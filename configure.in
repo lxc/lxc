@@ -15,7 +15,7 @@ AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h],, AC_MSG_ERROR([netlink hea
 AC_PROG_GCC_TRADITIONAL
 
 if test "x$GCC" = "xyes"; then
-  CFLAGS="$CFLAGS -Wall -Werror"
+  CFLAGS="$CFLAGS -Wall"
 fi
 
 AC_CONFIG_FILES([
