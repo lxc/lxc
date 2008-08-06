@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -x
+
+test -d autom4te.cache && rm -rf autom4te.cache
+
+ACLOCAL_AMFLAGS="-I config $ACLOCAL_AMFLAGS"
+aclocal $ACLOCAL_AMFLAGS || exit 1
+autoheader || exit 1
+autoconf || exit 1
+automake --add-missing --copy || exit 1

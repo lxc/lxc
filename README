@@ -1,0 +1,275 @@
+
+Linux Container - LXC:
+----------------------
+
+This document provides a quick help to use the linux container.
+
+Change log:
+-----------
+
+version 0.1.0 : initial document, Daniel Lezcano <dlezcano@fr.ibm.com>, Aug 01, 2008
+
+Contents:
+---------
+	0) Quick start
+	1) Overview
+	2) Requirements
+	3) Functional Specification
+	4) Future work
+
+
+0) Quick start
+--------------
+
+You are in a hurry, and you don't want to read this README. Ok,
+without warranty, here are the commands to launch a shell inside a
+container with a predefined configuration template, it may work.
+
+   lxc-create -n foo -f /etc/lxc/lxc-macvlan.conf
+
+   lxc-execute -n foo /bin/bash
+
+When your bash exits, you don't have to create 'foo' again, just call
+lxc-execute again.
+
+1) Overview
+-----------
+
+The container technology is actively being pushed into the mainstream
+linux kernel. It provides the resource management through the control
+groups aka process containers and resource isolation through the
+namespaces.
+
+The LXC aims to use these new functionnalities to provide an userspace
+container object which provides full resource isolation and resource
+control for an applications or a system.
+
+The first objective of this project is to make the life easier for the
+kernel developpers involved in the containers project and especially
+to continue working on the Checkpoint/Restart new features. The LXC is
+small enough to easily manage a container with simple command lines
+and complete enough to be used for other purposes.
+
+2) Requirements
+---------------
+
+The LXC relies on a set of functionnalies provided by the kernel which
+needs to be active. Depending of the missing functionnality the LXC
+will work with a restricted number of functionnality or will simply
+fails.
+
+This is the list of the kernel features which needs to be compiled in:
+
+* General
+ * Control Group support
+   -> namespace cgroup subsystem
+   -> cpuset support
+   -> Group CPU scheduler
+   -> control group freeze subsystem
+   -> Basis for grouping tasks (Control Groups)
+   -> Simple CPU accounting
+   -> Resource counters
+   -> Memory resource controllers for Control Groups
+   -> Namespace support
+     -> UTS namespace	
+     -> IPC namespace
+     -> User namespace
+     -> Pid namespace
+* Network support
+ -> Networking options
+  -> Network namespace support
+
+For the moment the easiest way to have all the features in the kernel
+is to use the git tree at:
+
+git://git.kernel.org/pub/scm/linux/kernel/git/daveh/linux-2.6-lxc.git
+
+Otherwise the latest version of 2.6.26 kernel is usable with LXC but
+without sysfs if the network namespace is activated and without the
+freezer subsystem.
+
+Before using LXC, the system should be configured as followed:
+
+* Control group file system must be mounted
+
+  mount -t cgroup cgroup /cgroup
+
+* You must have root privileges
+
+3) Functional Specification
+---------------------------
+
+A container is an object where the configuration is persistent. The
+application will be launched inside this container and it will
+use the configuration which was previously created.
+
+3.1 Container life cycle
+------------------------
+
+When the container is created, it contains the configuration
+information. When a process is launched, the container will be
+starting and running. When the last process running inside the
+container exits, the container is stopped.
+
+In case of failure when the container is initialized, it will pass
+through the aborting state.
+
+   ---------
+  | STOPPED |<---------------
+   ---------                 |
+       |                     |
+     start                   |
+       |                     |
+       V                     |
+   ----------                |
+  | STARTING |--error-       |
+   ----------         |      |
+       |              |      |
+       V              V      |
+   ---------    ----------   |
+  | RUNNING |  | ABORTING |  |
+   ---------    ----------   |
+       |              |      |
+  no process          |      |
+       |              |      |
+       V              |      |
+   ----------         |      |
+  | STOPPING |<-------       |
+   ----------                |
+       |                     |
+        ---------------------
+
+3.2 Configuration file
+----------------------
+
+The configuration file has the following format:
+
+--------------------------------------------------------------------------------
+
+# the fstab mount file.
+lxc.mount = ./fstab
+
+# the hostname to be set into the container
+lxc.utsname = virtnode
+
+# the chroot if needed for the running application
+lxc.chroot = /mnt/root
+
+# The network has several of kind of configuration:
+#
+#  * veth : the network will use the veth virtual device, the
+#              specified link must be a bridge
+#  * macvlan : the network will use the macvlan device, the specified
+#              link should be an existing interface, usually it is
+#              eth0
+#  * phys : the network will use a physical network device, the
+#              specified link should be an existing interface
+lxc.network.type = macvlan
+
+# specify the flags to be used for the network, actually only <up> is
+# allowed which mean the network should be set up when created. If the
+# network is set up, the loopback is automatically set up too.
+lxc.network.flags = up
+
+# specify the physical network device which will communicate with the
+# outside world
+lxc.network.link = eth0
+
+# NIC ethernet mac address
+lxc.network.hwaddr = 4a:49:43:49:79:bd
+
+# specify the ipv4 address of the container. Several lines are allowed
+# and will mean several addresses will be assigned to the interface
+lxc.network.ipv4 = 1.2.3.5/24
+
+# specify the ipv6 address of the container. Several lines are allowed
+# and will mean several addresses will be assigned to the interface
+lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
+
+--------------------------------------------------------------------------------
+
+ * lxc.mount is optional
+ * lxc.utsname is optional
+ * lxc.network.xxx are optional, if not specified, the network 
+ namespace will not be created
+ * lxc.chroot is optional
+
+3.3 Container creation
+----------------------
+
+The container is created via the 'lxc-create' command.  The command
+specifies the container name and the container configuration file.
+
+      lxc-create -n foo -f <config>
+
+
+3.4 Starting a container
+------------------------
+
+As the container has been create with the lxc-create command, it is
+possible now to start an application inside.
+
+      lxc-execute -n foo /bin/bash
+
+When the application has exited, it is possible to continue using the
+container configuration to launch another application.
+
+3.5 Stopping a container
+------------------------
+
+Usually, a container stops when the last process exits but in some
+cases, it is usefully to wipe out such application. The following
+command will kill the processes.
+
+      lxc-stop -n foo
+
+3.6 Freezing/Unfreezing a container
+-----------------------------------
+
+All the processes belonging to a container can be stopped and resumed.
+
+      lxc-freeze -n foo
+
+      lxc-unfreeze -n foo
+
+3.7 Sending a signal to a container
+-----------------------------------
+
+A signal can be sent to all processes running inside the container.
+
+      lxc-kill -n foo -s <signal>
+
+3.8 Monitoring container states
+-------------------------------
+
+A container has a life cycle and pass though different states as
+defined in section 3.1. The following command allows to watch such
+states for a specific container.
+
+     lxc-monitor -n foo
+
+3.9 Getting the container state
+-------------------------------
+
+At any time, the following command will retrieve the state of the
+container.
+
+     lxc-state -n foo
+
+3.10 Showing processes list for a container
+------------------------------------------
+
+The following command will show all the processes for all the running
+container.
+
+     lxc-ps
+
+4) Future work
+--------------
+
+ * change the lxc-start command to support system container
+ * change the lxc-execute to have the first process to exec
+ * take into account all the resource management
+ * man pages
+ * improve monitoring support
+ * and more :)

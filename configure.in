@@ -1,0 +1,38 @@
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+AC_INIT([lxc], [0.1.0])
+
+AC_CONFIG_SRCDIR([configure.in])
+AC_CONFIG_AUX_DIR([config])
+AM_CONFIG_HEADER([src/config.h])
+AM_INIT_AUTOMAKE([-Wno-portability])
+AC_CANONICAL_HOST
+AC_PROG_RANLIB
+AM_PROG_CC_C_O
+AC_GNU_SOURCE
+AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h],, AC_MSG_ERROR([netlink headers not found]), [[]])
+AC_PROG_GCC_TRADITIONAL
+
+if test "x$GCC" = "xyes"; then
+  CFLAGS="$CFLAGS -Wall -Werror"
+fi
+
+AC_CONFIG_FILES([
+        Makefile
+	lxc.spec
+        config/Makefile
+        src/Makefile
+	src/liblxc/Makefile
+	src/lxc/Makefile
+	src/lxc/lxc-ps
+	etc/Makefile
+	etc/lxc-macvlan.conf
+	etc/lxc-no-netns.conf
+	etc/lxc-phys.conf
+	etc/lxc-veth.conf
+	etc/lxc-complex-config
+	test/Makefile
+])
+AC_CONFIG_COMMANDS([default],[[]],[[]])
+AC_OUTPUT

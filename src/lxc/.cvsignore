@@ -1,0 +1,15 @@
+.deps
+Makefile
+Makefile.in
+lxc-console
+lxc-create
+lxc-destroy
+lxc-execute
+lxc-freeze
+lxc-kill
+lxc-monitor
+lxc-start
+lxc-state
+lxc-stop
+lxc-unfreeze
+lxc-ps

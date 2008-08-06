@@ -1,0 +1,9 @@
+# Container with network virtualized using a physical network device with name
+# 'eth0'
+lxc.utsname = gamma
+lxc.network.type = phys
+lxc.network.flags = up
+lxc.network.link = eth0
+lxc.network.hwaddr = 4a:49:43:49:79:ff
+lxc.network.ipv4 = 1.2.3.6/24
+lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297

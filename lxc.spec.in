@@ -1,0 +1,99 @@
+#
+# lxc: linux Container library
+#
+# (C) Copyright IBM Corp. 2007, 2008
+#
+# Authors:
+# Daniel Lezcano <dlezcano at fr.ibm.com>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+%define _unpackaged_files_terminate_build    0
+
+%define RELEASE 1
+%define rel     %{?CUSTOM_RELEASE} %{!?CUSTOM_RELEASE: %RELEASE}
+
+#
+# Arguments that can be passed to the rpm builder:
+#
+# --define 'confargs <extra args to configure args>' (def. '')
+#
+
+%{!?confargs: %{expand:%%define confargs ''}}
+
+# What kernel are we building for?
+%{!?kernel: %{expand:%%define kernel %(uname -r)}}
+
+%define _prefix /usr
+
+Name: @PACKAGE@
+Version: @VERSION@
+Release: %{rel}
+Packager:  <dlezcano@fr.ibm.com>
+URL: http://lxc.sourceforge.net
+Summary: %name
+Group: Applications/System
+License: LGPL
+Source:	%name/%name-%version.tar.gz
+BuildRoot: %_tmppath/%name-%version-root
+
+%description
+%name is a set of command line to manage containers
+
+%package devel
+Release:        %{rel}
+Summary: development library for %{name}
+Group: Application/System
+
+%description devel
+The %{name}-devel package contains header files and library needed for development
+of containers
+
+%prep
+%setup -q
+
+%build
+%configure $args
+
+ncpus=`egrep -c "^cpu[0-9]+" /proc/stat || :`
+make -j$ncpus
+
+%install
+rm -rf %{buildroot}
+%makeinstall
+
+%clean
+rm -rf %{buildroot}
+
+%post
+
+%files
+%defattr(-,root,root)
+%{_sysconfdir}/%{name}/*
+%{_bindir}/*
+
+%files devel
+%defattr(-,root,root)
+%{_includedir}/%{name}/*
+%{_libdir}/*.a
+
+%changelog
+* Sun Aug 3 2008 Daniel Lezcano <dlezcano@fr.ibm.com>
+- Initial RPM release.
+
+# Local variables:
+# mode: shell-script
+# sh-shell: rpm
+# end:

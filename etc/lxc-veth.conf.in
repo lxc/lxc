@@ -1,0 +1,9 @@
+# Container with network virtualized using a pre-configured bridge named br0 and
+# veth pair virtual network devices
+lxc.utsname = beta
+lxc.network.type = veth
+lxc.network.flags = up
+lxc.network.link = br0
+lxc.network.hwaddr = 4a:49:43:49:79:bf
+lxc.network.ipv4 = 1.2.3.5/24
+lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597

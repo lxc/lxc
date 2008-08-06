@@ -1,0 +1,17 @@
+#!/bin/bash
+
+LXCPATH=/var/lxc
+
+if [ ! -r $LXCPATH ]; then
+    exit 0
+fi
+
+LXCS=$(ls $LXCPATH)
+
+for i in $LXCS; do
+    if [ -d $LXCPATH/$i/nsgroup ]; then
+	echo "Container : $(basename $i)"
+	cat $LXCPATH/$i/nsgroup/tasks
+    fi
+done
+
