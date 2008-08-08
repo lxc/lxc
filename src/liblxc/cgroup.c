@@ -80,6 +80,7 @@ int lxc_link_nsgroup(const char *name, pid_t pid)
 	asprintf(&lxc, LXCPATH "/%s/nsgroup", name);
 	asprintf(&nsgroup, "%s/%d", cgroup, pid);
 
+	unlink(lxc);
 	ret = symlink(nsgroup, lxc);
 	if (ret)
 		lxc_log_syserror("failed to create symlink %s->%s",
