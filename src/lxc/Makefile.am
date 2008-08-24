@@ -14,7 +14,8 @@ bin_PROGRAMS = \
 	lxc-state \
 	lxc-kill \
 	lxc-freeze \
-	lxc-unfreeze
+	lxc-unfreeze \
+	lxc-priority
 
 lxc_create_SOURCES = lxc_create.c config.c config.h
 lxc_create_LDADD = \
@@ -58,4 +59,8 @@ lxc_freeze_LDADD = \
 
 lxc_unfreeze_SOURCES = lxc_unfreeze.c
 lxc_unfreeze_LDADD = \
+        $(top_builddir)/src/liblxc/liblxc.a
+
+lxc_priority_SOURCES = lxc_priority.c
+lxc_priority_LDADD = \
         $(top_builddir)/src/liblxc/liblxc.a

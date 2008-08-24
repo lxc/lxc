@@ -42,7 +42,6 @@
 #define MAXPIDLEN 20
 
 struct lxc_mem_stat;
-struct lxc_conf;
 
 typedef int (*lxc_callback_t)(const char *name, int argc, 
 			      char *argv[], void *data);

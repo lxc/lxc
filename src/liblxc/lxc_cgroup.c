@@ -154,7 +154,7 @@ int lxc_get_priority(const char *name, int *priority)
 	ret = 0;
 out:
 	free(path);
-	return 0;
+	return ret;
 }
 
 int lxc_set_memory(const char *name, size_t memmax)
