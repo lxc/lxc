@@ -39,15 +39,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
-#include <list.h>
-#include <conf.h>
-#include <log.h>
 #include <lxc.h>
-#include <lock.h>
-#include <state.h>
-#include <cgroup.h>
-#include <namespace.h>
-#include <utils.h>
 
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);

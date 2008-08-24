@@ -33,8 +33,6 @@
 #include <net/if.h>
 
 #include <lxc.h>
-#include <state.h>
-#include <log.h>
 
 int lxc_monitor(const char *name, int output_fd)
 {

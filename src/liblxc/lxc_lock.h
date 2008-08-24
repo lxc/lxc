@@ -20,46 +20,11 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <libgen.h>
+#ifndef _lock_h
+#define _lock_h
 
-#include <lxc.h>
+extern int lxc_get_lock(const char *name);
 
-void usage(char *cmd)
-{
-	fprintf(stderr, "%s <command>\n", basename(cmd));
-	fprintf(stderr, "\t -n <name>   : name of the container\n");
-	_exit(1);
-}
+extern void lxc_put_lock(int lock);
 
-int main(int argc, char *argv[])
-{
-	char opt;
-	char *name = NULL;
-	int state;
-
-	while ((opt = getopt(argc, argv, "n:")) != -1) {
-		switch (opt) {
-		case 'n':
-			name = optarg;
-			break;
-		}
-	}
-
-	if (!name)
-		usage(argv[0]);
-
-	state = lxc_state(name);
-	if (state < 0) {
-		fprintf(stderr, "failed to retrieve the state of %s\n", name);
-		return 1;
-	}
-
-	printf("container has the state to %d - %s\n",
-	       state, state2str(state));
-
-
-	return 0;
-}
+#endif

@@ -37,11 +37,6 @@
 #include <net/if.h>
 
 #include <lxc.h>
-#include <state.h>
-#include <list.h>
-#include <conf.h>
-#include <log.h>
-#include <lock.h>
 
 static int dir_filter(const struct dirent *dirent)
 {

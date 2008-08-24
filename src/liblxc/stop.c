@@ -37,13 +37,10 @@
 #include <net/if.h>
 
 #include <lxc.h>
-#include <state.h>
-#include <log.h>
-#include <lock.h>
 
 int lxc_stop(const char *name)
 {
-	char *init;
+	char init[MAXPATHLEN];
 	char val[MAXPIDLEN];
 	int fd, lock, ret = -1;
 	size_t pid;
@@ -61,11 +58,11 @@ int lxc_stop(const char *name)
 		return -1;
 	}
 
-	asprintf(&init, LXCPATH "/%s/init", name);
+	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
 	fd = open(init, O_RDONLY);
 	if (fd < 0) {
 		lxc_log_syserror("failed to open init file for %s", name);
-		goto out_free;
+		goto out_unlock;
 	}
 	
 	if (read(fd, val, sizeof(val)) < 0) {
@@ -89,7 +86,7 @@ int lxc_stop(const char *name)
 
 out_close:
 	close(fd);
-out_free:
-	free(init);
+out_unlock:
+	lxc_put_lock(lock);
 	return ret;
 }

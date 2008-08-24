@@ -34,9 +34,6 @@
 #include <net/if.h>
 
 #include <lxc.h>
-#include <state.h>
-#include <list.h>
-#include <conf.h>
 
 void usage(char *cmd)
 {

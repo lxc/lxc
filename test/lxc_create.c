@@ -31,9 +31,6 @@
 #include <net/if.h>
 
 #include <lxc.h>
-#include <state.h>
-#include <list.h>
-#include <conf.h>
 
 static void usage(const char *cmd)
 {
@@ -50,7 +47,7 @@ int main(int argc, char *argv[])
 /* 	struct list mclist2; */
 /* 	struct list vethlist; */
 /* 	struct list vethlist2; */
-	struct list phylist;
+	struct lxc_list phylist;
 
 /* 	struct inetdev idev; */
 /* 	struct list l1 = init_list(&l1); */
@@ -129,30 +126,30 @@ int main(int argc, char *argv[])
 /* 	}; */
 /* 	mclist2.elem = &macvlan2; */
 
-	struct netdev nd = {
+	struct lxc_netdev nd = {
 			.ifname = "dummy0",
-			.ipv4 = init_list(&nd.ipv4),
-			.ipv6 = init_list(&nd.ipv6),
+			.ipv4 = lxc_init_list(&nd.ipv4),
+			.ipv6 = lxc_init_list(&nd.ipv6),
 	};
-	struct list ndlist = init_list(&ndlist);
+	struct lxc_list ndlist = lxc_init_list(&ndlist);
 	ndlist.elem = &nd;
 
-	struct network phys = {
+	struct lxc_network phys = {
 		.type = PHYS,
-		.netdev = init_list(&phys.netdev),
+		.netdev = lxc_init_list(&phys.netdev),
 	};
  	phylist.elem = &phys;
 
 	struct lxc_conf lxc_conf = {
-		.networks = init_list(&lxc_conf.networks),
+		.networks = lxc_init_list(&lxc_conf.networks),
 		.chroot = "/mnt/iso",
 	};
 
-	list_add(&phys.netdev, &ndlist);
+	lxc_list_add(&phys.netdev, &ndlist);
 
 /* 	list_add(&lxc_conf.networks, &vethlist); */
 /* 	list_add(&lxc_conf.networks, &mclist); */
-	list_add(&lxc_conf.networks, &phylist);
+	lxc_list_add(&lxc_conf.networks, &phylist);
 /* 	list_add(&lxc_conf.networks, &mclist); */
 /* 	list_add(&lxc_conf.networks, &vethlist2); */
 

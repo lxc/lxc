@@ -20,46 +20,43 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+
+#define _GNU_SOURCE
 #include <stdio.h>
+#undef _GNU_SOURCE
+#include <errno.h>
 #include <unistd.h>
-#include <string.h>
-#include <libgen.h>
+#include <stdlib.h>
+#include <sys/file.h>
 
 #include <lxc.h>
 
-void usage(char *cmd)
+int lxc_get_lock(const char *name)
 {
-	fprintf(stderr, "%s <command>\n", basename(cmd));
-	fprintf(stderr, "\t -n <name>   : name of the container\n");
-	_exit(1);
+	char *lock;
+	int fd, ret;
+
+	asprintf(&lock, LXCPATH "/%s", name);
+	fd = open(lock, O_RDONLY|O_DIRECTORY, S_IRUSR|S_IWUSR);
+	if (fd < 0) {
+		ret = -errno;
+		goto out;
+	}
+
+	if (flock(fd, LOCK_EX|LOCK_NB)) {
+		ret = errno == EWOULDBLOCK ? 0 : -errno;
+		close(fd);
+		goto out;
+	}
+
+	ret = fd;
+out:
+	free(lock);
+	return ret;
 }
 
-int main(int argc, char *argv[])
+void lxc_put_lock(int lock)
 {
-	char opt;
-	char *name = NULL;
-	int state;
-
-	while ((opt = getopt(argc, argv, "n:")) != -1) {
-		switch (opt) {
-		case 'n':
-			name = optarg;
-			break;
-		}
-	}
-
-	if (!name)
-		usage(argv[0]);
-
-	state = lxc_state(name);
-	if (state < 0) {
-		fprintf(stderr, "failed to retrieve the state of %s\n", name);
-		return 1;
-	}
-
-	printf("container has the state to %d - %s\n",
-	       state, state2str(state));
-
-
-	return 0;
+	flock(lock, LOCK_UN);
+	close(lock);
 }

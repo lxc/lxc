@@ -31,9 +31,6 @@
 #include <net/if.h>
 
 #include <lxc.h>
-#include <state.h>
-#include <list.h>
-#include <conf.h>
 
 #include "../src/lxc/config.h"
 

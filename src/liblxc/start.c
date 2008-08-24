@@ -41,15 +41,6 @@
 #include <net/if.h>
 
 #include <lxc.h>
-#include <namespace.h>
-#include <network.h>
-#include <state.h>
-#include <cgroup.h>
-#include <utils.h>
-#include <list.h>
-#include <conf.h>
-#include <log.h>
-#include <lock.h>
 
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);

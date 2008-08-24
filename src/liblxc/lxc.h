@@ -29,16 +29,20 @@
  liblxc/lxc.h will contain exports of liblxc
  **/
 
+#include <lxc_state.h>
+#include <lxc_list.h>
+#include <lxc_conf.h>
+#include <lxc_log.h>
+#include <lxc_lock.h>
+#include <lxc_cgroup.h>
+#include <lxc_namespace.h>
+#include <lxc_utils.h>
+
 #define LXCPATH "/var/lxc"
 #define MAXPIDLEN 20
 
 struct lxc_mem_stat;
 struct lxc_conf;
-
-typedef enum {
-	STOPPED, STARTING, RUNNING, STOPPING,
-	ABORTING, FREEZING, FROZEN, MAX_STATE,
-} lxc_state_t;
 
 typedef int (*lxc_callback_t)(const char *name, int argc, 
 			      char *argv[], void *data);

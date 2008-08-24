@@ -36,8 +36,6 @@
 #include <net/if.h>
 
 #include <lxc.h>
-#include <state.h>
-#include <log.h>
 
 static int freeze_unfreeze(const char *name, int freeze)
 {

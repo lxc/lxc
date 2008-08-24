@@ -20,46 +20,32 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <libgen.h>
+#ifndef _utils_h
+#define _utils_h
 
-#include <lxc.h>
-
-void usage(char *cmd)
-{
-	fprintf(stderr, "%s <command>\n", basename(cmd));
-	fprintf(stderr, "\t -n <name>   : name of the container\n");
-	_exit(1);
-}
-
-int main(int argc, char *argv[])
-{
-	char opt;
-	char *name = NULL;
-	int state;
-
-	while ((opt = getopt(argc, argv, "n:")) != -1) {
-		switch (opt) {
-		case 'n':
-			name = optarg;
-			break;
-		}
+#define LXC_TTY_HANDLER(s) \
+	static struct sigaction lxc_tty_sa_##s;				\
+	static void tty_##s##_handler(int sig, siginfo_t *info, void *ctx) \
+	{								\
+		if (lxc_tty_sa_##s.sa_handler == SIG_DFL ||		\
+		    lxc_tty_sa_##s.sa_handler == SIG_IGN)		\
+			return;						\
+		(*lxc_tty_sa_##s.sa_sigaction)(sig, info, ctx);	\
 	}
 
-	if (!name)
-		usage(argv[0]);
+#define LXC_TTY_ADD_HANDLER(s) \
+	do { \
+		struct sigaction sa; \
+		sa.sa_sigaction = tty_##s##_handler; \
+		sa.sa_flags = SA_SIGINFO; \
+		sigfillset(&sa.sa_mask); \
+		/* No error expected with sigaction. */ \
+		sigaction(s, &sa, &lxc_tty_sa_##s); \
+	} while (0)
 
-	state = lxc_state(name);
-	if (state < 0) {
-		fprintf(stderr, "failed to retrieve the state of %s\n", name);
-		return 1;
-	}
+#define LXC_TTY_DEL_HANDLER(s) \
+	do { \
+		sigaction(s, &lxc_tty_sa_##s, NULL); \
+	} while (0)
 
-	printf("container has the state to %d - %s\n",
-	       state, state2str(state));
-
-
-	return 0;
-}
+#endif

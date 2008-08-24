@@ -26,7 +26,6 @@
 #include <libgen.h>
 
 #include <lxc.h>
-#include <state.h>
 
 void usage(char *cmd)
 {

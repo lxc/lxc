@@ -36,10 +36,6 @@
 #include <net/if.h>
 
 #include <lxc.h>
-#include <state.h>
-#include <list.h>
-#include <conf.h>
-#include <log.h>
 
 int lxc_kill(const char *name, int signum)
 {
