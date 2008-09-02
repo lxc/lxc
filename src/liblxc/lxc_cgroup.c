@@ -101,7 +101,7 @@ int lxc_unlink_nsgroup(const char *name)
 	return ret;
 }
 
-int lxc_set_priority(const char *name, int priority)
+int lxc_cgroup_set_priority(const char *name, int priority)
 {
 	int fd;
 	char *path = NULL, *prio = NULL;
@@ -129,7 +129,7 @@ out:
 	return 0;
 }
 
-int lxc_get_priority(const char *name, int *priority)
+int lxc_cgroup_get_priority(const char *name, int *priority)
 {
 	int fd, ret = -1;
 	char *path, prio[MAXPRIOLEN];

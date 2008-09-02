@@ -11,6 +11,7 @@ AC_CANONICAL_HOST
 AC_PROG_RANLIB
 AM_PROG_CC_C_O
 AC_GNU_SOURCE
+AC_PROG_LIBTOOL
 AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h],, AC_MSG_ERROR([netlink headers not found]), [[]])
 AC_PROG_GCC_TRADITIONAL
 

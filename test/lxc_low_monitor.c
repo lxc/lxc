@@ -22,58 +22,44 @@
  */
 #include <stdio.h>
 #include <unistd.h>
-#include <sys/param.h>
-#include <sys/utsname.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <net/if.h>
+#include <string.h>
+#include <libgen.h>
 
 #include <lxc.h>
 
-#include "../src/lxc/lxc_config.h"
-
-static void usage(const char *cmd)
+void usage(char *cmd)
 {
-	fprintf(stderr, "%s -n <name>\n", cmd);
+	fprintf(stderr, "%s <command>\n", basename(cmd));
+	fprintf(stderr, "\t -n <name>   : name of the container\n");
 	_exit(1);
 }
 
 int main(int argc, char *argv[])
 {
-	char *file = NULL, *name = NULL;
-	struct lxc_conf lxc_conf;
-	int opt;
+	char opt;
+	char *name = NULL;
+	int fd;
 
-	while ((opt = getopt(argc, argv, "n:f:")) != -1) {
+	while ((opt = getopt(argc, argv, "n:")) != -1) {
 		switch (opt) {
-		case 'f':
-			file = optarg;
-			break;
 		case 'n':
 			name = optarg;
 			break;
 		}
 	}
 
-	if (!file || !name)
+	if (!name)
 		usage(argv[0]);
 
-	if (lxc_config_init(&lxc_conf)) {
-		fprintf(stderr, "failed to initialize configuration structure\n");
-		return 1;
+	fd = lxc_monitor_open(name);
+	if (fd < 0) {
+		fprintf(stderr, "failed to open monitor\n");
+		return -1;
 	}
-
-	if (lxc_config_read(file, &lxc_conf)) {
-		fprintf(stderr, "failed to read configuration\n");
-		return 1;
+	
+	for (;;) {
+		lxc_state_t state;
+		lxc_monitor_read(fd, &state);
+		printf("received changing state '%s'\n", lxc_state2str(state));
 	}
-
-	if (lxc_create(name, &lxc_conf)) {
-		fprintf(stderr, "failed to create <%s>\n", name);
-		return 1;
-	}
-
-	return 0;
 }

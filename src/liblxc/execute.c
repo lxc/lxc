@@ -64,10 +64,8 @@ int lxc_execute(const char *name, int argc, char *argv[],
 		return -1;
 	}
 
-	fcntl(lock, F_SETFD, FD_CLOEXEC);
-
 	if (lxc_setstate(name, STARTING)) {
-		lxc_log_error("failed to set state %s", state2str(STARTING));
+		lxc_log_error("failed to set state %s", lxc_state2str(STARTING));
 		goto out;
 	}
 
@@ -117,10 +115,12 @@ int lxc_execute(const char *name, int argc, char *argv[],
 				lxc_log_error("failed to setup the container");
 				goto error;
 			}
+
 			if (mount("proc", "/proc", "proc", 0, NULL)) {
-				lxc_log_error("failed to mount '/proc'");
+				lxc_log_syserror("failed to mount '/proc'");
 				goto error;
 			}
+
 			if (mount("sysfs", "/sys", "sysfs", 0, NULL)) {
 				lxc_log_syserror("failed to mount '/sys'");
 				/* continue: non fatal error until sysfs not per
@@ -213,7 +213,7 @@ int lxc_execute(const char *name, int argc, char *argv[],
 		lxc_log_warning("cgroupfs not found: cgroup disabled");
 
 	if (lxc_setstate(name, RUNNING)) {
-		lxc_log_error("failed to set state to %s", state2str(RUNNING));
+		lxc_log_error("failed to set state to %s", lxc_state2str(RUNNING));
 		goto err_state_failed;
 	}
 
@@ -226,7 +226,7 @@ wait_again:
 	}
 
 	if (lxc_setstate(name, STOPPING))
-		lxc_log_error("failed to set state %s", state2str(STOPPING));
+		lxc_log_error("failed to set state %s", lxc_state2str(STOPPING));
 
 	if (clone_flags & CLONE_NEWNET && conf_destroy_network(name))
 		lxc_log_error("failed to destroy the network");
@@ -234,7 +234,7 @@ wait_again:
 	err = 0;
 out:
 	if (lxc_setstate(name, STOPPED))
-		lxc_log_error("failed to set state %s", state2str(STOPPED));
+		lxc_log_error("failed to set state %s", lxc_state2str(STOPPED));
 
 	lxc_unlink_nsgroup(name);
 	unlink(init);
@@ -257,7 +257,7 @@ err_pipe_read:
 err_open:
 err_waitpid_failed:
 	if (lxc_setstate(name, ABORTING))
-		lxc_log_error("failed to set state %s", state2str(STOPPED));
+		lxc_log_error("failed to set state %s", lxc_state2str(STOPPED));
 
 	kill(pid, SIGKILL);
 err_fork_ns:

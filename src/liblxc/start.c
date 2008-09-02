@@ -69,7 +69,7 @@ int lxc_start(const char *name, int argc, char *argv[],
 
 	/* Begin the set the state to STARTING*/
 	if (lxc_setstate(name, STARTING)) {
-		lxc_log_error("failed to set state %s", state2str(STARTING));
+		lxc_log_error("failed to set state %s", lxc_state2str(STARTING));
 		goto out;
 	}
 
@@ -195,7 +195,7 @@ int lxc_start(const char *name, int argc, char *argv[],
 		lxc_log_warning("cgroupfs not found: cgroup disabled");
 
 	if (lxc_setstate(name, RUNNING)) {
-		lxc_log_error("failed to set state to %s", state2str(RUNNING));
+		lxc_log_error("failed to set state to %s", lxc_state2str(RUNNING));
 		goto err_state_failed;
 	}
 
@@ -208,7 +208,7 @@ wait_again:
 	}
 
 	if (lxc_setstate(name, STOPPING))
-		lxc_log_error("failed to set state %s", state2str(STOPPING));
+		lxc_log_error("failed to set state %s", lxc_state2str(STOPPING));
 
 	if (clone_flags & CLONE_NEWNET && conf_destroy_network(name))
 		lxc_log_error("failed to destroy the network");
@@ -216,7 +216,7 @@ wait_again:
 	err = 0;
 out:
 	if (lxc_setstate(name, STOPPED))
-		lxc_log_error("failed to set state %s", state2str(STOPPED));
+		lxc_log_error("failed to set state %s", lxc_state2str(STOPPED));
 
 	lxc_unlink_nsgroup(name);
 	unlink(init);
@@ -239,7 +239,7 @@ err_create_network:
 err_pipe_read:
 err_waitpid_failed:
 	if (lxc_setstate(name, ABORTING))
-		lxc_log_error("failed to set state %s", state2str(STOPPED));
+		lxc_log_error("failed to set state %s", lxc_state2str(STOPPED));
 
 	kill(pid, SIGKILL);
 err_fork_ns:

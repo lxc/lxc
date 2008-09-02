@@ -94,10 +94,12 @@ int lxc_destroy(const char *name)
 		goto out;
 	}
 
-	if (rmstate(name)) {
+	if (lxc_rmstate(name)) {
 		lxc_log_error("failed to remove state file for %s", name);
 		goto out_lock;
 	}
+	
+	lxc_monitor_cleanup(name);
 
 	if (lxc_unconfigure(name)) {
 		lxc_log_error("failed to cleanup %s", name);

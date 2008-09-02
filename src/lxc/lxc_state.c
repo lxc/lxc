@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	printf("'%s' is %s\n", name, state2str(state));
+	printf("'%s' is %s\n", name, lxc_state2str(state));
 
 	return 0;
 }

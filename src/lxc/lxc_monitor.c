@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 		}
 
 		printf("container has changed the state to %d - %s\n", 
-		       state, state2str(state));
+		       state, lxc_state2str(state));
 	}
 	return 0;
 }

@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <stdlib.h>
 #include <sys/types.h>
 
 #include <lxc.h>
@@ -58,7 +59,7 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 
 	if (!priority) {
-		if (lxc_get_priority(name, &prio)) {
+		if (lxc_cgroup_get_priority(name, &prio)) {
 			fprintf(stderr, "failed to retrieve the priority of '%s'\n", name);
 			return 1;
 		}
@@ -68,7 +69,7 @@ int main(int argc, char *argv[])
 	}
 
 	prio = atoi(priority);
-	if (lxc_set_priority(name, prio)) {
+	if (lxc_cgroup_set_priority(name, prio)) {
 		fprintf(stderr, "failed to assign priority  %d to of '%s'", 
 			prio, name);
 		return 1;

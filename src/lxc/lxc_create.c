@@ -32,8 +32,7 @@
 #include <net/if.h>
 
 #include <lxc.h>
-
-#include "config.h"
+#include "lxc_config.h"
 
 void usage(char *cmd)
 {
@@ -63,12 +62,12 @@ int main(int argc, char *argv[])
 	if (!name || !file)
 		usage(argv[0]);
 
-	if (config_init(&lxc_conf)) {
+	if (lxc_config_init(&lxc_conf)) {
 		fprintf(stderr, "failed to initialize the configuration\n");
 		return 1;
 	}
 
-	if (config_read(file, &lxc_conf)) {
+	if (lxc_config_read(file, &lxc_conf)) {
 		fprintf(stderr, "invalid configuration file\n");
 		return 1;
 	}

@@ -24,15 +24,21 @@
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <sys/inotify.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <net/if.h>
-
 #include <lxc.h>
+
+#ifndef UNIX_PATH_MAX
+#define UNIX_PATH_MAX 108
+#endif
 
 int lxc_monitor(const char *name, int output_fd)
 {
@@ -92,4 +98,73 @@ out:
 	inotify_rm_watch(nfd, wfd);
 	close(nfd);
 	return err;
+}
+
+void lxc_monitor_send_state(const char *name, lxc_state_t state)
+{
+	int fd;
+	struct sockaddr_un addr;
+
+	fd = socket(PF_UNIX, SOCK_DGRAM, 0);
+	if (fd < 0)
+		lxc_log_syserror("failed to create notification socket");
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	snprintf(addr.sun_path, UNIX_PATH_MAX, LXCPATH "/%s/notification", name);
+
+	sendto(fd, &state, sizeof(state), 0, 
+	       (const struct sockaddr *)&addr, sizeof(addr));
+
+	close(fd);
+}
+
+void lxc_monitor_cleanup(const char *name)
+{
+	char path[UNIX_PATH_MAX];
+	snprintf(path, UNIX_PATH_MAX, LXCPATH "/%s/notification", name);
+	unlink(path);
+}
+
+int lxc_monitor_open(const char *name)
+{
+	int fd;
+	struct sockaddr_un addr;
+
+	fd = socket(PF_UNIX, SOCK_DGRAM, 0);
+	if (fd < 0) {
+		lxc_log_syserror("failed to create notification socket");
+		return -1;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+
+	addr.sun_family = AF_UNIX;
+	snprintf(addr.sun_path, UNIX_PATH_MAX, LXCPATH "/%s/notification", name);
+	unlink(addr.sun_path);
+
+	if (bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
+		lxc_log_syserror("failed to bind to '%s'", addr.sun_path);
+		return -1;
+	}
+
+	return fd;
+}
+
+int lxc_monitor_read(int fd, lxc_state_t *state)
+{
+	int ret;
+
+	ret = recv(fd, state, sizeof(*state), 0);
+	if (ret < 0) {
+		lxc_log_syserror("failed to received state");
+		return -1;
+	}
+
+	return ret;
+}
+
+int lxc_monitor_close(int fd)
+{
+	return close(fd);
 }

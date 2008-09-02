@@ -82,12 +82,17 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root)
 %{_sysconfdir}/%{name}/*
+%{_libdir}/*.so*
 %{_bindir}/*
 
 %files devel
 %defattr(-,root,root)
 %{_includedir}/%{name}/*
 %{_libdir}/*.a
+
+%post devel
+ln -sf %{_includedir}/%{name} %{_includedir}/liblxc
+
 
 %changelog
 * Sun Aug 3 2008 Daniel Lezcano <dlezcano@fr.ibm.com>

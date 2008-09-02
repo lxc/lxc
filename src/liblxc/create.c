@@ -116,7 +116,7 @@ int lxc_create(const char *name, struct lxc_conf *conf)
 		goto err;
 	}
 
-	if (mkstate(name)) {
+	if (lxc_mkstate(name)) {
 		lxc_log_error("failed to create the state file for %s", name);
 		goto err;
 	}
@@ -139,7 +139,7 @@ out:
 err_state:
 	lxc_unconfigure(name);
 
-	if (rmstate(name))
+	if (lxc_rmstate(name))
 		lxc_log_error("failed to remove state file for %s", name);
 err:
 	if (remove_lxc_directory(name))

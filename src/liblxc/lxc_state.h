@@ -28,11 +28,12 @@ typedef enum {
 	ABORTING, FREEZING, FROZEN, MAX_STATE,
 } lxc_state_t;
 
-extern const char *state2str(lxc_state_t state);
-extern lxc_state_t str2state(const char *state);
-extern int mkstate(const char *name);
-extern int rmstate(const char *name);
+extern int lxc_mkstate(const char *name);
+extern int lxc_rmstate(const char *name);
 extern int lxc_setstate(const char *name, lxc_state_t state);
 extern lxc_state_t lxc_getstate(const char *name);
+
+extern lxc_state_t lxc_str2state(const char *state);
+extern const char *lxc_state2str(lxc_state_t state);
 
 #endif

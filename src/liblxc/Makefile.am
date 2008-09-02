@@ -1,4 +1,4 @@
-lib_LIBRARIES = liblxc.a
+lib_LTLIBRARIES = liblxc.la
 pkginclude_HEADERS = \
 		lxc.h \
 		lxc_cgroup.h \
@@ -10,16 +10,15 @@ pkginclude_HEADERS = \
 		lxc_state.h \
 		lxc_utils.h
 
-liblxc_a_SOURCES = \
+liblxc_la_SOURCES = \
 	create.c \
 	destroy.c \
 	start.c \
 	stop.c \
 	execute.c \
-	monitor.c \
+	monitor.c monitor.h \
 	kill.c \
 	freezer.c \
-	lxc_state.c lxc_state.h \
 	lxc_cgroup.c lxc_cgroup.h \
 	lxc.h \
 	lxc_utils.h \
@@ -34,3 +33,5 @@ liblxc_a_SOURCES = \
         nl.c nl.h \
         rtnl.c rtnl.h \
         genl.c genl.h
+
+liblxc_la_LDFLAGS = -release @PACKAGE_VERSION@

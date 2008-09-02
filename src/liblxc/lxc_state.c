@@ -32,20 +32,21 @@
 #include <sys/file.h>
 
 #include <lxc.h>
+#include "monitor.h"
 
 static char *strstate[] = {
 	"STOPPED", "STARTING", "RUNNING", "STOPPING",
 	"ABORTING", "FREEZING", "FROZEN",
 };
 
-const char *state2str(lxc_state_t state)
+const char *lxc_state2str(lxc_state_t state)
 {
 	if (state < STOPPED || state > MAX_STATE - 1)
 		return NULL;
 	return strstate[state];
 }
 
-lxc_state_t str2state(const char *state)
+lxc_state_t lxc_str2state(const char *state)
 {
 	int i, len;
 	len = sizeof(strstate)/sizeof(strstate[0]);
@@ -59,7 +60,7 @@ int lxc_setstate(const char *name, lxc_state_t state)
 {
 	int fd, err;
 	char file[MAXPATHLEN];
-	const char *str = state2str(state);
+	const char *str = lxc_state2str(state);
 
 	if (!str)
 		return -1;
@@ -91,6 +92,8 @@ int lxc_setstate(const char *name, lxc_state_t state)
 out:
 	close(fd);
 
+	lxc_monitor_send_state(name, state);
+
 	/* let the event to be propagated, crappy but that works,
 	 * otherwise the events will be folded into only one event,
 	 * and I want to have them to be one by one in order
@@ -101,7 +104,7 @@ out:
 	return -err;
 }
 
-int mkstate(const char *name)
+int lxc_mkstate(const char *name)
 {
 	int fd;
 	char file[MAXPATHLEN];
@@ -116,7 +119,7 @@ int mkstate(const char *name)
 	return 0;
 }
 
-int rmstate(const char *name)
+int lxc_rmstate(const char *name)
 {
 	char file[MAXPATHLEN];
 	snprintf(file, MAXPATHLEN, LXCPATH "/%s/state", name);
@@ -152,7 +155,7 @@ lxc_state_t lxc_getstate(const char *name)
 	file[err] = '\0';
 
 	close(fd);
-	return str2state(file);
+	return lxc_str2state(file);
 }
 
 static int freezer_state(const char *name)
@@ -166,7 +169,7 @@ static int freezer_state(const char *name)
 		 LXCPATH "/%s/freezer.freeze", name);
 
 	file = fopen(freezer, "r");
-	if (file < 0) {
+	if (!file) {
 		lxc_log_syserror("failed to open %s", freezer);
 		return -1;
 	}
@@ -179,7 +182,7 @@ static int freezer_state(const char *name)
 		return -1;
 	}
 
-	return str2state(status);
+	return lxc_str2state(status);
 }
 
 lxc_state_t lxc_state(const char *name)

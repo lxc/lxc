@@ -35,13 +35,13 @@ static inline int lxc_list_empty(struct lxc_list *list)
 	return list == list->next;
 }
 
-static inline void lxc_list_add(struct lxc_list *list, struct lxc_list *new)
+static inline void lxc_list_add(struct lxc_list *head, struct lxc_list *list)
 {
-	struct lxc_list *next = list->next;
-	next->prev = new;
-	new->next = next;
-	new->prev = list;
-	list->next = new;
+	struct lxc_list *next = head->next;
+	next->prev = list;
+	list->next = next;
+	list->prev = head;
+	head->next = list;
 }
 
 static inline void lxc_list_del(struct lxc_list *list)

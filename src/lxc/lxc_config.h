@@ -21,43 +21,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#define _GNU_SOURCE
-#include <stdio.h>
-#undef _GNU_SOURCE
-#include <errno.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <sys/file.h>
-#include <lxc.h>
+extern int lxc_config_init(struct lxc_conf *conf);
+extern int lxc_config_read(const char *file, struct lxc_conf *conf);
 
-int lxc_get_lock(const char *name)
-{
-	char *lock;
-	int fd, ret;
 
-	asprintf(&lock, LXCPATH "/%s", name);
-	fd = open(lock, O_RDONLY|O_DIRECTORY, S_IRUSR|S_IWUSR);
-	if (fd < 0) {
-		ret = -errno;
-		goto out;
-	}
 
-	fcntl(fd, F_SETFD, FD_CLOEXEC);
-
-	if (flock(fd, LOCK_EX|LOCK_NB)) {
-		ret = errno == EWOULDBLOCK ? 0 : -errno;
-		close(fd);
-		goto out;
-	}
-
-	ret = fd;
-out:
-	free(lock);
-	return ret;
-}
-
-void lxc_put_lock(int lock)
-{
-	flock(lock, LOCK_UN);
-	close(lock);
-}

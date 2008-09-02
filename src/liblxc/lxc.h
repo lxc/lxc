@@ -23,20 +23,24 @@
 #ifndef __lxc_h
 #define __lxc_h
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  Following code is for liblxc.
 
  liblxc/lxc.h will contain exports of liblxc
  **/
 
-#include <lxc_state.h>
-#include <lxc_list.h>
-#include <lxc_conf.h>
-#include <lxc_log.h>
-#include <lxc_lock.h>
-#include <lxc_cgroup.h>
-#include <lxc_namespace.h>
-#include <lxc_utils.h>
+#include <liblxc/lxc_state.h>
+#include <liblxc/lxc_list.h>
+#include <liblxc/lxc_conf.h>
+#include <liblxc/lxc_log.h>
+#include <liblxc/lxc_lock.h>
+#include <liblxc/lxc_cgroup.h>
+#include <liblxc/lxc_namespace.h>
+#include <liblxc/lxc_utils.h>
 
 #define LXCPATH "/var/lxc"
 #define MAXPIDLEN 20
@@ -104,11 +108,36 @@ extern int lxc_stop(const char *name);
  * is changed, a state data is send through a file descriptor passed to
  * the function with output_fd.
  * The function will block until the container is destroyed.
- * @name : the name of the contaier
+ * @name : the name of the container
  * @output_fd : the file descriptor where to send the states
  * Returns 0 on success, < 0 otherwise
  */
 extern int lxc_monitor(const char *name, int output_fd);
+
+/*
+ * Open the monitoring mechanism for a specific container
+ * The function will return an fd corresponding to the events
+ * @name  : the name of the container
+ * Returns a file descriptor on success, < 0 otherwise
+ */
+extern int lxc_monitor_open(const char *name);
+
+/*
+ * Read the state of the container if this one has changed
+ * The function will block until there is an event available
+ * @fd : the file descriptor provided by lxc_monitor_open
+ * @state : the variable which will be filled with the state
+ * Returns 0 if the monitored container has exited, > 0 if
+ * data was readen, < 0 otherwise
+ */
+extern int lxc_monitor_read(int fd, lxc_state_t *state);
+
+/*
+ * Close the fd associated with the monitoring
+ * @fd : the file descriptor provided by lxc_monitor_open
+ * Returns 0 on success, < 0 otherwise
+ */
+extern int lxc_monitor_close(int fd);
 
 /*
  * Show the console of the container.
@@ -219,5 +248,9 @@ extern int lxc_cgroup_get_cpuset(const char *name, long *cpumask,
  * Returns 0 on sucess, < 0 otherwise
  */
 extern int lxc_cgroup_get_cpu_usage(const char *name, long long *usage);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
