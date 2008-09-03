@@ -169,10 +169,8 @@ static int freezer_state(const char *name)
 		 LXCPATH "/%s/freezer.freeze", name);
 
 	file = fopen(freezer, "r");
-	if (!file) {
-		lxc_log_syserror("failed to open %s", freezer);
+	if (!file)
 		return -1;
-	}
 
 	err = fscanf(file, "%s", status);
 	fclose(file);
