@@ -26,6 +26,7 @@
 #include <netinet/in.h>
 
 enum { 
+	EMPTY,
 	VETH,
 	MACVLAN,
 	PHYS,

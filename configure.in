@@ -30,6 +30,7 @@ AC_CONFIG_FILES([
 	etc/Makefile
 	etc/lxc-macvlan.conf
 	etc/lxc-no-netns.conf
+	etc/lxc-empty-netns.conf
 	etc/lxc-phys.conf
 	etc/lxc-veth.conf
 	etc/lxc-complex-config

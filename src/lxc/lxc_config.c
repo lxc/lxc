@@ -176,6 +176,8 @@ static int config_network_type(char *value, struct lxc_conf *lxc_conf)
 		network->type = MACVLAN;
 	else if (!strcmp(value, "phys"))
 		network->type = PHYS;
+	else if (!strcmp(value, "empty"))
+		network->type = EMPTY;
 	else {
 		lxc_log_error("invalid network type %s", value);
 		return -1;

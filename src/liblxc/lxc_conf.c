@@ -67,11 +67,13 @@ struct netdev_conf {
 static int instanciate_veth(const char *, const char *, pid_t);
 static int instanciate_macvlan(const char *, const char *, pid_t);
 static int instanciate_phys(const char *, const char *, pid_t);
+static int instanciate_empty(const char *, const char *, pid_t);
 
-static struct netdev_conf netdev_conf[] = {
-	{ "veth",    instanciate_veth,    0  },
-	{ "macvlan", instanciate_macvlan, 0, },
-	{ "phys",    instanciate_phys,    0, },
+static struct netdev_conf netdev_conf[MAXCONFTYPE + 1] = {
+	[VETH]    = { "veth",    instanciate_veth,    0  },
+	[MACVLAN] = { "macvlan", instanciate_macvlan, 0, },
+	[PHYS]    = { "phys",    instanciate_phys,    0, },
+	[EMPTY]   = { "empty",   instanciate_empty,   0, },
 };
 
 static int dir_filter(const struct dirent *dirent)
@@ -376,7 +378,7 @@ static int configure_network(const char *name, struct lxc_list *network)
 		n = iterator->elem;
 
 		if (n->type < 0 || n->type > MAXCONFTYPE) {
-			lxc_log_error("invalid network configuration type %d",
+			lxc_log_error("invalid network configuration type '%d'",
 				      n->type);
 			goto out;
 		}
@@ -760,32 +762,36 @@ static int setup_network_cb(const char *name, const char *dirname,
 	char newname[IFNAMSIZ];
 	char hwaddr[MAXHWLEN];
 	char *current_ifname = ifname;
-	int ifindex, ret = -1;
+	int ifindex;
 
 	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
 
 	if (read_info(path, "ifindex", strindex, sizeof(strindex))) {
 		lxc_log_error("failed to read ifindex info");
-		goto out;
+		return -1;
 	}
 	
 	ifindex = atoi(strindex);
 	if (!ifindex) {
-		lxc_log_error("bad index %s", strindex);
-		goto out;
+		if (!read_info(path, "up", strindex, sizeof(strindex)))
+		    if (device_up("lo")) {
+			    lxc_log_error("failed to set the loopback up");
+			    return -1;
+		    }
+		    return 0;
 	}
 	
 	if (!if_indextoname(ifindex, current_ifname)) {
 		lxc_log_error("no interface corresponding to index '%d'",
 			      ifindex);
-		goto out;
+		return -1;
 	}
 	
 	if (!read_info(path, "name", newname, sizeof(newname))) {
 		if (device_rename(ifname, newname)) {
 			lxc_log_error("failed to rename %s->%s", 
 				      ifname, newname);
-			goto out;
+			return -1;
 		}
 		current_ifname = newname;
 	}
@@ -794,38 +800,36 @@ static int setup_network_cb(const char *name, const char *dirname,
 		if (setup_hw_addr(hwaddr, current_ifname)) {
 			lxc_log_error("failed to setup hw address for '%s'", 
 				      current_ifname);
-			goto out;
+			return -1;
 		}
 	}
 
 	if (setup_ip_addr(path, current_ifname)) {
 		lxc_log_error("failed to setup ip addresses for '%s'",
 			      ifname);
-		goto out;
+		return -1;
 	}
 
 	if (setup_ip6_addr(path, current_ifname)) {
 		lxc_log_error("failed to setup ipv6 addresses for '%s'",
 			      ifname);
-		goto out;
+		return -1;
 	}
 
 	if (!read_info(path, "up", strindex, sizeof(strindex))) {
 		if (device_up(current_ifname)) {
 			lxc_log_error("failed to set '%s' up", current_ifname);
-			goto out;
+			return -1;
 		}
 
 		/* the network is up, make the loopback up too */
 		if (device_up("lo")) {
 			lxc_log_error("failed to set the loopback up");
-			goto out;
+			return -1;
 		}
 	}
 
-	ret = 0;
-out:
-	return ret;
+	return 0;
 }
 
 static int setup_network(const char *name)
@@ -962,12 +966,12 @@ out:
 } 
 static int instanciate_macvlan(const char *dirname, const char *file, pid_t pid)
 {
-	char *path = NULL, *strindex = NULL, *peer = NULL;
+	char path[MAXPATHLEN], *strindex = NULL, *peer = NULL;
 	char link[IFNAMSIZ]; 
 	int ifindex, ret = -1;
 			
 	asprintf(&peer, "%s~%d", file, pid);
-	asprintf(&path, "%s/%s", dirname, file);
+	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
 	if (read_info(path, "link", link, IFNAMSIZ)) {
 		lxc_log_error("failed to read bridge info");
 		goto out;
@@ -992,7 +996,6 @@ static int instanciate_macvlan(const char *dirname, const char *file, pid_t pid)
 
 	ret = 0;
 out:
-	free(path);
 	free(strindex);
 	free(peer);
 	return ret;
@@ -1000,11 +1003,11 @@ out:
 
 static int instanciate_phys(const char *dirname, const char *file, pid_t pid)
 {
-	char *path = NULL, *strindex = NULL;
+	char path[MAXPATHLEN], *strindex = NULL;
 	char link[IFNAMSIZ];
 	int ifindex, ret = -1;
 
-	asprintf(&path, "%s/%s", dirname, file);
+	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
 	if (read_info(path, "link", link, IFNAMSIZ)) {
 		lxc_log_error("failed to read link info");
 		goto out;
@@ -1024,7 +1027,28 @@ static int instanciate_phys(const char *dirname, const char *file, pid_t pid)
 
 	ret = 0;
 out:
-	free(path);
+	free(strindex);
+	return ret;
+}
+
+static int instanciate_empty(const char *dirname, const char *file, pid_t pid)
+{
+	char path[MAXPATHLEN], *strindex = NULL;
+	int ret = -1;
+
+	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
+	if (!asprintf(&strindex, "%d", 0)) {
+		lxc_log_error("not enough memory");
+		return -1;
+	}
+
+	if (write_info(path, "ifindex", strindex)) {
+		lxc_log_error("failed to write interface index to %s", path);
+		goto out;
+	}
+
+	ret = 0;
+out:
 	free(strindex);
 	return ret;
 }
@@ -1040,6 +1064,8 @@ static int instanciate_netdev_cb(const char *name, const char *dirname,
 		return instanciate_macvlan(dirname, file, *pid);
 	else if (!strncmp("phys", file, strlen("phys")))
 		return instanciate_phys(dirname, file, *pid);
+	else if (!strncmp("empty", file, strlen("empty")))
+		 return instanciate_empty(dirname, file, *pid);
 
 	return -1;
 }
@@ -1059,32 +1085,32 @@ static int instanciate_netdev(const char *name, pid_t pid)
 static int move_netdev_cb(const char *name, const char *dirname, 
 			  const char *file, void *data)
 {
-	char *path, ifname[IFNAMSIZ], strindex[MAXINDEXLEN];
+	char path[MAXPATHLEN], ifname[IFNAMSIZ], strindex[MAXINDEXLEN];
 	pid_t *pid = data;
-	int ifindex, ret = -1;
+	int ifindex;
 
-	asprintf(&path, "%s/%s", dirname, file);
+	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
 	if (read_info(path, "ifindex", strindex, MAXINDEXLEN) < 0) {
 		lxc_log_error("failed to read index to from %s", path);
-		goto out;
+		return -1;
 	}
 	
 	ifindex = atoi(strindex);
+	if (!ifindex)
+		return 0;
+
 	if (!if_indextoname(ifindex, ifname)) {
 		lxc_log_error("interface with index %d does not exist",
 			      ifindex);
-		goto out;
+		return -1;
 	}
 	
 	if (device_move(ifname, *pid)) {
 		lxc_log_error("failed to move %s to %d", ifname, *pid);
-		goto out;
+		return -1;
 	}
 
-	ret = 0;
-out:
-	free(path);
-	return ret;
+	return 0;
 }
 
 static int move_netdev(const char *name, pid_t pid)
@@ -1130,10 +1156,8 @@ static int delete_netdev_cb(const char *name, const char *dirname,
 	}
 		
 	ifindex = atoi(strindex);
-	if (!ifindex) {
-		lxc_log_error("bad index %s", strindex);
-		return -1;
-	}
+	if (!ifindex)
+		return 0;
 
 	/* TODO : temporary code - needs wait on namespace */
 	for (i = 0; i < 120; i++) {
