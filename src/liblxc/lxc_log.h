@@ -12,8 +12,8 @@
 #define lxc_log_debug(format, ...) lxc_log(format, "debug", ##__VA_ARGS__);
 #define lxc_log_trace(format, ...) lxc_log(format, "trace", ##__VA_ARGS__);
 #define lxc_log_syserror(format, ...) do { \
-		fprintf(stderr, "[syserr][%s] \t%s:%d - " format "\n", \
-			strerror(errno),__FUNCTION__, __LINE__, \
+		fprintf(stderr, "[syserr] \t%s:%d: %s - " format "\n", \
+			__FUNCTION__, __LINE__, strerror(errno), \
 			##__VA_ARGS__);					\
 	} while (0)
 
