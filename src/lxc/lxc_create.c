@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (!name || !file)
+	if (!name)
 		usage(argv[0]);
 
 	if (lxc_config_init(&lxc_conf)) {
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (lxc_config_read(file, &lxc_conf)) {
+	if (file && lxc_config_read(file, &lxc_conf)) {
 		fprintf(stderr, "invalid configuration file\n");
 		return 1;
 	}
