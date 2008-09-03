@@ -1,3 +1,5 @@
+INCLUDES= -I$(top_srcdir)/src
+
 lib_LTLIBRARIES = liblxc.la
 pkginclude_HEADERS = \
 		lxc.h \

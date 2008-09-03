@@ -1,4 +1,4 @@
-INCLUDES= -I$(top_srcdir)/src/liblxc
+INCLUDES= -I$(top_srcdir)/src/liblxc -I$(top_srcdir)/src
 
 bin_SCRIPTS = \
 	lxc-ps
