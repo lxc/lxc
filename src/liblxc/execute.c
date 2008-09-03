@@ -121,11 +121,12 @@ int lxc_execute(const char *name, int argc, char *argv[],
 				goto error;
 			}
 
-			if (mount("sysfs", "/sys", "sysfs", 0, NULL)) {
-				lxc_log_syserror("failed to mount '/sys'");
-				/* continue: non fatal error until sysfs not per
-				 namespace */
-			}
+			if (conf_has_network(name))
+				if (mount("sysfs", "/sys", "sysfs", 0, NULL)) {
+					lxc_log_syserror("failed to mount '/sys'");
+					/* continue: non fatal error until sysfs not per
+					   namespace */
+				}
 
 			if (preexec)
 				if (preexec(name, argc, argv, data)) {
@@ -134,12 +135,12 @@ int lxc_execute(const char *name, int argc, char *argv[],
 				}
 
 			execvp(argv[0], argv);
-		error:
 			lxc_log_syserror("failed to exec %s", argv[0]);
+		error:
 			if (write(sv[0], &sync, sizeof(sync)) < 0)
 				lxc_log_syserror("failed to write the socket");
 			
-			return 1;
+			exit(1);
 		}
 
 		setsid();
