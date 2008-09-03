@@ -54,7 +54,7 @@ static int get_cgroup_mount(const char *mtab, char *mnt)
         }
 
         while ((mntent = getmntent(file))) {
-                if (strcmp(mntent->mnt_fsname, "cgroup"))
+                if (strcmp(mntent->mnt_type, "cgroup"))
                         continue;
                 strcpy(mnt, mntent->mnt_dir);
                 err = 0;
