@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 	argc -= nbargs;
 
 	if (lxc_execute(name, argc, args, NULL, NULL)) {
-		fprintf(stderr, "failed to start %s\n", name);
+		fprintf(stderr, "failed to start '%s'\n", name);
 		return 1;
 	}
 
