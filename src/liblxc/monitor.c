@@ -145,6 +145,7 @@ int lxc_monitor_open(const char *name)
 
 	if (bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
 		lxc_log_syserror("failed to bind to '%s'", addr.sun_path);
+		close(fd);
 		return -1;
 	}
 
