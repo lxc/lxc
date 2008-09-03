@@ -606,6 +606,7 @@ static int setup_mount(const char *name)
 	struct mntent *mntent;
 	FILE *file;
 	int ret = -1;
+	unsigned long mntflags = 0;
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/fstab", name);
 
@@ -618,8 +619,12 @@ static int setup_mount(const char *name)
 	}
 
 	while((mntent = getmntent(file))) {
+
+		if (hasmntopt(mntent, "bind"))
+			mntflags |= MS_BIND;
+
 		if (mount(mntent->mnt_fsname, mntent->mnt_dir,
-			  mntent->mnt_type, 0, NULL)) {
+			  mntent->mnt_type, mntflags, NULL)) {
 			lxc_log_syserror("failed to mount '%s' on '%s'",
 					 mntent->mnt_fsname, mntent->mnt_dir);
 			goto out;
