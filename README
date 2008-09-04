@@ -248,13 +248,13 @@ states for a specific container.
 
      lxc-monitor -n foo
 
-3.9 Getting the container state
--------------------------------
+3.9 Getting container information
+----------------------------------
 
-At any time, the following command will retrieve the state of the
-container.
+At any time, the following command will retrieve informations of the
+ container.
 
-     lxc-state -n foo
+     lxc-info -n foo
 
 3.10 Showing processes list for a container
 ------------------------------------------
