@@ -21,46 +21,172 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 #include <stdio.h>
+#include <string.h>
+#include <fcntl.h>
+#include <errno.h>
 #include <unistd.h>
-#include <libgen.h>
 #include <sys/types.h>
+#include <sys/types.h>
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/file.h>
 
 #include <lxc.h>
+#include "monitor.h"
 
-void usage(char *cmd)
+static char *strstate[] = {
+	"STOPPED", "STARTING", "RUNNING", "STOPPING",
+	"ABORTING", "FREEZING", "FROZEN",
+};
+
+const char *lxc_state2str(lxc_state_t state)
 {
-	fprintf(stderr, "%s <command>\n", basename(cmd));
-	fprintf(stderr, "\t -n <name>   : name of the container\n");
-	_exit(1);
+	if (state < STOPPED || state > MAX_STATE - 1)
+		return NULL;
+	return strstate[state];
 }
 
-int main(int argc, char *argv[])
+lxc_state_t lxc_str2state(const char *state)
 {
-	char opt;
-	char *name = NULL;
-	int state, nbargs = 0;
+	int i, len;
+	len = sizeof(strstate)/sizeof(strstate[0]);
+	for (i = 0; i < len; i++)
+		if (!strcmp(strstate[i], state))
+			return i;
+	return -1;
+}
 
-	while ((opt = getopt(argc, argv, "n:")) != -1) {
-		switch (opt) {
-		case 'n':
-			name = optarg;
-			break;
-		}
+int lxc_setstate(const char *name, lxc_state_t state)
+{
+	int fd, err;
+	char file[MAXPATHLEN];
+	const char *str = lxc_state2str(state);
 
-		nbargs++;
+	if (!str)
+		return -1;
+
+	snprintf(file, MAXPATHLEN, LXCPATH "/%s/state", name);
+
+	fd = open(file, O_WRONLY);
+	if (fd < 0) {
+		lxc_log_syserror("failed to open %s file", file);
+		return -1;
 	}
 
-	if (!name)
-		usage(argv[0]);
-
-	state = lxc_getstate(name);
-	if (state < 0) {
-		fprintf(stderr, "failed to freeze '%s'\n", name);
-		return 1;
+	if (flock(fd, LOCK_EX)) {
+		lxc_log_syserror("failed to take the lock to %s", file);
+		goto out;
 	}
 
-	printf("'%s' is %s\n", name, lxc_state2str(state));
+	if (ftruncate(fd, 0)) {
+		lxc_log_syserror("failed to truncate the file %s", file);
+		goto out;
+	}
 
+	if (write(fd, str, strlen(str)) < 0) {
+		lxc_log_syserror("failed to write state to %s", file);
+		goto out;
+	}
+
+	err = 0;
+out:
+	close(fd);
+
+	lxc_monitor_send_state(name, state);
+
+	/* let the event to be propagated, crappy but that works,
+	 * otherwise the events will be folded into only one event,
+	 * and I want to have them to be one by one in order
+	 * to follow the different states of the container.
+	 */
+ 	usleep(200000);
+
+	return -err;
+}
+
+int lxc_mkstate(const char *name)
+{
+	int fd;
+	char file[MAXPATHLEN];
+
+	snprintf(file, MAXPATHLEN, LXCPATH "/%s/state", name);
+	fd = creat(file, S_IRUSR|S_IWUSR);
+	if (fd < 0) {
+		lxc_log_syserror("failed to create file %s", file);
+		return -1;
+	}
+	close(fd);
 	return 0;
 }
 
+int lxc_rmstate(const char *name)
+{
+	char file[MAXPATHLEN];
+	snprintf(file, MAXPATHLEN, LXCPATH "/%s/state", name);
+	unlink(file);
+	return 0;
+}
+
+lxc_state_t lxc_getstate(const char *name)
+{
+	int fd, err;
+	char file[MAXPATHLEN];
+
+	snprintf(file, MAXPATHLEN, LXCPATH "/%s/state", name);
+
+	fd = open(file, O_RDONLY);
+	if (fd < 0) {
+		lxc_log_syserror("failed to open %s", file);
+		return -1;
+	}
+
+	if (flock(fd, LOCK_SH)) {
+		lxc_log_syserror("failed to take the lock to %s", file);
+		close(fd);
+		return -1;
+	}
+
+	err = read(fd, file, strlen(file));
+	if (err < 0) {
+		lxc_log_syserror("failed to read file %s", file);
+		close(fd);
+		return -1;
+	}
+	file[err] = '\0';
+
+	close(fd);
+	return lxc_str2state(file);
+}
+
+static int freezer_state(const char *name)
+{
+	char freezer[MAXPATHLEN];
+	char status[MAXPATHLEN];
+	FILE *file;
+	int err;
+	
+	snprintf(freezer, MAXPATHLEN,
+		 LXCPATH "/%s/freezer.freeze", name);
+
+	file = fopen(freezer, "r");
+	if (!file)
+		return -1;
+
+	err = fscanf(file, "%s", status);
+	fclose(file);
+
+	if (err == EOF) {
+		lxc_log_syserror("failed to read %s", freezer);
+		return -1;
+	}
+
+	return lxc_str2state(status);
+}
+
+lxc_state_t lxc_state(const char *name)
+{
+	int state = freezer_state(name);
+	if (state != FROZEN && state != FREEZING)
+		state = lxc_getstate(name);
+	return state;
+}
