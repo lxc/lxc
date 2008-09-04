@@ -27,8 +27,8 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
-#include <lxc_list.h>
-#include <lxc_conf.h>
+#include <lxc/lxc_list.h>
+#include <lxc/lxc_conf.h>
 
 /*
  * I want to setup a container with a veth attached on a bridge, 

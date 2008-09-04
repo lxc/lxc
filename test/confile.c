@@ -30,9 +30,8 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
-#include <lxc.h>
-
-#include "../src/lxc/lxc_config.h"
+#include <lxc/lxc.h>
+#include <lxc/lxc_config.h>
 
 static void usage(const char *cmd)
 {

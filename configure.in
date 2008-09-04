@@ -24,7 +24,6 @@ AC_CONFIG_FILES([
 	lxc.spec
         config/Makefile
         src/Makefile
-	src/liblxc/Makefile
 	src/lxc/Makefile
 	src/lxc/lxc-ps
 	etc/Makefile

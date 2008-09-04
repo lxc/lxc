@@ -91,8 +91,6 @@ rm -rf %{buildroot}
 %{_libdir}/*.a
 
 %post devel
-ln -sf %{_includedir}/%{name} %{_includedir}/liblxc
-
 
 %changelog
 * Sun Aug 3 2008 Daniel Lezcano <dlezcano@fr.ibm.com>

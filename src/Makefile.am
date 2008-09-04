@@ -1,1 +1,1 @@
-SUBDIRS = liblxc lxc 
+SUBDIRS = lxc 

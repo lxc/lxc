@@ -26,7 +26,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include <network.h>
+#include <lxc/network.h>
 
 void usage(const char *cmd)
 {

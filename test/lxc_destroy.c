@@ -22,7 +22,8 @@
  */
 #include <stdio.h>
 #include <unistd.h>
-#include <lxc.h>
+
+#include <lxc/lxc.h>
 
 static void usage(const char *cmd)
 {
