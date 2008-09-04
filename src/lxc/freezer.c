@@ -29,34 +29,30 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/param.h>
-#include <sys/inotify.h>
-#include <netinet/in.h>
-#include <net/if.h>
 
 #include <lxc.h>
 
 static int freeze_unfreeze(const char *name, int freeze)
 {
-	char *freezer, *f = freeze?"FROZEN":"RUNNING";
+	char freezer[MAXPATHLEN], *f = freeze?"FROZEN":"RUNNING";
 	int fd, ret = -1;
 	
-	asprintf(&freezer, LXCPATH "/%s/nsgroup/freezer.state", name);
+	snprintf(freezer, MAXPATHLEN, 
+		 LXCPATH "/%s/nsgroup/freezer.state", name);
 
 	fd = open(freezer, O_WRONLY);
 	if (fd < 0) {
 		lxc_log_syserror("failed to open freezer for '%s'", name);
-		goto out;
+		return -1;
 	}
 
 	ret = write(fd, f, strlen(f) + 1) < 0;
 	close(fd);
 	if (ret) 
 		lxc_log_syserror("failed to write to '%s'", freezer);
-out:
-	free(freezer);
-	return ret;
+
+	return 0;
 }
 
 int lxc_freeze(const char *name)

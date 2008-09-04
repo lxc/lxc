@@ -21,9 +21,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#define _GNU_SOURCE
-#include <stdio.h>
-#undef _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -31,12 +28,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/param.h>
-#include <sys/inotify.h>
-#include <sys/file.h>
-#include <netinet/in.h>
-#include <net/if.h>
 
 #include <lxc.h>
+#include "monitor.h"
 
 static int dir_filter(const struct dirent *dirent)
 {

@@ -27,12 +27,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/param.h>
-#include <sys/inotify.h>
-#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <netinet/in.h>
-#include <net/if.h>
 
 #include <lxc.h>
 

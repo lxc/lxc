@@ -29,26 +29,26 @@
 #include <string.h>
 #include <signal.h>
 #include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/param.h>
-#include <netinet/in.h>
-#include <net/if.h>
 
 #include <lxc.h>
 
 int lxc_kill(const char *name, int signum)
 {
-	char *freezer = NULL, *signal = NULL;
+	char freezer[MAXPATHLEN], *signal = NULL;
 	int fd = -1, ret = -1;
 	
 	if (signum < SIGHUP || signum > SIGRTMAX) {
 		lxc_log_error("bad signal value %d", signum);
-		goto out;
+		return -1;
 	}
 
-	asprintf(&freezer, LXCPATH "/%s/nsgroup/freezer.kill", name);
-	asprintf(&signal, "%d", signum);
+	snprintf(freezer, MAXPATHLEN, LXCPATH "/%s/nsgroup/freezer.kill", name);
+
+	if (!asprintf(&signal, "%d", signum)) {
+		lxc_log_syserror("not enough memory");
+		return -1;
+	}
 
 	fd = open(freezer, O_WRONLY);
 	if (fd < 0) {
@@ -64,7 +64,6 @@ int lxc_kill(const char *name, int signum)
 	ret = 0;
 out:
 	close(fd);
-	free(freezer);
 	free(signal);
 	return ret;
 }
