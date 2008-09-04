@@ -31,8 +31,8 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
-#include <lxc.h>
-#include "lxc_config.h"
+#include <lxc/lxc.h>
+#include <lxc/lxc_config.h>
 
 void usage(char *cmd)
 {

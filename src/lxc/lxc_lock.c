@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <sys/file.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 
 int lxc_get_lock(const char *name)
 {

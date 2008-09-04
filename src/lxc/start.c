@@ -36,7 +36,7 @@
 #include <sys/prctl.h>
 #include <sys/wait.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);

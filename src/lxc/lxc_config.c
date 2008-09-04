@@ -32,7 +32,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 
 typedef int (*file_cb)(char* buffer, void *data);
 typedef int (*config_cb)(char *value, struct lxc_conf *lxc_conf);

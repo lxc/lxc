@@ -31,7 +31,7 @@
 #include <sys/types.h>
 #include <sys/param.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 
 static int freeze_unfreeze(const char *name, int freeze)
 {

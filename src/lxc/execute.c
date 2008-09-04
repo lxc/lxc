@@ -36,7 +36,7 @@
 #include <sys/file.h>
 #include <sys/mount.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);

@@ -31,7 +31,7 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 #include "monitor.h"
 
 static char *strstate[] = {

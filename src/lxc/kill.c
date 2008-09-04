@@ -31,7 +31,7 @@
 #include <fcntl.h>
 #include <sys/param.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 
 int lxc_kill(const char *name, int signum)
 {

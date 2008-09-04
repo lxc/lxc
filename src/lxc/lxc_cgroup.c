@@ -36,7 +36,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 
 #define MAXPRIOLEN 24
 #define MTAB "/etc/mtab"

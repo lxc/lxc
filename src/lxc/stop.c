@@ -31,7 +31,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 
 int lxc_stop(const char *name)
 {

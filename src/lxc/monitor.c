@@ -34,7 +34,8 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <net/if.h>
-#include <lxc.h>
+
+#include <lxc/lxc.h>
 
 #ifndef UNIX_PATH_MAX
 #define UNIX_PATH_MAX 108

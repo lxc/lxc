@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 
 void usage(char *cmd)
 {

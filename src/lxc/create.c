@@ -30,7 +30,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 
 static int dir_filter(const struct dirent *dirent)
 {

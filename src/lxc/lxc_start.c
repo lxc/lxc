@@ -32,7 +32,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 
 void usage(char *cmd)
 {

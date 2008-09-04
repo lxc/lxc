@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
 
 int main(int argc, char *argv[])
 {
