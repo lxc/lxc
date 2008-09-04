@@ -45,7 +45,7 @@ container object which provides full resource isolation and resource
 control for an applications or a system.
 
 The first objective of this project is to make the life easier for the
-kernel developpers involved in the containers project and especially
+kernel developers involved in the containers project and especially
 to continue working on the Checkpoint/Restart new features. The LXC is
 small enough to easily manage a container with simple command lines
 and complete enough to be used for other purposes.
@@ -54,8 +54,8 @@ and complete enough to be used for other purposes.
 ---------------
 
 The LXC relies on a set of functionnalies provided by the kernel which
-needs to be active. Depending of the missing functionnality the LXC
-will work with a restricted number of functionnality or will simply
+needs to be active. Depending of the missing functionnalities the LXC
+will work with a restricted number of functionnalities or will simply
 fails.
 
 This is the list of the kernel features which needs to be compiled in:
@@ -206,7 +206,7 @@ specifies the container name and the container configuration file.
 3.4 Starting a container
 ------------------------
 
-As the container has been create with the lxc-create command, it is
+As the container has been created with the lxc-create command, it is
 possible now to start an application inside.
 
       lxc-execute -n foo /bin/bash
@@ -242,7 +242,7 @@ A signal can be sent to all processes running inside the container.
 3.8 Monitoring container states
 -------------------------------
 
-A container has a life cycle and pass though different states as
+A container has a life cycle and passes though different states as
 defined in section 3.1. The following command allows to watch such
 states for a specific container.
 
