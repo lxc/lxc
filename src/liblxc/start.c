@@ -139,7 +139,7 @@ int lxc_start(const char *name, int argc, char *argv[],
 		if (write(sv[0], &sync, sizeof(sync)) < 0)
 			lxc_log_syserror("failed to write the socket");
 		
-		return 1;
+		exit(1);
 	}
 
 	close(sv[0]);
@@ -178,7 +178,7 @@ int lxc_start(const char *name, int argc, char *argv[],
 
 	asprintf(&val, "%d\n", pid);
 	asprintf(&init, LXCPATH "/%s/init", name);
-	fd = open(init, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
+	fd = open(init, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 	if (fd < 0) {
 		lxc_log_syserror("failed to open '%s'", init);
 		goto err_write;
@@ -195,7 +195,8 @@ int lxc_start(const char *name, int argc, char *argv[],
 		lxc_log_warning("cgroupfs not found: cgroup disabled");
 
 	if (lxc_setstate(name, RUNNING)) {
-		lxc_log_error("failed to set state to %s", lxc_state2str(RUNNING));
+		lxc_log_error("failed to set state to %s", 
+			      lxc_state2str(RUNNING));
 		goto err_state_failed;
 	}
 

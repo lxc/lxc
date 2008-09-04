@@ -198,7 +198,7 @@ int lxc_execute(const char *name, int argc, char *argv[],
 	}
 
 	asprintf(&init, LXCPATH "/%s/init", name);
-	fd = open(init, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
+	fd = open(init, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 	if (fd < 0) {
 		lxc_log_syserror("failed to open %s", init);
 		goto err_open;
