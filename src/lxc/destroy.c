@@ -30,7 +30,6 @@
 #include <sys/param.h>
 
 #include <lxc/lxc.h>
-#include "monitor.h"
 
 static int dir_filter(const struct dirent *dirent)
 {

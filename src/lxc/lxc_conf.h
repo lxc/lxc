@@ -105,13 +105,13 @@ struct lxc_cgroup {
 
 /*
  * Defines the global container configuration
- * @chroot  : the root directory to run the container
+ * @rootfs  : the root directory to run the container
  * @mount   : the list of mount points
  * @network : the network configuration
  * @utsname : the container utsname
  */
 struct lxc_conf {
-	char *chroot;
+	char *rootfs;
 	char *fstab;
 	struct utsname *utsname;
 	struct lxc_cgroup *cgroup;
@@ -140,7 +140,7 @@ extern int lxc_setup(const char *name);
 extern int conf_has(const char *name, const char *info);
 
 #define conf_has_fstab(__name)   conf_has(__name, "fstab")
-#define conf_has_chroot(__name)  conf_has(__name, "chroot")
+#define conf_has_rootfs(__name)  conf_has(__name, "rootfs")
 #define conf_has_utsname(__name) conf_has(__name, "utsname")
 #define conf_has_network(__name) conf_has(__name, "network")
 

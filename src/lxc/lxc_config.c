@@ -38,7 +38,7 @@ typedef int (*file_cb)(char* buffer, void *data);
 typedef int (*config_cb)(char *value, struct lxc_conf *lxc_conf);
 
 static int config_mount(char *, struct lxc_conf *);
-static int config_chroot(char *, struct lxc_conf *);
+static int config_rootfs(char *, struct lxc_conf *);
 static int config_utsname(char *, struct lxc_conf *);
 static int config_network_type(char *, struct lxc_conf *);
 static int config_network_flags(char *, struct lxc_conf *);
@@ -54,12 +54,12 @@ struct config {
 	config_cb cb;
 };
 
-enum { MOUNT, CHROOT, UTSNAME, NETTYPE, NETFLAGS, NETLINK, 
+enum { MOUNT, ROOTFS, UTSNAME, NETTYPE, NETFLAGS, NETLINK, 
        NETNAME, NETHWADDR, NETIPV4, NETIPV6 };
 
 struct config config[] = {
 	{ "lxc.mount",             MOUNT,     config_mount           },
-	{ "lxc.chroot",            CHROOT,    config_chroot          },
+	{ "lxc.rootfs",            ROOTFS,    config_rootfs          },
 	{ "lxc.utsname",           UTSNAME,   config_utsname         },
 	{ "lxc.network.type",      NETTYPE,   config_network_type    },
 	{ "lxc.network.flags",     NETFLAGS,  config_network_flags   },
@@ -434,15 +434,15 @@ static int config_mount(char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_chroot(char *value, struct lxc_conf *lxc_conf)
+static int config_rootfs(char *value, struct lxc_conf *lxc_conf)
 {
 	if (strlen(value) >= MAXPATHLEN) {
 		lxc_log_error("%s path is too long", value);
 		return -1;
 	}
 
-	lxc_conf->chroot = strdup(value);
-	if (!lxc_conf->chroot) {
+	lxc_conf->rootfs = strdup(value);
+	if (!lxc_conf->rootfs) {
 		lxc_log_syserror("failed to duplicate string %s", value);
 		return -1;
 	}
@@ -539,7 +539,7 @@ int lxc_config_read(const char *file, struct lxc_conf *conf)
 
 int lxc_config_init(struct lxc_conf *conf)
 {
-	conf->chroot = NULL;
+	conf->rootfs = NULL;
 	conf->fstab = NULL;
 	conf->utsname = NULL;
 	conf->cgroup = NULL;

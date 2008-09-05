@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 
 	struct lxc_conf lxc_conf = {
 		.networks = lxc_init_list(&lxc_conf.networks),
-		.chroot = "/mnt/iso",
+		.rootfs = "/mnt/iso",
 	};
 
 	lxc_list_add(&phys.netdev, &ndlist);

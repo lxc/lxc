@@ -104,17 +104,21 @@ int lxc_unlink_nsgroup(const char *name)
 int lxc_cgroup_set_priority(const char *name, int priority)
 {
 	int fd;
-	char *path = NULL, *prio = NULL;
+	char path[MAXPATHLEN], *prio = NULL;
 
-        asprintf(&path, LXCPATH "/%s/nsgroup/cpu.shares", name);
+        snprintf(path, MAXPATHLEN, 
+		 LXCPATH "/%s/nsgroup/cpu.shares", name);
 
 	fd = open(path, O_WRONLY);
 	if (fd < 0) {
 		lxc_log_syserror("failed to open '%s'", path);
-		goto out;
+		return -1;
 	}
 
-	asprintf(&prio, "%d", priority);
+	if (!asprintf(&prio, "%d", priority)) {
+		lxc_log_syserror("not enough memory");
+		goto out;
+	}
 
 	if (write(fd, prio, strlen(prio) + 1) < 0) {
 		lxc_log_syserror("failed to write to '%s'", path);
@@ -122,9 +126,10 @@ int lxc_cgroup_set_priority(const char *name, int priority)
 		goto out;
 	}
 
+	lxc_monitor_send_priority(name, priority);
+
 	close(fd);
 out:
-	free(path);
 	free(prio);
 	return 0;
 }

@@ -41,6 +41,7 @@ extern "C" {
 #include <lxc/lxc_cgroup.h>
 #include <lxc/lxc_namespace.h>
 #include <lxc/lxc_utils.h>
+#include <lxc/monitor.h>
 
 #define LXCPATH "/var/lxc"
 #define MAXPIDLEN 20
@@ -130,7 +131,7 @@ extern int lxc_monitor_open(const char *name);
  * Returns 0 if the monitored container has exited, > 0 if
  * data was readen, < 0 otherwise
  */
-extern int lxc_monitor_read(int fd, lxc_state_t *state);
+extern int lxc_monitor_read(int fd, struct lxc_msg *msg);
 
 /*
  * Close the fd associated with the monitoring

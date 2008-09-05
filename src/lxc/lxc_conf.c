@@ -404,13 +404,13 @@ static int configure_cgroup(const char *name, struct lxc_cgroup *cgroup)
 	return 0;
 }
 
-static int configure_chroot(const char *name, const char *chroot)
+static int configure_rootfs(const char *name, const char *rootfs)
 {
 	char path[MAXPATHLEN];
 
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s/chroot", name);
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
 
-	return symlink(chroot, path);
+	return symlink(rootfs, path);
 
 }
 
@@ -524,12 +524,12 @@ static int unconfigure_cgroup(const char *name)
 	return 0;
 }
 
-static int unconfigure_chroot(const char *name)
+static int unconfigure_rootfs(const char *name)
 {
 	char path[MAXPATHLEN];
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
-	delete_info(path, "chroot");
+	delete_info(path, "rootfs");
 
 	return 0;
 }
@@ -578,11 +578,11 @@ static int setup_utsname(const char *name)
 	return 0;
 }
 
-static int setup_chroot(const char *name)
+static int setup_rootfs(const char *name)
 {
 	char path[MAXPATHLEN], chrt[MAXPATHLEN];
 
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s/chroot", name);
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
 
 	if (readlink(path, chrt, MAXPATHLEN) > 0) {
 
@@ -889,8 +889,8 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 		return -1;
 	}
 
-	if (conf->chroot && configure_chroot(name, conf->chroot)) {
-		lxc_log_error("failed to configure the chroot");
+	if (conf->rootfs && configure_rootfs(name, conf->rootfs)) {
+		lxc_log_error("failed to configure the rootfs");
 		return -1;
 	}
 
@@ -913,8 +913,8 @@ int lxc_unconfigure(const char *name)
 	if (unconfigure_cgroup(name))
 		lxc_log_error("failed to cleanup cgroup");
 
-	if (conf_has_chroot(name) && unconfigure_chroot(name))
-		lxc_log_error("failed to cleanup chroot");
+	if (conf_has_rootfs(name) && unconfigure_rootfs(name))
+		lxc_log_error("failed to cleanup rootfs");
 
 	if (conf_has_fstab(name) && unconfigure_mount(name))
 		lxc_log_error("failed to cleanup mount");
@@ -1225,8 +1225,8 @@ int lxc_setup(const char *name)
 		return -1;
 	}
 
-	if (conf_has_chroot(name) && setup_chroot(name)) {
-		lxc_log_error("failed to set chroot for '%s'", name);
+	if (conf_has_rootfs(name) && setup_rootfs(name)) {
+		lxc_log_error("failed to set rootfs for '%s'", name);
 		return -1;
 	}
 

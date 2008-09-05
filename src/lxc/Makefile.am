@@ -2,6 +2,7 @@ INCLUDES= -I$(top_srcdir)/src
 
 lib_LTLIBRARIES = liblxc.la
 pkginclude_HEADERS = \
+		monitor.h \
 		lxc.h \
 		lxc_cgroup.h \
 		lxc_conf.h \

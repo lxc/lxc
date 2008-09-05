@@ -101,23 +101,40 @@ out:
 	return err;
 }
 
-void lxc_monitor_send_state(const char *name, lxc_state_t state)
+static void lxc_monitor_send(const char *name, struct lxc_msg *msg)
 {
 	int fd;
 	struct sockaddr_un addr;
 
 	fd = socket(PF_UNIX, SOCK_DGRAM, 0);
-	if (fd < 0)
+	if (fd < 0) {
 		lxc_log_syserror("failed to create notification socket");
+		return;
+	}
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path, UNIX_PATH_MAX, LXCPATH "/%s/notification", name);
+	snprintf(addr.sun_path, UNIX_PATH_MAX, 
+		 LXCPATH "/%s/notification", name);
 
-	sendto(fd, &state, sizeof(state), 0, 
+	sendto(fd, msg, sizeof(*msg), 0,
 	       (const struct sockaddr *)&addr, sizeof(addr));
 
 	close(fd);
+}
+
+void lxc_monitor_send_priority(const char *name, int priority)
+{
+	struct lxc_msg msg = { .type = lxc_msg_priority,
+			       .value = priority };
+	lxc_monitor_send(name, &msg);
+}
+
+void lxc_monitor_send_state(const char *name, lxc_state_t state)
+{
+	struct lxc_msg msg = { .type = lxc_msg_state,
+			       .value = state };
+	lxc_monitor_send(name, &msg);
 }
 
 void lxc_monitor_cleanup(const char *name)
@@ -153,11 +170,11 @@ int lxc_monitor_open(const char *name)
 	return fd;
 }
 
-int lxc_monitor_read(int fd, lxc_state_t *state)
+int lxc_monitor_read(int fd, struct lxc_msg *msg)
 {
 	int ret;
 
-	ret = recv(fd, state, sizeof(*state), 0);
+	ret = recv(fd, msg, sizeof(*msg), 0);
 	if (ret < 0) {
 		lxc_log_syserror("failed to received state");
 		return -1;

@@ -36,10 +36,9 @@ void usage(char *cmd)
 
 int main(int argc, char *argv[])
 {
-	char opt;
-	char *name = NULL;
-	int fds[2];
-	pid_t pid;
+	char opt, *name = NULL;
+	struct lxc_msg msg;
+	int fd;
 
 	while ((opt = getopt(argc, argv, "n:")) != -1) {
 		switch (opt) {
@@ -52,46 +51,35 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
-	if (pipe(fds)) {
-		perror("pipe");
-		return 1;
+	fd = lxc_monitor_open(name);
+	if (fd < 0) {
+		fprintf(stderr, "failed to open monitor for '%s'\n", name);
+		return -1;
 	}
-
-	pid = fork();
-	if (pid < 0) {
-		perror("fork");
-		return 1;
-	}
-
-	if (!pid) {
-		close(fds[0]);
-		if (lxc_monitor(name, fds[1])) {
-			fprintf(stderr, "failed to monitor %s\n", name);
-			return 1;
-		}
-
-		return 0;
-	}
-
-	close(fds[1]);
 
 	for (;;) {
-		int err, state;
-
-		err = read(fds[0], &state, sizeof(state));
-		if (err < 0) {
-			perror("read");
-			return 1;
+		if (lxc_monitor_read(fd, &msg) < 0) {
+			fprintf(stderr, 
+				"failed to read monitor's message for '%s'\n", 
+				name);
+			return -1;
 		}
 
-		if (!err) {
-			printf("container has been destroyed\n");
-			return 0;
+		switch (msg.type) {
+		case lxc_msg_state:
+			printf("'%s' changed state to [%s]\n", 
+			       name, lxc_state2str(msg.value));
+			break;
+		case lxc_msg_priority:
+			printf("'%s' changed priority to [%d]\n", 
+			       name, msg.value);
+			break;
+		default:
+			printf("invalid msg format\n");
+			break;
 		}
-
-		printf("container has changed the state to %d - %s\n", 
-		       state, lxc_state2str(state));
 	}
+
 	return 0;
 }
 

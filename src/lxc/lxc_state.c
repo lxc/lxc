@@ -32,7 +32,6 @@
 #include <sys/file.h>
 
 #include <lxc/lxc.h>
-#include "monitor.h"
 
 static char *strstate[] = {
 	"STOPPED", "STARTING", "RUNNING", "STOPPING",
