@@ -93,7 +93,19 @@ rm -rf %{buildroot}
 %post devel
 
 %changelog
-* Sun Aug 3 2008 Daniel Lezcano <dlezcano@fr.ibm.com>
+
+* Fri Sep 5 2008 Daniel Lezcano <dlezcano@fr.ibm.com> - Version 0.2.0
+- Fix typos in README
+- Added empty container configuration
+- Added empty network container configuration
+- Added bind option for mount configuration
+- Merged lxc and liblxc directories
+- Changed monitoring mechanism
+- Fixed child process should exit instead of returning on error
+- Fixed lxc.h headers can be included in C++ code
+- A lot of code cleanup and improvements
+
+* Sun Aug 3 2008 Daniel Lezcano <dlezcano@fr.ibm.com> - Version 0.1.0
 - Initial RPM release.
 
 # Local variables:

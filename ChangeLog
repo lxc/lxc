@@ -1,0 +1,19 @@
+
+Version 0.2.0
+
+* Fri Sept 5 2008 Daniel Lezcano <dlezcano@fr.ibm.com>
+- Fix typos in README
+- Added empty container configuration
+- Added empty network container configuration
+- Added bind option for mount configuration
+- Merged lxc and liblxc directories
+- Changed monitoring mechanism
+- Fixed child process should exit instead of returning on error
+- Fixed lxc.h headers can be included in C++ code
+- A lot of code cleanup and improvements
+
+Version 0.1.0
+
+* Sun Aug 3 2008 Daniel Lezcano <dlezcano@fr.ibm.com>
+- Initial RPM release.
+
