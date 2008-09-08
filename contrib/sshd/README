@@ -1,0 +1,50 @@
+This contribution is an example on how to launch a sshd daemon in a
+chroot'ed environment. The script will generate the files need to run
+the container. The script assume there is a bridge which is configured
+on the host.
+
+Check the pre-requisite:
+      * you can run this script as 'root'
+      * your kernel is configured with all the needed container
+        functionnality (check the lxc's README file).
+
+You can log to the sshd daemon only as 'root' with the password 'root'
+
+
+Create the container:
+---------------------
+
+	Generates the configuration files, untar the rootfs and
+	creates the container.
+
+	./lxc-sshd create
+
+Start the container:
+--------------------
+		
+	Launches in background /usr/sbin/sshd in the container.		
+	
+	./lxc-sshd start
+
+Stop the container:
+-------------------
+
+	Kills all the processes belonging to the container, sshd and
+	the connected clients.
+
+	./lxc-sshd stop
+
+Destroy the container:
+----------------------
+
+	Removes the generated files and destroy the container
+
+	./lxc-sshd destroy
+
+Status of the container
+-----------------------
+
+	Give the state of the container, if the container is destroyed, the command will fail.
+
+	./lxc-sshd status
+
