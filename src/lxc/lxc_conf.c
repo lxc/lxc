@@ -407,10 +407,23 @@ static int configure_cgroup(const char *name, struct lxc_cgroup *cgroup)
 static int configure_rootfs(const char *name, const char *rootfs)
 {
 	char path[MAXPATHLEN];
+	char absrootfs[MAXPATHLEN];
+	char *pwd;
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
 
-	return symlink(rootfs, path);
+	pwd = get_current_dir_name();
+
+	snprintf(absrootfs, MAXPATHLEN, "%s/%s", pwd, rootfs);
+
+	free(pwd);
+
+	if (access(absrootfs, F_OK)) {
+		lxc_log_syserror("'%s' is not accessible", absrootfs);
+		return -1;
+	}
+
+	return symlink(absrootfs, path);
 
 }
 
@@ -497,6 +510,7 @@ static int unconfigure_network_cb(const char *name, const char *dirname,
 	char path[MAXPATHLEN];
 
 	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
+	delete_info(path, "ifindex");
 	delete_info(path, "name");
 	delete_info(path, "addr");
 	delete_info(path, "link");
@@ -521,6 +535,11 @@ static int unconfigure_network(const char *name)
 
 static int unconfigure_cgroup(const char *name)
 {
+	char path[MAXPATHLEN];
+
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
+	delete_info(path, "nsgroup");
+
 	return 0;
 }
 
@@ -847,14 +866,13 @@ static int setup_network(const char *name)
 
 int conf_has(const char *name, const char *info)
 {
-	int ret;
+	int ret = 0;
 	char path[MAXPATHLEN];
 	struct stat st;
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/%s", name, info);
 
-	ret = stat(path, &st);
-	if (!ret) {
+	if (!stat(path, &st) || !lstat(path, &st)) {
 		ret = 1;
 		goto out;
 	}
