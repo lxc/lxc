@@ -49,6 +49,7 @@ bin_PROGRAMS = \
 	lxc-start \
 	lxc-execute \
 	lxc-monitor \
+	lxc-wait \
 	lxc-console \
 	lxc-kill \
 	lxc-freeze \
@@ -73,6 +74,9 @@ lxc_execute_LDADD = liblxc.la
 
 lxc_monitor_SOURCES = lxc_monitor.c
 lxc_monitor_LDADD = liblxc.la
+
+lxc_wait_SOURCES = lxc_wait.c
+lxc_wait_LDADD = liblxc.la
 
 lxc_console_SOURCES = lxc_console.c
 lxc_console_LDADD = liblxc.la
