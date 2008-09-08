@@ -74,6 +74,7 @@ static int remove_lxc_directory(const char *dirname)
 int lxc_destroy(const char *name)
 {
 	int ret = -1, lock;
+	char path[MAXPATHLEN];
 
 	lock = lxc_get_lock(name);
 	if (!lock) {
@@ -92,6 +93,9 @@ int lxc_destroy(const char *name)
 		goto out_lock;
 	}
 	
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s/init", name);
+	unlink(path);
+
 	lxc_monitor_cleanup(name);
 
 	if (lxc_unconfigure(name)) {
