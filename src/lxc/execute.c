@@ -118,7 +118,7 @@ int lxc_execute(const char *name, int argc, char *argv[],
 				goto error;
 			}
 
-			if (conf_has_network(name))
+			if (clone_flags & CLONE_NEWNET)
 				if (mount("sysfs", "/sys", "sysfs", 0, NULL)) {
 					lxc_log_syserror("failed to mount '/sys'");
 					/* continue: non fatal error until sysfs not per
