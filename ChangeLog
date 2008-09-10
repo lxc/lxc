@@ -1,7 +1,15 @@
 
+Version 0.2.1
+
+* Wed Sep 10 2008 Daniel Lezcano <dlezcano@fr.ibm.com>
+- Added lxc-wait command line
+- Added tty support for lxc-start
+- Fixed rootfs absolute directory
+- Improved system containers
+
 Version 0.2.0
 
-* Fri Sept 5 2008 Daniel Lezcano <dlezcano@fr.ibm.com>
+* Fri Sep 5 2008 Daniel Lezcano <dlezcano@fr.ibm.com>
 - Fix typos in README
 - Added empty container configuration
 - Added empty network container configuration

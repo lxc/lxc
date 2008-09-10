@@ -94,6 +94,12 @@ rm -rf %{buildroot}
 
 %changelog
 
+* Wed Sep 10 2008 Daniel Lezcano <dlezcano@fr.ibm.com> - Version 0.2.1
+- Added lxc-wait command line
+- Added tty support for lxc-start
+- Fixed rootfs absolute directory
+- Improved system containers
+
 * Fri Sep 5 2008 Daniel Lezcano <dlezcano@fr.ibm.com> - Version 0.2.0
 - Fix typos in README
 - Added empty container configuration
