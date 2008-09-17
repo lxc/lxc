@@ -165,7 +165,7 @@ static int freezer_state(const char *name)
 	int err;
 	
 	snprintf(freezer, MAXPATHLEN,
-		 LXCPATH "/%s/freezer.freeze", name);
+		 LXCPATH "/%s/freezer.state", name);
 
 	file = fopen(freezer, "r");
 	if (!file)
