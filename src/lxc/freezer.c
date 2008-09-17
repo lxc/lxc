@@ -57,11 +57,23 @@ static int freeze_unfreeze(const char *name, int freeze)
 
 int lxc_freeze(const char *name)
 {
-	return freeze_unfreeze(name, 1);
+	if (freeze_unfreeze(name, 1))
+		return -1;
+
+	if (lxc_setstate(name, FROZEN))
+		return -1;
+
+	return 0;
 }
 
 int lxc_unfreeze(const char *name)
 {
-	return freeze_unfreeze(name, 0);
+	if (freeze_unfreeze(name, 0))
+		return -1;
+
+	if (lxc_setstate(name, RUNNING))
+		return -1;
+
+	return 0;
 }
 
