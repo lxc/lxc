@@ -22,6 +22,7 @@ liblxc_la_SOURCES = \
 	monitor.c monitor.h \
 	kill.c \
 	freezer.c \
+	version.c \
 	lxc_cgroup.c lxc_cgroup.h \
 	lxc.h \
 	lxc_utils.h \
@@ -55,7 +56,8 @@ bin_PROGRAMS = \
 	lxc-freeze \
 	lxc-info \
 	lxc-unfreeze \
-	lxc-priority
+	lxc-priority \
+	lxc-version
 
 lxc_create_SOURCES = lxc_create.c lxc_config.c lxc_config.h
 lxc_create_LDADD = liblxc.la
@@ -95,3 +97,6 @@ lxc_unfreeze_LDADD = liblxc.la
 
 lxc_priority_SOURCES = lxc_priority.c
 lxc_priority_LDADD = liblxc.la
+
+lxc_version_SOURCES = lxc_version.c
+lxc_version_LDADD = liblxc.la
