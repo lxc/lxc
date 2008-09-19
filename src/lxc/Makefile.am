@@ -71,7 +71,7 @@ lxc_start_LDADD = liblxc.la
 lxc_stop_SOURCES = lxc_stop.c
 lxc_stop_LDADD = liblxc.la
 
-lxc_execute_SOURCES = lxc_execute.c
+lxc_execute_SOURCES = lxc_execute.c lxc_config.c lxc_config.h
 lxc_execute_LDADD = liblxc.la
 
 lxc_monitor_SOURCES = lxc_monitor.c
