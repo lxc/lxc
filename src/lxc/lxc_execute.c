@@ -84,6 +84,7 @@ int main(int argc, char *argv[])
 
 	}
 
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
 	if (access(path, R_OK)) {
 		if (lxc_create(name, &lxc_conf)) {
 			fprintf(stderr, "failed to create the container '%s'\n", name);
