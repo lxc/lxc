@@ -251,7 +251,7 @@ extern int lxc_cgroup_get_cpuset(const char *name, long *cpumask,
 extern int lxc_cgroup_get_cpu_usage(const char *name, long long *usage);
 
 /*
- * Returns a the version number of the library
+ * Returns the version number of the library
  */
 extern const char const *lxc_version(void);
 

@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (lxc_create(name, &lxc_conf)) {
-		fprintf(stderr, "failed to create the container %s\n", name);
+		fprintf(stderr, "failed to create the container '%s'\n", name);
 		return 1;
 	}
 

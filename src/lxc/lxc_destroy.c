@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 
 	if (lxc_destroy(name)) {
-		fprintf(stderr, "failed to destroy %s\n", name);
+		fprintf(stderr, "failed to destroy '%s'\n", name);
 		return 1;
 	}
 
