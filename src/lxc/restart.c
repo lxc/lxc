@@ -44,13 +44,18 @@ LXC_TTY_HANDLER(SIGQUIT);
 
 #if __i386__
 #    define __NR_restart 335
-#else
-#    error "Architecture not supported"
-#endif
 static inline long sys_restart(pid_t pid, int fd, unsigned long flags)
 {
 	return syscall(__NR_restart, pid, fd, flags);
 }
+#else
+static inline long sys_restart(pid_t pid, int fd, unsigned long flags)
+{
+	errno = ENOSYS;
+	return -1;
+}
+#    warning "Architecture not supported for restart syscall"
+#endif
 
 int lxc_restart(const char *name, int cfd, unsigned long flags)
 {

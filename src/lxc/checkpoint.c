@@ -41,13 +41,19 @@
 
 #if __i386__
 #    define __NR_checkpoint 334
-#else
-#    error "Architecture not supported"
-#endif
 static inline long sys_checkpoint(pid_t pid, int fd, unsigned long flags)
 {
 	return syscall(__NR_checkpoint, pid, fd, flags);
 }
+#else
+#    warning "Architecture not supported for checkpoint"
+static inline long sys_checkpoint(pid_t pid, int fd, unsigned long flags)
+{
+	errno = ENOSYS;
+	return -1;
+}
+
+#endif
 
 int lxc_checkpoint(const char *name, int cfd, unsigned long flags)
 {
