@@ -251,6 +251,24 @@ extern int lxc_cgroup_get_cpuset(const char *name, long *cpumask,
 extern int lxc_cgroup_get_cpu_usage(const char *name, long long *usage);
 
 /*
+ * Checkpoint a container previously frozen
+ * @name : the name of the container being checkpointed
+ * @fd : file descriptor on which the container is checkpointed
+ * @flags : checkpoint flags
+ * Returns 0 on success, < 0 otherwise
+ */
+extern int lxc_checkpoint(const char *name, int fd, unsigned long flags);
+
+/*
+ * Restart a container previously frozen
+ * @name : the name of the container being restarted
+ * @fd : file descriptor from which the container is restarted
+ * @flags : restart flags
+ * Returns 0 on success, < 0 otherwise
+ */
+extern int lxc_restart(const char *name, int fd, unsigned long flags);
+
+/*
  * Returns the version number of the library
  */
 extern const char const *lxc_version(void);
