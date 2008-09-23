@@ -40,7 +40,7 @@
 
 
 #if __i386__
-#    define __NR_checkpoint 334
+#    define __NR_checkpoint 333
 static inline long sys_checkpoint(pid_t pid, int fd, unsigned long flags)
 {
 	return syscall(__NR_checkpoint, pid, fd, flags);
