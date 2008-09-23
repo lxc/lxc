@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 
 	if (lxc_restart(name, STDIN_FILENO, 0)) {
-		fprintf(stderr, "failed to checkpoint %s\n", name);
+		fprintf(stderr, "failed to restart %s\n", name);
 		return 1;
 	}
 
