@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
+#include <sys/mount.h>
 
 #include <lxc/lxc.h>
 
@@ -43,7 +44,7 @@ LXC_TTY_HANDLER(SIGQUIT);
 
 
 #if __i386__
-#    define __NR_restart 335
+#    define __NR_restart 334
 static inline long sys_restart(pid_t pid, int fd, unsigned long flags)
 {
 	return syscall(__NR_restart, pid, fd, flags);
@@ -57,13 +58,39 @@ static inline long sys_restart(pid_t pid, int fd, unsigned long flags)
 #    warning "Architecture not supported for restart syscall"
 #endif
 
+static int opentty(const char *ttyname)
+{
+        int i, fd, flags;
+
+        fd = open(ttyname, O_RDWR | O_NONBLOCK);
+        if (fd == -1) {
+		lxc_log_syserror("open '%s'", ttyname);
+		return -1;
+        }
+
+        flags = fcntl(fd, F_GETFL);
+        flags &= ~O_NONBLOCK;
+        fcntl(fd, F_SETFL, flags);
+
+        for (i = 0; i < fd; i++)
+                close(i);
+        for (i = 0; i < 3; i++)
+                if (fd != i)
+                        dup2(fd, i);
+        if (fd >= 3)
+                close(fd);
+
+	return 0;
+}
+
 int lxc_restart(const char *name, int cfd, unsigned long flags)
 {
 	char *init = NULL, *val = NULL;
+	char ttyname[MAXPATHLEN];
 	int fd, lock, sv[2], sync = 0, err = -1;
 	pid_t pid;
 	int clone_flags;
-	
+
 	lock = lxc_get_lock(name);
 	if (!lock) {
 		lxc_log_error("'%s' is busy", name);
@@ -76,27 +103,29 @@ int lxc_restart(const char *name, int cfd, unsigned long flags)
 		return -1;
 	}
 
-	fcntl(lock, F_SETFD, FD_CLOEXEC);
-
 	/* Begin the set the state to STARTING*/
 	if (lxc_setstate(name, STARTING)) {
 		lxc_log_error("failed to set state %s", lxc_state2str(STARTING));
 		goto out;
 	}
 
+	if (readlink("/proc/self/fd/0", ttyname, sizeof(ttyname)) < 0) {
+		lxc_log_syserror("failed to read '/proc/self/fd/0'");
+		goto out;
+	}
+
+
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
 		lxc_log_syserror("failed to create communication socketpair");
-		goto err;
+		goto out;
 	}
 
 	/* Avoid signals from terminal */
 	LXC_TTY_ADD_HANDLER(SIGINT);
 	LXC_TTY_ADD_HANDLER(SIGQUIT);
 
-	clone_flags = CLONE_NEWPID|CLONE_NEWIPC;
-	if (conf_has_fstab(name))
-		clone_flags |= CLONE_NEWNS;
+	clone_flags = CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
 	if (conf_has_utsname(name))
 		clone_flags |= CLONE_NEWUTS;
 	if (conf_has_network(name))
@@ -136,9 +165,20 @@ int lxc_restart(const char *name, int cfd, unsigned long flags)
 			return -1;
 		}
 
+		/* Open the tty */
+		if (opentty(ttyname)) {
+			lxc_log_syserror("failed to open the tty");
+			return -1;
+		}
+
+		if (mount(ttyname, "/dev/console", "none", MS_BIND, 0)) {
+			lxc_log_syserror("failed to mount '/dev/console'");
+			return -1;
+		}
+
 		sys_restart(pid, cfd, flags);
 		lxc_log_syserror("failed to restart");
-
+  
 		/* If the exec fails, tell that to our father */
 		if (write(sv[0], &sync, sizeof(sync)) < 0)
 			lxc_log_syserror("failed to write the socket");
