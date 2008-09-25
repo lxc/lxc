@@ -35,7 +35,7 @@
 
 static int freeze_unfreeze(const char *name, int freeze)
 {
-	char freezer[MAXPATHLEN], *f = freeze?"FROZEN":"RUNNING";
+	char freezer[MAXPATHLEN], *f = freeze?"FROZEN":"THAWED";
 	int fd, ret = -1;
 	
 	snprintf(freezer, MAXPATHLEN, 
