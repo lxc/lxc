@@ -70,7 +70,8 @@ int opentty(const char *ttyname)
 int lxc_start(const char *name, int argc, char *argv[], 
 	      lxc_callback_t prestart, void *data)
 {
-	char *init = NULL, *val = NULL;
+	char init[MAXPATHLEN];
+	char *val = NULL;
 	char ttyname[MAXPATHLEN];
 	int fd, lock, sv[2], sync = 0, err = -1;
 	pid_t pid;
@@ -213,7 +214,9 @@ int lxc_start(const char *name, int argc, char *argv[],
 	}
 
 	asprintf(&val, "%d\n", pid);
-	asprintf(&init, LXCPATH "/%s/init", name);
+
+	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
+
 	fd = open(init, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 	if (fd < 0) {
 		lxc_log_syserror("failed to open '%s'", init);
@@ -257,7 +260,6 @@ out:
 
 	lxc_unlink_nsgroup(name);
 	unlink(init);
-	free(init);
 	free(val);
 	lxc_put_lock(lock);
 
@@ -284,6 +286,5 @@ err_fork_ns:
 	LXC_TTY_DEL_HANDLER(SIGINT);
 	close(sv[0]);
 	close(sv[1]);
-err:
 	goto out;
 }

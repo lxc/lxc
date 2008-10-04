@@ -44,7 +44,8 @@ LXC_TTY_HANDLER(SIGQUIT);
 int lxc_execute(const char *name, int argc, char *argv[], 
 		lxc_callback_t preexec, void *data)
 {
-	char *init = NULL, *val = NULL, *vinit = "[vinit]";
+	char init[MAXPATHLEN];
+	char *val = NULL, *vinit = "[vinit]";
 	int fd, lock, sv[2], sync = 0, err = -1;
 	pid_t pid;
 	int clone_flags;
@@ -194,14 +195,19 @@ int lxc_execute(const char *name, int argc, char *argv[],
 		goto err_child_failed;
 	}
 
-	asprintf(&init, LXCPATH "/%s/init", name);
+	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
+		
 	fd = open(init, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 	if (fd < 0) {
 		lxc_log_syserror("failed to open %s", init);
 		goto err_open;
 	}
 
-	asprintf(&val, "%d", pid);
+	if (!asprintf(&val, "%d", pid)) {
+		lxc_log_syserror("failed to allocate memory");
+		goto err_open;
+	}
+
 	if (write(fd, val, strlen(val)) < 0) {
 		lxc_log_syserror("failed to write init pid");
 		goto err_write;
@@ -236,7 +242,6 @@ out:
 
 	lxc_unlink_nsgroup(name);
 	unlink(init);
-	free(init);
 	free(val);
 	lxc_put_lock(lock);
 

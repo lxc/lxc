@@ -68,7 +68,9 @@ out:
 
 int lxc_link_nsgroup(const char *name, pid_t pid)
 {
-	char *lxc, *nsgroup, cgroup[MAXPATHLEN];
+	char lxc[MAXPATHLEN];
+	char nsgroup[MAXPATHLEN];
+	char cgroup[MAXPATHLEN];
 	int ret;
 
 	if (get_cgroup_mount(MTAB, cgroup)) {
@@ -76,29 +78,23 @@ int lxc_link_nsgroup(const char *name, pid_t pid)
 		return -1;
 	}
 
-	asprintf(&lxc, LXCPATH "/%s/nsgroup", name);
-	asprintf(&nsgroup, "%s/%d", cgroup, pid);
+	snprintf(lxc, MAXPATHLEN, LXCPATH "/%s/nsgroup", name);
+	snprintf(nsgroup, MAXPATHLEN, "%s/%d", cgroup, pid);
 
 	unlink(lxc);
 	ret = symlink(nsgroup, lxc);
 	if (ret)
 		lxc_log_syserror("failed to create symlink %s->%s",
 				 nsgroup, lxc);
-	free(lxc);
-	free(nsgroup);
-	return ret;
+      return ret;
 }
 
 int lxc_unlink_nsgroup(const char *name)
 {
-	char *nsgroup;
-	int ret;
+	char nsgroup[MAXPATHLEN];
 
-	asprintf(&nsgroup, LXCPATH "/%s/nsgroup", name);
-	ret = unlink(nsgroup);
-	free(nsgroup);
-
-	return ret;
+	snprintf(nsgroup, MAXPATHLEN, LXCPATH "/%s/nsgroup", name);
+	return unlink(nsgroup);
 }
 
 int lxc_cgroup_set_priority(const char *name, int priority)
@@ -137,28 +133,26 @@ out:
 int lxc_cgroup_get_priority(const char *name, int *priority)
 {
 	int fd, ret = -1;
-	char *path, prio[MAXPRIOLEN];
+	char path[MAXPATHLEN], prio[MAXPRIOLEN];
 
-        asprintf(&path, LXCPATH "/%s/nsgroup/cpu.shares", name);
+        snprintf(path, MAXPATHLEN, LXCPATH "/%s/nsgroup/cpu.shares", name);
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
 		lxc_log_syserror("failed to open '%s'", path);
-		goto out;
+		return -1;
 	}
 
 	if (read(fd, prio, MAXPRIOLEN) < 0) {
 		lxc_log_syserror("failed to read from '%s'", path);
-		close(fd);
 		goto out;
 	}
 
-	close(fd);
 	*priority = atoi(prio);
 
 	ret = 0;
 out:
-	free(path);
+	close(fd);
 	return ret;
 }
 

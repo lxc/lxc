@@ -436,19 +436,15 @@ static int proc_sys_net_write(const char *path, const char *value)
 
 static int ip_forward_set(const char *ifname, int family, int flag)
 {
-	char *path;
-	int ret;
+	char path[MAXPATHLEN];
 
 	if (family != AF_INET && family != AF_INET6)
 		return -1;
 
-	asprintf(&path, "/proc/sys/net/%s/conf/%s/forwarding", 
+	snprintf(path, MAXPATHLEN, "/proc/sys/net/%s/conf/%s/forwarding", 
 		 family == AF_INET?"ipv4":"ipv6" , ifname);
 
-	ret = proc_sys_net_write(path, flag?"1":"0");
-	free(path);
-
-	return ret;
+	return proc_sys_net_write(path, flag?"1":"0");
 }
 
 int ip_forward_on(const char *ifname, int family)

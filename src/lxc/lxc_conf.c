@@ -132,9 +132,9 @@ out:
 static int write_info(const char *path, const char *file, const char *info)
 {
 	int fd, err = -1;
-	char *f;
+	char f[MAXPATHLEN];
 
-	asprintf(&f, "%s/%s", path, file);
+	snprintf(f, MAXPATHLEN, "%s/%s", path, file);
 	fd = creat(f, 0755);
 	if (fd < 0)
 		goto out;
@@ -145,7 +145,6 @@ static int write_info(const char *path, const char *file, const char *info)
 	err = 0;
 out:
 	close(fd);
-	free(f);
 	return err;
 
 out_write:
@@ -156,9 +155,9 @@ out_write:
 static int read_info(const char *path, const char *file, char *info, size_t len)
 {
 	int fd, ret = -1;
-	char *f, *token;
+	char f[MAXPATHLEN], *token;
 
-	asprintf(&f, "%s/%s", path, file);
+	snprintf(f, MAXPATHLEN, "%s/%s", path, file);
 	fd = open(f, O_RDONLY);
 	if (fd < 0) {
 		if (errno == ENOENT)
@@ -176,18 +175,16 @@ static int read_info(const char *path, const char *file, char *info, size_t len)
 	ret = 0;
 out:
 	close(fd);
-	free(f);
 	return ret;
 }
 
 static int delete_info(const char *path, const char *file)
 {
-	char *info;
+	char info[MAXPATHLEN];
 	int ret;
 
-	asprintf(&info, "%s/%s", path, file);
+	snprintf(info, MAXPATHLEN, "%s/%s", path, file);
 	ret = unlink(info);
-	free(info);
 
 	return ret;
 }
@@ -196,7 +193,7 @@ static int configure_ip4addr(int fd, struct lxc_inetdev *in)
 {
 	char addr[INET6_ADDRSTRLEN];
 	char bcast[INET_ADDRSTRLEN];
-	char *line = NULL; 
+	char line[MAXLINELEN]; 
 	int err = -1;
 
 	if (!inet_ntop(AF_INET, &in->addr, addr, sizeof(addr))) {
@@ -210,9 +207,9 @@ static int configure_ip4addr(int fd, struct lxc_inetdev *in)
 	}
 		
 	if (in->prefix)
-		asprintf(&line, "%s/%d %s\n", addr, in->prefix, bcast);
+		snprintf(line, MAXLINELEN, "%s/%d %s\n", addr, in->prefix, bcast);
 	else
-		asprintf(&line, "%s %s\n", addr, bcast);
+		snprintf(line, MAXLINELEN, "%s %s\n", addr, bcast);
 		
 	if (write(fd, line, strlen(line)) < 0) {
 		lxc_log_syserror("failed to write address info");
@@ -221,14 +218,13 @@ static int configure_ip4addr(int fd, struct lxc_inetdev *in)
 
 	err = 0;
 err:
-	free(line);
 	return err;
 }
 
 static int configure_ip6addr(int fd, struct lxc_inet6dev *in6)
 {
 	char addr[INET6_ADDRSTRLEN];
-	char *line = NULL;
+	char line[MAXLINELEN];
 	int err = -1;
 
 	if (!inet_ntop(AF_INET6, &in6->addr, addr, sizeof(addr))) {
@@ -236,7 +232,7 @@ static int configure_ip6addr(int fd, struct lxc_inet6dev *in6)
 		goto err;
 	}
 		
-	asprintf(&line, "%s/%d\n", addr, in6->prefix?in6->prefix:64);
+	snprintf(line, MAXLINELEN, "%s/%d\n", addr, in6->prefix?in6->prefix:64);
 		
 	if (write(fd, line, strlen(line)) < 0) {
 		lxc_log_syserror("failed to write address info");
@@ -245,7 +241,6 @@ static int configure_ip6addr(int fd, struct lxc_inet6dev *in6)
 
 	err = 0;
 err:
-	free(line);
 	return err;
 }
 
@@ -429,14 +424,14 @@ static int configure_rootfs(const char *name, const char *rootfs)
 
 static int configure_mount(const char *name, const char *fstab)
 {
-	char *path;
+	char path[MAXPATHLEN];
 	struct stat stat;
 	int infd, outfd;
 	void *src, *dst;
 	char c = '\0';
 	int ret = -1;
 
-	asprintf(&path, LXCPATH "/%s/fstab", name);
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s/fstab", name);
 
 	outfd = open(path, O_RDWR|O_CREAT|O_EXCL, 0640);
 	if (outfd < 0) {
@@ -447,35 +442,35 @@ static int configure_mount(const char *name, const char *fstab)
 	infd = open(fstab, O_RDONLY);
 	if (infd < 0) {
 		lxc_log_syserror("failed to open '%s'", fstab);
-		goto out;
+		goto out_open;
 	}
 
 	if (fstat(infd, &stat)) {
 		lxc_log_syserror("failed to stat '%s'", fstab);
-		goto out;
+		goto out_open2;
 	}
 
 	if (lseek(outfd, stat.st_size - 1, SEEK_SET) < 0) {
 		lxc_log_syserror("failed to seek dest file '%s'", path);
-		goto out;
+		goto out_open2;
 	}
 
 	/* fixup length */
 	if (write(outfd, &c, 1) < 0) {
 		lxc_log_syserror("failed to write to '%s'", path);
-		goto out;
+		goto out_open2;
 	}
 
 	src = mmap(NULL, stat.st_size, PROT_READ, MAP_SHARED, infd, 0L);
 	if (src == MAP_FAILED) {
 		lxc_log_syserror("failed to mmap '%s'", fstab);
-		goto out;
+		goto out_open2;
 	}
 
 	dst = mmap(NULL, stat.st_size, PROT_WRITE, MAP_SHARED, outfd, 0L);
 	if (dst == MAP_FAILED) {
 		lxc_log_syserror("failed to mmap '%s'", path);
-		goto out;
+		goto out_mmap;
 	}
 
 	memcpy(dst, src, stat.st_size);
@@ -485,8 +480,16 @@ static int configure_mount(const char *name, const char *fstab)
 
 	ret = 0;
 out:
-	free(path);
 	return ret;
+
+out_mmap:
+	munmap(src, stat.st_size);
+out_open2:
+	close(infd);
+out_open:
+	unlink(path);
+	close(outfd);
+	goto out;
 }
 
 static int unconfigure_ip_addresses(const char *dirname)
@@ -946,9 +949,12 @@ static int instanciate_veth(const char *dirname, const char *file, pid_t pid)
 	char bridge[IFNAMSIZ];
 	int ifindex, ret = -1;
 			
-	asprintf(&veth1, "%s_%d", file, pid);
-	asprintf(&veth2, "%s~%d", file, pid);
-	asprintf(&path, "%s/%s", dirname, file);
+	if (!asprintf(&veth1, "%s_%d", file, pid) ||
+	    !asprintf(&veth2, "%s~%d", file, pid) ||
+	    !asprintf(&path, "%s/%s", dirname, file)) {
+		lxc_log_syserror("failed to allocate memory");
+		goto out;
+	}
 	
 	if (read_info(path, "link", bridge, IFNAMSIZ)) {
 		lxc_log_error("failed to read bridge info");
@@ -966,7 +972,11 @@ static int instanciate_veth(const char *dirname, const char *file, pid_t pid)
 		goto out;
 	}
 	
-	asprintf(&strindex, "%d", ifindex);
+	if (!asprintf(&strindex, "%d", ifindex)) {
+		lxc_log_syserror("failed to allocate memory");
+		goto out;
+	}
+
 	if (write_info(path, "ifindex", strindex)) {
 		lxc_log_error("failed to write interface index to %s", path);
 		goto out;
@@ -993,7 +1003,11 @@ static int instanciate_macvlan(const char *dirname, const char *file, pid_t pid)
 	char link[IFNAMSIZ]; 
 	int ifindex, ret = -1;
 			
-	asprintf(&peer, "%s~%d", file, pid);
+	if (!asprintf(&peer, "%s~%d", file, pid)) {
+		lxc_log_syserror("failed to allocate memory");
+		return -1;
+	}
+
 	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
 	if (read_info(path, "link", link, IFNAMSIZ)) {
 		lxc_log_error("failed to read bridge info");
@@ -1011,7 +1025,11 @@ static int instanciate_macvlan(const char *dirname, const char *file, pid_t pid)
 		goto out;
 	}
 
-	asprintf(&strindex, "%d", ifindex);
+	if (!asprintf(&strindex, "%d", ifindex)) {
+		lxc_log_syserror("failed to allocate memory");
+		return -1;
+	}
+
 	if (write_info(path, "ifindex", strindex)) {
 		lxc_log_error("failed to write interface index to %s", path);
 		goto out;
@@ -1042,7 +1060,11 @@ static int instanciate_phys(const char *dirname, const char *file, pid_t pid)
 		goto out;
 	}
 
-	asprintf(&strindex, "%d", ifindex);
+	if (!asprintf(&strindex, "%d", ifindex)) {
+		lxc_log_syserror("failed to allocate memory");
+		return -1;
+	}
+
 	if (write_info(path, "ifindex", strindex)) {
 		lxc_log_error("failed to write interface index to %s", path);
 		goto out;
@@ -1095,14 +1117,10 @@ static int instanciate_netdev_cb(const char *name, const char *dirname,
 
 static int instanciate_netdev(const char *name, pid_t pid)
 {
-	char *dirname;
-	int ret;
+	char dirname[MAXPATHLEN];
 
-	asprintf(&dirname, LXCPATH "/%s/network", name);
-	ret =  dir_for_each(name, dirname, instanciate_netdev_cb, &pid);
-	free(dirname);
-
-	return ret;
+	snprintf(dirname, MAXPATHLEN, LXCPATH "/%s/network", name);
+	return dir_for_each(name, dirname, instanciate_netdev_cb, &pid);
 }
 
 static int move_netdev_cb(const char *name, const char *dirname, 
@@ -1138,14 +1156,9 @@ static int move_netdev_cb(const char *name, const char *dirname,
 
 static int move_netdev(const char *name, pid_t pid)
 {
-	char *dirname;
-	int ret;
-
-	asprintf(&dirname, LXCPATH "/%s/network", name);
-	ret = dir_for_each(name, dirname, move_netdev_cb, &pid);
-	free(dirname);
-
-	return ret;
+	char dirname[MAXPATHLEN];
+	snprintf(dirname, MAXPATHLEN, LXCPATH "/%s/network", name);
+	return dir_for_each(name, dirname, move_netdev_cb, &pid);
 }
 
 int conf_create_network(const char *name, pid_t pid)
@@ -1206,14 +1219,10 @@ static int delete_netdev_cb(const char *name, const char *dirname,
 
 static int delete_netdev(const char *name)
 {
-	char *dirname;
-	int ret;
+	char dirname[MAXPATHLEN];
 
-	asprintf(&dirname, LXCPATH "/%s/network", name);
-	ret = dir_for_each(name, dirname, delete_netdev_cb, NULL);
-	free(dirname);
-
-	return ret;
+	snprintf(dirname, MAXPATHLEN, LXCPATH "/%s/network", name);
+	return dir_for_each(name, dirname, delete_netdev_cb, NULL);
 }
 
 int conf_destroy_network(const char *name)

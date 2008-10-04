@@ -28,15 +28,16 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/file.h>
+#include <sys/param.h>
 
 #include <lxc/lxc.h>
 
 int lxc_get_lock(const char *name)
 {
-	char *lock;
+	char lock[MAXPATHLEN];
 	int fd, ret;
 
-	asprintf(&lock, LXCPATH "/%s", name);
+	snprintf(lock, MAXPATHLEN, LXCPATH "/%s", name);
 	fd = open(lock, O_RDONLY|O_DIRECTORY, S_IRUSR|S_IWUSR);
 	if (fd < 0) {
 		ret = -errno;
@@ -53,7 +54,6 @@ int lxc_get_lock(const char *name)
 
 	ret = fd;
 out:
-	free(lock);
 	return ret;
 }
 
