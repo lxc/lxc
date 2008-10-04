@@ -45,6 +45,12 @@ static inline long sys_checkpoint(pid_t pid, int fd, unsigned long flags)
 {
 	return syscall(__NR_checkpoint, pid, fd, flags);
 }
+#elif __x86_64__
+#    define __NR_checkpoint 295
+static inline long sys_checkpoint(pid_t pid, int fd, unsigned long flags)
+{
+        return syscall(__NR_checkpoint, pid, fd, flags);
+}
 #else
 #    warning "Architecture not supported for checkpoint"
 static inline long sys_checkpoint(pid_t pid, int fd, unsigned long flags)

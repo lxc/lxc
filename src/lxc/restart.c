@@ -49,6 +49,12 @@ static inline long sys_restart(pid_t pid, int fd, unsigned long flags)
 {
 	return syscall(__NR_restart, pid, fd, flags);
 }
+#elif __x86_64__
+#    define __NR_restart 296
+static inline long sys_restart(pid_t pid, int fd, unsigned long flags)
+{
+        return syscall(__NR_restart, pid, fd, flags);
+}
 #else
 static inline long sys_restart(pid_t pid, int fd, unsigned long flags)
 {
