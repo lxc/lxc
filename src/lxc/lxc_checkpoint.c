@@ -38,12 +38,17 @@ int main(int argc, char *argv[])
 {
 	char opt;
 	char *name = NULL;
+	int stop = 0;
 	int nbargs = 0;
+	int ret = 1;
 
-	while ((opt = getopt(argc, argv, "n:")) != -1) {
+	while ((opt = getopt(argc, argv, "sn:")) != -1) {
 		switch (opt) {
 		case 'n':
 			name = optarg;
+			break;
+		case 's':
+			stop = 1;
 			break;
 		}
 
@@ -53,10 +58,30 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
+	if (lxc_freeze(name)) {
+		fprintf(stderr, "failed to freeze '%s'\n", name);
+		return -1;
+	}
+
 	if (lxc_checkpoint(name, STDOUT_FILENO, 0)) {
 		fprintf(stderr, "failed to checkpoint %s\n", name);
+		goto out;
+	}
+
+	if (stop) {
+		if (lxc_stop(name)) {
+			fprintf(stderr, "failed to stop '%s'\n", name);
+			goto out;
+		}
+	}
+
+	ret = 0;
+
+out:
+	if (lxc_unfreeze(name)) {
+		fprintf(stderr, "failed to unfreeze '%s'\n", name);
 		return 1;
 	}
 
-	return 0;
+	return ret;
 }
