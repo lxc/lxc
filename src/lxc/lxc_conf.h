@@ -97,10 +97,14 @@ struct lxc_network {
 };
 
 /*
- * Defines a structure to configure the control data and path
+ * Defines a generic struct to configure the control group.
+ * It is up to the programmer to specify the right subsystem.
+ * @subsystem : the targetted subsystem
+ * @value     : the value to set
  */
 struct lxc_cgroup {
-	;
+	char *subsystem;
+	char *value;
 };
 
 /*
@@ -114,7 +118,7 @@ struct lxc_conf {
 	char *rootfs;
 	char *fstab;
 	struct utsname *utsname;
-	struct lxc_cgroup *cgroup;
+	struct lxc_list cgroup;
 	struct lxc_list networks;
 };
 
@@ -143,5 +147,6 @@ extern int conf_has(const char *name, const char *info);
 #define conf_has_rootfs(__name)  conf_has(__name, "rootfs")
 #define conf_has_utsname(__name) conf_has(__name, "utsname")
 #define conf_has_network(__name) conf_has(__name, "network")
+#define conf_has_cgroup(__name) conf_has(__name, "cgroup")
 
 #endif

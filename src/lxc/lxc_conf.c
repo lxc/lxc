@@ -394,8 +394,28 @@ out:
 	return err;
 }
 
-static int configure_cgroup(const char *name, struct lxc_cgroup *cgroup)
+static int configure_cgroup(const char *name, struct lxc_list *cgroup)
 {
+	char path[MAXPATHLEN];
+	struct lxc_list *iterator;
+	struct lxc_cgroup *cg;
+	int ret = -1;
+
+	if (lxc_list_empty(cgroup))
+		return 0;
+
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
+
+	if (mkdir(path, 0755)) {
+		lxc_log_syserror("failed to create '%s' directory", path);
+		return -1;
+	}
+
+	lxc_list_for_each(iterator, cgroup) {
+		cg = iterator->elem;
+		write_info(path, cg->subsystem, cg->value);
+	}
+	
 	return 0;
 }
 
@@ -536,12 +556,20 @@ static int unconfigure_network(const char *name)
 	return 0;
 }
 
+static int unconfigure_cgroup_cb(const char *name, const char *dirname, 
+				  const char *file, void *data)
+{
+	return delete_info(dirname, file);
+}
+
 static int unconfigure_cgroup(const char *name)
 {
-	char path[MAXPATHLEN];
+	char dirname[MAXPATHLEN];
 
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
-	delete_info(path, "nsgroup");
+	lxc_unlink_nsgroup(name);
+	snprintf(dirname, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
+	dir_for_each(name, dirname, unconfigure_cgroup_cb, NULL);
+	rmdir(dirname);
 
 	return 0;
 }
@@ -620,6 +648,21 @@ static int setup_rootfs(const char *name)
 	}
 
 	return 0;
+}
+
+static int setup_cgroup_cb(const char *name, const char *dirname, 
+			   const char *file, void *data)
+{
+	if (lxc_cgroup_copy(name, file))
+		lxc_log_warning("failed to setup '%s'");
+	return 0;
+}
+
+static int setup_cgroup(const char *name)
+{
+	char dirname[MAXPATHLEN];
+	snprintf(dirname, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
+	return dir_for_each(name, dirname, setup_cgroup_cb, NULL);
 }
 
 static int setup_mount(const char *name)
@@ -900,13 +943,13 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 		return -1;
 	}
 
-	if (configure_network(name, &conf->networks)) {
-		lxc_log_error("failed to configure the network");
+	if (configure_cgroup(name, &conf->cgroup)) {
+		lxc_log_error("failed to configure the control group");
 		return -1;
 	}
 
-	if (conf->cgroup && configure_cgroup(name, conf->cgroup)) {
-		lxc_log_error("failed to configure the control group");
+	if (configure_network(name, &conf->networks)) {
+		lxc_log_error("failed to configure the network");
 		return -1;
 	}
 
@@ -931,7 +974,7 @@ int lxc_unconfigure(const char *name)
 	if (conf_has_network(name) && unconfigure_network(name))
 		lxc_log_error("failed to cleanup the network");
 
-	if (unconfigure_cgroup(name))
+	if (conf_has_cgroup(name) && unconfigure_cgroup(name))
 		lxc_log_error("failed to cleanup cgroup");
 
 	if (conf_has_rootfs(name) && unconfigure_rootfs(name))
@@ -1249,6 +1292,11 @@ int lxc_setup(const char *name)
 
 	if (conf_has_fstab(name) && setup_mount(name)) {
 		lxc_log_error("failed to setup the mount points for '%s'", name);
+		return -1;
+	}
+
+	if (conf_has_cgroup(name) && setup_cgroup(name)) {
+		lxc_log_error("failed to setup the cgroups for '%s'", name);
 		return -1;
 	}
 

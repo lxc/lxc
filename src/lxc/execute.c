@@ -172,6 +172,9 @@ int lxc_execute(const char *name, int argc, char *argv[],
 		goto err_pipe_read;
 	}
 
+	if (lxc_link_nsgroup(name, pid))
+		lxc_log_warning("cgroupfs not found: cgroup disabled");
+
 	if (clone_flags & CLONE_NEWNET && conf_create_network(name, pid)) {
 		lxc_log_error("failed to create the configured network");
 		goto err_create_network;
@@ -213,9 +216,6 @@ int lxc_execute(const char *name, int argc, char *argv[],
 		goto err_write;
 	}
 
-	if (lxc_link_nsgroup(name, pid))
-		lxc_log_warning("cgroupfs not found: cgroup disabled");
-
 	if (lxc_setstate(name, RUNNING)) {
 		lxc_log_error("failed to set state to %s", lxc_state2str(RUNNING));
 		goto err_state_failed;
@@ -254,7 +254,8 @@ err_state_failed:
 err_child_failed:
 err_pipe_read2:
 err_pipe_write:
-	conf_destroy_network(name);
+	if (clone_flags & CLONE_NEWNET)
+		conf_destroy_network(name);
 err_create_network:
 err_pipe_read:
 err_open:

@@ -35,39 +35,38 @@
 #include <lxc/lxc.h>
 
 typedef int (*file_cb)(char* buffer, void *data);
-typedef int (*config_cb)(char *value, struct lxc_conf *lxc_conf);
+typedef int (*config_cb)(const char *, char *, struct lxc_conf *);
 
-static int config_mount(char *, struct lxc_conf *);
-static int config_rootfs(char *, struct lxc_conf *);
-static int config_utsname(char *, struct lxc_conf *);
-static int config_network_type(char *, struct lxc_conf *);
-static int config_network_flags(char *, struct lxc_conf *);
-static int config_network_link(char *, struct lxc_conf *);
-static int config_network_name(char *, struct lxc_conf *);
-static int config_network_hwaddr(char *, struct lxc_conf *);
-static int config_network_ipv4(char *, struct lxc_conf *);
-static int config_network_ipv6(char *, struct lxc_conf *);
+static int config_cgroup(const char *, char *, struct lxc_conf *);
+static int config_mount(const char *, char *, struct lxc_conf *);
+static int config_rootfs(const char *, char *, struct lxc_conf *);
+static int config_utsname(const char *, char *, struct lxc_conf *);
+static int config_network_type(const char *, char *, struct lxc_conf *);
+static int config_network_flags(const char *, char *, struct lxc_conf *);
+static int config_network_link(const char *, char *, struct lxc_conf *);
+static int config_network_name(const char *, char *, struct lxc_conf *);
+static int config_network_hwaddr(const char *, char *, struct lxc_conf *);
+static int config_network_ipv4(const char *, char *, struct lxc_conf *);
+static int config_network_ipv6(const char *, char *, struct lxc_conf *);
 
 struct config {
 	char *name;
-	int type;
 	config_cb cb;
 };
 
-enum { MOUNT, ROOTFS, UTSNAME, NETTYPE, NETFLAGS, NETLINK, 
-       NETNAME, NETHWADDR, NETIPV4, NETIPV6 };
+static struct config config[] = {
 
-struct config config[] = {
-	{ "lxc.mount",             MOUNT,     config_mount           },
-	{ "lxc.rootfs",            ROOTFS,    config_rootfs          },
-	{ "lxc.utsname",           UTSNAME,   config_utsname         },
-	{ "lxc.network.type",      NETTYPE,   config_network_type    },
-	{ "lxc.network.flags",     NETFLAGS,  config_network_flags   },
-	{ "lxc.network.link",      NETLINK,   config_network_link    },
-	{ "lxc.network.name",      NETNAME,   config_network_name    },
-	{ "lxc.network.hwaddr",    NETHWADDR, config_network_hwaddr  },
-	{ "lxc.network.ipv4",      NETIPV4,   config_network_ipv4    },
-	{ "lxc.network.ipv6",      NETIPV6,   config_network_ipv6    },
+	{ "lxc.cgroup",         config_cgroup         },
+	{ "lxc.mount",          config_mount          },
+	{ "lxc.rootfs",         config_rootfs         },
+	{ "lxc.utsname",        config_utsname        },
+	{ "lxc.network.type",   config_network_type   },
+	{ "lxc.network.flags",  config_network_flags  },
+	{ "lxc.network.link",   config_network_link   },
+	{ "lxc.network.name",   config_network_name   },
+	{ "lxc.network.hwaddr", config_network_hwaddr },
+	{ "lxc.network.ipv4",   config_network_ipv4   },
+	{ "lxc.network.ipv6",   config_network_ipv6   },
 };
 
 static const size_t config_size = sizeof(config)/sizeof(struct config);
@@ -122,7 +121,7 @@ static int char_right_gc(char *buffer, size_t len)
 	return 0;
 }
 
-static int config_network_type(char *value, struct lxc_conf *lxc_conf)
+static int config_network_type(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	struct lxc_list *networks = &lxc_conf->networks;
 	struct lxc_network *network;
@@ -185,7 +184,7 @@ static int config_network_type(char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_network_flags(char *value, struct lxc_conf *lxc_conf)
+static int config_network_flags(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	struct lxc_list *networks = &lxc_conf->networks;
 	struct lxc_network *network;
@@ -207,7 +206,7 @@ static int config_network_flags(char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_network_link(char *value, struct lxc_conf *lxc_conf)
+static int config_network_link(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	struct lxc_list *networks = &lxc_conf->networks;
 	struct lxc_network *network;
@@ -234,7 +233,7 @@ static int config_network_link(char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_network_name(char *value, struct lxc_conf *lxc_conf)
+static int config_network_name(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	struct lxc_list *networks = &lxc_conf->networks;
 	struct lxc_network *network;
@@ -261,7 +260,7 @@ static int config_network_name(char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_network_hwaddr(char *value, struct lxc_conf *lxc_conf)
+static int config_network_hwaddr(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	struct lxc_list *networks = &lxc_conf->networks;
 	struct lxc_network *network;
@@ -283,7 +282,7 @@ static int config_network_hwaddr(char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_network_ipv4(char *value, struct lxc_conf *lxc_conf)
+static int config_network_ipv4(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	struct lxc_list *networks = &lxc_conf->networks;
 	struct lxc_network *network;
@@ -362,7 +361,7 @@ static int config_network_ipv4(char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_network_ipv6(char *value, struct lxc_conf *lxc_conf)
+static int config_network_ipv6(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	struct lxc_list *networks = &lxc_conf->networks;
 	struct lxc_network *network;
@@ -418,7 +417,46 @@ static int config_network_ipv6(char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_mount(char *value, struct lxc_conf *lxc_conf)
+static int config_cgroup(const char *key, char *value, struct lxc_conf *lxc_conf)
+{
+	char *token = "lxc.cgroup.";
+	char *subkey;
+	struct lxc_list *cglist;
+	struct lxc_cgroup *cgelem;
+
+	subkey = strstr(key, token);
+
+	if (!subkey)
+		return -1;
+
+	if (!strlen(subkey))
+		return -1;
+
+	if (strlen(subkey) == strlen(token))
+		return -1;
+	
+	subkey += strlen(token);
+
+	cglist = malloc(sizeof(*cglist));
+	if (!cglist)
+		return -1;
+
+	cgelem = malloc(sizeof(*cgelem));
+	if (!cgelem) {
+		free(cglist);
+		return -1;
+	}
+
+	cgelem->subsystem = strdup(subkey);
+	cgelem->value = strdup(value);
+	cglist->elem = cgelem;
+
+	lxc_list_add(&lxc_conf->cgroup, cglist);
+
+	return 0;
+}
+
+static int config_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	if (strlen(value) >= MAXPATHLEN) {
 		lxc_log_error("%s path is too long", value);
@@ -434,7 +472,7 @@ static int config_mount(char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_rootfs(char *value, struct lxc_conf *lxc_conf)
+static int config_rootfs(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	if (strlen(value) >= MAXPATHLEN) {
 		lxc_log_error("%s path is too long", value);
@@ -450,7 +488,7 @@ static int config_rootfs(char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_utsname(char *value, struct lxc_conf *lxc_conf)
+static int config_utsname(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	struct utsname *utsname;
 
@@ -507,7 +545,7 @@ static int parse_line(char *buffer, void *data)
 		return -1;
 	}
 
-	return config->cb(value, data);
+	return config->cb(key, value, data);
 }
 
 static int file_for_each_line(const char *file, file_cb callback, void *data)
@@ -542,7 +580,7 @@ int lxc_config_init(struct lxc_conf *conf)
 	conf->rootfs = NULL;
 	conf->fstab = NULL;
 	conf->utsname = NULL;
-	conf->cgroup = NULL;
+	lxc_list_init(&conf->cgroup);
 	lxc_list_init(&conf->networks);
 	return 0;
 }

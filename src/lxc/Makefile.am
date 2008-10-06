@@ -25,7 +25,7 @@ liblxc_la_SOURCES = \
 	checkpoint.c \
 	restart.c \
 	version.c \
-	lxc_cgroup.c lxc_cgroup.h \
+	cgroup.c cgroup.h \
 	lxc.h \
 	lxc_utils.h \
 	lxc_lock.c lxc_lock.h \
@@ -57,8 +57,8 @@ bin_PROGRAMS = \
 	lxc-kill \
 	lxc-freeze \
 	lxc-info \
+	lxc-cgroup \
 	lxc-unfreeze \
-	lxc-priority \
 	lxc-checkpoint \
 	lxc-restart \
 	lxc-version
@@ -99,8 +99,8 @@ lxc_freeze_LDADD = liblxc.la
 lxc_unfreeze_SOURCES = lxc_unfreeze.c
 lxc_unfreeze_LDADD = liblxc.la
 
-lxc_priority_SOURCES = lxc_priority.c
-lxc_priority_LDADD = liblxc.la
+lxc_cgroup_SOURCES = lxc_cgroup.c
+lxc_cgroup_LDADD = liblxc.la
 
 lxc_checkpoint_SOURCES = lxc_checkpoint.c
 lxc_checkpoint_LDADD = liblxc.la

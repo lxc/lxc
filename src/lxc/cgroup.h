@@ -20,11 +20,14 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+#ifndef _cgroup_h
+#define _cgroup_h
 
-#include <stdio.h>
-#include <lxc/lxc.h>
+#define MAXPRIOLEN 24
 
-int main(int argc, char *argv[])
-{
-	return 0;
-}
+int lxc_get_cgroup_mount(const char *mtab, char *mnt);
+int lxc_link_nsgroup(const char *name, pid_t pid);
+int lxc_unlink_nsgroup(const char *name);
+int lxc_cgroup_copy(const char *name, const char *subsystem);
+
+#endif

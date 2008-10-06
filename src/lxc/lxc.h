@@ -38,9 +38,9 @@ extern "C" {
 #include <lxc/lxc_conf.h>
 #include <lxc/lxc_log.h>
 #include <lxc/lxc_lock.h>
-#include <lxc/lxc_cgroup.h>
 #include <lxc/lxc_namespace.h>
 #include <lxc/lxc_utils.h>
+#include <lxc/cgroup.h>
 #include <lxc/monitor.h>
 
 #define LXCPATH "/var/lxc"
@@ -179,76 +179,26 @@ extern lxc_state_t lxc_state(const char *name);
 extern int lxc_kill(const char *name, int signum);
 
 /*
- * Change the priority of the container
- * @name     : the name of the container
- * @priority : an integer representing the desired priority
+ * Set a specified value for a specified subsystem. The specified
+ * subsystem must be fully specified, eg. "cpu.shares"
+ * @name      : the name of the container
+ * @subsystem : the subsystem
+ * @value     : the value to be set
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_cgroup_set_priority(const char *name, int priority);
+extern int lxc_cgroup_set(const char *name, const char *subsystem, const char *value);
 
 /*
- * Retrieve the priority of the container
- * @name     : the name of the container
- * @priority : a pointer to an int where the priority will be stored
+ * Get a specified value for a specified subsystem. The specified
+ * subsystem must be fully specified, eg. "cpu.shares"
+ * @name      : the name of the container
+ * @subsystem : the subsystem
+ * @value     : the value to be set
+ * @len       : the len of the value variable
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_cgroup_get_priority(const char *name, int *priority);
-
-/*
- * Set the maximum memory usable by the container
- * @name   : the name of the container
- * @memmax : the maximum usable memory in bytes
- * Returns 0 on sucess, < 0 otherwise
- */
-extern int lxc_cgroup_set_memory(const char *name, size_t memmax);
-
-/*
- * Get the maximum memory usable by the container
- * @name : the name of the container
- * @memmax : a pointer to a size_t where the value will be stored
- * Returns 0 on sucess, < 0 otherwise
- */
-extern int lxc_cgroup_get_memory(const char *name, size_t *memmax);
-
-/*
- * Get the memory statistics of the container
- * @name    : the name of the container
- * @memstat : a pointer to a structure defining the memory statistic
- * Returns 0 on sucess, < 0 otherwise
- */
-extern int lxc_cgroup_get_memstat(const char *name, 
-				  struct lxc_mem_stat *memstat);
-
-/*
- * Set the cpuset for the container
- * @name    : the name of the container
- * @cpumask : a bitmask representing the cpu maps
- * @len     : the len of the bitmask
- * @shared  : a boolean specifying if the cpu could be shared with
- *            processes not belonging to the container
- * Returns 0 on sucess, < 0 otherwise
- */
-extern int lxc_cgroup_set_cpuset(const char *name, long *cpumask, 
-				 int len, int shared);
-
-/*
- * Get the actual cpuset for the container
- * @cpumask : a bitmask representing the cpu maps
- * @len     : the len of the bitmask
- * @shared  : a boolean specifying if the cpu is shared with
- *            processes not belonging to the container
- * Returns 0 on sucess, < 0 otherwise
- */
-extern int lxc_cgroup_get_cpuset(const char *name, long *cpumask, 
-				 int len, int *shared);
-
-/*
- * Get the cpu usage of the container
- * @name  : the name of the container
- * @usage : a value to be filled with the current container cpu usage
- * Returns 0 on sucess, < 0 otherwise
- */
-extern int lxc_cgroup_get_cpu_usage(const char *name, long long *usage);
+extern int lxc_cgroup_get(const char *name, const char *subsystem, 
+			  char *value, size_t len);
 
 /*
  * Checkpoint a container previously frozen

@@ -123,13 +123,6 @@ static void lxc_monitor_send(const char *name, struct lxc_msg *msg)
 	close(fd);
 }
 
-void lxc_monitor_send_priority(const char *name, int priority)
-{
-	struct lxc_msg msg = { .type = lxc_msg_priority,
-			       .value = priority };
-	lxc_monitor_send(name, &msg);
-}
-
 void lxc_monitor_send_state(const char *name, lxc_state_t state)
 {
 	struct lxc_msg msg = { .type = lxc_msg_state,
