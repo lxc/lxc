@@ -654,7 +654,7 @@ static int setup_cgroup_cb(const char *name, const char *dirname,
 			   const char *file, void *data)
 {
 	if (lxc_cgroup_copy(name, file))
-		lxc_log_warning("failed to setup '%s'");
+		lxc_log_warning("failed to setup '%s'", name);
 	return 0;
 }
 
@@ -1290,13 +1290,13 @@ int lxc_setup(const char *name)
 		return -1;
 	}
 
-	if (conf_has_fstab(name) && setup_mount(name)) {
-		lxc_log_error("failed to setup the mount points for '%s'", name);
+	if (conf_has_cgroup(name) && setup_cgroup(name)) {
+		lxc_log_error("failed to setup the cgroups for '%s'", name);
 		return -1;
 	}
 
-	if (conf_has_cgroup(name) && setup_cgroup(name)) {
-		lxc_log_error("failed to setup the cgroups for '%s'", name);
+	if (conf_has_fstab(name) && setup_mount(name)) {
+		lxc_log_error("failed to setup the mount points for '%s'", name);
 		return -1;
 	}
 
