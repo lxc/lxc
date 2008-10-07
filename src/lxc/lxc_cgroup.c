@@ -22,9 +22,60 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
+#include <libgen.h>
+#include <sys/types.h>
+
 #include <lxc/lxc.h>
+
+void usage(char *cmd)
+{
+	fprintf(stderr, "%s <subsystem> [value]\n", basename(cmd));
+	fprintf(stderr, "\t -n <name>   : name of the container\n");
+	_exit(1);
+}
 
 int main(int argc, char *argv[])
 {
+	char opt;
+	char *name = NULL, *subsystem = NULL, *value = NULL;
+	int nbargs = 0;
+
+	while ((opt = getopt(argc, argv, "n:")) != -1) {
+		switch (opt) {
+		case 'n':
+			name = optarg;
+			break;
+		}
+
+		nbargs++;
+	}
+
+	if (!name || argc < 4)
+		usage(argv[0]);
+
+	if (argc >= 5)
+		value = argv[4];
+
+	subsystem = argv[3];
+
+	if (value) {
+		if (lxc_cgroup_set(name, subsystem, value)) {
+			fprintf(stderr, "failed to assign '%s' value to '%s' for '%s'\n",
+				value, subsystem, name);
+			return 1;
+		}
+	} else {
+		const unsigned long len = 4096;
+		char buffer[len];
+		if (lxc_cgroup_get(name, subsystem, buffer, len)) {
+			fprintf(stderr, "failed to retrieve value of '%s' for '%s'\n",
+				subsystem, name);
+			return 1;
+		}
+
+		printf("%s", buffer);
+	}
+
 	return 0;
 }
