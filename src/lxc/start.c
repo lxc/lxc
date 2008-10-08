@@ -42,31 +42,6 @@
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);
 
-int opentty(const char *ttyname)
-{
-        int i, fd, flags;
-
-        fd = open(ttyname, O_RDWR | O_NONBLOCK);
-        if (fd == -1) {
-		lxc_log_syserror("open '%s'", ttyname);
-		return -1;
-        }
-
-        flags = fcntl(fd, F_GETFL);
-        flags &= ~O_NONBLOCK;
-        fcntl(fd, F_SETFL, flags);
-
-        for (i = 0; i < fd; i++)
-                close(i);
-        for (i = 0; i < 3; i++)
-                if (fd != i)
-                        dup2(fd, i);
-        if (fd >= 3)
-                close(fd);
-
-	return 0;
-}
-
 int lxc_start(const char *name, int argc, char *argv[], 
 	      lxc_callback_t prestart, void *data)
 {
@@ -148,12 +123,6 @@ int lxc_start(const char *name, int argc, char *argv[],
 			lxc_log_error("failed to setup the container");
 			if (write(sv[0], &sync, sizeof(sync)) < 0)
 				lxc_log_syserror("failed to write the socket");
-			return -1;
-		}
-
-		/* Open the tty */
-		if (opentty(ttyname)) {
-			lxc_log_syserror("failed to open the tty");
 			return -1;
 		}
 
@@ -262,6 +231,8 @@ out:
 	unlink(init);
 	free(val);
 	lxc_put_lock(lock);
+	LXC_TTY_DEL_HANDLER(SIGQUIT);
+	LXC_TTY_DEL_HANDLER(SIGINT);
 
 	return err;
 
@@ -282,8 +253,6 @@ err_waitpid_failed:
 
 	kill(pid, SIGKILL);
 err_fork_ns:
-	LXC_TTY_DEL_HANDLER(SIGQUIT);
-	LXC_TTY_DEL_HANDLER(SIGINT);
 	close(sv[0]);
 	close(sv[1]);
 	goto out;
