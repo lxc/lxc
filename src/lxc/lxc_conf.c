@@ -630,21 +630,18 @@ static int setup_utsname(const char *name)
 
 static int setup_rootfs(const char *name)
 {
-	char path[MAXPATHLEN], chrt[MAXPATHLEN];
+	char path[MAXPATHLEN];
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
 
-	if (readlink(path, chrt, MAXPATHLEN) > 0) {
+	if (chroot(path)) {
+		lxc_log_syserror("failed to set chroot %s", path);
+		return -1;
+	}
 
-		if (chroot(chrt)) {
-			lxc_log_syserror("failed to set chroot %s", path);
-			return -1;
-		}
-
-		if (chdir(getenv("HOME")) && chdir("/")) {
-			lxc_log_syserror("failed to change to home directory");
-			return -1;
-		}
+	if (chdir(getenv("HOME")) && chdir("/")) {
+		lxc_log_syserror("failed to change to home directory");
+		return -1;
 	}
 
 	return 0;
