@@ -94,6 +94,11 @@ rm -rf %{buildroot}
 
 %changelog
 
+* Thu Oct 9 2008 Daniel Lezcano <dlezcano@fr.ibm.com> - Version 0;3.0
+- Added checkpoint/restart API and CLI
+- Added cgroup support
+- Misc fixes - Details in Changelog file
+
 * Wed Sep 10 2008 Daniel Lezcano <dlezcano@fr.ibm.com> - Version 0.2.1
 - Added lxc-wait command line
 - Added tty support for lxc-start
