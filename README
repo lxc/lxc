@@ -4,11 +4,6 @@ Linux Container - LXC:
 
 This document provides a quick help to use the linux container.
 
-Change log:
------------
-
-version 0.1.0 : initial document, Daniel Lezcano <dlezcano@fr.ibm.com>, Aug 01, 2008
-
 Contents:
 ---------
 	0) Quick start
@@ -164,6 +159,9 @@ lxc.rootfs = /mnt/root
 #              eth0
 #  * phys : the network will use a physical network device, the
 #              specified link should be an existing interface
+#  * empty : the network namespace will be empty, only the default network
+#              devices will be created (loopback, gre, ...)
+
 lxc.network.type = macvlan
 
 # specify the flags to be used for the network, actually only <up> is
@@ -186,13 +184,14 @@ lxc.network.ipv4 = 1.2.3.5/24
 # and will mean several addresses will be assigned to the interface
 lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
 
+# specify the a cgroup value
+lxc.cgroup.cpu.shares = 512
+lxc.cgroup.cpuset.cpu = 0,1
+
 --------------------------------------------------------------------------------
 
- * lxc.mount is optional
- * lxc.utsname is optional
- * lxc.network.xxx are optional, if not specified, the network 
- namespace will not be created
- * lxc.rootfs is optional
+All fields are optional.
+
 
 3.3 Container creation
 ----------------------
@@ -257,19 +256,28 @@ At any time, the following command will retrieve informations of the
      lxc-info -n foo
 
 3.10 Showing processes list for a container
-------------------------------------------
+-------------------------------------------
 
 The following command will show all the processes for all the running
 container.
 
      lxc-ps
 
+3.11 Using the control group for a container
+--------------------------------------------
+
+Each time a container is created, a cgroup is associated to it.
+If the command is specified without value, the specified key is
+retrieved otherwise it is set.
+
+     lxc-cgroup -n foo cpuset.cpu 1
+
+     lxc-cgroup -n foo cpu.shares
+
 4) Future work
 --------------
 
- * change the lxc-start command to support system container
  * change the lxc-execute to have the first process to exec
- * take into account all the resource management
  * man pages
  * improve monitoring support
  * and more :)
