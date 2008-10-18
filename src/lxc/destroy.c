@@ -96,8 +96,6 @@ int lxc_destroy(const char *name)
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/init", name);
 	unlink(path);
 
-	lxc_monitor_cleanup(name);
-
 	if (lxc_unconfigure(name)) {
 		lxc_log_error("failed to cleanup %s", name);
 		goto out_lock;

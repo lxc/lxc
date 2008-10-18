@@ -118,10 +118,9 @@ extern int lxc_monitor(const char *name, int output_fd);
 /*
  * Open the monitoring mechanism for a specific container
  * The function will return an fd corresponding to the events
- * @name  : the name of the container
  * Returns a file descriptor on success, < 0 otherwise
  */
-extern int lxc_monitor_open(const char *name);
+extern int lxc_monitor_open();
 
 /*
  * Read the state of the container if this one has changed

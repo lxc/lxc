@@ -21,8 +21,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 #include <stdio.h>
+#include <string.h>
 #include <libgen.h>
 #include <unistd.h>
+#include <regex.h>
 #include <sys/types.h>
 
 #include <lxc/lxc.h>
@@ -30,14 +32,16 @@
 void usage(char *cmd)
 {
 	fprintf(stderr, "%s <command>\n", basename(cmd));
-	fprintf(stderr, "\t -n <name>   : name of the container\n");
+	fprintf(stderr, "\t -n <name>   : name of the container or regular expression\n");
 	_exit(1);
 }
 
 int main(int argc, char *argv[])
 {
 	char opt, *name = NULL;
+	char *regexp;
 	struct lxc_msg msg;
+	regex_t preg;
 	int fd;
 
 	while ((opt = getopt(argc, argv, "n:")) != -1) {
@@ -51,7 +55,16 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
-	fd = lxc_monitor_open(name);
+	regexp = malloc(strlen(name) + 3);
+	sprintf(regexp, "^%s$", name);
+
+	if (regcomp(&preg, regexp, REG_NOSUB|REG_EXTENDED)) {
+		fprintf(stderr, "failed to compile the regex '%s'\n",
+			name);
+		return 1;
+	}
+
+	fd = lxc_monitor_open();
 	if (fd < 0) {
 		fprintf(stderr, "failed to open monitor for '%s'\n", name);
 		return -1;
@@ -65,20 +78,21 @@ int main(int argc, char *argv[])
 			return -1;
 		}
 
+		if (regexec(&preg, msg.name, 0, NULL, 0))
+			continue;
+
 		switch (msg.type) {
 		case lxc_msg_state:
 			printf("'%s' changed state to [%s]\n", 
-			       name, lxc_state2str(msg.value));
-			break;
-		case lxc_msg_priority:
-			printf("'%s' changed priority to [%d]\n", 
-			       name, msg.value);
+			       msg.name, lxc_state2str(msg.value));
 			break;
 		default:
-			printf("invalid msg format\n");
+			/* ignore garbage */
 			break;
 		}
 	}
+
+	regfree(&preg);
 
 	return 0;
 }

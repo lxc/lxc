@@ -31,15 +31,25 @@
 #include <sys/param.h>
 #include <sys/inotify.h>
 #include <sys/socket.h>
-#include <sys/un.h>
 #include <netinet/in.h>
 #include <net/if.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
 
 #include <lxc/lxc.h>
 
 #ifndef UNIX_PATH_MAX
 #define UNIX_PATH_MAX 108
 #endif
+
+#ifndef SOL_NETLINK
+#define SOL_NETLINK 270
+#endif
+
+/* assuming this multicast group is not used by anyone else :/
+ * otherwise a new genetlink family should be defined to own
+ * its multicast groups */
+#define MONITOR_MCGROUP RTNLGRP_MAX
 
 int lxc_monitor(const char *name, int output_fd)
 {
@@ -101,21 +111,22 @@ out:
 	return err;
 }
 
-static void lxc_monitor_send(const char *name, struct lxc_msg *msg)
+static void lxc_monitor_send(struct lxc_msg *msg)
 {
 	int fd;
-	struct sockaddr_un addr;
+	struct sockaddr_nl addr;
 
-	fd = socket(PF_UNIX, SOCK_DGRAM, 0);
+	fd = socket(PF_NETLINK, SOCK_RAW, 0);
 	if (fd < 0) {
 		lxc_log_syserror("failed to create notification socket");
 		return;
 	}
 
 	memset(&addr, 0, sizeof(addr));
-	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path, UNIX_PATH_MAX, 
-		 LXCPATH "/%s/notification", name);
+
+	addr.nl_family = AF_NETLINK;
+	addr.nl_pid = 0;
+ 	addr.nl_groups = MONITOR_MCGROUP;
 
 	sendto(fd, msg, sizeof(*msg), 0,
 	       (const struct sockaddr *)&addr, sizeof(addr));
@@ -127,22 +138,17 @@ void lxc_monitor_send_state(const char *name, lxc_state_t state)
 {
 	struct lxc_msg msg = { .type = lxc_msg_state,
 			       .value = state };
-	lxc_monitor_send(name, &msg);
+	strncpy(msg.name, name, sizeof(msg.name));
+
+	lxc_monitor_send(&msg);
 }
 
-void lxc_monitor_cleanup(const char *name)
-{
-	char path[UNIX_PATH_MAX];
-	snprintf(path, UNIX_PATH_MAX, LXCPATH "/%s/notification", name);
-	unlink(path);
-}
-
-int lxc_monitor_open(const char *name)
+int lxc_monitor_open(void)
 {
 	int fd;
-	struct sockaddr_un addr;
+	struct sockaddr_nl addr;
 
-	fd = socket(PF_UNIX, SOCK_DGRAM, 0);
+	fd = socket(PF_NETLINK, SOCK_RAW, 0);
 	if (fd < 0) {
 		lxc_log_syserror("failed to create notification socket");
 		return -1;
@@ -150,12 +156,13 @@ int lxc_monitor_open(const char *name)
 
 	memset(&addr, 0, sizeof(addr));
 
-	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path, UNIX_PATH_MAX, LXCPATH "/%s/notification", name);
-	unlink(addr.sun_path);
+	addr.nl_family = AF_NETLINK;
+	addr.nl_pid = 0;
+  	addr.nl_groups = MONITOR_MCGROUP;
 
 	if (bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
-		lxc_log_syserror("failed to bind to '%s'", addr.sun_path);
+		lxc_log_syserror("failed to bind to multicast group '%d'",
+			addr.nl_groups);
 		close(fd);
 		return -1;
 	}
@@ -165,9 +172,12 @@ int lxc_monitor_open(const char *name)
 
 int lxc_monitor_read(int fd, struct lxc_msg *msg)
 {
+	struct sockaddr_nl from;
+	socklen_t len = sizeof(from);
 	int ret;
 
-	ret = recv(fd, msg, sizeof(*msg), 0);
+	ret = recvfrom(fd, msg, sizeof(*msg), 0, 
+		       (struct sockaddr *)&from, &len);
 	if (ret < 0) {
 		lxc_log_syserror("failed to received state");
 		return -1;

@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 	}
 
 	
-	fd = lxc_monitor_open(name);
+	fd = lxc_monitor_open();
 	if (fd < 0) {
 		fprintf(stderr, "failed to open monitor for '%s'\n", name);
 		return -1;
@@ -96,10 +96,14 @@ int main(int argc, char *argv[])
 			return -1;
 		}
 
+		if (strcmp(name, msg.name))
+			continue;
+
 		switch (msg.type) {
 		case lxc_msg_state:
 			if (msg.value < 0 || msg.value >= MAX_STATE) {
-				fprintf(stderr, "Receive an invalid state number '%d'\n", msg.value);
+				fprintf(stderr, "Receive an invalid state number '%d'\n", 
+					msg.value);
 				return -1;
 			}
 
@@ -107,7 +111,7 @@ int main(int argc, char *argv[])
 				return 0;
 			break;
 		default:
-			printf("invalid msg format\n");
+			/* just ignore garbage */
 			break;
 		}
 	}
