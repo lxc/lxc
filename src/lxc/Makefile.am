@@ -43,7 +43,8 @@ liblxc_la_SOURCES = \
 liblxc_la_LDFLAGS = -release @PACKAGE_VERSION@
 
 bin_SCRIPTS = \
-	lxc-ps
+	lxc-ps \
+	lxc-checkconfig
 
 bin_PROGRAMS = \
 	lxc-create \

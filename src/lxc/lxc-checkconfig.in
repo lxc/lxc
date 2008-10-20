@@ -1,0 +1,54 @@
+#!/bin/bash
+CONFIGZ=/proc/config.gz
+
+SETCOLOR_SUCCESS="echo -en \\033[1;32m"
+SETCOLOR_FAILURE="echo -en \\033[1;31m"
+SETCOLOR_WARNING="echo -en \\033[1;33m"
+SETCOLOR_NORMAL="echo -en \\033[0;39m"
+
+is_enabled() {
+    mandatory=$2
+    zgrep -q "$1=y" $CONFIGZ
+    RES=$?
+
+    if [ $RES = 0 ]; then
+	$SETCOLOR_SUCCESS && echo -e "enabled" && $SETCOLOR_NORMAL
+    else
+	if [ ! -z "$mandatory" -a "$mandatory" = yes ]; then
+	    $SETCOLOR_FAILURE && echo -e "disabled" && $SETCOLOR_NORMAL
+	else
+	    $SETCOLOR_WARNING && echo -e "disabled" && $SETCOLOR_NORMAL
+	fi
+    fi
+}
+
+if [ ! -f $CONFIGZ ]; then
+    echo 
+    echo "The kernel configuration can not be retrieved because"
+    echo "\"$CONFIGZ\" was not found."
+    echo
+    echo "Is your kernel compiled with IKCONFIG_PROC ?"
+    echo 
+    exit 1
+fi
+
+echo "--- Namespaces ---"
+echo -n "Namespaces: " && is_enabled CONFIG_NAMESPACES yes
+echo -n "Utsname namespace: " && is_enabled CONFIG_UTS_NS
+echo -n "Ipc namespace: " && is_enabled CONFIG_IPC_NS yes
+echo -n "Pid namespace: " && is_enabled CONFIG_PID_NS yes
+echo -n "User namespace: " && is_enabled CONFIG_USER_NS
+echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
+echo
+echo "--- Control groups ---"
+echo -n "Cgroup: " && is_enabled CONFIG_CGROUPS
+echo -n "Cgroup namespace: " && is_enabled CONFIG_CGROUP_NS
+echo -n "Cgroup device: " && is_enabled CONFIG_CGROUP_DEVICE
+echo -n "Cgroup sched: " && is_enabled CONFIG_CGROUP_SCHED
+echo -n "Cgroup cpu account: " && is_enabled CONFIG_CGROUP_CPUACCT
+echo -n "Cgroup memory controller: " && is_enabled CONFIG_CGROUP_MEM_RES_CTLR
+echo -n "Cgroup cpuset: " && is_enabled CONFIG_CPUSETS
+echo
+echo "--- Misc ---"
+echo -n "Veth pair device: " && is_enabled CONFIG_VETH
+echo -n "Macvlan: " && is_enabled CONFIG_MACVLAN
