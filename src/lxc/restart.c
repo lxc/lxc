@@ -64,31 +64,6 @@ static inline long sys_restart(pid_t pid, int fd, unsigned long flags)
 #    warning "Architecture not supported for restart syscall"
 #endif
 
-static int opentty(const char *ttyname)
-{
-        int i, fd, flags;
-
-        fd = open(ttyname, O_RDWR | O_NONBLOCK);
-        if (fd == -1) {
-		lxc_log_syserror("open '%s'", ttyname);
-		return -1;
-        }
-
-        flags = fcntl(fd, F_GETFL);
-        flags &= ~O_NONBLOCK;
-        fcntl(fd, F_SETFL, flags);
-
-        for (i = 0; i < fd; i++)
-                close(i);
-        for (i = 0; i < 3; i++)
-                if (fd != i)
-                        dup2(fd, i);
-        if (fd >= 3)
-                close(fd);
-
-	return 0;
-}
-
 int lxc_restart(const char *name, int cfd, unsigned long flags)
 {
 	char *init = NULL, *val = NULL;
@@ -171,18 +146,12 @@ int lxc_restart(const char *name, int cfd, unsigned long flags)
 			return -1;
 		}
 
-		/* Open the tty */
-		if (opentty(ttyname)) {
-			lxc_log_syserror("failed to open the tty");
-			return -1;
-		}
-
 		if (mount(ttyname, "/dev/console", "none", MS_BIND, 0)) {
 			lxc_log_syserror("failed to mount '/dev/console'");
 			return -1;
 		}
 
-		sys_restart(pid, cfd, flags);
+		sys_restart(getpid(), cfd, flags);
 		lxc_log_syserror("failed to restart");
   
 		/* If the exec fails, tell that to our father */
