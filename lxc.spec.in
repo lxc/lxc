@@ -108,6 +108,7 @@ chmod ugo+w /var/lxc
 
 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-execute
 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-start
+setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-restart
 
 %files
 %defattr(-,root,root)

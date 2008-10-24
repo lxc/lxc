@@ -115,6 +115,7 @@ lxc_version_LDADD = liblxc.la
 install-exec-local:
 	-@/usr/sbin/setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep $(bindir)/lxc-execute 2>&1 > /dev/null && \
 	/usr/sbin/setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep $(bindir)/lxc-start && \
+	/usr/sbin/setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep $(bindir)/lxc-restart && \
 	mkdir -p $(prefix)/var/lxc && \
 	chmod ugo+rw $(prefix)/var/lxc || \
 	(echo && echo && \
