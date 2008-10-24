@@ -24,6 +24,14 @@ if test "x$GCC" = "xyes"; then
   CFLAGS="$CFLAGS -Wall"
 fi
 
+LXC_MAJOR_VERSION=$(echo $PACKAGE_VERSION | cut -d. -f1)
+LXC_MINOR_VERSION=$(echo $PACKAGE_VERSION | cut -d. -f2)
+LXC_MICRO_VERSION=$(echo $PACKAGE_VERSION | cut -d. -f3)
+
+AC_SUBST(LXC_MAJOR_VERSION)
+AC_SUBST(LXC_MINOR_VERSION)
+AC_SUBST(LXC_MICRO_VERSION)
+
 AC_CONFIG_FILES([
         Makefile
 	lxc.spec
