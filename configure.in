@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT([lxc], [0.3.0])
+AC_INIT([lxc], [0.4.0])
 
 AC_CONFIG_SRCDIR([configure.in])
 AC_CONFIG_AUX_DIR([config])
@@ -12,6 +12,8 @@ AC_PROG_RANLIB
 AM_PROG_CC_C_O
 AC_GNU_SOURCE
 AC_PROG_LIBTOOL
+AC_CHECK_PROG(SETCAP, setcap, yes, no, "/usr/sbin")
+
 AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h], [], AC_MSG_ERROR([netlink headers not found]),
 [#include <linux/types.h>
 #include <bits/sockaddr.h>
@@ -29,7 +31,7 @@ AC_CONFIG_FILES([
         src/Makefile
 	src/lxc/Makefile
 	src/lxc/lxc-ps
-	src/lxc/lxc-checkconfig
+	src/lxc/lxc-checkconfig	
 	etc/Makefile
 	etc/lxc-macvlan.conf
 	etc/lxc-no-netns.conf
@@ -41,3 +43,32 @@ AC_CONFIG_FILES([
 ])
 AC_CONFIG_COMMANDS([default],[[]],[[]])
 AC_OUTPUT
+
+if test "x$SETCAP" = "xno"; then
+   AC_MSG_NOTICE([ 
+
+Warning:
+--------
+
+The libcap-2 is not installed. That means the tools to
+set the privilege for the lxc commands are not available
+and you will need to run these commands as root
+
+])
+
+else
+
+   AC_MSG_NOTICE([ 
+
+Advice:
+-------
+
+When installing the tools, it is adviced to install as
+root, so the privilege for the commands will be set and
+they will be usable by non-root user
+
+    make && sudo make install
+
+])
+
+fi

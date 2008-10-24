@@ -31,25 +31,6 @@
 
 #include <lxc/lxc.h>
 
-static int dir_filter(const struct dirent *dirent)
-{
-	if (!strcmp(dirent->d_name, ".") ||
-            !strcmp(dirent->d_name, ".."))
-                return 0;
-        return 1;
-}
-
-static int is_empty_directory(const char *dirname)
-{
-	struct dirent **namelist;
-	int n;
-
-	n = scandir(dirname, &namelist, dir_filter, alphasort);
-	if (n < 0)
-		lxc_log_syserror("failed to scan %s directory", dirname);
-	return n == 0;
-}
-
 static int remove_lxc_directory(const char *dirname)
 {
 	char path[MAXPATHLEN];
@@ -59,13 +40,6 @@ static int remove_lxc_directory(const char *dirname)
 	if (rmdir(path)) {
 		lxc_log_syserror("failed to remove %s directory", path);
 		return -1;
-	}
-
-	if (is_empty_directory(LXCPATH)) {
-		if (rmdir(LXCPATH)) {
-			lxc_log_syserror("failed to remove %s directory", LXCPATH);
-			return -1;
-		}
 	}
 
 	return 0;
