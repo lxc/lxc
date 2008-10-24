@@ -101,12 +101,12 @@ int lxc_execute(const char *name, int argc, char *argv[],
 
 			if (write(sv[0], &sync, sizeof(sync)) < 0) {
 				lxc_log_syserror("failed to write socket");
-				return 1;
+				exit(1);
 			}
 
 			if (read(sv[0], &sync, sizeof(sync)) < 0) {
 				lxc_log_syserror("failed to read socket");
-				return 1;
+				exit(1);
 			}
 
 			if (lxc_setup(name)) {
@@ -156,11 +156,11 @@ int lxc_execute(const char *name, int argc, char *argv[],
 			int status;
 			if (wait(&status) < 0) {
 				if (errno == ECHILD)
-					return 0;
+					exit(0);
 				if (errno == EINTR)
 					continue;
 				lxc_log_syserror("failed to wait child");
-				return 1;
+				exit(1);
 			}
 		}
 	}
