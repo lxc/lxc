@@ -5,12 +5,14 @@ DIST_SUBDIRS = config src test etc
 EXTRA_DIST = lxc.spec
 
 ChangeLog::
-	@echo "Generating ChangeLog"
-	@cvs2cl
+	touch ChangeLog
 
 rpm: dist
 	rpmbuild --clean -ta ${distdir}.tar.gz
+
 release: rpm
+	@echo "Generating ChangeLog"
+	@cvs2cl
 	@sh ./release.sh $(PACKAGE_NAME) \
 			$(LXC_MAJOR_VERSION) \
 			$(LXC_MINOR_VERSION) \

@@ -43,7 +43,7 @@ extern "C" {
 #include <lxc/cgroup.h>
 #include <lxc/monitor.h>
 
-#define LXCPATH "/var/lxc"
+/* #define LXCPATH "/var/lxc" */
 #define MAXPIDLEN 20
 
 struct lxc_mem_stat;

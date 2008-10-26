@@ -75,7 +75,9 @@ development of containers
 %setup -q
 
 %build
-%configure $args
+
+# I don't understand why but I have to specify this prefix :(
+%configure --prefix=/ $args
 
 ncpus=`egrep -c "^cpu[0-9]+" /proc/stat || :`
 make -j$ncpus
@@ -106,9 +108,24 @@ fi
 
 chmod ugo+w /var/lxc
 
-setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-execute
-setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-start
-setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-restart
+PATH=$PATH:/usr/sbin:/sbin
+
+which setcap 2>&1 > /dev/null
+RES=$?
+
+if [ $RES != 0 ]; then
+    echo -e "\t********************WARNING*************************"
+    echo -e "\t* The 'setcap' command was not found, this is not  *" 
+    echo -e "\t* a problem and the 'lxc' package is installed but *"
+    echo -e "\t* you will have to run the 'lxc' commands as root. *"
+    echo -e "\t* If you wish to run these commands as a non-root  *"
+    echo -e "\t* user, you will need to install libcap-2 package  *"
+    echo -e "\t* and reinstall the lxc package                    *"
+    echo -e "\t****************************************************"
+else
+setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-execute && setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-start && setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-restart
+fi
+
 
 %files
 %defattr(-,root,root)

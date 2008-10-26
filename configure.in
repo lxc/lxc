@@ -12,7 +12,7 @@ AC_PROG_RANLIB
 AM_PROG_CC_C_O
 AC_GNU_SOURCE
 AC_PROG_LIBTOOL
-AC_CHECK_PROG(SETCAP, setcap, yes, no, "/usr/sbin")
+AC_CHECK_PROG(SETCAP, setcap, yes, no)
 
 AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h], [], AC_MSG_ERROR([netlink headers not found]),
 [#include <linux/types.h>
@@ -59,8 +59,8 @@ Warning:
 --------
 
 The libcap-2 is not installed. That means the tools to
-set the privilege for the lxc commands are not available
-and you will need to run these commands as root
+set the privilege for the lxc commands are not available,
+that's ok, but you will need to run these commands as root
 
 ])
 

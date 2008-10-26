@@ -1,5 +1,5 @@
-INCLUDES= -I$(top_srcdir)/src
-
+lxcpath=$(prefix)/var/lxc
+INCLUDES= -I$(top_srcdir)/src -DLXCPATH="\"$(lxcpath)\""
 lib_LTLIBRARIES = liblxc.la
 pkginclude_HEADERS = \
 		monitor.h \
@@ -113,9 +113,10 @@ lxc_version_SOURCES = lxc_version.c
 lxc_version_LDADD = liblxc.la
 
 install-exec-local:
-	-@/usr/sbin/setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep $(bindir)/lxc-execute 2>&1 > /dev/null && \
-	/usr/sbin/setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep $(bindir)/lxc-start && \
-	/usr/sbin/setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep $(bindir)/lxc-restart && \
+	-@export PATH=$$PATH:/sbin:/usr/sbin && \
+	 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep $(bindir)/lxc-execute && \
+	setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep $(bindir)/lxc-start && \
+	setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep $(bindir)/lxc-restart && \
 	mkdir -p $(prefix)/var/lxc && \
 	chmod ugo+rw $(prefix)/var/lxc || \
 	(echo && echo && \
