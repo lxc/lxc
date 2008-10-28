@@ -26,7 +26,7 @@ release_changelog() {
     echo "Generating ChangeLog"
     echo -n "Please give the previous tag name: "
     read 
-    cvs2cl --delta $REPLY:$TAG --stdout
+    cvs2cl --delta $REPLY:$TAG --stdout > ChangeLog.diff
 }
 
 release_tag
