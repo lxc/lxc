@@ -1,5 +1,4 @@
-lxcpath=$(prefix)/var/lxc
-INCLUDES= -I$(top_srcdir)/src -DLXCPATH="\"$(lxcpath)\""
+INCLUDES= -I$(top_srcdir)/src -DLXCPATH="\"$(localstatedir)/lxc\""
 lib_LTLIBRARIES = liblxc.la
 pkginclude_HEADERS = \
 		monitor.h \
