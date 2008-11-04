@@ -109,13 +109,13 @@ int lxc_start(const char *name, int argc, char *argv[],
 		/* Tell our father he can begin to configure the container */
 		if (write(sv[0], &sync, sizeof(sync)) < 0) {
 			lxc_log_syserror("failed to write socket");
-			return 1;
+			goto out_child;
 		}
 
 		/* Wait for the father to finish the configuration */
 		if (read(sv[0], &sync, sizeof(sync)) < 0) {
 			lxc_log_syserror("failed to read socket");
-			return 1;
+			goto out_child;
 		}
 
 		/* Setup the container, ip, names, utsname, ... */
@@ -123,19 +123,19 @@ int lxc_start(const char *name, int argc, char *argv[],
 			lxc_log_error("failed to setup the container");
 			if (write(sv[0], &sync, sizeof(sync)) < 0)
 				lxc_log_syserror("failed to write the socket");
-			return -1;
+			goto out_child;
 		}
 
 		if (mount(ttyname, "/dev/console", "none", MS_BIND, 0)) {
 			lxc_log_syserror("failed to mount '/dev/console'");
-			return -1;
+			goto out_child;
 		}
 
 		/* If a callback has been passed, call it before doing exec */
 		if (prestart)
 			if (prestart(name, argc, argv, data)) {
 				lxc_log_error("prestart callback has failed");
-				return -1;
+				goto out_child;
 			}
 
 		execvp(argv[0], argv);
@@ -145,6 +145,7 @@ int lxc_start(const char *name, int argc, char *argv[],
 		if (write(sv[0], &sync, sizeof(sync)) < 0)
 			lxc_log_syserror("failed to write the socket");
 		
+	out_child:
 		exit(1);
 	}
 
