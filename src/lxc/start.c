@@ -35,6 +35,7 @@
 #include <sys/mount.h>
 #include <sys/types.h>
 #include <sys/prctl.h>
+#include <sys/capability.h>
 #include <sys/wait.h>
 
 #include <lxc/lxc.h>
@@ -137,6 +138,11 @@ int lxc_start(const char *name, int argc, char *argv[],
 				lxc_log_error("prestart callback has failed");
 				goto out_child;
 			}
+
+		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
+			lxc_log_syserror("failed to remove CAP_SYS_BOOT capability");
+			goto out_child;
+		}
 
 		execvp(argv[0], argv);
 		lxc_log_syserror("failed to exec %s", argv[0]);
