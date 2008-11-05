@@ -1,0 +1,12 @@
+
+Before submitting your patches, check they are signed-off-by
+conforming with the DCO contained in the ./CONTRIBUTING file.
+
+Maintainer
+----------
+
+Person          : Daniel Lezcano
+Mail patches to : dlezcano@fr.ibm.com
+Mailing lists   : lxc-devel@sourceforge.net, containers@lists.osdl.org
+Web page        : lxc.sourceforge.net
+CVS location    : http://lxc.cvs.sourceforge.net/

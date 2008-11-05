@@ -2,7 +2,7 @@
 
 SUBDIRS = src test etc
 DIST_SUBDIRS = config src test etc
-EXTRA_DIST = lxc.spec
+EXTRA_DIST = lxc.spec CONTRIBUTING MAINTAINERS
 
 ChangeLog::
 	@touch ChangeLog
