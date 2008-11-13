@@ -42,13 +42,6 @@ void usage(char *cmd)
 	_exit(1);
 }
 
-static int prestart(const char *name, int argc, char *argv[], void *data)
-{
-	printf("%s hook has been called with data %s\n",
-		__FUNCTION__, (char *)data);
-	return 0;
-}
-
 int main(int argc, char *argv[])
 {
 	char opt;
@@ -72,7 +65,7 @@ int main(int argc, char *argv[])
 	args = &argv[optind];
 	argc -= nbargs;
 
-	if (lxc_start(name, argc, args, prestart, "hello world")) {
+	if (lxc_start(name, args)) {
 		fprintf(stderr, "failed to start %s\n", name);
 		return 1;
 	}
