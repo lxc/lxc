@@ -20,6 +20,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <libgen.h>
@@ -44,7 +45,7 @@ int main(int argc, char *argv[])
 {
 	char opt;
 	char *name = NULL, *file = NULL;
-	char **args;
+	static char **args;
 	char path[MAXPATHLEN];
 	int nbargs = 0;
 	int autodestroy = 0;
@@ -67,7 +68,6 @@ int main(int argc, char *argv[])
 	if (!name || !argv[optind] || !strlen(argv[optind]))
 		usage(argv[0]);
 
-	args = &argv[optind];
 	argc -= nbargs;
 	
 	if (lxc_config_init(&lxc_conf)) {
@@ -75,13 +75,9 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (file) {
-
-		if (lxc_config_read(file, &lxc_conf)) {
-			fprintf(stderr, "invalid configuration file\n");
-			goto out;
-		}
-
+	if (file && lxc_config_read(file, &lxc_conf)) {
+		fprintf(stderr, "invalid configuration file\n");
+		goto out;
 	}
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
@@ -93,13 +89,27 @@ int main(int argc, char *argv[])
 		autodestroy = 1;
 	}
 
-	if (lxc_execute(name, argc, args, NULL, NULL)) {
+	/* lxc-init --mount-procfs -- .... */
+	args = malloc((argc + 3)*sizeof(*args));
+	if (!args) {
+		fprintf(stderr, "failed to allocate memory for '%s'\n", name);
+		goto out;
+	}
+
+	nbargs = 0;
+	args[nbargs++] = LXCBINDIR "/lxc-init";
+	args[nbargs++] = "--mount-procfs";
+	args[nbargs++] = "--";
+
+	for (opt = 0; opt < argc; opt++)
+		args[nbargs++] = argv[optind++];
+
+	if (lxc_start(name, args)) {
 		fprintf(stderr, "failed to execute '%s'\n", name);
 		goto out;
 	}
 
 	ret = 0;
-
 out:
 	if (autodestroy) {
 		if (lxc_destroy(name)) {

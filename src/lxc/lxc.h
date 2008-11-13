@@ -48,9 +48,6 @@ extern "C" {
 
 struct lxc_mem_stat;
 
-typedef int (*lxc_callback_t)(const char *name, int argc, 
-			      char *argv[], void *data);
-
 /*
  * Create the container object. Creates the /lxc/<name> directory
  * and fills it with the files corresponding to the configuration
@@ -74,28 +71,10 @@ extern int lxc_destroy(const char *name);
 /*
  * Start the container previously created with lxc_create.
  * @name     : the name of the container
- * @argc     : the number of arguments of the command line
  * @argv     : an array of char * corresponding to the commande line
- * @prestart : hooks will be called just before the command execs
  * Returns 0 on sucess, < 0 otherwise
  */
-extern int lxc_start(const char *name, int argc, char *argv[], 
-		     lxc_callback_t prestart, void *data);
-
-/*
- * Create the container and start it directly, using the argc, argv 
- * parameter. This command is for application container.
- * At the end of the exec'ed command, the container will
- * automatically autodestroy.
- * @name    : the name of the container
- * @conf    : the configuration data
- * @argc    : the number of arguments of the command line
- * @argv    : an array of char * corresponding to the commande line
- * @preexec : hooks will be called just before the command execs
- * Returns 0 on success, < 0 otherwise
- */
-extern int lxc_execute(const char *name, int argc, char *argv[], 
-		       lxc_callback_t preexec, void *data);
+extern int lxc_start(const char *name, char *argv[]);
 
 /*
  * Stop the container previously started with lxc_start or lxc_exec

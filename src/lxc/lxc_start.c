@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 	args = &argv[optind];
 	argc -= nbargs;
 
-	if (lxc_start(name, argc, args, NULL, NULL)) {
+	if (lxc_start(name, args)) {
 		fprintf(stderr, "failed to start %s\n", name);
 		return 1;
 	}

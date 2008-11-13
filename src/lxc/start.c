@@ -43,8 +43,7 @@
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);
 
-int lxc_start(const char *name, int argc, char *argv[], 
-	      lxc_callback_t prestart, void *data)
+int lxc_start(const char *name, char *argv[])
 {
 	char init[MAXPATHLEN];
 	char *val = NULL;
@@ -131,13 +130,6 @@ int lxc_start(const char *name, int argc, char *argv[],
 			lxc_log_syserror("failed to mount '/dev/console'");
 			goto out_child;
 		}
-
-		/* If a callback has been passed, call it before doing exec */
-		if (prestart)
-			if (prestart(name, argc, argv, data)) {
-				lxc_log_error("prestart callback has failed");
-				goto out_child;
-			}
 
 		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
 			lxc_log_syserror("failed to remove CAP_SYS_BOOT capability");

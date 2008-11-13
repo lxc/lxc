@@ -1,4 +1,4 @@
-INCLUDES= -I$(top_srcdir)/src -DLXCPATH="\"$(localstatedir)/lxc\""
+INCLUDES= -I$(top_srcdir)/src -DLXCPATH="\"$(localstatedir)/lxc\"" -DLXCBINDIR="\"$(bindir)\""
 lib_LTLIBRARIES = liblxc.la
 pkginclude_HEADERS = \
 		monitor.h \
@@ -17,7 +17,6 @@ liblxc_la_SOURCES = \
 	destroy.c \
 	start.c \
 	stop.c \
-	execute.c \
 	monitor.c monitor.h \
 	kill.c \
 	freezer.c \
@@ -46,6 +45,7 @@ bin_SCRIPTS = \
 	lxc-checkconfig
 
 bin_PROGRAMS = \
+	lxc-init \
 	lxc-create \
 	lxc-destroy \
 	lxc-stop \
@@ -62,6 +62,9 @@ bin_PROGRAMS = \
 	lxc-checkpoint \
 	lxc-restart \
 	lxc-version
+
+lxc_init_SOURCES = lxc_init.c
+lxc_init_LDADD = liblxc.la
 
 lxc_create_SOURCES = lxc_create.c lxc_config.c lxc_config.h
 lxc_create_LDADD = liblxc.la
