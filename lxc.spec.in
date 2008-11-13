@@ -123,7 +123,10 @@ if [ $RES != 0 ]; then
     echo -e "\t* and reinstall the lxc package                    *"
     echo -e "\t****************************************************"
 else
-setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-execute && setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-start && setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-restart
+setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-execute && \
+setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-start && \
+setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-restart && \
+setcap cap_sys_admin=ep %{_bindir}/lxc-init 
 fi
 
 
