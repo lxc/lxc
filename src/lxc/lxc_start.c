@@ -47,6 +47,10 @@ int main(int argc, char *argv[])
 	char *name = NULL;
 	char **args;
 	int nbargs = 0;
+	char *default_args[] = {
+		"/sbin/init",
+		'\0',
+	};
 
 	while ((opt = getopt(argc, argv, "n:")) != -1) {
 		switch (opt) {
@@ -58,11 +62,15 @@ int main(int argc, char *argv[])
 		nbargs++;
 	}
 
-	if (!name || !argv[optind] || !strlen(argv[optind]))
-		usage(argv[0]);
+	if (!argv[optind] || !strlen(argv[optind]))
+		args = default_args; 
+	else {
+		args = &argv[optind];
+		argc -= nbargs;
+	}
 
-	args = &argv[optind];
-	argc -= nbargs;
+	if (!name)
+		usage(argv[0]);
 
 	if (lxc_start(name, args)) {
 		fprintf(stderr, "failed to start %s\n", name);
