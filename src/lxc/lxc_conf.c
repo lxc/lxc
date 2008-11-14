@@ -42,6 +42,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <net/if.h>
+#include <libgen.h>
 
 #include <lxc/lxc.h>
 #include <network.h>
@@ -50,10 +51,10 @@
 #define MAXINDEXLEN 20
 #define MAXLINELEN  128
 
-typedef int (*instanciate_cb)(const char *dirname, 
+typedef int (*instanciate_cb)(const char *directory, 
 			      const char *file, pid_t pid);
 
-typedef int (*dir_cb)(const char *name, const char *dirname, 
+typedef int (*dir_cb)(const char *name, const char *directory, 
 		      const char *file, void *data);
 
 typedef int (*file_cb)(void* buffer, void *data);
@@ -68,6 +69,7 @@ static int instanciate_veth(const char *, const char *, pid_t);
 static int instanciate_macvlan(const char *, const char *, pid_t);
 static int instanciate_phys(const char *, const char *, pid_t);
 static int instanciate_empty(const char *, const char *, pid_t);
+static int unconfigure_cgroup(const char *name);
 
 static struct netdev_conf netdev_conf[MAXCONFTYPE + 1] = {
 	[VETH]    = { "veth",    instanciate_veth,    0  },
@@ -84,20 +86,20 @@ static int dir_filter(const struct dirent *dirent)
         return 1;
 }
 
-static int dir_for_each(const char *name, const char *dirname, 
+static int dir_for_each(const char *name, const char *directory, 
 			dir_cb callback, void *data)
 {
 	struct dirent **namelist;
 	int n;
 	
-	n = scandir(dirname, &namelist, dir_filter, alphasort);
+	n = scandir(directory, &namelist, dir_filter, alphasort);
 	if (n < 0) {
-		lxc_log_syserror("failed to scan %s directory", dirname);
+		lxc_log_syserror("failed to scan %s directory", directory);
 		return -1;
 	}
 	
 	while (n--) {
-		if (callback(name, dirname, namelist[n]->d_name, data)) {
+		if (callback(name, directory, namelist[n]->d_name, data)) {
 			lxc_log_error("callback failed");
 			free(namelist[n]);
 			return -1;
@@ -399,23 +401,26 @@ static int configure_cgroup(const char *name, struct lxc_list *cgroup)
 	char path[MAXPATHLEN];
 	struct lxc_list *iterator;
 	struct lxc_cgroup *cg;
-	int ret = -1;
+	FILE *file;
 
 	if (lxc_list_empty(cgroup))
 		return 0;
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
 
-	if (mkdir(path, 0755)) {
-		lxc_log_syserror("failed to create '%s' directory", path);
+	file = fopen(path, "w+");
+	if (!file) {
+		lxc_log_syserror("failed to open '%s'", path);
 		return -1;
 	}
 
 	lxc_list_for_each(iterator, cgroup) {
 		cg = iterator->elem;
-		write_info(path, cg->subsystem, cg->value);
+		fprintf(file, "%s=%s\n", cg->subsystem, cg->value);
 	}
 	
+	fclose(file);
+
 	return 0;
 }
 
@@ -512,27 +517,27 @@ out_open:
 	goto out;
 }
 
-static int unconfigure_ip_addresses(const char *dirname)
+static int unconfigure_ip_addresses(const char *directory)
 {
 	char path[MAXPATHLEN];
 
-	snprintf(path, MAXPATHLEN, "%s/ipv4", dirname);
+	snprintf(path, MAXPATHLEN, "%s/ipv4", directory);
 	delete_info(path, "addresses");
 	rmdir(path);
 
-	snprintf(path, MAXPATHLEN, "%s/ipv6", dirname);
+	snprintf(path, MAXPATHLEN, "%s/ipv6", directory);
 	delete_info(path, "addresses");
 	rmdir(path);
 
 	return 0;
 }
 
-static int unconfigure_network_cb(const char *name, const char *dirname, 
+static int unconfigure_network_cb(const char *name, const char *directory, 
 				  const char *file, void *data)
 {
 	char path[MAXPATHLEN];
 
-	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
+	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 	delete_info(path, "ifindex");
 	delete_info(path, "name");
 	delete_info(path, "addr");
@@ -547,29 +552,40 @@ static int unconfigure_network_cb(const char *name, const char *dirname,
 
 static int unconfigure_network(const char *name)
 {
-	char dirname[MAXPATHLEN];
+	char directory[MAXPATHLEN];
 
-	snprintf(dirname, MAXPATHLEN, LXCPATH "/%s/network", name);
-	dir_for_each(name, dirname, unconfigure_network_cb, NULL);
-	rmdir(dirname);
+	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
+	dir_for_each(name, directory, unconfigure_network_cb, NULL);
+	rmdir(directory);
 
 	return 0;
 }
 
-static int unconfigure_cgroup_cb(const char *name, const char *dirname, 
+static int unconfigure_cgroup_cb(const char *name, const char *directory, 
 				  const char *file, void *data)
 {
-	return delete_info(dirname, file);
+	return delete_info(directory, file);
 }
 
 static int unconfigure_cgroup(const char *name)
 {
-	char dirname[MAXPATHLEN];
+	char filename[MAXPATHLEN];
+	struct stat s;
 
-	lxc_unlink_nsgroup(name);
-	snprintf(dirname, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
-	dir_for_each(name, dirname, unconfigure_cgroup_cb, NULL);
-	rmdir(dirname);
+	snprintf(filename, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
+
+	if (stat(filename, &s)) {
+		lxc_log_syserror("failed to stat '%s'", filename);
+		return -1;
+	}
+
+	if (S_ISDIR(s.st_mode)) {
+		/* old cgroup configuration */
+		dir_for_each(name, filename, unconfigure_cgroup_cb, NULL);
+		rmdir(filename);
+	} else {
+		unlink(filename);
+	}
 
 	return 0;
 }
@@ -647,19 +663,93 @@ static int setup_rootfs(const char *name)
 	return 0;
 }
 
-static int setup_cgroup_cb(const char *name, const char *dirname, 
-			   const char *file, void *data)
+static int setup_cgroup_cb(void* buffer, void *data)
 {
-	if (lxc_cgroup_copy(name, file))
-		lxc_log_warning("failed to setup '%s'", name);
+	char *key = buffer, *value;
+
+	value = strchr(key, '=');
+	if (!value)
+		return -1;
+
+	*value = '\0';
+	value += 1;
+
+	printf("key: %s\n", key);
+	printf("value: %s\n", value);
+
 	return 0;
+}
+
+static int setup_convert_cgroup_cb(const char *name, const char *directory, 
+				   const char *file, void *data)
+{
+	FILE *f = data;
+	char line[MAXPATHLEN];
+	
+	if (read_info(directory, file, line, MAXPATHLEN)) {
+		lxc_log_error("failed to read %s", file);
+		return -1;
+	}
+
+	fprintf(f, "%s=%s\n", file, line);
+
+	return 0;
+}
+
+static int setup_convert_cgroup(const char *name, char *directory)
+{
+	char filename[MAXPATHLEN];
+	FILE *file;
+	int ret;
+
+	snprintf(filename, MAXPATHLEN, LXCPATH "/%s/cgroup.new", name);
+
+	file = fopen(filename, "w+");
+	if (!file)
+		return -1;
+
+	ret = dir_for_each(name, directory, setup_convert_cgroup_cb, file);
+	if (ret)
+		goto out_error;
+
+	ret = unconfigure_cgroup(name);
+	if (ret)
+		goto out_error;
+
+	ret = rename(filename, directory);
+	if (ret)
+		goto out_error;
+out:
+	fclose(file);
+	return ret;
+
+out_error:
+	unlink(filename);
+	goto out;
 }
 
 static int setup_cgroup(const char *name)
 {
-	char dirname[MAXPATHLEN];
-	snprintf(dirname, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
-	return dir_for_each(name, dirname, setup_cgroup_cb, NULL);
+	char filename[MAXPATHLEN];
+	char line[MAXPATHLEN];
+	struct stat s;
+	
+	snprintf(filename, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
+
+	if (stat(filename, &s)) {
+		lxc_log_syserror("failed to stat '%s'", filename);
+		return -1;
+	}
+
+	if (S_ISDIR(s.st_mode)) {
+		if (setup_convert_cgroup(name, filename)) {
+			lxc_log_error("failed to convert old cgroup configuration");
+			return -1;
+		}
+	}
+	
+	return file_for_each_line(filename, setup_cgroup_cb, 
+				  line, MAXPATHLEN, filename);
 }
 
 static int setup_mount(const char *name)
@@ -794,33 +884,33 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	return ret;
 }
 
-static int setup_ip_addr(const char *dirname, const char *ifname)
+static int setup_ip_addr(const char *directory, const char *ifname)
 {
 	char path[MAXPATHLEN], line[MAXLINELEN];
 	struct stat s;
 	int ret = 0;
 
-	snprintf(path, MAXPATHLEN, "%s/ipv4/addresses", dirname);
+	snprintf(path, MAXPATHLEN, "%s/ipv4/addresses", directory);
 	if (!stat(path, &s))
 		ret = file_for_each_line(path, setup_ipv4_addr_cb, 
 					 line, MAXPATHLEN, (void*)ifname);
 	return ret;
 }
 
-static int setup_ip6_addr(const char *dirname, const char *ifname)
+static int setup_ip6_addr(const char *directory, const char *ifname)
 {
 	char path[MAXPATHLEN], line[MAXLINELEN];
 	struct stat s;
 	int ret = 0;
 
-	snprintf(path, MAXLINELEN, "%s/ipv6/addresses", dirname);
+	snprintf(path, MAXLINELEN, "%s/ipv6/addresses", directory);
 	if (!stat(path, &s))
 		ret = file_for_each_line(path, setup_ipv6_addr_cb, 
 					 line, MAXPATHLEN, (void*)ifname);	
 	return ret;
 }
 
-static int setup_network_cb(const char *name, const char *dirname, 
+static int setup_network_cb(const char *name, const char *directory, 
 			    const char *file, void *data)
 {
 	char path[MAXPATHLEN];
@@ -831,7 +921,7 @@ static int setup_network_cb(const char *name, const char *dirname,
 	char *current_ifname = ifname;
 	int ifindex;
 
-	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
+	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 
 	if (read_info(path, "ifindex", strindex, sizeof(strindex))) {
 		lxc_log_error("failed to read ifindex info");
@@ -901,10 +991,10 @@ static int setup_network_cb(const char *name, const char *dirname,
 
 static int setup_network(const char *name)
 {
-	char dirname[MAXPATHLEN];
+	char directory[MAXPATHLEN];
 
-	snprintf(dirname, MAXPATHLEN, LXCPATH "/%s/network", name);
-	return dir_for_each(name, dirname, setup_network_cb, NULL);
+	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
+	return dir_for_each(name, directory, setup_network_cb, NULL);
 }
 
 int conf_has(const char *name, const char *info)
@@ -983,7 +1073,7 @@ int lxc_unconfigure(const char *name)
 	return 0;
 }
 
-static int instanciate_veth(const char *dirname, const char *file, pid_t pid)
+static int instanciate_veth(const char *directory, const char *file, pid_t pid)
 {
 	char *path = NULL, *strindex = NULL, *veth1 = NULL, *veth2 = NULL;
 	char bridge[IFNAMSIZ];
@@ -991,7 +1081,7 @@ static int instanciate_veth(const char *dirname, const char *file, pid_t pid)
 			
 	if (!asprintf(&veth1, "%s_%d", file, pid) ||
 	    !asprintf(&veth2, "%s~%d", file, pid) ||
-	    !asprintf(&path, "%s/%s", dirname, file)) {
+	    !asprintf(&path, "%s/%s", directory, file)) {
 		lxc_log_syserror("failed to allocate memory");
 		goto out;
 	}
@@ -1037,7 +1127,7 @@ out:
 	free(veth2);
 	return ret;
 } 
-static int instanciate_macvlan(const char *dirname, const char *file, pid_t pid)
+static int instanciate_macvlan(const char *directory, const char *file, pid_t pid)
 {
 	char path[MAXPATHLEN], *strindex = NULL, *peer = NULL;
 	char link[IFNAMSIZ]; 
@@ -1048,7 +1138,7 @@ static int instanciate_macvlan(const char *dirname, const char *file, pid_t pid)
 		return -1;
 	}
 
-	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
+	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 	if (read_info(path, "link", link, IFNAMSIZ)) {
 		lxc_log_error("failed to read bridge info");
 		goto out;
@@ -1082,13 +1172,13 @@ out:
 	return ret;
 }
 
-static int instanciate_phys(const char *dirname, const char *file, pid_t pid)
+static int instanciate_phys(const char *directory, const char *file, pid_t pid)
 {
 	char path[MAXPATHLEN], *strindex = NULL;
 	char link[IFNAMSIZ];
 	int ifindex, ret = -1;
 
-	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
+	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 	if (read_info(path, "link", link, IFNAMSIZ)) {
 		lxc_log_error("failed to read link info");
 		goto out;
@@ -1116,12 +1206,12 @@ out:
 	return ret;
 }
 
-static int instanciate_empty(const char *dirname, const char *file, pid_t pid)
+static int instanciate_empty(const char *directory, const char *file, pid_t pid)
 {
 	char path[MAXPATHLEN], *strindex = NULL;
 	int ret = -1;
 
-	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
+	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 	if (!asprintf(&strindex, "%d", 0)) {
 		lxc_log_error("not enough memory");
 		return -1;
@@ -1138,39 +1228,39 @@ out:
 	return ret;
 }
 
-static int instanciate_netdev_cb(const char *name, const char *dirname, 
+static int instanciate_netdev_cb(const char *name, const char *directory, 
 				 const char *file, void *data)
 {
 	pid_t *pid = data;
 
 	if (!strncmp("veth", file, strlen("veth")))
-		return instanciate_veth(dirname, file, *pid);
+		return instanciate_veth(directory, file, *pid);
 	else if (!strncmp("macvlan", file, strlen("macvlan")))
-		return instanciate_macvlan(dirname, file, *pid);
+		return instanciate_macvlan(directory, file, *pid);
 	else if (!strncmp("phys", file, strlen("phys")))
-		return instanciate_phys(dirname, file, *pid);
+		return instanciate_phys(directory, file, *pid);
 	else if (!strncmp("empty", file, strlen("empty")))
-		 return instanciate_empty(dirname, file, *pid);
+		 return instanciate_empty(directory, file, *pid);
 
 	return -1;
 }
 
 static int instanciate_netdev(const char *name, pid_t pid)
 {
-	char dirname[MAXPATHLEN];
+	char directory[MAXPATHLEN];
 
-	snprintf(dirname, MAXPATHLEN, LXCPATH "/%s/network", name);
-	return dir_for_each(name, dirname, instanciate_netdev_cb, &pid);
+	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
+	return dir_for_each(name, directory, instanciate_netdev_cb, &pid);
 }
 
-static int move_netdev_cb(const char *name, const char *dirname, 
+static int move_netdev_cb(const char *name, const char *directory, 
 			  const char *file, void *data)
 {
 	char path[MAXPATHLEN], ifname[IFNAMSIZ], strindex[MAXINDEXLEN];
 	pid_t *pid = data;
 	int ifindex;
 
-	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
+	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 	if (read_info(path, "ifindex", strindex, MAXINDEXLEN) < 0) {
 		lxc_log_error("failed to read index to from %s", path);
 		return -1;
@@ -1196,9 +1286,9 @@ static int move_netdev_cb(const char *name, const char *dirname,
 
 static int move_netdev(const char *name, pid_t pid)
 {
-	char dirname[MAXPATHLEN];
-	snprintf(dirname, MAXPATHLEN, LXCPATH "/%s/network", name);
-	return dir_for_each(name, dirname, move_netdev_cb, &pid);
+	char directory[MAXPATHLEN];
+	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
+	return dir_for_each(name, directory, move_netdev_cb, &pid);
 }
 
 int conf_create_network(const char *name, pid_t pid)
@@ -1216,7 +1306,7 @@ int conf_create_network(const char *name, pid_t pid)
 	return 0;
 }
 
-static int delete_netdev_cb(const char *name, const char *dirname, 
+static int delete_netdev_cb(const char *name, const char *directory, 
 			    const char *file, void *data)
 {
 	char strindex[MAXINDEXLEN];
@@ -1224,7 +1314,7 @@ static int delete_netdev_cb(const char *name, const char *dirname,
 	char ifname[IFNAMSIZ];
 	int i, ifindex;
 	
-	snprintf(path, MAXPATHLEN, "%s/%s", dirname, file);
+	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 	
 	if (read_info(path, "ifindex", strindex, MAXINDEXLEN)) {
 		lxc_log_error("failed to read ifindex info");
@@ -1259,10 +1349,10 @@ static int delete_netdev_cb(const char *name, const char *dirname,
 
 static int delete_netdev(const char *name)
 {
-	char dirname[MAXPATHLEN];
+	char directory[MAXPATHLEN];
 
-	snprintf(dirname, MAXPATHLEN, LXCPATH "/%s/network", name);
-	return dir_for_each(name, dirname, delete_netdev_cb, NULL);
+	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
+	return dir_for_each(name, directory, delete_netdev_cb, NULL);
 }
 
 int conf_destroy_network(const char *name)
