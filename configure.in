@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT([lxc], [0.4.0])
+AC_INIT([lxc], [0.4.1])
 
 AC_CONFIG_SRCDIR([configure.in])
 AC_CONFIG_AUX_DIR([config])
@@ -27,6 +27,11 @@ fi
 LXC_MAJOR_VERSION=$(echo $PACKAGE_VERSION | cut -d. -f1)
 LXC_MINOR_VERSION=$(echo $PACKAGE_VERSION | cut -d. -f2)
 LXC_MICRO_VERSION=$(echo $PACKAGE_VERSION | cut -d. -f3)
+
+AC_ARG_ENABLE(network_destroy, [  --disable-network-destroy  disable network destruction at exit [default=no]],, enable_network_destroy=yes)
+if test "x$enable_network_destroy" = "xyes"; then
+   CFLAGS="$CFLAGS -DNETWORK_DESTROY"
+fi
 
 AC_SUBST(LXC_MAJOR_VERSION)
 AC_SUBST(LXC_MINOR_VERSION)

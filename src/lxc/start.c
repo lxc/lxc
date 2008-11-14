@@ -218,8 +218,10 @@ wait_again:
 	if (lxc_setstate(name, STOPPING))
 		lxc_log_error("failed to set state %s", lxc_state2str(STOPPING));
 
+#ifdef NETWORK_DESTROY
 	if (clone_flags & CLONE_NEWNET && conf_destroy_network(name))
 		lxc_log_error("failed to destroy the network");
+#endif
 
 	err = 0;
 out:
@@ -242,8 +244,10 @@ err_state_failed:
 err_child_failed:
 err_pipe_read2:
 err_pipe_write:
+#ifdef NETWORK_DESTROY
 	if (clone_flags & CLONE_NEWNET)
 		conf_destroy_network(name);
+#endif
 err_create_network:
 err_pipe_read:
 err_waitpid_failed:
