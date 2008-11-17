@@ -28,6 +28,5 @@
 int lxc_get_cgroup_mount(const char *mtab, char *mnt);
 int lxc_link_nsgroup(const char *name, pid_t pid);
 int lxc_unlink_nsgroup(const char *name);
-int lxc_cgroup_copy(const char *name, const char *subsystem);
 
 #endif

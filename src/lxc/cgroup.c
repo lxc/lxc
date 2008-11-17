@@ -96,50 +96,6 @@ int lxc_unlink_nsgroup(const char *name)
 	return unlink(nsgroup);
 }
 
-int lxc_cgroup_copy(const char *name, const char *subsystem)
-{
-	char destination[MAXPATHLEN];
-	char source[MAXPATHLEN];
-	char buffer[1024];
-	int nbbytes, fd_source, fd_destination, ret = -1;
-
-	snprintf(source, MAXPATHLEN, LXCPATH "/%s/cgroup/%s", name, subsystem);
-
-	if (access(source, F_OK))
-		return 0;
-
-	fd_source = open(source, O_RDONLY);
-	if (fd_source < 0) {
-		lxc_log_syserror("failed to open '%s'", source);
-		return -1;
-	}
-
-	snprintf(destination, MAXPATHLEN, LXCPATH "/%s/nsgroup/%s", name, subsystem);
-
-	fd_destination = open(destination, O_WRONLY);
-	if (fd_destination < 0) {
-		lxc_log_syserror("failed to open '%s'", destination);
-		goto out;
-	}
-
-	nbbytes = read(fd_source, buffer, sizeof(buffer));
-	if (nbbytes < 0) {
-		lxc_log_syserror("failed to read '%s'", source);
-		goto out;
-	}
-	
-	if (write(fd_destination, buffer, nbbytes) < 0) {
-		lxc_log_syserror("failed to write to '%s'", destination);
-		goto out;
-	}
-
-	ret = 0;
-out:
-	close(fd_source);
-	close(fd_destination);
-	return ret;
-}
-
 int lxc_cgroup_set(const char *name, const char *subsystem, const char *value)
 {
 	int fd, ret = -1;;

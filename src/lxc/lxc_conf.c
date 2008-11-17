@@ -666,6 +666,8 @@ static int setup_rootfs(const char *name)
 static int setup_cgroup_cb(void* buffer, void *data)
 {
 	char *key = buffer, *value;
+	char *name = data;
+	int ret;
 
 	value = strchr(key, '=');
 	if (!value)
@@ -674,10 +676,11 @@ static int setup_cgroup_cb(void* buffer, void *data)
 	*value = '\0';
 	value += 1;
 
-	printf("key: %s\n", key);
-	printf("value: %s\n", value);
-
-	return 0;
+	ret = lxc_cgroup_set(name, key, value);
+	if (ret)
+		lxc_log_syserror("failed to set cgroup '%s' = '%s' for '%s'",
+				 key, value, name);
+	return ret;
 }
 
 static int setup_convert_cgroup_cb(const char *name, const char *directory, 
@@ -749,7 +752,7 @@ static int setup_cgroup(const char *name)
 	}
 	
 	return file_for_each_line(filename, setup_cgroup_cb, 
-				  line, MAXPATHLEN, filename);
+				  line, MAXPATHLEN, (void *)name);
 }
 
 static int setup_mount(const char *name)
