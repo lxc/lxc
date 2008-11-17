@@ -18,7 +18,6 @@ liblxc_la_SOURCES = \
 	start.c \
 	stop.c \
 	monitor.c monitor.h \
-	kill.c \
 	freezer.c \
 	checkpoint.c \
 	restart.c \
@@ -54,7 +53,6 @@ bin_PROGRAMS = \
 	lxc-monitor \
 	lxc-wait \
 	lxc-console \
-	lxc-kill \
 	lxc-freeze \
 	lxc-info \
 	lxc-cgroup \
@@ -92,9 +90,6 @@ lxc_console_LDADD = liblxc.la
 
 lxc_info_SOURCES = lxc_info.c
 lxc_info_LDADD = liblxc.la
-
-lxc_kill_SOURCES = lxc_kill.c
-lxc_kill_LDADD = liblxc.la
 
 lxc_freeze_SOURCES = lxc_freeze.c
 lxc_freeze_LDADD = liblxc.la

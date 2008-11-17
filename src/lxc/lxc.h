@@ -147,16 +147,6 @@ extern int lxc_unfreeze(const char *name);
 extern lxc_state_t lxc_state(const char *name);
 
 /*
- * Send a signal to all processes of the container. This is the same
- * behavior of the well-known 'killpg' command except it is related
- * to all tasks belonging to a container.
- * @name   : the name of the container
- * @signum : the signal number to be sent
- * Returns 0 on success, < 0 otherwise
- */
-extern int lxc_kill(const char *name, int signum);
-
-/*
  * Set a specified value for a specified subsystem. The specified
  * subsystem must be fully specified, eg. "cpu.shares"
  * @name      : the name of the container
