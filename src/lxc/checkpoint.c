@@ -38,6 +38,7 @@
 
 #include <lxc.h>
 
+#define MAXPIDLEN 20
 
 #if __i386__
 #    define __NR_checkpoint 333

@@ -33,6 +33,8 @@
 
 #include <lxc/lxc.h>
 
+#define MAXPIDLEN 20
+
 int lxc_stop(const char *name)
 {
 	char init[MAXPATHLEN];

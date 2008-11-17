@@ -30,7 +30,7 @@ extern "C" {
 /**
  Following code is for liblxc.
 
- liblxc/lxc.h will contain exports of liblxc
+ lxc/lxc.h will contain exports of liblxc
  **/
 
 #include <lxc/lxc_state.h>
@@ -42,11 +42,6 @@ extern "C" {
 #include <lxc/lxc_utils.h>
 #include <lxc/cgroup.h>
 #include <lxc/monitor.h>
-
-/* #define LXCPATH "/var/lxc" */
-#define MAXPIDLEN 20
-
-struct lxc_mem_stat;
 
 /*
  * Create the container object. Creates the /lxc/<name> directory
