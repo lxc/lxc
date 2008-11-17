@@ -55,10 +55,13 @@ int lxc_start(const char *name, char *argv[])
 	int clone_flags;
 
 	lock = lxc_get_lock(name);
-	if (lock < 0)
-		return lock == -EWOULDBLOCK ? 
-			-LXC_ERROR_BUSY : 
-			-LXC_ERROR_LOCK;
+	if (lock < 0) {
+		if (lock == -EWOULDBLOCK)
+			return -LXC_ERROR_BUSY;
+		if (lock == -ENOENT)
+			return -LXC_ERROR_NOT_FOUND;
+		return -LXC_ERROR_LOCK;
+	}
 
 	/* Begin the set the state to STARTING*/
 	if (lxc_setstate(name, STARTING)) {
@@ -70,7 +73,6 @@ int lxc_start(const char *name, char *argv[])
 		lxc_log_syserror("failed to read '/proc/self/fd/0'");
 		goto out;
 	}
-
 
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
@@ -115,9 +117,10 @@ int lxc_start(const char *name, char *argv[])
 		}
 
 		/* Setup the container, ip, names, utsname, ... */
-		if (lxc_setup(name)) {
+		err = lxc_setup(name);
+		if (err) {
 			lxc_log_error("failed to setup the container");
-			if (write(sv[0], &sync, sizeof(sync)) < 0)
+			if (write(sv[0], &err, sizeof(err)) < 0)
 				lxc_log_syserror("failed to write the socket");
 			goto out_child;
 		}
@@ -136,11 +139,11 @@ int lxc_start(const char *name, char *argv[])
 		lxc_log_syserror("failed to exec %s", argv[0]);
 
 		/* If the exec fails, tell that to our father */
-		if (write(sv[0], &sync, sizeof(sync)) < 0)
+		if (write(sv[0], &err, sizeof(err)) < 0)
 			lxc_log_syserror("failed to write the socket");
 		
 	out_child:
-		exit(1);
+		exit(err);
 	}
 
 	close(sv[0]);
@@ -174,7 +177,8 @@ int lxc_start(const char *name, char *argv[])
 	}
 
 	if (err > 0) {
-		lxc_log_error("something went wrong with %d", pid);
+		err = sync;
+		printf("error value is %d\n", err);
 		/* TODO : check status etc ... */
 		waitpid(pid, NULL, 0);
 		goto err_child_failed;

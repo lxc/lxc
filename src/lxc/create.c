@@ -112,7 +112,8 @@ int lxc_create(const char *name, struct lxc_conf *conf)
 		goto err_state;
 	}
 
-	if (lxc_configure(name, conf)) {
+	err = lxc_configure(name, conf);
+	if (err) {
 		lxc_log_error("failed to set configuration for %s", name);
 		goto err_state;
 	}

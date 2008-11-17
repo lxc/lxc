@@ -44,8 +44,11 @@
 #include <net/if.h>
 #include <libgen.h>
 
+#include "network.h"
+#include "error.h"
+
 #include <lxc/lxc.h>
-#include <network.h>
+
 
 #define MAXHWLEN    18
 #define MAXINDEXLEN 20
@@ -1030,27 +1033,27 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 
 	if (conf->utsname && configure_utsname(name, conf->utsname)) {
 		lxc_log_error("failed to configure the utsname");
-		return -1;
+		return -LXC_ERROR_CONF_UTSNAME;
 	}
 
 	if (configure_cgroup(name, &conf->cgroup)) {
 		lxc_log_error("failed to configure the control group");
-		return -1;
+		return -LXC_ERROR_CONF_CGROUP;
 	}
 
 	if (configure_network(name, &conf->networks)) {
 		lxc_log_error("failed to configure the network");
-		return -1;
+		return -LXC_ERROR_CONF_NETWORK;
 	}
 
 	if (conf->rootfs && configure_rootfs(name, conf->rootfs)) {
 		lxc_log_error("failed to configure the rootfs");
-		return -1;
+		return -LXC_ERROR_CONF_ROOTFS;
 	}
 
 	if (conf->fstab && configure_mount(name, conf->fstab)) {
 		lxc_log_error("failed to configure the mount points");
-		return -1;
+		return -LXC_ERROR_CONF_MOUNT;
 	}
 
 	return 0;
@@ -1372,27 +1375,27 @@ int lxc_setup(const char *name)
 {
 	if (conf_has_utsname(name) && setup_utsname(name)) {
 		lxc_log_error("failed to setup the utsname for '%s'", name);
-		return -1;
+		return -LXC_ERROR_SETUP_UTSNAME;
 	}
 
 	if (conf_has_network(name) && setup_network(name)) {
 		lxc_log_error("failed to setup the network for '%s'", name);
-		return -1;
+		return -LXC_ERROR_SETUP_NETWORK;
 	}
 
 	if (conf_has_cgroup(name) && setup_cgroup(name)) {
 		lxc_log_error("failed to setup the cgroups for '%s'", name);
-		return -1;
+		return -LXC_ERROR_SETUP_CGROUP;
 	}
 
 	if (conf_has_fstab(name) && setup_mount(name)) {
 		lxc_log_error("failed to setup the mount points for '%s'", name);
-		return -1;
+		return -LXC_ERROR_SETUP_MOUNT;
 	}
 
 	if (conf_has_rootfs(name) && setup_rootfs(name)) {
 		lxc_log_error("failed to set rootfs for '%s'", name);
-		return -1;
+		return -LXC_ERROR_SETUP_ROOTFS;
 	}
 
 	return 0;
