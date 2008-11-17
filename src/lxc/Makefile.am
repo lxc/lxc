@@ -22,6 +22,7 @@ liblxc_la_SOURCES = \
 	checkpoint.c \
 	restart.c \
 	version.c \
+	error.h error.c \
 	cgroup.c cgroup.h \
 	lxc.h \
 	lxc_utils.h \

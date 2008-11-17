@@ -64,7 +64,8 @@ extern int lxc_create(const char *name, struct lxc_conf *conf);
 extern int lxc_destroy(const char *name);
 
 /*
- * Start the container previously created with lxc_create.
+ * Start the specified command inside a container which has
+ * been created before with lxc_create.
  * @name     : the name of the container
  * @argv     : an array of char * corresponding to the commande line
  * Returns 0 on sucess, < 0 otherwise
@@ -72,7 +73,8 @@ extern int lxc_destroy(const char *name);
 extern int lxc_start(const char *name, char *argv[]);
 
 /*
- * Stop the container previously started with lxc_start or lxc_exec
+ * Stop the container previously started with lxc_start, all
+ * the processes running inside this container will be killed.
  * @name : the name of the container
  * Returns 0 on success, < 0 otherwise
  */
@@ -162,6 +164,14 @@ extern int lxc_cgroup_set(const char *name, const char *subsystem, const char *v
  */
 extern int lxc_cgroup_get(const char *name, const char *subsystem, 
 			  char *value, size_t len);
+
+/*
+ * Retrieve the error string associated with the error returned by
+ * the function.
+ * @error : the value of the error
+ * Returns a string on success or NULL otherwise.
+ */
+extern int lxc_strerror(int error);
 
 /*
  * Checkpoint a container previously frozen
