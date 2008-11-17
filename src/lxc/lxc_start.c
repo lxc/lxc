@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 	char opt;
 	char *name = NULL;
 	char **args;
-	int nbargs = 0;
+	int err, nbargs = 0;
 	char *default_args[] = {
 		"/sbin/init",
 		'\0',
@@ -72,8 +72,9 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
-	if (lxc_start(name, args)) {
-		fprintf(stderr, "failed to start %s\n", name);
+	err = lxc_start(name, args);
+	if (err) {
+		fprintf(stderr, "%s\n", lxc_strerror(err));
 		return 1;
 	}
 

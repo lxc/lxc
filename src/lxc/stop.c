@@ -44,16 +44,15 @@ int lxc_stop(const char *name)
 	size_t pid;
 
 	lock = lxc_get_lock(name);
-	if (lock > 0) {
-		lxc_log_error("'%s' is not running", name);
+	if (lock >= 0) {
 		lxc_put_lock(lock);
 		return -LXC_ERROR_EMPTY;
 	}
 
-	if (lock < 0) {
-		lxc_log_error("failed to acquire the lock on '%s':%s", 
-			      name, strerror(-lock));
-		return -LXC_ERROR_INTERNAL;
+	if (lock < 0 && lock != -EWOULDBLOCK) {
+		if (lock == -ENOENT)
+			return -LXC_ERROR_NOT_FOUND;
+		return -LXC_ERROR_LOCK;
 	}
 
 	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);

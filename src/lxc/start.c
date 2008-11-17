@@ -55,20 +55,14 @@ int lxc_start(const char *name, char *argv[])
 	int clone_flags;
 
 	lock = lxc_get_lock(name);
-	if (!lock) {
-		lxc_log_error("'%s' is busy", name);
-		return -LXC_ERROR_BUSY;
-	}
-
-	if (lock < 0) {
-		lxc_log_error("failed to acquire lock on '%s':%s",
-			      name, strerror(-lock));
-		return -LXC_ERROR_INTERNAL;
-	}
+	if (lock < 0)
+		return lock == -EWOULDBLOCK ? 
+			-LXC_ERROR_BUSY : 
+			-LXC_ERROR_LOCK;
 
 	/* Begin the set the state to STARTING*/
 	if (lxc_setstate(name, STARTING)) {
-		lxc_log_error("failed to set state %s", lxc_state2str(STARTING));
+		lxc_log_error("failed to set state '%s'", lxc_state2str(STARTING));
 		goto out;
 	}
 

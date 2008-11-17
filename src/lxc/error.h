@@ -24,6 +24,10 @@
 #define __lxc_error_h
 
 typedef enum {
+	LXC_SUCCESS, /* 0 == success ;) */
+
+	LXC_ERROR_LOCK,
+
 	LXC_ERROR_EMPTY,
 	LXC_ERROR_BUSY,
 	LXC_ERROR_ALREADY_EXISTS,

@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 {
 	const char *name = NULL, *file = NULL;
 	struct lxc_conf lxc_conf;
-	int opt;
+	int err, opt;
 
 	while ((opt = getopt(argc, argv, "f:n:")) != -1) {
 		switch (opt) {
@@ -72,8 +72,9 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (lxc_create(name, &lxc_conf)) {
-		fprintf(stderr, "failed to create the container '%s'\n", name);
+	err = lxc_create(name, &lxc_conf);
+	if (err) {
+		fprintf(stderr, "%s\n", lxc_strerror(err));
 		return 1;
 	}
 

@@ -52,15 +52,12 @@ int lxc_destroy(const char *name)
 	char path[MAXPATHLEN];
 
 	lock = lxc_get_lock(name);
-	if (!lock) {
-		lxc_log_error("'%s' is busy", name);
-		return -LXC_ERROR_BUSY;
-	}
-
 	if (lock < 0) {
-		lxc_log_error("failed to acquire the lock for '%s':%s", 
-			      name, strerror(-lock));
-		goto out;
+		if (lock == -EWOULDBLOCK)
+			return -LXC_ERROR_BUSY;
+		if (lock == -ENOENT)
+			return -LXC_ERROR_NOT_FOUND;
+		return -LXC_ERROR_INTERNAL;
 	}
 
 	if (lxc_rmstate(name)) {

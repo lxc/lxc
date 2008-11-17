@@ -56,17 +56,13 @@ static int create_lxc_directory(const char *dirname)
 {
 	char path[MAXPATHLEN];
 
-	if (mkdir(LXCPATH, 0755) && errno != EEXIST) {
-		lxc_log_syserror("failed to created %s directory", LXCPATH);
-		return -1;
-	}
+	if (mkdir(LXCPATH, 0755) && errno != EEXIST)
+		return -errno;
 
 	sprintf(path, LXCPATH "/%s", dirname);
 
-	if (mkdir(path, 0755)) {
-		lxc_log_syserror("failed to created %s directory", path);
-		return -1;
-	}
+	if (mkdir(path, 0755))
+		return -errno;
 
 	return 0;
 }
@@ -94,25 +90,18 @@ static int remove_lxc_directory(const char *dirname)
 
 int lxc_create(const char *name, struct lxc_conf *conf)
 {
-	int lock, err = -LXC_ERROR_INTERNAL;
+	int lock, err;
 
-	if (create_lxc_directory(name)) {
-		lxc_log_error("failed to create %s directory", name);
-		return -LXC_ERROR_INTERNAL;
-	}
-
+	err = create_lxc_directory(name);
+	if (err < 0)
+		return err == -EEXIST ?
+			-LXC_ERROR_ALREADY_EXISTS:LXC_ERROR_INTERNAL;
+	
 	lock = lxc_get_lock(name);
-	if (!lock) {
-		lxc_log_error("'%s' is busy", name);
-		return -LXC_ERROR_ALREADY_EXISTS;
-	}
+	if (lock < 0)
+		return -LXC_ERROR_LOCK;
 
-	if (lock < 0) {
-		lxc_log_error("failed to acquire lock on '%s':%s",
-			      name, strerror(-lock));
-		goto err;
-	}
-
+	err = LXC_ERROR_INTERNAL;
 	if (lxc_mkstate(name)) {
 		lxc_log_error("failed to create the state file for %s", name);
 		goto err;

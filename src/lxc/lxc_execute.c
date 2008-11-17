@@ -104,8 +104,9 @@ int main(int argc, char *argv[])
 	for (opt = 0; opt < argc; opt++)
 		args[nbargs++] = argv[optind++];
 
-	if (lxc_start(name, args)) {
-		fprintf(stderr, "failed to execute '%s'\n", name);
+	ret = lxc_start(name, args);
+	if (ret) {
+		fprintf(stderr, "%s\n", lxc_strerror(ret));
 		goto out;
 	}
 

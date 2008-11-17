@@ -47,7 +47,7 @@ int lxc_get_lock(const char *name)
         fcntl(fd, F_SETFD, FD_CLOEXEC);
 
 	if (flock(fd, LOCK_EX|LOCK_NB)) {
-		ret = errno == EWOULDBLOCK ? 0 : -errno;
+		ret = -errno;
 		close(fd);
 		goto out;
 	}

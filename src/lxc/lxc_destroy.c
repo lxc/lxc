@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
 	char opt;
 	char *name = NULL;
 	int nbargs = 0;
+	int err;
 
 	while ((opt = getopt(argc, argv, "n:")) != -1) {
 		switch (opt) {
@@ -53,8 +54,9 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
-	if (lxc_destroy(name)) {
-		fprintf(stderr, "failed to destroy '%s'\n", name);
+	err = lxc_destroy(name);
+	if (err) {
+		fprintf(stderr, "%s\n", lxc_strerror(err));
 		return 1;
 	}
 

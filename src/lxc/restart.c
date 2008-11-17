@@ -37,6 +37,7 @@
 #include <sys/wait.h>
 #include <sys/mount.h>
 
+#include "error.h"
 #include <lxc/lxc.h>
 
 LXC_TTY_HANDLER(SIGINT);
@@ -73,16 +74,10 @@ int lxc_restart(const char *name, int cfd, unsigned long flags)
 	int clone_flags;
 
 	lock = lxc_get_lock(name);
-	if (!lock) {
-		lxc_log_error("'%s' is busy", name);
-		return -1;
-	}
-
-	if (lock < 0) {
-		lxc_log_error("failed to acquire lock on '%s':%s",
-			      name, strerror(-lock));
-		return -1;
-	}
+	if (lock < 0)
+		return lock == -EWOULDBLOCK ? 
+			-LXC_ERROR_BUSY : 
+			-LXC_ERROR_LOCK;
 
 	/* Begin the set the state to STARTING*/
 	if (lxc_setstate(name, STARTING)) {

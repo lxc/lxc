@@ -36,6 +36,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
+#include "error.h"
 #include <lxc.h>
 
 #define MAXPIDLEN 20
@@ -70,17 +71,13 @@ int lxc_checkpoint(const char *name, int cfd, unsigned long flags)
 	size_t pid;
 
 	lock = lxc_get_lock(name);
-	if (lock > 0) {
-		lxc_log_error("'%s' is not running", name);
+	if (lock >= 0) {
 		lxc_put_lock(lock);
-		return -1;
+		return -LXC_ERROR_EMPTY;
 	}
 
-	if (lock < 0) {
-		lxc_log_error("failed to acquire the lock on '%s':%s", 
-			      name, strerror(-lock));
-		return -1;
-	}
+	if (lock < 0 && lock != -EWOULDBLOCK)
+		return -LXC_ERROR_LOCK;
 
 	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
 	fd = open(init, O_RDONLY);

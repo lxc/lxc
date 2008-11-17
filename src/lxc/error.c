@@ -22,11 +22,14 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "error.h"
 
+static const char *const catalogue[] = {
 
-static char *catalogue[] = {
-	[LXC_ERROR_EMPTY] = "The container is not running",
+	[LXC_ERROR_LOCK] = "Failed to lock the container",
+
+	[LXC_ERROR_EMPTY] = "The container is empty",
 	[LXC_ERROR_ALREADY_EXISTS] = "The container already exists",
 	[LXC_ERROR_BUSY] = "The container is busy",
 	[LXC_ERROR_NOT_FOUND] = "The container was not found",
@@ -50,7 +53,10 @@ static char *catalogue[] = {
 
 const char *const lxc_strerror(int error)
 {
-	if (error < 0 || error >= LXC_LAST_ERROR)
+	error = abs(error);
+
+	if (error >= LXC_LAST_ERROR)
 		return NULL;
+
 	return catalogue[error];
 }
