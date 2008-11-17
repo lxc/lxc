@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <sys/param.h>
 
+#include "error.h"
 #include <lxc/lxc.h>
 
 static int freeze_unfreeze(const char *name, int freeze)
@@ -58,10 +59,10 @@ static int freeze_unfreeze(const char *name, int freeze)
 int lxc_freeze(const char *name)
 {
 	if (freeze_unfreeze(name, 1))
-		return -1;
+		return -LXC_ERROR_INTERNAL;
 
 	if (lxc_setstate(name, FROZEN))
-		return -1;
+		return -LXC_ERROR_INTERNAL;
 
 	return 0;
 }
@@ -69,10 +70,10 @@ int lxc_freeze(const char *name)
 int lxc_unfreeze(const char *name)
 {
 	if (freeze_unfreeze(name, 0))
-		return -1;
+		return -LXC_ERROR_INTERNAL;
 
 	if (lxc_setstate(name, RUNNING))
-		return -1;
+		return -LXC_ERROR_INTERNAL;
 
 	return 0;
 }

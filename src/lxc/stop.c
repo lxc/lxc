@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "error.h"
 #include <lxc/lxc.h>
 
 #define MAXPIDLEN 20
@@ -39,20 +40,20 @@ int lxc_stop(const char *name)
 {
 	char init[MAXPATHLEN];
 	char val[MAXPIDLEN];
-	int fd, lock, ret = -1;
+	int fd, lock, ret = -LXC_ERROR_INTERNAL;
 	size_t pid;
 
 	lock = lxc_get_lock(name);
 	if (lock > 0) {
 		lxc_log_error("'%s' is not running", name);
 		lxc_put_lock(lock);
-		return -1;
+		return -LXC_ERROR_EMPTY;
 	}
 
 	if (lock < 0) {
 		lxc_log_error("failed to acquire the lock on '%s':%s", 
 			      name, strerror(-lock));
-		return -1;
+		return -LXC_ERROR_INTERNAL;
 	}
 
 	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);

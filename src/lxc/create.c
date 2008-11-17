@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "error.h"
 #include <lxc/lxc.h>
 
 static int dir_filter(const struct dirent *dirent)
@@ -93,17 +94,17 @@ static int remove_lxc_directory(const char *dirname)
 
 int lxc_create(const char *name, struct lxc_conf *conf)
 {
-	int lock, err = -1;
+	int lock, err = -LXC_ERROR_INTERNAL;
 
 	if (create_lxc_directory(name)) {
 		lxc_log_error("failed to create %s directory", name);
-		return -1;
+		return -LXC_ERROR_INTERNAL;
 	}
 
 	lock = lxc_get_lock(name);
 	if (!lock) {
 		lxc_log_error("'%s' is busy", name);
-		goto err;
+		return -LXC_ERROR_ALREADY_EXISTS;
 	}
 
 	if (lock < 0) {

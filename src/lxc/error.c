@@ -27,6 +27,7 @@
 
 static char *catalogue[] = {
 	[LXC_ERROR_EMPTY] = "The container is not running",
+	[LXC_ERROR_ALREADY_EXISTS] = "The container already exists",
 	[LXC_ERROR_BUSY] = "The container is busy",
 	[LXC_ERROR_NOT_FOUND] = "The container was not found",
 	[LXC_ERROR_PERMISSION_DENIED] = "Permission denied",
@@ -43,6 +44,8 @@ static char *catalogue[] = {
 	[LXC_ERROR_SETUP_UTSNAME] = "Failed to setup the utsname",
 	[LXC_ERROR_SETUP_NETWORK] = "Failed to setup the network",
 	[LXC_ERROR_SETUP_ROOTFS] = "Failed to setup the root fs",
+
+	[LXC_ERROR_INTERNAL] = "Internal system error",
 };
 
 const char *const lxc_strerror(int error)

@@ -36,6 +36,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
+#include "error.h"
 #include <lxc/lxc.h>
 
 #define MTAB "/etc/mtab"
@@ -98,7 +99,7 @@ int lxc_unlink_nsgroup(const char *name)
 
 int lxc_cgroup_set(const char *name, const char *subsystem, const char *value)
 {
-	int fd, ret = -1;;
+	int fd, ret = -LXC_ERROR_INTERNAL;;
 	char path[MAXPATHLEN];
 
         snprintf(path, MAXPATHLEN, LXCPATH "/%s/nsgroup/%s", name, subsystem);
@@ -119,7 +120,7 @@ out:
 int lxc_cgroup_get(const char *name, const char *subsystem,  
 		   char *value, size_t len)
 {
-	int fd, ret = -1;;
+	int fd, ret = -LXC_ERROR_INTERNAL;
 	char path[MAXPATHLEN];
 
         snprintf(path, MAXPATHLEN, LXCPATH "/%s/nsgroup/%s", name, subsystem);

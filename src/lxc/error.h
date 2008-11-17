@@ -20,12 +20,13 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-#ifndef __lxc_h
-#define __lxc_h
+#ifndef __lxc_error_h
+#define __lxc_error_h
 
 typedef enum {
 	LXC_ERROR_EMPTY,
 	LXC_ERROR_BUSY,
+	LXC_ERROR_ALREADY_EXISTS,
 	LXC_ERROR_NOT_FOUND,
 	LXC_ERROR_PERMISSION_DENIED,
 	LXC_ERROR_WRONG_COMMAND,
@@ -41,6 +42,8 @@ typedef enum {
 	LXC_ERROR_SETUP_UTSNAME,
 	LXC_ERROR_SETUP_NETWORK,
 	LXC_ERROR_SETUP_ROOTFS,
+
+	LXC_ERROR_INTERNAL,
 
 	LXC_LAST_ERROR,
 } lxc_error_t;

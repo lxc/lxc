@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <sys/param.h>
 
+#include "error.h"
 #include <lxc/lxc.h>
 
 static int remove_lxc_directory(const char *dirname)
@@ -47,13 +48,13 @@ static int remove_lxc_directory(const char *dirname)
 
 int lxc_destroy(const char *name)
 {
-	int ret = -1, lock;
+	int lock, ret = -LXC_ERROR_INTERNAL;
 	char path[MAXPATHLEN];
 
 	lock = lxc_get_lock(name);
 	if (!lock) {
 		lxc_log_error("'%s' is busy", name);
-		goto out;
+		return -LXC_ERROR_BUSY;
 	}
 
 	if (lock < 0) {

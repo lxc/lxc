@@ -38,6 +38,8 @@
 #include <sys/capability.h>
 #include <sys/wait.h>
 
+#include "error.h"
+
 #include <lxc/lxc.h>
 
 LXC_TTY_HANDLER(SIGINT);
@@ -48,20 +50,20 @@ int lxc_start(const char *name, char *argv[])
 	char init[MAXPATHLEN];
 	char *val = NULL;
 	char ttyname[MAXPATHLEN];
-	int fd, lock, sv[2], sync = 0, err = -1;
+	int fd, lock, sv[2], sync = 0, err = -LXC_ERROR_INTERNAL;
 	pid_t pid;
 	int clone_flags;
 
 	lock = lxc_get_lock(name);
 	if (!lock) {
 		lxc_log_error("'%s' is busy", name);
-		return -1;
+		return -LXC_ERROR_BUSY;
 	}
 
 	if (lock < 0) {
 		lxc_log_error("failed to acquire lock on '%s':%s",
 			      name, strerror(-lock));
-		return -1;
+		return -LXC_ERROR_INTERNAL;
 	}
 
 	/* Begin the set the state to STARTING*/

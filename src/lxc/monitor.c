@@ -36,6 +36,7 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
+#include "error.h"
 #include <lxc/lxc.h>
 
 #ifndef UNIX_PATH_MAX
@@ -151,7 +152,7 @@ int lxc_monitor_open(void)
 	fd = socket(PF_NETLINK, SOCK_RAW, 0);
 	if (fd < 0) {
 		lxc_log_syserror("failed to create notification socket");
-		return -1;
+		return -LXC_ERROR_INTERNAL;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -180,7 +181,7 @@ int lxc_monitor_read(int fd, struct lxc_msg *msg)
 		       (struct sockaddr *)&from, &len);
 	if (ret < 0) {
 		lxc_log_syserror("failed to received state");
-		return -1;
+		return -LXC_ERROR_INTERNAL;
 	}
 
 	return ret;
