@@ -56,6 +56,7 @@ AC_CONFIG_FILES([
 	doc/lxc-wait.sgml
 	doc/lxc-ls.sgml
 	doc/lxc-ps.sgml
+	doc/lxc-cgroup.sgml
 
         src/Makefile
 	src/lxc/Makefile

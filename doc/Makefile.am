@@ -10,7 +10,8 @@ man_MANS = \
 	lxc-monitor.1 \
 	lxc-wait.1 \
 	lxc-ls.1 \
-	lxc-ps.1
+	lxc-ps.1 \
+	lxc-cgroup.1
 
 
 %.1 : %.sgml 
