@@ -42,6 +42,7 @@ liblxc_la_LDFLAGS = -release @PACKAGE_VERSION@
 
 bin_SCRIPTS = \
 	lxc-ps \
+	lxc-ls \
 	lxc-checkconfig
 
 bin_PROGRAMS = \

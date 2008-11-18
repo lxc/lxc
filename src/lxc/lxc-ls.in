@@ -1,0 +1,9 @@
+#!/bin/bash
+
+lxcpath=@prefix@/var/lxc
+
+if [ ! -r $lxcpath ]; then
+    exit 0
+fi
+
+ls -1 $lxcpath
