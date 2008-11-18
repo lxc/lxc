@@ -6,4 +6,4 @@ if [ ! -r $lxcpath ]; then
     exit 0
 fi
 
-ls -1 $lxcpath
+ls $* $lxcpath

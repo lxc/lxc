@@ -41,9 +41,24 @@ AC_CONFIG_FILES([
         Makefile
 	lxc.spec
         config/Makefile
+
+        doc/Makefile
+	doc/lxc-create.sgml
+	doc/lxc-destroy.sgml
+	doc/lxc-execute.sgml
+	doc/lxc-start.sgml
+	doc/lxc-stop.sgml
+	doc/lxc-freeze.sgml
+	doc/lxc-unfreeze.sgml
+	doc/lxc-monitor.sgml
+	doc/lxc-wait.sgml
+	doc/lxc-ls.sgml
+	doc/lxc-ps.sgml
+
         src/Makefile
 	src/lxc/Makefile
 	src/lxc/lxc-ps
+	src/lxc/lxc-ls
 	src/lxc/lxc-checkconfig	
 	etc/Makefile
 	etc/lxc-macvlan.conf

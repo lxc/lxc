@@ -135,6 +135,7 @@ fi
 %{_sysconfdir}/%{name}/*
 %{_libdir}/*.so*
 %{_bindir}/*
+%{_mandir}/*
 
 %files devel
 %defattr(-,root,root)
