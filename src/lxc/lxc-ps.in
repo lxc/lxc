@@ -1,6 +1,6 @@
 #!/bin/bash
 # set -ex
-lxcpath=@prefix@/var/lxc
+lxcpath=@localstatedir@/lxc
 
 if [ ! -r $lxcpath ]; then
     exit 0
