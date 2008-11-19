@@ -11,9 +11,17 @@ man_MANS = \
 	lxc-wait.1 \
 	lxc-ls.1 \
 	lxc-ps.1 \
-	lxc-cgroup.1
+	lxc-cgroup.1 \
+	\
+	lxc.conf.5
 
 
 %.1 : %.sgml 
 	docbook2man $<
+
+%.5 : %.sgml 
+	docbook2man $<
+
+clean-local:
+	$(RM) manpage.* *.1 *.sgml $(man_MANS)
 endif

@@ -1,0 +1,590 @@
+<!-- 
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <dlezcano at fr.ibm.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+-->
+
+<!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN">
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc.conf</refentrytitle>
+    <manvolnum>5</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc.conf</refname>
+
+    <refpurpose>
+      linux container configuration file
+    </refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+
+    <para>
+      The linux containers (<command>lxc</command>) are always created
+      before being used. This creation defines a set of system
+      resources to be virtualized / isolated when a process is using
+      the container. By default, the pids, sysv ipc and mount points
+      are virtualized and isolated. The other system resources are
+      shared across containers, until they are explicitly defined in
+      the configuration file. For example, if there is no network
+      configuration, the network will be shared between the creator of
+      the container and the container itself, but if the network is
+      specified, a new network stack is created for the container and
+      the container can no longer use the network of its ancestor.
+    </para>
+
+    <para>
+      The configuration file defines the different system resources to
+      be assigned for the container. At present, the utsname, the
+      network, the mount points, the root file system and the control
+      groups are supported.
+    </para>
+
+    <para>
+      Each option in the configuration file has the form <command>key
+      = value</command> fitting in one line. The '#' caracter means
+      the line is a comment.
+    </para>
+
+    <refsect2>
+      <title>Hostname</title>
+      <para>
+	The utsname section defines the hostname to be set for the
+	container. That means the container can set its own hostname
+	without changing the one from the system. That makes the
+	hostname private for the container.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.utsname</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify the hostname for the container
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>Network</title>
+      <para>
+	The network section defines how the network is virtualized in
+	the container. The network virtualization acts at the layer
+	two, so in order to use the network, a few information should
+	be specified to define the network interfaces to be used by
+	the container. Several virtual interfaces can be assigned and
+	used in a container either if the system has only one physical
+	network interface.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.type</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify what kind of network virtualization to be used
+	      for the container. Each time
+	      a <option>lxc.network.type</option> field is found a new
+	      round of network configuration begins. By this way
+	      several network virtualization can be specified for the
+	      same container, as well as assigning several network
+	      interfaces for one container. The different
+	      virtualization types can be:
+	    </para>
+
+	    <para>
+	      <option>empty:</option> a new network stack is created
+	      for the container, but it will not contain any network
+	      interface.
+	    </para>
+
+	    <para>
+	      <option>veth:</option> a new network stack is created, a
+	      peer network device is created with one side assigned to
+	      the container and the other side attached to a bridge
+	      specified by the <option>lxc.network.link</option>. The
+	      bridge has to be setup before on the
+	      system, <command>lxc</command> won't handle
+	      configuration outside of the container.
+	    </para>
+
+	    <para>
+	      <option>macvlan:</option> a new network stack is
+	      created, a macvlan interface is linked with the
+	      interface specified by
+	      the <option>lxc.network.link</option> and assigned to
+	      the container.
+	    </para>
+
+	    <para>
+	      <option>phys:</option> a new network stack is created
+	      and the interface specified by
+	      the <option>lxc.network.link</option> is assigned to the
+	      container.
+	    </para>
+	  </listitem>
+	  </varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.flags</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify an action to do for the
+	      network.
+	    </para>
+	    
+	    <para><option>up:</option> activates the interface.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.link</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify the interface to be used for real network
+	      traffic.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.name</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      the interface name is dynamically allocated, but if an
+	      other name is needed because the configuration files
+	      being used by the container use a generic name,
+	      eg. eth0, this option will rename the interface in the
+	      container.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.hwaddr</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      the interface mac address is dynamically allocated by
+	      default to the virtual interface, but in some case, this
+	      is needed to resolve a mac address conflict or to have
+	      always the same link-locak ipv6 address.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.ipv4</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify the ipv4 address to assign to the virtualized
+	      interface. Several lines specify several ipv4 addresses.
+	      The address is in format x.y.z.t/m,
+	      eg. 192.168.1.123/24.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.ipv6</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify the ipv6 address to assign to the virtualized
+	      interface. Several lines specify several ipv6 addresses.
+	      The address is in format x::y/m,
+	      eg. 2003:db8:1:0:214:1234:fe0b:3596/64
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+      </variablelist>
+
+    </refsect2>
+
+    <refsect2>
+      <title>Mount points</title>
+      <para>
+	The mount points section specifies the different places to be
+	mounted. These mount points will be private to the container
+	and won't be visible by the processes running outside of the
+	container. This is useful to mount /etc, /var or /home for
+	examples.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.mount</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify a file location in
+	      the <filename>fstab</filename> format, containing the
+	      mount informations.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>Root file system</title>
+      <para>
+	The root file system is the location where the container will
+	chroot.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.rootfs</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify a file location containing the new file tree for
+	      a root file system.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>Control group</title>
+      <para>
+	The control group section contains the configuration for the
+	different subsystem. <command>lxc</command> does not check the
+	correctness of the subsystem name. This has the inconvenient
+	to have the error being detected at runtime, but the advantage
+	to support any future subsystem.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.cgroup</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify the control group value to be set. This field is
+	      the identifier to tell the following keyword is the
+	      literal name of the control group subsystem,
+	      eg. <option>lxc.cgroup.cpuset.cpus</option>
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+  </refsect1>
+
+  <refsect1>
+    <title>Examples</title>
+    <refsect2>
+      <title>Network</title>
+      <para>This configuration sets up a container to use a veth pair
+	device with one side plugged to a bridge br0 (which has been
+	configured before on the system by the administrator). The
+	virtual network device visible in the container is renamed to
+	eth0.</para>
+
+      <variablelist>
+
+	<varlistentry>
+	  <term>lxc.utsname = myhostname</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	
+	<varlistentry>
+	  <term>lxc.network.type = veth</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>lxc.network.flags = up</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>lxc.network.link = br0</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>lxc.network.name = eth0</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>lxc.network.hwaddr = 4a:49:43:49:79:bf</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>lxc.network.ipv4 = 1.2.3.5/24</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+
+      </variablelist>
+
+    </refsect2>
+
+    <refsect2>
+      <title>Control group</title>
+      <para>This configuration will setup several control groups for
+      the application, cpuset.cpus restricts usage of the defined cpu,
+      cpus.share prioritize the control group, devices.allow makes
+      usable the specified devices.</para>
+
+      <variablelist>
+	<varlistentry>
+	  <term>lxc.cgroup.cpuset.cpus = 0,1</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	
+	<varlistentry>
+	  <term>lxc.cgroup.cpu.shares = 1234</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>lxc.cgroup.devices.deny = a</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>lxc.cgroup.devices.allow = c 1:3 rw</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>lxc.cgroup.devices.allow = b 8:0 rw</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+      </variablelist>
+
+    </refsect2>
+
+    <refsect2>
+      <title>Complex configuration</title>
+      <para>This example show a complex configuration making a complex
+      network stack, using the control groups, setting a new hostname,
+      mounting some locations and a changing the root file
+      system.</para>
+
+      <variablelist>
+	<varlistentry>
+	  <term>lxc.utsname = complex</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.type = veth</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.flags = up</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.link = br0</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.hwaddr = 4a:49:43:49:79:bf</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.ipv4 = 1.2.3.5/24</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.ipv6 = 2003:db8:1:0:214:5432:feab:3588</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.type = macvlan</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.flags = up</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.link = eth0</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.hwaddr = 4a:49:43:49:79:bd</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.ipv4 = 1.2.3.4/24</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.ipv4 = 192.168.10.125/24</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.type = phys</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.flags = up</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.link = dummy0</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.hwaddr = 4a:49:43:49:79:ff</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.ipv4 = 1.2.3.6/24</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.cgroup.cpuset.cpus = 0,1</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.cgroup.cpu.shares = 1234</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.cgroup.devices.deny = a</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.cgroup.devices.allow = c 1:3 rw</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.cgroup.devices.allow = b 8:0 rw</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.mount = /etc/fstab.complex</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.rootfs = /mnt/rootfs.complex</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+  </refsect1>
+
+  <refsect1>
+    <title>See Also</title>
+    <simpara>    
+      <citerefentry>
+	<refentrytitle><command>lxc-create</command></refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>,
+      
+      <citerefentry>
+	<refentrytitle><command>lxc-execute</command></refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+	<refentrytitle><command>chroot</command></refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+	<refentrytitle><command>pivot_root</command></refentrytitle>
+	<manvolnum>8</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+	<refentrytitle><filename>fstab</filename></refentrytitle>
+	<manvolnum>5</manvolnum>
+      </citerefentry>
+
+    </simpara>
+  </refsect1>
+  
+  <refsect1>
+    <title>Author</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+  
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->
