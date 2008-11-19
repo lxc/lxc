@@ -53,6 +53,7 @@ int lxc_start(const char *name, char *argv[])
 	int fd, lock, sv[2], sync = 0, err = -LXC_ERROR_INTERNAL;
 	pid_t pid;
 	int clone_flags;
+	ssize_t n;
 
 	lock = lxc_get_lock(name);
 	if (lock < 0) {
@@ -69,10 +70,12 @@ int lxc_start(const char *name, char *argv[])
 		goto out;
 	}
 
-	if (readlink("/proc/self/fd/0", ttyname, sizeof(ttyname)) < 0) {
+	n = readlink("/proc/self/fd/0", ttyname, sizeof(ttyname));
+	if (n < 0) {
 		lxc_log_syserror("failed to read '/proc/self/fd/0'");
 		goto out;
 	}
+	ttyname[n] = '\0';
 
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
