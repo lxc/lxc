@@ -1,6 +1,6 @@
 #!/bin/bash
 
-lxcpath=@localstatedir@/lxc
+lxcpath=$(PKG_CONFIG_PATH=/usr/lib/pkgconfig pkg-config --variable=localstatedir lxc)/lxc
 
 if [ ! -r $lxcpath ]; then
     exit 0

@@ -15,6 +15,7 @@ AC_PROG_LIBTOOL
 AC_CHECK_PROG(SETCAP, setcap, yes, no)
 AC_CHECK_PROG(DOCBOOK, docbook2man, yes, no)
 AM_CONDITIONAL(ENABLE_DOCBOOK, test x$DOCBOOK = xyes)
+PKG_PROG_PKG_CONFIG
 
 AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h], [], AC_MSG_ERROR([netlink headers not found]),
 [#include <linux/types.h>
@@ -37,12 +38,15 @@ fi
 AC_ARG_ENABLE(test, [  --enable-test    compile test program [default=no]],, enable_test=no)
 AM_CONDITIONAL(ENABLE_TEST, test x$enable_test = xyes)
 
+
+
 AC_SUBST(LXC_MAJOR_VERSION)
 AC_SUBST(LXC_MINOR_VERSION)
 AC_SUBST(LXC_MICRO_VERSION)
 
 AC_CONFIG_FILES([
         Makefile
+	lxc.pc
 	lxc.spec
         config/Makefile
 
