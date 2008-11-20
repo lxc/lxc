@@ -13,7 +13,9 @@ man_MANS = \
 	lxc-ps.1 \
 	lxc-cgroup.1 \
 	\
-	lxc.conf.5
+	lxc.conf.5 \
+	\
+	lxc.7
 
 
 %.1 : %.sgml 
@@ -22,6 +24,9 @@ man_MANS = \
 %.5 : %.sgml 
 	docbook2man $<
 
+%.7 : %.sgml 
+	docbook2man $<
+
 clean-local:
-	$(RM) manpage.* *.1 *.sgml $(man_MANS)
+	$(RM) manpage.* *.7 *.5 *.1 *.sgml $(man_MANS)
 endif

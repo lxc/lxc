@@ -58,6 +58,7 @@ AC_CONFIG_FILES([
 	doc/lxc-ps.sgml
 	doc/lxc-cgroup.sgml
 	doc/lxc.conf.sgml
+	doc/lxc.sgml
 
         src/Makefile
 	src/lxc/Makefile
@@ -82,6 +83,7 @@ if test "x$DOCBOOK" = "xno"; then
 Warning:
 --------
 The docbook tool is not installed, the man pages won't be generated.
+If you want the man pages, install docbook and rerun 'configure'.
 
 ])
 

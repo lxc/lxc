@@ -49,11 +49,9 @@ int lxc_start(const char *name, char *argv[])
 {
 	char init[MAXPATHLEN];
 	char *val = NULL;
-	char ttyname[MAXPATHLEN];
 	int fd, lock, sv[2], sync = 0, err = -LXC_ERROR_INTERNAL;
 	pid_t pid;
 	int clone_flags;
-	ssize_t n;
 
 	lock = lxc_get_lock(name);
 	if (lock < 0) {
@@ -66,16 +64,10 @@ int lxc_start(const char *name, char *argv[])
 
 	/* Begin the set the state to STARTING*/
 	if (lxc_setstate(name, STARTING)) {
-		lxc_log_error("failed to set state '%s'", lxc_state2str(STARTING));
+		lxc_log_error("failed to set state '%s'", 
+			      lxc_state2str(STARTING));
 		goto out;
 	}
-
-	n = readlink("/proc/self/fd/0", ttyname, sizeof(ttyname));
-	if (n < 0) {
-		lxc_log_syserror("failed to read '/proc/self/fd/0'");
-		goto out;
-	}
-	ttyname[n] = '\0';
 
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
@@ -125,11 +117,6 @@ int lxc_start(const char *name, char *argv[])
 			lxc_log_error("failed to setup the container");
 			if (write(sv[0], &err, sizeof(err)) < 0)
 				lxc_log_syserror("failed to write the socket");
-			goto out_child;
-		}
-
-		if (mount(ttyname, "/dev/console", "none", MS_BIND, 0)) {
-			lxc_log_syserror("failed to mount '/dev/console'");
 			goto out_child;
 		}
 
