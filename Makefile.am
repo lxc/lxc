@@ -2,14 +2,14 @@
 
 SUBDIRS = doc src test etc
 DIST_SUBDIRS = config doc src test etc
-EXTRA_DIST = lxc.spec CONTRIBUTING MAINTAINERS
+EXTRA_DIST = lxc.spec CONTRIBUTING MAINTAINERS ChangeLog
 
 ChangeLog::
 	@touch ChangeLog
 
 dist-hook:
 	-@cvs2cl
-	@cp ChangeLog $(distdir)
+	@mv ChangeLog $(distdir)
 
 rpm: dist
 	rpmbuild --clean -ta ${distdir}.tar.gz

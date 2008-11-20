@@ -34,6 +34,8 @@ AC_ARG_ENABLE(network_destroy, [  --disable-network-destroy  disable network des
 if test "x$enable_network_destroy" = "xyes"; then
    CFLAGS="$CFLAGS -DNETWORK_DESTROY"
 fi
+AC_ARG_ENABLE(test, [  --enable-test    compile test program [default=no]],, enable_test=no)
+AM_CONDITIONAL(ENABLE_TEST, test x$enable_test = xyes)
 
 AC_SUBST(LXC_MAJOR_VERSION)
 AC_SUBST(LXC_MINOR_VERSION)

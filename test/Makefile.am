@@ -1,3 +1,5 @@
+if ENABLE_TEST
+
 INCLUDES= -I$(top_srcdir)/src
 
 noinst_PROGRAMS = \
@@ -93,3 +95,5 @@ lxc_low_monitor_LDADD = \
 lxc_state_SOURCES = lxc_state.c
 lxc_state_LDADD = \
 	$(top_builddir)/src/lxc/liblxc.la
+
+endif
