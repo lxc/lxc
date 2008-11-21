@@ -2,9 +2,7 @@
 
 SUBDIRS = doc src test etc
 DIST_SUBDIRS = config doc src test etc
-EXTRA_DIST = lxc.spec CONTRIBUTING MAINTAINERS ChangeLog lxc.pc.in
-pkgconfigdir = /usr/lib/pkgconfig
-pkgconfig_DATA = lxc.pc
+EXTRA_DIST = lxc.spec CONTRIBUTING MAINTAINERS ChangeLog
 
 ChangeLog::
 	@touch ChangeLog
