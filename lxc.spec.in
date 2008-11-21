@@ -120,7 +120,7 @@ if [ $RES != 0 ]; then
     echo -e "\t* you will have to run the 'lxc' commands as root. *"
     echo -e "\t* If you wish to run these commands as a non-root  *"
     echo -e "\t* user, you will need to install libcap-2 package  *"
-    echo -e "\t* and reinstall the lxc package                    *"
+    echo -e "\t* and reinstall lxc                                *"
     echo -e "\t****************************************************"
 else
 setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-execute && \
