@@ -1,0 +1,39 @@
+#!/bin/bash
+# set -ex
+
+prefix=@prefix@
+lxcpath=@localstatedir@/lxc
+
+if [ ! -r $lxcpath ]; then
+    exit 0
+fi
+
+if [ $# -eq  0 ]; then
+    echo "usage: $0 -n <name>"
+    exit 1
+fi
+
+for i in $*; do
+    case $i in
+	-n)
+	    name=$2; shift 2;;
+    esac
+done
+
+if [ -z "$name" ]; then
+    echo "usage: $0 -n <name>"
+    exit 1
+fi
+
+if [ ! -d $lxcpath/$name ]; then
+    echo "'$name' does not exists"
+    exit 1
+fi
+
+if [ ! -f $lxcpath/$name/init ]; then
+    exit 0
+fi
+
+initpid=$(cat $lxcpath/$name/init)
+
+mount --bind /proc/$initpid/net /proc/$$/net && exec netstat $*
