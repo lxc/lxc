@@ -128,6 +128,7 @@ int lxc_start(const char *name, char *argv[])
 		execvp(argv[0], argv);
 		lxc_log_syserror("failed to exec %s", argv[0]);
 
+		err = LXC_ERROR_WRONG_COMMAND;
 		/* If the exec fails, tell that to our father */
 		if (write(sv[0], &err, sizeof(err)) < 0)
 			lxc_log_syserror("failed to write the socket");
@@ -168,8 +169,6 @@ int lxc_start(const char *name, char *argv[])
 
 	if (err > 0) {
 		err = sync;
-		printf("error value is %d\n", err);
-		/* TODO : check status etc ... */
 		waitpid(pid, NULL, 0);
 		goto err_child_failed;
 	}
