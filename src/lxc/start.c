@@ -48,6 +48,7 @@ LXC_TTY_HANDLER(SIGQUIT);
 int lxc_start(const char *name, char *argv[])
 {
 	char init[MAXPATHLEN];
+	char tty[MAXPATHLEN];
 	char *val = NULL;
 	int fd, lock, sv[2], sync = 0, err = -LXC_ERROR_INTERNAL;
 	pid_t pid;
@@ -67,6 +68,11 @@ int lxc_start(const char *name, char *argv[])
 		lxc_log_error("failed to set state '%s'", 
 			      lxc_state2str(STARTING));
 		goto out;
+	}
+
+	if (ttyname_r(0, tty, sizeof(tty))) {
+		tty[0] = '\0';
+		lxc_log_warning("failed to get tty name");
 	}
 
 	/* Synchro socketpair */
@@ -112,7 +118,7 @@ int lxc_start(const char *name, char *argv[])
 		}
 
 		/* Setup the container, ip, names, utsname, ... */
-		err = lxc_setup(name);
+		err = lxc_setup(name, tty);
 		if (err) {
 			lxc_log_error("failed to setup the container");
 			if (write(sv[0], &err, sizeof(err)) < 0)
@@ -207,10 +213,8 @@ wait_again:
 	if (lxc_setstate(name, STOPPING))
 		lxc_log_error("failed to set state %s", lxc_state2str(STOPPING));
 
-#ifdef NETWORK_DESTROY
 	if (clone_flags & CLONE_NEWNET && conf_destroy_network(name))
 		lxc_log_error("failed to destroy the network");
-#endif
 
 	err = 0;
 out:
@@ -233,10 +237,8 @@ err_state_failed:
 err_child_failed:
 err_pipe_read2:
 err_pipe_write:
-#ifdef NETWORK_DESTROY
 	if (clone_flags & CLONE_NEWNET)
 		conf_destroy_network(name);
-#endif
 err_create_network:
 err_pipe_read:
 err_waitpid_failed:
