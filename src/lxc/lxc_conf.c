@@ -793,6 +793,10 @@ static int setup_mount(const char *name)
 
 		if (hasmntopt(mntent, "bind"))
 			mntflags |= MS_BIND;
+		if (hasmntopt(mntent, "ro"))
+			mntflags |= MS_RDONLY;
+		if (hasmntopt(mntent, "noexec"))
+			mntflags |= MS_NOEXEC;
 
 		if (mount(mntent->mnt_fsname, mntent->mnt_dir,
 			  mntent->mnt_type, mntflags, NULL)) {
