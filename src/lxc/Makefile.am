@@ -24,6 +24,7 @@ liblxc_la_SOURCES = \
 	version.c \
 	error.h error.c \
 	cgroup.c cgroup.h \
+	cr_plugin_columbia.c \
 	lxc.h \
 	lxc_utils.h \
 	lxc_lock.c lxc_lock.h \

@@ -29,7 +29,7 @@
 
 void usage(char *cmd)
 {
-	fprintf(stderr, "%s <command>\n", basename(cmd));
+	fprintf(stderr, "%s <statefile>\n", basename(cmd));
 	fprintf(stderr, "\t -n <name>   : name of the container\n");
 	_exit(1);
 }
@@ -58,12 +58,15 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
+	if (!argv[1])
+		usage(argv[0]);
+
 	if (lxc_freeze(name)) {
 		fprintf(stderr, "failed to freeze '%s'\n", name);
 		return -1;
 	}
 
-	if (lxc_checkpoint(name, STDOUT_FILENO, 0)) {
+	if (lxc_checkpoint(name, argv[1], 0)) {
 		fprintf(stderr, "failed to checkpoint %s\n", name);
 		goto out;
 	}

@@ -180,7 +180,8 @@ extern const char *const lxc_strerror(int error);
  * @flags : checkpoint flags
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_checkpoint(const char *name, int fd, unsigned long flags);
+extern int lxc_checkpoint(const char *name, const char *statefile, 
+			unsigned long flags);
 
 /*
  * Restart a container previously frozen
@@ -189,7 +190,8 @@ extern int lxc_checkpoint(const char *name, int fd, unsigned long flags);
  * @flags : restart flags
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_restart(const char *name, int fd, unsigned long flags);
+extern int lxc_restart(const char *name, const char *statefile, 
+			unsigned long flags);
 
 /*
  * Returns the version number of the library

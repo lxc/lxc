@@ -37,33 +37,13 @@
 #include <net/if.h>
 
 #include "error.h"
+#include "lxc_plugin.h"
 #include <lxc.h>
 
 #define MAXPIDLEN 20
 
-#if __i386__
-#    define __NR_checkpoint 333
-static inline long sys_checkpoint(pid_t pid, int fd, unsigned long flags)
-{
-	return syscall(__NR_checkpoint, pid, fd, flags);
-}
-#elif __x86_64__
-#    define __NR_checkpoint 295
-static inline long sys_checkpoint(pid_t pid, int fd, unsigned long flags)
-{
-        return syscall(__NR_checkpoint, pid, fd, flags);
-}
-#else
-#    warning "Architecture not supported for checkpoint"
-static inline long sys_checkpoint(pid_t pid, int fd, unsigned long flags)
-{
-	errno = ENOSYS;
-	return -1;
-}
-
-#endif
-
-int lxc_checkpoint(const char *name, int cfd, unsigned long flags)
+int lxc_checkpoint(const char *name, const char *statefile, 
+		unsigned long flags)
 {
 	char init[MAXPATHLEN];
 	char val[MAXPIDLEN];
@@ -93,7 +73,7 @@ int lxc_checkpoint(const char *name, int cfd, unsigned long flags)
 
 	pid = atoi(val);
 
-	if (sys_checkpoint(pid, cfd, flags) < 0) {
+	if (lxc_plugin_checkpoint(pid, statefile, flags) < 0) {
 		lxc_log_syserror("failed to checkpoint %zd", pid);
 		goto out_close;
 	}

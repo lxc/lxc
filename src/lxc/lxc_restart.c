@@ -29,7 +29,7 @@
 
 void usage(char *cmd)
 {
-	fprintf(stderr, "%s <command>\n", basename(cmd));
+	fprintf(stderr, "%s <statefile>\n", basename(cmd));
 	fprintf(stderr, "\t -n <name>   : name of the container\n");
 	_exit(1);
 }
@@ -53,7 +53,10 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
-	if (lxc_restart(name, STDIN_FILENO, 0)) {
+	if (!argv[1])
+		usage(argv[0]);
+
+	if (lxc_restart(name, argv[1], 0)) {
 		fprintf(stderr, "failed to restart %s\n", name);
 		return 1;
 	}

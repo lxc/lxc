@@ -38,34 +38,14 @@
 #include <sys/mount.h>
 
 #include "error.h"
+#include "lxc_plugin.h"
 #include <lxc/lxc.h>
 
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);
 
-
-#if __i386__
-#    define __NR_restart 334
-static inline long sys_restart(pid_t pid, int fd, unsigned long flags)
-{
-	return syscall(__NR_restart, pid, fd, flags);
-}
-#elif __x86_64__
-#    define __NR_restart 296
-static inline long sys_restart(pid_t pid, int fd, unsigned long flags)
-{
-        return syscall(__NR_restart, pid, fd, flags);
-}
-#else
-static inline long sys_restart(pid_t pid, int fd, unsigned long flags)
-{
-	errno = ENOSYS;
-	return -1;
-}
-#    warning "Architecture not supported for restart syscall"
-#endif
-
-int lxc_restart(const char *name, int cfd, unsigned long flags)
+int lxc_restart(const char *name, const char *statefile,
+		unsigned long flags)
 {
 	char *init = NULL, *val = NULL;
 	char ttyname[MAXPATHLEN];
@@ -116,6 +96,7 @@ int lxc_restart(const char *name, int cfd, unsigned long flags)
 
 	if (!pid) {
 
+		char dummytty = '\0';
 		close(sv[1]);
 
 		/* Be sure we don't inherit this after the exec */
@@ -134,7 +115,7 @@ int lxc_restart(const char *name, int cfd, unsigned long flags)
 		}
 
 		/* Setup the container, ip, names, utsname, ... */
-		if (lxc_setup(name)) {
+		if (lxc_setup(name, &dummytty)) {
 			lxc_log_error("failed to setup the container");
 			if (write(sv[0], &sync, sizeof(sync)) < 0)
 				lxc_log_syserror("failed to write the socket");
@@ -146,7 +127,7 @@ int lxc_restart(const char *name, int cfd, unsigned long flags)
 			return -1;
 		}
 
-		sys_restart(getpid(), cfd, flags);
+		lxc_plugin_restart(getpid(), statefile, flags);
 		lxc_log_syserror("failed to restart");
   
 		/* If the exec fails, tell that to our father */
