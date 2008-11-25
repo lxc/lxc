@@ -666,6 +666,19 @@ static int setup_rootfs(const char *name)
 	return 0;
 }
 
+static int setup_console(const char *name, const char *tty)
+{
+	if (access("/dev/console", R_OK|W_OK))
+		return 0;
+	
+	if (mount(tty, "/dev/console", "none", MS_BIND, 0)) {
+		lxc_log_error("failed to mount the console");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int setup_cgroup_cb(void* buffer, void *data)
 {
 	char *key = buffer, *value;
@@ -1363,15 +1376,16 @@ static int delete_netdev(const char *name)
 
 int conf_destroy_network(const char *name)
 {
+#ifdef NETWORK_DESTROY
 	if (delete_netdev(name)) {
 		lxc_log_error("failed to remove the network devices");
 		return -1;
 	}
-
+#endif
 	return 0;
 }
 
-int lxc_setup(const char *name)
+int lxc_setup(const char *name, const char *tty)
 {
 	if (conf_has_utsname(name) && setup_utsname(name)) {
 		lxc_log_error("failed to setup the utsname for '%s'", name);
@@ -1389,13 +1403,18 @@ int lxc_setup(const char *name)
 	}
 
 	if (conf_has_fstab(name) && setup_mount(name)) {
-		lxc_log_error("failed to setup the mount points for '%s'", name);
+		lxc_log_error("failed to setup the mounts for '%s'", name);
 		return -LXC_ERROR_SETUP_MOUNT;
 	}
 
 	if (conf_has_rootfs(name) && setup_rootfs(name)) {
 		lxc_log_error("failed to set rootfs for '%s'", name);
 		return -LXC_ERROR_SETUP_ROOTFS;
+	}
+
+	if (tty[0] && setup_console(name, tty)) {
+		lxc_log_error("failed to setup the console for '%s'", name);
+		return -LXC_ERROR_SETUP_CONSOLE;
 	}
 
 	return 0;

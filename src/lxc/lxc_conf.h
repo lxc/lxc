@@ -139,7 +139,7 @@ extern int conf_destroy_network(const char *name);
 /*
  * Configure the container from inside
  */
-extern int lxc_setup(const char *name);
+extern int lxc_setup(const char *name, const char *tty);
 
 extern int conf_has(const char *name, const char *info);
 
@@ -147,6 +147,7 @@ extern int conf_has(const char *name, const char *info);
 #define conf_has_rootfs(__name)  conf_has(__name, "rootfs")
 #define conf_has_utsname(__name) conf_has(__name, "utsname")
 #define conf_has_network(__name) conf_has(__name, "network")
+#define conf_has_console(__name) conf_has(__name, "console")
 #define conf_has_cgroup(__name) conf_has(__name, "cgroup")
 
 #endif
