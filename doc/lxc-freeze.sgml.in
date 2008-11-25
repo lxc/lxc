@@ -53,7 +53,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <title>Description</title>
 
     <para>
-      <command>lxc-freeze</command> freeze all the processes running
+      <command>lxc-freeze</command> freezes all the processes running
       inside the container. The processes will be blocked until they
       are explicitly thawed by the <command>lxc-unfreeze</command>
       command. This command is useful for batch managers to schedule a

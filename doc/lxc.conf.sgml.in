@@ -301,7 +301,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <variablelist>
 	<varlistentry>
 	  <term>
-	    <option>lxc.cgroup</option>
+	    <option>lxc.cgroup.[subsystem name]</option>
 	  </term>
 	  <listitem>
 	    <para>
