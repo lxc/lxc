@@ -30,10 +30,15 @@ if [ ! -d $lxcpath/$name ]; then
     exit 1
 fi
 
+if [ ! -r $lxcpath/$name ]; then
+    echo "Can not access '$name': permission denied"
+    exit 1
+fi
+
 if [ ! -f $lxcpath/$name/init ]; then
     exit 0
 fi
 
-initpid=$(cat $lxcpath/$name/init)
-
-mount --bind /proc/$initpid/net /proc/$$/net && exec netstat $*
+initpid=$(cat $lxcpath/$name/init) && \
+    mount --bind /proc/$initpid/net /proc/$$/net && \
+    exec netstat $*

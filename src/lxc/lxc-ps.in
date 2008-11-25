@@ -30,6 +30,11 @@ if [ ! -d $lxcpath/$name ]; then
     exit 1
 fi
 
+if [ ! -r $lxcpath/$name ]; then
+    echo "Can not access '$name', permission denied"
+    exit 1
+fi
+
 if [ -h $lxcpath/$name/nsgroup ]; then
     ps $* -p $(cat $lxcpath/$name/nsgroup/tasks)
 fi
