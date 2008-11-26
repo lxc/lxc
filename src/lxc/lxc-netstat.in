@@ -3,6 +3,7 @@
 
 prefix=@prefix@
 lxcpath=@localstatedir@/lxc
+exec=""
 
 if [ ! -r $lxcpath ]; then
     exit 0
@@ -17,8 +18,14 @@ for i in $*; do
     case $i in
 	-n)
 	    name=$2; shift 2;;
+	--exec)
+	    exec="exec"; shift;;
     esac
 done
+
+if [ -z "$exec" ]; then
+    exec @bindir@/lxc-unshare -m -- @bindir@/lxc-netstat -n $name --exec $*
+fi
 
 if [ -z "$name" ]; then
     echo "usage: $0 -n <name>"
