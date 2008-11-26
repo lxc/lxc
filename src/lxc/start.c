@@ -70,10 +70,9 @@ int lxc_start(const char *name, char *argv[])
 		goto out;
 	}
 
-	if (ttyname_r(0, tty, sizeof(tty))) {
+	/* If we are not attached to a tty, disable it */
+	if (ttyname_r(0, tty, sizeof(tty))) 
 		tty[0] = '\0';
-		lxc_log_warning("failed to get tty name");
-	}
 
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {

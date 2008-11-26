@@ -83,6 +83,5 @@ int lxc_destroy(const char *name)
 	
 out_lock:
 	lxc_put_lock(lock);
-out:
 	return ret;
 }

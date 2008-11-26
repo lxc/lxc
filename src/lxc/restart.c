@@ -48,7 +48,7 @@ int lxc_restart(const char *name, const char *statefile,
 		unsigned long flags)
 {
 	char *init = NULL, *val = NULL;
-	char ttyname[MAXPATHLEN];
+	char tty[MAXPATHLEN];
 	int fd, lock, sv[2], sync = 0, err = -1;
 	pid_t pid;
 	int clone_flags;
@@ -65,11 +65,10 @@ int lxc_restart(const char *name, const char *statefile,
 		goto out;
 	}
 
-	if (readlink("/proc/self/fd/0", ttyname, sizeof(ttyname)) < 0) {
-		lxc_log_syserror("failed to read '/proc/self/fd/0'");
-		goto out;
+	if (ttyname_r(0, tty, sizeof(tty))) {
+		tty[0] = '\0';
+		lxc_log_warning("failed to get tty name");
 	}
-
 
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
@@ -96,7 +95,6 @@ int lxc_restart(const char *name, const char *statefile,
 
 	if (!pid) {
 
-		char dummytty = '\0';
 		close(sv[1]);
 
 		/* Be sure we don't inherit this after the exec */
@@ -115,15 +113,10 @@ int lxc_restart(const char *name, const char *statefile,
 		}
 
 		/* Setup the container, ip, names, utsname, ... */
-		if (lxc_setup(name, &dummytty)) {
+		if (lxc_setup(name, tty)) {
 			lxc_log_error("failed to setup the container");
 			if (write(sv[0], &sync, sizeof(sync)) < 0)
 				lxc_log_syserror("failed to write the socket");
-			return -1;
-		}
-
-		if (mount(ttyname, "/dev/console", "none", MS_BIND, 0)) {
-			lxc_log_syserror("failed to mount '/dev/console'");
 			return -1;
 		}
 
@@ -243,6 +236,5 @@ err_fork_ns:
 	LXC_TTY_DEL_HANDLER(SIGINT);
 	close(sv[0]);
 	close(sv[1]);
-err:
 	goto out;
 }
