@@ -76,8 +76,7 @@ static inline long sys_restart(pid_t pid, int fd, unsigned long flags)
 #endif
 
 
-int lxc_plugin_checkpoint(pid_t pid, const char *statefile, 
-	unsigned long flags)
+int lxc_plugin_checkpoint(pid_t pid, const char *statefile, unsigned long flags)
 {
 	int fd, ret;
 
@@ -89,7 +88,7 @@ int lxc_plugin_checkpoint(pid_t pid, const char *statefile,
 	
 	ret = sys_checkpoint(pid, fd, flags);
 	if (ret < 0) {
-		lxc_log_syserror("failed to checkpoint %zd", pid);
+		lxc_log_syserror("failed to checkpoint %d", pid);
 		goto out_close;
 	}
 
@@ -100,8 +99,7 @@ out_close:
 	return ret;
 }
 
-int lxc_plugin_restart(pid_t pid, const char *statefile, 
-	unsigned long flags)
+int lxc_plugin_restart(pid_t pid, const char *statefile, unsigned long flags)
 {
 	int fd;
 
@@ -112,7 +110,7 @@ int lxc_plugin_restart(pid_t pid, const char *statefile,
 	}
 	
 	sys_restart(pid, fd, flags);
-	lxc_log_syserror("failed to restart %zd", pid);
+	lxc_log_syserror("failed to restart %d", pid);
 	close(fd);
 	return -1;
 }
