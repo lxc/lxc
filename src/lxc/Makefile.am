@@ -24,7 +24,6 @@ liblxc_la_SOURCES = \
 	version.c \
 	error.h error.c \
 	cgroup.c cgroup.h \
-	cr_plugin_columbia.c \
 	lxc.h \
 	lxc_utils.h \
 	lxc_lock.c lxc_lock.h \
@@ -37,17 +36,20 @@ liblxc_la_SOURCES = \
 	network.c network.h \
         nl.c nl.h \
         rtnl.c rtnl.h \
-        genl.c genl.h
+        genl.c genl.h \
+	\
+	cr_plugin_columbia.c lxc_plugin.h
 
 liblxc_la_LDFLAGS = -release @PACKAGE_VERSION@
 
 bin_SCRIPTS = \
 	lxc-ps \
-	lxc-ls \
 	lxc-netstat \
+	lxc-ls \
 	lxc-checkconfig
 
 bin_PROGRAMS = \
+	lxc-unshare \
 	lxc-init \
 	lxc-create \
 	lxc-destroy \
@@ -64,6 +66,9 @@ bin_PROGRAMS = \
 	lxc-checkpoint \
 	lxc-restart \
 	lxc-version
+
+lxc_unshare_SOURCES = lxc_unshare.c
+lxc_unshare_LDADD = liblxc.la
 
 lxc_init_SOURCES = lxc_init.c
 lxc_init_LDADD = liblxc.la
@@ -115,12 +120,20 @@ lxc_version_LDADD = liblxc.la
 
 install-exec-local:
 	-@export PATH=$$PATH:/sbin:/usr/sbin && \
-	 setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep $(bindir)/lxc-execute && \
-	setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep $(bindir)/lxc-start && \
-	setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep $(bindir)/lxc-restart && \
-	setcap cap_sys_admin=ep $(bindir)/lxc-init && \
-	mkdir -p $(prefix)/var/lxc && \
-	chmod ugo+rw $(prefix)/var/lxc || \
+	 setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
+		$(bindir)/lxc-execute && \
+	 setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
+		$(bindir)/lxc-start && \
+	 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
+		$(bindir)/lxc-restart && \
+	 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
+		$(bindir)/lxc-unshare && \
+	 setcap cap_sys_admin=ep \
+		$(bindir)/lxc-init && \
+	 setcap cap_sys_admin=ep \
+		$(bindir)/lxc-netstat && \
+	 mkdir -p $(prefix)/var/lxc && \
+	 chmod ugo+rw $(prefix)/var/lxc || \
 	(echo && echo && \
 	 echo "*****************************************************************" && \
 	 echo "*                                                               *" && \

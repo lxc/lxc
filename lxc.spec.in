@@ -77,7 +77,7 @@ development of containers
 %build
 
 # I don't understand why but I have to specify this prefix :(
-%configure --prefix=/ $args
+%configure $args %{confargs} --prefix=/
 
 ncpus=`egrep -c "^cpu[0-9]+" /proc/stat || :`
 make -j$ncpus
@@ -123,10 +123,18 @@ if [ $RES != 0 ]; then
     echo -e "\t* and reinstall lxc                                *"
     echo -e "\t****************************************************"
 else
-setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-execute && \
-setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-start && \
-setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep %{_bindir}/lxc-restart && \
-setcap cap_sys_admin=ep %{_bindir}/lxc-init 
+setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
+    %{_bindir}/lxc-execute && \
+setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
+    %{_bindir}/lxc-start && \
+setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
+    %{_bindir}/lxc-restart && \
+setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
+    %{_bindir}/lxc-unshare && \
+setcap cap_sys_admin=ep \
+    %{_bindir}/lxc-init &&
+setcap cap_sys_admin=ep \
+    %{_bindir}/lxc-netstat
 fi
 
 
