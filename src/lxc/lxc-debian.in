@@ -1,0 +1,283 @@
+#!/bin/bash
+# set -ex
+
+NAME="debian"
+CONFFILE="lxc.conf"
+MNTFILE="mount.conf"
+UTSNAME=
+IPV4="172.20.0.21"
+GATEWAY="172.20.0.1"
+INTERFACES="/etc/network/interfaces"
+INITTAB="/etc/inittab"
+HOSTNAME="/etc/hostname"
+FSTAB="/etc/fstab"
+CACHE="/var/cache/lxc/debian"
+
+create() {
+
+    # choose a container name, default is 'debian'
+    echo -n "What is the name for the container ? [$NAME] "
+    read _NAME_
+
+    if [ ! -z "$_NAME_" ]; then
+	NAME=$_NAME_
+    fi
+
+    # choose a hostname, default is the container name
+    echo -n "What hostname do you wish for this container ? [$NAME] "
+    read _UTSNAME_
+
+    if [ ! -z "$_UTSNAME_" ]; then
+	UTSNAME=$_UTSNAME_
+    else
+	UTSNAME=$NAME
+    fi
+
+    # choose an ipv4 address, better to choose the same network than
+    # your host
+    echo -n "What IP address do you wish for this container ? [$IPV4] "
+    read _IPV4_
+
+    if [ ! -z "$_IPV4_" ]; then
+	IPV4=$_IPV4_
+    fi
+
+    # choose the gateway ip address
+    echo -n "What is the gateway IP address ? [$GATEWAY] "
+    read _GATEWAY_
+
+    if [ ! -z "$_GATEWAY_" ]; then
+	GATEWAY=$_GATEWAY_
+    fi
+
+    # the rootfs name will be build with the container name
+    ROOTFS="./rootfs.$NAME"
+
+    # check if the rootfs does already exist
+    if [ ! -e "$ROOTFS" ]; then
+	(
+	    flock -n -x 200 
+
+	    RES=$?
+	    if [ "$RES" != "0" ]; then
+		echo "Cache repository is busy."
+		break
+	    fi
+
+	    echo "Choose your architecture"
+	    select ARCH in amd64 i386; do
+		echo "Architecture $ARCH selected"
+		break;
+	    done
+
+	    # check the mini debian was not already downloaded
+	    echo -n "Checking cache download ..."
+	    if [ ! -e "$CACHE/rootfs-$ARCH" ]; then
+		
+		echo "not cached"
+		
+		mkdir -p "$CACHE/rootfs-$ARCH"
+		
+	        # download a mini debian into a cache
+		echo "Downloading debian minimal ..."
+		debootstrap --verbose --variant=minbase --arch=$ARCH \
+		    --include apache,netbase,net-tools,iproute,openssh-server \
+		    etch $CACHE/rootfs-$ARCH http://ftp.debian.org/debian
+		
+		RESULT=$?
+		if [ "$RESULT" != "0" ]; then
+		    echo "Failed to download the rootfs, aborting."
+		    exit 1
+		fi
+		echo "Download complete."
+	    else
+		echo "Found."
+	    fi
+	    
+            # make a local copy of the minidebian
+	    echo -n "Copying rootfs ..."
+	    cp -a $CACHE/rootfs-$ARCH $ROOTFS && echo "Done." || exit
+	) 200>/var/lock/subsys/lxc
+    fi
+
+
+########################################
+# lxc configuration files
+########################################
+
+# lxc mount point
+
+cat <<EOF > $MNTFILE
+/dev	$(pwd)/$ROOTFS/dev none bind 0 0
+/dev/pts $(pwd)/$ROOTFS/dev/pts none bind 0 0
+/etc/resolv.conf $(pwd)/$ROOTFS/etc/resolv.conf none ro,bind 0 0
+EOF
+
+# lxc configuration
+
+cat <<EOF > $CONFFILE
+lxc.utsname = $UTSNAME
+lxc.network.type = veth
+lxc.network.flags = up
+lxc.network.link = br0
+lxc.network.name = eth0
+lxc.mount = $MNTFILE
+lxc.rootfs = $ROOTFS
+EOF
+
+
+########################################
+# rootfs configuration files tweak
+########################################
+
+# inittab
+
+cat <<EOF > $ROOTFS/$INITTAB
+id:3:initdefault:
+si::sysinit:/etc/init.d/rcS
+l0:0:wait:/etc/init.d/rc 0
+l1:1:wait:/etc/init.d/rc 1
+l2:2:wait:/etc/init.d/rc 2
+l3:3:wait:/etc/init.d/rc 3
+l4:4:wait:/etc/init.d/rc 4
+l5:5:wait:/etc/init.d/rc 5
+l6:6:wait:/etc/init.d/rc 6
+# Normally not reached, but fallthrough in case of emergency.
+z6:6:respawn:/sbin/sulogin
+1:2345:respawn:/sbin/getty 38400 console
+EOF
+
+# hostname
+cat <<EOF > $ROOTFS/$HOSTNAME
+$UTSNAME
+EOF
+
+# fstab
+
+cat <<EOF > $ROOTFS/$FSTAB
+tmpfs                   /dev/shm                tmpfs   defaults        0 0
+EOF
+
+# network
+
+cat <<EOF > $ROOTFS/$INTERFACES
+auto eth0 lo
+iface eth0 inet static
+address $IPV4
+netmask 255.255.255.0
+broadcast 0.0.0.0
+up route add default gw $GATEWAY
+iface lo inet loopback
+EOF
+
+# create the container object
+
+lxc-create -n $NAME -f $CONFFILE
+
+# remove the configuration files
+
+rm -f $CONFFILE
+rm -f $MNTFILE
+
+echo "Done."
+echo -e "\nYou can run your container with the 'lxc-start -n $NAME'\n"
+}
+
+destroy() {
+
+    echo -n "What is the name for the container ? [$NAME] "
+    read _NAME_
+
+    if [ ! -z "$_NAME_" ]; then
+	NAME=$_NAME_
+    fi
+
+    lxc-destroy -n $NAME
+    RETVAL=$?
+    if [ ! $RETVAL -eq 0 ]; then
+	echo "Failed to destroyed '$NAME'"
+	return $RETVAL;
+    fi
+
+    ROOTFS="./rootfs.$NAME"
+
+    echo -n "Shall I remove the rootfs [y/n] ? "
+    read
+    if [ "$REPLY" = "y" ]; then
+	rm -rf $ROOTFS
+    fi
+
+    return 0
+}
+
+help() {
+    cat <<EOF
+
+This script is a helper to create debian system containers.
+
+The script will create the container configuration file following
+the informations submitted interactively with 'lxc-debian create'
+
+The first creation will download, with debootstrap, a debian
+minimal and store it into a cache.
+
+The script will copy from the cache the root filesystem to the
+current directory.
+
+If there is a problem with the container, (bad configuration for 
+example), you can destroy the container with 'lxc-debian destroy'
+but without removing the rootfs and recreate it again with
+'lxc-debian create'.
+
+If you want to create another debian container, call the 'lxc-debian
+ create' again, specifying another name and new parameters.
+
+At any time you can purge the debian cache download by calling 
+'lxc-debian purge'
+
+Have fun :)
+
+EOF
+}
+
+purge() {
+
+    if [ ! -e $CACHE ]; then
+	exit 0
+    fi
+
+    # lock, so we won't purge while someone is creating a repository
+    (
+	flock -n -x 200 
+
+	RES=$?
+	if [ "$RES" != "0" ]; then
+	    echo "Cache repository is busy."
+	    exit 1
+	fi
+
+	echo -n "Purging the download cache..."
+	rm -rf $CACHE/* && echo "Done." || exit 1
+	exit 0
+
+    ) 200>/var/lock/subsys/lxc
+}
+
+if [ "$(id -u)" != "0" ]; then
+	echo "This script should be run as 'root'"
+	exit 1
+fi 
+
+case "$1" in
+    create)
+	create;;
+    destroy)
+	destroy;;
+    help)
+	help;;
+    purge)
+	purge;;
+    *)
+	echo "Usage: $0 {create|destroy|purge|help}"
+	exit 1;;
+esac

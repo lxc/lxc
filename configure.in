@@ -68,6 +68,7 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-ps
 	src/lxc/lxc-ls
 	src/lxc/lxc-netstat
+	src/lxc/lxc-debian
 	src/lxc/lxc-checkconfig	
 	etc/Makefile
 	etc/lxc-macvlan.conf

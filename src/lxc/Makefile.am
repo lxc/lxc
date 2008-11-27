@@ -46,6 +46,7 @@ bin_SCRIPTS = \
 	lxc-ps \
 	lxc-netstat \
 	lxc-ls \
+	lxc-debian \
 	lxc-checkconfig
 
 bin_PROGRAMS = \
