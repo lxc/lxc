@@ -1,7 +1,7 @@
 # Makefile.am
 
-SUBDIRS = doc src test etc
-DIST_SUBDIRS = config doc src test etc
+SUBDIRS = doc src test etc scripts 
+DIST_SUBDIRS = config doc src test etc scripts
 EXTRA_DIST = lxc.spec CONTRIBUTING MAINTAINERS ChangeLog
 
 ChangeLog::

@@ -63,13 +63,17 @@ AC_CONFIG_FILES([
 	doc/lxc.conf.sgml
 	doc/lxc.sgml
 
+	scripts/Makefile
+	scripts/lxc-debian
+	scripts/lxc-sshd
+
         src/Makefile
 	src/lxc/Makefile
 	src/lxc/lxc-ps
 	src/lxc/lxc-ls
 	src/lxc/lxc-netstat
-	src/lxc/lxc-debian
 	src/lxc/lxc-checkconfig	
+
 	etc/Makefile
 	etc/lxc-macvlan.conf
 	etc/lxc-no-netns.conf
@@ -77,6 +81,7 @@ AC_CONFIG_FILES([
 	etc/lxc-phys.conf
 	etc/lxc-veth.conf
 	etc/lxc-complex-config
+
 	test/Makefile
 ])
 AC_CONFIG_COMMANDS([default],[[]],[[]])
