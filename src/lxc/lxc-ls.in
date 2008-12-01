@@ -1,7 +1,6 @@
 #!/bin/bash
 
-prefix=@prefix@
-lxcpath=@localstatedir@/lxc
+lxcpath=@LOCALSTATEDIR@/lxc
 
 if [ ! -r $lxcpath ]; then
     exit 0

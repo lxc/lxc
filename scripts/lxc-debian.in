@@ -11,7 +11,7 @@ INTERFACES="/etc/network/interfaces"
 INITTAB="/etc/inittab"
 HOSTNAME="/etc/hostname"
 FSTAB="/etc/fstab"
-CACHE="/var/cache/lxc/debian"
+CACHE="@LOCALSTATEDIR@/cache/lxc/debian"
 
 create() {
 
@@ -172,7 +172,7 @@ EOF
 
 # create the container object
 
-lxc-create -n $NAME -f $CONFFILE
+@BINDIR@/lxc-create -n $NAME -f $CONFFILE
 
 # remove the configuration files
 
@@ -192,7 +192,7 @@ destroy() {
 	NAME=$_NAME_
     fi
 
-    lxc-destroy -n $NAME
+    @BINDIR@/lxc-destroy -n $NAME
     RETVAL=$?
     if [ ! $RETVAL -eq 0 ]; then
 	echo "Failed to destroyed '$NAME'"
@@ -257,10 +257,7 @@ purge() {
 	fi
 
 	echo -n "Purging the download cache..."
-	# I don't use here the variable, just to be sure
-	# nobody touching the CACHE variable will lead to
-	# remove the real rootfs '/'.
-	rm -rf /var/cache/lxc/debian/* && echo "Done." || exit 1
+	rm --preserve-root --one-file-system -rf $CACHE && echo "Done." || exit 1
 	exit 0
 
     ) 200>/var/lock/subsys/lxc

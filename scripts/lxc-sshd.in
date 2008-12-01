@@ -407,7 +407,7 @@ cat <<EOF >> $MNTFILE
 EOF
 fi
 
-    lxc-create -n $NAME -f $CONFFILE
+    @BINDIR@/lxc-create -n $NAME -f $CONFFILE
 
     rm -f $MNTFILE
     rm -f $CONFFILE
@@ -434,7 +434,7 @@ destroy() {
 	rm -rf $ROOTFS
     fi
 
-    lxc-destroy -n $NAME
+    @BINDIR@/lxc-destroy -n $NAME
 }
 
 help() {

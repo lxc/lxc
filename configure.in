@@ -15,7 +15,9 @@ AC_PROG_LIBTOOL
 AC_CHECK_PROG(SETCAP, setcap, yes, no)
 AC_CHECK_PROG(DOCBOOK, docbook2man, yes, no)
 AM_CONDITIONAL(ENABLE_DOCBOOK, test x$DOCBOOK = xyes)
-PKG_PROG_PKG_CONFIG
+AS_AC_EXPAND(BINDIR, $bindir)
+AS_AC_EXPAND(SYSCONFDIR, $sysconfdir)
+AS_AC_EXPAND(LOCALSTATEDIR, $localstatedir)
 
 AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h], [], AC_MSG_ERROR([netlink headers not found]),
 [#include <linux/types.h>

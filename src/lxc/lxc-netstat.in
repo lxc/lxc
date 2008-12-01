@@ -1,8 +1,7 @@
 #!/bin/bash
 # set -ex
 
-prefix=@prefix@
-lxcpath=@localstatedir@/lxc
+lxcpath=@LOCALSTATEDIR@/lxc
 exec=""
 
 if [ ! -r $lxcpath ]; then
@@ -24,7 +23,7 @@ for i in $*; do
 done
 
 if [ -z "$exec" ]; then
-    exec @bindir@/lxc-unshare -m -- @bindir@/lxc-netstat -n $name --exec $*
+    exec @BINDIR@/lxc-unshare -m -- @BINDIR@/lxc-netstat -n $name --exec $*
 fi
 
 if [ -z "$name" ]; then
