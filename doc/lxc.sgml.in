@@ -56,7 +56,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       a container with a predefined configuration template, it may
       work.
       <command>
-	lxc-execute -n foo -f /etc/lxc/lxc-macvlan.conf /bin/bash
+	@BINDIR@/lxc-execute -n foo -f @SYSCONFDIR@/lxc/lxc-macvlan.conf /bin/bash
       </command>
     </para>
   </refsect1>
@@ -72,7 +72,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
     <para>
       The linux containers, <command>lxc</command>, aims to use these
-      new functionnalities to provide an userspace container object
+      new functionalities to provide an userspace container object
       which provides full resource isolation and resource control for
       an applications or a system.
     </para>
@@ -90,10 +90,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsect1>
     <title>Requirements</title>
     <para>
-      The <command>lxc</command> relies on a set of functionnalies
+      The <command>lxc</command> relies on a set of functionalies
       provided by the kernel which needs to be active. Depending of
-      the missing functionnalities the <command>lxc</command> will
-      work with a restricted number of functionnalities or will simply
+      the missing functionalities the <command>lxc</command> will
+      work with a restricted number of functionalities or will simply
       fails.
     </para>
 
@@ -131,10 +131,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 	But the kernel version >= 2.6.27 shipped with the distros, may
 	work with <command>lxc</command>, this one will have less
-	functionnalities but enough to be interesting.
+	functionalities but enough to be interesting.
 
 	The planned kernel version which <command>lxc</command> should
-	be fully functionnaly is 2.6.29.
+	be fully functionaly is 2.6.29.
       </para>
 
       <para>
@@ -158,15 +158,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <para>How to run an application in a container ?</para>
     <para>
       Before running an application, you should know what are the
-      resource you want to isolate. The default configuration is
-      isolation of the pids, the sysv ipc and the mount points.  If
-      you want to run a simple shell inside a container, a basic
-      configuration is needed, especially if you want to share the
-      rootfs. If you want to run an application
-      like <command>sshd</command>, you should provide a new network
-      stack and a new hostname. If you want to avoid conflicts with
-      some files eg. <filename>/var/run/httpd.pid</filename>, you
-      should remount <filename>/var/run</filename> with an empty
+      resources you want to isolate. The default configuration is to
+      isolate the pids, the sysv ipc and the mount points. If you want
+      to run a simple shell inside a container, a basic configuration
+      is needed, especially if you want to share the rootfs. If you
+      want to run an application like <command>sshd</command>, you
+      should provide a new network stack and a new hostname. If you
+      want to avoid conflicts with some files
+      eg. <filename>/var/run/httpd.pid</filename>, you should
+      remount <filename>/var/run</filename> with an empty
       directory. If you want to avoid the conflicts in all the cases,
       you can specify a rootfs for the container. The rootfs can be a
       directory tree, previously bind mounted with the initial rootfs,
@@ -233,19 +233,13 @@ rootfs
 	/dev/pts /home/root/debian/rootfs/dev/pts  none bind 0 0
       </programlisting>
 
-      A good idea to have the console is to mount bind this one to our
-      tty, so we see the output of the system container booting and
-      we can log to it.
+      More information can be added to the container to facilitate the
+      configuration. For example, make accessible from the container
+      the resolv.conf file belonging to the host.
 
       <programlisting>
-	$(tty) /home/root/debian/rootfs/dev/console none bind 0 0
+	/etc/resolv.conf /home/root/debian/rootfs/etc/resolv.conf none bind 0 0
       </programlisting>
-    </para>
-
-    <para>These examples are avaible in the contrib package located at:
-      <systemitem>
-	https://sourceforge.net/projects/lxc/
-      </systemitem>
     </para>
 
     <refsect2>
@@ -363,8 +357,8 @@ rootfs
       </para>
 
       <para>
-	If the application is no longer responding, inaccessible and
-	is not able to finish by itself, a
+	If the application is no longer responding, inaccessible or is
+	not able to finish by itself, a
 	wild <command>lxc-stop</command> command will kill all the
 	processes in the container without pity.
 	<programlisting>
@@ -382,7 +376,7 @@ rootfs
 	  lxc-freeze -n foo
 	</programlisting>
 
-	will put all the processes in an ininteruptible state and 
+	will put all the processes in an uninteruptible state and 
 
 	<programlisting>
 	  lxc-unfreeze -n foo
@@ -438,7 +432,7 @@ rootfs
 
       <para>
 	<command>lxc-info</command> gives informations for a specific
-	container, at present only the state of the container is
+	container, at present time, only the state of the container is
 	displayed.
       </para>
 
