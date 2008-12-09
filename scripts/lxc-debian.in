@@ -116,13 +116,40 @@ EOF
 # lxc configuration
 
 cat <<EOF > $CONFFILE
+
 lxc.utsname = $UTSNAME
+
 lxc.network.type = veth
 lxc.network.flags = up
 lxc.network.link = br0
 lxc.network.name = eth0
+
 lxc.mount = $MNTFILE
+
 lxc.rootfs = $ROOTFS
+
+lxc.cgroup.devices.deny = a
+
+# /dev/null and zero
+lxc.cgroup.devices.allow = c 1:3 rwm
+lxc.cgroup.devices.allow = c 1:5 rwm
+
+# consoles
+lxc.cgroup.devices.allow = c 5:1 rwm
+lxc.cgroup.devices.allow = c 5:0 rwm
+lxc.cgroup.devices.allow = c 4:0 rwm
+lxc.cgroup.devices.allow = c 4:1 rwm
+
+# /dev/{,u}random
+lxc.cgroup.devices.allow = c 1:9 rwm
+lxc.cgroup.devices.allow = c 1:8 rwm
+
+# /dev/pts/* - pts namespaces are "coming soon"
+lxc.cgroup.devices.allow = c 136:* rwm
+
+# rtc
+lxc.cgroup.devices.allow = c 254:0 rwm
+
 EOF
 
 
@@ -172,12 +199,17 @@ EOF
 
 # create the container object
 
-@BINDIR@/lxc-create -n $NAME -f $CONFFILE
+@BINDIR@/lxc-create -n $NAME -f $CONFFILE 
+RES=$?
 
 # remove the configuration files
-
 rm -f $CONFFILE
 rm -f $MNTFILE
+
+if [ "$RES" != "0" ]; then
+    echo "Failed to create '$NAME'"
+    exit 1
+fi
 
 echo "Done."
 echo -e "\nYou can run your container with the 'lxc-start -n $NAME'\n"
