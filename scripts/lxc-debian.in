@@ -18,6 +18,13 @@ CACHE="@LOCALSTATEDIR@/cache/lxc/debian"
 #                    debian custom configuration files
 ################################################################################
 
+# custom selinux
+
+write_debian_selinux() {
+    mkdir $ROOTFS/selinux
+    echo 0 > $ROOTFS/selinux/enforce
+}
+
 # custom fstab
 
 write_debian_fstab() {
@@ -219,7 +226,6 @@ create() {
 	) 200>/var/lock/subsys/lxc
     fi
 
-
 write_lxc_mounts
 
 write_lxc_configuration
@@ -233,6 +239,8 @@ write_debian_fstab
 write_debian_network
 
 write_debian_sshd_config
+
+write_debian_selinux
 
 @BINDIR@/lxc-create -n $NAME -f $CONFFILE 
 RES=$?
