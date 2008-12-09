@@ -451,7 +451,7 @@ static int config_cgroup(const char *key, char *value, struct lxc_conf *lxc_conf
 	cgelem->value = strdup(value);
 	cglist->elem = cgelem;
 
-	lxc_list_add(&lxc_conf->cgroup, cglist);
+	lxc_list_add_tail(&lxc_conf->cgroup, cglist);
 
 	return 0;
 }
