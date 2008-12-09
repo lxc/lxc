@@ -7,7 +7,7 @@ struct lxc_list {
 	struct lxc_list *prev;
 };
 
-#define lxc_init_list(l) { .next = l, .prev = l, }
+#define lxc_init_list(l) { .next = l, .prev = l }
 
 #define lxc_list_for_each(__iterator, __list)				\
 	for (__iterator = (__list)->next;				\
@@ -35,13 +35,25 @@ static inline int lxc_list_empty(struct lxc_list *list)
 	return list == list->next;
 }
 
+static inline void __lxc_list_add(struct lxc_list *new, 
+				  struct lxc_list *prev, 
+				  struct lxc_list *next)
+{
+        next->prev = new;
+        new->next = next;
+        new->prev = prev;
+        prev->next = new;
+}
+
 static inline void lxc_list_add(struct lxc_list *head, struct lxc_list *list)
 {
-	struct lxc_list *next = head->next;
-	next->prev = list;
-	list->next = next;
-	list->prev = head;
-	head->next = list;
+	__lxc_list_add(list, head, head->next);
+}
+
+static inline void lxc_list_add_tail(struct lxc_list *head, 
+				     struct lxc_list *list)
+{
+	__lxc_list_add(list, head->prev, head);
 }
 
 static inline void lxc_list_del(struct lxc_list *list)
