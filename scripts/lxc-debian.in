@@ -146,6 +146,7 @@ lxc.cgroup.devices.allow = c 1:8 rwm
 
 # /dev/pts/* - pts namespaces are "coming soon"
 lxc.cgroup.devices.allow = c 136:* rwm
+lxc.cgroup.devices.allow = c 5:2 rwm
 
 # rtc
 lxc.cgroup.devices.allow = c 254:0 rwm
