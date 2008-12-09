@@ -668,10 +668,14 @@ static int setup_rootfs(const char *name)
 
 static int setup_console(const char *name, const char *tty)
 {
-	if (access("/dev/console", R_OK|W_OK))
+	char console[MAXPATHLEN];
+
+	snprintf(console, MAXPATHLEN, LXCPATH "/%s/rootfs/dev/console", name);
+
+	if (access(console, R_OK|W_OK))
 		return 0;
 	
-	if (mount(tty, "/dev/console", "none", MS_BIND, 0)) {
+	if (mount(tty, console, "none", MS_BIND, 0)) {
 		lxc_log_error("failed to mount the console");
 		return -1;
 	}
@@ -1411,14 +1415,14 @@ int lxc_setup(const char *name, const char *tty)
 		return -LXC_ERROR_SETUP_MOUNT;
 	}
 
-	if (conf_has_rootfs(name) && setup_rootfs(name)) {
-		lxc_log_error("failed to set rootfs for '%s'", name);
-		return -LXC_ERROR_SETUP_ROOTFS;
-	}
-
 	if (tty[0] && setup_console(name, tty)) {
 		lxc_log_error("failed to setup the console for '%s'", name);
 		return -LXC_ERROR_SETUP_CONSOLE;
+	}
+
+	if (conf_has_rootfs(name) && setup_rootfs(name)) {
+		lxc_log_error("failed to set rootfs for '%s'", name);
+		return -LXC_ERROR_SETUP_ROOTFS;
 	}
 
 	return 0;
