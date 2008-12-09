@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT([lxc], [0.5.0])
+AC_INIT([lxc], [0.5.1])
 
 AC_CONFIG_SRCDIR([configure.in])
 AC_CONFIG_AUX_DIR([config])
@@ -23,6 +23,10 @@ AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h], [], AC_MSG_ERROR([netlink 
 [#include <linux/types.h>
 #include <bits/sockaddr.h>
 #include <linux/socket.h>])
+
+AC_CHECK_HEADERS([sys/capability.h], [], AC_MSG_ERROR([please install libcap-devel.]),
+[#include <sys/capability.h>])
+
 AC_PROG_GCC_TRADITIONAL
 
 if test "x$GCC" = "xyes"; then
@@ -37,6 +41,7 @@ AC_ARG_ENABLE(network_destroy, [  --disable-network-destroy  disable network des
 if test "x$enable_network_destroy" = "xyes"; then
    CFLAGS="$CFLAGS -DNETWORK_DESTROY"
 fi
+
 AC_ARG_ENABLE(test, [  --enable-test    compile test program [default=no]],, enable_test=no)
 AM_CONDITIONAL(ENABLE_TEST, test x$enable_test = xyes)
 
