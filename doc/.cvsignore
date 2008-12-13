@@ -1,0 +1,8 @@
+Makefile.in
+Makefile
+*.sgml
+*.1
+*.5
+*.7
+manpage.links
+manpage.refs

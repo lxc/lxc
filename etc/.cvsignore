@@ -1,5 +1,7 @@
 Makefile
 Makefile.in
+lxc-complex-config
+lxc-empty-netns.conf
 lxc-macvlan.conf
 lxc-no-netns.conf
 lxc-phys.conf

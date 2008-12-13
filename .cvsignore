@@ -5,3 +5,8 @@ config.status
 config.log
 autom4te.cache
 aclocal.m4
+libtool
+lxc.spec
+*.tar.gz
+.pc
+patches
