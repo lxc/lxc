@@ -1,3 +1,6 @@
+
+EXTRA_DIST = FAQ.txt
+
 if ENABLE_DOCBOOK
 man_MANS = \
 	lxc-create.1 \
