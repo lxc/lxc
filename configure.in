@@ -4,6 +4,7 @@
 AC_INIT([lxc], [0.5.1])
 
 AC_CONFIG_SRCDIR([configure.in])
+AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([config])
 AM_CONFIG_HEADER([src/config.h])
 AM_INIT_AUTOMAKE([-Wno-portability])

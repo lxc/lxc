@@ -4,7 +4,7 @@ set -x
 
 test -d autom4te.cache && rm -rf autom4te.cache
 
-ACLOCAL_AMFLAGS="-I config $ACLOCAL_AMFLAGS"
+ACLOCAL_AMFLAGS="-I m4 -I config $ACLOCAL_AMFLAGS"
 libtoolize --force
 aclocal $ACLOCAL_AMFLAGS || exit 1
 autoheader || exit 1
