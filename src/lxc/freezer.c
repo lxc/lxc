@@ -36,7 +36,7 @@
 
 static int freeze_unfreeze(const char *name, int freeze)
 {
-	char freezer[MAXPATHLEN], *f = freeze?"FROZEN":"THAWED";
+	char freezer[MAXPATHLEN], *f;
 	int fd, ret = -1;
 	
 	snprintf(freezer, MAXPATHLEN, 
@@ -48,7 +48,20 @@ static int freeze_unfreeze(const char *name, int freeze)
 		return -1;
 	}
 
-	ret = write(fd, f, strlen(f) + 1) < 0;
+	if (freeze) {
+		f = "FROZEN";
+		ret = write(fd, f, strlen(f) + 1) < 0;
+	} else {
+		f = "THAWED";
+		ret = write(fd, f, strlen(f) + 1) < 0;
+
+		/* compatibility code with old freezer interface */
+		if (ret) {
+			f = "RUNNING";
+			ret = write(fd, f, strlen(f) + 1) < 0;
+		}
+	}
+
 	close(fd);
 	if (ret) 
 		lxc_log_syserror("failed to write to '%s'", freezer);
