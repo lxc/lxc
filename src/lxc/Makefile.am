@@ -120,6 +120,7 @@ lxc_version_LDADD = liblxc.la
 
 install-exec-local:
 	-@export PATH=$$PATH:/sbin:/usr/sbin && \
+	 mkdir -p $(localstatedir) && \
 	 setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
 		$(bindir)/lxc-execute && \
 	 setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
