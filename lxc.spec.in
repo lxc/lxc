@@ -20,10 +20,10 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-%define _unpackaged_files_terminate_build    0
+%define _unpackaged_files_terminate_build 0
 
 %define RELEASE 1
-%define rel     %{?CUSTOM_RELEASE} %{!?CUSTOM_RELEASE: %RELEASE}
+%define rel %{?CUSTOM_RELEASE} %{!?CUSTOM_RELEASE: %RELEASE}
 
 #
 # Arguments that can be passed to the rpm builder:
@@ -41,12 +41,11 @@
 Name: @PACKAGE@
 Version: @VERSION@
 Release: %{rel}
-Packager:  <dlezcano@fr.ibm.com>
 URL: http://lxc.sourceforge.net
 Summary: %name
 Group: Applications/System
 License: LGPL
-Source:	%name/%name-%version.tar.gz
+Source: %name/%name-%version.tar.gz
 BuildRoot: %_tmppath/%name-%version-root
 
 %description
@@ -62,7 +61,7 @@ Virtual Private Server, or to run isolated applications like bash or
 sshd.
 
 %package devel
-Release:        %{rel}
+Release: %{rel}
 Summary: development library for %{name}
 Requires: libcap
 Group: Application/System
@@ -93,7 +92,7 @@ rm -rf %{buildroot}
 %post
 if [ -d /var/lxc ]; then
     for i in $(ls -1 /var/lxc); do
-	chmod -fR go-rwx /var/lxc/$i
+        chmod -fR go-rwx /var/lxc/$i
     done
     mv /var/lxc /var/lxc.rpm-$$
 fi
@@ -102,7 +101,7 @@ mkdir -p /var/lxc
 
 if [ -d /var/lxc.rpm-$$ ]; then
     for i in $(ls -1 /var/lxc.rpm-$$); do
-	cp -a /var/lxc.rpm-$$/$i /var/lxc
+        cp -a /var/lxc.rpm-$$/$i /var/lxc
     done
 fi
 
