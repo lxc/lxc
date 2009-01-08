@@ -56,13 +56,17 @@ static int create_lxc_directory(const char *dirname)
 {
 	char path[MAXPATHLEN];
 
-	if (mkdir(LXCPATH, 0755) && errno != EEXIST)
+	if (mkdir(LXCPATH, 0755) && errno != EEXIST) {
+		lxc_log_syserror("failed to create %s directory", LXCPATH);
 		return -errno;
+	}
 
 	sprintf(path, LXCPATH "/%s", dirname);
 
-	if (mkdir(path, 0755))
+	if (mkdir(path, 0755)) {
+		lxc_log_syserror("failed to create %s directory", path);
 		return -errno;
+	}
 
 	return 0;
 }
