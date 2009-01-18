@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+# set -ex
 
 NAME="debian"
 CONFFILE="lxc.conf"
