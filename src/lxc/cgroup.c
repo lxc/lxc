@@ -92,8 +92,13 @@ int lxc_link_nsgroup(const char *name, pid_t pid)
 int lxc_unlink_nsgroup(const char *name)
 {
 	char nsgroup[MAXPATHLEN];
+	char path[MAXPATHLEN];
 
 	snprintf(nsgroup, MAXPATHLEN, LXCPATH "/%s/nsgroup", name);
+	
+	if (readlink(nsgroup, path, MAXPATHLEN) >  0)
+		rmdir(path);
+
 	return unlink(nsgroup);
 }
 
