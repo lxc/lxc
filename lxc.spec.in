@@ -20,37 +20,21 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-%define _unpackaged_files_terminate_build 0
-
-%define RELEASE 1
-%define rel %{?CUSTOM_RELEASE} %{!?CUSTOM_RELEASE: %RELEASE}
-
-#
-# Arguments that can be passed to the rpm builder:
-#
-# --define 'confargs <extra args to configure args>' (def. '')
-#
-
-%{!?confargs: %{expand:%%define confargs ''}}
-
-# What kernel are we building for?
-%{!?kernel: %{expand:%%define kernel %(uname -r)}}
-
-%define _prefix /usr
-
 Name: @PACKAGE@
 Version: @VERSION@
-Release: %{rel}
+Release: 1
 URL: http://lxc.sourceforge.net
-Summary: %name
+Source: http://dl.sourceforge.net/sourceforge/%{name}/%{name}-%{version}.tar.gz
+Summary: %{name} : Linux Container
 Group: Applications/System
 License: LGPL
-Source: %name/%name-%version.tar.gz
-BuildRoot: %_tmppath/%name-%version-root
+BuildRoot: %{_tmppath}/%{name}-%{version}-build
+Requires: libcap
+BuildRequires: libcap libcap-devel docbook-utils
 
 %description
 
-The package "%name" provides the command lines to create and manage
+The package "%{name}" provides the command lines to create and manage
 containers.  It contains a full featured container with the isolation
 / virtualization of the pids, the ipc, the utsname, the mount points,
 /proc, /sys, the network and it takes into account the control groups.
@@ -61,49 +45,32 @@ Virtual Private Server, or to run isolated applications like bash or
 sshd.
 
 %package devel
-Release: %{rel}
+Release: 1
 Summary: development library for %{name}
-Requires: libcap
-Group: Application/System
+Group: Development/Libraries
 
 %description devel
 The %{name}-devel package contains header files and library needed for
-development of containers
+development of the linux containers.
 
 %prep
-%setup -q
-
+%setup
 %build
-
-# I don't understand why but I have to specify this prefix :(
-%configure $args %{confargs} --prefix=/
-
-ncpus=`egrep -c "^cpu[0-9]+" /proc/stat || :`
-make -j$ncpus
+PATH=$PATH:/usr/sbin:/sbin %configure
+make %{?_smp_mflags}
 
 %install
-rm -rf %{buildroot}
+%makeinstall
+
+find $RPM_BUILD_ROOT -type f -name '*.la' -exec rm -f {} ';'  
 
 %clean
 rm -rf %{buildroot}
 
+%post
+mkdir -p /var/lxc
 chmod ugo+w /var/lxc
 
-PATH=$PATH:/usr/sbin:/sbin
-
-which setcap 2>&1 > /dev/null
-RES=$?
-
-if [ $RES != 0 ]; then
-    echo -e "\t********************WARNING*************************"
-    echo -e "\t* The 'setcap' command was not found, this is not  *" 
-    echo -e "\t* a problem and the 'lxc' package is installed but *"
-    echo -e "\t* you will have to run the 'lxc' commands as root. *"
-    echo -e "\t* If you wish to run these commands as a non-root  *"
-    echo -e "\t* user, you will need to install libcap-2 package  *"
-    echo -e "\t* and reinstall lxc                                *"
-    echo -e "\t****************************************************"
-else
 setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
     %{_bindir}/lxc-execute && \
 setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
@@ -126,15 +93,16 @@ fi
 %{_bindir}/*
 %{_mandir}/*
 
-# %post -p /sbin/ldconfig
-# %postun -p /sbin/ldconfig
-
 %files devel
 %defattr(-,root,root)
 %{_includedir}/%{name}/*
+%{_libdir}/*.so*
 %{_libdir}/*.a
 
 %changelog
+
+* Sun Jan 25 2009 Daniel Lezcano <daniel.lezcano@free.fr> - Version 0.6.0
+- Reduced spec file
 
 * Sun Aug 3 2008 Daniel Lezcano <dlezcano@fr.ibm.com> - Version 0.1.0
 - Initial RPM release.
