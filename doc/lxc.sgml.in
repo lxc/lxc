@@ -368,6 +368,20 @@ rootfs
     </refsect2>
 
     <refsect2>
+      <title>Connect to an available tty</title>
+      <para>
+	If the container is configured with the ttys, it is possible
+	to access it through them. It is up to the container to
+	provide a set of available tty to be used by the following
+	command. When the tty is lost, it is possible to reconnect it
+	without login again.
+	<programlisting>
+	  lxc-console -n foo -t 3
+	</programlisting>
+      </para>
+    </refsect2>
+
+    <refsect2>
       <title>Freeze / Unfreeze a container</title>
       <para>
 	Sometime, it is useful to stop all the processes belonging to
@@ -588,6 +602,11 @@ rootfs
 
       <citerefentry>
 	<refentrytitle><command>lxc-stop</command></refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+	<refentrytitle><command>lxc-console</command></refentrytitle>
 	<manvolnum>1</manvolnum>
       </citerefentry>,
 

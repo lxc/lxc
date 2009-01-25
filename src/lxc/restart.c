@@ -47,6 +47,7 @@ LXC_TTY_HANDLER(SIGQUIT);
 int lxc_restart(const char *name, const char *statefile,
 		unsigned long flags)
 {
+	struct lxc_tty_info tty_info = { 0 };
 	char *init = NULL, *val = NULL;
 	char tty[MAXPATHLEN];
 	int fd, lock, sv[2], sync = 0, err = -1;
@@ -55,13 +56,12 @@ int lxc_restart(const char *name, const char *statefile,
 
 	lock = lxc_get_lock(name);
 	if (lock < 0)
-		return lock == -EWOULDBLOCK ? 
-			-LXC_ERROR_BUSY : 
-			-LXC_ERROR_LOCK;
+		return lock;
 
 	/* Begin the set the state to STARTING*/
 	if (lxc_setstate(name, STARTING)) {
-		lxc_log_error("failed to set state %s", lxc_state2str(STARTING));
+		lxc_log_error("failed to set state %s", 
+			      lxc_state2str(STARTING));
 		goto out;
 	}
 
@@ -113,7 +113,7 @@ int lxc_restart(const char *name, const char *statefile,
 		}
 
 		/* Setup the container, ip, names, utsname, ... */
-		if (lxc_setup(name, tty)) {
+		if (lxc_setup(name, tty, &tty_info)) {
 			lxc_log_error("failed to setup the container");
 			if (write(sv[0], &sync, sizeof(sync)) < 0)
 				lxc_log_syserror("failed to write the socket");

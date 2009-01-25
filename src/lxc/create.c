@@ -99,7 +99,7 @@ int lxc_create(const char *name, struct lxc_conf *conf)
 	err = create_lxc_directory(name);
 	if (err < 0)
 		return err == -EEXIST ?
-			-LXC_ERROR_ALREADY_EXISTS:LXC_ERROR_INTERNAL;
+			-LXC_ERROR_EEXIST : LXC_ERROR_INTERNAL;
 	
 	lock = lxc_get_lock(name);
 	if (lock < 0)

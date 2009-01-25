@@ -40,6 +40,7 @@ extern "C" {
 #include <lxc/lxc_lock.h>
 #include <lxc/lxc_namespace.h>
 #include <lxc/lxc_utils.h>
+#include <lxc/error.h>
 #include <lxc/cgroup.h>
 #include <lxc/monitor.h>
 
@@ -120,7 +121,7 @@ extern int lxc_monitor_close(int fd);
  * @name : the name of container
  * Returns 0 on sucess, < 0 otherwise
  */
-extern int lxc_console(const char *name);
+extern int lxc_console(const char *name, int ttynum, int *fd);
 
 /*
  * Freeze all the tasks running inside the container <name>

@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT([lxc], [0.5.2])
+AC_INIT([lxc], [0.6.0])
 
 AC_CONFIG_SRCDIR([configure.in])
 AC_CONFIG_MACRO_DIR([m4])
@@ -60,6 +60,7 @@ AC_CONFIG_FILES([
 	doc/lxc-execute.sgml
 	doc/lxc-start.sgml
 	doc/lxc-stop.sgml
+	doc/lxc-console.sgml
 	doc/lxc-freeze.sgml
 	doc/lxc-unfreeze.sgml
 	doc/lxc-monitor.sgml

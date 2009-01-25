@@ -20,41 +20,12 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-#ifndef __lxc_error_h
-#define __lxc_error_h
 
-typedef enum {
-	LXC_SUCCESS, /* 0 == success ;) */
+extern int lxc_af_unix_open(const char *path, int type, int flags);
+extern int lxc_af_unix_close(int fd);
+extern int lxc_af_unix_connect(const char *path);
+extern int lxc_af_unix_send_fd(int fd, int sendfd, void *data, size_t size);
+extern int lxc_af_unix_recv_fd(int fd, int *recvfd, void *data, size_t size);
+extern int lxc_af_unix_send_credential(int fd, void *data, size_t size);
+extern int lxc_af_unix_rcv_credential(int fd, void *data, size_t size);
 
-	LXC_ERROR_LOCK,
-
-	LXC_ERROR_ESRCH,
-	LXC_ERROR_EEXIST,
-	LXC_ERROR_EBUSY,
-	LXC_ERROR_ENOENT,
-	LXC_ERROR_EACCES,
-	LXC_ERROR_WRONG_COMMAND,
-
-	LXC_ERROR_CONF_CGROUP,
-	LXC_ERROR_CONF_MOUNT,
-	LXC_ERROR_CONF_UTSNAME,
-	LXC_ERROR_CONF_NETWORK,
-	LXC_ERROR_CONF_TTY,
-	LXC_ERROR_CONF_ROOTFS,
-
-	LXC_ERROR_SETUP_CGROUP,
-	LXC_ERROR_SETUP_MOUNT,
-	LXC_ERROR_SETUP_UTSNAME,
-	LXC_ERROR_SETUP_NETWORK,
-	LXC_ERROR_SETUP_CONSOLE,
-	LXC_ERROR_SETUP_TTY,
-	LXC_ERROR_SETUP_ROOTFS,
-
-	LXC_ERROR_TTY_DENIED,
-	LXC_ERROR_TTY_EAGAIN,
-	LXC_ERROR_INTERNAL,
-
-	LXC_LAST_ERROR,
-} lxc_error_t;
-
-#endif

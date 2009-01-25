@@ -31,7 +31,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include "error.h"
 #include <lxc/lxc.h>
 
 #define MAXPIDLEN 20
@@ -46,20 +45,17 @@ int lxc_stop(const char *name)
 	lock = lxc_get_lock(name);
 	if (lock >= 0) {
 		lxc_put_lock(lock);
-		return -LXC_ERROR_EMPTY;
+		return -LXC_ERROR_ESRCH;
 	}
 
-	if (lock < 0 && lock != -EWOULDBLOCK) {
-		if (lock == -ENOENT)
-			return -LXC_ERROR_NOT_FOUND;
-		return -LXC_ERROR_LOCK;
-	}
+	if (lock < 0 && lock != -LXC_ERROR_EBUSY)
+		return lock;
 
 	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
 	fd = open(init, O_RDONLY);
 	if (fd < 0) {
 		lxc_log_syserror("failed to open init file for %s", name);
-		goto out_unlock;
+		goto out_close;
 	}
 	
 	if (read(fd, val, sizeof(val)) < 0) {
@@ -83,7 +79,5 @@ int lxc_stop(const char *name)
 
 out_close:
 	close(fd);
-out_unlock:
-	lxc_put_lock(lock);
 	return ret;
 }

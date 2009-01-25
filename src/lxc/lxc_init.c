@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
@@ -42,7 +43,6 @@ static struct option options[] = {
 int main(int argc, char *argv[])
 {
 	pid_t pid;
-
 	int nbargs = 0;
 	char **aargv;
 
@@ -84,6 +84,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "failed to exec: %s\n", aargv[0]);
 		exit(1);
 	}
+
+	
 
 	for (;;) {
 		int status;

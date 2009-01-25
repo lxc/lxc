@@ -24,6 +24,7 @@
 #define _conf_h
 
 #include <netinet/in.h>
+#include <sys/param.h>
 
 enum { 
 	EMPTY,
@@ -117,9 +118,34 @@ struct lxc_cgroup {
 struct lxc_conf {
 	char *rootfs;
 	char *fstab;
+	int tty;
 	struct utsname *utsname;
 	struct lxc_list cgroup;
 	struct lxc_list networks;
+};
+
+/*
+ * Defines a structure containing a pty information for
+ * virtualizing a tty
+ * @name   : the path name of the slave pty side
+ * @master : the file descriptor of the master
+ * @slave  : the file descriptor of the slave
+ */
+struct lxc_pty_info {
+	char name[MAXPATHLEN];
+	int master;
+	int slave;
+	int busy;
+};
+
+/*
+ * Defines the number of tty configured and contains the
+ * instanciated ptys
+ * @nbtty = number of configured ttys
+ */
+struct lxc_tty_info {
+	int nbtty;
+	struct lxc_pty_info *pty_info;
 };
 
 /*
@@ -136,10 +162,14 @@ extern int conf_create_network(const char *name, pid_t pid);
 
 extern int conf_destroy_network(const char *name);
 
+extern int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info);
+extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
+
 /*
  * Configure the container from inside
  */
-extern int lxc_setup(const char *name, const char *tty);
+extern int lxc_setup(const char *name, const char *tty, 
+		     const struct lxc_tty_info *tty_info);
 
 extern int conf_has(const char *name, const char *info);
 
@@ -148,6 +178,7 @@ extern int conf_has(const char *name, const char *info);
 #define conf_has_utsname(__name) conf_has(__name, "utsname")
 #define conf_has_network(__name) conf_has(__name, "network")
 #define conf_has_console(__name) conf_has(__name, "console")
-#define conf_has_cgroup(__name) conf_has(__name, "cgroup")
+#define conf_has_cgroup(__name)  conf_has(__name, "cgroup")
+#define conf_has_tty(__name)     conf_has(__name, "tty")
 
 #endif

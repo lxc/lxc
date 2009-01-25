@@ -29,17 +29,18 @@ static const char *const catalogue[] = {
 
 	[LXC_ERROR_LOCK] = "Failed to lock the container",
 
-	[LXC_ERROR_EMPTY] = "The container is empty",
-	[LXC_ERROR_ALREADY_EXISTS] = "The container already exists",
-	[LXC_ERROR_BUSY] = "The container is busy",
-	[LXC_ERROR_NOT_FOUND] = "The container was not found",
-	[LXC_ERROR_PERMISSION_DENIED] = "Permission denied",
+	[LXC_ERROR_ESRCH] = "The container is empty",
+	[LXC_ERROR_EEXIST] = "The container already exists",
+	[LXC_ERROR_EBUSY] = "The container is busy",
+	[LXC_ERROR_ENOENT] = "The container was not found",
+	[LXC_ERROR_EACCES] = "Not enough privilege to use the container",
 	[LXC_ERROR_WRONG_COMMAND] = "Wrong command",
 
 	[LXC_ERROR_CONF_CGROUP] = "Failed to configure the control group",
 	[LXC_ERROR_CONF_MOUNT] = "Failed to configure the mount points",
 	[LXC_ERROR_CONF_UTSNAME] = "Failed to configure the utsname",
 	[LXC_ERROR_CONF_NETWORK] = "Failed to configure the network",
+	[LXC_ERROR_CONF_TTY] = "Failed to configure the tty",
 	[LXC_ERROR_CONF_ROOTFS] = "Failed to configure the root fs",
 
 	[LXC_ERROR_SETUP_CGROUP] = "Failed to setup the control group",
@@ -47,8 +48,11 @@ static const char *const catalogue[] = {
 	[LXC_ERROR_SETUP_UTSNAME] = "Failed to setup the utsname",
 	[LXC_ERROR_SETUP_NETWORK] = "Failed to setup the network",
 	[LXC_ERROR_SETUP_CONSOLE] = "Failed to setup the console",
+	[LXC_ERROR_SETUP_TTY] = "Failed to setup the tty",
 	[LXC_ERROR_SETUP_ROOTFS] = "Failed to setup the root fs",
 
+	[LXC_ERROR_TTY_DENIED] = "tty service denied",
+	[LXC_ERROR_TTY_EAGAIN] = "tty service is not available",
 	[LXC_ERROR_INTERNAL] = "Internal system error",
 };
 

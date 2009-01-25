@@ -20,41 +20,26 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-#ifndef __lxc_error_h
-#define __lxc_error_h
 
-typedef enum {
-	LXC_SUCCESS, /* 0 == success ;) */
+struct epoll_event;
 
-	LXC_ERROR_LOCK,
+struct lxc_epoll_descr {
+	int epfd;
+	int nfds;
+	struct epoll_event *ev;
+};
 
-	LXC_ERROR_ESRCH,
-	LXC_ERROR_EEXIST,
-	LXC_ERROR_EBUSY,
-	LXC_ERROR_ENOENT,
-	LXC_ERROR_EACCES,
-	LXC_ERROR_WRONG_COMMAND,
+typedef int (*lxc_mainloop_callback_t)(int fd, void *data, 
+				       struct lxc_epoll_descr *descr);
 
-	LXC_ERROR_CONF_CGROUP,
-	LXC_ERROR_CONF_MOUNT,
-	LXC_ERROR_CONF_UTSNAME,
-	LXC_ERROR_CONF_NETWORK,
-	LXC_ERROR_CONF_TTY,
-	LXC_ERROR_CONF_ROOTFS,
+extern int lxc_mainloop(struct lxc_epoll_descr *descr);
 
-	LXC_ERROR_SETUP_CGROUP,
-	LXC_ERROR_SETUP_MOUNT,
-	LXC_ERROR_SETUP_UTSNAME,
-	LXC_ERROR_SETUP_NETWORK,
-	LXC_ERROR_SETUP_CONSOLE,
-	LXC_ERROR_SETUP_TTY,
-	LXC_ERROR_SETUP_ROOTFS,
+extern int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
+				    lxc_mainloop_callback_t callback, 
+				    void *data);
 
-	LXC_ERROR_TTY_DENIED,
-	LXC_ERROR_TTY_EAGAIN,
-	LXC_ERROR_INTERNAL,
+extern int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd);
 
-	LXC_LAST_ERROR,
-} lxc_error_t;
+extern int lxc_mainloop_open(int size, struct lxc_epoll_descr *descr);
 
-#endif
+extern int lxc_mainloop_close(struct lxc_epoll_descr *descr);

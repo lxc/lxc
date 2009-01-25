@@ -29,6 +29,7 @@
 #include <dirent.h>
 #include <mntent.h>
 #include <unistd.h>
+#include <pty.h>
 
 #include <sys/types.h>
 #include <sys/utsname.h>
@@ -427,6 +428,28 @@ static int configure_cgroup(const char *name, struct lxc_list *cgroup)
 	return 0;
 }
 
+static int configure_tty(const char *name, int tty)
+{
+	char path[MAXPATHLEN];
+	char *nbtty;
+	int ret;
+
+	if (asprintf(&nbtty, "%d", tty) < 0) {
+		lxc_log_error("failed to convert tty number");
+		return -1;
+	}
+
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
+
+	ret = write_info(path, "tty", nbtty);
+	if (ret)
+		lxc_log_error("failed to write the tty info");
+
+	free(nbtty);
+
+	return ret;
+}
+
 static int configure_rootfs(const char *name, const char *rootfs)
 {
 	char path[MAXPATHLEN];
@@ -447,7 +470,6 @@ static int configure_rootfs(const char *name, const char *rootfs)
 	}
 
 	return symlink(absrootfs, path);
-
 }
 
 static int configure_mount(const char *name, const char *fstab)
@@ -642,6 +664,31 @@ static int setup_utsname(const char *name)
 		lxc_log_syserror("failed to set the hostname to '%s'",
 				 utsname.nodename);
 		return -1;
+	}
+
+	return 0;
+}
+
+static int setup_tty(const char *name, const struct lxc_tty_info *tty_info)
+{
+	char path[MAXPATHLEN];
+	int i;
+
+	for (i = 0; i < tty_info->nbtty; i++) {
+
+		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
+
+		snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs/dev/tty%d", name, i + 1);
+
+		/* At this point I can not use the "access" function 
+		 * to check the file is present or not because it fails
+		 * with EACCES errno and I don't know why :( */
+			
+		if (mount(pty_info->name, path, "none", MS_BIND, 0)) {
+			lxc_log_warning("failed to mount '%s'->'%s'", 
+					pty_info->name, path);
+			continue;
+		}
 	}
 
 	return 0;
@@ -1067,6 +1114,11 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 		return -LXC_ERROR_CONF_NETWORK;
 	}
 
+	if (conf->tty && configure_tty(name, conf->tty)) {
+		lxc_log_error("failed to configure the tty");
+		return -LXC_ERROR_CONF_TTY;
+	}
+
 	if (conf->rootfs && configure_rootfs(name, conf->rootfs)) {
 		lxc_log_error("failed to configure the rootfs");
 		return -LXC_ERROR_CONF_ROOTFS;
@@ -1393,7 +1445,78 @@ int conf_destroy_network(const char *name)
 	return 0;
 }
 
-int lxc_setup(const char *name, const char *tty)
+int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info)
+{
+	char path[MAXPATHLEN];
+	char tty[4];
+	int i, ret = -1;
+
+	tty_info->nbtty = 0;
+
+	if (!conf_has_tty(name))
+		return 0;
+
+	if (!conf_has_rootfs(name)) {
+		lxc_log_warning("no rootfs is configured, ignoring ttys");
+		return 0;
+	}
+
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
+
+	if (read_info(path, "tty", tty, sizeof(tty)) < 0) {
+		lxc_log_syserror("failed to read tty info");
+		goto out;
+	}
+
+	tty_info->nbtty = atoi(tty);
+	tty_info->pty_info = 
+		malloc(sizeof(*tty_info->pty_info)*tty_info->nbtty);
+	
+	if (!tty_info->pty_info) {
+		lxc_log_syserror("failed to allocate pty_info");
+		goto out;
+	}
+
+	for (i = 0; i < tty_info->nbtty; i++) {
+		
+		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
+
+		if (openpty(&pty_info->master, &pty_info->slave, 
+			    pty_info->name, NULL, NULL)) {
+			lxc_log_syserror("failed to create pty #%d", i);
+			goto out_free;
+		}
+
+		pty_info->busy = 0;
+	}
+
+	ret = 0;
+out:
+	return ret;
+
+out_free:
+	free(tty_info->pty_info);
+	goto out;
+}
+
+void lxc_delete_tty(struct lxc_tty_info *tty_info)
+{
+	int i;
+
+	for (i = 0; i < tty_info->nbtty; i++) {
+		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
+
+		close(pty_info->master);
+		close(pty_info->slave);
+	}
+
+	free(tty_info->pty_info);
+	tty_info->nbtty = 0;
+}
+
+int lxc_setup(const char *name, const char *tty, 
+	      const struct lxc_tty_info *tty_info)
+	      
 {
 	if (conf_has_utsname(name) && setup_utsname(name)) {
 		lxc_log_error("failed to setup the utsname for '%s'", name);
@@ -1418,6 +1541,11 @@ int lxc_setup(const char *name, const char *tty)
 	if (tty[0] && setup_console(name, tty)) {
 		lxc_log_error("failed to setup the console for '%s'", name);
 		return -LXC_ERROR_SETUP_CONSOLE;
+	}
+
+	if (tty_info->nbtty && setup_tty(name, tty_info)) {
+		lxc_log_error("failed to setup the ttys for '%s'", name);
+		return -LXC_ERROR_SETUP_TTY;
 	}
 
 	if (conf_has_rootfs(name) && setup_rootfs(name)) {

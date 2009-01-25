@@ -24,6 +24,8 @@
 #include <libgen.h>
 #include <unistd.h>
 #include <string.h>
+#include <termios.h>
+#include <errno.h>
 #include <sys/param.h>
 #include <sys/utsname.h>
 #include <sys/types.h>
@@ -46,7 +48,9 @@ int main(int argc, char *argv[])
 	char opt;
 	char *name = NULL;
 	char **args;
-	int err, nbargs = 0;
+	int err = LXC_ERROR_INTERNAL, nbargs = 0;
+	struct termios tios;
+
 	char *default_args[] = {
 		"/sbin/init",
 		'\0',
@@ -72,12 +76,21 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
-	err = lxc_start(name, args);
-	if (err) {
+	if (tcgetattr(0, &tios)) {
+		lxc_log_error("failed to get current terminal settings");
 		fprintf(stderr, "%s\n", lxc_strerror(err));
 		return 1;
 	}
 
-	return 0;
+	err = lxc_start(name, args);
+	if (err) {
+		fprintf(stderr, "%s\n", lxc_strerror(err));
+		err = 1;
+	}
+
+	if (tcsetattr(0, TCSAFLUSH, &tios))
+		lxc_log_syserror("failed to restore terminal attributes");
+
+	return err;
 }
 

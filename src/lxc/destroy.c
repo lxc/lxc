@@ -52,13 +52,8 @@ int lxc_destroy(const char *name)
 	char path[MAXPATHLEN];
 
 	lock = lxc_get_lock(name);
-	if (lock < 0) {
-		if (lock == -EWOULDBLOCK)
-			return -LXC_ERROR_BUSY;
-		if (lock == -ENOENT)
-			return -LXC_ERROR_NOT_FOUND;
-		return -LXC_ERROR_INTERNAL;
-	}
+	if (lock < 0)
+		return lock;
 
 	if (lxc_rmstate(name)) {
 		lxc_log_error("failed to remove state file for %s", name);

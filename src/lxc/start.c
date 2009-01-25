@@ -30,6 +30,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>
+#include <fcntl.h>
+#include <termios.h>
 #include <sys/param.h>
 #include <sys/file.h>
 #include <sys/mount.h>
@@ -37,31 +39,216 @@
 #include <sys/prctl.h>
 #include <sys/capability.h>
 #include <sys/wait.h>
+#include <sys/un.h>
+#include <sys/poll.h>
+#include <sys/signalfd.h>
 
 #include "error.h"
+#include "af_unix.h"
+#include "mainloop.h"
 
 #include <lxc/lxc.h>
 
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);
 
+static int setup_sigchld_fd(sigset_t *oldmask)
+{
+	sigset_t mask;
+	int fd;
+
+	if (sigprocmask(SIG_BLOCK, NULL, &mask)) {
+		lxc_log_syserror("failed to get mask signal");
+		return -1;
+	}
+
+	if (sigaddset(&mask, SIGCHLD) || sigprocmask(SIG_BLOCK, &mask, oldmask)) {
+		lxc_log_syserror("failed to set mask signal");
+		return -1;
+	}
+
+	fd = signalfd(-1, &mask, 0);
+	if (fd < 0) {
+		lxc_log_syserror("failed to create the signal fd");
+		return -1;
+	}
+
+	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
+		lxc_log_syserror("failed to set sigfd to close-on-exec");
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+static int setup_tty_service(const char *name, int *ttyfd)
+{
+	int fd;
+	struct sockaddr_un addr = { 0 };
+	char *offset = &addr.sun_path[1];
+	
+	strcpy(offset, name);
+	addr.sun_path[0] = '\0';
+
+	fd = lxc_af_unix_open(addr.sun_path, SOCK_STREAM, 0);
+	if (fd < 0)
+		return -1;
+
+	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
+		lxc_log_syserror("failed to close-on-exec flag");
+		close(fd);
+		return -1;
+	}
+
+	*ttyfd = fd;
+
+	return 0;
+}
+
+static int sigchld_handler(int fd, void *data, 
+			   struct lxc_epoll_descr *descr)
+{
+	pid_t *pid = data;
+
+	waitpid(*pid, NULL, 0);
+
+	return 1;
+}
+
+static int ttyclient_handler(int fd, void *data,
+			     struct lxc_epoll_descr *descr)
+{
+	int i;
+ 	struct lxc_tty_info *tty_info = data;
+
+	for (i = 0; i < tty_info->nbtty; i++) {
+
+		if (tty_info->pty_info[i].busy != fd)
+			continue;
+
+		lxc_mainloop_del_handler(descr, fd);
+		tty_info->pty_info[i].busy = 0;
+		close(fd);
+	}
+
+	return 0;
+}
+
+static int ttyservice_handler(int fd, void *data,
+			      struct lxc_epoll_descr *descr)
+{
+	int conn, ttynum, val = 1, ret = -1;
+	struct lxc_tty_info *tty_info = data;
+	
+	conn = accept(fd, NULL, 0);
+	if (conn < 0) {
+		lxc_log_syserror("failed to accept tty client");
+		return -1;
+	}
+	
+	if (setsockopt(conn, SOL_SOCKET, SO_PASSCRED, &val, sizeof(val))) {
+		lxc_log_syserror("failed to enable credential on socket");
+		goto out_close;
+	}
+
+	if (lxc_af_unix_rcv_credential(conn, &ttynum, sizeof(ttynum)))
+		goto out_close;
+
+	if (ttynum <= 0 || ttynum > tty_info->nbtty)
+		goto out_close;
+
+	/* fixup index array (eg. tty1 is index 0) */
+	ttynum--;
+
+	if (tty_info->pty_info[ttynum].busy)
+		goto out_close;
+
+	if (lxc_af_unix_send_fd(conn, tty_info->pty_info[ttynum].master, 
+				NULL, 0) < 0) {
+		lxc_log_error("failed to send tty to client");
+		goto out_close;
+	}
+
+	if (lxc_mainloop_add_handler(descr, conn, 
+				     ttyclient_handler, tty_info)) {
+		lxc_log_error("failed to add tty client handler");
+		goto out_close;
+	}
+
+	tty_info->pty_info[ttynum].busy = conn;
+
+	ret = 0;
+
+out:
+	return ret;
+out_close:
+	close(conn);
+	goto out;
+}
+
+static int mainloop(const char *name, pid_t pid, int sigfd,
+		    const struct lxc_tty_info *tty_info)
+{
+	int nfds, ttyfd = -1, ret = -1;
+	struct lxc_epoll_descr descr;
+
+	if (tty_info->nbtty && setup_tty_service(name, &ttyfd)) {
+		lxc_log_error("failed to create the tty service point");
+		goto out_sigfd;
+	}
+
+	/* sigfd + nb tty + tty service 
+	 * if tty is enabled */
+	nfds = tty_info->nbtty + 1 + tty_info->nbtty ? 1 : 0;
+
+	if (lxc_mainloop_open(nfds, &descr)) {
+		lxc_log_error("failed to create mainloop");
+		goto out_ttyfd;
+	}
+
+	if (lxc_mainloop_add_handler(&descr, sigfd, sigchld_handler, &pid)) {
+		lxc_log_error("failed to add handler for the signal");
+		goto out_mainloop_open;
+	}
+
+	if (tty_info->nbtty) {
+		if (lxc_mainloop_add_handler(&descr, ttyfd, 
+					     ttyservice_handler, 
+					     (void *)tty_info)) {
+			lxc_log_error("failed to add handler for the tty");
+			goto out_mainloop_open;
+		}
+	}
+
+	ret = lxc_mainloop(&descr);
+
+out:
+	return ret;
+
+out_mainloop_open:
+	lxc_mainloop_close(&descr);
+out_ttyfd:
+	close(ttyfd);
+out_sigfd:
+	close(sigfd);
+	goto out;
+}
+
 int lxc_start(const char *name, char *argv[])
 {
+	struct lxc_tty_info tty_info = { 0 };
+	sigset_t oldmask;
 	char init[MAXPATHLEN];
 	char tty[MAXPATHLEN];
 	char *val = NULL;
-	int fd, lock, sv[2], sync = 0, err = -LXC_ERROR_INTERNAL;
+	int fd, sigfd, lock, sv[2], sync = 0, err = -LXC_ERROR_INTERNAL;
 	pid_t pid;
 	int clone_flags;
 
 	lock = lxc_get_lock(name);
-	if (lock < 0) {
-		if (lock == -EWOULDBLOCK)
-			return -LXC_ERROR_BUSY;
-		if (lock == -ENOENT)
-			return -LXC_ERROR_NOT_FOUND;
-		return -LXC_ERROR_LOCK;
-	}
+	if (lock < 0)
+		return lock;
 
 	/* Begin the set the state to STARTING*/
 	if (lxc_setstate(name, STARTING)) {
@@ -73,6 +260,20 @@ int lxc_start(const char *name, char *argv[])
 	/* If we are not attached to a tty, disable it */
 	if (ttyname_r(0, tty, sizeof(tty))) 
 		tty[0] = '\0';
+
+	if (lxc_create_tty(name, &tty_info)) {
+		lxc_log_error("failed to create the ttys");
+		goto out;
+	}
+
+	/* the signal fd has to be created before forking otherwise
+	 * if the child process exits before we setup the signal fd,
+	 * the event will be lost and the command will be stuck */
+	sigfd = setup_sigchld_fd(&oldmask);
+	if (sigfd < 0) {
+		lxc_log_error("failed to set sigchild fd handler");
+		return -1;
+	}
 
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
@@ -99,6 +300,11 @@ int lxc_start(const char *name, char *argv[])
 
 	if (!pid) {
 
+		if (sigprocmask(SIG_SETMASK, &oldmask, NULL)) {
+			lxc_log_syserror("failed to set sigprocmask");
+			return -1;
+		}
+
 		close(sv[1]);
 
 		/* Be sure we don't inherit this after the exec */
@@ -117,7 +323,7 @@ int lxc_start(const char *name, char *argv[])
 		}
 
 		/* Setup the container, ip, names, utsname, ... */
-		err = lxc_setup(name, tty);
+		err = lxc_setup(name, tty, &tty_info);
 		if (err) {
 			lxc_log_error("failed to setup the container");
 			if (write(sv[0], &err, sizeof(err)) < 0)
@@ -201,12 +407,9 @@ int lxc_start(const char *name, char *argv[])
 		goto err_state_failed;
 	}
 
-wait_again:
-	if (waitpid(pid, NULL, 0) < 0) {
-		if (errno == EINTR) 
-			goto wait_again;
-		lxc_log_syserror("failed to wait the pid %d", pid);
-		goto err_waitpid_failed;
+	if (mainloop(name, pid, sigfd, &tty_info)) {
+		lxc_log_error("mainloop exited with an error");
+		goto err_mailoop_failed;
 	}
 
 	if (lxc_setstate(name, STOPPING))
@@ -220,6 +423,7 @@ out:
 	if (lxc_setstate(name, STOPPED))
 		lxc_log_error("failed to set state %s", lxc_state2str(STOPPED));
 
+	lxc_delete_tty(&tty_info);
 	lxc_unlink_nsgroup(name);
 	unlink(init);
 	free(val);
@@ -240,7 +444,7 @@ err_pipe_write:
 		conf_destroy_network(name);
 err_create_network:
 err_pipe_read:
-err_waitpid_failed:
+err_mailoop_failed:
 	if (lxc_setstate(name, ABORTING))
 		lxc_log_error("failed to set state %s", lxc_state2str(STOPPED));
 

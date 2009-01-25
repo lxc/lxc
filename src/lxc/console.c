@@ -21,68 +21,51 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#define _GNU_SOURCE
 #include <stdio.h>
-#undef _GNU_SOURCE
-#include <errno.h>
 #include <unistd.h>
-#include <stdlib.h>
-#include <sys/file.h>
-#include <sys/param.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/un.h>
 
+#include "lxc_log.h"
+#include "af_unix.h"
 #include "error.h"
-#include <lxc/lxc.h>
 
-int lxc_get_lock(const char *name)
+extern int lxc_console(const char *name, int ttynum, int *fd)
 {
-	char lock[MAXPATHLEN];
-	int fd, ret;
+	struct sockaddr_un addr = { 0 };
+	int sock, ret = -LXC_ERROR_TTY_EAGAIN;
 
-	snprintf(lock, MAXPATHLEN, LXCPATH "/%s", name);
+	snprintf(addr.sun_path, sizeof(addr.sun_path), "@%s", name);
+	addr.sun_path[0] = '\0';
 
-	/* need to check access because of cap_dac_override */
-	if (access(lock, R_OK |W_OK | X_OK)) {
-		ret = errno;
+	sock = lxc_af_unix_connect(addr.sun_path);
+	if (sock < 0) {
+		lxc_log_error("failed to connect to the tty service");
 		goto out_err;
 	}
 
-	fd = open(lock, O_RDONLY|O_DIRECTORY, S_IRUSR|S_IWUSR);
-	if (fd < 0) {
-		ret = errno;
+	ret = lxc_af_unix_send_credential(sock, &ttynum, sizeof(ttynum));
+	if (ret < 0) {
+		lxc_log_syserror("failed to send credentials");
 		goto out_err;
 	}
 
-        fcntl(fd, F_SETFD, FD_CLOEXEC);
-
-	if (flock(fd, LOCK_EX|LOCK_NB)) {
-		ret = errno;
-		close(fd);
+	ret = lxc_af_unix_recv_fd(sock, fd, NULL, 0);
+	if (ret < 0) {
+		lxc_log_error("failed to connect to the tty");
 		goto out_err;
 	}
 
-	ret = fd;
-out:
-	return ret;
+	if (!ret) {
+		lxc_log_error("tty%d denied by '%s'", ttynum, name);
+		ret = -LXC_ERROR_TTY_DENIED;
+		goto out_err;
+	}
+
+	ret = 0;
 
 out_err:
-	switch (ret) {
-	case EWOULDBLOCK:
-		ret = -LXC_ERROR_EBUSY;
-		goto out;
-	case ENOENT:
-		ret = -LXC_ERROR_ENOENT;
-		goto out;
-	case EACCES:
-		ret = -LXC_ERROR_EACCES;
-		goto out;
-	default:
-		ret = -LXC_ERROR_LOCK;
-		goto out;
-	}
-}
-
-void lxc_put_lock(int lock)
-{
-	flock(lock, LOCK_UN);
-	close(lock);
+	close(sock);
+	return ret;
 }

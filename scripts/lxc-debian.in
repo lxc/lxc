@@ -49,6 +49,10 @@ l6:6:wait:/etc/init.d/rc 6
 # Normally not reached, but fallthrough in case of emergency.
 z6:6:respawn:/sbin/sulogin
 1:2345:respawn:/sbin/getty 38400 console
+c1:12345:respawn:/sbin/getty 38400 tty1 linux
+c2:12345:respawn:/sbin/getty 38400 tty2 linux
+c3:12345:respawn:/sbin/getty 38400 tty3 linux
+c4:12345:respawn:/sbin/getty 38400 tty4 linux
 EOF
 }
 
@@ -107,6 +111,7 @@ EOF
 write_lxc_configuration() {
 cat <<EOF > $CONFFILE
 lxc.utsname = $UTSNAME
+lxc.tty = 4
 lxc.network.type = veth
 lxc.network.flags = up
 lxc.network.link = br0

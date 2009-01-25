@@ -1,4 +1,5 @@
 INCLUDES= -I$(top_srcdir)/src -DLXCPATH="\"$(localstatedir)/lxc\"" -DLXCBINDIR="\"$(bindir)\""
+AM_LDFLAGS= -lutil
 lib_LTLIBRARIES = liblxc.la
 pkginclude_HEADERS = \
 		monitor.h \
@@ -18,6 +19,7 @@ liblxc_la_SOURCES = \
 	start.c \
 	stop.c \
 	monitor.c monitor.h \
+	console.c \
 	freezer.c \
 	checkpoint.c \
 	restart.c \
@@ -37,6 +39,9 @@ liblxc_la_SOURCES = \
         nl.c nl.h \
         rtnl.c rtnl.h \
         genl.c genl.h \
+	\
+	mainloop.c mainloop.h \
+	af_unix.c af_unix.h \
 	\
 	cr_plugin_columbia.c lxc_plugin.h
 
