@@ -84,26 +84,8 @@ make -j$ncpus
 %install
 rm -rf %{buildroot}
 
-%makeinstall
-
 %clean
 rm -rf %{buildroot}
-
-%post
-if [ -d /var/lxc ]; then
-    for i in $(ls -1 /var/lxc); do
-        chmod -fR go-rwx /var/lxc/$i
-    done
-    mv /var/lxc /var/lxc.rpm-$$
-fi
-
-mkdir -p /var/lxc
-
-if [ -d /var/lxc.rpm-$$ ]; then
-    for i in $(ls -1 /var/lxc.rpm-$$); do
-        cp -a /var/lxc.rpm-$$/$i /var/lxc
-    done
-fi
 
 chmod ugo+w /var/lxc
 
@@ -144,12 +126,13 @@ fi
 %{_bindir}/*
 %{_mandir}/*
 
+# %post -p /sbin/ldconfig
+# %postun -p /sbin/ldconfig
+
 %files devel
 %defattr(-,root,root)
 %{_includedir}/%{name}/*
 %{_libdir}/*.a
-
-%post devel
 
 %changelog
 
