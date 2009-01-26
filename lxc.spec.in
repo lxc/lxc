@@ -83,8 +83,6 @@ setcap cap_sys_admin=ep \
     %{_bindir}/lxc-init &&
 setcap cap_sys_admin=ep \
     %{_bindir}/lxc-netstat
-fi
-
 
 %files
 %defattr(-,root,root)
