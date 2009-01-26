@@ -13,9 +13,3 @@ dist-hook:
 
 rpm: dist
 	rpmbuild --clean -ta ${distdir}.tar.gz
-
-release: rpm
-	@sh ./release.sh $(PACKAGE_NAME) \
-			$(LXC_MAJOR_VERSION) \
-			$(LXC_MINOR_VERSION) \
-			$(LXC_MICRO_VERSION)
