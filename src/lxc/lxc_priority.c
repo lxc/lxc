@@ -38,9 +38,8 @@ void usage(char *cmd)
 
 int main(int argc, char *argv[])
 {
-	char opt;
 	char *name = NULL, *priority = NULL;
-	int prio, nbargs = 0;
+	int opt, prio, nbargs = 0;
 
 	while ((opt = getopt(argc, argv, "p:n:")) != -1) {
 		switch (opt) {

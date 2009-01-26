@@ -43,10 +43,10 @@ void usage(char *cmd)
 
 int main(int argc, char *argv[])
 {
-	char opt;
 	char *name = NULL, *file = NULL;
 	static char **args;
 	char path[MAXPATHLEN];
+	int opt;
 	int nbargs = 0;
 	int autodestroy = 0;
 	int ret = 1;

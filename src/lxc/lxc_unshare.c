@@ -50,8 +50,8 @@ void usage(char *cmd)
 
 int main(int argc, char *argv[])
 {
-	int nbargs = 0, status = 1, hastofork = 0;
-	char **args, opt;
+	int opt, nbargs = 0, status = 1, hastofork = 0;
+	char **args;
 	long flags = 0;
 	uid_t uid;
 	pid_t pid;

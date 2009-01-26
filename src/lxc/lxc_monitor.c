@@ -38,11 +38,11 @@ void usage(char *cmd)
 
 int main(int argc, char *argv[])
 {
-	char opt, *name = NULL;
+	char *name = NULL;
 	char *regexp;
 	struct lxc_msg msg;
 	regex_t preg;
-	int fd;
+	int fd, opt;
 
 	while ((opt = getopt(argc, argv, "n:")) != -1) {
 		switch (opt) {

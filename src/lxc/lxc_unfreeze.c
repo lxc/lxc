@@ -36,9 +36,8 @@ void usage(char *cmd)
 
 int main(int argc, char *argv[])
 {
-	char opt;
 	char *name = NULL;
-	int nbargs = 0;
+	int opt, nbargs = 0;
 
 	while ((opt = getopt(argc, argv, "n:")) != -1) {
 		switch (opt) {

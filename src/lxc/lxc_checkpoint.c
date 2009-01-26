@@ -36,7 +36,7 @@ void usage(char *cmd)
 
 int main(int argc, char *argv[])
 {
-	char opt;
+	int opt;
 	char *name = NULL;
 	int stop = 0;
 	int nbargs = 0;

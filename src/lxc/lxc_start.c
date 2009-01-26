@@ -45,10 +45,9 @@ void usage(char *cmd)
 
 int main(int argc, char *argv[])
 {
-	char opt;
 	char *name = NULL;
 	char **args;
-	int err = LXC_ERROR_INTERNAL, nbargs = 0;
+	int opt, err = LXC_ERROR_INTERNAL, nbargs = 0;
 	struct termios tios;
 
 	char *default_args[] = {

@@ -58,9 +58,9 @@ static int fillwaitedstates(char *strstates, int *states)
 
 int main(int argc, char *argv[])
 {
-	char opt, *name = NULL, *states = NULL;
+	char *name = NULL, *states = NULL;
 	struct lxc_msg msg;
-	int s[MAX_STATE] = { }, fd;
+	int s[MAX_STATE] = { }, fd, opt;
 
 	while ((opt = getopt(argc, argv, "s:n:")) != -1) {
 		switch (opt) {

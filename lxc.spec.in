@@ -80,7 +80,7 @@ setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
     %{_bindir}/lxc-unshare && \
 setcap cap_sys_admin=ep \
-    %{_bindir}/lxc-init &&
+    %{_bindir}/lxc-init && \
 setcap cap_sys_admin=ep \
     %{_bindir}/lxc-netstat
 

@@ -50,8 +50,8 @@ void usage(char *cmd)
 
 int main(int argc, char *argv[])
 {
-	char opt;
 	char *name = NULL;
+	int opt;
 	int ttynum = 0;
 	int nbargs = 0;
 	int master = -1;
