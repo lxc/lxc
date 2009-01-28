@@ -625,6 +625,16 @@ static int unconfigure_rootfs(const char *name)
 	return 0;
 }
 
+static int unconfigure_tty(const char *name)
+{
+	char path[MAXPATHLEN];
+
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
+	delete_info(path, "tty");
+
+	return 0;
+}
+
 static int unconfigure_mount(const char *name)
 {
 	char path[MAXPATHLEN];
@@ -678,7 +688,11 @@ static int setup_tty(const char *name, const struct lxc_tty_info *tty_info)
 
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
-		snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs/dev/tty%d", name, i + 1);
+		if (conf_has_rootfs(name))
+			snprintf(path, MAXPATHLEN, 
+				 LXCPATH "/%s/rootfs/dev/tty%d", name, i + 1);
+		else
+			snprintf(path, MAXPATHLEN, "/dev/tty%d", i + 1);
 
 		/* At this point I can not use the "access" function 
 		 * to check the file is present or not because it fails
@@ -1143,6 +1157,9 @@ int lxc_unconfigure(const char *name)
 	if (conf_has_cgroup(name) && unconfigure_cgroup(name))
 		lxc_log_error("failed to cleanup cgroup");
 
+	if (conf_has_tty(name) && unconfigure_tty(name))
+		lxc_log_error("failed to cleanup mount");
+
 	if (conf_has_rootfs(name) && unconfigure_rootfs(name))
 		lxc_log_error("failed to cleanup rootfs");
 
@@ -1456,11 +1473,12 @@ int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info)
 	if (!conf_has_tty(name))
 		return 0;
 
+/*
 	if (!conf_has_rootfs(name)) {
 		lxc_log_warning("no rootfs is configured, ignoring ttys");
 		return 0;
 	}
-
+*/
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
 
 	if (read_info(path, "tty", tty, sizeof(tty)) < 0) {
