@@ -1,18 +1,21 @@
 #!/bin/bash
 # set -ex
 
+CACHE="@LOCALSTATEDIR@/cache/lxc/debian"
+
 NAME="debian"
 CONFFILE="lxc.conf"
 MNTFILE="mount.conf"
 UTSNAME=
 IPV4="172.20.0.21"
 GATEWAY="172.20.0.1"
+
+# These paths are within the container so do not need to obey configure prefixes
 INTERFACES="/etc/network/interfaces"
 INITTAB="/etc/inittab"
 HOSTNAME="/etc/hostname"
 FSTAB="/etc/fstab"
 SSHD_CONFIG="/etc/ssh/sshd_config"
-CACHE="@LOCALSTATEDIR@/cache/lxc/debian"
 
 ################################################################################
 #                    debian custom configuration files
@@ -186,8 +189,10 @@ create() {
 
     # check if the rootfs does already exist
     if [ ! -e "$ROOTFS" ]; then
+	    mkdir -p @LOCALSTATEDIR@/lock/subsys/
 	(
 	    flock -n -x 200 
+
 
 	    RES=$?
 	    if [ "$RES" != "0" ]; then
@@ -228,7 +233,7 @@ create() {
             # make a local copy of the minidebian
 	    echo -n "Copying rootfs ..."
 	    cp -a $CACHE/rootfs-$ARCH $ROOTFS && echo "Done." || exit
-	) 200>/var/lock/subsys/lxc
+	) 200> "@LOCALSTATEDIR@/lock/subsys/lxc"
     fi
 
 write_lxc_mounts
@@ -340,7 +345,7 @@ purge() {
 	rm --preserve-root --one-file-system -rf $CACHE && echo "Done." || exit 1
 	exit 0
 
-    ) 200>/var/lock/subsys/lxc
+    ) 200> "@LOCALSTATEDIR@/lock/subsys/lxc"
 }
 
 if [ "$(id -u)" != "0" ]; then
