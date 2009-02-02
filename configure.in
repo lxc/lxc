@@ -27,6 +27,8 @@ AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h], [], AC_MSG_ERROR([netlink 
 AC_CHECK_HEADERS([sys/capability.h], [], AC_MSG_ERROR([please install libcap-devel.]),
 [#include <sys/capability.h>])
 
+AC_CHECK_HEADERS([sys/signalfd.h])
+
 AC_PROG_GCC_TRADITIONAL
 
 if test "x$GCC" = "xyes"; then

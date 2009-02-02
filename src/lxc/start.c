@@ -21,7 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#define _GNU_SOURCE
+#include "../config.h"
 #include <stdio.h>
 #undef _GNU_SOURCE
 #include <string.h>
@@ -41,7 +41,12 @@
 #include <sys/wait.h>
 #include <sys/un.h>
 #include <sys/poll.h>
+
+#ifdef HAVE_SYS_SIGNALFD_H 
 #include <sys/signalfd.h>
+#else
+extern int signalfd (int fd, const sigset_t *mask, int flags);
+#endif
 
 #include "error.h"
 #include "af_unix.h"
