@@ -212,19 +212,20 @@ create() {
 		
 		echo "not cached"
 		
-		mkdir -p "$CACHE/rootfs-$ARCH"
+		mkdir -p "$CACHE/partial-$ARCH"
 		
 	        # download a mini debian into a cache
 		echo "Downloading debian minimal ..."
 		debootstrap --verbose --variant=minbase --arch=$ARCH \
 		    --include apache,netbase,net-tools,iproute,openssh-server \
-		    etch $CACHE/rootfs-$ARCH http://ftp.debian.org/debian
+		    etch $CACHE/partial-$ARCH http://ftp.debian.org/debian
 		
 		RESULT=$?
 		if [ "$RESULT" != "0" ]; then
 		    echo "Failed to download the rootfs, aborting."
 		    exit 1
 		fi
+		mv "$CACHE/partial-$ARCH" "$CACHE/rootfs-$ARCH"
 		echo "Download complete."
 	    else
 		echo "Found."
