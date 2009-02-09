@@ -217,8 +217,8 @@ create() {
 	        # download a mini debian into a cache
 		echo "Downloading debian minimal ..."
 		debootstrap --verbose --variant=minbase --arch=$ARCH \
-		    --include apache,netbase,net-tools,iproute,openssh-server \
-		    etch $CACHE/partial-$ARCH http://ftp.debian.org/debian
+		    --include apache2,netbase,net-tools,iproute,openssh-server \
+		    lenny $CACHE/partial-$ARCH http://ftp.debian.org/debian
 		
 		RESULT=$?
 		if [ "$RESULT" != "0" ]; then
