@@ -3,7 +3,7 @@
 set -x
 
 test -d autom4te.cache && rm -rf autom4te.cache
-
+test -d m4 || mkdir m4
 ACLOCAL_AMFLAGS="-I m4 -I config $ACLOCAL_AMFLAGS"
 libtoolize --force
 aclocal $ACLOCAL_AMFLAGS || exit 1
