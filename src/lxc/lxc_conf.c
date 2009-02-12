@@ -472,6 +472,28 @@ static int configure_rootfs(const char *name, const char *rootfs)
 	return symlink(absrootfs, path);
 }
 
+static int configure_pts(const char *name, int pts)
+{
+	char path[MAXPATHLEN];
+	char *maxpts;
+	int ret;
+
+	if (asprintf(&maxpts, "%d", pts) < 0) {
+		lxc_log_error("failed to convert max pts number");
+		return -1;
+	}
+
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
+
+	ret = write_info(path, "pts", maxpts);
+	if (ret)
+		lxc_log_error("failed to write the pts info");
+
+	free(maxpts);
+
+	return ret;
+}
+
 static int configure_mount(const char *name, const char *fstab)
 {
 	char path[MAXPATHLEN];
@@ -621,6 +643,16 @@ static int unconfigure_rootfs(const char *name)
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
 	delete_info(path, "rootfs");
+
+	return 0;
+}
+
+static int unconfigure_pts(const char *name)
+{
+	char path[MAXPATHLEN];
+
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
+	delete_info(path, "pts");
 
 	return 0;
 }
@@ -1143,6 +1175,11 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 		return -LXC_ERROR_CONF_MOUNT;
 	}
 
+	if (conf->pts && configure_pts(name, conf->pts)) {
+		lxc_log_error("failed to configure a new pts instance");
+		return -LXC_ERROR_CONF_PTS;
+	}
+
 	return 0;
 }
 
@@ -1158,13 +1195,16 @@ int lxc_unconfigure(const char *name)
 		lxc_log_error("failed to cleanup cgroup");
 
 	if (conf_has_tty(name) && unconfigure_tty(name))
-		lxc_log_error("failed to cleanup mount");
+		lxc_log_error("failed to cleanup tty");
 
 	if (conf_has_rootfs(name) && unconfigure_rootfs(name))
 		lxc_log_error("failed to cleanup rootfs");
 
 	if (conf_has_fstab(name) && unconfigure_mount(name))
 		lxc_log_error("failed to cleanup mount");
+
+	if (conf_has_pts(name) && unconfigure_pts(name))
+		lxc_log_error("failed to cleanup pts");
 
 	return 0;
 }

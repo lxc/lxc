@@ -119,6 +119,7 @@ struct lxc_conf {
 	char *rootfs;
 	char *fstab;
 	int tty;
+	int pts;
 	struct utsname *utsname;
 	struct lxc_list cgroup;
 	struct lxc_list networks;
@@ -180,5 +181,5 @@ extern int conf_has(const char *name, const char *info);
 #define conf_has_console(__name) conf_has(__name, "console")
 #define conf_has_cgroup(__name)  conf_has(__name, "cgroup")
 #define conf_has_tty(__name)     conf_has(__name, "tty")
-
+#define conf_has_pts(__name)     conf_has(__name, "pts")
 #endif

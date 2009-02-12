@@ -37,6 +37,7 @@
 typedef int (*file_cb)(char* buffer, void *data);
 typedef int (*config_cb)(const char *, char *, struct lxc_conf *);
 
+static int config_pts(const char *, char *, struct lxc_conf *);
 static int config_tty(const char *, char *, struct lxc_conf *);
 static int config_cgroup(const char *, char *, struct lxc_conf *);
 static int config_mount(const char *, char *, struct lxc_conf *);
@@ -57,6 +58,7 @@ struct config {
 
 static struct config config[] = {
 
+	{ "lxc.pts",            config_pts            },
 	{ "lxc.tty",            config_tty            },
 	{ "lxc.cgroup",         config_cgroup         },
 	{ "lxc.mount",          config_mount          },
@@ -419,6 +421,15 @@ static int config_network_ipv6(const char *key, char *value, struct lxc_conf *lx
 	return 0;
 }
 
+static int config_pts(const char *key, char *value, struct lxc_conf *lxc_conf)
+{
+	int maxpts = atoi(value);
+
+	lxc_conf->pts = maxpts;
+
+	return 0;
+}
+
 static int config_tty(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	int nbtty = atoi(value);
@@ -592,6 +603,7 @@ int lxc_config_init(struct lxc_conf *conf)
 	conf->fstab = NULL;
 	conf->utsname = NULL;
 	conf->tty = 0;
+	conf->pts = 0;
 	lxc_list_init(&conf->cgroup);
 	lxc_list_init(&conf->networks);
 	return 0;
