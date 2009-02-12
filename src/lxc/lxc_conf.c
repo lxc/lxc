@@ -759,6 +759,43 @@ static int setup_rootfs(const char *name)
 	return 0;
 }
 
+static int setup_pts(const char *name)
+{
+	char mountname[MAXPATHLEN];
+
+	if (!access("/dev/pts/ptmx", F_OK) && umount("/dev/pts")) {
+		lxc_log_syserror("failed to umount 'dev/pts'");
+		return -1;
+	}
+
+	snprintf(mountname, MAXPATHLEN, "%spts", name);
+
+	if (mount(mountname, "/dev/pts", "devpts", MS_MGC_VAL, "newinstance")) {
+		lxc_log_syserror("failed to mount a new instance of '/dev/pts'");
+		return -1;
+	}
+
+	if (chmod("/dev/pts/ptmx", 0666)) {
+		lxc_log_syserror("failed to set permission for '/dev/pts/ptmx'");
+		return -1;
+	}
+
+	if (access("/dev/ptmx", F_OK)) {
+		if (!symlink("/dev/pts/ptmx", "/dev/ptmx"))
+			goto out;
+		lxc_log_syserror("failed to symlink '/dev/pts/ptmx'->'/dev/ptmx'");
+		return -1;
+	}
+
+	/* fallback here, /dev/pts/ptmx exists just mount bind */
+	if (mount("/dev/pts/ptmx", "/dev/ptmx", "none", MS_BIND, 0)) {
+		lxc_log_syserror("mount failed '/dev/pts/ptmx'->'/dev/ptmx'");
+		return -1;
+	}
+out:
+	return 0;
+}
+
 static int setup_console(const char *name, const char *tty)
 {
 	char console[MAXPATHLEN];
@@ -1572,7 +1609,7 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 	tty_info->nbtty = 0;
 }
 
-enum { utsname, network, cgroup, fstab, console, tty, rootfs, };
+enum { utsname, network, cgroup, fstab, console, tty, rootfs, pts };
 
 static int conf_is_set(long flags, int subsystem)
 {
@@ -1603,6 +1640,9 @@ static long make_conf_flagset(const char *name, const char *cons,
 
 	if (conf_has_rootfs(name))
 		conf_set_flag(&flags, rootfs);
+
+	if (conf_has_pts(name))
+		conf_set_flag(&flags, pts);
 
 	if (tty_info->nbtty)
 		conf_set_flag(&flags, tty);
@@ -1654,6 +1694,11 @@ int lxc_setup(const char *name, const char *cons,
 	if (conf_is_set(flags, rootfs) && setup_rootfs(name)) {
 		lxc_log_error("failed to set rootfs for '%s'", name);
 		return -LXC_ERROR_SETUP_ROOTFS;
+	}
+
+	if (conf_is_set(flags, pts) && setup_pts(name)) {
+		lxc_log_error("failed to setup the new pts instance");
+		return -LXC_ERROR_SETUP_PTS;
 	}
 
 	return 0;
