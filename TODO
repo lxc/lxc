@@ -1,0 +1,6 @@
+
+
+* create an interactive configuration with the lxc-create command
+  line, like the 'make menuconfig' of the kernel.  
+
+  = lxc-create [-n foo] -m|--menuconfig
