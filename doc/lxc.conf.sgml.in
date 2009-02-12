@@ -244,6 +244,31 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </refsect2>
 
     <refsect2>
+      <title>New pseudo tty instance (devpts)</title>
+      <para>
+	For stricter isolation the container can have its own private
+	instance of the pseudo tty.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.pts</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Specify the container should have a new pseudo tty
+	      instance making this private to it. The value specified
+	      is ignored for but it is preferable to specify a
+	      consistent value representing the maximum number of
+	      pseudo tty allowed for pts instance either if it is
+	      ignored for now.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Console through the ttys</title>
       <para>
 	If the container is configured with a root filesystem and the
