@@ -455,17 +455,15 @@ static int configure_rootfs(const char *name, const char *rootfs)
 	char path[MAXPATHLEN];
 	char absrootfs[MAXPATHLEN];
 	char fstab[MAXPATHLEN];
-	char *pwd;
-	int ret;
 	FILE *f;
+	int ret;
+
+	if (!realpath(rootfs, absrootfs)) {
+		lxc_log_syserror("failed to get real path for '%s'", rootfs);
+		return -1;
+	}
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
-
-	pwd = get_current_dir_name();
-
-	snprintf(absrootfs, MAXPATHLEN, "%s/%s", pwd, rootfs);
-
-	free(pwd);
 
 	if (access(absrootfs, F_OK)) {
 		lxc_log_syserror("'%s' is not accessible", absrootfs);
@@ -486,6 +484,7 @@ static int configure_rootfs(const char *name, const char *rootfs)
 	}
 
 	ret = fprintf(f, "%s %s none bind 0 0\n", absrootfs, path);
+
 	fclose(f);
 
 	if (ret < 0) {
