@@ -454,7 +454,10 @@ static int configure_rootfs(const char *name, const char *rootfs)
 {
 	char path[MAXPATHLEN];
 	char absrootfs[MAXPATHLEN];
+	char fstab[MAXPATHLEN];
 	char *pwd;
+	int ret;
+	FILE *f;
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
 
@@ -468,6 +471,29 @@ static int configure_rootfs(const char *name, const char *rootfs)
 		lxc_log_syserror("'%s' is not accessible", absrootfs);
 		return -1;
 	}
+
+	if (mkdir(path, 0755)) {
+		lxc_log_syserror("failed to create the '%s' directory", path);
+		return -1;
+	}
+
+	snprintf(fstab, MAXPATHLEN, LXCPATH "/%s/fstab", name);
+
+	f = fopen(fstab, "a+");
+	if (!f) {
+		lxc_log_syserror("failed to open fstab file");
+		return -1;
+	}
+
+	ret = fprintf(f, "%s %s none bind 0 0\n", absrootfs, path);
+	fclose(f);
+
+	if (ret < 0) {
+		lxc_log_syserror("failed to add rootfs mount in fstab");
+		return -1;
+	}
+
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs/rootfs", name);
 
 	return symlink(absrootfs, path);
 }
@@ -641,8 +667,14 @@ static int unconfigure_rootfs(const char *name)
 {
 	char path[MAXPATHLEN];
 
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
+
+#warning deprecated code to be removed in the next version
+
+	/* ugly but for backward compatibily, */
 	delete_info(path, "rootfs");
+	rmdir(path);
+	unlink(path);
 
 	return 0;
 }
@@ -1202,14 +1234,14 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 		return -LXC_ERROR_CONF_TTY;
 	}
 
-	if (conf->rootfs && configure_rootfs(name, conf->rootfs)) {
-		lxc_log_error("failed to configure the rootfs");
-		return -LXC_ERROR_CONF_ROOTFS;
-	}
-
 	if (conf->fstab && configure_mount(name, conf->fstab)) {
 		lxc_log_error("failed to configure the mount points");
 		return -LXC_ERROR_CONF_MOUNT;
+	}
+
+	if (conf->rootfs && configure_rootfs(name, conf->rootfs)) {
+		lxc_log_error("failed to configure the rootfs");
+		return -LXC_ERROR_CONF_ROOTFS;
 	}
 
 	if (conf->pts && configure_pts(name, conf->pts)) {
@@ -1550,12 +1582,6 @@ int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info)
 	if (!conf_has_tty(name))
 		return 0;
 
-/*
-	if (!conf_has_rootfs(name)) {
-		lxc_log_warning("no rootfs is configured, ignoring ttys");
-		return 0;
-	}
-*/
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
 
 	if (read_info(path, "tty", tty, sizeof(tty)) < 0) {
