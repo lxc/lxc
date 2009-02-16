@@ -126,13 +126,40 @@ static int file_for_each_line(const char *file, file_cb callback,
 		return -1;
 	}
 	
-	while (fgets(buffer, len, f))
-		if (callback(buffer, data))
+	while (fgets(buffer, len, f)) {
+		err = callback(buffer, data);
+		if (err)
 			goto out;
-	err = 0;
+	}
 out:
 	fclose(f);
 	return err;
+}
+
+static int char_left_gc(char *buffer, size_t len)
+{
+	int i;
+	for (i = 0; i < len; i++) {
+		if (buffer[i] == ' ' ||
+		    buffer[i] == '\t')
+			continue;
+		return i;
+	}
+	return 0;
+}
+
+static int char_right_gc(char *buffer, size_t len)
+{
+	int i;
+	for (i = len - 1; i >= 0; i--) {
+		if (buffer[i] == ' '  ||
+		    buffer[i] == '\t' ||
+		    buffer[i] == '\n' ||
+		    buffer[i] == '\0')
+			continue;
+		return i + 1;
+	}
+	return 0;
 }
 
 static int write_info(const char *path, const char *file, const char *info)
@@ -450,13 +477,134 @@ static int configure_tty(const char *name, int tty)
 	return ret;
 }
 
+static int configure_find_fstype_cb(void* buffer, void *data)
+{
+	struct cbarg {
+		const char *rootfs;
+		const char *testdir;
+		char *fstype;
+		int mntopt;
+	} *cbarg = data;
+
+	char *fstype;
+
+	/* we don't try 'nodev' entries */
+	if (strstr(buffer, "nodev"))
+		return 0;
+
+	fstype = buffer;
+	fstype += char_left_gc(fstype, strlen(fstype));
+	fstype[char_right_gc(fstype, strlen(fstype))] = '\0';
+
+	if (mount(cbarg->rootfs, cbarg->testdir, fstype, cbarg->mntopt, NULL))
+		return 0;
+
+	/* found ! */
+	umount(cbarg->testdir);
+	strcpy(cbarg->fstype, fstype);
+
+	return 1;
+}
+
+/* find the filesystem type with brute force */
+static int configure_find_fstype(const char *rootfs, char *fstype, int mntopt)
+{
+	int i, found;
+	char buffer[MAXPATHLEN];
+
+	struct cbarg {
+		const char *rootfs;
+		const char *testdir;
+		char *fstype;
+		int mntopt;
+	} cbarg = {
+		.rootfs = rootfs,
+		.fstype = fstype,
+		.mntopt = mntopt,
+	};
+
+	/* first we check with /etc/filesystems, in case the modules
+	 * are auto-loaded and fall back to the supported kernel fs
+	 */
+	char *fsfile[] = {
+		"/etc/filesystems",
+		"/proc/filesystems",
+	};
+
+	cbarg.testdir = tempnam("/tmp", "lxc-");
+	if (!cbarg.testdir) {
+		lxc_log_syserror("failed to build a temp name");
+		return -1;
+	}
+
+	if (mkdir(cbarg.testdir, 0755)) {
+		lxc_log_syserror("failed to create temporary directory");
+		return -1;
+	}
+
+	for (i = 0; i < sizeof(fsfile)/sizeof(fsfile[0]); i++) {
+
+		found = file_for_each_line(fsfile[i],
+					   configure_find_fstype_cb,
+					   buffer, sizeof(buffer), &cbarg);
+
+		if (found < 0) {
+			lxc_log_syserror("failed to read '%s'", fsfile[i]);
+			goto out;
+		}
+
+		if (found)
+			break;
+	}
+
+	if (!found) {
+		lxc_log_error("failed to determine fs type for '%s'", rootfs);
+		goto out;
+	}
+
+out:
+	rmdir(cbarg.testdir);
+	return found - 1;
+}
+
+static int configure_rootfs_dir_cb(const char *rootfs, const char *absrootfs,
+				   FILE *f)
+{
+	return fprintf(f, "%s %s none bind 0 0\n", absrootfs, rootfs);
+}
+
+static int configure_rootfs_blk_cb(const char *rootfs, const char *absrootfs,
+				   FILE *f)
+{
+	char fstype[MAXPATHLEN];
+
+	if (configure_find_fstype(absrootfs, fstype, 0)) {
+		lxc_log_error("failed to configure mount for block device '%s'",
+			      absrootfs);
+		return -1;
+	}
+
+	return fprintf(f, "%s %s %s defaults 0 0\n", absrootfs, rootfs, fstype);
+}
+
 static int configure_rootfs(const char *name, const char *rootfs)
 {
 	char path[MAXPATHLEN];
 	char absrootfs[MAXPATHLEN];
 	char fstab[MAXPATHLEN];
+	struct stat s;
 	FILE *f;
-	int ret;
+	int i, ret;
+
+	typedef int (*rootfs_cb)(const char *, const char *, FILE *);
+
+	struct rootfs_type {
+		int type;
+		rootfs_cb cb;
+	} rtfs_type[] = {
+		{ __S_IFDIR, configure_rootfs_dir_cb },
+		{ __S_IFBLK, configure_rootfs_blk_cb },
+	};
 
 	if (!realpath(rootfs, absrootfs)) {
 		lxc_log_syserror("failed to get real path for '%s'", rootfs);
@@ -465,36 +613,50 @@ static int configure_rootfs(const char *name, const char *rootfs)
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
 
-	if (access(absrootfs, F_OK)) {
-		lxc_log_syserror("'%s' is not accessible", absrootfs);
-		return -1;
-	}
-
 	if (mkdir(path, 0755)) {
 		lxc_log_syserror("failed to create the '%s' directory", path);
 		return -1;
 	}
 
-	snprintf(fstab, MAXPATHLEN, LXCPATH "/%s/fstab", name);
-
-	f = fopen(fstab, "a+");
-	if (!f) {
-		lxc_log_syserror("failed to open fstab file");
+	if (access(absrootfs, F_OK)) {
+		lxc_log_syserror("'%s' is not accessible", absrootfs);
 		return -1;
 	}
 
-	ret = fprintf(f, "%s %s none bind 0 0\n", absrootfs, path);
-
-	fclose(f);
-
-	if (ret < 0) {
-		lxc_log_syserror("failed to add rootfs mount in fstab");
+	if (stat(absrootfs, &s)) {
+		lxc_log_syserror("failed to stat '%s'", absrootfs);
 		return -1;
 	}
 
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs/rootfs", name);
+	for (i = 0; i < sizeof(rtfs_type)/sizeof(rtfs_type[0]); i++) {
 
-	return symlink(absrootfs, path);
+		if (!__S_ISTYPE(s.st_mode, rtfs_type[i].type))
+			continue;
+
+		snprintf(fstab, MAXPATHLEN, LXCPATH "/%s/fstab", name);
+
+		f = fopen(fstab, "a+");
+		if (!f) {
+			lxc_log_syserror("failed to open fstab file");
+			return -1;
+		}
+
+		ret = rtfs_type[i].cb(path, absrootfs, f);
+
+		fclose(f);
+
+		if (ret < 0) {
+			lxc_log_error("failed to add rootfs mount in fstab");
+			return -1;
+		}
+
+		snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs/rootfs", name);
+
+		return symlink(absrootfs, path);
+	}
+
+	lxc_log_error("unsupported rootfs type for '%s'", absrootfs);
+	return -1;
 }
 
 static int configure_pts(const char *name, int pts)
