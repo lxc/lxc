@@ -126,18 +126,27 @@ lxc_version_LDADD = liblxc.la
 install-exec-local:
 	-@export PATH=$$PATH:/sbin:/usr/sbin && \
 	 mkdir -p $(localstatedir) && \
-	 setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
+		\
+	 setcap cap_sys_admin=ep $(bindir)/lxc-create && \
+	 	\
+	 setcap cap_sys_chroot,cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
 		$(bindir)/lxc-execute && \
-	 setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
+		\
+	 setcap cap_sys_chroot,cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
 		$(bindir)/lxc-start && \
+		\
 	 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
 		$(bindir)/lxc-restart && \
+		\
 	 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
 		$(bindir)/lxc-unshare && \
+		\
 	 setcap cap_sys_admin=ep \
 		$(bindir)/lxc-init && \
+		\
 	 setcap cap_sys_admin=ep \
 		$(bindir)/lxc-netstat && \
+		\
 	 mkdir -p $(prefix)/var/lxc && \
 	 chmod ugo+rw $(prefix)/var/lxc || \
 	(echo && echo && \

@@ -71,18 +71,23 @@ rm -rf %{buildroot}
 mkdir -p /var/lxc
 chmod ugo+w /var/lxc
 
-setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
-    %{_bindir}/lxc-execute && \
-setcap cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
-    %{_bindir}/lxc-start && \
+setcap cap_sys_admin=ep %{_bindir}/lxc-init
+
+setcap cap_sys_admin=ep %{_bindir}/lxc-netstat
+
+setcap cap_sys_admin=ep %{_bindir}/lxc-create
+
+setcap cap_sys_chroot,cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
+    %{_bindir}/lxc-execute
+
+setcap cap_sys_chroot,cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
+    %{_bindir}/lxc-start
+
 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
-    %{_bindir}/lxc-restart && \
+    %{_bindir}/lxc-restart
+
 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
-    %{_bindir}/lxc-unshare && \
-setcap cap_sys_admin=ep \
-    %{_bindir}/lxc-init && \
-setcap cap_sys_admin=ep \
-    %{_bindir}/lxc-netstat
+    %{_bindir}/lxc-unshare
 
 %files
 %defattr(-,root,root)
@@ -98,6 +103,9 @@ setcap cap_sys_admin=ep \
 %{_libdir}/*.a
 
 %changelog
+
+* Mon Feb 16 2009 Daniel Lezcano <daniel.lezcano@free.fr> - Version 0.6.0
+- Added more capabilities to the executables
 
 * Sun Jan 25 2009 Daniel Lezcano <daniel.lezcano@free.fr> - Version 0.6.0
 - Reduced spec file
