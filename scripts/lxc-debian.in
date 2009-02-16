@@ -16,6 +16,7 @@ INITTAB="/etc/inittab"
 HOSTNAME="/etc/hostname"
 FSTAB="/etc/fstab"
 SSHD_CONFIG="/etc/ssh/sshd_config"
+PROFILE="/etc/profile"
 
 ################################################################################
 #                    debian custom configuration files
@@ -24,7 +25,7 @@ SSHD_CONFIG="/etc/ssh/sshd_config"
 # custom selinux
 
 write_debian_selinux() {
-    mkdir $ROOTFS/selinux
+    mkdir -p $ROOTFS/selinux
     echo 0 > $ROOTFS/selinux/enforce
 }
 
@@ -107,6 +108,17 @@ ChallengeResponseAuthentication no
 EOF
 }
 
+reconfigure_debian_packages() {
+    chroot $ROOTFS /usr/sbin/dpkg-reconfigure locales
+}
+
+disable_debian_services() {
+    chroot $ROOTFS /usr/sbin/update-rc.d -f umountfs remove
+    chroot $ROOTFS /usr/sbin/update-rc.d -f hwclock.sh remove
+    chroot $ROOTFS /usr/sbin/update-rc.d -f hwclockfirst.sh remove
+}
+
+
 ################################################################################
 #                        lxc configuration files
 ################################################################################
@@ -147,8 +159,7 @@ cat <<EOF > $MNTFILE
 EOF
 }
 
-create() {
-
+collect_information() {
     # choose a container name, default is 'debian'
     echo -n "What is the name for the container ? [$NAME] "
     read _NAME_
@@ -184,9 +195,18 @@ create() {
 	GATEWAY=$_GATEWAY_
     fi
 
-    # the rootfs name will be build with the container name
     ROOTFS="./rootfs.$NAME"
+    # choose the rootfs
+    echo -n "Specify the location of the rootfs [$ROOTFS] "
+    read _ROOTFS_
 
+    if [ ! -z "$_ROOTFS_" ]; then
+	ROOTFS=$_ROOTFS_
+    fi
+}
+
+install_debian()
+{
     # check if the rootfs does already exist
     if [ ! -e "$ROOTFS" ]; then
 	    mkdir -p @LOCALSTATEDIR@/lock/subsys/
@@ -217,7 +237,7 @@ create() {
 	        # download a mini debian into a cache
 		echo "Downloading debian minimal ..."
 		debootstrap --verbose --variant=minbase --arch=$ARCH \
-		    --include ifupdown,apache2,netbase,net-tools,iproute,openssh-server \
+		    --include ifupdown,locales,libui-dialog-perl,dialog,apache2,netbase,net-tools,iproute,openssh-server \
 		    lenny $CACHE/partial-$ARCH http://ftp.debian.org/debian
 		
 		RESULT=$?
@@ -237,36 +257,48 @@ create() {
 	) 200> "@LOCALSTATEDIR@/lock/subsys/lxc"
     fi
 
-write_lxc_mounts
+}
 
-write_lxc_configuration
+create() {
 
-write_debian_inittab
+    collect_information
 
-write_debian_hostname
+    install_debian
 
-write_debian_fstab
+    write_lxc_mounts
 
-write_debian_network
+    write_lxc_configuration
 
-write_debian_sshd_config
+    write_debian_inittab
 
-write_debian_selinux
+    write_debian_hostname
 
-@BINDIR@/lxc-create -n $NAME -f $CONFFILE 
-RES=$?
+    write_debian_fstab
 
-# remove the configuration files
-rm -f $CONFFILE
-rm -f $MNTFILE
+    write_debian_network
 
-if [ "$RES" != "0" ]; then
-    echo "Failed to create '$NAME'"
-    exit 1
-fi
+    write_debian_sshd_config
 
-echo "Done."
-echo -e "\nYou can run your container with the 'lxc-start -n $NAME'\n"
+    write_debian_selinux
+
+    reconfigure_debian_packages
+
+    disable_debian_services
+
+    @BINDIR@/lxc-create -n $NAME -f $CONFFILE
+    RES=$?
+
+    # remove the configuration files
+    rm -f $CONFFILE
+    rm -f $MNTFILE
+
+    if [ "$RES" != "0" ]; then
+	echo "Failed to create '$NAME'"
+	exit 1
+    fi
+
+    echo "Done."
+    echo -e "\nYou can run your container with the 'lxc-start -n $NAME'\n"
 }
 
 destroy() {
