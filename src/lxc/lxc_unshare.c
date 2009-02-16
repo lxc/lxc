@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 	int opt, nbargs = 0, status = 1, hastofork = 0;
 	char **args;
 	long flags = 0;
-	uid_t uid;
+	uid_t uid = 0;
 	pid_t pid;
 
 	while ((opt = getopt(argc, argv, "fmphiu:n")) != -1) {

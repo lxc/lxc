@@ -47,6 +47,7 @@
 
 #include "network.h"
 #include "error.h"
+#include "parse.h"
 
 #include <lxc/lxc.h>
 
@@ -57,11 +58,6 @@
 
 typedef int (*instanciate_cb)(const char *directory, 
 			      const char *file, pid_t pid);
-
-typedef int (*dir_cb)(const char *name, const char *directory, 
-		      const char *file, void *data);
-
-typedef int (*file_cb)(void* buffer, void *data);
 
 struct netdev_conf {
 	const char *type;
@@ -81,86 +77,6 @@ static struct netdev_conf netdev_conf[MAXCONFTYPE + 1] = {
 	[PHYS]    = { "phys",    instanciate_phys,    0, },
 	[EMPTY]   = { "empty",   instanciate_empty,   0, },
 };
-
-static int dir_filter(const struct dirent *dirent)
-{
-	if (!strcmp(dirent->d_name, ".") ||
-            !strcmp(dirent->d_name, ".."))
-                return 0;
-        return 1;
-}
-
-static int dir_for_each(const char *name, const char *directory, 
-			dir_cb callback, void *data)
-{
-	struct dirent **namelist;
-	int n;
-	
-	n = scandir(directory, &namelist, dir_filter, alphasort);
-	if (n < 0) {
-		lxc_log_syserror("failed to scan %s directory", directory);
-		return -1;
-	}
-	
-	while (n--) {
-		if (callback(name, directory, namelist[n]->d_name, data)) {
-			lxc_log_error("callback failed");
-			free(namelist[n]);
-			return -1;
-		}
-		free(namelist[n]);
-	}
-
-	return 0;
-}
-
-static int file_for_each_line(const char *file, file_cb callback, 
-			      void *buffer, size_t len, void* data)
-{
-	FILE *f;
-	int err = -1;
-
-	f = fopen(file, "r");
-	if (!f) {
-		lxc_log_syserror("failed to open %s", file);
-		return -1;
-	}
-	
-	while (fgets(buffer, len, f)) {
-		err = callback(buffer, data);
-		if (err)
-			goto out;
-	}
-out:
-	fclose(f);
-	return err;
-}
-
-static int char_left_gc(char *buffer, size_t len)
-{
-	int i;
-	for (i = 0; i < len; i++) {
-		if (buffer[i] == ' ' ||
-		    buffer[i] == '\t')
-			continue;
-		return i;
-	}
-	return 0;
-}
-
-static int char_right_gc(char *buffer, size_t len)
-{
-	int i;
-	for (i = len - 1; i >= 0; i--) {
-		if (buffer[i] == ' '  ||
-		    buffer[i] == '\t' ||
-		    buffer[i] == '\n' ||
-		    buffer[i] == '\0')
-			continue;
-		return i + 1;
-	}
-	return 0;
-}
 
 static int write_info(const char *path, const char *file, const char *info)
 {
@@ -493,8 +409,8 @@ static int configure_find_fstype_cb(void* buffer, void *data)
 		return 0;
 
 	fstype = buffer;
-	fstype += char_left_gc(fstype, strlen(fstype));
-	fstype[char_right_gc(fstype, strlen(fstype))] = '\0';
+	fstype += lxc_char_left_gc(fstype, strlen(fstype));
+	fstype[lxc_char_right_gc(fstype, strlen(fstype))] = '\0';
 
 	if (mount(cbarg->rootfs, cbarg->testdir, fstype, cbarg->mntopt, NULL))
 		return 0;
@@ -544,9 +460,9 @@ static int configure_find_fstype(const char *rootfs, char *fstype, int mntopt)
 
 	for (i = 0; i < sizeof(fsfile)/sizeof(fsfile[0]); i++) {
 
-		found = file_for_each_line(fsfile[i],
-					   configure_find_fstype_cb,
-					   buffer, sizeof(buffer), &cbarg);
+		found = lxc_file_for_each_line(fsfile[i],
+					       configure_find_fstype_cb,
+					       buffer, sizeof(buffer), &cbarg);
 
 		if (found < 0) {
 			lxc_log_syserror("failed to read '%s'", fsfile[i]);
@@ -789,7 +705,7 @@ static int unconfigure_network(const char *name)
 	char directory[MAXPATHLEN];
 
 	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
-	dir_for_each(name, directory, unconfigure_network_cb, NULL);
+	lxc_dir_for_each(name, directory, unconfigure_network_cb, NULL);
 	rmdir(directory);
 
 	return 0;
@@ -815,7 +731,7 @@ static int unconfigure_cgroup(const char *name)
 
 	if (S_ISDIR(s.st_mode)) {
 		/* old cgroup configuration */
-		dir_for_each(name, filename, unconfigure_cgroup_cb, NULL);
+		lxc_dir_for_each(name, filename, unconfigure_cgroup_cb, NULL);
 		rmdir(filename);
 	} else {
 		unlink(filename);
@@ -1054,7 +970,7 @@ static int setup_convert_cgroup(const char *name, char *directory)
 	if (!file)
 		return -1;
 
-	ret = dir_for_each(name, directory, setup_convert_cgroup_cb, file);
+	ret = lxc_dir_for_each(name, directory, setup_convert_cgroup_cb, file);
 	if (ret)
 		goto out_error;
 
@@ -1094,8 +1010,8 @@ static int setup_cgroup(const char *name)
 		}
 	}
 	
-	return file_for_each_line(filename, setup_cgroup_cb, 
-				  line, MAXPATHLEN, (void *)name);
+	return lxc_file_for_each_line(filename, setup_cgroup_cb,
+				      line, MAXPATHLEN, (void *)name);
 }
 
 static int setup_mount(const char *name)
@@ -1242,8 +1158,8 @@ static int setup_ip_addr(const char *directory, const char *ifname)
 
 	snprintf(path, MAXPATHLEN, "%s/ipv4/addresses", directory);
 	if (!stat(path, &s))
-		ret = file_for_each_line(path, setup_ipv4_addr_cb, 
-					 line, MAXPATHLEN, (void*)ifname);
+		ret = lxc_file_for_each_line(path, setup_ipv4_addr_cb,
+					     line, MAXPATHLEN, (void*)ifname);
 	return ret;
 }
 
@@ -1255,8 +1171,8 @@ static int setup_ip6_addr(const char *directory, const char *ifname)
 
 	snprintf(path, MAXLINELEN, "%s/ipv6/addresses", directory);
 	if (!stat(path, &s))
-		ret = file_for_each_line(path, setup_ipv6_addr_cb, 
-					 line, MAXPATHLEN, (void*)ifname);	
+		ret = lxc_file_for_each_line(path, setup_ipv6_addr_cb,
+					     line, MAXPATHLEN, (void*)ifname);
 	return ret;
 }
 
@@ -1344,7 +1260,7 @@ static int setup_network(const char *name)
 	char directory[MAXPATHLEN];
 
 	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
-	return dir_for_each(name, directory, setup_network_cb, NULL);
+	return lxc_dir_for_each(name, directory, setup_network_cb, NULL);
 }
 
 int conf_has(const char *name, const char *info)
@@ -1616,7 +1532,7 @@ static int instanciate_netdev(const char *name, pid_t pid)
 	char directory[MAXPATHLEN];
 
 	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
-	return dir_for_each(name, directory, instanciate_netdev_cb, &pid);
+	return lxc_dir_for_each(name, directory, instanciate_netdev_cb, &pid);
 }
 
 static int move_netdev_cb(const char *name, const char *directory, 
@@ -1654,7 +1570,7 @@ static int move_netdev(const char *name, pid_t pid)
 {
 	char directory[MAXPATHLEN];
 	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
-	return dir_for_each(name, directory, move_netdev_cb, &pid);
+	return lxc_dir_for_each(name, directory, move_netdev_cb, &pid);
 }
 
 int conf_create_network(const char *name, pid_t pid)
@@ -1672,6 +1588,7 @@ int conf_create_network(const char *name, pid_t pid)
 	return 0;
 }
 
+#ifdef NETWORK_DESTROY
 static int delete_netdev_cb(const char *name, const char *directory, 
 			    const char *file, void *data)
 {
@@ -1712,19 +1629,16 @@ static int delete_netdev_cb(const char *name, const char *directory,
 
 	return 0;
 }
-
-static int delete_netdev(const char *name)
-{
-	char directory[MAXPATHLEN];
-
-	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
-	return dir_for_each(name, directory, delete_netdev_cb, NULL);
-}
+#endif
 
 int conf_destroy_network(const char *name)
 {
 #ifdef NETWORK_DESTROY
-	if (delete_netdev(name)) {
+	char directory[MAXPATHLEN];
+
+	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
+
+	if (lxc_dir_for_each(name, directory, delete_netdev_cb, NULL)) {
 		lxc_log_error("failed to remove the network devices");
 		return -1;
 	}

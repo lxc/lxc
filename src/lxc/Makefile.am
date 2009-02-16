@@ -25,6 +25,7 @@ liblxc_la_SOURCES = \
 	restart.c \
 	version.c \
 	error.h error.c \
+	parse.c parse.h \
 	cgroup.c cgroup.h \
 	lxc.h \
 	lxc_utils.h \

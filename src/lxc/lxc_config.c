@@ -32,10 +32,9 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
-#include <lxc/lxc.h>
+#include "parse.h"
 
-typedef int (*file_cb)(char* buffer, void *data);
-typedef int (*config_cb)(const char *, char *, struct lxc_conf *);
+#include <lxc/lxc.h>
 
 static int config_pts(const char *, char *, struct lxc_conf *);
 static int config_tty(const char *, char *, struct lxc_conf *);
@@ -50,6 +49,8 @@ static int config_network_name(const char *, char *, struct lxc_conf *);
 static int config_network_hwaddr(const char *, char *, struct lxc_conf *);
 static int config_network_ipv4(const char *, char *, struct lxc_conf *);
 static int config_network_ipv6(const char *, char *, struct lxc_conf *);
+
+typedef int (*config_cb)(const char *, char *, struct lxc_conf *);
 
 struct config {
 	char *name;
@@ -84,45 +85,6 @@ static struct config *getconfig(const char *key)
 			     strlen(config[i].name)))
 			return &config[i];
 	return NULL;
-}
-
-static int is_line_empty(char *line)
-{
-	int i;
-	size_t len = strlen(line);
-
-	for (i = 0; i < len; i++)
-		if (line[i] != ' ' && line[i] != '\t' && 
-		    line[i] != '\n' && line[i] != '\r' &&
-		    line[i] != '\f' && line[i] != '\0')
-			return 0;
-	return 1;
-}
-
-static int char_left_gc(char *buffer, size_t len)
-{
-	int i;
-	for (i = 0; i < len; i++) {
-		if (buffer[i] == ' ' ||
-		    buffer[i] == '\t')
-			continue;
-		return i;
-	}
-	return 0;
-}
-
-static int char_right_gc(char *buffer, size_t len)
-{
-	int i;
-	for (i = len - 1; i >= 0; i--) {
-		if (buffer[i] == ' '  ||
-		    buffer[i] == '\t' ||
-		    buffer[i] == '\n' ||
-		    buffer[i] == '\0')
-			continue;
-		return i + 1;
-	}
-	return 0;
 }
 
 static int config_network_type(const char *key, char *value, struct lxc_conf *lxc_conf)
@@ -532,34 +494,35 @@ static int config_utsname(const char *key, char *value, struct lxc_conf *lxc_con
 	return 0;
 }
 
-static int parse_line(char *buffer, void *data)
+static int parse_line(void *buffer, void *data)
 {
 	struct config *config;
+	char *line = buffer;
 	char *dot;
 	char *key;
 	char *value;
 
-	if (is_line_empty(buffer))
+	if (lxc_is_line_empty(line))
 		return 0;
 
-	buffer += char_left_gc(buffer, strlen(buffer));
-	if (buffer[0] == '#')
+	line += lxc_char_left_gc(line, strlen(line));
+	if (line[0] == '#')
 		return 0;
 
-	dot = strstr(buffer, "=");
+	dot = strstr(line, "=");
 	if (!dot) {
-		lxc_log_error("invalid configuration line: %s", buffer);
+		lxc_log_error("invalid configuration line: %s", line);
 		return -1;
 	}
 	
 	*dot = '\0';
 	value = dot + 1;
 
-	key = buffer;
-	key[char_right_gc(key, strlen(key))] = '\0';
+	key = line;
+	key[lxc_char_right_gc(key, strlen(key))] = '\0';
 
-	value += char_left_gc(value, strlen(value));
-	value[char_right_gc(value, strlen(value))] = '\0';
+	value += lxc_char_left_gc(value, strlen(value));
+	value[lxc_char_right_gc(value, strlen(value))] = '\0';
 
 	config = getconfig(key);
 	if (!config) {
@@ -570,31 +533,12 @@ static int parse_line(char *buffer, void *data)
 	return config->cb(key, value, data);
 }
 
-static int file_for_each_line(const char *file, file_cb callback, void *data)
-{
-	char buffer[MAXPATHLEN];
-	size_t len = sizeof(buffer);
-	FILE *f;
-	int err = -1;
-
-	f = fopen(file, "r");
-	if (!f) {
-		lxc_log_syserror("failed to open %s", file);
-		return -1;
-	}
-	
-	while (fgets(buffer, len, f))
-		if (callback(buffer, data))
-			goto out;
-	err = 0;
-out:
-	fclose(f);	
-	return err;
-}
-
 int lxc_config_read(const char *file, struct lxc_conf *conf)
 {
-	return file_for_each_line(file, parse_line, conf);
+	char buffer[MAXPATHLEN];
+
+	return lxc_file_for_each_line(file, parse_line, buffer,
+				      sizeof(buffer), conf);
 }
 
 int lxc_config_init(struct lxc_conf *conf)
