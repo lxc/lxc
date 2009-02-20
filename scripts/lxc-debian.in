@@ -127,6 +127,7 @@ write_lxc_configuration() {
 cat <<EOF > $CONFFILE
 lxc.utsname = $UTSNAME
 lxc.tty = 4
+lxc.pts = 1024
 lxc.network.type = veth
 lxc.network.flags = up
 lxc.network.link = br0
@@ -145,7 +146,6 @@ lxc.cgroup.devices.allow = c 4:1 rwm
 # /dev/{,u}random
 lxc.cgroup.devices.allow = c 1:9 rwm
 lxc.cgroup.devices.allow = c 1:8 rwm
-# /dev/pts/* - pts namespaces are "coming soon"
 lxc.cgroup.devices.allow = c 136:* rwm
 lxc.cgroup.devices.allow = c 5:2 rwm
 # rtc
