@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <pwd.h>
 
 #include "lxc_namespace.h"
 
@@ -48,12 +49,37 @@ void usage(char *cmd)
 	_exit(1);
 }
 
+static uid_t lookup_user(const char *optarg)
+{
+	char name[sysconf(_SC_LOGIN_NAME_MAX)];
+	uid_t uid = -1;
+
+	if (!optarg || (optarg[0] == '\0'))
+		return uid;
+	if (sscanf(optarg, "%u", &uid) < 1) {
+		struct passwd pwent; /* not a uid -- perhaps a username */
+		struct passwd *pent;
+
+		if (sscanf(optarg, "%s", name) < 1)
+			return uid;
+		if (getpwnam_r(name, &pwent, NULL, 0, &pent) || !pent)
+			return uid;
+		uid = pent->pw_uid;
+	} else {
+		if (getpwuid_r(uid, NULL, NULL, 0, NULL)) {
+			uid = -1;
+			return uid;
+		}
+	}
+	return uid;
+}
+
 int main(int argc, char *argv[])
 {
 	int opt, nbargs = 0, status = 1, hastofork = 0;
 	char **args;
 	long flags = 0;
-	uid_t uid = 0;
+	uid_t uid = -1; /* valid only if (flags & CLONE_NEWUSER) */
 	pid_t pid;
 
 	while ((opt = getopt(argc, argv, "fmphiu:n")) != -1) {
@@ -71,8 +97,10 @@ int main(int argc, char *argv[])
 			flags |= CLONE_NEWIPC;
 			break;
 		case 'u':
+			uid = lookup_user(optarg);
+			if (uid == -1)
+				break;
 			flags |= CLONE_NEWUSER;
-			uid = atoi(optarg);
 			break;
 		case 'n':
 			flags |= CLONE_NEWNET;
