@@ -172,7 +172,7 @@ extern int lxc_cgroup_get(const char *name, const char *subsystem,
  * @error : the value of the error
  * Returns a string on success or NULL otherwise.
  */
-extern const char *const lxc_strerror(int error);
+extern const char *lxc_strerror(int error);
 
 /*
  * Checkpoint a container previously frozen
