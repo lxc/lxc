@@ -43,9 +43,35 @@
 #include <sys/poll.h>
 
 #ifdef HAVE_SYS_SIGNALFD_H 
-#include <sys/signalfd.h>
+#  include <sys/signalfd.h>
 #else
-extern int signalfd (int fd, const sigset_t *mask, int flags);
+#  ifndef __NR_signalfd4
+/* assume kernel headers are too old */
+#    if __i386__
+#      define __NR_signalfd4 327
+#    elif __x86_64__
+#      define __NR_signalfd4 289
+#    endif
+#endif
+
+#  ifndef __NR_signalfd
+/* assume kernel headers are too old */
+#    if __i386__
+#      define __NR_signalfd 321
+#    elif __x86_64__
+#      define __NR_signalfd 282
+#    endif
+#endif
+
+int signalfd(int fd, const sigset_t *mask, int flags)
+{
+	int retval;
+
+	retval = syscall (__NR_signalfd4, fd, mask, _NSIG / 8, flags);
+	if (errno == ENOSYS && flags == 0)
+		retval = syscall (__NR_signalfd, fd, mask, _NSIG / 8);
+	return retval;
+}
 #endif
 
 #if !HAVE_DECL_PR_CAPBSET_DROP
