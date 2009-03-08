@@ -48,6 +48,10 @@
 extern int signalfd (int fd, const sigset_t *mask, int flags);
 #endif
 
+#if !HAVE_DECL_PR_CAPBSET_DROP
+#define PR_CAPBSET_DROP 24
+#endif
+
 #include "error.h"
 #include "af_unix.h"
 #include "mainloop.h"
