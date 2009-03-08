@@ -76,7 +76,7 @@ static uid_t lookup_user(const char *optarg)
 
 int main(int argc, char *argv[])
 {
-	int opt, nbargs = 0, status = 1, hastofork = 0;
+	int opt, status = 1, hastofork = 0;
 	char **args;
 	long flags = 0;
 	uid_t uid = -1; /* valid only if (flags & CLONE_NEWUSER) */
@@ -109,12 +109,9 @@ int main(int argc, char *argv[])
 			hastofork = 1;
 			break;
 		}
-
-		nbargs++;
 	}
 
 	args = &argv[optind];
-	argc -= nbargs;
 
 	if (!flags)
 		usage(argv[0]);
