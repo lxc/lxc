@@ -84,6 +84,7 @@ AC_CONFIG_FILES([
 
 	scripts/Makefile
 	scripts/lxc-debian
+	scripts/lxc-fedora
 	scripts/lxc-sshd
 
         src/Makefile
