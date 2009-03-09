@@ -51,6 +51,8 @@
 #      define __NR_signalfd4 327
 #    elif __x86_64__
 #      define __NR_signalfd4 289
+#    elif __s390x__
+#      define __NR_signalfd4 322
 #    endif
 #endif
 
@@ -60,6 +62,8 @@
 #      define __NR_signalfd 321
 #    elif __x86_64__
 #      define __NR_signalfd 282
+#    elif __s390x__
+#      define __NR_signalfd 316
 #    endif
 #endif
 
