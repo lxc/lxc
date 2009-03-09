@@ -60,8 +60,10 @@
 #    error "unsupported architecture"
 #  endif
 #endif
-#if __i386__ || __x86_64__ || __s390__ || __powerpc__
+#if __i386__ || __x86_64__ || __powerpc__
 #   define fork_ns(flags) syscall(SYS_clone, flags|SIGCHLD, NULL);
+#elif __s390__
+#   define fork_ns(flags) syscall(SYS_clone, NULL, flags|SIGCHLD)
 #elif __ia64__
 #   define fork_ns(flags) syscall(SYS_clone2, flags|SIGCHLD, NULL);
 #else
