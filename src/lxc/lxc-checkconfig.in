@@ -1,5 +1,6 @@
 #!/bin/bash
-CONFIGZ=/proc/config.gz
+CONFIG=/proc/config.gz
+GREP=zgrep
 
 SETCOLOR_SUCCESS="echo -en \\033[1;32m"
 SETCOLOR_FAILURE="echo -en \\033[1;31m"
@@ -8,7 +9,7 @@ SETCOLOR_NORMAL="echo -en \\033[0;39m"
 
 is_enabled() {
     mandatory=$2
-    zgrep -q "$1=y" $CONFIGZ
+    $GREP -q "$1=[y|m]" $CONFIG
     RES=$?
 
     if [ $RES = 0 ]; then
@@ -22,14 +23,17 @@ is_enabled() {
     fi
 }
 
-if [ ! -f $CONFIGZ ]; then
-    echo 
-    echo "The kernel configuration can not be retrieved because"
-    echo "\"$CONFIGZ\" was not found."
-    echo
-    echo "Is your kernel compiled with IKCONFIG_PROC ?"
-    echo 
-    exit 1
+if [ ! -f $CONFIG ]; then
+    KVER="`uname -r`"
+    CONFIG="/lib/modules/$KVER/build/.config"
+    GREP=grep
+    if [ ! -f $CONFIG ]; then
+        echo
+        echo "The kernel configuration can not be retrieved"
+        echo "Please recompile with IKCONFIG_PROC or install the kernel headers"
+        echo
+        exit 1
+    fi
 fi
 
 echo "--- Namespaces ---"
