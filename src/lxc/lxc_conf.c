@@ -51,10 +51,13 @@
 
 #include <lxc/lxc.h>
 
-
 #define MAXHWLEN    18
 #define MAXINDEXLEN 20
 #define MAXLINELEN  128
+
+#ifndef MS_REC
+#define MS_REC 16384
+#endif
 
 typedef int (*instanciate_cb)(const char *directory, 
 			      const char *file, pid_t pid);
@@ -486,7 +489,7 @@ out:
 static int configure_rootfs_dir_cb(const char *rootfs, const char *absrootfs,
 				   FILE *f)
 {
-	return fprintf(f, "%s %s none bind 0 0\n", absrootfs, rootfs);
+	return fprintf(f, "%s %s none rbind 0 0\n", absrootfs, rootfs);
 }
 
 static int configure_rootfs_blk_cb(const char *rootfs, const char *absrootfs,
@@ -1036,6 +1039,8 @@ static int setup_mount(const char *name)
 
 		if (hasmntopt(mntent, "bind"))
 			mntflags |= MS_BIND;
+		if (hasmntopt(mntent, "rbind"))
+			mntflags |= MS_BIND|MS_REC;
 		if (hasmntopt(mntent, "ro"))
 			mntflags |= MS_RDONLY;
 		if (hasmntopt(mntent, "noexec"))
