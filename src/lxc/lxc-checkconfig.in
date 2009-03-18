@@ -1,6 +1,8 @@
 #!/bin/bash
-CONFIG=/proc/config.gz
-GREP=zgrep
+
+# Allow environment variables to override grep and config
+: ${CONFIG:=/proc/config.gz}
+: ${GREP:=zgrep}
 
 SETCOLOR_SUCCESS="echo -en \\033[1;32m"
 SETCOLOR_FAILURE="echo -en \\033[1;31m"
@@ -24,6 +26,7 @@ is_enabled() {
 }
 
 if [ ! -f $CONFIG ]; then
+    echo "Kernel config $CONFIG not found, looking in other places..."
     KVER="`uname -r`"
     HEADERS_CONFIG="/lib/modules/$KVER/build/.config"
     BOOT_CONFIG="/boot/config-$KVER"
@@ -36,6 +39,8 @@ if [ ! -f $CONFIG ]; then
         echo "Please recompile with IKCONFIG_PROC or install the kernel headers"
         echo
         exit 1
+    else
+        echo "Found kernel config file $CONFIG"
     fi
 fi
 
