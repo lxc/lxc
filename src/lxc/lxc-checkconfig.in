@@ -25,7 +25,10 @@ is_enabled() {
 
 if [ ! -f $CONFIG ]; then
     KVER="`uname -r`"
-    CONFIG="/lib/modules/$KVER/build/.config"
+    HEADERS_CONFIG="/lib/modules/$KVER/build/.config"
+    BOOT_CONFIG="/boot/config-$KVER"
+    [ -f "${HEADERS_CONFIG}" ] && CONFIG=${HEADERS_CONFIG}
+    [ -f "${BOOT_CONFIG}" ] && CONFIG=${BOOT_CONFIG}
     GREP=grep
     if [ ! -f $CONFIG ]; then
         echo
