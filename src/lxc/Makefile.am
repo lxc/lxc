@@ -1,4 +1,6 @@
-INCLUDES= -I$(top_srcdir)/src -DLXCPATH="\"$(localstatedir)/lxc\"" -DLXCBINDIR="\"$(bindir)\""
+INCLUDES= -I$(top_srcdir)/src -DLXCPATH="\"$(localstatedir)/lxc\"" \
+	  -DLXCBINDIR="\"$(bindir)\"" \
+	  -DLXCLIBEXECDIR="\"$(libexecdir)\""
 AM_LDFLAGS= -lutil
 lib_LTLIBRARIES = liblxc.la
 pkginclude_HEADERS = \
@@ -56,7 +58,6 @@ bin_SCRIPTS = \
 
 bin_PROGRAMS = \
 	lxc-unshare \
-	lxc-init \
 	lxc-create \
 	lxc-destroy \
 	lxc-stop \
@@ -72,6 +73,9 @@ bin_PROGRAMS = \
 	lxc-checkpoint \
 	lxc-restart \
 	lxc-version
+
+libexec_PROGRAMS = \
+	lxc-init
 
 lxc_unshare_SOURCES = lxc_unshare.c
 lxc_unshare_LDADD = liblxc.la

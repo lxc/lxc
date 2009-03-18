@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 	}
 
 	nbargs = 0;
-	args[nbargs++] = LXCBINDIR "/lxc-init";
+	args[nbargs++] = LXCLIBEXECDIR "/lxc-init";
 	args[nbargs++] = "--mount-procfs";
 	args[nbargs++] = "--";
 
