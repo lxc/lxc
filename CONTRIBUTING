@@ -19,7 +19,7 @@ The coding style follows the Linux kernel coding style.
 The coding style is defined in the 'CodingStyle' file, available in
 the directory 'Documentation' of the Linux kernel source tree.
 
-It can be accessible online too:
+It can be accessed online too:
 
 http://lxr.linux.no/linux+v2.6.27/Documentation/CodingStyle
 
@@ -32,7 +32,7 @@ is defined below. The guidelines are defined in the
 'SubmittingPatches' file, available in the directory 'Documentation'
 of the Linux kernel source tree.
 
-It can be accessible online too:
+It can be accessed online too:
 
 http://lxr.linux.no/linux+v2.6.27/Documentation/SubmittingPatches
 
