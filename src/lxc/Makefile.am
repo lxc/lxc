@@ -128,6 +128,9 @@ lxc_restart_LDADD = liblxc.la
 lxc_version_SOURCES = lxc_version.c
 lxc_version_LDADD = liblxc.la
 
+install-libexecPROGRAMS:
+	 setcap cap_sys_admin=ep $(libexecdir)/lxc-init
+
 install-exec-local:
 	-@export PATH=$$PATH:/sbin:/usr/sbin && \
 	 mkdir -p $(localstatedir) && \
@@ -145,9 +148,6 @@ install-exec-local:
 		\
 	 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
 		$(bindir)/lxc-unshare && \
-		\
-	 setcap cap_sys_admin=ep \
-		$(bindir)/lxc-init && \
 		\
 	 setcap cap_sys_admin=ep \
 		$(bindir)/lxc-netstat && \
