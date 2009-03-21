@@ -79,6 +79,7 @@ struct lxc_netdev {
 	char *ifname;
 	char *newname;
 	char *hwaddr;
+	char *mtu;
 	struct lxc_list ipv4;
 	struct lxc_list ipv6;
 	struct lxc_list route4;

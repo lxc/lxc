@@ -53,6 +53,7 @@
 
 #define MAXHWLEN    18
 #define MAXINDEXLEN 20
+#define MAXMTULEN   16
 #define MAXLINELEN  128
 
 #ifndef MS_REC
@@ -252,12 +253,17 @@ static int configure_netdev(const char *path, struct lxc_netdev *netdev)
 
 	if (netdev->hwaddr) {
 		if (write_info(path, "hwaddr", netdev->hwaddr))
-			goto out_up;
+			goto out_hwaddr;
+	}
+
+	if (netdev->mtu) {
+		if (write_info(path, "mtu", netdev->mtu))
+			goto out_mtu;
 	}
 
 	if (netdev->flags & IFF_UP) {
 		if (write_info(path, "up", ""))
-			goto out_hwaddr;
+			goto out_up;
 	}
 
 	if (!lxc_list_empty(&netdev->ipv4)) {
@@ -278,9 +284,11 @@ out_ipv6:
 	delete_info(path, "ipv4");
 out_ipv4:
 	delete_info(path, "up");
-out_hwaddr:
-	delete_info(path, "hwaddr");
 out_up:
+	delete_info(path, "mtu");
+out_mtu:
+	delete_info(path, "hwaddr");
+out_hwaddr:
 	delete_info(path, "name");
 out_newname:
 	delete_info(path, "link");
@@ -696,6 +704,7 @@ static int unconfigure_network_cb(const char *name, const char *directory,
 	delete_info(path, "addr");
 	delete_info(path, "link");
 	delete_info(path, "hwaddr");
+	delete_info(path, "mtu");
 	delete_info(path, "up");
 	unconfigure_ip_addresses(path);
 	rmdir(path);
@@ -1364,7 +1373,8 @@ static int instanciate_veth(const char *directory, const char *file, pid_t pid)
 {
 	char *path = NULL, *strindex = NULL, *veth1 = NULL, *veth2 = NULL;
 	char bridge[IFNAMSIZ];
-	int ifindex, ret = -1;
+	char strmtu[MAXMTULEN];
+	int ifindex, mtu = 0, ret = -1;
 			
 	if (!asprintf(&veth1, "%s_%d", file, pid) ||
 	    !asprintf(&veth2, "%s~%d", file, pid) ||
@@ -1378,7 +1388,14 @@ static int instanciate_veth(const char *directory, const char *file, pid_t pid)
 		goto out;
 	}
 
-	if (lxc_configure_veth(veth1, veth2, bridge)) {
+	if (!read_info(path, "mtu", strmtu, MAXMTULEN)) {
+		if (sscanf(strmtu, "%u", &mtu) < 1) {
+			lxc_log_error("invalid mtu size '%d'", mtu);
+			goto out;
+		}
+	}
+
+	if (lxc_configure_veth(veth1, veth2, bridge, mtu)) {
 		lxc_log_error("failed to create %s-%s/%s", veth1, veth2, bridge);
 		goto out;
 	}

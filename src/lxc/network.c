@@ -281,7 +281,7 @@ out:
 	return err;
 }
 
-int veth_create(const char *name1, const char *name2)
+int veth_create(const char *name1, const char *name2, const int mtu)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -343,6 +343,10 @@ int veth_create(const char *name1, const char *name2)
 
 	if (nla_put_string(nlmsg, IFLA_IFNAME, name1))
 		goto out;
+
+	if (mtu)
+		if (nla_put_u32(nlmsg, IFLA_MTU, mtu))
+			goto out;
 
 	if (netlink_transaction(&nlh, nlmsg, answer))
 		goto out;
@@ -690,10 +694,11 @@ int bridge_detach(const char *bridge, const char *ifname)
 	return bridge_add_del_interface(bridge, ifname, 1);
 }
 
-int lxc_configure_veth(const char *veth1, const char *veth2, const char *bridge)
+int lxc_configure_veth(const char *veth1, const char *veth2,
+		       const char *bridge, const int mtu)
 {
 	int err = -1;
-	if (veth_create(veth1, veth2)) {
+	if (veth_create(veth1, veth2, mtu)) {
 		fprintf(stderr, "failed to create veth interfaces %s/%s\n",
 			veth1, veth2);
 		return -1;

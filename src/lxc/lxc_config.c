@@ -47,6 +47,7 @@ static int config_network_flags(const char *, char *, struct lxc_conf *);
 static int config_network_link(const char *, char *, struct lxc_conf *);
 static int config_network_name(const char *, char *, struct lxc_conf *);
 static int config_network_hwaddr(const char *, char *, struct lxc_conf *);
+static int config_network_mtu(const char *, char *, struct lxc_conf *);
 static int config_network_ipv4(const char *, char *, struct lxc_conf *);
 static int config_network_ipv6(const char *, char *, struct lxc_conf *);
 
@@ -70,6 +71,7 @@ static struct config config[] = {
 	{ "lxc.network.link",   config_network_link   },
 	{ "lxc.network.name",   config_network_name   },
 	{ "lxc.network.hwaddr", config_network_hwaddr },
+	{ "lxc.network.mtu",    config_network_mtu    },
 	{ "lxc.network.ipv4",   config_network_ipv4   },
 	{ "lxc.network.ipv6",   config_network_ipv6   },
 };
@@ -245,6 +247,28 @@ static int config_network_hwaddr(const char *key, char *value, struct lxc_conf *
 
 	netdev = lxc_list_first_elem(&network->netdev);
 	netdev->hwaddr = strdup(value);
+	return 0;
+}
+
+static int config_network_mtu(const char *key, char *value, struct lxc_conf *lxc_conf)
+{
+	struct lxc_list *networks = &lxc_conf->networks;
+	struct lxc_network *network;
+	struct lxc_netdev *netdev;
+
+	if (lxc_list_empty(networks)) {
+		lxc_log_error("network is not created for %s", value);
+		return -1;
+	}
+
+	network = lxc_list_first_elem(networks);
+	if (!network) {
+		lxc_log_error("no network defined for %s", value);
+		return -1;
+	}
+
+	netdev = lxc_list_first_elem(&network->netdev);
+	netdev->mtu = strdup(value);
 	return 0;
 }
 
