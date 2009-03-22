@@ -220,6 +220,54 @@ out:
 	return err;
 }
 
+extern int device_set_mtu(const char *name, int mtu)
+{
+	struct nl_handler nlh;
+	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	struct link_req *link_req;
+	int index, len, err = -1;
+
+	if (netlink_open(&nlh, NETLINK_ROUTE))
+		return -1;
+
+	len = strlen(name);
+	if (len == 1 || len > IFNAMSIZ)
+		goto out;
+
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		goto out;
+
+	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!answer)
+		goto out;
+
+	index = if_nametoindex(name);
+	if (!index)
+		goto out;
+
+	link_req = (struct link_req *)nlmsg;
+	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
+	link_req->ifinfomsg.ifi_index = index;
+	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_REQUEST|NLM_F_ACK;
+	nlmsg->nlmsghdr.nlmsg_type = RTM_NEWLINK;
+
+	if (nla_put_u32(nlmsg, IFLA_MTU, mtu))
+		goto out;
+
+	err = netlink_transaction(&nlh, nlmsg, answer);
+	if (err < 0)
+		goto out;
+
+	err = 0;
+out:
+	netlink_close(&nlh);
+	nlmsg_free(nlmsg);
+	nlmsg_free(answer);
+	return err;
+}
+
 int device_up(const char *name)
 {
 	return device_set_flag(name, IFF_UP);
@@ -281,7 +329,7 @@ out:
 	return err;
 }
 
-int veth_create(const char *name1, const char *name2, const int mtu)
+int veth_create(const char *name1, const char *name2)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -343,10 +391,6 @@ int veth_create(const char *name1, const char *name2, const int mtu)
 
 	if (nla_put_string(nlmsg, IFLA_IFNAME, name1))
 		goto out;
-
-	if (mtu)
-		if (nla_put_u32(nlmsg, IFLA_MTU, mtu))
-			goto out;
 
 	if (netlink_transaction(&nlh, nlmsg, answer))
 		goto out;
@@ -694,11 +738,10 @@ int bridge_detach(const char *bridge, const char *ifname)
 	return bridge_add_del_interface(bridge, ifname, 1);
 }
 
-int lxc_configure_veth(const char *veth1, const char *veth2,
-		       const char *bridge, const int mtu)
+int lxc_configure_veth(const char *veth1, const char *veth2, const char *bridge)
 {
 	int err = -1;
-	if (veth_create(veth1, veth2, mtu)) {
+	if (veth_create(veth1, veth2)) {
 		fprintf(stderr, "failed to create veth interfaces %s/%s\n",
 			veth1, veth2);
 		return -1;

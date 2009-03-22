@@ -1388,14 +1388,7 @@ static int instanciate_veth(const char *directory, const char *file, pid_t pid)
 		goto out;
 	}
 
-	if (!read_info(path, "mtu", strmtu, MAXMTULEN)) {
-		if (sscanf(strmtu, "%u", &mtu) < 1) {
-			lxc_log_error("invalid mtu size '%d'", mtu);
-			goto out;
-		}
-	}
-
-	if (lxc_configure_veth(veth1, veth2, bridge, mtu)) {
+	if (lxc_configure_veth(veth1, veth2, bridge)) {
 		lxc_log_error("failed to create %s-%s/%s", veth1, veth2, bridge);
 		goto out;
 	}
@@ -1414,6 +1407,23 @@ static int instanciate_veth(const char *directory, const char *file, pid_t pid)
 	if (write_info(path, "ifindex", strindex)) {
 		lxc_log_error("failed to write interface index to %s", path);
 		goto out;
+	}
+
+	if (!read_info(path, "mtu", strmtu, MAXMTULEN)) {
+		if (sscanf(strmtu, "%u", &mtu) < 1) {
+			lxc_log_error("invalid mtu size '%d'", mtu);
+			goto out;
+		}
+
+		if (device_set_mtu(veth1, mtu)) {
+			lxc_log_error("failed to set mtu for '%s'", veth1);
+			goto out;
+		}
+
+		if (device_set_mtu(veth2, mtu)) {
+			lxc_log_error("failed to set mtu for '%s'", veth1);
+			goto out;
+		}
 	}
 
 	if (!read_info(path, "up", strindex, sizeof(strindex))) {
@@ -1435,6 +1445,7 @@ static int instanciate_macvlan(const char *directory, const char *file, pid_t pi
 {
 	char path[MAXPATHLEN], *strindex = NULL, *peer = NULL;
 	char link[IFNAMSIZ]; 
+	char strmtu[MAXMTULEN];
 	int ifindex, ret = -1;
 			
 	if (!asprintf(&peer, "%s~%d", file, pid)) {

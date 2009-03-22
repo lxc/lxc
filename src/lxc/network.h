@@ -32,7 +32,7 @@ extern int lxc_configure_macvlan(const char *link, const char *peer);
  * Create a veth pair virtual device
  */
 extern int lxc_configure_veth(const char *veth1, const char *veth2, 
-			      const char *bridge, const int mtu);
+			      const char *bridge);
 
 /*
  * Convert a string mac address to a socket structure
@@ -65,9 +65,14 @@ extern int device_down(const char *name);
 extern int device_rename(const char *oldname, const char *newname);
 
 /*
+ * Change the mtu size for the specified device
+ */
+extern int device_set_mtu(const char *name, int mtu);
+
+/*
  * Create a veth network device
  */
-extern int veth_create(const char *name1, const char *name2, const int mtu);
+extern int veth_create(const char *name1, const char *name2);
 
 /* 
  * Create a macvlan network device
