@@ -1,0 +1,103 @@
+#!/bin/bash
+
+#
+# lxc: linux Container library
+
+# Authors:
+# Daniel Lezcano <daniel.lezcano@free.fr>
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+#
+# This script allows to set or remove the capabilities on the lxc tools.
+# When the capabilities are set, a non root user can manage the containers.
+#
+
+LXC_CREATE_CAPS="cap_sys_admin"
+LXC_NETSTAT_CAPS="cap_sys_admin"
+LXC_INIT_CAPS="cap_sys_admin"
+LXC_UNSHARE_CAPS="cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override"
+LXC_START_CAPS="cap_sys_chroot,cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override"
+LXC_EXECUTE_CAPS=$LXC_START_CAPS
+LXC_RESTART_CAPS=$LXC_START_CAPS
+
+LXC_DROP_CAPS=""
+
+usage()
+{
+    echo "lxc-setcap [-d] : set or remove capabilities on the lxc tools"
+}
+
+lxc_setcaps()
+{
+    setcap $LXC_CREATE_CAPS=ep @BINDIR@/lxc-create
+    setcap $LXC_EXECUTE_CAPS=ep @BINDIR@/lxc-execute
+    setcap $LXC_START_CAPS=ep @BINDIR@/lxc-start
+    setcap $LXC_RESTART_CAPS=ep @BINDIR@/lxc-restart
+    setcap $LXC_UNSHARE_CAPS=ep @BINDIR@/lxc-unshare
+    setcap $LXC_NETSTAT_CAPS=ep @BINDIR@/lxc-netstat
+    setcap $LXC_INIT_CAPS=ep @LIBEXECDIR@/lxc-init
+}
+
+lxc_dropcaps()
+{
+    setcap -r @BINDIR@/lxc-create
+    setcap -r @BINDIR@/lxc-execute
+    setcap -r @BINDIR@/lxc-start
+    setcap -r @BINDIR@/lxc-restart
+    setcap -r @BINDIR@/lxc-unshare
+    setcap -r @BINDIR@/lxc-netstat
+    setcap -r @LIBEXECDIR@/lxc-init
+}
+
+if [ "$(id -u)" != "0" ]; then
+    echo "You have to be root to run this script"
+    exit 1
+fi
+
+
+if [ $? != 0 ]; then
+    usage
+    exit 1
+fi
+
+set -- $(getopt dh $*)
+
+for i in $*; do
+    case "$1" in
+	-d)
+	    LXC_DROP_CAPS="yes"
+	    shift
+	    ;;
+	-h)
+	    usage
+	    exit 0
+	    ;;
+	--)
+	    shift
+	    break
+	    ;;
+	*)
+	    usage
+	    exit 1
+	    ;;
+    esac
+done;
+
+if [ -z "$LXC_DROP_CAPS" ]; then
+    lxc_setcaps
+else
+    lxc_dropcaps
+fi

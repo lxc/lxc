@@ -54,7 +54,8 @@ bin_SCRIPTS = \
 	lxc-ps \
 	lxc-netstat \
 	lxc-ls \
-	lxc-checkconfig
+	lxc-checkconfig \
+	lxc-setcap
 
 bin_PROGRAMS = \
 	lxc-unshare \
@@ -128,38 +129,6 @@ lxc_restart_LDADD = liblxc.la
 lxc_version_SOURCES = lxc_version.c
 lxc_version_LDADD = liblxc.la
 
-install-libexecPROGRAMS:
-	 setcap cap_sys_admin=ep $(libexecdir)/lxc-init
-
 install-exec-local:
-	-@export PATH=$$PATH:/sbin:/usr/sbin && \
-	 mkdir -p $(localstatedir) && \
-		\
-	 setcap cap_sys_admin=ep $(bindir)/lxc-create && \
-	 	\
-	 setcap cap_sys_chroot,cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
-		$(bindir)/lxc-execute && \
-		\
-	 setcap cap_sys_chroot,cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
-		$(bindir)/lxc-start && \
-		\
-	 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
-		$(bindir)/lxc-restart && \
-		\
-	 setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
-		$(bindir)/lxc-unshare && \
-		\
-	 setcap cap_sys_admin=ep \
-		$(bindir)/lxc-netstat && \
-		\
-	 mkdir -p $(prefix)/var/lxc && \
-	 chmod ugo+rw $(prefix)/var/lxc || \
-	(echo && echo && \
-	 echo "*****************************************************************" && \
-	 echo "*                                                               *" && \
-	 echo "* The installation failed to set file capabilities, that is ok, *" && \
-	 echo "* but you won't have enough privilege to run the 'lxc' commands *" && \
-	 echo "* and you will need to run them as 'root' yourself.             *" && \
-	 echo "*                                                               *" && \
-	 echo "*****************************************************************" && \
-	 echo && echo)
+	@mkdir -p $(localstatedir) && mkdir -p $(prefix)/var/lxc && \
+	chmod ugo+rw $(prefix)/var/lxc

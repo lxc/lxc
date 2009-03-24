@@ -71,29 +71,12 @@ rm -rf %{buildroot}
 mkdir -p /var/lxc
 chmod ugo+w /var/lxc
 
-setcap cap_sys_admin=ep %{_bindir}/lxc-init
-
-setcap cap_sys_admin=ep %{_bindir}/lxc-netstat
-
-setcap cap_sys_admin=ep %{_bindir}/lxc-create
-
-setcap cap_sys_chroot,cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
-    %{_bindir}/lxc-execute
-
-setcap cap_sys_chroot,cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
-    %{_bindir}/lxc-start
-
-setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
-    %{_bindir}/lxc-restart
-
-setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
-    %{_bindir}/lxc-unshare
-
 %files
 %defattr(-,root,root)
 %{_sysconfdir}/%{name}/*
 %{_libdir}/*.so*
 %{_bindir}/*
+%{_libexecdir}/*
 %{_mandir}/*
 
 %files devel
@@ -103,6 +86,9 @@ setcap cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override=ep \
 %{_libdir}/*.a
 
 %changelog
+
+* Mon Mar 24 2009 Daniel Lezcano <daniel.lezcano@free.fr> - Version 0.6.1
+- Removed capability setting, let the user to do that through "lxc-setcap"
 
 * Mon Feb 16 2009 Daniel Lezcano <daniel.lezcano@free.fr> - Version 0.6.0
 - Added more capabilities to the executables

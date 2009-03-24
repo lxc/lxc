@@ -43,6 +43,7 @@ src/lxc/lxc-init
 src/lxc/lxc-ls
 src/lxc/lxc-monitor
 src/lxc/lxc-netstat
+src/lxc/lxc-setcap
 src/lxc/lxc-ps
 src/lxc/lxc-restart
 src/lxc/lxc-start

@@ -96,7 +96,8 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-ps
 	src/lxc/lxc-ls
 	src/lxc/lxc-netstat
-	src/lxc/lxc-checkconfig	
+	src/lxc/lxc-checkconfig
+	src/lxc/lxc-setcap
 
 	etc/Makefile
 	etc/lxc-macvlan.conf
@@ -142,12 +143,10 @@ else
 Advice:
 -------
 
-When installing the tools, it is adviced to install as
-root, so the privilege for the commands will be set and
-they will be usable by non-root user
-
-    make && sudo make install
-
+If you which to have a non root user to use the lxc tools,
+you can add the needed capabilities to the tools by invoking
+the 'lxc-setcap' script. To remove the capabilities, use
+'lxc-setcap -d'
 ])
 
 fi
