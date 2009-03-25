@@ -1421,7 +1421,7 @@ static int instanciate_veth(const char *directory, const char *file, pid_t pid)
 		}
 
 		if (device_set_mtu(veth2, mtu)) {
-			lxc_log_error("failed to set mtu for '%s'", veth1);
+			lxc_log_error("failed to set mtu for '%s'", veth2);
 			goto out;
 		}
 	}
@@ -1445,7 +1445,6 @@ static int instanciate_macvlan(const char *directory, const char *file, pid_t pi
 {
 	char path[MAXPATHLEN], *strindex = NULL, *peer = NULL;
 	char link[IFNAMSIZ]; 
-	char strmtu[MAXMTULEN];
 	int ifindex, ret = -1;
 			
 	if (!asprintf(&peer, "%s~%d", file, pid)) {
