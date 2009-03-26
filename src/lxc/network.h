@@ -24,17 +24,6 @@
 #define _network_h
 
 /*
- * Create a macvlan network device
- */
-extern int lxc_configure_macvlan(const char *link, const char *peer);
-
-/*
- * Create a veth pair virtual device
- */
-extern int lxc_configure_veth(const char *veth1, const char *veth2, 
-			      const char *bridge);
-
-/*
  * Convert a string mac address to a socket structure
  */
 extern int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr);

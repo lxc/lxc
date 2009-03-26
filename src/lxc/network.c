@@ -737,35 +737,3 @@ int lxc_bridge_detach(const char *bridge, const char *ifname)
 {
 	return bridge_add_del_interface(bridge, ifname, 1);
 }
-
-int lxc_configure_veth(const char *veth1, const char *veth2, const char *bridge)
-{
-	int err = -1;
-	if (lxc_veth_create(veth1, veth2)) {
-		fprintf(stderr, "failed to create veth interfaces %s/%s\n",
-			veth1, veth2);
-		return -1;
-	}
-
-	if (lxc_bridge_attach(bridge, veth1)) {
-		fprintf(stderr, "failed to attach %s to %s\n", 
-			veth1, bridge);
-		goto err;
-	}
-
-	err = 0;
-out:
-	return err;
-err:
-	lxc_device_delete(veth1);
-	goto out;
-}
-
-int lxc_configure_macvlan(const char *link, const char *peer)
-{
-	if (lxc_macvlan_create(link, peer)) {
-		fprintf(stderr, "failed to create %s", peer);
-		return -1;
-	}
-	return 0;
-}

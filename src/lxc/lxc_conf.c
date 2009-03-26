@@ -1388,48 +1388,54 @@ static int instanciate_veth(const char *directory, const char *file, pid_t pid)
 		goto out;
 	}
 
-	if (lxc_configure_veth(veth1, veth2, bridge)) {
+	if (lxc_veth_create(veth1, veth2)) {
 		lxc_log_error("failed to create %s-%s/%s", veth1, veth2, bridge);
 		goto out;
 	}
 	
-	ifindex = if_nametoindex(veth2);
-	if (!ifindex) {
-		lxc_log_error("failed to retrieve the index for %s", veth2);
-		goto out;
-	}
-	
-	if (!asprintf(&strindex, "%d", ifindex)) {
-		lxc_log_syserror("failed to allocate memory");
-		goto out;
-	}
-
-	if (write_info(path, "ifindex", strindex)) {
-		lxc_log_error("failed to write interface index to %s", path);
-		goto out;
-	}
-
 	if (!read_info(path, "mtu", strmtu, MAXMTULEN)) {
 		if (sscanf(strmtu, "%u", &mtu) < 1) {
 			lxc_log_error("invalid mtu size '%d'", mtu);
-			goto out;
+			goto out_delete;
 		}
 
 		if (lxc_device_set_mtu(veth1, mtu)) {
 			lxc_log_error("failed to set mtu for '%s'", veth1);
-			goto out;
+			goto out_delete;
 		}
 
 		if (lxc_device_set_mtu(veth2, mtu)) {
 			lxc_log_error("failed to set mtu for '%s'", veth2);
-			goto out;
+			goto out_delete;
 		}
+	}
+
+	if (lxc_bridge_attach(bridge, veth1)) {
+		lxc_log_error("failed to attach '%s' to the bridge '%s'",
+			      veth1, bridge);
+		goto out_delete;
+	}
+
+	ifindex = if_nametoindex(veth2);
+	if (!ifindex) {
+		lxc_log_error("failed to retrieve the index for %s", veth2);
+		goto out_delete;
+	}
+
+	if (!asprintf(&strindex, "%d", ifindex)) {
+		lxc_log_syserror("failed to allocate memory");
+		goto out_delete;
+	}
+
+	if (write_info(path, "ifindex", strindex)) {
+		lxc_log_error("failed to write interface index to %s", path);
+		goto out_delete;
 	}
 
 	if (!read_info(path, "up", strindex, sizeof(strindex))) {
 		if (lxc_device_up(veth1)) {
 			lxc_log_error("failed to set %s up", veth1);
-			goto out;
+			goto out_delete;
 		}
 	}
 
@@ -1440,6 +1446,10 @@ out:
 	free(veth1);
 	free(veth2);
 	return ret;
+
+out_delete:
+	lxc_device_delete(veth1);
+	goto out;
 } 
 static int instanciate_macvlan(const char *directory, const char *file, pid_t pid)
 {
@@ -1458,8 +1468,9 @@ static int instanciate_macvlan(const char *directory, const char *file, pid_t pi
 		goto out;
 	}
 
-	if (lxc_configure_macvlan(link, peer)) {
-		lxc_log_error("failed to create macvlan interface %s", peer);
+	if (lxc_macvlan_create(link, peer)) {
+		lxc_log_error("failed to create macvlan interface '%s' on '%s'",
+			      peer, link);
 		goto out;
 	}
 
