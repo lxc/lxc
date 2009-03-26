@@ -9,6 +9,7 @@ MNTFILE="mount.conf"
 UTSNAME=
 IPV4="172.20.0.21"
 GATEWAY="172.20.0.1"
+MTU="1500"
 
 # These paths are within the container so do not need to obey configure prefixes
 INTERFACES="/etc/network/interfaces"
@@ -69,6 +70,7 @@ iface eth0 inet static
 address $IPV4
 netmask 255.255.255.0
 broadcast 0.0.0.0
+mtu $MTU
 up route add default gw $GATEWAY
 iface lo inet loopback
 EOF
@@ -132,6 +134,7 @@ lxc.network.type = veth
 lxc.network.flags = up
 lxc.network.link = br0
 lxc.network.name = eth0
+lxc.network.mtu = $MTU
 lxc.mount = $MNTFILE
 lxc.rootfs = $ROOTFS
 lxc.cgroup.devices.deny = a
@@ -193,6 +196,14 @@ collect_information() {
 
     if [ ! -z "$_GATEWAY_" ]; then
 	GATEWAY=$_GATEWAY_
+    fi
+
+    # choose the MTU size
+    echo -n "What is the MTU size ? [$MTU] "
+    read _MTU_
+
+    if [ ! -z "$_MTU_" ]; then
+	MTU=$_MTU_
     fi
 
     ROOTFS="./rootfs.$NAME"
