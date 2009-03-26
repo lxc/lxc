@@ -81,7 +81,7 @@ struct ip_req {
 	struct ifaddrmsg ifa;
 };
 
-int device_move(const char *name, pid_t pid)
+int lxc_device_move(const char *name, pid_t pid)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL;
@@ -126,7 +126,7 @@ out:
 	return err;
 }
 
-extern int device_delete(const char *name)
+extern int lxc_device_delete(const char *name)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -220,7 +220,7 @@ out:
 	return err;
 }
 
-extern int device_set_mtu(const char *name, int mtu)
+extern int lxc_device_set_mtu(const char *name, int mtu)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -268,17 +268,17 @@ out:
 	return err;
 }
 
-int device_up(const char *name)
+int lxc_device_up(const char *name)
 {
 	return device_set_flag(name, IFF_UP);
 }
 
-int device_down(const char *name)
+int lxc_device_down(const char *name)
 {
 	return device_set_flag(name, 0);
 }
 
-int device_rename(const char *oldname, const char *newname)
+int lxc_device_rename(const char *oldname, const char *newname)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -329,7 +329,7 @@ out:
 	return err;
 }
 
-int veth_create(const char *name1, const char *name2)
+int lxc_veth_create(const char *name1, const char *name2)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -403,7 +403,7 @@ out:
 	return err;
 }
 
-int macvlan_create(const char *master, const char *name)
+int lxc_macvlan_create(const char *master, const char *name)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -495,12 +495,12 @@ static int ip_forward_set(const char *ifname, int family, int flag)
 	return proc_sys_net_write(path, flag?"1":"0");
 }
 
-int ip_forward_on(const char *ifname, int family)
+int lxc_ip_forward_on(const char *ifname, int family)
 {
 	return ip_forward_set(ifname, family, 1);
 }
 
-int ip_forward_off(const char *ifname, int family)
+int lxc_ip_forward_off(const char *ifname, int family)
 {
 	return ip_forward_set(ifname, family, 0);
 }
@@ -519,12 +519,12 @@ static int neigh_proxy_set(const char *ifname, int family, int flag)
 	return proc_sys_net_write(path, flag?"1":"0");
 }
 
-int neigh_proxy_on(const char *name, int family)
+int lxc_neigh_proxy_on(const char *name, int family)
 {
 	return neigh_proxy_set(name, family, 1);
 }
 
-int neigh_proxy_off(const char *name, int family)
+int lxc_neigh_proxy_off(const char *name, int family)
 {
 	return neigh_proxy_set(name, family, 0);
 }
@@ -576,8 +576,8 @@ int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr)
     return 0;
 }
 
-int ip_addr_add(const char *ifname, const char *addr, 
-		int prefix, const char *bcast)
+int lxc_ip_addr_add(const char *ifname, const char *addr,
+		    int prefix, const char *bcast)
 {
 	struct nl_handler nlh;
 	struct in_addr in_addr;
@@ -639,8 +639,8 @@ out:
 	return err;
 }
 
-int ip6_addr_add(const char *ifname, const char *addr, 
-		int prefix, const char *bcast)
+int lxc_ip6_addr_add(const char *ifname, const char *addr,
+		     int prefix, const char *bcast)
 {
 	struct nl_handler nlh;
 	struct in6_addr in6_addr;
@@ -728,12 +728,12 @@ static int bridge_add_del_interface(const char *bridge,
 	return err;
 }
 
-int bridge_attach(const char *bridge, const char *ifname)
+int lxc_bridge_attach(const char *bridge, const char *ifname)
 {
 	return bridge_add_del_interface(bridge, ifname, 0);
 }
 
-int bridge_detach(const char *bridge, const char *ifname)
+int lxc_bridge_detach(const char *bridge, const char *ifname)
 {
 	return bridge_add_del_interface(bridge, ifname, 1);
 }
@@ -741,13 +741,13 @@ int bridge_detach(const char *bridge, const char *ifname)
 int lxc_configure_veth(const char *veth1, const char *veth2, const char *bridge)
 {
 	int err = -1;
-	if (veth_create(veth1, veth2)) {
+	if (lxc_veth_create(veth1, veth2)) {
 		fprintf(stderr, "failed to create veth interfaces %s/%s\n",
 			veth1, veth2);
 		return -1;
 	}
 
-	if (bridge_attach(bridge, veth1)) {
+	if (lxc_bridge_attach(bridge, veth1)) {
 		fprintf(stderr, "failed to attach %s to %s\n", 
 			veth1, bridge);
 		goto err;
@@ -757,13 +757,13 @@ int lxc_configure_veth(const char *veth1, const char *veth2, const char *bridge)
 out:
 	return err;
 err:
-	device_delete(veth1);
+	lxc_device_delete(veth1);
 	goto out;
 }
 
 int lxc_configure_macvlan(const char *link, const char *peer)
 {
-	if (macvlan_create(link, peer)) {
+	if (lxc_macvlan_create(link, peer)) {
 		fprintf(stderr, "failed to create %s", peer);
 		return -1;
 	}

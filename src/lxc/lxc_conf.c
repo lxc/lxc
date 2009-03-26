@@ -1093,7 +1093,7 @@ static int setup_ipv4_addr_cb(void *buffer, void *data)
 	if (prefix)
 		p = atoi(prefix);
 	
-	if (ip_addr_add(ifname, addr, p, bcast)) {
+	if (lxc_ip_addr_add(ifname, addr, p, bcast)) {
 		lxc_log_error("failed to set %s to addr %s/%d %s", ifname,
 			      addr, p, bcast?bcast:"");
 		return -1;
@@ -1127,7 +1127,7 @@ static int setup_ipv6_addr_cb(void *buffer, void *data)
 	if (prefix)
 		p = atoi(prefix);
 	
-	if (ip6_addr_add(ifname, addr, p, bcast)) {
+	if (lxc_ip6_addr_add(ifname, addr, p, bcast)) {
 		lxc_log_error("failed to set %s to addr %s/%d %s", ifname,
 			      addr, p, bcast?bcast:"");
 		return -1;
@@ -1211,7 +1211,7 @@ static int setup_network_cb(const char *name, const char *directory,
 	ifindex = atoi(strindex);
 	if (!ifindex) {
 		if (!read_info(path, "up", strindex, sizeof(strindex)))
-		    if (device_up("lo")) {
+		    if (lxc_device_up("lo")) {
 			    lxc_log_error("failed to set the loopback up");
 			    return -1;
 		    }
@@ -1225,7 +1225,7 @@ static int setup_network_cb(const char *name, const char *directory,
 	}
 	
 	if (!read_info(path, "name", newname, sizeof(newname))) {
-		if (device_rename(ifname, newname)) {
+		if (lxc_device_rename(ifname, newname)) {
 			lxc_log_error("failed to rename %s->%s", 
 				      ifname, newname);
 			return -1;
@@ -1254,13 +1254,13 @@ static int setup_network_cb(const char *name, const char *directory,
 	}
 
 	if (!read_info(path, "up", strindex, sizeof(strindex))) {
-		if (device_up(current_ifname)) {
+		if (lxc_device_up(current_ifname)) {
 			lxc_log_error("failed to set '%s' up", current_ifname);
 			return -1;
 		}
 
 		/* the network is up, make the loopback up too */
-		if (device_up("lo")) {
+		if (lxc_device_up("lo")) {
 			lxc_log_error("failed to set the loopback up");
 			return -1;
 		}
@@ -1415,19 +1415,19 @@ static int instanciate_veth(const char *directory, const char *file, pid_t pid)
 			goto out;
 		}
 
-		if (device_set_mtu(veth1, mtu)) {
+		if (lxc_device_set_mtu(veth1, mtu)) {
 			lxc_log_error("failed to set mtu for '%s'", veth1);
 			goto out;
 		}
 
-		if (device_set_mtu(veth2, mtu)) {
+		if (lxc_device_set_mtu(veth2, mtu)) {
 			lxc_log_error("failed to set mtu for '%s'", veth2);
 			goto out;
 		}
 	}
 
 	if (!read_info(path, "up", strindex, sizeof(strindex))) {
-		if (device_up(veth1)) {
+		if (lxc_device_up(veth1)) {
 			lxc_log_error("failed to set %s up", veth1);
 			goto out;
 		}
@@ -1590,7 +1590,7 @@ static int move_netdev_cb(const char *name, const char *directory,
 		return -1;
 	}
 	
-	if (device_move(ifname, *pid)) {
+	if (lxc_device_move(ifname, *pid)) {
 		lxc_log_error("failed to move %s to %d", ifname, *pid);
 		return -1;
 	}
@@ -1653,7 +1653,7 @@ static int delete_netdev_cb(const char *name, const char *directory,
 
 	/* do not delete a physical network device */
 	if (strncmp("phys", file, strlen("phys")))
-		if (device_delete(ifname)) {
+		if (lxc_device_delete(ifname)) {
 			lxc_log_error("failed to remove the netdev %s", ifname);
 		}
 

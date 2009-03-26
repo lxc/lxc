@@ -42,90 +42,92 @@ extern int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr);
 /*
  * Move a device between namespaces
  */
-extern int device_move(const char *name, pid_t pid);
+extern int lxc_device_move(const char *name, pid_t pid);
 
 /*
  * Delete a network device
  */
-extern int device_delete(const char *name);
+extern int lxc_device_delete(const char *name);
 
 /*
  * Set the device network up
  */
-extern int device_up(const char *name);
+extern int lxc_device_up(const char *name);
 
 /*
  * Set the device network down
  */
-extern int device_down(const char *name);
+extern int lxc_device_down(const char *name);
 
 /*
  * Change the device name
  */
-extern int device_rename(const char *oldname, const char *newname);
+extern int lxc_device_rename(const char *oldname, const char *newname);
 
 /*
  * Change the mtu size for the specified device
  */
-extern int device_set_mtu(const char *name, int mtu);
+extern int lxc_device_set_mtu(const char *name, int mtu);
 
 /*
  * Create a veth network device
  */
-extern int veth_create(const char *name1, const char *name2);
+extern int lxc_veth_create(const char *name1, const char *name2);
 
 /* 
  * Create a macvlan network device
  */
-extern int macvlan_create(const char *master, const char *name);
+extern int lxc_macvlan_create(const char *master, const char *name);
 
 /*
  * Activate forwarding
  */
-extern int ip_forward_on(const char *name, int family);
+extern int lxc_ip_forward_on(const char *name, int family);
 
 /*
  * Disable forwarding
  */
-extern int ip_forward_off(const char *name, int family);
+extern int lxc_ip_forward_off(const char *name, int family);
 
 /*
  * Set ip address
  */
-extern int ip_addr_add(const char *ifname, const char *addr, 
-		       int prefix, const char *bcast);
+extern int lxc_ip_addr_add(const char *ifname, const char *addr,
+			   int prefix, const char *bcast);
 
-extern int ip6_addr_add(const char *ifname, const char *addr, 
-			int prefix, const char *bcast);
+extern int lxc_ip6_addr_add(const char *ifname, const char *addr,
+			    int prefix, const char *bcast);
 
 /*
  * Attach an interface to the bridge
  */
-extern int bridge_attach(const char *bridge, const char *ifname);
+extern int lxc_bridge_attach(const char *bridge, const char *ifname);
 
 /*
  * Detach an interface from the bridge
  */
-extern int bridge_detach(const char *bridge, const char *ifname);
+extern int lxc_bridge_detach(const char *bridge, const char *ifname);
 
 /* 
  * Create default gateway
  */
-extern int route_create_default(const char *addr, const char *ifname, int gateway);
+extern int lxc_route_create_default(const char *addr, const char *ifname,
+				    int gateway);
 
 /*
  * Delete default gateway
  */
-extern int route_delete_default(const char *addr, const char *ifname, int gateway);
+extern int lxc_route_delete_default(const char *addr, const char *ifname,
+				    int gateway);
 
 /*
  * Activate neighbor proxying
  */
-extern int neigh_proxy_on(const char *name, int family);
+extern int lxc_neigh_proxy_on(const char *name, int family);
 
 /*
  * Disable neighbor proxying
  */
-extern int neigh_proxy_off(const char *name, int family);
+extern int lxc_neigh_proxy_off(const char *name, int family);
 
 #endif
