@@ -401,7 +401,7 @@ cat <<EOF > $MNTFILE
 /sbin $(pwd)/$ROOTFS/sbin none ro,bind 0 0
 EOF
 
-if [ "$(arch)" = "x86_64" ]; then
+if [ "$(uname -m)" = "x86_64" ]; then
 cat <<EOF >> $MNTFILE
 /lib64 $(pwd)/$ROOTFS/lib64 none ro,bind 0 0
 EOF
