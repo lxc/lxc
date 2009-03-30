@@ -163,7 +163,7 @@ static int freezer_state(const char *name)
 	char status[MAXPATHLEN];
 	FILE *file;
 	int err;
-	
+
 	snprintf(freezer, MAXPATHLEN,
 		 LXCPATH "/%s/freezer.state", name);
 

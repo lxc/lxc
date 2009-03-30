@@ -33,7 +33,7 @@ extern "C" {
  lxc/lxc.h will contain exports of liblxc
  **/
 
-#include <lxc/lxc_state.h>
+#include <lxc/state.h>
 #include <lxc/list.h>
 #include <lxc/log.h>
 #include <lxc/conf.h>
