@@ -83,7 +83,7 @@ static struct config *getconfig(const char *key)
 	int i;
 
 	for (i = 0; i < config_size; i++)
-		if (!strncmp(config[i].name, key, 
+		if (!strncmp(config[i].name, key,
 			     strlen(config[i].name)))
 			return &config[i];
 	return NULL;
@@ -102,7 +102,7 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 		lxc_log_syserror("failed to allocate memory");
 		return -1;
 	}
-	
+
 	lxc_list_init(&network->netdev);
 
 	netdev = malloc(sizeof(*netdev));
@@ -136,7 +136,7 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 	list->elem = network;
 
 	lxc_list_add(networks, list);
-	
+
 	if (!strcmp(value, "veth"))
 		network->type = VETH;
 	else if (!strcmp(value, "macvlan"))
@@ -442,7 +442,7 @@ static int config_cgroup(const char *key, char *value, struct lxc_conf *lxc_conf
 
 	if (strlen(subkey) == strlen(token))
 		return -1;
-	
+
 	subkey += strlen(token);
 
 	cglist = malloc(sizeof(*cglist));
@@ -507,7 +507,7 @@ static int config_utsname(const char *key, char *value, struct lxc_conf *lxc_con
 	}
 
 	if (strlen(value) >= sizeof(utsname->nodename)) {
-		lxc_log_error("node name '%s' is too long", 
+		lxc_log_error("node name '%s' is too long",
 			      utsname->nodename);
 		return -1;
 	}
@@ -538,7 +538,7 @@ static int parse_line(void *buffer, void *data)
 		lxc_log_error("invalid configuration line: %s", line);
 		return -1;
 	}
-	
+
 	*dot = '\0';
 	value = dot + 1;
 

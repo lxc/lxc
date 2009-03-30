@@ -31,7 +31,7 @@
 #include <sys/param.h>
 
 #include <lxc/lxc.h>
-#include <lxc/lxc_config.h>
+#include "confile.h"
 
 void usage(char *cmd)
 {

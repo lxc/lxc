@@ -85,7 +85,7 @@ lxc_unshare_LDADD = liblxc.la
 lxc_init_SOURCES = lxc_init.c
 lxc_init_LDADD = liblxc.la
 
-lxc_create_SOURCES = lxc_create.c lxc_config.c lxc_config.h
+lxc_create_SOURCES = lxc_create.c confile.c confile.h
 lxc_create_LDADD = liblxc.la
 
 lxc_destroy_SOURCES = lxc_destroy.c
@@ -97,7 +97,7 @@ lxc_start_LDADD = liblxc.la
 lxc_stop_SOURCES = lxc_stop.c
 lxc_stop_LDADD = liblxc.la
 
-lxc_execute_SOURCES = lxc_execute.c lxc_config.c lxc_config.h
+lxc_execute_SOURCES = lxc_execute.c confile.c confile.h
 lxc_execute_LDADD = liblxc.la
 
 lxc_monitor_SOURCES = lxc_monitor.c
