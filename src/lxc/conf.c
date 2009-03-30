@@ -1300,6 +1300,18 @@ out:
 	return ret;
 }
 
+int lxc_conf_init(struct lxc_conf *conf)
+{
+	conf->rootfs = NULL;
+	conf->fstab = NULL;
+	conf->utsname = NULL;
+	conf->tty = 0;
+	conf->pts = 0;
+	lxc_list_init(&conf->cgroup);
+	lxc_list_init(&conf->networks);
+	return 0;
+}
+
 int lxc_configure(const char *name, struct lxc_conf *conf)
 {
 	if (!conf)

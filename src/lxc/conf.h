@@ -151,6 +151,11 @@ struct lxc_tty_info {
 };
 
 /*
+ * Initialize the lxc configuration structure
+ */
+extern int lxc_conf_init(struct lxc_conf *conf);
+
+/*
  * Configure the external resources for the container
  */
 extern int lxc_configure(const char *name, struct lxc_conf *conf);

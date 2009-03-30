@@ -564,15 +564,3 @@ int lxc_config_read(const char *file, struct lxc_conf *conf)
 	return lxc_file_for_each_line(file, parse_line, buffer,
 				      sizeof(buffer), conf);
 }
-
-int lxc_config_init(struct lxc_conf *conf)
-{
-	conf->rootfs = NULL;
-	conf->fstab = NULL;
-	conf->utsname = NULL;
-	conf->tty = 0;
-	conf->pts = 0;
-	lxc_list_init(&conf->cgroup);
-	lxc_list_init(&conf->networks);
-	return 0;
-}

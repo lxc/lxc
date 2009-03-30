@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
-	if (lxc_config_init(&lxc_conf)) {
+	if (lxc_conf_init(&lxc_conf)) {
 		fprintf(stderr, "failed to initialize the configuration\n");
 		return 1;
 	}
