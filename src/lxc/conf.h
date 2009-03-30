@@ -26,7 +26,7 @@
 #include <netinet/in.h>
 #include <sys/param.h>
 
-enum { 
+enum {
 	EMPTY,
 	VETH,
 	MACVLAN,
@@ -170,7 +170,7 @@ extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
 /*
  * Configure the container from inside
  */
-extern int lxc_setup(const char *name, const char *tty, 
+extern int lxc_setup(const char *name, const char *tty,
 		     const struct lxc_tty_info *tty_info);
 
 extern int conf_has(const char *name, const char *info);

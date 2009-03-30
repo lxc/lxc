@@ -35,8 +35,8 @@ extern "C" {
 
 #include <lxc/lxc_state.h>
 #include <lxc/lxc_list.h>
-#include <lxc/lxc_conf.h>
 #include <lxc/lxc_log.h>
+#include <lxc/conf.h>
 #include <lxc/lock.h>
 #include <lxc/namespace.h>
 #include <lxc/utils.h>
