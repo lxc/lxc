@@ -4,6 +4,7 @@ INCLUDES= -I$(top_srcdir)/src -DLXCPATH="\"$(localstatedir)/lxc\"" \
 AM_LDFLAGS= -lutil
 lib_LTLIBRARIES = liblxc.la
 pkginclude_HEADERS = \
+		error.h \
 		monitor.h \
 		utils.h \
 		namespace.h \
