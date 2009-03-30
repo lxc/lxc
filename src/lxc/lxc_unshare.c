@@ -32,7 +32,7 @@
 #include <sys/wait.h>
 #include <pwd.h>
 
-#include "lxc_namespace.h"
+#include <lxc/lxc.h>
 
 void usage(char *cmd)
 {

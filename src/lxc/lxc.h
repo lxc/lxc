@@ -38,8 +38,8 @@ extern "C" {
 #include <lxc/lxc_conf.h>
 #include <lxc/lxc_log.h>
 #include <lxc/lxc_lock.h>
-#include <lxc/lxc_namespace.h>
-#include <lxc/lxc_utils.h>
+#include <lxc/namespace.h>
+#include <lxc/utils.h>
 #include <lxc/error.h>
 #include <lxc/cgroup.h>
 #include <lxc/monitor.h>

@@ -5,15 +5,16 @@ AM_LDFLAGS= -lutil
 lib_LTLIBRARIES = liblxc.la
 pkginclude_HEADERS = \
 		monitor.h \
+		utils.h \
+		namespace.h \
 		lxc.h \
 		lxc_cgroup.h \
 		lxc_conf.h \
 		lxc_list.h \
 		lxc_lock.h \
 		lxc_log.h \
-		lxc_namespace.h \
-		lxc_state.h \
-		lxc_utils.h
+		lxc_state.h
+
 
 liblxc_la_SOURCES = \
 	create.c \
@@ -32,7 +33,7 @@ liblxc_la_SOURCES = \
 	lxc.h \
 	lxc_utils.h \
 	lxc_lock.c lxc_lock.h \
-	lxc_namespace.h \
+	namespace.h \
 	lxc_conf.c lxc_conf.h \
 	lxc_list.h \
 	lxc_state.c lxc_state.h \
