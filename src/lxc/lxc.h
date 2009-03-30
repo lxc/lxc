@@ -34,7 +34,7 @@ extern "C" {
  **/
 
 #include <lxc/lxc_state.h>
-#include <lxc/lxc_list.h>
+#include <lxc/list.h>
 #include <lxc/log.h>
 #include <lxc/conf.h>
 #include <lxc/lock.h>
