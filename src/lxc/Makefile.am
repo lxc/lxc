@@ -1,4 +1,4 @@
-INCLUDES= -I$(top_srcdir)/src -DLXCPATH="\"$(localstatedir)/lxc\"" \
+INCLUDES= -I$(top_srcdir)/src -DLXCPATH="\"@LXCPATH@\"" \
 	  -DLXCBINDIR="\"$(bindir)\"" \
 	  -DLXCLIBEXECDIR="\"$(libexecdir)\""
 AM_LDFLAGS= -lutil
@@ -132,5 +132,4 @@ lxc_version_SOURCES = lxc_version.c
 lxc_version_LDADD = liblxc.la
 
 install-exec-local:
-	@mkdir -p $(localstatedir) && mkdir -p $(prefix)/var/lxc && \
-	chmod ugo+rw $(prefix)/var/lxc
+	@mkdir -p $(DESTDIR)@LXCPATH@

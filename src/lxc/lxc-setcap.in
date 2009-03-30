@@ -49,6 +49,7 @@ lxc_setcaps()
     setcap $LXC_UNSHARE_CAPS=ep @BINDIR@/lxc-unshare
     setcap $LXC_NETSTAT_CAPS=ep @BINDIR@/lxc-netstat
     setcap $LXC_INIT_CAPS=ep @LIBEXECDIR@/lxc-init
+    chmod 2777 @LXCPATH@
 }
 
 lxc_dropcaps()
@@ -60,6 +61,7 @@ lxc_dropcaps()
     setcap -r @BINDIR@/lxc-unshare
     setcap -r @BINDIR@/lxc-netstat
     setcap -r @LIBEXECDIR@/lxc-init
+    chmod 0755 @LXCPATH@
 }
 
 if [ "$(id -u)" != "0" ]; then
