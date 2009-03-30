@@ -9,7 +9,7 @@ pkginclude_HEADERS = \
 		namespace.h \
 		lock.h \
 		lxc.h \
-		lxc_cgroup.h \
+		cgroup.h \
 		lxc_conf.h \
 		lxc_list.h \
 		lxc_log.h \
