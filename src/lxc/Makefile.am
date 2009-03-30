@@ -7,11 +7,11 @@ pkginclude_HEADERS = \
 		monitor.h \
 		utils.h \
 		namespace.h \
+		lock.h \
 		lxc.h \
 		lxc_cgroup.h \
 		lxc_conf.h \
 		lxc_list.h \
-		lxc_lock.h \
 		lxc_log.h \
 		lxc_state.h
 
@@ -32,7 +32,7 @@ liblxc_la_SOURCES = \
 	cgroup.c cgroup.h \
 	lxc.h \
 	lxc_utils.h \
-	lxc_lock.c lxc_lock.h \
+	lock.c lock.h \
 	namespace.h \
 	lxc_conf.c lxc_conf.h \
 	lxc_list.h \
