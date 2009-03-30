@@ -27,7 +27,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include "lxc_log.h"
+#include "log.h"
 #include "af_unix.h"
 #include "error.h"
 

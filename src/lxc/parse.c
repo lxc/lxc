@@ -27,7 +27,7 @@
 #include <dirent.h>
 
 #include "parse.h"
-#include "lxc_log.h"
+#include "log.h"
 
 static int dir_filter(const struct dirent *dirent)
 {

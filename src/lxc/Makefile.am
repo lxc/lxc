@@ -12,7 +12,7 @@ pkginclude_HEADERS = \
 		cgroup.h \
 		conf.h \
 		lxc_list.h \
-		lxc_log.h \
+		log.h \
 		lxc_state.h
 
 
@@ -37,7 +37,7 @@ liblxc_la_SOURCES = \
 	conf.c conf.h \
 	lxc_list.h \
 	lxc_state.c lxc_state.h \
-	lxc_log.c lxc_log.h \
+	log.c log.h \
 	\
 	network.c network.h \
         nl.c nl.h \
