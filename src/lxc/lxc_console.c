@@ -133,7 +133,10 @@ int main(int argc, char *argv[])
 		/* read the "stdin" and write that to the master
 		 */
 		if (pfd[0].revents & POLLIN) {
-			read(0, &c, 1);
+			if (read(0, &c, 1) < 0) {
+				lxc_log_syserror("failed to read");
+				goto out_err;
+			}
 
 			/* we want to exit the console with Ctrl+a q */
 			if (c == 1) {
@@ -145,7 +148,10 @@ int main(int argc, char *argv[])
 				goto out;
 
 			wait4q = 0;
-			write(master, &c, 1);
+			if (write(master, &c, 1) < 0) {
+				lxc_log_syserror("failed to write");
+				goto out_err;
+			}
 		}
 
 		/* other side has closed the connection */
@@ -154,7 +160,10 @@ int main(int argc, char *argv[])
 
 		/* read the master and write to "stdout" */
 		if (pfd[1].revents & POLLIN) {
-			read(master, &c, 1);
+			if (read(master, &c, 1) < 0) {
+				lxc_log_syserror("failed to read");
+				goto out_err;
+			}
 			printf("%c", c);
 			fflush(stdout);
 		}

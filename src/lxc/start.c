@@ -427,7 +427,10 @@ int lxc_start(const char *name, char *argv[])
 		goto err_child_failed;
 	}
 
-	asprintf(&val, "%d\n", pid);
+	if (!asprintf(&val, "%d\n", pid)) {
+		lxc_log_syserror("failed to allocate memory");
+		goto err_child_failed;
+	}
 
 	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
 

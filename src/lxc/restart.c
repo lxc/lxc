@@ -164,8 +164,14 @@ int lxc_restart(const char *name, const char *statefile,
 		goto err_child_failed;
 	}
 
-	asprintf(&val, "%d\n", pid);
-	asprintf(&init, LXCPATH "/%s/init", name);
+	if (!asprintf(&val, "%d\n", pid)) {
+		lxc_log_syserror("failed to allocate memory");
+		goto err_child_failed;
+	}
+	if (!asprintf(&init, LXCPATH "/%s/init", name)) {
+		lxc_log_syserror("failed to allocate memory");
+		goto err_child_failed;
+	}
 	fd = open(init, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 	if (fd < 0) {
 		lxc_log_syserror("failed to open '%s'", init);
