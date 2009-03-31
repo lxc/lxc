@@ -93,13 +93,6 @@ out:
 
 	lxc_monitor_send_state(name, state);
 
-	/* let the event to be propagated, crappy but that works,
-	 * otherwise the events will be folded into only one event,
-	 * and I want to have them to be one by one in order
-	 * to follow the different states of the container.
-	 */
- 	usleep(200000);
-
 	return -err;
 }
 
