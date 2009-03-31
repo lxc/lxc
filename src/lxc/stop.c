@@ -70,11 +70,6 @@ int lxc_stop(const char *name)
 		goto out_close;
 	}
 
-	if (unlink(init)) {
-		lxc_log_syserror("failed to unlink %s", init);
-		goto out_close;
-	}
-
 	ret = 0;
 
 out_close:
