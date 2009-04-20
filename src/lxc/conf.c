@@ -1738,6 +1738,10 @@ int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info)
 			goto out_free;
 		}
 
+                /* Prevent leaking the file descriptors to the container */
+		fcntl(pty_info->master, F_SETFD, FD_CLOEXEC);
+		fcntl(pty_info->slave, F_SETFD, FD_CLOEXEC);
+
 		pty_info->busy = 0;
 	}
 
