@@ -69,6 +69,12 @@ struct netdev_conf {
 	int count;
 };
 
+struct mount_opt {
+	char *name;
+	int clear;
+	int flag;
+};
+
 static int instanciate_veth(const char *, const char *, pid_t);
 static int instanciate_macvlan(const char *, const char *, pid_t);
 static int instanciate_phys(const char *, const char *, pid_t);
@@ -80,6 +86,30 @@ static struct netdev_conf netdev_conf[MAXCONFTYPE + 1] = {
 	[MACVLAN] = { "macvlan", instanciate_macvlan, 0, },
 	[PHYS]    = { "phys",    instanciate_phys,    0, },
 	[EMPTY]   = { "empty",   instanciate_empty,   0, },
+};
+
+static struct mount_opt mount_opt[] = {
+	{ "defaults",   0, 0              },
+	{ "ro",         0, MS_RDONLY      },
+	{ "rw",         1, MS_RDONLY      },
+	{ "suid",       1, MS_NOSUID      },
+	{ "nosuid",     0, MS_NOSUID      },
+	{ "dev",        1, MS_NODEV       },
+	{ "nodev",      0, MS_NODEV       },
+	{ "exec",       1, MS_NOEXEC      },
+	{ "noexec",     0, MS_NOEXEC      },
+	{ "sync",       0, MS_SYNCHRONOUS },
+	{ "async",      1, MS_SYNCHRONOUS },
+	{ "remount",    0, MS_REMOUNT     },
+	{ "mand",       0, MS_MANDLOCK    },
+	{ "nomand",     1, MS_MANDLOCK    },
+	{ "atime",      1, MS_NOATIME     },
+	{ "noatime",    0, MS_NOATIME     },
+	{ "diratime",   1, MS_NODIRATIME  },
+	{ "nodiratime", 0, MS_NODIRATIME  },
+	{ "bind",       0, MS_BIND        },
+	{ "rbind",      0, MS_BIND|MS_REC },
+	{ NULL,         0, 0              },
 };
 
 static int write_info(const char *path, const char *file, const char *info)
@@ -1026,13 +1056,72 @@ static int setup_cgroup(const char *name)
 				      line, MAXPATHLEN, (void *)name);
 }
 
+static void parse_mntopt(char *opt, unsigned long *flags, char **data)
+{
+	struct mount_opt *mo;
+
+	/* If opt is found in mount_opt, set or clear flags.
+	 * Otherwise append it to data. */
+
+	for (mo = &mount_opt[0]; mo->name != NULL; mo++) {
+		if (!strncmp(opt, mo->name, strlen(mo->name))) {
+			if (mo->clear)
+				*flags &= ~mo->flag;
+			else
+				*flags |= mo->flag;
+			return;
+		}
+	}
+
+	if (strlen(*data))
+		strcat(*data, ",");
+	strcat(*data, opt);
+}
+
+static int parse_mntopts(struct mntent *mntent, unsigned long *mntflags,
+			 char **mntdata)
+{
+	char *s, *data;
+	char *p, *saveptr = NULL;
+
+	if (!mntent->mnt_opts)
+		return 0;
+
+	s = strdup(mntent->mnt_opts);
+	if (!s) {
+		lxc_log_syserror("failed to allocate memory");
+		return -1;
+	}
+
+	data = malloc(strlen(s) + 1);
+	if (!data) {
+		lxc_log_syserror("failed to allocate memory");
+		free(s);
+		return -1;
+	}
+	*data = 0;
+
+	for (p = strtok_r(s, ",", &saveptr); p != NULL;
+	     p = strtok_r(NULL, ",", &saveptr))
+		parse_mntopt(p, mntflags, &data);
+
+	if (*data)
+		*mntdata = data;
+	else
+		free(data);
+	free(s);
+
+	return 0;
+}
+
 static int setup_mount(const char *name)
 {
 	char path[MAXPATHLEN];
 	struct mntent *mntent;
 	FILE *file;
 	int ret = -1;
-	unsigned long mntflags = 0;
+	unsigned long mntflags;
+	char *mntdata;
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/fstab", name);
 
@@ -1044,23 +1133,23 @@ static int setup_mount(const char *name)
 		goto out;
 	}
 
-	while((mntent = getmntent(file))) {
-
-		if (hasmntopt(mntent, "bind"))
-			mntflags |= MS_BIND;
-		if (hasmntopt(mntent, "rbind"))
-			mntflags |= MS_BIND|MS_REC;
-		if (hasmntopt(mntent, "ro"))
-			mntflags |= MS_RDONLY;
-		if (hasmntopt(mntent, "noexec"))
-			mntflags |= MS_NOEXEC;
+	while ((mntent = getmntent(file))) {
+		mntflags = 0;
+		mntdata = NULL;
+		if (parse_mntopts(mntent, &mntflags, &mntdata) < 0) {
+			lxc_log_error("failed to parse mount option '%s'",
+				      mntent->mnt_opts);
+			goto out;
+		}
 
 		if (mount(mntent->mnt_fsname, mntent->mnt_dir,
-			  mntent->mnt_type, mntflags, NULL)) {
+			  mntent->mnt_type, mntflags, mntdata)) {
 			lxc_log_syserror("failed to mount '%s' on '%s'",
 					 mntent->mnt_fsname, mntent->mnt_dir);
 			goto out;
 		}
+
+		free(mntdata);
 	}
 	ret = 0;
 out:
