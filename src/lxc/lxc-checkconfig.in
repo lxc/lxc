@@ -51,6 +51,7 @@ echo -n "Ipc namespace: " && is_enabled CONFIG_IPC_NS yes
 echo -n "Pid namespace: " && is_enabled CONFIG_PID_NS yes
 echo -n "User namespace: " && is_enabled CONFIG_USER_NS
 echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
+echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
 echo
 echo "--- Control groups ---"
 echo -n "Cgroup: " && is_enabled CONFIG_CGROUPS
