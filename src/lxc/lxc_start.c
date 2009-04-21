@@ -35,6 +35,9 @@
 #include <net/if.h>
 
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
+lxc_log_define(lxc_start, lxc);
 
 void usage(char *cmd)
 {
@@ -76,7 +79,7 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 
 	if (tcgetattr(0, &tios)) {
-		lxc_log_error("failed to get current terminal settings");
+		ERROR("failed to get current terminal settings");
 		fprintf(stderr, "%s\n", lxc_strerror(err));
 		return 1;
 	}
@@ -88,7 +91,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (tcsetattr(0, TCSAFLUSH, &tios))
-		lxc_log_syserror("failed to restore terminal attributes");
+		SYSERROR("failed to restore terminal attributes");
 
 	return err;
 }

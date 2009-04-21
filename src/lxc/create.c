@@ -32,6 +32,9 @@
 
 #include "error.h"
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
+lxc_log_define(lxc_create, lxc);
 
 static int dir_filter(const struct dirent *dirent)
 {
@@ -48,7 +51,7 @@ static int is_empty_directory(const char *dirname)
 
 	n = scandir(dirname, &namelist, dir_filter, alphasort);
 	if (n < 0)
-		lxc_log_syserror("failed to scan %s directory", dirname);
+		SYSERROR("failed to scan %s directory", dirname);
 	return n == 0;
 }
 
@@ -57,14 +60,14 @@ static int create_lxc_directory(const char *dirname)
 	char path[MAXPATHLEN];
 
 	if (mkdir(LXCPATH, 0755) && errno != EEXIST) {
-		lxc_log_syserror("failed to create %s directory", LXCPATH);
+		SYSERROR("failed to create %s directory", LXCPATH);
 		return -errno;
 	}
 
 	sprintf(path, LXCPATH "/%s", dirname);
 
 	if (mkdir(path, 0755)) {
-		lxc_log_syserror("failed to create %s directory", path);
+		SYSERROR("failed to create %s directory", path);
 		return -errno;
 	}
 
@@ -78,13 +81,13 @@ static int remove_lxc_directory(const char *dirname)
 	sprintf(path, LXCPATH "/%s", dirname);
 
 	if (rmdir(path)) {
-		lxc_log_syserror("failed to remove %s directory", path);
+		SYSERROR("failed to remove %s directory", path);
 		return -1;
 	}
 
 	if (is_empty_directory(LXCPATH)) {
 		if (rmdir(LXCPATH)) {
-			lxc_log_syserror("failed to remove %s directory", LXCPATH);
+			SYSERROR("failed to remove %s directory", LXCPATH);
 			return -1;
 		}
 	}
@@ -107,18 +110,18 @@ int lxc_create(const char *name, struct lxc_conf *conf)
 
 	err = LXC_ERROR_INTERNAL;
 	if (lxc_mkstate(name)) {
-		lxc_log_error("failed to create the state file for %s", name);
+		ERROR("failed to create the state file for %s", name);
 		goto err;
 	}
 
 	if (lxc_setstate(name, STOPPED)) {
-		lxc_log_error("failed to set state for %s", name);
+		ERROR("failed to set state for %s", name);
 		goto err_state;
 	}
 
 	err = lxc_configure(name, conf);
 	if (err) {
-		lxc_log_error("failed to set configuration for %s", name);
+		ERROR("failed to set configuration for %s", name);
 		goto err_state;
 	}
 
@@ -131,9 +134,9 @@ err_state:
 	lxc_unconfigure(name);
 
 	if (lxc_rmstate(name))
-		lxc_log_error("failed to remove state file for %s", name);
+		ERROR("failed to remove state file for %s", name);
 err:
 	if (remove_lxc_directory(name))
-		lxc_log_error("failed to cleanup lxc directory for %s", name);
+		ERROR("failed to cleanup lxc directory for %s", name);
 	goto out;
 }

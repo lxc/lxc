@@ -28,6 +28,9 @@
 
 #include "parse.h"
 #include "log.h"
+#include <lxc/log.h>
+
+lxc_log_define(lxc_parse, lxc);
 
 static int dir_filter(const struct dirent *dirent)
 {
@@ -45,13 +48,13 @@ int lxc_dir_for_each(const char *name, const char *directory,
 
 	n = scandir(directory, &namelist, dir_filter, alphasort);
 	if (n < 0) {
-		lxc_log_syserror("failed to scan %s directory", directory);
+		SYSERROR("failed to scan %s directory", directory);
 		return -1;
 	}
 
 	while (n--) {
 		if (callback(name, directory, namelist[n]->d_name, data)) {
-			lxc_log_error("callback failed");
+			ERROR("callback failed");
 			free(namelist[n]);
 			return -1;
 		}
@@ -69,7 +72,7 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback,
 
 	f = fopen(file, "r");
 	if (!f) {
-		lxc_log_syserror("failed to open %s", file);
+		SYSERROR("failed to open %s", file);
 		return -1;
 	}
 

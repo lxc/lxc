@@ -31,6 +31,9 @@
 
 #include "error.h"
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
+lxc_log_define(lxc_destroy, lxc);
 
 static int remove_lxc_directory(const char *dirname)
 {
@@ -39,7 +42,7 @@ static int remove_lxc_directory(const char *dirname)
 	sprintf(path, LXCPATH "/%s", dirname);
 
 	if (rmdir(path)) {
-		lxc_log_syserror("failed to remove %s directory", path);
+		SYSERROR("failed to remove %s directory", path);
 		return -1;
 	}
 
@@ -56,7 +59,7 @@ int lxc_destroy(const char *name)
 		return lock;
 
 	if (lxc_rmstate(name)) {
-		lxc_log_error("failed to remove state file for %s", name);
+		ERROR("failed to remove state file for %s", name);
 		goto out_lock;
 	}
 	
@@ -65,12 +68,12 @@ int lxc_destroy(const char *name)
 	lxc_unlink_nsgroup(name);
 
 	if (lxc_unconfigure(name)) {
-		lxc_log_error("failed to cleanup %s", name);
+		ERROR("failed to cleanup %s", name);
 		goto out_lock;
 	}
 
 	if (remove_lxc_directory(name)) {
-		lxc_log_syserror("failed to remove '%s'", name);
+		SYSERROR("failed to remove '%s'", name);
 		goto out_lock;
 	}
 

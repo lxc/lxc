@@ -91,6 +91,10 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #include "mainloop.h"
 
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
+lxc_log_define(lxc_start, lxc);
+
 
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);
@@ -101,23 +105,23 @@ static int setup_sigchld_fd(sigset_t *oldmask)
 	int fd;
 
 	if (sigprocmask(SIG_BLOCK, NULL, &mask)) {
-		lxc_log_syserror("failed to get mask signal");
+		SYSERROR("failed to get mask signal");
 		return -1;
 	}
 
 	if (sigaddset(&mask, SIGCHLD) || sigprocmask(SIG_BLOCK, &mask, oldmask)) {
-		lxc_log_syserror("failed to set mask signal");
+		SYSERROR("failed to set mask signal");
 		return -1;
 	}
 
 	fd = signalfd(-1, &mask, 0);
 	if (fd < 0) {
-		lxc_log_syserror("failed to create the signal fd");
+		SYSERROR("failed to create the signal fd");
 		return -1;
 	}
 
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
-		lxc_log_syserror("failed to set sigfd to close-on-exec");
+		SYSERROR("failed to set sigfd to close-on-exec");
 		close(fd);
 		return -1;
 	}
@@ -139,7 +143,7 @@ static int setup_tty_service(const char *name, int *ttyfd)
 		return -1;
 
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
-		lxc_log_syserror("failed to close-on-exec flag");
+		SYSERROR("failed to close-on-exec flag");
 		close(fd);
 		return -1;
 	}
@@ -186,12 +190,12 @@ static int ttyservice_handler(int fd, void *data,
 	
 	conn = accept(fd, NULL, 0);
 	if (conn < 0) {
-		lxc_log_syserror("failed to accept tty client");
+		SYSERROR("failed to accept tty client");
 		return -1;
 	}
 	
 	if (setsockopt(conn, SOL_SOCKET, SO_PASSCRED, &val, sizeof(val))) {
-		lxc_log_syserror("failed to enable credential on socket");
+		SYSERROR("failed to enable credential on socket");
 		goto out_close;
 	}
 
@@ -209,13 +213,13 @@ static int ttyservice_handler(int fd, void *data,
 
 	if (lxc_af_unix_send_fd(conn, tty_info->pty_info[ttynum].master, 
 				NULL, 0) < 0) {
-		lxc_log_error("failed to send tty to client");
+		ERROR("failed to send tty to client");
 		goto out_close;
 	}
 
 	if (lxc_mainloop_add_handler(descr, conn, 
 				     ttyclient_handler, tty_info)) {
-		lxc_log_error("failed to add tty client handler");
+		ERROR("failed to add tty client handler");
 		goto out_close;
 	}
 
@@ -237,7 +241,7 @@ static int mainloop(const char *name, pid_t pid, int sigfd,
 	struct lxc_epoll_descr descr;
 
 	if (tty_info->nbtty && setup_tty_service(name, &ttyfd)) {
-		lxc_log_error("failed to create the tty service point");
+		ERROR("failed to create the tty service point");
 		goto out_sigfd;
 	}
 
@@ -246,12 +250,12 @@ static int mainloop(const char *name, pid_t pid, int sigfd,
 	nfds = tty_info->nbtty + 1 + tty_info->nbtty ? 1 : 0;
 
 	if (lxc_mainloop_open(nfds, &descr)) {
-		lxc_log_error("failed to create mainloop");
+		ERROR("failed to create mainloop");
 		goto out_ttyfd;
 	}
 
 	if (lxc_mainloop_add_handler(&descr, sigfd, sigchld_handler, &pid)) {
-		lxc_log_error("failed to add handler for the signal");
+		ERROR("failed to add handler for the signal");
 		goto out_mainloop_open;
 	}
 
@@ -259,7 +263,7 @@ static int mainloop(const char *name, pid_t pid, int sigfd,
 		if (lxc_mainloop_add_handler(&descr, ttyfd, 
 					     ttyservice_handler, 
 					     (void *)tty_info)) {
-			lxc_log_error("failed to add handler for the tty");
+			ERROR("failed to add handler for the tty");
 			goto out_mainloop_open;
 		}
 	}
@@ -295,7 +299,7 @@ int lxc_start(const char *name, char *argv[])
 
 	/* Begin the set the state to STARTING*/
 	if (lxc_setstate(name, STARTING)) {
-		lxc_log_error("failed to set state '%s'", 
+		ERROR("failed to set state '%s'",
 			      lxc_state2str(STARTING));
 		goto out;
 	}
@@ -305,7 +309,7 @@ int lxc_start(const char *name, char *argv[])
 		tty[0] = '\0';
 
 	if (lxc_create_tty(name, &tty_info)) {
-		lxc_log_error("failed to create the ttys");
+		ERROR("failed to create the ttys");
 		goto out;
 	}
 
@@ -314,13 +318,13 @@ int lxc_start(const char *name, char *argv[])
 	 * the event will be lost and the command will be stuck */
 	sigfd = setup_sigchld_fd(&oldmask);
 	if (sigfd < 0) {
-		lxc_log_error("failed to set sigchild fd handler");
+		ERROR("failed to set sigchild fd handler");
 		return -1;
 	}
 
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
-		lxc_log_syserror("failed to create communication socketpair");
+		SYSERROR("failed to create communication socketpair");
 		goto out;
 	}
 
@@ -337,14 +341,14 @@ int lxc_start(const char *name, char *argv[])
 	/* Create a process in a new set of namespaces */
 	pid = fork_ns(clone_flags);
 	if (pid < 0) {
-		lxc_log_syserror("failed to fork into a new namespace");
+		SYSERROR("failed to fork into a new namespace");
 		goto err_fork_ns;
 	}
 
 	if (!pid) {
 
 		if (sigprocmask(SIG_SETMASK, &oldmask, NULL)) {
-			lxc_log_syserror("failed to set sigprocmask");
+			SYSERROR("failed to set sigprocmask");
 			return -1;
 		}
 
@@ -355,37 +359,37 @@ int lxc_start(const char *name, char *argv[])
 		
 		/* Tell our father he can begin to configure the container */
 		if (write(sv[0], &sync, sizeof(sync)) < 0) {
-			lxc_log_syserror("failed to write socket");
+			SYSERROR("failed to write socket");
 			goto out_child;
 		}
 
 		/* Wait for the father to finish the configuration */
 		if (read(sv[0], &sync, sizeof(sync)) < 0) {
-			lxc_log_syserror("failed to read socket");
+			SYSERROR("failed to read socket");
 			goto out_child;
 		}
 
 		/* Setup the container, ip, names, utsname, ... */
 		err = lxc_setup(name, tty, &tty_info);
 		if (err) {
-			lxc_log_error("failed to setup the container");
+			ERROR("failed to setup the container");
 			if (write(sv[0], &err, sizeof(err)) < 0)
-				lxc_log_syserror("failed to write the socket");
+				SYSERROR("failed to write the socket");
 			goto out_child;
 		}
 
 		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
-			lxc_log_syserror("failed to remove CAP_SYS_BOOT capability");
+			SYSERROR("failed to remove CAP_SYS_BOOT capability");
 			goto out_child;
 		}
 
 		execvp(argv[0], argv);
-		lxc_log_syserror("failed to exec %s", argv[0]);
+		SYSERROR("failed to exec %s", argv[0]);
 
 		err = LXC_ERROR_WRONG_COMMAND;
 		/* If the exec fails, tell that to our father */
 		if (write(sv[0], &err, sizeof(err)) < 0)
-			lxc_log_syserror("failed to write the socket");
+			SYSERROR("failed to write the socket");
 		
 	out_child:
 		exit(err);
@@ -395,29 +399,29 @@ int lxc_start(const char *name, char *argv[])
 	
 	/* Wait for the child to be ready */
 	if (read(sv[1], &sync, sizeof(sync)) < 0) {
-		lxc_log_syserror("failed to read the socket");
+		SYSERROR("failed to read the socket");
 		goto err_pipe_read;
 	}
 
 	if (lxc_link_nsgroup(name, pid))
-		lxc_log_warning("cgroupfs not found: cgroup disabled");
+		WARN("cgroupfs not found: cgroup disabled");
 
 	/* Create the network configuration */
 	if (clone_flags & CLONE_NEWNET && conf_create_network(name, pid)) {
-		lxc_log_error("failed to create the configured network");
+		ERROR("failed to create the configured network");
 		goto err_create_network;
 	}
 
 	/* Tell the child to continue its initialization */
 	if (write(sv[1], &sync, sizeof(sync)) < 0) {
-		lxc_log_syserror("failed to write the socket");
+		SYSERROR("failed to write the socket");
 		goto err_pipe_write;
 	}
 
 	/* Wait for the child to exec or returning an error */
 	err = read(sv[1], &sync, sizeof(sync));
 	if (err < 0) {
-		lxc_log_error("failed to read the socket");
+		ERROR("failed to read the socket");
 		goto err_pipe_read2;
 	}
 
@@ -428,7 +432,7 @@ int lxc_start(const char *name, char *argv[])
 	}
 
 	if (!asprintf(&val, "%d\n", pid)) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		goto err_child_failed;
 	}
 
@@ -436,38 +440,38 @@ int lxc_start(const char *name, char *argv[])
 
 	fd = open(init, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 	if (fd < 0) {
-		lxc_log_syserror("failed to open '%s'", init);
+		SYSERROR("failed to open '%s'", init);
 		goto err_write;
 	}
 	
 	if (write(fd, val, strlen(val)) < 0) {
-		lxc_log_syserror("failed to write the init pid");
+		SYSERROR("failed to write the init pid");
 		goto err_write;
 	}
 
 	close(fd);
 
 	if (lxc_setstate(name, RUNNING)) {
-		lxc_log_error("failed to set state to %s", 
+		ERROR("failed to set state to %s",
 			      lxc_state2str(RUNNING));
 		goto err_state_failed;
 	}
 
 	if (mainloop(name, pid, sigfd, &tty_info)) {
-		lxc_log_error("mainloop exited with an error");
+		ERROR("mainloop exited with an error");
 		goto err_mailoop_failed;
 	}
 
 	if (lxc_setstate(name, STOPPING))
-		lxc_log_error("failed to set state %s", lxc_state2str(STOPPING));
+		ERROR("failed to set state %s", lxc_state2str(STOPPING));
 
 	if (clone_flags & CLONE_NEWNET && conf_destroy_network(name))
-		lxc_log_error("failed to destroy the network");
+		ERROR("failed to destroy the network");
 
 	err = 0;
 out:
 	if (lxc_setstate(name, STOPPED))
-		lxc_log_error("failed to set state %s", lxc_state2str(STOPPED));
+		ERROR("failed to set state %s", lxc_state2str(STOPPED));
 
 	lxc_delete_tty(&tty_info);
 	lxc_unlink_nsgroup(name);
@@ -492,7 +496,7 @@ err_create_network:
 err_pipe_read:
 err_mailoop_failed:
 	if (lxc_setstate(name, ABORTING))
-		lxc_log_error("failed to set state %s", lxc_state2str(STOPPED));
+		ERROR("failed to set state %s", lxc_state2str(STOPPED));
 
 	kill(pid, SIGKILL);
 err_fork_ns:

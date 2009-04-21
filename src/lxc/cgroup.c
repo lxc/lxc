@@ -37,7 +37,11 @@
 #include <net/if.h>
 
 #include "error.h"
+
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
+lxc_log_define(lxc_cgroup, lxc);
 
 #define MTAB "/etc/mtab"
 
@@ -49,7 +53,7 @@ static int get_cgroup_mount(const char *mtab, char *mnt)
 
         file = setmntent(mtab, "r");
         if (!file) {
-                lxc_log_syserror("failed to open %s", mtab);
+                SYSERROR("failed to open %s", mtab);
                 goto out;
         }
 
@@ -74,7 +78,7 @@ int lxc_link_nsgroup(const char *name, pid_t pid)
 	int ret;
 
 	if (get_cgroup_mount(MTAB, cgroup)) {
-		lxc_log_info("cgroup is not mounted");
+		INFO("cgroup is not mounted");
 		return -1;
 	}
 
@@ -84,7 +88,7 @@ int lxc_link_nsgroup(const char *name, pid_t pid)
 	unlink(lxc);
 	ret = symlink(nsgroup, lxc);
 	if (ret)
-		lxc_log_syserror("failed to create symlink %s->%s",
+		SYSERROR("failed to create symlink %s->%s",
 				 nsgroup, lxc);
       return ret;
 }

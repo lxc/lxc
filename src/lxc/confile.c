@@ -35,6 +35,9 @@
 #include "parse.h"
 
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
+lxc_log_define(lxc_confile, lxc);
 
 static int config_pts(const char *, char *, struct lxc_conf *);
 static int config_tty(const char *, char *, struct lxc_conf *);
@@ -99,7 +102,7 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 
 	network = malloc(sizeof(*network));
 	if (!network) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		return -1;
 	}
 
@@ -107,7 +110,7 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 
 	netdev = malloc(sizeof(*netdev));
 	if (!netdev) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		return -1;
 	}
 
@@ -118,7 +121,7 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 
 	ndlist = malloc(sizeof(*ndlist));
 	if (!ndlist) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		return -1;
 	}
 
@@ -128,7 +131,7 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 
 	list = malloc(sizeof(*list));
 	if (!list) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		return -1;
 	}
 
@@ -146,7 +149,7 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 	else if (!strcmp(value, "empty"))
 		network->type = EMPTY;
 	else {
-		lxc_log_error("invalid network type %s", value);
+		ERROR("invalid network type %s", value);
 		return -1;
 	}
 	return 0;
@@ -159,13 +162,13 @@ static int config_network_flags(const char *key, char *value, struct lxc_conf *l
 	struct lxc_netdev *netdev;
 
 	if (lxc_list_empty(networks)) {
-		lxc_log_error("network is not created for '%s' option", value);
+		ERROR("network is not created for '%s' option", value);
 		return -1;
 	}
 
 	network = lxc_list_first_elem(networks);
 	if (!network) {
-		lxc_log_error("no network defined for '%s' option", value);
+		ERROR("no network defined for '%s' option", value);
 		return -1;
 	}
 
@@ -181,18 +184,18 @@ static int config_network_link(const char *key, char *value, struct lxc_conf *lx
 	struct lxc_netdev *netdev;
 
 	if (lxc_list_empty(networks)) {
-		lxc_log_error("network is not created for %s", value);
+		ERROR("network is not created for %s", value);
 		return -1;
 	}
 
 	network = lxc_list_first_elem(networks);
 	if (!network) {
-		lxc_log_error("no network defined for %s", value);
+		ERROR("no network defined for %s", value);
 		return -1;
 	}
 
 	if (strlen(value) > IFNAMSIZ) {
-		lxc_log_error("invalid interface name: %s", value);
+		ERROR("invalid interface name: %s", value);
 		return -1;
 	}
 
@@ -208,18 +211,18 @@ static int config_network_name(const char *key, char *value, struct lxc_conf *lx
 	struct lxc_netdev *netdev;
 
 	if (lxc_list_empty(networks)) {
-		lxc_log_error("network is not created for %s", value);
+		ERROR("network is not created for %s", value);
 		return -1;
 	}
 
 	network = lxc_list_first_elem(networks);
 	if (!network) {
-		lxc_log_error("no network defined for %s", value);
+		ERROR("no network defined for %s", value);
 		return -1;
 	}
 
 	if (strlen(value) > IFNAMSIZ) {
-		lxc_log_error("invalid interface name: %s", value);
+		ERROR("invalid interface name: %s", value);
 		return -1;
 	}
 
@@ -235,13 +238,13 @@ static int config_network_hwaddr(const char *key, char *value, struct lxc_conf *
 	struct lxc_netdev *netdev;
 
 	if (lxc_list_empty(networks)) {
-		lxc_log_error("network is not created for %s", value);
+		ERROR("network is not created for %s", value);
 		return -1;
 	}
 
 	network = lxc_list_first_elem(networks);
 	if (!network) {
-		lxc_log_error("no network defined for %s", value);
+		ERROR("no network defined for %s", value);
 		return -1;
 	}
 
@@ -257,13 +260,13 @@ static int config_network_mtu(const char *key, char *value, struct lxc_conf *lxc
 	struct lxc_netdev *netdev;
 
 	if (lxc_list_empty(networks)) {
-		lxc_log_error("network is not created for %s", value);
+		ERROR("network is not created for %s", value);
 		return -1;
 	}
 
 	network = lxc_list_first_elem(networks);
 	if (!network) {
-		lxc_log_error("no network defined for %s", value);
+		ERROR("no network defined for %s", value);
 		return -1;
 	}
 
@@ -282,31 +285,31 @@ static int config_network_ipv4(const char *key, char *value, struct lxc_conf *lx
 	char *cursor, *slash, *addr = NULL, *bcast = NULL, *prefix = NULL;
 
 	if (lxc_list_empty(networks)) {
-		lxc_log_error("network is not created for '%s'", value);
+		ERROR("network is not created for '%s'", value);
 		return -1;
 	}
 
 	network = lxc_list_first_elem(networks);
 	if (!network) {
-		lxc_log_error("no network defined for '%s'", value);
+		ERROR("no network defined for '%s'", value);
 		return -1;
 	}
 
 	netdev = lxc_list_first_elem(&network->netdev);
 	if (!netdev) {
-		lxc_log_error("no netdev defined for '%s'", value);
+		ERROR("no netdev defined for '%s'", value);
 	}
 
 	inetdev = malloc(sizeof(*inetdev));
 	if (!inetdev) {
-		lxc_log_syserror("failed to allocate ipv4 address");
+		SYSERROR("failed to allocate ipv4 address");
 		return -1;
 	}
 	memset(inetdev, 0, sizeof(*inetdev));
 
 	list = malloc(sizeof(*list));
 	if (!list) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		return -1;
 	}
 
@@ -328,18 +331,18 @@ static int config_network_ipv4(const char *key, char *value, struct lxc_conf *lx
 	}
 
 	if (!addr) {
-		lxc_log_error("no address specified");
+		ERROR("no address specified");
 		return -1;
 	}
 
 	if (!inet_pton(AF_INET, addr, &inetdev->addr)) {
-		lxc_log_syserror("invalid ipv4 address: %s", value);
+		SYSERROR("invalid ipv4 address: %s", value);
 		return -1;
 	}
 
 	if (bcast)
 		if (!inet_pton(AF_INET, bcast, &inetdev->bcast)) {
-			lxc_log_syserror("invalid ipv4 address: %s", value);
+			SYSERROR("invalid ipv4 address: %s", value);
 			return -1;
 		}
 
@@ -362,26 +365,26 @@ static int config_network_ipv6(const char *key, char *value, struct lxc_conf *lx
 	char *netmask;
 
 	if (lxc_list_empty(networks)) {
-		lxc_log_error("network is not created for %s", value);
+		ERROR("network is not created for %s", value);
 		return -1;
 	}
 
 	network = lxc_list_first_elem(networks);
 	if (!network) {
-		lxc_log_error("no network defined for %s", value);
+		ERROR("no network defined for %s", value);
 		return -1;
 	}
 
 	inet6dev = malloc(sizeof(*inet6dev));
 	if (!inet6dev) {
-		lxc_log_syserror("failed to allocate ipv6 address");
+		SYSERROR("failed to allocate ipv6 address");
 		return -1;
 	}
 	memset(inet6dev, 0, sizeof(*inet6dev));
 
 	list = malloc(sizeof(*list));
 	if (!list) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		return -1;
 	}
 
@@ -396,7 +399,7 @@ static int config_network_ipv6(const char *key, char *value, struct lxc_conf *lx
 	}
 
 	if (!inet_pton(AF_INET6, value, &inet6dev->addr)) {
-		lxc_log_syserror("invalid ipv6 address: %s", value);
+		SYSERROR("invalid ipv6 address: %s", value);
 		return -1;
 	}
 
@@ -467,13 +470,13 @@ static int config_cgroup(const char *key, char *value, struct lxc_conf *lxc_conf
 static int config_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	if (strlen(value) >= MAXPATHLEN) {
-		lxc_log_error("%s path is too long", value);
+		ERROR("%s path is too long", value);
 		return -1;
 	}
 
 	lxc_conf->fstab = strdup(value);
 	if (!lxc_conf->fstab) {
-		lxc_log_syserror("failed to duplicate string %s", value);
+		SYSERROR("failed to duplicate string %s", value);
 		return -1;
 	}
 
@@ -483,13 +486,13 @@ static int config_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
 static int config_rootfs(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	if (strlen(value) >= MAXPATHLEN) {
-		lxc_log_error("%s path is too long", value);
+		ERROR("%s path is too long", value);
 		return -1;
 	}
 
 	lxc_conf->rootfs = strdup(value);
 	if (!lxc_conf->rootfs) {
-		lxc_log_syserror("failed to duplicate string %s", value);
+		SYSERROR("failed to duplicate string %s", value);
 		return -1;
 	}
 
@@ -502,12 +505,12 @@ static int config_utsname(const char *key, char *value, struct lxc_conf *lxc_con
 
 	utsname = malloc(sizeof(*utsname));
 	if (!utsname) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		return -1;
 	}
 
 	if (strlen(value) >= sizeof(utsname->nodename)) {
-		lxc_log_error("node name '%s' is too long",
+		ERROR("node name '%s' is too long",
 			      utsname->nodename);
 		return -1;
 	}
@@ -535,7 +538,7 @@ static int parse_line(void *buffer, void *data)
 
 	dot = strstr(line, "=");
 	if (!dot) {
-		lxc_log_error("invalid configuration line: %s", line);
+		ERROR("invalid configuration line: %s", line);
 		return -1;
 	}
 
@@ -550,7 +553,7 @@ static int parse_line(void *buffer, void *data)
 
 	config = getconfig(key);
 	if (!config) {
-		lxc_log_error("unknow key %s", key);
+		ERROR("unknow key %s", key);
 		return -1;
 	}
 

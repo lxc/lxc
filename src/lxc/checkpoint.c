@@ -40,6 +40,10 @@
 #include "lxc_plugin.h"
 #include <lxc.h>
 
+#include <lxc/log.h>
+
+lxc_log_define(lxc_checkpoint, lxc);
+
 #define MAXPIDLEN 20
 
 int lxc_checkpoint(const char *name, const char *statefile, 
@@ -62,19 +66,19 @@ int lxc_checkpoint(const char *name, const char *statefile,
 	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
 	fd = open(init, O_RDONLY);
 	if (fd < 0) {
-		lxc_log_syserror("failed to open init file for %s", name);
+		SYSERROR("failed to open init file for %s", name);
 		goto out_close;
 	}
 	
 	if (read(fd, val, sizeof(val)) < 0) {
-		lxc_log_syserror("failed to read %s", init);
+		SYSERROR("failed to read %s", init);
 		goto out_close;
 	}
 
 	pid = atoi(val);
 
 	if (lxc_plugin_checkpoint(pid, statefile, flags) < 0) {
-		lxc_log_syserror("failed to checkpoint %zd", pid);
+		SYSERROR("failed to checkpoint %zd", pid);
 		goto out_close;
 	}
 

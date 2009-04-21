@@ -39,6 +39,9 @@
 
 #include "error.h"
 #include "lxc.h"
+#include <lxc/log.h>
+
+lxc_log_define(lxc_console, lxc);
 
 void usage(char *cmd)
 {
@@ -77,7 +80,7 @@ int main(int argc, char *argv[])
 
 	/* Get current termios */
 	if (tcgetattr(0, &tios)) {
-		lxc_log_error("failed to get current terminal settings");
+		ERROR("failed to get current terminal settings");
 		fprintf(stderr, "%s\n", lxc_strerror(err));
 		return 1;
 	}
@@ -94,7 +97,7 @@ int main(int argc, char *argv[])
 
 	/* Set new attributes */
 	if (tcsetattr(0, TCSAFLUSH, &tios)) {
-		lxc_log_syserror("failed to set new terminal settings");
+		SYSERROR("failed to set new terminal settings");
 		fprintf(stderr, "%s\n", lxc_strerror(err));
 		return 1;
 	}
@@ -126,7 +129,7 @@ int main(int argc, char *argv[])
 		if (poll(pfd, 2, -1) < 0) {
 			if (errno == EINTR)
 				continue;
-			lxc_log_syserror("failed to poll");
+			SYSERROR("failed to poll");
 			goto out_err;
 		}
 		
@@ -134,7 +137,7 @@ int main(int argc, char *argv[])
 		 */
 		if (pfd[0].revents & POLLIN) {
 			if (read(0, &c, 1) < 0) {
-				lxc_log_syserror("failed to read");
+				SYSERROR("failed to read");
 				goto out_err;
 			}
 
@@ -149,7 +152,7 @@ int main(int argc, char *argv[])
 
 			wait4q = 0;
 			if (write(master, &c, 1) < 0) {
-				lxc_log_syserror("failed to write");
+				SYSERROR("failed to write");
 				goto out_err;
 			}
 		}
@@ -161,7 +164,7 @@ int main(int argc, char *argv[])
 		/* read the master and write to "stdout" */
 		if (pfd[1].revents & POLLIN) {
 			if (read(master, &c, 1) < 0) {
-				lxc_log_syserror("failed to read");
+				SYSERROR("failed to read");
 				goto out_err;
 			}
 			printf("%c", c);

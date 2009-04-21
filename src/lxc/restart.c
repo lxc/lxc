@@ -40,6 +40,9 @@
 #include "error.h"
 #include "lxc_plugin.h"
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
+lxc_log_define(lxc_restart, lxc);
 
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);
@@ -60,19 +63,19 @@ int lxc_restart(const char *name, const char *statefile,
 
 	/* Begin the set the state to STARTING*/
 	if (lxc_setstate(name, STARTING)) {
-		lxc_log_error("failed to set state %s", 
+		ERROR("failed to set state %s",
 			      lxc_state2str(STARTING));
 		goto out;
 	}
 
 	if (ttyname_r(0, tty, sizeof(tty))) {
 		tty[0] = '\0';
-		lxc_log_warning("failed to get tty name");
+		WARN("failed to get tty name");
 	}
 
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
-		lxc_log_syserror("failed to create communication socketpair");
+		SYSERROR("failed to create communication socketpair");
 		goto out;
 	}
 
@@ -89,7 +92,7 @@ int lxc_restart(const char *name, const char *statefile,
 	/* Create a process in a new set of namespaces */
 	pid = fork_ns(clone_flags);
 	if (pid < 0) {
-		lxc_log_syserror("failed to fork into a new namespace");
+		SYSERROR("failed to fork into a new namespace");
 		goto err_fork_ns;
 	}
 
@@ -102,30 +105,30 @@ int lxc_restart(const char *name, const char *statefile,
 		
 		/* Tell our father he can begin to configure the container */
 		if (write(sv[0], &sync, sizeof(sync)) < 0) {
-			lxc_log_syserror("failed to write socket");
+			SYSERROR("failed to write socket");
 			return 1;
 		}
 
 		/* Wait for the father to finish the configuration */
 		if (read(sv[0], &sync, sizeof(sync)) < 0) {
-			lxc_log_syserror("failed to read socket");
+			SYSERROR("failed to read socket");
 			return 1;
 		}
 
 		/* Setup the container, ip, names, utsname, ... */
 		if (lxc_setup(name, tty, &tty_info)) {
-			lxc_log_error("failed to setup the container");
+			ERROR("failed to setup the container");
 			if (write(sv[0], &sync, sizeof(sync)) < 0)
-				lxc_log_syserror("failed to write the socket");
+				SYSERROR("failed to write the socket");
 			return -1;
 		}
 
 		lxc_plugin_restart(getpid(), statefile, flags);
-		lxc_log_syserror("failed to restart");
+		SYSERROR("failed to restart");
   
 		/* If the exec fails, tell that to our father */
 		if (write(sv[0], &sync, sizeof(sync)) < 0)
-			lxc_log_syserror("failed to write the socket");
+			SYSERROR("failed to write the socket");
 		
 		exit(1);
 	}
@@ -134,62 +137,62 @@ int lxc_restart(const char *name, const char *statefile,
 	
 	/* Wait for the child to be ready */
 	if (read(sv[1], &sync, sizeof(sync)) < 0) {
-		lxc_log_syserror("failed to read the socket");
+		SYSERROR("failed to read the socket");
 		goto err_pipe_read;
 	}
 
 	/* Create the network configuration */
 	if (clone_flags & CLONE_NEWNET && conf_create_network(name, pid)) {
-		lxc_log_error("failed to create the configured network");
+		ERROR("failed to create the configured network");
 		goto err_create_network;
 	}
 
 	/* Tell the child to continue its initialization */
 	if (write(sv[1], &sync, sizeof(sync)) < 0) {
-		lxc_log_syserror("failed to write the socket");
+		SYSERROR("failed to write the socket");
 		goto err_pipe_write;
 	}
 
 	/* Wait for the child to exec or returning an error */
 	err = read(sv[1], &sync, sizeof(sync));
 	if (err < 0) {
-		lxc_log_error("failed to read the socket");
+		ERROR("failed to read the socket");
 		goto err_pipe_read2;
 	}
 
 	if (err > 0) {
-		lxc_log_error("something went wrong with %d", pid);
+		ERROR("something went wrong with %d", pid);
 		/* TODO : check status etc ... */
 		waitpid(pid, NULL, 0);
 		goto err_child_failed;
 	}
 
 	if (!asprintf(&val, "%d\n", pid)) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		goto err_child_failed;
 	}
 	if (!asprintf(&init, LXCPATH "/%s/init", name)) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		goto err_child_failed;
 	}
 	fd = open(init, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 	if (fd < 0) {
-		lxc_log_syserror("failed to open '%s'", init);
+		SYSERROR("failed to open '%s'", init);
 		goto err_write;
 	}
 	
 	if (write(fd, val, strlen(val)) < 0) {
-		lxc_log_syserror("failed to write the init pid");
+		SYSERROR("failed to write the init pid");
 		goto err_write;
 	}
 
 	close(fd);
 
 	if (lxc_link_nsgroup(name, pid))
-		lxc_log_warning("cgroupfs not found: cgroup disabled");
+		WARN("cgroupfs not found: cgroup disabled");
 
 	if (lxc_setstate(name, RUNNING)) {
-		lxc_log_error("failed to set state to %s", 
+		ERROR("failed to set state to %s",
 			      lxc_state2str(RUNNING));
 		goto err_state_failed;
 	}
@@ -198,20 +201,20 @@ wait_again:
 	if (waitpid(pid, NULL, 0) < 0) {
 		if (errno == EINTR) 
 			goto wait_again;
-		lxc_log_syserror("failed to wait the pid %d", pid);
+		SYSERROR("failed to wait the pid %d", pid);
 		goto err_waitpid_failed;
 	}
 
 	if (lxc_setstate(name, STOPPING))
-		lxc_log_error("failed to set state %s", lxc_state2str(STOPPING));
+		ERROR("failed to set state %s", lxc_state2str(STOPPING));
 
 	if (clone_flags & CLONE_NEWNET && conf_destroy_network(name))
-		lxc_log_error("failed to destroy the network");
+		ERROR("failed to destroy the network");
 
 	err = 0;
 out:
 	if (lxc_setstate(name, STOPPED))
-		lxc_log_error("failed to set state %s", lxc_state2str(STOPPED));
+		ERROR("failed to set state %s", lxc_state2str(STOPPED));
 
 	lxc_unlink_nsgroup(name);
 	unlink(init);
@@ -234,7 +237,7 @@ err_create_network:
 err_pipe_read:
 err_waitpid_failed:
 	if (lxc_setstate(name, ABORTING))
-		lxc_log_error("failed to set state %s", lxc_state2str(STOPPED));
+		ERROR("failed to set state %s", lxc_state2str(STOPPED));
 
 	kill(pid, SIGKILL);
 err_fork_ns:

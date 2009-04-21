@@ -33,6 +33,9 @@
 
 #include "error.h"
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
+lxc_log_define(lxc_freezer, lxc);
 
 static int freeze_unfreeze(const char *name, int freeze)
 {
@@ -44,7 +47,7 @@ static int freeze_unfreeze(const char *name, int freeze)
 
 	fd = open(freezer, O_WRONLY);
 	if (fd < 0) {
-		lxc_log_syserror("failed to open freezer for '%s'", name);
+		SYSERROR("failed to open freezer for '%s'", name);
 		return -1;
 	}
 
@@ -64,7 +67,7 @@ static int freeze_unfreeze(const char *name, int freeze)
 
 	close(fd);
 	if (ret) 
-		lxc_log_syserror("failed to write to '%s'", freezer);
+		SYSERROR("failed to write to '%s'", freezer);
 
 	return 0;
 }

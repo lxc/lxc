@@ -32,6 +32,9 @@
 #include <fcntl.h>
 
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
+lxc_log_define(lxc_stop, lxc);
 
 #define MAXPIDLEN 20
 
@@ -54,19 +57,19 @@ int lxc_stop(const char *name)
 	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
 	fd = open(init, O_RDONLY);
 	if (fd < 0) {
-		lxc_log_syserror("failed to open init file for %s", name);
+		SYSERROR("failed to open init file for %s", name);
 		goto out_close;
 	}
 	
 	if (read(fd, val, sizeof(val)) < 0) {
-		lxc_log_syserror("failed to read %s", init);
+		SYSERROR("failed to read %s", init);
 		goto out_close;
 	}
 
 	pid = atoi(val);
 
 	if (kill(pid, SIGKILL)) {
-		lxc_log_syserror("failed to kill %zd", pid);
+		SYSERROR("failed to kill %zd", pid);
 		goto out_close;
 	}
 

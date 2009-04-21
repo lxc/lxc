@@ -50,6 +50,9 @@
 #include "parse.h"
 
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
+lxc_log_define(lxc_conf, lxc);
 
 #define MAXHWLEN    18
 #define MAXINDEXLEN 20
@@ -180,12 +183,12 @@ static int configure_ip4addr(int fd, struct lxc_inetdev *in)
 	int err = -1;
 
 	if (!inet_ntop(AF_INET, &in->addr, addr, sizeof(addr))) {
-		lxc_log_syserror("failed to convert ipv4 address");
+		SYSERROR("failed to convert ipv4 address");
 		goto err;
 	}
 
 	if (!inet_ntop(AF_INET, &in->bcast, bcast, sizeof(bcast))) {
-		lxc_log_syserror("failed to convert ipv4 broadcast");
+		SYSERROR("failed to convert ipv4 broadcast");
 		goto err;
 	}
 
@@ -195,7 +198,7 @@ static int configure_ip4addr(int fd, struct lxc_inetdev *in)
 		snprintf(line, MAXLINELEN, "%s %s\n", addr, bcast);
 
 	if (write(fd, line, strlen(line)) < 0) {
-		lxc_log_syserror("failed to write address info");
+		SYSERROR("failed to write address info");
 		goto err;
 	}
 
@@ -211,14 +214,14 @@ static int configure_ip6addr(int fd, struct lxc_inet6dev *in6)
 	int err = -1;
 
 	if (!inet_ntop(AF_INET6, &in6->addr, addr, sizeof(addr))) {
-		lxc_log_syserror("failed to convert ipv4 address");
+		SYSERROR("failed to convert ipv4 address");
 		goto err;
 	}
 
 	snprintf(line, MAXLINELEN, "%s/%d\n", addr, in6->prefix?in6->prefix:64);
 
 	if (write(fd, line, strlen(line)) < 0) {
-		lxc_log_syserror("failed to write address info");
+		SYSERROR("failed to write address info");
 		goto err;
 	}
 
@@ -234,14 +237,14 @@ static int configure_ip_address(const char *path, struct lxc_list *ip, int famil
 	int fd, err = -1;
 
 	if (mkdir(path, 0755)) {
-		lxc_log_syserror("failed to create directory %s", path);
+		SYSERROR("failed to create directory %s", path);
 		return -1;
 	}
 
 	snprintf(file, MAXPATHLEN, "%s/addresses", path);
 	fd = creat(file, 0755);
 	if (fd < 0) {
-		lxc_log_syserror("failed to create %s file", file);
+		SYSERROR("failed to create %s file", file);
 		goto err;
 	}
 
@@ -267,7 +270,7 @@ static int configure_netdev(const char *path, struct lxc_netdev *netdev)
 	char dir[MAXPATHLEN];
 
 	if (mkdir(path, 0755)) {
-		lxc_log_syserror("failed to create %s directory", path);
+		SYSERROR("failed to create %s directory", path);
 		return -1;
 	}
 
@@ -334,7 +337,7 @@ static int configure_utsname(const char *name, struct utsname *utsname)
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
 
 	if (write_info(path, "utsname", utsname->nodename)) {
-		lxc_log_error("failed to write the utsname info");
+		ERROR("failed to write the utsname info");
 		return -1;
 	}
 
@@ -354,7 +357,7 @@ static int configure_network(const char *name, struct lxc_list *network)
 
 	snprintf(networkpath, MAXPATHLEN, LXCPATH "/%s/network", name);
 	if (mkdir(networkpath, 0755)) {
-		lxc_log_syserror("failed to create %s directory", networkpath);
+		SYSERROR("failed to create %s directory", networkpath);
 		goto out;
 	}
 
@@ -363,7 +366,7 @@ static int configure_network(const char *name, struct lxc_list *network)
 		n = iterator->elem;
 
 		if (n->type < 0 || n->type > MAXCONFTYPE) {
-			lxc_log_error("invalid network configuration type '%d'",
+			ERROR("invalid network configuration type '%d'",
 				      n->type);
 			goto out;
 		}
@@ -373,7 +376,7 @@ static int configure_network(const char *name, struct lxc_list *network)
 			 netdev_conf[n->type].count++);
 
 		if (configure_netdev(path, lxc_list_first_elem(&n->netdev))) {
-			lxc_log_error("failed to configure network type %s",
+			ERROR("failed to configure network type %s",
 				      netdev_conf[n->type].type);
 			goto out;
 		}
@@ -398,7 +401,7 @@ static int configure_cgroup(const char *name, struct lxc_list *cgroup)
 
 	file = fopen(path, "w+");
 	if (!file) {
-		lxc_log_syserror("failed to open '%s'", path);
+		SYSERROR("failed to open '%s'", path);
 		return -1;
 	}
 
@@ -419,7 +422,7 @@ static int configure_tty(const char *name, int tty)
 	int ret;
 
 	if (asprintf(&nbtty, "%d", tty) < 0) {
-		lxc_log_error("failed to convert tty number");
+		ERROR("failed to convert tty number");
 		return -1;
 	}
 
@@ -427,7 +430,7 @@ static int configure_tty(const char *name, int tty)
 
 	ret = write_info(path, "tty", nbtty);
 	if (ret)
-		lxc_log_error("failed to write the tty info");
+		ERROR("failed to write the tty info");
 
 	free(nbtty);
 
@@ -490,12 +493,12 @@ static int configure_find_fstype(const char *rootfs, char *fstype, int mntopt)
 
 	cbarg.testdir = tempnam("/tmp", "lxc-");
 	if (!cbarg.testdir) {
-		lxc_log_syserror("failed to build a temp name");
+		SYSERROR("failed to build a temp name");
 		return -1;
 	}
 
 	if (mkdir(cbarg.testdir, 0755)) {
-		lxc_log_syserror("failed to create temporary directory");
+		SYSERROR("failed to create temporary directory");
 		return -1;
 	}
 
@@ -506,7 +509,7 @@ static int configure_find_fstype(const char *rootfs, char *fstype, int mntopt)
 					       buffer, sizeof(buffer), &cbarg);
 
 		if (found < 0) {
-			lxc_log_syserror("failed to read '%s'", fsfile[i]);
+			SYSERROR("failed to read '%s'", fsfile[i]);
 			goto out;
 		}
 
@@ -515,7 +518,7 @@ static int configure_find_fstype(const char *rootfs, char *fstype, int mntopt)
 	}
 
 	if (!found) {
-		lxc_log_error("failed to determine fs type for '%s'", rootfs);
+		ERROR("failed to determine fs type for '%s'", rootfs);
 		goto out;
 	}
 
@@ -536,7 +539,7 @@ static int configure_rootfs_blk_cb(const char *rootfs, const char *absrootfs,
 	char fstype[MAXPATHLEN];
 
 	if (configure_find_fstype(absrootfs, fstype, 0)) {
-		lxc_log_error("failed to configure mount for block device '%s'",
+		ERROR("failed to configure mount for block device '%s'",
 			      absrootfs);
 		return -1;
 	}
@@ -564,24 +567,24 @@ static int configure_rootfs(const char *name, const char *rootfs)
 	};
 
 	if (!realpath(rootfs, absrootfs)) {
-		lxc_log_syserror("failed to get real path for '%s'", rootfs);
+		SYSERROR("failed to get real path for '%s'", rootfs);
 		return -1;
 	}
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
 
 	if (mkdir(path, 0755)) {
-		lxc_log_syserror("failed to create the '%s' directory", path);
+		SYSERROR("failed to create the '%s' directory", path);
 		return -1;
 	}
 
 	if (access(absrootfs, F_OK)) {
-		lxc_log_syserror("'%s' is not accessible", absrootfs);
+		SYSERROR("'%s' is not accessible", absrootfs);
 		return -1;
 	}
 
 	if (stat(absrootfs, &s)) {
-		lxc_log_syserror("failed to stat '%s'", absrootfs);
+		SYSERROR("failed to stat '%s'", absrootfs);
 		return -1;
 	}
 
@@ -594,7 +597,7 @@ static int configure_rootfs(const char *name, const char *rootfs)
 
 		f = fopen(fstab, "a+");
 		if (!f) {
-			lxc_log_syserror("failed to open fstab file");
+			SYSERROR("failed to open fstab file");
 			return -1;
 		}
 
@@ -603,7 +606,7 @@ static int configure_rootfs(const char *name, const char *rootfs)
 		fclose(f);
 
 		if (ret < 0) {
-			lxc_log_error("failed to add rootfs mount in fstab");
+			ERROR("failed to add rootfs mount in fstab");
 			return -1;
 		}
 
@@ -612,7 +615,7 @@ static int configure_rootfs(const char *name, const char *rootfs)
 		return symlink(absrootfs, path);
 	}
 
-	lxc_log_error("unsupported rootfs type for '%s'", absrootfs);
+	ERROR("unsupported rootfs type for '%s'", absrootfs);
 	return -1;
 }
 
@@ -623,7 +626,7 @@ static int configure_pts(const char *name, int pts)
 	int ret;
 
 	if (asprintf(&maxpts, "%d", pts) < 0) {
-		lxc_log_error("failed to convert max pts number");
+		ERROR("failed to convert max pts number");
 		return -1;
 	}
 
@@ -631,7 +634,7 @@ static int configure_pts(const char *name, int pts)
 
 	ret = write_info(path, "pts", maxpts);
 	if (ret)
-		lxc_log_error("failed to write the pts info");
+		ERROR("failed to write the pts info");
 
 	free(maxpts);
 
@@ -651,41 +654,41 @@ static int configure_mount(const char *name, const char *fstab)
 
 	outfd = open(path, O_RDWR|O_CREAT|O_EXCL, 0640);
 	if (outfd < 0) {
-		lxc_log_syserror("failed to creat '%s'", path);
+		SYSERROR("failed to creat '%s'", path);
 		goto out;
 	}
 
 	infd = open(fstab, O_RDONLY);
 	if (infd < 0) {
-		lxc_log_syserror("failed to open '%s'", fstab);
+		SYSERROR("failed to open '%s'", fstab);
 		goto out_open;
 	}
 
 	if (fstat(infd, &stat)) {
-		lxc_log_syserror("failed to stat '%s'", fstab);
+		SYSERROR("failed to stat '%s'", fstab);
 		goto out_open2;
 	}
 
 	if (lseek(outfd, stat.st_size - 1, SEEK_SET) < 0) {
-		lxc_log_syserror("failed to seek dest file '%s'", path);
+		SYSERROR("failed to seek dest file '%s'", path);
 		goto out_open2;
 	}
 
 	/* fixup length */
 	if (write(outfd, &c, 1) < 0) {
-		lxc_log_syserror("failed to write to '%s'", path);
+		SYSERROR("failed to write to '%s'", path);
 		goto out_open2;
 	}
 
 	src = mmap(NULL, stat.st_size, PROT_READ, MAP_SHARED, infd, 0L);
 	if (src == MAP_FAILED) {
-		lxc_log_syserror("failed to mmap '%s'", fstab);
+		SYSERROR("failed to mmap '%s'", fstab);
 		goto out_open2;
 	}
 
 	dst = mmap(NULL, stat.st_size, PROT_WRITE, MAP_SHARED, outfd, 0L);
 	if (dst == MAP_FAILED) {
-		lxc_log_syserror("failed to mmap '%s'", path);
+		SYSERROR("failed to mmap '%s'", path);
 		goto out_mmap;
 	}
 
@@ -767,7 +770,7 @@ static int unconfigure_cgroup(const char *name)
 	snprintf(filename, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
 
 	if (stat(filename, &s)) {
-		lxc_log_syserror("failed to stat '%s'", filename);
+		SYSERROR("failed to stat '%s'", filename);
 		return -1;
 	}
 
@@ -849,12 +852,12 @@ static int setup_utsname(const char *name)
 	ret = read_info(path, "utsname", utsname.nodename,
 			sizeof(utsname.nodename));
 	if (ret < 0) {
-		lxc_log_syserror("failed to read utsname info");
+		SYSERROR("failed to read utsname info");
 		return -1;
 	}
 
 	if (!ret && sethostname(utsname.nodename, strlen(utsname.nodename))) {
-		lxc_log_syserror("failed to set the hostname to '%s'",
+		SYSERROR("failed to set the hostname to '%s'",
 				 utsname.nodename);
 		return -1;
 	}
@@ -882,7 +885,7 @@ static int setup_tty(const char *name, const struct lxc_tty_info *tty_info)
 		 * with EACCES errno and I don't know why :( */
 
 		if (mount(pty_info->name, path, "none", MS_BIND, 0)) {
-			lxc_log_warning("failed to mount '%s'->'%s'",
+			WARN("failed to mount '%s'->'%s'",
 					pty_info->name, path);
 			continue;
 		}
@@ -898,12 +901,12 @@ static int setup_rootfs(const char *name)
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
 
 	if (chroot(path)) {
-		lxc_log_syserror("failed to set chroot %s", path);
+		SYSERROR("failed to set chroot %s", path);
 		return -1;
 	}
 
 	if (chdir(getenv("HOME")) && chdir("/")) {
-		lxc_log_syserror("failed to change to home directory");
+		SYSERROR("failed to change to home directory");
 		return -1;
 	}
 
@@ -915,32 +918,32 @@ static int setup_pts(const char *name)
 	char mountname[MAXPATHLEN];
 
 	if (!access("/dev/pts/ptmx", F_OK) && umount("/dev/pts")) {
-		lxc_log_syserror("failed to umount 'dev/pts'");
+		SYSERROR("failed to umount 'dev/pts'");
 		return -1;
 	}
 
 	snprintf(mountname, MAXPATHLEN, "%spts", name);
 
 	if (mount(mountname, "/dev/pts", "devpts", MS_MGC_VAL, "newinstance")) {
-		lxc_log_syserror("failed to mount a new instance of '/dev/pts'");
+		SYSERROR("failed to mount a new instance of '/dev/pts'");
 		return -1;
 	}
 
 	if (chmod("/dev/pts/ptmx", 0666)) {
-		lxc_log_syserror("failed to set permission for '/dev/pts/ptmx'");
+		SYSERROR("failed to set permission for '/dev/pts/ptmx'");
 		return -1;
 	}
 
 	if (access("/dev/ptmx", F_OK)) {
 		if (!symlink("/dev/pts/ptmx", "/dev/ptmx"))
 			goto out;
-		lxc_log_syserror("failed to symlink '/dev/pts/ptmx'->'/dev/ptmx'");
+		SYSERROR("failed to symlink '/dev/pts/ptmx'->'/dev/ptmx'");
 		return -1;
 	}
 
 	/* fallback here, /dev/pts/ptmx exists just mount bind */
 	if (mount("/dev/pts/ptmx", "/dev/ptmx", "none", MS_BIND, 0)) {
-		lxc_log_syserror("mount failed '/dev/pts/ptmx'->'/dev/ptmx'");
+		SYSERROR("mount failed '/dev/pts/ptmx'->'/dev/ptmx'");
 		return -1;
 	}
 out:
@@ -957,7 +960,7 @@ static int setup_console(const char *name, const char *tty)
 		return 0;
 
 	if (mount(tty, console, "none", MS_BIND, 0)) {
-		lxc_log_error("failed to mount the console");
+		ERROR("failed to mount the console");
 		return -1;
 	}
 
@@ -979,7 +982,7 @@ static int setup_cgroup_cb(void* buffer, void *data)
 
 	ret = lxc_cgroup_set(name, key, value);
 	if (ret)
-		lxc_log_syserror("failed to set cgroup '%s' = '%s' for '%s'",
+		SYSERROR("failed to set cgroup '%s' = '%s' for '%s'",
 				 key, value, name);
 	return ret;
 }
@@ -991,7 +994,7 @@ static int setup_convert_cgroup_cb(const char *name, const char *directory,
 	char line[MAXPATHLEN];
 
 	if (read_info(directory, file, line, MAXPATHLEN)) {
-		lxc_log_error("failed to read %s", file);
+		ERROR("failed to read %s", file);
 		return -1;
 	}
 
@@ -1041,13 +1044,13 @@ static int setup_cgroup(const char *name)
 	snprintf(filename, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
 
 	if (stat(filename, &s)) {
-		lxc_log_syserror("failed to stat '%s'", filename);
+		SYSERROR("failed to stat '%s'", filename);
 		return -1;
 	}
 
 	if (S_ISDIR(s.st_mode)) {
 		if (setup_convert_cgroup(name, filename)) {
-			lxc_log_error("failed to convert old cgroup configuration");
+			ERROR("failed to convert old cgroup configuration");
 			return -1;
 		}
 	}
@@ -1089,13 +1092,13 @@ static int parse_mntopts(struct mntent *mntent, unsigned long *mntflags,
 
 	s = strdup(mntent->mnt_opts);
 	if (!s) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		return -1;
 	}
 
 	data = malloc(strlen(s) + 1);
 	if (!data) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		free(s);
 		return -1;
 	}
@@ -1129,7 +1132,7 @@ static int setup_mount(const char *name)
 	if (!file) {
 		if (errno == ENOENT)
 			return 0;
-		lxc_log_syserror("failed to open '%s'", path);
+		SYSERROR("failed to open '%s'", path);
 		goto out;
 	}
 
@@ -1137,14 +1140,14 @@ static int setup_mount(const char *name)
 		mntflags = 0;
 		mntdata = NULL;
 		if (parse_mntopts(mntent, &mntflags, &mntdata) < 0) {
-			lxc_log_error("failed to parse mount option '%s'",
+			ERROR("failed to parse mount option '%s'",
 				      mntent->mnt_opts);
 			goto out;
 		}
 
 		if (mount(mntent->mnt_fsname, mntent->mnt_dir,
 			  mntent->mnt_type, mntflags, mntdata)) {
-			lxc_log_syserror("failed to mount '%s' on '%s'",
+			SYSERROR("failed to mount '%s' on '%s'",
 					 mntent->mnt_fsname, mntent->mnt_dir);
 			goto out;
 		}
@@ -1183,7 +1186,7 @@ static int setup_ipv4_addr_cb(void *buffer, void *data)
 		p = atoi(prefix);
 
 	if (lxc_ip_addr_add(ifname, addr, p, bcast)) {
-		lxc_log_error("failed to set %s to addr %s/%d %s", ifname,
+		ERROR("failed to set %s to addr %s/%d %s", ifname,
 			      addr, p, bcast?bcast:"");
 		return -1;
 	}
@@ -1217,7 +1220,7 @@ static int setup_ipv6_addr_cb(void *buffer, void *data)
 		p = atoi(prefix);
 
 	if (lxc_ip6_addr_add(ifname, addr, p, bcast)) {
-		lxc_log_error("failed to set %s to addr %s/%d %s", ifname,
+		ERROR("failed to set %s to addr %s/%d %s", ifname,
 			      addr, p, bcast?bcast:"");
 		return -1;
 	}
@@ -1293,7 +1296,7 @@ static int setup_network_cb(const char *name, const char *directory,
 	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 
 	if (read_info(path, "ifindex", strindex, sizeof(strindex))) {
-		lxc_log_error("failed to read ifindex info");
+		ERROR("failed to read ifindex info");
 		return -1;
 	}
 
@@ -1301,21 +1304,21 @@ static int setup_network_cb(const char *name, const char *directory,
 	if (!ifindex) {
 		if (!read_info(path, "up", strindex, sizeof(strindex)))
 		    if (lxc_device_up("lo")) {
-			    lxc_log_error("failed to set the loopback up");
+			    ERROR("failed to set the loopback up");
 			    return -1;
 		    }
 		    return 0;
 	}
 
 	if (!if_indextoname(ifindex, current_ifname)) {
-		lxc_log_error("no interface corresponding to index '%d'",
+		ERROR("no interface corresponding to index '%d'",
 			      ifindex);
 		return -1;
 	}
 
 	if (!read_info(path, "name", newname, sizeof(newname))) {
 		if (lxc_device_rename(ifname, newname)) {
-			lxc_log_error("failed to rename %s->%s",
+			ERROR("failed to rename %s->%s",
 				      ifname, newname);
 			return -1;
 		}
@@ -1324,33 +1327,33 @@ static int setup_network_cb(const char *name, const char *directory,
 
 	if (!read_info(path, "hwaddr", hwaddr, sizeof(hwaddr))) {
 		if (setup_hw_addr(hwaddr, current_ifname)) {
-			lxc_log_error("failed to setup hw address for '%s'",
+			ERROR("failed to setup hw address for '%s'",
 				      current_ifname);
 			return -1;
 		}
 	}
 
 	if (setup_ip_addr(path, current_ifname)) {
-		lxc_log_error("failed to setup ip addresses for '%s'",
+		ERROR("failed to setup ip addresses for '%s'",
 			      ifname);
 		return -1;
 	}
 
 	if (setup_ip6_addr(path, current_ifname)) {
-		lxc_log_error("failed to setup ipv6 addresses for '%s'",
+		ERROR("failed to setup ipv6 addresses for '%s'",
 			      ifname);
 		return -1;
 	}
 
 	if (!read_info(path, "up", strindex, sizeof(strindex))) {
 		if (lxc_device_up(current_ifname)) {
-			lxc_log_error("failed to set '%s' up", current_ifname);
+			ERROR("failed to set '%s' up", current_ifname);
 			return -1;
 		}
 
 		/* the network is up, make the loopback up too */
 		if (lxc_device_up("lo")) {
-			lxc_log_error("failed to set the loopback up");
+			ERROR("failed to set the loopback up");
 			return -1;
 		}
 	}
@@ -1384,7 +1387,7 @@ int conf_has(const char *name, const char *info)
 		goto out;
 	}
 
-	lxc_log_syserror("failed to stat %s info", info);
+	SYSERROR("failed to stat %s info", info);
 out:
 	return ret;
 }
@@ -1407,37 +1410,37 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 		return 0;
 
 	if (conf->utsname && configure_utsname(name, conf->utsname)) {
-		lxc_log_error("failed to configure the utsname");
+		ERROR("failed to configure the utsname");
 		return -LXC_ERROR_CONF_UTSNAME;
 	}
 
 	if (configure_cgroup(name, &conf->cgroup)) {
-		lxc_log_error("failed to configure the control group");
+		ERROR("failed to configure the control group");
 		return -LXC_ERROR_CONF_CGROUP;
 	}
 
 	if (configure_network(name, &conf->networks)) {
-		lxc_log_error("failed to configure the network");
+		ERROR("failed to configure the network");
 		return -LXC_ERROR_CONF_NETWORK;
 	}
 
 	if (conf->tty && configure_tty(name, conf->tty)) {
-		lxc_log_error("failed to configure the tty");
+		ERROR("failed to configure the tty");
 		return -LXC_ERROR_CONF_TTY;
 	}
 
 	if (conf->fstab && configure_mount(name, conf->fstab)) {
-		lxc_log_error("failed to configure the mount points");
+		ERROR("failed to configure the mount points");
 		return -LXC_ERROR_CONF_MOUNT;
 	}
 
 	if (conf->rootfs && configure_rootfs(name, conf->rootfs)) {
-		lxc_log_error("failed to configure the rootfs");
+		ERROR("failed to configure the rootfs");
 		return -LXC_ERROR_CONF_ROOTFS;
 	}
 
 	if (conf->pts && configure_pts(name, conf->pts)) {
-		lxc_log_error("failed to configure a new pts instance");
+		ERROR("failed to configure a new pts instance");
 		return -LXC_ERROR_CONF_PTS;
 	}
 
@@ -1447,25 +1450,25 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 int lxc_unconfigure(const char *name)
 {
 	if (conf_has_utsname(name) && unconfigure_utsname(name))
-		lxc_log_error("failed to cleanup utsname");
+		ERROR("failed to cleanup utsname");
 
 	if (conf_has_network(name) && unconfigure_network(name))
-		lxc_log_error("failed to cleanup the network");
+		ERROR("failed to cleanup the network");
 
 	if (conf_has_cgroup(name) && unconfigure_cgroup(name))
-		lxc_log_error("failed to cleanup cgroup");
+		ERROR("failed to cleanup cgroup");
 
 	if (conf_has_tty(name) && unconfigure_tty(name))
-		lxc_log_error("failed to cleanup tty");
+		ERROR("failed to cleanup tty");
 
 	if (conf_has_rootfs(name) && unconfigure_rootfs(name))
-		lxc_log_error("failed to cleanup rootfs");
+		ERROR("failed to cleanup rootfs");
 
 	if (conf_has_fstab(name) && unconfigure_mount(name))
-		lxc_log_error("failed to cleanup mount");
+		ERROR("failed to cleanup mount");
 
 	if (conf_has_pts(name) && unconfigure_pts(name))
-		lxc_log_error("failed to cleanup pts");
+		ERROR("failed to cleanup pts");
 
 	return 0;
 }
@@ -1480,62 +1483,62 @@ static int instanciate_veth(const char *directory, const char *file, pid_t pid)
 	if (!asprintf(&veth1, "%s_%d", file, pid) ||
 	    !asprintf(&veth2, "%s~%d", file, pid) ||
 	    !asprintf(&path, "%s/%s", directory, file)) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		goto out;
 	}
 
 	if (read_info(path, "link", bridge, IFNAMSIZ)) {
-		lxc_log_error("failed to read bridge info");
+		ERROR("failed to read bridge info");
 		goto out;
 	}
 
 	if (lxc_veth_create(veth1, veth2)) {
-		lxc_log_error("failed to create %s-%s/%s", veth1, veth2, bridge);
+		ERROR("failed to create %s-%s/%s", veth1, veth2, bridge);
 		goto out;
 	}
 
 	if (!read_info(path, "mtu", strmtu, MAXMTULEN)) {
 		if (sscanf(strmtu, "%u", &mtu) < 1) {
-			lxc_log_error("invalid mtu size '%d'", mtu);
+			ERROR("invalid mtu size '%d'", mtu);
 			goto out_delete;
 		}
 
 		if (lxc_device_set_mtu(veth1, mtu)) {
-			lxc_log_error("failed to set mtu for '%s'", veth1);
+			ERROR("failed to set mtu for '%s'", veth1);
 			goto out_delete;
 		}
 
 		if (lxc_device_set_mtu(veth2, mtu)) {
-			lxc_log_error("failed to set mtu for '%s'", veth2);
+			ERROR("failed to set mtu for '%s'", veth2);
 			goto out_delete;
 		}
 	}
 
 	if (lxc_bridge_attach(bridge, veth1)) {
-		lxc_log_error("failed to attach '%s' to the bridge '%s'",
+		ERROR("failed to attach '%s' to the bridge '%s'",
 			      veth1, bridge);
 		goto out_delete;
 	}
 
 	ifindex = if_nametoindex(veth2);
 	if (!ifindex) {
-		lxc_log_error("failed to retrieve the index for %s", veth2);
+		ERROR("failed to retrieve the index for %s", veth2);
 		goto out_delete;
 	}
 
 	if (!asprintf(&strindex, "%d", ifindex)) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		goto out_delete;
 	}
 
 	if (write_info(path, "ifindex", strindex)) {
-		lxc_log_error("failed to write interface index to %s", path);
+		ERROR("failed to write interface index to %s", path);
 		goto out_delete;
 	}
 
 	if (!read_info(path, "up", strindex, sizeof(strindex))) {
 		if (lxc_device_up(veth1)) {
-			lxc_log_error("failed to set %s up", veth1);
+			ERROR("failed to set %s up", veth1);
 			goto out_delete;
 		}
 	}
@@ -1559,35 +1562,35 @@ static int instanciate_macvlan(const char *directory, const char *file, pid_t pi
 	int ifindex, ret = -1;
 
 	if (!asprintf(&peer, "%s~%d", file, pid)) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		return -1;
 	}
 
 	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 	if (read_info(path, "link", link, IFNAMSIZ)) {
-		lxc_log_error("failed to read bridge info");
+		ERROR("failed to read bridge info");
 		goto out;
 	}
 
 	if (lxc_macvlan_create(link, peer)) {
-		lxc_log_error("failed to create macvlan interface '%s' on '%s'",
+		ERROR("failed to create macvlan interface '%s' on '%s'",
 			      peer, link);
 		goto out;
 	}
 
 	ifindex = if_nametoindex(peer);
 	if (!ifindex) {
-		lxc_log_error("failed to retrieve the index for %s", peer);
+		ERROR("failed to retrieve the index for %s", peer);
 		goto out;
 	}
 
 	if (!asprintf(&strindex, "%d", ifindex)) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		return -1;
 	}
 
 	if (write_info(path, "ifindex", strindex)) {
-		lxc_log_error("failed to write interface index to %s", path);
+		ERROR("failed to write interface index to %s", path);
 		goto out;
 	}
 
@@ -1606,23 +1609,23 @@ static int instanciate_phys(const char *directory, const char *file, pid_t pid)
 
 	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 	if (read_info(path, "link", link, IFNAMSIZ)) {
-		lxc_log_error("failed to read link info");
+		ERROR("failed to read link info");
 		goto out;
 	}
 
 	ifindex = if_nametoindex(link);
 	if (!ifindex) {
-		lxc_log_error("failed to retrieve the index for %s", link);
+		ERROR("failed to retrieve the index for %s", link);
 		goto out;
 	}
 
 	if (!asprintf(&strindex, "%d", ifindex)) {
-		lxc_log_syserror("failed to allocate memory");
+		SYSERROR("failed to allocate memory");
 		return -1;
 	}
 
 	if (write_info(path, "ifindex", strindex)) {
-		lxc_log_error("failed to write interface index to %s", path);
+		ERROR("failed to write interface index to %s", path);
 		goto out;
 	}
 
@@ -1639,12 +1642,12 @@ static int instanciate_empty(const char *directory, const char *file, pid_t pid)
 
 	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 	if (!asprintf(&strindex, "%d", 0)) {
-		lxc_log_error("not enough memory");
+		ERROR("not enough memory");
 		return -1;
 	}
 
 	if (write_info(path, "ifindex", strindex)) {
-		lxc_log_error("failed to write interface index to %s", path);
+		ERROR("failed to write interface index to %s", path);
 		goto out;
 	}
 
@@ -1688,7 +1691,7 @@ static int move_netdev_cb(const char *name, const char *directory,
 
 	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 	if (read_info(path, "ifindex", strindex, MAXINDEXLEN) < 0) {
-		lxc_log_error("failed to read index to from %s", path);
+		ERROR("failed to read index to from %s", path);
 		return -1;
 	}
 
@@ -1697,13 +1700,13 @@ static int move_netdev_cb(const char *name, const char *directory,
 		return 0;
 
 	if (!if_indextoname(ifindex, ifname)) {
-		lxc_log_error("interface with index %d does not exist",
+		ERROR("interface with index %d does not exist",
 			      ifindex);
 		return -1;
 	}
 
 	if (lxc_device_move(ifname, *pid)) {
-		lxc_log_error("failed to move %s to %d", ifname, *pid);
+		ERROR("failed to move %s to %d", ifname, *pid);
 		return -1;
 	}
 
@@ -1720,12 +1723,12 @@ static int move_netdev(const char *name, pid_t pid)
 int conf_create_network(const char *name, pid_t pid)
 {
 	if (instanciate_netdev(name, pid)) {
-		lxc_log_error("failed to instantiate the network devices");
+		ERROR("failed to instantiate the network devices");
 		return -1;
 	}
 
 	if (move_netdev(name, pid)) {
-		lxc_log_error("failed to move the netdev to the container");
+		ERROR("failed to move the netdev to the container");
 		return -1;
 	}
 
@@ -1744,7 +1747,7 @@ static int delete_netdev_cb(const char *name, const char *directory,
 	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
 
 	if (read_info(path, "ifindex", strindex, MAXINDEXLEN)) {
-		lxc_log_error("failed to read ifindex info");
+		ERROR("failed to read ifindex info");
 		return -1;
 	}
 
@@ -1766,7 +1769,7 @@ static int delete_netdev_cb(const char *name, const char *directory,
 	/* do not delete a physical network device */
 	if (strncmp("phys", file, strlen("phys")))
 		if (lxc_device_delete(ifname)) {
-			lxc_log_error("failed to remove the netdev %s", ifname);
+			ERROR("failed to remove the netdev %s", ifname);
 		}
 
 	delete_info(path, "ifindex");
@@ -1783,7 +1786,7 @@ int conf_destroy_network(const char *name)
 	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
 
 	if (lxc_dir_for_each(name, directory, delete_netdev_cb, NULL)) {
-		lxc_log_error("failed to remove the network devices");
+		ERROR("failed to remove the network devices");
 		return -1;
 	}
 #endif
@@ -1804,7 +1807,7 @@ int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info)
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
 
 	if (read_info(path, "tty", tty, sizeof(tty)) < 0) {
-		lxc_log_syserror("failed to read tty info");
+		SYSERROR("failed to read tty info");
 		goto out;
 	}
 
@@ -1813,7 +1816,7 @@ int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info)
 		malloc(sizeof(*tty_info->pty_info)*tty_info->nbtty);
 
 	if (!tty_info->pty_info) {
-		lxc_log_syserror("failed to allocate pty_info");
+		SYSERROR("failed to allocate pty_info");
 		goto out;
 	}
 
@@ -1823,7 +1826,7 @@ int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info)
 
 		if (openpty(&pty_info->master, &pty_info->slave,
 			    pty_info->name, NULL, NULL)) {
-			lxc_log_syserror("failed to create pty #%d", i);
+			SYSERROR("failed to create pty #%d", i);
 			goto out_free;
 		}
 
@@ -1911,42 +1914,42 @@ int lxc_setup(const char *name, const char *cons,
 	long flags = make_conf_flagset(name, cons, tty_info);
 
 	if (conf_is_set(flags, utsname) && setup_utsname(name)) {
-		lxc_log_error("failed to setup the utsname for '%s'", name);
+		ERROR("failed to setup the utsname for '%s'", name);
 		return -LXC_ERROR_SETUP_UTSNAME;
 	}
 
 	if (conf_is_set(flags, network) && setup_network(name)) {
-		lxc_log_error("failed to setup the network for '%s'", name);
+		ERROR("failed to setup the network for '%s'", name);
 		return -LXC_ERROR_SETUP_NETWORK;
 	}
 
 	if (conf_is_set(flags, cgroup) && setup_cgroup(name)) {
-		lxc_log_error("failed to setup the cgroups for '%s'", name);
+		ERROR("failed to setup the cgroups for '%s'", name);
 		return -LXC_ERROR_SETUP_CGROUP;
 	}
 
 	if (conf_is_set(flags, fstab) && setup_mount(name)) {
-		lxc_log_error("failed to setup the mounts for '%s'", name);
+		ERROR("failed to setup the mounts for '%s'", name);
 		return -LXC_ERROR_SETUP_MOUNT;
 	}
 
 	if (conf_is_set(flags, console) && setup_console(name, cons)) {
-		lxc_log_error("failed to setup the console for '%s'", name);
+		ERROR("failed to setup the console for '%s'", name);
 		return -LXC_ERROR_SETUP_CONSOLE;
 	}
 
 	if (conf_is_set(flags, tty) && setup_tty(name, tty_info)) {
-		lxc_log_error("failed to setup the ttys for '%s'", name);
+		ERROR("failed to setup the ttys for '%s'", name);
 		return -LXC_ERROR_SETUP_TTY;
 	}
 
 	if (conf_is_set(flags, rootfs) && setup_rootfs(name)) {
-		lxc_log_error("failed to set rootfs for '%s'", name);
+		ERROR("failed to set rootfs for '%s'", name);
 		return -LXC_ERROR_SETUP_ROOTFS;
 	}
 
 	if (conf_is_set(flags, pts) && setup_pts(name)) {
-		lxc_log_error("failed to setup the new pts instance");
+		ERROR("failed to setup the new pts instance");
 		return -LXC_ERROR_SETUP_PTS;
 	}
 

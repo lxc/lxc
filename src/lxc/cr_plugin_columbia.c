@@ -36,6 +36,11 @@
 
 #include "error.h"
 #include <lxc.h>
+#include <lxc/log.h>
+
+lxc_log_define(lxc_columbia, lxc);
+
+
 
 #if __i386__
 #    define __NR_checkpoint 333
@@ -82,13 +87,13 @@ int lxc_plugin_checkpoint(pid_t pid, const char *statefile, unsigned long flags)
 
 	fd = open(statefile, O_RDWR);
 	if (fd < 0) {
-		lxc_log_syserror("failed to open init file for %s", statefile);
+		SYSERROR("failed to open init file for %s", statefile);
 		return -1;
 	}
 	
 	ret = sys_checkpoint(pid, fd, flags);
 	if (ret < 0) {
-		lxc_log_syserror("failed to checkpoint %d", pid);
+		SYSERROR("failed to checkpoint %d", pid);
 		goto out_close;
 	}
 
@@ -105,12 +110,12 @@ int lxc_plugin_restart(pid_t pid, const char *statefile, unsigned long flags)
 
 	fd = open(statefile, O_RDONLY);
 	if (fd < 0) {
-		lxc_log_syserror("failed to open init file for %s", statefile);
+		SYSERROR("failed to open init file for %s", statefile);
 		return -1;
 	}
 	
 	sys_restart(pid, fd, flags);
-	lxc_log_syserror("failed to restart %d", pid);
+	SYSERROR("failed to restart %d", pid);
 	close(fd);
 	return -1;
 }

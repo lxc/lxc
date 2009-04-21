@@ -38,6 +38,9 @@
 
 #include "error.h"
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
+lxc_log_define(lxc_monitor, lxc);
 
 #ifndef UNIX_PATH_MAX
 #define UNIX_PATH_MAX 108
@@ -59,7 +62,7 @@ int lxc_monitor(const char *name, int output_fd)
 
 	nfd = inotify_init();
 	if (nfd < 0) {
-		lxc_log_syserror("failed to initialize inotify");
+		SYSERROR("failed to initialize inotify");
 		return -1;
 	}
 
@@ -67,7 +70,7 @@ int lxc_monitor(const char *name, int output_fd)
 
 	wfd = inotify_add_watch(nfd, path, IN_DELETE_SELF|IN_CLOSE_WRITE);
 	if (wfd < 0) {
-		lxc_log_syserror("failed to add a watch on %s", path);
+		SYSERROR("failed to add a watch on %s", path);
 		goto out;
 	}
 
@@ -75,7 +78,7 @@ int lxc_monitor(const char *name, int output_fd)
 		struct inotify_event evt;
 
 		if (read(nfd, &evt, sizeof(evt)) < 0) {
-			lxc_log_syserror("failed to read inotify event");
+			SYSERROR("failed to read inotify event");
 			goto out;
 		}
 
@@ -83,13 +86,13 @@ int lxc_monitor(const char *name, int output_fd)
 
 			state = lxc_getstate(name);
 			if (state < 0) {
-				lxc_log_error("failed to get the state for %s",
+				ERROR("failed to get the state for %s",
 					      name);
 				goto out;
 			}
 
 			if (write(output_fd, &state, sizeof(state)) < 0) {
-				lxc_log_syserror("failed to send state to %d", 
+				SYSERROR("failed to send state to %d",
 						 output_fd);
 				goto out;
 			}
@@ -102,7 +105,7 @@ int lxc_monitor(const char *name, int output_fd)
 			goto out;
 		}
 
-		lxc_log_error("unknown evt for inotity (%d)", evt.mask);
+		ERROR("unknown evt for inotity (%d)", evt.mask);
 		goto out;
 	}
 
@@ -119,7 +122,7 @@ static void lxc_monitor_send(struct lxc_msg *msg)
 
 	fd = socket(PF_NETLINK, SOCK_RAW, 0);
 	if (fd < 0) {
-		lxc_log_syserror("failed to create notification socket");
+		SYSERROR("failed to create notification socket");
 		return;
 	}
 
@@ -151,7 +154,7 @@ int lxc_monitor_open(void)
 
 	fd = socket(PF_NETLINK, SOCK_RAW, 0);
 	if (fd < 0) {
-		lxc_log_syserror("failed to create notification socket");
+		SYSERROR("failed to create notification socket");
 		return -LXC_ERROR_INTERNAL;
 	}
 
@@ -162,7 +165,7 @@ int lxc_monitor_open(void)
   	addr.nl_groups = MONITOR_MCGROUP;
 
 	if (bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
-		lxc_log_syserror("failed to bind to multicast group '%d'",
+		SYSERROR("failed to bind to multicast group '%d'",
 			addr.nl_groups);
 		close(fd);
 		return -1;
@@ -180,7 +183,7 @@ int lxc_monitor_read(int fd, struct lxc_msg *msg)
 	ret = recvfrom(fd, msg, sizeof(*msg), 0, 
 		       (struct sockaddr *)&from, &len);
 	if (ret < 0) {
-		lxc_log_syserror("failed to received state");
+		SYSERROR("failed to received state");
 		return -LXC_ERROR_INTERNAL;
 	}
 
