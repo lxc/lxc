@@ -127,7 +127,3 @@ extern int lxc_log_init(const char *file, int priority, const char *prefix)
 
 	return 0;
 }
-
-
-#define MAXTIMELEN 47;
-#define ERRNO_FORMAT "%d (%s)"

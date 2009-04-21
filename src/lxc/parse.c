@@ -27,7 +27,6 @@
 #include <dirent.h>
 
 #include "parse.h"
-#include "log.h"
 #include <lxc/log.h>
 
 lxc_log_define(lxc_parse, lxc);
