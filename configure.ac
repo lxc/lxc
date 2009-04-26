@@ -3,7 +3,7 @@
 
 AC_INIT([lxc], [0.6.2])
 
-AC_CONFIG_SRCDIR([configure.in])
+AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_AUX_DIR([config])
 AM_CONFIG_HEADER([src/config.h])
 AM_INIT_AUTOMAKE([-Wno-portability])
@@ -113,7 +113,7 @@ AC_CONFIG_COMMANDS([default],[[]],[[]])
 AC_OUTPUT
 
 if test "x$DOCBOOK" = "xno"; then
-   AC_MSG_NOTICE([ 
+   AC_MSG_NOTICE([
 
 Warning:
 --------
@@ -125,7 +125,7 @@ If you want the man pages, install docbook and rerun 'configure'.
 fi
 
 if test "x$SETCAP" = "xno"; then
-   AC_MSG_NOTICE([ 
+   AC_MSG_NOTICE([
 
 Warning:
 --------
@@ -138,7 +138,7 @@ that's ok, but you will need to run these commands as root
 
 else
 
-   AC_MSG_NOTICE([ 
+   AC_MSG_NOTICE([
 
 Advice:
 -------
