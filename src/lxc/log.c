@@ -35,8 +35,11 @@
 
 #include <lxc/log.h>
 
-static __thread int lxc_log_fd = 2;
-static __thread char log_prefix[LXC_LOG_PREFIX_SIZE] = "lxc";
+#define LXC_LOG_PREFIX_SIZE	32
+#define LXC_LOG_BUFFER_SIZE	512
+
+int lxc_log_fd = 2;
+static char log_prefix[LXC_LOG_PREFIX_SIZE] = "lxc";
 
 lxc_log_define(lxc_log, lxc);
 
