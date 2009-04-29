@@ -43,6 +43,7 @@ extern "C" {
 #include <lxc/error.h>
 #include <lxc/cgroup.h>
 #include <lxc/monitor.h>
+#include <lxc/start.h>
 
 /*
  * Create the container object. Creates the /lxc/<name> directory

@@ -98,15 +98,6 @@ lxc_log_define(lxc_start, lxc);
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);
 
-struct lxc_handler {
-	int sigfd;
-	int lock;
-	pid_t pid;
-	char tty[MAXPATHLEN];
-	sigset_t oldmask;
-	struct lxc_tty_info tty_info;
-};
-
 static int setup_sigchld_fd(sigset_t *oldmask)
 {
 	sigset_t mask;
@@ -238,7 +229,7 @@ out_close:
 	goto out;
 }
 
-static int lxc_poll(const char *name, struct lxc_handler *handler)
+int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int sigfd = handler->sigfd;
 	int pid = handler->pid;
@@ -331,7 +322,7 @@ static void remove_init_pid(const char *name, pid_t pid)
 	unlink(init);
 }
 
-static int lxc_init(const char *name, struct lxc_handler *handler)
+int lxc_init(const char *name, struct lxc_handler *handler)
 {
 	int err = -1;
 
@@ -382,7 +373,7 @@ out_put_lock:
 	goto out;
 }
 
-static void lxc_fini(const char *name, struct lxc_handler *handler)
+void lxc_fini(const char *name, struct lxc_handler *handler)
 {
 	/* The STOPPING state is there for future cleanup code
 	 * which can take awhile
@@ -403,13 +394,13 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 	LXC_TTY_DEL_HANDLER(SIGINT);
 }
 
-static void lxc_abort(const char *name, struct lxc_handler *handler)
+void lxc_abort(const char *name, struct lxc_handler *handler)
 {
 	lxc_setstate(name, ABORTING);
 	kill(handler->pid, SIGKILL);
 }
 
-static int lxc_spawn(const char *name, struct lxc_handler *handler, char *argv[])
+int lxc_spawn(const char *name, struct lxc_handler *handler, char *argv[])
 {
 	int sv[2];
 	int clone_flags;
@@ -560,8 +551,8 @@ int lxc_start(const char *name, char *argv[])
 		goto out_abort;
 	}
 
-	waitpid(handler.pid, &status, 0);
-
+	while (waitpid(handler.pid, &status, 0) < 0 && errno == EINTR)
+		continue;
 	err = 0;
 out:
 	lxc_fini(name, &handler);
