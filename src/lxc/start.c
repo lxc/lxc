@@ -100,7 +100,10 @@ LXC_TTY_HANDLER(SIGQUIT);
 
 struct lxc_handler {
 	int sigfd;
+	int lock;
 	pid_t pid;
+	char tty[MAXPATHLEN];
+	sigset_t oldmask;
 	struct lxc_tty_info tty_info;
 };
 
@@ -161,10 +164,6 @@ static int setup_tty_service(const char *name, int *ttyfd)
 static int sigchld_handler(int fd, void *data, 
 			   struct lxc_epoll_descr *descr)
 {
-	pid_t *pid = data;
-
-	waitpid(*pid, NULL, 0);
-
 	return 1;
 }
 
@@ -239,7 +238,7 @@ out_close:
 	goto out;
 }
 
-static int mainloop(const char *name, struct lxc_handler *handler)
+static int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int sigfd = handler->sigfd;
 	int pid = handler->pid;
@@ -290,54 +289,137 @@ out_sigfd:
 	goto out;
 }
 
-int lxc_start(const char *name, char *argv[])
+static int save_init_pid(const char *name, pid_t pid)
 {
-	struct lxc_handler handler = { 0 };
-	sigset_t oldmask;
 	char init[MAXPATHLEN];
-	char tty[MAXPATHLEN];
-	char *val = NULL;
-	int fd, lock, sv[2], sync = 0, err = -LXC_ERROR_INTERNAL;
-	int clone_flags;
+	char *val;
+	int fd, err = -1;
 
-	lock = lxc_get_lock(name);
-	if (lock < 0)
-		return lock;
+	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
 
-	/* Begin the set the state to STARTING*/
-	if (lxc_setstate(name, STARTING)) {
-		ERROR("failed to set state '%s'",
-			      lxc_state2str(STARTING));
+	if (!asprintf(&val, "%d\n", pid)) {
+		SYSERROR("failed to allocate memory");
 		goto out;
 	}
 
-	/* If we are not attached to a tty, disable it */
-	if (ttyname_r(0, tty, sizeof(tty))) 
-		tty[0] = '\0';
+	fd = open(init, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+	if (fd < 0) {
+		SYSERROR("failed to open '%s'", init);
+		goto out_free;
+	}
 
-	if (lxc_create_tty(name, &handler.tty_info)) {
-		ERROR("failed to create the ttys");
+	if (write(fd, val, strlen(val)) < 0) {
+		SYSERROR("failed to write the init pid");
+		goto out_close;
+	}
+
+	err = 0;
+
+out_close:
+	close(fd);
+out_free:
+	free(val);
+out:
+	return err;
+}
+
+static void remove_init_pid(const char *name, pid_t pid)
+{
+	char init[MAXPATHLEN];
+
+	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
+	unlink(init);
+}
+
+static int lxc_init(const char *name, struct lxc_handler *handler)
+{
+	int err = -1;
+
+	memset(handler, 0, sizeof(*handler));
+
+	handler->lock = lxc_get_lock(name);
+	if (handler->lock < 0)
 		goto out;
+
+	/* Begin the set the state to STARTING*/
+	if (lxc_setstate(name, STARTING)) {
+		ERROR("failed to set state '%s'", lxc_state2str(STARTING));
+		goto out_put_lock;
+	}
+
+	/* If we are not attached to a tty, disable it */
+	if (ttyname_r(0, handler->tty, sizeof(handler->tty)))
+		handler->tty[0] = '\0';
+
+	if (lxc_create_tty(name, &handler->tty_info)) {
+		ERROR("failed to create the ttys");
+		goto out_aborting;
 	}
 
 	/* the signal fd has to be created before forking otherwise
 	 * if the child process exits before we setup the signal fd,
 	 * the event will be lost and the command will be stuck */
-	handler.sigfd = setup_sigchld_fd(&oldmask);
-	if (handler.sigfd < 0) {
+	handler->sigfd = setup_sigchld_fd(&handler->oldmask);
+	if (handler->sigfd < 0) {
 		ERROR("failed to set sigchild fd handler");
-		return -1;
+		goto out_delete_tty;
 	}
+
+	/* Avoid signals from terminal */
+	LXC_TTY_ADD_HANDLER(SIGINT);
+	LXC_TTY_ADD_HANDLER(SIGQUIT);
+
+	err = 0;
+out:
+	return err;
+
+out_delete_tty:
+	lxc_delete_tty(&handler->tty_info);
+out_aborting:
+	lxc_setstate(name, ABORTING);
+out_put_lock:
+	lxc_put_lock(handler->lock);
+	goto out;
+}
+
+static void lxc_fini(const char *name, struct lxc_handler *handler)
+{
+	/* The STOPPING state is there for future cleanup code
+	 * which can take awhile
+	 */
+	lxc_setstate(name, STOPPING);
+
+	lxc_setstate(name, STOPPED);
+
+	remove_init_pid(name, handler->pid);
+
+	lxc_delete_tty(&handler->tty_info);
+
+	lxc_unlink_nsgroup(name);
+
+	lxc_put_lock(handler->lock);
+
+	LXC_TTY_DEL_HANDLER(SIGQUIT);
+	LXC_TTY_DEL_HANDLER(SIGINT);
+}
+
+static void lxc_abort(const char *name, struct lxc_handler *handler)
+{
+	lxc_setstate(name, ABORTING);
+	kill(handler->pid, SIGKILL);
+}
+
+static int lxc_spawn(const char *name, struct lxc_handler *handler, char *argv[])
+{
+	int sv[2];
+	int clone_flags;
+	int err = -1, sync;
 
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
 		SYSERROR("failed to create communication socketpair");
 		goto out;
 	}
-
-	/* Avoid signals from terminal */
-	LXC_TTY_ADD_HANDLER(SIGINT);
-	LXC_TTY_ADD_HANDLER(SIGQUIT);
 
 	clone_flags = CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
 	if (conf_has_utsname(name))
@@ -346,15 +428,15 @@ int lxc_start(const char *name, char *argv[])
 		clone_flags |= CLONE_NEWNET;
 
 	/* Create a process in a new set of namespaces */
-	handler.pid = fork_ns(clone_flags);
-	if (handler.pid < 0) {
+	handler->pid = fork_ns(clone_flags);
+	if (handler->pid < 0) {
 		SYSERROR("failed to fork into a new namespace");
-		goto err_fork_ns;
+		goto out_close;
 	}
 
-	if (!handler.pid) {
+	if (!handler->pid) {
 
-		if (sigprocmask(SIG_SETMASK, &oldmask, NULL)) {
+		if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
 			SYSERROR("failed to set sigprocmask");
 			return -1;
 		}
@@ -377,7 +459,7 @@ int lxc_start(const char *name, char *argv[])
 		}
 
 		/* Setup the container, ip, names, utsname, ... */
-		err = lxc_setup(name, tty, &handler.tty_info);
+		err = lxc_setup(name, handler->tty, &handler->tty_info);
 		if (err) {
 			ERROR("failed to setup the container");
 			if (write(sv[0], &err, sizeof(err)) < 0)
@@ -407,107 +489,85 @@ int lxc_start(const char *name, char *argv[])
 	/* Wait for the child to be ready */
 	if (read(sv[1], &sync, sizeof(sync)) < 0) {
 		SYSERROR("failed to read the socket");
-		goto err_pipe_read;
+		goto out_abort;
 	}
 
-	if (lxc_link_nsgroup(name, handler.pid))
+	if (lxc_link_nsgroup(name, handler->pid))
 		WARN("cgroupfs not found: cgroup disabled");
 
 	/* Create the network configuration */
-	if (clone_flags & CLONE_NEWNET && conf_create_network(name, handler.pid)) {
+	if (clone_flags & CLONE_NEWNET && conf_create_network(name, handler->pid)) {
 		ERROR("failed to create the configured network");
-		goto err_create_network;
+		goto out_abort;
 	}
 
 	/* Tell the child to continue its initialization */
 	if (write(sv[1], &sync, sizeof(sync)) < 0) {
 		SYSERROR("failed to write the socket");
-		goto err_pipe_write;
+		goto out_abort;
 	}
 
 	/* Wait for the child to exec or returning an error */
 	err = read(sv[1], &sync, sizeof(sync));
 	if (err < 0) {
 		ERROR("failed to read the socket");
-		goto err_pipe_read2;
+		goto out_abort;
 	}
 
-	if (err > 0) {
-		err = sync;
-		waitpid(handler.pid, NULL, 0);
-		goto err_child_failed;
+	if (save_init_pid(name, handler->pid)) {
+		ERROR("failed to save the init pid info");
+		goto out_abort;
 	}
-
-	if (!asprintf(&val, "%d\n", handler.pid)) {
-		SYSERROR("failed to allocate memory");
-		goto err_child_failed;
-	}
-
-	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
-
-	fd = open(init, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
-	if (fd < 0) {
-		SYSERROR("failed to open '%s'", init);
-		goto err_write;
-	}
-	
-	if (write(fd, val, strlen(val)) < 0) {
-		SYSERROR("failed to write the init pid");
-		goto err_write;
-	}
-
-	close(fd);
 
 	if (lxc_setstate(name, RUNNING)) {
 		ERROR("failed to set state to %s",
 			      lxc_state2str(RUNNING));
-		goto err_state_failed;
+		goto out_abort;
 	}
 
-	if (mainloop(name, &handler)) {
+	err = 0;
+
+out_close:
+	close(sv[0]);
+	close(sv[1]);
+out:
+	return err;
+
+out_abort:
+	lxc_abort(name, handler);
+	goto out_close;
+}
+
+int lxc_start(const char *name, char *argv[])
+{
+	struct lxc_handler handler = { 0 };
+	int err = -LXC_ERROR_INTERNAL;
+	int status;
+
+	if (lxc_init(name, &handler)) {
+		ERROR("failed to initialize the container");
+		goto out;
+	}
+
+	err = lxc_spawn(name, &handler, argv);
+	if (err) {
+		ERROR("failed to spawn '%s'", argv[0]);
+		goto out;
+	}
+
+	if (lxc_poll(name, &handler)) {
 		ERROR("mainloop exited with an error");
-		goto err_mailoop_failed;
+		goto out_abort;
 	}
 
-	if (lxc_setstate(name, STOPPING))
-		ERROR("failed to set state %s", lxc_state2str(STOPPING));
-
-	if (clone_flags & CLONE_NEWNET && conf_destroy_network(name))
-		ERROR("failed to destroy the network");
+	waitpid(handler.pid, &status, 0);
 
 	err = 0;
 out:
-	if (lxc_setstate(name, STOPPED))
-		ERROR("failed to set state %s", lxc_state2str(STOPPED));
-
-	lxc_delete_tty(&handler.tty_info);
-	lxc_unlink_nsgroup(name);
-	unlink(init);
-	free(val);
-	lxc_put_lock(lock);
-	LXC_TTY_DEL_HANDLER(SIGQUIT);
-	LXC_TTY_DEL_HANDLER(SIGINT);
-
+	lxc_fini(name, &handler);
 	return err;
 
-err_write:
-	close(fd);
-
-err_state_failed:
-err_child_failed:
-err_pipe_read2:
-err_pipe_write:
-	if (clone_flags & CLONE_NEWNET)
-		conf_destroy_network(name);
-err_create_network:
-err_pipe_read:
-err_mailoop_failed:
-	if (lxc_setstate(name, ABORTING))
-		ERROR("failed to set state %s", lxc_state2str(STOPPED));
-
-	kill(handler.pid, SIGKILL);
-err_fork_ns:
-	close(sv[0]);
-	close(sv[1]);
+out_abort:
+	lxc_abort(name, &handler);
 	goto out;
 }
