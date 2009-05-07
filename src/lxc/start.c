@@ -197,31 +197,41 @@ static int ttyservice_handler(int fd, void *data,
 	if (lxc_af_unix_rcv_credential(conn, &ttynum, sizeof(ttynum)))
 		goto out_close;
 
-	if (ttynum <= 0 || ttynum > tty_info->nbtty)
+	if (ttynum > 0) {
+		if (ttynum > tty_info->nbtty)
+			goto out_close;
+
+		if (tty_info->pty_info[ttynum - 1].busy)
+			goto out_close;
+
+		goto out_send;
+	}
+
+	/* fixup index tty1 => [0] */
+	for (ttynum = 1;
+	     ttynum <= tty_info->nbtty && tty_info->pty_info[ttynum - 1].busy;
+	     ttynum++);
+
+	/* we didn't find any available slot for tty */
+	if (ttynum > tty_info->nbtty)
 		goto out_close;
 
-	/* fixup index array (eg. tty1 is index 0) */
-	ttynum--;
-
-	if (tty_info->pty_info[ttynum].busy)
-		goto out_close;
-
-	if (lxc_af_unix_send_fd(conn, tty_info->pty_info[ttynum].master, 
-				NULL, 0) < 0) {
+out_send:
+	if (lxc_af_unix_send_fd(conn, tty_info->pty_info[ttynum - 1].master,
+				&ttynum, sizeof(ttynum)) < 0) {
 		ERROR("failed to send tty to client");
 		goto out_close;
 	}
 
-	if (lxc_mainloop_add_handler(descr, conn, 
+	if (lxc_mainloop_add_handler(descr, conn,
 				     ttyclient_handler, tty_info)) {
 		ERROR("failed to add tty client handler");
 		goto out_close;
 	}
 
-	tty_info->pty_info[ttynum].busy = conn;
+	tty_info->pty_info[ttynum - 1].busy = conn;
 
 	ret = 0;
-
 out:
 	return ret;
 out_close:

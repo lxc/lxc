@@ -120,6 +120,8 @@ extern int lxc_monitor_close(int fd);
 /*
  * Show the console of the container.
  * @name : the name of container
+ * @tty  : the tty number
+ * @fd   : a pointer to a tty file descriptor
  * Returns 0 on sucess, < 0 otherwise
  */
 extern int lxc_console(const char *name, int ttynum, int *fd);

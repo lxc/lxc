@@ -47,7 +47,7 @@ void usage(char *cmd)
 {
 	fprintf(stderr, "%s <command>\n", basename(cmd));
 	fprintf(stderr, "\t -n <name>   : name of the container\n");
-	fprintf(stderr, "\t -t <tty#>   : tty number\n");
+	fprintf(stderr, "\t [-t <tty#>] : tty number\n");
 	_exit(1);
 }
 
@@ -55,9 +55,9 @@ int main(int argc, char *argv[])
 {
 	char *name = NULL;
 	int opt;
-	int ttynum = 0;
 	int nbargs = 0;
 	int master = -1;
+	int ttynum = -1;
 	int wait4q = 0;
 	int err = LXC_ERROR_INTERNAL;
 	struct termios tios, oldtios;
@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
 		case 'n':
 			name = optarg;
 			break;
+
 		case 't':
 			ttynum = atoi(optarg);
 			break;
@@ -75,7 +76,7 @@ int main(int argc, char *argv[])
 		nbargs++;
 	}
 
-	if (!name || !ttynum)
+	if (!name)
 		usage(argv[0]);
 
 	/* Get current termios */

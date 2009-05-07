@@ -19,6 +19,7 @@ AS_AC_EXPAND(LIBEXECDIR, $libexecdir)
 AS_AC_EXPAND(SYSCONFDIR, $sysconfdir)
 AS_AC_EXPAND(LOCALSTATEDIR, $localstatedir)
 AS_AC_EXPAND(LXCPATH, "${localstatedir}/lib/lxc")
+AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 
 AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h], [], AC_MSG_ERROR([netlink headers not found]),
 [#include <linux/types.h>
