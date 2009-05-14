@@ -51,13 +51,14 @@ int main(int argc, char *argv[])
 		nbargs++;
 	}
 
-	if (!name || argc < 4)
+	if (!name || (argc-optind) < 1)
 		usage(argv[0]);
 
-	if (argc >= 5)
-		value = argv[4];
+	if ((argc -optind) >= 1)
+		subsystem = argv[optind];
 
-	subsystem = argv[3];
+	if ((argc -optind) >= 2)
+		value = argv[optind+1];
 
 	if (value) {
 		if (lxc_cgroup_set(name, subsystem, value)) {
