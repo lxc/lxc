@@ -108,17 +108,21 @@ int lxc_unlink_nsgroup(const char *name)
 
 int lxc_cgroup_set(const char *name, const char *subsystem, const char *value)
 {
-	int fd, ret = -LXC_ERROR_INTERNAL;;
+	int fd, ret = -1;
 	char path[MAXPATHLEN];
 
         snprintf(path, MAXPATHLEN, LXCPATH "/%s/nsgroup/%s", name, subsystem);
 
 	fd = open(path, O_WRONLY);
-	if (fd < 0)
+	if (fd < 0) {
+		ERROR("open %s : %s", path, strerror(errno));
 		return -1;
+	}
 
-	if (write(fd, value, strlen(value)) < 0)
+	if (write(fd, value, strlen(value)) < 0) {
+		ERROR("write %s : %s", path, strerror(errno));
 		goto out;
+	}
 	
 	ret = 0;
 out:
@@ -129,17 +133,21 @@ out:
 int lxc_cgroup_get(const char *name, const char *subsystem,  
 		   char *value, size_t len)
 {
-	int fd, ret = -LXC_ERROR_INTERNAL;
+	int fd, ret = -1;
 	char path[MAXPATHLEN];
 
         snprintf(path, MAXPATHLEN, LXCPATH "/%s/nsgroup/%s", name, subsystem);
 
 	fd = open(path, O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
+		ERROR("open %s : %s", path, strerror(errno));
 		return -1;
+	}
 
-	if (read(fd, value, len) < 0)
+	if (read(fd, value, len) < 0) {
+		ERROR("read %s : %s", path, strerror(errno));
 		goto out;
+	}
 	
 	ret = 0;
 out:
