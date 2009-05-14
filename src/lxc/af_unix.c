@@ -56,7 +56,7 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 		return -1;
 	}
 	
-	if (listen(fd, 100)) {
+	if (type == SOCK_STREAM && listen(fd, 100)) {
 		close(fd);
 		return -1;
 	}

@@ -98,7 +98,7 @@ extern int lxc_monitor(const char *name, int output_fd);
  * The function will return an fd corresponding to the events
  * Returns a file descriptor on success, < 0 otherwise
  */
-extern int lxc_monitor_open();
+extern int lxc_monitor_open(void);
 
 /*
  * Read the state of the container if this one has changed

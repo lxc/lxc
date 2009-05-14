@@ -31,12 +31,12 @@
 #include <sys/param.h>
 #include <sys/inotify.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <net/if.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
 
 #include "error.h"
+#include "af_unix.h"
 #include <lxc/lxc.h>
 #include <lxc/log.h>
 
@@ -45,15 +45,6 @@ lxc_log_define(lxc_monitor, lxc);
 #ifndef UNIX_PATH_MAX
 #define UNIX_PATH_MAX 108
 #endif
-
-#ifndef SOL_NETLINK
-#define SOL_NETLINK 270
-#endif
-
-/* assuming this multicast group is not used by anyone else :/
- * otherwise a new genetlink family should be defined to own
- * its multicast groups */
-#define MONITOR_MCGROUP RTNLGRP_MAX
 
 int lxc_monitor(const char *name, int output_fd)
 {
@@ -118,19 +109,14 @@ out:
 static void lxc_monitor_send(struct lxc_msg *msg)
 {
 	int fd;
-	struct sockaddr_nl addr;
+	struct sockaddr_un addr = { .sun_family = AF_UNIX };
+	char *offset = &addr.sun_path[1];
 
-	fd = socket(PF_NETLINK, SOCK_RAW, 0);
-	if (fd < 0) {
-		SYSERROR("failed to create notification socket");
+	strcpy(offset, "lxc-monitor");
+
+	fd = socket(PF_UNIX, SOCK_DGRAM, 0);
+	if (fd < 0)
 		return;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-
-	addr.nl_family = AF_NETLINK;
-	addr.nl_pid = 0;
- 	addr.nl_groups = MONITOR_MCGROUP;
 
 	sendto(fd, msg, sizeof(*msg), 0,
 	       (const struct sockaddr *)&addr, sizeof(addr));
@@ -149,24 +135,17 @@ void lxc_monitor_send_state(const char *name, lxc_state_t state)
 
 int lxc_monitor_open(void)
 {
+	struct sockaddr_un addr = { .sun_family = AF_UNIX };
+	char *offset = &addr.sun_path[1];
 	int fd;
-	struct sockaddr_nl addr;
 
-	fd = socket(PF_NETLINK, SOCK_RAW, 0);
-	if (fd < 0) {
-		SYSERROR("failed to create notification socket");
-		return -LXC_ERROR_INTERNAL;
-	}
+	strcpy(offset, "lxc-monitor");
 
-	memset(&addr, 0, sizeof(addr));
+	fd = socket(PF_UNIX, SOCK_DGRAM, 0);
+	if (fd < 0)
+		return -1;
 
-	addr.nl_family = AF_NETLINK;
-	addr.nl_pid = 0;
-  	addr.nl_groups = MONITOR_MCGROUP;
-
-	if (bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
-		SYSERROR("failed to bind to multicast group '%d'",
-			addr.nl_groups);
+	if (bind(fd, (struct sockaddr *)&addr, sizeof(addr))) {
 		close(fd);
 		return -1;
 	}
@@ -176,7 +155,7 @@ int lxc_monitor_open(void)
 
 int lxc_monitor_read(int fd, struct lxc_msg *msg)
 {
-	struct sockaddr_nl from;
+	struct sockaddr_un from;
 	socklen_t len = sizeof(from);
 	int ret;
 
