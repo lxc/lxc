@@ -34,6 +34,8 @@
 
 #include <lxc/lxc.h>
 
+lxc_log_define(lxc_unshare, lxc);
+
 void usage(char *cmd)
 {
 	fprintf(stderr, "%s <options> [command]\n", basename(cmd));
@@ -67,13 +69,13 @@ static uid_t lookup_user(const char *optarg)
 			return uid;
 
 		if (getpwnam_r(name, &pwent, buff, bufflen, &pent) || !pent) {
-			fprintf(stderr, "invalid username %s\n", name);
+			ERROR("invalid username %s", name);
 			return uid;
 		}
 		uid = pent->pw_uid;
 	} else {
 		if (getpwuid_r(uid, &pwent, buff, bufflen, &pent) || !pent) {
-			fprintf(stderr, "invalid uid %d\n", uid);
+			ERROR("invalid uid %d", uid);
 			uid = -1;
 			return uid;
 		}
@@ -131,45 +133,45 @@ int main(int argc, char *argv[])
 		pid = fork_ns(flags);
 
 		if (pid < 0) {
-			fprintf(stderr, "failed to fork into a new namespace: %s\n",
+			ERROR("failed to fork into a new namespace: %s",
 				strerror(errno));
 			return 1;
 		}
 
 		if (!pid) {
 			if (flags & CLONE_NEWUSER && setuid(uid)) {
-				fprintf(stderr, "failed to set uid %d: %s\n",
+				ERROR("failed to set uid %d: %s",
 					uid, strerror(errno));
 				exit(1);
 			}
 
 			execvp(args[0], args);
-			fprintf(stderr, "failed to exec: '%s': %s\n",
+			ERROR("failed to exec: '%s': %s",
 				argv[0], strerror(errno));
 			exit(1);
 		}
 		
 		if (waitpid(pid, &status, 0) < 0)
-			fprintf(stderr, "failed to wait for '%d'\n", pid);
+			ERROR("failed to wait for '%d'", pid);
 		
 		return status;
 	}
 
 	if (unshare_ns(flags)) {
-		fprintf(stderr, "failed to unshare the current process: %s\n",
+		ERROR("failed to unshare the current process: %s",
 			strerror(errno));
 		return 1;
 	}
 
 	if (flags & CLONE_NEWUSER && setuid(uid)) {
-		fprintf(stderr, "failed to set uid %d: %s\n",
+		ERROR("failed to set uid %d: %s",
 			uid, strerror(errno));
 		return 1;
 	}
 
 	if (argv[optind] && strlen(argv[optind])) {
 		execvp(args[0], args);
-		fprintf(stderr, "failed to exec: '%s': %s\n",
+		ERROR("failed to exec: '%s': %s",
 			argv[0], strerror(errno));
 		return 1;
 	}
