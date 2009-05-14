@@ -36,6 +36,8 @@ void usage(char *cmd)
 	fprintf(stderr, "\t -n <name>   : name of the container\n");
 	fprintf(stderr, "\t -s <states> : ORed states to wait for STOPPED, " \
 		"STARTING, RUNNING, STOPPING, ABORTING, FREEZING, FROZEN\n");
+	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
+	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
 	_exit(1);
 }
 
@@ -61,10 +63,11 @@ static int fillwaitedstates(char *strstates, int *states)
 int main(int argc, char *argv[])
 {
 	char *name = NULL, *states = NULL;
+	const char *log_file = NULL, *log_priority = NULL;
 	struct lxc_msg msg;
 	int s[MAX_STATE] = { }, fd, opt;
 
-	while ((opt = getopt(argc, argv, "s:n:")) != -1) {
+	while ((opt = getopt(argc, argv, "s:n:o:l:")) != -1) {
 		switch (opt) {
 		case 'n':
 			name = optarg;
@@ -72,11 +75,20 @@ int main(int argc, char *argv[])
 		case 's':
 			states = optarg;
 			break;
+		case 'o':
+			log_file = optarg;
+			break;
+		case 'l':
+			log_priority = optarg;
+			break;
 		}
 	}
 
 	if (!name || !states)
 		usage(argv[0]);
+
+	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+		return -1;
 
 	if (fillwaitedstates(states, s)) {
 		usage(argv[0]);

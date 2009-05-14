@@ -43,12 +43,15 @@ void usage(char *cmd)
 {
 	fprintf(stderr, "%s <command>\n", basename(cmd));
 	fprintf(stderr, "\t -n <name>   : name of the container\n");
+	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
+	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
 	_exit(1);
 }
 
 int main(int argc, char *argv[])
 {
 	char *name = NULL;
+	const char *log_file = NULL, *log_priority = NULL;
 	char **args;
 	int opt, err = LXC_ERROR_INTERNAL, nbargs = 0;
 	struct termios tios;
@@ -58,10 +61,16 @@ int main(int argc, char *argv[])
 		'\0',
 	};
 
-	while ((opt = getopt(argc, argv, "n:")) != -1) {
+	while ((opt = getopt(argc, argv, "n:o:l:")) != -1) {
 		switch (opt) {
 		case 'n':
 			name = optarg;
+			break;
+		case 'o':
+			log_file = optarg;
+			break;
+		case 'l':
+			log_priority = optarg;
 			break;
 		}
 
@@ -77,6 +86,9 @@ int main(int argc, char *argv[])
 
 	if (!name)
 		usage(argv[0]);
+
+	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+		return 1;
 
 	if (tcgetattr(0, &tios)) {
 		ERROR("failed to get current terminal settings : %s",

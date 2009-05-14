@@ -48,12 +48,15 @@ void usage(char *cmd)
 	fprintf(stderr, "%s <command>\n", basename(cmd));
 	fprintf(stderr, "\t -n <name>   : name of the container\n");
 	fprintf(stderr, "\t [-t <tty#>] : tty number\n");
+	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
+	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
 	_exit(1);
 }
 
 int main(int argc, char *argv[])
 {
 	char *name = NULL;
+	const char *log_file = NULL, *log_priority = NULL;
 	int opt;
 	int nbargs = 0;
 	int master = -1;
@@ -62,7 +65,7 @@ int main(int argc, char *argv[])
 	int err = LXC_ERROR_INTERNAL;
 	struct termios tios, oldtios;
 
-	while ((opt = getopt(argc, argv, "t:n:")) != -1) {
+	while ((opt = getopt(argc, argv, "t:n:o:l:")) != -1) {
 		switch (opt) {
 		case 'n':
 			name = optarg;
@@ -71,6 +74,12 @@ int main(int argc, char *argv[])
 		case 't':
 			ttynum = atoi(optarg);
 			break;
+		case 'o':
+			log_file = optarg;
+			break;
+		case 'l':
+			log_priority = optarg;
+			break;
 		}
 
 		nbargs++;
@@ -78,6 +87,9 @@ int main(int argc, char *argv[])
 
 	if (!name)
 		usage(argv[0]);
+
+	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+		return 1;
 
 	/* Get current termios */
 	if (tcgetattr(0, &tios)) {

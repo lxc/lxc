@@ -31,6 +31,8 @@ void usage(char *cmd)
 {
 	fprintf(stderr, "%s <statefile>\n", basename(cmd));
 	fprintf(stderr, "\t -n <name>   : name of the container\n");
+	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
+	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
 	_exit(1);
 }
 
@@ -38,17 +40,24 @@ int main(int argc, char *argv[])
 {
 	int opt;
 	char *name = NULL;
+	const char *log_file = NULL, *log_priority = NULL;
 	int stop = 0;
 	int nbargs = 0;
 	int ret = 1;
 
-	while ((opt = getopt(argc, argv, "sn:")) != -1) {
+	while ((opt = getopt(argc, argv, "sn:o:l:")) != -1) {
 		switch (opt) {
 		case 'n':
 			name = optarg;
 			break;
 		case 's':
 			stop = 1;
+			break;
+		case 'o':
+			log_file = optarg;
+			break;
+		case 'l':
+			log_priority = optarg;
 			break;
 		}
 
@@ -60,6 +69,9 @@ int main(int argc, char *argv[])
 
 	if (!argv[1])
 		usage(argv[0]);
+
+	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+		return -1;
 
 	if (lxc_freeze(name))
 		return -1;

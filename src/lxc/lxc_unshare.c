@@ -45,6 +45,8 @@ void usage(char *cmd)
 			"\t           MOUNT, PID, UTSNAME, IPC, USER, NETWORK\n");
 	fprintf(stderr, "\t -u <id> : new id to be set if -s USER is specified\n");
 	fprintf(stderr, "\t if -f or -s PID is specified, <command> is mandatory)\n");
+	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
+	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
 	_exit(1);
 }
 
@@ -131,11 +133,12 @@ int main(int argc, char *argv[])
 	int ret;
 	char *namespaces = NULL;
 	char **args;
+	const char *log_file = NULL, *log_priority = NULL;
 	long flags = 0;
 	uid_t uid = -1; /* valid only if (flags & CLONE_NEWUSER) */
 	pid_t pid;
 
-	while ((opt = getopt(argc, argv, "fs:u:")) != -1) {
+	while ((opt = getopt(argc, argv, "fs:u:o:l:")) != -1) {
 		switch (opt) {
 		case 's':
 			namespaces = optarg;
@@ -147,10 +150,19 @@ int main(int argc, char *argv[])
 		case 'f':
 			hastofork = 1;
 			break;
+		case 'o':
+			log_file = optarg;
+			break;
+		case 'l':
+			log_priority = optarg;
+			break;
 		}
 	}
 
 	args = &argv[optind];
+
+	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+		return 1;
 
         ret = lxc_fill_namespace_flags(namespaces, &flags);
 	if (ret)

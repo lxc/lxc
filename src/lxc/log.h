@@ -278,4 +278,6 @@ extern struct lxc_log_category lxc_log_category_lxc;
 	ERROR("%s - " format "\n", strerror(errno), ##__VA_ARGS__); 	\
 } while (0)
 
+extern int lxc_log_init(const char *file, const char *priority,
+			const char *prefix);
 #endif

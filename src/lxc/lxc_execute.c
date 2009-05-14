@@ -40,12 +40,15 @@ void usage(char *cmd)
 	fprintf(stderr, "%s <command>\n", basename(cmd));
 	fprintf(stderr, "\t -n <name>      : name of the container\n");
 	fprintf(stderr, "\t [-f <confile>] : path of the configuration file\n");
+	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
+	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
 	_exit(1);
 }
 
 int main(int argc, char *argv[])
 {
-	char *name = NULL, *file = NULL;
+	const char *name = NULL, *file = NULL;
+	const char *log_file = NULL, *log_priority = NULL;
 	static char **args;
 	char path[MAXPATHLEN];
 	int opt;
@@ -54,13 +57,19 @@ int main(int argc, char *argv[])
 	int ret = 1;
 	struct lxc_conf lxc_conf;
 
-	while ((opt = getopt(argc, argv, "f:n:")) != -1) {
+	while ((opt = getopt(argc, argv, "f:n:o:l:")) != -1) {
 		switch (opt) {
 		case 'n':
 			name = optarg;
 			break;
 		case 'f':
 			file = optarg;
+			break;
+		case 'o':
+			log_file = optarg;
+			break;
+		case 'l':
+			log_priority = optarg;
 			break;
 		}
 
@@ -72,6 +81,9 @@ int main(int argc, char *argv[])
 
 	argc -= nbargs;
 	
+	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+		goto out;
+
 	if (lxc_conf_init(&lxc_conf))
 		goto out;
 

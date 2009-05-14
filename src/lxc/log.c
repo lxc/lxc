@@ -127,9 +127,21 @@ static int log_open(const char *name)
 }
 
 /*---------------------------------------------------------------------------*/
-extern int lxc_log_init(const char *file, int priority, const char *prefix)
+extern int lxc_log_init(const char *file, const char *priority,
+			const char *prefix)
 {
-	lxc_log_category_lxc.priority = priority;
+	int lxc_priority = LXC_LOG_PRIORITY_ERROR;
+
+	if (priority) {
+		lxc_priority = lxc_log_priority_to_int(priority);
+
+		if (lxc_priority == LXC_LOG_PRIORITY_NOTSET) {
+			ERROR("invalid log priority %s", priority);
+			return -1;
+		}
+	}
+
+	lxc_log_category_lxc.priority = lxc_priority;
 
 	if (prefix)
 		lxc_log_setprefix(prefix);

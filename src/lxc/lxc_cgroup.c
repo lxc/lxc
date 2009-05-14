@@ -34,6 +34,8 @@ void usage(char *cmd)
 {
 	fprintf(stderr, "%s <subsystem> [value]\n", basename(cmd));
 	fprintf(stderr, "\t -n <name>   : name of the container\n");
+	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
+	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
 	_exit(1);
 }
 
@@ -41,12 +43,19 @@ int main(int argc, char *argv[])
 {
 	int opt;
 	char *name = NULL, *subsystem = NULL, *value = NULL;
+	const char *log_file = NULL, *log_priority = NULL;
 	int nbargs = 0;
 
-	while ((opt = getopt(argc, argv, "n:")) != -1) {
+	while ((opt = getopt(argc, argv, "n:o:l:")) != -1) {
 		switch (opt) {
 		case 'n':
 			name = optarg;
+			break;
+		case 'o':
+			log_file = optarg;
+			break;
+		case 'l':
+			log_priority = optarg;
 			break;
 		}
 
@@ -55,6 +64,9 @@ int main(int argc, char *argv[])
 
 	if (!name || (argc-optind) < 1)
 		usage(argv[0]);
+
+	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+		return 1;
 
 	if ((argc -optind) >= 1)
 		subsystem = argv[optind];

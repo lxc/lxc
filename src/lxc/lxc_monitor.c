@@ -35,27 +35,39 @@ void usage(char *cmd)
 {
 	fprintf(stderr, "%s <command>\n", basename(cmd));
 	fprintf(stderr, "\t -n <name>   : name of the container or regular expression\n");
+	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
+	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
 	_exit(1);
 }
 
 int main(int argc, char *argv[])
 {
 	char *name = NULL;
+	const char *log_file = NULL, *log_priority = NULL;
 	char *regexp;
 	struct lxc_msg msg;
 	regex_t preg;
 	int fd, opt;
 
-	while ((opt = getopt(argc, argv, "n:")) != -1) {
+	while ((opt = getopt(argc, argv, "n:o:l:")) != -1) {
 		switch (opt) {
 		case 'n':
 			name = optarg;
+			break;
+		case 'o':
+			log_file = optarg;
+			break;
+		case 'l':
+			log_priority = optarg;
 			break;
 		}
 	}
 
 	if (!name)
 		usage(argv[0]);
+
+	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+		return 1;
 
 	regexp = malloc(strlen(name) + 3);
 	sprintf(regexp, "^%s$", name);
