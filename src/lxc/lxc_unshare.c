@@ -51,22 +51,29 @@ void usage(char *cmd)
 
 static uid_t lookup_user(const char *optarg)
 {
+	int bufflen = sysconf(_SC_GETPW_R_SIZE_MAX);
+	char buff[bufflen];
 	char name[sysconf(_SC_LOGIN_NAME_MAX)];
 	uid_t uid = -1;
+	struct passwd pwent;
+	struct passwd *pent;
 
 	if (!optarg || (optarg[0] == '\0'))
 		return uid;
-	if (sscanf(optarg, "%u", &uid) < 1) {
-		struct passwd pwent; /* not a uid -- perhaps a username */
-		struct passwd *pent;
 
+	if (sscanf(optarg, "%u", &uid) < 1) {
+		/* not a uid -- perhaps a username */
 		if (sscanf(optarg, "%s", name) < 1)
 			return uid;
-		if (getpwnam_r(name, &pwent, NULL, 0, &pent) || !pent)
+
+		if (getpwnam_r(name, &pwent, buff, bufflen, &pent) || !pent) {
+			fprintf(stderr, "invalid username %s\n", name);
 			return uid;
+		}
 		uid = pent->pw_uid;
 	} else {
-		if (getpwuid_r(uid, NULL, NULL, 0, NULL)) {
+		if (getpwuid_r(uid, &pwent, buff, bufflen, &pent) || !pent) {
+			fprintf(stderr, "invalid uid %d\n", uid);
 			uid = -1;
 			return uid;
 		}
