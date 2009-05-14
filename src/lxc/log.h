@@ -275,7 +275,7 @@ extern struct lxc_log_category lxc_log_category_lxc;
 
 
 #define SYSERROR(format, ...) do {				    	\
-	ERROR("%s - " format "\n", strerror(errno), ##__VA_ARGS__); 	\
+	ERROR("%s - " format, strerror(errno), ##__VA_ARGS__);		\
 } while (0)
 
 extern int lxc_log_init(const char *file, const char *priority,
