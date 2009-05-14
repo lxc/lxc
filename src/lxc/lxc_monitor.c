@@ -29,6 +29,8 @@
 
 #include <lxc/lxc.h>
 
+lxc_log_define(monitor, lxc);
+
 void usage(char *cmd)
 {
 	fprintf(stderr, "%s <command>\n", basename(cmd));
@@ -59,24 +61,17 @@ int main(int argc, char *argv[])
 	sprintf(regexp, "^%s$", name);
 
 	if (regcomp(&preg, regexp, REG_NOSUB|REG_EXTENDED)) {
-		fprintf(stderr, "failed to compile the regex '%s'\n",
-			name);
+		ERROR("failed to compile the regex '%s'", name);
 		return 1;
 	}
 
 	fd = lxc_monitor_open();
-	if (fd < 0) {
-		fprintf(stderr, "failed to open monitor for '%s'\n", name);
+	if (fd < 0)
 		return -1;
-	}
 
 	for (;;) {
-		if (lxc_monitor_read(fd, &msg) < 0) {
-			fprintf(stderr, 
-				"failed to read monitor's message for '%s'\n", 
-				name);
+		if (lxc_monitor_read(fd, &msg) < 0)
 			return -1;
-		}
 
 		if (regexec(&preg, msg.name, 0, NULL, 0))
 			continue;

@@ -61,30 +61,22 @@ int main(int argc, char *argv[])
 	if (!argv[1])
 		usage(argv[0]);
 
-	if (lxc_freeze(name)) {
-		fprintf(stderr, "failed to freeze '%s'\n", name);
+	if (lxc_freeze(name))
 		return -1;
-	}
 
-	if (lxc_checkpoint(name, argv[1], 0)) {
-		fprintf(stderr, "failed to checkpoint %s\n", name);
+	if (lxc_checkpoint(name, argv[1], 0))
 		goto out;
-	}
 
 	if (stop) {
-		if (lxc_stop(name)) {
-			fprintf(stderr, "failed to stop '%s'\n", name);
+		if (lxc_stop(name))
 			goto out;
-		}
 	}
 
 	ret = 0;
 
 out:
-	if (lxc_unfreeze(name)) {
-		fprintf(stderr, "failed to unfreeze '%s'\n", name);
+	if (lxc_unfreeze(name))
 		return 1;
-	}
 
 	return ret;
 }

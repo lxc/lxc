@@ -79,19 +79,20 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 
 	if (tcgetattr(0, &tios)) {
-		ERROR("failed to get current terminal settings");
-		fprintf(stderr, "%s\n", lxc_strerror(err));
+		ERROR("failed to get current terminal settings : %s",
+		      strerror(errno));
 		return 1;
 	}
 
 	err = lxc_start(name, args);
 	if (err) {
-		fprintf(stderr, "%s\n", lxc_strerror(err));
+		ERROR("failed to start : %s\n", lxc_strerror(err));
 		err = 1;
 	}
 
 	if (tcsetattr(0, TCSAFLUSH, &tios))
-		SYSERROR("failed to restore terminal attributes");
+		ERROR("failed to restore terminal settings : %s",
+		      strerror(errno));
 
 	return err;
 }

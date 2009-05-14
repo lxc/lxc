@@ -62,21 +62,13 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
-	if (lxc_conf_init(&lxc_conf)) {
-		fprintf(stderr, "failed to initialize the configuration\n");
-		return 1;
-	}
 
-	if (file && lxc_config_read(file, &lxc_conf)) {
-		fprintf(stderr, "invalid configuration file\n");
+	if (file && lxc_config_read(file, &lxc_conf))
 		return 1;
-	}
 
 	err = lxc_create(name, &lxc_conf);
-	if (err) {
-		fprintf(stderr, "%s\n", lxc_strerror(err));
+	if (err)
 		return 1;
-	}
 
 	return 0;
 }

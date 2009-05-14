@@ -27,6 +27,8 @@
 
 #include <lxc.h>
 
+lxc_log_define(lxc_restart, lxc);
+
 void usage(char *cmd)
 {
 	fprintf(stderr, "%s <statefile>\n", basename(cmd));
@@ -56,7 +58,7 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 
 	if (lxc_restart(name, argv[1], 0)) {
-		fprintf(stderr, "failed to restart %s\n", name);
+		ERROR("failed to restart %s", name);
 		return 1;
 	}
 

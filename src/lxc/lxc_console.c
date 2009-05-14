@@ -81,8 +81,8 @@ int main(int argc, char *argv[])
 
 	/* Get current termios */
 	if (tcgetattr(0, &tios)) {
-		ERROR("failed to get current terminal settings");
-		fprintf(stderr, "%s\n", lxc_strerror(err));
+		ERROR("failed to get current terminal settings : %s",
+		      strerror(errno));
 		return 1;
 	}
 
@@ -98,16 +98,14 @@ int main(int argc, char *argv[])
 
 	/* Set new attributes */
 	if (tcsetattr(0, TCSAFLUSH, &tios)) {
-		SYSERROR("failed to set new terminal settings");
-		fprintf(stderr, "%s\n", lxc_strerror(err));
+		ERROR("failed to set new terminal settings : %s",
+		      strerror(errno));
 		return 1;
 	}
 
 	err = lxc_console(name, ttynum, &master);
-	if (err) {
-		fprintf(stderr, "%s\n", lxc_strerror(err));
+	if (err)
 		goto out;
-	}
 
 	fprintf(stderr, "\nType <Ctrl+a q> to exit the console\n");
 
@@ -184,7 +182,6 @@ out:
 	return err;
 
 out_err:
-	fprintf(stderr, "%s\n", lxc_strerror(-LXC_ERROR_INTERNAL));
 	err = 1;
 	goto out;
 }

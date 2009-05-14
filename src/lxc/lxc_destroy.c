@@ -55,10 +55,8 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 
 	err = lxc_destroy(name);
-	if (err) {
-		fprintf(stderr, "%s\n", lxc_strerror(err));
+	if (err)
 		return 1;
-	}
 
 	return 0;
 }

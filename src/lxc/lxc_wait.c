@@ -28,6 +28,8 @@
 
 #include <lxc/lxc.h>
 
+lxc_log_define(lxc_wait, lxc);
+
 void usage(char *cmd)
 {
 	fprintf(stderr, "%s <command>\n", basename(cmd));
@@ -77,24 +79,17 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 
 	if (fillwaitedstates(states, s)) {
-		fprintf(stderr, "invalid states specified\n");
 		usage(argv[0]);
 	}
 
 	
 	fd = lxc_monitor_open();
-	if (fd < 0) {
-		fprintf(stderr, "failed to open monitor for '%s'\n", name);
+	if (fd < 0)
 		return -1;
-	}
 
 	for (;;) {
-		if (lxc_monitor_read(fd, &msg) < 0) {
-			fprintf(stderr, 
-				"failed to read monitor's message for '%s'\n", 
-				name);
+		if (lxc_monitor_read(fd, &msg) < 0)
 			return -1;
-		}
 
 		if (strcmp(name, msg.name))
 			continue;
@@ -102,7 +97,7 @@ int main(int argc, char *argv[])
 		switch (msg.type) {
 		case lxc_msg_state:
 			if (msg.value < 0 || msg.value >= MAX_STATE) {
-				fprintf(stderr, "Receive an invalid state number '%d'\n", 
+				ERROR("Receive an invalid state number '%d'",
 					msg.value);
 				return -1;
 			}

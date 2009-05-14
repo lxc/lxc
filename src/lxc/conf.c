@@ -1235,7 +1235,7 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	int ret, fd;
 
 	if (lxc_convert_mac(hwaddr, &sockaddr)) {
-		fprintf(stderr, "conversion has failed\n");
+		ERROR("conversion has failed");
 		return -1;
 	}
 
@@ -1244,14 +1244,14 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (fd < 0) {
-		perror("socket");
+		ERROR("socket failure : %s", strerror(errno));
 		return -1;
 	}
 
 	ret = ioctl(fd, SIOCSIFHWADDR, &ifr);
 	close(fd);
 	if (ret)
-		perror("ioctl");
+		ERROR("ioctl failure : %s", strerror(errno));
 
 	return ret;
 }

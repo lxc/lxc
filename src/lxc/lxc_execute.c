@@ -33,6 +33,8 @@
 #include <lxc/lxc.h>
 #include "confile.h"
 
+lxc_log_define(lxc_execute, lxc);
+
 void usage(char *cmd)
 {
 	fprintf(stderr, "%s <command>\n", basename(cmd));
@@ -70,29 +72,23 @@ int main(int argc, char *argv[])
 
 	argc -= nbargs;
 	
-	if (lxc_conf_init(&lxc_conf)) {
-		fprintf(stderr, "failed to initialize the configuration\n");
+	if (lxc_conf_init(&lxc_conf))
 		goto out;
-	}
 
-	if (file && lxc_config_read(file, &lxc_conf)) {
-		fprintf(stderr, "invalid configuration file\n");
+	if (file && lxc_config_read(file, &lxc_conf))
 		goto out;
-	}
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
 	if (access(path, R_OK)) {
-		if (lxc_create(name, &lxc_conf)) {
-			fprintf(stderr, "failed to create the container '%s'\n", name);
+		if (lxc_create(name, &lxc_conf))
 			goto out;
-		}
 		autodestroy = 1;
 	}
 
 	/* lxc-init --mount-procfs -- .... */
 	args = malloc((argc + 3)*sizeof(*args));
 	if (!args) {
-		fprintf(stderr, "failed to allocate memory for '%s'\n", name);
+		ERROR("failed to allocate memory for '%s'\n", name);
 		goto out;
 	}
 
@@ -106,7 +102,8 @@ int main(int argc, char *argv[])
 
 	ret = lxc_start(name, args);
 	if (ret) {
-		fprintf(stderr, "%s\n", lxc_strerror(ret));
+		ERROR("failed to start '%s': %s\n", name,
+		      lxc_strerror(ret));
 		goto out;
 	}
 
@@ -114,7 +111,8 @@ int main(int argc, char *argv[])
 out:
 	if (autodestroy) {
 		if (lxc_destroy(name)) {
-			fprintf(stderr, "failed to destroy '%s'\n", name);
+			ERROR("failed to destroy '%s': %s\n",
+			      name, lxc_strerror(ret));
 			ret = 1;
 		}
 	}

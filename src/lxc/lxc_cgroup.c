@@ -28,6 +28,8 @@
 
 #include <lxc/lxc.h>
 
+lxc_log_define(lxc_cgroup, lxc);
+
 void usage(char *cmd)
 {
 	fprintf(stderr, "%s <subsystem> [value]\n", basename(cmd));
@@ -62,7 +64,7 @@ int main(int argc, char *argv[])
 
 	if (value) {
 		if (lxc_cgroup_set(name, subsystem, value)) {
-			fprintf(stderr, "failed to assign '%s' value to '%s' for '%s'\n",
+			ERROR("failed to assign '%s' value to '%s' for '%s'\n",
 				value, subsystem, name);
 			return 1;
 		}
@@ -70,7 +72,7 @@ int main(int argc, char *argv[])
 		const unsigned long len = 4096;
 		char buffer[len];
 		if (lxc_cgroup_get(name, subsystem, buffer, len)) {
-			fprintf(stderr, "failed to retrieve value of '%s' for '%s'\n",
+			ERROR("failed to retrieve value of '%s' for '%s'\n",
 				subsystem, name);
 			return 1;
 		}

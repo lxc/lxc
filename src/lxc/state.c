@@ -55,6 +55,8 @@ lxc_state_t lxc_str2state(const char *state)
 	for (i = 0; i < len; i++)
 		if (!strcmp(strstate[i], state))
 			return i;
+
+	ERROR("invalid specified state %s", state);
 	return -1;
 }
 

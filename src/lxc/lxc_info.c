@@ -53,10 +53,8 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 
 	state = lxc_getstate(name);
-	if (state < 0) {
-		fprintf(stderr, "failed to freeze '%s'\n", name);
+	if (state < 0)
 		return 1;
-	}
 
 	printf("'%s' is %s\n", name, lxc_state2str(state));
 

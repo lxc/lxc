@@ -54,10 +54,8 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
-	if (lxc_freeze(name)) {
-		fprintf(stderr, "failed to freeze '%s'\n", name);
+	if (lxc_freeze(name))
 		return 1;
-	}
 
 	return 0;
 }
