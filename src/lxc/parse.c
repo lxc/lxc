@@ -64,7 +64,7 @@ int lxc_dir_for_each(const char *name, const char *directory,
 }
 
 int lxc_file_for_each_line(const char *file, lxc_file_cb callback,
-			   void *buffer, size_t len, void* data)
+			   char *buffer, size_t len, void* data)
 {
 	FILE *f;
 	int err = -1;
@@ -77,8 +77,10 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback,
 
 	while (fgets(buffer, len, f)) {
 		err = callback(buffer, data);
-		if (err)
+		if (err) {
+			ERROR("failed to process '%s'", buffer);
 			goto out;
+		}
 	}
 out:
 	fclose(f);
