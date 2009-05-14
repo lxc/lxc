@@ -41,13 +41,10 @@ void usage(char *cmd)
 	fprintf(stderr, "%s <options> [command]\n", basename(cmd));
 	fprintf(stderr, "Options are:\n");
 	fprintf(stderr, "\t -f      : fork and unshare (automatic when unsharing the pids)\n");
-	fprintf(stderr, "\t -m      : unshare the mount points\n");
-	fprintf(stderr, "\t -p      : unshare the pids\n");
-	fprintf(stderr, "\t -h      : unshare the utsname\n");
-	fprintf(stderr, "\t -i      : unshare the sysv ipc\n");
-	fprintf(stderr, "\t -n      : unshare the network\n");
-	fprintf(stderr, "\t -u <id> : unshare the users and set a new id\n");
-	fprintf(stderr, "\t if -f or -p is specified, <command> is mandatory)\n");
+	fprintf(stderr, "\t -s flags: Ored list of flags to unshare:\n" \
+			"\t           MOUNT, PID, UTSNAME, IPC, USER, NETWORK\n");
+	fprintf(stderr, "\t -u <id> : new id to be set if -s USER is specified\n");
+	fprintf(stderr, "\t if -f or -s PID is specified, <command> is mandatory)\n");
 	_exit(1);
 }
 
@@ -83,37 +80,70 @@ static uid_t lookup_user(const char *optarg)
 	return uid;
 }
 
+static char *namespaces_list[] = {
+	"MOUNT", "PID", "UTSNAME", "IPC",
+	"USER", "NETWORK"
+};
+static int cloneflags_list[] = {
+	CLONE_NEWNS, CLONE_NEWPID, CLONE_NEWUTS, CLONE_NEWIPC,
+	CLONE_NEWUSER, CLONE_NEWNET
+};
+
+static int lxc_namespace_2_cloneflag(char *namespace)
+{
+	int i, len;
+	len = sizeof(namespaces_list)/sizeof(namespaces_list[0]);
+	for (i = 0; i < len; i++)
+		if (!strcmp(namespaces_list[i], namespace))
+			return cloneflags_list[i];
+
+	ERROR("invalid namespace name %s", namespace);
+	return -1;
+}
+
+static int lxc_fill_namespace_flags(char *flaglist, long *flags)
+{
+	char *token, *saveptr = NULL;
+	int aflag;
+
+	if (!flaglist) {
+		ERROR("need at least one namespace to unshare");
+		return -1;
+	}
+
+	token = strtok_r(flaglist, "|", &saveptr);
+	while (token) {
+
+		aflag = lxc_namespace_2_cloneflag(token);
+		if (aflag < 0)
+			return -1;
+
+		*flags |= aflag;
+
+		token = strtok_r(NULL, "|", &saveptr);
+	}
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	int opt, status = 1, hastofork = 0;
+	int ret;
+	char *namespaces = NULL;
 	char **args;
 	long flags = 0;
 	uid_t uid = -1; /* valid only if (flags & CLONE_NEWUSER) */
 	pid_t pid;
 
-	while ((opt = getopt(argc, argv, "fmphiu:n")) != -1) {
+	while ((opt = getopt(argc, argv, "fs:u:")) != -1) {
 		switch (opt) {
-		case 'm':
-			flags |= CLONE_NEWNS;
-			break;
-		case 'p':
-			flags |= CLONE_NEWPID;
-			break;
-		case 'h':
-			flags |= CLONE_NEWUTS;
-			break;
-		case 'i':
-			flags |= CLONE_NEWIPC;
+		case 's':
+			namespaces = optarg;
 			break;
 		case 'u':
 			uid = lookup_user(optarg);
 			if (uid == -1)
-				break;
-			flags |= CLONE_NEWUSER;
-			break;
-		case 'n':
-			flags |= CLONE_NEWNET;
-			break;
+				return 1;
 		case 'f':
 			hastofork = 1;
 			break;
@@ -122,8 +152,14 @@ int main(int argc, char *argv[])
 
 	args = &argv[optind];
 
-	if (!flags)
+        ret = lxc_fill_namespace_flags(namespaces, &flags);
+	if (ret)
 		usage(argv[0]);
+
+	if (!(flags & CLONE_NEWUSER) && uid != -1) {
+		ERROR("-u <uid> need -s USER option");
+		return 1;
+	}
 
 	if ((flags & CLONE_NEWPID) || hastofork) {
 
