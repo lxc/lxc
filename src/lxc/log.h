@@ -71,14 +71,13 @@ struct lxc_log_event {
 	struct timeval		timestamp;
 	struct lxc_log_locinfo	*locinfo;
 	const char		*fmt;
-	va_list 		va;
+	va_list			*vap;
 };
 
 /* log appender object */
 struct lxc_log_appender {
 	const char*	name;
-	int (*append)(const struct lxc_log_appender *,
-		      const struct lxc_log_event *);
+	int (*append)(const struct lxc_log_appender *, struct lxc_log_event *);
 
 	/*
 	 * appenders can be stacked
@@ -148,17 +147,23 @@ static inline int lxc_log_priority_to_int(const char* name)
 
 static inline void
 __lxc_log_append(const struct lxc_log_appender *appender,
-		const struct lxc_log_event* event)
+		struct lxc_log_event* event)
 {
+	va_list va, *va_keep;
+	va_keep = event->vap;
+
 	while (appender) {
+		va_copy(va, *va_keep);
+		event->vap = &va;
 		appender->append(appender, event);
 		appender = appender->next;
+		va_end(va);
 	}
 }
 
 static inline void
 __lxc_log(const struct lxc_log_category* category,
-	 const struct lxc_log_event* event)
+	  struct lxc_log_event* event)
 {
 	while (category) {
 		__lxc_log_append(category->appender, event);
@@ -185,12 +190,14 @@ static inline void LXC_##PRIORITY(struct lxc_log_locinfo* locinfo,	\
 			.fmt		= format,			\
 			.locinfo	= locinfo			\
 		};							\
+		va_list va_ref;						\
 									\
 		gettimeofday(&evt.timestamp, NULL);			\
 									\
-		va_start(evt.va, format);				\
+		va_start(va_ref, format);				\
+		evt.vap = &va_ref;					\
 		__lxc_log(acategory, &evt);				\
-		va_end(evt.va);						\
+		va_end(va_ref);						\
 	}								\
 }
 

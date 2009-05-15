@@ -45,7 +45,7 @@ lxc_log_define(lxc_log, lxc);
 
 /*---------------------------------------------------------------------------*/
 static int log_append_logfile(const struct lxc_log_appender *appender,
-	const struct lxc_log_event *event)
+			      struct lxc_log_event *event)
 {
 	char buffer[LXC_LOG_BUFFER_SIZE];
 	int n;
@@ -62,10 +62,10 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 		     event->category);
 
 	n += vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt,
-		       event->va);
+		       *event->vap);
 
 	if (n >= sizeof(buffer) - 1) {
-		WARN("truncated next event from %d to %d bytes", n,
+		WARN("truncated next event from %d to %zd bytes", n,
 		     sizeof(buffer));
 		n = sizeof(buffer) - 1;
 	}
