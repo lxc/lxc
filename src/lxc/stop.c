@@ -42,17 +42,11 @@ int lxc_stop(const char *name)
 {
 	char init[MAXPATHLEN];
 	char val[MAXPIDLEN];
-	int fd, lock, ret = -LXC_ERROR_INTERNAL;
+	int fd, ret = -LXC_ERROR_INTERNAL;
 	size_t pid;
 
-	lock = lxc_get_lock(name);
-	if (lock >= 0) {
-		lxc_put_lock(lock);
-		return -LXC_ERROR_ESRCH;
-	}
-
-	if (lock < 0 && lock != -LXC_ERROR_EBUSY)
-		return lock;
+	if (lxc_check_lock(name) < 0)
+		return ret;
 
 	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
 	fd = open(init, O_RDONLY);
@@ -60,7 +54,7 @@ int lxc_stop(const char *name)
 		SYSERROR("failed to open init file for %s", name);
 		goto out_close;
 	}
-	
+
 	if (read(fd, val, sizeof(val)) < 0) {
 		SYSERROR("failed to read %s", init);
 		goto out_close;

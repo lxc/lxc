@@ -24,7 +24,7 @@
 #define _lock_h
 
 extern int lxc_get_lock(const char *name);
-
+extern int lxc_check_lock(const char *name);
 extern void lxc_put_lock(int lock);
 
 #endif

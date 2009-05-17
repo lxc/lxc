@@ -65,10 +65,8 @@ int main(int argc, char *argv[])
 		return 1;
 
 	err = lxc_stop(name);
-	if (err) {
-		fprintf(stderr, "%s\n", lxc_strerror(err));
+	if (err)
 		return 1;
-	}
 
 	return 0;
 }

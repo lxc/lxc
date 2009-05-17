@@ -33,7 +33,9 @@
 #include "error.h"
 #include <lxc/lxc.h>
 
-int lxc_get_lock(const char *name)
+lxc_log_define(lxc_lock, lxc);
+
+static int __lxc_get_lock(const char *name)
 {
 	char lock[MAXPATHLEN];
 	int fd, ret;
@@ -41,31 +43,37 @@ int lxc_get_lock(const char *name)
 	snprintf(lock, MAXPATHLEN, LXCPATH "/%s", name);
 
 	/* need to check access because of cap_dac_override */
-	if (access(lock, R_OK |W_OK | X_OK)) {
-		ret = errno;
-		goto out_err;
-	}
+	if (access(lock, R_OK |W_OK | X_OK))
+		return -errno;
 
 	fd = open(lock, O_RDONLY|O_DIRECTORY, S_IRUSR|S_IWUSR);
-	if (fd < 0) {
-		ret = errno;
-		goto out_err;
-	}
+	if (fd < 0)
+		return -errno;
 
         fcntl(fd, F_SETFD, FD_CLOEXEC);
 
 	if (flock(fd, LOCK_EX|LOCK_NB)) {
-		ret = errno;
+		ret = -errno;
 		close(fd);
-		goto out_err;
+		goto out;
 	}
 
 	ret = fd;
 out:
 	return ret;
+}
 
+int lxc_get_lock(const char *name)
+{
+	int ret;
+
+	ret = __lxc_get_lock(name);
+	if (ret < 0)
+		goto out_err;
+out:
+	return ret;
 out_err:
-	switch (ret) {
+	switch (-ret) {
 	case EWOULDBLOCK:
 		ret = -LXC_ERROR_EBUSY;
 		goto out;
@@ -79,6 +87,23 @@ out_err:
 		ret = -LXC_ERROR_LOCK;
 		goto out;
 	}
+}
+
+int lxc_check_lock(const char *name)
+{
+	int ret;
+
+	ret = __lxc_get_lock(name);
+	if (ret >= 0) {
+		ERROR("container '%s' is not active", name);
+		lxc_put_lock(ret);
+		return -1;
+	}
+	if (ret != -EWOULDBLOCK) {
+		ERROR("container '%s' : %s", name, strerror(-ret));
+		return -1;
+	}
+	return 0;
 }
 
 void lxc_put_lock(int lock)
