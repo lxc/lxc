@@ -70,23 +70,24 @@ int lxc_get_lock(const char *name)
 	ret = __lxc_get_lock(name);
 	if (ret < 0)
 		goto out_err;
-out:
+
 	return ret;
 out_err:
 	switch (-ret) {
 	case EWOULDBLOCK:
-		ret = -LXC_ERROR_EBUSY;
-		goto out;
+		ERROR("container '%s' is busy", name);
+		break;
 	case ENOENT:
-		ret = -LXC_ERROR_ENOENT;
-		goto out;
+		ERROR("container '%s' is not found", name);
+		break;
 	case EACCES:
-		ret = -LXC_ERROR_EACCES;
-		goto out;
+		ERROR("not enough privilege to use container '%s'", name);
+		break;
 	default:
-		ret = -LXC_ERROR_LOCK;
-		goto out;
+		ERROR("container '%s' failed to lock : %s",
+		      name, strerror(-ret));
 	}
+	return -1;
 }
 
 int lxc_check_lock(const char *name)

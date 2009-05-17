@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
 
 	err = lxc_start(name, args);
 	if (err) {
-		ERROR("failed to start : %s\n", lxc_strerror(err));
+		ERROR("failed to start '%s'", name);
 		err = 1;
 	}
 

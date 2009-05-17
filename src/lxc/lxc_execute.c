@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 	/* lxc-init --mount-procfs -- .... */
 	args = malloc((argc + 3)*sizeof(*args));
 	if (!args) {
-		ERROR("failed to allocate memory for '%s'\n", name);
+		ERROR("failed to allocate memory for '%s'", name);
 		goto out;
 	}
 
@@ -114,8 +114,7 @@ int main(int argc, char *argv[])
 
 	ret = lxc_start(name, args);
 	if (ret) {
-		ERROR("failed to start '%s': %s\n", name,
-		      lxc_strerror(ret));
+		ERROR("failed to start '%s'", name);
 		goto out;
 	}
 
@@ -123,8 +122,7 @@ int main(int argc, char *argv[])
 out:
 	if (autodestroy) {
 		if (lxc_destroy(name)) {
-			ERROR("failed to destroy '%s': %s\n",
-			      name, lxc_strerror(ret));
+			ERROR("failed to destroy '%s'", name);
 			ret = 1;
 		}
 	}
