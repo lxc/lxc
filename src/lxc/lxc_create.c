@@ -70,22 +70,18 @@ int main(int argc, char *argv[])
 
 	ret = lxc_arguments_parse(&my_args, argc, argv);
 	if (ret)
-		return 1;
+		return -1;
 
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
-		return 1;
+		return -1;
 
 	if (lxc_conf_init(&lxc_conf))
-		return 1;
+		return -1;
 
 	if (my_args.rcfile && lxc_config_read(my_args.rcfile, &lxc_conf))
-		return 1;
+		return -1;
 
-	ret = lxc_create(my_args.name, &lxc_conf);
-	if (ret)
-		return 1;
-
-	return 0;
+	return lxc_create(my_args.name, &lxc_conf);
 }
 

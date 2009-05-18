@@ -61,14 +61,14 @@ static int create_lxc_directory(const char *dirname)
 
 	if (mkdir(LXCPATH, 0755) && errno != EEXIST) {
 		SYSERROR("failed to create %s directory", LXCPATH);
-		return -errno;
+		return -1;
 	}
 
-	sprintf(path, LXCPATH "/%s", dirname);
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s", dirname);
 
 	if (mkdir(path, 0755)) {
 		SYSERROR("failed to create %s directory", path);
-		return -errno;
+		return -1;
 	}
 
 	return 0;
@@ -78,7 +78,7 @@ static int remove_lxc_directory(const char *dirname)
 {
 	char path[MAXPATHLEN];
 
-	sprintf(path, LXCPATH "/%s", dirname);
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s", dirname);
 
 	if (rmdir(path)) {
 		SYSERROR("failed to remove %s directory", path);
@@ -97,18 +97,15 @@ static int remove_lxc_directory(const char *dirname)
 
 int lxc_create(const char *name, struct lxc_conf *conf)
 {
-	int lock, err;
+	int lock, err = -1;
 
-	err = create_lxc_directory(name);
-	if (err < 0)
-		return err == -EEXIST ?
-			-LXC_ERROR_EEXIST : LXC_ERROR_INTERNAL;
+	if (create_lxc_directory(name))
+		return err;
 	
 	lock = lxc_get_lock(name);
 	if (lock < 0)
-		return -LXC_ERROR_LOCK;
+		return err;
 
-	err = LXC_ERROR_INTERNAL;
 	if (lxc_mkstate(name)) {
 		ERROR("failed to create the state file for %s", name);
 		goto err;
@@ -119,8 +116,7 @@ int lxc_create(const char *name, struct lxc_conf *conf)
 		goto err_state;
 	}
 
-	err = lxc_configure(name, conf);
-	if (err) {
+	if (lxc_configure(name, conf)) {
 		ERROR("failed to set configuration for %s", name);
 		goto err_state;
 	}
