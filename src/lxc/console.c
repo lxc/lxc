@@ -37,7 +37,7 @@ lxc_log_define(lxc_console, lxc);
 extern int lxc_console(const char *name, int ttynum, int *fd)
 {
 	struct sockaddr_un addr = { 0 };
-	int sock, ret = -LXC_ERROR_TTY_EAGAIN;
+	int sock, ret = -1;
 
 	snprintf(addr.sun_path, sizeof(addr.sun_path), "@%s", name);
 	addr.sun_path[0] = '\0';
@@ -64,7 +64,6 @@ extern int lxc_console(const char *name, int ttynum, int *fd)
 
 	if (!ret) {
 		ERROR("console denied by '%s'", name);
-		ret = -LXC_ERROR_TTY_DENIED;
 		goto out_close;
 	}
 

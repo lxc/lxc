@@ -81,17 +81,17 @@ int main(int argc, char *argv[])
 
 	err = lxc_arguments_parse(&my_args, argc, argv);
 	if (err)
-		return 1;
+		return -1;
 
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
-		return 1;
+		return -1;
 
 	/* Get current termios */
 	if (tcgetattr(0, &tios)) {
 		ERROR("failed to get current terminal settings : %s",
 		      strerror(errno));
-		return 1;
+		return -1;
 	}
 
 	oldtios = tios;
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 	if (tcsetattr(0, TCSAFLUSH, &tios)) {
 		ERROR("failed to set new terminal settings : %s",
 		      strerror(errno));
-		return 1;
+		return -1;
 	}
 
 	err = lxc_console(my_args.name, my_args.ttynum, &master);
@@ -190,6 +190,6 @@ out:
 	return err;
 
 out_err:
-	err = 1;
+	err = -1;
 	goto out;
 }
