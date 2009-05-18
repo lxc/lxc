@@ -23,7 +23,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 #include "error.h"
+#include "log.h"
+
+lxc_log_define(lxc_error, lxc);
 
 static const char *const catalogue[] = {
 
@@ -66,4 +70,33 @@ const char *const lxc_strerror(int error)
 		return NULL;
 
 	return catalogue[error];
+}
+
+/*---------------------------------------------------------------------------*/
+/* lxc_error_set_and_log
+ * function is here to convert
+ * the reported status to an exit code as detailed here:
+ *
+ *   0-126       exit code of the application
+ *   128+n       signal n received by the application
+ *   255         lxc error
+ */
+extern int  lxc_error_set_and_log(int pid, int status)
+{
+	int ret = 0;
+
+	if (WIFEXITED(status)) {
+		ret = WEXITSTATUS(status);
+		if (ret)
+			INFO("child <%d> ended on error (%d)", pid, ret);
+	}
+
+	if (WIFSIGNALED(status)) {
+		int signal = WTERMSIG(status);
+		ret = ret + 128 + signal;
+
+		INFO("child <%d> ended on signal (%d)", pid, signal);
+	}
+
+	return ret;
 }

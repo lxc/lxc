@@ -439,7 +439,7 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 
 		if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
 			SYSERROR("failed to set sigprocmask");
-			return -1;
+			goto out_child;
 		}
 
 		close(sv[1]);
@@ -460,12 +460,9 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 		}
 
 		/* Setup the container, ip, names, utsname, ... */
-		err = lxc_setup(name, handler->tty, &handler->tty_info);
-		if (err) {
+		if (lxc_setup(name, handler->tty, &handler->tty_info)) {
 			ERROR("failed to setup the container");
-			if (write(sv[0], &err, sizeof(err)) < 0)
-				SYSERROR("failed to write the socket");
-			goto out_child;
+			goto out_warn_father;
 		}
 
 		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
@@ -476,11 +473,10 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 		execvp(argv[0], argv);
 		SYSERROR("failed to exec %s", argv[0]);
 
-		err = LXC_ERROR_WRONG_COMMAND;
+	out_warn_father:
 		/* If the exec fails, tell that to our father */
 		if (write(sv[0], &err, sizeof(err)) < 0)
 			SYSERROR("failed to write the socket");
-		
 	out_child:
 		exit(err);
 	}
@@ -509,8 +505,7 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	}
 
 	/* Wait for the child to exec or returning an error */
-	err = read(sv[1], &sync, sizeof(sync));
-	if (err < 0) {
+	if (read(sv[1], &sync, sizeof(sync)) < 0) {
 		ERROR("failed to read the socket");
 		goto out_abort;
 	}
@@ -542,7 +537,7 @@ out_abort:
 int lxc_start(const char *name, char *const argv[])
 {
 	struct lxc_handler handler = { 0 };
-	int err = -LXC_ERROR_INTERNAL;
+	int err = -1;
 	int status;
 
 	if (lxc_init(name, &handler)) {
@@ -556,14 +551,16 @@ int lxc_start(const char *name, char *const argv[])
 		goto out;
 	}
 
-	if (lxc_poll(name, &handler)) {
+	err = lxc_poll(name, &handler);
+	if (err) {
 		ERROR("mainloop exited with an error");
 		goto out_abort;
 	}
 
 	while (waitpid(handler.pid, &status, 0) < 0 && errno == EINTR)
 		continue;
-	err = 0;
+
+	err =  lxc_error_set_and_log(handler.pid, status);
 out:
 	lxc_fini(name, &handler);
 	return err;

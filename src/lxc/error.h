@@ -59,4 +59,5 @@ typedef enum {
 	LXC_LAST_ERROR,
 } lxc_error_t;
 
+extern int  lxc_error_set_and_log(int pid, int status);
 #endif

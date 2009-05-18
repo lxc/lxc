@@ -61,7 +61,7 @@ Options :\n\
 int main(int argc, char *argv[])
 {
 	char *const *args;
-	int err;
+	int err = -1;
 	struct termios tios;
 
 	char *const default_args[] = {
@@ -69,9 +69,8 @@ int main(int argc, char *argv[])
 		'\0',
 	};
 
-	err = lxc_arguments_parse(&my_args, argc, argv);
-	if (err)
-		return 1;
+	if (lxc_arguments_parse(&my_args, argc, argv))
+		return err;
 
 	if (!my_args.argc)
 		args = default_args; 
@@ -80,19 +79,15 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
-		return 1;
+		return err;
 
 	if (tcgetattr(0, &tios)) {
 		ERROR("failed to get current terminal settings : %s",
 		      strerror(errno));
-		return 1;
+		return err;
 	}
 
 	err = lxc_start(my_args.name, args);
-	if (err) {
-		ERROR("failed to start '%s'", my_args.name);
-		err = 1;
-	}
 
 	if (tcsetattr(0, TCSAFLUSH, &tios))
 		ERROR("failed to restore terminal settings : %s",
