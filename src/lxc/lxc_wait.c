@@ -27,20 +27,48 @@
 #include <sys/types.h>
 
 #include <lxc/lxc.h>
+#include "arguments.h"
 
 lxc_log_define(lxc_wait, lxc);
 
-void usage(char *cmd)
+static int my_checker(const struct lxc_arguments* args)
 {
-	fprintf(stderr, "%s <command>\n", basename(cmd));
-	fprintf(stderr, "\t -n <name>   : name of the container\n");
-	fprintf(stderr, "\t -s <states> : ORed states to wait for STOPPED, " \
-		"STARTING, RUNNING, STOPPING, ABORTING, FREEZING, FROZEN\n");
-	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
-	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
-	fprintf(stderr, "\t[-q ]             : be quiet\n");
-	_exit(1);
+	if (!args->states) {
+		lxc_error(args, "missing state option to wait for.");
+		return -1;
+	}
+	return 0;
 }
+
+static int my_parser(struct lxc_arguments* args, int c, char* arg)
+{
+	switch (c) {
+	case 's': args->states = optarg; break;
+	}
+	return 0;
+}
+
+static const struct option my_longopts[] = {
+	{"state", required_argument, 0, 's'},
+	LXC_COMMON_OPTIONS
+};
+
+static struct lxc_arguments my_args = {
+	.progname = "lxc-wait",
+	.help     = "\
+--name=NAME --state=STATE\n\
+\n\
+lxc-wait waits for NAME container state to reach STATE\n\
+\n\
+Options :\n\
+  -n, --name=NAME   NAME for name of the container\n\
+  -s, --state=STATE ORed states to wait for\n\
+                    STOPPED, STARTING, RUNNING, STOPPING,\n\
+                    ABORTING, FREEZING, FROZEN\n",
+	.options  = my_longopts,
+	.parser   = my_parser,
+	.checker  = my_checker,
+};
 
 static int fillwaitedstates(char *strstates, int *states)
 {
@@ -51,8 +79,10 @@ static int fillwaitedstates(char *strstates, int *states)
 	while (token) {
 
 		state = lxc_str2state(token);
-		if (state < 0)
+		if (state < 0) {
+			ERROR("invalid state %s", token);
 			return -1;
+		}
 		states[state] = 1;
 
 		token = strtok_r(NULL, "|", &saveptr);
@@ -63,43 +93,22 @@ static int fillwaitedstates(char *strstates, int *states)
 
 int main(int argc, char *argv[])
 {
-	char *name = NULL, *states = NULL;
-	const char *log_file = NULL, *log_priority = NULL;
 	struct lxc_msg msg;
-	int s[MAX_STATE] = { }, fd, opt;
-	int quiet = 0;
+	int s[MAX_STATE] = { }, fd;
+	int ret;
 
-	while ((opt = getopt(argc, argv, "s:n:o:l:")) != -1) {
-		switch (opt) {
-		case 'n':
-			name = optarg;
-			break;
-		case 's':
-			states = optarg;
-			break;
-		case 'o':
-			log_file = optarg;
-			break;
-		case 'l':
-			log_priority = optarg;
-			break;
-		case 'q':
-			quiet = 1;
-			break;
-		}
-	}
+	ret = lxc_arguments_parse(&my_args, argc, argv);
+	if (ret)
+		return 1;
 
-	if (!name || !states)
-		usage(argv[0]);
-
-	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
+	if (lxc_log_init(my_args.log_file, my_args.log_priority,
+			 my_args.progname, my_args.quiet))
 		return -1;
 
-	if (fillwaitedstates(states, s)) {
-		usage(argv[0]);
-	}
+	ret = fillwaitedstates(my_args.states, s);
+	if (ret)
+		return 1;
 
-	
 	fd = lxc_monitor_open();
 	if (fd < 0)
 		return -1;
@@ -108,7 +117,7 @@ int main(int argc, char *argv[])
 		if (lxc_monitor_read(fd, &msg) < 0)
 			return -1;
 
-		if (strcmp(name, msg.name))
+		if (strcmp(my_args.name, msg.name))
 			continue;
 
 		switch (msg.type) {

@@ -44,6 +44,15 @@ struct lxc_arguments {
 	int quiet;
 	const char *rcfile;
 
+	/* for lxc-checkpoint */
+	int stop;
+
+	/* for lxc-console */
+	int ttynum;
+
+	/* for lxc-wait */
+	char *states;
+
 	/* remaining arguments */
 	char *const *argv;
 	int argc;

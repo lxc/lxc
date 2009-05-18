@@ -26,73 +26,74 @@
 #include <sys/types.h>
 
 #include <lxc.h>
+#include "arguments.h"
 
-void usage(char *cmd)
+static int my_checker(const struct lxc_arguments* args)
 {
-	fprintf(stderr, "%s <statefile>\n", basename(cmd));
-	fprintf(stderr, "\t -n <name>   : name of the container\n");
-	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
-	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
-	fprintf(stderr, "\t[-q ]             : be quiet\n");
-	_exit(1);
+	if (!args->argc) {
+		lxc_error(args, "missing STATEFILE filename !");
+		return -1;
+	}
+	return 0;
 }
+
+static int my_parser(struct lxc_arguments* args, int c, char* arg)
+{
+	switch (c) {
+	case 's': args->stop = 1; break;
+	}
+	return 0;
+}
+
+static const struct option my_longopts[] = {
+	{"stop", no_argument, 0, 's'},
+	LXC_COMMON_OPTIONS
+};
+
+static struct lxc_arguments my_args = {
+	.progname = "lxc-checkpoint",
+	.help     = "\
+--name=NAME STATEFILE\n\
+\n\
+lxc-checkpoint checkpoints in STATEFILE file the NAME container\n\
+\n\
+Options :\n\
+  -n, --name=NAME      NAME for name of the container\n\
+  -s, --stop           stop the container after checkpoint\n",
+	.options  = my_longopts,
+	.parser   = my_parser,
+	.checker  = my_checker,
+
+	.rcfile   = NULL,
+};
 
 int main(int argc, char *argv[])
 {
-	int opt;
-	char *name = NULL;
-	const char *log_file = NULL, *log_priority = NULL;
-	int stop = 0;
-	int nbargs = 0;
-	int ret = 1;
-	int quiet = 0;
+	int ret;
 
-	while ((opt = getopt(argc, argv, "sn:o:l:")) != -1) {
-		switch (opt) {
-		case 'n':
-			name = optarg;
-			break;
-		case 's':
-			stop = 1;
-			break;
-		case 'o':
-			log_file = optarg;
-			break;
-		case 'l':
-			log_priority = optarg;
-			break;
-		case 'q':
-			quiet = 1;
-			break;
-		}
+	ret = lxc_arguments_parse(&my_args, argc, argv);
+	if (ret)
+		return 1;
 
-		nbargs++;
-	}
-
-	if (!name)
-		usage(argv[0]);
-
-	if (!argv[1])
-		usage(argv[0]);
-
-	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
+	if (lxc_log_init(my_args.log_file, my_args.log_priority,
+			 my_args.progname, my_args.quiet))
 		return -1;
 
-	if (lxc_freeze(name))
+	if (lxc_freeze(my_args.name))
 		return -1;
 
-	if (lxc_checkpoint(name, argv[1], 0))
+	if (lxc_checkpoint(my_args.name, my_args.argv[0], 0))
 		goto out;
 
-	if (stop) {
-		if (lxc_stop(name))
+	if (my_args.stop) {
+		if (lxc_stop(my_args.name))
 			goto out;
 	}
 
 	ret = 0;
 
 out:
-	if (lxc_unfreeze(name))
+	if (lxc_unfreeze(my_args.name))
 		return 1;
 
 	return ret;
