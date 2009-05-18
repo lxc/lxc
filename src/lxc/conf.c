@@ -1411,37 +1411,37 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 
 	if (conf->utsname && configure_utsname(name, conf->utsname)) {
 		ERROR("failed to configure the utsname");
-		return -LXC_ERROR_CONF_UTSNAME;
+		return -1;
 	}
 
 	if (configure_cgroup(name, &conf->cgroup)) {
 		ERROR("failed to configure the control group");
-		return -LXC_ERROR_CONF_CGROUP;
+		return -1;
 	}
 
 	if (configure_network(name, &conf->networks)) {
 		ERROR("failed to configure the network");
-		return -LXC_ERROR_CONF_NETWORK;
+		return -1;
 	}
 
 	if (conf->tty && configure_tty(name, conf->tty)) {
 		ERROR("failed to configure the tty");
-		return -LXC_ERROR_CONF_TTY;
+		return -1;
 	}
 
 	if (conf->fstab && configure_mount(name, conf->fstab)) {
 		ERROR("failed to configure the mount points");
-		return -LXC_ERROR_CONF_MOUNT;
+		return -1;
 	}
 
 	if (conf->rootfs && configure_rootfs(name, conf->rootfs)) {
 		ERROR("failed to configure the rootfs");
-		return -LXC_ERROR_CONF_ROOTFS;
+		return -1;
 	}
 
 	if (conf->pts && configure_pts(name, conf->pts)) {
 		ERROR("failed to configure a new pts instance");
-		return -LXC_ERROR_CONF_PTS;
+		return -1;
 	}
 
 	return 0;
@@ -1915,42 +1915,42 @@ int lxc_setup(const char *name, const char *cons,
 
 	if (conf_is_set(flags, utsname) && setup_utsname(name)) {
 		ERROR("failed to setup the utsname for '%s'", name);
-		return -LXC_ERROR_SETUP_UTSNAME;
+		return -1;
 	}
 
 	if (conf_is_set(flags, network) && setup_network(name)) {
 		ERROR("failed to setup the network for '%s'", name);
-		return -LXC_ERROR_SETUP_NETWORK;
+		return -1;
 	}
 
 	if (conf_is_set(flags, cgroup) && setup_cgroup(name)) {
 		ERROR("failed to setup the cgroups for '%s'", name);
-		return -LXC_ERROR_SETUP_CGROUP;
+		return -1;
 	}
 
 	if (conf_is_set(flags, fstab) && setup_mount(name)) {
 		ERROR("failed to setup the mounts for '%s'", name);
-		return -LXC_ERROR_SETUP_MOUNT;
+		return -1;
 	}
 
 	if (conf_is_set(flags, console) && setup_console(name, cons)) {
 		ERROR("failed to setup the console for '%s'", name);
-		return -LXC_ERROR_SETUP_CONSOLE;
+		return -1;
 	}
 
 	if (conf_is_set(flags, tty) && setup_tty(name, tty_info)) {
 		ERROR("failed to setup the ttys for '%s'", name);
-		return -LXC_ERROR_SETUP_TTY;
+		return -1;
 	}
 
 	if (conf_is_set(flags, rootfs) && setup_rootfs(name)) {
 		ERROR("failed to set rootfs for '%s'", name);
-		return -LXC_ERROR_SETUP_ROOTFS;
+		return -1;
 	}
 
 	if (conf_is_set(flags, pts) && setup_pts(name)) {
 		ERROR("failed to setup the new pts instance");
-		return -LXC_ERROR_SETUP_PTS;
+		return -1;
 	}
 
 	return 0;
