@@ -42,7 +42,7 @@ int lxc_stop(const char *name)
 {
 	char init[MAXPATHLEN];
 	char val[MAXPIDLEN];
-	int fd, ret = -LXC_ERROR_INTERNAL;
+	int fd, ret = -1;
 	size_t pid;
 
 	if (lxc_check_lock(name) < 0)
