@@ -410,7 +410,7 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 	kill(handler->pid, SIGKILL);
 }
 
-int lxc_spawn(const char *name, struct lxc_handler *handler, char *argv[])
+int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 {
 	int sv[2];
 	int clone_flags;
@@ -539,7 +539,7 @@ out_abort:
 	goto out_close;
 }
 
-int lxc_start(const char *name, char *argv[])
+int lxc_start(const char *name, char *const argv[])
 {
 	struct lxc_handler handler = { 0 };
 	int err = -LXC_ERROR_INTERNAL;

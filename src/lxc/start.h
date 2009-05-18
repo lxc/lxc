@@ -32,7 +32,7 @@ struct lxc_handler {
 
 extern int lxc_init(const char *name, struct lxc_handler *handler);
 extern int lxc_spawn(const char *name, struct lxc_handler *handler,
-		     char *argv[]);
+		     char *const argv[]);
 
 extern int lxc_poll(const char *name, struct lxc_handler *handler);
 extern void lxc_abort(const char *name, struct lxc_handler *handler);

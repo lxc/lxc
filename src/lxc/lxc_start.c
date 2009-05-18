@@ -36,63 +36,50 @@
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>
+#include "arguments.h"
 
 lxc_log_define(lxc_start, lxc);
 
-void usage(char *cmd)
-{
-	fprintf(stderr, "%s <command>\n", basename(cmd));
-	fprintf(stderr, "\t -n <name>   : name of the container\n");
-	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
-	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
-	fprintf(stderr, "\t[-q ]             : be quiet\n");
-	_exit(1);
-}
+static const struct option my_longopts[] = {
+	LXC_COMMON_OPTIONS
+};
+
+static struct lxc_arguments my_args = {
+	.progname = "lxc-start",
+	.help     = "\
+--name=NAME -- COMMAND\n\
+\n\
+lxc-start start COMMAND in specified container NAME\n\
+\n\
+Options :\n\
+  -n, --name=NAME      NAME for name of the container",
+	.options  = my_longopts,
+	.parser   = NULL,
+	.checker  = NULL,
+};
 
 int main(int argc, char *argv[])
 {
-	char *name = NULL;
-	const char *log_file = NULL, *log_priority = NULL;
-	char **args;
-	int opt, err = LXC_ERROR_INTERNAL, nbargs = 0;
-	int quiet = 0;
+	char *const *args;
+	int err;
 	struct termios tios;
 
-	char *default_args[] = {
+	char *const default_args[] = {
 		"/sbin/init",
 		'\0',
 	};
 
-	while ((opt = getopt(argc, argv, "n:o:l:")) != -1) {
-		switch (opt) {
-		case 'n':
-			name = optarg;
-			break;
-		case 'o':
-			log_file = optarg;
-			break;
-		case 'l':
-			log_priority = optarg;
-			break;
-		case 'q':
-			quiet = 1;
-			break;
-		}
+	err = lxc_arguments_parse(&my_args, argc, argv);
+	if (err)
+		return 1;
 
-		nbargs++;
-	}
-
-	if (!argv[optind] || !strlen(argv[optind]))
+	if (!my_args.argc)
 		args = default_args; 
-	else {
-		args = &argv[optind];
-		argc -= nbargs;
-	}
+	else
+		args = my_args.argv;
 
-	if (!name)
-		usage(argv[0]);
-
-	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
+	if (lxc_log_init(my_args.log_file, my_args.log_priority,
+			 my_args.progname, my_args.quiet))
 		return 1;
 
 	if (tcgetattr(0, &tios)) {
@@ -101,9 +88,9 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	err = lxc_start(name, args);
+	err = lxc_start(my_args.name, args);
 	if (err) {
-		ERROR("failed to start '%s'", name);
+		ERROR("failed to start '%s'", my_args.name);
 		err = 1;
 	}
 
