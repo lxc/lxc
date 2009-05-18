@@ -61,16 +61,14 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	int ret;
 	char *subsystem = NULL, *value = NULL;
 
-	ret = lxc_arguments_parse(&my_args, argc, argv);
-	if (ret)
-		return 1;
+	if (lxc_arguments_parse(&my_args, argc, argv))
+		return -1;
 
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
-		return 1;
+		return -1;
 
 	subsystem = my_args.argv[0];
 
@@ -81,7 +79,7 @@ int main(int argc, char *argv[])
 		if (lxc_cgroup_set(my_args.name, subsystem, value)) {
 			ERROR("failed to assign '%s' value to '%s' for '%s'",
 				value, subsystem, my_args.name);
-			return 1;
+			return -1;
 		}
 	} else {
 		const unsigned long len = 4096;
@@ -89,7 +87,7 @@ int main(int argc, char *argv[])
 		if (lxc_cgroup_get(my_args.name, subsystem, buffer, len)) {
 			ERROR("failed to retrieve value of '%s' for '%s'",
 				subsystem, my_args.name);
-			return 1;
+			return -1;
 		}
 
 		printf("%s", buffer);
