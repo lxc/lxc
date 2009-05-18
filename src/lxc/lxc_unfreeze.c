@@ -48,19 +48,13 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	int ret;
-
-	ret = lxc_arguments_parse(&my_args, argc, argv);
-	if (ret)
-		return 1;
+	if (lxc_arguments_parse(&my_args, argc, argv))
+		return -1;
 
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
-		return 1;
+		return -1;
 
-	if (lxc_unfreeze(my_args.name))
-		return 1;
-
-	return 0;
+	return lxc_unfreeze(my_args.name);
 }
 

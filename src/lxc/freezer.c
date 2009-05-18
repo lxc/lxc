@@ -75,22 +75,16 @@ static int freeze_unfreeze(const char *name, int freeze)
 int lxc_freeze(const char *name)
 {
 	if (freeze_unfreeze(name, 1))
-		return -LXC_ERROR_INTERNAL;
+		return -1;
 
-	if (lxc_setstate(name, FROZEN))
-		return -LXC_ERROR_INTERNAL;
-
-	return 0;
+	return lxc_setstate(name, FROZEN);
 }
 
 int lxc_unfreeze(const char *name)
 {
 	if (freeze_unfreeze(name, 0))
-		return -LXC_ERROR_INTERNAL;
+		return -1;
 
-	if (lxc_setstate(name, RUNNING))
-		return -LXC_ERROR_INTERNAL;
-
-	return 0;
+	return lxc_setstate(name, RUNNING);
 }
 
