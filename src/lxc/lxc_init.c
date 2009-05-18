@@ -26,18 +26,29 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <signal.h>
+#include <libgen.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
 #define _GNU_SOURCE
 #include <getopt.h>
+#include "log.h"
+
+lxc_log_define(lxc_init, lxc);
 
 static int mount_sysfs;
 static int mount_procfs;
+static char const *log_file;
+static char const *log_priority;
+static int quiet;
 
 static struct option options[] = {
 	{ "mount-sysfs", no_argument, &mount_sysfs, 1 },
 	{ "mount-procfs", no_argument, &mount_procfs, 1 },
+	{ "logfile", required_argument, 0, 'o' },
+	{ "logpriority", required_argument, 0, 'l' },
+	{ "quiet", no_argument, &quiet, 1 },
+	{ 0, 0, 0, 0 },
 };
 
 int main(int argc, char *argv[])
@@ -48,15 +59,23 @@ int main(int argc, char *argv[])
 
 	while (1) {
 		int ret = getopt_long_only(argc, argv, "", options, NULL);
-		if (ret == -1)
+		if (ret == -1) {
 			break;
-		if (ret == '?')
+		}
+		switch (ret) {
+		case 'o':	log_file = optarg; break;
+		case 'l':	log_priority = optarg; break;
+		case '?':
 			exit(1);
+		}
 		nbargs++;
 	}
 
+	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
+		exit(1);
+
 	if (!argv[optind]) {
-		fprintf(stderr, "missing command to launch\n");
+		ERROR("missing command to launch");
 		exit(1);
 	}
 
@@ -71,21 +90,19 @@ int main(int argc, char *argv[])
 	if (!pid) {
 		
 		if (mount_sysfs && mount("sysfs", "/sys", "sysfs", 0, NULL)) {
-			fprintf(stderr, "failed to mount '/sys'\n");
+			ERROR("failed to mount '/sys' : %s", strerror(errno));
 			exit(1);
 		}
 		
 		if (mount_procfs && mount("proc", "/proc", "proc", 0, NULL)) {
-			fprintf(stderr, "failed to mount '/proc'\n");
+			ERROR("failed to mount '/proc' : %s", strerror(errno));
 			exit(1);
 		}
 
 		execvp(aargv[0], aargv);
-		fprintf(stderr, "failed to exec: %s\n", aargv[0]);
+		ERROR("failed to exec: '%s' : %s", aargv[0], strerror(errno));
 		exit(1);
 	}
-
-	
 
 	for (;;) {
 		int status;
@@ -94,7 +111,7 @@ int main(int argc, char *argv[])
 				exit(0);
 			if (errno == EINTR)
 				continue;
-			fprintf(stderr, "failed to wait child\n");
+			ERROR("failed to wait child");
 			return 1;
 		}
 	}
