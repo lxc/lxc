@@ -42,6 +42,7 @@ void usage(char *cmd)
 	fprintf(stderr, "\t [-f <confile>] : path of the configuration file\n");
 	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
 	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
+	fprintf(stderr, "\t[-q ]             : be quiet\n");
 	_exit(1);
 }
 
@@ -55,9 +56,10 @@ int main(int argc, char *argv[])
 	int nbargs = 0;
 	int autodestroy = 0;
 	int ret = 1;
+	int quiet = 0;
 	struct lxc_conf lxc_conf;
 
-	while ((opt = getopt(argc, argv, "f:n:o:l:")) != -1) {
+	while ((opt = getopt(argc, argv, "f:n:o:l:q")) != -1) {
 		switch (opt) {
 		case 'n':
 			name = optarg;
@@ -71,6 +73,9 @@ int main(int argc, char *argv[])
 		case 'l':
 			log_priority = optarg;
 			break;
+		case 'q':
+			quiet = 1;
+			break;
 		}
 
 		nbargs++;
@@ -81,7 +86,7 @@ int main(int argc, char *argv[])
 
 	argc -= nbargs;
 	
-	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
 		goto out;
 
 	if (lxc_conf_init(&lxc_conf))

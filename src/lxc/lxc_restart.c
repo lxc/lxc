@@ -35,6 +35,7 @@ void usage(char *cmd)
 	fprintf(stderr, "\t -n <name>   : name of the container\n");
 	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
 	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
+	fprintf(stderr, "\t[-q ]             : be quiet\n");
 	_exit(1);
 }
 
@@ -43,6 +44,7 @@ int main(int argc, char *argv[])
 	char *name = NULL;
 	const char *log_file = NULL, *log_priority = NULL;
 	int opt, nbargs = 0;
+	int quiet = 0;
 
 	while ((opt = getopt(argc, argv, "n:o:l:")) != -1) {
 		switch (opt) {
@@ -55,6 +57,9 @@ int main(int argc, char *argv[])
 		case 'l':
 			log_priority = optarg;
 			break;
+		case 'q':
+			quiet = 1;
+			break;
 		}
 
 		nbargs++;
@@ -66,7 +71,7 @@ int main(int argc, char *argv[])
 	if (!argv[optind])
 		usage(argv[0]);
 
-	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
 		return 1;
 
 	if (lxc_restart(name, argv[1], 0)) {

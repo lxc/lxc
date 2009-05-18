@@ -50,6 +50,7 @@ void usage(char *cmd)
 	fprintf(stderr, "\t [-t <tty#>] : tty number\n");
 	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
 	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
+	fprintf(stderr, "\t[-q ]             : be quiet\n");
 	_exit(1);
 }
 
@@ -57,6 +58,7 @@ int main(int argc, char *argv[])
 {
 	char *name = NULL;
 	const char *log_file = NULL, *log_priority = NULL;
+	int quiet = 0;
 	int opt;
 	int nbargs = 0;
 	int master = -1;
@@ -80,6 +82,9 @@ int main(int argc, char *argv[])
 		case 'l':
 			log_priority = optarg;
 			break;
+		case 'q':
+			quiet = 1;
+			break;
 		}
 
 		nbargs++;
@@ -88,7 +93,7 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
-	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
 		return 1;
 
 	/* Get current termios */

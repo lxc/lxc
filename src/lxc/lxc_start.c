@@ -45,6 +45,7 @@ void usage(char *cmd)
 	fprintf(stderr, "\t -n <name>   : name of the container\n");
 	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
 	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
+	fprintf(stderr, "\t[-q ]             : be quiet\n");
 	_exit(1);
 }
 
@@ -54,6 +55,7 @@ int main(int argc, char *argv[])
 	const char *log_file = NULL, *log_priority = NULL;
 	char **args;
 	int opt, err = LXC_ERROR_INTERNAL, nbargs = 0;
+	int quiet = 0;
 	struct termios tios;
 
 	char *default_args[] = {
@@ -72,6 +74,9 @@ int main(int argc, char *argv[])
 		case 'l':
 			log_priority = optarg;
 			break;
+		case 'q':
+			quiet = 1;
+			break;
 		}
 
 		nbargs++;
@@ -87,7 +92,7 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
-	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
 		return 1;
 
 	if (tcgetattr(0, &tios)) {

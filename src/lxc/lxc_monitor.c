@@ -37,6 +37,7 @@ void usage(char *cmd)
 	fprintf(stderr, "\t -n <name>   : name of the container or regular expression\n");
 	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
 	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
+	fprintf(stderr, "\t[-q ]             : be quiet\n");
 	_exit(1);
 }
 
@@ -48,8 +49,9 @@ int main(int argc, char *argv[])
 	struct lxc_msg msg;
 	regex_t preg;
 	int fd, opt;
+	int quiet = 0;
 
-	while ((opt = getopt(argc, argv, "n:o:l:")) != -1) {
+	while ((opt = getopt(argc, argv, "n:o:l:q")) != -1) {
 		switch (opt) {
 		case 'n':
 			name = optarg;
@@ -60,13 +62,16 @@ int main(int argc, char *argv[])
 		case 'l':
 			log_priority = optarg;
 			break;
+		case 'q':
+			quiet = 1;
+			break;
 		}
 	}
 
 	if (!name)
 		usage(argv[0]);
 
-	if (lxc_log_init(log_file, log_priority, basename(argv[0])))
+	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
 		return 1;
 
 	regexp = malloc(strlen(name) + 3);
