@@ -163,7 +163,7 @@ int lxc_monitor_read(int fd, struct lxc_msg *msg)
 		       (struct sockaddr *)&from, &len);
 	if (ret < 0) {
 		SYSERROR("failed to receive state");
-		return -LXC_ERROR_INTERNAL;
+		return -1;
 	}
 
 	return ret;

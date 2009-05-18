@@ -95,19 +95,16 @@ int main(int argc, char *argv[])
 {
 	struct lxc_msg msg;
 	int s[MAX_STATE] = { }, fd;
-	int ret;
 
-	ret = lxc_arguments_parse(&my_args, argc, argv);
-	if (ret)
-		return 1;
+	if (lxc_arguments_parse(&my_args, argc, argv))
+		return -1;
 
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	ret = fillwaitedstates(my_args.states, s);
-	if (ret)
-		return 1;
+	if (fillwaitedstates(my_args.states, s))
+		return -1;
 
 	fd = lxc_monitor_open();
 	if (fd < 0)

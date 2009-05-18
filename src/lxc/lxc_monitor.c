@@ -56,22 +56,21 @@ int main(int argc, char *argv[])
 	char *regexp;
 	struct lxc_msg msg;
 	regex_t preg;
-	int fd, ret;
+	int fd;
 
-	ret = lxc_arguments_parse(&my_args, argc, argv);
-	if (ret)
-		return 1;
+	if (lxc_arguments_parse(&my_args, argc, argv))
+		return -1;
 
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
-		return 1;
+		return -1;
 
 	regexp = malloc(strlen(my_args.name) + 3);
 	sprintf(regexp, "^%s$", my_args.name);
 
 	if (regcomp(&preg, regexp, REG_NOSUB|REG_EXTENDED)) {
 		ERROR("failed to compile the regex '%s'", my_args.name);
-		return 1;
+		return -1;
 	}
 
 	fd = lxc_monitor_open();
