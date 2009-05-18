@@ -22,7 +22,6 @@
  */
 #include <stdio.h>
 #include <unistd.h>
-#include <libgen.h>
 #include <sys/types.h>
 
 #include <lxc/lxc.h>
@@ -48,20 +47,13 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	int ret;
-
-	ret = lxc_arguments_parse(&my_args, argc, argv);
-	if (ret)
-		return 1;
+	if (lxc_arguments_parse(&my_args, argc, argv))
+		return -1;
 
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
-		return 1;
+		return -1;
 
-	ret = lxc_destroy(my_args.name);
-	if (ret)
-		return 1;
-
-	return 0;
+	return lxc_destroy(my_args.name);
 }
 

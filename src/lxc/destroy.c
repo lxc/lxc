@@ -39,7 +39,7 @@ static int remove_lxc_directory(const char *dirname)
 {
 	char path[MAXPATHLEN];
 
-	sprintf(path, LXCPATH "/%s", dirname);
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s", dirname);
 
 	if (rmdir(path)) {
 		SYSERROR("failed to remove %s directory", path);
@@ -51,12 +51,12 @@ static int remove_lxc_directory(const char *dirname)
 
 int lxc_destroy(const char *name)
 {
-	int lock, ret = -LXC_ERROR_INTERNAL;
+	int lock, ret = -1;
 	char path[MAXPATHLEN];
 
 	lock = lxc_get_lock(name);
 	if (lock < 0)
-		return lock;
+		return ret;
 
 	if (lxc_rmstate(name)) {
 		ERROR("failed to remove state file for %s", name);
