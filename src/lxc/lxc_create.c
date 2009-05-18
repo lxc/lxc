@@ -33,60 +33,57 @@
 
 #include <lxc/lxc.h>
 #include "confile.h"
+#include "arguments.h"
 
-void usage(char *cmd)
+static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
-	fprintf(stderr, "%s <command>\n", basename(cmd));
-	fprintf(stderr, "\t -n <name>    : name of the container\n");
-	fprintf(stderr, "\t -f <confile> : path of the configuration file\n");
-	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
-	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
-	fprintf(stderr, "\t[-q ]             : be quiet\n");
-	_exit(1);
+	switch (c) {
+	case 'f': args->rcfile = arg; break;
+	}
+	return 0;
 }
+
+static const struct option my_longopts[] = {
+	{"rcfile", required_argument, 0, 'f'},
+	LXC_COMMON_OPTIONS
+};
+
+static struct lxc_arguments my_args = {
+	.progname = "lxc-create",
+	.help     = "\
+--name=NAME\n\
+\n\
+lxc-create creates a container with the identifier NAME\n\
+\n\
+Options :\n\
+  -n, --name=NAME      NAME for name of the container\n\
+  -f, --rcfile=FILE    Load configuration file FILE\n",
+	.options  = my_longopts,
+	.parser   = my_parser,
+	.checker  = NULL,
+};
 
 int main(int argc, char *argv[])
 {
-	const char *name = NULL, *file = NULL;
-	const char *log_file = NULL, *log_priority = NULL;
 	struct lxc_conf lxc_conf;
-	int err, opt;
-	int quiet = 0;
+	int ret;
 
-	while ((opt = getopt(argc, argv, "f:n:o:l:q")) != -1) {
-		switch (opt) {
-		case 'n':
-			name = optarg;
-			break;
-		case 'f':
-			file = optarg;
-			break;
-		case 'o':
-			log_file = optarg;
-			break;
-		case 'l':
-			log_priority = optarg;
-			break;
-		case 'q':
-			quiet = 1;
-			break;
-		}
-	}
+	ret = lxc_arguments_parse(&my_args, argc, argv);
+	if (ret)
+		return 1;
 
-	if (!name)
-		usage(argv[0]);
-
-	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
+	if (lxc_log_init(my_args.log_file, my_args.log_priority,
+			 my_args.progname, my_args.quiet))
 		return 1;
 
 	if (lxc_conf_init(&lxc_conf))
 		return 1;
 
-	if (file && lxc_config_read(file, &lxc_conf))
+	if (my_args.rcfile && lxc_config_read(my_args.rcfile, &lxc_conf))
 		return 1;
 
-	err = lxc_create(name, &lxc_conf);
-	if (err)
+	ret = lxc_create(my_args.name, &lxc_conf);
+	if (ret)
 		return 1;
 
 	return 0;

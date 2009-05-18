@@ -27,70 +27,68 @@
 #include <sys/types.h>
 
 #include <lxc/lxc.h>
+#include "arguments.h"
 
 lxc_log_define(lxc_cgroup, lxc);
 
-void usage(char *cmd)
+static int my_checker(const struct lxc_arguments* args)
 {
-	fprintf(stderr, "%s <subsystem> [value]\n", basename(cmd));
-	fprintf(stderr, "\t -n <name>   : name of the container\n");
-	fprintf(stderr, "\t[-o <logfile>]    : path of the log file\n");
-	fprintf(stderr, "\t[-l <logpriority>]: log level priority\n");
-	fprintf(stderr, "\t[-q ]             : be quiet\n");
-	_exit(1);
+	if (!args->argc) {
+		lxc_error(args, "missing cgroup subsystem");
+		return -1;
+	}
+	return 0;
 }
+
+static const struct option my_longopts[] = {
+	LXC_COMMON_OPTIONS
+};
+
+static struct lxc_arguments my_args = {
+	.progname = "lxc-cgroup",
+	.help     = "\
+--name=NAME subsystem [value]\n\
+\n\
+lxc-cgroup get or set subsystem value of cgroup\n\
+associated with the NAME container\n\
+\n\
+Options :\n\
+  -n, --name=NAME      NAME for name of the container",
+	.options  = my_longopts,
+	.parser   = NULL,
+	.checker  = my_checker,
+};
 
 int main(int argc, char *argv[])
 {
-	int opt;
-	char *name = NULL, *subsystem = NULL, *value = NULL;
-	const char *log_file = NULL, *log_priority = NULL;
-	int nbargs = 0;
-	int quiet = 0;
+	int ret;
+	char *subsystem = NULL, *value = NULL;
 
-	while ((opt = getopt(argc, argv, "n:o:l:")) != -1) {
-		switch (opt) {
-		case 'n':
-			name = optarg;
-			break;
-		case 'o':
-			log_file = optarg;
-			break;
-		case 'l':
-			log_priority = optarg;
-			break;
-		case 'q':
-			quiet = 1;
-			break;
-		}
-
-		nbargs++;
-	}
-
-	if (!name || (argc-optind) < 1)
-		usage(argv[0]);
-
-	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
+	ret = lxc_arguments_parse(&my_args, argc, argv);
+	if (ret)
 		return 1;
 
-	if ((argc -optind) >= 1)
-		subsystem = argv[optind];
+	if (lxc_log_init(my_args.log_file, my_args.log_priority,
+			 my_args.progname, my_args.quiet))
+		return 1;
 
-	if ((argc -optind) >= 2)
-		value = argv[optind+1];
+	subsystem = my_args.argv[0];
+
+	if ((argc) > 1)
+		value = my_args.argv[1];
 
 	if (value) {
-		if (lxc_cgroup_set(name, subsystem, value)) {
-			ERROR("failed to assign '%s' value to '%s' for '%s'\n",
-				value, subsystem, name);
+		if (lxc_cgroup_set(my_args.name, subsystem, value)) {
+			ERROR("failed to assign '%s' value to '%s' for '%s'",
+				value, subsystem, my_args.name);
 			return 1;
 		}
 	} else {
 		const unsigned long len = 4096;
 		char buffer[len];
-		if (lxc_cgroup_get(name, subsystem, buffer, len)) {
-			ERROR("failed to retrieve value of '%s' for '%s'\n",
-				subsystem, name);
+		if (lxc_cgroup_get(my_args.name, subsystem, buffer, len)) {
+			ERROR("failed to retrieve value of '%s' for '%s'",
+				subsystem, my_args.name);
 			return 1;
 		}
 
