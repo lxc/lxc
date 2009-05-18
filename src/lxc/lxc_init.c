@@ -33,6 +33,7 @@
 #define _GNU_SOURCE
 #include <getopt.h>
 #include "log.h"
+#include "error.h"
 
 lxc_log_define(lxc_init, lxc);
 
@@ -55,6 +56,7 @@ int main(int argc, char *argv[])
 {
 	pid_t pid;
 	int nbargs = 0;
+	int err = -1;
 	char **aargv;
 
 	while (1) {
@@ -66,17 +68,17 @@ int main(int argc, char *argv[])
 		case 'o':	log_file = optarg; break;
 		case 'l':	log_priority = optarg; break;
 		case '?':
-			exit(1);
+			exit(err);
 		}
 		nbargs++;
 	}
 
 	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
-		exit(1);
+		exit(err);
 
 	if (!argv[optind]) {
 		ERROR("missing command to launch");
-		exit(1);
+		exit(err);
 	}
 
 	aargv = &argv[optind];
@@ -85,36 +87,41 @@ int main(int argc, char *argv[])
 	pid = fork();
 	
 	if (pid < 0)
-		exit(1);
+		exit(err);
 
 	if (!pid) {
 		
 		if (mount_sysfs && mount("sysfs", "/sys", "sysfs", 0, NULL)) {
 			ERROR("failed to mount '/sys' : %s", strerror(errno));
-			exit(1);
+			exit(err);
 		}
 		
 		if (mount_procfs && mount("proc", "/proc", "proc", 0, NULL)) {
 			ERROR("failed to mount '/proc' : %s", strerror(errno));
-			exit(1);
+			exit(err);
 		}
 
 		execvp(aargv[0], aargv);
 		ERROR("failed to exec: '%s' : %s", aargv[0], strerror(errno));
-		exit(1);
+		exit(err);
 	}
 
 	for (;;) {
 		int status;
-		if (wait(&status) < 0) {
+		pid_t waited_pid;
+
+		waited_pid = wait(&status);
+		if (waited_pid < 0) {
 			if (errno == ECHILD)
-				exit(0);
+				goto out;
 			if (errno == EINTR)
 				continue;
-			ERROR("failed to wait child");
-			return 1;
+			ERROR("failed to wait child : %s", strerror(errno));
+			goto out;
+		} else {
+			err = lxc_error_set_and_log(waited_pid, status);
 		}
 	}
-
-	return 0;
+out:
+	return err;
 }

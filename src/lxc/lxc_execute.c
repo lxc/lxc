@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 	int opt;
 	int nbargs = 0;
 	int autodestroy = 0;
-	int ret = 1;
+	int ret = -1;
 	struct lxc_conf lxc_conf;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
@@ -131,17 +131,12 @@ int main(int argc, char *argv[])
 		args[nbargs++] = my_args.argv[opt];
 
 	ret = lxc_start(my_args.name, args);
-	if (ret) {
-		ERROR("failed to start '%s'", my_args.name);
-		goto out;
-	}
-
-	ret = 0;
 out:
 	if (autodestroy) {
 		if (lxc_destroy(my_args.name)) {
 			ERROR("failed to destroy '%s'", my_args.name);
-			ret = 1;
+			if (!ret)
+				ret = -1;
 		}
 	}
 
