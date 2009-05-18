@@ -62,19 +62,19 @@ lxc_state_t lxc_str2state(const char *state)
 
 int lxc_setstate(const char *name, lxc_state_t state)
 {
-	int fd, err;
+	int fd, err = -1;
 	char file[MAXPATHLEN];
 	const char *str = lxc_state2str(state);
 
 	if (!str)
-		return -1;
+		return err;
 
 	snprintf(file, MAXPATHLEN, LXCPATH "/%s/state", name);
 
 	fd = open(file, O_WRONLY);
 	if (fd < 0) {
 		SYSERROR("failed to open %s file", file);
-		return -1;
+		return err;
 	}
 
 	if (flock(fd, LOCK_EX)) {
@@ -98,7 +98,7 @@ out:
 
 	lxc_monitor_send_state(name, state);
 
-	return -err;
+	return err;
 }
 
 int lxc_mkstate(const char *name)
