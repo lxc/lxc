@@ -19,6 +19,7 @@ pkginclude_HEADERS = \
 
 
 liblxc_la_SOURCES = \
+	arguments.c arguments.h \
 	create.c \
 	destroy.c \
 	start.c \
