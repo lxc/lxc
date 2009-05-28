@@ -40,13 +40,15 @@ static int my_checker(const struct lxc_arguments* args)
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
-	case 's': args->stop = 1; break;
+	case 'k': args->kill = 1; break;
+	case 'p': args->pause = 1; break;
 	}
 	return 0;
 }
 
 static const struct option my_longopts[] = {
-	{"stop", no_argument, 0, 's'},
+	{"kill", no_argument, 0, 'k'},
+	{"pause", no_argument, 0, 'p'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -59,7 +61,9 @@ lxc-checkpoint checkpoints in STATEFILE file the NAME container\n\
 \n\
 Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
-  -s, --stop           stop the container after checkpoint\n",
+  -k, --kill           stop the container after checkpoint\n\
+  -p, --pause          don't unfreeze the container after the checkpoint\n",
+
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,
@@ -71,29 +75,18 @@ int main(int argc, char *argv[])
 {
 	int ret = -1;
 
-	if (lxc_arguments_parse(&my_args, argc, argv))
+	ret = lxc_arguments_parse(&my_args, argc, argv);
+	if (ret)
 		return ret;
 
-	if (lxc_log_init(my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet))
+	ret = lxc_log_init(my_args.log_file, my_args.log_priority,
+			   my_args.progname, my_args.quiet);
+	if (ret)
 		return ret;
 
-	if (lxc_freeze(my_args.name))
+	ret = lxc_checkpoint(my_args.name, my_args.argv[0], 0);
+	if (ret)
 		return ret;
-
-	if (lxc_checkpoint(my_args.name, my_args.argv[0], 0))
-		goto out;
-
-	if (my_args.stop) {
-		if (lxc_stop(my_args.name))
-			goto out;
-	}
-
-	ret = 0;
-
-out:
-	if (lxc_unfreeze(my_args.name))
-		return -1;
 
 	return ret;
 }

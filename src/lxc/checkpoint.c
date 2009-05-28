@@ -44,42 +44,7 @@
 
 lxc_log_define(lxc_checkpoint, lxc);
 
-#define MAXPIDLEN 20
-
-int lxc_checkpoint(const char *name, const char *statefile,
-		unsigned long flags)
+int lxc_checkpoint(const char *name, const char *statefile, unsigned long flags)
 {
-	char init[MAXPATHLEN];
-	char val[MAXPIDLEN];
-	int fd, ret = -1;
-	size_t pid;
-
-	if (lxc_check_lock(name) < 0) {
-		return -1;
-	}
-
-	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
-	fd = open(init, O_RDONLY);
-	if (fd < 0) {
-		SYSERROR("failed to open init file for %s", name);
-		goto out_close;
-	}
-
-	if (read(fd, val, sizeof(val)) < 0) {
-		SYSERROR("failed to read %s", init);
-		goto out_close;
-	}
-
-	pid = atoi(val);
-
-	if (lxc_plugin_checkpoint(pid, statefile, flags) < 0) {
-		SYSERROR("failed to checkpoint %zd", pid);
-		goto out_close;
-	}
-
-	ret = 0;
-
-out_close:
-	close(fd);
-	return ret;
+	return 0;
 }
