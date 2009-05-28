@@ -43,6 +43,7 @@ struct lxc_arguments {
 	char *log_priority;
 	int quiet;
 	const char *rcfile;
+	const char *statefile;
 
 	/* for lxc-checkpoint */
 	int kill;

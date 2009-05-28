@@ -28,12 +28,15 @@
 #include <lxc.h>
 #include "arguments.h"
 
+lxc_log_define(lxc_checkpoint, lxc);
+
 static int my_checker(const struct lxc_arguments* args)
 {
-	if (!args->argc) {
-		lxc_error(args, "missing STATEFILE filename !");
+	if (!args->statefile) {
+		lxc_error(args, "no statefile specified");
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -42,6 +45,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	switch (c) {
 	case 'k': args->kill = 1; break;
 	case 'p': args->pause = 1; break;
+	case 'd': args->statefile = arg; break;
 	}
 	return 0;
 }
@@ -49,6 +53,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 static const struct option my_longopts[] = {
 	{"kill", no_argument, 0, 'k'},
 	{"pause", no_argument, 0, 'p'},
+	{"directory", required_argument, 0, 'd'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -62,7 +67,8 @@ lxc-checkpoint checkpoints in STATEFILE file the NAME container\n\
 Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
   -k, --kill           stop the container after checkpoint\n\
-  -p, --pause          don't unfreeze the container after the checkpoint\n",
+  -p, --pause          don't unfreeze the container after the checkpoint\n\
+  -d, --directory      directory to store the statefile\n",
 
 	.options  = my_longopts,
 	.parser   = my_parser,
@@ -85,8 +91,12 @@ int main(int argc, char *argv[])
 		return ret;
 
 	ret = lxc_checkpoint(my_args.name, -1, 0);
-	if (ret)
+	if (ret) {
+		ERROR("failed to checkpoint '%s'", my_args.name);
 		return ret;
+	}
+
+	INFO("'%s' checkpointed", my_args.name);
 
 	return ret;
 }
