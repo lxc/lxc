@@ -31,7 +31,7 @@ man_MANS = \
 %.7 : %.sgml 
 	docbook2man -w all $<
 
-lxc-%.sgml : see_also.sgml
+lxc-%.sgml : common_options.sgml see_also.sgml
 
 clean-local:
 	$(RM) manpage.* *.7 *.5 *.1 *.sgml $(man_MANS)

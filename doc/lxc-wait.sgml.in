@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 <!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
 
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
 ]>
 
@@ -68,17 +69,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
       <varlistentry>
 	<term>
-	  <option>-n <replaceable>name</replaceable></option>
-	</term>
-	<listitem>
-	  <para>
-	    Specify the container name to be waited.
-	  </para>
-	</listitem>
-      </varlistentry>
-
-      <varlistentry>
-	<term>
 	  <option>-s <replaceable>states</replaceable></option>
 	</term>
 	<listitem>
@@ -93,6 +83,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   </refsect1>
 
+  &commonoptions;
+
   <refsect1>
     <title>Examples</title>
     <variablelist>
@@ -106,7 +98,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       </varlistentry>
 
       <varlistentry>
-	<term>lxc-wait -n 'RUNNING|STOPPED'</term>
+	<term>lxc-wait -n foo -s 'RUNNING|STOPPED'</term>
 	<listitem>
 	<para>
 	  exits when 'RUNNING' or 'STOPPED' state is reached.
