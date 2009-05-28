@@ -1679,64 +1679,6 @@ int conf_create_network(const char *name, pid_t pid)
 	return 0;
 }
 
-#ifdef NETWORK_DESTROY
-static int delete_netdev_cb(const char *name, const char *directory,
-			    const char *file, void *data)
-{
-	char strindex[MAXINDEXLEN];
-	char path[MAXPATHLEN];
-	char ifname[IFNAMSIZ];
-	int i, ifindex;
-
-	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
-
-	if (read_info(path, "ifindex", strindex, MAXINDEXLEN)) {
-		ERROR("failed to read ifindex info");
-		return -1;
-	}
-
-	ifindex = atoi(strindex);
-	if (!ifindex)
-		return 0;
-
-	/* TODO : temporary code - needs wait on namespace */
-	for (i = 0; i < 120; i++) {
-		if (if_indextoname(ifindex, ifname))
-			break;
-		if (!i)
-			printf("waiting for interface #%d to come back\n", ifindex);
-		else
-			printf("."); fflush(stdout);
-		sleep(1);
-	}
-
-	/* do not delete a physical network device */
-	if (strncmp("phys", file, strlen("phys")))
-		if (lxc_device_delete(ifname)) {
-			ERROR("failed to remove the netdev %s", ifname);
-		}
-
-	delete_info(path, "ifindex");
-
-	return 0;
-}
-#endif
-
-int conf_destroy_network(const char *name)
-{
-#ifdef NETWORK_DESTROY
-	char directory[MAXPATHLEN];
-
-	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
-
-	if (lxc_dir_for_each(name, directory, delete_netdev_cb, NULL)) {
-		ERROR("failed to remove the network devices");
-		return -1;
-	}
-#endif
-	return 0;
-}
-
 int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info)
 {
 	char path[MAXPATHLEN];

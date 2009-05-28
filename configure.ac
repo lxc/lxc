@@ -50,14 +50,6 @@ AC_ARG_WITH([kernel-release],
 	[KERNEL_RELEASE="${withval}"],
 	[KERNEL_RELEASE=`uname -r`])
 
-AX_COMPARE_VERSION([$KERNEL_RELEASE], [ge], [2.6.29],
-				     AC_MSG_NOTICE([network autodestroy: yes]),
-				     AC_MSG_NOTICE([network autodestroy: no]))
-
-if test ${ax_compare_version} != "true"; then
-   CFLAGS="$CFLAGS -DNETWORK_DESTROY"
-fi
-
 AC_ARG_ENABLE(test, [  --enable-test    compile test program [default=no]],, enable_test=no)
 AM_CONDITIONAL(ENABLE_TEST, test x$enable_test = xyes)
 
