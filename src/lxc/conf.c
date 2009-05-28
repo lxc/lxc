@@ -1260,13 +1260,22 @@ static int setup_network_cb(const char *name, const char *directory,
 		return -1;
 	}
 
-	if (!read_info(path, "name", newname, sizeof(newname))) {
-		if (lxc_device_rename(ifname, newname)) {
-			ERROR("failed to rename %s->%s",
-				      ifname, newname);
-			return -1;
-		}
-		current_ifname = newname;
+	/* default: let the system to choose one interface name */
+	if (read_info(path, "name", newname, sizeof(newname)))
+		strcpy(newname, "eth%d");
+
+	if (lxc_device_rename(ifname, newname)) {
+		ERROR("failed to rename %s->%s", ifname, current_ifname);
+		return -1;
+	}
+
+	/* Re-read the name of the interface because its name has changed
+	 * and would be automatically allocated by the system
+	 */
+	if (!if_indextoname(ifindex, current_ifname)) {
+		ERROR("no interface corresponding to index '%d'",
+			      ifindex);
+		return -1;
 	}
 
 	if (!read_info(path, "hwaddr", hwaddr, sizeof(hwaddr))) {
