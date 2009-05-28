@@ -35,6 +35,8 @@
 #include "confile.h"
 #include "arguments.h"
 
+lxc_log_define(lxc_create, lxc);
+
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
@@ -63,6 +65,11 @@ Options :\n\
 	.checker  = NULL,
 };
 
+static int copy_config_file(const char *name, const char *file)
+{
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	struct lxc_conf lxc_conf;
@@ -79,9 +86,22 @@ int main(int argc, char *argv[])
 	if (lxc_conf_init(&lxc_conf))
 		return -1;
 
-	if (my_args.rcfile && lxc_config_read(my_args.rcfile, &lxc_conf))
+	if (my_args.rcfile && lxc_config_read(my_args.rcfile, &lxc_conf)) {
+		ERROR("failed to read the configuration file");
 		return -1;
+	}
 
-	return lxc_create(my_args.name, &lxc_conf);
+	if (lxc_create(my_args.name, &lxc_conf)) {
+		ERROR("failed to create the container");
+		return -1;
+	}
+
+	if (copy_config_file(my_args.name, my_args.rcfile)) {
+		ERROR("failed to copy the configuration file");
+		lxc_destroy(my_args.name);
+		return -1;
+	}
+
+	return 0;
 }
 

@@ -67,7 +67,7 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback,
 			   char *buffer, size_t len, void* data)
 {
 	FILE *f;
-	int err = -1;
+	int err = 0;
 
 	f = fopen(file, "r");
 	if (!f) {
