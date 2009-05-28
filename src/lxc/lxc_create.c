@@ -20,9 +20,11 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <libgen.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <sys/param.h>
 #include <sys/utsname.h>
 #include <sys/types.h>
@@ -67,7 +69,20 @@ Options :\n\
 
 static int copy_config_file(const char *name, const char *file)
 {
-	return 0;
+	char *src;
+	int ret;
+
+	if (!asprintf(&src, LXCPATH "/%s/config", name)) {
+		ERROR("failed to allocate memory");
+		return -1;
+	}
+
+	ret = lxc_copy_file(file, src);
+	if (ret)
+		ERROR("failed to copy '%s' to '%s'", file, src);
+	free(src);
+
+	return ret;
 }
 
 int main(int argc, char *argv[])
@@ -96,11 +111,13 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (copy_config_file(my_args.name, my_args.rcfile)) {
+	if (my_args.rcfile && copy_config_file(my_args.name, my_args.rcfile)) {
 		ERROR("failed to copy the configuration file");
 		lxc_destroy(my_args.name);
 		return -1;
 	}
+
+	INFO("'%s' created", my_args.name);
 
 	return 0;
 }
