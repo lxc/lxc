@@ -142,10 +142,13 @@ int lxc_monitor_open(void)
 	strcpy(offset, "lxc-monitor");
 
 	fd = socket(PF_UNIX, SOCK_DGRAM, 0);
-	if (fd < 0)
+	if (fd < 0) {
+		ERROR("socket : %s", strerror(errno));
 		return -1;
+	}
 
 	if (bind(fd, (struct sockaddr *)&addr, sizeof(addr))) {
+		ERROR("bind : %s", strerror(errno));
 		close(fd);
 		return -1;
 	}
