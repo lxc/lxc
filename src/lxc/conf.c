@@ -644,71 +644,15 @@ static int configure_pts(const char *name, int pts)
 static int configure_mount(const char *name, const char *fstab)
 {
 	char path[MAXPATHLEN];
-	struct stat stat;
-	int infd, outfd;
-	void *src, *dst;
-	char c = '\0';
-	int ret = -1;
 
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/fstab", name);
 
-	outfd = open(path, O_RDWR|O_CREAT|O_EXCL, 0640);
-	if (outfd < 0) {
-		SYSERROR("failed to creat '%s'", path);
-		goto out;
+	if (lxc_copy_file(fstab, path)) {
+		ERROR("failed to copy the fstab file");
+		return -1;
 	}
 
-	infd = open(fstab, O_RDONLY);
-	if (infd < 0) {
-		SYSERROR("failed to open '%s'", fstab);
-		goto out_open;
-	}
-
-	if (fstat(infd, &stat)) {
-		SYSERROR("failed to stat '%s'", fstab);
-		goto out_open2;
-	}
-
-	if (lseek(outfd, stat.st_size - 1, SEEK_SET) < 0) {
-		SYSERROR("failed to seek dest file '%s'", path);
-		goto out_open2;
-	}
-
-	/* fixup length */
-	if (write(outfd, &c, 1) < 0) {
-		SYSERROR("failed to write to '%s'", path);
-		goto out_open2;
-	}
-
-	src = mmap(NULL, stat.st_size, PROT_READ, MAP_SHARED, infd, 0L);
-	if (src == MAP_FAILED) {
-		SYSERROR("failed to mmap '%s'", fstab);
-		goto out_open2;
-	}
-
-	dst = mmap(NULL, stat.st_size, PROT_WRITE, MAP_SHARED, outfd, 0L);
-	if (dst == MAP_FAILED) {
-		SYSERROR("failed to mmap '%s'", path);
-		goto out_mmap;
-	}
-
-	memcpy(dst, src, stat.st_size);
-
-	munmap(src, stat.st_size);
-	munmap(dst, stat.st_size);
-
-	ret = 0;
-out:
-	return ret;
-
-out_mmap:
-	munmap(src, stat.st_size);
-out_open2:
-	close(infd);
-out_open:
-	unlink(path);
-	close(outfd);
-	goto out;
+	return 0;
 }
 
 static int unconfigure_ip_addresses(const char *directory)
