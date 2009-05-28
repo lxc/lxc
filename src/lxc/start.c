@@ -489,11 +489,12 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 		goto out_abort;
 	}
 
-	if (lxc_link_nsgroup(name, handler->pid))
+	if (lxc_rename_nsgroup(name, handler->pid) || lxc_link_nsgroup(name))
 		WARN("cgroupfs not found: cgroup disabled");
 
 	/* Create the network configuration */
-	if (clone_flags & CLONE_NEWNET && conf_create_network(name, handler->pid)) {
+	if (clone_flags & CLONE_NEWNET &&
+	    conf_create_network(name, handler->pid)) {
 		ERROR("failed to create the configured network");
 		goto out_abort;
 	}

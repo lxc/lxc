@@ -70,7 +70,24 @@ out:
         return err;
 }
 
-int lxc_link_nsgroup(const char *name, pid_t pid)
+int lxc_rename_nsgroup(const char *name, pid_t pid)
+{
+	char oldname[MAXPATHLEN];
+	char newname[MAXPATHLEN];
+	char cgroup[MAXPATHLEN];
+
+	if (get_cgroup_mount(MTAB, cgroup)) {
+		INFO("cgroup is not mounted");
+		return -1;
+	}
+
+	snprintf(oldname, MAXPATHLEN, "%s/%d", cgroup, pid);
+	snprintf(newname, MAXPATHLEN, "%s/%s", cgroup, name);
+
+	return rename(oldname, newname);
+}
+
+int lxc_link_nsgroup(const char *name)
 {
 	char lxc[MAXPATHLEN];
 	char nsgroup[MAXPATHLEN];
@@ -83,7 +100,7 @@ int lxc_link_nsgroup(const char *name, pid_t pid)
 	}
 
 	snprintf(lxc, MAXPATHLEN, LXCPATH "/%s/nsgroup", name);
-	snprintf(nsgroup, MAXPATHLEN, "%s/%d", cgroup, pid);
+	snprintf(nsgroup, MAXPATHLEN, "%s/%s", cgroup, name);
 
 	unlink(lxc);
 	ret = symlink(nsgroup, lxc);
