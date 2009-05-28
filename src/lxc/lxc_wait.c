@@ -79,10 +79,9 @@ static int fillwaitedstates(char *strstates, int *states)
 	while (token) {
 
 		state = lxc_str2state(token);
-		if (state < 0) {
-			ERROR("invalid state %s", token);
+		if (state < 0)
 			return -1;
-		}
+
 		states[state] = 1;
 
 		token = strtok_r(NULL, "|", &saveptr);
