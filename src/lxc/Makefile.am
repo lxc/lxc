@@ -34,7 +34,7 @@ liblxc_la_SOURCES = \
 	parse.c parse.h \
 	cgroup.c cgroup.h \
 	lxc.h \
-	lxc_utils.h \
+	utils.c utils.h \
 	lock.c lock.h \
 	namespace.h \
 	conf.c conf.h \

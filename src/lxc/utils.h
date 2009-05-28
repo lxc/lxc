@@ -49,3 +49,5 @@
 	} while (0)
 
 #endif
+
+extern int lxc_copy_file(const char *src, const char *dst);
