@@ -23,7 +23,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN">
+<!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
 
 <refentry>
 
@@ -577,86 +580,7 @@ rootfs
     the frozen version.</para>
   </refsect1>
 
-  <refsect1>
-    <title>See Also</title>
-    <simpara>    
-      <citerefentry>
-	<refentrytitle><command>lxc-create</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc-destroy</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc-start</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc-execute</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc-stop</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc-console</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc-monitor</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-      
-      <citerefentry>
-	<refentrytitle><command>lxc-wait</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc-cgroup</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc-ls</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc-ps</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc-info</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc-freeze</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc-unfreeze</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
-	<refentrytitle><command>lxc.conf</command></refentrytitle>
-	<manvolnum>5</manvolnum>
-      </citerefentry>,
-
-    </simpara>
-  </refsect1>
+  &seealso;
 
   <refsect1>
     <title>Author</title>

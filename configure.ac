@@ -78,6 +78,7 @@ AC_CONFIG_FILES([
 	doc/lxc-cgroup.sgml
 	doc/lxc.conf.sgml
 	doc/lxc.sgml
+	doc/see_also.sgml
 
 	scripts/Makefile
 	scripts/lxc-debian

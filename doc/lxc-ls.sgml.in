@@ -24,7 +24,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN">
+<!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
 
 <refentry>
 
@@ -112,8 +115,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       </citerefentry>,
     </simpara>
 
-
   </refsect1>
+
+  &seealso;
 
   <refsect1>
     <title>Author</title>

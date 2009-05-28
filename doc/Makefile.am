@@ -23,13 +23,15 @@ man_MANS = \
 
 
 %.1 : %.sgml 
-	docbook2man $<
+	docbook2man -w all $<
 
 %.5 : %.sgml 
-	docbook2man $<
+	docbook2man -w all $<
 
 %.7 : %.sgml 
-	docbook2man $<
+	docbook2man -w all $<
+
+lxc-%.sgml : see_also.sgml
 
 clean-local:
 	$(RM) manpage.* *.7 *.5 *.1 *.sgml $(man_MANS)
