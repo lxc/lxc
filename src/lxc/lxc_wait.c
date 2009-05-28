@@ -86,7 +86,6 @@ static int fillwaitedstates(char *strstates, int *states)
 		states[state] = 1;
 
 		token = strtok_r(NULL, "|", &saveptr);
-		
 	}
 	return 0;
 }
@@ -95,6 +94,7 @@ int main(int argc, char *argv[])
 {
 	struct lxc_msg msg;
 	int s[MAX_STATE] = { }, fd;
+	int state, ret;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
@@ -110,9 +110,22 @@ int main(int argc, char *argv[])
 	if (fd < 0)
 		return -1;
 
+	/*
+	 * if container present,
+	 * then check if already in requested state
+	 */
+	ret = -1;
+	state = lxc_getstate(my_args.name);
+	if (state < 0) {
+		goto out_close;
+	} else if ((state >= 0) && (s[state])) {
+		ret = 0;
+		goto out_close;
+	}
+
 	for (;;) {
 		if (lxc_monitor_read(fd, &msg) < 0)
-			return -1;
+			goto out_close;
 
 		if (strcmp(my_args.name, msg.name))
 			continue;
@@ -122,11 +135,13 @@ int main(int argc, char *argv[])
 			if (msg.value < 0 || msg.value >= MAX_STATE) {
 				ERROR("Receive an invalid state number '%d'",
 					msg.value);
-				return -1;
+				goto out_close;
 			}
 
-			if (s[msg.value])
-				return 0;
+			if (s[msg.value]) {
+				ret = 0;
+				goto out_close;
+			}
 			break;
 		default:
 			/* just ignore garbage */
@@ -134,5 +149,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	return 0;
+out_close:
+	lxc_monitor_close(fd);
+	return ret;
 }
