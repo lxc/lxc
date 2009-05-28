@@ -23,7 +23,7 @@ for i in $*; do
 done
 
 if [ -z "$exec" ]; then
-    exec @BINDIR@/lxc-unshare -m -- @BINDIR@/lxc-netstat -n $name --exec $*
+    exec @BINDIR@/lxc-unshare -s MOUNT -- @BINDIR@/lxc-netstat -n $name --exec $*
 fi
 
 if [ -z "$name" ]; then
