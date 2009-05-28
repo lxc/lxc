@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	ret = lxc_checkpoint(my_args.name, my_args.argv[0], 0);
+	ret = lxc_checkpoint(my_args.name, -1, 0);
 	if (ret)
 		return ret;
 

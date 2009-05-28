@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	if (lxc_restart(my_args.name, my_args.argv[0], 0))
+	if (lxc_restart(my_args.name, -1, 0))
 		return -1;
 
 	return 0;
