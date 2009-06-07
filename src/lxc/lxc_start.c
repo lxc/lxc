@@ -135,9 +135,30 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return err;
 
-	if (my_args.daemonize && daemon(0 ,0)) {
-		SYSERROR("failed to daemonize '%s'", my_args.name);
-		return err;
+	if (my_args.daemonize) {
+
+                /* do not chdir as we want to open the log file,
+		 * change the directory right after.
+		 * do not close 0, 1, 2, we want to do that
+		 * ourself because we don't want /dev/null
+		 * being reopened.
+		 */
+		if (daemon(1 ,1)) {
+			SYSERROR("failed to daemonize '%s'", my_args.name);
+			return err;
+		}
+
+		close(0);
+		close(1);
+		close(2);
+
+		if (my_args.log_file) {
+			open(my_args.log_file, O_WRONLY | O_CLOEXEC);
+			open(my_args.log_file, O_RDONLY | O_CLOEXEC);
+			open(my_args.log_file, O_RDONLY | O_CLOEXEC);
+		}
+
+		chdir("/");
 	}
 
 	save_tty(&tios);

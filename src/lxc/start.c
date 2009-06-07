@@ -332,6 +332,41 @@ static void remove_init_pid(const char *name, pid_t pid)
 	unlink(init);
 }
 
+static int fdname(int fd, char *name, size_t size)
+{
+	char path[MAXPATHLEN];
+
+	snprintf(path, MAXPATHLEN, "/proc/self/fd/%d", fd);
+
+	return readlink(path, name, size) < 0 ? -1 : 0;
+}
+
+static int console_init(char *console, size_t size)
+{
+	struct stat stat;
+	int i;
+
+	for (i = 0; i < 3; i++) {
+		if (!isatty(i))
+			continue;
+
+		if (ttyname_r(i, console, size)) {
+			SYSERROR("failed to retrieve tty name");
+			return -1;
+		}
+		return 0;
+	}
+
+	if (!fstat(0, &stat)) {
+		if (S_ISREG(stat.st_mode) || S_ISCHR(stat.st_mode) ||
+		    S_ISFIFO(stat.st_mode) || S_ISLNK(stat.st_mode))
+			return fdname(0, console, size);
+	}
+
+	console[0] = '\0';
+	return 0;
+}
+
 int lxc_init(const char *name, struct lxc_handler *handler)
 {
 	int err = -1;
@@ -348,9 +383,10 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 		goto out_put_lock;
 	}
 
-	/* If we are not attached to a tty, disable it */
-	if (ttyname_r(0, handler->tty, sizeof(handler->tty)))
-		handler->tty[0] = '\0';
+	if (console_init(handler->tty, sizeof(handler->tty))) {
+		ERROR("failed to initialize the console");
+		goto out_aborting;
+	}
 
 	if (lxc_create_tty(name, &handler->tty_info)) {
 		ERROR("failed to create the ttys");
