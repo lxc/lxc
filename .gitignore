@@ -89,3 +89,21 @@ src/stamp-h1
 .pc/
 patches/
 
+test/conf
+test/confile
+test/dev
+test/forward
+test/ipv4_add
+test/ipv6_add
+test/lxc_create
+test/lxc_destroy
+test/lxc_low_monitor
+test/lxc_monitor
+test/lxc_start
+test/lxc_state
+test/lxc_stop
+test/macvlan
+test/movedev
+test/proxy
+test/tst_list
+test/veth
