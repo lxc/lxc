@@ -1,5 +1,7 @@
 if ENABLE_TEST
 
+AM_LDFLAGS = -lutil
+
 INCLUDES= -I$(top_srcdir)/src
 
 noinst_PROGRAMS = \
@@ -29,7 +31,8 @@ tst_list_LDADD = \
 
 confile_SOURCES = confile.c
 confile_LDADD = \
-	$(top_builddir)/src/lxc/lxc_config.o \
+	$(top_builddir)/src/lxc/conf.o \
+	$(top_builddir)/src/lxc/confile.o \
 	$(top_builddir)/src/lxc/liblxc.la
 
 conf_SOURCES = conf.c

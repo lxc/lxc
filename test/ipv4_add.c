@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	
-	ret = ip_addr_add(ifname, addr, 24, NULL);
+	ret = lxc_ip_addr_add(ifname, addr, 24, NULL);
 	if (ret) {
 		fprintf(stderr, "failed to set %s: %s\n", 
 			ifname, strerror(-ret));

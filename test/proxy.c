@@ -59,9 +59,9 @@ int main(int argc, char *argv[])
 	}
 
 	if (!strcmp(flag, "on"))
-		ret = neigh_proxy_on(ifname, family);
+		ret = lxc_neigh_proxy_on(ifname, family);
 	else if (!strcmp(flag, "off"))
-		ret = neigh_proxy_off(ifname, family);
+		ret = lxc_neigh_proxy_off(ifname, family);
 	else {
 		usage(argv[0]);
 		return 1;

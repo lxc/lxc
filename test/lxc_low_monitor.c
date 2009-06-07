@@ -51,15 +51,17 @@ int main(int argc, char *argv[])
 	if (!name)
 		usage(argv[0]);
 
-	fd = lxc_monitor_open(name);
+	fd = lxc_monitor_open();
 	if (fd < 0) {
 		fprintf(stderr, "failed to open monitor\n");
 		return -1;
 	}
 	
 	for (;;) {
-		lxc_state_t state;
-		lxc_monitor_read(fd, &state);
-		printf("received changing state '%s'\n", lxc_state2str(state));
+		struct lxc_msg msg;
+		lxc_monitor_read(fd, &msg);
+		if (msg.type == lxc_msg_state) {
+			printf("received changing state '%s'\n", lxc_state2str(msg.value));
+		}
 	}
 }

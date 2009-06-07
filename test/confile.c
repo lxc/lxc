@@ -31,7 +31,8 @@
 #include <net/if.h>
 
 #include <lxc/lxc.h>
-#include <lxc/lxc_config.h>
+#include <lxc/conf.h>
+#include <lxc/confile.h>
 
 static void usage(const char *cmd)
 {
@@ -59,7 +60,7 @@ int main(int argc, char *argv[])
 	if (!file || !name)
 		usage(argv[0]);
 
-	if (lxc_config_init(&lxc_conf)) {
+	if (lxc_conf_init(&lxc_conf)) {
 		fprintf(stderr, "failed to initialize configuration structure\n");
 		return 1;
 	}

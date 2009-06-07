@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	ret = macvlan_create(ifname, peer);
+	ret = lxc_macvlan_create(ifname, peer);
 	if (ret) {
 		fprintf(stderr, "failed to set %s/%s: %s\n", 
 			ifname, peer, strerror(-ret));

@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	
-	ret = ip6_addr_add(ifname, addr, 64, NULL);
+	ret = lxc_ip6_addr_add(ifname, addr, 64, NULL);
 	if (ret) {
 		fprintf(stderr, "failed to set %s: %s\n", 
 			ifname, strerror(-ret));

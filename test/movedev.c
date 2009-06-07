@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (device_move(ifname, pid)) {
+	if (lxc_device_move(ifname, pid)) {
 		fprintf(stderr, "failed to move %s\n", ifname);
 		return 1;
 	}

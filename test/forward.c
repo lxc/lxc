@@ -59,9 +59,9 @@ int main(int argc, char *argv[])
 	}
 
 	if (!strcmp(flag, "on"))
-		ret = ip_forward_on(ifname, family);
+		ret = lxc_ip_forward_on(ifname, family);
 	else if (!strcmp(flag, "off"))
-		ret = ip_forward_off(ifname, family);
+		ret = lxc_ip_forward_off(ifname, family);
 	else {
 		usage(argv[0]);
 		return 1;

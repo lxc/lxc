@@ -60,11 +60,11 @@ int main(int argc, char *argv[])
 	}
 
 	if (destroy)
-		ret = device_delete(ifname);
+		ret = lxc_device_delete(ifname);
 	else if (!strcmp(flag, "up"))
-		ret = device_up(ifname);
+		ret = lxc_device_up(ifname);
 	else if (!strcmp(flag, "down"))
-		ret = device_down(ifname);
+		ret = lxc_device_down(ifname);
 
 	if (ret) {
 		fprintf(stderr, "failed to set %s: %s\n", 
