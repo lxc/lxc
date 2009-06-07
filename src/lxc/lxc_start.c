@@ -26,6 +26,7 @@
 #include <string.h>
 #include <termios.h>
 #include <errno.h>
+#include <signal.h>
 #include <sys/param.h>
 #include <sys/utsname.h>
 #include <sys/types.h>
@@ -58,6 +59,46 @@ Options :\n\
 	.checker  = NULL,
 };
 
+static int save_tty(struct termios *tios)
+{
+	if (!isatty(0))
+		return 0;
+
+	if (tcgetattr(0, tios))
+		WARN("failed to get current terminal settings : %s",
+		     strerror(errno));
+
+	return 0;
+}
+
+static int restore_tty(struct termios *tios)
+{
+	struct termios current_tios;
+	void (*oldhandler)(int);
+	int ret;
+
+	if (!isatty(0))
+		return 0;
+
+	if (tcgetattr(0, &current_tios)) {
+		ERROR("failed to get current terminal settings : %s",
+		      strerror(errno));
+		return -1;
+	}
+
+	if (!memcmp(tios, &current_tios, sizeof(*tios)))
+		return 0;
+
+
+	oldhandler = signal(SIGTTOU, SIG_IGN);
+	ret = tcsetattr(0, TCSADRAIN, tios);
+	if (ret)
+		ERROR("failed to restore terminal attributes");
+	signal(SIGTTOU, oldhandler);
+
+	return ret;
+}
+
 int main(int argc, char *argv[])
 {
 	char *const *args;
@@ -81,17 +122,11 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return err;
 
-	if (tcgetattr(0, &tios)) {
-		ERROR("failed to get current terminal settings : %s",
-		      strerror(errno));
-		return err;
-	}
+	save_tty(&tios);
 
 	err = lxc_start(my_args.name, args);
 
-	if (tcsetattr(0, TCSAFLUSH, &tios))
-		ERROR("failed to restore terminal settings : %s",
-		      strerror(errno));
+	restore_tty(&tios);
 
 	return err;
 }
