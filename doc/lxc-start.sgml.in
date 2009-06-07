@@ -74,6 +74,29 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   </refsect1>
 
+  <refsect1>
+
+    <title>Options</title>
+
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-d, --daemon</option>
+	</term>
+	<listitem>
+	  <para>
+	    Run the container as a daemon. As the container has no
+	    more tty, if an error occurs nothing will be displayed,
+	    the log file can be used to check the error.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
   &commonoptions;
 
   <refsect1>
@@ -101,7 +124,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
           </para>
         </listitem>
       </varlistentry>    
-
 
     </variablelist>
 

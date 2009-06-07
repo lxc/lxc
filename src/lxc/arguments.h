@@ -42,6 +42,7 @@ struct lxc_arguments {
 	char *log_file;
 	char *log_priority;
 	int quiet;
+	int daemonize;
 	const char *rcfile;
 	const char *statefile;
 

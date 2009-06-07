@@ -26,11 +26,13 @@
 #include <string.h>
 #include <termios.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/param.h>
 #include <sys/utsname.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <net/if.h>
@@ -41,7 +43,16 @@
 
 lxc_log_define(lxc_start, lxc);
 
+static int my_parser(struct lxc_arguments* args, int c, char* arg)
+{
+	switch (c) {
+	case 'd': args->daemonize = 1; break;
+	}
+	return 0;
+}
+
 static const struct option my_longopts[] = {
+	{"daemon", no_argument, 0, 'd'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -53,10 +64,12 @@ static struct lxc_arguments my_args = {
 lxc-start start COMMAND in specified container NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME      NAME for name of the container",
-	.options  = my_longopts,
-	.parser   = NULL,
-	.checker  = NULL,
+  -n, --name=NAME      NAME for name of the container\n\
+  -d, --daemon         daemonize the container",
+	.options   = my_longopts,
+	.parser    = my_parser,
+	.checker   = NULL,
+	.daemonize = 0,
 };
 
 static int save_tty(struct termios *tios)
@@ -121,6 +134,11 @@ int main(int argc, char *argv[])
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
 		return err;
+
+	if (my_args.daemonize && daemon(0 ,0)) {
+		SYSERROR("failed to daemonize '%s'", my_args.name);
+		return err;
+	}
 
 	save_tty(&tios);
 
