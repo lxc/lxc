@@ -1,0 +1,4 @@
+#!/bin/bash
+
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:@DATADIR@/pkgconfig
+echo "lxc version: $(pkg-config --modversion lxc)"

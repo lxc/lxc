@@ -59,7 +59,7 @@ bin_SCRIPTS = \
 	lxc-ls \
 	lxc-checkconfig \
 	lxc-setcap \
-	lxc-config
+	lxc-version
 
 bin_PROGRAMS = \
 	lxc-unshare \

@@ -98,7 +98,7 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-netstat
 	src/lxc/lxc-checkconfig
 	src/lxc/lxc-setcap
-	src/lxc/lxc-config
+	src/lxc/lxc-version
 
 	etc/Makefile
 	etc/lxc-macvlan.conf
