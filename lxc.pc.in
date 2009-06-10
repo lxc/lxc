@@ -1,0 +1,11 @@
+bindir=@BINDIR@
+libdir=@LIBDIR@
+localstatedir=@LXCPATH@
+includedir=@INCLUDEDIR@
+
+Name: lxc
+Description: linux container tools
+Version: @LXC_MAJOR_VERSION@.@LXC_MINOR_VERSION@.@LXC_MICRO_VERSION@
+URL: http://lxc.sourceforge.net
+Libs: -L${libdir} -llxc -lutil
+Cflags: -I${includedir}

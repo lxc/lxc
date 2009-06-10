@@ -14,7 +14,10 @@ AC_PROG_LIBTOOL
 AC_CHECK_PROG(SETCAP, setcap, yes, no)
 AC_CHECK_PROG(DOCBOOK, docbook2man, yes, no)
 AM_CONDITIONAL(ENABLE_DOCBOOK, test x$DOCBOOK = xyes)
+AS_AC_EXPAND(PREFIX, $prefix)
+AS_AC_EXPAND(LIBDIR, $libdir)
 AS_AC_EXPAND(BINDIR, $bindir)
+AS_AC_EXPAND(INCLUDEDIR, $includedir)
 AS_AC_EXPAND(LIBEXECDIR, $libexecdir)
 AS_AC_EXPAND(SYSCONFDIR, $sysconfdir)
 AS_AC_EXPAND(LOCALSTATEDIR, $localstatedir)
@@ -59,6 +62,7 @@ AC_SUBST(LXC_MICRO_VERSION)
 
 AC_CONFIG_FILES([
         Makefile
+	lxc.pc
 	lxc.spec
         config/Makefile
 

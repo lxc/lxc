@@ -78,6 +78,7 @@ chmod ugo+w /var/lxc
 %{_bindir}/*
 %{_libexecdir}/*
 %{_mandir}/*
+%{_datadir}/pkgconfig/*
 
 %files devel
 %defattr(-,root,root)
