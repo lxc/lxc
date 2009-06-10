@@ -29,7 +29,6 @@ liblxc_la_SOURCES = \
 	freezer.c \
 	checkpoint.c \
 	restart.c \
-	version.c \
 	error.h error.c \
 	parse.c parse.h \
 	cgroup.c cgroup.h \
@@ -59,7 +58,8 @@ bin_SCRIPTS = \
 	lxc-netstat \
 	lxc-ls \
 	lxc-checkconfig \
-	lxc-setcap
+	lxc-setcap \
+	lxc-config
 
 bin_PROGRAMS = \
 	lxc-unshare \
@@ -76,8 +76,7 @@ bin_PROGRAMS = \
 	lxc-cgroup \
 	lxc-unfreeze \
 	lxc-checkpoint \
-	lxc-restart \
-	lxc-version
+	lxc-restart
 
 libexec_PROGRAMS = \
 	lxc-init
@@ -129,9 +128,6 @@ lxc_checkpoint_LDADD = liblxc.la
 
 lxc_restart_SOURCES = lxc_restart.c
 lxc_restart_LDADD = liblxc.la
-
-lxc_version_SOURCES = lxc_version.c
-lxc_version_LDADD = liblxc.la
 
 install-exec-local:
 	@mkdir -p $(DESTDIR)@LXCPATH@

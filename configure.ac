@@ -20,6 +20,7 @@ AS_AC_EXPAND(BINDIR, $bindir)
 AS_AC_EXPAND(INCLUDEDIR, $includedir)
 AS_AC_EXPAND(LIBEXECDIR, $libexecdir)
 AS_AC_EXPAND(SYSCONFDIR, $sysconfdir)
+AS_AC_EXPAND(DATADIR, $datadir)
 AS_AC_EXPAND(LOCALSTATEDIR, $localstatedir)
 AS_AC_EXPAND(LXCPATH, "${localstatedir}/lib/lxc")
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
@@ -97,6 +98,7 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-netstat
 	src/lxc/lxc-checkconfig
 	src/lxc/lxc-setcap
+	src/lxc/lxc-config
 
 	etc/Makefile
 	etc/lxc-macvlan.conf
