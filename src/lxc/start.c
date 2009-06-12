@@ -459,9 +459,7 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 		goto out;
 	}
 
-	clone_flags = CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
-	if (conf_has_utsname(name))
-		clone_flags |= CLONE_NEWUTS;
+	clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
 	if (conf_has_network(name))
 		clone_flags |= CLONE_NEWNET;
 
