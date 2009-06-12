@@ -37,6 +37,7 @@
 #include <sys/mount.h>
 #include <sys/types.h>
 #include <sys/prctl.h>
+#include <sys/types.h>
 #include <sys/capability.h>
 #include <sys/wait.h>
 #include <sys/un.h>
