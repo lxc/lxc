@@ -93,7 +93,7 @@ EOF
 # custom hostname
 
 write_distro_hostname() {
-cat <<EOF > ${ROOTFS}/sysconfig/network
+cat <<EOF > ${ROOTFS}/etc/sysconfig/network
 NETWORKING=yes
 HOSTNAME=${UTSNAME}
 EOF
@@ -246,14 +246,23 @@ create() {
 				'/^Release/ { release = $2 }
 				/^Version/ { version = $2 }
 				END { print version "-" release }')"
-		PKG="${DISTRO}-release.noarch.rpm"
-		RPM="rpm --root \"${CACHE}/partial\""
+
+		PKG="${DISTRO}-release-${RELEASE}.noarch"
+		RPM="rpm --root ${CACHE}/partial"
 
 		echo "Initializing RPM cache ..."
 		${RPM} --initdb
-		echo "Downloading ${DISTRO} Release ${RELEASE} description ..."
-		yumdownloader --destdir="${CACHE}/partial" "${DISTRO}-release.noarch.rpm" && \
-		${RPM} --nodeps -ihv "${CACHE}/partial/${DISTRO}-release*.noarch.rpm"
+		echo "Downloading distribution release file ${PKG}"
+		yumdownloader --destdir="${CACHE}/partial" "${PKG}"
+                RESULT=$?
+
+               if [ "${RESULT}" != "0" ]; then
+                   echo "Enable to download the distribution release file"
+                   exit 1
+               fi
+
+		${RPM} --nodeps -ihv "${CACHE}/partial/${PKG}.rpm"
+
 		echo "Downloading ${DISTRO} minimal ..."
 		yum --installroot="${CACHE}/partial" -y groupinstall Base
 		RESULT=$?
