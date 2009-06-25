@@ -30,29 +30,42 @@
 
 static int my_checker(const struct lxc_arguments* args)
 {
-	if (!args->argc) {
-		lxc_error(args, "missing STATEFILE filename !");
+	if (!args->statefile) {
+		lxc_error(args, "no statefile specified");
 		return -1;
 	}
 
 	return 0;
 }
 
+static int my_parser(struct lxc_arguments* args, int c, char* arg)
+{
+	switch (c) {
+	case 'd':
+		args->statefile = arg;
+		break;
+	}
+
+	return 0;
+}
+
 static const struct option my_longopts[] = {
+	{"directory", required_argument, 0, 'd'},
 	LXC_COMMON_OPTIONS
 };
 
 static struct lxc_arguments my_args = {
 	.progname = "lxc-restart",
 	.help     = "\
---name=NAME STATEFILE\n\
+--name=NAME --directory STATEFILE\n\
 \n\
-lxc-restart restarts from STATEFILE file the NAME container\n\
+lxc-restart restarts from STATEFILE the NAME container\n\
 \n\
 Options :\n\
-  -n, --name=NAME      NAME for name of the container\n",
+  -n, --name=NAME           NAME for name of the container\n\
+  -d, --directory=STATEFILE for name of statefile\n",
 	.options  = my_longopts,
-	.parser   = NULL,
+	.parser   = my_parser,
 	.checker  = my_checker,
 };
 

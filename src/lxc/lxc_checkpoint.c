@@ -62,15 +62,15 @@ static const struct option my_longopts[] = {
 static struct lxc_arguments my_args = {
 	.progname = "lxc-checkpoint",
 	.help     = "\
---name=NAME STATEFILE\n\
+--name=NAME --directory STATEFILE\n\
 \n\
-lxc-checkpoint checkpoints in STATEFILE file the NAME container\n\
+lxc-checkpoint checkpoints in STATEFILE the NAME container\n\
 \n\
 Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
   -k, --kill           stop the container after checkpoint\n\
   -p, --pause          don't unfreeze the container after the checkpoint\n\
-  -d, --directory      directory to store the statefile\n",
+  -d, --directory=STATEFILE where to store the statefile\n",
 
 	.options  = my_longopts,
 	.parser   = my_parser,
