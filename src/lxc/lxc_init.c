@@ -106,8 +106,10 @@ int main(int argc, char *argv[])
 		exit(err);
 	}
 
+	err = 0;
 	for (;;) {
 		int status;
+		int orphan = 0;
 		pid_t waited_pid;
 
 		waited_pid = wait(&status);
@@ -118,9 +120,16 @@ int main(int argc, char *argv[])
 				continue;
 			ERROR("failed to wait child : %s", strerror(errno));
 			goto out;
-		} else {
-			err = lxc_error_set_and_log(waited_pid, status);
 		}
+
+		/*
+		 * keep the exit code of started application (not wrapped pid)
+		 * and continue to wait for the end of the orphan group.
+		 */
+		if ((waited_pid != pid) || (orphan ==1))
+			continue;
+		orphan = 1;
+		err = lxc_error_set_and_log(waited_pid, status);
 	}
 out:
 	return err;
