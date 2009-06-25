@@ -336,10 +336,15 @@ static void remove_init_pid(const char *name, pid_t pid)
 static int fdname(int fd, char *name, size_t size)
 {
 	char path[MAXPATHLEN];
+	ssize_t len;
 
 	snprintf(path, MAXPATHLEN, "/proc/self/fd/%d", fd);
 
-	return readlink(path, name, size) < 0 ? -1 : 0;
+	len = readlink(path, name, size);
+	if (len >  0)
+		path[len] = '\0';
+
+	return (len <= 0) ? -1 : 0;
 }
 
 static int console_init(char *console, size_t size)
