@@ -114,11 +114,15 @@ int lxc_unlink_nsgroup(const char *name)
 {
 	char nsgroup[MAXPATHLEN];
 	char path[MAXPATHLEN];
+	ssize_t len;
 
 	snprintf(nsgroup, MAXPATHLEN, LXCPATH "/%s/nsgroup", name);
 	
-	if (readlink(nsgroup, path, MAXPATHLEN) >  0)
+	len = readlink(nsgroup, path, MAXPATHLEN-1);
+	if (len >  0) {
+		path[len] = '\0';
 		rmdir(path);
+	}
 
 	return unlink(nsgroup);
 }
