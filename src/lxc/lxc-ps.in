@@ -1,40 +1,188 @@
-#!/bin/bash
-# set -ex
+#!/usr/bin/perl
+#
+# lxc-ps
+#
+# Authors:
+# Daniel Lezcano <daniel.lezcano@free.fr>
 
-lxcpath=@LXCPATH@
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
 
-if [ ! -r $lxcpath ]; then
-    exit 0
-fi
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
 
-if [ $# -eq  0 ]; then
-    echo "usage: $0 -n <name>"
-    exit 1
-fi
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-for i in $*; do
-    case $i in
-	-n)
-	    name=$2; shift 2;;
-    esac
-done
+#
+# This script allows to
+# display processes information with related container name if available.
+#
+use strict;
 
-if [ -z "$name" ]; then
-    echo "usage: $0 -n <name>"
-    exit 1
-fi
 
-if [ ! -d $lxcpath/$name ]; then
-    echo "'$name' does not exists"
-    exit 1
-fi
+# Some globals
 
-if [ ! -r $lxcpath/$name ]; then
-    echo "Can not access '$name', permission denied"
-    exit 1
-fi
+our $PS_HEADERS;      # String containing headers of the ps output
+our $PS_PID_INDEX;    # Index of the PID column in the ps headers
+our @PS_LINES;        # Output lines of the ps command
 
-if [ -h $lxcpath/$name/nsgroup ]; then
-    ps $* -p $(cat $lxcpath/$name/nsgroup/tasks)
-fi
+our $LXC_DISPLAY = 0; # By default do not display container information
+our %LXC_NAMES;       # Specified container names (if any)
 
+
+# Reclaim the PID index in the ps output.
+# The $PS_HEADERS must be set to the first line of ps output and must
+# contains the columns headers.
+# This function will set the $PS_PID_INDEX global or exit with an error
+# message if the PID index can't be retrieved.
+
+sub reclaim_pid_index {
+    my @headers = split " ", $PS_HEADERS;
+    for my $i (0 .. $#headers) {
+	if ($headers[$i] eq "PID") {
+	    $PS_PID_INDEX = $i;
+	    return;
+	}
+    }
+    print "Cannot find ps PID column !\n";
+    exit 1;
+}
+
+
+# Execute the ps command
+
+sub execute_ps {
+    open(ps, "ps @_ |") or die "Cannot execute ps command: $!\n";
+
+    # Reclaim the PID index in ps output
+    $PS_HEADERS = <ps>;
+    reclaim_pid_index;
+
+    # Reclaim lines of ps output
+    while (<ps>) {
+	push @PS_LINES, $_;
+    }
+    close ps;
+}
+
+
+# Get the container name (if any) associated to a given PID.
+# @param $pid The PID to use.
+# @return The container name as a string or an empty string.
+
+sub get_container {
+    my $pid = shift;
+    my $filename = "/proc/$pid/cgroup";
+    open(LXC, "$filename");
+    my $container = <LXC>;
+    close LXC;
+    chomp($container);
+    if ($container =~ m/[:,]ns[:,]/o) {
+    	$container =~ s/.*:\///o;
+    } else {
+	$container ='';
+    }
+    return $container;
+}
+
+
+# Display headers line.
+# The $PS_HEADERS global must be set.
+
+sub display_headers {
+    printf "%-10s %s", "CONTAINER", $PS_HEADERS;
+}
+
+
+# Display command usage
+
+sub display_usage {
+    print <<EOF;
+Usage: lxc-ps [--help] [--usage] [--name NAME...] [--lxc] [ps options]
+EOF
+}
+
+
+# Display command help
+
+sub display_help {
+    display_usage;
+    print <<EOF;
+
+Display processes information with related container name if available.
+
+Options:
+--help     Display this help.
+--usage    Display the command usage.
+--name     Display processes related to given containers.
+           Containers are identified by a comma separated list of
+	   their names.
+--lxc      Display processes related to all lxc containers.
+
+Other available options correspond to the ps ones, see the ps manual
+or try a 'ps --help' for further details.
+EOF
+}
+
+
+# Process lxc-ps arguments and build
+
+use Getopt::Long qw(:config no_auto_abbrev pass_through);
+
+my $arg_help  = '';
+my $arg_usage = '';
+my $arg_lxc   = '';
+my @arg_name;
+
+GetOptions('help'   => \$arg_help,
+	   'usage'  => \$arg_usage,
+	   'lxc'    => \$arg_lxc,
+	   'name=s' => \@arg_name);
+
+@arg_name = split(/,/, join(',', @arg_name));
+
+# Some help
+if ($arg_help)  {display_help; exit 0;}
+if ($arg_usage) {display_usage; exit 0;}
+
+# Should we filter processes related to containers
+if ($arg_lxc) {
+    # Display processes related to all containers
+    $LXC_DISPLAY = 1;
+    @ARGV = ('-e', @ARGV);
+} elsif (@arg_name > 0) {
+    # Display processes related to specified containers
+    $LXC_DISPLAY = 2;
+    foreach (@arg_name) {
+	$LXC_NAMES{$_} = 1;
+    }
+    @ARGV = ('-e', @ARGV);
+}
+
+
+# Execute the ps command
+
+execute_ps @ARGV;
+
+
+# Display result with addition of container name
+
+display_headers;
+for (@PS_LINES) {
+    my @a = split;
+    my $container = get_container $a[$PS_PID_INDEX];
+    if ($LXC_DISPLAY == 1 and $container eq '') {next;}
+    if ($LXC_DISPLAY == 2 and not $LXC_NAMES{$container}) {next;}
+    printf "%-10s %s", $container, $_;
+}
+
+
+# Done
+
+exit 0;
