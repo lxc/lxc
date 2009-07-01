@@ -48,7 +48,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-ps <replaceable>-n name</replaceable>
+      <command>lxc-ps <optional>--name name</optional>
+        <optional>--lxc</optional>
 	<optional>ps option</optional>
       </command>
     </cmdsynopsis>
@@ -57,8 +58,20 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsect1>
     <title>Description</title>
     <para>
-      <command>lxc-ps</command> list the processes belonging to a
-      specific container.
+      <command>lxc-ps</command> is a wrapper tp ps command
+	to report the name of lxc container associated
+	to reported processes.
+    </para>
+    <para>
+	The cgroup fs must be mounted before container creation,
+	to be able to have <command>lxc-ps</command> to find
+	the container associated to processes.
+    </para>
+    <para>
+	The additionnal specified ps options must not
+	remove the default ps header and the pid information,
+	to be able to have the <command>lxc-ps</command> to find
+	the container associated to processes.
     </para>
   </refsect1>
 
@@ -68,12 +81,25 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
       <varlistentry>
 	<term>
-	  <option><replaceable>-n name</replaceable></option>
+	  <option><replaceable>--name NAME</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
-	    specify the container <replaceable>name</replaceable> to
-	    list the processes.
+	    specify the container <replaceable>NAME</replaceable>
+	    to limit the output to the processes belonging 
+	    to this container name.	    
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option><replaceable>--lxc</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    limit the output to the processes belonging 
+	    to all lxc containers.
 	  </para>
 	</listitem>
       </varlistentry>
@@ -95,10 +121,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   </refsect1>
 
   <refsect1>
-    <title>Examples</title>
+    <title>Example</title>
     <variablelist>
       <varlistentry>
-	<term>lxc-ps -n foo --forest</term>
+	<term>lxc-ps --name foo --forest</term>
 	<listitem>
 	<para>
 	  list all the processes belonging to container 'foo' and show
@@ -106,16 +132,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</para>
 	</listitem>
       </varlistentry>
-
-      <varlistentry>
-	<term>lxc-ps -n foo -o pid=</term>
-	<listitem>
-	<para>
-	  list all the containers and display the list in one column.
-	</para>
-	</listitem>
-      </varlistentry>
-
     </variablelist>
   </refsect1>
 
