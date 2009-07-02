@@ -132,9 +132,9 @@ if test "x$SETCAP" = "xno"; then
 Warning:
 --------
 
-The libcap-2 is not installed. That means the tools to
-set the privilege for the lxc commands are not available,
-that's ok, but you will need to run these commands as root
+The setcap binary was not found. This means the tools to set the
+privilege for the lxc commands are not available, that's ok, but you
+will need to run these commands as root or install libcap-2.
 
 ])
 
@@ -145,10 +145,10 @@ else
 Advice:
 -------
 
-If you which to have a non root user to use the lxc tools,
+If you wish to have a non root user to use the lxc tools,
 you can add the needed capabilities to the tools by invoking
 the 'lxc-setcap' script. To remove the capabilities, use
-'lxc-setcap -d'
+'lxc-setcap -d'.
 ])
 
 fi
