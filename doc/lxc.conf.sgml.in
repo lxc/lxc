@@ -259,12 +259,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  </term>
 	  <listitem>
 	    <para>
-	      Specify the container should have a new pseudo tty
-	      instance making this private to it. The value specified
-	      is ignored for but it is preferable to specify a
-	      consistent value representing the maximum number of
-	      pseudo tty allowed for pts instance either if it is
-	      ignored for now.
+	      If set, the container will have a new pseudo tty
+	      instance, making this private to it. The value specifies
+              the maximum number of pseudo ttys allowed for a pts
+              instance (this limitation is not implemented yet).
 	    </para>
 	  </listitem>
 	</varlistentry>
