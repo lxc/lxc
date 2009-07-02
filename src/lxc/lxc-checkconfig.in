@@ -65,3 +65,4 @@ echo
 echo "--- Misc ---"
 echo -n "Veth pair device: " && is_enabled CONFIG_VETH
 echo -n "Macvlan: " && is_enabled CONFIG_MACVLAN
+echo -n "File capabilities: " && is_enabled CONFIG_SECURITY_FILE_CAPABILITIES
