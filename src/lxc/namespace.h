@@ -49,18 +49,6 @@
 #  define CLONE_NEWNET            0x40000000
 #endif
 
-#if __i386__ || __x86_64__ || __powerpc__
-#   define fork_ns(flags) syscall(SYS_clone, flags|SIGCHLD, NULL)
-#elif __s390__
-#   define fork_ns(flags) syscall(SYS_clone, NULL, flags|SIGCHLD)
-#elif __ia64__
-#   define fork_ns(flags) syscall(SYS_clone2, flags|SIGCHLD, NULL)
-#else
-#   error "unsupported architecture"
-#endif
-
-#define unshare_ns(flags) unshare(flags)
-
 extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags);
 
 #endif
