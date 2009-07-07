@@ -35,7 +35,7 @@ liblxc_la_SOURCES = \
 	lxc.h \
 	utils.c utils.h \
 	lock.c lock.h \
-	namespace.h \
+	namespace.h namespace.c \
 	conf.c conf.h \
 	list.h \
 	state.c state.h \

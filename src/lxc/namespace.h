@@ -1,7 +1,7 @@
 /*
  * lxc: linux Container library
  *
- * (C) Copyright IBM Corp. 2007, 2008
+ * (C) Copyright IBM Corp. 2007, 2009
  *
  * Authors:
  * Daniel Lezcano <dlezcano at fr.ibm.com>
@@ -24,6 +24,9 @@
 #define __namespace_h
 
 #include <syscall.h>
+#define _GNU_SOURCE
+#include <sched.h>
+
 #ifndef CLONE_FS
 #  define CLONE_FS                0x00000200
 #endif
@@ -45,21 +48,7 @@
 #ifndef CLONE_NEWNET
 #  define CLONE_NEWNET            0x40000000
 #endif
-#ifndef __NR_unshare
-#  ifdef __i386__
-#    define __NR_unshare 310
-#  elif __x86_64__
-#    define __NR_unshare 272
-#  elif __ia64__
-#    define __NR_unshare 1296
-#  elif __s390__
-#    define __NR_unshare 303
-#  elif __powerpc__
-#    define __NR_unshare 282
-#else
-#    error "unsupported architecture"
-#  endif
-#endif
+
 #if __i386__ || __x86_64__ || __powerpc__
 #   define fork_ns(flags) syscall(SYS_clone, flags|SIGCHLD, NULL)
 #elif __s390__
@@ -69,5 +58,9 @@
 #else
 #   error "unsupported architecture"
 #endif
-#define unshare_ns(flags) syscall(__NR_unshare, flags, NULL)
+
+#define unshare_ns(flags) unshare(flags)
+
+extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags);
+
 #endif
