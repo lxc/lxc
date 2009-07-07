@@ -32,6 +32,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <namespace.h>
 #include <sys/param.h>
 #include <sys/file.h>
 #include <sys/mount.h>
@@ -452,11 +453,78 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 	kill(handler->pid, SIGKILL);
 }
 
+struct start_arg {
+	const char *name;
+	char *const *argv;
+	struct lxc_handler *handler;
+	int *sv;
+};
+
+static int do_start(void *arg)
+{
+	struct start_arg *start_arg = arg;
+	struct lxc_handler *handler = start_arg->handler;
+	const char *name = start_arg->name;
+	char *const *argv = start_arg->argv;
+	int *sv = start_arg->sv;
+	int err = -1, sync;
+
+	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
+		SYSERROR("failed to set sigprocmask");
+		goto out_child;
+	}
+
+	close(sv[1]);
+
+	/* Be sure we don't inherit this after the exec */
+	fcntl(sv[0], F_SETFD, FD_CLOEXEC);
+
+	/* Tell our father he can begin to configure the container */
+	if (write(sv[0], &sync, sizeof(sync)) < 0) {
+		SYSERROR("failed to write socket");
+		goto out_child;
+	}
+
+	/* Wait for the father to finish the configuration */
+	if (read(sv[0], &sync, sizeof(sync)) < 0) {
+		SYSERROR("failed to read socket");
+		goto out_child;
+	}
+
+	/* Setup the container, ip, names, utsname, ... */
+	if (lxc_setup(name, handler->tty, &handler->tty_info)) {
+		ERROR("failed to setup the container");
+		goto out_warn_father;
+	}
+
+	if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
+		SYSERROR("failed to remove CAP_SYS_BOOT capability");
+		goto out_child;
+	}
+
+	execvp(argv[0], argv);
+	SYSERROR("failed to exec %s", argv[0]);
+
+out_warn_father:
+	/* If the exec fails, tell that to our father */
+	if (write(sv[0], &err, sizeof(err)) < 0)
+		SYSERROR("failed to write the socket");
+out_child:
+	return -1;
+}
+
 int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 {
 	int sv[2];
 	int clone_flags;
 	int err = -1, sync;
+
+	struct start_arg start_arg = {
+		.name = name,
+		.argv = argv,
+		.handler = handler,
+		.sv = sv,
+	};
 
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
@@ -469,56 +537,10 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 		clone_flags |= CLONE_NEWNET;
 
 	/* Create a process in a new set of namespaces */
-	handler->pid = fork_ns(clone_flags);
+	handler->pid = lxc_clone(do_start, &start_arg, clone_flags);
 	if (handler->pid < 0) {
 		SYSERROR("failed to fork into a new namespace");
 		goto out_close;
-	}
-
-	if (!handler->pid) {
-
-		if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
-			SYSERROR("failed to set sigprocmask");
-			goto out_child;
-		}
-
-		close(sv[1]);
-
-		/* Be sure we don't inherit this after the exec */
-		fcntl(sv[0], F_SETFD, FD_CLOEXEC);
-		
-		/* Tell our father he can begin to configure the container */
-		if (write(sv[0], &sync, sizeof(sync)) < 0) {
-			SYSERROR("failed to write socket");
-			goto out_child;
-		}
-
-		/* Wait for the father to finish the configuration */
-		if (read(sv[0], &sync, sizeof(sync)) < 0) {
-			SYSERROR("failed to read socket");
-			goto out_child;
-		}
-
-		/* Setup the container, ip, names, utsname, ... */
-		if (lxc_setup(name, handler->tty, &handler->tty_info)) {
-			ERROR("failed to setup the container");
-			goto out_warn_father;
-		}
-
-		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
-			SYSERROR("failed to remove CAP_SYS_BOOT capability");
-			goto out_child;
-		}
-
-		execvp(argv[0], argv);
-		SYSERROR("failed to exec %s", argv[0]);
-
-	out_warn_father:
-		/* If the exec fails, tell that to our father */
-		if (write(sv[0], &err, sizeof(err)) < 0)
-			SYSERROR("failed to write the socket");
-	out_child:
-		exit(err);
 	}
 
 	close(sv[0]);

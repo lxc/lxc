@@ -40,7 +40,6 @@ void usage(char *cmd)
 {
 	fprintf(stderr, "%s <options> [command]\n", basename(cmd));
 	fprintf(stderr, "Options are:\n");
-	fprintf(stderr, "\t -f      : fork and unshare (automatic when unsharing the pids)\n");
 	fprintf(stderr, "\t -s flags: Ored list of flags to unshare:\n" \
 			"\t           MOUNT, PID, UTSNAME, IPC, USER, NETWORK\n");
 	fprintf(stderr, "\t -u <id> : new id to be set if -s USER is specified\n");
@@ -101,7 +100,7 @@ static int lxc_namespace_2_cloneflag(char *namespace)
 	return -1;
 }
 
-static int lxc_fill_namespace_flags(char *flaglist, long *flags)
+static int lxc_fill_namespace_flags(char *flaglist, int *flags)
 {
 	char *token, *saveptr = NULL;
 	int aflag;
@@ -125,17 +124,48 @@ static int lxc_fill_namespace_flags(char *flaglist, long *flags)
 	return 0;
 }
 
+
+struct start_arg {
+	char ***args;
+	int *flags;
+	uid_t *uid;
+};
+
+static int do_start(void *arg)
+{
+	struct start_arg *start_arg = arg;
+	char **args = *start_arg->args;
+	int flags = *start_arg->flags;
+	uid_t uid = *start_arg->uid;
+
+	if (flags & CLONE_NEWUSER && setuid(uid)) {
+		ERROR("failed to set uid %d: %s", uid, strerror(errno));
+		exit(1);
+	}
+
+	execvp(args[0], args);
+
+	ERROR("failed to exec: '%s': %s", args[0], strerror(errno));
+	return 1;
+}
+
 int main(int argc, char *argv[])
 {
-	int opt, status = 1, hastofork = 0;
+	int opt, status;
 	int ret;
 	char *namespaces = NULL;
 	char **args;
-	long flags = 0;
+	int flags = 0;
 	uid_t uid = -1; /* valid only if (flags & CLONE_NEWUSER) */
 	pid_t pid;
 
-	while ((opt = getopt(argc, argv, "fs:u:")) != -1) {
+	struct start_arg start_arg = {
+		.args = &args,
+		.uid = &uid,
+		.flags = &flags,
+	};
+
+	while ((opt = getopt(argc, argv, "s:u:")) != -1) {
 		switch (opt) {
 		case 's':
 			namespaces = optarg;
@@ -144,74 +174,31 @@ int main(int argc, char *argv[])
 			uid = lookup_user(optarg);
 			if (uid == -1)
 				return 1;
-		case 'f':
-			hastofork = 1;
-			break;
 		}
 	}
 
 	args = &argv[optind];
 
         ret = lxc_fill_namespace_flags(namespaces, &flags);
-	if (ret)
+ 	if (ret)
 		usage(argv[0]);
 
 	if (!(flags & CLONE_NEWUSER) && uid != -1) {
-		ERROR("-u <uid> need -s USER option");
+		ERROR("-u <uid> needs -s USER option");
 		return 1;
 	}
 
-	if ((flags & CLONE_NEWPID) || hastofork) {
-
-		if (!argv[optind] || !strlen(argv[optind]))
-			usage(argv[0]);
-
-		pid = fork_ns(flags);
-
-		if (pid < 0) {
-			ERROR("failed to fork into a new namespace: %s",
-				strerror(errno));
-			return 1;
-		}
-
-		if (!pid) {
-			if (flags & CLONE_NEWUSER && setuid(uid)) {
-				ERROR("failed to set uid %d: %s",
-					uid, strerror(errno));
-				exit(1);
-			}
-
-			execvp(args[0], args);
-			ERROR("failed to exec: '%s': %s",
-				argv[0], strerror(errno));
-			exit(1);
-		}
-		
-		if (waitpid(pid, &status, 0) < 0)
-			ERROR("failed to wait for '%d'", pid);
-		
-		return status;
+	pid = lxc_clone(do_start, &start_arg, flags);
+	if (pid < 0) {
+		ERROR("failed to clone");
+		return -1;
 	}
 
-	if (unshare_ns(flags)) {
-		ERROR("failed to unshare the current process: %s",
-			strerror(errno));
-		return 1;
+	if (waitpid(pid, &status, 0) < 0) {
+		ERROR("failed to wait for '%d'", pid);
+		return -1;
 	}
 
-	if (flags & CLONE_NEWUSER && setuid(uid)) {
-		ERROR("failed to set uid %d: %s",
-			uid, strerror(errno));
-		return 1;
-	}
-
-	if (argv[optind] && strlen(argv[optind])) {
-		execvp(args[0], args);
-		ERROR("failed to exec: '%s': %s",
-			argv[0], strerror(errno));
-		return 1;
-	}
-
-	return 0;
+	return status;
 }
 
