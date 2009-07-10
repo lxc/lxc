@@ -49,7 +49,9 @@ lxc_setcaps()
     setcap $LXC_UNSHARE_CAPS=ep @BINDIR@/lxc-unshare
     setcap $LXC_NETSTAT_CAPS=ep @BINDIR@/lxc-netstat
     setcap $LXC_INIT_CAPS=ep @LIBEXECDIR@/lxc-init
-    chmod 2777 @LXCPATH@
+
+    test -e @LXCPATH@ || mkdir -p @LXCPATH@
+    chmod 0777 @LXCPATH@
 }
 
 lxc_dropcaps()
