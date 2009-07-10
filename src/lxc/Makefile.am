@@ -128,6 +128,3 @@ lxc_checkpoint_LDADD = liblxc.la
 
 lxc_restart_SOURCES = lxc_restart.c
 lxc_restart_LDADD = liblxc.la
-
-install-exec-local:
-	@mkdir -p $(DESTDIR)@LXCPATH@
