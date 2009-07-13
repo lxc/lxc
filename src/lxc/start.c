@@ -552,7 +552,7 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	}
 
 	if (lxc_rename_nsgroup(name, handler->pid) || lxc_link_nsgroup(name))
-		WARN("cgroupfs not found: cgroup disabled");
+		goto out_abort;
 
 	/* Create the network configuration */
 	if (clone_flags & CLONE_NEWNET &&

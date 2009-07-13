@@ -75,16 +75,21 @@ int lxc_rename_nsgroup(const char *name, pid_t pid)
 	char oldname[MAXPATHLEN];
 	char newname[MAXPATHLEN];
 	char cgroup[MAXPATHLEN];
+	int ret;
 
 	if (get_cgroup_mount(MTAB, cgroup)) {
-		INFO("cgroup is not mounted");
+		ERROR("cgroup is not mounted");
 		return -1;
 	}
 
 	snprintf(oldname, MAXPATHLEN, "%s/%d", cgroup, pid);
 	snprintf(newname, MAXPATHLEN, "%s/%s", cgroup, name);
 
-	return rename(oldname, newname);
+	ret = rename(oldname, newname);
+	if (ret)
+		SYSERROR("failed to rename cgroup %s->%s",
+				 oldname, newname);
+	return ret;
 }
 
 int lxc_link_nsgroup(const char *name)
@@ -95,7 +100,7 @@ int lxc_link_nsgroup(const char *name)
 	int ret;
 
 	if (get_cgroup_mount(MTAB, cgroup)) {
-		INFO("cgroup is not mounted");
+		ERROR("cgroup is not mounted");
 		return -1;
 	}
 
