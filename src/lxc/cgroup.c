@@ -58,11 +58,20 @@ static int get_cgroup_mount(const char *mtab, char *mnt)
         }
 
         while ((mntent = getmntent(file))) {
-                if (strcmp(mntent->mnt_type, "cgroup"))
-                        continue;
-                strcpy(mnt, mntent->mnt_dir);
-                err = 0;
-                break;
+
+		/* there is a cgroup mounted named "lxc" */
+		if (!strcmp(mntent->mnt_fsname, "lxc") &&
+		    !strcmp(mntent->mnt_type, "cgroup")) {
+			strcpy(mnt, mntent->mnt_dir);
+			err = 0;
+			break;
+		}
+
+		/* fallback to the first non-lxc cgroup found */
+                if (!strcmp(mntent->mnt_type, "cgroup") && err) {
+			strcpy(mnt, mntent->mnt_dir);
+			err = 0;
+		}
         };
 
         fclose(file);
@@ -87,8 +96,7 @@ int lxc_rename_nsgroup(const char *name, pid_t pid)
 
 	ret = rename(oldname, newname);
 	if (ret)
-		SYSERROR("failed to rename cgroup %s->%s",
-				 oldname, newname);
+		SYSERROR("failed to rename cgroup %s->%s", oldname, newname);
 	return ret;
 }
 
@@ -110,8 +118,7 @@ int lxc_link_nsgroup(const char *name)
 	unlink(lxc);
 	ret = symlink(nsgroup, lxc);
 	if (ret)
-		SYSERROR("failed to create symlink %s->%s",
-				 nsgroup, lxc);
+		SYSERROR("failed to create symlink %s->%s", nsgroup, lxc);
       return ret;
 }
 
