@@ -73,8 +73,11 @@ struct lxc_arguments {
 /* option keys for long only options */
 #define	OPT_USAGE 0x1000
 
-extern int lxc_arguments_parse(struct lxc_arguments *a_args,
+extern int lxc_arguments_parse(struct lxc_arguments *args,
 			       int argc, char *const argv[]);
+
+extern char **lxc_arguments_dup(const char *file, struct lxc_arguments *args);
+
 extern const char *lxc_strerror(int errnum);
 
 #define lxc_error(arg, fmt, args...) if (!(arg)->quiet)			\
