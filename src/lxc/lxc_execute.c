@@ -105,8 +105,7 @@ int main(int argc, char *argv[])
 		autodestroy = 1;
 	}
 
-	/* lxc-init --mount-procfs -- .... */
-	args = malloc((my_args.argc + 8)*sizeof(*args));
+	args = alloca((my_args.argc + 3)*sizeof(*args));
 	if (!args) {
 		ERROR("failed to allocate memory for '%s'", my_args.name);
 		goto out;
@@ -114,14 +113,14 @@ int main(int argc, char *argv[])
 
 	nbargs = 0;
 	args[nbargs++] = LXCLIBEXECDIR "/lxc-init";
-	args[nbargs++] = "--mount-procfs";
+
 	if (my_args.log_file) {
 		args[nbargs++] = "--logfile";
-		args[nbargs++] = my_args.log_file;
+		args[nbargs++] = strdupa(my_args.log_file);
 	}
 	if (my_args.log_priority) {
 		args[nbargs++] = "--logpriority";
-		args[nbargs++] = my_args.log_priority;
+		args[nbargs++] = strdupa(my_args.log_priority);
 	}
 	if (my_args.quiet) {
 		args[nbargs++] = "--quiet";
@@ -129,7 +128,9 @@ int main(int argc, char *argv[])
 	args[nbargs++] = "--";
 
 	for (opt = 0; opt < my_args.argc; opt++)
-		args[nbargs++] = my_args.argv[opt];
+		args[nbargs++] = strdupa(my_args.argv[opt]);
+
+	args[nbargs] = '\0';
 
 	ret = lxc_start(my_args.name, args);
 out:
