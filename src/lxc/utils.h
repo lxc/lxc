@@ -51,3 +51,4 @@
 #endif
 
 extern int lxc_copy_file(const char *src, const char *dst);
+extern int lxc_fd_close_inherited(void);

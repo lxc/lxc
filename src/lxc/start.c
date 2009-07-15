@@ -614,6 +614,12 @@ int lxc_start(const char *name, char *const argv[])
 		goto out;
 	}
 
+	err = lxc_fd_close_inherited();
+	if (err) {
+		ERROR("unable to close inherited fds");
+		goto out_abort;
+	}
+
 	err = lxc_poll(name, &handler);
 	if (err) {
 		ERROR("mainloop exited with an error");

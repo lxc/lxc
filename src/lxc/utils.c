@@ -21,12 +21,17 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#include <fcntl.h>
+#define _GNU_SOURCE
 #include <errno.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <stddef.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/param.h>
+#include <dirent.h>
+#include <fcntl.h>
 
 #include "log.h"
 
@@ -101,4 +106,96 @@ out:
 err:
 	unlink(dstfile);
 	goto out_mmap;
+}
+
+struct lxc_fd_entry {
+	int fd;
+	struct lxc_fd_entry *next;
+};
+
+static struct lxc_fd_entry *lxc_fd_list;
+
+static int fd_list_add(int fd)
+{
+	struct lxc_fd_entry *entry;
+
+	entry = malloc(sizeof(struct lxc_fd_entry));
+	if (!entry) {
+		SYSERROR("malloc");
+		return -1;
+	}
+
+	entry->fd = fd;
+	entry->next = lxc_fd_list;
+	lxc_fd_list = entry;
+
+	return 0;
+}
+
+static void fd_list_del(struct lxc_fd_entry *entry)
+{
+	free(lxc_fd_list);
+	lxc_fd_list = entry;
+}
+
+static void __attribute__((constructor)) __lxc_fd_collect_inherited(void)
+{
+	struct dirent dirent, *direntp;
+	int fd, fddir;
+	DIR *dir;
+
+	dir = opendir("/proc/self/fd");
+	if (!dir) {
+		WARN("failed to open directory: %s", strerror(errno));
+		return;
+	}
+
+	fddir = dirfd(dir);
+
+	while (!readdir_r(dir, &dirent, &direntp)) {
+
+		if (!direntp)
+			break;
+
+		if (!strcmp(direntp->d_name, "."))
+			continue;
+
+		if (!strcmp(direntp->d_name, ".."))
+			continue;
+
+		fd = atoi(direntp->d_name);
+
+		if (fd == fddir)
+			continue;
+
+		if (fd_list_add(fd))
+			WARN("failed to add fd '%d' to the list", fd);
+	}
+
+	if (closedir(dir))
+		WARN("failed to close directory");
+}
+
+int lxc_fd_close_inherited(void)
+{
+	struct lxc_fd_entry *next;
+
+	while (lxc_fd_list) {
+
+		/* do not close the stderr fd to keep open default
+		 * error reporting path.
+		 */
+		if (lxc_fd_list->fd == 2 && isatty(lxc_fd_list->fd))
+			goto next;
+
+		if (close(lxc_fd_list->fd))
+			WARN("failed to close fd '%d': %s", lxc_fd_list->fd,
+			     strerror(errno));
+
+	next:
+		next = lxc_fd_list->next;
+		fd_list_del(next);
+	}
+
+	return 0;
 }

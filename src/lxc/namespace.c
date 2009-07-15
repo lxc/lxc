@@ -50,7 +50,7 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 	};
 
 	long stack_size = sysconf(_SC_PAGESIZE);
-	void *stack = alloca(stack_size) + stack_size;
+ 	void *stack = alloca(stack_size) + stack_size;
 	pid_t ret;
 
 	ret = clone(do_clone, stack, flags | SIGCHLD, &clone_arg);
