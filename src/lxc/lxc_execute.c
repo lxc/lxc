@@ -79,8 +79,6 @@ int main(int argc, char *argv[])
 {
 	static char **args;
 	char path[MAXPATHLEN];
-	int opt;
-	int nbargs = 0;
 	int autodestroy = 0;
 	int ret = -1;
 	struct lxc_conf lxc_conf;
@@ -105,32 +103,9 @@ int main(int argc, char *argv[])
 		autodestroy = 1;
 	}
 
-	args = alloca((my_args.argc + 3)*sizeof(*args));
-	if (!args) {
-		ERROR("failed to allocate memory for '%s'", my_args.name);
+	args = lxc_arguments_dup(LXCLIBEXECDIR "/lxc-init", &my_args);
+	if (!args)
 		goto out;
-	}
-
-	nbargs = 0;
-	args[nbargs++] = LXCLIBEXECDIR "/lxc-init";
-
-	if (my_args.log_file) {
-		args[nbargs++] = "--logfile";
-		args[nbargs++] = strdupa(my_args.log_file);
-	}
-	if (my_args.log_priority) {
-		args[nbargs++] = "--logpriority";
-		args[nbargs++] = strdupa(my_args.log_priority);
-	}
-	if (my_args.quiet) {
-		args[nbargs++] = "--quiet";
-	}
-	args[nbargs++] = "--";
-
-	for (opt = 0; opt < my_args.argc; opt++)
-		args[nbargs++] = strdupa(my_args.argv[opt]);
-
-	args[nbargs] = '\0';
 
 	ret = lxc_start(my_args.name, args);
 out:
