@@ -94,6 +94,17 @@ int lxc_rename_nsgroup(const char *name, pid_t pid)
 	snprintf(oldname, MAXPATHLEN, "%s/%d", cgroup, pid);
 	snprintf(newname, MAXPATHLEN, "%s/%s", cgroup, name);
 
+	/* there is a previous cgroup, assume it is empty, otherwise
+	 * that fails */
+	if (!access(newname, F_OK)) {
+		ret = rmdir(newname);
+		if (ret) {
+			SYSERROR("failed to remove previous cgroup '%s'",
+				 newname);
+			return ret;
+		}
+	}
+
 	ret = rename(oldname, newname);
 	if (ret)
 		SYSERROR("failed to rename cgroup %s->%s", oldname, newname);
