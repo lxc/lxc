@@ -599,7 +599,7 @@ out_abort:
 
 int lxc_start(const char *name, char *const argv[])
 {
-	struct lxc_handler handler = { 0 };
+	struct lxc_handler handler;
 	int err = -1;
 	int status;
 
