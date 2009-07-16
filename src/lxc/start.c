@@ -100,6 +100,15 @@ lxc_log_define(lxc_start, lxc);
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);
 
+struct lxc_handler {
+	int sigfd;
+	int lock;
+	pid_t pid;
+	char tty[MAXPATHLEN];
+	sigset_t oldmask;
+	struct lxc_tty_info tty_info;
+};
+
 static int setup_sigchld_fd(sigset_t *oldmask)
 {
 	sigset_t mask;
@@ -374,15 +383,19 @@ static int console_init(char *console, size_t size)
 	return 0;
 }
 
-int lxc_init(const char *name, struct lxc_handler *handler)
+struct lxc_handler *lxc_init(const char *name)
 {
-	int err = -1;
+	struct lxc_handler *handler;
+
+	handler = malloc(sizeof(*handler));
+	if (!handler)
+		return NULL;
 
 	memset(handler, 0, sizeof(*handler));
 
 	handler->lock = lxc_get_lock(name);
 	if (handler->lock < 0)
-		goto out;
+		goto out_free;
 
 	/* Begin the set the state to STARTING*/
 	if (lxc_setstate(name, STARTING)) {
@@ -413,9 +426,8 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	LXC_TTY_ADD_HANDLER(SIGINT);
 	LXC_TTY_ADD_HANDLER(SIGQUIT);
 
-	err = 0;
 out:
-	return err;
+	return handler;
 
 out_delete_tty:
 	lxc_delete_tty(&handler->tty_info);
@@ -423,6 +435,9 @@ out_aborting:
 	lxc_setstate(name, ABORTING);
 out_put_lock:
 	lxc_put_lock(handler->lock);
+out_free:
+	free(handler);
+	handler = NULL;
 	goto out;
 }
 
@@ -432,16 +447,15 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	 * which can take awhile
 	 */
 	lxc_setstate(name, STOPPING);
-
 	lxc_setstate(name, STOPPED);
-
-	remove_init_pid(name, handler->pid);
-
-	lxc_delete_tty(&handler->tty_info);
-
 	lxc_unlink_nsgroup(name);
 
-	lxc_put_lock(handler->lock);
+	if (handler) {
+		remove_init_pid(name, handler->pid);
+		lxc_delete_tty(&handler->tty_info);
+		lxc_put_lock(handler->lock);
+		free(handler);
+	}
 
 	LXC_TTY_DEL_HANDLER(SIGQUIT);
 	LXC_TTY_DEL_HANDLER(SIGINT);
@@ -599,16 +613,17 @@ out_abort:
 
 int lxc_start(const char *name, char *const argv[])
 {
-	struct lxc_handler handler;
+	struct lxc_handler *handler;
 	int err = -1;
 	int status;
 
-	if (lxc_init(name, &handler)) {
+	handler = lxc_init(name);
+	if (!handler) {
 		ERROR("failed to initialize the container");
 		goto out;
 	}
 
-	err = lxc_spawn(name, &handler, argv);
+	err = lxc_spawn(name, handler, argv);
 	if (err) {
 		ERROR("failed to spawn '%s'", argv[0]);
 		goto out;
@@ -620,21 +635,21 @@ int lxc_start(const char *name, char *const argv[])
 		goto out_abort;
 	}
 
-	err = lxc_poll(name, &handler);
+	err = lxc_poll(name, handler);
 	if (err) {
 		ERROR("mainloop exited with an error");
 		goto out_abort;
 	}
 
-	while (waitpid(handler.pid, &status, 0) < 0 && errno == EINTR)
+	while (waitpid(handler->pid, &status, 0) < 0 && errno == EINTR)
 		continue;
 
-	err =  lxc_error_set_and_log(handler.pid, status);
+	err =  lxc_error_set_and_log(handler->pid, status);
 out:
-	lxc_fini(name, &handler);
+	lxc_fini(name, handler);
 	return err;
 
 out_abort:
-	lxc_abort(name, &handler);
+	lxc_abort(name, handler);
 	goto out;
 }
