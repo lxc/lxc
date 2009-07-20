@@ -33,6 +33,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 
+#include "list.h"
 #include "log.h"
 
 lxc_log_define(lxc_utils, lxc);
@@ -110,10 +111,10 @@ err:
 
 struct lxc_fd_entry {
 	int fd;
-	struct lxc_fd_entry *next;
+	struct lxc_list list;
 };
 
-static struct lxc_fd_entry *lxc_fd_list;
+struct lxc_list lxc_fd_list;
 
 static int fd_list_add(int fd)
 {
@@ -126,16 +127,16 @@ static int fd_list_add(int fd)
 	}
 
 	entry->fd = fd;
-	entry->next = lxc_fd_list;
-	lxc_fd_list = entry;
+	entry->list.elem = entry;
+	lxc_list_add(&lxc_fd_list, &entry->list);
 
 	return 0;
 }
 
 static void fd_list_del(struct lxc_fd_entry *entry)
 {
-	free(lxc_fd_list);
-	lxc_fd_list = entry;
+	lxc_list_del(&entry->list);
+	free(entry);
 }
 
 static void __attribute__((constructor)) __lxc_fd_collect_inherited(void)
@@ -151,6 +152,8 @@ static void __attribute__((constructor)) __lxc_fd_collect_inherited(void)
 	}
 
 	fddir = dirfd(dir);
+
+	lxc_list_init(&lxc_fd_list);
 
 	while (!readdir_r(dir, &dirent, &direntp)) {
 
@@ -176,25 +179,50 @@ static void __attribute__((constructor)) __lxc_fd_collect_inherited(void)
 		WARN("failed to close directory");
 }
 
-int lxc_fd_close_inherited(void)
+int lxc_close_inherited_fd(int fd)
 {
-	struct lxc_fd_entry *next;
+	struct lxc_fd_entry *entry;
+	struct lxc_list *iterator;
 
-	while (lxc_fd_list) {
+	lxc_list_for_each(iterator, &lxc_fd_list) {
+
+		entry = iterator->elem;
+
+		if (entry->fd != fd)
+			continue;
+
+		fd_list_del(entry);
+
+		break;
+	}
+
+	return close(fd);
+}
+
+int lxc_close_all_inherited_fd(void)
+{
+	struct lxc_fd_entry *entry;
+	struct lxc_list *iterator;
+
+again:
+	lxc_list_for_each(iterator, &lxc_fd_list) {
+
+		entry = iterator->elem;
 
 		/* do not close the stderr fd to keep open default
 		 * error reporting path.
 		 */
-		if (lxc_fd_list->fd == 2 && isatty(lxc_fd_list->fd))
-			goto next;
+		if (entry->fd == 2 && isatty(entry->fd)) {
+			fd_list_del(entry);
+			continue;
+		}
 
-		if (close(lxc_fd_list->fd))
-			WARN("failed to close fd '%d': %s", lxc_fd_list->fd,
+		if (close(entry->fd))
+			WARN("failed to close fd '%d': %s", entry->fd,
 			     strerror(errno));
 
-	next:
-		next = lxc_fd_list->next;
-		fd_list_del(next);
+		fd_list_del(entry);
+		goto again;
 	}
 
 	return 0;

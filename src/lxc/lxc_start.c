@@ -143,14 +143,14 @@ int main(int argc, char *argv[])
 		 * ourself because we don't want /dev/null
 		 * being reopened.
 		 */
-		if (daemon(1 ,1)) {
+		if (daemon(1, 1)) {
 			SYSERROR("failed to daemonize '%s'", my_args.name);
 			return err;
 		}
 
-		close(0);
-		close(1);
-		close(2);
+		lxc_close_inherited_fd(0);
+		lxc_close_inherited_fd(1);
+		lxc_close_inherited_fd(2);
 
 		if (my_args.log_file) {
 			open(my_args.log_file, O_WRONLY | O_CLOEXEC);

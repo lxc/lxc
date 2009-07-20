@@ -51,4 +51,5 @@
 #endif
 
 extern int lxc_copy_file(const char *src, const char *dst);
-extern int lxc_fd_close_inherited(void);
+extern int lxc_close_inherited_fd(int fd);
+extern int lxc_close_all_inherited_fd(void);

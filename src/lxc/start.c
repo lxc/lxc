@@ -370,6 +370,7 @@ static int console_init(char *console, size_t size)
 			SYSERROR("failed to retrieve tty name");
 			return -1;
 		}
+
 		return 0;
 	}
 
@@ -629,7 +630,7 @@ int lxc_start(const char *name, char *const argv[])
 		goto out;
 	}
 
-	err = lxc_fd_close_inherited();
+	err = lxc_close_all_inherited_fd();
 	if (err) {
 		ERROR("unable to close inherited fds");
 		goto out_abort;
