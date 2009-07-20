@@ -48,6 +48,30 @@ static struct option options[] = {
 	{ 0, 0, 0, 0 },
 };
 
+static int mount_fs(const char *source, const char *target, const char *type)
+{
+	/* sometimes the umount fails */
+	if (umount(target))
+		WARN("failed to unmount %s : %s", target, strerror(errno));
+
+	if (mount(source, target, type, 0, NULL)) {
+		ERROR("failed to mount %s : %s", target, strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+static inline int setup_fs(void)
+{
+	if (mount_fs("proc", "/proc", "proc"))
+		return -1;
+	if (mount_fs("shmfs", "/dev/shm", "tmpfs"))
+		return -1;
+
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	pid_t pid;
@@ -87,10 +111,8 @@ int main(int argc, char *argv[])
 
 	if (!pid) {
 		
-		if (mount("proc", "/proc", "proc", 0, NULL)) {
-			ERROR("failed to mount '/proc' : %s", strerror(errno));
+		if (setup_fs())
 			exit(err);
-		}
 
 		execvp(aargv[0], aargv);
 		ERROR("failed to exec: '%s' : %s", aargv[0], strerror(errno));
