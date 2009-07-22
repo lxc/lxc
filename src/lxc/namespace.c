@@ -53,7 +53,12 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
  	void *stack = alloca(stack_size) + stack_size;
 	pid_t ret;
 
+#ifdef __ia64__
+	ret = __clone2(do_clone, stack,
+		       stack_size, flags | SIGCHLD, &clone_arg);
+#else
 	ret = clone(do_clone, stack, flags | SIGCHLD, &clone_arg);
+#endif
 	if (ret < 0)
 		ERROR("failed to clone(0x%x): %s", flags, strerror(errno));
 
