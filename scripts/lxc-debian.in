@@ -5,7 +5,8 @@ CACHE="@LOCALSTATEDIR@/cache/lxc/debian"
 
 NAME="debian"
 CONFFILE="lxc.conf"
-MNTFILE="mount.conf"
+MNTFILE=
+TMPMNTFILE=
 UTSNAME=
 IPV4="172.20.0.21"
 GATEWAY="172.20.0.1"
@@ -135,7 +136,7 @@ lxc.network.flags = up
 lxc.network.link = br0
 lxc.network.name = eth0
 lxc.network.mtu = $MTU
-lxc.mount = $MNTFILE
+lxc.mount = $TMPMNTFILE
 lxc.rootfs = $ROOTFS
 lxc.cgroup.devices.deny = a
 # /dev/null and zero
@@ -157,9 +158,12 @@ EOF
 }
 
 write_lxc_mounts() {
-cat <<EOF > $MNTFILE
 
-EOF
+    TMPMNTFILE=$(mktemp lxc.XXXXXXXXXX)
+
+    if [ ! -z "$MNTFILE" ]; then
+	cp $MNTFILE $TMPMNTFILE
+    fi
 }
 
 collect_information() {
@@ -213,6 +217,13 @@ collect_information() {
 
     if [ ! -z "$_ROOTFS_" ]; then
 	ROOTFS=$_ROOTFS_
+    fi
+
+    echo -n "Specify the location for an extra fstab file [(none)] "
+    read _MNTFILE_
+
+    if [ ! -z "$_MNTFILE_" ]; then
+	MNTFILE=$_MNTFILE_
     fi
 }
 
@@ -301,7 +312,7 @@ create() {
 
     # remove the configuration files
     rm -f $CONFFILE
-    rm -f $MNTFILE
+    rm -f $TMPMNTFILE
 
     if [ "$RES" != "0" ]; then
 	echo "Failed to create '$NAME'"
