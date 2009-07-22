@@ -806,6 +806,8 @@ static int setup_utsname(const char *name)
 		return -1;
 	}
 
+	INFO("'%s' hostname has been setup", utsname.nodename);
+
 	return 0;
 }
 
@@ -835,6 +837,8 @@ static int setup_tty(const char *name, const struct lxc_tty_info *tty_info)
 		}
 	}
 
+	INFO("%d tty(s) has been setup", tty_info->nbtty);
+
 	return 0;
 }
 
@@ -853,6 +857,8 @@ static int setup_rootfs(const char *name)
 		SYSERROR("failed to change to home directory");
 		return -1;
 	}
+
+	INFO("chrooted to '%s'", path);
 
 	return 0;
 }
@@ -890,6 +896,8 @@ static int setup_pts(const char *name)
 		SYSERROR("mount failed '/dev/pts/ptmx'->'/dev/ptmx'");
 		return -1;
 	}
+
+	INFO("created new pts instance");
 out:
 	return 0;
 }
@@ -908,6 +916,8 @@ static int setup_console(const char *name, const char *tty)
 		return -1;
 	}
 
+	INFO("console '%s' mounted to '%s'", tty, console);
+
 	return 0;
 }
 
@@ -924,10 +934,17 @@ static int setup_cgroup_cb(void* buffer, void *data)
 	*value = '\0';
 	value += 1;
 
+	/* remove spurious '\n'*/
+	if (value[strlen(value) - 1] == '\n')
+		value[strlen(value) - 1] = '\0';
+
 	ret = lxc_cgroup_set(name, key, value);
 	if (ret)
 		ERROR("failed to set cgroup '%s' = '%s' for '%s'",
 				 key, value, name);
+
+	DEBUG("cgroup '%s' set to '%s'", key, value);
+
 	return ret;
 }
 
@@ -984,6 +1001,7 @@ static int setup_cgroup(const char *name)
 	char filename[MAXPATHLEN];
 	char line[MAXPATHLEN];
 	struct stat s;
+	int ret;
 
 	snprintf(filename, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
 
@@ -999,8 +1017,14 @@ static int setup_cgroup(const char *name)
 		}
 	}
 
-	return lxc_file_for_each_line(filename, setup_cgroup_cb,
-				      line, MAXPATHLEN, (void *)name);
+	ret = lxc_file_for_each_line(filename, setup_cgroup_cb,
+				     line, MAXPATHLEN, (void *)name);
+	if (ret)
+		return ret;
+
+	INFO("cgroup has been setup");
+
+	return 0;
 }
 
 static void parse_mntopt(char *opt, unsigned long *flags, char **data)
@@ -1096,9 +1120,15 @@ static int setup_mount(const char *name)
 			goto out;
 		}
 
+		DEBUG("mounted %s on %s, type %s", mntent->mnt_fsname,
+		      mntent->mnt_dir, mntent->mnt_type);
+
 		free(mntdata);
 	}
+
 	ret = 0;
+
+	INFO("mount points have been setup");
 out:
 	endmntent(file);
 	return ret;
@@ -1135,6 +1165,8 @@ static int setup_ipv4_addr_cb(void *buffer, void *data)
 		return -1;
 	}
 
+	DEBUG("address '%s/%s' on '%s' has been setup", addr, prefix, ifname);
+
 	return 0;
 }
 
@@ -1169,6 +1201,8 @@ static int setup_ipv6_addr_cb(void *buffer, void *data)
 		return -1;
 	}
 
+	INFO("address '%s/%s' on '%s' has been setup", addr, prefix, ifname);
+
 	return 0;
 }
 
@@ -1196,6 +1230,8 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	close(fd);
 	if (ret)
 		ERROR("ioctl failure : %s", strerror(errno));
+
+	DEBUG("mac address '%s' on '%s' has been setup", hwaddr, ifname);
 
 	return ret;
 }
@@ -1311,15 +1347,25 @@ static int setup_network_cb(const char *name, const char *directory,
 		}
 	}
 
+	DEBUG("'%s' has been setup", current_ifname);
+
 	return 0;
 }
 
 static int setup_network(const char *name)
 {
 	char directory[MAXPATHLEN];
+	int ret;
 
 	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
-	return lxc_dir_for_each(name, directory, setup_network_cb, NULL);
+
+	ret = lxc_dir_for_each(name, directory, setup_network_cb, NULL);
+	if (ret)
+		return ret;
+
+	INFO("network has been setup");
+
+	return 0;
 }
 
 int conf_has(const char *name, const char *info)
@@ -1847,6 +1893,8 @@ int lxc_setup(const char *name, const char *cons,
 		ERROR("failed to setup the new pts instance");
 		return -1;
 	}
+
+	NOTICE("'%s' is setup.", name);
 
 	return 0;
 }

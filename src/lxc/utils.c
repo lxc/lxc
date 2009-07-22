@@ -196,6 +196,8 @@ int lxc_close_inherited_fd(int fd)
 		break;
 	}
 
+	DEBUG("closing fd '%d'", fd);
+
 	return close(fd);
 }
 
@@ -217,6 +219,8 @@ again:
 			continue;
 		}
 
+		DEBUG("closing fd '%d'", entry->fd);
+
 		if (close(entry->fd))
 			WARN("failed to close fd '%d': %s", entry->fd,
 			     strerror(errno));
@@ -224,6 +228,8 @@ again:
 		fd_list_del(entry);
 		goto again;
 	}
+
+	DEBUG("closed all inherited file descriptors");
 
 	return 0;
 }
