@@ -32,8 +32,7 @@
 #include <sys/mount.h>
 #define _GNU_SOURCE
 #include <getopt.h>
-#include "log.h"
-#include "error.h"
+#include "lxc.h"
 
 lxc_log_define(lxc_init, lxc);
 
@@ -59,6 +58,8 @@ static int mount_fs(const char *source, const char *target, const char *type)
 		return -1;
 	}
 
+	DEBUG("'%s' mounted on '%s'", source, target);
+
 	return 0;
 }
 
@@ -66,6 +67,7 @@ static inline int setup_fs(void)
 {
 	if (mount_fs("proc", "/proc", "proc"))
 		return -1;
+
 	if (mount_fs("shmfs", "/dev/shm", "tmpfs"))
 		return -1;
 
@@ -114,9 +116,17 @@ int main(int argc, char *argv[])
 		if (setup_fs())
 			exit(err);
 
+		NOTICE("about to exec '%s'", aargv[0]);
+
 		execvp(aargv[0], aargv);
 		ERROR("failed to exec: '%s' : %s", aargv[0], strerror(errno));
 		exit(err);
+	}
+
+	err = lxc_close_all_inherited_fd();
+	if (err) {
+		ERROR("unable to close inherited fds");
+		goto out;
 	}
 
 	err = 0;
