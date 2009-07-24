@@ -230,13 +230,11 @@ rootfs
 
     <para>Running a system inside a container is paradoxically easier
     than running an application. Why ? Because you don't have to care
-    about the resources to be isolated, everything need to be isolated
-    except <filename>/dev</filename> which needs to be remounted in
-    the container rootfs, the other resources are specified as being
-    isolated but without configuration because the container will set
-    them up. eg. the ipv4 address will be setup by the system
-    container init scripts. Here is an example of the mount points
-    file:
+    about the resources to be isolated, everything need to be
+    isolated, the other resources are specified as being isolated but
+    without configuration because the container will set them
+    up. eg. the ipv4 address will be setup by the system container
+    init scripts. Here is an example of the mount points file:
       
       <programlisting>
 	[root@lxc debian]$ cat fstab
@@ -425,7 +423,7 @@ rootfs
       following commands give this information:
 	<programlisting>
 	  lxc-ls
-	  lxc-ps -n foo
+	  lxc-ps --name foo
 	  lxc-info -n foo
 	</programlisting>
       </para>
@@ -449,11 +447,12 @@ rootfs
 	container. Like <command>lxc-ls</command>, <command>lxc-ps</command>
 	is built on top of <command>ps</command> and accepts the same
 	options, eg:
-	<programlisting>
-	  lxc-ps -n foo --forest
-	</programlisting>
+	<programlisting>lxc-ps --name foo --forest</programlisting>
+	will display the processes hierarchy for the processes
+	belonging the 'foo' container.
 
-	will display the process hierarchy for the container 'foo'.
+	<programlisting>lxc-ps --lxc</programlisting>
+	will display all the containers and their processes.
       </para>
 
       <para>
