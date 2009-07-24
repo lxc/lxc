@@ -93,6 +93,8 @@ int lxc_setstate(const char *name, lxc_state_t state)
 	}
 
 	err = 0;
+
+	DEBUG("set state to '%s'", str);
 out:
 	close(fd);
 

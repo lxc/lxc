@@ -136,6 +136,8 @@ static int setup_sigchld_fd(sigset_t *oldmask)
 		return -1;
 	}
 
+	DEBUG("sigchild handler set");
+
 	return fd;
 }
 
@@ -166,6 +168,8 @@ static int setup_tty_service(const char *name, int *ttyfd)
 static int sigchld_handler(int fd, void *data, 
 			   struct lxc_epoll_descr *descr)
 {
+	DEBUG("child exited");
+
 	return 1;
 }
 
@@ -381,6 +385,9 @@ static int console_init(char *console, size_t size)
 	}
 
 	console[0] = '\0';
+
+	DEBUG("console initialized");
+
 	return 0;
 }
 
@@ -428,6 +435,9 @@ struct lxc_handler *lxc_init(const char *name)
 	LXC_TTY_ADD_HANDLER(SIGQUIT);
 
 out:
+	if (handler)
+		INFO("'%s' is initialized", name);
+
 	return handler;
 
 out_delete_tty:
@@ -517,6 +527,8 @@ static int do_start(void *arg)
 		goto out_child;
 	}
 
+	NOTICE("exec'ing '%s'", argv[0]);
+
 	execvp(argv[0], argv);
 	SYSERROR("failed to exec %s", argv[0]);
 
@@ -600,6 +612,8 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	}
 
 	err = 0;
+
+	NOTICE("'%s' started with pid '%d'", argv[0], handler->pid);
 
 out_close:
 	close(sv[0]);

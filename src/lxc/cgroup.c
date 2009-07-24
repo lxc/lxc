@@ -74,6 +74,8 @@ static int get_cgroup_mount(const char *mtab, char *mnt)
 		}
         };
 
+	DEBUG("using cgroup mounted at '%s'", mnt);
+
         fclose(file);
 out:
         return err;
@@ -108,6 +110,9 @@ int lxc_rename_nsgroup(const char *name, pid_t pid)
 	ret = rename(oldname, newname);
 	if (ret)
 		SYSERROR("failed to rename cgroup %s->%s", oldname, newname);
+	else
+		DEBUG("'%s' renamed to '%s'", oldname, newname);
+
 	return ret;
 }
 
@@ -130,7 +135,10 @@ int lxc_link_nsgroup(const char *name)
 	ret = symlink(nsgroup, lxc);
 	if (ret)
 		SYSERROR("failed to create symlink %s->%s", nsgroup, lxc);
-      return ret;
+	else
+		DEBUG("'%s' linked to '%s'", nsgroup, lxc);
+
+	return ret;
 }
 
 int lxc_unlink_nsgroup(const char *name)
@@ -146,6 +154,8 @@ int lxc_unlink_nsgroup(const char *name)
 		path[len] = '\0';
 		rmdir(path);
 	}
+
+	DEBUG("unlinking '%s'", nsgroup);
 
 	return unlink(nsgroup);
 }

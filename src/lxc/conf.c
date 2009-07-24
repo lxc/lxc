@@ -1779,6 +1779,9 @@ int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info)
 	}
 
 	ret = 0;
+
+	INFO("tty's configured");
+
 out:
 	return ret;
 
