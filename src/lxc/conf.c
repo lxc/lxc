@@ -941,9 +941,9 @@ static int setup_cgroup_cb(void* buffer, void *data)
 	ret = lxc_cgroup_set(name, key, value);
 	if (ret)
 		ERROR("failed to set cgroup '%s' = '%s' for '%s'",
-				 key, value, name);
-
-	DEBUG("cgroup '%s' set to '%s'", key, value);
+		      key, value, name);
+	else
+		DEBUG("cgroup '%s' set to '%s'", key, value);
 
 	return ret;
 }
