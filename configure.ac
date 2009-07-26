@@ -49,12 +49,6 @@ LXC_MAJOR_VERSION=$(echo $PACKAGE_VERSION | cut -d. -f1)
 LXC_MINOR_VERSION=$(echo $PACKAGE_VERSION | cut -d. -f2)
 LXC_MICRO_VERSION=$(echo $PACKAGE_VERSION | cut -d. -f3)
 
-AC_ARG_WITH([kernel-release],
- [AC_HELP_STRING([--with-kernel-release=RELEASE],
-		[specify the "uname -r"-value to build for])],
-	[KERNEL_RELEASE="${withval}"],
-	[KERNEL_RELEASE=`uname -r`])
-
 AC_ARG_ENABLE(test, [  --enable-test    compile test program [default=no]],, enable_test=no)
 AM_CONDITIONAL(ENABLE_TEST, test x$enable_test = xyes)
 
