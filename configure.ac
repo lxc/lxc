@@ -113,8 +113,8 @@ if test "x$DOCBOOK" = "xno"; then
 
 Warning:
 --------
-The docbook tool is not installed, the man pages won't be generated.
-If you want the man pages, install docbook and rerun 'configure'.
+The docbook tool is not installed, the man pages won't be regenerated.
+If you need to update the manpages, install docbook and rerun 'configure'.
 
 ])
 

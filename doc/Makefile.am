@@ -1,5 +1,7 @@
 
-EXTRA_DIST = FAQ.txt
+EXTRA_DIST = \
+	FAQ.txt \
+	$(man_MANS)
 
 if ENABLE_DOCBOOK
 man_MANS = \
@@ -33,6 +35,6 @@ man_MANS = \
 
 lxc-%.sgml : common_options.sgml see_also.sgml
 
-clean-local:
+maintainer-clean-local:
 	$(RM) manpage.* *.7 *.5 *.1 $(man_MANS)
 endif
