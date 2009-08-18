@@ -145,6 +145,8 @@ static void __attribute__((constructor)) __lxc_fd_collect_inherited(void)
 	int fd, fddir;
 	DIR *dir;
 
+	lxc_list_init(&lxc_fd_list);
+
 	dir = opendir("/proc/self/fd");
 	if (!dir) {
 		WARN("failed to open directory: %s", strerror(errno));
@@ -152,8 +154,6 @@ static void __attribute__((constructor)) __lxc_fd_collect_inherited(void)
 	}
 
 	fddir = dirfd(dir);
-
-	lxc_list_init(&lxc_fd_list);
 
 	while (!readdir_r(dir, &dirent, &direntp)) {
 
