@@ -1,7 +1,6 @@
 INCLUDES= -I$(top_srcdir)/src -DLXCPATH="\"@LXCPATH@\"" \
 	  -DLXCBINDIR="\"$(bindir)\"" \
 	  -DLXCLIBEXECDIR="\"$(libexecdir)\""
-AM_LDFLAGS= -lutil
 lib_LTLIBRARIES = liblxc.la
 pkginclude_HEADERS = \
 		start.h \
@@ -52,6 +51,7 @@ liblxc_la_SOURCES = \
 	cr_plugin_columbia.c lxc_plugin.h
 
 liblxc_la_LDFLAGS = -release @PACKAGE_VERSION@
+liblxc_la_LIBADD = -lutil
 
 bin_SCRIPTS = \
 	lxc-ps \
