@@ -12,9 +12,5 @@ pcdata_DATA = lxc.pc
 ChangeLog::
 	@touch ChangeLog
 
-dist-hook:
-	-@cvs2cl
-	@mv ChangeLog $(distdir)
-
 rpm: dist
 	rpmbuild --clean -ta ${distdir}.tar.gz
