@@ -83,14 +83,17 @@ int main(int argc, char *argv[])
 		}
 	} else {
 		const unsigned long len = 4096;
+		int ret;
 		char buffer[len];
-		if (lxc_cgroup_get(my_args.name, subsystem, buffer, len)) {
+
+		ret = lxc_cgroup_get(my_args.name, subsystem, buffer, len);
+		if (ret < 0) {
 			ERROR("failed to retrieve value of '%s' for '%s'",
-				subsystem, my_args.name);
+			      subsystem, my_args.name);
 			return -1;
 		}
 
-		printf("%s", buffer);
+		printf("%*s", ret, buffer);
 	}
 
 	return 0;

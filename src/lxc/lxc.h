@@ -164,7 +164,7 @@ extern int lxc_cgroup_set(const char *name, const char *subsystem, const char *v
  * @subsystem : the subsystem
  * @value     : the value to be set
  * @len       : the len of the value variable
- * Returns 0 on success, < 0 otherwise
+ * Returns the number of bytes read, < 0 on error
  */
 extern int lxc_cgroup_get(const char *name, const char *subsystem, 
 			  char *value, size_t len);

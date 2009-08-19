@@ -198,13 +198,10 @@ int lxc_cgroup_get(const char *name, const char *subsystem,
 		return -1;
 	}
 
-	if (read(fd, value, len) < 0) {
+	ret = read(fd, value, len);
+	if (ret < 0)
 		ERROR("read %s : %s", path, strerror(errno));
-		goto out;
-	}
-	
-	ret = 0;
-out:
+
 	close(fd);
 	return ret;
 }
