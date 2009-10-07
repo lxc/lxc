@@ -128,7 +128,12 @@ static int command_handler(int fd, void *data,
 	struct lxc_handler *handler = data;
 
 	ret = lxc_af_unix_rcv_credential(fd, &request, sizeof(request));
-	if (ret < 0) {
+	if (ret < 0 && ret == -EACCES) {
+		/* we don't care for the peer, just send and close */
+		struct lxc_answer answer = { .ret = ret };
+		send(fd, &answer, sizeof(answer), 0);
+		goto out_close;
+	} else if (ret < 0) {
 		SYSERROR("failed to receive data on command socket");
 		goto out_close;
 	}

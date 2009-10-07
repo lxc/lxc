@@ -51,6 +51,12 @@ extern int lxc_console(const char *name, int ttynum, int *fd)
 		return -1;
 	}
 
+	if (command.answer.ret) {
+		ERROR("console access denied: %s",
+			strerror(-command.answer.ret));
+		return -1;
+	}
+
 	*fd = command.answer.fd;
 	if (*fd <0) {
 		ERROR("unable to allocate fd for tty %d", ttynum);
