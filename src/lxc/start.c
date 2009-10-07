@@ -175,23 +175,35 @@ static int sigchld_handler(int fd, void *data,
 	return 1;
 }
 
-static int ttyclient_handler(int fd, void *data,
-			     struct lxc_epoll_descr *descr)
+static void ttyinfo_remove_fd(int fd, struct lxc_tty_info *tty_info)
 {
 	int i;
- 	struct lxc_tty_info *tty_info = data;
 
 	for (i = 0; i < tty_info->nbtty; i++) {
 
 		if (tty_info->pty_info[i].busy != fd)
 			continue;
 
-		lxc_mainloop_del_handler(descr, fd);
 		tty_info->pty_info[i].busy = 0;
-		close(fd);
 	}
 
-	return 0;
+	return;
+}
+
+static void command_fd_cleanup(int fd, struct lxc_tty_info *tty_info,
+			struct lxc_epoll_descr *descr)
+{
+	ttyinfo_remove_fd(fd, tty_info);
+	lxc_mainloop_del_handler(descr, fd);
+	close(fd);
+}
+
+static int ttyclient_handler(int fd, void *data,
+			     struct lxc_epoll_descr *descr)
+{
+	struct lxc_tty_info *tty_info = data;
+
+	command_fd_cleanup(fd, tty_info, descr);
 }
 
 static int ttyservice_handler(int fd, void *data,
