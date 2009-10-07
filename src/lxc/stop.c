@@ -37,44 +37,6 @@
 
 lxc_log_define(lxc_stop, lxc);
 
-#define MAXPIDLEN 20
-
-int __lxc_stop(const char *name)
-{
-	char init[MAXPATHLEN];
-	char val[MAXPIDLEN];
-	int fd, ret = -1;
-	size_t pid;
-
-	if (lxc_check_lock(name) < 0)
-		return ret;
-
-	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
-	fd = open(init, O_RDONLY);
-	if (fd < 0) {
-		SYSERROR("failed to open init file for %s", name);
-		goto out_close;
-	}
-
-	if (read(fd, val, sizeof(val)) < 0) {
-		SYSERROR("failed to read %s", init);
-		goto out_close;
-	}
-
-	pid = atoi(val);
-
-	if (kill(pid, SIGKILL)) {
-		SYSERROR("failed to kill %zd", pid);
-		goto out_close;
-	}
-
-	ret = 0;
-
-out_close:
-	close(fd);
-	return ret;
-}
-
 int lxc_stop(const char *name)
 {
 	struct lxc_command command = {
