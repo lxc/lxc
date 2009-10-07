@@ -117,6 +117,7 @@ struct lxc_cgroup {
  * @utsname : the container utsname
  */
 struct lxc_conf {
+	const char *rcfile;
 	char *rootfs;
 	char *fstab;
 	int tty;

@@ -1393,6 +1393,7 @@ out:
 
 int lxc_conf_init(struct lxc_conf *conf)
 {
+	conf->rcfile = NULL;
 	conf->rootfs = NULL;
 	conf->fstab = NULL;
 	conf->utsname = NULL;

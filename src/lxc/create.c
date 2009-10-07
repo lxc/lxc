@@ -21,7 +21,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
+#define _GNU_SOURCE
 #include <stdio.h>
+#undef _GNU_SOURCE
+#include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -95,6 +98,24 @@ static int remove_lxc_directory(const char *dirname)
 	return 0;
 }
 
+static int copy_config_file(const char *name, const char *file)
+{
+	char *dst;
+	int ret;
+
+	if (!asprintf(&dst, LXCPATH "/%s/config", name)) {
+		ERROR("failed to allocate memory");
+		return -1;
+	}
+
+	ret = lxc_copy_file(file, dst);
+	if (ret)
+		ERROR("failed to copy '%s' to '%s'", file, dst);
+	free(dst);
+
+	return ret;
+}
+
 int lxc_create(const char *name, struct lxc_conf *conf)
 {
 	int lock, err = -1;
@@ -118,6 +139,11 @@ int lxc_create(const char *name, struct lxc_conf *conf)
 
 	if (lxc_configure(name, conf)) {
 		ERROR("failed to set configuration for %s", name);
+		goto err_state;
+	}
+
+	if (conf->rcfile && copy_config_file(name, conf->rcfile)) {
+		ERROR("failed to copy the configuration file");
 		goto err_state;
 	}
 

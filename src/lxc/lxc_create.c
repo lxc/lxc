@@ -67,24 +67,6 @@ Options :\n\
 	.checker  = NULL,
 };
 
-static int copy_config_file(const char *name, const char *file)
-{
-	char *src;
-	int ret;
-
-	if (!asprintf(&src, LXCPATH "/%s/config", name)) {
-		ERROR("failed to allocate memory");
-		return -1;
-	}
-
-	ret = lxc_copy_file(file, src);
-	if (ret)
-		ERROR("failed to copy '%s' to '%s'", file, src);
-	free(src);
-
-	return ret;
-}
-
 int main(int argc, char *argv[])
 {
 	struct lxc_conf lxc_conf;
@@ -108,12 +90,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_create(my_args.name, &lxc_conf)) {
 		ERROR("failed to create the container");
-		return -1;
-	}
-
-	if (my_args.rcfile && copy_config_file(my_args.name, my_args.rcfile)) {
-		ERROR("failed to copy the configuration file");
-		lxc_destroy(my_args.name);
 		return -1;
 	}
 

@@ -49,6 +49,24 @@ static int remove_lxc_directory(const char *dirname)
 	return 0;
 }
 
+static int remove_config_file(const char *name)
+{
+	char path[MAXPATHLEN];
+
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s/config", name);
+
+	/* config file does not exists */
+	if (access(path, F_OK))
+		return 0;
+
+	if (unlink(path)) {
+		ERROR("failed to unlink '%s'", path);
+		return -1;
+	}
+
+	return 0;
+}
+
 int lxc_destroy(const char *name)
 {
 	int lock, ret = -1;
@@ -57,6 +75,9 @@ int lxc_destroy(const char *name)
 	lock = lxc_get_lock(name);
 	if (lock < 0)
 		return ret;
+
+	if (remove_config_file(name))
+		WARN("failed to remove the configuration file");
 
 	if (lxc_rmstate(name)) {
 		ERROR("failed to remove state file for %s", name);

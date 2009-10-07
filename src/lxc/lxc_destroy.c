@@ -48,24 +48,6 @@ Options :\n\
 	.checker  = NULL,
 };
 
-static int remove_config_file(const char *name)
-{
-	char path[MAXPATHLEN];
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s/config", name);
-
-	/* config file does not exists */
-	if (access(path, F_OK))
-		return 0;
-
-	if (unlink(path)) {
-		ERROR("failed to unlink '%s'", path);
-		return -1;
-	}
-
-	return 0;
-}
-
 int main(int argc, char *argv[])
 {
 	if (lxc_arguments_parse(&my_args, argc, argv))
@@ -74,9 +56,6 @@ int main(int argc, char *argv[])
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
 		return -1;
-
-	if (remove_config_file(my_args.name))
-		WARN("failed to remove the configuration file");
 
 	if (lxc_destroy(my_args.name)) {
 		ERROR("failed to destroy the container");
