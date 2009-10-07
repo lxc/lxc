@@ -69,37 +69,6 @@ int lxc_rmstate(const char *name)
 	return 0;
 }
 
-lxc_state_t __lxc_getstate(const char *name)
-{
-	int fd, err;
-	char file[MAXPATHLEN];
-
-	snprintf(file, MAXPATHLEN, LXCPATH "/%s/state", name);
-
-	fd = open(file, O_RDONLY);
-	if (fd < 0) {
-		SYSERROR("failed to open %s", file);
-		return -1;
-	}
-
-	if (flock(fd, LOCK_SH)) {
-		SYSERROR("failed to take the lock to %s", file);
-		close(fd);
-		return -1;
-	}
-
-	err = read(fd, file, strlen(file));
-	if (err < 0) {
-		SYSERROR("failed to read file %s", file);
-		close(fd);
-		return -1;
-	}
-	file[err] = '\0';
-
-	close(fd);
-	return lxc_str2state(file);
-}
-
 static int freezer_state(const char *name)
 {
 	char freezer[MAXPATHLEN];
