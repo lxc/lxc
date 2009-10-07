@@ -29,7 +29,7 @@
 
 #include "mainloop.h"
 
-struct lxc_handler {
+struct mainloop_handler {
 	lxc_mainloop_callback_t callback;
 	int fd;
 	void *data;
@@ -38,7 +38,7 @@ struct lxc_handler {
 int lxc_mainloop(struct lxc_epoll_descr *descr)
 {
 	int i, nfds, triggered;
-	struct lxc_handler *handler;
+	struct mainloop_handler *handler;
 
 	for (;;) {
 
@@ -58,7 +58,8 @@ int lxc_mainloop(struct lxc_epoll_descr *descr)
 				continue;
 
 			triggered++;
-			handler = (struct lxc_handler *)descr->ev[i].data.ptr;
+			handler =
+			  (struct mainloop_handler *) descr->ev[i].data.ptr;
 
 			/* If the handler returns a positive value, exit
 			   the mainloop */
@@ -79,7 +80,7 @@ int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
 			     lxc_mainloop_callback_t callback, void *data)
 {
 	struct epoll_event *ev;
-	struct lxc_handler *handler;
+	struct mainloop_handler *handler;
 	int ret = -1;
 
 	handler = malloc(sizeof(*handler));
@@ -118,7 +119,7 @@ out_free:
 int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd)
 {
 	struct epoll_event *ev;
-	struct lxc_handler *handler;
+	struct mainloop_handler *handler;
 	int i, j, idx = 0;
 
 	for (i = 0; i < descr->nfds; i++) {
