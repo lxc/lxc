@@ -200,8 +200,21 @@ static int ttyservice_handler(int fd, void *data,
 		goto out_close;
 	}
 
-	if (lxc_af_unix_rcv_credential(conn, &ttynum, sizeof(ttynum)))
+	ret = lxc_af_unix_rcv_credential(conn, &ttynum, sizeof(ttynum));
+	if (ret < 0) {
+		SYSERROR("failed to receive data on tty socket");
 		goto out_close;
+	}
+
+	if (!ret) {
+		DEBUG("peer has disconnected");
+		goto out_close;
+	}
+
+	if (ret != sizeof(ttynum)) {
+		WARN("partial request, ignored");
+		goto out_close;
+	}
 
 	if (ttynum > 0) {
 		if (ttynum > tty_info->nbtty)

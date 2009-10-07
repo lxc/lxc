@@ -23,11 +23,15 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 #define __USE_GNU
 #include <sys/socket.h>
 #undef __USE_GNU
 #include <sys/un.h>
 
+#include "log.h"
+
+lxc_log_define(lxc_af_unix, lxc);
 
 int lxc_af_unix_open(const char *path, int type, int flags)
 {
@@ -229,14 +233,14 @@ int lxc_af_unix_rcv_credential(int fd, void *data, size_t size)
 
         cmsg = CMSG_FIRSTHDR(&msg);
 
-	ret = -1;
-
         if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(struct ucred)) &&
             cmsg->cmsg_level == SOL_SOCKET &&
             cmsg->cmsg_type == SCM_CREDENTIALS) {
                 cred = *((struct ucred *) CMSG_DATA(cmsg));
-		if (cred.uid == getuid() && cred.gid == getgid())
-			ret = 0;
+		if (cred.uid != getuid() || cred.gid != getgid()) {
+			INFO("message denied for '%d/%d'", cred.uid, cred.gid);
+			return -EPERM;
+		}
         }
 out:
         return ret;
