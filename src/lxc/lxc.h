@@ -83,17 +83,6 @@ extern int lxc_start(const char *name, char *const argv[]);
 extern int lxc_stop(const char *name);
 
 /*
- * Monitor the container, each time the state of the container
- * is changed, a state data is send through a file descriptor passed to
- * the function with output_fd.
- * The function will block until the container is destroyed.
- * @name : the name of the container
- * @output_fd : the file descriptor where to send the states
- * Returns 0 on success, < 0 otherwise
- */
-extern int lxc_monitor(const char *name, int output_fd);
-
-/*
  * Open the monitoring mechanism for a specific container
  * The function will return an fd corresponding to the events
  * Returns a file descriptor on success, < 0 otherwise

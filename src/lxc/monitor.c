@@ -29,7 +29,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>
-#include <sys/inotify.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <netinet/in.h>
@@ -45,66 +44,6 @@ lxc_log_define(lxc_monitor, lxc);
 #ifndef UNIX_PATH_MAX
 #define UNIX_PATH_MAX 108
 #endif
-
-int lxc_monitor(const char *name, int output_fd)
-{
-	char path[MAXPATHLEN];
-	int err = -1, nfd, wfd, state;
-
-	nfd = inotify_init();
-	if (nfd < 0) {
-		SYSERROR("failed to initialize inotify");
-		return -1;
-	}
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s/state", name);
-
-	wfd = inotify_add_watch(nfd, path, IN_DELETE_SELF|IN_CLOSE_WRITE);
-	if (wfd < 0) {
-		SYSERROR("failed to add a watch on %s", path);
-		goto out;
-	}
-
-	for(;;) {
-		struct inotify_event evt;
-
-		if (read(nfd, &evt, sizeof(evt)) < 0) {
-			SYSERROR("failed to read inotify event");
-			goto out;
-		}
-
-		if (evt.mask & IN_CLOSE_WRITE) {
-
-			state = lxc_getstate(name);
-			if (state < 0) {
-				ERROR("failed to get the state for %s",
-					      name);
-				goto out;
-			}
-
-			if (write(output_fd, &state, sizeof(state)) < 0) {
-				SYSERROR("failed to send state to %d",
-						 output_fd);
-				goto out;
-			}
-			continue;
-		}
-
-		if (evt.mask & IN_DELETE_SELF) {
-			close(output_fd);
-			err = 0;
-			goto out;
-		}
-
-		ERROR("unknown evt for inotity (%d)", evt.mask);
-		goto out;
-	}
-
-out:
-	inotify_rm_watch(nfd, wfd);
-	close(nfd);
-	return err;
-}
 
 static void lxc_monitor_send(struct lxc_msg *msg)
 {
@@ -162,7 +101,7 @@ int lxc_monitor_read(int fd, struct lxc_msg *msg)
 	socklen_t len = sizeof(from);
 	int ret;
 
-	ret = recvfrom(fd, msg, sizeof(*msg), 0, 
+	ret = recvfrom(fd, msg, sizeof(*msg), 0,
 		       (struct sockaddr *)&from, &len);
 	if (ret < 0) {
 		SYSERROR("failed to receive state");
