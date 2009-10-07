@@ -35,12 +35,17 @@ lxc_log_define(lxc_console, lxc);
 
 extern int lxc_console(const char *name, int ttynum, int *fd)
 {
-	int ret;
+	int ret, stopped = 0;
 	struct lxc_command command = {
 		.request = { .type = LXC_COMMAND_TTY, .data = ttynum },
 	};
 
-	ret = lxc_command(name, &command);
+	ret = lxc_command(name, &command, &stopped);
+	if (ret < 0 && stopped) {
+		ERROR("'%s' is stopped", name);
+		return -1;
+	}
+
 	if (ret < 0) {
 		ERROR("failed to send command");
 		return -1;

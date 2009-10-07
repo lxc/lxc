@@ -100,9 +100,12 @@ lxc_state_t lxc_getstate(const char *name)
 		.request = { .type = LXC_COMMAND_STATE },
 	};
 
-	int ret;
+	int ret, stopped = 0;
 
-	ret = lxc_command(name, &command);
+	ret = lxc_command(name, &command, &stopped);
+	if (ret < 0 && stopped)
+		return STOPPED;
+
 	if (ret < 0) {
 		ERROR("failed to send command");
 		return -1;

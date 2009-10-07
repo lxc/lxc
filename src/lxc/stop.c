@@ -43,9 +43,14 @@ int lxc_stop(const char *name)
 		.request = { .type = LXC_COMMAND_STOP },
 	};
 
-	int ret;
+	int ret, stopped = 0;
 
-	ret = lxc_command(name, &command);
+	ret = lxc_command(name, &command,&stopped);
+	if (ret < 0 && stopped) {
+		INFO("'%s' is already stopped", name);
+		return 0;
+	}
+
 	if (ret < 0) {
 		ERROR("failed to send command");
 		return -1;
@@ -55,7 +60,7 @@ int lxc_stop(const char *name)
 	 * closed
 	 */
 	if (ret > 0) {
-		ERROR("stop request rejected for '%s': %s",
+		ERROR("failed to stop '%s': %s",
 			name, strerror(-command.answer.ret));
 		return -1;
 	}

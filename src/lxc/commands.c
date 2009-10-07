@@ -52,7 +52,8 @@ static int receive_answer(int sock, struct lxc_answer *answer)
 	return ret;
 }
 
-extern int lxc_command(const char *name, struct lxc_command *command)
+extern int lxc_command(const char *name, struct lxc_command *command,
+			int *stopped)
 {
 	int sock, ret = -1;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
@@ -61,20 +62,25 @@ extern int lxc_command(const char *name, struct lxc_command *command)
 	sprintf(offset, "/var/run/lxc/%s/command", name);
 
 	sock = lxc_af_unix_connect(path);
+	if (sock < 0 && errno == ECONNREFUSED) {
+		*stopped = 1;
+		return -1;
+	}
+
 	if (sock < 0) {
-		WARN("failed to connect to '@%s': %s", offset, strerror(errno));
+		SYSERROR("failed to connect to '@%s'", offset);
 		return -1;
 	}
 
 	ret = lxc_af_unix_send_credential(sock, &command->request,
 					sizeof(command->request));
 	if (ret < 0) {
-		SYSERROR("failed to send credentials");
+		SYSERROR("failed to send request to '@%s'", offset);
 		goto out_close;
 	}
 
 	if (ret != sizeof(command->request)) {
-		SYSERROR("message only partially sent to '@%s'", offset);
+		SYSERROR("message partially sent to '@%s'", offset);
 		goto out_close;
 	}
 
