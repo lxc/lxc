@@ -33,6 +33,7 @@
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>
+#include "commands.h"
 
 lxc_log_define(lxc_state, lxc);
 
@@ -68,7 +69,7 @@ int lxc_rmstate(const char *name)
 	return 0;
 }
 
-lxc_state_t lxc_getstate(const char *name)
+lxc_state_t __lxc_getstate(const char *name)
 {
 	int fd, err;
 	char file[MAXPATHLEN];
@@ -124,6 +125,36 @@ static int freezer_state(const char *name)
 	return lxc_str2state(status);
 }
 
+lxc_state_t lxc_getstate(const char *name)
+{
+	struct lxc_command command = {
+		.request = { .type = LXC_COMMAND_STATE },
+	};
+
+	int ret;
+
+	ret = lxc_command(name, &command);
+	if (ret < 0) {
+		ERROR("failed to send command");
+		return -1;
+	}
+
+	if (!ret) {
+		WARN("'%s' has stopped before sending its state", name);
+		return -1;
+	}
+
+	if (command.answer.ret < 0) {
+		ERROR("failed to get state for '%s': %s",
+			name, strerror(-command.answer.ret));
+		return -1;
+	}
+
+	DEBUG("'%s' is in '%s' state", name, lxc_state2str(command.answer.ret));
+
+	return command.answer.ret;
+}
+
 lxc_state_t lxc_state(const char *name)
 {
 	int state = freezer_state(name);
@@ -131,3 +162,31 @@ lxc_state_t lxc_state(const char *name)
 		state = lxc_getstate(name);
 	return state;
 }
+
+/*----------------------------------------------------------------------------
+ * functions used by lxc-start mainloop
+ * to handle above command request.
+ *--------------------------------------------------------------------------*/
+extern int lxc_state_callback(int fd, struct lxc_request *request,
+			struct lxc_handler *handler)
+{
+	struct lxc_answer answer;
+	int ret;
+
+	answer.ret = handler->state;
+
+	ret = send(fd, &answer, sizeof(answer), 0);
+	if (ret < 0) {
+		WARN("failed to send answer to the peer");
+		goto out;
+	}
+
+	if (ret != sizeof(answer)) {
+		ERROR("partial answer sent");
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
