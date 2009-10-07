@@ -54,14 +54,13 @@ static int receive_answer(int sock, struct lxc_answer *answer)
 
 extern int lxc_command(const char *name, struct lxc_command *command)
 {
-	struct sockaddr_un addr = { 0 };
 	int sock, ret = -1;
-	char *offset = &addr.sun_path[1];
+	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
+	char *offset = &path[1];
 
-	snprintf(addr.sun_path, sizeof(addr.sun_path), "@%s", name);
-	addr.sun_path[0] = '\0';
+	sprintf(offset, "/var/run/lxc/%s/command", name);
 
-	sock = lxc_af_unix_connect(addr.sun_path);
+	sock = lxc_af_unix_connect(path);
 	if (sock < 0) {
 		WARN("failed to connect to '@%s': %s", offset, strerror(errno));
 		return -1;
@@ -202,13 +201,12 @@ extern int lxc_command_mainloop_add(const char *name, struct lxc_epoll_descr *de
 				    struct lxc_handler *handler)
 {
 	int ret, fd;
-	struct sockaddr_un addr = { 0 };
-	char *offset = &addr.sun_path[1];
+	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
+	char *offset = &path[1];
 
-	strcpy(offset, name);
-	addr.sun_path[0] = '\0';
+	sprintf(offset, "/var/run/lxc/%s/command", name);
 
-	fd = lxc_af_unix_open(addr.sun_path, SOCK_STREAM, 0);
+	fd = lxc_af_unix_open(path, SOCK_STREAM, 0);
 	if (fd < 0) {
 		ERROR("failed to create the command service point");
 		return -1;
