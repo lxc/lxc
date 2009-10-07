@@ -178,40 +178,6 @@ out_sigfd:
 	goto out;
 }
 
-static int save_init_pid(const char *name, pid_t pid)
-{
-	char init[MAXPATHLEN];
-	char *val;
-	int fd, err = -1;
-
-	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
-
-	if (!asprintf(&val, "%d\n", pid)) {
-		SYSERROR("failed to allocate memory");
-		goto out;
-	}
-
-	fd = open(init, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
-	if (fd < 0) {
-		SYSERROR("failed to open '%s'", init);
-		goto out_free;
-	}
-
-	if (write(fd, val, strlen(val)) < 0) {
-		SYSERROR("failed to write the init pid");
-		goto out_close;
-	}
-
-	err = 0;
-
-out_close:
-	close(fd);
-out_free:
-	free(val);
-out:
-	return err;
-}
-
 static void remove_init_pid(const char *name, pid_t pid)
 {
 	char init[MAXPATHLEN];
@@ -470,11 +436,6 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	/* Wait for the child to exec or returning an error */
 	if (read(sv[1], &sync, sizeof(sync)) < 0) {
 		ERROR("failed to read the socket");
-		goto out_abort;
-	}
-
-	if (save_init_pid(name, handler->pid)) {
-		ERROR("failed to save the init pid info");
 		goto out_abort;
 	}
 
