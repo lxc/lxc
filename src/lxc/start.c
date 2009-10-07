@@ -100,15 +100,6 @@ lxc_log_define(lxc_start, lxc);
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);
 
-struct lxc_handler {
-	int sigfd;
-	int lock;
-	pid_t pid;
-	char tty[MAXPATHLEN];
-	sigset_t oldmask;
-	struct lxc_tty_info tty_info;
-};
-
 static int setup_sigchld_fd(sigset_t *oldmask)
 {
 	sigset_t mask;

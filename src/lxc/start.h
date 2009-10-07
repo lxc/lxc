@@ -21,7 +21,14 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-struct lxc_handler;
+struct lxc_handler {
+	int sigfd;
+	int lock;
+	pid_t pid;
+	char tty[MAXPATHLEN];
+	sigset_t oldmask;
+	struct lxc_tty_info tty_info;
+};
 
 extern struct lxc_handler *lxc_init(const char *name);
 extern int lxc_spawn(const char *name, struct lxc_handler *handler,
