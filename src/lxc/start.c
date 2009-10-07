@@ -141,6 +141,13 @@ static int sigchld_handler(int fd, void *data,
 	return 1;
 }
 
+static int set_state(const char *name, struct lxc_handler *handler, lxc_state_t state)
+{
+	handler->state = state;
+	lxc_monitor_send_state(name, state);
+	return 0;
+}
+
 int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int sigfd = handler->sigfd;
@@ -245,7 +252,7 @@ struct lxc_handler *lxc_init(const char *name)
 		goto out_free;
 
 	/* Begin the set the state to STARTING*/
-	if (lxc_setstate(name, STARTING)) {
+	if (set_state(name, handler, STARTING)) {
 		ERROR("failed to set state '%s'", lxc_state2str(STARTING));
 		goto out_put_lock;
 	}
@@ -282,7 +289,7 @@ out:
 out_delete_tty:
 	lxc_delete_tty(&handler->tty_info);
 out_aborting:
-	lxc_setstate(name, ABORTING);
+	set_state(name, handler, ABORTING);
 out_put_lock:
 	lxc_put_lock(handler->lock);
 out_free:
@@ -296,8 +303,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	/* The STOPPING state is there for future cleanup code
 	 * which can take awhile
 	 */
-	lxc_setstate(name, STOPPING);
-	lxc_setstate(name, STOPPED);
+	set_state(name, handler, STOPPING);
+	set_state(name, handler, STOPPED);
 	lxc_unlink_nsgroup(name);
 
 	if (handler) {
@@ -313,7 +320,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 void lxc_abort(const char *name, struct lxc_handler *handler)
 {
-	lxc_setstate(name, ABORTING);
+	set_state(name, handler, ABORTING);
 	kill(handler->pid, SIGKILL);
 }
 
@@ -439,7 +446,7 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 		goto out_abort;
 	}
 
-	if (lxc_setstate(name, RUNNING)) {
+	if (set_state(name, handler, RUNNING)) {
 		ERROR("failed to set state to %s",
 			      lxc_state2str(RUNNING));
 		goto out_abort;
@@ -469,7 +476,7 @@ int lxc_start(const char *name, char *const argv[])
 	handler = lxc_init(name);
 	if (!handler) {
 		ERROR("failed to initialize the container");
-		goto out;
+		return -1;
 	}
 
 	err = lxc_spawn(name, handler, argv);

@@ -125,17 +125,7 @@ int lxc_create(const char *name, struct lxc_conf *conf)
 	
 	lock = lxc_get_lock(name);
 	if (lock < 0)
-		return err;
-
-	if (lxc_mkstate(name)) {
-		ERROR("failed to create the state file for %s", name);
 		goto err;
-	}
-
-	if (lxc_setstate(name, STOPPED)) {
-		ERROR("failed to set state for %s", name);
-		goto err_state;
-	}
 
 	if (lxc_configure(name, conf)) {
 		ERROR("failed to set configuration for %s", name);

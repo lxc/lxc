@@ -22,9 +22,12 @@
  */
 
 struct lxc_handler {
+
+	pid_t pid;
+	lxc_state_t state;
+
 	int sigfd;
 	int lock;
-	pid_t pid;
 	char tty[MAXPATHLEN];
 	sigset_t oldmask;
 	struct lxc_tty_info tty_info;

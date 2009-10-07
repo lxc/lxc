@@ -60,64 +60,6 @@ lxc_state_t lxc_str2state(const char *state)
 	return -1;
 }
 
-int lxc_setstate(const char *name, lxc_state_t state)
-{
-	int fd, err = -1;
-	char file[MAXPATHLEN];
-	const char *str = lxc_state2str(state);
-
-	if (!str)
-		return err;
-
-	snprintf(file, MAXPATHLEN, LXCPATH "/%s/state", name);
-
-	fd = open(file, O_WRONLY);
-	if (fd < 0) {
-		SYSERROR("failed to open %s file", file);
-		return err;
-	}
-
-	if (flock(fd, LOCK_EX)) {
-		SYSERROR("failed to take the lock to %s", file);
-		goto out;
-	}
-
-	if (ftruncate(fd, 0)) {
-		SYSERROR("failed to truncate the file %s", file);
-		goto out;
-	}
-
-	if (write(fd, str, strlen(str)) < 0) {
-		SYSERROR("failed to write state to %s", file);
-		goto out;
-	}
-
-	err = 0;
-
-	DEBUG("set state to '%s'", str);
-out:
-	close(fd);
-
-	lxc_monitor_send_state(name, state);
-
-	return err;
-}
-
-int lxc_mkstate(const char *name)
-{
-	int fd;
-	char file[MAXPATHLEN];
-
-	snprintf(file, MAXPATHLEN, LXCPATH "/%s/state", name);
-	fd = creat(file, S_IRUSR|S_IWUSR);
-	if (fd < 0) {
-		SYSERROR("failed to create file %s", file);
-		return -1;
-	}
-	close(fd);
-	return 0;
-}
-
 int lxc_rmstate(const char *name)
 {
 	char file[MAXPATHLEN];
