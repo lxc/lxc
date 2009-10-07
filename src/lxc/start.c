@@ -132,18 +132,24 @@ static int setup_sigchld_fd(sigset_t *oldmask)
 	return fd;
 }
 
-static int setup_tty_service(const char *name, int *ttyfd)
+static int ttyservice_handler(int fd, void *data,
+			      struct lxc_epoll_descr *descr);
+
+static int tty_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
+			     struct lxc_handler *handler)
 {
-	int fd;
+	int ret, fd;
 	struct sockaddr_un addr = { 0 };
 	char *offset = &addr.sun_path[1];
-	
+
 	strcpy(offset, name);
 	addr.sun_path[0] = '\0';
 
 	fd = lxc_af_unix_open(addr.sun_path, SOCK_STREAM, 0);
-	if (fd < 0)
+	if (fd < 0) {
+		ERROR("failed to create the tty service point");
 		return -1;
+	}
 
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
 		SYSERROR("failed to close-on-exec flag");
@@ -151,9 +157,14 @@ static int setup_tty_service(const char *name, int *ttyfd)
 		return -1;
 	}
 
-	*ttyfd = fd;
+	ret = lxc_mainloop_add_handler(descr, fd, ttyservice_handler,
+					handler);
+	if (ret) {
+		ERROR("failed to add handler for command socket");
+		close(fd);
+	}
 
-	return 0;
+	return ret;
 }
 
 static int sigchld_handler(int fd, void *data, 
@@ -187,7 +198,8 @@ static int ttyservice_handler(int fd, void *data,
 			      struct lxc_epoll_descr *descr)
 {
 	int conn, ttynum, val = 1, ret = -1;
-	struct lxc_tty_info *tty_info = data;
+	struct lxc_handler *handler = data;
+	struct lxc_tty_info *tty_info = &handler->tty_info;
 	
 	conn = accept(fd, NULL, 0);
 	if (conn < 0) {
@@ -264,13 +276,8 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	int pid = handler->pid;
 	const struct lxc_tty_info *tty_info = &handler->tty_info;
 
-	int nfds, ttyfd = -1, ret = -1;
+	int nfds, ret = -1;
 	struct lxc_epoll_descr descr;
-
-	if (tty_info->nbtty && setup_tty_service(name, &ttyfd)) {
-		ERROR("failed to create the tty service point");
-		goto out_sigfd;
-	}
 
 	/* sigfd + nb tty + tty service 
 	 * if tty is enabled */
@@ -278,7 +285,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 
 	if (lxc_mainloop_open(nfds, &descr)) {
 		ERROR("failed to create mainloop");
-		goto out_ttyfd;
+		goto out_sigfd;
 	}
 
 	if (lxc_mainloop_add_handler(&descr, sigfd, sigchld_handler, &pid)) {
@@ -287,12 +294,8 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	}
 
 	if (tty_info->nbtty) {
-		if (lxc_mainloop_add_handler(&descr, ttyfd, 
-					     ttyservice_handler, 
-					     (void *)tty_info)) {
-			ERROR("failed to add handler for the tty");
+		if (tty_mainloop_add(name, &descr, handler))
 			goto out_mainloop_open;
-		}
 	}
 
 	ret = lxc_mainloop(&descr);
@@ -302,8 +305,6 @@ out:
 
 out_mainloop_open:
 	lxc_mainloop_close(&descr);
-out_ttyfd:
-	close(ttyfd);
 out_sigfd:
 	close(sigfd);
 	goto out;
