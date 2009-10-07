@@ -154,12 +154,13 @@ int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd)
 	return -1;
 }
 
-int lxc_mainloop_open(int size, struct lxc_epoll_descr *descr)
+int lxc_mainloop_open(struct lxc_epoll_descr *descr)
 {
 	descr->nfds = 0;
 	descr->ev = NULL;
 
-	descr->epfd = epoll_create(size);
+	/* hint value passed to epoll create */
+	descr->epfd = epoll_create(2);
 	if (descr->epfd < 0)
 		return -1;
 

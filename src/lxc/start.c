@@ -152,15 +152,10 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int sigfd = handler->sigfd;
 	int pid = handler->pid;
-	const struct lxc_tty_info *tty_info = &handler->tty_info;
-
-	int nfds, ret = -1;
+	int ret = -1;
 	struct lxc_epoll_descr descr;
 
-	/* nb tty + sigfd + command service */
-	nfds = tty_info->nbtty + 2;
-
-	if (lxc_mainloop_open(nfds, &descr)) {
+	if (lxc_mainloop_open(&descr)) {
 		ERROR("failed to create mainloop");
 		goto out_sigfd;
 	}

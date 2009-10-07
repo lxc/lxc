@@ -40,6 +40,6 @@ extern int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
 
 extern int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd);
 
-extern int lxc_mainloop_open(int size, struct lxc_epoll_descr *descr);
+extern int lxc_mainloop_open(struct lxc_epoll_descr *descr);
 
 extern int lxc_mainloop_close(struct lxc_epoll_descr *descr);
