@@ -237,9 +237,9 @@ int lxc_af_unix_rcv_credential(int fd, void *data, size_t size)
             cmsg->cmsg_level == SOL_SOCKET &&
             cmsg->cmsg_type == SCM_CREDENTIALS) {
                 cred = *((struct ucred *) CMSG_DATA(cmsg));
-		if (cred.uid != getuid() || cred.gid != getgid()) {
+		if (cred.uid && (cred.uid != getuid() || cred.gid != getgid())) {
 			INFO("message denied for '%d/%d'", cred.uid, cred.gid);
-			return -EPERM;
+			return -EACCES;
 		}
         }
 out:
