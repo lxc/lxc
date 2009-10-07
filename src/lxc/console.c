@@ -27,61 +27,11 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include "af_unix.h"
-#include "error.h"
-
-#include <lxc/log.h>
+#include <lxc/lxc.h>
 #include "commands.h"
+#include "af_unix.h"
 
 lxc_log_define(lxc_console, lxc);
-
-static int receive_answer(int sock, struct lxc_answer *answer)
-{
-	int ret;
-
-	ret = lxc_af_unix_recv_fd(sock, &answer->fd, answer, sizeof(*answer));
-	if (ret < 0)
-		ERROR("failed to receive answer for the command");
-
-	return ret;
-}
-
-static int send_command(const char *name, struct lxc_command *command)
-{
-	struct sockaddr_un addr = { 0 };
-	int sock, ret = -1;
-	char *offset = &addr.sun_path[1];
-
-	snprintf(addr.sun_path, sizeof(addr.sun_path), "@%s", name);
-	addr.sun_path[0] = '\0';
-
-	sock = lxc_af_unix_connect(addr.sun_path);
-	if (sock < 0) {
-		WARN("failed to connect to '@%s': %s", offset, strerror(errno));
-		return -1;
-	}
-
-	ret = lxc_af_unix_send_credential(sock, &command->request,
-					sizeof(command->request));
-	if (ret < 0) {
-		SYSERROR("failed to send credentials");
-		goto out_close;
-	}
-
-	if (ret != sizeof(command->request)) {
-		SYSERROR("message only partially sent to '@%s'", offset);
-		goto out_close;
-	}
-
-	ret = receive_answer(sock, &command->answer);
-	if (ret < 0)
-		goto out_close;
-out:
-	return ret;
-out_close:
-	close(sock);
-	goto out;
-}
 
 extern int lxc_console(const char *name, int ttynum, int *fd)
 {
@@ -90,7 +40,7 @@ extern int lxc_console(const char *name, int ttynum, int *fd)
 		.request = { .type = LXC_COMMAND_TTY, .data = ttynum },
 	};
 
-	ret = send_command(name, &command);
+	ret = lxc_command(name, &command);
 	if (ret < 0) {
 		ERROR("failed to send command");
 		return -1;
@@ -110,3 +60,64 @@ extern int lxc_console(const char *name, int ttynum, int *fd)
 	INFO("tty %d allocated", ttynum);
 	return 0;
 }
+
+/*----------------------------------------------------------------------------
+ * functions used by lxc-start mainloop
+ * to handle above command request.
+ *--------------------------------------------------------------------------*/
+extern void lxc_console_remove_fd(int fd, struct lxc_tty_info *tty_info)
+{
+	int i;
+
+	for (i = 0; i < tty_info->nbtty; i++) {
+
+		if (tty_info->pty_info[i].busy != fd)
+			continue;
+
+		tty_info->pty_info[i].busy = 0;
+	}
+
+	return;
+}
+
+extern int lxc_console_callback(int fd, struct lxc_request *request,
+			struct lxc_handler *handler)
+{
+	int ttynum = request->data;
+	struct lxc_tty_info *tty_info = &handler->tty_info;
+
+	if (ttynum > 0) {
+		if (ttynum > tty_info->nbtty)
+			goto out_close;
+
+		if (tty_info->pty_info[ttynum - 1].busy)
+			goto out_close;
+
+		goto out_send;
+	}
+
+	/* fixup index tty1 => [0] */
+	for (ttynum = 1;
+	     ttynum <= tty_info->nbtty && tty_info->pty_info[ttynum - 1].busy;
+	     ttynum++);
+
+	/* we didn't find any available slot for tty */
+	if (ttynum > tty_info->nbtty)
+		goto out_close;
+
+out_send:
+	if (lxc_af_unix_send_fd(fd, tty_info->pty_info[ttynum - 1].master,
+				&ttynum, sizeof(ttynum)) < 0) {
+		ERROR("failed to send tty to client");
+		goto out_close;
+	}
+
+	tty_info->pty_info[ttynum - 1].busy = fd;
+
+	return 0;
+
+out_close:
+	/* the close fd and related cleanup will be done by caller */
+	return 1;
+}
+

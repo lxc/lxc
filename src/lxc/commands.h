@@ -43,4 +43,12 @@ struct lxc_command {
 	struct lxc_answer answer;
 };
 
+extern int lxc_command(const char *name, struct lxc_command *command);
+
+struct lxc_epoll_descr;
+struct lxc_handler;
+
+extern int lxc_command_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
+				    struct lxc_handler *handler);
+
 #endif
