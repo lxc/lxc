@@ -91,6 +91,7 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #include "error.h"
 #include "af_unix.h"
 #include "mainloop.h"
+#include "commands.h"
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>
@@ -132,10 +133,10 @@ static int setup_sigchld_fd(sigset_t *oldmask)
 	return fd;
 }
 
-static int ttyservice_handler(int fd, void *data,
+static int incoming_command_handler(int fd, void *data,
 			      struct lxc_epoll_descr *descr);
 
-static int tty_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
+static int command_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 			     struct lxc_handler *handler)
 {
 	int ret, fd;
@@ -147,7 +148,7 @@ static int tty_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 
 	fd = lxc_af_unix_open(addr.sun_path, SOCK_STREAM, 0);
 	if (fd < 0) {
-		ERROR("failed to create the tty service point");
+		ERROR("failed to create the command service point");
 		return -1;
 	}
 
@@ -157,7 +158,7 @@ static int tty_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 		return -1;
 	}
 
-	ret = lxc_mainloop_add_handler(descr, fd, ttyservice_handler,
+	ret = lxc_mainloop_add_handler(descr, fd, incoming_command_handler,
 					handler);
 	if (ret) {
 		ERROR("failed to add handler for command socket");
@@ -175,6 +176,41 @@ static int sigchld_handler(int fd, void *data,
 	return 1;
 }
 
+static int command_handler(int fd, void *data,
+			      struct lxc_epoll_descr *descr);
+static int trigger_command(int fd, struct lxc_request *request,
+			struct lxc_handler *handler,
+			struct lxc_epoll_descr *descr);
+
+static int incoming_command_handler(int fd, void *data, struct lxc_epoll_descr *descr)
+{
+	int ret = 1, connection;
+
+	connection = accept(fd, NULL, 0);
+	if (connection < 0) {
+		SYSERROR("failed to accept connection");
+		return -1;
+	}
+
+	if (setsockopt(connection, SOL_SOCKET, SO_PASSCRED, &ret, sizeof(ret))) {
+		SYSERROR("failed to enable credential on socket");
+		goto out_close;
+	}
+
+	ret = lxc_mainloop_add_handler(descr, connection, command_handler, data);
+	if (ret) {
+		ERROR("failed to add handler");
+		goto out_close;
+	}
+
+out:
+	return ret;
+
+out_close:
+	close(connection);
+	goto out;
+}
+
 static void ttyinfo_remove_fd(int fd, struct lxc_tty_info *tty_info)
 {
 	int i;
@@ -190,43 +226,24 @@ static void ttyinfo_remove_fd(int fd, struct lxc_tty_info *tty_info)
 	return;
 }
 
-static void command_fd_cleanup(int fd, struct lxc_tty_info *tty_info,
+static void command_fd_cleanup(int fd, struct lxc_handler *handler,
 			struct lxc_epoll_descr *descr)
 {
-	ttyinfo_remove_fd(fd, tty_info);
+	ttyinfo_remove_fd(fd, &handler->tty_info);
 	lxc_mainloop_del_handler(descr, fd);
 	close(fd);
 }
 
-static int ttyclient_handler(int fd, void *data,
-			     struct lxc_epoll_descr *descr)
-{
-	struct lxc_tty_info *tty_info = data;
-
-	command_fd_cleanup(fd, tty_info, descr);
-}
-
-static int ttyservice_handler(int fd, void *data,
+static int command_handler(int fd, void *data,
 			      struct lxc_epoll_descr *descr)
 {
-	int conn, ttynum, val = 1, ret = -1;
+	int ret;
+	struct lxc_request request;
 	struct lxc_handler *handler = data;
-	struct lxc_tty_info *tty_info = &handler->tty_info;
-	
-	conn = accept(fd, NULL, 0);
-	if (conn < 0) {
-		SYSERROR("failed to accept tty client");
-		return -1;
-	}
-	
-	if (setsockopt(conn, SOL_SOCKET, SO_PASSCRED, &val, sizeof(val))) {
-		SYSERROR("failed to enable credential on socket");
-		goto out_close;
-	}
 
-	ret = lxc_af_unix_rcv_credential(conn, &ttynum, sizeof(ttynum));
+	ret = lxc_af_unix_rcv_credential(fd, &request, sizeof(request));
 	if (ret < 0) {
-		SYSERROR("failed to receive data on tty socket");
+		SYSERROR("failed to receive data on command socket");
 		goto out_close;
 	}
 
@@ -235,10 +252,31 @@ static int ttyservice_handler(int fd, void *data,
 		goto out_close;
 	}
 
-	if (ret != sizeof(ttynum)) {
+	if (ret != sizeof(request)) {
 		WARN("partial request, ignored");
 		goto out_close;
 	}
+
+	ret = trigger_command(fd, &request, handler, descr);
+	if (ret) {
+		/* this is not an error, but only a request to close fd */
+		ret = 0;
+		goto out_close;
+	}
+
+out:
+	return ret;
+out_close:
+	command_fd_cleanup(fd, handler, descr);
+	goto out;
+}
+
+static int ttyservice_handler(int fd, struct lxc_request *request,
+			struct lxc_handler *handler,
+			struct lxc_epoll_descr *descr)
+{
+	int ttynum = request->data;
+	struct lxc_tty_info *tty_info = &handler->tty_info;
 
 	if (ttynum > 0) {
 		if (ttynum > tty_info->nbtty)
@@ -260,26 +298,37 @@ static int ttyservice_handler(int fd, void *data,
 		goto out_close;
 
 out_send:
-	if (lxc_af_unix_send_fd(conn, tty_info->pty_info[ttynum - 1].master,
+	if (lxc_af_unix_send_fd(fd, tty_info->pty_info[ttynum - 1].master,
 				&ttynum, sizeof(ttynum)) < 0) {
 		ERROR("failed to send tty to client");
 		goto out_close;
 	}
 
-	if (lxc_mainloop_add_handler(descr, conn,
-				     ttyclient_handler, tty_info)) {
-		ERROR("failed to add tty client handler");
-		goto out_close;
-	}
+	tty_info->pty_info[ttynum - 1].busy = fd;
 
-	tty_info->pty_info[ttynum - 1].busy = conn;
+	return 0;
 
-	ret = 0;
-out:
-	return ret;
 out_close:
-	close(conn);
-	goto out;
+	/* the close fd and related cleanup will be done by caller */
+	return 1;
+}
+
+static int trigger_command(int fd, struct lxc_request *request,
+			struct lxc_handler *handler,
+			struct lxc_epoll_descr *descr)
+{
+	typedef int (*callback)(int, struct lxc_request *,
+				struct lxc_handler *,
+				struct lxc_epoll_descr *descr);
+
+	callback cb[LXC_COMMAND_MAX] = {
+		[LXC_COMMAND_TTY] = ttyservice_handler,
+	};
+
+	if (request->type < 0 || request->type >= LXC_COMMAND_MAX)
+		return -1;
+
+	return cb[request->type](fd, request, handler, descr);
 }
 
 int lxc_poll(const char *name, struct lxc_handler *handler)
@@ -291,9 +340,8 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	int nfds, ret = -1;
 	struct lxc_epoll_descr descr;
 
-	/* sigfd + nb tty + tty service 
-	 * if tty is enabled */
-	nfds = tty_info->nbtty + 1 + tty_info->nbtty ? 1 : 0;
+	/* nb tty + sigfd + command service */
+	nfds = tty_info->nbtty + 2;
 
 	if (lxc_mainloop_open(nfds, &descr)) {
 		ERROR("failed to create mainloop");
@@ -305,10 +353,8 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_open;
 	}
 
-	if (tty_info->nbtty) {
-		if (tty_mainloop_add(name, &descr, handler))
-			goto out_mainloop_open;
-	}
+	if (command_mainloop_add(name, &descr, handler))
+		goto out_mainloop_open;
 
 	ret = lxc_mainloop(&descr);
 

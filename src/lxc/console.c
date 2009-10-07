@@ -31,47 +31,82 @@
 #include "error.h"
 
 #include <lxc/log.h>
+#include "commands.h"
 
 lxc_log_define(lxc_console, lxc);
 
-extern int lxc_console(const char *name, int ttynum, int *fd)
+static int receive_answer(int sock, struct lxc_answer *answer)
+{
+	int ret;
+
+	ret = lxc_af_unix_recv_fd(sock, &answer->fd, answer, sizeof(*answer));
+	if (ret < 0)
+		ERROR("failed to receive answer for the command");
+
+	return ret;
+}
+
+static int send_command(const char *name, struct lxc_command *command)
 {
 	struct sockaddr_un addr = { 0 };
 	int sock, ret = -1;
+	char *offset = &addr.sun_path[1];
 
 	snprintf(addr.sun_path, sizeof(addr.sun_path), "@%s", name);
 	addr.sun_path[0] = '\0';
 
 	sock = lxc_af_unix_connect(addr.sun_path);
 	if (sock < 0) {
-		ERROR("failed to connect to the tty service");
-		goto out;
+		WARN("failed to connect to '@%s': %s", offset, strerror(errno));
+		return -1;
 	}
 
-	ret = lxc_af_unix_send_credential(sock, &ttynum, sizeof(ttynum));
+	ret = lxc_af_unix_send_credential(sock, &command->request,
+					sizeof(command->request));
 	if (ret < 0) {
 		SYSERROR("failed to send credentials");
 		goto out_close;
 	}
 
-	ret = lxc_af_unix_recv_fd(sock, fd, &ttynum, sizeof(ttynum));
-	if (ret < 0) {
-		ERROR("failed to connect to the tty");
+	if (ret != sizeof(command->request)) {
+		SYSERROR("message only partially sent to '@%s'", offset);
 		goto out_close;
 	}
 
-	INFO("tty %d allocated", ttynum);
-
-	if (!ret) {
-		ERROR("console denied by '%s'", name);
+	ret = receive_answer(sock, &command->answer);
+	if (ret < 0)
 		goto out_close;
-	}
-
-	ret = 0;
-
 out:
 	return ret;
 out_close:
 	close(sock);
 	goto out;
+}
+
+extern int lxc_console(const char *name, int ttynum, int *fd)
+{
+	int ret;
+	struct lxc_command command = {
+		.request = { .type = LXC_COMMAND_TTY, .data = ttynum },
+	};
+
+	ret = send_command(name, &command);
+	if (ret < 0) {
+		ERROR("failed to send command");
+		return -1;
+	}
+
+	if (!ret) {
+		ERROR("console denied by '%s'", name);
+		return -1;
+	}
+
+	*fd = command.answer.fd;
+	if (*fd <0) {
+		ERROR("unable to allocate fd for tty %d", ttynum);
+		return -1;
+	}
+
+	INFO("tty %d allocated", ttynum);
+	return 0;
 }
