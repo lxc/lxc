@@ -95,6 +95,8 @@ out_close:
 extern void lxc_console_remove_fd(int fd, struct lxc_tty_info *tty_info);
 extern int lxc_console_callback(int fd, struct lxc_request *request,
 			struct lxc_handler *handler);
+extern int lxc_stop_callback(int fd, struct lxc_request *request,
+			struct lxc_handler *handler);
 
 static int trigger_command(int fd, struct lxc_request *request,
 			struct lxc_handler *handler)
@@ -104,6 +106,7 @@ static int trigger_command(int fd, struct lxc_request *request,
 
 	callback cb[LXC_COMMAND_MAX] = {
 		[LXC_COMMAND_TTY] = lxc_console_callback,
+		[LXC_COMMAND_STOP] = lxc_stop_callback,
 	};
 
 	if (request->type < 0 || request->type >= LXC_COMMAND_MAX)

@@ -33,12 +33,13 @@
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>
+#include "commands.h"
 
 lxc_log_define(lxc_stop, lxc);
 
 #define MAXPIDLEN 20
 
-int lxc_stop(const char *name)
+int __lxc_stop(const char *name)
 {
 	char init[MAXPATHLEN];
 	char val[MAXPIDLEN];
@@ -73,3 +74,61 @@ out_close:
 	close(fd);
 	return ret;
 }
+
+int lxc_stop(const char *name)
+{
+	struct lxc_command command = {
+		.request = { .type = LXC_COMMAND_STOP },
+	};
+
+	int ret;
+
+	ret = lxc_command(name, &command);
+	if (ret < 0) {
+		ERROR("failed to send command");
+		return -1;
+	}
+
+	/* we do not expect any answer, because we wait for the connection to be
+	 * closed
+	 */
+	if (ret > 0) {
+		ERROR("stop request rejected for '%s': %s",
+			name, strerror(-command.answer.ret));
+		return -1;
+	}
+
+	INFO("'%s' has stopped", name);
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------
+ * functions used by lxc-start mainloop
+ * to handle above command request.
+ *--------------------------------------------------------------------------*/
+extern int lxc_stop_callback(int fd, struct lxc_request *request,
+			struct lxc_handler *handler)
+{
+	struct lxc_answer answer;
+	int ret;
+
+	answer.ret = kill(handler->pid, SIGKILL);
+	if (!answer.ret)
+		return 0;
+
+	ret = send(fd, &answer, sizeof(answer), 0);
+	if (ret < 0) {
+		WARN("failed to send answer to the peer");
+		goto out;
+	}
+
+	if (ret != sizeof(answer)) {
+		ERROR("partial answer sent");
+		goto out;
+	}
+
+out:
+	return -1;
+}
+

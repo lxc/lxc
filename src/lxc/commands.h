@@ -25,6 +25,7 @@
 
 enum {
 	LXC_COMMAND_TTY,
+	LXC_COMMAND_STOP,
 	LXC_COMMAND_MAX,
 };
 
