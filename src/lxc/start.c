@@ -368,6 +368,11 @@ static int do_start(void *arg)
 		goto out_child;
 	}
 
+	if (prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0)) {
+		SYSERROR("failed to set pdeath signal");
+		goto out_child;
+	}
+
 	NOTICE("exec'ing '%s'", argv[0]);
 
 	execvp(argv[0], argv);
