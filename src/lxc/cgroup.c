@@ -81,10 +81,10 @@ out:
         return err;
 }
 
-int lxc_rename_nsgroup(const char *name, pid_t pid)
+int lxc_rename_nsgroup(const char *name, struct lxc_handler *handler)
 {
 	char oldname[MAXPATHLEN];
-	char newname[MAXPATHLEN];
+	char *newname = handler->nsgroup;
 	char cgroup[MAXPATHLEN];
 	int ret;
 
@@ -93,7 +93,7 @@ int lxc_rename_nsgroup(const char *name, pid_t pid)
 		return -1;
 	}
 
-	snprintf(oldname, MAXPATHLEN, "%s/%d", cgroup, pid);
+	snprintf(oldname, MAXPATHLEN, "%s/%d", cgroup, handler->pid);
 	snprintf(newname, MAXPATHLEN, "%s/%s", cgroup, name);
 
 	/* there is a previous cgroup, assume it is empty, otherwise
@@ -113,23 +113,16 @@ int lxc_rename_nsgroup(const char *name, pid_t pid)
 	else
 		DEBUG("'%s' renamed to '%s'", oldname, newname);
 
+
 	return ret;
 }
 
-int lxc_link_nsgroup(const char *name)
+int lxc_link_nsgroup(const char *name, const char *nsgroup)
 {
 	char lxc[MAXPATHLEN];
-	char nsgroup[MAXPATHLEN];
-	char cgroup[MAXPATHLEN];
 	int ret;
 
-	if (get_cgroup_mount(MTAB, cgroup)) {
-		ERROR("cgroup is not mounted");
-		return -1;
-	}
-
 	snprintf(lxc, MAXPATHLEN, LXCPATH "/%s/nsgroup", name);
-	snprintf(nsgroup, MAXPATHLEN, "%s/%s", cgroup, name);
 
 	unlink(lxc);
 	ret = symlink(nsgroup, lxc);
