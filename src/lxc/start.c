@@ -424,8 +424,7 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 		goto out_abort;
 	}
 
-	if (lxc_rename_nsgroup(name, handler) ||
-	    lxc_link_nsgroup(name, handler->nsgroup))
+	if (lxc_rename_nsgroup(name, handler))
 		goto out_abort;
 
 	/* Create the network configuration */

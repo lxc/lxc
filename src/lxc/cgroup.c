@@ -119,23 +119,7 @@ int lxc_rename_nsgroup(const char *name, struct lxc_handler *handler)
 	return ret;
 }
 
-int lxc_link_nsgroup(const char *name, const char *nsgroup)
-{
-	char lxc[MAXPATHLEN];
-	int ret;
-
-	snprintf(lxc, MAXPATHLEN, LXCPATH "/%s/nsgroup", name);
-
-	unlink(lxc);
-	ret = symlink(nsgroup, lxc);
-	if (ret)
-		SYSERROR("failed to create symlink %s->%s", nsgroup, lxc);
-	else
-		DEBUG("'%s' linked to '%s'", nsgroup, lxc);
-
-	return ret;
-}
-
+#warning keep lxc_unlink_nsgroup fct to be able to destroy old created container.
 int lxc_unlink_nsgroup(const char *name)
 {
 	char nsgroup[MAXPATHLEN];
