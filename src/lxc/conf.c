@@ -605,20 +605,6 @@ static int configure_rootfs(const char *name, const char *rootfs)
 	return -1;
 }
 
-static int configure_mount(const char *name, const char *fstab)
-{
-	char path[MAXPATHLEN];
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s/fstab", name);
-
-	if (lxc_copy_file(fstab, path)) {
-		ERROR("failed to copy the fstab file");
-		return -1;
-	}
-
-	return 0;
-}
-
 static int unconfigure_ip_addresses(const char *directory)
 {
 	char path[MAXPATHLEN];
@@ -1059,26 +1045,25 @@ static int parse_mntopts(struct mntent *mntent, unsigned long *mntflags,
 	return 0;
 }
 
-static int setup_mount(const char *name)
+static int setup_mount(const char *fstab)
 {
-	char path[MAXPATHLEN];
 	struct mntent *mntent;
 	FILE *file;
 	int ret = -1;
 	unsigned long mntflags;
 	char *mntdata;
 
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s/fstab", name);
+	if (!fstab)
+		return 0;
 
-	file = setmntent(path, "r");
+	file = setmntent(fstab, "r");
 	if (!file) {
-		if (errno == ENOENT)
-			return 0;
-		SYSERROR("failed to open '%s'", path);
-		goto out;
+		SYSERROR("failed to use '%s'", fstab);
+		return -1;
 	}
 
 	while ((mntent = getmntent(file))) {
+
 		mntflags = 0;
 		mntdata = NULL;
 		if (parse_mntopts(mntent, &mntflags, &mntdata) < 0) {
@@ -1395,11 +1380,6 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 
 	if (conf->tty && configure_tty(name, conf->tty)) {
 		ERROR("failed to configure the tty");
-		return -1;
-	}
-
-	if (conf->fstab && configure_mount(name, conf->fstab)) {
-		ERROR("failed to configure the mount points");
 		return -1;
 	}
 
@@ -1804,7 +1784,7 @@ int lxc_setup(const char *name, const char *cons,
 		return -1;
 	}
 
-	if (lxc_conf.fstab && setup_mount(name)) {
+	if (setup_mount(lxc_conf.fstab)) {
 		ERROR("failed to setup the mounts for '%s'", name);
 		return -1;
 	}
