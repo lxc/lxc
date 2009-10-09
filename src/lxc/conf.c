@@ -897,17 +897,14 @@ static int setup_netdev(struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int setup_network(struct lxc_list *networks)
+static int setup_network(struct lxc_list *network)
 {
 	struct lxc_list *iterator;
-	struct lxc_network *network;
 	struct lxc_netdev *netdev;
 
-	lxc_list_for_each(iterator, networks) {
+	lxc_list_for_each(iterator, network) {
 
-		network = iterator->elem;
-
-		netdev = lxc_list_first_elem(&network->netdev);
+		netdev = iterator->elem;
 
 		if (setup_netdev(netdev)) {
 			ERROR("failed to setup netdev");
@@ -915,7 +912,8 @@ static int setup_network(struct lxc_list *networks)
 		}
 	}
 
-	INFO("network has been setup");
+	if (!lxc_list_empty(network))
+		INFO("network has been setup");
 
 	return 0;
 }
@@ -953,7 +951,7 @@ int lxc_conf_init(struct lxc_conf *conf)
 	conf->pts = 0;
 	conf->console[0] = '\0';
 	lxc_list_init(&conf->cgroup);
-	lxc_list_init(&conf->networks);
+	lxc_list_init(&conf->network);
 	return 0;
 }
 
@@ -1109,25 +1107,22 @@ static int instanciate_empty(struct lxc_netdev *netdev)
 	return 0;
 }
 
-int lxc_create_network(struct lxc_list *networks)
+int lxc_create_network(struct lxc_list *network)
 {
 	struct lxc_list *iterator;
-	struct lxc_network *network;
 	struct lxc_netdev *netdev;
 
-	lxc_list_for_each(iterator, networks) {
+	lxc_list_for_each(iterator, network) {
 
-		network = iterator->elem;
+		netdev = iterator->elem;
 
-		if (network->type < 0 || network->type > MAXCONFTYPE) {
+		if (netdev->type < 0 || netdev->type > MAXCONFTYPE) {
 			ERROR("invalid network configuration type '%d'",
-			      network->type);
+			      netdev->type);
 			return -1;
 		}
 
-		netdev = lxc_list_first_elem(&network->netdev);
-
-		if (netdev_conf[network->type](netdev)) {
+		if (netdev_conf[netdev->type](netdev)) {
 			ERROR("failed to create netdev");
 			return -1;
 		}
@@ -1136,17 +1131,14 @@ int lxc_create_network(struct lxc_list *networks)
 	return 0;
 }
 
-int lxc_assign_network(struct lxc_list *networks, pid_t pid)
+int lxc_assign_network(struct lxc_list *network, pid_t pid)
 {
 	struct lxc_list *iterator;
-	struct lxc_network *network;
 	struct lxc_netdev *netdev;
 
-	lxc_list_for_each(iterator, networks) {
+	lxc_list_for_each(iterator, network) {
 
-		network = iterator->elem;
-
-		netdev = lxc_list_first_elem(&network->netdev);
+		netdev = iterator->elem;
 
 		if (lxc_device_move(netdev->ifindex, pid)) {
 			ERROR("failed to move '%s' to the container",
@@ -1238,7 +1230,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_network(&lxc_conf->networks)) {
+	if (setup_network(&lxc_conf->network)) {
 		ERROR("failed to setup the network for '%s'", name);
 		return -1;
 	}

@@ -75,6 +75,7 @@ struct lxc_route6 {
  * @ipv6   : a list of ipv6 addresses to be set on the network device
  */
 struct lxc_netdev {
+	int type;
 	int flags;
 	int ifindex;
 	char *ifname;
@@ -83,20 +84,6 @@ struct lxc_netdev {
 	char *mtu;
 	struct lxc_list ipv4;
 	struct lxc_list ipv6;
-	struct lxc_list route4;
-	struct lxc_list route6;
-};
-
-/*
- * Defines the kind of the network to use
- * @type : the type of the network virtualization
- * @phys : phys configuration type
- * @veth : veth configuration type
- * @macvlan : macvlan configuration type
- */
-struct lxc_network {
-	int type;
-	struct lxc_list netdev;
 };
 
 /*
@@ -149,7 +136,7 @@ struct lxc_conf {
 	int pts;
 	struct utsname *utsname;
 	struct lxc_list cgroup;
-	struct lxc_list networks;
+	struct lxc_list network;
 	struct lxc_tty_info tty_info;
 	char console[MAXPATHLEN];
 };

@@ -94,19 +94,9 @@ static struct config *getconfig(const char *key)
 
 static int config_network_type(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
-	struct lxc_list *networks = &lxc_conf->networks;
-	struct lxc_network *network;
+	struct lxc_list *network = &lxc_conf->network;
 	struct lxc_netdev *netdev;
 	struct lxc_list *list;
-	struct lxc_list *ndlist;
-
-	network = malloc(sizeof(*network));
-	if (!network) {
-		SYSERROR("failed to allocate memory");
-		return -1;
-	}
-
-	lxc_list_init(&network->netdev);
 
 	netdev = malloc(sizeof(*netdev));
 	if (!netdev) {
@@ -117,18 +107,6 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 	memset(netdev, 0, sizeof(*netdev));
 	lxc_list_init(&netdev->ipv4);
 	lxc_list_init(&netdev->ipv6);
-	lxc_list_init(&netdev->route4);
-	lxc_list_init(&netdev->route6);
-
-	ndlist = malloc(sizeof(*ndlist));
-	if (!ndlist) {
-		SYSERROR("failed to allocate memory");
-		return -1;
-	}
-
-	ndlist->elem = netdev;
-
-	lxc_list_add(&network->netdev, ndlist);
 
 	list = malloc(sizeof(*list));
 	if (!list) {
@@ -137,18 +115,18 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 	}
 
 	lxc_list_init(list);
-	list->elem = network;
+	list->elem = netdev;
 
-	lxc_list_add(networks, list);
+	lxc_list_add(network, list);
 
 	if (!strcmp(value, "veth"))
-		network->type = VETH;
+		netdev->type = VETH;
 	else if (!strcmp(value, "macvlan"))
-		network->type = MACVLAN;
+		netdev->type = MACVLAN;
 	else if (!strcmp(value, "phys"))
-		network->type = PHYS;
+		netdev->type = PHYS;
 	else if (!strcmp(value, "empty"))
-		network->type = EMPTY;
+		netdev->type = EMPTY;
 	else {
 		ERROR("invalid network type %s", value);
 		return -1;
@@ -158,39 +136,36 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 
 static int config_network_flags(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
-	struct lxc_list *networks = &lxc_conf->networks;
-	struct lxc_network *network;
+	struct lxc_list *network = &lxc_conf->network;
 	struct lxc_netdev *netdev;
 
-	if (lxc_list_empty(networks)) {
+	if (lxc_list_empty(network)) {
 		ERROR("network is not created for '%s' option", value);
 		return -1;
 	}
 
-	network = lxc_list_first_elem(networks);
-	if (!network) {
+	netdev = lxc_list_first_elem(network);
+	if (!netdev) {
 		ERROR("no network defined for '%s' option", value);
 		return -1;
 	}
 
-	netdev = lxc_list_first_elem(&network->netdev);
 	netdev->flags |= IFF_UP;
 	return 0;
 }
 
 static int config_network_link(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
-	struct lxc_list *networks = &lxc_conf->networks;
-	struct lxc_network *network;
+	struct lxc_list *network = &lxc_conf->network;
 	struct lxc_netdev *netdev;
 
-	if (lxc_list_empty(networks)) {
+	if (lxc_list_empty(network)) {
 		ERROR("network is not created for %s", value);
 		return -1;
 	}
 
-	network = lxc_list_first_elem(networks);
-	if (!network) {
+	netdev = lxc_list_first_elem(network);
+	if (!netdev) {
 		ERROR("no network defined for %s", value);
 		return -1;
 	}
@@ -200,24 +175,22 @@ static int config_network_link(const char *key, char *value, struct lxc_conf *lx
 		return -1;
 	}
 
-	netdev = lxc_list_first_elem(&network->netdev);
 	netdev->ifname = strdup(value);
 	return 0;
 }
 
 static int config_network_name(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
-	struct lxc_list *networks = &lxc_conf->networks;
-	struct lxc_network *network;
+	struct lxc_list *network = &lxc_conf->network;
 	struct lxc_netdev *netdev;
 
-	if (lxc_list_empty(networks)) {
+	if (lxc_list_empty(network)) {
 		ERROR("network is not created for %s", value);
 		return -1;
 	}
 
-	network = lxc_list_first_elem(networks);
-	if (!network) {
+	netdev = lxc_list_first_elem(network);
+	if (!netdev) {
 		ERROR("no network defined for %s", value);
 		return -1;
 	}
@@ -227,76 +200,64 @@ static int config_network_name(const char *key, char *value, struct lxc_conf *lx
 		return -1;
 	}
 
-	netdev = lxc_list_first_elem(&network->netdev);
 	netdev->newname = strdup(value);
 	return 0;
 }
 
 static int config_network_hwaddr(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
-	struct lxc_list *networks = &lxc_conf->networks;
-	struct lxc_network *network;
+	struct lxc_list *network = &lxc_conf->network;
 	struct lxc_netdev *netdev;
 
-	if (lxc_list_empty(networks)) {
+	if (lxc_list_empty(network)) {
 		ERROR("network is not created for %s", value);
 		return -1;
 	}
 
-	network = lxc_list_first_elem(networks);
-	if (!network) {
+	netdev = lxc_list_first_elem(network);
+	if (!netdev) {
 		ERROR("no network defined for %s", value);
 		return -1;
 	}
 
-	netdev = lxc_list_first_elem(&network->netdev);
 	netdev->hwaddr = strdup(value);
 	return 0;
 }
 
 static int config_network_mtu(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
-	struct lxc_list *networks = &lxc_conf->networks;
-	struct lxc_network *network;
+	struct lxc_list *network = &lxc_conf->network;
 	struct lxc_netdev *netdev;
 
-	if (lxc_list_empty(networks)) {
+	if (lxc_list_empty(network)) {
 		ERROR("network is not created for %s", value);
 		return -1;
 	}
 
-	network = lxc_list_first_elem(networks);
-	if (!network) {
+	netdev = lxc_list_first_elem(network);
+	if (!netdev) {
 		ERROR("no network defined for %s", value);
 		return -1;
 	}
 
-	netdev = lxc_list_first_elem(&network->netdev);
 	netdev->mtu = strdup(value);
 	return 0;
 }
 
 static int config_network_ipv4(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
-	struct lxc_list *networks = &lxc_conf->networks;
-	struct lxc_network *network;
+	struct lxc_list *network = &lxc_conf->network;
 	struct lxc_inetdev *inetdev;
 	struct lxc_netdev *netdev;
 	struct lxc_list *list;
 	char *cursor, *slash, *addr = NULL, *bcast = NULL, *prefix = NULL;
 
-	if (lxc_list_empty(networks)) {
+	if (lxc_list_empty(network)) {
 		ERROR("network is not created for '%s'", value);
 		return -1;
 	}
 
-	network = lxc_list_first_elem(networks);
-	if (!network) {
-		ERROR("no network defined for '%s'", value);
-		return -1;
-	}
-
-	netdev = lxc_list_first_elem(&network->netdev);
+	netdev = lxc_list_first_elem(network);
 	if (!netdev) {
 		ERROR("no netdev defined for '%s'", value);
 	}
@@ -357,21 +318,20 @@ static int config_network_ipv4(const char *key, char *value, struct lxc_conf *lx
 
 static int config_network_ipv6(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
-	struct lxc_list *networks = &lxc_conf->networks;
-	struct lxc_network *network;
+	struct lxc_list *network = &lxc_conf->network;
 	struct lxc_netdev *netdev;
 	struct lxc_inet6dev *inet6dev;
 	struct lxc_list *list;
 	char *slash;
 	char *netmask;
 
-	if (lxc_list_empty(networks)) {
+	if (lxc_list_empty(network)) {
 		ERROR("network is not created for %s", value);
 		return -1;
 	}
 
-	network = lxc_list_first_elem(networks);
-	if (!network) {
+	netdev = lxc_list_first_elem(network);
+	if (!netdev) {
 		ERROR("no network defined for %s", value);
 		return -1;
 	}
@@ -404,8 +364,6 @@ static int config_network_ipv6(const char *key, char *value, struct lxc_conf *lx
 		return -1;
 	}
 
-
-	netdev = lxc_list_first_elem(&network->netdev);
 	lxc_list_add(&netdev->ipv6, list);
 
 	return 0;
