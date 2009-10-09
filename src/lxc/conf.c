@@ -842,25 +842,46 @@ static int setup_tty(const char *name, const struct lxc_tty_info *tty_info)
 	return 0;
 }
 
-static int setup_rootfs(const char *name)
+static int setup_rootfs(const char *rootfs)
 {
-	char path[MAXPATHLEN];
+	char *tmpname;
+	int ret = -1;
 
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
+	if (!rootfs)
+		return 0;
 
-	if (chroot(path)) {
-		SYSERROR("failed to set chroot %s", path);
+	tmpname = tempnam("/tmp", "lxc-rootfs");
+	if (!tmpname) {
+		SYSERROR("failed to generate temporary name");
 		return -1;
+	}
+
+	if (mkdir(tmpname, 0700)) {
+		SYSERROR("failed to create temporary directory '%s'", tmpname);
+		return -1;
+	}
+
+	if (mount(rootfs, tmpname, "none", MS_BIND|MS_REC, NULL)) {
+		SYSERROR("failed to mount '%s'->'%s'", rootfs, tmpname);
+		goto out;
+	}
+
+	if (chroot(tmpname)) {
+		SYSERROR("failed to set chroot %s", tmpname);
+		goto out;
 	}
 
 	if (chdir(getenv("HOME")) && chdir("/")) {
 		SYSERROR("failed to change to home directory");
-		return -1;
+		goto out;
 	}
 
-	INFO("chrooted to '%s'", path);
+	INFO("chrooted to '%s'", rootfs);
 
-	return 0;
+	ret = 0;
+out:
+	rmdir(tmpname);
+	return ret;
 }
 
 static int setup_pts(const char *name)
@@ -1434,11 +1455,6 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 		return -1;
 	}
 
-	if (conf->rootfs && configure_rootfs(name, conf->rootfs)) {
-		ERROR("failed to configure the rootfs");
-		return -1;
-	}
-
 	if (conf->pts && configure_pts(name, conf->pts)) {
 		ERROR("failed to configure a new pts instance");
 		return -1;
@@ -1860,7 +1876,7 @@ int lxc_setup(const char *name, const char *cons,
 		return -1;
 	}
 
-	if (lxc_conf.rootfs && setup_rootfs(name)) {
+	if (setup_rootfs(lxc_conf.rootfs)) {
 		ERROR("failed to set rootfs for '%s'", name);
 		return -1;
 	}
