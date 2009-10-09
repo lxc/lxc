@@ -159,7 +159,7 @@ extern int lxc_unconfigure(const char *name);
 extern int lxc_create_network(struct lxc_list *networks);
 extern int lxc_assign_network(struct lxc_list *networks, pid_t pid);
 
-extern int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info);
+extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
 
 /*

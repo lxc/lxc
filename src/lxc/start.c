@@ -276,7 +276,7 @@ struct lxc_handler *lxc_init(const char *name)
 		goto out_aborting;
 	}
 
-	if (lxc_create_tty(name, &handler->conf.tty_info)) {
+	if (lxc_create_tty(name, &handler->conf)) {
 		ERROR("failed to create the ttys");
 		goto out_aborting;
 	}

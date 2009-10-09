@@ -107,32 +107,6 @@ static struct mount_opt mount_opt[] = {
 	{ NULL,         0, 0              },
 };
 
-static int read_info(const char *path, const char *file, char *info, size_t len)
-{
-	int fd, ret = -1;
-	char f[MAXPATHLEN], *token;
-
-	snprintf(f, MAXPATHLEN, "%s/%s", path, file);
-	fd = open(f, O_RDONLY);
-	if (fd < 0) {
-		if (errno == ENOENT)
-			ret = 1;
-		goto out;
-	}
-
-	ret = read(fd, info, len);
-	if (ret < 0)
-		goto out;
-
-	token = strstr(info, "\n");
-	if (token)
-		*token = '\0';
-	ret = 0;
-out:
-	close(fd);
-	return ret;
-}
-
 static int delete_info(const char *path, const char *file)
 {
 	char info[MAXPATHLEN];
@@ -1152,25 +1126,16 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 	return 0;
 }
 
-int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info)
+int lxc_create_tty(const char *name, struct lxc_conf *conf)
 {
-	char path[MAXPATHLEN];
-	char tty[4];
+	struct lxc_tty_info *tty_info = &conf->tty_info;
 	int i, ret = -1;
 
-	tty_info->nbtty = 0;
-
-	if (!conf_has_tty(name))
+	/* no tty in the configuration */
+	if (!conf->tty)
 		return 0;
 
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
-
-	if (read_info(path, "tty", tty, sizeof(tty)) < 0) {
-		SYSERROR("failed to read tty info");
-		goto out;
-	}
-
-	tty_info->nbtty = atoi(tty);
+	tty_info->nbtty = conf->tty;
 	tty_info->pty_info =
 		malloc(sizeof(*tty_info->pty_info)*tty_info->nbtty);
 
