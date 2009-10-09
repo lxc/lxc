@@ -176,8 +176,10 @@ extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
 /*
  * Configure the container from inside
  */
-extern int lxc_setup(const char *name, const char *tty,
-		     const struct lxc_tty_info *tty_info);
+
+struct lxc_handler;
+
+extern int lxc_setup(const char *name, struct lxc_handler *handler);
 
 extern int conf_has(const char *name, const char *info);
 

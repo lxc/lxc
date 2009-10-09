@@ -32,6 +32,7 @@ struct lxc_handler {
 	char nsgroup[MAXPATHLEN];
 	sigset_t oldmask;
 	struct lxc_tty_info tty_info;
+	struct lxc_conf lxc_conf;
 };
 
 extern struct lxc_handler *lxc_init(const char *name);

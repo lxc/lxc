@@ -1619,66 +1619,44 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 	tty_info->nbtty = 0;
 }
 
-extern int lxc_config_read(const char *file, struct lxc_conf *conf);
-
-int lxc_setup(const char *name, const char *cons,
-	      const struct lxc_tty_info *tty_info)
-
+int lxc_setup(const char *name, struct lxc_handler *handler)
 {
-	struct lxc_conf lxc_conf;
-	char path[MAXPATHLEN];
-
-	if (lxc_conf_init(&lxc_conf)) {
-		ERROR("failed to initialize the configuration");
-		return -1;
-	}
-
-	snprintf(path, sizeof(path), LXCPATH "/%s/config", name);
-
-	if (!access(path, F_OK)) {
-
-		if (lxc_config_read(path, &lxc_conf)) {
-			ERROR("failed to read the configuration file");
-			return -1;
-		}
-	}
-
-	if (setup_utsname(lxc_conf.utsname)) {
+	if (setup_utsname(handler->lxc_conf.utsname)) {
 		ERROR("failed to setup the utsname for '%s'", name);
 		return -1;
 	}
 
-	if (!lxc_list_empty(&lxc_conf.networks) && setup_network(name)) {
+	if (!lxc_list_empty(&handler->lxc_conf.networks) && setup_network(name)) {
 		ERROR("failed to setup the network for '%s'", name);
 		return -1;
 	}
 
-	if (setup_cgroup(name, &lxc_conf.cgroup)) {
+	if (setup_cgroup(name, &handler->lxc_conf.cgroup)) {
 		ERROR("failed to setup the cgroups for '%s'", name);
 		return -1;
 	}
 
-	if (setup_mount(lxc_conf.fstab)) {
+	if (setup_mount(handler->lxc_conf.fstab)) {
 		ERROR("failed to setup the mounts for '%s'", name);
 		return -1;
 	}
 
-	if (setup_console(lxc_conf.rootfs, cons)) {
+	if (setup_console(handler->lxc_conf.rootfs, handler->tty)) {
 		ERROR("failed to setup the console for '%s'", name);
 		return -1;
 	}
 
-	if (setup_tty(lxc_conf.rootfs, tty_info)) {
+	if (setup_tty(handler->lxc_conf.rootfs, &handler->tty_info)) {
 		ERROR("failed to setup the ttys for '%s'", name);
 		return -1;
 	}
 
-	if (setup_rootfs(lxc_conf.rootfs)) {
+	if (setup_rootfs(handler->lxc_conf.rootfs)) {
 		ERROR("failed to set rootfs for '%s'", name);
 		return -1;
 	}
 
-	if (setup_pts(lxc_conf.pts)) {
+	if (setup_pts(handler->lxc_conf.pts)) {
 		ERROR("failed to setup the new pts instance");
 		return -1;
 	}

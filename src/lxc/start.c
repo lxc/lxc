@@ -44,6 +44,9 @@
 #include <sys/un.h>
 #include <sys/poll.h>
 
+#include <lxc/lxc.h>
+#include <lxc/confile.h>
+
 #ifdef HAVE_SYS_SIGNALFD_H 
 #  include <sys/signalfd.h>
 #else
@@ -235,6 +238,7 @@ static int console_init(char *console, size_t size)
 struct lxc_handler *lxc_init(const char *name)
 {
 	struct lxc_handler *handler;
+	char path[MAXPATHLEN];
 
 	handler = malloc(sizeof(*handler));
 	if (!handler)
@@ -250,6 +254,21 @@ struct lxc_handler *lxc_init(const char *name)
 	if (set_state(name, handler, STARTING)) {
 		ERROR("failed to set state '%s'", lxc_state2str(STARTING));
 		goto out_put_lock;
+	}
+
+	if (lxc_conf_init(&handler->lxc_conf)) {
+		ERROR("failed to initialize the configuration");
+		goto out_aborting;
+	}
+
+	snprintf(path, sizeof(path), LXCPATH "/%s/config", name);
+
+	if (!access(path, F_OK)) {
+
+		if (lxc_config_read(path, &handler->lxc_conf)) {
+			ERROR("failed to read the configuration file");
+			goto out_aborting;
+		}
 	}
 
 	if (console_init(handler->tty, sizeof(handler->tty))) {
@@ -358,7 +377,7 @@ static int do_start(void *arg)
 	}
 
 	/* Setup the container, ip, names, utsname, ... */
-	if (lxc_setup(name, handler->tty, &handler->tty_info)) {
+	if (lxc_setup(name, handler)) {
 		ERROR("failed to setup the container");
 		goto out_warn_father;
 	}
