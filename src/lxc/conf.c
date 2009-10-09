@@ -373,34 +373,6 @@ out:
 	return err;
 }
 
-static int configure_cgroup(const char *name, struct lxc_list *cgroup)
-{
-	char path[MAXPATHLEN];
-	struct lxc_list *iterator;
-	struct lxc_cgroup *cg;
-	FILE *file;
-
-	if (lxc_list_empty(cgroup))
-		return 0;
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
-
-	file = fopen(path, "w+");
-	if (!file) {
-		SYSERROR("failed to open '%s'", path);
-		return -1;
-	}
-
-	lxc_list_for_each(iterator, cgroup) {
-		cg = iterator->elem;
-		fprintf(file, "%s=%s\n", cg->subsystem, cg->value);
-	}
-
-	fclose(file);
-
-	return 0;
-}
-
 static int configure_find_fstype_cb(void* buffer, void *data)
 {
 	struct cbarg {
@@ -876,106 +848,23 @@ static int setup_console(const char *rootfs, const char *tty)
 	return 0;
 }
 
-static int setup_cgroup_cb(void* buffer, void *data)
+static int setup_cgroup(const char *name, struct lxc_list *cgroups)
 {
-	char *key = buffer, *value;
-	char *name = data;
-	int ret;
+	struct lxc_list *iterator;
+	struct lxc_cgroup *cg;
 
-	value = strchr(key, '=');
-	if (!value)
-		return -1;
+	if (lxc_list_empty(cgroups))
+		return 0;
 
-	*value = '\0';
-	value += 1;
+	lxc_list_for_each(iterator, cgroups) {
 
-	/* remove spurious '\n'*/
-	if (value[strlen(value) - 1] == '\n')
-		value[strlen(value) - 1] = '\0';
+		cg = iterator->elem;
 
-	ret = lxc_cgroup_set(name, key, value);
-	if (ret)
-		ERROR("failed to set cgroup '%s' = '%s' for '%s'",
-		      key, value, name);
-	else
-		DEBUG("cgroup '%s' set to '%s'", key, value);
+		if (lxc_cgroup_set(name, cg->subsystem, cg->value))
+			break;
 
-	return ret;
-}
-
-static int setup_convert_cgroup_cb(const char *name, const char *directory,
-				   const char *file, void *data)
-{
-	FILE *f = data;
-	char line[MAXPATHLEN];
-
-	if (read_info(directory, file, line, MAXPATHLEN)) {
-		ERROR("failed to read %s", file);
-		return -1;
+		DEBUG("cgroup '%s' set to '%s'", cg->subsystem, cg->value);
 	}
-
-	fprintf(f, "%s=%s\n", file, line);
-
-	return 0;
-}
-
-static int setup_convert_cgroup(const char *name, char *directory)
-{
-	char filename[MAXPATHLEN];
-	FILE *file;
-	int ret;
-
-	snprintf(filename, MAXPATHLEN, LXCPATH "/%s/cgroup.new", name);
-
-	file = fopen(filename, "w+");
-	if (!file)
-		return -1;
-
-	ret = lxc_dir_for_each(name, directory, setup_convert_cgroup_cb, file);
-	if (ret)
-		goto out_error;
-
-	ret = unconfigure_cgroup(name);
-	if (ret)
-		goto out_error;
-
-	ret = rename(filename, directory);
-	if (ret)
-		goto out_error;
-out:
-	fclose(file);
-	return ret;
-
-out_error:
-	unlink(filename);
-	goto out;
-}
-
-static int setup_cgroup(const char *name)
-{
-	char filename[MAXPATHLEN];
-	char line[MAXPATHLEN];
-	struct stat s;
-	int ret;
-
-	snprintf(filename, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
-
-	if (stat(filename, &s)) {
-		SYSERROR("failed to stat '%s'", filename);
-		return -1;
-	}
-
-	if (S_ISDIR(s.st_mode)) {
-		if (setup_convert_cgroup(name, filename)) {
-			ERROR("failed to convert old cgroup configuration");
-			return -1;
-		}
-	}
-
-	ret = lxc_file_for_each_line(filename, setup_cgroup_cb,
-				     line, MAXPATHLEN, (void *)name);
-	if (ret)
-		return ret;
 
 	INFO("cgroup has been setup");
 
@@ -1362,11 +1251,6 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 {
 	if (!conf)
 		return 0;
-
-	if (configure_cgroup(name, &conf->cgroup)) {
-		ERROR("failed to configure the control group");
-		return -1;
-	}
 
 	if (configure_network(name, &conf->networks)) {
 		ERROR("failed to configure the network");
@@ -1769,7 +1653,7 @@ int lxc_setup(const char *name, const char *cons,
 		return -1;
 	}
 
-	if (!lxc_list_empty(&lxc_conf.cgroup) && setup_cgroup(name)) {
+	if (setup_cgroup(name, &lxc_conf.cgroup)) {
 		ERROR("failed to setup the cgroups for '%s'", name);
 		return -1;
 	}
