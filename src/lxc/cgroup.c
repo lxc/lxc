@@ -45,6 +45,8 @@ lxc_log_define(lxc_cgroup, lxc);
 
 #define MTAB "/etc/mtab"
 
+static char nsgroup_path[MAXPATHLEN];
+
 static int get_cgroup_mount(const char *mtab, char *mnt)
 {
         struct mntent *mntent;
@@ -153,12 +155,38 @@ int lxc_unlink_nsgroup(const char *name)
 	return unlink(nsgroup);
 }
 
+static int lxc_cgroup_path_get(char **path, const char *name)
+{
+	char cgroup[MAXPATHLEN];
+
+	*path = &nsgroup_path[0];
+
+	/*
+	 * report nsgroup_path string if already set
+	 */
+	if (**path != 0)
+		return 0;
+
+	if (get_cgroup_mount(MTAB, cgroup)) {
+		ERROR("cgroup is not mounted");
+		return -1;
+	}
+
+	snprintf(nsgroup_path, MAXPATHLEN, "%s/%s", cgroup, name);
+	return 0;
+}
+
 int lxc_cgroup_set(const char *name, const char *subsystem, const char *value)
 {
 	int fd, ret = -1;
+	char *nsgroup;
 	char path[MAXPATHLEN];
 
-        snprintf(path, MAXPATHLEN, LXCPATH "/%s/nsgroup/%s", name, subsystem);
+	ret = lxc_cgroup_path_get(&nsgroup, name);
+	if (ret)
+		return -1;
+
+        snprintf(path, MAXPATHLEN, "%s/%s", nsgroup, subsystem);
 
 	fd = open(path, O_WRONLY);
 	if (fd < 0) {
@@ -181,9 +209,14 @@ int lxc_cgroup_get(const char *name, const char *subsystem,
 		   char *value, size_t len)
 {
 	int fd, ret = -1;
+	char *nsgroup;
 	char path[MAXPATHLEN];
 
-        snprintf(path, MAXPATHLEN, LXCPATH "/%s/nsgroup/%s", name, subsystem);
+	ret = lxc_cgroup_path_get(&nsgroup, name);
+	if (ret)
+		return -1;
+
+        snprintf(path, MAXPATHLEN, "%s/%s", nsgroup, subsystem);
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
