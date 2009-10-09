@@ -605,28 +605,6 @@ static int configure_rootfs(const char *name, const char *rootfs)
 	return -1;
 }
 
-static int configure_pts(const char *name, int pts)
-{
-	char path[MAXPATHLEN];
-	char *maxpts;
-	int ret;
-
-	if (asprintf(&maxpts, "%d", pts) < 0) {
-		ERROR("failed to convert max pts number");
-		return -1;
-	}
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
-
-	ret = write_info(path, "pts", maxpts);
-	if (ret)
-		ERROR("failed to write the pts info");
-
-	free(maxpts);
-
-	return ret;
-}
-
 static int configure_mount(const char *name, const char *fstab)
 {
 	char path[MAXPATHLEN];
@@ -859,18 +837,17 @@ out:
 	return ret;
 }
 
-static int setup_pts(const char *name)
+static int setup_pts(int pts)
 {
-	char mountname[MAXPATHLEN];
+	if (!pts)
+		return 0;
 
 	if (!access("/dev/pts/ptmx", F_OK) && umount("/dev/pts")) {
 		SYSERROR("failed to umount 'dev/pts'");
 		return -1;
 	}
 
-	snprintf(mountname, MAXPATHLEN, "%spts", name);
-
-	if (mount(mountname, "/dev/pts", "devpts", MS_MGC_VAL, "newinstance")) {
+	if (mount("devpts", "/dev/pts", "devpts", MS_MGC_VAL, "newinstance")) {
 		SYSERROR("failed to mount a new instance of '/dev/pts'");
 		return -1;
 	}
@@ -894,6 +871,7 @@ static int setup_pts(const char *name)
 	}
 
 	INFO("created new pts instance");
+
 out:
 	return 0;
 }
@@ -1425,11 +1403,6 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 		return -1;
 	}
 
-	if (conf->pts && configure_pts(name, conf->pts)) {
-		ERROR("failed to configure a new pts instance");
-		return -1;
-	}
-
 	return 0;
 }
 
@@ -1851,7 +1824,7 @@ int lxc_setup(const char *name, const char *cons,
 		return -1;
 	}
 
-	if (lxc_conf.pts && setup_pts(name)) {
+	if (setup_pts(lxc_conf.pts)) {
 		ERROR("failed to setup the new pts instance");
 		return -1;
 	}
