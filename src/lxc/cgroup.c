@@ -155,7 +155,7 @@ int lxc_unlink_nsgroup(const char *name)
 	return unlink(nsgroup);
 }
 
-static int lxc_cgroup_path_get(char **path, const char *name)
+int lxc_cgroup_path_get(char **path, const char *name)
 {
 	char cgroup[MAXPATHLEN];
 
