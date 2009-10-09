@@ -1806,60 +1806,12 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 	tty_info->nbtty = 0;
 }
 
-enum { utsname, network, cgroup, fstab, console, tty, rootfs, pts };
-
-static int conf_is_set(long flags, int subsystem)
-{
-	return flags & (1 << subsystem);
-}
-
-static void conf_set_flag(long *flags, int subsystem)
-{
-	*flags |= 1 << subsystem;
-}
-
-static long make_conf_flagset(const char *name, const char *cons,
-			      const struct lxc_tty_info *tty_info)
-{
-	long flags = 0;
-
-	if (conf_has_utsname(name))
-		conf_set_flag(&flags, utsname);
-
-	if (conf_has_network(name))
-		conf_set_flag(&flags, network);
-
-	if (conf_has_cgroup(name))
-		conf_set_flag(&flags, cgroup);
-
-	if (conf_has_fstab(name))
-		conf_set_flag(&flags, fstab);
-
-	if (conf_has_rootfs(name))
-		conf_set_flag(&flags, rootfs);
-
-	if (conf_has_pts(name))
-		conf_set_flag(&flags, pts);
-
-	if (tty_info->nbtty)
-		conf_set_flag(&flags, tty);
-
-	if (cons[0])
-		conf_set_flag(&flags, console);
-
-	return flags;
-}
-
 extern int lxc_config_read(const char *file, struct lxc_conf *conf);
 
 int lxc_setup(const char *name, const char *cons,
 	      const struct lxc_tty_info *tty_info)
 
 {
-	/* store the conf flags set otherwise conf_has will not
-	 * work after chrooting */
-	long flags = make_conf_flagset(name, cons, tty_info);
-
 	struct lxc_conf lxc_conf;
 	char path[MAXPATHLEN];
 
@@ -1878,42 +1830,42 @@ int lxc_setup(const char *name, const char *cons,
 		}
 	}
 
-	if (conf_is_set(flags, utsname) && setup_utsname(name)) {
+	if (lxc_conf.utsname && setup_utsname(name)) {
 		ERROR("failed to setup the utsname for '%s'", name);
 		return -1;
 	}
 
-	if (conf_is_set(flags, network) && setup_network(name)) {
+	if (!lxc_list_empty(&lxc_conf.networks) && setup_network(name)) {
 		ERROR("failed to setup the network for '%s'", name);
 		return -1;
 	}
 
-	if (conf_is_set(flags, cgroup) && setup_cgroup(name)) {
+	if (!lxc_list_empty(&lxc_conf.cgroup) && setup_cgroup(name)) {
 		ERROR("failed to setup the cgroups for '%s'", name);
 		return -1;
 	}
 
-	if (conf_is_set(flags, fstab) && setup_mount(name)) {
+	if (lxc_conf.fstab && setup_mount(name)) {
 		ERROR("failed to setup the mounts for '%s'", name);
 		return -1;
 	}
 
-	if (conf_is_set(flags, console) && setup_console(name, cons)) {
+	if (cons[0] && setup_console(name, cons)) {
 		ERROR("failed to setup the console for '%s'", name);
 		return -1;
 	}
 
-	if (conf_is_set(flags, tty) && setup_tty(name, tty_info)) {
+	if (lxc_conf.tty && setup_tty(name, tty_info)) {
 		ERROR("failed to setup the ttys for '%s'", name);
 		return -1;
 	}
 
-	if (conf_is_set(flags, rootfs) && setup_rootfs(name)) {
+	if (lxc_conf.rootfs && setup_rootfs(name)) {
 		ERROR("failed to set rootfs for '%s'", name);
 		return -1;
 	}
 
-	if (conf_is_set(flags, pts) && setup_pts(name)) {
+	if (lxc_conf.pts && setup_pts(name)) {
 		ERROR("failed to setup the new pts instance");
 		return -1;
 	}
