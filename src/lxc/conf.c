@@ -787,8 +787,8 @@ static int setup_ipv4_addr(struct lxc_list *ip, int ifindex)
 
 		inetdev = iterator->elem;
 
-		if (lxc_ip_addr_add(ifindex, inetdev->addr,
-				    inetdev->prefix, inetdev->bcast)) {
+		if (lxc_ip_addr_add(AF_INET, ifindex,
+				    &inetdev->addr, inetdev->prefix)) {
 			return -1;
 		}
 	}
@@ -799,16 +799,15 @@ static int setup_ipv4_addr(struct lxc_list *ip, int ifindex)
 static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 {
 	struct lxc_list *iterator;
-	struct lxc_inet6dev *inet6dev;
+	struct lxc_inetdev *inet6dev;
 
 	lxc_list_for_each(iterator, ip) {
 
 		inet6dev = iterator->elem;
 
-		if (lxc_ip6_addr_add(ifindex, inet6dev->addr,
-				     inet6dev->prefix, inet6dev->bcast)) {
+		if (lxc_ip_addr_add(AF_INET6, ifindex,
+				    & inet6dev->addr, inet6dev->prefix))
 			return -1;
-		}
 	}
 
 	return 0;

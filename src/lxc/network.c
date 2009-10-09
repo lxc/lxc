@@ -86,7 +86,7 @@ int lxc_device_move(int ifindex, pid_t pid)
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL;
 	struct link_req *link_req;
-	int len, err = -1;
+	int err = -1;
 
 	if (netlink_open(&nlh, NETLINK_ROUTE))
 		return -1;
@@ -565,13 +565,16 @@ int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr)
     return 0;
 }
 
-int lxc_ip_addr_add(int ifindex, struct in_addr in_addr,
-		    int prefix,  struct in_addr in_bcast)
+int lxc_ip_addr_add(int family, int ifindex, void *addr, int prefix)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
 	struct ip_req *ip_req;
+	int addrlen;
 	int err = -1;
+
+	addrlen = family == AF_INET ? sizeof(struct in_addr) :
+		sizeof(struct in6_addr);
 
 	if (netlink_open(&nlh, NETLINK_ROUTE))
 		return -1;
@@ -591,69 +594,18 @@ int lxc_ip_addr_add(int ifindex, struct in_addr in_addr,
         ip_req->nlmsg.nlmsghdr.nlmsg_type = RTM_NEWADDR;
 	ip_req->ifa.ifa_prefixlen = prefix;
         ip_req->ifa.ifa_index = ifindex;
-        ip_req->ifa.ifa_family = AF_INET;
+        ip_req->ifa.ifa_family = family;
 	ip_req->ifa.ifa_scope = 0;
 	
-	if (nla_put_buffer(nlmsg, IFA_LOCAL, &in_addr, sizeof(in_addr)))
+	if (nla_put_buffer(nlmsg, IFA_LOCAL, addr, addrlen))
 		goto out;
 
-	if (nla_put_buffer(nlmsg, IFA_ADDRESS, &in_addr, sizeof(in_addr)))
+	if (nla_put_buffer(nlmsg, IFA_ADDRESS, addr, addrlen))
 		goto out;
 
 /* 	if (in_bcast.s_addr != INADDR_ANY) */
 /* 		if (nla_put_buffer(nlmsg, IFA_BROADCAST, &in_bcast, */
 /* 				   sizeof(in_bcast))) */
-/* 			goto out; */
-
-	if (netlink_transaction(&nlh, nlmsg, answer))
-		goto out;
-
-	err = 0;
-out:
-	netlink_close(&nlh);
-	nlmsg_free(answer);
-	nlmsg_free(nlmsg);
-	return err;
-}
-
-int lxc_ip6_addr_add(int ifindex, struct in6_addr in6_addr,
-		     int prefix,  struct in6_addr in6_bcast)
-{
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
-	struct ip_req *ip_req;
-	int err = -1;
-
-	if (netlink_open(&nlh, NETLINK_ROUTE))
-		return -1;
-
-	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!nlmsg)
-		goto out;
-
-	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!answer)
-		goto out;
-
-	ip_req = (struct ip_req *)nlmsg;
-        ip_req->nlmsg.nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifaddrmsg));
-        ip_req->nlmsg.nlmsghdr.nlmsg_flags =
-		NLM_F_ACK|NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL;
-        ip_req->nlmsg.nlmsghdr.nlmsg_type = RTM_NEWADDR;
-	ip_req->ifa.ifa_prefixlen = prefix;
-        ip_req->ifa.ifa_index = ifindex;
-        ip_req->ifa.ifa_family = AF_INET6;
-	ip_req->ifa.ifa_scope = 0;
-	
-	if (nla_put_buffer(nlmsg, IFA_LOCAL, &in6_addr, sizeof(in6_addr)))
-		goto out;
-
-	if (nla_put_buffer(nlmsg, IFA_ADDRESS, &in6_addr, sizeof(in6_addr)))
-		goto out;
-
-/* 	if (in6_bcast.s6_addr != in6addr_any.s6_addr) */
-/* 		if (nla_put_buffer(nlmsg, IFA_BROADCAST, &in6_bcast, */
-/* 				   sizeof(in6_bcast))) */
 /* 			goto out; */
 
 	if (netlink_transaction(&nlh, nlmsg, answer))
