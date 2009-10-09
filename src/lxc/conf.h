@@ -110,24 +110,6 @@ struct lxc_cgroup {
 };
 
 /*
- * Defines the global container configuration
- * @rootfs  : the root directory to run the container
- * @mount   : the list of mount points
- * @network : the network configuration
- * @utsname : the container utsname
- */
-struct lxc_conf {
-	const char *rcfile;
-	char *rootfs;
-	char *fstab;
-	int tty;
-	int pts;
-	struct utsname *utsname;
-	struct lxc_list cgroup;
-	struct lxc_list networks;
-};
-
-/*
  * Defines a structure containing a pty information for
  * virtualizing a tty
  * @name   : the path name of the slave pty side
@@ -149,6 +131,26 @@ struct lxc_pty_info {
 struct lxc_tty_info {
 	int nbtty;
 	struct lxc_pty_info *pty_info;
+};
+
+/*
+ * Defines the global container configuration
+ * @rootfs  : the root directory to run the container
+ * @mount   : the list of mount points
+ * @network : the network configuration
+ * @utsname : the container utsname
+ */
+struct lxc_conf {
+	const char *rcfile;
+	char *rootfs;
+	char *fstab;
+	int tty;
+	int pts;
+	struct utsname *utsname;
+	struct lxc_list cgroup;
+	struct lxc_list networks;
+	struct lxc_tty_info tty_info;
+	char console[MAXPATHLEN];
 };
 
 /*
@@ -179,7 +181,7 @@ extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
 
 struct lxc_handler;
 
-extern int lxc_setup(const char *name, struct lxc_handler *handler);
+extern int lxc_setup(const char *name, struct lxc_conf *lxc_conf);
 
 extern int conf_has(const char *name, const char *info);
 

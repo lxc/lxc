@@ -256,7 +256,7 @@ struct lxc_handler *lxc_init(const char *name)
 		goto out_put_lock;
 	}
 
-	if (lxc_conf_init(&handler->lxc_conf)) {
+	if (lxc_conf_init(&handler->conf)) {
 		ERROR("failed to initialize the configuration");
 		goto out_aborting;
 	}
@@ -265,18 +265,18 @@ struct lxc_handler *lxc_init(const char *name)
 
 	if (!access(path, F_OK)) {
 
-		if (lxc_config_read(path, &handler->lxc_conf)) {
+		if (lxc_config_read(path, &handler->conf)) {
 			ERROR("failed to read the configuration file");
 			goto out_aborting;
 		}
 	}
 
-	if (console_init(handler->tty, sizeof(handler->tty))) {
+	if (console_init(handler->conf.console, sizeof(handler->conf.console))) {
 		ERROR("failed to initialize the console");
 		goto out_aborting;
 	}
 
-	if (lxc_create_tty(name, &handler->tty_info)) {
+	if (lxc_create_tty(name, &handler->conf.tty_info)) {
 		ERROR("failed to create the ttys");
 		goto out_aborting;
 	}
@@ -301,7 +301,7 @@ out:
 	return handler;
 
 out_delete_tty:
-	lxc_delete_tty(&handler->tty_info);
+	lxc_delete_tty(&handler->conf.tty_info);
 out_aborting:
 	set_state(name, handler, ABORTING);
 out_put_lock:
@@ -323,7 +323,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	if (handler) {
 		remove_init_pid(name, handler->pid);
-		lxc_delete_tty(&handler->tty_info);
+		lxc_delete_tty(&handler->conf.tty_info);
 		lxc_put_lock(handler->lock);
 		free(handler);
 	}
@@ -377,7 +377,7 @@ static int do_start(void *arg)
 	}
 
 	/* Setup the container, ip, names, utsname, ... */
-	if (lxc_setup(name, handler)) {
+	if (lxc_setup(name, &handler->conf)) {
 		ERROR("failed to setup the container");
 		goto out_warn_father;
 	}

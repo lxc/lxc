@@ -28,11 +28,9 @@ struct lxc_handler {
 
 	int sigfd;
 	int lock;
-	char tty[MAXPATHLEN];
 	char nsgroup[MAXPATHLEN];
 	sigset_t oldmask;
-	struct lxc_tty_info tty_info;
-	struct lxc_conf lxc_conf;
+	struct lxc_conf conf;
 };
 
 extern struct lxc_handler *lxc_init(const char *name);
