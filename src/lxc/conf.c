@@ -330,20 +330,6 @@ out_link:
 	goto out;
 }
 
-static int configure_utsname(const char *name, struct utsname *utsname)
-{
-	char path[MAXPATHLEN];
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
-
-	if (write_info(path, "utsname", utsname->nodename)) {
-		ERROR("failed to write the utsname info");
-		return -1;
-	}
-
-	return 0;
-}
-
 static int configure_network(const char *name, struct lxc_list *network)
 {
 	struct lxc_list *iterator;
@@ -785,28 +771,17 @@ static int unconfigure_utsname(const char *name)
 	return 0;
 }
 
-static int setup_utsname(const char *name)
+static int setup_utsname(struct utsname *utsname)
 {
-	int ret;
-	char path[MAXPATHLEN];
-	struct utsname utsname;
+	if (!utsname)
+		return 0;
 
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
-
-	ret = read_info(path, "utsname", utsname.nodename,
-			sizeof(utsname.nodename));
-	if (ret < 0) {
-		SYSERROR("failed to read utsname info");
+	if (sethostname(utsname->nodename, strlen(utsname->nodename))) {
+		SYSERROR("failed to set the hostname to '%s'", utsname->nodename);
 		return -1;
 	}
 
-	if (!ret && sethostname(utsname.nodename, strlen(utsname.nodename))) {
-		SYSERROR("failed to set the hostname to '%s'",
-				 utsname.nodename);
-		return -1;
-	}
-
-	INFO("'%s' hostname has been setup", utsname.nodename);
+	INFO("'%s' hostname has been setup", utsname->nodename);
 
 	return 0;
 }
@@ -1430,11 +1405,6 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 	if (!conf)
 		return 0;
 
-	if (conf->utsname && configure_utsname(name, conf->utsname)) {
-		ERROR("failed to configure the utsname");
-		return -1;
-	}
-
 	if (configure_cgroup(name, &conf->cgroup)) {
 		ERROR("failed to configure the control group");
 		return -1;
@@ -1846,7 +1816,7 @@ int lxc_setup(const char *name, const char *cons,
 		}
 	}
 
-	if (lxc_conf.utsname && setup_utsname(name)) {
+	if (setup_utsname(lxc_conf.utsname)) {
 		ERROR("failed to setup the utsname for '%s'", name);
 		return -1;
 	}
