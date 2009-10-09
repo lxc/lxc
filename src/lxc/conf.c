@@ -1850,6 +1850,8 @@ static long make_conf_flagset(const char *name, const char *cons,
 	return flags;
 }
 
+extern int lxc_config_read(const char *file, struct lxc_conf *conf);
+
 int lxc_setup(const char *name, const char *cons,
 	      const struct lxc_tty_info *tty_info)
 
@@ -1857,6 +1859,24 @@ int lxc_setup(const char *name, const char *cons,
 	/* store the conf flags set otherwise conf_has will not
 	 * work after chrooting */
 	long flags = make_conf_flagset(name, cons, tty_info);
+
+	struct lxc_conf lxc_conf;
+	char path[MAXPATHLEN];
+
+	if (lxc_conf_init(&lxc_conf)) {
+		ERROR("failed to initialize the configuration");
+		return -1;
+	}
+
+	snprintf(path, sizeof(path), LXCPATH "/%s/config", name);
+
+	if (!access(path, F_OK)) {
+
+		if (lxc_config_read(path, &lxc_conf)) {
+			ERROR("failed to read the configuration file");
+			return -1;
+		}
+	}
 
 	if (conf_is_set(flags, utsname) && setup_utsname(name)) {
 		ERROR("failed to setup the utsname for '%s'", name);
