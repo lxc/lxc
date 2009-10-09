@@ -81,39 +81,28 @@ struct ip_req {
 	struct ifaddrmsg ifa;
 };
 
-int lxc_device_move(const char *name, pid_t pid)
+int lxc_device_move(int ifindex, pid_t pid)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL;
 	struct link_req *link_req;
-	int index, len, err = -1;
+	int len, err = -1;
 
 	if (netlink_open(&nlh, NETLINK_ROUTE))
 		return -1;
-
-	len = strlen(name);
-	if (len == 1 || len > IFNAMSIZ)
-		goto out;
 
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
 		goto out;
 
-	index = if_nametoindex(name);
-	if (!index)
-		goto out;
-
 	link_req = (struct link_req *)nlmsg;
 	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
-	link_req->ifinfomsg.ifi_index = index;
+	link_req->ifinfomsg.ifi_index = ifindex;
 	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
 	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_REQUEST|NLM_F_ACK;
 	nlmsg->nlmsghdr.nlmsg_type = RTM_NEWLINK;
 
 	if (nla_put_u32(nlmsg, IFLA_NET_NS_PID, pid))
-		goto out;
-
-	if (nla_put_string(nlmsg, IFLA_IFNAME, name))
 		goto out;
 
 	if (netlink_transaction(&nlh, nlmsg, nlmsg))
@@ -576,24 +565,16 @@ int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr)
     return 0;
 }
 
-int lxc_ip_addr_add(const char *ifname, const char *addr,
-		    int prefix, const char *bcast)
+int lxc_ip_addr_add(int ifindex, struct in_addr in_addr,
+		    int prefix,  struct in_addr in_bcast)
 {
 	struct nl_handler nlh;
-	struct in_addr in_addr;
-/* 	struct in_addr in_bcast; */
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
 	struct ip_req *ip_req;
-	int ifindex, err = -1;
+	int err = -1;
 
 	if (netlink_open(&nlh, NETLINK_ROUTE))
 		return -1;
-
-	if (inet_pton(AF_INET, addr, (void *)&in_addr) < 0)
-		goto out;
-
-/* 	if (inet_pton(AF_INET, bcast, (void *)&in_bcast) < 0) */
-/* 			goto out; */
 
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
@@ -601,10 +582,6 @@ int lxc_ip_addr_add(const char *ifname, const char *addr,
 
 	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!answer)
-		goto out;
-
-	ifindex = if_nametoindex(ifname);
-	if (!ifindex)
 		goto out;
 
 	ip_req = (struct ip_req *)nlmsg;
@@ -639,25 +616,16 @@ out:
 	return err;
 }
 
-int lxc_ip6_addr_add(const char *ifname, const char *addr,
-		     int prefix, const char *bcast)
+int lxc_ip6_addr_add(int ifindex, struct in6_addr in6_addr,
+		     int prefix,  struct in6_addr in6_bcast)
 {
 	struct nl_handler nlh;
-	struct in6_addr in6_addr;
-/* 	struct in6_addr in6_bcast; */
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
 	struct ip_req *ip_req;
-	int ifindex, err = -1;
+	int err = -1;
 
 	if (netlink_open(&nlh, NETLINK_ROUTE))
 		return -1;
-
-	if (inet_pton(AF_INET6, addr, (void *)&in6_addr) < 0)
-		goto out;
-
-
-/* 	if (inet_pton(AF_INET6, bcast, (void *)&in6_bcast) < 0) */
-/* 			goto out; */
 
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
@@ -665,10 +633,6 @@ int lxc_ip6_addr_add(const char *ifname, const char *addr,
 
 	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!answer)
-		goto out;
-
-	ifindex = if_nametoindex(ifname);
-	if (!ifindex)
 		goto out;
 
 	ip_req = (struct ip_req *)nlmsg;

@@ -31,7 +31,7 @@ extern int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr);
 /*
  * Move a device between namespaces
  */
-extern int lxc_device_move(const char *name, pid_t pid);
+extern int lxc_device_move(int ifindex, pid_t pid);
 
 /*
  * Delete a network device
@@ -81,11 +81,11 @@ extern int lxc_ip_forward_off(const char *name, int family);
 /*
  * Set ip address
  */
-extern int lxc_ip_addr_add(const char *ifname, const char *addr,
-			   int prefix, const char *bcast);
+extern int lxc_ip_addr_add(int ifindex, struct in_addr addr,
+			   int prefix, struct in_addr bcast);
 
-extern int lxc_ip6_addr_add(const char *ifname, const char *addr,
-			    int prefix, const char *bcast);
+extern int lxc_ip6_addr_add(int ifindex, struct in6_addr addr,
+			    int prefix, struct in6_addr bcast);
 
 /*
  * Attach an interface to the bridge

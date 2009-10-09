@@ -76,6 +76,7 @@ struct lxc_route6 {
  */
 struct lxc_netdev {
 	int flags;
+	int ifindex;
 	char *ifname;
 	char *newname;
 	char *hwaddr;
@@ -168,9 +169,8 @@ extern int lxc_configure(const char *name, struct lxc_conf *conf);
  */
 extern int lxc_unconfigure(const char *name);
 
-extern int conf_create_network(const char *name, pid_t pid);
-
-extern int conf_destroy_network(const char *name);
+extern int lxc_create_network(struct lxc_list *networks);
+extern int lxc_assign_network(struct lxc_list *networks, pid_t pid);
 
 extern int lxc_create_tty(const char *name, struct lxc_tty_info *tty_info);
 extern void lxc_delete_tty(struct lxc_tty_info *tty_info);

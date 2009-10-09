@@ -425,8 +425,18 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	}
 
 	clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
-	if (conf_has_network(name))
+	if (!lxc_list_empty(&handler->conf.networks)) {
+
 		clone_flags |= CLONE_NEWNET;
+
+		/* that should be done before the clone because we will
+		 * fill the netdev index and use them in the child
+		 */
+		if (lxc_create_network(&handler->conf.networks)) {
+			ERROR("failed to create the network");
+			goto out_close;
+		}
+	}
 
 	/* Create a process in a new set of namespaces */
 	handler->pid = lxc_clone(do_start, &start_arg, clone_flags);
@@ -447,10 +457,11 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 		goto out_abort;
 
 	/* Create the network configuration */
-	if (clone_flags & CLONE_NEWNET &&
-	    conf_create_network(name, handler->pid)) {
-		ERROR("failed to create the configured network");
-		goto out_abort;
+	if (clone_flags & CLONE_NEWNET) {
+		if (lxc_assign_network(&handler->conf.networks, handler->pid)) {
+			ERROR("failed to create the configured network");
+			goto out_abort;
+		}
 	}
 
 	/* Tell the child to continue its initialization */

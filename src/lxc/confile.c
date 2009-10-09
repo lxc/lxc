@@ -114,6 +114,7 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 		return -1;
 	}
 
+	memset(netdev, 0, sizeof(*netdev));
 	lxc_list_init(&netdev->ipv4);
 	lxc_list_init(&netdev->ipv6);
 	lxc_list_init(&netdev->route4);

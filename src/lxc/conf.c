@@ -63,14 +63,7 @@ lxc_log_define(lxc_conf, lxc);
 #define MS_REC 16384
 #endif
 
-typedef int (*instanciate_cb)(const char *directory,
-			      const char *file, pid_t pid);
-
-struct netdev_conf {
-	const char *type;
-	instanciate_cb cb;
-	int count;
-};
+typedef int (*instanciate_cb)(struct lxc_netdev *);
 
 struct mount_opt {
 	char *name;
@@ -78,17 +71,16 @@ struct mount_opt {
 	int flag;
 };
 
-static int instanciate_veth(const char *, const char *, pid_t);
-static int instanciate_macvlan(const char *, const char *, pid_t);
-static int instanciate_phys(const char *, const char *, pid_t);
-static int instanciate_empty(const char *, const char *, pid_t);
-static int unconfigure_cgroup(const char *name);
+static int instanciate_veth(struct lxc_netdev *);
+static int instanciate_macvlan(struct lxc_netdev *);
+static int instanciate_phys(struct lxc_netdev *);
+static int instanciate_empty(struct lxc_netdev *);
 
-static struct netdev_conf netdev_conf[MAXCONFTYPE + 1] = {
-	[VETH]    = { "veth",    instanciate_veth,    0  },
-	[MACVLAN] = { "macvlan", instanciate_macvlan, 0, },
-	[PHYS]    = { "phys",    instanciate_phys,    0, },
-	[EMPTY]   = { "empty",   instanciate_empty,   0, },
+static  instanciate_cb netdev_conf[MAXCONFTYPE + 1] = {
+	[VETH]    = instanciate_veth,
+	[MACVLAN] = instanciate_macvlan,
+	[PHYS]    = instanciate_phys,
+	[EMPTY]   = instanciate_empty,
 };
 
 static struct mount_opt mount_opt[] = {
@@ -114,29 +106,6 @@ static struct mount_opt mount_opt[] = {
 	{ "rbind",      0, MS_BIND|MS_REC },
 	{ NULL,         0, 0              },
 };
-
-static int write_info(const char *path, const char *file, const char *info)
-{
-	int fd, err = -1;
-	char f[MAXPATHLEN];
-
-	snprintf(f, MAXPATHLEN, "%s/%s", path, file);
-	fd = creat(f, 0755);
-	if (fd < 0)
-		goto out;
-
-	if (write(fd, info, strlen(info)) < 0 ||
-	    write(fd, "\n", strlen("\n") + 1) < 0)
-		goto out_write;
-	err = 0;
-out:
-	close(fd);
-	return err;
-
-out_write:
-	unlink(f);
-	goto out;
-}
 
 static int read_info(const char *path, const char *file, char *info, size_t len)
 {
@@ -173,204 +142,6 @@ static int delete_info(const char *path, const char *file)
 	ret = unlink(info);
 
 	return ret;
-}
-
-static int configure_ip4addr(int fd, struct lxc_inetdev *in)
-{
-	char addr[INET6_ADDRSTRLEN];
-	char bcast[INET_ADDRSTRLEN];
-	char line[MAXLINELEN];
-	int err = -1;
-
-	if (!inet_ntop(AF_INET, &in->addr, addr, sizeof(addr))) {
-		SYSERROR("failed to convert ipv4 address");
-		goto err;
-	}
-
-	if (!inet_ntop(AF_INET, &in->bcast, bcast, sizeof(bcast))) {
-		SYSERROR("failed to convert ipv4 broadcast");
-		goto err;
-	}
-
-	if (in->prefix)
-		snprintf(line, MAXLINELEN, "%s/%d %s\n", addr, in->prefix, bcast);
-	else
-		snprintf(line, MAXLINELEN, "%s %s\n", addr, bcast);
-
-	if (write(fd, line, strlen(line)) < 0) {
-		SYSERROR("failed to write address info");
-		goto err;
-	}
-
-	err = 0;
-err:
-	return err;
-}
-
-static int configure_ip6addr(int fd, struct lxc_inet6dev *in6)
-{
-	char addr[INET6_ADDRSTRLEN];
-	char line[MAXLINELEN];
-	int err = -1;
-
-	if (!inet_ntop(AF_INET6, &in6->addr, addr, sizeof(addr))) {
-		SYSERROR("failed to convert ipv4 address");
-		goto err;
-	}
-
-	snprintf(line, MAXLINELEN, "%s/%d\n", addr, in6->prefix?in6->prefix:64);
-
-	if (write(fd, line, strlen(line)) < 0) {
-		SYSERROR("failed to write address info");
-		goto err;
-	}
-
-	err = 0;
-err:
-	return err;
-}
-
-static int configure_ip_address(const char *path, struct lxc_list *ip, int family)
-{
-	char file[MAXPATHLEN];
-	struct lxc_list *iterator;
-	int fd, err = -1;
-
-	if (mkdir(path, 0755)) {
-		SYSERROR("failed to create directory %s", path);
-		return -1;
-	}
-
-	snprintf(file, MAXPATHLEN, "%s/addresses", path);
-	fd = creat(file, 0755);
-	if (fd < 0) {
-		SYSERROR("failed to create %s file", file);
-		goto err;
-	}
-
-	lxc_list_for_each(iterator, ip) {
-		err = family == AF_INET?
-			configure_ip4addr(fd, iterator->elem):
-			configure_ip6addr(fd, iterator->elem);
-		if (err)
-			goto err;
-	}
-out:
-	close(fd);
-	return err;
-err:
-	unlink(file);
-	rmdir(path);
-	goto out;
-}
-
-static int configure_netdev(const char *path, struct lxc_netdev *netdev)
-{
-	int err = -1;
-	char dir[MAXPATHLEN];
-
-	if (mkdir(path, 0755)) {
-		SYSERROR("failed to create %s directory", path);
-		return -1;
-	}
-
-	if (netdev->ifname) {
-		if (write_info(path, "link", netdev->ifname))
-			goto out_link;
-	}
-
-	if (netdev->newname) {
-		if (write_info(path, "name", netdev->newname))
-			goto out_newname;
-	}
-
-	if (netdev->hwaddr) {
-		if (write_info(path, "hwaddr", netdev->hwaddr))
-			goto out_hwaddr;
-	}
-
-	if (netdev->mtu) {
-		if (write_info(path, "mtu", netdev->mtu))
-			goto out_mtu;
-	}
-
-	if (netdev->flags & IFF_UP) {
-		if (write_info(path, "up", ""))
-			goto out_up;
-	}
-
-	if (!lxc_list_empty(&netdev->ipv4)) {
-		snprintf(dir, MAXPATHLEN, "%s/ipv4", path);
-		if (configure_ip_address(dir, &netdev->ipv4, AF_INET))
-			goto out_ipv4;
-	}
-
-	if (!lxc_list_empty(&netdev->ipv6)) {
-		snprintf(dir, MAXPATHLEN, "%s/ipv6", path);
-		if (configure_ip_address(dir, &netdev->ipv6, AF_INET6))
-			goto out_ipv6;
-	}
-	err = 0;
-out:
-	return err;
-out_ipv6:
-	delete_info(path, "ipv4");
-out_ipv4:
-	delete_info(path, "up");
-out_up:
-	delete_info(path, "mtu");
-out_mtu:
-	delete_info(path, "hwaddr");
-out_hwaddr:
-	delete_info(path, "name");
-out_newname:
-	delete_info(path, "link");
-out_link:
-	rmdir(path);
-	goto out;
-}
-
-static int configure_network(const char *name, struct lxc_list *network)
-{
-	struct lxc_list *iterator;
-	struct lxc_network *n;
-	char networkpath[MAXPATHLEN];
-	char path[MAXPATHLEN];
-	int err = -1;
-
-	if (lxc_list_empty(network))
-		return 0;
-
-	snprintf(networkpath, MAXPATHLEN, LXCPATH "/%s/network", name);
-	if (mkdir(networkpath, 0755)) {
-		SYSERROR("failed to create %s directory", networkpath);
-		goto out;
-	}
-
- 	lxc_list_for_each(iterator, network) {
-
-		n = iterator->elem;
-
-		if (n->type < 0 || n->type > MAXCONFTYPE) {
-			ERROR("invalid network configuration type '%d'",
-				      n->type);
-			goto out;
-		}
-
-		snprintf(path, MAXPATHLEN, "%s/%s%d", networkpath,
-			 netdev_conf[n->type].type,
-			 netdev_conf[n->type].count++);
-
-		if (configure_netdev(path, lxc_list_first_elem(&n->netdev))) {
-			ERROR("failed to configure network type %s",
-				      netdev_conf[n->type].type);
-			goto out;
-		}
-	}
-
-	err = 0;
-out:
-	return err;
 }
 
 static int configure_find_fstype_cb(void* buffer, void *data)
@@ -977,78 +748,6 @@ out:
 	return ret;
 }
 
-static int setup_ipv4_addr_cb(void *buffer, void *data)
-{
-	char *ifname = data;
-	char *cursor, *slash, *addr, *bcast = NULL, *prefix = NULL;
-	int p = 24;
-
-	addr = buffer;
-	cursor = strstr(addr, " ");
-	if (cursor) {
-		*cursor = '\0';
-		bcast = cursor + 1;
-		cursor = strstr(bcast, "\n");
-		if (cursor)
-			*cursor = '\0';
-	}
-
-	slash = strstr(addr, "/");
-	if (slash) {
-		*slash = '\0';
-		prefix = slash + 1;
-	}
-
-	if (prefix)
-		p = atoi(prefix);
-
-	if (lxc_ip_addr_add(ifname, addr, p, bcast)) {
-		ERROR("failed to set %s to addr %s/%d %s", ifname,
-			      addr, p, bcast?bcast:"");
-		return -1;
-	}
-
-	DEBUG("address '%s/%s' on '%s' has been setup", addr, prefix, ifname);
-
-	return 0;
-}
-
-static int setup_ipv6_addr_cb(void *buffer, void *data)
-{
-	char *ifname = data;
-	char *cursor, *slash, *addr, *bcast = NULL, *prefix = NULL;
-	int p = 24;
-
-	addr = buffer;
-	cursor = strstr(addr, " ");
-	if (cursor) {
-		*cursor = '\0';
-		bcast = cursor + 1;
-		cursor = strstr(bcast, "\n");
-		if (cursor)
-			*cursor = '\0';
-	}
-
-	slash = strstr(addr, "/");
-	if (slash) {
-		*slash = '\0';
-		prefix = slash + 1;
-	}
-
-	if (prefix)
-		p = atoi(prefix);
-
-	if (lxc_ip6_addr_add(ifname, addr, p, bcast)) {
-		ERROR("failed to set %s to addr %s/%d %s", ifname,
-			      addr, p, bcast?bcast:"");
-		return -1;
-	}
-
-	INFO("address '%s/%s' on '%s' has been setup", addr, prefix, ifname);
-
-	return 0;
-}
-
 static int setup_hw_addr(char *hwaddr, const char *ifname)
 {
 	struct sockaddr sockaddr;
@@ -1079,71 +778,71 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	return ret;
 }
 
-static int setup_ip_addr(const char *directory, const char *ifname)
+static int setup_ipv4_addr(struct lxc_list *ip, int ifindex)
 {
-	char path[MAXPATHLEN], line[MAXLINELEN];
-	struct stat s;
-	int ret = 0;
+	struct lxc_list *iterator;
+	struct lxc_inetdev *inetdev;
 
-	snprintf(path, MAXPATHLEN, "%s/ipv4/addresses", directory);
-	if (!stat(path, &s))
-		ret = lxc_file_for_each_line(path, setup_ipv4_addr_cb,
-					     line, MAXPATHLEN, (void*)ifname);
-	return ret;
+	lxc_list_for_each(iterator, ip) {
+
+		inetdev = iterator->elem;
+
+		if (lxc_ip_addr_add(ifindex, inetdev->addr,
+				    inetdev->prefix, inetdev->bcast)) {
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
-static int setup_ip6_addr(const char *directory, const char *ifname)
+static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 {
-	char path[MAXPATHLEN], line[MAXLINELEN];
-	struct stat s;
-	int ret = 0;
+	struct lxc_list *iterator;
+	struct lxc_inet6dev *inet6dev;
 
-	snprintf(path, MAXLINELEN, "%s/ipv6/addresses", directory);
-	if (!stat(path, &s))
-		ret = lxc_file_for_each_line(path, setup_ipv6_addr_cb,
-					     line, MAXPATHLEN, (void*)ifname);
-	return ret;
+	lxc_list_for_each(iterator, ip) {
+
+		inet6dev = iterator->elem;
+
+		if (lxc_ip6_addr_add(ifindex, inet6dev->addr,
+				     inet6dev->prefix, inet6dev->bcast)) {
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
-static int setup_network_cb(const char *name, const char *directory,
-			    const char *file, void *data)
+static int setup_netdev(struct lxc_netdev *netdev)
 {
-	char path[MAXPATHLEN];
-	char strindex[MAXINDEXLEN];
 	char ifname[IFNAMSIZ];
-	char newname[IFNAMSIZ];
-	char hwaddr[MAXHWLEN];
 	char *current_ifname = ifname;
-	int ifindex;
 
-	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
-
-	if (read_info(path, "ifindex", strindex, sizeof(strindex))) {
-		ERROR("failed to read ifindex info");
-		return -1;
+	/* empty network namespace */
+	if (!netdev->ifindex) {
+		if (netdev->flags | IFF_UP) {
+			if (lxc_device_up("lo")) {
+				ERROR("failed to set the loopback up");
+				return -1;
+			}
+			return 0;
+		}
 	}
 
-	ifindex = atoi(strindex);
-	if (!ifindex) {
-		if (!read_info(path, "up", strindex, sizeof(strindex)))
-		    if (lxc_device_up("lo")) {
-			    ERROR("failed to set the loopback up");
-			    return -1;
-		    }
-		    return 0;
-	}
-
-	if (!if_indextoname(ifindex, current_ifname)) {
+	/* retrieve the name of the interface */
+	if (!if_indextoname(netdev->ifindex, current_ifname)) {
 		ERROR("no interface corresponding to index '%d'",
-			      ifindex);
+		      netdev->ifindex);
 		return -1;
 	}
 
 	/* default: let the system to choose one interface name */
-	if (read_info(path, "name", newname, sizeof(newname)))
-		strcpy(newname, "eth%d");
+	if (!netdev->newname)
+		netdev->newname = "eth%d";
 
-	if (lxc_device_rename(ifname, newname)) {
+	/* rename the interface name */
+	if (lxc_device_rename(ifname, netdev->newname)) {
 		ERROR("failed to rename %s->%s", ifname, current_ifname);
 		return -1;
 	}
@@ -1151,33 +850,37 @@ static int setup_network_cb(const char *name, const char *directory,
 	/* Re-read the name of the interface because its name has changed
 	 * and would be automatically allocated by the system
 	 */
-	if (!if_indextoname(ifindex, current_ifname)) {
+	if (!if_indextoname(netdev->ifindex, current_ifname)) {
 		ERROR("no interface corresponding to index '%d'",
-			      ifindex);
+		      netdev->ifindex);
 		return -1;
 	}
 
-	if (!read_info(path, "hwaddr", hwaddr, sizeof(hwaddr))) {
-		if (setup_hw_addr(hwaddr, current_ifname)) {
+	/* set a mac address */
+	if (netdev->hwaddr) {
+		if (setup_hw_addr(netdev->hwaddr, current_ifname)) {
 			ERROR("failed to setup hw address for '%s'",
-				      current_ifname);
+			      current_ifname);
 			return -1;
 		}
 	}
 
-	if (setup_ip_addr(path, current_ifname)) {
+	/* setup ipv4 addresses on the interface */
+	if (setup_ipv4_addr(&netdev->ipv4, netdev->ifindex)) {
 		ERROR("failed to setup ip addresses for '%s'",
 			      ifname);
 		return -1;
 	}
 
-	if (setup_ip6_addr(path, current_ifname)) {
+	/* setup ipv6 addresses on the interface */
+	if (setup_ipv6_addr(&netdev->ipv6, netdev->ifindex)) {
 		ERROR("failed to setup ipv6 addresses for '%s'",
 			      ifname);
 		return -1;
 	}
 
-	if (!read_info(path, "up", strindex, sizeof(strindex))) {
+	/* set the network device up */
+	if (netdev->flags | IFF_UP) {
 		if (lxc_device_up(current_ifname)) {
 			ERROR("failed to set '%s' up", current_ifname);
 			return -1;
@@ -1195,16 +898,23 @@ static int setup_network_cb(const char *name, const char *directory,
 	return 0;
 }
 
-static int setup_network(const char *name)
+static int setup_network(struct lxc_list *networks)
 {
-	char directory[MAXPATHLEN];
-	int ret;
+	struct lxc_list *iterator;
+	struct lxc_network *network;
+	struct lxc_netdev *netdev;
 
-	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
+	lxc_list_for_each(iterator, networks) {
 
-	ret = lxc_dir_for_each(name, directory, setup_network_cb, NULL);
-	if (ret)
-		return ret;
+		network = iterator->elem;
+
+		netdev = lxc_list_first_elem(&network->netdev);
+
+		if (setup_netdev(netdev)) {
+			ERROR("failed to setup netdev");
+			return -1;
+		}
+	}
 
 	INFO("network has been setup");
 
@@ -1250,14 +960,6 @@ int lxc_conf_init(struct lxc_conf *conf)
 
 int lxc_configure(const char *name, struct lxc_conf *conf)
 {
-	if (!conf)
-		return 0;
-
-	if (configure_network(name, &conf->networks)) {
-		ERROR("failed to configure the network");
-		return -1;
-	}
-
 	return 0;
 }
 
@@ -1287,263 +989,173 @@ int lxc_unconfigure(const char *name)
 	return 0;
 }
 
-static int instanciate_veth(const char *directory, const char *file, pid_t pid)
+static int instanciate_veth(struct lxc_netdev *netdev)
 {
-	char *path = NULL, *strindex = NULL, *veth1 = NULL, *veth2 = NULL;
-	char bridge[IFNAMSIZ];
-	char strmtu[MAXMTULEN];
-	int ifindex, mtu = 0, ret = -1;
+	char veth1[IFNAMSIZ];
+	char veth2[IFNAMSIZ];
+	int ret = -1;
 
-	if (!asprintf(&veth1, "%s_%d", file, pid) ||
-	    !asprintf(&veth2, "%s~%d", file, pid) ||
-	    !asprintf(&path, "%s/%s", directory, file)) {
-		SYSERROR("failed to allocate memory");
-		goto out;
-	}
+	snprintf(veth1, sizeof(veth1), "vethXXXXXX");
+	snprintf(veth2, sizeof(veth2), "vethXXXXXX");
 
-	if (read_info(path, "link", bridge, IFNAMSIZ)) {
-		ERROR("failed to read bridge info");
-		goto out;
+	mktemp(veth1);
+	mktemp(veth2);
+
+	if (!strlen(veth1) || !strlen(veth2)) {
+		ERROR("failed to allocate a temporary name");
+		return -1;
 	}
 
 	if (lxc_veth_create(veth1, veth2)) {
-		ERROR("failed to create %s-%s/%s", veth1, veth2, bridge);
+		ERROR("failed to create %s-%s/%s",
+		      veth1, veth2, netdev->ifname);
 		goto out;
 	}
 
-	if (!read_info(path, "mtu", strmtu, MAXMTULEN)) {
-		if (sscanf(strmtu, "%u", &mtu) < 1) {
-			ERROR("invalid mtu size '%d'", mtu);
+	if (netdev->mtu) {
+		if (lxc_device_set_mtu(veth1, atoi(netdev->mtu))) {
+			ERROR("failed to set mtu '%s' for '%s'",
+			      netdev->mtu, veth1);
 			goto out_delete;
 		}
 
-		if (lxc_device_set_mtu(veth1, mtu)) {
-			ERROR("failed to set mtu for '%s'", veth1);
-			goto out_delete;
-		}
-
-		if (lxc_device_set_mtu(veth2, mtu)) {
-			ERROR("failed to set mtu for '%s'", veth2);
+		if (lxc_device_set_mtu(veth2, atoi(netdev->mtu))) {
+			ERROR("failed to set mtu '%s' for '%s'",
+			      netdev->mtu, veth2);
 			goto out_delete;
 		}
 	}
 
-	if (lxc_bridge_attach(bridge, veth1)) {
+	if (lxc_bridge_attach(netdev->ifname, veth1)) {
 		ERROR("failed to attach '%s' to the bridge '%s'",
-			      veth1, bridge);
+			      veth1, netdev->ifname);
 		goto out_delete;
 	}
 
-	ifindex = if_nametoindex(veth2);
-	if (!ifindex) {
+	netdev->ifindex = if_nametoindex(veth2);
+	if (!netdev->ifindex) {
 		ERROR("failed to retrieve the index for %s", veth2);
 		goto out_delete;
 	}
 
-	if (!asprintf(&strindex, "%d", ifindex)) {
-		SYSERROR("failed to allocate memory");
-		goto out_delete;
-	}
-
-	if (write_info(path, "ifindex", strindex)) {
-		ERROR("failed to write interface index to %s", path);
-		goto out_delete;
-	}
-
-	if (!read_info(path, "up", strindex, sizeof(strindex))) {
+	if (netdev->flags & IFF_UP) {
 		if (lxc_device_up(veth1)) {
 			ERROR("failed to set %s up", veth1);
 			goto out_delete;
 		}
 	}
 
+	DEBUG("instanciated veth '%s/%s', index is '%d'",
+	      veth1, veth2, netdev->ifindex);
+
 	ret = 0;
 out:
-	free(path);
-	free(strindex);
-	free(veth1);
-	free(veth2);
 	return ret;
 
 out_delete:
 	lxc_device_delete(veth1);
 	goto out;
 }
-static int instanciate_macvlan(const char *directory, const char *file, pid_t pid)
+static int instanciate_macvlan(struct lxc_netdev *netdev)
 {
-	char path[MAXPATHLEN], *strindex = NULL, *peer = NULL;
-	char link[IFNAMSIZ];
-	int ifindex, ret = -1;
-
-	if (!asprintf(&peer, "%s~%d", file, pid)) {
-		SYSERROR("failed to allocate memory");
-		return -1;
-	}
-
-	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
-	if (read_info(path, "link", link, IFNAMSIZ)) {
-		ERROR("failed to read bridge info");
-		goto out;
-	}
-
-	if (lxc_macvlan_create(link, peer)) {
-		ERROR("failed to create macvlan interface '%s' on '%s'",
-			      peer, link);
-		goto out;
-	}
-
-	ifindex = if_nametoindex(peer);
-	if (!ifindex) {
-		ERROR("failed to retrieve the index for %s", peer);
-		goto out;
-	}
-
-	if (!asprintf(&strindex, "%d", ifindex)) {
-		SYSERROR("failed to allocate memory");
-		return -1;
-	}
-
-	if (write_info(path, "ifindex", strindex)) {
-		ERROR("failed to write interface index to %s", path);
-		goto out;
-	}
-
-	ret = 0;
-out:
-	free(strindex);
-	free(peer);
-	return ret;
-}
-
-static int instanciate_phys(const char *directory, const char *file, pid_t pid)
-{
-	char path[MAXPATHLEN], *strindex = NULL;
-	char link[IFNAMSIZ];
-	int ifindex, ret = -1;
-
-	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
-	if (read_info(path, "link", link, IFNAMSIZ)) {
-		ERROR("failed to read link info");
-		goto out;
-	}
-
-	ifindex = if_nametoindex(link);
-	if (!ifindex) {
-		ERROR("failed to retrieve the index for %s", link);
-		goto out;
-	}
-
-	if (!asprintf(&strindex, "%d", ifindex)) {
-		SYSERROR("failed to allocate memory");
-		return -1;
-	}
-
-	if (write_info(path, "ifindex", strindex)) {
-		ERROR("failed to write interface index to %s", path);
-		goto out;
-	}
-
-	ret = 0;
-out:
-	free(strindex);
-	return ret;
-}
-
-static int instanciate_empty(const char *directory, const char *file, pid_t pid)
-{
-	char path[MAXPATHLEN], *strindex = NULL;
+	char peer[IFNAMSIZ];
 	int ret = -1;
 
-	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
-	if (!asprintf(&strindex, "%d", 0)) {
-		ERROR("not enough memory");
+	snprintf(peer, sizeof(peer), "mcXXXXXX");
+
+	mktemp(peer);
+
+	if (!strlen(peer)) {
+		ERROR("failed to make a temporary name");
 		return -1;
 	}
 
-	if (write_info(path, "ifindex", strindex)) {
-		ERROR("failed to write interface index to %s", path);
+	if (lxc_macvlan_create(netdev->ifname, peer)) {
+		ERROR("failed to create macvlan interface '%s' on '%s'",
+		      peer, netdev->ifname);
 		goto out;
 	}
 
+	netdev->ifindex = if_nametoindex(peer);
+	if (!netdev->ifindex) {
+		ERROR("failed to retrieve the index for %s", peer);
+		goto out_delete;
+	}
+
+	DEBUG("instanciated macvlan '%s', index is '%d'", peer, netdev->ifindex);
+
 	ret = 0;
 out:
-	free(strindex);
 	return ret;
+
+out_delete:
+	lxc_device_delete(peer);
+	goto out;
 }
 
-static int instanciate_netdev_cb(const char *name, const char *directory,
-				 const char *file, void *data)
+static int instanciate_phys(struct lxc_netdev *netdev)
 {
-	pid_t *pid = data;
-
-	if (!strncmp("veth", file, strlen("veth")))
-		return instanciate_veth(directory, file, *pid);
-	else if (!strncmp("macvlan", file, strlen("macvlan")))
-		return instanciate_macvlan(directory, file, *pid);
-	else if (!strncmp("phys", file, strlen("phys")))
-		return instanciate_phys(directory, file, *pid);
-	else if (!strncmp("empty", file, strlen("empty")))
-		 return instanciate_empty(directory, file, *pid);
-
-	return -1;
-}
-
-static int instanciate_netdev(const char *name, pid_t pid)
-{
-	char directory[MAXPATHLEN];
-
-	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
-	return lxc_dir_for_each(name, directory, instanciate_netdev_cb, &pid);
-}
-
-static int move_netdev_cb(const char *name, const char *directory,
-			  const char *file, void *data)
-{
-	char path[MAXPATHLEN], ifname[IFNAMSIZ], strindex[MAXINDEXLEN];
-	pid_t *pid = data;
-	int ifindex;
-
-	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
-	if (read_info(path, "ifindex", strindex, MAXINDEXLEN) < 0) {
-		ERROR("failed to read index to from %s", path);
-		return -1;
-	}
-
-	ifindex = atoi(strindex);
-	if (!ifindex)
-		return 0;
-
-	if (!if_indextoname(ifindex, ifname)) {
-		ERROR("interface with index %d does not exist",
-			      ifindex);
-		return -1;
-	}
-
-	if (lxc_device_move(ifname, *pid)) {
-		ERROR("failed to move %s to %d", ifname, *pid);
+	netdev->ifindex = if_nametoindex(netdev->ifname);
+	if (!netdev->ifindex) {
+		ERROR("failed to retrieve the index for %s", netdev->ifname);
 		return -1;
 	}
 
 	return 0;
 }
 
-static int move_netdev(const char *name, pid_t pid)
+static int instanciate_empty(struct lxc_netdev *netdev)
 {
-	char directory[MAXPATHLEN];
-	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
-	return lxc_dir_for_each(name, directory, move_netdev_cb, &pid);
+	netdev->ifindex = 0;
+	return 0;
 }
 
-int conf_create_network(const char *name, pid_t pid)
+int lxc_create_network(struct lxc_list *networks)
 {
-	if (instanciate_netdev(name, pid)) {
-		ERROR("failed to instantiate the network devices");
-		return -1;
+	struct lxc_list *iterator;
+	struct lxc_network *network;
+	struct lxc_netdev *netdev;
+
+	lxc_list_for_each(iterator, networks) {
+
+		network = iterator->elem;
+
+		if (network->type < 0 || network->type > MAXCONFTYPE) {
+			ERROR("invalid network configuration type '%d'",
+			      network->type);
+			return -1;
+		}
+
+		netdev = lxc_list_first_elem(&network->netdev);
+
+		if (netdev_conf[network->type](netdev)) {
+			ERROR("failed to create netdev");
+			return -1;
+		}
 	}
 
-	if (move_netdev(name, pid)) {
-		ERROR("failed to move the netdev to the container");
-		return -1;
+	return 0;
+}
+
+int lxc_assign_network(struct lxc_list *networks, pid_t pid)
+{
+	struct lxc_list *iterator;
+	struct lxc_network *network;
+	struct lxc_netdev *netdev;
+
+	lxc_list_for_each(iterator, networks) {
+
+		network = iterator->elem;
+
+		netdev = lxc_list_first_elem(&network->netdev);
+
+		if (lxc_device_move(netdev->ifindex, pid)) {
+			ERROR("failed to move '%s' to the container",
+			      netdev->ifname);
+			return -1;
+		}
+
+		DEBUG("move '%s' to '%d'", netdev->ifname, pid);
 	}
 
 	return 0;
@@ -1627,7 +1239,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (!lxc_list_empty(&lxc_conf->networks) && setup_network(name)) {
+	if (setup_network(&lxc_conf->networks)) {
 		ERROR("failed to setup the network for '%s'", name);
 		return -1;
 	}
