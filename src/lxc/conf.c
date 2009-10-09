@@ -401,28 +401,6 @@ static int configure_cgroup(const char *name, struct lxc_list *cgroup)
 	return 0;
 }
 
-static int configure_tty(const char *name, int tty)
-{
-	char path[MAXPATHLEN];
-	char *nbtty;
-	int ret;
-
-	if (asprintf(&nbtty, "%d", tty) < 0) {
-		ERROR("failed to convert tty number");
-		return -1;
-	}
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
-
-	ret = write_info(path, "tty", nbtty);
-	if (ret)
-		ERROR("failed to write the tty info");
-
-	free(nbtty);
-
-	return ret;
-}
-
 static int configure_find_fstype_cb(void* buffer, void *data)
 {
 	struct cbarg {
@@ -750,7 +728,7 @@ static int setup_utsname(struct utsname *utsname)
 	return 0;
 }
 
-static int setup_tty(const char *name, const struct lxc_tty_info *tty_info)
+static int setup_tty(const char *rootfs, const struct lxc_tty_info *tty_info)
 {
 	char path[MAXPATHLEN];
 	int i;
@@ -759,11 +737,8 @@ static int setup_tty(const char *name, const struct lxc_tty_info *tty_info)
 
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
-		if (conf_has_rootfs(name))
-			snprintf(path, MAXPATHLEN,
-				 LXCPATH "/%s/rootfs/dev/tty%d", name, i + 1);
-		else
-			snprintf(path, MAXPATHLEN, "/dev/tty%d", i + 1);
+		snprintf(path, sizeof(path), "%s/dev/tty%d",
+			 rootfs ? rootfs : "", i + 1);
 
 		/* At this point I can not use the "access" function
 		 * to check the file is present or not because it fails
@@ -771,7 +746,7 @@ static int setup_tty(const char *name, const struct lxc_tty_info *tty_info)
 
 		if (mount(pty_info->name, path, "none", MS_BIND, 0)) {
 			WARN("failed to mount '%s'->'%s'",
-					pty_info->name, path);
+			     pty_info->name, path);
 			continue;
 		}
 	}
@@ -862,11 +837,31 @@ out:
 	return 0;
 }
 
-static int setup_console(const char *name, const char *tty)
+static int setup_console(const char *rootfs, const char *tty)
 {
 	char console[MAXPATHLEN];
 
-	snprintf(console, MAXPATHLEN, LXCPATH "/%s/rootfs/dev/console", name);
+	snprintf(console, sizeof(console), "%s/dev/console",
+		 rootfs ? rootfs : "");
+
+	/* we have the rootfs with /dev/console but no tty
+	 * to be used as console, let's remap /dev/console
+	 * to /dev/null to avoid to log to the system console
+	 */
+	if (rootfs && !tty[0]) {
+
+		if (!access(console, F_OK)) {
+
+			if (mount("/dev/null", console, "none", MS_BIND, 0)) {
+				SYSERROR("failed to mount '/dev/null'->'%s'",
+					 console);
+				return -1;
+			}
+		}
+	}
+
+	if (!tty[0])
+		return 0;
 
 	if (access(console, R_OK|W_OK))
 		return 0;
@@ -1378,11 +1373,6 @@ int lxc_configure(const char *name, struct lxc_conf *conf)
 		return -1;
 	}
 
-	if (conf->tty && configure_tty(name, conf->tty)) {
-		ERROR("failed to configure the tty");
-		return -1;
-	}
-
 	return 0;
 }
 
@@ -1789,12 +1779,12 @@ int lxc_setup(const char *name, const char *cons,
 		return -1;
 	}
 
-	if (cons[0] && setup_console(name, cons)) {
+	if (setup_console(lxc_conf.rootfs, cons)) {
 		ERROR("failed to setup the console for '%s'", name);
 		return -1;
 	}
 
-	if (lxc_conf.tty && setup_tty(name, tty_info)) {
+	if (setup_tty(lxc_conf.rootfs, tty_info)) {
 		ERROR("failed to setup the ttys for '%s'", name);
 		return -1;
 	}
