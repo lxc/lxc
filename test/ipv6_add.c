@@ -26,7 +26,8 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
+#include <net/if.h>
+#include <arpa/inet.h>
 #include <lxc/network.h>
 
 void usage(char *cmd)
@@ -37,6 +38,7 @@ void usage(char *cmd)
 int main(int argc, char *argv[])
 {
 	char *ifname = NULL, *addr = NULL;
+	struct in6_addr in6;
 	int opt, ret = -EINVAL;
 
 	while ((opt = getopt(argc, argv, "i:a:")) != -1) {
@@ -55,7 +57,13 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	
-	ret = lxc_ip6_addr_add(ifname, addr, 64, NULL);
+	if (inet_pton(AF_INET6, addr, &in6)) {
+		perror("inet_pton");
+		return 1;
+	}
+
+	ret = lxc_ip_addr_add(AF_INET6, if_nametoindex(ifname),
+			      &in6, 64);
 	if (ret) {
 		fprintf(stderr, "failed to set %s: %s\n", 
 			ifname, strerror(-ret));

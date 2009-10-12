@@ -21,7 +21,6 @@ noinst_PROGRAMS = \
 	lxc_destroy \
 	lxc_start \
 	lxc_stop \
-	lxc_monitor \
 	lxc_low_monitor \
 	lxc_state
 
@@ -85,10 +84,6 @@ lxc_start_LDADD = \
 
 lxc_stop_SOURCES = lxc_stop.c
 lxc_stop_LDADD = \
-	$(top_builddir)/src/lxc/liblxc.la
-
-lxc_monitor_SOURCES = lxc_monitor.c
-lxc_monitor_LDADD = \
 	$(top_builddir)/src/lxc/liblxc.la
 
 lxc_low_monitor_SOURCES = lxc_low_monitor.c
