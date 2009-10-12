@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
 
 	lxc_conf_init(&lxc_conf);
 
-	if (lxc_create(name, &lxc_conf)) {
+	if (lxc_create(name, NULL)) {
 		fprintf(stderr, "failed to create the container %s\n", name);
 		return 1;
 	}

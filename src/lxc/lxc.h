@@ -54,7 +54,7 @@ extern "C" {
  * @conf : the configuration data for the container
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_create(const char *name, struct lxc_conf *conf);
+extern int lxc_create(const char *name, const char *confile);
 
 /*
  * Destroy the container object. Removes the files into the /lxc/<name>

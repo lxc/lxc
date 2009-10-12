@@ -101,7 +101,7 @@ static int remove_lxc_directory(const char *dirname)
 static int copy_config_file(const char *name, const char *file)
 {
 	char *dst;
-	int ret;
+	int ret = -1;
 
 	if (!asprintf(&dst, LXCPATH "/%s/config", name)) {
 		ERROR("failed to allocate memory");
@@ -111,23 +111,27 @@ static int copy_config_file(const char *name, const char *file)
 	ret = lxc_copy_file(file, dst);
 	if (ret)
 		ERROR("failed to copy '%s' to '%s'", file, dst);
+
 	free(dst);
 
 	return ret;
 }
 
-int lxc_create(const char *name, struct lxc_conf *conf)
+int lxc_create(const char *name, const char *confile)
 {
 	int lock, err = -1;
 
 	if (create_lxc_directory(name))
 		return err;
 	
+	if (!confile)
+		return 0;
+
 	lock = lxc_get_lock(name);
 	if (lock < 0)
 		goto err;
 
-	if (conf->rcfile && copy_config_file(name, conf->rcfile)) {
+	if (copy_config_file(name, confile)) {
 		ERROR("failed to copy the configuration file");
 		goto err_state;
 	}

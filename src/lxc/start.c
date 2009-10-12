@@ -263,15 +263,13 @@ struct lxc_handler *lxc_init(const char *name)
 
 	snprintf(path, sizeof(path), LXCPATH "/%s/config", name);
 
-	if (!access(path, F_OK)) {
-
-		if (lxc_config_read(path, &handler->conf)) {
-			ERROR("failed to read the configuration file");
-			goto out_aborting;
-		}
+	if (!access(path, F_OK) && lxc_config_read(path, &handler->conf)) {
+		ERROR("failed to read the configuration file");
+		goto out_aborting;
 	}
 
-	if (console_init(handler->conf.console, sizeof(handler->conf.console))) {
+	if (console_init(handler->conf.console,
+			 sizeof(handler->conf.console))) {
 		ERROR("failed to initialize the console");
 		goto out_aborting;
 	}

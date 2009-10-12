@@ -538,8 +538,6 @@ int lxc_config_read(const char *file, struct lxc_conf *conf)
 {
 	char buffer[MAXPATHLEN];
 
-	conf->rcfile = file;
-
 	return lxc_file_for_each_line(file, parse_line, buffer,
 				      sizeof(buffer), conf);
 }

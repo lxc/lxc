@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (lxc_create(name, &lxc_conf)) {
+	if (lxc_create(name, file)) {
 		fprintf(stderr, "failed to create <%s>\n", name);
 		return 1;
 	}

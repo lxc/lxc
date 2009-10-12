@@ -214,7 +214,7 @@ extern char **lxc_arguments_dup(const char *file, struct lxc_arguments *args)
 	if (args->quiet)
 		nbargs += 1;
 
-	argv = malloc(nbargs * sizeof(*argv));
+	argv = malloc((nbargs + 1) * sizeof(*argv));
 	if (!argv)
 		return NULL;
 

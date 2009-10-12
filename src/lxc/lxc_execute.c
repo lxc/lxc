@@ -81,7 +81,6 @@ int main(int argc, char *argv[])
 	char path[MAXPATHLEN];
 	int autodestroy = 0;
 	int ret = -1;
-	struct lxc_conf lxc_conf;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		goto out;
@@ -90,15 +89,10 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		goto out;
 
-	if (lxc_conf_init(&lxc_conf))
-		goto out;
-
-	if (my_args.rcfile && lxc_config_read(my_args.rcfile, &lxc_conf))
-		goto out;
-
+	/* the container is not created, let's create it */
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s", my_args.name);
 	if (access(path, R_OK)) {
-		if (lxc_create(my_args.name, &lxc_conf))
+		if (lxc_create(my_args.name, my_args.rcfile))
 			goto out;
 		autodestroy = 1;
 	}

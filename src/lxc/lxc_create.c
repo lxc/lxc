@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (lxc_create(my_args.name, &lxc_conf)) {
+	if (lxc_create(my_args.name, my_args.rcfile)) {
 		ERROR("failed to create the container");
 		return -1;
 	}
