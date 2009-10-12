@@ -127,11 +127,6 @@ int lxc_create(const char *name, struct lxc_conf *conf)
 	if (lock < 0)
 		goto err;
 
-	if (lxc_configure(name, conf)) {
-		ERROR("failed to set configuration for %s", name);
-		goto err_state;
-	}
-
 	if (conf->rcfile && copy_config_file(name, conf->rcfile)) {
 		ERROR("failed to copy the configuration file");
 		goto err_state;

@@ -147,11 +147,6 @@ struct lxc_conf {
 extern int lxc_conf_init(struct lxc_conf *conf);
 
 /*
- * Configure the external resources for the container
- */
-extern int lxc_configure(const char *name, struct lxc_conf *conf);
-
-/*
  * Remove the resources created by the configuration
  */
 extern int lxc_unconfigure(const char *name);

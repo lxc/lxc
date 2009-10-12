@@ -929,11 +929,6 @@ int lxc_conf_init(struct lxc_conf *conf)
 	return 0;
 }
 
-int lxc_configure(const char *name, struct lxc_conf *conf)
-{
-	return 0;
-}
-
 int lxc_unconfigure(const char *name)
 {
 	if (conf_has_utsname(name) && unconfigure_utsname(name))
