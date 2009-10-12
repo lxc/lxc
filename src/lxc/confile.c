@@ -134,6 +134,18 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 	return 0;
 }
 
+static int config_ip_prefix(struct in_addr *addr)
+{
+	if (IN_CLASSA(addr->s_addr))
+		return 32 - IN_CLASSA_NSHIFT;
+	if (IN_CLASSB(addr->s_addr))
+		return 32 - IN_CLASSB_NSHIFT;
+	if (IN_CLASSC(addr->s_addr))
+		return 32 - IN_CLASSC_NSHIFT;
+
+	return 0;
+}
+
 static int config_network_flags(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	struct lxc_list *network = &lxc_conf->network;
@@ -308,8 +320,10 @@ static int config_network_ipv4(const char *key, char *value, struct lxc_conf *lx
 			return -1;
 		}
 
-	if (prefix)
-		inetdev->prefix = atoi(prefix);
+	/* no prefix specified, determine it from the network class */
+	inetdev->prefix = prefix ? atoi(prefix) :
+		config_ip_prefix(&inetdev->addr);
+
 
 	lxc_list_add(&netdev->ipv4, list);
 
@@ -352,6 +366,7 @@ static int config_network_ipv6(const char *key, char *value, struct lxc_conf *lx
 	lxc_list_init(list);
 	list->elem = inet6dev;
 
+	inet6dev->prefix = 64;
 	slash = strstr(value, "/");
 	if (slash) {
 		*slash = '\0';
