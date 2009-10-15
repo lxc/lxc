@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <libgen.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
@@ -49,7 +50,7 @@ static struct option options[] = {
 
 static int mount_fs(const char *source, const char *target, const char *type)
 {
-	/* sometimes the umount fails */
+	/* the umount may fail */
 	if (umount(target))
 		WARN("failed to unmount %s : %s", target, strerror(errno));
 
@@ -69,6 +70,15 @@ static inline int setup_fs(void)
 		return -1;
 
 	if (mount_fs("shmfs", "/dev/shm", "tmpfs"))
+		return -1;
+
+	/* If we were able to mount /dev/shm, then /dev exists */
+	if (access("/dev/mqueue", F_OK) && mkdir("/dev/mqueue", 0666)) {
+		SYSERROR("failed to create '/dev/mqueue'");
+		return -1;
+	}
+
+	if (mount_fs("mqueue", "/dev/mqueue", "mqueue"))
 		return -1;
 
 	return 0;
