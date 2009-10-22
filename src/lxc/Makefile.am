@@ -1,6 +1,5 @@
 AM_CFLAGS= -I$(top_srcdir)/src
 
-lib_LTLIBRARIES = liblxc.la
 pkginclude_HEADERS = \
 		start.h \
 		error.h \
@@ -15,8 +14,11 @@ pkginclude_HEADERS = \
 		log.h \
 		state.h
 
+sodir=$(libdir)
+# use PROGRAMS to avoid complains from automake
+so_PROGRAMS = liblxc.so
 
-liblxc_la_SOURCES = \
+liblxc_so_SOURCES = \
 	arguments.c arguments.h \
 	commands.c commands.h \
 	create.c \
@@ -51,8 +53,13 @@ liblxc_la_SOURCES = \
 	\
 	cr_plugin_columbia.c lxc_plugin.h
 
-liblxc_la_LDFLAGS = -release @PACKAGE_VERSION@
-liblxc_la_LIBADD = -lutil
+liblxc_so_CFLAGS = -fPIC -DPIC
+
+liblxc_so_LDFLAGS = \
+	-shared \
+	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,$(VERSION)))
+
+liblxc_so_LDADD = -lutil
 
 bin_SCRIPTS = \
 	lxc-ps \
@@ -83,49 +90,75 @@ libexec_PROGRAMS = \
 	lxc-init
 
 lxc_unshare_SOURCES = lxc_unshare.c
-lxc_unshare_LDADD = liblxc.la
+lxc_unshare_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_unshare_LDADD = liblxc.so
 
 lxc_init_SOURCES = lxc_init.c
-lxc_init_LDADD = liblxc.la
+lxc_init_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_init_LDADD = liblxc.so
 
 lxc_create_SOURCES = lxc_create.c
-lxc_create_LDADD = liblxc.la
+lxc_create_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_create_LDADD = liblxc.so
 
 lxc_destroy_SOURCES = lxc_destroy.c
-lxc_destroy_LDADD = liblxc.la
+lxc_destroy_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_destroy_LDADD = liblxc.so
 
 lxc_start_SOURCES = lxc_start.c
-lxc_start_LDADD = liblxc.la
+lxc_start_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_start_LDADD = liblxc.so
 
 lxc_stop_SOURCES = lxc_stop.c
-lxc_stop_LDADD = liblxc.la
+lxc_stop_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_stop_LDADD = liblxc.so
 
 lxc_execute_SOURCES = lxc_execute.c
-lxc_execute_LDADD = liblxc.la
+lxc_execute_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_execute_LDADD = liblxc.so
 
 lxc_monitor_SOURCES = lxc_monitor.c
-lxc_monitor_LDADD = liblxc.la
+lxc_monitor_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_monitor_LDADD = liblxc.so
 
 lxc_wait_SOURCES = lxc_wait.c
-lxc_wait_LDADD = liblxc.la
+lxc_wait_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_wait_LDADD = liblxc.so
 
 lxc_console_SOURCES = lxc_console.c
-lxc_console_LDADD = liblxc.la
+lxc_console_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_console_LDADD = liblxc.so
 
 lxc_info_SOURCES = lxc_info.c
-lxc_info_LDADD = liblxc.la
+lxc_info_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_info_LDADD = liblxc.so
 
 lxc_freeze_SOURCES = lxc_freeze.c
-lxc_freeze_LDADD = liblxc.la
+lxc_freeze_SLDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_freeze_LDADD = liblxc.so
 
 lxc_unfreeze_SOURCES = lxc_unfreeze.c
-lxc_unfreeze_LDADD = liblxc.la
+lxc_unfreeze_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_unfreeze_LDADD = liblxc.so
 
 lxc_cgroup_SOURCES = lxc_cgroup.c
-lxc_cgroup_LDADD = liblxc.la
+lxc_cgroup_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_cgroup_LDADD = liblxc.so
 
 lxc_checkpoint_SOURCES = lxc_checkpoint.c
-lxc_checkpoint_LDADD = liblxc.la
+lxc_checkpoint_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_checkpoint_LDADD = liblxc.so
 
 lxc_restart_SOURCES = lxc_restart.c
-lxc_restart_LDADD = liblxc.la
+lxc_restart_LDFLAGS = -Wl,-E -Wl,-rpath -Wl,$(libdir)
+lxc_restart_LDADD = liblxc.so
+
+
+install-exec-local: install-soPROGRAMS
+	mv $(DESTDIR)$(libdir)/liblxc.so $(DESTDIR)$(libdir)/liblxc.so.$(VERSION)
+	/sbin/ldconfig -l $(DESTDIR)$(libdir)/liblxc.so.$(VERSION)
+	cd $(DESTDIR)$(libdir); \
+	ln -sf liblxc.so.$(firstword $(subst ., ,$(VERSION))) liblxc.so
+
+uninstall-local:
+	$(RM) $(DESTDIR)$(libdir)/liblxc.so*
