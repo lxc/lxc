@@ -33,6 +33,8 @@
 #include <lxc/lxc.h>
 #include <lxc/log.h>
 
+#include "config.h"
+
 lxc_log_define(lxc_destroy, lxc);
 
 static int remove_lxc_directory(const char *dirname)

@@ -32,10 +32,11 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
 #include "error.h"
 #include <lxc/lxc.h>
 #include <lxc/log.h>
+
+#include "config.h"
 
 lxc_log_define(lxc_create, lxc);
 

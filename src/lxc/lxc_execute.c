@@ -34,6 +34,7 @@
 #include <lxc/lxc.h>
 #include "confile.h"
 #include "arguments.h"
+#include "config.h"
 
 lxc_log_define(lxc_execute, lxc);
 

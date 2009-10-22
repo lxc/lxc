@@ -37,6 +37,7 @@
 #include <net/if.h>
 
 #include "error.h"
+#include "config.h"
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>

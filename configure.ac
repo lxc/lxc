@@ -25,6 +25,11 @@ AS_AC_EXPAND(LOCALSTATEDIR, $localstatedir)
 AS_AC_EXPAND(LXCPATH, "${localstatedir}/lib/lxc")
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 
+AH_TEMPLATE([LXCPATH], [lxc configuration repository])
+AH_TEMPLATE([LXCLIBEXECDIR], [lxc executable library path])
+AC_DEFINE_UNQUOTED(LXCPATH, "$LXCPATH")
+AC_DEFINE_UNQUOTED(LXCLIBEXECDIR, "$LIBEXECDIR")
+
 AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h],
                  [],
                  AC_MSG_ERROR([netlink headers not found. Please install the linux kernel headers.]),

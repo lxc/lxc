@@ -24,7 +24,6 @@
 #define __namespace_h
 
 #include <syscall.h>
-#define _GNU_SOURCE
 #include <sched.h>
 
 #ifndef CLONE_FS

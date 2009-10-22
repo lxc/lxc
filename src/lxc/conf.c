@@ -48,6 +48,7 @@
 #include "network.h"
 #include "error.h"
 #include "parse.h"
+#include "config.h"
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>

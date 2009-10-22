@@ -31,6 +31,8 @@
 #include <sys/param.h>
 
 #include "error.h"
+#include "config.h"
+
 #include <lxc/lxc.h>
 
 lxc_log_define(lxc_lock, lxc);
