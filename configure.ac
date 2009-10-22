@@ -50,9 +50,6 @@ LXC_MAJOR_VERSION=$(echo $PACKAGE_VERSION | cut -d. -f1)
 LXC_MINOR_VERSION=$(echo $PACKAGE_VERSION | cut -d. -f2)
 LXC_MICRO_VERSION=$(echo $PACKAGE_VERSION | cut -d. -f3)
 
-AC_ARG_ENABLE(test, [  --enable-test    compile test program [default=no]],, enable_test=no)
-AM_CONDITIONAL(ENABLE_TEST, test x$enable_test = xyes)
-
 AC_SUBST(LXC_MAJOR_VERSION)
 AC_SUBST(LXC_MINOR_VERSION)
 AC_SUBST(LXC_MICRO_VERSION)
@@ -103,8 +100,6 @@ AC_CONFIG_FILES([
 	etc/lxc-phys.conf
 	etc/lxc-veth.conf
 	etc/lxc-complex-config
-
-	test/Makefile
 ])
 AC_CONFIG_COMMANDS([default],[[]],[[]])
 AC_OUTPUT
