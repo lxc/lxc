@@ -86,9 +86,12 @@ int lxc_destroy(const char *name)
 		goto out_lock;
 	}
 	
+#warning keep access to LXCPATH/<name> to destroy old created container
 	snprintf(path, MAXPATHLEN, LXCPATH "/%s/init", name);
 	unlink(path);
-	lxc_unlink_nsgroup(name);
+
+	snprintf(path, MAXPATHLEN, LXCPATH "/%s/nsgroup", name);
+	unlink(path);
 
 	if (lxc_unconfigure(name)) {
 		ERROR("failed to cleanup %s", name);

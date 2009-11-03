@@ -120,24 +120,25 @@ int lxc_rename_nsgroup(const char *name, struct lxc_handler *handler)
 	return ret;
 }
 
-#warning keep lxc_unlink_nsgroup fct to be able to destroy old created container.
 int lxc_unlink_nsgroup(const char *name)
 {
 	char nsgroup[MAXPATHLEN];
-	char path[MAXPATHLEN];
-	ssize_t len;
+	char cgroup[MAXPATHLEN];
+	int ret;
 
-	snprintf(nsgroup, MAXPATHLEN, LXCPATH "/%s/nsgroup", name);
-	
-	len = readlink(nsgroup, path, MAXPATHLEN-1);
-	if (len >  0) {
-		path[len] = '\0';
-		rmdir(path);
+	if (get_cgroup_mount(MTAB, cgroup)) {
+		ERROR("cgroup is not mounted");
+		return -1;
 	}
 
-	DEBUG("unlinking '%s'", nsgroup);
+	snprintf(nsgroup, MAXPATHLEN, "%s/%s", cgroup, name);
+	ret = rmdir(nsgroup);
+	if (ret)
+		SYSERROR("failed to remove cgroup '%s'", nsgroup);
+	else
+		DEBUG("'%s' unlinked", nsgroup);
 
-	return unlink(nsgroup);
+	return ret;
 }
 
 int lxc_cgroup_path_get(char **path, const char *name)
