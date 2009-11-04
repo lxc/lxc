@@ -11,8 +11,20 @@ AC_CANONICAL_HOST
 AM_PROG_CC_C_O
 AC_GNU_SOURCE
 AC_CHECK_PROG(SETCAP, setcap, yes, no, $PATH$PATH_SEPARATOR/sbin)
-AC_CHECK_PROG(DOCBOOK, docbook2man, yes, no)
-AM_CONDITIONAL(ENABLE_DOCBOOK, test x$DOCBOOK = xyes)
+
+AC_ARG_ENABLE([doc],
+	[AC_HELP_STRING([--enable-doc], [make mans (require docbook2man installed) [default=auto]])],
+	[], [enable_doc=auto])
+
+if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
+	AC_CHECK_PROG(have_docbook, [docbook2man], [yes], [no])
+
+	test "x$have_docbook" = "xno" -a "x$enable_doc" = "xyes" && \
+		AC_MSG_ERROR([docbook2man required by man request, but not found])
+fi
+
+AM_CONDITIONAL([ENABLE_DOCBOOK], [test "x$have_docbook" = "xyes"])
+
 AS_AC_EXPAND(PREFIX, $prefix)
 AS_AC_EXPAND(LIBDIR, $libdir)
 AS_AC_EXPAND(BINDIR, $bindir)
@@ -107,18 +119,6 @@ AC_CONFIG_FILES([
 ])
 AC_CONFIG_COMMANDS([default],[[]],[[]])
 AC_OUTPUT
-
-if test "x$DOCBOOK" = "xno"; then
-   AC_MSG_NOTICE([
-
-Warning:
---------
-The docbook tool is not installed, the man pages won't be regenerated.
-If you need to update the manpages, install docbook and rerun 'configure'.
-
-])
-
-fi
 
 if test "x$SETCAP" = "xno"; then
    AC_MSG_NOTICE([
