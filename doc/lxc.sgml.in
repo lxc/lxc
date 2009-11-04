@@ -39,7 +39,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <refentrytitle>lxc</refentrytitle>
     <manvolnum>7</manvolnum>
     <refmiscinfo>
-      Version @LXC_MAJOR_VERSION@.@LXC_MINOR_VERSION@.@LXC_MICRO_VERSION@
+      Version @PACKAGE_VERSION@
     </refmiscinfo>
   </refmeta>
 
