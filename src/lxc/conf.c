@@ -774,7 +774,7 @@ static int setup_ipv4_addr(struct lxc_list *ip, int ifindex)
 static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 {
 	struct lxc_list *iterator;
-	struct lxc_inetdev *inet6dev;
+	struct lxc_inet6dev *inet6dev;
 
 	lxc_list_for_each(iterator, ip) {
 
