@@ -82,7 +82,6 @@ rm -rf %{buildroot}
 %defattr(-,root,root)
 %{_includedir}/%{name}/*
 %{_libdir}/*.so*
-%{_libdir}/*.a
 
 %changelog
 
