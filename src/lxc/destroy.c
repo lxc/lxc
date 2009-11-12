@@ -71,19 +71,15 @@ static int remove_config_file(const char *name)
 
 int lxc_destroy(const char *name)
 {
-	int lock, ret = -1;
+	int ret = -1;
 	char path[MAXPATHLEN];
-
-	lock = lxc_get_lock(name);
-	if (lock < 0)
-		return ret;
 
 	if (remove_config_file(name))
 		WARN("failed to remove the configuration file");
 
 	if (lxc_rmstate(name)) {
 		ERROR("failed to remove state file for %s", name);
-		goto out_lock;
+		return -1;
 	}
 	
 #warning keep access to LXCPATH/<name> to destroy old created container
@@ -95,17 +91,13 @@ int lxc_destroy(const char *name)
 
 	if (lxc_unconfigure(name)) {
 		ERROR("failed to cleanup %s", name);
-		goto out_lock;
+		return -1;
 	}
 
 	if (remove_lxc_directory(name)) {
 		SYSERROR("failed to remove '%s'", name);
-		goto out_lock;
+		return -1;
 	}
 
-	ret = 0;
-	
-out_lock:
-	lxc_put_lock(lock);
-	return ret;
+	return 0;
 }

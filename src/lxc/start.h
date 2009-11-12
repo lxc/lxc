@@ -27,7 +27,6 @@ struct lxc_handler {
 	lxc_state_t state;
 
 	int sigfd;
-	int lock;
 	char nsgroup[MAXPATHLEN];
 	sigset_t oldmask;
 	struct lxc_conf conf;

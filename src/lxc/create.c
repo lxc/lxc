@@ -120,7 +120,7 @@ static int copy_config_file(const char *name, const char *file)
 
 int lxc_create(const char *name, const char *confile)
 {
-	int lock, err = -1;
+	int err = -1;
 
 	if (create_lxc_directory(name))
 		return err;
@@ -128,26 +128,21 @@ int lxc_create(const char *name, const char *confile)
 	if (!confile)
 		return 0;
 
-	lock = lxc_get_lock(name);
-	if (lock < 0)
-		goto err;
-
 	if (copy_config_file(name, confile)) {
 		ERROR("failed to copy the configuration file");
-		goto err_state;
+		goto err;
 	}
 
 	err = 0;
 out:
-	lxc_put_lock(lock);
 	return err;
 
-err_state:
+err:
 	lxc_unconfigure(name);
 
 	if (lxc_rmstate(name))
 		ERROR("failed to remove state file for %s", name);
-err:
+
 	if (remove_lxc_directory(name))
 		ERROR("failed to cleanup lxc directory for %s", name);
 	goto out;

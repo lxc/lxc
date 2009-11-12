@@ -246,14 +246,10 @@ struct lxc_handler *lxc_init(const char *name)
 
 	memset(handler, 0, sizeof(*handler));
 
-	handler->lock = lxc_get_lock(name);
-	if (handler->lock < 0)
-		goto out_free;
-
 	/* Begin the set the state to STARTING*/
 	if (set_state(name, handler, STARTING)) {
 		ERROR("failed to set state '%s'", lxc_state2str(STARTING));
-		goto out_put_lock;
+		goto out_free;
 	}
 
 	if (lxc_conf_init(&handler->conf)) {
@@ -302,8 +298,6 @@ out_delete_tty:
 	lxc_delete_tty(&handler->conf.tty_info);
 out_aborting:
 	set_state(name, handler, ABORTING);
-out_put_lock:
-	lxc_put_lock(handler->lock);
 out_free:
 	free(handler);
 	handler = NULL;
@@ -322,7 +316,6 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	if (handler) {
 		remove_init_pid(name, handler->pid);
 		lxc_delete_tty(&handler->conf.tty_info);
-		lxc_put_lock(handler->lock);
 		free(handler);
 	}
 
