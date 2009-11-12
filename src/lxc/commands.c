@@ -35,6 +35,7 @@
 #include "commands.h"
 #include "mainloop.h"
 #include "af_unix.h"
+#include "config.h"
 
 /*
  * This file provides the different functions to have the client
@@ -52,7 +53,7 @@
 
 lxc_log_define(lxc_commands, lxc);
 
-#define abstractname "LXCPATH/%s/command"
+#define abstractname LXCPATH "/%s/command"
 
 static int receive_answer(int sock, struct lxc_answer *answer)
 {
