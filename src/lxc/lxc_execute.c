@@ -44,6 +44,7 @@ static int my_checker(const struct lxc_arguments* args)
 		lxc_error(args, "missing command to execute !");
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -79,39 +80,18 @@ Options :\n\
 int main(int argc, char *argv[])
 {
 	static char **args;
-	char path[MAXPATHLEN];
-	int autodestroy = 0;
-	int ret = -1;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		goto out;
+		return -1;
 
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
-		goto out;
-
-	/* the container is not created, let's create it */
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s", my_args.name);
-	if (access(path, R_OK)) {
-		if (lxc_create(my_args.name, my_args.rcfile))
-			goto out;
-		autodestroy = 1;
-	}
+		return -1;
 
 	args = lxc_arguments_dup(LXCLIBEXECDIR "/lxc-init", &my_args);
 	if (!args)
-		goto out;
+		return -1;
 
-	ret = lxc_start(my_args.name, args);
-out:
-	if (autodestroy) {
-		if (lxc_destroy(my_args.name)) {
-			ERROR("failed to destroy '%s'", my_args.name);
-			if (!ret)
-				ret = -1;
-		}
-	}
-
-	return ret;
+	return lxc_start(my_args.name, args, my_args.rcfile);
 }
 

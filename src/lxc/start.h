@@ -32,7 +32,7 @@ struct lxc_handler {
 	struct lxc_conf conf;
 };
 
-extern struct lxc_handler *lxc_init(const char *name);
+extern struct lxc_handler *lxc_init(const char *name, const char *rcfile);
 extern int lxc_spawn(const char *name, struct lxc_handler *handler,
 		     char *const argv[]);
 

@@ -235,7 +235,7 @@ static int console_init(char *console, size_t size)
 	return 0;
 }
 
-struct lxc_handler *lxc_init(const char *name)
+struct lxc_handler *lxc_init(const char *name, const char *rcfile)
 {
 	struct lxc_handler *handler;
 	char path[MAXPATHLEN];
@@ -257,11 +257,14 @@ struct lxc_handler *lxc_init(const char *name)
 		goto out_aborting;
 	}
 
-	snprintf(path, sizeof(path), LXCPATH "/%s/config", name);
-
-	if (!access(path, F_OK) && lxc_config_read(path, &handler->conf)) {
-		ERROR("failed to read the configuration file");
+	if (rcfile && access(path, F_OK)) {
+		ERROR("failed to access rcfile");
 		goto out_aborting;
+
+		if (lxc_config_read(path, &handler->conf)) {
+			ERROR("failed to read the configuration file");
+			goto out_aborting;
+		}
 	}
 
 	if (console_init(handler->conf.console,
@@ -488,13 +491,13 @@ out_abort:
 	goto out_close;
 }
 
-int lxc_start(const char *name, char *const argv[])
+int lxc_start(const char *name, char *const argv[], const char *rcfile)
 {
 	struct lxc_handler *handler;
 	int err = -1;
 	int status;
 
-	handler = lxc_init(name);
+	handler = lxc_init(name, rcfile);
 	if (!handler) {
 		ERROR("failed to initialize the container");
 		return -1;

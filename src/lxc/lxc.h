@@ -71,7 +71,7 @@ extern int lxc_destroy(const char *name);
  * @argv     : an array of char * corresponding to the commande line
  * Returns 0 on sucess, < 0 otherwise
  */
-extern int lxc_start(const char *name, char *const argv[]);
+extern int lxc_start(const char *name, char *const argv[], const char *rcfile);
 
 /*
  * Stop the container previously started with lxc_start, all

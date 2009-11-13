@@ -47,12 +47,14 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
 	case 'd': args->daemonize = 1; break;
+	case 'f': args->rcfile = arg; break;
 	}
 	return 0;
 }
 
 static const struct option my_longopts[] = {
 	{"daemon", no_argument, 0, 'd'},
+	{"rcfile", required_argument, 0, 'f'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -65,7 +67,8 @@ lxc-start start COMMAND in specified container NAME\n\
 \n\
 Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
-  -d, --daemon         daemonize the container",
+  -d, --daemon         daemonize the container\n\
+  -f, --rcfile=FILE    Load configuration file FILE\n",
 	.options   = my_longopts,
 	.parser    = my_parser,
 	.checker   = NULL,
@@ -101,7 +104,6 @@ static int restore_tty(struct termios *tios)
 
 	if (!memcmp(tios, &current_tios, sizeof(*tios)))
 		return 0;
-
 
 	oldhandler = signal(SIGTTOU, SIG_IGN);
 	ret = tcsetattr(0, TCSADRAIN, tios);
@@ -163,7 +165,7 @@ int main(int argc, char *argv[])
 
 	save_tty(&tios);
 
-	err = lxc_start(my_args.name, args);
+	err = lxc_start(my_args.name, args, my_args.rcfile);
 
 	restore_tty(&tios);
 
