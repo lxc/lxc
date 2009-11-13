@@ -156,9 +156,7 @@ lxc.cgroup.devices.allow = c 254:0 rwm
 EOF
 
 	if [ ! -z "$TMPMNTFILE" ]; then
-cat <<EOF >> $CONFFILE
-lxc.mount = $TMPMNTFILE
-EOF
+		cat $TMPMNTFILE >> $CONFFILE
 	fi
 }
 
@@ -166,7 +164,7 @@ write_lxc_mounts() {
 
     if [ ! -z "$MNTFILE" ]; then
 	TMPMNTFILE=$(mktemp lxc.$NAME.XXXXXXXXXX)
-	cp $MNTFILE $TMPMNTFILE
+	sed -e 's/^\(.*\)/lxc.mount.entry=&/' $MNTFILE >$TMPMNTFILE
     fi
 }
 
@@ -316,6 +314,7 @@ create() {
 
     # remove the configuration files
     rm -f $CONFFILE
+    rm -f $TMPMNTFILE
 
     if [ "$RES" != "0" ]; then
 	echo "Failed to create '$NAME'"
