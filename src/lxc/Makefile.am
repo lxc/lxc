@@ -4,7 +4,6 @@ pkginclude_HEADERS = \
 		monitor.h \
 		utils.h \
 		namespace.h \
-		lock.h \
 		lxc.h \
 		cgroup.h \
 		conf.h \
@@ -33,7 +32,6 @@ liblxc_so_SOURCES = \
 	cgroup.c cgroup.h \
 	lxc.h \
 	utils.c utils.h \
-	lock.c lock.h \
 	namespace.h namespace.c \
 	conf.c conf.h \
 	confile.c confile.h \
