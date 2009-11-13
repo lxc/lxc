@@ -348,7 +348,6 @@ untar_tarball() {
 
 NAME="sshd"
 CONFFILE="lxc.conf"
-MNTFILE="mount.conf"
 UTSNAME=
 IPV4="172.20.0.20/24"
 
@@ -390,26 +389,21 @@ lxc.network.flags = up
 lxc.network.link = br0
 lxc.network.ipv4 = $IPV4
 lxc.network.name = eth0
-lxc.mount = $MNTFILE
 lxc.rootfs = $ROOTFS
-EOF
-
-cat <<EOF > $MNTFILE
-/lib $(pwd)/$ROOTFS/lib none ro,bind 0 0
-/bin $(pwd)/$ROOTFS/bin none ro,bind 0 0
-/usr $(pwd)/$ROOTFS/usr none ro,bind 0 0
-/sbin $(pwd)/$ROOTFS/sbin none ro,bind 0 0
+lxc.mount.entry=/lib $(pwd)/$ROOTFS/lib none ro,bind 0 0
+lxc.mount.entry=/bin $(pwd)/$ROOTFS/bin none ro,bind 0 0
+lxc.mount.entry=/usr $(pwd)/$ROOTFS/usr none ro,bind 0 0
+lxc.mount.entry=/sbin $(pwd)/$ROOTFS/sbin none ro,bind 0 0
 EOF
 
 if [ "$(uname -m)" = "x86_64" ]; then
-cat <<EOF >> $MNTFILE
-/lib64 $(pwd)/$ROOTFS/lib64 none ro,bind 0 0
+cat <<EOF >> $CONFFILE
+lxc.mount.entry=/lib64 $(pwd)/$ROOTFS/lib64 none ro,bind 0 0
 EOF
 fi
 
     @BINDIR@/lxc-create -n $NAME -f $CONFFILE
 
-    rm -f $MNTFILE
     rm -f $CONFFILE
 
     echo "Done."
