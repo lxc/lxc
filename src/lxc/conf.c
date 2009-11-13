@@ -457,6 +457,7 @@ static int setup_cgroup(const char *name, struct lxc_list *cgroups)
 {
 	struct lxc_list *iterator;
 	struct lxc_cgroup *cg;
+	int ret = -1;
 
 	if (lxc_list_empty(cgroups))
 		return 0;
@@ -466,14 +467,15 @@ static int setup_cgroup(const char *name, struct lxc_list *cgroups)
 		cg = iterator->elem;
 
 		if (lxc_cgroup_set(name, cg->subsystem, cg->value))
-			break;
+			goto out;
 
 		DEBUG("cgroup '%s' set to '%s'", cg->subsystem, cg->value);
 	}
 
+	ret = 0;
 	INFO("cgroup has been setup");
-
-	return 0;
+out:
+	return ret;
 }
 
 static void parse_mntopt(char *opt, unsigned long *flags, char **data)
