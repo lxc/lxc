@@ -230,7 +230,6 @@ static int console_init(char *console, size_t size)
 struct lxc_handler *lxc_init(const char *name, const char *rcfile)
 {
 	struct lxc_handler *handler;
-	char path[MAXPATHLEN];
 
 	handler = malloc(sizeof(*handler));
 	if (!handler)
@@ -249,11 +248,13 @@ struct lxc_handler *lxc_init(const char *name, const char *rcfile)
 		goto out_aborting;
 	}
 
-	if (rcfile && access(path, F_OK)) {
-		ERROR("failed to access rcfile");
-		goto out_aborting;
+	if (rcfile) {
+		if (access(rcfile, F_OK)) {
+			ERROR("failed to access rcfile");
+			goto out_aborting;
+		}
 
-		if (lxc_config_read(path, &handler->conf)) {
+		if (lxc_config_read(rcfile, &handler->conf)) {
 			ERROR("failed to read the configuration file");
 			goto out_aborting;
 		}
