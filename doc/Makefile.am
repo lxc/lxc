@@ -1,3 +1,5 @@
+SUBDIRS = examples
+DIST_SUBDIRS = examples
 
 EXTRA_DIST = \
 	FAQ.txt \

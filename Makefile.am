@@ -2,8 +2,8 @@
 
 ACLOCAL_AMFLAGS = -I config
 
-SUBDIRS = src etc scripts doc
-DIST_SUBDIRS = config src etc scripts doc
+SUBDIRS = src scripts doc
+DIST_SUBDIRS = config src scripts doc
 EXTRA_DIST = autogen.sh lxc.spec CONTRIBUTING MAINTAINERS ChangeLog
 
 pcdatadir = $(datadir)/pkgconfig

@@ -1,4 +1,4 @@
-# Container with network a complex network mixing macvlan, veth and 
+# Container with network a complex network mixing macvlan, veth and
 # physical network devices
 lxc.utsname = complex
 lxc.network.type = veth

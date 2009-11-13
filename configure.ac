@@ -25,6 +25,12 @@ fi
 
 AM_CONDITIONAL([ENABLE_DOCBOOK], [test "x$have_docbook" = "xyes"])
 
+AC_ARG_ENABLE([examples],
+	[AC_HELP_STRING([--disable-examples], [do not install configuration examples])],
+	[], [enable_examples=yes])
+
+AM_CONDITIONAL([ENABLE_EXAMPLES], [test "x$enable_examples" = "xyes"])
+
 AS_AC_EXPAND(PREFIX, $prefix)
 AS_AC_EXPAND(LIBDIR, $libdir)
 AS_AC_EXPAND(BINDIR, $bindir)
@@ -103,13 +109,13 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-create
 	src/lxc/lxc-destroy
 
-	etc/Makefile
-	etc/lxc-macvlan.conf
-	etc/lxc-no-netns.conf
-	etc/lxc-empty-netns.conf
-	etc/lxc-phys.conf
-	etc/lxc-veth.conf
-	etc/lxc-complex-config
+	doc/examples/Makefile
+	doc/examples/lxc-macvlan.conf
+	doc/examples/lxc-no-netns.conf
+	doc/examples/lxc-empty-netns.conf
+	doc/examples/lxc-phys.conf
+	doc/examples/lxc-veth.conf
+	doc/examples/lxc-complex-config
 ])
 AC_CONFIG_COMMANDS([default],[[]],[[]])
 AC_OUTPUT
