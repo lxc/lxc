@@ -536,22 +536,12 @@ static int parse_mntopts(struct mntent *mntent, unsigned long *mntflags,
 	return 0;
 }
 
-static int setup_mount(const char *fstab)
+static int mount_file_entries(FILE *file)
 {
 	struct mntent *mntent;
-	FILE *file;
 	int ret = -1;
 	unsigned long mntflags;
 	char *mntdata;
-
-	if (!fstab)
-		return 0;
-
-	file = setmntent(fstab, "r");
-	if (!file) {
-		SYSERROR("failed to use '%s'", fstab);
-		return -1;
-	}
 
 	while ((mntent = getmntent(file))) {
 
@@ -580,7 +570,52 @@ static int setup_mount(const char *fstab)
 
 	INFO("mount points have been setup");
 out:
+	return ret;
+}
+
+static int setup_mount(const char *fstab)
+{
+	FILE *file;
+	int ret;
+
+	if (!fstab)
+		return 0;
+
+	file = setmntent(fstab, "r");
+	if (!file) {
+		SYSERROR("failed to use '%s'", fstab);
+		return -1;
+	}
+
+	ret = mount_file_entries(file);
+
 	endmntent(file);
+	return ret;
+}
+
+static int setup_mount_entries(struct lxc_list *mount)
+{
+	FILE *file;
+	struct lxc_list *iterator;
+	char *mount_entry;
+	int ret;
+
+	file = tmpfile();
+	if (!file) {
+		ERROR("tmpfile error: %m");
+		return -1;
+	}
+
+	lxc_list_for_each(iterator, mount) {
+		mount_entry = iterator->elem;
+		fprintf(file, "%s", mount_entry);
+	}
+
+	rewind(file);
+
+	ret = mount_file_entries(file);
+
+	fclose(file);
 	return ret;
 }
 
@@ -787,6 +822,7 @@ int lxc_conf_init(struct lxc_conf *conf)
 	conf->console[0] = '\0';
 	lxc_list_init(&conf->cgroup);
 	lxc_list_init(&conf->network);
+	lxc_list_init(&conf->mount_list);
 	return 0;
 }
 
@@ -1037,6 +1073,11 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 
 	if (setup_mount(lxc_conf->fstab)) {
 		ERROR("failed to setup the mounts for '%s'", name);
+		return -1;
+	}
+
+	if (setup_mount_entries(&lxc_conf->mount_list)) {
+		ERROR("failed to setup the mount entries for '%s'", name);
 		return -1;
 	}
 

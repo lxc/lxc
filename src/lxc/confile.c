@@ -441,7 +441,7 @@ static int config_cgroup(const char *key, char *value, struct lxc_conf *lxc_conf
 	return 0;
 }
 
-static int config_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_fstab(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	if (strlen(value) >= MAXPATHLEN) {
 		ERROR("%s path is too long", value);
@@ -453,6 +453,40 @@ static int config_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
 		SYSERROR("failed to duplicate string %s", value);
 		return -1;
 	}
+
+	return 0;
+}
+
+static int config_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
+{
+	char *fstab_token = "lxc.mount";
+	char *token = "lxc.mount.entry";
+	char *subkey;
+	char *mntelem;
+	struct lxc_list *mntlist;
+
+	subkey = strstr(key, token);
+
+	if (!subkey) {
+		subkey = strstr(key, fstab_token);
+
+		if (!subkey)
+			return -1;
+
+		return config_fstab(key, value, lxc_conf);
+	}
+
+	if (!strlen(subkey))
+		return -1;
+
+	mntlist = malloc(sizeof(*mntlist));
+	if (!mntlist)
+		return -1;
+
+	mntelem = strdup(value);
+	mntlist->elem = mntelem;
+
+	lxc_list_add_tail(&lxc_conf->mount_list, mntlist);
 
 	return 0;
 }

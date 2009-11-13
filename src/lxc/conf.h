@@ -136,6 +136,7 @@ struct lxc_conf {
 	struct utsname *utsname;
 	struct lxc_list cgroup;
 	struct lxc_list network;
+	struct lxc_list mount_list;
 	struct lxc_tty_info tty_info;
 	char console[MAXPATHLEN];
 };
