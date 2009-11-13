@@ -1,7 +1,7 @@
 #!/bin/bash
 # set -ex
 
-lxcpath=@LXCPATH@
+lxcpath=/var/lib/lxc
 exec=""
 
 if [ ! -r $lxcpath ]; then
@@ -15,15 +15,15 @@ fi
 
 for i in $*; do
     case $i in
-	-n)
-	    name=$2; shift 2;;
-	--exec)
-	    exec="exec"; shift;;
+        -n)
+            name=$2; shift 2;;
+        --exec)
+            exec="exec"; shift;;
     esac
 done
 
 if [ -z "$exec" ]; then
-    exec @BINDIR@/lxc-unshare -s MOUNT -- @BINDIR@/lxc-netstat -n $name --exec $*
+    exec /usr/bin/lxc-unshare -s MOUNT -- /usr/bin/lxc-netstat -n $name --exec $*
 fi
 
 if [ -z "$name" ]; then
@@ -31,20 +31,31 @@ if [ -z "$name" ]; then
     exit 1
 fi
 
-if [ ! -d $lxcpath/$name ]; then
-    echo "'$name' does not exists"
+cgroups=$(mount -l -t cgroup)
+cgroup_path=""
+
+for i in "$cgroups"; do
+
+    cgroup_name=$(echo $i | awk ' { print $1 } ')
+    cgroup_path=$(echo $i | awk ' { print $3 } ')
+
+    if [ "$cgroup_name" == "lxc" ]; then
+        break;
+    fi
+
+done
+
+if [ -z "$cgroup_path" ]; then
+    echo "no cgroup mount point found"
     exit 1
 fi
 
-if [ ! -r $lxcpath/$name ]; then
-    echo "Can not access '$name': permission denied"
+pid=$(head -1 $cgroup_path/$name/tasks)
+
+if [ -z "$pid" ]; then
+    echo "no process found for '$name'"
     exit 1
 fi
 
-if [ ! -f $lxcpath/$name/init ]; then
-    exit 0
-fi
-
-initpid=$(cat $lxcpath/$name/init) && \
-    mount --bind /proc/$initpid/net /proc/$$/net && \
+mount --bind /proc/$pid/net /proc/$$/net && \
     exec netstat $*
