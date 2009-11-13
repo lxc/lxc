@@ -45,28 +45,7 @@ extern "C" {
 #include <lxc/start.h>
 
 /*
- * Create the container object. Creates the /lxc/<name> directory
- * and fills it with the files corresponding to the configuration
- * structure passed as parameter.
- * The first container will create the /lxc directory.
- * @name : the name of the container
- * @conf : the configuration data for the container
- * Returns 0 on success, < 0 otherwise
- */
-extern int lxc_create(const char *name, const char *confile);
-
-/*
- * Destroy the container object. Removes the files into the /lxc/<name>
- * directory and removes the <name> directory.
- * The last container will remove the /lxc directory.
- * @name : the name of the container to be detroyed
- * Returns 0 on success, < 0 otherwise
- */
-extern int lxc_destroy(const char *name);
-
-/*
- * Start the specified command inside a container which has
- * been created before with lxc_create.
+ * Start the specified command inside a container
  * @name     : the name of the container
  * @argv     : an array of char * corresponding to the commande line
  * Returns 0 on sucess, < 0 otherwise

@@ -183,14 +183,6 @@ out_sigfd:
 	goto out;
 }
 
-static void remove_init_pid(const char *name, pid_t pid)
-{
-	char init[MAXPATHLEN];
-
-	snprintf(init, MAXPATHLEN, LXCPATH "/%s/init", name);
-	unlink(init);
-}
-
 static int fdname(int fd, char *name, size_t size)
 {
 	char path[MAXPATHLEN];
@@ -317,7 +309,6 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_unlink_nsgroup(name);
 
 	if (handler) {
-		remove_init_pid(name, handler->pid);
 		lxc_delete_tty(&handler->conf.tty_info);
 		free(handler);
 	}

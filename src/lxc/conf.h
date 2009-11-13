@@ -145,11 +145,6 @@ struct lxc_conf {
  */
 extern int lxc_conf_init(struct lxc_conf *conf);
 
-/*
- * Remove the resources created by the configuration
- */
-extern int lxc_unconfigure(const char *name);
-
 extern int lxc_create_network(struct lxc_list *networks);
 extern int lxc_assign_network(struct lxc_list *networks, pid_t pid);
 

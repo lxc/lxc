@@ -108,17 +108,6 @@ static struct mount_opt mount_opt[] = {
 	{ NULL,         0, 0              },
 };
 
-static int delete_info(const char *path, const char *file)
-{
-	char info[MAXPATHLEN];
-	int ret;
-
-	snprintf(info, MAXPATHLEN, "%s/%s", path, file);
-	ret = unlink(info);
-
-	return ret;
-}
-
 static int configure_find_fstype_cb(void* buffer, void *data)
 {
 	struct cbarg {
@@ -299,136 +288,6 @@ static int configure_rootfs(const char *name, const char *rootfs)
 
 	ERROR("unsupported rootfs type for '%s'", absrootfs);
 	return -1;
-}
-
-static int unconfigure_ip_addresses(const char *directory)
-{
-	char path[MAXPATHLEN];
-
-	snprintf(path, MAXPATHLEN, "%s/ipv4", directory);
-	delete_info(path, "addresses");
-	rmdir(path);
-
-	snprintf(path, MAXPATHLEN, "%s/ipv6", directory);
-	delete_info(path, "addresses");
-	rmdir(path);
-
-	return 0;
-}
-
-static int unconfigure_network_cb(const char *name, const char *directory,
-				  const char *file, void *data)
-{
-	char path[MAXPATHLEN];
-
-	snprintf(path, MAXPATHLEN, "%s/%s", directory, file);
-	delete_info(path, "ifindex");
-	delete_info(path, "name");
-	delete_info(path, "addr");
-	delete_info(path, "link");
-	delete_info(path, "hwaddr");
-	delete_info(path, "mtu");
-	delete_info(path, "up");
-	unconfigure_ip_addresses(path);
-	rmdir(path);
-
-	return 0;
-}
-
-static int unconfigure_network(const char *name)
-{
-	char directory[MAXPATHLEN];
-
-	snprintf(directory, MAXPATHLEN, LXCPATH "/%s/network", name);
-	lxc_dir_for_each(name, directory, unconfigure_network_cb, NULL);
-	rmdir(directory);
-
-	return 0;
-}
-
-static int unconfigure_cgroup_cb(const char *name, const char *directory,
-				  const char *file, void *data)
-{
-	return delete_info(directory, file);
-}
-
-static int unconfigure_cgroup(const char *name)
-{
-	char filename[MAXPATHLEN];
-	struct stat s;
-
-	snprintf(filename, MAXPATHLEN, LXCPATH "/%s/cgroup", name);
-
-	if (stat(filename, &s)) {
-		SYSERROR("failed to stat '%s'", filename);
-		return -1;
-	}
-
-	if (S_ISDIR(s.st_mode)) {
-		/* old cgroup configuration */
-		lxc_dir_for_each(name, filename, unconfigure_cgroup_cb, NULL);
-		rmdir(filename);
-	} else {
-		unlink(filename);
-	}
-
-	return 0;
-}
-
-static int unconfigure_rootfs(const char *name)
-{
-	char path[MAXPATHLEN];
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
-
-#warning deprecated code to be removed in the next version
-
-	/* ugly but for backward compatibily, */
-	delete_info(path, "rootfs");
-	rmdir(path);
-	unlink(path);
-
-	return 0;
-}
-
-static int unconfigure_pts(const char *name)
-{
-	char path[MAXPATHLEN];
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
-	delete_info(path, "pts");
-
-	return 0;
-}
-
-static int unconfigure_tty(const char *name)
-{
-	char path[MAXPATHLEN];
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
-	delete_info(path, "tty");
-
-	return 0;
-}
-
-static int unconfigure_mount(const char *name)
-{
-	char path[MAXPATHLEN];
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
-	delete_info(path, "fstab");
-
-	return 0;
-}
-
-static int unconfigure_utsname(const char *name)
-{
-	char path[MAXPATHLEN];
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s", name);
-	delete_info(path, "utsname");
-
-	return 0;
 }
 
 static int setup_utsname(struct utsname *utsname)
@@ -926,32 +785,6 @@ int lxc_conf_init(struct lxc_conf *conf)
 	conf->console[0] = '\0';
 	lxc_list_init(&conf->cgroup);
 	lxc_list_init(&conf->network);
-	return 0;
-}
-
-int lxc_unconfigure(const char *name)
-{
-	if (conf_has_utsname(name) && unconfigure_utsname(name))
-		ERROR("failed to cleanup utsname");
-
-	if (conf_has_network(name) && unconfigure_network(name))
-		ERROR("failed to cleanup the network");
-
-	if (conf_has_cgroup(name) && unconfigure_cgroup(name))
-		ERROR("failed to cleanup cgroup");
-
-	if (conf_has_tty(name) && unconfigure_tty(name))
-		ERROR("failed to cleanup tty");
-
-	if (conf_has_rootfs(name) && unconfigure_rootfs(name))
-		ERROR("failed to cleanup rootfs");
-
-	if (conf_has_fstab(name) && unconfigure_mount(name))
-		ERROR("failed to cleanup mount");
-
-	if (conf_has_pts(name) && unconfigure_pts(name))
-		ERROR("failed to cleanup pts");
-
 	return 0;
 }
 

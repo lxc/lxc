@@ -100,6 +100,8 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-checkconfig
 	src/lxc/lxc-setcap
 	src/lxc/lxc-version
+	src/lxc/lxc-create
+	src/lxc/lxc-destroy
 
 	etc/Makefile
 	etc/lxc-macvlan.conf

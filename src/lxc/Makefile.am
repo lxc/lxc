@@ -18,8 +18,6 @@ so_PROGRAMS = liblxc.so
 liblxc_so_SOURCES = \
 	arguments.c arguments.h \
 	commands.c commands.h \
-	create.c \
-	destroy.c \
 	start.c \
 	stop.c \
 	monitor.c monitor.h \
@@ -65,12 +63,12 @@ bin_SCRIPTS = \
 	lxc-ls \
 	lxc-checkconfig \
 	lxc-setcap \
-	lxc-version
+	lxc-version \
+	lxc-create \
+	lxc-destroy
 
 bin_PROGRAMS = \
 	lxc-unshare \
-	lxc-create \
-	lxc-destroy \
 	lxc-stop \
 	lxc-start \
 	lxc-execute \
@@ -93,8 +91,6 @@ LDADD=liblxc.so
 lxc_cgroup_SOURCES = lxc_cgroup.c
 lxc_checkpoint_SOURCES = lxc_checkpoint.c
 lxc_console_SOURCES = lxc_console.c
-lxc_create_SOURCES = lxc_create.c
-lxc_destroy_SOURCES = lxc_destroy.c
 lxc_execute_SOURCES = lxc_execute.c
 lxc_freeze_SOURCES = lxc_freeze.c
 lxc_info_SOURCES = lxc_info.c
