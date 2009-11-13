@@ -136,7 +136,6 @@ lxc.network.flags = up
 lxc.network.link = br0
 lxc.network.name = eth0
 lxc.network.mtu = $MTU
-lxc.mount = $TMPMNTFILE
 lxc.rootfs = $ROOTFS
 lxc.cgroup.devices.deny = a
 # /dev/null and zero
@@ -155,13 +154,18 @@ lxc.cgroup.devices.allow = c 5:2 rwm
 # rtc
 lxc.cgroup.devices.allow = c 254:0 rwm
 EOF
+
+	if [ ! -z "$TMPMNTFILE" ]; then
+cat <<EOF >> $CONFFILE
+lxc.mount = $TMPMNTFILE
+EOF
+	fi
 }
 
 write_lxc_mounts() {
 
-    TMPMNTFILE=$(mktemp lxc.XXXXXXXXXX)
-
     if [ ! -z "$MNTFILE" ]; then
+	TMPMNTFILE=$(mktemp lxc.$NAME.XXXXXXXXXX)
 	cp $MNTFILE $TMPMNTFILE
     fi
 }
@@ -312,7 +316,6 @@ create() {
 
     # remove the configuration files
     rm -f $CONFFILE
-    rm -f $TMPMNTFILE
 
     if [ "$RES" != "0" ]; then
 	echo "Failed to create '$NAME'"
