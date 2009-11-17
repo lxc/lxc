@@ -27,7 +27,10 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include <lxc/lxc.h>
+#include <lxc/log.h>
+#include <lxc/conf.h>
+#include <lxc/start.h> 	/* for struct lxc_handler */
+
 #include "commands.h"
 #include "af_unix.h"
 

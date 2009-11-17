@@ -33,7 +33,11 @@
 #include <sys/mount.h>
 #define _GNU_SOURCE
 #include <getopt.h>
-#include "lxc.h"
+
+#include <lxc/lxc.h>
+#include <lxc/log.h>
+#include <lxc/utils.h>
+#include <lxc/error.h>
 
 lxc_log_define(lxc_init, lxc);
 

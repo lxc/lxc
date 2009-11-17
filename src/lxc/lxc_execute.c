@@ -31,8 +31,10 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 
+#include <lxc/log.h>
+#include <lxc/confile.h>
 #include <lxc/lxc.h>
-#include "confile.h"
+
 #include "arguments.h"
 #include "config.h"
 

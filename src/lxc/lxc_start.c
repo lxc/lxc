@@ -39,6 +39,8 @@
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>
+#include <lxc/utils.h>
+
 #include "arguments.h"
 
 lxc_log_define(lxc_start, lxc);

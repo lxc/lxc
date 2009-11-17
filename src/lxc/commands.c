@@ -30,7 +30,9 @@
 #include <sys/poll.h>
 #include <sys/param.h>
 
-#include <lxc/lxc.h>
+#include <lxc/log.h>
+#include <lxc/conf.h>
+#include <lxc/start.h>	/* for struct lxc_handler */
 
 #include "commands.h"
 #include "mainloop.h"

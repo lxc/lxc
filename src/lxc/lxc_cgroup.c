@@ -27,6 +27,8 @@
 #include <sys/types.h>
 
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
 #include "arguments.h"
 
 lxc_log_define(lxc_cgroup, lxc);

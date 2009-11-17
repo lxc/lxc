@@ -32,8 +32,9 @@
 #include <sys/param.h>
 
 #include "error.h"
-#include <lxc/lxc.h>
+
 #include <lxc/log.h>
+#include <lxc/cgroup.h>
 
 lxc_log_define(lxc_freezer, lxc);
 

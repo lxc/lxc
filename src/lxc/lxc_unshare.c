@@ -32,7 +32,8 @@
 #include <sys/wait.h>
 #include <pwd.h>
 
-#include <lxc/lxc.h>
+#include <lxc/log.h>
+#include <lxc/namespace.h>
 
 lxc_log_define(lxc_unshare, lxc);
 

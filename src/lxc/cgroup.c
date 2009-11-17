@@ -39,8 +39,9 @@
 #include "error.h"
 #include "config.h"
 
-#include <lxc/lxc.h>
 #include <lxc/log.h>
+#include <lxc/cgroup.h>
+#include <lxc/start.h>
 
 lxc_log_define(lxc_cgroup, lxc);
 

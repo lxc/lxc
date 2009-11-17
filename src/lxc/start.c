@@ -44,9 +44,6 @@
 #include <sys/un.h>
 #include <sys/poll.h>
 
-#include <lxc/lxc.h>
-#include <lxc/confile.h>
-
 #ifdef HAVE_SYS_SIGNALFD_H 
 #  include <sys/signalfd.h>
 #else
@@ -91,13 +88,19 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #define PR_CAPBSET_DROP 24
 #endif
 
+#include <lxc/log.h>
+#include <lxc/conf.h>
+#include <lxc/confile.h>
+#include <lxc/start.h>
+#include <lxc/utils.h>
+#include <lxc/cgroup.h>
+#include <lxc/monitor.h>
+
 #include "error.h"
 #include "af_unix.h"
 #include "mainloop.h"
 #include "commands.h"
 
-#include <lxc/lxc.h>
-#include <lxc/log.h>
 
 lxc_log_define(lxc_start, lxc);
 

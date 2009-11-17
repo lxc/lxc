@@ -29,10 +29,12 @@
 #include <sys/signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 #include <fcntl.h>
 
-#include <lxc/lxc.h>
 #include <lxc/log.h>
+#include <lxc/start.h>
+
 #include "commands.h"
 
 lxc_log_define(lxc_stop, lxc);

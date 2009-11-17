@@ -27,7 +27,7 @@
 #include <signal.h>
 #include <namespace.h>
 
-#include <lxc/lxc.h>
+#include <lxc/log.h>
 
 lxc_log_define(lxc_namespace, lxc);
 

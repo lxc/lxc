@@ -29,6 +29,8 @@
 #include <sys/types.h>
 
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+#include <lxc/monitor.h>
 #include "arguments.h"
 
 lxc_log_define(monitor, lxc);

@@ -27,7 +27,10 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
+#include <lxc/log.h>
+#include <lxc/utils.h>
+
 #include "arguments.h"
 #include "config.h"
 

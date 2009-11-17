@@ -36,11 +36,8 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
-#include "error.h"
-#include "lxc_plugin.h"
-#include <lxc.h>
-
 #include <lxc/log.h>
+#include "lxc_plugin.h"
 
 lxc_log_define(lxc_checkpoint, lxc);
 

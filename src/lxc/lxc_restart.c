@@ -25,7 +25,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include <lxc.h>
+#include <lxc/lxc.h>
+#include <lxc/log.h>
+
 #include "arguments.h"
 
 static int my_checker(const struct lxc_arguments* args)

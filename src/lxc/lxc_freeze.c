@@ -27,6 +27,8 @@
 #include <string.h>
 
 #include <lxc/lxc.h>
+#include <lxc/log.h>
+
 #include "arguments.h"
 
 static const struct option my_longopts[] = {

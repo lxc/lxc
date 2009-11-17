@@ -50,8 +50,9 @@
 #include "parse.h"
 #include "config.h"
 
-#include <lxc/lxc.h>
+#include <lxc/conf.h>
 #include <lxc/log.h>
+#include <lxc/lxc.h>	/* for lxc_cgroup_set() */
 
 lxc_log_define(lxc_conf, lxc);
 

@@ -36,8 +36,10 @@
 
 #include "error.h"
 #include "af_unix.h"
-#include <lxc/lxc.h>
+
 #include <lxc/log.h>
+#include <lxc/state.h>
+#include <lxc/monitor.h>
 
 lxc_log_define(lxc_monitor, lxc);
 

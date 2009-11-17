@@ -44,9 +44,6 @@
 
 lxc_log_define(lxc_restart, lxc);
 
-LXC_TTY_HANDLER(SIGINT);
-LXC_TTY_HANDLER(SIGQUIT);
-
 int lxc_restart(const char *name, int fd, unsigned long flags)
 {
 	return 0;

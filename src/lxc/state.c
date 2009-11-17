@@ -31,8 +31,8 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 
-#include <lxc/lxc.h>
 #include <lxc/log.h>
+#include <lxc/start.h>
 #include "commands.h"
 #include "config.h"
 

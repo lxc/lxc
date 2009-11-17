@@ -20,6 +20,11 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+#ifndef __lxc_state_h
+#define __lxc_state_h
+
+#include <lxc/conf.h>
+#include <lxc/state.h>
 
 struct lxc_handler {
 
@@ -40,5 +45,5 @@ extern int lxc_poll(const char *name, struct lxc_handler *handler);
 extern void lxc_abort(const char *name, struct lxc_handler *handler);
 extern void lxc_fini(const char *name, struct lxc_handler *handler);
 
-
+#endif
 

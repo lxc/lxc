@@ -37,8 +37,10 @@
 #include <sys/stat.h>
 #include <sys/poll.h>
 
-#include "error.h"
-#include "lxc.h"
+#include <lxc/error.h>
+#include <lxc/lxc.h>
+#include <lxc/log.h>
+
 #include "arguments.h"
 
 lxc_log_define(lxc_console, lxc);

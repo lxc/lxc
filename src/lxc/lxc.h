@@ -33,16 +33,10 @@ extern "C" {
  lxc/lxc.h will contain exports of liblxc
  **/
 
+#include <stddef.h>
 #include <lxc/state.h>
-#include <lxc/list.h>
-#include <lxc/log.h>
-#include <lxc/conf.h>
-#include <lxc/namespace.h>
-#include <lxc/utils.h>
-#include <lxc/error.h>
-#include <lxc/cgroup.h>
-#include <lxc/monitor.h>
-#include <lxc/start.h>
+
+struct lxc_msg;
 
 /*
  * Start the specified command inside a container
