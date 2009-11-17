@@ -39,9 +39,15 @@ AS_AC_EXPAND(LIBEXECDIR, $libexecdir)
 AS_AC_EXPAND(SYSCONFDIR, $sysconfdir)
 AS_AC_EXPAND(DATADIR, $datadir)
 AS_AC_EXPAND(LOCALSTATEDIR, $localstatedir)
-AS_AC_EXPAND(LXCPATH, "${localstatedir}/lib/lxc")
-AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 
+AC_ARG_WITH([config-path],
+	[AC_HELP_STRING(
+		[--with-config-path=dir],
+		[lxc configuration repository]
+	)], [], [with_config_path="${localstatedir}/lib/lxc"])
+
+AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
+AS_AC_EXPAND(LXCPATH, "${with_config_path}")
 AH_TEMPLATE([LXCPATH], [lxc configuration repository])
 AH_TEMPLATE([LXCLIBEXECDIR], [lxc executable library path])
 AC_DEFINE_UNQUOTED(LXCPATH, "$LXCPATH")
