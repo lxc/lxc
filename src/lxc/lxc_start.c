@@ -20,8 +20,11 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+#define _GNU_SOURCE
 #include <stdio.h>
+#undef _GNU_SOURCE
 #include <libgen.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <termios.h>
@@ -42,6 +45,7 @@
 #include <lxc/utils.h>
 
 #include "arguments.h"
+#include "config.h"
 
 lxc_log_define(lxc_start, lxc);
 
@@ -127,6 +131,8 @@ int main(int argc, char *argv[])
 		'\0',
 	};
 
+	char *rcfile = NULL;
+
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return err;
 
@@ -138,6 +144,22 @@ int main(int argc, char *argv[])
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
 		return err;
+
+	/* rcfile is specified in the cli option */
+	if (my_args.rcfile)
+		rcfile = (char *)my_args.rcfile;
+	else {
+		if (!asprintf(&rcfile, LXCPATH "/%s", my_args.name)) {
+			SYSERROR("failed to allocate memory");
+			return err;
+		}
+
+		/* container configuration does not exist */
+		if (access(rcfile, F_OK)) {
+			free(rcfile);
+			rcfile = NULL;
+		}
+	}
 
 	if (my_args.daemonize) {
 
@@ -167,7 +189,7 @@ int main(int argc, char *argv[])
 
 	save_tty(&tios);
 
-	err = lxc_start(my_args.name, args, my_args.rcfile);
+	err = lxc_start(my_args.name, args, rcfile);
 
 	restore_tty(&tios);
 

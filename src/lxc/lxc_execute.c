@@ -82,6 +82,7 @@ Options :\n\
 int main(int argc, char *argv[])
 {
 	static char **args;
+	char *rcfile;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
@@ -93,6 +94,22 @@ int main(int argc, char *argv[])
 	args = lxc_arguments_dup(LXCLIBEXECDIR "/lxc-init", &my_args);
 	if (!args)
 		return -1;
+
+	/* rcfile is specified in the cli option */
+	if (my_args.rcfile)
+		rcfile = (char *)my_args.rcfile;
+	else {
+		if (!asprintf(&rcfile, LXCPATH "/%s", my_args.name)) {
+			SYSERROR("failed to allocate memory");
+			return -1;
+		}
+
+		/* container configuration does not exist */
+		if (access(rcfile, F_OK)) {
+			free(rcfile);
+			rcfile = NULL;
+		}
+	}
 
 	return lxc_start(my_args.name, args, my_args.rcfile);
 }
