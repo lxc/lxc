@@ -30,7 +30,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <sys/mount.h>
 #define _GNU_SOURCE
 #include <getopt.h>
 
@@ -51,42 +50,6 @@ static struct option options[] = {
 	{ "quiet", no_argument, &quiet, 1 },
 	{ 0, 0, 0, 0 },
 };
-
-static int mount_fs(const char *source, const char *target, const char *type)
-{
-	/* the umount may fail */
-	if (umount(target))
-		WARN("failed to unmount %s : %s", target, strerror(errno));
-
-	if (mount(source, target, type, 0, NULL)) {
-		ERROR("failed to mount %s : %s", target, strerror(errno));
-		return -1;
-	}
-
-	DEBUG("'%s' mounted on '%s'", source, target);
-
-	return 0;
-}
-
-static inline int setup_fs(void)
-{
-	if (mount_fs("proc", "/proc", "proc"))
-		return -1;
-
-	if (mount_fs("shmfs", "/dev/shm", "tmpfs"))
-		return -1;
-
-	/* If we were able to mount /dev/shm, then /dev exists */
-	if (access("/dev/mqueue", F_OK) && mkdir("/dev/mqueue", 0666)) {
-		SYSERROR("failed to create '/dev/mqueue'");
-		return -1;
-	}
-
-	if (mount_fs("mqueue", "/dev/mqueue", "mqueue"))
-		return -1;
-
-	return 0;
-}
 
 int main(int argc, char *argv[])
 {
@@ -127,7 +90,7 @@ int main(int argc, char *argv[])
 
 	if (!pid) {
 		
-		if (setup_fs())
+		if (lxc_setup_fs())
 			exit(err);
 
 		NOTICE("about to exec '%s'", aargv[0]);
@@ -171,3 +134,4 @@ int main(int argc, char *argv[])
 out:
 	return err;
 }
+
