@@ -1,12 +1,7 @@
 #!/bin/bash
 # set -ex
 
-lxcpath=/var/lib/lxc
 exec=""
-
-if [ ! -r $lxcpath ]; then
-    exit 0
-fi
 
 if [ $# -eq  0 ]; then
     echo "usage: $0 -n <name>"
@@ -23,7 +18,7 @@ for i in $*; do
 done
 
 if [ -z "$exec" ]; then
-    exec /usr/bin/lxc-unshare -s MOUNT -- /usr/bin/lxc-netstat -n $name --exec $*
+    exec @BINDIR@/lxc-unshare -s MOUNT -- $0 -n $name --exec $*
 fi
 
 if [ -z "$name" ]; then
