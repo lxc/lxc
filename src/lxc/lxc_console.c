@@ -36,6 +36,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/poll.h>
+#include <sys/ioctl.h>
 
 #include <lxc/error.h>
 #include <lxc/lxc.h>
@@ -74,9 +75,22 @@ Options :\n\
 	.ttynum = -1,
 };
 
+static int master = -1;
+
+static void winsz(void)
+{
+	struct winsize wsz;
+	if (ioctl(0, TIOCGWINSZ, &wsz) == 0)
+		ioctl(master, TIOCSWINSZ, &wsz);
+}
+
+static void sigwinch(int sig)
+{
+	winsz();
+}
+
 int main(int argc, char *argv[])
 {
-	int master = -1;
 	int wait4q = 0;
 	int err;
 	struct termios tios, oldtios;
@@ -120,6 +134,8 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "\nType <Ctrl+a q> to exit the console\n");
 
 	setsid();
+	signal(SIGWINCH, sigwinch);
+	winsz();
 
 	err = 0;
 
