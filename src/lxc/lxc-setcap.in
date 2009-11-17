@@ -28,10 +28,12 @@
 LXC_CREATE_CAPS="cap_sys_admin"
 LXC_NETSTAT_CAPS="cap_sys_admin"
 LXC_INIT_CAPS="cap_sys_admin,cap_dac_override"
-LXC_UNSHARE_CAPS="cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override"
-LXC_START_CAPS="cap_fowner,cap_sys_chroot,cap_setpcap,cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override"
+LXC_COMMON_CAPS="cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override"
+LXC_UNSHARE_CAPS=$LXC_COMMON_CAPS
+LXC_START_CAPS="$LXC_COMMON_CAPS,cap_fowner,cap_sys_chroot,cap_setpcap"
 LXC_EXECUTE_CAPS=$LXC_START_CAPS
 LXC_RESTART_CAPS=$LXC_START_CAPS
+LXC_CHECKPOINT_CAPS="$LXC_COMMON_CAPS,cap_sys_ptrace"
 
 LXC_DROP_CAPS=""
 
@@ -48,6 +50,7 @@ lxc_setcaps()
     setcap $LXC_RESTART_CAPS=ep @BINDIR@/lxc-restart
     setcap $LXC_UNSHARE_CAPS=ep @BINDIR@/lxc-unshare
     setcap $LXC_NETSTAT_CAPS=ep @BINDIR@/lxc-netstat
+    setcap $LXC_CHECKPOINT_CAPS=ep @BINDIR@/lxc-checkpoint
     setcap $LXC_INIT_CAPS=ep @LIBEXECDIR@/lxc-init
 
     test -e @LXCPATH@ || mkdir -p @LXCPATH@
@@ -62,6 +65,7 @@ lxc_dropcaps()
     setcap -r @BINDIR@/lxc-restart
     setcap -r @BINDIR@/lxc-unshare
     setcap -r @BINDIR@/lxc-netstat
+    setcap -r @BINDIR@/lxc-checkpoint
     setcap -r @LIBEXECDIR@/lxc-init
     chmod 0755 @LXCPATH@
 }
