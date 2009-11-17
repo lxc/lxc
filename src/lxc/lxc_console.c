@@ -141,7 +141,6 @@ int main(int argc, char *argv[])
 
 	/* let's proxy the tty */
 	for (;;) {
-		char c;
 		struct pollfd pfd[2] = {
 			{ .fd = 0,
 			  .events = POLLIN|POLLPRI,
@@ -161,6 +160,7 @@ int main(int argc, char *argv[])
 		/* read the "stdin" and write that to the master
 		 */
 		if (pfd[0].revents & POLLIN) {
+			char c;
 			if (read(0, &c, 1) < 0) {
 				SYSERROR("failed to read");
 				goto out_err;
@@ -188,12 +188,14 @@ int main(int argc, char *argv[])
 
 		/* read the master and write to "stdout" */
 		if (pfd[1].revents & POLLIN) {
-			if (read(master, &c, 1) < 0) {
+			char buf[1024];
+			int r;
+			r = read(master, buf, sizeof(buf));
+			if (r < 0) {
 				SYSERROR("failed to read");
 				goto out_err;
 			}
-			printf("%c", c);
-			fflush(stdout);
+			write(1, buf, r);
 		}
 	}
 out:
