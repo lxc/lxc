@@ -66,17 +66,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </para>
 
     <para>
-      If the container does not exist, it is automatically created and
-      destroyed at the end. The command can use the configuration file
-      to create itself the container
-      like <command>lxc-create</command> would do and will destroy the
-      container when the application exits. If the container was
-      previously created with the lxc-create command, when the
-      application exits, the container is not destroyed and it can be
-      reused later.
-    </para>
-
-    <para>
       This command is mainly used when you want to quickly launch an
       application in an isolated environment. It will create an
       intermediate process allowing you application to daemonize in

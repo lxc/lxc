@@ -39,6 +39,7 @@ AS_AC_EXPAND(LIBEXECDIR, $libexecdir)
 AS_AC_EXPAND(SYSCONFDIR, $sysconfdir)
 AS_AC_EXPAND(DATADIR, $datadir)
 AS_AC_EXPAND(LOCALSTATEDIR, $localstatedir)
+AS_AC_EXPAND(DOCDIR, $docdir)
 
 AC_ARG_WITH([config-path],
 	[AC_HELP_STRING(
@@ -99,6 +100,14 @@ AC_CONFIG_FILES([
 	doc/common_options.sgml
 	doc/see_also.sgml
 
+	doc/examples/Makefile
+	doc/examples/lxc-macvlan.conf
+	doc/examples/lxc-no-netns.conf
+	doc/examples/lxc-empty-netns.conf
+	doc/examples/lxc-phys.conf
+	doc/examples/lxc-veth.conf
+	doc/examples/lxc-complex-config
+
 	scripts/Makefile
 	scripts/lxc-debian
 	scripts/lxc-fedora
@@ -115,13 +124,6 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-create
 	src/lxc/lxc-destroy
 
-	doc/examples/Makefile
-	doc/examples/lxc-macvlan.conf
-	doc/examples/lxc-no-netns.conf
-	doc/examples/lxc-empty-netns.conf
-	doc/examples/lxc-phys.conf
-	doc/examples/lxc-veth.conf
-	doc/examples/lxc-complex-config
 ])
 AC_CONFIG_COMMANDS([default],[[]],[[]])
 AC_OUTPUT

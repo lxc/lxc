@@ -60,10 +60,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <para>
       <command>lxc-start</command> runs the specified command inside
       the container specified by name. It will setup the container
-      according with the configuration defined previously with the
-      lxc-create command and execute the command inside the
-      container. The orphan process group and daemon are not supported
-      by this command.
+      according the configuration previously defined with the
+      lxc-create command or with the configuration file parameter and
+      execute the command inside the container. If no configuration is
+      defined, the default isolation is used. The orphan process
+      group and daemon are not supported by this command.
       
       If no command is specified, <command>lxc-start</command> will
       use the default
@@ -89,6 +90,18 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    Run the container as a daemon. As the container has no
 	    more tty, if an error occurs nothing will be displayed,
 	    the log file can be used to check the error.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-f <replaceable>config_file</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Specify the configuration file to configure the virtualization
+	    and isolation functionalities for the container.
 	  </para>
 	</listitem>
       </varlistentry>

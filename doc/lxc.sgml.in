@@ -59,7 +59,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       a container with a predefined configuration template, it may
       work.
       <command>
-	@BINDIR@/lxc-execute -n foo -f @SYSCONFDIR@/lxc/lxc-macvlan.conf /bin/bash
+	@BINDIR@/lxc-execute -n foo -f @DOCDIR@/examples/lxc-macvlan.conf /bin/bash
       </command>
     </para>
   </refsect1>

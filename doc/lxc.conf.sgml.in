@@ -318,6 +318,19 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    </para>
 	  </listitem>
 	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.mount.entry</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify a mount point corresponding to a line in the
+	      fstab format.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
       </variablelist>
     </refsect2>
 
@@ -576,6 +589,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</varlistentry>
 	<varlistentry>
 	  <term>lxc.mount = /etc/fstab.complex</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0</term>
 	  <listitem><para></para></listitem>
 	</varlistentry>
 	<varlistentry>
