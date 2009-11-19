@@ -253,12 +253,12 @@ struct lxc_handler *lxc_init(const char *name, const char *rcfile)
 
 	if (rcfile) {
 		if (access(rcfile, F_OK)) {
-			ERROR("failed to access rcfile");
+			ERROR("failed to access '%s'", rcfile);
 			goto out_aborting;
 		}
 
 		if (lxc_config_read(rcfile, &handler->conf)) {
-			ERROR("failed to read the configuration file");
+			ERROR("failed to read '%s'", rcfile);
 			goto out_aborting;
 		}
 	}
