@@ -43,9 +43,7 @@ liblxc_so_SOURCES = \
         genl.c genl.h \
 	\
 	mainloop.c mainloop.h \
-	af_unix.c af_unix.h \
-	\
-	cr_plugin_columbia.c lxc_plugin.h
+	af_unix.c af_unix.h
 
 AM_CFLAGS=-I$(top_srcdir)/src
 

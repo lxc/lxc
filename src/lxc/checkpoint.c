@@ -20,24 +20,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-#define _GNU_SOURCE
-#include <stdio.h>
-#undef _GNU_SOURCE
-#include <fcntl.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/param.h>
-#include <sys/file.h>
-#include <netinet/in.h>
-#include <net/if.h>
-
+#include <lxc/lxc.h>
 #include <lxc/log.h>
-#include "lxc_plugin.h"
 
 lxc_log_define(lxc_checkpoint, lxc);
 
