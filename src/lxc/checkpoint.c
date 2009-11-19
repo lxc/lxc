@@ -25,7 +25,7 @@
 
 lxc_log_define(lxc_checkpoint, lxc);
 
-int lxc_checkpoint(const char *name, int fd, unsigned long flags)
+int lxc_checkpoint(const char *name, const char *statefile, int flags)
 {
 	return 0;
 }

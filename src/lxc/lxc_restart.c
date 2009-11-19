@@ -20,8 +20,10 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+#define _GNU_SOURCE
 #include <stdio.h>
-#include <libgen.h>
+#undef _GNU_SOURCE
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 
@@ -29,6 +31,8 @@
 #include <lxc/log.h>
 
 #include "arguments.h"
+
+lxc_log_define(lxc_restart, lxc);
 
 static int my_checker(const struct lxc_arguments* args)
 {
@@ -43,9 +47,9 @@ static int my_checker(const struct lxc_arguments* args)
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
-	case 'd':
-		args->statefile = arg;
-		break;
+	case 'd': args->statefile = arg; break;
+	case 'f': args->rcfile = arg; break;
+	case 'p': args->flags = LXC_FLAG_PAUSE; break;
 	}
 
 	return 0;
@@ -53,6 +57,8 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 
 static const struct option my_longopts[] = {
 	{"directory", required_argument, 0, 'd'},
+	{"rcfile", required_argument, 0, 'f'},
+	{"pause", no_argument, 0, 'p'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -64,8 +70,10 @@ static struct lxc_arguments my_args = {
 lxc-restart restarts from STATEFILE the NAME container\n\
 \n\
 Options :\n\
-  -n, --name=NAME           NAME for name of the container\n\
-  -d, --directory=STATEFILE for name of statefile\n",
+  -n, --name=NAME      NAME for name of the container\n\
+  -p, --pause          do not release the container after the restart\n\
+  -d, --directory=STATEFILE for name of statefile\n\
+  -f, --rcfile=FILE Load configuration file FILE\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,
@@ -80,8 +88,6 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	if (lxc_restart(my_args.name, -1, 0))
-		return -1;
-
-	return 0;
+	return lxc_restart(my_args.name, my_args.statefile, my_args.rcfile,
+			   my_args.flags);
 }

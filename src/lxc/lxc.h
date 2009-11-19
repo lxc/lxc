@@ -27,16 +27,16 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
+#include <lxc/state.h>
+
+struct lxc_msg;
+
 /**
  Following code is for liblxc.
 
  lxc/lxc.h will contain exports of liblxc
  **/
-
-#include <stddef.h>
-#include <lxc/state.h>
-
-struct lxc_msg;
 
 /*
  * Start the specified command inside a container
@@ -139,22 +139,25 @@ extern int lxc_cgroup_get(const char *name, const char *subsystem,
 extern const char *lxc_strerror(int error);
 
 /*
- * Checkpoint a container previously frozen
+ * Checkpoint a container
  * @name : the name of the container being checkpointed
- * @fd : file descriptor on which the container is checkpointed
- * @flags : checkpoint flags
+ * @statefile: string object on which the container is checkpointed
+ * @flags : checkpoint flags (an ORed value)
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_checkpoint(const char *name, int fd, unsigned long flags);
+extern int lxc_checkpoint(const char *name, const char *statefile, int flags);
+#define LXC_FLAG_PAUSE 1
+#define LXC_FLAG_HALT  2
 
 /*
- * Restart a container previously frozen
+ * Restart a container
  * @name : the name of the container being restarted
- * @fd : file descriptor from which the container is restarted
- * @flags : restart flags
+ * @statefile: string object from which the container is restarted
+ * @rcfile: container configuration file.
+ * @flags : restart flags (an ORed value)
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_restart(const char *name, int fd, unsigned long flags);
+extern int lxc_restart(const char *, const char *, const char *, int);
 
 /*
  * Returns the version number of the library

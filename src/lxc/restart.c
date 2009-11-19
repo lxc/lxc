@@ -25,7 +25,8 @@
 
 lxc_log_define(lxc_restart, lxc);
 
-int lxc_restart(const char *name, int fd, unsigned long flags)
+int lxc_restart(const char *name, const char *statefile, const char *rcfile,
+		int flags)
 {
 	return 0;
 }

@@ -23,8 +23,9 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <libgen.h>
 #include <unistd.h>
+#include <errno.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
 #include <lxc/lxc.h>
@@ -49,8 +50,8 @@ static int my_checker(const struct lxc_arguments* args)
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
-	case 'k': args->kill = 1; break;
-	case 'p': args->pause = 1; break;
+	case 'k': args->flags = LXC_FLAG_HALT; break;
+	case 'p': args->flags = LXC_FLAG_PAUSE; break;
 	case 'd': args->statefile = arg; break;
 	}
 	return 0;
@@ -83,40 +84,19 @@ Options :\n\
 	.rcfile   = NULL,
 };
 
-static int save_config_file(const char *name, const char *dir)
+static int create_statefile(const char *dir)
 {
-	char *src, *dst;
-	int ret;
-
-	if (!asprintf(&src, LXCPATH "/%s/config", name)) {
-		ERROR("failed to allocate memory");
+	if (mkdir(dir, 0700) == -1 && errno != EEXIST) {
+		ERROR("'%s' creation error : %m", dir);
 		return -1;
 	}
 
-	if (access(src, F_OK)) {
-		free(src);
-		return 0;
-	}
-
-	if (!asprintf(&dst, "%s/config", dir)) {
-		ERROR("failed to allocate memory");
-		free(src);
-		return -1;
-	}
-
-	ret = lxc_copy_file(src, dst);
-	if (ret)
-		ERROR("failed to copy '%s' to '%s'", src, dst);
-
-	free(src);
-	free(dst);
-
-	return ret;
+	return 0;
 }
 
 int main(int argc, char *argv[])
 {
-	int ret = -1;
+	int ret;
 
 	ret = lxc_arguments_parse(&my_args, argc, argv);
 	if (ret)
@@ -127,13 +107,11 @@ int main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	ret = save_config_file(my_args.name, my_args.statefile);
-	if (ret) {
-		ERROR("failed to save the configuration");
+	ret = create_statefile(my_args.statefile);
+	if (ret)
 		return ret;
-	}
 
-	ret = lxc_checkpoint(my_args.name, -1, 0);
+	ret = lxc_checkpoint(my_args.name, my_args.statefile, my_args.flags);
 	if (ret) {
 		ERROR("failed to checkpoint '%s'", my_args.name);
 		return ret;

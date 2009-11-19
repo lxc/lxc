@@ -47,8 +47,7 @@ struct lxc_arguments {
 	const char *statefile;
 
 	/* for lxc-checkpoint */
-	int kill;
-	int pause;
+	int flags;
 
 	/* for lxc-console */
 	int ttynum;
