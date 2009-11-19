@@ -146,20 +146,21 @@ static int config_ip_prefix(struct in_addr *addr)
 	return 0;
 }
 
-static struct lxc_netdev *network_netdev(const char *key, char *value,
-					 struct lxc_conf *lxc_conf)
+static struct lxc_netdev *network_netdev(const char *key, const char *value,
+					 struct lxc_list *network)
 {
-	struct lxc_list *network = &lxc_conf->network;
 	struct lxc_netdev *netdev;
 
 	if (lxc_list_empty(network)) {
-		ERROR("network is not created for '%s' option", value);
+		ERROR("network is not created for '%s' = '%s' option",
+		      key, value);
 		return NULL;
 	}
 
 	netdev = lxc_list_first_elem(network);
 	if (!netdev) {
-		ERROR("no network defined for '%s' option", value);
+		ERROR("no network device defined for '%s' = '%s' option",
+		      key, value);
 		return NULL;
 	}
 
@@ -174,6 +175,10 @@ static int network_ifname(char **valuep, char *value)
 	}
 
 	*valuep = strdup(value);
+	if (!*valuep) {
+		ERROR("failed to dup string '%s'", value);
+		return -1;
+	}
 
 	return 0;
 }
@@ -183,7 +188,7 @@ static int config_network_flags(const char *key, char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, lxc_conf);
+	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
@@ -197,7 +202,7 @@ static int config_network_link(const char *key, char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, lxc_conf);
+	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
@@ -209,7 +214,7 @@ static int config_network_name(const char *key, char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, lxc_conf);
+	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
@@ -221,11 +226,15 @@ static int config_network_hwaddr(const char *key, char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, lxc_conf);
+	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
 	netdev->hwaddr = strdup(value);
+	if (!netdev->hwaddr) {
+		SYSERROR("failed to dup string '%s'", value);
+		return -1;
+	}
 
 	return 0;
 }
@@ -235,11 +244,15 @@ static int config_network_mtu(const char *key, char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, lxc_conf);
+	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
 	netdev->mtu = strdup(value);
+	if (!netdev->mtu) {
+		SYSERROR("failed to dup string '%s'", value);
+		return -1;
+	}
 
 	return 0;
 }
@@ -252,7 +265,7 @@ static int config_network_ipv4(const char *key, char *value,
 	struct lxc_list *list;
 	char *cursor, *slash, *addr = NULL, *bcast = NULL, *prefix = NULL;
 
-	netdev = network_netdev(key, value, lxc_conf);
+	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
@@ -320,7 +333,7 @@ static int config_network_ipv6(const char *key, char *value, struct lxc_conf *lx
 	char *slash;
 	char *netmask;
 
-	netdev = network_netdev(key, value, lxc_conf);
+	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
