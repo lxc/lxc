@@ -709,11 +709,11 @@ static int setup_netdev(struct lxc_netdev *netdev)
 	}
 
 	/* default: let the system to choose one interface name */
-	if (!netdev->newname)
-		netdev->newname = "eth%d";
+	if (!netdev->name)
+		netdev->name = "eth%d";
 
 	/* rename the interface name */
-	if (lxc_device_rename(ifname, netdev->newname)) {
+	if (lxc_device_rename(ifname, netdev->name)) {
 		ERROR("failed to rename %s->%s", ifname, current_ifname);
 		return -1;
 	}
@@ -846,7 +846,7 @@ static int instanciate_veth(struct lxc_netdev *netdev)
 
 	if (lxc_veth_create(veth1, veth2)) {
 		ERROR("failed to create %s-%s/%s",
-		      veth1, veth2, netdev->ifname);
+		      veth1, veth2, netdev->link);
 		goto out;
 	}
 
@@ -864,9 +864,9 @@ static int instanciate_veth(struct lxc_netdev *netdev)
 		}
 	}
 
-	if (lxc_bridge_attach(netdev->ifname, veth1)) {
+	if (lxc_bridge_attach(netdev->link, veth1)) {
 		ERROR("failed to attach '%s' to the bridge '%s'",
-			      veth1, netdev->ifname);
+			      veth1, netdev->link);
 		goto out_delete;
 	}
 
@@ -908,9 +908,9 @@ static int instanciate_macvlan(struct lxc_netdev *netdev)
 		return -1;
 	}
 
-	if (lxc_macvlan_create(netdev->ifname, peer)) {
+	if (lxc_macvlan_create(netdev->link, peer)) {
 		ERROR("failed to create macvlan interface '%s' on '%s'",
-		      peer, netdev->ifname);
+		      peer, netdev->link);
 		goto out;
 	}
 
@@ -933,9 +933,9 @@ out_delete:
 
 static int instanciate_phys(struct lxc_netdev *netdev)
 {
-	netdev->ifindex = if_nametoindex(netdev->ifname);
+	netdev->ifindex = if_nametoindex(netdev->link);
 	if (!netdev->ifindex) {
-		ERROR("failed to retrieve the index for %s", netdev->ifname);
+		ERROR("failed to retrieve the index for %s", netdev->link);
 		return -1;
 	}
 
@@ -983,11 +983,11 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 
 		if (lxc_device_move(netdev->ifindex, pid)) {
 			ERROR("failed to move '%s' to the container",
-			      netdev->ifname);
+			      netdev->link);
 			return -1;
 		}
 
-		DEBUG("move '%s' to '%d'", netdev->ifname, pid);
+		DEBUG("move '%s' to '%d'", netdev->link, pid);
 	}
 
 	return 0;

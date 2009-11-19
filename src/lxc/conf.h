@@ -71,7 +71,8 @@ struct lxc_route6 {
 };
 /*
  * Defines a structure to configure a network device
- * @ifname : network device name
+ * @link   : lxc.network.link, name of bridge or host iface to attach if any
+ * @name   : lxc.network.name, name of iface on the container side
  * @flags  : flag of the network device (IFF_UP, ... )
  * @ipv4   : a list of ipv4 addresses to be set on the network device
  * @ipv6   : a list of ipv6 addresses to be set on the network device
@@ -80,8 +81,8 @@ struct lxc_netdev {
 	int type;
 	int flags;
 	int ifindex;
-	char *ifname;
-	char *newname;
+	char *link;
+	char *name;
 	char *hwaddr;
 	char *mtu;
 	struct lxc_list ipv4;

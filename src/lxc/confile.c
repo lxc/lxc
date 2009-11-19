@@ -187,7 +187,7 @@ static int config_network_link(const char *key, char *value, struct lxc_conf *lx
 		return -1;
 	}
 
-	netdev->ifname = strdup(value);
+	netdev->link = strdup(value);
 	return 0;
 }
 
@@ -212,7 +212,7 @@ static int config_network_name(const char *key, char *value, struct lxc_conf *lx
 		return -1;
 	}
 
-	netdev->newname = strdup(value);
+	netdev->name = strdup(value);
 	return 0;
 }
 
