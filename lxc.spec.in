@@ -71,12 +71,12 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root)
-%{_sysconfdir}/%{name}/*
 %{_libdir}/*.so*
 %{_bindir}/*
 %{_libexecdir}/*
 %{_mandir}/*
 %{_datadir}/pkgconfig/*
+%{_docdir}/%{name}/*
 
 %files devel
 %defattr(-,root,root)
