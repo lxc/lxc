@@ -845,8 +845,7 @@ static int instanciate_veth(struct lxc_netdev *netdev)
 	}
 
 	if (lxc_veth_create(veth1, veth2)) {
-		ERROR("failed to create %s-%s/%s",
-		      veth1, veth2, netdev->link);
+		ERROR("failed to create %s-%s", veth1, veth2);
 		goto out;
 	}
 
@@ -864,7 +863,7 @@ static int instanciate_veth(struct lxc_netdev *netdev)
 		}
 	}
 
-	if (lxc_bridge_attach(netdev->link, veth1)) {
+	if (netdev->link && lxc_bridge_attach(netdev->link, veth1)) {
 		ERROR("failed to attach '%s' to the bridge '%s'",
 			      veth1, netdev->link);
 		goto out_delete;
