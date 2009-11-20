@@ -70,7 +70,7 @@ if [ -z "$lxc_name" ]; then
     exit 1
 fi
 
-if [ ! -f "$lxc_path/$lxc_name" ]; then
+if [ ! -d "$lxc_path/$lxc_name" ]; then
     echo "'$lxc_name' does not exist"
     exit 1
 fi

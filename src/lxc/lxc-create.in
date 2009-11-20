@@ -80,18 +80,20 @@ if [ -z "$lxc_name" ]; then
     exit 1
 fi
 
-if [ -f "$lxc_path/$lxc_name" ]; then
+if [ -d "$lxc_path/$lxc_name" ]; then
     echo "'$lxc_name' already exists"
     exit 1
 fi
 
+mkdir -p $lxc_path/$lxc_name
+
 if [ -z "$lxc_config" ]; then
-    touch $lxc_path/$lxc_name
+    touch $lxc_path/$lxc_name/config
 else
     if [ ! -r "$lxc_config" ]; then
 	echo "'$lxc_config' configuration file not found"
 	exit 1
     fi
 
-    cp $lxc_config $lxc_path/$lxc_name
+    cp $lxc_config $lxc_path/$lxc_name/config
 fi
