@@ -58,9 +58,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       without warranty, here are the commands to launch a shell inside
       a container with a predefined configuration template, it may
       work.
-      <command>
-	@BINDIR@/lxc-execute -n foo -f @DOCDIR@/examples/lxc-macvlan.conf /bin/bash
-      </command>
+      <command>@BINDIR@/lxc-execute -n foo -f
+      @DOCDIR@/examples/lxc-macvlan.conf /bin/bash</command>
     </para>
   </refsect1>
 
@@ -121,6 +120,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	        -> User namespace
 	        -> Pid namespace
 	        -> Network namespace
+	    * Device Drivers
+	      * Character devices
+	        -> Support multiple instances of devpts
+	      * Network device support
+	        -> MAC-VLAN support
+	        -> Virtual ethernet pair device
+	    * Networking
+	      * Networking options
+	        -> 802.1d Ethernet Bridging
 	    * Security options
 	      -> File POSIX Capabilities
       </programlisting>
@@ -133,6 +141,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 	With the kernel 2.6.29, <command>lxc</command> is fully
 	functional.
+
+	The helper script <command>lxc-checkconfig</command> will give
+	you information about your kernel configuration.
       </para>
 
       <para>
@@ -164,7 +175,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       A container is an object where the configuration is
       persistent. The application will be launched inside this
       container and it will use the configuration which was previously
-      created.
+      created or specified in parameter of the command.
     </para>
 
     <para>How to run an application in a container ?</para>
@@ -296,6 +307,13 @@ rootfs
     </refsect2>
 
     <refsect2>
+      <title>Volatile containers</title>
+      <para>The container can be directly started with a
+	configuration file in parameter without creating them before.
+      </para>
+    </refsect2>
+
+    <refsect2>
       <title>Configuration</title>
       <para>The container is configured through a configuration
       file, the format of the configuration file is described in 
@@ -325,9 +343,12 @@ rootfs
     <refsect2>
       <title>Starting / Stopping a container</title>
       <para>When the container has been created, it is ready to run an
-      application / system. When the application has to be destroyed
+      application / system. When the application has to be destroyed,
       the container can be stopped, that will kill all the processes
-      of the container.</para>
+      of the container. If the container was not created before
+      starting the application, the container will use the
+      configuration file passed as parameter to the command, otherwise
+      it will use the default isolation.</para>
       
       <para>
 	Running an application inside a container is not exactly the

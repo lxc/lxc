@@ -58,11 +58,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
     <para>
       <command>lxc-create</command> creates a system object where is
-      stored the configuration informations and where will be stored
-      runtime information. The
-      identifier <replaceable>name</replaceable> is used to
-      specify the container to be used with the different lxc
-      commands.
+      stored the configuration informations and where can be stored
+      user information. The identifier <replaceable>name</replaceable>
+      is used to specify the container to be used with the different
+      lxc commands.
     </para>
 
     <para>
@@ -98,8 +97,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </variablelist>
 
   </refsect1>
-
-  &commonoptions;
 
   <refsect1>
     <title>Diagnostic</title>

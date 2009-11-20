@@ -48,8 +48,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-destroy <replaceable>-n name</replaceable>
-      </command>
+      <command>lxc-destroy <replaceable>-n
+      name</replaceable></command>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -57,14 +57,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <title>Description</title>
 
     <para>
-      <command>lxc-destroy</command> destroys the system container
-      object. After the destruction the container is no longer
+      <command>lxc-destroy</command> destroys the directory where is
+      stored the configuration and all the data contained in this
+      directory. After the destruction the container is no longer
       available and should be recreated.
     </para>
 
   </refsect1>
-
-  &commonoptions;
 
   <refsect1>
     <title>Diagnostic</title>
@@ -79,17 +78,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    is probable it does not exists and was already
 	    destroyed.You can use the <command>lxc-ls -l</command>
 	    command to list the available containers on the system.
-          </para>
-        </listitem>
-      </varlistentry>    
-
-      <varlistentry>
-        <term>The container is busy</term>
-        <listitem>
-          <para>
-	    The specified container is running an application. At this
-	    point it is not destroyable, and it should be stopped
-	    before trying to destroy it.
           </para>
         </listitem>
       </varlistentry>    
