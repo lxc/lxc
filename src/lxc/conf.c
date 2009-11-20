@@ -893,10 +893,15 @@ out_delete:
 	lxc_device_delete(veth1);
 	goto out;
 }
+
 static int instanciate_macvlan(struct lxc_netdev *netdev)
 {
 	char peer[IFNAMSIZ];
-	int ret = -1;
+
+	if (!netdev->link) {
+		ERROR("no link specified for macvlan netdev");
+		return -1;
+	}
 
 	snprintf(peer, sizeof(peer), "mcXXXXXX");
 
@@ -910,24 +915,19 @@ static int instanciate_macvlan(struct lxc_netdev *netdev)
 	if (lxc_macvlan_create(netdev->link, peer)) {
 		ERROR("failed to create macvlan interface '%s' on '%s'",
 		      peer, netdev->link);
-		goto out;
+		return -1;
 	}
 
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
 		ERROR("failed to retrieve the index for %s", peer);
-		goto out_delete;
+		lxc_device_delete(peer);
+		return -1;
 	}
 
 	DEBUG("instanciated macvlan '%s', index is '%d'", peer, netdev->ifindex);
 
-	ret = 0;
-out:
-	return ret;
-
-out_delete:
-	lxc_device_delete(peer);
-	goto out;
+	return 0;
 }
 
 static int instanciate_phys(struct lxc_netdev *netdev)
