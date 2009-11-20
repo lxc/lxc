@@ -183,8 +183,6 @@ int main(int argc, char *argv[])
 			open(my_args.log_file, O_RDONLY | O_CLOEXEC);
 			open(my_args.log_file, O_RDONLY | O_CLOEXEC);
 		}
-
-		chdir("/");
 	}
 
 	save_tty(&tios);
