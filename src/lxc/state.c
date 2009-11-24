@@ -40,7 +40,7 @@ lxc_log_define(lxc_state, lxc);
 
 static char *strstate[] = {
 	"STOPPED", "STARTING", "RUNNING", "STOPPING",
-	"ABORTING", "FREEZING", "FROZEN",
+	"ABORTING", "FREEZING", "FROZEN", "THAWED",
 };
 
 const char *lxc_state2str(lxc_state_t state)
@@ -72,13 +72,17 @@ int lxc_rmstate(const char *name)
 
 static int freezer_state(const char *name)
 {
+	char *nsgroup;
 	char freezer[MAXPATHLEN];
 	char status[MAXPATHLEN];
 	FILE *file;
 	int err;
 
-	snprintf(freezer, MAXPATHLEN,
-		 LXCPATH "/%s/freezer.state", name);
+	err = lxc_cgroup_path_get(&nsgroup, name);
+	if (err)
+		return -1;
+
+	snprintf(freezer, MAXPATHLEN, "%s/freezer.state", nsgroup);
 
 	file = fopen(freezer, "r");
 	if (!file)
@@ -95,7 +99,7 @@ static int freezer_state(const char *name)
 	return lxc_str2state(status);
 }
 
-lxc_state_t lxc_getstate(const char *name)
+static lxc_state_t __lxc_getstate(const char *name)
 {
 	struct lxc_command command = {
 		.request = { .type = LXC_COMMAND_STATE },
@@ -128,11 +132,11 @@ lxc_state_t lxc_getstate(const char *name)
 	return command.answer.ret;
 }
 
-lxc_state_t lxc_state(const char *name)
+lxc_state_t lxc_getstate(const char *name)
 {
 	int state = freezer_state(name);
 	if (state != FROZEN && state != FREEZING)
-		state = lxc_getstate(name);
+		state = __lxc_getstate(name);
 	return state;
 }
 
