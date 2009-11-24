@@ -995,29 +995,29 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 int lxc_create_tty(const char *name, struct lxc_conf *conf)
 {
 	struct lxc_tty_info *tty_info = &conf->tty_info;
-	int i, ret = -1;
+	int i;
 
 	/* no tty in the configuration */
 	if (!conf->tty)
 		return 0;
 
-	tty_info->nbtty = conf->tty;
 	tty_info->pty_info =
 		malloc(sizeof(*tty_info->pty_info)*tty_info->nbtty);
-
 	if (!tty_info->pty_info) {
 		SYSERROR("failed to allocate pty_info");
-		goto out;
+		return -1;
 	}
 
-	for (i = 0; i < tty_info->nbtty; i++) {
+	for (i = 0; i < conf->tty; i++) {
 
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
 		if (openpty(&pty_info->master, &pty_info->slave,
 			    pty_info->name, NULL, NULL)) {
 			SYSERROR("failed to create pty #%d", i);
-			goto out_free;
+			tty_info->nbtty = i;
+			lxc_delete_tty(tty_info);
+			return -1;
 		}
 
                 /* Prevent leaking the file descriptors to the container */
@@ -1027,16 +1027,11 @@ int lxc_create_tty(const char *name, struct lxc_conf *conf)
 		pty_info->busy = 0;
 	}
 
-	ret = 0;
+	tty_info->nbtty = conf->tty;
 
 	INFO("tty's configured");
 
-out:
-	return ret;
-
-out_free:
-	free(tty_info->pty_info);
-	goto out;
+	return 0;
 }
 
 void lxc_delete_tty(struct lxc_tty_info *tty_info)
