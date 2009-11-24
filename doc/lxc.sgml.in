@@ -495,7 +495,7 @@ rootfs
 
 	<programlisting>
 	  for i in $(lxc-ls -1); do
-	    lxc-ps -n $i --forest
+	    lxc-ps --name $i --forest
 	  done
 	</programlisting>
 
