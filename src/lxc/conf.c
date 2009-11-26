@@ -999,7 +999,7 @@ int lxc_create_tty(const char *name, struct lxc_conf *conf)
 		return 0;
 
 	tty_info->pty_info =
-		malloc(sizeof(*tty_info->pty_info)*tty_info->nbtty);
+		malloc(sizeof(*tty_info->pty_info)*conf->tty);
 	if (!tty_info->pty_info) {
 		SYSERROR("failed to allocate pty_info");
 		return -1;
