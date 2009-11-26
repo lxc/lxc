@@ -831,7 +831,6 @@ static int instanciate_veth(struct lxc_netdev *netdev)
 {
 	char veth1buf[IFNAMSIZ], *veth1;
 	char veth2[IFNAMSIZ];
-	int ret = -1;
 
 	if (netdev->pair)
 		veth1 = netdev->pair;
@@ -851,19 +850,14 @@ static int instanciate_veth(struct lxc_netdev *netdev)
 
 	if (lxc_veth_create(veth1, veth2)) {
 		ERROR("failed to create %s-%s", veth1, veth2);
-		goto out;
+		return -1;
 	}
 
 	if (netdev->mtu) {
-		if (lxc_device_set_mtu(veth1, atoi(netdev->mtu))) {
-			ERROR("failed to set mtu '%s' for '%s'",
-			      netdev->mtu, veth1);
-			goto out_delete;
-		}
-
-		if (lxc_device_set_mtu(veth2, atoi(netdev->mtu))) {
-			ERROR("failed to set mtu '%s' for '%s'",
-			      netdev->mtu, veth2);
+		if (lxc_device_set_mtu(veth1, atoi(netdev->mtu)) ||
+		    lxc_device_set_mtu(veth2, atoi(netdev->mtu))) {
+			ERROR("failed to set mtu '%s' for %s-%s",
+			      netdev->mtu, veth1, veth2);
 			goto out_delete;
 		}
 	}
@@ -890,13 +884,11 @@ static int instanciate_veth(struct lxc_netdev *netdev)
 	DEBUG("instanciated veth '%s/%s', index is '%d'",
 	      veth1, veth2, netdev->ifindex);
 
-	ret = 0;
-out:
-	return ret;
+	return 0;
 
 out_delete:
 	lxc_device_delete(veth1);
-	goto out;
+	return -1;
 }
 
 static int instanciate_macvlan(struct lxc_netdev *netdev)
