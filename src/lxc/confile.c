@@ -49,6 +49,7 @@ static int config_network_type(const char *, char *, struct lxc_conf *);
 static int config_network_flags(const char *, char *, struct lxc_conf *);
 static int config_network_link(const char *, char *, struct lxc_conf *);
 static int config_network_name(const char *, char *, struct lxc_conf *);
+static int config_network_pair(const char *, char *, struct lxc_conf *);
 static int config_network_hwaddr(const char *, char *, struct lxc_conf *);
 static int config_network_mtu(const char *, char *, struct lxc_conf *);
 static int config_network_ipv4(const char *, char *, struct lxc_conf *);
@@ -73,6 +74,7 @@ static struct config config[] = {
 	{ "lxc.network.flags",  config_network_flags  },
 	{ "lxc.network.link",   config_network_link   },
 	{ "lxc.network.name",   config_network_name   },
+	{ "lxc.network.pair",   config_network_pair   },
 	{ "lxc.network.hwaddr", config_network_hwaddr },
 	{ "lxc.network.mtu",    config_network_mtu    },
 	{ "lxc.network.ipv4",   config_network_ipv4   },
@@ -219,6 +221,18 @@ static int config_network_name(const char *key, char *value,
 		return -1;
 
 	return network_ifname(&netdev->name, value);
+}
+
+static int config_network_pair(const char *key, char *value,
+			       struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+
+	netdev = network_netdev(key, value, &lxc_conf->network);
+	if (!netdev)
+		return -1;
+
+	return network_ifname(&netdev->pair, value);
 }
 
 static int config_network_hwaddr(const char *key, char *value,

@@ -829,14 +829,19 @@ int lxc_conf_init(struct lxc_conf *conf)
 
 static int instanciate_veth(struct lxc_netdev *netdev)
 {
-	char veth1[IFNAMSIZ];
+	char veth1buf[IFNAMSIZ], *veth1;
 	char veth2[IFNAMSIZ];
 	int ret = -1;
 
-	snprintf(veth1, sizeof(veth1), "vethXXXXXX");
-	snprintf(veth2, sizeof(veth2), "vethXXXXXX");
+	if (netdev->pair)
+		veth1 = netdev->pair;
+	else {
+		snprintf(veth1buf, sizeof(veth1buf), "vethXXXXXX");
+		mktemp(veth1buf);
+		veth1 = veth1buf;
+	}
 
-	mktemp(veth1);
+	snprintf(veth2, sizeof(veth2), "vethXXXXXX");
 	mktemp(veth2);
 
 	if (!strlen(veth1) || !strlen(veth2)) {
