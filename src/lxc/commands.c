@@ -135,7 +135,7 @@ static int trigger_command(int fd, struct lxc_request *request,
 static void command_fd_cleanup(int fd, struct lxc_handler *handler,
 			       struct lxc_epoll_descr *descr)
 {
-	lxc_console_remove_fd(fd, &handler->conf.tty_info);
+	lxc_console_remove_fd(fd, &handler->conf->tty_info);
 	lxc_mainloop_del_handler(descr, fd);
 	close(fd);
 }

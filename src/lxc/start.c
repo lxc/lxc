@@ -230,7 +230,7 @@ static int console_init(char *console, size_t size)
 	return 0;
 }
 
-struct lxc_handler *lxc_init(const char *name, const char *rcfile)
+struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 {
 	struct lxc_handler *handler;
 
@@ -240,36 +240,20 @@ struct lxc_handler *lxc_init(const char *name, const char *rcfile)
 
 	memset(handler, 0, sizeof(*handler));
 
+	handler->conf = conf;
+
 	/* Begin the set the state to STARTING*/
 	if (lxc_set_state(name, handler, STARTING)) {
 		ERROR("failed to set state '%s'", lxc_state2str(STARTING));
 		goto out_free;
 	}
 
-	if (lxc_conf_init(&handler->conf)) {
-		ERROR("failed to initialize the configuration");
-		goto out_aborting;
-	}
-
-	if (rcfile) {
-		if (access(rcfile, F_OK)) {
-			ERROR("failed to access '%s'", rcfile);
-			goto out_aborting;
-		}
-
-		if (lxc_config_read(rcfile, &handler->conf)) {
-			ERROR("failed to read '%s'", rcfile);
-			goto out_aborting;
-		}
-	}
-
-	if (console_init(handler->conf.console,
-			 sizeof(handler->conf.console))) {
+	if (console_init(conf->console, sizeof(conf->console))) {
 		ERROR("failed to initialize the console");
 		goto out_aborting;
 	}
 
-	if (lxc_create_tty(name, &handler->conf)) {
+	if (lxc_create_tty(name, conf)) {
 		ERROR("failed to create the ttys");
 		goto out_aborting;
 	}
@@ -294,7 +278,7 @@ out:
 	return handler;
 
 out_delete_tty:
-	lxc_delete_tty(&handler->conf.tty_info);
+	lxc_delete_tty(&conf->tty_info);
 out_aborting:
 	lxc_set_state(name, handler, ABORTING);
 out_free:
@@ -313,7 +297,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_unlink_nsgroup(name);
 
 	if (handler) {
-		lxc_delete_tty(&handler->conf.tty_info);
+		lxc_delete_tty(&handler->conf->tty_info);
 		free(handler);
 	}
 
@@ -366,7 +350,7 @@ static int do_start(void *arg)
 	}
 
 	/* Setup the container, ip, names, utsname, ... */
-	if (lxc_setup(name, &handler->conf)) {
+	if (lxc_setup(name, handler->conf)) {
 		ERROR("failed to setup the container");
 		goto out_warn_father;
 	}
@@ -414,14 +398,14 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	}
 
 	clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
-	if (!lxc_list_empty(&handler->conf.network)) {
+	if (!lxc_list_empty(&handler->conf->network)) {
 
 		clone_flags |= CLONE_NEWNET;
 
 		/* that should be done before the clone because we will
 		 * fill the netdev index and use them in the child
 		 */
-		if (lxc_create_network(&handler->conf.network)) {
+		if (lxc_create_network(&handler->conf->network)) {
 			ERROR("failed to create the network");
 			goto out_close;
 		}
@@ -447,7 +431,7 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 
 	/* Create the network configuration */
 	if (clone_flags & CLONE_NEWNET) {
-		if (lxc_assign_network(&handler->conf.network, handler->pid)) {
+		if (lxc_assign_network(&handler->conf->network, handler->pid)) {
 			ERROR("failed to create the configured network");
 			goto out_abort;
 		}
@@ -486,13 +470,13 @@ out_abort:
 	goto out_close;
 }
 
-int lxc_start(const char *name, char *const argv[], const char *rcfile)
+int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 {
 	struct lxc_handler *handler;
 	int err = -1;
 	int status;
 
-	handler = lxc_init(name, rcfile);
+	handler = lxc_init(name, conf);
 	if (!handler) {
 		ERROR("failed to initialize the container");
 		return -1;

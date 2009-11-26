@@ -31,6 +31,7 @@ extern "C" {
 #include <lxc/state.h>
 
 struct lxc_msg;
+struct lxc_conf;
 
 /**
  Following code is for liblxc.
@@ -44,7 +45,7 @@ struct lxc_msg;
  * @argv     : an array of char * corresponding to the commande line
  * Returns 0 on sucess, < 0 otherwise
  */
-extern int lxc_start(const char *name, char *const argv[], const char *rcfile);
+extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *);
 
 /*
  * Stop the container previously started with lxc_start, all

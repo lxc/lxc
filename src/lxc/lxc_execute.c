@@ -31,10 +31,11 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 
-#include <lxc/log.h>
-#include <lxc/confile.h>
-#include <lxc/lxc.h>
 
+#include "lxc.h"
+#include "log.h"
+#include "conf.h"
+#include "confile.h"
 #include "arguments.h"
 #include "config.h"
 
@@ -83,6 +84,7 @@ int main(int argc, char *argv[])
 {
 	static char **args;
 	char *rcfile;
+	struct lxc_conf conf;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
@@ -111,6 +113,16 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	return lxc_start(my_args.name, args, my_args.rcfile);
+	if (lxc_conf_init(&conf)) {
+		ERROR("failed to initialze configuration");
+		return -1;
+	}
+
+	if (rcfile && lxc_config_read(rcfile, &conf)) {
+		ERROR("failed to read configuration file");
+		return -1;
+	}
+
+	return lxc_start(my_args.name, args, &conf);
 }
 

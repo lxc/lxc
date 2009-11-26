@@ -98,7 +98,7 @@ extern int lxc_console_callback(int fd, struct lxc_request *request,
 			struct lxc_handler *handler)
 {
 	int ttynum = request->data;
-	struct lxc_tty_info *tty_info = &handler->conf.tty_info;
+	struct lxc_tty_info *tty_info = &handler->conf->tty_info;
 
 	if (ttynum > 0) {
 		if (ttynum > tty_info->nbtty)

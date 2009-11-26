@@ -40,12 +40,13 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
-#include <lxc/lxc.h>
-#include <lxc/log.h>
-#include <lxc/utils.h>
-
-#include "arguments.h"
+#include "log.h"
+#include "lxc.h"
+#include "conf.h"
+#include "utils.h"
 #include "config.h"
+#include "confile.h"
+#include "arguments.h"
 
 lxc_log_define(lxc_start, lxc);
 
@@ -132,6 +133,7 @@ int main(int argc, char *argv[])
 	};
 
 	char *rcfile = NULL;
+	struct lxc_conf conf;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return err;
@@ -161,6 +163,16 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (lxc_conf_init(&conf)) {
+		ERROR("failed to initialze configuration");
+		return err;
+	}
+
+	if (rcfile && lxc_config_read(rcfile, &conf)) {
+		ERROR("failed to read configuration file");
+		return err;
+	}
+
 	if (my_args.daemonize) {
 
                 /* do not chdir as we want to open the log file,
@@ -187,7 +199,7 @@ int main(int argc, char *argv[])
 
 	save_tty(&tios);
 
-	err = lxc_start(my_args.name, args, rcfile);
+	err = lxc_start(my_args.name, args, &conf);
 
 	restore_tty(&tios);
 
