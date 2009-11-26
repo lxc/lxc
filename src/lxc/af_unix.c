@@ -122,7 +122,6 @@ int lxc_af_unix_send_fd(int fd, int sendfd, void *data, size_t size)
         cmsg->cmsg_level = SOL_SOCKET;
         cmsg->cmsg_type = SCM_RIGHTS;
         *((int *) CMSG_DATA(cmsg)) = sendfd;
-        msg.msg_controllen = cmsg->cmsg_len;
 
         msg.msg_name = NULL;
         msg.msg_namelen = 0;
@@ -194,7 +193,6 @@ int lxc_af_unix_send_credential(int fd, void *data, size_t size)
         cmsg->cmsg_level = SOL_SOCKET;
         cmsg->cmsg_type = SCM_CREDENTIALS;
 	*((struct ucred *) CMSG_DATA(cmsg)) = cred;
-        msg.msg_controllen = cmsg->cmsg_len;
 
         msg.msg_name = NULL;
         msg.msg_namelen = 0;
