@@ -6,4 +6,26 @@ if [ ! -r $lxcpath ]; then
     exit 0
 fi
 
+function get_cgroup()
+{
+	local mount_string
+	mount_string=$(mount -t cgroup |grep -E -e '^lxc ')
+	if test -z "$mount_string"; then
+		mount_string=$(mount |grep -m1 'type cgroup')
+	fi
+	if test -n "$mount_string"; then
+		mount_point=$(echo $mount_string |cut -d' ' -f3)
+	fi
+}
+
 ls $* $lxcpath
+
+active=$(netstat -xa | grep $lxcpath | \
+	sed -e 's#.*'"$lxcpath/"'\(.*\)/command#\1#');
+
+if test -n "$active"; then
+	get_cgroup
+	if test -n "$mount_point"; then
+		cd $mount_point; ls $* -d $active
+	fi
+fi
