@@ -33,6 +33,7 @@
 
 #include <lxc/log.h>
 #include <lxc/start.h>
+#include <lxc/cgroup.h>
 #include "commands.h"
 #include "config.h"
 
