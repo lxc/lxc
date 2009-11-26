@@ -173,6 +173,11 @@ int main(int argc, char *argv[])
 		return err;
 	}
 
+	if (!rcfile && !strcmp("/sbin/init", args[0])) {
+		ERROR("no configuration file for '/sbin/init' (may crash the host)");
+		return err;
+	}
+
 	if (my_args.daemonize) {
 
                 /* do not chdir as we want to open the log file,
