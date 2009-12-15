@@ -76,10 +76,10 @@ static struct config config[] = {
 	{ "lxc.network.flags",  config_network_flags  },
 	{ "lxc.network.link",   config_network_link   },
 	{ "lxc.network.name",   config_network_name   },
-	{ "lxc.network.pair",   config_network_pair   },
+	{ "lxc.network.veth.pair",   config_network_pair   },
 	{ "lxc.network.hwaddr", config_network_hwaddr },
 	{ "lxc.network.mtu",    config_network_mtu    },
-	{ "lxc.network.vlanid", config_network_vlanid },
+	{ "lxc.network.vlan.id", config_network_vlanid },
 	{ "lxc.network.ipv4",   config_network_ipv4   },
 	{ "lxc.network.ipv6",   config_network_ipv6   },
 };
@@ -237,7 +237,7 @@ static int config_network_pair(const char *key, char *value,
 	if (!netdev)
 		return -1;
 
-	return network_ifname(&netdev->pair, value);
+	return network_ifname(&netdev->priv.pair, value);
 }
 
 static int config_network_hwaddr(const char *key, char *value,
@@ -267,7 +267,7 @@ static int config_network_vlanid(const char *key, char *value,
 	if (!netdev)
 		return -1;
 
-	if (get_u16(&netdev->vlan_attr.vid, value, 0))
+	if (get_u16(&netdev->priv.vlan_attr.vid, value, 0))
 		return -1;
 
 	return 0;

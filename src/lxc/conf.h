@@ -78,11 +78,15 @@ struct ifla_vlan {
 	ushort   pad;
 };
 
+union netdev_p {
+	char *pair;
+	struct ifla_vlan vlan_attr;
+};
+
 /*
  * Defines a structure to configure a network device
  * @link   : lxc.network.link, name of bridge or host iface to attach if any
  * @name   : lxc.network.name, name of iface on the container side
- * @pair   : lxc.network.pair, name of host-side iface in case of veth etc
  * @flags  : flag of the network device (IFF_UP, ... )
  * @ipv4   : a list of ipv4 addresses to be set on the network device
  * @ipv6   : a list of ipv6 addresses to be set on the network device
@@ -93,10 +97,9 @@ struct lxc_netdev {
 	int ifindex;
 	char *link;
 	char *name;
-	char *pair;
 	char *hwaddr;
 	char *mtu;
-	struct ifla_vlan vlan_attr;
+	union netdev_p priv;
 	struct lxc_list ipv4;
 	struct lxc_list ipv6;
 };
