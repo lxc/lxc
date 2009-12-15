@@ -102,6 +102,7 @@ AC_CONFIG_FILES([
 
 	doc/examples/Makefile
 	doc/examples/lxc-macvlan.conf
+	doc/examples/lxc-vlan.conf
 	doc/examples/lxc-no-netns.conf
 	doc/examples/lxc-empty-netns.conf
 	doc/examples/lxc-phys.conf

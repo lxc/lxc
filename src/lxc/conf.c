@@ -75,12 +75,14 @@ struct mount_opt {
 
 static int instanciate_veth(struct lxc_netdev *);
 static int instanciate_macvlan(struct lxc_netdev *);
+static int instanciate_vlan(struct lxc_netdev *);
 static int instanciate_phys(struct lxc_netdev *);
 static int instanciate_empty(struct lxc_netdev *);
 
 static  instanciate_cb netdev_conf[MAXCONFTYPE + 1] = {
 	[VETH]    = instanciate_veth,
 	[MACVLAN] = instanciate_macvlan,
+	[VLAN]    = instanciate_vlan,
 	[PHYS]    = instanciate_phys,
 	[EMPTY]   = instanciate_empty,
 };
@@ -924,6 +926,35 @@ static int instanciate_macvlan(struct lxc_netdev *netdev)
 
 	DEBUG("instanciated macvlan '%s', index is '%d'", peer, netdev->ifindex);
 
+	return 0;
+}
+
+/* XXX: merge with instanciate_macvlan */
+static int instanciate_vlan(struct lxc_netdev *netdev)
+{
+	char peer[IFNAMSIZ];
+
+	if (!netdev->link) {
+		ERROR("no link specified for vlan netdev");
+		return -1;
+	}
+
+	snprintf(peer, sizeof(peer), "vlan%d",netdev->vlan_attr.vid);
+
+	if (lxc_vlan_create(netdev->link, peer, netdev->vlan_attr.vid)) {
+		ERROR("failed to create vlan interface '%s' on '%s'",
+		      peer, netdev->link);
+		return -1;
+	}
+
+	netdev->ifindex = if_nametoindex(peer);
+	if (!netdev->ifindex) {
+		ERROR("failed to retrieve the ifindex for %s", peer);
+		lxc_device_delete(peer);
+		return -1;
+	}
+
+	DEBUG("instanciated vlan '%s', ifindex is '%d'", "vlan1000", netdev->ifindex);
 	return 0;
 }
 

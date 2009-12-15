@@ -69,6 +69,11 @@ extern int lxc_veth_create(const char *name1, const char *name2);
 extern int lxc_macvlan_create(const char *master, const char *name);
 
 /*
+ * Create a vlan network device
+ */
+extern int lxc_vlan_create(const char *master, const char *name, ushort vid);
+
+/*
  * Activate forwarding
  */
 extern int lxc_ip_forward_on(const char *name, int family);

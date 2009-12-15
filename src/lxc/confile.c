@@ -33,6 +33,7 @@
 #include <net/if.h>
 
 #include "parse.h"
+#include "utils.h"
 
 #include <lxc/log.h>
 #include <lxc/conf.h>
@@ -51,6 +52,7 @@ static int config_network_link(const char *, char *, struct lxc_conf *);
 static int config_network_name(const char *, char *, struct lxc_conf *);
 static int config_network_pair(const char *, char *, struct lxc_conf *);
 static int config_network_hwaddr(const char *, char *, struct lxc_conf *);
+static int config_network_vlanid(const char *, char *, struct lxc_conf *);
 static int config_network_mtu(const char *, char *, struct lxc_conf *);
 static int config_network_ipv4(const char *, char *, struct lxc_conf *);
 static int config_network_ipv6(const char *, char *, struct lxc_conf *);
@@ -77,6 +79,7 @@ static struct config config[] = {
 	{ "lxc.network.pair",   config_network_pair   },
 	{ "lxc.network.hwaddr", config_network_hwaddr },
 	{ "lxc.network.mtu",    config_network_mtu    },
+	{ "lxc.network.vlanid", config_network_vlanid },
 	{ "lxc.network.ipv4",   config_network_ipv4   },
 	{ "lxc.network.ipv6",   config_network_ipv6   },
 };
@@ -125,6 +128,8 @@ static int config_network_type(const char *key, char *value, struct lxc_conf *lx
 		netdev->type = VETH;
 	else if (!strcmp(value, "macvlan"))
 		netdev->type = MACVLAN;
+	else if (!strcmp(value, "vlan"))
+		netdev->type = VLAN;
 	else if (!strcmp(value, "phys"))
 		netdev->type = PHYS;
 	else if (!strcmp(value, "empty"))
@@ -249,6 +254,21 @@ static int config_network_hwaddr(const char *key, char *value,
 		SYSERROR("failed to dup string '%s'", value);
 		return -1;
 	}
+
+	return 0;
+}
+
+static int config_network_vlanid(const char *key, char *value,
+			       struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+
+	netdev = network_netdev(key, value, &lxc_conf->network);
+	if (!netdev)
+		return -1;
+
+	if (get_u16(&netdev->vlan_attr.vid, value, 0))
+		return -1;
 
 	return 0;
 }

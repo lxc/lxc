@@ -33,6 +33,7 @@ enum {
 	VETH,
 	MACVLAN,
 	PHYS,
+	VLAN,
 	MAXCONFTYPE,
 };
 
@@ -69,6 +70,14 @@ struct lxc_inet6dev {
 struct lxc_route6 {
 	struct in6_addr addr;
 };
+
+struct ifla_vlan {
+	uint   flags;
+	uint   fmask;
+	ushort   vid;
+	ushort   pad;
+};
+
 /*
  * Defines a structure to configure a network device
  * @link   : lxc.network.link, name of bridge or host iface to attach if any
@@ -87,6 +96,7 @@ struct lxc_netdev {
 	char *pair;
 	char *hwaddr;
 	char *mtu;
+	struct ifla_vlan vlan_attr;
 	struct lxc_list ipv4;
 	struct lxc_list ipv6;
 };
