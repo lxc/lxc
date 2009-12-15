@@ -78,6 +78,11 @@ extern int nla_put_u32(struct nlmsg *nlmsg, int attr, int value)
 	return nla_put(nlmsg, attr, &value, sizeof(value));
 }
 
+extern int nla_put_u16(struct nlmsg *nlmsg, int attr, ushort value)
+{
+	return nla_put(nlmsg, attr, &value, 2);
+}
+
 extern int nla_put_attr(struct nlmsg *nlmsg, int attr)
 {
 	return nla_put(nlmsg, attr, NULL, 0);
@@ -184,6 +189,9 @@ extern int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg)
 	return ret;
 }
 
+#ifndef NLMSG_ERROR
+#define NLMSG_ERROR                0x2
+#endif
 extern int netlink_transaction(struct nl_handler *handler, 
 			       struct nlmsg *request, struct nlmsg *answer)
 {
@@ -201,6 +209,8 @@ extern int netlink_transaction(struct nl_handler *handler,
 	if (answer->nlmsghdr.nlmsg_type == NLMSG_ERROR) {
 		struct nlmsgerr *err = (struct nlmsgerr*)NLMSG_DATA(answer);
 		errno = -err->error;
+		if (errno)
+			perror("Error configuring kernel");
 		return -errno;
 	}
 	

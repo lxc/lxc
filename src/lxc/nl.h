@@ -161,6 +161,17 @@ int nla_put_buffer(struct nlmsg *nlmsg, int attr,
 int nla_put_u32(struct nlmsg *nlmsg, int attr, int value);
 
 /*
+ * nla_put_u16: copy an integer to a netlink message attribute
+ *
+ * @nlmsg: the netlink message to be filled
+ * @attr: the attribute name of the unsigned 16-bit value
+ * @value: 16-bit attribute data value to be copied to the netlink message
+ *
+ * Returns 0 on success, < 0 otherwise
+ */
+int nla_put_u16(struct nlmsg *nlmsg, int attr, ushort value);
+
+/*
  * nla_put_attr: add an attribute name to a netlink 
  *
  * @nlmsg: the netlink message to be filled

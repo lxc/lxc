@@ -54,3 +54,4 @@ extern int lxc_copy_file(const char *src, const char *dst);
 extern int lxc_close_inherited_fd(int fd);
 extern int lxc_close_all_inherited_fd(void);
 extern int lxc_setup_fs(void);
+extern int get_u16(ushort *val, const char *arg, int base);

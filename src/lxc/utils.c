@@ -270,3 +270,22 @@ extern int lxc_setup_fs(void)
 
 	return 0;
 }
+
+/* borrowed from iproute2 */
+extern int get_u16(ushort *val, const char *arg, int base)
+{
+	unsigned long res;
+	char *ptr;
+
+	if (!arg || !*arg)
+		return -1;
+
+	res = strtoul(arg, &ptr, base);
+	if (!ptr || ptr == arg || *ptr || res > 0xFFFF)
+		return -1;
+
+	*val = res;
+
+	return 0;
+}
+
