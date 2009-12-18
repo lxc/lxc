@@ -611,7 +611,7 @@ static int setup_mount_entries(struct lxc_list *mount)
 
 	lxc_list_for_each(iterator, mount) {
 		mount_entry = iterator->elem;
-		fprintf(file, "%s", mount_entry);
+		fprintf(file, "%s\n", mount_entry);
 	}
 
 	rewind(file);
