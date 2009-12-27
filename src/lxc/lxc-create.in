@@ -34,8 +34,8 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
-shortoptions='n:f:'
-longoptions='name:,config:'
+shortoptions='n:f:t:'
+longoptions='name:,config:,template:'
 lxc_path=@LXCPATH@
 
 getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
@@ -56,6 +56,11 @@ while true; do
 	    -f|--config)
 		shift
 		lxc_config=$1
+		shift
+		;;
+	    -t|--template)
+		shift
+		lxc_template=$1
 		shift
 		;;
             --)
@@ -85,6 +90,8 @@ if [ -d "$lxc_path/$lxc_name" ]; then
     exit 1
 fi
 
+trap "lxc-destroy -n $lxc_name; echo aborted; exit 1" SIGHUP SIGINT SIGTERM
+
 mkdir -p $lxc_path/$lxc_name
 
 if [ -z "$lxc_config" ]; then
@@ -97,3 +104,50 @@ else
 
     cp $lxc_config $lxc_path/$lxc_name/config
 fi
+
+if [ ! -z $lxc_template ]; then
+
+    type lxc-$lxc_template
+    if [ $? -ne 0 ]; then
+	echo "unknown template '$lxc_template'"
+	lxc-destroy -n $lxc_name
+	exit 1
+    fi
+
+    if [ -z "$lxc_config" ]; then
+	echo
+	echo "Warning:"
+	echo "-------"
+	echo "Usually the template option is called with a configuration"
+	echo "file option too, mostly to configure the network."
+	echo "eg. lxc-create -n foo -f lxc.conf -t debian"
+	echo "The configuration file is often:"
+	echo
+	echo "lxc.network.type=macvlan"
+	echo "lxc.network.link=eth0"
+	echo "lxc.network.flags=up"
+	echo
+	echo "or alternatively:"
+	echo
+	echo "lxc.network.type=veth"
+	echo "lxc.network.link=br0"
+	echo "lxc.network.flags=up"
+	echo
+	echo "For more information look at lxc.conf (5)"
+	echo
+	echo "At this point, I assume you know what you do."
+	echo "Press <enter> to continue ..."
+	read dummy
+    fi
+
+    lxc-$lxc_template --path=$lxc_path/$lxc_name --name=$lxc_name
+    if [ $? -ne 0 ]; then
+	echo "failed to execute template '$lxc_template'"
+	lxc-destroy -n $lxc_name
+	exit 1
+    fi
+
+    echo "'$lxc_template' template installed"
+fi
+
+echo "'$lxc_name' created"
