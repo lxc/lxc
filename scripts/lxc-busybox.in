@@ -1,0 +1,267 @@
+#!/bin/bash
+
+#
+# lxc: linux Container library
+
+# Authors:
+# Daniel Lezcano <daniel.lezcano@free.fr>
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+install_busybox()
+{
+    rootfs=$1
+    name=$2
+    res=0
+    tree="\
+$rootfs/dev \
+$rootfs/home \
+$rootfs/root \
+$rootfs/etc \
+$rootfs/etc/init.d \
+$rootfs/bin \
+$rootfs/sbin \
+$rootfs/proc \
+$rootfs/mnt \
+$rootfs/tmp \
+$rootfs/var/log \
+$rootfs/usr/share/udhcpc \
+$rootfs/dev/shm"
+
+    mkdir -p $tree || return 1
+    chmod 755 $tree || return 1
+
+    pushd $rootfs/dev > /dev/null || return 1
+
+    # minimal devices needed for busybox
+    mknod tty c 5 0       || res=1
+    mknod console c 5 1   || res=1
+    chmod 666 tty console || res=1
+    mknod tty0 c 4 0      || res=1
+    mknod tty1 c 4 0      || res=1
+    mknod tty5 c 4 0      || res=1
+    chmod 666 tty0        || res=1
+    mknod ram0 b 1 0      || res=1
+    chmod 600 ram0        || res=1
+    mknod null c 1 3      || res=1
+    chmod 666 null        || res=1
+
+    popd > /dev/null
+
+    # root user defined
+    cat <<EOF >> $rootfs/etc/passwd
+root:x:0:0:root:/root:/bin/sh
+EOF
+
+    cat <<EOF >> $rootfs/etc/group
+root:x:0:root
+EOF
+
+    # empty password
+    cat <<EOF >> $rootfs/etc/shadow
+root:\$1\$NJJLsV0P\$Y/esfSXDNR88G/bZFzgWY1:14595:0:99999:7:::
+EOF
+
+    echo "empty password for root, don't forget to change it !"
+
+    # mount everything
+    cat <<EOF >> $rootfs/etc/init.d/rcS
+#!/bin/sh
+syslogd
+mount -a
+udhcpc
+EOF
+
+    # executable
+    chmod 744 $rootfs/etc/init.d/rcS || return 1
+
+    # mount points
+    cat <<EOF >> $rootfs/etc/fstab
+proc  /proc      proc    defaults     0      0
+shm   /dev/shm   tmpfs   defaults     0      0
+EOF
+
+    # writable and readable for other
+    chmod 644 $rootfs/etc/fstab || return 1
+
+    # launch rcS first then make a console available
+    # and propose a shell on the tty, the last one is
+    # not needed
+    cat <<EOF >> $rootfs/etc/inittab
+::sysinit:/etc/init.d/rcS
+::respawn:/bin/getty -L tty1 115200 vt100
+::askfirst:/bin/sh
+EOF
+    # writable and readable for other
+    chmod 644 $rootfs/etc/inittab || return 1
+
+    cat <<EOF >> $rootfs/usr/share/udhcpc/default.script
+#!/bin/sh
+
+case "\$1" in
+	deconfig)
+		ip addr flush dev \$interface
+                ;;
+
+	renew|bound)
+
+                # flush all the routes
+		if [ -n "\$router" ]; then
+                        ip route del default 2> /dev/null
+		fi
+
+                # check broadcast
+                if [ -n "\$broadcast" ]; then
+                        broadcast="broadcast \$broadcast"
+                fi
+
+                # add a new ip address
+		ip addr add \$ip/\$mask \$broadcast dev \$interface
+
+		if [ -n "\$router" ]; then
+                        ip route add default via \$router dev \$interface
+                fi
+
+		[ -n "\$domain" ] && echo search \$domain > /etc/resolv.conf
+		for i in \$dns ; do
+			echo nameserver \$i >> /etc/resolv.conf
+		done
+		;;
+esac
+exit 0
+EOF
+
+    chmod 744 $rootfs/usr/share/udhcpc/default.script
+
+    return $res
+}
+
+configure_busybox()
+{
+    rootfs=$1
+
+    functions="\
+[  [[  addgroup  adduser  adjtimex  ar  arp  arping  ash  awk  basename  brctl  bunzip2  bzcat  bzip2  cal  cat  catv  chattr  chgrp  chmod  chown  chpasswd  chpst  chroot  chrt  chvt  cksum  clear  cmp  comm  cp  cpio  crond  crontab  cryptpw  cut  date  dc  dd  deallocvt  delgroup  deluser  df  dhcprelay  diff  dirname  dmesg  dnsd  dos2unix  du  dumpkmap  dumpleases  echo  ed  egrep  eject  env  envdir  envuidgid  ether-wake  expand  expr  fakeidentd  false  fbset  fdformat  fdisk  fetchmail  fgrep  find  findfs  fold  free  freeramdisk  fsck  fsck.minix  ftpget  ftpput  fuser  getopt  getty  grep  gunzip  gzip  halt  hdparm  head  hexdump  hostid  hostname  httpd  hwclock  id  ifconfig  ifdown  ifenslave  ifup  inetd  init  insmod  install  ip  ipaddr  ipcalc  ipcrm  ipcs  iplink  iproute  iprule  iptunnel  kbd_mode  kill  killall  killall5  klogd  last  length  less  linux32  linux64  linuxrc  ln  loadfont  loadkmap  logger  login  logname  logread  losetup  lpd  lpq  lpr  ls  lsattr  lsmod  lzmacat  makedevs  md5sum  mdev  mesg  microcom  mkdir  mkfifo  mkfs.minix  mknod  mkswap  mktemp  modprobe  more  mount  mountpoint  msh  mt  mv  nameif  nc  netstat  nice  nmeter  nohup  nslookup  od  openvt  passwd  patch  pgrep  pidof  ping  ping6  pipe_progress  pivot_root  pkill  poweroff  printenv  printf  ps  pscan  pwd  raidautorun  rdate  readahead  readlink  readprofile  realpath  reboot  renice  reset  resize  rm  rmdir  rmmod  route  rpm  rpm2cpio  run-parts  runlevel  runsv  runsvdir  rx  script  sed  sendmail  seq  setarch  setconsole  setkeycodes  setlogcons  setsid  setuidgid  sh  sha1sum  slattach  sleep  softlimit  sort  split  start-stop-daemon  stat  strings  stty  su  sulogin  sum  sv  svlogd  swapoff  swapon  switch_root  sync  sysctl  syslogd  tac  tail  tar  taskset  tcpsvd  tee  telnet  telnetd  test  tftp  tftpd  time  top  touch  tr  traceroute  true  tty  ttysize  udhcpc  udhcpd  udpsvd  umount  uname  uncompress  unexpand  uniq  unix2dos  unlzma  unzip  uptime  usleep  uudecode  uuencode  vconfig  vi  vlock  watch  watchdog  wc  wget  which  who  whoami  xargs  yes  zcat  zcip"
+
+    type busybox
+    if [ $? -ne 0 ]; then
+	echo "busybox executable is not accessible"
+	return 1
+    fi
+
+    # copy busybox in the rootfs
+    cp $(which busybox) $rootfs/bin
+    if [ $? -ne 0 ]; then
+	echo "failed to copy busybox in the rootfs"
+	return 1
+    fi
+
+    # do hardlink to busybox for the different commands
+    for i in $functions; do ln $rootfs/bin/busybox $rootfs/bin/$i; done
+
+    # relink /sbin/init
+    ln $rootfs/bin/busybox $rootfs/sbin/init
+
+    # passwd exec must be setuid
+    chmod +s $rootfs/bin/passwd
+
+    return 0
+}
+
+copy_configuration()
+{
+    path=$1
+    rootfs=$2
+    name=$3
+
+cat <<EOF >> $path/config
+lxc.utsname = $name
+lxc.tty = 1
+lxc.rootfs = $rootfs
+lxc.cgroup.devices.deny = a
+# /dev/null and zero
+lxc.cgroup.devices.allow = c 1:3 rwm
+lxc.cgroup.devices.allow = c 1:5 rwm
+# consoles
+lxc.cgroup.devices.allow = c 5:1 rwm
+lxc.cgroup.devices.allow = c 5:0 rwm
+lxc.cgroup.devices.allow = c 4:0 rwm
+lxc.cgroup.devices.allow = c 4:1 rwm
+# /dev/{,u}random
+lxc.cgroup.devices.allow = c 1:9 rwm
+lxc.cgroup.devices.allow = c 1:8 rwm
+lxc.cgroup.devices.allow = c 136:* rwm
+lxc.cgroup.devices.allow = c 5:2 rwm
+# rtc
+lxc.cgroup.devices.allow = c 254:0 rwm
+EOF
+}
+
+usage()
+{
+    cat <<EOF
+$1 -h|--help -p|--path=<path>
+EOF
+    return 0
+}
+
+options=$(getopt -o hp:n: -l help,path:,name: -- "$@")
+if [ $? -ne 0 ]; then
+        usage $(basename $0)
+	exit 1
+fi
+eval set -- "$options"
+
+while true
+do
+    case "$1" in
+        -h|--help)      usage $0 && exit 0;;
+        -p|--path)      path=$2; shift 2;;
+	-n|--name)      name=$2; shift 2;;
+        --)             shift 1; break ;;
+        *)              break ;;
+    esac
+done
+
+if [ "$(id -u)" != "0" ]; then
+    echo "This script should be run as 'root'"
+    exit 1
+fi
+
+if [ -z "$path" ]; then
+    echo "'path' parameter is required"
+    exit 1
+fi
+
+rootfs=$path/rootfs
+
+install_busybox $rootfs $name
+if [ $? -ne 0 ]; then
+    echo "failed to install busybox's rootfs"
+    exit 1
+fi
+
+configure_busybox $rootfs
+if [ $? -ne 0 ]; then
+    echo "failed to configure busybox template"
+    exit 1
+fi
+
+copy_configuration $path $rootfs $name
+if [ $? -ne 0 ]; then
+    echo "failed to write configuration file"
+    exit 1
+fi
+

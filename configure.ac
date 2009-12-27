@@ -111,6 +111,7 @@ AC_CONFIG_FILES([
 
 	scripts/Makefile
 	scripts/lxc-debian
+	scripts/lxc-busybox
 	scripts/lxc-fedora
 	scripts/lxc-sshd
 
