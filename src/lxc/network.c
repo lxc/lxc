@@ -75,6 +75,10 @@
 # define VETH_INFO_PEER 1
 #endif
 
+#ifndef IFLA_MACVLAN_MODE
+# define IFLA_MACVLAN_MODE 1
+#endif
+
 struct link_req {
 	struct nlmsg nlmsg;
 	struct ifinfomsg ifinfomsg;
@@ -445,8 +449,10 @@ int lxc_vlan_create(const char *master, const char *name, ushort vlanid)
 	nest2 = nla_begin_nested(nlmsg, IFLA_INFO_DATA);
 	if (!nest2)
 		goto err1;
+
 	if (nla_put_u16(nlmsg, IFLA_VLAN_ID, vlanid))
 		goto err1;
+
 	nla_end_nested(nlmsg, nest2);
 
 	nla_end_nested(nlmsg, nest);
@@ -470,12 +476,12 @@ err3:
 	return err;
 }
 
-int lxc_macvlan_create(const char *master, const char *name)
+int lxc_macvlan_create(const char *master, const char *name, int mode)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
 	struct link_req *link_req;
-	struct rtattr *nest;
+	struct rtattr *nest, *nest2;
 	int index, len, err = -1;
 
 	if (netlink_open(&nlh, NETLINK_ROUTE))
@@ -514,6 +520,17 @@ int lxc_macvlan_create(const char *master, const char *name)
 
 	if (nla_put_string(nlmsg, IFLA_INFO_KIND, "macvlan"))
 		goto out;
+
+	if (mode) {
+		nest2 = nla_begin_nested(nlmsg, IFLA_INFO_DATA);
+		if (!nest2)
+			goto out;
+
+		if (nla_put_u32(nlmsg, IFLA_MACVLAN_MODE, mode))
+			goto out;
+
+		nla_end_nested(nlmsg, nest2);
+	}
 
 	nla_end_nested(nlmsg, nest);
 

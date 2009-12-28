@@ -71,6 +71,10 @@ struct lxc_route6 {
 	struct in6_addr addr;
 };
 
+struct ifla_veth {
+	char *pair; /* pair name */
+};
+
 struct ifla_vlan {
 	uint   flags;
 	uint   fmask;
@@ -78,9 +82,14 @@ struct ifla_vlan {
 	ushort   pad;
 };
 
+struct ifla_macvlan {
+	int mode; /* private, vepa, bridge */
+};
+
 union netdev_p {
-	char *pair;
+	struct ifla_veth veth_attr;
 	struct ifla_vlan vlan_attr;
+	struct ifla_macvlan macvlan_attr;
 };
 
 /*

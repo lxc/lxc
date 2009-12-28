@@ -44,7 +44,7 @@ AS_AC_EXPAND(DOCDIR, $docdir)
 AC_ARG_WITH([config-path],
 	[AC_HELP_STRING(
 		[--with-config-path=dir],
-		[lxc configuration repository]
+		[lxc configuration repository path]
 	)], [], [with_config_path="${localstatedir}/lib/lxc"])
 
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")

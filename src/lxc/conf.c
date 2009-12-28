@@ -834,8 +834,8 @@ static int instanciate_veth(struct lxc_netdev *netdev)
 	char veth1buf[IFNAMSIZ], *veth1;
 	char veth2[IFNAMSIZ];
 
-	if (netdev->priv.pair)
-		veth1 = netdev->priv.pair;
+	if (netdev->priv.veth_attr.pair)
+		veth1 = netdev->priv.veth_attr.pair;
 	else {
 		snprintf(veth1buf, sizeof(veth1buf), "vethXXXXXX");
 		mktemp(veth1buf);
@@ -911,7 +911,8 @@ static int instanciate_macvlan(struct lxc_netdev *netdev)
 		return -1;
 	}
 
-	if (lxc_macvlan_create(netdev->link, peer)) {
+	if (lxc_macvlan_create(netdev->link, peer,
+			       netdev->priv.macvlan_attr.mode)) {
 		ERROR("failed to create macvlan interface '%s' on '%s'",
 		      peer, netdev->link);
 		return -1;
@@ -924,7 +925,8 @@ static int instanciate_macvlan(struct lxc_netdev *netdev)
 		return -1;
 	}
 
-	DEBUG("instanciated macvlan '%s', index is '%d'", peer, netdev->ifindex);
+	DEBUG("instanciated macvlan '%s', index is '%d' and mode '%d'",
+	      peer, netdev->ifindex, netdev->priv.macvlan_attr.mode);
 
 	return 0;
 }
@@ -939,7 +941,7 @@ static int instanciate_vlan(struct lxc_netdev *netdev)
 		return -1;
 	}
 
-	snprintf(peer, sizeof(peer), "vlan%d",netdev->priv.vlan_attr.vid);
+	snprintf(peer, sizeof(peer), "vlan%d", netdev->priv.vlan_attr.vid);
 
 	if (lxc_vlan_create(netdev->link, peer, netdev->priv.vlan_attr.vid)) {
 		ERROR("failed to create vlan interface '%s' on '%s'",
@@ -954,7 +956,9 @@ static int instanciate_vlan(struct lxc_netdev *netdev)
 		return -1;
 	}
 
-	DEBUG("instanciated vlan '%s', ifindex is '%d'", "vlan1000", netdev->ifindex);
+	DEBUG("instanciated vlan '%s', ifindex is '%d'", " vlan1000",
+	      netdev->ifindex);
+
 	return 0;
 }
 

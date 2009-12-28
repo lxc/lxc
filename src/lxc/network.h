@@ -66,7 +66,7 @@ extern int lxc_veth_create(const char *name1, const char *name2);
 /* 
  * Create a macvlan network device
  */
-extern int lxc_macvlan_create(const char *master, const char *name);
+extern int lxc_macvlan_create(const char *master, const char *name, int mode);
 
 /*
  * Create a vlan network device

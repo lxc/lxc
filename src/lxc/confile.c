@@ -50,9 +50,10 @@ static int config_network_type(const char *, char *, struct lxc_conf *);
 static int config_network_flags(const char *, char *, struct lxc_conf *);
 static int config_network_link(const char *, char *, struct lxc_conf *);
 static int config_network_name(const char *, char *, struct lxc_conf *);
-static int config_network_pair(const char *, char *, struct lxc_conf *);
+static int config_network_veth_pair(const char *, char *, struct lxc_conf *);
+static int config_network_macvlan_mode(const char *, char *, struct lxc_conf *);
 static int config_network_hwaddr(const char *, char *, struct lxc_conf *);
-static int config_network_vlanid(const char *, char *, struct lxc_conf *);
+static int config_network_vlan_id(const char *, char *, struct lxc_conf *);
 static int config_network_mtu(const char *, char *, struct lxc_conf *);
 static int config_network_ipv4(const char *, char *, struct lxc_conf *);
 static int config_network_ipv6(const char *, char *, struct lxc_conf *);
@@ -66,22 +67,23 @@ struct config {
 
 static struct config config[] = {
 
-	{ "lxc.pts",            config_pts            },
-	{ "lxc.tty",            config_tty            },
-	{ "lxc.cgroup",         config_cgroup         },
-	{ "lxc.mount",          config_mount          },
-	{ "lxc.rootfs",         config_rootfs         },
-	{ "lxc.utsname",        config_utsname        },
-	{ "lxc.network.type",   config_network_type   },
-	{ "lxc.network.flags",  config_network_flags  },
-	{ "lxc.network.link",   config_network_link   },
-	{ "lxc.network.name",   config_network_name   },
-	{ "lxc.network.veth.pair",   config_network_pair   },
-	{ "lxc.network.hwaddr", config_network_hwaddr },
-	{ "lxc.network.mtu",    config_network_mtu    },
-	{ "lxc.network.vlan.id", config_network_vlanid },
-	{ "lxc.network.ipv4",   config_network_ipv4   },
-	{ "lxc.network.ipv6",   config_network_ipv6   },
+	{ "lxc.pts",                  config_pts                  },
+	{ "lxc.tty",                  config_tty                  },
+	{ "lxc.cgroup",               config_cgroup               },
+	{ "lxc.mount",                config_mount                },
+	{ "lxc.rootfs",               config_rootfs               },
+	{ "lxc.utsname",              config_utsname              },
+	{ "lxc.network.type",         config_network_type         },
+	{ "lxc.network.flags",        config_network_flags        },
+	{ "lxc.network.link",         config_network_link         },
+	{ "lxc.network.name",         config_network_name         },
+	{ "lxc.network.macvlan.mode", config_network_macvlan_mode },
+	{ "lxc.network.veth.pair",    config_network_veth_pair    },
+	{ "lxc.network.hwaddr",       config_network_hwaddr       },
+	{ "lxc.network.mtu",          config_network_mtu          },
+	{ "lxc.network.vlan.id",      config_network_vlan_id      },
+	{ "lxc.network.ipv4",         config_network_ipv4         },
+	{ "lxc.network.ipv6",         config_network_ipv6         },
 };
 
 static const size_t config_size = sizeof(config)/sizeof(struct config);
@@ -97,7 +99,8 @@ static struct config *getconfig(const char *key)
 	return NULL;
 }
 
-static int config_network_type(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_network_type(const char *key, char *value,
+			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_list *network = &lxc_conf->network;
 	struct lxc_netdev *netdev;
@@ -190,6 +193,42 @@ static int network_ifname(char **valuep, char *value)
 	return 0;
 }
 
+#ifndef MACVLAN_MODE_PRIVATE
+#  define MACVLAN_MODE_PRIVATE 1
+#endif
+
+#ifndef MACVLAN_MODE_VEPA
+#  define MACVLAN_MODE_VEPA 2
+#endif
+
+#ifndef MACVLAN_MODE_BRIDGE
+#  define MACVLAN_MODE_BRIDGE 4
+#endif
+
+static int macvlan_mode(int *valuep, char *value)
+{
+	struct mc_mode {
+		char *name;
+		int mode;
+	} m[] = {
+		{ "private", MACVLAN_MODE_PRIVATE },
+		{ "vepa", MACVLAN_MODE_VEPA },
+		{ "bridge", MACVLAN_MODE_BRIDGE },
+	};
+
+	int i;
+
+	for (i = 0; i < sizeof(m)/sizeof(m[0]); i++) {
+		if (strcmp(m[i].name, value))
+			continue;
+
+		*valuep = m[i].mode;
+		return 0;
+	}
+
+	return -1;
+}
+
 static int config_network_flags(const char *key, char *value,
 				struct lxc_conf *lxc_conf)
 {
@@ -228,8 +267,8 @@ static int config_network_name(const char *key, char *value,
 	return network_ifname(&netdev->name, value);
 }
 
-static int config_network_pair(const char *key, char *value,
-			       struct lxc_conf *lxc_conf)
+static int config_network_veth_pair(const char *key, char *value,
+				    struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
 
@@ -237,7 +276,19 @@ static int config_network_pair(const char *key, char *value,
 	if (!netdev)
 		return -1;
 
-	return network_ifname(&netdev->priv.pair, value);
+	return network_ifname(&netdev->priv.veth_attr.pair, value);
+}
+
+static int config_network_macvlan_mode(const char *key, char *value,
+				       struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+
+	netdev = network_netdev(key, value, &lxc_conf->network);
+	if (!netdev)
+		return -1;
+
+	return macvlan_mode(&netdev->priv.macvlan_attr.mode, value);
 }
 
 static int config_network_hwaddr(const char *key, char *value,
@@ -258,7 +309,7 @@ static int config_network_hwaddr(const char *key, char *value,
 	return 0;
 }
 
-static int config_network_vlanid(const char *key, char *value,
+static int config_network_vlan_id(const char *key, char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -359,7 +410,8 @@ static int config_network_ipv4(const char *key, char *value,
 	return 0;
 }
 
-static int config_network_ipv6(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_network_ipv6(const char *key, char *value,
+			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_inet6dev *inet6dev;

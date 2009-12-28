@@ -134,11 +134,28 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    <para>
 	      <option>veth:</option> a new network stack is created, a
 	      peer network device is created with one side assigned to
-	      the container and the other side attached to a bridge
-	      specified by the <option>lxc.network.link</option>. The
-	      bridge has to be setup before on the
-	      system, <command>lxc</command> won't handle
-	      configuration outside of the container.
+	      the container and the other side is attached to a bridge
+	      specified by the <option>lxc.network.link</option>. If
+	      the bridge is not specified, then the veth pair device
+	      will be created but not attached to any
+	      bridge. Otherwise, the bridge has to be setup before on
+	      the system, <command>lxc</command> won't handle
+	      any configuration outside of the container.  By
+	      default <command>lxc</command> choose a name for the
+	      network device belonging to the outside of the
+	      container, this name is handled
+	      by <command>lxc</command>, but if you wish to handle
+	      this name yourself, you can tell <command>lxc</command>
+	      to set a specific name with
+	      the <option>lxc.network.veth.pair</option> option.
+	    </para>
+
+	    <para>
+	      <option>vlan:</option> a new network stack is created, a
+	      vlan interface is linked with the interface specified by
+	      the <option>lxc.network.link</option> and assigned to
+	      the container. The vlan identifier is specified with the
+	      option <option>lxc.network.vlan.id</option>.
 	    </para>
 
 	    <para>
@@ -147,11 +164,33 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      interface specified by
 	      the <option>lxc.network.link</option> and assigned to
 	      the container.
+	      <option>lxc.network.macvlan.mode</option> specifies the
+	      mode the macvlan will use to communicate between
+	      different macvlan on the same upper device. The accepted
+	      modes are <option>private</option>, the device never
+	      communicates with any other device on the same upper_dev (default),
+	      <option>vepa</option>, the new Virtual Ethernet Port
+	      Aggregator (VEPA) mode, it assumes that the adjacent
+	      bridge returns all frames where both source and
+	      destination are local to the macvlan port, i.e. the
+	      bridge is set up as a reflective relay.  Broadcast
+	      frames coming in from the upper_dev get flooded to all
+	      macvlan interfaces in VEPA mode, local frames are not
+	      delivered locallay, or <option>bridge</option>, it
+	      provides the behavior of a simple bridge between
+	      different macvlan interfaces on the same port. Frames
+	      from one interface to another one get delivered directly
+	      and are not sent out externally. Broadcast frames get
+	      flooded to all other bridge ports and to the external
+	      interface, but when they come back from a reflective
+	      relay, we don't deliver them again.  Since we know all
+	      the MAC addresses, the macvlan bridge mode does not
+	      require learning or STP like the bridge module does.
 	    </para>
 
 	    <para>
 	      <option>phys:</option> a new network stack is created
-	      and the interface specified by
+	      and an already existing interface specified by
 	      the <option>lxc.network.link</option> is assigned to the
 	      container.
 	    </para>
