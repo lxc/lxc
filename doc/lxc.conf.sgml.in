@@ -71,7 +71,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
     <para>
       Each option in the configuration file has the form <command>key
-      = value</command> fitting in one line. The '#' caracter means
+      = value</command> fitting in one line. The '#' character means
       the line is a comment.
     </para>
 
@@ -101,11 +101,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <title>Network</title>
       <para>
 	The network section defines how the network is virtualized in
-	the container. The network virtualization acts at the layer
-	two, so in order to use the network, a few information should
-	be specified to define the network interfaces to be used by
-	the container. Several virtual interfaces can be assigned and
-	used in a container either if the system has only one physical
+	the container. The network virtualization acts at layer
+	two. In order to use the network virtualization, parameters
+	must be specified to define the network interfaces of the
+	container. Several virtual interfaces can be assigned and used
+	in a container even if the system has only one physical
 	network interface.
       </para>
       <variablelist>
@@ -118,29 +118,28 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      specify what kind of network virtualization to be used
 	      for the container. Each time
 	      a <option>lxc.network.type</option> field is found a new
-	      round of network configuration begins. By this way
-	      several network virtualization can be specified for the
-	      same container, as well as assigning several network
-	      interfaces for one container. The different
+	      round of network configuration begins. In this way,
+	      several network virtualization types can be specified
+	      for the same container, as well as assigning several
+	      network interfaces for one container. The different
 	      virtualization types can be:
 	    </para>
 
 	    <para>
-	      <option>empty:</option> a new network stack is created
-	      for the container, but it will not contain any network
+	      <option>empty:</option> will create only the loopback
 	      interface.
 	    </para>
 
 	    <para>
-	      <option>veth:</option> a new network stack is created, a
-	      peer network device is created with one side assigned to
-	      the container and the other side is attached to a bridge
-	      specified by the <option>lxc.network.link</option>. If
-	      the bridge is not specified, then the veth pair device
-	      will be created but not attached to any
-	      bridge. Otherwise, the bridge has to be setup before on
-	      the system, <command>lxc</command> won't handle
-	      any configuration outside of the container.  By
+	      <option>veth:</option> a peer network device is created
+	      with one side assigned to the container and the other
+	      side is attached to a bridge specified by
+	      the <option>lxc.network.link</option>. If the bridge is
+	      not specified, then the veth pair device will be created
+	      but not attached to any bridge. Otherwise, the bridge
+	      has to be setup before on the
+	      system, <command>lxc</command> won't handle any
+	      configuration outside of the container.  By
 	      default <command>lxc</command> choose a name for the
 	      network device belonging to the outside of the
 	      container, this name is handled
@@ -151,17 +150,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    </para>
 
 	    <para>
-	      <option>vlan:</option> a new network stack is created, a
-	      vlan interface is linked with the interface specified by
+	      <option>vlan:</option> a vlan interface is linked with
+	      the interface specified by
 	      the <option>lxc.network.link</option> and assigned to
 	      the container. The vlan identifier is specified with the
 	      option <option>lxc.network.vlan.id</option>.
 	    </para>
 
 	    <para>
-	      <option>macvlan:</option> a new network stack is
-	      created, a macvlan interface is linked with the
-	      interface specified by
+	      <option>macvlan:</option> a macvlan interface is linked
+	      with the interface specified by
 	      the <option>lxc.network.link</option> and assigned to
 	      the container.
 	      <option>lxc.network.macvlan.mode</option> specifies the
@@ -189,10 +187,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    </para>
 
 	    <para>
-	      <option>phys:</option> a new network stack is created
-	      and an already existing interface specified by
-	      the <option>lxc.network.link</option> is assigned to the
-	      container.
+	      <option>phys:</option> an already existing interface
+	      specified by the <option>lxc.network.link</option> is
+	      assigned to the container.
 	    </para>
 	  </listitem>
 	  </varlistentry>
@@ -230,8 +227,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  </term>
 	  <listitem>
 	    <para>
-	      the interface name is dynamically allocated, but if an
-	      other name is needed because the configuration files
+	      the interface name is dynamically allocated, but if
+	      another name is needed because the configuration files
 	      being used by the container use a generic name,
 	      eg. eth0, this option will rename the interface in the
 	      container.
@@ -246,9 +243,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  <listitem>
 	    <para>
 	      the interface mac address is dynamically allocated by
-	      default to the virtual interface, but in some case, this
-	      is needed to resolve a mac address conflict or to have
-	      always the same link-locak ipv6 address.
+	      default to the virtual interface, but in some cases,
+	      this is needed to resolve a mac address conflict or to
+	      always have the same link-local ipv6 address
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -315,10 +312,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	inittab file is setup to launch a getty on the ttys. This
 	option will specify the number of ttys to be available for the
 	container. The number of getty in the inittab file of the
-	container and the number of tty specified in this
-	configuration file should be equal, otherwise the getty will
-	die and respawn indefinitly giving annoying messages on the
-	console.
+	container should not be greater than the number of ttys
+	specified in this configuration file, otherwise the excess
+	getty sessions will die and respawn indefinitly giving
+	annoying messages on the console.
       </para>
       <variablelist>
 	<varlistentry>
@@ -399,9 +396,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <para>
 	The control group section contains the configuration for the
 	different subsystem. <command>lxc</command> does not check the
-	correctness of the subsystem name. This has the inconvenient
-	to have the error being detected at runtime, but the advantage
-	to support any future subsystem.
+	correctness of the subsystem name. This has the disadvantage
+	of not detecting configuration errors until the container is
+	started, but has the advantage of permitting any future
+	subsystem.
       </para>
       <variablelist>
 	<varlistentry>
@@ -410,9 +408,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  </term>
 	  <listitem>
 	    <para>
-	      specify the control group value to be set. This field is
-	      the identifier to tell the following keyword is the
-	      literal name of the control group subsystem,
+	      specify the control group value to be set.  The
+	      subsystem name is the literal name of the control group
+	      subsystem.  The permitted names and the syntax of their
+	      values is not dictated by LXC, instead it depends on the
+	      features of the Linux kernel running at the time the
+	      container is started,
 	      eg. <option>lxc.cgroup.cpuset.cpus</option>
 	    </para>
 	  </listitem>
