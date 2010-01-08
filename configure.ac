@@ -107,7 +107,7 @@ AC_CONFIG_FILES([
 	doc/examples/lxc-empty-netns.conf
 	doc/examples/lxc-phys.conf
 	doc/examples/lxc-veth.conf
-	doc/examples/lxc-complex-config
+	doc/examples/lxc-complex.conf
 
 	scripts/Makefile
 	scripts/lxc-debian

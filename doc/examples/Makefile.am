@@ -10,7 +10,7 @@ pkgexamples_DATA = \
 	lxc-empty-netns.conf \
 	lxc-phys.conf \
 	lxc-veth.conf \
-	lxc-complex-config
+	lxc-complex.conf
 endif
 
 noinst_DATA = \
@@ -20,4 +20,4 @@ noinst_DATA = \
 	lxc-no-netns.conf.in \
 	lxc-phys.conf.in \
 	lxc-veth.conf.in \
-	lxc-complex-config.in
+	lxc-complex.conf.in
