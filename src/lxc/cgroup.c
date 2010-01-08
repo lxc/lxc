@@ -165,7 +165,7 @@ int lxc_cgroup_path_get(char **path, const char *name)
 
 int lxc_cgroup_set(const char *name, const char *subsystem, const char *value)
 {
-	int fd, ret = -1;
+	int fd, ret;
 	char *nsgroup;
 	char path[MAXPATHLEN];
 
@@ -181,7 +181,8 @@ int lxc_cgroup_set(const char *name, const char *subsystem, const char *value)
 		return -1;
 	}
 
-	if (write(fd, value, strlen(value)) < 0) {
+	ret = write(fd, value, strlen(value));
+	if (ret < 0) {
 		ERROR("write %s : %s", path, strerror(errno));
 		goto out;
 	}
