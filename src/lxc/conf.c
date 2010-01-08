@@ -963,29 +963,6 @@ static int setup_network(struct lxc_list *network)
 	return 0;
 }
 
-int conf_has(const char *name, const char *info)
-{
-	int ret = 0;
-	char path[MAXPATHLEN];
-	struct stat st;
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s/%s", name, info);
-
-	if (!stat(path, &st) || !lstat(path, &st)) {
-		ret = 1;
-		goto out;
-	}
-
-	if (errno == ENOENT) {
-		ret = 0;
-		goto out;
-	}
-
-	SYSERROR("failed to stat %s info", info);
-out:
-	return ret;
-}
-
 struct lxc_conf *lxc_conf_init(void)
 {
 	struct lxc_conf *new;
