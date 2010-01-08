@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 {
 	static char **args;
 	char *rcfile;
-	struct lxc_conf conf;
+	struct lxc_conf *conf;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
@@ -113,16 +113,17 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (lxc_conf_init(&conf)) {
-		ERROR("failed to initialze configuration");
+	conf = lxc_conf_init();
+	if (!conf) {
+		ERROR("failed to initialize configuration");
 		return -1;
 	}
 
-	if (rcfile && lxc_config_read(rcfile, &conf)) {
+	if (rcfile && lxc_config_read(rcfile, conf)) {
 		ERROR("failed to read configuration file");
 		return -1;
 	}
 
-	return lxc_start(my_args.name, args, &conf);
+	return lxc_start(my_args.name, args, conf);
 }
 

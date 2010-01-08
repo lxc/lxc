@@ -815,18 +815,28 @@ out:
 	return ret;
 }
 
-int lxc_conf_init(struct lxc_conf *conf)
+struct lxc_conf *lxc_conf_init(void)
 {
-	conf->rootfs = NULL;
-	conf->fstab = NULL;
-	conf->utsname = NULL;
-	conf->tty = 0;
-	conf->pts = 0;
-	conf->console[0] = '\0';
-	lxc_list_init(&conf->cgroup);
-	lxc_list_init(&conf->network);
-	lxc_list_init(&conf->mount_list);
-	return 0;
+	struct lxc_conf *new;
+
+	new = 	malloc(sizeof(*new));
+	if (!new) {
+		ERROR("lxc_conf_init : %m");
+		return NULL;
+	}
+	memset(new, 0, sizeof(*new));
+
+	new->rootfs = NULL;
+	new->fstab = NULL;
+	new->utsname = NULL;
+	new->tty = 0;
+	new->pts = 0;
+	new->console[0] = '\0';
+	lxc_list_init(&new->cgroup);
+	lxc_list_init(&new->network);
+	lxc_list_init(&new->mount_list);
+
+	return new;
 }
 
 static int instanciate_veth(struct lxc_netdev *netdev)

@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 	};
 
 	char *rcfile = NULL;
-	struct lxc_conf conf;
+	struct lxc_conf *conf;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return err;
@@ -163,12 +163,13 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (lxc_conf_init(&conf)) {
-		ERROR("failed to initialze configuration");
+	conf = lxc_conf_init();
+	if (!conf) {
+		ERROR("failed to initialize configuration");
 		return err;
 	}
 
-	if (rcfile && lxc_config_read(rcfile, &conf)) {
+	if (rcfile && lxc_config_read(rcfile, conf)) {
 		ERROR("failed to read configuration file");
 		return err;
 	}
@@ -204,7 +205,7 @@ int main(int argc, char *argv[])
 
 	save_tty(&tios);
 
-	err = lxc_start(my_args.name, args, &conf);
+	err = lxc_start(my_args.name, args, conf);
 
 	restore_tty(&tios);
 

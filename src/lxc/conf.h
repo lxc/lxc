@@ -171,7 +171,7 @@ struct lxc_conf {
 /*
  * Initialize the lxc configuration structure
  */
-extern int lxc_conf_init(struct lxc_conf *conf);
+extern struct lxc_conf *lxc_conf_init(void);
 
 extern int lxc_create_network(struct lxc_list *networks);
 extern int lxc_assign_network(struct lxc_list *networks, pid_t pid);
