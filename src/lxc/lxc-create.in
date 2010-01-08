@@ -84,6 +84,16 @@ while true; do
         esac
 done
 
+if [ -z "$lxc_path" ]; then
+    echo "no configuration path defined !"
+    exit 1
+fi
+
+if [ ! -r $lxc_path ]; then
+    echo "configuration path '$lxc_path' not found"
+    exit 1
+fi
+
 if [ -z "$lxc_name" ]; then
     echo "no container name specified"
     usage
