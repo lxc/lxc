@@ -50,6 +50,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <cmdsynopsis>
       <command>lxc-create <replaceable>-n name</replaceable>
        <optional>-f config_file</optional></command>
+       <optional>-t template</optional></command>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -90,6 +91,20 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  <para>
 	    Specify the configuration file to configure the virtualization
 	    and isolation functionalities for the container.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-t <replaceable>template</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    'template' is the short name of an existing 'lxc-template'
+	    script that is called by lxc-create.
+	    eg: lxc-debian, lxc-busybox ...
+	    Refer to those exemples for details of expecting script structure.
 	  </para>
 	</listitem>
       </varlistentry>

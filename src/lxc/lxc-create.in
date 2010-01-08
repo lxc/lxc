@@ -26,21 +26,27 @@
 #
 
 usage() {
-    echo "usage: $0 -n <name> [-f configuration]"
+    echo "usage: lxc-create -n <name> [-f configuration] [-t template] [-h]"
 }
 
-if [ "$(id -u)" != "0" ]; then
-   echo "This command has to be run as root"
-   exit 1
-fi
+help() {
+    usage
+    echo
+    echo "creates a lxc system object."
+    echo
+    echo "Options:"
+    echo "name         : name of the container"
+    echo "configuration: lxc configuration"
+    echo "template     : lxc-template is an accessible template script"
+}
 
-shortoptions='n:f:t:'
-longoptions='name:,config:,template:'
+shortoptions='hn:f:t:'
+longoptions='help,name:,config:,template:'
 lxc_path=@LXCPATH@
 
 getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
 if [ $? != 0 ]; then
-    usage $0
+    usage
     exit 1;
 fi
 
@@ -48,6 +54,10 @@ eval set -- "$getopt"
 
 while true; do
         case "$1" in
+	    -h|--help)
+		help
+		exit 1
+		;;
 	    -n|--name)
 		shift
 		lxc_name=$1
@@ -68,20 +78,25 @@ while true; do
 		break;;
             *)
 		echo $1
-		usage $0
+		usage
 		exit 1
 		;;
         esac
 done
 
-if [ ! -r $lxc_path ]; then
-    echo "no configuration path defined !"
+if [ -z "$lxc_name" ]; then
+    echo "no container name specified"
+    usage
     exit 1
 fi
 
-if [ -z "$lxc_name" ]; then
-    echo "no container name specified"
-    usage $0
+if [ "$(id -u)" != "0" ]; then
+   echo "This command has to be run as root"
+   exit 1
+fi
+
+if [ ! -r $lxc_path ]; then
+    echo "no configuration path defined !"
     exit 1
 fi
 
