@@ -65,6 +65,8 @@ lxc_log_define(lxc_conf, lxc);
 #define MS_REC 16384
 #endif
 
+extern int pivot_root(const char * new_root, const char * put_old);
+
 typedef int (*instanciate_cb)(struct lxc_netdev *);
 
 struct mount_opt {
@@ -336,7 +338,183 @@ static int setup_tty(const char *rootfs, const struct lxc_tty_info *tty_info)
 	return 0;
 }
 
-static int setup_rootfs(const char *rootfs)
+static int setup_rootfs_pivot_root_cb(void *buffer, void *data)
+{
+	struct lxc_list	*mountlist, *listentry, *iterator;
+	char *pivotdir, *mountpoint, *mountentry;
+	int found;
+	void **cbparm;
+
+	mountentry = buffer;
+	cbparm = (void **)data;
+
+	mountlist = cbparm[0];
+	pivotdir  = cbparm[1];
+
+	/* parse entry, first field is mountname, ignore */
+	mountpoint = strtok(mountentry, " ");
+	if (!mountpoint)
+		return -1;
+
+	/* second field is mountpoint */
+	mountpoint = strtok(NULL, " ");
+	if (!mountpoint)
+		return -1;
+
+	/* only consider mountpoints below old root fs */
+	if (strncmp(mountpoint, pivotdir, strlen(pivotdir)))
+		return 0;
+
+	/* filter duplicate mountpoints */
+	found = 0;
+	lxc_list_for_each(iterator, mountlist) {
+		if (!strcmp(iterator->elem, mountpoint)) {
+			found = 1;
+			break;
+		}
+	}
+	if (found)
+		return 0;
+
+	/* add entry to list */
+	listentry = malloc(sizeof(*listentry));
+	if (!listentry) {
+		SYSERROR("malloc for mountpoint listentry failed");
+		return -1;
+	}
+
+	listentry->elem = strdup(mountpoint);
+	if (!listentry->elem) {
+		SYSERROR("strdup failed");
+		return -1;
+	}
+	lxc_list_add_tail(mountlist, listentry);
+
+	return 0;
+}
+
+
+static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
+{
+	char path[MAXPATHLEN], buffer[MAXPATHLEN];
+	void *cbparm[2];
+	struct lxc_list mountlist, *iterator;
+	int ok, still_mounted, last_still_mounted;
+	int pivotdir_is_temp = 0;
+
+	/* change into new root fs */
+	if (chdir(rootfs)) {
+		SYSERROR("can't chroot to new rootfs '%s'", rootfs);
+		return -1;
+	}
+
+	/* create temporary mountpoint if none specified */
+	if (!pivotdir) {
+
+		snprintf(path, sizeof(path), "./lxc-oldrootfs-XXXXXX" );
+		if (!mkdtemp(path)) {
+			SYSERROR("can't make temporary mountpoint");
+			return -1;
+		}
+
+		pivotdir = strdup(&path[1]); /* get rid of leading dot */
+		if (!pivotdir) {
+			SYSERROR("strdup failed");
+			return -1;
+		}
+
+		pivotdir_is_temp = 1;
+	}
+	else {
+		snprintf(path, sizeof(path), ".%s", pivotdir);
+	}
+
+	DEBUG("temporary mountpoint for old rootfs is '%s'", path);
+
+	/* pivot_root into our new root fs */
+
+	if (pivot_root(".", path)) {
+		SYSERROR("pivot_root syscall failed");
+		return -1;
+	}
+
+	if (chdir("/")) {
+		SYSERROR("can't chroot to / after pivot_root");
+		return -1;
+	}
+
+	DEBUG("pivot_root syscall to '%s' successful", pivotdir);
+
+	/* read and parse /proc/mounts in old root fs */
+	lxc_list_init(&mountlist);
+
+	snprintf(path, sizeof(path), "%s/", pivotdir);
+	cbparm[0] = &mountlist;
+	cbparm[1] = strdup(path);
+
+	if (!cbparm[1]) {
+		SYSERROR("strdup failed");
+		return -1;
+	}
+
+	snprintf(path, sizeof(path), "/%s/proc/mounts", pivotdir);
+	ok = lxc_file_for_each_line(path,
+			       setup_rootfs_pivot_root_cb,
+			       buffer, sizeof(buffer), &cbparm);
+	if (ok < 0) {
+		SYSERROR("failed to read or parse mount list '%s'", path);
+		return -1;
+	}
+
+	/* umount filesystems until none left or list no longer shrinks */
+	still_mounted = 0;
+	do {
+		last_still_mounted = still_mounted;
+		still_mounted = 0;
+
+		lxc_list_for_each(iterator, &mountlist) {
+
+			if (!umount(iterator->elem)) {
+				DEBUG("umounted '%s'", (char *)iterator->elem);
+				lxc_list_del(iterator);
+				continue;
+			}
+
+			if (errno != EBUSY) {
+				SYSERROR("failed to umount '%s'", (char *)iterator->elem);
+				return -1;
+			}
+
+			still_mounted++;
+		}
+	} while (still_mounted > 0 && still_mounted != last_still_mounted);
+
+	if (still_mounted) {
+		ERROR("could not umount %d mounts", still_mounted);
+		return -1;
+	}
+
+	/* umount old root fs */
+	if (umount(pivotdir)) {
+		SYSERROR("could not unmount old rootfs");
+		return -1;
+	}
+	DEBUG("umounted '%s'", pivotdir);
+
+	/* remove temporary mount point */
+	if (pivotdir_is_temp) {
+		if (rmdir(pivotdir)) {
+			SYSERROR("can't remove temporary mountpoint");
+			return -1;
+		}
+
+	}
+
+	INFO("pivoted to '%s'", rootfs);
+	return 0;
+}
+
+static int setup_rootfs(const char *rootfs, const char *pivotdir)
 {
 	char *tmpname;
 	int ret = -1;
@@ -360,17 +538,10 @@ static int setup_rootfs(const char *rootfs)
 		goto out;
 	}
 
-	if (chroot(tmpname)) {
-		SYSERROR("failed to set chroot %s", tmpname);
+	if (setup_rootfs_pivot_root(tmpname, pivotdir)) {
+		ERROR("failed to pivot_root to '%s'", rootfs);
 		goto out;
 	}
-
-	if (chdir(getenv("HOME")) && chdir("/")) {
-		SYSERROR("failed to change to home directory");
-		goto out;
-	}
-
-	INFO("chrooted to '%s'", rootfs);
 
 	ret = 0;
 out:
@@ -827,6 +998,7 @@ struct lxc_conf *lxc_conf_init(void)
 	memset(new, 0, sizeof(*new));
 
 	new->rootfs = NULL;
+	new->pivotdir = NULL;
 	new->fstab = NULL;
 	new->utsname = NULL;
 	new->tty = 0;
@@ -1128,7 +1300,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_rootfs(lxc_conf->rootfs)) {
+	if (setup_rootfs(lxc_conf->rootfs, lxc_conf->pivotdir)) {
 		ERROR("failed to set rootfs for '%s'", name);
 		return -1;
 	}

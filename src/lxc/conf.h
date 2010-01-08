@@ -157,6 +157,7 @@ struct lxc_tty_info {
  */
 struct lxc_conf {
 	char *rootfs;
+	char *pivotdir;
 	char *fstab;
 	int tty;
 	int pts;
@@ -191,6 +192,7 @@ extern int conf_has(const char *name, const char *info);
 
 #define conf_has_fstab(__name)   conf_has(__name, "fstab")
 #define conf_has_rootfs(__name)  conf_has(__name, "rootfs")
+#define conf_has_pivotdir(__name) conf_has(__name, "pivotdir")
 #define conf_has_utsname(__name) conf_has(__name, "utsname")
 #define conf_has_network(__name) conf_has(__name, "network")
 #define conf_has_console(__name) conf_has(__name, "console")
