@@ -22,10 +22,12 @@ config.status
 libtool
 
 lxc.spec
+lxc.pc
 
 scripts/lxc-debian
 scripts/lxc-fedora
 scripts/lxc-sshd
+scripts/lxc-busybox
 
 src/lxc/lxc-cgroup
 src/lxc/lxc-checkconfig
