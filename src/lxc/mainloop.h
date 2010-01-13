@@ -21,12 +21,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-struct epoll_event;
+#include <list.h>
 
 struct lxc_epoll_descr {
 	int epfd;
-	int nfds;
-	struct epoll_event *ev;
+	struct lxc_list handlers;
 };
 
 typedef int (*lxc_mainloop_callback_t)(int fd, void *data, 
