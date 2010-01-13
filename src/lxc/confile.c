@@ -659,6 +659,11 @@ static int parse_line(char *buffer, void *data)
 	return config->cb(key, value, data);
 }
 
+int lxc_config_readline(char *buffer, struct lxc_conf *conf)
+{
+	return parse_line(buffer, conf);
+}
+
 int lxc_config_read(const char *file, struct lxc_conf *conf)
 {
 	char buffer[MAXPATHLEN];
