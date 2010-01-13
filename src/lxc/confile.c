@@ -620,7 +620,7 @@ static int config_utsname(const char *key, char *value, struct lxc_conf *lxc_con
 	return 0;
 }
 
-static int parse_line(void *buffer, void *data)
+static int parse_line(char *buffer, void *data)
 {
 	struct config *config;
 	char *line = buffer;

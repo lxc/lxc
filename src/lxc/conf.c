@@ -113,7 +113,7 @@ static struct mount_opt mount_opt[] = {
 	{ NULL,         0, 0              },
 };
 
-static int configure_find_fstype_cb(void* buffer, void *data)
+static int configure_find_fstype_cb(char* buffer, void *data)
 {
 	struct cbarg {
 		const char *rootfs;
@@ -338,7 +338,7 @@ static int setup_tty(const char *rootfs, const struct lxc_tty_info *tty_info)
 	return 0;
 }
 
-static int setup_rootfs_pivot_root_cb(void *buffer, void *data)
+static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
 {
 	struct lxc_list	*mountlist, *listentry, *iterator;
 	char *pivotdir, *mountpoint, *mountentry;
