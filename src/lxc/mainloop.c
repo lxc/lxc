@@ -138,7 +138,6 @@ int lxc_mainloop_open(struct lxc_epoll_descr *descr)
 
 int lxc_mainloop_close(struct lxc_epoll_descr *descr)
 {
-	int i;
 	struct lxc_list *iterator, *next;
 
 	iterator = descr->handlers.next;
