@@ -35,40 +35,32 @@ struct mainloop_handler {
 	void *data;
 };
 
+#define MAX_EVENTS 10
+
 int lxc_mainloop(struct lxc_epoll_descr *descr)
 {
-	int i, nfds, triggered;
+	int i, nfds;
 	struct mainloop_handler *handler;
+	struct epoll_event events[MAX_EVENTS];
 
 	for (;;) {
 
-		triggered = 0;
-
-		nfds = epoll_wait(descr->epfd, descr->ev, descr->nfds, -1);
+		nfds = epoll_wait(descr->epfd, events, MAX_EVENTS, -1);
 		if (nfds < 0) {
 			if (errno == EINTR)
 				continue;
 			return -1;
 		}
 
-		for (i = 0; i < descr->nfds; i++) {
-
-			if (!(descr->ev[i].events & EPOLLIN) &&
-			    !(descr->ev[i].events & EPOLLHUP))
-				continue;
-
-			triggered++;
+		for (i = 0; i < nfds; i++) {
 			handler =
-			  (struct mainloop_handler *) descr->ev[i].data.ptr;
+				(struct mainloop_handler *) events[i].data.ptr;
 
 			/* If the handler returns a positive value, exit
 			   the mainloop */
 			if (handler->callback(handler->fd, handler->data, 
 					      descr) > 0)
 				return 0;
-
-			if (triggered == nfds)
-				break;
 		}
 
 		if (!descr->nfds)
