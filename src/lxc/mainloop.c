@@ -81,7 +81,6 @@ int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
 {
 	struct epoll_event *ev;
 	struct mainloop_handler *handler;
-	int ret = -1;
 
 	handler = malloc(sizeof(*handler));
 	if (!handler)
@@ -95,25 +94,24 @@ int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
 	if (!ev)
 		goto out_free;
 
-	if (descr->nfds) {
-		memcpy(ev, descr->ev, sizeof(*descr->ev) * (descr->nfds));
-		free(descr->ev);
+	memcpy(ev, descr->ev, sizeof(*descr->ev) * (descr->nfds));
+
+	ev[descr->nfds].events = EPOLLIN;
+	ev[descr->nfds].data.ptr = handler;
+
+	if (epoll_ctl(descr->epfd, EPOLL_CTL_ADD, fd, &ev[descr->nfds]) < 0) {
+		free(ev);
+		goto out_free;
 	}
 
+	free(descr->ev);
 	descr->ev = ev;
-	descr->ev[descr->nfds].events = EPOLLIN;
-	descr->ev[descr->nfds].data.ptr = handler;
-
-	ret = epoll_ctl(descr->epfd, EPOLL_CTL_ADD, fd, 
-			&descr->ev[descr->nfds]);
-
 	descr->nfds++;
-out:
-	return ret;
+	return 0;
 
 out_free:
 	free(handler);
-	goto out;
+	return -1;
 }
 
 int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd)
