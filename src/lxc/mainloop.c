@@ -139,7 +139,7 @@ int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd)
 		for (j = 0; j < descr->nfds; j++) {
 			if (i == j)
 				continue;
-			ev[idx] = descr->ev[idx];
+			ev[idx] = descr->ev[j];
 			idx++;
 		}
 
