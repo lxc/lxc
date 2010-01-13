@@ -35,7 +35,7 @@
 #include "arguments.h"
 #include "config.h"
 
-lxc_log_define(lxc_checkpoint, lxc);
+lxc_log_define(lxc_checkpoint_ui, lxc_checkpoint);
 
 static int my_checker(const struct lxc_arguments* args)
 {

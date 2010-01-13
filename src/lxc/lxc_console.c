@@ -44,7 +44,7 @@
 
 #include "arguments.h"
 
-lxc_log_define(lxc_console, lxc);
+lxc_log_define(lxc_console_ui, lxc_console);
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {

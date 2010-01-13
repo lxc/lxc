@@ -31,7 +31,7 @@
 #include <lxc/monitor.h>
 #include "arguments.h"
 
-lxc_log_define(lxc_wait, lxc);
+lxc_log_define(lxc_wait_ui, lxc_monitor);
 
 static int my_checker(const struct lxc_arguments* args)
 {

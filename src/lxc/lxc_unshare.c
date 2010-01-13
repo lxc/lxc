@@ -35,7 +35,7 @@
 #include <lxc/log.h>
 #include <lxc/namespace.h>
 
-lxc_log_define(lxc_unshare, lxc);
+lxc_log_define(lxc_unshare_ui, lxc);
 
 void usage(char *cmd)
 {

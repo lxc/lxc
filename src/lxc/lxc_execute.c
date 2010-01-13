@@ -39,7 +39,7 @@
 #include "arguments.h"
 #include "config.h"
 
-lxc_log_define(lxc_execute, lxc);
+lxc_log_define(lxc_execute_ui, lxc_start);
 
 static int my_checker(const struct lxc_arguments* args)
 {

@@ -48,7 +48,7 @@
 #include "confile.h"
 #include "arguments.h"
 
-lxc_log_define(lxc_start, lxc);
+lxc_log_define(lxc_start_ui, lxc_start);
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {

@@ -33,7 +33,7 @@
 #include <lxc/monitor.h>
 #include "arguments.h"
 
-lxc_log_define(monitor, lxc);
+lxc_log_define(lxc_monitor_ui, lxc_monitor);
 
 static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
