@@ -49,7 +49,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsynopsisdiv>
     <cmdsynopsis><command>lxc-start <replaceable>-n
     name</replaceable> <optional>-f
-    config_file</optional> <optional>command</optional></command></cmdsynopsis>
+    config_file</optional> <optional>-s KEY=VAL</optional>
+    <optional>command</optional></command></cmdsynopsis>
   </refsynopsisdiv>
 
   <refsect1>
@@ -101,6 +102,19 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  <para>
 	    Specify the configuration file to configure the virtualization
 	    and isolation functionalities for the container.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-s <replaceable>KEY=VAL</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Assign value <replaceable>VAL</replaceable> to configuration
+	    variable <replaceable>KEY</replaceable>. This overrides any
+	    assignment done in <replaceable>config_file</replaceable>.
 	  </para>
 	</listitem>
       </varlistentry>

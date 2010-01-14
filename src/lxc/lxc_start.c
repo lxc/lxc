@@ -50,11 +50,14 @@
 
 lxc_log_define(lxc_start_ui, lxc_start);
 
+static struct lxc_list defines;
+
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
 	case 'd': args->daemonize = 1; break;
 	case 'f': args->rcfile = arg; break;
+	case 's': return lxc_config_define_add(&defines, arg);
 	}
 	return 0;
 }
@@ -62,6 +65,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 static const struct option my_longopts[] = {
 	{"daemon", no_argument, 0, 'd'},
 	{"rcfile", required_argument, 0, 'f'},
+	{"define", required_argument, 0, 's'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -75,7 +79,8 @@ lxc-start start COMMAND in specified container NAME\n\
 Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
   -d, --daemon         daemonize the container\n\
-  -f, --rcfile=FILE    Load configuration file FILE\n",
+  -f, --rcfile=FILE    Load configuration file FILE\n\
+  -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
 	.options   = my_longopts,
 	.parser    = my_parser,
 	.checker   = NULL,
@@ -135,6 +140,8 @@ int main(int argc, char *argv[])
 	char *rcfile = NULL;
 	struct lxc_conf *conf;
 
+	lxc_list_init(&defines);
+
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return err;
 
@@ -173,6 +180,9 @@ int main(int argc, char *argv[])
 		ERROR("failed to read configuration file");
 		return err;
 	}
+
+	if (lxc_config_define_load(&defines, conf))
+		return err;
 
 	if (!rcfile && !strcmp("/sbin/init", args[0])) {
 		ERROR("no configuration file for '/sbin/init' (may crash the host)");
