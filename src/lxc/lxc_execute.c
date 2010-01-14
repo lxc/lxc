@@ -41,6 +41,8 @@
 
 lxc_log_define(lxc_execute_ui, lxc_start);
 
+static struct lxc_list defines;
+
 static int my_checker(const struct lxc_arguments* args)
 {
 	if (!args->argc) {
@@ -55,12 +57,14 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
 	case 'f': args->rcfile = arg; break;
+	case 's': return lxc_config_define_add(&defines, arg);
 	}
 	return 0;
 }
 
 static const struct option my_longopts[] = {
 	{"rcfile", required_argument, 0, 'f'},
+	{"define", required_argument, 0, 's'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -73,8 +77,9 @@ lxc-execute creates a container with the identifier NAME\n\
 and execs COMMAND into this container.\n\
 \n\
 Options :\n\
-  -n, --name=NAME   NAME for name of the container\n\
-  -f, --rcfile=FILE Load configuration file FILE\n",
+  -n, --name=NAME      NAME for name of the container\n\
+  -f, --rcfile=FILE    Load configuration file FILE\n\
+  -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,
@@ -85,6 +90,8 @@ int main(int argc, char *argv[])
 	static char **args;
 	char *rcfile;
 	struct lxc_conf *conf;
+
+	lxc_list_init(&defines);
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
@@ -123,6 +130,9 @@ int main(int argc, char *argv[])
 		ERROR("failed to read configuration file");
 		return -1;
 	}
+
+	if (lxc_config_define_load(&defines, conf))
+		return -1;
 
 	return lxc_start(my_args.name, args, conf);
 }
