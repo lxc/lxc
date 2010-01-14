@@ -685,8 +685,7 @@ int lxc_config_define_add(struct lxc_list *defines, char* arg)
 	return 0;
 }
 
-char* lxc_config_define_load(struct lxc_list *defines,
-	struct lxc_conf *conf)
+int lxc_config_define_load(struct lxc_list *defines, struct lxc_conf *conf)
 {
 	struct lxc_list *it;
 	int ret = 0;
