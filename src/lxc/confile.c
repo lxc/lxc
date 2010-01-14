@@ -671,3 +671,36 @@ int lxc_config_read(const char *file, struct lxc_conf *conf)
 	return lxc_file_for_each_line(file, parse_line, buffer,
 				      sizeof(buffer), conf);
 }
+
+int lxc_config_define_add(struct lxc_list *defines, char* arg)
+{
+	struct lxc_list *dent;
+
+	dent = malloc(sizeof(struct lxc_list));
+	if (!dent)
+		return -1;
+
+	dent->elem = arg;
+	lxc_list_add_tail(defines, dent);
+	return 0;
+}
+
+char* lxc_config_define_load(struct lxc_list *defines,
+	struct lxc_conf *conf)
+{
+	struct lxc_list *it;
+	int ret = 0;
+
+	lxc_list_for_each(it, defines) {
+		ret = lxc_config_readline(it->elem, conf);
+		if (ret)
+			break;
+	}
+
+	lxc_list_for_each(it, defines) {
+		lxc_list_del(it);
+		free(it);
+	}
+
+	return ret;
+}
