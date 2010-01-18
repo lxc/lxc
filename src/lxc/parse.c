@@ -43,7 +43,7 @@ int lxc_dir_for_each(const char *name, const char *directory,
 		     lxc_dir_cb callback, void *data)
 {
 	struct dirent **namelist;
-	int n;
+	int n, ret = 0;
 
 	n = scandir(directory, &namelist, dir_filter, alphasort);
 	if (n < 0) {
@@ -52,15 +52,16 @@ int lxc_dir_for_each(const char *name, const char *directory,
 	}
 
 	while (n--) {
-		if (callback(name, directory, namelist[n]->d_name, data)) {
+		if (!ret &&
+		    callback(name, directory, namelist[n]->d_name, data)) {
 			ERROR("callback failed");
-			free(namelist[n]);
-			return -1;
+			ret = -1;
 		}
 		free(namelist[n]);
 	}
+	free(namelist);
 
-	return 0;
+	return ret;
 }
 
 int lxc_file_for_each_line(const char *file, lxc_file_cb callback,
