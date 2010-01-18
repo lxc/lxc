@@ -51,6 +51,7 @@ struct lxc_arguments {
 
 	/* for lxc-console */
 	int ttynum;
+	char escape;
 
 	/* for lxc-wait */
 	char *states;

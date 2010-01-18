@@ -46,16 +46,25 @@
 
 lxc_log_define(lxc_console_ui, lxc_console);
 
+static char etoc(const char *expr)
+{
+	/* returns "control code" of given expression */
+	char c = expr[0] == '^' ? expr[1] : expr[0];
+	return 1 + ((c > 'Z') ? (c - 'a') : (c - 'Z'));
+}
+
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
 	case 't': args->ttynum = atoi(arg); break;
+	case 'e': args->escape = etoc(arg); break;
 	}
 	return 0;
 }
 
 static const struct option my_longopts[] = {
 	{"tty", required_argument, 0, 't'},
+	{"escape", required_argument, 0, 'e'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -67,12 +76,14 @@ static struct lxc_arguments my_args = {
 lxc-console logs on the container with the identifier NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME   NAME for name of the container\n\
-  -t, --tty=NUMBER  console tty number\n",
+  -n, --name=NAME      NAME for name of the container\n\
+  -t, --tty=NUMBER     console tty number\n\
+  -e, --escape=PREFIX  prefix for escape command\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
 	.ttynum = -1,
+	.escape = 1,
 };
 
 static int master = -1;
@@ -131,7 +142,8 @@ int main(int argc, char *argv[])
 	if (err)
 		goto out;
 
-	fprintf(stderr, "\nType <Ctrl+a q> to exit the console\n");
+	fprintf(stderr, "\nType <Ctrl+%c q> to exit the console\n",
+                'a' + my_args.escape - 1);
 
 	setsid();
 	signal(SIGWINCH, sigwinch);
@@ -167,7 +179,7 @@ int main(int argc, char *argv[])
 			}
 
 			/* we want to exit the console with Ctrl+a q */
-			if (c == 1) {
+			if (c == my_args.escape) {
 				wait4q = !wait4q;
 				continue;
 			}
