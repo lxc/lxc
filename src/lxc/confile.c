@@ -666,10 +666,7 @@ int lxc_config_readline(char *buffer, struct lxc_conf *conf)
 
 int lxc_config_read(const char *file, struct lxc_conf *conf)
 {
-	char buffer[MAXPATHLEN];
-
-	return lxc_file_for_each_line(file, parse_line, buffer,
-				      sizeof(buffer), conf);
+	return lxc_file_for_each_line(file, parse_line, conf);
 }
 
 int lxc_config_define_add(struct lxc_list *defines, char* arg)

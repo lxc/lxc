@@ -64,11 +64,12 @@ int lxc_dir_for_each(const char *name, const char *directory,
 	return ret;
 }
 
-int lxc_file_for_each_line(const char *file, lxc_file_cb callback,
-			   char *buffer, size_t len, void* data)
+int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 {
 	FILE *f;
 	int err = 0;
+	char *line = NULL;
+	size_t len = 0;
 
 	f = fopen(file, "r");
 	if (!f) {
@@ -76,14 +77,16 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback,
 		return -1;
 	}
 
-	while (fgets(buffer, len, f)) {
-		err = callback(buffer, data);
+	while (getline(&line, &len, f) != -1) {
+		err = callback(line, data);
 		if (err) {
-			ERROR("failed to process '%s'", buffer);
-			goto out;
+			ERROR("failed to process '%s'", line);
+			break;
 		}
 	}
-out:
+
+	if (line)
+		free(line);
 	fclose(f);
 	return err;
 }

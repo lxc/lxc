@@ -146,7 +146,6 @@ static int configure_find_fstype_cb(char* buffer, void *data)
 static int configure_find_fstype(const char *rootfs, char *fstype, int mntopt)
 {
 	int i, found;
-	char buffer[MAXPATHLEN];
 
 	struct cbarg {
 		const char *rootfs;
@@ -182,7 +181,7 @@ static int configure_find_fstype(const char *rootfs, char *fstype, int mntopt)
 
 		found = lxc_file_for_each_line(fsfile[i],
 					       configure_find_fstype_cb,
-					       buffer, sizeof(buffer), &cbarg);
+					       &cbarg);
 
 		if (found < 0) {
 			SYSERROR("failed to read '%s'", fsfile[i]);
@@ -396,7 +395,7 @@ static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
 
 static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 {
-	char path[MAXPATHLEN], buffer[MAXPATHLEN];
+	char path[MAXPATHLEN];
 	void *cbparm[2];
 	struct lxc_list mountlist, *iterator;
 	int ok, still_mounted, last_still_mounted;
@@ -458,9 +457,7 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	}
 
 	snprintf(path, sizeof(path), "/%s/proc/mounts", pivotdir);
-	ok = lxc_file_for_each_line(path,
-			       setup_rootfs_pivot_root_cb,
-			       buffer, sizeof(buffer), &cbparm);
+	ok = lxc_file_for_each_line(path, setup_rootfs_pivot_root_cb, &cbparm);
 	if (ok < 0) {
 		SYSERROR("failed to read or parse mount list '%s'", path);
 		return -1;
