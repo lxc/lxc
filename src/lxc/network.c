@@ -356,11 +356,11 @@ int lxc_veth_create(const char *name1, const char *name2)
 	link_req = (struct link_req *)nlmsg;
 	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
 	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-	nlmsg->nlmsghdr.nlmsg_flags = 
+	nlmsg->nlmsghdr.nlmsg_flags =
 		NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL|NLM_F_ACK;
 	nlmsg->nlmsghdr.nlmsg_type = RTM_NEWLINK;
 
- 	nest1 = nla_begin_nested(nlmsg, IFLA_LINKINFO);
+	nest1 = nla_begin_nested(nlmsg, IFLA_LINKINFO);
 	if (!nest1)
 		goto out;
 
@@ -439,7 +439,7 @@ int lxc_vlan_create(const char *master, const char *name, ushort vlanid)
 		NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL|NLM_F_ACK;
 	nlmsg->nlmsghdr.nlmsg_type = RTM_NEWLINK;
 
- 	nest = nla_begin_nested(nlmsg, IFLA_LINKINFO);
+	nest = nla_begin_nested(nlmsg, IFLA_LINKINFO);
 	if (!nest)
 		goto err1;
 
@@ -514,7 +514,7 @@ int lxc_macvlan_create(const char *master, const char *name, int mode)
 		NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL|NLM_F_ACK;
 	nlmsg->nlmsghdr.nlmsg_type = RTM_NEWLINK;
 
- 	nest = nla_begin_nested(nlmsg, IFLA_LINKINFO);
+	nest = nla_begin_nested(nlmsg, IFLA_LINKINFO);
 	if (!nest)
 		goto out;
 
@@ -573,7 +573,7 @@ static int ip_forward_set(const char *ifname, int family, int flag)
 	if (family != AF_INET && family != AF_INET6)
 		return -1;
 
-	snprintf(path, MAXPATHLEN, "/proc/sys/net/%s/conf/%s/forwarding", 
+	snprintf(path, MAXPATHLEN, "/proc/sys/net/%s/conf/%s/forwarding",
 		 family == AF_INET?"ipv4":"ipv6" , ifname);
 
 	return proc_sys_net_write(path, flag?"1":"0");
@@ -596,8 +596,8 @@ static int neigh_proxy_set(const char *ifname, int family, int flag)
 	if (family != AF_INET && family != AF_INET6)
 		return -1;
 
-	sprintf(path, "/proc/sys/net/%s/conf/%s/%s", 
-		family == AF_INET?"ipv4":"ipv6" , ifname, 
+	sprintf(path, "/proc/sys/net/%s/conf/%s/%s",
+		family == AF_INET?"ipv4":"ipv6" , ifname,
 		family == AF_INET?"proxy_arp":"proxy_ndp");
 
 	return proc_sys_net_write(path, flag?"1":"0");
@@ -698,10 +698,10 @@ int lxc_ip_addr_add(int family, int ifindex, void *addr, int prefix)
 	if (nla_put_buffer(nlmsg, IFA_ADDRESS, addr, addrlen))
 		goto out;
 
-/* 	if (in_bcast.s_addr != INADDR_ANY) */
-/* 		if (nla_put_buffer(nlmsg, IFA_BROADCAST, &in_bcast, */
-/* 				   sizeof(in_bcast))) */
-/* 			goto out; */
+/*	if (in_bcast.s_addr != INADDR_ANY) */
+/*		if (nla_put_buffer(nlmsg, IFA_BROADCAST, &in_bcast, */
+/*				   sizeof(in_bcast))) */
+/*			goto out; */
 
 	if (netlink_transaction(&nlh, nlmsg, answer))
 		goto out;
@@ -714,7 +714,7 @@ out:
 	return err;
 }
 
-static int bridge_add_del_interface(const char *bridge, 
+static int bridge_add_del_interface(const char *bridge,
 				    const char *ifname, int detach)
 {
 	int fd, index, err;
