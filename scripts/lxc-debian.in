@@ -173,7 +173,7 @@ install_debian()
 	    if [ $? -ne 0 ]; then
 		echo "Failed to download 'debian base'"
 		return 1
- 	    fi
+	    fi
 	fi
 
 	copy_debian $cache $arch $rootfs
