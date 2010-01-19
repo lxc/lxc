@@ -32,8 +32,8 @@ LXC_COMMON_CAPS="cap_net_admin,cap_net_raw,cap_sys_admin,cap_dac_override"
 LXC_UNSHARE_CAPS=$LXC_COMMON_CAPS
 LXC_START_CAPS="$LXC_COMMON_CAPS,cap_fowner,cap_sys_chroot,cap_setpcap"
 LXC_EXECUTE_CAPS=$LXC_START_CAPS
-LXC_RESTART_CAPS=$LXC_START_CAPS
-LXC_CHECKPOINT_CAPS="$LXC_COMMON_CAPS,cap_sys_ptrace"
+LXC_RESTART_CAPS="$LXC_START_CAPS,cap_mknod"
+LXC_CHECKPOINT_CAPS="$LXC_COMMON_CAPS,cap_sys_ptrace,cap_mknod"
 
 LXC_DROP_CAPS=""
 
