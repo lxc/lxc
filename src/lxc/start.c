@@ -158,7 +158,6 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int sigfd = handler->sigfd;
 	int pid = handler->pid;
-	int ret = -1;
 	struct lxc_epoll_descr descr;
 
 	if (lxc_mainloop_open(&descr)) {
@@ -174,16 +173,13 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	if (lxc_command_mainloop_add(name, &descr, handler))
 		goto out_mainloop_open;
 
-	ret = lxc_mainloop(&descr);
-
-out:
-	return ret;
+	return lxc_mainloop(&descr);
 
 out_mainloop_open:
 	lxc_mainloop_close(&descr);
 out_sigfd:
 	close(sigfd);
-	goto out;
+	return -1;
 }
 
 static int fdname(int fd, char *name, size_t size)
@@ -271,10 +267,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 	LXC_TTY_ADD_HANDLER(SIGINT);
 	LXC_TTY_ADD_HANDLER(SIGQUIT);
 
-out:
-	if (handler)
-		INFO("'%s' is initialized", name);
-
+	INFO("'%s' is initialized", name);
 	return handler;
 
 out_delete_tty:
@@ -283,8 +276,7 @@ out_aborting:
 	lxc_set_state(name, handler, ABORTING);
 out_free:
 	free(handler);
-	handler = NULL;
-	goto out;
+	return NULL;
 }
 
 void lxc_fini(const char *name, struct lxc_handler *handler)
