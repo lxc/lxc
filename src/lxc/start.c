@@ -288,10 +288,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_set_state(name, handler, STOPPED);
 	lxc_unlink_nsgroup(name);
 
-	if (handler) {
-		lxc_delete_tty(&handler->conf->tty_info);
-		free(handler);
-	}
+	lxc_delete_tty(&handler->conf->tty_info);
+	free(handler);
 
 	LXC_TTY_DEL_HANDLER(SIGQUIT);
 	LXC_TTY_DEL_HANDLER(SIGINT);
