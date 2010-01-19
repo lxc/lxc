@@ -457,7 +457,8 @@ out_close:
 
 out_abort:
 	lxc_abort(name, handler);
-	goto out_close;
+	close(sv[1]);
+	return -1;
 }
 
 int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
