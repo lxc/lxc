@@ -329,7 +329,7 @@ static int do_start(void *arg)
 
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
 		SYSERROR("failed to set sigprocmask");
-		goto out_child;
+		return -1;
 	}
 
 	close(sv[1]);
@@ -340,13 +340,13 @@ static int do_start(void *arg)
 	/* Tell our father he can begin to configure the container */
 	if (write(sv[0], &sync, sizeof(sync)) < 0) {
 		SYSERROR("failed to write socket");
-		goto out_child;
+		return -1;
 	}
 
 	/* Wait for the father to finish the configuration */
 	if (read(sv[0], &sync, sizeof(sync)) < 0) {
 		SYSERROR("failed to read socket");
-		goto out_child;
+		return -1;
 	}
 
 	/* Setup the container, ip, names, utsname, ... */
@@ -357,12 +357,12 @@ static int do_start(void *arg)
 
 	if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
 		SYSERROR("failed to remove CAP_SYS_BOOT capability");
-		goto out_child;
+		return -1;
 	}
 
 	if (prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0)) {
 		SYSERROR("failed to set pdeath signal");
-		goto out_child;
+		return -1;
 	}
 
 	NOTICE("exec'ing '%s'", argv[0]);
@@ -374,7 +374,6 @@ out_warn_father:
 	/* If the exec fails, tell that to our father */
 	if (write(sv[0], &err, sizeof(err)) < 0)
 		SYSERROR("failed to write the socket");
-out_child:
 	return -1;
 }
 
@@ -394,7 +393,7 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
 		SYSERROR("failed to create communication socketpair");
-		goto out;
+		return -1;
 	}
 
 	clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
@@ -462,7 +461,6 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 out_close:
 	close(sv[0]);
 	close(sv[1]);
-out:
 	return err;
 
 out_abort:
@@ -485,7 +483,7 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 	err = lxc_spawn(name, handler, argv);
 	if (err) {
 		ERROR("failed to spawn '%s'", argv[0]);
-		goto out;
+		goto out_fini;
 	}
 
 	err = lxc_close_all_inherited_fd();
@@ -504,11 +502,11 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 		continue;
 
 	err =  lxc_error_set_and_log(handler->pid, status);
-out:
+out_fini:
 	lxc_fini(name, handler);
 	return err;
 
 out_abort:
 	lxc_abort(name, handler);
-	goto out;
+	goto out_fini;
 }
