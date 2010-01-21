@@ -58,6 +58,7 @@ static int config_network_vlan_id(const char *, char *, struct lxc_conf *);
 static int config_network_mtu(const char *, char *, struct lxc_conf *);
 static int config_network_ipv4(const char *, char *, struct lxc_conf *);
 static int config_network_ipv6(const char *, char *, struct lxc_conf *);
+static int config_cap_drop(const char *, char *, struct lxc_conf *);
 
 typedef int (*config_cb)(const char *, char *, struct lxc_conf *);
 
@@ -86,6 +87,7 @@ static struct config config[] = {
 	{ "lxc.network.vlan.id",      config_network_vlan_id      },
 	{ "lxc.network.ipv4",         config_network_ipv4         },
 	{ "lxc.network.ipv6",         config_network_ipv6         },
+	{ "lxc.cap.drop",             config_cap_drop             },
 };
 
 static const size_t config_size = sizeof(config)/sizeof(struct config);
@@ -564,6 +566,53 @@ static int config_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
 	lxc_list_add_tail(&lxc_conf->mount_list, mntlist);
 
 	return 0;
+}
+
+static int config_cap_drop(const char *key, char *value,
+			   struct lxc_conf *lxc_conf)
+{
+	char *dropcaps, *caps, *sptr, *token;
+	struct lxc_list *droplist;
+	int ret = -1;
+
+	if (!strlen(value))
+		return -1;
+
+	dropcaps = strdup(value);
+	if (!dropcaps) {
+		SYSERROR("failed to dup '%s'", value);
+		return -1;
+	}
+
+	/* in case several capability drop is specified in a single line
+	 * split these caps in a single element for the list */
+	for (;;) {
+                token = strtok_r(dropcaps, " \t", &sptr);
+                if (!token) {
+			ret = 0;
+                        break;
+		}
+		dropcaps = NULL;
+
+		droplist = malloc(sizeof(*droplist));
+		if (!droplist) {
+			SYSERROR("failed to allocate drop list");
+			break;
+		}
+
+		droplist->elem = strdup(token);
+		if (!droplist->elem) {
+			SYSERROR("failed to dup '%s'", token);
+			free(droplist);
+			break;
+		}
+
+		lxc_list_add_tail(&lxc_conf->caps, droplist);
+        }
+
+	free(dropcaps);
+
+	return ret;
 }
 
 static int config_rootfs(const char *key, char *value, struct lxc_conf *lxc_conf)

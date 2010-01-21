@@ -421,6 +421,36 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       </variablelist>
     </refsect2>
 
+    <refsect2>
+      <title>Capabilities</title>
+      <para>
+	The capabilities can be dropped in the container if this one
+	is run as root.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.cap.drop</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Specify the capability to be dropped in the
+	      container. The format is the lower case of the
+	      capability definition without the "CAP_" prefix,
+	      eg. CAP_SYS_MODULE should be specified as
+	      sys_module. See
+	      <citerefentry>
+		<refentrytitle><command>capabilities</command></refentrytitle>
+		<manvolnum>7</manvolnum>. A single line defining
+		several capabilities with a space separation is
+		allowed.
+	      </citerefentry>,
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
   </refsect1>
 
   <refsect1>
@@ -637,6 +667,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</varlistentry>
 	<varlistentry>
 	  <term>lxc.rootfs = /mnt/rootfs.complex</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.cap.drop = sys_module mknod setuid net_raw</term>
+	  <listitem><para></para></listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lxc.cap.drop = mac_override</term>
 	  <listitem><para></para></listitem>
 	</varlistentry>
       </variablelist>

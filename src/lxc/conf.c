@@ -38,6 +38,8 @@
 #include <sys/socket.h>
 #include <sys/mount.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
+#include <sys/capability.h>
 
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -73,6 +75,11 @@ struct mount_opt {
 	char *name;
 	int clear;
 	int flag;
+};
+
+struct caps_opt {
+	char *name;
+	int value;
 };
 
 static int instanciate_veth(struct lxc_netdev *);
@@ -112,6 +119,45 @@ static struct mount_opt mount_opt[] = {
 	{ "rbind",      0, MS_BIND|MS_REC },
 	{ NULL,         0, 0              },
 };
+
+static struct caps_opt caps_opt[] = {
+ 	{ "chown",             CAP_CHOWN 	     },
+ 	{ "dac_override",      CAP_DAC_OVERRIDE      },
+ 	{ "dac_read_search",   CAP_DAC_READ_SEARCH   },
+ 	{ "fowner",            CAP_FOWNER            },
+ 	{ "fsetid",            CAP_FSETID            },
+	{ "kill",              CAP_KILL              },
+	{ "setgid",            CAP_SETGID            },
+	{ "setuid",            CAP_SETUID            },
+	{ "setpcap",           CAP_SETPCAP           },
+	{ "linux_immutable",   CAP_LINUX_IMMUTABLE   },
+	{ "net_bind_service",  CAP_NET_BIND_SERVICE  },
+	{ "net_broadcast",     CAP_NET_BROADCAST     },
+	{ "net_admin",         CAP_NET_ADMIN         },
+	{ "net_raw",           CAP_NET_RAW           },
+	{ "ipc_lock",          CAP_IPC_LOCK          },
+	{ "ipc_owner",         CAP_IPC_OWNER         },
+	{ "sys_module",        CAP_SYS_MODULE        },
+	{ "sys_rawio",         CAP_SYS_RAWIO         },
+	{ "sys_chroot",        CAP_SYS_CHROOT        },
+	{ "sys_ptrace",        CAP_SYS_PTRACE        },
+	{ "sys_pacct",         CAP_SYS_PACCT         },
+	{ "sys_admin",         CAP_SYS_ADMIN         },
+	{ "sys_boot",          CAP_SYS_BOOT          },
+	{ "sys_nice",          CAP_SYS_NICE          },
+	{ "sys_resource",      CAP_SYS_RESOURCE      },
+	{ "sys_time",          CAP_SYS_TIME          },
+	{ "sys_tty_config",    CAP_SYS_TTY_CONFIG    },
+	{ "mknod",             CAP_MKNOD             },
+	{ "lease",             CAP_LEASE             },
+	{ "audit_write",       CAP_AUDIT_WRITE       },
+	{ "audit_control",     CAP_AUDIT_CONTROL     },
+	{ "setfcap",           CAP_SETFCAP           },
+	{ "mac_override",      CAP_MAC_OVERRIDE      },
+	{ "mac_admin",         CAP_MAC_ADMIN         },
+	{ NULL,                0,		     },
+};
+
 
 static int configure_find_fstype_cb(char* buffer, void *data)
 {
@@ -790,6 +836,46 @@ static int setup_mount_entries(struct lxc_list *mount)
 	return ret;
 }
 
+static int setup_caps(struct lxc_list *caps)
+{
+	struct lxc_list *iterator;
+	char *drop_entry;
+	int i, capid;
+
+	lxc_list_for_each(iterator, caps) {
+
+		drop_entry = iterator->elem;
+
+		capid = -1;
+
+		for (i = 0; i < sizeof(caps_opt)/sizeof(caps_opt[0]); i++) {
+
+			if (strcmp(drop_entry, caps_opt[i].name))
+				continue;
+
+			capid = caps_opt[i].value;
+			break;
+		}
+
+	        if (capid < 0) {
+        		ERROR("unknown capability %s", drop_entry);
+        		return -1;
+		}
+
+		DEBUG("drop capability '%s' (%d)", drop_entry, capid);
+
+		if (prctl(PR_CAPBSET_DROP, capid, 0, 0, 0)) {
+                       SYSERROR("failed to remove %s capability", drop_entry);
+                       return -1;
+                }
+
+	}
+
+	DEBUG("capabilities has been setup");
+
+	return 0;
+}
+
 static int setup_hw_addr(char *hwaddr, const char *ifname)
 {
 	struct sockaddr sockaddr;
@@ -981,6 +1067,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
+	lxc_list_init(&new->caps);
 
 	return new;
 }
@@ -1281,6 +1368,11 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 
 	if (setup_pts(lxc_conf->pts)) {
 		ERROR("failed to setup the new pts instance");
+		return -1;
+	}
+
+	if (setup_caps(&lxc_conf->caps)) {
+		ERROR("failed to drop capabilities");
 		return -1;
 	}
 
