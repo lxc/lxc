@@ -67,6 +67,22 @@ lxc_log_define(lxc_conf, lxc);
 #define MS_REC 16384
 #endif
 
+#ifndef CAP_SETFCAP
+#define CAP_SETFCAP 31
+#endif
+
+#ifndef CAP_MAC_OVERRIDE
+#define CAP_MAC_OVERRIDE 32
+#endif
+
+#ifndef CAP_MAC_ADMIN
+#define CAP_MAC_ADMIN 33
+#endif
+
+#ifndef PR_CAPBSET_DROP
+#define PR_CAPBSET_DROP 24
+#endif
+
 extern int pivot_root(const char * new_root, const char * put_old);
 
 typedef int (*instanciate_cb)(struct lxc_netdev *);
