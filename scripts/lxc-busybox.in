@@ -187,6 +187,7 @@ configure_busybox()
 	who whoami xargs yes zcat zcip"
 
     type busybox >/dev/null
+
     if [ $? -ne 0 ]; then
 	echo "busybox executable is not accessible"
 	return 1
