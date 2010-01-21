@@ -571,7 +571,7 @@ static int config_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
 static int config_cap_drop(const char *key, char *value,
 			   struct lxc_conf *lxc_conf)
 {
-	char *dropcaps, *caps, *sptr, *token;
+	char *dropcaps, *sptr, *token;
 	struct lxc_list *droplist;
 	int ret = -1;
 
