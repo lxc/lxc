@@ -153,9 +153,40 @@ configure_busybox()
     rootfs=$1
 
     functions="\
-[  [[  addgroup  adduser  adjtimex  ar  arp  arping  ash  awk  basename  brctl  bunzip2  bzcat  bzip2  cal  cat  catv  chattr  chgrp  chmod  chown  chpasswd  chpst  chroot  chrt  chvt  cksum  clear  cmp  comm  cp  cpio  crond  crontab  cryptpw  cut  date  dc  dd  deallocvt  delgroup  deluser  df  dhcprelay  diff  dirname  dmesg  dnsd  dos2unix  du  dumpkmap  dumpleases  echo  ed  egrep  eject  env  envdir  envuidgid  ether-wake  expand  expr  fakeidentd  false  fbset  fdformat  fdisk  fetchmail  fgrep  find  findfs  fold  free  freeramdisk  fsck  fsck.minix  ftpget  ftpput  fuser  getopt  getty  grep  gunzip  gzip  halt  hdparm  head  hexdump  hostid  hostname  httpd  hwclock  id  ifconfig  ifdown  ifenslave  ifup  inetd  init  insmod  install  ip  ipaddr  ipcalc  ipcrm  ipcs  iplink  iproute  iprule  iptunnel  kbd_mode  kill  killall  killall5  klogd  last  length  less  linux32  linux64  linuxrc  ln  loadfont  loadkmap  logger  login  logname  logread  losetup  lpd  lpq  lpr  ls  lsattr  lsmod  lzmacat  makedevs  md5sum  mdev  mesg  microcom  mkdir  mkfifo  mkfs.minix  mknod  mkswap  mktemp  modprobe  more  mount  mountpoint  msh  mt  mv  nameif  nc  netstat  nice  nmeter  nohup  nslookup  od  openvt  passwd  patch  pgrep  pidof  ping  ping6  pipe_progress  pivot_root  pkill  poweroff  printenv  printf  ps  pscan  pwd  raidautorun  rdate  readahead  readlink  readprofile  realpath  reboot  renice  reset  resize  rm  rmdir  rmmod  route  rpm  rpm2cpio  run-parts  runlevel  runsv  runsvdir  rx  script  sed  sendmail  seq  setarch  setconsole  setkeycodes  setlogcons  setsid  setuidgid  sh  sha1sum  slattach  sleep  softlimit  sort  split  start-stop-daemon  stat  strings  stty  su  sulogin  sum  sv  svlogd  swapoff  swapon  switch_root  sync  sysctl  syslogd  tac  tail  tar  taskset  tcpsvd  tee  telnet  telnetd  test  tftp  tftpd  time  top  touch  tr  traceroute  true  tty  ttysize  udhcpc  udhcpd  udpsvd  umount  uname  uncompress  unexpand  uniq  unix2dos  unlzma  unzip  uptime  usleep  uudecode  uuencode  vconfig  vi  vlock  watch  watchdog  wc  wget  which  who  whoami  xargs  yes  zcat  zcip"
+	[ [[ addgroup adduser adjtimex ar arp arping ash awk basename \
+	brctl bunzip2 bzcat bzip2 cal cat catv chattr chgrp chmod \
+	chown chpasswd chpst chroot chrt chvt cksum clear cmp comm \
+	cp cpio crond crontab cryptpw cut date dc dd deallocvt \
+	delgroup deluser df dhcprelay diff dirname dmesg dnsd dos2unix \
+	du dumpkmap dumpleases echo ed egrep eject env envdir envuidgid \
+	ether-wake expand expr fakeidentd false fbset fdformat fdisk \
+	fetchmail fgrep find findfs fold free freeramdisk fsck \
+	fsck.minix ftpget ftpput fuser getopt getty grep gunzip gzip \
+	halt hdparm head hexdump hostid hostname httpd hwclock id \
+	ifconfig ifdown ifenslave ifup inetd init insmod install ip \
+	ipaddr ipcalc ipcrm ipcs iplink iproute iprule iptunnel \
+	kbd_mode kill killall killall5 klogd last length less linux32 \
+	linux64 linuxrc ln loadfont loadkmap logger login logname \
+	logread losetup lpd lpq lpr ls lsattr lsmod lzmacat makedevs \
+	md5sum mdev mesg microcom mkdir mkfifo mkfs.minix mknod mkswap \
+	mktemp modprobe more mount mountpoint msh mt mv nameif nc \
+	netstat nice nmeter nohup nslookup od openvt passwd patch \
+	pgrep pidof ping ping6 pipe_progress pivot_root pkill poweroff \
+	printenv printf ps pscan pwd raidautorun rdate readahead \
+	readlink readprofile realpath reboot renice reset resize rm \
+	rmdir rmmod route rpm rpm2cpio run-parts runlevel runsv \
+	runsvdir rx script sed sendmail seq setarch setconsole \
+	setkeycodes setlogcons setsid setuidgid sh sha1sum slattach \
+	sleep softlimit sort split start-stop-daemon stat strings \
+	stty su sulogin sum sv svlogd swapoff swapon switch_root \
+	sync sysctl syslogd tac tail tar taskset tcpsvd tee telnet \
+	telnetd test tftp tftpd time top touch tr traceroute \
+	true tty ttysize udhcpc udhcpd udpsvd umount uname uncompress \
+	unexpand uniq unix2dos unlzma unzip uptime usleep uudecode \
+	uuencode vconfig vi vlock watch watchdog wc wget which \
+	who whoami xargs yes zcat zcip"
 
-    type busybox
+    type busybox >/dev/null
     if [ $? -ne 0 ]; then
 	echo "busybox executable is not accessible"
 	return 1
