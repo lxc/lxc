@@ -37,6 +37,8 @@
 
 lxc_log_define(lxc_restart_ui, lxc_restart);
 
+static struct lxc_list defines;
+
 static int my_checker(const struct lxc_arguments* args)
 {
 	if (!args->statefile) {
@@ -53,6 +55,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'd': args->statefile = arg; break;
 	case 'f': args->rcfile = arg; break;
 	case 'p': args->flags = LXC_FLAG_PAUSE; break;
+	case 's': return lxc_config_define_add(&defines, arg);
 	}
 
 	return 0;
@@ -62,6 +65,7 @@ static const struct option my_longopts[] = {
 	{"directory", required_argument, 0, 'd'},
 	{"rcfile", required_argument, 0, 'f'},
 	{"pause", no_argument, 0, 'p'},
+	{"define", required_argument, 0, 's'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -76,7 +80,8 @@ Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
   -p, --pause          do not release the container after the restart\n\
   -d, --directory=STATEFILE for name of statefile\n\
-  -f, --rcfile=FILE Load configuration file FILE\n",
+  -f, --rcfile=FILE Load configuration file FILE\n\
+  -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,
@@ -86,6 +91,8 @@ int main(int argc, char *argv[])
 {
 	char *rcfile = NULL;
 	struct lxc_conf *conf;
+
+	lxc_list_init(&defines);
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
@@ -120,6 +127,9 @@ int main(int argc, char *argv[])
 		ERROR("failed to read configuration file");
 		return -1;
 	}
+
+	if (lxc_config_define_load(&defines, conf))
+		return -1;
 
 	return lxc_restart(my_args.name, my_args.statefile, conf,
 			   my_args.flags);
