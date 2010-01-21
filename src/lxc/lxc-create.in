@@ -43,6 +43,7 @@ help() {
 shortoptions='hn:f:t:'
 longoptions='help,name:,config:,template:'
 lxc_path=@LXCPATH@
+bindir=@BINDIR@
 
 getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
 if [ $? != 0 ]; then
@@ -115,7 +116,7 @@ if [ -d "$lxc_path/$lxc_name" ]; then
     exit 1
 fi
 
-trap "lxc-destroy -n $lxc_name; echo aborted; exit 1" SIGHUP SIGINT SIGTERM
+trap "${bindir}/lxc-destroy -n $lxc_name; echo aborted; exit 1" SIGHUP SIGINT SIGTERM
 
 mkdir -p $lxc_path/$lxc_name
 
@@ -132,10 +133,10 @@ fi
 
 if [ ! -z $lxc_template ]; then
 
-    type lxc-$lxc_template
+    type ${bindir}/lxc-$lxc_template >/dev/null
     if [ $? -ne 0 ]; then
 	echo "unknown template '$lxc_template'"
-	lxc-destroy -n $lxc_name
+	${bindir}/lxc-destroy -n $lxc_name
 	exit 1
     fi
 
@@ -165,10 +166,10 @@ if [ ! -z $lxc_template ]; then
 	read dummy
     fi
 
-    lxc-$lxc_template --path=$lxc_path/$lxc_name --name=$lxc_name
+    ${bindir}/lxc-$lxc_template --path=$lxc_path/$lxc_name --name=$lxc_name
     if [ $? -ne 0 ]; then
 	echo "failed to execute template '$lxc_template'"
-	lxc-destroy -n $lxc_name
+	${bindir}/lxc-destroy -n $lxc_name
 	exit 1
     fi
 
