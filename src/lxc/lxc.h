@@ -154,11 +154,11 @@ extern int lxc_checkpoint(const char *name, const char *statefile, int flags);
  * Restart a container
  * @name : the name of the container being restarted
  * @statefile: string object from which the container is restarted
- * @rcfile: container configuration file.
+ * @conf: lxc_conf structure.
  * @flags : restart flags (an ORed value)
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_restart(const char *, const char *, const char *, int);
+extern int lxc_restart(const char *, const char *, struct lxc_conf *, int);
 
 /*
  * Returns the version number of the library

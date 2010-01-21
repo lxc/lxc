@@ -1,7 +1,7 @@
 /*
  * lxc: linux Container library
  *
- * (C) Copyright IBM Corp. 2007, 2008
+ * (C) Copyright IBM Corp. 2007, 2010
  *
  * Authors:
  * Daniel Lezcano <dlezcano at fr.ibm.com>
@@ -25,7 +25,7 @@
 
 lxc_log_define(lxc_restart, lxc);
 
-int lxc_restart(const char *name, const char *statefile, const char *rcfile,
+int lxc_restart(const char *name, const char *statefile, struct lxc_conf *conf,
 		int flags)
 {
 	return 0;
