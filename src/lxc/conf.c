@@ -121,11 +121,11 @@ static struct mount_opt mount_opt[] = {
 };
 
 static struct caps_opt caps_opt[] = {
- 	{ "chown",             CAP_CHOWN 	     },
- 	{ "dac_override",      CAP_DAC_OVERRIDE      },
- 	{ "dac_read_search",   CAP_DAC_READ_SEARCH   },
- 	{ "fowner",            CAP_FOWNER            },
- 	{ "fsetid",            CAP_FSETID            },
+	{ "chown",             CAP_CHOWN 	     },
+	{ "dac_override",      CAP_DAC_OVERRIDE      },
+	{ "dac_read_search",   CAP_DAC_READ_SEARCH   },
+	{ "fowner",            CAP_FOWNER            },
+	{ "fsetid",            CAP_FSETID            },
 	{ "kill",              CAP_KILL              },
 	{ "setgid",            CAP_SETGID            },
 	{ "setuid",            CAP_SETUID            },
@@ -155,7 +155,6 @@ static struct caps_opt caps_opt[] = {
 	{ "setfcap",           CAP_SETFCAP           },
 	{ "mac_override",      CAP_MAC_OVERRIDE      },
 	{ "mac_admin",         CAP_MAC_ADMIN         },
-	{ NULL,                0,		     },
 };
 
 
@@ -858,8 +857,8 @@ static int setup_caps(struct lxc_list *caps)
 		}
 
 	        if (capid < 0) {
-        		ERROR("unknown capability %s", drop_entry);
-        		return -1;
+			ERROR("unknown capability %s", drop_entry);
+			return -1;
 		}
 
 		DEBUG("drop capability '%s' (%d)", drop_entry, capid);
