@@ -538,19 +538,14 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 				continue;
 			}
 
-			if (errno != EBUSY) {
-				SYSERROR("failed to umount '%s'", (char *)iterator->elem);
-				return -1;
-			}
-
 			still_mounted++;
 		}
+
 	} while (still_mounted > 0 && still_mounted != last_still_mounted);
 
-	if (still_mounted) {
-		ERROR("could not umount %d mounts", still_mounted);
-		return -1;
-	}
+
+	lxc_list_for_each(iterator, &mountlist)
+		WARN("failed to unmount '%s'", (char *)iterator->elem);
 
 	/* umount old root fs */
 	if (umount(pivotdir)) {
