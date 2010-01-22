@@ -434,16 +434,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  </term>
 	  <listitem>
 	    <para>
-	      Specify the capability to be dropped in the
-	      container. The format is the lower case of the
-	      capability definition without the "CAP_" prefix,
+	      Specify the capability to be dropped in the container. A
+	      single line defining several capabilities with a space
+	      separation is allowed. The format is the lower case of
+	      the capability definition without the "CAP_" prefix,
 	      eg. CAP_SYS_MODULE should be specified as
 	      sys_module. See
 	      <citerefentry>
 		<refentrytitle><command>capabilities</command></refentrytitle>
-		<manvolnum>7</manvolnum>. A single line defining
-		several capabilities with a space separation is
-		allowed.
+		<manvolnum>7</manvolnum>
 	      </citerefentry>,
 	    </para>
 	  </listitem>
