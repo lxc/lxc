@@ -9,9 +9,17 @@ SETCOLOR_FAILURE="echo -en \\033[1;31m"
 SETCOLOR_WARNING="echo -en \\033[1;33m"
 SETCOLOR_NORMAL="echo -en \\033[0;39m"
 
+is_set() {
+    $GREP -q "$1=[y|m]" $CONFIG
+    RES=$?
+
+    return $?
+}
+
 is_enabled() {
     mandatory=$2
-    $GREP -q "$1=[y|m]" $CONFIG
+
+    is_set $1
     RES=$?
 
     if [ $RES = 0 ]; then
@@ -54,13 +62,13 @@ echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
 echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
 echo
 echo "--- Control groups ---"
-echo -n "Cgroup: " && is_enabled CONFIG_CGROUPS
+echo -n "Cgroup: " && is_enabled CONFIG_CGROUPS yes
 echo -n "Cgroup namespace: " && is_enabled CONFIG_CGROUP_NS
 echo -n "Cgroup device: " && is_enabled CONFIG_CGROUP_DEVICE
 echo -n "Cgroup sched: " && is_enabled CONFIG_CGROUP_SCHED
 echo -n "Cgroup cpu account: " && is_enabled CONFIG_CGROUP_CPUACCT
 echo -n "Cgroup memory controller: " && is_enabled CONFIG_CGROUP_MEM_RES_CTLR
-echo -n "Cgroup cpuset: " && is_enabled CONFIG_CPUSETS
+is_set CONFIG_SMP && echo -n "Cgroup cpuset: " && is_enabled CONFIG_CPUSETS
 echo
 echo "--- Misc ---"
 echo -n "Veth pair device: " && is_enabled CONFIG_VETH
