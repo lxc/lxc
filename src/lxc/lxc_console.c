@@ -100,11 +100,43 @@ static void sigwinch(int sig)
 	winsz();
 }
 
+static int setup_tios(int fd, struct termios *newtios, struct termios *oldtios)
+{
+	if (isatty(fd)) {
+		ERROR("'%d' is not a tty", fd);
+		return -1;
+	}
+
+	/* Get current termios */
+	if (tcgetattr(0, oldtios)) {
+		SYSERROR("failed to get current terminal settings");
+		return -1;
+	}
+
+	*newtios = *oldtios;
+
+	/* Remove the echo characters and signal reception, the echo
+	 * will be done below with master proxying */
+	newtios->c_iflag &= ~IGNBRK;
+	newtios->c_iflag &= BRKINT;
+	newtios->c_lflag &= ~(ECHO|ICANON|ISIG);
+	newtios->c_cc[VMIN] = 1;
+	newtios->c_cc[VTIME] = 0;
+
+	/* Set new attributes */
+	if (tcsetattr(0, TCSAFLUSH, newtios)) {
+		ERROR("failed to set new terminal settings");
+		return -1;
+	}
+
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	int wait4q = 0;
 	int err;
-	struct termios tios, oldtios;
+	struct termios newtios, oldtios;
 
 	err = lxc_arguments_parse(&my_args, argc, argv);
 	if (err)
@@ -114,27 +146,8 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	/* Get current termios */
-	if (tcgetattr(0, &tios)) {
-		ERROR("failed to get current terminal settings : %s",
-		      strerror(errno));
-		return -1;
-	}
-
-	oldtios = tios;
-
-	/* Remove the echo characters and signal reception, the echo
-	 * will be done below with master proxying */
-	tios.c_iflag &= ~IGNBRK;
-	tios.c_iflag &= BRKINT;
-	tios.c_lflag &= ~(ECHO|ICANON|ISIG);
-	tios.c_cc[VMIN] = 1;
-	tios.c_cc[VTIME] = 0;
-
-	/* Set new attributes */
-	if (tcsetattr(0, TCSAFLUSH, &tios)) {
-		ERROR("failed to set new terminal settings : %s",
-		      strerror(errno));
+	if (setup_tios(0, &newtios, &oldtios)) {
+		ERROR("failed to setup tios");
 		return -1;
 	}
 
@@ -145,8 +158,14 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "\nType <Ctrl+%c q> to exit the console\n",
                 'a' + my_args.escape - 1);
 
-	setsid();
-	signal(SIGWINCH, sigwinch);
+	if (setsid())
+		INFO("already group leader");
+
+	if (signal(SIGWINCH, sigwinch) == SIG_ERR) {
+		SYSERROR("failed to set SIGWINCH handler");
+		return -1;
+	}
+
 	winsz();
 
 	err = 0;
