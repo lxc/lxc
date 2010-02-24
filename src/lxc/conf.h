@@ -158,6 +158,7 @@ struct lxc_console {
 	int master;
 	int peer;
 	char name[MAXPATHLEN];
+	struct termios *tios;
 };
 
 /*

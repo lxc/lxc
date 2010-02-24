@@ -22,6 +22,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -140,6 +141,8 @@ out_close:
 
 int lxc_create_console(struct lxc_console *console)
 {
+	struct termios tios;
+
 	if (openpty(&console->master, &console->slave,
 		    console->name, NULL, NULL)) {
 		SYSERROR("failed to allocate a pty");
@@ -156,7 +159,41 @@ int lxc_create_console(struct lxc_console *console)
 		goto err;
 	}
 
+	if (!isatty(console->peer))
+		return 0;
+
+	console->tios = malloc(sizeof(tios));
+	if (!console->tios) {
+		SYSERROR("failed to allocate memory");
+		goto err;
+	}
+
+	/* Get termios */
+	if (tcgetattr(console->peer, console->tios)) {
+		SYSERROR("failed to get current terminal settings");
+		goto err_free;
+	}
+
+	tios = *console->tios;
+
+	/* Remove the echo characters and signal reception, the echo
+	 * will be done below with master proxying */
+	tios.c_iflag &= ~IGNBRK;
+	tios.c_iflag &= BRKINT;
+	tios.c_lflag &= ~(ECHO|ICANON|ISIG);
+	tios.c_cc[VMIN] = 1;
+	tios.c_cc[VTIME] = 0;
+
+	/* Set new attributes */
+	if (tcsetattr(console->peer, TCSAFLUSH, &tios)) {
+		ERROR("failed to set new terminal settings");
+		goto err_free;
+	}
+
 	return 0;
+
+err_free:
+	free(console->tios);
 err:
 	close(console->master);
 	close(console->slave);
@@ -165,6 +202,9 @@ err:
 
 void lxc_delete_console(const struct lxc_console *console)
 {
+	if (console->tios &&
+	    tcsetattr(console->peer, TCSAFLUSH, console->tios))
+		WARN("failed to set old terminal settings");
 	close(console->master);
 	close(console->slave);
 }
