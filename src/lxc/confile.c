@@ -132,15 +132,15 @@ static int config_network_type(const char *key, char *value,
 	lxc_list_add(network, list);
 
 	if (!strcmp(value, "veth"))
-		netdev->type = VETH;
+		netdev->type = LXC_NET_VETH;
 	else if (!strcmp(value, "macvlan"))
-		netdev->type = MACVLAN;
+		netdev->type = LXC_NET_MACVLAN;
 	else if (!strcmp(value, "vlan"))
-		netdev->type = VLAN;
+		netdev->type = LXC_NET_VLAN;
 	else if (!strcmp(value, "phys"))
-		netdev->type = PHYS;
+		netdev->type = LXC_NET_PHYS;
 	else if (!strcmp(value, "empty"))
-		netdev->type = EMPTY;
+		netdev->type = LXC_NET_EMPTY;
 	else {
 		ERROR("invalid network type %s", value);
 		return -1;

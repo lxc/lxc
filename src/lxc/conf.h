@@ -29,12 +29,12 @@
 #include <lxc/list.h>
 
 enum {
-	EMPTY,
-	VETH,
-	MACVLAN,
-	PHYS,
-	VLAN,
-	MAXCONFTYPE,
+	LXC_NET_EMPTY,
+	LXC_NET_VETH,
+	LXC_NET_MACVLAN,
+	LXC_NET_PHYS,
+	LXC_NET_VLAN,
+	LXC_NET_MAXCONFTYPE,
 };
 
 /*

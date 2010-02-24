@@ -104,12 +104,12 @@ static int instanciate_vlan(struct lxc_netdev *);
 static int instanciate_phys(struct lxc_netdev *);
 static int instanciate_empty(struct lxc_netdev *);
 
-static  instanciate_cb netdev_conf[MAXCONFTYPE + 1] = {
-	[VETH]    = instanciate_veth,
-	[MACVLAN] = instanciate_macvlan,
-	[VLAN]    = instanciate_vlan,
-	[PHYS]    = instanciate_phys,
-	[EMPTY]   = instanciate_empty,
+static  instanciate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
+	[LXC_NET_VETH]    = instanciate_veth,
+	[LXC_NET_MACVLAN] = instanciate_macvlan,
+	[LXC_NET_VLAN]    = instanciate_vlan,
+	[LXC_NET_PHYS]    = instanciate_phys,
+	[LXC_NET_EMPTY]   = instanciate_empty,
 };
 
 static struct mount_opt mount_opt[] = {
@@ -1241,7 +1241,7 @@ int lxc_create_network(struct lxc_list *network)
 
 		netdev = iterator->elem;
 
-		if (netdev->type < 0 || netdev->type > MAXCONFTYPE) {
+		if (netdev->type < 0 || netdev->type > LXC_NET_MAXCONFTYPE) {
 			ERROR("invalid network configuration type '%d'",
 			      netdev->type);
 			return -1;
