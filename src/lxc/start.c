@@ -207,7 +207,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 		goto out_aborting;
 	}
 
-	if (lxc_create_console(&conf->console)) {
+	if (lxc_create_console(conf)) {
 		ERROR("failed to create console");
 		goto out_delete_tty;
 	}

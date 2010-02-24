@@ -139,9 +139,13 @@ out_close:
 	return 1;
 }
 
-int lxc_create_console(struct lxc_console *console)
+int lxc_create_console(struct lxc_conf *conf)
 {
 	struct termios tios;
+	struct lxc_console *console = &conf->console;
+
+	if (!conf->rootfs)
+		return 0;
 
 	if (openpty(&console->master, &console->slave,
 		    console->name, NULL, NULL)) {
@@ -238,6 +242,11 @@ int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
 {
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_console *console = &conf->console;
+
+	if (!conf->rootfs) {
+		INFO("no rootfs, no console.");
+		return 0;
+	}
 
 	if (lxc_mainloop_add_handler(descr, console->master,
 				     console_handler, console)) {
