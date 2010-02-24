@@ -67,6 +67,10 @@ lxc_log_define(lxc_conf, lxc);
 #define MS_REC 16384
 #endif
 
+#ifndef MNT_DETACH
+#define MNT_DETACH 2
+#endif
+
 #ifndef CAP_SETFCAP
 #define CAP_SETFCAP 31
 #endif
@@ -532,6 +536,7 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 
 		lxc_list_for_each(iterator, &mountlist) {
 
+			/* umount normally */
 			if (!umount(iterator->elem)) {
 				DEBUG("umounted '%s'", (char *)iterator->elem);
 				lxc_list_del(iterator);
@@ -544,24 +549,38 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	} while (still_mounted > 0 && still_mounted != last_still_mounted);
 
 
-	lxc_list_for_each(iterator, &mountlist)
-		WARN("failed to unmount '%s'", (char *)iterator->elem);
+	lxc_list_for_each(iterator, &mountlist) {
 
-	/* umount old root fs */
-	if (umount(pivotdir)) {
+		/* let's try a lazy umount */
+		if (!umount2(iterator->elem, MNT_DETACH)) {
+			INFO("lazy unmount of '%s'", (char *)iterator->elem);
+			continue;
+		}
+
+		/* be more brutal (nfs) */
+		if (!umount2(iterator->elem, MNT_FORCE)) {
+			INFO("forced unmount of '%s'", (char *)iterator->elem);
+			continue;
+		}
+
+		WARN("failed to unmount '%s'", (char *)iterator->elem);
+	}
+
+	/* umount old root fs; if some other mount points are still
+	 * there, we won't be able to umount it, so we have to do
+	 * that in a lazy way otherwise the container will always
+	 * fail to start
+	 */
+	if (umount2(pivotdir, MNT_DETACH)) {
 		SYSERROR("could not unmount old rootfs");
 		return -1;
 	}
 	DEBUG("umounted '%s'", pivotdir);
 
-	/* remove temporary mount point */
-	if (pivotdir_is_temp) {
-		if (rmdir(pivotdir)) {
-			SYSERROR("can't remove temporary mountpoint");
-			return -1;
-		}
-
-	}
+	/* remove temporary mount point, we don't consider the removing
+	 * as fatal */
+	if (pivotdir_is_temp && rmdir(pivotdir))
+		WARN("can't remove temporary mountpoint: %m");
 
 	INFO("pivoted to '%s'", rootfs);
 	return 0;
