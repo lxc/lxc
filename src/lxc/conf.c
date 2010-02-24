@@ -1265,6 +1265,10 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 
 		netdev = iterator->elem;
 
+		/* empty network namespace, nothing to move */
+		if (!netdev->ifindex)
+			continue;
+
 		if (lxc_device_move(netdev->ifindex, pid)) {
 			ERROR("failed to move '%s' to the container",
 			      netdev->link);
