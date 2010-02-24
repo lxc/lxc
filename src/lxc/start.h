@@ -23,14 +23,14 @@
 #ifndef __lxc_state_h
 #define __lxc_state_h
 
-#include <lxc/conf.h>
 #include <lxc/state.h>
+#include <sys/param.h>
+
+struct lxc_conf;
 
 struct lxc_handler {
-
 	pid_t pid;
 	lxc_state_t state;
-
 	int sigfd;
 	char nsgroup[MAXPATHLEN];
 	sigset_t oldmask;
