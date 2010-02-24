@@ -641,41 +641,42 @@ out:
 	return 0;
 }
 
-static int setup_console(const char *rootfs, const char *tty)
+static int setup_console(const char *rootfs, const struct lxc_console *console)
 {
-	char console[MAXPATHLEN];
+	char path[MAXPATHLEN];
+	struct stat s;
 
-	snprintf(console, sizeof(console), "%s/dev/console",
-		 rootfs ? rootfs : "");
+	/* We don't have a rootfs, /dev/console will be shared */
+	if (!rootfs)
+		return 0;
 
-	/* we have the rootfs with /dev/console but no tty
-	 * to be used as console, let's remap /dev/console
-	 * to /dev/null to avoid to log to the system console
-	 */
-	if (rootfs && !tty[0]) {
+	snprintf(path, sizeof(path), "%s/dev/console", rootfs);
 
-		if (!access(console, F_OK)) {
-
-			if (mount("/dev/null", console, "none", MS_BIND, 0)) {
-				SYSERROR("failed to mount '/dev/null'->'%s'",
-					 console);
-				return -1;
-			}
-		}
+	if (access(path, F_OK)) {
+		WARN("rootfs specified but no console found");
+		return 0;
 	}
 
-	if (!tty[0])
-		return 0;
+	if (console->peer == -1)
+		INFO("no console output required");
 
-	if (access(console, R_OK|W_OK))
-		return 0;
-
-	if (mount(tty, console, "none", MS_BIND, 0)) {
-		ERROR("failed to mount the console");
+	if (stat(path, &s)) {
+		SYSERROR("failed to stat '%s'", path);
 		return -1;
 	}
 
-	INFO("console '%s' mounted to '%s'", tty, console);
+	if (chmod(console->name, s.st_mode)) {
+		SYSERROR("failed to set mode '0%o' to '%s'",
+			 s.st_mode, console->name);
+		return -1;
+	}
+
+	if (mount(console->name, path, "none", MS_BIND, 0)) {
+		ERROR("failed to mount '%s' on '%s'", console->name, path);
+		return -1;
+	}
+
+	INFO("console has been setup");
 
 	return 0;
 }
@@ -1073,7 +1074,10 @@ struct lxc_conf *lxc_conf_init(void)
 	new->utsname = NULL;
 	new->tty = 0;
 	new->pts = 0;
-	new->console[0] = '\0';
+	new->console.peer = -1;
+	new->console.master = -1;
+	new->console.slave = -1;
+	new->console.name[0] = '\0';
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
@@ -1365,7 +1369,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_console(lxc_conf->rootfs, lxc_conf->console)) {
+	if (setup_console(lxc_conf->rootfs, &lxc_conf->console)) {
 		ERROR("failed to setup the console for '%s'", name);
 		return -1;
 	}

@@ -149,11 +149,31 @@ struct lxc_tty_info {
 };
 
 /*
+ * Defines the structure to store the console information
+ * @peer   : the file descriptor put/get console traffic
+ * @name   : the file name of the slave pty
+ */
+struct lxc_console {
+	int slave;
+	int master;
+	int peer;
+	char name[MAXPATHLEN];
+};
+
+/*
  * Defines the global container configuration
- * @rootfs  : the root directory to run the container
- * @mount   : the list of mount points
- * @network : the network configuration
- * @utsname : the container utsname
+ * @rootfs     : root directory to run the container
+ * @pivotdir   : pivotdir path, if not set default will be used
+ * @mount      : list of mount points
+ * @tty        : numbers of tty
+ * @pts        : new pts instance
+ * @mount_list : list of mount point (alternative to fstab file)
+ * @network    : network configuration
+ * @utsname    : container utsname
+ * @fstab      : path to a fstab file format
+ * @caps       : list of the capabilities
+ * @tty_info   : tty data
+ * @console    : console data
  */
 struct lxc_conf {
 	char *rootfs;
@@ -167,7 +187,7 @@ struct lxc_conf {
 	struct lxc_list mount_list;
 	struct lxc_list caps;
 	struct lxc_tty_info tty_info;
-	char console[MAXPATHLEN];
+	struct lxc_console console;
 };
 
 /*

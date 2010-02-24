@@ -25,6 +25,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <pty.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/utsname.h>
@@ -59,6 +62,7 @@ static int config_network_mtu(const char *, char *, struct lxc_conf *);
 static int config_network_ipv4(const char *, char *, struct lxc_conf *);
 static int config_network_ipv6(const char *, char *, struct lxc_conf *);
 static int config_cap_drop(const char *, char *, struct lxc_conf *);
+static int config_console(const char *, char *, struct lxc_conf *);
 
 typedef int (*config_cb)(const char *, char *, struct lxc_conf *);
 
@@ -88,6 +92,7 @@ static struct config config[] = {
 	{ "lxc.network.ipv4",         config_network_ipv4         },
 	{ "lxc.network.ipv6",         config_network_ipv6         },
 	{ "lxc.cap.drop",             config_cap_drop             },
+	{ "lxc.console",              config_console              },
 };
 
 static const size_t config_size = sizeof(config)/sizeof(struct config);
@@ -613,6 +618,21 @@ static int config_cap_drop(const char *key, char *value,
 	free(dropcaps);
 
 	return ret;
+}
+
+static int config_console(const char *key, char *value, struct lxc_conf *lxc_conf)
+{
+	int fd;
+
+	fd = open(value, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600);
+	if (fd < 0) {
+		SYSERROR("failed to open '%s'", value);
+		return -1;
+	}
+
+	lxc_conf->console.peer = fd;
+
+	return 0;
 }
 
 static int config_rootfs(const char *key, char *value, struct lxc_conf *lxc_conf)

@@ -43,6 +43,7 @@
 #include "log.h"
 #include "lxc.h"
 #include "conf.h"
+#include "cgroup.h"
 #include "utils.h"
 #include "config.h"
 #include "confile.h"
@@ -87,50 +88,10 @@ Options :\n\
 	.daemonize = 0,
 };
 
-static int save_tty(struct termios *tios)
-{
-	if (!isatty(0))
-		return 0;
-
-	if (tcgetattr(0, tios))
-		WARN("failed to get current terminal settings : %s",
-		     strerror(errno));
-
-	return 0;
-}
-
-static int restore_tty(struct termios *tios)
-{
-	struct termios current_tios;
-	void (*oldhandler)(int);
-	int ret;
-
-	if (!isatty(0))
-		return 0;
-
-	if (tcgetattr(0, &current_tios)) {
-		ERROR("failed to get current terminal settings : %s",
-		      strerror(errno));
-		return -1;
-	}
-
-	if (!memcmp(tios, &current_tios, sizeof(*tios)))
-		return 0;
-
-	oldhandler = signal(SIGTTOU, SIG_IGN);
-	ret = tcsetattr(0, TCSADRAIN, tios);
-	if (ret)
-		ERROR("failed to restore terminal attributes");
-	signal(SIGTTOU, oldhandler);
-
-	return ret;
-}
-
 int main(int argc, char *argv[])
 {
 	char *const *args;
 	int err = -1;
-	struct termios tios;
 
 	char *const default_args[] = {
 		"/sbin/init",
@@ -213,11 +174,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	save_tty(&tios);
-
 	err = lxc_start(my_args.name, args, conf);
-
-	restore_tty(&tios);
 
 	return err;
 }

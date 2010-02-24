@@ -88,19 +88,16 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #define PR_CAPBSET_DROP 24
 #endif
 
-#include <lxc/log.h>
-#include <lxc/conf.h>
-#include <lxc/confile.h>
-#include <lxc/start.h>
-#include <lxc/utils.h>
-#include <lxc/cgroup.h>
-#include <lxc/monitor.h>
-
+#include "start.h"
+#include "conf.h"
+#include "log.h"
 #include "error.h"
 #include "af_unix.h"
 #include "mainloop.h"
+#include "utils.h"
+#include "monitor.h"
 #include "commands.h"
-
+#include "console.h"
 
 lxc_log_define(lxc_start, lxc);
 
@@ -170,6 +167,11 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_open;
 	}
 
+	if (lxc_console_mainloop_add(&descr, handler)) {
+		ERROR("failed to add console handler to mainloop");
+		goto out_mainloop_open;
+	}
+
 	if (lxc_command_mainloop_add(name, &descr, handler))
 		goto out_mainloop_open;
 
@@ -180,50 +182,6 @@ out_mainloop_open:
 out_sigfd:
 	close(sigfd);
 	return -1;
-}
-
-static int fdname(int fd, char *name, size_t size)
-{
-	char path[MAXPATHLEN];
-	ssize_t len;
-
-	snprintf(path, MAXPATHLEN, "/proc/self/fd/%d", fd);
-
-	len = readlink(path, name, size);
-	if (len >  0)
-		path[len] = '\0';
-
-	return (len <= 0) ? -1 : 0;
-}
-
-static int console_init(char *console, size_t size)
-{
-	struct stat stat;
-	int i;
-
-	for (i = 0; i < 3; i++) {
-		if (!isatty(i))
-			continue;
-
-		if (ttyname_r(i, console, size)) {
-			SYSERROR("failed to retrieve tty name");
-			return -1;
-		}
-
-		return 0;
-	}
-
-	if (!fstat(0, &stat)) {
-		if (S_ISREG(stat.st_mode) || S_ISCHR(stat.st_mode) ||
-		    S_ISFIFO(stat.st_mode) || S_ISLNK(stat.st_mode))
-			return fdname(0, console, size);
-	}
-
-	console[0] = '\0';
-
-	DEBUG("console initialized");
-
-	return 0;
 }
 
 struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
@@ -244,14 +202,14 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 		goto out_free;
 	}
 
-	if (console_init(conf->console, sizeof(conf->console))) {
-		ERROR("failed to initialize the console");
-		goto out_aborting;
-	}
-
 	if (lxc_create_tty(name, conf)) {
 		ERROR("failed to create the ttys");
 		goto out_aborting;
+	}
+
+	if (lxc_create_console(&conf->console)) {
+		ERROR("failed to create console");
+		goto out_delete_tty;
 	}
 
 	/* the signal fd has to be created before forking otherwise
@@ -260,7 +218,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 	handler->sigfd = setup_sigchld_fd(&handler->oldmask);
 	if (handler->sigfd < 0) {
 		ERROR("failed to set sigchild fd handler");
-		goto out_delete_tty;
+		goto out_delete_console;
 	}
 
 	/* Avoid signals from terminal */
@@ -270,6 +228,8 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 	INFO("'%s' is initialized", name);
 	return handler;
 
+out_delete_console:
+	lxc_delete_console(&conf->console);
 out_delete_tty:
 	lxc_delete_tty(&conf->tty_info);
 out_aborting:
@@ -288,6 +248,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_set_state(name, handler, STOPPED);
 	lxc_unlink_nsgroup(name);
 
+	lxc_delete_console(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
 	free(handler);
 

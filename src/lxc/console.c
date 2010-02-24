@@ -23,7 +23,9 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
+#include <pty.h>
 #include <sys/types.h>
 #include <sys/un.h>
 
@@ -32,6 +34,7 @@
 #include <lxc/start.h> 	/* for struct lxc_handler */
 
 #include "commands.h"
+#include "mainloop.h"
 #include "af_unix.h"
 
 lxc_log_define(lxc_console, lxc);
@@ -95,7 +98,7 @@ extern void lxc_console_remove_fd(int fd, struct lxc_tty_info *tty_info)
 }
 
 extern int lxc_console_callback(int fd, struct lxc_request *request,
-			struct lxc_handler *handler)
+				struct lxc_handler *handler)
 {
 	int ttynum = request->data;
 	struct lxc_tty_info *tty_info = &handler->conf->tty_info;
@@ -135,3 +138,78 @@ out_close:
 	return 1;
 }
 
+int lxc_create_console(struct lxc_console *console)
+{
+	if (openpty(&console->master, &console->slave,
+		    console->name, NULL, NULL)) {
+		SYSERROR("failed to allocate a pty");
+		return -1;
+        }
+
+	if (fcntl(console->master, F_SETFD, FD_CLOEXEC)) {
+		SYSERROR("failed to set console master to close-on-exec");
+		goto err;
+	}
+
+	if (fcntl(console->slave, F_SETFD, FD_CLOEXEC)) {
+		SYSERROR("failed to set console slave to close-on-exec");
+		goto err;
+	}
+
+	return 0;
+err:
+	close(console->master);
+	close(console->slave);
+	return -1;
+}
+
+void lxc_delete_console(const struct lxc_console *console)
+{
+	close(console->master);
+	close(console->slave);
+}
+
+static int console_handler(int fd, void *data, struct lxc_epoll_descr *descr)
+{
+	struct lxc_console *console = (struct lxc_console *)data;
+	char buf[1024];
+	int r;
+
+	r = read(fd, buf, sizeof(buf));
+	if (r < 0) {
+		SYSERROR("failed to read");
+		return 1;
+	}
+
+	/* no output for the console, do nothing */
+	if (console->peer == -1)
+		return 0;
+
+	if (console->peer == fd)
+		write(console->master, buf, r);
+	else
+		write(console->peer, buf, r);
+
+	return 0;
+}
+
+int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
+			     struct lxc_handler *handler)
+{
+	struct lxc_conf *conf = handler->conf;
+	struct lxc_console *console = &conf->console;
+
+	if (lxc_mainloop_add_handler(descr, console->master,
+				     console_handler, console)) {
+		ERROR("failed to add to mainloop console handler for '%d'",
+		      console->master);
+		return -1;
+	}
+
+	if (console->peer != -1 &&
+	    lxc_mainloop_add_handler(descr, console->peer,
+				     console_handler, console))
+		WARN("console input disabled");
+
+	return 0;
+}
