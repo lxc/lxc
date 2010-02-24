@@ -38,10 +38,10 @@
 #include <sys/poll.h>
 #include <sys/ioctl.h>
 
-#include <lxc/error.h>
-#include <lxc/lxc.h>
-#include <lxc/log.h>
-
+#include "error.h"
+#include "lxc.h"
+#include "log.h"
+#include "mainloop.h"
 #include "arguments.h"
 
 lxc_log_define(lxc_console_ui, lxc_console);
@@ -102,7 +102,7 @@ static void sigwinch(int sig)
 
 static int setup_tios(int fd, struct termios *newtios, struct termios *oldtios)
 {
-	if (isatty(fd)) {
+	if (!isatty(fd)) {
 		ERROR("'%d' is not a tty", fd);
 		return -1;
 	}
@@ -132,21 +132,68 @@ static int setup_tios(int fd, struct termios *newtios, struct termios *oldtios)
 	return 0;
 }
 
+static int stdin_handler(int fd, void *data, struct lxc_epoll_descr *descr)
+{
+	static int wait4q = 0;
+	int *peer = (int *)data;
+	char c;
+
+	if (read(0, &c, 1) < 0) {
+		SYSERROR("failed to read");
+		return 1;
+	}
+
+	/* we want to exit the console with Ctrl+a q */
+	if (c == my_args.escape) {
+		wait4q = !wait4q;
+		return 0;
+	}
+
+	if (c == 'q' && wait4q)
+		return 1;
+
+	wait4q = 0;
+	if (write(*peer, &c, 1) < 0) {
+		SYSERROR("failed to write");
+		return 1;
+	}
+
+	return 0;
+}
+
+static int master_handler(int fd, void *data, struct lxc_epoll_descr *descr)
+{
+	char buf[1024];
+	int *peer = (int *)data;
+	int r;
+
+	r = read(fd, buf, sizeof(buf));
+	if (r < 0) {
+		SYSERROR("failed to read");
+		return 1;
+	}
+	write(*peer, buf, r);
+
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
-	int wait4q = 0;
-	int err;
+	int err, std_in = 1;
+	struct lxc_epoll_descr descr;
 	struct termios newtios, oldtios;
 
 	err = lxc_arguments_parse(&my_args, argc, argv);
 	if (err)
 		return -1;
 
-	if (lxc_log_init(my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet))
+	err = lxc_log_init(my_args.log_file, my_args.log_priority,
+			   my_args.progname, my_args.quiet);
+	if (err)
 		return -1;
 
-	if (setup_tios(0, &newtios, &oldtios)) {
+	err = setup_tios(0, &newtios, &oldtios);
+	if (err) {
 		ERROR("failed to setup tios");
 		return -1;
 	}
@@ -158,77 +205,47 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "\nType <Ctrl+%c q> to exit the console\n",
                 'a' + my_args.escape - 1);
 
-	if (setsid())
+	err = setsid();
+	if (err)
 		INFO("already group leader");
 
 	if (signal(SIGWINCH, sigwinch) == SIG_ERR) {
 		SYSERROR("failed to set SIGWINCH handler");
-		return -1;
+		err = -1;
+		goto out;
 	}
 
 	winsz();
 
-	err = 0;
-
-	/* let's proxy the tty */
-	for (;;) {
-		struct pollfd pfd[2] = {
-			{ .fd = 0,
-			  .events = POLLIN|POLLPRI,
-			  .revents = 0 },
-			{ .fd = master,
-			  .events = POLLIN|POLLPRI,
-			  .revents = 0 },
-		};
-
-		if (poll(pfd, 2, -1) < 0) {
-			if (errno == EINTR)
-				continue;
-			SYSERROR("failed to poll");
-			goto out_err;
-		}
-		
-		/* read the "stdin" and write that to the master
-		 */
-		if (pfd[0].revents & POLLIN) {
-			char c;
-			if (read(0, &c, 1) < 0) {
-				SYSERROR("failed to read");
-				goto out_err;
-			}
-
-			/* we want to exit the console with Ctrl+a q */
-			if (c == my_args.escape) {
-				wait4q = !wait4q;
-				continue;
-			}
-
-			if (c == 'q' && wait4q)
-				goto out;
-
-			wait4q = 0;
-			if (write(master, &c, 1) < 0) {
-				SYSERROR("failed to write");
-				goto out_err;
-			}
-		}
-
-		/* other side has closed the connection */
-		if (pfd[1].revents & POLLHUP)
-			goto out;
-
-		/* read the master and write to "stdout" */
-		if (pfd[1].revents & POLLIN) {
-			char buf[1024];
-			int r;
-			r = read(master, buf, sizeof(buf));
-			if (r < 0) {
-				SYSERROR("failed to read");
-				goto out_err;
-			}
-			write(1, buf, r);
-		}
+	err = lxc_mainloop_open(&descr);
+	if (err) {
+		ERROR("failed to create mainloop");
+		goto out;
 	}
+
+	err = lxc_mainloop_add_handler(&descr, 0, stdin_handler, &master);
+	if (err) {
+		ERROR("failed to add handler for the stdin");
+		goto out_mainloop_open;
+	}
+
+	err = lxc_mainloop_add_handler(&descr, master, master_handler, &std_in);
+	if (err) {
+		ERROR("failed to add handler for the master");
+		goto out_mainloop_open;
+	}
+
+	err = lxc_mainloop(&descr);
+	if (err) {
+		ERROR("mainloop returned an error");
+		goto out_mainloop_open;
+	}
+
+	err =  0;
+
+out_mainloop_open:
+	lxc_mainloop_close(&descr);
+
 out:
 	/* Restore previous terminal parameter */
 	tcsetattr(0, TCSAFLUSH, &oldtios);
@@ -239,8 +256,4 @@ out:
 	close(master);
 
 	return err;
-
-out_err:
-	err = -1;
-	goto out;
 }
