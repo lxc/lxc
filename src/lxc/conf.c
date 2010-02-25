@@ -1279,6 +1279,18 @@ int lxc_create_network(struct lxc_list *network)
 	return 0;
 }
 
+void lxc_delete_network(struct lxc_list *network)
+{
+	struct lxc_list *iterator;
+	struct lxc_netdev *netdev;
+
+	lxc_list_for_each(iterator, network) {
+		netdev = iterator->elem;
+		if (netdev->ifindex > 0)
+			lxc_device_delete_index(netdev->ifindex);
+	}
+}
+
 int lxc_assign_network(struct lxc_list *network, pid_t pid)
 {
 	struct lxc_list *iterator;

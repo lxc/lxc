@@ -197,6 +197,7 @@ struct lxc_conf {
 extern struct lxc_conf *lxc_conf_init(void);
 
 extern int lxc_create_network(struct lxc_list *networks);
+extern void lxc_delete_network(struct lxc_list *networks);
 extern int lxc_assign_network(struct lxc_list *networks, pid_t pid);
 
 extern int lxc_create_tty(const char *name, struct lxc_conf *conf);

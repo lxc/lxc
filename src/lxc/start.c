@@ -367,7 +367,7 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	handler->pid = lxc_clone(do_start, &start_arg, clone_flags);
 	if (handler->pid < 0) {
 		SYSERROR("failed to fork into a new namespace");
-		goto out_close;
+		goto out_delete_net;
 	}
 
 	close(sv[0]);
@@ -375,17 +375,17 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	/* Wait for the child to be ready */
 	if (read(sv[1], &sync, sizeof(sync)) < 0) {
 		SYSERROR("failed to read the socket");
-		goto out_abort;
+		goto out_delete_net;
 	}
 
 	if (lxc_rename_nsgroup(name, handler))
-		goto out_abort;
+		goto out_delete_net;
 
 	/* Create the network configuration */
 	if (clone_flags & CLONE_NEWNET) {
 		if (lxc_assign_network(&handler->conf->network, handler->pid)) {
 			ERROR("failed to create the configured network");
-			goto out_abort;
+			goto out_delete_net;
 		}
 	}
 
@@ -416,6 +416,9 @@ out_close:
 	close(sv[1]);
 	return err;
 
+out_delete_net:
+	if (clone_flags & CLONE_NEWNET)
+		lxc_delete_network(&handler->conf->network);
 out_abort:
 	lxc_abort(name, handler);
 	close(sv[1]);
