@@ -170,6 +170,42 @@ out:
 	return err;
 }
 
+int lxc_device_delete_index(int ifindex)
+{
+	struct nl_handler nlh;
+	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	struct link_req *link_req;
+	int err = -1;
+
+	if (netlink_open(&nlh, NETLINK_ROUTE))
+		return -1;
+
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		goto out;
+
+	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!answer)
+		goto out;
+
+	link_req = (struct link_req *)nlmsg;
+	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
+	link_req->ifinfomsg.ifi_index = ifindex;
+	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_ACK|NLM_F_REQUEST;
+	nlmsg->nlmsghdr.nlmsg_type = RTM_DELLINK;
+
+	if (netlink_transaction(&nlh, nlmsg, answer))
+		goto out;
+
+	err = 0;
+out:
+	netlink_close(&nlh);
+	nlmsg_free(answer);
+	nlmsg_free(nlmsg);
+	return err;
+}
+
 static int device_set_flag(const char *name, int flag)
 {
 	struct nl_handler nlh;

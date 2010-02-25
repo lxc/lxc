@@ -39,6 +39,11 @@ extern int lxc_device_move(int ifindex, pid_t pid);
 extern int lxc_device_delete(const char *name);
 
 /*
+ * Delete a network device by the index
+ */
+extern int lxc_device_delete_index(int ifindex);
+
+/*
  * Set the device network up
  */
 extern int lxc_device_up(const char *name);
