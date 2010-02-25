@@ -123,7 +123,7 @@ out:
 	return err;
 }
 
-extern int lxc_device_delete(const char *name)
+int lxc_device_delete(const char *name)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -253,7 +253,7 @@ out:
 	return err;
 }
 
-extern int lxc_device_set_mtu(const char *name, int mtu)
+int lxc_device_set_mtu(const char *name, int mtu)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
