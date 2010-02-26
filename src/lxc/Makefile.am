@@ -1,5 +1,6 @@
 pkginclude_HEADERS = \
 		start.h \
+		console.h \
 		error.h \
 		monitor.h \
 		utils.h \
