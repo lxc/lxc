@@ -261,7 +261,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 void lxc_abort(const char *name, struct lxc_handler *handler)
 {
 	lxc_set_state(name, handler, ABORTING);
-	kill(handler->pid, SIGKILL);
+	if (handler->pid > 0)
+		kill(handler->pid, SIGKILL);
 }
 
 struct start_arg {
