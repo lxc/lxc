@@ -1000,7 +1000,7 @@ static int setup_netdev(struct lxc_netdev *netdev)
 
 	/* rename the interface name */
 	if (lxc_device_rename(ifname, netdev->name)) {
-		ERROR("failed to rename %s->%s", ifname, current_ifname);
+		ERROR("failed to rename %s->%s", ifname, netdev->name);
 		return -1;
 	}
 
