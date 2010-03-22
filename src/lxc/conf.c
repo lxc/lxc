@@ -1093,6 +1093,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->utsname = NULL;
 	new->tty = 0;
 	new->pts = 0;
+	new->console.path = NULL;
 	new->console.peer = -1;
 	new->console.master = -1;
 	new->console.slave = -1;

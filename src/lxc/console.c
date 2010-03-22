@@ -143,6 +143,7 @@ int lxc_create_console(struct lxc_conf *conf)
 {
 	struct termios tios;
 	struct lxc_console *console = &conf->console;
+	int fd;
 
 	if (!conf->rootfs)
 		return 0;
@@ -162,6 +163,14 @@ int lxc_create_console(struct lxc_conf *conf)
 		SYSERROR("failed to set console slave to close-on-exec");
 		goto err;
 	}
+
+	fd = open(console->path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600);
+	if (fd < 0) {
+		SYSERROR("failed to open '%s'", console->path);
+		goto err;
+	}
+
+	console->peer = fd;
 
 	if (!isatty(console->peer))
 		return 0;

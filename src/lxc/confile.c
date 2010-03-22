@@ -620,7 +620,7 @@ static int config_cap_drop(const char *key, char *value,
 	return ret;
 }
 
-static int config_console(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int _config_console(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	int fd;
 
@@ -631,6 +631,22 @@ static int config_console(const char *key, char *value, struct lxc_conf *lxc_con
 	}
 
 	lxc_conf->console.peer = fd;
+
+	return 0;
+}
+
+static int config_console(const char *key, char *value,
+			  struct lxc_conf *lxc_conf)
+{
+	char *path;
+
+	path = strdup(value);
+	if (!path) {
+		SYSERROR("failed to strdup '%s': %m", value);
+		return -1;
+	}
+
+	lxc_conf->console.path = path;
 
 	return 0;
 }
