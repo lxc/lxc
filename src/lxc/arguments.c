@@ -207,10 +207,6 @@ extern char **lxc_arguments_dup(const char *file, struct lxc_arguments *args)
 	char **argv;
 	int opt, nbargs = args->argc + 2;
 
-	if (args->log_file)
-		nbargs += 2;
-	if (args->log_priority)
-		nbargs += 2;
 	if (args->quiet)
 		nbargs += 1;
 
@@ -221,16 +217,6 @@ extern char **lxc_arguments_dup(const char *file, struct lxc_arguments *args)
 	nbargs = 0;
 
 	argv[nbargs++] = strdup(file);
-
-	if (args->log_file) {
-		argv[nbargs++] = "--logfile";
-		argv[nbargs++] = strdup(args->log_file);
-	}
-
-	if (args->log_priority) {
-		argv[nbargs++] = "--logpriority";
-		argv[nbargs++] = strdup(args->log_priority);
-	}
 
 	if (args->quiet)
 		argv[nbargs++] = "--quiet";

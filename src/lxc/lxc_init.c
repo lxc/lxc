@@ -38,13 +38,9 @@
 
 lxc_log_define(lxc_init, lxc);
 
-static char const *log_file;
-static char const *log_priority;
 static int quiet;
 
 static struct option options[] = {
-	{ "logfile", required_argument, 0, 'o' },
-	{ "logpriority", required_argument, 0, 'l' },
 	{ "quiet", no_argument, &quiet, 1 },
 	{ 0, 0, 0, 0 },
 };
@@ -61,16 +57,13 @@ int main(int argc, char *argv[])
 		if (ret == -1) {
 			break;
 		}
-		switch (ret) {
-		case 'o':	log_file = optarg; break;
-		case 'l':	log_priority = optarg; break;
-		case '?':
+		if  (ret == '?')
 			exit(err);
-		}
+
 		nbargs++;
 	}
 
-	if (lxc_log_init(log_file, log_priority, basename(argv[0]), quiet))
+	if (lxc_log_init(NULL, 0, basename(argv[0]), quiet))
 		exit(err);
 
 	if (!argv[optind]) {
