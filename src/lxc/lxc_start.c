@@ -163,9 +163,9 @@ int main(int argc, char *argv[])
 			return err;
 		}
 
-		lxc_close_inherited_fd(0);
-		lxc_close_inherited_fd(1);
-		lxc_close_inherited_fd(2);
+		close(0);
+		close(1);
+		close(2);
 
 		if (my_args.log_file) {
 			open(my_args.log_file, O_WRONLY | O_CLOEXEC);

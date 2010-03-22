@@ -34,7 +34,6 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-#include "list.h"
 #include "log.h"
 
 lxc_log_define(lxc_utils, lxc);
@@ -108,131 +107,6 @@ out:
 err:
 	unlink(dstfile);
 	goto out_mmap;
-}
-
-struct lxc_fd_entry {
-	int fd;
-	struct lxc_list list;
-};
-
-struct lxc_list lxc_fd_list;
-
-static int fd_list_add(int fd)
-{
-	struct lxc_fd_entry *entry;
-
-	entry = malloc(sizeof(struct lxc_fd_entry));
-	if (!entry) {
-		SYSERROR("malloc");
-		return -1;
-	}
-
-	entry->fd = fd;
-	entry->list.elem = entry;
-	lxc_list_add(&lxc_fd_list, &entry->list);
-
-	return 0;
-}
-
-static void fd_list_del(struct lxc_fd_entry *entry)
-{
-	lxc_list_del(&entry->list);
-	free(entry);
-}
-
-static void __attribute__((constructor)) __lxc_fd_collect_inherited(void)
-{
-	struct dirent dirent, *direntp;
-	int fd, fddir;
-	DIR *dir;
-
-	lxc_list_init(&lxc_fd_list);
-
-	dir = opendir("/proc/self/fd");
-	if (!dir) {
-		WARN("failed to open directory: %s", strerror(errno));
-		return;
-	}
-
-	fddir = dirfd(dir);
-
-	while (!readdir_r(dir, &dirent, &direntp)) {
-
-		if (!direntp)
-			break;
-
-		if (!strcmp(direntp->d_name, "."))
-			continue;
-
-		if (!strcmp(direntp->d_name, ".."))
-			continue;
-
-		fd = atoi(direntp->d_name);
-
-		if (fd == fddir)
-			continue;
-
-		if (fd_list_add(fd))
-			WARN("failed to add fd '%d' to the list", fd);
-	}
-
-	if (closedir(dir))
-		WARN("failed to close directory");
-}
-
-int lxc_close_inherited_fd(int fd)
-{
-	struct lxc_fd_entry *entry;
-	struct lxc_list *iterator;
-
-	lxc_list_for_each(iterator, &lxc_fd_list) {
-
-		entry = iterator->elem;
-
-		if (entry->fd != fd)
-			continue;
-
-		fd_list_del(entry);
-
-		break;
-	}
-
-	DEBUG("closing fd '%d'", fd);
-
-	return close(fd);
-}
-
-int lxc_close_all_inherited_fd(void)
-{
-	struct lxc_fd_entry *entry;
-	struct lxc_list *iterator;
-
-again:
-	lxc_list_for_each(iterator, &lxc_fd_list) {
-
-		entry = iterator->elem;
-
-		/* do not close the stderr fd to keep open default
-		 * error reporting path.
-		 */
-		if (entry->fd == 2 && isatty(entry->fd)) {
-			fd_list_del(entry);
-			continue;
-		}
-
-		DEBUG("closing fd '%d'", entry->fd);
-
-		if (close(entry->fd))
-			WARN("failed to close fd '%d': %s", entry->fd,
-			     strerror(errno));
-
-		fd_list_del(entry);
-		goto again;
-	}
-
-	DEBUG("closed all inherited file descriptors");
-
-	return 0;
 }
 
 static int mount_fs(const char *source, const char *target, const char *type)

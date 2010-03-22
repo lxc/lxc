@@ -33,9 +33,7 @@
 #define _GNU_SOURCE
 #include <getopt.h>
 
-#include <lxc/lxc.h>
 #include <lxc/log.h>
-#include <lxc/utils.h>
 #include <lxc/error.h>
 
 lxc_log_define(lxc_init, lxc);
@@ -98,12 +96,6 @@ int main(int argc, char *argv[])
 		execvp(aargv[0], aargv);
 		ERROR("failed to exec: '%s' : %s", aargv[0], strerror(errno));
 		exit(err);
-	}
-
-	err = lxc_close_all_inherited_fd();
-	if (err) {
-		ERROR("unable to close inherited fds");
-		goto out;
 	}
 
 	err = 0;

@@ -106,6 +106,64 @@ lxc_log_define(lxc_start, lxc);
 LXC_TTY_HANDLER(SIGINT);
 LXC_TTY_HANDLER(SIGQUIT);
 
+static int match_fd(int fd)
+{
+	return (fd == 0 || fd == 1 || fd == 2);
+}
+
+int lxc_check_inherited(void)
+{
+	struct dirent dirent, *direntp;
+	int fd, fddir;
+	DIR *dir;
+	int ret = 0;
+
+	dir = opendir("/proc/self/fd");
+	if (!dir) {
+		WARN("failed to open directory: %m");
+		return -1;
+	}
+
+	fddir = dirfd(dir);
+
+	while (!readdir_r(dir, &dirent, &direntp)) {
+		char procpath[64];
+		char path[PATH_MAX];
+
+		if (!direntp)
+			break;
+
+		if (!strcmp(direntp->d_name, "."))
+			continue;
+
+		if (!strcmp(direntp->d_name, ".."))
+			continue;
+
+		fd = atoi(direntp->d_name);
+
+		if (fd == fddir || fd == lxc_log_fd)
+			continue;
+
+		if (match_fd(fd))
+			continue;
+		/*
+		 * found inherited fd
+		 */
+		ret = -1;
+
+		snprintf(procpath, sizeof(procpath), "/proc/self/fd/%d", fd);
+
+		if (readlink(procpath, path, sizeof(path)) == -1)
+			ERROR("readlink(%s) failed : %m", procpath);
+		else
+			ERROR("inherited fd %d on %s", fd, path);
+	}
+
+	if (closedir(dir))
+		ERROR("failed to close directory");
+	return ret;
+}
+
 static int setup_sigchld_fd(sigset_t *oldmask)
 {
 	sigset_t mask;
@@ -432,6 +490,9 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 	int err = -1;
 	int status;
 
+	if (lxc_check_inherited())
+		return -1;
+
 	handler = lxc_init(name, conf);
 	if (!handler) {
 		ERROR("failed to initialize the container");
@@ -442,12 +503,6 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 	if (err) {
 		ERROR("failed to spawn '%s'", argv[0]);
 		goto out_fini;
-	}
-
-	err = lxc_close_all_inherited_fd();
-	if (err) {
-		ERROR("unable to close inherited fds");
-		goto out_abort;
 	}
 
 	err = lxc_poll(name, handler);
