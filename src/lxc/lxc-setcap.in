@@ -25,6 +25,7 @@
 # When the capabilities are set, a non root user can manage the containers.
 #
 
+LXC_ATTACH_CAP="cap_sys_admin"
 LXC_CREATE_CAPS="cap_sys_admin"
 LXC_NETSTAT_CAPS="cap_sys_admin"
 LXC_INIT_CAPS="cap_sys_admin,cap_dac_override"
@@ -34,7 +35,6 @@ LXC_START_CAPS="$LXC_COMMON_CAPS,cap_fowner,cap_sys_chroot,cap_setpcap"
 LXC_EXECUTE_CAPS=$LXC_START_CAPS
 LXC_RESTART_CAPS="$LXC_START_CAPS,cap_mknod"
 LXC_CHECKPOINT_CAPS="$LXC_COMMON_CAPS,cap_sys_ptrace,cap_mknod"
-
 LXC_DROP_CAPS=""
 
 usage()
@@ -44,6 +44,7 @@ usage()
 
 lxc_setcaps()
 {
+    setcap $LXC_ATTACH_CAPS=ep @BINDIR@/lxc-attach
     setcap $LXC_CREATE_CAPS=ep @BINDIR@/lxc-create
     setcap $LXC_EXECUTE_CAPS=ep @BINDIR@/lxc-execute
     setcap $LXC_START_CAPS=ep @BINDIR@/lxc-start

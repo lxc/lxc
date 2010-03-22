@@ -67,6 +67,7 @@ bin_SCRIPTS = \
 	lxc-destroy
 
 bin_PROGRAMS = \
+	lxc-attach \
 	lxc-unshare \
 	lxc-stop \
 	lxc-start \
@@ -87,6 +88,7 @@ libexec_PROGRAMS = \
 AM_LDFLAGS=-Wl,-E -Wl,-rpath -Wl,$(libdir)
 LDADD=liblxc.so
 
+lxc_attach_SOURCES = lxc_attach.c
 lxc_cgroup_SOURCES = lxc_cgroup.c
 lxc_checkpoint_SOURCES = lxc_checkpoint.c
 lxc_console_SOURCES = lxc_console.c

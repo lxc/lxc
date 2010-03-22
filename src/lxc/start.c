@@ -204,6 +204,28 @@ static int sigchld_handler(int fd, void *data,
 	return 1;
 }
 
+int lxc_pid_callback(int fd, struct lxc_request *request, struct lxc_handler *handler)
+{
+	struct lxc_answer answer;
+	int ret;
+
+	answer.pid = handler->pid;
+	answer.ret = 0;
+
+	ret = send(fd, &answer, sizeof(answer), 0);
+	if (ret < 0) {
+		WARN("failed to send answer to the peer");
+		return -1;
+	}
+
+	if (ret != sizeof(answer)) {
+		ERROR("partial answer sent");
+		return -1;
+	}
+
+	return 0;
+}
+
 int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state)
 {
 	handler->state = state;
