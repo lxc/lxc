@@ -204,7 +204,8 @@ static int sigchld_handler(int fd, void *data,
 	return 1;
 }
 
-int lxc_pid_callback(int fd, struct lxc_request *request, struct lxc_handler *handler)
+int lxc_pid_callback(int fd, struct lxc_request *request,
+		     struct lxc_handler *handler)
 {
 	struct lxc_answer answer;
 	int ret;

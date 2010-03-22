@@ -71,7 +71,7 @@ pid_t get_init_pid(const char *name)
 
 	if (command.answer.ret) {
 		ERROR("failed to retrieve the init pid: %s",
-		      strerror(command.answer.ret));
+		      strerror(-command.answer.ret));
 		return -1;
 	}
 

@@ -149,7 +149,7 @@ static int command_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 	struct lxc_handler *handler = data;
 
 	ret = lxc_af_unix_rcv_credential(fd, &request, sizeof(request));
-	if (ret < 0 && ret == -EACCES) {
+	if (ret == -EACCES) {
 		/* we don't care for the peer, just send and close */
 		struct lxc_answer answer = { .ret = ret };
 		send(fd, &answer, sizeof(answer), 0);
@@ -196,7 +196,8 @@ static int incoming_command_handler(int fd, void *data,
 		return -1;
 	}
 
-	if (setsockopt(connection, SOL_SOCKET, SO_PASSCRED, &opt, sizeof(opt))) {
+	if (setsockopt(connection, SOL_SOCKET,
+		       SO_PASSCRED, &opt, sizeof(opt))) {
 		SYSERROR("failed to enable credential on socket");
 		goto out_close;
 	}
@@ -215,7 +216,8 @@ out_close:
 	goto out;
 }
 
-extern int lxc_command_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
+extern int lxc_command_mainloop_add(const char *name,
+				    struct lxc_epoll_descr *descr,
 				    struct lxc_handler *handler)
 {
 	int ret, fd;
@@ -230,7 +232,8 @@ extern int lxc_command_mainloop_add(const char *name, struct lxc_epoll_descr *de
 		return -1;
 	}
 
-	ret = lxc_mainloop_add_handler(descr, fd, incoming_command_handler, handler);
+	ret = lxc_mainloop_add_handler(descr, fd, incoming_command_handler,
+				       handler);
 	if (ret) {
 		ERROR("failed to add handler for command socket");
 		close(fd);
