@@ -25,7 +25,7 @@
 # When the capabilities are set, a non root user can manage the containers.
 #
 
-LXC_ATTACH_CAP="cap_sys_admin"
+LXC_ATTACH_CAPS="cap_sys_admin,cap_dac_override"
 LXC_CREATE_CAPS="cap_sys_admin"
 LXC_NETSTAT_CAPS="cap_sys_admin"
 LXC_INIT_CAPS="cap_sys_admin,cap_dac_override"
