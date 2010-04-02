@@ -148,6 +148,9 @@ int lxc_create_console(struct lxc_conf *conf)
 	if (!conf->rootfs)
 		return 0;
 
+	if (!console->path)
+		return 0;
+
 	if (openpty(&console->master, &console->slave,
 		    console->name, NULL, NULL)) {
 		SYSERROR("failed to allocate a pty");
@@ -254,6 +257,11 @@ int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
 
 	if (!conf->rootfs) {
 		INFO("no rootfs, no console.");
+		return 0;
+	}
+
+	if (!console->path) {
+		INFO("no console specified");
 		return 0;
 	}
 

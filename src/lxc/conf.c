@@ -676,8 +676,10 @@ static int setup_console(const char *rootfs, const struct lxc_console *console)
 		return 0;
 	}
 
-	if (console->peer == -1)
+	if (console->peer == -1) {
 		INFO("no console output required");
+		return 0;
+	}
 
 	if (stat(path, &s)) {
 		SYSERROR("failed to stat '%s'", path);
