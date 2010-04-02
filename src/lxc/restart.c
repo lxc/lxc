@@ -25,8 +25,8 @@
 
 lxc_log_define(lxc_restart, lxc);
 
-int lxc_restart(const char *name, const char *statefile, struct lxc_conf *conf,
-		int flags)
+int lxc_restart(const char *name, int sfd, struct lxc_conf *conf, int flags)
 {
-	return 0;
+	ERROR("'restart' function not implemented");
+	return -1;
 }

@@ -142,23 +142,23 @@ extern const char *lxc_strerror(int error);
 /*
  * Checkpoint a container
  * @name : the name of the container being checkpointed
- * @statefile: string object on which the container is checkpointed
+ * @sfd: fd on which the container is checkpointed
  * @flags : checkpoint flags (an ORed value)
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_checkpoint(const char *name, const char *statefile, int flags);
+extern int lxc_checkpoint(const char *name, int sfd, int flags);
 #define LXC_FLAG_PAUSE 1
 #define LXC_FLAG_HALT  2
 
 /*
  * Restart a container
  * @name : the name of the container being restarted
- * @statefile: string object from which the container is restarted
+ * @sfd: fd from which the container is restarted
  * @conf: lxc_conf structure.
  * @flags : restart flags (an ORed value)
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_restart(const char *, const char *, struct lxc_conf *, int);
+extern int lxc_restart(const char *, int, struct lxc_conf *, int);
 
 /*
  * Returns the version number of the library

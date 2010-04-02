@@ -25,7 +25,8 @@
 
 lxc_log_define(lxc_checkpoint, lxc);
 
-int lxc_checkpoint(const char *name, const char *statefile, int flags)
+int lxc_checkpoint(const char *name, int sfd, int flags)
 {
-	return 0;
+	ERROR("'checkpoint' function not implemented");
+	return -1;
 }

@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <fcntl.h>
 
 #include "log.h"
 #include "lxc.h"
@@ -52,7 +53,7 @@ static int my_checker(const struct lxc_arguments* args)
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
-	case 'd': args->statefile = arg; break;
+	case 'S': args->statefile = arg; break;
 	case 'f': args->rcfile = arg; break;
 	case 'p': args->flags = LXC_FLAG_PAUSE; break;
 	case 's': return lxc_config_define_add(&defines, arg);
@@ -62,7 +63,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 }
 
 static const struct option my_longopts[] = {
-	{"directory", required_argument, 0, 'd'},
+	{"statefile", required_argument, 0, 'S'},
 	{"rcfile", required_argument, 0, 'f'},
 	{"pause", no_argument, 0, 'p'},
 	{"define", required_argument, 0, 's'},
@@ -72,14 +73,14 @@ static const struct option my_longopts[] = {
 static struct lxc_arguments my_args = {
 	.progname = "lxc-restart",
 	.help     = "\
---name=NAME --directory STATEFILE\n\
+--name=NAME --statefile STATEFILE\n\
 \n\
 lxc-restart restarts from STATEFILE the NAME container\n\
 \n\
 Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
   -p, --pause          do not release the container after the restart\n\
-  -d, --directory=STATEFILE for name of statefile\n\
+  -S, --statefile=STATEFILE file from which to read data\n\
   -f, --rcfile=FILE Load configuration file FILE\n\
   -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
 	.options  = my_longopts,
@@ -89,6 +90,7 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
+	int sfd = -1;
 	char *rcfile = NULL;
 	struct lxc_conf *conf;
 
@@ -131,6 +133,12 @@ int main(int argc, char *argv[])
 	if (lxc_config_define_load(&defines, conf))
 		return -1;
 
-	return lxc_restart(my_args.name, my_args.statefile, conf,
-			   my_args.flags);
+#define OPEN_READ_MODE O_RDONLY | O_CLOEXEC | O_LARGEFILE
+	sfd = open(my_args.statefile, OPEN_READ_MODE, 0);
+	if (sfd < 0) {
+		ERROR("'%s' open failure : %m", my_args.statefile);
+		return sfd;
+	}
+
+	return lxc_restart(my_args.name, sfd, conf, my_args.flags);
 }
