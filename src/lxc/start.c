@@ -279,10 +279,16 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 
 	handler->conf = conf;
 
+	handler->name = strdup(name);
+	if (!handler->name) {
+		ERROR("failed to allocate memory");
+		goto out_free;
+	}
+
 	/* Begin the set the state to STARTING*/
 	if (lxc_set_state(name, handler, STARTING)) {
 		ERROR("failed to set state '%s'", lxc_state2str(STARTING));
-		goto out_free;
+		goto out_free_name;
 	}
 
 	if (lxc_create_tty(name, conf)) {
@@ -317,6 +323,9 @@ out_delete_tty:
 	lxc_delete_tty(&conf->tty_info);
 out_aborting:
 	lxc_set_state(name, handler, ABORTING);
+out_free_name:
+	free(handler->name);
+	handler->name = NULL;
 out_free:
 	free(handler);
 	return NULL;
@@ -333,6 +342,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	lxc_delete_console(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
+	free(handler->name);
 	free(handler);
 
 	LXC_TTY_DEL_HANDLER(SIGQUIT);
