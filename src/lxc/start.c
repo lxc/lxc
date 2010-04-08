@@ -93,10 +93,12 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #include "conf.h"
 #include "cgroup.h"
 #include "log.h"
+#include "cgroup.h"
 #include "error.h"
 #include "af_unix.h"
 #include "mainloop.h"
 #include "utils.h"
+#include "utmp.h"
 #include "monitor.h"
 #include "commands.h"
 #include "console.h"
@@ -255,8 +257,15 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_open;
 	}
 
-	if (lxc_command_mainloop_add(name, &descr, handler))
+	if (lxc_command_mainloop_add(name, &descr, handler)) {
+		ERROR("failed to add command handler to mainloop");
 		goto out_mainloop_open;
+	}
+
+	if (lxc_utmp_mainloop_add(&descr, handler)) {
+		ERROR("failed to add utmp handler to mainloop");
+		goto out_mainloop_open;
+	}
 
 	return lxc_mainloop(&descr);
 

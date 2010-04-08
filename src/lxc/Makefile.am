@@ -19,7 +19,7 @@ so_PROGRAMS = liblxc.so
 liblxc_so_SOURCES = \
 	arguments.c arguments.h \
 	commands.c commands.h \
-	start.c \
+	start.c start.h \
 	stop.c \
 	monitor.c monitor.h \
 	console.c \
@@ -44,7 +44,9 @@ liblxc_so_SOURCES = \
         genl.c genl.h \
 	\
 	mainloop.c mainloop.h \
-	af_unix.c af_unix.h
+	af_unix.c af_unix.h \
+	\
+	utmp.c utmp.h
 
 AM_CFLAGS=-I$(top_srcdir)/src
 
