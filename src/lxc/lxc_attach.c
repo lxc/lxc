@@ -21,10 +21,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
+#define _GNU_SOURCE
 #include <unistd.h>
 #include <errno.h>
-#include <sys/param.h>
 #include <pwd.h>
+#include <stdlib.h>
+#include <sys/param.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -87,6 +89,7 @@ int main(int argc, char *argv[], char *envp[])
 	pid_t pid;
 	struct passwd *passwd;
 	uid_t uid;
+	char *curdir;
 
 	ret = lxc_arguments_parse(&my_args, argc, argv);
 	if (ret)
@@ -103,11 +106,18 @@ int main(int argc, char *argv[], char *envp[])
 		return -1;
 	}
 
+	curdir = get_current_dir_name();
+
 	ret = lxc_attach(pid);
 	if (ret < 0) {
 		ERROR("failed to enter the namespace");
 		return -1;
 	}
+
+	if (curdir && chdir(curdir))
+		WARN("could not change directory to '%s'", curdir);
+
+	free(curdir);
 
 	pid = fork();
 
