@@ -219,3 +219,30 @@ int lxc_cgroup_get(const char *name, const char *subsystem,
 	close(fd);
 	return ret;
 }
+
+int lxc_cgroup_nrtasks(const char *name)
+{
+	char *nsgroup;
+	char path[MAXPATHLEN];
+	int pid, ret, count = 0;
+	FILE *file;
+
+	ret = lxc_cgroup_path_get(&nsgroup, name);
+	if (ret)
+		return -1;
+
+        snprintf(path, MAXPATHLEN, "%s/tasks", nsgroup);
+
+	file = fopen(path, "r");
+	if (!file) {
+		SYSERROR("fopen '%s' failed", path);
+		return -1;
+	}
+
+	while (fscanf(file, "%d", &pid) != EOF)
+		count++;
+
+	fclose(file);
+
+	return count;
+}
