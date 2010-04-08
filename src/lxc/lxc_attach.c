@@ -65,8 +65,8 @@ pid_t get_init_pid(const char *name)
 
 	ret = lxc_command(name, &command, &stopped);
 	if (ret < 0 && stopped) {
-		INFO("'%s' is already stopped", name);
-		return 0;
+		ERROR("'%s' is not running", name);
+		return -1;
 	}
 
 	if (ret < 0) {
