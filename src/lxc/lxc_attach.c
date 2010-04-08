@@ -25,6 +25,9 @@
 #include <errno.h>
 #include <sys/param.h>
 #include <pwd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include "commands.h"
 #include "arguments.h"
 #include "namespace.h"
@@ -106,29 +109,58 @@ int main(int argc, char *argv[], char *envp[])
 		return -1;
 	}
 
-	if (my_args.argc) {
-		execve(my_args.argv[0], my_args.argv, envp);
-		SYSERROR("failed to exec '%s'", my_args.argv[0]);
+	pid = fork();
+
+	if (pid < 0) {
+		SYSERROR("failed to fork");
 		return -1;
 	}
 
-	uid = getuid();
+	if (pid) {
+		int status;
 
-	passwd = getpwuid(uid);
-	if (!passwd) {
-		SYSERROR("failed to get passwd entry for uid '%d'", uid);
+	again:
+		if (waitpid(pid, &status, 0) < 0) {
+			if (errno == EINTR)
+				goto again;
+			SYSERROR("failed to wait '%d'", pid);
+			return -1;
+		}
+
+		if (WIFEXITED(status))
+			return WEXITSTATUS(status);
+
 		return -1;
 	}
 
-	{
-		char *const args[] = {
-			passwd->pw_shell,
-			NULL,
-		};
+	if (!pid) {
 
-		execve(args[0], args, envp);
-		SYSERROR("failed to exec '%s'", args[0]);
-		return -1;
+		if (my_args.argc) {
+			execve(my_args.argv[0], my_args.argv, envp);
+			SYSERROR("failed to exec '%s'", my_args.argv[0]);
+			return -1;
+		}
+
+		uid = getuid();
+
+		passwd = getpwuid(uid);
+		if (!passwd) {
+			SYSERROR("failed to get passwd "		\
+				 "entry for uid '%d'", uid);
+			return -1;
+		}
+
+		{
+			char *const args[] = {
+				passwd->pw_shell,
+				NULL,
+			};
+
+			execve(args[0], args, envp);
+			SYSERROR("failed to exec '%s'", args[0]);
+			return -1;
+		}
+
 	}
 
 	return 0;
