@@ -24,6 +24,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/epoll.h>
 
@@ -131,6 +132,11 @@ int lxc_mainloop_open(struct lxc_epoll_descr *descr)
 	descr->epfd = epoll_create(2);
 	if (descr->epfd < 0)
 		return -1;
+
+	if (fcntl(descr->epfd, F_SETFD, FD_CLOEXEC)) {
+		close(descr->epfd);
+		return -1;
+	}
 
 	lxc_list_init(&descr->handlers);
 	return 0;

@@ -43,9 +43,10 @@ struct lxc_conf;
  * Start the specified command inside a container
  * @name     : the name of the container
  * @argv     : an array of char * corresponding to the commande line
+ * @conf     : configuration
  * Returns 0 on sucess, < 0 otherwise
  */
-extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *);
+extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf);
 
 /*
  * Stop the container previously started with lxc_start, all

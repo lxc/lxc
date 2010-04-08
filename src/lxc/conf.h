@@ -183,6 +183,7 @@ struct lxc_conf {
 	char *fstab;
 	int tty;
 	int pts;
+	int reboot;
 	struct utsname *utsname;
 	struct lxc_list cgroup;
 	struct lxc_list network;

@@ -94,7 +94,8 @@ static int utmp_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 		}
 
 		if (currun_level == '6') {
-			INFO("container has reboot");
+			INFO("container has rebooted");
+			conf->reboot = 1;
 			kill(handler->pid, SIGKILL);
 		}
 	}

@@ -1089,12 +1089,6 @@ struct lxc_conf *lxc_conf_init(void)
 	}
 	memset(new, 0, sizeof(*new));
 
-	new->rootfs = NULL;
-	new->pivotdir = NULL;
-	new->fstab = NULL;
-	new->utsname = NULL;
-	new->tty = 0;
-	new->pts = 0;
 	new->console.path = NULL;
 	new->console.peer = -1;
 	new->console.master = -1;

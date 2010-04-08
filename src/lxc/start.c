@@ -556,6 +556,9 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 	while (waitpid(handler->pid, &status, 0) < 0 && errno == EINTR)
 		continue;
 
+	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL))
+		WARN("failed to restore sigprocmask");
+
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
 	lxc_fini(name, handler);

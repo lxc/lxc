@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/poll.h>
@@ -229,6 +230,12 @@ extern int lxc_command_mainloop_add(const char *name,
 	fd = lxc_af_unix_open(path, SOCK_STREAM, 0);
 	if (fd < 0) {
 		ERROR("failed to create the command service point");
+		return -1;
+	}
+
+	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
+		SYSERROR("failed to set sigfd to close-on-exec");
+		close(fd);
 		return -1;
 	}
 

@@ -90,16 +90,14 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	char *const *args;
 	int err = -1;
-
+	struct lxc_conf *conf;
+	char *const *args;
+	char *rcfile = NULL;
 	char *const default_args[] = {
 		"/sbin/init",
 		'\0',
 	};
-
-	char *rcfile = NULL;
-	struct lxc_conf *conf;
 
 	lxc_list_init(&defines);
 
@@ -175,6 +173,17 @@ int main(int argc, char *argv[])
 	}
 
 	err = lxc_start(my_args.name, args, conf);
+
+	/*
+	 * exec ourself, that requires to have all opened fd
+	 * with the close-on-exec flag set
+	 */
+	if (conf->reboot) {
+		INFO("rebooting container");
+		execvp(argv[0], argv);
+		SYSERROR("failed to exec");
+		err = -1;
+	}
 
 	return err;
 }
