@@ -914,8 +914,10 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	struct ifreq ifr;
 	int ret, fd;
 
-	if (lxc_convert_mac(hwaddr, &sockaddr)) {
-		ERROR("conversion has failed");
+	ret = lxc_convert_mac(hwaddr, &sockaddr);
+	if (ret) {
+		ERROR("mac address '%s' conversion failed : %s",
+		      hwaddr, strerror(-ret));
 		return -1;
 	}
 
@@ -942,13 +944,17 @@ static int setup_ipv4_addr(struct lxc_list *ip, int ifindex)
 {
 	struct lxc_list *iterator;
 	struct lxc_inetdev *inetdev;
+	int err;
 
 	lxc_list_for_each(iterator, ip) {
 
 		inetdev = iterator->elem;
 
-		if (lxc_ip_addr_add(AF_INET, ifindex,
-				    &inetdev->addr, inetdev->prefix)) {
+		err = lxc_ip_addr_add(AF_INET, ifindex,
+				      &inetdev->addr, inetdev->prefix);
+		if (err) {
+			ERROR("failed to setup_ipv4_addr ifindex %d : %s",
+			      ifindex, strerror(-err));
 			return -1;
 		}
 	}
@@ -960,14 +966,19 @@ static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 {
 	struct lxc_list *iterator;
 	struct lxc_inet6dev *inet6dev;
+	int err;
 
 	lxc_list_for_each(iterator, ip) {
 
 		inet6dev = iterator->elem;
 
-		if (lxc_ip_addr_add(AF_INET6, ifindex,
-				    & inet6dev->addr, inet6dev->prefix))
+		err = lxc_ip_addr_add(AF_INET6, ifindex,
+				      &inet6dev->addr, inet6dev->prefix);
+		if (err) {
+			ERROR("failed to setup_ipv6_addr ifindex %d : %s",
+			      ifindex, strerror(-err));
 			return -1;
+		}
 	}
 
 	return 0;
@@ -977,12 +988,15 @@ static int setup_netdev(struct lxc_netdev *netdev)
 {
 	char ifname[IFNAMSIZ];
 	char *current_ifname = ifname;
+	int err;
 
 	/* empty network namespace */
 	if (!netdev->ifindex) {
 		if (netdev->flags | IFF_UP) {
-			if (lxc_device_up("lo")) {
-				ERROR("failed to set the loopback up");
+			err = lxc_device_up("lo");
+			if (err) {
+				ERROR("failed to set the loopback up : %s",
+				      strerror(-err));
 				return -1;
 			}
 			return 0;
@@ -1001,8 +1015,10 @@ static int setup_netdev(struct lxc_netdev *netdev)
 		netdev->name = "eth%d";
 
 	/* rename the interface name */
-	if (lxc_device_rename(ifname, netdev->name)) {
-		ERROR("failed to rename %s->%s", ifname, netdev->name);
+	err = lxc_device_rename(ifname, netdev->name);
+	if (err) {
+		ERROR("failed to rename %s->%s : %s", ifname, netdev->name,
+		      strerror(-err));
 		return -1;
 	}
 
@@ -1040,14 +1056,20 @@ static int setup_netdev(struct lxc_netdev *netdev)
 
 	/* set the network device up */
 	if (netdev->flags | IFF_UP) {
-		if (lxc_device_up(current_ifname)) {
-			ERROR("failed to set '%s' up", current_ifname);
+		int err;
+
+		err = lxc_device_up(current_ifname);
+		if (err) {
+			ERROR("failed to set '%s' up : %s", current_ifname,
+			      strerror(-err));
 			return -1;
 		}
 
 		/* the network is up, make the loopback up too */
-		if (lxc_device_up("lo")) {
-			ERROR("failed to set the loopback up");
+		err = lxc_device_up("lo");
+		if (err) {
+			ERROR("failed to set the loopback up : %s",
+			      strerror(-err));
 			return -1;
 		}
 	}
@@ -1106,6 +1128,7 @@ static int instanciate_veth(struct lxc_netdev *netdev)
 {
 	char veth1buf[IFNAMSIZ], *veth1;
 	char veth2[IFNAMSIZ];
+	int err;
 
 	if (netdev->priv.veth_attr.pair)
 		veth1 = netdev->priv.veth_attr.pair;
@@ -1123,24 +1146,31 @@ static int instanciate_veth(struct lxc_netdev *netdev)
 		return -1;
 	}
 
-	if (lxc_veth_create(veth1, veth2)) {
-		ERROR("failed to create %s-%s", veth1, veth2);
+	err = lxc_veth_create(veth1, veth2);
+	if (err) {
+		ERROR("failed to create %s-%s : %s", veth1, veth2,
+		      strerror(-err));
 		return -1;
 	}
 
 	if (netdev->mtu) {
-		if (lxc_device_set_mtu(veth1, atoi(netdev->mtu)) ||
-		    lxc_device_set_mtu(veth2, atoi(netdev->mtu))) {
-			ERROR("failed to set mtu '%s' for %s-%s",
-			      netdev->mtu, veth1, veth2);
+		err = lxc_device_set_mtu(veth1, atoi(netdev->mtu));
+		if (!err)
+			err = lxc_device_set_mtu(veth2, atoi(netdev->mtu));
+		if (err) {
+			ERROR("failed to set mtu '%s' for %s-%s : %s",
+			      netdev->mtu, veth1, veth2, strerror(-err));
 			goto out_delete;
 		}
 	}
 
-	if (netdev->link && lxc_bridge_attach(netdev->link, veth1)) {
-		ERROR("failed to attach '%s' to the bridge '%s'",
-			      veth1, netdev->link);
-		goto out_delete;
+	if (netdev->link) {
+		err = lxc_bridge_attach(netdev->link, veth1);
+		if (err) {
+			ERROR("failed to attach '%s' to the bridge '%s' : %s",
+				      veth1, netdev->link, strerror(-err));
+			goto out_delete;
+		}
 	}
 
 	netdev->ifindex = if_nametoindex(veth2);
@@ -1150,8 +1180,10 @@ static int instanciate_veth(struct lxc_netdev *netdev)
 	}
 
 	if (netdev->flags & IFF_UP) {
-		if (lxc_device_up(veth1)) {
-			ERROR("failed to set %s up", veth1);
+		err = lxc_device_up(veth1);
+		if (err) {
+			ERROR("failed to set %s up : %s", veth1,
+			      strerror(-err));
 			goto out_delete;
 		}
 	}
@@ -1169,6 +1201,7 @@ out_delete:
 static int instanciate_macvlan(struct lxc_netdev *netdev)
 {
 	char peer[IFNAMSIZ];
+	int err;
 
 	if (!netdev->link) {
 		ERROR("no link specified for macvlan netdev");
@@ -1184,10 +1217,11 @@ static int instanciate_macvlan(struct lxc_netdev *netdev)
 		return -1;
 	}
 
-	if (lxc_macvlan_create(netdev->link, peer,
-			       netdev->priv.macvlan_attr.mode)) {
-		ERROR("failed to create macvlan interface '%s' on '%s'",
-		      peer, netdev->link);
+	err = lxc_macvlan_create(netdev->link, peer,
+				 netdev->priv.macvlan_attr.mode);
+	if (err) {
+		ERROR("failed to create macvlan interface '%s' on '%s' : %s",
+		      peer, netdev->link, strerror(-err));
 		return -1;
 	}
 
@@ -1208,6 +1242,7 @@ static int instanciate_macvlan(struct lxc_netdev *netdev)
 static int instanciate_vlan(struct lxc_netdev *netdev)
 {
 	char peer[IFNAMSIZ];
+	int err;
 
 	if (!netdev->link) {
 		ERROR("no link specified for vlan netdev");
@@ -1216,9 +1251,10 @@ static int instanciate_vlan(struct lxc_netdev *netdev)
 
 	snprintf(peer, sizeof(peer), "vlan%d", netdev->priv.vlan_attr.vid);
 
-	if (lxc_vlan_create(netdev->link, peer, netdev->priv.vlan_attr.vid)) {
-		ERROR("failed to create vlan interface '%s' on '%s'",
-		      peer, netdev->link);
+	err = lxc_vlan_create(netdev->link, peer, netdev->priv.vlan_attr.vid);
+	if (err) {
+		ERROR("failed to create vlan interface '%s' on '%s' : %s",
+		      peer, netdev->link, strerror(-err));
 		return -1;
 	}
 
@@ -1292,6 +1328,7 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 {
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
+	int err;
 
 	lxc_list_for_each(iterator, network) {
 
@@ -1301,9 +1338,10 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 		if (!netdev->ifindex)
 			continue;
 
-		if (lxc_device_move(netdev->ifindex, pid)) {
-			ERROR("failed to move '%s' to the container",
-			      netdev->link);
+		err = lxc_device_move(netdev->ifindex, pid);
+		if (err) {
+			ERROR("failed to move '%s' to the container : %s",
+			      netdev->link, strerror(-err));
 			return -1;
 		}
 

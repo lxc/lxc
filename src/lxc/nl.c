@@ -195,7 +195,6 @@ extern int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg)
 extern int netlink_transaction(struct nl_handler *handler, 
 			       struct nlmsg *request, struct nlmsg *answer)
 {
-
 	int ret;
 
 	ret = netlink_send(handler, request);
@@ -208,10 +207,7 @@ extern int netlink_transaction(struct nl_handler *handler,
 
 	if (answer->nlmsghdr.nlmsg_type == NLMSG_ERROR) {
 		struct nlmsgerr *err = (struct nlmsgerr*)NLMSG_DATA(answer);
-		errno = -err->error;
-		if (errno)
-			perror("Error configuring kernel");
-		return -errno;
+		return err->error;
 	}
 	
 	return 0;
