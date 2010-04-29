@@ -92,7 +92,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsect1>
     <title>Requirements</title>
     <para>
-      The <command>lxc</command> relies on a set of functionalies
+      The <command>lxc</command> relies on a set of functionalities
       provided by the kernel which needs to be active. Depending of
       the missing functionalities the <command>lxc</command> will
       work with a restricted number of functionalities or will simply
@@ -172,10 +172,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsect1>
     <title>Functional specification</title>
     <para>
-      A container is an object where the configuration is
-      persistent. The application will be launched inside this
-      container and it will use the configuration which was previously
-      created or specified in parameter of the command.
+      A container is an object isolating some resources of the host,
+      for the application or system running in it.
+    </para>
+    <para>
+      The application / system will be launched inside a
+      container specified by a configuration that is either
+      initially created or passed as parameter of the starting commands.
     </para>
 
     <para>How to run an application in a container ?</para>
@@ -307,13 +310,6 @@ rootfs
     </refsect2>
 
     <refsect2>
-      <title>Volatile containers</title>
-      <para>The container can be directly started with a
-	configuration file in parameter without creating them before.
-      </para>
-    </refsect2>
-
-    <refsect2>
       <title>Configuration</title>
       <para>The container is configured through a configuration
       file, the format of the configuration file is described in 
@@ -325,11 +321,14 @@ rootfs
     </refsect2>
 
     <refsect2>
-      <title>Creating / Destroying the containers</title>
+      <title>Creating / Destroying container
+	(persistent container)</title>
       <para>
-	The container is created via the <command>lxc-create</command>
-	command. It takes a container name as parameter and an
-	optional configuration file. The name is used by the different
+	A persistent container object can be
+	created via the <command>lxc-create</command>
+	command. It takes a container name as parameter and
+	optional configuration file and template.
+	The name is used by the different
 	commands to refer to this
 	container. The <command>lxc-destroy</command> command will
 	destroy the container object.
@@ -341,41 +340,55 @@ rootfs
     </refsect2>
 
     <refsect2>
-      <title>Starting / Stopping a container</title>
+	<title>Volatile container</title>
+	<para>It is not mandatory to create a container object
+	before to start it.
+	The container can be directly started with a
+	configuration file as parameter.
+	</para>
+    </refsect2>
+
+    <refsect2>
+      <title>Starting / Stopping container</title>
       <para>When the container has been created, it is ready to run an
-      application / system. When the application has to be destroyed,
-      the container can be stopped, that will kill all the processes
-      of the container. If the container was not created before
+      application / system.
+      This is the purpose of the <command>lxc-execute</command> and
+      <command>lxc-start</command> commands.
+      If the container was not created before
       starting the application, the container will use the
-      configuration file passed as parameter to the command, otherwise
-      it will use the default isolation.</para>
+      configuration file passed as parameter to the command,
+      and if there is no such parameter either, then
+      it will use a default isolation.
+      If the application is ended, the container will be stopped also,
+      but if needed the <command>lxc-stop</command> command can
+      be used to kill the still running application.
+      </para>
       
       <para>
 	Running an application inside a container is not exactly the
-	same thing as running a system. For this reason, there is two
-	commands to run an application into a container:
+	same thing as running a system. For this reason, there are two
+	different commands to run an application into a container:
 	<programlisting>
 	  lxc-execute -n foo [-f config] /bin/bash
-	  lxc-start -n foo [/bin/bash]
+	  lxc-start -n foo [-f config] [/bin/bash]
 	</programlisting>
       </para>
 
       <para>
 	<command>lxc-execute</command> command will run the
-	specified command into a container but it will mount /proc
-	and autocreate/autodestroy the container if it does not
-	exist. It will furthermore create an intermediate
-	process, <command>lxc-init</command>, which is in charge to
-	launch the specified command, that allows to support daemons
-	in the container. In other words, in the
-	container <command>lxc-init</command> has the pid 1 and the
+	specified command into the container via an intermediate
+	process, <command>lxc-init</command>.
+	This lxc-init after launching  the specified command,
+	will wait for its end and all other reparented processes.
+        (that allows to support daemons in the container).
+	In other words, in the
+	container, <command>lxc-init</command> has the pid 1 and the
 	first process of the application has the pid 2.
       </para>
 
       <para>
-	<command>lxc-start</command> command will run the specified
-	command into the container doing nothing else than using the
-	configuration specified by <command>lxc-create</command>.
+	<command>lxc-start</command> command will run directly the specified
+	command into the container.
 	The pid of the first process is 1. If no command is
 	specified <command>lxc-start</command> will
 	run <filename>/sbin/init</filename>.
@@ -383,12 +396,12 @@ rootfs
 
       <para>
 	To summarize, <command>lxc-execute</command> is for running
-	an application and <command>lxc-start</command> is for
+	an application and <command>lxc-start</command> is better suited for
 	running a system.
       </para>
 
       <para>
-	If the application is no longer responding, inaccessible or is
+	If the application is no longer responding, is inaccessible or is
 	not able to finish by itself, a
 	wild <command>lxc-stop</command> command will kill all the
 	processes in the container without pity.
@@ -413,7 +426,7 @@ rootfs
     </refsect2>
 
     <refsect2>
-      <title>Freeze / Unfreeze a container</title>
+      <title>Freeze / Unfreeze container</title>
       <para>
 	Sometime, it is useful to stop all the processes belonging to
 	a container, eg. for job scheduling. The commands:
@@ -427,7 +440,7 @@ rootfs
 	  lxc-unfreeze -n foo
 	</programlisting>
 
-	will resume all the tasks.
+	will resume them.
       </para>
 
       <para>
@@ -437,11 +450,11 @@ rootfs
     </refsect2>
 
     <refsect2>
-      <title>Getting information about the container</title>
+      <title>Getting information about container</title>
       <para>When there are a lot of containers, it is hard to follow
       what has been created or destroyed, what is running or what are
       the pids running into a specific container. For this reason, the
-      following commands give this information:
+      following commands may be usefull:
 	<programlisting>
 	  lxc-ls
 	  lxc-ps --name foo
@@ -519,7 +532,7 @@ rootfs
     </refsect2>
 
     <refsect2>
-      <title>Monitoring the containers</title>
+      <title>Monitoring container</title>
       <para>It is sometime useful to track the states of a container,
       for example to monitor it or just to wait for a specific
       state in a script.
@@ -576,7 +589,7 @@ rootfs
     </refsect2>
 
     <refsect2>
-      <title>Setting the control group for a container</title>
+      <title>Setting the control group for container</title>
       <para>The container is tied with the control groups, when a
 	container is started a control group is created and associated
 	with it. The control group properties can be read and modified
