@@ -58,6 +58,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       </citerefentry>,
 
       <citerefentry>
+	<refentrytitle><command>lxc-kill</command></refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
 	<refentrytitle><command>lxc-console</command></refentrytitle>
 	<manvolnum>1</manvolnum>
       </citerefentry>,

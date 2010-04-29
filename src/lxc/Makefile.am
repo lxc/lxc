@@ -82,7 +82,8 @@ bin_PROGRAMS = \
 	lxc-cgroup \
 	lxc-unfreeze \
 	lxc-checkpoint \
-	lxc-restart
+	lxc-restart \
+	lxc-kill
 
 libexec_PROGRAMS = \
 	lxc-init
@@ -105,6 +106,7 @@ lxc_stop_SOURCES = lxc_stop.c
 lxc_unfreeze_SOURCES = lxc_unfreeze.c
 lxc_unshare_SOURCES = lxc_unshare.c
 lxc_wait_SOURCES = lxc_wait.c
+lxc_kill_SOURCES = lxc_kill.c
 
 install-exec-local: install-soPROGRAMS
 	mv $(DESTDIR)$(libdir)/liblxc.so $(DESTDIR)$(libdir)/liblxc.so.$(VERSION)

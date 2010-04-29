@@ -95,6 +95,7 @@ AC_CONFIG_FILES([
 	doc/lxc-ls.sgml
 	doc/lxc-ps.sgml
 	doc/lxc-cgroup.sgml
+	doc/lxc-kill.sgml
 	doc/lxc.conf.sgml
 	doc/lxc.sgml
 	doc/common_options.sgml

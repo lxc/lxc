@@ -86,6 +86,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       container, <command>lxc-init</command> has the pid 1 and the
       first process of the application has the pid 2.
      </para>
+     <para>
+      The above <command>lxc-init</command> is designed to forward received
+      signals to the started command.
+      So <command>lxc-kill</command> (1) sent signal is received
+      by the user specified command (pid 2 in the container).
+     </para>
   </refsect1>
 
   <refsect1>
