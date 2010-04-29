@@ -92,6 +92,10 @@ int main(int argc, char *argv[])
 		exit(err);
 	}
 
+	/* no need of other inherited fds but stderr */
+	close(fileno(stdin));
+	close(fileno(stdout));
+
 	err = 0;
 	for (;;) {
 		int status;
