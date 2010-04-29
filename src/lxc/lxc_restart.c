@@ -42,8 +42,13 @@ static struct lxc_list defines;
 
 static int my_checker(const struct lxc_arguments* args)
 {
-	if (!args->statefile) {
+	if ((!args->statefile) && (args->statefd == -1)) {
 		lxc_error(args, "no statefile specified");
+		return -1;
+	}
+
+	if ((args->statefile) && (args->statefd != -1)) {
+		lxc_error(args, "--statefile AND --statefd abnormally set");
 		return -1;
 	}
 
@@ -57,6 +62,18 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'f': args->rcfile = arg; break;
 	case 'p': args->flags = LXC_FLAG_PAUSE; break;
 	case 's': return lxc_config_define_add(&defines, arg);
+	case 'd': {
+			long val;
+			errno = 0;
+			val = strtol(arg, (char **)NULL, 10);
+			if (errno) {
+				lxc_error(args, "invalid statefd '%s' : %m\n",
+					  arg);
+				return -1;
+			}
+			args->statefd = (int)val;
+			break;
+		}
 	}
 
 	return 0;
@@ -64,6 +81,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 
 static const struct option my_longopts[] = {
 	{"statefile", required_argument, 0, 'S'},
+	{"statefd", required_argument, 0, 'd'},
 	{"rcfile", required_argument, 0, 'f'},
 	{"pause", no_argument, 0, 'p'},
 	{"define", required_argument, 0, 's'},
@@ -73,24 +91,28 @@ static const struct option my_longopts[] = {
 static struct lxc_arguments my_args = {
 	.progname = "lxc-restart",
 	.help     = "\
---name=NAME --statefile STATEFILE\n\
+--name=NAME --statefile FILE\n\
 \n\
-lxc-restart restarts from STATEFILE the NAME container\n\
+lxc-restart restarts from FILE the NAME container\n\
 \n\
 Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
-  -p, --pause          do not release the container after the restart\n\
-  -S, --statefile=STATEFILE file from which to read data\n\
+  -p, --pause          do not unfreeze the container after the restart\n\
+  -S, --statefile=FILE read the container state from this file, or\n\
+  -d, --statefd=FD read the container state from this file descriptor\n\
   -f, --rcfile=FILE Load configuration file FILE\n\
   -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,
+
+	.statefd  = -1,
 };
 
 int main(int argc, char *argv[])
 {
 	int sfd = -1;
+	int ret;
 	char *rcfile = NULL;
 	struct lxc_conf *conf;
 
@@ -133,12 +155,21 @@ int main(int argc, char *argv[])
 	if (lxc_config_define_load(&defines, conf))
 		return -1;
 
+	if (my_args.statefd != -1)
+		sfd = my_args.statefd;
+
 #define OPEN_READ_MODE O_RDONLY | O_CLOEXEC | O_LARGEFILE
-	sfd = open(my_args.statefile, OPEN_READ_MODE, 0);
-	if (sfd < 0) {
-		ERROR("'%s' open failure : %m", my_args.statefile);
-		return sfd;
+	if (my_args.statefile) {
+		sfd = open(my_args.statefile, OPEN_READ_MODE, 0);
+		if (sfd < 0) {
+			ERROR("'%s' open failure : %m", my_args.statefile);
+			return sfd;
+		}
 	}
 
-	return lxc_restart(my_args.name, sfd, conf, my_args.flags);
+	ret = lxc_restart(my_args.name, sfd, conf, my_args.flags);
+
+	if (my_args.statefile)
+		close(sfd);
+	return ret;
 }

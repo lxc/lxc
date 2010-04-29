@@ -44,9 +44,10 @@ struct lxc_arguments {
 	int quiet;
 	int daemonize;
 	const char *rcfile;
-	const char *statefile;
 
-	/* for lxc-checkpoint */
+	/* for lxc-checkpoint/restart */
+	const char *statefile;
+	int statefd;
 	int flags;
 
 	/* for lxc-console */
