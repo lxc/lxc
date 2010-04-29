@@ -57,10 +57,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <title>Description</title>
 
     <para>
-      <command>lxc-destroy</command> destroys the directory where is
-      stored the configuration and all the data contained in this
-      directory. After the destruction the container is no longer
-      available and should be recreated.
+      <command>lxc-destroy</command> destroys the system object
+      previously created by the <command>lxc-create</command> command.
     </para>
 
   </refsect1>

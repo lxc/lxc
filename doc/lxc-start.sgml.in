@@ -110,6 +110,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    Specify the configuration file to configure the virtualization
 	    and isolation functionalities for the container.
 	  </para>
+	  <para>
+	   This configuration file if present will be used even if there is
+	   already a configuration file present in the previously created
+	   container (via lxc-create).
+	  </para>
 	</listitem>
       </varlistentry>
 

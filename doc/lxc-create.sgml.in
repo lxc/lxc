@@ -64,9 +64,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       is used to specify the container to be used with the different
       lxc commands.
     </para>
+    <para>
+      The object is a directory created in @LXCPATH@ and identified by its name.
+    </para>
 
     <para>
-      This object is the definition of the different resources an
+      The object is the definition of the different resources an
       application can use or can see. The more the configuration file
       contains informations, the more the container is isolated and
       the more the application is jailed.
@@ -103,8 +106,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  <para>
 	    'template' is the short name of an existing 'lxc-template'
 	    script that is called by lxc-create.
-	    eg: lxc-debian, lxc-busybox ...
-	    Refer to those exemples for details of expecting script structure.
+	    eg: lxc-busybox, lxc-debian, lxc-fedora, lxc-sshd.
+	    Refer to those exemples in @BINDIR@
+	    for details of expecting script structure.
 	  </para>
 	</listitem>
       </varlistentry>
