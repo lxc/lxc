@@ -436,6 +436,7 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	int sv[2];
 	int clone_flags;
 	int err = -1, sync;
+	int failed_before_rename = 0;
 
 	struct start_arg start_arg = {
 		.name = name,
@@ -474,12 +475,15 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	close(sv[0]);
 	
 	/* Wait for the child to be ready */
-	if (read(sv[1], &sync, sizeof(sync)) < 0) {
-		SYSERROR("failed to read the socket");
-		goto out_delete_net;
+	if (read(sv[1], &sync, sizeof(sync)) <= 0) {
+		ERROR("sync read failure : %m");
+		failed_before_rename = 1;
 	}
 
 	if (lxc_rename_nsgroup(name, handler))
+		goto out_delete_net;
+
+	if (failed_before_rename)
 		goto out_delete_net;
 
 	/* Create the network configuration */
