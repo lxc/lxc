@@ -347,7 +347,6 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	 */
 	lxc_set_state(name, handler, STOPPING);
 	lxc_set_state(name, handler, STOPPED);
-	lxc_unlink_nsgroup(name);
 
 	lxc_delete_console(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
@@ -569,6 +568,7 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
+	lxc_unlink_nsgroup(name);
 	lxc_fini(name, handler);
 	return err;
 
