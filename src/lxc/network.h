@@ -98,11 +98,6 @@ extern int lxc_ip_addr_add(int family, int ifindex, void *addr, int prefix);
  */
 extern int lxc_bridge_attach(const char *bridge, const char *ifname);
 
-/*
- * Detach an interface from the bridge
- */
-extern int lxc_bridge_detach(const char *bridge, const char *ifname);
-
 /* 
  * Create default gateway
  */

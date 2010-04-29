@@ -753,8 +753,11 @@ out:
 	return err;
 }
 
-static int bridge_add_del_interface(const char *bridge,
-				    const char *ifname, int detach)
+/*
+ * There is a lxc_bridge_attach, but no need of a bridge detach
+ * as automatically done by kernel when device deleted.
+ */
+int lxc_bridge_attach(const char *bridge, const char *ifname)
 {
 	int fd, index, err;
 	struct ifreq ifr;
@@ -772,20 +775,10 @@ static int bridge_add_del_interface(const char *bridge,
 
 	strncpy(ifr.ifr_name, bridge, IFNAMSIZ);
 	ifr.ifr_ifindex = index;
-	err = ioctl(fd, detach?SIOCBRDELIF:SIOCBRADDIF, &ifr);
+	err = ioctl(fd, SIOCBRADDIF, &ifr);
 	close(fd);
 	if (err)
 		err = -errno;
 
 	return err;
-}
-
-int lxc_bridge_attach(const char *bridge, const char *ifname)
-{
-	return bridge_add_del_interface(bridge, ifname, 0);
-}
-
-int lxc_bridge_detach(const char *bridge, const char *ifname)
-{
-	return bridge_add_del_interface(bridge, ifname, 1);
 }
