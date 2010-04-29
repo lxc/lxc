@@ -111,6 +111,34 @@ out_close:
 	goto out;
 }
 
+pid_t get_init_pid(const char *name)
+{
+	struct lxc_command command = {
+		.request = { .type = LXC_COMMAND_PID },
+	};
+
+	int ret, stopped = 0;
+
+	ret = lxc_command(name, &command, &stopped);
+	if (ret < 0 && stopped) {
+		ERROR("'%s' is not running", name);
+		return -1;
+	}
+
+	if (ret < 0) {
+		ERROR("failed to send command");
+		return -1;
+	}
+
+	if (command.answer.ret) {
+		ERROR("failed to retrieve the init pid: %s",
+		      strerror(-command.answer.ret));
+		return -1;
+	}
+
+	return command.answer.pid;
+}
+
 extern void lxc_console_remove_fd(int, struct lxc_tty_info *);
 extern int  lxc_console_callback(int, struct lxc_request *, struct lxc_handler *);
 extern int  lxc_stop_callback(int, struct lxc_request *, struct lxc_handler *);

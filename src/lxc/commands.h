@@ -47,6 +47,7 @@ struct lxc_command {
 	struct lxc_answer answer;
 };
 
+extern pid_t get_init_pid(const char *name);
 extern int lxc_command(const char *name, struct lxc_command *command,
 			int *stopped);
 
