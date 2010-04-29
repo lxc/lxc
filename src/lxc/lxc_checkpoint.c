@@ -60,15 +60,12 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'p': args->flags = LXC_FLAG_PAUSE; break;
 	case 'S': args->statefile = arg; break;
 	case 'd': {
-			long val;
-			errno = 0;
-			val = strtol(arg, (char **)NULL, 10);
-			if (errno) {
-				lxc_error(args, "invalid statefd '%s' : %m\n",
-					  arg);
+			int fd;
+			fd = lxc_arguments_str_to_int(args, arg);
+			if (fd < 0)
 				return -1;
-			}
-			args->statefd = (int)val;
+
+			args->statefd = fd;
 			break;
 		}
 	}

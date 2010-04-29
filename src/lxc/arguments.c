@@ -230,3 +230,23 @@ extern char **lxc_arguments_dup(const char *file, struct lxc_arguments *args)
 
 	return argv;
 }
+
+int lxc_arguments_str_to_int(struct lxc_arguments *args, const char *str)
+{
+	long val;
+	char *endptr;
+
+	errno = 0;
+	val = strtol(str, &endptr, 10);
+	if (errno) {
+		lxc_error(args, "invalid statefd '%s' : %m", str);
+		return -1;
+	}
+
+	if (*endptr) {
+		lxc_error(args, "invalid digit for statefd '%s'", str);
+		return -1;
+	}
+
+	return (int)val;
+}
