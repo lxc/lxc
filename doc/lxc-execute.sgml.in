@@ -60,20 +60,32 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <title>Description</title>
 
     <para>
-      <command>lxc-execute</command> runs
-      the <replaceable>command</replaceable> inside the container
-      specified by <replaceable>name</replaceable>. This command
-      should be used to launch an application, eg. sshd or bash.
+      <command>lxc-execute</command> runs the specified
+      <replaceable>command</replaceable> inside the container
+      specified by <replaceable>name</replaceable>.
     </para>
-
+    <para>
+      It will setup the container
+      according to the configuration previously defined with the
+      lxc-create command or with the configuration file parameter.
+      If no configuration is
+      defined, the default isolation is used.
+    </para>
     <para>
       This command is mainly used when you want to quickly launch an
-      application in an isolated environment. It will create an
-      intermediate process allowing you application to daemonize in
-      the pid namespace and will mount the proc filesystem to complete
-      the pid isolation.
+      application in an isolated environment.
     </para>
-
+    <para>
+      <command>lxc-execute</command> command will run the
+      specified command into the container via an intermediate
+      process, <command>lxc-init</command>.
+      This lxc-init after launching  the specified command,
+      will wait for its end and all other reparented processes.
+      (that allows to support daemons in the container).
+      In other words, in the
+      container, <command>lxc-init</command> has the pid 1 and the
+      first process of the application has the pid 2.
+     </para>
   </refsect1>
 
   <refsect1>
@@ -82,18 +94,23 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
       <varlistentry>
 	<term>
-	  <option>-f <replaceable>config_file</replaceable></option>
+	  <option>-f, --rcfile <replaceable>config_file</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
 	    Specify the configuration file to configure the virtualization
 	    and isolation functionalities for the container.
 	  </para>
+	  <para>
+	   This configuration file if present will be used even if there is
+	   already a configuration file present in the previously created
+	   container (via lxc-create).
+	  </para>
 	</listitem>
       </varlistentry>
       <varlistentry>
 	<term>
-	  <option>-s <replaceable>KEY=VAL</replaceable></option>
+	  <option>-s, --define <replaceable>KEY=VAL</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
