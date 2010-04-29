@@ -46,7 +46,7 @@ extern int lxc_poll(const char *name, struct lxc_handler *handler);
 extern void lxc_abort(const char *name, struct lxc_handler *handler);
 extern void lxc_fini(const char *name, struct lxc_handler *handler);
 extern int lxc_set_state(const char *, struct lxc_handler *, lxc_state_t);
-extern int lxc_check_inherited(void);
+extern int lxc_check_inherited(int fd_to_ignore);
 
 #endif
 

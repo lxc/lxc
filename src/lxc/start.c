@@ -113,7 +113,7 @@ static int match_fd(int fd)
 	return (fd == 0 || fd == 1 || fd == 2);
 }
 
-int lxc_check_inherited(void)
+int lxc_check_inherited(int fd_to_ignore)
 {
 	struct dirent dirent, *direntp;
 	int fd, fddir;
@@ -143,7 +143,7 @@ int lxc_check_inherited(void)
 
 		fd = atoi(direntp->d_name);
 
-		if (fd == fddir || fd == lxc_log_fd)
+		if (fd == fddir || fd == lxc_log_fd || fd == fd_to_ignore)
 			continue;
 
 		if (match_fd(fd))
@@ -535,7 +535,7 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 	int err = -1;
 	int status;
 
-	if (lxc_check_inherited())
+	if (lxc_check_inherited(-1))
 		return -1;
 
 	handler = lxc_init(name, conf);
