@@ -620,21 +620,6 @@ static int config_cap_drop(const char *key, char *value,
 	return ret;
 }
 
-static int _config_console(const char *key, char *value, struct lxc_conf *lxc_conf)
-{
-	int fd;
-
-	fd = open(value, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600);
-	if (fd < 0) {
-		SYSERROR("failed to open '%s'", value);
-		return -1;
-	}
-
-	lxc_conf->console.peer = fd;
-
-	return 0;
-}
-
 static int config_console(const char *key, char *value,
 			  struct lxc_conf *lxc_conf)
 {
