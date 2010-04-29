@@ -20,7 +20,9 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+#define _GNU_SOURCE
 #include <stdio.h>
+#undef _GNU_SOURCE
 #include <stdlib.h>
 #include <unistd.h>
 #include <libgen.h>
@@ -34,6 +36,8 @@
 
 #include <lxc/log.h>
 #include <lxc/namespace.h>
+#include <lxc/cgroup.h>
+#include <lxc/error.h>
 
 lxc_log_define(lxc_unshare_ui, lxc);
 
@@ -154,6 +158,7 @@ int main(int argc, char *argv[])
 {
 	int opt, status;
 	int ret;
+	char *pid_name;
 	char *namespaces = NULL;
 	char **args;
 	int flags = 0;
@@ -200,6 +205,12 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	return status;
-}
+	if (!asprintf(&pid_name, "%d", pid)) {
+		ERROR("pid_name: failed to allocate memory");
+		return -1;
+	}
+	lxc_unlink_nsgroup(pid_name);
+	free(pid_name);
 
+	return  lxc_error_set_and_log(pid, status);
+}
