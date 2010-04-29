@@ -454,6 +454,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsect1>
     <title>Examples</title>
+      <para>
+	In addition to the few examples given below, you will find
+	some other examples of configuration file in @DOCDIR@/examples
+      </para>
     <refsect2>
       <title>Network</title>
       <para>This configuration sets up a container to use a veth pair
@@ -461,51 +465,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	configured before on the system by the administrator). The
 	virtual network device visible in the container is renamed to
 	eth0.</para>
-
-      <variablelist>
-
-	<varlistentry>
-	  <term>lxc.utsname = myhostname</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	
-	<varlistentry>
-	  <term>lxc.network.type = veth</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-
-	<varlistentry>
-	  <term>lxc.network.flags = up</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-
-	<varlistentry>
-	  <term>lxc.network.link = br0</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-
-	<varlistentry>
-	  <term>lxc.network.name = eth0</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-
-	<varlistentry>
-	  <term>lxc.network.hwaddr = 4a:49:43:49:79:bf</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-
-	<varlistentry>
-	  <term>lxc.network.ipv4 = 1.2.3.5/24</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-
-	<varlistentry>
-	  <term>lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-
-      </variablelist>
-
+      <programlisting>
+	lxc.utsname = myhostname
+	lxc.network.type = veth
+	lxc.network.flags = up
+	lxc.network.link = br0
+	lxc.network.name = eth0
+	lxc.network.hwaddr = 4a:49:43:49:79:bf
+	lxc.network.ipv4 = 1.2.3.5/24
+	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+      </programlisting>
     </refsect2>
 
     <refsect2>
@@ -514,169 +483,53 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       the application, cpuset.cpus restricts usage of the defined cpu,
       cpus.share prioritize the control group, devices.allow makes
       usable the specified devices.</para>
-
-      <variablelist>
-	<varlistentry>
-	  <term>lxc.cgroup.cpuset.cpus = 0,1</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	
-	<varlistentry>
-	  <term>lxc.cgroup.cpu.shares = 1234</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-
-	<varlistentry>
-	  <term>lxc.cgroup.devices.deny = a</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-
-	<varlistentry>
-	  <term>lxc.cgroup.devices.allow = c 1:3 rw</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-
-	<varlistentry>
-	  <term>lxc.cgroup.devices.allow = b 8:0 rw</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-      </variablelist>
-
+      <programlisting>
+	lxc.cgroup.cpuset.cpus = 0,1
+	lxc.cgroup.cpu.shares = 1234
+	lxc.cgroup.devices.deny = a
+	lxc.cgroup.devices.allow = c 1:3 rw
+	lxc.cgroup.devices.allow = b 8:0 rw
+      </programlisting>
     </refsect2>
 
     <refsect2>
       <title>Complex configuration</title>
       <para>This example show a complex configuration making a complex
       network stack, using the control groups, setting a new hostname,
-      mounting some locations and a changing the root file
-      system.</para>
-
-      <variablelist>
-	<varlistentry>
-	  <term>lxc.utsname = complex</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.type = veth</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.flags = up</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.link = br0</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.hwaddr = 4a:49:43:49:79:bf</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.ipv4 = 1.2.3.5/24</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.ipv6 = 2003:db8:1:0:214:5432:feab:3588</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.type = macvlan</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.flags = up</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.link = eth0</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.hwaddr = 4a:49:43:49:79:bd</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.ipv4 = 1.2.3.4/24</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.ipv4 = 192.168.10.125/24</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.type = phys</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.flags = up</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.link = dummy0</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.hwaddr = 4a:49:43:49:79:ff</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.ipv4 = 1.2.3.6/24</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.cgroup.cpuset.cpus = 0,1</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.cgroup.cpu.shares = 1234</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.cgroup.devices.deny = a</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.cgroup.devices.allow = c 1:3 rw</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.cgroup.devices.allow = b 8:0 rw</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.mount = /etc/fstab.complex</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.rootfs = /mnt/rootfs.complex</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.cap.drop = sys_module mknod setuid net_raw</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>lxc.cap.drop = mac_override</term>
-	  <listitem><para></para></listitem>
-	</varlistentry>
-      </variablelist>
+      mounting some locations and a changing root file system.</para>
+      <programlisting>
+	lxc.utsname = complex
+	lxc.network.type = veth
+	lxc.network.flags = up
+	lxc.network.link = br0
+	lxc.network.hwaddr = 4a:49:43:49:79:bf
+	lxc.network.ipv4 = 1.2.3.5/24
+	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+	lxc.network.ipv6 = 2003:db8:1:0:214:5432:feab:3588
+	lxc.network.type = macvlan
+	lxc.network.flags = up
+	lxc.network.link = eth0
+	lxc.network.hwaddr = 4a:49:43:49:79:bd
+	lxc.network.ipv4 = 1.2.3.4/24
+	lxc.network.ipv4 = 192.168.10.125/24
+	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
+	lxc.network.type = phys
+	lxc.network.flags = up
+	lxc.network.link = dummy0
+	lxc.network.hwaddr = 4a:49:43:49:79:ff
+	lxc.network.ipv4 = 1.2.3.6/24
+	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
+	lxc.cgroup.cpuset.cpus = 0,1
+	lxc.cgroup.cpu.shares = 1234
+	lxc.cgroup.devices.deny = a
+	lxc.cgroup.devices.allow = c 1:3 rw
+	lxc.cgroup.devices.allow = b 8:0 rw
+	lxc.mount = /etc/fstab.complex
+	lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0
+	lxc.rootfs = /mnt/rootfs.complex
+	lxc.cap.drop = sys_module mknod setuid net_raw
+	lxc.cap.drop = mac_override
+      </programlisting>
     </refsect2>
 
   </refsect1>
