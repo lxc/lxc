@@ -1,20 +1,39 @@
 #!/bin/bash
 # set -ex
 
+usage() {
+	echo "usage: $(basename $0) --name <name> [netstat options]"
+}
+
+help() {
+	usage
+	echo
+	echo "execute netstat for the specified container"
+	echo "with the added netstat options"
+	echo
+	echo "Options:"
+	echo "name  : name of the container"
+	echo "help  : this current help."
+	echo
+	echo "to be executed as root."
+}
+
 exec=""
 
 if [ $# -eq  0 ]; then
-    echo "usage: $0 -n <name>"
-    exit 1
+	usage
+	exit 1
 fi
 
 for i in $*; do
-    case $i in
-        -n)
-            name=$2; shift 2;;
-        --exec)
-            exec="exec"; shift;;
-    esac
+	case $i in
+		-h|--help)
+			help; exit 1;;
+		-n|--name)
+			name=$2; shift 2;;
+		--exec)
+			exec="exec"; shift;;
+	esac
 done
 
 if [ -z "$exec" ]; then
@@ -22,8 +41,8 @@ if [ -z "$exec" ]; then
 fi
 
 if [ -z "$name" ]; then
-    echo "usage: $0 -n <name>"
-    exit 1
+	usage
+	exit 1
 fi
 
 cgroups=$(mount -l -t cgroup)
