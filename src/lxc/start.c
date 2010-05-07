@@ -225,6 +225,7 @@ static int sigchld_handler(int fd, void *data,
 {
 	struct signalfd_siginfo siginfo;
 	int ret;
+	pid_t *pid = data;
 
 	ret = read(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0) {
@@ -240,6 +241,14 @@ static int sigchld_handler(int fd, void *data,
 	if (siginfo.ssi_code == CLD_STOPPED ||
 	    siginfo.ssi_code == CLD_CONTINUED) {
 		INFO("container init process was stopped/continued");
+		return 0;
+	}
+
+	/* more robustness, protect ourself from a SIGCHLD sent
+	 * by a process different from the container init
+	 */
+	if (siginfo.ssi_pid != *pid) {
+		WARN("invalid pid for SIGCHLD");
 		return 0;
 	}
 
