@@ -26,9 +26,9 @@ is_enabled() {
 	$SETCOLOR_SUCCESS && echo -e "enabled" && $SETCOLOR_NORMAL
     else
 	if [ ! -z "$mandatory" -a "$mandatory" = yes ]; then
-	    $SETCOLOR_FAILURE && echo -e "disabled" && $SETCOLOR_NORMAL
+	    $SETCOLOR_FAILURE && echo -e "required" && $SETCOLOR_NORMAL
 	else
-	    $SETCOLOR_WARNING && echo -e "disabled" && $SETCOLOR_NORMAL
+	    $SETCOLOR_WARNING && echo -e "missing" && $SETCOLOR_NORMAL
 	fi
     fi
 }
@@ -43,8 +43,10 @@ if [ ! -f $CONFIG ]; then
     GREP=grep
     if [ ! -f $CONFIG ]; then
         echo
-        echo "The kernel configuration can not be retrieved"
-        echo "Please recompile with IKCONFIG_PROC or install the kernel headers"
+        echo "The kernel configuration can not be retrieved."
+        echo "Please recompile with IKCONFIG_PROC, or"
+	echo "install the kernel headers, or specify"
+	echo "the path to the config file with: CONFIG=<path> lxc-checkconfig"
         echo
         exit 1
     else
@@ -74,4 +76,13 @@ echo "--- Misc ---"
 echo -n "Veth pair device: " && is_enabled CONFIG_VETH
 echo -n "Macvlan: " && is_enabled CONFIG_MACVLAN
 echo -n "Vlan: " && is_enabled CONFIG_VLAN_8021Q
-echo -n "File capabilities: " && is_enabled CONFIG_SECURITY_FILE_CAPABILITIES
+KVER_MINOR=$($GREP '^# Linux kernel version:' $CONFIG | \
+    sed -r 's/.*2.6.([0-9]{2}).*/\1/')
+[[ ${KVER_MINOR} < 33 ]] && echo -n "File capabilities: " && is_enabled \
+    CONFIG_SECURITY_FILE_CAPABILITIES
+
+echo
+echo "Note : Before booting a new kernel, you can check its configuration"
+echo "usage : CONFIG=/path/to/config $0"
+echo
+
