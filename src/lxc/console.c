@@ -237,6 +237,13 @@ static int console_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 		return 1;
 	}
 
+	if (!r) {
+		INFO("console client has exited");
+		lxc_mainloop_del_handler(descr, fd);
+		close(fd);
+		return 0;
+	}
+
 	/* no output for the console, do nothing */
 	if (console->peer == -1)
 		return 0;
