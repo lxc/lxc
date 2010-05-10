@@ -44,6 +44,11 @@ of `autoconf'.
 
 The simplest way to compile this package is:
 
+  0. If the sources are not coming from a package maintainer and the
+     'configure' file does not exist, you should run './autogen.sh' in
+     the directory containing the package's source code in order to
+     generate the 'configure' file from the 'configure.ac' file.
+
   1. `cd' to the directory containing the package's source code and type
      `./configure' to configure the package for your system.
 
