@@ -51,10 +51,10 @@
 #include "error.h"
 #include "parse.h"
 #include "config.h"
-
-#include <lxc/conf.h>
-#include <lxc/log.h>
-#include <lxc/lxc.h>	/* for lxc_cgroup_set() */
+#include "utils.h"
+#include "conf.h"
+#include "log.h"
+#include "lxc.h"	/* for lxc_cgroup_set() */
 
 lxc_log_define(lxc_conf, lxc);
 
@@ -488,12 +488,21 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 		}
 
 		pivotdir_is_temp = 1;
-	}
-	else {
-		snprintf(path, sizeof(path), ".%s", pivotdir);
+	} else {
+
+		snprintf(path, sizeof(path), "%s/%s", rootfs, pivotdir);
+
+		if (access(path, F_OK)) {
+			if (mkdir_p(path, 0755)) {
+				SYSERROR("failed to create pivotdir '%s'", path);
+				return -1;
+			}
+
+			DEBUG("created '%s' directory", path);
+		}
 	}
 
-	DEBUG("temporary mountpoint for old rootfs is '%s'", path);
+	DEBUG("mountpoint for old rootfs is '%s'", path);
 
 	/* pivot_root into our new root fs */
 

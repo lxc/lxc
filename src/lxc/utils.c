@@ -33,6 +33,7 @@
 #include <sys/mount.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include "log.h"
 
@@ -163,3 +164,30 @@ extern int get_u16(ushort *val, const char *arg, int base)
 	return 0;
 }
 
+extern int mkdir_p(char *dir, mode_t mode)
+{
+        int ret;
+        char *d;
+
+        if (!strcmp(dir, "/"))
+                return 0;
+
+        d = strdup(dir);
+        if (!d)
+                return -1;
+
+        ret = mkdir_p(dirname(d), mode);
+        free(d);
+        if (ret)
+                return -1;
+
+        if (!access(dir, F_OK))
+                return 0;
+
+        if (mkdir(dir, mode)) {
+                SYSERROR("failed to create directory '%s'\n", dir);
+                return -1;
+        }
+
+        return 0;
+}
