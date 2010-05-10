@@ -38,6 +38,7 @@ $rootfs/mnt \
 $rootfs/tmp \
 $rootfs/var/log \
 $rootfs/usr/share/udhcpc \
+$rootfs/dev/pts \
 $rootfs/dev/shm"
 
     mkdir -p $tree || return 1
