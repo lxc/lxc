@@ -581,37 +581,24 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 
 static int setup_rootfs(const char *rootfs, const char *pivotdir)
 {
-	char *tmpname;
-	int ret = -1;
+	const char *tmpfs = "/tmp";
 
 	if (!rootfs)
 		return 0;
 
-	tmpname = tempnam("/tmp", "lxc-rootfs");
-	if (!tmpname) {
-		SYSERROR("failed to generate temporary name");
+	if (mount(rootfs, tmpfs, "none", MS_BIND|MS_REC, NULL)) {
+		SYSERROR("failed to mount '%s'->'%s'", rootfs, "/tmp");
 		return -1;
 	}
 
-	if (mkdir(tmpname, 0700)) {
-		SYSERROR("failed to create temporary directory '%s'", tmpname);
-		return -1;
-	}
+	DEBUG("mounted '%s' on '%s'", rootfs, tmpfs);
 
-	if (mount(rootfs, tmpname, "none", MS_BIND|MS_REC, NULL)) {
-		SYSERROR("failed to mount '%s'->'%s'", rootfs, tmpname);
-		goto out;
-	}
-
-	if (setup_rootfs_pivot_root(tmpname, pivotdir)) {
+	if (setup_rootfs_pivot_root(tmpfs, pivotdir)) {
 		ERROR("failed to pivot_root to '%s'", rootfs);
-		goto out;
+		return -1;
 	}
 
-	ret = 0;
-out:
-	rmdir(tmpname);
-	return ret;
+	return 0;
 }
 
 static int setup_pts(int pts)
