@@ -457,14 +457,12 @@ static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
 	return 0;
 }
 
-
 static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 {
 	char path[MAXPATHLEN];
 	void *cbparm[2];
 	struct lxc_list mountlist, *iterator;
 	int ok, still_mounted, last_still_mounted;
-	int pivotdir_is_temp = 0;
 
 	/* change into new root fs */
 	if (chdir(rootfs)) {
@@ -472,34 +470,20 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 		return -1;
 	}
 
-	/* create temporary mountpoint if none specified */
-	if (!pivotdir) {
+	if (!pivotdir)
+		pivotdir = "oldrootfs";
 
-		snprintf(path, sizeof(path), "./lxc-oldrootfs-XXXXXX" );
-		if (!mkdtemp(path)) {
-			SYSERROR("can't make temporary mountpoint");
+	/* create a default mountpoint if none specified */
+	snprintf(path, sizeof(path), "%s/%s", rootfs, pivotdir);
+
+	if (access(path, F_OK)) {
+
+		if (mkdir_p(path, 0755)) {
+			SYSERROR("failed to create pivotdir '%s'", path);
 			return -1;
 		}
 
-		pivotdir = strdup(&path[1]); /* get rid of leading dot */
-		if (!pivotdir) {
-			SYSERROR("strdup failed");
-			return -1;
-		}
-
-		pivotdir_is_temp = 1;
-	} else {
-
-		snprintf(path, sizeof(path), "%s/%s", rootfs, pivotdir);
-
-		if (access(path, F_OK)) {
-			if (mkdir_p(path, 0755)) {
-				SYSERROR("failed to create pivotdir '%s'", path);
-				return -1;
-			}
-
-			DEBUG("created '%s' directory", path);
-		}
+		DEBUG("created '%s' directory", path);
 	}
 
 	DEBUG("mountpoint for old rootfs is '%s'", path);
@@ -588,8 +572,8 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 
 	/* remove temporary mount point, we don't consider the removing
 	 * as fatal */
-	if (pivotdir_is_temp && rmdir(pivotdir))
-		WARN("can't remove temporary mountpoint: %m");
+	if (rmdir(pivotdir))
+		WARN("can't remove mountpoint: %m");
 
 	INFO("pivoted to '%s'", rootfs);
 	return 0;
