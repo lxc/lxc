@@ -39,7 +39,11 @@ $rootfs/tmp \
 $rootfs/var/log \
 $rootfs/usr/share/udhcpc \
 $rootfs/dev/pts \
-$rootfs/dev/shm"
+$rootfs/dev/shm \
+$rootfs/lib \
+$rootfs/usr/lib \
+$rootfs/lib64 \
+$rootfs/usr/lib64"
 
     mkdir -p $tree || return 1
     chmod 755 $tree || return 1
@@ -223,23 +227,21 @@ cat <<EOF >> $path/config
 lxc.utsname = $name
 lxc.tty = 1
 lxc.rootfs = $rootfs
-lxc.cgroup.devices.deny = a
-# /dev/null and zero
-lxc.cgroup.devices.allow = c 1:3 rwm
-lxc.cgroup.devices.allow = c 1:5 rwm
-# consoles
-lxc.cgroup.devices.allow = c 5:1 rwm
-lxc.cgroup.devices.allow = c 5:0 rwm
-lxc.cgroup.devices.allow = c 4:0 rwm
-lxc.cgroup.devices.allow = c 4:1 rwm
-# /dev/{,u}random
-lxc.cgroup.devices.allow = c 1:9 rwm
-lxc.cgroup.devices.allow = c 1:8 rwm
-lxc.cgroup.devices.allow = c 136:* rwm
-lxc.cgroup.devices.allow = c 5:2 rwm
-# rtc
-lxc.cgroup.devices.allow = c 254:0 rwm
 EOF
+
+if [ -d "$rootfs/lib" ]; then
+cat <<EOF >> $path/config
+lxc.mount.entry=/lib $rootfs/lib none ro,bind 0 0
+lxc.mount.entry=/usr/lib $rootfs/usr/lib none ro,bind 0 0
+EOF
+fi
+
+if [ -d "$rootfs/lib64" ]; then
+cat <<EOF >> $path/config
+lxc.mount.entry=/lib64 $rootfs/lib64 none ro,bind 0 0
+lxc.mount.entry=/usr/lib64 $rootfs/usr/lib64 none ro,bind 0 0
+EOF
+fi
 }
 
 usage()
