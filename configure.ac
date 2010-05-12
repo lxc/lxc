@@ -47,12 +47,21 @@ AC_ARG_WITH([config-path],
 		[lxc configuration repository path]
 	)], [], [with_config_path="${localstatedir}/lib/lxc"])
 
+AC_ARG_WITH([rootfs-path],
+	[AC_HELP_STRING(
+		[--with-rootfs-path=dir],
+		[lxc rootfs mount point]
+	)], [], [with_rootfs_path="${libdir}/lxc"])
+
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 AS_AC_EXPAND(LXCPATH, "${with_config_path}")
+AS_AC_EXPAND(LXCROOTFSMOUNT, "${with_rootfs_path}")
 AH_TEMPLATE([LXCPATH], [lxc configuration repository])
 AH_TEMPLATE([LXCLIBEXECDIR], [lxc executable library path])
+AH_TEMPLATE([LXCROOTFSMOUNT], [lxc default rootfs mount point])
 AC_DEFINE_UNQUOTED(LXCPATH, "$LXCPATH")
 AC_DEFINE_UNQUOTED(LXCLIBEXECDIR, "$LIBEXECDIR")
+AC_DEFINE_UNQUOTED(LXCROOTFSMOUNT, "$LXCROOTFSMOUNT")
 
 AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h],
 				  [],
