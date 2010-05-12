@@ -170,6 +170,7 @@ struct lxc_console {
  */
 struct lxc_rootfs {
 	char *path;
+	char *mount;
 	char *pivot;
 };
 

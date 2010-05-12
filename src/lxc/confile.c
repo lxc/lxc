@@ -48,6 +48,7 @@ static int config_tty(const char *, char *, struct lxc_conf *);
 static int config_cgroup(const char *, char *, struct lxc_conf *);
 static int config_mount(const char *, char *, struct lxc_conf *);
 static int config_rootfs(const char *, char *, struct lxc_conf *);
+static int config_rootfs_mount(const char *, char *, struct lxc_conf *);
 static int config_pivotdir(const char *, char *, struct lxc_conf *);
 static int config_utsname(const char *, char *, struct lxc_conf *);
 static int config_network_type(const char *, char *, struct lxc_conf *);
@@ -77,6 +78,7 @@ static struct config config[] = {
 	{ "lxc.tty",                  config_tty                  },
 	{ "lxc.cgroup",               config_cgroup               },
 	{ "lxc.mount",                config_mount                },
+	{ "lxc.rootfs.mount",         config_rootfs_mount         },
 	{ "lxc.rootfs",               config_rootfs               },
 	{ "lxc.pivotdir",             config_pivotdir             },
 	{ "lxc.utsname",              config_utsname              },
@@ -646,6 +648,22 @@ static int config_rootfs(const char *key, char *value, struct lxc_conf *lxc_conf
 	lxc_conf->rootfs.path = strdup(value);
 	if (!lxc_conf->rootfs.path) {
 		SYSERROR("failed to duplicate string %s", value);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int config_rootfs_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
+{
+	if (strlen(value) >= MAXPATHLEN) {
+		ERROR("%s path is too long", value);
+		return -1;
+	}
+
+	lxc_conf->rootfs.mount = strdup(value);
+	if (!lxc_conf->rootfs.mount) {
+		SYSERROR("failed to duplicate string '%s'", value);
 		return -1;
 	}
 
