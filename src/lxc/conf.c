@@ -582,19 +582,28 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 
 static int setup_rootfs(const struct lxc_rootfs *rootfs)
 {
-	const char *tmpfs = "/tmp";
+	char *mpath = LXCROOTFSMOUNT;
 
 	if (!rootfs->path)
 		return 0;
 
-	if (mount(rootfs->path, tmpfs, "none", MS_BIND|MS_REC, NULL)) {
-		SYSERROR("failed to mount '%s'->'%s'", rootfs->path, "/tmp");
+	if (rootfs->mount)
+		mpath = rootfs->mount;
+
+	if (access(mpath, F_OK)) {
+		SYSERROR("failed to access to '%s', check it is present",
+			 mpath);
 		return -1;
 	}
 
-	DEBUG("mounted '%s' on '%s'", rootfs->path, tmpfs);
+	if (mount(rootfs->path, mpath, "none", MS_BIND|MS_REC, NULL)) {
+		SYSERROR("failed to mount '%s'->'%s'", rootfs->path, mpath);
+		return -1;
+	}
 
-	if (setup_rootfs_pivot_root(tmpfs, rootfs->pivot)) {
+	DEBUG("mounted '%s' on '%s'", rootfs->path, mpath);
+
+	if (setup_rootfs_pivot_root(mpath, rootfs->pivot)) {
 		ERROR("failed to pivot_root to '%s'", rootfs->pivot);
 		return -1;
 	}
