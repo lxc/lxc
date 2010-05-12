@@ -468,7 +468,7 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 
 	/* change into new root fs */
 	if (chdir(rootfs)) {
-		SYSERROR("can't chroot to new rootfs '%s'", rootfs);
+		SYSERROR("can't chdir to new rootfs '%s'", rootfs);
 		return -1;
 	}
 
@@ -499,7 +499,7 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	}
 
 	if (chdir("/")) {
-		SYSERROR("can't chroot to / after pivot_root");
+		SYSERROR("can't chdir to / after pivot_root");
 		return -1;
 	}
 
