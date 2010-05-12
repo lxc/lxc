@@ -464,6 +464,7 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	void *cbparm[2];
 	struct lxc_list mountlist, *iterator;
 	int ok, still_mounted, last_still_mounted;
+	int remove_pivotdir = 0;
 
 	/* change into new root fs */
 	if (chdir(rootfs)) {
@@ -484,6 +485,7 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 			return -1;
 		}
 
+		remove_pivotdir = 1;
 		DEBUG("created '%s' directory", path);
 	}
 
@@ -573,8 +575,8 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 
 	/* remove temporary mount point, we don't consider the removing
 	 * as fatal */
-	if (rmdir(pivotdir))
-		WARN("can't remove mountpoint: %m");
+	if (remove_pivotdir && rmdir(pivotdir))
+		WARN("can't remove mountpoint '%s': %m", pivotdir);
 
 	INFO("pivoted to '%s'", rootfs);
 	return 0;
