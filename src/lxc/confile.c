@@ -643,8 +643,8 @@ static int config_rootfs(const char *key, char *value, struct lxc_conf *lxc_conf
 		return -1;
 	}
 
-	lxc_conf->rootfs = strdup(value);
-	if (!lxc_conf->rootfs) {
+	lxc_conf->rootfs.path = strdup(value);
+	if (!lxc_conf->rootfs.path) {
 		SYSERROR("failed to duplicate string %s", value);
 		return -1;
 	}
@@ -659,8 +659,8 @@ static int config_pivotdir(const char *key, char *value, struct lxc_conf *lxc_co
 		return -1;
 	}
 
-	lxc_conf->pivotdir = strdup(value);
-	if (!lxc_conf->pivotdir) {
+	lxc_conf->rootfs.pivot = strdup(value);
+	if (!lxc_conf->rootfs.pivot) {
 		SYSERROR("failed to duplicate string %s", value);
 		return -1;
 	}

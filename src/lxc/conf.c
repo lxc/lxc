@@ -374,7 +374,8 @@ static int setup_utsname(struct utsname *utsname)
 	return 0;
 }
 
-static int setup_tty(const char *rootfs, const struct lxc_tty_info *tty_info)
+static int setup_tty(const struct lxc_rootfs *rootfs,
+		     const struct lxc_tty_info *tty_info)
 {
 	char path[MAXPATHLEN];
 	int i;
@@ -384,7 +385,7 @@ static int setup_tty(const char *rootfs, const struct lxc_tty_info *tty_info)
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
 		snprintf(path, sizeof(path), "%s/dev/tty%d",
-			 rootfs ? rootfs : "", i + 1);
+			 rootfs->path ? rootfs->path : "", i + 1);
 
 		/* At this point I can not use the "access" function
 		 * to check the file is present or not because it fails
@@ -579,22 +580,22 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	return 0;
 }
 
-static int setup_rootfs(const char *rootfs, const char *pivotdir)
+static int setup_rootfs(const struct lxc_rootfs *rootfs)
 {
 	const char *tmpfs = "/tmp";
 
-	if (!rootfs)
+	if (!rootfs->path)
 		return 0;
 
-	if (mount(rootfs, tmpfs, "none", MS_BIND|MS_REC, NULL)) {
-		SYSERROR("failed to mount '%s'->'%s'", rootfs, "/tmp");
+	if (mount(rootfs->path, tmpfs, "none", MS_BIND|MS_REC, NULL)) {
+		SYSERROR("failed to mount '%s'->'%s'", rootfs->path, "/tmp");
 		return -1;
 	}
 
-	DEBUG("mounted '%s' on '%s'", rootfs, tmpfs);
+	DEBUG("mounted '%s' on '%s'", rootfs->path, tmpfs);
 
-	if (setup_rootfs_pivot_root(tmpfs, pivotdir)) {
-		ERROR("failed to pivot_root to '%s'", rootfs);
+	if (setup_rootfs_pivot_root(tmpfs, rootfs->pivot)) {
+		ERROR("failed to pivot_root to '%s'", rootfs->pivot);
 		return -1;
 	}
 
@@ -640,16 +641,17 @@ out:
 	return 0;
 }
 
-static int setup_console(const char *rootfs, const struct lxc_console *console)
+static int setup_console(const struct lxc_rootfs *rootfs,
+			 const struct lxc_console *console)
 {
 	char path[MAXPATHLEN];
 	struct stat s;
 
 	/* We don't have a rootfs, /dev/console will be shared */
-	if (!rootfs)
+	if (!rootfs->path)
 		return 0;
 
-	snprintf(path, sizeof(path), "%s/dev/console", rootfs);
+	snprintf(path, sizeof(path), "%s/dev/console", rootfs->path);
 
 	if (access(path, F_OK)) {
 		WARN("rootfs specified but no console found");
@@ -1415,17 +1417,17 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_console(lxc_conf->rootfs, &lxc_conf->console)) {
+	if (setup_console(&lxc_conf->rootfs, &lxc_conf->console)) {
 		ERROR("failed to setup the console for '%s'", name);
 		return -1;
 	}
 
-	if (setup_tty(lxc_conf->rootfs, &lxc_conf->tty_info)) {
+	if (setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info)) {
 		ERROR("failed to setup the ttys for '%s'", name);
 		return -1;
 	}
 
-	if (setup_rootfs(lxc_conf->rootfs, lxc_conf->pivotdir)) {
+	if (setup_rootfs(&lxc_conf->rootfs)) {
 		ERROR("failed to set rootfs for '%s'", name);
 		return -1;
 	}

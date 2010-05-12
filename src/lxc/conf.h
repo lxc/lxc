@@ -163,6 +163,17 @@ struct lxc_console {
 };
 
 /*
+ * Defines a structure to store the rootfs location, the
+ * optionals pivot_root, rootfs mount paths
+ * @rootfs     : a path to the rootfs
+ * @pivot_root : a path to a pivot_root location to be used
+ */
+struct lxc_rootfs {
+	char *path;
+	char *pivot;
+};
+
+/*
  * Defines the global container configuration
  * @rootfs     : root directory to run the container
  * @pivotdir   : pivotdir path, if not set default will be used
@@ -178,8 +189,6 @@ struct lxc_console {
  * @console    : console data
  */
 struct lxc_conf {
-	char *rootfs;
-	char *pivotdir;
 	char *fstab;
 	int tty;
 	int pts;
@@ -191,6 +200,7 @@ struct lxc_conf {
 	struct lxc_list caps;
 	struct lxc_tty_info tty_info;
 	struct lxc_console console;
+	struct lxc_rootfs rootfs;
 };
 
 /*

@@ -145,7 +145,7 @@ int lxc_create_console(struct lxc_conf *conf)
 	struct lxc_console *console = &conf->console;
 	int fd;
 
-	if (!conf->rootfs)
+	if (!conf->rootfs.path)
 		return 0;
 
 	if (!console->path)
@@ -155,7 +155,7 @@ int lxc_create_console(struct lxc_conf *conf)
 		    console->name, NULL, NULL)) {
 		SYSERROR("failed to allocate a pty");
 		return -1;
-        }
+	}
 
 	if (fcntl(console->master, F_SETFD, FD_CLOEXEC)) {
 		SYSERROR("failed to set console master to close-on-exec");
@@ -262,7 +262,7 @@ int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_console *console = &conf->console;
 
-	if (!conf->rootfs) {
+	if (!conf->rootfs.path) {
 		INFO("no rootfs, no console.");
 		return 0;
 	}

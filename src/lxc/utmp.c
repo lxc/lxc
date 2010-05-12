@@ -56,7 +56,7 @@ static int utmp_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 		return -1;
 	}
 
-	if (snprintf(path, MAXPATHLEN, "%s/var/run/utmp", conf->rootfs) >
+	if (snprintf(path, MAXPATHLEN, "%s/var/run/utmp", conf->rootfs.path) >
 	    MAXPATHLEN) {
 		ERROR("path is too long");
 		return -1;
@@ -114,10 +114,10 @@ int lxc_utmp_mainloop_add(struct lxc_epoll_descr *descr,
 	char path[MAXPATHLEN];
 	int fd, wd;
 
-	if (!conf->rootfs)
+	if (!conf->rootfs.path)
 		return 0;
 
-	if (snprintf(path, MAXPATHLEN, "%s/var/run/utmp", conf->rootfs) >
+	if (snprintf(path, MAXPATHLEN, "%s/var/run/utmp", conf->rootfs.path) >
 	    MAXPATHLEN) {
 		ERROR("path is too long");
 		return -1;
