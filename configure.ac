@@ -55,9 +55,9 @@ AC_DEFINE_UNQUOTED(LXCPATH, "$LXCPATH")
 AC_DEFINE_UNQUOTED(LXCLIBEXECDIR, "$LIBEXECDIR")
 
 AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h],
-                 [],
-                 AC_MSG_ERROR([netlink headers not found. Please install the linux kernel headers.]),
-                 [#include <sys/socket.h>
+				  [],
+				  AC_MSG_ERROR([netlink headers not found. Please install the linux kernel headers.]),
+				  [#include <sys/socket.h>
 		 ])
 
 AC_CHECK_HEADERS([sys/capability.h], [], AC_MSG_ERROR([please install libcap-devel.]),
@@ -76,12 +76,12 @@ if test "x$GCC" = "xyes"; then
 fi
 
 AC_CONFIG_FILES([
-        Makefile
+	Makefile
 	lxc.pc
 	lxc.spec
-        config/Makefile
+	config/Makefile
 
-        doc/Makefile
+	doc/Makefile
 	doc/lxc-create.sgml
 	doc/lxc-destroy.sgml
 	doc/lxc-execute.sgml
@@ -116,7 +116,7 @@ AC_CONFIG_FILES([
 	scripts/lxc-fedora
 	scripts/lxc-sshd
 
-        src/Makefile
+	src/Makefile
 	src/lxc/Makefile
 	src/lxc/lxc-ps
 	src/lxc/lxc-ls
