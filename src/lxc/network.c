@@ -654,52 +654,53 @@ int lxc_neigh_proxy_off(const char *name, int family)
 
 int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr)
 {
-    unsigned char *data;
-    char c;
-    int i = 0;
-    unsigned val;
+	unsigned char *data;
+	char c;
+	int i = 0;
+	unsigned val;
 
-    sockaddr->sa_family = ARPHRD_ETHER;
-    data = (unsigned char *)sockaddr->sa_data;
+	sockaddr->sa_family = ARPHRD_ETHER;
+	data = (unsigned char *)sockaddr->sa_data;
 
-    while ((*macaddr != '\0') && (i < ETH_ALEN)) {
-	val = 0;
-	c = *macaddr++;
-	if (isdigit(c))
-	    val = c - '0';
-	else if (c >= 'a' && c <= 'f')
-	    val = c - 'a' + 10;
-	else if (c >= 'A' && c <= 'F')
-	    val = c - 'A' + 10;
-	else {
-	    return -EINVAL;
+	while ((*macaddr != '\0') && (i < ETH_ALEN)) {
+	    val = 0;
+	    c = *macaddr++;
+	    if (isdigit(c))
+		    val = c - '0';
+	    else if (c >= 'a' && c <= 'f')
+		    val = c - 'a' + 10;
+	    else if (c >= 'A' && c <= 'F')
+		    val = c - 'A' + 10;
+	    else {
+		    return -EINVAL;
+	    }
+	    val <<= 4;
+	    c = *macaddr;
+	    if (isdigit(c))
+		    val |= c - '0';
+	    else if (c >= 'a' && c <= 'f')
+		    val |= c - 'a' + 10;
+	    else if (c >= 'A' && c <= 'F')
+		    val |= c - 'A' + 10;
+	    else if (c == ':' || c == 0)
+		    val >>= 4;
+	    else {
+		    return -EINVAL;
+	    }
+	    if (c != 0)
+		    macaddr++;
+	    *data++ = (unsigned char) (val & 0377);
+	    i++;
+
+	    if (*macaddr == ':')
+		    macaddr++;
 	}
-	val <<= 4;
-	c = *macaddr;
-	if (isdigit(c))
-	    val |= c - '0';
-	else if (c >= 'a' && c <= 'f')
-	    val |= c - 'a' + 10;
-	else if (c >= 'A' && c <= 'F')
-	    val |= c - 'A' + 10;
-	else if (c == ':' || c == 0)
-	    val >>= 4;
-	else {
-	    return -EINVAL;
-	}
-	if (c != 0)
-	    macaddr++;
-	*data++ = (unsigned char) (val & 0377);
-	i++;
 
-	if (*macaddr == ':')
-	    macaddr++;
-    }
-
-    return 0;
+	return 0;
 }
 
-int lxc_ip_addr_add(int family, int ifindex, void *addr, int prefix)
+static int ip_addr_add(int family, int ifindex,
+		       void *addr, void *bcast, void *acast, int prefix)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -724,7 +725,8 @@ int lxc_ip_addr_add(int family, int ifindex, void *addr, int prefix)
 		goto out;
 
 	ip_req = (struct ip_req *)nlmsg;
-        ip_req->nlmsg.nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifaddrmsg));
+        ip_req->nlmsg.nlmsghdr.nlmsg_len =
+		NLMSG_LENGTH(sizeof(struct ifaddrmsg));
         ip_req->nlmsg.nlmsghdr.nlmsg_flags =
 		NLM_F_ACK|NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL;
         ip_req->nlmsg.nlmsghdr.nlmsg_type = RTM_NEWADDR;
@@ -740,10 +742,13 @@ int lxc_ip_addr_add(int family, int ifindex, void *addr, int prefix)
 	if (nla_put_buffer(nlmsg, IFA_ADDRESS, addr, addrlen))
 		goto out;
 
-/*	if (in_bcast.s_addr != INADDR_ANY) */
-/*		if (nla_put_buffer(nlmsg, IFA_BROADCAST, &in_bcast, */
-/*				   sizeof(in_bcast))) */
-/*			goto out; */
+	if (bcast && nla_put_buffer(nlmsg, IFA_BROADCAST, bcast, addrlen))
+		goto out;
+
+	/* TODO : multicast, anycast with ipv6 */
+	err = EPROTONOSUPPORT;
+	if ((bcast || acast) && family == AF_INET6)
+		goto out;
 
 	err = netlink_transaction(&nlh, nlmsg, answer);
 out:
@@ -751,6 +756,19 @@ out:
 	nlmsg_free(answer);
 	nlmsg_free(nlmsg);
 	return err;
+}
+
+int lxc_ipv6_addr_add(int ifindex, struct in6_addr *addr,
+		      struct in6_addr *mcast,
+		      struct in6_addr *acast, int prefix)
+{
+	return ip_addr_add(AF_INET6, ifindex, addr, mcast, acast, prefix);
+}
+
+int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr,
+		      struct in_addr *bcast, int prefix)
+{
+	return ip_addr_add(AF_INET, ifindex, addr, bcast, NULL, prefix);
 }
 
 /*
