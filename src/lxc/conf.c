@@ -943,8 +943,8 @@ static int setup_ipv4_addr(struct lxc_list *ip, int ifindex)
 
 		inetdev = iterator->elem;
 
-		err = lxc_ip_addr_add(AF_INET, ifindex,
-				      &inetdev->addr, inetdev->prefix);
+		err = lxc_ipv4_addr_add(ifindex, &inetdev->addr,
+					&inetdev->bcast, inetdev->prefix);
 		if (err) {
 			ERROR("failed to setup_ipv4_addr ifindex %d : %s",
 			      ifindex, strerror(-err));
@@ -965,8 +965,9 @@ static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 
 		inet6dev = iterator->elem;
 
-		err = lxc_ip_addr_add(AF_INET6, ifindex,
-				      &inet6dev->addr, inet6dev->prefix);
+		err = lxc_ipv6_addr_add(ifindex, &inet6dev->addr, 
+					&inet6dev->mcast, &inet6dev->acast,
+					inet6dev->prefix);
 		if (err) {
 			ERROR("failed to setup_ipv6_addr ifindex %d : %s",
 			      ifindex, strerror(-err));

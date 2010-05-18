@@ -405,16 +405,23 @@ static int config_network_ipv4(const char *key, char *value,
 		return -1;
 	}
 
-	if (bcast)
-		if (!inet_pton(AF_INET, bcast, &inetdev->bcast)) {
-			SYSERROR("invalid ipv4 address: %s", value);
-			return -1;
-		}
+	if (bcast && !inet_pton(AF_INET, bcast, &inetdev->bcast)) {
+		SYSERROR("invalid ipv4 broadcast address: %s", value);
+		return -1;
+	}
 
 	/* no prefix specified, determine it from the network class */
 	inetdev->prefix = prefix ? atoi(prefix) :
 		config_ip_prefix(&inetdev->addr);
 
+	/* if no broadcast address, let compute one from the 
+	 * prefix and address
+	 */
+	if (!bcast) {
+		inetdev->bcast.s_addr = 
+			htonl(INADDR_BROADCAST << (32 - inetdev->prefix));
+		inetdev->bcast.s_addr &= inetdev->addr.s_addr;
+	}
 
 	lxc_list_add(&netdev->ipv4, list);
 

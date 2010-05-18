@@ -62,7 +62,7 @@ struct lxc_route {
  */
 struct lxc_inet6dev {
 	struct in6_addr addr;
-	struct in6_addr bcast;
+	struct in6_addr mcast;
 	struct in6_addr acast;
 	int prefix;
 };
