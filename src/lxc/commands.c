@@ -93,22 +93,18 @@ extern int lxc_command(const char *name, struct lxc_command *command,
 					sizeof(command->request));
 	if (ret < 0) {
 		SYSERROR("failed to send request to '@%s'", offset);
-		goto out_close;
+		goto out;
 	}
 
 	if (ret != sizeof(command->request)) {
 		SYSERROR("message partially sent to '@%s'", offset);
-		goto out_close;
+		goto out;
 	}
 
 	ret = receive_answer(sock, &command->answer);
-	if (ret < 0)
-		goto out_close;
 out:
-	return ret;
-out_close:
 	close(sock);
-	goto out;
+	return ret;
 }
 
 pid_t get_init_pid(const char *name)
