@@ -126,7 +126,10 @@ int main(int argc, char *argv[])
 	if (my_args.rcfile)
 		rcfile = (char *)my_args.rcfile;
 	else {
-		if (!asprintf(&rcfile, LXCPATH "/%s/config", my_args.name)) {
+		int rc;
+
+		rc = asprintf(&rcfile, LXCPATH "/%s/config", my_args.name);
+		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
 			return -1;
 		}
