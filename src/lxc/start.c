@@ -600,10 +600,6 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 		goto out_fini;
 	}
 
-	/* no need of other inherited fds but stderr */
-	close(fileno(stdin));
-	close(fileno(stdout));
-
 	err = lxc_poll(name, handler);
 	if (err) {
 		ERROR("mainloop exited with an error");

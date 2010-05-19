@@ -1373,6 +1373,9 @@ int lxc_create_tty(const char *name, struct lxc_conf *conf)
 			return -1;
 		}
 
+		DEBUG("allocated pty '%s' (%d/%d)",
+		      pty_info->name, pty_info->master, pty_info->slave);
+
                 /* Prevent leaking the file descriptors to the container */
 		fcntl(pty_info->master, F_SETFD, FD_CLOEXEC);
 		fcntl(pty_info->slave, F_SETFD, FD_CLOEXEC);
