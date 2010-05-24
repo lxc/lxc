@@ -83,7 +83,7 @@ static int utmp_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 		goto out;
 	}
 
-	if (ntasks == 1 && prevrun_level == '3') {
+	if (ntasks == 1 && prevrun_level > '1' && prevrun_level < '6') {
 
 		DEBUG("run level is %c/%c", prevrun_level, currun_level);
 		DEBUG("there is %d tasks remaining", ntasks);
