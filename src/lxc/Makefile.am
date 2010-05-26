@@ -31,6 +31,7 @@ liblxc_so_SOURCES = \
 	cgroup.c cgroup.h \
 	lxc.h \
 	utils.c utils.h \
+	sync.c sync.h \
 	namespace.h namespace.c \
 	conf.c conf.h \
 	confile.c confile.h \

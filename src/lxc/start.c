@@ -124,6 +124,7 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #include "monitor.h"
 #include "commands.h"
 #include "console.h"
+#include "sync.h"
 
 lxc_log_define(lxc_start, lxc);
 
@@ -414,29 +415,19 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 static int do_start(void *data)
 {
 	struct lxc_handler *handler = data;
-	int err = -1, sync;
 
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
 		SYSERROR("failed to set sigprocmask");
 		return -1;
 	}
 
-	close(handler->sv[1]);
+	lxc_sync_fini_parent(handler);
 
-	/* Be sure we don't inherit this after the exec */
-	fcntl(handler->sv[0], F_SETFD, FD_CLOEXEC);
-
-	/* Tell our father he can begin to configure the container */
-	if (write(handler->sv[0], &sync, sizeof(sync)) < 0) {
-		SYSERROR("failed to write socket");
+	/* Tell the parent task it can begin to configure the
+	 * container and wait for it to finish
+	 */
+	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
 		return -1;
-	}
-
-	/* Wait for the father to finish the configuration */
-	if (read(handler->sv[0], &sync, sizeof(sync)) < 0) {
-		SYSERROR("failed to read socket");
-		return -1;
-	}
 
 	/* Setup the container, ip, names, utsname, ... */
 	if (lxc_setup(handler->name, handler->conf)) {
@@ -462,24 +453,18 @@ static int do_start(void *data)
 		return -1;
 
 out_warn_father:
-	/* If the exec fails, tell that to our father */
-	if (write(handler->sv[0], &err, sizeof(err)) < 0)
-		SYSERROR("failed to write the socket");
+	lxc_sync_wake_parent(handler, LXC_SYNC_POST_CONFIGURE);
 	return -1;
 }
 
 int lxc_spawn(struct lxc_handler *handler)
 {
 	int clone_flags;
-	int sync;
 	int failed_before_rename = 0;
 	const char *name = handler->name;
 
-	/* Synchro socketpair */
-	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, handler->sv)) {
-		SYSERROR("failed to create communication socketpair");
+	if (lxc_sync_init(handler))
 		return -1;
-	}
 
 	clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
 	if (!lxc_list_empty(&handler->conf->network)) {
@@ -491,8 +476,7 @@ int lxc_spawn(struct lxc_handler *handler)
 		 */
 		if (lxc_create_network(&handler->conf->network)) {
 			ERROR("failed to create the network");
-			close(handler->sv[0]);
-			close(handler->sv[1]);
+			lxc_sync_fini(handler);
 			return -1;
 		}
 	}
@@ -505,13 +489,10 @@ int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	close(handler->sv[0]);
-	
-	/* Wait for the child to be ready */
-	if (read(handler->sv[1], &sync, sizeof(sync)) <= 0) {
-		ERROR("sync read failure : %m");
+	lxc_sync_fini_child(handler);
+
+	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 		failed_before_rename = 1;
-	}
 
 	if (lxc_rename_nsgroup(name, handler))
 		goto out_delete_net;
@@ -527,17 +508,11 @@ int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	/* Tell the child to continue its initialization */
-	if (write(handler->sv[1], &sync, sizeof(sync)) < 0) {
-		SYSERROR("failed to write the socket");
-		goto out_abort;
-	}
-
-	/* Wait for the child to exec or returning an error */
-	if (read(handler->sv[1], &sync, sizeof(sync)) < 0) {
-		ERROR("failed to read the socket");
-		goto out_abort;
-	}
+	/* Tell the child to continue its initialization and wait for
+	 * it to exec or return an error
+	 */
+	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
+		return -1;
 
 	if (handler->ops->post_start(handler, handler->data))
 		goto out_abort;
@@ -548,7 +523,7 @@ int lxc_spawn(struct lxc_handler *handler)
 		goto out_abort;
 	}
 
-	close(handler->sv[1]);
+	lxc_sync_fini(handler);
 	return 0;
 
 out_delete_net:
@@ -556,7 +531,7 @@ out_delete_net:
 		lxc_delete_network(&handler->conf->network);
 out_abort:
 	lxc_abort(name, handler);
-	close(handler->sv[1]);
+	lxc_sync_fini(handler);
 	return -1;
 }
 
