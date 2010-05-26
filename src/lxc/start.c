@@ -498,7 +498,9 @@ int lxc_spawn(struct start_arg *start_arg, int flags)
 		 */
 		if (lxc_create_network(&handler->conf->network)) {
 			ERROR("failed to create the network");
-			goto out_close;
+			close(sv[0]);
+			close(sv[1]);
+			return -1;
 		}
 	}
 
@@ -554,11 +556,6 @@ int lxc_spawn(struct start_arg *start_arg, int flags)
 
 	close(sv[1]);
 	return 0;
-
-out_close:
-	close(sv[0]);
-	close(sv[1]);
-	return -1;
 
 out_delete_net:
 	if (clone_flags & CLONE_NEWNET)
