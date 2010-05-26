@@ -560,57 +560,24 @@ out_abort:
 	return -1;
 }
 
-struct start_arg {
-	char *const *argv;
-};
-
-static int start(struct lxc_handler *handler, void* data)
-{
-	struct start_arg *arg = data;
-
-	NOTICE("exec'ing '%s'", arg->argv[0]);
-
-	execvp(arg->argv[0], arg->argv);
-	SYSERROR("failed to exec %s", arg->argv[0]);
-	return 0;
-}
-
-static int post_start(struct lxc_handler *handler, void* data)
-{
-	struct start_arg *arg = data;
-
-	NOTICE("'%s' started with pid '%d'", arg->argv[0], handler->pid);
-	return 0;
-}
-
-static struct lxc_operations start_ops = {
-	.start = start,
-	.post_start = post_start
-};
-
-int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
+int __lxc_start(const char *name, struct lxc_conf *conf,
+		struct lxc_operations* ops, void *data)
 {
 	struct lxc_handler *handler;
 	int err = -1;
 	int status;
-	struct start_arg start_arg = {
-		.argv = argv,
-	};
-
-	if (lxc_check_inherited(-1))
-		return -1;
 
 	handler = lxc_init(name, conf);
 	if (!handler) {
 		ERROR("failed to initialize the container");
 		return -1;
 	}
-	handler->ops = &start_ops;
-	handler->data = &start_arg;
+	handler->ops = ops;
+	handler->data = data;
 
 	err = lxc_spawn(handler);
 	if (err) {
-		ERROR("failed to spawn '%s'", argv[0]);
+		ERROR("failed to spawn '%s'", name);
 		goto out_fini;
 	}
 
@@ -638,4 +605,44 @@ out_fini:
 out_abort:
 	lxc_abort(name, handler);
 	goto out_fini;
+}
+
+struct start_args {
+	char *const *argv;
+};
+
+static int start(struct lxc_handler *handler, void* data)
+{
+	struct start_args *arg = data;
+
+	NOTICE("exec'ing '%s'", arg->argv[0]);
+
+	execvp(arg->argv[0], arg->argv);
+	SYSERROR("failed to exec %s", arg->argv[0]);
+	return 0;
+}
+
+static int post_start(struct lxc_handler *handler, void* data)
+{
+	struct start_args *arg = data;
+
+	NOTICE("'%s' started with pid '%d'", arg->argv[0], handler->pid);
+	return 0;
+}
+
+static struct lxc_operations start_ops = {
+	.start = start,
+	.post_start = post_start
+};
+
+int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
+{
+	struct start_args start_arg = {
+		.argv = argv,
+	};
+
+	if (lxc_check_inherited(-1))
+		return -1;
+
+	return __lxc_start(name, conf, &start_ops, &start_arg);
 }
