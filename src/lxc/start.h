@@ -28,6 +28,14 @@
 
 struct lxc_conf;
 
+struct start_arg;
+struct lxc_handler;
+
+struct lxc_operations {
+	int (*start)(struct lxc_handler *, struct start_arg *);
+	int (*post_start)(struct lxc_handler *, struct start_arg *, int);
+};
+
 struct lxc_handler {
 	pid_t pid;
 	char *name;
@@ -36,6 +44,7 @@ struct lxc_handler {
 	char nsgroup[MAXPATHLEN];
 	sigset_t oldmask;
 	struct lxc_conf *conf;
+	struct lxc_operations *ops;
 };
 
 struct start_arg {
