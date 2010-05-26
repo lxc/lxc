@@ -411,12 +411,10 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 		kill(handler->pid, SIGKILL);
 }
 
-static int do_start(void *arg)
+static int do_start(void *data)
 {
-	struct start_arg *start_arg = arg;
-	struct lxc_handler *handler = start_arg->handler;
-	const char *name = start_arg->name;
-	int *sv = start_arg->sv;
+	struct start_arg *arg = data;
+	struct lxc_handler *handler = arg->handler;
 	int err = -1, sync;
 
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
@@ -424,25 +422,25 @@ static int do_start(void *arg)
 		return -1;
 	}
 
-	close(sv[1]);
+	close(arg->sv[1]);
 
 	/* Be sure we don't inherit this after the exec */
-	fcntl(sv[0], F_SETFD, FD_CLOEXEC);
+	fcntl(arg->sv[0], F_SETFD, FD_CLOEXEC);
 
 	/* Tell our father he can begin to configure the container */
-	if (write(sv[0], &sync, sizeof(sync)) < 0) {
+	if (write(arg->sv[0], &sync, sizeof(sync)) < 0) {
 		SYSERROR("failed to write socket");
 		return -1;
 	}
 
 	/* Wait for the father to finish the configuration */
-	if (read(sv[0], &sync, sizeof(sync)) < 0) {
+	if (read(arg->sv[0], &sync, sizeof(sync)) < 0) {
 		SYSERROR("failed to read socket");
 		return -1;
 	}
 
 	/* Setup the container, ip, names, utsname, ... */
-	if (lxc_setup(name, handler->conf)) {
+	if (lxc_setup(handler->name, handler->conf)) {
 		ERROR("failed to setup the container");
 		goto out_warn_father;
 	}
@@ -461,29 +459,25 @@ static int do_start(void *arg)
 
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
-	if (handler->ops->start(handler, start_arg))
+	if (handler->ops->start(handler, arg))
 		return -1;
 
 out_warn_father:
 	/* If the exec fails, tell that to our father */
-	if (write(sv[0], &err, sizeof(err)) < 0)
+	if (write(arg->sv[0], &err, sizeof(err)) < 0)
 		SYSERROR("failed to write the socket");
 	return -1;
 }
 
-int lxc_spawn(struct start_arg *start_arg, int flags)
+int lxc_spawn(struct lxc_handler *handler, struct start_arg *arg, int flags)
 {
-	int sv[2];
 	int clone_flags;
 	int sync;
 	int failed_before_rename = 0;
-	const char *name = start_arg->name;
-	struct lxc_handler *handler = start_arg->handler;
-
-	start_arg->sv = sv;
+	const char *name = handler->name;
 
 	/* Synchro socketpair */
-	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
+	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, arg->sv)) {
 		SYSERROR("failed to create communication socketpair");
 		return -1;
 	}
@@ -498,23 +492,25 @@ int lxc_spawn(struct start_arg *start_arg, int flags)
 		 */
 		if (lxc_create_network(&handler->conf->network)) {
 			ERROR("failed to create the network");
-			close(sv[0]);
-			close(sv[1]);
+			close(arg->sv[0]);
+			close(arg->sv[1]);
 			return -1;
 		}
 	}
 
+
 	/* Create a process in a new set of namespaces */
-	handler->pid = lxc_clone(do_start, start_arg, clone_flags);
+	arg->handler = handler;
+	handler->pid = lxc_clone(do_start, arg, clone_flags);
 	if (handler->pid < 0) {
 		SYSERROR("failed to fork into a new namespace");
 		goto out_delete_net;
 	}
 
-	close(sv[0]);
+	close(arg->sv[0]);
 	
 	/* Wait for the child to be ready */
-	if (read(sv[1], &sync, sizeof(sync)) <= 0) {
+	if (read(arg->sv[1], &sync, sizeof(sync)) <= 0) {
 		ERROR("sync read failure : %m");
 		failed_before_rename = 1;
 	}
@@ -534,18 +530,18 @@ int lxc_spawn(struct start_arg *start_arg, int flags)
 	}
 
 	/* Tell the child to continue its initialization */
-	if (write(sv[1], &sync, sizeof(sync)) < 0) {
+	if (write(arg->sv[1], &sync, sizeof(sync)) < 0) {
 		SYSERROR("failed to write the socket");
 		goto out_abort;
 	}
 
 	/* Wait for the child to exec or returning an error */
-	if (read(sv[1], &sync, sizeof(sync)) < 0) {
+	if (read(arg->sv[1], &sync, sizeof(sync)) < 0) {
 		ERROR("failed to read the socket");
 		goto out_abort;
 	}
 
-	if (handler->ops->post_start(handler, start_arg, flags))
+	if (handler->ops->post_start(handler, arg, flags))
 		goto out_abort;
 
 	if (lxc_set_state(name, handler, RUNNING)) {
@@ -554,7 +550,7 @@ int lxc_spawn(struct start_arg *start_arg, int flags)
 		goto out_abort;
 	}
 
-	close(sv[1]);
+	close(arg->sv[1]);
 	return 0;
 
 out_delete_net:
@@ -562,7 +558,7 @@ out_delete_net:
 		lxc_delete_network(&handler->conf->network);
 out_abort:
 	lxc_abort(name, handler);
-	close(sv[1]);
+	close(arg->sv[1]);
 	return -1;
 }
 
@@ -604,13 +600,10 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 	handler->ops = &start_ops;
 
 	struct start_arg start_arg = {
-		.name = name,
 		.argv = argv,
-		.sfd = -1,
-		.handler = handler,
 	};
 
-	err = lxc_spawn(&start_arg, 0);
+	err = lxc_spawn(handler, &start_arg, 0);
 	if (err) {
 		ERROR("failed to spawn '%s'", argv[0]);
 		goto out_fini;

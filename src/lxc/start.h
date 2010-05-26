@@ -48,15 +48,15 @@ struct lxc_handler {
 };
 
 struct start_arg {
-	const char *name;
 	struct lxc_handler *handler;
-	int *sv;
+	int sv[2];
 	char *const *argv;
 	int sfd;
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *);
-extern int lxc_spawn(struct start_arg *start_arg, int restart_flags);
+extern int lxc_spawn(struct lxc_handler *, struct start_arg *start_arg,
+	int restart_flags);
 
 extern int lxc_poll(const char *name, struct lxc_handler *handler);
 extern void lxc_abort(const char *name, struct lxc_handler *handler);
