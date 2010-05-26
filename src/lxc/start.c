@@ -369,10 +369,6 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 		goto out_delete_console;
 	}
 
-	/* Avoid signals from terminal */
-	LXC_TTY_ADD_HANDLER(SIGINT);
-	LXC_TTY_ADD_HANDLER(SIGQUIT);
-
 	INFO("'%s' is initialized", name);
 	return handler;
 
@@ -406,9 +402,6 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_delete_tty(&handler->conf->tty_info);
 	free(handler->name);
 	free(handler);
-
-	LXC_TTY_DEL_HANDLER(SIGQUIT);
-	LXC_TTY_DEL_HANDLER(SIGINT);
 }
 
 void lxc_abort(const char *name, struct lxc_handler *handler)
@@ -604,6 +597,10 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 		goto out_fini;
 	}
 
+	/* Avoid signals from terminal */
+	LXC_TTY_ADD_HANDLER(SIGINT);
+	LXC_TTY_ADD_HANDLER(SIGQUIT);
+
 	err = lxc_poll(name, handler);
 	if (err) {
 		ERROR("mainloop exited with an error");
@@ -615,6 +612,8 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
+	LXC_TTY_DEL_HANDLER(SIGQUIT);
+	LXC_TTY_DEL_HANDLER(SIGINT);
 	lxc_unlink_nsgroup(name);
 	lxc_fini(name, handler);
 	return err;
