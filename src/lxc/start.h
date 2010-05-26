@@ -38,6 +38,15 @@ struct lxc_handler {
 	struct lxc_conf *conf;
 };
 
+struct start_arg {
+	const char *name;
+	struct lxc_handler *handler;
+	int *sv;
+	char *const *argv;
+	int sfd;
+};
+
+extern int do_start(void *arg);
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *);
 extern int lxc_spawn(const char *name, struct lxc_handler *handler,
 		     char *const argv[]);

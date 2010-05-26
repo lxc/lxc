@@ -411,14 +411,7 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 		kill(handler->pid, SIGKILL);
 }
 
-struct start_arg {
-	const char *name;
-	char *const *argv;
-	struct lxc_handler *handler;
-	int *sv;
-};
-
-static int do_start(void *arg)
+int do_start(void *arg)
 {
 	struct start_arg *start_arg = arg;
 	struct lxc_handler *handler = start_arg->handler;
@@ -465,6 +458,8 @@ static int do_start(void *arg)
 		return -1;
 	}
 
+	close(handler->sigfd);
+
 	NOTICE("exec'ing '%s'", argv[0]);
 
 	execvp(argv[0], argv);
@@ -487,6 +482,7 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	struct start_arg start_arg = {
 		.name = name,
 		.argv = argv,
+		.sfd = -1,
 		.handler = handler,
 		.sv = sv,
 	};
