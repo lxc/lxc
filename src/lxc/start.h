@@ -46,10 +46,8 @@ struct start_arg {
 	int sfd;
 };
 
-extern int do_start(void *arg);
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *);
-extern int lxc_spawn(const char *name, struct lxc_handler *handler,
-		     char *const argv[]);
+extern int lxc_spawn(struct start_arg *start_arg, int restart_flags);
 
 extern int lxc_poll(const char *name, struct lxc_handler *handler);
 extern void lxc_abort(const char *name, struct lxc_handler *handler);

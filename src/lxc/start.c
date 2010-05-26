@@ -411,12 +411,11 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 		kill(handler->pid, SIGKILL);
 }
 
-int do_start(void *arg)
+static int do_start(void *arg)
 {
 	struct start_arg *start_arg = arg;
 	struct lxc_handler *handler = start_arg->handler;
 	const char *name = start_arg->name;
-	char *const *argv = start_arg->argv;
 	int *sv = start_arg->sv;
 	int err = -1, sync;
 
@@ -460,10 +459,10 @@ int do_start(void *arg)
 
 	close(handler->sigfd);
 
-	NOTICE("exec'ing '%s'", argv[0]);
-
-	execvp(argv[0], argv);
-	SYSERROR("failed to exec %s", argv[0]);
+	/* after this call, we are in error because this
+	 * ops should not return as it execs */
+	if (handler->ops->start(handler, start_arg))
+		return -1;
 
 out_warn_father:
 	/* If the exec fails, tell that to our father */
@@ -472,20 +471,16 @@ out_warn_father:
 	return -1;
 }
 
-int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
+int lxc_spawn(struct start_arg *start_arg, int flags)
 {
 	int sv[2];
 	int clone_flags;
-	int err = -1, sync;
+	int sync;
 	int failed_before_rename = 0;
+	const char *name = start_arg->name;
+	struct lxc_handler *handler = start_arg->handler;
 
-	struct start_arg start_arg = {
-		.name = name,
-		.argv = argv,
-		.sfd = -1,
-		.handler = handler,
-		.sv = sv,
-	};
+	start_arg->sv = sv;
 
 	/* Synchro socketpair */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv)) {
@@ -508,7 +503,7 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 	}
 
 	/* Create a process in a new set of namespaces */
-	handler->pid = lxc_clone(do_start, &start_arg, clone_flags);
+	handler->pid = lxc_clone(do_start, start_arg, clone_flags);
 	if (handler->pid < 0) {
 		SYSERROR("failed to fork into a new namespace");
 		goto out_delete_net;
@@ -548,20 +543,22 @@ int lxc_spawn(const char *name, struct lxc_handler *handler, char *const argv[])
 		goto out_abort;
 	}
 
+	if (handler->ops->post_start(handler, start_arg, flags))
+		goto out_abort;
+
 	if (lxc_set_state(name, handler, RUNNING)) {
 		ERROR("failed to set state to %s",
 			      lxc_state2str(RUNNING));
 		goto out_abort;
 	}
 
-	err = 0;
-
-	NOTICE("'%s' started with pid '%d'", argv[0], handler->pid);
+	close(sv[1]);
+	return 0;
 
 out_close:
 	close(sv[0]);
 	close(sv[1]);
-	return err;
+	return -1;
 
 out_delete_net:
 	if (clone_flags & CLONE_NEWNET)
@@ -571,6 +568,27 @@ out_abort:
 	close(sv[1]);
 	return -1;
 }
+
+static int start(struct lxc_handler *handler, struct start_arg *arg)
+{
+	NOTICE("exec'ing '%s'", arg->argv[0]);
+
+	execvp(arg->argv[0], arg->argv);
+	SYSERROR("failed to exec %s", arg->argv[0]);
+	return 0;
+}
+
+static int post_start(struct lxc_handler *handler, struct start_arg *arg,
+		      int flags)
+{
+	NOTICE("'%s' started with pid '%d'", arg->argv[0], handler->pid);
+	return 0;
+}
+
+static struct lxc_operations start_ops = {
+	.start = start,
+	.post_start = post_start
+};
 
 int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 {
@@ -586,8 +604,16 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 		ERROR("failed to initialize the container");
 		return -1;
 	}
+	handler->ops = &start_ops;
 
-	err = lxc_spawn(name, handler, argv);
+	struct start_arg start_arg = {
+		.name = name,
+		.argv = argv,
+		.sfd = -1,
+		.handler = handler,
+	};
+
+	err = lxc_spawn(&start_arg, 0);
 	if (err) {
 		ERROR("failed to spawn '%s'", argv[0]);
 		goto out_fini;
