@@ -32,8 +32,8 @@ struct start_arg;
 struct lxc_handler;
 
 struct lxc_operations {
-	int (*start)(struct lxc_handler *, struct start_arg *);
-	int (*post_start)(struct lxc_handler *, struct start_arg *, int);
+	int (*start)(struct lxc_handler *, void *);
+	int (*post_start)(struct lxc_handler *, void *);
 };
 
 struct lxc_handler {
@@ -45,18 +45,14 @@ struct lxc_handler {
 	sigset_t oldmask;
 	struct lxc_conf *conf;
 	struct lxc_operations *ops;
-};
-
-struct start_arg {
-	struct lxc_handler *handler;
+	void *data;
 	int sv[2];
 	char *const *argv;
 	int sfd;
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *);
-extern int lxc_spawn(struct lxc_handler *, struct start_arg *start_arg,
-	int restart_flags);
+extern int lxc_spawn(struct lxc_handler *);
 
 extern int lxc_poll(const char *name, struct lxc_handler *handler);
 extern void lxc_abort(const char *name, struct lxc_handler *handler);
