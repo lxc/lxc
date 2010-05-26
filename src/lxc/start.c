@@ -398,6 +398,10 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_set_state(name, handler, STOPPING);
 	lxc_set_state(name, handler, STOPPED);
 
+	/* reset mask set by setup_sigchld_fd */
+	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL))
+		WARN("failed to restore sigprocmask");
+
 	lxc_delete_console(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
 	free(handler->name);
@@ -608,9 +612,6 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 
 	while (waitpid(handler->pid, &status, 0) < 0 && errno == EINTR)
 		continue;
-
-	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL))
-		WARN("failed to restore sigprocmask");
 
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
