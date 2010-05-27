@@ -43,10 +43,16 @@
     </para>
 
     <para>
+      The <replaceable>SIGNUM</replaceable> is a numeric value,
+      the signal name is not supported.
+    </para>
+    <para>
 	If this command is used on an application container ran by
 	lxc-execute, the lxc-init will receive the signal and will forward it to
 	the process 2 which is the command specified in the command line. See
 	lxc-execute (1).
+	Obviously the SIGKILL and SIGSTOP signals are not able to be forwarded,
+	(as per the signal(7) man page).
     </para>
   </refsect1>
 
