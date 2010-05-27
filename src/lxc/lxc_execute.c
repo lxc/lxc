@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	args = lxc_arguments_dup(LXCLIBEXECDIR "/lxc-init", &my_args);
+	args = lxc_arguments_dup(LXCINITDIR "/lxc-init", &my_args);
 	if (!args)
 		return -1;
 

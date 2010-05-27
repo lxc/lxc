@@ -35,7 +35,6 @@ AS_AC_EXPAND(PREFIX, $prefix)
 AS_AC_EXPAND(LIBDIR, $libdir)
 AS_AC_EXPAND(BINDIR, $bindir)
 AS_AC_EXPAND(INCLUDEDIR, $includedir)
-AS_AC_EXPAND(LIBEXECDIR, $libexecdir)
 AS_AC_EXPAND(SYSCONFDIR, $sysconfdir)
 AS_AC_EXPAND(DATADIR, $datadir)
 AS_AC_EXPAND(LOCALSTATEDIR, $localstatedir)
@@ -54,13 +53,15 @@ AC_ARG_WITH([rootfs-path],
 	)], [], [with_rootfs_path="${libdir}/lxc/rootfs"])
 
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
+
 AS_AC_EXPAND(LXCPATH, "${with_config_path}")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "${with_rootfs_path}")
+AS_AC_EXPAND(LXCINITDIR, $libdir/lxc)
 AH_TEMPLATE([LXCPATH], [lxc configuration repository])
-AH_TEMPLATE([LXCLIBEXECDIR], [lxc executable library path])
+AH_TEMPLATE([LXCINITDIR], [lxc-init directory location])
 AH_TEMPLATE([LXCROOTFSMOUNT], [lxc default rootfs mount point])
 AC_DEFINE_UNQUOTED(LXCPATH, "$LXCPATH")
-AC_DEFINE_UNQUOTED(LXCLIBEXECDIR, "$LIBEXECDIR")
+AC_DEFINE_UNQUOTED(LXCINITDIR, "$LXCINITDIR")
 AC_DEFINE_UNQUOTED(LXCROOTFSMOUNT, "$LXCROOTFSMOUNT")
 
 AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h],
