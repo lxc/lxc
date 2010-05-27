@@ -51,7 +51,7 @@ AC_ARG_WITH([rootfs-path],
 	[AC_HELP_STRING(
 		[--with-rootfs-path=dir],
 		[lxc rootfs mount point]
-	)], [], [with_rootfs_path="${libdir}/lxc"])
+	)], [], [with_rootfs_path="${libdir}/lxc/rootfs"])
 
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 AS_AC_EXPAND(LXCPATH, "${with_config_path}")
@@ -118,6 +118,8 @@ AC_CONFIG_FILES([
 	doc/lxc.sgml
 	doc/common_options.sgml
 	doc/see_also.sgml
+
+	doc/rootfs/Makefile
 
 	doc/examples/Makefile
 	doc/examples/lxc-macvlan.conf

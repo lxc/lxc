@@ -1,0 +1,4 @@
+This directory must exist, even though no contents are ever placed
+here. It is used to temporary mount the rootfs of lxc in a private
+mount namespace only visible by the processes running in the
+container.

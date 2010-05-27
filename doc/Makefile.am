@@ -1,5 +1,5 @@
-SUBDIRS = examples
-DIST_SUBDIRS = examples
+SUBDIRS = examples rootfs
+DIST_SUBDIRS = examples rootfs
 
 EXTRA_DIST = \
 	FAQ.txt \
