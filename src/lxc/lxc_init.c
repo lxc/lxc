@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/capability.h>
 #define _GNU_SOURCE
 #include <getopt.h>
 
@@ -47,6 +48,25 @@ static struct option options[] = {
 };
 
 static	int was_interrupted = 0;
+
+static int cap_reset(void)
+{
+	cap_t cap = cap_init();
+	int ret = 0;
+
+	if (!cap) {
+		ERROR("cap_init() failed : %m");
+		return -1;
+	}
+
+	if (cap_set_proc(cap)) {
+		ERROR("cap_set_proc() failed : %m");
+		ret = -1;
+	}
+
+	cap_free(cap);
+	return ret;
+}
 
 int main(int argc, char *argv[])
 {
@@ -98,6 +118,12 @@ int main(int argc, char *argv[])
 		sigaction(i, &act, NULL);
 	}
 
+	if (lxc_setup_fs())
+		exit(err);
+
+	if (cap_reset())
+		exit(err);
+
 	pid = fork();
 	
 	if (pid < 0)
@@ -109,13 +135,10 @@ int main(int argc, char *argv[])
 			signal(i, SIG_DFL);
 		sigprocmask(SIG_SETMASK, &omask, NULL);
 
-		if (lxc_setup_fs())
-			exit(err);
-
 		NOTICE("about to exec '%s'", aargv[0]);
 
 		execvp(aargv[0], aargv);
-		ERROR("failed to exec: '%s' : %s", aargv[0], strerror(errno));
+		ERROR("failed to exec: '%s' : %m", aargv[0]);
 		exit(err);
 	}
 

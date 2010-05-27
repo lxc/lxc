@@ -72,6 +72,15 @@ AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h],
 AC_CHECK_HEADERS([sys/capability.h], [], AC_MSG_ERROR([please install libcap-devel.]),
 [#include <sys/types.h>
 #include <sys/capability.h>])
+AC_CHECK_LIB(cap,cap_set_proc,caplib=yes,caplib=no)
+AC_MSG_CHECKING([linux capabilities])
+if test "x$caplib" = "xyes" ; then
+   CAP_LIBS="-lcap"
+   AC_MSG_RESULT([$CAP_LIBS])
+else
+   AC_MSG_ERROR([not found])
+fi
+AC_SUBST([CAP_LIBS])
 
 # Some systems lack PR_CAPBSET_DROP definition => HAVE_DECL_PR_CAPBSET_DROP
 AC_CHECK_DECLS([PR_CAPBSET_DROP], [], [], [#include <sys/prctl.h>])

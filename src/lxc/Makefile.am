@@ -100,6 +100,7 @@ lxc_execute_SOURCES = lxc_execute.c
 lxc_freeze_SOURCES = lxc_freeze.c
 lxc_info_SOURCES = lxc_info.c
 lxc_init_SOURCES = lxc_init.c
+lxc_init_LDADD = $(LDADD) @CAP_LIBS@
 lxc_monitor_SOURCES = lxc_monitor.c
 lxc_restart_SOURCES = lxc_restart.c
 lxc_start_SOURCES = lxc_start.c
