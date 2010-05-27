@@ -623,13 +623,8 @@ static int setup_pts(int pts)
 		return -1;
 	}
 
-	if (mount("devpts", "/dev/pts", "devpts", MS_MGC_VAL, "newinstance")) {
+	if (mount("devpts", "/dev/pts", "devpts", MS_MGC_VAL, "newinstance,ptmxmode=0666")) {
 		SYSERROR("failed to mount a new instance of '/dev/pts'");
-		return -1;
-	}
-
-	if (chmod("/dev/pts/ptmx", 0666)) {
-		SYSERROR("failed to set permission for '/dev/pts/ptmx'");
 		return -1;
 	}
 
