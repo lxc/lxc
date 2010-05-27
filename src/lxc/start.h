@@ -46,8 +46,6 @@ struct lxc_handler {
 	struct lxc_operations *ops;
 	void *data;
 	int sv[2];
-	char *const *argv;
-	int sfd;
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *);
