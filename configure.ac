@@ -105,6 +105,8 @@ AC_CONFIG_FILES([
 	doc/lxc-destroy.sgml
 	doc/lxc-execute.sgml
 	doc/lxc-start.sgml
+	doc/lxc-checkpoint.sgml
+	doc/lxc-restart.sgml
 	doc/lxc-stop.sgml
 	doc/lxc-console.sgml
 	doc/lxc-freeze.sgml

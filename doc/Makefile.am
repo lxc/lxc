@@ -12,6 +12,8 @@ man_MANS = \
 	lxc-execute.1 \
 	lxc-start.1 \
 	lxc-stop.1 \
+	lxc-checkpoint.1 \
+	lxc-restart.1 \
 	lxc-console.1 \
 	lxc-freeze.1 \
 	lxc-unfreeze.1 \
