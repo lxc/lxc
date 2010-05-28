@@ -458,67 +458,30 @@ static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
 	return 0;
 }
 
-static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
+static int umount_oldrootfs(const char *oldrootfs)
 {
 	char path[MAXPATHLEN];
 	void *cbparm[2];
 	struct lxc_list mountlist, *iterator;
 	int ok, still_mounted, last_still_mounted;
-	int remove_pivotdir = 0;
-
-	/* change into new root fs */
-	if (chdir(rootfs)) {
-		SYSERROR("can't chdir to new rootfs '%s'", rootfs);
-		return -1;
-	}
-
-	if (!pivotdir)
-		pivotdir = "oldrootfs";
-
-	/* create a default mountpoint if none specified */
-	snprintf(path, sizeof(path), "%s/%s", rootfs, pivotdir);
-
-	if (access(path, F_OK)) {
-
-		if (mkdir_p(path, 0755)) {
-			SYSERROR("failed to create pivotdir '%s'", path);
-			return -1;
-		}
-
-		remove_pivotdir = 1;
-		DEBUG("created '%s' directory", path);
-	}
-
-	DEBUG("mountpoint for old rootfs is '%s'", path);
-
-	/* pivot_root into our new root fs */
-
-	if (pivot_root(".", path)) {
-		SYSERROR("pivot_root syscall failed");
-		return -1;
-	}
-
-	if (chdir("/")) {
-		SYSERROR("can't chdir to / after pivot_root");
-		return -1;
-	}
-
-	DEBUG("pivot_root syscall to '%s' successful", pivotdir);
 
 	/* read and parse /proc/mounts in old root fs */
 	lxc_list_init(&mountlist);
 
-	snprintf(path, sizeof(path), "%s/", pivotdir);
+	/* oldrootfs is on the top tree directory now */
+	snprintf(path, sizeof(path), "/%s", oldrootfs);
 	cbparm[0] = &mountlist;
-	cbparm[1] = strdup(path);
 
+	cbparm[1] = strdup(path);
 	if (!cbparm[1]) {
 		SYSERROR("strdup failed");
 		return -1;
 	}
 
-	snprintf(path, sizeof(path), "/%s/proc/mounts", pivotdir);
-	ok = lxc_file_for_each_line(path, setup_rootfs_pivot_root_cb, &cbparm);
+	snprintf(path, sizeof(path), "%s/proc/mounts", oldrootfs);
+
+	ok = lxc_file_for_each_line(path,
+				    setup_rootfs_pivot_root_cb, &cbparm);
 	if (ok < 0) {
 		SYSERROR("failed to read or parse mount list '%s'", path);
 		return -1;
@@ -562,16 +525,55 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 		WARN("failed to unmount '%s'", (char *)iterator->elem);
 	}
 
-	/* umount old root fs; if some other mount points are still
-	 * there, we won't be able to umount it, so we have to do
-	 * that in a lazy way otherwise the container will always
-	 * fail to start
-	 */
-	if (umount2(pivotdir, MNT_DETACH)) {
-		SYSERROR("could not unmount old rootfs");
+	return 0;
+}
+
+static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
+{
+	char path[MAXPATHLEN];
+	int remove_pivotdir = 0;
+
+	/* change into new root fs */
+	if (chdir(rootfs)) {
+		SYSERROR("can't chdir to new rootfs '%s'", rootfs);
 		return -1;
 	}
-	DEBUG("umounted '%s'", pivotdir);
+
+	if (!pivotdir)
+		pivotdir = "oldrootfs";
+
+	/* create a default mountpoint if none specified */
+	snprintf(path, sizeof(path), "%s/%s", rootfs, pivotdir);
+
+	if (access(path, F_OK)) {
+
+		if (mkdir_p(path, 0755)) {
+			SYSERROR("failed to create pivotdir '%s'", path);
+			return -1;
+		}
+
+		remove_pivotdir = 1;
+		DEBUG("created '%s' directory", path);
+	}
+
+	DEBUG("mountpoint for old rootfs is '%s'", path);
+
+	/* pivot_root into our new root fs */
+	if (pivot_root(".", path)) {
+		SYSERROR("pivot_root syscall failed");
+		return -1;
+	}
+
+	if (chdir("/")) {
+		SYSERROR("can't chdir to / after pivot_root");
+		return -1;
+	}
+
+	DEBUG("pivot_root syscall to '%s' successful", rootfs);
+
+	/* we switch from absolute path to relative path */
+	if (umount_oldrootfs(pivotdir))
+		return -1;
 
 	/* remove temporary mount point, we don't consider the removing
 	 * as fatal */
@@ -579,6 +581,7 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 		WARN("can't remove mountpoint '%s': %m", pivotdir);
 
 	INFO("pivoted to '%s'", rootfs);
+
 	return 0;
 }
 
@@ -606,7 +609,7 @@ static int setup_rootfs(const struct lxc_rootfs *rootfs)
 	DEBUG("mounted '%s' on '%s'", rootfs->path, mpath);
 
 	if (setup_rootfs_pivot_root(mpath, rootfs->pivot)) {
-		ERROR("failed to pivot_root to '%s'", rootfs->pivot);
+		ERROR("failed to setup pivot root");
 		return -1;
 	}
 
