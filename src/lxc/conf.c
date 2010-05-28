@@ -960,7 +960,7 @@ static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 
 		inet6dev = iterator->elem;
 
-		err = lxc_ipv6_addr_add(ifindex, &inet6dev->addr, 
+		err = lxc_ipv6_addr_add(ifindex, &inet6dev->addr,
 					&inet6dev->mcast, &inet6dev->acast,
 					inet6dev->prefix);
 		if (err) {
