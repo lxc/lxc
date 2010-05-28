@@ -177,7 +177,7 @@ static struct caps_opt caps_opt[] = {
 	{ "mac_admin",         CAP_MAC_ADMIN         },
 };
 
-
+#if 0 /* will be reactivated with image mounting support */
 static int configure_find_fstype_cb(char* buffer, void *data)
 {
 	struct cbarg {
@@ -358,6 +358,7 @@ static int configure_rootfs(const char *name, const char *rootfs)
 	ERROR("unsupported rootfs type for '%s'", absrootfs);
 	return -1;
 }
+#endif
 
 static int setup_utsname(struct utsname *utsname)
 {
