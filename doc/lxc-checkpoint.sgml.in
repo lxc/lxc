@@ -43,7 +43,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <refname>lxc-checkpoint</refname>
 
     <refpurpose>
-      checkpoint a running container
+      checkpoint a running container (not implemented yet)
     </refpurpose>
   </refnamediv>
 
@@ -162,6 +162,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       lxc-checkpoint --name=123 -S /share/123/chkpt1 -p
     </programlisting>
 
+  </refsect1>
+
+  <refsect1>
+    <Title>Notes</Title>
+    <para>Actually, this command does not operate. Its description
+    helps to define a CLI api for future Checkpoint / Restart
+    solution</para>
   </refsect1>
 
   &seealso;
