@@ -21,6 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 #define _GNU_SOURCE
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -128,6 +129,9 @@ int main(int argc, char *argv[])
 	}
 
 	ret = lxc_checkpoint(my_args.name, sfd, my_args.flags);
+
+	assert(ret == 0 || ret == -1);
+
 	if (ret)
 		ERROR("failed to checkpoint '%s'", my_args.name);
 	else
