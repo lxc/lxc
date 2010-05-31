@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (!asprintf(&pid_name, "%d", pid)) {
+	if (asprintf(&pid_name, "%d", pid) == -1) {
 		ERROR("pid_name: failed to allocate memory");
 		return -1;
 	}
