@@ -79,6 +79,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  <literal>NOTICE</literal>, <literal>INFO</literal>,
 	  <literal>DEBUG</literal>.
 	</para>
+	<para>
+	Note that this option is setting the priority of the events
+	log in the alternate log file. It do not have effect on the
+	ERROR events log on stderr.
+	</para>
       </listitem>
     </varlistentry>
 
