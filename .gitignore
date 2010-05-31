@@ -65,6 +65,8 @@ config/depcomp
 config/install-sh
 config/ltmain.sh
 config/missing
+config/libtool.m4
+config/lt*.m4
 
 doc/lxc-cgroup.1
 doc/lxc-console.1
@@ -84,28 +86,11 @@ doc/lxc.conf.5
 doc/manpage.links
 doc/manpage.refs
 
+m4/
+
 src/config.h
 src/config.h.in
 src/stamp-h1
 
-.pc/
-patches/
-
-test/conf
-test/confile
-test/dev
-test/forward
-test/ipv4_add
-test/ipv6_add
-test/lxc_create
-test/lxc_destroy
-test/lxc_low_monitor
-test/lxc_monitor
-test/lxc_start
-test/lxc_state
-test/lxc_stop
-test/macvlan
-test/movedev
-test/proxy
-test/tst_list
-test/veth
+.pc
+patches
