@@ -113,6 +113,7 @@ int lxc_af_unix_send_fd(int fd, int sendfd, void *data, size_t size)
         struct cmsghdr *cmsg;
         char cmsgbuf[CMSG_SPACE(sizeof(int))];
         char buf[1];
+	int *val;
 
         msg.msg_control = cmsgbuf;
         msg.msg_controllen = sizeof(cmsgbuf);
@@ -121,7 +122,8 @@ int lxc_af_unix_send_fd(int fd, int sendfd, void *data, size_t size)
         cmsg->cmsg_len = CMSG_LEN(sizeof(int));
         cmsg->cmsg_level = SOL_SOCKET;
         cmsg->cmsg_type = SCM_RIGHTS;
-        *((int *) CMSG_DATA(cmsg)) = sendfd;
+	val = (int *)(CMSG_DATA(cmsg));
+	*val = sendfd;
 
         msg.msg_name = NULL;
         msg.msg_namelen = 0;
@@ -141,7 +143,7 @@ int lxc_af_unix_recv_fd(int fd, int *recvfd, void *data, size_t size)
         struct cmsghdr *cmsg;
         char cmsgbuf[CMSG_SPACE(sizeof(int))];
         char buf[1];
-	int ret;
+	int ret, *val;
 
         msg.msg_name = NULL;
         msg.msg_namelen = 0;
@@ -166,7 +168,8 @@ int lxc_af_unix_recv_fd(int fd, int *recvfd, void *data, size_t size)
         if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(int)) &&
             cmsg->cmsg_level == SOL_SOCKET &&
             cmsg->cmsg_type == SCM_RIGHTS) {
-                *recvfd = *((int *) CMSG_DATA(cmsg));
+		val = (int *) CMSG_DATA(cmsg);
+                *recvfd = *val;
         }
 out:
         return ret;
@@ -192,7 +195,7 @@ int lxc_af_unix_send_credential(int fd, void *data, size_t size)
         cmsg->cmsg_len = CMSG_LEN(sizeof(struct ucred));
         cmsg->cmsg_level = SOL_SOCKET;
         cmsg->cmsg_type = SCM_CREDENTIALS;
-	*((struct ucred *) CMSG_DATA(cmsg)) = cred;
+	memcpy(CMSG_DATA(cmsg), &cred, sizeof(cred));
 
         msg.msg_name = NULL;
         msg.msg_namelen = 0;
@@ -234,7 +237,7 @@ int lxc_af_unix_rcv_credential(int fd, void *data, size_t size)
         if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(struct ucred)) &&
             cmsg->cmsg_level == SOL_SOCKET &&
             cmsg->cmsg_type == SCM_CREDENTIALS) {
-                cred = *((struct ucred *) CMSG_DATA(cmsg));
+		memcpy(&cred, CMSG_DATA(cmsg), sizeof(cred));
 		if (cred.uid && (cred.uid != getuid() || cred.gid != getgid())) {
 			INFO("message denied for '%d/%d'", cred.uid, cred.gid);
 			return -EACCES;

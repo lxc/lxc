@@ -1120,19 +1120,18 @@ struct lxc_conf *lxc_conf_init(void)
 static int instanciate_veth(struct lxc_netdev *netdev)
 {
 	char veth1buf[IFNAMSIZ], *veth1;
-	char veth2[IFNAMSIZ];
+	char veth2buf[IFNAMSIZ], *veth2;
 	int err;
 
 	if (netdev->priv.veth_attr.pair)
 		veth1 = netdev->priv.veth_attr.pair;
 	else {
 		snprintf(veth1buf, sizeof(veth1buf), "vethXXXXXX");
-		mktemp(veth1buf);
-		veth1 = veth1buf;
+		veth1 = mktemp(veth1buf);
 	}
 
-	snprintf(veth2, sizeof(veth2), "vethXXXXXX");
-	mktemp(veth2);
+	snprintf(veth2buf, sizeof(veth2buf), "vethXXXXXX");
+	veth2 = mktemp(veth2buf);
 
 	if (!strlen(veth1) || !strlen(veth2)) {
 		ERROR("failed to allocate a temporary name");
@@ -1193,7 +1192,7 @@ out_delete:
 
 static int instanciate_macvlan(struct lxc_netdev *netdev)
 {
-	char peer[IFNAMSIZ];
+	char peerbuf[IFNAMSIZ], *peer;
 	int err;
 
 	if (!netdev->link) {
@@ -1201,10 +1200,9 @@ static int instanciate_macvlan(struct lxc_netdev *netdev)
 		return -1;
 	}
 
-	snprintf(peer, sizeof(peer), "mcXXXXXX");
+	snprintf(peerbuf, sizeof(peerbuf), "mcXXXXXX");
 
-	mktemp(peer);
-
+	peer = mktemp(peerbuf);
 	if (!strlen(peer)) {
 		ERROR("failed to make a temporary name");
 		return -1;

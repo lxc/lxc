@@ -249,9 +249,9 @@ static int console_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 		return 0;
 
 	if (console->peer == fd)
-		write(console->master, buf, r);
+		r = write(console->master, buf, r);
 	else
-		write(console->peer, buf, r);
+		r = write(console->peer, buf, r);
 
 	return 0;
 }
