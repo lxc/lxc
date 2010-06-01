@@ -172,7 +172,7 @@ static int master_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 		SYSERROR("failed to read");
 		return 1;
 	}
-	write(*peer, buf, r);
+	r = write(*peer, buf, r);
 
 	return 0;
 }
