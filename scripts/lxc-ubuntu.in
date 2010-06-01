@@ -75,7 +75,7 @@ none            /lib/init/rw              tmpfs           mode=0755,nosuid,optio
 EOF
 
     # reconfigure some services
-    chroot $rootfs locale-gen de_DE.UTF-8
+    chroot $rootfs locale-gen en_US.UTF-8
 
     # remove pointless services in a container
     chroot $rootfs /usr/sbin/update-rc.d -f ondemand remove
@@ -86,9 +86,10 @@ EOF
     chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls hwclock*.conf); do echo $f; mv $f $f.orig; done'
     chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls module*.conf); do echo $f; mv $f $f.orig; done'
 
-    echo "Please change root-password !"
+    echo "root:root" | chroot $rootfs chpasswd
+    echo "Root password is 'root', please change !"
 
-    echo "root:root" | chroot /usr/local/var/lib/lxc/test/rootfs chpasswd
+    return 0
 }
 
 download_ubuntu()
@@ -181,15 +182,8 @@ copy_configuration()
     rootfs=$2
     name=$3
 
-    cat <<EOF > $path/config
-# Container with network virtualized using the macvlan device driver
+    cat <<EOF >> $path/config
 lxc.utsname = $name
-
-lxc.network.type = macvlan
-lxc.network.flags = up
-lxc.network.link = eth1
-lxc.network.hwaddr = 4a:49:43:49:79:03
-lxc.network.macvlan.mode = vepa
 
 lxc.tty = 4
 lxc.pts = 1024
