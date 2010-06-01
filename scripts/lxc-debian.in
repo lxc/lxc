@@ -49,29 +49,6 @@ EOF
     mkdir -p $rootfs/selinux
     echo 0 > $rootfs/selinux/enforce
 
-    # by default setup root password with no password
-    cat <<EOF > $rootfs/etc/ssh/sshd_config
-Port 22
-Protocol 2
-HostKey /etc/ssh/ssh_host_rsa_key
-HostKey /etc/ssh/ssh_host_dsa_key
-UsePrivilegeSeparation yes
-KeyRegenerationInterval 3600
-ServerKeyBits 768
-SyslogFacility AUTH
-LogLevel INFO
-LoginGraceTime 120
-PermitRootLogin yes
-StrictModes yes
-RSAAuthentication yes
-PubkeyAuthentication yes
-IgnoreRhosts yes
-RhostsRSAAuthentication no
-HostbasedAuthentication no
-PermitEmptyPasswords yes
-ChallengeResponseAuthentication no
-EOF
-
     # configure the network using the dhcp
     cat <<EOF > $rootfs/etc/network/interfaces
 auto lo
@@ -87,12 +64,17 @@ $hostname
 EOF
 
     # reconfigure some services
-    chroot $rootfs /usr/sbin/dpkg-reconfigure locales
+    chroot $rootfs locale-gen en_US.UTF-8
 
     # remove pointless services in a container
     chroot $rootfs /usr/sbin/update-rc.d -f umountfs remove
     chroot $rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
     chroot $rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
+
+    echo "root:root" | chroot $rootfs chpasswd
+    echo "Root password is 'root', please change !"
+
+    return 0
 }
 
 download_debian()

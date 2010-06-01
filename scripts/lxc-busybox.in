@@ -74,13 +74,6 @@ EOF
 root:x:0:root
 EOF
 
-    # empty password
-    cat <<EOF >> $rootfs/etc/shadow
-root:\$1\$NJJLsV0P\$Y/esfSXDNR88G/bZFzgWY1:14595:0:99999:7:::
-EOF
-
-    echo "empty password for root, don't forget to change it !"
-
     # mount everything
     cat <<EOF >> $rootfs/etc/init.d/rcS
 #!/bin/sh
@@ -213,6 +206,9 @@ configure_busybox()
 
     # passwd exec must be setuid
     chmod +s $rootfs/bin/passwd
+
+    echo "root:root" | chroot $rootfs chpasswd
+    echo "Root password is 'root', please change !"
 
     return 0
 }
