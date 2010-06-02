@@ -59,9 +59,9 @@ description     "Container Upstart"
 start on startup
 
 script
-        rm -rf /var/run/*
-        /sbin/initctl emit stopped JOB=udevtrigger
-        /sbin/initctl emit started JOB=udev
+	rm -rf /var/run/*
+	/sbin/initctl emit stopped JOB=udevtrigger
+	/sbin/initctl emit started JOB=udev
 end script
 EOF
 
@@ -257,7 +257,7 @@ EOF
 
 options=$(getopt -o hp:n:c -l help,path:,name:,clean -- "$@")
 if [ $? -ne 0 ]; then
-        usage $(basename $0)
+	usage $(basename $0)
 	exit 1
 fi
 eval set -- "$options"
@@ -265,12 +265,12 @@ eval set -- "$options"
 while true
 do
     case "$1" in
-        -h|--help)      usage $0 && exit 0;;
-        -p|--path)      path=$2; shift 2;;
+	-h|--help)      usage $0 && exit 0;;
+	-p|--path)      path=$2; shift 2;;
 	-n|--name)      name=$2; shift 2;;
 	-c|--clean)     clean=$2; shift 2;;
-        --)             shift 1; break ;;
-        *)              break ;;
+	--)             shift 1; break ;;
+	*)              break ;;
     esac
 done
 
