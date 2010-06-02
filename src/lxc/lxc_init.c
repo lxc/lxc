@@ -125,12 +125,12 @@ int main(int argc, char *argv[])
 		exit(err);
 
 	pid = fork();
-	
+
 	if (pid < 0)
 		exit(err);
 
 	if (!pid) {
-		
+
 		for (i = 1; i < NSIG; i++)
 			signal(i, SIG_DFL);
 		sigprocmask(SIG_SETMASK, &omask, NULL);
@@ -181,4 +181,3 @@ int main(int argc, char *argv[])
 out:
 	return err;
 }
-
