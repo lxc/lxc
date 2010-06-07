@@ -189,4 +189,3 @@ if [ $? -ne 0 ]; then
     echo "failed to write configuration file"
     exit 1
 fi
-

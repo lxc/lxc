@@ -217,7 +217,7 @@ clean()
 
     # lock, so we won't purge while someone is creating a repository
     (
-	flock -n -x 200 
+	flock -n -x 200
 	if [ $? != 0 ]; then
 	    echo "Cache repository is busy."
 	    exit 1
@@ -276,7 +276,7 @@ fi
 if [ "$(id -u)" != "0" ]; then
     echo "This script should be run as 'root'"
     exit 1
-fi 
+fi
 
 rootfs=$path/rootfs
 

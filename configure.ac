@@ -57,6 +57,7 @@ AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 AS_AC_EXPAND(LXCPATH, "${with_config_path}")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "${with_rootfs_path}")
 AS_AC_EXPAND(LXCINITDIR, $libdir/lxc)
+AS_AC_EXPAND(LXCTEMPLATEDIR, $libdir/lxc/templates)
 AH_TEMPLATE([LXCPATH], [lxc configuration repository])
 AH_TEMPLATE([LXCINITDIR], [lxc-init directory location])
 AH_TEMPLATE([LXCROOTFSMOUNT], [lxc default rootfs mount point])
@@ -133,12 +134,12 @@ AC_CONFIG_FILES([
 	doc/examples/lxc-veth.conf
 	doc/examples/lxc-complex.conf
 
-	scripts/Makefile
-	scripts/lxc-debian
-	scripts/lxc-ubuntu
-	scripts/lxc-busybox
-	scripts/lxc-fedora
-	scripts/lxc-sshd
+	templates/Makefile
+	templates/lxc-debian
+	templates/lxc-ubuntu
+	templates/lxc-busybox
+	templates/lxc-fedora
+	templates/lxc-sshd
 
 	src/Makefile
 	src/lxc/Makefile

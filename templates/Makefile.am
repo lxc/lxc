@@ -1,4 +1,6 @@
-bin_SCRIPTS = \
+templatesdir=@LXCTEMPLATEDIR@
+
+templates_SCRIPTS = \
 	lxc-debian \
 	lxc-ubuntu \
 	lxc-fedora \
