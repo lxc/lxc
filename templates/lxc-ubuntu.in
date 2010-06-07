@@ -59,9 +59,10 @@ description     "Container Upstart"
 start on startup
 
 script
-	rm -rf /var/run/*
-	/sbin/initctl emit stopped JOB=udevtrigger
-	/sbin/initctl emit started JOB=udev
+        rm -rf /var/run/*.pid
+        rm -rf /var/run/network/*
+        /sbin/initctl emit stopped JOB=udevtrigger --no-wait
+        /sbin/initctl emit started JOB=udev --no-wait
 end script
 EOF
 
@@ -82,32 +83,37 @@ EOF
 # /lib/init/fstab: lxc system fstab
 none            /spu                      spufs           gid=spu,optional                  0 0
 none            /tmp                      none            defaults                          0 0
-none            /var/run                  tmpfs           mode=0755,nosuid,showthrough      0 0
 none            /var/lock                 tmpfs           nodev,noexec,nosuid,showthrough   0 0
 none            /lib/init/rw              tmpfs           mode=0755,nosuid,optional         0 0
 EOF
 
     # reconfigure some services
-    chroot $rootfs locale-gen en_US.UTF-8
+    if [ -z "$LANG" ]; then
+	chroot $rootfs locale-gen en_US.UTF-8
+	chroot $rootfs update-locale LANG=en_US.UTF-8
+    else
+	chroot $rootfs locale-gen $LANG
+	chroot $rootfs update-locale LANG=$LANG
+    fi
 
     # remove pointless services in a container
     chroot $rootfs /usr/sbin/update-rc.d -f ondemand remove
 
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls u*.conf); do echo $f; mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls tty[2-9].conf); do echo $f; mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls plymouth*.conf); do echo $f; mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls hwclock*.conf); do echo $f; mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls module*.conf); do echo $f; mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls u*.conf); do mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls tty[2-9].conf); do mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls plymouth*.conf); do mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls hwclock*.conf); do mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls module*.conf); do mv $f $f.orig; done'
 
+    echo "Please change root-password !"
     echo "root:root" | chroot $rootfs chpasswd
-    echo "Root password is 'root', please change !"
 
     return 0
 }
 
 download_ubuntu()
 {
-    packages=dialog,apt,resolvconf,iproute,inetutils-ping,vim,dhcp3-client,ssh,lsb-release
+    packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,dhcp3-client,ssh,lsb-release
 
     cache=$1
     arch=$2
@@ -270,8 +276,8 @@ EOF
 
 options=$(getopt -o hp:n:c -l help,path:,name:,clean -- "$@")
 if [ $? -ne 0 ]; then
-	usage $(basename $0)
-	exit 1
+    usage $(basename $0)
+    exit 1
 fi
 eval set -- "$options"
 
@@ -283,7 +289,7 @@ do
 	-n|--name)      name=$2; shift 2;;
 	-c|--clean)     clean=$2; shift 2;;
 	--)             shift 1; break ;;
-	*)              break ;;
+        *)              break ;;
     esac
 done
 
