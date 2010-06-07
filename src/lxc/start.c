@@ -49,6 +49,7 @@
 #  include <sys/signalfd.h>
 #else
 /* assume kernel headers are too old */
+#include <stdint.h>
 struct signalfd_siginfo
 {
 	uint32_t ssi_signo;
