@@ -13,7 +13,7 @@
 
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
 
 # You should have received a copy of the GNU Lesser General Public
@@ -64,7 +64,13 @@ $hostname
 EOF
 
     # reconfigure some services
-    chroot $rootfs locale-gen en_US.UTF-8
+    if [ -z "$LANG" ]; then
+	chroot $rootfs locale-gen en_US.UTF-8
+	chroot $rootfs update-locale LANG=en_US.UTF-8
+    else
+	chroot $rootfs locale-gen $LANG
+	chroot $rootfs update-locale LANG=$LANG
+    fi
 
     # remove pointless services in a container
     chroot $rootfs /usr/sbin/update-rc.d -f umountfs remove
