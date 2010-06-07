@@ -24,11 +24,11 @@ libtool
 lxc.spec
 lxc.pc
 
-scripts/lxc-debian
-scripts/lxc-ubuntu
-scripts/lxc-fedora
-scripts/lxc-sshd
-scripts/lxc-busybox
+templates/lxc-debian
+templates/lxc-ubuntu
+templates/lxc-fedora
+templates/lxc-sshd
+templates/lxc-busybox
 
 src/lxc/lxc-attach
 src/lxc/lxc-cgroup
