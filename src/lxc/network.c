@@ -747,7 +747,9 @@ static int ip_addr_add(int family, int ifindex,
 
 	/* TODO : multicast, anycast with ipv6 */
 	err = EPROTONOSUPPORT;
-	if ((bcast || acast) && family == AF_INET6)
+	if (family == AF_INET6 &&
+	    (memcmp(bcast, &in6addr_any, sizeof(in6addr_any)) ||
+	     memcmp(acast, &in6addr_any, sizeof(in6addr_any))))
 		goto out;
 
 	err = netlink_transaction(&nlh, nlmsg, answer);
