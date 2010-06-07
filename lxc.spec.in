@@ -72,8 +72,8 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root)
 %{_libdir}/*.so*
+%{_libdir}/%{name}
 %{_bindir}/*
-%{_libexecdir}/*
 %{_mandir}/*
 %{_datadir}/pkgconfig/*
 %{_docdir}/%{name}/*
