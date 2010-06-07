@@ -170,8 +170,12 @@ static struct caps_opt caps_opt[] = {
 	{ "sys_tty_config",    CAP_SYS_TTY_CONFIG    },
 	{ "mknod",             CAP_MKNOD             },
 	{ "lease",             CAP_LEASE             },
+#ifdef CAP_AUDIT_WRITE
 	{ "audit_write",       CAP_AUDIT_WRITE       },
+#endif
+#ifdef CAP_AUDIT_CONTROL
 	{ "audit_control",     CAP_AUDIT_CONTROL     },
+#endif
 	{ "setfcap",           CAP_SETFCAP           },
 	{ "mac_override",      CAP_MAC_OVERRIDE      },
 	{ "mac_admin",         CAP_MAC_ADMIN         },
