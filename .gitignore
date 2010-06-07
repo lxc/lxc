@@ -59,8 +59,6 @@ src/lxc/lxc-unshare
 src/lxc/lxc-version
 src/lxc/lxc-wait
 
-etc/lxc-complex-config
-
 config/compile
 config/config.guess
 config/config.sub
@@ -71,21 +69,9 @@ config/missing
 config/libtool.m4
 config/lt*.m4
 
-doc/lxc-cgroup.1
-doc/lxc-console.1
-doc/lxc-create.1
-doc/lxc-destroy.1
-doc/lxc-execute.1
-doc/lxc-freeze.1
-doc/lxc-ls.1
-doc/lxc-monitor.1
-doc/lxc-ps.1
-doc/lxc-start.1
-doc/lxc-stop.1
-doc/lxc-unfreeze.1
-doc/lxc-wait.1
-doc/lxc.7
-doc/lxc.conf.5
+doc/*.1
+doc/*.5
+doc/*.7
 doc/manpage.links
 doc/manpage.refs
 
