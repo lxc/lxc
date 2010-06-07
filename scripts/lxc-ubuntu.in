@@ -65,6 +65,19 @@ script
 end script
 EOF
 
+    cat <<EOF > $rootfs/etc/init/console.conf
+# console - getty
+#
+# This service maintains a console on tty1 from the point the system is
+# started until it is shut down again.
+
+start on stopped rc RUNLEVEL=[2345]
+stop on runlevel [!2345]
+
+respawn
+exec /sbin/getty -8 38400 /dev/console
+EOF
+
     cat <<EOF > $rootfs/lib/init/fstab
 # /lib/init/fstab: lxc system fstab
 none            /spu                      spufs           gid=spu,optional                  0 0
