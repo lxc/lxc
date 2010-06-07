@@ -1,143 +1,210 @@
 #!/bin/bash
-# set -ex
 
-DISTRO="fedora"
-CACHE="@LOCALSTATEDIR@/cache/lxc/${DISTRO}"
+#
+# template script for generating fedora container for LXC
+#
 
-# Default container name
-NAME="fedora"
-CONFFILE="lxc.conf"
-UTSNAME=
-IPV4="172.20.0.21"
-GATEWAY="172.20.0.1"
-MTU="1500"
+#
+# lxc: linux Container library
 
-# These paths are within the container so do not need to obey configure prefixes
-INITTAB="/etc/inittab"
-FSTAB="/etc/fstab"
-SSHD_CONFIG="/etc/ssh/sshd_config"
+# Authors:
+# Daniel Lezcano <daniel.lezcano@free.fr>
 
-################################################################################
-#                    DISTRO custom configuration files
-################################################################################
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
 
-# custom selinux
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
 
-write_distro_selinux() {
-    mkdir -p ${ROOTFS}/selinux
-    echo 0 > ${ROOTFS}/selinux/enforce
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+DISTRO=fedora-10
+
+configure_fedora()
+{
+    rootfs=$1
+    hostname=$2
+
+    # disable selinux in fedora
+    mkdir -p $rootfs/selinux
+    echo 0 > $rootfs/selinux/enforce
+
+   # configure the network using the dhcp
+    cat <<EOF > $rootfs/etc/network/interfaces
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+EOF
+
+    # set the hostname
+    cat <<EOF > $rootfs/etc/hostname
+$hostname
+EOF
+    # set minimal hosts
+    cat <<EOF > $rootfs/etc/hosts
+127.0.0.1 localhost $hostname
+EOF
+
+    # provide the lxc service
+    cat <<EOF > $rootfs/etc/init/lxc.conf
+# fake some events needed for correct startup other services
+
+description     "Container Upstart"
+
+start on startup
+
+script
+        rm -rf /var/run/*.pid
+        rm -rf /var/run/network/*
+        /sbin/initctl emit stopped JOB=udevtrigger --no-wait
+        /sbin/initctl emit started JOB=udev --no-wait
+end script
+EOF
+
+    cat <<EOF > $rootfs/etc/init/console.conf
+# console - getty
+#
+# This service maintains a console on tty1 from the point the system is
+# started until it is shut down again.
+
+start on stopped rc RUNLEVEL=[2345]
+stop on runlevel [!2345]
+
+respawn
+exec /sbin/getty -8 38400 /dev/console
+EOF
+
+    cat <<EOF > $rootfs/lib/init/fstab
+# /lib/init/fstab: lxc system fstab
+none            /spu                      spufs           gid=spu,optional                  0 0
+none            /tmp                      none            defaults                          0 0
+none            /var/lock                 tmpfs           nodev,noexec,nosuid,showthrough   0 0
+none            /lib/init/rw              tmpfs           mode=0755,nosuid,optional         0 0
+EOF
+
+    # reconfigure some services
+    if [ -z "$LANG" ]; then
+	chroot $rootfs locale-gen en_US.UTF-8
+	chroot $rootfs update-locale LANG=en_US.UTF-8
+    else
+	chroot $rootfs locale-gen $LANG
+	chroot $rootfs update-locale LANG=$LANG
+    fi
+
+    # remove pointless services in a container
+    chroot $rootfs /usr/sbin/update-rc.d -f ondemand remove
+
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls u*.conf); do mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls tty[2-9].conf); do mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls plymouth*.conf); do mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls hwclock*.conf); do mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls module*.conf); do mv $f $f.orig; done'
+
+    echo "Please change root-password !"
+    echo "root:root" | chroot $rootfs chpasswd
+
+    return 0
 }
 
-# custom fstab
+download_fedora()
+{
+    cache=$1
+    arch=$2
 
-write_distro_fstab() {
-cat <<EOF > ${ROOTFS}/${FSTAB}
-tmpfs  /dev/shm   tmpfs  defaults  0 0
-EOF
+    # check the mini fedora was not already downloaded
+    mkdir -p "$cache/partial-$arch"
+    if [ $? -ne 0 ]; then
+	echo "Failed to create '$cache/partial-$arch' directory"
+	return 1
+    fi
+
+    # download a mini fedora into a cache
+    echo "Downloading fedora minimal ..."
+    febootstrap $DISTRO $cache/partial-$arch
+    if [ $? -ne 0 ]; then
+	echo "Failed to download the rootfs, aborting."
+	return 1
+    fi
+
+    mv "$1/partial-$arch" "$1/rootfs-$arch"
+    echo "Download complete."
+
+    return 0
 }
 
-# custom inittab
+copy_fedora()
+{
+    cache=$1
+    arch=$2
+    rootfs=$3
 
-write_distro_inittab() {
-cat <<EOF > ${ROOTFS}/${INITTAB}
-id:3:initdefault:
-si::sysinit:/etc/init.d/rcS
-l0:0:wait:/etc/init.d/rc 0
-l1:1:wait:/etc/init.d/rc 1
-l2:2:wait:/etc/init.d/rc 2
-l3:3:wait:/etc/init.d/rc 3
-l4:4:wait:/etc/init.d/rc 4
-l5:5:wait:/etc/init.d/rc 5
-l6:6:wait:/etc/init.d/rc 6
-# Normally not reached, but fallthrough in case of emergency.
-z6:6:respawn:/sbin/sulogin
-1:2345:respawn:/sbin/getty 38400 console
-c1:12345:respawn:/sbin/getty 38400 tty1 linux
-c2:12345:respawn:/sbin/getty 38400 tty2 linux
-c3:12345:respawn:/sbin/getty 38400 tty3 linux
-c4:12345:respawn:/sbin/getty 38400 tty4 linux
-EOF
+    # make a local copy of the minifedora
+    echo -n "Copying rootfs to $rootfs ..."
+    cp -a $cache/rootfs-$arch $rootfs || return 1
+    return 0
 }
 
-# custom network configuration
-write_distro_network() {
-cat <<EOF > ${ROOTFS}/etc/sysconfig/network-scripts/ifcfg-lo
-DEVICE=lo
-IPADDR=127.0.0.1
-NETMASK=255.0.0.0
-NETWORK=127.0.0.0
-# If you're having problems with gated making 127.0.0.0/8 a martian,
-# you can change this to something else (255.255.255.255, for example)
-BROADCAST=127.255.255.255
-ONBOOT=yes
-NAME=loopback
-EOF
-cat <<EOF > ${ROOTFS}/etc/sysconfig/network-scripts/ifcfg-eth0
-DEVICE=eth0
-BOOTPROTO=static
-HWADDR=52:54:00:12:34:56
-ONBOOT=yes
-HOSTNAME=${UTSNAME}
-NM_CONTROLLED=no
-TYPE=Ethernet
-IPADDR=${IPV4}
-NETWORK=$(ipcalc -sn ${IPV4} 255.255.255.0)
-GATEWAY=${GATEWAY}
-BROADCAST=$(ipcalc -sb ${IPV4} 255.255.255.0)
-NETMASK=255.255.255.0
-MTU=${MTU}
-EOF
+install_fedora()
+{
+    cache="/var/cache/lxc/fedora"
+    rootfs=$1
+    mkdir -p /var/lock/subsys/
+    (
+	flock -n -x 200
+	if [ $? -ne 0 ]; then
+	    echo "Cache repository is busy."
+	    return 1
+	fi
+
+	arch=$(arch)
+
+	echo "Checking cache download in $cache/rootfs-$arch ... "
+	if [ ! -e "$cache/rootfs-$arch" ]; then
+	    download_fedora $cache $arch
+	    if [ $? -ne 0 ]; then
+		echo "Failed to download 'fedora base'"
+		return 1
+	    fi
+	fi
+
+	echo "Copy $cache/rootfs-$arch to $rootfs ... "
+	copy_fedora $cache $arch $rootfs
+	if [ $? -ne 0 ]; then
+	    echo "Failed to copy rootfs"
+	    return 1
+	fi
+
+	return 0
+
+	) 200>/var/lock/subsys/lxc
+
+    return $?
 }
 
-# custom hostname
+copy_configuration()
+{
+    path=$1
+    rootfs=$2
+    name=$3
 
-write_distro_hostname() {
-cat <<EOF > ${ROOTFS}/etc/sysconfig/network
-NETWORKING=yes
-HOSTNAME=${UTSNAME}
-EOF
-}
+    cat <<EOF >> $path/config
+lxc.utsname = $name
 
-# custom sshd configuration file
-
-write_distro_sshd_config() {
-cat <<EOF > ${ROOTFS}/${SSHD_CONFIG}
-Port 22
-Protocol 2
-HostKey /etc/ssh/ssh_host_rsa_key
-HostKey /etc/ssh/ssh_host_dsa_key
-UsePrivilegeSeparation yes
-KeyRegenerationInterval 3600
-ServerKeyBits 768
-SyslogFacility AUTH
-LogLevel INFO
-LoginGraceTime 120
-PermitRootLogin yes
-StrictModes yes
-RSAAuthentication yes
-PubkeyAuthentication yes
-IgnoreRhosts yes
-RhostsRSAAuthentication no
-HostbasedAuthentication no
-PermitEmptyPasswords yes
-ChallengeResponseAuthentication no
-EOF
-}
-
-################################################################################
-#                        lxc configuration files
-################################################################################
-
-write_lxc_configuration() {
-cat <<EOF > ${CONFFILE}
-lxc.utsname = ${UTSNAME}
 lxc.tty = 4
-lxc.network.type = veth
-lxc.network.flags = up
-lxc.network.link = br0
-lxc.network.name = eth0
-lxc.network.mtu = ${MTU}
-lxc.rootfs = ${ROOTFS}
+lxc.pts = 1024
+lxc.rootfs = $rootfs
+lxc.mount  = $path/fstab
+
+lxc.console = /dev/console
+
 lxc.cgroup.devices.deny = a
 # /dev/null and zero
 lxc.cgroup.devices.allow = c 1:3 rwm
@@ -150,264 +217,118 @@ lxc.cgroup.devices.allow = c 4:1 rwm
 # /dev/{,u}random
 lxc.cgroup.devices.allow = c 1:9 rwm
 lxc.cgroup.devices.allow = c 1:8 rwm
-# /dev/pts/* - pts namespaces are "coming soon"
 lxc.cgroup.devices.allow = c 136:* rwm
 lxc.cgroup.devices.allow = c 5:2 rwm
 # rtc
 lxc.cgroup.devices.allow = c 254:0 rwm
 EOF
-}
 
-create() {
+    cat <<EOF > $path/fstab
+proc            $rootfs/proc         proc    nodev,noexec,nosuid 0 0
+devpts          $rootfs/dev/pts      devpts defaults 0 0
+sysfs           $rootfs/sys          sysfs defaults  0 0
+EOF
 
-    # choose a container name, default is already in shell NAME variable
-    echo -n "What is the name for the container ? [${NAME}] "
-    read _NAME_
-
-    if [ ! -z "${_NAME_}" ]; then
-	NAME=${_NAME_}
-    fi
-
-    # choose a hostname, default is the container name
-    echo -n "What hostname do you wish for this container ? [${NAME}] "
-    read _UTSNAME_
-
-    if [ ! -z "${_UTSNAME_}" ]; then
-	UTSNAME=${_UTSNAME_}
-    else
-	UTSNAME=${NAME}
-    fi
-
-    # choose an ipv4 address, better to choose the same network than
-    # your host
-    echo -n "What IP address do you wish for this container ? [${IPV4}] "
-    read _IPV4_
-
-    if [ ! -z "${_IPV4_}" ]; then
-	IPV4=${_IPV4_}
-    fi
-
-    # choose the gateway ip address
-    echo -n "What is the gateway IP address ? [${GATEWAY}] "
-    read _GATEWAY_
-
-    if [ ! -z "${_GATEWAY_}" ]; then
-	GATEWAY=${_GATEWAY_}
-    fi
-
-    # choose the MTU size
-    echo -n "What is the MTU size ? [$MTU] "
-    read _MTU_
-
-    if [ ! -z "$_MTU_" ]; then
-	MTU=$_MTU_
-    fi
-
-    # the rootfs name will be build with the container name
-    ROOTFS="./rootfs.${NAME}"
-
-    # check if the rootfs does already exist
-    if [ ! -e "${ROOTFS}" ]; then
-	    mkdir -p @LOCALSTATEDIR@/lock/subsys/
-	(
-	    flock -n -x 200
-
-
-	    RES=$?
-	    if [ "${RES}" != "0" ]; then
-		echo "Cache repository is busy."
-		break
-	    fi
-
-	    # check the mini distro was not already downloaded
-	    echo -n "Checking cache download ..."
-	    if [ ! -e "${CACHE}/rootfs" ]; then
-
-		echo "not cached"
-
-		# Rather than write a special yum config we just make the
-		# default RPM and yum layout in ${CACHE}. The alternative is
-		# to copy /etc/yum/yum.conf or /etc/yum.conf and fiddle with
-		# some settings.
-		mkdir -p "${CACHE}/partial/var/lib/rpm"
-		mkdir -p "${CACHE}/partial/var/log"
-		touch "${CACHE}/partial/var/log/yum.log"
-
-		RELEASE="$(yum info ${DISTRO}-release | \
-			awk -F '[[:space:]]*:[[:space:]]*' \
-				'/^Release/ { release = $2 }
-				/^Version/ { version = $2 }
-				END { print version "-" release }')"
-
-		PKG="${DISTRO}-release-${RELEASE}.noarch"
-		RPM="rpm --root ${CACHE}/partial"
-
-		echo "Initializing RPM cache ..."
-		${RPM} --initdb
-		echo "Downloading distribution release file ${PKG}"
-		yumdownloader --destdir="${CACHE}/partial" "${PKG}"
-                RESULT=$?
-
-               if [ "${RESULT}" != "0" ]; then
-                   echo "Enable to download the distribution release file"
-                   exit 1
-               fi
-
-		${RPM} --nodeps -ihv "${CACHE}/partial/${PKG}.rpm"
-
-		echo "Downloading ${DISTRO} minimal ..."
-		yum --installroot="${CACHE}/partial" -y groupinstall Base
-		RESULT=$?
-		if [ "${RESULT}" != "0" ]; then
-		    echo "Failed to download the rootfs, aborting."
-		    exit 1
-		fi
-		mv "${CACHE}/partial" "${CACHE}/rootfs"
-		echo "Download complete."
-	    else
-		echo "Found."
-	    fi
-
-            # make a local copy of the mini
-	    echo -n "Copying rootfs ..."
-	    cp -a ${CACHE}/rootfs ${ROOTFS} && echo "Done." || exit
-	) 200> "@LOCALSTATEDIR@/lock/subsys/lxc"
-    fi
-
-write_lxc_configuration
-
-write_distro_inittab
-
-write_distro_hostname
-
-write_distro_fstab
-
-write_distro_network
-
-write_distro_sshd_config
-
-write_distro_selinux
-
-@BINDIR@/lxc-create -n ${NAME} -f ${CONFFILE}
-RES=$?
-
-# remove the configuration files
-rm -f ${CONFFILE}
-
-if [ "${RES}" != "0" ]; then
-    echo "Failed to create '${NAME}'"
-    exit 1
-fi
-
-echo "Done."
-echo -e "\nYou can run your container with the 'lxc-start -n ${NAME}'\n"
-}
-
-destroy() {
-
-    echo -n "What is the name for the container ? [${NAME}] "
-    read _NAME_
-
-    if [ ! -z "${_NAME_}" ]; then
-	NAME=${_NAME_}
-    fi
-
-    @BINDIR@/lxc-destroy -n ${NAME}
-    RETVAL=$?
-    if [ ! ${RETVAL} -eq 0 ]; then
-	echo "Failed to destroyed '${NAME}'"
-	return ${RETVAL}
-    fi
-
-    ROOTFS="./rootfs.${NAME}"
-
-    echo -n "Shall I remove the rootfs [y/n] ? "
-    read
-    if [ "${REPLY}" = "y" ]; then
-	rm -rf ${ROOTFS}
+    if [ $? -ne 0 ]; then
+	echo "Failed to add configuration"
+	return 1
     fi
 
     return 0
 }
 
-help() {
-    cat <<EOF
+clean()
+{
+    cache="/var/cache/lxc/fedora"
 
-This script is a helper to create ${DISTRO} system containers.
-
-The script will create the container configuration file following
-the informations submitted interactively with 'lxc-${DISTRO} create'
-
-The first creation will download, with yum, a ${DISTRO} minimal
-install and store it into a cache.
-
-The script will copy from the cache the root filesystem to the
-current directory.
-
-If there is a problem with the container, (bad configuration for
-example), you can destroy the container with 'lxc-${DISTRO} destroy'
-but without removing the rootfs and recreate it again with
-'lxc-${DISTRO} create'.
-
-If you want to create another ${DISTRO} container, call the 'lxc-${DISTRO}
- create' again, specifying another name and new parameters.
-
-At any time you can purge the ${DISTRO} cache download by calling
-'lxc-${DISTRO} purge'
-
-Have fun :)
-
-EOF
-}
-
-purge() {
-
-    if [ ! -e ${CACHE} ]; then
+    if [ ! -e $cache ]; then
 	exit 0
     fi
 
     # lock, so we won't purge while someone is creating a repository
     (
 	flock -n -x 200
-
-	RES=$?
-	if [ "${RES}" != "0" ]; then
+	if [ $? != 0 ]; then
 	    echo "Cache repository is busy."
 	    exit 1
 	fi
 
 	echo -n "Purging the download cache..."
-	rm --preserve-root --one-file-system -rf ${CACHE} && echo "Done." || exit 1
+	rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
 	exit 0
 
-    ) 200> "@LOCALSTATEDIR@/lock/subsys/lxc"
+    ) 200>/var/lock/subsys/lxc
 }
 
-# Note: assuming uid==0 is root -- might break with userns??
-if [ "$(id -u)" != "0" ]; then
-	echo "This script should be run as 'root'"
-	exit 1
+usage()
+{
+    cat <<EOF
+$1 -h|--help -p|--path=<path> --clean
+EOF
+    return 0
+}
+
+options=$(getopt -o hp:n:c -l help,path:,name:,clean -- "$@")
+if [ $? -ne 0 ]; then
+    usage $(basename $0)
+    exit 1
+fi
+eval set -- "$options"
+
+while true
+do
+    case "$1" in
+	-h|--help)      usage $0 && exit 0;;
+	-p|--path)      path=$2; shift 2;;
+	-n|--name)      name=$2; shift 2;;
+	-c|--clean)     clean=$2; shift 2;;
+	--)             shift 1; break ;;
+        *)              break ;;
+    esac
+done
+
+if [ ! -z "$clean" -a -z "$path" ]; then
+    clean || exit 1
+    exit 0
 fi
 
-# Detect which executable we were run as, lxc-fedora or lxc-redhat
-case "$0" in
-    *lxc-redhat)
-	DISTRO="redhat";;
-    *) # default is fedora
-	DISTRO="fedora";;
-esac
-CACHE="@LOCALSTATEDIR@/cache/lxc/${DISTRO}"
+type febootstrap
+if [ $? -ne 0 ]; then
+    echo "'febootstrap' command is missing"
+    exit 1
+fi
 
-case "$1" in
-    create)
-	create;;
-    destroy)
-	destroy;;
-    help)
-	help;;
-    purge)
-	purge;;
-    *)
-	echo "Usage: $0 {create|destroy|purge|help}"
-	exit 1;;
-esac
+if [ -z "$path" ]; then
+    echo "'path' parameter is required"
+    exit 1
+fi
+
+if [ "$(id -u)" != "0" ]; then
+    echo "This script should be run as 'root'"
+    exit 1
+fi
+
+rootfs=$path/rootfs
+
+install_fedora $rootfs
+if [ $? -ne 0 ]; then
+    echo "failed to install fedora"
+    exit 1
+fi
+
+configure_fedora $rootfs $name
+if [ $? -ne 0 ]; then
+    echo "failed to configure fedora for a container"
+    exit 1
+fi
+
+copy_configuration $path $rootfs $name
+if [ $? -ne 0 ]; then
+    echo "failed write configuration file"
+    exit 1
+fi
+
+if [ ! -z $clean ]; then
+    clean || exit 1
+    exit 0
+fi
