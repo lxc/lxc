@@ -545,7 +545,7 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	}
 
 	if (!pivotdir)
-		pivotdir = "oldrootfs";
+		pivotdir = "mnt";
 
 	/* create a default mountpoint if none specified */
 	snprintf(path, sizeof(path), "%s/%s", rootfs, pivotdir);
