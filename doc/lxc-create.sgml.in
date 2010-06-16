@@ -65,7 +65,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       lxc commands.
     </para>
     <para>
-      The object is a directory created in @LXCPATH@ and identified by its name.
+      The object is a directory created in <filename>@LXCPATH@</filename>
+      and identified by its name.
     </para>
 
     <para>
@@ -105,10 +106,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	<listitem>
 	  <para>
 	    'template' is the short name of an existing 'lxc-template'
-	    script that is called by lxc-create.
-	    eg: lxc-busybox, lxc-debian, lxc-fedora, lxc-sshd.
-	    Refer to those exemples in @BINDIR@
-	    for details of expecting script structure.
+	    script that is called by lxc-create,
+	    eg. busybox, debian, fedora, ubuntu or sshd.
+	    Refer to the examples in <filename>@LXCTEMPLATEDIR@</filename>
+	    for details of the expected script structure.
 	  </para>
 	</listitem>
       </varlistentry>
