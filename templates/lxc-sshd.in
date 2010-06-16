@@ -149,7 +149,7 @@ fi
 
 if [ $0 == "/sbin/init" ]; then
 
-    type @LIBEXECDIR@/lxc-init
+    type @LXCINITDIR@/lxc-init
     if [ $? -ne 0 ]; then
 	echo "'lxc-init is not accessible on the system"
 	exit 1
@@ -161,7 +161,7 @@ if [ $0 == "/sbin/init" ]; then
 	exit 1
     fi
 
-    exec @LIBEXECDIR@/lxc-init -- /usr/sbin/sshd
+    exec @LXCINITDIR@/lxc-init -- /usr/sbin/sshd
     exit 1
 fi
 
