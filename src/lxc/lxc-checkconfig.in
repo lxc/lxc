@@ -11,8 +11,6 @@ SETCOLOR_NORMAL="echo -en \\033[0;39m"
 
 is_set() {
     $GREP -q "$1=[y|m]" $CONFIG
-    RES=$?
-
     return $?
 }
 
@@ -22,7 +20,7 @@ is_enabled() {
     is_set $1
     RES=$?
 
-    if [ $RES = 0 ]; then
+    if [ $RES -eq 0 ]; then
 	$SETCOLOR_SUCCESS && echo -e "enabled" && $SETCOLOR_NORMAL
     else
 	if [ ! -z "$mandatory" -a "$mandatory" = yes ]; then
