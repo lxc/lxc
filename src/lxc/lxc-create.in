@@ -20,11 +20,6 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-#
-# This script allows to set or remove the capabilities on the lxc tools.
-# When the capabilities are set, a non root user can manage the containers.
-#
-
 usage() {
     echo "usage: lxc-create -n <name> [-f configuration] [-t template] [-h]"
 }
