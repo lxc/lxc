@@ -25,7 +25,7 @@ install_sshd()
     rootfs=$1
 
     tree="\
-$rootfs/var/run \
+$rootfs/var/run/sshd \
 $rootfs/var/empty/sshd \
 $rootfs/var/lib/empty/sshd \
 $rootfs/etc/ssh \
@@ -105,8 +105,8 @@ lxc.mount.entry=/lib $rootfs/lib none ro,bind 0 0
 lxc.mount.entry=/bin $rootfs/bin none ro,bind 0 0
 lxc.mount.entry=/usr /$rootfs/usr none ro,bind 0 0
 lxc.mount.entry=/sbin $rootfs/sbin none ro,bind 0 0
-lxc.mount.entry=tmpfs $rootfs/var/run tmpfs defaults 0 0
-lxc.mount.entry=@BINDIR@/lxc-sshd $rootfs/sbin/init none bind 0 0
+lxc.mount.entry=tmpfs $rootfs/var/run/sshd tmpfs mode=0644 0 0
+lxc.mount.entry=@LXCTEMPLATEDIR@/lxc-sshd $rootfs/sbin/init none bind 0 0
 EOF
 
 if [ "$(uname -m)" = "x86_64" ]; then
