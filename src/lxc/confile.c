@@ -718,7 +718,7 @@ static int config_utsname(const char *key, char *value, struct lxc_conf *lxc_con
 static int parse_line(char *buffer, void *data)
 {
 	struct config *config;
-	char *line;
+	char *line, *linep;
 	char *dot;
 	char *key;
 	char *value;
@@ -727,13 +727,14 @@ static int parse_line(char *buffer, void *data)
 	if (lxc_is_line_empty(buffer))
 		return 0;
 
-	/* we have to dup the buffer otherwise, at the re-exec for reboot we modified
-	 * the original string on the stack by replacing '=' by '\0' below
+	/* we have to dup the buffer otherwise, at the re-exec for
+	 * reboot we modified the original string on the stack by
+	 * replacing '=' by '\0' below
 	 */
-	line = strdup(buffer);
+	linep = line = strdup(buffer);
 	if (!line) {
 		SYSERROR("failed to allocate memory for '%s'", buffer);
-		goto out;
+		return -1;
 	}
 
 	line += lxc_char_left_gc(line, strlen(line));
@@ -766,7 +767,7 @@ static int parse_line(char *buffer, void *data)
 	ret = config->cb(key, value, data);
 
 out:
-	free(line);
+	free(linep);
 	return ret;
 }
 
