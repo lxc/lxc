@@ -76,7 +76,7 @@ rm -rf %{buildroot}
 %{_bindir}/*
 %{_mandir}/*
 %{_datadir}/pkgconfig/*
-%{_docdir}/%{name}/*
+%{_datadir}/doc/*
 
 %files devel
 %defattr(-,root,root)
