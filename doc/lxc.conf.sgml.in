@@ -306,6 +306,28 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </refsect2>
 
     <refsect2>
+      <title>Container system console</title>
+      <para>
+	If the container is configured with a root filesystem and the
+	inittab file is setup to use the console, you may want to specify
+	where goes the output of this console.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.console</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Specify a path to a file where the console output will
+	      be written.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Console through the ttys</title>
       <para>
 	If the container is configured with a root filesystem and the
