@@ -139,6 +139,29 @@ out_close:
 	return 1;
 }
 
+static get_default_console(char **console)
+{
+	int fd;
+
+	if (!access("/dev/tty", F_OK)) {
+		fd = open("/dev/tty", O_RDWR);
+		if (fd > 0) {
+			close(fd);
+			*console = strdup("/dev/tty");
+			goto out;
+		}
+	}
+
+	if (!access("/dev/null", F_OK)) {
+		*console = strdup("/dev/null");
+		goto out;
+	}
+
+	ERROR("No suitable default console");
+out:
+	return *console ? 0 : -1;
+}
+
 int lxc_create_console(struct lxc_conf *conf)
 {
 	struct termios tios;
@@ -148,8 +171,10 @@ int lxc_create_console(struct lxc_conf *conf)
 	if (!conf->rootfs.path)
 		return 0;
 
-	if (!console->path)
-		return 0;
+	if (!console->path && get_default_console(&console->path)) {
+		ERROR("failed to get default console");
+		return -1;
+	}
 
 	if (openpty(&console->master, &console->slave,
 		    console->name, NULL, NULL)) {
@@ -172,6 +197,8 @@ int lxc_create_console(struct lxc_conf *conf)
 		SYSERROR("failed to open '%s'", console->path);
 		goto err;
 	}
+
+	DEBUG("using '%s' as console", console->path);
 
 	console->peer = fd;
 
