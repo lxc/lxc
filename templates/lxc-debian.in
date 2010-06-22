@@ -203,6 +203,11 @@ lxc.cgroup.devices.allow = c 136:* rwm
 lxc.cgroup.devices.allow = c 5:2 rwm
 # rtc
 lxc.cgroup.devices.allow = c 254:0 rwm
+
+# mounts point
+lxc.mount.entry=proc $rootfs/proc proc nodev,noexec,nosuid 0 0
+lxc.mount.entry=devpts $rootfs/dev/pts devpts defaults 0 0
+lxc.mount.entry=sysfs $rootfs/sys sysfs defaults  0 0
 EOF
 
     if [ $? -ne 0 ]; then
