@@ -799,10 +799,26 @@ static int mount_file_entries(FILE *file)
 		}
 
 		if (mount(mntent->mnt_fsname, mntent->mnt_dir,
-			  mntent->mnt_type, mntflags, mntdata)) {
+			  mntent->mnt_type, mntflags & ~MS_REMOUNT, mntdata)) {
 			SYSERROR("failed to mount '%s' on '%s'",
 					 mntent->mnt_fsname, mntent->mnt_dir);
 			goto out;
+		}
+
+		if ((mntflags & MS_REMOUNT) == MS_REMOUNT ||
+		    ((mntflags & MS_BIND) == MS_BIND)) {
+
+			DEBUG ("remounting %s on %s to respect bind " \
+			       "or remount options",
+			       mntent->mnt_fsname, mntent->mnt_dir);
+
+			if (mount(mntent->mnt_fsname, mntent->mnt_dir,
+				  mntent->mnt_type,
+				  mntflags | MS_REMOUNT, mntdata)) {
+				SYSERROR("failed to mount '%s' on '%s'",
+					 mntent->mnt_fsname, mntent->mnt_dir);
+				goto out;
+			}
 		}
 
 		DEBUG("mounted %s on %s, type %s", mntent->mnt_fsname,
