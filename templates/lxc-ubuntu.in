@@ -240,8 +240,6 @@ lxc.pts = 1024
 lxc.rootfs = $rootfs
 lxc.mount  = $path/fstab
 
-lxc.console = /dev/console
-
 lxc.cgroup.devices.deny = a
 # /dev/null and zero
 lxc.cgroup.devices.allow = c 1:3 rwm
