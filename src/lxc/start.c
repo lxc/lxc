@@ -422,6 +422,17 @@ static int do_start(void *data)
 		return -1;
 	}
 
+        /* This prctl must be before the synchro, so if the parent
+	 * dies before we set the parent death signal, we will detect
+	 * its death with the synchro right after, otherwise we have
+	 * a window where the parent can exit before we set the pdeath
+	 * signal leading to a unsupervized container.
+	 */
+	if (prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0)) {
+		SYSERROR("failed to set pdeath signal");
+		return -1;
+	}
+
 	lxc_sync_fini_parent(handler);
 
 	/* Tell the parent task it can begin to configure the
@@ -438,11 +449,6 @@ static int do_start(void *data)
 
 	if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
 		SYSERROR("failed to remove CAP_SYS_BOOT capability");
-		return -1;
-	}
-
-	if (prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0)) {
-		SYSERROR("failed to set pdeath signal");
 		return -1;
 	}
 
