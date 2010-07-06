@@ -97,7 +97,7 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 int lxc_attach(pid_t pid)
 {
 	char path[MAXPATHLEN];
-	char *ns[] = { "pid", "mnt", "net", "pid", "uts" };
+	char *ns[] = { "pid", "mnt", "net", "ipc", "uts" };
 	const int size = sizeof(ns) / sizeof(char *);
 	int fd[size];
 	int i;
