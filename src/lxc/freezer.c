@@ -42,6 +42,7 @@ static int freeze_unfreeze(const char *name, int freeze)
 {
 	char *nsgroup;
 	char freezer[MAXPATHLEN], *f;
+	char tmpf[32];
 	int fd, ret;
 	
 	ret = lxc_cgroup_path_get(&nsgroup, name);
@@ -50,7 +51,7 @@ static int freeze_unfreeze(const char *name, int freeze)
 
 	snprintf(freezer, MAXPATHLEN, "%s/freezer.state", nsgroup);
 
-	fd = open(freezer, O_WRONLY);
+	fd = open(freezer, O_RDWR);
 	if (fd < 0) {
 		SYSERROR("failed to open freezer for '%s'", name);
 		return -1;
@@ -58,22 +59,57 @@ static int freeze_unfreeze(const char *name, int freeze)
 
 	if (freeze) {
 		f = "FROZEN";
-		ret = write(fd, f, strlen(f) + 1) < 0;
+		ret = write(fd, f, strlen(f) + 1);
 	} else {
 		f = "THAWED";
-		ret = write(fd, f, strlen(f) + 1) < 0;
+		ret = write(fd, f, strlen(f) + 1);
 
 		/* compatibility code with old freezer interface */
-		if (ret) {
+		if (ret < 0) {
 			f = "RUNNING";
 			ret = write(fd, f, strlen(f) + 1) < 0;
 		}
 	}
 
-	close(fd);
-	if (ret) 
-		SYSERROR("failed to write to '%s'", freezer);
+	if (ret < 0) {
+		SYSERROR("failed to write '%s' to '%s'", f, freezer);
+		goto out;
+	}
 
+	while (1) {
+		ret = lseek(fd, 0L, SEEK_SET);
+		if (ret < 0) {
+			SYSERROR("failed to lseek on file '%s'", freezer);
+			goto out;
+		}
+
+		ret = read(fd, tmpf, sizeof(tmpf));
+		if (ret < 0) {
+			SYSERROR("failed to read to '%s'", freezer);
+			goto out;
+		}
+
+		ret = strncmp(f, tmpf, strlen(f));
+		if (!ret)
+			break;		/* Success */
+
+		sleep(1);
+
+		ret = lseek(fd, 0L, SEEK_SET);
+		if (ret < 0) {
+			SYSERROR("failed to lseek on file '%s'", freezer);
+			goto out;
+		}
+
+		ret = write(fd, f, strlen(f) + 1);
+		if (ret < 0) {
+			SYSERROR("failed to write '%s' to '%s'", f, freezer);
+			goto out;
+		}
+	}
+
+out:
+	close(fd);
 	return ret;
 }
 
