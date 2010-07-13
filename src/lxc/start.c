@@ -190,7 +190,7 @@ int lxc_check_inherited(int fd_to_ignore)
 	return ret;
 }
 
-static int setup_sigchld_fd(sigset_t *oldmask)
+static int setup_signal_fd(sigset_t *oldmask)
 {
 	sigset_t mask;
 	int fd;
@@ -222,7 +222,7 @@ static int setup_sigchld_fd(sigset_t *oldmask)
 	return fd;
 }
 
-static int sigchld_handler(int fd, void *data,
+static int signal_handler(int fd, void *data,
 			   struct lxc_epoll_descr *descr)
 {
 	struct signalfd_siginfo siginfo;
@@ -305,7 +305,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_sigfd;
 	}
 
-	if (lxc_mainloop_add_handler(&descr, sigfd, sigchld_handler, &pid)) {
+	if (lxc_mainloop_add_handler(&descr, sigfd, signal_handler, &pid)) {
 		ERROR("failed to add handler for the signal");
 		goto out_mainloop_open;
 	}
@@ -371,7 +371,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 	/* the signal fd has to be created before forking otherwise
 	 * if the child process exits before we setup the signal fd,
 	 * the event will be lost and the command will be stuck */
-	handler->sigfd = setup_sigchld_fd(&handler->oldmask);
+	handler->sigfd = setup_signal_fd(&handler->oldmask);
 	if (handler->sigfd < 0) {
 		ERROR("failed to set sigchild fd handler");
 		goto out_delete_console;
@@ -402,7 +402,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_set_state(name, handler, STOPPING);
 	lxc_set_state(name, handler, STOPPED);
 
-	/* reset mask set by setup_sigchld_fd */
+	/* reset mask set by setup_signal_fd */
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL))
 		WARN("failed to restore sigprocmask");
 
