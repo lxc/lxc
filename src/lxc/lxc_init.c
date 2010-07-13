@@ -154,11 +154,21 @@ int main(int argc, char *argv[])
 		int orphan = 0;
 		pid_t waited_pid;
 
-		if (was_interrupted) {
+		switch (was_interrupted) {
+
+		case 0:
+			break;
+
+		case SIGTERM:
+			kill(-1, SIGTERM);
+			break;
+
+		default:
 			kill(pid, was_interrupted);
-			was_interrupted = 0;
+			break;
 		}
 
+		was_interrupted = 0;
 		waited_pid = wait(&status);
 		if (waited_pid < 0) {
 			if (errno == ECHILD)
