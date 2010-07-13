@@ -195,13 +195,13 @@ static int setup_sigchld_fd(sigset_t *oldmask)
 	sigset_t mask;
 	int fd;
 
-	if (sigprocmask(SIG_BLOCK, NULL, &mask)) {
-		SYSERROR("failed to get mask signal");
-		return -1;
-	}
-
-	if (sigaddset(&mask, SIGCHLD) || sigprocmask(SIG_BLOCK, &mask, oldmask)) {
-		SYSERROR("failed to set mask signal");
+	/* Block everything except serious error signals */
+	if (sigfillset(&mask) ||
+	    sigdelset(&mask, SIGILL) ||
+	    sigdelset(&mask, SIGSEGV) ||
+	    sigdelset(&mask, SIGBUS) ||
+	    sigprocmask(SIG_BLOCK, &mask, oldmask)) {
+		SYSERROR("failed to set signal mask");
 		return -1;
 	}
 
@@ -231,13 +231,19 @@ static int sigchld_handler(int fd, void *data,
 
 	ret = read(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0) {
-		ERROR("failed to read sigchld info");
+		ERROR("failed to read signal info");
 		return -1;
 	}
 
 	if (ret != sizeof(siginfo)) {
 		ERROR("unexpected siginfo size");
 		return -1;
+	}
+
+	if (siginfo.ssi_signo != SIGCHLD) {
+		kill(*pid, siginfo.ssi_signo);
+		INFO("forwarded signal %d to pid %d", siginfo.ssi_signo, *pid);
+		return 0;
 	}
 
 	if (siginfo.ssi_code == CLD_STOPPED ||
