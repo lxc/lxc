@@ -63,14 +63,6 @@ lxc_state_t lxc_str2state(const char *state)
 	return -1;
 }
 
-int lxc_rmstate(const char *name)
-{
-	char file[MAXPATHLEN];
-	snprintf(file, MAXPATHLEN, LXCPATH "/%s/state", name);
-	unlink(file);
-	return 0;
-}
-
 static int freezer_state(const char *name)
 {
 	char *nsgroup;
