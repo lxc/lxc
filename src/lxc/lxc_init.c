@@ -30,12 +30,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <sys/capability.h>
 #define _GNU_SOURCE
 #include <getopt.h>
 
-#include <lxc/log.h>
-#include <lxc/error.h>
+#include "log.h"
+#include "caps.h"
+#include "error.h"
 #include "utils.h"
 
 lxc_log_define(lxc_init, lxc);
@@ -48,25 +48,6 @@ static struct option options[] = {
 };
 
 static	int was_interrupted = 0;
-
-static int cap_reset(void)
-{
-	cap_t cap = cap_init();
-	int ret = 0;
-
-	if (!cap) {
-		ERROR("cap_init() failed : %m");
-		return -1;
-	}
-
-	if (cap_set_proc(cap)) {
-		ERROR("cap_set_proc() failed : %m");
-		ret = -1;
-	}
-
-	cap_free(cap);
-	return ret;
-}
 
 int main(int argc, char *argv[])
 {
@@ -94,6 +75,9 @@ int main(int argc, char *argv[])
 
 		nbargs++;
 	}
+
+	if (lxc_caps_init())
+		exit(err);
 
 	if (lxc_log_init(NULL, 0, basename(argv[0]), quiet))
 		exit(err);
@@ -128,7 +112,7 @@ int main(int argc, char *argv[])
 	if (lxc_setup_fs())
 		exit(err);
 
-	if (cap_reset())
+	if (lxc_caps_reset())
 		exit(err);
 
 	pid = fork();
