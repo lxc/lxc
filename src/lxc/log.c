@@ -33,7 +33,8 @@
 #include <fcntl.h>
 #include <stdlib.h>
 
-#include <lxc/log.h>
+#include "log.h"
+#include "caps.h"
 
 #define LXC_LOG_PREFIX_SIZE	32
 #define LXC_LOG_BUFFER_SIZE	512
@@ -127,7 +128,8 @@ static int log_open(const char *name)
 	int fd;
 	int newfd;
 
-	fd = open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0666);
+	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY |
+			     O_APPEND | O_CLOEXEC, 0666));
 	if (fd == -1) {
 		ERROR("failed to open log file \"%s\" : %s", name,
 		      strerror(errno));
