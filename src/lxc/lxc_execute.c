@@ -31,7 +31,7 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 
-
+#include "caps.h"
 #include "lxc.h"
 #include "log.h"
 #include "conf.h"
@@ -92,6 +92,9 @@ int main(int argc, char *argv[])
 	struct lxc_conf *conf;
 
 	lxc_list_init(&defines);
+
+	if (lxc_caps_init())
+		return -1;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;

@@ -41,6 +41,7 @@
 #include <net/if.h>
 
 #include "log.h"
+#include "caps.h"
 #include "lxc.h"
 #include "conf.h"
 #include "cgroup.h"
@@ -100,6 +101,9 @@ int main(int argc, char *argv[])
 	};
 
 	lxc_list_init(&defines);
+
+	if (lxc_caps_init())
+		return err;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return err;
