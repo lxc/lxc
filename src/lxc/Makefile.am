@@ -5,6 +5,7 @@ pkginclude_HEADERS = \
 		monitor.h \
 		utils.h \
 		namespace.h \
+		caps.h \
 		lxc.h \
 		cgroup.h \
 		conf.h \
@@ -44,6 +45,7 @@ liblxc_so_SOURCES = \
         rtnl.c rtnl.h \
         genl.c genl.h \
 	\
+	caps.c caps.h \
 	mainloop.c mainloop.h \
 	af_unix.c af_unix.h \
 	\
@@ -90,7 +92,7 @@ pkglib_PROGRAMS = \
 	lxc-init
 
 AM_LDFLAGS=-Wl,-E -Wl,-rpath -Wl,$(libdir)
-LDADD=liblxc.so
+LDADD=liblxc.so @CAP_LIBS@
 
 lxc_attach_SOURCES = lxc_attach.c
 lxc_cgroup_SOURCES = lxc_cgroup.c
@@ -100,7 +102,6 @@ lxc_execute_SOURCES = lxc_execute.c
 lxc_freeze_SOURCES = lxc_freeze.c
 lxc_info_SOURCES = lxc_info.c
 lxc_init_SOURCES = lxc_init.c
-lxc_init_LDADD = $(LDADD) @CAP_LIBS@
 lxc_monitor_SOURCES = lxc_monitor.c
 lxc_restart_SOURCES = lxc_restart.c
 lxc_start_SOURCES = lxc_start.c
