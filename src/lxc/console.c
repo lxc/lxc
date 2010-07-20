@@ -30,10 +30,10 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include <lxc/log.h>
-#include <lxc/conf.h>
-#include <lxc/start.h> 	/* for struct lxc_handler */
-
+#include "log.h"
+#include "conf.h"
+#include "start.h" 	/* for struct lxc_handler */
+#include "caps.h"
 #include "commands.h"
 #include "mainloop.h"
 #include "af_unix.h"
@@ -192,7 +192,8 @@ int lxc_create_console(struct lxc_conf *conf)
 		goto err;
 	}
 
-	fd = open(console->path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600);
+	fd = lxc_unpriv(open(console->path, O_CLOEXEC | O_RDWR | O_CREAT |
+			     O_APPEND, 0600));
 	if (fd < 0) {
 		SYSERROR("failed to open '%s'", console->path);
 		goto err;
