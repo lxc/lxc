@@ -67,6 +67,7 @@ bin_SCRIPTS = \
 	lxc-ls \
 	lxc-checkconfig \
 	lxc-setcap \
+	lxc-setuid \
 	lxc-version \
 	lxc-create \
 	lxc-destroy
