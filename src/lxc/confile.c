@@ -136,7 +136,7 @@ static int config_network_type(const char *key, char *value,
 	lxc_list_init(list);
 	list->elem = netdev;
 
-	lxc_list_add(network, list);
+	lxc_list_add_tail(network, list);
 
 	if (!strcmp(value, "veth"))
 		netdev->type = LXC_NET_VETH;
@@ -178,7 +178,7 @@ static struct lxc_netdev *network_netdev(const char *key, const char *value,
 		return NULL;
 	}
 
-	netdev = lxc_list_first_elem(network);
+	netdev = lxc_list_last_elem(network);
 	if (!netdev) {
 		ERROR("no network device defined for '%s' = '%s' option",
 		      key, value);
