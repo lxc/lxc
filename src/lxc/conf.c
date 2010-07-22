@@ -1025,7 +1025,8 @@ static int setup_netdev(struct lxc_netdev *netdev)
 
 	/* default: let the system to choose one interface name */
 	if (!netdev->name)
-		netdev->name = "eth%d";
+		netdev->name = netdev->type == LXC_NET_PHYS ?
+			netdev->link : "eth%d";
 
 	/* rename the interface name */
 	err = lxc_device_rename(ifname, netdev->name);
