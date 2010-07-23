@@ -33,6 +33,7 @@
 #include "commands.h"
 #include "arguments.h"
 #include "namespace.h"
+#include "caps.h"
 #include "log.h"
 
 lxc_log_define(lxc_attach_ui, lxc);
@@ -62,6 +63,10 @@ int main(int argc, char *argv[], char *envp[])
 	struct passwd *passwd;
 	uid_t uid;
 	char *curdir;
+
+	ret = lxc_caps_init();
+	if (ret)
+		return ret;
 
 	ret = lxc_arguments_parse(&my_args, argc, argv);
 	if (ret)

@@ -185,6 +185,10 @@ int main(int argc, char *argv[])
 
 	args = &argv[optind];
 
+	ret = lxc_caps_init();
+	if (ret)
+		return ret;
+
         ret = lxc_fill_namespace_flags(namespaces, &flags);
  	if (ret)
 		usage(argv[0]);
