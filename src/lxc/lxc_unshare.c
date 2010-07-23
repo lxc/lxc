@@ -34,10 +34,11 @@
 #include <sys/wait.h>
 #include <pwd.h>
 
-#include <lxc/log.h>
-#include <lxc/namespace.h>
-#include <lxc/cgroup.h>
-#include <lxc/error.h>
+#include "caps.h"
+#include "log.h"
+#include "namespace.h"
+#include "cgroup.h"
+#include "error.h"
 
 lxc_log_define(lxc_unshare_ui, lxc);
 
