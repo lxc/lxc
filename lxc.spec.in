@@ -73,7 +73,16 @@ rm -rf %{buildroot}
 %defattr(-,root,root)
 %{_libdir}/*.so*
 %{_libdir}/%{name}
+%attr(4111,root,root) %{_libdir}/%{name}/lxc-init
 %{_bindir}/*
+%attr(4111,root,root) %{_bindir}/lxc-attach
+%attr(4111,root,root) %{_bindir}/lxc-create
+%attr(4111,root,root) %{_bindir}/lxc-start
+%attr(4111,root,root) %{_bindir}/lxc-netstat
+%attr(4111,root,root) %{_bindir}/lxc-unshare
+%attr(4111,root,root) %{_bindir}/lxc-execute
+%attr(4111,root,root) %{_bindir}/lxc-checkpoint
+%attr(4111,root,root) %{_bindir}/lxc-restart
 %{_mandir}/*
 %{_datadir}/pkgconfig/*
 %{_datadir}/doc/*
