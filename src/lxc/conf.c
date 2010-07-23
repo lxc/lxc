@@ -1336,7 +1336,7 @@ void lxc_delete_network(struct lxc_list *network)
 
 	lxc_list_for_each(iterator, network) {
 		netdev = iterator->elem;
-		if (netdev->ifindex > 0)
+		if (netdev->ifindex > 0 && netdev->type != LXC_NET_PHYS)
 			lxc_device_delete_index(netdev->ifindex);
 	}
 }
