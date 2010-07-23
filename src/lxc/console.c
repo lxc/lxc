@@ -139,7 +139,7 @@ out_close:
 	return 1;
 }
 
-static get_default_console(char **console)
+static int get_default_console(char **console)
 {
 	int fd;
 
