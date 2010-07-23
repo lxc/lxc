@@ -60,6 +60,7 @@ lxc_setcaps()
 
 lxc_dropcaps()
 {
+    setcap -r @BINDIR@/lxc-attach
     setcap -r @BINDIR@/lxc-create
     setcap -r @BINDIR@/lxc-execute
     setcap -r @BINDIR@/lxc-start

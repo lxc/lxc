@@ -41,7 +41,10 @@ setuid()
 
 lxc_setuid()
 {
+    setuid @BINDIR@/lxc-attach
+    setuid @BINDIR@/lxc-create
     setuid @BINDIR@/lxc-execute
+    setuid @BINDIR@/lxc-start
     setuid @BINDIR@/lxc-restart
     setuid @BINDIR@/lxc-unshare
     setuid @BINDIR@/lxc-netstat
@@ -54,12 +57,16 @@ lxc_setuid()
 
 lxc_dropuid()
 {
+    setuid -r @BINDIR@/lxc-attach
+    setuid -r @BINDIR@/lxc-create
     setuid -r @BINDIR@/lxc-execute
+    setuid -r @BINDIR@/lxc-start
     setuid -r @BINDIR@/lxc-restart
     setuid -r @BINDIR@/lxc-unshare
     setuid -r @BINDIR@/lxc-netstat
     setuid -r @BINDIR@/lxc-checkpoint
     setuid -r @LXCINITDIR@/lxc-init
+
     chmod 0755 @LXCPATH@
 }
 
