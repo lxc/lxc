@@ -1285,6 +1285,11 @@ static int instanciate_vlan(struct lxc_netdev *netdev)
 
 static int instanciate_phys(struct lxc_netdev *netdev)
 {
+	if (!netdev->link) {
+		ERROR("no link specified for the physical interface");
+		return -1;
+	}
+
 	netdev->ifindex = if_nametoindex(netdev->link);
 	if (!netdev->ifindex) {
 		ERROR("failed to retrieve the index for %s", netdev->link);
