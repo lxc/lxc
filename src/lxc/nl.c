@@ -155,7 +155,8 @@ again:
 	if (!ret)
 		return 0;
 
-	if (msg.msg_flags & MSG_TRUNC)
+	if (msg.msg_flags & MSG_TRUNC &&
+	    ret == answer->nlmsghdr.nlmsg_len)
 		return -EMSGSIZE;
 
 	return ret;
@@ -182,9 +183,8 @@ extern int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg)
         nladdr.nl_groups = 0;
 
 	ret = sendmsg(handler->fd, &msg, 0);
-	if (ret < 0) {
+	if (ret < 0)
 		return -errno;
-	}
 
 	return ret;
 }
@@ -209,7 +209,7 @@ extern int netlink_transaction(struct nl_handler *handler,
 		struct nlmsgerr *err = (struct nlmsgerr*)NLMSG_DATA(answer);
 		return err->error;
 	}
-	
+
 	return 0;
 }
 
