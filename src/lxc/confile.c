@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/utsname.h>
+#include <sys/personality.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <net/if.h>
@@ -43,6 +44,7 @@
 
 lxc_log_define(lxc_confile, lxc);
 
+static int config_personality(const char *, char *, struct lxc_conf *);
 static int config_pts(const char *, char *, struct lxc_conf *);
 static int config_tty(const char *, char *, struct lxc_conf *);
 static int config_cgroup(const char *, char *, struct lxc_conf *);
@@ -74,6 +76,7 @@ struct config {
 
 static struct config config[] = {
 
+	{ "lxc.arch",                 config_personality          },
 	{ "lxc.pts",                  config_pts                  },
 	{ "lxc.tty",                  config_tty                  },
 	{ "lxc.cgroup",               config_cgroup               },
@@ -473,6 +476,34 @@ static int config_network_ipv6(const char *key, char *value,
 	lxc_list_add(&netdev->ipv6, list);
 
 	return 0;
+}
+
+static int config_personality(const char *key, char *value,
+			      struct lxc_conf *lxc_conf)
+{
+	struct per_name {
+		char *name;
+		int per;
+	} pername[4] = {
+		{ "x86", PER_LINUX32 },
+		{ "i686", PER_LINUX32 },
+		{ "x86_64", PER_LINUX },
+		{ "amd64", PER_LINUX },
+	};
+
+	int i;
+
+	for (i = 0; i < sizeof(pername); i++) {
+
+		if (strcmp(pername[i].name, value))
+		    continue;
+
+		lxc_conf->personality = pername[i].per;
+		return 0;
+	}
+
+	ERROR("unsupported personality '%s'", value);
+	return -1;
 }
 
 static int config_pts(const char *key, char *value, struct lxc_conf *lxc_conf)

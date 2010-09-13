@@ -40,6 +40,7 @@
 #include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/capability.h>
+#include <sys/personality.h>
 
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -655,6 +656,21 @@ out:
 	return 0;
 }
 
+static int setup_personality(int persona)
+{
+	if (persona == -1)
+		return 0;
+
+	if (personality(persona) < 0) {
+		SYSERROR("failed to set personality to '0x%x'", persona);
+		return -1;
+	}
+
+	INFO("set personality to '0x%x'", persona);
+
+	return 0;
+}
+
 static int setup_console(const struct lxc_rootfs *rootfs,
 			 const struct lxc_console *console)
 {
@@ -1125,6 +1141,7 @@ struct lxc_conf *lxc_conf_init(void)
 	}
 	memset(new, 0, sizeof(*new));
 
+	new->personality = -1;
 	new->console.path = NULL;
 	new->console.peer = -1;
 	new->console.master = -1;
@@ -1472,6 +1489,11 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 
 	if (setup_pts(lxc_conf->pts)) {
 		ERROR("failed to setup the new pts instance");
+		return -1;
+	}
+
+	if (setup_personality(lxc_conf->personality)) {
+		ERROR("failed to setup personality");
 		return -1;
 	}
 
