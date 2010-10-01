@@ -59,7 +59,7 @@ liblxc_so_LDFLAGS = \
 	-shared \
 	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,$(VERSION)))
 
-liblxc_so_LDADD = -lutil
+liblxc_so_LDADD = -lutil $(CAP_LIBS)
 
 bin_SCRIPTS = \
 	lxc-ps \
