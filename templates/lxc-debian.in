@@ -20,6 +20,8 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
+SUITE=${SUITE:-lenny}
+
 configure_debian()
 {
     rootfs=$1
@@ -90,7 +92,7 @@ ifupdown,\
 locales,\
 libui-dialog-perl,\
 dialog,\
-dhcp-client,\
+dhcp3-client,\
 netbase,\
 net-tools,\
 iproute,\
@@ -100,9 +102,9 @@ openssh-server
     arch=$2
 
     # check the mini debian was not already downloaded
-    mkdir -p "$cache/partial-$arch"
+    mkdir -p "$cache/partial-$SUITE-$arch"
     if [ $? -ne 0 ]; then
-	echo "Failed to create '$cache/partial-$arch' directory"
+	echo "Failed to create '$cache/partial-$SUITE-$arch' directory"
 	return 1
     fi
 
@@ -110,13 +112,13 @@ openssh-server
     echo "Downloading debian minimal ..."
     debootstrap --verbose --variant=minbase --arch=$arch \
 	--include $packages \
-	lenny $cache/partial-$arch http://ftp.debian.org/debian
+	"$SUITE" "$cache/partial-$SUITE-$arch" http://ftp.debian.org/debian
     if [ $? -ne 0 ]; then
 	echo "Failed to download the rootfs, aborting."
 	return 1
     fi
 
-    mv "$1/partial-$arch" "$1/rootfs-$arch"
+    mv "$1/partial-$SUITE-$arch" "$1/rootfs-$SUITE-$arch"
     echo "Download complete."
 
     return 0
@@ -130,7 +132,7 @@ copy_debian()
 
     # make a local copy of the minidebian
     echo -n "Copying rootfs to $rootfs..."
-    cp -a $cache/rootfs-$arch $rootfs || return 1
+    cp -a "$cache/rootfs-$SUITE-$arch" $rootfs || return 1
     return 0
 }
 
@@ -155,8 +157,8 @@ install_debian()
 	    arch=i386
 	fi
 
-	echo "Checking cache download in $cache/rootfs-$arch ... "
-	if [ ! -e "$cache/rootfs-$arch" ]; then
+	echo "Checking cache download in $cache/rootfs-$SUITE-$arch ... "
+	if [ ! -e "$cache/rootfs-$SUITE-$arch" ]; then
 	    download_debian $cache $arch
 	    if [ $? -ne 0 ]; then
 		echo "Failed to download 'debian base'"
