@@ -107,6 +107,9 @@ int main(int argc, char *argv[])
 	int ret;
 	int sfd = -1;
 
+	if (lxc_caps_init())
+		return -1;
+
 	ret = lxc_arguments_parse(&my_args, argc, argv);
 	if (ret)
 		return ret;
