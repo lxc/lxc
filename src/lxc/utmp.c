@@ -82,8 +82,10 @@ static int utmp_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 
 	struct lxc_utmp *utmp_data = (struct lxc_utmp *)data;
 
-	/* we're monitoring a directory. ie->name is not included in sizeof(struct inotify_event)
-	 * if we don't read it all at once, read gives us EINVAL, so we read and cast to struct ie
+	/*
+	 * we're monitoring a directory. ie->name is not included in
+	 * sizeof(struct inotify_event) if we don't read it all at once,
+	 * read gives us EINVAL, so we read and cast to struct ie
 	 */
 	char buffer[MAXPATHLEN];
 
@@ -100,7 +102,13 @@ static int utmp_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 	ie = (struct inotify_event *)buffer;
 
 	if (ie->len <= 0) {
-		SYSERROR("inotify event with no name");
+
+		if (ie->mask & IN_UNMOUNT) {
+			DEBUG("watched directory removed");
+			goto out;
+		}
+
+		SYSERROR("inotify event with no name (mask %d)", ie->mask);
 		return -1;
 	}
 
@@ -161,10 +169,9 @@ static int utmp_get_runlevel(struct lxc_utmp *utmp_data)
 	struct utmpx *utmpx;
 	char path[MAXPATHLEN];
 	struct lxc_handler *handler = utmp_data->handler;
-	struct lxc_conf *conf = handler->conf;
 
-	if (snprintf(path, MAXPATHLEN, "%s/var/run/utmp", conf->rootfs.path) >
-	    MAXPATHLEN) {
+	if (snprintf(path, MAXPATHLEN, "/proc/%d/root/var/run/utmp",
+		     handler->pid) > MAXPATHLEN) {
 		ERROR("path is too long");
 		return -1;
 	}
@@ -211,19 +218,20 @@ static int utmp_get_ntasks(struct lxc_handler *handler)
 int lxc_utmp_mainloop_add(struct lxc_epoll_descr *descr,
 			  struct lxc_handler *handler)
 {
-	struct lxc_conf *conf = handler->conf;
 	char path[MAXPATHLEN];
 	int fd, wd;
 	struct lxc_utmp *utmp_data;
+	struct lxc_conf *conf = handler->conf;
 
 	if (!conf->rootfs.path)
 		return 0;
 
-	/* We set up a watch for the /var/run directory. We're only interested in
-	 * utmp at the moment, but want to watch for delete and create events as well.
+	/* We set up a watch for the /var/run directory. We're only interested
+	 * in utmp at the moment, but want to watch for delete and create
+	 * events as well.
 	 */
-	if (snprintf(path, MAXPATHLEN, "%s/var/run", conf->rootfs.path) >
-	    MAXPATHLEN) {
+	if (snprintf(path, MAXPATHLEN, "/proc/%d/root/var/run",
+		     handler->pid) > MAXPATHLEN) {
 		ERROR("path is too long");
 		return -1;
 	}
