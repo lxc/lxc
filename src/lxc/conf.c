@@ -386,12 +386,15 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 	char path[MAXPATHLEN];
 	int i;
 
+	if (!rootfs->path)
+		return 0;
+
 	for (i = 0; i < tty_info->nbtty; i++) {
 
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
 		snprintf(path, sizeof(path), "%s/dev/tty%d",
-			 rootfs->path ? rootfs->path : "", i + 1);
+			 rootfs->mount ? rootfs->mount : LXCROOTFSMOUNT, i + 1);
 
 		/* At this point I can not use the "access" function
 		 * to check the file is present or not because it fails
