@@ -394,7 +394,7 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
 		snprintf(path, sizeof(path), "%s/dev/tty%d",
-			 rootfs->mount ? rootfs->mount : LXCROOTFSMOUNT, i + 1);
+			 rootfs->mount, i + 1);
 
 		/* At this point I can not use the "access" function
 		 * to check the file is present or not because it fails
@@ -589,47 +589,42 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	if (remove_pivotdir && rmdir(pivotdir))
 		WARN("can't remove mountpoint '%s': %m", pivotdir);
 
-	INFO("pivoted to '%s'", rootfs);
-
 	return 0;
 }
 
 static int setup_rootfs(const struct lxc_rootfs *rootfs)
 {
-	char *mpath = rootfs->mount ? rootfs->mount : LXCROOTFSMOUNT;
-
 	if (!rootfs->path)
 		return 0;
 
-	if (access(mpath, F_OK)) {
+	if (access(rootfs->mount, F_OK)) {
 		SYSERROR("failed to access to '%s', check it is present",
-			 mpath);
+			 rootfs->mount);
 		return -1;
 	}
 
-	if (mount(rootfs->path, mpath, "none", MS_BIND|MS_REC, NULL)) {
-		SYSERROR("failed to mount '%s'->'%s'", rootfs->path, mpath);
+	if (mount(rootfs->path, rootfs->mount, "none", MS_BIND|MS_REC, NULL)) {
+		SYSERROR("failed to mount '%s'->'%s'",
+			 rootfs->path, rootfs->mount);
 		return -1;
 	}
 
-	DEBUG("mounted '%s' on '%s'", rootfs->path, mpath);
+	DEBUG("mounted '%s' on '%s'", rootfs->path, rootfs->mount);
 
 	return 0;
 }
 
 int setup_pivot_root(const struct lxc_rootfs *rootfs)
 {
-	char *mpath = rootfs->mount ? rootfs->mount : LXCROOTFSMOUNT;
-
 	if (!rootfs->path)
 		return 0;
 
-	if (setup_rootfs_pivot_root(mpath, rootfs->pivot)) {
+	if (setup_rootfs_pivot_root(rootfs->mount, rootfs->pivot)) {
 		ERROR("failed to setup pivot root");
 		return -1;
 	}
 
-	DEBUG("pivot rooted to '%s'", mpath);
+	DEBUG("pivot rooted to '%s'", rootfs->mount);
 
 	return 0;
 }
@@ -693,8 +688,7 @@ static int setup_console(const struct lxc_rootfs *rootfs,
 	if (!rootfs->path)
 		return 0;
 
-	snprintf(path, sizeof(path), "%s/dev/console",
-		 rootfs->mount ? rootfs->mount : LXCROOTFSMOUNT);
+	snprintf(path, sizeof(path), "%s/dev/console", rootfs->mount);
 
 	if (access(path, F_OK)) {
 		WARN("rootfs specified but no console found at '%s'", path);
@@ -1160,6 +1154,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.master = -1;
 	new->console.slave = -1;
 	new->console.name[0] = '\0';
+	new->rootfs.mount = LXCROOTFSMOUNT;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
