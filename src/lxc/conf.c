@@ -48,6 +48,8 @@
 #include <net/if.h>
 #include <libgen.h>
 
+#include <linux/loop.h>
+
 #include "network.h"
 #include "error.h"
 #include "parse.h"
@@ -142,7 +144,7 @@ static struct mount_opt mount_opt[] = {
 };
 
 static struct caps_opt caps_opt[] = {
-	{ "chown",             CAP_CHOWN 	     },
+	{ "chown",             CAP_CHOWN             },
 	{ "dac_override",      CAP_DAC_OVERRIDE      },
 	{ "dac_read_search",   CAP_DAC_READ_SEARCH   },
 	{ "fowner",            CAP_FOWNER            },
@@ -182,13 +184,11 @@ static struct caps_opt caps_opt[] = {
 	{ "mac_admin",         CAP_MAC_ADMIN         },
 };
 
-#if 0 /* will be reactivated with image mounting support */
-static int configure_find_fstype_cb(char* buffer, void *data)
+static int find_fstype_cb(char* buffer, void *data)
 {
 	struct cbarg {
 		const char *rootfs;
-		const char *testdir;
-		char *fstype;
+		const char *target;
 		int mntopt;
 	} *cbarg = data;
 
@@ -202,33 +202,38 @@ static int configure_find_fstype_cb(char* buffer, void *data)
 	fstype += lxc_char_left_gc(fstype, strlen(fstype));
 	fstype[lxc_char_right_gc(fstype, strlen(fstype))] = '\0';
 
-	if (mount(cbarg->rootfs, cbarg->testdir, fstype, cbarg->mntopt, NULL))
-		return 0;
+	DEBUG("trying to mount '%s'->'%s' with fstype '%s'",
+	      cbarg->rootfs, cbarg->target, fstype);
 
-	/* found ! */
-	umount(cbarg->testdir);
-	strcpy(cbarg->fstype, fstype);
+	if (mount(cbarg->rootfs, cbarg->target, fstype, cbarg->mntopt, NULL)) {
+		DEBUG("mount failed with error: %s", strerror(errno));
+		return 0;
+	}
+
+	INFO("mounted '%s' on '%s', with fstype '%s'",
+	     cbarg->rootfs, cbarg->target, fstype);
 
 	return 1;
 }
 
-/* find the filesystem type with brute force */
-static int configure_find_fstype(const char *rootfs, char *fstype, int mntopt)
+static int setup_mount_unknow_fs(const char *rootfs,
+				 const char *target, int mntopt)
 {
-	int i, found;
+	int i;
 
 	struct cbarg {
 		const char *rootfs;
-		const char *testdir;
-		char *fstype;
+		const char *target;
 		int mntopt;
 	} cbarg = {
 		.rootfs = rootfs,
-		.fstype = fstype,
+		.target = target,
 		.mntopt = mntopt,
 	};
 
-	/* first we check with /etc/filesystems, in case the modules
+	/*
+	 * find the filesystem type with brute force:
+	 * first we check with /etc/filesystems, in case the modules
 	 * are auto-loaded and fall back to the supported kernel fs
 	 */
 	char *fsfile[] = {
@@ -236,90 +241,148 @@ static int configure_find_fstype(const char *rootfs, char *fstype, int mntopt)
 		"/proc/filesystems",
 	};
 
-	cbarg.testdir = tempnam("/tmp", "lxc-");
-	if (!cbarg.testdir) {
-		SYSERROR("failed to build a temp name");
-		return -1;
-	}
-
-	if (mkdir(cbarg.testdir, 0755)) {
-		SYSERROR("failed to create temporary directory");
-		return -1;
-	}
-
 	for (i = 0; i < sizeof(fsfile)/sizeof(fsfile[0]); i++) {
 
-		found = lxc_file_for_each_line(fsfile[i],
-					       configure_find_fstype_cb,
-					       &cbarg);
+		int ret;
 
-		if (found < 0) {
-			SYSERROR("failed to read '%s'", fsfile[i]);
-			goto out;
+		if (access(fsfile[i], F_OK))
+			continue;
+
+		ret = lxc_file_for_each_line(fsfile[i], find_fstype_cb, &cbarg);
+		if (ret < 0) {
+			ERROR("failed to parse '%s'", fsfile[i]);
+			return -1;
 		}
 
-		if (found)
-			break;
+		if (ret)
+			return 0;
 	}
 
-	if (!found) {
-		ERROR("failed to determine fs type for '%s'", rootfs);
+	ERROR("failed to determine fs type for '%s'", rootfs);
+	return -1;
+}
+
+static int setup_mount_rootfs_dir(const char *rootfs, const char *target)
+{
+	return mount(rootfs, target, "none", MS_BIND | MS_REC, NULL);
+}
+
+static int setup_lodev(const char *rootfs, int fd, struct loop_info64 *loinfo)
+{
+	int rfd;
+	int ret = -1;
+
+	rfd = open(rootfs, O_RDWR);
+	if (rfd < 0) {
+		SYSERROR("failed to open '%s'", rootfs);
+		return -1;
+	}
+
+	memset(loinfo, 0, sizeof(*loinfo));
+
+	loinfo->lo_flags = LO_FLAGS_AUTOCLEAR;
+
+	if (ioctl(fd, LOOP_SET_FD, rfd)) {
+		SYSERROR("failed to LOOP_SET_FD");
 		goto out;
 	}
 
+	if (ioctl(fd, LOOP_SET_STATUS64, loinfo)) {
+		SYSERROR("failed to LOOP_SET_STATUS64");
+		goto out;
+	}
+
+	ret = 0;
 out:
-	rmdir(cbarg.testdir);
-	return found - 1;
+	close(rfd);
+
+	return ret;
 }
 
-static int configure_rootfs_dir_cb(const char *rootfs, const char *absrootfs,
-				   FILE *f)
+static int setup_mount_rootfs_file(const char *rootfs, const char *target)
 {
-	return fprintf(f, "%s %s none rbind 0 0\n", absrootfs, rootfs);
-}
+	struct dirent dirent, *direntp;
+	struct loop_info64 loinfo;
+	int ret = -1, fd = -1;
+	DIR *dir;
+	char path[MAXPATHLEN];
 
-static int configure_rootfs_blk_cb(const char *rootfs, const char *absrootfs,
-				   FILE *f)
-{
-	char fstype[MAXPATHLEN];
-
-	if (configure_find_fstype(absrootfs, fstype, 0)) {
-		ERROR("failed to configure mount for block device '%s'",
-			      absrootfs);
+	dir = opendir("/dev");
+	if (!dir) {
+		SYSERROR("failed to open '/dev'");
 		return -1;
 	}
 
-	return fprintf(f, "%s %s %s defaults 0 0\n", absrootfs, rootfs, fstype);
+	while (!readdir_r(dir, &dirent, &direntp)) {
+
+		if (!direntp)
+			break;
+
+		if (!strcmp(direntp->d_name, "."))
+			continue;
+
+		if (!strcmp(direntp->d_name, ".."))
+			continue;
+
+		if (strncmp(direntp->d_name, "loop", 4))
+			continue;
+
+		sprintf(path, "/dev/%s", direntp->d_name);
+		fd = open(path, O_RDWR);
+		if (fd < 0)
+			continue;
+
+		if (ioctl(fd, LOOP_GET_STATUS64, &loinfo) == 0) {
+			close(fd);
+			continue;
+		}
+
+		if (errno != ENXIO) {
+			WARN("unexpected error for ioctl on '%s': %m",
+			     direntp->d_name);
+			continue;
+		}
+
+		DEBUG("found '%s' free lodev", path);
+
+		ret = setup_lodev(rootfs, fd, &loinfo);
+		if (!ret)
+			ret = setup_mount_unknow_fs(path, target, 0);
+		close(fd);
+
+		break;
+	}
+
+	if (closedir(dir))
+		WARN("failed to close directory");
+
+	return ret;
 }
 
-static int configure_rootfs(const char *name, const char *rootfs)
+static int setup_mount_rootfs_block(const char *rootfs, const char *target)
 {
-	char path[MAXPATHLEN];
-	char absrootfs[MAXPATHLEN];
-	char fstab[MAXPATHLEN];
-	struct stat s;
-	FILE *f;
-	int i, ret;
+	return setup_mount_unknow_fs(rootfs, target, 0);
+}
 
-	typedef int (*rootfs_cb)(const char *, const char *, FILE *);
+static int setup_mount_rootfs(const char *rootfs, const char *target)
+{
+	char absrootfs[MAXPATHLEN];
+	struct stat s;
+	int i;
+
+	typedef int (*rootfs_cb)(const char *, const char *);
 
 	struct rootfs_type {
 		int type;
 		rootfs_cb cb;
 	} rtfs_type[] = {
-		{ __S_IFDIR, configure_rootfs_dir_cb },
-		{ __S_IFBLK, configure_rootfs_blk_cb },
+		{ S_IFDIR, setup_mount_rootfs_dir },
+		{ S_IFBLK, setup_mount_rootfs_block },
+		{ S_IFREG, setup_mount_rootfs_file },
 	};
 
 	if (!realpath(rootfs, absrootfs)) {
 		SYSERROR("failed to get real path for '%s'", rootfs);
-		return -1;
-	}
-
-	snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", name);
-
-	if (mkdir(path, 0755)) {
-		SYSERROR("failed to create the '%s' directory", path);
 		return -1;
 	}
 
@@ -338,32 +401,12 @@ static int configure_rootfs(const char *name, const char *rootfs)
 		if (!__S_ISTYPE(s.st_mode, rtfs_type[i].type))
 			continue;
 
-		snprintf(fstab, MAXPATHLEN, LXCPATH "/%s/fstab", name);
-
-		f = fopen(fstab, "a+");
-		if (!f) {
-			SYSERROR("failed to open fstab file");
-			return -1;
-		}
-
-		ret = rtfs_type[i].cb(path, absrootfs, f);
-
-		fclose(f);
-
-		if (ret < 0) {
-			ERROR("failed to add rootfs mount in fstab");
-			return -1;
-		}
-
-		snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs/rootfs", name);
-
-		return symlink(absrootfs, path);
+		return rtfs_type[i].cb(absrootfs, target);
 	}
 
 	ERROR("unsupported rootfs type for '%s'", absrootfs);
 	return -1;
 }
-#endif
 
 static int setup_utsname(struct utsname *utsname)
 {
@@ -603,9 +646,8 @@ static int setup_rootfs(const struct lxc_rootfs *rootfs)
 		return -1;
 	}
 
-	if (mount(rootfs->path, rootfs->mount, "none", MS_BIND|MS_REC, NULL)) {
-		SYSERROR("failed to mount '%s'->'%s'",
-			 rootfs->path, rootfs->mount);
+	if (setup_mount_rootfs(rootfs->path, rootfs->mount)) {
+		ERROR("failed to mount rootfs");
 		return -1;
 	}
 
@@ -624,8 +666,6 @@ int setup_pivot_root(const struct lxc_rootfs *rootfs)
 		return -1;
 	}
 
-	DEBUG("pivot rooted to '%s'", rootfs->mount);
-
 	return 0;
 }
 
@@ -639,7 +679,8 @@ static int setup_pts(int pts)
 		return -1;
 	}
 
-	if (mount("devpts", "/dev/pts", "devpts", MS_MGC_VAL, "newinstance,ptmxmode=0666")) {
+	if (mount("devpts", "/dev/pts", "devpts", MS_MGC_VAL,
+		  "newinstance,ptmxmode=0666")) {
 		SYSERROR("failed to mount a new instance of '/dev/pts'");
 		return -1;
 	}
