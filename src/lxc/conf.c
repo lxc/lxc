@@ -690,10 +690,11 @@ static int setup_console(const struct lxc_rootfs *rootfs,
 	if (!rootfs->path)
 		return 0;
 
-	snprintf(path, sizeof(path), "%s/dev/console", rootfs->path);
+	snprintf(path, sizeof(path), "%s/dev/console",
+		 rootfs->mount ? rootfs->mount : LXCROOTFSMOUNT);
 
 	if (access(path, F_OK)) {
-		WARN("rootfs specified but no console found");
+		WARN("rootfs specified but no console found at '%s'", path);
 		return 0;
 	}
 
