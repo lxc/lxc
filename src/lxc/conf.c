@@ -593,13 +593,10 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 
 static int setup_rootfs(const struct lxc_rootfs *rootfs)
 {
-	char *mpath = LXCROOTFSMOUNT;
+	char *mpath = rootfs->mount ? rootfs->mount : LXCROOTFSMOUNT;
 
 	if (!rootfs->path)
 		return 0;
-
-	if (rootfs->mount)
-		mpath = rootfs->mount;
 
 	if (access(mpath, F_OK)) {
 		SYSERROR("failed to access to '%s', check it is present",
@@ -614,10 +611,22 @@ static int setup_rootfs(const struct lxc_rootfs *rootfs)
 
 	DEBUG("mounted '%s' on '%s'", rootfs->path, mpath);
 
+	return 0;
+}
+
+int setup_pivot_root(const struct lxc_rootfs *rootfs)
+{
+	char *mpath = rootfs->mount ? rootfs->mount : LXCROOTFSMOUNT;
+
+	if (!rootfs->path)
+		return 0;
+
 	if (setup_rootfs_pivot_root(mpath, rootfs->pivot)) {
 		ERROR("failed to setup pivot root");
 		return -1;
 	}
+
+	DEBUG("pivot rooted to '%s'", mpath);
 
 	return 0;
 }
@@ -1457,8 +1466,8 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_cgroup(name, &lxc_conf->cgroup)) {
-		ERROR("failed to setup the cgroups for '%s'", name);
+	if (setup_rootfs(&lxc_conf->rootfs)) {
+		ERROR("failed to setup rootfs for '%s'", name);
 		return -1;
 	}
 
@@ -1472,6 +1481,11 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
+	if (setup_cgroup(name, &lxc_conf->cgroup)) {
+		ERROR("failed to setup the cgroups for '%s'", name);
+		return -1;
+	}
+
 	if (setup_console(&lxc_conf->rootfs, &lxc_conf->console)) {
 		ERROR("failed to setup the console for '%s'", name);
 		return -1;
@@ -1482,7 +1496,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_rootfs(&lxc_conf->rootfs)) {
+	if (setup_pivot_root(&lxc_conf->rootfs)) {
 		ERROR("failed to set rootfs for '%s'", name);
 		return -1;
 	}
