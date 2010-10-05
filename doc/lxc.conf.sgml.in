@@ -404,7 +404,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    <para>
 	      specify a file location in
 	      the <filename>fstab</filename> format, containing the
-	      mount informations.
+	      mount informations. If the rootfs is an image file or a
+	      device block and the fstab is used to mount a point
+	      somewhere in this rootfs, the path of the rootfs mount
+	      point should be prefixed with the
+	      <filename>@LXCROOTFSMOUNT@</filename> default path or
+	      the value of <option>lxc.rootfs.mount</option> if
+	      specified.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -437,9 +443,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  </term>
 	  <listitem>
 	    <para>
-	      specify a directory to become the root of the container.
-	      If not specified, the container shares its root file
-	      system with the host.
+	      specify the root file system for the container. It can
+	      be an image file, a directory or a block device. If not
+	      specified, the container shares its root file system
+	      with the host.
 	    </para>
 	  </listitem>
 	</varlistentry>
