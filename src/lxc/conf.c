@@ -189,54 +189,57 @@ static struct caps_opt caps_opt[] = {
 static int run_script(const char *name, const char *section,
 		      const char *script, ...)
 {
-	va_list argp;
-	int vargc = 4;
-	int status = 0;
-
-	/* count variable arguments and add 4 for script, container
-	 * and section name  as well as the terminating NULL
-	 */
-	va_start(argp, script);
-	while (va_arg(argp, char*)) vargc++;
-	va_end(argp);
+	int ret;
+	FILE *f;
+	char *buffer, *p, *output;
+	size_t size = 0;
+	va_list ap;
 
 	INFO("Executing script '%s' for container '%s', config section '%s'",
 	     script, name, section);
 
-	int pid = fork();
-	if (pid < 0) {
-		ERROR("Error forking");
+
+	va_start(ap, script);
+	while ((p = va_arg(ap, char *)))
+		size += strlen(p);
+	va_end(ap);
+
+	size += strlen(script);
+	size += strlen(name);
+	size += strlen(section);
+
+	buffer = alloca(size + 1);
+	if (!buffer) {
+		ERROR("failed to allocate memory");
 		return -1;
 	}
 
-        if (pid == 0) {
+	ret = sprintf(buffer, "%s %s %s", script, name, section);
 
-		/* prepare command line arguments */
-		char *args[vargc];
-		int i;
-		args[0] = strdup(script);
-		args[1] = strdup(name);
-		args[2] = strdup(section);
+	va_start(ap, script);
+	while ((p = va_arg(ap, char *)))
+		ret += sprintf(buffer + ret, " %s", p);
+	va_end(ap);
 
-		va_start(argp, script);
-		for (i = 3; i < vargc; i++)
-			args[i] = va_arg(argp, char*);
-		va_end(argp);
-
-		args[vargc-1] = (char*) NULL;
-
-		execv(script, args);
-		/* if we cannot exec, we exit this fork */
-		SYSERROR("Failed to execute script '%s' for container '%s': %s",
-			 script, name);
-		exit(1);
+	f = popen(buffer, "r");
+	if (!f) {
+		SYSERROR("popen failed");
+		return -1;
 	}
 
-	waitpid(pid, &status, 0);
-	if (status != 0) {
-		/* something weird happened */
-		SYSERROR("Script '%s' terminated with non-zero exitcode %d",
-			 name, status);
+	output = malloc(LXC_LOG_BUFFER_SIZE);
+	if (!output) {
+		ERROR("failed to allocate memory for script output");
+		return -1;
+	}
+
+	while(fgets(output, LXC_LOG_BUFFER_SIZE, f))
+		DEBUG("script output: %s", output);
+
+	free(output);
+
+	if (pclose(f)) {
+		ERROR("Script exited on error");
 		return -1;
 	}
 
