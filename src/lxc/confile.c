@@ -63,6 +63,7 @@ static int config_network_hwaddr(const char *, char *, struct lxc_conf *);
 static int config_network_vlan_id(const char *, char *, struct lxc_conf *);
 static int config_network_mtu(const char *, char *, struct lxc_conf *);
 static int config_network_ipv4(const char *, char *, struct lxc_conf *);
+static int config_network_script(const char *, char *, struct lxc_conf *);
 static int config_network_ipv6(const char *, char *, struct lxc_conf *);
 static int config_cap_drop(const char *, char *, struct lxc_conf *);
 static int config_console(const char *, char *, struct lxc_conf *);
@@ -91,6 +92,7 @@ static struct config config[] = {
 	{ "lxc.network.name",         config_network_name         },
 	{ "lxc.network.macvlan.mode", config_network_macvlan_mode },
 	{ "lxc.network.veth.pair",    config_network_veth_pair    },
+	{ "lxc.network.script.up",    config_network_script       },
 	{ "lxc.network.hwaddr",       config_network_hwaddr       },
 	{ "lxc.network.mtu",          config_network_mtu          },
 	{ "lxc.network.vlan.id",      config_network_vlan_id      },
@@ -476,6 +478,29 @@ static int config_network_ipv6(const char *key, char *value,
 	lxc_list_add(&netdev->ipv6, list);
 
 	return 0;
+}
+
+static int config_network_script(const char *key, char *value,
+				 struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+
+	netdev = network_netdev(key, value, &lxc_conf->network);
+	if (!netdev)
+	return -1;
+
+	char *copy = strdup(value);
+	if (!copy) {
+		SYSERROR("failed to dup string '%s'", value);
+		return -1;
+	}
+	if (strcmp(key, "lxc.network.script.up") == 0) {
+		netdev->upscript = copy;
+		return 0;
+	}
+	SYSERROR("Unknown key: %s", key);
+	free(copy);
+	return -1;
 }
 
 static int config_personality(const char *key, char *value,

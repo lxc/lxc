@@ -24,11 +24,13 @@
 #include <stdio.h>
 #undef _GNU_SOURCE
 #include <stdlib.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <string.h>
 #include <dirent.h>
 #include <mntent.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include <pty.h>
 
 #include <sys/types.h>
@@ -92,7 +94,7 @@ lxc_log_define(lxc_conf, lxc);
 
 extern int pivot_root(const char * new_root, const char * put_old);
 
-typedef int (*instanciate_cb)(struct lxc_netdev *);
+typedef int (*instanciate_cb)(struct lxc_handler *, struct lxc_netdev *);
 
 struct mount_opt {
 	char *name;
@@ -105,11 +107,11 @@ struct caps_opt {
 	int value;
 };
 
-static int instanciate_veth(struct lxc_netdev *);
-static int instanciate_macvlan(struct lxc_netdev *);
-static int instanciate_vlan(struct lxc_netdev *);
-static int instanciate_phys(struct lxc_netdev *);
-static int instanciate_empty(struct lxc_netdev *);
+static int instanciate_veth(struct lxc_handler *, struct lxc_netdev *);
+static int instanciate_macvlan(struct lxc_handler *, struct lxc_netdev *);
+static int instanciate_vlan(struct lxc_handler *, struct lxc_netdev *);
+static int instanciate_phys(struct lxc_handler *, struct lxc_netdev *);
+static int instanciate_empty(struct lxc_handler *, struct lxc_netdev *);
 
 static  instanciate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_VETH]    = instanciate_veth,
@@ -183,6 +185,53 @@ static struct caps_opt caps_opt[] = {
 	{ "mac_override",      CAP_MAC_OVERRIDE      },
 	{ "mac_admin",         CAP_MAC_ADMIN         },
 };
+
+static int run_script(const char *name, const char *section, const char *script, ...)
+{
+	va_list argp;
+	int vargc = 4;
+	/* count variable arguments and add 4 for script, container
+	 * and section name  as well as the terminating NULL
+	 */
+	va_start(argp, script);
+	while (va_arg(argp, char*)) vargc++;
+	va_end(argp);
+	INFO("Executing script '%s' for container '%s', config section '%s'", script, name, section);
+
+	int pid = fork();
+	if (pid < 0) {
+		ERROR("Error forking");
+	} else if (pid == 0) {
+		/* prepare command line arguments */
+		char *args[vargc];
+		int i;
+		args[0] = strdup(script);
+		args[1] = strdup(name);
+		args[2] = strdup(section);
+		va_start(argp, script);
+		for (i=3; i<vargc; i++) {
+			args[i] = va_arg(argp, char*);
+		}
+		va_end(argp);
+		args[vargc-1] = (char*) NULL;
+
+		execv(script, args);
+		/* if we cannot exec, we exit this fork */
+		SYSERROR("Failed to execute script '%s' for container '%s': %s", script, name, strerror(errno));
+		exit(1);
+	} else {
+		int status = 0;
+		waitpid( pid, &status, 0 );
+		if (status != 0) {
+			/* something weird happened */
+			SYSERROR("Script '%s' terminated with non-zero exitcode %d",  name, status);
+			return -1;
+		} else {
+			return 0; /* all is well */
+		}
+	}
+	return -1;
+}
 
 static int find_fstype_cb(char* buffer, void *data)
 {
@@ -1204,7 +1253,7 @@ struct lxc_conf *lxc_conf_init(void)
 	return new;
 }
 
-static int instanciate_veth(struct lxc_netdev *netdev)
+static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	char veth1buf[IFNAMSIZ], *veth1;
 	char veth2buf[IFNAMSIZ], *veth2;
@@ -1267,6 +1316,16 @@ static int instanciate_veth(struct lxc_netdev *netdev)
 		}
 	}
 
+	if (netdev->upscript) {
+		err = run_script(handler->name, "net", netdev->upscript, "up", "veth",
+			         veth1, (char*) NULL);
+		if (err) {
+			ERROR("Failed to run script '%s' for container '%s' and interface '%s'",
+				      netdev->upscript, handler->name, veth1);
+			goto out_delete;
+		}
+	}
+
 	DEBUG("instanciated veth '%s/%s', index is '%d'",
 	      veth1, veth2, netdev->ifindex);
 
@@ -1277,7 +1336,7 @@ out_delete:
 	return -1;
 }
 
-static int instanciate_macvlan(struct lxc_netdev *netdev)
+static int instanciate_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	char peerbuf[IFNAMSIZ], *peer;
 	int err;
@@ -1310,6 +1369,16 @@ static int instanciate_macvlan(struct lxc_netdev *netdev)
 		return -1;
 	}
 
+	if (netdev->upscript) {
+		err = run_script(handler->name, "net", netdev->upscript, "up", "macvlan",
+			         netdev->link, (char*) NULL);
+		if (err) {
+			ERROR("Failed to run script '%s' for container '%s' and interface '%s'",
+				      netdev->upscript, handler->name, netdev->link);
+			return -1;
+		}
+	}
+
 	DEBUG("instanciated macvlan '%s', index is '%d' and mode '%d'",
 	      peer, netdev->ifindex, netdev->priv.macvlan_attr.mode);
 
@@ -1317,7 +1386,7 @@ static int instanciate_macvlan(struct lxc_netdev *netdev)
 }
 
 /* XXX: merge with instanciate_macvlan */
-static int instanciate_vlan(struct lxc_netdev *netdev)
+static int instanciate_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	char peer[IFNAMSIZ];
 	int err;
@@ -1349,7 +1418,7 @@ static int instanciate_vlan(struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int instanciate_phys(struct lxc_netdev *netdev)
+static int instanciate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	if (!netdev->link) {
 		ERROR("no link specified for the physical interface");
@@ -1362,17 +1431,37 @@ static int instanciate_phys(struct lxc_netdev *netdev)
 		return -1;
 	}
 
+	if (netdev->upscript) {
+		int err;
+		err = run_script(handler->name, "net", netdev->upscript, "up", "phys",
+			         netdev->link, (char*) NULL);
+		if (err) {
+			ERROR("Failed to run script '%s' for container '%s' and interface '%s'",
+				      netdev->upscript, handler->name, netdev->link);
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
-static int instanciate_empty(struct lxc_netdev *netdev)
+static int instanciate_empty(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	netdev->ifindex = 0;
+	if (netdev->upscript) {
+		int err;
+		err = run_script(handler->name, "net", netdev->upscript, "up", "empty", (char*) NULL);
+		if (err) {
+			ERROR("Failed to run script '%s' for container '%s'", netdev->upscript, handler->name);
+			return -1;
+		}
+	}
 	return 0;
 }
 
-int lxc_create_network(struct lxc_list *network)
+int lxc_create_network(struct lxc_handler *handler)
 {
+	struct lxc_list *network = &handler->conf->network;
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
 
@@ -1386,10 +1475,11 @@ int lxc_create_network(struct lxc_list *network)
 			return -1;
 		}
 
-		if (netdev_conf[netdev->type](netdev)) {
+		if (netdev_conf[netdev->type](handler, netdev)) {
 			ERROR("failed to create netdev");
 			return -1;
 		}
+
 	}
 
 	return 0;

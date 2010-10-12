@@ -28,6 +28,8 @@
 
 #include <lxc/list.h>
 
+#include <start.h> /* for lxc_handler */
+
 enum {
 	LXC_NET_EMPTY,
 	LXC_NET_VETH,
@@ -94,11 +96,12 @@ union netdev_p {
 
 /*
  * Defines a structure to configure a network device
- * @link   : lxc.network.link, name of bridge or host iface to attach if any
- * @name   : lxc.network.name, name of iface on the container side
- * @flags  : flag of the network device (IFF_UP, ... )
- * @ipv4   : a list of ipv4 addresses to be set on the network device
- * @ipv6   : a list of ipv6 addresses to be set on the network device
+ * @link       : lxc.network.link, name of bridge or host iface to attach if any
+ * @name       : lxc.network.name, name of iface on the container side
+ * @flags      : flag of the network device (IFF_UP, ... )
+ * @ipv4       : a list of ipv4 addresses to be set on the network device
+ * @ipv6       : a list of ipv6 addresses to be set on the network device
+ * @upscript   : a script filename to be executed during interface configuration
  */
 struct lxc_netdev {
 	int type;
@@ -111,6 +114,7 @@ struct lxc_netdev {
 	union netdev_p priv;
 	struct lxc_list ipv4;
 	struct lxc_list ipv6;
+	char *upscript;
 };
 
 /*
@@ -210,7 +214,7 @@ struct lxc_conf {
  */
 extern struct lxc_conf *lxc_conf_init(void);
 
-extern int lxc_create_network(struct lxc_list *networks);
+extern int lxc_create_network(struct lxc_handler *handler);
 extern void lxc_delete_network(struct lxc_list *networks);
 extern int lxc_assign_network(struct lxc_list *networks, pid_t pid);
 
@@ -221,8 +225,5 @@ extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
  * Configure the container from inside
  */
 
-struct lxc_handler;
-
 extern int lxc_setup(const char *name, struct lxc_conf *lxc_conf);
-
 #endif
