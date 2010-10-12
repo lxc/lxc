@@ -294,13 +294,16 @@ static int utmp_shutdown_handler(int fd, void *data,
 				 struct lxc_epoll_descr *descr)
 {
 	int ntasks;
+	ssize_t nread;
 	struct lxc_utmp *utmp_data = (struct lxc_utmp *)data;
 	struct lxc_handler *handler = utmp_data->handler;
 	struct lxc_conf *conf = handler->conf;
 	uint64_t expirations;
 
 	/* read and clear notifications */
-	read(fd, &expirations, sizeof(expirations));
+	nread = read(fd, &expirations, sizeof(expirations));
+	if (nread < 0)
+		SYSERROR("Failed to read timer notification");
 
 	ntasks = utmp_get_ntasks(handler);
 

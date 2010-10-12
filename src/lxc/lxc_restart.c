@@ -31,6 +31,7 @@
 
 #include "log.h"
 #include "lxc.h"
+#include "caps.h"
 #include "conf.h"
 #include "config.h"
 #include "confile.h"

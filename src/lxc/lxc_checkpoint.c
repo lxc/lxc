@@ -36,6 +36,7 @@
 
 #include "arguments.h"
 #include "config.h"
+#include "caps.h"
 
 lxc_log_define(lxc_checkpoint_ui, lxc_checkpoint);
 
