@@ -33,6 +33,8 @@
 #include <sys/wait.h>
 #include <pty.h>
 
+#include <linux/loop.h>
+
 #include <sys/types.h>
 #include <sys/utsname.h>
 #include <sys/param.h>
@@ -49,8 +51,6 @@
 #include <netinet/in.h>
 #include <net/if.h>
 #include <libgen.h>
-
-#include <linux/loop.h>
 
 #include "network.h"
 #include "error.h"
