@@ -198,7 +198,6 @@ static int run_script(const char *name, const char *section,
 	INFO("Executing script '%s' for container '%s', config section '%s'",
 	     script, name, section);
 
-
 	va_start(ap, script);
 	while ((p = va_arg(ap, char *)))
 		size += strlen(p);
@@ -278,8 +277,7 @@ static int find_fstype_cb(char* buffer, void *data)
 	return 1;
 }
 
-static int setup_mount_unknow_fs(const char *rootfs,
-				 const char *target, int mntopt)
+static int mount_unknow_fs(const char *rootfs, const char *target, int mntopt)
 {
 	int i;
 
@@ -324,7 +322,7 @@ static int setup_mount_unknow_fs(const char *rootfs,
 	return -1;
 }
 
-static int setup_mount_rootfs_dir(const char *rootfs, const char *target)
+static int mount_rootfs_dir(const char *rootfs, const char *target)
 {
 	return mount(rootfs, target, "none", MS_BIND | MS_REC, NULL);
 }
@@ -361,7 +359,7 @@ out:
 	return ret;
 }
 
-static int setup_mount_rootfs_file(const char *rootfs, const char *target)
+static int mount_rootfs_file(const char *rootfs, const char *target)
 {
 	struct dirent dirent, *direntp;
 	struct loop_info64 loinfo;
@@ -409,7 +407,7 @@ static int setup_mount_rootfs_file(const char *rootfs, const char *target)
 
 		ret = setup_lodev(rootfs, fd, &loinfo);
 		if (!ret)
-			ret = setup_mount_unknow_fs(path, target, 0);
+			ret = mount_unknow_fs(path, target, 0);
 		close(fd);
 
 		break;
@@ -421,12 +419,12 @@ static int setup_mount_rootfs_file(const char *rootfs, const char *target)
 	return ret;
 }
 
-static int setup_mount_rootfs_block(const char *rootfs, const char *target)
+static int mount_rootfs_block(const char *rootfs, const char *target)
 {
-	return setup_mount_unknow_fs(rootfs, target, 0);
+	return mount_unknow_fs(rootfs, target, 0);
 }
 
-static int setup_mount_rootfs(const char *rootfs, const char *target)
+static int mount_rootfs(const char *rootfs, const char *target)
 {
 	char absrootfs[MAXPATHLEN];
 	struct stat s;
@@ -438,9 +436,9 @@ static int setup_mount_rootfs(const char *rootfs, const char *target)
 		int type;
 		rootfs_cb cb;
 	} rtfs_type[] = {
-		{ S_IFDIR, setup_mount_rootfs_dir },
-		{ S_IFBLK, setup_mount_rootfs_block },
-		{ S_IFREG, setup_mount_rootfs_file },
+		{ S_IFDIR, mount_rootfs_dir },
+		{ S_IFBLK, mount_rootfs_block },
+		{ S_IFREG, mount_rootfs_file },
 	};
 
 	if (!realpath(rootfs, absrootfs)) {
@@ -708,7 +706,7 @@ static int setup_rootfs(const struct lxc_rootfs *rootfs)
 		return -1;
 	}
 
-	if (setup_mount_rootfs(rootfs->path, rootfs->mount)) {
+	if (mount_rootfs(rootfs->path, rootfs->mount)) {
 		ERROR("failed to mount rootfs");
 		return -1;
 	}
