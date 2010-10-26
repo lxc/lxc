@@ -69,8 +69,8 @@ static int receive_answer(int sock, struct lxc_answer *answer)
 	return ret;
 }
 
-extern int lxc_command(const char *name, struct lxc_command *command,
-		       int *stopped)
+static int __lxc_command(const char *name, struct lxc_command *command,
+			 int *stopped, int stay_connected)
 {
 	int sock, ret = -1;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
@@ -103,9 +103,24 @@ extern int lxc_command(const char *name, struct lxc_command *command,
 
 	ret = receive_answer(sock, &command->answer);
 out:
-	close(sock);
+	if (!stay_connected || ret < 0)
+		close(sock);
+
 	return ret;
 }
+
+extern int lxc_command(const char *name,
+		       struct lxc_command *command, int *stopped)
+{
+	return __lxc_command(name, command, stopped, 0);
+}
+
+extern int lxc_command_connected(const char *name,
+				 struct lxc_command *command, int *stopped)
+{
+	return __lxc_command(name, command, stopped, 1);
+}
+
 
 pid_t get_init_pid(const char *name)
 {

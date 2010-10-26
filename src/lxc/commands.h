@@ -48,8 +48,12 @@ struct lxc_command {
 };
 
 extern pid_t get_init_pid(const char *name);
+
 extern int lxc_command(const char *name, struct lxc_command *command,
 			int *stopped);
+
+extern int lxc_command_connected(const char *name, struct lxc_command *command,
+				 int *stopped);
 
 struct lxc_epoll_descr;
 struct lxc_handler;
