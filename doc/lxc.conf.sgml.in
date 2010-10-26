@@ -310,8 +310,26 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  </listitem>
 	</varlistentry>
 
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.script.up</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      add a configuration option to specify a script to be
+	      executed after creating and configuring the network used
+	      from the host side. The following arguments are passed
+	      to the script: container name and config section name
+	      (net) Additional arguments depend on the config section
+	      employing a script hook; the following are used by the
+	      network system: execution context (up), network type
+	      (empty/veth/macvlan/phys), Depending on the network
+	      type, other arguments may be passed:
+	      veth/macvlan/phys. And finally (host-sided) device name.
+	    </para>
+	  </listitem>
+	</varlistentry>
       </variablelist>
-
     </refsect2>
 
     <refsect2>
