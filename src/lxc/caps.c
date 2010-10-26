@@ -54,6 +54,11 @@ int lxc_caps_down(void)
 	cap_t caps;
 	int ret;
 
+	/* when we are run as root, we don't want to play
+	 * with the capabilities */
+	if (!getuid())
+		return 0;
+
 	caps = cap_get_proc();
 	if (!caps) {
 		ERROR("failed to cap_get_proc: %m");
@@ -82,6 +87,11 @@ int lxc_caps_up(void)
 	cap_t caps;
 	cap_value_t cap;
 	int ret;
+
+	/* when we are run as root, we don't want to play
+	 * with the capabilities */
+	if (!getuid())
+		return 0;
 
 	caps = cap_get_proc();
 	if (!caps) {
