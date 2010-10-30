@@ -68,6 +68,10 @@ lxc_log_define(lxc_conf, lxc);
 #define MAXMTULEN   16
 #define MAXLINELEN  128
 
+#ifndef MS_DIRSYNC
+#define MS_DIRSYNC  128
+#endif
+
 #ifndef MS_REC
 #define MS_REC 16384
 #endif
@@ -133,6 +137,7 @@ static struct mount_opt mount_opt[] = {
 	{ "noexec",     0, MS_NOEXEC      },
 	{ "sync",       0, MS_SYNCHRONOUS },
 	{ "async",      1, MS_SYNCHRONOUS },
+	{ "dirsync",    0, MS_DIRSYNC     },
 	{ "remount",    0, MS_REMOUNT     },
 	{ "mand",       0, MS_MANDLOCK    },
 	{ "nomand",     1, MS_MANDLOCK    },
