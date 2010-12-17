@@ -506,7 +506,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 		failed_before_rename = 1;
 
-	if (lxc_rename_nsgroup(name, handler))
+	if (lxc_rename_nsgroup(name, handler->pid))
 		goto out_delete_net;
 
 	if (failed_before_rename)

@@ -85,7 +85,7 @@ out:
         return err;
 }
 
-int lxc_rename_nsgroup(const char *name, struct lxc_handler *handler)
+int lxc_rename_nsgroup(const char *name, pid_t pid)
 {
 	char oldname[MAXPATHLEN];
 	char newname[MAXPATHLEN];
@@ -97,7 +97,7 @@ int lxc_rename_nsgroup(const char *name, struct lxc_handler *handler)
 		return -1;
 	}
 
-	snprintf(oldname, MAXPATHLEN, "%s/%d", cgroup, handler->pid);
+	snprintf(oldname, MAXPATHLEN, "%s/%d", cgroup, pid);
 	snprintf(newname, MAXPATHLEN, "%s/%s", cgroup, name);
 
 	/* there is a previous cgroup, assume it is empty, otherwise
