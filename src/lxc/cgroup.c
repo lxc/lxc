@@ -101,10 +101,56 @@ int lxc_rename_nsgroup(const char *mnt, const char *name, pid_t pid)
 	return 0;
 }
 
+static int cgroup_enable_clone_children(const char *path)
+{
+	FILE *f;
+	int ret = 0;
+
+	f = fopen(path, "w");
+	if (!f) {
+		SYSERROR("failed to open '%s'", path);
+		return -1;
+	}
+
+	if (fprintf(f, "1") < 1) {
+		ERROR("failed to write flag to '%s'", path);
+		ret = -1;
+	}
+
+	fclose(f);
+
+	return ret;
+}
+
+static int cgroup_attach(const char *path, pid_t pid)
+{
+	FILE *f;
+	char tasks[MAXPATHLEN];
+	int ret = 0;
+
+	snprintf(tasks, MAXPATHLEN, "%s/tasks", path);
+
+	f = fopen(tasks, "w");
+	if (!f) {
+		SYSERROR("failed to open '%s'", tasks);
+		return -1;
+	}
+
+	if (fprintf(f, "%d", pid) <= 0) {
+		SYSERROR("failed to write pid '%d' to '%s'", pid, tasks);
+		ret = -1;
+	}
+
+	fclose(f);
+
+	return ret;
+}
+
 int lxc_cgroup_create(const char *name, pid_t pid)
 {
 	char cgmnt[MAXPATHLEN];
 	char cgname[MAXPATHLEN];
+	char clonechild[MAXPATHLEN];
 
 	if (get_cgroup_mount(MTAB, cgmnt)) {
 		ERROR("cgroup is not mounted");
@@ -122,7 +168,34 @@ int lxc_cgroup_create(const char *name, pid_t pid)
 		return -1;
 	}
 
-	return lxc_rename_nsgroup(cgmnt, cgname, pid);
+	snprintf(clonechild, MAXPATHLEN, "%s/cgroup.clone_children", cgmnt);
+
+	/* we check if the kernel has ns_cgroup or clone_children */
+	if (access(clonechild, F_OK)) {
+		WARN("using deprecated ns_cgroup");
+		return lxc_rename_nsgroup(cgmnt, cgname, pid);
+	}
+
+	/* we enable the clone_children flag of the cgroup */
+	if (cgroup_enable_clone_children(clonechild)) {
+		SYSERROR("failed to enable 'clone_children flag");
+		return -1;
+	}
+
+	/* Let's create the cgroup */
+	if (mkdir(cgname, 0700)) {
+		SYSERROR("failed to create '%s' directory", cgname);
+		return -1;
+	}
+
+	/* Let's add the pid to the 'tasks' file */
+	if (cgroup_attach(cgname, pid)) {
+		SYSERROR("failed to attach pid '%d' to '%s'", pid, cgname);
+		rmdir(cgname);
+		return -1;
+	}
+
+	return 0;
 }
 
 int lxc_cgroup_destroy(const char *name)
