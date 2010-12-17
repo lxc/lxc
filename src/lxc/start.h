@@ -40,7 +40,6 @@ struct lxc_handler {
 	char *name;
 	lxc_state_t state;
 	int sigfd;
-	char nsgroup[MAXPATHLEN];
 	sigset_t oldmask;
 	struct lxc_conf *conf;
 	struct lxc_operations *ops;

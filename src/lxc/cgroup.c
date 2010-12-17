@@ -88,7 +88,7 @@ out:
 int lxc_rename_nsgroup(const char *name, struct lxc_handler *handler)
 {
 	char oldname[MAXPATHLEN];
-	char *newname = handler->nsgroup;
+	char newname[MAXPATHLEN];
 	char cgroup[MAXPATHLEN];
 	int ret;
 
