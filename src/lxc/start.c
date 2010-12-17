@@ -114,7 +114,6 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 
 #include "start.h"
 #include "conf.h"
-#include "cgroup.h"
 #include "log.h"
 #include "cgroup.h"
 #include "error.h"
