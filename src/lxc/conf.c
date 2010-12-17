@@ -910,12 +910,14 @@ static int parse_mntopts(struct mntent *mntent, unsigned long *mntflags,
 	return 0;
 }
 
-static int mount_file_entries(FILE *file)
+static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file)
 {
 	struct mntent *mntent;
 	int ret = -1;
 	unsigned long mntflags;
 	char *mntdata;
+	char path[MAXPATHLEN];
+	const char *mntdir, *mntroot;
 
 	while ((mntent = getmntent(file))) {
 
@@ -927,7 +929,34 @@ static int mount_file_entries(FILE *file)
 			goto out;
 		}
 
-		if (mount(mntent->mnt_fsname, mntent->mnt_dir,
+		/* now figure out where to mount it to. */
+		mntdir =  mntent->mnt_dir;
+		mntroot = NULL;
+		if (!rootfs->path) {
+			/* if we use system root fs,
+			 * the mount is relative to / and can be absolute */
+			if (mntdir[0] != '/')
+				mntroot = ""; /* this is "/" */
+		}
+		else {
+			/* else we have a separate root, mounts are
+			 * relative to it, and absolute paths are risky */
+			if (mntdir[0] != '/')
+				/* relative too root mount point */
+				mntroot = rootfs->mount;
+			else if (strncmp(mntdir, rootfs->mount, strlen(rootfs->mount)))
+				WARN("mount target directory '%s' is outside container root",
+					mntdir);
+			else
+				WARN("mount target directory '%s' is not relative to container root",
+					mntdir);
+		}
+		if (mntroot) {
+			/* make it relative to mntroot */
+			snprintf(path, sizeof(path), "%s/%s", mntroot, mntdir);
+			mntdir = path;
+		}
+		if (mount(mntent->mnt_fsname, mntdir,
 			  mntent->mnt_type, mntflags & ~MS_REMOUNT, mntdata)) {
 			SYSERROR("failed to mount '%s' on '%s'",
 					 mntent->mnt_fsname, mntent->mnt_dir);
@@ -963,7 +992,7 @@ out:
 	return ret;
 }
 
-static int setup_mount(const char *fstab)
+static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab)
 {
 	FILE *file;
 	int ret;
@@ -977,13 +1006,13 @@ static int setup_mount(const char *fstab)
 		return -1;
 	}
 
-	ret = mount_file_entries(file);
+	ret = mount_file_entries(rootfs, file);
 
 	endmntent(file);
 	return ret;
 }
 
-static int setup_mount_entries(struct lxc_list *mount)
+static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list *mount)
 {
 	FILE *file;
 	struct lxc_list *iterator;
@@ -1003,7 +1032,7 @@ static int setup_mount_entries(struct lxc_list *mount)
 
 	rewind(file);
 
-	ret = mount_file_entries(file);
+	ret = mount_file_entries(rootfs, file);
 
 	fclose(file);
 	return ret;
@@ -1607,12 +1636,12 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_mount(lxc_conf->fstab)) {
+	if (setup_mount(&lxc_conf->rootfs, lxc_conf->fstab)) {
 		ERROR("failed to setup the mounts for '%s'", name);
 		return -1;
 	}
 
-	if (setup_mount_entries(&lxc_conf->mount_list)) {
+	if (setup_mount_entries(&lxc_conf->rootfs, &lxc_conf->mount_list)) {
 		ERROR("failed to setup the mount entries for '%s'", name);
 		return -1;
 	}
