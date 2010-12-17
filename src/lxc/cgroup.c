@@ -85,71 +85,65 @@ out:
         return err;
 }
 
-int lxc_rename_nsgroup(const char *name, pid_t pid)
+int lxc_rename_nsgroup(const char *mnt, const char *name, pid_t pid)
 {
 	char oldname[MAXPATHLEN];
-	char newname[MAXPATHLEN];
-	char cgroup[MAXPATHLEN];
-	int ret;
 
-	if (get_cgroup_mount(MTAB, cgroup)) {
-		ERROR("cgroup is not mounted");
+	snprintf(oldname, MAXPATHLEN, "%s/%d", mnt, pid);
+
+	if (rename(oldname, name)) {
+		SYSERROR("failed to rename cgroup %s->%s", oldname, name);
 		return -1;
 	}
 
-	snprintf(oldname, MAXPATHLEN, "%s/%d", cgroup, pid);
-	snprintf(newname, MAXPATHLEN, "%s/%s", cgroup, name);
+	DEBUG("'%s' renamed to '%s'", oldname, name);
 
-	/* there is a previous cgroup, assume it is empty, otherwise
-	 * that fails */
-	if (!access(newname, F_OK)) {
-		ret = rmdir(newname);
-		if (ret) {
-			SYSERROR("failed to remove previous cgroup '%s'",
-				 newname);
-			return ret;
-		}
-	}
-
-	ret = rename(oldname, newname);
-	if (ret)
-		SYSERROR("failed to rename cgroup %s->%s", oldname, newname);
-	else
-		DEBUG("'%s' renamed to '%s'", oldname, newname);
-
-
-	return ret;
-}
-
-int lxc_unlink_nsgroup(const char *name)
-{
-	char nsgroup[MAXPATHLEN];
-	char cgroup[MAXPATHLEN];
-	int ret;
-
-	if (get_cgroup_mount(MTAB, cgroup)) {
-		ERROR("cgroup is not mounted");
-		return -1;
-	}
-
-	snprintf(nsgroup, MAXPATHLEN, "%s/%s", cgroup, name);
-	ret = rmdir(nsgroup);
-	if (ret)
-		SYSERROR("failed to remove cgroup '%s'", nsgroup);
-	else
-		DEBUG("'%s' unlinked", nsgroup);
-
-	return ret;
+	return 0;
 }
 
 int lxc_cgroup_create(const char *name, pid_t pid)
 {
-	return lxc_rename_nsgroup(name, pid);
+	char cgmnt[MAXPATHLEN];
+	char cgname[MAXPATHLEN];
+
+	if (get_cgroup_mount(MTAB, cgmnt)) {
+		ERROR("cgroup is not mounted");
+		return -1;
+	}
+
+	snprintf(cgname, MAXPATHLEN, "%s/%s", cgmnt, name);
+
+	/*
+	 * There is a previous cgroup, assume it is empty,
+	 * otherwise that fails
+	 */
+	if (!access(cgname, F_OK) && rmdir(cgname)) {
+		SYSERROR("failed to remove previous cgroup '%s'", cgname);
+		return -1;
+	}
+
+	return lxc_rename_nsgroup(cgmnt, cgname, pid);
 }
 
 int lxc_cgroup_destroy(const char *name)
 {
-	return lxc_unlink_nsgroup(name);
+	char cgmnt[MAXPATHLEN];
+	char cgname[MAXPATHLEN];
+
+	if (get_cgroup_mount(MTAB, cgmnt)) {
+		ERROR("cgroup is not mounted");
+		return -1;
+	}
+
+	snprintf(cgname, MAXPATHLEN, "%s/%s", cgmnt, name);
+	if (rmdir(cgmnt)) {
+		SYSERROR("failed to remove cgroup '%s'", cgname);
+		return -1;
+	}
+
+	DEBUG("'%s' unlinked", cgname);
+
+	return 0;
 }
 
 int lxc_cgroup_path_get(char **path, const char *name)
