@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 		ERROR("pid_name: failed to allocate memory");
 		return -1;
 	}
-	lxc_unlink_nsgroup(pid_name);
+	lxc_cgroup_destroy(pid_name);
 	free(pid_name);
 
 	return  lxc_error_set_and_log(pid, status);

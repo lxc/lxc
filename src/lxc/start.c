@@ -506,7 +506,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 		failed_before_rename = 1;
 
-	if (lxc_rename_nsgroup(name, handler->pid))
+	if (lxc_cgroup_create(name, handler->pid))
 		goto out_delete_net;
 
 	if (failed_before_rename)
@@ -585,7 +585,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 out_fini:
 	LXC_TTY_DEL_HANDLER(SIGQUIT);
 	LXC_TTY_DEL_HANDLER(SIGINT);
-	lxc_unlink_nsgroup(name);
+	lxc_cgroup_destroy(name);
 	lxc_fini(name, handler);
 	return err;
 
