@@ -121,7 +121,7 @@ openssh-server
     # download a mini debian into a cache
     echo "Downloading debian minimal ..."
     debootstrap --verbose --variant=minbase --arch=$arch \
-	--include $packages \
+	--include=$packages \
 	"$SUITE" "$cache/partial-$SUITE-$arch" $MIRROR
     if [ $? -ne 0 ]; then
 	echo "Failed to download the rootfs, aborting."
