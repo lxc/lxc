@@ -45,9 +45,14 @@
 
 lxc_log_define(lxc_cgroup, lxc);
 
-#define MTAB "/etc/mtab"
+#define MTAB "/proc/mounts"
 
 static char nsgroup_path[MAXPATHLEN];
+
+enum {
+	CGROUP_NS_CGROUP = 1,
+	CGROUP_CLONE_CHILDREN,
+};
 
 static int get_cgroup_mount(const char *mtab, char *mnt)
 {
@@ -58,7 +63,7 @@ static int get_cgroup_mount(const char *mtab, char *mnt)
         file = setmntent(mtab, "r");
         if (!file) {
                 SYSERROR("failed to open %s", mtab);
-                goto out;
+		return -1;
         }
 
         while ((mntent = getmntent(file))) {
@@ -81,7 +86,57 @@ static int get_cgroup_mount(const char *mtab, char *mnt)
 	DEBUG("using cgroup mounted at '%s'", mnt);
 
         fclose(file);
-out:
+
+        return err;
+}
+
+static int get_cgroup_flags(const char *mtab, int *flags)
+{
+        struct mntent *mntent;
+        FILE *file = NULL;
+        int err = -1;
+
+        file = setmntent(mtab, "r");
+        if (!file) {
+                SYSERROR("failed to open %s", mtab);
+		return -1;
+        }
+
+	*flags = 0;
+
+        while ((mntent = getmntent(file))) {
+
+		/* there is a cgroup mounted named "lxc" */
+		if (!strcmp(mntent->mnt_fsname, "lxc") &&
+		    !strcmp(mntent->mnt_type, "cgroup")) {
+
+			if (hasmntopt(mntent, "ns"))
+				*flags |= CGROUP_NS_CGROUP;
+
+			if (hasmntopt(mntent, "clone_children"))
+				*flags |= CGROUP_CLONE_CHILDREN;
+
+			err = 0;
+			break;
+		}
+
+		/* fallback to the first non-lxc cgroup found */
+                if (!strcmp(mntent->mnt_type, "cgroup") && err) {
+
+			if (hasmntopt(mntent, "ns"))
+				*flags |= CGROUP_NS_CGROUP;
+
+			if (hasmntopt(mntent, "clone_children"))
+				*flags |= CGROUP_CLONE_CHILDREN;
+
+			err = 0;
+		}
+        };
+
+	DEBUG("cgroup flags is 0x%x", *flags);
+
+        fclose(file);
+
         return err;
 }
 
@@ -151,6 +206,7 @@ int lxc_cgroup_create(const char *name, pid_t pid)
 	char cgmnt[MAXPATHLEN];
 	char cgname[MAXPATHLEN];
 	char clonechild[MAXPATHLEN];
+	int flags;
 
 	if (get_cgroup_mount(MTAB, cgmnt)) {
 		ERROR("cgroup is not mounted");
@@ -168,13 +224,27 @@ int lxc_cgroup_create(const char *name, pid_t pid)
 		return -1;
 	}
 
-	snprintf(clonechild, MAXPATHLEN, "%s/cgroup.clone_children", cgmnt);
+	if (get_cgroup_flags(MTAB, &flags)) {
+		SYSERROR("failed to get cgroup flags");
+		return -1;
+	}
 
-	/* we check if the kernel has ns_cgroup or clone_children */
-	if (access(clonechild, F_OK)) {
+	/* We have the deprecated ns_cgroup subsystem */
+	if (flags & CGROUP_NS_CGROUP) {
 		WARN("using deprecated ns_cgroup");
 		return lxc_rename_nsgroup(cgmnt, cgname, pid);
 	}
+
+	/* we check if the kernel has clone_children, at this point if there
+	 * no clone_children neither ns_cgroup, that means the cgroup is mounted
+	 * without the ns_cgroup and it has not the compatibility flag
+	 */
+	if (access(clonechild, F_OK)) {
+		ERROR("no ns_cgroup option specified");
+		return -1;
+	}
+
+	snprintf(clonechild, MAXPATHLEN, "%s/cgroup.clone_children", cgmnt);
 
 	/* we enable the clone_children flag of the cgroup */
 	if (cgroup_enable_clone_children(clonechild)) {
