@@ -279,7 +279,7 @@ int lxc_cgroup_destroy(const char *name)
 	}
 
 	snprintf(cgname, MAXPATHLEN, "%s/%s", cgmnt, name);
-	if (rmdir(cgmnt)) {
+	if (rmdir(cgname)) {
 		SYSERROR("failed to remove cgroup '%s'", cgname);
 		return -1;
 	}
