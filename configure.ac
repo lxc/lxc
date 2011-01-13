@@ -135,6 +135,7 @@ AC_CONFIG_FILES([
 	doc/examples/lxc-complex.conf
 
 	templates/Makefile
+	templates/lxc-lenny
 	templates/lxc-debian
 	templates/lxc-ubuntu
 	templates/lxc-busybox
