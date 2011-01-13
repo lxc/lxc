@@ -235,6 +235,8 @@ int lxc_cgroup_create(const char *name, pid_t pid)
 		return cgroup_rename_nsgroup(cgmnt, cgname, pid);
 	}
 
+	snprintf(clonechild, MAXPATHLEN, "%s/cgroup.clone_children", cgmnt);
+
 	/* we check if the kernel has clone_children, at this point if there
 	 * no clone_children neither ns_cgroup, that means the cgroup is mounted
 	 * without the ns_cgroup and it has not the compatibility flag
@@ -243,8 +245,6 @@ int lxc_cgroup_create(const char *name, pid_t pid)
 		ERROR("no ns_cgroup option specified");
 		return -1;
 	}
-
-	snprintf(clonechild, MAXPATHLEN, "%s/cgroup.clone_children", cgmnt);
 
 	/* we enable the clone_children flag of the cgroup */
 	if (cgroup_enable_clone_children(clonechild)) {
