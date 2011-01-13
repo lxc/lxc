@@ -100,8 +100,8 @@ EOF
     # not needed
     cat <<EOF >> $rootfs/etc/inittab
 ::sysinit:/etc/init.d/rcS
-::respawn:/bin/getty -L tty1 115200 vt100
-::askfirst:/bin/sh
+tty1::respawn:/bin/getty -L tty1 115200 vt100
+console::askfirst:/bin/sh
 EOF
     # writable and readable for other
     chmod 644 $rootfs/etc/inittab || return 1
