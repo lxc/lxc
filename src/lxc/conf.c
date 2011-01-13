@@ -874,16 +874,18 @@ static void parse_mntopt(char *opt, unsigned long *flags, char **data)
 	strcat(*data, opt);
 }
 
-static int parse_mntopts(struct mntent *mntent, unsigned long *mntflags,
+static int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 			 char **mntdata)
 {
 	char *s, *data;
 	char *p, *saveptr = NULL;
 
-	if (!mntent->mnt_opts)
+	*mntdata = NULL;
+
+	if (!mntopts)
 		return 0;
 
-	s = strdup(mntent->mnt_opts);
+	s = strdup(mntopts);
 	if (!s) {
 		SYSERROR("failed to allocate memory");
 		return -1;
@@ -910,83 +912,126 @@ static int parse_mntopts(struct mntent *mntent, unsigned long *mntflags,
 	return 0;
 }
 
+static int mount_entry(const char *fsname, const char *target,
+		       const char *fstype, unsigned long mountflags,
+		       const char *data)
+{
+	if (mount(fsname, target, fstype, mountflags & ~MS_REMOUNT, data)) {
+		SYSERROR("failed to mount '%s' on '%s'", fsname, target);
+		return -1;
+	}
+
+	if ((mountflags & MS_REMOUNT) || (mountflags & MS_BIND)) {
+
+		DEBUG("remounting %s on %s to respect bind or remount options",
+		      fsname, target);
+
+		if (mount(fsname, target, fstype,
+			  mountflags | MS_REMOUNT, data)) {
+			SYSERROR("failed to mount '%s' on '%s'",
+				 fsname, target);
+			return -1;
+		}
+	}
+
+	DEBUG("mounted '%s' on '%s', type '%s'", fsname, target, fstype);
+
+	return 0;
+}
+
+static inline int mount_entry_on_systemfs(struct mntent *mntent)
+{
+	unsigned long mntflags;
+	char *mntdata;
+	int ret;
+
+	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
+		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
+		return -1;
+	}
+
+	ret = mount_entry(mntent->mnt_fsname, mntent->mnt_dir,
+			  mntent->mnt_type, mntflags, mntdata);
+
+	free(mntdata);
+
+	return ret;
+}
+
+static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
+					  const char *rootfs)
+{
+	char path[MAXPATHLEN];
+	unsigned long mntflags;
+	char *mntdata;
+	int ret;
+
+	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
+		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
+		return -1;
+	}
+
+	if (strncmp(mntent->mnt_dir, rootfs, strlen(rootfs)))
+		WARN("mount target directory '%s' is outside "
+		     "container root", mntent->mnt_dir);
+	else
+		WARN("mount target directory '%s' is not "
+		     "relative to container root", mntent->mnt_dir);
+
+	ret = mount_entry(mntent->mnt_fsname, mntent->mnt_dir, mntent->mnt_type,
+			  mntflags, mntdata);
+
+	free(mntdata);
+	return ret;
+}
+
+static int mount_entry_on_relative_rootfs(struct mntent *mntent,
+					  const char *rootfs)
+{
+	char path[MAXPATHLEN];
+	unsigned long mntflags;
+	char *mntdata;
+	int ret;
+
+	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
+		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
+		return -1;
+	}
+
+        /* relative to root mount point */
+	snprintf(path, sizeof(path), "%s/%s", rootfs, mntent->mnt_dir);
+
+	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
+			  mntflags, mntdata);
+
+	free(mntdata);
+
+	return ret;
+}
+
 static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file)
 {
 	struct mntent *mntent;
 	int ret = -1;
-	unsigned long mntflags;
-	char *mntdata;
-	char path[MAXPATHLEN];
-	const char *mntdir, *mntroot;
 
 	while ((mntent = getmntent(file))) {
 
-		mntflags = 0;
-		mntdata = NULL;
-
-		if (parse_mntopts(mntent, &mntflags, &mntdata) < 0) {
-			ERROR("failed to parse mount option '%s'",
-			      mntent->mnt_opts);
-			goto out;
-		}
-
-		/* now figure out where to mount it to. */
-		mntdir =  mntent->mnt_dir;
-		mntroot = NULL;
-
 		if (!rootfs->path) {
-			/* if we use system root fs, the mount is relative to '/'
-			 * and can be absolute */
-			if (mntdir[0] != '/')
-				mntroot = ""; /* this is '/' */
-		} else {
-			/* else we have a separate root, mounts are
-			 * relative to it, and absolute paths are risky */
-			if (mntdir[0] != '/')
-				/* relative to root mount point */
-				mntroot = rootfs->mount;
-			else if (strncmp(mntdir, rootfs->mount,
-					 strlen(rootfs->mount)))
-				WARN("mount target directory '%s' is outside "
-				     "container root", mntdir);
-			else
-				WARN("mount target directory '%s' is not "
-				     "relative to container root", mntdir);
-		}
-
-		if (mntroot) {
-			/* make it relative to mntroot */
-			snprintf(path, sizeof(path), "%s/%s", mntroot, mntdir);
-			mntdir = path;
-		}
-
-		if (mount(mntent->mnt_fsname, mntdir,
-			  mntent->mnt_type, mntflags & ~MS_REMOUNT, mntdata)) {
-			SYSERROR("failed to mount '%s' on '%s'",
-					 mntent->mnt_fsname, mntent->mnt_dir);
-			goto out;
-		}
-
-		if ((mntflags & MS_REMOUNT) == MS_REMOUNT ||
-		    ((mntflags & MS_BIND) == MS_BIND)) {
-
-			DEBUG ("remounting %s on %s to respect bind " \
-			       "or remount options",
-			       mntent->mnt_fsname, mntent->mnt_dir);
-
-			if (mount(mntent->mnt_fsname, mntent->mnt_dir,
-				  mntent->mnt_type,
-				  mntflags | MS_REMOUNT, mntdata)) {
-				SYSERROR("failed to mount '%s' on '%s'",
-					 mntent->mnt_fsname, mntent->mnt_dir);
+			if (mount_entry_on_systemfs(mntent))
 				goto out;
-			}
+			continue;
 		}
 
-		DEBUG("mounted %s on %s, type %s", mntent->mnt_fsname,
-		      mntent->mnt_dir, mntent->mnt_type);
+		/* We have a separate root, mounts are relative to it */
+		if (mntent->mnt_dir[0] != '/') {
+			if (mount_entry_on_relative_rootfs(mntent,
+							   rootfs->mount))
+				goto out;
+			continue;
+		}
 
-		free(mntdata);
+		if (mount_entry_on_absolute_rootfs(mntent, rootfs->path))
+			goto out;
 	}
 
 	ret = 0;
