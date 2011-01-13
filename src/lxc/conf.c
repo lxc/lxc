@@ -959,28 +959,32 @@ static inline int mount_entry_on_systemfs(struct mntent *mntent)
 }
 
 static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
-					  const char *rootfs)
+					  const struct lxc_rootfs *rootfs)
 {
+	char *aux;
 	char path[MAXPATHLEN];
 	unsigned long mntflags;
 	char *mntdata;
-	int ret;
+	int ret = 0;
 
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
 		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
 		return -1;
 	}
 
-	if (strncmp(mntent->mnt_dir, rootfs, strlen(rootfs)))
-		WARN("mount target directory '%s' is outside "
-		     "container root", mntent->mnt_dir);
-	else
-		WARN("mount target directory '%s' is not "
-		     "relative to container root", mntent->mnt_dir);
+	aux = strstr(mntent->mnt_dir, rootfs->path);
+	if (!aux) {
+		WARN("ignoring mount point '%s'", mntent->mnt_dir);
+		goto out;
+	}
 
-	ret = mount_entry(mntent->mnt_fsname, mntent->mnt_dir, mntent->mnt_type,
+	snprintf(path, MAXPATHLEN, "%s%s", rootfs->mount,
+		 aux + strlen(rootfs->path));
+
+	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
 			  mntflags, mntdata);
 
+out:
 	free(mntdata);
 	return ret;
 }
@@ -1030,7 +1034,7 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file)
 			continue;
 		}
 
-		if (mount_entry_on_absolute_rootfs(mntent, rootfs->path))
+		if (mount_entry_on_absolute_rootfs(mntent, rootfs))
 			goto out;
 	}
 
