@@ -140,7 +140,7 @@ static int get_cgroup_flags(const char *mtab, int *flags)
         return err;
 }
 
-int lxc_rename_nsgroup(const char *mnt, const char *name, pid_t pid)
+static int cgroup_rename_nsgroup(const char *mnt, const char *name, pid_t pid)
 {
 	char oldname[MAXPATHLEN];
 
@@ -232,7 +232,7 @@ int lxc_cgroup_create(const char *name, pid_t pid)
 	/* We have the deprecated ns_cgroup subsystem */
 	if (flags & CGROUP_NS_CGROUP) {
 		WARN("using deprecated ns_cgroup");
-		return lxc_rename_nsgroup(cgmnt, cgname, pid);
+		return cgroup_rename_nsgroup(cgmnt, cgname, pid);
 	}
 
 	/* we check if the kernel has clone_children, at this point if there
