@@ -923,39 +923,43 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file)
 
 		mntflags = 0;
 		mntdata = NULL;
+
 		if (parse_mntopts(mntent, &mntflags, &mntdata) < 0) {
 			ERROR("failed to parse mount option '%s'",
-				      mntent->mnt_opts);
+			      mntent->mnt_opts);
 			goto out;
 		}
 
 		/* now figure out where to mount it to. */
 		mntdir =  mntent->mnt_dir;
 		mntroot = NULL;
+
 		if (!rootfs->path) {
-			/* if we use system root fs,
-			 * the mount is relative to / and can be absolute */
+			/* if we use system root fs, the mount is relative to '/'
+			 * and can be absolute */
 			if (mntdir[0] != '/')
-				mntroot = ""; /* this is "/" */
-		}
-		else {
+				mntroot = ""; /* this is '/' */
+		} else {
 			/* else we have a separate root, mounts are
 			 * relative to it, and absolute paths are risky */
 			if (mntdir[0] != '/')
-				/* relative too root mount point */
+				/* relative to root mount point */
 				mntroot = rootfs->mount;
-			else if (strncmp(mntdir, rootfs->mount, strlen(rootfs->mount)))
-				WARN("mount target directory '%s' is outside container root",
-					mntdir);
+			else if (strncmp(mntdir, rootfs->mount,
+					 strlen(rootfs->mount)))
+				WARN("mount target directory '%s' is outside "
+				     "container root", mntdir);
 			else
-				WARN("mount target directory '%s' is not relative to container root",
-					mntdir);
+				WARN("mount target directory '%s' is not "
+				     "relative to container root", mntdir);
 		}
+
 		if (mntroot) {
 			/* make it relative to mntroot */
 			snprintf(path, sizeof(path), "%s/%s", mntroot, mntdir);
 			mntdir = path;
 		}
+
 		if (mount(mntent->mnt_fsname, mntdir,
 			  mntent->mnt_type, mntflags & ~MS_REMOUNT, mntdata)) {
 			SYSERROR("failed to mount '%s' on '%s'",
