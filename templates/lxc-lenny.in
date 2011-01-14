@@ -138,7 +138,7 @@ copy_debian()
 
 install_debian()
 {
-    cache="@LOCALSTATEDIR@/cache/lxc/debian"
+    cache="@LOCALSTATEDIR@/cache/lxc/$SUITE"
     rootfs=$1
     mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
@@ -222,7 +222,7 @@ EOF
 
 clean()
 {
-    cache="@LOCALSTATEDIR@/cache/lxc/debian"
+    cache="@LOCALSTATEDIR@/cache/lxc/$SUITE"
 
     if [ ! -e $cache ]; then
 	exit 0
