@@ -881,6 +881,7 @@ static int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 	char *p, *saveptr = NULL;
 
 	*mntdata = NULL;
+	*mntflags = 0L;
 
 	if (!mntopts)
 		return 0;
