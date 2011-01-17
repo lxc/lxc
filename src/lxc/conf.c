@@ -1217,7 +1217,7 @@ static int setup_netdev(struct lxc_netdev *netdev)
 
 	/* empty network namespace */
 	if (!netdev->ifindex) {
-		if (netdev->flags | IFF_UP) {
+		if (netdev->flags & IFF_UP) {
 			err = lxc_device_up("lo");
 			if (err) {
 				ERROR("failed to set the loopback up : %s",
@@ -1281,7 +1281,7 @@ static int setup_netdev(struct lxc_netdev *netdev)
 	}
 
 	/* set the network device up */
-	if (netdev->flags | IFF_UP) {
+	if (netdev->flags & IFF_UP) {
 		int err;
 
 		err = lxc_device_up(current_ifname);
