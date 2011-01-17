@@ -1406,13 +1406,10 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		goto out_delete;
 	}
 
-	if (netdev->flags & IFF_UP) {
-		err = lxc_device_up(veth1);
-		if (err) {
-			ERROR("failed to set %s up : %s", veth1,
-			      strerror(-err));
-			goto out_delete;
-		}
+	err = lxc_device_up(veth1);
+	if (err) {
+		ERROR("failed to set %s up : %s", veth1, strerror(-err));
+		goto out_delete;
 	}
 
 	if (netdev->upscript) {
