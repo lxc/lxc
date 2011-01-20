@@ -11,7 +11,8 @@ pkginclude_HEADERS = \
 		conf.h \
 		list.h \
 		log.h \
-		state.h
+		state.h \
+		setns.h
 
 sodir=$(libdir)
 # use PROGRAMS to avoid complains from automake
@@ -120,3 +121,14 @@ install-exec-local: install-soPROGRAMS
 
 uninstall-local:
 	$(RM) $(DESTDIR)$(libdir)/liblxc.so*
+
+namespace.c: setns.h
+
+setns.h:
+	-$(CC) $(CPPFLAGS) -M -MT$@ $(LINUX_DIR)/arch/$(LINUX_SRCARCH)/include/asm/unistd.h >setns.P
+	-$(CPP) $(CPPFLAGS) -dM $(LINUX_DIR)/arch/$(LINUX_SRCARCH)/include/asm/unistd.h |grep setns > $@
+
+clean-local:
+	$(RM) setns.h setns.P
+
+-include setns.P

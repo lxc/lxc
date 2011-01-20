@@ -34,19 +34,7 @@
 #include "namespace.h"
 #include "log.h"
 
-#ifndef __NR_setns
-#  if __i386__
-#    define __NR_setns 338
-#  elif __x86_64__
-#    define __NR_setns 300
-#  elif __powerpc__
-#    define __NR_setns 323
-#  elif __s390__
-#    define __NR_setns 332
-#  else
-#    warning "architecture not supported for setns"
-#  endif
-#endif
+#include "setns.h"
 
 lxc_log_define(lxc_namespace, lxc);
 

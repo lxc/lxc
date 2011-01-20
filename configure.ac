@@ -91,6 +91,8 @@ AC_CHECK_HEADERS([sys/signalfd.h])
 
 AC_PROG_GCC_TRADITIONAL
 
+AC_LINUX
+
 if test "x$GCC" = "xyes"; then
   CFLAGS="$CFLAGS -Wall"
 fi
