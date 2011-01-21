@@ -56,7 +56,8 @@ development of the linux containers.
 %prep
 %setup
 %build
-PATH=$PATH:/usr/sbin:/sbin %configure
+test "%{ksrc}" != "none" && args="--with-linuxdir=%{ksrc}"
+PATH=$PATH:/usr/sbin:/sbin %configure $args
 make %{?_smp_mflags}
 
 %install

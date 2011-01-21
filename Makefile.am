@@ -13,4 +13,4 @@ ChangeLog::
 	@touch ChangeLog
 
 rpm: dist
-	rpmbuild --clean -ta ${distdir}.tar.gz
+	rpmbuild --clean -ta --define "ksrc ${LINUX_DIR}" ${distdir}.tar.gz
