@@ -137,7 +137,9 @@ AC_CONFIG_FILES([
 	templates/Makefile
 	templates/lxc-lenny
 	templates/lxc-debian
-	templates/lxc-ubuntu
+	templates/lxc-lucid
+	templates/lxc-maverick
+	templates/lxc-natty
 	templates/lxc-busybox
 	templates/lxc-fedora
 	templates/lxc-sshd

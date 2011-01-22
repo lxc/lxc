@@ -1,12 +1,12 @@
 #!/bin/bash
 
 #
-# template script for generating ubuntu/lucid container for LXC
+# template script for generating ubuntu/maverick container for LXC
 #
 # This script is based on lxc-debian (Daniel Lezcano <daniel.lezcano@free.fr>)
 #
 
-# Copyright Â© 2010 Wilhelm Meier
+# Copyright © 2010 Wilhelm Meier
 # Author: Wilhelm Meier <wilhelm.meier@fh-kl.de>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -28,10 +28,6 @@ configure_ubuntu()
     rootfs=$1
     hostname=$2
 
-    # disable selinux in ubuntu
-    mkdir -p $rootfs/selinux
-    echo 0 > $rootfs/selinux/enforce
-
    # configure the network using the dhcp
     cat <<EOF > $rootfs/etc/network/interfaces
 auto lo
@@ -40,6 +36,8 @@ iface lo inet loopback
 auto eth0
 iface eth0 inet dhcp
 EOF
+
+    sed -i "s/<hostname>/$hostname/" $rootfs/etc/dhcp3/dhclient.conf
 
     # set the hostname
     cat <<EOF > $rootfs/etc/hostname
@@ -50,91 +48,13 @@ EOF
 127.0.0.1 localhost $hostname
 EOF
 
-    # provide the lxc service
-    cat <<EOF > $rootfs/etc/init/lxc.conf
-# fake some events needed for correct startup other services
+    # tweak consoles
+    rm -f $rootfs/etc/init/tty{5,6}.conf
+    cp $rootfs/etc/init/tty1.conf $rootfs/etc/init/console.conf
+    sed -i 's/tty1/\/dev\/console/' $rootfs/etc/init/console.conf
 
-description     "Container Upstart"
-
-start on startup
-
-script
-        rm -rf /var/run/*.pid
-        rm -rf /var/run/network/*
-        /sbin/initctl emit stopped JOB=udevtrigger --no-wait
-        /sbin/initctl emit started JOB=udev --no-wait
-end script
-EOF
-
-    # fix buggus runlevel with sshd
-    cat <<EOF > $rootfs/etc/init/ssh.conf
-# ssh - OpenBSD Secure Shell server
-#
-# The OpenSSH server provides secure shell access to the system.
-
-description	"OpenSSH server"
-
-start on filesystem
-stop on runlevel [!2345]
-
-expect fork
-respawn
-respawn limit 10 5
-umask 022
-# replaces SSHD_OOM_ADJUST in /etc/default/ssh
-oom never
-
-pre-start script
-    test -x /usr/sbin/sshd || { stop; exit 0; }
-    test -e /etc/ssh/sshd_not_to_be_run && { stop; exit 0; }
-    test -c /dev/null || { stop; exit 0; }
-
-    mkdir -p -m0755 /var/run/sshd
-end script
-
-# if you used to set SSHD_OPTS in /etc/default/ssh, you can change the
-# 'exec' line here instead
-exec /usr/sbin/sshd
-EOF
-
-    cat <<EOF > $rootfs/etc/init/console.conf
-# console - getty
-#
-# This service maintains a console on tty1 from the point the system is
-# started until it is shut down again.
-
-start on stopped rc RUNLEVEL=[2345]
-stop on runlevel [!2345]
-
-respawn
-exec /sbin/getty -8 38400 /dev/console
-EOF
-
-    cat <<EOF > $rootfs/lib/init/fstab
-# /lib/init/fstab: lxc system fstab
-none            /spu                      spufs           gid=spu,optional                  0 0
-none            /tmp                      none            defaults                          0 0
-none            /var/lock                 tmpfs           nodev,noexec,nosuid,showthrough   0 0
-none            /lib/init/rw              tmpfs           mode=0755,nosuid,optional         0 0
-EOF
-
-    # reconfigure some services
-    if [ -z "$LANG" ]; then
-	chroot $rootfs locale-gen en_US.UTF-8
-	chroot $rootfs update-locale LANG=en_US.UTF-8
-    else
-	chroot $rootfs locale-gen $LANG
-	chroot $rootfs update-locale LANG=$LANG
-    fi
-
-    # remove pointless services in a container
-    chroot $rootfs /usr/sbin/update-rc.d -f ondemand remove
-
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls u*.conf); do mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls tty[2-9].conf); do mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls plymouth*.conf); do mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls hwclock*.conf); do mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls module*.conf); do mv $f $f.orig; done'
+    # don't let upstart mount anything from its builtin fs
+    echo "#Emptied out by lxc-maverick template"  > $rootfs/lib/init/fstab
 
     echo "Please change root-password !"
     echo "root:root" | chroot $rootfs chpasswd
@@ -144,7 +64,7 @@ EOF
 
 download_ubuntu()
 {
-    packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,dhcp3-client,ssh,lsb-release
+    packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,dhcp3-client,ssh,lsb-release,gnupg
 
     cache=$1
     arch=$2
@@ -157,8 +77,8 @@ download_ubuntu()
     fi
 
     # download a mini ubuntu into a cache
-    echo "Downloading ubuntu minimal ..."
-    debootstrap --verbose --variant=minbase --components=main,universe --arch=$arch --include=$packages lucid $cache/partial-$arch
+    echo "Downloading ubuntu maverick minimal ..."
+    debootstrap --verbose --variant=minbase --components=main,universe --arch=$arch --include=$packages maverick $cache/partial-$arch
     if [ $? -ne 0 ]; then
 	echo "Failed to download the rootfs, aborting."
 	return 1
@@ -184,7 +104,7 @@ copy_ubuntu()
 
 install_ubuntu()
 {
-    cache="/var/cache/lxc/ubuntu"
+    cache="/var/cache/lxc/maverick"
     rootfs=$1
     mkdir -p /var/lock/subsys/
     (
@@ -207,7 +127,7 @@ install_ubuntu()
 	if [ ! -e "$cache/rootfs-$arch" ]; then
 	    download_ubuntu $cache $arch
 	    if [ $? -ne 0 ]; then
-		echo "Failed to download 'ubuntu base'"
+		echo "Failed to download 'ubuntu maverick base'"
 		return 1
 	    fi
 	fi
@@ -247,8 +167,8 @@ lxc.cgroup.devices.allow = c 1:5 rwm
 # consoles
 lxc.cgroup.devices.allow = c 5:1 rwm
 lxc.cgroup.devices.allow = c 5:0 rwm
-lxc.cgroup.devices.allow = c 4:0 rwm
-lxc.cgroup.devices.allow = c 4:1 rwm
+#lxc.cgroup.devices.allow = c 4:0 rwm
+#lxc.cgroup.devices.allow = c 4:1 rwm
 # /dev/{,u}random
 lxc.cgroup.devices.allow = c 1:9 rwm
 lxc.cgroup.devices.allow = c 1:8 rwm
@@ -274,7 +194,7 @@ EOF
 
 clean()
 {
-    cache="/var/cache/lxc/ubuntu"
+    cache="/var/cache/lxc/maverick"
 
     if [ ! -e $cache ]; then
 	exit 0
@@ -347,13 +267,13 @@ rootfs=$path/rootfs
 
 install_ubuntu $rootfs
 if [ $? -ne 0 ]; then
-    echo "failed to install ubuntu"
+    echo "failed to install ubuntu maverick"
     exit 1
 fi
 
 configure_ubuntu $rootfs $name
 if [ $? -ne 0 ]; then
-    echo "failed to configure ubuntu for a container"
+    echo "failed to configure ubuntu maverick for a container"
     exit 1
 fi
 

@@ -25,7 +25,9 @@ lxc.spec
 lxc.pc
 
 templates/lxc-debian
-templates/lxc-ubuntu
+templates/lxc-lucid
+templates/lxc-maverick
+templates/lxc-natty
 templates/lxc-fedora
 templates/lxc-sshd
 templates/lxc-busybox
