@@ -48,6 +48,9 @@ EOF
 127.0.0.1 localhost $hostname
 EOF
 
+    # suppress log level output for udev
+    sed -i "s/=\"err\"/=0/" $rootfs/etc/udev/udev.conf
+
     # tweak consoles
     rm -f $rootfs/etc/init/tty{5,6}.conf
     cp $rootfs/etc/init/tty1.conf $rootfs/etc/init/console.conf
