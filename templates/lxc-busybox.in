@@ -78,9 +78,9 @@ EOF
     # mount everything
     cat <<EOF >> $rootfs/etc/init.d/rcS
 #!/bin/sh
-syslogd
-mount -a
-udhcpc
+/bin/syslogd
+/bin/mount -a
+/bin/udhcpc
 EOF
 
     # executable
@@ -242,7 +242,7 @@ lxc.mount.entry=/usr/lib $rootfs/usr/lib none ro,bind 0 0
 EOF
 fi
 
-if [ -d "$rootfs/lib64" ]; then
+if [ -d "/lib64" ] && [ -d "$rootfs/lib64" ]; then
 cat <<EOF >> $path/config
 lxc.mount.entry=/lib64 $rootfs/lib64 none ro,bind 0 0
 lxc.mount.entry=/usr/lib64 $rootfs/usr/lib64 none ro,bind 0 0
