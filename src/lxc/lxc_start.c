@@ -57,6 +57,7 @@ static struct lxc_list defines;
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
+	case 'c': args->console = arg; break;
 	case 'd': args->daemonize = 1; break;
 	case 'f': args->rcfile = arg; break;
 	case 's': return lxc_config_define_add(&defines, arg);
@@ -68,6 +69,7 @@ static const struct option my_longopts[] = {
 	{"daemon", no_argument, 0, 'd'},
 	{"rcfile", required_argument, 0, 'f'},
 	{"define", required_argument, 0, 's'},
+	{"console", required_argument, 0, 'c'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -82,6 +84,7 @@ Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
   -d, --daemon         daemonize the container\n\
   -f, --rcfile=FILE    Load configuration file FILE\n\
+  -c, --console=FILE   Set the file output for the container console\n\
   -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
 	.options   = my_longopts,
 	.parser    = my_parser,
@@ -160,28 +163,40 @@ int main(int argc, char *argv[])
 		return err;
 	}
 
-	if (my_args.daemonize) {
+	if (my_args.console) {
 
-                /* do not chdir as we want to open the log file,
-		 * change the directory right after.
-		 * do not close 0, 1, 2, we want to do that
-		 * ourself because we don't want /dev/null
-		 * being reopened.
-		 */
-		if (daemon(1, 1)) {
-			SYSERROR("failed to daemonize '%s'", my_args.name);
+		char *console, fd;
+
+		if (access(my_args.console, W_OK)) {
+
+			fd = creat(my_args.console, 0600);
+			if (fd < 0) {
+				SYSERROR("failed to touch file '%s'",
+					 my_args.console);
+				return err;
+			}
+			close(fd);
+		}
+
+		console = realpath(my_args.console, NULL);
+		if (!console) {
+			SYSERROR("failed to get the real path of '%s'",
+				 my_args.console);
 			return err;
 		}
 
-		close(0);
-		close(1);
-		close(2);
-
-		if (my_args.log_file) {
-			open(my_args.log_file, O_WRONLY | O_CLOEXEC);
-			open(my_args.log_file, O_RDONLY | O_CLOEXEC);
-			open(my_args.log_file, O_RDONLY | O_CLOEXEC);
+		conf->console.path = strdup(console);
+		if (!conf->console.path) {
+			ERROR("failed to dup string '%s'", console);
+			return err;
 		}
+
+		free(console);
+	}
+
+	if (my_args.daemonize && daemon(0, 0)) {
+		SYSERROR("failed to daemonize '%s'", my_args.name);
+		return err;
 	}
 
 	err = lxc_start(my_args.name, args, conf);

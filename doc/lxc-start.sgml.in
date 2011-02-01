@@ -49,7 +49,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsynopsisdiv>
     <cmdsynopsis><command>lxc-start <replaceable>-n
     name</replaceable> <optional>-f
-    config_file</optional> <optional>-s KEY=VAL</optional>
+    config_file</optional> <optional>-c
+    console_file</optional> <optional>-d</optional> <optional>-s
+    KEY=VAL</optional>
     <optional>command</optional></command></cmdsynopsis>
   </refsynopsisdiv>
 
@@ -114,6 +116,20 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	   This configuration file if present will be used even if there is
 	   already a configuration file present in the previously created
 	   container (via lxc-create).
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-c,
+	  --console <replaceable>console_file</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Specify a file to output the container console. If the
+	    option is not specified the output will go the terminal
+	    except if the <option>-d</option> is specified.
 	  </para>
 	</listitem>
       </varlistentry>

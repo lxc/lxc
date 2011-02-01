@@ -168,6 +168,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args,
 		case 'n': 	args->name = optarg; break;
 		case 'o':	args->log_file = optarg; break;
 		case 'l':	args->log_priority = optarg; break;
+		case 'c':	args->console = optarg; break;
 		case 'q':	args->quiet = 1; break;
 		case OPT_USAGE: print_usage(args->options, args);
 		case '?':	print_help(args, 1);
