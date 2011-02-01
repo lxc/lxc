@@ -102,6 +102,12 @@ int lxc_attach(pid_t pid)
 	int fd[size];
 	int i;
 
+	sprintf(path, "/proc/%d/ns", pid);
+	if (access(path, R_OK)) {
+		ERROR("Does this kernel version support 'attach' ?");
+		return -1;
+	}
+
 	for (i = 0; i < size; i++) {
 		sprintf(path, "/proc/%d/ns/%s", pid, ns[i]);
 		fd[i] = open(path, O_RDONLY);
