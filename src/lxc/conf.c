@@ -1224,8 +1224,8 @@ static int setup_netdev(struct lxc_netdev *netdev)
 				      strerror(-err));
 				return -1;
 			}
-			return 0;
 		}
+		return 0;
 	}
 
 	/* retrieve the name of the interface */
