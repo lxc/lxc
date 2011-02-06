@@ -742,7 +742,7 @@ static int ip_addr_add(int family, int ifindex,
 	if (nla_put_buffer(nlmsg, IFA_ADDRESS, addr, addrlen))
 		goto out;
 
-	if (bcast && nla_put_buffer(nlmsg, IFA_BROADCAST, bcast, addrlen))
+	if (nla_put_buffer(nlmsg, IFA_BROADCAST, bcast, addrlen))
 		goto out;
 
 	/* TODO : multicast, anycast with ipv6 */

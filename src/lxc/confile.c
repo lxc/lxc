@@ -423,9 +423,8 @@ static int config_network_ipv4(const char *key, char *value,
 	 * prefix and address
 	 */
 	if (!bcast) {
-		inetdev->bcast.s_addr =
-			htonl(INADDR_BROADCAST << (32 - inetdev->prefix));
-		inetdev->bcast.s_addr &= inetdev->addr.s_addr;
+		int mask = htonl(INADDR_BROADCAST << (32 - inetdev->prefix));
+		inetdev->bcast.s_addr = (inetdev->addr.s_addr & mask) | ~mask;
 	}
 
 	lxc_list_add(&netdev->ipv4, list);
