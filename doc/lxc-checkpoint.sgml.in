@@ -165,7 +165,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   </refsect1>
 
   <refsect1>
-    <Title>Notes</Title>
+    <title>Notes</title>
     <para>Actually, this command does not operate. Its description
     helps to define a CLI api for future Checkpoint / Restart
     solution</para>

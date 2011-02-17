@@ -53,7 +53,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	config_file</optional><optional>-s KEY=VAL</optional>
 	--statefile=<replaceable>FILE</replaceable>
 	--statefd=<replaceable>FD</replaceable></command>
-      <arg choice=req><option>--name=<replaceable>NAME</replaceable></option></arg>
+      <arg choice="req"><option>--name=<replaceable>NAME</replaceable></option></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -177,7 +177,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
    </refsect1>
 
   <refsect1>
-    <Title>Notes</Title>
+    <title>Notes</title>
     <para>Actually, this command does not operate. Its description
     helps to define a CLI api for future Checkpoint / Restart
     solution</para>
