@@ -84,7 +84,7 @@ EOF
     fi
 
     # remove pointless services in a container
-    chroot $rootfs /usr/sbin/udpate-rc.d -f checkroot.sh remove
+    chroot $rootfs /usr/sbin/update-rc.d -f checkroot.sh remove
     chroot $rootfs /usr/sbin/update-rc.d -f umountfs remove
     chroot $rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
     chroot $rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
