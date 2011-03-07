@@ -36,12 +36,14 @@ extern int lxc_device_move(int ifindex, pid_t pid);
 /*
  * Delete a network device
  */
-extern int lxc_device_delete(const char *name);
+extern int lxc_netdev_delete_by_name(const char *name);
+extern int lxc_netdev_delete_by_index(int ifindex);
 
 /*
- * Delete a network device by the index
+ * Change the device name
  */
-extern int lxc_device_delete_index(int ifindex);
+extern int lxc_netdev_rename_by_name(const char *oldname, const char *newname);
+extern int lxc_netdev_rename_by_index(int ifindex, const char *newname);
 
 /*
  * Set the device network up
@@ -52,11 +54,6 @@ extern int lxc_device_up(const char *name);
  * Set the device network down
  */
 extern int lxc_device_down(const char *name);
-
-/*
- * Change the device name
- */
-extern int lxc_device_rename(const char *oldname, const char *newname);
 
 /*
  * Change the mtu size for the specified device
