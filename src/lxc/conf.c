@@ -1218,7 +1218,7 @@ static int setup_netdev(struct lxc_netdev *netdev)
 	/* empty network namespace */
 	if (!netdev->ifindex) {
 		if (netdev->flags & IFF_UP) {
-			err = lxc_device_up("lo");
+			err = lxc_netdev_up("lo");
 			if (err) {
 				ERROR("failed to set the loopback up : %s",
 				      strerror(-err));
@@ -1284,7 +1284,7 @@ static int setup_netdev(struct lxc_netdev *netdev)
 	if (netdev->flags & IFF_UP) {
 		int err;
 
-		err = lxc_device_up(current_ifname);
+		err = lxc_netdev_up(current_ifname);
 		if (err) {
 			ERROR("failed to set '%s' up : %s", current_ifname,
 			      strerror(-err));
@@ -1292,7 +1292,7 @@ static int setup_netdev(struct lxc_netdev *netdev)
 		}
 
 		/* the network is up, make the loopback up too */
-		err = lxc_device_up("lo");
+		err = lxc_netdev_up("lo");
 		if (err) {
 			ERROR("failed to set the loopback up : %s",
 			      strerror(-err));
@@ -1381,9 +1381,9 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	if (netdev->mtu) {
-		err = lxc_device_set_mtu(veth1, atoi(netdev->mtu));
+		err = lxc_netdev_set_mtu(veth1, atoi(netdev->mtu));
 		if (!err)
-			err = lxc_device_set_mtu(veth2, atoi(netdev->mtu));
+			err = lxc_netdev_set_mtu(veth2, atoi(netdev->mtu));
 		if (err) {
 			ERROR("failed to set mtu '%s' for %s-%s : %s",
 			      netdev->mtu, veth1, veth2, strerror(-err));
@@ -1406,7 +1406,7 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		goto out_delete;
 	}
 
-	err = lxc_device_up(veth1);
+	err = lxc_netdev_up(veth1);
 	if (err) {
 		ERROR("failed to set %s up : %s", veth1, strerror(-err));
 		goto out_delete;
@@ -1578,8 +1578,16 @@ void lxc_delete_network(struct lxc_list *network)
 
 	lxc_list_for_each(iterator, network) {
 		netdev = iterator->elem;
-		if (netdev->ifindex > 0 && netdev->type != LXC_NET_PHYS)
-			lxc_netdev_delete_by_index(netdev->ifindex);
+		if (netdev->ifindex == 0)
+			continue;
+
+		/* Recent kernels already delete the virtual devices */
+		if (netdev->type != LXC_NET_PHYS)
+			continue;
+
+		if (lxc_netdev_rename_by_index(netdev->ifindex, netdev->link))
+			WARN("failed to rename to the initial name the netdev '%s'",
+			     netdev->link);
 	}
 }
 
@@ -1597,7 +1605,7 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 		if (!netdev->ifindex)
 			continue;
 
-		err = lxc_device_move(netdev->ifindex, pid);
+		err = lxc_netdev_move_by_index(netdev->ifindex, pid);
 		if (err) {
 			ERROR("failed to move '%s' to the container : %s",
 			      netdev->link, strerror(-err));
