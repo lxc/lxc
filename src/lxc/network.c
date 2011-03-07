@@ -89,7 +89,7 @@ struct ip_req {
 	struct ifaddrmsg ifa;
 };
 
-int lxc_device_move(int ifindex, pid_t pid)
+int lxc_netdev_move_by_index(int ifindex, pid_t pid)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL;
@@ -225,7 +225,7 @@ int lxc_netdev_rename_by_name(const char *oldname, const char *newname)
 	return lxc_netdev_rename_by_index(index, newname);
 }
 
-static int device_set_flag(const char *name, int flag)
+static int netdev_set_flag(const char *name, int flag)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -272,7 +272,7 @@ out:
 	return err;
 }
 
-int lxc_device_set_mtu(const char *name, int mtu)
+int lxc_netdev_set_mtu(const char *name, int mtu)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -320,14 +320,14 @@ out:
 	return err;
 }
 
-int lxc_device_up(const char *name)
+int lxc_netdev_up(const char *name)
 {
-	return device_set_flag(name, IFF_UP);
+	return netdev_set_flag(name, IFF_UP);
 }
 
-int lxc_device_down(const char *name)
+int lxc_netdev_down(const char *name)
 {
-	return device_set_flag(name, 0);
+	return netdev_set_flag(name, 0);
 }
 
 int lxc_veth_create(const char *name1, const char *name2)
@@ -743,7 +743,7 @@ int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr,
 
 /*
  * There is a lxc_bridge_attach, but no need of a bridge detach
- * as automatically done by kernel when device deleted.
+ * as automatically done by kernel when a netdev is deleted.
  */
 int lxc_bridge_attach(const char *bridge, const char *ifname)
 {
