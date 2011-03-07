@@ -1241,7 +1241,7 @@ static int setup_netdev(struct lxc_netdev *netdev)
 			netdev->link : "eth%d";
 
 	/* rename the interface name */
-	err = lxc_device_rename(ifname, netdev->name);
+	err = lxc_netdev_rename_by_name(ifname, netdev->name);
 	if (err) {
 		ERROR("failed to rename %s->%s : %s", ifname, netdev->name,
 		      strerror(-err));
@@ -1425,7 +1425,7 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	return 0;
 
 out_delete:
-	lxc_device_delete(veth1);
+	lxc_netdev_delete_by_name(veth1);
 	return -1;
 }
 
@@ -1458,7 +1458,7 @@ static int instanciate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
 		ERROR("failed to retrieve the index for %s", peer);
-		lxc_device_delete(peer);
+		lxc_netdev_delete_by_name(peer);
 		return -1;
 	}
 
@@ -1498,7 +1498,7 @@ static int instanciate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
 		ERROR("failed to retrieve the ifindex for %s", peer);
-		lxc_device_delete(peer);
+		lxc_netdev_delete_by_name(peer);
 		return -1;
 	}
 
@@ -1579,7 +1579,7 @@ void lxc_delete_network(struct lxc_list *network)
 	lxc_list_for_each(iterator, network) {
 		netdev = iterator->elem;
 		if (netdev->ifindex > 0 && netdev->type != LXC_NET_PHYS)
-			lxc_device_delete_index(netdev->ifindex);
+			lxc_netdev_delete_by_index(netdev->ifindex);
 	}
 }
 

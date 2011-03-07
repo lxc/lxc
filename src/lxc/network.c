@@ -122,55 +122,7 @@ out:
 	return err;
 }
 
-int lxc_device_delete(const char *name)
-{
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
-	struct link_req *link_req;
-	int index, len, err;
-
-	err = netlink_open(&nlh, NETLINK_ROUTE);
-	if (err)
-		return err;
-
-	err = -EINVAL;
-	len = strlen(name);
-	if (len == 1 || len > IFNAMSIZ)
-		goto out;
-
-	err = -ENOMEM;
-	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!nlmsg)
-		goto out;
-
-	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!answer)
-		goto out;
-
-	err = -EINVAL;
-	index = if_nametoindex(name);
-	if (!index)
-		goto out;
-
-	link_req = (struct link_req *)nlmsg;
-	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
-	link_req->ifinfomsg.ifi_index = index;
-	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_ACK|NLM_F_REQUEST;
-	nlmsg->nlmsghdr.nlmsg_type = RTM_DELLINK;
-
-	if (nla_put_string(nlmsg, IFLA_IFNAME, name))
-		goto out;
-
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(answer);
-	nlmsg_free(nlmsg);
-	return err;
-}
-
-int lxc_device_delete_index(int ifindex)
+int lxc_netdev_delete_by_index(int ifindex)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -203,6 +155,74 @@ out:
 	nlmsg_free(answer);
 	nlmsg_free(nlmsg);
 	return err;
+}
+
+int lxc_netdev_delete_by_name(const char *name)
+{
+	int index;
+
+	index = if_nametoindex(name);
+	if (!index)
+		return -EINVAL;
+
+	return lxc_netdev_delete_by_index(index);
+}
+
+int lxc_netdev_rename_by_index(int ifindex, const char *newname)
+{
+	struct nl_handler nlh;
+	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	struct link_req *link_req;
+	int len, err;
+
+	err = netlink_open(&nlh, NETLINK_ROUTE);
+	if (err)
+		return err;
+
+	len = strlen(newname);
+	if (len == 1 || len > IFNAMSIZ)
+		goto out;
+
+	err = -ENOMEM;
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		goto out;
+
+	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!answer)
+		goto out;
+
+	link_req = (struct link_req *)nlmsg;
+	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
+	link_req->ifinfomsg.ifi_index = ifindex;
+	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_ACK|NLM_F_REQUEST;
+	nlmsg->nlmsghdr.nlmsg_type = RTM_NEWLINK;
+
+	if (nla_put_string(nlmsg, IFLA_IFNAME, newname))
+		goto out;
+
+	err = netlink_transaction(&nlh, nlmsg, answer);
+out:
+	netlink_close(&nlh);
+	nlmsg_free(answer);
+	nlmsg_free(nlmsg);
+	return err;
+}
+
+int lxc_netdev_rename_by_name(const char *oldname, const char *newname)
+{
+	int len, index;
+
+	len = strlen(oldname);
+	if (len == 1 || len > IFNAMSIZ)
+		return -EINVAL;
+
+	index = if_nametoindex(oldname);
+	if (!index)
+		return -EINVAL;
+
+	return lxc_netdev_rename_by_index(index, newname);
 }
 
 static int device_set_flag(const char *name, int flag)
@@ -308,58 +328,6 @@ int lxc_device_up(const char *name)
 int lxc_device_down(const char *name)
 {
 	return device_set_flag(name, 0);
-}
-
-int lxc_device_rename(const char *oldname, const char *newname)
-{
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
-	struct link_req *link_req;
-	int index, len, err;
-
-	err = netlink_open(&nlh, NETLINK_ROUTE);
-	if (err)
-		return err;
-
-	err = -EINVAL;
-	len = strlen(oldname);
-	if (len == 1 || len > IFNAMSIZ)
-		goto out;
-
-	len = strlen(newname);
-	if (len == 1 || len > IFNAMSIZ)
-		goto out;
-
-	err = -ENOMEM;
-	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!nlmsg)
-		goto out;
-
-	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!answer)
-		goto out;
-
-	err = -EINVAL;
-	index = if_nametoindex(oldname);
-	if (!index)
-		goto out;
-
-	link_req = (struct link_req *)nlmsg;
-	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
-	link_req->ifinfomsg.ifi_index = index;
-	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_ACK|NLM_F_REQUEST;
-	nlmsg->nlmsghdr.nlmsg_type = RTM_NEWLINK;
-
-	if (nla_put_string(nlmsg, IFLA_IFNAME, newname))
-		goto out;
-
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(answer);
-	nlmsg_free(nlmsg);
-	return err;
 }
 
 int lxc_veth_create(const char *name1, const char *name2)
