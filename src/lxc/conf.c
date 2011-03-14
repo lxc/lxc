@@ -979,7 +979,7 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 		goto out;
 	}
 
-	snprintf(path, MAXPATHLEN, "%s%s", rootfs->mount,
+	snprintf(path, MAXPATHLEN, "%s/%s", rootfs->mount,
 		 aux + strlen(rootfs->path));
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
