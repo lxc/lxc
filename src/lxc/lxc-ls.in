@@ -18,7 +18,7 @@ function get_cgroup()
 	fi
 }
 
-ls $* $lxcpath
+ls "$@" $lxcpath
 
 active=$(netstat -xa | grep $lxcpath | \
 	sed -e 's#.*'"$lxcpath/"'\(.*\)/command#\1#');
@@ -26,6 +26,6 @@ active=$(netstat -xa | grep $lxcpath | \
 if test -n "$active"; then
 	get_cgroup
 	if test -n "$mount_point"; then
-		cd $mount_point; ls $* -d $active
+		cd $mount_point; ls "$@" -d $active
 	fi
 fi

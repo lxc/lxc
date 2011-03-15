@@ -81,9 +81,9 @@ if [ $? != 0 ]; then
     exit 1
 fi
 
-set -- $(getopt dh $*)
+set -- $(getopt dh "$@")
 
-for i in $*; do
+for i in "$@"; do
     case "$1" in
 	-d)
 	    LXC_DROP_CAPS="yes"
