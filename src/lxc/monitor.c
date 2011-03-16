@@ -70,6 +70,7 @@ void lxc_monitor_send_state(const char *name, lxc_state_t state)
 	struct lxc_msg msg = { .type = lxc_msg_state,
 			       .value = state };
 	strncpy(msg.name, name, sizeof(msg.name));
+	msg.name[sizeof(msg.name) - 1] = 0;
 
 	lxc_monitor_send(&msg);
 }
