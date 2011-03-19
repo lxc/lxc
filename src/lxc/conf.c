@@ -205,14 +205,18 @@ static int run_script(const char *name, const char *section,
 
 	va_start(ap, script);
 	while ((p = va_arg(ap, char *)))
-		size += strlen(p);
+		size += strlen(p) + 1;
 	va_end(ap);
 
 	size += strlen(script);
 	size += strlen(name);
 	size += strlen(section);
+	size += 3;
 
-	buffer = alloca(size + 1);
+	if (size > INT_MAX)
+		return -1;
+
+	buffer = alloca(size);
 	if (!buffer) {
 		ERROR("failed to allocate memory");
 		return -1;
