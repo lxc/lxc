@@ -46,10 +46,10 @@ void usage(char *cmd)
 {
 	fprintf(stderr, "%s <options> [command]\n", basename(cmd));
 	fprintf(stderr, "Options are:\n");
-	fprintf(stderr, "\t -s flags: Ored list of flags to unshare:\n" \
+	fprintf(stderr, "\t -s flags: ORed list of flags to unshare:\n" \
 			"\t           MOUNT, PID, UTSNAME, IPC, USER, NETWORK\n");
 	fprintf(stderr, "\t -u <id> : new id to be set if -s USER is specified\n");
-	fprintf(stderr, "\t if -f or -s PID is specified, <command> is mandatory)\n");
+	fprintf(stderr, "\t if -s PID is specified, <command> is mandatory)\n");
 	_exit(1);
 }
 
