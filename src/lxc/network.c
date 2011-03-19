@@ -180,7 +180,7 @@ int lxc_netdev_rename_by_index(int ifindex, const char *newname)
 		return err;
 
 	len = strlen(newname);
-	if (len == 1 || len > IFNAMSIZ)
+	if (len == 1 || len >= IFNAMSIZ)
 		goto out;
 
 	err = -ENOMEM;
@@ -215,7 +215,7 @@ int lxc_netdev_rename_by_name(const char *oldname, const char *newname)
 	int len, index;
 
 	len = strlen(oldname);
-	if (len == 1 || len > IFNAMSIZ)
+	if (len == 1 || len >= IFNAMSIZ)
 		return -EINVAL;
 
 	index = if_nametoindex(oldname);
@@ -238,7 +238,7 @@ static int netdev_set_flag(const char *name, int flag)
 
 	err = -EINVAL;
 	len = strlen(name);
-	if (len == 1 || len > IFNAMSIZ)
+	if (len == 1 || len >= IFNAMSIZ)
 		goto out;
 
 	err = -ENOMEM;
@@ -285,7 +285,7 @@ int lxc_netdev_set_mtu(const char *name, int mtu)
 
 	err = -EINVAL;
 	len = strlen(name);
-	if (len == 1 || len > IFNAMSIZ)
+	if (len == 1 || len >= IFNAMSIZ)
 		goto out;
 
 	err = -ENOMEM;
@@ -344,11 +344,11 @@ int lxc_veth_create(const char *name1, const char *name2)
 
 	err = -EINVAL;
 	len = strlen(name1);
-	if (len == 1 || len > IFNAMSIZ)
+	if (len == 1 || len >= IFNAMSIZ)
 		goto out;
 
 	len = strlen(name2);
-	if (len == 1 || len > IFNAMSIZ)
+	if (len == 1 || len >= IFNAMSIZ)
 		goto out;
 
 	err = -ENOMEM;
@@ -420,11 +420,11 @@ int lxc_vlan_create(const char *master, const char *name, ushort vlanid)
 
 	err = -EINVAL;
 	len = strlen(master);
-	if (len == 1 || len > IFNAMSIZ)
+	if (len == 1 || len >= IFNAMSIZ)
 		goto err3;
 
 	len = strlen(name);
-	if (len == 1 || len > IFNAMSIZ)
+	if (len == 1 || len >= IFNAMSIZ)
 		goto err3;
 
 	err = -ENOMEM;
@@ -496,11 +496,11 @@ int lxc_macvlan_create(const char *master, const char *name, int mode)
 
 	err = -EINVAL;
 	len = strlen(master);
-	if (len == 1 || len > IFNAMSIZ)
+	if (len == 1 || len >= IFNAMSIZ)
 		goto out;
 
 	len = strlen(name);
-	if (len == 1 || len > IFNAMSIZ)
+	if (len == 1 || len >= IFNAMSIZ)
 		goto out;
 
 	err = -ENOMEM;
@@ -750,7 +750,7 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 	int fd, index, err;
 	struct ifreq ifr;
 
-	if (strlen(ifname) > IFNAMSIZ)
+	if (strlen(ifname) >= IFNAMSIZ)
 		return -EINVAL;
 
 	index = if_nametoindex(ifname);
