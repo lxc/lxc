@@ -96,6 +96,9 @@ static void print_usage(const struct option longopts[],
 		int j;
 		char *uppername = strdup(opt->name);
 
+		if (!uppername)
+			exit(-ENOMEM);
+
 		for (j = 0; uppername[j]; j++)
 			uppername[j] = toupper(uppername[j]);
 
@@ -217,15 +220,22 @@ extern char **lxc_arguments_dup(const char *file, struct lxc_arguments *args)
 
 	nbargs = 0;
 
-	argv[nbargs++] = strdup(file);
+	argv[nbargs] = strdup(file);
+	if (!argv[nbargs])
+		return NULL;
+	nbargs++;
 
 	if (args->quiet)
 		argv[nbargs++] = "--quiet";
 
 	argv[nbargs++] = "--";
 
-	for (opt = 0; opt < args->argc; opt++)
-		argv[nbargs++] = strdup(args->argv[opt]);
+	for (opt = 0; opt < args->argc; opt++) {
+		argv[nbargs] = strdup(args->argv[opt]);
+		if (!argv[nbargs])
+			return NULL;
+		nbargs++;
+	}
 
 	argv[nbargs] = NULL;
 
