@@ -47,8 +47,6 @@ lxc_log_define(lxc_cgroup, lxc);
 
 #define MTAB "/proc/mounts"
 
-static char nsgroup_path[MAXPATHLEN];
-
 enum {
 	CGROUP_NS_CGROUP = 1,
 	CGROUP_CLONE_CHILDREN,
@@ -291,22 +289,21 @@ int lxc_cgroup_destroy(const char *name)
 
 int lxc_cgroup_path_get(char **path, const char *name)
 {
-	char cgroup[MAXPATHLEN];
+	static char        cgroup[MAXPATHLEN];
+	static const char* cgroup_cached = 0;
+	static char        buf[MAXPATHLEN];
 
-	*path = &nsgroup_path[0];
-
-	/*
-	 * report nsgroup_path string if already set
-	 */
-	if (**path != 0)
-		return 0;
-
-	if (get_cgroup_mount(MTAB, cgroup)) {
-		ERROR("cgroup is not mounted");
-		return -1;
+	if (!cgroup_cached) {
+		if (get_cgroup_mount(MTAB, cgroup)) {
+			ERROR("cgroup is not mounted");
+			return -1;
+		} else {
+			cgroup_cached = cgroup;
+		}
 	}
 
-	snprintf(nsgroup_path, MAXPATHLEN, "%s/%s", cgroup, name);
+	snprintf(buf, MAXPATHLEN, "%s/%s", cgroup_cached, name);
+	*path = buf;
 	return 0;
 }
 
