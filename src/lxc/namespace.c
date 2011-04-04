@@ -91,7 +91,7 @@ int lxc_attach(pid_t pid)
 	int i;
 
 	sprintf(path, "/proc/%d/ns", pid);
-	if (access(path, R_OK)) {
+	if (access(path, X_OK)) {
 		ERROR("Does this kernel version support 'attach' ?");
 		return -1;
 	}
