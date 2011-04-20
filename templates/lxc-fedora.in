@@ -9,6 +9,7 @@
 
 # Authors:
 # Daniel Lezcano <daniel.lezcano@free.fr>
+# Ramez Hanna <rhanna@informatiq.org>
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -24,117 +25,106 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-DISTRO=fedora-10
+#Configurations
+arch=$(arch)
+cache_base=/var/cache/lxc/fedora/$arch
+default_path=/var/lib/lxc
+root_password=rooter
+lxc_network_type=veth
+lxc_network_link=virbr0
+
+# is this fedora?
+[ -f /etc/fedora-release ] && is_fedora=true
 
 configure_fedora()
 {
-    rootfs=$1
-    hostname=$2
 
     # disable selinux in fedora
-    mkdir -p $rootfs/selinux
-    echo 0 > $rootfs/selinux/enforce
+    mkdir -p $rootfs_path/selinux
+    echo 0 > $rootfs_path/selinux/enforce
 
    # configure the network using the dhcp
-    cat <<EOF > $rootfs/etc/network/interfaces
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet dhcp
+    cat <<EOF > ${rootfs_path}/etc/sysconfig/network-scripts/ifcfg-eth0
+DEVICE=eth0
+BOOTPROTO=dhcp
+ONBOOT=yes
+HOSTNAME=${UTSNAME}
+NM_CONTROLLED=no
+TYPE=Ethernet
+MTU=${MTU}
 EOF
 
     # set the hostname
-    cat <<EOF > $rootfs/etc/hostname
-$hostname
+    cat <<EOF > ${rootfs_path}/etc/sysconfig/network
+NETWORKING=yes
+HOSTNAME=${UTSNAME}
 EOF
+
     # set minimal hosts
-    cat <<EOF > $rootfs/etc/hosts
-127.0.0.1 localhost $hostname
+    cat <<EOF > $rootfs_path/etc/hosts
+127.0.0.1 localhost $name
 EOF
 
-    # provide the lxc service
-    cat <<EOF > $rootfs/etc/init/lxc.conf
-# fake some events needed for correct startup other services
+    sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.sysinit
+    sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.d/rc.sysinit
+    chroot ${rootfs_path} chkconfig udev-post off
+    chroot ${rootfs_path} chkconfig network on
 
-description     "Container Upstart"
+    dev_path="${rootfs_path}/dev"
+    rm -rf $dev_path
+    mkdir -p $dev_path
+    mknod -m 666 ${dev_path}/null c 1 3
+    mknod -m 666 ${dev_path}/zero c 1 5
+    mknod -m 666 ${dev_path}/random c 1 8
+    mknod -m 666 ${dev_path}/urandom c 1 9
+    mkdir -m 755 ${dev_path}/pts
+    mkdir -m 1777 ${dev_path}/shm
+    mknod -m 666 ${dev_path}/tty c 5 0
+    mknod -m 666 ${dev_path}/tty0 c 4 0
+    mknod -m 666 ${dev_path}/tty1 c 4 1
+    mknod -m 666 ${dev_path}/tty2 c 4 2
+    mknod -m 666 ${dev_path}/tty3 c 4 3
+    mknod -m 666 ${dev_path}/tty4 c 4 4
+    mknod -m 600 ${dev_path}/console c 5 1
+    mknod -m 666 ${dev_path}/full c 1 7
+    mknod -m 600 ${dev_path}/initctl p
+    mknod -m 666 ${dev_path}/ptmx c 5 2
 
-start on startup
-
-script
-        rm -rf /var/run/*.pid
-        rm -rf /var/run/network/*
-        /sbin/initctl emit stopped JOB=udevtrigger --no-wait
-        /sbin/initctl emit started JOB=udev --no-wait
-end script
-EOF
-
-    cat <<EOF > $rootfs/etc/init/console.conf
-# console - getty
-#
-# This service maintains a console on tty1 from the point the system is
-# started until it is shut down again.
-
-start on stopped rc RUNLEVEL=[2345]
-stop on runlevel [!2345]
-
-respawn
-exec /sbin/getty -8 38400 /dev/console
-EOF
-
-    cat <<EOF > $rootfs/lib/init/fstab
-# /lib/init/fstab: lxc system fstab
-none            /spu                      spufs           gid=spu,optional                  0 0
-none            /tmp                      none            defaults                          0 0
-none            /var/lock                 tmpfs           nodev,noexec,nosuid,showthrough   0 0
-none            /lib/init/rw              tmpfs           mode=0755,nosuid,optional         0 0
-EOF
-
-    # reconfigure some services
-    if [ -z "$LANG" ]; then
-	chroot $rootfs locale-gen en_US.UTF-8
-	chroot $rootfs update-locale LANG=en_US.UTF-8
-    else
-	chroot $rootfs locale-gen $LANG
-	chroot $rootfs update-locale LANG=$LANG
-    fi
-
-    # remove pointless services in a container
-    chroot $rootfs /usr/sbin/update-rc.d -f ondemand remove
-
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls u*.conf); do mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls tty[2-9].conf); do mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls plymouth*.conf); do mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls hwclock*.conf); do mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls module*.conf); do mv $f $f.orig; done'
-
-    echo "Please change root-password !"
-    echo "root:root" | chroot $rootfs chpasswd
+    echo "setting root passwd to $root_password"
+    echo "root:$root_password" | chroot $rootfs_path chpasswd
 
     return 0
 }
 
 download_fedora()
 {
-    cache=$1
-    arch=$2
 
     # check the mini fedora was not already downloaded
-    mkdir -p "$cache/partial-$arch"
+    INSTALL_ROOT=$cache/partial
+    mkdir -p $INSTALL_ROOT
     if [ $? -ne 0 ]; then
-	echo "Failed to create '$cache/partial-$arch' directory"
+	echo "Failed to create '$INSTALL_ROOT' directory"
 	return 1
     fi
 
     # download a mini fedora into a cache
     echo "Downloading fedora minimal ..."
-    febootstrap $DISTRO $cache/partial-$arch
+    YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
+    PKG_LIST="yum initscripts passwd rsyslog vim-minimal dhclient chkconfig rootfiles policycoreutils"
+    RELEASE_URL="http://ftp.funet.fi/pub/mirrors/fedora.redhat.com/pub/fedora/linux/releases/$release/Everything/x86_64/os/Packages/fedora-release-$release-1.noarch.rpm"
+    curl $RELEASE_URL > $INSTALL_ROOT/fedora-release-$release.noarch.rpm
+
+    mkdir -p $INSTALL_ROOT/var/lib/rpm
+    rpm --root $INSTALL_ROOT  --initdb
+    rpm --root $INSTALL_ROOT -ivh $INSTALL_ROOT/fedora-release-$release.noarch.rpm
+    $YUM install $PKG_LIST
+
     if [ $? -ne 0 ]; then
 	echo "Failed to download the rootfs, aborting."
 	return 1
     fi
 
-    mv "$1/partial-$arch" "$1/rootfs-$arch"
+    mv "$INSTALL_ROOT" "$cache/rootfs"
     echo "Download complete."
 
     return 0
@@ -142,20 +132,23 @@ download_fedora()
 
 copy_fedora()
 {
-    cache=$1
-    arch=$2
-    rootfs=$3
 
     # make a local copy of the minifedora
-    echo -n "Copying rootfs to $rootfs ..."
-    cp -a $cache/rootfs-$arch $rootfs || return 1
+    echo -n "Copying rootfs to $rootfs_path ..."
+    #cp -a $cache/rootfs-$arch $rootfs_path || return 1
+    # i prefer rsync (no reason really)
+    mkdir -p $rootfs_path
+    rsync -a $cache/rootfs/ $rootfs_path/
     return 0
+}
+
+update_fedora()
+{
+    chroot $cache/rootfs yum -y update
 }
 
 install_fedora()
 {
-    cache="/var/cache/lxc/fedora"
-    rootfs=$1
     mkdir -p /var/lock/subsys/
     (
 	flock -n -x 200
@@ -164,19 +157,25 @@ install_fedora()
 	    return 1
 	fi
 
-	arch=$(arch)
-
-	echo "Checking cache download in $cache/rootfs-$arch ... "
-	if [ ! -e "$cache/rootfs-$arch" ]; then
-	    download_fedora $cache $arch
+	echo "Checking cache download in $cache/rootfs ... "
+	if [ ! -e "$cache/rootfs" ]; then
+	    download_fedora
 	    if [ $? -ne 0 ]; then
 		echo "Failed to download 'fedora base'"
 		return 1
 	    fi
+        else
+	    echo "Cache found. Updating..."
+            update_fedora
+	    if [ $? -ne 0 ]; then
+		echo "Failed to update 'fedora base', continuing with last known good cache"
+            else
+                echo "Update finished"
+	    fi
 	fi
 
-	echo "Copy $cache/rootfs-$arch to $rootfs ... "
-	copy_fedora $cache $arch $rootfs
+	echo "Copy $cache/rootfs to $rootfs_path ... "
+	copy_fedora
 	if [ $? -ne 0 ]; then
 	    echo "Failed to copy rootfs"
 	    return 1
@@ -191,20 +190,21 @@ install_fedora()
 
 copy_configuration()
 {
-    path=$1
-    rootfs=$2
-    name=$3
 
-    cat <<EOF >> $path/config
+    mkdir -p $config_path
+    cat <<EOF >> $config_path/config
 lxc.utsname = $name
-
 lxc.tty = 4
 lxc.pts = 1024
-lxc.rootfs = $rootfs
-lxc.mount  = $path/fstab
-
-lxc.console = /dev/console
-
+lxc.rootfs = $rootfs_path
+lxc.mount  = $config_path/fstab
+#networking
+lxc.network.type = $lxc_network_type
+lxc.network.flags = up
+lxc.network.link = $lxc_network_link
+lxc.network.name = eth0
+lxc.network.mtu = 1500
+#cgroups
 lxc.cgroup.devices.deny = a
 # /dev/null and zero
 lxc.cgroup.devices.allow = c 1:3 rwm
@@ -223,10 +223,10 @@ lxc.cgroup.devices.allow = c 5:2 rwm
 lxc.cgroup.devices.allow = c 254:0 rwm
 EOF
 
-    cat <<EOF > $path/fstab
-proc            $rootfs/proc         proc    nodev,noexec,nosuid 0 0
-sysfs           $rootfs/sys          sysfs defaults  0 0
-EOF
+    cat <<EOF > $config_path/fstab
++proc            $rootfs_path/proc         proc    nodev,noexec,nosuid 0 0
++devpts          $rootfs_path/dev/pts      devpts defaults 0 0
++sysfs           $rootfs_path/sys          sysfs defaults  0 0
 
     if [ $? -ne 0 ]; then
 	echo "Failed to add configuration"
@@ -238,7 +238,6 @@ EOF
 
 clean()
 {
-    cache="/var/cache/lxc/fedora"
 
     if [ ! -e $cache ]; then
 	exit 0
@@ -252,7 +251,7 @@ clean()
 	    exit 1
 	fi
 
-	echo -n "Purging the download cache..."
+	echo -n "Purging the download cache for Fedora-$release..."
 	rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
 	exit 0
 
@@ -262,12 +261,23 @@ clean()
 usage()
 {
     cat <<EOF
-$1 -h|--help -p|--path=<path> --clean
+usage:
+    $1 -n|--name=<container_name>
+        [-p|--path=<path>] [-c|--clean] [-R|--release=<Fedora_release>] [-A|--arch=<arch of the container>]
+        [-h|--help]
+Mandatory args:
+  -n,--name         container name, used to as an identifier for that container from now on
+Optional args:
+  -p,--path         path to where the container rootfs will be created, defaults to /var/lib/lxc. The container config will go under /var/lib/lxc in and case
+  -c,--clean        clean the cache
+  -R,--release      Fedora release for the new container. if the host is Fedora, then it will defaultto the host's release.
+  -A,--arch         NOT USED YET. Define what arch the container will be [i686,x86_64]
+  -h,--help         print this help
 EOF
     return 0
 }
 
-options=$(getopt -o hp:n:c -l help,path:,name:,clean -- "$@")
+options=$(getopt -o hp:n:cR: -l help,path:,name:,clean,release: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -281,6 +291,7 @@ do
 	-p|--path)      path=$2; shift 2;;
 	-n|--name)      name=$2; shift 2;;
 	-c|--clean)     clean=$2; shift 2;;
+        -R|--release)   release=$2; shift 2;;
 	--)             shift 1; break ;;
         *)              break ;;
     esac
@@ -291,15 +302,23 @@ if [ ! -z "$clean" -a -z "$path" ]; then
     exit 0
 fi
 
-type febootstrap
+type yum >/dev/null 2>&1
 if [ $? -ne 0 ]; then
-    echo "'febootstrap' command is missing"
+    echo "'yum' command is missing"
     exit 1
 fi
 
 if [ -z "$path" ]; then
-    echo "'path' parameter is required"
-    exit 1
+    path=$default_path
+fi
+
+if [ -z "$release" ]; then
+    if [ "$is_fedora" ]; then
+        release=$(cat /etc/fedora-release |awk '/^Fedora/ {print $3}')
+    else
+        echo "This is not a fedora host and release missing, use -R|--release to specify release"
+        exit 1
+    fi
 fi
 
 if [ "$(id -u)" != "0" ]; then
@@ -307,21 +326,28 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-rootfs=$path/rootfs
+rootfs_path=$path/$name/rootfs
+config_path=$default_path/$name
+cache=$cache_base/$release
 
-install_fedora $rootfs
+if [ -f $config_path/config ]; then
+    echo "A container with that name exists, chose a different name"
+    exit 1
+fi
+
+install_fedora
 if [ $? -ne 0 ]; then
     echo "failed to install fedora"
     exit 1
 fi
 
-configure_fedora $rootfs $name
+configure_fedora
 if [ $? -ne 0 ]; then
     echo "failed to configure fedora for a container"
     exit 1
 fi
 
-copy_configuration $path $rootfs $name
+copy_configuration
 if [ $? -ne 0 ]; then
     echo "failed write configuration file"
     exit 1
@@ -331,3 +357,5 @@ if [ ! -z $clean ]; then
     clean || exit 1
     exit 0
 fi
+echo "container rootfs and config created"
+echo "container is configured for lxc.network.type=veth and lxc.network.link=virbr0 (which is default if you have libvirt runnig)"
