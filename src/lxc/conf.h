@@ -28,7 +28,7 @@
 
 #include <lxc/list.h>
 
-#include <start.h> /* for lxc_handler */
+#include <lxc/start.h> /* for lxc_handler */
 
 enum {
 	LXC_NET_EMPTY,
