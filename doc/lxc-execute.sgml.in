@@ -51,6 +51,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <command>lxc-execute <replaceable>-n name</replaceable>
 	<optional>-f config_file</optional> <optional>-s KEY=VAL
 	</optional>
+	<optional>--</optional>
 	<replaceable>command</replaceable></command>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -122,6 +123,21 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    Assign value <replaceable>VAL</replaceable> to configuration
 	    variable <replaceable>KEY</replaceable>. This overrides any
 	    assignment done in <replaceable>config_file</replaceable>.
+	  </para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term><option>--</option></term>
+	<listitem>
+	  <para>
+	    Signal the end of options and disables further option
+	    processing. Any arguments after the -- are treated as
+	    arguments.
+	  </para>
+	  <para>
+	    This option is useful when you want to execute, with the
+	    command <command>lxc-execute</command>, a command line
+	    with its own options.
 	  </para>
 	</listitem>
       </varlistentry>
