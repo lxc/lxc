@@ -260,7 +260,6 @@ EOF
 
     cat <<EOF > $path/fstab
 proc            $rootfs/proc         proc    nodev,noexec,nosuid 0 0
-devpts          $rootfs/dev/pts      devpts defaults 0 0
 sysfs           $rootfs/sys          sysfs defaults  0 0
 EOF
 
