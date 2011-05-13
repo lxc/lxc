@@ -799,7 +799,7 @@ static int parse_line(char *buffer, void *data)
 	char *dot;
 	char *key;
 	char *value;
-	int ret = -1;
+	int ret = 0;
 
 	if (lxc_is_line_empty(buffer))
 		return 0;
@@ -815,10 +815,14 @@ static int parse_line(char *buffer, void *data)
 	}
 
 	line += lxc_char_left_gc(line, strlen(line));
-	if (line[0] == '#') {
-		ret = 0;
+
+	/* martian option - ignoring it, the commented lines beginning by '#'
+	 * fall in this case
+	 */
+	if (strncmp(line, "lxc.", 4))
 		goto out;
-	}
+
+	ret = -1;
 
 	dot = strstr(line, "=");
 	if (!dot) {
