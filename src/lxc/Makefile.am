@@ -11,8 +11,7 @@ pkginclude_HEADERS = \
 		conf.h \
 		list.h \
 		log.h \
-		state.h \
-		setns.h
+		state.h
 
 sodir=$(libdir)
 # use PROGRAMS to avoid complains from automake
