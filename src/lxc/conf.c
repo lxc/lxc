@@ -752,6 +752,8 @@ int setup_pivot_root(const struct lxc_rootfs *rootfs)
 
 static int setup_pts(int pts)
 {
+	char target[PATH_MAX];
+
 	if (!pts)
 		return 0;
 
@@ -772,6 +774,9 @@ static int setup_pts(int pts)
 		SYSERROR("failed to symlink '/dev/pts/ptmx'->'/dev/ptmx'");
 		return -1;
 	}
+
+	if (realpath("/dev/ptmx", target) && !strcmp(target, "/dev/pts/ptmx"))
+		goto out;
 
 	/* fallback here, /dev/pts/ptmx exists just mount bind */
 	if (mount("/dev/pts/ptmx", "/dev/ptmx", "none", MS_BIND, 0)) {
