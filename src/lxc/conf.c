@@ -80,6 +80,14 @@ lxc_log_define(lxc_conf, lxc);
 #define MNT_DETACH 2
 #endif
 
+#ifndef MS_RELATIME
+#define MS_RELATIME (1 << 21)
+#endif
+
+#ifndef MS_STRICTATIME
+#define MS_STRICTATIME (1 << 24)
+#endif
+
 #ifndef CAP_SETFCAP
 #define CAP_SETFCAP 31
 #endif
@@ -126,28 +134,32 @@ static  instanciate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
 };
 
 static struct mount_opt mount_opt[] = {
-	{ "defaults",   0, 0              },
-	{ "ro",         0, MS_RDONLY      },
-	{ "rw",         1, MS_RDONLY      },
-	{ "suid",       1, MS_NOSUID      },
-	{ "nosuid",     0, MS_NOSUID      },
-	{ "dev",        1, MS_NODEV       },
-	{ "nodev",      0, MS_NODEV       },
-	{ "exec",       1, MS_NOEXEC      },
-	{ "noexec",     0, MS_NOEXEC      },
-	{ "sync",       0, MS_SYNCHRONOUS },
-	{ "async",      1, MS_SYNCHRONOUS },
-	{ "dirsync",    0, MS_DIRSYNC     },
-	{ "remount",    0, MS_REMOUNT     },
-	{ "mand",       0, MS_MANDLOCK    },
-	{ "nomand",     1, MS_MANDLOCK    },
-	{ "atime",      1, MS_NOATIME     },
-	{ "noatime",    0, MS_NOATIME     },
-	{ "diratime",   1, MS_NODIRATIME  },
-	{ "nodiratime", 0, MS_NODIRATIME  },
-	{ "bind",       0, MS_BIND        },
-	{ "rbind",      0, MS_BIND|MS_REC },
-	{ NULL,         0, 0              },
+	{ "defaults",      0, 0              },
+	{ "ro",            0, MS_RDONLY      },
+	{ "rw",            1, MS_RDONLY      },
+	{ "suid",          1, MS_NOSUID      },
+	{ "nosuid",        0, MS_NOSUID      },
+	{ "dev",           1, MS_NODEV       },
+	{ "nodev",         0, MS_NODEV       },
+	{ "exec",          1, MS_NOEXEC      },
+	{ "noexec",        0, MS_NOEXEC      },
+	{ "sync",          0, MS_SYNCHRONOUS },
+	{ "async",         1, MS_SYNCHRONOUS },
+	{ "dirsync",       0, MS_DIRSYNC     },
+	{ "remount",       0, MS_REMOUNT     },
+	{ "mand",          0, MS_MANDLOCK    },
+	{ "nomand",        1, MS_MANDLOCK    },
+	{ "atime",         1, MS_NOATIME     },
+	{ "noatime",       0, MS_NOATIME     },
+	{ "diratime",      1, MS_NODIRATIME  },
+	{ "nodiratime",    0, MS_NODIRATIME  },
+	{ "bind",          0, MS_BIND        },
+	{ "rbind",         0, MS_BIND|MS_REC },
+	{ "relatime",      0, MS_RELATIME    },
+	{ "norelatime",    1, MS_RELATIME    },
+	{ "strictatime",   0, MS_STRICTATIME },
+	{ "nostrictatime", 1, MS_STRICTATIME },
+	{ NULL,            0, 0              },
 };
 
 static struct caps_opt caps_opt[] = {
