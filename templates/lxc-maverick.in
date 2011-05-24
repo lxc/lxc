@@ -117,14 +117,7 @@ install_ubuntu()
 	    return 1
 	fi
 
-	arch=$(arch)
-	if [ "$arch" == "x86_64" ]; then
-	    arch=amd64
-	fi
-
-	if [ "$arch" == "i686" ]; then
-	    arch=i386
-	fi
+	arch=$(dpkg --print-architecture)
 
 	echo "Checking cache download in $cache/rootfs-$arch ... "
 	if [ ! -e "$cache/rootfs-$arch" ]; then
