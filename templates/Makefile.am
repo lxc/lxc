@@ -6,6 +6,7 @@ templates_SCRIPTS = \
 	lxc-lucid \
 	lxc-maverick \
 	lxc-natty \
+	lxc-oneiric \
 	lxc-fedora \
 	lxc-busybox \
 	lxc-sshd
