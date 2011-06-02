@@ -236,6 +236,11 @@ static int incoming_command_handler(int fd, void *data,
 		return -1;
 	}
 
+	if (fcntl(connection, F_SETFD, FD_CLOEXEC)) {
+		SYSERROR("failed to set close-on-exec on incoming connection");
+		goto out_close;
+	}
+
 	if (setsockopt(connection, SOL_SOCKET,
 		       SO_PASSCRED, &opt, sizeof(opt))) {
 		SYSERROR("failed to enable credential on socket");
