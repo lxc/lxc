@@ -78,6 +78,7 @@ rm -rf %{buildroot}
 %{_bindir}/*
 %attr(4111,root,root) %{_bindir}/lxc-attach
 %attr(4111,root,root) %{_bindir}/lxc-create
+%attr(4111,root,root) %{_bindir}/lxc-clone
 %attr(4111,root,root) %{_bindir}/lxc-start
 %attr(4111,root,root) %{_bindir}/lxc-netstat
 %attr(4111,root,root) %{_bindir}/lxc-unshare

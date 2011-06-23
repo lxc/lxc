@@ -70,6 +70,7 @@ bin_SCRIPTS = \
 	lxc-setuid \
 	lxc-version \
 	lxc-create \
+	lxc-clone \
 	lxc-destroy
 
 bin_PROGRAMS = \

@@ -157,6 +157,7 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-setuid
 	src/lxc/lxc-version
 	src/lxc/lxc-create
+	src/lxc/lxc-clone
 	src/lxc/lxc-destroy
 
 ])

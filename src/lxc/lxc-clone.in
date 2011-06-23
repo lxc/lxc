@@ -1,0 +1,208 @@
+#!/bin/bash
+
+#
+# lxc: linux Container library
+
+# Authors:
+# Serge Hallyn <serge.hallyn@ubuntu.com>
+# Daniel Lezcano <daniel.lezcano@free.fr>
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+usage() {
+    echo "usage: lxc-clone -o <orig> -n <new> [-s] [-h] [-L fssize] [-v vgname]"
+}
+
+help() {
+    usage
+    echo
+    echo "creates a lxc system object."
+    echo
+    echo "Options:"
+    echo "orig        : name of the original container"
+    echo "new         : name of the new container"
+    echo "-s          : make the new rootfs a snapshot of the original"
+    echo "fssize      : size if creating a new fs.  By default, 2G"
+    echo "vgname      : lvm volume group name, lxc by default"
+}
+
+shortoptions='ho:n:sL:v:'
+longoptions='help,orig:,name:,snapshot,fssize,vgname'
+lxc_path=/var/lib/lxc
+bindir=/usr/bin
+snapshot=no
+lxc_size=2G
+lxc_vg=lxc
+
+getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
+if [ $? != 0 ]; then
+    usage
+    exit 1;
+fi
+
+eval set -- "$getopt"
+
+while true; do
+        case "$1" in
+	    -h|--help)
+		help
+		exit 1
+		;;
+	    -s|--snapshot)
+		shift
+		snapshot=yes
+		;;
+	    -o|--orig)
+		shift
+		lxc_orig=$1
+		shift
+		;;
+	    -L|--fssize)
+		shift
+		lxc_size=$1
+		shift
+		;;
+	    -v|--vgname)
+		shift
+		lxc_vg=$1
+		shift
+		;;
+	    -n|--new)
+		shift
+		lxc_new=$1
+		shift
+		;;
+            --)
+		shift
+		break;;
+            *)
+		echo $1
+		usage
+		exit 1
+		;;
+        esac
+done
+
+if [ -z "$lxc_path" ]; then
+    echo "no configuration path defined !"
+    exit 1
+fi
+
+if [ ! -r $lxc_path ]; then
+    echo "configuration path '$lxc_path' not found"
+    exit 1
+fi
+
+if [ -z "$lxc_orig" ]; then
+    echo "no original container name specified"
+    usage
+    exit 1
+fi
+
+if [ -z "$lxc_new" ]; then
+    echo "no new container name specified"
+    usage
+    exit 1
+fi
+
+if [ "$(id -u)" != "0" ]; then
+   echo "This command has to be run as root"
+   exit 1
+fi
+
+if [ ! -r $lxc_path ]; then
+    echo "no configuration path defined !"
+    exit 1
+fi
+
+if [ ! -d "$lxc_path/$lxc_orig" ]; then
+    echo "'$lxc_orig' does not exist"
+    exit 1
+fi
+
+if [ -d "$lxc_path/$lxc_new" ]; then
+    echo "'$lxc_new' already exists"
+    exit 1
+fi
+
+trap "${bindir}/lxc-destroy -n $lxc_new; echo aborted; exit 1" SIGHUP SIGINT SIGTERM
+
+mkdir -p $lxc_path/$lxc_new
+
+echo "Tweaking configuration"
+cp $lxc_path/$lxc_orig/config $lxc_path/$lxc_new/config
+sed -i '/lxc.utsname/d' $lxc_path/$lxc_new/config
+echo "lxc.utsname = $hostname" >> $lxc_path/$lxc_new/config
+
+sed -i '/lxc.mount/d' $lxc_path/$lxc_new/config
+echo "lxc.mount = $lxc_path/$lxc_new/fstab" >> $lxc_path/$lxc_new/config
+
+cp $lxc_path/$lxc_orig/fstab $lxc_path/$lxc_new/fstab
+sed -i "s@$lxc_path/$lxc_orig@$lxc_path/$lxc_new@" $lxc_path/$lxc_new/fstab
+
+echo "Copying rootfs..."
+rootfs=$lxc_path/$lxc_new/rootfs
+# First figure out if the old is a device.  For now we only support
+# lvm devices.
+mounted=0
+sed -i '/lxc.rootfs/d' $lxc_path/$lxc_new/config
+oldroot=`grep lxc.rootfs $lxc_path/$lxc_orig/config | awk -F= '{ print $2 '}`
+if [ -b $oldroot ]; then
+	# this is a device.  If we don't want to snapshot, then mkfs, mount
+	# and rsync.  Trivial but not yet implemented
+	if [ $snapshot == "no" ]; then
+		echo "non-snapshot and non-lvm clone of block device not yet implemented"
+		exit 1
+	fi
+	lvdisplay $oldroot > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		echo "non-snapshot and non-lvm clone of block device not yet implemented"
+		exit 1
+	fi
+	# ok, create a snapshot of the lvm device
+	lvcreate -s -L $lxc_size -n $lxc_new /dev/$lxc_vg/$lxc_orig || exit 1
+	echo "lxc.rootfs = /dev/$lxc_vg/$lxc_new" >> $lxc_path/$lxc_new/config
+	# and mount it so we can tweak it
+	mkdir -p $lxc_path/$lxc_new/rootfs
+	mount /dev/$lxc_vg/$lxc_new $rootfs || { echo "failed to mount new rootfs"; exit 1; }
+	mounted=1
+else
+	cp -a $lxc_path/$lxc_orig/rootfs $lxc_path/$lxc_new/rootfs || return 1
+	echo "lxc.rootfs = $rootfs" >> $lxc_path/$lxc_new/config
+fi
+
+echo "Updating rootfs..."
+hostname=$lxc_new
+
+# so you can 'ssh $hostname.' or 'ssh $hostname.local'
+if [ -f $rootfs/etc/dhcp/dhclient.conf ]; then
+	sed -i "s/send host-name.*$/send host-name $hostname/" $rootfs/etc/dhcp/dhclient.conf
+fi
+
+# set the hostname
+cat <<EOF > $rootfs/etc/hostname
+$hostname
+EOF
+# set minimal hosts
+cat <<EOF > $rootfs/etc/hosts
+127.0.0.1 localhost $hostname
+EOF
+
+# if this was a block device, then umount it now
+if [ $mounted -eq 1 ]; then
+	umount $rootfs
+fi
+
+echo "'$lxc_new' created"
