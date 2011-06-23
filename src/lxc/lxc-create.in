@@ -162,7 +162,7 @@ if [ ! -z $lxc_template ]; then
 	read dummy
     fi
 
-    ${templatedir}/lxc-$lxc_template --path=$lxc_path/$lxc_name --name=$lxc_name
+    ${templatedir}/lxc-$lxc_template --path=$lxc_path/$lxc_name --name=$lxc_name $*
     if [ $? -ne 0 ]; then
 	echo "failed to execute template '$lxc_template'"
 	${bindir}/lxc-destroy -n $lxc_name
