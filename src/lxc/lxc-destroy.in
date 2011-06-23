@@ -75,5 +75,15 @@ if [ ! -d "$lxc_path/$lxc_name" ]; then
     exit 1
 fi
 
+# Deduce the type of rootfs
+# If LVM partition, destroy it.  If anything else, ignore it.  We'll support
+# deletion of others later.
+rootdev=`grep lxc.rootfs $lxc_path/$lxc_name/config | awk -F= '{ print $2 '}`
+if [ -b $rootdev -o -h $rootdev ]; then
+	lvdisplay $rootdev > /dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		lvremove $rootdev
+	fi
+fi
 # recursively remove the container to remove old container configuration
 rm -rf --preserve-root $lxc_path/$lxc_name
