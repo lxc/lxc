@@ -391,6 +391,15 @@ fi
 eval set -- "$options"
 
 release=lucid
+if [ -f /etc/lsb-release ]; then
+    . /etc/lsb-release
+    case "$DISTRIB_CODENAME" in
+        lucid|maverick|natty|oneiric)
+            release=$DISTRIB_CODENAME
+        ;;
+    esac
+fi
+
 bindhome=
 arch=$(arch)
 
