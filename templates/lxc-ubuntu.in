@@ -393,14 +393,24 @@ eval set -- "$options"
 release=lucid
 bindhome=
 arch=$(arch)
+
+# Code taken from debootstrap
+if [ -x /usr/bin/dpkg ] && /usr/bin/dpkg --print-architecture >/dev/null 2>&1; then
+    arch=`/usr/bin/dpkg --print-architecture`
+elif type udpkg >/dev/null 2>&1 && udpkg --print-architecture >/dev/null 2>&1; then
+    arch=`/usr/bin/udpkg --print-architecture`
+else
+    arch=$(arch)
+    if [ "$arch" = "i686" ]; then
+        arch="i386"
+    elif [ "$arch" = "x86_64" ]; then
+        arch="amd64"
+    elif [ "$arch" = "armv7l" ]; then
+        arch="armel"
+    fi
+fi
+
 trim_container=0
-if [ "$arch" == "x86_64" ]; then arch=amd64
-fi
-
-if [ "$arch" == "i686" ]; then
-    arch=i386
-fi
-
 hostarch=$arch
 while true
 do
