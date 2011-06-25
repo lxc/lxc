@@ -1633,7 +1633,7 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 			return -1;
 		}
 
-		DEBUG("move '%s' to '%d'", netdev->link, pid);
+		DEBUG("move '%s' to '%d'", netdev->name, pid);
 	}
 
 	return 0;
