@@ -21,7 +21,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 usage() {
-    echo "usage: lxc-create -n <name> [-f configuration] [-t template] [-h]"
+    echo "usage: lxc-create -n <name> [-f configuration] [-t template] [-h] -- [template_options]"
 }
 
 help() {
@@ -33,6 +33,17 @@ help() {
     echo "name         : name of the container"
     echo "configuration: lxc configuration"
     echo "template     : lxc-template is an accessible template script"
+    if [ -z $lxc_template ]; then
+        echo "for template-specific help, specify a template, for instance:"
+        echo "lxc-create -t ubuntu -h"
+        exit 0
+    fi
+    type ${templatedir}/lxc-$lxc_template >/dev/null
+    echo
+    echo "template-specific help follows: (these options follow '--')"
+    if [ $? -eq 0 ]; then
+        ${templatedir}/lxc-$lxc_template -h
+    fi
 }
 
 shortoptions='hn:f:t:'
