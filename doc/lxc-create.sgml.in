@@ -107,7 +107,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  <para>
 	    'template' is the short name of an existing 'lxc-template'
 	    script that is called by lxc-create,
-	    eg. busybox, debian, fedora, lucid, maverick, natty or sshd.
+	    eg. busybox, debian, fedora, ubuntu or sshd.
 	    Refer to the examples in <filename>@LXCTEMPLATEDIR@</filename>
 	    for details of the expected script structure.
 	  </para>

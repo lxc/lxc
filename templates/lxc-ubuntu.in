@@ -1,0 +1,479 @@
+#!/bin/bash
+
+#
+# template script for generating ubuntu container for LXC
+#
+# This script consolidates and extends the existing lxc ubuntu scripts
+#
+
+# XXX todo: add -lvm option
+
+# Copyright © 2011 Serge Hallyn <serge.hallyn@canonical.com>
+# Copyright © 2010 Wilhelm Meier
+# Author: Wilhelm Meier <wilhelm.meier@fh-kl.de>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2, as
+# published by the Free Software Foundation.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+
+if [ -r /etc/default/lxc ]; then
+    . /etc/default/lxc
+fi
+
+configure_ubuntu()
+{
+    rootfs=$1
+    hostname=$2
+
+   # configure the network using the dhcp
+    cat <<EOF > $rootfs/etc/network/interfaces
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+EOF
+
+    # so you can 'ssh $hostname.' or 'ssh $hostname.local'
+    if [ -f $rootfs/etc/dhcp/dhclient.conf ]; then
+        sed -i "s/<hostname>/$hostname/" $rootfs/etc/dhcp/dhclient.conf
+    elif [ -f $rootfs/etc/dhcp3/dhclient.conf ]; then
+        sed -i "s/<hostname>/$hostname/" $rootfs/etc/dhcp3/dhclient.conf
+    fi
+
+    # set the hostname
+    cat <<EOF > $rootfs/etc/hostname
+$hostname
+EOF
+    # set minimal hosts
+    cat <<EOF > $rootfs/etc/hosts
+127.0.0.1 localhost $hostname
+EOF
+
+    # suppress log level output for udev
+    sed -i "s/=\"err\"/=0/" $rootfs/etc/udev/udev.conf
+
+    # remove jobs for consoles 5 and 6 since we only create 4 consoles in
+    # this template
+    rm -f $rootfs/etc/init/tty{5,6}.conf
+
+    echo "Please change root-password !"
+    echo "root:root" | chroot $rootfs chpasswd
+
+    return 0
+}
+
+download_ubuntu()
+{
+    cache=$1
+    arch=$2
+    release=$3
+
+    if [ $release = "lucid" ]; then
+        packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,dhcp3-client,ssh,lsb-release,gnupg
+    elif [ $release = "maverick" ]; then
+        packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,dhcp3-client,ssh,lsb-release,gnupg,netbase
+    else
+        packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,isc-dhcp-client,isc-dhcp-common,ssh,lsb-release,gnupg,netbase
+    fi
+    echo "installing packages: $packages"
+
+    # check the mini ubuntu was not already downloaded
+    mkdir -p "$cache/partial-$arch"
+    if [ $? -ne 0 ]; then
+        echo "Failed to create '$cache/partial-$arch' directory"
+        return 1
+    fi
+
+    # download a mini ubuntu into a cache
+    echo "Downloading ubuntu $release minimal ..."
+    debootstrap --verbose --variant=minbase --components=main,universe --arch=$arch --include=$packages $release $cache/partial-$arch $MIRROR
+    if [ $? -ne 0 ]; then
+        echo "Failed to download the rootfs, aborting."
+            return 1
+    fi
+
+    mv "$1/partial-$arch" "$1/rootfs-$arch"
+    echo "Download complete."
+
+    return 0
+}
+
+copy_ubuntu()
+{
+    cache=$1
+    arch=$2
+    rootfs=$3
+
+    # make a local copy of the miniubuntu
+    echo -n "Copying rootfs to $rootfs ..."
+    cp -a $cache/rootfs-$arch $rootfs || return 1
+    return 0
+}
+
+install_ubuntu()
+{
+    rootfs=$1
+    release=$2
+    cache="/var/cache/lxc/$release"
+    mkdir -p /var/lock/subsys/
+    (
+	flock -n -x 200
+	if [ $? -ne 0 ]; then
+	    echo "Cache repository is busy."
+	    return 1
+	fi
+
+
+	echo "Checking cache download in $cache/rootfs-$arch ... "
+	if [ ! -e "$cache/rootfs-$arch" ]; then
+	    download_ubuntu $cache $arch $release
+	    if [ $? -ne 0 ]; then
+		echo "Failed to download 'ubuntu $release base'"
+		return 1
+	    fi
+	fi
+
+	echo "Copy $cache/rootfs-$arch to $rootfs ... "
+	copy_ubuntu $cache $arch $rootfs
+	if [ $? -ne 0 ]; then
+	    echo "Failed to copy rootfs"
+	    return 1
+	fi
+
+	return 0
+
+	) 200>/var/lock/subsys/lxc
+
+    return $?
+}
+
+copy_configuration()
+{
+    path=$1
+    rootfs=$2
+    name=$3
+    arch=$4
+
+    if [ $arch = "i386" ]; then
+        arch="i686"
+    fi
+
+    cat <<EOF >> $path/config
+lxc.utsname = $name
+
+lxc.tty = 4
+lxc.pts = 1024
+lxc.rootfs = $rootfs
+lxc.mount  = $path/fstab
+lxc.arch = $arch
+
+lxc.cgroup.devices.deny = a
+# /dev/null and zero
+lxc.cgroup.devices.allow = c 1:3 rwm
+lxc.cgroup.devices.allow = c 1:5 rwm
+# consoles
+lxc.cgroup.devices.allow = c 5:1 rwm
+lxc.cgroup.devices.allow = c 5:0 rwm
+#lxc.cgroup.devices.allow = c 4:0 rwm
+#lxc.cgroup.devices.allow = c 4:1 rwm
+# /dev/{,u}random
+lxc.cgroup.devices.allow = c 1:9 rwm
+lxc.cgroup.devices.allow = c 1:8 rwm
+lxc.cgroup.devices.allow = c 136:* rwm
+lxc.cgroup.devices.allow = c 5:2 rwm
+# rtc
+lxc.cgroup.devices.allow = c 254:0 rwm
+EOF
+
+    cat <<EOF > $path/fstab
+proc            $rootfs/proc         proc    nodev,noexec,nosuid 0 0
+devpts          $rootfs/dev/pts      devpts defaults 0 0
+sysfs           $rootfs/sys          sysfs defaults  0 0
+EOF
+
+    if [ $? -ne 0 ]; then
+	echo "Failed to add configuration"
+	return 1
+    fi
+
+    return 0
+}
+
+trim()
+{
+    rootfs=$1
+    release=$2
+
+    # provide the lxc service
+    cat <<EOF > $rootfs/etc/init/lxc.conf
+# fake some events needed for correct startup other services
+
+description     "Container Upstart"
+
+start on startup
+
+script
+        rm -rf /var/run/*.pid
+        rm -rf /var/run/network/*
+        /sbin/initctl emit stopped JOB=udevtrigger --no-wait
+        /sbin/initctl emit started JOB=udev --no-wait
+end script
+EOF
+
+    # fix buggus runlevel with sshd
+    cat <<EOF > $rootfs/etc/init/ssh.conf
+# ssh - OpenBSD Secure Shell server
+#
+# The OpenSSH server provides secure shell access to the system.
+
+description	"OpenSSH server"
+
+start on filesystem
+stop on runlevel [!2345]
+
+expect fork
+respawn
+respawn limit 10 5
+umask 022
+# replaces SSHD_OOM_ADJUST in /etc/default/ssh
+oom never
+
+pre-start script
+    test -x /usr/sbin/sshd || { stop; exit 0; }
+    test -e /etc/ssh/sshd_not_to_be_run && { stop; exit 0; }
+    test -c /dev/null || { stop; exit 0; }
+
+    mkdir -p -m0755 /var/run/sshd
+end script
+
+# if you used to set SSHD_OPTS in /etc/default/ssh, you can change the
+# 'exec' line here instead
+exec /usr/sbin/sshd
+EOF
+
+    cat <<EOF > $rootfs/etc/init/console.conf
+# console - getty
+#
+# This service maintains a console on tty1 from the point the system is
+# started until it is shut down again.
+
+start on stopped rc RUNLEVEL=[2345]
+stop on runlevel [!2345]
+
+respawn
+exec /sbin/getty -8 38400 /dev/console
+EOF
+
+    cat <<EOF > $rootfs/lib/init/fstab
+# /lib/init/fstab: cleared out for bare-bones lxc
+EOF
+
+    # reconfigure some services
+    if [ -z "$LANG" ]; then
+	chroot $rootfs locale-gen en_US.UTF-8
+	chroot $rootfs update-locale LANG=en_US.UTF-8
+    else
+	chroot $rootfs locale-gen $LANG
+	chroot $rootfs update-locale LANG=$LANG
+    fi
+
+    # remove pointless services in a container
+    chroot $rootfs /usr/sbin/update-rc.d -f ondemand remove
+
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls u*.conf); do mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls tty[2-9].conf); do mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls plymouth*.conf); do mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls hwclock*.conf); do mv $f $f.orig; done'
+    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls module*.conf); do mv $f $f.orig; done'
+
+    # if this isn't lucid, then we need to twiddle the network upstart bits :(
+    if [ $release != "lucid" ]; then
+        sed -i 's/^.*emission handled.*$/echo Emitting lo/' $rootfs/etc/network/if-up.d/upstart
+    fi
+}
+
+post_process()
+{
+    rootfs=$1
+    release=$2
+    trim_container=$3
+
+    if [ $trim_container -eq 1 ]; then
+        trim $rootfs $release
+    else
+        # for lucid and maverick, if not trimming, then add the ubuntu-virt
+        # ppa and install lxcguest
+        if [ $release = "lucid" -o $release = "maverick" ]; then
+            chroot $rootfs apt-get install --force-yes -y python-software-properties
+            chroot $rootfs add-apt-repository ppa:ubuntu-virt/ppa
+            chroot $rootfs apt-get update
+        fi
+        chroot $rootfs apt-get install --force-yes -y lxcguest
+    fi
+}
+
+do_bindhome()
+{
+    rootfs=$1
+    user=$2
+
+    # bind-mount the user's path into the container's /home
+    h=`getent passwd $user | cut -d: -f 6`
+    mkdir -p $rootfs/$h
+    echo "$h $rootfs/$h none bind 0 0" >> $path/fstab
+
+    # copy /etc/passwd, /etc/shadow, and /etc/group entries into container
+    pwd=`getent passwd $user`
+    if [ $? -ne 0 ]; then
+        echo 'Warning: failed to copy password entry for $user'
+    else
+        echo $pwd >> $rootfs/etc/passwd
+    fi
+    shad=`getent shadow $user`
+    echo $shad >> $rootfs/etc/shadow
+    for g in `groups $user | cut -d: -f 2-`; do
+        chroot $rootfs adduser $user $g
+    done
+}
+
+clean()
+{
+    release=$1
+    cache="/var/cache/lxc/$release"
+
+    if [ ! -e $cache ]; then
+	exit 0
+    fi
+
+    # lock, so we won't purge while someone is creating a repository
+    (
+	flock -n -x 200
+	if [ $? != 0 ]; then
+	    echo "Cache repository is busy."
+	    exit 1
+	fi
+
+	echo -n "Purging the download cache..."
+	rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
+	exit 0
+
+    ) 200>/var/lock/subsys/lxc
+}
+
+usage()
+{
+    cat <<EOF
+$1 -h|--help -p|--path=<path> --clean [-a|--arch] [-b|--bindhome <user>] [--trim] [-r|--release]
+release: lucid | maverick | natty | oneiric
+trim: make a minimal (faster, but not upgrade-safe) container
+bindhome: bind <user>'s home into the container
+arch: amd64 or i386: defaults to host arch
+EOF
+    return 0
+}
+
+options=$(getopt -o a:b:hp:r:xn:c -l arch:,bindhome:,help,path:,release:,trim,name:,clean -- "$@")
+if [ $? -ne 0 ]; then
+    usage $(basename $0)
+    exit 1
+fi
+eval set -- "$options"
+
+release=lucid
+bindhome=
+arch=$(arch)
+trim_container=0
+if [ "$arch" == "x86_64" ]; then arch=amd64
+fi
+
+if [ "$arch" == "i686" ]; then
+    arch=i386
+fi
+
+hostarch=$arch
+while true
+do
+    case "$1" in
+    -h|--help)      usage $0 && exit 0;;
+    -p|--path)      path=$2; shift 2;;
+    -n|--name)      name=$2; shift 2;;
+    -c|--clean)     clean=$2; shift 2;;
+    -r|--release)   release=$2; shift 2;;
+    -b|--bindhome)  bindhome=$2; shift 2;;
+    -a|--arch)      arch=$2; shift 2;;
+    -x|--trim)      trim_container=1; shift 1;;
+    --)             shift 1; break ;;
+        *)              break ;;
+    esac
+done
+
+if [ "$arch" == "i686" ]; then
+    arch=i386
+fi
+
+if [ ! -z "$clean" -a -z "$path" ]; then
+    clean || exit 1
+    exit 0
+fi
+
+if [ $hostarch = "i386" -a $arch = "amd64" ]; then
+    echo "can't create amd64 container on i386"
+    exit 1
+fi
+
+type debootstrap
+if [ $? -ne 0 ]; then
+    echo "'debootstrap' command is missing"
+    exit 1
+fi
+
+if [ -z "$path" ]; then
+    echo "'path' parameter is required"
+    exit 1
+fi
+
+if [ "$(id -u)" != "0" ]; then
+    echo "This script should be run as 'root'"
+    exit 1
+fi
+
+rootfs=$path/rootfs
+
+install_ubuntu $rootfs $release
+if [ $? -ne 0 ]; then
+    echo "failed to install ubuntu $release"
+    exit 1
+fi
+
+configure_ubuntu $rootfs $name
+if [ $? -ne 0 ]; then
+    echo "failed to configure ubuntu $release for a container"
+    exit 1
+fi
+
+copy_configuration $path $rootfs $name $arch
+if [ $? -ne 0 ]; then
+    echo "failed write configuration file"
+    exit 1
+fi
+
+post_process $rootfs $release $trim_container
+if [ ! -z $bindhome ]; then
+	do_bindhome $rootfs $bindhome
+fi
+
+if [ ! -z $clean ]; then
+    clean $release || exit 1
+    exit 0
+fi
