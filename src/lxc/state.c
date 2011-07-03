@@ -71,7 +71,7 @@ static int freezer_state(const char *name)
 	FILE *file;
 	int err;
 
-	err = lxc_cgroup_path_get(&nsgroup, name);
+	err = lxc_cgroup_path_get(&nsgroup, "freezer", name);
 	if (err)
 		return -1;
 

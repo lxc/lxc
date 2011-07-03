@@ -114,22 +114,22 @@ extern lxc_state_t lxc_state(const char *name);
  * Set a specified value for a specified subsystem. The specified
  * subsystem must be fully specified, eg. "cpu.shares"
  * @name      : the name of the container
- * @subsystem : the subsystem
+ * @filename : the cgroup attribute filename
  * @value     : the value to be set
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_cgroup_set(const char *name, const char *subsystem, const char *value);
+extern int lxc_cgroup_set(const char *name, const char *filename, const char *value);
 
 /*
  * Get a specified value for a specified subsystem. The specified
  * subsystem must be fully specified, eg. "cpu.shares"
  * @name      : the name of the container
- * @subsystem : the subsystem
+ * @filename : the cgroup attribute filename
  * @value     : the value to be set
  * @len       : the len of the value variable
  * Returns the number of bytes read, < 0 on error
  */
-extern int lxc_cgroup_get(const char *name, const char *subsystem, 
+extern int lxc_cgroup_get(const char *name, const char *filename,
 			  char *value, size_t len);
 
 /*

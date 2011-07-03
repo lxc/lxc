@@ -45,7 +45,7 @@ static int freeze_unfreeze(const char *name, int freeze)
 	char tmpf[32];
 	int fd, ret;
 	
-	ret = lxc_cgroup_path_get(&nsgroup, name);
+	ret = lxc_cgroup_path_get(&nsgroup, "freezer", name);
 	if (ret)
 		return -1;
 
