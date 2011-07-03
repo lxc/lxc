@@ -140,6 +140,7 @@ AC_CONFIG_FILES([
 	templates/lxc-lenny
 	templates/lxc-debian
 	templates/lxc-ubuntu
+	templates/lxc-opensuse
 	templates/lxc-busybox
 	templates/lxc-fedora
 	templates/lxc-sshd
