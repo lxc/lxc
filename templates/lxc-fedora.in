@@ -111,7 +111,7 @@ download_fedora()
     echo "Downloading fedora minimal ..."
     YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
     PKG_LIST="yum initscripts passwd rsyslog vim-minimal dhclient chkconfig rootfiles policycoreutils"
-    RELEASE_URL="http://ftp.funet.fi/pub/mirrors/fedora.redhat.com/pub/fedora/linux/releases/$release/Everything/x86_64/os/Packages/fedora-release-$release-1.noarch.rpm"
+    RELEASE_URL="http://ftp.funet.fi/pub/mirrors/fedora.redhat.com/pub/fedora/linux/releases/$release/Everything/$arch/os/Packages/fedora-release-$release-1.noarch.rpm"
     curl $RELEASE_URL > $INSTALL_ROOT/fedora-release-$release.noarch.rpm
 
     mkdir -p $INSTALL_ROOT/var/lib/rpm
