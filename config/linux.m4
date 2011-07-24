@@ -65,6 +65,7 @@ AC_DEFUN([AC_LINUX_SRCARCH],[
 	x86_64-*) LINUX_SRCARCH=x86;;
 	powerpc*-*) LINUX_SRCARCH=powerpc;;
 	s390*-*) LINUX_SRCARCH=s390;;
+	arm*-*) LINUX_SRCARCH=arm;;
 	*) AC_MSG_ERROR([architecture ${host} not supported]);;
 	esac
 
