@@ -37,7 +37,7 @@ our %LXC_NAMES;       # Specified container names (if any)
 
 sub get_container_names {
 	my $ref_names = shift;
-	my $lxcpath='@LXCPATH@';
+	my $lxcpath = '@LXCPATH@';
 
 	open(active, "netstat -xa | grep $lxcpath |") or return;
 	while(<active>) {
@@ -112,13 +112,18 @@ sub get_container {
     my $pid = shift;
     my $filename = "/proc/$pid/cgroup";
     open(LXC, "$filename");
-    my $container = <LXC>;
+    # read all lines at once
+    my @cgroup = <LXC>;
     close LXC;
-    chomp($container);
-    if ($container =~ m/[:,]ns[:,]/o) {
-    	$container =~ s/.*:\///o;
-    } else {
-	$container ='';
+    my $container = '';
+    foreach ( @cgroup ) {
+        chomp;
+        # find the container name
+        if (m/[:,]ns[:,]/o) {
+	    # container name after :/
+	    s/.*:\///o;
+            $container = $_;
+        }
     }
     return $container;
 }
