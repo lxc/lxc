@@ -343,9 +343,6 @@ do_bindhome()
     fi
     shad=`getent shadow $user`
     echo $shad >> $rootfs/etc/shadow
-    for g in `groups $user | cut -d: -f 2-`; do
-        chroot $rootfs adduser $user $g
-    done
 }
 
 clean()
