@@ -170,6 +170,15 @@ static int utmp_get_runlevel(struct lxc_utmp *utmp_data)
 	char path[MAXPATHLEN];
 	struct lxc_handler *handler = utmp_data->handler;
 
+	if (snprintf(path, MAXPATHLEN, "/proc/%d/root/run/utmp",
+		     handler->pid) > MAXPATHLEN) {
+		ERROR("path is too long");
+		return -1;
+	}
+
+	if (!access(path, F_OK) && !utmpxname(path))
+		goto utmp_ok;
+
 	if (snprintf(path, MAXPATHLEN, "/proc/%d/root/var/run/utmp",
 		     handler->pid) > MAXPATHLEN) {
 		ERROR("path is too long");
@@ -180,6 +189,8 @@ static int utmp_get_runlevel(struct lxc_utmp *utmp_data)
 		SYSERROR("failed to 'utmpxname'");
 		return -1;
 	}
+
+utmp_ok:
 
 	setutxent();
 
@@ -219,6 +230,7 @@ int lxc_utmp_mainloop_add(struct lxc_epoll_descr *descr,
 			  struct lxc_handler *handler)
 {
 	char path[MAXPATHLEN];
+	char path2[MAXPATHLEN];
 	int fd, wd;
 	struct lxc_utmp *utmp_data;
 	struct lxc_conf *conf = handler->conf;
@@ -230,6 +242,19 @@ int lxc_utmp_mainloop_add(struct lxc_epoll_descr *descr,
 	 * in utmp at the moment, but want to watch for delete and create
 	 * events as well.
 	 */
+	if (snprintf(path, MAXPATHLEN, "/proc/%d/root/run",
+		     handler->pid) > MAXPATHLEN) {
+		ERROR("path is too long");
+		return -1;
+	}
+	if (snprintf(path2, MAXPATHLEN, "/proc/%d/root/run/utmp",
+		     handler->pid) > MAXPATHLEN) {
+		ERROR("path is too long");
+		return -1;
+	}
+	if (!access(path2, F_OK))
+		goto run_ok;
+
 	if (snprintf(path, MAXPATHLEN, "/proc/%d/root/var/run",
 		     handler->pid) > MAXPATHLEN) {
 		ERROR("path is too long");
@@ -240,6 +265,8 @@ int lxc_utmp_mainloop_add(struct lxc_epoll_descr *descr,
 		WARN("'%s' not found", path);
 		return 0;
 	}
+
+run_ok:
 
 	utmp_data = (struct lxc_utmp *)malloc(sizeof(struct lxc_utmp));
 
