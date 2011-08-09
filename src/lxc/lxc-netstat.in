@@ -60,6 +60,16 @@ for i in "$cgroups"; do
 done
 
 if [ -z "$cgroup_path" ]; then
+	cgroups=`grep -m1 -E '^[^ \t]+[ \t]+[^ \t]+[ \t]+cgroup' /proc/self/mounts`
+	for i in "$cgroups"; do
+	    cgroup_path=$(echo $i | awk ' { print $2 } ')
+	    if [ -n $cgroup_path ]; then
+		break;
+	    fi
+	done
+fi
+
+if [ -z "$cgroup_path" ]; then
     echo "no cgroup mount point found"
     exit 1
 fi
