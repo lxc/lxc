@@ -62,8 +62,17 @@ echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
 echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
 echo
 echo "--- Control groups ---"
+
+CGROUP_MNT_PATH=$(grep -m1 "^cgroup" /proc/self/mounts | awk '{ print $2 }')
+
 echo -n "Cgroup: " && is_enabled CONFIG_CGROUPS yes
-echo -n "Cgroup namespace: " && is_enabled CONFIG_CGROUP_NS
+
+if [ -f $CGROUP_MNT_PATH/cgroup.clone_children ]; then
+    echo -n "Cgroup clone_children flag: " &&
+    $SETCOLOR_SUCCESS && echo -e "enabled" && $SETCOLOR_NORMAL
+else
+    echo -n "Cgroup namespace: " && is_enabled CONFIG_CGROUP_NS yes
+fi
 echo -n "Cgroup device: " && is_enabled CONFIG_CGROUP_DEVICE
 echo -n "Cgroup sched: " && is_enabled CONFIG_CGROUP_SCHED
 echo -n "Cgroup cpu account: " && is_enabled CONFIG_CGROUP_CPUACCT
