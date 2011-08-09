@@ -372,7 +372,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  <listitem>
 	    <para>
 	      Specify a path to a file where the console output will
-	      be written.
+	      be written. The keyword 'none' will simply disable the
+	      console. This is dangerous once if have a rootfs with a
+	      console device file where the application can write, the
+	      messages will fall in the host.
 	    </para>
 	  </listitem>
 	</varlistentry>
