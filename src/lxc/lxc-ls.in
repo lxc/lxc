@@ -10,12 +10,16 @@ function get_cgroup()
 {
 	local mount_string
 	mount_string=$(mount -t cgroup |grep -E -e '^lxc ')
-	if test -z "$mount_string"; then
-		mount_string=$(mount |grep -m1 'type cgroup')
-	fi
 	if test -n "$mount_string"; then
 		mount_point=$(echo $mount_string |cut -d' ' -f3)
+		return
 	fi
+	mount_string=`grep -m1 -E '^[^ \t]+[ \t]+[^ \t]+[ \t]+cgroup' /proc/self/mounts`;
+	if test -z "$mount_string"; then
+		echo "failed to find mounted cgroup"
+		exit 1
+	fi
+	mount_point=`echo "$mount_string" |cut -d' ' -f2`;
 }
 
 ls "$@" $lxcpath
