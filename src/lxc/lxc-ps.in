@@ -134,7 +134,7 @@ sub display_headers {
 
 sub display_usage {
     print <<EOF;
-Usage: lxc-ps [--help] [--usage] [--name NAME...] [--lxc] [ps options]
+Usage: lxc-ps [--help] [--usage] [-n|--name NAME...] [--lxc] [-- ps options]
 EOF
 }
 
@@ -157,7 +157,7 @@ or try a 'ps --help' for further details.
 EOF
 }
 
-use Getopt::Long qw(:config no_auto_abbrev pass_through);
+use Getopt::Long qw(:config pass_through);
 
 my $arg_help  = '';
 my $arg_usage = '';
@@ -174,6 +174,10 @@ GetOptions('help'   => \$arg_help,
 # Some help
 if ($arg_help)  {display_help; exit 0;}
 if ($arg_usage) {display_usage; exit 0;}
+
+if ($ARGV[0] == '--') {
+	shift @ARGV;
+}
 
 # Should we filter processes related to containers
 if ($arg_lxc) {
