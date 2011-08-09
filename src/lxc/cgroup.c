@@ -82,6 +82,13 @@ static int get_cgroup_mount(const char *subsystem, char *mnt)
 	return -1;
 }
 
+int lxc_ns_is_mounted(void)
+{
+	static char        buf[MAXPATHLEN];
+
+	return (get_cgroup_mount("ns", buf) == 0);
+}
+
 static int get_cgroup_flags(struct mntent *mntent)
 {
 	int flags = 0;
