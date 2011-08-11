@@ -515,10 +515,11 @@ static int config_personality(const char *key, char *value,
 		{ "x86_64", PER_LINUX },
 		{ "amd64", PER_LINUX },
 	};
+	size_t len = sizeof(pername) / sizeof(pername[0]);
 
 	int i;
 
-	for (i = 0; i < sizeof(pername); i++) {
+	for (i = 0; i < len; i++) {
 
 		if (strcmp(pername[i].name, value))
 		    continue;
