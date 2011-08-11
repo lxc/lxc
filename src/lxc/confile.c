@@ -525,11 +525,13 @@ static int config_personality(const char *key, char *value,
 		    continue;
 
 		lxc_conf->personality = pername[i].per;
+
 		return 0;
 	}
 
-	ERROR("unsupported personality '%s'", value);
-	return -1;
+	WARN("unsupported personality '%s'", value);
+
+	return 0;
 }
 
 static int config_pts(const char *key, char *value, struct lxc_conf *lxc_conf)
