@@ -43,13 +43,13 @@ struct clone_arg {
 	void *arg;
 };
 
-int setns(int nstype, int fd)
+int setns(int fd, int nstype)
 {
 #ifndef __NR_setns
 	errno = ENOSYS;
 	return -1;
 #else
-	return syscall(__NR_setns, nstype, fd);
+	return syscall(__NR_setns, fd, nstype);
 #endif
 }
 
@@ -106,7 +106,7 @@ int lxc_attach(pid_t pid)
 	}
 
 	for (i = 0; i < size; i++) {
-		if (setns(0, fd[i])) {
+		if (setns(fd[i], 0)) {
 			SYSERROR("failed to set namespace '%s'", ns[i]);
 			return -1;
 		}
