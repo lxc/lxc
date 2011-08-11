@@ -118,12 +118,9 @@ sub get_container {
     my $container = '';
     foreach ( @cgroup ) {
         chomp;
-        # find the container name
-        if (m/[:,]ns[:,]/o) {
-	    # container name after :/
-	    s/.*:\///o;
-            $container = $_;
-        }
+        # find the container name after :/
+	s/.*:\///o;
+	$container = $_;
     }
     return $container;
 }
