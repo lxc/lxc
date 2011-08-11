@@ -110,8 +110,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</term>
 	<listitem>
 	  <para>
-	    The option passed to <command>lxc-ps</command> are the
-	    same as the <command>ps</command> command.
+	    The <command>ps</command> options must be separated
+	    from <command>lxc-ps</command> options by
+	    the <option>--</option> parameter.
 	  </para>
 	</listitem>
       </varlistentry>
@@ -124,7 +125,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <title>Example</title>
     <variablelist>
       <varlistentry>
-	<term>lxc-ps --name foo --forest</term>
+	<term>lxc-ps --name foo -- --forest</term>
 	<listitem>
 	<para>
 	  list all the processes belonging to container 'foo' and show
