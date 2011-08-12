@@ -99,7 +99,7 @@ download_ubuntu()
 
     # download a mini ubuntu into a cache
     echo "Downloading ubuntu $release minimal ..."
-    debootstrap --verbose --variant=minbase --components=main,universe --arch=$arch --include=$packages $release $cache/partial-$arch $MIRROR
+    debootstrap --verbose --components=main,universe --arch=$arch --include=$packages $release $cache/partial-$arch $MIRROR
     if [ $? -ne 0 ]; then
         echo "Failed to download the rootfs, aborting."
             return 1
