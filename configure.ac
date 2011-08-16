@@ -143,6 +143,7 @@ AC_CONFIG_FILES([
 	templates/lxc-opensuse
 	templates/lxc-busybox
 	templates/lxc-fedora
+	templates/lxc-altlinux
 	templates/lxc-sshd
 
 	src/Makefile

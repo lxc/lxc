@@ -6,5 +6,6 @@ templates_SCRIPTS = \
 	lxc-ubuntu \
 	lxc-opensuse \
 	lxc-fedora \
+	lxc-altlinux \
 	lxc-busybox \
 	lxc-sshd

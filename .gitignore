@@ -30,6 +30,7 @@ templates/lxc-maverick
 templates/lxc-natty
 templates/lxc-oneiric
 templates/lxc-fedora
+templates/lxc-altlinux
 templates/lxc-sshd
 templates/lxc-busybox
 
