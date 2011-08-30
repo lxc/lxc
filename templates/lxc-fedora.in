@@ -316,8 +316,7 @@ if [ -z "$release" ]; then
     if [ "$is_fedora" ]; then
         release=$(cat /etc/fedora-release |awk '/^Fedora/ {print $3}')
     else
-        echo "This is not a fedora host and release missing, use -R|--release to specify release"
-        exit 1
+        echo "This is not a fedora host and release missing, defaulting to 14. use -R|--release to specify release"
     fi
 fi
 
@@ -326,12 +325,32 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
+
 rootfs_path=$path/$name/rootfs
 config_path=$default_path/$name
 cache=$cache_base/$release
 
 if [ -f $config_path/config ]; then
     echo "A container with that name exists, chose a different name"
+    exit 1
+fi
+
+revert()
+{
+    echo "Interrupted, so cleaning up"
+    lxc-destroy -n $name
+    # maybe was interrupted before copy config
+    rm -rf $path/$name
+    rm -rf $default_path/$name
+    echo "exiting..."
+    exit 1
+}
+
+trap revert SIGHUP SIGINT SIGTERM
+
+copy_configuration
+if [ $? -ne 0 ]; then
+    echo "failed write configuration file"
     exit 1
 fi
 
@@ -347,11 +366,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-copy_configuration
-if [ $? -ne 0 ]; then
-    echo "failed write configuration file"
-    exit 1
-fi
 
 if [ ! -z $clean ]; then
     clean || exit 1
