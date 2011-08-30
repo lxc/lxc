@@ -198,9 +198,14 @@ if [ -b $oldroot ]; then
         if [ $container_running == "True" ]; then
             lxc-freeze -n $lxc_orig
         fi
-	lvcreate -s -L $lxc_size -n ${lxc_lv_prefix}${lxc_new}_snapshot $oldroot || exit 1
+	lvcreate -s -L $lxc_size -n ${lxc_lv_prefix}${lxc_new}_snapshot $oldroot
+        RETVAL=$?
         if [ $container_running == "True" ]; then
             lxc-unfreeze -n $lxc_orig
+        fi
+        if [ $RETVAL -ne 0 ]; then
+            echo "snapshot creation failed"
+            exit 1
         fi
         if [ $snapshot == "no" ]; then
             #mount snapshot
@@ -231,9 +236,14 @@ else
         if [ $container_running == True ];then
             lxc-freeze -n $lxc_orig
         fi
-	rsync -ax $lxc_path/$lxc_orig/rootfs $lxc_path/$lxc_new/rootfs || return 1
+	rsync -ax $lxc_path/$lxc_orig/rootfs $lxc_path/$lxc_new/rootfs
+        RETVAL=$?
         if [ $container_running == True ];then
             lxc-unfreeze -n $lxc_orig
+        fi
+        if [ RETVAL -ne 0 ]; then
+            echo "copying rootfs failed"
+            exit 1
         fi
 	echo "lxc.rootfs = $rootfs" >> $lxc_path/$lxc_new/config
 fi
