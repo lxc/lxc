@@ -300,6 +300,28 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 	<varlistentry>
 	  <term>
+	    <option>lxc.network.ipv4.gateway</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify the ipv4 address to use as the gateway inside the
+	      container. The address is in format x.y.z.t, eg.
+	      192.168.1.123.
+
+	      Can also have the special value <option>auto</option>,
+	      which means to take the primary address from the bridge
+	      interface (as specified by the
+	      <option>lxc.network.link</option> option) and use that as
+	      the gateway. <option>auto</option> is only available when
+	      using the <option>veth</option> and
+	      <option>macvlan</option> network types.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+
+	<varlistentry>
+	  <term>
 	    <option>lxc.network.ipv6</option>
 	  </term>
 	  <listitem>
@@ -308,6 +330,27 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      interface. Several lines specify several ipv6 addresses.
 	      The address is in format x::y/m,
 	      eg. 2003:db8:1:0:214:1234:fe0b:3596/64
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.ipv6.gateway</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify the ipv6 address to use as the gateway inside the
+	      container. The address is in format x::y,
+	      eg. 2003:db8:1:0::1
+
+	      Can also have the special value <option>auto</option>,
+	      which means to take the primary address from the bridge
+	      interface (as specified by the
+	      <option>lxc.network.link</option> option) and use that as
+	      the gateway. <option>auto</option> is only available when
+	      using the <option>veth</option> and
+	      <option>macvlan</option> network types.
 	    </para>
 	  </listitem>
 	</varlistentry>
