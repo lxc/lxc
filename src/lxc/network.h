@@ -84,6 +84,12 @@ extern int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr,
 			     struct in_addr *bcast, int prefix);
 
 /*
+ * Get ip address
+ */
+extern int lxc_ipv4_addr_get(int ifindex, struct in_addr **res);
+extern int lxc_ipv6_addr_get(int ifindex, struct in6_addr **res);
+
+/*
  * Set default route.
  */
 extern int lxc_ipv4_gateway_add(int ifindex, struct in_addr *gw);

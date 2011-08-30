@@ -746,6 +746,163 @@ int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr,
 	return ip_addr_add(AF_INET, ifindex, addr, bcast, NULL, prefix);
 }
 
+/* Find an IFA_LOCAL (or IFA_ADDRESS if not IFA_LOCAL is present)
+ * address from the given RTM_NEWADDR message.  Allocates memory for the
+ * address and stores that pointer in *res (so res should be an
+ * in_addr** or in6_addr**).
+ */
+static int ifa_get_local_ip(int family, struct ip_req *ip_info, void** res) {
+	struct rtattr *rta = IFA_RTA(&ip_info->ifa);
+	int attr_len = IFA_PAYLOAD(&ip_info->nlmsg.nlmsghdr);
+	int addrlen;
+
+	if (ip_info->ifa.ifa_family != family)
+		return 0;
+
+	addrlen = family == AF_INET ? sizeof(struct in_addr) :
+		sizeof(struct in6_addr);
+
+	/* Loop over the rtattr's in this message */
+	while(RTA_OK(rta, attr_len)) {
+		/* Found a local address for the requested interface,
+		 * return it. */
+		if (rta->rta_type == IFA_LOCAL || rta->rta_type == IFA_ADDRESS) {
+			/* Sanity check. The family check above should
+			 * make sure the address length is correct, but
+			 * check here just in case */
+			if (RTA_PAYLOAD(rta) != addrlen)
+				return -1;
+
+			/* We might have found an IFA_ADDRESS before,
+			 * which we now overwrite with an IFA_LOCAL. */
+			if (!*res)
+				*res = malloc(addrlen);
+
+			memcpy(*res, RTA_DATA(rta), addrlen);
+
+			if (rta->rta_type == IFA_LOCAL)
+				break;
+		}
+		rta = RTA_NEXT(rta, attr_len);
+	}
+	return 0;
+}
+
+static int ip_addr_get(int family, int ifindex, void **res)
+{
+	struct nl_handler nlh;
+	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	struct ip_req *ip_req, *ip_info;
+	struct nlmsghdr *msg;
+	int err;
+	int recv_len = 0, answer_len;
+	int readmore = 0;
+
+	err = netlink_open(&nlh, NETLINK_ROUTE);
+	if (err)
+		return err;
+
+	err = -ENOMEM;
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		goto out;
+
+	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!answer)
+		goto out;
+
+	/* Save the answer buffer length, since it will be overwritten
+	 * on the first receive (and we might need to receive more than
+	 * once. */
+	answer_len = answer->nlmsghdr.nlmsg_len;
+
+	ip_req = (struct ip_req *)nlmsg;
+	ip_req->nlmsg.nlmsghdr.nlmsg_len =
+		NLMSG_LENGTH(sizeof(struct ifaddrmsg));
+	ip_req->nlmsg.nlmsghdr.nlmsg_flags = NLM_F_REQUEST|NLM_F_ROOT;
+	ip_req->nlmsg.nlmsghdr.nlmsg_type = RTM_GETADDR;
+	ip_req->ifa.ifa_family = family;
+
+	/* Send the request for addresses, which returns all addresses
+	 * on all interfaces. */
+	err = netlink_send(&nlh, nlmsg);
+	if (err < 0)
+		goto out;
+	err = 0;
+
+	do {
+		/* Restore the answer buffer length, it might have been
+		 * overwritten by a previous receive. */
+		answer->nlmsghdr.nlmsg_len = answer_len;
+
+		/* Get the (next) batch of reply messages */
+		err = netlink_rcv(&nlh, answer);
+		if (err < 0)
+			goto out;
+
+		recv_len = err;
+		err = 0;
+
+		/* Satisfy the typing for the netlink macros */
+		msg = &answer->nlmsghdr;
+
+		while (NLMSG_OK(msg, recv_len)) {
+			/* Stop reading if we see an error message */
+			if (msg->nlmsg_type == NLMSG_ERROR) {
+				struct nlmsgerr *errmsg = (struct nlmsgerr*)NLMSG_DATA(msg);
+				err = errmsg->error;
+				goto out;
+			}
+
+			/* Stop reading if we see a NLMSG_DONE message */
+			if (msg->nlmsg_type == NLMSG_DONE) {
+				readmore = 0;
+				break;
+			}
+
+			if (msg->nlmsg_type != RTM_NEWADDR) {
+				err = -1;
+				goto out;
+			}
+
+			ip_info = (struct ip_req *)msg;
+			if (ip_info->ifa.ifa_index == ifindex) {
+				ifa_get_local_ip(family, ip_info, res);
+				/* Found a result, stop searching */
+				if (*res)
+					goto out;
+			}
+
+			/* Keep reading more data from the socket if the
+			 * last message had the NLF_F_MULTI flag set */
+			readmore = (msg->nlmsg_flags & NLM_F_MULTI);
+
+			/* Look at the next message received in this buffer */
+			msg = NLMSG_NEXT(msg, recv_len);
+		}
+	} while (readmore);
+
+	/* If we end up here, we didn't find any result, so signal an
+	 * error */
+	err = -1;
+
+out:
+	netlink_close(&nlh);
+	nlmsg_free(answer);
+	nlmsg_free(nlmsg);
+	return err;
+}
+
+int lxc_ipv6_addr_get(int ifindex, struct in6_addr **res)
+{
+	return ip_addr_get(AF_INET6, ifindex, (void**)res);
+}
+
+int lxc_ipv4_addr_get(int ifindex, struct in_addr** res)
+{
+	return ip_addr_get(AF_INET, ifindex, (void**)res);
+}
+
 static int ip_gateway_add(int family, int ifindex, void *gw)
 {
 	struct nl_handler nlh;

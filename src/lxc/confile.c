@@ -458,12 +458,18 @@ static int config_network_ipv4_gateway(const char *key, char *value,
 		return -1;
 	}
 
-	if (!inet_pton(AF_INET, value, gw)) {
-		SYSERROR("invalid ipv4 gateway address: %s", value);
-		return -1;
-	}
+	if (!strcmp(value, "auto")) {
+		netdev->ipv4_gateway = NULL;
+		netdev->ipv4_gateway_auto = true;
+	} else {
+		if (!inet_pton(AF_INET, value, gw)) {
+			SYSERROR("invalid ipv4 gateway address: %s", value);
+			return -1;
+		}
 
-	netdev->ipv4_gateway = gw;
+		netdev->ipv4_gateway = gw;
+		netdev->ipv4_gateway_auto = false;
+	}
 
 	return 0;
 }
@@ -536,12 +542,18 @@ static int config_network_ipv6_gateway(const char *key, char *value,
 		return -1;
 	}
 
-	if (!inet_pton(AF_INET6, value, gw)) {
-		SYSERROR("invalid ipv6 gateway address: %s", value);
-		return -1;
-	}
+	if (!strcmp(value, "auto")) {
+		netdev->ipv6_gateway = NULL;
+		netdev->ipv6_gateway_auto = true;
+	} else {
+		if (!inet_pton(AF_INET6, value, gw)) {
+			SYSERROR("invalid ipv6 gateway address: %s", value);
+			return -1;
+		}
 
-	netdev->ipv6_gateway = gw;
+		netdev->ipv6_gateway = gw;
+		netdev->ipv6_gateway_auto = false;
+	}
 
 	return 0;
 }

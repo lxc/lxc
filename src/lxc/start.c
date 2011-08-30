@@ -483,6 +483,16 @@ int lxc_spawn(struct lxc_handler *handler)
 
 		clone_flags |= CLONE_NEWNET;
 
+		/* Find gateway addresses from the link device, which is
+		 * no longer accessible inside the container. Do this
+		 * before creating network interfaces, since goto
+		 * out_delete_net does not work before lxc_clone. */
+		if (lxc_find_gateway_addresses(handler)) {
+			ERROR("failed to find gateway addresses");
+			lxc_sync_fini(handler);
+			return -1;
+		}
+
 		/* that should be done before the clone because we will
 		 * fill the netdev index and use them in the child
 		 */
