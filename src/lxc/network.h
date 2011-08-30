@@ -84,6 +84,12 @@ extern int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr,
 			     struct in_addr *bcast, int prefix);
 
 /*
+ * Set default route.
+ */
+extern int lxc_ipv4_gateway_add(int ifindex, struct in_addr *gw);
+extern int lxc_ipv6_gateway_add(int ifindex, struct in6_addr *gw);
+
+/*
  * Attach an interface to the bridge
  */
 extern int lxc_bridge_attach(const char *bridge, const char *ifname);

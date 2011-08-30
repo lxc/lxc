@@ -63,8 +63,10 @@ static int config_network_hwaddr(const char *, char *, struct lxc_conf *);
 static int config_network_vlan_id(const char *, char *, struct lxc_conf *);
 static int config_network_mtu(const char *, char *, struct lxc_conf *);
 static int config_network_ipv4(const char *, char *, struct lxc_conf *);
+static int config_network_ipv4_gateway(const char *, char *, struct lxc_conf *);
 static int config_network_script(const char *, char *, struct lxc_conf *);
 static int config_network_ipv6(const char *, char *, struct lxc_conf *);
+static int config_network_ipv6_gateway(const char *, char *, struct lxc_conf *);
 static int config_cap_drop(const char *, char *, struct lxc_conf *);
 static int config_console(const char *, char *, struct lxc_conf *);
 
@@ -96,7 +98,9 @@ static struct config config[] = {
 	{ "lxc.network.hwaddr",       config_network_hwaddr       },
 	{ "lxc.network.mtu",          config_network_mtu          },
 	{ "lxc.network.vlan.id",      config_network_vlan_id      },
+	{ "lxc.network.ipv4.gateway", config_network_ipv4_gateway },
 	{ "lxc.network.ipv4",         config_network_ipv4         },
+	{ "lxc.network.ipv6.gateway", config_network_ipv6_gateway },
 	{ "lxc.network.ipv6",         config_network_ipv6         },
 	{ "lxc.cap.drop",             config_cap_drop             },
 	{ "lxc.console",              config_console              },
@@ -433,6 +437,37 @@ static int config_network_ipv4(const char *key, char *value,
 	return 0;
 }
 
+static int config_network_ipv4_gateway(const char *key, char *value,
+			               struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+	struct in_addr *gw;
+
+	netdev = network_netdev(key, value, &lxc_conf->network);
+	if (!netdev)
+		return -1;
+
+	gw = malloc(sizeof(*gw));
+	if (!gw) {
+		SYSERROR("failed to allocate ipv4 gateway address");
+		return -1;
+	}
+
+	if (!value) {
+		ERROR("no ipv4 gateway address specified");
+		return -1;
+	}
+
+	if (!inet_pton(AF_INET, value, gw)) {
+		SYSERROR("invalid ipv4 gateway address: %s", value);
+		return -1;
+	}
+
+	netdev->ipv4_gateway = gw;
+
+	return 0;
+}
+
 static int config_network_ipv6(const char *key, char *value,
 			       struct lxc_conf *lxc_conf)
 {
@@ -476,6 +511,37 @@ static int config_network_ipv6(const char *key, char *value,
 	}
 
 	lxc_list_add(&netdev->ipv6, list);
+
+	return 0;
+}
+
+static int config_network_ipv6_gateway(const char *key, char *value,
+			               struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+	struct in6_addr *gw;
+
+	netdev = network_netdev(key, value, &lxc_conf->network);
+	if (!netdev)
+		return -1;
+
+	gw = malloc(sizeof(*gw));
+	if (!gw) {
+		SYSERROR("failed to allocate ipv6 gateway address");
+		return -1;
+	}
+
+	if (!value) {
+		ERROR("no ipv6 gateway address specified");
+		return -1;
+	}
+
+	if (!inet_pton(AF_INET6, value, gw)) {
+		SYSERROR("invalid ipv6 gateway address: %s", value);
+		return -1;
+	}
+
+	netdev->ipv6_gateway = gw;
 
 	return 0;
 }

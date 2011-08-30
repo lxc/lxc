@@ -114,6 +114,8 @@ struct lxc_netdev {
 	union netdev_p priv;
 	struct lxc_list ipv4;
 	struct lxc_list ipv6;
+	struct in_addr *ipv4_gateway;
+	struct in6_addr *ipv6_gateway;
 	char *upscript;
 };
 

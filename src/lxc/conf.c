@@ -1321,6 +1321,51 @@ static int setup_netdev(struct lxc_netdev *netdev)
 		}
 	}
 
+	/* We can only set up the default routes after bringing
+	 * up the interface, sine bringing up the interface adds
+	 * the link-local routes and we can't add a default
+	 * route if the gateway is not reachable. */
+
+	/* setup ipv4 gateway on the interface */
+	if (netdev->ipv4_gateway) {
+		if (!(netdev->flags & IFF_UP)) {
+			ERROR("Cannot add ipv4 gateway for %s when not bringing up the interface", ifname);
+			return -1;
+		}
+
+		if (lxc_list_empty(&netdev->ipv4)) {
+			ERROR("Cannot add ipv4 gateway for %s when not assigning an address", ifname);
+			return -1;
+		}
+
+		err = lxc_ipv4_gateway_add(netdev->ifindex, netdev->ipv4_gateway);
+		if (err) {
+			ERROR("failed to setup ipv4 gateway for '%s': %s",
+				      ifname, strerror(-err));
+			return -1;
+		}
+	}
+
+	/* setup ipv6 gateway on the interface */
+	if (netdev->ipv6_gateway) {
+		if (!(netdev->flags & IFF_UP)) {
+			ERROR("Cannot add ipv6 gateway for %s when not bringing up the interface", ifname);
+			return -1;
+		}
+
+		if (lxc_list_empty(&netdev->ipv6) && !IN6_IS_ADDR_LINKLOCAL(netdev->ipv6_gateway)) {
+			ERROR("Cannot add ipv6 gateway for %s when not assigning an address", ifname);
+			return -1;
+		}
+
+		err = lxc_ipv6_gateway_add(netdev->ifindex, netdev->ipv6_gateway);
+		if (err) {
+			ERROR("failed to setup ipv6 gateway for '%s': %s",
+				      ifname, strerror(-err));
+			return -1;
+		}
+	}
+
 	DEBUG("'%s' has been setup", current_ifname);
 
 	return 0;
