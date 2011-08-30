@@ -22,7 +22,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 usage() {
-    echo "usage: lxc-clone -o <orig> -n <new> [-s] [-h] [-L fssize] [-v vgname]"
+    echo "usage: lxc-clone -o <orig> -n <new> [-s] [-h] [-L fssize] [-v vgname] [-p lxc_lv_prefix] [-t fstype]"
 }
 
 help() {
@@ -36,15 +36,19 @@ help() {
     echo "-s          : make the new rootfs a snapshot of the original"
     echo "fssize      : size if creating a new fs.  By default, 2G"
     echo "vgname      : lvm volume group name, lxc by default"
+    echo "lvprefix"   : lvm volume name prefix, none by default, e.g. --lvprefix=lxc_ then new lxc lv name will be lxc_newname"
+    echo "fstype"     : new container file system type, ext3 by default (only works for non-snapshot lvm)"
 }
 
-shortoptions='ho:n:sL:v:'
-longoptions='help,orig:,name:,snapshot,fssize,vgname'
+shortoptions='ho:n:sL:v:p:t:'
+longoptions='help,orig:,name:,snapshot,fssize:,vgname:,lvprefix:,fstype:'
 lxc_path=/var/lib/lxc
 bindir=/usr/bin
 snapshot=no
 lxc_size=2G
 lxc_vg=lxc
+lxc_lv_prefix=""
+fstype=ext3
 
 getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
 if [ $? != 0 ]; then
@@ -63,6 +67,7 @@ while true; do
 	    -s|--snapshot)
 		shift
 		snapshot=yes
+                snapshot_opt="-s"
 		;;
 	    -o|--orig)
 		shift
@@ -84,6 +89,11 @@ while true; do
 		lxc_new=$1
 		shift
 		;;
+            -p|--lvprefix)
+                shift
+                lxc_lv_prefix=$1
+                shift
+                ;;
             --)
 		shift
 		break;;
@@ -141,50 +151,92 @@ trap "${bindir}/lxc-destroy -n $lxc_new; echo aborted; exit 1" SIGHUP SIGINT SIG
 
 mkdir -p $lxc_path/$lxc_new
 
+hostname=$lxc_new
+
 echo "Tweaking configuration"
 cp $lxc_path/$lxc_orig/config $lxc_path/$lxc_new/config
 sed -i '/lxc.utsname/d' $lxc_path/$lxc_new/config
 echo "lxc.utsname = $hostname" >> $lxc_path/$lxc_new/config
 
-sed -i '/lxc.mount/d' $lxc_path/$lxc_new/config
-echo "lxc.mount = $lxc_path/$lxc_new/fstab" >> $lxc_path/$lxc_new/config
+grep "lxc.mount =" $lxc_path/$lxc_new/config >/dev/null 2>&1 && { sed -i '/lxc.mount =/d' $lxc_path/$lxc_new/config; echo "lxc.mount = $lxc_path/$lxc_new/fstab" >> $lxc_path/$lxc_new/config; }
 
-cp $lxc_path/$lxc_orig/fstab $lxc_path/$lxc_new/fstab
-sed -i "s@$lxc_path/$lxc_orig@$lxc_path/$lxc_new@" $lxc_path/$lxc_new/fstab
+if [ -e  $lxc_path/$lxc_orig/fstab ];then
+    cp $lxc_path/$lxc_orig/fstab $lxc_path/$lxc_new/fstab
+    sed -i "s@$lxc_path/$lxc_orig@$lxc_path/$lxc_new@" $lxc_path/$lxc_new/fstab
+fi
 
 echo "Copying rootfs..."
 rootfs=$lxc_path/$lxc_new/rootfs
 # First figure out if the old is a device.  For now we only support
 # lvm devices.
 mounted=0
+#is container running
+lxc-info -s -n $lxc_orig|grep RUNNING >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    container_running=True
+fi
 sed -i '/lxc.rootfs/d' $lxc_path/$lxc_new/config
 oldroot=`grep lxc.rootfs $lxc_path/$lxc_orig/config | awk -F= '{ print $2 '}`
 if [ -b $oldroot ]; then
 	# this is a device.  If we don't want to snapshot, then mkfs, mount
 	# and rsync.  Trivial but not yet implemented
-	if [ $snapshot == "no" ]; then
-		echo "non-snapshot and non-lvm clone of block device not yet implemented"
-		exit 1
-	fi
+	#if [ $snapshot == "no" ]; then
+	#	echo "non-snapshot and non-lvm clone of block device not yet implemented"
+	#	exit 1
+	#fi
 	lvdisplay $oldroot > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
-		echo "non-snapshot and non-lvm clone of block device not yet implemented"
-		exit 1
-	fi
+            lvm=False
+            echo "non-lvm block device cloning not yet implemented"
+            exit 1
+        else
+            lvm=TRUE
+        fi
 	# ok, create a snapshot of the lvm device
-	lvcreate -s -L $lxc_size -n $lxc_new /dev/$lxc_vg/$lxc_orig || exit 1
-	echo "lxc.rootfs = /dev/$lxc_vg/$lxc_new" >> $lxc_path/$lxc_new/config
-	# and mount it so we can tweak it
-	mkdir -p $lxc_path/$lxc_new/rootfs
-	mount /dev/$lxc_vg/$lxc_new $rootfs || { echo "failed to mount new rootfs"; exit 1; }
-	mounted=1
+        if [ $container_running == "True" ]; then
+            lxc-freeze -n $lxc_orig
+        fi
+	lvcreate -s -L $lxc_size -n ${lxc_lv_prefix}${lxc_new}_snapshot $oldroot || exit 1
+        if [ $container_running == "True" ]; then
+            lxc-unfreeze -n $lxc_orig
+        fi
+        if [ $snapshot == "no" ]; then
+            #mount snapshot
+            mkdir -p ${rootfs}_snapshot
+            mount /dev/$lxc_vg/${lxc_lv_prefix}${lxc_new}_snapshot ${rootfs}_snapshot || { echo "failed to mount new rootfs_snapshot"; exit 1; }
+            #create a new lv
+            lvcreate -L $lxc_size $lxc_vg -n ${lxc_lv_prefix}$lxc_new
+	    echo "lxc.rootfs = /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new" >> $lxc_path/$lxc_new/config
+	    # and mount it so we can tweak it
+            mkdir -p $lxc_path/$lxc_new/rootfs
+            mkfs -t $fstype /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new
+            mount /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new $rootfs || { echo "failed to mount new rootfs"; exit 1; }
+            mounted=1
+            rsync -ax ${rootfs}_snapshot/ ${rootfs}/ || { echo "copy of data to new lv failed"; exit 1; }
+            umount ${rootfs}_snapshot || { echo "failed to unmount new rootfs_snapshot"; exit 1; }
+            rm -rf ${rootfs}_snapshot
+            lvremove -f $lxc_vg/${lxc_lv_prefix}$lxc_new || echo "failed to remove the snapshot"
+        else
+            lvrename $lxc_vg/${lxc_lv_prefix}}${lxc_new}_snapshot $lxc_vg/${lxc_lv_prefix}$lxc_new
+            echo "lxc.rootfs = /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new" >> $lxc_path/$lxc_new/config
+	    # and mount it so we can tweak it
+            mkdir -p $lxc_path/$lxc_new/rootfs
+            mount /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new $rootfs || { echo "failed to mount new rootfs"; exit 1; }
+            mounted=1
+        fi
+
 else
-	cp -a $lxc_path/$lxc_orig/rootfs $lxc_path/$lxc_new/rootfs || return 1
+        if [ $container_running == True ];then
+            lxc-freeze -n $lxc_orig
+        fi
+	rsync -ax $lxc_path/$lxc_orig/rootfs $lxc_path/$lxc_new/rootfs || return 1
+        if [ $container_running == True ];then
+            lxc-unfreeze -n $lxc_orig
+        fi
 	echo "lxc.rootfs = $rootfs" >> $lxc_path/$lxc_new/config
 fi
 
 echo "Updating rootfs..."
-hostname=$lxc_new
 
 # so you can 'ssh $hostname.' or 'ssh $hostname.local'
 if [ -f $rootfs/etc/dhcp/dhclient.conf ]; then
