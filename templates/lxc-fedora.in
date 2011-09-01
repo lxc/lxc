@@ -330,11 +330,6 @@ rootfs_path=$path/$name/rootfs
 config_path=$default_path/$name
 cache=$cache_base/$release
 
-if [ -f $config_path/config ]; then
-    echo "A container with that name exists, chose a different name"
-    exit 1
-fi
-
 revert()
 {
     echo "Interrupted, so cleaning up"
