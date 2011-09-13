@@ -141,7 +141,6 @@ int lxc_check_inherited(int fd_to_ignore)
 	struct dirent dirent, *direntp;
 	int fd, fddir;
 	DIR *dir;
-	int ret = 0;
 
 	dir = opendir("/proc/self/fd");
 	if (!dir) {
@@ -152,9 +151,6 @@ int lxc_check_inherited(int fd_to_ignore)
 	fddir = dirfd(dir);
 
 	while (!readdir_r(dir, &dirent, &direntp)) {
-		char procpath[64];
-		char path[PATH_MAX];
-
 		if (!direntp)
 			break;
 
@@ -171,22 +167,12 @@ int lxc_check_inherited(int fd_to_ignore)
 
 		if (match_fd(fd))
 			continue;
-		/*
-		 * found inherited fd
-		 */
-		ret = -1;
 
-		snprintf(procpath, sizeof(procpath), "/proc/self/fd/%d", fd);
-
-		if (readlink(procpath, path, sizeof(path)) == -1)
-			ERROR("readlink(%s) failed : %m", procpath);
-		else
-			ERROR("inherited fd %d on %s", fd, path);
+		WARN("inherited fd %d", fd);
 	}
 
-	if (closedir(dir))
-		ERROR("failed to close directory");
-	return ret;
+	closedir(dir); /* cannot fail */
+	return 0;
 }
 
 static int setup_signal_fd(sigset_t *oldmask)
