@@ -186,12 +186,13 @@ copy_configuration()
 {
     path=$1
     rootfs=$2
-    name=$3
+    hostname=$3
 
     cat <<EOF >> $path/config
 lxc.tty = 4
 lxc.pts = 1024
 lxc.rootfs = $rootfs
+lxc.utsname = $hostname
 lxc.cgroup.devices.deny = a
 # /dev/null and zero
 lxc.cgroup.devices.allow = c 1:3 rwm
@@ -307,7 +308,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-copy_configuration $path $rootfs
+copy_configuration $path $rootfs $name
 if [ $? -ne 0 ]; then
     echo "failed write configuration file"
     exit 1
