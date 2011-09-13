@@ -1,6 +1,6 @@
 bindir=@BINDIR@
 libdir=@LIBDIR@
-localstatedir=@LXCPATH@
+localstatedir=@LOCALSTATEDIR@
 includedir=@INCLUDEDIR@
 rootfsmountdir=@LXCROOTFSMOUNT@
 

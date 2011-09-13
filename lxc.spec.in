@@ -44,6 +44,13 @@ or the freeze of the container. This package is useful to create
 Virtual Private Server, or to run isolated applications like bash or
 sshd.
 
+%package        libs
+Summary:        runtime library files for %{name}
+Group:          System Environment/Libraries
+
+%description    libs
+The %{name}-libs package contains libraries for running %{name} applications.
+
 %package devel
 Release: 1
 Summary: development library for %{name}
@@ -57,7 +64,7 @@ development of the linux containers.
 %setup
 %build
 test "%{ksrc}" != "none" && args="--with-linuxdir=%{ksrc}"
-PATH=$PATH:/usr/sbin:/sbin %configure $args
+PATH=$PATH:/usr/sbin:/sbin %configure $args --disable-rpath
 make %{?_smp_mflags}
 
 %install
@@ -72,9 +79,6 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root)
-%{_libdir}/*.so*
-%{_libdir}/%{name}
-%attr(4555,root,root) %{_libdir}/%{name}/lxc-init
 %{_bindir}/*
 %attr(4111,root,root) %{_bindir}/lxc-attach
 %attr(4111,root,root) %{_bindir}/lxc-create
@@ -86,20 +90,28 @@ rm -rf %{buildroot}
 %attr(4111,root,root) %{_bindir}/lxc-checkpoint
 %attr(4111,root,root) %{_bindir}/lxc-restart
 %{_mandir}/*
-%{_datadir}/pkgconfig/*
 %{_datadir}/doc/*
+
+%files libs
+%defattr(-,root,root)
+%{_libdir}/*.so.*
+%{_libdir}/%{name}
+%attr(4555,root,root) %{_libdir}/%{name}/lxc-init
 
 %files devel
 %defattr(-,root,root)
 %{_includedir}/%{name}/*
-%{_libdir}/*.so.*
+%{_libdir}/*.so
+%{_datadir}/pkgconfig/*
 
 %changelog
+* Thu Sep  8 2011 Greg Kurz <gkurz@fr.ibm.com> - Version 0.7.5.1
+- fix installed files for rpmbuild
+- introduce lxc-libs package
 
 * Fri Jul 23 2010 Daniel Lezcano <dlezcano@fr.ibm.com> - Version 0.7.2
 - set attribute for installed files
 - fix libraries installation
--
 
 * Mon Mar 24 2009 Daniel Lezcano <daniel.lezcano@free.fr> - Version 0.6.1
 - Removed capability setting, let the user to do that through "lxc-setcap"

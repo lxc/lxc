@@ -51,7 +51,10 @@ liblxc_so_SOURCES = \
 	\
 	utmp.c utmp.h
 
-AM_CFLAGS=-I$(top_srcdir)/src
+AM_CFLAGS=-I$(top_srcdir)/src \
+	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
+	-DLXCPATH=\"$(LXCPATH)\" \
+	-DLXCINITDIR=\"$(LXCINITDIR)\"
 
 liblxc_so_CFLAGS = -fPIC -DPIC $(AM_CFLAGS)
 
@@ -93,7 +96,10 @@ bin_PROGRAMS = \
 pkglib_PROGRAMS = \
 	lxc-init
 
-AM_LDFLAGS=-Wl,-E -Wl,-rpath -Wl,$(libdir)
+AM_LDFLAGS = -Wl,-E
+if ENABLE_RPATH
+AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
+endif
 LDADD=liblxc.so @CAP_LIBS@
 
 lxc_attach_SOURCES = lxc_attach.c

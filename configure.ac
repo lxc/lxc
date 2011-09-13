@@ -12,6 +12,12 @@ AM_PROG_CC_C_O
 AC_GNU_SOURCE
 AC_CHECK_PROG(SETCAP, setcap, yes, no, $PATH$PATH_SEPARATOR/sbin)
 
+AC_ARG_ENABLE([rpath],
+	[AC_HELP_STRING([--disable-rpath], [do not set rpath in executables])],
+	[], [enable_rpath=yes])
+
+AM_CONDITIONAL([ENABLE_RPATH], [test "x$enable_rpath" = "xyes"])
+
 AC_ARG_ENABLE([doc],
 	[AC_HELP_STRING([--enable-doc], [make mans (require docbook2man installed) [default=auto]])],
 	[], [enable_doc=auto])
@@ -44,26 +50,20 @@ AC_ARG_WITH([config-path],
 	[AC_HELP_STRING(
 		[--with-config-path=dir],
 		[lxc configuration repository path]
-	)], [], [with_config_path="${localstatedir}/lib/lxc"])
+	)], [], [with_config_path=['${localstatedir}/lib/lxc']])
 
 AC_ARG_WITH([rootfs-path],
 	[AC_HELP_STRING(
 		[--with-rootfs-path=dir],
 		[lxc rootfs mount point]
-	)], [], [with_rootfs_path="${libdir}/lxc/rootfs"])
+	)], [], [with_rootfs_path=['${libdir}/lxc/rootfs']])
 
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 
-AS_AC_EXPAND(LXCPATH, "${with_config_path}")
-AS_AC_EXPAND(LXCROOTFSMOUNT, "${with_rootfs_path}")
-AS_AC_EXPAND(LXCINITDIR, $libdir/lxc)
-AS_AC_EXPAND(LXCTEMPLATEDIR, $libdir/lxc/templates)
-AH_TEMPLATE([LXCPATH], [lxc configuration repository])
-AH_TEMPLATE([LXCINITDIR], [lxc-init directory location])
-AH_TEMPLATE([LXCROOTFSMOUNT], [lxc default rootfs mount point])
-AC_DEFINE_UNQUOTED(LXCPATH, "$LXCPATH")
-AC_DEFINE_UNQUOTED(LXCINITDIR, "$LXCINITDIR")
-AC_DEFINE_UNQUOTED(LXCROOTFSMOUNT, "$LXCROOTFSMOUNT")
+AC_SUBST(LXCPATH, "${with_config_path}")
+AC_SUBST(LXCROOTFSMOUNT, "${with_rootfs_path}")
+AC_SUBST(LXCINITDIR, ['${libdir}/lxc'])
+AC_SUBST(LXCTEMPLATEDIR, ['${libdir}/lxc/templates'])
 
 AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h],
 				  [],
