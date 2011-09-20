@@ -50,6 +50,7 @@ shortoptions='hn:f:t:'
 longoptions='help,name:,config:,template:'
 lxc_path=@LXCPATH@
 bindir=@BINDIR@
+libdir=@LIBDIR@
 templatedir=@LXCTEMPLATEDIR@
 
 getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")

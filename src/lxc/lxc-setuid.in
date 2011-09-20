@@ -70,11 +70,13 @@ lxc_dropuid()
     chmod 0755 @LXCPATH@
 }
 
+libdir=@LIBDIR@
+localstatedir=@LOCALSTATEDIR@
+
 if [ "$(id -u)" != "0" ]; then
     echo "You have to be root to run this script"
     exit 1
 fi
-
 
 if [ $? != 0 ]; then
     usage
