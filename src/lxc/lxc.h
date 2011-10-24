@@ -32,6 +32,7 @@ extern "C" {
 
 struct lxc_msg;
 struct lxc_conf;
+struct lxc_arguments;
 
 /**
  Following code is for liblxc.
@@ -40,7 +41,7 @@ struct lxc_conf;
  **/
 
 /*
- * Start the specified command inside a container
+ * Start the specified command inside a system container
  * @name     : the name of the container
  * @argv     : an array of char * corresponding to the commande line
  * @conf     : configuration
@@ -55,6 +56,17 @@ extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf
  * Returns 0 on success, < 0 otherwise
  */
 extern int lxc_stop(const char *name);
+
+/*
+ * Start the specified command inside an application container
+ * @name     : the name of the container
+ * @argv     : an array of char * corresponding to the commande line
+ * @quiet    : if != 0 then lxc-init won't produce any output
+ * @conf     : configuration
+ * Returns 0 on sucess, < 0 otherwise
+ */
+extern int lxc_execute(const char *name, char *const argv[], int quiet,
+		       struct lxc_conf *conf);
 
 /*
  * Open the monitoring mechanism for a specific container

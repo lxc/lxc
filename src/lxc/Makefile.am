@@ -22,6 +22,7 @@ liblxc_so_SOURCES = \
 	commands.c commands.h \
 	start.c start.h \
 	stop.c \
+	execute.c \
 	monitor.c monitor.h \
 	console.c \
 	freezer.c \

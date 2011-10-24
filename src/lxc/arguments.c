@@ -206,42 +206,6 @@ error:
 	return ret;
 }
 
-extern char **lxc_arguments_dup(const char *file, struct lxc_arguments *args)
-{
-	char **argv;
-	int opt, nbargs = args->argc + 2;
-
-	if (args->quiet)
-		nbargs += 1;
-
-	argv = malloc((nbargs + 1) * sizeof(*argv));
-	if (!argv)
-		return NULL;
-
-	nbargs = 0;
-
-	argv[nbargs] = strdup(file);
-	if (!argv[nbargs])
-		return NULL;
-	nbargs++;
-
-	if (args->quiet)
-		argv[nbargs++] = "--quiet";
-
-	argv[nbargs++] = "--";
-
-	for (opt = 0; opt < args->argc; opt++) {
-		argv[nbargs] = strdup(args->argv[opt]);
-		if (!argv[nbargs])
-			return NULL;
-		nbargs++;
-	}
-
-	argv[nbargs] = NULL;
-
-	return argv;
-}
-
 int lxc_arguments_str_to_int(struct lxc_arguments *args, const char *str)
 {
 	long val;

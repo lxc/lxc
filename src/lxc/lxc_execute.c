@@ -38,8 +38,9 @@
 #include "confile.h"
 #include "arguments.h"
 #include "config.h"
+#include "start.h"
 
-lxc_log_define(lxc_execute_ui, lxc_start);
+lxc_log_define(lxc_execute_ui, lxc_execute);
 
 static struct lxc_list defines;
 
@@ -87,7 +88,6 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	static char **args;
 	char *rcfile;
 	struct lxc_conf *conf;
 
@@ -101,10 +101,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
-		return -1;
-
-	args = lxc_arguments_dup(LXCINITDIR "/lxc-init", &my_args);
-	if (!args)
 		return -1;
 
 	/* rcfile is specified in the cli option */
@@ -140,6 +136,5 @@ int main(int argc, char *argv[])
 	if (lxc_config_define_load(&defines, conf))
 		return -1;
 
-	return lxc_start(my_args.name, args, conf);
+	return lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf);
 }
-
