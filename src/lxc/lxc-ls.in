@@ -25,7 +25,7 @@ function get_cgroup()
 
 ls "$@" $lxcpath
 
-active=$(netstat -xa | grep $lxcpath | \
+active=$(netstat -xl | grep $lxcpath | \
 	sed -e 's#.*'"$lxcpath/"'\(.*\)/command#\1#');
 
 if test -n "$active"; then
