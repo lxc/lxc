@@ -334,20 +334,21 @@ do_bindhome()
     rootfs=$1
     user=$2
 
-    # bind-mount the user's path into the container's /home
-    h=`getent passwd $user | cut -d: -f 6`
-    mkdir -p $rootfs/$h
-    echo "$h $rootfs/$h none bind 0 0" >> $path/fstab
-
     # copy /etc/passwd, /etc/shadow, and /etc/group entries into container
     pwd=`getent passwd $user`
     if [ $? -ne 0 ]; then
         echo 'Warning: failed to copy password entry for $user'
+	return
     else
         echo $pwd >> $rootfs/etc/passwd
     fi
     shad=`getent shadow $user`
     echo $shad >> $rootfs/etc/shadow
+
+    # bind-mount the user's path into the container's /home
+    h=`getent passwd $user | cut -d: -f 6`
+    mkdir -p $rootfs/$h
+    echo "$h $rootfs/$h none bind 0 0" >> $path/fstab
 }
 
 clean()
@@ -439,6 +440,13 @@ do
         *)              break ;;
     esac
 done
+
+pwd=`getent passwd $bindhome`
+if [ $? -ne 0 ]; then
+    echo "Error: no password entry found for $bindhome"
+    exit 1
+fi
+
 
 if [ "$arch" == "i686" ]; then
     arch=i386
