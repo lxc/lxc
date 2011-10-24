@@ -1,4 +1,5 @@
 pkginclude_HEADERS = \
+		arguments.h \
 		start.h \
 		console.h \
 		error.h \

@@ -61,6 +61,9 @@ struct lxc_arguments {
 	/* remaining arguments */
 	char *const *argv;
 	int argc;
+
+	/* private arguments */
+	void *data;
 };
 
 #define LXC_COMMON_OPTIONS \
