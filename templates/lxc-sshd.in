@@ -30,6 +30,7 @@ $rootfs/var/empty/sshd \
 $rootfs/var/lib/empty/sshd \
 $rootfs/etc/ssh \
 $rootfs/dev/shm \
+$rootfs/run/shm \
 $rootfs/proc \
 $rootfs/bin \
 $rootfs/sbin \

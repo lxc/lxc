@@ -135,9 +135,10 @@ extern int lxc_setup_fs(void)
 		return -1;
 
 	/* If we were able to mount /dev/shm, then /dev exists */
+	/* Sure, but it's read-only per config :) */
 	if (access("/dev/mqueue", F_OK) && mkdir("/dev/mqueue", 0666)) {
-		SYSERROR("failed to create '/dev/mqueue'");
-		return -1;
+		DEBUG("failed to create '/dev/mqueue'");
+		return 0;
 	}
 
 	if (mount_fs("mqueue", "/dev/mqueue", "mqueue"))
