@@ -86,7 +86,7 @@ download_ubuntu()
     elif [ $release = "natty" ]; then
         packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,isc-dhcp-client,isc-dhcp-common,ssh,lsb-release,gnupg,netbase
     else
-        packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,isc-dhcp-client,isc-dhcp-common,ssh,lsb-release,gnupg,netbase,ubuntu-keyring
+        packages=dialog,apt,apt-utils,iproute,inetutils-ping,vim,isc-dhcp-client,isc-dhcp-common,ssh,lsb-release,gnupg,netbase,ubuntu-keyring
     fi
     echo "installing packages: $packages"
 
