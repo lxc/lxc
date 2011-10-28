@@ -317,6 +317,7 @@ if [ -z "$release" ]; then
         release=$(cat /etc/fedora-release |awk '/^Fedora/ {print $3}')
     else
         echo "This is not a fedora host and release missing, defaulting to 14. use -R|--release to specify release"
+        release=14
     fi
 fi
 
