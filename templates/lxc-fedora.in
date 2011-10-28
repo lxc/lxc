@@ -115,8 +115,30 @@ download_fedora()
     echo "Downloading fedora minimal ..."
     YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
     PKG_LIST="yum initscripts passwd rsyslog vim-minimal dhclient chkconfig rootfiles policycoreutils"
-    RELEASE_URL="http://ftp.funet.fi/pub/mirrors/fedora.redhat.com/pub/fedora/linux/releases/$release/Everything/$arch/os/Packages/fedora-release-$release-1.noarch.rpm"
-    curl $RELEASE_URL > $INSTALL_ROOT/fedora-release-$release.noarch.rpm
+    MIRRORLIST_URL="http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$release&arch=$arch"
+
+    DOWNLOAD_OK=no
+    for trynumber in 1 2 3; do
+        [ $trynumber != 1 ] && echo "Trying again..."
+        MIRROR_URL=$(curl -s -S -f "$MIRRORLIST_URL" | head -n2 | tail -n1)
+        if [ $? -ne 0 ] || [ -z "$MIRROR_URL" ]; then
+            echo "Failed to get a mirror"
+            continue
+        fi
+        RELEASE_URL="$MIRROR_URL/Packages/fedora-release-$release-1.noarch.rpm"
+        echo "Fetching from $RELEASE_URL"
+        curl -f "$RELEASE_URL" > $INSTALL_ROOT/fedora-release-$release.noarch.rpm
+        if [ $? -ne 0 ]; then
+            echo "Failed to download fedora release rpm"
+            continue
+        fi
+        DOWNLOAD_OK=yes
+        break
+    done
+    if [ $DOWNLOAD_OK != yes ]; then
+        echo "Aborting"
+        return 1
+    fi
 
     mkdir -p $INSTALL_ROOT/var/lib/rpm
     rpm --root $INSTALL_ROOT  --initdb
