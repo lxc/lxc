@@ -36,6 +36,10 @@ lxc_network_link=virbr0
 # is this fedora?
 [ -f /etc/fedora-release ] && is_fedora=true
 
+if [ "$arch" = "i686" ]; then
+    arch=i386
+fi
+
 configure_fedora()
 {
 
