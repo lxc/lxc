@@ -21,7 +21,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#include "../config.h"
+#include "config.h"
+
 #include <stdio.h>
 #undef _GNU_SOURCE
 #include <string.h>
@@ -32,7 +33,6 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <termios.h>
-#include <namespace.h>
 #include <sys/param.h>
 #include <sys/file.h>
 #include <sys/mount.h>
@@ -125,6 +125,7 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #include "commands.h"
 #include "console.h"
 #include "sync.h"
+#include "namespace.h"
 
 lxc_log_define(lxc_start, lxc);
 

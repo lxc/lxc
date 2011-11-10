@@ -44,8 +44,9 @@
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
 #include <linux/if_bridge.h>
-#include <nl.h>
-#include <network.h>
+
+#include "nl.h"
+#include "network.h"
 
 #ifndef IFLA_LINKMODE
 #  define IFLA_LINKMODE 17

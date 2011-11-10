@@ -29,7 +29,8 @@
 #include <stdlib.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
-#include <nl.h>
+
+#include "nl.h"
 
 #define NLMSG_TAIL(nmsg) \
         ((struct rtattr *) (((void *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))

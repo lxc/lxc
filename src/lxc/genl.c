@@ -28,8 +28,9 @@
 #include <unistd.h>
 #include <linux/genetlink.h>
 #include <linux/rtnetlink.h>
-#include <nl.h>
-#include <genl.h>
+
+#include "nl.h"
+#include "genl.h"
 
 static int genetlink_resolve_family(const char *family)
 {

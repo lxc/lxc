@@ -28,8 +28,9 @@
 #include <unistd.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
-#include <nl.h>
-#include <rtnl.h>
+
+#include "nl.h"
+#include "rtnl.h"
 
 extern int rtnetlink_open(struct rtnl_handler *handler)
 {
