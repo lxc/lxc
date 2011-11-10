@@ -36,6 +36,7 @@ fi
 
 shortoptions='n:'
 longoptions='name:'
+localstatedir=@LOCALSTATEDIR@
 lxc_path=@LXCPATH@
 
 getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
