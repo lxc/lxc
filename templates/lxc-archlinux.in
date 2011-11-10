@@ -1,0 +1,462 @@
+#!/bin/bash
+
+#
+# template script for generating Arch linux container for LXC
+#
+
+#
+# lxc: linux Container library
+
+# Authors:
+# Alexander Vladimirov <idkfa@vlan1.ru>
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+# defaults
+arch=$(arch)
+cache=/var/cache/lxc/arch/${arch}
+lxc_network_type="veth"
+lxc_network_link="br0"
+default_path=/var/lib/lxc
+default_rc_locale="en-US.UTF-8"
+default_rc_timezone="UTC"
+host_mirror="http://mirrors.kernel.org/archlinux/\$repo/os/$arch"
+
+# sort of minimal package set
+base_packages=(
+    "filesystem"
+    "initscripts"
+    "coreutils"
+    "module-init-tools"
+    "procps"
+    "psmisc"
+    "pacman"
+    "bash"
+    "syslog-ng"
+    "cronie"
+    "iproute2"
+    "iputils"
+    "inetutils"
+    "dhcpcd"
+    "dnsutils"
+    "nano"
+    "grep"
+    "less"
+    "gawk"
+    "sed"
+    "tar"
+    "wget"
+    "gzip"
+    "which"
+)
+declare -a additional_packages
+
+[ -f /etc/arch-release ] && is_arch=true
+
+# find and extract parameter value from given config file
+# ${1} - file to read parameter from
+# ${2} - parameter name
+# ${result} - result value on success
+function read_parameter_value {
+    [ -f ${1} ] && [ "${2}" ] || return 1
+    local pattern="^[[:space:]]*${2}[[:space:]]*=[[:space:]]*"
+    local str=$(grep "${pattern}" "${1}")
+    local str=${str/#$(grep -o "${pattern}" "${1}")/}
+    result=${str//\"/}
+    return 0
+}
+
+# split comma-separated string into an array
+# ${1} - string to split
+# ${2} - separator (default is ",")
+# ${result} - result value on success
+function split_string {
+    local ifs=${IFS}
+    IFS="${2:-,}"
+    read -a result < <(echo "${1}")
+    IFS=${ifs}
+    return 0
+}
+
+# Arch-specific preconfiguration for container
+function configure_arch {
+    # read locale and timezone defaults from system rc.conf if running on Arch
+    if [ "${is_arch}" ]; then
+        read_parameter_value "/etc/rc.conf" "LOCALE"
+        rc_locale=${result:-${default_rc_locale}}
+        read_parameter_value "/etc/rc.conf" "TIMEZONE"
+        rc_timezone=${result:-${default_rc_timezone}}
+    else
+        rc_locale=${default_rc_locale}
+        rc_timezone=${default_rc_timezone}
+    fi
+
+    echo "Setting up rc.conf"
+    cat > "${rootfs_path}/etc/rc.conf" << EOF
+# /etc/rc.conf - Main Configuration for Arch Linux
+LOCALE="${rc_locale}"
+DAEMON_LOCALE="no"
+HARDWARECLOCK="local"
+TIMEZONE="${rc_timezone}"
+KEYMAP=us
+CONSOLEFONT=
+CONSOLEMAP=
+USECOLOR="yes"
+MODULES=()
+HOSTNAME="${name}"
+interface=eth0
+address=
+netmask=
+broadcast=
+gateway=
+DAEMONS=(syslog-ng crond network)
+EOF
+
+    if [ -e "${rootfs_path}/etc/locale.gen" ]; then
+        sed -i 's@^#\(en_US\.UTF-8\)@\1@' "${rootfs_path}/etc/locale.gen"
+        if [ ! "${rc_locale}" = "en_US.UTF-8" ]; then
+            echo "${rc_locale} ${rc_locale##*.}" >> "${rootfs_path}/etc/locale.gen"
+        fi
+        chroot "${rootfs_path}" locale-gen
+    fi
+    cp "${rootfs_path}/usr/share/zoneinfo/${rc_timezone}" \
+       "${rootfs_path}/etc/localtime"
+
+    echo "Setting up rc.sysinit"
+    cat > "${rootfs_path}/etc/rc.sysinit.lxc" << EOF
+#!/bin/bash
+. /etc/rc.conf
+. /etc/rc.d/functions
+
+echo "starting Arch Linux"
+rm -f \$(find /var/run -name '*pid')
+rm -f /run/daemons/*
+rm -f /var/lock/subsys/*
+rm -f /etc/mtab
+touch /etc/mtab
+run_hook sysinit_end
+EOF
+
+    echo "Setting up rc.shutdown"
+    cat > "${rootfs_path}/etc/rc.shutdown.lxc" << EOF
+#!/bin/bash
+. /etc/rc.conf
+. /etc/rc.d/functions
+stty onlcr
+run_hook shutdown_start
+[[ -x /etc/rc.local.shutdown ]] && /etc/rc.local.shutdown
+stop_all_daemons
+run_hook shutdown_prekillall
+kill_all
+run_hook shutdown_postkillall
+[[ \${TIMEZONE} ]] && cp --remove-destination "/usr/share/zoneinfo/\${TIMEZONE}" /etc/localtime
+halt -w
+umount -a -r -t nodevtmpfs,notmpfs,nosysfs,noproc,nodevpts -O no_netdev
+run_hook shutdown_postumount
+run_hook shutdown_poweroff
+if [[ \${RUNLEVEL} = 0 ]]; then
+    poweroff -d -f -i
+else
+    reboot -d -f -i
+fi
+# vim: set ts=2 sw=2 noet:
+EOF
+    chmod 755 "${rootfs_path}/etc/rc.shutdown.lxc" "${rootfs_path}/etc/rc.sysinit.lxc"
+
+    echo "Setting up inittab"
+    cat > "${rootfs_path}/etc/inittab" << EOF
+id:3:initdefault:
+rc::sysinit:/etc/rc.sysinit.lxc
+rs:S1:wait:/etc/rc.single
+rm:2345:wait:/etc/rc.multi
+rh:06:wait:/etc/rc.shutdown.lxc
+su:S:wait:/sbin/sulogin -p
+c1:2345:respawn:/sbin/agetty -8 38400 tty1 linux
+EOF
+
+    echo "Setting up hosts"
+    cat > "${rootfs_path}/etc/hosts" << EOF
+127.0.0.1   localhost.localdomain   localhost ${name}
+::1     localhost.localdomain   localhost
+EOF
+
+    echo "Setting up nameserver"
+    grep nameserver /etc/resolv.conf > "${rootfs_path}/etc/resolv.conf"
+
+    echo "Setting up device nodes"
+    mkdir -m 755 "${rootfs_path}/dev/pts"
+    mkdir -m 1777 "${rootfs_path}/dev/shm"
+    mknod -m 666 "${rootfs_path}/dev/null" c 1 3
+    mknod -m 666 "${rootfs_path}/dev/full" c 1 7
+    mknod -m 666 "${rootfs_path}/dev/random" c 1 8
+    mknod -m 666 "${rootfs_path}/dev/urandom" c 1 9
+    mknod -m 666 "${rootfs_path}/dev/tty0" c 4 0
+    mknod -m 666 "${rootfs_path}/dev/tty1" c 4 1
+    mknod -m 666 "${rootfs_path}/dev/tty2" c 4 2
+    mknod -m 666 "${rootfs_path}/dev/tty3" c 4 3
+    mknod -m 666 "${rootfs_path}/dev/tty4" c 4 4
+    mknod -m 600 "${rootfs_path}/dev/initctl" p
+    mknod -m 666 "${rootfs_path}/dev/tty" c 5 0
+    mknod -m 666 "${rootfs_path}/dev/console" c 5 1
+    mknod -m 666 "${rootfs_path}/dev/ptmx" c 5 2
+
+    return 0
+}
+
+# write container configuration files
+function copy_configuration {
+    mkdir -p "${config_path}"
+    cat > "${config_path}/config" << EOF
+lxc.utsname=${name}
+lxc.tty=4
+lxc.pts=1024
+lxc.rootfs=${rootfs_path}
+lxc.mount=${config_path}/fstab
+#networking
+lxc.network.type=${lxc_network_type}
+lxc.network.flags=up
+lxc.network.link=${lxc_network_link}
+lxc.network.name=eth0
+lxc.network.mtu=1500
+#cgroups
+lxc.cgroup.devices.deny = a
+# /dev/null and zero
+lxc.cgroup.devices.allow = c 1:3 rwm
+lxc.cgroup.devices.allow = c 1:5 rwm
+# consoles
+lxc.cgroup.devices.allow = c 5:1 rwm
+lxc.cgroup.devices.allow = c 5:0 rwm
+lxc.cgroup.devices.allow = c 4:0 rwm
+lxc.cgroup.devices.allow = c 4:1 rwm
+# /dev/{,u}random
+lxc.cgroup.devices.allow = c 1:9 rwm
+lxc.cgroup.devices.allow = c 1:8 rwm
+# /dev/pts
+lxc.cgroup.devices.allow = c 136:* rwm
+lxc.cgroup.devices.allow = c 5:2 rwm
+# rtc
+lxc.cgroup.devices.allow = c 254:0 rwm
+EOF
+
+    cat > "${config_path}/fstab" << EOF
+none ${rootfs_path}/dev/pts devpts defaults 0 0
+none ${rootfs_path}/proc proc nodev,noexec,nosuid 0 0
+none ${rootfs_path}/sys sysfs defaults 0 0
+none ${rootfs_path}/dev/shm tmpfs defaults 0 0
+EOF
+
+    if [ ${?} -ne 0 ]; then
+        echo "Failed to configure container"
+        return 1
+    fi
+
+    return 0
+}
+
+# lock chroot and mount subdirectories before installing container
+function mount_chroot {
+    echo "mounting chroot"
+    umask 0022
+    [ -e "${rootfs_path}/sys" ] || mkdir "${rootfs_path}/sys"
+    mount -t sysfs sysfs "${rootfs_path}/sys"
+    [ -e "${rootfs_path}/proc" ] || mkdir "${rootfs_path}/proc"
+    mount -t proc proc "${rootfs_path}/proc"
+    [ -e "${rootfs_path}/dev" ] || mkdir "${rootfs_path}/dev"
+    mount -t tmpfs dev "${rootfs_path}/dev" -o mode=0755,size=10M,nosuid
+    mknod -m 666 "${rootfs_path}/dev/null" c 1 3
+    mknod -m 666 "${rootfs_path}/dev/zero" c 1 5
+    mknod -m 600 "${rootfs_path}/dev/console" c 5 1
+    mknod -m 644 "${rootfs_path}/dev/random" c 1 8
+    mknod -m 644 "${rootfs_path}/dev/urandom" c 1 9
+    mknod -m 666 "${rootfs_path}/dev/tty" c 5 0
+    mknod -m 666 "${rootfs_path}/dev/tty0" c 4 0
+    mknod -m 666 "${rootfs_path}/dev/full" c 1 7
+    ln -s /proc/kcore "${rootfs_path}/dev/core"
+    ln -s /proc/self/fd "${rootfs_path}/dev/fd"
+    ln -s /proc/self/fd/0 "${rootfs_path}/dev/stdin"
+    ln -s /proc/self/fd/1 "${rootfs_path}/dev/stdout"
+    ln -s /proc/self/fd/2 "${rootfs_path}/dev/stderr"
+    [ -e "${rootfs_path}/dev/shm" ] || mkdir "${rootfs_path}/dev/shm"
+    mount -t tmpfs shm "${rootfs_path}/dev/shm" -o nodev,nosuid,size=128M
+    [ -e "${rootfs_path}/dev/pts" ] || mkdir "${rootfs_path}/dev/pts"
+    mount -t devpts devpts "${rootfs_path}/dev/pts" -o newinstance,ptmxmode=666
+    ln -s pts/ptmx "${rootfs_path}/dev/ptmx"
+    [ -e "${cache_dir}" ] || mkdir -p "${cache_dir}"
+    [ -e "${rootfs_path}/${cache_dir}" ] || mkdir -p "${rootfs_path}/${cache_dir}"
+    mount -o bind "${cache_dir}" "${rootfs_path}/${cache_dir}"
+    if [ -n "${host_mirror_path}" ]; then
+        [ -e "${rootfs_path}/${host_mirror_path}" ] || mkdir -p "${rootfs_path}/${host_mirror_path}"
+        mount -o bind "${host_mirror_path}" "${rootfs_path}/${host_mirror_path}"
+        mount -o remount,ro,bind "${host_mirror_path}" "${rootfs_path}/${host_mirror_path}"
+    fi
+    trap 'umount_chroot' EXIT INT QUIT TERM HUP
+}
+
+function umount_chroot {
+    if [ -z "${umount_done}" ]; then
+        echo "unmounting chroot"
+        umount "${rootfs_path}/proc"
+        umount "${rootfs_path}/sys"
+        umount "${rootfs_path}/dev/pts"
+        umount "${rootfs_path}/dev/shm"
+        umount "${rootfs_path}/dev"
+        umount "${rootfs_path}/${cache_dir}"
+        [ -n "${host_mirror_path}" ] && umount "${rootfs_path}/${host_mirror_path}"
+        umount_done=1
+    fi
+}
+
+# install packages within container chroot
+function install_arch {
+    pacman_config=$(mktemp)
+
+    cat <<EOF > "${pacman_config}"
+[options]
+HoldPkg      = pacman glibc
+SyncFirst    = pacman
+Architecture = auto
+#IgnorePkg    = udev
+[core]
+Include = /etc/pacman.d/mirrorlist
+Server = ${host_mirror}
+[extra]
+Include = /etc/pacman.d/mirrorlist
+Server = ${host_mirror}
+[community]
+Include = /etc/pacman.d/mirrorlist
+Server = ${host_mirror}
+EOF
+
+    mkdir -p "${rootfs_path}/var/lib/pacman/sync"
+    mkdir -p "${rootfs_path}/etc"
+
+    if echo "${host_mirror}" | grep -q 'file://'; then
+        host_mirror_path=$(echo "${host_mirror}" | sed -E 's#file://(/.*)/\$repo/os/\$arch#\1#g')
+    fi
+    cache_dir=$( (grep -m 1 '^CacheDir' "${pacman_config}" || echo 'CacheDir = /var/cache/pacman/pkg') | sed 's/CacheDir\s*=\s*//')
+    mount_chroot
+    params="--root ${rootfs_path} --config=${pacman_config} --noconfirm"
+    if ! pacman -Sydd ${params} --dbonly udev; then
+        echo "Failed to preinstall udev package record"
+        return 1
+    fi
+    if ! pacman -S ${params} ${base_packages[@]}; then
+        echo "Failed to install container packages"
+        return 1
+    fi
+    [ -d "${rootfs_path}/lib/modules" ] && ldconfig -r "${rootfs_path}"
+    mv "${pacman_config}" "${rootfs_path}/etc/pacman.conf"
+    umount_chroot
+    return 0
+}
+
+usage()
+{
+    cat <<EOF
+usage:
+    ${1} -n|--name=<container_name>
+        [-P|--packages=<pkg1,pkg2,...>] [-p|--path=<path>] [-h|--help]
+Mandatory args:
+  -n,--name         container name, used to as an identifier for that container from now on
+Optional args:
+  -p,--path         path to where the container rootfs will be created, defaults to /var/lib/lxc. The container config will go under /var/lib/lxc in that case
+  -P,--packages     preinstall additional packages, comma-separated list
+  -h,--help         print this help
+EOF
+    return 0
+}
+
+options=$(getopt -o hp:P:n:cm: -l help,path:,packages:,name:,clean,mirror: -- "${@}")
+if [ ${?} -ne 0 ]; then
+    usage $(basename ${0})
+    exit 1
+fi
+eval set -- "${options}"
+
+while true
+do
+    case "${1}" in
+    -h|--help)      usage ${0} && exit 0;;
+    -p|--path)      path=${2}; shift 2;;
+    -n|--name)      name=${2}; shift 2;;
+    -P|--packages)  additional_packages=${2}; shift 2;;
+    -m|--mirror)    host_mirror=${2}; shift 2;;
+    --)             shift 1; break ;;
+    *)              break ;;
+    esac
+done
+
+if [ -z "${name}" ]; then
+    echo "missing required 'name' parameter"
+    exit 1
+fi
+
+type pacman >/dev/null 2>&1
+if [ ${?} -ne 0 ]; then
+    echo "'pacman' command is missing, refer to wiki.archlinux.org for information about installing pacman"
+    exit 1
+fi
+
+if [ -z "${path}" ]; then
+    path="${default_path}/${name}"
+fi
+
+if [ "${EUID}" != "0" ]; then
+    echo "This script should be run as 'root'"
+    exit 1
+fi
+
+rootfs_path="${path}/rootfs"
+config_path="${default_path}/${name}"
+
+revert()
+{
+    echo "Interrupted, so cleaning up"
+    lxc-destroy -n "${name}"
+    # maybe was interrupted before copy config
+    rm -rf "${path}/${name}"
+    rm -rf "${default_path}/${name}"
+    exit 1
+}
+
+trap revert SIGHUP SIGINT SIGTERM
+
+copy_configuration
+if [ ${?} -ne 0 ]; then
+    echo "failed write configuration file"
+    rm -rf "${config_path}"
+    exit 1
+fi
+
+if [ ${#additional_packages[@]} -gt 0 ]; then
+    split_string ${additional_packages}
+    base_packages+=(${result[@]})
+fi
+
+install_arch
+if [ ${?} -ne 0 ]; then
+    echo "failed to install Arch linux"
+    rm -rf "${config_path}" "${path}"
+    exit 1
+fi
+
+configure_arch
+if [ ${?} -ne 0 ]; then
+    echo "failed to configure Arch linux for a container"
+    rm -rf "${config_path}" "${path}"
+    exit 1
+fi
+
+echo "container rootfs and config created"

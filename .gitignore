@@ -33,6 +33,7 @@ templates/lxc-fedora
 templates/lxc-altlinux
 templates/lxc-sshd
 templates/lxc-busybox
+templates/lxc-archlinux
 
 src/lxc/lxc-attach
 src/lxc/lxc-cgroup

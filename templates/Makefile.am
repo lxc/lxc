@@ -8,4 +8,5 @@ templates_SCRIPTS = \
 	lxc-fedora \
 	lxc-altlinux \
 	lxc-busybox \
-	lxc-sshd
+	lxc-sshd \
+	lxc-archlinux

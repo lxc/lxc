@@ -145,6 +145,7 @@ AC_CONFIG_FILES([
 	templates/lxc-fedora
 	templates/lxc-altlinux
 	templates/lxc-sshd
+	templates/lxc-archlinux
 
 	src/Makefile
 	src/lxc/Makefile
