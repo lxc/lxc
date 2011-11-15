@@ -1402,6 +1402,36 @@ static int setup_network(struct lxc_list *network)
 	return 0;
 }
 
+static int setup_private_host_hw_addr(char *veth1)
+{
+	struct ifreq ifr;
+	int err;
+	int sockfd;
+
+	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sockfd < 0)
+		return -errno;
+
+	snprintf((char *)ifr.ifr_name, IFNAMSIZ, "%s", veth1);
+	err = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
+	if (err < 0) {
+		close(sockfd);
+		return -errno;
+	}
+
+	ifr.ifr_hwaddr.sa_data[0] = 0xfe;
+	err = ioctl(sockfd, SIOCSIFHWADDR, &ifr);
+	close(sockfd);
+	if (err < 0)
+		return -errno;
+
+	DEBUG("mac address of host interface '%s' changed to private %02x:%02x:%02x:%02x:%02x:%02x",
+	      veth1, ifr.ifr_hwaddr.sa_data[0] & 0xff, ifr.ifr_hwaddr.sa_data[1] & 0xff, ifr.ifr_hwaddr.sa_data[2] & 0xff,
+	      ifr.ifr_hwaddr.sa_data[3] & 0xff, ifr.ifr_hwaddr.sa_data[4] & 0xff, ifr.ifr_hwaddr.sa_data[5] & 0xff);
+
+	return 0;
+}
+
 struct lxc_conf *lxc_conf_init(void)
 {
 	struct lxc_conf *new;
@@ -1454,6 +1484,16 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		ERROR("failed to create %s-%s : %s", veth1, veth2,
 		      strerror(-err));
 		return -1;
+	}
+
+	/* changing the high byte of the mac address to 0xfe, the bridge interface
+	 * will always keep the host's mac address and not take the mac address
+	 * of a container */
+	err = setup_private_host_hw_addr(veth1);
+	if (err) {
+		ERROR("failed to change mac address of host interface '%s' : %s",
+			veth1, strerror(-err));
+		goto out_delete;
 	}
 
 	if (netdev->mtu) {
