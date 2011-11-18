@@ -53,12 +53,7 @@ liblxc_so_SOURCES = \
 	\
 	utmp.c utmp.h
 
-DEFAULT_INCLUDES = \
-	-iquote $(builddir) \
-	-iquote $(srcdir) \
-	-iquote $(top_builddir)/src
-
-AM_CFLAGS = \
+AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
 	-DLXCINITDIR=\"$(LXCINITDIR)\"
