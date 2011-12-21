@@ -87,4 +87,4 @@ if [ -b $rootdev -o -h $rootdev ]; then
 	fi
 fi
 # recursively remove the container to remove old container configuration
-rm -rf --preserve-root $lxc_path/$lxc_name
+rm -rf --one-file-system --preserve-root $lxc_path/$lxc_name
