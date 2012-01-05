@@ -490,7 +490,6 @@ int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-
 	/* Create a process in a new set of namespaces */
 	handler->pid = lxc_clone(do_start, handler, clone_flags);
 	if (handler->pid < 0) {
