@@ -68,6 +68,18 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   &commonoptions;
 
   <refsect1>
+    <title>Bugs</title>
+
+    <para>
+      Only one <command>lxc-monitor</command> can run at a time. Other
+      invocations will fail with the following error:
+    </para>
+    <para>
+      lxc-monitor: bind : Address already in use
+    </para>
+
+  </refsect1>
+  <refsect1>
     <title>Examples</title>
     <variablelist>
       <varlistentry>
