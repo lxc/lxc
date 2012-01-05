@@ -84,6 +84,8 @@ int main(int argc, char *argv[])
 	if (fd < 0)
 		return -1;
 
+	setlinebuf(stdout);
+
 	for (;;) {
 		if (lxc_monitor_read(fd, &msg) < 0)
 			return -1;
