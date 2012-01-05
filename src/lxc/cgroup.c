@@ -240,6 +240,7 @@ int lxc_cgroup_create(const char *name, pid_t pid)
 	struct mntent *mntent;
 	FILE *file = NULL;
 	int err = -1;
+	int found = 0;
 
 	file = setmntent(MTAB, "r");
 	if (!file) {
@@ -253,12 +254,17 @@ int lxc_cgroup_create(const char *name, pid_t pid)
 
 		if (!strcmp(mntent->mnt_type, "cgroup")) {
 
-			INFO("found cgroup mounted at '%s'", mntent->mnt_dir);
+			INFO("[%d] found cgroup mounted at '%s',opts='%s'",
+			     ++found, mntent->mnt_dir, mntent->mnt_opts);
+
 			err = lxc_one_cgroup_create(name, mntent, pid);
 			if (err)
 				goto out;
 		}
 	};
+
+	if (!found)
+		ERROR("No cgroup mounted on the system");
 
 out:
 	endmntent(file);
