@@ -1425,9 +1425,14 @@ static int setup_private_host_hw_addr(char *veth1)
 	if (err < 0)
 		return -errno;
 
-	DEBUG("mac address of host interface '%s' changed to private %02x:%02x:%02x:%02x:%02x:%02x",
-	      veth1, ifr.ifr_hwaddr.sa_data[0] & 0xff, ifr.ifr_hwaddr.sa_data[1] & 0xff, ifr.ifr_hwaddr.sa_data[2] & 0xff,
-	      ifr.ifr_hwaddr.sa_data[3] & 0xff, ifr.ifr_hwaddr.sa_data[4] & 0xff, ifr.ifr_hwaddr.sa_data[5] & 0xff);
+	DEBUG("mac address of host interface '%s' changed to private "
+	      "%02x:%02x:%02x:%02x:%02x:%02x", veth1,
+	      ifr.ifr_hwaddr.sa_data[0] & 0xff,
+	      ifr.ifr_hwaddr.sa_data[1] & 0xff,
+	      ifr.ifr_hwaddr.sa_data[2] & 0xff,
+	      ifr.ifr_hwaddr.sa_data[3] & 0xff,
+	      ifr.ifr_hwaddr.sa_data[4] & 0xff,
+	      ifr.ifr_hwaddr.sa_data[5] & 0xff);
 
 	return 0;
 }
