@@ -409,7 +409,7 @@ usage()
 {
     cat <<EOF
 $1 -h|--help -p|--path=<path> --clean [-a|--arch] [-b|--bindhome <user>] [--trim] [-r|--release]
-release: lucid | maverick | natty | oneiric
+release: lucid | maverick | natty | oneiric | precise
 trim: make a minimal (faster, but not upgrade-safe) container
 bindhome: bind <user>'s home into the container
 arch: amd64 or i386: defaults to host arch
@@ -428,7 +428,7 @@ release=lucid
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
     case "$DISTRIB_CODENAME" in
-        lucid|maverick|natty|oneiric)
+        lucid|maverick|natty|oneiric|precise)
             release=$DISTRIB_CODENAME
         ;;
     esac
