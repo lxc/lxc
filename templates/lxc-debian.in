@@ -142,7 +142,8 @@ copy_debian()
 
     # make a local copy of the minidebian
     echo -n "Copying rootfs to $rootfs..."
-    cp -a "$cache/rootfs-$SUITE-$arch" $rootfs || return 1
+    mkdir -p $rootfs
+    rsync -a "$cache/rootfs-$SUITE-$arch"/ $rootfs/ || return 1
     return 0
 }
 

@@ -21,7 +21,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 usage() {
-    echo "usage: lxc-create -n <name> [-f configuration] [-t template] [-h] -- [template_options]"
+    echo "usage: lxc-create -n <name> [-f configuration] [-t template] [-h] [fsopts] -- [template_options]"
+    echo "   fsopts: -B none"
+    echo "   fsopts: -B lvm [--lvname lvname] [--vgname vgname] [--fstype fstype] [--fssize fssize]"
+#    echo "   fsopts: -B union [--uniontype overlayfs]"
+#    echo "   fsopts: -B loop [--fstype fstype] [--fssize fssize]"
+#    echo "   fsopts: -B qemu-nbd [--type qed|qcow2|raw] [--fstype fstype] [--fssize fssize] # Qemu qed disk format"
 }
 
 help() {
@@ -33,6 +38,16 @@ help() {
     echo "name         : name of the container"
     echo "configuration: lxc configuration"
     echo "template     : lxc-template is an accessible template script"
+    echo
+    echo "The container backing store can be altered using '-B'.  By default it"
+    echo "is 'none', which is a simple directory tree under /var/lib/lxc/<name>/rootfs"
+    echo "Otherwise, the following option values may be relevant:"
+    echo "lvname       : [for -lvm] name of lv in which to create lv,"
+    echo "                container-name by default"
+    echo "vgname       : [for -lvm] name of vg in which to create lv, 'lxc' by default"
+    echo "fstype       : name of filesystem to create, ext4 by default"
+    echo "fssize       : size of filesystem to create, 500M by default"
+    echo
     if [ -z $lxc_template ]; then
         echo "for template-specific help, specify a template, for instance:"
         echo "lxc-create -t ubuntu -h"
@@ -46,13 +61,17 @@ help() {
     fi
 }
 
-shortoptions='hn:f:t:'
-longoptions='help,name:,config:,template:'
+shortoptions='hn:f:t:B:'
+longoptions='help,name:,config:,template:,backingstore:,fstype:,lvname:,vgname:,fssize:'
 localstatedir=@LOCALSTATEDIR@
 lxc_path=@LXCPATH@
 bindir=@BINDIR@
 libdir=@LIBDIR@
 templatedir=@LXCTEMPLATEDIR@
+backingstore=none
+fstype=ext4
+fssize=500M
+vgname=lxc
 
 getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
 if [ $? != 0 ]; then
@@ -83,6 +102,31 @@ while true; do
 		lxc_template=$1
 		shift
 		;;
+	    -B|--backingstore)
+		shift
+		backingstore=$1
+		shift
+		;;
+	    --lvname)
+		shift
+		lvname=$1
+		shift
+		;;
+	    --vgname)
+		shift
+		vgname=$1
+		shift
+		;;
+	    --fstype)
+		shift
+		fstype=$1
+		shift
+		;;
+	    --fssize)
+		shift
+		fssize=$1
+		shift
+		;;
             --)
 		shift
 		break;;
@@ -110,9 +154,19 @@ if [ -z "$lxc_name" ]; then
     exit 1
 fi
 
+if [ -z "$lvname" ]; then
+    lvname="$lxc_name"
+fi
+
 if [ "$(id -u)" != "0" ]; then
    echo "This command has to be run as root"
    exit 1
+fi
+
+if [ $backingstore != "none" -a $backingstore != "lvm" ]; then
+    echo "only 'none' and 'lvm' backing stores are known"
+    usage
+    exit 1
 fi
 
 if [ ! -r $lxc_path ]; then
@@ -125,7 +179,47 @@ if [ -d "$lxc_path/$lxc_name" ]; then
     exit 1
 fi
 
-trap "${bindir}/lxc-destroy -n $lxc_name; echo aborted; exit 1" SIGHUP SIGINT SIGTERM
+rootfs="$lxc_path/$lxc_name/rootfs"
+if [ $backingstore = "lvm" ]; then
+    which vgscan > /dev/null
+    if [ $? -ne 0 ]; then
+        echo "vgscan not found.  Please install lvm2 package"
+        exit 1
+    fi
+    grep -q "\<$fstype\>" /proc/filesystems
+    if [ $? -ne 0 ]; then
+        echo "$fstype is not listed in /proc/filesystems"
+        usage
+        exit 1
+    fi
+
+    vgscan | grep -q "Found volume group \"$vgname\""
+    if [ $? -ne 0 ]; then
+        echo "Could not find volume group \"$vgname\""
+        usage
+        exit 1
+    fi
+
+    rootdev=/dev/$vgname/$lvname
+    lvdisplay $rootdev > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        echo "backing store already exists: $rootdev"
+        echo "please delete it (using \"lvremove $rootdev\") and try again"
+        exit 1
+    fi
+fi
+
+cleanup() {
+    if [ $backingstore = "lvm" ]; then
+        umount $rootfs
+        lvremove -f $rootdev
+    fi
+    ${bindir}/lxc-destroy -n $lxc_name
+    echo aborted
+    exit 1
+}
+
+trap cleanup SIGHUP SIGINT SIGTERM
 
 mkdir -p $lxc_path/$lxc_name
 
@@ -140,13 +234,21 @@ else
     cp $lxc_config $lxc_path/$lxc_name/config
 fi
 
+# Create the fs as needed
+mkdir $rootfs
+if [ $backingstore = "lvm" ]; then
+    lvcreate -L $fssize -n $lxc_name $vgname || exit 1
+    udevadm settle
+    mkfs -t $fstype $rootdev || exit 1
+    mount -t $fstype $rootdev $rootfs
+fi
+
 if [ ! -z $lxc_template ]; then
 
     type ${templatedir}/lxc-$lxc_template >/dev/null
     if [ $? -ne 0 ]; then
-	echo "unknown template '$lxc_template'"
-	${bindir}/lxc-destroy -n $lxc_name
-	exit 1
+        echo "unknown template '$lxc_template'"
+        cleanup
     fi
 
     if [ -z "$lxc_config" ]; then
@@ -183,6 +285,15 @@ if [ ! -z $lxc_template ]; then
     fi
 
     echo "'$lxc_template' template installed"
+fi
+
+if [ $backingstore = "lvm" ]; then
+    echo "Unmounting LVM"
+    umount $rootfs
+
+    # TODO: make the templates set this right from the start?
+    sed -i '/lxc.rootfs/d' $lxc_path/$lxc_name/config
+    echo "lxc.rootfs = $rootdev" >> $lxc_path/$lxc_name/config
 fi
 
 echo "'$lxc_name' created"

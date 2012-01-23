@@ -42,8 +42,8 @@ help() {
 
 shortoptions='ho:n:sL:v:p:t:'
 longoptions='help,orig:,name:,snapshot,fssize:,vgname:,lvprefix:,fstype:'
-lxc_path=/var/lib/lxc
-bindir=/usr/bin
+lxc_path=@LXCPATH@
+bindir=@BINDIR@
 snapshot=no
 lxc_size=2G
 lxc_vg=lxc
