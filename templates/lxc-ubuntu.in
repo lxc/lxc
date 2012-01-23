@@ -133,6 +133,55 @@ EOF
         return 1
     fi
 
+    # Serge isn't sure whether we should avoid doing this when
+    # $release == `distro-info -d`
+    echo "Installing updates"
+    case $arch in
+      amd64|i386)
+            MIRROR=${MIRROR:-http://archive.ubuntu.com/ubuntu}
+            SECURITY_MIRROR=${SECURITY_MIRROR:-http://security.ubuntu.com/ubuntu}
+            ;;
+      sparc)
+            case $SUITE in
+              gutsy)
+            MIRROR=${MIRROR:-http://archive.ubuntu.com/ubuntu}
+            SECURITY_MIRROR=${SECURITY_MIRRORMIRROR:-http://security.ubuntu.com/ubuntu}
+            ;;
+              *)
+            MIRROR=${MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
+            SECURITY_MIRROR=${SECURITY_MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
+            ;;
+            esac
+            ;;
+      *)
+            MIRROR=${MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
+            SECURITY_MIRROR=${SECURITY_MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
+            ;;
+    esac
+    cat >> "$1/partial-${arch}/etc/apt/sources.list" << EOF
+deb $MIRROR ${release}-updates main universe
+deb $SECURITY_MIRROR ${release}-security main universe
+EOF
+    chroot "$1/partial-${arch}" apt-get update
+    if [ $? -ne 0 ]; then
+        echo "Failed to update the apt cache"
+        return 1
+    fi
+    cat > "$1/partial-${arch}"/usr/sbin/policy-rc.d << EOF
+#!/bin/sh
+exit 101
+EOF
+    chmod +x "$1/partial-${arch}"/usr/sbin/policy-rc.d
+
+    lxc-unshare -s MOUNT -- chroot "$1/partial-${arch}" apt-get dist-upgrade -y
+    ret=$?
+    rm -f "$1/partial-${arch}"/usr/sbin/policy-rc.d
+
+    if [ $ret -ne 0 ]; then
+        echo "Failed to upgrade the cache"
+        return 1
+    fi
+
     mv "$1/partial-$arch" "$1/rootfs-$arch"
     echo "Download complete"
     return 0
@@ -359,8 +408,9 @@ post_process()
         if [ $release = "lucid" -o $release = "maverick" ]; then
             chroot $rootfs apt-get install --force-yes -y python-software-properties
             chroot $rootfs add-apt-repository ppa:ubuntu-virt/ppa
-            chroot $rootfs apt-get update
         fi
+        cp /etc/resolv.conf "${rootfs}/etc"
+        chroot $rootfs apt-get update
         chroot $rootfs apt-get install --force-yes -y lxcguest
     fi
 }
