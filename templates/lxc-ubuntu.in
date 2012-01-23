@@ -206,7 +206,7 @@ lxc.pts = 1024
 lxc.rootfs = $rootfs
 lxc.mount  = $path/fstab
 lxc.arch = $arch
-lxc.cap.drop = sys_module
+lxc.cap.drop = sys_module mac_admin mac_override
 
 lxc.cgroup.devices.deny = a
 # Allow any mknod (but not using the node)
