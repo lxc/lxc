@@ -53,25 +53,32 @@ sub get_cgroup {
 	my $mount_string;
 
 	$mount_string=`mount -t cgroup |grep -E -e '^lxc '`;
-	unless ($mount_string) {
-		$mount_string=`mount |grep -m1 'type cgroup'`;
-	}
-	chomp($mount_string);
 	if ($mount_string) {
+                # use the one 'lxc' cgroup mount if it exists
+		chomp($mount_string);
 		$$ref_cgroup=`echo "$mount_string" |cut -d' ' -f3`;
 		chomp($$ref_cgroup);
 	}
-	die "unable to find mounted cgroup" unless $$ref_cgroup;
+	# Otherwise (i.e. cgroup-bin) use the first cgroup mount
+	$mount_string=`grep -m1 -E '^[^ \t]+[ \t]+[^ \t]+[ \t]+cgroup' /proc/self/mounts`;
+	unless ($mount_string) {
+		die "unable to find mounted cgroup" unless $$ref_cgroup;
+	}
+	chomp($mount_string);
+	$$ref_cgroup=`echo "$mount_string" |cut -d' ' -f2`;
+	chomp($$ref_cgroup);
+	return;
 }
 
 sub get_pids_in_containers {
 	my $ref_names = shift;
 	my $ref_cgroup = shift;
 	my $ref_pids = shift;
+	my $init_cgroup = shift;
 	my @pidlist;
 
 	for (@{$ref_names}) {
-		my $task_file = "$$ref_cgroup/$_/tasks";
+		my $task_file = "$$ref_cgroup/$init_cgroup/lxc/$_/tasks";
 
 		$LXC_NAMES{$_} = 1;
 		open(tasks, "cat $task_file 2>/dev/null |") or next;
@@ -108,6 +115,20 @@ sub execute_ps {
     close ps;
 }
 
+sub get_init_cgroup {
+    my $filename = "/proc/1/cgroup";
+    open(LXC, "$filename");
+    my @cgroup = <LXC>;
+    close LXC;
+    my $container = '';
+    foreach ( @cgroup ) {
+        chomp;
+        # find the container name after :/
+        s/.*:\///o;
+    }
+    return $container;
+}
+
 sub get_container {
     my $pid = shift;
     my $filename = "/proc/$pid/cgroup";
@@ -119,8 +140,10 @@ sub get_container {
     foreach ( @cgroup ) {
         chomp;
         # find the container name after :/
-	s/.*:\///o;
-	$container = $_;
+        s/.*:\///o;
+        # chop off everything up to 'lxc/'
+        s/lxc\///o;
+        $container = $_;
     }
     return $container;
 }
@@ -160,6 +183,7 @@ my $arg_help  = '';
 my $arg_usage = '';
 my $arg_lxc   = '';
 my @arg_name;
+my $init_cgroup = '/';
 
 GetOptions('help'   => \$arg_help,
 	   'usage'  => \$arg_usage,
@@ -186,8 +210,9 @@ if (@arg_name > 0) {
 	my $pid_list;
 	$LXC_DISPLAY = 2;
 
+	$init_cgroup = get_init_cgroup();
 	get_cgroup \$cgroup;
-	get_pids_in_containers(\@arg_name, \$cgroup, \$pid_list);
+	get_pids_in_containers(\@arg_name, \$cgroup, \$pid_list, $init_cgroup);
 	if ($pid_list) {
 		@ARGV = ("-p $pid_list",@ARGV);
 	}

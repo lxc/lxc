@@ -31,6 +31,9 @@ active=$(netstat -xl | grep $lxcpath | \
 if test -n "$active"; then
 	get_cgroup
 	if test -n "$mount_point"; then
-		cd $mount_point; ls "$@" -d $active
+		# get cgroup for init
+		init_cgroup=`cat /proc/1/cgroup | awk -F: '{ print $3 }' | head -1`
+		cd $mount_point/$init_cgroup/lxc
+		ls "$@" -d $active
 	fi
 fi
