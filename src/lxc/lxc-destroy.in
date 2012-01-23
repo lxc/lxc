@@ -26,7 +26,8 @@
 #
 
 usage() {
-    echo "usage: $0 -n <name>"
+    echo "usage: $0 -n <name> [-f]"
+    echo "  -f: if a container is running, stop it first.  Default is to abort"
 }
 
 if [ "$(id -u)" != "0" ]; then
@@ -34,10 +35,11 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
-shortoptions='n:'
+shortoptions='n:f'
 longoptions='name:'
 localstatedir=@LOCALSTATEDIR@
 lxc_path=@LXCPATH@
+force=0
 
 getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
 if [ $? != 0 ]; then
@@ -52,6 +54,10 @@ while true; do
 	    -n|--name)
 		shift
 		lxc_name=$1
+		shift
+		;;
+	    -f)
+		force=1
 		shift
 		;;
             --)
@@ -76,14 +82,28 @@ if [ ! -d "$lxc_path/$lxc_name" ]; then
     exit 1
 fi
 
+# make sure the container isn't running
+lxc-info -n $lxc_name 2>/dev/null | grep -q RUNNING
+if [ $? -eq 0 ]; then
+	if [ $force -eq 1 ]; then
+		lxc-stop -n $lxc_name
+	else
+		echo "Container $lxc_name is running, aborting the deletion."
+		exit 1
+	fi
+fi
+
 # Deduce the type of rootfs
 # If LVM partition, destroy it.  If anything else, ignore it.  We'll support
 # deletion of others later.
-rootdev=`grep lxc.rootfs $lxc_path/$lxc_name/config | awk -F= '{ print $2 '}`
-if [ -b $rootdev -o -h $rootdev ]; then
-	lvdisplay $rootdev > /dev/null 2>&1
-	if [ $? -eq 0 ]; then
-		lvremove $rootdev
+rootdev=`grep lxc.rootfs $lxc_path/$lxc_name/config 2>/dev/null | sed -e 's/^[^/]*/\//'`
+if [ ! -z "$rootdev" ]; then
+	if [ -b "$rootdev" -o -h "$rootdev" ]; then
+		lvdisplay $rootdev > /dev/null 2>&1
+		if [ $? -eq 0 ]; then
+			echo "removing backing store: $rootdev"
+			lvremove -f $rootdev
+		fi
 	fi
 fi
 # recursively remove the container to remove old container configuration
