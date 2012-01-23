@@ -237,7 +237,7 @@ fi
 # Create the fs as needed
 mkdir $rootfs
 if [ $backingstore = "lvm" ]; then
-    lvcreate -L $fssize -n $lxc_name $vgname || exit 1
+    lvcreate -L $fssize -n $lvname $vgname || exit 1
     udevadm settle
     mkfs -t $fstype $rootdev || exit 1
     mount -t $fstype $rootdev $rootfs
