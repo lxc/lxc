@@ -203,6 +203,7 @@ struct lxc_conf {
 	int tty;
 	int pts;
 	int reboot;
+	int need_utmp_watch;
 	int personality;
 	struct utsname *utsname;
 	struct lxc_list cgroup;

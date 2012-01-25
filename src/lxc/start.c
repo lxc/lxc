@@ -303,9 +303,11 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_open;
 	}
 
-	if (lxc_utmp_mainloop_add(&descr, handler)) {
-		ERROR("failed to add utmp handler to mainloop");
-		goto out_mainloop_open;
+	if (handler->conf->need_utmp_watch) {
+		if (lxc_utmp_mainloop_add(&descr, handler)) {
+			ERROR("failed to add utmp handler to mainloop");
+			goto out_mainloop_open;
+		}
 	}
 
 	return lxc_mainloop(&descr);
@@ -402,6 +404,28 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 		kill(handler->pid, SIGKILL);
 }
 
+#include <sys/reboot.h>
+#include <linux/reboot.h>
+
+static int must_drop_cap_sys_boot(void)
+{
+	FILE *f = fopen("/proc/sys/kernel/ctrl-alt-del", "r");
+	int ret;
+	int v;
+
+	if (!f)
+		return 1;
+
+	ret = fscanf(f, "%d", &v);
+	fclose(f);
+	if (ret != 1)
+		return 1;
+	ret = reboot(v ? LINUX_REBOOT_CMD_CAD_ON : LINUX_REBOOT_CMD_CAD_OFF);
+	if (ret != -1)
+		return 1;
+	return 0;
+}
+
 static int do_start(void *data)
 {
 	struct lxc_handler *handler = data;
@@ -436,10 +460,14 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
-	if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
-		SYSERROR("failed to remove CAP_SYS_BOOT capability");
-		return -1;
-	}
+	if (must_drop_cap_sys_boot()) {
+		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
+			SYSERROR("failed to remove CAP_SYS_BOOT capability");
+			return -1;
+		}
+		handler->conf->need_utmp_watch = 1;
+	} else
+		handler->conf->need_utmp_watch = 0;
 
 	close(handler->sigfd);
 
@@ -570,6 +598,24 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	while (waitpid(handler->pid, &status, 0) < 0 && errno == EINTR)
 		continue;
 
+        if (!WIFSIGNALED(status)) {
+                printf("child process exited but was not signaled\n");
+                return -1;
+        }
+
+	switch(WTERMSIG(status)) {
+	case SIGINT: /* halt */
+		DEBUG("Container halting");
+		break;
+	case SIGHUP: /* reboot */
+		DEBUG("Container rebooting");
+		handler->conf->reboot = 1;
+		break;
+	default:
+		DEBUG("unknown exit status for init: %d\n", WTERMSIG(status));
+		break;
+        }
+
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
 	lxc_cgroup_destroy(name);
@@ -618,5 +664,6 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 	if (lxc_check_inherited(-1))
 		return -1;
 
+	conf->need_utmp_watch = 1;
 	return __lxc_start(name, conf, &start_ops, &start_arg);
 }
