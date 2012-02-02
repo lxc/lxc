@@ -28,6 +28,7 @@
 #include <mntent.h>
 #include <unistd.h>
 #include <string.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -419,6 +420,48 @@ out:
 	return err;
 }
 
+int recursive_rmdir(char *dirname)
+{
+	struct dirent dirent, *direntp;
+	int fddir;
+	DIR *dir;
+	int ret;
+	char pathname[MAXPATHLEN];
+
+	dir = opendir(dirname);
+	if (!dir) {
+		WARN("failed to open directory: %m");
+		return -1;
+	}
+
+	fddir = dirfd(dir);
+
+	while (!readdir_r(dir, &dirent, &direntp)) {
+		struct stat mystat;
+
+		if (!direntp)
+			break;
+
+		if (!strcmp(direntp->d_name, ".") ||
+		    !strcmp(direntp->d_name, ".."))
+			continue;
+
+		snprintf(pathname, MAXPATHLEN, "%s/%s", dirname, direntp->d_name);
+		ret = stat(pathname, &mystat);
+		if (ret)
+			continue;
+		if (S_ISDIR(mystat.st_mode))
+			recursive_rmdir(pathname);
+	}
+
+	ret = rmdir(dirname);
+
+	if (closedir(dir))
+		ERROR("failed to close directory");
+	return ret;
+
+
+}
 
 int lxc_one_cgroup_destroy(struct mntent *mntent, const char *name)
 {
@@ -428,7 +471,7 @@ int lxc_one_cgroup_destroy(struct mntent *mntent, const char *name)
 	snprintf(cgname, MAXPATHLEN, "%s%s/lxc/%s", cgmnt,
 		get_init_cgroup(NULL, mntent, initcgroup), name);
 	DEBUG("destroying %s\n", cgname);
-	if (rmdir(cgname)) {
+	if (recursive_rmdir(cgname)) {
 		SYSERROR("failed to remove cgroup '%s'", cgname);
 		return -1;
 	}
