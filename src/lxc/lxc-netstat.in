@@ -45,6 +45,12 @@ if [ -z "$name" ]; then
 	exit 1
 fi
 
+lxc-info -n $name 2>&1 | grep -q 'STOPPED'
+if [ $? -eq 0 ]; then
+	echo "Container $name is not running"
+	exit 1
+fi
+
 cgroups=$(mount -l -t cgroup)
 cgroup_path=""
 
@@ -74,12 +80,16 @@ if [ -z "$cgroup_path" ]; then
     exit 1
 fi
 
-pid=$(head -1 $cgroup_path/$name/tasks)
+# the container will be in:
+# ${cgroup_path}.${init_cgroup_path}."lxc".$name
+init_cgroup=`cat /proc/1/cgroup | awk -F: '{ print $3 }' | head -1`
+final_cgroup_path=$cgroup_path/$init_cgroup/lxc
+pid=$(head -1 $final_cgroup_path/$name/tasks)
 
 if [ -z "$pid" ]; then
     echo "no process found for '$name'"
     exit 1
 fi
 
-mount --bind /proc/$pid/net /proc/$$/net && \
+mount -n --bind /proc/$pid/net /proc/$$/net && \
     exec netstat "$@"
