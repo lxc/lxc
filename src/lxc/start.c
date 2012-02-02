@@ -319,9 +319,16 @@ out_sigfd:
 	return -1;
 }
 
+extern int lxc_caps_check(void);
+
 struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 {
 	struct lxc_handler *handler;
+
+	if (!lxc_caps_check()) {
+		ERROR("Not running with sufficient privilege");
+		return NULL;
+	}
 
 	handler = malloc(sizeof(*handler));
 	if (!handler)

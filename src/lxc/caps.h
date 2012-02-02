@@ -27,6 +27,7 @@ extern int lxc_caps_reset(void);
 extern int lxc_caps_down(void);
 extern int lxc_caps_up(void);
 extern int lxc_caps_init(void);
+extern int lxc_caps_check(void);
 
 extern int lxc_caps_last_cap(void);
 
