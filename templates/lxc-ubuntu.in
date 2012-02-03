@@ -71,6 +71,49 @@ EOF
     return 0
 }
 
+write_sourceslist()
+{
+    # $1 => path to the rootfs
+    # $2 => architecture we want to add
+    # $3 => whether to use the multi-arch syntax or not
+
+    case $2 in
+      amd64|i386)
+            MIRROR=${MIRROR:-http://archive.ubuntu.com/ubuntu}
+            SECURITY_MIRROR=${SECURITY_MIRROR:-http://security.ubuntu.com/ubuntu}
+            ;;
+      sparc)
+            case $SUITE in
+              gutsy)
+            MIRROR=${MIRROR:-http://archive.ubuntu.com/ubuntu}
+            SECURITY_MIRROR=${SECURITY_MIRRORMIRROR:-http://security.ubuntu.com/ubuntu}
+            ;;
+              *)
+            MIRROR=${MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
+            SECURITY_MIRROR=${SECURITY_MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
+            ;;
+            esac
+            ;;
+      *)
+            MIRROR=${MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
+            SECURITY_MIRROR=${SECURITY_MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
+            ;;
+    esac
+    if [ -n "$3" ]; then
+        cat >> "$1/etc/apt/sources.list" << EOF
+deb [arch=$2] $MIRROR ${release} main restricted universe multiverse
+deb [arch=$2] $MIRROR ${release}-updates main restricted universe multiverse
+deb [arch=$2] $SECURITY_MIRROR ${release}-security main restricted universe multiverse
+EOF
+    else
+        cat >> "$1/etc/apt/sources.list" << EOF
+deb $MIRROR ${release} main restricted universe multiverse
+deb $MIRROR ${release}-updates main restricted universe multiverse
+deb $SECURITY_MIRROR ${release}-security main restricted universe multiverse
+EOF
+    fi
+}
+
 download_ubuntu()
 {
     cache=$1
@@ -97,7 +140,12 @@ download_ubuntu()
 
     # download a mini ubuntu into a cache
     echo "Downloading ubuntu $release minimal ..."
-    debootstrap --verbose --components=main,universe --arch=$arch --include=$packages $release $cache/partial-$arch $MIRROR
+    if [ -n "$(which qemu-debootstrap)" ]; then
+        qemu-debootstrap --verbose --components=main,universe --arch=$arch --include=$packages $release $cache/partial-$arch $MIRROR
+    else
+        debootstrap --verbose --components=main,universe --arch=$arch --include=$packages $release $cache/partial-$arch $MIRROR
+    fi
+
     if [ $? -ne 0 ]; then
         echo "Failed to download the rootfs, aborting."
             return 1
@@ -134,32 +182,9 @@ EOF
     # Serge isn't sure whether we should avoid doing this when
     # $release == `distro-info -d`
     echo "Installing updates"
-    case $arch in
-      amd64|i386)
-            MIRROR=${MIRROR:-http://archive.ubuntu.com/ubuntu}
-            SECURITY_MIRROR=${SECURITY_MIRROR:-http://security.ubuntu.com/ubuntu}
-            ;;
-      sparc)
-            case $SUITE in
-              gutsy)
-            MIRROR=${MIRROR:-http://archive.ubuntu.com/ubuntu}
-            SECURITY_MIRROR=${SECURITY_MIRRORMIRROR:-http://security.ubuntu.com/ubuntu}
-            ;;
-              *)
-            MIRROR=${MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
-            SECURITY_MIRROR=${SECURITY_MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
-            ;;
-            esac
-            ;;
-      *)
-            MIRROR=${MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
-            SECURITY_MIRROR=${SECURITY_MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
-            ;;
-    esac
-    cat >> "$1/partial-${arch}/etc/apt/sources.list" << EOF
-deb $MIRROR ${release}-updates main universe
-deb $SECURITY_MIRROR ${release}-security main universe
-EOF
+    > $cache/partial-$arch/etc/apt/sources.list
+    write_sourceslist $cache/partial-$arch/ $arch
+
     chroot "$1/partial-${arch}" apt-get update
     if [ $? -ne 0 ]; then
         echo "Failed to update the apt cache"
@@ -411,6 +436,28 @@ post_process()
         cp /etc/resolv.conf "${rootfs}/etc"
         chroot $rootfs apt-get update
         chroot $rootfs apt-get install --force-yes -y lxcguest
+    fi
+
+    # If the container isn't running a native architecture, setup multiarch
+    if [ -x "$(ls -1 ${rootfs}/usr/bin/qemu-*-static 2>/dev/null)" ]; then
+        mkdir -p ${rootfs}/etc/dpkg/dpkg.cfg.d
+        echo "foreign-architecture ${hostarch}" > ${rootfs}/etc/dpkg/dpkg.cfg.d/lxc-multiarch
+
+        # Save existing value of MIRROR and SECURITY_MIRROR
+        DEFAULT_MIRROR=$MIRROR
+        DEFAULT_SECURITY_MIRROR=$SECURITY_MIRROR
+
+        # Write a new sources.list containing both native and multiarch entries
+        > ${rootfs}/etc/apt/sources.list
+        write_sourceslist $rootfs $arch "native"
+
+        MIRROR=$DEFAULT_MIRROR
+        SECURITY_MIRROR=$DEFAULT_SECURITY_MIRROR
+        write_sourceslist $rootfs $hostarch "multiarch"
+
+        # Finally update the lists and install upstart using the host architecture
+        chroot $rootfs apt-get update
+        chroot $rootfs apt-get install --force-yes -y --no-install-recommends upstart:${hostarch} mountall:amd64 iproute:amd64 isc-dhcp-client:amd64
     fi
 }
 
