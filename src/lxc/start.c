@@ -605,22 +605,25 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	while (waitpid(handler->pid, &status, 0) < 0 && errno == EINTR)
 		continue;
 
-        if (!WIFSIGNALED(status)) {
-                printf("child process exited but was not signaled\n");
-                return -1;
-        }
-
-	switch(WTERMSIG(status)) {
-	case SIGINT: /* halt */
-		DEBUG("Container halting");
-		break;
-	case SIGHUP: /* reboot */
-		DEBUG("Container rebooting");
-		handler->conf->reboot = 1;
-		break;
-	default:
-		DEBUG("unknown exit status for init: %d\n", WTERMSIG(status));
-		break;
+	/*
+	 * If the child process exited but was not signaled,
+	 * it didn't call reboot.  This should mean it was an
+	 * lxc-execute which simply exited.  In any case, treat
+	 * it as a 'halt'
+	 */
+        if (WIFSIGNALED(status)) {
+		switch(WTERMSIG(status)) {
+		case SIGINT: /* halt */
+			DEBUG("Container halting");
+			break;
+		case SIGHUP: /* reboot */
+			DEBUG("Container rebooting");
+			handler->conf->reboot = 1;
+			break;
+		default:
+			DEBUG("unknown exit status for init: %d\n", WTERMSIG(status));
+			break;
+		}
         }
 
 	err =  lxc_error_set_and_log(handler->pid, status);
