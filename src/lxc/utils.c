@@ -131,8 +131,9 @@ extern int lxc_setup_fs(void)
 	if (mount_fs("proc", "/proc", "proc"))
 		return -1;
 
+	/* if we can't mount /dev/shm, continue anyway */
 	if (mount_fs("shmfs", "/dev/shm", "tmpfs"))
-		return -1;
+		DEBUG("failed to mount /dev/shm");
 
 	/* If we were able to mount /dev/shm, then /dev exists */
 	/* Sure, but it's read-only per config :) */
