@@ -426,7 +426,8 @@ post_process()
 
     if [ $trim_container -eq 1 ]; then
         trim $rootfs $release
-    else
+    elif [ $release = "lucid" -o $release = "maverick" -o $release = "natty" \
+               -o $release = "oneiric" ]; then
         # for lucid and maverick, if not trimming, then add the ubuntu-virt
         # ppa and install lxcguest
         if [ $release = "lucid" -o $release = "maverick" ]; then
