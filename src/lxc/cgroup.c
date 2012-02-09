@@ -423,7 +423,6 @@ out:
 int recursive_rmdir(char *dirname)
 {
 	struct dirent dirent, *direntp;
-	int fddir;
 	DIR *dir;
 	int ret;
 	char pathname[MAXPATHLEN];
@@ -433,8 +432,6 @@ int recursive_rmdir(char *dirname)
 		WARN("failed to open directory: %m");
 		return -1;
 	}
-
-	fddir = dirfd(dir);
 
 	while (!readdir_r(dir, &dirent, &direntp)) {
 		struct stat mystat;
