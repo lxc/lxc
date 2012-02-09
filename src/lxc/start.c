@@ -414,22 +414,57 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 #include <sys/reboot.h>
 #include <linux/reboot.h>
 
+/*
+ * reboot(LINUX_REBOOT_CMD_CAD_ON) will return -EINVAL
+ * in a child pid namespace if container reboot support exists.
+ * Otherwise, it will either succeed or return -EPERM.
+ */
+static int container_reboot_supported(void *arg)
+{
+        int *cmd = arg;
+	int ret;
+
+        ret = reboot(*cmd);
+	if (ret == -1 && errno == EINVAL)
+		return 1;
+	return 0;
+}
+
 static int must_drop_cap_sys_boot(void)
 {
 	FILE *f = fopen("/proc/sys/kernel/ctrl-alt-del", "r");
-	int ret;
-	int v;
+	int ret, cmd, v;
+        long stack_size = 4096;
+        void *stack = alloca(stack_size) + stack_size;
+        int status;
+        pid_t pid;
 
-	if (!f)
+	if (!f) {
+		DEBUG("failed to open /proc/sys/kernel/ctrl-alt-del");
 		return 1;
+	}
 
 	ret = fscanf(f, "%d", &v);
 	fclose(f);
-	if (ret != 1)
+	if (ret != 1) {
+		DEBUG("Failed to read /proc/sys/kernel/ctrl-alt-del");
 		return 1;
-	ret = reboot(v ? LINUX_REBOOT_CMD_CAD_ON : LINUX_REBOOT_CMD_CAD_OFF);
-	if (ret != -1)
+	}
+	cmd = v ? LINUX_REBOOT_CMD_CAD_ON : LINUX_REBOOT_CMD_CAD_OFF;
+
+        pid = clone(container_reboot_supported, stack, CLONE_NEWPID | SIGCHLD, &cmd);
+        if (pid < 0) {
+                SYSERROR("failed to clone\n");
+                return -1;
+        }
+        if (wait(&status) < 0) {
+                SYSERROR("unexpected wait error: %m\n");
+                return -1;
+        }
+
+	if (WEXITSTATUS(status) != 1)
 		return 1;
+
 	return 0;
 }
 
@@ -461,20 +496,23 @@ static int do_start(void *data)
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
 		return -1;
 
-	/* Setup the container, ip, names, utsname, ... */
-	if (lxc_setup(handler->name, handler->conf)) {
-		ERROR("failed to setup the container");
-		goto out_warn_father;
-	}
-
 	if (must_drop_cap_sys_boot()) {
 		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
 			SYSERROR("failed to remove CAP_SYS_BOOT capability");
 			return -1;
 		}
 		handler->conf->need_utmp_watch = 1;
-	} else
+		DEBUG("Dropped cap_sys_boot\n");
+	} else {
+		DEBUG("Not dropping cap_sys_boot or watching utmp\n");
 		handler->conf->need_utmp_watch = 0;
+	}
+
+	/* Setup the container, ip, names, utsname, ... */
+	if (lxc_setup(handler->name, handler->conf)) {
+		ERROR("failed to setup the container");
+		goto out_warn_father;
+	}
 
 	close(handler->sigfd);
 
