@@ -24,6 +24,8 @@ usage() {
     echo "usage: lxc-create -n <name> [-f configuration] [-t template] [-h] [fsopts] -- [template_options]"
     echo "   fsopts: -B none"
     echo "   fsopts: -B lvm [--lvname lvname] [--vgname vgname] [--fstype fstype] [--fssize fssize]"
+    echo "   fsopts: -B btrfs"
+    echo "           flag is not necessary, if possible btrfs support will be used"
 #    echo "   fsopts: -B union [--uniontype overlayfs]"
 #    echo "   fsopts: -B loop [--fstype fstype] [--fssize fssize]"
 #    echo "   fsopts: -B qemu-nbd [--type qed|qcow2|raw] [--fstype fstype] [--fssize fssize] # Qemu qed disk format"
@@ -68,7 +70,7 @@ lxc_path=@LXCPATH@
 bindir=@BINDIR@
 libdir=@LIBDIR@
 templatedir=@LXCTEMPLATEDIR@
-backingstore=none
+backingstore=_unset
 fstype=ext4
 fssize=500M
 vgname=lxc
@@ -163,16 +165,13 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
-if [ $backingstore != "none" -a $backingstore != "lvm" ]; then
-    echo "only 'none' and 'lvm' backing stores are known"
-    usage
-    exit 1
-fi
-
-if [ ! -r $lxc_path ]; then
-    echo "no configuration path defined !"
-    exit 1
-fi
+case "$backingstore" in
+    lvm|none|btrfs|_unset) :;;
+    *) echo "'$backingstore' is not known ('none', 'lvm', 'btrfs')"
+        usage
+        exit 1
+        ;;
+esac
 
 if [ -d "$lxc_path/$lxc_name" ]; then
     echo "'$lxc_name' already exists"
@@ -180,6 +179,21 @@ if [ -d "$lxc_path/$lxc_name" ]; then
 fi
 
 rootfs="$lxc_path/$lxc_name/rootfs"
+
+if [ "$backingstore" = "_unset" -o "$backingstore" = "btrfs" ]; then
+# if no backing store was given, then see if btrfs would work
+    if which btrfs >/dev/null 2>&1 &&
+        btrfs filesystem df "$lxc_path/" >/dev/null 2>&1; then
+        backingstore="btrfs"
+    else
+        if [ "$backingstore" = "btrfs" ]; then
+            echo "missing 'btrfs' command or $lxc_path is not btrfs";
+            exit 1;
+        fi
+        backingstore="none"
+    fi
+fi
+
 if [ $backingstore = "lvm" ]; then
     which vgscan > /dev/null
     if [ $? -ne 0 ]; then
@@ -206,6 +220,12 @@ if [ $backingstore = "lvm" ]; then
         echo "backing store already exists: $rootdev"
         echo "please delete it (using \"lvremove $rootdev\") and try again"
         exit 1
+    fi
+elif [ "$backingstore" = "btrfs" ]; then
+    mkdir "$lxc_path/$lxc_name"
+    if ! out=$(btrfs subvolume create "$rootfs" 2>&1); then
+        echo "failed to create subvolume in $rootfs: $out";
+        exit 1;
     fi
 fi
 
@@ -235,7 +255,7 @@ else
 fi
 
 # Create the fs as needed
-mkdir $rootfs
+[ -d "$rootfs" ] || mkdir $rootfs
 if [ $backingstore = "lvm" ]; then
     lvcreate -L $fssize -n $lvname $vgname || exit 1
     udevadm settle
@@ -279,9 +299,8 @@ if [ ! -z $lxc_template ]; then
 
     ${templatedir}/lxc-$lxc_template --path=$lxc_path/$lxc_name --name=$lxc_name $*
     if [ $? -ne 0 ]; then
-	echo "failed to execute template '$lxc_template'"
-	${bindir}/lxc-destroy -n $lxc_name
-	exit 1
+        echo "failed to execute template '$lxc_template'"
+        cleanup
     fi
 
     echo "'$lxc_template' template installed"
