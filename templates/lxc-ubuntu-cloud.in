@@ -36,6 +36,15 @@ copy_configuration()
         arch="i686"
     fi
 
+    # if there is exactly one veth network entry, make sure it has an
+    # associated hwaddr.
+    nics=`grep -e '^lxc\.network\.type[ \t]*=[ \t]*veth' $path/config | wc -l`
+    if [ $nics -eq 1 ]; then
+        grep -q "^lxc.network.hwaddr" $path/config || cat <<EOF >> $path/config
+lxc.network.hwaddr= 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')
+EOF
+    fi
+
     cat <<EOF >> $path/config
 lxc.utsname = $name
 
@@ -88,14 +97,25 @@ EOF
 usage()
 {
     cat <<EOF
-$1 -h|--help [-a|--arch] [-F | --flush-cache] [-r|--release <release>]
-release: lucid | maverick | natty | oneiric | precise
-arch: amd64 or i386: defaults to host arch
+LXC Container configuration for Ubuntu Cloud images.
+
+Generic Options
+[ -r | --release <release> ]: Release name of container, defaults to host
+[ -a | --arch ]: Arhcitecture of container, defaults to host arcitecture
+[ -C | --cloud ]: Configure container for use with meta-data service, defaults to no
+[ -T | --tarball ]: Location of tarball
+
+Options, mutually exclusive of "-C" and "--cloud":
+  [ -i | --hostid ]:    HostID for cloud-init, defaults to random string
+  [ -u | --userdata ]:  Cloud-init user-data file to configure container on start
+  [ -S | --auth_key ]:  SSH Public key file to inject into container
+  [ -L | --nolocales ]: Do not copy host's locales into container
+
 EOF
     return 0
 }
 
-options=$(getopt -o a:hp:r:n:Fi:C -l arch:,help,path:,release:,name:,flush-cache,hostid:,cloud -- "$@")
+options=$(getopt -o a:hp:r:n:Fi:CLS:T: -l arch:,help,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -132,20 +152,24 @@ fi
 
 hostarch=$arch
 cloud=0
+locales=1
 flushcache=0
 while true
 do
     case "$1" in
-    -h|--help)      usage $0 && exit 0;;
-    -p|--path)      path=$2; shift 2;;
-    -n|--name)      name=$2; shift 2;;
-    -F|--flush-cache) flushcache=1; shift 1;;
-    -r|--release)   release=$2; shift 2;;
-    -a|--arch)      arch=$2; shift 2;;
-    -i|--hostid)    host_id=$2; shift 2;;
-    -u|--userdata)  userdata=$2; shift 2;;
-    -C|--cloud)     cloud=1; shift 1;;
-    --)             shift 1; break ;;
+    -h|--help)         usage $0 && exit 0;;
+    -p|--path)         path=$2; shift 2;;
+    -n|--name)         name=$2; shift 2;;
+    -F|--flush-cache)  flushcache=1; shift 1;;
+    -r|--release)      release=$2; shift 2;;
+    -a|--arch)         arch=$2; shift 2;;
+    -i|--hostid)       host_id=$2; shift 2;;
+    -u|--userdata)     userdata=$2; shift 2;;
+    -C|--cloud)        cloud=1; shift 1;;
+    -S|--auth_key)     auth_key=$2; shift 2;;
+    -L|--no_locales)   locales=0; shift 2;;
+    -T|--tarball)      tarball=$2; shift 2;;
+    --)                shift 1; break ;;
         *)              break ;;
     esac
 done
@@ -185,8 +209,13 @@ cache="/var/cache/lxc/cloud-$release"
 
 mkdir -p $cache
 
-url1=`ubuntu-cloudimg-query precise daily $arch --format "%{url}\n"`
-url2=`echo $url1 | sed -e 's/.tar.gz/-root\0/'`
+if [ -n "$tarball" ]; then
+	url2="$tarball"
+else
+	url1=`ubuntu-cloudimg-query precise daily $arch --format "%{url}\n"`
+	url2=`echo $url1 | sed -e 's/.tar.gz/-root\0/'`
+fi
+
 filename=`basename $url2`
 
 mkdir -p /var/lock/subsys/
@@ -200,7 +229,7 @@ mkdir -p /var/lock/subsys/
     fi
 
     if [ ! -f $filename ]; then
-        wget $url2
+       wget $url2
     fi
 
     echo "Extracting rootfs"
@@ -215,21 +244,46 @@ mkdir -p /var/lock/subsys/
 
 	seed_d=$rootfs/var/lib/cloud/seed/nocloud-net
 	rhostid=$(uuidgen | cut -c -8)
-        host_id=${hostid:-$rhostid}
-        mkdir -p $seed_d
+	host_id=${hostid:-$rhostid}
+	mkdir -p $seed_d
 
 	cat > "$seed_d/meta-data" <<EOF
 instance_id: lxc-$host_id
 EOF
 
+	rm $rootfs/etc/hostname
+
+	if [ $locales -eq 1 ]; then
+		cp /usr/lib/locale/locale-archive $rootfs/usr/lib/locale/locale-archive
+	fi
+
+
+	if [ -n "$auth_key" -a -f "$auth_key" ]; then
+		u_path="/home/ubuntu/.ssh"
+		root_u_path="$rootfs/$u_path"
+		mkdir -p $root_u_path
+		cp $auth_key "$root_u_path/authorized_keys"
+		chroot $rootfs chown -R ubuntu: "$u_path"
+
+		echo "Inserted SSH public key from $auth_key into /home/ubuntu/.ssh/authorized_keys"
+	fi
+
 	if [ ! -f $userdata ]; then
-		cp $userdata $seed_d/user-data
+		cp $userdata $data_d/user-data
 	else
-	        echo "#cloud-config" > $seed_d/user-data
+
 		if [ -z "$MIRROR" ]; then
 			MIRROR="http://archive.ubuntu.com/ubuntu"
 		fi
-		echo "apt-mirror: $MIRROR" >> $seed_d/user-data
+
+		cat > "$seed_d/user-data" <<EOF
+#cloud-config
+output: {all: '| tee -a /var/log/cloud-init-output.log'}
+apt-mirror: $MIRROR
+manage_etc_hosts: localhost
+locale: $(/usr/bin/locale | awk -F= '/LANG=/ {print$NF}')
+EOF
+
 	fi
 
 	chroot $rootfs /usr/sbin/usermod -U ubuntu
