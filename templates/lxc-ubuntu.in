@@ -32,6 +32,7 @@ configure_ubuntu()
 {
     rootfs=$1
     hostname=$2
+    release=$3
 
    # configure the network using the dhcp
     cat <<EOF > $rootfs/etc/network/interfaces
@@ -42,13 +43,6 @@ auto eth0
 iface eth0 inet dhcp
 EOF
 
-    # so you can 'ssh $hostname.' or 'ssh $hostname.local'
-    if [ -f $rootfs/etc/dhcp/dhclient.conf ]; then
-        sed -i "s/<hostname>/$hostname/" $rootfs/etc/dhcp/dhclient.conf
-    elif [ -f $rootfs/etc/dhcp3/dhclient.conf ]; then
-        sed -i "s/<hostname>/$hostname/" $rootfs/etc/dhcp3/dhclient.conf
-    fi
-
     # set the hostname
     cat <<EOF > $rootfs/etc/hostname
 $hostname
@@ -58,16 +52,22 @@ EOF
 127.0.0.1 localhost $hostname
 EOF
 
-    # suppress log level output for udev
-    sed -i "s/=\"err\"/=0/" $rootfs/etc/udev/udev.conf
+    if [ "$release" = "precise" ]; then
+        group="sudo"
+    else
+        group="admin"
 
-    # remove jobs for consoles 5 and 6 since we only create 4 consoles in
-    # this template
-    rm -f $rootfs/etc/init/tty{5,6}.conf
+        # suppress log level output for udev
+        sed -i "s/=\"err\"/=0/" $rootfs/etc/udev/udev.conf
 
-    echo "Please change root-password !"
-    echo "root:root" | chroot $rootfs chpasswd
+        # remove jobs for consoles 5 and 6 since we only create 4 consoles in
+        # this template
+        rm -f $rootfs/etc/init/tty{5,6}.conf
+    fi
 
+    chroot $rootfs groupadd --system $group >/dev/null 2>&1 || true
+    chroot $rootfs useradd --create-home -s /bin/bash -G $group ubuntu
+    echo "ubuntu:ubuntu" | chroot $rootfs chpasswd
     return 0
 }
 
@@ -217,7 +217,7 @@ copy_ubuntu()
     rootfs=$3
 
     # make a local copy of the miniubuntu
-    echo -n "Copying rootfs to $rootfs ..."
+    echo "Copying rootfs to $rootfs ..."
     mkdir -p $rootfs
     rsync -a $cache/rootfs-$arch/ $rootfs/ || return 1
     return 0
@@ -266,14 +266,21 @@ copy_configuration()
     rootfs=$2
     name=$3
     arch=$4
+    release=$5
 
     if [ $arch = "i386" ]; then
         arch="i686"
     fi
 
+    ttydir=""
+    if [ $release = "precise" ]; then
+        ttydir=" lxc"
+    fi
+
     cat <<EOF >> $path/config
 lxc.utsname = $name
 
+lxc.devttydir = $ttydir
 lxc.tty = 4
 lxc.pts = 1024
 lxc.rootfs = $rootfs
@@ -619,13 +626,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-configure_ubuntu $rootfs $name
+configure_ubuntu $rootfs $name $release
 if [ $? -ne 0 ]; then
     echo "failed to configure ubuntu $release for a container"
     exit 1
 fi
 
-copy_configuration $path $rootfs $name $arch
+copy_configuration $path $rootfs $name $arch $release
 if [ $? -ne 0 ]; then
     echo "failed write configuration file"
     exit 1
@@ -640,3 +647,10 @@ if [ ! -z $clean ]; then
     clean $release || exit 1
     exit 0
 fi
+
+echo ""
+echo "##"
+echo "# The default user is 'ubuntu' with password 'ubuntu'!"
+echo "# Use the 'sudo' command to run tasks as root in the container."
+echo "##"
+echo ""
