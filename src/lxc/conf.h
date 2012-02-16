@@ -197,6 +197,7 @@ struct lxc_rootfs {
  * @caps       : list of the capabilities
  * @tty_info   : tty data
  * @console    : console data
+ * @ttydir     : directory (under /dev) in which to create console and ttys
  */
 struct lxc_conf {
 	char *fstab;
@@ -213,6 +214,7 @@ struct lxc_conf {
 	struct lxc_tty_info tty_info;
 	struct lxc_console console;
 	struct lxc_rootfs rootfs;
+	char *ttydir;
 };
 
 /*

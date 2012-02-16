@@ -512,10 +512,10 @@ static int setup_utsname(struct utsname *utsname)
 }
 
 static int setup_tty(const struct lxc_rootfs *rootfs,
-		     const struct lxc_tty_info *tty_info)
+		     const struct lxc_tty_info *tty_info, char *ttydir)
 {
-	char path[MAXPATHLEN];
-	int i;
+	char path[MAXPATHLEN], lxcpath[MAXPATHLEN];
+	int i, ret;
 
 	if (!rootfs->path)
 		return 0;
@@ -524,17 +524,50 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
-		snprintf(path, sizeof(path), "%s/dev/tty%d",
+		ret = snprintf(path, sizeof(path), "%s/dev/tty%d",
 			 rootfs->mount, i + 1);
+		if (ret >= sizeof(path)) {
+			ERROR("pathname too long for ttys");
+			return -1;
+		}
+		if (ttydir) {
+			/* create dev/lxc/tty%d" */
+			snprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/tty%d",
+				 rootfs->mount, ttydir, i + 1);
+			if (ret >= sizeof(lxcpath)) {
+				ERROR("pathname too long for ttys");
+				return -1;
+			}
+			ret = creat(lxcpath, 0660);
+			if (ret==-1 && errno != EEXIST) {
+				SYSERROR("error creating %s\n", lxcpath);
+				return -1;
+			}
+			close(ret);
+			ret = unlink(path);
+			if (ret && errno != ENOENT) {
+				SYSERROR("error unlinking %s\n", path);
+				return -1;
+			}
 
-		/* At this point I can not use the "access" function
-		 * to check the file is present or not because it fails
-		 * with EACCES errno and I don't know why :( */
+			if (mount(pty_info->name, lxcpath, "none", MS_BIND, 0)) {
+				WARN("failed to mount '%s'->'%s'",
+				     pty_info->name, path);
+				continue;
+			}
 
-		if (mount(pty_info->name, path, "none", MS_BIND, 0)) {
-			WARN("failed to mount '%s'->'%s'",
-			     pty_info->name, path);
-			continue;
+			snprintf(lxcpath, sizeof(lxcpath), "%s/tty%d", ttydir, i+1);
+			ret = symlink(lxcpath, path);
+			if (ret) {
+				SYSERROR("failed to create symlink for tty %d\n", i+1);
+				return -1;
+			}
+		} else {
+			if (mount(pty_info->name, path, "none", MS_BIND, 0)) {
+				WARN("failed to mount '%s'->'%s'",
+						pty_info->name, path);
+				continue;
+			}
 		}
 	}
 
@@ -812,17 +845,18 @@ static int setup_personality(int persona)
 	return 0;
 }
 
-static int setup_console(const struct lxc_rootfs *rootfs,
+static int setup_dev_console(const struct lxc_rootfs *rootfs,
 			 const struct lxc_console *console)
 {
 	char path[MAXPATHLEN];
 	struct stat s;
+	int ret;
 
-	/* We don't have a rootfs, /dev/console will be shared */
-	if (!rootfs->path)
-		return 0;
-
-	snprintf(path, sizeof(path), "%s/dev/console", rootfs->mount);
+	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs->mount);
+	if (ret >= sizeof(path)) {
+		ERROR("console path too long\n");
+		return -1;
+	}
 
 	if (access(path, F_OK)) {
 		WARN("rootfs specified but no console found at '%s'", path);
@@ -851,8 +885,83 @@ static int setup_console(const struct lxc_rootfs *rootfs,
 	}
 
 	INFO("console has been setup");
+	return 0;
+}
+
+static int setup_ttydir_console(const struct lxc_rootfs *rootfs,
+			 const struct lxc_console *console,
+			 char *ttydir)
+{
+	char path[MAXPATHLEN], lxcpath[MAXPATHLEN];
+	int ret;
+
+	/* create rootfs/dev/<ttydir> directory */
+	ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs->mount,
+		       ttydir);
+	if (ret >= sizeof(path))
+		return -1;
+	ret = mkdir(path, 0755);
+	if (ret && errno != EEXIST) {
+		SYSERROR("failed with errno %d to create %s\n", errno, path);
+		return -1;
+	}
+	INFO("created %s\n", path);
+
+	ret = snprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/console",
+		       rootfs->mount, ttydir);
+	if (ret >= sizeof(lxcpath)) {
+		ERROR("console path too long\n");
+		return -1;
+	}
+
+	snprintf(path, sizeof(path), "%s/dev/console", rootfs->mount);
+	ret = unlink(path);
+	if (ret && errno != ENOENT) {
+		SYSERROR("error unlinking %s\n", path);
+		return -1;
+	}
+
+	ret = creat(lxcpath, 0660);
+	if (ret==-1 && errno != EEXIST) {
+		SYSERROR("error %d creating %s\n", errno, lxcpath);
+		return -1;
+	}
+	close(ret);
+
+	if (console->peer == -1) {
+		INFO("no console output required");
+		return 0;
+	}
+
+	if (mount(console->name, lxcpath, "none", MS_BIND, 0)) {
+		ERROR("failed to mount '%s' on '%s'", console->name, lxcpath);
+		return -1;
+	}
+
+	/* create symlink from rootfs/dev/console to 'lxc/console' */
+	snprintf(lxcpath, sizeof(lxcpath), "%s/console", ttydir);
+	ret = symlink(lxcpath, path);
+	if (ret) {
+		SYSERROR("failed to create symlink for console");
+		return -1;
+	}
+
+	INFO("console has been setup on %s", lxcpath);
 
 	return 0;
+}
+
+static int setup_console(const struct lxc_rootfs *rootfs,
+			 const struct lxc_console *console,
+			 char *ttydir)
+{
+	/* We don't have a rootfs, /dev/console will be shared */
+	if (!rootfs->path)
+		return 0;
+	if (!ttydir)
+		return setup_dev_console(rootfs, console);
+
+	return setup_ttydir_console(rootfs, console, ttydir);
 }
 
 static int setup_cgroup(const char *name, struct lxc_list *cgroups)
@@ -1908,12 +2017,12 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_console(&lxc_conf->rootfs, &lxc_conf->console)) {
+	if (setup_console(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->ttydir)) {
 		ERROR("failed to setup the console for '%s'", name);
 		return -1;
 	}
 
-	if (setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info)) {
+	if (setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info, lxc_conf->ttydir)) {
 		ERROR("failed to setup the ttys for '%s'", name);
 		return -1;
 	}

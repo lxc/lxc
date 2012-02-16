@@ -48,6 +48,7 @@ lxc_log_define(lxc_confile, lxc);
 static int config_personality(const char *, char *, struct lxc_conf *);
 static int config_pts(const char *, char *, struct lxc_conf *);
 static int config_tty(const char *, char *, struct lxc_conf *);
+static int config_ttydir(const char *, char *, struct lxc_conf *);
 static int config_cgroup(const char *, char *, struct lxc_conf *);
 static int config_mount(const char *, char *, struct lxc_conf *);
 static int config_rootfs(const char *, char *, struct lxc_conf *);
@@ -83,6 +84,7 @@ static struct config config[] = {
 	{ "lxc.arch",                 config_personality          },
 	{ "lxc.pts",                  config_pts                  },
 	{ "lxc.tty",                  config_tty                  },
+	{ "lxc.devttydir",            config_ttydir               },
 	{ "lxc.cgroup",               config_cgroup               },
 	{ "lxc.mount",                config_mount                },
 	{ "lxc.rootfs.mount",         config_rootfs_mount         },
@@ -609,6 +611,24 @@ static int config_tty(const char *key, char *value, struct lxc_conf *lxc_conf)
 	int nbtty = atoi(value);
 
 	lxc_conf->tty = nbtty;
+
+	return 0;
+}
+
+static int config_ttydir(const char *key, char *value,
+			  struct lxc_conf *lxc_conf)
+{
+	char *path;
+
+	if (!value || strlen(value) == 0)
+		return 0;
+	path = strdup(value);
+	if (!path) {
+		SYSERROR("failed to strdup '%s': %m", value);
+		return -1;
+	}
+
+	lxc_conf->ttydir = path;
 
 	return 0;
 }
