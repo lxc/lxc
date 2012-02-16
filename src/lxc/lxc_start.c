@@ -58,8 +58,9 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
 	case 'c': args->console = arg; break;
-	case 'd': args->daemonize = 1; break;
+	case 'd': args->daemonize = 1; args->close_all_fds = 1; break;
 	case 'f': args->rcfile = arg; break;
+	case 'C': args->close_all_fds = 1; break;
 	case 's': return lxc_config_define_add(&defines, arg);
 	}
 	return 0;
@@ -70,6 +71,7 @@ static const struct option my_longopts[] = {
 	{"rcfile", required_argument, 0, 'f'},
 	{"define", required_argument, 0, 's'},
 	{"console", required_argument, 0, 'c'},
+	{"close-all-fds", no_argument, 0, 'C'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -85,6 +87,9 @@ Options :\n\
   -d, --daemon         daemonize the container\n\
   -f, --rcfile=FILE    Load configuration file FILE\n\
   -c, --console=FILE   Set the file output for the container console\n\
+  -C, --close-all-fds  If any fds are inherited, close them\n\
+                       If not specified, exit with failure instead\n\
+		       Note: --daemon implies --close-all-fds\n\
   -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
 	.options   = my_longopts,
 	.parser    = my_parser,
@@ -198,6 +203,9 @@ int main(int argc, char *argv[])
 		SYSERROR("failed to daemonize '%s'", my_args.name);
 		return err;
 	}
+
+	if (my_args.close_all_fds)
+		conf->close_all_fds = 1;
 
 	err = lxc_start(my_args.name, args, conf);
 

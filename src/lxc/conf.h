@@ -215,6 +215,7 @@ struct lxc_conf {
 	struct lxc_console console;
 	struct lxc_rootfs rootfs;
 	char *ttydir;
+	int close_all_fds;
 };
 
 /*

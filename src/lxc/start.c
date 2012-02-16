@@ -134,12 +134,13 @@ static int match_fd(int fd)
 	return (fd == 0 || fd == 1 || fd == 2);
 }
 
-int lxc_check_inherited(int fd_to_ignore)
+int lxc_check_inherited(struct lxc_conf *conf, int fd_to_ignore)
 {
 	struct dirent dirent, *direntp;
 	int fd, fddir;
 	DIR *dir;
 
+restart:
 	dir = opendir("/proc/self/fd");
 	if (!dir) {
 		WARN("failed to open directory: %m");
@@ -166,6 +167,12 @@ int lxc_check_inherited(int fd_to_ignore)
 		if (match_fd(fd))
 			continue;
 
+		if (conf->close_all_fds) {
+			close(fd);
+			closedir(dir);
+			INFO("closed inherited fd %d", fd);
+			goto restart;
+		}
 		WARN("inherited fd %d", fd);
 	}
 
@@ -709,7 +716,7 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 		.argv = argv,
 	};
 
-	if (lxc_check_inherited(-1))
+	if (lxc_check_inherited(conf, -1))
 		return -1;
 
 	conf->need_utmp_watch = 1;

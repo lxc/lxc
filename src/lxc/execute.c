@@ -83,7 +83,7 @@ int lxc_execute(const char *name, char *const argv[], int quiet,
 		.quiet = quiet
 	};
 
-	if (lxc_check_inherited(-1))
+	if (lxc_check_inherited(conf, -1))
 		return -1;
 
 	return __lxc_start(name, conf, &execute_start_ops, &args);

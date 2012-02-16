@@ -58,6 +58,9 @@ struct lxc_arguments {
 	/* for lxc-wait */
 	char *states;
 
+	/* close fds from parent? */
+	int close_all_fds;
+
 	/* remaining arguments */
 	char *const *argv;
 	int argc;

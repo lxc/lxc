@@ -71,7 +71,7 @@ int lxc_restart(const char *name, int sfd, struct lxc_conf *conf, int flags)
 		.flags = flags
 	};
 
-	if (lxc_check_inherited(sfd))
+	if (lxc_check_inherited(conf, sfd))
 		return -1;
 
 	return __lxc_start(name, conf, &restart_ops, &restart_arg);
