@@ -227,6 +227,7 @@ install_ubuntu()
 {
     rootfs=$1
     release=$2
+    flushcache=$3
     cache="/var/cache/lxc/$release"
     mkdir -p /var/lock/subsys/
     (
@@ -236,6 +237,12 @@ install_ubuntu()
 	    return 1
 	fi
 
+
+    if [ $flushcache -eq 1 ]; then
+        echo "Flushing cache..."
+        rm -rf "$cache/partial-$arch"
+        rm -rf "$cache/rootfs-$arch"
+    fi
 
 	echo "Checking cache download in $cache/rootfs-$arch ... "
 	if [ ! -e "$cache/rootfs-$arch" ]; then
@@ -491,34 +498,11 @@ do_bindhome()
     echo "$h $rootfs/$h none bind 0 0" >> $path/fstab
 }
 
-clean()
-{
-    release=$1
-    cache="/var/cache/lxc/$release"
-
-    if [ ! -e $cache ]; then
-	exit 0
-    fi
-
-    # lock, so we won't purge while someone is creating a repository
-    (
-	flock -n -x 200
-	if [ $? != 0 ]; then
-	    echo "Cache repository is busy."
-	    exit 1
-	fi
-
-	echo -n "Purging the download cache..."
-	rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
-	exit 0
-
-    ) 200>/var/lock/subsys/lxc
-}
-
 usage()
 {
     cat <<EOF
-$1 -h|--help -p|--path=<path> --clean [-a|--arch] [-b|--bindhome <user>] [--trim] [-r|--release]
+$1 -h|--help [-a|--arch] [-b|--bindhome <user>] [--trim]
+   [-F | --flush-cache] [-r|--release <release>]
 release: lucid | maverick | natty | oneiric | precise
 trim: make a minimal (faster, but not upgrade-safe) container
 bindhome: bind <user>'s home into the container
@@ -527,7 +511,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:b:hp:r:xn:c -l arch:,bindhome:,help,path:,release:,trim,name:,clean -- "$@")
+options=$(getopt -o a:b:hp:r:xn:F -l arch:,bindhome:,help,path:,release:,trim,name:,flush-cache -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -565,13 +549,14 @@ fi
 
 trim_container=0
 hostarch=$arch
+flushcache=0
 while true
 do
     case "$1" in
     -h|--help)      usage $0 && exit 0;;
     -p|--path)      path=$2; shift 2;;
     -n|--name)      name=$2; shift 2;;
-    -c|--clean)     clean=$2; shift 2;;
+    -F|--flush-cache) flushcache=1; shift 1;;
     -r|--release)   release=$2; shift 2;;
     -b|--bindhome)  bindhome=$2; shift 2;;
     -a|--arch)      arch=$2; shift 2;;
@@ -590,11 +575,6 @@ fi
 
 if [ "$arch" == "i686" ]; then
     arch=i386
-fi
-
-if [ ! -z "$clean" -a -z "$path" ]; then
-    clean || exit 1
-    exit 0
 fi
 
 if [ $hostarch = "i386" -a $arch = "amd64" ]; then
@@ -620,7 +600,7 @@ fi
 
 rootfs=$path/rootfs
 
-install_ubuntu $rootfs $release
+install_ubuntu $rootfs $release $flushcache
 if [ $? -ne 0 ]; then
     echo "failed to install ubuntu $release"
     exit 1
@@ -641,11 +621,6 @@ fi
 post_process $rootfs $release $trim_container
 if [ ! -z $bindhome ]; then
 	do_bindhome $rootfs $bindhome
-fi
-
-if [ ! -z $clean ]; then
-    clean $release || exit 1
-    exit 0
 fi
 
 echo ""
