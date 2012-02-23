@@ -1,0 +1,47 @@
+/*
+ * lxc: linux Container library
+ *
+ * (C) Copyright IBM Corp. 2007, 2008
+ *
+ * Authors:
+ * Daniel Lezcano <dlezcano at fr.ibm.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ */
+
+#ifndef _attach_h
+#define _attach_h
+
+#include <sys/types.h>
+
+struct lxc_proc_cgroup_info {
+	char *subsystems;
+	char *cgroup;
+};
+
+struct lxc_proc_context_info {
+	unsigned long personality;
+	unsigned long long capability_mask;
+	struct lxc_proc_cgroup_info* cgroups;
+	int cgroups_count;
+};
+
+extern struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid);
+extern void lxc_proc_free_context_info(struct lxc_proc_context_info *info);
+
+extern int lxc_attach_proc_to_cgroups(pid_t pid, struct lxc_proc_context_info *ctx);
+extern int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx);
+
+#endif

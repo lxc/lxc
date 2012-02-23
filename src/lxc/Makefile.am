@@ -12,7 +12,8 @@ pkginclude_HEADERS = \
 		conf.h \
 		list.h \
 		log.h \
-		state.h
+		state.h \
+		attach.h
 
 sodir=$(libdir)
 # use PROGRAMS to avoid complains from automake
@@ -41,6 +42,7 @@ liblxc_so_SOURCES = \
 	list.h \
 	state.c state.h \
 	log.c log.h \
+	attach.c attach.h \
 	\
 	network.c network.h \
         nl.c nl.h \
