@@ -37,6 +37,7 @@
 #include <net/if.h>
 
 #include "parse.h"
+#include "confile.h"
 #include "utils.h"
 
 #include <lxc/log.h>
@@ -584,30 +585,12 @@ static int config_network_script(const char *key, char *value,
 static int config_personality(const char *key, char *value,
 			      struct lxc_conf *lxc_conf)
 {
-	struct per_name {
-		char *name;
-		int per;
-	} pername[4] = {
-		{ "x86", PER_LINUX32 },
-		{ "i686", PER_LINUX32 },
-		{ "x86_64", PER_LINUX },
-		{ "amd64", PER_LINUX },
-	};
-	size_t len = sizeof(pername) / sizeof(pername[0]);
+	signed long personality = lxc_config_parse_arch(value);
 
-	int i;
-
-	for (i = 0; i < len; i++) {
-
-		if (strcmp(pername[i].name, value))
-		    continue;
-
-		lxc_conf->personality = pername[i].per;
-
-		return 0;
-	}
-
-	WARN("unsupported personality '%s'", value);
+	if (personality >= 0)
+		lxc_conf->personality = personality;
+	else
+		WARN("unsupported personality '%s'", value);
 
 	return 0;
 }
@@ -973,4 +956,27 @@ int lxc_config_define_load(struct lxc_list *defines, struct lxc_conf *conf)
 	}
 
 	return ret;
+}
+
+signed long lxc_config_parse_arch(const char *arch)
+{
+	struct per_name {
+		char *name;
+		unsigned long per;
+	} pername[4] = {
+		{ "x86", PER_LINUX32 },
+		{ "i686", PER_LINUX32 },
+		{ "x86_64", PER_LINUX },
+		{ "amd64", PER_LINUX },
+	};
+	size_t len = sizeof(pername) / sizeof(pername[0]);
+
+	int i;
+
+	for (i = 0; i < len; i++) {
+		if (!strcmp(pername[i].name, arch))
+		    return pername[i].per;
+	}
+
+	return -1;
 }

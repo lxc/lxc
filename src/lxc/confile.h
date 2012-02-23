@@ -34,4 +34,7 @@ extern int lxc_config_define_add(struct lxc_list *defines, char* arg);
 extern int lxc_config_define_load(struct lxc_list *defines,
 				  struct lxc_conf *conf);
 
+/* needed for lxc-attach */
+extern signed long lxc_config_parse_arch(const char *arch);
+
 #endif
