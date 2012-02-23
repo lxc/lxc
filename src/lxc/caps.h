@@ -28,6 +28,8 @@ extern int lxc_caps_down(void);
 extern int lxc_caps_up(void);
 extern int lxc_caps_init(void);
 
+extern int lxc_caps_last_cap(void);
+
 #define lxc_priv(__lxc_function)			\
 	({						\
 		int __ret, __ret2, __errno = 0;		\

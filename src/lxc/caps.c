@@ -23,6 +23,9 @@
 
 #define _GNU_SOURCE
 #include <unistd.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <limits.h>
 #include <sys/prctl.h>
 #include <sys/capability.h>
 
@@ -166,4 +169,47 @@ int lxc_caps_init(void)
 		INFO("command is run as user '%d'", uid);
 
 	return 0;
+}
+
+static int _real_caps_last_cap(void)
+{
+	int fd;
+	int result = -1;
+
+	/* try to get the maximum capability over the kernel
+	* interface introduced in v3.2 */
+	fd = open("/proc/sys/kernel/cap_last_cap", O_RDONLY);
+	if (fd >= 0) {
+		char buf[32];
+		char *ptr;
+		int n;
+
+		if ((n = read(fd, buf, 31)) >= 0) {
+			buf[n] = '\0';
+			result = strtol(buf, &ptr, 10);
+			if (!ptr || (*ptr != '\0' && *ptr != '\n') ||
+			    result == LONG_MIN || result == LONG_MAX)
+				result = -1;
+		}
+
+		close(fd);
+	}
+
+	/* try to get it manually by trying to get the status of
+	* each capability indiviually from the kernel */
+	if (result < 0) {
+		int cap = 0;
+		while (prctl(PR_CAPBSET_READ, cap) >= 0) cap++;
+		result = cap - 1;
+	}
+
+	return result;
+}
+
+int lxc_caps_last_cap(void)
+{
+	static int last_cap = -1;
+	if (last_cap < 0) last_cap = _real_caps_last_cap();
+
+	return last_cap;
 }
