@@ -129,9 +129,6 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 
 lxc_log_define(lxc_start, lxc);
 
-LXC_TTY_HANDLER(SIGINT);
-LXC_TTY_HANDLER(SIGQUIT);
-
 static int match_fd(int fd)
 {
 	return (fd == 0 || fd == 1 || fd == 2);
@@ -564,10 +561,6 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 		goto out_fini;
 	}
 
-	/* Avoid signals from terminal */
-	LXC_TTY_ADD_HANDLER(SIGINT);
-	LXC_TTY_ADD_HANDLER(SIGQUIT);
-
 	err = lxc_poll(name, handler);
 	if (err) {
 		ERROR("mainloop exited with an error");
@@ -579,8 +572,6 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
-	LXC_TTY_DEL_HANDLER(SIGQUIT);
-	LXC_TTY_DEL_HANDLER(SIGINT);
 	lxc_cgroup_destroy(name);
 	lxc_fini(name, handler);
 	return err;
