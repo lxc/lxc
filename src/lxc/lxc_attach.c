@@ -30,9 +30,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include "attach.h"
 #include "commands.h"
 #include "arguments.h"
-#include "namespace.h"
 #include "caps.h"
 #include "log.h"
 
@@ -85,7 +85,7 @@ int main(int argc, char *argv[], char *envp[])
 
 	curdir = get_current_dir_name();
 
-	ret = lxc_attach(pid);
+	ret = lxc_attach_to_ns(pid);
 	if (ret < 0) {
 		ERROR("failed to enter the namespace");
 		return -1;

@@ -34,24 +34,12 @@
 #include "namespace.h"
 #include "log.h"
 
-#include "setns.h"
-
 lxc_log_define(lxc_namespace, lxc);
 
 struct clone_arg {
 	int (*fn)(void *);
 	void *arg;
 };
-
-int setns(int fd, int nstype)
-{
-#ifndef __NR_setns
-	errno = ENOSYS;
-	return -1;
-#else
-	return syscall(__NR_setns, fd, nstype);
-#endif
-}
 
 static int do_clone(void *arg)
 {
@@ -80,39 +68,4 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 		ERROR("failed to clone(0x%x): %s", flags, strerror(errno));
 
 	return ret;
-}
-
-int lxc_attach(pid_t pid)
-{
-	char path[MAXPATHLEN];
-	char *ns[] = { "pid", "mnt", "net", "ipc", "uts" };
-	const int size = sizeof(ns) / sizeof(char *);
-	int fd[size];
-	int i;
-
-	sprintf(path, "/proc/%d/ns", pid);
-	if (access(path, X_OK)) {
-		ERROR("Does this kernel version support 'attach' ?");
-		return -1;
-	}
-
-	for (i = 0; i < size; i++) {
-		sprintf(path, "/proc/%d/ns/%s", pid, ns[i]);
-		fd[i] = open(path, O_RDONLY);
-		if (fd[i] < 0) {
-			SYSERROR("failed to open '%s'", path);
-			return -1;
-		}
-	}
-
-	for (i = 0; i < size; i++) {
-		if (setns(fd[i], 0)) {
-			SYSERROR("failed to set namespace '%s'", ns[i]);
-			return -1;
-		}
-
-		close(fd[i]);
-	}
-
-	return 0;
 }

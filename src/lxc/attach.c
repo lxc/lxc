@@ -226,6 +226,41 @@ int lxc_attach_proc_to_cgroups(pid_t pid, struct lxc_proc_context_info *ctx)
 	return 0;
 }
 
+int lxc_attach_to_ns(pid_t pid)
+{
+	char path[MAXPATHLEN];
+	char *ns[] = { "pid", "mnt", "net", "ipc", "uts" };
+	const int size = sizeof(ns) / sizeof(char *);
+	int fd[size];
+	int i;
+
+	snprintf(path, MAXPATHLEN, "/proc/%d/ns", pid);
+	if (access(path, X_OK)) {
+		ERROR("Does this kernel version support 'attach' ?");
+		return -1;
+	}
+
+	for (i = 0; i < size; i++) {
+		snprintf(path, MAXPATHLEN, "/proc/%d/ns/%s", pid, ns[i]);
+		fd[i] = open(path, O_RDONLY);
+		if (fd[i] < 0) {
+			SYSERROR("failed to open '%s'", path);
+			return -1;
+		}
+	}
+
+	for (i = 0; i < size; i++) {
+		if (setns(fd[i], 0)) {
+			SYSERROR("failed to set namespace '%s'", ns[i]);
+			return -1;
+		}
+
+		close(fd[i]);
+	}
+
+	return 0;
+}
+
 int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
 {
 	int last_cap = lxc_caps_last_cap();
