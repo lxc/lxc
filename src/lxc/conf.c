@@ -60,6 +60,7 @@
 #include "conf.h"
 #include "log.h"
 #include "lxc.h"	/* for lxc_cgroup_set() */
+#include "caps.h"       /* for lxc_caps_last_cap() */
 
 lxc_log_define(lxc_conf, lxc);
 
@@ -1123,6 +1124,7 @@ static int setup_caps(struct lxc_list *caps)
 {
 	struct lxc_list *iterator;
 	char *drop_entry;
+	char *ptr;
 	int i, capid;
 
 	lxc_list_for_each(iterator, caps) {
@@ -1138,6 +1140,21 @@ static int setup_caps(struct lxc_list *caps)
 
 			capid = caps_opt[i].value;
 			break;
+		}
+
+		if (capid < 0) {
+			/* try to see if it's numeric, so the user may specify
+			* capabilities  that the running kernel knows about but
+			* we don't */
+			capid = strtol(drop_entry, &ptr, 10);
+			if (!ptr || *ptr != '\0' ||
+			capid == LONG_MIN || capid == LONG_MAX)
+				/* not a valid number */
+				capid = -1;
+			else if (capid > lxc_caps_last_cap())
+				/* we have a number but it's not a valid
+				* capability */
+				capid = -1;
 		}
 
 	        if (capid < 0) {
