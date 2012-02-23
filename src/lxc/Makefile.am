@@ -97,7 +97,7 @@ bin_PROGRAMS = \
 	lxc-restart \
 	lxc-kill
 
-pkglib_PROGRAMS = \
+pkglibexec_PROGRAMS = \
 	lxc-init
 
 AM_LDFLAGS = -Wl,-E

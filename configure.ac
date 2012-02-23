@@ -62,7 +62,7 @@ AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 
 AC_SUBST(LXCPATH, "${with_config_path}")
 AC_SUBST(LXCROOTFSMOUNT, "${with_rootfs_path}")
-AC_SUBST(LXCINITDIR, ['${libdir}/lxc'])
+AC_SUBST(LXCINITDIR, ['${libexecdir}/lxc'])
 AC_SUBST(LXCTEMPLATEDIR, ['${libdir}/lxc/templates'])
 
 AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h],
