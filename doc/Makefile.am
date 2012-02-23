@@ -23,6 +23,7 @@ man_MANS = \
 	lxc-ps.1 \
 	lxc-cgroup.1 \
 	lxc-kill.1 \
+	lxc-attach.1 \
 	\
 	lxc.conf.5 \
 	\

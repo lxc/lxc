@@ -120,6 +120,7 @@ AC_CONFIG_FILES([
 	doc/lxc-ps.sgml
 	doc/lxc-cgroup.sgml
 	doc/lxc-kill.sgml
+	doc/lxc-attach.sgml
 	doc/lxc.conf.sgml
 	doc/lxc.sgml
 	doc/common_options.sgml
