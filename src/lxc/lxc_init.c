@@ -95,15 +95,31 @@ int main(int argc, char *argv[])
 	 * signal handler and to fork
 	 */
 	sigfillset(&mask);
+	sigdelset(&mask, SIGILL);
+	sigdelset(&mask, SIGSEGV);
+	sigdelset(&mask, SIGBUS);
 	sigprocmask(SIG_SETMASK, &mask, &omask);
 
 	for (i = 1; i < NSIG; i++) {
 		struct sigaction act;
 
+		/* Exclude some signals: ILL, SEGV and BUS are likely to
+		 * reveal a bug and we want a core. STOP and KILL cannot be
+		 * handled anyway: they're here for documentation.
+		 */
+		if (i == SIGILL ||
+		    i == SIGSEGV ||
+		    i == SIGBUS ||
+		    i == SIGSTOP ||
+		    i == SIGKILL)
+			continue;
+
 		sigfillset(&act.sa_mask);
-		sigdelset(&mask, SIGILL);
-		sigdelset(&mask, SIGSEGV);
-		sigdelset(&mask, SIGBUS);
+		sigdelset(&act.sa_mask, SIGILL);
+		sigdelset(&act.sa_mask, SIGSEGV);
+		sigdelset(&act.sa_mask, SIGBUS);
+		sigdelset(&act.sa_mask, SIGSTOP);
+		sigdelset(&act.sa_mask, SIGKILL);
 		act.sa_flags = 0;
 		act.sa_handler = interrupt_handler;
 		sigaction(i, &act, NULL);
