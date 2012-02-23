@@ -21,6 +21,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
+#ifndef _confile_h
+#define _confile_h
+
 struct lxc_conf;
 struct lxc_list;
 
@@ -30,3 +33,5 @@ extern int lxc_config_readline(char *buffer, struct lxc_conf *conf);
 extern int lxc_config_define_add(struct lxc_list *defines, char* arg);
 extern int lxc_config_define_load(struct lxc_list *defines,
 				  struct lxc_conf *conf);
+
+#endif
