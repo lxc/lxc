@@ -52,6 +52,35 @@ enum {
 	CGROUP_CLONE_CHILDREN,
 };
 
+static char *hasmntopt_multiple(struct mntent *mntent, const char *options)
+{
+	const char *ptr = options;
+	const char *ptr2 = strchr(options, ',');
+	char *result;
+
+	while (ptr2 != NULL) {
+		char *option = strndup(ptr, ptr2 - ptr);
+		if (!option) {
+			SYSERROR("Temporary memory allocation error");
+			return NULL;
+		}
+
+		result = hasmntopt(mntent, option);
+		free(option);
+
+		if (!result) {
+			return NULL;
+		}
+
+		ptr = ptr2 + 1;
+		ptr2 = strchr(ptr, ',');
+	}
+
+	/* for multiple mount options, the return value is basically NULL
+	 * or non-NULL, so this should suffice for our purposes */
+	return hasmntopt(mntent, ptr);
+}
+
 static int get_cgroup_mount(const char *subsystem, char *mnt)
 {
 	struct mntent *mntent;
@@ -67,7 +96,7 @@ static int get_cgroup_mount(const char *subsystem, char *mnt)
 
 		if (strcmp(mntent->mnt_type, "cgroup"))
 			continue;
-		if (!subsystem || hasmntopt(mntent, subsystem)) {
+		if (!subsystem || hasmntopt_multiple(mntent, subsystem)) {
 			strcpy(mnt, mntent->mnt_dir);
 			fclose(file);
 			DEBUG("using cgroup mounted at '%s'", mnt);
