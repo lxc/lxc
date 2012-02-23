@@ -29,18 +29,44 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/personality.h>
 
 #include "attach.h"
 #include "commands.h"
 #include "arguments.h"
 #include "caps.h"
+#include "attach.h"
+#include "confile.h"
+#include "start.h"
+#include "sync.h"
 #include "log.h"
 
 lxc_log_define(lxc_attach_ui, lxc);
 
 static const struct option my_longopts[] = {
+	{"elevated-privileges", no_argument, 0, 'e'},
+	{"arch", required_argument, 0, 'a'},
 	LXC_COMMON_OPTIONS
 };
+
+static int elevated_privileges = 0;
+static signed long new_personality = -1;
+
+static int my_parser(struct lxc_arguments* args, int c, char* arg)
+{
+	switch (c) {
+	case 'e': elevated_privileges = 1; break;
+	case 'a':
+		new_personality = lxc_config_parse_arch(arg);
+		if (new_personality < 0) {
+			lxc_error(args, "invalid architecture specified: %s", arg);
+			return -1;
+		}
+		break;
+	}
+
+	return 0;
+}
 
 static struct lxc_arguments my_args = {
 	.progname = "lxc-attach",
@@ -50,17 +76,26 @@ static struct lxc_arguments my_args = {
 Execute the specified command - enter the container NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME   NAME for name of the container\n",
+  -n, --name=NAME   NAME for name of the container\n\
+  -e, --elevated-privileges\n\
+                    Use elevated privileges (capabilities, cgroup\n\
+                    restrictions) instead of those of the container.\n\
+                    WARNING: This may leak privleges into the container.\n\
+                    Use with care.\n\
+  -a, --arch=ARCH   Use ARCH for program instead of container's own\n\
+                    architecture.\n",
 	.options  = my_longopts,
-	.parser   = NULL,
+	.parser   = my_parser,
 	.checker  = NULL,
 };
 
 int main(int argc, char *argv[], char *envp[])
 {
 	int ret;
-	pid_t pid;
+	pid_t pid, init_pid;
 	struct passwd *passwd;
+	struct lxc_proc_context_info *init_ctx;
+	struct lxc_handler *handler;
 	uid_t uid;
 	char *curdir;
 
@@ -77,24 +112,25 @@ int main(int argc, char *argv[], char *envp[])
 	if (ret)
 		return ret;
 
-	pid = get_init_pid(my_args.name);
-	if (pid < 0) {
+	init_pid = get_init_pid(my_args.name);
+	if (init_pid < 0) {
 		ERROR("failed to get the init pid");
 		return -1;
 	}
 
-	curdir = get_current_dir_name();
-
-	ret = lxc_attach_to_ns(pid);
-	if (ret < 0) {
-		ERROR("failed to enter the namespace");
+	init_ctx = lxc_proc_get_context_info(init_pid);
+	if (!init_ctx) {
+		ERROR("failed to get context of the init process, pid = %d", init_pid);
 		return -1;
 	}
 
-	if (curdir && chdir(curdir))
-		WARN("could not change directory to '%s'", curdir);
+	/* hack: we need sync.h infrastructure - and that needs a handler */
+	handler = calloc(1, sizeof(*handler));
 
-	free(curdir);
+	if (lxc_sync_init(handler)) {
+		ERROR("failed to initialize synchronization socket");
+		return -1;
+	}
 
 	pid = fork();
 
@@ -105,6 +141,23 @@ int main(int argc, char *argv[], char *envp[])
 
 	if (pid) {
 		int status;
+
+		lxc_sync_fini_child(handler);
+
+		/* wait until the child has done configuring itself before
+		 * we put it in a cgroup that potentially limits these
+		 * possibilities */
+		if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
+			return -1;
+
+		if (!elevated_privileges && lxc_attach_proc_to_cgroups(pid, init_ctx))
+			return -1;
+
+		/* tell the child we are done initializing */
+		if (lxc_sync_wake_child(handler, LXC_SYNC_POST_CONFIGURE))
+			return -1;
+
+		lxc_sync_fini(handler);
 
 	again:
 		if (waitpid(pid, &status, 0) < 0) {
@@ -121,6 +174,42 @@ int main(int argc, char *argv[], char *envp[])
 	}
 
 	if (!pid) {
+		lxc_sync_fini_parent(handler);
+
+		curdir = get_current_dir_name();
+
+		ret = lxc_attach_to_ns(init_pid);
+		if (ret < 0) {
+			ERROR("failed to enter the namespace");
+			return -1;
+		}
+
+		if (curdir && chdir(curdir))
+			WARN("could not change directory to '%s'", curdir);
+
+		free(curdir);
+
+		if (new_personality < 0)
+			new_personality = init_ctx->personality;
+
+		if (personality(new_personality) == -1) {
+			ERROR("could not ensure correct architecture: %s",
+			      strerror(errno));
+			return -1;
+		}
+
+		if (!elevated_privileges && lxc_attach_drop_privs(init_ctx)) {
+			ERROR("could not drop privileges");
+			return -1;
+		}
+
+		/* tell parent we are done setting up the container and wait
+		 * until we have been put in the container's cgroup, if
+		 * applicable */
+		if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
+			return -1;
+
+		lxc_sync_fini(handler);
 
 		if (my_args.argc) {
 			execve(my_args.argv[0], my_args.argv, envp);
