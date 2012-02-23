@@ -170,7 +170,7 @@ static int cgroup_enable_clone_children(const char *path)
 	return ret;
 }
 
-static int cgroup_attach(const char *path, pid_t pid)
+int lxc_cgroup_attach(const char *path, pid_t pid)
 {
 	FILE *f;
 	char tasks[MAXPATHLEN];
@@ -250,7 +250,7 @@ static int lxc_one_cgroup_create(const char *name,
 	}
 
 	/* Let's add the pid to the 'tasks' file */
-	if (cgroup_attach(cgname, pid)) {
+	if (lxc_cgroup_attach(cgname, pid)) {
 		SYSERROR("failed to attach pid '%d' to '%s'", pid, cgname);
 		rmdir(cgname);
 		return -1;
