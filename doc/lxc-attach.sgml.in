@@ -150,8 +150,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
           lxc-attach -n container -e -- /sbin/ip link delete eth1
         </programlisting>
       </para>
-    <variablelist>
-
   </refsect1>
 
   <refsect1>
