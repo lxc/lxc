@@ -137,6 +137,21 @@ found:
 	return dsg;
 }
 
+static int get_cgroup_flags(struct mntent *mntent)
+{
+	int flags = 0;
+
+
+	if (hasmntopt(mntent, "ns"))
+		flags |= CGROUP_NS_CGROUP;
+
+	if (hasmntopt(mntent, "clone_children"))
+		flags |= CGROUP_CLONE_CHILDREN;
+
+	DEBUG("cgroup %s has flags 0x%x", mntent->mnt_dir, flags);
+	return flags;
+}
+
 static int get_cgroup_mount(const char *subsystem, char *mnt)
 {
 	struct mntent *mntent;
@@ -155,10 +170,12 @@ static int get_cgroup_mount(const char *subsystem, char *mnt)
 			continue;
 		if (!subsystem || hasmntopt_multiple(mntent, subsystem)) {
 			int ret;
-			ret = snprintf(mnt, MAXPATHLEN, "%s%s/lxc",
+			int flags = get_cgroup_flags(mntent);
+			ret = snprintf(mnt, MAXPATHLEN, "%s%s%s",
 				       mntent->mnt_dir,
 				       get_init_cgroup(subsystem, NULL,
-						       initcgroup));
+						       initcgroup),
+				       (flags & CGROUP_NS_CGROUP) ? "" : "/lxc");
 			if (ret < 0 || ret >= MAXPATHLEN)
 				goto fail;
 			fclose(file);
@@ -183,33 +200,26 @@ int lxc_ns_is_mounted(void)
 	return (get_cgroup_mount("ns", buf) == 0);
 }
 
-static int get_cgroup_flags(struct mntent *mntent)
-{
-	int flags = 0;
-
-
-	if (hasmntopt(mntent, "ns"))
-		flags |= CGROUP_NS_CGROUP;
-
-	if (hasmntopt(mntent, "clone_children"))
-		flags |= CGROUP_CLONE_CHILDREN;
-
-	DEBUG("cgroup %s has flags 0x%x", mntent->mnt_dir, flags);
-	return flags;
-}
-
 static int cgroup_rename_nsgroup(const char *mnt, const char *name, pid_t pid)
 {
 	char oldname[MAXPATHLEN];
+	char newname[MAXPATHLEN];
+	int ret;
 
-	snprintf(oldname, MAXPATHLEN, "%s/%d", mnt, pid);
+	ret = snprintf(oldname, MAXPATHLEN, "%s/%d", mnt, pid);
+	if (ret >= MAXPATHLEN)
+		return -1;
 
-	if (rename(oldname, name)) {
-		SYSERROR("failed to rename cgroup %s->%s", oldname, name);
+	ret = snprintf(newname, MAXPATHLEN, "%s/%s", mnt, name);
+	if (ret >= MAXPATHLEN)
+		return -1;
+
+	if (rename(oldname, newname)) {
+		SYSERROR("failed to rename cgroup %s->%s", oldname, newname);
 		return -1;
 	}
 
-	DEBUG("'%s' renamed to '%s'", oldname, name);
+	DEBUG("'%s' renamed to '%s'", oldname, newname);
 
 	return 0;
 }
@@ -321,7 +331,7 @@ static int lxc_one_cgroup_create(const char *name,
 	/* Do we have the deprecated ns_cgroup subsystem? */
 	if (flags & CGROUP_NS_CGROUP) {
 		WARN("using deprecated ns_cgroup");
-		return cgroup_rename_nsgroup(cgparent, cgname, pid);
+		return cgroup_rename_nsgroup(cginit, name, pid);
 	}
 
 	ret = snprintf(clonechild, MAXPATHLEN, "%s/cgroup.clone_children",
@@ -464,9 +474,11 @@ int lxc_one_cgroup_destroy(struct mntent *mntent, const char *name)
 {
 	char cgname[MAXPATHLEN], initcgroup[MAXPATHLEN];
 	char *cgmnt = mntent->mnt_dir;
+	int flags = get_cgroup_flags(mntent);
 
-	snprintf(cgname, MAXPATHLEN, "%s%s/lxc/%s", cgmnt,
-		get_init_cgroup(NULL, mntent, initcgroup), name);
+	snprintf(cgname, MAXPATHLEN, "%s%s%s/%s", cgmnt,
+		get_init_cgroup(NULL, mntent, initcgroup),
+		(flags & CGROUP_NS_CGROUP) ? "" : "/lxc", name);
 	DEBUG("destroying %s\n", cgname);
 	if (recursive_rmdir(cgname)) {
 		SYSERROR("failed to remove cgroup '%s'", cgname);
