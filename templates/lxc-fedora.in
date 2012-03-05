@@ -69,11 +69,6 @@ EOF
 127.0.0.1 localhost $name
 EOF
 
-    sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.sysinit
-    sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.d/rc.sysinit
-    chroot ${rootfs_path} chkconfig udev-post off
-    chroot ${rootfs_path} chkconfig network on
-
     dev_path="${rootfs_path}/dev"
     rm -rf $dev_path
     mkdir -p $dev_path
@@ -98,6 +93,23 @@ EOF
     echo "root:$root_password" | chroot $rootfs_path chpasswd
 
     return 0
+}
+configure_fedora_init()
+{
+    sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.sysinit
+    sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.d/rc.sysinit
+    chroot ${rootfs_path} chkconfig udev-post off
+    chroot ${rootfs_path} chkconfig network on
+}
+
+configure_fedora_systemd()
+{
+    unlink ${rootfs_path}/etc/systemd/system/default.target
+    touch ${rootfs_path}/etc/fstab
+    chroot ${rootfs_path} ln -s /dev/null //etc/systemd/system/udev.service
+    chroot ${rootfs_path} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+    #dependency on a device unit fails it specially that we disabled udev
+    sed -i 's/After=dev-%i.device/After=/' ${rootfs_path}/lib/systemd/system/getty\@.service
 }
 
 download_fedora()
@@ -170,7 +182,8 @@ copy_fedora()
 
 update_fedora()
 {
-    chroot $cache/rootfs yum -y update
+    YUM="yum --installroot $cache/rootfs -y --nogpgcheck"
+    $YUM update
 }
 
 install_fedora()
@@ -353,7 +366,7 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 
-rootfs_path=$path/$name/rootfs
+rootfs_path=$path/rootfs
 config_path=$default_path/$name
 cache=$cache_base/$release
 
@@ -362,7 +375,7 @@ revert()
     echo "Interrupted, so cleaning up"
     lxc-destroy -n $name
     # maybe was interrupted before copy config
-    rm -rf $path/$name
+    rm -rf $path
     rm -rf $default_path/$name
     echo "exiting..."
     exit 1
@@ -388,6 +401,12 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+type /bin/systemd >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    configure_fedora_init
+else
+    configure_fedora_systemd
+fi
 
 if [ ! -z $clean ]; then
     clean || exit 1
