@@ -50,7 +50,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <cmdsynopsis>
       <command>lxc-create <replaceable>-n name</replaceable>
        <optional>-f config_file</optional>
-       <optional>-t template</optional></command>
+       <optional>-t template</optional>
+       <optional>-B backingstore</optional>
+       <optional>-- template-options</optional>
+       </command>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -110,6 +113,45 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    eg. busybox, debian, fedora, ubuntu or sshd.
 	    Refer to the examples in <filename>@LXCTEMPLATEDIR@</filename>
 	    for details of the expected script structure.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-B <replaceable>backingstore</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    'backingstore' is one of 'none', 'lvm', or 'btrfs'.  The
+	    default is 'none', meaning that the container root filesystem
+	    will be a directory under <filename>@LXCPATH@/container/rootfs</filename>.
+	    The option 'btrfs' need not be specified as it will be used
+	    automatically if the <filename>@LXCPATH@</filename> filesystem is found to
+	    be btrfs.  If backingstore is 'lvm', then an lvm block device will be
+	    used and the following further options are available:
+	    <replaceable>--lvname lvname1</replaceable> will create an LV
+	    named <filename>lvname1</filename> rather than the default, which
+	    is the container name.  <replaceable>--vgname vgname1</replaceable>
+	    will create the LV in volume group <filename>vgname1</filename>
+	    rather than the default, <filename>lxc</filename>.
+	    <replaceable>--fstype FSTYPE</replaceable> will create an FSTYPE
+	    filesystem on the LV, rather than the default, which is ext4.
+	    <replaceable>--fssize SIZE</replaceable> will create a LV (and
+	    filesystem) of size SIZE rather than the default, which is 1G.
+	  </para>
+	</listitem>
+
+      <varlistentry>
+	<term>
+	  <option>-- <replaceable>template-options</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    This will pass <replaceable>template-options</replaceable> to the
+	    template as arguments.  To see the list of options supported by
+	    the template, you can run
+	    <command>lxc-create -t TEMPLATE -h</command>.
 	  </para>
 	</listitem>
       </varlistentry>

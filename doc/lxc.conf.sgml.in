@@ -453,6 +453,35 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </refsect2>
 
     <refsect2>
+      <title>Console devices location</title>
+      <para>
+        LXC consoles are provided through Unix98 PTYs created on the
+	host and bind-mounted over the expected devices in the container.
+	By default, they are bind-mounted over <filename>/dev/console</filename>
+	and <filename>/dev/ttyN</filename>.  This can prevent package upgrades
+	in the guest.  Therefore you can specify a directory location (under
+	<filename>/dev</filename> under which LXC will create the files and
+	bind-mount over them.  These will then be symbolically linked to
+	<filename>/dev/console</filename> and <filename>/dev/ttyN</filename>.
+	A package upgrade can then succeed as it is able to remove and replace
+	the symbolic links.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.devttydir</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Specify a directory under <filename>/dev</filename>
+	      under which to create the container console devices.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Mount points</title>
       <para>
 	The mount points section specifies the different places to be

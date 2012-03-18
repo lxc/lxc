@@ -51,7 +51,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     name</replaceable> <optional>-f
     config_file</optional> <optional>-c
     console_file</optional> <optional>-d</optional> <optional>-s
-    KEY=VAL</optional>
+    KEY=VAL</optional> <optional>-C</optional>
     <optional>command</optional></command></cmdsynopsis>
   </refsynopsisdiv>
 
@@ -143,6 +143,21 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    Assign value <replaceable>VAL</replaceable> to configuration
 	    variable <replaceable>KEY</replaceable>. This overrides any
 	    assignment done in <replaceable>config_file</replaceable>.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-C,
+	  --close-all-fds</option>
+	</term>
+	<listitem>
+	  <para>
+	  If any file descriptors are inherited, close them.  If this option
+	  is not specified, then <command>lxc-start</command> will exit with
+	  failure instead. Note: <replaceable>--daemon</replaceable> implies
+	  <replaceable>--close-all-fds</replaceable>.
 	  </para>
 	</listitem>
       </varlistentry>

@@ -49,7 +49,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-destroy <replaceable>-n
-      name</replaceable></command>
+      name</replaceable>
+      <optional>-f</optional>
+      </command>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -60,6 +62,27 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <command>lxc-destroy</command> destroys the system object
       previously created by the <command>lxc-create</command> command.
     </para>
+
+  </refsect1>
+
+  <refsect1>
+
+    <title>Options</title>
+
+    <variablelist>
+      <varlistentry>
+	<term>
+	  <option>-f</option>
+	</term>
+	<listitem>
+	  <para>
+	    If a container is running, stop it first.  If this option is
+	    not specified and the container is running, then
+	    <command>lxc-destroy</command> will be aborted.
+	  </para>
+	</listitem>
+      </varlistentry>
+    </variablelist>
 
   </refsect1>
 
