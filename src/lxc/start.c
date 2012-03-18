@@ -503,16 +503,12 @@ static int do_start(void *data)
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
 		return -1;
 
-	if (must_drop_cap_sys_boot()) {
+	if (handler->conf->need_utmp_watch) {
 		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
 			SYSERROR("failed to remove CAP_SYS_BOOT capability");
 			return -1;
 		}
-		handler->conf->need_utmp_watch = 1;
 		DEBUG("Dropped cap_sys_boot\n");
-	} else {
-		DEBUG("Not dropping cap_sys_boot or watching utmp\n");
-		handler->conf->need_utmp_watch = 0;
 	}
 
 	/* Setup the container, ip, names, utsname, ... */
@@ -634,6 +630,14 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	}
 	handler->ops = ops;
 	handler->data = data;
+
+	if (must_drop_cap_sys_boot()) {
+		handler->conf->need_utmp_watch = 1;
+		DEBUG("Dropping cap_sys_boot and watching utmp\n");
+	} else {
+		DEBUG("Not dropping cap_sys_boot or watching utmp\n");
+		handler->conf->need_utmp_watch = 0;
+	}
 
 	err = lxc_spawn(handler);
 	if (err) {
