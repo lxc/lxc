@@ -519,18 +519,18 @@ do_bindhome()
 usage()
 {
     cat <<EOF
-$1 -h|--help [-a|--arch] [-b|--bindhome <user>] [--trim]
-   [-F | --flush-cache] [-r|--release <release>] [ -S | --auth_key <keyfile>]
+$1 -h|--help [-a|--arch] [-b|--bindhome <user>] [--trim] [-d|--debug]
+   [-F | --flush-cache] [-r|--release <release>] [ -S | --auth-key <keyfile>]
 release: lucid | maverick | natty | oneiric | precise
 trim: make a minimal (faster, but not upgrade-safe) container
 bindhome: bind <user>'s home into the container
 arch: amd64 or i386: defaults to host arch
-auth_key: SSH Public key file to inject into container
+auth-key: SSH Public key file to inject into container
 EOF
     return 0
 }
 
-options=$(getopt -o a:b:hp:r:xn:FS: -l arch:,bindhome:,help,path:,release:,trim,name:,flush-cache,auth-key: -- "$@")
+options=$(getopt -o a:b:hp:r:xn:FS:d -l arch:,bindhome:,help,path:,release:,trim,name:,flush-cache,auth-key:,debug -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -566,6 +566,7 @@ else
     fi
 fi
 
+debug=0
 trim_container=0
 hostarch=$arch
 flushcache=0
@@ -580,11 +581,16 @@ do
     -b|--bindhome)  bindhome=$2; shift 2;;
     -a|--arch)      arch=$2; shift 2;;
     -x|--trim)      trim_container=1; shift 1;;
-    -S|--auth_key)  auth_key=$2; shift 2;;
+    -S|--auth-key)  auth_key=$2; shift 2;;
+    -d|--debug)     debug=1; shift 1;;
     --)             shift 1; break ;;
         *)              break ;;
     esac
 done
+
+if [ $debug -eq 1 ]; then
+    set -x
+fi
 
 pwd=`getent passwd $bindhome`
 if [ $? -ne 0 ]; then
