@@ -34,8 +34,8 @@ configure_opensuse()
 
    # set network as static, but everything is done by LXC outside the container
    cat <<EOF > $rootfs/etc/sysconfig/network/ifcfg-eth0
-STARTMODE='auto'
-BOOTPROTO='static'
+STARTMODE='manual'
+BOOTPROTO='none'
 EOF
 
    # set default route
@@ -71,6 +71,8 @@ EOF
     cat <<EOF > $rootfs/etc/HOSTNAME
 $hostname
 EOF
+    # ensure /etc/hostname is available too
+    ln -s -f HOSTNAME $rootfs/etc/hostname
 
     # do not use hostname from HOSTNAME variable
     cat <<EOF >> $rootfs/etc/sysconfig/cron
@@ -252,6 +254,9 @@ copy_configuration()
     path=$1
     rootfs=$2
     name=$3
+
+    # only disable network if no network configuration was passed
+    grep -q "^lxc.network.type" $path/config || echo 'lxc.network.type = empty' >> $path/config
 
     grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
     cat <<EOF >> $path/config
