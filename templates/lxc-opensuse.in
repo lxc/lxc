@@ -188,6 +188,10 @@ EOF
 #   create mtab symlink
     rm -f $cache/partial-$arch/etc/mtab
     ln -sf /proc/self/mounts $cache/partial-$arch/etc/mtab
+
+# ensure /var/run and /run are symlinked
+    rm -fr $cache/partial-$arch/var/run
+    ln -s -f ../run $cache/partial-$arch/var/run
     if [ $? -ne 0 ]; then
         echo "Failed to download the rootfs, aborting."
         return 1
@@ -290,6 +294,7 @@ EOF
     cat <<EOF > $path/fstab
 proc            proc         proc	nodev,noexec,nosuid 0 0
 sysfs           sys          sysfs	defaults  0 0
+tmpfs           run          tmpfs	mode=0755,nodev,nosuid 0 0
 EOF
 
     if [ $? -ne 0 ]; then
