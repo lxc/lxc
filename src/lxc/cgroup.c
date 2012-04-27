@@ -560,6 +560,9 @@ static int lxc_one_cgroup_create(const char *name,
 	if (!access(cgname, F_OK) && rmdir(cgname)) {
 		if (try_to_move_cgname(cgparent, cgname)) {
 			SYSERROR("failed to remove previous cgroup '%s'", cgname);
+			ERROR("##");
+			ERROR("# The container might be already running!");
+			ERROR("##");
 			return -1;
 		}
 	}
