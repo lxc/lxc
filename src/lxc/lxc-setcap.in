@@ -37,9 +37,17 @@ LXC_RESTART_CAPS="$LXC_START_CAPS,cap_mknod"
 LXC_CHECKPOINT_CAPS="$LXC_COMMON_CAPS,cap_sys_ptrace,cap_mknod"
 LXC_DROP_CAPS=""
 
-usage()
-{
-    echo "lxc-setcap [-d] : set or remove capabilities on the lxc tools"
+usage() {
+    echo "usage: $(basename $0) [-d]" >&2
+}
+
+help() {
+    usage
+    echo >&2
+    echo "Set or drop file capabilities on the lxc tools." >&2
+    echo >&2
+    echo "Options:" >&2
+    echo "  -d   drop file capabilities" >&2
 }
 
 lxc_setcaps()
@@ -69,32 +77,31 @@ lxc_dropcaps()
     setcap -r @BINDIR@/lxc-netstat
     setcap -r @BINDIR@/lxc-checkpoint
     setcap -r @LXCINITDIR@/lxc-init
+
     chmod 0755 @LXCPATH@
 }
 
+shortoptions='hd'
+longoptions='help'
 libdir=@LIBDIR@
 localstatedir=@LOCALSTATEDIR@
 
-if [ "$(id -u)" != "0" ]; then
-    echo "You have to be root to run this script"
-    exit 1
-fi
-
+getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
 if [ $? != 0 ]; then
     usage
     exit 1
 fi
 
-set -- $(getopt dh "$@")
+eval set -- "$getopt"
 
-for i in "$@"; do
+while true; do
     case "$1" in
 	-d)
 	    LXC_DROP_CAPS="yes"
 	    shift
 	    ;;
-	-h)
-	    usage
+	-h|--help)
+	    help
 	    exit 0
 	    ;;
 	--)
@@ -107,6 +114,11 @@ for i in "$@"; do
 	    ;;
     esac
 done;
+
+if [ "$(id -u)" != "0" ]; then
+   echo "$(basename $0): must be run as root" >&2
+   exit 1
+fi
 
 if [ -z "$LXC_DROP_CAPS" ]; then
     lxc_setcaps

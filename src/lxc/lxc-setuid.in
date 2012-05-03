@@ -25,9 +25,17 @@
 # When the capabilities are set, a non root user can manage the containers.
 #
 
-usage()
-{
-    echo "lxc-setuid [-d] : set or remove setuid on the lxc tools"
+usage() {
+    echo "usage: $(basename $0) [-d]" >&2
+}
+
+help() {
+    usage
+    echo >&2
+    echo "Set or drop the setuid attribute on the lxc tools." >&2
+    echo >&2
+    echo "Options:" >&2
+    echo "  -d   drop the setuid attribute" >&2
 }
 
 setuid()
@@ -70,29 +78,27 @@ lxc_dropuid()
     chmod 0755 @LXCPATH@
 }
 
+shortoptions='hd'
+longoptions='help'
 libdir=@LIBDIR@
 localstatedir=@LOCALSTATEDIR@
 
-if [ "$(id -u)" != "0" ]; then
-    echo "You have to be root to run this script"
-    exit 1
-fi
-
+getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
 if [ $? != 0 ]; then
     usage
     exit 1
 fi
 
-set -- $(getopt dh "$@")
+eval set -- "$getopt"
 
-for i in "$@"; do
+while true; do
     case "$1" in
 	-d)
 	    LXC_DROP_CAPS="yes"
 	    shift
 	    ;;
-	-h)
-	    usage
+	-h|--help)
+	    help
 	    exit 0
 	    ;;
 	--)
@@ -105,6 +111,11 @@ for i in "$@"; do
 	    ;;
     esac
 done;
+
+if [ "$(id -u)" != "0" ]; then
+   echo "$(basename $0): must be run as root" >&2
+   exit 1
+fi
 
 if [ -z "$LXC_DROP_CAPS" ]; then
     lxc_setuid

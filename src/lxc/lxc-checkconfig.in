@@ -32,7 +32,7 @@ is_enabled() {
 }
 
 if [ ! -f $CONFIG ]; then
-    echo "Kernel config $CONFIG not found, looking in other places..."
+    echo "Kernel configuration not found at $CONFIG; searching..."
     KVER="`uname -r`"
     HEADERS_CONFIG="/lib/modules/$KVER/build/.config"
     BOOT_CONFIG="/boot/config-$KVER"
@@ -40,15 +40,14 @@ if [ ! -f $CONFIG ]; then
     [ -f "${BOOT_CONFIG}" ] && CONFIG=${BOOT_CONFIG}
     GREP=grep
     if [ ! -f $CONFIG ]; then
-        echo
-        echo "The kernel configuration can not be retrieved."
-        echo "Please recompile with IKCONFIG_PROC, or"
-	echo "install the kernel headers, or specify"
-	echo "the path to the config file with: CONFIG=<path> lxc-checkconfig"
-        echo
+        echo "$(basename $0): unable to retrieve kernel configuration" >&2
+        echo >&2
+        echo "Try recompiling with IKCONFIG_PROC, installing the kernel headers," >&2
+        echo "or specifying the kernel configuration path with:" >&2
+        echo "  CONFIG=<path> $(basename $0)" >&2
         exit 1
     else
-        echo "Found kernel config file $CONFIG"
+        echo "Kernel configuration found at $CONFIG"
     fi
 fi
 

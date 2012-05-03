@@ -24,22 +24,24 @@
 set -e
 
 usage() {
-    echo "usage: lxc-clone -o <orig> -n <new> [-s] [-h] [-L fssize] [-v vgname] [-p lxc_lv_prefix] [-t fstype]"
+    echo "usage: $(basename $0) -o ORIG_NAME -n NEW_NAME [-s] [-h] [-L FS_SIZE]" >&2
+    echo "        [-v VG_NAME] [-p LV_PREFIX] [-t FS_TYPE]" >&2
 }
 
 help() {
     usage
-    echo
-    echo "creates a lxc system object."
-    echo
-    echo "Options:"
-    echo "orig        : name of the original container"
-    echo "new         : name of the new container"
-    echo "-s          : make the new rootfs a snapshot of the original"
-    echo "fssize      : size if creating a new fs.  By default, 2G"
-    echo "vgname      : lvm volume group name, lxc by default"
-    echo "lvprefix    : lvm volume name prefix, none by default, e.g. --lvprefix=lxc_ then new lxc lv name will be lxc_newname"
-    echo "fstype      : new container file system type, ext3 by default (only works for non-snapshot lvm)"
+    echo >&2
+    echo "Clone an existing container on the system." >&2
+    echo >&2
+    echo "Options:" >&2
+    echo "  -o ORIG_NAME   specify the name of the original container" >&2
+    echo "  -n NEW_NAME    specify the name of the new container" >&2
+    echo "  -s             make the new rootfs a snapshot of the original" >&2
+    echo "  -L FS_SIZE     specify the new filesystem size (default: 2G)" >&2
+    echo "  -v VG_NAME     specify the new LVM volume group name (default: lxc)" >&2
+    echo "  -p LV_PREFIX   add a prefix to new LVM logical volume names" >&2
+    echo "  -t FS_TYPE     specify the new filesystem type (default: ext3;" >&2
+    echo "                  only works for non-snapshot LVM)" >&2
 }
 
 shortoptions='ho:n:sL:v:p:t:'
@@ -62,8 +64,8 @@ fi
 eval set -- "$getopt"
 
 while true; do
-        case "$1" in
-            -h|--help)
+    case "$1" in
+        -h|--help)
             help
             exit 1
             ;;
@@ -102,52 +104,46 @@ while true; do
             break
             ;;
         *)
-            echo $1
             usage
             exit 1
             ;;
-        esac
+    esac
 done
 
 if [ -z "$lxc_path" ]; then
-    echo "no configuration path defined !"
+    echo "$(basename $0): no configuration path defined" >&2
     exit 1
 fi
 
 if [ ! -r $lxc_path ]; then
-    echo "configuration path '$lxc_path' not found"
+    echo "$(basename $0): configuration path '$lxc_path' not found" >&2
     exit 1
 fi
 
 if [ -z "$lxc_orig" ]; then
-    echo "no original container name specified"
+    echo "$(basename $0): no original container name specified" >&2
     usage
     exit 1
 fi
 
 if [ -z "$lxc_new" ]; then
-    echo "no new container name specified"
+    echo "$(basename $0): no new container name specified" >&2
     usage
     exit 1
 fi
 
 if [ "$(id -u)" != "0" ]; then
-   echo "This command has to be run as root"
+   echo "$(basename $0): must be run as root" >&2
    exit 1
 fi
 
-if [ ! -r $lxc_path ]; then
-    echo "no configuration path defined !"
-    exit 1
-fi
-
 if [ ! -d "$lxc_path/$lxc_orig" ]; then
-    echo "'$lxc_orig' does not exist"
+    echo "$(basename $0): '$lxc_orig' does not exist" >&2
     exit 1
 fi
 
 if [ -d "$lxc_path/$lxc_new" ]; then
-    echo "'$lxc_new' already exists"
+    echo "$(basename $0): '$lxc_new' already exists" >&2
     exit 1
 fi
 
@@ -166,7 +162,7 @@ cleanup() {
     if [ $frozen -eq 1 ]; then
         lxc-unfreeze -n $lxc_orig
     fi
-    echo aborted
+    echo "$(basename $0): aborted" >&2
     exit 1
 }
 trap cleanup SIGHUP SIGINT SIGTERM
@@ -195,8 +191,8 @@ lxc-info -s -n $lxc_orig|grep RUNNING >/dev/null 2>&1 || container_running=False
 sed -i '/lxc.rootfs/d' $lxc_path/$lxc_new/config
 oldroot=`grep lxc.rootfs $lxc_path/$lxc_orig/config | awk -F= '{ print $2 '}`
 if [ -b $oldroot ]; then
-    type vgscan || { echo "Please install lvm"; false; }
-    lvdisplay $oldroot > /dev/null 2>&1 || { echo "non-lvm blockdev cloning not supported"; false; }
+    type vgscan || { echo "$(basename $0): lvm is not installed" >&2; false; }
+    lvdisplay $oldroot > /dev/null 2>&1 || { echo "$(basename $0): non-lvm blockdev cloning is not supported" >&2; false; }
     lvm=TRUE
     # ok, create a snapshot of the lvm device
     if [ $container_running = "True" ]; then
@@ -211,16 +207,16 @@ if [ -b $oldroot ]; then
     if [ $snapshot = "no" ]; then
         #mount snapshot
         mkdir -p ${rootfs}_snapshot
-        mount /dev/$lxc_vg/${lxc_lv_prefix}${lxc_new}_snapshot ${rootfs}_snapshot || { echo "failed to mount new rootfs_snapshot"; false; }
+        mount /dev/$lxc_vg/${lxc_lv_prefix}${lxc_new}_snapshot ${rootfs}_snapshot || { echo "$(basename $0): failed to mount new rootfs_snapshot" >&2; false; }
         #create a new lv
         lvcreate -L $lxc_size $lxc_vg -n ${lxc_lv_prefix}$lxc_new
         echo "lxc.rootfs = /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new" >> $lxc_path/$lxc_new/config
         # and mount it so we can tweak it
         mkdir -p $lxc_path/$lxc_new/rootfs
         mkfs -t $fstype /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new
-        mount /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new $rootfs || { echo "failed to mount new rootfs"; false; }
+        mount /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new $rootfs || { echo "$(basename $0): failed to mount new rootfs" >&2; false; }
         mounted=1
-        rsync -ax ${rootfs}_snapshot/ ${rootfs}/ || { echo "copy of data to new lv failed"; false; }
+        rsync -ax ${rootfs}_snapshot/ ${rootfs}/ || { echo "$(basename $0): copying data to new lv failed" >&2; false; }
         umount ${rootfs}_snapshot
         rmdir ${rootfs}_snapshot
         lvremove -f $lxc_vg/${lxc_lv_prefix}${lxc_new}_snapshot
@@ -229,18 +225,18 @@ if [ -b $oldroot ]; then
         echo "lxc.rootfs = /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new" >> $lxc_path/$lxc_new/config
         # and mount it so we can tweak it
         mkdir -p $lxc_path/$lxc_new/rootfs
-        mount /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new $rootfs || { echo "failed to mount new rootfs"; false; }
+        mount /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new $rootfs || { echo "$(basename $0): failed to mount new rootfs" >&2; false; }
         mounted=1
     fi
 
 elif out=$(btrfs subvolume list "$lxc_path/$lxc_orig/rootfs" 2>&1); then
 
-    out=$(btrfs subvolume snapshot "$lxc_path/$lxc_orig/rootfs" "$rootfs" 2>&1) || { echo "failed btrfs snapshot"; false; }
+    out=$(btrfs subvolume snapshot "$lxc_path/$lxc_orig/rootfs" "$rootfs" 2>&1) || { echo "$(basename $0): btrfs snapshot failed" >&2; false; }
     echo "lxc.rootfs = $rootfs" >> "$lxc_path/$lxc_new/config"
 
 else
     if [ $snapshot = "yes" ]; then
-        echo "Can't snapshot a directory"
+        echo "$(basename $0): cannot snapshot a directory" >&2
         cleanup
     fi
     if [ $container_running = "True" ]; then
