@@ -26,22 +26,13 @@
 
 #include <sys/types.h>
 
-struct lxc_proc_cgroup_info {
-	char *subsystems;
-	char *cgroup;
-};
-
 struct lxc_proc_context_info {
 	unsigned long personality;
 	unsigned long long capability_mask;
-	struct lxc_proc_cgroup_info* cgroups;
-	int cgroups_count;
 };
 
 extern struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid);
-extern void lxc_proc_free_context_info(struct lxc_proc_context_info *info);
 
-extern int lxc_attach_proc_to_cgroups(pid_t pid, struct lxc_proc_context_info *ctx);
 extern int lxc_attach_to_ns(pid_t other_pid);
 extern int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx);
 

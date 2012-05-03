@@ -35,7 +35,7 @@
 #include "commands.h"
 #include "arguments.h"
 #include "caps.h"
-#include "attach.h"
+#include "cgroup.h"
 #include "confile.h"
 #include "start.h"
 #include "sync.h"
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 		if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 			return -1;
 
-		if (!elevated_privileges && lxc_attach_proc_to_cgroups(pid, init_ctx))
+		if (!elevated_privileges && lxc_cgroup_attach(my_args.name, pid))
 			return -1;
 
 		/* tell the child we are done initializing */

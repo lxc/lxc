@@ -60,10 +60,9 @@ struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 	struct lxc_proc_context_info *info = calloc(1, sizeof(*info));
 	FILE *proc_file;
 	char proc_fn[MAXPATHLEN];
-	char *line = NULL, *ptr, *ptr2;
+	char *line = NULL;
 	size_t line_bufsz = 0;
-	int ret, found, l;
-	int i;
+	int ret, found;
 
 	if (!info) {
 		SYSERROR("Could not allocate memory.");
@@ -114,115 +113,12 @@ struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 		goto out_error;
 	}
 
-	/* read cgroups */
-	snprintf(proc_fn, MAXPATHLEN, "/proc/%d/cgroup", pid);
-
-	proc_file = fopen(proc_fn, "r");
-	if (!proc_file) {
-		SYSERROR("Could not open %s", proc_fn);
-		goto out_error;
-	}
-
-	/* we don't really know how many cgroup subsystems there are
-	 * mounted, so we go through the whole file twice */
-	i = 0;
-	while (getline(&line, &line_bufsz, proc_file) != -1) {
-		/* we assume that all lines containing at least two colons
-		 * are valid */
-		ptr = strchr(line, ':');
-		if (ptr && strchr(ptr + 1, ':'))
-			i++;
-	}
-
-	rewind(proc_file);
-
-	info->cgroups = calloc(i, sizeof(*(info->cgroups)));
-	info->cgroups_count = i;
-
-	i = 0;
-	while (getline(&line, &line_bufsz, proc_file) != -1 && i < info->cgroups_count) {
-		/* format of the lines is:
-		 * id:subsystems:path, where subsystems are separated by
-		 * commas and each subsystem may also be of the form
-		 * name=xxx if it describes a private named hierarchy
-		 * we will ignore the id in the following */
-		ptr = strchr(line, ':');
-		ptr2 = ptr ? strchr(ptr + 1, ':') : NULL;
-
-		/* ignore invalid lines */
-		if (!ptr || !ptr2) continue;
-
-		l = strlen(ptr2) - 1;
-		if (ptr2[l] == '\n')
-			ptr2[l] = '\0';
-
-		info->cgroups[i].subsystems = strndup(ptr + 1, ptr2 - (ptr + 1));
-		info->cgroups[i].cgroup = strdup(ptr2 + 1);
-
-		i++;
-	}
-
-	free(line);
-	fclose(proc_file);
-
 	return info;
 
 out_error:
-	lxc_proc_free_context_info(info);
+	free(info);
 	free(line);
 	return NULL;
-}
-
-void lxc_proc_free_context_info(struct lxc_proc_context_info *info)
-{
-	if (!info)
-		return;
-
-	if (info->cgroups) {
-		int i;
-		for (i = 0; i < info->cgroups_count; i++) {
-			free(info->cgroups[i].subsystems);
-			free(info->cgroups[i].cgroup);
-		}
-	}
-	free(info->cgroups);
-	free(info);
-}
-
-int lxc_attach_proc_to_cgroups(pid_t pid, struct lxc_proc_context_info *ctx)
-{
-	int i, ret;
-
-	if (!ctx) {
-		ERROR("No valid context supplied when asked to attach "
-		      "process to cgroups.");
-		return -1;
-	}
-
-	for (i = 0; i < ctx->cgroups_count; i++) {
-		char *path;
-
-		/* the kernel should return paths that start with '/' */
-		if (ctx->cgroups[i].cgroup[0] != '/') {
-			ERROR("For cgroup subsystem(s) %s the path '%s' does "
-			      "not start with a '/'",
-			      ctx->cgroups[i].subsystems,
-			      ctx->cgroups[i].cgroup);
-			return -1;
-		}
-
-		/* lxc_cgroup_path_get can process multiple subsystems */
-		ret = lxc_cgroup_path_get(&path, ctx->cgroups[i].subsystems,
-		                          &ctx->cgroups[i].cgroup[1]);
-		if (ret)
-			return -1;
-
-		ret = lxc_cgroup_attach(path, pid);
-		if (ret)
-			return -1;
-	}
-
-	return 0;
 }
 
 int lxc_attach_to_ns(pid_t pid)

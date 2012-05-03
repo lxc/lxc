@@ -30,6 +30,6 @@ extern int lxc_cgroup_create(const char *name, pid_t pid);
 extern int lxc_cgroup_destroy(const char *name);
 extern int lxc_cgroup_path_get(char **path, const char *subsystem, const char *name);
 extern int lxc_cgroup_nrtasks(const char *name);
-extern int lxc_cgroup_attach(const char *path, pid_t pid);
+extern int lxc_cgroup_attach(const char *name, pid_t pid);
 extern int lxc_ns_is_mounted(void);
 #endif

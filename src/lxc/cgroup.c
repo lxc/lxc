@@ -53,35 +53,6 @@ enum {
 	CGROUP_CLONE_CHILDREN,
 };
 
-static char *hasmntopt_multiple(struct mntent *mntent, const char *options)
-{
-	const char *ptr = options;
-	const char *ptr2 = strchr(options, ',');
-	char *result;
-
-	while (ptr2 != NULL) {
-		char *option = strndup(ptr, ptr2 - ptr);
-		if (!option) {
-			SYSERROR("Temporary memory allocation error");
-			return NULL;
-		}
-
-		result = hasmntopt(mntent, option);
-		free(option);
-
-		if (!result) {
-			return NULL;
-		}
-
-		ptr = ptr2 + 1;
-		ptr2 = strchr(ptr, ',');
-	}
-
-	/* for multiple mount options, the return value is basically NULL
-	 * or non-NULL, so this should suffice for our purposes */
-	return hasmntopt(mntent, ptr);
-}
-
 /*
  * get_init_cgroup: get the cgroup init is in.
  *  dsg: preallocated buffer to put the output in
@@ -168,7 +139,7 @@ static int get_cgroup_mount(const char *subsystem, char *mnt)
 	while ((mntent = getmntent(file))) {
 		if (strcmp(mntent->mnt_type, "cgroup"))
 			continue;
-		if (subsystem && !hasmntopt_multiple(mntent, subsystem))
+		if (subsystem && !hasmntopt(mntent, subsystem))
 			continue;
 
 		flags = get_cgroup_flags(mntent);
@@ -243,13 +214,20 @@ static int cgroup_enable_clone_children(const char *path)
 	return ret;
 }
 
-int lxc_cgroup_attach(const char *path, pid_t pid)
+static int lxc_one_cgroup_attach(const char *name,
+				 struct mntent *mntent, pid_t pid)
 {
 	FILE *f;
-	char tasks[MAXPATHLEN];
-	int ret = 0;
+	char tasks[MAXPATHLEN], initcgroup[MAXPATHLEN];
+	char *cgmnt = mntent->mnt_dir;
+	int flags, ret = 0;
 
-	snprintf(tasks, MAXPATHLEN, "%s/tasks", path);
+	flags = get_cgroup_flags(mntent);
+
+	snprintf(tasks, MAXPATHLEN, "%s%s%s/%s/tasks", cgmnt,
+	         get_init_cgroup(NULL, mntent, initcgroup),
+	         (flags & CGROUP_NS_CGROUP) ? "" : "/lxc",
+	         name);
 
 	f = fopen(tasks, "w");
 	if (!f) {
@@ -265,6 +243,44 @@ int lxc_cgroup_attach(const char *path, pid_t pid)
 	fclose(f);
 
 	return ret;
+}
+
+/*
+ * for each mounted cgroup, attach a pid to the cgroup for the container
+ */
+int lxc_cgroup_attach(const char *name, pid_t pid)
+{
+	struct mntent *mntent;
+	FILE *file = NULL;
+	int err = -1;
+	int found = 0;
+
+	file = setmntent(MTAB, "r");
+	if (!file) {
+		SYSERROR("failed to open %s", MTAB);
+		return -1;
+	}
+
+	while ((mntent = getmntent(file))) {
+		DEBUG("checking '%s' (%s)", mntent->mnt_dir, mntent->mnt_type);
+
+		if (strcmp(mntent->mnt_type, "cgroup"))
+			continue;
+
+		INFO("[%d] found cgroup mounted at '%s',opts='%s'",
+		     ++found, mntent->mnt_dir, mntent->mnt_opts);
+
+		err = lxc_one_cgroup_attach(name, mntent, pid);
+		if (err)
+			goto out;
+	};
+
+	if (!found)
+		ERROR("No cgroup mounted on the system");
+
+out:
+	endmntent(file);
+	return err;
 }
 
 /*
@@ -378,20 +394,13 @@ static int lxc_one_cgroup_create(const char *name,
 		return -1;
 	}
 
-	/* Let's add the pid to the 'tasks' file */
-	if (lxc_cgroup_attach(cgname, pid)) {
-		SYSERROR("failed to attach pid '%d' to '%s'", pid, cgname);
-		rmdir(cgname);
-		return -1;
-	}
-
 	INFO("created cgroup '%s'", cgname);
 
 	return 0;
 }
 
 /*
- * for each mounted cgroup, create a cgroup for the container
+ * for each mounted cgroup, create a cgroup for the container and attach a pid
  */
 int lxc_cgroup_create(const char *name, pid_t pid)
 {
@@ -416,6 +425,10 @@ int lxc_cgroup_create(const char *name, pid_t pid)
 		     ++found, mntent->mnt_dir, mntent->mnt_opts);
 
 		err = lxc_one_cgroup_create(name, mntent, pid);
+		if (err)
+			goto out;
+
+		err = lxc_one_cgroup_attach(name, mntent, pid);
 		if (err)
 			goto out;
 	};
