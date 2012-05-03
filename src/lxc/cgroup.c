@@ -531,8 +531,8 @@ int lxc_cgroup_path_get(char **path, const char *subsystem, const char *name)
 	static char        buf[MAXPATHLEN];
 	static char        retbuf[MAXPATHLEN];
 
-	/* what lxc_cgroup_set calls subsystem is actually the filename, i.e.
-	   'devices.allow'.  So for our purposee we trim it */
+	/* lxc_cgroup_set passes a state object for the subsystem,
+	 * so trim it to just the subsystem part */
 	if (subsystem) {
 		snprintf(retbuf, MAXPATHLEN, "%s", subsystem);
 		char *s = index(retbuf, '.');

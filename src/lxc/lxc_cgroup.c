@@ -36,7 +36,7 @@ lxc_log_define(lxc_cgroup_ui, lxc_cgroup);
 static int my_checker(const struct lxc_arguments* args)
 {
 	if (!args->argc) {
-		lxc_error(args, "missing cgroup subsystem");
+		lxc_error(args, "missing state object");
 		return -1;
 	}
 	return 0;
@@ -49,13 +49,13 @@ static const struct option my_longopts[] = {
 static struct lxc_arguments my_args = {
 	.progname = "lxc-cgroup",
 	.help     = "\
---name=NAME subsystem [value]\n\
+--name=NAME state-object [value]\n\
 \n\
-lxc-cgroup get or set subsystem value of cgroup\n\
-associated with the NAME container\n\
+Get or set the value of a state object (for example, 'cpuset.cpus')\n\
+in the container's cgroup for the corresponding subsystem.\n\
 \n\
 Options :\n\
-  -n, --name=NAME      NAME for name of the container",
+  -n, --name=NAME      container name",
 	.options  = my_longopts,
 	.parser   = NULL,
 	.checker  = my_checker,
@@ -63,7 +63,7 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	char *subsystem = NULL, *value = NULL;
+	char *state_object = NULL, *value = NULL;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
@@ -72,15 +72,15 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	subsystem = my_args.argv[0];
+	state_object = my_args.argv[0];
 
 	if ((argc) > 1)
 		value = my_args.argv[1];
 
 	if (value) {
-		if (lxc_cgroup_set(my_args.name, subsystem, value)) {
+		if (lxc_cgroup_set(my_args.name, state_object, value)) {
 			ERROR("failed to assign '%s' value to '%s' for '%s'",
-				value, subsystem, my_args.name);
+				value, state_object, my_args.name);
 			return -1;
 		}
 	} else {
@@ -88,10 +88,10 @@ int main(int argc, char *argv[])
 		int ret;
 		char buffer[len];
 
-		ret = lxc_cgroup_get(my_args.name, subsystem, buffer, len);
+		ret = lxc_cgroup_get(my_args.name, state_object, buffer, len);
 		if (ret < 0) {
 			ERROR("failed to retrieve value of '%s' for '%s'",
-			      subsystem, my_args.name);
+			      state_object, my_args.name);
 			return -1;
 		}
 

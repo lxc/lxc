@@ -48,8 +48,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-start <replaceable>-n name</replaceable>
-	<replaceable>subsystem</replaceable> <optional>value</optional>
+      <command>lxc-cgroup -n <replaceable>name</replaceable>
+	<replaceable>state-object</replaceable> <optional>value</optional>
       </command>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -58,17 +58,20 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <title>Description</title>
 
     <para>
-      <command>lxc-cgroup</command> get or set value from the control
-      group associated with the
-      container <replaceable>name</replaceable>. If
-      no <optional>value</optional> is specified, the value of
-      the <replaceable>subsystem</replaceable> is displayed, otherwise
-      it is set. The <command>lxc-cgroup</command> does not assume the
-      correctness of the <replaceable>subsystem</replaceable> name, it
-      is up to the user to specify the
-      right <replaceable>subsystem</replaceable> name.
+      <command>lxc-cgroup</command> gets or sets the value of a
+      <replaceable>state-object</replaceable> (e.g., 'cpuset.cpus')
+      in the container's cgroup for the corresponding subsystem (e.g.,
+      'cpuset'). If no <optional>value</optional> is specified, the
+      current value of the <replaceable>state-object</replaceable> is
+      displayed; otherwise it is set.
     </para>
 
+    <para>
+      Note that <command>lxc-cgroup</command> does not check that the
+      <replaceable>state-object</replaceable> is valid for the running
+      kernel, or that the corresponding subsystem is contained in any
+      mounted cgroup hierarchy.
+    </para>
   </refsect1>
 
   <refsect1>
@@ -77,11 +80,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
       <varlistentry>
 	<term>
-	  <option><replaceable>subsystem</replaceable></option>
+	  <option><replaceable>state-object</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
-	    Specify the subsystem control group name.
+	    Specify the state object name.
 	  </para>
 	</listitem>
       </varlistentry>
@@ -92,7 +95,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</term>
 	<listitem>
 	  <para>
-	    Specify the subsystem control group value to be set.
+	    Specify the value to assign to the state object.
 	  </para>
 	</listitem>
       </varlistentry>
