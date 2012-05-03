@@ -305,9 +305,9 @@ static int lxc_one_cgroup_create(const char *name,
 	char initcgroup[MAXPATHLEN];
 	int flags, ret;
 
-	/* cgparent is the parent dir, /sys/fs/cgroup/<cgroup>/<init-cgroup>/lxc */
+	/* cgparent is the parent dir, e.g., /sys/fs/cgroup/<cgroup>/<init-cgroup>/lxc */
 	/* (remember get_init_cgroup() returns a path starting with '/') */
-	/* cgname is the full name,    /sys/fs/cgroup/</cgroup>/<init-cgroup>/lxc/name */
+	/* cgname is the full name, e.g., /sys/fs/cgroup/<cgroup>/<init-cgroup>/lxc/name */
 	ret = snprintf(cginit, MAXPATHLEN, "%s%s", mntent->mnt_dir,
 		get_init_cgroup(NULL, mntent, initcgroup));
 	if (ret < 0 || ret >= MAXPATHLEN) {
@@ -315,7 +315,10 @@ static int lxc_one_cgroup_create(const char *name,
 		return -1;
 	}
 
-	ret = snprintf(cgparent, MAXPATHLEN, "%s/lxc", cginit);
+	flags = get_cgroup_flags(mntent);
+
+	ret = snprintf(cgparent, MAXPATHLEN, "%s%s", cginit,
+		       (flags & CGROUP_NS_CGROUP) ? "" : "/lxc");
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		SYSERROR("Failed creating pathname for cgroup parent (%d)\n", ret);
 		return -1;
@@ -325,8 +328,6 @@ static int lxc_one_cgroup_create(const char *name,
 		SYSERROR("Failed creating pathname for cgroup (%d)\n", ret);
 		return -1;
 	}
-
-	flags = get_cgroup_flags(mntent);
 
 	/* Do we have the deprecated ns_cgroup subsystem? */
 	if (flags & CGROUP_NS_CGROUP) {
@@ -356,7 +357,7 @@ static int lxc_one_cgroup_create(const char *name,
 		return -1;
 	}
 
-	/* if /sys/fs/cgroup/<cgroup>/<init-cgroup>/lxc does not exist, create it */
+	/* if cgparent does not exist, create it */
 	if (access(cgparent, F_OK) && mkdir(cgparent, 0755)) {
 		SYSERROR("failed to create '%s' directory", cgparent);
 		return -1;
