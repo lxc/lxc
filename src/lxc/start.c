@@ -632,8 +632,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	handler->data = data;
 
 	if (must_drop_cap_sys_boot()) {
-		handler->conf->need_utmp_watch = 1;
-		DEBUG("Dropping cap_sys_boot and watching utmp\n");
+		DEBUG("Dropping cap_sys_boot\n");
 	} else {
 		DEBUG("Not dropping cap_sys_boot or watching utmp\n");
 		handler->conf->need_utmp_watch = 0;
