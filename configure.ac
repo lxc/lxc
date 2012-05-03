@@ -65,13 +65,13 @@ AC_SUBST(LXCROOTFSMOUNT, "${with_rootfs_path}")
 AC_SUBST(LXCINITDIR, ['${libexecdir}/lxc'])
 AC_SUBST(LXCTEMPLATEDIR, ['${libdir}/lxc/templates'])
 
-AC_CHECK_HEADERS([linux/netlink.h linux/genetlink.h],
+AC_CHECK_HEADERS([linux/unistd.h linux/netlink.h linux/genetlink.h],
 				  [],
-				  AC_MSG_ERROR([netlink headers not found. Please install the linux kernel headers.]),
+				  AC_MSG_ERROR([Please install the Linux kernel headers.]),
 				  [#include <sys/socket.h>
 		 ])
 
-AC_CHECK_HEADERS([sys/capability.h], [], AC_MSG_ERROR([please install libcap-devel.]),
+AC_CHECK_HEADERS([sys/capability.h], [], AC_MSG_ERROR([Please install the libcap development files.]),
 [#include <sys/types.h>
 #include <sys/capability.h>])
 AC_CHECK_LIB(cap,cap_set_proc,caplib=yes,caplib=no)
@@ -90,8 +90,6 @@ AC_CHECK_DECLS([PR_CAPBSET_DROP], [], [], [#include <sys/prctl.h>])
 AC_CHECK_HEADERS([sys/signalfd.h])
 
 AC_PROG_GCC_TRADITIONAL
-
-AC_LINUX
 
 if test "x$GCC" = "xyes"; then
   CFLAGS="$CFLAGS -Wall"

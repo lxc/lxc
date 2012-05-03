@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
+#include <linux/unistd.h>
 
 #if !HAVE_DECL_PR_CAPBSET_DROP
 #define PR_CAPBSET_DROP 24
@@ -41,8 +42,6 @@
 #include "caps.h"
 #include "cgroup.h"
 #include "config.h"
-
-#include "setns.h"
 
 lxc_log_define(lxc_attach, lxc);
 
