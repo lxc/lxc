@@ -48,7 +48,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-ls <optional>ls option</optional>
+      <command>lxc-ls <optional>--active</optional> <optional>ls option</optional>
       </command>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -64,6 +64,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsect1>
     <title>Options</title>
     <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option><optional>--active</optional></option>
+	</term>
+	<listitem>
+	  <para>
+	    List active containers.
+	  </para>
+	</listitem>
+      </varlistentry>
 
       <varlistentry>
 	<term>
@@ -94,10 +105,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       </varlistentry>
 
       <varlistentry>
-	<term>lxc-ls -1</term>
+	<term>lxc-ls --active -1</term>
 	<listitem>
 	<para>
-	  list all the containers and display the list in one column.
+	  list active containers and display the list in one column.
 	</para>
 	</listitem>
       </varlistentry>
