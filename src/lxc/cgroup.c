@@ -157,6 +157,7 @@ static int get_cgroup_mount(const char *subsystem, char *mnt)
 	struct mntent *mntent;
 	char initcgroup[MAXPATHLEN];
 	FILE *file = NULL;
+	int ret, flags, err = -1;
 
 	file = setmntent(MTAB, "r");
 	if (!file) {
@@ -165,32 +166,29 @@ static int get_cgroup_mount(const char *subsystem, char *mnt)
 	}
 
 	while ((mntent = getmntent(file))) {
-
 		if (strcmp(mntent->mnt_type, "cgroup"))
 			continue;
-		if (!subsystem || hasmntopt_multiple(mntent, subsystem)) {
-			int ret;
-			int flags = get_cgroup_flags(mntent);
-			ret = snprintf(mnt, MAXPATHLEN, "%s%s%s",
-				       mntent->mnt_dir,
-				       get_init_cgroup(subsystem, NULL,
-						       initcgroup),
-				       (flags & CGROUP_NS_CGROUP) ? "" : "/lxc");
-			if (ret < 0 || ret >= MAXPATHLEN)
-				goto fail;
-			fclose(file);
-			DEBUG("using cgroup mounted at '%s'", mnt);
-			return 0;
-		}
+		if (subsystem && !hasmntopt_multiple(mntent, subsystem))
+			continue;
+
+		flags = get_cgroup_flags(mntent);
+		ret = snprintf(mnt, MAXPATHLEN, "%s%s%s", mntent->mnt_dir,
+			       get_init_cgroup(subsystem, NULL, initcgroup),
+		               (flags & CGROUP_NS_CGROUP) ? "" : "/lxc");
+		if (ret < 0 || ret >= MAXPATHLEN)
+			goto fail;
+
+		DEBUG("using cgroup mounted at '%s'", mnt);
+		err = 0;
+		goto out;
 	};
 
 fail:
 	DEBUG("Failed to find cgroup for %s\n",
 	      subsystem ? subsystem : "(NULL)");
-
-	fclose(file);
-
-	return -1;
+out:
+	endmntent(file);
+	return err;
 }
 
 int lxc_ns_is_mounted(void)
@@ -409,18 +407,17 @@ int lxc_cgroup_create(const char *name, pid_t pid)
 	}
 
 	while ((mntent = getmntent(file))) {
-
 		DEBUG("checking '%s' (%s)", mntent->mnt_dir, mntent->mnt_type);
 
-		if (!strcmp(mntent->mnt_type, "cgroup")) {
+		if (strcmp(mntent->mnt_type, "cgroup"))
+			continue;
 
-			INFO("[%d] found cgroup mounted at '%s',opts='%s'",
-			     ++found, mntent->mnt_dir, mntent->mnt_opts);
+		INFO("[%d] found cgroup mounted at '%s',opts='%s'",
+		     ++found, mntent->mnt_dir, mntent->mnt_opts);
 
-			err = lxc_one_cgroup_create(name, mntent, pid);
-			if (err)
-				goto out;
-		}
+		err = lxc_one_cgroup_create(name, mntent, pid);
+		if (err)
+			goto out;
 	};
 
 	if (!found)
@@ -498,7 +495,7 @@ int lxc_cgroup_destroy(const char *name)
 {
 	struct mntent *mntent;
 	FILE *file = NULL;
-	int ret, err = -1;
+	int err = -1;
 
 	file = setmntent(MTAB, "r");
 	if (!file) {
@@ -507,18 +504,15 @@ int lxc_cgroup_destroy(const char *name)
 	}
 
 	while ((mntent = getmntent(file))) {
-		if (!strcmp(mntent->mnt_type, "cgroup")) {
-			ret = lxc_one_cgroup_destroy(mntent, name);
-			if (ret) {
-				fclose(file);
-				return ret;
-			}
-			err = 0;
-		}
+		if (strcmp(mntent->mnt_type, "cgroup"))
+			continue;
+
+		err = lxc_one_cgroup_destroy(mntent, name);
+		if (err)
+			break;
 	}
 
-	fclose(file);
-
+	endmntent(file);
 	return err;
 }
 /*
