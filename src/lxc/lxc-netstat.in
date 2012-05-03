@@ -1,21 +1,70 @@
 #!/bin/bash
-# set -ex
+
+#
+# lxc: linux Container library
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 usage() {
-	echo "usage: $(basename $0) --name <name> [netstat options]"
+	echo "usage: $(basename $0) --name NAME [--] [NETSTAT_OPTIONS...]" >&2
 }
 
 help() {
 	usage
-	echo
-	echo "execute netstat for the specified container"
-	echo "with the added netstat options"
-	echo
-	echo "Options:"
-	echo "name  : name of the container"
-	echo "help  : this current help."
-	echo
-	echo "to be executed as root."
+	echo >&2
+	echo "Execute 'netstat' for the specified container." >&2
+	echo >&2
+	echo "  --name NAME       specify the container name" >&2
+	echo "  NETSTAT_OPTIONS   netstat command options (see \`netstat --help')" >&2
+}
+
+get_parent_cgroup()
+{
+	local hierarchies hierarchy fields subsystems init_cgroup mountpoint
+
+	parent_cgroup=""
+
+	# Obtain a list of hierarchies that contain one or more subsystems
+	hierarchies=$(tail -n +2 /proc/cgroups | cut -f 2)
+
+	# Iterate through the list until a suitable hierarchy is found
+	for hierarchy in $hierarchies; do
+		# Obtain information about the init process in the hierarchy
+		fields=$(grep -E "^$hierarchy:" /proc/1/cgroup | head -n 1)
+		if [ -z "$fields" ]; then continue; fi
+		fields=${fields#*:}
+
+		# Get a comma-separated list of the hierarchy's subsystems
+		subsystems=${fields%:*}
+
+		# Get the cgroup of the init process in the hierarchy
+		init_cgroup=${fields#*:}
+
+		# Get the filesystem mountpoint of the hierarchy
+		mountpoint=$(grep -E "^cgroup [^ ]+ [^ ]+ ([^ ]+,)?$subsystems(,[^ ]+)? " /proc/self/mounts | cut -d ' ' -f 2)
+		if [ -z "$mountpoint" ]; then continue; fi
+
+		# Return the absolute path to the containers' parent cgroup
+		# (do not append '/lxc' if the hierarchy contains the 'ns' subsystem)
+		if [[ ",$subsystems," == *,ns,* ]]; then
+			parent_cgroup="${mountpoint}${init_cgroup%/}"
+		else
+			parent_cgroup="${mountpoint}${init_cgroup%/}/lxc"
+		fi
+		break
+	done
 }
 
 exec=""
@@ -25,19 +74,24 @@ if [ $# -eq  0 ]; then
 	exit 1
 fi
 
-for i in "$@"; do
-	case $i in
+while true; do
+	case $1 in
 		-h|--help)
 			help; exit 1;;
 		-n|--name)
 			name=$2; shift 2;;
 		--exec)
 			exec="exec"; shift;;
+		--)
+			shift; break;;
+		*)
+			break;
 	esac
 done
 
-if [ -z "$exec" ]; then
-    exec @BINDIR@/lxc-unshare -s MOUNT -- $0 -n $name --exec "$@"
+if [ "$(id -u)" != "0" ]; then
+	echo "$(basename $0): must be run as root" >&2
+	exit 1
 fi
 
 if [ -z "$name" ]; then
@@ -45,51 +99,43 @@ if [ -z "$name" ]; then
 	exit 1
 fi
 
+if [ -z "$exec" ]; then
+	exec @BINDIR@/lxc-unshare -s MOUNT -- $0 -n $name --exec "$@"
+fi
+
 lxc-info -n $name 2>&1 | grep -q 'STOPPED'
 if [ $? -eq 0 ]; then
-	echo "Container $name is not running"
+	echo "$(basename $0): container '$name' is not running" >&2
 	exit 1
 fi
 
-cgroups=$(mount -l -t cgroup)
-cgroup_path=""
-
-for i in "$cgroups"; do
-
-    cgroup_name=$(echo $i | awk ' { print $1 } ')
-    cgroup_path=$(echo $i | awk ' { print $3 } ')
-
-    if [ "$cgroup_name" == "lxc" ]; then
-        break;
-    fi
-
-done
-
-if [ -z "$cgroup_path" ]; then
-	cgroups=`grep -m1 -E '^[^ \t]+[ \t]+[^ \t]+[ \t]+cgroup' /proc/self/mounts`
-	for i in "$cgroups"; do
-	    cgroup_path=$(echo $i | awk ' { print $2 } ')
-	    if [ -n $cgroup_path ]; then
-		break;
-	    fi
-	done
+get_parent_cgroup
+if [ ! -d "$parent_cgroup" ]; then
+	echo "$(basename $0): no cgroup mount point found" >&2
+	exit 1
 fi
 
-if [ -z "$cgroup_path" ]; then
-    echo "no cgroup mount point found"
-    exit 1
-fi
-
-# the container will be in:
-# ${cgroup_path}.${init_cgroup_path}."lxc".$name
-init_cgroup=`cat /proc/1/cgroup | awk -F: '{ print $3 }' | head -1`
-final_cgroup_path=$cgroup_path/$init_cgroup/lxc
-pid=$(head -1 $final_cgroup_path/$name/tasks)
+pid=$(head -1 $parent_cgroup/$name/tasks)
 
 if [ -z "$pid" ]; then
-    echo "no process found for '$name'"
-    exit 1
+	echo "$(basename $0): no process found for '$name'" >&2
+	exit 1
 fi
 
-mount -n --bind /proc/$pid/net /proc/$$/net && \
+tmpdir=$(mktemp -d)
+
+if [ -z "$tmpdir" -o ! -d "$tmpdir" ]; then
+	echo "$(basename $0): unable to create temporary directory" >&2
+	exit 1
+fi
+
+# Bind mount /proc/$pid/net onto /proc/net before calling 'netstat'.
+# However, we can not simply bind mount on top of procfs, so we have
+# to move procfs out of the way first.
+mount -n --move /proc "$tmpdir" && \
+    mount -n -t tmpfs tmpfs /proc && \
+    mkdir /proc/root /proc/net && \
+    mount -n --move "$tmpdir" /proc/root && \
+    rmdir "$tmpdir" && \
+    mount -n --bind /proc/root/$pid/net /proc/net && \
     exec netstat "$@"
