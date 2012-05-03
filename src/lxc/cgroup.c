@@ -53,6 +53,39 @@ enum {
 	CGROUP_CLONE_CHILDREN,
 };
 
+/* Check if a mount is a cgroup hierarchy for any subsystem.
+ * Return the first subsystem found (or NULL if none).
+ */
+static char *mount_has_subsystem(const struct mntent *mntent)
+{
+	FILE *f;
+	char *c, *ret;
+	char line[MAXPATHLEN];
+
+	/* read the list of subsystems from the kernel */
+	f = fopen("/proc/cgroups", "r");
+	if (!f)
+		return 0;
+
+	/* skip the first line, which contains column headings */
+	if (!fgets(line, MAXPATHLEN, f))
+		return 0;
+
+	while (fgets(line, MAXPATHLEN, f)) {
+		c = strchr(line, '\t');
+		if (!c)
+			continue;
+		*c = '\0';
+
+		ret = hasmntopt(mntent, line);
+		if (ret)
+			break;
+	}
+
+	fclose(f);
+	return ret;
+}
+
 /*
  * get_init_cgroup: get the cgroup init is in.
  *  dsg: preallocated buffer to put the output in
@@ -139,8 +172,15 @@ static int get_cgroup_mount(const char *subsystem, char *mnt)
 	while ((mntent = getmntent(file))) {
 		if (strcmp(mntent->mnt_type, "cgroup"))
 			continue;
-		if (subsystem && !hasmntopt(mntent, subsystem))
-			continue;
+
+		if (subsystem) {
+			if (!hasmntopt(mntent, subsystem))
+				continue;
+		}
+		else {
+			if (!mount_has_subsystem(mntent))
+				continue;
+		}
 
 		flags = get_cgroup_flags(mntent);
 		ret = snprintf(mnt, MAXPATHLEN, "%s%s%s", mntent->mnt_dir,
@@ -265,6 +305,8 @@ int lxc_cgroup_attach(const char *name, pid_t pid)
 		DEBUG("checking '%s' (%s)", mntent->mnt_dir, mntent->mnt_type);
 
 		if (strcmp(mntent->mnt_type, "cgroup"))
+			continue;
+		if (!mount_has_subsystem(mntent))
 			continue;
 
 		INFO("[%d] found cgroup mounted at '%s',opts='%s'",
@@ -420,6 +462,8 @@ int lxc_cgroup_create(const char *name, pid_t pid)
 
 		if (strcmp(mntent->mnt_type, "cgroup"))
 			continue;
+		if (!mount_has_subsystem(mntent))
+			continue;
 
 		INFO("[%d] found cgroup mounted at '%s',opts='%s'",
 		     ++found, mntent->mnt_dir, mntent->mnt_opts);
@@ -518,6 +562,8 @@ int lxc_cgroup_destroy(const char *name)
 
 	while ((mntent = getmntent(file))) {
 		if (strcmp(mntent->mnt_type, "cgroup"))
+			continue;
+		if (!mount_has_subsystem(mntent))
 			continue;
 
 		err = lxc_one_cgroup_destroy(mntent, name);
