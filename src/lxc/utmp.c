@@ -233,10 +233,6 @@ int lxc_utmp_mainloop_add(struct lxc_epoll_descr *descr,
 	char path2[MAXPATHLEN];
 	int fd, wd;
 	struct lxc_utmp *utmp_data;
-	struct lxc_conf *conf = handler->conf;
-
-	if (!conf->rootfs.path)
-		return 0;
 
 	/* We set up a watch for the /var/run directory. We're only interested
 	 * in utmp at the moment, but want to watch for delete and create
