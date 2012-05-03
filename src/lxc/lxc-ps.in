@@ -1,9 +1,7 @@
-#!/usr/bin/perl
+#!/bin/bash
+
 #
-# lxc-ps
-#
-# Authors:
-# Daniel Lezcano <daniel.lezcano@free.fr>
+# lxc: linux Container library
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -19,214 +17,127 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-#
-# This script allows to
-# display processes information with related container name if available.
-#
-use strict;
-
-
-# Some globals
-
-our $PS_HEADERS;      # String containing headers of the ps output
-our $PS_PID_INDEX;    # Index of the PID column in the ps headers
-our @PS_LINES;        # Output lines of the ps command
-
-our $LXC_DISPLAY = 0; # By default do not display container information
-our %LXC_NAMES;       # Specified container names (if any)
-
-sub get_container_names {
-	my $ref_names = shift;
-	my $lxcpath = '@LXCPATH@';
-
-	open(active, "netstat -xa | grep $lxcpath |") or return;
-	while(<active>) {
-		chomp;
-		s#.*$lxcpath/(.*)/command.*#$1#;
-		push @$ref_names, $_;
-	}
-	close active;
+usage()
+{
+	echo "usage: $(basename $0) [--lxc | --name NAME] [--] [PS_OPTIONS...]" >&2
 }
 
-sub get_cgroup {
-	my $ref_cgroup = shift;
-	my $mount_string;
-
-	$mount_string=`mount -t cgroup |grep -E -e '^lxc '`;
-	if ($mount_string) {
-                # use the one 'lxc' cgroup mount if it exists
-		chomp($mount_string);
-		$$ref_cgroup=`echo "$mount_string" |cut -d' ' -f3`;
-		chomp($$ref_cgroup);
-	}
-	# Otherwise (i.e. cgroup-bin) use the first cgroup mount
-	$mount_string=`grep -m1 -E '^[^ \t]+[ \t]+[^ \t]+[ \t]+cgroup' /proc/self/mounts`;
-	unless ($mount_string) {
-		die "unable to find mounted cgroup" unless $$ref_cgroup;
-	}
-	chomp($mount_string);
-	$$ref_cgroup=`echo "$mount_string" |cut -d' ' -f2`;
-	chomp($$ref_cgroup);
-	return;
+help() {
+	usage
+	echo >&2
+	echo "List current processes with container names." >&2
+	echo >&2
+	echo "  --lxc         show processes in all containers" >&2
+	echo "  --name NAME   show processes in the specified container" >&2
+	echo "                 (multiple containers can be separated by commas)" >&2
+	echo "  PS_OPTIONS    ps command options (see \`ps --help')" >&2
 }
 
-sub get_pids_in_containers {
-	my $ref_names = shift;
-	my $ref_cgroup = shift;
-	my $ref_pids = shift;
-	my $init_cgroup = shift;
-	my @pidlist;
+get_parent_cgroup()
+{
+	local hierarchies hierarchy fields subsystems init_cgroup mountpoint
 
-	for (@{$ref_names}) {
-		my $task_file = "$$ref_cgroup/$init_cgroup/lxc/$_/tasks";
+	parent_cgroup=""
 
-		$LXC_NAMES{$_} = 1;
-		open(tasks, "cat $task_file 2>/dev/null |") or next;
-		while (<tasks>) {
-			chomp $_;
-			push @pidlist, $_;
-		}
-		close tasks;
-	}
-	$$ref_pids = join(',', @pidlist);
+	# Obtain a list of hierarchies that contain one or more subsystems
+	hierarchies=$(tail -n +2 /proc/cgroups | cut -f 2)
+
+	# Iterate through the list until a suitable hierarchy is found
+	for hierarchy in $hierarchies; do
+		# Obtain information about the init process in the hierarchy
+		fields=$(grep -E "^$hierarchy:" /proc/1/cgroup | head -n 1)
+		if [ -z "$fields" ]; then continue; fi
+		fields=${fields#*:}
+
+		# Get a comma-separated list of the hierarchy's subsystems
+		subsystems=${fields%:*}
+
+		# Get the cgroup of the init process in the hierarchy
+		init_cgroup=${fields#*:}
+
+		# Get the filesystem mountpoint of the hierarchy
+		mountpoint=$(grep -E "^cgroup [^ ]+ [^ ]+ ([^ ]+,)?$subsystems(,[^ ]+)? " /proc/self/mounts | cut -d ' ' -f 2)
+		if [ -z "$mountpoint" ]; then continue; fi
+
+		# Return the absolute path to the containers' parent cgroup
+		# (do not append '/lxc' if the hierarchy contains the 'ns' subsystem)
+		if [[ ",$subsystems," == *,ns,* ]]; then
+			parent_cgroup="${mountpoint}${init_cgroup%/}"
+		else
+			parent_cgroup="${mountpoint}${init_cgroup%/}/lxc"
+		fi
+		break
+	done
 }
 
-sub reclaim_pid_index {
-    my @headers = split " ", $PS_HEADERS;
-    for my $i (0 .. $#headers) {
-	if ($headers[$i] eq "PID") {
-	    $PS_PID_INDEX = $i;
-	    return;
-	}
-    }
-    print "Cannot find ps PID column !\n";
-    exit 1;
-}
+containers=""
+list_container_processes=0
+for i in "$@"; do
+	case $i in
+		--help)
+			help; exit 1;;
+		--name)
+			containers=$2; list_container_processes=1; shift 2;;
+		--lxc)
+			list_container_processes=1; shift;;
+		--)
+			shift; break;;
+		*)
+			break;;
+        esac
+done
 
-sub execute_ps {
-    open(ps, "ps @_ |") or die "Cannot execute ps command: $!\n";
+if [ "$list_container_processes" -eq "1" ]; then
+	set -- -e $@
+fi
 
-    $PS_HEADERS = <ps>;
-    reclaim_pid_index;
+get_parent_cgroup
+if [ ! -d "$parent_cgroup" ]; then
+	echo "$(basename $0): no cgroup mount point found" >&2
+	exit 1
+fi
 
-    while (<ps>) {
-	push @PS_LINES, $_;
-    }
-    close ps;
-}
+declare -a container_of_pid
+container_field_width=9
+IFS=","
+if [ -z "$containers" ]; then
+	containers=( $(find $parent_cgroup -mindepth 1 -maxdepth 1 -type d -printf "%f," 2>/dev/null) )
+else
+	containers=( $containers )
+fi
 
-sub get_init_cgroup {
-    my $filename = "/proc/1/cgroup";
-    open(LXC, "$filename");
-    my @cgroup = <LXC>;
-    close LXC;
-    my $container = '';
-    foreach ( @cgroup ) {
-        chomp;
-        # find the container name after :/
-        s/.*:\///o;
-    }
-    return $container;
-}
+declare -i pid
+IFS=$'\n'
+for container in ${containers[@]}; do
+	if [ "${#container}" -gt "$container_field_width" ]; then
+		container_field_width=${#container}
+	fi
 
-sub get_container {
-    my $pid = shift;
-    my $filename = "/proc/$pid/cgroup";
-    open(LXC, "$filename");
-    # read all lines at once
-    my @cgroup = <LXC>;
-    close LXC;
-    my $container = '';
-    foreach ( @cgroup ) {
-        chomp;
-        # find the container name after :/
-        s/.*:\///o;
-        # chop off everything up to 'lxc/'
-        s/lxc\///o;
-        $container = $_;
-    }
-    return $container;
-}
+	if [ -f "$parent_cgroup/$container/tasks" ]; then
+		while read pid; do
+			container_of_pid[$pid]=$container
+		done < "$parent_cgroup/$container/tasks"
+	fi
+done
 
-sub display_headers {
-    printf "%-10s %s", "CONTAINER", $PS_HEADERS;
-}
+declare -i line_pid_end_position
+while read line; do
+	if [ -z "$line_pid_end_position" ]; then
+		if [[ "$line" != *" PID"* ]]; then
+			echo "$(basename $0): no PID column found in \`ps' output" >&2
+			exit 1
+		fi
 
-sub display_usage {
-    print <<EOF;
-Usage: lxc-ps [--help] [--usage] [-n|--name NAME...] [--lxc] [-- ps options]
-EOF
-}
+		buffer=${line%" PID"*}
+		let line_pid_end_position=${#buffer}+4
+		printf "%-${container_field_width}s %s\n" "CONTAINER" "$line"
+		continue
+	fi
 
-sub display_help {
-    display_usage;
-    print <<EOF;
+	buffer=${line:0:$line_pid_end_position}
+	pid=${buffer##* }
+	if [ "$list_container_processes" -eq "0" -o ! -z "${container_of_pid[pid]}" ]; then
+		printf "%-${container_field_width}s %s\n" "${container_of_pid[pid]}" "$line"
+	fi
+done < <(ps "$@")
 
-Display processes information with related container name if available.
-
-Options:
---help     Display this help.
---usage    Display the command usage.
---name     Display processes related to given containers.
-           Containers are identified by a comma separated list of
-	   their names.
---lxc      Display processes related to all lxc containers.
-
-Other available options correspond to the ps ones, see the ps manual
-or try a 'ps --help' for further details.
-EOF
-}
-
-use Getopt::Long qw(:config pass_through);
-
-my $arg_help  = '';
-my $arg_usage = '';
-my $arg_lxc   = '';
-my @arg_name;
-my $init_cgroup = '/';
-
-GetOptions('help'   => \$arg_help,
-	   'usage'  => \$arg_usage,
-	   'lxc'    => \$arg_lxc,
-	   'name=s' => \@arg_name);
-
-@arg_name = split(/,/, join(',', @arg_name));
-
-# Some help
-if ($arg_help)  {display_help; exit 0;}
-if ($arg_usage) {display_usage; exit 0;}
-
-if ($ARGV[0] == '--') {
-	shift @ARGV;
-}
-
-# Should we filter processes related to containers
-if ($arg_lxc) {
-	$LXC_DISPLAY = 1;
-	get_container_names \@arg_name;
-}
-if (@arg_name > 0) {
-	my $cgroup;
-	my $pid_list;
-	$LXC_DISPLAY = 2;
-
-	$init_cgroup = get_init_cgroup();
-	get_cgroup \$cgroup;
-	get_pids_in_containers(\@arg_name, \$cgroup, \$pid_list, $init_cgroup);
-	if ($pid_list) {
-		@ARGV = ("-p $pid_list",@ARGV);
-	}
-}
-
-execute_ps @ARGV;
-
-display_headers;
-for (@PS_LINES) {
-    my @a = split;
-    my $container = get_container $a[$PS_PID_INDEX];
-    if ($LXC_DISPLAY == 2 and not $LXC_NAMES{$container}) {next;}
-    if ($LXC_DISPLAY == 1 and $container eq '') {next;}
-    printf "%-10s %s", $container, $_;
-}
-
-exit 0;
