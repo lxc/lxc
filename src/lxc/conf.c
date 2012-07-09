@@ -134,6 +134,20 @@ static  instanciate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_EMPTY]   = instanciate_empty,
 };
 
+static int shutdown_veth(struct lxc_handler *, struct lxc_netdev *);
+static int shutdown_macvlan(struct lxc_handler *, struct lxc_netdev *);
+static int shutdown_vlan(struct lxc_handler *, struct lxc_netdev *);
+static int shutdown_phys(struct lxc_handler *, struct lxc_netdev *);
+static int shutdown_empty(struct lxc_handler *, struct lxc_netdev *);
+
+static  instanciate_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
+	[LXC_NET_VETH]    = shutdown_veth,
+	[LXC_NET_MACVLAN] = shutdown_macvlan,
+	[LXC_NET_VLAN]    = shutdown_vlan,
+	[LXC_NET_PHYS]    = shutdown_phys,
+	[LXC_NET_EMPTY]   = shutdown_empty,
+};
+
 static struct mount_opt mount_opt[] = {
 	{ "defaults",      0, 0              },
 	{ "ro",            0, MS_RDONLY      },
@@ -1736,6 +1750,8 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			return -1;
 		}
 		veth1 = mktemp(veth1buf);
+		/* store away for deconf */
+		memcpy(netdev->priv.veth_attr.veth1, veth1, IFNAMSIZ);
 	}
 
 	snprintf(veth2buf, sizeof(veth2buf), "vethXXXXXX");
@@ -1812,6 +1828,25 @@ out_delete:
 	return -1;
 }
 
+static int shutdown_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	char *veth1;
+	int err;
+
+	if (netdev->priv.veth_attr.pair)
+		veth1 = netdev->priv.veth_attr.pair;
+	else
+		veth1 = netdev->priv.veth_attr.veth1;
+
+	if (netdev->downscript) {
+		err = run_script(handler->name, "net", netdev->downscript,
+				 "down", "veth", veth1, (char*) NULL);
+		if (err)
+			return -1;
+	}
+	return 0;
+}
+
 static int instanciate_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	char peerbuf[IFNAMSIZ], *peer;
@@ -1860,6 +1895,20 @@ static int instanciate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	return 0;
 }
 
+static int shutdown_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	int err;
+
+	if (netdev->downscript) {
+		err = run_script(handler->name, "net", netdev->downscript,
+				 "down", "macvlan", netdev->link,
+				 (char*) NULL);
+		if (err)
+			return -1;
+	}
+	return 0;
+}
+
 /* XXX: merge with instanciate_macvlan */
 static int instanciate_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
@@ -1897,6 +1946,11 @@ static int instanciate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	return 0;
 }
 
+static int shutdown_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	return 0;
+}
+
 static int instanciate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	if (!netdev->link) {
@@ -1921,6 +1975,19 @@ static int instanciate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	return 0;
 }
 
+static int shutdown_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	int err;
+
+	if (netdev->downscript) {
+		err = run_script(handler->name, "net", netdev->downscript,
+				 "down", "phys", netdev->link, (char*) NULL);
+		if (err)
+			return -1;
+	}
+	return 0;
+}
+
 static int instanciate_empty(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	netdev->ifindex = 0;
@@ -1928,6 +1995,19 @@ static int instanciate_empty(struct lxc_handler *handler, struct lxc_netdev *net
 		int err;
 		err = run_script(handler->name, "net", netdev->upscript,
 				 "up", "empty", (char*) NULL);
+		if (err)
+			return -1;
+	}
+	return 0;
+}
+
+static int shutdown_empty(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	int err;
+
+	if (netdev->downscript) {
+		err = run_script(handler->name, "net", netdev->downscript,
+				 "down", "empty", (char*) NULL);
 		if (err)
 			return -1;
 	}
@@ -1960,28 +2040,32 @@ int lxc_create_network(struct lxc_handler *handler)
 	return 0;
 }
 
-void lxc_delete_network(struct lxc_list *network)
+void lxc_delete_network(struct lxc_handler *handler)
 {
+	struct lxc_list *network = &handler->conf->network;
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
 
 	lxc_list_for_each(iterator, network) {
 		netdev = iterator->elem;
-		if (netdev->ifindex == 0)
-			continue;
 
-		if (netdev->type == LXC_NET_PHYS) {
+		if (netdev->ifindex != 0 && netdev->type == LXC_NET_PHYS) {
 			if (lxc_netdev_rename_by_index(netdev->ifindex, netdev->link))
 				WARN("failed to rename to the initial name the " \
 				     "netdev '%s'", netdev->link);
 			continue;
 		}
 
+		if (netdev_deconf[netdev->type](handler, netdev)) {
+			WARN("failed to destroy netdev");
+		}
+
 		/* Recent kernel remove the virtual interfaces when the network
 		 * namespace is destroyed but in case we did not moved the
 		 * interface to the network namespace, we have to destroy it
 		 */
-		if (lxc_netdev_delete_by_index(netdev->ifindex))
+		if (netdev->ifindex != 0 &&
+		    lxc_netdev_delete_by_index(netdev->ifindex))
 			WARN("failed to remove interface '%s'", netdev->name);
 	}
 }
