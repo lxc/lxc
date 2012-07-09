@@ -24,6 +24,7 @@
 #define _conf_h
 
 #include <netinet/in.h>
+#include <net/if.h>
 #include <sys/param.h>
 #include <stdbool.h>
 
@@ -76,6 +77,7 @@ struct lxc_route6 {
 
 struct ifla_veth {
 	char *pair; /* pair name */
+	char veth1[IFNAMSIZ]; /* needed for deconf */
 };
 
 struct ifla_vlan {
@@ -103,6 +105,7 @@ union netdev_p {
  * @ipv4       : a list of ipv4 addresses to be set on the network device
  * @ipv6       : a list of ipv6 addresses to be set on the network device
  * @upscript   : a script filename to be executed during interface configuration
+ * @downscript : a script filename to be executed during interface destruction
  */
 struct lxc_netdev {
 	int type;
@@ -120,6 +123,7 @@ struct lxc_netdev {
 	struct in6_addr *ipv6_gateway;
 	bool ipv6_gateway_auto;
 	char *upscript;
+	char *downscript;
 };
 
 /*
@@ -242,7 +246,7 @@ extern struct lxc_conf *lxc_conf_init(void);
 extern int pin_rootfs(const char *rootfs);
 
 extern int lxc_create_network(struct lxc_handler *handler);
-extern void lxc_delete_network(struct lxc_list *networks);
+extern void lxc_delete_network(struct lxc_handler *handler);
 extern int lxc_assign_network(struct lxc_list *networks, pid_t pid);
 extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
 

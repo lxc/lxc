@@ -111,6 +111,7 @@ static struct config config[] = {
 	{ "lxc.network.macvlan.mode", config_network_macvlan_mode },
 	{ "lxc.network.veth.pair",    config_network_veth_pair    },
 	{ "lxc.network.script.up",    config_network_script       },
+	{ "lxc.network.script.down",  config_network_script       },
 	{ "lxc.network.hwaddr",       config_network_hwaddr       },
 	{ "lxc.network.mtu",          config_network_mtu          },
 	{ "lxc.network.vlan.id",      config_network_vlan_id      },
@@ -593,6 +594,10 @@ static int config_network_script(const char *key, char *value,
 	}
 	if (strcmp(key, "lxc.network.script.up") == 0) {
 		netdev->upscript = copy;
+		return 0;
+	}
+	if (strcmp(key, "lxc.network.script.down") == 0) {
+		netdev->downscript = copy;
 		return 0;
 	}
 	SYSERROR("Unknown key: %s", key);

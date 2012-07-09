@@ -652,7 +652,7 @@ int lxc_spawn(struct lxc_handler *handler)
 
 out_delete_net:
 	if (clone_flags & CLONE_NEWNET)
-		lxc_delete_network(&handler->conf->network);
+		lxc_delete_network(handler);
 out_abort:
 	lxc_abort(name, handler);
 	lxc_sync_fini(handler);
@@ -684,7 +684,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	err = lxc_spawn(handler);
 	if (err) {
 		ERROR("failed to spawn '%s'", name);
-		goto out_fini;
+		goto out_fini_nonet;
 	}
 
 	err = lxc_poll(name, handler);
@@ -719,6 +719,9 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
+	lxc_delete_network(handler);
+
+out_fini_nonet:
 	lxc_cgroup_destroy(name);
 	lxc_fini(name, handler);
 	return err;
