@@ -203,7 +203,13 @@ if [ -b $oldroot ]; then
     if [ $lxc_size = "_unset" ]; then
         lxc_size=`lvdisplay $oldroot | grep Size | awk '{ print $3 $4 }'`
     fi
-    lvcreate -s -L $lxc_size -n ${lxc_lv_prefix}${lxc_new}_snapshot $oldroot
+    newlv="${lxc_lv_prefix}${lxc_new}_snapshot"
+    lvcreate -s -L $lxc_size -n $newlv $oldroot
+    type xfs_admin > /dev/null 2>&1 && {
+        # change filesystem UUID if it is an xfs filesystem
+        xfs_admin -u /dev/$lxc_vg/$newlv && xfs_admin -U generate /dev/$lxc_vg/$newlv
+    }
+
     if [ $container_running = "True" ]; then
         lxc-unfreeze -n $lxc_orig
         frozen=0
