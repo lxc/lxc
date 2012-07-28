@@ -229,6 +229,7 @@ struct lxc_conf {
 #if HAVE_APPARMOR /* || HAVE_SELINUX || HAVE_SMACK */
 	int lsm_umount_proc;
 #endif
+	char *seccomp;  // filename with the seccomp rules
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);

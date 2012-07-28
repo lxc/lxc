@@ -50,6 +50,7 @@ liblxc_so_SOURCES = \
         genl.c genl.h \
 	\
 	caps.c caps.h \
+	seccomp.c seccomp.h \
 	mainloop.c mainloop.h \
 	af_unix.c af_unix.h \
 	\
@@ -65,13 +66,17 @@ if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
 endif
 
+if ENABLE_SECCOMP
+AM_CFLAGS += -DHAVE_SECCOMP
+endif
+
 liblxc_so_CFLAGS = -fPIC -DPIC $(AM_CFLAGS)
 
 liblxc_so_LDFLAGS = \
 	-shared \
 	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,$(VERSION)))
 
-liblxc_so_LDADD = -lutil $(CAP_LIBS) $(APPARMOR_LIBS)
+liblxc_so_LDADD = -lutil $(CAP_LIBS) $(APPARMOR_LIBS) $(SECCOMP_LIBS)
 
 bin_SCRIPTS = \
 	lxc-ps \
@@ -110,7 +115,7 @@ AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
 AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
 endif
-LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@
+LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@ @SECCOMP_LIBS@
 
 lxc_attach_SOURCES = lxc_attach.c
 lxc_cgroup_SOURCES = lxc_cgroup.c

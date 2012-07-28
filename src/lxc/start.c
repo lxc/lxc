@@ -353,6 +353,11 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 		goto out_free;
 	}
 
+	if (lxc_read_seccomp_config(conf) != 0) {
+		ERROR("failed loading seccomp policy");
+		goto out_free_name;
+	}
+
 	/* Begin the set the state to STARTING*/
 	if (lxc_set_state(name, handler, STARTING)) {
 		ERROR("failed to set state '%s'", lxc_state2str(STARTING));
@@ -524,6 +529,9 @@ static int do_start(void *data)
 	}
 
 	if (apparmor_load(handler) < 0)
+		goto out_warn_father;
+
+	if (lxc_seccomp_load(handler->conf) != 0)
 		goto out_warn_father;
 
 	close(handler->sigfd);

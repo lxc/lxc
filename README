@@ -52,3 +52,27 @@ Portability:
 
 AUTHOR
        Daniel Lezcano <daniel.lezcano@free.fr>
+
+Seccomp with LXC
+----------------
+
+To restrict a container with seccomp, you must specify a profile which is
+basically a whitelist of system calls it may execute.  In the container
+config file, add a line like
+
+lxc.seccomp = /var/lib/lxc/q1/seccomp.full
+
+I created a usable (but basically worthless) seccomp.full file using
+
+cat > seccomp.full << EOF
+1
+whitelist
+EOF
+for i in `seq 0 300`; do
+	echo $i >> secomp.full
+done
+for i in `seq 1024 1079`; do
+	echo $i >> seccomp.full
+done
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 27 Jul 2012 15:47:02 +0600
