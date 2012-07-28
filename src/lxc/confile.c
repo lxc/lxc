@@ -75,6 +75,7 @@ static int config_network_ipv6(const char *, char *, struct lxc_conf *);
 static int config_network_ipv6_gateway(const char *, char *, struct lxc_conf *);
 static int config_cap_drop(const char *, char *, struct lxc_conf *);
 static int config_console(const char *, char *, struct lxc_conf *);
+static int config_seccomp(const char *, char *, struct lxc_conf *);
 
 typedef int (*config_cb)(const char *, char *, struct lxc_conf *);
 
@@ -118,6 +119,7 @@ static struct config config[] = {
 	{ "lxc.network.ipv6",         config_network_ipv6         },
 	{ "lxc.cap.drop",             config_cap_drop             },
 	{ "lxc.console",              config_console              },
+	{ "lxc.seccomp",              config_seccomp              },
 };
 
 static const size_t config_size = sizeof(config)/sizeof(struct config);
@@ -607,6 +609,26 @@ static int add_hook(struct lxc_conf *lxc_conf, int which, char *hook)
 	}
 	hooklist->elem = hook;
 	lxc_list_add_tail(&lxc_conf->hooks[which], hooklist);
+	return 0;
+}
+
+static int config_seccomp(const char *key, char *value,
+				 struct lxc_conf *lxc_conf)
+{
+	char *path;
+
+	if (lxc_conf->seccomp) {
+		ERROR("seccomp already defined");
+		return -1;
+	}
+	path = strdup(value);
+	if (!path) {
+		SYSERROR("failed to strdup '%s': %m", value);
+		return -1;
+	}
+
+	lxc_conf->seccomp = path;
+
 	return 0;
 }
 
