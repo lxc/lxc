@@ -153,7 +153,7 @@ install_debian()
     rootfs=$1
     mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
-	flock -n -x 200
+	flock -x 200
 	if [ $? -ne 0 ]; then
 	    echo "Cache repository is busy."
 	    return 1
@@ -234,7 +234,7 @@ clean()
 
     # lock, so we won't purge while someone is creating a repository
     (
-	flock -n -x 200
+	flock -x 200
 	if [ $? != 0 ]; then
 	    echo "Cache repository is busy."
 	    exit 1
