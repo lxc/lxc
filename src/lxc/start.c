@@ -126,6 +126,7 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #include "console.h"
 #include "sync.h"
 #include "namespace.h"
+#include "apparmor.h"
 
 lxc_log_define(lxc_start, lxc);
 
@@ -345,6 +346,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 
 	handler->conf = conf;
 
+	apparmor_handler_init(handler);
 	handler->name = strdup(name);
 	if (!handler->name) {
 		ERROR("failed to allocate memory");
@@ -516,6 +518,9 @@ static int do_start(void *data)
 		ERROR("failed to setup the container");
 		goto out_warn_father;
 	}
+
+	if (apparmor_load(handler) < 0)
+		goto out_warn_father;
 
 	close(handler->sigfd);
 

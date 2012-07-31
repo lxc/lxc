@@ -1636,6 +1636,12 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
 	lxc_list_init(&new->caps);
+#if HAVE_APPARMOR
+	new->aa_profile = NULL;
+#endif
+#if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
+	new->lsm_umount_proc = 0;
+#endif
 
 	return new;
 }
@@ -2032,6 +2038,10 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 
 int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 {
+#if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
+	int mounted;
+#endif
+
 	if (setup_utsname(lxc_conf->utsname)) {
 		ERROR("failed to setup the utsname for '%s'", name);
 		return -1;
@@ -2071,6 +2081,16 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		ERROR("failed to setup the ttys for '%s'", name);
 		return -1;
 	}
+
+#if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
+	mounted = lsm_mount_proc_if_needed(lxc_conf->rootfs.path, lxc_conf->rootfs.mount);
+	if (mounted == -1) {
+		SYSERROR("failed to mount /proc in the container.");
+		return -1;
+	} else if (mounted == 1) {
+		lxc_conf->lsm_umount_proc = 1;
+	}
+#endif
 
 	if (setup_pivot_root(&lxc_conf->rootfs)) {
 		ERROR("failed to set rootfs for '%s'", name);

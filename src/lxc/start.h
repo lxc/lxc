@@ -45,6 +45,9 @@ struct lxc_handler {
 	struct lxc_operations *ops;
 	void *data;
 	int sv[2];
+#if HAVE_APPARMOR
+	int aa_enabled;
+#endif
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *);

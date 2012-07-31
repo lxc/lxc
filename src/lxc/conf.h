@@ -198,6 +198,9 @@ struct lxc_rootfs {
  * @tty_info   : tty data
  * @console    : console data
  * @ttydir     : directory (under /dev) in which to create console and ttys
+#if HAVE_APPARMOR
+ * @aa_profile : apparmor profile to switch to
+#endif
  */
 struct lxc_conf {
 	char *fstab;
@@ -216,6 +219,12 @@ struct lxc_conf {
 	struct lxc_rootfs rootfs;
 	char *ttydir;
 	int close_all_fds;
+#if HAVE_APPARMOR
+	char *aa_profile;
+#endif
+#if HAVE_APPARMOR /* || HAVE_SELINUX || HAVE_SMACK */
+	int lsm_umount_proc;
+#endif
 };
 
 /*
