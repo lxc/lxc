@@ -50,7 +50,8 @@ localstatedir=@LOCALSTATEDIR@
 lxc_path=@LXCPATH@
 bindir=@BINDIR@
 snapshot=no
-lxc_size=2G
+lxc_defsize=2G
+lxc_size=_unset
 lxc_vg=lxc
 lxc_lv_prefix=""
 fstype=ext3
@@ -198,6 +199,9 @@ if [ -b $oldroot ]; then
     if [ $container_running = "True" ]; then
         lxc-freeze -n $lxc_orig
         frozen=1
+    fi
+    if [ $lxc_size = "_unset" ]; then
+        lxc_size=`lvdisplay $oldroot | grep Size | awk '{ print $3 $4 }'`
     fi
     lvcreate -s -L $lxc_size -n ${lxc_lv_prefix}${lxc_new}_snapshot $oldroot
     if [ $container_running = "True" ]; then
