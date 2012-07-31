@@ -144,7 +144,7 @@ static int stdin_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 	}
 
 	/* we want to exit the console with Ctrl+a q */
-	if (c == my_args.escape) {
+	if (c == my_args.escape && !wait4q) {
 		wait4q = !wait4q;
 		return 0;
 	}
@@ -202,7 +202,9 @@ int main(int argc, char *argv[])
 	if (err)
 		goto out;
 
-	fprintf(stderr, "\nType <Ctrl+%c q> to exit the console\n",
+	fprintf(stderr, "\n\
+Type <Ctrl+%1$c q> to exit the console, \
+<Ctrl+%1$c Ctrl+%1$c> to enter Ctrl+%1$c itself\n",
                 'a' + my_args.escape - 1);
 
 	err = setsid();
