@@ -78,6 +78,7 @@ bin_SCRIPTS = \
 	lxc-version \
 	lxc-create \
 	lxc-clone \
+	lxc-shutdown \
 	lxc-destroy
 
 bin_PROGRAMS = \
