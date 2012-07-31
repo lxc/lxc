@@ -97,4 +97,4 @@ if [ -z "$containers" ]; then
 fi
 
 cd "$directory"
-ls -d $@ $containers
+ls -d $@ -- $containers
