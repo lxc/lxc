@@ -6,11 +6,11 @@
 #include <sys/mount.h>
 
 #include "log.h"
+#include "apparmor.h"
 
 lxc_log_define(lxc_apparmor, lxc);
 
 #if HAVE_APPARMOR
-#include "apparmor.h"
 #include <sys/apparmor.h>
 
 #define AA_MOUNT_RESTR "/sys/kernel/security/apparmor/features/mount/mask"
