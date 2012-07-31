@@ -266,29 +266,10 @@ if [ ! -z $lxc_template ]; then
     fi
 
     if [ -z "$lxc_config" ]; then
-	echo
-	echo "Warning:"
-	echo "-------"
-	echo "Usually the template option is called with a configuration"
+	echo "Note: Usually the template option is called with a configuration"
 	echo "file option too, mostly to configure the network."
-	echo "eg. lxc-create -n foo -f lxc.conf -t debian"
-	echo "The configuration file is often:"
-	echo
-	echo "lxc.network.type=macvlan"
-	echo "lxc.network.link=eth0"
-	echo "lxc.network.flags=up"
-	echo
-	echo "or alternatively:"
-	echo
-	echo "lxc.network.type=veth"
-	echo "lxc.network.link=br0"
-	echo "lxc.network.flags=up"
-	echo
 	echo "For more information look at lxc.conf (5)"
 	echo
-	echo "At this point, I assume you know what you do."
-	echo "Press <enter> to continue ..."
-	read dummy
     fi
 
     ${templatedir}/lxc-$lxc_template --path=$lxc_path/$lxc_name --name=$lxc_name $*
