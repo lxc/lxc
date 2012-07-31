@@ -543,7 +543,12 @@ do_bindhome()
     # bind-mount the user's path into the container's /home
     h=`getent passwd $user | cut -d: -f 6`
     mkdir -p $rootfs/$h
-    echo "$h $h none bind 0 0" >> $path/fstab
+	# use relative path in container
+	h2=${h#/}
+	while [ ${h2:0:1} = "/" ]; do
+		h2=${h2#/}
+	done
+    echo "$h $h2 none bind 0 0" >> $path/fstab
 
     # Make sure the group exists in container
     grp=`echo $pwd | cut -d: -f 4`  # group number for $user
