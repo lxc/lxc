@@ -662,7 +662,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	lxc.network.link = br0
 	lxc.network.name = eth0
 	lxc.network.hwaddr = 4a:49:43:49:79:bf
-	lxc.network.ipv4 = 1.2.3.5/24 1.2.3.255
+	lxc.network.ipv4 = 10.2.3.5/24 10.2.3.255
 	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
       </programlisting>
     </refsect2>
@@ -693,21 +693,21 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	lxc.network.flags = up
 	lxc.network.link = br0
 	lxc.network.hwaddr = 4a:49:43:49:79:bf
-	lxc.network.ipv4 = 1.2.3.5/24 1.2.3.255
+	lxc.network.ipv4 = 10.2.3.5/24 10.2.3.255
 	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
 	lxc.network.ipv6 = 2003:db8:1:0:214:5432:feab:3588
 	lxc.network.type = macvlan
 	lxc.network.flags = up
 	lxc.network.link = eth0
 	lxc.network.hwaddr = 4a:49:43:49:79:bd
-	lxc.network.ipv4 = 1.2.3.4/24
+	lxc.network.ipv4 = 10.2.3.4/24
 	lxc.network.ipv4 = 192.168.10.125/24
 	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
 	lxc.network.type = phys
 	lxc.network.flags = up
 	lxc.network.link = dummy0
 	lxc.network.hwaddr = 4a:49:43:49:79:ff
-	lxc.network.ipv4 = 1.2.3.6/24
+	lxc.network.ipv4 = 10.2.3.6/24
 	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
 	lxc.cgroup.cpuset.cpus = 0,1
 	lxc.cgroup.cpu.shares = 1234
