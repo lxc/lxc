@@ -105,6 +105,7 @@ Generic Options
 [ -C | --cloud ]: Configure container for use with meta-data service, defaults to no
 [ -T | --tarball ]: Location of tarball
 [ -d | --debug ]: Run with 'set -x' to debug errors
+[ -s | --stream]: Use specified stream rather than 'released'
 
 Options, mutually exclusive of "-C" and "--cloud":
   [ -i | --hostid ]:    HostID for cloud-init, defaults to random string
@@ -116,7 +117,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:hp:r:n:Fi:CLS:T:d -l arch:,help,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug -- "$@")
+options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds: -l arch:,help,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -160,6 +161,7 @@ hostarch=$arch
 cloud=0
 locales=1
 flushcache=0
+stream="released"
 while true
 do
     case "$1" in
@@ -176,6 +178,7 @@ do
     -L|--no_locales)   locales=0; shift 2;;
     -T|--tarball)      tarball=$2; shift 2;;
     -d|--debug)        debug=1; shift 1;;
+    -s|--stream)       stream=$2; shift 2;;
     --)                shift 1; break ;;
         *)              break ;;
     esac
@@ -196,6 +199,11 @@ fi
 
 if [ $arch != "i386" -a $arch != "amd64" ]; then
     echo "Only i386 and amd64 are supported by the ubuntu cloud template."
+    exit 1
+fi
+
+if [ "$stream" != "daily" -a "$stream" != "released" ]; then
+    echo "Only 'daily' and 'released' streams are supported"
     exit 1
 fi
 
@@ -223,7 +231,7 @@ mkdir -p $cache
 if [ -n "$tarball" ]; then
 	url2="$tarball"
 else
-	url1=`ubuntu-cloudimg-query $release released $arch --format "%{url}\n"`
+	url1=`ubuntu-cloudimg-query $release $stream $arch --format "%{url}\n"`
 	url2=`echo $url1 | sed -e 's/.tar.gz/-root\0/'`
 fi
 
