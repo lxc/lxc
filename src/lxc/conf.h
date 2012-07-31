@@ -202,6 +202,9 @@ struct lxc_rootfs {
  * @aa_profile : apparmor profile to switch to
 #endif
  */
+enum lxchooks {
+	LXCHOOK_PRESTART, LXCHOOK_MOUNT, LXCHOOK_START,
+	LXCHOOK_POSTSTOP, NUM_LXC_HOOKS};
 struct lxc_conf {
 	char *fstab;
 	int tty;
@@ -219,6 +222,7 @@ struct lxc_conf {
 	struct lxc_rootfs rootfs;
 	char *ttydir;
 	int close_all_fds;
+	struct lxc_list hooks[NUM_LXC_HOOKS];
 #if HAVE_APPARMOR
 	char *aa_profile;
 #endif
@@ -226,6 +230,14 @@ struct lxc_conf {
 	int lsm_umount_proc;
 #endif
 };
+
+int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);
+/* we don't want to stick with the HOOK define, it's just to easily start */
+#define HOOK(name, which, conf) \
+	do { \
+		int hookret = run_lxc_hooks(name, which, conf); \
+		if (hookret) return -1; \
+	} while (0);
 
 /*
  * Initialize the lxc configuration structure

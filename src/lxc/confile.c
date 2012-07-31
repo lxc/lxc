@@ -58,6 +58,7 @@ static int config_rootfs(const char *, char *, struct lxc_conf *);
 static int config_rootfs_mount(const char *, char *, struct lxc_conf *);
 static int config_pivotdir(const char *, char *, struct lxc_conf *);
 static int config_utsname(const char *, char *, struct lxc_conf *);
+static int config_hook(const char *key, char *value, struct lxc_conf *lxc_conf);
 static int config_network_type(const char *, char *, struct lxc_conf *);
 static int config_network_flags(const char *, char *, struct lxc_conf *);
 static int config_network_link(const char *, char *, struct lxc_conf *);
@@ -97,6 +98,10 @@ static struct config config[] = {
 	{ "lxc.rootfs",               config_rootfs               },
 	{ "lxc.pivotdir",             config_pivotdir             },
 	{ "lxc.utsname",              config_utsname              },
+	{ "lxc.hook.pre-start",       config_hook                 },
+	{ "lxc.hook.mount",           config_hook                 },
+	{ "lxc.hook.start",           config_hook                 },
+	{ "lxc.hook.post-stop",       config_hook                 },
 	{ "lxc.network.type",         config_network_type         },
 	{ "lxc.network.flags",        config_network_flags        },
 	{ "lxc.network.link",         config_network_link         },
@@ -585,6 +590,41 @@ static int config_network_script(const char *key, char *value,
 		netdev->upscript = copy;
 		return 0;
 	}
+	SYSERROR("Unknown key: %s", key);
+	free(copy);
+	return -1;
+}
+
+static int add_hook(struct lxc_conf *lxc_conf, int which, char *hook)
+{
+	struct lxc_list *hooklist;
+
+	hooklist = malloc(sizeof(*hooklist));
+	if (!hooklist) {
+		free(hook);
+		return -1;
+	}
+	hooklist->elem = hook;
+	lxc_list_add_tail(&lxc_conf->hooks[which], hooklist);
+	return 0;
+}
+
+static int config_hook(const char *key, char *value,
+				 struct lxc_conf *lxc_conf)
+{
+	char *copy = strdup(value);
+	if (!copy) {
+		SYSERROR("failed to dup string '%s'", value);
+		return -1;
+	}
+	if (strcmp(key, "lxc.hook.pre-start") == 0)
+		return add_hook(lxc_conf, LXCHOOK_PRESTART, copy);
+	else if (strcmp(key, "lxc.hook.mount") == 0)
+		return add_hook(lxc_conf, LXCHOOK_MOUNT, copy);
+	else if (strcmp(key, "lxc.hook.start") == 0)
+		return add_hook(lxc_conf, LXCHOOK_START, copy);
+	else if (strcmp(key, "lxc.hook.post-stop") == 0)
+		return add_hook(lxc_conf, LXCHOOK_POSTSTOP, copy);
 	SYSERROR("Unknown key: %s", key);
 	free(copy);
 	return -1;

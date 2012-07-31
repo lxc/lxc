@@ -359,6 +359,8 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 		goto out_free_name;
 	}
 
+	HOOK(name, "pre-start", conf);
+
 	if (lxc_create_tty(name, conf)) {
 		ERROR("failed to create the ttys");
 		goto out_aborting;
@@ -402,6 +404,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	 */
 	lxc_set_state(name, handler, STOPPING);
 	lxc_set_state(name, handler, STOPPED);
+
+	HOOK(name, "post-stop", handler->conf);
 
 	/* reset mask set by setup_signal_fd */
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL))
@@ -523,6 +527,8 @@ static int do_start(void *data)
 		goto out_warn_father;
 
 	close(handler->sigfd);
+
+	HOOK(handler->name, "start", handler->conf);
 
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */

@@ -1617,6 +1617,7 @@ static int setup_private_host_hw_addr(char *veth1)
 struct lxc_conf *lxc_conf_init(void)
 {
 	struct lxc_conf *new;
+	int i;
 
 	new = 	malloc(sizeof(*new));
 	if (!new) {
@@ -1636,6 +1637,8 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
 	lxc_list_init(&new->caps);
+	for (i=0; i<NUM_LXC_HOOKS; i++)
+		lxc_list_init(&new->hooks[i]);
 #if HAVE_APPARMOR
 	new->aa_profile = NULL;
 #endif
@@ -2067,6 +2070,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
+	HOOK(name, "mount", lxc_conf);
 	if (setup_cgroup(name, &lxc_conf->cgroup)) {
 		ERROR("failed to setup the cgroups for '%s'", name);
 		return -1;
@@ -2114,5 +2118,30 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 
 	NOTICE("'%s' is setup.", name);
 
+	return 0;
+}
+
+int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf)
+{
+	int which = -1;
+	struct lxc_list *it;
+
+	if (strcmp(hook, "pre-start") == 0)
+		which = LXCHOOK_PRESTART;
+	else if (strcmp(hook, "mount") == 0)
+		which = LXCHOOK_MOUNT;
+	else if (strcmp(hook, "start") == 0)
+		which = LXCHOOK_START;
+	else if (strcmp(hook, "post-stop") == 0)
+		which = LXCHOOK_POSTSTOP;
+	else
+		return -1;
+	lxc_list_for_each(it, &conf->hooks[which]) {
+		int ret;
+		char *hookname = it->elem;
+		ret = run_script(name, "lxc", hookname, hook, NULL);
+		if (ret)
+			return ret;
+	}
 	return 0;
 }
