@@ -792,7 +792,7 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	}
 
 	if (!pivotdir)
-		pivotdir = "mnt";
+		pivotdir = "lxc_putold";
 
 	/* compute the full path to pivotdir under rootfs */
 	rc = snprintf(path, sizeof(path), "%s/%s", rootfs, pivotdir);
