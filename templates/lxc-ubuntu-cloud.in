@@ -41,7 +41,7 @@ copy_configuration()
     nics=`grep -e '^lxc\.network\.type[ \t]*=[ \t]*veth' $path/config | wc -l`
     if [ $nics -eq 1 ]; then
         grep -q "^lxc.network.hwaddr" $path/config || cat <<EOF >> $path/config
-lxc.network.hwaddr= 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')
+lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')
 EOF
     fi
 
