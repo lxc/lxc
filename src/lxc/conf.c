@@ -1142,27 +1142,50 @@ static inline int mount_entry_on_systemfs(struct mntent *mntent)
 }
 
 static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
-					  const struct lxc_rootfs *rootfs)
+					  const struct lxc_rootfs *rootfs,
+					  const char *lxc_name)
 {
 	char *aux;
 	char path[MAXPATHLEN];
 	unsigned long mntflags;
 	char *mntdata;
-	int ret = 0;
+	int r, ret = 0, offset;
 
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
 		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
 		return -1;
 	}
 
+	/* if rootfs->path is a blockdev path, allow container fstab to
+	 * use /var/lib/lxc/CN/rootfs as the target prefix */
+	r = snprintf(path, MAXPATHLEN, "/var/lib/lxc/%s/rootfs", lxc_name);
+	if (r < 0 || r >= MAXPATHLEN)
+		goto skipvarlib;
+
+	aux = strstr(mntent->mnt_dir, path);
+	if (aux) {
+		offset = strlen(path);
+		goto skipabs;
+	}
+
+skipvarlib:
 	aux = strstr(mntent->mnt_dir, rootfs->path);
 	if (!aux) {
 		WARN("ignoring mount point '%s'", mntent->mnt_dir);
 		goto out;
 	}
+	offset = strlen(rootfs->path);
+
+skipabs:
 
 	snprintf(path, MAXPATHLEN, "%s/%s", rootfs->mount,
-		 aux + strlen(rootfs->path));
+		 aux + offset);
+	if (r < 0 || r >= MAXPATHLEN) {
+		WARN("pathnme too long for '%s'", mntent->mnt_dir);
+		ret = -1;
+		goto out;
+	}
+
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
 			  mntflags, mntdata);
@@ -1196,7 +1219,8 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	return ret;
 }
 
-static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file)
+static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
+	const char *lxc_name)
 {
 	struct mntent *mntent;
 	int ret = -1;
@@ -1217,7 +1241,7 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file)
 			continue;
 		}
 
-		if (mount_entry_on_absolute_rootfs(mntent, rootfs))
+		if (mount_entry_on_absolute_rootfs(mntent, rootfs, lxc_name))
 			goto out;
 	}
 
@@ -1228,7 +1252,8 @@ out:
 	return ret;
 }
 
-static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab)
+static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab,
+	const char *lxc_name)
 {
 	FILE *file;
 	int ret;
@@ -1242,13 +1267,14 @@ static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab)
 		return -1;
 	}
 
-	ret = mount_file_entries(rootfs, file);
+	ret = mount_file_entries(rootfs, file, lxc_name);
 
 	endmntent(file);
 	return ret;
 }
 
-static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list *mount)
+static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list *mount,
+	const char *lxc_name)
 {
 	FILE *file;
 	struct lxc_list *iterator;
@@ -1268,7 +1294,7 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list 
 
 	rewind(file);
 
-	ret = mount_file_entries(rootfs, file);
+	ret = mount_file_entries(rootfs, file, lxc_name);
 
 	fclose(file);
 	return ret;
@@ -2060,12 +2086,12 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_mount(&lxc_conf->rootfs, lxc_conf->fstab)) {
+	if (setup_mount(&lxc_conf->rootfs, lxc_conf->fstab, name)) {
 		ERROR("failed to setup the mounts for '%s'", name);
 		return -1;
 	}
 
-	if (setup_mount_entries(&lxc_conf->rootfs, &lxc_conf->mount_list)) {
+	if (setup_mount_entries(&lxc_conf->rootfs, &lxc_conf->mount_list, name)) {
 		ERROR("failed to setup the mount entries for '%s'", name);
 		return -1;
 	}

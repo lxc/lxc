@@ -263,9 +263,9 @@ lxc.cgroup.devices.allow = c 254:0 rwm
 EOF
 
     cat <<EOF > $config_path/fstab
-proc            $rootfs_path/proc         proc    nodev,noexec,nosuid 0 0
-devpts          $rootfs_path/dev/pts      devpts defaults 0 0
-sysfs           $rootfs_path/sys          sysfs defaults  0 0
+proc            proc         proc    nodev,noexec,nosuid 0 0
+devpts          dev/pts      devpts defaults 0 0
+sysfs           sys          sysfs defaults  0 0
 EOF
     if [ $? -ne 0 ]; then
 	echo "Failed to add configuration"

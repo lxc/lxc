@@ -87,8 +87,8 @@ lxc.cgroup.devices.allow = c 10:232 rwm
 EOF
 
     cat <<EOF > $path/fstab
-proc            $rootfs/proc         proc    nodev,noexec,nosuid 0 0
-sysfs           $rootfs/sys          sysfs defaults  0 0
+proc            proc         proc    nodev,noexec,nosuid 0 0
+sysfs           sys          sysfs defaults  0 0
 EOF
 
     return 0

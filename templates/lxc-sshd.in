@@ -101,18 +101,18 @@ cat <<EOF >> $path/config
 lxc.utsname = $name
 lxc.pts = 1024
 lxc.rootfs = $rootfs
-lxc.mount.entry=/dev $rootfs/dev none ro,bind 0 0
-lxc.mount.entry=/lib $rootfs/lib none ro,bind 0 0
-lxc.mount.entry=/bin $rootfs/bin none ro,bind 0 0
-lxc.mount.entry=/usr /$rootfs/usr none ro,bind 0 0
-lxc.mount.entry=/sbin $rootfs/sbin none ro,bind 0 0
-lxc.mount.entry=tmpfs $rootfs/var/run/sshd tmpfs mode=0644 0 0
-lxc.mount.entry=@LXCTEMPLATEDIR@/lxc-sshd $rootfs/sbin/init none bind 0 0
+lxc.mount.entry=/dev dev none ro,bind 0 0
+lxc.mount.entry=/lib lib none ro,bind 0 0
+lxc.mount.entry=/bin bin none ro,bind 0 0
+lxc.mount.entry=/usr usr none ro,bind 0 0
+lxc.mount.entry=/sbin sbin none ro,bind 0 0
+lxc.mount.entry=tmpfs var/run/sshd tmpfs mode=0644 0 0
+lxc.mount.entry=@LXCTEMPLATEDIR@/lxc-sshd sbin/init none bind 0 0
 EOF
 
 if [ "$(uname -m)" = "x86_64" ]; then
     cat <<EOF >> $path/config
-lxc.mount.entry=/lib64 $rootfs/lib64 none ro,bind 0 0
+lxc.mount.entry=/lib64 lib64 none ro,bind 0 0
 EOF
 fi
 }
