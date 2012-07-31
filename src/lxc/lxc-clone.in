@@ -259,6 +259,20 @@ if [ -f $rootfs/etc/dhcp/dhclient.conf ]; then
     sed -i "s/send host-name.*$/send host-name \"$hostname\";/" $rootfs/etc/dhcp/dhclient.conf
 fi
 
+c=$lxc_path/$lxc_new/config
+# change hwaddrs
+mv ${c} ${c}.old
+(
+while read line; do
+	if [ "${line:0:18}" = "lxc.network.hwaddr" ]; then
+		echo "lxc.network.hwaddr= 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')"
+	else
+		echo $line
+	fi
+done
+) < ${c}.old > ${c}
+rm -f ${c}.old
+
 # set the hostname
 cat <<EOF > $rootfs/etc/hostname
 $hostname
