@@ -28,6 +28,7 @@
 #include <limits.h>
 #include <sys/prctl.h>
 #include <sys/capability.h>
+#include <errno.h>
 
 #include "log.h"
 
@@ -90,6 +91,7 @@ int lxc_caps_up(void)
 	cap_t caps;
 	cap_value_t cap;
 	int ret;
+	int lastcap = 0;
 
 	/* when we are run as root, we don't want to play
 	 * with the capabilities */
@@ -108,9 +110,15 @@ int lxc_caps_up(void)
 
 		ret = cap_get_flag(caps, cap, CAP_PERMITTED, &flag);
 		if (ret) {
-			ERROR("failed to cap_get_flag: %m");
-			goto out;
+			if (errno == EINVAL) {
+				INFO("Last supported cap was %d\n", cap-1);
+				break;
+			} else {
+				ERROR("failed to cap_get_flag: %m");
+				goto out;
+			}
 		}
+		lastcap = cap;
 
 		ret = cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap, flag);
 		if (ret) {
