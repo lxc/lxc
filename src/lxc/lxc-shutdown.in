@@ -60,7 +60,7 @@ dowait=0
 while true; do
     case "$1" in
     -h|--help)
-        help
+        usage
         exit 1
         ;;
     -n|--name)
