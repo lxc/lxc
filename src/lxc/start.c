@@ -534,6 +534,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	int clone_flags;
 	int failed_before_rename = 0;
 	const char *name = handler->name;
+	int pinfd;
 
 	if (lxc_sync_init(handler))
 		return -1;
@@ -561,6 +562,17 @@ int lxc_spawn(struct lxc_handler *handler)
 			lxc_sync_fini(handler);
 			return -1;
 		}
+	}
+
+	/*
+	 * if the rootfs is not a blockdev, prevent the container from
+	 * marking it readonly.
+	 */
+
+	pinfd = pin_rootfs(handler->conf->rootfs.path);
+	if (pinfd == -1) {
+		ERROR("failed to pin the container's rootfs");
+		goto out_abort;
 	}
 
 	/* Create a process in a new set of namespaces */
@@ -605,6 +617,10 @@ int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	lxc_sync_fini(handler);
+
+	if (pinfd >= 0)
+		close(pinfd);
+
 	return 0;
 
 out_delete_net:

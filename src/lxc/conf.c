@@ -452,6 +452,51 @@ static int mount_rootfs_block(const char *rootfs, const char *target)
 	return mount_unknow_fs(rootfs, target, 0);
 }
 
+/*
+ * pin_rootfs
+ * if rootfs is a directory, then open ${rootfs}.hold for writing for the
+ * duration of the container run, to prevent the container from marking the
+ * underlying fs readonly on shutdown.
+ * return -1 on error.
+ * return -2 if nothing needed to be pinned.
+ * return an open fd (>=0) if we pinned it.
+ */
+int pin_rootfs(const char *rootfs)
+{
+	char absrootfs[MAXPATHLEN];
+	char absrootfspin[MAXPATHLEN];
+	struct stat s;
+	int ret, fd;
+
+	if (!realpath(rootfs, absrootfs)) {
+		SYSERROR("failed to get real path for '%s'", rootfs);
+		return -1;
+	}
+
+	if (access(absrootfs, F_OK)) {
+		SYSERROR("'%s' is not accessible", absrootfs);
+		return -1;
+	}
+
+	if (stat(absrootfs, &s)) {
+		SYSERROR("failed to stat '%s'", absrootfs);
+		return -1;
+	}
+
+	if (!__S_ISTYPE(s.st_mode, S_IFDIR))
+		return -2;
+
+	ret = snprintf(absrootfspin, MAXPATHLEN, "%s%s", absrootfs, ".hold");
+	if (ret >= MAXPATHLEN) {
+		SYSERROR("pathname too long for rootfs hold file");
+		return -1;
+	}
+
+	fd = open(absrootfspin, O_CREAT | O_RDWR, S_IWUSR|S_IRUSR);
+	INFO("opened %s as fd %d\n", absrootfspin, fd);
+	return fd;
+}
+
 static int mount_rootfs(const char *rootfs, const char *target)
 {
 	char absrootfs[MAXPATHLEN];
