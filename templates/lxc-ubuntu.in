@@ -513,7 +513,7 @@ post_process()
 
         # Finally update the lists and install upstart using the host architecture
         chroot $rootfs apt-get update
-        chroot $rootfs apt-get install --force-yes -y --no-install-recommends upstart:${hostarch} mountall:amd64 iproute:amd64 isc-dhcp-client:amd64
+        chroot $rootfs apt-get install --force-yes -y --no-install-recommends upstart:${hostarch} mountall:${hostarch} iproute:${hostarch} isc-dhcp-client:${hostarch}
     fi
 
     # rmdir /dev/shm in precise and quantal containers.
