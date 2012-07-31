@@ -245,6 +245,11 @@ fi
 if [ -d "/lib64" ] && [ -d "$rootfs/lib64" ]; then
 cat <<EOF >> $path/config
 lxc.mount.entry=/lib64 $rootfs/lib64 none ro,bind 0 0
+EOF
+fi
+
+if [ -d "/usr/lib64" ] && [ -d "$rootfs/usr/lib64" ]; then
+cat <<EOF >> $path/config
 lxc.mount.entry=/usr/lib64 $rootfs/usr/lib64 none ro,bind 0 0
 EOF
 fi
