@@ -31,6 +31,7 @@ copy_configuration()
     rootfs=$2
     name=$3
     arch=$4
+    release=$5
 
     if [ $arch = "i386" ]; then
         arch="i686"
@@ -90,6 +91,16 @@ EOF
 proc            proc         proc    nodev,noexec,nosuid 0 0
 sysfs           sys          sysfs defaults  0 0
 EOF
+
+    # rmdir /dev/shm in precise containers.
+    # I'm afraid of doing rm -rf $rootfs/dev/shm, in case it did
+    # get bind mounted to the host's /run/shm.  So try to rmdir
+    # it, and in case that fails move it out of the way.
+    if [ $release = "precise" ]; then
+        [ -d "$rootfs/dev/shm" ] && rmdir $rootfs/dev/shm
+        [ -e "$rootfs/dev/shm" ] && mv $rootfs/dev/shm $rootfs/dev/shm.bak
+        ln -s /run/shm $rootfs/dev/shm
+    fi
 
     return 0
 }
@@ -358,7 +369,7 @@ EOF
 
 ) 200>/var/lock/subsys/lxc-ubucloud
 
-copy_configuration $path $rootfs $name $arch
+copy_configuration $path $rootfs $name $arch $release
 
 echo "Container $name created."
 exit 0

@@ -517,6 +517,16 @@ post_process()
         chroot $rootfs apt-get update
         chroot $rootfs apt-get install --force-yes -y --no-install-recommends upstart:${hostarch} mountall:amd64 iproute:amd64 isc-dhcp-client:amd64
     fi
+
+    # rmdir /dev/shm in precise containers.
+    # I'm afraid of doing rm -rf $rootfs/dev/shm, in case it did
+    # get bind mounted to the host's /run/shm.  So try to rmdir
+    # it, and in case that fails move it out of the way.
+    if [ $release = "precise" ]; then
+        [ -d "$rootfs/dev/shm" ] && rmdir $rootfs/dev/shm
+        [ -e "$rootfs/dev/shm" ] && mv $rootfs/dev/shm $rootfs/dev/shm.bak
+        ln -s /run/shm $rootfs/dev/shm
+    fi
 }
 
 do_bindhome()
