@@ -990,7 +990,7 @@ static int parse_line(char *buffer, void *data)
 
 	config = getconfig(key);
 	if (!config) {
-		ERROR("unknow key %s", key);
+		ERROR("unknown key %s", key);
 		goto out;
 	}
 
