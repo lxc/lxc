@@ -546,10 +546,9 @@ do_bindhome()
     echo "$h $rootfs/$h none bind 0 0" >> $path/fstab
 
     # Make sure the group exists in container
-    chroot $rootfs getent group $user || { \
-        grp=`getent group $user`
-        echo "$grp" >> $rootfs/etc/group
-    }
+    grp=`echo $pwd | cut -d: -f 4`  # group number for $user
+    grpe=`getent group $grp` || return 0  # if host doesn't define grp, ignore in container
+    chroot $rootfs getent group "$grpe" || echo "$grpe" >> $rootfs/etc/group
 }
 
 usage()
@@ -630,10 +629,12 @@ if [ $debug -eq 1 ]; then
     set -x
 fi
 
-pwd=`getent passwd $bindhome`
-if [ $? -ne 0 ]; then
-    echo "Error: no password entry found for $bindhome"
-    exit 1
+if [ -n "$bindhome" ]; then
+    pwd=`getent passwd $bindhome`
+    if [ $? -ne 0 ]; then
+        echo "Error: no password entry found for $bindhome"
+        exit 1
+    fi
 fi
 
 
