@@ -485,6 +485,9 @@ int pin_rootfs(const char *rootfs)
 	struct stat s;
 	int ret, fd;
 
+	if (rootfs == NULL || strlen(rootfs) == 0)
+		return 0;
+
 	if (!realpath(rootfs, absrootfs)) {
 		SYSERROR("failed to get real path for '%s'", rootfs);
 		return -1;
