@@ -38,6 +38,10 @@ configure_ubuntu()
 
    # configure the network using the dhcp
     cat <<EOF > $rootfs/etc/network/interfaces
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+# The loopback network interface
 auto lo
 iface lo inet loopback
 
@@ -51,10 +55,18 @@ $hostname
 EOF
     # set minimal hosts
     cat <<EOF > $rootfs/etc/hosts
-127.0.0.1 localhost $hostname
+127.0.0.1   localhost
+127.0.1.1   $hostname
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
 EOF
 
-    if [ "$release" != "precise" ] && [ "$release" != "quantal" ]; then
+    if [ ! -f $rootfs/etc/init/container-detect.conf ]; then
         # suppress log level output for udev
         sed -i "s/=\"err\"/=0/" $rootfs/etc/udev/udev.conf
 
@@ -78,7 +90,9 @@ finalize_user()
 {
     user=$1
 
-    if [ "$release" = "precise" ] || [ "$release" = "quantal" ]; then
+    sudo_version=$(chroot $rootfs dpkg-query -W -f='${Version}' sudo)
+
+    if chroot $rootfs dpkg --compare-versions $sudo_version gt "1.8.3p1-1"; then
         groups="sudo"
     else
         groups="sudo admin"
@@ -112,18 +126,6 @@ write_sourceslist()
             MIRROR=${MIRROR:-http://archive.ubuntu.com/ubuntu}
             SECURITY_MIRROR=${SECURITY_MIRROR:-http://security.ubuntu.com/ubuntu}
             ;;
-      sparc)
-            case $SUITE in
-              gutsy)
-            MIRROR=${MIRROR:-http://archive.ubuntu.com/ubuntu}
-            SECURITY_MIRROR=${SECURITY_MIRRORMIRROR:-http://security.ubuntu.com/ubuntu}
-            ;;
-              *)
-            MIRROR=${MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
-            SECURITY_MIRROR=${SECURITY_MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
-            ;;
-            esac
-            ;;
       *)
             MIRROR=${MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
             SECURITY_MIRROR=${SECURITY_MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
@@ -150,13 +152,7 @@ download_ubuntu()
     arch=$2
     release=$3
 
-    if [ $release = "lucid" ]; then
-        packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,dhcp3-client,ssh,lsb-release,gnupg
-    elif [ $release = "natty" ]; then
-        packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,isc-dhcp-client,isc-dhcp-common,ssh,lsb-release,gnupg,netbase
-    else
-        packages=dialog,apt,apt-utils,iproute,inetutils-ping,vim,isc-dhcp-client,isc-dhcp-common,ssh,lsb-release,gnupg,netbase,ubuntu-keyring
-    fi
+    packages=vim,ssh
     echo "installing packages: $packages"
 
     # check the mini ubuntu was not already downloaded
@@ -258,39 +254,40 @@ install_ubuntu()
     flushcache=$3
     cache="/var/cache/lxc/$release"
     mkdir -p /var/lock/subsys/
+
     (
-	flock -n -x 200
-	if [ $? -ne 0 ]; then
-	    echo "Cache repository is busy."
-	    return 1
-	fi
+        flock -n -x 200
+        if [ $? -ne 0 ]; then
+            echo "Cache repository is busy."
+            return 1
+        fi
 
 
-    if [ $flushcache -eq 1 ]; then
-        echo "Flushing cache..."
-        rm -rf "$cache/partial-$arch"
-        rm -rf "$cache/rootfs-$arch"
-    fi
+        if [ $flushcache -eq 1 ]; then
+            echo "Flushing cache..."
+            rm -rf "$cache/partial-$arch"
+            rm -rf "$cache/rootfs-$arch"
+        fi
 
-	echo "Checking cache download in $cache/rootfs-$arch ... "
-	if [ ! -e "$cache/rootfs-$arch" ]; then
-	    download_ubuntu $cache $arch $release
-	    if [ $? -ne 0 ]; then
-		echo "Failed to download 'ubuntu $release base'"
-		return 1
-	    fi
-	fi
+        echo "Checking cache download in $cache/rootfs-$arch ... "
+        if [ ! -e "$cache/rootfs-$arch" ]; then
+            download_ubuntu $cache $arch $release
+            if [ $? -ne 0 ]; then
+                echo "Failed to download 'ubuntu $release base'"
+                return 1
+            fi
+        fi
 
-	echo "Copy $cache/rootfs-$arch to $rootfs ... "
-	copy_ubuntu $cache $arch $rootfs
-	if [ $? -ne 0 ]; then
-	    echo "Failed to copy rootfs"
-	    return 1
-	fi
+        echo "Copy $cache/rootfs-$arch to $rootfs ... "
+        copy_ubuntu $cache $arch $rootfs
+        if [ $? -ne 0 ]; then
+            echo "Failed to copy rootfs"
+            return 1
+        fi
 
-	return 0
+        return 0
 
-	) 200>/var/lock/subsys/lxc
+    ) 200>/var/lock/subsys/lxc
 
     return $?
 }
@@ -308,7 +305,7 @@ copy_configuration()
     fi
 
     ttydir=""
-    if [ $release = "precise" ] || [ $release = "quantal" ]; then
+    if [ -f $rootfs/etc/init/container-detect.conf ]; then
         ttydir=" lxc"
     fi
 
@@ -369,8 +366,8 @@ sysfs           sys          sysfs defaults  0 0
 EOF
 
     if [ $? -ne 0 ]; then
-	echo "Failed to add configuration"
-	return 1
+        echo "Failed to add configuration"
+        return 1
     fi
 
     return 0
@@ -447,11 +444,11 @@ EOF
 
     # reconfigure some services
     if [ -z "$LANG" ]; then
-	chroot $rootfs locale-gen en_US.UTF-8
-	chroot $rootfs update-locale LANG=en_US.UTF-8
+        chroot $rootfs locale-gen en_US.UTF-8
+        chroot $rootfs update-locale LANG=en_US.UTF-8
     else
-	chroot $rootfs locale-gen $LANG
-	chroot $rootfs update-locale LANG=$LANG
+        chroot $rootfs locale-gen $LANG
+        chroot $rootfs update-locale LANG=$LANG
     fi
 
     # remove pointless services in a container
@@ -477,21 +474,25 @@ post_process()
 
     if [ $trim_container -eq 1 ]; then
         trim $rootfs $release
-    elif [ $release = "lucid" -o $release = "natty" \
-               -o $release = "oneiric" ]; then
+    elif [ ! -f $rootfs/etc/init/container-detect.conf ]; then
+        # Make sure we have a working resolv.conf
+        cresolvonf="${rootfs}/etc/resolv.conf"
+        mv $cresolvonf ${cresolvonf}.lxcbak
+        cat /etc/resolv.conf > ${cresolvonf}
+
         # for lucid, if not trimming, then add the ubuntu-virt
         # ppa and install lxcguest
         if [ $release = "lucid" ]; then
             chroot $rootfs apt-get install --force-yes -y python-software-properties
             chroot $rootfs add-apt-repository ppa:ubuntu-virt/ppa
         fi
-	cresolvonf="${rootfs}/etc/resolv.conf"
-	mv $cresolvonf ${cresolvonf}.lxcbak
-        cat /etc/resolv.conf > ${cresolvonf}
+
         chroot $rootfs apt-get update
         chroot $rootfs apt-get install --force-yes -y lxcguest
-	rm -f ${cresolvonf}
-	mv ${cresolvonf}.lxcbak ${cresolvonf}
+
+        # Restore old resolv.conf
+        rm -f ${cresolvonf}
+        mv ${cresolvonf}.lxcbak ${cresolvonf}
     fi
 
     # If the container isn't running a native architecture, setup multiarch
@@ -516,11 +517,11 @@ post_process()
         chroot $rootfs apt-get install --force-yes -y --no-install-recommends upstart:${hostarch} mountall:${hostarch} iproute:${hostarch} isc-dhcp-client:${hostarch}
     fi
 
-    # rmdir /dev/shm in precise and quantal containers.
+    # rmdir /dev/shm for containers that have /run/shm
     # I'm afraid of doing rm -rf $rootfs/dev/shm, in case it did
     # get bind mounted to the host's /run/shm.  So try to rmdir
     # it, and in case that fails move it out of the way.
-    if [ $release = "precise" ] || [ $release = "quantal" ]; then
+    if [ -d $rootfs/run/shm ]; then
         [ -d "$rootfs/dev/shm" ] && rmdir $rootfs/dev/shm
         [ -e "$rootfs/dev/shm" ] && mv $rootfs/dev/shm $rootfs/dev/shm.bak
         ln -s /run/shm $rootfs/dev/shm
@@ -551,11 +552,12 @@ do_bindhome()
     # bind-mount the user's path into the container's /home
     h=`getent passwd $user | cut -d: -f 6`
     mkdir -p $rootfs/$h
-	# use relative path in container
-	h2=${h#/}
-	while [ ${h2:0:1} = "/" ]; do
-		h2=${h2#/}
-	done
+
+    # use relative path in container
+    h2=${h#/}
+    while [ ${h2:0:1} = "/" ]; do
+        h2=${h2#/}
+    done
     echo "$h $h2 none bind 0 0" >> $path/fstab
 
     # Make sure the group exists in container
@@ -569,12 +571,12 @@ usage()
     cat <<EOF
 $1 -h|--help [-a|--arch] [-b|--bindhome <user>] [--trim] [-d|--debug]
    [-F | --flush-cache] [-r|--release <release>] [ -S | --auth-key <keyfile>]
-release: lucid | natty | oneiric | precise | quantal
+release: the ubuntu release (e.g. precise): defaults to host release on ubuntu, otherwise uses latest LTS
 trim: make a minimal (faster, but not upgrade-safe) container
 bindhome: bind <user>'s home into the container
           The ubuntu user will not be created, and <user> will have
-	  sudo access.
-arch: amd64 or i386: defaults to host arch
+          sudo access.
+arch: the container architecture (e.g. amd64): defaults to host arch
 auth-key: SSH Public key file to inject into container
 EOF
     return 0
@@ -587,14 +589,12 @@ if [ $? -ne 0 ]; then
 fi
 eval set -- "$options"
 
-release=lucid
+release=precise # Default to the last Ubuntu LTS release for non-Ubuntu systems
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
-    case "$DISTRIB_CODENAME" in
-        lucid|natty|oneiric|precise|quantal)
-            release=$DISTRIB_CODENAME
-        ;;
-    esac
+    if [ "$DISTRIB_ID" = "Ubuntu" ]; then
+        release=$DISTRIB_CODENAME
+    fi
 fi
 
 bindhome=
