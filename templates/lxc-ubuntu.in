@@ -54,11 +54,7 @@ EOF
 127.0.0.1 localhost $hostname
 EOF
 
-    if [ "$release" = "precise" ]; then
-        groups="sudo"
-    else
-        groups="sudo admin"
-
+    if [ "$release" != "precise" ]; then
         # suppress log level output for udev
         sed -i "s/=\"err\"/=0/" $rootfs/etc/udev/udev.conf
 
@@ -67,22 +63,40 @@ EOF
         rm -f $rootfs/etc/init/tty{5,6}.conf
     fi
 
-    chroot $rootfs useradd --create-home -s /bin/bash ubuntu
-    echo "ubuntu:ubuntu" | chroot $rootfs chpasswd
+    if [ -z "$bindhome" ]; then
+        chroot $rootfs useradd --create-home -s /bin/bash ubuntu
+        echo "ubuntu:ubuntu" | chroot $rootfs chpasswd
+    fi
+
+    return 0
+}
+
+# finish setting up the user in the container by injecting ssh key and
+# adding sudo group membership.
+# passed-in user is either 'ubuntu' or the user to bind in from host.
+finalize_user()
+{
+    user=$1
+
+    if [ "$release" = "precise" ]; then
+        groups="sudo"
+    else
+        groups="sudo admin"
+    fi
 
     for group in $groups; do
         chroot $rootfs groupadd --system $group >/dev/null 2>&1 || true
-        chroot $rootfs adduser ubuntu $group >/dev/null 2>&1 || true
+        chroot $rootfs adduser ${user} $group >/dev/null 2>&1 || true
     done
 
     if [ -n "$auth_key" -a -f "$auth_key" ]; then
-	u_path="/home/ubuntu/.ssh"
+	u_path="/home/${user}/.ssh"
 	root_u_path="$rootfs/$u_path"
 	mkdir -p $root_u_path
 	cp $auth_key "$root_u_path/authorized_keys"
-	chroot $rootfs chown -R ubuntu: "$u_path"
+	chroot $rootfs chown -R ${user}: "$u_path"
 
-	echo "Inserted SSH public key from $auth_key into /home/ubuntu/.ssh/authorized_keys"
+	echo "Inserted SSH public key from $auth_key into /home/${user}/.ssh/authorized_keys"
     fi
     return 0
 }
@@ -546,6 +560,8 @@ $1 -h|--help [-a|--arch] [-b|--bindhome <user>] [--trim] [-d|--debug]
 release: lucid | maverick | natty | oneiric | precise
 trim: make a minimal (faster, but not upgrade-safe) container
 bindhome: bind <user>'s home into the container
+          The ubuntu user will not be created, and <user> will have
+	  sudo access.
 arch: amd64 or i386: defaults to host arch
 auth-key: SSH Public key file to inject into container
 EOF
@@ -667,8 +683,12 @@ if [ $? -ne 0 ]; then
 fi
 
 post_process $rootfs $release $trim_container
-if [ ! -z $bindhome ]; then
-	do_bindhome $rootfs $bindhome
+
+if [ -n "$bindhome" ]; then
+    do_bindhome $rootfs $bindhome
+    finalize_user $bindhome
+else
+    finalize_user ubuntu
 fi
 
 echo ""
