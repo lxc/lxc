@@ -506,20 +506,31 @@ do_bindhome()
     user=$2
 
     # copy /etc/passwd, /etc/shadow, and /etc/group entries into container
-    pwd=`getent passwd $user`
-    if [ $? -ne 0 ]; then
-        echo 'Warning: failed to copy password entry for $user'
-	return
-    else
-        echo $pwd >> $rootfs/etc/passwd
+    pwd=`getent passwd $user` || { echo "Failed to copy password entry for $user"; false; }
+    echo $pwd >> $rootfs/etc/passwd
+
+    # make sure user's shell exists in the container
+    shell=`echo $pwd | cut -d: -f 7`
+    if [ ! -x $rootfs/$shell ]; then
+        echo "shell $shell for user $user was not found in the container."
+        pkg=`dpkg -S $(readlink -m $shell) | cut -d ':' -f1`
+        echo "Installing $pkg"
+        chroot $rootfs apt-get --force-yes -y install $pkg
     fi
+
     shad=`getent shadow $user`
-    echo $shad >> $rootfs/etc/shadow
+    echo "$shad" >> $rootfs/etc/shadow
 
     # bind-mount the user's path into the container's /home
     h=`getent passwd $user | cut -d: -f 6`
     mkdir -p $rootfs/$h
     echo "$h $rootfs/$h none bind 0 0" >> $path/fstab
+
+    # Make sure the group exists in container
+    chroot $rootfs getent group $user || { \
+        grp=`getent group $user`
+        echo "$grp" >> $rootfs/etc/group
+    }
 }
 
 usage()
