@@ -91,7 +91,6 @@ int lxc_caps_up(void)
 	cap_t caps;
 	cap_value_t cap;
 	int ret;
-	int lastcap = 0;
 
 	/* when we are run as root, we don't want to play
 	 * with the capabilities */
@@ -118,7 +117,6 @@ int lxc_caps_up(void)
 				goto out;
 			}
 		}
-		lastcap = cap;
 
 		ret = cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap, flag);
 		if (ret) {
