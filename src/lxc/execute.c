@@ -52,15 +52,29 @@ static char *choose_init(void)
 	if (!retv)
 		return NULL;
 
-	snprintf(retv, PATH_MAX-1, LXCINITDIR "/lxc/lxc-init");
+	ret = snprintf(retv, PATH_MAX, LXCINITDIR "/lxc/lxc-init");
+	if (ret < 0 || ret >= PATH_MAX) {
+		ERROR("pathname too long");
+		return NULL;
+	}
+
 	ret = stat(retv, &mystat);
 	if (ret == 0)
 		return retv;
-	snprintf(retv, PATH_MAX-1, "/usr/lib/lxc/lxc-init");
+
+	ret = snprintf(retv, PATH_MAX, "/usr/lib/lxc/lxc-init");
+	if (ret < 0 || ret >= PATH_MAX) {
+		ERROR("pathname too long");
+		return NULL;
+	}
 	ret = stat(retv, &mystat);
 	if (ret == 0)
 		return retv;
-	snprintf(retv, PATH_MAX-1, "/sbin/lxc-init");
+	ret = snprintf(retv, PATH_MAX, "/sbin/lxc-init");
+	if (ret < 0 || ret >= PATH_MAX) {
+		ERROR("pathname too long");
+		return NULL;
+	}
 	ret = stat(retv, &mystat);
 	if (ret == 0)
 		return retv;

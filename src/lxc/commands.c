@@ -75,8 +75,14 @@ static int __lxc_command(const char *name, struct lxc_command *command,
 	int sock, ret = -1;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
 	char *offset = &path[1];
+	int rc, len;
 
-	sprintf(offset, abstractname, name);
+	len = sizeof(path)-1;
+	rc = snprintf(offset, len, abstractname, name);
+	if (rc < 0 || rc >= len) {
+		ERROR("Name too long");
+		return -1;
+	}
 
 	sock = lxc_af_unix_connect(path);
 	if (sock < 0 && errno == ECONNREFUSED) {
@@ -266,8 +272,14 @@ extern int lxc_command_mainloop_add(const char *name,
 	int ret, fd;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
 	char *offset = &path[1];
+	int rc, len;
 
-	sprintf(offset, abstractname, name);
+	len = sizeof(path)-1;
+	rc = snprintf(offset, len, abstractname, name);
+	if (rc < 0 || rc >= len) {
+		ERROR("Name too long");
+		return -1;
+	}
 
 	fd = lxc_af_unix_open(path, SOCK_STREAM, 0);
 	if (fd < 0) {

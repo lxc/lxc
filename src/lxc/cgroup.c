@@ -261,13 +261,18 @@ static int lxc_one_cgroup_attach(const char *name,
 	char tasks[MAXPATHLEN], initcgroup[MAXPATHLEN];
 	char *cgmnt = mntent->mnt_dir;
 	int flags, ret = 0;
+	int rc;
 
 	flags = get_cgroup_flags(mntent);
 
-	snprintf(tasks, MAXPATHLEN, "%s%s%s/%s/tasks", cgmnt,
+	rc = snprintf(tasks, MAXPATHLEN, "%s%s%s/%s/tasks", cgmnt,
 	         get_init_cgroup(NULL, mntent, initcgroup),
 	         (flags & CGROUP_NS_CGROUP) ? "" : "/lxc",
 	         name);
+	if (rc < 0 || rc >= MAXPATHLEN) {
+		ERROR("pathname too long");
+		return -1;
+	}
 
 	f = fopen(tasks, "w");
 	if (!f) {
@@ -500,6 +505,7 @@ int recursive_rmdir(char *dirname)
 
 	while (!readdir_r(dir, &dirent, &direntp)) {
 		struct stat mystat;
+		int rc;
 
 		if (!direntp)
 			break;
@@ -508,7 +514,11 @@ int recursive_rmdir(char *dirname)
 		    !strcmp(direntp->d_name, ".."))
 			continue;
 
-		snprintf(pathname, MAXPATHLEN, "%s/%s", dirname, direntp->d_name);
+		rc = snprintf(pathname, MAXPATHLEN, "%s/%s", dirname, direntp->d_name);
+		if (rc < 0 || rc >= MAXPATHLEN) {
+			ERROR("pathname too long");
+			continue;
+		}
 		ret = stat(pathname, &mystat);
 		if (ret)
 			continue;
@@ -530,10 +540,15 @@ int lxc_one_cgroup_destroy(struct mntent *mntent, const char *name)
 	char cgname[MAXPATHLEN], initcgroup[MAXPATHLEN];
 	char *cgmnt = mntent->mnt_dir;
 	int flags = get_cgroup_flags(mntent);
+	int rc;
 
-	snprintf(cgname, MAXPATHLEN, "%s%s%s/%s", cgmnt,
+	rc = snprintf(cgname, MAXPATHLEN, "%s%s%s/%s", cgmnt,
 		get_init_cgroup(NULL, mntent, initcgroup),
 		(flags & CGROUP_NS_CGROUP) ? "" : "/lxc", name);
+	if (rc < 0 || rc >= MAXPATHLEN) {
+		ERROR("name too long");
+		return -1;
+	}
 	DEBUG("destroying %s\n", cgname);
 	if (recursive_rmdir(cgname)) {
 		SYSERROR("failed to remove cgroup '%s'", cgname);
@@ -583,11 +598,16 @@ int lxc_cgroup_path_get(char **path, const char *subsystem, const char *name)
 {
 	static char        buf[MAXPATHLEN];
 	static char        retbuf[MAXPATHLEN];
+	int rc;
 
 	/* lxc_cgroup_set passes a state object for the subsystem,
 	 * so trim it to just the subsystem part */
 	if (subsystem) {
-		snprintf(retbuf, MAXPATHLEN, "%s", subsystem);
+		rc = snprintf(retbuf, MAXPATHLEN, "%s", subsystem);
+		if (rc < 0 || rc >= MAXPATHLEN) {
+			ERROR("subsystem name too long");
+			return -1;
+		}
 		char *s = index(retbuf, '.');
 		if (s)
 			*s = '\0';
@@ -598,7 +618,11 @@ int lxc_cgroup_path_get(char **path, const char *subsystem, const char *name)
 		return -1;
 	}
 
-	snprintf(retbuf, MAXPATHLEN, "%s/%s", buf, name);
+	rc = snprintf(retbuf, MAXPATHLEN, "%s/%s", buf, name);
+	if (rc < 0 || rc >= MAXPATHLEN) {
+		ERROR("name too long");
+		return -1;
+	}
 
 	DEBUG("%s: returning %s for subsystem %s", __func__, retbuf, subsystem);
 
@@ -611,12 +635,17 @@ int lxc_cgroup_set(const char *name, const char *filename, const char *value)
 	int fd, ret;
 	char *dirpath;
 	char path[MAXPATHLEN];
+	int rc;
 
 	ret = lxc_cgroup_path_get(&dirpath, filename, name);
 	if (ret)
 		return -1;
 
-	snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
+	rc = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
+	if (rc < 0 || rc >= MAXPATHLEN) {
+		ERROR("pathname too long");
+		return -1;
+	}
 
 	fd = open(path, O_WRONLY);
 	if (fd < 0) {
@@ -642,12 +671,17 @@ int lxc_cgroup_get(const char *name, const char *filename,
 	int fd, ret = -1;
 	char *dirpath;
 	char path[MAXPATHLEN];
+	int rc;
 
 	ret = lxc_cgroup_path_get(&dirpath, filename, name);
 	if (ret)
 		return -1;
 
-	snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
+	rc = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
+	if (rc < 0 || rc >= MAXPATHLEN) {
+		ERROR("pathname too long");
+		return -1;
+	}
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
@@ -669,12 +703,17 @@ int lxc_cgroup_nrtasks(const char *name)
 	char path[MAXPATHLEN];
 	int pid, ret, count = 0;
 	FILE *file;
+	int rc;
 
 	ret = lxc_cgroup_path_get(&dpath, NULL, name);
 	if (ret)
 		return -1;
 
-	snprintf(path, MAXPATHLEN, "%s/tasks", dpath);
+	rc = snprintf(path, MAXPATHLEN, "%s/tasks", dpath);
+	if (rc < 0 || rc >= MAXPATHLEN) {
+		ERROR("pathname too long");
+		return -1;
+	}
 
 	file = fopen(path, "r");
 	if (!file) {

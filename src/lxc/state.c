@@ -75,7 +75,9 @@ static int freezer_state(const char *name)
 	if (err)
 		return -1;
 
-	snprintf(freezer, MAXPATHLEN, "%s/freezer.state", nsgroup);
+	err = snprintf(freezer, MAXPATHLEN, "%s/freezer.state", nsgroup);
+	if (err < 0 || err >= MAXPATHLEN)
+		return -1;
 
 	file = fopen(freezer, "r");
 	if (!file)

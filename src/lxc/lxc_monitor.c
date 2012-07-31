@@ -60,6 +60,7 @@ int main(int argc, char *argv[])
 	struct lxc_msg msg;
 	regex_t preg;
 	int fd;
+	int len, rc;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
@@ -68,12 +69,18 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	regexp = malloc(strlen(my_args.name) + 3);
+	len = strlen(my_args.name) + 3;
+	regexp = malloc(len + 3);
 	if (!regexp) {
 		ERROR("failed to allocate memory");
 		return -1;
 	}
-	sprintf(regexp, "^%s$", my_args.name);
+	rc = snprintf(regexp, len, "^%s$", my_args.name);
+	if (rc < 0 || rc >= len) {
+		ERROR("Name too long");
+		free(regexp);
+		return -1;
+	}
 
 	if (regcomp(&preg, regexp, REG_NOSUB|REG_EXTENDED)) {
 		ERROR("failed to compile the regex '%s'", my_args.name);

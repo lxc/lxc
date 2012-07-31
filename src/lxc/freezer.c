@@ -49,7 +49,11 @@ static int freeze_unfreeze(const char *name, int freeze)
 	if (ret)
 		return -1;
 
-	snprintf(freezer, MAXPATHLEN, "%s/freezer.state", nsgroup);
+	ret = snprintf(freezer, MAXPATHLEN, "%s/freezer.state", nsgroup);
+	if (ret >= MAXPATHLEN) {
+		ERROR("freezer.state name too long");
+		return -1;
+	}
 
 	fd = open(freezer, O_RDWR);
 	if (fd < 0) {
