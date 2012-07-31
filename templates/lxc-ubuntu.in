@@ -469,8 +469,13 @@ post_process()
 
     # If the container isn't running a native architecture, setup multiarch
     if [ -x "$(ls -1 ${rootfs}/usr/bin/qemu-*-static 2>/dev/null)" ]; then
-        mkdir -p ${rootfs}/etc/dpkg/dpkg.cfg.d
-        echo "foreign-architecture ${hostarch}" > ${rootfs}/etc/dpkg/dpkg.cfg.d/lxc-multiarch
+        dpkg_version=$(chroot $rootfs dpkg-query -W -f='${Version}' dpkg)
+        if chroot $rootfs dpkg --compare-versions $dpkg_version ge "1.16.2"; then
+            chroot $rootfs dpkg --add-architecture ${hostarch}
+        else
+            mkdir -p ${rootfs}/etc/dpkg/dpkg.cfg.d
+            echo "foreign-architecture ${hostarch}" > ${rootfs}/etc/dpkg/dpkg.cfg.d/lxc-multiarch
+        fi
 
         # Save existing value of MIRROR and SECURITY_MIRROR
         DEFAULT_MIRROR=$MIRROR
