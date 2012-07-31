@@ -117,7 +117,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds: -l arch:,help,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream: -- "$@")
+options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds: -l arch:,help,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -204,6 +204,11 @@ fi
 
 if [ "$stream" != "daily" -a "$stream" != "released" ]; then
     echo "Only 'daily' and 'released' streams are supported"
+    exit 1
+fi
+
+if [ -n "$userdata" -a ! -f "$userdata" ]; then
+    echo "Userdata does not exist"
     exit 1
 fi
 
@@ -322,8 +327,9 @@ EOF
 		echo "Inserted SSH public key from $auth_key into /home/ubuntu/.ssh/authorized_keys"
 	fi
 
-	if [ ! -f $userdata ]; then
-		cp $userdata $data_d/user-data
+	if [ -f "$userdata" ]; then
+		echo "Using custom user-data"
+		cp $userdata $seed_d/user-data
 	else
 
 		if [ -z "$MIRROR" ]; then
@@ -337,7 +343,6 @@ apt-mirror: $MIRROR
 manage_etc_hosts: localhost
 locale: $(/usr/bin/locale | awk -F= '/LANG=/ {print$NF}')
 EOF
-
 	fi
 
 	chroot $rootfs /usr/sbin/usermod -U ubuntu
