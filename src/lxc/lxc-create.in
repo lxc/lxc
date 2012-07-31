@@ -233,7 +233,7 @@ cleanup() {
     exit 1
 }
 
-trap cleanup SIGHUP SIGINT SIGTERM
+trap cleanup HUP INT TERM
 
 mkdir -p $lxc_path/$lxc_name
 
