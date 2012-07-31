@@ -24,6 +24,8 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 
+set -e
+
 if [ -r /etc/default/lxc ]; then
     . /etc/default/lxc
 fi
