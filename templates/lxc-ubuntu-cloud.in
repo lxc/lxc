@@ -270,7 +270,7 @@ build_root_tgz()
 
     xdir=`mktemp -d -p .`
     tarname=`basename $url`
-    imgname="`basename $tarname .tar.gz`.img"
+    imgname="$release-*-cloudimg-$arch.img"
     trap buildcleanup EXIT
     if [ $flushcache -eq 1 -o ! -f $cache/$tarname ]; then
         rm -f $tarname
@@ -278,7 +278,7 @@ build_root_tgz()
         wget $url || { echo "Couldn't find cloud image $url."; exit 1; }
     fi
     echo "Creating new cached cloud image rootfs"
-    tar zxf $tarname $imgname
+    tar --wildcards -zxf $tarname $imgname
     mount -o loop $imgname $xdir
     (cd $xdir; tar zcf ../$filename .)
     umount $xdir
