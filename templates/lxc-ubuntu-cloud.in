@@ -139,7 +139,7 @@ release=lucid
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
     case "$DISTRIB_CODENAME" in
-        lucid|maverick|natty|oneiric|precise|quantal)
+        lucid|natty|oneiric|precise|quantal)
             release=$DISTRIB_CODENAME
         ;;
     esac

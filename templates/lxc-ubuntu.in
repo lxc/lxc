@@ -152,8 +152,6 @@ download_ubuntu()
 
     if [ $release = "lucid" ]; then
         packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,dhcp3-client,ssh,lsb-release,gnupg
-    elif [ $release = "maverick" ]; then
-        packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,dhcp3-client,ssh,lsb-release,gnupg,netbase
     elif [ $release = "natty" ]; then
         packages=dialog,apt,apt-utils,resolvconf,iproute,inetutils-ping,vim,isc-dhcp-client,isc-dhcp-common,ssh,lsb-release,gnupg,netbase
     else
@@ -479,11 +477,11 @@ post_process()
 
     if [ $trim_container -eq 1 ]; then
         trim $rootfs $release
-    elif [ $release = "lucid" -o $release = "maverick" -o $release = "natty" \
+    elif [ $release = "lucid" -o $release = "natty" \
                -o $release = "oneiric" ]; then
-        # for lucid and maverick, if not trimming, then add the ubuntu-virt
+        # for lucid, if not trimming, then add the ubuntu-virt
         # ppa and install lxcguest
-        if [ $release = "lucid" -o $release = "maverick" ]; then
+        if [ $release = "lucid" ]; then
             chroot $rootfs apt-get install --force-yes -y python-software-properties
             chroot $rootfs add-apt-repository ppa:ubuntu-virt/ppa
         fi
@@ -571,7 +569,7 @@ usage()
     cat <<EOF
 $1 -h|--help [-a|--arch] [-b|--bindhome <user>] [--trim] [-d|--debug]
    [-F | --flush-cache] [-r|--release <release>] [ -S | --auth-key <keyfile>]
-release: lucid | maverick | natty | oneiric | precise | quantal
+release: lucid | natty | oneiric | precise | quantal
 trim: make a minimal (faster, but not upgrade-safe) container
 bindhome: bind <user>'s home into the container
           The ubuntu user will not be created, and <user> will have
@@ -593,7 +591,7 @@ release=lucid
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
     case "$DISTRIB_CODENAME" in
-        lucid|maverick|natty|oneiric|precise|quantal)
+        lucid|natty|oneiric|precise|quantal)
             release=$DISTRIB_CODENAME
         ;;
     esac
