@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 usage() {
-	echo "usage: $(basename $0) --name NAME [--] [NETSTAT_OPTIONS...]" >&2
+	echo "usage: $(basename $0) -n|--name <name> -- [netstat_options]" >&2
 }
 
 help() {
@@ -67,12 +67,18 @@ get_parent_cgroup()
 	done
 }
 
+shortoptions='hn:'
+longoptions='help,name:,exec'
+
+getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
+if [ $? != 0 ]; then
+    usage
+    exit 1;
+fi
+
 exec=""
 
-if [ $# -eq  0 ]; then
-	usage
-	exit 1
-fi
+eval set -- "$getopt"
 
 while true; do
 	case $1 in
