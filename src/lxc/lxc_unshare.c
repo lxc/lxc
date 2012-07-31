@@ -44,12 +44,11 @@ lxc_log_define(lxc_unshare_ui, lxc);
 
 void usage(char *cmd)
 {
-	fprintf(stderr, "%s <options> [command]\n", basename(cmd));
+	fprintf(stderr, "%s <options> command [command_arguments]\n", basename(cmd));
 	fprintf(stderr, "Options are:\n");
 	fprintf(stderr, "\t -s flags: ORed list of flags to unshare:\n" \
 			"\t           MOUNT, PID, UTSNAME, IPC, USER, NETWORK\n");
 	fprintf(stderr, "\t -u <id> : new id to be set if -s USER is specified\n");
-	fprintf(stderr, "\t if -s PID is specified, <command> is mandatory)\n");
 	_exit(1);
 }
 
@@ -183,6 +182,11 @@ int main(int argc, char *argv[])
 				return 1;
 		}
 	}
+
+    if (argv[optind] == NULL) {
+        ERROR("a command to execute in the new namespace is required");
+        return 1;
+    }
 
 	args = &argv[optind];
 
