@@ -54,7 +54,7 @@ EOF
 127.0.0.1 localhost $hostname
 EOF
 
-    if [ "$release" != "precise" ]; then
+    if [ "$release" != "precise" ] && [ "$release" != "quantal" ]; then
         # suppress log level output for udev
         sed -i "s/=\"err\"/=0/" $rootfs/etc/udev/udev.conf
 
@@ -78,7 +78,7 @@ finalize_user()
 {
     user=$1
 
-    if [ "$release" = "precise" ]; then
+    if [ "$release" = "precise" ] || [ "$release" = "quantal" ]; then
         groups="sudo"
     else
         groups="sudo admin"
@@ -310,7 +310,7 @@ copy_configuration()
     fi
 
     ttydir=""
-    if [ $release = "precise" ]; then
+    if [ $release = "precise" ] || [ $release = "quantal" ]; then
         ttydir=" lxc"
     fi
 
@@ -518,11 +518,11 @@ post_process()
         chroot $rootfs apt-get install --force-yes -y --no-install-recommends upstart:${hostarch} mountall:amd64 iproute:amd64 isc-dhcp-client:amd64
     fi
 
-    # rmdir /dev/shm in precise containers.
+    # rmdir /dev/shm in precise and quantal containers.
     # I'm afraid of doing rm -rf $rootfs/dev/shm, in case it did
     # get bind mounted to the host's /run/shm.  So try to rmdir
     # it, and in case that fails move it out of the way.
-    if [ $release = "precise" ]; then
+    if [ $release = "precise" ] || [ $release = "quantal" ]; then
         [ -d "$rootfs/dev/shm" ] && rmdir $rootfs/dev/shm
         [ -e "$rootfs/dev/shm" ] && mv $rootfs/dev/shm $rootfs/dev/shm.bak
         ln -s /run/shm $rootfs/dev/shm
@@ -571,7 +571,7 @@ usage()
     cat <<EOF
 $1 -h|--help [-a|--arch] [-b|--bindhome <user>] [--trim] [-d|--debug]
    [-F | --flush-cache] [-r|--release <release>] [ -S | --auth-key <keyfile>]
-release: lucid | maverick | natty | oneiric | precise
+release: lucid | maverick | natty | oneiric | precise | quantal
 trim: make a minimal (faster, but not upgrade-safe) container
 bindhome: bind <user>'s home into the container
           The ubuntu user will not be created, and <user> will have
@@ -593,7 +593,7 @@ release=lucid
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
     case "$DISTRIB_CODENAME" in
-        lucid|maverick|natty|oneiric|precise)
+        lucid|maverick|natty|oneiric|precise|quantal)
             release=$DISTRIB_CODENAME
         ;;
     esac

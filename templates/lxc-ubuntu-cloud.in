@@ -92,11 +92,11 @@ proc            proc         proc    nodev,noexec,nosuid 0 0
 sysfs           sys          sysfs defaults  0 0
 EOF
 
-    # rmdir /dev/shm in precise containers.
+    # rmdir /dev/shm in precise and quantal containers.
     # I'm afraid of doing rm -rf $rootfs/dev/shm, in case it did
     # get bind mounted to the host's /run/shm.  So try to rmdir
     # it, and in case that fails move it out of the way.
-    if [ $release = "precise" ]; then
+    if [ $release = "precise" ] || [ $release = "quantal" ]; then
         [ -d "$rootfs/dev/shm" ] && rmdir $rootfs/dev/shm
         [ -e "$rootfs/dev/shm" ] && mv $rootfs/dev/shm $rootfs/dev/shm.bak
         ln -s /run/shm $rootfs/dev/shm
@@ -139,7 +139,7 @@ release=lucid
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
     case "$DISTRIB_CODENAME" in
-        lucid|maverick|natty|oneiric|precise)
+        lucid|maverick|natty|oneiric|precise|quantal)
             release=$DISTRIB_CODENAME
         ;;
     esac
@@ -160,7 +160,7 @@ else
         arch="amd64"
     elif [ "$arch" = "armv7l" ]; then
         # note: arm images don't exist before oneiric;  are called armhf in
-        # precise;  and are not supported by the query, so we don't actually
+        # precise and later;  and are not supported by the query, so we don't actually
         # support them yet (see check later on).  When Query2 is available,
         # we'll use that to enable arm images.
         arch="armel"
