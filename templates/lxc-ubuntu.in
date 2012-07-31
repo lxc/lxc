@@ -55,9 +55,9 @@ EOF
 EOF
 
     if [ "$release" = "precise" ]; then
-        group="sudo"
+        groups="sudo"
     else
-        group="admin"
+        groups="sudo admin"
 
         # suppress log level output for udev
         sed -i "s/=\"err\"/=0/" $rootfs/etc/udev/udev.conf
@@ -67,9 +67,14 @@ EOF
         rm -f $rootfs/etc/init/tty{5,6}.conf
     fi
 
-    chroot $rootfs groupadd --system $group >/dev/null 2>&1 || true
-    chroot $rootfs useradd --create-home -s /bin/bash -G $group ubuntu
+    chroot $rootfs useradd --create-home -s /bin/bash ubuntu
     echo "ubuntu:ubuntu" | chroot $rootfs chpasswd
+
+    for group in $groups; do
+        chroot $rootfs groupadd --system $group >/dev/null 2>&1 || true
+        chroot $rootfs adduser ubuntu $group >/dev/null 2>&1 || true
+    done
+
     if [ -n "$auth_key" -a -f "$auth_key" ]; then
 	u_path="/home/ubuntu/.ssh"
 	root_u_path="$rootfs/$u_path"
@@ -307,7 +312,7 @@ EOF
     cat <<EOF >> $path/config
 lxc.utsname = $name
 
-lxc.devttydir = $ttydir
+lxc.devttydir =$ttydir
 lxc.tty = 4
 lxc.pts = 1024
 lxc.rootfs = $rootfs
