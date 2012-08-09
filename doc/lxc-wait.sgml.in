@@ -79,6 +79,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</listitem>
       </varlistentry>
 
+      <varlistentry>
+	<term>
+	  <option>-t <replaceable>timeout</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Wait timeout seconds for desired state to be reached.
+	  </para>
+	</listitem>
+      </varlistentry>
+
     </variablelist>
 
   </refsect1>

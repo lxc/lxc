@@ -57,6 +57,7 @@ struct lxc_arguments {
 
 	/* for lxc-wait */
 	char *states;
+	long timeout;
 
 	/* close fds from parent? */
 	int close_all_fds;

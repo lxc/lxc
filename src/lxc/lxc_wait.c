@@ -24,6 +24,8 @@
 #include <string.h>
 #include <libgen.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <signal.h>
 #include <sys/types.h>
 
 #include <lxc/lxc.h>
@@ -46,12 +48,14 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
 	case 's': args->states = optarg; break;
+	case 't': args->timeout = atol(optarg); break;
 	}
 	return 0;
 }
 
 static const struct option my_longopts[] = {
 	{"state", required_argument, 0, 's'},
+	{"timeout", required_argument, 0, 't'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -66,7 +70,8 @@ Options :\n\
   -n, --name=NAME   NAME for name of the container\n\
   -s, --state=STATE ORed states to wait for\n\
                     STOPPED, STARTING, RUNNING, STOPPING,\n\
-                    ABORTING, FREEZING, FROZEN\n",
+                    ABORTING, FREEZING, FROZEN\n\
+  -t, --timeout=TMO Seconds to wait for state changes\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,
@@ -89,6 +94,11 @@ static int fillwaitedstates(char *strstates, int *states)
 		token = strtok_r(NULL, "|", &saveptr);
 	}
 	return 0;
+}
+
+static void timeout_handler(int signal)
+{
+	exit(-1);
 }
 
 int main(int argc, char *argv[])
@@ -124,6 +134,9 @@ int main(int argc, char *argv[])
 		goto out_close;
 	}
 
+	signal(SIGALRM, timeout_handler);
+	alarm(my_args.timeout);
+
 	for (;;) {
 		if (lxc_monitor_read(fd, &msg) < 0)
 			goto out_close;
@@ -140,6 +153,7 @@ int main(int argc, char *argv[])
 			}
 
 			if (s[msg.value]) {
+				alarm(0);
 				ret = 0;
 				goto out_close;
 			}
