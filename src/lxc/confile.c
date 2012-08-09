@@ -76,6 +76,7 @@ static int config_network_ipv6_gateway(const char *, char *, struct lxc_conf *);
 static int config_cap_drop(const char *, char *, struct lxc_conf *);
 static int config_console(const char *, char *, struct lxc_conf *);
 static int config_seccomp(const char *, char *, struct lxc_conf *);
+static int config_includefile(const char *, char *, struct lxc_conf *);
 
 typedef int (*config_cb)(const char *, char *, struct lxc_conf *);
 
@@ -120,6 +121,7 @@ static struct config config[] = {
 	{ "lxc.cap.drop",             config_cap_drop             },
 	{ "lxc.console",              config_console              },
 	{ "lxc.seccomp",              config_seccomp              },
+	{ "lxc.include",              config_includefile          },
 };
 
 static const size_t config_size = sizeof(config)/sizeof(struct config);
@@ -892,6 +894,12 @@ static int config_console(const char *key, char *value,
 	lxc_conf->console.path = path;
 
 	return 0;
+}
+
+static int config_includefile(const char *key, char *value,
+			  struct lxc_conf *lxc_conf)
+{
+	return lxc_config_read(value, lxc_conf);
 }
 
 static int config_rootfs(const char *key, char *value, struct lxc_conf *lxc_conf)
