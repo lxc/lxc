@@ -127,6 +127,7 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #include "sync.h"
 #include "namespace.h"
 #include "apparmor.h"
+#include "lxcseccomp.h"
 
 lxc_log_define(lxc_start, lxc);
 
