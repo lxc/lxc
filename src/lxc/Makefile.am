@@ -50,7 +50,7 @@ liblxc_so_SOURCES = \
         genl.c genl.h \
 	\
 	caps.c caps.h \
-	seccomp.c seccomp.h \
+	lxcseccomp.h \
 	mainloop.c mainloop.h \
 	af_unix.c af_unix.h \
 	\
@@ -68,6 +68,7 @@ endif
 
 if ENABLE_SECCOMP
 AM_CFLAGS += -DHAVE_SECCOMP
+liblxc_so_SOURCES += seccomp.c
 endif
 
 liblxc_so_CFLAGS = -fPIC -DPIC $(AM_CFLAGS)
