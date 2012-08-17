@@ -18,16 +18,6 @@ AC_ARG_ENABLE([rpath],
 
 AM_CONDITIONAL([ENABLE_RPATH], [test "x$enable_rpath" = "xyes"])
 
-AC_ARG_ENABLE([apparmor],
-	[AC_HELP_STRING([--enable-apparmor], [enable apparmor])],
-	[], [enable_apparmor=yes])
-AM_CONDITIONAL([ENABLE_APPARMOR], [test "x$enable_apparmor" = "xyes"])
-
-AC_ARG_ENABLE([seccomp],
-	[AC_HELP_STRING([--enable-seccomp], [enable seccomp])],
-	[], [enable_seccomp=yes])
-AM_CONDITIONAL([ENABLE_SECCOMP], [test "x$enable_seccomp" = "xyes"])
-
 AC_ARG_ENABLE([doc],
 	[AC_HELP_STRING([--enable-doc], [make mans (require docbook2man installed) [default=auto]])],
 	[], [enable_doc=auto])
@@ -39,10 +29,30 @@ if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
 		AC_MSG_ERROR([docbook2man required by man request, but not found])
 fi
 
+AC_ARG_ENABLE([apparmor],
+	[AC_HELP_STRING([--enable-apparmor], [enable apparmor])],
+	[], [enable_apparmor=check])
+
+if test "$enable_apparmor" = "check" ; then
+	AC_CHECK_LIB([apparmor],[aa_change_profile],[enable_apparmor=yes], [enable_apparmor=no])
+fi
+
+AM_CONDITIONAL([ENABLE_APPARMOR], [test "x$enable_apparmor" = "xyes"])
+
 AM_COND_IF([ENABLE_APPARMOR],
     [AC_CHECK_HEADER([sys/apparmor.h],[],[AC_MSG_ERROR([You must install the AppArmor development package in order to compile lxc])])
      AC_CHECK_LIB([apparmor], [aa_change_profile],[],[AC_MSG_ERROR([You must install the AppArmor development package in order to compile lxc])])
      AC_SUBST([APPARMOR_LIBS], [-lapparmor])])
+
+AC_ARG_ENABLE([seccomp],
+	[AC_HELP_STRING([--enable-seccomp], [enable seccomp])],
+	[], [enable_seccomp=check])
+
+if test "$enable_seccomp" = "check" ; then
+	AC_CHECK_LIB([seccomp],[seccomp_init],[enable_seccomp=yes],[enable_seccomp=no])
+fi
+
+AM_CONDITIONAL([ENABLE_SECCOMP], [test "x$enable_seccomp" = "xyes"])
 
 AM_COND_IF([ENABLE_SECCOMP],
     [AC_CHECK_HEADER([seccomp.h],[],[AC_MSG_ERROR([You must install the seccomp development package in order to compile lxc])])
