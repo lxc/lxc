@@ -136,6 +136,18 @@ while true; do
         esac
 done
 
+# If -h or --help was passed into the container, we'll want to cleanup
+# afterward
+wantedhelp=0
+for var in "$@"
+do
+if [ "$var" = "-h" -o "$var" = "--help" ]; then
+    help
+    exit 1
+fi
+done
+
+
 if [ -z "$lxc_path" ]; then
     echo "$(basename $0): no configuration path defined" >&2
     exit 1
