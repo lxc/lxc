@@ -208,6 +208,8 @@ EOF
         return 1
     fi
 
+    chroot "$1/partial-${arch}" apt-get clean
+
     mv "$1/partial-$arch" "$1/rootfs-$arch"
     trap EXIT
     trap SIGINT
