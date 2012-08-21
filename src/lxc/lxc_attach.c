@@ -48,12 +48,14 @@ static const struct option my_longopts[] = {
 	{"elevated-privileges", no_argument, 0, 'e'},
 	{"arch", required_argument, 0, 'a'},
 	{"namespaces", required_argument, 0, 's'},
+	{"remount-sys-proc", no_argument, 0, 'R'},
 	LXC_COMMON_OPTIONS
 };
 
 static int elevated_privileges = 0;
 static signed long new_personality = -1;
 static int namespace_flags = -1;
+static int remount_sys_proc = 0;
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
@@ -61,6 +63,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 
 	switch (c) {
 	case 'e': elevated_privileges = 1; break;
+	case 'R': remount_sys_proc = 1; break;
 	case 'a':
 		new_personality = lxc_config_parse_arch(arg);
 		if (new_personality < 0) {
@@ -102,7 +105,12 @@ Options :\n\
                     but just to the following OR'd list of flags:\n\
                     MOUNT, PID, UTSNAME, IPC, USER or NETWORK\n\
                     WARNING: Using -s implies -e, it may therefore\n\
-                    leak privileges into the container. Use with care.\n",
+                    leak privileges into the container. Use with care.\n\
+  -R, --remount-sys-proc\n\
+                    Remount /sys and /proc if not attaching to the\n\
+                    mount namespace when using -s in order to properly\n\
+                    reflect the correct namespace context. See the\n\
+                    lxc-attach(1) manual page for details.\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
@@ -252,6 +260,18 @@ int main(int argc, char *argv[])
 	if (!pid) {
 		lxc_sync_fini_parent(handler);
 		lxc_cgroup_dispose_attach(cgroup_data);
+
+		/* A description of the purpose of this functionality is
+		 * provided in the lxc-attach(1) manual page. We have to
+		 * remount here and not in the parent process, otherwise
+		 * /proc may not properly reflect the new pid namespace.
+		 */
+		if (!(namespace_flags & CLONE_NEWNS) && remount_sys_proc) {
+			ret = lxc_attach_remount_sys_proc();
+			if (ret < 0) {
+				return -1;
+			}
+		}
 
 		if (new_personality < 0)
 			new_personality = init_ctx->personality;
