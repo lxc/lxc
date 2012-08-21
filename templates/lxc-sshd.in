@@ -97,10 +97,10 @@ copy_configuration()
     rootfs=$2
     name=$3
 
+    grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
 cat <<EOF >> $path/config
 lxc.utsname = $name
 lxc.pts = 1024
-lxc.rootfs = $rootfs
 lxc.mount.entry=/dev dev none ro,bind 0 0
 lxc.mount.entry=/lib lib none ro,bind 0 0
 lxc.mount.entry=/bin bin none ro,bind 0 0
@@ -171,7 +171,13 @@ if [ -z "$path" ]; then
     exit 1
 fi
 
-rootfs=$path/rootfs
+# detect rootfs
+config="$path/config"
+if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+else
+    rootfs=$path/rootfs
+fi
 
 install_sshd $rootfs
 if [ $? -ne 0 ]; then

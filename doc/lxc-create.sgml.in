@@ -123,9 +123,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</term>
 	<listitem>
 	  <para>
-	    'backingstore' is one of 'none', 'lvm', or 'btrfs'.  The
+	    'backingstore' is one of 'none', 'dir', 'lvm', or 'btrfs'.  The
 	    default is 'none', meaning that the container root filesystem
 	    will be a directory under <filename>@LXCPATH@/container/rootfs</filename>.
+	    'dir' has the same meaning as 'none', but also allows the optional
+	    <replaceable>--dir ROOTFS</replaceable> to be specified, meaning
+	    that the container rootfs should be placed under the specified path,
+	    rather than the default.
 	    The option 'btrfs' need not be specified as it will be used
 	    automatically if the <filename>@LXCPATH@</filename> filesystem is found to
 	    be btrfs.  If backingstore is 'lvm', then an lvm block device will be

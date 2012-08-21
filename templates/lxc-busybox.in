@@ -228,11 +228,11 @@ copy_configuration()
     rootfs=$2
     name=$3
 
+grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
 cat <<EOF >> $path/config
 lxc.utsname = $name
 lxc.tty = 1
 lxc.pts = 1
-lxc.rootfs = $rootfs
 EOF
 
 if [ -d "$rootfs/lib" ]; then
@@ -291,7 +291,13 @@ if [ -z "$path" ]; then
     exit 1
 fi
 
-rootfs=$path/rootfs
+# detect rootfs
+config="$path/config"
+if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+else
+    rootfs=$path/rootfs
+fi
 
 install_busybox $rootfs $name
 if [ $? -ne 0 ]; then

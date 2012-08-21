@@ -200,10 +200,10 @@ copy_configuration()
     rootfs=$2
     hostname=$3
 
+    grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
     cat <<EOF >> $path/config
 lxc.tty = 4
 lxc.pts = 1024
-lxc.rootfs = $rootfs
 lxc.utsname = $hostname
 lxc.cgroup.devices.deny = a
 # /dev/null and zero
@@ -306,7 +306,14 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-rootfs=$path/rootfs
+# detect rootfs
+config="$path/config"
+if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+else
+    rootfs=$path/rootfs
+fi
+
 
 install_debian $rootfs
 if [ $? -ne 0 ]; then
