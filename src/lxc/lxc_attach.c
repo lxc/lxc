@@ -40,12 +40,14 @@
 #include "start.h"
 #include "sync.h"
 #include "log.h"
+#include "namespace.h"
 
 lxc_log_define(lxc_attach_ui, lxc);
 
 static const struct option my_longopts[] = {
 	{"elevated-privileges", no_argument, 0, 'e'},
 	{"arch", required_argument, 0, 'a'},
+	{"namespaces", required_argument, 0, 's'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -55,6 +57,8 @@ static int namespace_flags = -1;
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
+	int ret;
+
 	switch (c) {
 	case 'e': elevated_privileges = 1; break;
 	case 'a':
@@ -63,6 +67,14 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 			lxc_error(args, "invalid architecture specified: %s", arg);
 			return -1;
 		}
+		break;
+	case 's':
+		namespace_flags = 0;
+		ret = lxc_fill_namespace_flags(arg, &namespace_flags);
+		if (ret)
+			return -1;
+		/* -s implies -e */
+		elevated_privileges = 1;
 		break;
 	}
 
@@ -84,7 +96,13 @@ Options :\n\
                     WARNING: This may leak privleges into the container.\n\
                     Use with care.\n\
   -a, --arch=ARCH   Use ARCH for program instead of container's own\n\
-                    architecture.\n",
+                    architecture.\n\
+  -s, --namespaces=FLAGS\n\
+                    Don't attach to all the namespaces of the container\n\
+                    but just to the following OR'd list of flags:\n\
+                    MOUNT, PID, UTSNAME, IPC, USER or NETWORK\n\
+                    WARNING: Using -s implies -e, it may therefore\n\
+                    leak privileges into the container. Use with care.\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
