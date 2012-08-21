@@ -110,7 +110,7 @@ fi
 # else, ignore it. We'll support deletion of others later.
 rootdev=`grep lxc.rootfs $lxc_path/$lxc_name/config 2>/dev/null | sed -e 's/^[^/]*/\//'`
 if [ -n "$rootdev" ]; then
-	if [ -b "$rootdev" ]; then
+	if [ -b "$rootdev" -o -h "$rootdev" ]; then
 		lvdisplay $rootdev > /dev/null 2>&1
 		if [ $? -eq 0 ]; then
 			echo "removing backing store: $rootdev"
@@ -126,5 +126,6 @@ if [ -n "$rootdev" ]; then
 		fi
 	fi
 fi
+
 # recursively remove the container to remove old container configuration
 rm -rf --one-file-system --preserve-root $lxc_path/$lxc_name

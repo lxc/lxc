@@ -46,12 +46,12 @@ lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//
 EOF
     fi
 
+    grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
     cat <<EOF >> $path/config
 lxc.utsname = $name
 
 lxc.tty = 4
 lxc.pts = 1024
-lxc.rootfs = $rootfs
 lxc.mount  = $path/fstab
 lxc.arch = $arch
 lxc.cap.drop = sys_module mac_admin
@@ -249,7 +249,13 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-rootfs=$path/rootfs
+# detect rootfs
+config="$path/config"
+if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+else
+    rootfs=$path/rootfs
+fi
 
 type ubuntu-cloudimg-query
 type wget
