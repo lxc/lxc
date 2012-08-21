@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
+#include <sys/mount.h>
 #include <linux/unistd.h>
 
 #if !HAVE_DECL_PR_CAPBSET_DROP
@@ -183,6 +184,49 @@ int lxc_attach_to_ns(pid_t pid, int which)
 		}
 
 		close(fd[i]);
+	}
+
+	return 0;
+}
+
+int lxc_attach_remount_sys_proc()
+{
+	int ret;
+
+	ret = unshare(CLONE_NEWNS);
+	if (ret < 0) {
+		SYSERROR("failed to unshare mount namespace");
+		return -1;
+	}
+
+	/* assume /proc is always mounted, so remount it */
+	ret = umount2("/proc", MNT_DETACH);
+	if (ret < 0) {
+		SYSERROR("failed to unmount /proc");
+		return -1;
+	}
+
+	ret = mount("none", "/proc", "proc", 0, NULL);
+	if (ret < 0) {
+		SYSERROR("failed to remount /proc");
+		return -1;
+	}
+
+	/* try to umount /sys - if it's not a mount point,
+	 * we'll get EINVAL, then we ignore it because it
+	 * may not have been mounted in the first place
+	 */
+	ret = umount2("/sys", MNT_DETACH);
+	if (ret < 0 && errno != EINVAL) {
+		SYSERROR("failed to unmount /sys");
+		return -1;
+	} else if (ret == 0) {
+		/* remount it */
+		ret = mount("none", "/sys", "sysfs", 0, NULL);
+		if (ret < 0) {
+			SYSERROR("failed to remount /sys");
+			return -1;
+		}
 	}
 
 	return 0;

@@ -53,6 +53,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <arg choice="opt">-a <replaceable>arch</replaceable></arg>
       <arg choice="opt">-e</arg>
       <arg choice="opt">-s <replaceable>namespaces</replaceable></arg>
+      <arg choice="opt">-R</arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -149,7 +150,30 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</listitem>
       </varlistentry>
 
-    </variablelist>
+      <varlistentry>
+	<term>
+	  <option>-R, --remount-sys-proc</option>
+	</term>
+	<listitem>
+	  <para>
+	    When using <option>-s</option> and the mount namespace is not
+	    included, this flag will cause <command>lxc-attach</command>
+	    to remount <replaceable>/proc</replaceable> and
+	    <replaceable>/sys</replaceable> to reflect the current other
+	    namespace contexts.
+	  </para>
+	  <para>
+	    Please see the <emphasis>Notes</emphasis> section for more
+	    details.
+	  </para>
+	  <para>
+	    This option will be ignored if one tries to attach to the
+	    mount namespace anyway.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+     </variablelist>
 
   </refsect1>
 
@@ -232,13 +256,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       the network namespace.
     </para>
     <para>
-      A workaround is to use <command>lxc-unshare</command> to unshare
-      the mount namespace after using <command>lxc-attach</command> with
-      <replaceable>-s PID</replaceable> and/or <replaceable>-s
-      NETWORK</replaceable> and then unmount and then mount again both
-      pseudo-filesystems within that new mount namespace, before
-      executing a program/script that relies on this information to be
-      correct.
+      To work around this problem, the <option>-R</option> flag provides
+      the option to remount <replaceable>/proc</replaceable> and
+      <replaceable>/sys</replaceable> in order for them to reflect the
+      network/pid namespace context of the attached process. In order
+      not to interfere with the host's actual filesystem, the mount
+      namespace will be unshared (like <command>lxc-unshare</command>
+      does) before this is done, esentially giving the process a new
+      mount namespace, which is identical to the hosts's mount namespace
+      except for the <replaceable>/proc</replaceable> and
+      <replaceable>/sys</replaceable> filesystems.
     </para>
   </refsect1>
 
