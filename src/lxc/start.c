@@ -279,6 +279,29 @@ int lxc_pid_callback(int fd, struct lxc_request *request,
 	return 0;
 }
 
+int lxc_clone_flags_callback(int fd, struct lxc_request *request,
+			     struct lxc_handler *handler)
+{
+	struct lxc_answer answer;
+	int ret;
+
+	answer.pid = 0;
+	answer.ret = handler->clone_flags;
+
+	ret = send(fd, &answer, sizeof(answer), 0);
+	if (ret < 0) {
+		WARN("failed to send answer to the peer");
+		return -1;
+	}
+
+	if (ret != sizeof(answer)) {
+		ERROR("partial answer sent");
+		return -1;
+	}
+
+	return 0;
+}
+
 int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state)
 {
 	handler->state = state;
@@ -551,7 +574,6 @@ out_warn_father:
 
 int lxc_spawn(struct lxc_handler *handler)
 {
-	int clone_flags;
 	int failed_before_rename = 0;
 	const char *name = handler->name;
 	int pinfd;
@@ -559,10 +581,10 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_init(handler))
 		return -1;
 
-	clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
+	handler->clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
 	if (!lxc_list_empty(&handler->conf->network)) {
 
-		clone_flags |= CLONE_NEWNET;
+		handler->clone_flags |= CLONE_NEWNET;
 
 		/* Find gateway addresses from the link device, which is
 		 * no longer accessible inside the container. Do this
@@ -596,7 +618,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	/* Create a process in a new set of namespaces */
-	handler->pid = lxc_clone(do_start, handler, clone_flags);
+	handler->pid = lxc_clone(do_start, handler, handler->clone_flags);
 	if (handler->pid < 0) {
 		SYSERROR("failed to fork into a new namespace");
 		goto out_delete_net;
@@ -614,7 +636,7 @@ int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 
 	/* Create the network configuration */
-	if (clone_flags & CLONE_NEWNET) {
+	if (handler->clone_flags & CLONE_NEWNET) {
 		if (lxc_assign_network(&handler->conf->network, handler->pid)) {
 			ERROR("failed to create the configured network");
 			goto out_delete_net;
@@ -644,7 +666,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	return 0;
 
 out_delete_net:
-	if (clone_flags & CLONE_NEWNET)
+	if (handler->clone_flags & CLONE_NEWNET)
 		lxc_delete_network(handler);
 out_abort:
 	lxc_abort(name, handler);

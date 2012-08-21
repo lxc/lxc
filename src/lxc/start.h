@@ -39,6 +39,7 @@ struct lxc_handler {
 	pid_t pid;
 	char *name;
 	lxc_state_t state;
+	int clone_flags;
 	int sigfd;
 	sigset_t oldmask;
 	struct lxc_conf *conf;
