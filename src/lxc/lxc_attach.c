@@ -51,6 +51,7 @@ static const struct option my_longopts[] = {
 
 static int elevated_privileges = 0;
 static signed long new_personality = -1;
+static int namespace_flags = -1;
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
@@ -139,11 +140,24 @@ int main(int argc, char *argv[])
 
 	curdir = get_current_dir_name();
 
+	/* determine which namespaces the container was created with
+	 * by asking lxc-start
+	 */
+	if (namespace_flags == -1) {
+		namespace_flags = lxc_get_clone_flags(my_args.name);
+		/* call failed */
+		if (namespace_flags == -1) {
+			ERROR("failed to automatically determine the "
+			      "namespaces which the container unshared");
+			return -1;
+		}
+	}
+
 	/* we need to attach before we fork since certain namespaces
 	 * (such as pid namespaces) only really affect children of the
 	 * current process and not the process itself
 	 */
-	ret = lxc_attach_to_ns(init_pid);
+	ret = lxc_attach_to_ns(init_pid, namespace_flags);
 	if (ret < 0) {
 		ERROR("failed to enter the namespace");
 		return -1;
