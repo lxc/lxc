@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
 	struct passwd *passwd;
 	struct lxc_proc_context_info *init_ctx;
 	struct lxc_handler *handler;
+	void *cgroup_data = NULL;
 	uid_t uid;
 	char *curdir;
 
@@ -124,6 +125,35 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	if (!elevated_privileges) {
+	        /* we have to do this now since /sys/fs/cgroup may not
+	         * be available inside the container or we may not have
+	         * the required permissions anymore
+	         */
+		ret = lxc_cgroup_prepare_attach(my_args.name, &cgroup_data);
+		if (ret < 0) {
+			ERROR("failed to prepare attaching to cgroup");
+			return -1;
+		}
+	}
+
+	curdir = get_current_dir_name();
+
+	/* we need to attach before we fork since certain namespaces
+	 * (such as pid namespaces) only really affect children of the
+	 * current process and not the process itself
+	 */
+	ret = lxc_attach_to_ns(init_pid);
+	if (ret < 0) {
+		ERROR("failed to enter the namespace");
+		return -1;
+	}
+
+	if (curdir && chdir(curdir))
+		WARN("could not change directory to '%s'", curdir);
+
+	free(curdir);
+
 	/* hack: we need sync.h infrastructure - and that needs a handler */
 	handler = calloc(1, sizeof(*handler));
 
@@ -150,8 +180,22 @@ int main(int argc, char *argv[])
 		if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 			return -1;
 
-		if (!elevated_privileges && lxc_cgroup_attach(my_args.name, pid))
-			return -1;
+		/* now that we are done with all privileged operations,
+		 * we can add ourselves to the cgroup. Since we smuggled in
+		 * the fds earlier, we still have write permission
+		 */
+		if (!elevated_privileges) {
+			/* since setns() for pid namespaces only really
+			 * affects child processes, the pid we have is
+			 * still valid outside the container, so this is
+			 * fine
+			 */
+			ret = lxc_cgroup_finish_attach(cgroup_data, pid);
+			if (ret < 0) {
+				ERROR("failed to attach process to cgroup");
+				return -1;
+			}
+		}
 
 		/* tell the child we are done initializing */
 		if (lxc_sync_wake_child(handler, LXC_SYNC_POST_CONFIGURE))
@@ -175,19 +219,7 @@ int main(int argc, char *argv[])
 
 	if (!pid) {
 		lxc_sync_fini_parent(handler);
-
-		curdir = get_current_dir_name();
-
-		ret = lxc_attach_to_ns(init_pid);
-		if (ret < 0) {
-			ERROR("failed to enter the namespace");
-			return -1;
-		}
-
-		if (curdir && chdir(curdir))
-			WARN("could not change directory to '%s'", curdir);
-
-		free(curdir);
+		lxc_cgroup_dispose_attach(cgroup_data);
 
 		if (new_personality < 0)
 			new_personality = init_ctx->personality;
