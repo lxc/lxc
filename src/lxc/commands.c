@@ -154,11 +154,32 @@ pid_t get_init_pid(const char *name)
 	return command.answer.pid;
 }
 
+int lxc_get_clone_flags(const char *name)
+{
+	struct lxc_command command = {
+		.request = { .type = LXC_COMMAND_CLONE_FLAGS },
+	};
+
+	int ret, stopped = 0;
+
+	ret = lxc_command(name, &command, &stopped);
+	if (ret < 0 && stopped)
+		return -1;
+
+	if (ret < 0) {
+		ERROR("failed to send command");
+		return -1;
+	}
+
+	return command.answer.ret;
+}
+
 extern void lxc_console_remove_fd(int, struct lxc_tty_info *);
 extern int  lxc_console_callback(int, struct lxc_request *, struct lxc_handler *);
 extern int  lxc_stop_callback(int, struct lxc_request *, struct lxc_handler *);
 extern int  lxc_state_callback(int, struct lxc_request *, struct lxc_handler *);
 extern int  lxc_pid_callback(int, struct lxc_request *, struct lxc_handler *);
+extern int  lxc_clone_flags_callback(int, struct lxc_request *, struct lxc_handler *);
 
 static int trigger_command(int fd, struct lxc_request *request,
 			   struct lxc_handler *handler)
@@ -166,10 +187,11 @@ static int trigger_command(int fd, struct lxc_request *request,
 	typedef int (*callback)(int, struct lxc_request *, struct lxc_handler *);
 
 	callback cb[LXC_COMMAND_MAX] = {
-		[LXC_COMMAND_TTY]   = lxc_console_callback,
-		[LXC_COMMAND_STOP]  = lxc_stop_callback,
-		[LXC_COMMAND_STATE] = lxc_state_callback,
-		[LXC_COMMAND_PID]   = lxc_pid_callback,
+		[LXC_COMMAND_TTY]         = lxc_console_callback,
+		[LXC_COMMAND_STOP]        = lxc_stop_callback,
+		[LXC_COMMAND_STATE]       = lxc_state_callback,
+		[LXC_COMMAND_PID]         = lxc_pid_callback,
+		[LXC_COMMAND_CLONE_FLAGS] = lxc_clone_flags_callback,
 	};
 
 	if (request->type < 0 || request->type >= LXC_COMMAND_MAX)
