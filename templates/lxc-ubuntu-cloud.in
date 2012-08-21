@@ -253,6 +253,11 @@ fi
 
 filename=`basename $url2`
 
+wgetcleanup()
+{
+	rm -f $filename
+}
+
 buildcleanup()
 {
     cd $rootfs
@@ -271,7 +276,7 @@ build_root_tgz()
     xdir=`mktemp -d -p .`
     tarname=`basename $url`
     imgname="$release-*-cloudimg-$arch.img"
-    trap buildcleanup EXIT
+    trap buildcleanup EXIT SIGHUP SIGINT SIGTERM
     if [ $flushcache -eq 1 -o ! -f $cache/$tarname ]; then
         rm -f $tarname
         echo "Downloading cloud image from $url"
@@ -286,6 +291,9 @@ build_root_tgz()
     rmdir $xdir
     echo "New cloud image cache created"
     trap EXIT
+    trap SIGHUP
+    trap SIGINT
+    trap SIGTERM
 }
 
 mkdir -p /var/lock/subsys/
@@ -298,9 +306,14 @@ mkdir -p /var/lock/subsys/
         rm -f $filename
     fi
 
+    trap wgetcleanup EXIT SIGHUP SIGINT SIGTERM
     if [ ! -f $filename ]; then
        wget $url2 || build_root_tgz $url1 $filename
     fi
+    trap EXIT
+    trap SIGHUP
+    trap SIGINT
+    trap SIGTERM
 
     echo "Extracting container rootfs"
     mkdir -p $rootfs

@@ -146,6 +146,12 @@ EOF
     fi
 }
 
+cleanup()
+{
+    rm -rf $cache/partial-$arch
+    rm -rf $cache/rootfs-$arch
+}
+
 download_ubuntu()
 {
     cache=$1
@@ -155,6 +161,7 @@ download_ubuntu()
     packages=vim,ssh
     echo "installing packages: $packages"
 
+    trap cleanup EXIT SIGHUP SIGINT SIGTERM
     # check the mini ubuntu was not already downloaded
     mkdir -p "$cache/partial-$arch"
     if [ $? -ne 0 ]; then
@@ -202,6 +209,10 @@ EOF
     fi
 
     mv "$1/partial-$arch" "$1/rootfs-$arch"
+    trap EXIT
+    trap SIGINT
+    trap SIGTERM
+    trap SIGHUP
     echo "Download complete"
     return 0
 }
