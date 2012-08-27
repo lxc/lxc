@@ -1,1 +1,1 @@
-SUBDIRS = lxc tests
+SUBDIRS = lxc tests python-lxc
