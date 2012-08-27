@@ -122,4 +122,5 @@ extern int lxc_neigh_proxy_on(const char *name, int family);
  */
 extern int lxc_neigh_proxy_off(const char *name, int family);
 
+extern const char *lxc_net_type_to_str(int type);
 #endif

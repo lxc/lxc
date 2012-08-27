@@ -109,6 +109,9 @@ lxc_log_define(lxc_conf, lxc);
 #define PR_CAPBSET_DROP 24
 #endif
 
+char *lxchook_names[NUM_LXC_HOOKS] = {
+	"pre-start", "mount", "start", "post-stop" };
+
 extern int pivot_root(const char * new_root, const char * put_old);
 
 typedef int (*instanciate_cb)(struct lxc_handler *, struct lxc_netdev *);
@@ -1661,7 +1664,7 @@ static int setup_netdev(struct lxc_netdev *netdev)
 				      ifname, strerror(-err));
 			if (netdev->ipv6_gateway_auto) {
 				char buf[INET6_ADDRSTRLEN];
-				inet_ntop(AF_INET, netdev->ipv6_gateway, buf, sizeof(buf));
+				inet_ntop(AF_INET6, netdev->ipv6_gateway, buf, sizeof(buf));
 				ERROR("tried to set autodetected ipv6 gateway '%s'", buf);
 			}
 			return -1;
@@ -2351,6 +2354,198 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf)
 		ret = run_script(name, "lxc", hookname, hook, NULL);
 		if (ret)
 			return ret;
+	}
+	return 0;
+}
+
+static int lxc_remove_nic(struct lxc_list *it)
+{
+	struct lxc_netdev *netdev = it->elem;
+	struct lxc_list *it2;
+
+	lxc_list_del(it);
+
+	if (netdev->link)
+		free(netdev->link);
+	if (netdev->name)
+		free(netdev->name);
+	if (netdev->upscript)
+		free(netdev->upscript);
+	if (netdev->hwaddr)
+		free(netdev->hwaddr);
+	if (netdev->mtu)
+		free(netdev->mtu);
+	if (netdev->ipv4_gateway)
+		free(netdev->ipv4_gateway);
+	if (netdev->ipv6_gateway)
+		free(netdev->ipv6_gateway);
+	lxc_list_for_each(it2, &netdev->ipv4) {
+		lxc_list_del(it2);
+		free(it2->elem);
+		free(it2);
+	}
+	lxc_list_for_each(it2, &netdev->ipv6) {
+		lxc_list_del(it2);
+		free(it2->elem);
+		free(it2);
+	}
+	free(it);
+}
+
+/* we get passed in something like '0', '0.ipv4' or '1.ipv6' */
+int lxc_clear_nic(struct lxc_conf *c, char *key)
+{
+	char *p1;
+	int ret, idx, i;
+	struct lxc_list *it;
+	struct lxc_netdev *netdev;
+
+	p1 = index(key, '.');
+	if (!p1 || *(p1+1) == '\0')
+		p1 = NULL;
+
+	ret = sscanf(key, "%d", &idx);
+	if (ret != 1) return -1;
+	if (idx < 0)
+		return -1;
+
+	i = 0;
+	lxc_list_for_each(it, &c->network) {
+		if (i == idx)
+			break;
+		i++;
+	}
+	if (i < idx)  // we don't have that many nics defined
+		return -1;
+
+	if (!it || !it->elem)
+		return -1;
+
+	netdev = it->elem;
+
+	if (!p1) {
+		lxc_remove_nic(it);
+	} else if (strcmp(p1, "ipv4") == 0) {
+		struct lxc_list *it2;
+		lxc_list_for_each(it2, &netdev->ipv4) {
+			lxc_list_del(it2);
+			free(it2->elem);
+			free(it2);
+		}
+	} else if (strcmp(p1, "ipv6") == 0) {
+		struct lxc_list *it2;
+		lxc_list_for_each(it2, &netdev->ipv6) {
+			lxc_list_del(it2);
+			free(it2->elem);
+			free(it2);
+		}
+	} else if (strcmp(p1, "link") == 0) {
+		if (netdev->link) {
+			free(netdev->link);
+			netdev->link = NULL;
+		}
+	} else if (strcmp(p1, "name") == 0) {
+		if (netdev->name) {
+			free(netdev->name);
+			netdev->name = NULL;
+		}
+	} else if (strcmp(p1, "script.up") == 0) {
+		if (netdev->upscript) {
+			free(netdev->upscript);
+			netdev->upscript = NULL;
+		}
+	} else if (strcmp(p1, "hwaddr") == 0) {
+		if (netdev->hwaddr) {
+			free(netdev->hwaddr);
+			netdev->hwaddr = NULL;
+		}
+	} else if (strcmp(p1, "mtu") == 0) {
+		if (netdev->mtu) {
+			free(netdev->mtu);
+			netdev->mtu = NULL;
+		}
+	} else if (strcmp(p1, "ipv4_gateway") == 0) {
+		if (netdev->ipv4_gateway) {
+			free(netdev->ipv4_gateway);
+			netdev->ipv4_gateway = NULL;
+		}
+	} else if (strcmp(p1, "ipv6_gateway") == 0) {
+		if (netdev->ipv6_gateway) {
+			free(netdev->ipv6_gateway);
+			netdev->ipv6_gateway = NULL;
+		}
+	}
+		else return -1;
+
+	return 0;
+}
+
+int lxc_clear_config_network(struct lxc_conf *c)
+{
+	struct lxc_list *it;
+	lxc_list_for_each(it, &c->network) {
+		lxc_remove_nic(it);
+	}
+	return 0;
+}
+
+int lxc_clear_config_caps(struct lxc_conf *c)
+{
+	struct lxc_list *it;
+
+	lxc_list_for_each(it, &c->caps) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+	return 0;
+}
+
+int lxc_clear_cgroups(struct lxc_conf *c, char *key)
+{
+	struct lxc_list *it;
+	bool all = false;
+	char *k = key + 11;
+
+	if (strcmp(key, "lxc.cgroup") == 0)
+		all = true;
+
+	lxc_list_for_each(it, &c->cgroup) {
+		struct lxc_cgroup *cg = it->elem;
+		if (!all && strcmp(cg->subsystem, k) != 0)
+			continue;
+		lxc_list_del(it);
+		free(cg->subsystem);
+		free(cg->value);
+		free(cg);
+		free(it);
+	}
+	return 0;
+}
+
+int lxc_clear_mount_entries(struct lxc_conf *c)
+{
+	struct lxc_list *it;
+
+	lxc_list_for_each(it, &c->mount_list) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+	return 0;
+}
+
+int lxc_clear_hooks(struct lxc_conf *c)
+{
+	struct lxc_list *it;
+	int i;
+
+	for (i=0; i<NUM_LXC_HOOKS; i++) {
+		lxc_list_for_each(it, &c->hooks[i]) {
+			lxc_list_del(it);
+			free(it->elem);
+			free(it);
+		}
 	}
 	return 0;
 }

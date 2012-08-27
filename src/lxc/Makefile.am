@@ -13,7 +13,9 @@ pkginclude_HEADERS = \
 		list.h \
 		log.h \
 		state.h \
-		attach.h
+		attach.h \
+		lxccontainer.h \
+		lxclock.h
 
 sodir=$(libdir)
 # use PROGRAMS to avoid complains from automake
@@ -55,12 +57,15 @@ liblxc_so_SOURCES = \
 	af_unix.c af_unix.h \
 	\
 	utmp.c utmp.h \
-	apparmor.c apparmor.h
+	apparmor.c apparmor.h \
+	lxclock.h lxclock.c \
+	lxccontainer.c lxccontainer.h
 
 AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
-	-DLXCINITDIR=\"$(LXCINITDIR)\"
+	-DLXCINITDIR=\"$(LXCINITDIR)\" \
+	-DLXCTEMPLATEDIR=\"$(LXCTEMPLATEDIR)\"
 
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
@@ -77,7 +82,7 @@ liblxc_so_LDFLAGS = \
 	-shared \
 	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,$(VERSION)))
 
-liblxc_so_LDADD = -lutil $(CAP_LIBS) $(APPARMOR_LIBS) $(SECCOMP_LIBS)
+liblxc_so_LDADD = -lutil $(CAP_LIBS) $(APPARMOR_LIBS) $(SECCOMP_LIBS) -lrt
 
 bin_SCRIPTS = \
 	lxc-ps \
@@ -116,7 +121,7 @@ AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
 AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
 endif
-LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@ @SECCOMP_LIBS@
+LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@ @SECCOMP_LIBS@ -lrt
 
 lxc_attach_SOURCES = lxc_attach.c
 lxc_cgroup_SOURCES = lxc_cgroup.c

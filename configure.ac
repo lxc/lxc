@@ -192,6 +192,8 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-shutdown
 	src/lxc/lxc-destroy
 
+	src/tests/Makefile
+
 ])
 AC_CONFIG_COMMANDS([default],[[]],[[]])
 AC_OUTPUT

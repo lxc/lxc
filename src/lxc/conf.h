@@ -209,6 +209,8 @@ struct lxc_rootfs {
 enum lxchooks {
 	LXCHOOK_PRESTART, LXCHOOK_MOUNT, LXCHOOK_START,
 	LXCHOOK_POSTSTOP, NUM_LXC_HOOKS};
+extern char *lxchook_names[NUM_LXC_HOOKS];
+
 struct lxc_conf {
 	char *fstab;
 	int tty;
@@ -234,6 +236,7 @@ struct lxc_conf {
 	int lsm_umount_proc;
 #endif
 	char *seccomp;  // filename with the seccomp rules
+	int maincmd_fd;
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);
@@ -252,6 +255,13 @@ extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
 
 extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
+
+extern int lxc_clear_config_network(struct lxc_conf *c);
+extern int lxc_clear_nic(struct lxc_conf *c, char *key);
+extern int lxc_clear_config_caps(struct lxc_conf *c);
+extern int lxc_clear_cgroups(struct lxc_conf *c, char *key);
+extern int lxc_clear_mount_entries(struct lxc_conf *c);
+extern int lxc_clear_hooks(struct lxc_conf *c);
 
 /*
  * Configure the container from inside

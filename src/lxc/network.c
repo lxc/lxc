@@ -47,6 +47,7 @@
 
 #include "nl.h"
 #include "network.h"
+#include "conf.h"
 
 #ifndef IFLA_LINKMODE
 #  define IFLA_LINKMODE 17
@@ -1003,4 +1004,19 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 		err = -errno;
 
 	return err;
+}
+
+static char* lxc_network_types[LXC_NET_MAXCONFTYPE + 1] = {
+	[LXC_NET_VETH]    = "veth",
+	[LXC_NET_MACVLAN] = "macvlan",
+	[LXC_NET_VLAN]    = "vlan",
+	[LXC_NET_PHYS]    = "phys",
+	[LXC_NET_EMPTY]   = "empty",
+};
+
+const char *lxc_net_type_to_str(int type)
+{
+	if (type < 0 || type > LXC_NET_MAXCONFTYPE)
+		return NULL;
+	return lxc_network_types[type];
 }
