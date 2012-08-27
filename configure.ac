@@ -12,6 +12,11 @@ AM_PROG_CC_C_O
 AC_GNU_SOURCE
 AC_CHECK_PROG(SETCAP, setcap, yes, no, $PATH$PATH_SEPARATOR/sbin)
 
+if test -f /etc/debian_version; then
+    osname="debian"
+fi
+AM_CONDITIONAL([HAVE_DEBIAN], [test x"$osname" == xdebian])
+
 AC_ARG_ENABLE([rpath],
 	[AC_HELP_STRING([--disable-rpath], [do not set rpath in executables])],
 	[], [enable_rpath=yes])
@@ -66,6 +71,17 @@ AC_ARG_ENABLE([examples],
 	[], [enable_examples=yes])
 
 AM_CONDITIONAL([ENABLE_EXAMPLES], [test "x$enable_examples" = "xyes"])
+
+AC_ARG_ENABLE([python],
+	[AC_HELP_STRING([--enable-python], [enable python binding])],
+	[enable_python=yes], [enable_python=no])
+
+AM_CONDITIONAL([ENABLE_PYTHON], [test "x$enable_python" = "xyes"])
+
+AM_COND_IF([ENABLE_PYTHON],
+    [AM_PATH_PYTHON([3.2], [], [AC_MSG_ERROR([You must install python3])])
+     AC_CHECK_HEADER([python$PYTHON_VERSION/Python.h],[],[AC_MSG_ERROR([You must install python3-dev])])
+     AC_DEFINE_UNQUOTED([ENABLE_PYTHON], 1, [Python3 is available])])
 
 AS_AC_EXPAND(PREFIX, $prefix)
 AS_AC_EXPAND(LIBDIR, $libdir)
@@ -191,6 +207,8 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-clone
 	src/lxc/lxc-shutdown
 	src/lxc/lxc-destroy
+
+	src/python-lxc/Makefile
 
 	src/tests/Makefile
 
