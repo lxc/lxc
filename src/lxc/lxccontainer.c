@@ -244,6 +244,26 @@ static void lxcapi_want_daemonize(struct lxc_container *c)
 	c->daemonize = 1;
 }
 
+static bool lxcapi_wait(struct lxc_container *c, char *state, int timeout)
+{
+	int ret;
+
+	if (!c)
+		return false;
+
+	ret = lxc_wait(c->name, state, timeout);
+	return ret == 0;
+}
+
+
+static bool wait_on_daemonized_start(struct lxc_container *c)
+{
+	/* we'll probably want to make this timeout configurable? */
+	int timeout = 5;
+
+	return lxcapi_wait(c, "RUNNING", timeout);
+}
+
 /*
  * I can't decide if it'd be more convenient for callers if we accept '...',
  * or a null-terminated array (i.e. execl vs execv)
@@ -298,7 +318,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char ** argv)
 			return false;
 		}
 		if (pid != 0)
-			return true;
+			return wait_on_daemonized_start(c);
 		/* like daemon(), chdir to / and redirect 0,1,2 to /dev/null */
 		chdir("/");
 		close(0);
@@ -405,17 +425,6 @@ static bool lxcapi_stop(struct lxc_container *c)
 
 	ret = lxc_stop(c->name);
 
-	return ret == 0;
-}
-
-static bool lxcapi_wait(struct lxc_container *c, char *state, int timeout)
-{
-	int ret;
-
-	if (!c)
-		return false;
-
-	ret = lxc_wait(c->name, state, timeout);
 	return ret == 0;
 }
 
