@@ -77,25 +77,6 @@ Options :\n\
 	.checker  = my_checker,
 };
 
-static int fillwaitedstates(char *strstates, int *states)
-{
-	char *token, *saveptr = NULL;
-	int state;
-
-	token = strtok_r(strstates, "|", &saveptr);
-	while (token) {
-
-		state = lxc_str2state(token);
-		if (state < 0)
-			return -1;
-
-		states[state] = 1;
-
-		token = strtok_r(NULL, "|", &saveptr);
-	}
-	return 0;
-}
-
 static void timeout_handler(int signal)
 {
 	exit(-1);
@@ -114,57 +95,5 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	if (fillwaitedstates(my_args.states, s))
-		return -1;
-
-	fd = lxc_monitor_open();
-	if (fd < 0)
-		return -1;
-
-	/*
-	 * if container present,
-	 * then check if already in requested state
-	 */
-	ret = -1;
-	state = lxc_getstate(my_args.name);
-	if (state < 0) {
-		goto out_close;
-	} else if ((state >= 0) && (s[state])) {
-		ret = 0;
-		goto out_close;
-	}
-
-	signal(SIGALRM, timeout_handler);
-	alarm(my_args.timeout);
-
-	for (;;) {
-		if (lxc_monitor_read(fd, &msg) < 0)
-			goto out_close;
-
-		if (strcmp(my_args.name, msg.name))
-			continue;
-
-		switch (msg.type) {
-		case lxc_msg_state:
-			if (msg.value < 0 || msg.value >= MAX_STATE) {
-				ERROR("Receive an invalid state number '%d'",
-					msg.value);
-				goto out_close;
-			}
-
-			if (s[msg.value]) {
-				alarm(0);
-				ret = 0;
-				goto out_close;
-			}
-			break;
-		default:
-			/* just ignore garbage */
-			break;
-		}
-	}
-
-out_close:
-	lxc_monitor_close(fd);
-	return ret;
+	return lxc_wait(my_args.name, my_args.states, my_args.timeout);
 }

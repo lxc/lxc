@@ -327,5 +327,6 @@ extern int lxc_command_mainloop_add(const char *name,
 		close(fd);
 	}
 
+	handler->conf->maincmd_fd = fd;
 	return ret;
 }
