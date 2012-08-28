@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 cleanup() {
     rm -f /etc/lxc/test-busybox.conf
