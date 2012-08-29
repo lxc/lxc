@@ -419,9 +419,12 @@ static int lxc_one_cgroup_create(const char *name,
 	}
 
 	/* if cgparent does not exist, create it */
-	if (access(cgparent, F_OK) && mkdir(cgparent, 0755)) {
-		SYSERROR("failed to create '%s' directory", cgparent);
-		return -1;
+	if (access(cgparent, F_OK)) {
+		ret = mkdir(cgparent, 0755);
+		if (ret == -1 && errno == EEXIST) {
+			SYSERROR("failed to create '%s' directory", cgparent);
+			return -1;
+		}
 	}
 
 	/*
