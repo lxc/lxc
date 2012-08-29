@@ -265,7 +265,7 @@ fi
 echo "Updating rootfs..."
 
 # so you can 'ssh $hostname.' or 'ssh $hostname.local'
-if [ -f $rootfs/etc/dhcp/dhclient.conf ]; then
+if [ -f $rootfs/etc/dhcp/dhclient.conf ] && ! grep -q "^send host-name.*hostname" $rootfs/etc/dhcp/dhclient.conf; then
     sed -i "s/send host-name.*$/send host-name \"$hostname\";/" $rootfs/etc/dhcp/dhclient.conf
 fi
 
