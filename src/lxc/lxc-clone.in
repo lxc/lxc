@@ -176,7 +176,7 @@ cp $lxc_path/$lxc_orig/config $lxc_path/$lxc_new/config
 sed -i '/lxc.utsname/d' $lxc_path/$lxc_new/config
 echo "lxc.utsname = $hostname" >> $lxc_path/$lxc_new/config
 
-grep "lxc.mount =" $lxc_path/$lxc_new/config >/dev/null 2>&1 && { sed -i '/lxc.mount =/d' $lxc_path/$lxc_new/config; echo "lxc.mount = $lxc_path/$lxc_new/fstab" >> $lxc_path/$lxc_new/config; }
+grep "lxc.mount[ \t]" $lxc_path/$lxc_new/config >/dev/null 2>&1 && { sed -i '/lxc.mount[ \t]/d' $lxc_path/$lxc_new/config; echo "lxc.mount = $lxc_path/$lxc_new/fstab" >> $lxc_path/$lxc_new/config; }
 
 if [ -e  $lxc_path/$lxc_orig/fstab ];then
     cp $lxc_path/$lxc_orig/fstab $lxc_path/$lxc_new/fstab
