@@ -224,6 +224,10 @@ lxc.tty=4
 lxc.pts=1024
 lxc.rootfs=${rootfs_path}
 lxc.mount=${config_path}/fstab
+
+# When using LXC with apparmor, uncomment the next line to run unconfined:
+#lxc.aa_profile = unconfined
+
 #networking
 lxc.network.type=${lxc_network_type}
 lxc.network.flags=up

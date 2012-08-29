@@ -233,6 +233,9 @@ lxc.utsname = $name
 lxc.tty = 1
 lxc.pts = 1
 lxc.rootfs = $rootfs
+
+# When using LXC with apparmor, uncomment the next line to run unconfined:
+#lxc.aa_profile = unconfined
 EOF
 
 if [ -d "$rootfs/lib" ]; then

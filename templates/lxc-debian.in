@@ -205,6 +205,10 @@ lxc.tty = 4
 lxc.pts = 1024
 lxc.rootfs = $rootfs
 lxc.utsname = $hostname
+
+# When using LXC with apparmor, uncomment the next line to run unconfined:
+#lxc.aa_profile = unconfined
+
 lxc.cgroup.devices.deny = a
 # /dev/null and zero
 lxc.cgroup.devices.allow = c 1:3 rwm
