@@ -221,9 +221,13 @@ if [ "$stream" != "daily" -a "$stream" != "released" ]; then
     exit 1
 fi
 
-if [ -n "$userdata" -a ! -f "$userdata" ]; then
-    echo "Userdata does not exist"
-    exit 1
+if [ -n "$userdata" ]; then
+    if [ ! -f "$userdata" ]; then
+        echo "Userdata ($userdata) does not exist"
+        exit 1
+    else
+        userdata=`readlink -f $userdata`
+    fi
 fi
 
 if [ -z "$path" ]; then
