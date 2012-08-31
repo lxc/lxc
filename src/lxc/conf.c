@@ -106,7 +106,7 @@ lxc_log_define(lxc_conf, lxc);
 #endif
 
 char *lxchook_names[NUM_LXC_HOOKS] = {
-	"pre-start", "mount", "start", "post-stop" };
+	"pre-start", "pre-mount", "mount", "start", "post-stop" };
 
 extern int pivot_root(const char * new_root, const char * put_old);
 
@@ -2224,6 +2224,8 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
+	HOOK(name, "pre-mount", lxc_conf);
+
 	if (setup_rootfs(&lxc_conf->rootfs)) {
 		ERROR("failed to setup rootfs for '%s'", name);
 		return -1;
@@ -2302,6 +2304,8 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf)
 
 	if (strcmp(hook, "pre-start") == 0)
 		which = LXCHOOK_PRESTART;
+	else if (strcmp(hook, "pre-mount") == 0)
+		which = LXCHOOK_PREMOUNT;
 	else if (strcmp(hook, "mount") == 0)
 		which = LXCHOOK_MOUNT;
 	else if (strcmp(hook, "start") == 0)
