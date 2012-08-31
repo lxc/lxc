@@ -98,6 +98,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.pivotdir",             config_pivotdir             },
 	{ "lxc.utsname",              config_utsname              },
 	{ "lxc.hook.pre-start",       config_hook                 },
+	{ "lxc.hook.pre-mount",           config_hook             },
 	{ "lxc.hook.mount",           config_hook                 },
 	{ "lxc.hook.start",           config_hook                 },
 	{ "lxc.hook.post-stop",       config_hook                 },
@@ -801,6 +802,8 @@ static int config_hook(const char *key, char *value,
 	}
 	if (strcmp(key, "lxc.hook.pre-start") == 0)
 		return add_hook(lxc_conf, LXCHOOK_PRESTART, copy);
+	else if (strcmp(key, "lxc.hook.pre-mount") == 0)
+		return add_hook(lxc_conf, LXCHOOK_PREMOUNT, copy);
 	else if (strcmp(key, "lxc.hook.mount") == 0)
 		return add_hook(lxc_conf, LXCHOOK_MOUNT, copy);
 	else if (strcmp(key, "lxc.hook.start") == 0)
