@@ -88,6 +88,17 @@ HostbasedAuthentication no
 PermitEmptyPasswords yes
 ChallengeResponseAuthentication no
 EOF
+
+    if [ -n "$auth_key" -a -f "$auth_key" ]; then
+        u_path="/root/.ssh"
+        root_u_path="$rootfs/$u_path"
+        mkdir -p $root_u_path
+        cp $auth_key "$root_u_path/authorized_keys"
+        chown -R 0:0 "$rootfs/$u_path"
+        chmod 700 "$rootfs/$u_path"
+        echo "Inserted SSH public key from $auth_key into /home/ubuntu/.ssh/authorized_keys"
+    fi
+
     return 0
 }
 
@@ -112,13 +123,17 @@ lxc.mount.entry=/usr usr none ro,bind 0 0
 lxc.mount.entry=/sbin sbin none ro,bind 0 0
 lxc.mount.entry=tmpfs var/run/sshd tmpfs mode=0644 0 0
 lxc.mount.entry=@LXCTEMPLATEDIR@/lxc-sshd sbin/init none bind 0 0
+lxc.mount.entry=proc $rootfs/proc proc nodev,noexec,nosuid 0 0
 EOF
 
-if [ "$(uname -m)" = "x86_64" ]; then
-    cat <<EOF >> $path/config
+    # if no .ipv4 section in config, then have the container run dhcp
+    grep -q "^lxc.network.ipv4" $path/config || touch $rootfs/run-dhcp
+
+    if [ "$(uname -m)" = "x86_64" ]; then
+        cat <<EOF >> $path/config
 lxc.mount.entry=/lib64 lib64 none ro,bind 0 0
 EOF
-fi
+    fi
 }
 
 usage()
@@ -129,10 +144,10 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n: -l help,path:,name: -- "$@")
+options=$(getopt -o hp:n:S: -l help,path:,name:,auth-key: -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
-	exit 1
+    exit 1
 fi
 eval set -- "$options"
 
@@ -141,7 +156,8 @@ do
     case "$1" in
         -h|--help)      usage $0 && exit 0;;
         -p|--path)      path=$2; shift 2;;
-	-n|--name)      name=$2; shift 2;;
+        -n|--name)      name=$2; shift 2;;
+        -S|--auth-key)  auth_key=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
     esac
@@ -164,6 +180,22 @@ if [ $0 == "/sbin/init" ]; then
     if [ $? -ne 0 ]; then
 	echo "'sshd' is not accessible on the system "
 	exit 1
+    fi
+
+    # run dhcp?
+    if [ -f /run-dhcp ]; then
+        type dhclient
+        if [ $? -ne 0 ]; then
+            echo "can't find dhclient"
+            exit 1
+        fi
+        touch /etc/fstab
+        rm -f /dhclient.conf
+        cat > /dhclient.conf << EOF
+send host-name "<hostname>";
+EOF
+        ifconfig eth0 up
+        dhclient eth0 -cf /dhclient.conf
     fi
 
     exec @LXCINITDIR@/lxc-init -- /usr/sbin/sshd
