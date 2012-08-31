@@ -75,6 +75,7 @@ Options :\n\
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,
+	.timeout = -1,
 };
 
 static void timeout_handler(int signal)
