@@ -2169,7 +2169,12 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 	}
 
 #if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
-	mounted = lsm_mount_proc_if_needed(lxc_conf->rootfs.path, lxc_conf->rootfs.mount);
+	INFO("rootfs path is .%s., mount is .%s.", lxc_conf->rootfs.path,
+		lxc_conf->rootfs.mount);
+	if (lxc_conf->rootfs.path == NULL || strlen(lxc_conf->rootfs.path) == 0)
+		mounted = 0;
+	else
+		mounted = lsm_mount_proc_if_needed(lxc_conf->rootfs.path, lxc_conf->rootfs.mount);
 	if (mounted == -1) {
 		SYSERROR("failed to mount /proc in the container.");
 		return -1;
