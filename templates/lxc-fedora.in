@@ -29,9 +29,7 @@
 arch=$(arch)
 cache_base=/var/cache/lxc/fedora/$arch
 default_path=/var/lib/lxc
-root_password=rooter
-lxc_network_type=veth
-lxc_network_link=virbr0
+root_password=root
 
 # is this fedora?
 [ -f /etc/fedora-release ] && is_fedora=true
@@ -52,7 +50,7 @@ configure_fedora()
 DEVICE=eth0
 BOOTPROTO=dhcp
 ONBOOT=yes
-HOSTNAME=${UTSNAME}
+HOSTNAME=${name}
 NM_CONTROLLED=no
 TYPE=Ethernet
 MTU=${MTU}
@@ -61,7 +59,7 @@ EOF
     # set the hostname
     cat <<EOF > ${rootfs_path}/etc/sysconfig/network
 NETWORKING=yes
-HOSTNAME=${UTSNAME}
+HOSTNAME=${name}
 EOF
 
     # set minimal hosts
@@ -92,12 +90,26 @@ EOF
     echo "setting root passwd to $root_password"
     echo "root:$root_password" | chroot $rootfs_path chpasswd
 
+    # specifying this in the initial packages doesn't always work.
+    echo "installing fedora-release package"
+    chroot ${rootfs_path} yum --releasever=${release} -y install fedora-release
+
+    # silence some needless startup errors
+    touch ${rootfs_path}/etc/fstab
+
+    # give us a console on /dev/console
+    sed -i 's/ACTIVE_CONSOLES=.*$/ACTIVE_CONSOLES="\/dev\/console \/dev\/tty[1-4]"/' \
+        ${rootfs_path}/etc/sysconfig/init
+
     return 0
 }
 configure_fedora_init()
 {
     sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.sysinit
     sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.d/rc.sysinit
+    # don't mount devpts, for pete's sake
+    sed -i 's/^.*dev.pts.*$/#\0/' ${rootfs_path}/etc/rc.sysinit
+    sed -i 's/^.*dev.pts.*$/#\0/' ${rootfs_path}/etc/rc.d/rc.sysinit
     chroot ${rootfs_path} chkconfig udev-post off
     chroot ${rootfs_path} chkconfig network on
 }
@@ -126,7 +138,7 @@ download_fedora()
     # download a mini fedora into a cache
     echo "Downloading fedora minimal ..."
     YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
-    PKG_LIST="yum initscripts passwd rsyslog vim-minimal dhclient chkconfig rootfiles policycoreutils"
+    PKG_LIST="yum initscripts passwd rsyslog vim-minimal dhclient chkconfig rootfiles policycoreutils fedora-release"
     MIRRORLIST_URL="http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$release&arch=$arch"
 
     DOWNLOAD_OK=no
@@ -241,12 +253,6 @@ lxc.mount  = $config_path/fstab
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
 
-#networking
-lxc.network.type = $lxc_network_type
-lxc.network.flags = up
-lxc.network.link = $lxc_network_link
-lxc.network.name = eth0
-lxc.network.mtu = 1500
 #cgroups
 lxc.cgroup.devices.deny = a
 # /dev/null and zero
@@ -268,7 +274,6 @@ EOF
 
     cat <<EOF > $config_path/fstab
 proc            proc         proc    nodev,noexec,nosuid 0 0
-devpts          dev/pts      devpts defaults 0 0
 sysfs           sys          sysfs defaults  0 0
 EOF
     if [ $? -ne 0 ]; then
@@ -345,9 +350,21 @@ if [ ! -z "$clean" -a -z "$path" ]; then
     exit 0
 fi
 
+needed_pkgs=""
 type yum >/dev/null 2>&1
 if [ $? -ne 0 ]; then
-    echo "'yum' command is missing"
+    needed_pkgs="yum $needed_pkgs"
+    exit 1
+fi
+
+type curl >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    needed_pkgs="curl $needed_pkgs"
+fi
+
+if [ -n "$needed_pkgs" ]; then
+    echo "Missing commands: $needed_pkgs"
+    echo "Please install these using \"sudo apt-get install $needed_pkgs\""
     exit 1
 fi
 
@@ -370,7 +387,11 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 
-rootfs_path=$path/rootfs
+rootfs_path=$path/$name/rootfs
+# check for 'lxc.rootfs' passed in through default config by lxc-create
+if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
+    rootfs_path=`grep 'lxc.rootfs =' $path/config | awk -F= '{ print $2 }'`
+fi
 config_path=$default_path/$name
 cache=$cache_base/$release
 
@@ -417,4 +438,3 @@ if [ ! -z $clean ]; then
     exit 0
 fi
 echo "container rootfs and config created"
-echo "container is configured for lxc.network.type=veth and lxc.network.link=virbr0 (which is default if you have libvirt runnig)"
