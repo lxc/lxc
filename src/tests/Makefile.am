@@ -1,3 +1,5 @@
+if ENABLE_TESTS
+
 LDADD = ../lxc/liblxc.so -lrt
 containertests_SOURCES = containertests.c
 locktests_SOURCES = locktests.c
@@ -15,3 +17,5 @@ AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCINITDIR=\"$(LXCINITDIR)\"
 
 bin_PROGRAMS = containertests locktests startone destroytest saveconfig createtest shutdowntest get_item getkeys
+
+endif
