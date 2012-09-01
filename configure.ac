@@ -83,6 +83,12 @@ AM_COND_IF([ENABLE_PYTHON],
      AC_CHECK_HEADER([python$PYTHON_VERSION/Python.h],[],[AC_MSG_ERROR([You must install python3-dev])])
      AC_DEFINE_UNQUOTED([ENABLE_PYTHON], 1, [Python3 is available])])
 
+AC_ARG_ENABLE([tests],
+	[AC_HELP_STRING([--enable-tests], [build test/example binaries])],
+	[enable_tests=yes], [enable_tests=no])
+
+AM_CONDITIONAL([ENABLE_TESTS], [test "x$enable_tests" = "xyes"])
+
 AS_AC_EXPAND(PREFIX, $prefix)
 AS_AC_EXPAND(LIBDIR, $libdir)
 AS_AC_EXPAND(BINDIR, $bindir)
