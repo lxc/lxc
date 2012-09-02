@@ -62,6 +62,10 @@
 #include "lxc.h"	/* for lxc_cgroup_set() */
 #include "caps.h"       /* for lxc_caps_last_cap() */
 
+#if HAVE_APPARMOR
+#include <apparmor.h>
+#endif
+
 lxc_log_define(lxc_conf, lxc);
 
 #define MAXHWLEN    18
