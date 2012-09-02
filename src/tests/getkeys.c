@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	int len, ret;
-	char v1[2], v2[256], v3[2048];
+	char v3[2048];
 
 	if ((c = lxc_container_new(MYNAME)) == NULL) {
 		fprintf(stderr, "%d: error opening lxc_container %s\n", __LINE__, MYNAME);
