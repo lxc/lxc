@@ -78,17 +78,8 @@ Options :\n\
 	.timeout = -1,
 };
 
-static void timeout_handler(int signal)
-{
-	exit(-1);
-}
-
 int main(int argc, char *argv[])
 {
-	struct lxc_msg msg;
-	int s[MAX_STATE] = { }, fd;
-	int state, ret;
-
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
 
