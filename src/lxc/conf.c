@@ -2328,7 +2328,7 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf)
 	return 0;
 }
 
-static int lxc_remove_nic(struct lxc_list *it)
+static void lxc_remove_nic(struct lxc_list *it)
 {
 	struct lxc_netdev *netdev = it->elem;
 	struct lxc_list *it2;
