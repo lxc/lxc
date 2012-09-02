@@ -1399,7 +1399,7 @@ static int lxc_get_mount_entries(struct lxc_conf *c, char *retv, int inlen)
 static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen, char *key)
 {
 	char *p1;
-	int i, len, fulllen = 0;
+	int len, fulllen = 0;
 	struct lxc_netdev *netdev;
 
 	if (!retv)
