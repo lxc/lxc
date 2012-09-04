@@ -2253,7 +2253,10 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	HOOK(name, "pre-mount", lxc_conf);
+	if (run_lxc_hooks(name, "pre-mount", lxc_conf)) {
+		ERROR("failed to run pre-mount hooks for container '%s'.", name);
+		return -1;
+	}
 
 	if (setup_rootfs(&lxc_conf->rootfs)) {
 		ERROR("failed to setup rootfs for '%s'", name);
