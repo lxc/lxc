@@ -47,6 +47,10 @@
 #ifndef CLONE_NEWNET
 #  define CLONE_NEWNET            0x40000000
 #endif
+int clone(int (*fn)(void *), void *child_stack,
+	int flags, void *arg, ...
+	/* pid_t *ptid, struct user_desc *tls, pid_t *ctid */ );
+
 
 extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags);
 
