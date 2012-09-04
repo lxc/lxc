@@ -1530,7 +1530,7 @@ int lxc_get_config_item(struct lxc_conf *c, char *key, char *retv, int inlen)
 	else if (strncmp(key, "lxc.cgroup.", 11) == 0) // specific cgroup info
 		return lxc_get_cgroup_entry(c, retv, inlen, key + 11);
 	else if (strcmp(key, "lxc.utsname") == 0)
-		v = c->utsname->nodename;
+		v = c->utsname ? c->utsname->nodename : NULL;
 	else if (strcmp(key, "lxc.console") == 0)
 		v = c->console.path;
 	else if (strcmp(key, "lxc.rootfs.mount") == 0)
