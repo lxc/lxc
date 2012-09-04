@@ -240,12 +240,6 @@ struct lxc_conf {
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);
-/* we don't want to stick with the HOOK define, it's just to easily start */
-#define HOOK(name, which, conf) \
-	do { \
-		int hookret = run_lxc_hooks(name, which, conf); \
-		if (hookret) return -1; \
-	} while (0);
 
 /*
  * Initialize the lxc configuration structure
