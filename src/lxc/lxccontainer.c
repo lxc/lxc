@@ -320,7 +320,10 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char ** argv)
 		if (pid != 0)
 			return wait_on_daemonized_start(c);
 		/* like daemon(), chdir to / and redirect 0,1,2 to /dev/null */
-		chdir("/");
+		if (chdir("/")) {
+			SYSERROR("Error chdir()ing to /.");
+			return false;
+		}
 		close(0);
 		close(1);
 		close(2);
