@@ -906,7 +906,7 @@ err:
 	return NULL;
 }
 
-int lxc_get_wait_states(char **states)
+int lxc_get_wait_states(const char **states)
 {
 	int i;
 

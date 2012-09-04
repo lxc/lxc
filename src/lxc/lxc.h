@@ -201,7 +201,7 @@ extern int lxc_container_put(struct lxc_container *c);
  * Get a list of valid wait states.
  * If states is NULL, simply return the number of states
  */
-extern int lxc_get_wait_states(char **states);
+extern int lxc_get_wait_states(const char **states);
 
 #ifdef __cplusplus
 }

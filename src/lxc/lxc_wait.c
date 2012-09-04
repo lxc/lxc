@@ -87,5 +87,5 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	return lxc_wait(my_args.name, my_args.states, my_args.timeout);
+	return lxc_wait(strdup(my_args.name), my_args.states, my_args.timeout);
 }
