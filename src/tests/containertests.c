@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%d: lxc_get_wait_states gave %d not %d\n", __LINE__, numstates, MAX_STATE);
 		goto out;
 	}
-	char **sstr = malloc(numstates * sizeof(char *));
+	const char **sstr = malloc(numstates * sizeof(const char *));
 	numstates = lxc_get_wait_states(sstr);
 	int i;
 	for (i=0; i<numstates; i++) {
