@@ -359,7 +359,10 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 		goto out_free_name;
 	}
 
-	HOOK(name, "pre-start", conf);
+	if (run_lxc_hooks(name, "pre-start", conf)) {
+		ERROR("failed to run pre-start hooks for container '%s'.", name);
+		goto out_aborting;
+	}
 
 	if (lxc_create_tty(name, conf)) {
 		ERROR("failed to create the ttys");
@@ -405,7 +408,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_set_state(name, handler, STOPPING);
 	lxc_set_state(name, handler, STOPPED);
 
-	HOOK(name, "post-stop", handler->conf);
+	if (run_lxc_hooks(name, "post-stop", handler->conf))
+		ERROR("failed to run post-stop hooks for container '%s'.", name);
 
 	/* reset mask set by setup_signal_fd */
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL))
@@ -526,9 +530,12 @@ static int do_start(void *data)
 	if (apparmor_load(handler) < 0)
 		goto out_warn_father;
 
-	close(handler->sigfd);
+	if (run_lxc_hooks(handler->name, "start", handler->conf)) {
+		ERROR("failed to run start hooks for container '%s'.", handler->name);
+		goto out_warn_father;
+	}
 
-	HOOK(handler->name, "start", handler->conf);
+	close(handler->sigfd);
 
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
