@@ -215,6 +215,15 @@ static pid_t lxcapi_init_pid(struct lxc_container *c)
 	return ret;
 }
 
+static bool load_config_locked(struct lxc_container *c, char *fname)
+{
+	if (!c->lxc_conf)
+		c->lxc_conf = lxc_conf_init();
+	if (c->lxc_conf && !lxc_config_read(fname, c->lxc_conf))
+		return true;
+	return false;
+}
+
 static bool lxcapi_load_config(struct lxc_container *c, char *alt_file)
 {
 	bool ret = false;
@@ -229,10 +238,7 @@ static bool lxcapi_load_config(struct lxc_container *c, char *alt_file)
 		return false;
 	if (lxclock(c->slock, 0))
 		return false;
-	if (!c->lxc_conf)
-		c->lxc_conf = lxc_conf_init();
-	if (c->lxc_conf && !lxc_config_read(fname, c->lxc_conf))
-		ret = true;
+	ret = load_config_locked(c, fname);
 	lxcunlock(c->slock);
 	return ret;
 }
@@ -596,11 +602,18 @@ again:
 		goto out_unlock;
 	}
 
-	if (WEXITSTATUS(status) != 0)
+	if (WEXITSTATUS(status) != 0) {
 		ERROR("container creation template for %s exited with %d\n",
 		      c->name, WEXITSTATUS(status));
-	else
-		bret = true;
+		goto out_unlock;
+	}
+
+	// now clear out the lxc_conf we have, reload from the created
+	// container
+	if (c->lxc_conf)
+		lxc_conf_free(c->lxc_conf);
+	c->lxc_conf = NULL;
+	bret = load_config_locked(c, c->configfile);
 
 out_unlock:
 	lxcunlock(c->slock);

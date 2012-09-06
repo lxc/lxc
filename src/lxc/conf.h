@@ -245,6 +245,7 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);
  * Initialize the lxc configuration structure
  */
 extern struct lxc_conf *lxc_conf_init(void);
+extern void lxc_conf_free(struct lxc_conf *conf);
 
 extern int pin_rootfs(const char *rootfs);
 

@@ -2556,3 +2556,21 @@ int lxc_clear_hooks(struct lxc_conf *c)
 	}
 	return 0;
 }
+
+void lxc_conf_free(struct lxc_conf *conf)
+{
+	if (!conf)
+		return;
+	if (conf->console.path)
+		free(conf->console.path);
+	if (conf->rootfs.mount != LXCROOTFSMOUNT)
+		free(conf->rootfs.mount);
+	lxc_clear_config_network(conf);
+	if (conf->aa_profile)
+		free(conf->aa_profile);
+	lxc_clear_config_caps(conf);
+	lxc_clear_cgroups(conf, "lxc.cgroup");
+	lxc_clear_hooks(conf);
+	lxc_clear_mount_entries(conf);
+	free(conf);
+}
