@@ -660,6 +660,85 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       </variablelist>
     </refsect2>
 
+    <refsect2>
+      <title>Startup hooks</title>
+      <para>
+        Startup hooks are programs or scripts which can be executed
+	at various times in a container's lifetime.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.pre-start</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      A hook to be run in the host's namespace before the
+	      container ttys, consoles, or mounts are up.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.pre-mount</option>
+	  </term>
+	  <listitem>
+	    <para>
+	    (Not yet implemented)
+	      A hook to be run in the container's fs namespace but before
+	      the rootfs has been set up.  This allows for manipulation
+	      of the rootfs, i.e. to mount an encrypted filesystem.  Mounts
+	      done in this hook will not be reflected on the host (apart from
+	      mounts propagation), so they will be automatically cleaned up
+	      when the container shuts down.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.mount</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      A hook to be run in the container's namespace after
+	      mounting has been done, but before the pivot_root.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.start</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      A hook to be run in the container's namespace immediately
+	      before executing the container's init.  This requires the
+	      program to be available in the container.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.post-stop</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      A hook to be run in the host's namespace after the
+	      container has been shut down.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
   </refsect1>
 
   <refsect1>
