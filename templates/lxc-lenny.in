@@ -307,7 +307,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-copy_configuration $path $rootfs
+copy_configuration $path $rootfs $name
 if [ $? -ne 0 ]; then
     echo "failed write configuration file"
     exit 1
