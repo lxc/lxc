@@ -32,6 +32,7 @@ import warnings
 warnings.warn("The python-lxc API isn't yet stable "
               "and may change at any point in the future.", Warning, 2)
 
+
 class ContainerNetwork():
     props = {}
 
@@ -141,6 +142,9 @@ class Container(_lxc.Container):
         """
             Creates a new Container instance.
         """
+
+        if os.geteuid() != 0:
+            raise Exception("Running as non-root.")
 
         _lxc.Container.__init__(self, name)
         self.network = ContainerNetworkList(self)
