@@ -283,8 +283,8 @@ static int run_script(const char *name, const char *section,
 
 	free(output);
 
-	if (pclose(f)) {
-		ERROR("Script exited on error");
+	if (pclose(f) == -1) {
+		SYSERROR("Script exited on error");
 		return -1;
 	}
 
