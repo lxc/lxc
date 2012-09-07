@@ -97,6 +97,10 @@ bin_SCRIPTS = \
 	lxc-shutdown \
 	lxc-destroy
 
+if ENABLE_PYTHON
+    bin_SCRIPTS += lxc-start-ephemeral
+endif
+
 bin_PROGRAMS = \
 	lxc-attach \
 	lxc-unshare \
