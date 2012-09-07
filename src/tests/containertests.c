@@ -220,7 +220,9 @@ int main(int argc, char *argv[])
 
 	printf("hit return to start container");
 	char mychar;
-	scanf("%c", &mychar);
+	ret = scanf("%c", &mychar);
+	if (ret < 0)
+		goto out;
 
 	/* non-daemonized is tested in 'startone' */
 	c->want_daemonize(c);
@@ -242,7 +244,10 @@ int main(int argc, char *argv[])
 	}
 
 	printf("hit return to finish");
-	scanf("%c", &mychar);
+	ret = scanf("%c", &mychar);
+	if (ret < 0)
+		goto out;
+
 
 	fprintf(stderr, "all lxc_container tests passed for %s\n", c->name);
 	ret = 0;
