@@ -59,14 +59,6 @@ convert_tuple_to_char_pointer_array(PyObject *argv) {
     return result;
 }
 
-void zombie_handler(int sig)
-{
-    signal(SIGCHLD,zombie_handler);
-    int status;
-
-    waitpid(-1, &status, WNOHANG);
-}
-
 static void
 Container_dealloc(Container* self)
 {
@@ -353,7 +345,6 @@ Container_start(Container *self, PyObject *args, PyObject *kwds)
         }
     }
 
-    signal(SIGCHLD, zombie_handler);
     self->container->want_daemonize(self->container);
 
     if (self->container->start(self->container, init_useinit, init_args)) {
