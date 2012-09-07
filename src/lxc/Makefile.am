@@ -144,6 +144,10 @@ lxc_unshare_SOURCES = lxc_unshare.c
 lxc_wait_SOURCES = lxc_wait.c
 lxc_kill_SOURCES = lxc_kill.c
 
+lxc-start-ephemeral: lxc-start-ephemeral.in
+	[ -f $@ ] && rm -f $@ || true
+	$(SED) -e "s:[@]LXCPATH@:$(LXCPATH):" $< > $@
+
 install-exec-local: install-soPROGRAMS
 	mv $(DESTDIR)$(libdir)/liblxc.so $(DESTDIR)$(libdir)/liblxc.so.$(VERSION)
 	/sbin/ldconfig -l $(DESTDIR)$(libdir)/liblxc.so.$(VERSION)

@@ -143,6 +143,7 @@ AC_CHECK_DECLS([PR_CAPBSET_DROP], [], [], [#include <sys/prctl.h>])
 AC_CHECK_HEADERS([sys/signalfd.h])
 
 AC_PROG_GCC_TRADITIONAL
+AC_PROG_SED
 
 if test "x$GCC" = "xyes"; then
   CFLAGS="$CFLAGS -Wall"
