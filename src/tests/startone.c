@@ -144,7 +144,9 @@ int main(int argc, char *argv[])
 
 	printf("hit return to start container");
 	char mychar;
-	scanf("%c", &mychar);
+	ret = scanf("%c", &mychar);
+	if (ret < 0)
+		goto out;
 
 	if (!lxc_container_get(c)) {
 		fprintf(stderr, "%d: failed to get extra ref to container\n", __LINE__);
@@ -171,20 +173,33 @@ int main(int argc, char *argv[])
 	}
 
 	printf("hit return to finish");
-	scanf("%c", &mychar);
+	ret = scanf("%c", &mychar);
+	if (ret < 0)
+		goto out;
 	c->stop(c);
 
-	system("mkdir -p /var/lib/lxc/lxctest1/rootfs//usr/local/libexec/lxc");
-	system("mkdir -p /var/lib/lxc/lxctest1/rootfs/usr/lib/lxc/");
-	system("cp src/lxc/lxc-init /var/lib/lxc/lxctest1/rootfs//usr/local/libexec/lxc");
-	system("cp src/lxc/liblxc.so /var/lib/lxc/lxctest1/rootfs/usr/lib/lxc");
-	system("cp src/lxc/liblxc.so /var/lib/lxc/lxctest1/rootfs/usr/lib/lxc/liblxc.so.0");
-	system("cp src/lxc/liblxc.so /var/lib/lxc/lxctest1/rootfs/usr/lib");
-	system("mkdir -p /var/lib/lxc/lxctest1/rootfs/dev/shm");
-	system("chroot /var/lib/lxc/lxctest1/rootfs apt-get install --no-install-recommends lxc");
+	ret = system("mkdir -p /var/lib/lxc/lxctest1/rootfs//usr/local/libexec/lxc");
+	if (!ret)
+		system("mkdir -p /var/lib/lxc/lxctest1/rootfs/usr/lib/lxc/");
+	if (!ret)
+		ret = system("cp src/lxc/lxc-init /var/lib/lxc/lxctest1/rootfs//usr/local/libexec/lxc");
+	if (!ret)
+		ret = system("cp src/lxc/liblxc.so /var/lib/lxc/lxctest1/rootfs/usr/lib/lxc");
+	if (!ret)
+		ret = system("cp src/lxc/liblxc.so /var/lib/lxc/lxctest1/rootfs/usr/lib/lxc/liblxc.so.0");
+	if (!ret)
+		ret = system("cp src/lxc/liblxc.so /var/lib/lxc/lxctest1/rootfs/usr/lib");
+	if (!ret)
+		ret = system("mkdir -p /var/lib/lxc/lxctest1/rootfs/dev/shm");
+	if (!ret)
+		ret = system("chroot /var/lib/lxc/lxctest1/rootfs apt-get install --no-install-recommends lxc");
+	if (ret) {
+		fprintf(stderr, "%d: failed to installing lxc-init in container\n", __LINE__);
+		goto out;
+	}
 	// next write out the config file;  does it match?
 	if (!c->startl(c, 1, "/bin/hostname", NULL)) {
-		fprintf(stderr, "%d: failed to lxc-execute /bin/hostname", __LINE__);
+		fprintf(stderr, "%d: failed to lxc-execute /bin/hostname\n", __LINE__);
 		goto out;
 	}
 	//  auto-check result?  ('bobo' is printed on stdout)
