@@ -18,7 +18,7 @@ EOF
 
 [ -f liblxc.so.0 ] || ln -s src/lxc/liblxc.so ./liblxc.so.0
 export LD_LIBRARY_PATH=.
-TESTS="containertests locktests startone"
+TESTS="lxc-test-containertests lxc-test-locktests lxc-test-startone"
 for curtest in $TESTS; do
 	echo "running $curtest"
 	./src/tests/$curtest
