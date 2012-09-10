@@ -362,6 +362,15 @@ class Container(_lxc.Container):
             self.clear_config_item(key)
             return False
 
+    def wait(self, state, timeout = -1):
+        """
+            Wait for the container to reach a given state or timeout.
+        """
+
+        if isinstance(state, str):
+            state = state.upper()
+
+        _lxc.Container.wait(self, state, timeout)
 
 def list_containers(as_object=False):
     """
