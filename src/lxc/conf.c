@@ -2566,8 +2566,10 @@ void lxc_conf_free(struct lxc_conf *conf)
 	if (conf->rootfs.mount != LXCROOTFSMOUNT)
 		free(conf->rootfs.mount);
 	lxc_clear_config_network(conf);
+#if HAVE_APPARMOR
 	if (conf->aa_profile)
 		free(conf->aa_profile);
+#endif
 	lxc_clear_config_caps(conf);
 	lxc_clear_cgroups(conf, "lxc.cgroup");
 	lxc_clear_hooks(conf);

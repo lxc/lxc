@@ -1523,8 +1523,10 @@ int lxc_get_config_item(struct lxc_conf *c, char *key, char *retv, int inlen)
 		v = c->ttydir;
 	else if (strcmp(key, "lxc.arch") == 0)
 		return lxc_get_arch_entry(c, retv, inlen);
+#if HAVE_APPARMOR
 	else if (strcmp(key, "lxc.aa_profile") == 0)
 		v = c->aa_profile;
+#endif
 	else if (strcmp(key, "lxc.cgroup") == 0) // all cgroup info
 		return lxc_get_cgroup_entry(c, retv, inlen, "all");
 	else if (strncmp(key, "lxc.cgroup.", 11) == 0) // specific cgroup info
@@ -1598,8 +1600,10 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	case PER_LINUX: fprintf(fout, "lxc.arch = x86_64\n"); break;
 	default: break;
 	}
+#if HAVE_APPARMOR
 	if (c->aa_profile)
 		fprintf(fout, "lxc.aa_profile = %s\n", c->aa_profile);
+#endif
 	lxc_list_for_each(it, &c->cgroup) {
 		struct lxc_cgroup *cg = it->elem;
 		fprintf(fout, "lxc.cgroup.%s = %s\n", cg->subsystem, cg->value);
