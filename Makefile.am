@@ -6,7 +6,7 @@ SUBDIRS = src templates doc
 DIST_SUBDIRS = config src templates doc
 EXTRA_DIST = autogen.sh lxc.spec CONTRIBUTING MAINTAINERS ChangeLog
 
-pcdatadir = $(datadir)/pkgconfig
+pcdatadir = $(libdir)/pkgconfig
 pcdata_DATA = lxc.pc
 
 ChangeLog::
