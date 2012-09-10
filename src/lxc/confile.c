@@ -80,8 +80,6 @@ static int config_seccomp(const char *, char *, struct lxc_conf *);
 static int config_includefile(const char *, char *, struct lxc_conf *);
 static int config_network_nic(const char *, char *, struct lxc_conf *);
 
-typedef int (*config_cb)(const char *, char *, struct lxc_conf *);
-
 static struct lxc_config_t config[] = {
 
 	{ "lxc.arch",                 config_personality          },
