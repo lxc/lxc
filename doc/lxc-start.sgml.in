@@ -47,12 +47,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   </refnamediv>
 
   <refsynopsisdiv>
-    <cmdsynopsis><command>lxc-start <replaceable>-n
-    name</replaceable> <optional>-f
-    config_file</optional> <optional>-c
-    console_file</optional> <optional>-d</optional> <optional>-s
-    KEY=VAL</optional> <optional>-C</optional>
-    <optional>command</optional></command></cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-start</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
+      <arg choice="opt">-c <replaceable>console_file</replaceable></arg>
+      <arg choice="opt">-d</arg>
+      <arg choice="opt">-s KEY=VAL</arg>
+      <arg choice="opt">-C</arg>
+      <arg choice="opt">command</arg>
+    </cmdsynopsis>
   </refsynopsisdiv>
 
   <refsect1>

@@ -48,11 +48,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-execute <replaceable>-n name</replaceable>
-	<optional>-f config_file</optional> <optional>-s KEY=VAL
-	</optional>
-	<optional>--</optional>
-	<replaceable>command</replaceable></command>
+      <command>lxc-execute</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
+      <arg choice="opt">-s KEY=VAL</arg>
+      <arg choice="opt">-- <replaceable>command</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 

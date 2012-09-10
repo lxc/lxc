@@ -48,10 +48,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-destroy <replaceable>-n
-      name</replaceable>
-      <optional>-f</optional>
-      </command>
+      <command>lxc-destroy</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-f</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
