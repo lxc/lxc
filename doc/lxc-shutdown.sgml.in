@@ -45,9 +45,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-shutdown <replaceable>-n name</replaceable>
-      <optional>-w</optional> <optional>-r</optional>
-      </command>
+      <command>lxc-shutdown</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-w</arg>
+      <arg choice="opt">-r</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 

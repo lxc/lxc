@@ -47,10 +47,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   </refnamediv>
 
   <refsynopsisdiv>
-    <cmdsynopsis><command>lxc-attach <replaceable>-n
-    name</replaceable> <optional>-a
-    arch</optional> <optional>-e</optional>
-    <optional>-- command</optional></command></cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-attach</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-a <replaceable>arch</replaceable></arg>
+      <arg choice="opt">-e</arg>
+      <arg choice="opt">-- <replaceable>command</replaceable></arg>
+    </cmdsynopsis>
   </refsynopsisdiv>
 
   <refsect1>
