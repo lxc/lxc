@@ -68,9 +68,9 @@ PATH=$PATH:/usr/sbin:/sbin %configure $args --disable-rpath
 make %{?_smp_mflags}
 
 %install
-%makeinstall
-
-find $RPM_BUILD_ROOT -type f -name '*.la' -exec rm -f {} ';'  
+rm -rf %{buildroot}
+make install DESTDIR=%{buildroot}
+find %{buildroot} -type f -name '*.la' -exec rm -f {} ';'
 
 %clean
 rm -rf %{buildroot}
@@ -92,20 +92,26 @@ rm -rf %{buildroot}
 %attr(4111,root,root) %{_bindir}/lxc-restart
 %{_mandir}/*
 %{_datadir}/doc/*
+%{_datadir}/lxc/*
 
 %files libs
 %defattr(-,root,root)
 %{_libdir}/*.so.*
 %{_libdir}/%{name}
-%attr(4555,root,root) %{_libdir}/%{name}/lxc-init
+%attr(4555,root,root) %{_libexecdir}/%{name}/lxc-init
 
 %files devel
 %defattr(-,root,root)
 %{_includedir}/%{name}/*
 %{_libdir}/*.so
-%{_datadir}/pkgconfig/*
+%{_libdir}/pkgconfig/*
 
 %changelog
+* Mon Sep 10 2012 Dwight Engen <dwight.engen@oracle.com> - Version 0.8.0
+- fix lxc-init moved to libexec
+- .pc moved to _libdir
+- package template files /usr/share/lxc/templates
+
 * Thu Sep  8 2011 Greg Kurz <gkurz@fr.ibm.com> - Version 0.7.5.1
 - fix installed files for rpmbuild
 - introduce lxc-libs package
