@@ -70,11 +70,11 @@ AC_ARG_WITH([rootfs-path],
 	)], [], [with_rootfs_path=['${libdir}/lxc/rootfs']])
 
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
+AS_AC_EXPAND(LXCPATH, "${with_config_path}")
+AS_AC_EXPAND(LXCROOTFSMOUNT, "${with_rootfs_path}")
+AS_AC_EXPAND(LXCTEMPLATEDIR, ['${datadir}/lxc/templates'])
 
-AC_SUBST(LXCPATH, "${with_config_path}")
-AC_SUBST(LXCROOTFSMOUNT, "${with_rootfs_path}")
 AC_SUBST(LXCINITDIR, ['${libexecdir}'])
-AC_SUBST(LXCTEMPLATEDIR, ['${datadir}/lxc/templates'])
 
 AC_CHECK_HEADERS([linux/unistd.h linux/netlink.h linux/genetlink.h],
 				  [],
@@ -170,6 +170,7 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-create
 	src/lxc/lxc-clone
 	src/lxc/lxc-shutdown
+	src/lxc/lxc-start-ephemeral
 	src/lxc/lxc-destroy
 
 ])

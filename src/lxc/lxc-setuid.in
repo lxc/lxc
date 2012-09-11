@@ -80,9 +80,6 @@ lxc_dropuid()
 
 shortoptions='hd'
 longoptions='help'
-libdir=@LIBDIR@
-libexecdir=@LIBEXECDIR@
-localstatedir=@LOCALSTATEDIR@
 
 getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
 if [ $? != 0 ]; then
