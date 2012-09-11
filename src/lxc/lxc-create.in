@@ -64,10 +64,8 @@ help() {
 
 shortoptions='hn:f:t:B:'
 longoptions='help,name:,config:,template:,backingstore:,fstype:,dir:,lvname:,vgname:,fssize:'
-localstatedir=@LOCALSTATEDIR@
 lxc_path=@LXCPATH@
 bindir=@BINDIR@
-libdir=@LIBDIR@
 templatedir=@LXCTEMPLATEDIR@
 backingstore=_unset
 fstype=ext4

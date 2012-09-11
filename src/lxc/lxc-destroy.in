@@ -41,7 +41,6 @@ help() {
 
 shortoptions='hn:f'
 longoptions='help,name:'
-localstatedir=@LOCALSTATEDIR@
 lxc_path=@LXCPATH@
 force=0
 
