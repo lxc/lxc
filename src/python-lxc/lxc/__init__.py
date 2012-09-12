@@ -370,7 +370,7 @@ class Container(_lxc.Container):
         if isinstance(state, str):
             state = state.upper()
 
-        _lxc.Container.wait(self, state, timeout)
+        return _lxc.Container.wait(self, state, timeout)
 
 def list_containers(as_object=False):
     """
