@@ -239,14 +239,14 @@ lxc.pts = 1
 EOF
 
     libdirs="\
-        /lib \
-        /usr/lib \
-        /lib64 \
-        /usr/lib64"
+        lib \
+        usr/lib \
+        lib64 \
+        usr/lib64"
 
     for dir in $libdirs; do
-        if [ -d $dir ] && [ -d "$rootfs$dir" ]; then
-            echo "lxc.mount.entry=$dir $rootfs$dir none ro,bind 0 0" >> $path/config
+        if [ -d "/$dir" ] && [ -d "$rootfs/$dir" ]; then
+            echo "lxc.mount.entry=/$dir $dir none ro,bind 0 0" >> $path/config
         fi
     done
 }
