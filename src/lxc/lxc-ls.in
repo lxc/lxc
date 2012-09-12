@@ -70,7 +70,7 @@ get_parent_cgroup()
 	done
 }
 
-directory="$lxc_path"
+directory=$(readlink -f "$lxc_path")
 
 for i in "$@"; do
 	case $i in
