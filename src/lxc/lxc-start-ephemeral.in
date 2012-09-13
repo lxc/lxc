@@ -286,3 +286,5 @@ for ip in ips:
 
 # Shutdown the container
 dest.shutdown(timeout=5)
+
+sys.exit(retval)
