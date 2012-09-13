@@ -251,8 +251,7 @@ The following IP addresses have be found in the container:
         sys.exit(0)
     else:
         dest.console(tty=1)
-        if not dest.shutdown(timeout=5):
-            dest.stop()
+        dest.shutdown(timeout=5)
         sys.exit(0)
 
 # Now deal with the case where we want to run a command in the container
@@ -286,5 +285,4 @@ for ip in ips:
     break
 
 # Shutdown the container
-if not dest.shutdown(timeout=5):
-    dest.stop()
+dest.shutdown(timeout=5)
