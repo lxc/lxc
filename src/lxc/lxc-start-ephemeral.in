@@ -233,26 +233,27 @@ if not dest.start() or not dest.wait("RUNNING", timeout=5):
         dest.destroy()
     sys.exit(1)
 
-# Try to get the IP addresses
-ips = dest.get_ips(timeout=5)
+# Deal with the case where we just attach to the container's console
+if not args.command and not args.daemon:
+    dest.console(tty=1)
+    dest.shutdown(timeout=5)
+    sys.exit(0)
 
-# Deal with the case where we don't start a command in the container
-if not args.command:
-    if args.daemon:
-        print(_("""The ephemeral container is now started.
+# Try to get the IP addresses
+ips = dest.get_ips(timeout=10)
+
+# Deal with the case where we just print info about the container
+if args.daemon:
+    print(_("""The ephemeral container is now started.
 
 You can enter it from the command line with: lxc-console -n %s
 The following IP addresses have be found in the container:
 %s""") % (
-                dest.name,
-                "\n".join([" - %s" % entry for entry in ips]
-                            or [" - %s" % _("No address could be found")])
-            ))
-        sys.exit(0)
-    else:
-        dest.console(tty=1)
-        dest.shutdown(timeout=5)
-        sys.exit(0)
+            dest.name,
+            "\n".join([" - %s" % entry for entry in ips]
+                        or [" - %s" % _("No address could be found")])
+        ))
+    sys.exit(0)
 
 # Now deal with the case where we want to run a command in the container
 if not ips:
