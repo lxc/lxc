@@ -1055,6 +1055,31 @@ static int setup_console(const struct lxc_rootfs *rootfs,
 	return setup_ttydir_console(rootfs, console, ttydir);
 }
 
+static int setup_kmsg(const struct lxc_rootfs *rootfs,
+		       const struct lxc_console *console)
+{
+	char kpath[MAXPATHLEN];
+	int ret;
+
+	ret = snprintf(kpath, sizeof(kpath), "%s/dev/kmsg", rootfs->mount);
+	if (ret < 0 || ret >= sizeof(kpath))
+		return -1;
+
+	ret = unlink(kpath);
+	if (ret && errno != ENOENT) {
+		SYSERROR("error unlinking %s\n", kpath);
+		return -1;
+	}
+
+	ret = symlink("console", kpath);
+	if (ret) {
+		SYSERROR("failed to create symlink for kmsg");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int setup_cgroup(const char *name, struct lxc_list *cgroups)
 {
 	struct lxc_list *iterator;
@@ -2164,6 +2189,11 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 
 	if (setup_console(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->ttydir)) {
 		ERROR("failed to setup the console for '%s'", name);
+		return -1;
+	}
+
+	if (setup_kmsg(&lxc_conf->rootfs, &lxc_conf->console)) {
+		ERROR("failed to setup kmsg for '%s'", name);
 		return -1;
 	}
 
