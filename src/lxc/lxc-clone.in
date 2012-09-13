@@ -89,7 +89,7 @@ while true; do
             lxc_vg=$1
             shift
             ;;
-        -n|--new)
+        -n|--name)
             shift
             lxc_new=$1
             shift
