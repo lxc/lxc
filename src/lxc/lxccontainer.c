@@ -655,7 +655,7 @@ static bool lxcapi_shutdown(struct lxc_container *c, int timeout)
 		return true;
 	kill(pid, SIGPWR);
 	retv = c->wait(c, "STOPPED", timeout);
-	if (timeout > 0) {
+	if (!retv && timeout > 0) {
 		c->stop(c);
 		retv = c->wait(c, "STOPPED", 0); // 0 means don't wait
 	}
