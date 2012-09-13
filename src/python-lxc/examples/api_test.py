@@ -53,7 +53,6 @@ assert(container.state == "STOPPED")
 ## Create a rootfs
 print("Creating rootfs using '%s'" % LXC_TEMPLATE)
 container.create(LXC_TEMPLATE)
-container.load_config()  # FIXME: workaround for get_config_item segfault
 
 assert(container.defined == True)
 assert(container.name == CONTAINER_NAME
@@ -74,7 +73,6 @@ assert(capdrop == container.get_config_item("lxc.cap.drop"))
 
 ## Test the networking
 print("Testing the networking")
-container.network.remove(0)  # FIXME: workaround for get_config_item segfault
 
 # A few basic checks of the current state
 assert("name" in container.get_keys("lxc.network.0"))
@@ -142,8 +140,6 @@ assert(container.state == "STOPPED")
 print("Cloning the container")
 clone = lxc.Container(CLONE_NAME)
 clone.clone(container)
-clone.load_config()  # FIXME: workaround for get_config_item segfault
-clone.network.remove(0)  # FIXME: workaround for get_config_item segfault
 clone.start()
 clone.stop()
 clone.destroy()
