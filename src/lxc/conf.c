@@ -2542,17 +2542,30 @@ int lxc_clear_mount_entries(struct lxc_conf *c)
 	return 0;
 }
 
-int lxc_clear_hooks(struct lxc_conf *c)
+int lxc_clear_hooks(struct lxc_conf *c, char *key)
 {
 	struct lxc_list *it;
+	bool all = false, done = false;
+	char *k = key + 9;
 	int i;
 
+	if (strcmp(key, "lxc.hook") == 0)
+		all = true;
+
 	for (i=0; i<NUM_LXC_HOOKS; i++) {
-		lxc_list_for_each(it, &c->hooks[i]) {
-			lxc_list_del(it);
-			free(it->elem);
-			free(it);
+		if (all || strcmp(k, lxchook_names[i]) == 0) {
+			lxc_list_for_each(it, &c->hooks[i]) {
+				lxc_list_del(it);
+				free(it->elem);
+				free(it);
+			}
+			done = true;
 		}
+	}
+
+	if (!done) {
+		ERROR("Invalid hook key: %s", key);
+		return -1;
 	}
 	return 0;
 }
@@ -2572,7 +2585,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 #endif
 	lxc_clear_config_caps(conf);
 	lxc_clear_cgroups(conf, "lxc.cgroup");
-	lxc_clear_hooks(conf);
+	lxc_clear_hooks(conf, "lxc.hook");
 	lxc_clear_mount_entries(conf);
 	free(conf);
 }

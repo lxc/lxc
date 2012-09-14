@@ -1567,8 +1567,8 @@ int lxc_clear_config_item(struct lxc_conf *c, char *key)
 		return lxc_clear_cgroups(c, key);
 	else if (strcmp(key, "lxc.mount.entries") == 0)
 		return lxc_clear_mount_entries(c);
-	else if (strcmp(key, "lxc.hook") == 0)
-		return lxc_clear_hooks(c);
+	else if (strncmp(key, "lxc.hook", 8) == 0)
+		return lxc_clear_hooks(c, key);
 
 	return -1;
 }
