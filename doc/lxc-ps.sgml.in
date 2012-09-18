@@ -51,7 +51,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <command>lxc-ps</command>
       <arg choice="opt">--name <replaceable>name</replaceable></arg>
       <arg choice="opt">--lxc</arg>
-      <arg choice="opt">ps option</arg>
+      <arg choice="opt">-- ps option</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -81,7 +81,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
       <varlistentry>
 	<term>
-	  <option>--name <replaceable>name</replaceable></option>
+	  <option>-n, --name <replaceable>name</replaceable></option>
 	</term>
 	<listitem>
 	  <para>

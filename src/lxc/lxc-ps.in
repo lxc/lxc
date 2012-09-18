@@ -74,9 +74,9 @@ containers=""
 list_container_processes=0
 for i in "$@"; do
 	case $i in
-		--help)
+		-h|--help)
 			help; exit 1;;
-		--name)
+		-n|--name)
 			containers=$2; list_container_processes=1; shift 2;;
 		--lxc)
 			list_container_processes=1; shift;;
