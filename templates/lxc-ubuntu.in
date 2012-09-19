@@ -701,7 +701,11 @@ fi
 
 echo ""
 echo "##"
-echo "# The default user is 'ubuntu' with password 'ubuntu'!"
-echo "# Use the 'sudo' command to run tasks as root in the container."
+if [ -n "$bindhome" ]; then
+	echo "# Log in as user $bindhome"
+else
+	echo "# The default user is 'ubuntu' with password 'ubuntu'!"
+	echo "# Use the 'sudo' command to run tasks as root in the container."
+fi
 echo "##"
 echo ""
