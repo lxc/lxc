@@ -110,7 +110,7 @@ ifupdown,\
 locales,\
 libui-dialog-perl,\
 dialog,\
-isc-dhcp-server,\
+isc-dhcp-client,\
 netbase,\
 net-tools,\
 iproute,\
