@@ -56,7 +56,7 @@ get_parent_cgroup()
 		init_cgroup=${fields#*:}
 
 		# Get the filesystem mountpoint of the hierarchy
-		mountpoint=$(grep -E "^cgroup [^ ]+ [^ ]+ ([^ ]+,)?$subsystems(,[^ ]+)? " /proc/self/mounts | cut -d ' ' -f 2)
+		mountpoint=$(grep -E "^[^ ]+ [^ ]+ cgroup ([^ ]+,)?$subsystems(,[^ ]+)? " /proc/self/mounts | cut -d ' ' -f 2)
 		if [ -z "$mountpoint" ]; then continue; fi
 
 		# Return the absolute path to the containers' parent cgroup
