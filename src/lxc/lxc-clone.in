@@ -183,13 +183,13 @@ if [ -e  $lxc_path/$lxc_orig/fstab ];then
 fi
 
 echo "Copying rootfs..."
-rootfs=$lxc_path/$lxc_new/rootfs
+oldroot=`grep lxc.rootfs $lxc_path/$lxc_orig/config | awk -F'[= \t]+' '{ print $2 }'`
+rootfs=`echo $oldroot |sed "s/$lxc_orig/$lxc_new/"`
 
 container_running=True
 lxc-info -s -n $lxc_orig|grep RUNNING >/dev/null 2>&1 || container_running=False
 
 sed -i '/lxc.rootfs/d' $lxc_path/$lxc_new/config
-oldroot=`grep lxc.rootfs $lxc_path/$lxc_orig/config | awk -F= '{ print $2 '}`
 if [ -b $oldroot ]; then
     type vgscan || { echo "$(basename $0): lvm is not installed" >&2; false; }
     lvdisplay $oldroot > /dev/null 2>&1 || { echo "$(basename $0): non-lvm blockdev cloning is not supported" >&2; false; }
@@ -221,7 +221,7 @@ if [ -b $oldroot ]; then
         lvcreate -L $lxc_size $lxc_vg -n ${lxc_lv_prefix}$lxc_new
         echo "lxc.rootfs = /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new" >> $lxc_path/$lxc_new/config
         # and mount it so we can tweak it
-        mkdir -p $lxc_path/$lxc_new/rootfs
+        mkdir -p $rootfs
         mkfs -t $fstype /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new
         mount /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new $rootfs || { echo "$(basename $0): failed to mount new rootfs" >&2; false; }
         mounted=1
@@ -233,16 +233,15 @@ if [ -b $oldroot ]; then
         lvrename $lxc_vg/${lxc_lv_prefix}${lxc_new}_snapshot $lxc_vg/${lxc_lv_prefix}$lxc_new
         echo "lxc.rootfs = /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new" >> $lxc_path/$lxc_new/config
         # and mount it so we can tweak it
-        mkdir -p $lxc_path/$lxc_new/rootfs
+        mkdir -p $rootfs
         mount /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new $rootfs || { echo "$(basename $0): failed to mount new rootfs" >&2; false; }
         mounted=1
     fi
 
-elif out=$(btrfs subvolume list "$lxc_path/$lxc_orig/rootfs" 2>&1); then
-
-    out=$(btrfs subvolume snapshot "$lxc_path/$lxc_orig/rootfs" "$rootfs" 2>&1) || { echo "$(basename $0): btrfs snapshot failed" >&2; false; }
+elif which btrfs >/dev/null 2>&1 && btrfs subvolume list $oldroot >/dev/null 2>&1; then
+    # if oldroot is a btrfs subvolume, assume they want a snapshot
+    btrfs subvolume snapshot "$oldroot" "$rootfs" 2>&1 || { echo "$(basename $0): btrfs snapshot failed" >&2; false; }
     echo "lxc.rootfs = $rootfs" >> "$lxc_path/$lxc_new/config"
-
 else
     if [ $snapshot = "yes" ]; then
         echo "$(basename $0): cannot snapshot a directory" >&2
@@ -252,8 +251,8 @@ else
         lxc-freeze -n $lxc_orig
         frozen=1
     fi
-    mkdir -p $lxc_path/$lxc_new/rootfs/
-    rsync -ax $lxc_path/$lxc_orig/rootfs/ $lxc_path/$lxc_new/rootfs/
+    mkdir -p $rootfs/
+    rsync -ax $oldroot/ $rootfs/
     echo "lxc.rootfs = $rootfs" >> $lxc_path/$lxc_new/config
     if [ $container_running = "True" ]; then
         lxc-unfreeze -n $lxc_orig
