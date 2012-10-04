@@ -354,7 +354,6 @@ needed_pkgs=""
 type yum >/dev/null 2>&1
 if [ $? -ne 0 ]; then
     needed_pkgs="yum $needed_pkgs"
-    exit 1
 fi
 
 type curl >/dev/null 2>&1
