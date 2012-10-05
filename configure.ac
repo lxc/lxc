@@ -197,6 +197,7 @@ AC_CONFIG_FILES([
 	templates/lxc-opensuse
 	templates/lxc-busybox
 	templates/lxc-fedora
+	templates/lxc-oracle
 	templates/lxc-altlinux
 	templates/lxc-sshd
 	templates/lxc-archlinux
