@@ -250,7 +250,6 @@ container_config_create()
 		      head -1 |awk '{print $2}' | cut -c1-10 |\
 		      sed 's/\(..\)/\1:/g; s/.$//'`"
     mkdir -p $cfg_dir || die "unable to create config dir $cfg_dir"
-    rm -f $cfg_dir/config
     cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
 # Container configuration for Oracle Linux $release_major.$release_minor
 lxc.arch = $arch
@@ -261,9 +260,19 @@ lxc.pts = 1024
 lxc.rootfs = $container_rootfs
 lxc.mount  = $cfg_dir/fstab
 # Networking
-lxc.network.type = $lxc_network_type
-lxc.network.flags = up
-lxc.network.link = $lxc_network_link
+EOF
+
+    # see if the network settings were already specified
+    lxc_network_type=`grep '^lxc.network.type' $cfg_dir/config | awk -F'[= \t]+' '{ print $2 }'`
+    if [ -z "$lxc_network_type" -a			\
+	 $host_distribution = "OracleServer" -o		\
+	 $host_distribution = "Fedora" ]; then
+	    echo "lxc.network.type = veth" >>$cfg_dir/config
+	    echo "lxc.network.flags = up" >>$cfg_dir/config
+	    echo "lxc.network.link = virbr0" >>$cfg_dir/config
+    fi
+
+    cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
 lxc.network.name = eth0
 lxc.network.mtu = 1500
 lxc.network.hwaddr = $hwaddr
