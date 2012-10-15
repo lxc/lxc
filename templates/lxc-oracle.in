@@ -94,7 +94,7 @@ EOF
     # disable ipv6
     echo "blacklist ipv6" >>$container_rootfs/etc/modprobe.d/blacklist.conf
     echo "blacklist net-pf-10" >>$container_rootfs/etc/modprobe.d/blacklist.conf
-    rm $container_rootfs/etc/sysconfig/network-scripts/init.ipv6-global
+    rm -f $container_rootfs/etc/sysconfig/network-scripts/init.ipv6-global
 
     cat <<EOF > $container_rootfs/etc/fstab
 proc    /proc     proc   nodev,noexec,nosuid 0 0
@@ -111,8 +111,8 @@ EOF
 
     # disable readahead in the container
     if [ $container_release_major = "6" -a -e $container_rootfs/etc/sysconfig/readahead ]; then
-	rm -f $container_root/etc/init/readahead-collector.conf
-	rm -f $container_root/etc/init/readahead-disable-services.conf
+	rm -f $container_rootfs/etc/init/readahead-collector.conf
+	rm -f $container_rootfs/etc/init/readahead-disable-services.conf
 	sed -i 's|READAHEAD="yes"|READAHEAD="no"|' $container_rootfs/etc/sysconfig/readahead
     fi
 
@@ -141,9 +141,9 @@ EOF
     # fix assumptions that plymouth is available
     sed -i 's|\[ "$PROMPT" != no \] && plymouth|[ "$PROMPT" != no ] \&\& [ -n "$PLYMOUTH" ] \&\& plymouth|' $container_rootfs/etc/rc.sysinit
     sed -i 's|\[ "$PROMPT" != no \] && plymouth|[ "$PROMPT" != no ] \&\& [ -n "$PLYMOUTH" ] \&\& plymouth|' $container_rootfs/etc/rc.d/rc.sysinit
-    rm -f $container_root/etc/init/plymouth-shutdown.conf
-    rm -f $container_root/etc/init/quit-plymouth.conf
-    rm -f $container_root/etc/init/splash-manager.conf
+    rm -f $container_rootfs/etc/init/plymouth-shutdown.conf
+    rm -f $container_rootfs/etc/init/quit-plymouth.conf
+    rm -f $container_rootfs/etc/init/splash-manager.conf
 
     # setup console and tty[1-4] for login. note that /dev/console and
     # /dev/tty[1-4] will be symlinks to the ptys /dev/lxc/console and
