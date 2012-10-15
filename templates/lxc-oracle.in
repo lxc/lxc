@@ -304,7 +304,17 @@ container_rootfs_create()
 {
     cmds="rpm wget yum"
     if [ $release_major = "5" ]; then
-	cmds="$cmds db_dump db43_load"
+	if [ $host_distribution = "Ubuntu" ]; then
+	    db_dump_cmd="db5.1_dump"
+	    db_load_cmd="db4.3_load"
+	fi
+	if [ $host_distribution = "OracleServer" -o \
+	     $host_distribution = "Fedora" ]; then
+	    db_dump_cmd="db_dump"
+	    db_load_cmd="db43_load"
+	fi
+
+	cmds="$cmds $db_dump_cmd $db_load_cmd file"
     fi
     for cmd in $cmds; do
 	which $cmd >/dev/null 2>&1
@@ -385,13 +395,21 @@ container_rootfs_create()
 	    fi
 	fi
 
-	# if we're on 6 and installing 5 we need to fix up the rpm database
-	# since 5 uses an older db format
-	if [ $release_major = "5" -a $host_release_major = "6" ]; then
-	    echo "Fixing (downgrading) rpm database"
+	# these distributions put the rpm database in a place the guest is
+	# not expecting it, so move it
+	if [ $host_distribution = "Ubuntu" ]; then
+	    mv $container_rootfs/root/.rpmdb/* $container_rootfs/var/lib/rpm
+	fi
+
+	# if the native rpm created the db with Hash version 9, we need to
+	# downgrade it to Hash version 8 for use with OL5.x
+	db_version=`file $container_rootfs/var/lib/rpm/Packages | \
+		    grep -o 'version [0-9]*' |awk '{print $2}'`
+	if [ $release_major = "5" -a $db_version != "8" ]; then
+	    echo "Fixing (downgrading) rpm database from version $db_version"
 	    rm -f $container_rootfs/var/lib/rpm/__db*
 	    for db in $container_rootfs/var/lib/rpm/* ; do
-		db_dump $db |db43_load $db.new
+		$db_dump_cmd $db |$db_load_cmd $db.new
 		mv $db.new $db
 	    done
 	    chroot $container_rootfs rpm --rebuilddb
@@ -472,9 +490,16 @@ fi
 release_major=`echo $release_version |awk -F '.' '{print $1}'`
 release_minor=`echo $release_version |awk -F '.' '{print $2}'`
 
-host_release_version=`cat /etc/oracle-release |awk '/^Oracle/ {print $5}'`
-host_release_major=`echo $host_release_version |awk -F '.' '{print $1}'`
-host_release_minor=`echo $host_release_version |awk -F '.' '{print $2}'`
+if which lsb_release >/dev/null 2>&1; then
+    host_distribution=`lsb_release --id |awk '{print $3}'`
+    host_release_version=`lsb_release --release |awk '{print $2}'`
+    host_release_major=`echo $host_release_version |awk -F '.' '{print $1}'`
+    host_release_minor=`echo $host_release_version |awk -F '.' '{print $2}'`
+else
+    echo "Unable to determine host distribution, ensure lsb_release is installed"
+    exit 1
+fi
+echo "Host is $host_distribution $host_release_version"
 
 trap cleanup SIGHUP SIGINT SIGTERM
 
