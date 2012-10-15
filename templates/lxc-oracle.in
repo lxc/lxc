@@ -412,9 +412,13 @@ container_rootfs_create()
 		$db_dump_cmd $db |$db_load_cmd $db.new
 		mv $db.new $db
 	    done
-	    chroot $container_rootfs rpm --rebuilddb
 	fi
 
+	# the host rpm may not be the same as the guest, rebuild the db with
+	# the guest rpm version
+	echo "Rebuilding rpm database"
+	rm -f $container_rootfs/var/lib/rpm/__db*
+	chroot $container_rootfs rpm --rebuilddb >/dev/null 2>&1
     ) 200>/var/lock/subsys/lxc-oracle-$name
 }
 
