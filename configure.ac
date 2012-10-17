@@ -12,10 +12,45 @@ AM_PROG_CC_C_O
 AC_GNU_SOURCE
 AC_CHECK_PROG(SETCAP, setcap, yes, no, $PATH$PATH_SEPARATOR/sbin)
 
-if test -f /etc/debian_version; then
-    osname="debian"
+AC_MSG_CHECKING([host distribution])
+AC_ARG_WITH(distro, AS_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, oracle, fedora, suse, gentoo, debian, arch, slackware, paldo, mandriva or pardus]))
+if test "z$with_distro" = "z"; then
+	with_distro=`lsb_release -is`
 fi
-AM_CONDITIONAL([HAVE_DEBIAN], [test x"$osname" == xdebian])
+if test "z$with_distro" = "z"; then
+	AC_CHECK_FILE(/etc/redhat-release,with_distro="redhat")
+	AC_CHECK_FILE(/etc/oracle-release,with_distro="oracle")
+	AC_CHECK_FILE(/etc/fedora-release,with_distro="fedora")
+	AC_CHECK_FILE(/etc/SuSE-release,with_distro="suse")
+	AC_CHECK_FILE(/etc/gentoo-release,with_distro="gentoo")
+	AC_CHECK_FILE(/etc/debian_version,with_distro="debian")
+	AC_CHECK_FILE(/etc/arch-release,with_distro="arch")
+	AC_CHECK_FILE(/etc/slackware-version,with_distro="slackware")
+	AC_CHECK_FILE(/etc/frugalware-release,with_distro="frugalware")
+	AC_CHECK_FILE(/etc/mandrakelinux-release, with_distro="mandriva")
+	AC_CHECK_FILE(/etc/mandriva-release,with_distro="mandriva")
+	AC_CHECK_FILE(/etc/pardus-release,with_distro="pardus")
+fi
+with_distro=`echo ${with_distro} | tr '[[:upper:]]' '[[:lower:]]'`
+
+if test "z$with_distro" = "z"; then
+	with_distro="unknown"
+fi
+case $with_distro in
+	ubuntu)
+		conffile=lxc.conf.ubuntu
+		;;
+	redhat|fedora|oracle|oracleserver)
+		conffile=lxc.conf.libvirt
+		;;
+	*)
+		echo -n "Linux distribution network config unknown, defaulting to lxc.network.type = empty"
+		conffile=lxc.conf.unknown
+		;;
+esac
+AC_MSG_RESULT([$with_distro])
+
+AM_CONDITIONAL([HAVE_DEBIAN], [test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu"])
 
 AC_ARG_ENABLE([rpath],
 	[AC_HELP_STRING([--disable-rpath], [do not set rpath in executables])],
@@ -111,6 +146,7 @@ AC_ARG_WITH([rootfs-path],
 		[lxc rootfs mount point]
 	)], [], [with_rootfs_path=['${libdir}/lxc/rootfs']])
 
+AS_AC_EXPAND(LXC_CONFFILE, $conffile)
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 AS_AC_EXPAND(LXCPATH, "${with_config_path}")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "${with_rootfs_path}")
