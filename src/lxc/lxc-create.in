@@ -260,15 +260,17 @@ trap cleanup HUP INT TERM
 mkdir -p $lxc_path/$lxc_name
 
 if [ -z "$lxc_config" ]; then
-    touch $lxc_path/$lxc_name/config
-else
-    if [ ! -r "$lxc_config" ]; then
-	echo "$(basename $0): '$lxc_config' configuration file not found" >&2
-	exit 1
-    fi
-
-    cp $lxc_config $lxc_path/$lxc_name/config
+    lxc_config="@SYSCONFDIR@/lxc/lxc.conf"
+    echo
+    echo "$(basename $0): No config file specified, using the default config $lxc_config"
 fi
+
+if [ ! -r "$lxc_config" ]; then
+    echo "$(basename $0): '$lxc_config' configuration file not found" >&2
+    exit 1
+fi
+
+cp $lxc_config $lxc_path/$lxc_name/config
 
 if [ -n "$custom_rootfs" ]; then
 	if grep -q "lxc.rootfs" $lxc_path/$lxc_name/config ; then
@@ -293,13 +295,6 @@ if [ ! -z $lxc_template ]; then
     if [ $? -ne 0 ]; then
         echo "$(basename $0): unknown template '$lxc_template'" >&2
         cleanup
-    fi
-
-    if [ -z "$lxc_config" ]; then
-	echo "Note: Usually the template option is called with a configuration"
-	echo "file option too, mostly to configure the network."
-	echo "For more information look at lxc.conf (5)"
-	echo
     fi
 
     ${templatedir}/lxc-$lxc_template --path=$lxc_path/$lxc_name --name=$lxc_name $*

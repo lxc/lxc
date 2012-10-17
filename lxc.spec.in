@@ -91,6 +91,7 @@ rm -rf %{buildroot}
 %{_mandir}/*
 %{_datadir}/doc/*
 %{_datadir}/lxc/*
+%{_sysconfdir}/lxc/*
 
 %files libs
 %defattr(-,root,root)
