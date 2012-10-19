@@ -478,7 +478,7 @@ static PyMethodDef Container_methods[] = {
     {"start", (PyCFunction)Container_start, METH_VARARGS | METH_KEYWORDS,
      "start(useinit = False, cmd = (,)) -> boolean\n"
      "\n"
-     "Start the container, optionally using lxc-init and"
+     "Start the container, optionally using lxc-init and "
      "an alternate init command, then returns its return code."
     },
     {"stop", (PyCFunction)Container_stop, METH_NOARGS,
