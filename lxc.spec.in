@@ -30,7 +30,7 @@ Group: Applications/System
 License: LGPL
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 Requires: libcap
-BuildRequires: libcap libcap-devel docbook-utils
+BuildRequires: libcap libcap-devel docbook2x
 
 %description
 
