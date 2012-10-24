@@ -99,6 +99,7 @@ EOF
 cat <<EOF >> $path/fstab
 devtmpfs        dev          devtmpfs defaults 0 0
 EOF
+    fi
 
     # rmdir /dev/shm for containers that have /run/shm
     # I'm afraid of doing rm -rf $rootfs/dev/shm, in case it did
