@@ -353,11 +353,6 @@ EOF
 proc            proc         proc    nodev,noexec,nosuid 0 0
 sysfs           sys          sysfs defaults  0 0
 EOF
-    if grep devtmpfs /proc/filesystems > /dev/null 2>&1; then
-cat <<EOF >> $path/fstab
-devtmpfs        dev          devtmpfs defaults 0 0
-EOF
-    fi
 
     if [ $? -ne 0 ]; then
         echo "Failed to add configuration"
