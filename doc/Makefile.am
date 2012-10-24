@@ -30,14 +30,14 @@ man_MANS = \
 	lxc.7
 
 
-%.1 : %.sgml 
-	docbook2man -w all $<
+%.1 : %.sgml
+	docbook2man $<
 
-%.5 : %.sgml 
-	docbook2man -w all $<
+%.5 : %.sgml
+	docbook2man $<
 
-%.7 : %.sgml 
-	docbook2man -w all $<
+%.7 : %.sgml
+	docbook2man $<
 
 lxc-%.sgml : common_options.sgml see_also.sgml
 
