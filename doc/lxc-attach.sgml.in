@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+<!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
 
 <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
@@ -220,7 +220,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <para>
       Nevertheless, it will succeed on an unpatched kernel of version 3.0
       or higher if the <option>-s</option> option is used to restrict the
-      namespaces that the process is to be attached to to one or more of
+      namespaces that the process is to be attached to to one or more of 
       <replaceable>NETWORK</replaceable>, <replaceable>IPC</replaceable>
       and <replaceable>UTSNAME</replaceable>.
     </para>
