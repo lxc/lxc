@@ -72,8 +72,8 @@ get_parent_cgroup()
 
 containers=""
 list_container_processes=0
-for i in "$@"; do
-	case $i in
+while true; do
+	case $1 in
 		-h|--help)
 			help; exit 1;;
 		-n|--name)
