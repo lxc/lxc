@@ -170,7 +170,6 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-create
 	src/lxc/lxc-clone
 	src/lxc/lxc-shutdown
-	src/lxc/lxc-start-ephemeral
 	src/lxc/lxc-destroy
 
 ])
