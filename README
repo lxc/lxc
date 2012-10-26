@@ -7,7 +7,7 @@ What is lxc:
   kernel. It provides the resource management through the control groups  aka
   process containers and resource isolation through the namespaces.
 
-  The  linux  containers, lxc, aims to use these new functionnalities to pro-
+  The  linux  containers, lxc, aims to use these new functionalities to pro-
   vide an userspace container object which provides full  resource  isolation
   and resource control for an applications or a system.
 
@@ -31,7 +31,7 @@ Downloading the current source code:
 
   For detailed build instruction refer to INSTALL and man lxc man page
   but a short command line should work:
-  ./configure && make && sudo make install && sudo lxc-setcap
+  ./autogen.sh && ./configure && make && sudo make install && sudo lxc-setcap
   preceded by ./autogen.sh if configure do not exist yet.
 
 Getting help:
