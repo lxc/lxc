@@ -370,7 +370,7 @@ static struct lxc_netdev *network_netdev(const char *key, const char *value,
 static int network_ifname(char **valuep, char *value)
 {
 	if (strlen(value) >= IFNAMSIZ) {
-		ERROR("invalid interface name: %s", value);
+		ERROR("interface name '%s' is too long (> %d)", value, IFNAMSIZ - 1);
 		return -1;
 	}
 
