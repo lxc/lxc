@@ -67,18 +67,7 @@ get_parent_cgroup()
 	done
 }
 
-shortoptions='hn:'
-longoptions='help,name:,exec'
-
-getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
-if [ $? != 0 ]; then
-    usage
-    exit 1;
-fi
-
 exec=""
-
-eval set -- "$getopt"
 
 while true; do
 	case $1 in
@@ -91,7 +80,7 @@ while true; do
 		--)
 			shift; break;;
 		*)
-			break;
+			break;;
 	esac
 done
 
