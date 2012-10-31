@@ -22,7 +22,7 @@
 
 Name: @PACKAGE@
 Version: @VERSION@
-Release: 1
+Release: 1%{?dist}
 URL: http://lxc.sourceforge.net
 Source: http://dl.sourceforge.net/sourceforge/%{name}/%{name}-%{version}.tar.gz
 Summary: %{name} : Linux Container
@@ -52,7 +52,6 @@ Group:          System Environment/Libraries
 The %{name}-libs package contains libraries for running %{name} applications.
 
 %package devel
-Release: 1
 Summary: development library for %{name}
 Group: Development/Libraries
 
