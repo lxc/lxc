@@ -62,7 +62,6 @@ development of the linux containers.
 %prep
 %setup
 %build
-test "%{ksrc}" != "none" && args="--with-linuxdir=%{ksrc}"
 PATH=$PATH:/usr/sbin:/sbin %configure $args --disable-rpath
 make %{?_smp_mflags}
 
