@@ -49,9 +49,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-wait <replaceable>-n name</replaceable>
-	<replaceable>-s states</replaceable>
-      </command>
+      <command>lxc-wait</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="req">-s <replaceable>states</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 

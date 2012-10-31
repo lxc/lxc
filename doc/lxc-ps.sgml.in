@@ -48,10 +48,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-ps <optional>--name name</optional>
-        <optional>--lxc</optional>
-	<optional>ps option</optional>
-      </command>
+      <command>lxc-ps</command>
+      <arg choice="opt">--name <replaceable>name</replaceable></arg>
+      <arg choice="opt">--lxc</arg>
+      <arg choice="opt">-- ps option</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -81,11 +81,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
       <varlistentry>
 	<term>
-	  <option><replaceable>--name NAME</replaceable></option>
+	  <option>-n, --name <replaceable>name</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
-	    specify the container <replaceable>NAME</replaceable>
+	    specify the container <replaceable>name</replaceable>
 	    to limit the output to the processes belonging 
 	    to this container name.	    
 	  </para>
@@ -94,7 +94,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
       <varlistentry>
 	<term>
-	  <option><replaceable>--lxc</replaceable></option>
+	  <option>--lxc</option>
 	</term>
 	<listitem>
 	  <para>

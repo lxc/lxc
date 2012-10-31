@@ -62,6 +62,10 @@
 #include "lxc.h"	/* for lxc_cgroup_set() */
 #include "caps.h"       /* for lxc_caps_last_cap() */
 
+#if HAVE_APPARMOR
+#include <apparmor.h>
+#endif
+
 lxc_log_define(lxc_conf, lxc);
 
 #define MAXHWLEN    18
@@ -279,8 +283,8 @@ static int run_script(const char *name, const char *section,
 
 	free(output);
 
-	if (pclose(f)) {
-		ERROR("Script exited on error");
+	if (pclose(f) == -1) {
+		SYSERROR("Script exited on error");
 		return -1;
 	}
 
@@ -1049,6 +1053,31 @@ static int setup_console(const struct lxc_rootfs *rootfs,
 		return setup_dev_console(rootfs, console);
 
 	return setup_ttydir_console(rootfs, console, ttydir);
+}
+
+static int setup_kmsg(const struct lxc_rootfs *rootfs,
+		       const struct lxc_console *console)
+{
+	char kpath[MAXPATHLEN];
+	int ret;
+
+	ret = snprintf(kpath, sizeof(kpath), "%s/dev/kmsg", rootfs->mount);
+	if (ret < 0 || ret >= sizeof(kpath))
+		return -1;
+
+	ret = unlink(kpath);
+	if (ret && errno != ENOENT) {
+		SYSERROR("error unlinking %s\n", kpath);
+		return -1;
+	}
+
+	ret = symlink("console", kpath);
+	if (ret) {
+		SYSERROR("failed to create symlink for kmsg");
+		return -1;
+	}
+
+	return 0;
 }
 
 static int setup_cgroup(const char *name, struct lxc_list *cgroups)
@@ -2152,7 +2181,11 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	HOOK(name, "mount", lxc_conf);
+	if (run_lxc_hooks(name, "mount", lxc_conf)) {
+		ERROR("failed to run mount hooks for container '%s'.", name);
+		return -1;
+	}
+
 	if (setup_cgroup(name, &lxc_conf->cgroup)) {
 		ERROR("failed to setup the cgroups for '%s'", name);
 		return -1;
@@ -2163,13 +2196,23 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
+	if (setup_kmsg(&lxc_conf->rootfs, &lxc_conf->console)) {
+		ERROR("failed to setup kmsg for '%s'", name);
+		return -1;
+	}
+
 	if (setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info, lxc_conf->ttydir)) {
 		ERROR("failed to setup the ttys for '%s'", name);
 		return -1;
 	}
 
 #if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
-	mounted = lsm_mount_proc_if_needed(lxc_conf->rootfs.path, lxc_conf->rootfs.mount);
+	INFO("rootfs path is .%s., mount is .%s.", lxc_conf->rootfs.path,
+		lxc_conf->rootfs.mount);
+	if (lxc_conf->rootfs.path == NULL || strlen(lxc_conf->rootfs.path) == 0)
+		mounted = 0;
+	else
+		mounted = lsm_mount_proc_if_needed(lxc_conf->rootfs.path, lxc_conf->rootfs.mount);
 	if (mounted == -1) {
 		SYSERROR("failed to mount /proc in the container.");
 		return -1;

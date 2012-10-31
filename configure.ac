@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT([lxc], [0.8.0-rc2])
+AC_INIT([lxc], [0.8.0.rc2])
 
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_AUX_DIR([config])
@@ -70,11 +70,11 @@ AC_ARG_WITH([rootfs-path],
 	)], [], [with_rootfs_path=['${libdir}/lxc/rootfs']])
 
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
+AS_AC_EXPAND(LXCPATH, "${with_config_path}")
+AS_AC_EXPAND(LXCROOTFSMOUNT, "${with_rootfs_path}")
+AS_AC_EXPAND(LXCTEMPLATEDIR, ['${datadir}/lxc/templates'])
 
-AC_SUBST(LXCPATH, "${with_config_path}")
-AC_SUBST(LXCROOTFSMOUNT, "${with_rootfs_path}")
 AC_SUBST(LXCINITDIR, ['${libexecdir}'])
-AC_SUBST(LXCTEMPLATEDIR, ['/usr/share/lxc/templates'])
 
 AC_CHECK_HEADERS([linux/unistd.h linux/netlink.h linux/genetlink.h],
 				  [],

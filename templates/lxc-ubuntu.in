@@ -146,6 +146,18 @@ EOF
     fi
 }
 
+cleanup()
+{
+    rm -rf $cache/partial-$arch
+    rm -rf $cache/rootfs-$arch
+}
+
+suggest_flush()
+{
+    echo "Container upgrade failed.  The container cache may be out of date,"
+    echo "in which case flushing the case (see -F in the hep output) may help."
+}
+
 download_ubuntu()
 {
     cache=$1
@@ -155,6 +167,7 @@ download_ubuntu()
     packages=vim,ssh
     echo "installing packages: $packages"
 
+    trap cleanup EXIT SIGHUP SIGINT SIGTERM
     # check the mini ubuntu was not already downloaded
     mkdir -p "$cache/partial-$arch"
     if [ $? -ne 0 ]; then
@@ -192,16 +205,16 @@ exit 101
 EOF
     chmod +x "$1/partial-${arch}"/usr/sbin/policy-rc.d
 
-    lxc-unshare -s MOUNT -- chroot "$1/partial-${arch}" apt-get dist-upgrade -y
-    ret=$?
+    lxc-unshare -s MOUNT -- chroot "$1/partial-${arch}" apt-get dist-upgrade -y || { suggest_flush; false; }
     rm -f "$1/partial-${arch}"/usr/sbin/policy-rc.d
 
-    if [ $ret -ne 0 ]; then
-        echo "Failed to upgrade the cache"
-        return 1
-    fi
+    chroot "$1/partial-${arch}" apt-get clean
 
     mv "$1/partial-$arch" "$1/rootfs-$arch"
+    trap EXIT
+    trap SIGINT
+    trap SIGTERM
+    trap SIGHUP
     echo "Download complete"
     return 0
 }
@@ -300,6 +313,10 @@ lxc.rootfs = $rootfs
 lxc.mount  = $path/fstab
 lxc.arch = $arch
 lxc.cap.drop = sys_module mac_admin mac_override
+lxc.pivotdir = lxc_putold
+
+# When using LXC with apparmor, uncomment the next line to run unconfined:
+#lxc.aa_profile = unconfined
 
 lxc.cgroup.devices.deny = a
 # Allow any mknod (but not using the node)
@@ -455,6 +472,7 @@ post_process()
         # for lucid, if not trimming, then add the ubuntu-virt
         # ppa and install lxcguest
         if [ $release = "lucid" ]; then
+            chroot $rootfs apt-get update
             chroot $rootfs apt-get install --force-yes -y python-software-properties
             chroot $rootfs add-apt-repository ppa:ubuntu-virt/ppa
         fi
@@ -498,9 +516,8 @@ post_process()
     # I'm afraid of doing rm -rf $rootfs/dev/shm, in case it did
     # get bind mounted to the host's /run/shm.  So try to rmdir
     # it, and in case that fails move it out of the way.
-    if [ -d $rootfs/run/shm ]; then
-        [ -d "$rootfs/dev/shm" ] && rmdir $rootfs/dev/shm
-        [ -e "$rootfs/dev/shm" ] && mv $rootfs/dev/shm $rootfs/dev/shm.bak
+    if [ ! -L $rootfs/dev/shm ] && [ -d $rootfs/run/shm ] && [ -e $rootfs/dev/shm ]; then
+        mv $rootfs/dev/shm $rootfs/dev/shm.bak
         ln -s /run/shm $rootfs/dev/shm
     fi
 }
@@ -684,7 +701,11 @@ fi
 
 echo ""
 echo "##"
-echo "# The default user is 'ubuntu' with password 'ubuntu'!"
-echo "# Use the 'sudo' command to run tasks as root in the container."
+if [ -n "$bindhome" ]; then
+	echo "# Log in as user $bindhome"
+else
+	echo "# The default user is 'ubuntu' with password 'ubuntu'!"
+	echo "# Use the 'sudo' command to run tasks as root in the container."
+fi
 echo "##"
 echo ""

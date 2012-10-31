@@ -48,9 +48,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-cgroup -n <replaceable>name</replaceable>
-	<replaceable>state-object</replaceable> <optional>value</optional>
-      </command>
+      <command>lxc-cgroup</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="req"><replaceable>state-object</replaceable></arg>
+      <arg choice="opt">value</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 

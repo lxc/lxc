@@ -48,9 +48,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-console <replaceable>-n name</replaceable>
-	<optional>-t ttynum</optional>
-      </command>
+      <command>lxc-console</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-t <replaceable>ttynum</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -84,7 +84,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
       <varlistentry>
 	<term>
-	  <option>-t <optional>ttynum</optional></option>
+	  <option>-t <optional><replaceable>ttynum</replaceable></optional></option>
 	</term>
 	<listitem>
 	  <para>

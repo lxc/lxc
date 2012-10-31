@@ -49,11 +49,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-restart <optional>-f
-	config_file</optional><optional>-s KEY=VAL</optional>
-	--statefile=<replaceable>FILE</replaceable>
-	--statefd=<replaceable>FD</replaceable></command>
-      <arg choice="req"><option>--name=<replaceable>NAME</replaceable></option></arg>
+      <command>lxc-restart</command>
+      <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
+      <arg choice="opt">-s KEY=VAL</arg>
+      <arg choice="req">--statefile=<replaceable>FILE</replaceable></arg>
+      <arg choice="req">--statefd=<replaceable>FD</replaceable></arg>
+      <arg choice="req">--name=<replaceable>NAME</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
