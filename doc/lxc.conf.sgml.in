@@ -502,6 +502,31 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </refsect2>
 
     <refsect2>
+      <title>/dev directory</title>
+      <para>
+	By default, lxc does nothing with the container's
+	<filename>/dev</filename>.  This allows the container's
+	<filename>/dev</filename> to be set up as needed in the container
+	rootfs.  If lxc.autodev is to 1, then after mounting the container's
+	rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
+	(limited to 100k) and fill in a minimal set of initial devices.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.autodev</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Set this to 1 to have LXC mount and populate a minimal
+	      <filename>/dev</filename> when starting the container.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Mount points</title>
       <para>
 	The mount points section specifies the different places to be

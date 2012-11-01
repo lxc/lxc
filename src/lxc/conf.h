@@ -237,6 +237,7 @@ struct lxc_conf {
 #endif
 	char *seccomp;  // filename with the seccomp rules
 	int maincmd_fd;
+	int autodev;  // if 1, mount and fill a /dev at start
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);

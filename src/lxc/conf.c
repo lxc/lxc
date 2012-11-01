@@ -653,6 +653,15 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 				return -1;
 			}
 		} else {
+			/* If we populated /dev, then we need to create /dev/ttyN */
+			if (access(path, F_OK)) {
+				ret = creat(path, 0660);
+				if (ret==-1) {
+					SYSERROR("error creating %s\n", path);
+					/* this isn't fatal, continue */
+				} else
+					close(ret);
+			}
 			if (mount(pty_info->name, path, "none", MS_BIND, 0)) {
 				WARN("failed to mount '%s'->'%s'",
 						pty_info->name, path);
@@ -857,6 +866,67 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	if (remove_pivotdir && rmdir(pivotdir))
 		WARN("can't remove mountpoint '%s': %m", pivotdir);
 
+	return 0;
+}
+
+struct lxc_devs {
+	char *name;
+	mode_t mode;
+	int maj;
+	int min;
+};
+
+struct lxc_devs lxc_devs[] = {
+	{ "null",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 3	},
+	{ "zero",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 5	},
+	{ "full",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 7	},
+	{ "urandom",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 9	},
+	{ "random",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 8	},
+	{ "tty",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 5, 0	},
+	{ "console",	S_IFCHR | S_IRUSR | S_IWUSR,	       5, 1	},
+};
+
+/*
+ * Do we want to add options for max size of /dev and a file to
+ * specify which devices to create?
+ */
+static int setup_autodev(char *root)
+{
+	int ret;
+	struct lxc_devs *d;
+	char path[MAXPATHLEN];
+	int i;
+
+	INFO("Creating and populating /dev under %s\n", root);
+	ret = snprintf(path, MAXPATHLEN, "%s/dev", root);
+	if (ret < 0 || ret > MAXPATHLEN)
+		return -1;
+	ret = mount("none", path, "tmpfs", 0, "size=100000");
+	if (ret) {
+		SYSERROR("Failed to mount /dev at %s\n", root);
+		return -1;
+	}
+	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
+		d = &lxc_devs[i];
+		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", root, d->name);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			return -1;
+		ret = mknod(path, d->mode, makedev(d->maj, d->min));
+		if (ret) {
+			SYSERROR("Error creating %s\n", d->name);
+			return -1;
+		}
+	}
+	ret = snprintf(path, MAXPATHLEN, "%s/dev/pts", root);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return -1;
+	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	if (ret) {
+		SYSERROR("Failed to create /dev/pts in container");
+		return -1;
+	}
+
+	INFO("Populated /dev under %s\n", root);
 	return 0;
 }
 
@@ -2263,6 +2333,13 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 	if (setup_rootfs(&lxc_conf->rootfs)) {
 		ERROR("failed to setup rootfs for '%s'", name);
 		return -1;
+	}
+
+	if (lxc_conf->autodev) {
+		if (setup_autodev(lxc_conf->rootfs.mount)) {
+			ERROR("failed to set up /dev in the container");
+			return -1;
+		}
 	}
 
 	if (setup_mount(&lxc_conf->rootfs, lxc_conf->fstab, name)) {

@@ -79,6 +79,7 @@ static int config_console(const char *, char *, struct lxc_conf *);
 static int config_seccomp(const char *, char *, struct lxc_conf *);
 static int config_includefile(const char *, char *, struct lxc_conf *);
 static int config_network_nic(const char *, char *, struct lxc_conf *);
+static int config_autodev(const char *, char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 
@@ -121,6 +122,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.console",              config_console              },
 	{ "lxc.seccomp",              config_seccomp              },
 	{ "lxc.include",              config_includefile          },
+	{ "lxc.autodev",              config_autodev              },
 };
 
 static const size_t config_size = sizeof(config)/sizeof(struct lxc_config_t);
@@ -880,6 +882,16 @@ static int config_aa_profile(const char *key, char *value, struct lxc_conf *lxc_
 	return 0;
 }
 #endif
+
+static int config_autodev(const char *key, char *value,
+			  struct lxc_conf *lxc_conf)
+{
+	int v = atoi(value);
+
+	lxc_conf->autodev = v;
+
+	return 0;
+}
 
 static int config_cgroup(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
