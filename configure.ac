@@ -152,7 +152,7 @@ AS_AC_EXPAND(LXCPATH, "${with_config_path}")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "${with_rootfs_path}")
 AS_AC_EXPAND(LXCTEMPLATEDIR, ['${datadir}/lxc/templates'])
 
-AC_SUBST(LXCINITDIR, ['${libexecdir}'])
+AS_AC_EXPAND(LXCINITDIR, ['${libexecdir}'])
 
 AC_CHECK_HEADERS([linux/unistd.h linux/netlink.h linux/genetlink.h],
 				  [],
