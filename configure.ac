@@ -6,7 +6,7 @@ AC_INIT([lxc], [0.8.0])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_AUX_DIR([config])
 AM_CONFIG_HEADER([src/config.h])
-AM_INIT_AUTOMAKE([-Wno-portability])
+AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability])
 AC_CANONICAL_HOST
 AM_PROG_CC_C_O
 AC_GNU_SOURCE
@@ -182,7 +182,7 @@ AC_PROG_GCC_TRADITIONAL
 AC_PROG_SED
 
 if test "x$GCC" = "xyes"; then
-  CFLAGS="$CFLAGS -Wall"
+  CFLAGS="$CFLAGS -Wall -Werror"
 fi
 
 AC_CONFIG_FILES([
