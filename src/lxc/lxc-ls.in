@@ -75,7 +75,7 @@ directory=$(readlink -f "$lxc_path")
 for i in "$@"; do
 	case $i in
 		--help)
-			help; exit 1;;
+			help; exit;;
 		--active)
 			get_parent_cgroup; directory="$parent_cgroup"; shift;;
 		--)
@@ -88,11 +88,6 @@ done
 containers=""
 if [ ! -z "$directory" ]; then
 	containers=$(find $directory -mindepth 1 -maxdepth 1 -type d -printf "%f\n" 2>/dev/null)
-fi
-
-if [ -z "$containers" ]; then
-	echo "$(basename $0): no containers found" >&2
-	exit 1
 fi
 
 cd "$directory"
