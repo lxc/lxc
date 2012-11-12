@@ -59,14 +59,30 @@ AC_ARG_ENABLE([rpath],
 AM_CONDITIONAL([ENABLE_RPATH], [test "x$enable_rpath" = "xyes"])
 
 AC_ARG_ENABLE([doc],
-	[AC_HELP_STRING([--enable-doc], [make mans (require docbook2man installed) [default=auto]])],
+	[AC_HELP_STRING([--enable-doc], [make mans (require docbook2x-man installed) [default=auto]])],
 	[], [enable_doc=auto])
 
 if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
-	AC_CHECK_PROG(have_docbook, [docbook2man], [yes], [no])
+	db2xman=""
 
-	test "x$have_docbook" = "xno" -a "x$enable_doc" = "xyes" && \
-		AC_MSG_ERROR([docbook2man required by man request, but not found])
+	AC_MSG_CHECKING(for docbook2x-man)
+	for name in docbook2x-man db2x_docbook2man; do
+		if "$name" --help >/dev/null 2>&1; then
+			db2xman="$name"
+			break;
+		fi
+	done
+
+	if test -n "${db2xman}"; then
+		AC_MSG_RESULT(${db2xman})
+	else
+		AC_MSG_RESULT(no)
+		if test "x$enable_doc" = "xyes"; then
+			AC_MSG_ERROR([docbook2x-man required by man request, but not found])
+		fi
+	fi
+
+	AC_SUBST(db2xman)
 fi
 
 AC_ARG_ENABLE([apparmor],
@@ -99,7 +115,7 @@ AM_COND_IF([ENABLE_SECCOMP],
      AC_CHECK_LIB([seccomp], [seccomp_init],[],[AC_MSG_ERROR([You must install the seccomp development package in order to compile lxc])])
      AC_SUBST([SECCOMP_LIBS], [-lseccomp])])
 
-AM_CONDITIONAL([ENABLE_DOCBOOK], [test "x$have_docbook" = "xyes"])
+AM_CONDITIONAL([ENABLE_DOCBOOK], [test "x$db2xman" != "x"])
 
 AC_ARG_ENABLE([examples],
 	[AC_HELP_STRING([--disable-examples], [do not install configuration examples])],

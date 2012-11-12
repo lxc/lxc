@@ -31,13 +31,13 @@ man_MANS = \
 
 
 %.1 : %.sgml
-	docbook2man $<
+	$(db2xman) $<
 
 %.5 : %.sgml
-	docbook2man $<
+	$(db2xman) $<
 
 %.7 : %.sgml
-	docbook2man $<
+	$(db2xman) $<
 
 lxc-%.sgml : common_options.sgml see_also.sgml
 
