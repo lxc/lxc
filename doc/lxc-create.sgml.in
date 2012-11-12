@@ -113,6 +113,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    eg. busybox, debian, fedora, ubuntu or sshd.
 	    Refer to the examples in <filename>@LXCTEMPLATEDIR@</filename>
 	    for details of the expected script structure.
+	    Alternatively, the full path to an executable template script
+	    can also be passed as a parameter.
 	  </para>
 	</listitem>
       </varlistentry>

@@ -290,14 +290,20 @@ if [ $backingstore = "lvm" ]; then
 fi
 
 if [ ! -z $lxc_template ]; then
+    # Allow for a path to be provided as the template name
+    if [ -x $lxc_template ]; then
+        template_path=$lxc_template
+    else
+        template_path=${templatedir}/lxc-$lxc_template
+    fi
 
-    type ${templatedir}/lxc-$lxc_template 2>/dev/null
+    type $template_path 2>/dev/null
     if [ $? -ne 0 ]; then
         echo "$(basename $0): unknown template '$lxc_template'" >&2
         cleanup
     fi
 
-    ${templatedir}/lxc-$lxc_template --path=$lxc_path/$lxc_name --name=$lxc_name $*
+    $template_path --path=$lxc_path/$lxc_name --name=$lxc_name $*
     if [ $? -ne 0 ]; then
         echo "$(basename $0): failed to execute template '$lxc_template'" >&2
         cleanup
