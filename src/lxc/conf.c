@@ -1732,6 +1732,8 @@ static int setup_private_host_hw_addr(char *veth1)
 	return 0;
 }
 
+static char *default_rootfs_mount = LXCROOTFSMOUNT;
+
 struct lxc_conf *lxc_conf_init(void)
 {
 	struct lxc_conf *new;
@@ -1750,7 +1752,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.master = -1;
 	new->console.slave = -1;
 	new->console.name[0] = '\0';
-	new->rootfs.mount = LXCROOTFSMOUNT;
+	new->rootfs.mount = default_rootfs_mount;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
@@ -2576,7 +2578,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 		return;
 	if (conf->console.path)
 		free(conf->console.path);
-	if (conf->rootfs.mount != LXCROOTFSMOUNT)
+	if (conf->rootfs.mount != default_rootfs_mount)
 		free(conf->rootfs.mount);
 	lxc_clear_config_network(conf);
 #if HAVE_APPARMOR
