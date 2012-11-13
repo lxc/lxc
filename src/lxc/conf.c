@@ -2576,7 +2576,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 		return;
 	if (conf->console.path)
 		free(conf->console.path);
-	if (strcmp(conf->rootfs.mount, LXCROOTFSMOUNT) != 0)
+	if (conf->rootfs.mount != LXCROOTFSMOUNT)
 		free(conf->rootfs.mount);
 	lxc_clear_config_network(conf);
 #if HAVE_APPARMOR
