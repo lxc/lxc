@@ -96,7 +96,7 @@ EOF
         cp $auth_key "$root_u_path/authorized_keys"
         chown -R 0:0 "$rootfs/$u_path"
         chmod 700 "$rootfs/$u_path"
-        echo "Inserted SSH public key from $auth_key into /home/ubuntu/.ssh/authorized_keys"
+        echo "Inserted SSH public key from $auth_key into $rootfs/$u_path"
     fi
 
     return 0
