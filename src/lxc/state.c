@@ -210,7 +210,7 @@ extern int lxc_wait(char *lxcname, char *states, int timeout)
 	}
 
 	for (;;) {
-		int elapsed_time, curtime;
+		int elapsed_time, curtime = 0;
 		struct timeval tv;
 		int stop = 0;
 		int retval;
