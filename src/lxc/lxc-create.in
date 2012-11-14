@@ -249,6 +249,8 @@ cleanup() {
     if [ $backingstore = "lvm" ]; then
         umount $rootfs
         lvremove -f $rootdev
+    elif [ $backingstore = "btrfs" ]; then
+        btrfs subvolume delete "$rootfs"
     fi
     ${bindir}/lxc-destroy -n $lxc_name
     echo "$(basename $0): aborted" >&2
