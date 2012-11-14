@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 
 	ret = system("mkdir -p /var/lib/lxc/lxctest1/rootfs//usr/local/libexec/lxc");
 	if (!ret)
-		system("mkdir -p /var/lib/lxc/lxctest1/rootfs/usr/lib/lxc/");
+		ret = system("mkdir -p /var/lib/lxc/lxctest1/rootfs/usr/lib/lxc/");
 	if (!ret)
 		ret = system("cp src/lxc/lxc-init /var/lib/lxc/lxctest1/rootfs//usr/local/libexec/lxc");
 	if (!ret)
