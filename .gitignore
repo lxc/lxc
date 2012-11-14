@@ -66,6 +66,17 @@ src/lxc/lxc-unshare
 src/lxc/lxc-version
 src/lxc/lxc-wait
 
+src/tests/lxc-test-containertests
+src/tests/lxc-test-createtest
+src/tests/lxc-test-destroytest
+src/tests/lxc-test-get_item
+src/tests/lxc-test-getkeys
+src/tests/lxc-test-locktests
+src/tests/lxc-test-saveconfig
+src/tests/lxc-test-shutdowntest
+src/tests/lxc-test-startone
+
+
 config/compile
 config/config.guess
 config/config.sub
