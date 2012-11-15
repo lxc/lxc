@@ -53,6 +53,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
       <arg choice="opt">-c <replaceable>console_file</replaceable></arg>
       <arg choice="opt">-d</arg>
+      <arg choice="opt">-p <replaceable>pid_file</replaceable></arg>
       <arg choice="opt">-s KEY=VAL</arg>
       <arg choice="opt">-C</arg>
       <arg choice="opt">command</arg>
@@ -103,6 +104,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    Run the container as a daemon. As the container has no
 	    more tty, if an error occurs nothing will be displayed,
 	    the log file can be used to check the error.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-p, --pidfile <replaceable>pid_file</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Create a file with the process id.
 	  </para>
 	</listitem>
       </varlistentry>

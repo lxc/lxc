@@ -45,6 +45,7 @@ struct lxc_arguments {
 	int daemonize;
 	const char *rcfile;
 	const char *console;
+	const char *pidfile;
 
 	/* for lxc-checkpoint/restart */
 	const char *statefile;
