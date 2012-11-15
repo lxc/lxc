@@ -207,7 +207,8 @@ int main(int argc, char *argv[])
 	if (my_args.pidfile != NULL) {
 		pid_fp = fopen(my_args.pidfile, "w");
 		if (pid_fp == NULL) {
-			SYSERROR("failed to create '%s'", my_args.name);
+			SYSERROR("failed to create pidfile '%s' for '%s'",
+				 my_args.pidfile, my_args.name);
 			return err;
 		}
 	}
