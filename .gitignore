@@ -50,7 +50,6 @@ src/lxc/lxc-freeze
 src/lxc/lxc-info
 src/lxc/lxc-init
 src/lxc/lxc-kill
-src/lxc/lxc-ls
 src/lxc/lxc-monitor
 src/lxc/lxc-netstat
 src/lxc/lxc-ps

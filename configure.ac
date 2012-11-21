@@ -256,7 +256,6 @@ AC_CONFIG_FILES([
 	src/Makefile
 	src/lxc/Makefile
 	src/lxc/lxc-ps
-	src/lxc/lxc-ls
 	src/lxc/lxc-netstat
 	src/lxc/lxc-checkconfig
 	src/lxc/lxc-setcap

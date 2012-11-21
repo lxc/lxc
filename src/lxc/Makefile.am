@@ -87,7 +87,6 @@ liblxc_so_LDADD = -lutil $(CAP_LIBS) $(APPARMOR_LIBS) $(SECCOMP_LIBS) -lrt
 bin_SCRIPTS = \
 	lxc-ps \
 	lxc-netstat \
-	lxc-ls \
 	lxc-checkconfig \
 	lxc-setcap \
 	lxc-setuid \
@@ -99,6 +98,7 @@ bin_SCRIPTS = \
 
 if ENABLE_PYTHON
     bin_SCRIPTS += lxc-device
+    bin_SCRIPTS += lxc-ls
     bin_SCRIPTS += lxc-start-ephemeral
 endif
 
