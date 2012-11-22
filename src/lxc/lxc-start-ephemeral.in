@@ -46,16 +46,17 @@ def randomMAC():
     import random
 
     mac = [0x00, 0x16, 0x3e,
-        random.randint(0x00, 0x7f),
-        random.randint(0x00, 0xff),
-        random.randint(0x00, 0xff)]
+           random.randint(0x00, 0x7f),
+           random.randint(0x00, 0xff),
+           random.randint(0x00, 0xff)]
     return ':'.join(map(lambda x: "%02x" % x, mac))
 
 # Begin parsing the command line
-parser = argparse.ArgumentParser(
-            description=_("LXC: Start an ephemeral container"),
-            formatter_class=argparse.RawTextHelpFormatter, epilog=_(
-"""If a COMMAND is given, then the container will run only as long
+parser = argparse.ArgumentParser(description=_(
+                                 "LXC: Start an ephemeral container"),
+                                 formatter_class=argparse.RawTextHelpFormatter,
+                                 epilog=_("If a COMMAND is given, then the "
+                                          """container will run only as long
 as the command runs.
 If no COMMAND is given, this command will attach to tty1 and stop the
 container when exiting (with ctrl-a-q).
@@ -64,29 +65,31 @@ If no COMMAND is given and -d is used, the name and IP addresses of the
 container will be printed to the console."""))
 
 parser.add_argument("--orig", "-o", type=str, required=True,
-    help=_("name of the original container"))
+                    help=_("name of the original container"))
 
 parser.add_argument("--bdir", "-b", type=str,
-    help=_("directory to bind mount into container"))
+                    help=_("directory to bind mount into container"))
 
 parser.add_argument("--user", "-u", type=str,
-    help=_("the user to connect to the container as"))
+                    help=_("the user to connect to the container as"))
 
 parser.add_argument("--key", "-S", type=str,
-    help=_("the path to the SSH key to use to connect"))
+                    help=_("the path to the SSH key to use to connect"))
 
 parser.add_argument("--daemon", "-d", action="store_true",
-    help=_("run in the background"))
+                    help=_("run in the background"))
 
 parser.add_argument("--union-type", "-U", type=str, default="overlayfs",
-    choices=("overlayfs", "aufs"),
-    help=_("type of union (overlayfs or aufs), defaults to overlayfs."))
+                    choices=("overlayfs", "aufs"),
+                    help=_("type of union (overlayfs or aufs), "
+                           "defaults to overlayfs."))
 
 parser.add_argument("--keep-data", "-k", action="store_true",
-    help=_("Use a persistent backend instead of tmpfs."))
+                    help=_("Use a persistent backend instead of tmpfs."))
 
 parser.add_argument("command", metavar='CMD', type=str, nargs="*",
-    help=_("Run specific command in container (command as argument)"))
+                    help=_("Run specific command in container "
+                           "(command as argument)"))
 
 args = parser.parse_args()
 
@@ -129,7 +132,7 @@ if orig.get_config_item("lxc.mount"):
             for line in orig_fd.read().split("\n"):
                 # Start by replacing any reference to the container rootfs
                 line.replace(orig.get_config_item("lxc.rootfs"),
-                                dest.get_config_item("lxc.rootfs"))
+                             dest.get_config_item("lxc.rootfs"))
 
                 # Skip any line that's not a bind mount
                 fields = line.split()
@@ -143,17 +146,17 @@ if orig.get_config_item("lxc.mount"):
 
                 # Process any remaining line
                 dest_mount = os.path.abspath(os.path.join("%s/rootfs/" % (
-                                dest_path), fields[1]))
+                                             dest_path), fields[1]))
 
                 if dest_mount == os.path.abspath("%s/rootfs/%s" % (
-                    dest_path, args.bdir)):
+                                                 dest_path, args.bdir)):
 
                     dest_fd.write("%s\n" % line)
                     continue
 
                 if "%s/rootfs/" % dest_path not in dest_mount:
-                    print(_(
-"Skipping mount entry '%s' as it's outside of the container rootfs.") % line)
+                    print(_("Skipping mount entry '%s' as it's outside "
+                            "of the container rootfs.") % line)
 
                 overlay_dirs += [(fields[0], dest_mount)]
 
@@ -176,27 +179,27 @@ LXC_NAME="%s"
 
         if args.union_type == "overlayfs":
             fd.write("mount -n -t overlayfs"
-                        " -oupperdir=%s,lowerdir=%s none %s\n" % (
-                        target,
-                        entry[0],
-                        entry[1]))
+                     " -oupperdir=%s,lowerdir=%s none %s\n" % (
+                     target,
+                     entry[0],
+                     entry[1]))
         elif args.union_type == "aufs":
             fd.write("mount -n -t aufs "
-                        "-o br=${upper}=rw:${lower}=ro,noplink none %s\n" % (
-                        target,
-                        entry[0],
-                        entry[1]))
+                     "-o br=${upper}=rw:${lower}=ro,noplink none %s\n" % (
+                     target,
+                     entry[0],
+                     entry[1]))
         count += 1
 
     if args.bdir:
         if not os.path.exists(args.bdir):
             print(_("Path '%s' doesn't exist, won't be bind-mounted.") %
-                    args.bdir)
+                  args.bdir)
         else:
             src_path = os.path.abspath(args.bdir)
             dst_path = "%s/rootfs/%s" % (dest_path, os.path.abspath(args.bdir))
             fd.write("mkdir -p %s\nmount -n --bind %s %s\n" % (
-                            dst_path, src_path, dst_path))
+                     dst_path, src_path, dst_path))
 
     fd.write("""
 [ -e $LXC_DIR/configured ] && exit 0
@@ -210,7 +213,7 @@ touch $LXC_DIR/configured
 """)
 
 dest.set_config_item("lxc.hook.pre-mount",
-                        os.path.join(dest_path, "pre-mount"))
+                     os.path.join(dest_path, "pre-mount"))
 
 # Generate post-stop script
 if not args.keep_data:
@@ -221,7 +224,7 @@ if not args.keep_data:
 """ % (dest_path, dest_path))
 
     dest.set_config_item("lxc.hook.post-stop",
-                            os.path.join(dest_path, "post-stop"))
+                         os.path.join(dest_path, "post-stop"))
 
 dest.save_config()
 
@@ -248,11 +251,9 @@ if args.daemon:
 
 You can enter it from the command line with: lxc-console -n %s
 The following IP addresses have be found in the container:
-%s""") % (
-            dest.name,
-            "\n".join([" - %s" % entry for entry in ips]
-                        or [" - %s" % _("No address could be found")])
-        ))
+%s""") % (dest.name,
+          "\n".join([" - %s" % entry for entry in ips]
+                    or [" - %s" % _("No address could be found")])))
     sys.exit(0)
 
 # Now deal with the case where we want to run a command in the container
@@ -265,8 +266,8 @@ if not ips:
 
 # NOTE: To replace by .attach() once the kernel supports it
 cmd = ["ssh",
-        "-o", "StrictHostKeyChecking=no",
-        "-o", "UserKnownHostsFile=/dev/null"]
+       "-o", "StrictHostKeyChecking=no",
+       "-o", "UserKnownHostsFile=/dev/null"]
 
 if args.user:
     cmd += ["-l", args.user]

@@ -43,20 +43,20 @@ container = lxc.Container(CONTAINER_NAME)
 
 # A few basic checks of the current state
 assert(container.config_file_name == "%s/%s/config" %
-            (LXC_PATH_LIB, CONTAINER_NAME))
-assert(container.defined == False)
+       (LXC_PATH_LIB, CONTAINER_NAME))
+assert(not container.defined)
 assert(container.init_pid == -1)
 assert(container.name == CONTAINER_NAME)
-assert(container.running == False)
+assert(not container.running)
 assert(container.state == "STOPPED")
 
 ## Create a rootfs
 print("Creating rootfs using '%s'" % LXC_TEMPLATE)
 container.create(LXC_TEMPLATE)
 
-assert(container.defined == True)
+assert(container.defined)
 assert(container.name == CONTAINER_NAME
-        == container.get_config_item("lxc.utsname"))
+       == container.get_config_item("lxc.utsname"))
 assert(container.name in lxc.list_containers())
 
 ## Test the config
@@ -86,7 +86,7 @@ container.wait("RUNNING", 3)
 
 # A few basic checks of the current state
 assert(container.init_pid > 1)
-assert(container.running == True)
+assert(container.running)
 assert(container.state == "RUNNING")
 
 ## Checking IP address
@@ -104,7 +104,7 @@ container.wait("FROZEN", 3)
 
 # A few basic checks of the current state
 assert(container.init_pid > 1)
-assert(container.running == True)
+assert(container.running)
 assert(container.state == "FROZEN")
 
 ## Unfreezing the container
@@ -114,7 +114,7 @@ container.wait("RUNNING", 3)
 
 # A few basic checks of the current state
 assert(container.init_pid > 1)
-assert(container.running == True)
+assert(container.running)
 assert(container.state == "RUNNING")
 
 if len(sys.argv) > 1 and sys.argv[1] == "--with-console":
@@ -133,7 +133,7 @@ if container.running:
 
 # A few basic checks of the current state
 assert(container.init_pid == -1)
-assert(container.running == False)
+assert(not container.running)
 assert(container.state == "STOPPED")
 
 ## Cloning the container
@@ -148,4 +148,4 @@ clone.destroy()
 print("Destroying the container")
 container.destroy()
 
-assert(container.defined == False)
+assert(not container.defined)

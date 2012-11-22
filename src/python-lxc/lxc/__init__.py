@@ -56,7 +56,7 @@ class ContainerNetwork():
 
         if key not in self.props:
             raise AttributeError("'%s' network has no attribute '%s'" % (
-                    self.__get_network_item("type"), key))
+                                 self.__get_network_item("type"), key))
 
         return self.__clear_network_item(self.props[key])
 
@@ -69,7 +69,7 @@ class ContainerNetwork():
 
         if key not in self.props:
             raise AttributeError("'%s' network has no attribute '%s'" % (
-                    self.__get_network_item("type"), key))
+                                 self.__get_network_item("type"), key))
 
         return self.__get_network_item(self.props[key])
 
@@ -79,7 +79,7 @@ class ContainerNetwork():
 
         if key not in self.props:
             raise AttributeError("'%s' network has no attribute '%s'" % (
-                    self.__get_network_item("type"), key))
+                                 self.__get_network_item("type"), key))
 
         return True
 
@@ -93,21 +93,21 @@ class ContainerNetwork():
 
         if key not in self.props:
             raise AttributeError("'%s' network has no attribute '%s'" % (
-                    self.__get_network_item("type"), key))
+                                 self.__get_network_item("type"), key))
 
         return self.__set_network_item(self.props[key], value)
 
     def __clear_network_item(self, key):
         return self.container.clear_config_item("lxc.network.%s.%s" % (
-                    self.index, key))
+                                                self.index, key))
 
     def __get_network_item(self, key):
         return self.container.get_config_item("lxc.network.%s.%s" % (
-                    self.index, key))
+                                              self.index, key))
 
     def __set_network_item(self, key, value):
         return self.container.set_config_item("lxc.network.%s.%s" % (
-                    self.index, key), value)
+                                              self.index, key), value)
 
 
 class ContainerNetworkList():
@@ -128,7 +128,7 @@ class ContainerNetworkList():
         index = len(self.container.get_config_item("lxc.network"))
 
         return self.container.set_config_item("lxc.network.%s.type" % index,
-                    network_type)
+                                              network_type)
 
     def remove(self, index):
         count = len(self.container.get_config_item("lxc.network"))
@@ -272,9 +272,8 @@ class Container(_lxc.Container):
         if not source.defined:
             return False
 
-        if subprocess.call(
-                    ["lxc-clone", "-o", source.name, "-n", self.name],
-                    universal_newlines=True) != 0:
+        if subprocess.call(["lxc-clone", "-o", source.name, "-n", self.name],
+                           universal_newlines=True) != 0:
             return False
 
         self.load_config()
@@ -288,9 +287,8 @@ class Container(_lxc.Container):
         if not self.running:
             return False
 
-        if subprocess.call(
-                    ["lxc-console", "-n", self.name, "-t", "%s" % tty],
-                    universal_newlines=True) != 0:
+        if subprocess.call(["lxc-console", "-n", self.name, "-t", "%s" % tty],
+                           universal_newlines=True) != 0:
             return False
         return True
 
@@ -339,10 +337,11 @@ class Container(_lxc.Container):
                 ip6_cmd = base_cmd + ["-6", "addr", "show", "scope", "global"]
                 if interface:
                     ip = subprocess.Popen(ip6_cmd + ["dev", interface],
-                            stdout=subprocess.PIPE, universal_newlines=True)
+                                          stdout=subprocess.PIPE,
+                                          universal_newlines=True)
                 else:
                     ip = subprocess.Popen(ip6_cmd, stdout=subprocess.PIPE,
-                            universal_newlines=True)
+                                          universal_newlines=True)
 
                 ip.wait()
                 for line in ip.stdout.read().split("\n"):
@@ -355,10 +354,11 @@ class Container(_lxc.Container):
                 ip4_cmd = base_cmd + ["-4", "addr", "show", "scope", "global"]
                 if interface:
                     ip = subprocess.Popen(ip4_cmd + ["dev", interface],
-                            stdout=subprocess.PIPE, universal_newlines=True)
+                                          stdout=subprocess.PIPE,
+                                          universal_newlines=True)
                 else:
                     ip = subprocess.Popen(ip4_cmd, stdout=subprocess.PIPE,
-                            universal_newlines=True)
+                                          universal_newlines=True)
 
                 ip.wait()
                 for line in ip.stdout.read().split("\n"):
@@ -407,14 +407,14 @@ class Container(_lxc.Container):
         set_key(key, value)
         new_value = self.get_config_item(key)
 
-        if isinstance(value, str) and isinstance(new_value, str) and \
-           value == new_value:
+        if (isinstance(value, str) and isinstance(new_value, str) and
+                value == new_value):
             return True
-        elif isinstance(value, list) and isinstance(new_value, list) and \
-           set(value) == set(new_value):
+        elif (isinstance(value, list) and isinstance(new_value, list) and
+                set(value) == set(new_value)):
             return True
-        elif isinstance(value, str) and isinstance(new_value, list) and \
-           set([value]) == set(new_value):
+        elif (isinstance(value, str) and isinstance(new_value, list) and
+                set([value]) == set(new_value)):
             return True
         elif old_value:
             set_key(key, old_value)
@@ -423,7 +423,7 @@ class Container(_lxc.Container):
             self.clear_config_item(key)
             return False
 
-    def wait(self, state, timeout = -1):
+    def wait(self, state, timeout=-1):
         """
             Wait for the container to reach a given state or timeout.
         """
@@ -432,6 +432,7 @@ class Container(_lxc.Container):
             state = state.upper()
 
         return _lxc.Container.wait(self, state, timeout)
+
 
 def list_containers(as_object=False):
     """
