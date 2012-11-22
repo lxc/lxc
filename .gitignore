@@ -66,6 +66,8 @@ src/lxc/lxc-unshare
 src/lxc/lxc-version
 src/lxc/lxc-wait
 
+src/python-lxc/lxc/__pycache__/
+
 src/tests/lxc-test-containertests
 src/tests/lxc-test-createtest
 src/tests/lxc-test-destroytest
