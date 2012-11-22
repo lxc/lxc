@@ -98,6 +98,7 @@ bin_SCRIPTS = \
 	lxc-destroy
 
 if ENABLE_PYTHON
+    bin_SCRIPTS += lxc-device
     bin_SCRIPTS += lxc-start-ephemeral
 endif
 
