@@ -137,7 +137,6 @@ while [ $# -gt 0 ]; do
 		shift
 		;;
             --)
-		shift
 		break;;
 	    -?)
 		usage_err "unknown option '$opt'"
