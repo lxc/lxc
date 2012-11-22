@@ -115,23 +115,27 @@ class ContainerNetworkList():
         self.container = container
 
     def __getitem__(self, index):
-        count = len(self.container.get_config_item("lxc.network"))
-        if index >= count:
+        if index >= len(self):
             raise IndexError("list index out of range")
 
         return ContainerNetwork(self.container, index)
 
     def __len__(self):
-        return len(self.container.get_config_item("lxc.network"))
+        values = self.container.get_config_item("lxc.network")
+
+        if values:
+            return len(values)
+        else:
+            return 0
 
     def add(self, network_type):
-        index = len(self.container.get_config_item("lxc.network"))
+        index = len(self)
 
         return self.container.set_config_item("lxc.network.%s.type" % index,
                                               network_type)
 
     def remove(self, index):
-        count = len(self.container.get_config_item("lxc.network"))
+        count = len(self)
         if index >= count:
             raise IndexError("list index out of range")
 
