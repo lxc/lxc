@@ -25,6 +25,7 @@ import _lxc
 import glob
 import os
 import subprocess
+import stat
 import tempfile
 import time
 import warnings
@@ -148,6 +149,66 @@ class Container(_lxc.Container):
 
         _lxc.Container.__init__(self, name)
         self.network = ContainerNetworkList(self)
+
+    def add_device(self, path, destpath=None):
+        """
+            Add device to running container.
+        """
+
+        if not destpath:
+            destpath = path
+
+        if not os.path.exists(path):
+            return False
+
+        # Lookup the source
+        path_stat = os.stat(path)
+        mode = stat.S_IMODE(path_stat.st_mode)
+
+        # Lookup the cgroup
+        cgroup_path = None
+        with open("/proc/%s/cgroup" % self.init_pid, "r") as fd:
+            for line in fd:
+                if ":devices:" in line:
+                    cgroup_path = line.split(":")[-1].strip()
+                    break
+            else:
+                return False
+
+        # Lookup the cgroup mount point
+        cgroup = None
+        with open("/proc/mounts", "r") as fd:
+            for line in fd:
+                mount = line.split()
+                if (mount[2] == "cgroup" and "devices" in mount[3]
+                        and os.path.exists("%s/%s" % (mount[1], cgroup_path))):
+                    cgroup = "%s/%s" % (mount[1], cgroup_path)
+                    break
+
+        if not os.path.exists(cgroup):
+            return False
+
+        # Allow the target
+        with open("%s/devices.allow" % cgroup, "a") as fd:
+            if stat.S_ISBLK(path_stat.st_mode):
+                fd.write("b %s:%s rwm" % (int(path_stat.st_rdev / 256),
+                                          int(path_stat.st_rdev % 256)))
+            elif stat.S_ISCHR(path_stat.st_mode):
+                fd.write("c %s:%s rwm" % (int(path_stat.st_rdev / 256),
+                                          int(path_stat.st_rdev % 256)))
+
+        # Create the target
+        rootfs = "/proc/%s/root/" % self.init_pid
+        container_path = "%s/%s" % (rootfs, destpath)
+
+        if os.path.exists(container_path):
+            os.remove(container_path)
+
+        os.mknod(container_path, path_stat.st_mode, path_stat.st_rdev)
+        os.chmod(container_path, mode)
+        os.chown(container_path, 0, 0)
+
+        return True
 
     def append_config_item(self, key, value):
         """
