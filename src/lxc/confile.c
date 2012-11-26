@@ -1231,7 +1231,7 @@ int lxc_config_define_add(struct lxc_list *defines, char* arg)
 
 int lxc_config_define_load(struct lxc_list *defines, struct lxc_conf *conf)
 {
-	struct lxc_list *it;
+	struct lxc_list *it,*next;
 	int ret = 0;
 
 	lxc_list_for_each(it, defines) {
@@ -1240,7 +1240,7 @@ int lxc_config_define_load(struct lxc_list *defines, struct lxc_conf *conf)
 			break;
 	}
 
-	lxc_list_for_each(it, defines) {
+	lxc_list_for_each_safe(it, defines, next) {
 		lxc_list_del(it);
 		free(it);
 	}

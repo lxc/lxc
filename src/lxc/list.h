@@ -14,6 +14,11 @@ struct lxc_list {
 	     __iterator != __list;					\
 	     __iterator = __iterator->next)
 
+#define lxc_list_for_each_safe(__iterator, __list, __next)		\
+	for (__iterator = (__list)->next, __next = __iterator->next;	\
+	     __iterator != __list;					\
+	     __iterator = __next, __next = __next->next)
+
 static inline void lxc_list_init(struct lxc_list *list)
 {
 	list->elem = NULL;

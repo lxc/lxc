@@ -734,7 +734,7 @@ static int umount_oldrootfs(const char *oldrootfs)
 {
 	char path[MAXPATHLEN];
 	void *cbparm[2];
-	struct lxc_list mountlist, *iterator;
+	struct lxc_list mountlist, *iterator, *next;
 	int ok, still_mounted, last_still_mounted;
 	int rc;
 
@@ -774,7 +774,7 @@ static int umount_oldrootfs(const char *oldrootfs)
 		last_still_mounted = still_mounted;
 		still_mounted = 0;
 
-		lxc_list_for_each(iterator, &mountlist) {
+		lxc_list_for_each_safe(iterator, &mountlist, next) {
 
 			/* umount normally */
 			if (!umount(iterator->elem)) {
@@ -2445,7 +2445,7 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf)
 static void lxc_remove_nic(struct lxc_list *it)
 {
 	struct lxc_netdev *netdev = it->elem;
-	struct lxc_list *it2;
+	struct lxc_list *it2,*next;
 
 	lxc_list_del(it);
 
@@ -2463,12 +2463,12 @@ static void lxc_remove_nic(struct lxc_list *it)
 		free(netdev->ipv4_gateway);
 	if (netdev->ipv6_gateway)
 		free(netdev->ipv6_gateway);
-	lxc_list_for_each(it2, &netdev->ipv4) {
+	lxc_list_for_each_safe(it2, &netdev->ipv4, next) {
 		lxc_list_del(it2);
 		free(it2->elem);
 		free(it2);
 	}
-	lxc_list_for_each(it2, &netdev->ipv6) {
+	lxc_list_for_each_safe(it2, &netdev->ipv6, next) {
 		lxc_list_del(it2);
 		free(it2->elem);
 		free(it2);
@@ -2510,15 +2510,15 @@ int lxc_clear_nic(struct lxc_conf *c, char *key)
 	if (!p1) {
 		lxc_remove_nic(it);
 	} else if (strcmp(p1, "ipv4") == 0) {
-		struct lxc_list *it2;
-		lxc_list_for_each(it2, &netdev->ipv4) {
+		struct lxc_list *it2,*next;
+		lxc_list_for_each_safe(it2, &netdev->ipv4, next) {
 			lxc_list_del(it2);
 			free(it2->elem);
 			free(it2);
 		}
 	} else if (strcmp(p1, "ipv6") == 0) {
-		struct lxc_list *it2;
-		lxc_list_for_each(it2, &netdev->ipv6) {
+		struct lxc_list *it2,*next;
+		lxc_list_for_each_safe(it2, &netdev->ipv6, next) {
 			lxc_list_del(it2);
 			free(it2->elem);
 			free(it2);
@@ -2566,8 +2566,8 @@ int lxc_clear_nic(struct lxc_conf *c, char *key)
 
 int lxc_clear_config_network(struct lxc_conf *c)
 {
-	struct lxc_list *it;
-	lxc_list_for_each(it, &c->network) {
+	struct lxc_list *it,*next;
+	lxc_list_for_each_safe(it, &c->network, next) {
 		lxc_remove_nic(it);
 	}
 	return 0;
@@ -2575,9 +2575,9 @@ int lxc_clear_config_network(struct lxc_conf *c)
 
 int lxc_clear_config_caps(struct lxc_conf *c)
 {
-	struct lxc_list *it;
+	struct lxc_list *it,*next;
 
-	lxc_list_for_each(it, &c->caps) {
+	lxc_list_for_each_safe(it, &c->caps, next) {
 		lxc_list_del(it);
 		free(it->elem);
 		free(it);
@@ -2587,14 +2587,14 @@ int lxc_clear_config_caps(struct lxc_conf *c)
 
 int lxc_clear_cgroups(struct lxc_conf *c, char *key)
 {
-	struct lxc_list *it;
+	struct lxc_list *it,*next;
 	bool all = false;
 	char *k = key + 11;
 
 	if (strcmp(key, "lxc.cgroup") == 0)
 		all = true;
 
-	lxc_list_for_each(it, &c->cgroup) {
+	lxc_list_for_each_safe(it, &c->cgroup, next) {
 		struct lxc_cgroup *cg = it->elem;
 		if (!all && strcmp(cg->subsystem, k) != 0)
 			continue;
@@ -2609,9 +2609,9 @@ int lxc_clear_cgroups(struct lxc_conf *c, char *key)
 
 int lxc_clear_mount_entries(struct lxc_conf *c)
 {
-	struct lxc_list *it;
+	struct lxc_list *it,*next;
 
-	lxc_list_for_each(it, &c->mount_list) {
+	lxc_list_for_each_safe(it, &c->mount_list, next) {
 		lxc_list_del(it);
 		free(it->elem);
 		free(it);
@@ -2621,7 +2621,7 @@ int lxc_clear_mount_entries(struct lxc_conf *c)
 
 int lxc_clear_hooks(struct lxc_conf *c, char *key)
 {
-	struct lxc_list *it;
+	struct lxc_list *it,*next;
 	bool all = false, done = false;
 	char *k = key + 9;
 	int i;
@@ -2631,7 +2631,7 @@ int lxc_clear_hooks(struct lxc_conf *c, char *key)
 
 	for (i=0; i<NUM_LXC_HOOKS; i++) {
 		if (all || strcmp(k, lxchook_names[i]) == 0) {
-			lxc_list_for_each(it, &c->hooks[i]) {
+			lxc_list_for_each_safe(it, &c->hooks[i], next) {
 				lxc_list_del(it);
 				free(it->elem);
 				free(it);
