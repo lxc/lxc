@@ -68,9 +68,8 @@ usage_err() {
 }
 
 optarg_check() {
-    local opt="$1" optarg="$2"
-    if [ -z "$optarg" ]; then
-        usage_err "option '$opt' requires an argument"
+    if [ -z "$2" ]; then
+        usage_err "option '$1' requires an argument"
     fi
 }
 
@@ -84,7 +83,7 @@ vgname=lxc
 custom_rootfs=""
 
 while [ $# -gt 0 ]; do
-        local opt="$1"
+        opt="$1"
         shift
         case "$opt" in
 	    -h|--help)
