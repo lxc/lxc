@@ -882,13 +882,13 @@ struct lxc_container *lxc_container_new(char *name)
 		goto err;
 	}
 
-	len = strlen(LXCDIR)+strlen(c->name)+strlen("/config")+2;
+	len = strlen(LXCPATH)+strlen(c->name)+strlen("/config")+2;
 	c->configfile = malloc(len);
 	if (!c->configfile) {
 		fprintf(stderr, "Error allocating config file pathname\n");
 		goto err;
 	}
-	ret = snprintf(c->configfile, len, "%s/%s/config", LXCDIR, c->name);
+	ret = snprintf(c->configfile, len, "%s/%s/config", LXCPATH, c->name);
 	if (ret < 0 || ret >= len) {
 		fprintf(stderr, "Error printing out config file name\n");
 		goto err;
@@ -928,7 +928,7 @@ struct lxc_container *lxc_container_new(char *name)
 	}
 
 	/*
-	 * default configuration file is $LXCDIR/$NAME/config
+	 * default configuration file is $LXCPATH/$NAME/config
 	 */
 
 	return c;

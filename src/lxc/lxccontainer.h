@@ -18,7 +18,6 @@ struct lxc_container {
 	int error_num;
 	int daemonize;
 
-#define LXCDIR "/var/lib/lxc"
 	bool (*is_defined)(struct lxc_container *c);  // did /var/lib/lxc/$name/config exist
 	const char *(*state)(struct lxc_container *c);
 	bool (*is_running)(struct lxc_container *c);  // true so long as defined and not stopped
