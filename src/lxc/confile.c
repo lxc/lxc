@@ -488,17 +488,21 @@ static int config_network_hwaddr(const char *key, char *value,
 				 struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
+	char *hwaddr;
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
-	netdev->hwaddr = strdup(value);
-	if (!netdev->hwaddr) {
+	hwaddr = strdup(value);
+	if (!hwaddr) {
 		SYSERROR("failed to dup string '%s'", value);
 		return -1;
 	}
 
+	if (netdev->hwaddr)
+		free(netdev->hwaddr);
+	netdev->hwaddr = hwaddr;
 	return 0;
 }
 
@@ -521,17 +525,21 @@ static int config_network_mtu(const char *key, char *value,
 			      struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
+	char *mtu;
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
-	netdev->mtu = strdup(value);
-	if (!netdev->mtu) {
+	mtu = strdup(value);
+	if (!mtu) {
 		SYSERROR("failed to dup string '%s'", value);
 		return -1;
 	}
 
+	if (netdev->mtu)
+		free(netdev->mtu);
+	netdev->mtu = mtu;
 	return 0;
 }
 
@@ -787,6 +795,8 @@ static int config_seccomp(const char *key, char *value,
 		return -1;
 	}
 
+	if (lxc_conf->seccomp)
+		free(lxc_conf->seccomp);
 	lxc_conf->seccomp = path;
 
 	return 0;
@@ -859,6 +869,8 @@ static int config_ttydir(const char *key, char *value,
 		return -1;
 	}
 
+	if (lxc_conf->ttydir)
+		free(lxc_conf->ttydir);
 	lxc_conf->ttydir = path;
 
 	return 0;
@@ -877,6 +889,8 @@ static int config_aa_profile(const char *key, char *value, struct lxc_conf *lxc_
 		return -1;
 	}
 
+	if (lxc_conf->aa_profile)
+		free(lxc_conf->aa_profile);
 	lxc_conf->aa_profile = path;
 
 	return 0;
@@ -951,20 +965,31 @@ out:
 	return -1;
 }
 
-static int config_fstab(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_path_item(const char *key, const char *value,
+			    struct lxc_conf *lxc_conf, char **conf_item)
 {
+	char *valdup;
 	if (strlen(value) >= MAXPATHLEN) {
 		ERROR("%s path is too long", value);
 		return -1;
 	}
 
-	lxc_conf->fstab = strdup(value);
-	if (!lxc_conf->fstab) {
+	valdup = strdup(value);
+	if (!valdup) {
 		SYSERROR("failed to duplicate string %s", value);
 		return -1;
 	}
+	if (*conf_item)
+		free(*conf_item);
+	*conf_item = valdup;
 
 	return 0;
+}
+
+static int config_fstab(const char *key, const char *value,
+			struct lxc_conf *lxc_conf)
+{
+	return config_path_item(key, value, lxc_conf, &lxc_conf->fstab);
 }
 
 static int config_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
@@ -1006,7 +1031,7 @@ static int config_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
 static int config_cap_drop(const char *key, char *value,
 			   struct lxc_conf *lxc_conf)
 {
-	char *dropcaps, *sptr, *token;
+	char *dropcaps, *dropptr, *sptr, *token;
 	struct lxc_list *droplist;
 	int ret = -1;
 
@@ -1021,13 +1046,12 @@ static int config_cap_drop(const char *key, char *value,
 
 	/* in case several capability drop is specified in a single line
 	 * split these caps in a single element for the list */
-	for (;;) {
-                token = strtok_r(dropcaps, " \t", &sptr);
+	for (dropptr = dropcaps;;dropptr = NULL) {
+                token = strtok_r(dropptr, " \t", &sptr);
                 if (!token) {
 			ret = 0;
                         break;
 		}
-		dropcaps = NULL;
 
 		droplist = malloc(sizeof(*droplist));
 		if (!droplist) {
@@ -1035,10 +1059,6 @@ static int config_cap_drop(const char *key, char *value,
 			break;
 		}
 
-		/* note - i do believe we're losing memory here,
-		   note that token is already pointing into dropcaps
-		   which is strdup'd.  we never free that bit.
-		 */
 		droplist->elem = strdup(token);
 		if (!droplist->elem) {
 			SYSERROR("failed to dup '%s'", token);
@@ -1065,6 +1085,8 @@ static int config_console(const char *key, char *value,
 		return -1;
 	}
 
+	if (lxc_conf->console.path)
+		free(lxc_conf->console.path);
 	lxc_conf->console.path = path;
 
 	return 0;
@@ -1078,50 +1100,17 @@ static int config_includefile(const char *key, char *value,
 
 static int config_rootfs(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
-	if (strlen(value) >= MAXPATHLEN) {
-		ERROR("%s path is too long", value);
-		return -1;
-	}
-
-	lxc_conf->rootfs.path = strdup(value);
-	if (!lxc_conf->rootfs.path) {
-		SYSERROR("failed to duplicate string %s", value);
-		return -1;
-	}
-
-	return 0;
+	return config_path_item(key, value, lxc_conf, &lxc_conf->rootfs.path);
 }
 
 static int config_rootfs_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
-	if (strlen(value) >= MAXPATHLEN) {
-		ERROR("%s path is too long", value);
-		return -1;
-	}
-
-	lxc_conf->rootfs.mount = strdup(value);
-	if (!lxc_conf->rootfs.mount) {
-		SYSERROR("failed to duplicate string '%s'", value);
-		return -1;
-	}
-
-	return 0;
+	return config_path_item(key, value, lxc_conf, &lxc_conf->rootfs.mount);
 }
 
 static int config_pivotdir(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
-	if (strlen(value) >= MAXPATHLEN) {
-		ERROR("%s path is too long", value);
-		return -1;
-	}
-
-	lxc_conf->rootfs.pivot = strdup(value);
-	if (!lxc_conf->rootfs.pivot) {
-		SYSERROR("failed to duplicate string %s", value);
-		return -1;
-	}
-
-	return 0;
+	return config_path_item(key, value, lxc_conf, &lxc_conf->rootfs.pivot);
 }
 
 static int config_utsname(const char *key, char *value, struct lxc_conf *lxc_conf)
@@ -1141,6 +1130,8 @@ static int config_utsname(const char *key, char *value, struct lxc_conf *lxc_con
 	}
 
 	strcpy(utsname->nodename, value);
+	if (lxc_conf->utsname)
+		free(lxc_conf->utsname);
 	lxc_conf->utsname = utsname;
 
 	return 0;

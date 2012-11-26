@@ -65,6 +65,10 @@ static void lxc_container_free(struct lxc_container *c)
 		free(c->error_string);
 		c->error_string = NULL;
 	}
+	if (c->slock) {
+		sem_close(c->slock);
+		c->slock = NULL;
+	}
 	if (c->privlock) {
 		sem_destroy(c->privlock);
 		free(c->privlock);
@@ -74,11 +78,10 @@ static void lxc_container_free(struct lxc_container *c)
 		free(c->name);
 		c->name = NULL;
 	}
-	/*
-	 * XXX TODO
-	 * note, c->lxc_conf is going to have to be freed, but the fn
-	 * to do that hasn't been written yet near as I can tell
-	 */
+	if (c->lxc_conf) {
+		lxc_conf_free(c->lxc_conf);
+		c->lxc_conf = NULL;
+	}
 	free(c);
 }
 

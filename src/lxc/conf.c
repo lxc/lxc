@@ -2473,6 +2473,7 @@ static void lxc_remove_nic(struct lxc_list *it)
 		free(it2->elem);
 		free(it2);
 	}
+	free(netdev);
 	free(it);
 }
 
@@ -2655,6 +2656,14 @@ void lxc_conf_free(struct lxc_conf *conf)
 		free(conf->console.path);
 	if (conf->rootfs.mount != default_rootfs_mount)
 		free(conf->rootfs.mount);
+	if (conf->rootfs.path)
+		free(conf->rootfs.path);
+	if (conf->utsname)
+		free(conf->utsname);
+	if (conf->ttydir)
+		free(conf->ttydir);
+	if (conf->fstab)
+		free(conf->fstab);
 	lxc_clear_config_network(conf);
 #if HAVE_APPARMOR
 	if (conf->aa_profile)
