@@ -27,7 +27,7 @@
 #define LXCLOCK_PREFIX "/lxcapi."
 
 
-static char *lxclock_name(char *container)
+static char *lxclock_name(const char *container)
 {
 	int ret;
 	int len = strlen(container) + strlen(LXCLOCK_PREFIX) + 1;
@@ -62,7 +62,7 @@ static sem_t *lxc_new_unnamed_sem(void)
     return s;
 }
 
-sem_t *lxc_newlock(char *name)
+sem_t *lxc_newlock(const char *name)
 {
 	char *lname;
 	sem_t *lock;

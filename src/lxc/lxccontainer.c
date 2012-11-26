@@ -218,7 +218,7 @@ static pid_t lxcapi_init_pid(struct lxc_container *c)
 	return ret;
 }
 
-static bool load_config_locked(struct lxc_container *c, char *fname)
+static bool load_config_locked(struct lxc_container *c, const char *fname)
 {
 	if (!c->lxc_conf)
 		c->lxc_conf = lxc_conf_init();
@@ -227,10 +227,10 @@ static bool load_config_locked(struct lxc_container *c, char *fname)
 	return false;
 }
 
-static bool lxcapi_load_config(struct lxc_container *c, char *alt_file)
+static bool lxcapi_load_config(struct lxc_container *c, const char *alt_file)
 {
 	bool ret = false;
-	char *fname;
+	const char *fname;
 	if (!c)
 		return false;
 
@@ -253,7 +253,7 @@ static void lxcapi_want_daemonize(struct lxc_container *c)
 	c->daemonize = 1;
 }
 
-static bool lxcapi_wait(struct lxc_container *c, char *state, int timeout)
+static bool lxcapi_wait(struct lxc_container *c, const char *state, int timeout)
 {
 	int ret;
 
@@ -284,7 +284,7 @@ static bool wait_on_daemonized_start(struct lxc_container *c)
  * I can't decide if it'd be more convenient for callers if we accept '...',
  * or a null-terminated array (i.e. execl vs execv)
  */
-static bool lxcapi_start(struct lxc_container *c, int useinit, char ** argv)
+static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv[])
 {
 	int ret;
 	struct lxc_conf *conf;
@@ -499,7 +499,7 @@ static bool create_container_dir(struct lxc_container *c)
  * for ->create, argv contains the arguments to pass to the template,
  * terminated by NULL.  If no arguments, you can just pass NULL.
  */
-static bool lxcapi_create(struct lxc_container *c, char *t, char **argv)
+static bool lxcapi_create(struct lxc_container *c, char *t, char *const argv[])
 {
 	bool bret = false;
 	pid_t pid;
@@ -703,7 +703,7 @@ out:
 	return bret;
 }
 
-static bool lxcapi_clear_config_item(struct lxc_container *c, char *key)
+static bool lxcapi_clear_config_item(struct lxc_container *c, const char *key)
 {
 	int ret;
 
@@ -717,7 +717,7 @@ static bool lxcapi_clear_config_item(struct lxc_container *c, char *key)
 	return ret == 0;
 }
 
-static int lxcapi_get_config_item(struct lxc_container *c, char *key, char *retv, int inlen)
+static int lxcapi_get_config_item(struct lxc_container *c, const char *key, char *retv, int inlen)
 {
 	int ret;
 
@@ -731,7 +731,7 @@ static int lxcapi_get_config_item(struct lxc_container *c, char *key, char *retv
 	return ret;
 }
 
-static int lxcapi_get_keys(struct lxc_container *c, char *key, char *retv, int inlen)
+static int lxcapi_get_keys(struct lxc_container *c, const char *key, char *retv, int inlen)
 {
 	if (!key)
 		return lxc_listconfigs(retv, inlen);
@@ -754,7 +754,7 @@ static int lxcapi_get_keys(struct lxc_container *c, char *key, char *retv, int i
 
 /* default config file - should probably come through autoconf */
 #define LXC_DEFAULT_CONFIG "/etc/lxc/lxc.conf"
-static bool lxcapi_save_config(struct lxc_container *c, char *alt_file)
+static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 {
 	if (!alt_file)
 		alt_file = c->configfile;
@@ -815,7 +815,7 @@ again:
 	return WEXITSTATUS(status) == 0;
 }
 
-static bool lxcapi_set_config_item(struct lxc_container *c, char *key, char *v)
+static bool lxcapi_set_config_item(struct lxc_container *c, const char *key, const char *v)
 {
 	int ret;
 	bool b = false;
@@ -850,7 +850,7 @@ static char *lxcapi_config_file_name(struct lxc_container *c)
 	return strdup(c->configfile);
 }
 
-struct lxc_container *lxc_container_new(char *name)
+struct lxc_container *lxc_container_new(const char *name)
 {
 	struct lxc_container *c;
 	int ret, len;

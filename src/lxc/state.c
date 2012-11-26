@@ -21,6 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -164,26 +165,33 @@ out:
 	return ret;
 }
 
-static int fillwaitedstates(char *strstates, int *states)
+static int fillwaitedstates(const char *strstates, int *states)
 {
 	char *token, *saveptr = NULL;
+	char *strstates_dup = strdup(strstates);
 	int state;
 
-	token = strtok_r(strstates, "|", &saveptr);
+	if (!strstates_dup)
+		return -1;
+
+	token = strtok_r(strstates_dup, "|", &saveptr);
 	while (token) {
 
 		state = lxc_str2state(token);
-		if (state < 0)
+		if (state < 0) {
+			free(strstates_dup);
 			return -1;
+		}
 
 		states[state] = 1;
 
 		token = strtok_r(NULL, "|", &saveptr);
 	}
+	free(strstates_dup);
 	return 0;
 }
 
-extern int lxc_wait(char *lxcname, char *states, int timeout)
+extern int lxc_wait(const char *lxcname, const char *states, int timeout)
 {
 	struct lxc_msg msg;
 	int state, ret;

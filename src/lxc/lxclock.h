@@ -44,7 +44,7 @@
  * return NULL on failure, else a sem_t * which can be passed to
  * lxclock() and lxcunlock().
  */
-extern sem_t *lxc_newlock(char *name);
+extern sem_t *lxc_newlock(const char *name);
 
 /*
  * lxclock: take an existing lock.  If timeout is 0, wait

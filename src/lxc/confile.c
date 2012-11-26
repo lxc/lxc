@@ -20,6 +20,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,40 +47,40 @@
 
 lxc_log_define(lxc_confile, lxc);
 
-static int config_personality(const char *, char *, struct lxc_conf *);
-static int config_pts(const char *, char *, struct lxc_conf *);
-static int config_tty(const char *, char *, struct lxc_conf *);
-static int config_ttydir(const char *, char *, struct lxc_conf *);
+static int config_personality(const char *, const char *, struct lxc_conf *);
+static int config_pts(const char *, const char *, struct lxc_conf *);
+static int config_tty(const char *, const char *, struct lxc_conf *);
+static int config_ttydir(const char *, const char *, struct lxc_conf *);
 #if HAVE_APPARMOR
-static int config_aa_profile(const char *, char *, struct lxc_conf *);
+static int config_aa_profile(const char *, const char *, struct lxc_conf *);
 #endif
-static int config_cgroup(const char *, char *, struct lxc_conf *);
-static int config_mount(const char *, char *, struct lxc_conf *);
-static int config_rootfs(const char *, char *, struct lxc_conf *);
-static int config_rootfs_mount(const char *, char *, struct lxc_conf *);
-static int config_pivotdir(const char *, char *, struct lxc_conf *);
-static int config_utsname(const char *, char *, struct lxc_conf *);
-static int config_hook(const char *key, char *value, struct lxc_conf *lxc_conf);
-static int config_network_type(const char *, char *, struct lxc_conf *);
-static int config_network_flags(const char *, char *, struct lxc_conf *);
-static int config_network_link(const char *, char *, struct lxc_conf *);
-static int config_network_name(const char *, char *, struct lxc_conf *);
-static int config_network_veth_pair(const char *, char *, struct lxc_conf *);
-static int config_network_macvlan_mode(const char *, char *, struct lxc_conf *);
-static int config_network_hwaddr(const char *, char *, struct lxc_conf *);
-static int config_network_vlan_id(const char *, char *, struct lxc_conf *);
-static int config_network_mtu(const char *, char *, struct lxc_conf *);
-static int config_network_ipv4(const char *, char *, struct lxc_conf *);
-static int config_network_ipv4_gateway(const char *, char *, struct lxc_conf *);
-static int config_network_script(const char *, char *, struct lxc_conf *);
-static int config_network_ipv6(const char *, char *, struct lxc_conf *);
-static int config_network_ipv6_gateway(const char *, char *, struct lxc_conf *);
-static int config_cap_drop(const char *, char *, struct lxc_conf *);
-static int config_console(const char *, char *, struct lxc_conf *);
-static int config_seccomp(const char *, char *, struct lxc_conf *);
-static int config_includefile(const char *, char *, struct lxc_conf *);
-static int config_network_nic(const char *, char *, struct lxc_conf *);
-static int config_autodev(const char *, char *, struct lxc_conf *);
+static int config_cgroup(const char *, const char *, struct lxc_conf *);
+static int config_mount(const char *, const char *, struct lxc_conf *);
+static int config_rootfs(const char *, const char *, struct lxc_conf *);
+static int config_rootfs_mount(const char *, const char *, struct lxc_conf *);
+static int config_pivotdir(const char *, const char *, struct lxc_conf *);
+static int config_utsname(const char *, const char *, struct lxc_conf *);
+static int config_hook(const char *, const char *, struct lxc_conf *lxc_conf);
+static int config_network_type(const char *, const char *, struct lxc_conf *);
+static int config_network_flags(const char *, const char *, struct lxc_conf *);
+static int config_network_link(const char *, const char *, struct lxc_conf *);
+static int config_network_name(const char *, const char *, struct lxc_conf *);
+static int config_network_veth_pair(const char *, const char *, struct lxc_conf *);
+static int config_network_macvlan_mode(const char *, const char *, struct lxc_conf *);
+static int config_network_hwaddr(const char *, const char *, struct lxc_conf *);
+static int config_network_vlan_id(const char *, const char *, struct lxc_conf *);
+static int config_network_mtu(const char *, const char *, struct lxc_conf *);
+static int config_network_ipv4(const char *, const char *, struct lxc_conf *);
+static int config_network_ipv4_gateway(const char *, const char *, struct lxc_conf *);
+static int config_network_script(const char *, const char *, struct lxc_conf *);
+static int config_network_ipv6(const char *, const char *, struct lxc_conf *);
+static int config_network_ipv6_gateway(const char *, const char *, struct lxc_conf *);
+static int config_cap_drop(const char *, const char *, struct lxc_conf *);
+static int config_console(const char *, const char *, struct lxc_conf *);
+static int config_seccomp(const char *, const char *, struct lxc_conf *);
+static int config_includefile(const char *, const char *, struct lxc_conf *);
+static int config_network_nic(const char *, const char *, struct lxc_conf *);
+static int config_autodev(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 
@@ -97,7 +98,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.pivotdir",             config_pivotdir             },
 	{ "lxc.utsname",              config_utsname              },
 	{ "lxc.hook.pre-start",       config_hook                 },
-	{ "lxc.hook.pre-mount",           config_hook             },
+	{ "lxc.hook.pre-mount",       config_hook                 },
 	{ "lxc.hook.mount",           config_hook                 },
 	{ "lxc.hook.start",           config_hook                 },
 	{ "lxc.hook.post-stop",       config_hook                 },
@@ -173,7 +174,7 @@ int lxc_listconfigs(char *retv, int inlen)
  * comes an integer, find the right callback (by rewriting
  * the key), and call it.
  */
-static int config_network_nic(const char *key, char *value,
+static int config_network_nic(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	char *copy = strdup(key), *p;
@@ -208,7 +209,7 @@ out:
 	return ret;
 }
 
-static int config_network_type(const char *key, char *value,
+static int config_network_type(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_list *network = &lxc_conf->network;
@@ -302,7 +303,8 @@ static struct lxc_netdev *get_netdev_from_key(const char *key,
 	return netdev;
 }
 
-extern int lxc_list_nicconfigs(struct lxc_conf *c, char *key, char *retv, int inlen)
+extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key,
+			       char *retv, int inlen)
 {
 	struct lxc_netdev *netdev;
 	int fulllen = 0, len;
@@ -369,7 +371,7 @@ static struct lxc_netdev *network_netdev(const char *key, const char *value,
 	return netdev;
 }
 
-static int network_ifname(char **valuep, char *value)
+static int network_ifname(char **valuep, const char *value)
 {
 	if (strlen(value) >= IFNAMSIZ) {
 		ERROR("interface name '%s' too long (>%d)\n",
@@ -398,7 +400,7 @@ static int network_ifname(char **valuep, char *value)
 #  define MACVLAN_MODE_BRIDGE 4
 #endif
 
-static int macvlan_mode(int *valuep, char *value)
+static int macvlan_mode(int *valuep, const char *value)
 {
 	struct mc_mode {
 		char *name;
@@ -422,7 +424,7 @@ static int macvlan_mode(int *valuep, char *value)
 	return -1;
 }
 
-static int config_network_flags(const char *key, char *value,
+static int config_network_flags(const char *key, const char *value,
 				struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -436,7 +438,7 @@ static int config_network_flags(const char *key, char *value,
 	return 0;
 }
 
-static int config_network_link(const char *key, char *value,
+static int config_network_link(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -448,7 +450,7 @@ static int config_network_link(const char *key, char *value,
 	return network_ifname(&netdev->link, value);
 }
 
-static int config_network_name(const char *key, char *value,
+static int config_network_name(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -460,7 +462,7 @@ static int config_network_name(const char *key, char *value,
 	return network_ifname(&netdev->name, value);
 }
 
-static int config_network_veth_pair(const char *key, char *value,
+static int config_network_veth_pair(const char *key, const char *value,
 				    struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -472,7 +474,7 @@ static int config_network_veth_pair(const char *key, char *value,
 	return network_ifname(&netdev->priv.veth_attr.pair, value);
 }
 
-static int config_network_macvlan_mode(const char *key, char *value,
+static int config_network_macvlan_mode(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -484,7 +486,7 @@ static int config_network_macvlan_mode(const char *key, char *value,
 	return macvlan_mode(&netdev->priv.macvlan_attr.mode, value);
 }
 
-static int config_network_hwaddr(const char *key, char *value,
+static int config_network_hwaddr(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -506,7 +508,7 @@ static int config_network_hwaddr(const char *key, char *value,
 	return 0;
 }
 
-static int config_network_vlan_id(const char *key, char *value,
+static int config_network_vlan_id(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -521,7 +523,7 @@ static int config_network_vlan_id(const char *key, char *value,
 	return 0;
 }
 
-static int config_network_mtu(const char *key, char *value,
+static int config_network_mtu(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -543,7 +545,7 @@ static int config_network_mtu(const char *key, char *value,
 	return 0;
 }
 
-static int config_network_ipv4(const char *key, char *value,
+static int config_network_ipv4(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -571,7 +573,7 @@ static int config_network_ipv4(const char *key, char *value,
 	lxc_list_init(list);
 	list->elem = inetdev;
 
-	addr = value;
+	addr = strdupa(value);
 
 	cursor = strstr(addr, " ");
 	if (cursor) {
@@ -618,7 +620,7 @@ static int config_network_ipv4(const char *key, char *value,
 	return 0;
 }
 
-static int config_network_ipv4_gateway(const char *key, char *value,
+static int config_network_ipv4_gateway(const char *key, const char *value,
 			               struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -655,13 +657,13 @@ static int config_network_ipv4_gateway(const char *key, char *value,
 	return 0;
 }
 
-static int config_network_ipv6(const char *key, char *value,
+static int config_network_ipv6(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_inet6dev *inet6dev;
 	struct lxc_list *list;
-	char *slash;
+	char *slash,*valdup;
 	char *netmask;
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
@@ -684,8 +686,9 @@ static int config_network_ipv6(const char *key, char *value,
 	lxc_list_init(list);
 	list->elem = inet6dev;
 
+	valdup = strdupa(value);
 	inet6dev->prefix = 64;
-	slash = strstr(value, "/");
+	slash = strstr(valdup, "/");
 	if (slash) {
 		*slash = '\0';
 		netmask = slash + 1;
@@ -702,7 +705,7 @@ static int config_network_ipv6(const char *key, char *value,
 	return 0;
 }
 
-static int config_network_ipv6_gateway(const char *key, char *value,
+static int config_network_ipv6_gateway(const char *key, const char *value,
 			               struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -739,7 +742,7 @@ static int config_network_ipv6_gateway(const char *key, char *value,
 	return 0;
 }
 
-static int config_network_script(const char *key, char *value,
+static int config_network_script(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -780,7 +783,7 @@ static int add_hook(struct lxc_conf *lxc_conf, int which, char *hook)
 	return 0;
 }
 
-static int config_seccomp(const char *key, char *value,
+static int config_seccomp(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
 	char *path;
@@ -802,7 +805,7 @@ static int config_seccomp(const char *key, char *value,
 	return 0;
 }
 
-static int config_hook(const char *key, char *value,
+static int config_hook(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
 	char *copy = strdup(value);
@@ -825,7 +828,7 @@ static int config_hook(const char *key, char *value,
 	return -1;
 }
 
-static int config_personality(const char *key, char *value,
+static int config_personality(const char *key, const const char *value,
 			      struct lxc_conf *lxc_conf)
 {
 	signed long personality = lxc_config_parse_arch(value);
@@ -838,7 +841,8 @@ static int config_personality(const char *key, char *value,
 	return 0;
 }
 
-static int config_pts(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_pts(const char *key, const char *value,
+		      struct lxc_conf *lxc_conf)
 {
 	int maxpts = atoi(value);
 
@@ -847,7 +851,8 @@ static int config_pts(const char *key, char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_tty(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_tty(const char *key, const char *value,
+		      struct lxc_conf *lxc_conf)
 {
 	int nbtty = atoi(value);
 
@@ -856,7 +861,7 @@ static int config_tty(const char *key, char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_ttydir(const char *key, char *value,
+static int config_ttydir(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
 	char *path;
@@ -877,7 +882,8 @@ static int config_ttydir(const char *key, char *value,
 }
 
 #if HAVE_APPARMOR
-static int config_aa_profile(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_aa_profile(const char *key, const char *value,
+			     struct lxc_conf *lxc_conf)
 {
 	char *path;
 
@@ -897,7 +903,7 @@ static int config_aa_profile(const char *key, char *value, struct lxc_conf *lxc_
 }
 #endif
 
-static int config_autodev(const char *key, char *value,
+static int config_autodev(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
 	int v = atoi(value);
@@ -907,7 +913,8 @@ static int config_autodev(const char *key, char *value,
 	return 0;
 }
 
-static int config_cgroup(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_cgroup(const char *key, const char *value,
+			 struct lxc_conf *lxc_conf)
 {
 	char *token = "lxc.cgroup.";
 	char *subkey;
@@ -992,7 +999,8 @@ static int config_fstab(const char *key, const char *value,
 	return config_path_item(key, value, lxc_conf, &lxc_conf->fstab);
 }
 
-static int config_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_mount(const char *key, const char *value,
+			struct lxc_conf *lxc_conf)
 {
 	char *fstab_token = "lxc.mount";
 	char *token = "lxc.mount.entry";
@@ -1028,7 +1036,7 @@ static int config_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-static int config_cap_drop(const char *key, char *value,
+static int config_cap_drop(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
 	char *dropcaps, *dropptr, *sptr, *token;
@@ -1074,7 +1082,7 @@ static int config_cap_drop(const char *key, char *value,
 	return ret;
 }
 
-static int config_console(const char *key, char *value,
+static int config_console(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
 	char *path;
@@ -1092,28 +1100,32 @@ static int config_console(const char *key, char *value,
 	return 0;
 }
 
-static int config_includefile(const char *key, char *value,
+static int config_includefile(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
 	return lxc_config_read(value, lxc_conf);
 }
 
-static int config_rootfs(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_rootfs(const char *key, const char *value,
+			 struct lxc_conf *lxc_conf)
 {
 	return config_path_item(key, value, lxc_conf, &lxc_conf->rootfs.path);
 }
 
-static int config_rootfs_mount(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_rootfs_mount(const char *key, const char *value,
+			       struct lxc_conf *lxc_conf)
 {
 	return config_path_item(key, value, lxc_conf, &lxc_conf->rootfs.mount);
 }
 
-static int config_pivotdir(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_pivotdir(const char *key, const char *value,
+			   struct lxc_conf *lxc_conf)
 {
 	return config_path_item(key, value, lxc_conf, &lxc_conf->rootfs.pivot);
 }
 
-static int config_utsname(const char *key, char *value, struct lxc_conf *lxc_conf)
+static int config_utsname(const char *key, const char *value,
+			  struct lxc_conf *lxc_conf)
 {
 	struct utsname *utsname;
 
@@ -1298,7 +1310,8 @@ static int lxc_get_arch_entry(struct lxc_conf *c, char *retv, int inlen)
  * If you ask for 'lxc.cgroup", then all cgroup entries will be printed,
  * in 'lxc.cgroup.subsystem.key = value' format.
  */
-static int lxc_get_cgroup_entry(struct lxc_conf *c, char *retv, int inlen, char *key)
+static int lxc_get_cgroup_entry(struct lxc_conf *c, char *retv, int inlen,
+				const char *key)
 {
 	int fulllen = 0, len;
 	int all = 0;
@@ -1323,7 +1336,8 @@ static int lxc_get_cgroup_entry(struct lxc_conf *c, char *retv, int inlen, char 
 	return fulllen;
 }
 
-static int lxc_get_item_hooks(struct lxc_conf *c, char *retv, int inlen, char *key)
+static int lxc_get_item_hooks(struct lxc_conf *c, char *retv, int inlen,
+			      const char *key)
 {
 	char *subkey;
 	int len, fulllen = 0, found = -1;
@@ -1398,7 +1412,8 @@ static int lxc_get_mount_entries(struct lxc_conf *c, char *retv, int inlen)
  * things like veth.pair return '' if invalid (i.e. if called for vlan
  * type).
  */
-static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen, char *key)
+static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
+			    const char *key)
 {
 	char *p1;
 	int len, fulllen = 0;
@@ -1508,7 +1523,8 @@ static int lxc_get_item_network(struct lxc_conf *c, char *retv, int inlen)
 	return fulllen;
 }
 
-int lxc_get_config_item(struct lxc_conf *c, char *key, char *retv, int inlen)
+int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
+			int inlen)
 {
 	char *v = NULL;
 
@@ -1559,7 +1575,7 @@ int lxc_get_config_item(struct lxc_conf *c, char *key, char *retv, int inlen)
 	return strlen(v);
 }
 
-int lxc_clear_config_item(struct lxc_conf *c, char *key)
+int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 {
 	if (strcmp(key, "lxc.network") == 0)
 		return lxc_clear_config_network(c);

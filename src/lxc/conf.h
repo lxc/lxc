@@ -259,11 +259,11 @@ extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
 
 extern int lxc_clear_config_network(struct lxc_conf *c);
-extern int lxc_clear_nic(struct lxc_conf *c, char *key);
+extern int lxc_clear_nic(struct lxc_conf *c, const char *key);
 extern int lxc_clear_config_caps(struct lxc_conf *c);
-extern int lxc_clear_cgroups(struct lxc_conf *c, char *key);
+extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key);
 extern int lxc_clear_mount_entries(struct lxc_conf *c);
-extern int lxc_clear_hooks(struct lxc_conf *c, char *key);
+extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
 
 /*
  * Configure the container from inside

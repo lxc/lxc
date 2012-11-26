@@ -182,7 +182,7 @@ extern const char const *lxc_version(void);
 /*
  * Create and return a new lxccontainer struct.
  */
-extern struct lxc_container *lxc_container_new(char *name);
+extern struct lxc_container *lxc_container_new(const char *name);
 
 /*
  * Returns 1 on success, 0 on failure.

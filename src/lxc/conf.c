@@ -2478,7 +2478,7 @@ static void lxc_remove_nic(struct lxc_list *it)
 }
 
 /* we get passed in something like '0', '0.ipv4' or '1.ipv6' */
-int lxc_clear_nic(struct lxc_conf *c, char *key)
+int lxc_clear_nic(struct lxc_conf *c, const char *key)
 {
 	char *p1;
 	int ret, idx, i;
@@ -2586,11 +2586,11 @@ int lxc_clear_config_caps(struct lxc_conf *c)
 	return 0;
 }
 
-int lxc_clear_cgroups(struct lxc_conf *c, char *key)
+int lxc_clear_cgroups(struct lxc_conf *c, const char *key)
 {
 	struct lxc_list *it,*next;
 	bool all = false;
-	char *k = key + 11;
+	const char *k = key + 11;
 
 	if (strcmp(key, "lxc.cgroup") == 0)
 		all = true;
@@ -2620,11 +2620,11 @@ int lxc_clear_mount_entries(struct lxc_conf *c)
 	return 0;
 }
 
-int lxc_clear_hooks(struct lxc_conf *c, char *key)
+int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 {
 	struct lxc_list *it,*next;
 	bool all = false, done = false;
-	char *k = key + 9;
+	const char *k = key + 9;
 	int i;
 
 	if (strcmp(key, "lxc.hook") == 0)
