@@ -48,7 +48,7 @@ extern void *nlmsg_data(struct nlmsg *nlmsg)
 	return data;
 }
 
-static int nla_put(struct nlmsg *nlmsg, int attr, 
+static int nla_put(struct nlmsg *nlmsg, int attr,
 		   const void *data, size_t len)
 {
 	struct rtattr *rta;
@@ -63,7 +63,7 @@ static int nla_put(struct nlmsg *nlmsg, int attr,
 	return 0;
 }
 
-extern int nla_put_buffer(struct nlmsg *nlmsg, int attr, 
+extern int nla_put_buffer(struct nlmsg *nlmsg, int attr,
 			  const void *data, size_t size)
 {
 	return nla_put(nlmsg, attr, data, size);
@@ -193,7 +193,7 @@ extern int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg)
 #ifndef NLMSG_ERROR
 #define NLMSG_ERROR                0x2
 #endif
-extern int netlink_transaction(struct nl_handler *handler, 
+extern int netlink_transaction(struct nl_handler *handler,
 			       struct nlmsg *request, struct nlmsg *answer)
 {
 	int ret;
@@ -226,11 +226,11 @@ extern int netlink_open(struct nl_handler *handler, int protocol)
         if (handler->fd < 0)
                 return -errno;
 
-        if (setsockopt(handler->fd, SOL_SOCKET, SO_SNDBUF, 
+        if (setsockopt(handler->fd, SOL_SOCKET, SO_SNDBUF,
 		       &sndbuf, sizeof(sndbuf)) < 0)
                 return -errno;
 
-        if (setsockopt(handler->fd, SOL_SOCKET, SO_RCVBUF, 
+        if (setsockopt(handler->fd, SOL_SOCKET, SO_RCVBUF,
 		       &rcvbuf,sizeof(rcvbuf)) < 0)
                 return -errno;
 
@@ -238,12 +238,12 @@ extern int netlink_open(struct nl_handler *handler, int protocol)
         handler->local.nl_family = AF_NETLINK;
         handler->local.nl_groups = 0;
 
-        if (bind(handler->fd, (struct sockaddr*)&handler->local, 
+        if (bind(handler->fd, (struct sockaddr*)&handler->local,
 		 sizeof(handler->local)) < 0)
                 return -errno;
 
         socklen = sizeof(handler->local);
-        if (getsockname(handler->fd, (struct sockaddr*)&handler->local, 
+        if (getsockname(handler->fd, (struct sockaddr*)&handler->local,
 			&socklen) < 0)
                 return -errno;
 

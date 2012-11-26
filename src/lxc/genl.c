@@ -62,7 +62,7 @@ static int genetlink_resolve_family(const char *family)
 	if (ret)
 		return ret;
 
-	ret = nla_put_string((struct nlmsg *)&request->nlmsghdr, 
+	ret = nla_put_string((struct nlmsg *)&request->nlmsghdr,
 			     CTRL_ATTR_FAMILY_NAME, family);
 	if (ret)
 		goto out;
@@ -130,7 +130,7 @@ extern int genetlink_send(struct genl_handler *handler, struct genlmsg *genlmsg)
 	return netlink_send(&handler->nlh, (struct nlmsg *)&genlmsg->nlmsghdr);
 }
 
-extern int genetlink_transaction(struct genl_handler *handler, 
+extern int genetlink_transaction(struct genl_handler *handler,
 			  struct genlmsg *request, struct genlmsg *answer)
 {
 	return netlink_transaction(&handler->nlh, (struct nlmsg *)&request->nlmsghdr,

@@ -30,7 +30,7 @@
 #define RTNLMSG_DATA(glh) ((void *)(NLMSG_DATA(glh) + RTNL_HDRLEN))
 
 /*
- * struct genl_handler : the structure which store the netlink handler 
+ * struct genl_handler : the structure which store the netlink handler
  *  and the family number
  *
  * @nlh: the netlink socket handler
@@ -105,6 +105,6 @@ void rtnlmsg_free(struct rtnlmsg *rtnlmsg);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int rtnetlink_transaction(struct rtnl_handler *handler, 
+int rtnetlink_transaction(struct rtnl_handler *handler,
 			  struct rtnlmsg *request, struct rtnlmsg *answer);
 #endif

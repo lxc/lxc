@@ -59,7 +59,7 @@ int lxc_mainloop(struct lxc_epoll_descr *descr)
 
 			/* If the handler returns a positive value, exit
 			   the mainloop */
-			if (handler->callback(handler->fd, handler->data, 
+			if (handler->callback(handler->fd, handler->data,
 					      descr) > 0)
 				return 0;
 		}
@@ -69,7 +69,7 @@ int lxc_mainloop(struct lxc_epoll_descr *descr)
 	}
 }
 
-int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd, 
+int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
 			     lxc_mainloop_callback_t callback, void *data)
 {
 	struct epoll_event ev;

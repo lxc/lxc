@@ -1,4 +1,4 @@
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -135,7 +135,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    the <command>lxc-create</command> command.
           </para>
         </listitem>
-      </varlistentry>    
+      </varlistentry>
 
 
     </variablelist>
@@ -145,7 +145,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsect1>
     <title>See Also</title>
 
-    <simpara>    
+    <simpara>
       <citerefentry>
 	<refentrytitle>regex</refentrytitle>
 	<manvolnum>7</manvolnum>

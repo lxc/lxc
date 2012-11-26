@@ -1,4 +1,4 @@
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -67,7 +67,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       The available tty are free slots taken by this command. That
       means if the container has four ttys available and the command
       has been launched four times taking the different tty, the fifth
-      command will fail because no console will be available. 
+      command will fail because no console will be available.
     </para>
 
     <para>
@@ -114,7 +114,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    user "foo" and "bar" is trying to open a console to it.
           </para>
         </listitem>
-      </varlistentry>    
+      </varlistentry>
 
     </variablelist>
 

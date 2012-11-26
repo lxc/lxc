@@ -105,7 +105,7 @@ EOF
     # remove module stuff for iptables it just shows errors that are not
     # relevant in a container
     if [ -f "$container_rootfs/etc/sysconfig/iptables-config" ]; then
-	sed -i 's|IPTABLES_MODULES=".*|IPTABLES_MODULES=""|' $container_rootfs/etc/sysconfig/iptables-config 
+	sed -i 's|IPTABLES_MODULES=".*|IPTABLES_MODULES=""|' $container_rootfs/etc/sysconfig/iptables-config
 	sed -i 's|IPTABLES_MODULES_UNLOAD=".*|IPTABLES_MODULES_UNLOAD="no"|' $container_rootfs/etc/sysconfig/iptables-config
     fi
 

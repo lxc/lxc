@@ -1,4 +1,4 @@
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -80,7 +80,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    container or create a new one.
           </para>
         </listitem>
-      </varlistentry>    
+      </varlistentry>
 
       <varlistentry>
         <term>The container was not found</term>
@@ -90,7 +90,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    the <command>lxc-create</command> command.
           </para>
         </listitem>
-      </varlistentry>    
+      </varlistentry>
 
 
     </variablelist>

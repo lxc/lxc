@@ -1,4 +1,4 @@
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -235,7 +235,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      specify an action to do for the
 	      network.
 	    </para>
-	    
+	
 	    <para><option>up:</option> activates the interface.
 	    </para>
 	  </listitem>
@@ -849,7 +849,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsect1>
     <title>See Also</title>
-    <simpara>    
+    <simpara>
       <citerefentry>
 	<refentrytitle><command>chroot</command></refentrytitle>
 	<manvolnum>1</manvolnum>
@@ -867,14 +867,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
     </simpara>
   </refsect1>
-  
+
   &seealso;
 
   <refsect1>
     <title>Author</title>
     <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
   </refsect1>
-  
+
 </refentry>
 
 <!-- Keep this comment at the end of the file

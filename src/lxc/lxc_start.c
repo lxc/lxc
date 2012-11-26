@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 		return err;
 
 	if (!my_args.argc)
-		args = default_args; 
+		args = default_args;
 	else
 		args = my_args.argv;
 

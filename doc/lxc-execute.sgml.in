@@ -1,4 +1,4 @@
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -162,7 +162,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    container or create a new one.
           </para>
         </listitem>
-      </varlistentry>   
+      </varlistentry>
 
     </variablelist>
 

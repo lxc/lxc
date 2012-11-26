@@ -89,7 +89,7 @@ fi
 echo -n "Cgroup device: " && is_enabled CONFIG_CGROUP_DEVICE
 echo -n "Cgroup sched: " && is_enabled CONFIG_CGROUP_SCHED
 echo -n "Cgroup cpu account: " && is_enabled CONFIG_CGROUP_CPUACCT
-echo -n "Cgroup memory controller: " 
+echo -n "Cgroup memory controller: "
 if [ $KVER_MAJOR -ge 3 -a $KVER_MINOR -ge 6 ]; then
     is_enabled CONFIG_MEMCG
 else

@@ -53,7 +53,7 @@ extern int rtnetlink_send(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg)
 	return netlink_send(&handler->nlh, (struct nlmsg *)&rtnlmsg->nlmsghdr);
 }
 
-extern int rtnetlink_transaction(struct rtnl_handler *handler, 
+extern int rtnetlink_transaction(struct rtnl_handler *handler,
 			  struct rtnlmsg *request, struct rtnlmsg *answer)
 {
 	return netlink_transaction(&handler->nlh, (struct nlmsg *)&request->nlmsghdr,

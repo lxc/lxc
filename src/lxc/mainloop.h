@@ -28,13 +28,13 @@ struct lxc_epoll_descr {
 	struct lxc_list handlers;
 };
 
-typedef int (*lxc_mainloop_callback_t)(int fd, void *data, 
+typedef int (*lxc_mainloop_callback_t)(int fd, void *data,
 				       struct lxc_epoll_descr *descr);
 
 extern int lxc_mainloop(struct lxc_epoll_descr *descr);
 
 extern int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
-				    lxc_mainloop_callback_t callback, 
+				    lxc_mainloop_callback_t callback,
 				    void *data);
 
 extern int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd);

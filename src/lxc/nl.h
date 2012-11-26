@@ -39,7 +39,7 @@
  * struct nl_handler : the handler for netlink sockets, this structure
  *  is used all along the netlink socket life cycle to specify the
  *  netlink socket to be used.
- * 
+ *
  * @fd: the file descriptor of the netlink socket
  * @seq: the sequence number of the netlink messages
  * @local: the bind address
@@ -77,7 +77,7 @@ struct nlmsg {
 int netlink_open(struct nl_handler *handler, int protocol);
 
 /*
- * netlink_close : close a netlink socket, after this call, 
+ * netlink_close : close a netlink socket, after this call,
  *  the handler is no longer valid
  *
  * @handler: a handler to the netlink socket
@@ -87,8 +87,8 @@ int netlink_open(struct nl_handler *handler, int protocol);
 int netlink_close(struct nl_handler *handler);
 
 /*
- * netlink_rcv : receive a netlink message from the kernel. 
- *  It is up to the caller to manage the allocation of the 
+ * netlink_rcv : receive a netlink message from the kernel.
+ *  It is up to the caller to manage the allocation of the
  *  netlink message
  *
  * @handler: a handler to the netlink socket
@@ -110,8 +110,8 @@ int netlink_rcv(struct nl_handler *handler, struct nlmsg *nlmsg);
 int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg);
 
 /*
- * netlink_transaction: send a request to the kernel and read the response. 
- *  This is useful for transactional protocol. It is up to the caller 
+ * netlink_transaction: send a request to the kernel and read the response.
+ *  This is useful for transactional protocol. It is up to the caller
  *  to manage the allocation of the netlink message.
  *
  * @handler: a handler to a opened netlink socket
@@ -120,11 +120,11 @@ int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int netlink_transaction(struct nl_handler *handler, 
+int netlink_transaction(struct nl_handler *handler,
 			struct nlmsg *request, struct nlmsg *anwser);
 
 /*
- * nla_put_string: copy a null terminated string to a netlink message 
+ * nla_put_string: copy a null terminated string to a netlink message
  *  attribute
  *
  * @nlmsg: the netlink message to be filled
@@ -146,7 +146,7 @@ int nla_put_string(struct nlmsg *nlmsg, int attr, const char *string);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int nla_put_buffer(struct nlmsg *nlmsg, int attr, 
+int nla_put_buffer(struct nlmsg *nlmsg, int attr,
 		   const void *data, size_t size);
 
 /*
@@ -172,7 +172,7 @@ int nla_put_u32(struct nlmsg *nlmsg, int attr, int value);
 int nla_put_u16(struct nlmsg *nlmsg, int attr, ushort value);
 
 /*
- * nla_put_attr: add an attribute name to a netlink 
+ * nla_put_attr: add an attribute name to a netlink
  *
  * @nlmsg: the netlink message to be filled
  * @attr: the attribute name of the integer
@@ -185,7 +185,7 @@ int nla_put_attr(struct nlmsg *nlmsg, int attr);
  * nla_begin_nested: begin the nesting attribute
  *
  * @nlmsg: the netlink message to be filled
- * @attr: the netsted attribute name 
+ * @attr: the netsted attribute name
  *
  * Returns current nested pointer to be reused
  * to nla_end_nested.
@@ -198,17 +198,17 @@ struct rtattr *nla_begin_nested(struct nlmsg *nlmsg, int attr);
  * @nlmsg: the netlink message
  * @nested: the nested pointer
  *
- * Returns the current 
+ * Returns the current
  */
 void nla_end_nested(struct nlmsg *nlmsg, struct rtattr *attr);
 
 /*
- * nlmsg_allocate : allocate a netlink message. The netlink format message 
+ * nlmsg_allocate : allocate a netlink message. The netlink format message
  *  is a header, a padding, a payload and a padding again.
- *  When a netlink message is allocated, the size specify the 
+ *  When a netlink message is allocated, the size specify the
  *  payload we want. So the real size of the allocated message
  *  is sizeof(header) + sizeof(padding) + payloadsize + sizeof(padding),
- *  in other words, the function will allocate more than specified. When 
+ *  in other words, the function will allocate more than specified. When
  *  the buffer is allocated, the content is zeroed.
  *  The function will also fill the field nlmsg_len with computed size.
  *  If the allocation must be for the specified size, just use malloc.
@@ -228,7 +228,7 @@ void nlmsg_free(struct nlmsg *nlmsg);
 
 /*
  * nlmsg_data : returns a pointer to the data contained in the netlink message
- * 
+ *
  * @nlmsg : the netlink message to get the data
  *
  * Returns a pointer to the netlink data or NULL if there is no data

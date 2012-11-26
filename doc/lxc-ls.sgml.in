@@ -1,5 +1,5 @@
 
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -120,7 +120,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsect1>
     <title>See Also</title>
 
-    <simpara>    
+    <simpara>
       <citerefentry>
 	<refentrytitle>ls</refentrytitle>
 	<manvolnum>1</manvolnum>
