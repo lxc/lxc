@@ -686,13 +686,14 @@ static bool lxcapi_createl(struct lxc_container *c, char *t, ...)
 		if (!arg)
 			break;
 		nargs++;
-		temp = realloc(args, nargs * sizeof(*args));
+		temp = realloc(args, (nargs+1) * sizeof(*args));
 		if (!temp)
 			goto out;
 		args = temp;
 		args[nargs - 1] = arg;
 	}
 	va_end(ap);
+	args[nargs] = NULL;
 
 	bret = c->create(c, t, args);
 
