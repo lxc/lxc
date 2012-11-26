@@ -153,6 +153,9 @@ extern int lxc_log_init(const char *file, const char *priority,
 {
 	int lxc_priority = LXC_LOG_PRIORITY_ERROR;
 
+	if (lxc_log_fd != -1)
+		return 0;
+
 	if (priority) {
 		lxc_priority = lxc_log_priority_to_int(priority);
 
