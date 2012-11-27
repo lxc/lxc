@@ -63,10 +63,10 @@ container_rootfs_configure()
     else
 	echo "SELINUX=disabled" >$container_rootfs/etc/selinux/config
     fi
-    if [ $container_release_major = "5" ]; then
-	sed -i 's|session[ ]*required[ ]*pam_selinux.so[ ]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/login
-	sed -i 's|session[ ]*required[ ]*pam_selinux.so[ ]*open|#session required pam_selinux.so open|' $container_rootfs/etc/pam.d/login
-    fi
+    sed -i 's|session[ ]*required[ ]*pam_selinux.so[ ]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/login
+    sed -i 's|session[ ]*required[ ]*pam_selinux.so[ ]*open|#session required pam_selinux.so open|' $container_rootfs/etc/pam.d/login
+    sed -i 's|session[ ]*required[ ]*pam_loginuid.so|#session required pam_loginuid.so|' $container_rootfs/etc/pam.d/login
+
 
     # configure the network to use dhcp. we set DHCP_HOSTNAME so the guest
     # will report its name and be resolv'able by the hosts dnsmasq
@@ -96,9 +96,12 @@ EOF
     echo "blacklist net-pf-10" >>$container_rootfs/etc/modprobe.d/blacklist.conf
     rm -f $container_rootfs/etc/sysconfig/network-scripts/init.ipv6-global
 
+    # this file has to exist for libvirt/Virtual machine monitor to boot the container
+    touch $container_rootfs/etc/mtab
+
+    # don't put devpts in here, it will already be mounted for us by lxc/libvirt
     cat <<EOF > $container_rootfs/etc/fstab
 proc    /proc     proc   nodev,noexec,nosuid 0 0
-devpts  /dev/pts  devpts defaults 0 0
 sysfs   /sys      sysfs  defaults 0 0
 EOF
 
@@ -151,13 +154,15 @@ EOF
     # lxc will maintain these links and bind mount ptys over /dev/lxc/*
     # since lxc.devttydir is specified in the config.
 
-    # allow root login on console and tty[1-4]
+    # allow root login on console, tty[1-4], and pts/0 for libvirt
     echo "# LXC (Linux Containers)" >>$container_rootfs/etc/securetty
     echo "lxc/console"	>>$container_rootfs/etc/securetty
     echo "lxc/tty1"	>>$container_rootfs/etc/securetty
     echo "lxc/tty2"	>>$container_rootfs/etc/securetty
     echo "lxc/tty3"	>>$container_rootfs/etc/securetty
     echo "lxc/tty4"	>>$container_rootfs/etc/securetty
+    echo "# For libvirt/Virtual Machine Monitor" >>$container_rootfs/etc/securetty
+    echo "pts/0"        >>$container_rootfs/etc/securetty
 
     # dont try to unmount /dev/lxc devices
     sed -i 's|&& $1 !~ /^\\/dev\\/ram/|\&\& $2 !~ /^\\/dev\\/lxc/ \&\& $1 !~ /^\\/dev\\/ram/|' $container_rootfs/etc/init.d/halt
@@ -201,7 +206,8 @@ EOF
 	chroot $container_rootfs chkconfig 2>/dev/null $service on
     done
 
-    # create required devices
+    # create required devices. note that /dev/console will be created by lxc
+    # or libvirt itself to be a symlink to the right pty.
     # take care to not nuke /dev in case $container_rootfs isn't set
     dev_path="$container_rootfs/dev"
     if [ $container_rootfs != "/" -a -d $dev_path ]; then
@@ -220,7 +226,6 @@ EOF
     mknod -m 666  $dev_path/tty2 c 4 2
     mknod -m 666  $dev_path/tty3 c 4 3
     mknod -m 666  $dev_path/tty4 c 4 4
-    mknod -m 600  $dev_path/console c 5 1
     mknod -m 666  $dev_path/full c 1 7
     mknod -m 600  $dev_path/initctl p
 
