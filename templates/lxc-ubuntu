@@ -113,13 +113,13 @@ finalize_user()
     done
 
     if [ -n "$auth_key" -a -f "$auth_key" ]; then
-	u_path="/home/${user}/.ssh"
-	root_u_path="$rootfs/$u_path"
-	mkdir -p $root_u_path
-	cp $auth_key "$root_u_path/authorized_keys"
-	chroot $rootfs chown -R ${user}: "$u_path"
+        u_path="/home/${user}/.ssh"
+        root_u_path="$rootfs/$u_path"
+        mkdir -p $root_u_path
+        cp $auth_key "$root_u_path/authorized_keys"
+        chroot $rootfs chown -R ${user}: "$u_path"
 
-	echo "Inserted SSH public key from $auth_key into /home/${user}/.ssh/authorized_keys"
+        echo "Inserted SSH public key from $auth_key into /home/${user}/.ssh/authorized_keys"
     fi
     return 0
 }
@@ -720,10 +720,10 @@ fi
 echo ""
 echo "##"
 if [ -n "$bindhome" ]; then
-	echo "# Log in as user $bindhome"
+    echo "# Log in as user $bindhome"
 else
-	echo "# The default user is 'ubuntu' with password 'ubuntu'!"
-	echo "# Use the 'sudo' command to run tasks as root in the container."
+    echo "# The default user is 'ubuntu' with password 'ubuntu'!"
+    echo "# Use the 'sudo' command to run tasks as root in the container."
 fi
 echo "##"
 echo ""
