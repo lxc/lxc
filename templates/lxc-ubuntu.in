@@ -80,6 +80,15 @@ EOF
         echo "ubuntu:ubuntu" | chroot $rootfs chpasswd
     fi
 
+    # make sure we have the current locale defined in the container
+    if [ -z "$LANG" ]; then
+        chroot $rootfs locale-gen en_US.UTF-8
+        chroot $rootfs update-locale LANG=en_US.UTF-8
+    else
+        chroot $rootfs locale-gen $LANG
+        chroot $rootfs update-locale LANG=$LANG
+    fi
+
     return 0
 }
 
@@ -430,15 +439,6 @@ EOF
     cat <<EOF > $rootfs/lib/init/fstab
 # /lib/init/fstab: cleared out for bare-bones lxc
 EOF
-
-    # reconfigure some services
-    if [ -z "$LANG" ]; then
-        chroot $rootfs locale-gen en_US.UTF-8
-        chroot $rootfs update-locale LANG=en_US.UTF-8
-    else
-        chroot $rootfs locale-gen $LANG
-        chroot $rootfs update-locale LANG=$LANG
-    fi
 
     # remove pointless services in a container
     chroot $rootfs /usr/sbin/update-rc.d -f ondemand remove
