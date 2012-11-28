@@ -1,6 +1,6 @@
 if ENABLE_TESTS
 
-LDADD = ../lxc/liblxc.so -lrt
+LDADD = ../lxc/liblxc.so -lpthread
 lxc_test_containertests_SOURCES = containertests.c
 lxc_test_locktests_SOURCES = locktests.c
 lxc_test_startone_SOURCES = startone.c
