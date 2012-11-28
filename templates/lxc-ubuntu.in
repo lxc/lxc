@@ -174,6 +174,18 @@ download_ubuntu()
     release=$3
 
     packages=vim,ssh
+
+    # Try to guess a list of langpacks to install
+    langpacks="language-pack-en"
+
+    if which dpkg >/dev/null 2>&1; then
+        langpacks=`(echo $LANGPACK_LIST &&
+                    dpkg -l | grep -E "^ii  language-pack-[a-z]* " |
+                        cut -d ' ' -f3) | sort -u`
+    fi
+    packages="$packages,$(echo $langpacks | sed 's/ /,/g')"
+
+
     echo "installing packages: $packages"
 
     trap cleanup EXIT SIGHUP SIGINT SIGTERM
