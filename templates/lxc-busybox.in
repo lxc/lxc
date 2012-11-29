@@ -245,10 +245,6 @@ lxc.mount.entry=/usr/lib $rootfs/usr/lib none ro,bind 0 0
 EOF
 fi
 
-# When using LXC with apparmor, uncomment the next line to run unconfined:
-#lxc.aa_profile = unconfined
-EOF
-
     libdirs="\
         lib \
         usr/lib \
