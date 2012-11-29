@@ -97,6 +97,7 @@ rm -rf %{buildroot}
 %defattr(-,root,root)
 %{_libdir}/*.so.*
 %{_libdir}/%{name}
+@LXCPATH@
 %attr(4555,root,root) %{_libexecdir}/%{name}/lxc-init
 
 %files devel

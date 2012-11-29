@@ -9,6 +9,9 @@ EXTRA_DIST = autogen.sh lxc.spec CONTRIBUTING MAINTAINERS ChangeLog
 pcdatadir = $(libdir)/pkgconfig
 pcdata_DATA = lxc.pc
 
+install-data-local:
+	$(MKDIR_P) $(DESTDIR)$(LXCPATH)
+
 ChangeLog::
 	@touch ChangeLog
 
