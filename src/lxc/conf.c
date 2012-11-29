@@ -231,12 +231,41 @@ static struct caps_opt caps_opt[] = {
 #endif
 };
 
+static int run_buffer(char *buffer)
+{
+	FILE *f;
+	char *output;
+
+	f = popen(buffer, "r");
+	if (!f) {
+		SYSERROR("popen failed");
+		return -1;
+	}
+
+	output = malloc(LXC_LOG_BUFFER_SIZE);
+	if (!output) {
+		ERROR("failed to allocate memory for script output");
+		return -1;
+	}
+
+	while(fgets(output, LXC_LOG_BUFFER_SIZE, f))
+		DEBUG("script output: %s", output);
+
+	free(output);
+
+	if (pclose(f) == -1) {
+		SYSERROR("Script exited on error");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int run_script(const char *name, const char *section,
 		      const char *script, ...)
 {
 	int ret;
-	FILE *f;
-	char *buffer, *p, *output;
+	char *buffer, *p;
 	size_t size = 0;
 	va_list ap;
 
@@ -283,29 +312,7 @@ static int run_script(const char *name, const char *section,
 	}
 	va_end(ap);
 
-	f = popen(buffer, "r");
-	if (!f) {
-		SYSERROR("popen failed");
-		return -1;
-	}
-
-	output = malloc(LXC_LOG_BUFFER_SIZE);
-	if (!output) {
-		ERROR("failed to allocate memory for script output");
-		return -1;
-	}
-
-	while(fgets(output, LXC_LOG_BUFFER_SIZE, f))
-		DEBUG("script output: %s", output);
-
-	free(output);
-
-	if (pclose(f) == -1) {
-		SYSERROR("Script exited on error");
-		return -1;
-	}
-
-	return 0;
+	return run_buffer(buffer);
 }
 
 static int find_fstype_cb(char* buffer, void *data)
@@ -869,6 +876,62 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	return 0;
 }
 
+/*
+ * Do we want to add options for max size of /dev and a file to
+ * specify which devices to create?
+ */
+static int mount_autodev(char *root)
+{
+	int ret;
+	char path[MAXPATHLEN];
+
+	INFO("Mounting /dev under %s\n", root);
+	ret = snprintf(path, MAXPATHLEN, "%s/dev", root);
+	if (ret < 0 || ret > MAXPATHLEN)
+		return -1;
+	ret = mount("none", path, "tmpfs", 0, "size=100000");
+	if (ret) {
+		SYSERROR("Failed to mount /dev at %s\n", root);
+		return -1;
+	}
+	ret = snprintf(path, MAXPATHLEN, "%s/dev/pts", root);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return -1;
+	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	if (ret) {
+		SYSERROR("Failed to create /dev/pts in container");
+		return -1;
+	}
+
+	INFO("Mounted /dev under %s\n", root);
+	return 0;
+}
+
+/*
+ * Try to run MAKEDEV console in the container.  If something fails,
+ * continue anyway as it should not be detrimental to the container.
+ * This makes sure that things like /dev/vcs* exist.
+ * (Pass devpath in to reduce stack usage)
+ */
+static void run_makedev(char *devpath)
+{
+	int curd;
+	int ret;
+
+	curd = open(".", O_RDONLY);
+	if (curd < 0)
+		return;
+	ret = chdir(devpath);
+	if (ret) {
+		close(curd);
+		return;
+	}
+	if (run_buffer("/sbin/MAKEDEV console"))
+		INFO("Error running MAKEDEV console in %s", devpath);
+	fchdir(curd);
+	close(curd);
+}
+
 struct lxc_devs {
 	char *name;
 	mode_t mode;
@@ -886,10 +949,6 @@ struct lxc_devs lxc_devs[] = {
 	{ "console",	S_IFCHR | S_IRUSR | S_IWUSR,	       5, 1	},
 };
 
-/*
- * Do we want to add options for max size of /dev and a file to
- * specify which devices to create?
- */
 static int setup_autodev(char *root)
 {
 	int ret;
@@ -897,33 +956,26 @@ static int setup_autodev(char *root)
 	char path[MAXPATHLEN];
 	int i;
 
-	INFO("Creating and populating /dev under %s\n", root);
+	INFO("Creating initial consoles under %s/dev\n", root);
+
 	ret = snprintf(path, MAXPATHLEN, "%s/dev", root);
-	if (ret < 0 || ret > MAXPATHLEN)
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("Error calculating container /dev location");
 		return -1;
-	ret = mount("none", path, "tmpfs", 0, "size=100000");
-	if (ret) {
-		SYSERROR("Failed to mount /dev at %s\n", root);
-		return -1;
-	}
+	} else
+		run_makedev(path);
+
+	INFO("Populating /dev under %s\n", root);
 	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
 		d = &lxc_devs[i];
 		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", root, d->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 		ret = mknod(path, d->mode, makedev(d->maj, d->min));
-		if (ret) {
+		if (ret && errno != EEXIST) {
 			SYSERROR("Error creating %s\n", d->name);
 			return -1;
 		}
-	}
-	ret = snprintf(path, MAXPATHLEN, "%s/dev/pts", root);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return -1;
-	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-	if (ret) {
-		SYSERROR("Failed to create /dev/pts in container");
-		return -1;
 	}
 
 	INFO("Populated /dev under %s\n", root);
@@ -2336,8 +2388,8 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 	}
 
 	if (lxc_conf->autodev) {
-		if (setup_autodev(lxc_conf->rootfs.mount)) {
-			ERROR("failed to set up /dev in the container");
+		if (mount_autodev(lxc_conf->rootfs.mount)) {
+			ERROR("failed to mount /dev in the container");
 			return -1;
 		}
 	}
@@ -2355,6 +2407,13 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 	if (run_lxc_hooks(name, "mount", lxc_conf)) {
 		ERROR("failed to run mount hooks for container '%s'.", name);
 		return -1;
+	}
+
+	if (lxc_conf->autodev) {
+		if (setup_autodev(lxc_conf->rootfs.mount)) {
+			ERROR("failed to populate /dev in the container");
+			return -1;
+		}
 	}
 
 	if (setup_cgroup(name, &lxc_conf->cgroup)) {
