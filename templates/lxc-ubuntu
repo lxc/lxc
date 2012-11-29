@@ -179,7 +179,7 @@ download_ubuntu()
     langpacks="language-pack-en"
 
     if which dpkg >/dev/null 2>&1; then
-        langpacks=`(echo $LANGPACK_LIST &&
+        langpacks=`(echo $langpacks &&
                     dpkg -l | grep -E "^ii  language-pack-[a-z]* " |
                         cut -d ' ' -f3) | sort -u`
     fi
