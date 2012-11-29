@@ -1,3 +1,5 @@
+EXTRA_DIST=lxc-ubuntu
+
 templatesdir=@LXCTEMPLATEDIR@
 
 templates_SCRIPTS = \
