@@ -281,7 +281,29 @@ if [ ! -r "$lxc_config" ]; then
     exit 1
 fi
 
-cp $lxc_config $lxc_path/$lxc_name/config
+# Allow for a path to be provided as the template name
+if [ -x $lxc_template ]; then
+    template_path=$lxc_template
+else
+    template_path=${templatedir}/lxc-$lxc_template
+fi
+
+if ! [ -x "$template_path" ]; then
+    echo "$(basename $0): unknown template '$lxc_template'" >&2
+    cleanup
+fi
+
+if [ ! -z $lxc_template ]; then
+    sum=$(sha1sum $template_path | cut -d ' ' -f1)
+    echo "# Template used to create this container: $lxc_template" >> $lxc_path/$lxc_name/config
+    if [ -n "$*" ]; then
+        echo "# Parameters passed to the template: $*" >> $lxc_path/$lxc_name/config
+    fi
+    echo "# Checksum of the template script (SHA-1): $sum" >> $lxc_path/$lxc_name/config
+    echo "" >> $lxc_path/$lxc_name/config
+fi
+
+cat $lxc_config >> $lxc_path/$lxc_name/config
 
 if [ -n "$custom_rootfs" ]; then
 	if grep -q "lxc.rootfs" $lxc_path/$lxc_name/config ; then
@@ -301,18 +323,6 @@ if [ $backingstore = "lvm" ]; then
 fi
 
 if [ ! -z $lxc_template ]; then
-    # Allow for a path to be provided as the template name
-    if [ -x $lxc_template ]; then
-        template_path=$lxc_template
-    else
-        template_path=${templatedir}/lxc-$lxc_template
-    fi
-
-    if ! [ -x "$template_path" ]; then
-        echo "$(basename $0): unknown template '$lxc_template'" >&2
-        cleanup
-    fi
-
     $template_path --path=$lxc_path/$lxc_name --name=$lxc_name $*
     if [ $? -ne 0 ]; then
         echo "$(basename $0): failed to execute template '$lxc_template'" >&2
