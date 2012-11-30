@@ -928,7 +928,9 @@ static void run_makedev(char *devpath)
 	}
 	if (run_buffer("/sbin/MAKEDEV console"))
 		INFO("Error running MAKEDEV console in %s", devpath);
-	fchdir(curd);
+	ret = fchdir(curd);
+	if (ret)
+		INFO("Error returning to original directory: expect breakage");
 	close(curd);
 }
 
