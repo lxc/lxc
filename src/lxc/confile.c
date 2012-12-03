@@ -55,6 +55,8 @@ static int config_ttydir(const char *, const char *, struct lxc_conf *);
 static int config_aa_profile(const char *, const char *, struct lxc_conf *);
 #endif
 static int config_cgroup(const char *, const char *, struct lxc_conf *);
+static int config_loglevel(const char *, const char *, struct lxc_conf *);
+static int config_logfile(const char *, const char *, struct lxc_conf *);
 static int config_mount(const char *, const char *, struct lxc_conf *);
 static int config_rootfs(const char *, const char *, struct lxc_conf *);
 static int config_rootfs_mount(const char *, const char *, struct lxc_conf *);
@@ -92,6 +94,8 @@ static struct lxc_config_t config[] = {
 	{ "lxc.aa_profile",            config_aa_profile          },
 #endif
 	{ "lxc.cgroup",               config_cgroup               },
+	{ "lxc.loglevel",             config_loglevel             },
+	{ "lxc.logfile",              config_logfile              },
 	{ "lxc.mount",                config_mount                },
 	{ "lxc.rootfs.mount",         config_rootfs_mount         },
 	{ "lxc.rootfs",               config_rootfs               },
@@ -903,6 +907,51 @@ static int config_aa_profile(const char *key, const char *value,
 }
 #endif
 
+static int config_logfile(const char *key, const char *value,
+			     struct lxc_conf *lxc_conf)
+{
+	char *path;
+
+	// if given a blank entry, null out any previous entries.
+	if (!value || strlen(value) == 0) {
+		if (lxc_conf->logfile) {
+			free(lxc_conf->logfile);
+			lxc_conf->logfile = NULL;
+		}
+		return 0;
+	}
+
+	path = strdup(value);
+	if (!path) {
+		SYSERROR("failed to strdup '%s': %m", value);
+		return -1;
+	}
+
+	if (lxc_log_set_file(path)) {
+		free(path);
+		return -1;
+	}
+
+	if (lxc_conf->logfile)
+		free(lxc_conf->logfile);
+	lxc_conf->logfile = path;
+
+	return 0;
+}
+
+static int config_loglevel(const char *key, const char *value,
+			     struct lxc_conf *lxc_conf)
+{
+	if (!value || strlen(value) == 0)
+		return 0;
+
+	if (value[0] >= '0' && value[0] <= '9')
+		lxc_conf->loglevel = atoi(value);
+	else
+		lxc_conf->loglevel = lxc_log_priority_to_int(value);
+	return lxc_log_set_level(lxc_conf->loglevel);
+}
+
 static int config_autodev(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
@@ -1526,7 +1575,7 @@ static int lxc_get_item_network(struct lxc_conf *c, char *retv, int inlen)
 int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 			int inlen)
 {
-	char *v = NULL;
+	const char *v = NULL;
 
 	if (strcmp(key, "lxc.mount.entry") == 0)
 		return lxc_get_mount_entries(c, retv, inlen);
@@ -1544,6 +1593,10 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 	else if (strcmp(key, "lxc.aa_profile") == 0)
 		v = c->aa_profile;
 #endif
+	else if (strcmp(key, "lxc.logfile") == 0)
+		v = c->logfile;
+	else if (strcmp(key, "lxc.loglevel") == 0)
+		v = lxc_log_priority_to_string(c->loglevel);
 	else if (strcmp(key, "lxc.cgroup") == 0) // all cgroup info
 		return lxc_get_cgroup_entry(c, retv, inlen, "all");
 	else if (strncmp(key, "lxc.cgroup.", 11) == 0) // specific cgroup info
@@ -1621,6 +1674,9 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	if (c->aa_profile)
 		fprintf(fout, "lxc.aa_profile = %s\n", c->aa_profile);
 #endif
+	fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(c->loglevel));
+	if (c->logfile)
+		fprintf(fout, "lxc.logfile = %s\n", c->logfile);
 	lxc_list_for_each(it, &c->cgroup) {
 		struct lxc_cgroup *cg = it->elem;
 		fprintf(fout, "lxc.cgroup.%s = %s\n", cg->subsystem, cg->value);
