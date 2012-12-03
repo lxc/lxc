@@ -188,7 +188,7 @@ copy_fedora()
     #cp -a $cache/rootfs-$arch $rootfs_path || return 1
     # i prefer rsync (no reason really)
     mkdir -p $rootfs_path
-    rsync -a $cache/rootfs/ $rootfs_path/
+    rsync -Ha $cache/rootfs/ $rootfs_path/
     return 0
 }
 
