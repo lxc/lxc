@@ -32,6 +32,7 @@ warnings.filterwarnings("ignore", "The python-lxc API isn't yet stable")
 import argparse
 import gettext
 import lxc
+import os
 import sys
 
 _ = gettext.gettext
@@ -48,6 +49,11 @@ parser.add_argument("--add", action="append", default=[], metavar="DEVICE",
                     help=_("Add a device"), required=True)
 
 args = parser.parse_args()
+
+# The user needs to be uid 0
+if not os.geteuid() == 0:
+    parser.error(_("You must be root to run this script. Try running: sudo %s"
+                   % (sys.argv[0])))
 
 container = lxc.Container(args.container)
 if not container.running:
