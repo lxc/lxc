@@ -154,10 +154,13 @@ class Container(_lxc.Container):
         _lxc.Container.__init__(self, name)
         self.network = ContainerNetworkList(self)
 
-    def add_device(self, path, destpath=None):
+    def add_device_node(self, path, destpath=None):
         """
-            Add device to running container.
+            Add block/char device to running container.
         """
+
+        if not self.running:
+            return False
 
         if not destpath:
             destpath = path
@@ -213,6 +216,25 @@ class Container(_lxc.Container):
         os.chown(container_path, 0, 0)
 
         return True
+
+    def add_device_net(self, name, destname=None):
+        """
+            Add network device to running container.
+        """
+
+        if not self.running:
+            return False
+
+        if not destname:
+            destname = name
+
+        if not os.path.exists("/sys/class/net/%s/" % name):
+            return False
+
+        return subprocess.call(['ip', 'link', 'set',
+                                'dev', name,
+                                'netns', str(self.init_pid),
+                                'name', destname]) == 0
 
     def append_config_item(self, key, value):
         """

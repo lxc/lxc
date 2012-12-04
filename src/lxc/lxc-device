@@ -42,24 +42,54 @@ gettext.textdomain("lxc-device")
 parser = argparse.ArgumentParser(description=_("LXC: Manage devices"),
                                  formatter_class=argparse.RawTextHelpFormatter)
 
+# Global arguments
 parser.add_argument("-n", dest="container", metavar="CONTAINER",
-                    help=_("Container to add the device to"), required=True)
+                    help=_("Name of the container to add the device to"),
+                    required=True)
 
-parser.add_argument("--add", action="append", default=[], metavar="DEVICE",
-                    help=_("Add a device"), required=True)
+# Commands
+subparsers = parser.add_subparsers()
+subparser_add = subparsers.add_parser('add', help=_('Add a device'))
+subparser_add.set_defaults(action="add")
+
+subparser_add.add_argument(dest="device", metavar="DEVICE",
+                           help=_("Add a device "
+                                  "(path to a node or interface name)"))
+
+subparser_add.add_argument(dest="name", metavar="NAME", nargs="?",
+                           help=_("Use an alternative path or name "
+                                  "in the container"))
 
 args = parser.parse_args()
 
-# The user needs to be uid 0
+# Some basic checks
+if not hasattr(args, "action"):
+    parser.error(_("You must specify an action."))
+
+## The user needs to be uid 0
 if not os.geteuid() == 0:
     parser.error(_("You must be root to run this script. Try running: sudo %s"
                    % (sys.argv[0])))
 
+## Don't rename if no alternative name
+if not args.name:
+    args.name = args.device
+
+## Check that the container is ready
 container = lxc.Container(args.container)
 if not container.running:
-    print("The container must be running.")
-    sys.exit(1)
+    parser.error("The container must be running.")
 
-for device in args.add:
-    container.add_device(device)
-    print("Added '%s' to '%s'." % (device, container.name))
+# Do the work
+if args.action == "add":
+    if os.path.exists("/sys/class/net/%s/" % args.device):
+        ret = container.add_device_net(args.device, args.name)
+    else:
+        ret = container.add_device_node(args.device, args.name)
+
+    if ret:
+        print("Added '%s' to '%s' as '%s'." %
+              (args.device, container.name, args.name))
+    else:
+        print("Failed to add '%s' to '%s' as '%s'." %
+              (args.device, container.name, args.name))
