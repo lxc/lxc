@@ -211,6 +211,11 @@ enum lxchooks {
 	LXCHOOK_POSTSTOP, NUM_LXC_HOOKS};
 extern char *lxchook_names[NUM_LXC_HOOKS];
 
+struct saved_nic {
+	int ifindex;
+	char *orig_name;
+};
+
 struct lxc_conf {
 	char *fstab;
 	int tty;
@@ -221,6 +226,8 @@ struct lxc_conf {
 	struct utsname *utsname;
 	struct lxc_list cgroup;
 	struct lxc_list network;
+	struct saved_nic *saved_nics;
+	int num_savednics;
 	struct lxc_list mount_list;
 	struct lxc_list caps;
 	struct lxc_tty_info tty_info;
@@ -273,4 +280,6 @@ extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
  */
 
 extern int lxc_setup(const char *name, struct lxc_conf *lxc_conf);
+
+extern void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf);
 #endif

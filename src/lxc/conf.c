@@ -1821,6 +1821,21 @@ static int setup_network(struct lxc_list *network)
 	return 0;
 }
 
+void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf)
+{
+	int i;
+
+	INFO("running to reset %d nic names", conf->num_savednics);
+	for (i=0; i<conf->num_savednics; i++) {
+		struct saved_nic *s = &conf->saved_nics[i];
+		INFO("resetting nic %d to %s\n", s->ifindex, s->orig_name);
+		lxc_netdev_rename_by_index(s->ifindex, s->orig_name);
+		free(s->orig_name);
+	}
+	conf->num_savednics = 0;
+	free(conf->saved_nics);
+}
+
 static int setup_private_host_hw_addr(char *veth1)
 {
 	struct ifreq ifr;
@@ -2710,6 +2725,18 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 	return 0;
 }
 
+void lxc_clear_saved_nics(struct lxc_conf *conf)
+{
+	int i;
+
+	if (!conf->num_savednics)
+		return;
+	for (i=0; i < conf->num_savednics; i++)
+		free(conf->saved_nics[i].orig_name);
+	conf->saved_nics = 0;
+	free(conf->saved_nics);
+}
+
 void lxc_conf_free(struct lxc_conf *conf)
 {
 	if (!conf)
@@ -2737,5 +2764,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_cgroups(conf, "lxc.cgroup");
 	lxc_clear_hooks(conf, "lxc.hook");
 	lxc_clear_mount_entries(conf);
+	lxc_clear_saved_nics(conf);
 	free(conf);
 }

@@ -579,6 +579,37 @@ out_warn_father:
 	return -1;
 }
 
+int save_phys_nics(struct lxc_conf *conf)
+{
+	struct lxc_list *iterator;
+
+	lxc_list_for_each(iterator, &conf->network) {
+		struct lxc_netdev *netdev = iterator->elem;
+
+		if (netdev->type != LXC_NET_PHYS)
+			continue;
+		conf->saved_nics = realloc(conf->saved_nics,
+				(conf->num_savednics+1)*sizeof(struct saved_nic));
+		if (!conf->saved_nics) {
+			SYSERROR("failed to allocate memory");
+			return -1;
+		}
+		conf->saved_nics[conf->num_savednics].ifindex = netdev->ifindex;
+		conf->saved_nics[conf->num_savednics].orig_name = strdup(netdev->link);
+		if (!conf->saved_nics[conf->num_savednics].orig_name) {
+			SYSERROR("failed to allocate memory");
+			return -1;
+		}
+		INFO("stored saved_nic #%d idx %d name %s\n", conf->num_savednics,
+			conf->saved_nics[conf->num_savednics].ifindex,
+			conf->saved_nics[conf->num_savednics].orig_name);
+		conf->num_savednics++;
+	}
+
+	return 0;
+}
+
+
 int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
@@ -611,6 +642,11 @@ int lxc_spawn(struct lxc_handler *handler)
 			lxc_sync_fini(handler);
 			return -1;
 		}
+	}
+
+	if (save_phys_nics(handler->conf)) {
+		ERROR("failed to save physical nic info");
+		goto out_abort;
 	}
 
 	/*
@@ -738,6 +774,8 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 			break;
 		}
         }
+
+	lxc_rename_phys_nics_on_shutdown(handler->conf);
 
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
