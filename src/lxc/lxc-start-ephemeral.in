@@ -96,20 +96,17 @@ args = parser.parse_args()
 # Basic requirements check
 ## Check that -d and CMD aren't used at the same time
 if args.command and args.daemon:
-    print(_("You can't use -d and a command at the same time."))
-    sys.exit(1)
+    parser.error(_("You can't use -d and a command at the same time."))
 
 ## The user needs to be uid 0
 if not os.geteuid() == 0:
-    print(_("You must be root to run this script. Try running: sudo %s" %
-            (sys.argv[0])))
-    sys.exit(1)
+    parser.error(_("You must be root to run this script. Try running: sudo %s"
+                   % (sys.argv[0])))
 
 # Load the orig container
 orig = lxc.Container(args.orig)
 if not orig.defined:
-    print(_("Source container '%s' doesn't exist." % args.orig))
-    sys.exit(1)
+    parser.error(_("Source container '%s' doesn't exist." % args.orig))
 
 # Create the new container paths
 dest_path = tempfile.mkdtemp(prefix="%s-" % args.orig, dir="@LXCPATH@")
