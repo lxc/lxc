@@ -116,12 +116,6 @@ parser.add_argument("filter", metavar='FILTER', type=str, nargs="?",
 
 args = parser.parse_args()
 
-# Basic checks
-## The user needs to be uid 0
-if not os.geteuid() == 0:
-    parser.error(_("You must be root to run this script. Try running: sudo %s"
-                   % (sys.argv[0])))
-
 # --active is the same as --running --frozen
 if args.active:
     if not args.state:
@@ -135,19 +129,33 @@ if not sys.stdout.isatty():
 # Turn args.fancy_format into a list
 args.fancy_format = args.fancy_format.strip().split(",")
 
+# Basic checks
+## The user needs to be uid 0
+if not os.geteuid() == 0 and (args.fancy or args.state):
+    parser.error(_("You must be root to access advanced container properties. "
+                   "Try running: sudo %s"
+                   % (sys.argv[0])))
+
 # List of containers, stored as dictionaries
 containers = []
-for container in lxc.list_containers(as_object=True):
+for container_name in lxc.list_containers():
+    entry = {}
+    entry['name'] = container_name
+
+    # Apply filter
+    if args.filter and not re.match(args.filter, container_name):
+        continue
+
+    # Return before grabbing the object (non-root)
+    if not args.state and not args.fancy:
+        containers.append(entry)
+        continue
+
+    container = lxc.Container(container_name)
+
     # Filter by status
     if args.state and container.state not in args.state:
         continue
-
-    # Apply filter
-    if args.filter and not re.match(args.filter, container.name):
-        continue
-
-    entry = {}
-    entry['name'] = container.name
 
     # Nothing more is needed if we're not printing some fancy output
     if not args.fancy:
