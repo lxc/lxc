@@ -32,6 +32,7 @@ warnings.filterwarnings("ignore", "The python-lxc API isn't yet stable")
 import argparse
 import gettext
 import lxc
+import os
 import re
 import sys
 
@@ -114,6 +115,12 @@ parser.add_argument("filter", metavar='FILTER', type=str, nargs="?",
                     help=_("regexp to be applied on the container list"))
 
 args = parser.parse_args()
+
+# Basic checks
+## The user needs to be uid 0
+if not os.geteuid() == 0:
+    parser.error(_("You must be root to run this script. Try running: sudo %s"
+                   % (sys.argv[0])))
 
 # --active is the same as --running --frozen
 if args.active:
