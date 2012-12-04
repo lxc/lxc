@@ -229,6 +229,7 @@ AC_CONFIG_FILES([
 	doc/lxc.sgml
 	doc/common_options.sgml
 	doc/see_also.sgml
+	doc/legacy/lxc-ls.sgml
 
 	doc/rootfs/Makefile
 
@@ -266,6 +267,7 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-shutdown
 	src/lxc/lxc-start-ephemeral
 	src/lxc/lxc-destroy
+	src/lxc/legacy/lxc-ls
 
 	src/python-lxc/Makefile
 

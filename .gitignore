@@ -64,6 +64,7 @@ src/lxc/lxc-unfreeze
 src/lxc/lxc-unshare
 src/lxc/lxc-version
 src/lxc/lxc-wait
+src/lxc/legacy/lxc-ls
 
 src/python-lxc/lxc/__pycache__/
 

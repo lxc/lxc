@@ -100,6 +100,8 @@ if ENABLE_PYTHON
     bin_SCRIPTS += lxc-device
     bin_SCRIPTS += lxc-ls
     bin_SCRIPTS += lxc-start-ephemeral
+else
+    bin_SCRIPTS += legacy/lxc-ls
 endif
 
 bin_PROGRAMS = \

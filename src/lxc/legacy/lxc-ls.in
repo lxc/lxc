@@ -1,0 +1,94 @@
+#!/bin/bash
+
+#
+# lxc: linux Container library
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+lxc_path=@LXCPATH@
+
+usage()
+{
+	echo "usage: $(basename $0) [--active] [--] [LS_OPTIONS...]" >&2
+}
+
+help() {
+	usage
+	echo >&2
+	echo "List containers existing on the system." >&2
+	echo >&2
+	echo "  --active     list active containers" >&2
+	echo "  LS_OPTIONS   ls command options (see \`ls --help')" >&2
+}
+
+get_parent_cgroup()
+{
+	local hierarchies hierarchy fields subsystems init_cgroup mountpoint
+
+	parent_cgroup=""
+
+	# Obtain a list of hierarchies that contain one or more subsystems
+	hierarchies=$(tail -n +2 /proc/cgroups | cut -f 2)
+
+	# Iterate through the list until a suitable hierarchy is found
+	for hierarchy in $hierarchies; do
+		# Obtain information about the init process in the hierarchy
+		fields=$(grep -E "^$hierarchy:" /proc/1/cgroup | head -n 1)
+		if [ -z "$fields" ]; then continue; fi
+		fields=${fields#*:}
+
+		# Get a comma-separated list of the hierarchy's subsystems
+		subsystems=${fields%:*}
+
+		# Get the cgroup of the init process in the hierarchy
+		init_cgroup=${fields#*:}
+
+		# Get the filesystem mountpoint of the hierarchy
+		mountpoint=$(grep -E "^[^ ]+ [^ ]+ cgroup ([^ ]+,)?$subsystems(,[^ ]+)? " /proc/self/mounts | cut -d ' ' -f 2)
+		if [ -z "$mountpoint" ]; then continue; fi
+
+		# Return the absolute path to the containers' parent cgroup
+		# (do not append '/lxc' if the hierarchy contains the 'ns' subsystem)
+		if [[ ",$subsystems," == *,ns,* ]]; then
+			parent_cgroup="${mountpoint}${init_cgroup%/}"
+		else
+			parent_cgroup="${mountpoint}${init_cgroup%/}/lxc"
+		fi
+		break
+	done
+}
+
+directory=$(readlink -f "$lxc_path")
+
+for i in "$@"; do
+	case $i in
+		--help)
+			help; exit;;
+		--active)
+			get_parent_cgroup; directory="$parent_cgroup"; shift;;
+		--)
+			shift; break;;
+		*)
+			break;;
+        esac
+done
+
+containers=""
+if [ ! -z "$directory" ]; then
+	containers=$(find $directory -mindepth 1 -maxdepth 1 -type d -printf "%f\n" 2>/dev/null)
+fi
+
+cd "$directory"
+ls -d $@ -- $containers
