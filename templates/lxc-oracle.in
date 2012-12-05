@@ -270,8 +270,8 @@ EOF
     # see if the network settings were already specified
     lxc_network_type=`grep '^lxc.network.type' $cfg_dir/config | awk -F'[= \t]+' '{ print $2 }'`
     if [ -z "$lxc_network_type" -a			\
-	 $host_distribution = "OracleServer" -o		\
-	 $host_distribution = "Fedora" ]; then
+        \( $host_distribution = "OracleServer" -o	\
+           $host_distribution = "Fedora" \) ]; then
 	    echo "lxc.network.type = veth" >>$cfg_dir/config
 	    echo "lxc.network.flags = up" >>$cfg_dir/config
 	    echo "lxc.network.link = virbr0" >>$cfg_dir/config
@@ -439,7 +439,7 @@ container_rootfs_create()
 usage()
 {
     cat <<EOF
-  -a|--arch=<arch>        architecture (ie. i686, x86_64)
+  -a|--arch=<arch>        architecture (ie. i386, x86_64)
   -R|--release=<release>  release to download for the new container
   -u|--url=<url>          replace yum repo url (ie. local yum mirror)
   -t|--templatefs=<path>  copy/clone rootfs at path instead of downloading
@@ -496,6 +496,12 @@ if [ "$arch" = "i686" ]; then
     basearch="i386"
 fi
 
+if [ "$arch" != "i386" -a "$arch" != "x86_64" ]; then
+    echo "Bad architecture given, check lxc-create"
+    usage
+    exit 1
+fi
+
 container_rootfs="$cfg_dir/rootfs"
 
 if [ -n "$template_rootfs" ]; then
@@ -514,8 +520,20 @@ if which lsb_release >/dev/null 2>&1; then
     host_release_major=`echo $host_release_version |awk -F '.' '{print $1}'`
     host_release_minor=`echo $host_release_version |awk -F '.' '{print $2}'`
 else
-    echo "Unable to determine host distribution, ensure lsb_release is installed"
-    exit 1
+    if   [ -f /etc/fedora-release ]; then
+       host_distribution="Fedora"
+       host_release_version=`cat /etc/fedora-release |awk '{print $3}'`
+       host_release_major=$host_release_version
+       host_release_minor=0
+    elif [ -f /etc/oracle-release ]; then
+       host_distribution="OracleServer"
+       host_release_version=`cat /etc/oracle-release |awk '{print $5}'`
+       host_release_major=`echo $host_release_version |awk -F '.' '{print $1}'`
+       host_release_minor=`echo $host_release_version |awk -F '.' '{print $2}'`
+    else
+       echo "Unable to determine host distribution, ensure lsb_release is installed"
+       exit 1
+    fi
 fi
 echo "Host is $host_distribution $host_release_version"
 
