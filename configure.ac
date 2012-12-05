@@ -271,6 +271,8 @@ AC_CONFIG_FILES([
 	src/lxc/legacy/lxc-ls
 
 	src/python-lxc/Makefile
+	src/python-lxc/lxc/__init__.py
+	src/python-lxc/examples/api_test.py
 
 	src/tests/Makefile
 

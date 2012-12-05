@@ -30,7 +30,7 @@ import uuid
 import sys
 
 # Some constants
-LXC_PATH_LIB = "/var/lib/lxc"
+LXC_PATH_LIB = "@LXCPATH@"
 LXC_TEMPLATE = "ubuntu"
 
 # Let's pick a random name, avoiding clashes

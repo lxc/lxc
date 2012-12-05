@@ -465,7 +465,7 @@ def list_containers(as_object=False):
         List the containers on the system.
     """
     containers = []
-    for entry in glob.glob("/var/lib/lxc/*/config"):
+    for entry in glob.glob("@LXCPATH@/*/config"):
         if as_object:
             containers.append(Container(entry.split("/")[-2]))
         else:
