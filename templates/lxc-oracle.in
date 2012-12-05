@@ -263,7 +263,7 @@ lxc.devttydir = lxc
 lxc.tty = 4
 lxc.pts = 1024
 lxc.rootfs = $container_rootfs
-lxc.mount  = $cfg_dir/fstab
+lxc.mount = $cfg_dir/fstab
 # Networking
 EOF
 

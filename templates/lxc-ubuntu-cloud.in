@@ -52,7 +52,7 @@ lxc.utsname = $name
 
 lxc.tty = 4
 lxc.pts = 1024
-lxc.mount  = $path/fstab
+lxc.mount = $path/fstab
 lxc.arch = $arch
 lxc.cap.drop = sys_module mac_admin
 lxc.pivotdir = lxc_putold

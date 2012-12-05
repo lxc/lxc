@@ -116,14 +116,14 @@ lxc.pts = 1024
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
 
-lxc.mount.entry=/dev dev none ro,bind 0 0
-lxc.mount.entry=/lib lib none ro,bind 0 0
-lxc.mount.entry=/bin bin none ro,bind 0 0
-lxc.mount.entry=/usr usr none ro,bind 0 0
-lxc.mount.entry=/sbin sbin none ro,bind 0 0
-lxc.mount.entry=tmpfs var/run/sshd tmpfs mode=0644 0 0
-lxc.mount.entry=@LXCTEMPLATEDIR@/lxc-sshd sbin/init none bind 0 0
-lxc.mount.entry=proc $rootfs/proc proc nodev,noexec,nosuid 0 0
+lxc.mount.entry = /dev dev none ro,bind 0 0
+lxc.mount.entry = /lib lib none ro,bind 0 0
+lxc.mount.entry = /bin bin none ro,bind 0 0
+lxc.mount.entry = /usr usr none ro,bind 0 0
+lxc.mount.entry = /sbin sbin none ro,bind 0 0
+lxc.mount.entry = tmpfs var/run/sshd tmpfs mode=0644 0 0
+lxc.mount.entry = @LXCTEMPLATEDIR@/lxc-sshd sbin/init none bind 0 0
+lxc.mount.entry = proc $rootfs/proc proc nodev,noexec,nosuid 0 0
 EOF
 
     # if no .ipv4 section in config, then have the container run dhcp
@@ -131,7 +131,7 @@ EOF
 
     if [ "$(uname -m)" = "x86_64" ]; then
         cat <<EOF >> $path/config
-lxc.mount.entry=/lib64 lib64 none ro,bind 0 0
+lxc.mount.entry = /lib64 lib64 none ro,bind 0 0
 EOF
     fi
 }

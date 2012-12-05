@@ -260,7 +260,7 @@ lxc.utsname = $name
 
 lxc.tty = 4
 lxc.pts = 1024
-lxc.mount  = $path/fstab
+lxc.mount = $path/fstab
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined

@@ -211,8 +211,8 @@ EOF
 
 if [ -d "$rootfs/lib" ]; then
 cat <<EOF >> $path/config
-lxc.mount.entry=/lib $rootfs/lib none ro,bind 0 0
-lxc.mount.entry=/usr/lib $rootfs/usr/lib none ro,bind 0 0
+lxc.mount.entry = /lib $rootfs/lib none ro,bind 0 0
+lxc.mount.entry = /usr/lib $rootfs/usr/lib none ro,bind 0 0
 EOF
 fi
 
@@ -224,7 +224,7 @@ fi
 
     for dir in $libdirs; do
         if [ -d "/$dir" ] && [ -d "$rootfs/$dir" ]; then
-            echo "lxc.mount.entry=/$dir $dir none ro,bind 0 0" >> $path/config
+            echo "lxc.mount.entry = /$dir $dir none ro,bind 0 0" >> $path/config
         fi
     done
 }
