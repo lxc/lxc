@@ -26,10 +26,10 @@
 
 # defaults
 arch=$(arch)
-cache=/var/cache/lxc/arch/${arch}
+cache=@LOCALSTATEDIR@/lxc/arch/${arch}
 lxc_network_type="veth"
 lxc_network_link="br0"
-default_path=/var/lib/lxc
+default_path=@LXCPATH@
 default_rc_locale="en-US.UTF-8"
 default_rc_timezone="UTC"
 host_mirror="http://mirrors.kernel.org/archlinux/\$repo/os/$arch"
