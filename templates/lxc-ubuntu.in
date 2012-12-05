@@ -258,7 +258,7 @@ install_ubuntu()
     rootfs=$1
     release=$2
     flushcache=$3
-    cache="/var/cache/lxc/$release"
+    cache="@LOCALSTATEDIR@/cache/lxc/$release"
     mkdir -p /var/lock/subsys/
 
     (
