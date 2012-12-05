@@ -242,7 +242,7 @@ install_opensuse()
         fi
 
         return 0
-    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-opensuse
 
     return $?
 }
@@ -314,7 +314,7 @@ clean()
         echo -n "Purging the download cache..."
         rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
         exit 0
-    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-opensuse
 }
 
 usage()

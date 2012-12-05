@@ -259,7 +259,7 @@ install_ubuntu()
     release=$2
     flushcache=$3
     cache="@LOCALSTATEDIR@/cache/lxc/$release"
-    mkdir -p /var/lock/subsys/
+    mkdir -p @LOCALSTATEDIR@/lock/subsys/
 
     (
         flock -x 200
@@ -293,7 +293,7 @@ install_ubuntu()
 
         return 0
 
-    ) 200>/var/lock/subsys/lxc
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-ubuntu
 
     return $?
 }

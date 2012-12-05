@@ -395,7 +395,7 @@ EOF
         echo "If you do not have a meta-data service, this container will likely be useless."
 
     fi
-) 200>@LOCALSTATEDIR@/lock/subsys/lxc-ubucloud
+) 200>@LOCALSTATEDIR@/lock/subsys/lxc-ubuntu-cloud
 
 copy_configuration $path $rootfs $name $arch $release
 
