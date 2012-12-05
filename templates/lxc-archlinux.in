@@ -375,7 +375,7 @@ usage:
 Mandatory args:
   -n,--name         container name, used to as an identifier for that container from now on
 Optional args:
-  -p,--path         path to where the container rootfs will be created, defaults to /var/lib/lxc. The container config will go under /var/lib/lxc in that case
+  -p,--path         path to where the container rootfs will be created, defaults to $default_path. The container config will go under $default_path in that case
   -P,--packages     preinstall additional packages, comma-separated list
   -h,--help         print this help
 EOF
