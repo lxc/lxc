@@ -313,6 +313,10 @@ if [ -n "$custom_rootfs" ]; then
         echo "configuration file already specifies a lxc.rootfs"
         exit 1
     fi
+    if [ -d "$custom_rootfs" ]; then
+        echo "specified rootfs ($custom_rootfs) already exists.  Bailing."
+        exit 1
+    fi
     echo "lxc.rootfs = $custom_rootfs" >> $lxc_path/$lxc_name/config
 fi
 
