@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%d: failed writing config file /tmp/lxctest1\n", __LINE__);
 		goto out;
 	}
-	rename("/var/lib/lxc/" MYNAME "/config", "/var/lib/lxc/" MYNAME "/config.bak");
+	rename(LXCPATH "/" MYNAME "/config", LXCPATH "/" MYNAME "/config.bak");
 	if (!c->save_config(c, NULL)) {
 		fprintf(stderr, "%d: failed writing config file\n", __LINE__);
 		goto out;

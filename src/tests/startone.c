@@ -178,21 +178,21 @@ int main(int argc, char *argv[])
 		goto out;
 	c->stop(c);
 
-	ret = system("mkdir -p /var/lib/lxc/lxctest1/rootfs//usr/local/libexec/lxc");
+	ret = system("mkdir -p " LXCPATH "/lxctest1/rootfs//usr/local/libexec/lxc");
 	if (!ret)
-		ret = system("mkdir -p /var/lib/lxc/lxctest1/rootfs/usr/lib/lxc/");
+		ret = system("mkdir -p " LXCPATH "/lxctest1/rootfs/usr/lib/lxc/");
 	if (!ret)
-		ret = system("cp src/lxc/lxc-init /var/lib/lxc/lxctest1/rootfs//usr/local/libexec/lxc");
+		ret = system("cp src/lxc/lxc-init " LXCPATH "/lxctest1/rootfs//usr/local/libexec/lxc");
 	if (!ret)
-		ret = system("cp src/lxc/liblxc.so /var/lib/lxc/lxctest1/rootfs/usr/lib/lxc");
+		ret = system("cp src/lxc/liblxc.so " LXCPATH "/lxctest1/rootfs/usr/lib/lxc");
 	if (!ret)
-		ret = system("cp src/lxc/liblxc.so /var/lib/lxc/lxctest1/rootfs/usr/lib/lxc/liblxc.so.0");
+		ret = system("cp src/lxc/liblxc.so " LXCPATH "/lxctest1/rootfs/usr/lib/lxc/liblxc.so.0");
 	if (!ret)
-		ret = system("cp src/lxc/liblxc.so /var/lib/lxc/lxctest1/rootfs/usr/lib");
+		ret = system("cp src/lxc/liblxc.so " LXCPATH "/lxctest1/rootfs/usr/lib");
 	if (!ret)
-		ret = system("mkdir -p /var/lib/lxc/lxctest1/rootfs/dev/shm");
+		ret = system("mkdir -p " LXCPATH "/lxctest1/rootfs/dev/shm");
 	if (!ret)
-		ret = system("chroot /var/lib/lxc/lxctest1/rootfs apt-get install --no-install-recommends lxc");
+		ret = system("chroot " LXCPATH "/lxctest1/rootfs apt-get install --no-install-recommends lxc");
 	if (ret) {
 		fprintf(stderr, "%d: failed to installing lxc-init in container\n", __LINE__);
 		goto out;

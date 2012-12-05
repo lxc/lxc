@@ -1369,8 +1369,8 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	}
 
 	/* if rootfs->path is a blockdev path, allow container fstab to
-	 * use /var/lib/lxc/CN/rootfs as the target prefix */
-	r = snprintf(path, MAXPATHLEN, "/var/lib/lxc/%s/rootfs", lxc_name);
+	 * use $LXCPATH/CN/rootfs as the target prefix */
+	r = snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", lxc_name);
 	if (r < 0 || r >= MAXPATHLEN)
 		goto skipvarlib;
 

@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 	str = c->config_file_name(c);
-#define CONFIGFNAM "/var/lib/lxc/" MYNAME "/config"
+#define CONFIGFNAM LXCPATH "/" MYNAME "/config"
 	if (!str || strcmp(str, CONFIGFNAM)) {
 		fprintf(stderr, "%d: got wrong config file name (%s, not %s)\n", __LINE__, str, CONFIGFNAM);
 		goto out;

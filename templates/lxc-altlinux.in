@@ -26,7 +26,7 @@
 
 #Configurations
 arch=$(arch)
-cache_base=/var/cache/lxc/altlinux/$arch
+cache_base=@LOCALSTATEDIR@/cache/lxc/altlinux/$arch
 default_path=@LXCPATH@
 default_profile=default
 profile_dir=/etc/lxc/profiles
@@ -196,7 +196,7 @@ update_altlinux()
 
 install_altlinux()
 {
-    mkdir -p /var/lock/subsys/
+    mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
 	flock -x 200
 	if [ $? -ne 0 ]; then
@@ -230,7 +230,7 @@ install_altlinux()
 
 	return 0
 
-	) 200>/var/lock/subsys/lxc
+	) 200>@LOCALSTATEDIR@/lock/subsys/lxc
 
     return $?
 }
@@ -328,7 +328,7 @@ clean()
 	rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
 	exit 0
 
-    ) 200>/var/lock/subsys/lxc
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc
 }
 
 usage()
@@ -345,7 +345,7 @@ usage:
 Mandatory args:
   -n,--name         container name, used to as an identifier for that container from now on
 Optional args:
-  -p,--path         path to where the container rootfs will be created, defaults to /var/lib/lxc. The container config will go under /var/lib/lxc in and case
+  -p,--path         path to where the container rootfs will be created, defaults to @LXCPATH@. The container config will go under @LXCPATH@ in that case
   -c,--clean        clean the cache
   -R,--release      ALTLinux release for the new container. if the host is ALTLinux, then it will defaultto the host's release.
   -4,--ipv4         specify the ipv4 address to assign to the virtualized interface, eg. 192.168.1.123/24

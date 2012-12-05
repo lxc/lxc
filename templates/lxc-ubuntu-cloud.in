@@ -262,7 +262,7 @@ type wget
 
 # determine the url, tarball, and directory names
 # download if needed
-cache="/var/cache/lxc/cloud-$release"
+cache="@LOCALSTATEDIR@/cache/lxc/cloud-$release"
 
 mkdir -p $cache
 
@@ -318,7 +318,7 @@ build_root_tgz()
     trap SIGTERM
 }
 
-mkdir -p /var/lock/subsys/
+mkdir -p @LOCALSTATEDIR@/lock/subsys/
 (
     flock -x 200
 
@@ -395,7 +395,7 @@ EOF
         echo "If you do not have a meta-data service, this container will likely be useless."
 
     fi
-) 200>/var/lock/subsys/lxc-ubucloud
+) 200>@LOCALSTATEDIR@/lock/subsys/lxc-ubucloud
 
 copy_configuration $path $rootfs $name $arch $release
 

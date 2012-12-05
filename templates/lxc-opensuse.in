@@ -213,9 +213,9 @@ copy_opensuse()
 
 install_opensuse()
 {
-    cache="/var/cache/lxc/opensuse"
+    cache="@LOCALSTATEDIR@/cache/lxc/opensuse"
     rootfs=$1
-    mkdir -p /var/lock/subsys/
+    mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
 	flock -x 200
 	if [ $? -ne 0 ]; then
@@ -243,7 +243,7 @@ install_opensuse()
 
 	return 0
 
-	) 200>/var/lock/subsys/lxc
+	) 200>@LOCALSTATEDIR@/lock/subsys/lxc
 
     return $?
 }
@@ -298,7 +298,7 @@ EOF
 
 clean()
 {
-    cache="/var/cache/lxc/opensuse"
+    cache="@LOCALSTATEDIR@/cache/lxc/opensuse"
 
     if [ ! -e $cache ]; then
 	exit 0
@@ -316,7 +316,7 @@ clean()
 	rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
 	exit 0
 
-    ) 200>/var/lock/subsys/lxc
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc
 }
 
 usage()

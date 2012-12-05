@@ -27,8 +27,8 @@
 
 #Configurations
 arch=$(arch)
-cache_base=/var/cache/lxc/fedora/$arch
-default_path=/var/lib/lxc
+cache_base=@LOCALSTATEDIR@/cache/lxc/fedora/$arch
+default_path=@LXCPATH@
 root_password=root
 
 # is this fedora?
@@ -200,7 +200,7 @@ update_fedora()
 
 install_fedora()
 {
-    mkdir -p /var/lock/subsys/
+    mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
 	flock -x 200
 	if [ $? -ne 0 ]; then
@@ -234,7 +234,7 @@ install_fedora()
 
 	return 0
 
-	) 200>/var/lock/subsys/lxc
+	) 200>@LOCALSTATEDIR@/lock/subsys/lxc
 
     return $?
 }
@@ -303,7 +303,7 @@ clean()
 	rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
 	exit 0
 
-    ) 200>/var/lock/subsys/lxc
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc
 }
 
 usage()
@@ -316,7 +316,7 @@ usage:
 Mandatory args:
   -n,--name         container name, used to as an identifier for that container from now on
 Optional args:
-  -p,--path         path to where the container rootfs will be created, defaults to /var/lib/lxc. The container config will go under /var/lib/lxc in that case
+  -p,--path         path to where the container rootfs will be created, defaults to @LXCPATH@. The container config will go under @LXCPATH@ in that case
   -c,--clean        clean the cache
   -R,--release      Fedora release for the new container. if the host is Fedora, then it will defaultto the host's release.
   -A,--arch         NOT USED YET. Define what arch the container will be [i686,x86_64]
