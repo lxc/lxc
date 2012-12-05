@@ -43,7 +43,7 @@ $rootfs/lib64"
 
     mkdir -p $tree
     if [ $? -ne 0 ]; then
-	return 1
+        return 1
     fi
 
     return 0
@@ -172,14 +172,14 @@ if [ $0 == "/sbin/init" ]; then
 
     type @LXCINITDIR@/lxc-init
     if [ $? -ne 0 ]; then
-	echo "'lxc-init is not accessible on the system"
-	exit 1
+        echo "'lxc-init is not accessible on the system"
+        exit 1
     fi
 
     type sshd
     if [ $? -ne 0 ]; then
-	echo "'sshd' is not accessible on the system "
-	exit 1
+        echo "'sshd' is not accessible on the system "
+        exit 1
     fi
 
     # run dhcp?

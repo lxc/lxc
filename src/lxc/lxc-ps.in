@@ -19,125 +19,124 @@
 
 usage()
 {
-	echo "usage: $(basename $0) [--lxc | --name NAME] [--] [PS_OPTIONS...]" >&2
+    echo "usage: $(basename $0) [--lxc | --name NAME] [--] [PS_OPTIONS...]" >&2
 }
 
 help() {
-	usage
-	echo >&2
-	echo "List current processes with container names." >&2
-	echo >&2
-	echo "  --lxc         show processes in all containers" >&2
-	echo "  --name NAME   show processes in the specified container" >&2
-	echo "                 (multiple containers can be separated by commas)" >&2
-	echo "  PS_OPTIONS    ps command options (see \`ps --help')" >&2
+    usage
+    echo >&2
+    echo "List current processes with container names." >&2
+    echo >&2
+    echo "  --lxc         show processes in all containers" >&2
+    echo "  --name NAME   show processes in the specified container" >&2
+    echo "                 (multiple containers can be separated by commas)" >&2
+    echo "  PS_OPTIONS    ps command options (see \`ps --help')" >&2
 }
 
 get_parent_cgroup()
 {
-	local hierarchies hierarchy fields subsystems init_cgroup mountpoint
+    local hierarchies hierarchy fields subsystems init_cgroup mountpoint
 
-	parent_cgroup=""
+    parent_cgroup=""
 
-	# Obtain a list of hierarchies that contain one or more subsystems
-	hierarchies=$(tail -n +2 /proc/cgroups | cut -f 2)
+    # Obtain a list of hierarchies that contain one or more subsystems
+    hierarchies=$(tail -n +2 /proc/cgroups | cut -f 2)
 
-	# Iterate through the list until a suitable hierarchy is found
-	for hierarchy in $hierarchies; do
-		# Obtain information about the init process in the hierarchy
-		fields=$(grep -E "^$hierarchy:" /proc/1/cgroup | head -n 1)
-		if [ -z "$fields" ]; then continue; fi
-		fields=${fields#*:}
+    # Iterate through the list until a suitable hierarchy is found
+    for hierarchy in $hierarchies; do
+        # Obtain information about the init process in the hierarchy
+        fields=$(grep -E "^$hierarchy:" /proc/1/cgroup | head -n 1)
+        if [ -z "$fields" ]; then continue; fi
+        fields=${fields#*:}
 
-		# Get a comma-separated list of the hierarchy's subsystems
-		subsystems=${fields%:*}
+        # Get a comma-separated list of the hierarchy's subsystems
+        subsystems=${fields%:*}
 
-		# Get the cgroup of the init process in the hierarchy
-		init_cgroup=${fields#*:}
+        # Get the cgroup of the init process in the hierarchy
+        init_cgroup=${fields#*:}
 
-		# Get the filesystem mountpoint of the hierarchy
-		mountpoint=$(grep -E "^cgroup [^ ]+ [^ ]+ ([^ ]+,)?$subsystems(,[^ ]+)? " /proc/self/mounts | cut -d ' ' -f 2)
-		if [ -z "$mountpoint" ]; then continue; fi
+        # Get the filesystem mountpoint of the hierarchy
+        mountpoint=$(grep -E "^cgroup [^ ]+ [^ ]+ ([^ ]+,)?$subsystems(,[^ ]+)? " /proc/self/mounts | cut -d ' ' -f 2)
+        if [ -z "$mountpoint" ]; then continue; fi
 
-		# Return the absolute path to the containers' parent cgroup
-		# (do not append '/lxc' if the hierarchy contains the 'ns' subsystem)
-		if [[ ",$subsystems," == *,ns,* ]]; then
-			parent_cgroup="${mountpoint}${init_cgroup%/}"
-		else
-			parent_cgroup="${mountpoint}${init_cgroup%/}/lxc"
-		fi
-		break
-	done
+        # Return the absolute path to the containers' parent cgroup
+        # (do not append '/lxc' if the hierarchy contains the 'ns' subsystem)
+        if [[ ",$subsystems," == *,ns,* ]]; then
+            parent_cgroup="${mountpoint}${init_cgroup%/}"
+        else
+            parent_cgroup="${mountpoint}${init_cgroup%/}/lxc"
+        fi
+        break
+    done
 }
 
 containers=""
 list_container_processes=0
 while true; do
-	case $1 in
-		-h|--help)
-			help; exit 1;;
-		-n|--name)
-			containers=$2; list_container_processes=1; shift 2;;
-		--lxc)
-			list_container_processes=1; shift;;
-		--)
-			shift; break;;
-		*)
-			break;;
+    case $1 in
+        -h|--help)
+            help; exit 1;;
+        -n|--name)
+            containers=$2; list_container_processes=1; shift 2;;
+        --lxc)
+            list_container_processes=1; shift;;
+        --)
+            shift; break;;
+        *)
+            break;;
         esac
 done
 
 if [ "$list_container_processes" -eq "1" ]; then
-	set -- -e $@
+    set -- -e $@
 fi
 
 get_parent_cgroup
 if [ ! -d "$parent_cgroup" ]; then
-	echo "$(basename $0): no cgroup mount point found" >&2
-	exit 1
+    echo "$(basename $0): no cgroup mount point found" >&2
+    exit 1
 fi
 
 declare -a container_of_pid
 container_field_width=9
 IFS=","
 if [ -z "$containers" ]; then
-	containers=( $(find $parent_cgroup -mindepth 1 -maxdepth 1 -type d -printf "%f," 2>/dev/null) )
+    containers=( $(find $parent_cgroup -mindepth 1 -maxdepth 1 -type d -printf "%f," 2>/dev/null) )
 else
-	containers=( $containers )
+    containers=( $containers )
 fi
 
 declare -i pid
 IFS=$'\n'
 for container in ${containers[@]}; do
-	if [ "${#container}" -gt "$container_field_width" ]; then
-		container_field_width=${#container}
-	fi
+    if [ "${#container}" -gt "$container_field_width" ]; then
+        container_field_width=${#container}
+    fi
 
-	if [ -f "$parent_cgroup/$container/tasks" ]; then
-		while read pid; do
-			container_of_pid[$pid]=$container
-		done < "$parent_cgroup/$container/tasks"
-	fi
+    if [ -f "$parent_cgroup/$container/tasks" ]; then
+        while read pid; do
+            container_of_pid[$pid]=$container
+        done < "$parent_cgroup/$container/tasks"
+    fi
 done
 
 declare -i line_pid_end_position
 while read line; do
-	if [ -z "$line_pid_end_position" ]; then
-		if [[ "$line" != *" PID"* ]]; then
-			echo "$(basename $0): no PID column found in \`ps' output" >&2
-			exit 1
-		fi
+    if [ -z "$line_pid_end_position" ]; then
+        if [[ "$line" != *" PID"* ]]; then
+            echo "$(basename $0): no PID column found in \`ps' output" >&2
+            exit 1
+        fi
 
-		buffer=${line%" PID"*}
-		let line_pid_end_position=${#buffer}+4
-		printf "%-${container_field_width}s %s\n" "CONTAINER" "$line"
-		continue
-	fi
+        buffer=${line%" PID"*}
+        let line_pid_end_position=${#buffer}+4
+        printf "%-${container_field_width}s %s\n" "CONTAINER" "$line"
+        continue
+    fi
 
-	buffer=${line:0:$line_pid_end_position}
-	pid=${buffer##* }
-	if [ "$list_container_processes" -eq "0" -o ! -z "${container_of_pid[pid]}" ]; then
-		printf "%-${container_field_width}s %s\n" "${container_of_pid[pid]}" "$line"
-	fi
+    buffer=${line:0:$line_pid_end_position}
+    pid=${buffer##* }
+    if [ "$list_container_processes" -eq "0" -o ! -z "${container_of_pid[pid]}" ]; then
+        printf "%-${container_field_width}s %s\n" "${container_of_pid[pid]}" "$line"
+    fi
 done < <(ps "$@")
-

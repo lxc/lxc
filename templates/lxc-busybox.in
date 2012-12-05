@@ -108,36 +108,34 @@ EOF
 
     cat <<EOF >> $rootfs/usr/share/udhcpc/default.script
 #!/bin/sh
-
 case "\$1" in
-	deconfig)
-		ip addr flush dev \$interface
-                ;;
+    deconfig)
+        ip addr flush dev \$interface
+        ;;
 
-	renew|bound)
+    renew|bound)
+        # flush all the routes
+        if [ -n "\$router" ]; then
+            ip route del default 2> /dev/null
+        fi
 
-                # flush all the routes
-		if [ -n "\$router" ]; then
-                        ip route del default 2> /dev/null
-		fi
+        # check broadcast
+        if [ -n "\$broadcast" ]; then
+            broadcast="broadcast \$broadcast"
+        fi
 
-                # check broadcast
-                if [ -n "\$broadcast" ]; then
-                        broadcast="broadcast \$broadcast"
-                fi
+        # add a new ip address
+        ip addr add \$ip/\$mask \$broadcast dev \$interface
 
-                # add a new ip address
-		ip addr add \$ip/\$mask \$broadcast dev \$interface
+        if [ -n "\$router" ]; then
+            ip route add default via \$router dev \$interface
+        fi
 
-		if [ -n "\$router" ]; then
-                        ip route add default via \$router dev \$interface
-                fi
-
-		[ -n "\$domain" ] && echo search \$domain > /etc/resolv.conf
-		for i in \$dns ; do
-			echo nameserver \$i >> /etc/resolv.conf
-		done
-		;;
+        [ -n "\$domain" ] && echo search \$domain > /etc/resolv.conf
+        for i in \$dns ; do
+            echo nameserver \$i >> /etc/resolv.conf
+        done
+        ;;
 esac
 exit 0
 EOF
@@ -154,22 +152,22 @@ configure_busybox()
     type busybox >/dev/null
 
     if [ $? -ne 0 ]; then
-	echo "busybox executable is not accessible"
-	return 1
+        echo "busybox executable is not accessible"
+        return 1
     fi
 
     file $(which busybox) | grep -q "statically linked"
     if [ $? -ne 0 ]; then
-	echo "warning : busybox is not statically linked."
-	echo "warning : The template script may not correctly"
-	echo "warning : setup the container environment."
+        echo "warning : busybox is not statically linked."
+        echo "warning : The template script may not correctly"
+        echo "warning : setup the container environment."
     fi
 
     # copy busybox in the rootfs
     cp $(which busybox) $rootfs/bin
     if [ $? -ne 0 ]; then
-	echo "failed to copy busybox in the rootfs"
-	return 1
+        echo "failed to copy busybox in the rootfs"
+        return 1
     fi
 
     # symlink busybox for the commands it supports
@@ -239,8 +237,8 @@ EOF
 
 options=$(getopt -o hp:n: -l help,path:,name: -- "$@")
 if [ $? -ne 0 ]; then
-        usage $(basename $0)
-	exit 1
+    usage $(basename $0)
+    exit 1
 fi
 eval set -- "$options"
 
@@ -249,7 +247,7 @@ do
     case "$1" in
         -h|--help)      usage $0 && exit 0;;
         -p|--path)      path=$2; shift 2;;
-	-n|--name)      name=$2; shift 2;;
+        -n|--name)      name=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
     esac

@@ -131,8 +131,8 @@ download_fedora()
     INSTALL_ROOT=$cache/partial
     mkdir -p $INSTALL_ROOT
     if [ $? -ne 0 ]; then
-	echo "Failed to create '$INSTALL_ROOT' directory"
-	return 1
+        echo "Failed to create '$INSTALL_ROOT' directory"
+        return 1
     fi
 
     # download a mini fedora into a cache
@@ -170,8 +170,8 @@ download_fedora()
     $YUM install $PKG_LIST
 
     if [ $? -ne 0 ]; then
-	echo "Failed to download the rootfs, aborting."
-	return 1
+        echo "Failed to download the rootfs, aborting."
+        return 1
     fi
 
     mv "$INSTALL_ROOT" "$cache/rootfs"
@@ -202,39 +202,38 @@ install_fedora()
 {
     mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
-	flock -x 200
-	if [ $? -ne 0 ]; then
-	    echo "Cache repository is busy."
-	    return 1
-	fi
+        flock -x 200
+        if [ $? -ne 0 ]; then
+            echo "Cache repository is busy."
+            return 1
+        fi
 
-	echo "Checking cache download in $cache/rootfs ... "
-	if [ ! -e "$cache/rootfs" ]; then
-	    download_fedora
-	    if [ $? -ne 0 ]; then
-		echo "Failed to download 'fedora base'"
-		return 1
-	    fi
+        echo "Checking cache download in $cache/rootfs ... "
+        if [ ! -e "$cache/rootfs" ]; then
+            download_fedora
+            if [ $? -ne 0 ]; then
+                echo "Failed to download 'fedora base'"
+                return 1
+            fi
         else
-	    echo "Cache found. Updating..."
+            echo "Cache found. Updating..."
             update_fedora
-	    if [ $? -ne 0 ]; then
-		echo "Failed to update 'fedora base', continuing with last known good cache"
+            if [ $? -ne 0 ]; then
+                echo "Failed to update 'fedora base', continuing with last known good cache"
             else
                 echo "Update finished"
-	    fi
-	fi
+            fi
+        fi
 
-	echo "Copy $cache/rootfs to $rootfs_path ... "
-	copy_fedora
-	if [ $? -ne 0 ]; then
-	    echo "Failed to copy rootfs"
-	    return 1
-	fi
+        echo "Copy $cache/rootfs to $rootfs_path ... "
+        copy_fedora
+        if [ $? -ne 0 ]; then
+            echo "Failed to copy rootfs"
+            return 1
+        fi
 
-	return 0
-
-	) 200>@LOCALSTATEDIR@/lock/subsys/lxc
+        return 0
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc
 
     return $?
 }
@@ -277,8 +276,8 @@ proc            proc         proc    nodev,noexec,nosuid 0 0
 sysfs           sys          sysfs defaults  0 0
 EOF
     if [ $? -ne 0 ]; then
-	echo "Failed to add configuration"
-	return 1
+        echo "Failed to add configuration"
+        return 1
     fi
 
     return 0
@@ -288,21 +287,20 @@ clean()
 {
 
     if [ ! -e $cache ]; then
-	exit 0
+        exit 0
     fi
 
     # lock, so we won't purge while someone is creating a repository
     (
-	flock -x 200
-	if [ $? != 0 ]; then
-	    echo "Cache repository is busy."
-	    exit 1
-	fi
+        flock -x 200
+        if [ $? != 0 ]; then
+            echo "Cache repository is busy."
+            exit 1
+        fi
 
-	echo -n "Purging the download cache for Fedora-$release..."
-	rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
-	exit 0
-
+        echo -n "Purging the download cache for Fedora-$release..."
+        rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
+        exit 0
     ) 200>@LOCALSTATEDIR@/lock/subsys/lxc
 }
 
@@ -335,12 +333,12 @@ eval set -- "$options"
 while true
 do
     case "$1" in
-	-h|--help)      usage $0 && exit 0;;
-	-p|--path)      path=$2; shift 2;;
-	-n|--name)      name=$2; shift 2;;
-	-c|--clean)     clean=$2; shift 2;;
+        -h|--help)      usage $0 && exit 0;;
+        -p|--path)      path=$2; shift 2;;
+        -n|--name)      name=$2; shift 2;;
+        -c|--clean)     clean=$2; shift 2;;
         -R|--release)   release=$2; shift 2;;
-	--)             shift 1; break ;;
+        --)             shift 1; break ;;
         *)              break ;;
     esac
 done

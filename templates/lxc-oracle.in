@@ -41,7 +41,7 @@ is_btrfs_subvolume()
 {
     if which btrfs >/dev/null 2>&1 && \
        btrfs subvolume list "$1" >/dev/null 2>&1; then
-	return 0
+        return 0
     fi
     return 1
 }
@@ -59,9 +59,9 @@ container_rootfs_configure()
     mkdir -p $container_rootfs/selinux
     echo 0 > $container_rootfs/selinux/enforce
     if [ -e $container_rootfs/etc/selinux/config ]; then
-	sed -i 's|SELINUX=enforcing|SELINUX=disabled|' $container_rootfs/etc/selinux/config
+        sed -i 's|SELINUX=enforcing|SELINUX=disabled|' $container_rootfs/etc/selinux/config
     else
-	echo "SELINUX=disabled" >$container_rootfs/etc/selinux/config
+        echo "SELINUX=disabled" >$container_rootfs/etc/selinux/config
     fi
     sed -i 's|session[ ]*required[ ]*pam_selinux.so[ ]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/login
     sed -i 's|session[ ]*required[ ]*pam_selinux.so[ ]*open|#session required pam_selinux.so open|' $container_rootfs/etc/pam.d/login
@@ -108,15 +108,15 @@ EOF
     # remove module stuff for iptables it just shows errors that are not
     # relevant in a container
     if [ -f "$container_rootfs/etc/sysconfig/iptables-config" ]; then
-	sed -i 's|IPTABLES_MODULES=".*|IPTABLES_MODULES=""|' $container_rootfs/etc/sysconfig/iptables-config
-	sed -i 's|IPTABLES_MODULES_UNLOAD=".*|IPTABLES_MODULES_UNLOAD="no"|' $container_rootfs/etc/sysconfig/iptables-config
+        sed -i 's|IPTABLES_MODULES=".*|IPTABLES_MODULES=""|' $container_rootfs/etc/sysconfig/iptables-config
+        sed -i 's|IPTABLES_MODULES_UNLOAD=".*|IPTABLES_MODULES_UNLOAD="no"|' $container_rootfs/etc/sysconfig/iptables-config
     fi
 
     # disable readahead in the container
     if [ $container_release_major = "6" -a -e $container_rootfs/etc/sysconfig/readahead ]; then
-	rm -f $container_rootfs/etc/init/readahead-collector.conf
-	rm -f $container_rootfs/etc/init/readahead-disable-services.conf
-	sed -i 's|READAHEAD="yes"|READAHEAD="no"|' $container_rootfs/etc/sysconfig/readahead
+        rm -f $container_rootfs/etc/init/readahead-collector.conf
+        rm -f $container_rootfs/etc/init/readahead-disable-services.conf
+        sed -i 's|READAHEAD="yes"|READAHEAD="no"|' $container_rootfs/etc/sysconfig/readahead
     fi
 
     # disable udev in the container
@@ -125,13 +125,13 @@ EOF
 
     # disable nash raidautorun in the container since no /dev/md*
     if [ $container_release_major = "5" ]; then
-	sed -i 's|echo "raidautorun /dev/md0"|echo ""|' $container_rootfs/etc/rc.sysinit
-	sed -i 's|echo "raidautorun /dev/md0"|echo ""|' $container_rootfs/etc/rc.d/rc.sysinit
+        sed -i 's|echo "raidautorun /dev/md0"|echo ""|' $container_rootfs/etc/rc.sysinit
+        sed -i 's|echo "raidautorun /dev/md0"|echo ""|' $container_rootfs/etc/rc.d/rc.sysinit
     fi
 
     # prevent rc.sysinit from attempting to loadkeys
     if [ $container_release_major = "5" -a -e $container_rootfs/etc/sysconfig/keyboard ]; then
-	rm $container_rootfs/etc/sysconfig/keyboard
+        rm $container_rootfs/etc/sysconfig/keyboard
     fi
 
     # dont try to sync the hwclock at shutdown
@@ -169,13 +169,13 @@ EOF
 
     # start a getty on /dev/console, /dev/tty[1-4]
     if [ $container_release_major = "5" ]; then
-	sed -i '/1:2345:respawn/i cns:2345:respawn:/sbin/mingetty console' $container_rootfs/etc/inittab
-	sed -i '/5:2345:respawn/d' $container_rootfs/etc/inittab
-	sed -i '/6:2345:respawn/d' $container_rootfs/etc/inittab
+        sed -i '/1:2345:respawn/i cns:2345:respawn:/sbin/mingetty console' $container_rootfs/etc/inittab
+        sed -i '/5:2345:respawn/d' $container_rootfs/etc/inittab
+        sed -i '/6:2345:respawn/d' $container_rootfs/etc/inittab
     fi
 
     if [ $container_release_major = "6" ]; then
-	cat <<EOF > $container_rootfs/etc/init/console.conf
+        cat <<EOF > $container_rootfs/etc/init/console.conf
 # console - getty
 #
 # This service maintains a getty on the console from the point the system is
@@ -192,18 +192,18 @@ EOF
     # there might be other services that are useless but the below set is a good start
     # some of these might not exist in the image, so we silence chkconfig complaining
     # about the service file not being found
-    for service in						\
-	acpid auditd autofs cpuspeed dund gpm haldaemon hidd	\
-	ip6tables irqbalance iscsi iscsid isdn kdump kudzu	\
-	lm_sensors lvm2-monitor mdmonitor microcode_ctl		\
-	ntpd postfix sendmail udev-post ;
+    for service in \
+        acpid auditd autofs cpuspeed dund gpm haldaemon hidd	\
+        ip6tables irqbalance iscsi iscsid isdn kdump kudzu	\
+        lm_sensors lvm2-monitor mdmonitor microcode_ctl		\
+        ntpd postfix sendmail udev-post ;
     do
-	chroot $container_rootfs chkconfig 2>/dev/null $service off
+        chroot $container_rootfs chkconfig 2>/dev/null $service off
     done
 
     for service in rsyslog ;
     do
-	chroot $container_rootfs chkconfig 2>/dev/null $service on
+        chroot $container_rootfs chkconfig 2>/dev/null $service on
     done
 
     # create required devices. note that /dev/console will be created by lxc
@@ -211,8 +211,8 @@ EOF
     # take care to not nuke /dev in case $container_rootfs isn't set
     dev_path="$container_rootfs/dev"
     if [ $container_rootfs != "/" -a -d $dev_path ]; then
-	rm -rf $dev_path
-	mkdir -p $dev_path
+        rm -rf $dev_path
+        mkdir -p $dev_path
     fi
     mknod -m 666  $dev_path/null c 1 3
     mknod -m 666  $dev_path/zero c 1 5
@@ -252,8 +252,8 @@ container_config_create()
     # generate a hwaddr for the container with a high mac address
     # see http://sourceforge.net/tracker/?func=detail&aid=3411497&group_id=163076&atid=826303
     local hwaddr="fe:`dd if=/dev/urandom bs=8 count=1 2>/dev/null |od -t x8 | \
-		      head -1 |awk '{print $2}' | cut -c1-10 |\
-		      sed 's/\(..\)/\1:/g; s/.$//'`"
+                      head -1 |awk '{print $2}' | cut -c1-10 |\
+                      sed 's/\(..\)/\1:/g; s/.$//'`"
     mkdir -p $cfg_dir || die "unable to create config dir $cfg_dir"
     cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
 # Container configuration for Oracle Linux $release_major.$release_minor
@@ -272,9 +272,9 @@ EOF
     if [ -z "$lxc_network_type" -a			\
         \( $host_distribution = "OracleServer" -o	\
            $host_distribution = "Fedora" \) ]; then
-	    echo "lxc.network.type = veth" >>$cfg_dir/config
-	    echo "lxc.network.flags = up" >>$cfg_dir/config
-	    echo "lxc.network.link = virbr0" >>$cfg_dir/config
+            echo "lxc.network.type = veth" >>$cfg_dir/config
+            echo "lxc.network.flags = up" >>$cfg_dir/config
+            echo "lxc.network.link = virbr0" >>$cfg_dir/config
     fi
 
     cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
@@ -304,13 +304,13 @@ EOF
 container_rootfs_clone()
 {
     if is_btrfs_subvolume $template_rootfs; then
-	# lxc-create already made $container_rootfs a btrfs subvolume, but
-	# in this case we want to snapshot the original subvolume so we we
-	# have to delete the one that lxc-create made
-	btrfs subvolume delete $container_rootfs
-	btrfs subvolume snapshot $template_rootfs $container_rootfs || die "btrfs clone template"
+        # lxc-create already made $container_rootfs a btrfs subvolume, but
+        # in this case we want to snapshot the original subvolume so we we
+        # have to delete the one that lxc-create made
+        btrfs subvolume delete $container_rootfs
+        btrfs subvolume snapshot $template_rootfs $container_rootfs || die "btrfs clone template"
     else
-	cp -ax $template_rootfs $container_rootfs || die "copy template"
+        cp -ax $template_rootfs $container_rootfs || die "copy template"
     fi
 }
 
@@ -318,121 +318,121 @@ container_rootfs_create()
 {
     cmds="rpm wget yum"
     if [ $release_major = "5" ]; then
-	if [ $host_distribution = "Ubuntu" ]; then
-	    db_dump_cmd="db5.1_dump"
-	    db_load_cmd="db4.3_load"
-	fi
-	if [ $host_distribution = "OracleServer" -o \
-	     $host_distribution = "Fedora" ]; then
-	    db_dump_cmd="db_dump"
-	    db_load_cmd="db43_load"
-	fi
+        if [ $host_distribution = "Ubuntu" ]; then
+            db_dump_cmd="db5.1_dump"
+            db_load_cmd="db4.3_load"
+        fi
+        if [ $host_distribution = "OracleServer" -o \
+             $host_distribution = "Fedora" ]; then
+            db_dump_cmd="db_dump"
+            db_load_cmd="db43_load"
+        fi
 
-	cmds="$cmds $db_dump_cmd $db_load_cmd file"
+        cmds="$cmds $db_dump_cmd $db_load_cmd file"
     fi
     for cmd in $cmds; do
-	which $cmd >/dev/null 2>&1
-	if [ $? -ne 0 ]; then
-	    die "The $cmd command is required, please install it"
-	fi
+        which $cmd >/dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            die "The $cmd command is required, please install it"
+        fi
     done
 
     mkdir -p /var/lock/subsys/
     (
-	flock -x 200
-	if [ $? -ne 0 ]; then
-	    die "The template is busy."
-	fi
+        flock -x 200
+        if [ $? -ne 0 ]; then
+            die "The template is busy."
+        fi
 
-	echo "Downloading release $release_major.$release_minor for $basearch"
+        echo "Downloading release $release_major.$release_minor for $basearch"
 
-	# get yum repo file
-	public_yum_url=http://public-yum.oracle.com
-	if   [ $release_major = "5" ]; then
-	    repofile=public-yum-el5.repo
-	elif [ $release_major = "6" ]; then
-	    repofile=public-yum-ol6.repo
-	else
-	    die "Unsupported release $release_major"
-	fi
-	mkdir -p $container_rootfs/etc/yum.repos.d
-	wget -q $public_yum_url/$repofile -O $container_rootfs/etc/yum.repos.d/$repofile
-	if [ $? -ne 0 ]; then
-	    die "Failed to download repo file $public_yum_url/$repofile"
-	fi
+        # get yum repo file
+        public_yum_url=http://public-yum.oracle.com
+        if   [ $release_major = "5" ]; then
+            repofile=public-yum-el5.repo
+        elif [ $release_major = "6" ]; then
+            repofile=public-yum-ol6.repo
+        else
+            die "Unsupported release $release_major"
+        fi
+        mkdir -p $container_rootfs/etc/yum.repos.d
+        wget -q $public_yum_url/$repofile -O $container_rootfs/etc/yum.repos.d/$repofile
+        if [ $? -ne 0 ]; then
+            die "Failed to download repo file $public_yum_url/$repofile"
+        fi
 
-	# yum will take $basearch from host, so force the arch we want
-	sed -i "s|\$basearch|$basearch|" $container_rootfs/etc/yum.repos.d/$repofile
+        # yum will take $basearch from host, so force the arch we want
+        sed -i "s|\$basearch|$basearch|" $container_rootfs/etc/yum.repos.d/$repofile
 
-	# replace url if they specified one
-	if [ -n "$repourl" ]; then
-	    sed -i "s|baseurl=http://public-yum.oracle.com/repo|baseurl=$repourl/repo|" $container_rootfs/etc/yum.repos.d/$repofile
-	    sed -i "s|gpgkey=http://public-yum.oracle.com|gpgkey=$repourl|" $container_rootfs/etc/yum.repos.d/$repofile
-	fi
+        # replace url if they specified one
+        if [ -n "$repourl" ]; then
+            sed -i "s|baseurl=http://public-yum.oracle.com/repo|baseurl=$repourl/repo|" $container_rootfs/etc/yum.repos.d/$repofile
+            sed -i "s|gpgkey=http://public-yum.oracle.com|gpgkey=$repourl|" $container_rootfs/etc/yum.repos.d/$repofile
+        fi
 
-	# disable all repos, then enable the repo for the version we are installing.
-	if [ $release_minor = "latest" ]; then
-	    if [ $release_major = "5" ]; then
-		repo="el"$release_major"_"$release_minor
-	    else
-		repo="ol"$release_major"_"$release_minor
-	    fi
-	elif [ $release_minor = "0" ]; then
-	    repo="ol"$release_major"_ga_base"
-	else
-	    repo="ol"$release_major"_u"$release_minor"_base"
-	fi
-	sed -i "s|enabled=1|enabled=0|" $container_rootfs/etc/yum.repos.d/$repofile
-	sed -i "/\[$repo\]/,/\[/ s/enabled=0/enabled=1/" $container_rootfs/etc/yum.repos.d/$repofile
+        # disable all repos, then enable the repo for the version we are installing.
+        if [ $release_minor = "latest" ]; then
+            if [ $release_major = "5" ]; then
+        repo="el"$release_major"_"$release_minor
+            else
+                repo="ol"$release_major"_"$release_minor
+            fi
+        elif [ $release_minor = "0" ]; then
+            repo="ol"$release_major"_ga_base"
+        else
+            repo="ol"$release_major"_u"$release_minor"_base"
+        fi
+        sed -i "s|enabled=1|enabled=0|" $container_rootfs/etc/yum.repos.d/$repofile
+        sed -i "/\[$repo\]/,/\[/ s/enabled=0/enabled=1/" $container_rootfs/etc/yum.repos.d/$repofile
 
-	# create rpm db, download and yum install minimal packages
-	mkdir -p $container_rootfs/var/lib/rpm
-	rpm --root $container_rootfs --initdb
-	yum_cmd="yum --installroot $container_rootfs --disablerepo=* --enablerepo=$repo -y --nogpgcheck"
-	min_pkgs="yum initscripts passwd rsyslog vim-minimal openssh-server dhclient chkconfig rootfiles policycoreutils oraclelinux-release"
+        # create rpm db, download and yum install minimal packages
+        mkdir -p $container_rootfs/var/lib/rpm
+        rpm --root $container_rootfs --initdb
+        yum_cmd="yum --installroot $container_rootfs --disablerepo=* --enablerepo=$repo -y --nogpgcheck"
+        min_pkgs="yum initscripts passwd rsyslog vim-minimal openssh-server dhclient chkconfig rootfiles policycoreutils oraclelinux-release"
 
-	$yum_cmd install $min_pkgs
-	if [ $? -ne 0 ]; then
-	    die "Failed to download and install the rootfs, aborting."
-	fi
+        $yum_cmd install $min_pkgs
+        if [ $? -ne 0 ]; then
+            die "Failed to download and install the rootfs, aborting."
+        fi
 
-	# rsyslog and pam depend on coreutils for some common commands in
-	# their POSTIN scriptlets, but coreutils wasn't installed yet. now
-	# that coreutils is installed, reinstall the packages so their POSTIN
-	# runs right. similarly, libutempter depends on libselinux.so.1 when
-	# it runs /usr/sbin/groupadd, so reinstall it too
-	if [ $release_major = "5" ]; then
-	    rpm --root $container_rootfs --nodeps -e rsyslog pam libutempter
-	    $yum_cmd install rsyslog pam libutempter
-	    if [ $? -ne 0 ]; then
-		die "Unable to reinstall packages"
-	    fi
-	fi
+        # rsyslog and pam depend on coreutils for some common commands in
+        # their POSTIN scriptlets, but coreutils wasn't installed yet. now
+        # that coreutils is installed, reinstall the packages so their POSTIN
+        # runs right. similarly, libutempter depends on libselinux.so.1 when
+        # it runs /usr/sbin/groupadd, so reinstall it too
+        if [ $release_major = "5" ]; then
+            rpm --root $container_rootfs --nodeps -e rsyslog pam libutempter
+            $yum_cmd install rsyslog pam libutempter
+            if [ $? -ne 0 ]; then
+                die "Unable to reinstall packages"
+            fi
+        fi
 
-	# these distributions put the rpm database in a place the guest is
-	# not expecting it, so move it
-	if [ $host_distribution = "Ubuntu" ]; then
-	    mv $container_rootfs/root/.rpmdb/* $container_rootfs/var/lib/rpm
-	fi
+        # these distributions put the rpm database in a place the guest is
+        # not expecting it, so move it
+        if [ $host_distribution = "Ubuntu" ]; then
+            mv $container_rootfs/root/.rpmdb/* $container_rootfs/var/lib/rpm
+        fi
 
-	# if the native rpm created the db with Hash version 9, we need to
-	# downgrade it to Hash version 8 for use with OL5.x
-	db_version=`file $container_rootfs/var/lib/rpm/Packages | \
-		    grep -o 'version [0-9]*' |awk '{print $2}'`
-	if [ $release_major = "5" -a $db_version != "8" ]; then
-	    echo "Fixing (downgrading) rpm database from version $db_version"
-	    rm -f $container_rootfs/var/lib/rpm/__db*
-	    for db in $container_rootfs/var/lib/rpm/* ; do
-		$db_dump_cmd $db |$db_load_cmd $db.new
-		mv $db.new $db
-	    done
-	fi
+        # if the native rpm created the db with Hash version 9, we need to
+        # downgrade it to Hash version 8 for use with OL5.x
+        db_version=`file $container_rootfs/var/lib/rpm/Packages | \
+                    grep -o 'version [0-9]*' |awk '{print $2}'`
+        if [ $release_major = "5" -a $db_version != "8" ]; then
+            echo "Fixing (downgrading) rpm database from version $db_version"
+            rm -f $container_rootfs/var/lib/rpm/__db*
+            for db in $container_rootfs/var/lib/rpm/* ; do
+                $db_dump_cmd $db |$db_load_cmd $db.new
+                mv $db.new $db
+            done
+        fi
 
-	# the host rpm may not be the same as the guest, rebuild the db with
-	# the guest rpm version
-	echo "Rebuilding rpm database"
-	rm -f $container_rootfs/var/lib/rpm/__db*
-	chroot $container_rootfs rpm --rebuilddb >/dev/null 2>&1
+        # the host rpm may not be the same as the guest, rebuild the db with
+        # the guest rpm version
+        echo "Rebuilding rpm database"
+        rm -f $container_rootfs/var/lib/rpm/__db*
+        chroot $container_rootfs rpm --rebuilddb >/dev/null 2>&1
     ) 200>/var/lock/subsys/lxc-oracle-$name
 }
 
@@ -461,14 +461,14 @@ eval set -- "$options"
 while true
 do
     case "$1" in
-	-h|--help)		usage $0 && exit 0;;
-	-p|--path)		cfg_dir=$2; shift 2;;
-	-n|--name)		name=$2; shift 2;;
-	-a|--arch)		arch=$2; shift 2;;
-	-R|--release)		release_version=$2; shift 2;;
-	-u|--url)		repourl=$2; shift;;
-	-t|--templatefs)	template_rootfs=$2; shift 2;;
-	--)             	shift 1; break ;;
+        -h|--help)		usage $0 && exit 0;;
+        -p|--path)		cfg_dir=$2; shift 2;;
+        -n|--name)		name=$2; shift 2;;
+        -a|--arch)		arch=$2; shift 2;;
+        -R|--release)		release_version=$2; shift 2;;
+        -u|--url)		repourl=$2; shift;;
+        -t|--templatefs)	template_rootfs=$2; shift 2;;
+        --)             	shift 1; break ;;
         *)              	break ;;
     esac
 done

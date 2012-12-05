@@ -6,8 +6,8 @@ cleanup() {
 }
 
 if [ `id -u` -ne 0 ]; then
-	echo "Run as root"
-	exit 1
+    echo "Run as root"
+    exit 1
 fi
 
 cat > /etc/lxc/test-busybox.conf << EOF
@@ -20,13 +20,13 @@ EOF
 export LD_LIBRARY_PATH=.
 TESTS="lxc-test-containertests lxc-test-locktests lxc-test-startone"
 for curtest in $TESTS; do
-	echo "running $curtest"
-	./src/tests/$curtest
-	if [ $? -ne 0 ]; then
-		echo "Test $curtest failed.  Stopping"
-		cleanup
-		exit 1
-	fi
+    echo "running $curtest"
+    ./src/tests/$curtest
+    if [ $? -ne 0 ]; then
+        echo "Test $curtest failed.  Stopping"
+        cleanup
+        exit 1
+    fi
 done
 echo "All tests passed"
 cleanup

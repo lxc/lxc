@@ -97,16 +97,16 @@ while [ $# -gt 0 ]; do
     opt="$1"
     shift
     case "$opt" in
-	-d)
-	    LXC_DROP_CAPS="yes"
-	    ;;
-	-h|--help)
-	    help
-	    exit 0
-	    ;;
-	--)
-	    break
-	    ;;
+        -d)
+            LXC_DROP_CAPS="yes"
+            ;;
+        -h|--help)
+            help
+            exit 0
+            ;;
+        --)
+            break
+            ;;
         -?)
             usage_err "unknown option '$opt'"
             ;;
@@ -115,9 +115,9 @@ while [ $# -gt 0 ]; do
             set -- $(echo "${opt#-}" | sed 's/\(.\)/ -\1/g') "$@"
             ;;
          *)
-	    usage
-	    exit 1
-	    ;;
+            usage
+            exit 1
+            ;;
     esac
 done;
 

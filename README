@@ -76,10 +76,10 @@ cat > seccomp.full << EOF
 whitelist
 EOF
 for i in `seq 0 300`; do
-	echo $i >> secomp.full
+    echo $i >> secomp.full
 done
 for i in `seq 1024 1079`; do
-	echo $i >> seccomp.full
+    echo $i >> seccomp.full
 done
 
  -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 27 Jul 2012 15:47:02 +0600

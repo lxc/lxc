@@ -18,110 +18,110 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 usage() {
-	echo "usage: $(basename $0) -n|--name <name> -- [netstat_options]" >&2
+    echo "usage: $(basename $0) -n|--name <name> -- [netstat_options]" >&2
 }
 
 help() {
-	usage
-	echo >&2
-	echo "Execute 'netstat' for the specified container." >&2
-	echo >&2
-	echo "  --name NAME       specify the container name" >&2
-	echo "  NETSTAT_OPTIONS   netstat command options (see \`netstat --help')" >&2
+    usage
+    echo >&2
+    echo "Execute 'netstat' for the specified container." >&2
+    echo >&2
+    echo "  --name NAME       specify the container name" >&2
+    echo "  NETSTAT_OPTIONS   netstat command options (see \`netstat --help')" >&2
 }
 
 get_parent_cgroup()
 {
-	local hierarchies hierarchy fields subsystems init_cgroup mountpoint
+    local hierarchies hierarchy fields subsystems init_cgroup mountpoint
 
-	parent_cgroup=""
+    parent_cgroup=""
 
-	# Obtain a list of hierarchies that contain one or more subsystems
-	hierarchies=$(tail -n +2 /proc/cgroups | cut -f 2)
+    # Obtain a list of hierarchies that contain one or more subsystems
+    hierarchies=$(tail -n +2 /proc/cgroups | cut -f 2)
 
-	# Iterate through the list until a suitable hierarchy is found
-	for hierarchy in $hierarchies; do
-		# Obtain information about the init process in the hierarchy
-		fields=$(grep -E "^$hierarchy:" /proc/1/cgroup | head -n 1)
-		if [ -z "$fields" ]; then continue; fi
-		fields=${fields#*:}
+    # Iterate through the list until a suitable hierarchy is found
+    for hierarchy in $hierarchies; do
+        # Obtain information about the init process in the hierarchy
+        fields=$(grep -E "^$hierarchy:" /proc/1/cgroup | head -n 1)
+        if [ -z "$fields" ]; then continue; fi
+        fields=${fields#*:}
 
-		# Get a comma-separated list of the hierarchy's subsystems
-		subsystems=${fields%:*}
+        # Get a comma-separated list of the hierarchy's subsystems
+        subsystems=${fields%:*}
 
-		# Get the cgroup of the init process in the hierarchy
-		init_cgroup=${fields#*:}
+        # Get the cgroup of the init process in the hierarchy
+        init_cgroup=${fields#*:}
 
-		# Get the filesystem mountpoint of the hierarchy
-		mountpoint=$(grep -E "^cgroup [^ ]+ [^ ]+ ([^ ]+,)?$subsystems(,[^ ]+)? " /proc/self/mounts | cut -d ' ' -f 2)
-		if [ -z "$mountpoint" ]; then continue; fi
+        # Get the filesystem mountpoint of the hierarchy
+        mountpoint=$(grep -E "^cgroup [^ ]+ [^ ]+ ([^ ]+,)?$subsystems(,[^ ]+)? " /proc/self/mounts | cut -d ' ' -f 2)
+        if [ -z "$mountpoint" ]; then continue; fi
 
-		# Return the absolute path to the containers' parent cgroup
-		# (do not append '/lxc' if the hierarchy contains the 'ns' subsystem)
-		if [[ ",$subsystems," == *,ns,* ]]; then
-			parent_cgroup="${mountpoint}${init_cgroup%/}"
-		else
-			parent_cgroup="${mountpoint}${init_cgroup%/}/lxc"
-		fi
-		break
-	done
+        # Return the absolute path to the containers' parent cgroup
+        # (do not append '/lxc' if the hierarchy contains the 'ns' subsystem)
+        if [[ ",$subsystems," == *,ns,* ]]; then
+            parent_cgroup="${mountpoint}${init_cgroup%/}"
+        else
+            parent_cgroup="${mountpoint}${init_cgroup%/}/lxc"
+        fi
+        break
+    done
 }
 
 exec=""
 
 while true; do
-	case $1 in
-		-h|--help)
-			help; exit 1;;
-		-n|--name)
-			name=$2; shift 2;;
-		--exec)
-			exec="exec"; shift;;
-		--)
-			shift; break;;
-		*)
-			break;;
-	esac
+    case $1 in
+        -h|--help)
+            help; exit 1;;
+        -n|--name)
+            name=$2; shift 2;;
+        --exec)
+            exec="exec"; shift;;
+        --)
+            shift; break;;
+        *)
+            break;;
+    esac
 done
 
 if [ "$(id -u)" != "0" ]; then
-	echo "$(basename $0): must be run as root" >&2
-	exit 1
+    echo "$(basename $0): must be run as root" >&2
+    exit 1
 fi
 
 if [ -z "$name" ]; then
-	usage
-	exit 1
+    usage
+    exit 1
 fi
 
 if [ -z "$exec" ]; then
-	exec @BINDIR@/lxc-unshare -s MOUNT -- $0 -n $name --exec "$@"
+    exec @BINDIR@/lxc-unshare -s MOUNT -- $0 -n $name --exec "$@"
 fi
 
 lxc-info -n $name 2>&1 | grep -q 'STOPPED'
 if [ $? -eq 0 ]; then
-	echo "$(basename $0): container '$name' is not running" >&2
-	exit 1
+    echo "$(basename $0): container '$name' is not running" >&2
+    exit 1
 fi
 
 get_parent_cgroup
 if [ ! -d "$parent_cgroup" ]; then
-	echo "$(basename $0): no cgroup mount point found" >&2
-	exit 1
+    echo "$(basename $0): no cgroup mount point found" >&2
+    exit 1
 fi
 
 pid=$(head -1 $parent_cgroup/$name/tasks)
 
 if [ -z "$pid" ]; then
-	echo "$(basename $0): no process found for '$name'" >&2
-	exit 1
+    echo "$(basename $0): no process found for '$name'" >&2
+    exit 1
 fi
 
 tmpdir=$(mktemp -d)
 
 if [ -z "$tmpdir" -o ! -d "$tmpdir" ]; then
-	echo "$(basename $0): unable to create temporary directory" >&2
-	exit 1
+    echo "$(basename $0): unable to create temporary directory" >&2
+    exit 1
 fi
 
 # Bind mount /proc/$pid/net onto /proc/net before calling 'netstat'.

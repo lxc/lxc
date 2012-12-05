@@ -21,13 +21,13 @@ is_enabled() {
     RES=$?
 
     if [ $RES -eq 0 ]; then
-	$SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
+        $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
     else
-	if [ ! -z "$mandatory" -a "$mandatory" = yes ]; then
-	    $SETCOLOR_FAILURE && echo "required" && $SETCOLOR_NORMAL
-	else
-	    $SETCOLOR_WARNING && echo "missing" && $SETCOLOR_NORMAL
-	fi
+        if [ ! -z "$mandatory" -a "$mandatory" = yes ]; then
+            $SETCOLOR_FAILURE && echo "required" && $SETCOLOR_NORMAL
+        else
+            $SETCOLOR_WARNING && echo "missing" && $SETCOLOR_NORMAL
+        fi
     fi
 }
 

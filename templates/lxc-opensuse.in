@@ -18,7 +18,7 @@
 
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
 
 # You should have received a copy of the GNU Lesser General Public
@@ -142,8 +142,8 @@ download_opensuse()
     mkdir -p "$cache/partial-$arch"
 
     if [ $? -ne 0 ]; then
-	echo "Failed to create '$cache/partial-$arch' directory"
-	return 1
+        echo "Failed to create '$cache/partial-$arch' directory"
+        return 1
     fi
 
     # download a mini opensuse into a cache
@@ -187,8 +187,8 @@ EOF
     rm -f $cache/partial-$arch/etc/mtab
     ln -sf /proc/self/mounts $cache/partial-$arch/etc/mtab
     if [ $? -ne 0 ]; then
-	echo "Failed to download the rootfs, aborting."
-	return 1
+        echo "Failed to download the rootfs, aborting."
+        return 1
     fi
 
     rm -fr "$cache/partial-$arch-packages"
@@ -217,33 +217,32 @@ install_opensuse()
     rootfs=$1
     mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
-	flock -x 200
-	if [ $? -ne 0 ]; then
-	    echo "Cache repository is busy."
-	    return 1
-	fi
+        flock -x 200
+        if [ $? -ne 0 ]; then
+            echo "Cache repository is busy."
+            return 1
+        fi
 
-	arch=$(arch)
+        arch=$(arch)
 
-	echo "Checking cache download in $cache/rootfs-$arch ... "
-	if [ ! -e "$cache/rootfs-$arch" ]; then
-	    download_opensuse $cache $arch
-	    if [ $? -ne 0 ]; then
-		echo "Failed to download 'opensuse base'"
-		return 1
-	    fi
-	fi
+        echo "Checking cache download in $cache/rootfs-$arch ... "
+        if [ ! -e "$cache/rootfs-$arch" ]; then
+            download_opensuse $cache $arch
+            if [ $? -ne 0 ]; then
+                echo "Failed to download 'opensuse base'"
+                return 1
+            fi
+        fi
 
-	echo "Copy $cache/rootfs-$arch to $rootfs ... "
-	copy_opensuse $cache $arch $rootfs
-	if [ $? -ne 0 ]; then
-	    echo "Failed to copy rootfs"
-	    return 1
-	fi
+        echo "Copy $cache/rootfs-$arch to $rootfs ... "
+        copy_opensuse $cache $arch $rootfs
+        if [ $? -ne 0 ]; then
+            echo "Failed to copy rootfs"
+            return 1
+        fi
 
-	return 0
-
-	) 200>@LOCALSTATEDIR@/lock/subsys/lxc
+        return 0
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc
 
     return $?
 }
@@ -289,8 +288,8 @@ sysfs           sys          sysfs	defaults  0 0
 EOF
 
     if [ $? -ne 0 ]; then
-	echo "Failed to add configuration"
-	return 1
+        echo "Failed to add configuration"
+        return 1
     fi
 
     return 0
@@ -301,21 +300,20 @@ clean()
     cache="@LOCALSTATEDIR@/cache/lxc/opensuse"
 
     if [ ! -e $cache ]; then
-	exit 0
+        exit 0
     fi
 
     # lock, so we won't purge while someone is creating a repository
     (
-	flock -x 200
-	if [ $? != 0 ]; then
-	    echo "Cache repository is busy."
-	    exit 1
-	fi
+        flock -x 200
+        if [ $? != 0 ]; then
+            echo "Cache repository is busy."
+            exit 1
+        fi
 
-	echo -n "Purging the download cache..."
-	rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
-	exit 0
-
+        echo -n "Purging the download cache..."
+        rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
+        exit 0
     ) 200>@LOCALSTATEDIR@/lock/subsys/lxc
 }
 
@@ -337,12 +335,12 @@ eval set -- "$options"
 while true
 do
     case "$1" in
-	-h|--help)      usage $0 && exit 0;;
-	-p|--path)      path=$2; shift 2;;
-	-n|--name)      name=$2; shift 2;;
-	-c|--clean)     clean=$2; shift 2;;
-	--)             shift 1; break ;;
-	*)              break ;;
+        -h|--help)      usage $0 && exit 0;;
+        -p|--path)      path=$2; shift 2;;
+        -n|--name)      name=$2; shift 2;;
+        -c|--clean)     clean=$2; shift 2;;
+        --)             shift 1; break ;;
+        *)              break ;;
     esac
 done
 
