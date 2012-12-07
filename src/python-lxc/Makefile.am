@@ -10,7 +10,11 @@ all:
 	CFLAGS="$(CFLAGS) -I ../../src -L../../src/lxc/" $(PYTHON) setup.py build
 
 install:
-	python3 setup.py install --root=$(DESTDIR) --prefix=$(PREFIX) --no-compile $(DISTSETUPOPTS)
+	if [ "$(DESTDIR)" = "" ]; then \
+		$(PYTHON) setup.py install --prefix=$(prefix) --no-compile $(DISTSETUPOPTS); \
+	else \
+		$(PYTHON) setup.py install --root=$(DESTDIR) --prefix=$(prefix) --no-compile $(DISTSETUPOPTS); \
+	fi
 
 clean:
 	rm -rf build
