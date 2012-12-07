@@ -1674,7 +1674,8 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	if (c->aa_profile)
 		fprintf(fout, "lxc.aa_profile = %s\n", c->aa_profile);
 #endif
-	fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(c->loglevel));
+	if (c->loglevel != LXC_LOG_PRIORITY_NOTSET)
+		fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(c->loglevel));
 	if (c->logfile)
 		fprintf(fout, "lxc.logfile = %s\n", c->logfile);
 	lxc_list_for_each(it, &c->cgroup) {
