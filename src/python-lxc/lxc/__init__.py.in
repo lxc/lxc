@@ -400,11 +400,14 @@ class Container(_lxc.Container):
         os.remove(path)
         return ips
 
-    def get_keys(self, key):
+    def get_keys(self, key=None):
         """
             Returns a list of valid sub-keys.
         """
-        value = _lxc.Container.get_keys(self, key)
+        if key:
+            value = _lxc.Container.get_keys(self, key)
+        else:
+            value = _lxc.Container.get_keys(self)
 
         if value is False:
             return False
