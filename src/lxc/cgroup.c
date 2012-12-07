@@ -789,6 +789,13 @@ out:
 	return ret;
 }
 
+/*
+ * If you pass in NULL value or 0 len, then you are asking for the size
+ * of the file.  Note that we can't get the file size quickly through stat
+ * or lseek.  Therefore if you pass in len > 0 but less than the file size,
+ * your only indication will be that the return value will be equal to the
+ * passed-in ret.  We will not return the actual full file size.
+ */
 int lxc_cgroup_get(const char *name, const char *filename,
 		   char *value, size_t len)
 {
@@ -813,7 +820,18 @@ int lxc_cgroup_get(const char *name, const char *filename,
 		return -1;
 	}
 
-	ret = read(fd, value, len);
+    if (!len || !value) {
+        char buf[100];
+        int count = 0;
+        while ((ret = read(fd, buf, 100)) > 0)
+            count += ret;
+        if (ret >= 0)
+            ret = count;
+    } else {
+        memset(value, 0, len);
+        ret = read(fd, value, len);
+    }
+
 	if (ret < 0)
 		ERROR("read %s : %s", path, strerror(errno));
 

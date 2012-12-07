@@ -48,6 +48,15 @@ struct lxc_container {
 	 * the length which was our would be printed. */
 	int (*get_config_item)(struct lxc_container *c, const char *key, char *retv, int inlen);
 	int (*get_keys)(struct lxc_container *c, const char *key, char *retv, int inlen);
+	/*
+	 * get_cgroup_item returns the number of bytes read, or an error (<0).
+	 * If retv NULL or inlen 0 is passed in, then the length of the cgroup
+	 * file will be returned.  *   Otherwise it will return the # of bytes read.
+	 * If inlen is less than the number of bytes available, then the returned
+	 * value will be inlen, not the full available size of the file.
+	 */
+	int (*get_cgroup_item)(struct lxc_container *c, const char *subsys, char *retv, int inlen);
+	bool (*set_cgroup_item)(struct lxc_container *c, const char *subsys, const char *value);
 
 #if 0
 	bool (*commit_cgroups)(struct lxc_container *c);

@@ -163,6 +163,13 @@ static const char *lxcapi_state(struct lxc_container *c)
 	return ret;
 }
 
+static bool is_stopped_nolock(struct lxc_container *c)
+{
+	lxc_state_t s;
+	s = lxc_getstate(c->name);
+	return (s == STOPPED);
+}
+
 static bool lxcapi_is_running(struct lxc_container *c)
 {
 	const char *s;
@@ -850,6 +857,49 @@ static char *lxcapi_config_file_name(struct lxc_container *c)
 	return strdup(c->configfile);
 }
 
+static bool lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, const char *value)
+{
+	int ret;
+	bool b = false;
+
+	if (!c)
+		return false;
+
+	if (lxclock(c->privlock, 0))
+		return false;
+
+	if (is_stopped_nolock(c))
+		goto err;
+
+	ret = lxc_cgroup_set(c->name, subsys, value);
+	if (!ret)
+		b = true;
+err:
+	lxcunlock(c->privlock);
+	return b;
+}
+
+static int lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, char *retv, int inlen)
+{
+	int ret = -1;
+
+	if (!c || !c->lxc_conf)
+		return -1;
+
+	if (lxclock(c->privlock, 0))
+		return -1;
+
+	if (is_stopped_nolock(c))
+		goto out;
+
+	ret = lxc_cgroup_get(c->name, subsys, retv, inlen);
+
+out:
+	lxcunlock(c->privlock);
+	return ret;
+}
+
+
 struct lxc_container *lxc_container_new(const char *name)
 {
 	struct lxc_container *c;
@@ -920,6 +970,8 @@ struct lxc_container *lxc_container_new(const char *name)
 	c->shutdown = lxcapi_shutdown;
 	c->clear_config_item = lxcapi_clear_config_item;
 	c->get_config_item = lxcapi_get_config_item;
+	c->get_cgroup_item = lxcapi_get_cgroup_item;
+	c->set_cgroup_item = lxcapi_set_cgroup_item;
 
 	/* we'll allow the caller to update these later */
 	if (lxc_log_init(NULL, NULL, "lxc_container", 0)) {
