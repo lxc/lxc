@@ -284,19 +284,19 @@ if [ ! -r "$lxc_config" ]; then
     exit 1
 fi
 
-# Allow for a path to be provided as the template name
-if [ -x "$lxc_template" ]; then
-    template_path=$lxc_template
-else
-    template_path=${templatedir}/lxc-$lxc_template
-fi
-
-if ! [ -x "$template_path" ]; then
-    echo "$(basename $0): unknown template '$lxc_template'" >&2
-    cleanup
-fi
-
 if [ ! -z "$lxc_template" ]; then
+    # Allow for a path to be provided as the template name
+    if [ -x "$lxc_template" ]; then
+        template_path=$lxc_template
+    else
+        template_path=${templatedir}/lxc-$lxc_template
+    fi
+
+    if ! [ -x "$template_path" ]; then
+        echo "$(basename $0): unknown template '$lxc_template'" >&2
+        cleanup
+    fi
+
     sum=$(sha1sum $template_path | cut -d ' ' -f1)
     echo "# Template used to create this container: $lxc_template" >> $lxc_path/$lxc_name/config
     if [ -n "$*" ]; then
