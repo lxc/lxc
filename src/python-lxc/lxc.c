@@ -204,13 +204,38 @@ Container_freeze(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+Container_get_cgroup_item(Container *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"key", NULL};
+    char* key = NULL;
+    int len = 0;
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
+                                      &key))
+        Py_RETURN_FALSE;
+
+    len = self->container->get_cgroup_item(self->container, key, NULL, 0);
+
+    if (len <= 0) {
+        Py_RETURN_FALSE;
+    }
+
+    char* value = (char*) malloc(sizeof(char)*len + 1);
+    if (self->container->get_cgroup_item(self->container, key, value, len + 1) != len) {
+        Py_RETURN_FALSE;
+    }
+
+    return PyUnicode_FromString(value);
+}
+
+static PyObject *
 Container_get_config_item(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"key", NULL};
     char* key = NULL;
     int len = 0;
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s", kwlist,
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
                                       &key))
         Py_RETURN_FALSE;
 
@@ -281,6 +306,24 @@ Container_save_config(Container *self, PyObject *args, PyObject *kwds)
         Py_RETURN_FALSE;
 
     if (self->container->save_config(self->container, path)) {
+        Py_RETURN_TRUE;
+    }
+
+    Py_RETURN_FALSE;
+}
+
+static PyObject *
+Container_set_cgroup_item(Container *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"key", "value", NULL};
+    char *key = NULL;
+    char *value = NULL;
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "ss|", kwlist,
+                                      &key, &value))
+        Py_RETURN_FALSE;
+
+    if (self->container->set_cgroup_item(self->container, key, value)) {
         Py_RETURN_TRUE;
     }
 
@@ -441,6 +484,11 @@ static PyMethodDef Container_methods[] = {
      "\n"
      "Freezes the container and returns its return code."
     },
+    {"get_cgroup_item", (PyCFunction)Container_get_cgroup_item, METH_VARARGS | METH_KEYWORDS,
+     "get_cgroup_item(key) -> string\n"
+     "\n"
+     "Get the current value of a cgroup entry."
+    },
     {"get_config_item", (PyCFunction)Container_get_config_item, METH_VARARGS | METH_KEYWORDS,
      "get_config_item(key) -> string\n"
      "\n"
@@ -462,6 +510,11 @@ static PyMethodDef Container_methods[] = {
      "\n"
      "Save the container configuration to its default "
      "location or to an alternative location if provided."
+    },
+    {"set_cgroup_item", (PyCFunction)Container_set_cgroup_item, METH_VARARGS | METH_KEYWORDS,
+     "set_cgroup_item(key, value) -> boolean\n"
+     "\n"
+     "Set a cgroup entry to the provided value."
     },
     {"set_config_item", (PyCFunction)Container_set_config_item, METH_VARARGS | METH_KEYWORDS,
      "set_config_item(key, value) -> boolean\n"

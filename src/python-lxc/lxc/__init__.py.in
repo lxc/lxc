@@ -318,6 +318,18 @@ class Container(_lxc.Container):
             return False
         return True
 
+    def get_cgroup_item(self, key):
+        """
+            Returns the value for a given cgroup entry.
+            A list is returned when multiple values are set.
+        """
+        value = _lxc.Container.get_cgroup_item(self, key)
+
+        if value is False:
+            return False
+        else:
+            return value.rstrip("\n")
+
     def get_config_item(self, key):
         """
             Returns the value for a given config key.

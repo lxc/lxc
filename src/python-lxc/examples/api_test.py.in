@@ -97,6 +97,13 @@ container.attach("NETWORK|UTSNAME", "/sbin/ifconfig", "eth0")
 # A few basic checks of the current state
 assert(len(ips) > 0)
 
+## Testing cgroups a bit
+print("Testing cgroup API")
+max_mem = container.get_cgroup_item("memory.max_usage_in_bytes")
+current_limit = container.get_cgroup_item("memory.limit_in_bytes")
+assert(container.set_cgroup_item("memory.limit_in_bytes", max_mem))
+assert(container.get_cgroup_item("memory.limit_in_bytes") != current_limit)
+
 ## Freezing the container
 print("Freezing the container")
 container.freeze()
