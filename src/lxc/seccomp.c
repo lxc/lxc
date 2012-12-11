@@ -27,6 +27,7 @@
 #include <seccomp.h>
 #include <errno.h>
 #include <seccomp.h>
+#include "config.h"
 #include "lxcseccomp.h"
 
 #include "log.h"
@@ -69,7 +70,11 @@ static int parse_config(FILE *f, struct lxc_conf *conf)
 		ret = sscanf(line, "%d", &nr);
 		if (ret != 1)
 			return -1;
-		ret = seccomp_rule_add(SCMP_ACT_ALLOW, nr, 0);
+		ret = seccomp_rule_add(
+#if HAVE_SCMP_FILTER_CTX
+			conf->seccomp_ctx,
+#endif
+			SCMP_ACT_ALLOW, nr, 0);
 		if (ret < 0) {
 			ERROR("failed loading allow rule for %d\n", nr);
 			return ret;
@@ -83,16 +88,28 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 	FILE *f;
 	int ret;
 
-	if (seccomp_init(SCMP_ACT_ERRNO(31)) < 0)  { /* for debug, pass in SCMP_ACT_TRAP */
-		ERROR("failed initializing seccomp");
-		return -1;
-	}
 	if (!conf->seccomp)
 		return 0;
 
+#if HAVE_SCMP_FILTER_CTX
+	/* XXX for debug, pass in SCMP_ACT_TRAP */
+	conf->seccomp_ctx = seccomp_init(SCMP_ACT_ERRNO(31));
+	ret = !conf->seccomp_ctx;
+#else
+	ret = seccomp_init(SCMP_ACT_ERRNO(31)) < 0;
+#endif
+	if (ret) {
+		ERROR("failed initializing seccomp");
+		return -1;
+	}
+
 	/* turn of no-new-privs.  We don't want it in lxc, and it breaks
 	 * with apparmor */
-	if (seccomp_attr_set(SCMP_FLTATR_CTL_NNP, 0)) {
+	if (seccomp_attr_set(
+#if HAVE_SCMP_FILTER_CTX
+			conf->seccomp_ctx,
+#endif
+			SCMP_FLTATR_CTL_NNP, 0)) {
 		ERROR("failed to turn off n-new-privs\n");
 		return -1;
 	}
@@ -112,10 +129,27 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 	int ret;
 	if (!conf->seccomp)
 		return 0;
-	ret = seccomp_load();
+	ret = seccomp_load(
+#if HAVE_SCMP_FILTER_CTX
+			conf->seccomp_ctx
+#endif
+	);
 	if (ret < 0) {
 		ERROR("Error loading the seccomp policy");
 		return -1;
 	}
 	return 0;
+}
+
+void lxc_seccomp_free(struct lxc_conf *conf) {
+	if (conf->seccomp) {
+		free(conf->seccomp);
+		conf->seccomp = NULL;
+	}
+#if HAVE_SCMP_FILTER_CTX
+	if (conf->seccomp_ctx) {
+		seccomp_release(conf->seccomp_ctx);
+		conf->seccomp_ctx = NULL;
+	}
+#endif
 }

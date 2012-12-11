@@ -32,6 +32,10 @@
 
 #include <lxc/start.h> /* for lxc_handler */
 
+#if HAVE_SCMP_FILTER_CTX
+typedef void * scmp_filter_ctx;
+#endif
+
 enum {
 	LXC_NET_EMPTY,
 	LXC_NET_VETH,
@@ -246,6 +250,9 @@ struct lxc_conf {
 	int lsm_umount_proc;
 #endif
 	char *seccomp;  // filename with the seccomp rules
+#if HAVE_SCMP_FILTER_CTX
+	scmp_filter_ctx *seccomp_ctx;
+#endif
 	int maincmd_fd;
 	int autodev;  // if 1, mount and fill a /dev at start
 };

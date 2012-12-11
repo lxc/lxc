@@ -66,6 +66,8 @@
 #include <apparmor.h>
 #endif
 
+#include "lxcseccomp.h"
+
 lxc_log_define(lxc_conf, lxc);
 
 #define MAXHWLEN    18
@@ -2760,8 +2762,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	if (conf->aa_profile)
 		free(conf->aa_profile);
 #endif
-	if (conf->seccomp)
-		free(conf->seccomp);
+	lxc_seccomp_free(conf);
 	lxc_clear_config_caps(conf);
 	lxc_clear_cgroups(conf, "lxc.cgroup");
 	lxc_clear_hooks(conf, "lxc.hook");

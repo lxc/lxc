@@ -115,6 +115,9 @@ AM_COND_IF([ENABLE_SECCOMP],
      AC_CHECK_LIB([seccomp], [seccomp_init],[],[AC_MSG_ERROR([You must install the seccomp development package in order to compile lxc])])
      AC_SUBST([SECCOMP_LIBS], [-lseccomp])])
 
+# HAVE_SCMP_FILTER_CTX=1 will tell us we have libseccomp api >= 1.0.0
+AC_CHECK_TYPES([scmp_filter_ctx], [], [], [#include <seccomp.h>])
+
 AM_CONDITIONAL([ENABLE_DOCBOOK], [test "x$db2xman" != "x"])
 
 AC_ARG_ENABLE([examples],
