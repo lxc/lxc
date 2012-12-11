@@ -2760,6 +2760,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 	if (conf->aa_profile)
 		free(conf->aa_profile);
 #endif
+	if (conf->seccomp)
+		free(conf->seccomp);
 	lxc_clear_config_caps(conf);
 	lxc_clear_cgroups(conf, "lxc.cgroup");
 	lxc_clear_hooks(conf, "lxc.hook");
