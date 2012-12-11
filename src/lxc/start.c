@@ -377,9 +377,12 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 		goto out_free;
 	}
 
+	if (lxc_command_init(name, handler))
+		goto out_free_name;
+
 	if (lxc_read_seccomp_config(conf) != 0) {
 		ERROR("failed loading seccomp policy");
-		goto out_free_name;
+		goto out_close_maincmd_fd;
 	}
 
 	/* Begin the set the state to STARTING*/
@@ -421,6 +424,9 @@ out_delete_tty:
 	lxc_delete_tty(&conf->tty_info);
 out_aborting:
 	lxc_set_state(name, handler, ABORTING);
+out_close_maincmd_fd:
+	close(conf->maincmd_fd);
+	conf->maincmd_fd = -1;
 out_free_name:
 	free(handler->name);
 	handler->name = NULL;
@@ -446,6 +452,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	lxc_delete_console(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
+	close(handler->conf->maincmd_fd);
+	handler->conf->maincmd_fd = -1;
 	free(handler->name);
 	free(handler);
 }

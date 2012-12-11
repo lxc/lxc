@@ -287,11 +287,9 @@ out_close:
 	goto out;
 }
 
-extern int lxc_command_mainloop_add(const char *name,
-				    struct lxc_epoll_descr *descr,
-				    struct lxc_handler *handler)
+extern int lxc_command_init(const char *name, struct lxc_handler *handler)
 {
-	int ret, fd;
+	int fd;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
 	char *offset = &path[1];
 	int rc, len;
@@ -320,6 +318,16 @@ extern int lxc_command_mainloop_add(const char *name,
 		return -1;
 	}
 
+	handler->conf->maincmd_fd = fd;
+	return 0;
+}
+
+extern int lxc_command_mainloop_add(const char *name,
+				    struct lxc_epoll_descr *descr,
+				    struct lxc_handler *handler)
+{
+	int ret, fd = handler->conf->maincmd_fd;
+
 	ret = lxc_mainloop_add_handler(descr, fd, incoming_command_handler,
 				       handler);
 	if (ret) {
@@ -327,6 +335,5 @@ extern int lxc_command_mainloop_add(const char *name,
 		close(fd);
 	}
 
-	handler->conf->maincmd_fd = fd;
 	return ret;
 }
