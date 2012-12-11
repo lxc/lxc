@@ -1204,6 +1204,8 @@ static int setup_kmsg(const struct lxc_rootfs *rootfs,
 	char kpath[MAXPATHLEN];
 	int ret;
 
+	if (!rootfs->path)
+		return 0;
 	ret = snprintf(kpath, sizeof(kpath), "%s/dev/kmsg", rootfs->mount);
 	if (ret < 0 || ret >= sizeof(kpath))
 		return -1;
