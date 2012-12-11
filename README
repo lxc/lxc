@@ -76,7 +76,7 @@ cat > seccomp.full << EOF
 whitelist
 EOF
 for i in `seq 0 300`; do
-    echo $i >> secomp.full
+    echo $i >> seccomp.full
 done
 for i in `seq 1024 1079`; do
     echo $i >> seccomp.full
