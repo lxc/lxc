@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 
 		switch (msg.type) {
 		case lxc_msg_state:
-			printf("'%s' changed state to [%s]\n", 
+			printf("'%s' changed state to [%s]\n",
 			       msg.name, lxc_state2str(msg.value));
 			break;
 		default:

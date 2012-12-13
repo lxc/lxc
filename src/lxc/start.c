@@ -127,6 +127,7 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #include "sync.h"
 #include "namespace.h"
 #include "apparmor.h"
+#include "lxcseccomp.h"
 
 lxc_log_define(lxc_start, lxc);
 
@@ -278,6 +279,29 @@ int lxc_pid_callback(int fd, struct lxc_request *request,
 	return 0;
 }
 
+int lxc_clone_flags_callback(int fd, struct lxc_request *request,
+			     struct lxc_handler *handler)
+{
+	struct lxc_answer answer;
+	int ret;
+
+	answer.pid = 0;
+	answer.ret = handler->clone_flags;
+
+	ret = send(fd, &answer, sizeof(answer), 0);
+	if (ret < 0) {
+		WARN("failed to send answer to the peer");
+		return -1;
+	}
+
+	if (ret != sizeof(answer)) {
+		ERROR("partial answer sent");
+		return -1;
+	}
+
+	return 0;
+}
+
 int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state)
 {
 	handler->state = state;
@@ -351,6 +375,11 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 	if (!handler->name) {
 		ERROR("failed to allocate memory");
 		goto out_free;
+	}
+
+	if (lxc_read_seccomp_config(conf) != 0) {
+		ERROR("failed loading seccomp policy");
+		goto out_free_name;
 	}
 
 	/* Begin the set the state to STARTING*/
@@ -530,6 +559,9 @@ static int do_start(void *data)
 	if (apparmor_load(handler) < 0)
 		goto out_warn_father;
 
+	if (lxc_seccomp_load(handler->conf) != 0)
+		goto out_warn_father;
+
 	if (run_lxc_hooks(handler->name, "start", handler->conf)) {
 		ERROR("failed to run start hooks for container '%s'.", handler->name);
 		goto out_warn_father;
@@ -547,9 +579,39 @@ out_warn_father:
 	return -1;
 }
 
+int save_phys_nics(struct lxc_conf *conf)
+{
+	struct lxc_list *iterator;
+
+	lxc_list_for_each(iterator, &conf->network) {
+		struct lxc_netdev *netdev = iterator->elem;
+
+		if (netdev->type != LXC_NET_PHYS)
+			continue;
+		conf->saved_nics = realloc(conf->saved_nics,
+				(conf->num_savednics+1)*sizeof(struct saved_nic));
+		if (!conf->saved_nics) {
+			SYSERROR("failed to allocate memory");
+			return -1;
+		}
+		conf->saved_nics[conf->num_savednics].ifindex = netdev->ifindex;
+		conf->saved_nics[conf->num_savednics].orig_name = strdup(netdev->link);
+		if (!conf->saved_nics[conf->num_savednics].orig_name) {
+			SYSERROR("failed to allocate memory");
+			return -1;
+		}
+		INFO("stored saved_nic #%d idx %d name %s\n", conf->num_savednics,
+			conf->saved_nics[conf->num_savednics].ifindex,
+			conf->saved_nics[conf->num_savednics].orig_name);
+		conf->num_savednics++;
+	}
+
+	return 0;
+}
+
+
 int lxc_spawn(struct lxc_handler *handler)
 {
-	int clone_flags;
 	int failed_before_rename = 0;
 	const char *name = handler->name;
 	int pinfd;
@@ -557,10 +619,10 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_init(handler))
 		return -1;
 
-	clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
+	handler->clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
 	if (!lxc_list_empty(&handler->conf->network)) {
 
-		clone_flags |= CLONE_NEWNET;
+		handler->clone_flags |= CLONE_NEWNET;
 
 		/* Find gateway addresses from the link device, which is
 		 * no longer accessible inside the container. Do this
@@ -582,6 +644,11 @@ int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
+	if (save_phys_nics(handler->conf)) {
+		ERROR("failed to save physical nic info");
+		goto out_abort;
+	}
+
 	/*
 	 * if the rootfs is not a blockdev, prevent the container from
 	 * marking it readonly.
@@ -594,7 +661,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	/* Create a process in a new set of namespaces */
-	handler->pid = lxc_clone(do_start, handler, clone_flags);
+	handler->pid = lxc_clone(do_start, handler, handler->clone_flags);
 	if (handler->pid < 0) {
 		SYSERROR("failed to fork into a new namespace");
 		goto out_delete_net;
@@ -612,7 +679,7 @@ int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 
 	/* Create the network configuration */
-	if (clone_flags & CLONE_NEWNET) {
+	if (handler->clone_flags & CLONE_NEWNET) {
 		if (lxc_assign_network(&handler->conf->network, handler->pid)) {
 			ERROR("failed to create the configured network");
 			goto out_delete_net;
@@ -642,8 +709,8 @@ int lxc_spawn(struct lxc_handler *handler)
 	return 0;
 
 out_delete_net:
-	if (clone_flags & CLONE_NEWNET)
-		lxc_delete_network(&handler->conf->network);
+	if (handler->clone_flags & CLONE_NEWNET)
+		lxc_delete_network(handler);
 out_abort:
 	lxc_abort(name, handler);
 	lxc_sync_fini(handler);
@@ -675,7 +742,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	err = lxc_spawn(handler);
 	if (err) {
 		ERROR("failed to spawn '%s'", name);
-		goto out_fini;
+		goto out_fini_nonet;
 	}
 
 	err = lxc_poll(name, handler);
@@ -708,8 +775,13 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 		}
         }
 
+	lxc_rename_phys_nics_on_shutdown(handler->conf);
+
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
+	lxc_delete_network(handler);
+
+out_fini_nonet:
 	lxc_cgroup_destroy(name);
 	lxc_fini(name, handler);
 	return err;

@@ -13,7 +13,7 @@
 
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
 
 # You should have received a copy of the GNU Lesser General Public
@@ -31,9 +31,9 @@ configure_debian()
     # squeeze only has /dev/tty and /dev/tty0 by default,
     # therefore creating missing device nodes for tty1-4.
     for tty in $(seq 1 4); do
-	if [ ! -e $rootfs/dev/tty$tty ]; then
-	    mknod $rootfs/dev/tty$tty c 4 $tty
-	fi
+        if [ ! -e $rootfs/dev/tty$tty ]; then
+            mknod $rootfs/dev/tty$tty c 4 $tty
+        fi
     done
 
     # configure the inittab
@@ -54,7 +54,7 @@ c1:12345:respawn:/sbin/getty 38400 tty1 linux
 c2:12345:respawn:/sbin/getty 38400 tty2 linux
 c3:12345:respawn:/sbin/getty 38400 tty3 linux
 c4:12345:respawn:/sbin/getty 38400 tty4 linux
-p6::ctrlaltdel:/sbin/init 6 
+p6::ctrlaltdel:/sbin/init 6
 p0::powerfail:/sbin/init 0
 EOF
 
@@ -78,11 +78,11 @@ EOF
 
     # reconfigure some services
     if [ -z "$LANG" ]; then
-	chroot $rootfs locale-gen en_US.UTF-8 UTF-8
-	chroot $rootfs update-locale LANG=en_US.UTF-8
+        chroot $rootfs locale-gen en_US.UTF-8 UTF-8
+        chroot $rootfs update-locale LANG=en_US.UTF-8
     else
-	chroot $rootfs locale-gen $LANG $(echo $LANG | cut -d. -f2)
-	chroot $rootfs update-locale LANG=$LANG
+        chroot $rootfs locale-gen $LANG $(echo $LANG | cut -d. -f2)
+        chroot $rootfs update-locale LANG=$LANG
     fi
 
     # remove pointless services in a container
@@ -123,18 +123,18 @@ openssh-server
     # check the mini debian was not already downloaded
     mkdir -p "$cache/partial-$SUITE-$arch"
     if [ $? -ne 0 ]; then
-	echo "Failed to create '$cache/partial-$SUITE-$arch' directory"
-	return 1
+        echo "Failed to create '$cache/partial-$SUITE-$arch' directory"
+        return 1
     fi
 
     # download a mini debian into a cache
     echo "Downloading debian minimal ..."
     debootstrap --verbose --variant=minbase --arch=$arch \
-	--include=$packages \
-	"$SUITE" "$cache/partial-$SUITE-$arch" $MIRROR
+        --include=$packages \
+        "$SUITE" "$cache/partial-$SUITE-$arch" $MIRROR
     if [ $? -ne 0 ]; then
-	echo "Failed to download the rootfs, aborting."
-	return 1
+        echo "Failed to download the rootfs, aborting."
+        return 1
     fi
 
     mv "$1/partial-$SUITE-$arch" "$1/rootfs-$SUITE-$arch"
@@ -156,7 +156,7 @@ copy_debian()
     # make a local copy of the minidebian
     echo -n "Copying rootfs to $rootfs..."
     mkdir -p $rootfs
-    rsync -a "$cache/rootfs-$SUITE-$arch"/ $rootfs/ || return 1
+    rsync -Ha "$cache/rootfs-$SUITE-$arch"/ $rootfs/ || return 1
     return 0
 }
 
@@ -166,32 +166,32 @@ install_debian()
     rootfs=$1
     mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
-	flock -x 200
-	if [ $? -ne 0 ]; then
-	    echo "Cache repository is busy."
-	    return 1
-	fi
+        flock -x 200
+        if [ $? -ne 0 ]; then
+            echo "Cache repository is busy."
+            return 1
+        fi
 
-	arch=$(dpkg --print-architecture)
+        arch=$(dpkg --print-architecture)
 
-	echo "Checking cache download in $cache/rootfs-$SUITE-$arch ... "
-	if [ ! -e "$cache/rootfs-$SUITE-$arch" ]; then
-	    download_debian $cache $arch
-	    if [ $? -ne 0 ]; then
-		echo "Failed to download 'debian base'"
-		return 1
-	    fi
-	fi
+        echo "Checking cache download in $cache/rootfs-$SUITE-$arch ... "
+        if [ ! -e "$cache/rootfs-$SUITE-$arch" ]; then
+            download_debian $cache $arch
+            if [ $? -ne 0 ]; then
+                echo "Failed to download 'debian base'"
+                return 1
+            fi
+        fi
 
-	copy_debian $cache $arch $rootfs
-	if [ $? -ne 0 ]; then
-	    echo "Failed to copy rootfs"
-	    return 1
-	fi
+        copy_debian $cache $arch $rootfs
+        if [ $? -ne 0 ]; then
+            echo "Failed to copy rootfs"
+            return 1
+        fi
 
-	return 0
+        return 0
 
-	) 200>@LOCALSTATEDIR@/lock/subsys/lxc
+        ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-debian
 
     return $?
 }
@@ -202,10 +202,10 @@ copy_configuration()
     rootfs=$2
     hostname=$3
 
+    grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
     cat <<EOF >> $path/config
 lxc.tty = 4
 lxc.pts = 1024
-lxc.rootfs = $rootfs
 lxc.utsname = $hostname
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
@@ -229,13 +229,13 @@ lxc.cgroup.devices.allow = c 5:2 rwm
 lxc.cgroup.devices.allow = c 254:0 rwm
 
 # mounts point
-lxc.mount.entry=proc proc proc nodev,noexec,nosuid 0 0
-lxc.mount.entry=sysfs sys sysfs defaults  0 0
+lxc.mount.entry = proc proc proc nodev,noexec,nosuid 0 0
+lxc.mount.entry = sysfs sys sysfs defaults  0 0
 EOF
 
     if [ $? -ne 0 ]; then
-	echo "Failed to add configuration"
-	return 1
+        echo "Failed to add configuration"
+        return 1
     fi
 
     return 0
@@ -246,22 +246,22 @@ clean()
     cache="@LOCALSTATEDIR@/cache/lxc/debian"
 
     if [ ! -e $cache ]; then
-	exit 0
+        exit 0
     fi
 
     # lock, so we won't purge while someone is creating a repository
     (
-	flock -x 200
-	if [ $? != 0 ]; then
-	    echo "Cache repository is busy."
-	    exit 1
-	fi
+        flock -x 200
+        if [ $? != 0 ]; then
+            echo "Cache repository is busy."
+            exit 1
+        fi
 
-	echo -n "Purging the download cache..."
-	rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
-	exit 0
+        echo -n "Purging the download cache..."
+        rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
+        exit 0
 
-    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-debian
 }
 
 usage()
@@ -275,7 +275,7 @@ EOF
 options=$(getopt -o hp:n:c -l help,path:,name:,clean -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
-	exit 1
+        exit 1
 fi
 eval set -- "$options"
 
@@ -284,8 +284,8 @@ do
     case "$1" in
         -h|--help)      usage $0 && exit 0;;
         -p|--path)      path=$2; shift 2;;
-	-n|--name)      name=$2; shift 2;;
-	-c|--clean)     clean=$2; shift 2;;
+        -n|--name)      name=$2; shift 2;;
+        -c|--clean)     clean=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
     esac
@@ -312,7 +312,14 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-rootfs=$path/rootfs
+# detect rootfs
+config="$path/config"
+if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+else
+    rootfs=$path/rootfs
+fi
+
 
 install_debian $rootfs
 if [ $? -ne 0 ]; then

@@ -54,26 +54,27 @@ eval set -- "$getopt"
 
 while true; do
         case "$1" in
-	    -h|--help)
-		help
-		exit 1
-		;;
-	    -n|--name)
-		shift
-		lxc_name=$1
-		shift
-		;;
-	    -f)
-		force=1
-		shift
-		;;
+            -h|--help)
+                help
+                exit 1
+            ;;
+            -n|--name)
+                shift
+                lxc_name=$1
+                shift
+            ;;
+            -f)
+                force=1
+                shift
+            ;;
             --)
-		shift
-		break;;
+                shift
+                break
+            ;;
             *)
-		usage
-		exit 1
-		;;
+            usage
+            exit 1
+            ;;
         esac
 done
 
@@ -96,13 +97,13 @@ fi
 # make sure the container isn't running
 lxc-info -n $lxc_name 2>/dev/null | grep -q RUNNING
 if [ $? -eq 0 ]; then
-	if [ $force -eq 1 ]; then
-		lxc-stop -n $lxc_name
-		lxc-wait -n $lxc_name -s STOPPED
-	else
-		echo "$(basename $0): '$lxc_name' is running; aborted" >&2
-		exit 1
-	fi
+    if [ $force -eq 1 ]; then
+        lxc-stop -n $lxc_name
+        lxc-wait -n $lxc_name -s STOPPED
+    else
+        echo "$(basename $0): '$lxc_name' is running; aborted" >&2
+        exit 1
+    fi
 fi
 
 # Deduce the type of rootfs
@@ -110,21 +111,22 @@ fi
 # else, ignore it. We'll support deletion of others later.
 rootdev=`grep lxc.rootfs $lxc_path/$lxc_name/config 2>/dev/null | sed -e 's/^[^/]*/\//'`
 if [ -n "$rootdev" ]; then
-	if [ -b "$rootdev" ]; then
-		lvdisplay $rootdev > /dev/null 2>&1
-		if [ $? -eq 0 ]; then
-			echo "removing backing store: $rootdev"
-			lvremove -f $rootdev
-		fi
-	elif [ -h "$rootdev" -o -d "$rootdev" ]; then
-		if which btrfs >/dev/null 2>&1 &&
-		   btrfs subvolume list "$rootdev" >/dev/null 2>&1; then
-			btrfs subvolume delete "$rootdev"
-		else
-			# In case rootfs is not under $lxc_path/$lxc_name, remove it
-			rm -rf --one-file-system --preserve-root $rootdev
-		fi
-	fi
+    if [ -b "$rootdev" -o -h "$rootdev" ]; then
+        lvdisplay $rootdev > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            echo "removing backing store: $rootdev"
+            lvremove -f $rootdev
+        fi
+    elif [ -h "$rootdev" -o -d "$rootdev" ]; then
+        if which btrfs >/dev/null 2>&1 &&
+           btrfs subvolume list "$rootdev" >/dev/null 2>&1; then
+            btrfs subvolume delete "$rootdev"
+        else
+            # In case rootfs is not under $lxc_path/$lxc_name, remove it
+            rm -rf --one-file-system --preserve-root $rootdev
+        fi
+    fi
 fi
+
 # recursively remove the container to remove old container configuration
 rm -rf --one-file-system --preserve-root $lxc_path/$lxc_name

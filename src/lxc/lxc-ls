@@ -1,0 +1,251 @@
+#!/usr/bin/python3
+#
+# lxc-ls: List containers
+#
+# This python implementation is based on the work done in the original
+# shell implementation done by Serge Hallyn in Ubuntu (and other contributors)
+#
+# (C) Copyright Canonical Ltd. 2012
+#
+# Authors:
+# Stéphane Graber <stgraber@ubuntu.com>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+#
+
+# NOTE: To remove once the API is stabilized
+import warnings
+warnings.filterwarnings("ignore", "The python-lxc API isn't yet stable")
+
+import argparse
+import gettext
+import lxc
+import os
+import re
+import sys
+
+_ = gettext.gettext
+gettext.textdomain("lxc-ls")
+
+
+# Functions used later on
+def batch(iterable, cols=1):
+    import math
+
+    length = len(iterable)
+    lines = math.ceil(length / cols)
+
+    for line in range(lines):
+        fields = []
+        for col in range(cols):
+            index = line + (col * lines)
+            if index < length:
+                fields.append(iterable[index])
+        yield fields
+
+
+def getTerminalSize():
+    import os
+    env = os.environ
+
+    def ioctl_GWINSZ(fd):
+        try:
+            import fcntl
+            import termios
+            import struct
+            cr = struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ,
+                               '1234'))
+            return cr
+        except:
+            return
+
+    cr = ioctl_GWINSZ(0) or ioctl_GWINSZ(1) or ioctl_GWINSZ(2)
+    if not cr:
+        try:
+            fd = os.open(os.ctermid(), os.O_RDONLY)
+            cr = ioctl_GWINSZ(fd)
+            os.close(fd)
+        except:
+            pass
+
+    if not cr:
+        cr = (env.get('LINES', 25), env.get('COLUMNS', 80))
+
+    return int(cr[1]), int(cr[0])
+
+# Begin parsing the command line
+parser = argparse.ArgumentParser(description=_("LXC: List containers"),
+                                 formatter_class=argparse.RawTextHelpFormatter)
+
+parser.add_argument("-1", dest="one", action="store_true",
+                    help=_("list one container per line (default when piped)"))
+
+parser.add_argument("--active", action="store_true",
+                    help=_("list only active containers "
+                           "(same as --running --frozen)"))
+
+parser.add_argument("--frozen", dest="state", action="append_const",
+                    const="FROZEN", help=_("list only frozen containers"))
+
+parser.add_argument("--running", dest="state", action="append_const",
+                    const="RUNNING", help=_("list only running containers"))
+
+parser.add_argument("--stopped", dest="state", action="append_const",
+                    const="STOPPED", help=_("list only stopped containers"))
+
+parser.add_argument("--fancy", action="store_true",
+                    help=_("use fancy output"))
+
+parser.add_argument("--fancy-format", type=str, default="name,state,ipv4,ipv6",
+                    help=_("comma separated list of fields to show"))
+
+parser.add_argument("filter", metavar='FILTER', type=str, nargs="?",
+                    help=_("regexp to be applied on the container list"))
+
+args = parser.parse_args()
+
+# --active is the same as --running --frozen
+if args.active:
+    if not args.state:
+        args.state = []
+    args.state += ["RUNNING", "FROZEN"]
+
+# If the output is piped, default to --one
+if not sys.stdout.isatty():
+    args.one = True
+
+# Turn args.fancy_format into a list
+args.fancy_format = args.fancy_format.strip().split(",")
+
+# Basic checks
+## The user needs to be uid 0
+if not os.geteuid() == 0 and (args.fancy or args.state):
+    parser.error(_("You must be root to access advanced container properties. "
+                   "Try running: sudo %s"
+                   % (sys.argv[0])))
+
+# List of containers, stored as dictionaries
+containers = []
+for container_name in lxc.list_containers():
+    entry = {}
+    entry['name'] = container_name
+
+    # Apply filter
+    if args.filter and not re.match(args.filter, container_name):
+        continue
+
+    # Return before grabbing the object (non-root)
+    if not args.state and not args.fancy:
+        containers.append(entry)
+        continue
+
+    container = lxc.Container(container_name)
+
+    # Filter by status
+    if args.state and container.state not in args.state:
+        continue
+
+    # Nothing more is needed if we're not printing some fancy output
+    if not args.fancy:
+        containers.append(entry)
+        continue
+
+    # Some extra field we may want
+    if 'state' in args.fancy_format:
+        entry['state'] = container.state
+    if 'pid' in args.fancy_format:
+        entry['pid'] = "-"
+        if container.init_pid != -1:
+            entry['pid'] = str(container.init_pid)
+
+    # Get the IPs
+    for protocol in ('ipv4', 'ipv6'):
+        if protocol in args.fancy_format:
+            entry[protocol] = "-"
+            ips = container.get_ips(protocol=protocol, timeout=1)
+            if ips:
+                entry[protocol] = ", ".join(ips)
+
+    containers.append(entry)
+
+
+# Print the list
+## Standard list with one entry per line
+if not args.fancy and args.one:
+    for container in sorted(containers,
+                            key=lambda container: container['name']):
+        print(container['name'])
+    sys.exit(0)
+
+## Standard list with multiple entries per line
+if not args.fancy and not args.one:
+    # Get the longest name and extra simple list
+    field_maxlength = 0
+    container_names = []
+    for container in containers:
+        if len(container['name']) > field_maxlength:
+            field_maxlength = len(container['name'])
+        container_names.append(container['name'])
+
+    # Figure out how many we can put per line
+    width = getTerminalSize()[0]
+
+    entries = int(width / (field_maxlength + 2))
+    if entries == 0:
+        entries = 1
+
+    for line in batch(sorted(container_names), entries):
+        line_format = ""
+        for index in range(len(line)):
+            line_format += "{line[%s]:%s}" % (index, field_maxlength + 2)
+
+        print(line_format.format(line=line))
+
+## Fancy listing
+if args.fancy:
+    field_maxlength = {}
+
+    # Get the maximum length per field
+    for field in args.fancy_format:
+        field_maxlength[field] = len(field)
+
+    for container in containers:
+        for field in args.fancy_format:
+            if len(container[field]) > field_maxlength[field]:
+                field_maxlength[field] = len(container[field])
+
+    # Generate the line format string based on the maximum length and
+    # a 2 character padding
+    line_format = ""
+    index = 0
+    for field in args.fancy_format:
+        line_format += "{fields[%s]:%s}" % (index, field_maxlength[field] + 2)
+        index += 1
+
+    # Get the line length minus the padding of the last field
+    line_length = -2
+    for field in field_maxlength:
+        line_length += field_maxlength[field] + 2
+
+    # Print header
+    print(line_format.format(fields=[header.upper()
+                                     for header in args.fancy_format]))
+    print("-" * line_length)
+
+    # Print the entries
+    for container in sorted(containers,
+                            key=lambda container: container['name']):
+        fields = [container[field] for field in args.fancy_format]
+        print(line_format.format(fields=fields))

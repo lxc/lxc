@@ -52,7 +52,7 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 
 	addr.sun_family = AF_UNIX;
 	/* copy entire buffer in case of abstract socket */
-	memcpy(addr.sun_path, path, 
+	memcpy(addr.sun_path, path,
 	       path[0]?strlen(path):sizeof(addr.sun_path));
 
 	if (bind(fd, (struct sockaddr *)&addr, sizeof(addr))) {
@@ -73,7 +73,7 @@ int lxc_af_unix_close(int fd)
 	struct sockaddr_un addr;
 	socklen_t addrlen;
 	
-	if (!getsockname(fd, (struct sockaddr *)&addr, &addrlen) && 
+	if (!getsockname(fd, (struct sockaddr *)&addr, &addrlen) &&
 	    addr.sun_path[0])
 		unlink(addr.sun_path);
 
@@ -95,7 +95,7 @@ int lxc_af_unix_connect(const char *path)
 
 	addr.sun_family = AF_UNIX;
 	/* copy entire buffer in case of abstract socket */
-	memcpy(addr.sun_path, path, 
+	memcpy(addr.sun_path, path,
 	       path[0]?strlen(path):sizeof(addr.sun_path));
 
 	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr))) {
@@ -161,7 +161,7 @@ int lxc_af_unix_recv_fd(int fd, int *recvfd, void *data, size_t size)
 
         cmsg = CMSG_FIRSTHDR(&msg);
 
-	/* if the message is wrong the variable will not be 
+	/* if the message is wrong the variable will not be
 	 * filled and the peer will notified about a problem */
 	*recvfd = -1;
 

@@ -41,6 +41,7 @@
 
 int lxc_log_fd = -1;
 static char log_prefix[LXC_LOG_PREFIX_SIZE] = "lxc";
+int lxc_loglevel_specified = 0;
 
 lxc_log_define(lxc_log, lxc);
 
@@ -153,7 +154,11 @@ extern int lxc_log_init(const char *file, const char *priority,
 {
 	int lxc_priority = LXC_LOG_PRIORITY_ERROR;
 
+	if (lxc_log_fd != -1)
+		return 0;
+
 	if (priority) {
+		lxc_loglevel_specified = 1;
 		lxc_priority = lxc_log_priority_to_int(priority);
 
 		if (lxc_priority == LXC_LOG_PRIORITY_NOTSET) {
@@ -183,5 +188,41 @@ extern int lxc_log_init(const char *file, const char *priority,
 		lxc_log_fd = fd;
 	}
 
+	return 0;
+}
+
+/*
+ * This is called when we read a lxc.loglevel entry in a lxc.conf file.  This
+ * happens after processing command line arguments, which override the .conf
+ * settings.  So only set the level if previously unset.
+ */
+extern int lxc_log_set_level(int level)
+{
+	if (lxc_loglevel_specified)
+		return 0;
+	if (level < 0 || level >= LXC_LOG_PRIORITY_NOTSET) {
+		ERROR("invalid log priority %d", level);
+		return -1;
+	}
+	lxc_log_category_lxc.priority = level;
+	return 0;
+}
+
+/*
+ * This is called when we read a lxc.logfile entry in a lxc.conf file.  This
+ * happens after processing command line arguments, which override the .conf
+ * settings.  So only set the logfile if previously unset.
+ */
+extern int lxc_log_set_file(char *fname)
+{
+	if (lxc_log_fd != -1) {
+		INFO("Configuration file was specified on command line, configuration file entry being ignored");
+		return 0;
+	}
+	lxc_log_fd = log_open(fname);
+	if (lxc_log_fd == -1) {
+		ERROR("failed to open log file %s\n", fname);
+		return -1;
+	}
 	return 0;
 }

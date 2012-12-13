@@ -254,13 +254,38 @@ static int cgroup_enable_clone_children(const char *path)
 	return ret;
 }
 
-static int lxc_one_cgroup_attach(const char *name,
-				 struct mntent *mntent, pid_t pid)
+static int lxc_one_cgroup_finish_attach(int fd, pid_t pid)
 {
-	FILE *f;
+       char buf[32];
+       int ret;
+
+       snprintf(buf, 32, "%ld", (long)pid);
+
+       ret = write(fd, buf, strlen(buf));
+       if (ret <= 0) {
+               SYSERROR("failed to write pid '%ld' to fd '%d'", (long)pid, fd);
+               ret = -1;
+       } else {
+               ret = 0;
+       }
+
+       close(fd);
+       return ret;
+}
+
+static int lxc_one_cgroup_dispose_attach(int fd)
+{
+       close(fd);
+       return 0;
+}
+
+static int lxc_one_cgroup_prepare_attach(const char *name,
+					 struct mntent *mntent)
+{
+	int fd;
 	char tasks[MAXPATHLEN], initcgroup[MAXPATHLEN];
 	char *cgmnt = mntent->mnt_dir;
-	int flags, ret = 0;
+	int flags;
 	int rc;
 
 	flags = get_cgroup_flags(mntent);
@@ -274,31 +299,83 @@ static int lxc_one_cgroup_attach(const char *name,
 		return -1;
 	}
 
-	f = fopen(tasks, "w");
-	if (!f) {
+	fd = open(tasks, O_WRONLY);
+	if (fd < 0) {
 		SYSERROR("failed to open '%s'", tasks);
 		return -1;
 	}
 
-	if (fprintf(f, "%d", pid) <= 0) {
-		SYSERROR("failed to write pid '%d' to '%s'", pid, tasks);
-		ret = -1;
+	return fd;
+}
+
+static int lxc_one_cgroup_attach(const char *name, struct mntent *mntent, pid_t pid)
+{
+	int fd;
+
+	fd = lxc_one_cgroup_prepare_attach(name, mntent);
+	if (fd < 0) {
+		return -1;
 	}
 
-	fclose(f);
+	return lxc_one_cgroup_finish_attach(fd, pid);
+}
+
+int lxc_cgroup_dispose_attach(void *data)
+{
+	int *fds = data;
+	int ret, err;
+
+	if (!fds) {
+		return 0;
+	}
+
+	ret = 0;
+
+	for (; *fds >= 0; fds++) {
+		err = lxc_one_cgroup_dispose_attach(*fds);
+		if (err) {
+			ret = err;
+		}
+	}
+
+	free(data);
 
 	return ret;
 }
 
-/*
- * for each mounted cgroup, attach a pid to the cgroup for the container
- */
-int lxc_cgroup_attach(const char *name, pid_t pid)
+int lxc_cgroup_finish_attach(void *data, pid_t pid)
+{
+	int *fds = data;
+	int err;
+
+	if (!fds) {
+		return 0;
+	}
+
+	for (; *fds >= 0; fds++) {
+		err = lxc_one_cgroup_finish_attach(*fds, pid);
+		if (err) {
+			/* get rid of the rest of them */
+			lxc_cgroup_dispose_attach(data);
+			return -1;
+		}
+		*fds = -1;
+	}
+
+	free(data);
+
+	return 0;
+}
+
+int lxc_cgroup_prepare_attach(const char *name, void **data)
 {
 	struct mntent *mntent;
 	FILE *file = NULL;
 	int err = -1;
 	int found = 0;
+	int *fds;
+	int i;
+	static const int MAXFDS = 256;
 
 	file = setmntent(MTAB, "r");
 	if (!file) {
@@ -306,7 +383,29 @@ int lxc_cgroup_attach(const char *name, pid_t pid)
 		return -1;
 	}
 
+	/* create a large enough buffer for all practical
+	 * use cases
+	 */
+	fds = malloc(sizeof(int) * MAXFDS);
+	if (!fds) {
+		err = -1;
+		goto out;
+	}
+	for (i = 0; i < MAXFDS; i++) {
+		fds[i] = -1;
+	}
+
+	err = 0;
+	i = 0;
 	while ((mntent = getmntent(file))) {
+		if (i >= MAXFDS - 1) {
+			ERROR("too many cgroups to attach to, aborting");
+			lxc_cgroup_dispose_attach(fds);
+			errno = ENOMEM;
+			err = -1;
+			goto out;
+		}
+
 		DEBUG("checking '%s' (%s)", mntent->mnt_dir, mntent->mnt_type);
 
 		if (strcmp(mntent->mnt_type, "cgroup"))
@@ -317,17 +416,39 @@ int lxc_cgroup_attach(const char *name, pid_t pid)
 		INFO("[%d] found cgroup mounted at '%s',opts='%s'",
 		     ++found, mntent->mnt_dir, mntent->mnt_opts);
 
-		err = lxc_one_cgroup_attach(name, mntent, pid);
-		if (err)
+		fds[i] = lxc_one_cgroup_prepare_attach(name, mntent);
+		if (fds[i] < 0) {
+			err = fds[i];
+			lxc_cgroup_dispose_attach(fds);
 			goto out;
+		}
+		i++;
 	};
 
 	if (!found)
 		ERROR("No cgroup mounted on the system");
 
+	*data = fds;
+
 out:
 	endmntent(file);
 	return err;
+}
+
+/*
+ * for each mounted cgroup, attach a pid to the cgroup for the container
+ */
+int lxc_cgroup_attach(const char *name, pid_t pid)
+{
+	void *data = NULL;
+	int ret;
+
+	ret = lxc_cgroup_prepare_attach(name, &data);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return lxc_cgroup_finish_attach(data, pid);
 }
 
 /*
@@ -421,7 +542,7 @@ static int lxc_one_cgroup_create(const char *name,
 	/* if cgparent does not exist, create it */
 	if (access(cgparent, F_OK)) {
 		ret = mkdir(cgparent, 0755);
-		if (ret == -1 && errno == EEXIST) {
+		if (ret == -1 && errno != EEXIST) {
 			SYSERROR("failed to create '%s' directory", cgparent);
 			return -1;
 		}
@@ -668,6 +789,13 @@ out:
 	return ret;
 }
 
+/*
+ * If you pass in NULL value or 0 len, then you are asking for the size
+ * of the file.  Note that we can't get the file size quickly through stat
+ * or lseek.  Therefore if you pass in len > 0 but less than the file size,
+ * your only indication will be that the return value will be equal to the
+ * passed-in ret.  We will not return the actual full file size.
+ */
 int lxc_cgroup_get(const char *name, const char *filename,
 		   char *value, size_t len)
 {
@@ -692,7 +820,18 @@ int lxc_cgroup_get(const char *name, const char *filename,
 		return -1;
 	}
 
-	ret = read(fd, value, len);
+    if (!len || !value) {
+        char buf[100];
+        int count = 0;
+        while ((ret = read(fd, buf, 100)) > 0)
+            count += ret;
+        if (ret >= 0)
+            ret = count;
+    } else {
+        memset(value, 0, len);
+        ret = read(fd, value, len);
+    }
+
 	if (ret < 0)
 		ERROR("read %s : %s", path, strerror(errno));
 

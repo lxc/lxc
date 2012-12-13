@@ -27,7 +27,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-
 #include "log.h"
 #include "start.h"
 

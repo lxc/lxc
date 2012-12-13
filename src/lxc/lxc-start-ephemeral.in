@@ -1,0 +1,289 @@
+#!/usr/bin/python3
+#
+# lxc-start-ephemeral: Start a copy of a container using an overlay
+#
+# This python implementation is based on the work done in the original
+# shell implementation done by Serge Hallyn in Ubuntu (and other contributors)
+#
+# (C) Copyright Canonical Ltd. 2012
+#
+# Authors:
+# Stéphane Graber <stgraber@ubuntu.com>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+#
+
+# NOTE: To remove once the API is stabilized
+import warnings
+warnings.filterwarnings("ignore", "The python-lxc API isn't yet stable")
+
+import argparse
+import gettext
+import lxc
+import os
+import sys
+import subprocess
+import tempfile
+
+_ = gettext.gettext
+gettext.textdomain("lxc-start-ephemeral")
+
+
+# Other functions
+def randomMAC():
+    import random
+
+    mac = [0x00, 0x16, 0x3e,
+           random.randint(0x00, 0x7f),
+           random.randint(0x00, 0xff),
+           random.randint(0x00, 0xff)]
+    return ':'.join(map(lambda x: "%02x" % x, mac))
+
+# Begin parsing the command line
+parser = argparse.ArgumentParser(description=_(
+                                 "LXC: Start an ephemeral container"),
+                                 formatter_class=argparse.RawTextHelpFormatter,
+                                 epilog=_("If a COMMAND is given, then the "
+                                          """container will run only as long
+as the command runs.
+If no COMMAND is given, this command will attach to tty1 and stop the
+container when exiting (with ctrl-a-q).
+
+If no COMMAND is given and -d is used, the name and IP addresses of the
+container will be printed to the console."""))
+
+parser.add_argument("--orig", "-o", type=str, required=True,
+                    help=_("name of the original container"))
+
+parser.add_argument("--bdir", "-b", type=str,
+                    help=_("directory to bind mount into container"))
+
+parser.add_argument("--user", "-u", type=str,
+                    help=_("the user to connect to the container as"))
+
+parser.add_argument("--key", "-S", type=str,
+                    help=_("the path to the SSH key to use to connect"))
+
+parser.add_argument("--daemon", "-d", action="store_true",
+                    help=_("run in the background"))
+
+parser.add_argument("--union-type", "-U", type=str, default="overlayfs",
+                    choices=("overlayfs", "aufs"),
+                    help=_("type of union (overlayfs or aufs), "
+                           "defaults to overlayfs."))
+
+parser.add_argument("--keep-data", "-k", action="store_true",
+                    help=_("Use a persistent backend instead of tmpfs."))
+
+parser.add_argument("command", metavar='CMD', type=str, nargs="*",
+                    help=_("Run specific command in container "
+                           "(command as argument)"))
+
+args = parser.parse_args()
+
+# Basic requirements check
+## Check that -d and CMD aren't used at the same time
+if args.command and args.daemon:
+    parser.error(_("You can't use -d and a command at the same time."))
+
+## The user needs to be uid 0
+if not os.geteuid() == 0:
+    parser.error(_("You must be root to run this script. Try running: sudo %s"
+                   % (sys.argv[0])))
+
+# Load the orig container
+orig = lxc.Container(args.orig)
+if not orig.defined:
+    parser.error(_("Source container '%s' doesn't exist." % args.orig))
+
+# Create the new container paths
+dest_path = tempfile.mkdtemp(prefix="%s-" % args.orig, dir="@LXCPATH@")
+os.mkdir(os.path.join(dest_path, "rootfs"))
+
+# Setup the new container's configuration
+dest = lxc.Container(os.path.basename(dest_path))
+dest.load_config(orig.config_file_name)
+dest.set_config_item("lxc.utsname", dest.name)
+dest.set_config_item("lxc.rootfs", os.path.join(dest_path, "rootfs"))
+dest.set_config_item("lxc.network.hwaddr", randomMAC())
+
+overlay_dirs = [(orig.get_config_item("lxc.rootfs"), "%s/rootfs/" % dest_path)]
+
+# Generate a new fstab
+if orig.get_config_item("lxc.mount"):
+    dest.set_config_item("lxc.mount", os.path.join(dest_path, "fstab"))
+    with open(orig.get_config_item("lxc.mount"), "r") as orig_fd:
+        with open(dest.get_config_item("lxc.mount"), "w+") as dest_fd:
+            for line in orig_fd.read().split("\n"):
+                # Start by replacing any reference to the container rootfs
+                line.replace(orig.get_config_item("lxc.rootfs"),
+                             dest.get_config_item("lxc.rootfs"))
+
+                # Skip any line that's not a bind mount
+                fields = line.split()
+                if len(fields) < 4:
+                    dest_fd.write("%s\n" % line)
+                    continue
+
+                if fields[2] != "bind" and "bind" not in fields[3]:
+                    dest_fd.write("%s\n" % line)
+                    continue
+
+                # Process any remaining line
+                dest_mount = os.path.abspath(os.path.join("%s/rootfs/" % (
+                                             dest_path), fields[1]))
+
+                if dest_mount == os.path.abspath("%s/rootfs/%s" % (
+                                                 dest_path, args.bdir)):
+
+                    dest_fd.write("%s\n" % line)
+                    continue
+
+                if "%s/rootfs/" % dest_path not in dest_mount:
+                    print(_("Skipping mount entry '%s' as it's outside "
+                            "of the container rootfs.") % line)
+
+                overlay_dirs += [(fields[0], dest_mount)]
+
+# Generate pre-mount script
+with open(os.path.join(dest_path, "pre-mount"), "w+") as fd:
+    os.fchmod(fd.fileno(), 0o755)
+    fd.write("""#!/bin/sh
+LXC_DIR="%s"
+LXC_BASE="%s"
+LXC_NAME="%s"
+""" % (dest_path, orig.name, dest.name))
+
+    count = 0
+    for entry in overlay_dirs:
+        target = "%s/delta%s" % (dest_path, count)
+        fd.write("mkdir -p %s %s\n" % (target, entry[1]))
+
+        if not args.keep_data:
+            fd.write("mount -n -t tmpfs none %s\n" % (target))
+
+        if args.union_type == "overlayfs":
+            fd.write("mount -n -t overlayfs"
+                     " -oupperdir=%s,lowerdir=%s none %s\n" % (
+                     target,
+                     entry[0],
+                     entry[1]))
+        elif args.union_type == "aufs":
+            fd.write("mount -n -t aufs "
+                     "-o br=${upper}=rw:${lower}=ro,noplink none %s\n" % (
+                     target,
+                     entry[0],
+                     entry[1]))
+        count += 1
+
+    if args.bdir:
+        if not os.path.exists(args.bdir):
+            print(_("Path '%s' doesn't exist, won't be bind-mounted.") %
+                  args.bdir)
+        else:
+            src_path = os.path.abspath(args.bdir)
+            dst_path = "%s/rootfs/%s" % (dest_path, os.path.abspath(args.bdir))
+            fd.write("mkdir -p %s\nmount -n --bind %s %s\n" % (
+                     dst_path, src_path, dst_path))
+
+    fd.write("""
+[ -e $LXC_DIR/configured ] && exit 0
+for file in $LXC_DIR/rootfs/etc/hostname \\
+            $LXC_DIR/rootfs/etc/hosts \\
+            $LXC_DIR/rootfs/etc/sysconfig/network \\
+            $LXC_DIR/rootfs/etc/sysconfig/network-scripts/ifcfg-eth0; do
+        [ -f "$file" ] && sed -i -e "s/$LXC_BASE/$LXC_NAME/" $file
+done
+touch $LXC_DIR/configured
+""")
+
+dest.set_config_item("lxc.hook.pre-mount",
+                     os.path.join(dest_path, "pre-mount"))
+
+# Generate post-stop script
+if not args.keep_data:
+    with open(os.path.join(dest_path, "post-stop"), "w+") as fd:
+        os.fchmod(fd.fileno(), 0o755)
+        fd.write("""#!/bin/sh
+[ -d "%s" ] && rm -Rf "%s"
+""" % (dest_path, dest_path))
+
+    dest.set_config_item("lxc.hook.post-stop",
+                         os.path.join(dest_path, "post-stop"))
+
+dest.save_config()
+
+# Start the container
+if not dest.start() or not dest.wait("RUNNING", timeout=5):
+    print(_("The container '%s' failed to start.") % dest.name)
+    dest.stop()
+    if dest.defined:
+        dest.destroy()
+    sys.exit(1)
+
+# Deal with the case where we just attach to the container's console
+if not args.command and not args.daemon:
+    dest.console(tty=1)
+    dest.shutdown(timeout=5)
+    sys.exit(0)
+
+# Try to get the IP addresses
+ips = dest.get_ips(timeout=10)
+
+# Deal with the case where we just print info about the container
+if args.daemon:
+    print(_("""The ephemeral container is now started.
+
+You can enter it from the command line with: lxc-console -n %s
+The following IP addresses have be found in the container:
+%s""") % (dest.name,
+          "\n".join([" - %s" % entry for entry in ips]
+                    or [" - %s" % _("No address could be found")])))
+    sys.exit(0)
+
+# Now deal with the case where we want to run a command in the container
+if not ips:
+    print(_("Failed to get an IP for container '%s'.") % dest.name)
+    dest.stop()
+    if dest.defined:
+        dest.destroy()
+    sys.exit(1)
+
+# NOTE: To replace by .attach() once the kernel supports it
+cmd = ["ssh",
+       "-o", "StrictHostKeyChecking=no",
+       "-o", "UserKnownHostsFile=/dev/null"]
+
+if args.user:
+    cmd += ["-l", args.user]
+
+if args.key:
+    cmd += ["-k", args.key]
+
+for ip in ips:
+    ssh_cmd = cmd + [ip] + args.command
+    retval = subprocess.call(ssh_cmd, universal_newlines=True)
+    if retval == 255:
+        print(_("SSH failed to connect, trying next IP address."))
+        continue
+
+    if retval != 0:
+        print(_("Command returned with non-zero return code: %s") % retval)
+    break
+
+# Shutdown the container
+dest.shutdown(timeout=5)
+
+sys.exit(retval)

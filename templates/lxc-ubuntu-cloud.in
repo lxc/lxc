@@ -46,13 +46,13 @@ lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//
 EOF
     fi
 
+    grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
     cat <<EOF >> $path/config
 lxc.utsname = $name
 
 lxc.tty = 4
 lxc.pts = 1024
-lxc.rootfs = $rootfs
-lxc.mount  = $path/fstab
+lxc.mount = $path/fstab
 lxc.arch = $arch
 lxc.cap.drop = sys_module mac_admin
 lxc.pivotdir = lxc_putold
@@ -131,7 +131,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds: -l arch:,help,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata: -- "$@")
+options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds:u: -l arch:,help,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -189,7 +189,7 @@ do
     -u|--userdata)     userdata=$2; shift 2;;
     -C|--cloud)        cloud=1; shift 1;;
     -S|--auth-key)     auth_key=$2; shift 2;;
-    -L|--no_locales)   locales=0; shift 2;;
+    -L|--no_locales)   locales=0; shift 1;;
     -T|--tarball)      tarball=$2; shift 2;;
     -d|--debug)        debug=1; shift 1;;
     -s|--stream)       stream=$2; shift 2;;
@@ -249,14 +249,20 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-rootfs=$path/rootfs
+# detect rootfs
+config="$path/config"
+if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+else
+    rootfs=$path/rootfs
+fi
 
 type ubuntu-cloudimg-query
 type wget
 
 # determine the url, tarball, and directory names
 # download if needed
-cache="/var/cache/lxc/cloud-$release"
+cache="@LOCALSTATEDIR@/cache/lxc/cloud-$release"
 
 mkdir -p $cache
 
@@ -312,7 +318,7 @@ build_root_tgz()
     trap SIGTERM
 }
 
-mkdir -p /var/lock/subsys/
+mkdir -p @LOCALSTATEDIR@/lock/subsys/
 (
     flock -x 200
 
@@ -389,7 +395,7 @@ EOF
         echo "If you do not have a meta-data service, this container will likely be useless."
 
     fi
-) 200>/var/lock/subsys/lxc-ubucloud
+) 200>@LOCALSTATEDIR@/lock/subsys/lxc-ubuntu-cloud
 
 copy_configuration $path $rootfs $name $arch $release
 

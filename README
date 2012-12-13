@@ -7,7 +7,7 @@ What is lxc:
   kernel. It provides the resource management through the control groups  aka
   process containers and resource isolation through the namespaces.
 
-  The  linux  containers, lxc, aims to use these new functionnalities to pro-
+  The  linux  containers, lxc, aims to use these new functionalities to pro-
   vide an userspace container object which provides full  resource  isolation
   and resource control for an applications or a system.
 
@@ -29,9 +29,14 @@ Downloading the current source code:
   You can browse the up to the minute source code and change history online.
   http://lxc.git.sourceforge.net
 
+  For an even more bleeding edge experience, you may want to look at the
+  staging branch where all changes aimed at the next release land before
+  getting pulled into the master branch.
+  http://github.com/lxc/lxc
+
   For detailed build instruction refer to INSTALL and man lxc man page
   but a short command line should work:
-  ./configure && make && sudo make install && sudo lxc-setcap
+  ./autogen.sh && ./configure && make && sudo make install && sudo lxc-setcap
   preceded by ./autogen.sh if configure do not exist yet.
 
 Getting help:
@@ -48,7 +53,33 @@ Portability:
 
   lxc is developed and tested on Linux since kernel mainline version 2.6.27
   (without network) and 2.6.29 with network isolation.
-  is compiled with gcc, and supports i686, x86_64, ppc, ppc64, S390 archi.
+  It's compiled with gcc, and should work on most architectures as long as the
+  required kernel features are available. This includes (but isn't limited to):
+  i686, x86_64, ppc, ppc64, S390, armel and armhf.
 
 AUTHOR
        Daniel Lezcano <daniel.lezcano@free.fr>
+
+Seccomp with LXC
+----------------
+
+To restrict a container with seccomp, you must specify a profile which is
+basically a whitelist of system calls it may execute.  In the container
+config file, add a line like
+
+lxc.seccomp = /var/lib/lxc/q1/seccomp.full
+
+I created a usable (but basically worthless) seccomp.full file using
+
+cat > seccomp.full << EOF
+1
+whitelist
+EOF
+for i in `seq 0 300`; do
+    echo $i >> seccomp.full
+done
+for i in `seq 1024 1079`; do
+    echo $i >> seccomp.full
+done
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 27 Jul 2012 15:47:02 +0600

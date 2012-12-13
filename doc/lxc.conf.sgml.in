@@ -1,4 +1,4 @@
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
 
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
 ]>
@@ -235,7 +235,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      specify an action to do for the
 	      network.
 	    </para>
-	    
+	
 	    <para><option>up:</option> activates the interface.
 	    </para>
 	  </listitem>
@@ -374,6 +374,26 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    </para>
 	  </listitem>
 	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.script.down</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      add a configuration option to specify a script to be
+	      executed before destroying the network used from the
+	      host side. The following arguments are passed to the
+	      script: container name and config section name (net)
+	      Additional arguments depend on the config section
+	      employing a script hook; the following are used by the
+	      network system: execution context (down), network type
+	      (empty/veth/macvlan/phys), Depending on the network
+	      type, other arguments may be passed:
+	      veth/macvlan/phys. And finally (host-sided) device name.
+	    </para>
+	  </listitem>
+	</varlistentry>
       </variablelist>
     </refsect2>
 
@@ -475,6 +495,31 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    <para>
 	      Specify a directory under <filename>/dev</filename>
 	      under which to create the container console devices.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>/dev directory</title>
+      <para>
+	By default, lxc does nothing with the container's
+	<filename>/dev</filename>.  This allows the container's
+	<filename>/dev</filename> to be set up as needed in the container
+	rootfs.  If lxc.autodev is set to 1, then after mounting the container's
+	rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
+	(limited to 100k) and fill in a minimal set of initial devices.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.autodev</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Set this to 1 to have LXC mount and populate a minimal
+	      <filename>/dev</filename> when starting the container.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -640,6 +685,84 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       </variablelist>
     </refsect2>
 
+    <refsect2>
+      <title>Startup hooks</title>
+      <para>
+        Startup hooks are programs or scripts which can be executed
+	at various times in a container's lifetime.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.pre-start</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      A hook to be run in the host's namespace before the
+	      container ttys, consoles, or mounts are up.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.pre-mount</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      A hook to be run in the container's fs namespace but before
+	      the rootfs has been set up.  This allows for manipulation
+	      of the rootfs, i.e. to mount an encrypted filesystem.  Mounts
+	      done in this hook will not be reflected on the host (apart from
+	      mounts propagation), so they will be automatically cleaned up
+	      when the container shuts down.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.mount</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      A hook to be run in the container's namespace after
+	      mounting has been done, but before the pivot_root.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.start</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      A hook to be run in the container's namespace immediately
+	      before executing the container's init.  This requires the
+	      program to be available in the container.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.post-stop</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      A hook to be run in the host's namespace after the
+	      container has been shut down.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
   </refsect1>
 
   <refsect1>
@@ -726,7 +849,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsect1>
     <title>See Also</title>
-    <simpara>    
+    <simpara>
       <citerefentry>
 	<refentrytitle><command>chroot</command></refentrytitle>
 	<manvolnum>1</manvolnum>
@@ -744,14 +867,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
     </simpara>
   </refsect1>
-  
+
   &seealso;
 
   <refsect1>
     <title>Author</title>
     <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
   </refsect1>
-  
+
 </refentry>
 
 <!-- Keep this comment at the end of the file

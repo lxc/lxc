@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
+#include <sys/mount.h>
 #include <linux/unistd.h>
 
 #if !HAVE_DECL_PR_CAPBSET_DROP
@@ -121,13 +122,22 @@ out_error:
 	return NULL;
 }
 
-int lxc_attach_to_ns(pid_t pid)
+int lxc_attach_to_ns(pid_t pid, int which)
 {
 	char path[MAXPATHLEN];
-	char *ns[] = { "pid", "mnt", "net", "ipc", "uts" };
-	const int size = sizeof(ns) / sizeof(char *);
+	/* according to <http://article.gmane.org/gmane.linux.kernel.containers.lxc.devel/1429>,
+	 * the file for user namepsaces in /proc/$pid/ns will be called
+	 * 'user' once the kernel supports it
+	 */
+	static char *ns[] = { "mnt", "pid", "uts", "ipc", "user", "net" };
+	static int flags[] = {
+		CLONE_NEWNS, CLONE_NEWPID, CLONE_NEWUTS, CLONE_NEWIPC,
+		CLONE_NEWUSER, CLONE_NEWNET
+	};
+	static const int size = sizeof(ns) / sizeof(char *);
 	int fd[size];
-	int i;
+	int i, j, saved_errno;
+
 
 	snprintf(path, MAXPATHLEN, "/proc/%d/ns", pid);
 	if (access(path, X_OK)) {
@@ -136,21 +146,87 @@ int lxc_attach_to_ns(pid_t pid)
 	}
 
 	for (i = 0; i < size; i++) {
+		/* ignore if we are not supposed to attach to that
+		 * namespace
+		 */
+		if (which != -1 && !(which & flags[i])) {
+			fd[i] = -1;
+			continue;
+		}
+
 		snprintf(path, MAXPATHLEN, "/proc/%d/ns/%s", pid, ns[i]);
 		fd[i] = open(path, O_RDONLY);
 		if (fd[i] < 0) {
+			saved_errno = errno;
+
+			/* close all already opened file descriptors before
+			 * we return an error, so we don't leak them
+			 */
+			for (j = 0; j < i; j++)
+				close(fd[j]);
+
+			errno = saved_errno;
 			SYSERROR("failed to open '%s'", path);
 			return -1;
 		}
 	}
 
 	for (i = 0; i < size; i++) {
-		if (setns(fd[i], 0)) {
+		if (fd[i] >= 0 && setns(fd[i], 0) != 0) {
+			saved_errno = errno;
+
+			for (j = i; j < size; j++)
+				close(fd[j]);
+
+			errno = saved_errno;
 			SYSERROR("failed to set namespace '%s'", ns[i]);
 			return -1;
 		}
 
 		close(fd[i]);
+	}
+
+	return 0;
+}
+
+int lxc_attach_remount_sys_proc()
+{
+	int ret;
+
+	ret = unshare(CLONE_NEWNS);
+	if (ret < 0) {
+		SYSERROR("failed to unshare mount namespace");
+		return -1;
+	}
+
+	/* assume /proc is always mounted, so remount it */
+	ret = umount2("/proc", MNT_DETACH);
+	if (ret < 0) {
+		SYSERROR("failed to unmount /proc");
+		return -1;
+	}
+
+	ret = mount("none", "/proc", "proc", 0, NULL);
+	if (ret < 0) {
+		SYSERROR("failed to remount /proc");
+		return -1;
+	}
+
+	/* try to umount /sys - if it's not a mount point,
+	 * we'll get EINVAL, then we ignore it because it
+	 * may not have been mounted in the first place
+	 */
+	ret = umount2("/sys", MNT_DETACH);
+	if (ret < 0 && errno != EINVAL) {
+		SYSERROR("failed to unmount /sys");
+		return -1;
+	} else if (ret == 0) {
+		/* remount it */
+		ret = mount("none", "/sys", "sysfs", 0, NULL);
+		if (ret < 0) {
+			SYSERROR("failed to remount /sys");
+			return -1;
+		}
 	}
 
 	return 0;

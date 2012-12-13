@@ -62,6 +62,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'f': args->rcfile = arg; break;
 	case 'C': args->close_all_fds = 1; break;
 	case 's': return lxc_config_define_add(&defines, arg);
+	case 'p': args->pidfile = arg; break;
 	}
 	return 0;
 }
@@ -72,6 +73,7 @@ static const struct option my_longopts[] = {
 	{"define", required_argument, 0, 's'},
 	{"console", required_argument, 0, 'c'},
 	{"close-all-fds", no_argument, 0, 'C'},
+	{"pidfile", required_argument, 0, 'p'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -85,6 +87,7 @@ lxc-start start COMMAND in specified container NAME\n\
 Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
   -d, --daemon         daemonize the container\n\
+  -p, --pidfile=FILE   Create a file with the process id\n\
   -f, --rcfile=FILE    Load configuration file FILE\n\
   -c, --console=FILE   Set the file output for the container console\n\
   -C, --close-all-fds  If any fds are inherited, close them\n\
@@ -95,6 +98,7 @@ Options :\n\
 	.parser    = my_parser,
 	.checker   = NULL,
 	.daemonize = 0,
+	.pidfile = NULL,
 };
 
 int main(int argc, char *argv[])
@@ -107,6 +111,7 @@ int main(int argc, char *argv[])
 		"/sbin/init",
 		'\0',
 	};
+	FILE *pid_fp = NULL;
 
 	lxc_list_init(&defines);
 
@@ -117,7 +122,7 @@ int main(int argc, char *argv[])
 		return err;
 
 	if (!my_args.argc)
-		args = default_args; 
+		args = default_args;
 	else
 		args = my_args.argv;
 
@@ -199,6 +204,15 @@ int main(int argc, char *argv[])
 		free(console);
 	}
 
+	if (my_args.pidfile != NULL) {
+		pid_fp = fopen(my_args.pidfile, "w");
+		if (pid_fp == NULL) {
+			SYSERROR("failed to create pidfile '%s' for '%s'",
+				 my_args.pidfile, my_args.name);
+			return err;
+		}
+	}
+
 	if (my_args.daemonize) {
 		/* do an early check for needed privs, since otherwise the
 		 * user won't see the error */
@@ -212,6 +226,14 @@ int main(int argc, char *argv[])
 			SYSERROR("failed to daemonize '%s'", my_args.name);
 			return err;
 		}
+	}
+
+	if (pid_fp != NULL) {
+		if (fprintf(pid_fp, "%d\n", getpid()) < 0) {
+			SYSERROR("failed to write '%s'", my_args.pidfile);
+			return err;
+		}
+		fclose(pid_fp);
 	}
 
 	if (my_args.close_all_fds)
@@ -229,6 +251,9 @@ int main(int argc, char *argv[])
 		SYSERROR("failed to exec");
 		err = -1;
 	}
+
+	if (my_args.pidfile)
+		unlink(my_args.pidfile);
 
 	return err;
 }

@@ -80,6 +80,15 @@ EOF
         echo "ubuntu:ubuntu" | chroot $rootfs chpasswd
     fi
 
+    # make sure we have the current locale defined in the container
+    if [ -z "$LANG" ]; then
+        chroot $rootfs locale-gen en_US.UTF-8
+        chroot $rootfs update-locale LANG=en_US.UTF-8
+    else
+        chroot $rootfs locale-gen $LANG
+        chroot $rootfs update-locale LANG=$LANG
+    fi
+
     return 0
 }
 
@@ -104,13 +113,13 @@ finalize_user()
     done
 
     if [ -n "$auth_key" -a -f "$auth_key" ]; then
-	u_path="/home/${user}/.ssh"
-	root_u_path="$rootfs/$u_path"
-	mkdir -p $root_u_path
-	cp $auth_key "$root_u_path/authorized_keys"
-	chroot $rootfs chown -R ${user}: "$u_path"
+        u_path="/home/${user}/.ssh"
+        root_u_path="$rootfs/$u_path"
+        mkdir -p $root_u_path
+        cp $auth_key "$root_u_path/authorized_keys"
+        chroot $rootfs chown -R ${user}: "$u_path"
 
-	echo "Inserted SSH public key from $auth_key into /home/${user}/.ssh/authorized_keys"
+        echo "Inserted SSH public key from $auth_key into /home/${user}/.ssh/authorized_keys"
     fi
     return 0
 }
@@ -165,6 +174,18 @@ download_ubuntu()
     release=$3
 
     packages=vim,ssh
+
+    # Try to guess a list of langpacks to install
+    langpacks="language-pack-en"
+
+    if which dpkg >/dev/null 2>&1; then
+        langpacks=`(echo $langpacks &&
+                    dpkg -l | grep -E "^ii  language-pack-[a-z]* " |
+                        cut -d ' ' -f3) | sort -u`
+    fi
+    packages="$packages,$(echo $langpacks | sed 's/ /,/g')"
+
+
     echo "installing packages: $packages"
 
     trap cleanup EXIT SIGHUP SIGINT SIGTERM
@@ -228,7 +249,7 @@ copy_ubuntu()
     # make a local copy of the miniubuntu
     echo "Copying rootfs to $rootfs ..."
     mkdir -p $rootfs
-    rsync -a $cache/rootfs-$arch/ $rootfs/ || return 1
+    rsync -Ha $cache/rootfs-$arch/ $rootfs/ || return 1
     return 0
 }
 
@@ -237,8 +258,8 @@ install_ubuntu()
     rootfs=$1
     release=$2
     flushcache=$3
-    cache="/var/cache/lxc/$release"
-    mkdir -p /var/lock/subsys/
+    cache="@LOCALSTATEDIR@/cache/lxc/$release"
+    mkdir -p @LOCALSTATEDIR@/lock/subsys/
 
     (
         flock -x 200
@@ -272,7 +293,7 @@ install_ubuntu()
 
         return 0
 
-    ) 200>/var/lock/subsys/lxc
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-ubuntu
 
     return $?
 }
@@ -303,14 +324,14 @@ lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//
 EOF
     fi
 
+    grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
     cat <<EOF >> $path/config
 lxc.utsname = $name
 
 lxc.devttydir =$ttydir
 lxc.tty = 4
 lxc.pts = 1024
-lxc.rootfs = $rootfs
-lxc.mount  = $path/fstab
+lxc.mount = $path/fstab
 lxc.arch = $arch
 lxc.cap.drop = sys_module mac_admin mac_override
 lxc.pivotdir = lxc_putold
@@ -430,15 +451,6 @@ EOF
     cat <<EOF > $rootfs/lib/init/fstab
 # /lib/init/fstab: cleared out for bare-bones lxc
 EOF
-
-    # reconfigure some services
-    if [ -z "$LANG" ]; then
-        chroot $rootfs locale-gen en_US.UTF-8
-        chroot $rootfs update-locale LANG=en_US.UTF-8
-    else
-        chroot $rootfs locale-gen $LANG
-        chroot $rootfs update-locale LANG=$LANG
-    fi
 
     # remove pointless services in a container
     chroot $rootfs /usr/sbin/update-rc.d -f ondemand remove
@@ -670,7 +682,13 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-rootfs=$path/rootfs
+# detect rootfs
+config="$path/config"
+if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+else
+    rootfs=$path/rootfs
+fi
 
 install_ubuntu $rootfs $release $flushcache
 if [ $? -ne 0 ]; then
@@ -702,10 +720,10 @@ fi
 echo ""
 echo "##"
 if [ -n "$bindhome" ]; then
-	echo "# Log in as user $bindhome"
+    echo "# Log in as user $bindhome"
 else
-	echo "# The default user is 'ubuntu' with password 'ubuntu'!"
-	echo "# Use the 'sudo' command to run tasks as root in the container."
+    echo "# The default user is 'ubuntu' with password 'ubuntu'!"
+    echo "# Use the 'sudo' command to run tasks as root in the container."
 fi
 echo "##"
 echo ""

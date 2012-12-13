@@ -1,4 +1,4 @@
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
 
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
 ]>
@@ -239,7 +239,7 @@ rootfs
 	/sbin /home/root/sshd/rootfs/sbin none ro,bind 0 0
       </programlisting>
     </para>
-    
+
     <para>How to run a system in a container ?</para>
 
     <para>Running a system inside a container is paradoxically easier
@@ -249,7 +249,7 @@ rootfs
     without configuration because the container will set them
     up. eg. the ipv4 address will be setup by the system container
     init scripts. Here is an example of the mount points file:
-      
+
       <programlisting>
 	[root@lxc debian]$ cat fstab
 
@@ -280,7 +280,7 @@ rootfs
       </para>
 
       <programlisting>
-
+<![CDATA[
    ---------
   | STOPPED |<---------------
    ---------                 |
@@ -305,14 +305,14 @@ rootfs
    ----------                |
        |                     |
         ---------------------
-
+]]>
       </programlisting>
     </refsect2>
 
     <refsect2>
       <title>Configuration</title>
       <para>The container is configured through a configuration
-      file, the format of the configuration file is described in 
+      file, the format of the configuration file is described in
       <citerefentry>
 	<refentrytitle><filename>lxc.conf</filename></refentrytitle>
 	<manvolnum>5</manvolnum>
@@ -363,7 +363,7 @@ rootfs
       but if needed the <command>lxc-stop</command> command can
       be used to kill the still running application.
       </para>
-      
+
       <para>
 	Running an application inside a container is not exactly the
 	same thing as running a system. For this reason, there are two
@@ -434,7 +434,7 @@ rootfs
 	  lxc-freeze -n foo
 	</programlisting>
 
-	will put all the processes in an uninteruptible state and 
+	will put all the processes in an uninteruptible state and
 
 	<programlisting>
 	  lxc-unfreeze -n foo
@@ -570,7 +570,7 @@ rootfs
 	to the background.
 
 	<programlisting>
-
+<![CDATA[
 	  # launch lxc-wait in background
 	  lxc-wait -n foo -s STOPPED &
 	  LXC_WAIT_PID=$!
@@ -583,7 +583,7 @@ rootfs
 	  # is STOPPED
 	  wait $LXC_WAIT_PID
 	  echo "'foo' is finished"
-
+]]>
 	</programlisting>
       </para>
     </refsect2>

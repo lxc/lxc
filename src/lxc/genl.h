@@ -30,7 +30,7 @@
 #define GENLMSG_DATA(glh) ((void *)(NLMSG_DATA(glh) + GENL_HDRLEN))
 
 /*
- * struct genl_handler : the structure which store the netlink handler 
+ * struct genl_handler : the structure which store the netlink handler
  *  and the family number resulting of the auto-generating id family
  *  for the generic netlink protocol
  *
@@ -116,6 +116,6 @@ void genlmsg_free(struct genlmsg *genlmsg);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int genetlink_transaction(struct genl_handler *handler, 
+int genetlink_transaction(struct genl_handler *handler,
 			  struct genlmsg *request, struct genlmsg *answer);
 #endif

@@ -1,3 +1,5 @@
+EXTRA_DIST=lxc-ubuntu
+
 templatesdir=@LXCTEMPLATEDIR@
 
 templates_SCRIPTS = \
@@ -7,6 +9,7 @@ templates_SCRIPTS = \
 	lxc-ubuntu-cloud \
 	lxc-opensuse \
 	lxc-fedora \
+	lxc-oracle \
 	lxc-altlinux \
 	lxc-busybox \
 	lxc-sshd \

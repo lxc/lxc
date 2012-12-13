@@ -41,7 +41,7 @@
 #define LXC_LOG_BUFFER_SIZE	512
 
 /* predefined priorities. */
-enum {
+enum lxc_loglevel {
 	LXC_LOG_PRIORITY_TRACE,
 	LXC_LOG_PRIORITY_DEBUG,
 	LXC_LOG_PRIORITY_INFO,
@@ -291,4 +291,6 @@ extern int lxc_log_init(const char *file, const char *priority,
 			const char *prefix, int quiet);
 
 extern void lxc_log_setprefix(const char *a_prefix);
+extern int lxc_log_set_level(int level);
+extern int lxc_log_set_file(char *fname);
 #endif

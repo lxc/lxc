@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #
 # lxc: linux Container library
@@ -81,35 +81,43 @@ lxc_dropcaps()
     chmod 0755 @LXCPATH@
 }
 
-shortoptions='hd'
-longoptions='help'
-
-getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
-if [ $? != 0 ]; then
+usage_err() {
+    [ -n "$1" ] && echo "$1" >&2
     usage
     exit 1
-fi
+}
 
-eval set -- "$getopt"
+optarg_check() {
+    if [ -z "$2" ]; then
+        usage_err "option '$1' requires an argument"
+    fi
+}
 
-while true; do
-    case "$1" in
-	-d)
-	    LXC_DROP_CAPS="yes"
-	    shift
-	    ;;
-	-h|--help)
-	    help
-	    exit 0
-	    ;;
-	--)
-	    shift
-	    break
-	    ;;
-	*)
-	    usage
-	    exit 1
-	    ;;
+while [ $# -gt 0 ]; do
+    opt="$1"
+    shift
+    case "$opt" in
+        -d)
+            LXC_DROP_CAPS="yes"
+            ;;
+        -h|--help)
+            help
+            exit 0
+            ;;
+        --)
+            break
+            ;;
+        -?)
+            usage_err "unknown option '$opt'"
+            ;;
+        -*)
+            # split opts -abc into -a -b -c
+            set -- $(echo "${opt#-}" | sed 's/\(.\)/ -\1/g') "$@"
+            ;;
+         *)
+            usage
+            exit 1
+            ;;
     esac
 done;
 

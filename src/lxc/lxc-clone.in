@@ -225,7 +225,7 @@ if [ -b $oldroot ]; then
         mkfs -t $fstype /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new
         mount /dev/$lxc_vg/${lxc_lv_prefix}$lxc_new $rootfs || { echo "$(basename $0): failed to mount new rootfs" >&2; false; }
         mounted=1
-        rsync -ax ${rootfs}_snapshot/ ${rootfs}/ || { echo "$(basename $0): copying data to new lv failed" >&2; false; }
+        rsync -Hax ${rootfs}_snapshot/ ${rootfs}/ || { echo "$(basename $0): copying data to new lv failed" >&2; false; }
         umount ${rootfs}_snapshot
         rmdir ${rootfs}_snapshot
         lvremove -f $lxc_vg/${lxc_lv_prefix}${lxc_new}_snapshot
@@ -252,7 +252,7 @@ else
         frozen=1
     fi
     mkdir -p $rootfs/
-    rsync -ax $oldroot/ $rootfs/
+    rsync -Hax $oldroot/ $rootfs/
     echo "lxc.rootfs = $rootfs" >> $lxc_path/$lxc_new/config
     if [ $container_running = "True" ]; then
         lxc-unfreeze -n $lxc_orig
@@ -272,11 +272,11 @@ c=$lxc_path/$lxc_new/config
 mv ${c} ${c}.old
 (
 while read line; do
-	if [ "${line:0:18}" = "lxc.network.hwaddr" ]; then
-		echo "lxc.network.hwaddr= 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')"
-	else
-		echo "$line"
-	fi
+    if [ "${line:0:18}" = "lxc.network.hwaddr" ]; then
+        echo "lxc.network.hwaddr= 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')"
+    else
+        echo "$line"
+    fi
 done
 ) < ${c}.old > ${c}
 rm -f ${c}.old

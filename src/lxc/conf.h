@@ -24,12 +24,17 @@
 #define _conf_h
 
 #include <netinet/in.h>
+#include <net/if.h>
 #include <sys/param.h>
 #include <stdbool.h>
 
 #include <lxc/list.h>
 
 #include <lxc/start.h> /* for lxc_handler */
+
+#if HAVE_SCMP_FILTER_CTX
+typedef void * scmp_filter_ctx;
+#endif
 
 enum {
 	LXC_NET_EMPTY,
@@ -76,6 +81,7 @@ struct lxc_route6 {
 
 struct ifla_veth {
 	char *pair; /* pair name */
+	char veth1[IFNAMSIZ]; /* needed for deconf */
 };
 
 struct ifla_vlan {
@@ -103,6 +109,7 @@ union netdev_p {
  * @ipv4       : a list of ipv4 addresses to be set on the network device
  * @ipv6       : a list of ipv6 addresses to be set on the network device
  * @upscript   : a script filename to be executed during interface configuration
+ * @downscript : a script filename to be executed during interface destruction
  */
 struct lxc_netdev {
 	int type;
@@ -120,6 +127,7 @@ struct lxc_netdev {
 	struct in6_addr *ipv6_gateway;
 	bool ipv6_gateway_auto;
 	char *upscript;
+	char *downscript;
 };
 
 /*
@@ -203,8 +211,15 @@ struct lxc_rootfs {
 #endif
  */
 enum lxchooks {
-	LXCHOOK_PRESTART, LXCHOOK_MOUNT, LXCHOOK_START,
+	LXCHOOK_PRESTART, LXCHOOK_PREMOUNT, LXCHOOK_MOUNT, LXCHOOK_START,
 	LXCHOOK_POSTSTOP, NUM_LXC_HOOKS};
+extern char *lxchook_names[NUM_LXC_HOOKS];
+
+struct saved_nic {
+	int ifindex;
+	char *orig_name;
+};
+
 struct lxc_conf {
 	char *fstab;
 	int tty;
@@ -215,6 +230,8 @@ struct lxc_conf {
 	struct utsname *utsname;
 	struct lxc_list cgroup;
 	struct lxc_list network;
+	struct saved_nic *saved_nics;
+	int num_savednics;
 	struct lxc_list mount_list;
 	struct lxc_list caps;
 	struct lxc_tty_info tty_info;
@@ -226,9 +243,18 @@ struct lxc_conf {
 #if HAVE_APPARMOR
 	char *aa_profile;
 #endif
+	char *logfile;
+	int loglevel;
+
 #if HAVE_APPARMOR /* || HAVE_SELINUX || HAVE_SMACK */
 	int lsm_umount_proc;
 #endif
+	char *seccomp;  // filename with the seccomp rules
+#if HAVE_SCMP_FILTER_CTX
+	scmp_filter_ctx *seccomp_ctx;
+#endif
+	int maincmd_fd;
+	int autodev;  // if 1, mount and fill a /dev at start
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);
@@ -237,20 +263,30 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);
  * Initialize the lxc configuration structure
  */
 extern struct lxc_conf *lxc_conf_init(void);
+extern void lxc_conf_free(struct lxc_conf *conf);
 
 extern int pin_rootfs(const char *rootfs);
 
 extern int lxc_create_network(struct lxc_handler *handler);
-extern void lxc_delete_network(struct lxc_list *networks);
+extern void lxc_delete_network(struct lxc_handler *handler);
 extern int lxc_assign_network(struct lxc_list *networks, pid_t pid);
 extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
 
 extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
 
+extern int lxc_clear_config_network(struct lxc_conf *c);
+extern int lxc_clear_nic(struct lxc_conf *c, const char *key);
+extern int lxc_clear_config_caps(struct lxc_conf *c);
+extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key);
+extern int lxc_clear_mount_entries(struct lxc_conf *c);
+extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
+
 /*
  * Configure the container from inside
  */
 
 extern int lxc_setup(const char *name, struct lxc_conf *lxc_conf);
+
+extern void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf);
 #endif

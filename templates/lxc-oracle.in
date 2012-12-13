@@ -1,0 +1,557 @@
+#!/bin/bash
+#
+# Template script for generating Oracle Enterprise Linux container for LXC
+# based on lxc-fedora, lxc-ubuntu
+#
+# Copyright © 2011 Wim Coekaerts <wim.coekaerts@oracle.com>
+# Copyright © 2012 Dwight Engen <dwight.engen@oracle.com>
+#
+# Modified for Oracle Linux 5
+# Wim Coekaerts <wim.coekaerts@oracle.com>
+#
+# Modified for Oracle Linux 6, combined OL5,6 into one template script
+# Dwight Engen <dwight.engen@oracle.com>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+#
+
+# use virbr0 that is setup by default by libvirtd
+lxc_network_type=veth
+lxc_network_link=virbr0
+
+die()
+{
+    echo "failed: $1"
+    exit 1
+}
+
+is_btrfs_subvolume()
+{
+    if which btrfs >/dev/null 2>&1 && \
+       btrfs subvolume list "$1" >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
+# fix up the container_rootfs
+container_rootfs_configure()
+{
+    echo "Configuring container for Oracle Linux $container_release_major"
+
+    # "disable" selinux. init in OL 5 honors /etc/selinux/config. note that
+    # this doesnt actually disable it if it's enabled in the host, since
+    # libselinux::is_selinux_enabled() in the guest will check
+    # /proc/filesystems and see selinuxfs, thus reporting that it is on
+    # (ie. check the output of sestatus in the guest)
+    mkdir -p $container_rootfs/selinux
+    echo 0 > $container_rootfs/selinux/enforce
+    if [ -e $container_rootfs/etc/selinux/config ]; then
+        sed -i 's|SELINUX=enforcing|SELINUX=disabled|' $container_rootfs/etc/selinux/config
+    else
+        echo "SELINUX=disabled" >$container_rootfs/etc/selinux/config
+    fi
+    sed -i 's|session[ ]*required[ ]*pam_selinux.so[ ]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/login
+    sed -i 's|session[ ]*required[ ]*pam_selinux.so[ ]*open|#session required pam_selinux.so open|' $container_rootfs/etc/pam.d/login
+    sed -i 's|session[ ]*required[ ]*pam_loginuid.so|#session required pam_loginuid.so|' $container_rootfs/etc/pam.d/login
+
+
+    # configure the network to use dhcp. we set DHCP_HOSTNAME so the guest
+    # will report its name and be resolv'able by the hosts dnsmasq
+    touch $container_rootfs/etc/resolv.conf
+    cat <<EOF > $container_rootfs/etc/sysconfig/network-scripts/ifcfg-eth0
+DEVICE=eth0
+BOOTPROTO=dhcp
+ONBOOT=yes
+HOSTNAME=$name
+DHCP_HOSTNAME=$name
+NM_CONTROLLED=no
+TYPE=Ethernet
+EOF
+
+    # set the hostname
+    cat <<EOF > $container_rootfs/etc/sysconfig/network
+NETWORKING=yes
+NETWORKING_IPV6=no
+HOSTNAME=$name
+EOF
+
+    # set minimal hosts
+    echo "127.0.0.1 localhost $name" > $container_rootfs/etc/hosts
+
+    # disable ipv6
+    echo "blacklist ipv6" >>$container_rootfs/etc/modprobe.d/blacklist.conf
+    echo "blacklist net-pf-10" >>$container_rootfs/etc/modprobe.d/blacklist.conf
+    rm -f $container_rootfs/etc/sysconfig/network-scripts/init.ipv6-global
+
+    # this file has to exist for libvirt/Virtual machine monitor to boot the container
+    touch $container_rootfs/etc/mtab
+
+    # don't put devpts in here, it will already be mounted for us by lxc/libvirt
+    cat <<EOF > $container_rootfs/etc/fstab
+proc    /proc     proc   nodev,noexec,nosuid 0 0
+sysfs   /sys      sysfs  defaults 0 0
+EOF
+
+    # remove module stuff for iptables it just shows errors that are not
+    # relevant in a container
+    if [ -f "$container_rootfs/etc/sysconfig/iptables-config" ]; then
+        sed -i 's|IPTABLES_MODULES=".*|IPTABLES_MODULES=""|' $container_rootfs/etc/sysconfig/iptables-config
+        sed -i 's|IPTABLES_MODULES_UNLOAD=".*|IPTABLES_MODULES_UNLOAD="no"|' $container_rootfs/etc/sysconfig/iptables-config
+    fi
+
+    # disable readahead in the container
+    if [ $container_release_major = "6" -a -e $container_rootfs/etc/sysconfig/readahead ]; then
+        rm -f $container_rootfs/etc/init/readahead-collector.conf
+        rm -f $container_rootfs/etc/init/readahead-disable-services.conf
+        sed -i 's|READAHEAD="yes"|READAHEAD="no"|' $container_rootfs/etc/sysconfig/readahead
+    fi
+
+    # disable udev in the container
+    sed -i 's|.sbin.start_udev||' $container_rootfs/etc/rc.sysinit
+    sed -i 's|.sbin.start_udev||' $container_rootfs/etc/rc.d/rc.sysinit
+
+    # disable nash raidautorun in the container since no /dev/md*
+    if [ $container_release_major = "5" ]; then
+        sed -i 's|echo "raidautorun /dev/md0"|echo ""|' $container_rootfs/etc/rc.sysinit
+        sed -i 's|echo "raidautorun /dev/md0"|echo ""|' $container_rootfs/etc/rc.d/rc.sysinit
+    fi
+
+    # prevent rc.sysinit from attempting to loadkeys
+    if [ $container_release_major = "5" -a -e $container_rootfs/etc/sysconfig/keyboard ]; then
+        rm $container_rootfs/etc/sysconfig/keyboard
+    fi
+
+    # dont try to sync the hwclock at shutdown
+    sed -i 's|\[ -x /sbin/hwclock|\[ 0 -eq 1|' $container_rootfs/etc/rc.d/init.d/halt
+
+    # dont start lvm
+    sed -i 's|action $"Setting up Logical Volume Management:"|#action $"Setting up Logical Volume Management:"|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|action $"Setting up Logical Volume Management:"|/bin/true #action $"Setting up Logical Volume Management:"|' $container_rootfs/etc/rc.d/rc.sysinit
+
+    # fix assumptions that plymouth is available
+    sed -i 's|\[ "$PROMPT" != no \] && plymouth|[ "$PROMPT" != no ] \&\& [ -n "$PLYMOUTH" ] \&\& plymouth|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|\[ "$PROMPT" != no \] && plymouth|[ "$PROMPT" != no ] \&\& [ -n "$PLYMOUTH" ] \&\& plymouth|' $container_rootfs/etc/rc.d/rc.sysinit
+    rm -f $container_rootfs/etc/init/plymouth-shutdown.conf
+    rm -f $container_rootfs/etc/init/quit-plymouth.conf
+    rm -f $container_rootfs/etc/init/splash-manager.conf
+
+    # setup console and tty[1-4] for login. note that /dev/console and
+    # /dev/tty[1-4] will be symlinks to the ptys /dev/lxc/console and
+    # /dev/lxc/tty[1-4] so that package updates can overwrite the symlinks.
+    # lxc will maintain these links and bind mount ptys over /dev/lxc/*
+    # since lxc.devttydir is specified in the config.
+
+    # allow root login on console, tty[1-4], and pts/0 for libvirt
+    echo "# LXC (Linux Containers)" >>$container_rootfs/etc/securetty
+    echo "lxc/console"	>>$container_rootfs/etc/securetty
+    echo "lxc/tty1"	>>$container_rootfs/etc/securetty
+    echo "lxc/tty2"	>>$container_rootfs/etc/securetty
+    echo "lxc/tty3"	>>$container_rootfs/etc/securetty
+    echo "lxc/tty4"	>>$container_rootfs/etc/securetty
+    echo "# For libvirt/Virtual Machine Monitor" >>$container_rootfs/etc/securetty
+    echo "pts/0"        >>$container_rootfs/etc/securetty
+
+    # dont try to unmount /dev/lxc devices
+    sed -i 's|&& $1 !~ /^\\/dev\\/ram/|\&\& $2 !~ /^\\/dev\\/lxc/ \&\& $1 !~ /^\\/dev\\/ram/|' $container_rootfs/etc/init.d/halt
+
+    # start a getty on /dev/console, /dev/tty[1-4]
+    if [ $container_release_major = "5" ]; then
+        sed -i '/1:2345:respawn/i cns:2345:respawn:/sbin/mingetty console' $container_rootfs/etc/inittab
+        sed -i '/5:2345:respawn/d' $container_rootfs/etc/inittab
+        sed -i '/6:2345:respawn/d' $container_rootfs/etc/inittab
+    fi
+
+    if [ $container_release_major = "6" ]; then
+        cat <<EOF > $container_rootfs/etc/init/console.conf
+# console - getty
+#
+# This service maintains a getty on the console from the point the system is
+# started until it is shut down again.
+
+start on stopped rc RUNLEVEL=[2345]
+stop on runlevel [!2345]
+
+respawn
+exec /sbin/mingetty /dev/console
+EOF
+    fi
+
+    # there might be other services that are useless but the below set is a good start
+    # some of these might not exist in the image, so we silence chkconfig complaining
+    # about the service file not being found
+    for service in \
+        acpid auditd autofs cpuspeed dund gpm haldaemon hidd	\
+        ip6tables irqbalance iscsi iscsid isdn kdump kudzu	\
+        lm_sensors lvm2-monitor mdmonitor microcode_ctl		\
+        ntpd postfix sendmail udev-post ;
+    do
+        chroot $container_rootfs chkconfig 2>/dev/null $service off
+    done
+
+    for service in rsyslog ;
+    do
+        chroot $container_rootfs chkconfig 2>/dev/null $service on
+    done
+
+    # create required devices. note that /dev/console will be created by lxc
+    # or libvirt itself to be a symlink to the right pty.
+    # take care to not nuke /dev in case $container_rootfs isn't set
+    dev_path="$container_rootfs/dev"
+    if [ $container_rootfs != "/" -a -d $dev_path ]; then
+        rm -rf $dev_path
+        mkdir -p $dev_path
+    fi
+    mknod -m 666  $dev_path/null c 1 3
+    mknod -m 666  $dev_path/zero c 1 5
+    mknod -m 666  $dev_path/random c 1 8
+    mknod -m 666  $dev_path/urandom c 1 9
+    mkdir -m 755  $dev_path/pts
+    mkdir -m 1777 $dev_path/shm
+    mknod -m 666  $dev_path/tty c 5 0
+    mknod -m 666  $dev_path/tty0 c 4 0
+    mknod -m 666  $dev_path/tty1 c 4 1
+    mknod -m 666  $dev_path/tty2 c 4 2
+    mknod -m 666  $dev_path/tty3 c 4 3
+    mknod -m 666  $dev_path/tty4 c 4 4
+    mknod -m 666  $dev_path/full c 1 7
+    mknod -m 600  $dev_path/initctl p
+
+    # ensure /dev/ptmx refers to the newinstance devpts of the container, or
+    # pty's will get crossed up with the hosts (https://lkml.org/lkml/2012/1/23/512)
+    rm -f $container_rootfs/dev/ptmx
+    ln -s pts/ptmx $container_rootfs/dev/ptmx
+
+    # start with a clean /var/log/messages
+    rm -f $container_rootfs/var/log/messages
+
+    # add oracle user, set root password
+    chroot $container_rootfs useradd --create-home -s /bin/bash oracle
+    echo "oracle:oracle" | chroot $container_rootfs chpasswd
+    echo "root:root" | chroot $container_rootfs chpasswd
+    echo -e "Added container user:\033[1moracle\033[0m password:\033[1moracle\033[0m"
+    echo -e "Added container user:\033[1mroot\033[0m password:\033[1mroot\033[0m"
+}
+
+# create the container's lxc config file
+container_config_create()
+{
+    echo "Create configuration file $cfg_dir/config"
+    # generate a hwaddr for the container with a high mac address
+    # see http://sourceforge.net/tracker/?func=detail&aid=3411497&group_id=163076&atid=826303
+    local hwaddr="fe:`dd if=/dev/urandom bs=8 count=1 2>/dev/null |od -t x8 | \
+                      head -1 |awk '{print $2}' | cut -c1-10 |\
+                      sed 's/\(..\)/\1:/g; s/.$//'`"
+    mkdir -p $cfg_dir || die "unable to create config dir $cfg_dir"
+    cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
+# Container configuration for Oracle Linux $release_major.$release_minor
+lxc.arch = $arch
+lxc.utsname = $name
+lxc.devttydir = lxc
+lxc.tty = 4
+lxc.pts = 1024
+lxc.rootfs = $container_rootfs
+lxc.mount = $cfg_dir/fstab
+# Networking
+EOF
+
+    # see if the network settings were already specified
+    lxc_network_type=`grep '^lxc.network.type' $cfg_dir/config | awk -F'[= \t]+' '{ print $2 }'`
+    if [ -z "$lxc_network_type" -a			\
+        \( $host_distribution = "OracleServer" -o	\
+           $host_distribution = "Fedora" \) ]; then
+            echo "lxc.network.type = veth" >>$cfg_dir/config
+            echo "lxc.network.flags = up" >>$cfg_dir/config
+            echo "lxc.network.link = virbr0" >>$cfg_dir/config
+    fi
+
+    cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
+lxc.network.name = eth0
+lxc.network.mtu = 1500
+lxc.network.hwaddr = $hwaddr
+# Control Group devices: all denied except those whitelisted
+lxc.cgroup.devices.deny = a
+lxc.cgroup.devices.allow = c 1:3 rwm	# /dev/null
+lxc.cgroup.devices.allow = c 1:5 rwm	# /dev/zero
+lxc.cgroup.devices.allow = c 1:7 rwm	# /dev/full
+lxc.cgroup.devices.allow = c 5:0 rwm	# /dev/tty
+lxc.cgroup.devices.allow = c 1:8 rwm	# /dev/random
+lxc.cgroup.devices.allow = c 1:9 rwm	# /dev/urandom
+lxc.cgroup.devices.allow = c 136:* rwm	# /dev/tty[1-4] ptys and lxc console
+lxc.cgroup.devices.allow = c 5:2 rwm	# /dev/ptmx pty master
+lxc.cgroup.devices.allow = c 254:0 rwm	# /dev/rtc0
+EOF
+
+    cat <<EOF > $cfg_dir/fstab || die "unable to create $cfg_dir/fstab"
+proc    $container_rootfs/proc     proc   nodev,noexec,nosuid 0 0
+devpts  $container_rootfs/dev/pts  devpts defaults 0 0
+sysfs   $container_rootfs/sys      sysfs  defaults  0 0
+EOF
+}
+
+container_rootfs_clone()
+{
+    if is_btrfs_subvolume $template_rootfs; then
+        # lxc-create already made $container_rootfs a btrfs subvolume, but
+        # in this case we want to snapshot the original subvolume so we we
+        # have to delete the one that lxc-create made
+        btrfs subvolume delete $container_rootfs
+        btrfs subvolume snapshot $template_rootfs $container_rootfs || die "btrfs clone template"
+    else
+        cp -ax $template_rootfs $container_rootfs || die "copy template"
+    fi
+}
+
+container_rootfs_create()
+{
+    cmds="rpm wget yum"
+    if [ $release_major = "5" ]; then
+        if [ $host_distribution = "Ubuntu" ]; then
+            db_dump_cmd="db5.1_dump"
+            db_load_cmd="db4.3_load"
+        fi
+        if [ $host_distribution = "OracleServer" -o \
+             $host_distribution = "Fedora" ]; then
+            db_dump_cmd="db_dump"
+            db_load_cmd="db43_load"
+        fi
+
+        cmds="$cmds $db_dump_cmd $db_load_cmd file"
+    fi
+    for cmd in $cmds; do
+        which $cmd >/dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            die "The $cmd command is required, please install it"
+        fi
+    done
+
+    mkdir -p @LOCALSTATEDIR@/lock/subsys/lxc
+    (
+        flock -x 200
+        if [ $? -ne 0 ]; then
+            die "The template is busy."
+        fi
+
+        echo "Downloading release $release_major.$release_minor for $basearch"
+
+        # get yum repo file
+        public_yum_url=http://public-yum.oracle.com
+        if   [ $release_major = "5" ]; then
+            repofile=public-yum-el5.repo
+        elif [ $release_major = "6" ]; then
+            repofile=public-yum-ol6.repo
+        else
+            die "Unsupported release $release_major"
+        fi
+        mkdir -p $container_rootfs/etc/yum.repos.d
+        wget -q $public_yum_url/$repofile -O $container_rootfs/etc/yum.repos.d/$repofile
+        if [ $? -ne 0 ]; then
+            die "Failed to download repo file $public_yum_url/$repofile"
+        fi
+
+        # yum will take $basearch from host, so force the arch we want
+        sed -i "s|\$basearch|$basearch|" $container_rootfs/etc/yum.repos.d/$repofile
+
+        # replace url if they specified one
+        if [ -n "$repourl" ]; then
+            sed -i "s|baseurl=http://public-yum.oracle.com/repo|baseurl=$repourl/repo|" $container_rootfs/etc/yum.repos.d/$repofile
+            sed -i "s|gpgkey=http://public-yum.oracle.com|gpgkey=$repourl|" $container_rootfs/etc/yum.repos.d/$repofile
+        fi
+
+        # disable all repos, then enable the repo for the version we are installing.
+        if [ $release_minor = "latest" ]; then
+            if [ $release_major = "5" ]; then
+        repo="el"$release_major"_"$release_minor
+            else
+                repo="ol"$release_major"_"$release_minor
+            fi
+        elif [ $release_minor = "0" ]; then
+            repo="ol"$release_major"_ga_base"
+        else
+            repo="ol"$release_major"_u"$release_minor"_base"
+        fi
+        sed -i "s|enabled=1|enabled=0|" $container_rootfs/etc/yum.repos.d/$repofile
+        sed -i "/\[$repo\]/,/\[/ s/enabled=0/enabled=1/" $container_rootfs/etc/yum.repos.d/$repofile
+
+        # create rpm db, download and yum install minimal packages
+        mkdir -p $container_rootfs/var/lib/rpm
+        rpm --root $container_rootfs --initdb
+        yum_cmd="yum --installroot $container_rootfs --disablerepo=* --enablerepo=$repo -y --nogpgcheck"
+        min_pkgs="yum initscripts passwd rsyslog vim-minimal openssh-server dhclient chkconfig rootfiles policycoreutils oraclelinux-release"
+
+        $yum_cmd install $min_pkgs
+        if [ $? -ne 0 ]; then
+            die "Failed to download and install the rootfs, aborting."
+        fi
+
+        # rsyslog and pam depend on coreutils for some common commands in
+        # their POSTIN scriptlets, but coreutils wasn't installed yet. now
+        # that coreutils is installed, reinstall the packages so their POSTIN
+        # runs right. similarly, libutempter depends on libselinux.so.1 when
+        # it runs /usr/sbin/groupadd, so reinstall it too
+        if [ $release_major = "5" ]; then
+            rpm --root $container_rootfs --nodeps -e rsyslog pam libutempter
+            $yum_cmd install rsyslog pam libutempter
+            if [ $? -ne 0 ]; then
+                die "Unable to reinstall packages"
+            fi
+        fi
+
+        # these distributions put the rpm database in a place the guest is
+        # not expecting it, so move it
+        if [ $host_distribution = "Ubuntu" ]; then
+            mv $container_rootfs/root/.rpmdb/* $container_rootfs/var/lib/rpm
+        fi
+
+        # if the native rpm created the db with Hash version 9, we need to
+        # downgrade it to Hash version 8 for use with OL5.x
+        db_version=`file $container_rootfs/var/lib/rpm/Packages | \
+                    grep -o 'version [0-9]*' |awk '{print $2}'`
+        if [ $release_major = "5" -a $db_version != "8" ]; then
+            echo "Fixing (downgrading) rpm database from version $db_version"
+            rm -f $container_rootfs/var/lib/rpm/__db*
+            for db in $container_rootfs/var/lib/rpm/* ; do
+                $db_dump_cmd $db |$db_load_cmd $db.new
+                mv $db.new $db
+            done
+        fi
+
+        # the host rpm may not be the same as the guest, rebuild the db with
+        # the guest rpm version
+        echo "Rebuilding rpm database"
+        rm -f $container_rootfs/var/lib/rpm/__db*
+        chroot $container_rootfs rpm --rebuilddb >/dev/null 2>&1
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-oracle-$name
+}
+
+usage()
+{
+    cat <<EOF
+  -a|--arch=<arch>        architecture (ie. i386, x86_64)
+  -R|--release=<release>  release to download for the new container
+  -u|--url=<url>          replace yum repo url (ie. local yum mirror)
+  -t|--templatefs=<path>  copy/clone rootfs at path instead of downloading
+  -h|--help
+
+Release is of the format "major.minor", for example "5.8", "6.3", or "6.latest"
+EOF
+    return 0
+}
+
+options=$(getopt -o hp:n:a:R:u:t: -l help,path:,name:,arch:,release:,url:,templatefs: -- "$@")
+if [ $? -ne 0 ]; then
+    usage $(basename $0)
+    exit 1
+fi
+
+arch=$(arch)
+eval set -- "$options"
+while true
+do
+    case "$1" in
+        -h|--help)		usage $0 && exit 0;;
+        -p|--path)		cfg_dir=$2; shift 2;;
+        -n|--name)		name=$2; shift 2;;
+        -a|--arch)		arch=$2; shift 2;;
+        -R|--release)		release_version=$2; shift 2;;
+        -u|--url)		repourl=$2; shift;;
+        -t|--templatefs)	template_rootfs=$2; shift 2;;
+        --)             	shift 1; break ;;
+        *)              	break ;;
+    esac
+done
+
+# make sure mandatory args are given and valid
+if [ "$(id -u)" != "0" ]; then
+    echo "This script should be run as 'root'"
+    exit 1
+fi
+
+if [ -z $name ]; then
+    echo "Container name must be given"
+    usage
+    exit 1
+fi
+
+if [ -z $cfg_dir ]; then
+    echo "Configuration directory must be given, check lxc-create"
+    usage
+    exit 1
+fi
+
+basearch=$arch
+if [ "$arch" = "i686" ]; then
+    basearch="i386"
+fi
+
+if [ "$arch" != "i386" -a "$arch" != "x86_64" ]; then
+    echo "Bad architecture given, check lxc-create"
+    usage
+    exit 1
+fi
+
+container_rootfs="$cfg_dir/rootfs"
+
+if [ -n "$template_rootfs" ]; then
+    release_version=`cat $template_rootfs/etc/oracle-release |awk '/^Oracle/ {print $5}'`
+fi
+if [ -z "$release_version" ]; then
+    echo "No release specified with -R, defaulting to 6.3"
+    release_version="6.3"
+fi
+release_major=`echo $release_version |awk -F '.' '{print $1}'`
+release_minor=`echo $release_version |awk -F '.' '{print $2}'`
+
+if which lsb_release >/dev/null 2>&1; then
+    host_distribution=`lsb_release --id |awk '{print $3}'`
+    host_release_version=`lsb_release --release |awk '{print $2}'`
+    host_release_major=`echo $host_release_version |awk -F '.' '{print $1}'`
+    host_release_minor=`echo $host_release_version |awk -F '.' '{print $2}'`
+else
+    if   [ -f /etc/fedora-release ]; then
+       host_distribution="Fedora"
+       host_release_version=`cat /etc/fedora-release |awk '{print $3}'`
+       host_release_major=$host_release_version
+       host_release_minor=0
+    elif [ -f /etc/oracle-release ]; then
+       host_distribution="OracleServer"
+       host_release_version=`cat /etc/oracle-release |awk '{print $5}'`
+       host_release_major=`echo $host_release_version |awk -F '.' '{print $1}'`
+       host_release_minor=`echo $host_release_version |awk -F '.' '{print $2}'`
+    else
+       echo "Unable to determine host distribution, ensure lsb_release is installed"
+       exit 1
+    fi
+fi
+echo "Host is $host_distribution $host_release_version"
+
+trap cleanup SIGHUP SIGINT SIGTERM
+
+container_config_create
+if [ -n "$template_rootfs" ]; then
+    container_rootfs_clone
+else
+    container_rootfs_create
+fi
+
+container_release_version=`cat $container_rootfs/etc/oracle-release |awk '/^Oracle/ {print $5}'`
+container_release_major=`echo $container_release_version |awk -F '.' '{print $1}'`
+container_release_minor=`echo $container_release_version |awk -F '.' '{print $2}'`
+
+container_rootfs_configure
+
+echo "Container : $container_rootfs"
+echo "Config    : $cfg_dir/config"
+echo "Network   : eth0 ($lxc_network_type) on $lxc_network_link"

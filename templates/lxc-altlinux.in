@@ -17,7 +17,7 @@
 
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
 
 # You should have received a copy of the GNU Lesser General Public
@@ -26,7 +26,7 @@
 
 #Configurations
 arch=$(arch)
-cache_base=/var/cache/lxc/altlinux/$arch
+cache_base=@LOCALSTATEDIR@/cache/lxc/altlinux/$arch
 default_path=@LXCPATH@
 default_profile=default
 profile_dir=/etc/lxc/profiles
@@ -151,8 +151,8 @@ download_altlinux()
     INSTALL_ROOT=$cache/partial
     mkdir -p $INSTALL_ROOT
     if [ $? -ne 0 ]; then
-	echo "Failed to create '$INSTALL_ROOT' directory"
-	return 1
+        echo "Failed to create '$INSTALL_ROOT' directory"
+        return 1
     fi
 
     # download a mini altlinux into a cache
@@ -166,8 +166,8 @@ download_altlinux()
     $APT_GET install $PKG_LIST
 
     if [ $? -ne 0 ]; then
-	echo "Failed to download the rootfs, aborting."
-	return 1
+        echo "Failed to download the rootfs, aborting."
+        return 1
     fi
 
     mv "$INSTALL_ROOT" "$cache/rootfs"
@@ -184,7 +184,7 @@ copy_altlinux()
     #cp -a $cache/rootfs-$arch $rootfs_path || return 1
     # i prefer rsync (no reason really)
     mkdir -p $rootfs_path
-    rsync -a $cache/rootfs/ $rootfs_path/
+    rsync -Ha $cache/rootfs/ $rootfs_path/
     return 0
 }
 
@@ -196,41 +196,39 @@ update_altlinux()
 
 install_altlinux()
 {
-    mkdir -p /var/lock/subsys/
+    mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
-	flock -x 200
-	if [ $? -ne 0 ]; then
-	    echo "Cache repository is busy."
-	    return 1
-	fi
+        flock -x 200
+        if [ $? -ne 0 ]; then
+            echo "Cache repository is busy."
+            return 1
+        fi
 
-	echo "Checking cache download in $cache/rootfs ... "
-	if [ ! -e "$cache/rootfs" ]; then
-	    download_altlinux
-	    if [ $? -ne 0 ]; then
-		echo "Failed to download 'altlinux base'"
-		return 1
-	    fi
+        echo "Checking cache download in $cache/rootfs ... "
+        if [ ! -e "$cache/rootfs" ]; then
+            download_altlinux
+            if [ $? -ne 0 ]; then
+                echo "Failed to download 'altlinux base'"
+                return 1
+            fi
         else
-	    echo "Cache found. Updating..."
+            echo "Cache found. Updating..."
             update_altlinux
-	    if [ $? -ne 0 ]; then
-		echo "Failed to update 'altlinux base', continuing with last known good cache"
+            if [ $? -ne 0 ]; then
+                echo "Failed to update 'altlinux base', continuing with last known good cache"
             else
                 echo "Update finished"
-	    fi
-	fi
+            fi
+        fi
 
-	echo "Copy $cache/rootfs to $rootfs_path ... "
-	copy_altlinux
-	if [ $? -ne 0 ]; then
-	    echo "Failed to copy rootfs"
-	    return 1
-	fi
-
-	return 0
-
-	) 200>/var/lock/subsys/lxc
+        echo "Copy $cache/rootfs to $rootfs_path ... "
+        copy_altlinux
+        if [ $? -ne 0 ]; then
+            echo "Failed to copy rootfs"
+            return 1
+        fi
+        return 0
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-altlinux
 
     return $?
 }
@@ -239,12 +237,12 @@ copy_configuration()
 {
 
     mkdir -p $config_path
+    grep -q "^lxc.rootfs" $config_path/config 2>/dev/null || echo "lxc.rootfs = $rootfs_path" >> $config_path/config
     cat <<EOF >> $config_path/config
 lxc.utsname = $name
 lxc.tty = 4
 lxc.pts = 1024
-lxc.rootfs = $rootfs_path
-lxc.mount  = $config_path/fstab
+lxc.mount = $config_path/fstab
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
@@ -302,8 +300,8 @@ sysfs           $rootfs_path/sys          sysfs defaults  0 0
 EOF
 
     if [ $? -ne 0 ]; then
-	echo "Failed to add configuration"
-	return 1
+        echo "Failed to add configuration"
+        return 1
     fi
 
     return 0
@@ -313,22 +311,21 @@ clean()
 {
 
     if [ ! -e $cache ]; then
-	exit 0
+        exit 0
     fi
 
     # lock, so we won't purge while someone is creating a repository
     (
-	flock -x 200
-	if [ $? != 0 ]; then
-	    echo "Cache repository is busy."
-	    exit 1
-	fi
+        flock -x 200
+        if [ $? != 0 ]; then
+            echo "Cache repository is busy."
+            exit 1
+        fi
 
-	echo -n "Purging the download cache for ALTLinux-$release..."
-	rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
-	exit 0
-
-    ) 200>/var/lock/subsys/lxc
+        echo -n "Purging the download cache for ALTLinux-$release..."
+        rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
+        exit 0
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-altlinux
 }
 
 usage()
@@ -345,7 +342,7 @@ usage:
 Mandatory args:
   -n,--name         container name, used to as an identifier for that container from now on
 Optional args:
-  -p,--path         path to where the container rootfs will be created, defaults to /var/lib/lxc. The container config will go under /var/lib/lxc in and case
+  -p,--path         path to where the container rootfs will be created, defaults to @LXCPATH@. The container config will go under @LXCPATH@ in that case
   -c,--clean        clean the cache
   -R,--release      ALTLinux release for the new container. if the host is ALTLinux, then it will defaultto the host's release.
   -4,--ipv4         specify the ipv4 address to assign to the virtualized interface, eg. 192.168.1.123/24
@@ -370,17 +367,17 @@ eval set -- "$options"
 while true
 do
     case "$1" in
-	-h|--help)      usage $0 && exit 0;;
-	-p|--path)      path=$2; shift 2;;
-	-n|--name)      name=$2; shift 2;;
-	-P|--profile)   profile=$2; shift 2;;
-	-c|--clean)     clean=$2; shift 2;;
-	-R|--release)   release=$2; shift 2;;
-	-4|--ipv4)      ipv4=$2; shift 2;;
-	-6|--ipv6)      ipv6=$2; shift 2;;
-	-g|--gw)        gw=$2; shift 2;;
-	-d|--dns)       dns=$2; shift 2;;
-	--)             shift 1; break ;;
+        -h|--help)      usage $0 && exit 0;;
+        -p|--path)      path=$2; shift 2;;
+        -n|--name)      name=$2; shift 2;;
+        -P|--profile)   profile=$2; shift 2;;
+        -c|--clean)     clean=$2; shift 2;;
+        -R|--release)   release=$2; shift 2;;
+        -4|--ipv4)      ipv4=$2; shift 2;;
+        -6|--ipv6)      ipv6=$2; shift 2;;
+        -g|--gw)        gw=$2; shift 2;;
+        -d|--dns)       dns=$2; shift 2;;
+        --)             shift 1; break ;;
         *)              break ;;
     esac
 done
@@ -433,6 +430,11 @@ if [ -f $config_path/config ]; then
     exit 1
 fi
 
+# check for 'lxc.rootfs' passed in through default config by lxc-create
+if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
+    rootfs_path=`grep 'lxc.rootfs =' $path/config | awk -F= '{ print $2 }'`
+fi
+
 install_altlinux
 if [ $? -ne 0 ]; then
     echo "failed to install altlinux"
@@ -456,4 +458,4 @@ if [ ! -z $clean ]; then
     exit 0
 fi
 echo "container rootfs and config created"
-echo "container is configured for lxc.network.type=veth and lxc.network.link=virbr0 (which is default if you have libvirt runnig)"
+echo "network configured as $lxc_network_type in the $lxc_network_link"

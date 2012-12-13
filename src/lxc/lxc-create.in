@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #
 # lxc: linux Container library
@@ -26,6 +26,7 @@ usage() {
     echo >&2
     echo "where FS_OPTIONS is one of:" >&2
     echo "  -B none" >&2
+    echo "  -B dir [--dir rootfs_dir]" >&2
     echo "  -B lvm [--lvname LV_NAME] [--vgname VG_NAME] [--fstype FS_TYPE]" >&2
     echo "    [--fssize FS_SIZE]" >&2
     echo "  -B btrfs" >&2
@@ -43,25 +44,35 @@ help() {
     echo "  -B BACKING_STORE   alter the container backing store (default: none)" >&2
     echo "  --lvname LV_NAME   specify the LVM logical volume name" >&2
     echo "                      (default: container name)" >&2
+    echo "  --dir ROOTFS_DIR   specify path for custom rootfs directory location" >&2
     echo "  --vgname VG_NAME   specify the LVM volume group name (default: lxc)" >&2
     echo "  --fstype FS_TYPE   specify the filesystem type (default: ext4)" >&2
     echo "  --fssize FS_SIZE   specify the filesystem size (default: 500M)" >&2
     echo >&2
-    if [ -z $lxc_template ]; then
+    if [ -z "$lxc_template" ]; then
         echo "To see template-specific options, specify a template. For example:" >&2
         echo "  $(basename $0) -t ubuntu -h" >&2
         exit 0
     fi
-    type ${templatedir}/lxc-$lxc_template 2>/dev/null
-    if [ $? -eq 0 ]; then
+    if [ -x ${templatedir}/lxc-$lxc_template ]; then
         echo >&2
         echo "Template-specific options (TEMPLATE_OPTIONS):" >&2
         ${templatedir}/lxc-$lxc_template -h
     fi
 }
 
-shortoptions='hn:f:t:B:'
-longoptions='help,name:,config:,template:,backingstore:,fstype:,lvname:,vgname:,fssize:'
+usage_err() {
+    [ -n "$1" ] && echo "$1" >&2
+    usage
+    exit 1
+}
+
+optarg_check() {
+    if [ -z "$2" ]; then
+        usage_err "option '$1' requires an argument"
+    fi
+}
+
 lxc_path=@LXCPATH@
 bindir=@BINDIR@
 templatedir=@LXCTEMPLATEDIR@
@@ -69,80 +80,85 @@ backingstore=_unset
 fstype=ext4
 fssize=500M
 vgname=lxc
+custom_rootfs=""
 
-getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
-if [ $? != 0 ]; then
-    usage
-    exit 1;
-fi
-
-eval set -- "$getopt"
-
-while true; do
-        case "$1" in
-	    -h|--help)
-		help
-		exit 1
-		;;
-	    -n|--name)
-		shift
-		lxc_name=$1
-		shift
-		;;
-	    -f|--config)
-		shift
-		lxc_config=$1
-		shift
-		;;
-	    -t|--template)
-		shift
-		lxc_template=$1
-		shift
-		;;
-	    -B|--backingstore)
-		shift
-		backingstore=$1
-		shift
-		;;
-	    --lvname)
-		shift
-		lvname=$1
-		shift
-		;;
-	    --vgname)
-		shift
-		vgname=$1
-		shift
-		;;
-	    --fstype)
-		shift
-		fstype=$1
-		shift
-		;;
-	    --fssize)
-		shift
-		fssize=$1
-		shift
-		;;
-            --)
-		shift
-		break;;
-            *)
-		usage
-		exit 1
-		;;
-        esac
+while [ $# -gt 0 ]; do
+    opt="$1"
+    shift
+    case "$opt" in
+        -h|--help)
+            help
+            exit 1
+            ;;
+        -n|--name)
+            optarg_check $opt "$1"
+            lxc_name=$1
+            shift
+            ;;
+        -f|--config)
+            optarg_check $opt "$1"
+            lxc_config=$1
+            shift
+            ;;
+        -t|--template)
+            optarg_check $opt "$1"
+            lxc_template=$1
+            shift
+            ;;
+        -B|--backingstore)
+            optarg_check $opt "$1"
+            backingstore=$1
+            shift
+            ;;
+        --dir)
+            optarg_check $opt "$1"
+            custom_rootfs=$1
+            shift
+            ;;
+        --lvname)
+            optarg_check $opt "$1"
+            lvname=$1
+            shift
+            ;;
+        --vgname)
+            optarg_check $opt "$1"
+            vgname=$1
+            shift
+            ;;
+        --fstype)
+            optarg_check $opt "$1"
+            fstype=$1
+            shift
+            ;;
+        --fssize)
+            optarg_check $opt "$1"
+            fssize=$1
+            shift
+            ;;
+        --)
+            break;;
+        -?)
+            usage_err "unknown option '$opt'"
+            ;;
+        -*)
+            # split opts -abc into -a -b -c
+            set -- $(echo "${opt#-}" | sed 's/\(.\)/ -\1/g') "$@"
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+    esac
 done
 
 # If -h or --help was passed into the container, we'll want to cleanup
 # afterward
 wantedhelp=0
-for var in "$@"
-do
-if [ "$var" = "-h" -o "$var" = "--help" ]; then
-    help
-    exit 1
-fi
+for var in "$@"; do
+    if [ "$var" = "-h" ] || [ "$var" = "--help" ]; then
+        help
+        exit 1
+    fi
 done
 
 
@@ -171,9 +187,14 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
+if [ -n "$custom_rootfs" ] && [ "$backingstore" != "dir" ]; then
+   echo "--dir is only valid with -B dir"
+fi
+
 case "$backingstore" in
-    lvm|none|btrfs|_unset) :;;
-    *) echo "$(basename $0): '$backingstore' is not known (try 'none', 'lvm', 'btrfs')" >&2
+    dir|lvm|none|btrfs|_unset) :;;
+    *)
+        echo "$(basename $0): '$backingstore' is not known (try 'none', 'dir', 'lvm', 'btrfs')" >&2
         usage
         exit 1
         ;;
@@ -186,9 +207,9 @@ fi
 
 rootfs="$lxc_path/$lxc_name/rootfs"
 
-if [ "$backingstore" = "_unset" -o "$backingstore" = "btrfs" ]; then
+if [ "$backingstore" = "_unset" ] || [ "$backingstore" = "btrfs" ]; then
 # if no backing store was given, then see if btrfs would work
-    if which btrfs >/dev/null 2>&1 &&
+    if which btrfs >/dev/null 2>&1 && \
         btrfs filesystem df "$lxc_path/" >/dev/null 2>&1; then
         backingstore="btrfs"
     else
@@ -200,12 +221,13 @@ if [ "$backingstore" = "_unset" -o "$backingstore" = "btrfs" ]; then
     fi
 fi
 
-if [ $backingstore = "lvm" ]; then
+if [ "$backingstore" = "lvm" ]; then
     which vgscan > /dev/null
     if [ $? -ne 0 ]; then
         echo "$(basename $0): vgscan not found (is lvm2 installed?)" >&2
         exit 1
     fi
+
     grep -q "\<$fstype\>" /proc/filesystems
     if [ $? -ne 0 ]; then
         echo "$(basename $0): $fstype is not listed in /proc/filesystems" >&2
@@ -225,6 +247,7 @@ if [ $backingstore = "lvm" ]; then
         echo "please delete it (using \"lvremove $rootdev\") and try again" >&2
         exit 1
     fi
+
 elif [ "$backingstore" = "btrfs" ]; then
     mkdir "$lxc_path/$lxc_name"
     if ! out=$(btrfs subvolume create "$rootfs" 2>&1); then
@@ -234,10 +257,13 @@ elif [ "$backingstore" = "btrfs" ]; then
 fi
 
 cleanup() {
-    if [ $backingstore = "lvm" ]; then
+    if [ "$backingstore" = "lvm" ]; then
         umount $rootfs
         lvremove -f $rootdev
+    elif [ "$backingstore" = "btrfs" ]; then
+        btrfs subvolume delete "$rootfs"
     fi
+
     ${bindir}/lxc-destroy -n $lxc_name
     echo "$(basename $0): aborted" >&2
     exit 1
@@ -248,18 +274,54 @@ trap cleanup HUP INT TERM
 mkdir -p $lxc_path/$lxc_name
 
 if [ -z "$lxc_config" ]; then
-    touch $lxc_path/$lxc_name/config
-else
-    if [ ! -r "$lxc_config" ]; then
-	echo "$(basename $0): '$lxc_config' configuration file not found" >&2
-	exit 1
+    lxc_config="@SYSCONFDIR@/lxc/lxc.conf"
+    echo
+    echo "$(basename $0): No config file specified, using the default config $lxc_config"
+fi
+
+if [ ! -r "$lxc_config" ]; then
+    echo "$(basename $0): '$lxc_config' configuration file not found" >&2
+    exit 1
+fi
+
+if [ ! -z "$lxc_template" ]; then
+    # Allow for a path to be provided as the template name
+    if [ -x "$lxc_template" ]; then
+        template_path=$lxc_template
+    else
+        template_path=${templatedir}/lxc-$lxc_template
     fi
 
-    cp $lxc_config $lxc_path/$lxc_name/config
+    if ! [ -x "$template_path" ]; then
+        echo "$(basename $0): unknown template '$lxc_template'" >&2
+        cleanup
+    fi
+
+    sum=$(sha1sum $template_path | cut -d ' ' -f1)
+    echo "# Template used to create this container: $lxc_template" >> $lxc_path/$lxc_name/config
+    if [ -n "$*" ]; then
+        echo "# Parameters passed to the template: $*" >> $lxc_path/$lxc_name/config
+    fi
+    echo "# Checksum of the template script (SHA-1): $sum" >> $lxc_path/$lxc_name/config
+    echo "" >> $lxc_path/$lxc_name/config
+fi
+
+cat $lxc_config >> $lxc_path/$lxc_name/config
+
+if [ -n "$custom_rootfs" ]; then
+    if grep -q "lxc.rootfs" $lxc_path/$lxc_name/config ; then
+        echo "configuration file already specifies a lxc.rootfs"
+        exit 1
+    fi
+    if [ -d "$custom_rootfs" ]; then
+        echo "specified rootfs ($custom_rootfs) already exists.  Bailing."
+        exit 1
+    fi
+    echo "lxc.rootfs = $custom_rootfs" >> $lxc_path/$lxc_name/config
 fi
 
 # Create the fs as needed
-if [ $backingstore = "lvm" ]; then
+if [ "$backingstore" = "lvm" ]; then
     [ -d "$rootfs" ] || mkdir $rootfs
     lvcreate -L $fssize -n $lvname $vgname || exit 1
     udevadm settle
@@ -267,22 +329,8 @@ if [ $backingstore = "lvm" ]; then
     mount -t $fstype $rootdev $rootfs
 fi
 
-if [ ! -z $lxc_template ]; then
-
-    type ${templatedir}/lxc-$lxc_template 2>/dev/null
-    if [ $? -ne 0 ]; then
-        echo "$(basename $0): unknown template '$lxc_template'" >&2
-        cleanup
-    fi
-
-    if [ -z "$lxc_config" ]; then
-	echo "Note: Usually the template option is called with a configuration"
-	echo "file option too, mostly to configure the network."
-	echo "For more information look at lxc.conf (5)"
-	echo
-    fi
-
-    ${templatedir}/lxc-$lxc_template --path=$lxc_path/$lxc_name --name=$lxc_name $*
+if [ ! -z "$lxc_template" ]; then
+    $template_path --path=$lxc_path/$lxc_name --name=$lxc_name $*
     if [ $? -ne 0 ]; then
         echo "$(basename $0): failed to execute template '$lxc_template'" >&2
         cleanup
@@ -291,7 +339,7 @@ if [ ! -z $lxc_template ]; then
     echo "'$lxc_template' template installed"
 fi
 
-if [ $backingstore = "lvm" ]; then
+if [ "$backingstore" = "lvm" ]; then
     echo "Unmounting LVM"
     umount $rootfs
 

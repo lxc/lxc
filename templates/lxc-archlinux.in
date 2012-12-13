@@ -26,10 +26,10 @@
 
 # defaults
 arch=$(arch)
-cache=/var/cache/lxc/arch/${arch}
+cache=@LOCALSTATEDIR@/lxc/arch/${arch}
 lxc_network_type="veth"
 lxc_network_link="br0"
-default_path=/var/lib/lxc
+default_path=@LXCPATH@
 default_rc_locale="en-US.UTF-8"
 default_rc_timezone="UTC"
 host_mirror="http://mirrors.kernel.org/archlinux/\$repo/os/$arch"
@@ -218,22 +218,22 @@ EOF
 # write container configuration files
 function copy_configuration {
     mkdir -p "${config_path}"
+    grep -q "^lxc.rootfs" "${config_path}/config" 2>/dev/null || echo "lxc.rootfs=${rootfs_path}" >> "${config_path}/config"
     cat > "${config_path}/config" << EOF
-lxc.utsname=${name}
-lxc.tty=4
-lxc.pts=1024
-lxc.rootfs=${rootfs_path}
-lxc.mount=${config_path}/fstab
+lxc.utsname = ${name}
+lxc.tty = 4
+lxc.pts = 1024
+lxc.mount = ${config_path}/fstab
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
 
 #networking
-lxc.network.type=${lxc_network_type}
-lxc.network.flags=up
-lxc.network.link=${lxc_network_link}
-lxc.network.name=eth0
-lxc.network.mtu=1500
+lxc.network.type = ${lxc_network_type}
+lxc.network.flags = up
+lxc.network.link = ${lxc_network_link}
+lxc.network.name = eth0
+lxc.network.mtu = 1500
 #cgroups
 lxc.cgroup.devices.deny = a
 # /dev/null and zero
@@ -375,7 +375,7 @@ usage:
 Mandatory args:
   -n,--name         container name, used to as an identifier for that container from now on
 Optional args:
-  -p,--path         path to where the container rootfs will be created, defaults to /var/lib/lxc. The container config will go under /var/lib/lxc in that case
+  -p,--path         path to where the container rootfs will be created, defaults to $default_path. The container config will go under $default_path in that case
   -P,--packages     preinstall additional packages, comma-separated list
   -h,--help         print this help
 EOF
@@ -423,6 +423,10 @@ if [ "${EUID}" != "0" ]; then
 fi
 
 rootfs_path="${path}/rootfs"
+# check for 'lxc.rootfs' passed in through default config by lxc-create
+if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
+    rootfs_path=`grep 'lxc.rootfs =' $path/config | awk -F= '{ print $2 }'`
+fi
 config_path="${default_path}/${name}"
 
 revert()

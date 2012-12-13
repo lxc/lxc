@@ -10,8 +10,8 @@ unlimited permission to copy, distribute and modify it.
 Basic Installation
 ==================
 
-Briefly, the shell commands `./configure; make; make install' should
-configure, build, and install this package.  The following
+Briefly, the shell commands `./autogen.sh; ./configure; make; make install'
+should configure, build, and install this package.  The following
 more-detailed instructions are generic; see the `README' file for
 instructions specific to this package.
 

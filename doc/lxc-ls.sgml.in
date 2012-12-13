@@ -1,5 +1,5 @@
 
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
 
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
 ]>
@@ -49,8 +49,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-ls</command>
+      <arg choice="opt">-1</arg>
       <arg choice="opt">--active</arg>
-      <arg choice="opt">ls option</arg>
+      <arg choice="opt">--frozen</arg>
+      <arg choice="opt">--running</arg>
+      <arg choice="opt">--stopped</arg>
+      <arg choice="opt">--fancy</arg>
+      <arg choice="opt">--fancy-format</arg>
+      <arg choice="opt">filter</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -65,77 +71,136 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsect1>
     <title>Options</title>
     <variablelist>
-
       <varlistentry>
-	<term>
-	  <option><optional>--active</optional></option>
-	</term>
-	<listitem>
-	  <para>
-	    List active containers.
-	  </para>
-	</listitem>
+        <term>
+          <option><optional>-1</optional></option>
+        </term>
+        <listitem>
+          <para>
+            Show one entry per line. (default when /dev/stdout isn't a tty)
+          </para>
+        </listitem>
       </varlistentry>
 
       <varlistentry>
-	<term>
-	  <option><optional>ls options</optional></option>
-	</term>
-	<listitem>
-	  <para>
-	    The option passed to <command>lxc-ls</command> are the
-	    same as the <command>ls</command> command.
-	  </para>
-	</listitem>
-      </varlistentry>
-
-    </variablelist>
-
-  </refsect1>
-
-  <refsect1>
-    <title>Examples</title>
-    <variablelist>
-      <varlistentry>
-	<term>lxc-ls -l</term>
-	<listitem>
-	<para>
-	  list all the container and their permissions.
-	</para>
-	</listitem>
+        <term>
+          <option><optional>--active</optional></option>
+        </term>
+        <listitem>
+          <para>
+            List only active containers (same as --frozen --running).
+          </para>
+        </listitem>
       </varlistentry>
 
       <varlistentry>
-	<term>lxc-ls --active -1</term>
-	<listitem>
-	<para>
-	  list active containers and display the list in one column.
-	</para>
-	</listitem>
+        <term>
+          <option><optional>--frozen</optional></option>
+        </term>
+        <listitem>
+          <para>
+            List only frozen containers.
+          </para>
+        </listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term>
+          <option><optional>--running</optional></option>
+        </term>
+        <listitem>
+          <para>
+            List only running containers.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--stopped</optional></option>
+        </term>
+        <listitem>
+          <para>
+            List only stopped containers.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--fancy</optional></option>
+        </term>
+        <listitem>
+          <para>
+            Use a fancy, column-based output.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--fancy-format</optional></option>
+        </term>
+        <listitem>
+          <para>
+            Comma separate list of column to show in the fancy output.
+            Valid values are: name, state, ipv4, ipv6 and pid
+            Default is: name,state,ipv4,ipv6
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>filter</optional></option>
+        </term>
+        <listitem>
+          <para>
+            The filter passed to <command>lxc-ls</command> will be
+            applied to the container name. The format is a regular expression.
+          </para>
+        </listitem>
+      </varlistentry>
     </variablelist>
   </refsect1>
 
   <refsect1>
     <title>See Also</title>
 
-    <simpara>    
+    <simpara>
       <citerefentry>
-	<refentrytitle>ls</refentrytitle>
-	<manvolnum>1</manvolnum>
+        <refentrytitle>ls</refentrytitle>
+        <manvolnum>1</manvolnum>
       </citerefentry>,
     </simpara>
 
-  </refsect1>
+    <title>Examples</title>
+    <variablelist>
+      <varlistentry>
+        <term>lxc-ls --fancy</term>
+        <listitem>
+        <para>
+          list all the containers, listing one per line along with its
+          name, state, ipv4 and ipv6 addresses.
+        </para>
+        </listitem>
+      </varlistentry>
 
-  &seealso;
+      <varlistentry>
+        <term>lxc-ls --active -1</term>
+        <listitem>
+        <para>
+          list active containers and display the list in one column.
+        </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
 
   <refsect1>
     <title>Author</title>
-    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+    <para>Stéphane Graber <email>stgraber@ubuntu.com</email></para>
   </refsect1>
-
 </refentry>
 
 <!-- Keep this comment at the end of the file

@@ -33,7 +33,8 @@ struct lxc_proc_context_info {
 
 extern struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid);
 
-extern int lxc_attach_to_ns(pid_t other_pid);
+extern int lxc_attach_to_ns(pid_t other_pid, int which);
+extern int lxc_attach_remount_sys_proc();
 extern int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx);
 
 #endif

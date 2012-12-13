@@ -40,28 +40,44 @@
 #include "start.h"
 #include "sync.h"
 #include "log.h"
+#include "namespace.h"
 
 lxc_log_define(lxc_attach_ui, lxc);
 
 static const struct option my_longopts[] = {
 	{"elevated-privileges", no_argument, 0, 'e'},
 	{"arch", required_argument, 0, 'a'},
+	{"namespaces", required_argument, 0, 's'},
+	{"remount-sys-proc", no_argument, 0, 'R'},
 	LXC_COMMON_OPTIONS
 };
 
 static int elevated_privileges = 0;
 static signed long new_personality = -1;
+static int namespace_flags = -1;
+static int remount_sys_proc = 0;
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
+	int ret;
+
 	switch (c) {
 	case 'e': elevated_privileges = 1; break;
+	case 'R': remount_sys_proc = 1; break;
 	case 'a':
 		new_personality = lxc_config_parse_arch(arg);
 		if (new_personality < 0) {
 			lxc_error(args, "invalid architecture specified: %s", arg);
 			return -1;
 		}
+		break;
+	case 's':
+		namespace_flags = 0;
+		ret = lxc_fill_namespace_flags(arg, &namespace_flags);
+		if (ret)
+			return -1;
+		/* -s implies -e */
+		elevated_privileges = 1;
 		break;
 	}
 
@@ -83,7 +99,18 @@ Options :\n\
                     WARNING: This may leak privleges into the container.\n\
                     Use with care.\n\
   -a, --arch=ARCH   Use ARCH for program instead of container's own\n\
-                    architecture.\n",
+                    architecture.\n\
+  -s, --namespaces=FLAGS\n\
+                    Don't attach to all the namespaces of the container\n\
+                    but just to the following OR'd list of flags:\n\
+                    MOUNT, PID, UTSNAME, IPC, USER or NETWORK\n\
+                    WARNING: Using -s implies -e, it may therefore\n\
+                    leak privileges into the container. Use with care.\n\
+  -R, --remount-sys-proc\n\
+                    Remount /sys and /proc if not attaching to the\n\
+                    mount namespace when using -s in order to properly\n\
+                    reflect the correct namespace context. See the\n\
+                    lxc-attach(1) manual page for details.\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
@@ -96,6 +123,7 @@ int main(int argc, char *argv[])
 	struct passwd *passwd;
 	struct lxc_proc_context_info *init_ctx;
 	struct lxc_handler *handler;
+	void *cgroup_data = NULL;
 	uid_t uid;
 	char *curdir;
 
@@ -124,6 +152,48 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	if (!elevated_privileges) {
+	        /* we have to do this now since /sys/fs/cgroup may not
+	         * be available inside the container or we may not have
+	         * the required permissions anymore
+	         */
+		ret = lxc_cgroup_prepare_attach(my_args.name, &cgroup_data);
+		if (ret < 0) {
+			ERROR("failed to prepare attaching to cgroup");
+			return -1;
+		}
+	}
+
+	curdir = get_current_dir_name();
+
+	/* determine which namespaces the container was created with
+	 * by asking lxc-start
+	 */
+	if (namespace_flags == -1) {
+		namespace_flags = lxc_get_clone_flags(my_args.name);
+		/* call failed */
+		if (namespace_flags == -1) {
+			ERROR("failed to automatically determine the "
+			      "namespaces which the container unshared");
+			return -1;
+		}
+	}
+
+	/* we need to attach before we fork since certain namespaces
+	 * (such as pid namespaces) only really affect children of the
+	 * current process and not the process itself
+	 */
+	ret = lxc_attach_to_ns(init_pid, namespace_flags);
+	if (ret < 0) {
+		ERROR("failed to enter the namespace");
+		return -1;
+	}
+
+	if (curdir && chdir(curdir))
+		WARN("could not change directory to '%s'", curdir);
+
+	free(curdir);
+
 	/* hack: we need sync.h infrastructure - and that needs a handler */
 	handler = calloc(1, sizeof(*handler));
 
@@ -150,8 +220,22 @@ int main(int argc, char *argv[])
 		if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 			return -1;
 
-		if (!elevated_privileges && lxc_cgroup_attach(my_args.name, pid))
-			return -1;
+		/* now that we are done with all privileged operations,
+		 * we can add ourselves to the cgroup. Since we smuggled in
+		 * the fds earlier, we still have write permission
+		 */
+		if (!elevated_privileges) {
+			/* since setns() for pid namespaces only really
+			 * affects child processes, the pid we have is
+			 * still valid outside the container, so this is
+			 * fine
+			 */
+			ret = lxc_cgroup_finish_attach(cgroup_data, pid);
+			if (ret < 0) {
+				ERROR("failed to attach process to cgroup");
+				return -1;
+			}
+		}
 
 		/* tell the child we are done initializing */
 		if (lxc_sync_wake_child(handler, LXC_SYNC_POST_CONFIGURE))
@@ -175,19 +259,19 @@ int main(int argc, char *argv[])
 
 	if (!pid) {
 		lxc_sync_fini_parent(handler);
+		lxc_cgroup_dispose_attach(cgroup_data);
 
-		curdir = get_current_dir_name();
-
-		ret = lxc_attach_to_ns(init_pid);
-		if (ret < 0) {
-			ERROR("failed to enter the namespace");
-			return -1;
+		/* A description of the purpose of this functionality is
+		 * provided in the lxc-attach(1) manual page. We have to
+		 * remount here and not in the parent process, otherwise
+		 * /proc may not properly reflect the new pid namespace.
+		 */
+		if (!(namespace_flags & CLONE_NEWNS) && remount_sys_proc) {
+			ret = lxc_attach_remount_sys_proc();
+			if (ret < 0) {
+				return -1;
+			}
 		}
-
-		if (curdir && chdir(curdir))
-			WARN("could not change directory to '%s'", curdir);
-
-		free(curdir);
 
 		if (new_personality < 0)
 			new_personality = init_ctx->personality;

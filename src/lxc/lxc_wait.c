@@ -24,6 +24,8 @@
 #include <string.h>
 #include <libgen.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <signal.h>
 #include <sys/types.h>
 
 #include <lxc/lxc.h>
@@ -46,12 +48,14 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
 	case 's': args->states = optarg; break;
+	case 't': args->timeout = atol(optarg); break;
 	}
 	return 0;
 }
 
 static const struct option my_longopts[] = {
 	{"state", required_argument, 0, 's'},
+	{"timeout", required_argument, 0, 't'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -66,37 +70,16 @@ Options :\n\
   -n, --name=NAME   NAME for name of the container\n\
   -s, --state=STATE ORed states to wait for\n\
                     STOPPED, STARTING, RUNNING, STOPPING,\n\
-                    ABORTING, FREEZING, FROZEN\n",
+                    ABORTING, FREEZING, FROZEN\n\
+  -t, --timeout=TMO Seconds to wait for state changes\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,
+	.timeout = -1,
 };
-
-static int fillwaitedstates(char *strstates, int *states)
-{
-	char *token, *saveptr = NULL;
-	int state;
-
-	token = strtok_r(strstates, "|", &saveptr);
-	while (token) {
-
-		state = lxc_str2state(token);
-		if (state < 0)
-			return -1;
-
-		states[state] = 1;
-
-		token = strtok_r(NULL, "|", &saveptr);
-	}
-	return 0;
-}
 
 int main(int argc, char *argv[])
 {
-	struct lxc_msg msg;
-	int s[MAX_STATE] = { }, fd;
-	int state, ret;
-
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
 
@@ -104,53 +87,5 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	if (fillwaitedstates(my_args.states, s))
-		return -1;
-
-	fd = lxc_monitor_open();
-	if (fd < 0)
-		return -1;
-
-	/*
-	 * if container present,
-	 * then check if already in requested state
-	 */
-	ret = -1;
-	state = lxc_getstate(my_args.name);
-	if (state < 0) {
-		goto out_close;
-	} else if ((state >= 0) && (s[state])) {
-		ret = 0;
-		goto out_close;
-	}
-
-	for (;;) {
-		if (lxc_monitor_read(fd, &msg) < 0)
-			goto out_close;
-
-		if (strcmp(my_args.name, msg.name))
-			continue;
-
-		switch (msg.type) {
-		case lxc_msg_state:
-			if (msg.value < 0 || msg.value >= MAX_STATE) {
-				ERROR("Receive an invalid state number '%d'",
-					msg.value);
-				goto out_close;
-			}
-
-			if (s[msg.value]) {
-				ret = 0;
-				goto out_close;
-			}
-			break;
-		default:
-			/* just ignore garbage */
-			break;
-		}
-	}
-
-out_close:
-	lxc_monitor_close(fd);
-	return ret;
+	return lxc_wait(strdup(my_args.name), my_args.states, my_args.timeout);
 }

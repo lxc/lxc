@@ -29,8 +29,8 @@ Summary: %{name} : Linux Container
 Group: Applications/System
 License: LGPL
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
-Requires: libcap
-BuildRequires: libcap libcap-devel docbook-utils
+Requires: libcap openssl rsync
+BuildRequires: libcap libcap-devel docbook2X
 
 %description
 
@@ -91,11 +91,13 @@ rm -rf %{buildroot}
 %{_mandir}/*
 %{_datadir}/doc/*
 %{_datadir}/lxc/*
+%{_sysconfdir}/lxc/*
 
 %files libs
 %defattr(-,root,root)
 %{_libdir}/*.so.*
 %{_libdir}/%{name}
+%{_localstatedir}/*
 %attr(4555,root,root) %{_libexecdir}/%{name}/lxc-init
 
 %files devel

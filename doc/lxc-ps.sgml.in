@@ -1,5 +1,5 @@
 
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
 
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
 ]>
@@ -86,8 +86,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	<listitem>
 	  <para>
 	    specify the container <replaceable>name</replaceable>
-	    to limit the output to the processes belonging 
-	    to this container name.	    
+	    to limit the output to the processes belonging
+	    to this container name.	
 	  </para>
 	</listitem>
       </varlistentry>
@@ -98,7 +98,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</term>
 	<listitem>
 	  <para>
-	    limit the output to the processes belonging 
+	    limit the output to the processes belonging
 	    to all lxc containers.
 	  </para>
 	</listitem>
@@ -139,7 +139,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsect1>
     <title>See Also</title>
 
-    <simpara>    
+    <simpara>
       <citerefentry>
 	<refentrytitle>ps</refentrytitle>
 	<manvolnum>1</manvolnum>

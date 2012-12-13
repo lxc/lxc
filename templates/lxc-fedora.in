@@ -27,8 +27,8 @@
 
 #Configurations
 arch=$(arch)
-cache_base=/var/cache/lxc/fedora/$arch
-default_path=/var/lib/lxc
+cache_base=@LOCALSTATEDIR@/cache/lxc/fedora/$arch
+default_path=@LXCPATH@
 root_password=root
 
 # is this fedora?
@@ -131,8 +131,8 @@ download_fedora()
     INSTALL_ROOT=$cache/partial
     mkdir -p $INSTALL_ROOT
     if [ $? -ne 0 ]; then
-	echo "Failed to create '$INSTALL_ROOT' directory"
-	return 1
+        echo "Failed to create '$INSTALL_ROOT' directory"
+        return 1
     fi
 
     # download a mini fedora into a cache
@@ -170,8 +170,8 @@ download_fedora()
     $YUM install $PKG_LIST
 
     if [ $? -ne 0 ]; then
-	echo "Failed to download the rootfs, aborting."
-	return 1
+        echo "Failed to download the rootfs, aborting."
+        return 1
     fi
 
     mv "$INSTALL_ROOT" "$cache/rootfs"
@@ -188,7 +188,7 @@ copy_fedora()
     #cp -a $cache/rootfs-$arch $rootfs_path || return 1
     # i prefer rsync (no reason really)
     mkdir -p $rootfs_path
-    rsync -a $cache/rootfs/ $rootfs_path/
+    rsync -Ha $cache/rootfs/ $rootfs_path/
     return 0
 }
 
@@ -200,41 +200,40 @@ update_fedora()
 
 install_fedora()
 {
-    mkdir -p /var/lock/subsys/
+    mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
-	flock -x 200
-	if [ $? -ne 0 ]; then
-	    echo "Cache repository is busy."
-	    return 1
-	fi
+        flock -x 200
+        if [ $? -ne 0 ]; then
+            echo "Cache repository is busy."
+            return 1
+        fi
 
-	echo "Checking cache download in $cache/rootfs ... "
-	if [ ! -e "$cache/rootfs" ]; then
-	    download_fedora
-	    if [ $? -ne 0 ]; then
-		echo "Failed to download 'fedora base'"
-		return 1
-	    fi
+        echo "Checking cache download in $cache/rootfs ... "
+        if [ ! -e "$cache/rootfs" ]; then
+            download_fedora
+            if [ $? -ne 0 ]; then
+                echo "Failed to download 'fedora base'"
+                return 1
+            fi
         else
-	    echo "Cache found. Updating..."
+            echo "Cache found. Updating..."
             update_fedora
-	    if [ $? -ne 0 ]; then
-		echo "Failed to update 'fedora base', continuing with last known good cache"
+            if [ $? -ne 0 ]; then
+                echo "Failed to update 'fedora base', continuing with last known good cache"
             else
                 echo "Update finished"
-	    fi
-	fi
+            fi
+        fi
 
-	echo "Copy $cache/rootfs to $rootfs_path ... "
-	copy_fedora
-	if [ $? -ne 0 ]; then
-	    echo "Failed to copy rootfs"
-	    return 1
-	fi
+        echo "Copy $cache/rootfs to $rootfs_path ... "
+        copy_fedora
+        if [ $? -ne 0 ]; then
+            echo "Failed to copy rootfs"
+            return 1
+        fi
 
-	return 0
-
-	) 200>/var/lock/subsys/lxc
+        return 0
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-fedora
 
     return $?
 }
@@ -243,12 +242,12 @@ copy_configuration()
 {
 
     mkdir -p $config_path
+    grep -q "^lxc.rootfs" $config_path/config 2>/dev/null || echo "lxc.rootfs = $rootfs_path" >> $config_path/config
     cat <<EOF >> $config_path/config
 lxc.utsname = $name
 lxc.tty = 4
 lxc.pts = 1024
-lxc.rootfs = $rootfs_path
-lxc.mount  = $config_path/fstab
+lxc.mount = $config_path/fstab
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
@@ -277,8 +276,8 @@ proc            proc         proc    nodev,noexec,nosuid 0 0
 sysfs           sys          sysfs defaults  0 0
 EOF
     if [ $? -ne 0 ]; then
-	echo "Failed to add configuration"
-	return 1
+        echo "Failed to add configuration"
+        return 1
     fi
 
     return 0
@@ -288,22 +287,21 @@ clean()
 {
 
     if [ ! -e $cache ]; then
-	exit 0
+        exit 0
     fi
 
     # lock, so we won't purge while someone is creating a repository
     (
-	flock -x 200
-	if [ $? != 0 ]; then
-	    echo "Cache repository is busy."
-	    exit 1
-	fi
+        flock -x 200
+        if [ $? != 0 ]; then
+            echo "Cache repository is busy."
+            exit 1
+        fi
 
-	echo -n "Purging the download cache for Fedora-$release..."
-	rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
-	exit 0
-
-    ) 200>/var/lock/subsys/lxc
+        echo -n "Purging the download cache for Fedora-$release..."
+        rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
+        exit 0
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-fedora
 }
 
 usage()
@@ -316,7 +314,7 @@ usage:
 Mandatory args:
   -n,--name         container name, used to as an identifier for that container from now on
 Optional args:
-  -p,--path         path to where the container rootfs will be created, defaults to /var/lib/lxc. The container config will go under /var/lib/lxc in that case
+  -p,--path         path to where the container rootfs will be created, defaults to @LXCPATH@. The container config will go under @LXCPATH@ in that case
   -c,--clean        clean the cache
   -R,--release      Fedora release for the new container. if the host is Fedora, then it will defaultto the host's release.
   -A,--arch         NOT USED YET. Define what arch the container will be [i686,x86_64]
@@ -335,12 +333,12 @@ eval set -- "$options"
 while true
 do
     case "$1" in
-	-h|--help)      usage $0 && exit 0;;
-	-p|--path)      path=$2; shift 2;;
-	-n|--name)      name=$2; shift 2;;
-	-c|--clean)     clean=$2; shift 2;;
+        -h|--help)      usage $0 && exit 0;;
+        -p|--path)      path=$2; shift 2;;
+        -n|--name)      name=$2; shift 2;;
+        -c|--clean)     clean=$2; shift 2;;
         -R|--release)   release=$2; shift 2;;
-	--)             shift 1; break ;;
+        --)             shift 1; break ;;
         *)              break ;;
     esac
 done

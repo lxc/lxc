@@ -32,8 +32,8 @@ error when starting a container.
 "[syserr] lxc_start:96: Invalid argument - failed to fork into a new
 namespace"
 
-Answer: 
-------- 
+Answer:
+-------
 
 read the lxc man page about kernel version prereq :) most probably
 your kernel is not configured to support the container options you

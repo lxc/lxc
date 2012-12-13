@@ -19,7 +19,6 @@ man_MANS = \
 	lxc-unfreeze.1 \
 	lxc-monitor.1 \
 	lxc-wait.1 \
-	lxc-ls.1 \
 	lxc-ps.1 \
 	lxc-cgroup.1 \
 	lxc-kill.1 \
@@ -29,15 +28,23 @@ man_MANS = \
 	\
 	lxc.7
 
+if ENABLE_PYTHON
+    man_MANS += lxc-ls.1
+else
+    man_MANS += legacy/lxc-ls.1
+endif
 
-%.1 : %.sgml 
-	docbook2man -w all $<
+%.1 : %.sgml
+	$(db2xman) $<
+	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true
 
-%.5 : %.sgml 
-	docbook2man -w all $<
+%.5 : %.sgml
+	$(db2xman) $<
+	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true
 
-%.7 : %.sgml 
-	docbook2man -w all $<
+%.7 : %.sgml
+	$(db2xman) $<
+	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true
 
 lxc-%.sgml : common_options.sgml see_also.sgml
 

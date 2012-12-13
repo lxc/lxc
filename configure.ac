@@ -6,11 +6,51 @@ AC_INIT([lxc], [0.8.0])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_AUX_DIR([config])
 AM_CONFIG_HEADER([src/config.h])
-AM_INIT_AUTOMAKE([-Wno-portability])
+AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability])
 AC_CANONICAL_HOST
 AM_PROG_CC_C_O
 AC_GNU_SOURCE
 AC_CHECK_PROG(SETCAP, setcap, yes, no, $PATH$PATH_SEPARATOR/sbin)
+
+AC_MSG_CHECKING([host distribution])
+AC_ARG_WITH(distro, AS_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, oracle, fedora, suse, gentoo, debian, arch, slackware, paldo, mandriva or pardus]))
+if test "z$with_distro" = "z"; then
+	with_distro=`lsb_release -is`
+fi
+if test "z$with_distro" = "z"; then
+	AC_CHECK_FILE(/etc/redhat-release,with_distro="redhat")
+	AC_CHECK_FILE(/etc/oracle-release,with_distro="oracle")
+	AC_CHECK_FILE(/etc/fedora-release,with_distro="fedora")
+	AC_CHECK_FILE(/etc/SuSE-release,with_distro="suse")
+	AC_CHECK_FILE(/etc/gentoo-release,with_distro="gentoo")
+	AC_CHECK_FILE(/etc/debian_version,with_distro="debian")
+	AC_CHECK_FILE(/etc/arch-release,with_distro="arch")
+	AC_CHECK_FILE(/etc/slackware-version,with_distro="slackware")
+	AC_CHECK_FILE(/etc/frugalware-release,with_distro="frugalware")
+	AC_CHECK_FILE(/etc/mandrakelinux-release, with_distro="mandriva")
+	AC_CHECK_FILE(/etc/mandriva-release,with_distro="mandriva")
+	AC_CHECK_FILE(/etc/pardus-release,with_distro="pardus")
+fi
+with_distro=`echo ${with_distro} | tr '[[:upper:]]' '[[:lower:]]'`
+
+if test "z$with_distro" = "z"; then
+	with_distro="unknown"
+fi
+case $with_distro in
+	ubuntu)
+		conffile=lxc.conf.ubuntu
+		;;
+	redhat|fedora|oracle|oracleserver)
+		conffile=lxc.conf.libvirt
+		;;
+	*)
+		echo -n "Linux distribution network config unknown, defaulting to lxc.network.type = empty"
+		conffile=lxc.conf.unknown
+		;;
+esac
+AC_MSG_RESULT([$with_distro])
+
+AM_CONDITIONAL([HAVE_DEBIAN], [test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu"])
 
 AC_ARG_ENABLE([rpath],
 	[AC_HELP_STRING([--disable-rpath], [do not set rpath in executables])],
@@ -18,34 +58,90 @@ AC_ARG_ENABLE([rpath],
 
 AM_CONDITIONAL([ENABLE_RPATH], [test "x$enable_rpath" = "xyes"])
 
-AC_ARG_ENABLE([apparmor],
-	[AC_HELP_STRING([--enable-apparmor], [enable apparmor])],
-	[], [enable_apparmor=yes])
-AM_CONDITIONAL([ENABLE_APPARMOR], [test "x$enable_apparmor" = "xyes"])
-
 AC_ARG_ENABLE([doc],
-	[AC_HELP_STRING([--enable-doc], [make mans (require docbook2man installed) [default=auto]])],
+	[AC_HELP_STRING([--enable-doc], [make mans (require docbook2x-man installed) [default=auto]])],
 	[], [enable_doc=auto])
 
 if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
-	AC_CHECK_PROG(have_docbook, [docbook2man], [yes], [no])
+	db2xman=""
 
-	test "x$have_docbook" = "xno" -a "x$enable_doc" = "xyes" && \
-		AC_MSG_ERROR([docbook2man required by man request, but not found])
+	AC_MSG_CHECKING(for docbook2x-man)
+	for name in docbook2x-man db2x_docbook2man; do
+		if "$name" --help >/dev/null 2>&1; then
+			db2xman="$name"
+			break;
+		fi
+	done
+
+	if test -n "${db2xman}"; then
+		AC_MSG_RESULT(${db2xman})
+	else
+		AC_MSG_RESULT(no)
+		if test "x$enable_doc" = "xyes"; then
+			AC_MSG_ERROR([docbook2x-man required by man request, but not found])
+		fi
+	fi
+
+	AC_SUBST(db2xman)
 fi
+
+AC_ARG_ENABLE([apparmor],
+	[AC_HELP_STRING([--enable-apparmor], [enable apparmor])],
+	[], [enable_apparmor=check])
+
+if test "$enable_apparmor" = "check" ; then
+	AC_CHECK_LIB([apparmor],[aa_change_profile],[enable_apparmor=yes], [enable_apparmor=no])
+fi
+
+AM_CONDITIONAL([ENABLE_APPARMOR], [test "x$enable_apparmor" = "xyes"])
 
 AM_COND_IF([ENABLE_APPARMOR],
     [AC_CHECK_HEADER([sys/apparmor.h],[],[AC_MSG_ERROR([You must install the AppArmor development package in order to compile lxc])])
      AC_CHECK_LIB([apparmor], [aa_change_profile],[],[AC_MSG_ERROR([You must install the AppArmor development package in order to compile lxc])])
      AC_SUBST([APPARMOR_LIBS], [-lapparmor])])
 
-AM_CONDITIONAL([ENABLE_DOCBOOK], [test "x$have_docbook" = "xyes"])
+AC_ARG_ENABLE([seccomp],
+	[AC_HELP_STRING([--enable-seccomp], [enable seccomp])],
+	[], [enable_seccomp=check])
+
+if test "$enable_seccomp" = "check" ; then
+	AC_CHECK_LIB([seccomp],[seccomp_init],[enable_seccomp=yes],[enable_seccomp=no])
+fi
+
+AM_CONDITIONAL([ENABLE_SECCOMP], [test "x$enable_seccomp" = "xyes"])
+
+AM_COND_IF([ENABLE_SECCOMP],
+    [AC_CHECK_HEADER([seccomp.h],[],[AC_MSG_ERROR([You must install the seccomp development package in order to compile lxc])])
+     AC_CHECK_LIB([seccomp], [seccomp_init],[],[AC_MSG_ERROR([You must install the seccomp development package in order to compile lxc])])
+     AC_SUBST([SECCOMP_LIBS], [-lseccomp])])
+
+# HAVE_SCMP_FILTER_CTX=1 will tell us we have libseccomp api >= 1.0.0
+AC_CHECK_TYPES([scmp_filter_ctx], [], [], [#include <seccomp.h>])
+
+AM_CONDITIONAL([ENABLE_DOCBOOK], [test "x$db2xman" != "x"])
 
 AC_ARG_ENABLE([examples],
 	[AC_HELP_STRING([--disable-examples], [do not install configuration examples])],
 	[], [enable_examples=yes])
 
 AM_CONDITIONAL([ENABLE_EXAMPLES], [test "x$enable_examples" = "xyes"])
+
+AC_ARG_ENABLE([python],
+	[AC_HELP_STRING([--enable-python], [enable python binding])],
+	[enable_python=yes], [enable_python=no])
+
+AM_CONDITIONAL([ENABLE_PYTHON], [test "x$enable_python" = "xyes"])
+
+AM_COND_IF([ENABLE_PYTHON],
+    [AM_PATH_PYTHON([3.2], [], [AC_MSG_ERROR([You must install python3])])
+     AC_CHECK_HEADER([python$PYTHON_VERSION/Python.h],[],[AC_MSG_ERROR([You must install python3-dev])])
+     AC_DEFINE_UNQUOTED([ENABLE_PYTHON], 1, [Python3 is available])])
+
+AC_ARG_ENABLE([tests],
+	[AC_HELP_STRING([--enable-tests], [build test/example binaries])],
+	[enable_tests=yes], [enable_tests=no])
+
+AM_CONDITIONAL([ENABLE_TESTS], [test "x$enable_tests" = "xyes"])
 
 AS_AC_EXPAND(PREFIX, $prefix)
 AS_AC_EXPAND(LIBDIR, $libdir)
@@ -69,12 +165,13 @@ AC_ARG_WITH([rootfs-path],
 		[lxc rootfs mount point]
 	)], [], [with_rootfs_path=['${libdir}/lxc/rootfs']])
 
+AS_AC_EXPAND(LXC_CONFFILE, $conffile)
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 AS_AC_EXPAND(LXCPATH, "${with_config_path}")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "${with_rootfs_path}")
 AS_AC_EXPAND(LXCTEMPLATEDIR, ['${datadir}/lxc/templates'])
 
-AC_SUBST(LXCINITDIR, ['${libexecdir}'])
+AS_AC_EXPAND(LXCINITDIR, ['${libexecdir}'])
 
 AC_CHECK_HEADERS([linux/unistd.h linux/netlink.h linux/genetlink.h],
 				  [],
@@ -101,9 +198,10 @@ AC_CHECK_DECLS([PR_CAPBSET_DROP], [], [], [#include <sys/prctl.h>])
 AC_CHECK_HEADERS([sys/signalfd.h])
 
 AC_PROG_GCC_TRADITIONAL
+AC_PROG_SED
 
 if test "x$GCC" = "xyes"; then
-  CFLAGS="$CFLAGS -Wall"
+  CFLAGS="$CFLAGS -Wall -Werror"
 fi
 
 AC_CONFIG_FILES([
@@ -134,6 +232,7 @@ AC_CONFIG_FILES([
 	doc/lxc.sgml
 	doc/common_options.sgml
 	doc/see_also.sgml
+	doc/legacy/lxc-ls.sgml
 
 	doc/rootfs/Makefile
 
@@ -154,6 +253,7 @@ AC_CONFIG_FILES([
 	templates/lxc-opensuse
 	templates/lxc-busybox
 	templates/lxc-fedora
+	templates/lxc-oracle
 	templates/lxc-altlinux
 	templates/lxc-sshd
 	templates/lxc-archlinux
@@ -161,7 +261,6 @@ AC_CONFIG_FILES([
 	src/Makefile
 	src/lxc/Makefile
 	src/lxc/lxc-ps
-	src/lxc/lxc-ls
 	src/lxc/lxc-netstat
 	src/lxc/lxc-checkconfig
 	src/lxc/lxc-setcap
@@ -170,7 +269,15 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-create
 	src/lxc/lxc-clone
 	src/lxc/lxc-shutdown
+	src/lxc/lxc-start-ephemeral
 	src/lxc/lxc-destroy
+	src/lxc/legacy/lxc-ls
+
+	src/python-lxc/Makefile
+	src/python-lxc/lxc/__init__.py
+	src/python-lxc/examples/api_test.py
+
+	src/tests/Makefile
 
 ])
 AC_CONFIG_COMMANDS([default],[[]],[[]])

@@ -84,6 +84,7 @@ extern int lxc_monitor_open(void);
  * data was readen, < 0 otherwise
  */
 extern int lxc_monitor_read(int fd, struct lxc_msg *msg);
+extern int lxc_monitor_read_timeout(int fd, struct lxc_msg *msg, int timeout);
 
 /*
  * Close the fd associated with the monitoring
@@ -177,6 +178,30 @@ extern int lxc_restart(const char *, int, struct lxc_conf *, int);
  * Returns the version number of the library
  */
 extern const char const *lxc_version(void);
+
+/*
+ * Create and return a new lxccontainer struct.
+ */
+extern struct lxc_container *lxc_container_new(const char *name);
+
+/*
+ * Returns 1 on success, 0 on failure.
+ */
+extern int lxc_container_get(struct lxc_container *c);
+
+/*
+ * Put a lxccontainer struct reference.
+ * Return -1 on error.
+ * Return 0 if this was not the last reference.
+ * If it is the last reference, free the lxccontainer and return 1.
+ */
+extern int lxc_container_put(struct lxc_container *c);
+
+/*
+ * Get a list of valid wait states.
+ * If states is NULL, simply return the number of states
+ */
+extern int lxc_get_wait_states(const char **states);
 
 #ifdef __cplusplus
 }

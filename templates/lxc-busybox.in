@@ -108,36 +108,34 @@ EOF
 
     cat <<EOF >> $rootfs/usr/share/udhcpc/default.script
 #!/bin/sh
-
 case "\$1" in
-	deconfig)
-		ip addr flush dev \$interface
-                ;;
+    deconfig)
+        ip addr flush dev \$interface
+        ;;
 
-	renew|bound)
+    renew|bound)
+        # flush all the routes
+        if [ -n "\$router" ]; then
+            ip route del default 2> /dev/null
+        fi
 
-                # flush all the routes
-		if [ -n "\$router" ]; then
-                        ip route del default 2> /dev/null
-		fi
+        # check broadcast
+        if [ -n "\$broadcast" ]; then
+            broadcast="broadcast \$broadcast"
+        fi
 
-                # check broadcast
-                if [ -n "\$broadcast" ]; then
-                        broadcast="broadcast \$broadcast"
-                fi
+        # add a new ip address
+        ip addr add \$ip/\$mask \$broadcast dev \$interface
 
-                # add a new ip address
-		ip addr add \$ip/\$mask \$broadcast dev \$interface
+        if [ -n "\$router" ]; then
+            ip route add default via \$router dev \$interface
+        fi
 
-		if [ -n "\$router" ]; then
-                        ip route add default via \$router dev \$interface
-                fi
-
-		[ -n "\$domain" ] && echo search \$domain > /etc/resolv.conf
-		for i in \$dns ; do
-			echo nameserver \$i >> /etc/resolv.conf
-		done
-		;;
+        [ -n "\$domain" ] && echo search \$domain > /etc/resolv.conf
+        for i in \$dns ; do
+            echo nameserver \$i >> /etc/resolv.conf
+        done
+        ;;
 esac
 exit 0
 EOF
@@ -151,63 +149,35 @@ configure_busybox()
 {
     rootfs=$1
 
-    functions="\
-	[ [[ addgroup adduser adjtimex ar arp arping ash awk basename \
-	brctl bunzip2 bzcat bzip2 cal cat catv chattr chgrp chmod \
-	chown chpasswd chpst chroot chrt chvt cksum clear cmp comm \
-	cp cpio crond crontab cryptpw cut date dc dd deallocvt \
-	delgroup deluser df dhcprelay diff dirname dmesg dnsd dos2unix \
-	du dumpkmap dumpleases echo ed egrep eject env envdir envuidgid \
-	ether-wake expand expr fakeidentd false fbset fdformat fdisk \
-	fetchmail fgrep find findfs fold free freeramdisk fsck \
-	fsck.minix ftpget ftpput fuser getopt getty grep gunzip gzip \
-	halt hdparm head hexdump hostid hostname httpd hwclock id \
-	ifconfig ifdown ifenslave ifup inetd init insmod install ip \
-	ipaddr ipcalc ipcrm ipcs iplink iproute iprule iptunnel \
-	kbd_mode kill killall killall5 klogd last length less linux32 \
-	linux64 linuxrc ln loadfont loadkmap logger login logname \
-	logread losetup lpd lpq lpr ls lsattr lsmod lzmacat makedevs \
-	md5sum mdev mesg microcom mkdir mkfifo mkfs.minix mknod mkswap \
-	mktemp modprobe more mount mountpoint msh mt mv nameif nc \
-	netstat nice nmeter nohup nslookup od openvt passwd patch \
-	pgrep pidof ping ping6 pipe_progress pivot_root pkill poweroff \
-	printenv printf ps pscan pwd raidautorun rdate readahead \
-	readlink readprofile realpath reboot renice reset resize rm \
-	rmdir rmmod route rpm rpm2cpio run-parts runlevel runsv \
-	runsvdir rx script sed sendmail seq setarch setconsole \
-	setkeycodes setlogcons setsid setuidgid sh sha1sum slattach \
-	sleep softlimit sort split start-stop-daemon stat strings \
-	stty su sulogin sum sv svlogd swapoff swapon switch_root \
-	sync sysctl syslogd tac tail tar taskset tcpsvd tee telnet \
-	telnetd test tftp tftpd time top touch tr traceroute \
-	true tty ttysize udhcpc udhcpd udpsvd umount uname uncompress \
-	unexpand uniq unix2dos unlzma unzip uptime usleep uudecode \
-	uuencode vconfig vi vlock watch watchdog wc wget which \
-	who whoami xargs yes zcat zcip"
-
     type busybox >/dev/null
 
     if [ $? -ne 0 ]; then
-	echo "busybox executable is not accessible"
-	return 1
+        echo "busybox executable is not accessible"
+        return 1
     fi
 
     file $(which busybox) | grep -q "statically linked"
     if [ $? -ne 0 ]; then
-	echo "warning : busybox is not statically linked."
-	echo "warning : The template script may not correctly"
-	echo "warning : setup the container environment."
+        echo "warning : busybox is not statically linked."
+        echo "warning : The template script may not correctly"
+        echo "warning : setup the container environment."
     fi
 
     # copy busybox in the rootfs
     cp $(which busybox) $rootfs/bin
     if [ $? -ne 0 ]; then
-	echo "failed to copy busybox in the rootfs"
-	return 1
+        echo "failed to copy busybox in the rootfs"
+        return 1
     fi
 
-    # do hardlink to busybox for the different commands
-    for i in $functions; do ln $rootfs/bin/busybox $rootfs/bin/$i; done
+    # symlink busybox for the commands it supports
+    # it would be nice to just use "chroot $rootfs busybox --install -s /bin"
+    # but that only works right in a chroot with busybox >= 1.19.0
+    pushd $rootfs/bin > /dev/null || return 1
+    ./busybox --help | grep 'Currently defined functions:' -A300 | \
+      grep -v 'Currently defined functions:' | tr , '\n' | \
+      xargs -n1 ln -s busybox
+    popd > /dev/null
 
     # relink /sbin/init
     ln $rootfs/bin/busybox $rootfs/sbin/init
@@ -215,9 +185,8 @@ configure_busybox()
     # passwd exec must be setuid
     chmod +s $rootfs/bin/passwd
     touch $rootfs/etc/shadow
-    chroot $rootfs /bin/passwd -d root
-
-    echo "No password for 'root', please change !"
+    echo "setting root passwd to root"
+    echo "root:root" | chroot $rootfs chpasswd
 
     return 0
 }
@@ -228,15 +197,22 @@ copy_configuration()
     rootfs=$2
     name=$3
 
+grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
 cat <<EOF >> $path/config
 lxc.utsname = $name
 lxc.tty = 1
 lxc.pts = 1
-lxc.rootfs = $rootfs
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
 EOF
+
+if [ -d "$rootfs/lib" ]; then
+cat <<EOF >> $path/config
+lxc.mount.entry = /lib $rootfs/lib none ro,bind 0 0
+lxc.mount.entry = /usr/lib $rootfs/usr/lib none ro,bind 0 0
+EOF
+fi
 
     libdirs="\
         lib \
@@ -246,7 +222,7 @@ EOF
 
     for dir in $libdirs; do
         if [ -d "/$dir" ] && [ -d "$rootfs/$dir" ]; then
-            echo "lxc.mount.entry=/$dir $dir none ro,bind 0 0" >> $path/config
+            echo "lxc.mount.entry = /$dir $dir none ro,bind 0 0" >> $path/config
         fi
     done
 }
@@ -261,8 +237,8 @@ EOF
 
 options=$(getopt -o hp:n: -l help,path:,name: -- "$@")
 if [ $? -ne 0 ]; then
-        usage $(basename $0)
-	exit 1
+    usage $(basename $0)
+    exit 1
 fi
 eval set -- "$options"
 
@@ -271,7 +247,7 @@ do
     case "$1" in
         -h|--help)      usage $0 && exit 0;;
         -p|--path)      path=$2; shift 2;;
-	-n|--name)      name=$2; shift 2;;
+        -n|--name)      name=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
     esac
@@ -287,7 +263,13 @@ if [ -z "$path" ]; then
     exit 1
 fi
 
-rootfs=$path/rootfs
+# detect rootfs
+config="$path/config"
+if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+else
+    rootfs=$path/rootfs
+fi
 
 install_busybox $rootfs $name
 if [ $? -ne 0 ]; then

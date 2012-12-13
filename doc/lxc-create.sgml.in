@@ -1,4 +1,4 @@
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
 
 <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
@@ -113,6 +113,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    eg. busybox, debian, fedora, ubuntu or sshd.
 	    Refer to the examples in <filename>@LXCTEMPLATEDIR@</filename>
 	    for details of the expected script structure.
+	    Alternatively, the full path to an executable template script
+	    can also be passed as a parameter.
 	  </para>
 	</listitem>
       </varlistentry>
@@ -123,9 +125,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</term>
 	<listitem>
 	  <para>
-	    'backingstore' is one of 'none', 'lvm', or 'btrfs'.  The
+	    'backingstore' is one of 'none', 'dir', 'lvm', or 'btrfs'.  The
 	    default is 'none', meaning that the container root filesystem
 	    will be a directory under <filename>@LXCPATH@/container/rootfs</filename>.
+	    'dir' has the same meaning as 'none', but also allows the optional
+	    <replaceable>--dir ROOTFS</replaceable> to be specified, meaning
+	    that the container rootfs should be placed under the specified path,
+	    rather than the default.
 	    The option 'btrfs' need not be specified as it will be used
 	    automatically if the <filename>@LXCPATH@</filename> filesystem is found to
 	    be btrfs.  If backingstore is 'lvm', then an lvm block device will be
@@ -141,6 +147,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    filesystem) of size SIZE rather than the default, which is 1G.
 	  </para>
 	</listitem>
+      </varlistentry>
 
       <varlistentry>
 	<term>
@@ -175,7 +182,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    available containers on the system.
           </para>
         </listitem>
-      </varlistentry>    
+      </varlistentry>
 
     </variablelist>
 

@@ -66,6 +66,8 @@
 #include <apparmor.h>
 #endif
 
+#include "lxcseccomp.h"
+
 lxc_log_define(lxc_conf, lxc);
 
 #define MAXHWLEN    18
@@ -109,6 +111,9 @@ lxc_log_define(lxc_conf, lxc);
 #define PR_CAPBSET_DROP 24
 #endif
 
+char *lxchook_names[NUM_LXC_HOOKS] = {
+	"pre-start", "pre-mount", "mount", "start", "post-stop" };
+
 extern int pivot_root(const char * new_root, const char * put_old);
 
 typedef int (*instanciate_cb)(struct lxc_handler *, struct lxc_netdev *);
@@ -136,6 +141,20 @@ static  instanciate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_VLAN]    = instanciate_vlan,
 	[LXC_NET_PHYS]    = instanciate_phys,
 	[LXC_NET_EMPTY]   = instanciate_empty,
+};
+
+static int shutdown_veth(struct lxc_handler *, struct lxc_netdev *);
+static int shutdown_macvlan(struct lxc_handler *, struct lxc_netdev *);
+static int shutdown_vlan(struct lxc_handler *, struct lxc_netdev *);
+static int shutdown_phys(struct lxc_handler *, struct lxc_netdev *);
+static int shutdown_empty(struct lxc_handler *, struct lxc_netdev *);
+
+static  instanciate_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
+	[LXC_NET_VETH]    = shutdown_veth,
+	[LXC_NET_MACVLAN] = shutdown_macvlan,
+	[LXC_NET_VLAN]    = shutdown_vlan,
+	[LXC_NET_PHYS]    = shutdown_phys,
+	[LXC_NET_EMPTY]   = shutdown_empty,
 };
 
 static struct mount_opt mount_opt[] = {
@@ -214,12 +233,41 @@ static struct caps_opt caps_opt[] = {
 #endif
 };
 
+static int run_buffer(char *buffer)
+{
+	FILE *f;
+	char *output;
+
+	f = popen(buffer, "r");
+	if (!f) {
+		SYSERROR("popen failed");
+		return -1;
+	}
+
+	output = malloc(LXC_LOG_BUFFER_SIZE);
+	if (!output) {
+		ERROR("failed to allocate memory for script output");
+		return -1;
+	}
+
+	while(fgets(output, LXC_LOG_BUFFER_SIZE, f))
+		DEBUG("script output: %s", output);
+
+	free(output);
+
+	if (pclose(f) == -1) {
+		SYSERROR("Script exited on error");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int run_script(const char *name, const char *section,
 		      const char *script, ...)
 {
 	int ret;
-	FILE *f;
-	char *buffer, *p, *output;
+	char *buffer, *p;
 	size_t size = 0;
 	va_list ap;
 
@@ -266,29 +314,7 @@ static int run_script(const char *name, const char *section,
 	}
 	va_end(ap);
 
-	f = popen(buffer, "r");
-	if (!f) {
-		SYSERROR("popen failed");
-		return -1;
-	}
-
-	output = malloc(LXC_LOG_BUFFER_SIZE);
-	if (!output) {
-		ERROR("failed to allocate memory for script output");
-		return -1;
-	}
-
-	while(fgets(output, LXC_LOG_BUFFER_SIZE, f))
-		DEBUG("script output: %s", output);
-
-	free(output);
-
-	if (pclose(f) == -1) {
-		SYSERROR("Script exited on error");
-		return -1;
-	}
-
-	return 0;
+	return run_buffer(buffer);
 }
 
 static int find_fstype_cb(char* buffer, void *data)
@@ -636,6 +662,15 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 				return -1;
 			}
 		} else {
+			/* If we populated /dev, then we need to create /dev/ttyN */
+			if (access(path, F_OK)) {
+				ret = creat(path, 0660);
+				if (ret==-1) {
+					SYSERROR("error creating %s\n", path);
+					/* this isn't fatal, continue */
+				} else
+					close(ret);
+			}
 			if (mount(pty_info->name, path, "none", MS_BIND, 0)) {
 				WARN("failed to mount '%s'->'%s'",
 						pty_info->name, path);
@@ -708,7 +743,7 @@ static int umount_oldrootfs(const char *oldrootfs)
 {
 	char path[MAXPATHLEN];
 	void *cbparm[2];
-	struct lxc_list mountlist, *iterator;
+	struct lxc_list mountlist, *iterator, *next;
 	int ok, still_mounted, last_still_mounted;
 	int rc;
 
@@ -748,7 +783,7 @@ static int umount_oldrootfs(const char *oldrootfs)
 		last_still_mounted = still_mounted;
 		still_mounted = 0;
 
-		lxc_list_for_each(iterator, &mountlist) {
+		lxc_list_for_each_safe(iterator, &mountlist, next) {
 
 			/* umount normally */
 			if (!umount(iterator->elem)) {
@@ -840,6 +875,114 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	if (remove_pivotdir && rmdir(pivotdir))
 		WARN("can't remove mountpoint '%s': %m", pivotdir);
 
+	return 0;
+}
+
+/*
+ * Do we want to add options for max size of /dev and a file to
+ * specify which devices to create?
+ */
+static int mount_autodev(char *root)
+{
+	int ret;
+	char path[MAXPATHLEN];
+
+	INFO("Mounting /dev under %s\n", root);
+	ret = snprintf(path, MAXPATHLEN, "%s/dev", root);
+	if (ret < 0 || ret > MAXPATHLEN)
+		return -1;
+	ret = mount("none", path, "tmpfs", 0, "size=100000");
+	if (ret) {
+		SYSERROR("Failed to mount /dev at %s\n", root);
+		return -1;
+	}
+	ret = snprintf(path, MAXPATHLEN, "%s/dev/pts", root);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return -1;
+	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	if (ret) {
+		SYSERROR("Failed to create /dev/pts in container");
+		return -1;
+	}
+
+	INFO("Mounted /dev under %s\n", root);
+	return 0;
+}
+
+/*
+ * Try to run MAKEDEV console in the container.  If something fails,
+ * continue anyway as it should not be detrimental to the container.
+ * This makes sure that things like /dev/vcs* exist.
+ * (Pass devpath in to reduce stack usage)
+ */
+static void run_makedev(char *devpath)
+{
+	int curd;
+	int ret;
+
+	curd = open(".", O_RDONLY);
+	if (curd < 0)
+		return;
+	ret = chdir(devpath);
+	if (ret) {
+		close(curd);
+		return;
+	}
+	if (run_buffer("/sbin/MAKEDEV console"))
+		INFO("Error running MAKEDEV console in %s", devpath);
+	ret = fchdir(curd);
+	if (ret)
+		INFO("Error returning to original directory: expect breakage");
+	close(curd);
+}
+
+struct lxc_devs {
+	char *name;
+	mode_t mode;
+	int maj;
+	int min;
+};
+
+struct lxc_devs lxc_devs[] = {
+	{ "null",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 3	},
+	{ "zero",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 5	},
+	{ "full",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 7	},
+	{ "urandom",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 9	},
+	{ "random",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 8	},
+	{ "tty",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 5, 0	},
+	{ "console",	S_IFCHR | S_IRUSR | S_IWUSR,	       5, 1	},
+};
+
+static int setup_autodev(char *root)
+{
+	int ret;
+	struct lxc_devs *d;
+	char path[MAXPATHLEN];
+	int i;
+
+	INFO("Creating initial consoles under %s/dev\n", root);
+
+	ret = snprintf(path, MAXPATHLEN, "%s/dev", root);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("Error calculating container /dev location");
+		return -1;
+	} else
+		run_makedev(path);
+
+	INFO("Populating /dev under %s\n", root);
+	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
+		d = &lxc_devs[i];
+		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", root, d->name);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			return -1;
+		ret = mknod(path, d->mode, makedev(d->maj, d->min));
+		if (ret && errno != EEXIST) {
+			SYSERROR("Error creating %s\n", d->name);
+			return -1;
+		}
+	}
+
+	INFO("Populated /dev under %s\n", root);
 	return 0;
 }
 
@@ -1061,6 +1204,8 @@ static int setup_kmsg(const struct lxc_rootfs *rootfs,
 	char kpath[MAXPATHLEN];
 	int ret;
 
+	if (!rootfs->path)
+		return 0;
 	ret = snprintf(kpath, sizeof(kpath), "%s/dev/kmsg", rootfs->mount);
 	if (ret < 0 || ret >= sizeof(kpath))
 		return -1;
@@ -1228,8 +1373,8 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	}
 
 	/* if rootfs->path is a blockdev path, allow container fstab to
-	 * use /var/lib/lxc/CN/rootfs as the target prefix */
-	r = snprintf(path, MAXPATHLEN, "/var/lib/lxc/%s/rootfs", lxc_name);
+	 * use $LXCPATH/CN/rootfs as the target prefix */
+	r = snprintf(path, MAXPATHLEN, LXCPATH "/%s/rootfs", lxc_name);
 	if (r < 0 || r >= MAXPATHLEN)
 		goto skipvarlib;
 
@@ -1647,7 +1792,7 @@ static int setup_netdev(struct lxc_netdev *netdev)
 				      ifname, strerror(-err));
 			if (netdev->ipv6_gateway_auto) {
 				char buf[INET6_ADDRSTRLEN];
-				inet_ntop(AF_INET, netdev->ipv6_gateway, buf, sizeof(buf));
+				inet_ntop(AF_INET6, netdev->ipv6_gateway, buf, sizeof(buf));
 				ERROR("tried to set autodetected ipv6 gateway '%s'", buf);
 			}
 			return -1;
@@ -1678,6 +1823,21 @@ static int setup_network(struct lxc_list *network)
 		INFO("network has been setup");
 
 	return 0;
+}
+
+void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf)
+{
+	int i;
+
+	INFO("running to reset %d nic names", conf->num_savednics);
+	for (i=0; i<conf->num_savednics; i++) {
+		struct saved_nic *s = &conf->saved_nics[i];
+		INFO("resetting nic %d to %s\n", s->ifindex, s->orig_name);
+		lxc_netdev_rename_by_index(s->ifindex, s->orig_name);
+		free(s->orig_name);
+	}
+	conf->num_savednics = 0;
+	free(conf->saved_nics);
 }
 
 static int setup_private_host_hw_addr(char *veth1)
@@ -1715,6 +1875,8 @@ static int setup_private_host_hw_addr(char *veth1)
 	return 0;
 }
 
+static char *default_rootfs_mount = LXCROOTFSMOUNT;
+
 struct lxc_conf *lxc_conf_init(void)
 {
 	struct lxc_conf *new;
@@ -1733,7 +1895,8 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.master = -1;
 	new->console.slave = -1;
 	new->console.name[0] = '\0';
-	new->rootfs.mount = LXCROOTFSMOUNT;
+	new->rootfs.mount = default_rootfs_mount;
+	new->loglevel = LXC_LOG_PRIORITY_NOTSET;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
@@ -1765,6 +1928,8 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			return -1;
 		}
 		veth1 = mktemp(veth1buf);
+		/* store away for deconf */
+		memcpy(netdev->priv.veth_attr.veth1, veth1, IFNAMSIZ);
 	}
 
 	snprintf(veth2buf, sizeof(veth2buf), "vethXXXXXX");
@@ -1841,6 +2006,25 @@ out_delete:
 	return -1;
 }
 
+static int shutdown_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	char *veth1;
+	int err;
+
+	if (netdev->priv.veth_attr.pair)
+		veth1 = netdev->priv.veth_attr.pair;
+	else
+		veth1 = netdev->priv.veth_attr.veth1;
+
+	if (netdev->downscript) {
+		err = run_script(handler->name, "net", netdev->downscript,
+				 "down", "veth", veth1, (char*) NULL);
+		if (err)
+			return -1;
+	}
+	return 0;
+}
+
 static int instanciate_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	char peerbuf[IFNAMSIZ], *peer;
@@ -1889,6 +2073,20 @@ static int instanciate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	return 0;
 }
 
+static int shutdown_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	int err;
+
+	if (netdev->downscript) {
+		err = run_script(handler->name, "net", netdev->downscript,
+				 "down", "macvlan", netdev->link,
+				 (char*) NULL);
+		if (err)
+			return -1;
+	}
+	return 0;
+}
+
 /* XXX: merge with instanciate_macvlan */
 static int instanciate_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
@@ -1926,6 +2124,11 @@ static int instanciate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	return 0;
 }
 
+static int shutdown_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	return 0;
+}
+
 static int instanciate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	if (!netdev->link) {
@@ -1950,6 +2153,19 @@ static int instanciate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	return 0;
 }
 
+static int shutdown_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	int err;
+
+	if (netdev->downscript) {
+		err = run_script(handler->name, "net", netdev->downscript,
+				 "down", "phys", netdev->link, (char*) NULL);
+		if (err)
+			return -1;
+	}
+	return 0;
+}
+
 static int instanciate_empty(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	netdev->ifindex = 0;
@@ -1957,6 +2173,19 @@ static int instanciate_empty(struct lxc_handler *handler, struct lxc_netdev *net
 		int err;
 		err = run_script(handler->name, "net", netdev->upscript,
 				 "up", "empty", (char*) NULL);
+		if (err)
+			return -1;
+	}
+	return 0;
+}
+
+static int shutdown_empty(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	int err;
+
+	if (netdev->downscript) {
+		err = run_script(handler->name, "net", netdev->downscript,
+				 "down", "empty", (char*) NULL);
 		if (err)
 			return -1;
 	}
@@ -1989,28 +2218,32 @@ int lxc_create_network(struct lxc_handler *handler)
 	return 0;
 }
 
-void lxc_delete_network(struct lxc_list *network)
+void lxc_delete_network(struct lxc_handler *handler)
 {
+	struct lxc_list *network = &handler->conf->network;
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
 
 	lxc_list_for_each(iterator, network) {
 		netdev = iterator->elem;
-		if (netdev->ifindex == 0)
-			continue;
 
-		if (netdev->type == LXC_NET_PHYS) {
+		if (netdev->ifindex != 0 && netdev->type == LXC_NET_PHYS) {
 			if (lxc_netdev_rename_by_index(netdev->ifindex, netdev->link))
 				WARN("failed to rename to the initial name the " \
 				     "netdev '%s'", netdev->link);
 			continue;
 		}
 
+		if (netdev_deconf[netdev->type](handler, netdev)) {
+			WARN("failed to destroy netdev");
+		}
+
 		/* Recent kernel remove the virtual interfaces when the network
 		 * namespace is destroyed but in case we did not moved the
 		 * interface to the network namespace, we have to destroy it
 		 */
-		if (lxc_netdev_delete_by_index(netdev->ifindex))
+		if (netdev->ifindex != 0 &&
+		    lxc_netdev_delete_by_index(netdev->ifindex))
 			WARN("failed to remove interface '%s'", netdev->name);
 	}
 }
@@ -2166,9 +2399,21 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
+	if (run_lxc_hooks(name, "pre-mount", lxc_conf)) {
+		ERROR("failed to run pre-mount hooks for container '%s'.", name);
+		return -1;
+	}
+
 	if (setup_rootfs(&lxc_conf->rootfs)) {
 		ERROR("failed to setup rootfs for '%s'", name);
 		return -1;
+	}
+
+	if (lxc_conf->autodev) {
+		if (mount_autodev(lxc_conf->rootfs.mount)) {
+			ERROR("failed to mount /dev in the container");
+			return -1;
+		}
 	}
 
 	if (setup_mount(&lxc_conf->rootfs, lxc_conf->fstab, name)) {
@@ -2186,6 +2431,13 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
+	if (lxc_conf->autodev) {
+		if (setup_autodev(lxc_conf->rootfs.mount)) {
+			ERROR("failed to populate /dev in the container");
+			return -1;
+		}
+	}
+
 	if (setup_cgroup(name, &lxc_conf->cgroup)) {
 		ERROR("failed to setup the cgroups for '%s'", name);
 		return -1;
@@ -2196,10 +2448,8 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_kmsg(&lxc_conf->rootfs, &lxc_conf->console)) {
+	if (setup_kmsg(&lxc_conf->rootfs, &lxc_conf->console))  // don't fail
 		ERROR("failed to setup kmsg for '%s'", name);
-		return -1;
-	}
 
 	if (setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info, lxc_conf->ttydir)) {
 		ERROR("failed to setup the ttys for '%s'", name);
@@ -2253,6 +2503,8 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf)
 
 	if (strcmp(hook, "pre-start") == 0)
 		which = LXCHOOK_PRESTART;
+	else if (strcmp(hook, "pre-mount") == 0)
+		which = LXCHOOK_PREMOUNT;
 	else if (strcmp(hook, "mount") == 0)
 		which = LXCHOOK_MOUNT;
 	else if (strcmp(hook, "start") == 0)
@@ -2269,4 +2521,254 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf)
 			return ret;
 	}
 	return 0;
+}
+
+static void lxc_remove_nic(struct lxc_list *it)
+{
+	struct lxc_netdev *netdev = it->elem;
+	struct lxc_list *it2,*next;
+
+	lxc_list_del(it);
+
+	if (netdev->link)
+		free(netdev->link);
+	if (netdev->name)
+		free(netdev->name);
+	if (netdev->upscript)
+		free(netdev->upscript);
+	if (netdev->hwaddr)
+		free(netdev->hwaddr);
+	if (netdev->mtu)
+		free(netdev->mtu);
+	if (netdev->ipv4_gateway)
+		free(netdev->ipv4_gateway);
+	if (netdev->ipv6_gateway)
+		free(netdev->ipv6_gateway);
+	lxc_list_for_each_safe(it2, &netdev->ipv4, next) {
+		lxc_list_del(it2);
+		free(it2->elem);
+		free(it2);
+	}
+	lxc_list_for_each_safe(it2, &netdev->ipv6, next) {
+		lxc_list_del(it2);
+		free(it2->elem);
+		free(it2);
+	}
+	free(netdev);
+	free(it);
+}
+
+/* we get passed in something like '0', '0.ipv4' or '1.ipv6' */
+int lxc_clear_nic(struct lxc_conf *c, const char *key)
+{
+	char *p1;
+	int ret, idx, i;
+	struct lxc_list *it;
+	struct lxc_netdev *netdev;
+
+	p1 = index(key, '.');
+	if (!p1 || *(p1+1) == '\0')
+		p1 = NULL;
+
+	ret = sscanf(key, "%d", &idx);
+	if (ret != 1) return -1;
+	if (idx < 0)
+		return -1;
+
+	i = 0;
+	lxc_list_for_each(it, &c->network) {
+		if (i == idx)
+			break;
+		i++;
+	}
+	if (i < idx)  // we don't have that many nics defined
+		return -1;
+
+	if (!it || !it->elem)
+		return -1;
+
+	netdev = it->elem;
+
+	if (!p1) {
+		lxc_remove_nic(it);
+	} else if (strcmp(p1, "ipv4") == 0) {
+		struct lxc_list *it2,*next;
+		lxc_list_for_each_safe(it2, &netdev->ipv4, next) {
+			lxc_list_del(it2);
+			free(it2->elem);
+			free(it2);
+		}
+	} else if (strcmp(p1, "ipv6") == 0) {
+		struct lxc_list *it2,*next;
+		lxc_list_for_each_safe(it2, &netdev->ipv6, next) {
+			lxc_list_del(it2);
+			free(it2->elem);
+			free(it2);
+		}
+	} else if (strcmp(p1, "link") == 0) {
+		if (netdev->link) {
+			free(netdev->link);
+			netdev->link = NULL;
+		}
+	} else if (strcmp(p1, "name") == 0) {
+		if (netdev->name) {
+			free(netdev->name);
+			netdev->name = NULL;
+		}
+	} else if (strcmp(p1, "script.up") == 0) {
+		if (netdev->upscript) {
+			free(netdev->upscript);
+			netdev->upscript = NULL;
+		}
+	} else if (strcmp(p1, "hwaddr") == 0) {
+		if (netdev->hwaddr) {
+			free(netdev->hwaddr);
+			netdev->hwaddr = NULL;
+		}
+	} else if (strcmp(p1, "mtu") == 0) {
+		if (netdev->mtu) {
+			free(netdev->mtu);
+			netdev->mtu = NULL;
+		}
+	} else if (strcmp(p1, "ipv4_gateway") == 0) {
+		if (netdev->ipv4_gateway) {
+			free(netdev->ipv4_gateway);
+			netdev->ipv4_gateway = NULL;
+		}
+	} else if (strcmp(p1, "ipv6_gateway") == 0) {
+		if (netdev->ipv6_gateway) {
+			free(netdev->ipv6_gateway);
+			netdev->ipv6_gateway = NULL;
+		}
+	}
+		else return -1;
+
+	return 0;
+}
+
+int lxc_clear_config_network(struct lxc_conf *c)
+{
+	struct lxc_list *it,*next;
+	lxc_list_for_each_safe(it, &c->network, next) {
+		lxc_remove_nic(it);
+	}
+	return 0;
+}
+
+int lxc_clear_config_caps(struct lxc_conf *c)
+{
+	struct lxc_list *it,*next;
+
+	lxc_list_for_each_safe(it, &c->caps, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+	return 0;
+}
+
+int lxc_clear_cgroups(struct lxc_conf *c, const char *key)
+{
+	struct lxc_list *it,*next;
+	bool all = false;
+	const char *k = key + 11;
+
+	if (strcmp(key, "lxc.cgroup") == 0)
+		all = true;
+
+	lxc_list_for_each_safe(it, &c->cgroup, next) {
+		struct lxc_cgroup *cg = it->elem;
+		if (!all && strcmp(cg->subsystem, k) != 0)
+			continue;
+		lxc_list_del(it);
+		free(cg->subsystem);
+		free(cg->value);
+		free(cg);
+		free(it);
+	}
+	return 0;
+}
+
+int lxc_clear_mount_entries(struct lxc_conf *c)
+{
+	struct lxc_list *it,*next;
+
+	lxc_list_for_each_safe(it, &c->mount_list, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+	return 0;
+}
+
+int lxc_clear_hooks(struct lxc_conf *c, const char *key)
+{
+	struct lxc_list *it,*next;
+	bool all = false, done = false;
+	const char *k = key + 9;
+	int i;
+
+	if (strcmp(key, "lxc.hook") == 0)
+		all = true;
+
+	for (i=0; i<NUM_LXC_HOOKS; i++) {
+		if (all || strcmp(k, lxchook_names[i]) == 0) {
+			lxc_list_for_each_safe(it, &c->hooks[i], next) {
+				lxc_list_del(it);
+				free(it->elem);
+				free(it);
+			}
+			done = true;
+		}
+	}
+
+	if (!done) {
+		ERROR("Invalid hook key: %s", key);
+		return -1;
+	}
+	return 0;
+}
+
+void lxc_clear_saved_nics(struct lxc_conf *conf)
+{
+	int i;
+
+	if (!conf->num_savednics)
+		return;
+	for (i=0; i < conf->num_savednics; i++)
+		free(conf->saved_nics[i].orig_name);
+	conf->saved_nics = 0;
+	free(conf->saved_nics);
+}
+
+void lxc_conf_free(struct lxc_conf *conf)
+{
+	if (!conf)
+		return;
+	if (conf->console.path)
+		free(conf->console.path);
+	if (conf->rootfs.mount != default_rootfs_mount)
+		free(conf->rootfs.mount);
+	if (conf->rootfs.path)
+		free(conf->rootfs.path);
+	if (conf->utsname)
+		free(conf->utsname);
+	if (conf->ttydir)
+		free(conf->ttydir);
+	if (conf->fstab)
+		free(conf->fstab);
+	if (conf->logfile)
+		free(conf->logfile);
+	lxc_clear_config_network(conf);
+#if HAVE_APPARMOR
+	if (conf->aa_profile)
+		free(conf->aa_profile);
+#endif
+	lxc_seccomp_free(conf);
+	lxc_clear_config_caps(conf);
+	lxc_clear_cgroups(conf, "lxc.cgroup");
+	lxc_clear_hooks(conf, "lxc.hook");
+	lxc_clear_mount_entries(conf);
+	lxc_clear_saved_nics(conf);
+	free(conf);
 }

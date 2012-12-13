@@ -98,11 +98,28 @@ int lxc_monitor_open(void)
 	return fd;
 }
 
-int lxc_monitor_read(int fd, struct lxc_msg *msg)
+/* timeout of 0 means return immediately;  -1 means wait forever */
+int lxc_monitor_read_timeout(int fd, struct lxc_msg *msg, int timeout)
 {
 	struct sockaddr_un from;
 	socklen_t len = sizeof(from);
 	int ret;
+	fd_set rfds;
+	struct timeval tv;
+
+	if (timeout != -1) {
+		FD_ZERO(&rfds);
+		FD_SET(fd, &rfds);
+
+		tv.tv_sec = timeout;
+		tv.tv_usec = 0;
+
+		ret = select(fd+1, &rfds, NULL, NULL, &tv);
+		if (ret == -1)
+			return -1;
+		else if (!ret)
+			return -2;  // timed out
+	}
 
 	ret = recvfrom(fd, msg, sizeof(*msg), 0,
 		       (struct sockaddr *)&from, &len);
@@ -112,6 +129,11 @@ int lxc_monitor_read(int fd, struct lxc_msg *msg)
 	}
 
 	return ret;
+}
+
+int lxc_monitor_read(int fd, struct lxc_msg *msg)
+{
+	return lxc_monitor_read_timeout(fd, msg, -1);
 }
 
 int lxc_monitor_close(int fd)

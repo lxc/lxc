@@ -1,0 +1,3 @@
+lxc.network.type = veth
+lxc.network.link = virbr0
+lxc.network.flags = up

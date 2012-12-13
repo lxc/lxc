@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
 
 <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
@@ -52,6 +52,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <arg choice="req">-n <replaceable>name</replaceable></arg>
       <arg choice="opt">-a <replaceable>arch</replaceable></arg>
       <arg choice="opt">-e</arg>
+      <arg choice="opt">-s <replaceable>namespaces</replaceable></arg>
+      <arg choice="opt">-R</arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -125,7 +127,53 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</listitem>
       </varlistentry>
 
-    </variablelist>
+      <varlistentry>
+	<term>
+	  <option>-s, --namespaces <replaceable>namespaces</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Specify the namespaces to attach to, as a pipe-separated list,
+	    e.g. <replaceable>NETWORK|IPC</replaceable>. Allowed values are
+	    <replaceable>MOUNT</replaceable>, <replaceable>PID</replaceable>,
+	    <replaceable>UTSNAME</replaceable>, <replaceable>IPC</replaceable>,
+	    <replaceable>USER </replaceable> and
+	    <replaceable>NETWORK</replaceable>. This allows one to change
+	    the context of the process to e.g. the network namespace of the
+	    container while retaining the other namespaces as those of the
+	    host.
+	  </para>
+	  <para>
+	    <emphasis>Important:</emphasis> This option implies
+	    <option>-e</option>.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-R, --remount-sys-proc</option>
+	</term>
+	<listitem>
+	  <para>
+	    When using <option>-s</option> and the mount namespace is not
+	    included, this flag will cause <command>lxc-attach</command>
+	    to remount <replaceable>/proc</replaceable> and
+	    <replaceable>/sys</replaceable> to reflect the current other
+	    namespace contexts.
+	  </para>
+	  <para>
+	    Please see the <emphasis>Notes</emphasis> section for more
+	    details.
+	  </para>
+	  <para>
+	    This option will be ignored if one tries to attach to the
+	    mount namespace anyway.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+     </variablelist>
 
   </refsect1>
 
@@ -147,19 +195,86 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       </para>
       <para>
         To deactivate the network link eth1 of a running container that
-        does not have the NET_ADMIN capability, use the <option>-e</option>
-        option to use increased capabilities:
+        does not have the NET_ADMIN capability, use either the
+        <option>-e</option> option to use increased capabilities,
+        assuming the <command>ip</command> tool is installed:
         <programlisting>
           lxc-attach -n container -e -- /sbin/ip link delete eth1
+        </programlisting>
+        Or, alternatively, use the <option>-s</option> to use the
+        tools installed on the host outside the container:
+        <programlisting>
+          lxc-attach -n container -s NETWORK -- /sbin/ip link delete eth1
         </programlisting>
       </para>
   </refsect1>
 
   <refsect1>
+    <title>Compatibility</title>
+    <para>
+      Attaching completely (including the pid and mount namespaces) to a
+      container requires a patched kernel, please see the lxc website for
+      details. <command>lxc-attach</command> will fail in that case if
+      used with an unpatched kernel.
+    </para>
+    <para>
+      Nevertheless, it will succeed on an unpatched kernel of version 3.0
+      or higher if the <option>-s</option> option is used to restrict the
+      namespaces that the process is to be attached to to one or more of
+      <replaceable>NETWORK</replaceable>, <replaceable>IPC</replaceable>
+      and <replaceable>UTSNAME</replaceable>.
+    </para>
+    <para>
+      Attaching to user namespaces is currently completely unsupported
+      by the kernel. <command>lxc-attach</command> should however be able
+      to do this once once future kernel versions implement this.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Notes</title>
+    <para>
+      The Linux <replaceable>/proc</replaceable> and
+      <replaceable>/sys</replaceable> filesystems contain information
+      about some quantities that are affected by namespaces, such as
+      the directories named after process ids in
+      <replaceable>/proc</replaceable> or the network interface infromation
+      in <replaceable>/sys/class/net</replaceable>. The namespace of the
+      process mounting the pseudo-filesystems determines what information
+      is shown, <emphasis>not</emphasis> the namespace of the process
+      accessing <replaceable>/proc</replaceable> or
+      <replaceable>/sys</replaceable>.
+    </para>
+    <para>
+      If one uses the <option>-s</option> option to only attach to
+      the pid namespace of a container, but not its mount namespace
+      (which will contain the <replaceable>/proc</replaceable> of the
+      container and not the host), the contents of <option>/proc</option>
+      will reflect that of the host and not the container. Analogously,
+      the same issue occurs when reading the contents of
+      <replaceable>/sys/class/net</replaceable> and attaching to just
+      the network namespace.
+    </para>
+    <para>
+      To work around this problem, the <option>-R</option> flag provides
+      the option to remount <replaceable>/proc</replaceable> and
+      <replaceable>/sys</replaceable> in order for them to reflect the
+      network/pid namespace context of the attached process. In order
+      not to interfere with the host's actual filesystem, the mount
+      namespace will be unshared (like <command>lxc-unshare</command>
+      does) before this is done, esentially giving the process a new
+      mount namespace, which is identical to the hosts's mount namespace
+      except for the <replaceable>/proc</replaceable> and
+      <replaceable>/sys</replaceable> filesystems.
+    </para>
+  </refsect1>
+
+  <refsect1>
     <title>Security</title>
     <para>
-      The <option>-e</option> should be used with care, as it may break
-      the isolation of the containers if used improperly.
+      The <option>-e</option> and <option>-s</option> options should
+      be used with care, as it may break the isolation of the containers
+      if used improperly.
     </para>
   </refsect1>
 
