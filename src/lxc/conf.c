@@ -1895,6 +1895,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.master = -1;
 	new->console.slave = -1;
 	new->console.name[0] = '\0';
+	new->maincmd_fd = -1;
 	new->rootfs.mount = default_rootfs_mount;
 	new->loglevel = LXC_LOG_PRIORITY_NOTSET;
 	lxc_list_init(&new->cgroup);

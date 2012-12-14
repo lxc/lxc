@@ -60,6 +60,7 @@ extern int lxc_command_connected(const char *name, struct lxc_command *command,
 struct lxc_epoll_descr;
 struct lxc_handler;
 
+extern int lxc_command_init(const char *name, struct lxc_handler *handler);
 extern int lxc_command_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 				    struct lxc_handler *handler);
 

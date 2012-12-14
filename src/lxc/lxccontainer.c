@@ -381,9 +381,6 @@ reboot:
 	if (conf->reboot) {
 		INFO("container requested reboot");
 		conf->reboot = 0;
-		if (conf->maincmd_fd)
-			close(conf->maincmd_fd);
-		conf->maincmd_fd = 0;
 		goto reboot;
 	}
 
