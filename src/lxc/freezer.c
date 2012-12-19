@@ -32,6 +32,8 @@
 #include <sys/param.h>
 
 #include "error.h"
+#include "state.h"
+#include "monitor.h"
 
 #include <lxc/log.h>
 #include <lxc/cgroup.h>
@@ -95,7 +97,10 @@ static int freeze_unfreeze(const char *name, int freeze)
 
 		ret = strncmp(f, tmpf, strlen(f));
 		if (!ret)
+		{
+			lxc_monitor_send_state(name, freeze ? FROZEN : THAWED);
 			break;		/* Success */
+		}
 
 		sleep(1);
 
@@ -119,6 +124,7 @@ out:
 
 int lxc_freeze(const char *name)
 {
+	lxc_monitor_send_state(name, FREEZING);
 	return freeze_unfreeze(name, 1);
 }
 
