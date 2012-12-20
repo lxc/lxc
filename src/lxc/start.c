@@ -700,6 +700,14 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
 		return -1;
 
+	if (detect_shared_rootfs())
+		umount2(handler->conf->rootfs.mount, MNT_DETACH);
+
+	if (setup_cgroup(name, &handler->conf->cgroup)) {
+		ERROR("failed to setup the cgroups for '%s'", name);
+		goto out_delete_net;
+	}
+
 	if (handler->ops->post_start(handler, handler->data))
 		goto out_abort;
 

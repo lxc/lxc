@@ -986,8 +986,112 @@ static int setup_autodev(char *root)
 	return 0;
 }
 
-static int setup_rootfs(const struct lxc_rootfs *rootfs)
+/*
+ * Detect whether / is mounted MS_SHARED.  The only way I know of to
+ * check that is through /proc/self/mountinfo.
+ * I'm only checking for /.  If the container rootfs or mount location
+ * is MS_SHARED, but not '/', then you're out of luck - figuring that
+ * out would be too much work to be worth it.
+ */
+#define LINELEN 4096
+int detect_shared_rootfs(void)
 {
+	char buf[LINELEN], *p;
+	FILE *f;
+	int i;
+	char *p2;
+
+	f = fopen("/proc/self/mountinfo", "r");
+	if (!f)
+		return 0;
+	while ((p = fgets(buf, LINELEN, f))) {
+		INFO("looking at .%s.", p);
+		for (p = buf, i=0; p && i < 4; i++)
+			p = index(p+1, ' ');
+		if (!p)
+			continue;
+		p2 = index(p+1, ' ');
+		if (!p2)
+			continue;
+		*p2 = '\0';
+		INFO("now p is .%s.", p);
+		if (strcmp(p+1, "/") == 0) {
+			// this is '/'.  is it shared?
+			p = index(p2+1, ' ');
+			if (strstr(p, "shared:"))
+				return 1;
+		}
+	}
+	fclose(f);
+	return 0;
+}
+
+/*
+ * I'll forgive you for asking whether all of this is needed :)  The
+ * answer is yes.
+ * pivot_root will fail if the new root, the put_old dir, or the parent
+ * of current->fs->root are MS_SHARED.  (parent of current->fs_root may
+ * or may not be current->fs_root - if we assumed it always was, we could
+ * just mount --make-rslave /).  So,
+ *    1. mount a tiny tmpfs to be parent of current->fs->root.
+ *    2. make that MS_SLAVE
+ *    3. make a 'root' directory under that
+ *    4. mount --rbind / under the $tinyroot/root.
+ *    5. make that rslave
+ *    6. chdir and chroot into $tinyroot/root
+ *    7. $tinyroot will be unmounted by our parent in start.c
+ */
+static int chroot_into_slave(struct lxc_conf *conf)
+{
+	char path[MAXPATHLEN];
+	const char *destpath = conf->rootfs.mount;
+	int ret;
+
+	if (mount(destpath, destpath, NULL, MS_BIND, 0)) {
+		SYSERROR("failed to mount %s bind", destpath);
+		return -1;
+	}
+	if (mount("", destpath, NULL, MS_SLAVE, 0)) {
+		SYSERROR("failed to make %s slave", destpath);
+		return -1;
+	}
+	if (mount("none", destpath, "tmpfs", 0, "size=10000")) {
+		SYSERROR("Failed to mount tmpfs / at %s", destpath);
+		return -1;
+	}
+	ret = snprintf(path, MAXPATHLEN, "%s/root", destpath);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("out of memory making root path");
+		return -1;
+	}
+	if (mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+		SYSERROR("Failed to create /dev/pts in container");
+		return -1;
+	}
+	if (mount("/", path, NULL, MS_BIND|MS_REC, 0)) {
+		SYSERROR("Failed to rbind mount / to %s", path);
+		return -1;
+	}
+	if (mount("", destpath, NULL, MS_SLAVE|MS_REC, 0)) {
+		SYSERROR("Failed to make tmp-/ at %s rslave", path);
+		return -1;
+	}
+	if (chdir(path)) {
+		SYSERROR("Failed to chdir into tmp-/");
+		return -1;
+	}
+	if (chroot(path)) {
+		SYSERROR("Failed to chroot into tmp-/");
+		return -1;
+	}
+	INFO("Chrooted into tmp-/ at %s\n", path);
+	return 0;
+}
+
+static int setup_rootfs(struct lxc_conf *conf)
+{
+	const struct lxc_rootfs *rootfs = &conf->rootfs;
+
 	if (!rootfs->path)
 		return 0;
 
@@ -995,6 +1099,13 @@ static int setup_rootfs(const struct lxc_rootfs *rootfs)
 		SYSERROR("failed to access to '%s', check it is present",
 			 rootfs->mount);
 		return -1;
+	}
+
+	if (detect_shared_rootfs()) {
+		if (chroot_into_slave(conf)) {
+			ERROR("Failed to chroot into slave /");
+			return -1;
+		}
 	}
 
 	if (mount_rootfs(rootfs->path, rootfs->mount)) {
@@ -1225,7 +1336,7 @@ static int setup_kmsg(const struct lxc_rootfs *rootfs,
 	return 0;
 }
 
-static int setup_cgroup(const char *name, struct lxc_list *cgroups)
+int setup_cgroup(const char *name, struct lxc_list *cgroups)
 {
 	struct lxc_list *iterator;
 	struct lxc_cgroup *cg;
@@ -2405,7 +2516,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_rootfs(&lxc_conf->rootfs)) {
+	if (setup_rootfs(lxc_conf)) {
 		ERROR("failed to setup rootfs for '%s'", name);
 		return -1;
 	}
