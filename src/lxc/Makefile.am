@@ -17,6 +17,12 @@ pkginclude_HEADERS = \
 		lxccontainer.h \
 		lxclock.h
 
+if !HAVE_GETLINE
+if HAVE_FGETLN
+pkginclude_HEADERS += ../include/getline.h
+endif
+endif
+
 sodir=$(libdir)
 # use PROGRAMS to avoid complains from automake
 so_PROGRAMS = liblxc.so
@@ -60,6 +66,12 @@ liblxc_so_SOURCES = \
 	apparmor.c apparmor.h \
 	lxclock.h lxclock.c \
 	lxccontainer.c lxccontainer.h
+
+if !HAVE_GETLINE
+if HAVE_FGETLN
+liblxc_so_SOURCES += ../include/getline.c ../include/getline.h
+endif
+endif
 
 AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \

@@ -29,7 +29,15 @@
 #include <dirent.h>
 
 #include "parse.h"
+#include "config.h"
 #include <lxc/log.h>
+
+/* Define getline() if missing from the C library */
+#ifndef HAVE_GETLINE
+#ifdef HAVE_FGETLN
+#include <../include/getline.h>
+#endif
+#endif
 
 lxc_log_define(lxc_parse, lxc);
 

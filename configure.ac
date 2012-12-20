@@ -216,6 +216,15 @@ AC_CHECK_DECLS([PR_CAPBSET_DROP], [], [], [#include <sys/prctl.h>])
 # Check for optional headers
 AC_CHECK_HEADERS([sys/signalfd.h])
 
+AC_CHECK_FUNCS([getline],
+	AM_CONDITIONAL(HAVE_GETLINE, true)
+	AC_DEFINE(HAVE_GETLINE,1,[Have getline]),
+	AM_CONDITIONAL(HAVE_GETLINE, false))
+AC_CHECK_FUNCS([fgetln],
+	AM_CONDITIONAL(HAVE_FGETLN, true)
+	AC_DEFINE(HAVE_FGETLN,1,[Have fgetln]),
+	AM_CONDITIONAL(HAVE_FGETLN, false))
+
 # Check for some standard binaries
 AC_PROG_GCC_TRADITIONAL
 AC_PROG_SED

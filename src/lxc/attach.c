@@ -31,6 +31,7 @@
 #include <sys/param.h>
 #include <sys/prctl.h>
 #include <sys/mount.h>
+#include <sys/syscall.h>
 #include <linux/unistd.h>
 
 #if !HAVE_DECL_PR_CAPBSET_DROP
@@ -55,6 +56,13 @@ int setns(int fd, int nstype)
 	return syscall(__NR_setns, fd, nstype);
 #endif
 }
+
+/* Define getline() if missing from the C library */
+#ifndef HAVE_GETLINE
+#ifdef HAVE_FGETLN
+#include <../include/getline.h>
+#endif
+#endif
 
 struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 {
