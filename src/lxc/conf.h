@@ -26,6 +26,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 #include <sys/param.h>
+#include <sys/types.h>
 #include <stdbool.h>
 
 #include <lxc/list.h>

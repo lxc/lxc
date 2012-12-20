@@ -19,6 +19,7 @@
 
 #include "lxclock.h"
 #include <malloc.h>
+#include <stdio.h>
 
 #define OFLAG (O_CREAT | O_RDWR)
 #define SEMMODE 0660

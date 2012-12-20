@@ -28,7 +28,7 @@
 #include <errno.h>
 #include <pty.h>
 #include <sys/types.h>
-#include <sys/un.h>
+#include <termios.h>
 
 #include "log.h"
 #include "conf.h"

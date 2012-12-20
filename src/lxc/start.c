@@ -38,12 +38,14 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
 #include <sys/capability.h>
 #include <sys/wait.h>
 #include <sys/un.h>
 #include <sys/poll.h>
+#include <sys/syscall.h>
 
 #ifdef HAVE_SYS_SIGNALFD_H
 #  include <sys/signalfd.h>
@@ -128,6 +130,7 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #include "namespace.h"
 #include "apparmor.h"
 #include "lxcseccomp.h"
+#include "caps.h"
 
 lxc_log_define(lxc_start, lxc);
 

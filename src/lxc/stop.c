@@ -26,7 +26,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/param.h>
-#include <sys/signal.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
