@@ -364,6 +364,11 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		setsid();
 	}
 
+	if (clearenv()) {
+		SYSERROR("failed to clear environment");
+		/* don't error out though */
+	}
+
 	if (putenv("container=lxc")) {
 		fprintf(stderr, "failed to set environment variable");
 		if (daemonize) {

@@ -130,6 +130,10 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return err;
 
+	if (clearenv()) {
+		SYSERROR("failed to clear environment");
+		/* don't error out though */
+	}
 	if (putenv("container=lxc")) {
 		SYSERROR("failed to set environment variable");
 		return err;
