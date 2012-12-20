@@ -48,7 +48,6 @@
 #include <sys/mount.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
-#include <sys/capability.h>
 #include <sys/personality.h>
 
 #include <arpa/inet.h>
@@ -69,6 +68,10 @@
 
 #if HAVE_APPARMOR
 #include <apparmor.h>
+#endif
+
+#if HAVE_SYS_CAPABILITY_H
+#include <sys/capability.h>
 #endif
 
 #include "lxcseccomp.h"
@@ -104,6 +107,7 @@ lxc_log_define(lxc_conf, lxc);
 #define MS_STRICTATIME (1 << 24)
 #endif
 
+#if HAVE_SYS_CAPABILITY_H
 #ifndef CAP_SETFCAP
 #define CAP_SETFCAP 31
 #endif
@@ -114,6 +118,7 @@ lxc_log_define(lxc_conf, lxc);
 
 #ifndef CAP_MAC_ADMIN
 #define CAP_MAC_ADMIN 33
+#endif
 #endif
 
 #ifndef PR_CAPBSET_DROP
@@ -199,6 +204,7 @@ static struct mount_opt mount_opt[] = {
 	{ NULL,            0, 0              },
 };
 
+#if HAVE_SYS_CAPABILITY_H
 static struct caps_opt caps_opt[] = {
 	{ "chown",             CAP_CHOWN             },
 	{ "dac_override",      CAP_DAC_OVERRIDE      },
@@ -245,6 +251,9 @@ static struct caps_opt caps_opt[] = {
 	{ "wake_alarm",        CAP_WAKE_ALARM        },
 #endif
 };
+#else
+static struct caps_opt caps_opt[] = {};
+#endif
 
 static int run_buffer(char *buffer)
 {

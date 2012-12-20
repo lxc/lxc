@@ -180,17 +180,24 @@ AC_CHECK_HEADERS([linux/unistd.h linux/netlink.h linux/genetlink.h],
 				AC_MSG_ERROR([Please install the Linux kernel headers.]),
 				[#include <sys/socket.h>])
 
+# Allow disabling libcap support
+AC_ARG_ENABLE([capabilities],
+	[AC_HELP_STRING([--disable-capabilities], [disable kernel capabilities])],
+	[], [enable_capabilities=yes])
+
 # Check for libcap support
-AC_CHECK_HEADERS([sys/capability.h], [], AC_MSG_ERROR([Please install the libcap development files.]),
-[#include <sys/types.h>
-#include <sys/capability.h>])
-AC_CHECK_LIB(cap,cap_set_proc,caplib=yes,caplib=no)
-AC_MSG_CHECKING([linux capabilities])
-if test "x$caplib" = "xyes" ; then
-	CAP_LIBS="-lcap"
-	AC_MSG_RESULT([$CAP_LIBS])
+if test "x$enable_capabilities" = "xyes"; then
+	AC_CHECK_LIB(cap,cap_set_proc,caplib=yes,caplib=no)
+	AC_MSG_CHECKING([linux capabilities])
+	if test "x$caplib" = "xyes" ; then
+		CAP_LIBS="-lcap"
+		AC_MSG_RESULT([$CAP_LIBS])
+	else
+		AC_MSG_RESULT([no])
+		AC_MSG_ERROR([You are missing libcap support. If you really want to build without kernel capabilities, use --disable-capabilities])
+	fi
 else
-	AC_MSG_ERROR([not found])
+	CAP_LIBS=""
 fi
 AC_SUBST([CAP_LIBS])
 
@@ -214,7 +221,7 @@ AM_CONDITIONAL([IS_BIONIC], [test "x$is_bionic" = "xyes"])
 AC_CHECK_DECLS([PR_CAPBSET_DROP], [], [], [#include <sys/prctl.h>])
 
 # Check for some headers
-AC_CHECK_HEADERS([sys/signalfd.h pty.h])
+AC_CHECK_HEADERS([sys/signalfd.h pty.h sys/capability.h])
 
 # Check for some functions
 AC_CHECK_FUNCS([openpty])

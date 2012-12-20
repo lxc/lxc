@@ -41,11 +41,14 @@
 #include <sys/socket.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
-#include <sys/capability.h>
 #include <sys/wait.h>
 #include <sys/un.h>
 #include <sys/poll.h>
 #include <sys/syscall.h>
+
+#if HAVE_SYS_CAPABILITY_H
+#include <sys/capability.h>
+#endif
 
 #ifdef HAVE_SYS_SIGNALFD_H
 #  include <sys/signalfd.h>
@@ -339,10 +342,14 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	}
 
 	if (handler->conf->need_utmp_watch) {
+		#if HAVE_SYS_CAPABILITY_H
 		if (lxc_utmp_mainloop_add(&descr, handler)) {
 			ERROR("failed to add utmp handler to mainloop");
 			goto out_mainloop_open;
 		}
+		#else
+			DEBUG("not starting utmp handler as cap_sys_boot cannot be dropped without capabilities support\n");
+		#endif
 	}
 
 	return lxc_mainloop(&descr);
@@ -553,6 +560,7 @@ static int do_start(void *data)
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
 		return -1;
 
+	#if HAVE_SYS_CAPABILITY_H
 	if (handler->conf->need_utmp_watch) {
 		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
 			SYSERROR("failed to remove CAP_SYS_BOOT capability");
@@ -560,6 +568,7 @@ static int do_start(void *data)
 		}
 		DEBUG("Dropped cap_sys_boot\n");
 	}
+	#endif
 
 	/* Setup the container, ip, names, utsname, ... */
 	if (lxc_setup(handler->name, handler->conf)) {
@@ -752,7 +761,11 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	handler->data = data;
 
 	if (must_drop_cap_sys_boot()) {
+		#if HAVE_SYS_CAPABILITY_H
 		DEBUG("Dropping cap_sys_boot\n");
+		#else
+		DEBUG("Can't drop cap_sys_boot as capabilities aren't supported\n");
+		#endif
 	} else {
 		DEBUG("Not dropping cap_sys_boot or watching utmp\n");
 		handler->conf->need_utmp_watch = 0;
