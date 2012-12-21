@@ -59,7 +59,7 @@ enum {
 static char *mount_has_subsystem(const struct mntent *mntent)
 {
 	FILE *f;
-	char *c, *ret;
+	char *c, *ret = NULL;
 	char line[MAXPATHLEN];
 
 	/* read the list of subsystems from the kernel */
