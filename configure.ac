@@ -257,6 +257,7 @@ AC_CONFIG_FILES([
 	templates/lxc-altlinux
 	templates/lxc-sshd
 	templates/lxc-archlinux
+	templates/lxc-alpine
 
 	src/Makefile
 	src/lxc/Makefile

@@ -24,6 +24,7 @@ libtool
 lxc.spec
 lxc.pc
 
+templates/lxc-alpine
 templates/lxc-altlinux
 templates/lxc-archlinux
 templates/lxc-busybox
