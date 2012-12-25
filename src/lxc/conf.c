@@ -87,6 +87,10 @@ lxc_log_define(lxc_conf, lxc);
 #define MNT_DETACH 2
 #endif
 
+#ifndef MS_SLAVE
+#define MS_SLAVE (1<<19)
+#endif
+
 #ifndef MS_RELATIME
 #define MS_RELATIME (1 << 21)
 #endif
