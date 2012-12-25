@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #
 # lxc: linux Container library
@@ -44,8 +44,16 @@ help() {
     echo "                  only works for non-snapshot LVM)" >&2
 }
 
-shortoptions='ho:n:sL:v:p:t:'
-longoptions='help,orig:,name:,snapshot,fssize:,vgname:,lvprefix:,fstype:'
+usage_err() {
+    [ -n "$1" ] && echo "$1" >&2
+    usage
+    exit 1
+}
+
+optarg_check() {
+    [ -n "$2" ] || usage_err "option $1 requires an argument"
+}
+
 lxc_path=@LXCPATH@
 bindir=@BINDIR@
 snapshot=no
@@ -55,57 +63,55 @@ lxc_vg=lxc
 lxc_lv_prefix=""
 fstype=ext3
 
-getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
-if [ $? != 0 ]; then
-    usage
-    exit 1;
-fi
-
-eval set -- "$getopt"
-
-while true; do
-    case "$1" in
+while [ $# -gt 0 ]; do
+    opt="$1"
+    shift
+    case "$opt" in
         -h|--help)
             help
             exit 1
             ;;
         -s|--snapshot)
-            shift
             snapshot=yes
             snapshot_opt="-s"
             ;;
         -o|--orig)
-            shift
+            optarg_check $opt $1
             lxc_orig=$1
             shift
             ;;
         -L|--fssize)
-            shift
+            optarg_check $opt $1
             lxc_size=$1
             shift
             ;;
         -v|--vgname)
-            shift
+            optarg_check $opt $1
             lxc_vg=$1
             shift
             ;;
         -n|--name)
-            shift
+            optarg_check $opt $1
             lxc_new=$1
             shift
             ;;
         -p|--lvprefix)
-            shift
+            optarg_check $opt $1
             lxc_lv_prefix=$1
             shift
             ;;
         --)
-            shift
             break
             ;;
+        -?)
+            usage_err "Unknown option: '$opt'"
+            ;;
+        -*)
+            # split opts -abc into -a -b -c
+            set -- $(echo "${opt#-}" | sed 's/\(.\)/ -\1/g') "$@"
+            ;;
         *)
-            usage
-            exit 1
+            usage_err
             ;;
     esac
 done
@@ -191,7 +197,7 @@ lxc-info -s -n $lxc_orig|grep RUNNING >/dev/null 2>&1 || container_running=False
 
 sed -i '/lxc.rootfs/d' $lxc_path/$lxc_new/config
 if [ -b $oldroot ]; then
-    type vgscan || { echo "$(basename $0): lvm is not installed" >&2; false; }
+    which vgscan >/dev/null || { echo "$(basename $0): lvm is not installed" >&2; false; }
     lvdisplay $oldroot > /dev/null 2>&1 || { echo "$(basename $0): non-lvm blockdev cloning is not supported" >&2; false; }
     lvm=TRUE
     # ok, create a snapshot of the lvm device
@@ -204,7 +210,7 @@ if [ -b $oldroot ]; then
     fi
     newlv="${lxc_lv_prefix}${lxc_new}_snapshot"
     lvcreate -s -L $lxc_size -n $newlv $oldroot
-    type xfs_admin > /dev/null 2>&1 && {
+    which xfs_admin > /dev/null 2>&1 && {
         # change filesystem UUID if it is an xfs filesystem
         xfs_admin -u /dev/$lxc_vg/$newlv && xfs_admin -U generate /dev/$lxc_vg/$newlv
     }
@@ -272,7 +278,7 @@ c=$lxc_path/$lxc_new/config
 mv ${c} ${c}.old
 (
 while read line; do
-    if [ "${line:0:18}" = "lxc.network.hwaddr" ]; then
+    if echo $line | grep -q -w '^lxc.network.hwaddr'; then
         echo "lxc.network.hwaddr= 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')"
     else
         echo "$line"
