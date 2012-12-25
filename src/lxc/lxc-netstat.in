@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #
 # lxc: linux Container library
@@ -32,8 +32,6 @@ help() {
 
 get_parent_cgroup()
 {
-    local hierarchies hierarchy fields subsystems init_cgroup mountpoint
-
     parent_cgroup=""
 
     # Obtain a list of hierarchies that contain one or more subsystems
@@ -58,11 +56,10 @@ get_parent_cgroup()
 
         # Return the absolute path to the containers' parent cgroup
         # (do not append '/lxc' if the hierarchy contains the 'ns' subsystem)
-        if [[ ",$subsystems," == *,ns,* ]]; then
-            parent_cgroup="${mountpoint}${init_cgroup%/}"
-        else
-            parent_cgroup="${mountpoint}${init_cgroup%/}/lxc"
-        fi
+        case ",$subsystems," in
+            *,ns,*) parent_cgroup="${mountpoint}${init_cgroup%/}";;
+            *) parent_cgroup="${mountpoint}${init_cgroup%/}/lxc";;
+        esac
         break
     done
 }
