@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #
 # lxc: linux Container library
@@ -39,38 +39,47 @@ help() {
     echo "  -f        stop the container if it is running (rather than abort)" >&2
 }
 
-shortoptions='hn:f'
-longoptions='help,name:'
+usage_err() {
+    [ -n "$1" ] && echo "$1" >&2
+    usage
+    exit 1
+}
+
+optarg_check() {
+    if [ -z "$2" ]; then
+        usage_err "option '$1' requires an argument"
+    fi
+}
+
 lxc_path=@LXCPATH@
 force=0
 
-getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
-if [ $? != 0 ]; then
-    usage
-    exit 1;
-fi
-
-eval set -- "$getopt"
-
-while true; do
-        case "$1" in
+while [ $# -gt 0 ]; do
+        opt="$1"
+        shift
+        case "$opt" in
             -h|--help)
                 help
                 exit 1
             ;;
             -n|--name)
-                shift
+                optarg_check "$opt" "$1"
                 lxc_name=$1
                 shift
             ;;
             -f)
                 force=1
-                shift
             ;;
             --)
-                shift
                 break
             ;;
+            -?)
+                usage_err "unknown option '$opt'"
+            ;;
+            -*)
+                # split opts -abc into -a -b -c
+                set -- $(echo "${opt#-}" | sed 's/\(.\)/ -\1/g') "$@"
+                ;;
             *)
             usage
             exit 1
