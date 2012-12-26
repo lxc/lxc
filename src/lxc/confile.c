@@ -580,7 +580,11 @@ static int config_network_ipv4(const char *key, const char *value,
 	lxc_list_init(list);
 	list->elem = inetdev;
 
-	addr = strdupa(value);
+	addr = strdup(value);
+	if (!addr) {
+		ERROR("no address specified");
+		return -1;
+	}
 
 	cursor = strstr(addr, " ");
 	if (cursor) {
@@ -594,18 +598,15 @@ static int config_network_ipv4(const char *key, const char *value,
 		prefix = slash + 1;
 	}
 
-	if (!addr) {
-		ERROR("no address specified");
-		return -1;
-	}
-
 	if (!inet_pton(AF_INET, addr, &inetdev->addr)) {
 		SYSERROR("invalid ipv4 address: %s", value);
+		free(addr);
 		return -1;
 	}
 
 	if (bcast && !inet_pton(AF_INET, bcast, &inetdev->bcast)) {
 		SYSERROR("invalid ipv4 broadcast address: %s", value);
+		free(addr);
 		return -1;
 	}
 
@@ -624,6 +625,7 @@ static int config_network_ipv4(const char *key, const char *value,
 
 	lxc_list_add(&netdev->ipv4, list);
 
+	free(addr);
 	return 0;
 }
 
@@ -693,7 +695,12 @@ static int config_network_ipv6(const char *key, const char *value,
 	lxc_list_init(list);
 	list->elem = inet6dev;
 
-	valdup = strdupa(value);
+	valdup = strdup(value);
+	if (!valdup) {
+		ERROR("no address specified");
+		return -1;
+	}
+
 	inet6dev->prefix = 64;
 	slash = strstr(valdup, "/");
 	if (slash) {
@@ -704,11 +711,13 @@ static int config_network_ipv6(const char *key, const char *value,
 
 	if (!inet_pton(AF_INET6, value, &inet6dev->addr)) {
 		SYSERROR("invalid ipv6 address: %s", value);
+		free(valdup);
 		return -1;
 	}
 
 	lxc_list_add(&netdev->ipv6, list);
 
+	free(valdup);
 	return 0;
 }
 
