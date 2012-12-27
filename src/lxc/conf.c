@@ -2005,6 +2005,8 @@ struct lxc_conf *lxc_conf_init(void)
 	memset(new, 0, sizeof(*new));
 
 	new->personality = -1;
+	new->console.log_path = NULL;
+	new->console.log_fd = -1;
 	new->console.path = NULL;
 	new->console.peer = -1;
 	new->console.master = -1;

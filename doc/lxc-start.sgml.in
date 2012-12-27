@@ -51,7 +51,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <command>lxc-start</command>
       <arg choice="req">-n <replaceable>name</replaceable></arg>
       <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
-      <arg choice="opt">-c <replaceable>console_file</replaceable></arg>
+      <arg choice="opt">-c <replaceable>console_device</replaceable></arg>
+      <arg choice="opt">-L <replaceable>console_logfile</replaceable></arg>
       <arg choice="opt">-d</arg>
       <arg choice="opt">-p <replaceable>pid_file</replaceable></arg>
       <arg choice="opt">-s KEY=VAL</arg>
@@ -74,11 +75,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       lxc-create command or with the configuration file parameter.
       If no configuration is
       defined, the default isolation is used.
-    </para>
-    <para>
-      The orphan process group
-      and daemon are not supported by this command, use
-      the <command>lxc-execute</command> command instead.
     </para>
     <para>
       If no command is specified, <command>lxc-start</command> will
@@ -139,13 +135,25 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <varlistentry>
 	<term>
 	  <option>-c,
-	  --console <replaceable>console_file</replaceable></option>
+	  --console <replaceable>console_device</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
-	    Specify a file to output the container console. If the
-	    option is not specified the output will go the terminal
-	    except if the <option>-d</option> is specified.
+	    Specify a device to use for the container's console, for example
+            /dev/tty8. If this option is not specified the current terminal
+            will be used unless <option>-d</option> is specified.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-L,
+	  --console-log <replaceable>console_logfile</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Specify a file to log the container's console output to.
 	  </para>
 	</listitem>
       </varlistentry>

@@ -33,27 +33,29 @@ extern int lxc_caps_last_cap(void);
 
 #define lxc_priv(__lxc_function)			\
 	({						\
+		__label__ out;				\
 		int __ret, __ret2, __errno = 0;		\
 		__ret = lxc_caps_up();			\
 		if (__ret)				\
-			goto __out;			\
+			goto out;			\
 		__ret = __lxc_function;			\
 		if (__ret)				\
 			__errno = errno;		\
 		__ret2 = lxc_caps_down();		\
-	__out:	__ret ? errno = __errno,__ret : __ret2;	\
+	out:	__ret ? errno = __errno,__ret : __ret2;	\
 	})
 
-#define lxc_unpriv(__lxc_function)		\
+#define lxc_unpriv(__lxc_function)			\
 	({						\
+		__label__ out;				\
 		int __ret, __ret2, __errno = 0;		\
 		__ret = lxc_caps_down();		\
 		if (__ret)				\
-			goto __out;			\
+			goto out;			\
 		__ret = __lxc_function;			\
 		if (__ret)				\
 			__errno = errno;		\
 		__ret2 = lxc_caps_up();			\
-	__out:	__ret ? errno = __errno,__ret : __ret2;	\
+	out:	__ret ? errno = __errno,__ret : __ret2;	\
 	})
 #endif
