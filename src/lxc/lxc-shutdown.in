@@ -130,11 +130,7 @@ if [ $timeout != "-1" ]; then
     alarmpid=$!
 fi
 
-while [ 1 ]; do
-    s=`lxc-info -s -n $lxc_name | awk '{ print $2 }'`
-    if [ "$s" = "STOPPED" ]; then
-        break;
-    fi
+while ! lxc-info -n $lxc_name --state-is STOPPED; do
     sleep 1
 done
 

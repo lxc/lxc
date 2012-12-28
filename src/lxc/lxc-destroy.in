@@ -104,13 +104,12 @@ if [ ! -d "$lxc_path/$lxc_name" ]; then
 fi
 
 # make sure the container is stopped
-state=`lxc-info -n $lxc_name 2>/dev/null | head -1 |awk '{print $2}'`
-if [ $state != "STOPPED" ]; then
+if ! lxc-info -n $lxc_name --state-is "STOPPED"; then
     if [ $force -eq 1 ]; then
         lxc-stop -n $lxc_name
         lxc-wait -n $lxc_name -s STOPPED
     else
-        echo "$(basename $0): '$lxc_name' is $state; aborted" >&2
+        echo "$(basename $0): '$lxc_name' $(lxc-info -n $lxc_name -s); aborted" >&2
         exit 1
     fi
 fi

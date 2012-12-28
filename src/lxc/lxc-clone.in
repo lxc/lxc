@@ -193,7 +193,7 @@ oldroot=`grep lxc.rootfs $lxc_path/$lxc_orig/config | awk -F'[= \t]+' '{ print $
 rootfs=`echo $oldroot |sed "s/$lxc_orig/$lxc_new/"`
 
 container_running=True
-lxc-info -s -n $lxc_orig|grep RUNNING >/dev/null 2>&1 || container_running=False
+lxc-info -n $lxc_orig --state-is RUNNING || container_running=False
 
 sed -i '/lxc.rootfs/d' $lxc_path/$lxc_new/config
 if [ -b $oldroot ]; then
