@@ -2,6 +2,7 @@
 
 install_alpine() {
     rootfs="$1"
+    shift
     mkdir -p "$rootfs"/etc/apk || return 1
     cp -r ${keys_dir:-/etc/apk/keys} "$rootfs"/etc/apk/
     if [ -n "$repository" ]; then
@@ -13,7 +14,7 @@ install_alpine() {
     if [ -n "$apk_arch" ]; then
         opt_arch="--arch $apk_arch"
     fi
-    ${APK:-apk} add -U --initdb --root $rootfs $opt_arch alpine-base
+    ${APK:-apk} add -U --initdb --root $rootfs $opt_arch "$@" alpine-base
 }
 
 configure_alpine() {
@@ -128,7 +129,7 @@ die() {
 usage() {
     cat >&2 <<EOF
 Usage: $(basename $0) [-h|--help] [-r|--repository <url>] [-a|--arch <arch>]
-                   -p|--path <path> -n|--name <name>
+                   -p|--path <path> -n|--name <name> [PKG...]
 EOF
 }
 
@@ -186,10 +187,6 @@ while [ $# -gt 0 ]; do
         # split opts -abc into -a -b -c
         set -- $(echo "${opt#-}" | sed 's/\(.\)/ -\1/g') "$@"
         ;;
-    *)
-        usage
-        exit 1
-        ;;
     esac
 done
 
@@ -217,6 +214,6 @@ case "$arch" in
 	*)	die "unsupported architecture: $arch";;
 esac
 
-install_alpine "$rootfs" || die "Failed to install rootfs for $name"
+install_alpine "$rootfs" "$@" || die "Failed to install rootfs for $name"
 configure_alpine "$rootfs" "$name" || die "Failed to configure $name"
 copy_configuration "$path" "$rootfs" "$name"
