@@ -136,41 +136,41 @@ optarg_check() {
 default_path=@LXCPATH@
 
 while [ $# -gt 0 ]; do
-        opt="$1"
-        shift
-        case "$opt" in
-        -h|--help)
+    opt="$1"
+    shift
+    case "$opt" in
+    -h|--help)
         usage
         exit 0
         ;;
-        -n|--name)
+    -n|--name)
         optarg_check $opt "$1"
         name=$1
         shift
         ;;
-        -p|--path)
+    -p|--path)
         optarg_check $opt "$1"
         path=$1
         shift
         ;;
-            --)
+    --)
         break;;
-        --*=*)
-            # split --myopt=foo=bar into --myopt foo=bar
-            set -- ${opt%=*} ${opt#*=} "$@"
+    --*=*)
+        # split --myopt=foo=bar into --myopt foo=bar
+        set -- ${opt%=*} ${opt#*=} "$@"
         ;;
-        -?)
+    -?)
         usage_err "unknown option '$opt'"
         ;;
-        -*)
+    -*)
         # split opts -abc into -a -b -c
         set -- $(echo "${opt#-}" | sed 's/\(.\)/ -\1/g') "$@"
         ;;
-            *)
+    *)
         usage
         exit 1
         ;;
-        esac
+    esac
 done
 
 
