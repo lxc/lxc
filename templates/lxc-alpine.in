@@ -9,7 +9,11 @@ install_alpine() {
     else
         cp /etc/apk/repositories "$rootfs"/etc/apk/repositories || return 1
     fi
-    ${APK:-apk} add -U --initdb --root $rootfs alpine-base
+    opt_arch=
+    if [ -n "$apk_arch" ]; then
+        opt_arch="--arch $apk_arch"
+    fi
+    ${APK:-apk} add -U --initdb --root $rootfs $opt_arch alpine-base
 }
 
 configure_alpine() {
@@ -68,6 +72,9 @@ copy_configuration() {
 
     grep -q "^lxc.rootfs" $path/config 2>/dev/null \
         || echo "lxc.rootfs = $rootfs" >> $path/config
+    if [ -n "$lxc_arch" ]; then
+        echo "lxc.arch = $lxc_arch" >> $path/config
+    fi
     cat <<EOF >> $path/config
 lxc.tty = 4
 lxc.pts = 1024
@@ -120,7 +127,7 @@ die() {
 
 usage() {
     cat >&2 <<EOF
-Usage: $(basename $0) [-h|--help] [-r|--repository <url>]
+Usage: $(basename $0) [-h|--help] [-r|--repository <url>] [-a|--arch <arch>]
                    -p|--path <path> -n|--name <name>
 EOF
 }
@@ -161,6 +168,11 @@ while [ $# -gt 0 ]; do
         repository=$1
         shift
 	;;
+    -a|--arch)
+        optarg_check $opt "$1"
+        arch=$1
+        shift
+	;;
     --)
         break;;
     --*=*)
@@ -192,6 +204,18 @@ rootfs=`awk -F= '$1 ~ /^lxc.rootfs/ { print $2 }' "$path/config" 2>/dev/null`
 if [ -z "$rootfs" ]; then
     rootfs="${path}/rootfs"
 fi
+
+lxc_arch=$arch
+apk_arch=$arch
+
+case "$arch" in
+	i[3-6]86)
+		apk_arch=x86;;
+	x86)
+		lxc_arch=i686;;
+	x86_64|"") ;;
+	*)	die "unsupported architecture: $arch";;
+esac
 
 install_alpine "$rootfs" || die "Failed to install rootfs for $name"
 configure_alpine "$rootfs" "$name" || die "Failed to configure $name"
