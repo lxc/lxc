@@ -145,7 +145,7 @@ static int get_default_console(char **console)
 
 	if (!access("/dev/tty", F_OK)) {
 		fd = open("/dev/tty", O_RDWR);
-		if (fd > 0) {
+		if (fd >= 0) {
 			close(fd);
 			*console = strdup("/dev/tty");
 			goto out;
