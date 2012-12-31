@@ -119,7 +119,10 @@ die() {
 }
 
 usage() {
-    echo "Usage: $(basename $0) [-h|--help] -p|--path <path> -n|--name <name>" >&2
+    cat >&2 <<EOF
+Usage: $(basename $0) [-h|--help] [-r|--repository <url>]
+                   -p|--path <path> -n|--name <name>
+EOF
 }
 
 usage_err() {
@@ -153,6 +156,11 @@ while [ $# -gt 0 ]; do
         path=$1
         shift
         ;;
+    -r|--repository)
+        optarg_check $opt "$1"
+        repository=$1
+        shift
+	;;
     --)
         break;;
     --*=*)
