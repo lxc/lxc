@@ -118,10 +118,10 @@ if [ "$pid" = "-1" ]; then
 fi
 
 if [ $reboot -eq 1 ]; then
-    kill -s SIGINT $pid
+    kill -s INT $pid
     exit 0
 else
-    kill -s SIGPWR $pid
+    kill -s PWR $pid
 fi
 
 if [ $dowait -eq 0 ]; then
