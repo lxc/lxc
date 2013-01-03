@@ -28,7 +28,6 @@
 #include <errno.h>
 #include <string.h>
 #include <dirent.h>
-#include <mntent.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/syscall.h>
@@ -76,6 +75,12 @@
 
 #if HAVE_SYS_PERSONALITY_H
 #include <sys/personality.h>
+#endif
+
+#if IS_BIONIC
+#include <../include/lxcmntent.h>
+#else
+#include <mntent.h>
 #endif
 
 #include "lxcseccomp.h"

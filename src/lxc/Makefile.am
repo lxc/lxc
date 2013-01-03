@@ -19,7 +19,8 @@ pkginclude_HEADERS = \
 
 if IS_BIONIC
 pkginclude_HEADERS += \
-	../include/openpty.h
+	../include/openpty.h \
+	../include/lxcmntent.h
 endif
 
 if !HAVE_GETLINE
@@ -74,7 +75,8 @@ liblxc_so_SOURCES = \
 
 if IS_BIONIC
 liblxc_so_SOURCES += \
-	../include/openpty.c ../include/openpty.h
+	../include/openpty.c ../include/openpty.h \
+	../include/lxcmntent.c ../include/lxcmntent.h
 endif
 
 if !HAVE_GETLINE

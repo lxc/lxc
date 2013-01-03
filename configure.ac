@@ -227,7 +227,7 @@ AC_CHECK_HEADERS([sys/signalfd.h pty.h sys/capability.h sys/personality.h utmpx.
 AC_CHECK_FUNCS([setns pivot_root sethostname unshare])
 
 # Check for some functions
-AC_CHECK_FUNCS([openpty])
+AC_CHECK_FUNCS([openpty hasmntopt setmntent endmntent])
 AC_CHECK_FUNCS([getline],
 	AM_CONDITIONAL(HAVE_GETLINE, true)
 	AC_DEFINE(HAVE_GETLINE,1,[Have getline]),
