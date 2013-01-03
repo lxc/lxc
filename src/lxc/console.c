@@ -26,17 +26,23 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <pty.h>
 #include <sys/types.h>
 #include <termios.h>
 
 #include "log.h"
 #include "conf.h"
+#include "config.h"
 #include "start.h" 	/* for struct lxc_handler */
 #include "caps.h"
 #include "commands.h"
 #include "mainloop.h"
 #include "af_unix.h"
+
+#if HAVE_PTY_H
+#include <pty.h>
+#else
+#include <../include/openpty.h>
+#endif
 
 lxc_log_define(lxc_console, lxc);
 

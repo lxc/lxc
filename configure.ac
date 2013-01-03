@@ -213,9 +213,11 @@ AM_CONDITIONAL([IS_BIONIC], [test "x$is_bionic" = "xyes"])
 # Some systems lack PR_CAPBSET_DROP definition => HAVE_DECL_PR_CAPBSET_DROP
 AC_CHECK_DECLS([PR_CAPBSET_DROP], [], [], [#include <sys/prctl.h>])
 
-# Check for optional headers
-AC_CHECK_HEADERS([sys/signalfd.h])
+# Check for some headers
+AC_CHECK_HEADERS([sys/signalfd.h pty.h])
 
+# Check for some functions
+AC_CHECK_FUNCS([openpty])
 AC_CHECK_FUNCS([getline],
 	AM_CONDITIONAL(HAVE_GETLINE, true)
 	AC_DEFINE(HAVE_GETLINE,1,[Have getline]),

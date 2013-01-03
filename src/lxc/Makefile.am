@@ -17,6 +17,11 @@ pkginclude_HEADERS = \
 		lxccontainer.h \
 		lxclock.h
 
+if IS_BIONIC
+pkginclude_HEADERS += \
+	../include/openpty.h
+endif
+
 if !HAVE_GETLINE
 if HAVE_FGETLN
 pkginclude_HEADERS += ../include/getline.h
@@ -66,6 +71,11 @@ liblxc_so_SOURCES = \
 	apparmor.c apparmor.h \
 	lxclock.h lxclock.c \
 	lxccontainer.c lxccontainer.h
+
+if IS_BIONIC
+liblxc_so_SOURCES += \
+	../include/openpty.c ../include/openpty.h
+endif
 
 if !HAVE_GETLINE
 if HAVE_FGETLN

@@ -31,7 +31,12 @@
 #include <mntent.h>
 #include <unistd.h>
 #include <sys/wait.h>
+
+#if HAVE_PTY_H
 #include <pty.h>
+#else
+#include <../include/openpty.h>
+#endif
 
 #include <linux/loop.h>
 
