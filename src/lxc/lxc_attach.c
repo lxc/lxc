@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	curdir = get_current_dir_name();
+	curdir = getcwd(NULL, 0);
 
 	/* determine which namespaces the container was created with
 	 * by asking lxc-start
