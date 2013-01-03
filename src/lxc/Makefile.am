@@ -94,7 +94,11 @@ liblxc_so_LDFLAGS = \
 	-shared \
 	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,$(VERSION)))
 
-liblxc_so_LDADD = -lutil $(CAP_LIBS) $(APPARMOR_LIBS) $(SECCOMP_LIBS) -lrt
+liblxc_so_LDADD = $(CAP_LIBS) $(APPARMOR_LIBS) $(SECCOMP_LIBS)
+
+if !IS_BIONIC
+liblxc_so_LDADD += -lutil -lrt
+endif
 
 bin_SCRIPTS = \
 	lxc-ps \
@@ -140,7 +144,11 @@ AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
 AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
 endif
-LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@ @SECCOMP_LIBS@ -lrt
+LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@ @SECCOMP_LIBS@
+
+if !IS_BIONIC
+LDADD += -lrt
+endif
 
 lxc_attach_SOURCES = lxc_attach.c
 lxc_cgroup_SOURCES = lxc_cgroup.c
