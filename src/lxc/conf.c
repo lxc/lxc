@@ -115,6 +115,10 @@ lxc_log_define(lxc_conf, lxc);
 #define PR_CAPBSET_DROP 24
 #endif
 
+#ifndef LO_FLAGS_AUTOCLEAR
+#define LO_FLAGS_AUTOCLEAR 4
+#endif
+
 char *lxchook_names[NUM_LXC_HOOKS] = {
 	"pre-start", "pre-mount", "mount", "start", "post-stop" };
 
