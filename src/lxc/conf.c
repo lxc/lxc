@@ -48,7 +48,6 @@
 #include <sys/mount.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
-#include <sys/personality.h>
 
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -72,6 +71,10 @@
 
 #if HAVE_SYS_CAPABILITY_H
 #include <sys/capability.h>
+#endif
+
+#if HAVE_SYS_PERSONALITY_H
+#include <sys/personality.h>
 #endif
 
 #include "lxcseccomp.h"
@@ -1198,6 +1201,7 @@ out:
 
 static int setup_personality(int persona)
 {
+	#if HAVE_SYS_PERSONALITY_H
 	if (persona == -1)
 		return 0;
 
@@ -1207,6 +1211,7 @@ static int setup_personality(int persona)
 	}
 
 	INFO("set personality to '0x%x'", persona);
+	#endif
 
 	return 0;
 }

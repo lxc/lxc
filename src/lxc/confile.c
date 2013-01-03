@@ -31,18 +31,22 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/utsname.h>
-#include <sys/personality.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <net/if.h>
 
 #include "parse.h"
+#include "config.h"
 #include "confile.h"
 #include "utils.h"
 
 #include <lxc/log.h>
 #include <lxc/conf.h>
 #include "network.h"
+
+#if HAVE_SYS_PERSONALITY_H
+#include <sys/personality.h>
+#endif
 
 lxc_log_define(lxc_confile, lxc);
 
@@ -1301,6 +1305,7 @@ int lxc_config_define_load(struct lxc_list *defines, struct lxc_conf *conf)
 
 signed long lxc_config_parse_arch(const char *arch)
 {
+	#if HAVE_SYS_PERSONALITY_H
 	struct per_name {
 		char *name;
 		unsigned long per;
@@ -1318,6 +1323,7 @@ signed long lxc_config_parse_arch(const char *arch)
 		if (!strcmp(pername[i].name, arch))
 		    return pername[i].per;
 	}
+	#endif
 
 	return -1;
 }
@@ -1333,18 +1339,22 @@ static int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v)
 
 static int lxc_get_arch_entry(struct lxc_conf *c, char *retv, int inlen)
 {
-	int len, fulllen = 0;
+	int fulllen = 0;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
+	#if HAVE_SYS_PERSONALITY_H
+	int len = 0;
+
 	switch(c->personality) {
 	case PER_LINUX32: strprint(retv, inlen, "x86"); break;
 	case PER_LINUX: strprint(retv, inlen, "x86_64"); break;
 	default: break;
 	}
+	#endif
 
 	return fulllen;
 }
@@ -1664,11 +1674,13 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		fprintf(fout, "lxc.pts = %d\n", c->pts);
 	if (c->ttydir)
 		fprintf(fout, "lxc.devttydir = %s\n", c->ttydir);
+	#if HAVE_SYS_PERSONALITY_H
 	switch(c->personality) {
 	case PER_LINUX32: fprintf(fout, "lxc.arch = x86\n"); break;
 	case PER_LINUX: fprintf(fout, "lxc.arch = x86_64\n"); break;
 	default: break;
 	}
+	#endif
 #if HAVE_APPARMOR
 	if (c->aa_profile)
 		fprintf(fout, "lxc.aa_profile = %s\n", c->aa_profile);

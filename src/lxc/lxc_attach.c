@@ -29,18 +29,22 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <sys/personality.h>
 
 #include "attach.h"
 #include "commands.h"
 #include "arguments.h"
 #include "caps.h"
 #include "cgroup.h"
+#include "config.h"
 #include "confile.h"
 #include "start.h"
 #include "sync.h"
 #include "log.h"
 #include "namespace.h"
+
+#if HAVE_SYS_PERSONALITY_H
+#include <sys/personality.h>
+#endif
 
 lxc_log_define(lxc_attach_ui, lxc);
 
@@ -273,6 +277,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
+		#if HAVE_SYS_PERSONALITY_H
 		if (new_personality < 0)
 			new_personality = init_ctx->personality;
 
@@ -281,6 +286,7 @@ int main(int argc, char *argv[])
 			      strerror(errno));
 			return -1;
 		}
+		#endif
 
 		if (!elevated_privileges && lxc_attach_drop_privs(init_ctx)) {
 			ERROR("could not drop privileges");
