@@ -21,8 +21,17 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
+#include "config.h"
+
 struct lxc_handler;
 struct lxc_epoll_descr;
 
+#ifdef HAVE_UTMPX_H
 int lxc_utmp_mainloop_add(struct lxc_epoll_descr *descr,
 			  struct lxc_handler *handler);
+#else
+static inline int lxc_utmp_mainloop_add(struct lxc_epoll_descr *descr,
+			  struct lxc_handler *handler) {
+		return -1;
+}
+#endif

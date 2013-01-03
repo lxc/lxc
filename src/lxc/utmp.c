@@ -21,6 +21,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
+#include "config.h"
+
+#ifdef HAVE_UTMPX_H
+
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
@@ -37,7 +41,10 @@
 #include "mainloop.h"
 #include "lxc.h"
 #include "log.h"
+
+#ifndef __USE_GNU
 #define __USE_GNU
+#endif
 #include <utmpx.h>
 #undef __USE_GNU
 
@@ -410,3 +417,5 @@ int lxc_utmp_del_timer(struct lxc_epoll_descr *descr,
 	else
 		return 0;
 }
+
+#endif
