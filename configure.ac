@@ -223,6 +223,9 @@ AC_CHECK_DECLS([PR_CAPBSET_DROP], [], [], [#include <sys/prctl.h>])
 # Check for some headers
 AC_CHECK_HEADERS([sys/signalfd.h pty.h sys/capability.h sys/personality.h])
 
+# Check for some syscalls functions
+AC_CHECK_FUNCS([setns pivot_root sethostname unshare])
+
 # Check for some functions
 AC_CHECK_FUNCS([openpty])
 AC_CHECK_FUNCS([getline],

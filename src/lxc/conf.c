@@ -31,6 +31,7 @@
 #include <mntent.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/syscall.h>
 
 #if HAVE_PTY_H
 #include <pty.h>
@@ -132,10 +133,36 @@ lxc_log_define(lxc_conf, lxc);
 #define LO_FLAGS_AUTOCLEAR 4
 #endif
 
+/* Define pivot_root() if missing from the C library */
+#ifndef HAVE_PIVOT_ROOT
+static int pivot_root(const char * new_root, const char * put_old)
+{
+#ifdef __NR_pivot_root
+return syscall(__NR_pivot_root, new_root, put_old);
+#else
+errno = ENOSYS;
+return -1;
+#endif
+}
+#else
+extern int pivot_root(const char * new_root, const char * put_old);
+#endif
+
+/* Define sethostname() if missing from the C library */
+#ifndef HAVE_SETHOSTNAME
+static int sethostname(const char * name, size_t len)
+{
+#ifdef __NR_sethostname
+return syscall(__NR_sethostname, name, len);
+#else
+errno = ENOSYS;
+return -1;
+#endif
+}
+#endif
+
 char *lxchook_names[NUM_LXC_HOOKS] = {
 	"pre-start", "pre-mount", "mount", "start", "post-stop" };
-
-extern int pivot_root(const char * new_root, const char * put_old);
 
 typedef int (*instanciate_cb)(struct lxc_handler *, struct lxc_netdev *);
 

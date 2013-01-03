@@ -47,15 +47,31 @@
 
 lxc_log_define(lxc_attach, lxc);
 
-int setns(int fd, int nstype)
+/* Define setns() if missing from the C library */
+#ifndef HAVE_SETNS
+static int setns(int fd, int nstype)
 {
-#ifndef __NR_setns
-	errno = ENOSYS;
-	return -1;
+#ifdef __NR_setns
+return syscall(__NR_setns, fd, nstype);
 #else
-	return syscall(__NR_setns, fd, nstype);
+errno = ENOSYS;
+return -1;
 #endif
 }
+#endif
+
+/* Define unshare() if missing from the C library */
+#ifndef HAVE_UNSHARE
+static int unshare(int flags)
+{
+#ifdef __NR_unshare
+return syscall(__NR_unshare, flags);
+#else
+errno = ENOSYS;
+return -1;
+#endif
+}
+#endif
 
 /* Define getline() if missing from the C library */
 #ifndef HAVE_GETLINE
