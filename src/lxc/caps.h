@@ -58,28 +58,28 @@ static inline int lxc_caps_last_cap(void) {
 #define lxc_priv(__lxc_function)			\
 	({						\
 		__label__ out;				\
-		int __ret, __ret2, __errno = 0;		\
+		int __ret, __ret2, ___errno = 0;		\
 		__ret = lxc_caps_up();			\
 		if (__ret)				\
 			goto out;			\
 		__ret = __lxc_function;			\
 		if (__ret)				\
-			__errno = errno;		\
+			___errno = errno;		\
 		__ret2 = lxc_caps_down();		\
-	out:	__ret ? errno = __errno,__ret : __ret2;	\
+	out:	__ret ? errno = ___errno,__ret : __ret2;	\
 	})
 
 #define lxc_unpriv(__lxc_function)			\
 	({						\
 		__label__ out;				\
-		int __ret, __ret2, __errno = 0;		\
+		int __ret, __ret2, ___errno = 0;		\
 		__ret = lxc_caps_down();		\
 		if (__ret)				\
 			goto out;			\
 		__ret = __lxc_function;			\
 		if (__ret)				\
-			__errno = errno;		\
+			___errno = errno;		\
 		__ret2 = lxc_caps_up();			\
-	out:	__ret ? errno = __errno,__ret : __ret2;	\
+	out:	__ret ? errno = ___errno,__ret : __ret2;	\
 	})
 #endif
