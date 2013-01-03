@@ -166,6 +166,11 @@ return -1;
 }
 #endif
 
+/* Define __S_ISTYPE if missing from the C library */
+#ifndef __S_ISTYPE
+#define        __S_ISTYPE(mode, mask)  (((mode) & S_IFMT) == (mask))
+#endif
+
 char *lxchook_names[NUM_LXC_HOOKS] = {
 	"pre-start", "pre-mount", "mount", "start", "post-stop" };
 
@@ -590,7 +595,7 @@ int pin_rootfs(const char *rootfs)
 		return -1;
 	}
 
-	if (!__S_ISTYPE(s.st_mode, S_IFDIR))
+	if (!S_ISDIR(s.st_mode))
 		return -2;
 
 	ret = snprintf(absrootfspin, MAXPATHLEN, "%s%s", absrootfs, ".hold");
