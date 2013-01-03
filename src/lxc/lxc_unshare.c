@@ -54,12 +54,9 @@ void usage(char *cmd)
 
 static uid_t lookup_user(const char *optarg)
 {
-	int bufflen = sysconf(_SC_GETPW_R_SIZE_MAX);
-	char buff[bufflen];
 	char name[sysconf(_SC_LOGIN_NAME_MAX)];
 	uid_t uid = -1;
-	struct passwd pwent;
-	struct passwd *pent;
+	struct passwd *pwent = NULL;
 
 	if (!optarg || (optarg[0] == '\0'))
 		return uid;
@@ -69,13 +66,15 @@ static uid_t lookup_user(const char *optarg)
 		if (sscanf(optarg, "%s", name) < 1)
 			return uid;
 
-		if (getpwnam_r(name, &pwent, buff, bufflen, &pent) || !pent) {
+		pwent = getpwnam(name);
+		if (!pwent) {
 			ERROR("invalid username %s", name);
 			return uid;
 		}
-		uid = pent->pw_uid;
+		uid = pwent->pw_uid;
 	} else {
-		if (getpwuid_r(uid, &pwent, buff, bufflen, &pent) || !pent) {
+		pwent = getpwuid(uid);
+		if (!pwent) {
 			ERROR("invalid uid %d", uid);
 			uid = -1;
 			return uid;
