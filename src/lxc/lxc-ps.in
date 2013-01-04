@@ -114,7 +114,8 @@ for container in ${containers}; do
 done
 
 # first file is stdin, the rest are the container tasks
-ps "$@" | awk -v container_field_width="$container_field_width" '
+ps "$@" | awk -v container_field_width="$container_field_width" \
+    -v list_container_processes="$list_container_processes" '
 # first line is PS header
 NR == 1 {
     # find pid field index
@@ -133,7 +134,8 @@ NR == 1 {
 
 # store lines from ps with pid as index
 NR == FNR {
-    ps[$pididx] = $0
+    ps_line[NR] = $0
+    pid_of_line[NR] = $pididx
     next
 }
 
@@ -151,8 +153,11 @@ FNR == 1 {
 
 END {
     printf("%-" container_field_width "s %s\n", "CONTAINER", header)
-    for (pid in container_of_pid)
-        printf("%-" container_field_width "s %s\n", container_of_pid[pid], ps[pid])
+    for (i in ps_line) {
+	container = container_of_pid[pid_of_line[i]]
+        if (list_container_processes == 0 || container != "")
+            printf("%-" container_field_width "s %s\n", container, ps_line[i])
+    }
 }
 
 ' - $tasks_files
