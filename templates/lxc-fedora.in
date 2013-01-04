@@ -149,7 +149,11 @@ download_fedora()
             echo "Failed to get a mirror"
             continue
         fi
-        RELEASE_URL="$MIRROR_URL/Packages/fedora-release-$release-1.noarch.rpm"
+        if [ "$release" -gt "16" ]; then
+            RELEASE_URL="$MIRROR_URL/Packages/f/fedora-release-$release-1.noarch.rpm"
+        else
+            RELEASE_URL="$MIRROR_URL/Packages/fedora-release-$release-1.noarch.rpm"
+        fi
         echo "Fetching from $RELEASE_URL"
         curl -f "$RELEASE_URL" > $INSTALL_ROOT/fedora-release-$release.noarch.rpm
         if [ $? -ne 0 ]; then
