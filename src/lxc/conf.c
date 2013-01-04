@@ -2602,7 +2602,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_mount_entries(&lxc_conf->rootfs, &lxc_conf->mount_list, name)) {
+	if (!lxc_list_empty(&lxc_conf->mount_list) && setup_mount_entries(&lxc_conf->rootfs, &lxc_conf->mount_list, name)) {
 		ERROR("failed to setup the mount entries for '%s'", name);
 		return -1;
 	}
