@@ -397,7 +397,11 @@ container_rootfs_create()
         echo "Downloading release $container_release_major.$container_release_minor for $basearch"
 
         # get yum repo file
-        public_yum_url=http://public-yum.oracle.com
+        if [ -n "$repourl" ]; then
+            yum_url=$repourl
+        else
+            yum_url=http://public-yum.oracle.com
+        fi
         if   [ $container_release_major = "5" ]; then
             repofile=public-yum-el5.repo
         elif [ $container_release_major = "6" ]; then
@@ -406,9 +410,9 @@ container_rootfs_create()
             die "Unsupported release $container_release_major"
         fi
         mkdir -p $container_rootfs/etc/yum.repos.d
-        wget -q $public_yum_url/$repofile -O $container_rootfs/etc/yum.repos.d/$repofile
+        wget -q $yum_url/$repofile -O $container_rootfs/etc/yum.repos.d/$repofile
         if [ $? -ne 0 ]; then
-            die "Failed to download repo file $public_yum_url/$repofile"
+            die "Failed to download repo file $yum_url/$repofile"
         fi
 
         # yum will take $basearch from host, so force the arch we want
