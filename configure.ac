@@ -192,6 +192,22 @@ else
 fi
 AC_SUBST([CAP_LIBS])
 
+# Check for alternate C libraries
+AC_MSG_CHECKING(for bionic libc)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+    [[#ifndef __ANDROID__
+error: Not bionic!
+#endif]])],
+                   [is_bionic=yes],
+                   [is_bionic=no])
+if test "x$is_bionic" = "xyes"; then
+        AC_DEFINE([IS_BIONIC], 1, ["bionic libc"])
+        AC_MSG_RESULT([yes])
+else
+        AC_MSG_RESULT([no])
+fi
+AM_CONDITIONAL([IS_BIONIC], [test "x$is_bionic" = "xyes"])
+
 # Some systems lack PR_CAPBSET_DROP definition => HAVE_DECL_PR_CAPBSET_DROP
 AC_CHECK_DECLS([PR_CAPBSET_DROP], [], [], [#include <sys/prctl.h>])
 
