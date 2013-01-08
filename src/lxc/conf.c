@@ -963,6 +963,7 @@ static int setup_autodev(char *root)
 	struct lxc_devs *d;
 	char path[MAXPATHLEN];
 	int i;
+	mode_t cmask;
 
 	INFO("Creating initial consoles under %s/dev\n", root);
 
@@ -974,6 +975,7 @@ static int setup_autodev(char *root)
 		run_makedev(path);
 
 	INFO("Populating /dev under %s\n", root);
+	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
 		d = &lxc_devs[i];
 		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", root, d->name);
@@ -985,6 +987,7 @@ static int setup_autodev(char *root)
 			return -1;
 		}
 	}
+	umask(cmask);
 
 	INFO("Populated /dev under %s\n", root);
 	return 0;
