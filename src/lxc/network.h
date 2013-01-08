@@ -61,7 +61,7 @@ extern int lxc_netdev_set_mtu(const char *name, int mtu);
  */
 extern int lxc_veth_create(const char *name1, const char *name2);
 extern int lxc_macvlan_create(const char *master, const char *name, int mode);
-extern int lxc_vlan_create(const char *master, const char *name, ushort vid);
+extern int lxc_vlan_create(const char *master, const char *name, unsigned short vid);
 
 /*
  * Activate forwarding

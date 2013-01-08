@@ -79,7 +79,7 @@ extern int nla_put_u32(struct nlmsg *nlmsg, int attr, int value)
 	return nla_put(nlmsg, attr, &value, sizeof(value));
 }
 
-extern int nla_put_u16(struct nlmsg *nlmsg, int attr, ushort value)
+extern int nla_put_u16(struct nlmsg *nlmsg, int attr, unsigned short value)
 {
 	return nla_put(nlmsg, attr, &value, 2);
 }

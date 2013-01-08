@@ -149,7 +149,7 @@ extern int lxc_setup_fs(void)
 }
 
 /* borrowed from iproute2 */
-extern int get_u16(ushort *val, const char *arg, int base)
+extern int get_u16(unsigned short *val, const char *arg, int base)
 {
 	unsigned long res;
 	char *ptr;

@@ -87,8 +87,8 @@ struct ifla_veth {
 struct ifla_vlan {
 	uint   flags;
 	uint   fmask;
-	ushort   vid;
-	ushort   pad;
+	unsigned short   vid;
+	unsigned short   pad;
 };
 
 struct ifla_macvlan {

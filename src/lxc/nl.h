@@ -169,7 +169,7 @@ int nla_put_u32(struct nlmsg *nlmsg, int attr, int value);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int nla_put_u16(struct nlmsg *nlmsg, int attr, ushort value);
+int nla_put_u16(struct nlmsg *nlmsg, int attr, unsigned short value);
 
 /*
  * nla_put_attr: add an attribute name to a netlink

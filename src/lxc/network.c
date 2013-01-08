@@ -413,7 +413,7 @@ out:
 }
 
 /* XXX: merge with lxc_macvlan_create */
-int lxc_vlan_create(const char *master, const char *name, ushort vlanid)
+int lxc_vlan_create(const char *master, const char *name, unsigned short vlanid)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;

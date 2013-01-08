@@ -25,7 +25,7 @@
 
 extern int lxc_copy_file(const char *src, const char *dst);
 extern int lxc_setup_fs(void);
-extern int get_u16(ushort *val, const char *arg, int base);
+extern int get_u16(unsigned short *val, const char *arg, int base);
 extern int mkdir_p(const char *dir, mode_t mode);
 
 #endif
