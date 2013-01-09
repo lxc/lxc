@@ -62,6 +62,7 @@ while [ $# -gt 0 ]; do
     case "$opt" in
     -h|--help)
         usage
+        exit 0
         ;;
     -n|--name)
         optarg_check $opt "$1"
@@ -70,11 +71,9 @@ while [ $# -gt 0 ]; do
         ;;
     -w|--wait)
         dowait=1
-        shift
         ;;
     -r|--reboot)
         reboot=1
-        shift
         ;;
     -t|--timeout)
         optarg_check $opt "$1"
@@ -94,6 +93,7 @@ while [ $# -gt 0 ]; do
     *)
         usage_err "unknown option '$opt'"
         exit 1
+        ;;
     esac
 done
 
