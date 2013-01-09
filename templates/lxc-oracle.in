@@ -217,6 +217,27 @@ exec /sbin/mingetty /dev/console
 EOF
     fi
 
+    # lxc-shutdown sends SIGPWR to init, OL4 and OL5 have SysVInit, just
+    # make it do shutdown now instead of delaying 2 minutes.  OL6 uses
+    # upstart, so we create an upstart job to handle SIGPWR to shut down
+    # cleanly.  We use "init 0" instead of shutdown -h now to avoid SELinux
+    # permission denied when upstart's shutdown tries to connect to the
+    # /com/ubuntu/upstart socket.
+    if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
+        sed -i 's|pf::powerfail:/sbin/shutdown -f -h +2 "Power Failure; |pf::powerfail:/sbin/shutdown -f -h now "|' $container_rootfs/etc/inittab
+    else
+        cat <<EOF > $container_rootfs/etc/init/power-status-changed.conf
+# power-status-changed - used to cleanly shut down the container
+#
+# This task is run whenever init receives SIGPWR
+# Used to shut down the machine.
+
+start on power-status-changed
+
+exec init 0
+EOF
+    fi
+
     # there might be other services that are useless but the below set is a good start
     # some of these might not exist in the image, so we silence chkconfig complaining
     # about the service file not being found
