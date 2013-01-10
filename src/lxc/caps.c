@@ -37,6 +37,10 @@ lxc_log_define(lxc_caps, lxc);
 #if HAVE_SYS_CAPABILITY_H
 #include <sys/capability.h>
 
+#ifndef PR_CAPBSET_READ
+#define PR_CAPBSET_READ 23
+#endif
+
 int lxc_caps_reset(void)
 {
 	cap_t cap = cap_init();
