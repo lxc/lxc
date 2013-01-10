@@ -134,7 +134,7 @@ AM_CONDITIONAL([ENABLE_PYTHON], [test "x$enable_python" = "xyes"])
 
 AM_COND_IF([ENABLE_PYTHON],
 	[AM_PATH_PYTHON([3.2], [], [AC_MSG_ERROR([You must install python3])])
-	AC_CHECK_HEADER([python$PYTHON_VERSION/Python.h],[],[AC_MSG_ERROR([You must install python3-dev])])
+	PKG_CHECK_MODULES([PYTHONDEV], [python3 >= 3.2],[],[AC_MSG_ERROR([You must install python3-dev])])
 	AC_DEFINE_UNQUOTED([ENABLE_PYTHON], 1, [Python3 is available])])
 
 # Optional test binaries
