@@ -125,7 +125,7 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #include "af_unix.h"
 #include "mainloop.h"
 #include "utils.h"
-#include "utmp.h"
+#include "lxcutmp.h"
 #include "monitor.h"
 #include "commands.h"
 #include "console.h"

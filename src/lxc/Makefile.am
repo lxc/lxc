@@ -68,7 +68,7 @@ liblxc_so_SOURCES = \
 	mainloop.c mainloop.h \
 	af_unix.c af_unix.h \
 	\
-	utmp.c utmp.h \
+	lxcutmp.c lxcutmp.h \
 	apparmor.c apparmor.h \
 	lxclock.h lxclock.c \
 	lxccontainer.c lxccontainer.h
