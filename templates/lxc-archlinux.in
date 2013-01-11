@@ -31,7 +31,7 @@ lxc_network_link="br0"
 default_path="@LXCPATH@"
 default_locale="en-US.UTF-8"
 default_timezone="UTC"
-#host_mirror="http://mirrors.kernel.org/archlinux/\$repo/os/$arch"
+pacman_config="/etc/pacman.conf"
 
 # sort of minimal package set
 base_packages=(
@@ -113,8 +113,8 @@ ln -s /dev/null /etc/systemd/system/systemd-udevd.service
 ln -s /dev/null /etc/systemd/system/systemd-udevd-control.socket
 ln -s /dev/null /etc/systemd/system/systemd-udevd-kernel.socket
 ln -s /dev/null /etc/systemd/system/proc-sys-fs-binfmt_misc.automount
+# set default systemd target
 ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
-sed -i 's/After=dev-%i.device/After=/' "/lib/systemd/system/getty@.service"
 EOF
     return 0
 }
@@ -165,7 +165,7 @@ EOF
 
 # install packages within container chroot
 function install_arch {
-    if ! pacstrap -cd "${rootfs_path}" ${base_packages[@]}; then
+    if ! pacstrap -dcC "${pacman_config}" "${rootfs_path}" ${base_packages[@]}; then
         echo "Failed to install container packages"
         return 1
     fi
@@ -183,6 +183,7 @@ Mandatory args:
 Optional args:
   -p,--path         path to where the container rootfs will be created, defaults to ${default_path}/rootfs. The container config will go under ${default_path} in that case
   -P,--packages     preinstall additional packages, comma-separated list
+  -c,--config       use specified pacman config when installing container packages
   -t,--network_type set container network interface type (${lxc_network_type})
   -l,--network_link set network link device (${lxc_network_link})
   -h,--help         print this help
@@ -190,7 +191,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:P:n:cl:t: -l help,path:,packages:,name:,clean,network_type:,network_link: -- "${@}")
+options=$(getopt -o hp:P:n:c:l:t: -l help,path:,packages:,name:,config:,network_type:,network_link: -- "${@}")
 if [ ${?} -ne 0 ]; then
     usage $(basename ${0})
     exit 1
@@ -204,6 +205,7 @@ do
     -p|--path)          path=${2}; shift 2;;
     -n|--name)          name=${2}; shift 2;;
     -P|--packages)      additional_packages=${2}; shift 2;;
+    -c|--config)        pacman_config=${2}; shift 2;;
     -t|--network_type)  lxc_network_type=${2}; shift 2;;
     -l|--network_link)  lxc_network_link=${2}; shift 2;;
     --)             shift 1; break ;;
