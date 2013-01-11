@@ -41,7 +41,7 @@
 
 int lxc_log_fd = -1;
 static char log_prefix[LXC_LOG_PREFIX_SIZE] = "lxc";
-int lxc_loglevel_specified = 0;
+static int lxc_loglevel_specified = 0;
 
 lxc_log_define(lxc_log, lxc);
 
@@ -176,17 +176,8 @@ extern int lxc_log_init(const char *file, const char *priority,
 	if (prefix)
 		lxc_log_setprefix(prefix);
 
-	if (file) {
-		int fd;
-
-		fd = log_open(file);
-		if (fd == -1) {
-			ERROR("failed to initialize log service");
-			return -1;
-		}
-
-		lxc_log_fd = fd;
-	}
+	if (file)
+		return lxc_log_set_file(file);
 
 	return 0;
 }
@@ -208,21 +199,39 @@ extern int lxc_log_set_level(int level)
 	return 0;
 }
 
+char *log_fname;  // default to NULL, set in lxc_log_set_file.
+
 /*
  * This is called when we read a lxc.logfile entry in a lxc.conf file.  This
  * happens after processing command line arguments, which override the .conf
  * settings.  So only set the logfile if previously unset.
  */
-extern int lxc_log_set_file(char *fname)
+extern int lxc_log_set_file(const char *fname)
 {
 	if (lxc_log_fd != -1) {
-		INFO("Configuration file was specified on command line, configuration file entry being ignored");
-		return 0;
+		// this should've been caught at config_logfile.
+		ERROR("Race in setting logfile?");
+		return -1;
 	}
+
 	lxc_log_fd = log_open(fname);
 	if (lxc_log_fd == -1) {
 		ERROR("failed to open log file %s\n", fname);
 		return -1;
 	}
+
+	log_fname = strdup(fname);
 	return 0;
+}
+
+extern int lxc_log_get_level(void)
+{
+	if (!lxc_loglevel_specified)
+		return LXC_LOG_PRIORITY_NOTSET;
+	return lxc_log_category_lxc.priority;
+}
+
+extern const char *lxc_log_get_file(void)
+{
+	return log_fname;
 }

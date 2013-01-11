@@ -246,8 +246,6 @@ struct lxc_conf {
 #if HAVE_APPARMOR
 	char *aa_profile;
 #endif
-	char *logfile;
-	int loglevel;
 
 #if HAVE_APPARMOR /* || HAVE_SELINUX || HAVE_SMACK */
 	int lsm_umount_proc;

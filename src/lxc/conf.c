@@ -2077,7 +2077,6 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.name[0] = '\0';
 	new->maincmd_fd = -1;
 	new->rootfs.mount = default_rootfs_mount;
-	new->loglevel = LXC_LOG_PRIORITY_NOTSET;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
@@ -2938,8 +2937,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 		free(conf->ttydir);
 	if (conf->fstab)
 		free(conf->fstab);
-	if (conf->logfile)
-		free(conf->logfile);
 	lxc_clear_config_network(conf);
 #if HAVE_APPARMOR
 	if (conf->aa_profile)

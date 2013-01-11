@@ -922,46 +922,31 @@ static int config_aa_profile(const char *key, const char *value,
 static int config_logfile(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
 {
-	char *path;
-
-	// if given a blank entry, null out any previous entries.
-	if (!value || strlen(value) == 0) {
-		if (lxc_conf->logfile) {
-			free(lxc_conf->logfile);
-			lxc_conf->logfile = NULL;
-		}
+	if (lxc_log_get_file()) {
+		DEBUG("Log file already specified - ignoring new value");
 		return 0;
 	}
 
-	path = strdup(value);
-	if (!path) {
-		SYSERROR("failed to strdup '%s': %m", value);
-		return -1;
-	}
-
-	if (lxc_log_set_file(path)) {
-		free(path);
-		return -1;
-	}
-
-	if (lxc_conf->logfile)
-		free(lxc_conf->logfile);
-	lxc_conf->logfile = path;
-
-	return 0;
+	return lxc_log_set_file(value);
 }
 
 static int config_loglevel(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
 {
+	int newlevel;
+
 	if (!value || strlen(value) == 0)
 		return 0;
 
+	if (lxc_log_get_level() != LXC_LOG_PRIORITY_NOTSET) {
+		DEBUG("Log level already set - ignoring new value");
+		return 0;
+	}
 	if (value[0] >= '0' && value[0] <= '9')
-		lxc_conf->loglevel = atoi(value);
+		newlevel = atoi(value);
 	else
-		lxc_conf->loglevel = lxc_log_priority_to_int(value);
-	return lxc_log_set_level(lxc_conf->loglevel);
+		newlevel = lxc_log_priority_to_int(value);
+	return lxc_log_set_level(newlevel);
 }
 
 static int config_autodev(const char *key, const char *value,
@@ -1612,9 +1597,9 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->aa_profile;
 #endif
 	else if (strcmp(key, "lxc.logfile") == 0)
-		v = c->logfile;
+		v = lxc_log_get_file();
 	else if (strcmp(key, "lxc.loglevel") == 0)
-		v = lxc_log_priority_to_string(c->loglevel);
+		v = lxc_log_priority_to_string(lxc_log_get_level());
 	else if (strcmp(key, "lxc.cgroup") == 0) // all cgroup info
 		return lxc_get_cgroup_entry(c, retv, inlen, "all");
 	else if (strncmp(key, "lxc.cgroup.", 11) == 0) // specific cgroup info
@@ -1694,10 +1679,10 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	if (c->aa_profile)
 		fprintf(fout, "lxc.aa_profile = %s\n", c->aa_profile);
 #endif
-	if (c->loglevel != LXC_LOG_PRIORITY_NOTSET)
-		fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(c->loglevel));
-	if (c->logfile)
-		fprintf(fout, "lxc.logfile = %s\n", c->logfile);
+	if (lxc_log_get_level() != LXC_LOG_PRIORITY_NOTSET)
+		fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(lxc_log_get_level()));
+	if (lxc_log_get_file())
+		fprintf(fout, "lxc.logfile = %s\n", lxc_log_get_file());
 	lxc_list_for_each(it, &c->cgroup) {
 		struct lxc_cgroup *cg = it->elem;
 		fprintf(fout, "lxc.cgroup.%s = %s\n", cg->subsystem, cg->value);

@@ -292,5 +292,7 @@ extern int lxc_log_init(const char *file, const char *priority,
 
 extern void lxc_log_setprefix(const char *a_prefix);
 extern int lxc_log_set_level(int level);
-extern int lxc_log_set_file(char *fname);
+extern int lxc_log_set_file(const char *fname);
+extern int lxc_log_get_level(void);
+extern const char *lxc_log_get_file(void);
 #endif
