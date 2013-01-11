@@ -1,5 +1,5 @@
-#ifndef _mntent_h
-#define _mntent_h
+#ifndef _lxcmntent_h
+#define _lxcmntent_h
 
 #include <../config.h>
 
