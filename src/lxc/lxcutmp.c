@@ -31,7 +31,7 @@
 #include <fcntl.h>
 #include <sys/inotify.h>
 #include <sys/ioctl.h>
-#ifdef HAVE_SYS_TIMERFD_h
+#ifdef HAVE_SYS_TIMERFD_H
 #include <sys/timerfd.h>
 #else
 #include <sys/syscall.h>
