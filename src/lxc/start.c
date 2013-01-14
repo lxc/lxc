@@ -585,7 +585,7 @@ static int do_start(void *data)
 	if (handler->conf->need_utmp_watch) {
 		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
 			SYSERROR("failed to remove CAP_SYS_BOOT capability");
-			return -1;
+			goto out_warn_father;
 		}
 		DEBUG("Dropped cap_sys_boot\n");
 	}
@@ -620,15 +620,14 @@ static int do_start(void *data)
 
 	if (putenv("container=lxc")) {
 		SYSERROR("failed to set environment variable");
-		return -1;
+		goto out_warn_father;
 	}
 
 	close(handler->sigfd);
 
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
-	if (handler->ops->start(handler, handler->data))
-		return -1;
+	handler->ops->start(handler, handler->data);
 
 out_warn_father:
 	lxc_sync_wake_parent(handler, LXC_SYNC_POST_CONFIGURE);
@@ -750,11 +749,6 @@ int lxc_spawn(struct lxc_handler *handler)
 
 	if (detect_shared_rootfs())
 		umount2(handler->conf->rootfs.mount, MNT_DETACH);
-
-	if (setup_cgroup(name, &handler->conf->cgroup)) {
-		ERROR("failed to setup the cgroups for '%s'", name);
-		goto out_delete_net;
-	}
 
 	if (handler->ops->post_start(handler, handler->data))
 		goto out_abort;
