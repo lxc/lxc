@@ -597,6 +597,10 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
+	/* ask father to setup cgroups and wait for him to finish */
+	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP))
+		return -1;
+
 	if (apparmor_load(handler) < 0)
 		goto out_warn_father;
 
@@ -630,6 +634,8 @@ static int do_start(void *data)
 	handler->ops->start(handler, handler->data);
 
 out_warn_father:
+	/* we want the parent to know something went wrong, so any
+	 * value other than what it expects is ok. */
 	lxc_sync_wake_parent(handler, LXC_SYNC_POST_CONFIGURE);
 	return -1;
 }
@@ -741,10 +747,26 @@ int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	/* Tell the child to continue its initialization and wait for
-	 * it to exec or return an error
+	/* Tell the child to continue its initialization.  we'll get
+	 * LXC_SYNC_CGROUP when it is ready for us to setup cgroups
 	 */
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
+		goto out_delete_net;
+
+	if (setup_cgroup(name, &handler->conf->cgroup)) {
+		ERROR("failed to setup the cgroups for '%s'", name);
+		goto out_delete_net;
+	}
+
+
+	/* Tell the child to complete its initialization and wait for
+	 * it to exec or return an error.  (the child will never
+	 * return LXC_SYNC_POST_CGROUP+1.  It will either close the
+	 * sync pipe, causing lxc_sync_barrier_child to return
+	 * success, or return a different value, causing us to error
+	 * out).
+	 */
+	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CGROUP))
 		return -1;
 
 	if (detect_shared_rootfs())

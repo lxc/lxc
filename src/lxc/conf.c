@@ -2594,11 +2594,6 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		}
 	}
 
-	if (setup_cgroup(name, &lxc_conf->cgroup)) {
-		ERROR("failed to setup the cgroups for '%s'", name);
-		return -1;
-	}
-
 	if (setup_console(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->ttydir)) {
 		ERROR("failed to setup the console for '%s'", name);
 		return -1;
