@@ -107,6 +107,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.hook.pre-start",       config_hook                 },
 	{ "lxc.hook.pre-mount",       config_hook                 },
 	{ "lxc.hook.mount",           config_hook                 },
+	{ "lxc.hook.autodev",         config_hook                 },
 	{ "lxc.hook.start",           config_hook                 },
 	{ "lxc.hook.post-stop",       config_hook                 },
 	{ "lxc.network.type",         config_network_type         },
@@ -833,6 +834,8 @@ static int config_hook(const char *key, const char *value,
 		return add_hook(lxc_conf, LXCHOOK_PRESTART, copy);
 	else if (strcmp(key, "lxc.hook.pre-mount") == 0)
 		return add_hook(lxc_conf, LXCHOOK_PREMOUNT, copy);
+	else if (strcmp(key, "lxc.hook.autodev") == 0)
+		return add_hook(lxc_conf, LXCHOOK_AUTODEV, copy);
 	else if (strcmp(key, "lxc.hook.mount") == 0)
 		return add_hook(lxc_conf, LXCHOOK_MOUNT, copy);
 	else if (strcmp(key, "lxc.hook.start") == 0)
@@ -1262,6 +1265,10 @@ int lxc_config_readline(char *buffer, struct lxc_conf *conf)
 
 int lxc_config_read(const char *file, struct lxc_conf *conf)
 {
+	/* Catch only the top level config file name in the structure */
+	if( ! conf->rcfile ) {
+		conf->rcfile = strdup( file );
+	}
 	return lxc_file_for_each_line(file, parse_line, conf);
 }
 

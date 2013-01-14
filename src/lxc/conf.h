@@ -214,8 +214,8 @@ struct lxc_rootfs {
 #endif
  */
 enum lxchooks {
-	LXCHOOK_PRESTART, LXCHOOK_PREMOUNT, LXCHOOK_MOUNT, LXCHOOK_START,
-	LXCHOOK_POSTSTOP, NUM_LXC_HOOKS};
+	LXCHOOK_PRESTART, LXCHOOK_PREMOUNT, LXCHOOK_MOUNT, LXCHOOK_AUTODEV,
+	LXCHOOK_START, LXCHOOK_POSTSTOP, NUM_LXC_HOOKS};
 extern char *lxchook_names[NUM_LXC_HOOKS];
 
 struct saved_nic {
@@ -256,6 +256,7 @@ struct lxc_conf {
 #endif
 	int maincmd_fd;
 	int autodev;  // if 1, mount and fill a /dev at start
+	char *rcfile;	// Copy of the top level rcfile we read
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);

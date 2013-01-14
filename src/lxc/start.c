@@ -401,6 +401,27 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 		goto out_free_name;
 	}
 
+	/* Start of environment variable setup for hooks */
+	if (setenv("LXC_NAME", name, 1)) {
+		SYSERROR("failed to set environment variable for container name");
+	}
+	if (setenv("LXC_CONFIG_FILE", conf->rcfile, 1)) {
+		SYSERROR("failed to set environment variable for config path");
+	}
+	if (setenv("LXC_ROOTFS_MOUNT", conf->rootfs.mount, 1)) {
+		SYSERROR("failed to set environment variable for rootfs mount");
+	}
+	if (setenv("LXC_ROOTFS_PATH", conf->rootfs.path, 1)) {
+		SYSERROR("failed to set environment variable for rootfs mount");
+	}
+	if (conf->console.path && setenv("LXC_CONSOLE", conf->console.path, 1)) {
+		SYSERROR("failed to set environment variable for console path");
+	}
+	if (conf->console.log_path && setenv("LXC_CONSOLE_LOGPATH", conf->console.log_path, 1)) {
+		SYSERROR("failed to set environment variable for console log");
+	}
+	/* End of environment variable setup for hooks */
+
 	if (run_lxc_hooks(name, "pre-start", conf)) {
 		ERROR("failed to run pre-start hooks for container '%s'.", name);
 		goto out_aborting;
@@ -585,6 +606,21 @@ static int do_start(void *data)
 	if (run_lxc_hooks(handler->name, "start", handler->conf)) {
 		ERROR("failed to run start hooks for container '%s'.", handler->name);
 		goto out_warn_father;
+	}
+
+	/* The clearenv() and putenv() calls have been moved here
+	 * to allow us to use enviroment variables passed to the various
+	 * hooks, such as the start hook above.  Not all of the
+	 * variables like CONFIG_PATH or ROOTFS are valid in this
+	 * context but others are. */
+	if (clearenv()) {
+		SYSERROR("failed to clear environment");
+		/* don't error out though */
+	}
+
+	if (putenv("container=lxc")) {
+		SYSERROR("failed to set environment variable");
+		return -1;
 	}
 
 	close(handler->sigfd);

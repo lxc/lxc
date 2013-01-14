@@ -172,7 +172,7 @@ return -1;
 #endif
 
 char *lxchook_names[NUM_LXC_HOOKS] = {
-	"pre-start", "pre-mount", "mount", "start", "post-stop" };
+	"pre-start", "pre-mount", "mount", "autodev", "start", "post-stop" };
 
 typedef int (*instanciate_cb)(struct lxc_handler *, struct lxc_netdev *);
 
@@ -971,33 +971,6 @@ static int mount_autodev(char *root)
 	return 0;
 }
 
-/*
- * Try to run MAKEDEV console in the container.  If something fails,
- * continue anyway as it should not be detrimental to the container.
- * This makes sure that things like /dev/vcs* exist.
- * (Pass devpath in to reduce stack usage)
- */
-static void run_makedev(char *devpath)
-{
-	int curd;
-	int ret;
-
-	curd = open(".", O_RDONLY);
-	if (curd < 0)
-		return;
-	ret = chdir(devpath);
-	if (ret) {
-		close(curd);
-		return;
-	}
-	if (run_buffer("/sbin/MAKEDEV console"))
-		INFO("Error running MAKEDEV console in %s", devpath);
-	ret = fchdir(curd);
-	if (ret)
-		INFO("Error returning to original directory: expect breakage");
-	close(curd);
-}
-
 struct lxc_devs {
 	char *name;
 	mode_t mode;
@@ -1029,8 +1002,7 @@ static int setup_autodev(char *root)
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		ERROR("Error calculating container /dev location");
 		return -1;
-	} else
-		run_makedev(path);
+	}
 
 	INFO("Populating /dev under %s\n", root);
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
@@ -2612,6 +2584,10 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 	}
 
 	if (lxc_conf->autodev) {
+		if (run_lxc_hooks(name, "autodev", lxc_conf)) {
+			ERROR("failed to run autodev hooks for container '%s'.", name);
+			return -1;
+		}
 		if (setup_autodev(lxc_conf->rootfs.mount)) {
 			ERROR("failed to populate /dev in the container");
 			return -1;
@@ -2687,6 +2663,8 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf)
 		which = LXCHOOK_PREMOUNT;
 	else if (strcmp(hook, "mount") == 0)
 		which = LXCHOOK_MOUNT;
+	else if (strcmp(hook, "autodev") == 0)
+		which = LXCHOOK_AUTODEV;
 	else if (strcmp(hook, "start") == 0)
 		which = LXCHOOK_START;
 	else if (strcmp(hook, "post-stop") == 0)

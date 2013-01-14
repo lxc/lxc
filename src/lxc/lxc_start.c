@@ -168,15 +168,6 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return err;
 
-	if (clearenv()) {
-		SYSERROR("failed to clear environment");
-		/* don't error out though */
-	}
-	if (putenv("container=lxc")) {
-		SYSERROR("failed to set environment variable");
-		return err;
-	}
-
 	/* rcfile is specified in the cli option */
 	if (my_args.rcfile)
 		rcfile = (char *)my_args.rcfile;
