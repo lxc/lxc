@@ -624,7 +624,7 @@ static int config_network_ipv4(const char *key, const char *value,
 			htonl(INADDR_BROADCAST >>  inetdev->prefix);
 	}
 
-	lxc_list_add(&netdev->ipv4, list);
+	lxc_list_add_tail(&netdev->ipv4, list);
 
 	free(addr);
 	return 0;
@@ -716,7 +716,7 @@ static int config_network_ipv6(const char *key, const char *value,
 		return -1;
 	}
 
-	lxc_list_add(&netdev->ipv6, list);
+	lxc_list_add_tail(&netdev->ipv6, list);
 
 	free(valdup);
 	return 0;
