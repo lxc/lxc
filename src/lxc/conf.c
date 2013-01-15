@@ -2617,7 +2617,7 @@ static int uid_shift_file(char *path, struct lxc_conf *c)
 	newuid = shiftid(c, statbuf.st_uid, ID_TYPE_UID);
 	newgid = shiftid(c, statbuf.st_gid, ID_TYPE_GID);
 	if (newuid != statbuf.st_uid || newgid != statbuf.st_gid) {
-		DEBUG("chowning %s from %d:%d to %d:%d\n", path, statbuf.st_uid, statbuf.st_gid, newuid, newgid);
+		DEBUG("chowning %s from %d:%d to %d:%d\n", path, (int)statbuf.st_uid, (int)statbuf.st_gid, newuid, newgid);
 		if (chown(path, newuid, newgid)) {
 			SYSERROR("chown(%s)", path);
 			return -1;
