@@ -581,6 +581,22 @@ static int do_start(void *data)
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
 		return -1;
 
+	/*
+	 * if we are in a new user namespace, become root there to have
+	 * privilege over our namespace
+	 */
+	if (!lxc_list_empty(&handler->conf->id_map)) {
+		NOTICE("switching to gid/uid 0 in new user namespace");
+		if (setgid(0)) {
+			SYSERROR("setgid");
+			goto out_warn_father;
+		}
+		if (setuid(0)) {
+			SYSERROR("setuid");
+			goto out_warn_father;
+		}
+	}
+
 	#if HAVE_SYS_CAPABILITY_H
 	if (handler->conf->need_utmp_watch) {
 		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
@@ -681,6 +697,10 @@ int lxc_spawn(struct lxc_handler *handler)
 		return -1;
 
 	handler->clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
+	if (!lxc_list_empty(&handler->conf->id_map)) {
+		INFO("Cloning a new user namespace");
+		handler->clone_flags |= CLONE_NEWUSER;
+	}
 	if (!lxc_list_empty(&handler->conf->network)) {
 
 		handler->clone_flags |= CLONE_NEWNET;
@@ -747,6 +767,16 @@ int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
+	/* map the container uids - the container became an invalid
+	 * userid the moment it was cloned with CLONE_NEWUSER - this
+	 * call doesn't change anything immediately, but allows the
+	 * container to setuid(0) (0 being mapped to something else on
+	 * the host) later to become a valid uid again */
+	if (lxc_map_ids(&handler->conf->id_map, handler->pid)) {
+		ERROR("failed to set up id mapping");
+		goto out_delete_net;
+	}
+
 	/* Tell the child to continue its initialization.  we'll get
 	 * LXC_SYNC_CGROUP when it is ready for us to setup cgroups
 	 */
@@ -771,6 +801,11 @@ int lxc_spawn(struct lxc_handler *handler)
 
 	if (detect_shared_rootfs())
 		umount2(handler->conf->rootfs.mount, MNT_DETACH);
+
+	/* If child is in a fresh user namespace, chown his ptys for
+	 * it */
+	if (uid_shift_ttys(handler->pid, handler->conf))
+		DEBUG("Failed to chown ptys.\n");
 
 	if (handler->ops->post_start(handler, handler->data))
 		goto out_abort;

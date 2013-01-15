@@ -2053,6 +2053,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
 	lxc_list_init(&new->caps);
+	lxc_list_init(&new->id_map);
 	for (i=0; i<NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
 #if HAVE_APPARMOR
@@ -2427,6 +2428,44 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 	return 0;
 }
 
+int add_id_mapping(enum idtype idtype, pid_t pid, uid_t host_start, uid_t ns_start, int range)
+{
+	char path[PATH_MAX];
+	int ret;
+	FILE *f;
+
+	ret = snprintf(path, PATH_MAX, "/proc/%d/%cid_map", pid, idtype == ID_TYPE_UID ? 'u' : 'g');
+	if (ret < 0 || ret >= PATH_MAX) {
+		fprintf(stderr, "%s: path name too long", __func__);
+		return -E2BIG;
+	}
+	f = fopen(path, "w");
+	if (!f) {
+		perror("open");
+		return -EINVAL;
+	}
+	ret = fprintf(f, "%d %d %d", ns_start, host_start, range);
+	if (ret < 0)
+		perror("write");
+	fclose(f);
+	return ret < 0 ? ret : 0;
+}
+
+int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
+{
+	struct lxc_list *iterator;
+	struct id_map *map;
+	int ret = 0;
+
+	lxc_list_for_each(iterator, idmap) {
+		map = iterator->elem;
+		ret = add_id_mapping(map->idtype, pid, map->hostid, map->nsid, map->range);
+		if (ret)
+			break;
+	}
+	return ret;
+}
+
 int lxc_find_gateway_addresses(struct lxc_handler *handler)
 {
 	struct lxc_list *network = &handler->conf->network;
@@ -2535,6 +2574,93 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 	tty_info->nbtty = 0;
 }
 
+/*
+ * given a host uid, return the ns uid if it is mapped.
+ * if it is not mapped, return the original host id.
+ */
+static int shiftid(struct lxc_conf *c, int uid, enum idtype w)
+{
+	struct lxc_list *iterator;
+	struct id_map *map;
+	int low, high;
+
+	lxc_list_for_each(iterator, &c->id_map) {
+		map = iterator->elem;
+		if (map->idtype != w)
+			continue;
+
+		low = map->nsid;
+		high = map->nsid + map->range;
+		if (uid < low || uid >= high)
+			continue;
+
+		return uid - low + map->hostid;
+	}
+
+	return uid;
+}
+
+/*
+ * Take a pathname for a file created on the host, and map the uid and gid
+ * into the container if needed.  (Used for ttys)
+ */
+static int uid_shift_file(char *path, struct lxc_conf *c)
+{
+	struct stat statbuf;
+	int newuid, newgid;
+
+	if (stat(path, &statbuf)) {
+		SYSERROR("stat(%s)", path);
+		return -1;
+	}
+
+	newuid = shiftid(c, statbuf.st_uid, ID_TYPE_UID);
+	newgid = shiftid(c, statbuf.st_gid, ID_TYPE_GID);
+	if (newuid != statbuf.st_uid || newgid != statbuf.st_gid) {
+		DEBUG("chowning %s from %d:%d to %d:%d\n", path, statbuf.st_uid, statbuf.st_gid, newuid, newgid);
+		if (chown(path, newuid, newgid)) {
+			SYSERROR("chown(%s)", path);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+int uid_shift_ttys(int pid, struct lxc_conf *conf)
+{
+	int i, ret;
+	struct lxc_tty_info *tty_info = &conf->tty_info;
+	char path[MAXPATHLEN];
+	char *ttydir = conf->ttydir;
+
+	if (!conf->rootfs.path)
+		return 0;
+	/* first the console */
+	ret = snprintf(path, sizeof(path), "/proc/%d/root/dev/%s/console", pid, ttydir ? ttydir : "");
+	if (ret < 0 || ret >= sizeof(path)) {
+		ERROR("console path too long\n");
+		return -1;
+	}
+	if (uid_shift_file(path, conf)) {
+		DEBUG("Failed to chown the console %s.\n", path);
+		return -1;
+	}
+	for (i=0; i< tty_info->nbtty; i++) {
+		ret = snprintf(path, sizeof(path), "/proc/%d/root/dev/%s/tty%d",
+			pid, ttydir ? ttydir : "", i + 1);
+		if (ret < 0 || ret >= sizeof(path)) {
+			ERROR("pathname too long for ttys");
+			return -1;
+		}
+		if (uid_shift_file(path, conf)) {
+			DEBUG("Failed to chown pty %s.\n", path);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 {
 #if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
@@ -2637,9 +2763,11 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_caps(&lxc_conf->caps)) {
-		ERROR("failed to drop capabilities");
-		return -1;
+	if (lxc_list_empty(&lxc_conf->id_map)) {
+		if (setup_caps(&lxc_conf->caps)) {
+			ERROR("failed to drop capabilities");
+			return -1;
+		}
 	}
 
 	NOTICE("'%s' is setup.", name);

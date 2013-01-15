@@ -58,6 +58,7 @@ static int config_ttydir(const char *, const char *, struct lxc_conf *);
 static int config_aa_profile(const char *, const char *, struct lxc_conf *);
 #endif
 static int config_cgroup(const char *, const char *, struct lxc_conf *);
+static int config_idmap(const char *, const char *, struct lxc_conf *);
 static int config_loglevel(const char *, const char *, struct lxc_conf *);
 static int config_logfile(const char *, const char *, struct lxc_conf *);
 static int config_mount(const char *, const char *, struct lxc_conf *);
@@ -97,6 +98,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.aa_profile",            config_aa_profile          },
 #endif
 	{ "lxc.cgroup",               config_cgroup               },
+	{ "lxc.id_map",               config_idmap                },
 	{ "lxc.loglevel",             config_loglevel             },
 	{ "lxc.logfile",              config_logfile              },
 	{ "lxc.mount",                config_mount                },
@@ -1016,6 +1018,64 @@ out:
 			free(cgelem->value);
 
 		free(cgelem);
+	}
+
+	return -1;
+}
+
+static int config_idmap(const char *key, const char *value, struct lxc_conf *lxc_conf)
+{
+	char *token = "lxc.id_map";
+	char *subkey;
+	struct lxc_list *idmaplist = NULL;
+	struct id_map *idmap = NULL;
+	int hostid, nsid, range;
+	char type;
+	int ret;
+
+	subkey = strstr(key, token);
+
+	if (!subkey)
+		return -1;
+
+	if (!strlen(subkey))
+		return -1;
+
+	idmaplist = malloc(sizeof(*idmaplist));
+	if (!idmaplist)
+		goto out;
+
+	idmap = malloc(sizeof(*idmap));
+	if (!idmap)
+		goto out;
+	memset(idmap, 0, sizeof(*idmap));
+
+	idmaplist->elem = idmap;
+
+	lxc_list_add_tail(&lxc_conf->id_map, idmaplist);
+
+	ret = sscanf(value, "%c %d %d %d", &type, &hostid, &nsid, &range);
+	if (ret != 4)
+		goto out;
+	INFO("read uid map: type %c hostid %d nsid %d range %d", type, hostid, nsid, range);
+	if (type == 'U')
+		idmap->idtype = ID_TYPE_UID;
+	else if (type == 'G')
+		idmap->idtype = ID_TYPE_GID;
+	else
+		goto out;
+	idmap->hostid = hostid;
+	idmap->nsid = nsid;
+	idmap->range = range;
+
+	return 0;
+
+out:
+	if (idmaplist)
+		free(idmaplist);
+
+	if (idmap) {
+		free(idmap);
 	}
 
 	return -1;
