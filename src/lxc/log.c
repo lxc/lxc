@@ -42,6 +42,8 @@
 int lxc_log_fd = -1;
 static char log_prefix[LXC_LOG_PREFIX_SIZE] = "lxc";
 static int lxc_loglevel_specified = 0;
+// if logfile was specifed on command line, it won't be overridden by lxc.logfile
+static int lxc_log_specified = 0;
 
 lxc_log_define(lxc_log, lxc);
 
@@ -148,11 +150,42 @@ static int log_open(const char *name)
 	return newfd;
 }
 
+static char *build_log_path(const char *name)
+{
+	char *p;
+	int len, ret;
+
+	/* '$logpath' + '/' + '$name' + '/' + '$name' + '.log' + '\0' */
+	len = sizeof(LOGPATH) + 2*sizeof(name) + 7;
+	p = malloc(len);
+	if (!p)
+		return p;
+	ret = snprintf(p, len, "%s/%s", LOGPATH, name);
+	if (ret < 0 || ret >= len) {
+		free(p);
+		return NULL;
+	}
+	ret = mkdir(p, 0755);
+	if (ret == -1 && errno != EEXIST) {
+		free(p);
+		return NULL;
+	}
+	ret = snprintf(p, len, "%s/%s/%s.log", LOGPATH, name, name);
+	if (ret < 0 || ret >= len) {
+		free(p);
+		return NULL;
+	}
+	return p;
+}
+
 /*---------------------------------------------------------------------------*/
-extern int lxc_log_init(const char *file, const char *priority,
-			const char *prefix, int quiet)
+extern int lxc_log_init(const char *name, const char *file,
+			const char *priority, const char *prefix, int quiet)
 {
 	int lxc_priority = LXC_LOG_PRIORITY_ERROR;
+	int ret;
+	char *tmpfile = NULL;
+	int want_lxc_log_specified = 0;
 
 	if (lxc_log_fd != -1)
 		return 0;
@@ -176,10 +209,30 @@ extern int lxc_log_init(const char *file, const char *priority,
 	if (prefix)
 		lxc_log_setprefix(prefix);
 
-	if (file)
-		return lxc_log_set_file(file);
+	if (file && strcmp(file, "none") == 0) {
+		want_lxc_log_specified = 1;
+		return 0;
+	}
 
-	return 0;
+	if (!file) {
+		tmpfile = build_log_path(name);
+		if (!tmpfile) {
+			ERROR("could not build log path");
+			return -1;
+		}
+	} else {
+		want_lxc_log_specified = 1;
+	}
+
+	ret = lxc_log_set_file(tmpfile ? tmpfile : file);
+
+	if (want_lxc_log_specified)
+		lxc_log_specified = 1;
+
+	if (tmpfile)
+		free(tmpfile);
+
+	return ret;
 }
 
 /*
@@ -202,16 +255,23 @@ extern int lxc_log_set_level(int level)
 char *log_fname;  // default to NULL, set in lxc_log_set_file.
 
 /*
- * This is called when we read a lxc.logfile entry in a lxc.conf file.  This
- * happens after processing command line arguments, which override the .conf
- * settings.  So only set the logfile if previously unset.
+ * This can be called:
+ *   1. when a program calls lxc_log_init with no logfile parameter (in which
+ *      case the default is used).  In this case lxc.logfile can override this.
+ *   2. when a program calls lxc_log_init with a logfile parameter.  In this
+ *	case we don't want lxc.logfile to override this.
+ *   3. When a lxc.logfile entry is found in config file.
  */
 extern int lxc_log_set_file(const char *fname)
 {
+	if (lxc_log_specified) {
+		INFO("lxc.logfile overriden by command line");
+		return 0;
+	}
 	if (lxc_log_fd != -1) {
-		// this should've been caught at config_logfile.
-		ERROR("Race in setting logfile?");
-		return -1;
+		// we are overriding the default.
+		close(lxc_log_fd);
+		free(log_fname);
 	}
 
 	lxc_log_fd = log_open(fname);

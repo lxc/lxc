@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	ret = lxc_log_init(my_args.log_file, my_args.log_priority,
+	ret = lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			   my_args.progname, my_args.quiet);
 	if (ret)
 		return ret;
