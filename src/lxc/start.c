@@ -575,6 +575,9 @@ static int do_start(void *data)
 
 	lxc_sync_fini_parent(handler);
 
+	/* don't leak the pinfd to the container */
+	close(handler->pinfd);
+
 	/* Tell the parent task it can begin to configure the
 	 * container and wait for it to finish
 	 */
@@ -691,7 +694,6 @@ int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
 	const char *name = handler->name;
-	int pinfd;
 
 	if (lxc_sync_init(handler))
 		return -1;
@@ -735,8 +737,8 @@ int lxc_spawn(struct lxc_handler *handler)
 	 * marking it readonly.
 	 */
 
-	pinfd = pin_rootfs(handler->conf->rootfs.path);
-	if (pinfd == -1) {
+	handler->pinfd = pin_rootfs(handler->conf->rootfs.path);
+	if (handler->pinfd == -1) {
 		ERROR("failed to pin the container's rootfs");
 		goto out_abort;
 	}
@@ -818,8 +820,8 @@ int lxc_spawn(struct lxc_handler *handler)
 
 	lxc_sync_fini(handler);
 
-	if (pinfd >= 0)
-		close(pinfd);
+	if (handler->pinfd >= 0)
+		close(handler->pinfd);
 
 	return 0;
 

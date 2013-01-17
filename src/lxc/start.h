@@ -49,6 +49,7 @@ struct lxc_handler {
 #if HAVE_APPARMOR
 	int aa_enabled;
 #endif
+	int pinfd;
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *);
