@@ -60,7 +60,7 @@ lxc_setcaps()
     setcap $LXC_UNSHARE_CAPS=ep @BINDIR@/lxc-unshare
     setcap $LXC_NETSTAT_CAPS=ep @BINDIR@/lxc-netstat
     setcap $LXC_CHECKPOINT_CAPS=ep @BINDIR@/lxc-checkpoint
-    setcap $LXC_INIT_CAPS=ep @LXCINITDIR@/lxc-init
+    setcap $LXC_INIT_CAPS=ep @LXCINITDIR@/lxc/lxc-init
 
     test -e @LXCPATH@ || mkdir -p @LXCPATH@
     chmod 0777 @LXCPATH@
@@ -76,7 +76,7 @@ lxc_dropcaps()
     setcap -r @BINDIR@/lxc-unshare
     setcap -r @BINDIR@/lxc-netstat
     setcap -r @BINDIR@/lxc-checkpoint
-    setcap -r @LXCINITDIR@/lxc-init
+    setcap -r @LXCINITDIR@/lxc/lxc-init
 
     chmod 0755 @LXCPATH@
 }
