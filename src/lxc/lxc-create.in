@@ -222,7 +222,7 @@ if [ "$backingstore" = "_unset" ] || [ "$backingstore" = "btrfs" ]; then
 fi
 
 if [ "$backingstore" = "lvm" ]; then
-    which vgscan > /dev/null
+    which vgscan > /dev/null 2>&1
     if [ $? -ne 0 ]; then
         echo "$(basename $0): vgscan not found (is lvm2 installed?)" >&2
         exit 1

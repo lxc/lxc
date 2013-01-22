@@ -197,7 +197,7 @@ lxc-info -n $lxc_orig --state-is RUNNING || container_running=False
 
 sed -i '/lxc.rootfs/d' $lxc_path/$lxc_new/config
 if [ -b $oldroot ]; then
-    which vgscan >/dev/null || { echo "$(basename $0): lvm is not installed" >&2; false; }
+    which vgscan >/dev/null 2>&1 || { echo "$(basename $0): lvm is not installed" >&2; false; }
     lvdisplay $oldroot > /dev/null 2>&1 || { echo "$(basename $0): non-lvm blockdev cloning is not supported" >&2; false; }
     lvm=TRUE
     # ok, create a snapshot of the lvm device

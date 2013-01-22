@@ -153,7 +153,7 @@ configure_busybox()
 {
     rootfs=$1
 
-    type busybox >/dev/null
+    which busybox >/dev/null 2>&1
 
     if [ $? -ne 0 ]; then
         echo "busybox executable is not accessible"
@@ -194,7 +194,7 @@ configure_busybox()
 
 
     # add ssh functionality if dropbear package available on host
-    type dropbear >/dev/null
+    which dropbear >/dev/null 2>&1
     if [ $? -eq 0 ]; then
         # copy dropbear binary
         cp $(which dropbear) $rootfs/usr/sbin

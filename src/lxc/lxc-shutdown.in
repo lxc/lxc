@@ -108,8 +108,8 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
-which lxc-info > /dev/null || { echo "lxc-info not found."; exit 1; }
-which lxc-wait > /dev/null || { echo "lxc-wait not found."; exit 1; }
+which lxc-info > /dev/null 2>&1 || { echo "lxc-info not found."; exit 1; }
+which lxc-wait > /dev/null 2>&1 || { echo "lxc-wait not found."; exit 1; }
 
 pid=`lxc-info -n $lxc_name -p 2>/dev/null | awk '{ print $2 }'`
 if [ "$pid" = "-1" ]; then
