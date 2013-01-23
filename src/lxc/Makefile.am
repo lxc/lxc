@@ -125,6 +125,7 @@ bin_SCRIPTS = \
 	lxc-destroy
 
 if ENABLE_PYTHON
+    EXTRA_DIST = lxc-device lxc-ls
     bin_SCRIPTS += lxc-device
     bin_SCRIPTS += lxc-ls
     bin_SCRIPTS += lxc-start-ephemeral
