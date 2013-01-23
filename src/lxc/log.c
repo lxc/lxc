@@ -125,47 +125,12 @@ extern void lxc_log_setprefix(const char *prefix)
 	log_prefix[sizeof(log_prefix) - 1] = 0;
 }
 
-static int build_dir(const char *name)
-{
-	char *n = strdup(name);  // because we'll be modifying it
-	char *p, *e;
-	int ret;
-
-	if (!n) {
-		ERROR("Out of memory while creating directory '%s'.", name);
-		return -1;
-	}
-
-	e = &n[strlen(n)];
-	for (p = n+1; p < e; p++) {
-		if (*p != '/')
-			continue;
-		*p = '\0';
-		if (access(n, F_OK)) {
-			ret = lxc_unpriv(mkdir(n, 0755));
-			if (ret && errno != -EEXIST) {
-				SYSERROR("failed to create directory '%s'.", n);
-				free(n);
-				return -1;
-			}
-		}
-		*p = '/';
-	}
-	free(n);
-	return 0;
-}
-
 /*---------------------------------------------------------------------------*/
 static int log_open(const char *name)
 {
 	int fd;
 	int newfd;
 
-	if (build_dir(name)) {
-		ERROR("failed to create dir for log file \"%s\" : %s", name,
-		      strerror(errno));
-		return -1;
-	}
 	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY |
 			     O_APPEND | O_CLOEXEC, 0666));
 	if (fd == -1) {
@@ -195,6 +160,16 @@ static char *build_log_path(const char *name)
 	p = malloc(len);
 	if (!p)
 		return p;
+	ret = snprintf(p, len, "%s/%s", LOGPATH, name);
+	if (ret < 0 || ret >= len) {
+		free(p);
+		return NULL;
+	}
+	ret = mkdir(p, 0755);
+	if (ret == -1 && errno != EEXIST) {
+		free(p);
+		return NULL;
+	}
 	ret = snprintf(p, len, "%s/%s/%s.log", LOGPATH, name, name);
 	if (ret < 0 || ret >= len) {
 		free(p);
