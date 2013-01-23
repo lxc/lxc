@@ -976,7 +976,7 @@ struct lxc_container *lxc_container_new(const char *name)
 	c->set_cgroup_item = lxcapi_set_cgroup_item;
 
 	/* we'll allow the caller to update these later */
-	if (lxc_log_init(NULL, "none", NULL, "lxc_container", 0)) {
+	if (lxc_log_init(NULL, NULL, "lxc_container", 0)) {
 		fprintf(stderr, "failed to open log\n");
 		goto err;
 	}

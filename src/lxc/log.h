@@ -287,8 +287,8 @@ extern struct lxc_log_category lxc_log_category_lxc;
 
 extern int lxc_log_fd;
 
-extern int lxc_log_init(const char *name, const char *file,
-			const char *priority, const char *prefix, int quiet);
+extern int lxc_log_init(const char *file, const char *priority,
+			const char *prefix, int quiet);
 
 extern void lxc_log_setprefix(const char *a_prefix);
 extern int lxc_log_set_level(int level);

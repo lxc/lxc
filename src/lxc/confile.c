@@ -927,6 +927,11 @@ static int config_aa_profile(const char *key, const char *value,
 static int config_logfile(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
 {
+	if (lxc_log_get_file()) {
+		DEBUG("Log file already specified - ignoring new value");
+		return 0;
+	}
+
 	return lxc_log_set_file(value);
 }
 
