@@ -34,6 +34,10 @@ else
     man_MANS += legacy/lxc-ls.1
 endif
 
+if ENABLE_LUA
+    man_MANS += lxc-top.1
+endif
+
 %.1 : %.sgml
 	$(db2xman) $<
 	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true

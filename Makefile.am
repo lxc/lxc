@@ -5,9 +5,14 @@ ACLOCAL_AMFLAGS = -I config
 SUBDIRS = config src templates doc
 DIST_SUBDIRS = config src templates doc
 EXTRA_DIST = autogen.sh lxc.spec CONTRIBUTING MAINTAINERS ChangeLog
+RPMARGS =
+
+if ENABLE_LUA
+RPMARGS += --with lua
+endif
 
 if ENABLE_PYTHON
-RPMARGS = --with python
+RPMARGS += --with python
 endif
 
 pcdatadir = $(libdir)/pkgconfig

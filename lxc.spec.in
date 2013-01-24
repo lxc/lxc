@@ -38,6 +38,12 @@ Requires: python3
 BuildRequires: python3-devel
 %endif
 
+%define with_lua %{?_with_lua: 1} %{?!_with_lua: 0}
+%if %{with_lua}
+Requires: lua-filesystem
+BuildRequires: lua-devel
+%endif
+
 %description
 
 The package "%{name}" provides the command lines to create and manage
@@ -69,6 +75,9 @@ development of the linux containers.
 %setup
 %build
 PATH=$PATH:/usr/sbin:/sbin %configure $args \
+%if %{with_lua}
+  --enable-lua \
+%endif
 %if %{with_python}
   --enable-python \
 %endif
@@ -107,6 +116,10 @@ rm -rf %{buildroot}
 %defattr(-,root,root)
 %{_libdir}/*.so.*
 %{_libdir}/%{name}
+%if %{with_lua}
+%{_datadir}/lua
+%{_libdir}/lua
+%endif
 %if %{with_python}
 %{_libdir}/python*
 %endif

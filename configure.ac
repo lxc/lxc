@@ -137,6 +137,23 @@ AM_COND_IF([ENABLE_PYTHON],
 	PKG_CHECK_MODULES([PYTHONDEV], [python3 >= 3.2],[],[AC_MSG_ERROR([You must install python3-dev])])
 	AC_DEFINE_UNQUOTED([ENABLE_PYTHON], 1, [Python3 is available])])
 
+# Lua module and scripts
+if test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu" ; then
+    LUAPKGCONFIG=lua5.1
+else
+    LUAPKGCONFIG=lua
+fi
+
+AC_ARG_ENABLE([lua],
+	[AC_HELP_STRING([--enable-lua], [enable lua binding])],
+	[enable_lua=yes], [enable_lua=no])
+
+AM_CONDITIONAL([ENABLE_LUA], [test "x$enable_lua" = "xyes"])
+
+AM_COND_IF([ENABLE_LUA],
+	[PKG_CHECK_MODULES([LUA], [$LUAPKGCONFIG >= 5.1],[],[AC_MSG_ERROR([You must install lua-devel for lua 5.1])])
+	AC_DEFINE_UNQUOTED([ENABLE_LUA], 1, [Lua is available])])
+
 # Optional test binaries
 AC_ARG_ENABLE([tests],
 	[AC_HELP_STRING([--enable-tests], [build test/example binaries])],
@@ -289,6 +306,7 @@ AC_CONFIG_FILES([
 	doc/lxc-wait.sgml
 	doc/lxc-ls.sgml
 	doc/lxc-ps.sgml
+	doc/lxc-top.sgml
 	doc/lxc-cgroup.sgml
 	doc/lxc-kill.sgml
 	doc/lxc-attach.sgml
@@ -341,6 +359,8 @@ AC_CONFIG_FILES([
 	src/python-lxc/Makefile
 	src/python-lxc/lxc/__init__.py
 	src/python-lxc/examples/api_test.py
+
+	src/lua-lxc/Makefile
 
 	src/tests/Makefile
 ])

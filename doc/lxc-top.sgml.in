@@ -1,0 +1,164 @@
+<!--
+
+Copyright © 2012 Oracle.
+
+Authors:
+Dwight Engen <dwight.engen@oracle.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+-->
+
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-top</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-top</refname>
+
+    <refpurpose>
+      monitor container statistics
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-top</command>
+      <arg choice="opt">--help</arg>
+      <arg choice="opt">--max <replaceable>count</replaceable></arg>
+      <arg choice="opt">--delay <replaceable>delay</replaceable></arg>
+      <arg choice="opt">--sort <replaceable>sortby</replaceable></arg>
+      <arg choice="opt">--reverse</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      <command>lxc-top</command> displays container statistics. The output
+        is updated every <replaceable>delay</replaceable> seconds, and is
+        ordered according to the <replaceable>sortby</replaceable> value
+        given. Specifying <replaceable>count</replaceable> will limit the
+        number of containers displayed, otherwise <command>lxc-top</command>
+        will display as many containers as can fit in your terminal.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Options</title>
+    <variablelist>
+
+      <varlistentry>
+        <term>
+          <option><optional>-m, --max <replaceable>count</replaceable></optional></option>
+        </term>
+        <listitem>
+          <para>
+            Limit the number of containers displayed to
+            <replaceable>count</replaceable>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-d, --delay <replaceable>delay</replaceable></optional></option>
+        </term>
+        <listitem>
+          <para>
+            Amount of time in seconds to delay between screen updates.
+            This can be specified as less than a second by giving a
+            rational number, for example 0.5 for a half second delay. The
+            default is 3 seconds.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option><optional>-s, --sort <replaceable>sortby</replaceable></optional></option>
+        </term>
+        <listitem>
+          <para>
+            Sort the containers by name, cpu use, or memory use. The
+            <replaceable>sortby</replaceable> argument should be one of
+            the letters n,c,d,m to sort by name, cpu use, disk I/O, or
+            memory use respectively. The default is 'n'.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option><optional>-r, --reverse</optional></option>
+        </term>
+        <listitem>
+          <para>
+            Reverse the default sort order. By default, names sort in
+            ascending alphabetical order and values sort in descending
+            amounts (ie. largest value first).
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>Example</title>
+    <variablelist>
+      <varlistentry>
+        <term>lxc-top --delay 1 --sort m</term>
+        <listitem>
+        <para>
+          Display containers, updating every second, sorted by memory use.
+        </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title>Author</title>
+    <para>Dwight Engen <email>dwight.engen@oracle.com</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

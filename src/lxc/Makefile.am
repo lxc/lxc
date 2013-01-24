@@ -129,13 +129,19 @@ bin_SCRIPTS = \
 	lxc-shutdown \
 	lxc-destroy
 
+EXTRA_DIST=
 if ENABLE_PYTHON
-    EXTRA_DIST = lxc-device lxc-ls
+    EXTRA_DIST += lxc-device lxc-ls
     bin_SCRIPTS += lxc-device
     bin_SCRIPTS += lxc-ls
     bin_SCRIPTS += lxc-start-ephemeral
 else
     bin_SCRIPTS += legacy/lxc-ls
+endif
+
+if ENABLE_LUA
+    EXTRA_DIST += lxc-top
+    bin_SCRIPTS += lxc-top
 endif
 
 bin_PROGRAMS = \
