@@ -157,6 +157,26 @@ AC_ARG_WITH([rootfs-path],
 		[lxc rootfs mount point]
 	)], [], [with_rootfs_path=['${libdir}/lxc/rootfs']])
 
+# Container log path.  By default, use $lxcpath.
+AC_MSG_CHECKING([Whether to place logfiles in container config path])
+AC_ARG_ENABLE([configpath-log],
+	[AC_HELP_STRING([--enable-configpath-log], [use logfiles in config path])],
+	[use_configpath_logs=yes], [use_configpath_logs=no])
+AC_MSG_RESULT([$use_configpath_logs])
+AM_CONDITIONAL([USE_CONFIGPATH_LOGS], [test "$use_configpath_logs" = "yes"])
+
+if test "$use_configpath_logs" = "yes"; then
+	default_log_path="${with_config_path}"
+else
+	default_log_path="/var/log/lxc"
+fi
+
+AC_ARG_WITH([log-path],
+	[AC_HELP_STRING(
+		[--with-log-path=dir],
+		[per container log path]
+	)], [], [with_log_path=['${default_log_path}']])
+
 # Expand some useful variables
 AS_AC_EXPAND(PREFIX, "$prefix")
 AS_AC_EXPAND(LIBDIR, "$libdir")
@@ -173,6 +193,7 @@ AS_AC_EXPAND(LXCPATH, "$with_config_path")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "$with_rootfs_path")
 AS_AC_EXPAND(LXCTEMPLATEDIR, "$datadir/lxc/templates")
 AS_AC_EXPAND(LXCINITDIR, "$libexecdir")
+AS_AC_EXPAND(LOGPATH, "$with_log_path")
 
 # Check for some standard kernel headers
 AC_CHECK_HEADERS([linux/unistd.h linux/netlink.h linux/genetlink.h],
