@@ -487,7 +487,7 @@ container_rootfs_create()
         # these distributions put the rpm database in a place the guest is
         # not expecting it, so move it
         if [ $host_distribution = "Ubuntu" ]; then
-            mv $container_rootfs/root/.rpmdb/* $container_rootfs/var/lib/rpm
+            mv $container_rootfs/$HOME/.rpmdb/* $container_rootfs/var/lib/rpm
         fi
 
         # if the native rpm created the db with Hash version 9, we need to
