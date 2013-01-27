@@ -85,6 +85,11 @@ while [ $# -gt 0 ]; do
             lxc_size=$1
             shift
             ;;
+        -t|--fstype)
+            optarg_check $opt $1
+            fstype=$1
+            shift
+            ;;
         -v|--vgname)
             optarg_check $opt $1
             lxc_vg=$1
