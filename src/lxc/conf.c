@@ -1502,6 +1502,9 @@ static inline int mount_entry_on_systemfs(struct mntent *mntent)
 	ret = mount_entry(mntent->mnt_fsname, mntent->mnt_dir,
 			  mntent->mnt_type, mntflags, mntdata);
 
+	if (hasmntopt(mntent, "optional") != NULL)
+		ret = 0;
+
 	free(mntdata);
 
 	return ret;
@@ -1556,6 +1559,9 @@ skipabs:
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
 			  mntflags, mntdata);
 
+	if (hasmntopt(mntent, "optional") != NULL)
+		ret = 0;
+
 out:
 	free(mntdata);
 	return ret;
@@ -1583,6 +1589,9 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
 			  mntflags, mntdata);
+
+	if (hasmntopt(mntent, "optional") != NULL)
+		ret = 0;
 
 	free(mntdata);
 
