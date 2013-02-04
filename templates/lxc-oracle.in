@@ -61,6 +61,7 @@ container_rootfs_configure()
     if [ -e $container_rootfs/etc/selinux/config ]; then
         sed -i 's|SELINUX=enforcing|SELINUX=disabled|' $container_rootfs/etc/selinux/config
     else
+	mkdir -p $container_rootfs/etc/selinux
         echo "SELINUX=disabled" >$container_rootfs/etc/selinux/config
     fi
     sed -i 's|session[ ]*required[ ]*pam_selinux.so[ ]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/login
@@ -97,8 +98,10 @@ EOF
     echo "127.0.0.1 localhost $name" > $container_rootfs/etc/hosts
 
     # disable ipv6
-    echo "blacklist ipv6" >>$container_rootfs/etc/modprobe.d/blacklist.conf
-    echo "blacklist net-pf-10" >>$container_rootfs/etc/modprobe.d/blacklist.conf
+    if [ -f $container_rootfs/etc/modprobe.d/blacklist.conf ]; then
+        echo "blacklist ipv6" >>$container_rootfs/etc/modprobe.d/blacklist.conf
+        echo "blacklist net-pf-10" >>$container_rootfs/etc/modprobe.d/blacklist.conf
+    fi
     rm -f $container_rootfs/etc/sysconfig/network-scripts/init.ipv6-global
 
     # this file has to exist for libvirt/Virtual machine monitor to boot the container
@@ -132,8 +135,8 @@ EOF
         # dont attempt to set kernel parameters
         sed -i 's|action $"Configuring kernel parameters|# LXC action $"Configuring kernel parameters|' $container_rootfs/etc/rc.sysinit
         sed -i 's|action $"Configuring kernel parameters|# LXC action $"Configuring kernel parameters|' $container_rootfs/etc/rc.d/rc.sysinit
-        sed -i 's|action $"Setting network parameters|# LXC action $"Setting network parameters|' $container_rootfs/etc/init.d/network
-        sed -i 's|action $"Setting network parameters|# LXC action $"Setting network parameters|' $container_rootfs/etc/init.d/NetworkManager
+        sed -i 's|action $"Setting network parameters|# LXC action $"Setting network parameters|' $container_rootfs/etc/init.d/network 2>/dev/null
+        sed -i 's|action $"Setting network parameters|# LXC action $"Setting network parameters|' $container_rootfs/etc/init.d/NetworkManager 2>/dev/null
     fi
 
     # disable udev in the container
@@ -162,8 +165,8 @@ EOF
     else
         sed -i 's|\[ -x /sbin/hwclock|\[ 0 -eq 1|' $container_rootfs/etc/rc.d/init.d/halt
     fi
-    sed -i 's|/sbin/hwclock|# LXC no hwclock /sbin/hwclock|' $container_rootfs/etc/rc.sysinit
-    sed -i 's|/sbin/hwclock|# LXC no hwclock /sbin/hwclock|' $container_rootfs/etc/rc.d/rc.sysinit
+    sed -i 's|/sbin/hwclock|/sbin/nohwclock|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|/sbin/hwclock|/sbin/nohwclock|' $container_rootfs/etc/rc.d/rc.sysinit
 
     # dont start lvm
     sed -i 's|action $"Setting up Logical Volume Management:"|#action $"Setting up Logical Volume Management:"|' $container_rootfs/etc/rc.sysinit
@@ -388,7 +391,7 @@ container_rootfs_clone()
 container_rootfs_create()
 {
     cmds="rpm wget yum"
-    if [ $container_release_major = "5" ]; then
+    if [ $container_release_major -lt "6" ]; then
         if [ $host_distribution = "Ubuntu" ]; then
             db_dump_cmd="db5.1_dump"
             db_load_cmd="db4.3_load"
@@ -423,7 +426,9 @@ container_rootfs_create()
         else
             yum_url=http://public-yum.oracle.com
         fi
-        if   [ $container_release_major = "5" ]; then
+        if   [ $container_release_major = "4" ]; then
+            repofile=public-yum-el4.repo
+        elif [ $container_release_major = "5" ]; then
             repofile=public-yum-el5.repo
         elif [ $container_release_major = "6" ]; then
             repofile=public-yum-ol6.repo
@@ -447,15 +452,25 @@ container_rootfs_create()
 
         # disable all repos, then enable the repo for the version we are installing.
         if [ $container_release_minor = "latest" ]; then
-            if [ $container_release_major = "5" ]; then
-        repo="el"$container_release_major"_"$container_release_minor
+            if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
+                repo="el"$container_release_major"_"$container_release_minor
             else
                 repo="ol"$container_release_major"_"$container_release_minor
             fi
         elif [ $container_release_minor = "0" ]; then
             repo="ol"$container_release_major"_ga_base"
-        else
+        elif [ $container_release_major = "6" ]; then
             repo="ol"$container_release_major"_u"$container_release_minor"_base"
+        elif [ $container_release_major = "5" ]; then
+            if [ $container_release_minor -lt "6" ]; then
+                repo="el"$container_release_major"_u"$container_release_minor"_base"
+            else
+                repo="ol"$container_release_major"_u"$container_release_minor"_base"
+            fi
+        elif [ $container_release_major = "4" -a $container_release_minor -gt "5" ]; then
+            repo="el"$container_release_major"_u"$container_release_minor"_base"
+        else
+            die "Unsupported release $container_release_major.$container_release_minor"
         fi
         sed -i "s|enabled=1|enabled=0|" $container_rootfs/etc/yum.repos.d/$repofile
         sed -i "/\[$repo\]/,/\[/ s/enabled=0/enabled=1/" $container_rootfs/etc/yum.repos.d/$repofile
@@ -477,8 +492,15 @@ container_rootfs_create()
         # runs right. similarly, libutempter depends on libselinux.so.1 when
         # it runs /usr/sbin/groupadd, so reinstall it too
         if [ $container_release_major = "5" ]; then
-            rpm --root $container_rootfs --nodeps -e rsyslog pam libutempter
-            $yum_cmd install rsyslog pam libutempter
+            redo_pkgs="pam"
+            if [ $container_release_minor -gt "1" ]; then
+                redo_pkgs="$redo_pkgs rsyslog"
+            fi
+            if [ $container_release_minor -gt "5" ]; then
+                redo_pkgs="$redo_pkgs libutempter"
+            fi
+            rpm --root $container_rootfs --nodeps -e $redo_pkgs
+            $yum_cmd install $redo_pkgs
             if [ $? -ne 0 ]; then
                 die "Unable to reinstall packages"
             fi
@@ -494,7 +516,7 @@ container_rootfs_create()
         # downgrade it to Hash version 8 for use with OL5.x
         db_version=`file $container_rootfs/var/lib/rpm/Packages | \
                     grep -o 'version [0-9]*' |awk '{print $2}'`
-        if [ $container_release_major = "5" -a $db_version != "8" ]; then
+        if [ $container_release_major -lt "6" -a $db_version != "8" ]; then
             echo "Fixing (downgrading) rpm database from version $db_version"
             rm -f $container_rootfs/var/lib/rpm/__db*
             for db in $container_rootfs/var/lib/rpm/* ; do
@@ -508,6 +530,13 @@ container_rootfs_create()
         echo "Rebuilding rpm database"
         rm -f $container_rootfs/var/lib/rpm/__db*
         chroot $container_rootfs rpm --rebuilddb >/dev/null 2>&1
+
+        # doing the yum install with release 4 packages causes proc in the
+        # container to be mounted, which makes lxc-destroy fail.
+        if [ $container_release_major = "4" ]; then
+            umount $container_rootfs/proc
+        fi
+
     ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-oracle-$name
 }
 
@@ -517,10 +546,14 @@ container_release_get()
         container_release_version=`cat $1/etc/oracle-release |awk '/^Oracle/ {print $5}'`
         container_release_major=`echo $container_release_version |awk -F '.' '{print $1}'`
         container_release_minor=`echo $container_release_version |awk -F '.' '{print $2}'`
-    elif grep -q Nahant $1/etc/redhat-release; then
+    elif grep -q "Enterprise Linux AS" $1/etc/redhat-release; then
         container_release_major=`cat $1/etc/redhat-release |awk '{print $7}'`
         container_release_minor=`cat $1/etc/redhat-release |awk '{print $10}' |tr -d ")"`
         container_release_version="$container_release_major.$container_release_minor"
+    elif grep -q "Enterprise Linux Server" $1/etc/redhat-release; then
+        container_release_version=`cat $1/etc/redhat-release |awk '{print $7}'`
+        container_release_major=`echo $container_release_version |awk -F '.' '{print $1}'`
+        container_release_minor=`echo $container_release_version |awk -F '.' '{print $2}'`
     else
         echo "Unable to determine container release version"
         exit 1
