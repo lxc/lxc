@@ -762,7 +762,7 @@ static int lxcapi_get_keys(struct lxc_container *c, const char *key, char *retv,
 
 
 /* default config file - should probably come through autoconf */
-#define LXC_DEFAULT_CONFIG "/etc/lxc/lxc.conf"
+#define LXC_DEFAULT_CONFIG "/etc/lxc/default.conf"
 static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 {
 	if (!alt_file)

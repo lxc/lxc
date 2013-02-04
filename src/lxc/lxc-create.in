@@ -274,7 +274,7 @@ trap cleanup HUP INT TERM
 mkdir -p $lxc_path/$lxc_name
 
 if [ -z "$lxc_config" ]; then
-    lxc_config="@SYSCONFDIR@/lxc/lxc.conf"
+    lxc_config="@SYSCONFDIR@/lxc/default.conf"
     echo
     echo "$(basename $0): No config file specified, using the default config $lxc_config"
 fi

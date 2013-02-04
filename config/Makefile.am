@@ -1,15 +1,15 @@
 configdir = $(sysconfdir)/lxc
-config_DATA = lxc.conf
-conffile = @LXC_CONFFILE@
+config_DATA = default.conf
+defaultconf = @LXC_DEFAULT_CONF@
 
-EXTRA_DIST = lxc.conf.ubuntu lxc.conf.libvirt lxc.conf.unknown
+EXTRA_DIST = default.conf.ubuntu default.conf.libvirt default.conf.unknown
 
-lxc.conf:
-	cp $(conffile) $@
+default.conf:
+	cp $(defaultconf) $@
 
 clean-local:
-	@$(RM) -f lxc.conf
+	@$(RM) -f default.conf
 
 distclean-local:
-	@$(RM) -f lxc.conf
+	@$(RM) -f default.conf
 	@$(RM) -f compile config.guess config.sub depcomp install-sh ltmain.sh missing Makefile.in Makefile
