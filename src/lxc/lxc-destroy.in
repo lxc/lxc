@@ -51,7 +51,7 @@ optarg_check() {
     fi
 }
 
-lxc_path=@LXCPATH@
+. @DATADIR@/lxc/lxc.functions
 force=0
 
 while [ $# -gt 0 ]; do

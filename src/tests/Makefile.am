@@ -19,6 +19,7 @@ lxc_test_getkeys_SOURCES = getkeys.c
 AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
+	-DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
 	-DLXCINITDIR=\"$(LXCINITDIR)\"
 
 bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \

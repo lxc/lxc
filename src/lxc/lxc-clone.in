@@ -54,8 +54,7 @@ optarg_check() {
     [ -n "$2" ] || usage_err "option $1 requires an argument"
 }
 
-lxc_path=@LXCPATH@
-bindir=@BINDIR@
+. @DATADIR@/lxc/lxc.functions
 snapshot=no
 lxc_defsize=2G
 lxc_size=_unset

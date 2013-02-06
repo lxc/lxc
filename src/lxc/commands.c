@@ -30,10 +30,13 @@
 #include <sys/un.h>
 #include <sys/poll.h>
 #include <sys/param.h>
+#include <malloc.h>
+#include <stdlib.h>
 
 #include <lxc/log.h>
 #include <lxc/conf.h>
 #include <lxc/start.h>	/* for struct lxc_handler */
+#include <lxc/utils.h>
 
 #include "commands.h"
 #include "mainloop.h"
@@ -56,7 +59,20 @@
 
 lxc_log_define(lxc_commands, lxc);
 
-#define abstractname LXCPATH "/%s/command"
+static int fill_sock_name(char *path, int len, const char *name) {
+	char *lxcpath = default_lxc_path();
+	int ret;
+	if (!lxcpath) {
+		ERROR("Out of memory getting lxcpath");
+		return -1;
+	}
+	ret = snprintf(path, len, "%s/%s/command", lxcpath, name);
+	if (ret < 0 || ret >= len) {
+		ERROR("Name too long");
+		return -1;
+	}
+	return 0;
+}
 
 static int receive_answer(int sock, struct lxc_answer *answer)
 {
@@ -75,14 +91,11 @@ static int __lxc_command(const char *name, struct lxc_command *command,
 	int sock, ret = -1;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
 	char *offset = &path[1];
-	int rc, len;
+	int len;
 
 	len = sizeof(path)-1;
-	rc = snprintf(offset, len, abstractname, name);
-	if (rc < 0 || rc >= len) {
-		ERROR("Name too long");
+	if (fill_sock_name(offset, len, name))
 		return -1;
-	}
 
 	sock = lxc_af_unix_connect(path);
 	if (sock < 0 && errno == ECONNREFUSED) {
@@ -292,14 +305,11 @@ extern int lxc_command_init(const char *name, struct lxc_handler *handler)
 	int fd;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
 	char *offset = &path[1];
-	int rc, len;
+	int len;
 
 	len = sizeof(path)-1;
-	rc = snprintf(offset, len, abstractname, name);
-	if (rc < 0 || rc >= len) {
-		ERROR("Name too long");
+	if (fill_sock_name(offset, len, name))
 		return -1;
-	}
 
 	fd = lxc_af_unix_open(path, SOCK_STREAM, 0);
 	if (fd < 0) {

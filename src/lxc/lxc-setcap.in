@@ -25,6 +25,8 @@
 # When the capabilities are set, a non root user can manage the containers.
 #
 
+. @DATADIR@/lxc/lxc.functions
+
 LXC_ATTACH_CAPS="cap_sys_admin,cap_dac_override"
 LXC_CREATE_CAPS="cap_sys_admin"
 LXC_NETSTAT_CAPS="cap_sys_admin"
@@ -62,23 +64,23 @@ lxc_setcaps()
     setcap $LXC_CHECKPOINT_CAPS=ep @BINDIR@/lxc-checkpoint
     setcap $LXC_INIT_CAPS=ep @LXCINITDIR@/lxc/lxc-init
 
-    test -e @LXCPATH@ || mkdir -p @LXCPATH@
-    chmod 0777 @LXCPATH@
+    test -e $lxc_path || mkdir -p $lxc_path
+    chmod 0777 $lxc_path
 }
 
 lxc_dropcaps()
 {
-    setcap -r @BINDIR@/lxc-attach
-    setcap -r @BINDIR@/lxc-create
-    setcap -r @BINDIR@/lxc-execute
-    setcap -r @BINDIR@/lxc-start
-    setcap -r @BINDIR@/lxc-restart
-    setcap -r @BINDIR@/lxc-unshare
-    setcap -r @BINDIR@/lxc-netstat
-    setcap -r @BINDIR@/lxc-checkpoint
-    setcap -r @LXCINITDIR@/lxc/lxc-init
+    setcap -r $bindir/lxc-attach
+    setcap -r $bindir/lxc-create
+    setcap -r $bindir/lxc-execute
+    setcap -r $bindir/lxc-start
+    setcap -r $bindir/lxc-restart
+    setcap -r $bindir/lxc-unshare
+    setcap -r $bindir/lxc-netstat
+    setcap -r $bindir/lxc-checkpoint
+    setcap -r $lxcinitdir/lxc/lxc-init
 
-    chmod 0755 @LXCPATH@
+    chmod 0755 $lxc_path
 }
 
 usage_err() {

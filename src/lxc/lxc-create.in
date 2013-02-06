@@ -73,9 +73,7 @@ optarg_check() {
     fi
 }
 
-lxc_path=@LXCPATH@
-bindir=@BINDIR@
-templatedir=@LXCTEMPLATEDIR@
+. @DATADIR@/lxc/lxc.functions
 backingstore=_unset
 fstype=ext4
 fssize=500M

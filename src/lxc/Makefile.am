@@ -88,6 +88,7 @@ endif
 AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
+	-DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
 	-DLXCINITDIR=\"$(LXCINITDIR)\" \
 	-DLXCTEMPLATEDIR=\"$(LXCTEMPLATEDIR)\" \
 	-DLOGPATH=\"$(LOGPATH)\"
@@ -164,6 +165,9 @@ bin_PROGRAMS = \
 pkglibexec_PROGRAMS = \
 	lxc-init
 
+#pkglibexec_SCRIPTS = \
+#	lxc.functions
+
 AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
 AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
@@ -192,6 +196,8 @@ lxc_wait_SOURCES = lxc_wait.c
 lxc_kill_SOURCES = lxc_kill.c
 
 install-exec-local: install-soPROGRAMS
+	mkdir -p $(DESTDIR)$(datadir)/lxc
+	install -c -m 644 lxc.functions $(DESTDIR)$(datadir)/lxc
 	mv $(DESTDIR)$(libdir)/liblxc.so $(DESTDIR)$(libdir)/liblxc.so.$(VERSION)
 	/sbin/ldconfig -l $(DESTDIR)$(libdir)/liblxc.so.$(VERSION)
 	cd $(DESTDIR)$(libdir); \

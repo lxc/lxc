@@ -25,6 +25,8 @@
 # When the capabilities are set, a non root user can manage the containers.
 #
 
+. @DATADIR@/lxc/lxc.functions
+
 usage() {
     echo "usage: $(basename $0) [-d]" >&2
 }
@@ -49,33 +51,33 @@ setuid()
 
 lxc_setuid()
 {
-    setuid @BINDIR@/lxc-attach
-    setuid @BINDIR@/lxc-create
-    setuid @BINDIR@/lxc-execute
-    setuid @BINDIR@/lxc-start
-    setuid @BINDIR@/lxc-restart
-    setuid @BINDIR@/lxc-unshare
-    setuid @BINDIR@/lxc-netstat
-    setuid @BINDIR@/lxc-checkpoint
-    setuid @LXCINITDIR@/lxc-init
+    setuid $bindir/lxc-attach
+    setuid $bindir/lxc-create
+    setuid $bindir/lxc-execute
+    setuid $bindir/lxc-start
+    setuid $bindir/lxc-restart
+    setuid $bindir/lxc-unshare
+    setuid $bindir/lxc-netstat
+    setuid $bindir/lxc-checkpoint
+    setuid $lxcinitdir/lxc-init
 
-    test -e @LXCPATH@ || mkdir -p @LXCPATH@
-    chmod 0777 @LXCPATH@
+    test -e $lxc_path || mkdir -p $lxc_path
+    chmod 0777 $lxc_path
 }
 
 lxc_dropuid()
 {
-    setuid -r @BINDIR@/lxc-attach
-    setuid -r @BINDIR@/lxc-create
-    setuid -r @BINDIR@/lxc-execute
-    setuid -r @BINDIR@/lxc-start
-    setuid -r @BINDIR@/lxc-restart
-    setuid -r @BINDIR@/lxc-unshare
-    setuid -r @BINDIR@/lxc-netstat
-    setuid -r @BINDIR@/lxc-checkpoint
-    setuid -r @LXCINITDIR@/lxc-init
+    setuid -r $bindir/lxc-attach
+    setuid -r $bindir/lxc-create
+    setuid -r $bindir/lxc-execute
+    setuid -r $bindir/lxc-start
+    setuid -r $bindir/lxc-restart
+    setuid -r $bindir/lxc-unshare
+    setuid -r $bindir/lxc-netstat
+    setuid -r $bindir/lxc-checkpoint
+    setuid -r $lxcinitdir/lxc-init
 
-    chmod 0755 @LXCPATH@
+    chmod 0755 $lxc_path
 }
 
 usage_err() {

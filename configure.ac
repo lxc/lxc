@@ -161,11 +161,20 @@ AC_ARG_ENABLE([tests],
 AM_CONDITIONAL([ENABLE_TESTS], [test "x$enable_tests" = "xyes"])
 
 # LXC container path, where the containers are actually stored
+# This is overriden by an entry in the file called LXCCONF
+# (i.e. /etc/lxc/lxc.conf)
 AC_ARG_WITH([config-path],
 	[AC_HELP_STRING(
 		[--with-config-path=dir],
 		[lxc configuration repository path]
 	)], [], [with_config_path=['${localstatedir}/lib/lxc']])
+
+# The path of the global lxc configuration file.
+AC_ARG_WITH([global-conf],
+	[AC_HELP_STRING(
+		[--with-global-conf=dir],
+		[global lxc configuration file]
+	)], [], [with_global_conf=['${sysconfdir}/lxc/lxc.conf']])
 
 # Rootfs path, where the container mount structure is assembled
 AC_ARG_WITH([rootfs-path],
@@ -207,6 +216,7 @@ AS_AC_EXPAND(DOCDIR, "$docdir")
 AS_AC_EXPAND(LXC_DEFAULT_CONF, "$defaultconf")
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 AS_AC_EXPAND(LXCPATH, "$with_config_path")
+AS_AC_EXPAND(LXC_GLOBAL_CONF, "$with_global_conf")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "$with_rootfs_path")
 AS_AC_EXPAND(LXCTEMPLATEDIR, "$datadir/lxc/templates")
 AS_AC_EXPAND(LXCINITDIR, "$libexecdir")
@@ -355,6 +365,7 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-start-ephemeral
 	src/lxc/lxc-destroy
 	src/lxc/legacy/lxc-ls
+	src/lxc/lxc.functions
 
 	src/python-lxc/Makefile
 	src/python-lxc/lxc/__init__.py

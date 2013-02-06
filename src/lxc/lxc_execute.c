@@ -39,6 +39,7 @@
 #include "arguments.h"
 #include "config.h"
 #include "start.h"
+#include "utils.h"
 
 lxc_log_define(lxc_execute_ui, lxc_execute);
 
@@ -108,8 +109,14 @@ int main(int argc, char *argv[])
 		rcfile = (char *)my_args.rcfile;
 	else {
 		int rc;
+		char *lxcpath = default_lxc_path();
+		if (!lxcpath) {
+			ERROR("Out of memory");
+			return -1;
+		}
 
-		rc = asprintf(&rcfile, LXCPATH "/%s/config", my_args.name);
+		rc = asprintf(&rcfile, "%s/%s/config", lxcpath, my_args.name);
+		free(lxcpath);
 		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
 			return -1;

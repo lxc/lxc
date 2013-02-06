@@ -339,7 +339,11 @@ static int lxc_version_get(lua_State *L) {
 }
 
 static int lxc_path_get(lua_State *L) {
-    lua_pushstring(L, LXCPATH);
+    struct lxc_container *c = lua_unboxpointer(L, 1, CONTAINER_TYPENAME);
+    const char *lxcpath;
+
+    lxcpath = c->get_config_path(c);
+    lua_pushstring(L, lxcpath);
     return 1;
 }
 
