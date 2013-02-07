@@ -39,12 +39,11 @@ base_packages=(
     "systemd-sysvcompat"
     "filesystem"
     "coreutils"
-    "module-init-tools"
+    "kmod"
     "procps"
     "psmisc"
     "pacman"
     "bash"
-    "syslog-ng"
     "cronie"
     "iproute2"
     "iputils"
@@ -57,7 +56,6 @@ base_packages=(
     "gawk"
     "sed"
     "tar"
-    "wget"
     "gzip"
     "which"
 )
@@ -129,7 +127,7 @@ lxc.tty=1
 lxc.pts=1024
 lxc.rootfs=${rootfs_path}
 lxc.mount=${config_path}/fstab
-lxc.cap.drop = sys_module mac_admin mac_override
+lxc.cap.drop = mknod sys_module mac_admin mac_override
 #networking
 lxc.network.type=${lxc_network_type}
 lxc.network.link=${lxc_network_link}
