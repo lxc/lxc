@@ -37,7 +37,7 @@ help() {
     echo "  -o ORIG_NAME   specify the name of the original container" >&2
     echo "  -n NEW_NAME    specify the name of the new container" >&2
     echo "  -s             make the new rootfs a snapshot of the original" >&2
-    echo "  -L FS_SIZE     specify the new filesystem size (default: 2G)" >&2
+    echo "  -L FS_SIZE     specify the new filesystem size (default: same as original)" >&2
     echo "  -v VG_NAME     specify the new LVM volume group name (default: lxc)" >&2
     echo "  -p LV_PREFIX   add a prefix to new LVM logical volume names" >&2
     echo "  -t FS_TYPE     specify the new filesystem type (default: ext3;" >&2
@@ -56,7 +56,6 @@ optarg_check() {
 
 . @DATADIR@/lxc/lxc.functions
 snapshot=no
-lxc_defsize=2G
 lxc_size=_unset
 lxc_vg=lxc
 lxc_lv_prefix=""

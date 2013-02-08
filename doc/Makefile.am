@@ -7,6 +7,7 @@ EXTRA_DIST = \
 
 if ENABLE_DOCBOOK
 man_MANS = \
+	lxc-clone.1 \
 	lxc-create.1 \
 	lxc-destroy.1 \
 	lxc-execute.1 \

@@ -302,6 +302,7 @@ AC_CONFIG_FILES([
 	config/Makefile
 
 	doc/Makefile
+	doc/lxc-clone.sgml
 	doc/lxc-create.sgml
 	doc/lxc-destroy.sgml
 	doc/lxc-execute.sgml
