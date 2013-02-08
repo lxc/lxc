@@ -1,12 +1,10 @@
 
 <!--
 
-lxc: linux Container library
-
-(C) Copyright IBM Corp. 2007, 2008
+(C) Copyright Canonical Ltd. 2013
 
 Authors:
-Daniel Lezcano <dlezcano at fr.ibm.com>
+Stéphane Graber <stgraber@ubuntu.com>
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -34,37 +32,33 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
 
   <refmeta>
-    <refentrytitle>lxc-ls</refentrytitle>
+    <refentrytitle>lxc-device</refentrytitle>
     <manvolnum>1</manvolnum>
   </refmeta>
 
   <refnamediv>
-    <refname>lxc-ls</refname>
+    <refname>lxc-device</refname>
 
     <refpurpose>
-      list the containers existing on the system
+      manage deices of running containers
     </refpurpose>
   </refnamediv>
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-ls</command>
-      <arg choice="opt">-1</arg>
-      <arg choice="opt">--active</arg>
-      <arg choice="opt">--frozen</arg>
-      <arg choice="opt">--running</arg>
-      <arg choice="opt">--stopped</arg>
-      <arg choice="opt">--fancy</arg>
-      <arg choice="opt">--fancy-format</arg>
-      <arg choice="opt">filter</arg>
+      <command>lxc-device</command>
+      <arg choice="opt">-h</arg>
+      <arg choice="opt">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">add</arg>
+      <arg choice="opt">DEVICE</arg>
+      <arg choice="opt">NAME</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
   <refsect1>
     <title>Description</title>
     <para>
-      <command>lxc-ls</command> list the containers existing on the
-      system.
+      <command>lxc-device</command> manages devices in running container.
     </para>
   </refsect1>
 
@@ -73,91 +67,57 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <variablelist>
       <varlistentry>
         <term>
-          <option><optional>-1</optional></option>
+          <option><optional>-h</optional></option>
         </term>
         <listitem>
           <para>
-            Show one entry per line. (default when /dev/stdout isn't a tty)
+            The full command help message.
           </para>
         </listitem>
       </varlistentry>
 
       <varlistentry>
         <term>
-          <option><optional>--active</optional></option>
+          <option>-n</option>
         </term>
         <listitem>
           <para>
-            List only active containers (same as --frozen --running).
+             The name of the target container.
           </para>
         </listitem>
       </varlistentry>
 
       <varlistentry>
         <term>
-          <option><optional>--frozen</optional></option>
+          <option>action</option>
         </term>
         <listitem>
           <para>
-            List only frozen containers.
+            What action to perform. Only 'add' is supported at this point.
           </para>
         </listitem>
       </varlistentry>
 
       <varlistentry>
         <term>
-          <option><optional>--running</optional></option>
+          <option>DEVICE</option>
         </term>
         <listitem>
           <para>
-            List only running containers.
+            The device to add to the container.
+            It can either be the path to a device under /dev or a network
+            interface name.
           </para>
         </listitem>
       </varlistentry>
 
       <varlistentry>
         <term>
-          <option><optional>--stopped</optional></option>
+          <option><optional>NAME</optional></option>
         </term>
         <listitem>
           <para>
-            List only stopped containers.
-          </para>
-        </listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term>
-          <option><optional>--fancy</optional></option>
-        </term>
-        <listitem>
-          <para>
-            Use a fancy, column-based output.
-          </para>
-        </listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term>
-          <option><optional>--fancy-format</optional></option>
-        </term>
-        <listitem>
-          <para>
-            Comma separate list of column to show in the fancy output.
-            Valid values are: name, state, ipv4, ipv6 and pid
-            Default is: name,state,ipv4,ipv6
-          </para>
-        </listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term>
-          <option><optional>filter</optional></option>
-        </term>
-        <listitem>
-          <para>
-            The filter passed to <command>lxc-ls</command> will be
-            applied to the container name. The format is a regular expression.
+            Name for the device within the container.
           </para>
         </listitem>
       </varlistentry>
@@ -165,32 +125,23 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   </refsect1>
 
   <refsect1>
-    <title>See Also</title>
-
-    <simpara>
-      <citerefentry>
-        <refentrytitle>ls</refentrytitle>
-        <manvolnum>1</manvolnum>
-      </citerefentry>,
-    </simpara>
-
     <title>Examples</title>
     <variablelist>
       <varlistentry>
-        <term>lxc-ls --fancy</term>
+        <term>lxc-device -n p1 add /dev/video0</term>
         <listitem>
         <para>
-          list all the containers, listing one per line along with its
-          name, state, ipv4 and ipv6 addresses.
+          Creates a /dev/video0 device in container p1 based on the matching
+          device on the host.
         </para>
         </listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>lxc-ls --active -1</term>
+        <term>lxc-device -n p1 add eth0 eth1</term>
         <listitem>
         <para>
-          list active containers and display the list in one column.
+           Moves eth0 from the host as eth1 in p1.
         </para>
         </listitem>
       </varlistentry>

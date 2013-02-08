@@ -1,0 +1,164 @@
+<!--
+
+(C) Copyright Canonical Ltd. 2013
+
+Authors:
+Stéphane Graber <stgraber@ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+-->
+
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-info</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-info</refname>
+
+    <refpurpose>
+      query information about a container
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-info</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="req">-s</arg>
+      <arg choice="req">-p</arg>
+      <arg choice="req">-t <replaceable>state</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      <command>lxc-info</command> queries and shows information about a
+      container.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Options</title>
+    <variablelist>
+
+      <varlistentry>
+        <term>
+          <option>-n <replaceable>name</replaceable></option>
+        </term>
+        <listitem>
+          <para>
+            The container name.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-s</optional></option>
+        </term>
+        <listitem>
+          <para>
+            Just print the container's state.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-p</optional></option>
+        </term>
+        <listitem>
+          <para>
+            Just print the container's pid.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-t <replaceable>state</replaceable></optional></option>
+        </term>
+        <listitem>
+          <para>
+            Check whether the container is in the provided state.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title>Examples</title>
+    <variablelist>
+      <varlistentry>
+        <term>lxc-info -n foo</term>
+        <listitem>
+          <para>
+            Show information for foo.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>lxc-info -n foo -t RUNNING</term>
+        <listitem>
+          <para>
+            exits 0 if foo is RUNNING, 1 otherwise.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title>Author</title>
+    <para>Stéphane Graber <email>stgraber@ubuntu.com</email></para>
+  </refsect1>
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

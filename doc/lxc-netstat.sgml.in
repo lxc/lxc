@@ -1,12 +1,9 @@
-
 <!--
 
-lxc: linux Container library
-
-(C) Copyright IBM Corp. 2007, 2008
+(C) Copyright Canonical Ltd. 2013
 
 Authors:
-Daniel Lezcano <dlezcano at fr.ibm.com>
+Stéphane Graber <stgraber@ubuntu.com>
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -34,44 +31,30 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
 
   <refmeta>
-    <refentrytitle>lxc-ps</refentrytitle>
+    <refentrytitle>lxc-netstat</refentrytitle>
     <manvolnum>1</manvolnum>
   </refmeta>
 
   <refnamediv>
-    <refname>lxc-ps</refname>
+    <refname>lxc-netstat</refname>
 
     <refpurpose>
-      list the processes belonging to a specific container.
+      run netstat for the specified container
     </refpurpose>
   </refnamediv>
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-ps</command>
+      <command>lxc-netstat</command>
       <arg choice="opt">--name <replaceable>name</replaceable></arg>
-      <arg choice="opt">--lxc</arg>
-      <arg choice="opt">-- ps option</arg>
+      <arg choice="opt">-- netstat option</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
   <refsect1>
     <title>Description</title>
     <para>
-      <command>lxc-ps</command> is a wrapper to the ps command
-	to report the name of lxc container associated
-	to reported processes.
-    </para>
-    <para>
-	The cgroup fs must be mounted before container creation,
-	to be able to have <command>lxc-ps</command> to find
-	the container associated to processes.
-    </para>
-    <para>
-	The additionnal specified ps options must not
-	remove the default ps header and the pid information,
-	to be able to have the <command>lxc-ps</command> to find
-	the container associated to processes.
+      <command>lxc-netstat</command> is a wrapper to the netstat command.
     </para>
   </refsect1>
 
@@ -85,33 +68,19 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</term>
 	<listitem>
 	  <para>
-	    specify the container <replaceable>name</replaceable>
-	    to limit the output to the processes belonging
-	    to this container name.	
+	    The container name.
 	  </para>
 	</listitem>
       </varlistentry>
 
       <varlistentry>
 	<term>
-	  <option>--lxc</option>
+	  <option><optional>netstat options</optional></option>
 	</term>
 	<listitem>
 	  <para>
-	    limit the output to the processes belonging
-	    to all lxc containers.
-	  </para>
-	</listitem>
-      </varlistentry>
-
-      <varlistentry>
-	<term>
-	  <option><optional>ps options</optional></option>
-	</term>
-	<listitem>
-	  <para>
-	    The <command>ps</command> options must be separated
-	    from <command>lxc-ps</command> options by
+	    The <command>netstat</command> options must be separated
+	    from <command>lxc-netstat</command> options by
 	    the <option>--</option> parameter.
 	  </para>
 	</listitem>
@@ -125,11 +94,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <title>Example</title>
     <variablelist>
       <varlistentry>
-	<term>lxc-ps --name foo -- --forest</term>
+	<term>lxc-netstat --name foo -- -lnp</term>
 	<listitem>
 	<para>
-	  list all the processes belonging to container 'foo' and show
-	  dependencies.
+	  Call netstat -lnp for container foo.
 	</para>
 	</listitem>
       </varlistentry>
@@ -141,7 +109,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
     <simpara>
       <citerefentry>
-	<refentrytitle>ps</refentrytitle>
+	<refentrytitle>netstat</refentrytitle>
 	<manvolnum>1</manvolnum>
       </citerefentry>,
     </simpara>
@@ -152,7 +120,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsect1>
     <title>Author</title>
-    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+    <para>Stéphane Graber <email>stgraber@ubuntu.com</email></para>
   </refsect1>
 
 </refentry>

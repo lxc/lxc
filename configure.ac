@@ -302,31 +302,39 @@ AC_CONFIG_FILES([
 	config/Makefile
 
 	doc/Makefile
+	doc/legacy/lxc-ls.sgml
+	doc/lxc-attach.sgml
+	doc/lxc-cgroup.sgml
+	doc/lxc-checkconfig.sgml
+	doc/lxc-checkpoint.sgml
 	doc/lxc-clone.sgml
+	doc/lxc-console.sgml
 	doc/lxc-create.sgml
 	doc/lxc-destroy.sgml
+	doc/lxc-device.sgml
 	doc/lxc-execute.sgml
-	doc/lxc-start.sgml
-	doc/lxc-checkpoint.sgml
-	doc/lxc-restart.sgml
-	doc/lxc-stop.sgml
-	doc/lxc-console.sgml
 	doc/lxc-freeze.sgml
-	doc/lxc-unfreeze.sgml
-	doc/lxc-monitor.sgml
-	doc/lxc-wait.sgml
-	doc/lxc-ls.sgml
-	doc/lxc-ps.sgml
-	doc/lxc-top.sgml
-	doc/lxc-cgroup.sgml
+	doc/lxc-info.sgml
 	doc/lxc-kill.sgml
-	doc/lxc-attach.sgml
+	doc/lxc-ls.sgml
+	doc/lxc-monitor.sgml
+	doc/lxc-netstat.sgml
+	doc/lxc-ps.sgml
+	doc/lxc-restart.sgml
+	doc/lxc-shutdown.sgml
+	doc/lxc-start-ephemeral.sgml
+	doc/lxc-start.sgml
+	doc/lxc-stop.sgml
+	doc/lxc-top.sgml
+	doc/lxc-unfreeze.sgml
+	doc/lxc-unshare.sgml
+	doc/lxc-version.sgml
+	doc/lxc-wait.sgml
+
 	doc/lxc.conf.sgml
 	doc/lxc.sgml
 	doc/common_options.sgml
 	doc/see_also.sgml
-	doc/legacy/lxc-ls.sgml
-	doc/lxc-unshare.sgml
 
 	doc/rootfs/Makefile
 
