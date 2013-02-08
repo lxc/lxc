@@ -44,7 +44,7 @@
 static int container_new(lua_State *L)
 {
     const char *name = luaL_checkstring(L, 1);
-    struct lxc_container *c = lxc_container_new(name);
+    struct lxc_container *c = lxc_container_new(name, NULL);
 
     if (c) {
 	lua_boxpointer(L, c);

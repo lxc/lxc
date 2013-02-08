@@ -85,7 +85,7 @@ Container_init(Container *self, PyObject *args, PyObject *kwds)
                                       &name))
         return -1;
 
-    self->container = lxc_container_new(name);
+    self->container = lxc_container_new(name, NULL);
     if (!self->container) {
         fprintf(stderr, "%d: error creating lxc_container %s\n", __LINE__, name);
         return -1;

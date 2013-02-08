@@ -82,7 +82,7 @@ struct lxc_container {
 #endif
 };
 
-struct lxc_container *lxc_container_new(const char *name);
+struct lxc_container *lxc_container_new(const char *name, const char *configpath);
 int lxc_container_get(struct lxc_container *c);
 int lxc_container_put(struct lxc_container *c);
 int lxc_get_wait_states(const char **states);

@@ -871,10 +871,45 @@ static const char *lxcapi_get_config_path(struct lxc_container *c)
 	return (const char *)(c->config_path);
 }
 
+/*
+ * not for export
+ * Just recalculate the c->configfile based on the
+ * c->config_path, which must be set.
+ * The lxc_container must be locked or not yet public.
+ */
+static bool set_config_filename(struct lxc_container *c)
+{
+	char *newpath;
+	int len, ret;
+
+	if (!c->config_path)
+		return false;
+
+	/* $lxc_path + "/" + c->name + "/" + "config" + '\0' */
+	len = strlen(c->config_path) + strlen(c->name) + strlen("config") + 3;
+	newpath = malloc(len);
+	if (!newpath)
+		return false;
+
+	ret = snprintf(newpath, len, "%s/%s/config", c->config_path, c->name);
+	if (ret < 0 || ret >= len) {
+		fprintf(stderr, "Error printing out config file name\n");
+		free(newpath);
+		return false;
+	}
+
+	if (c->configfile)
+		free(c->configfile);
+	c->configfile = newpath;
+
+	return true;
+}
+
 static bool lxcapi_set_config_path(struct lxc_container *c, const char *path)
 {
 	char *p;
 	bool b = false;
+	char *oldpath = NULL;
 
 	if (!c)
 		return b;
@@ -883,13 +918,28 @@ static bool lxcapi_set_config_path(struct lxc_container *c, const char *path)
 		return b;
 
 	p = strdup(path);
-	if (!p)
+	if (!p) {
+		ERROR("Out of memory setting new lxc path");
 		goto err;
+	}
+
 	b = true;
 	if (c->config_path)
-		free(c->config_path);
+		oldpath = c->config_path;
 	c->config_path = p;
+
+	/* Since we've changed the config path, we have to change the
+	 * config file name too */
+	if (!set_config_filename(c)) {
+		ERROR("Out of memory setting new config filename");
+		b = false;
+		free(c->config_path);
+		c->config_path = oldpath;
+		oldpath = NULL;
+	}
 err:
+	if (oldpath)
+		free(oldpath);
 	lxcunlock(c->privlock);
 	return b;
 }
@@ -938,10 +988,9 @@ out:
 }
 
 
-struct lxc_container *lxc_container_new(const char *name)
+struct lxc_container *lxc_container_new(const char *name, const char *configpath)
 {
 	struct lxc_container *c;
-	int ret, len;
 
 	c = malloc(sizeof(*c));
 	if (!c) {
@@ -950,7 +999,11 @@ struct lxc_container *lxc_container_new(const char *name)
 	}
 	memset(c, 0, sizeof(*c));
 
-	c->config_path = default_lxc_path();
+	if (configpath)
+		c->config_path = strdup(configpath);
+	else
+		c->config_path = default_lxc_path();
+
 	if (!c->config_path) {
 		fprintf(stderr, "Out of memory");
 		goto err;
@@ -976,15 +1029,8 @@ struct lxc_container *lxc_container_new(const char *name)
 		goto err;
 	}
 
-	len = strlen(c->config_path)+strlen(c->name)+strlen("/config")+2;
-	c->configfile = malloc(len);
-	if (!c->configfile) {
+	if (!set_config_filename(c)) {
 		fprintf(stderr, "Error allocating config file pathname\n");
-		goto err;
-	}
-	ret = snprintf(c->configfile, len, "%s/%s/config", c->config_path, c->name);
-	if (ret < 0 || ret >= len) {
-		fprintf(stderr, "Error printing out config file name\n");
 		goto err;
 	}
 

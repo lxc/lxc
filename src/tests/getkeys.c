@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 	int len, ret;
 	char v3[2048];
 
-	if ((c = lxc_container_new(MYNAME)) == NULL) {
+	if ((c = lxc_container_new(MYNAME, NULL)) == NULL) {
 		fprintf(stderr, "%d: error opening lxc_container %s\n", __LINE__, MYNAME);
 		ret = 1;
 		goto out;

@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
 
 	ret = 1;
 	/* test refcounting */
-	c = lxc_container_new(MYNAME);
+	c = lxc_container_new(MYNAME, NULL);
 	if (!c) {
 		fprintf(stderr, "%d: error creating lxc_container %s\n", __LINE__, MYNAME);
 		goto out;
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* test a real container */
-	c = lxc_container_new(MYNAME);
+	c = lxc_container_new(MYNAME, NULL);
 	if (!c) {
 		fprintf(stderr, "%d: error creating lxc_container %s\n", __LINE__, MYNAME);
 		ret = 1;
