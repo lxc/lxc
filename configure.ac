@@ -326,6 +326,7 @@ AC_CONFIG_FILES([
 	doc/common_options.sgml
 	doc/see_also.sgml
 	doc/legacy/lxc-ls.sgml
+	doc/lxc-unshare.sgml
 
 	doc/rootfs/Makefile
 

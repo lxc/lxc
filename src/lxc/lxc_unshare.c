@@ -125,11 +125,13 @@ int main(int argc, char *argv[])
 		.flags = &flags,
 	};
 
-	while ((opt = getopt(argc, argv, "s:u:")) != -1) {
+	while ((opt = getopt(argc, argv, "s:u:h")) != -1) {
 		switch (opt) {
 		case 's':
 			namespaces = optarg;
 			break;
+		case 'h':
+			usage(argv[0]);
 		case 'u':
 			uid = lookup_user(optarg);
 			if (uid == -1)
@@ -137,10 +139,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-    if (argv[optind] == NULL) {
-        ERROR("a command to execute in the new namespace is required");
-        return 1;
-    }
+	if (argv[optind] == NULL) {
+		ERROR("a command to execute in the new namespace is required");
+		return 1;
+	}
 
 	args = &argv[optind];
 
@@ -148,8 +150,8 @@ int main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-        ret = lxc_fill_namespace_flags(namespaces, &flags);
- 	if (ret)
+	ret = lxc_fill_namespace_flags(namespaces, &flags);
+	if (ret)
 		usage(argv[0]);
 
 	if (!(flags & CLONE_NEWUSER) && uid != -1) {

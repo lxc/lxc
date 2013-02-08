@@ -18,6 +18,7 @@ man_MANS = \
 	lxc-console.1 \
 	lxc-freeze.1 \
 	lxc-unfreeze.1 \
+	lxc-unshare.1 \
 	lxc-monitor.1 \
 	lxc-wait.1 \
 	lxc-ps.1 \
