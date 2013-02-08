@@ -36,7 +36,7 @@ Downloading the current source code:
 
   For detailed build instruction refer to INSTALL and man lxc man page
   but a short command line should work:
-  ./autogen.sh && ./configure && make && sudo make install && sudo lxc-setcap
+  ./autogen.sh && ./configure && make && sudo make install
   preceded by ./autogen.sh if configure do not exist yet.
 
 Getting help:

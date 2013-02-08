@@ -356,8 +356,6 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-ps
 	src/lxc/lxc-netstat
 	src/lxc/lxc-checkconfig
-	src/lxc/lxc-setcap
-	src/lxc/lxc-setuid
 	src/lxc/lxc-version
 	src/lxc/lxc-create
 	src/lxc/lxc-clone
@@ -377,32 +375,3 @@ AC_CONFIG_FILES([
 ])
 AC_CONFIG_COMMANDS([default],[[]],[[]])
 AC_OUTPUT
-
-
-# Detect missing setcap binary
-AC_CHECK_PROG(SETCAP, setcap, yes, no, $PATH$PATH_SEPARATOR/sbin)
-if test "x$SETCAP" = "xno"; then
-	AC_MSG_NOTICE([
-
-Warning:
---------
-
-The setcap binary was not found. This means the tools to set the
-privilege for the lxc commands are not available, that's ok, but you
-will need to run these commands as root or install libcap-2.
-
-])
-
-else
-
-   AC_MSG_NOTICE([
-
-Advice:
--------
-
-If you wish to have a non root user to use the lxc tools,
-you can add the needed capabilities to the tools by invoking
-the 'lxc-setcap' script. To remove the capabilities, use
-'lxc-setcap -d'.
-])
-fi
