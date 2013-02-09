@@ -300,11 +300,12 @@ if [ ! -z "$lxc_template" ]; then
     if [ -n "$*" ]; then
         echo "# Parameters passed to the template: $*" >> $lxc_path/$lxc_name/config
     fi
-    echo "# Checksum of the template script (SHA-1): $sum" >> $lxc_path/$lxc_name/config
+    echo "# Template script checksum (SHA-1): $sum" >> $lxc_path/$lxc_name/config
     echo "" >> $lxc_path/$lxc_name/config
 fi
 
 cat $lxc_config >> $lxc_path/$lxc_name/config
+echo "" >> $lxc_path/$lxc_name/config
 
 if [ -n "$custom_rootfs" ]; then
     if grep -q "lxc.rootfs" $lxc_path/$lxc_name/config ; then
