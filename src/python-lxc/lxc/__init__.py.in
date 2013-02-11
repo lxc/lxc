@@ -33,6 +33,8 @@ import warnings
 warnings.warn("The python-lxc API isn't yet stable "
               "and may change at any point in the future.", Warning, 2)
 
+default_config_path = "@LXCPATH@"
+
 
 class ContainerNetwork():
     props = {}
@@ -143,7 +145,7 @@ class ContainerNetworkList():
 
 
 class Container(_lxc.Container):
-    def __init__(self, name):
+    def __init__(self, name, config_path=None):
         """
             Creates a new Container instance.
         """
@@ -151,7 +153,11 @@ class Container(_lxc.Container):
         if os.geteuid() != 0:
             raise Exception("Running as non-root.")
 
-        _lxc.Container.__init__(self, name)
+        if config_path:
+            _lxc.Container.__init__(self, name, config_path)
+        else:
+            _lxc.Container.__init__(self, name)
+
         self.network = ContainerNetworkList(self)
 
     def add_device_node(self, path, destpath=None):
@@ -455,14 +461,18 @@ class Container(_lxc.Container):
         return _lxc.Container.wait(self, state, timeout)
 
 
-def list_containers(as_object=False):
+def list_containers(as_object=False, config_path=None):
     """
         List the containers on the system.
     """
+
+    if not config_path:
+        config_path = default_config_path
+
     containers = []
-    for entry in glob.glob("@LXCPATH@/*/config"):
+    for entry in glob.glob("%s/*/config" % config_path):
         if as_object:
-            containers.append(Container(entry.split("/")[-2]))
+            containers.append(Container(entry.split("/")[-2], config_path))
         else:
             containers.append(entry.split("/")[-2])
     return containers
