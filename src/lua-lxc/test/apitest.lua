@@ -22,9 +22,10 @@
 --
 
 local lxc     = require("lxc")
+local lfs     = require("lfs")
 local getopt  = require("alt_getopt")
 
-local LXC_PATH		= lxc.path_get()
+local LXC_PATH		= lxc.default_config_path_get()
 
 local container
 local cfg_containers	= {}
@@ -81,6 +82,28 @@ function test_container_new()
     container = lxc.container:new(optarg["n"])
     assert(container ~= nil)
     assert(container:config_file_name() == string.format("%s/%s/config", LXC_PATH, optarg["n"]))
+end
+
+function test_container_config_path()
+    local cfgcontainer
+    local cfgpath = "/tmp/" .. optarg["n"]
+    local cfgname = cfgpath .. "/config"
+
+    log(0, "Test container config path...")
+
+    -- create a config file in the new location from container's config
+    assert(lfs.mkdir(cfgpath))
+    assert(container:save_config(cfgname))
+    cfgcontainer = lxc.container:new(optarg["n"], "/tmp")
+    assert(cfgcontainer ~= nil)
+    log(0, "cfgname:%s cfgpath:%s", cfgcontainer:config_file_name(), cfgcontainer:get_config_path())
+    assert(cfgcontainer:config_file_name() == cfgname)
+    assert(cfgcontainer:get_config_path() == "/tmp")
+    assert(cfgcontainer:set_config_path(LXC_PATH))
+    assert(cfgcontainer:get_config_path() == LXC_PATH)
+
+    assert(os.remove(cfgname))
+    assert(lfs.rmdir(cfgpath))
 end
 
 function test_container_create()
@@ -280,6 +303,7 @@ test_container_new()
 test_container_create()
 test_container_stopped()
 test_container_in_cfglist(true)
+test_container_config_path()
 
 test_config_items()
 test_config_keys()

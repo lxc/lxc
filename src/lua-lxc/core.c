@@ -43,9 +43,15 @@
 
 static int container_new(lua_State *L)
 {
+    struct lxc_container *c;
     const char *name = luaL_checkstring(L, 1);
-    struct lxc_container *c = lxc_container_new(name, NULL);
+    const char *configpath = NULL;
+    int argc = lua_gettop(L);
 
+    if (argc > 1)
+	configpath = luaL_checkstring(L, 2);
+
+    c = lxc_container_new(name, configpath);
     if (c) {
 	lua_boxpointer(L, c);
 	luaL_getmetatable(L, CONTAINER_TYPENAME);
@@ -238,6 +244,25 @@ static int container_save_config(lua_State *L)
     return 1;
 }
 
+static int container_get_config_path(lua_State *L)
+{
+    struct lxc_container *c = lua_unboxpointer(L, 1, CONTAINER_TYPENAME);
+    const char *config_path;
+
+    config_path = c->get_config_path(c);
+    lua_pushstring(L, config_path);
+    return 1;
+}
+
+static int container_set_config_path(lua_State *L)
+{
+    struct lxc_container *c = lua_unboxpointer(L, 1, CONTAINER_TYPENAME);
+    const char *config_path = luaL_checkstring(L, 2);
+
+    lua_pushboolean(L, !!c->set_config_path(c, config_path));
+    return 1;
+}
+
 static int container_clear_config_item(lua_State *L)
 {
     struct lxc_container *c = lua_unboxpointer(L, 1, CONTAINER_TYPENAME);
@@ -326,6 +351,8 @@ static luaL_Reg lxc_container_methods[] =
     {"config_file_name",	container_config_file_name},
     {"load_config",		container_load_config},
     {"save_config",		container_save_config},
+    {"get_config_path",		container_get_config_path},
+    {"set_config_path",		container_set_config_path},
     {"get_config_item",		container_get_config_item},
     {"set_config_item",		container_set_config_item},
     {"clear_config_item",	container_clear_config_item},
@@ -338,18 +365,17 @@ static int lxc_version_get(lua_State *L) {
     return 1;
 }
 
-static int lxc_path_get(lua_State *L) {
-    struct lxc_container *c = lua_unboxpointer(L, 1, CONTAINER_TYPENAME);
-    const char *lxcpath;
+static int lxc_default_config_path_get(lua_State *L) {
+    char *lxcpath = lxc_get_default_config_path();
 
-    lxcpath = c->get_config_path(c);
     lua_pushstring(L, lxcpath);
+    free(lxcpath);
     return 1;
 }
 
 static luaL_Reg lxc_lib_methods[] = {
     {"version_get",		lxc_version_get},
-    {"path_get",		lxc_path_get},
+    {"default_config_path_get",	lxc_default_config_path_get},
     {"container_new",		container_new},
     {NULL, NULL}
 };

@@ -987,6 +987,10 @@ out:
 	return ret;
 }
 
+char *lxc_get_default_config_path(void)
+{
+	return default_lxc_path();
+}
 
 struct lxc_container *lxc_container_new(const char *name, const char *configpath)
 {

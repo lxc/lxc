@@ -107,13 +107,17 @@ container = {}
 container_mt = {}
 container_mt.__index = container
 
-function container:new(lname)
+function container:new(lname, config)
     local lcore
     local lnetcfg = {}
     local lstats = {}
 
     if lname then
-	lcore = core.container_new(lname)
+	if config then
+	    lcore = core.container_new(lname, config)
+	else
+	    lcore = core.container_new(lname)
+	end
     end
 
     return setmetatable({ctname = lname, core = lcore, netcfg = lnetcfg, stats = lstats}, container_mt)
@@ -174,6 +178,14 @@ end
 
 function container:destroy()
     return self.core:destroy()
+end
+
+function container:get_config_path()
+    return self.core:get_config_path()
+end
+
+function container:set_config_path(path)
+    return self.core:set_config_path(path)
 end
 
 function container:append_config_item(key, value)
@@ -408,5 +420,5 @@ function containers_running(names_only)
     return containers
 end
 
-lxc_path = core.path_get()
+lxc_path = core.default_config_path_get()
 cgroup_path = cgroup_path_get()
