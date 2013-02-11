@@ -150,6 +150,8 @@ int main(int argc, char *argv[])
 		'\0',
 	};
 	FILE *pid_fp = NULL;
+	/* TODO: add cmdline arg to specify lxcpath */
+	char *lxcpath = NULL;
 
 	lxc_list_init(&defines);
 
@@ -258,7 +260,7 @@ int main(int argc, char *argv[])
 	if (my_args.close_all_fds)
 		conf->close_all_fds = 1;
 
-	err = lxc_start(my_args.name, args, conf);
+	err = lxc_start(my_args.name, args, conf, lxcpath);
 
 	/*
 	 * exec ourself, that requires to have all opened fd

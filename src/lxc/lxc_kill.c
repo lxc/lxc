@@ -56,6 +56,8 @@ int main(int argc, char *argv[], char *envp[])
 	int ret;
 	pid_t pid;
 	int sig;
+	/* TODO: add lxcpath cmdline arg */
+	const char *lxcpath = NULL;
 
 	ret = lxc_arguments_parse(&my_args, argc, argv);
 	if (ret)
@@ -76,7 +78,7 @@ int main(int argc, char *argv[], char *envp[])
 	} else
 		sig=SIGKILL;
 
-	pid = get_init_pid(my_args.name);
+	pid = get_init_pid(my_args.name, lxcpath);
 	if (pid < 0) {
 		ERROR("failed to get the init pid");
 		return -1;

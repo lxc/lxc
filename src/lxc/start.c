@@ -363,7 +363,7 @@ out_sigfd:
 
 extern int lxc_caps_check(void);
 
-struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
+struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char *lxcpath)
 {
 	struct lxc_handler *handler;
 
@@ -387,7 +387,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 		goto out_free;
 	}
 
-	if (lxc_command_init(name, handler))
+	if (lxc_command_init(name, handler, lxcpath))
 		goto out_free_name;
 
 	if (lxc_read_seccomp_config(conf) != 0) {
@@ -835,13 +835,13 @@ out_abort:
 }
 
 int __lxc_start(const char *name, struct lxc_conf *conf,
-		struct lxc_operations* ops, void *data)
+		struct lxc_operations* ops, void *data, const char *lxcpath)
 {
 	struct lxc_handler *handler;
 	int err = -1;
 	int status;
 
-	handler = lxc_init(name, conf);
+	handler = lxc_init(name, conf, lxcpath);
 	if (!handler) {
 		ERROR("failed to initialize the container");
 		return -1;
@@ -940,7 +940,8 @@ static struct lxc_operations start_ops = {
 	.post_start = post_start
 };
 
-int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
+int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
+	      const char *lxcpath)
 {
 	struct start_args start_arg = {
 		.argv = argv,
@@ -950,5 +951,5 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 		return -1;
 
 	conf->need_utmp_watch = 1;
-	return __lxc_start(name, conf, &start_ops, &start_arg);
+	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath);
 }

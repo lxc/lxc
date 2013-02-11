@@ -130,6 +130,8 @@ int main(int argc, char *argv[])
 	void *cgroup_data = NULL;
 	uid_t uid;
 	char *curdir;
+	/* TODO: add cmdline arg to set lxcpath */
+	const char *lxcpath = NULL;
 
 	ret = lxc_caps_init();
 	if (ret)
@@ -144,7 +146,7 @@ int main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	init_pid = get_init_pid(my_args.name);
+	init_pid = get_init_pid(my_args.name, lxcpath);
 	if (init_pid < 0) {
 		ERROR("failed to get the init pid");
 		return -1;
@@ -174,7 +176,7 @@ int main(int argc, char *argv[])
 	 * by asking lxc-start
 	 */
 	if (namespace_flags == -1) {
-		namespace_flags = lxc_get_clone_flags(my_args.name);
+		namespace_flags = lxc_get_clone_flags(my_args.name, lxcpath);
 		/* call failed */
 		if (namespace_flags == -1) {
 			ERROR("failed to automatically determine the "

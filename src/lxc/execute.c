@@ -127,7 +127,7 @@ static struct lxc_operations execute_start_ops = {
 };
 
 int lxc_execute(const char *name, char *const argv[], int quiet,
-		struct lxc_conf *conf)
+		struct lxc_conf *conf, const char *lxcpath)
 {
 	struct execute_args args = {
 		.argv = argv,
@@ -137,5 +137,5 @@ int lxc_execute(const char *name, char *const argv[], int quiet,
 	if (lxc_check_inherited(conf, -1))
 		return -1;
 
-	return __lxc_start(name, conf, &execute_start_ops, &args);
+	return __lxc_start(name, conf, &execute_start_ops, &args, lxcpath);
 }

@@ -161,7 +161,7 @@ static const char *lxcapi_state(struct lxc_container *c)
 		return NULL;
 	if (lxclock(c->slock, 0))
 		return NULL;
-	s = lxc_getstate(c->name);
+	s = lxc_getstate(c->name, c->config_path);
 	ret = lxc_state2str(s);
 	lxcunlock(c->slock);
 
@@ -171,7 +171,7 @@ static const char *lxcapi_state(struct lxc_container *c)
 static bool is_stopped_nolock(struct lxc_container *c)
 {
 	lxc_state_t s;
-	s = lxc_getstate(c->name);
+	s = lxc_getstate(c->name, c->config_path);
 	return (s == STOPPED);
 }
 
@@ -225,7 +225,7 @@ static pid_t lxcapi_init_pid(struct lxc_container *c)
 
 	if (lxclock(c->slock, 0))
 		return -1;
-	ret = get_init_pid(c->name);
+	ret = get_init_pid(c->name, c->config_path);
 	lxcunlock(c->slock);
 	return ret;
 }
@@ -324,7 +324,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 	lxcunlock(c->privlock);
 
 	if (useinit) {
-		ret = lxc_execute(c->name, argv, 1, conf);
+		ret = lxc_execute(c->name, argv, 1, conf, c->config_path);
 		return ret == 0 ? true : false;
 	}
 
@@ -386,7 +386,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 
 reboot:
 	conf->reboot = 0;
-	ret = lxc_start(c->name, argv, conf);
+	ret = lxc_start(c->name, argv, conf, c->config_path);
 
 	if (conf->reboot) {
 		INFO("container requested reboot");
@@ -464,7 +464,7 @@ static bool lxcapi_stop(struct lxc_container *c)
 	if (!c)
 		return false;
 
-	ret = lxc_stop(c->name);
+	ret = lxc_stop(c->name, c->config_path);
 
 	return ret == 0;
 }

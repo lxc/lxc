@@ -143,5 +143,5 @@ int main(int argc, char *argv[])
 	if (lxc_config_define_load(&defines, conf))
 		return -1;
 
-	return lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf);
+	return lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf, NULL);
 }
