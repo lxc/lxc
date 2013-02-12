@@ -182,12 +182,12 @@ int main(int argc, char *argv[])
 		}
 
 		rc = asprintf(&rcfile, "%s/%s/config", lxcpath, my_args.name);
-		INFO("using rcfile %s", rcfile);
 		free(lxcpath);
 		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
 			return err;
 		}
+		INFO("using rcfile %s", rcfile);
 
 		/* container configuration does not exist */
 		if (access(rcfile, F_OK)) {
