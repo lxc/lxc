@@ -85,7 +85,14 @@ done
 
 containers=""
 if [ ! -z "$directory" ]; then
-	containers=$(find $directory -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sed 's:.*/::')
+	if [ x"$parent_cgroup" = x ]; then
+		containers=$(find $directory -mindepth 2 -maxdepth 2 -name config -type f |awk -F "/" '{print $(NF-1)}')
+	else
+		containers=$(find $directory -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sed 's:.*/::')
+	fi
+	if [ x"$containers" = x ]; then
+		exit 0
+	fi
 fi
 
 cd "$directory"
