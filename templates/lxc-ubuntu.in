@@ -609,7 +609,7 @@ arch=$(arch)
 # Code taken from debootstrap
 if [ -x /usr/bin/dpkg ] && /usr/bin/dpkg --print-architecture >/dev/null 2>&1; then
     arch=`/usr/bin/dpkg --print-architecture`
-elif type udpkg >/dev/null 2>&1 && udpkg --print-architecture >/dev/null 2>&1; then
+elif which udpkg >/dev/null 2>&1 && udpkg --print-architecture >/dev/null 2>&1; then
     arch=`/usr/bin/udpkg --print-architecture`
 else
     arch=$(arch)
@@ -666,11 +666,7 @@ if [ $hostarch = "i386" -a $arch = "amd64" ]; then
     exit 1
 fi
 
-type debootstrap
-if [ $? -ne 0 ]; then
-    echo "'debootstrap' command is missing"
-    exit 1
-fi
+which debootstrap >/dev/null 2>&1 || { echo "'debootstrap' command is missing" >&2; false; }
 
 if [ -z "$path" ]; then
     echo "'path' parameter is required"

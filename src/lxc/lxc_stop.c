@@ -50,12 +50,15 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
+	/* TODO - make lxcpath a cmdline arg */
+	const char *lxcpath = NULL;
+
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
 
-	if (lxc_log_init(my_args.log_file, my_args.log_priority,
+	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	return lxc_stop(my_args.name);
+	return lxc_stop(my_args.name, lxcpath);
 }

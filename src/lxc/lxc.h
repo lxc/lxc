@@ -47,7 +47,8 @@ struct lxc_arguments;
  * @conf     : configuration
  * Returns 0 on sucess, < 0 otherwise
  */
-extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf);
+extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
+		     const char *lxcpath);
 
 /*
  * Stop the container previously started with lxc_start, all
@@ -55,7 +56,7 @@ extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf
  * @name : the name of the container
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_stop(const char *name);
+extern int lxc_stop(const char *name, const char *lxcpath);
 
 /*
  * Start the specified command inside an application container
@@ -66,7 +67,7 @@ extern int lxc_stop(const char *name);
  * Returns 0 on sucess, < 0 otherwise
  */
 extern int lxc_execute(const char *name, char *const argv[], int quiet,
-		       struct lxc_conf *conf);
+		       struct lxc_conf *conf, const char *lxcpath);
 
 /*
  * Open the monitoring mechanism for a specific container
@@ -100,7 +101,7 @@ extern int lxc_monitor_close(int fd);
  * @fd   : a pointer to a tty file descriptor
  * Returns 0 on sucess, < 0 otherwise
  */
-extern int lxc_console(const char *name, int ttynum, int *fd);
+extern int lxc_console(const char *name, int ttynum, int *fd, const char *lxcpath);
 
 /*
  * Freeze all the tasks running inside the container <name>
@@ -121,7 +122,7 @@ extern int lxc_unfreeze(const char *name);
  * @name : the name of the container
  * Returns the state of the container on success, < 0 otherwise
  */
-extern lxc_state_t lxc_state(const char *name);
+extern lxc_state_t lxc_state(const char *name, const char *lxcpath);
 
 /*
  * Set a specified value for a specified subsystem. The specified
@@ -182,7 +183,7 @@ extern const char const *lxc_version(void);
 /*
  * Create and return a new lxccontainer struct.
  */
-extern struct lxc_container *lxc_container_new(const char *name);
+extern struct lxc_container *lxc_container_new(const char *name, const char *configpath);
 
 /*
  * Returns 1 on success, 0 on failure.

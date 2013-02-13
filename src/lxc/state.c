@@ -97,7 +97,7 @@ static int freezer_state(const char *name)
 	return lxc_str2state(status);
 }
 
-static lxc_state_t __lxc_getstate(const char *name)
+static lxc_state_t __lxc_getstate(const char *name, const char *lxcpath)
 {
 	struct lxc_command command = {
 		.request = { .type = LXC_COMMAND_STATE },
@@ -105,7 +105,7 @@ static lxc_state_t __lxc_getstate(const char *name)
 
 	int ret, stopped = 0;
 
-	ret = lxc_command(name, &command, &stopped);
+	ret = lxc_command(name, &command, &stopped, lxcpath);
 	if (ret < 0 && stopped)
 		return STOPPED;
 
@@ -130,11 +130,11 @@ static lxc_state_t __lxc_getstate(const char *name)
 	return command.answer.ret;
 }
 
-lxc_state_t lxc_getstate(const char *name)
+lxc_state_t lxc_getstate(const char *name, const char *lxcpath)
 {
 	int state = freezer_state(name);
 	if (state != FROZEN && state != FREEZING)
-		state = __lxc_getstate(name);
+		state = __lxc_getstate(name, lxcpath);
 	return state;
 }
 
@@ -196,6 +196,8 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout)
 	struct lxc_msg msg;
 	int state, ret;
 	int s[MAX_STATE] = { }, fd;
+	/* TODO: add cmdline arg to specify lxcpath */
+	char *lxcpath = NULL;
 
 	if (fillwaitedstates(states, s))
 		return -1;
@@ -209,7 +211,7 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout)
 	 * then check if already in requested state
 	 */
 	ret = -1;
-	state = lxc_getstate(lxcname);
+	state = lxc_getstate(lxcname, lxcpath);
 	if (state < 0) {
 		goto out_close;
 	} else if ((state >= 0) && (s[state])) {

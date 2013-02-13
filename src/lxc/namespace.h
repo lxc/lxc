@@ -23,8 +23,10 @@
 #ifndef __namespace_h
 #define __namespace_h
 
-#include <syscall.h>
+#include <sys/syscall.h>
 #include <sched.h>
+
+#include "config.h"
 
 #ifndef CLONE_FS
 #  define CLONE_FS                0x00000200
@@ -47,9 +49,14 @@
 #ifndef CLONE_NEWNET
 #  define CLONE_NEWNET            0x40000000
 #endif
+#ifdef IS_BIONIC
+int clone(int (*fn)(void *), void *child_stack,
+	int flags, void *arg);
+#else
 int clone(int (*fn)(void *), void *child_stack,
 	int flags, void *arg, ...
 	/* pid_t *ptid, struct user_desc *tls, pid_t *ctid */ );
+#endif
 
 
 extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags);

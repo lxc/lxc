@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # (C) Copyright Canonical 2011,2012
 
@@ -41,53 +41,57 @@ dolxcstop()
     exit 0
 }
 
-shortoptions='hn:rwt:'
-longoptions='help,name:,wait,reboot,timeout:'
+usage_err() {
+    [ -n "$1" ] && echo "$1" >&2
+    usage
+    exit 1
+}
+
+optarg_check() {
+    [ -n "$2" ] || usage_err "option '$1' requires an argument"
+}
 
 timeout="-1"
-
-getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
-if [ $? != 0 ]; then
-    usage
-    exit 1;
-fi
-
-eval set -- "$getopt"
 
 reboot=0
 dowait=0
 
-while true; do
-    case "$1" in
+while [ $# -gt 0 ]; do
+    opt="$1"
+    shift
+    case "$opt" in
     -h|--help)
         usage
-        exit 1
+        exit 0
         ;;
     -n|--name)
-        shift
+        optarg_check $opt "$1"
         lxc_name=$1
         shift
         ;;
     -w|--wait)
         dowait=1
-        shift
         ;;
     -r|--reboot)
         reboot=1
-        shift
         ;;
     -t|--timeout)
-        shift
+        optarg_check $opt "$1"
         timeout=$1
         dowait=1
         shift
         ;;
     --)
-        shift
         break;;
+    -?)
+        usage_err "unknown option '$opt'"
+        ;;
+    -*)
+        # split opts -abc into -a -b -c
+        set -- $(echo "${opt#-}" | sed 's/\(.\)/ -\1/g') "$@"
+        ;;
     *)
-        echo $1
-        usage
+        usage_err "unknown option '$opt'"
         exit 1
         ;;
     esac
@@ -104,8 +108,8 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
-type lxc-info > /dev/null || { echo "lxc-info not found."; exit 1; }
-type lxc-wait > /dev/null || { echo "lxc-wait not found."; exit 1; }
+which lxc-info > /dev/null 2>&1 || { echo "lxc-info not found."; exit 1; }
+which lxc-wait > /dev/null 2>&1 || { echo "lxc-wait not found."; exit 1; }
 
 pid=`lxc-info -n $lxc_name -p 2>/dev/null | awk '{ print $2 }'`
 if [ "$pid" = "-1" ]; then
@@ -114,10 +118,10 @@ if [ "$pid" = "-1" ]; then
 fi
 
 if [ $reboot -eq 1 ]; then
-    kill -INT $pid
+    kill -s INT $pid
     exit 0
 else
-    kill -PWR $pid
+    kill -s PWR $pid
 fi
 
 if [ $dowait -eq 0 ]; then
@@ -130,11 +134,7 @@ if [ $timeout != "-1" ]; then
     alarmpid=$!
 fi
 
-while [ 1 ]; do
-    s=`lxc-info -s -n $lxc_name | awk '{ print $2 }'`
-    if [ "$s" = "STOPPED" ]; then
-        break;
-    fi
+while ! lxc-info -n $lxc_name --state-is STOPPED; do
     sleep 1
 done
 

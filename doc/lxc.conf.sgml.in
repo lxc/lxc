@@ -510,6 +510,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	rootfs.  If lxc.autodev is set to 1, then after mounting the container's
 	rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
 	(limited to 100k) and fill in a minimal set of initial devices.
+        This is generally required when starting a container containing
+        a "systemd" based "init" but may be optional at other times.  Addional
+        devices in the containers /dev directory may be created through the
+        use of the <option>lxc.hook.autodev</option> hook.
       </para>
       <variablelist>
 	<varlistentry>
@@ -686,6 +690,46 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </refsect2>
 
     <refsect2>
+      <title>UID mappings</title>
+      <para>
+        A container can be started in a private user namespace with
+	user and group id mappings.  For instance, you can map userid
+	0 in the container to userid 200000 on the host.  The root
+	user in the container will be privileged in the container,
+	but unprivileged on the host.  Normally a system container
+	will want a range of ids, so you would map, for instance,
+	user and group ids 0 through 20,000 in the container to the
+	ids 200,000 through 220,000.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.id_map</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Four values must be provided.  First a character, either
+	      'U', or 'G', to specify whether user or group ids are
+	      being mapped.  Next is the first userid as seen on the
+	      host.  Next is the userid to be mapped in the container.
+	      Finally, a range indicating the number of consecutive
+	      ids to map.  For instance
+	     </para>
+<programlisting>
+	lxc.id_map = U 200000 0 20000
+	lxc.id_map = G 200000 0 20000
+</programlisting>
+	    <para>
+	      will map both user and group ids in the
+	      range 0-19999 in the container to the ids
+	      200000-219999 on the host.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Startup hooks</title>
       <para>
         Startup hooks are programs or scripts which can be executed
@@ -737,6 +781,27 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <variablelist>
 	<varlistentry>
 	  <term>
+	    <option>lxc.hook.autodev</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      A hook to be run in the container's namespace after
+	      mounting has been done and after any mount hooks have
+	      run, but before the pivot_root, if
+	      <option>lxc.autodev</option> == 1.
+	      The purpose of this hook is to assist in populating the
+	      /dev directory of the container when using the autodev
+	      option for systemd based containers.  The container's /dev
+	      directory is relative to the
+	      ${<option>LXC_ROOTFS_MOUNT</option>} environment
+	      variable available when the hook is run.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
 	    <option>lxc.hook.start</option>
 	  </term>
 	  <listitem>
@@ -761,6 +826,103 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  </listitem>
 	</varlistentry>
       </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>Startup hooks Environment Variables</title>
+      <para>
+        A number of environment variables are made available to the startup
+        hooks to provide configuration information and assist in the
+        functioning of the hooks.  Not all variables are valid in all
+        contexts.  In particular, all paths are relative to the host system
+        and, as such, not valid during the <option>lxc.hook.start</option> hook.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>LXC_NAME</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      The LXC name of the container.  Useful for logging messages
+	      in commmon log environments.  [<option>-n</option>]
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>LXC_CONFIG_FILE</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Host relative path to the container configuration file.  This
+	      gives the container to reference the original, top level,
+	      configuration file for the container in order to locate any
+	      addotional configuration information not otherwise made
+	      available.  [<option>-f</option>]
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>LXC_CONSOLE</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      The path to the console output of the container if not NULL.
+	      [<option>-c</option>] [<option>lxc.console</option>]
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>LXC_CONSOLE_LOGPATH</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      The path to the console log output of the container if not NULL.
+	      [<option>-L</option>]
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>LXC_ROOTFS_MOUNT</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      The mount location to which the container is initially bound.
+	      This will be the host relative path to the container rootfs
+	      for the container instance being started and is where changes
+	      should be made for that instance.
+	      [<option>lxc.rootfs.mount</option>]
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>LXC_ROOTFS_PATH</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      The host relative path to the container root which has been
+	      mounted to the rootfs.mount location.
+	      [<option>lxc.rootfs</option>]
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+
     </refsect2>
 
   </refsect1>

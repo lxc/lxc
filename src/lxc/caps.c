@@ -27,12 +27,19 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <sys/prctl.h>
-#include <sys/capability.h>
 #include <errno.h>
 
+#include "config.h"
 #include "log.h"
 
 lxc_log_define(lxc_caps, lxc);
+
+#if HAVE_SYS_CAPABILITY_H
+#include <sys/capability.h>
+
+#ifndef PR_CAPBSET_READ
+#define PR_CAPBSET_READ 23
+#endif
 
 int lxc_caps_reset(void)
 {
@@ -258,3 +265,4 @@ int lxc_caps_check(void)
 
 	return 1;
 }
+#endif

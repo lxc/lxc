@@ -1,5 +1,3 @@
-EXTRA_DIST=lxc-ubuntu
-
 templatesdir=@LXCTEMPLATEDIR@
 
 templates_SCRIPTS = \
@@ -13,4 +11,5 @@ templates_SCRIPTS = \
 	lxc-altlinux \
 	lxc-busybox \
 	lxc-sshd \
-	lxc-archlinux
+	lxc-archlinux \
+	lxc-alpine

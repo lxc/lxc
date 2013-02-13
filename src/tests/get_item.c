@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 	int ret;
 	char v1[2], v2[256], v3[2048];
 
-	if ((c = lxc_container_new("testxyz")) == NULL) {
+	if ((c = lxc_container_new("testxyz", NULL)) == NULL) {
 		fprintf(stderr, "%d: error opening lxc_container %s\n", __LINE__, MYNAME);
 		ret = 1;
 		goto out;
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 	lxc_container_put(c);
 
 	// new test with real container
-	if ((c = lxc_container_new(MYNAME)) == NULL) {
+	if ((c = lxc_container_new(MYNAME, NULL)) == NULL) {
 		fprintf(stderr, "%d: error opening lxc_container %s\n", __LINE__, MYNAME);
 		ret = 1;
 		goto out;
@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
 	c->destroy(c);
 	lxc_container_put(c);
 
-	if ((c = lxc_container_new(MYNAME)) == NULL) {
+	if ((c = lxc_container_new(MYNAME, NULL)) == NULL) {
 		fprintf(stderr, "%d: error opening lxc_container %s\n", __LINE__, MYNAME);
 		ret = 1;
 		goto out;
@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 	lxc_container_put(c);
 
 	/* XXX TODO load_config needs to clear out any old config first */
-	if ((c = lxc_container_new(MYNAME)) == NULL) {
+	if ((c = lxc_container_new(MYNAME, NULL)) == NULL) {
 		fprintf(stderr, "%d: error opening lxc_container %s\n", __LINE__, MYNAME);
 		ret = 1;
 		goto out;

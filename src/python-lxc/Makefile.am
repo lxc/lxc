@@ -1,5 +1,7 @@
 if ENABLE_PYTHON
 
+EXTRA_DIST = setup.py lxc.c
+
 if HAVE_DEBIAN
     DISTSETUPOPTS=--install-layout=deb
 else

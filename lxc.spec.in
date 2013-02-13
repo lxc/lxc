@@ -32,6 +32,18 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-build
 Requires: libcap openssl rsync
 BuildRequires: libcap libcap-devel docbook2X
 
+%define with_python %{?_with_python: 1} %{?!_with_python: 0}
+%if %{with_python}
+Requires: python3
+BuildRequires: python3-devel
+%endif
+
+%define with_lua %{?_with_lua: 1} %{?!_with_lua: 0}
+%if %{with_lua}
+Requires: lua-filesystem
+BuildRequires: lua-devel
+%endif
+
 %description
 
 The package "%{name}" provides the command lines to create and manage
@@ -62,7 +74,14 @@ development of the linux containers.
 %prep
 %setup
 %build
-PATH=$PATH:/usr/sbin:/sbin %configure $args --disable-rpath
+PATH=$PATH:/usr/sbin:/sbin %configure $args \
+%if %{with_lua}
+  --enable-lua \
+%endif
+%if %{with_python}
+  --enable-python \
+%endif
+  --disable-rpath
 make %{?_smp_mflags}
 
 %install
@@ -97,6 +116,13 @@ rm -rf %{buildroot}
 %defattr(-,root,root)
 %{_libdir}/*.so.*
 %{_libdir}/%{name}
+%if %{with_lua}
+%{_datadir}/lua
+%{_libdir}/lua
+%endif
+%if %{with_python}
+%{_libdir}/python*
+%endif
 %{_localstatedir}/*
 %attr(4555,root,root) %{_libexecdir}/%{name}/lxc-init
 

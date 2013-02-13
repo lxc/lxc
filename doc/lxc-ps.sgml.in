@@ -58,7 +58,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsect1>
     <title>Description</title>
     <para>
-      <command>lxc-ps</command> is a wrapper tp ps command
+      <command>lxc-ps</command> is a wrapper to the ps command
 	to report the name of lxc container associated
 	to reported processes.
     </para>

@@ -26,6 +26,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 #include <sys/param.h>
+#include <sys/types.h>
 #include <stdbool.h>
 
 #include <lxc/list.h>
@@ -87,8 +88,8 @@ struct ifla_veth {
 struct ifla_vlan {
 	uint   flags;
 	uint   fmask;
-	ushort   vid;
-	ushort   pad;
+	unsigned short   vid;
+	unsigned short   pad;
 };
 
 struct ifla_macvlan {
@@ -141,6 +142,26 @@ struct lxc_cgroup {
 	char *value;
 };
 
+enum idtype {
+	ID_TYPE_UID,
+	ID_TYPE_GID
+};
+
+/*
+ * id_map is an id map entry.  Form in confile is:
+ * lxc.id_map = U 9800 0 100
+ * lxc.id_map = U 9900 1000 100
+ * lxc.id_map = G 9800 0 100
+ * lxc.id_map = G 9900 1000 100
+ * meaning the container can use uids and gids 0-100 and 1000-1100,
+ * with uid 0 mapping to uid 9800 on the host, and gid 1000 to
+ * gid 9900 on the host.
+ */
+struct id_map {
+	enum idtype idtype;
+	int hostid, nsid, range;
+};
+
 /*
  * Defines a structure containing a pty information for
  * virtualizing a tty
@@ -175,6 +196,8 @@ struct lxc_console {
 	int master;
 	int peer;
 	char *path;
+	char *log_path;
+	int log_fd;
 	char name[MAXPATHLEN];
 	struct termios *tios;
 };
@@ -211,8 +234,8 @@ struct lxc_rootfs {
 #endif
  */
 enum lxchooks {
-	LXCHOOK_PRESTART, LXCHOOK_PREMOUNT, LXCHOOK_MOUNT, LXCHOOK_START,
-	LXCHOOK_POSTSTOP, NUM_LXC_HOOKS};
+	LXCHOOK_PRESTART, LXCHOOK_PREMOUNT, LXCHOOK_MOUNT, LXCHOOK_AUTODEV,
+	LXCHOOK_START, LXCHOOK_POSTSTOP, NUM_LXC_HOOKS};
 extern char *lxchook_names[NUM_LXC_HOOKS];
 
 struct saved_nic {
@@ -229,6 +252,7 @@ struct lxc_conf {
 	int personality;
 	struct utsname *utsname;
 	struct lxc_list cgroup;
+	struct lxc_list id_map;
 	struct lxc_list network;
 	struct saved_nic *saved_nics;
 	int num_savednics;
@@ -243,8 +267,6 @@ struct lxc_conf {
 #if HAVE_APPARMOR
 	char *aa_profile;
 #endif
-	char *logfile;
-	int loglevel;
 
 #if HAVE_APPARMOR /* || HAVE_SELINUX || HAVE_SMACK */
 	int lsm_umount_proc;
@@ -255,9 +277,13 @@ struct lxc_conf {
 #endif
 	int maincmd_fd;
 	int autodev;  // if 1, mount and fill a /dev at start
+	char *rcfile;	// Copy of the top level rcfile we read
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);
+
+extern int setup_cgroup(const char *name, struct lxc_list *cgroups);
+extern int detect_shared_rootfs(void);
 
 /*
  * Initialize the lxc configuration structure
@@ -270,6 +296,7 @@ extern int pin_rootfs(const char *rootfs);
 extern int lxc_create_network(struct lxc_handler *handler);
 extern void lxc_delete_network(struct lxc_handler *handler);
 extern int lxc_assign_network(struct lxc_list *networks, pid_t pid);
+extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
 extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
 
 extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
@@ -281,6 +308,10 @@ extern int lxc_clear_config_caps(struct lxc_conf *c);
 extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key);
 extern int lxc_clear_mount_entries(struct lxc_conf *c);
 extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
+
+extern int setup_cgroup(const char *name, struct lxc_list *cgroups);
+
+extern int uid_shift_ttys(int pid, struct lxc_conf *conf);
 
 /*
  * Configure the container from inside

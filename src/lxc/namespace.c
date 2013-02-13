@@ -25,7 +25,6 @@
 #include <alloca.h>
 #include <errno.h>
 #include <signal.h>
-#include <syscall.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>

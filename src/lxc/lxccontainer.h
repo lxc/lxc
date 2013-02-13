@@ -18,6 +18,8 @@ struct lxc_container {
 	int error_num;
 	int daemonize;
 
+	char *config_path;
+
 	bool (*is_defined)(struct lxc_container *c);  // did /var/lib/lxc/$name/config exist
 	const char *(*state)(struct lxc_container *c);
 	bool (*is_running)(struct lxc_container *c);  // true so long as defined and not stopped
@@ -58,6 +60,18 @@ struct lxc_container {
 	int (*get_cgroup_item)(struct lxc_container *c, const char *subsys, char *retv, int inlen);
 	bool (*set_cgroup_item)(struct lxc_container *c, const char *subsys, const char *value);
 
+	/*
+	 * Each container can have a custom configuration path.  However
+	 * by default it will be set to either the LXCPATH configure
+	 * variable, or the lxcpath value in the LXC_GLOBAL_CONF configuration
+	 * file (i.e. /etc/lxc/lxc.conf).
+	 * You can change the value for a specific container with
+	 * set_config_path().  Note there is no other way to specify this in
+	 * general at the moment.
+	 */
+	const char *(*get_config_path)(struct lxc_container *c);
+	bool (*set_config_path)(struct lxc_container *c, const char *path);
+
 #if 0
 	bool (*commit_cgroups)(struct lxc_container *c);
 	bool (*reread_cgroups)(struct lxc_container *c);
@@ -68,10 +82,11 @@ struct lxc_container {
 #endif
 };
 
-struct lxc_container *lxc_container_new(const char *name);
+struct lxc_container *lxc_container_new(const char *name, const char *configpath);
 int lxc_container_get(struct lxc_container *c);
 int lxc_container_put(struct lxc_container *c);
 int lxc_get_wait_states(const char **states);
+char *lxc_get_default_config_path(void);
 
 #if 0
 char ** lxc_get_valid_keys();

@@ -74,12 +74,14 @@ Options :\n\
 int main(int argc, char *argv[])
 {
 	int ret;
+	/* TODO: add lxcpath cmdline arg */
+	const char *lxcpath = NULL;
 
 	ret = lxc_arguments_parse(&my_args, argc, argv);
 	if (ret)
 		return 1;
 
-	if (lxc_log_init(my_args.log_file, my_args.log_priority,
+	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
 		return 1;
 
@@ -87,7 +89,7 @@ int main(int argc, char *argv[])
 		state = pid = true;
 
 	if (state || test_state) {
-		ret = lxc_getstate(my_args.name);
+		ret = lxc_getstate(my_args.name, lxcpath);
 		if (ret < 0)
 			return 1;
 		if (test_state)
@@ -97,7 +99,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (pid)
-		printf("pid:%10d\n", get_init_pid(my_args.name));
+		printf("pid:%10d\n", get_init_pid(my_args.name, lxcpath));
 
 	return 0;
 }

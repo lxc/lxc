@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #
 # lxc: linux Container library
@@ -56,16 +56,16 @@ get_parent_cgroup()
         init_cgroup=${fields#*:}
 
         # Get the filesystem mountpoint of the hierarchy
-        mountpoint=$(grep -E "^cgroup [^ ]+ [^ ]+ ([^ ]+,)?$subsystems(,[^ ]+)? " /proc/self/mounts | cut -d ' ' -f 2)
+        mountpoint=$(awk -v subsysregex="(^|,)$subsystems(,|\$)" \
+            '$3 == "cgroup" && $4 ~ subsysregex {print $2}' /proc/self/mounts)
         if [ -z "$mountpoint" ]; then continue; fi
 
         # Return the absolute path to the containers' parent cgroup
         # (do not append '/lxc' if the hierarchy contains the 'ns' subsystem)
-        if [[ ",$subsystems," == *,ns,* ]]; then
-            parent_cgroup="${mountpoint}${init_cgroup%/}"
-        else
-            parent_cgroup="${mountpoint}${init_cgroup%/}/lxc"
-        fi
+        case ",$subsystems," in
+            *,ns,*) parent_cgroup="${mountpoint}${init_cgroup%/}";;
+            *) parent_cgroup="${mountpoint}${init_cgroup%/}/lxc";;
+        esac
         break
     done
 }
@@ -97,46 +97,67 @@ if [ ! -d "$parent_cgroup" ]; then
     exit 1
 fi
 
-declare -a container_of_pid
-container_field_width=9
-IFS=","
 if [ -z "$containers" ]; then
-    containers=( $(find $parent_cgroup -mindepth 1 -maxdepth 1 -type d -printf "%f," 2>/dev/null) )
-else
-    containers=( $containers )
+    containers="$(find $parent_cgroup -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sed 's:.*/::')"
 fi
 
-declare -i pid
-IFS=$'\n'
-for container in ${containers[@]}; do
+container_field_width=9
+tasks_files=
+for container in ${containers}; do
     if [ "${#container}" -gt "$container_field_width" ]; then
         container_field_width=${#container}
     fi
 
     if [ -f "$parent_cgroup/$container/tasks" ]; then
-        while read pid; do
-            container_of_pid[$pid]=$container
-        done < "$parent_cgroup/$container/tasks"
+        tasks_files="$tasks_files $parent_cgroup/$container/tasks"
     fi
 done
 
-declare -i line_pid_end_position
-while read line; do
-    if [ -z "$line_pid_end_position" ]; then
-        if [[ "$line" != *" PID"* ]]; then
-            echo "$(basename $0): no PID column found in \`ps' output" >&2
-            exit 1
-        fi
+# first file is stdin, the rest are the container tasks
+ps "$@" | awk -v container_field_width="$container_field_width" \
+    -v list_container_processes="$list_container_processes" '
+# first line is PS header
+NR == 1 {
+    # find pid field index
+    for (i = 1; i<=NF; i++)
+        if ($i == "PID") {
+            pididx = i
+            break
+        }
+    if (pididx == "") {
+        print("No PID field found") > "/dev/stderr"
+        exit 1
+    }
+    header = $0
+    next
+}
 
-        buffer=${line%" PID"*}
-        let line_pid_end_position=${#buffer}+4
-        printf "%-${container_field_width}s %s\n" "CONTAINER" "$line"
-        continue
-    fi
+# store lines from ps with pid as index
+NR == FNR {
+    ps_line[NR] = $0
+    pid_of_line[NR] = $pididx
+    next
+}
 
-    buffer=${line:0:$line_pid_end_position}
-    pid=${buffer##* }
-    if [ "$list_container_processes" -eq "0" -o ! -z "${container_of_pid[pid]}" ]; then
-        printf "%-${container_field_width}s %s\n" "${container_of_pid[pid]}" "$line"
-    fi
-done < <(ps "$@")
+# find container name from filename on first line
+FNR == 1 {
+    container = FILENAME
+    sub(/\/tasks/, "", container)
+    sub(/.*\//, "", container)
+}
+
+# container tasks
+{
+    container_of_pid[$0] = container
+}
+
+END {
+    printf("%-" container_field_width "s %s\n", "CONTAINER", header)
+    for (i in ps_line) {
+	container = container_of_pid[pid_of_line[i]]
+        if (list_container_processes == 0 || container != "")
+            printf("%-" container_field_width "s %s\n", container, ps_line[i])
+    }
+}
+
+' - $tasks_files

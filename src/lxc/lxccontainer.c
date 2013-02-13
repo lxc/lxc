@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <lxc/utils.h>
 
 lxc_log_define(lxc_container, lxc);
 
@@ -81,6 +82,10 @@ static void lxc_container_free(struct lxc_container *c)
 	if (c->lxc_conf) {
 		lxc_conf_free(c->lxc_conf);
 		c->lxc_conf = NULL;
+	}
+	if (c->config_path) {
+		free(c->config_path);
+		c->config_path = NULL;
 	}
 	free(c);
 }
@@ -156,7 +161,7 @@ static const char *lxcapi_state(struct lxc_container *c)
 		return NULL;
 	if (lxclock(c->slock, 0))
 		return NULL;
-	s = lxc_getstate(c->name);
+	s = lxc_getstate(c->name, c->config_path);
 	ret = lxc_state2str(s);
 	lxcunlock(c->slock);
 
@@ -166,7 +171,7 @@ static const char *lxcapi_state(struct lxc_container *c)
 static bool is_stopped_nolock(struct lxc_container *c)
 {
 	lxc_state_t s;
-	s = lxc_getstate(c->name);
+	s = lxc_getstate(c->name, c->config_path);
 	return (s == STOPPED);
 }
 
@@ -220,7 +225,7 @@ static pid_t lxcapi_init_pid(struct lxc_container *c)
 
 	if (lxclock(c->slock, 0))
 		return -1;
-	ret = get_init_pid(c->name);
+	ret = get_init_pid(c->name, c->config_path);
 	lxcunlock(c->slock);
 	return ret;
 }
@@ -319,7 +324,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 	lxcunlock(c->privlock);
 
 	if (useinit) {
-		ret = lxc_execute(c->name, argv, 1, conf);
+		ret = lxc_execute(c->name, argv, 1, conf, c->config_path);
 		return ret == 0 ? true : false;
 	}
 
@@ -364,6 +369,11 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		setsid();
 	}
 
+	if (clearenv()) {
+		SYSERROR("failed to clear environment");
+		/* don't error out though */
+	}
+
 	if (putenv("container=lxc")) {
 		fprintf(stderr, "failed to set environment variable");
 		if (daemonize) {
@@ -376,7 +386,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 
 reboot:
 	conf->reboot = 0;
-	ret = lxc_start(c->name, argv, conf);
+	ret = lxc_start(c->name, argv, conf, c->config_path);
 
 	if (conf->reboot) {
 		INFO("container requested reboot");
@@ -454,7 +464,7 @@ static bool lxcapi_stop(struct lxc_container *c)
 	if (!c)
 		return false;
 
-	ret = lxc_stop(c->name);
+	ret = lxc_stop(c->name, c->config_path);
 
 	return ret == 0;
 }
@@ -478,11 +488,11 @@ static bool create_container_dir(struct lxc_container *c)
 	char *s;
 	int len, ret;
 
-	len = strlen(LXCPATH) + strlen(c->name) + 2;
+	len = strlen(c->config_path) + strlen(c->name) + 2;
 	s = malloc(len);
 	if (!s)
 		return false;
-	ret = snprintf(s, len, "%s/%s", LXCPATH, c->name);
+	ret = snprintf(s, len, "%s/%s", c->config_path, c->name);
 	if (ret < 0 || ret >= len) {
 		free(s);
 		return false;
@@ -572,11 +582,11 @@ static bool lxcapi_create(struct lxc_container *c, char *t, char *const argv[])
 			exit(1);
 		newargv[0] = t;
 
-		len = strlen(LXCPATH) + strlen(c->name) + strlen("--path=") + 2;
+		len = strlen(c->config_path) + strlen(c->name) + strlen("--path=") + 2;
 		patharg = malloc(len);
 		if (!patharg)
 			exit(1);
-		ret = snprintf(patharg, len, "--path=%s/%s", LXCPATH, c->name);
+		ret = snprintf(patharg, len, "--path=%s/%s", c->config_path, c->name);
 		if (ret < 0 || ret >= len)
 			exit(1);
 		newargv[1] = patharg;
@@ -757,7 +767,7 @@ static int lxcapi_get_keys(struct lxc_container *c, const char *key, char *retv,
 
 
 /* default config file - should probably come through autoconf */
-#define LXC_DEFAULT_CONFIG "/etc/lxc/lxc.conf"
+#define LXC_DEFAULT_CONFIG "/etc/lxc/default.conf"
 static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 {
 	if (!alt_file)
@@ -854,6 +864,87 @@ static char *lxcapi_config_file_name(struct lxc_container *c)
 	return strdup(c->configfile);
 }
 
+static const char *lxcapi_get_config_path(struct lxc_container *c)
+{
+	if (!c || !c->config_path)
+		return NULL;
+	return (const char *)(c->config_path);
+}
+
+/*
+ * not for export
+ * Just recalculate the c->configfile based on the
+ * c->config_path, which must be set.
+ * The lxc_container must be locked or not yet public.
+ */
+static bool set_config_filename(struct lxc_container *c)
+{
+	char *newpath;
+	int len, ret;
+
+	if (!c->config_path)
+		return false;
+
+	/* $lxc_path + "/" + c->name + "/" + "config" + '\0' */
+	len = strlen(c->config_path) + strlen(c->name) + strlen("config") + 3;
+	newpath = malloc(len);
+	if (!newpath)
+		return false;
+
+	ret = snprintf(newpath, len, "%s/%s/config", c->config_path, c->name);
+	if (ret < 0 || ret >= len) {
+		fprintf(stderr, "Error printing out config file name\n");
+		free(newpath);
+		return false;
+	}
+
+	if (c->configfile)
+		free(c->configfile);
+	c->configfile = newpath;
+
+	return true;
+}
+
+static bool lxcapi_set_config_path(struct lxc_container *c, const char *path)
+{
+	char *p;
+	bool b = false;
+	char *oldpath = NULL;
+
+	if (!c)
+		return b;
+
+	if (lxclock(c->privlock, 0))
+		return b;
+
+	p = strdup(path);
+	if (!p) {
+		ERROR("Out of memory setting new lxc path");
+		goto err;
+	}
+
+	b = true;
+	if (c->config_path)
+		oldpath = c->config_path;
+	c->config_path = p;
+
+	/* Since we've changed the config path, we have to change the
+	 * config file name too */
+	if (!set_config_filename(c)) {
+		ERROR("Out of memory setting new config filename");
+		b = false;
+		free(c->config_path);
+		c->config_path = oldpath;
+		oldpath = NULL;
+	}
+err:
+	if (oldpath)
+		free(oldpath);
+	lxcunlock(c->privlock);
+	return b;
+}
+
+
 static bool lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, const char *value)
 {
 	int ret;
@@ -896,11 +987,14 @@ out:
 	return ret;
 }
 
+char *lxc_get_default_config_path(void)
+{
+	return default_lxc_path();
+}
 
-struct lxc_container *lxc_container_new(const char *name)
+struct lxc_container *lxc_container_new(const char *name, const char *configpath)
 {
 	struct lxc_container *c;
-	int ret, len;
 
 	c = malloc(sizeof(*c));
 	if (!c) {
@@ -908,6 +1002,16 @@ struct lxc_container *lxc_container_new(const char *name)
 		return NULL;
 	}
 	memset(c, 0, sizeof(*c));
+
+	if (configpath)
+		c->config_path = strdup(configpath);
+	else
+		c->config_path = default_lxc_path();
+
+	if (!c->config_path) {
+		fprintf(stderr, "Out of memory");
+		goto err;
+	}
 
 	c->name = malloc(strlen(name)+1);
 	if (!c->name) {
@@ -929,15 +1033,8 @@ struct lxc_container *lxc_container_new(const char *name)
 		goto err;
 	}
 
-	len = strlen(LXCPATH)+strlen(c->name)+strlen("/config")+2;
-	c->configfile = malloc(len);
-	if (!c->configfile) {
+	if (!set_config_filename(c)) {
 		fprintf(stderr, "Error allocating config file pathname\n");
-		goto err;
-	}
-	ret = snprintf(c->configfile, len, "%s/%s/config", LXCPATH, c->name);
-	if (ret < 0 || ret >= len) {
-		fprintf(stderr, "Error printing out config file name\n");
 		goto err;
 	}
 
@@ -969,16 +1066,14 @@ struct lxc_container *lxc_container_new(const char *name)
 	c->get_config_item = lxcapi_get_config_item;
 	c->get_cgroup_item = lxcapi_get_cgroup_item;
 	c->set_cgroup_item = lxcapi_set_cgroup_item;
+	c->get_config_path = lxcapi_get_config_path;
+	c->set_config_path = lxcapi_set_config_path;
 
 	/* we'll allow the caller to update these later */
-	if (lxc_log_init(NULL, NULL, "lxc_container", 0)) {
+	if (lxc_log_init(NULL, "none", NULL, "lxc_container", 0)) {
 		fprintf(stderr, "failed to open log\n");
 		goto err;
 	}
-
-	/*
-	 * default configuration file is $LXCPATH/$NAME/config
-	 */
 
 	return c;
 

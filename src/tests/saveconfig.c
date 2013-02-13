@@ -38,7 +38,7 @@ static int create_ubuntu(void)
 		return -1;
 	}
 	if (pid == 0) {
-		ret = execlp("lxc-create", "lxc-create", "-t", "ubuntu", "-f", "/etc/lxc/lxc.conf", "-n", MYNAME, NULL);
+		ret = execlp("lxc-create", "lxc-create", "-t", "ubuntu", "-f", "/etc/lxc/default.conf", "-n", MYNAME, NULL);
 		// Should not return
 		perror("execl");
 		exit(1);
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 	struct lxc_container *c;
 	int ret = 1;
 
-	if ((c = lxc_container_new(MYNAME)) == NULL) {
+	if ((c = lxc_container_new(MYNAME, NULL)) == NULL) {
 		fprintf(stderr, "%d: error opening lxc_container %s\n", __LINE__, MYNAME);
 		ret = 1;
 		goto out;

@@ -21,6 +21,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
@@ -29,7 +31,30 @@
 #include <fcntl.h>
 #include <sys/inotify.h>
 #include <sys/ioctl.h>
+#ifdef HAVE_SYS_TIMERFD_H
 #include <sys/timerfd.h>
+#else
+#include <sys/syscall.h>
+#ifndef TFD_NONBLOCK
+#define TFD_NONBLOCK O_NONBLOCK
+#endif
+
+#ifndef TFD_CLOEXEC
+#define TFD_CLOEXEC O_CLOEXEC
+#endif
+static int timerfd_create (clockid_t __clock_id, int __flags) {
+	return syscall(__NR_timerfd_create, __clock_id, __flags);
+}
+
+static int timerfd_settime (int __ufd, int __flags,
+			    const struct itimerspec *__utmr,
+			    struct itimerspec *__otmr) {
+
+	return syscall(__NR_timerfd_settime, __ufd, __flags,
+			    __utmr, __otmr);
+}
+
+#endif
 
 #include "conf.h"
 #include "cgroup.h"
@@ -37,8 +62,48 @@
 #include "mainloop.h"
 #include "lxc.h"
 #include "log.h"
+
+#ifndef __USE_GNU
 #define __USE_GNU
+#endif
+#ifdef HAVE_UTMPX_H
 #include <utmpx.h>
+#else
+#include <utmp.h>
+
+#ifndef RUN_LVL
+#define RUN_LVL 1
+#endif
+
+static int utmpxname(const char *file) {
+	int result;
+	result = utmpname(file);
+
+#ifdef IS_BIONIC
+	/* Yeah bionic is that weird */
+	result = result - 1;
+#endif
+
+	return result;
+}
+
+static void setutxent(void) {
+	return setutent();
+}
+
+static struct utmp * getutxent (void) {
+	return (struct utmp *) getutent();
+}
+
+static void endutxent (void) {
+#ifdef IS_BIONIC
+	/* bionic isn't exporting endutend */
+	return;
+#else
+	return endutent();
+#endif
+}
+#endif
 #undef __USE_GNU
 
 /* This file watches the /var/run/utmp file in the container
@@ -166,7 +231,11 @@ out:
 
 static int utmp_get_runlevel(struct lxc_utmp *utmp_data)
 {
+	#if HAVE_UTMPX_H
 	struct utmpx *utmpx;
+	#else
+	struct utmp *utmpx;
+	#endif
 	char path[MAXPATHLEN];
 	struct lxc_handler *handler = utmp_data->handler;
 

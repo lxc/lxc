@@ -39,6 +39,7 @@
 #include "arguments.h"
 #include "config.h"
 #include "start.h"
+#include "utils.h"
 
 lxc_log_define(lxc_execute_ui, lxc_execute);
 
@@ -99,7 +100,7 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
 
-	if (lxc_log_init(my_args.log_file, my_args.log_priority,
+	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
 		return -1;
 
@@ -108,8 +109,14 @@ int main(int argc, char *argv[])
 		rcfile = (char *)my_args.rcfile;
 	else {
 		int rc;
+		char *lxcpath = default_lxc_path();
+		if (!lxcpath) {
+			ERROR("Out of memory");
+			return -1;
+		}
 
-		rc = asprintf(&rcfile, LXCPATH "/%s/config", my_args.name);
+		rc = asprintf(&rcfile, "%s/%s/config", lxcpath, my_args.name);
+		free(lxcpath);
 		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
 			return -1;
@@ -136,5 +143,5 @@ int main(int argc, char *argv[])
 	if (lxc_config_define_load(&defines, conf))
 		return -1;
 
-	return lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf);
+	return lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf, NULL);
 }

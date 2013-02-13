@@ -78,14 +78,15 @@ Container_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static int
 Container_init(Container *self, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = {"name", NULL};
+    static char *kwlist[] = {"name", "config_path", NULL};
     char *name = NULL;
+    char *config_path = NULL;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
-                                      &name))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|s", kwlist,
+                                      &name, &config_path))
         return -1;
 
-    self->container = lxc_container_new(name);
+    self->container = lxc_container_new(name, config_path);
     if (!self->container) {
         fprintf(stderr, "%d: error creating lxc_container %s\n", __LINE__, name);
         return -1;
@@ -254,6 +255,12 @@ Container_get_config_item(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+Container_get_config_path(Container *self, PyObject *args, PyObject *kwds)
+{
+    return PyUnicode_FromString(self->container->get_config_path(self->container));
+}
+
+static PyObject *
 Container_get_keys(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"key", NULL};
@@ -342,6 +349,23 @@ Container_set_config_item(Container *self, PyObject *args, PyObject *kwds)
         Py_RETURN_FALSE;
 
     if (self->container->set_config_item(self->container, key, value)) {
+        Py_RETURN_TRUE;
+    }
+
+    Py_RETURN_FALSE;
+}
+
+static PyObject *
+Container_set_config_path(Container *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"path", NULL};
+    char *path = NULL;
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
+                                      &path))
+        Py_RETURN_FALSE;
+
+    if (self->container->set_config_path(self->container, path)) {
         Py_RETURN_TRUE;
     }
 
@@ -494,6 +518,11 @@ static PyMethodDef Container_methods[] = {
      "\n"
      "Get the current value of a config key."
     },
+    {"get_config_path", (PyCFunction)Container_get_config_path, METH_NOARGS,
+     "get_config_path() -> string\n"
+     "\n"
+     "Return the LXC config path (where the containers are stored)."
+    },
     {"get_keys", (PyCFunction)Container_get_keys, METH_VARARGS | METH_KEYWORDS,
      "get_keys(key) -> string\n"
      "\n"
@@ -520,6 +549,11 @@ static PyMethodDef Container_methods[] = {
      "set_config_item(key, value) -> boolean\n"
      "\n"
      "Set a config key to the provided value."
+    },
+    {"set_config_path", (PyCFunction)Container_set_config_path, METH_VARARGS | METH_KEYWORDS,
+     "set_config_path(path) -> boolean\n"
+     "\n"
+     "Set the LXC config path (where the containers are stored)."
     },
     {"shutdown", (PyCFunction)Container_shutdown, METH_VARARGS | METH_KEYWORDS,
      "shutdown(timeout = -1) -> boolean\n"

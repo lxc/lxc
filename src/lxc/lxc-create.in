@@ -73,9 +73,7 @@ optarg_check() {
     fi
 }
 
-lxc_path=@LXCPATH@
-bindir=@BINDIR@
-templatedir=@LXCTEMPLATEDIR@
+. @DATADIR@/lxc/lxc.functions
 backingstore=_unset
 fstype=ext4
 fssize=500M
@@ -222,7 +220,7 @@ if [ "$backingstore" = "_unset" ] || [ "$backingstore" = "btrfs" ]; then
 fi
 
 if [ "$backingstore" = "lvm" ]; then
-    which vgscan > /dev/null
+    which vgscan > /dev/null 2>&1
     if [ $? -ne 0 ]; then
         echo "$(basename $0): vgscan not found (is lvm2 installed?)" >&2
         exit 1
@@ -274,7 +272,7 @@ trap cleanup HUP INT TERM
 mkdir -p $lxc_path/$lxc_name
 
 if [ -z "$lxc_config" ]; then
-    lxc_config="@SYSCONFDIR@/lxc/lxc.conf"
+    lxc_config="@SYSCONFDIR@/lxc/default.conf"
     echo
     echo "$(basename $0): No config file specified, using the default config $lxc_config"
 fi
@@ -302,11 +300,12 @@ if [ ! -z "$lxc_template" ]; then
     if [ -n "$*" ]; then
         echo "# Parameters passed to the template: $*" >> $lxc_path/$lxc_name/config
     fi
-    echo "# Checksum of the template script (SHA-1): $sum" >> $lxc_path/$lxc_name/config
+    echo "# Template script checksum (SHA-1): $sum" >> $lxc_path/$lxc_name/config
     echo "" >> $lxc_path/$lxc_name/config
 fi
 
 cat $lxc_config >> $lxc_path/$lxc_name/config
+echo "" >> $lxc_path/$lxc_name/config
 
 if [ -n "$custom_rootfs" ]; then
     if grep -q "lxc.rootfs" $lxc_path/$lxc_name/config ; then

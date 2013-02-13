@@ -48,19 +48,20 @@ struct lxc_command {
 	struct lxc_answer answer;
 };
 
-extern pid_t get_init_pid(const char *name);
-extern int lxc_get_clone_flags(const char *name);
+extern pid_t get_init_pid(const char *name, const char *lxcpath);
+extern int lxc_get_clone_flags(const char *name, const char *lxcpath);
 
 extern int lxc_command(const char *name, struct lxc_command *command,
-			int *stopped);
+			int *stopped, const char *lxcpath);
 
 extern int lxc_command_connected(const char *name, struct lxc_command *command,
-				 int *stopped);
+				 int *stopped, const char *lxcpath);
 
 struct lxc_epoll_descr;
 struct lxc_handler;
 
-extern int lxc_command_init(const char *name, struct lxc_handler *handler);
+extern int lxc_command_init(const char *name, struct lxc_handler *handler,
+			    const char *lxcpath);
 extern int lxc_command_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 				    struct lxc_handler *handler);
 

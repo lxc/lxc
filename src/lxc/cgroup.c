@@ -25,7 +25,6 @@
 #undef _GNU_SOURCE
 #include <stdlib.h>
 #include <errno.h>
-#include <mntent.h>
 #include <unistd.h>
 #include <string.h>
 #include <dirent.h>
@@ -44,6 +43,12 @@
 #include <lxc/cgroup.h>
 #include <lxc/start.h>
 
+#if IS_BIONIC
+#include <../include/lxcmntent.h>
+#else
+#include <mntent.h>
+#endif
+
 lxc_log_define(lxc_cgroup, lxc);
 
 #define MTAB "/proc/mounts"
@@ -59,7 +64,7 @@ enum {
 static char *mount_has_subsystem(const struct mntent *mntent)
 {
 	FILE *f;
-	char *c, *ret;
+	char *c, *ret = NULL;
 	char line[MAXPATHLEN];
 
 	/* read the list of subsystems from the kernel */

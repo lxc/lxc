@@ -149,7 +149,7 @@ extern int lxc_setup_fs(void)
 }
 
 /* borrowed from iproute2 */
-extern int get_u16(ushort *val, const char *arg, int base)
+extern int get_u16(unsigned short *val, const char *arg, int base)
 {
 	unsigned long res;
 	char *ptr;
@@ -192,4 +192,60 @@ extern int mkdir_p(char *dir, mode_t mode)
         }
 
         return 0;
+}
+
+static char *copypath(char *p)
+{
+	int len = strlen(p);
+	char *retbuf;
+
+	if (len < 1)
+		return NULL;
+	if (p[len-1] == '\n') {
+		p[len-1] = '\0';
+		len--;
+	}
+	retbuf = malloc(len+1);
+	if (!retbuf)
+		return NULL;
+	strcpy(retbuf, p);
+	return retbuf;
+}
+
+char *default_lxc_path(void)
+{
+	char buf[1024], *p, *retbuf;
+	FILE *fin;
+
+	fin = fopen(LXC_GLOBAL_CONF, "r");
+	if (fin) {
+		while (fgets(buf, 1024, fin)) {
+			if (buf[0] == '#')
+				continue;
+			p = strstr(buf, "lxcpath");
+			if (!p)
+				continue;
+			p = strchr(p, '=');
+			if (!p)
+				continue;
+			p++;
+			while (*p && (*p == ' ' || *p == '\t')) p++;
+			if (!*p)
+				continue;
+			retbuf = copypath(p);
+			goto out;
+		}
+	}
+	/* we couldn't open the file, or didn't find a lxcpath
+	 * entry there.  Return @LXCPATH@ */
+	retbuf = malloc(strlen(LXCPATH)+1);
+	if (!retbuf)
+		goto out;
+	strcpy(retbuf, LXCPATH);
+
+out:
+	if (fin)
+		fclose(fin);
+	INFO("returning %s", (retbuf ? retbuf : "null"));
+	return retbuf;
 }

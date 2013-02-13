@@ -182,12 +182,14 @@ int main(int argc, char *argv[])
 	int err, std_in = 1;
 	struct lxc_epoll_descr descr;
 	struct termios newtios, oldtios;
+	/* TODO: add cmdline arg to specify lxcpath */
+	char *lxcpath = NULL;
 
 	err = lxc_arguments_parse(&my_args, argc, argv);
 	if (err)
 		return -1;
 
-	err = lxc_log_init(my_args.log_file, my_args.log_priority,
+	err = lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			   my_args.progname, my_args.quiet);
 	if (err)
 		return -1;
@@ -198,7 +200,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	err = lxc_console(my_args.name, my_args.ttynum, &master);
+	err = lxc_console(my_args.name, my_args.ttynum, &master, lxcpath);
 	if (err)
 		goto out;
 

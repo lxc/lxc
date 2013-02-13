@@ -1,0 +1,219 @@
+#!/bin/sh
+
+install_alpine() {
+    rootfs="$1"
+    shift
+    mkdir -p "$rootfs"/etc/apk || return 1
+    cp -r ${keys_dir:-/etc/apk/keys} "$rootfs"/etc/apk/
+    if [ -n "$repository" ]; then
+        echo "$repository" > "$rootfs"/etc/apk/repositories
+    else
+        cp /etc/apk/repositories "$rootfs"/etc/apk/repositories || return 1
+    fi
+    opt_arch=
+    if [ -n "$apk_arch" ]; then
+        opt_arch="--arch $apk_arch"
+    fi
+    ${APK:-apk} add -U --initdb --root $rootfs $opt_arch "$@" alpine-base
+}
+
+configure_alpine() {
+    rootfs="$1"
+    echo "Setting up /etc/inittab"
+    cat >"$rootfs"/etc/inittab<<EOF
+::sysinit:/sbin/rc sysinit
+::wait:/sbin/rc default
+tty1:12345:respawn:/sbin/getty 38400 tty1
+::ctrlaltdel:/sbin/reboot
+::shutdown:/sbin/rc shutdown
+EOF
+    # set up nameserver
+    grep nameserver /etc/resolv.conf > "$rootfs/etc/resolv.conf"
+
+    # configure the network using the dhcp
+    # note that lxc will set up lo interface
+    cat <<EOF > $rootfs/etc/network/interfaces
+#auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+EOF
+
+    # set the hostname
+    echo $hostname > $rootfs/etc/hostname
+
+    # missing device nodes
+    echo "Setting up device nodes"
+    mkdir -p -m 755 "$rootfs/dev/pts"
+    mkdir -p -m 1777 "$rootfs/dev/shm"
+    mknod -m 666 "$rootfs/dev/full" c 1 7
+    mknod -m 666 "$rootfs/dev/random" c 1 8
+    mknod -m 666 "$rootfs/dev/urandom" c 1 9
+    mknod -m 666 "$rootfs/dev/tty0" c 4 0
+    mknod -m 666 "$rootfs/dev/tty1" c 4 1
+    mknod -m 666 "$rootfs/dev/tty2" c 4 2
+    mknod -m 666 "$rootfs/dev/tty3" c 4 3
+    mknod -m 666 "$rootfs/dev/tty4" c 4 4
+#    mknod -m 600 "$rootfs/dev/initctl" p
+    mknod -m 666 "$rootfs/dev/tty" c 5 0
+    mknod -m 666 "$rootfs/dev/console" c 5 1
+    mknod -m 666 "$rootfs/dev/ptmx" c 5 2
+
+    # start services
+    ln -s /etc/init.d/syslog "$rootfs"/etc/runlevels/default/syslog
+
+    return 0
+}
+
+copy_configuration() {
+    path=$1
+    rootfs=$2
+    hostname=$3
+
+    grep -q "^lxc.rootfs" $path/config 2>/dev/null \
+        || echo "lxc.rootfs = $rootfs" >> $path/config
+    if [ -n "$lxc_arch" ]; then
+        echo "lxc.arch = $lxc_arch" >> $path/config
+    fi
+    cat <<EOF >> $path/config
+lxc.tty = 4
+lxc.pts = 1024
+lxc.utsname = $hostname
+
+# When using LXC with apparmor, uncomment the next line to run unconfined:
+#lxc.aa_profile = unconfined
+
+# network interface
+lxc.network.name = eth0
+lxc.network.type = veth
+lxc.network.flags = up
+# enable for bridging
+#lxc.network.link = br0
+#lxc.network.ipv4 = n.n.n.n
+#lxc.network.ipv4.gateway = auto
+
+# devices
+lxc.cgroup.devices.deny = a
+# /dev/null and zero
+lxc.cgroup.devices.allow = c 1:3 rwm
+lxc.cgroup.devices.allow = c 1:5 rwm
+# consoles
+lxc.cgroup.devices.allow = c 5:1 rwm
+lxc.cgroup.devices.allow = c 5:0 rwm
+lxc.cgroup.devices.allow = c 4:0 rwm
+lxc.cgroup.devices.allow = c 4:1 rwm
+# /dev/{,u}random
+lxc.cgroup.devices.allow = c 1:9 rwm
+lxc.cgroup.devices.allow = c 1:8 rwm
+lxc.cgroup.devices.allow = c 136:* rwm
+lxc.cgroup.devices.allow = c 5:2 rwm
+# rtc
+lxc.cgroup.devices.allow = c 254:0 rwm
+
+# mounts point
+lxc.mount.entry=proc proc proc nodev,noexec,nosuid 0 0
+lxc.mount.entry=run run tmpfs nodev,noexec,nosuid,relatime,size=1m,mode=0755 0 0
+lxc.mount.entry=none dev/pts devpts gid=5,mode=620 0 0
+
+EOF
+
+    return 0
+}
+
+die() {
+    echo "$@" >&2
+    exit 1
+}
+
+usage() {
+    cat >&2 <<EOF
+Usage: $(basename $0) [-h|--help] [-r|--repository <url>] [-a|--arch <arch>]
+                   -p|--path <path> -n|--name <name> [PKG...]
+EOF
+}
+
+usage_err() {
+    usage
+    exit 1
+}
+
+optarg_check() {
+    if [ -z "$2" ]; then
+        usage_err "option '$1' requires an argument"
+    fi
+}
+
+default_path=@LXCPATH@
+
+while [ $# -gt 0 ]; do
+    opt="$1"
+    shift
+    case "$opt" in
+    -h|--help)
+        usage
+        exit 0
+        ;;
+    -n|--name)
+        optarg_check $opt "$1"
+        name=$1
+        shift
+        ;;
+    -p|--path)
+        optarg_check $opt "$1"
+        path=$1
+        shift
+        ;;
+    -r|--repository)
+        optarg_check $opt "$1"
+        repository=$1
+        shift
+	;;
+    -a|--arch)
+        optarg_check $opt "$1"
+        arch=$1
+        shift
+	;;
+    --)
+        break;;
+    --*=*)
+        # split --myopt=foo=bar into --myopt foo=bar
+        set -- ${opt%=*} ${opt#*=} "$@"
+        ;;
+    -?)
+        usage_err "unknown option '$opt'"
+        ;;
+    -*)
+        # split opts -abc into -a -b -c
+        set -- $(echo "${opt#-}" | sed 's/\(.\)/ -\1/g') "$@"
+        ;;
+    esac
+done
+
+
+[ -z "$name" ] && usage_err
+
+if [ -z "${path}" ]; then
+    path="${default_path}/${name}"
+fi
+
+rootfs=`awk -F= '$1 ~ /^lxc.rootfs/ { print $2 }' "$path/config" 2>/dev/null`
+if [ -z "$rootfs" ]; then
+    rootfs="${path}/rootfs"
+fi
+
+lxc_arch=$arch
+apk_arch=$arch
+
+case "$arch" in
+	i[3-6]86)
+		apk_arch=x86;;
+	x86)
+		lxc_arch=i686;;
+	x86_64|"") ;;
+	*)	die "unsupported architecture: $arch";;
+esac
+
+install_alpine "$rootfs" "$@" || die "Failed to install rootfs for $name"
+configure_alpine "$rootfs" "$name" || die "Failed to configure $name"
+copy_configuration "$path" "$rootfs" "$name"

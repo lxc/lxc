@@ -27,23 +27,26 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <pty.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/utsname.h>
-#include <sys/personality.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <net/if.h>
 
 #include "parse.h"
+#include "config.h"
 #include "confile.h"
 #include "utils.h"
 
 #include <lxc/log.h>
 #include <lxc/conf.h>
 #include "network.h"
+
+#if HAVE_SYS_PERSONALITY_H
+#include <sys/personality.h>
+#endif
 
 lxc_log_define(lxc_confile, lxc);
 
@@ -55,6 +58,7 @@ static int config_ttydir(const char *, const char *, struct lxc_conf *);
 static int config_aa_profile(const char *, const char *, struct lxc_conf *);
 #endif
 static int config_cgroup(const char *, const char *, struct lxc_conf *);
+static int config_idmap(const char *, const char *, struct lxc_conf *);
 static int config_loglevel(const char *, const char *, struct lxc_conf *);
 static int config_logfile(const char *, const char *, struct lxc_conf *);
 static int config_mount(const char *, const char *, struct lxc_conf *);
@@ -94,6 +98,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.aa_profile",            config_aa_profile          },
 #endif
 	{ "lxc.cgroup",               config_cgroup               },
+	{ "lxc.id_map",               config_idmap                },
 	{ "lxc.loglevel",             config_loglevel             },
 	{ "lxc.logfile",              config_logfile              },
 	{ "lxc.mount",                config_mount                },
@@ -104,6 +109,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.hook.pre-start",       config_hook                 },
 	{ "lxc.hook.pre-mount",       config_hook                 },
 	{ "lxc.hook.mount",           config_hook                 },
+	{ "lxc.hook.autodev",         config_hook                 },
 	{ "lxc.hook.start",           config_hook                 },
 	{ "lxc.hook.post-stop",       config_hook                 },
 	{ "lxc.network.type",         config_network_type         },
@@ -577,7 +583,11 @@ static int config_network_ipv4(const char *key, const char *value,
 	lxc_list_init(list);
 	list->elem = inetdev;
 
-	addr = strdupa(value);
+	addr = strdup(value);
+	if (!addr) {
+		ERROR("no address specified");
+		return -1;
+	}
 
 	cursor = strstr(addr, " ");
 	if (cursor) {
@@ -591,18 +601,15 @@ static int config_network_ipv4(const char *key, const char *value,
 		prefix = slash + 1;
 	}
 
-	if (!addr) {
-		ERROR("no address specified");
-		return -1;
-	}
-
 	if (!inet_pton(AF_INET, addr, &inetdev->addr)) {
 		SYSERROR("invalid ipv4 address: %s", value);
+		free(addr);
 		return -1;
 	}
 
 	if (bcast && !inet_pton(AF_INET, bcast, &inetdev->bcast)) {
 		SYSERROR("invalid ipv4 broadcast address: %s", value);
+		free(addr);
 		return -1;
 	}
 
@@ -619,8 +626,9 @@ static int config_network_ipv4(const char *key, const char *value,
 			htonl(INADDR_BROADCAST >>  inetdev->prefix);
 	}
 
-	lxc_list_add(&netdev->ipv4, list);
+	lxc_list_add_tail(&netdev->ipv4, list);
 
+	free(addr);
 	return 0;
 }
 
@@ -690,7 +698,12 @@ static int config_network_ipv6(const char *key, const char *value,
 	lxc_list_init(list);
 	list->elem = inet6dev;
 
-	valdup = strdupa(value);
+	valdup = strdup(value);
+	if (!valdup) {
+		ERROR("no address specified");
+		return -1;
+	}
+
 	inet6dev->prefix = 64;
 	slash = strstr(valdup, "/");
 	if (slash) {
@@ -701,11 +714,13 @@ static int config_network_ipv6(const char *key, const char *value,
 
 	if (!inet_pton(AF_INET6, value, &inet6dev->addr)) {
 		SYSERROR("invalid ipv6 address: %s", value);
+		free(valdup);
 		return -1;
 	}
 
-	lxc_list_add(&netdev->ipv6, list);
+	lxc_list_add_tail(&netdev->ipv6, list);
 
+	free(valdup);
 	return 0;
 }
 
@@ -821,6 +836,8 @@ static int config_hook(const char *key, const char *value,
 		return add_hook(lxc_conf, LXCHOOK_PRESTART, copy);
 	else if (strcmp(key, "lxc.hook.pre-mount") == 0)
 		return add_hook(lxc_conf, LXCHOOK_PREMOUNT, copy);
+	else if (strcmp(key, "lxc.hook.autodev") == 0)
+		return add_hook(lxc_conf, LXCHOOK_AUTODEV, copy);
 	else if (strcmp(key, "lxc.hook.mount") == 0)
 		return add_hook(lxc_conf, LXCHOOK_MOUNT, copy);
 	else if (strcmp(key, "lxc.hook.start") == 0)
@@ -910,46 +927,26 @@ static int config_aa_profile(const char *key, const char *value,
 static int config_logfile(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
 {
-	char *path;
-
-	// if given a blank entry, null out any previous entries.
-	if (!value || strlen(value) == 0) {
-		if (lxc_conf->logfile) {
-			free(lxc_conf->logfile);
-			lxc_conf->logfile = NULL;
-		}
-		return 0;
-	}
-
-	path = strdup(value);
-	if (!path) {
-		SYSERROR("failed to strdup '%s': %m", value);
-		return -1;
-	}
-
-	if (lxc_log_set_file(path)) {
-		free(path);
-		return -1;
-	}
-
-	if (lxc_conf->logfile)
-		free(lxc_conf->logfile);
-	lxc_conf->logfile = path;
-
-	return 0;
+	return lxc_log_set_file(value);
 }
 
 static int config_loglevel(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
 {
+	int newlevel;
+
 	if (!value || strlen(value) == 0)
 		return 0;
 
+	if (lxc_log_get_level() != LXC_LOG_PRIORITY_NOTSET) {
+		DEBUG("Log level already set - ignoring new value");
+		return 0;
+	}
 	if (value[0] >= '0' && value[0] <= '9')
-		lxc_conf->loglevel = atoi(value);
+		newlevel = atoi(value);
 	else
-		lxc_conf->loglevel = lxc_log_priority_to_int(value);
-	return lxc_log_set_level(lxc_conf->loglevel);
+		newlevel = lxc_log_priority_to_int(value);
+	return lxc_log_set_level(newlevel);
 }
 
 static int config_autodev(const char *key, const char *value,
@@ -1016,6 +1013,64 @@ out:
 			free(cgelem->value);
 
 		free(cgelem);
+	}
+
+	return -1;
+}
+
+static int config_idmap(const char *key, const char *value, struct lxc_conf *lxc_conf)
+{
+	char *token = "lxc.id_map";
+	char *subkey;
+	struct lxc_list *idmaplist = NULL;
+	struct id_map *idmap = NULL;
+	int hostid, nsid, range;
+	char type;
+	int ret;
+
+	subkey = strstr(key, token);
+
+	if (!subkey)
+		return -1;
+
+	if (!strlen(subkey))
+		return -1;
+
+	idmaplist = malloc(sizeof(*idmaplist));
+	if (!idmaplist)
+		goto out;
+
+	idmap = malloc(sizeof(*idmap));
+	if (!idmap)
+		goto out;
+	memset(idmap, 0, sizeof(*idmap));
+
+	idmaplist->elem = idmap;
+
+	lxc_list_add_tail(&lxc_conf->id_map, idmaplist);
+
+	ret = sscanf(value, "%c %d %d %d", &type, &hostid, &nsid, &range);
+	if (ret != 4)
+		goto out;
+	INFO("read uid map: type %c hostid %d nsid %d range %d", type, hostid, nsid, range);
+	if (type == 'U')
+		idmap->idtype = ID_TYPE_UID;
+	else if (type == 'G')
+		idmap->idtype = ID_TYPE_GID;
+	else
+		goto out;
+	idmap->hostid = hostid;
+	idmap->nsid = nsid;
+	idmap->range = range;
+
+	return 0;
+
+out:
+	if (idmaplist)
+		free(idmaplist);
+
+	if (idmap) {
+		free(idmap);
 	}
 
 	return -1;
@@ -1265,6 +1320,10 @@ int lxc_config_readline(char *buffer, struct lxc_conf *conf)
 
 int lxc_config_read(const char *file, struct lxc_conf *conf)
 {
+	/* Catch only the top level config file name in the structure */
+	if( ! conf->rcfile ) {
+		conf->rcfile = strdup( file );
+	}
 	return lxc_file_for_each_line(file, parse_line, conf);
 }
 
@@ -1302,6 +1361,7 @@ int lxc_config_define_load(struct lxc_list *defines, struct lxc_conf *conf)
 
 signed long lxc_config_parse_arch(const char *arch)
 {
+	#if HAVE_SYS_PERSONALITY_H
 	struct per_name {
 		char *name;
 		unsigned long per;
@@ -1319,6 +1379,7 @@ signed long lxc_config_parse_arch(const char *arch)
 		if (!strcmp(pername[i].name, arch))
 		    return pername[i].per;
 	}
+	#endif
 
 	return -1;
 }
@@ -1334,18 +1395,22 @@ static int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v)
 
 static int lxc_get_arch_entry(struct lxc_conf *c, char *retv, int inlen)
 {
-	int len, fulllen = 0;
+	int fulllen = 0;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
+	#if HAVE_SYS_PERSONALITY_H
+	int len = 0;
+
 	switch(c->personality) {
 	case PER_LINUX32: strprint(retv, inlen, "x86"); break;
 	case PER_LINUX: strprint(retv, inlen, "x86_64"); break;
 	default: break;
 	}
+	#endif
 
 	return fulllen;
 }
@@ -1594,9 +1659,9 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->aa_profile;
 #endif
 	else if (strcmp(key, "lxc.logfile") == 0)
-		v = c->logfile;
+		v = lxc_log_get_file();
 	else if (strcmp(key, "lxc.loglevel") == 0)
-		v = lxc_log_priority_to_string(c->loglevel);
+		v = lxc_log_priority_to_string(lxc_log_get_level());
 	else if (strcmp(key, "lxc.cgroup") == 0) // all cgroup info
 		return lxc_get_cgroup_entry(c, retv, inlen, "all");
 	else if (strncmp(key, "lxc.cgroup.", 11) == 0) // specific cgroup info
@@ -1665,19 +1730,21 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		fprintf(fout, "lxc.pts = %d\n", c->pts);
 	if (c->ttydir)
 		fprintf(fout, "lxc.devttydir = %s\n", c->ttydir);
+	#if HAVE_SYS_PERSONALITY_H
 	switch(c->personality) {
 	case PER_LINUX32: fprintf(fout, "lxc.arch = x86\n"); break;
 	case PER_LINUX: fprintf(fout, "lxc.arch = x86_64\n"); break;
 	default: break;
 	}
+	#endif
 #if HAVE_APPARMOR
 	if (c->aa_profile)
 		fprintf(fout, "lxc.aa_profile = %s\n", c->aa_profile);
 #endif
-	if (c->loglevel != LXC_LOG_PRIORITY_NOTSET)
-		fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(c->loglevel));
-	if (c->logfile)
-		fprintf(fout, "lxc.logfile = %s\n", c->logfile);
+	if (lxc_log_get_level() != LXC_LOG_PRIORITY_NOTSET)
+		fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(lxc_log_get_level()));
+	if (lxc_log_get_file())
+		fprintf(fout, "lxc.logfile = %s\n", lxc_log_get_file());
 	lxc_list_for_each(it, &c->cgroup) {
 		struct lxc_cgroup *cg = it->elem;
 		fprintf(fout, "lxc.cgroup.%s = %s\n", cg->subsystem, cg->value);

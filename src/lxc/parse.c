@@ -29,7 +29,26 @@
 #include <dirent.h>
 
 #include "parse.h"
+#include "config.h"
 #include <lxc/log.h>
+
+/* Define getline() if missing from the C library */
+#ifndef HAVE_GETLINE
+#ifdef HAVE_FGETLN
+#include <../include/getline.h>
+#endif
+#endif
+
+/* Workaround for the broken signature of alphasort() in bionic.
+   This was fixed upstream in 40e467ec668b59be25491bd44bf348a884d6a68d so the
+   workaround can probably be dropped with the next version of the Android NDK.
+ */
+#ifdef IS_BIONIC
+int bionic_alphasort(const struct dirent** a, const struct dirent** b) {
+       return strcoll((*a)->d_name, (*b)->d_name);
+}
+#endif
+
 
 lxc_log_define(lxc_parse, lxc);
 
@@ -47,7 +66,11 @@ int lxc_dir_for_each(const char *name, const char *directory,
 	struct dirent **namelist;
 	int n, ret = 0;
 
+#ifdef IS_BIONIC
+	n = scandir(directory, &namelist, dir_filter, bionic_alphasort);
+#else
 	n = scandir(directory, &namelist, dir_filter, alphasort);
+#endif
 	if (n < 0) {
 		SYSERROR("failed to scan %s directory", directory);
 		return -1;

@@ -54,10 +54,46 @@ lxc_log_define(lxc_start_ui, lxc_start);
 
 static struct lxc_list defines;
 
+static int ensure_path(char **confpath, const char *path)
+{
+	int err = -1, fd;
+	char *fullpath = NULL;
+
+	if (path) {
+		if (access(path, W_OK)) {
+			fd = creat(path, 0600);
+			if (fd < 0) {
+				SYSERROR("failed to create '%s'", path);
+				goto err;
+			}
+			close(fd);
+		}
+
+		fullpath = realpath(path, NULL);
+		if (!fullpath) {
+			SYSERROR("failed to get the real path of '%s'", path);
+			goto err;
+		}
+
+		*confpath = strdup(fullpath);
+		if (!*confpath) {
+			ERROR("failed to dup string '%s'", fullpath);
+			goto err;
+		}
+	}
+	err = 0;
+
+err:
+	if (fullpath)
+		free(fullpath);
+	return err;
+}
+
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
 	case 'c': args->console = arg; break;
+	case 'L': args->console_log = arg; break;
 	case 'd': args->daemonize = 1; args->close_all_fds = 1; break;
 	case 'f': args->rcfile = arg; break;
 	case 'C': args->close_all_fds = 1; break;
@@ -72,6 +108,7 @@ static const struct option my_longopts[] = {
 	{"rcfile", required_argument, 0, 'f'},
 	{"define", required_argument, 0, 's'},
 	{"console", required_argument, 0, 'c'},
+	{"console-log", required_argument, 0, 'L'},
 	{"close-all-fds", no_argument, 0, 'C'},
 	{"pidfile", required_argument, 0, 'p'},
 	LXC_COMMON_OPTIONS
@@ -85,15 +122,16 @@ static struct lxc_arguments my_args = {
 lxc-start start COMMAND in specified container NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME      NAME for name of the container\n\
-  -d, --daemon         daemonize the container\n\
-  -p, --pidfile=FILE   Create a file with the process id\n\
-  -f, --rcfile=FILE    Load configuration file FILE\n\
-  -c, --console=FILE   Set the file output for the container console\n\
-  -C, --close-all-fds  If any fds are inherited, close them\n\
-                       If not specified, exit with failure instead\n\
-		       Note: --daemon implies --close-all-fds\n\
-  -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
+  -n, --name=NAME        NAME for name of the container\n\
+  -d, --daemon           daemonize the container\n\
+  -p, --pidfile=FILE     Create a file with the process id\n\
+  -f, --rcfile=FILE      Load configuration file FILE\n\
+  -c, --console=FILE     Use specified FILE for the container console\n\
+  -L, --console-log=FILE Log container console output to FILE\n\
+  -C, --close-all-fds    If any fds are inherited, close them\n\
+                         If not specified, exit with failure instead\n\
+		         Note: --daemon implies --close-all-fds\n\
+  -s, --define KEY=VAL   Assign VAL to configuration variable KEY\n",
 	.options   = my_longopts,
 	.parser    = my_parser,
 	.checker   = NULL,
@@ -112,6 +150,8 @@ int main(int argc, char *argv[])
 		'\0',
 	};
 	FILE *pid_fp = NULL;
+	/* TODO: add cmdline arg to specify lxcpath */
+	char *lxcpath = NULL;
 
 	lxc_list_init(&defines);
 
@@ -126,22 +166,24 @@ int main(int argc, char *argv[])
 	else
 		args = my_args.argv;
 
-	if (lxc_log_init(my_args.log_file, my_args.log_priority,
+	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet))
 		return err;
-
-	if (putenv("container=lxc")) {
-		SYSERROR("failed to set environment variable");
-		return err;
-	}
 
 	/* rcfile is specified in the cli option */
 	if (my_args.rcfile)
 		rcfile = (char *)my_args.rcfile;
 	else {
 		int rc;
+		char *lxcpath = default_lxc_path();
+		if (!lxcpath) {
+			ERROR("Out of memory");
+			return -1;
+		}
 
-		rc = asprintf(&rcfile, LXCPATH "/%s/config", my_args.name);
+		rc = asprintf(&rcfile, "%s/%s/config", lxcpath, my_args.name);
+		INFO("using rcfile %s", rcfile);
+		free(lxcpath);
 		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
 			return err;
@@ -173,35 +215,14 @@ int main(int argc, char *argv[])
 		return err;
 	}
 
-	if (my_args.console) {
+	if (ensure_path(&conf->console.path, my_args.console) < 0) {
+		ERROR("failed to ensure console path '%s'", my_args.console);
+		return err;
+	}
 
-		char *console, fd;
-
-		if (access(my_args.console, W_OK)) {
-
-			fd = creat(my_args.console, 0600);
-			if (fd < 0) {
-				SYSERROR("failed to touch file '%s'",
-					 my_args.console);
-				return err;
-			}
-			close(fd);
-		}
-
-		console = realpath(my_args.console, NULL);
-		if (!console) {
-			SYSERROR("failed to get the real path of '%s'",
-				 my_args.console);
-			return err;
-		}
-
-		conf->console.path = strdup(console);
-		if (!conf->console.path) {
-			ERROR("failed to dup string '%s'", console);
-			return err;
-		}
-
-		free(console);
+	if (ensure_path(&conf->console.log_path, my_args.console_log) < 0) {
+		ERROR("failed to ensure console log '%s'", my_args.console_log);
+		return err;
 	}
 
 	if (my_args.pidfile != NULL) {
@@ -239,7 +260,7 @@ int main(int argc, char *argv[])
 	if (my_args.close_all_fds)
 		conf->close_all_fds = 1;
 
-	err = lxc_start(my_args.name, args, conf);
+	err = lxc_start(my_args.name, args, conf, lxcpath);
 
 	/*
 	 * exec ourself, that requires to have all opened fd

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #
 # lxc: linux Container library
@@ -39,38 +39,47 @@ help() {
     echo "  -f        stop the container if it is running (rather than abort)" >&2
 }
 
-shortoptions='hn:f'
-longoptions='help,name:'
-lxc_path=@LXCPATH@
+usage_err() {
+    [ -n "$1" ] && echo "$1" >&2
+    usage
+    exit 1
+}
+
+optarg_check() {
+    if [ -z "$2" ]; then
+        usage_err "option '$1' requires an argument"
+    fi
+}
+
+. @DATADIR@/lxc/lxc.functions
 force=0
 
-getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
-if [ $? != 0 ]; then
-    usage
-    exit 1;
-fi
-
-eval set -- "$getopt"
-
-while true; do
-        case "$1" in
+while [ $# -gt 0 ]; do
+        opt="$1"
+        shift
+        case "$opt" in
             -h|--help)
                 help
                 exit 1
             ;;
             -n|--name)
-                shift
+                optarg_check "$opt" "$1"
                 lxc_name=$1
                 shift
             ;;
             -f)
                 force=1
-                shift
             ;;
             --)
-                shift
                 break
             ;;
+            -?)
+                usage_err "unknown option '$opt'"
+            ;;
+            -*)
+                # split opts -abc into -a -b -c
+                set -- $(echo "${opt#-}" | sed 's/\(.\)/ -\1/g') "$@"
+                ;;
             *)
             usage
             exit 1
@@ -94,14 +103,13 @@ if [ ! -d "$lxc_path/$lxc_name" ]; then
     exit 1
 fi
 
-# make sure the container isn't running
-lxc-info -n $lxc_name 2>/dev/null | grep -q RUNNING
-if [ $? -eq 0 ]; then
+# make sure the container is stopped
+if ! lxc-info -n $lxc_name --state-is "STOPPED"; then
     if [ $force -eq 1 ]; then
         lxc-stop -n $lxc_name
         lxc-wait -n $lxc_name -s STOPPED
     else
-        echo "$(basename $0): '$lxc_name' is running; aborted" >&2
+        echo "$(basename $0): '$lxc_name' $(lxc-info -n $lxc_name -s); aborted" >&2
         exit 1
     fi
 fi

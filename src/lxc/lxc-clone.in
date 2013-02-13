@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #
 # lxc: linux Container library
@@ -37,75 +37,84 @@ help() {
     echo "  -o ORIG_NAME   specify the name of the original container" >&2
     echo "  -n NEW_NAME    specify the name of the new container" >&2
     echo "  -s             make the new rootfs a snapshot of the original" >&2
-    echo "  -L FS_SIZE     specify the new filesystem size (default: 2G)" >&2
+    echo "  -L FS_SIZE     specify the new filesystem size (default: same as original)" >&2
     echo "  -v VG_NAME     specify the new LVM volume group name (default: lxc)" >&2
     echo "  -p LV_PREFIX   add a prefix to new LVM logical volume names" >&2
     echo "  -t FS_TYPE     specify the new filesystem type (default: ext3;" >&2
     echo "                  only works for non-snapshot LVM)" >&2
 }
 
-shortoptions='ho:n:sL:v:p:t:'
-longoptions='help,orig:,name:,snapshot,fssize:,vgname:,lvprefix:,fstype:'
-lxc_path=@LXCPATH@
-bindir=@BINDIR@
+usage_err() {
+    [ -n "$1" ] && echo "$1" >&2
+    usage
+    exit 1
+}
+
+optarg_check() {
+    [ -n "$2" ] || usage_err "option $1 requires an argument"
+}
+
+. @DATADIR@/lxc/lxc.functions
 snapshot=no
-lxc_defsize=2G
 lxc_size=_unset
 lxc_vg=lxc
 lxc_lv_prefix=""
 fstype=ext3
 
-getopt=$(getopt -o $shortoptions --longoptions  $longoptions -- "$@")
-if [ $? != 0 ]; then
-    usage
-    exit 1;
-fi
-
-eval set -- "$getopt"
-
-while true; do
-    case "$1" in
+while [ $# -gt 0 ]; do
+    opt="$1"
+    shift
+    case "$opt" in
         -h|--help)
             help
             exit 1
             ;;
         -s|--snapshot)
-            shift
             snapshot=yes
             snapshot_opt="-s"
             ;;
         -o|--orig)
-            shift
+            optarg_check $opt $1
             lxc_orig=$1
             shift
             ;;
         -L|--fssize)
-            shift
+            optarg_check $opt $1
             lxc_size=$1
             shift
             ;;
-        -v|--vgname)
+        -t|--fstype)
+            optarg_check $opt $1
+            fstype=$1
             shift
+            ;;
+        -v|--vgname)
+            optarg_check $opt $1
             lxc_vg=$1
             shift
             ;;
         -n|--name)
-            shift
+            optarg_check $opt $1
             lxc_new=$1
             shift
             ;;
         -p|--lvprefix)
-            shift
+            optarg_check $opt $1
             lxc_lv_prefix=$1
             shift
             ;;
         --)
-            shift
             break
             ;;
+        -?)
+            usage_err "Unknown option: '$opt'"
+            ;;
+        -*)
+            # split opts -abc into -a -b -c
+            set -- $(echo "${opt#-}" | sed 's/\(.\)/ -\1/g') "$@"
+            ;;
         *)
-            usage
-            exit 1
+            usage_err
             ;;
     esac
 done
@@ -187,11 +196,11 @@ oldroot=`grep lxc.rootfs $lxc_path/$lxc_orig/config | awk -F'[= \t]+' '{ print $
 rootfs=`echo $oldroot |sed "s/$lxc_orig/$lxc_new/"`
 
 container_running=True
-lxc-info -s -n $lxc_orig|grep RUNNING >/dev/null 2>&1 || container_running=False
+lxc-info -n $lxc_orig --state-is RUNNING || container_running=False
 
 sed -i '/lxc.rootfs/d' $lxc_path/$lxc_new/config
 if [ -b $oldroot ]; then
-    type vgscan || { echo "$(basename $0): lvm is not installed" >&2; false; }
+    which vgscan >/dev/null 2>&1 || { echo "$(basename $0): lvm is not installed" >&2; false; }
     lvdisplay $oldroot > /dev/null 2>&1 || { echo "$(basename $0): non-lvm blockdev cloning is not supported" >&2; false; }
     lvm=TRUE
     # ok, create a snapshot of the lvm device
@@ -204,7 +213,7 @@ if [ -b $oldroot ]; then
     fi
     newlv="${lxc_lv_prefix}${lxc_new}_snapshot"
     lvcreate -s -L $lxc_size -n $newlv $oldroot
-    type xfs_admin > /dev/null 2>&1 && {
+    which xfs_admin > /dev/null 2>&1 && {
         # change filesystem UUID if it is an xfs filesystem
         xfs_admin -u /dev/$lxc_vg/$newlv && xfs_admin -U generate /dev/$lxc_vg/$newlv
     }
@@ -272,7 +281,7 @@ c=$lxc_path/$lxc_new/config
 mv ${c} ${c}.old
 (
 while read line; do
-    if [ "${line:0:18}" = "lxc.network.hwaddr" ]; then
+    if echo $line | grep -q -w '^lxc.network.hwaddr'; then
         echo "lxc.network.hwaddr= 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')"
     else
         echo "$line"

@@ -50,6 +50,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <cmdsynopsis>
       <command>lxc-console</command>
       <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-e <replaceable>escape character</replaceable></arg>
       <arg choice="opt">-t <replaceable>ttynum</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -66,8 +67,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <para>
       The available tty are free slots taken by this command. That
       means if the container has four ttys available and the command
-      has been launched four times taking the different tty, the fifth
-      command will fail because no console will be available.
+      has been launched four times each taking a different tty, the
+      fifth command will fail because no console will be available.
     </para>
 
     <para>
@@ -76,12 +77,30 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       the state it was before the disconnection.
     </para>
 
+    <para>
+      A keyboard escape sequence may be used to disconnect from the tty
+      and quit lxc-console. The default escape sequence is &lt;Ctrl+a q&gt;.
+    </para>
+
   </refsect1>
 
   <refsect1>
     <title>Options</title>
     <variablelist>
 
+      <varlistentry>
+	<term>
+	  <option>-e <optional><replaceable>escape character</replaceable></optional></option>
+	</term>
+	<listitem>
+	  <para>
+	    Specify the escape sequence prefix to use instead of
+            &lt;Ctrl a&gt;.
+            This may be given as '^letter' or just 'letter'. For example
+            to use &lt;Ctrl+b q&gt; as the escape sequence use -e '^b'.
+	  </para>
+	</listitem>
+      </varlistentry>
       <varlistentry>
 	<term>
 	  <option>-t <optional><replaceable>ttynum</replaceable></optional></option>

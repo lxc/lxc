@@ -26,28 +26,34 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <pty.h>
 #include <sys/types.h>
-#include <sys/un.h>
+#include <termios.h>
 
 #include "log.h"
 #include "conf.h"
+#include "config.h"
 #include "start.h" 	/* for struct lxc_handler */
 #include "caps.h"
 #include "commands.h"
 #include "mainloop.h"
 #include "af_unix.h"
 
+#if HAVE_PTY_H
+#include <pty.h>
+#else
+#include <../include/openpty.h>
+#endif
+
 lxc_log_define(lxc_console, lxc);
 
-extern int lxc_console(const char *name, int ttynum, int *fd)
+extern int lxc_console(const char *name, int ttynum, int *fd, const char *lxcpath)
 {
 	int ret, stopped = 0;
 	struct lxc_command command = {
 		.request = { .type = LXC_COMMAND_TTY, .data = ttynum },
 	};
 
-	ret = lxc_command_connected(name, &command, &stopped);
+	ret = lxc_command_connected(name, &command, &stopped, lxcpath);
 	if (ret < 0 && stopped) {
 		ERROR("'%s' is stopped", name);
 		return -1;
@@ -145,7 +151,7 @@ static int get_default_console(char **console)
 
 	if (!access("/dev/tty", F_OK)) {
 		fd = open("/dev/tty", O_RDWR);
-		if (fd > 0) {
+		if (fd >= 0) {
 			close(fd);
 			*console = strdup("/dev/tty");
 			goto out;
@@ -195,11 +201,21 @@ int lxc_create_console(struct lxc_conf *conf)
 		goto err;
 	}
 
+	if (console->log_path) {
+		fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
+		if (fd < 0) {
+			SYSERROR("failed to open '%s'", console->log_path);
+			goto err;
+		}
+		DEBUG("using '%s' as console log", console->log_path);
+		console->log_fd = fd;
+	}
+
 	fd = lxc_unpriv(open(console->path, O_CLOEXEC | O_RDWR | O_CREAT |
 			     O_APPEND, 0600));
 	if (fd < 0) {
 		SYSERROR("failed to open '%s'", console->path);
-		goto err;
+		goto err_close_console_log;
 	}
 
 	DEBUG("using '%s' as console", console->path);
@@ -212,7 +228,7 @@ int lxc_create_console(struct lxc_conf *conf)
 	console->tios = malloc(sizeof(tios));
 	if (!console->tios) {
 		SYSERROR("failed to allocate memory");
-		goto err;
+		goto err_close_console;
 	}
 
 	/* Get termios */
@@ -241,26 +257,54 @@ int lxc_create_console(struct lxc_conf *conf)
 
 err_free:
 	free(console->tios);
+
+err_close_console:
+	close(console->peer);
+	console->peer = -1;
+
+err_close_console_log:
+	if (console->log_fd >= 0) {
+		close(console->log_fd);
+		console->log_fd = -1;
+	}
+
 err:
 	close(console->master);
+	console->master = -1;
+
 	close(console->slave);
+	console->slave = -1;
 	return -1;
 }
 
-void lxc_delete_console(const struct lxc_console *console)
+void lxc_delete_console(struct lxc_console *console)
 {
 	if (console->tios &&
 	    tcsetattr(console->peer, TCSAFLUSH, console->tios))
 		WARN("failed to set old terminal settings");
+	free(console->tios);
+	console->tios = NULL;
+
+	close(console->peer);
+	console->peer = -1;
+
+	if (console->log_fd >= 0) {
+		close(console->log_fd);
+		console->log_fd = -1;
+	}
+
 	close(console->master);
+	console->master = -1;
+
 	close(console->slave);
+	console->slave = -1;
 }
 
 static int console_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 {
 	struct lxc_console *console = (struct lxc_console *)data;
 	char buf[1024];
-	int r;
+	int r,w;
 
 	r = read(fd, buf, sizeof(buf));
 	if (r < 0) {
@@ -280,10 +324,14 @@ static int console_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 		return 0;
 
 	if (console->peer == fd)
-		r = write(console->master, buf, r);
-	else
-		r = write(console->peer, buf, r);
-
+		w = write(console->master, buf, r);
+	else {
+		w = write(console->peer, buf, r);
+		if (console->log_fd > 0)
+			w = write(console->log_fd, buf, r);
+	}
+	if (w != r)
+		WARN("console short write");
 	return 0;
 }
 

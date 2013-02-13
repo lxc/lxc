@@ -29,18 +29,22 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <sys/personality.h>
 
 #include "attach.h"
 #include "commands.h"
 #include "arguments.h"
 #include "caps.h"
 #include "cgroup.h"
+#include "config.h"
 #include "confile.h"
 #include "start.h"
 #include "sync.h"
 #include "log.h"
 #include "namespace.h"
+
+#if HAVE_SYS_PERSONALITY_H
+#include <sys/personality.h>
+#endif
 
 lxc_log_define(lxc_attach_ui, lxc);
 
@@ -126,6 +130,8 @@ int main(int argc, char *argv[])
 	void *cgroup_data = NULL;
 	uid_t uid;
 	char *curdir;
+	/* TODO: add cmdline arg to set lxcpath */
+	const char *lxcpath = NULL;
 
 	ret = lxc_caps_init();
 	if (ret)
@@ -135,12 +141,12 @@ int main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	ret = lxc_log_init(my_args.log_file, my_args.log_priority,
+	ret = lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			   my_args.progname, my_args.quiet);
 	if (ret)
 		return ret;
 
-	init_pid = get_init_pid(my_args.name);
+	init_pid = get_init_pid(my_args.name, lxcpath);
 	if (init_pid < 0) {
 		ERROR("failed to get the init pid");
 		return -1;
@@ -164,13 +170,13 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	curdir = get_current_dir_name();
+	curdir = getcwd(NULL, 0);
 
 	/* determine which namespaces the container was created with
 	 * by asking lxc-start
 	 */
 	if (namespace_flags == -1) {
-		namespace_flags = lxc_get_clone_flags(my_args.name);
+		namespace_flags = lxc_get_clone_flags(my_args.name, lxcpath);
 		/* call failed */
 		if (namespace_flags == -1) {
 			ERROR("failed to automatically determine the "
@@ -273,6 +279,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
+		#if HAVE_SYS_PERSONALITY_H
 		if (new_personality < 0)
 			new_personality = init_ctx->personality;
 
@@ -281,6 +288,7 @@ int main(int argc, char *argv[])
 			      strerror(errno));
 			return -1;
 		}
+		#endif
 
 		if (!elevated_privileges && lxc_attach_drop_privs(init_ctx)) {
 			ERROR("could not drop privileges");

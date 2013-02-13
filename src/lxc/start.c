@@ -38,12 +38,17 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
-#include <sys/capability.h>
 #include <sys/wait.h>
 #include <sys/un.h>
 #include <sys/poll.h>
+#include <sys/syscall.h>
+
+#if HAVE_SYS_CAPABILITY_H
+#include <sys/capability.h>
+#endif
 
 #ifdef HAVE_SYS_SIGNALFD_H
 #  include <sys/signalfd.h>
@@ -120,7 +125,7 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #include "af_unix.h"
 #include "mainloop.h"
 #include "utils.h"
-#include "utmp.h"
+#include "lxcutmp.h"
 #include "monitor.h"
 #include "commands.h"
 #include "console.h"
@@ -128,6 +133,7 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 #include "namespace.h"
 #include "apparmor.h"
 #include "lxcseccomp.h"
+#include "caps.h"
 
 lxc_log_define(lxc_start, lxc);
 
@@ -336,10 +342,14 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	}
 
 	if (handler->conf->need_utmp_watch) {
+		#if HAVE_SYS_CAPABILITY_H
 		if (lxc_utmp_mainloop_add(&descr, handler)) {
 			ERROR("failed to add utmp handler to mainloop");
 			goto out_mainloop_open;
 		}
+		#else
+			DEBUG("not starting utmp handler as cap_sys_boot cannot be dropped without capabilities support\n");
+		#endif
 	}
 
 	return lxc_mainloop(&descr);
@@ -353,7 +363,7 @@ out_sigfd:
 
 extern int lxc_caps_check(void);
 
-struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
+struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char *lxcpath)
 {
 	struct lxc_handler *handler;
 
@@ -377,7 +387,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 		goto out_free;
 	}
 
-	if (lxc_command_init(name, handler))
+	if (lxc_command_init(name, handler, lxcpath))
 		goto out_free_name;
 
 	if (lxc_read_seccomp_config(conf) != 0) {
@@ -390,6 +400,27 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf)
 		ERROR("failed to set state '%s'", lxc_state2str(STARTING));
 		goto out_free_name;
 	}
+
+	/* Start of environment variable setup for hooks */
+	if (setenv("LXC_NAME", name, 1)) {
+		SYSERROR("failed to set environment variable for container name");
+	}
+	if (setenv("LXC_CONFIG_FILE", conf->rcfile, 1)) {
+		SYSERROR("failed to set environment variable for config path");
+	}
+	if (setenv("LXC_ROOTFS_MOUNT", conf->rootfs.mount, 1)) {
+		SYSERROR("failed to set environment variable for rootfs mount");
+	}
+	if (setenv("LXC_ROOTFS_PATH", conf->rootfs.path, 1)) {
+		SYSERROR("failed to set environment variable for rootfs mount");
+	}
+	if (conf->console.path && setenv("LXC_CONSOLE", conf->console.path, 1)) {
+		SYSERROR("failed to set environment variable for console path");
+	}
+	if (conf->console.log_path && setenv("LXC_CONSOLE_LOGPATH", conf->console.log_path, 1)) {
+		SYSERROR("failed to set environment variable for console log");
+	}
+	/* End of environment variable setup for hooks */
 
 	if (run_lxc_hooks(name, "pre-start", conf)) {
 		ERROR("failed to run pre-start hooks for container '%s'.", name);
@@ -544,25 +575,50 @@ static int do_start(void *data)
 
 	lxc_sync_fini_parent(handler);
 
+	/* don't leak the pinfd to the container */
+	close(handler->pinfd);
+
 	/* Tell the parent task it can begin to configure the
 	 * container and wait for it to finish
 	 */
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
 		return -1;
 
+	/*
+	 * if we are in a new user namespace, become root there to have
+	 * privilege over our namespace
+	 */
+	if (!lxc_list_empty(&handler->conf->id_map)) {
+		NOTICE("switching to gid/uid 0 in new user namespace");
+		if (setgid(0)) {
+			SYSERROR("setgid");
+			goto out_warn_father;
+		}
+		if (setuid(0)) {
+			SYSERROR("setuid");
+			goto out_warn_father;
+		}
+	}
+
+	#if HAVE_SYS_CAPABILITY_H
 	if (handler->conf->need_utmp_watch) {
 		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
 			SYSERROR("failed to remove CAP_SYS_BOOT capability");
-			return -1;
+			goto out_warn_father;
 		}
 		DEBUG("Dropped cap_sys_boot\n");
 	}
+	#endif
 
 	/* Setup the container, ip, names, utsname, ... */
 	if (lxc_setup(handler->name, handler->conf)) {
 		ERROR("failed to setup the container");
 		goto out_warn_father;
 	}
+
+	/* ask father to setup cgroups and wait for him to finish */
+	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP))
+		return -1;
 
 	if (apparmor_load(handler) < 0)
 		goto out_warn_father;
@@ -575,14 +631,30 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
+	/* The clearenv() and putenv() calls have been moved here
+	 * to allow us to use enviroment variables passed to the various
+	 * hooks, such as the start hook above.  Not all of the
+	 * variables like CONFIG_PATH or ROOTFS are valid in this
+	 * context but others are. */
+	if (clearenv()) {
+		SYSERROR("failed to clear environment");
+		/* don't error out though */
+	}
+
+	if (putenv("container=lxc")) {
+		SYSERROR("failed to set environment variable");
+		goto out_warn_father;
+	}
+
 	close(handler->sigfd);
 
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
-	if (handler->ops->start(handler, handler->data))
-		return -1;
+	handler->ops->start(handler, handler->data);
 
 out_warn_father:
+	/* we want the parent to know something went wrong, so any
+	 * value other than what it expects is ok. */
 	lxc_sync_wake_parent(handler, LXC_SYNC_POST_CONFIGURE);
 	return -1;
 }
@@ -622,12 +694,15 @@ int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
 	const char *name = handler->name;
-	int pinfd;
 
 	if (lxc_sync_init(handler))
 		return -1;
 
 	handler->clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
+	if (!lxc_list_empty(&handler->conf->id_map)) {
+		INFO("Cloning a new user namespace");
+		handler->clone_flags |= CLONE_NEWUSER;
+	}
 	if (!lxc_list_empty(&handler->conf->network)) {
 
 		handler->clone_flags |= CLONE_NEWNET;
@@ -662,8 +737,8 @@ int lxc_spawn(struct lxc_handler *handler)
 	 * marking it readonly.
 	 */
 
-	pinfd = pin_rootfs(handler->conf->rootfs.path);
-	if (pinfd == -1) {
+	handler->pinfd = pin_rootfs(handler->conf->rootfs.path);
+	if (handler->pinfd == -1) {
 		ERROR("failed to pin the container's rootfs");
 		goto out_abort;
 	}
@@ -694,11 +769,45 @@ int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	/* Tell the child to continue its initialization and wait for
-	 * it to exec or return an error
+	/* map the container uids - the container became an invalid
+	 * userid the moment it was cloned with CLONE_NEWUSER - this
+	 * call doesn't change anything immediately, but allows the
+	 * container to setuid(0) (0 being mapped to something else on
+	 * the host) later to become a valid uid again */
+	if (lxc_map_ids(&handler->conf->id_map, handler->pid)) {
+		ERROR("failed to set up id mapping");
+		goto out_delete_net;
+	}
+
+	/* Tell the child to continue its initialization.  we'll get
+	 * LXC_SYNC_CGROUP when it is ready for us to setup cgroups
 	 */
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
+		goto out_delete_net;
+
+	if (setup_cgroup(name, &handler->conf->cgroup)) {
+		ERROR("failed to setup the cgroups for '%s'", name);
+		goto out_delete_net;
+	}
+
+
+	/* Tell the child to complete its initialization and wait for
+	 * it to exec or return an error.  (the child will never
+	 * return LXC_SYNC_POST_CGROUP+1.  It will either close the
+	 * sync pipe, causing lxc_sync_barrier_child to return
+	 * success, or return a different value, causing us to error
+	 * out).
+	 */
+	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CGROUP))
 		return -1;
+
+	if (detect_shared_rootfs())
+		umount2(handler->conf->rootfs.mount, MNT_DETACH);
+
+	/* If child is in a fresh user namespace, chown his ptys for
+	 * it */
+	if (uid_shift_ttys(handler->pid, handler->conf))
+		DEBUG("Failed to chown ptys.\n");
 
 	if (handler->ops->post_start(handler, handler->data))
 		goto out_abort;
@@ -711,8 +820,8 @@ int lxc_spawn(struct lxc_handler *handler)
 
 	lxc_sync_fini(handler);
 
-	if (pinfd >= 0)
-		close(pinfd);
+	if (handler->pinfd >= 0)
+		close(handler->pinfd);
 
 	return 0;
 
@@ -726,13 +835,13 @@ out_abort:
 }
 
 int __lxc_start(const char *name, struct lxc_conf *conf,
-		struct lxc_operations* ops, void *data)
+		struct lxc_operations* ops, void *data, const char *lxcpath)
 {
 	struct lxc_handler *handler;
 	int err = -1;
 	int status;
 
-	handler = lxc_init(name, conf);
+	handler = lxc_init(name, conf, lxcpath);
 	if (!handler) {
 		ERROR("failed to initialize the container");
 		return -1;
@@ -741,7 +850,11 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	handler->data = data;
 
 	if (must_drop_cap_sys_boot()) {
+		#if HAVE_SYS_CAPABILITY_H
 		DEBUG("Dropping cap_sys_boot\n");
+		#else
+		DEBUG("Can't drop cap_sys_boot as capabilities aren't supported\n");
+		#endif
 	} else {
 		DEBUG("Not dropping cap_sys_boot or watching utmp\n");
 		handler->conf->need_utmp_watch = 0;
@@ -827,7 +940,8 @@ static struct lxc_operations start_ops = {
 	.post_start = post_start
 };
 
-int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
+int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
+	      const char *lxcpath)
 {
 	struct start_args start_arg = {
 		.argv = argv,
@@ -837,5 +951,5 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf)
 		return -1;
 
 	conf->need_utmp_watch = 1;
-	return __lxc_start(name, conf, &start_ops, &start_arg);
+	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath);
 }

@@ -26,7 +26,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/param.h>
-#include <sys/signal.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -40,7 +40,7 @@
 
 lxc_log_define(lxc_stop, lxc);
 
-int lxc_stop(const char *name)
+int lxc_stop(const char *name, const char *lxcpath)
 {
 	struct lxc_command command = {
 		.request = { .type = LXC_COMMAND_STOP },
@@ -48,7 +48,7 @@ int lxc_stop(const char *name)
 
 	int ret, stopped = 0;
 
-	ret = lxc_command(name, &command,&stopped);
+	ret = lxc_command(name, &command,&stopped, lxcpath);
 	if (ret < 0 && stopped) {
 		INFO("'%s' is already stopped", name);
 		return 0;
