@@ -311,7 +311,7 @@ int lxc_clone_flags_callback(int fd, struct lxc_request *request,
 int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state)
 {
 	handler->state = state;
-	lxc_monitor_send_state(name, state);
+	lxc_monitor_send_state(name, state, handler->lxcpath);
 	return 0;
 }
 
@@ -379,6 +379,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 	memset(handler, 0, sizeof(*handler));
 
 	handler->conf = conf;
+	handler->lxcpath = lxcpath;
 
 	apparmor_handler_init(handler);
 	handler->name = strdup(name);

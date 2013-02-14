@@ -74,7 +74,7 @@ extern int lxc_execute(const char *name, char *const argv[], int quiet,
  * The function will return an fd corresponding to the events
  * Returns a file descriptor on success, < 0 otherwise
  */
-extern int lxc_monitor_open(void);
+extern int lxc_monitor_open(const char *lxcpath);
 
 /*
  * Read the state of the container if this one has changed
@@ -108,14 +108,14 @@ extern int lxc_console(const char *name, int ttynum, int *fd, const char *lxcpat
  * @name : the container name
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_freeze(const char *name);
+extern int lxc_freeze(const char *name, const char *lxcpath);
 
 /*
  * Unfreeze all previously frozen tasks.
  * @name : the name of the container
  * Return 0 on sucess, < 0 otherwise
  */
-extern int lxc_unfreeze(const char *name);
+extern int lxc_unfreeze(const char *name, const char *lxcpath);
 
 /*
  * Retrieve the container state

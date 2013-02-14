@@ -50,6 +50,7 @@ struct lxc_handler {
 	int aa_enabled;
 #endif
 	int pinfd;
+	const char *lxcpath;
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *, const char *);

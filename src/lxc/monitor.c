@@ -47,13 +47,23 @@ lxc_log_define(lxc_monitor, lxc);
 #define UNIX_PATH_MAX 108
 #endif
 
-static void lxc_monitor_send(struct lxc_msg *msg)
+static void lxc_monitor_send(struct lxc_msg *msg, const char *lxcpath)
 {
 	int fd;
 	struct sockaddr_un addr = { .sun_family = AF_UNIX };
 	char *offset = &addr.sun_path[1];
+	size_t ret, len;
 
-	strcpy(offset, "lxc-monitor");
+	/*
+	 * addr.sun_path is only 108 bytes.
+	 * should we take a hash of lxcpath?  a subset of it?
+	 */
+	len = sizeof(addr.sun_path) - 1;
+	ret = snprintf(offset, len, "%s/lxc-monitor", lxcpath);
+	if (ret < 0 || ret >= len) {
+		ERROR("lxcpath too long to open monitor");
+		return;
+	}
 
 	fd = socket(PF_UNIX, SOCK_DGRAM, 0);
 	if (fd < 0)
@@ -65,23 +75,33 @@ static void lxc_monitor_send(struct lxc_msg *msg)
 	close(fd);
 }
 
-void lxc_monitor_send_state(const char *name, lxc_state_t state)
+void lxc_monitor_send_state(const char *name, lxc_state_t state, const char *lxcpath)
 {
 	struct lxc_msg msg = { .type = lxc_msg_state,
 			       .value = state };
 	strncpy(msg.name, name, sizeof(msg.name));
 	msg.name[sizeof(msg.name) - 1] = 0;
 
-	lxc_monitor_send(&msg);
+	lxc_monitor_send(&msg, lxcpath);
 }
 
-int lxc_monitor_open(void)
+int lxc_monitor_open(const char *lxcpath)
 {
 	struct sockaddr_un addr = { .sun_family = AF_UNIX };
 	char *offset = &addr.sun_path[1];
 	int fd;
+	size_t ret, len;
 
-	strcpy(offset, "lxc-monitor");
+	/*
+	 * addr.sun_path is only 108 bytes.
+	 * should we take a hash of lxcpath?  a subset of it?
+	 */
+	len = sizeof(addr.sun_path) - 1;
+	ret = snprintf(offset, len, "%s/lxc-monitor", lxcpath);
+	if (ret < 0 || ret >= len) {
+		ERROR("lxcpath too long to open monitor");
+		return -1;
+	}
 
 	fd = socket(PF_UNIX, SOCK_DGRAM, 0);
 	if (fd < 0) {

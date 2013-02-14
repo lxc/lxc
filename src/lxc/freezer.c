@@ -40,7 +40,7 @@
 
 lxc_log_define(lxc_freezer, lxc);
 
-static int freeze_unfreeze(const char *name, int freeze)
+static int freeze_unfreeze(const char *name, int freeze, const char *lxcpath)
 {
 	char *nsgroup;
 	char freezer[MAXPATHLEN], *f;
@@ -98,7 +98,7 @@ static int freeze_unfreeze(const char *name, int freeze)
 		ret = strncmp(f, tmpf, strlen(f));
 		if (!ret)
 		{
-			lxc_monitor_send_state(name, freeze ? FROZEN : THAWED);
+			lxc_monitor_send_state(name, freeze ? FROZEN : THAWED, lxcpath);
 			break;		/* Success */
 		}
 
@@ -122,14 +122,14 @@ out:
 	return ret;
 }
 
-int lxc_freeze(const char *name)
+int lxc_freeze(const char *name, const char *lxcpath)
 {
-	lxc_monitor_send_state(name, FREEZING);
-	return freeze_unfreeze(name, 1);
+	lxc_monitor_send_state(name, FREEZING, lxcpath);
+	return freeze_unfreeze(name, 1, lxcpath);
 }
 
-int lxc_unfreeze(const char *name)
+int lxc_unfreeze(const char *name, const char *lxcpath)
 {
-	return freeze_unfreeze(name, 0);
+	return freeze_unfreeze(name, 0, lxcpath);
 }
 

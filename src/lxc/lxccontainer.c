@@ -195,7 +195,7 @@ static bool lxcapi_freeze(struct lxc_container *c)
 
 	if (lxclock(c->slock, 0))
 		return false;
-	ret = lxc_freeze(c->name);
+	ret = lxc_freeze(c->name, c->config_path);
 	lxcunlock(c->slock);
 	if (ret)
 		return false;
@@ -210,7 +210,7 @@ static bool lxcapi_unfreeze(struct lxc_container *c)
 
 	if (lxclock(c->slock, 0))
 		return false;
-	ret = lxc_unfreeze(c->name);
+	ret = lxc_unfreeze(c->name, c->config_path);
 	lxcunlock(c->slock);
 	if (ret)
 		return false;

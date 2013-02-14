@@ -85,7 +85,7 @@ extern int lxc_stop_callback(int fd, struct lxc_request *request,
 
 	answer.ret = kill(handler->pid, SIGKILL);
 	if (!answer.ret) {
-		ret = lxc_unfreeze(handler->name);
+		ret = lxc_unfreeze(handler->name, handler->lxcpath);
 		if (!ret)
 			return 0;
 
