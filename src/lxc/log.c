@@ -306,7 +306,7 @@ char *log_fname;  // default to NULL, set in lxc_log_set_file.
 int do_lxc_log_set_file(const char *fname, int from_default)
 {
 	if (lxc_log_specified) {
-		INFO("lxc.logfile overriden by command line");
+		INFO("lxc.logfile overridden by command line");
 		return 0;
 	}
 	if (lxc_log_fd != -1) {

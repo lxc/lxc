@@ -161,7 +161,7 @@ AC_ARG_ENABLE([tests],
 AM_CONDITIONAL([ENABLE_TESTS], [test "x$enable_tests" = "xyes"])
 
 # LXC container path, where the containers are actually stored
-# This is overriden by an entry in the file called LXCCONF
+# This is overridden by an entry in the file called LXCCONF
 # (i.e. /etc/lxc/lxc.conf)
 AC_ARG_WITH([config-path],
 	[AC_HELP_STRING(
