@@ -5,7 +5,7 @@ AC_INIT([lxc], [0.9.0.alpha3])
 
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_AUX_DIR([config])
-AM_CONFIG_HEADER([src/config.h])
+AC_CONFIG_HEADERS([src/config.h])
 AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability])
 AC_CANONICAL_HOST
 AM_PROG_CC_C_O
