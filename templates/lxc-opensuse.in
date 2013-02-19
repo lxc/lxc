@@ -25,7 +25,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-DISTRO=12.1
+DISTRO=12.2
 
 configure_opensuse()
 {
@@ -34,38 +34,12 @@ configure_opensuse()
 
    # set network as static, but everything is done by LXC outside the container
    cat <<EOF > $rootfs/etc/sysconfig/network/ifcfg-eth0
-STARTMODE='manual'
+STARTMODE='auto'
 BOOTPROTO='none'
 EOF
 
-   # set default route
-   IP=$(/sbin/ip route | awk '/default/ { print $3 }')
-   echo "default $IP - -" > $rootfs/etc/sysconfig/network/routes
-
    # create empty fstab
    touch $rootfs/etc/fstab
-
-    # create minimal /dev
-    mknod -m 666 $rootfs/dev/random c 1 8
-    mknod -m 666 $rootfs/dev/urandom c 1 9
-    mkdir -m 755 $rootfs/dev/pts
-    mkdir -m 1777 $rootfs/dev/shm
-    mknod -m 666 $rootfs/dev/tty c 5 0
-    mknod -m 600 $rootfs/dev/console c 5 1
-    mknod -m 666 $rootfs/dev/tty0 c 4 0
-    mknod -m 666 $rootfs/dev/tty1 c 4 1
-    mknod -m 666 $rootfs/dev/tty2 c 4 2
-    mknod -m 666 $rootfs/dev/tty3 c 4 3
-    mknod -m 666 $rootfs/dev/tty4 c 4 4
-    ln -s null $rootfs/dev/tty10
-    mknod -m 666 $rootfs/dev/full c 1 7
-    mknod -m 666 $rootfs/dev/ptmx c 5 2
-    ln -s /proc/self/fd $rootfs/dev/fd
-    ln -s /proc/kcore $rootfs/dev/core
-    mkdir -m 755 $rootfs/dev/mapper
-    mknod -m 600 $rootfs/dev/mapper/control c 10 60
-    mkdir -m 755 $rootfs/dev/net
-    mknod -m 666 $rootfs/dev/net/tun c 10 200
 
     # set the hostname
     cat <<EOF > $rootfs/etc/HOSTNAME
@@ -91,23 +65,6 @@ LOADER_TYPE=none
 LOADER_LOCATION=none
 EOF
 
-    # cut down inittab
-    cat <<EOF > $rootfs/etc/inittab
-id:3:initdefault:
-si::bootwait:/etc/init.d/boot
-l0:0:wait:/etc/init.d/rc 0
-l1:1:wait:/etc/init.d/rc 1
-l2:2:wait:/etc/init.d/rc 2
-l3:3:wait:/etc/init.d/rc 3
-l6:6:wait:/etc/init.d/rc 6
-ls:S:wait:/etc/init.d/rc S
-~~:S:respawn:/sbin/sulogin
-p6::ctrlaltdel:/sbin/init 6
-p0::powerfail:/sbin/init 0
-cons:2345:respawn:/sbin/mingetty --noclear console screen
-c1:2345:respawn:/sbin/mingetty --noclear tty1 screen
-EOF
-
     # set /dev/console as securetty
     cat << EOF >> $rootfs/etc/securetty
 console
@@ -121,10 +78,15 @@ EOF
 
 
     # remove pointless services in a container
-    chroot $rootfs /sbin/insserv -r -f boot.udev boot.loadmodules boot.device-mapper boot.clock boot.swap boot.klog kbd
+    ln -s /dev/null $rootfs/etc/systemd/system/proc-sys-fs-binfmt_misc.automount
+    ln -s /dev/null $rootfs/etc/systemd/system/console-shell.service
+    ln -s /dev/null $rootfs/etc/systemd/system/systemd-vconsole-setup.service
+    ln -s /lib/systemd/system/getty@.service $rootfs/etc/systemd/system/getty.target.wants/getty@console.service
+
+    touch $rootfs/etc/sysconfig/kernel
 
     echo "Please change root-password !"
-    echo "root:root" | chroot $rootfs chpasswd
+    echo "root:root" | chpasswd -R $rootfs
 
     return 0
 }
@@ -154,30 +116,45 @@ download_opensuse()
     zypper --quiet --root $cache/partial-$arch-packages --non-interactive ar http://download.opensuse.org/distribution/$DISTRO/repo/oss/ repo-oss
     zypper --quiet --root $cache/partial-$arch-packages --non-interactive ar http://download.opensuse.org/update/$DISTRO/ update
     zypper --quiet --root $cache/partial-$arch-packages --non-interactive --gpg-auto-import-keys update
-    zypper --root $cache/partial-$arch-packages --non-interactive in --auto-agree-with-licenses --download-only zypper lxc patterns-openSUSE-base sysvinit-init
+    zypper --root $cache/partial-$arch-packages --non-interactive in --auto-agree-with-licenses --download-only zypper lxc patterns-openSUSE-base iputils
     cat > $cache/partial-$arch-packages/opensuse.conf << EOF
 Preinstall: aaa_base bash coreutils diffutils
-Preinstall: filesystem fillup glibc grep insserv libacl1 libattr1
-Preinstall: libbz2-1 libgcc46 libxcrypt libncurses5 pam
+Preinstall: filesystem fillup glibc grep insserv
+Preinstall: libbz2-1 libgcc47 libncurses5 pam
 Preinstall: permissions libreadline6 rpm sed tar zlib libselinux1
-Preinstall: liblzma5 libcap2 libpcre0
+Preinstall: liblzma5 libcap2 libacl1 libattr1
 Preinstall: libpopt0 libelf1 liblua5_1
+Preinstall: libpcre1
 
 RunScripts: aaa_base
 
 Support: zypper
 Support: patterns-openSUSE-base
 Support: lxc
-Prefer: sysvinit-init
+Support: ncurses-utils
+Support: iputils
+Support: udev
+Support: netcfg
+Support: dhcpcd hwinfo insserv module-init-tools openSUSE-release openssh
+Support: pwdutils rpcbind sysconfig rsyslog
 
-Ignore: patterns-openSUSE-base:patterns-openSUSE-yast2_install_wf
+Ignore: rpm:suse-build-key,build-key
+Ignore: systemd:systemd-presets-branding
 EOF
+    if [ "$arch" == "i686" ]; then
+        mkdir -p $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/i686/
+        for i in "$cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/i586/*" ; do
+            ln -s $i $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/i686/
+        done
+        mkdir -p $cache/partial-$arch-packages/var/cache/zypp/packages/update/i686
+        for i in "$cache/partial-$arch-packages/var/cache/zypp/packages/update/i586/*" ; do
+            ln -s $i $cache/partial-$arch-packages/var/cache/zypp/packages/update/i686/
+	done
+    fi
 
-    CLEAN_BUILD=1 BUILD_ROOT="$cache/partial-$arch" BUILD_DIST="$cache/partial-$arch-packages/opensuse.conf" /usr/lib/build/init_buildsystem  --clean --cachedir $cache/partial-$arch-cache --repository $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/$arch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/noarch
+    CLEAN_BUILD=1 BUILD_ARCH="$arch" BUILD_ROOT="$cache/partial-$arch" BUILD_DIST="$cache/partial-$arch-packages/opensuse.conf" PATH="$PATH:/usr/lib/build" /usr/lib/build/init_buildsystem  --clean --configdir /usr/lib/build/configs --cachedir $cache/partial-$arch-cache --repository $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/$arch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/noarch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/update/$arch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/update/noarch
     chroot $cache/partial-$arch /usr/bin/zypper --quiet --non-interactive ar http://download.opensuse.org/distribution/$DISTRO/repo/oss repo-oss
     chroot $cache/partial-$arch /usr/bin/zypper --quiet --non-interactive ar http://download.opensuse.org/update/$DISTRO/ update
-    chroot $cache/partial-$arch rpm -e patterns-openSUSE-base
-    umount $cache/partial-$arch/proc
 #   really clean the image
     rm -fr $cache/partial-$arch/{.build,.guessed_dist,.srcfiles*,installed-pkg}
     rm -fr $cache/partial-$arch/dev
@@ -259,16 +236,40 @@ copy_configuration()
     rootfs=$2
     name=$3
 
-    # only disable network if no network configuration was passed
-    grep -q "^lxc.network.type" $path/config || echo 'lxc.network.type = empty' >> $path/config
+    if grep -q "^lxc.network.type" $path/config; then
+	TYPE=$(sed '/^#/d; /lxc.network.type/!d; s/.*=[ \t]*//' $path/config)
+	grep -q "^lxc.network.ipv4" $path/config
+	IPV4_NOT_CONFIGURED=$?
+
+	if [ ! grep -q "^lxc.network.*.gateway" $path/config ]; then
+	    [ $IPV4_NOT_CONFIGURED -eq 0 ] && IPV4=$(sed '/^#/d; /lxc.network.ipv4/!d; /gateway/d; s/.*=[ \t]*//; s/\([[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+\).*/\1/' $path/config)
+	    if [ "$TYPE" = "veth" -o "$TYPE" = "macvlan" ]; then
+		if [ $IPV4_NOT_CONFIGURED -eq 0 -a "$IPV4" != "0.0.0.0" ]; then
+		    # set default route
+		    IP=$(/sbin/ip route | awk '/default/ { print $3 }')
+		    echo "lxc.network.ipv4.gateway = $IP " >> $path/config
+		else
+		    # set network as dhcp
+		    sed -i -e 's/BOOTPROTO=.*/BOOTPROTO=dhcp/' $rootfs/etc/sysconfig/network/ifcfg-eth0
+		fi
+	    fi
+	fi
+	if [ "$TYPE" != "empty" ]; then
+	    echo "#remove next line if host DNS configuration should not be available to container" >> $path/config
+	    echo "lxc.mount.entry = /etc/resolv.conf etc/resolv.conf none bind,ro 0 0" >> $path/config
+	fi
+    else
+	echo 'lxc.network.type = empty' >> $path/config
+    fi
 
     grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
     cat <<EOF >> $path/config
 lxc.utsname = $name
-
+lxc.autodev=1
 lxc.tty = 4
 lxc.pts = 1024
 lxc.mount = $path/fstab
+lxc.cap.drop = sys_module mac_admin mac_override mknod
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
