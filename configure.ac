@@ -219,6 +219,7 @@ AS_AC_EXPAND(LXCPATH, "$with_config_path")
 AS_AC_EXPAND(LXC_GLOBAL_CONF, "$with_global_conf")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "$with_rootfs_path")
 AS_AC_EXPAND(LXCTEMPLATEDIR, "$datadir/lxc/templates")
+AS_AC_EXPAND(LXCHOOKDIR, "$datadir/lxc/hooks")
 AS_AC_EXPAND(LXCINITDIR, "$libexecdir")
 AS_AC_EXPAND(LOGPATH, "$with_log_path")
 
@@ -349,6 +350,8 @@ AC_CONFIG_FILES([
 	doc/examples/lxc-phys.conf
 	doc/examples/lxc-veth.conf
 	doc/examples/lxc-complex.conf
+
+	hooks/Makefile
 
 	templates/Makefile
 	templates/lxc-lenny
