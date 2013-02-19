@@ -286,6 +286,9 @@ AC_CHECK_FUNCS([fgetln],
 	AC_DEFINE(HAVE_FGETLN,1,[Have fgetln]),
 	AM_CONDITIONAL(HAVE_FGETLN, false))
 
+# Check for some libraries
+AC_SEARCH_LIBS(sem_open, [rt pthread])
+
 # Check for some standard binaries
 AC_PROG_GCC_TRADITIONAL
 AC_PROG_SED

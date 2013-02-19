@@ -2,10 +2,6 @@ if ENABLE_TESTS
 
 LDADD = ../lxc/liblxc.so
 
-if !IS_BIONIC
-LDADD += -lpthread
-endif
-
 lxc_test_containertests_SOURCES = containertests.c
 lxc_test_locktests_SOURCES = locktests.c
 lxc_test_startone_SOURCES = startone.c
