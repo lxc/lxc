@@ -116,7 +116,7 @@ download_opensuse()
     zypper --quiet --root $cache/partial-$arch-packages --non-interactive ar http://download.opensuse.org/distribution/$DISTRO/repo/oss/ repo-oss
     zypper --quiet --root $cache/partial-$arch-packages --non-interactive ar http://download.opensuse.org/update/$DISTRO/ update
     zypper --quiet --root $cache/partial-$arch-packages --non-interactive --gpg-auto-import-keys update
-    zypper --root $cache/partial-$arch-packages --non-interactive in --auto-agree-with-licenses --download-only zypper lxc patterns-openSUSE-base iputils
+    zypper --root $cache/partial-$arch-packages --non-interactive in --auto-agree-with-licenses --download-only zypper lxc patterns-openSUSE-base bash iputils sed tar
     cat > $cache/partial-$arch-packages/opensuse.conf << EOF
 Preinstall: aaa_base bash coreutils diffutils
 Preinstall: filesystem fillup glibc grep insserv
