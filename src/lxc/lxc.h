@@ -171,9 +171,10 @@ extern int lxc_checkpoint(const char *name, int sfd, int flags);
  * @sfd: fd from which the container is restarted
  * @conf: lxc_conf structure.
  * @flags : restart flags (an ORed value)
+ * @lxcpath: container path
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_restart(const char *, int, struct lxc_conf *, int);
+extern int lxc_restart(const char *, int, struct lxc_conf *, int, const char *);
 
 /*
  * Returns the version number of the library

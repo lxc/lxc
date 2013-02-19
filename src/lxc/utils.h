@@ -31,6 +31,6 @@ extern int mkdir_p(const char *dir, mode_t mode);
  * Return a newly allocated buffer containing the default container
  * path.  Caller must free this buffer.
  */
-extern char *default_lxc_path(void);
+extern const char *default_lxc_path(void);
 
 #endif

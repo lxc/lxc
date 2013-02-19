@@ -32,6 +32,7 @@
 #include <unistd.h>
 
 #include "arguments.h"
+#include "utils.h"
 
 /*---------------------------------------------------------------------------*/
 static int build_shortopts(const struct option *a_options,
@@ -136,6 +137,7 @@ Common options :\n\
   -o, --logfile=FILE               Output log to FILE instead of stderr\n\
   -l, --logpriority=LEVEL          Set log priority to LEVEL\n\
   -q, --quiet                      Don't produce any output\n\
+  -P, --lxcpath=PATH               Use specified container path\n\
   -?, --help                       Give this help list\n\
       --usage                      Give a short usage message\n\
 \n\
@@ -154,6 +156,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args,
 	char shortopts[256];
 	int  ret = 0;
 
+	args->lxcpath = default_lxc_path();
 	ret = build_shortopts(args->options, shortopts, sizeof(shortopts));
 	if (ret < 0) {
 		lxc_error(args, "build_shortopts() failed : %s",
@@ -173,6 +176,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args,
 		case 'l':	args->log_priority = optarg; break;
 		case 'c':	args->console = optarg; break;
 		case 'q':	args->quiet = 1; break;
+		case 'P':	args->lxcpath = optarg; break;
 		case OPT_USAGE: print_usage(args->options, args);
 		case '?':	print_help(args, 1);
 		case 'h': 	print_help(args, 0);

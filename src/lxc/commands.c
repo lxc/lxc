@@ -62,7 +62,7 @@ lxc_log_define(lxc_commands, lxc);
 static int fill_sock_name(char *path, int len, const char *name,
 			  const char *inpath)
 {
-	char *lxcpath = NULL;
+	const char *lxcpath = NULL;
 	int ret;
 
 	if (!inpath) {
@@ -73,8 +73,6 @@ static int fill_sock_name(char *path, int len, const char *name,
 		}
 	}
 	ret = snprintf(path, len, "%s/%s/command", lxcpath ? lxcpath : inpath, name);
-	if (lxcpath)
-		free(lxcpath);
 
 	if (ret < 0 || ret >= len) {
 		ERROR("Name too long");

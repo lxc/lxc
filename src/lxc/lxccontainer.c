@@ -272,7 +272,7 @@ static bool lxcapi_wait(struct lxc_container *c, const char *state, int timeout)
 	if (!c)
 		return false;
 
-	ret = lxc_wait(c->name, state, timeout);
+	ret = lxc_wait(c->name, state, timeout, c->config_path);
 	return ret == 0;
 }
 
@@ -987,7 +987,7 @@ out:
 	return ret;
 }
 
-char *lxc_get_default_config_path(void)
+const char *lxc_get_default_config_path(void)
 {
 	return default_lxc_path();
 }
@@ -1006,7 +1006,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	if (configpath)
 		c->config_path = strdup(configpath);
 	else
-		c->config_path = default_lxc_path();
+		c->config_path = strdup(default_lxc_path());
 
 	if (!c->config_path) {
 		fprintf(stderr, "Out of memory");

@@ -132,14 +132,8 @@ int main(int argc, char *argv[])
 		rcfile = (char *)my_args.rcfile;
 	else {
 		int rc;
-		char *lxcpath = default_lxc_path();
-		if (!lxcpath) {
-			ERROR("Out of memory");
-			return -1;
-		}
 
-		rc = asprintf(&rcfile, "%s/%s/config", lxcpath, my_args.name);
-		free(lxcpath);
+		rc = asprintf(&rcfile, "%s/%s/config", my_args.lxcpath, my_args.name);
 		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
 			return -1;
@@ -178,7 +172,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	ret = lxc_restart(my_args.name, sfd, conf, my_args.flags);
+	ret = lxc_restart(my_args.name, sfd, conf, my_args.flags, my_args.lxcpath);
 
 	if (my_args.statefile)
 		close(sfd);

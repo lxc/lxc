@@ -20,9 +20,11 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
+. @DATADIR@/lxc/lxc.functions
+
 usage() {
     echo "usage: $(basename $0) -n NAME [-f CONFIG_FILE] [-t TEMPLATE] [FS_OPTIONS] --" >&2
-    echo "         [TEMPLATE_OPTIONS]" >&2
+    echo "         [-P lxcpath] [TEMPLATE_OPTIONS]" >&2
     echo >&2
     echo "where FS_OPTIONS is one of:" >&2
     echo "  -B none" >&2
@@ -42,6 +44,7 @@ help() {
     echo "  -f CONFIG_FILE     use an existing configuration file" >&2
     echo "  -t TEMPLATE        use an accessible template script" >&2
     echo "  -B BACKING_STORE   alter the container backing store (default: none)" >&2
+    echo "  --lxcpath path     specify an alternate container patch (default: $lxc_path)" >&2
     echo "  --lvname LV_NAME   specify the LVM logical volume name" >&2
     echo "                      (default: container name)" >&2
     echo "  --dir ROOTFS_DIR   specify path for custom rootfs directory location" >&2
@@ -73,7 +76,6 @@ optarg_check() {
     fi
 }
 
-. @DATADIR@/lxc/lxc.functions
 backingstore=_unset
 fstype=ext4
 fssize=500M
@@ -96,6 +98,11 @@ while [ $# -gt 0 ]; do
         -f|--config)
             optarg_check $opt "$1"
             lxc_config=$1
+            shift
+            ;;
+        -P|--lxcpath)
+            optarg_check $opt "$1"
+            lxc_path=$1
             shift
             ;;
         -t|--template)

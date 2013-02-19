@@ -1519,7 +1519,7 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	unsigned long mntflags;
 	char *mntdata;
 	int r, ret = 0, offset;
-	char *lxcpath;
+	const char *lxcpath;
 
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
 		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
@@ -1535,7 +1535,6 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	/* if rootfs->path is a blockdev path, allow container fstab to
 	 * use $lxcpath/CN/rootfs as the target prefix */
 	r = snprintf(path, MAXPATHLEN, "%s/%s/rootfs", lxcpath, lxc_name);
-	free(lxcpath);
 	if (r < 0 || r >= MAXPATHLEN)
 		goto skipvarlib;
 

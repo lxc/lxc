@@ -191,13 +191,11 @@ static int fillwaitedstates(const char *strstates, int *states)
 	return 0;
 }
 
-extern int lxc_wait(const char *lxcname, const char *states, int timeout)
+extern int lxc_wait(const char *lxcname, const char *states, int timeout, const char *lxcpath)
 {
 	struct lxc_msg msg;
 	int state, ret;
 	int s[MAX_STATE] = { }, fd;
-	/* TODO: add cmdline arg to specify lxcpath */
-	char *lxcpath = NULL;
 
 	if (fillwaitedstates(states, s))
 		return -1;

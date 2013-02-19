@@ -150,8 +150,6 @@ int main(int argc, char *argv[])
 		'\0',
 	};
 	FILE *pid_fp = NULL;
-	/* TODO: add cmdline arg to specify lxcpath */
-	char *lxcpath = NULL;
 
 	lxc_list_init(&defines);
 
@@ -175,14 +173,8 @@ int main(int argc, char *argv[])
 		rcfile = (char *)my_args.rcfile;
 	else {
 		int rc;
-		char *lxcpath = default_lxc_path();
-		if (!lxcpath) {
-			ERROR("Out of memory");
-			return -1;
-		}
 
-		rc = asprintf(&rcfile, "%s/%s/config", lxcpath, my_args.name);
-		free(lxcpath);
+		rc = asprintf(&rcfile, "%s/%s/config", my_args.lxcpath, my_args.name);
 		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
 			return err;
@@ -260,7 +252,7 @@ int main(int argc, char *argv[])
 	if (my_args.close_all_fds)
 		conf->close_all_fds = 1;
 
-	err = lxc_start(my_args.name, args, conf, lxcpath);
+	err = lxc_start(my_args.name, args, conf, my_args.lxcpath);
 
 	/*
 	 * exec ourself, that requires to have all opened fd
