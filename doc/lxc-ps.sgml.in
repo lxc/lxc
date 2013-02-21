@@ -51,6 +51,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <command>lxc-ps</command>
       <arg choice="opt">--name <replaceable>name</replaceable></arg>
       <arg choice="opt">--lxc</arg>
+      <arg choice="opt">--host</arg>
       <arg choice="opt">-- ps option</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -100,6 +101,18 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  <para>
 	    limit the output to the processes belonging
 	    to all lxc containers.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--host</option>
+	</term>
+	<listitem>
+	  <para>
+	    limit the output to the processes belonging
+	    to the host.
 	  </para>
 	</listitem>
       </varlistentry>
