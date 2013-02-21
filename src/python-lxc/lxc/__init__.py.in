@@ -238,7 +238,8 @@ class Container(_lxc.Container):
         if not self.running:
             return False
 
-        attach = ["lxc-attach", "-n", self.name]
+        attach = ["lxc-attach", "-n", self.name,
+                  "-P", self.get_config_path()]
         if namespace != "ALL":
             attach += ["-s", namespace]
 
@@ -299,7 +300,8 @@ class Container(_lxc.Container):
         if not self.running:
             return False
 
-        if subprocess.call(["lxc-console", "-n", self.name, "-t", "%s" % tty],
+        if subprocess.call(["lxc-console", "-n", self.name, "-t", "%s" % tty,
+                            "-P", self.get_config_path()],
                            universal_newlines=True) != 0:
             return False
         return True

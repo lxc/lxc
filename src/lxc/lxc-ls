@@ -92,6 +92,9 @@ parser = argparse.ArgumentParser(description=_("LXC: List containers"),
 parser.add_argument("-1", dest="one", action="store_true",
                     help=_("list one container per line (default when piped)"))
 
+parser.add_argument("-P", "--lxcpath", dest="lxcpath", metavar="PATH",
+                    help=_("Use specified container path"), default=None)
+
 parser.add_argument("--active", action="store_true",
                     help=_("list only active containers "
                            "(same as --running --frozen)"))
@@ -138,7 +141,7 @@ if not os.geteuid() == 0 and (args.fancy or args.state):
 
 # List of containers, stored as dictionaries
 containers = []
-for container_name in lxc.list_containers():
+for container_name in lxc.list_containers(config_path=args.lxcpath):
     entry = {}
     entry['name'] = container_name
 
@@ -151,7 +154,7 @@ for container_name in lxc.list_containers():
         containers.append(entry)
         continue
 
-    container = lxc.Container(container_name)
+    container = lxc.Container(container_name, args.lxcpath)
 
     # Filter by status
     if args.state and container.state not in args.state:

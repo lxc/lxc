@@ -47,6 +47,9 @@ parser.add_argument("-n", dest="container", metavar="CONTAINER",
                     help=_("Name of the container to add the device to"),
                     required=True)
 
+parser.add_argument("-P", "--lxcpath", dest="lxcpath", metavar="PATH",
+                    help=_("Use specified container path"), default=None)
+
 # Commands
 subparsers = parser.add_subparsers()
 subparser_add = subparsers.add_parser('add', help=_('Add a device'))
@@ -76,7 +79,8 @@ if not args.name:
     args.name = args.device
 
 ## Check that the container is ready
-container = lxc.Container(args.container)
+container = lxc.Container(args.container, args.lxcpath)
+
 if not container.running:
     parser.error("The container must be running.")
 
