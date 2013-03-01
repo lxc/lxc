@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -16,21 +17,58 @@ lxc_log_define(lxc_apparmor, lxc);
 #define AA_MOUNT_RESTR "/sys/kernel/security/apparmor/features/mount/mask"
 #define AA_ENABLED_FILE "/sys/module/apparmor/parameters/enabled"
 
+
+/* caller must free the returned profile */
+extern char *aa_get_profile(pid_t pid)
+{
+	char path[100], *space;
+	int ret;
+	char *buf = NULL;
+	int sz = 0;
+	FILE *f;
+
+	ret = snprintf(path, 100, "/proc/%d/attr/current", pid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("path name too long");
+		return NULL;
+	}
+again:
+	f = fopen(path, "r");
+	if (!f) {
+		SYSERROR("opening %s\n", path);
+		return NULL;
+	}
+	sz += 1024;
+	buf = realloc(buf, sz);
+	if (!buf) {
+		ERROR("out of memory");
+		fclose(f);
+		return NULL;
+	}
+	ret = fread(buf, 1, sz, f);
+	fclose(f);
+	if (ret >= sz)
+		goto again;
+	if (ret < 0) {
+		ERROR("reading %s\n", path);
+		free(buf);
+		return NULL;
+	}
+	space = index(buf, ' ');
+	if (space)
+		*space = '\0';
+	return buf;
+}
+
 static int aa_am_unconfined(void)
 {
-	int ret;
-	char path[100], p[100];
-	sprintf(path, "/proc/%d/attr/current", getpid());
-	FILE *f = fopen(path, "r");
-	if (!f)
-		return 0;
-	ret = fscanf(f, "%99s", p);
-	fclose(f);
-	if (ret < 1)
-		return 0;
-	if (strcmp(p, "unconfined") == 0)
-		return 1;
-	return 0;
+	char *p = aa_get_profile(getpid());
+	int ret = 0;
+	if (!p || strcmp(p, "unconfined") == 0)
+		ret = 1;
+	if (p)
+		free(p);
+	return ret;
 }
 
 /* aa_getcon is not working right now.  Use our hand-rolled version below */
@@ -61,34 +99,55 @@ extern void apparmor_handler_init(struct lxc_handler *handler)
 }
 
 #define AA_DEF_PROFILE "lxc-container-default"
-extern int apparmor_load(struct lxc_handler *handler)
+
+extern int do_apparmor_load(int aa_enabled, char *aa_profile,
+				   int umount_proc, int dropprivs)
 {
-	if (!handler->aa_enabled) {
+	if (!aa_enabled) {
 		INFO("apparmor not enabled");
 		return 0;
 	}
 	INFO("setting up apparmor");
 
-	if (!handler->conf->aa_profile)
-		handler->conf->aa_profile = AA_DEF_PROFILE;
+	if (!aa_profile)
+		aa_profile = AA_DEF_PROFILE;
 
-	if (strcmp(handler->conf->aa_profile, "unconfined") == 0 &&
-	    aa_am_unconfined()) {
+	if (strcmp(aa_profile, "unconfined") == 0 && !dropprivs && aa_am_unconfined()) {
 		INFO("apparmor profile unchanged");
 		return 0;
 	}
 
-	//if (aa_change_onexec(handler->conf->aa_profile) < 0) {
-	if (aa_change_profile(handler->conf->aa_profile) < 0) {
-		SYSERROR("failed to change apparmor profile to %s", handler->conf->aa_profile);
+	//if (aa_change_onexec(aa_profile) < 0) {
+	if (aa_change_profile(aa_profile) < 0) {
+		SYSERROR("failed to change apparmor profile to %s", aa_profile);
 		return -1;
 	}
-	if (handler->conf->lsm_umount_proc == 1)
+	if (umount_proc == 1)
 		umount("/proc");
 
-	INFO("changed apparmor profile to %s", handler->conf->aa_profile);
+	INFO("changed apparmor profile to %s", aa_profile);
 
 	return 0;
+}
+
+extern int apparmor_load(struct lxc_handler *handler)
+{
+	if (!handler->conf->aa_profile)
+		handler->conf->aa_profile = AA_DEF_PROFILE;
+	return do_apparmor_load(handler->aa_enabled,
+				handler->conf->aa_profile,
+				handler->conf->lsm_umount_proc, 0);
+}
+
+extern int attach_apparmor(char *profile)
+{
+	if (!profile)
+		return 0;
+	if (!check_apparmor_enabled())
+		return 0;
+	if (strcmp(profile, "unconfined") == 0)
+		return 0;
+	return do_apparmor_load(1, profile, 0, 1);
 }
 
 /*

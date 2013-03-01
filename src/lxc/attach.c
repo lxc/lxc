@@ -44,6 +44,7 @@
 #include "caps.h"
 #include "cgroup.h"
 #include "config.h"
+#include "apparmor.h"
 
 lxc_log_define(lxc_attach, lxc);
 
@@ -137,6 +138,7 @@ struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 		errno = ENOENT;
 		goto out_error;
 	}
+	info->aa_profile = aa_get_profile(pid);
 
 	return info;
 

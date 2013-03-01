@@ -27,6 +27,7 @@
 #include <sys/types.h>
 
 struct lxc_proc_context_info {
+	char *aa_profile;
 	unsigned long personality;
 	unsigned long long capability_mask;
 };

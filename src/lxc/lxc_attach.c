@@ -41,6 +41,7 @@
 #include "sync.h"
 #include "log.h"
 #include "namespace.h"
+#include "apparmor.h"
 
 #if HAVE_SYS_PERSONALITY_H
 #include <sys/personality.h>
@@ -264,6 +265,11 @@ int main(int argc, char *argv[])
 	if (!pid) {
 		lxc_sync_fini_parent(handler);
 		lxc_cgroup_dispose_attach(cgroup_data);
+
+		if (attach_apparmor(init_ctx->aa_profile) < 0) {
+			ERROR("failed switching apparmor profiles");
+			return -1;
+		}
 
 		/* A description of the purpose of this functionality is
 		 * provided in the lxc-attach(1) manual page. We have to
