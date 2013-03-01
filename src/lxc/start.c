@@ -268,6 +268,7 @@ int lxc_pid_callback(int fd, struct lxc_request *request,
 	struct lxc_answer answer;
 	int ret;
 
+	memset(&answer, 0, sizeof(answer));
 	answer.pid = handler->pid;
 	answer.ret = 0;
 
@@ -285,12 +286,49 @@ int lxc_pid_callback(int fd, struct lxc_request *request,
 	return 0;
 }
 
+int lxc_cgroup_callback(int fd, struct lxc_request *request,
+		     struct lxc_handler *handler)
+{
+	struct lxc_answer answer;
+	int ret;
+
+	memset(&answer, 0, sizeof(answer));
+	answer.pathlen = strlen(handler->cgroup) + 1;
+	answer.path = handler->cgroup;
+	answer.ret = 0;
+
+	ret = send(fd, &answer, sizeof(answer), 0);
+	if (ret < 0) {
+		WARN("failed to send answer to the peer");
+		return -1;
+	}
+
+	if (ret != sizeof(answer)) {
+		ERROR("partial answer sent");
+		return -1;
+	}
+
+	ret = send(fd, answer.path, answer.pathlen, 0);
+	if (ret < 0) {
+		WARN("failed to send answer to the peer");
+		return -1;
+	}
+
+	if (ret != answer.pathlen) {
+		ERROR("partial answer sent");
+		return -1;
+	}
+
+	return 0;
+}
+
 int lxc_clone_flags_callback(int fd, struct lxc_request *request,
 			     struct lxc_handler *handler)
 {
 	struct lxc_answer answer;
 	int ret;
 
+	memset(&answer, 0, sizeof(answer));
 	answer.pid = 0;
 	answer.ret = handler->clone_flags;
 
@@ -467,7 +505,7 @@ out_free:
 	return NULL;
 }
 
-void lxc_fini(const char *name, struct lxc_handler *handler)
+static void lxc_fini(const char *name, struct lxc_handler *handler)
 {
 	/* The STOPPING state is there for future cleanup code
 	 * which can take awhile
@@ -487,6 +525,11 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	close(handler->conf->maincmd_fd);
 	handler->conf->maincmd_fd = -1;
 	free(handler->name);
+	if (handler->cgroup) {
+		lxc_cgroup_destroy(handler->cgroup);
+		free(handler->cgroup);
+		handler->cgroup = NULL;
+	}
 	free(handler);
 }
 
@@ -756,7 +799,11 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 		failed_before_rename = 1;
 
-	if (lxc_cgroup_create(name, handler->pid))
+	/* TODO - pass lxc.cgroup.dir (or user's pam cgroup) in for first argument */
+	if ((handler->cgroup = lxc_cgroup_path_create(NULL, name)) == NULL)
+		goto out_delete_net;
+	
+	if (lxc_cgroup_enter(handler->cgroup, handler->pid) < 0)
 		goto out_delete_net;
 
 	if (failed_before_rename)
@@ -786,7 +833,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
 		goto out_delete_net;
 
-	if (setup_cgroup(name, &handler->conf->cgroup)) {
+	if (setup_cgroup(handler->cgroup, &handler->conf->cgroup)) {
 		ERROR("failed to setup the cgroups for '%s'", name);
 		goto out_delete_net;
 	}
@@ -904,7 +951,6 @@ out_fini:
 	lxc_delete_network(handler);
 
 out_fini_nonet:
-	lxc_cgroup_destroy(name);
 	lxc_fini(name, handler);
 	return err;
 

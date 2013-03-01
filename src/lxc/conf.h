@@ -282,7 +282,7 @@ struct lxc_conf {
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);
 
-extern int setup_cgroup(const char *name, struct lxc_list *cgroups);
+extern int setup_cgroup(const char *cgpath, struct lxc_list *cgroups);
 extern int detect_shared_rootfs(void);
 
 /*

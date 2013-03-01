@@ -945,7 +945,7 @@ static bool lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, 
 	if (is_stopped_nolock(c))
 		goto err;
 
-	ret = lxc_cgroup_set(c->name, subsys, value);
+	ret = lxc_cgroup_set(c->name, subsys, value, c->config_path);
 	if (!ret)
 		b = true;
 err:
@@ -966,7 +966,7 @@ static int lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, c
 	if (is_stopped_nolock(c))
 		goto out;
 
-	ret = lxc_cgroup_get(c->name, subsys, retv, inlen);
+	ret = lxc_cgroup_get(c->name, subsys, retv, inlen, c->config_path);
 
 out:
 	lxcunlock(c->privlock);

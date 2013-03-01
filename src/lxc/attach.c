@@ -42,7 +42,6 @@
 #include "log.h"
 #include "attach.h"
 #include "caps.h"
-#include "cgroup.h"
 #include "config.h"
 #include "apparmor.h"
 

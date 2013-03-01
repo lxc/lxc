@@ -84,10 +84,19 @@ static int fill_sock_name(char *path, int len, const char *name,
 static int receive_answer(int sock, struct lxc_answer *answer)
 {
 	int ret;
+	static char answerpath[MAXPATHLEN];
 
 	ret = lxc_af_unix_recv_fd(sock, &answer->fd, answer, sizeof(*answer));
 	if (ret < 0)
 		ERROR("failed to receive answer for the command");
+	if (answer->pathlen == 0)
+		return ret;
+	ret = recv(sock, answerpath, answer->pathlen, 0);
+	if (ret != answer->pathlen) {
+		ERROR("failed to receive answer for the command");
+		ret = 0;
+	} else
+		answer->path = answerpath;
 
 	return ret;
 }
@@ -202,6 +211,7 @@ extern int  lxc_stop_callback(int, struct lxc_request *, struct lxc_handler *);
 extern int  lxc_state_callback(int, struct lxc_request *, struct lxc_handler *);
 extern int  lxc_pid_callback(int, struct lxc_request *, struct lxc_handler *);
 extern int  lxc_clone_flags_callback(int, struct lxc_request *, struct lxc_handler *);
+extern int lxc_cgroup_callback(int, struct lxc_request *, struct lxc_handler *);
 
 static int trigger_command(int fd, struct lxc_request *request,
 			   struct lxc_handler *handler)
@@ -214,6 +224,7 @@ static int trigger_command(int fd, struct lxc_request *request,
 		[LXC_COMMAND_STATE]       = lxc_state_callback,
 		[LXC_COMMAND_PID]         = lxc_pid_callback,
 		[LXC_COMMAND_CLONE_FLAGS] = lxc_clone_flags_callback,
+		[LXC_COMMAND_CGROUP]      = lxc_cgroup_callback,
 	};
 
 	if (request->type < 0 || request->type >= LXC_COMMAND_MAX)

@@ -237,7 +237,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (!elevated_privileges) {
-			ret = lxc_cgroup_attach(my_args.name, grandchild);
+			ret = lxc_cgroup_attach(grandchild, my_args.name, my_args.lxcpath);
 			if (ret < 0) {
 				ERROR("failed to attach process to cgroup");
 				return -1;

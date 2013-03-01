@@ -1375,7 +1375,7 @@ static int setup_kmsg(const struct lxc_rootfs *rootfs,
 	return 0;
 }
 
-int setup_cgroup(const char *name, struct lxc_list *cgroups)
+int setup_cgroup(const char *cgpath, struct lxc_list *cgroups)
 {
 	struct lxc_list *iterator;
 	struct lxc_cgroup *cg;
@@ -1388,8 +1388,11 @@ int setup_cgroup(const char *name, struct lxc_list *cgroups)
 
 		cg = iterator->elem;
 
-		if (lxc_cgroup_set(name, cg->subsystem, cg->value))
+		if (lxc_cgroup_set_bypath(cgpath, cg->subsystem, cg->value)) {
+			ERROR("Error setting %s to %s for %s\n", cg->subsystem,
+				cg->value, cgpath);
 			goto out;
+		}
 
 		DEBUG("cgroup '%s' set to '%s'", cg->subsystem, cg->value);
 	}

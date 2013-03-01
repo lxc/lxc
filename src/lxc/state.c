@@ -66,7 +66,7 @@ lxc_state_t lxc_str2state(const char *state)
 	return -1;
 }
 
-static int freezer_state(const char *name)
+static int freezer_state(const char *name, const char *lxcpath)
 {
 	char *nsgroup;
 	char freezer[MAXPATHLEN];
@@ -74,7 +74,7 @@ static int freezer_state(const char *name)
 	FILE *file;
 	int err;
 
-	err = lxc_cgroup_path_get(&nsgroup, "freezer", name);
+	err = lxc_cgroup_path_get(&nsgroup, "freezer", name, lxcpath);
 	if (err)
 		return -1;
 
@@ -132,7 +132,7 @@ static lxc_state_t __lxc_getstate(const char *name, const char *lxcpath)
 
 lxc_state_t lxc_getstate(const char *name, const char *lxcpath)
 {
-	int state = freezer_state(name);
+	int state = freezer_state(name, lxcpath);
 	if (state != FROZEN && state != FREEZING)
 		state = __lxc_getstate(name, lxcpath);
 	return state;
@@ -148,6 +148,7 @@ extern int lxc_state_callback(int fd, struct lxc_request *request,
 	struct lxc_answer answer;
 	int ret;
 
+	memset(&answer, 0, sizeof(answer));
 	answer.ret = handler->state;
 
 	ret = send(fd, &answer, sizeof(answer), 0);

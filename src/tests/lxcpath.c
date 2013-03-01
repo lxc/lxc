@@ -29,7 +29,7 @@
 #define MYNAME "lxctest1"
 
 #define TSTERR(x) do { \
-	fprintf(stderr, "%d: %s", __LINE__, x); \
+	fprintf(stderr, "%d: %s\n", __LINE__, x); \
 } while (0)
 
 int main()

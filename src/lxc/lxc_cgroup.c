@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 		value = my_args.argv[1];
 
 	if (value) {
-		if (lxc_cgroup_set(my_args.name, state_object, value)) {
+		if (lxc_cgroup_set(my_args.name, state_object, value, my_args.lxcpath)) {
 			ERROR("failed to assign '%s' value to '%s' for '%s'",
 				value, state_object, my_args.name);
 			return -1;
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 		int ret;
 		char buffer[len];
 
-		ret = lxc_cgroup_get(my_args.name, state_object, buffer, len);
+		ret = lxc_cgroup_get(my_args.name, state_object, buffer, len, my_args.lxcpath);
 		if (ret < 0) {
 			ERROR("failed to retrieve value of '%s' for '%s'",
 			      state_object, my_args.name);
