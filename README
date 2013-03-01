@@ -39,8 +39,13 @@ Downloading the current source code:
   ./autogen.sh && ./configure && make && sudo make install
   preceded by ./autogen.sh if configure do not exist yet.
 
+Troubleshooting:
+
   If the ./autogen.sh script outputs error message "aclocal: not found",
   run `sudo apt-get install automake` then try again.
+
+  If the ./configure step outputs error message "configure: error: Please install the libcap development files."  
+  run `sudo apt-get install libcap-dev` then try again.
 
 Getting help:
 
