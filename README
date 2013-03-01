@@ -39,6 +39,19 @@ Downloading the current source code:
   ./autogen.sh && ./configure && make && sudo make install
   preceded by ./autogen.sh if configure do not exist yet.
 
+Troubleshooting:
+
+  If the ./autogen.sh script shows the following message: "aclocal: not found",
+  you are likely missing the "automake" package. Make sure it's installed and
+  try again.
+
+  If the ./configure script gives you the following message:
+    "configure: error: Please install the libcap development files."
+  you are likely missing the "libcap-dev" package.
+  The configure script will usually give you hints as to what you are missing,
+  looking for those in your package manager will usually give you the package
+  that you need to install.
+
 Getting help:
 
   when you find you need help, you can check out one of the two
