@@ -132,6 +132,7 @@ int main(int argc, char *argv[])
 	uid_t uid;
 	char *curdir;
 	int cgroup_ipc_sockets[2];
+	char *user_shell;
 
 	ret = lxc_caps_init();
 	if (ret)
@@ -438,7 +439,20 @@ int main(int argc, char *argv[])
 		uid = getuid();
 
 		passwd = getpwuid(uid);
-		if (!passwd) {
+
+		/* this probably happens because of incompatible nss
+		 * implementations in host and container (remember, this
+		 * code is still using the host's glibc but our mount
+		 * namespace is in the container)
+		 * we may try to get the information by spawning a
+		 * [getent passwd uid] process and parsing the result
+		 */
+		if (!passwd)
+		        user_shell = lxc_attach_getpwshell(uid);
+                else
+                        user_shell = passwd->pw_shell;
+
+		if (!user_shell) {
 			SYSERROR("failed to get passwd "		\
 				 "entry for uid '%d'", uid);
 			return -1;
@@ -446,7 +460,7 @@ int main(int argc, char *argv[])
 
 		{
 			char *const args[] = {
-				passwd->pw_shell,
+				user_shell,
 				NULL,
 			};
 
