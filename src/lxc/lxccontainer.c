@@ -692,7 +692,8 @@ static bool lxcapi_createl(struct lxc_container *c, char *t, ...)
 		args[nargs - 1] = arg;
 	}
 	va_end(ap);
-	args[nargs] = NULL;
+	if (args)
+		args[nargs] = NULL;
 
 	bret = c->create(c, t, args);
 
