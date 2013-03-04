@@ -2447,7 +2447,7 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 int add_id_mapping(enum idtype idtype, pid_t pid, uid_t host_start, uid_t ns_start, int range)
 {
 	char path[PATH_MAX];
-	int ret;
+	int ret, closeret;
 	FILE *f;
 
 	ret = snprintf(path, PATH_MAX, "/proc/%d/%cid_map", pid, idtype == ID_TYPE_UID ? 'u' : 'g');
@@ -2462,9 +2462,11 @@ int add_id_mapping(enum idtype idtype, pid_t pid, uid_t host_start, uid_t ns_sta
 	}
 	ret = fprintf(f, "%d %d %d", ns_start, host_start, range);
 	if (ret < 0)
-		perror("write");
-	fclose(f);
-	return ret < 0 ? ret : 0;
+		SYSERROR("writing id mapping");
+	closeret = fclose(f);
+	if (closeret)
+		SYSERROR("writing id mapping");
+	return ret < 0 ? ret : closeret;
 }
 
 int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
