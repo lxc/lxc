@@ -791,7 +791,7 @@ static bool lxcapi_destroy(struct lxc_container *c)
 	if (pid < 0)
 		return false;
 	if (pid == 0) { // child
-		ret = execlp("lxc-destroy", "lxc-destroy", "-n", c->name, NULL);
+		ret = execlp("lxc-destroy", "lxc-destroy", "-n", c->name, "-P", c->config_path, NULL);
 		perror("execl");
 		exit(1);
 	}
