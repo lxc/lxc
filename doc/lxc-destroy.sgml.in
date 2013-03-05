@@ -83,6 +83,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       </varlistentry>
     </variablelist>
 
+    <varlistentry>
+      <term><option>-P, --lxcpath=<replaceable>PATH</replaceable></option></term>
+      <listitem>
+	<para>
+	  Use an alternate container path.  The default is @LXCPATH@.
+	</para>
+      </listitem>
+    </varlistentry>
+
   </refsect1>
 
   <refsect1>
