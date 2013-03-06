@@ -40,4 +40,6 @@ extern int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx);
 
 extern char *lxc_attach_getpwshell(uid_t uid);
 
+extern void lxc_attach_get_init_uidgid(uid_t* init_uid, gid_t* init_gid);
+
 #endif

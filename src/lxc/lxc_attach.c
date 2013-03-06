@@ -418,13 +418,20 @@ int main(int argc, char *argv[])
 		lxc_sync_fini(handler);
 
 		if (namespace_flags & CLONE_NEWUSER) {
-			/* XXX FIXME this should get the uid of the container init and setuid to that */
-			/* XXX FIXME or perhaps try to map in the lxc-attach caller's uid? */
-			if (setgid(0)) {
+			uid_t init_uid = 0;
+			gid_t init_gid = 0;
+
+			/* ignore errors, we will fall back to root in that case
+			 * (/proc was not mounted etc.)
+			 */
+			lxc_attach_get_init_uidgid(&init_uid, &init_gid);
+
+			/* try to set the uid/gid combination */
+			if (setgid(init_gid)) {
 				SYSERROR("switching to container gid");
 				return -1;
 			}
-			if (setuid(0)) {
+			if (setuid(init_uid)) {
 				SYSERROR("switching to container uid");
 				return -1;
 			}
