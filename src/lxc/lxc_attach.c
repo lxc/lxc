@@ -452,15 +452,21 @@ int main(int argc, char *argv[])
                 else
                         user_shell = passwd->pw_shell;
 
-		if (!user_shell) {
-			SYSERROR("failed to get passwd "		\
-				 "entry for uid '%d'", uid);
-			return -1;
-		}
-
-		{
+                if (user_shell) {
 			char *const args[] = {
 				user_shell,
+				NULL,
+			};
+
+			(void) execvp(args[0], args);
+		}
+
+		/* executed if either no passwd entry or execvp fails,
+		 * we will fall back on /bin/sh as a default shell
+		 */
+		{
+			char *const args[] = {
+				"/bin/sh",
 				NULL,
 			};
 
