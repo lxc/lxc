@@ -355,6 +355,8 @@ char *lxc_attach_getpwshell(uid_t uid)
 			}
 			if (!token)
 				continue;
+			if (result)
+				free(result);
 			result = strdup(token);
 
 			/* sanity check that there are no fields after that */
