@@ -376,9 +376,11 @@ int main(int argc, char *argv[])
 		lxc_sync_fini_parent(handler);
 		close(cgroup_ipc_sockets[1]);
 
-		if (attach_apparmor(init_ctx->aa_profile) < 0) {
-			ERROR("failed switching apparmor profiles");
-			return -1;
+		if ((namespace_flags & CLONE_NEWNS)) {
+			if (attach_apparmor(init_ctx->aa_profile) < 0) {
+				ERROR("failed switching apparmor profiles");
+				return -1;
+			}
 		}
 
 		/* A description of the purpose of this functionality is
