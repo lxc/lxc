@@ -26,3 +26,16 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-cgpath
 
 endif
+
+EXTRA_DIST = \
+	cgpath.c \
+	containertests.c \
+	createtest.c \
+	destroytest.c \
+	get_item.c \
+	getkeys.c \
+	locktests.c \
+	lxcpath.c \
+	saveconfig.c \
+	shutdowntest.c \
+	startone.c
