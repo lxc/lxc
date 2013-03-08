@@ -30,7 +30,6 @@ templates/lxc-archlinux
 templates/lxc-busybox
 templates/lxc-debian
 templates/lxc-fedora
-templates/lxc-lenny
 templates/lxc-opensuse
 templates/lxc-oracle
 templates/lxc-sshd

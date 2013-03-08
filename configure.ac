@@ -355,7 +355,6 @@ AC_CONFIG_FILES([
 	hooks/Makefile
 
 	templates/Makefile
-	templates/lxc-lenny
 	templates/lxc-debian
 	templates/lxc-ubuntu
 	templates/lxc-ubuntu-cloud
