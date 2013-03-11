@@ -1049,13 +1049,13 @@ static int config_idmap(const char *key, const char *value, struct lxc_conf *lxc
 
 	lxc_list_add_tail(&lxc_conf->id_map, idmaplist);
 
-	ret = sscanf(value, "%c %d %d %d", &type, &hostid, &nsid, &range);
+	ret = sscanf(value, "%c %d %d %d", &type, &nsid, &hostid, &range);
 	if (ret != 4)
 		goto out;
-	INFO("read uid map: type %c hostid %d nsid %d range %d", type, hostid, nsid, range);
-	if (type == 'U')
+	INFO("read uid map: type %c nsid %d hostid %d range %d", type, nsid, hostid, range);
+	if (type == 'u')
 		idmap->idtype = ID_TYPE_UID;
-	else if (type == 'G')
+	else if (type == 'g')
 		idmap->idtype = ID_TYPE_GID;
 	else
 		goto out;

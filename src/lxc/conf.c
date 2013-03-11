@@ -2447,7 +2447,7 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 	return 0;
 }
 
-int add_id_mapping(enum idtype idtype, pid_t pid, uid_t host_start, uid_t ns_start, int range)
+static int add_id_mapping(enum idtype idtype, pid_t pid, uid_t ns_start, uid_t host_start, int range)
 {
 	char path[PATH_MAX];
 	int ret, closeret;
@@ -2480,7 +2480,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 
 	lxc_list_for_each(iterator, idmap) {
 		map = iterator->elem;
-		ret = add_id_mapping(map->idtype, pid, map->hostid, map->nsid, map->range);
+		ret = add_id_mapping(map->idtype, pid, map->nsid, map->hostid, map->range);
 		if (ret)
 			break;
 	}
