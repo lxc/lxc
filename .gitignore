@@ -66,7 +66,6 @@ src/lxc/lxc-wait
 src/lxc/legacy/lxc-ls
 
 src/python-lxc/build/
-src/python-lxc/lxc/__init__.py
 src/python-lxc/lxc/__pycache__/
 
 src/tests/lxc-test-containertests

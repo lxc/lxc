@@ -26,14 +26,13 @@ import glob
 import os
 import subprocess
 import stat
-import tempfile
 import time
 import warnings
 
 warnings.warn("The python-lxc API isn't yet stable "
               "and may change at any point in the future.", Warning, 2)
 
-default_config_path = "@LXCPATH@"
+default_config_path = _lxc.get_default_config_path()
 
 
 class ContainerNetwork():
