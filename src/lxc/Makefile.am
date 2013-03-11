@@ -15,7 +15,8 @@ pkginclude_HEADERS = \
 		state.h \
 		attach.h \
 		lxccontainer.h \
-		lxclock.h
+		lxclock.h \
+		version.h
 
 if IS_BIONIC
 pkginclude_HEADERS += \
@@ -71,7 +72,8 @@ liblxc_so_SOURCES = \
 	lxcutmp.c lxcutmp.h \
 	apparmor.c apparmor.h \
 	lxclock.h lxclock.c \
-	lxccontainer.c lxccontainer.h
+	lxccontainer.c lxccontainer.h \
+	version.c version.h
 
 if IS_BIONIC
 liblxc_so_SOURCES += \

@@ -197,11 +197,6 @@ extern int lxc_checkpoint(const char *name, int sfd, int flags);
 extern int lxc_restart(const char *, int, struct lxc_conf *, int, const char *);
 
 /*
- * Returns the version number of the library
- */
-extern const char const *lxc_version(void);
-
-/*
  * Create and return a new lxccontainer struct.
  */
 extern struct lxc_container *lxc_container_new(const char *name, const char *configpath);

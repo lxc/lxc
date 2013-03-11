@@ -25,6 +25,7 @@
 #include "confile.h"
 #include "cgroup.h"
 #include "commands.h"
+#include "version.h"
 #include "log.h"
 #include <unistd.h>
 #include <sys/types.h>
@@ -976,6 +977,11 @@ out:
 const char *lxc_get_default_config_path(void)
 {
 	return default_lxc_path();
+}
+
+const char *lxc_get_version(void)
+{
+	return lxc_version();
 }
 
 struct lxc_container *lxc_container_new(const char *name, const char *configpath)
