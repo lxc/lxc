@@ -101,6 +101,12 @@ get_default_config_path(Container *self, PyObject *args, PyObject *kwds)
     return PyUnicode_FromString(lxc_get_default_config_path());
 }
 
+static PyObject *
+get_version(Container *self, PyObject *args, PyObject *kwds)
+{
+    return PyUnicode_FromString(lxc_get_version());
+}
+
 // Container properties
 static PyObject *
 Container_config_file_name(Container *self, PyObject *args, PyObject *kwds)
@@ -637,6 +643,8 @@ PyVarObject_HEAD_INIT(NULL, 0)
 static PyMethodDef LXC_methods[] = {
     {"get_default_config_path",  (PyCFunction)get_default_config_path, METH_NOARGS,
      "Returns the current LXC config path"},
+    {"get_version",  (PyCFunction)get_version, METH_NOARGS,
+     "Returns the current LXC library version"},
     {NULL, NULL, 0, NULL}
 };
 
