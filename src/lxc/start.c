@@ -620,7 +620,8 @@ static int do_start(void *data)
 	lxc_sync_fini_parent(handler);
 
 	/* don't leak the pinfd to the container */
-	close(handler->pinfd);
+	if (handler->pinfd >= 0)
+		close(handler->pinfd);
 
 	/* Tell the parent task it can begin to configure the
 	 * container and wait for it to finish

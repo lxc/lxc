@@ -578,7 +578,7 @@ int pin_rootfs(const char *rootfs)
 	int ret, fd;
 
 	if (rootfs == NULL || strlen(rootfs) == 0)
-		return 0;
+		return -2;
 
 	if (!realpath(rootfs, absrootfs)) {
 		SYSERROR("failed to get real path for '%s'", rootfs);
