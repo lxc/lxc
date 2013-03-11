@@ -2768,8 +2768,10 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_kmsg(&lxc_conf->rootfs, &lxc_conf->console))  // don't fail
-		ERROR("failed to setup kmsg for '%s'", name);
+	if (lxc_conf->kmsg) {
+		if (setup_kmsg(&lxc_conf->rootfs, &lxc_conf->console))  // don't fail
+			ERROR("failed to setup kmsg for '%s'", name);
+	}
 
 	if (setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info, lxc_conf->ttydir)) {
 		ERROR("failed to setup the ttys for '%s'", name);

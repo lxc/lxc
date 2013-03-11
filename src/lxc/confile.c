@@ -56,6 +56,7 @@ static int config_personality(const char *, const char *, struct lxc_conf *);
 static int config_pts(const char *, const char *, struct lxc_conf *);
 static int config_tty(const char *, const char *, struct lxc_conf *);
 static int config_ttydir(const char *, const char *, struct lxc_conf *);
+static int config_kmsg(const char *, const char *, struct lxc_conf *);
 #if HAVE_APPARMOR
 static int config_aa_profile(const char *, const char *, struct lxc_conf *);
 #endif
@@ -97,6 +98,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.pts",                  config_pts                  },
 	{ "lxc.tty",                  config_tty                  },
 	{ "lxc.devttydir",            config_ttydir               },
+	{ "lxc.kmsg",                 config_kmsg                 },
 #if HAVE_APPARMOR
 	{ "lxc.aa_profile",            config_aa_profile          },
 #endif
@@ -929,6 +931,16 @@ static int config_ttydir(const char *key, const char *value,
 	if (lxc_conf->ttydir)
 		free(lxc_conf->ttydir);
 	lxc_conf->ttydir = path;
+
+	return 0;
+}
+
+static int config_kmsg(const char *key, const char *value,
+			  struct lxc_conf *lxc_conf)
+{
+	int v = atoi(value);
+
+	lxc_conf->kmsg = v;
 
 	return 0;
 }
