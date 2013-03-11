@@ -2447,7 +2447,8 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 	return 0;
 }
 
-static int add_id_mapping(enum idtype idtype, pid_t pid, uid_t ns_start, uid_t host_start, int range)
+static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
+			    size_t buf_size)
 {
 	char path[PATH_MAX];
 	int ret, closeret;
@@ -2463,7 +2464,7 @@ static int add_id_mapping(enum idtype idtype, pid_t pid, uid_t ns_start, uid_t h
 		perror("open");
 		return -EINVAL;
 	}
-	ret = fprintf(f, "%d %d %d", ns_start, host_start, range);
+	ret = fwrite(buf, buf_size, 1, f);
 	if (ret < 0)
 		SYSERROR("writing id mapping");
 	closeret = fclose(f);
@@ -2477,13 +2478,34 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	struct lxc_list *iterator;
 	struct id_map *map;
 	int ret = 0;
+	char *buf,*pos;
+	enum idtype type;
 
-	lxc_list_for_each(iterator, idmap) {
-		map = iterator->elem;
-		ret = add_id_mapping(map->idtype, pid, map->nsid, map->hostid, map->range);
+	/* The kernel only takes <= 4k for writes to /proc/<nr>/[ug]id_map */
+	buf = pos = malloc(4096);
+	if (!buf)
+		return -ENOMEM;
+
+	for(type = ID_TYPE_UID; type <= ID_TYPE_GID; type++) {
+		int left,fill;
+		lxc_list_for_each(iterator, idmap) {
+			map = iterator->elem;
+			if (map->idtype == type) {
+				left = 4096 - (pos - buf);
+				fill = snprintf(pos, left, "%lu %lu %lu\n",
+					map->nsid, map->hostid, map->range);
+				if (fill <= 0 || fill >= left)
+					SYSERROR("snprintf failed, too many mappings");
+				pos += fill;
+			}
+		}
+		ret = write_id_mapping(type, pid, buf, pos-buf);
 		if (ret)
 			break;
+		pos = buf;
 	}
+
+	free(buf);
 	return ret;
 }
 

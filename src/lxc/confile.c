@@ -1114,7 +1114,7 @@ static int config_idmap(const char *key, const char *value, struct lxc_conf *lxc
 	char *subkey;
 	struct lxc_list *idmaplist = NULL;
 	struct id_map *idmap = NULL;
-	int hostid, nsid, range;
+	unsigned long hostid, nsid, range;
 	char type;
 	int ret;
 
@@ -1139,10 +1139,10 @@ static int config_idmap(const char *key, const char *value, struct lxc_conf *lxc
 
 	lxc_list_add_tail(&lxc_conf->id_map, idmaplist);
 
-	ret = sscanf(value, "%c %d %d %d", &type, &nsid, &hostid, &range);
+	ret = sscanf(value, "%c %lu %lu %lu", &type, &nsid, &hostid, &range);
 	if (ret != 4)
 		goto out;
-	INFO("read uid map: type %c nsid %d hostid %d range %d", type, nsid, hostid, range);
+	INFO("read uid map: type %c nsid %lu hostid %lu range %lu", type, nsid, hostid, range);
 	if (type == 'u')
 		idmap->idtype = ID_TYPE_UID;
 	else if (type == 'g')
