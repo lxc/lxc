@@ -277,6 +277,7 @@ struct lxc_conf {
 #endif
 	int maincmd_fd;
 	int autodev;  // if 1, mount and fill a /dev at start
+	int stopsignal; // signal used to stop container
 	char *rcfile;	// Copy of the top level rcfile we read
 };
 

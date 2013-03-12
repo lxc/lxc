@@ -130,6 +130,29 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </refsect2>
 
     <refsect2>
+      <title>Stop signal</title>
+      <para>
+    Allows to specify signal name or number, sent by lxc-stop to
+    shutdown the container. Different init systems could use
+    different signals to perform clean shutdown sequence. Option
+    allows signal to be specified in kill(1) fashion, e.g.
+    SIGKILL, SIGRTMIN+14, SIGRTMAX-10 or plain number.
+      </para>
+      <variablelist>
+    <varlistentry>
+      <term>
+        <option>lxc.stopsignal</option>
+      </term>
+      <listitem>
+        <para>
+          specify the signal used to stop the container
+        </para>
+      </listitem>
+    </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Network</title>
       <para>
 	The network section defines how the network is virtualized in

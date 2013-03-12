@@ -27,6 +27,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <ctype.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/param.h>
@@ -87,6 +89,7 @@ static int config_seccomp(const char *, const char *, struct lxc_conf *);
 static int config_includefile(const char *, const char *, struct lxc_conf *);
 static int config_network_nic(const char *, const char *, struct lxc_conf *);
 static int config_autodev(const char *, const char *, struct lxc_conf *);
+static int config_stopsignal(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 
@@ -134,6 +137,34 @@ static struct lxc_config_t config[] = {
 	{ "lxc.seccomp",              config_seccomp              },
 	{ "lxc.include",              config_includefile          },
 	{ "lxc.autodev",              config_autodev              },
+	{ "lxc.stopsignal",           config_stopsignal           },
+};
+
+struct signame {
+	int num;
+	char *name;
+};
+
+struct signame signames[] = {
+	{ SIGHUP,    "HUP" },
+	{ SIGINT,    "INT" },
+	{ SIGQUIT,   "QUIT" },
+	{ SIGILL,    "ILL" },
+	{ SIGABRT,   "ABRT" },
+	{ SIGFPE,    "FPE" },
+	{ SIGKILL,   "KILL" },
+	{ SIGSEGV,   "SEGV" },
+	{ SIGPIPE,   "PIPE" },
+	{ SIGALRM,   "ALRM" },
+	{ SIGTERM,   "TERM" },
+	{ SIGUSR1,   "USR1" },
+	{ SIGUSR2,   "USR2" },
+	{ SIGCHLD,   "CHLD" },
+	{ SIGCONT,   "CONT" },
+	{ SIGSTOP,   "STOP" },
+	{ SIGTSTP,   "TSTP" },
+	{ SIGTTIN,   "TTIN" },
+	{ SIGTTOU,   "TTOU" },
 };
 
 static const size_t config_size = sizeof(config)/sizeof(struct lxc_config_t);
@@ -955,6 +986,65 @@ static int config_autodev(const char *key, const char *value,
 	int v = atoi(value);
 
 	lxc_conf->autodev = v;
+
+	return 0;
+}
+
+static int sig_num(const char *sig)
+{
+	int n;
+	char *endp = NULL;
+
+	errno = 0;
+	n = strtol(sig, &endp, 10);
+	if (sig == endp || n < 0 || errno != 0)
+		return -1;
+	return n;
+}
+
+static int rt_sig_num(const char *signame)
+{
+	int sig_n = 0;
+	int rtmax = 0;
+
+	if (strncasecmp(signame, "max-", 4) == 0) {
+		rtmax = 1;
+	}
+	signame += 4;
+	if (!isdigit(*signame))
+		return -1;
+	sig_n = sig_num(signame);
+	sig_n = rtmax ? SIGRTMAX - sig_n : SIGRTMIN + sig_n;
+	if (sig_n > SIGRTMAX || sig_n < SIGRTMIN)
+		return -1;
+	return sig_n;
+}
+
+static int sig_parse(const char *signame) {
+	int n;
+
+	if (isdigit(*signame)) {
+		return sig_num(signame);
+	} else if (strncasecmp(signame, "sig", 3) == 0) {
+		signame += 3;
+		if (strncasecmp(signame, "rt", 2) == 0)
+			return rt_sig_num(signame + 2);
+		for (n = 0; n < sizeof(signames) / sizeof((signames)[0]); n++) {
+			if (strcasecmp (signames[n].name, signame) == 0)
+				return signames[n].num;
+		}
+	}
+	return -1;
+}
+
+static int config_stopsignal(const char *key, const char *value,
+			  struct lxc_conf *lxc_conf)
+{
+	int sig_n = sig_parse(value);
+
+	if (sig_n < 0)
+		return -1;
+	lxc_conf->stopsignal = sig_n;
 
 	return 0;
 }
