@@ -9,7 +9,7 @@
 # Modified for Oracle Linux 5
 # Wim Coekaerts <wim.coekaerts@oracle.com>
 #
-# Modified for Oracle Linux 6, combined OL5,6 into one template script
+# Modified for Oracle Linux 6, combined OL4,5,6 into one template script
 # Dwight Engen <dwight.engen@oracle.com>
 #
 # This library is free software; you can redistribute it and/or
@@ -64,14 +64,16 @@ container_rootfs_configure()
 	mkdir -p $container_rootfs/etc/selinux
         echo "SELINUX=disabled" >$container_rootfs/etc/selinux/config
     fi
-    sed -i 's|session[ ]*required[ ]*pam_selinux.so[ ]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/login
-    sed -i 's|session[ ]*required[ ]*pam_selinux.so[ ]*open|#session required pam_selinux.so open|' $container_rootfs/etc/pam.d/login
-    sed -i 's|session[ ]*required[ ]*pam_loginuid.so|#session required pam_loginuid.so|' $container_rootfs/etc/pam.d/login
+    sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/login
+    sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*open|#session required pam_selinux.so open|' $container_rootfs/etc/pam.d/login
+    sed -i 's|session[ \t]*required[ \t]*pam_loginuid.so|#session required pam_loginuid.so|' $container_rootfs/etc/pam.d/login
 
+    # silence error in checking for selinux
+    sed -i 's|cat /proc/self/attr/current|cat /proc/self/attr/current 2>/dev/null|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|cat /proc/self/attr/current|cat /proc/self/attr/current 2>/dev/null|' $container_rootfs/etc/rc.d/rc.sysinit
 
     # configure the network to use dhcp. we set DHCP_HOSTNAME so the guest
     # will report its name and be resolv'able by the hosts dnsmasq
-    touch $container_rootfs/etc/resolv.conf
     cat <<EOF > $container_rootfs/etc/sysconfig/network-scripts/ifcfg-eth0
 DEVICE=eth0
 BOOTPROTO=dhcp
@@ -81,6 +83,11 @@ DHCP_HOSTNAME=$name
 NM_CONTROLLED=no
 TYPE=Ethernet
 EOF
+
+    # avoid error in ol5 attempting to copy non-existent resolv.conf
+    if [ $container_release_major = "5" ]; then
+        sed -i 's|resolv.conf.predhclient|resolv.conf.predhclient 2>/dev/null|' $container_rootfs/sbin/dhclient-script
+    fi
 
     # set the hostname
     cat <<EOF > $container_rootfs/etc/sysconfig/network
@@ -97,11 +104,7 @@ EOF
     # set minimal hosts
     echo "127.0.0.1 localhost $name" > $container_rootfs/etc/hosts
 
-    # disable ipv6
-    if [ -f $container_rootfs/etc/modprobe.d/blacklist.conf ]; then
-        echo "blacklist ipv6" >>$container_rootfs/etc/modprobe.d/blacklist.conf
-        echo "blacklist net-pf-10" >>$container_rootfs/etc/modprobe.d/blacklist.conf
-    fi
+    # disable ipv6 on ol6
     rm -f $container_rootfs/etc/sysconfig/network-scripts/init.ipv6-global
 
     # this file has to exist for libvirt/Virtual machine monitor to boot the container
@@ -139,6 +142,12 @@ EOF
         sed -i 's|action $"Setting network parameters|# LXC action $"Setting network parameters|' $container_rootfs/etc/init.d/NetworkManager 2>/dev/null
     fi
 
+    # no need to attempt to mount /
+    sed -i 's|mount -f /$|# LXC mount -f /|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|mount -f /$|# LXC mount -f /|' $container_rootfs/etc/rc.d/rc.sysinit
+    sed -i 's|action \$"Remounting root filesystem|/bin/true # LXC action $"Remounting root filesystem|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|action \$"Remounting root filesystem|/bin/true # LXC action $"Remounting root filesystem|' $container_rootfs/etc/rc.d/rc.sysinit
+
     # disable udev in the container
     if [ $container_release_major = "4" ]; then
         sed -i 's|\[ -x /sbin/start_udev \]|# LXC no udev|' $container_rootfs/etc/rc.sysinit
@@ -165,8 +174,10 @@ EOF
     else
         sed -i 's|\[ -x /sbin/hwclock|\[ 0 -eq 1|' $container_rootfs/etc/rc.d/init.d/halt
     fi
-    sed -i 's|/sbin/hwclock|/sbin/nohwclock|' $container_rootfs/etc/rc.sysinit
-    sed -i 's|/sbin/hwclock|/sbin/nohwclock|' $container_rootfs/etc/rc.d/rc.sysinit
+    sed -i 's|^\[ -x /sbin/hwclock|\[ 0 -eq 1|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|^\[ -x /sbin/hwclock|\[ 0 -eq 1|' $container_rootfs/etc/rc.d/rc.sysinit
+    sed -i 's|^/sbin/hwclock|# LXC /sbin/nohwclock|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|^/sbin/hwclock|# LXC /sbin/nohwclock|' $container_rootfs/etc/rc.d/rc.sysinit
 
     # dont start lvm
     sed -i 's|action $"Setting up Logical Volume Management:"|#action $"Setting up Logical Volume Management:"|' $container_rootfs/etc/rc.sysinit
@@ -197,6 +208,9 @@ EOF
 
     # dont try to unmount /dev/lxc devices
     sed -i 's|&& $1 !~ /^\\/dev\\/ram/|\&\& $2 !~ /^\\/dev\\/lxc/ \&\& $1 !~ /^\\/dev\\/ram/|' $container_rootfs/etc/init.d/halt
+
+    # don't try to unmount swap
+    sed -i 's|\[ -f /proc/swaps \]|# LXC [ -f /proc/swaps ]|' $container_rootfs/etc/init.d/halt
 
     # start a getty on /dev/console, /dev/tty[1-4]
     if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
@@ -280,6 +294,15 @@ EOF
     mknod -m 666  $dev_path/tty4 c 4 4
     mknod -m 666  $dev_path/full c 1 7
     mknod -m 600  $dev_path/initctl p
+
+    # set selinux labels same as host
+    if which chcon >/dev/null 2>&1 ; then
+        for node in null zero random urandom pts shm \
+                    tty tty0 tty1 tty2 tty3 tty4 full ;
+        do
+            chcon --reference /dev/$node $dev_path/$node 2>/dev/null
+        done
+    fi
 
     # ensure /dev/ptmx refers to the newinstance devpts of the container, or
     # pty's will get crossed up with the hosts (https://lkml.org/lkml/2012/1/23/512)
@@ -384,7 +407,8 @@ container_rootfs_clone()
         btrfs subvolume delete $container_rootfs
         btrfs subvolume snapshot $template_rootfs $container_rootfs || die "btrfs clone template"
     else
-        cp -ax $template_rootfs $container_rootfs || die "copy template"
+        echo "Copying rootfs ..."
+        cp -axT $template_rootfs $container_rootfs || die "copy template"
     fi
 }
 
@@ -392,7 +416,7 @@ container_rootfs_create()
 {
     cmds="rpm wget yum"
     if [ $container_release_major -lt "6" ]; then
-        if [ $host_distribution = "Ubuntu" ]; then
+        if [ $host_distribution = "Ubuntu" -o $host_distribution = "Debian" ]; then
             db_dump_cmd="db5.1_dump"
             db_load_cmd="db4.3_load"
         fi
@@ -457,12 +481,16 @@ container_rootfs_create()
             else
                 repo="ol"$container_release_major"_"$container_release_minor
             fi
-        elif [ $container_release_minor = "0" ]; then
-            repo="ol"$container_release_major"_ga_base"
         elif [ $container_release_major = "6" ]; then
-            repo="ol"$container_release_major"_u"$container_release_minor"_base"
+            if   [ $container_release_minor = "0" ]; then
+                repo="ol"$container_release_major"_ga_base"
+            else
+                repo="ol"$container_release_major"_u"$container_release_minor"_base"
+            fi
         elif [ $container_release_major = "5" ]; then
-            if [ $container_release_minor -lt "6" ]; then
+            if   [ $container_release_minor = "0" ]; then
+                repo="el"$container_release_major"_ga_base"
+            elif [ $container_release_minor -lt "6" ]; then
                 repo="el"$container_release_major"_u"$container_release_minor"_base"
             else
                 repo="ol"$container_release_major"_u"$container_release_minor"_base"
@@ -478,10 +506,12 @@ container_rootfs_create()
         # create rpm db, download and yum install minimal packages
         mkdir -p $container_rootfs/var/lib/rpm
         rpm --root $container_rootfs --initdb
-        yum_cmd="yum --installroot $container_rootfs --disablerepo=* --enablerepo=$repo -y --nogpgcheck"
+        yum_args="--installroot $container_rootfs --disablerepo=* --enablerepo=$repo -y --nogpgcheck"
         min_pkgs="yum initscripts passwd rsyslog vim-minimal openssh-server dhclient chkconfig rootfiles policycoreutils oraclelinux-release"
 
-        $yum_cmd install $min_pkgs
+        # we unshare the mount namespace because yum installing the ol4
+        # packages causes $rootfs/proc to be mounted on
+        lxc-unshare -s MOUNT yum -- $yum_args install $min_pkgs
         if [ $? -ne 0 ]; then
             die "Failed to download and install the rootfs, aborting."
         fi
@@ -491,16 +521,26 @@ container_rootfs_create()
         # that coreutils is installed, reinstall the packages so their POSTIN
         # runs right. similarly, libutempter depends on libselinux.so.1 when
         # it runs /usr/sbin/groupadd, so reinstall it too
+        redo_pkgs=""
         if [ $container_release_major = "5" ]; then
-            redo_pkgs="pam"
-            if [ $container_release_minor -gt "1" ]; then
-                redo_pkgs="$redo_pkgs rsyslog"
+            if   [ $container_release_minor = "latest" ]; then
+                redo_pkgs="pam rsyslog libutempter"
+            elif [ $container_release_minor -lt 2 ]; then
+                redo_pkgs="pam"
+            elif [ $container_release_minor -lt 6 ]; then
+                redo_pkgs="pam rsyslog"
+            elif [ $container_release_minor -gt 5 ]; then
+                redo_pkgs="pam rsyslog libutempter"
             fi
-            if [ $container_release_minor -gt "5" ]; then
-                redo_pkgs="$redo_pkgs libutempter"
-            fi
+        fi
+        # shadow utils fails on ol4 and ol6.1
+        if [ $container_release_major = "4" -o \
+             $container_release_major = "6" -a $container_release_minor = "1" ]; then
+            redo_pkgs="shadow-utils"
+        fi
+        if [ x"$redo_pkgs" != x ]; then
             rpm --root $container_rootfs --nodeps -e $redo_pkgs
-            $yum_cmd install $redo_pkgs
+            yum $yum_args install $redo_pkgs
             if [ $? -ne 0 ]; then
                 die "Unable to reinstall packages"
             fi
@@ -508,7 +548,7 @@ container_rootfs_create()
 
         # these distributions put the rpm database in a place the guest is
         # not expecting it, so move it
-        if [ $host_distribution = "Ubuntu" ]; then
+        if [ $host_distribution = "Ubuntu" -o $host_distribution = "Debian" ]; then
             mv $container_rootfs/$HOME/.rpmdb/* $container_rootfs/var/lib/rpm
         fi
 
@@ -530,12 +570,6 @@ container_rootfs_create()
         echo "Rebuilding rpm database"
         rm -f $container_rootfs/var/lib/rpm/__db*
         chroot $container_rootfs rpm --rebuilddb >/dev/null 2>&1
-
-        # doing the yum install with release 4 packages causes proc in the
-        # container to be mounted, which makes lxc-destroy fail.
-        if [ $container_release_major = "4" ]; then
-            umount $container_rootfs/proc
-        fi
 
     ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-oracle-$name
 }
@@ -626,19 +660,6 @@ if [ "$arch" != "i386" -a "$arch" != "x86_64" ]; then
     exit 1
 fi
 
-container_rootfs="$cfg_dir/rootfs"
-
-if [ -n "$template_rootfs" ]; then
-    container_release_get $template_rootfs
-else
-    if [ -z "$container_release_version" ]; then
-        echo "No release specified with -R, defaulting to 6.3"
-        container_release_version="6.3"
-    fi
-    container_release_major=`echo $container_release_version |awk -F '.' '{print $1}'`
-    container_release_minor=`echo $container_release_version |awk -F '.' '{print $2}'`
-fi
-
 if which lsb_release >/dev/null 2>&1; then
     host_distribution=`lsb_release --id |awk '{print $3}'`
     host_release_version=`lsb_release --release |awk '{print $2}'`
@@ -662,7 +683,22 @@ else
 fi
 echo "Host is $host_distribution $host_release_version"
 
-trap cleanup SIGHUP SIGINT SIGTERM
+container_rootfs="$cfg_dir/rootfs"
+
+if [ -n "$template_rootfs" ]; then
+    container_release_get $template_rootfs
+else
+    if [ -z "$container_release_version" ]; then
+        if [ $host_distribution = "OracleServer" ]; then
+            container_release_version=$host_release_version
+        else
+            echo "No release specified with -R, defaulting to 6.4"
+            container_release_version="6.4"
+        fi
+    fi
+    container_release_major=`echo $container_release_version |awk -F '.' '{print $1}'`
+    container_release_minor=`echo $container_release_version |awk -F '.' '{print $2}'`
+fi
 
 container_config_create
 if [ -n "$template_rootfs" ]; then
