@@ -2068,6 +2068,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.name[0] = '\0';
 	new->maincmd_fd = -1;
 	new->rootfs.mount = default_rootfs_mount;
+	new->kmsg = 1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
