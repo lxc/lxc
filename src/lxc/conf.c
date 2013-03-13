@@ -2479,17 +2479,20 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	struct lxc_list *iterator;
 	struct id_map *map;
 	int ret = 0;
-	char *buf,*pos;
 	enum idtype type;
-
-	/* The kernel only takes <= 4k for writes to /proc/<nr>/[ug]id_map */
-	buf = pos = malloc(4096);
-	if (!buf)
-		return -ENOMEM;
+	char *buf = NULL, *pos;
 
 	for(type = ID_TYPE_UID; type <= ID_TYPE_GID; type++) {
-		int left,fill;
+		int left, fill;
+
+		pos = buf;
 		lxc_list_for_each(iterator, idmap) {
+			/* The kernel only takes <= 4k for writes to /proc/<nr>/[ug]id_map */
+			if (!buf)
+				buf = pos = malloc(4096);
+			if (!buf)
+				return -ENOMEM;
+
 			map = iterator->elem;
 			if (map->idtype == type) {
 				left = 4096 - (pos - buf);
@@ -2500,13 +2503,15 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 				pos += fill;
 			}
 		}
+		if (pos == buf) // no mappings were found
+			continue;
 		ret = write_id_mapping(type, pid, buf, pos-buf);
 		if (ret)
 			break;
-		pos = buf;
 	}
 
-	free(buf);
+	if (buf)
+		free(buf);
 	return ret;
 }
 
