@@ -88,76 +88,7 @@ static char *mount_has_subsystem(const struct mntent *mntent)
 }
 
 /*
- * get_init_cgroup: get the cgroup init is in.
- * @subsystem: the exact cgroup subsystem to look up (I.e. "freezer")
- * @mntent: a mntent (from getmntent) whose mntopts contains the subsystem to
- * look up.
- * @dsg: preallocated buffer of at least size MAXPATHLEN in which the path will
- * be copied.
- * @prependslash: if 1, the path will have a '/' prepended for easy of use by
- * the caller.
- *
- * subsystem and mntent can both be NULL, in which case we return
- * the first entry in /proc/1/cgroup.
- *
- * Returns a pointer to the answer (which is just the passed-in @dsg), which
- * may be "".
- */
-static char *get_init_cgroup(const char *subsystem, struct mntent *mntent,
-			     char *dsg, int prependslash)
-{
-	FILE *f;
-	char *c, *c2;
-	char line[MAXPATHLEN];
-	int ret;
-
-	*dsg = '\0';
-	f = fopen("/proc/1/cgroup", "r");
-	if (!f)
-		return dsg;
-
-	while (fgets(line, MAXPATHLEN, f)) {
-		c = index(line, ':');
-		if (!c)
-			continue;
-		c++;
-		c2 = index(c, ':');
-		if (!c2)
-			continue;
-		*c2 = '\0';
-		c2++;
-		if (!subsystem && !mntent)
-			goto good;
-		if (subsystem && strcmp(c, subsystem) != 0)
-			continue;
-		if (mntent && !hasmntopt(mntent, c))
-			continue;
-good:
-		DEBUG("get_init_cgroup: found init cgroup for subsys %s at %s\n",
-			subsystem, c2);
-		ret = snprintf(dsg, MAXPATHLEN, "%s%s", prependslash ? "/" : "", c2);
-		if (ret < 0 || ret >= MAXPATHLEN) {
-			WARN("init cgroup path name was too long.");
-			goto found;
-		}
-		if (ret < 1)
-			goto found;
-
-		c = &dsg[ret-1];
-		if (*c == '\n')
-			*c = '\0';
-
-		goto found;
-	}
-
-found:
-	fclose(f);
-	return dsg;
-}
-
-/*
- * Determine mountpoint for a cgroup subsystem, plus the cgroup path in that
- * subsytem of the container init.
+ * Determine mountpoint for a cgroup subsystem.
  * @subsystem: cgroup subsystem (i.e. freezer).  If this is NULL, the first
  * cgroup mountpoint with any subsystems is used.
  * @mnt: a passed-in buffer of at least size MAXPATHLEN into which the path
@@ -168,7 +99,6 @@ found:
 static int get_cgroup_mount(const char *subsystem, char *mnt)
 {
 	struct mntent *mntent;
-	char initcgroup[MAXPATHLEN], *init;
 	FILE *file = NULL;
 	int ret, err = -1;
 
@@ -190,9 +120,7 @@ static int get_cgroup_mount(const char *subsystem, char *mnt)
 				continue;
 		}
 
-		init = get_init_cgroup(NULL, mntent, initcgroup, 1);
-		ret = snprintf(mnt, MAXPATHLEN, "%s%s", mntent->mnt_dir,
-				init);
+		ret = snprintf(mnt, MAXPATHLEN, "%s", mntent->mnt_dir);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto fail;
 
@@ -505,59 +433,6 @@ int lxc_cgroup_nrtasks(const char *cgpath)
 }
 
 /*
- * Set of helper functions to make sure that, when we create a new
- * cpuset cgroup, its cpus and mems files inherit the values in the
- * parent cgroup
- */
-static long get_value(const char *dir, const char *file)
-{
-	FILE *f;
-	char path[MAXPATHLEN];
-	int ret, retv;
-
-	retv = snprintf(path, MAXPATHLEN, "%s/%s", dir, file);
-	if (retv < 0 || retv >= MAXPATHLEN)
-		return 0;
-	f = fopen(path, "r");
-	ret = fscanf(f, "%d", &retv);
-	fclose(f);
-	if (ret != 1)
-		return 0;
-	return retv;
-}
-
-static void set_value(const char *dir, const char *file, long v)
-{
-	FILE *f;
-	char path[MAXPATHLEN];
-	int retv;
-
-	retv = snprintf(path, MAXPATHLEN, "%s/%s", dir, file);
-	if (retv < 0 || retv >= MAXPATHLEN)
-		return;
-	f = fopen(path, "w");
-	fprintf(f, "%ld\n", v);
-	fclose(f);
-}
-
-static void setup_cpuset(const char *path)
-{
-	/* copy parent values for mems_allowed and cpus_allowed */
-	char *parentpath = strdup(path);
-	char *p;
-	long v;
-	if ((p = rindex(parentpath, '/')) == NULL)
-		goto out;
-	v = get_value(parentpath, "cpuset.mems");
-	set_value(path, "cpuset.mems", v);
-	v = get_value(parentpath, "cpuset.cpus");
-	set_value(path, "cpuset.cpus", v);
-	
-out:
-	free(parentpath);
-}
-
-/*
  * If first creating the /sys/fs/cgroup/$subsys/lxc container, then
  * try to set clone_children to 1.  Some kernels don't support
  * clone_children, and cgroup maintainer wants to deprecate it.  So
@@ -565,13 +440,13 @@ out:
  * hooks/mountcgroup) check if cpuset is in the subsystems, and if so
  * manually copy over mems and cpus.
  */
-static void set_clone_children(const char *mntdir, const char *init)
+static void set_clone_children(const char *mntdir)
 {
 	char path[MAXPATHLEN];
 	FILE *fout;
 	int ret;
 
-	ret = snprintf(path, MAXPATHLEN, "%s%s/cgroup.clone_children", mntdir, init);
+	ret = snprintf(path, MAXPATHLEN, "%s/cgroup.clone_children", mntdir);
 	INFO("writing to %s\n", path);
 	if (ret < 0 || ret > MAXPATHLEN)
 		return;
@@ -597,7 +472,7 @@ static int create_lxcgroups(const char *lxcgroup)
 	FILE *file = NULL;
 	struct mntent *mntent;
 	int ret, retv = -1;
-	char path[MAXPATHLEN], initpath[MAXPATHLEN];
+	char path[MAXPATHLEN];
 
 	file = setmntent(MTAB, "r");
 	if (!file) {
@@ -606,7 +481,6 @@ static int create_lxcgroups(const char *lxcgroup)
 	}
 
 	while ((mntent = getmntent(file))) {
-		char *init = get_init_cgroup(NULL, mntent, initpath, 1);
 
 		if (strcmp(mntent->mnt_type, "cgroup"))
 			continue;
@@ -615,21 +489,19 @@ static int create_lxcgroups(const char *lxcgroup)
 
 		/* 
 		 * TODO - handle case where lxcgroup has subdirs?  (i.e. build/l1)
-		 * May not be worthwhile - remember cgroup depth has perf penalties
-		 * */
-		ret = snprintf(path, MAXPATHLEN, "%s%s/%s",
-			       mntent->mnt_dir, init, lxcgroup ? lxcgroup : "lxc");
+		 * We probably only want to support that for /users/joe
+		 */
+		ret = snprintf(path, MAXPATHLEN, "%s/%s",
+			       mntent->mnt_dir, lxcgroup ? lxcgroup : "lxc");
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto fail;
 		if (access(path, F_OK)) {
-			set_clone_children(mntent->mnt_dir, init);
+			set_clone_children(mntent->mnt_dir);
 			ret = mkdir(path, 0755);
 			if (ret == -1 && errno != EEXIST) {
 				SYSERROR("failed to create '%s' directory", path);
 				goto fail;
 			}
-		} else if (hasmntopt(mntent, "cpuset")) {
-			setup_cpuset(path);
 		}
 
 	}
@@ -656,12 +528,9 @@ fail:
  * free that eventually, however the lxc monitor will keep that string so as to
  * return it in response to a LXC_COMMAND_CGROUP query.
  *
- * Note the path is relative to cgroup mounts plus the caller's init task's
- * cgroup.  I.e. if init is in cgroup /init and the freezer subsystem is at
- * /sys/fs/cgroup/freezer, and this fn returns '/lxc/r1', then the freezer
- * cgroup's full path will be /sys/fs/cgroup/freezer/init/lxc/r1/.  Note also
- * that this should cleanly account for init being in different cgroups for
- * different subsystems.
+ * Note the path is relative to cgroup mounts.  I.e. if the freezer subsystem
+ * is at /sys/fs/cgroup/freezer, and this fn returns '/lxc/r1', then the
+ * freezer cgroup's full path will be /sys/fs/cgroup/freezer/lxc/r1/.
  *
  * XXX This should probably be locked globally
  * 
@@ -670,7 +539,7 @@ fail:
 char *lxc_cgroup_path_create(const char *lxcgroup, const char *name)
 {
 	int i = 0, ret;
-	char *retpath, path[MAXPATHLEN], initpath[MAXPATHLEN], *init;
+	char *retpath, path[MAXPATHLEN];
 	char tail[12];
 	FILE *file = NULL;
 	struct mntent *mntent;
@@ -697,10 +566,8 @@ again:
 		if (!mount_has_subsystem(mntent))
 			continue;
 
-		init = get_init_cgroup(NULL, mntent, initpath, 1);
-		/* find unused mnt_dir + init_cgroup + lxcgroup + name + -$i */
-		ret = snprintf(path, MAXPATHLEN, "%s%s/%s/%s%s",
-			       mntent->mnt_dir, init,
+		/* find unused mnt_dir + lxcgroup + name + -$i */
+		ret = snprintf(path, MAXPATHLEN, "%s/%s/%s%s", mntent->mnt_dir,
 			       lxcgroup ? lxcgroup : "lxc", name, tail);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto fail;
@@ -712,9 +579,6 @@ again:
 			goto fail;
 		}
 
-		if (hasmntopt(mntent, "cpuset")) {
-			setup_cpuset(path);
-		}
 	}
 
 	endmntent(file);
@@ -741,7 +605,7 @@ fail:
 
 int lxc_cgroup_enter(const char *cgpath, pid_t pid)
 {
-	char path[MAXPATHLEN], initpath[MAXPATHLEN], *init;
+	char path[MAXPATHLEN];
 	FILE *file = NULL, *fout;
 	struct mntent *mntent;
 	int ret, retv = -1;
@@ -757,9 +621,8 @@ int lxc_cgroup_enter(const char *cgpath, pid_t pid)
 			continue;
 		if (!mount_has_subsystem(mntent))
 			continue;
-		init = get_init_cgroup(NULL, mntent, initpath, 1);
-		ret = snprintf(path, MAXPATHLEN, "%s%s/%s/tasks",
-			       mntent->mnt_dir, init, cgpath);
+		ret = snprintf(path, MAXPATHLEN, "%s/%s/tasks",
+			       mntent->mnt_dir, cgpath);
 		if (ret < 0 || ret >= MAXPATHLEN) {
 			ERROR("entering cgroup");
 			goto out;
@@ -826,12 +689,11 @@ int recursive_rmdir(char *dirname)
 
 static int lxc_one_cgroup_destroy(struct mntent *mntent, const char *cgpath)
 {
-	char cgname[MAXPATHLEN], initcgroup[MAXPATHLEN];
+	char cgname[MAXPATHLEN];
 	char *cgmnt = mntent->mnt_dir;
 	int rc;
 
-	rc = snprintf(cgname, MAXPATHLEN, "%s%s/%s", cgmnt,
-		get_init_cgroup(NULL, mntent, initcgroup, 1), cgpath);
+	rc = snprintf(cgname, MAXPATHLEN, "%s/%s", cgmnt, cgpath);
 	if (rc < 0 || rc >= MAXPATHLEN) {
 		ERROR("name too long");
 		return -1;

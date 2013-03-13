@@ -34,6 +34,8 @@ fi
 
 mount -n -t tmpfs tmpfs ${d2}
 
+# XXX TODO - we'll need to account for other cgroup groups beside 'lxc',
+# i.e. 'build' or 'users/joe'.
 for dir in `/bin/ls $d`; do
     mkdir -p "${d}/${dir}/lxc/${c}/${c}.real"
     echo 1 > "${d}/${dir}/lxc/${c}/${c}.real/tasks"
