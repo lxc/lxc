@@ -558,6 +558,31 @@ out:
 }
 
 /*
+ * If first creating the /sys/fs/cgroup/$subsys/lxc container, then
+ * try to set clone_children to 1.  Some kernels don't support
+ * clone_children, and cgroup maintainer wants to deprecate it.  So
+ * XXX TODO we should instead after each cgroup mkdir (here and in
+ * hooks/mountcgroup) check if cpuset is in the subsystems, and if so
+ * manually copy over mems and cpus.
+ */
+static void set_clone_children(const char *mntdir, const char *init)
+{
+	char path[MAXPATHLEN];
+	FILE *fout;
+	int ret;
+
+	ret = snprintf(path, MAXPATHLEN, "%s%s/cgroup.clone_children", mntdir, init);
+	INFO("writing to %s\n", path);
+	if (ret < 0 || ret > MAXPATHLEN)
+		return;
+	fout = fopen(path, "w");
+	if (!fout)
+		return;
+	fprintf(fout, "1\n");
+	fclose(fout);
+}
+
+/*
  * Make sure the 'cgroup group' exists, so that we don't have to worry about
  * that later.
  *
@@ -597,6 +622,7 @@ static int create_lxcgroups(const char *lxcgroup)
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto fail;
 		if (access(path, F_OK)) {
+			set_clone_children(mntent->mnt_dir, init);
 			ret = mkdir(path, 0755);
 			if (ret == -1 && errno != EEXIST) {
 				SYSERROR("failed to create '%s' directory", path);
