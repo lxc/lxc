@@ -91,6 +91,10 @@ static int receive_answer(int sock, struct lxc_answer *answer)
 		ERROR("failed to receive answer for the command");
 	if (answer->pathlen == 0)
 		return ret;
+	if (answer->pathlen >= MAXPATHLEN) {
+		ERROR("cgroup path was too long");
+		return -1;
+	}
 	ret = recv(sock, answerpath, answer->pathlen, 0);
 	if (ret != answer->pathlen) {
 		ERROR("failed to receive answer for the command");
