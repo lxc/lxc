@@ -23,6 +23,8 @@
 #ifndef _conf_h
 #define _conf_h
 
+#include "config.h"
+
 #include <netinet/in.h>
 #include <net/if.h>
 #include <sys/param.h>
