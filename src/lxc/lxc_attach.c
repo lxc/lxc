@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <sys/param.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/wait.h>
 
 #include "attach.h"
@@ -41,6 +42,7 @@
 #include "sync.h"
 #include "log.h"
 #include "namespace.h"
+#include "apparmor.h"
 
 #if HAVE_SYS_PERSONALITY_H
 #include <sys/personality.h>
@@ -127,11 +129,10 @@ int main(int argc, char *argv[])
 	struct passwd *passwd;
 	struct lxc_proc_context_info *init_ctx;
 	struct lxc_handler *handler;
-	void *cgroup_data = NULL;
 	uid_t uid;
 	char *curdir;
-	/* TODO: add cmdline arg to set lxcpath */
-	const char *lxcpath = NULL;
+	int cgroup_ipc_sockets[2];
+	char *user_shell;
 
 	ret = lxc_caps_init();
 	if (ret)
@@ -146,7 +147,7 @@ int main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	init_pid = get_init_pid(my_args.name, lxcpath);
+	init_pid = get_init_pid(my_args.name, my_args.lxcpath);
 	if (init_pid < 0) {
 		ERROR("failed to get the init pid");
 		return -1;
@@ -158,25 +159,13 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (!elevated_privileges) {
-	        /* we have to do this now since /sys/fs/cgroup may not
-	         * be available inside the container or we may not have
-	         * the required permissions anymore
-	         */
-		ret = lxc_cgroup_prepare_attach(my_args.name, &cgroup_data);
-		if (ret < 0) {
-			ERROR("failed to prepare attaching to cgroup");
-			return -1;
-		}
-	}
-
 	curdir = getcwd(NULL, 0);
 
 	/* determine which namespaces the container was created with
 	 * by asking lxc-start
 	 */
 	if (namespace_flags == -1) {
-		namespace_flags = lxc_get_clone_flags(my_args.name, lxcpath);
+		namespace_flags = lxc_get_clone_flags(my_args.name, my_args.lxcpath);
 		/* call failed */
 		if (namespace_flags == -1) {
 			ERROR("failed to automatically determine the "
@@ -184,6 +173,106 @@ int main(int argc, char *argv[])
 			return -1;
 		}
 	}
+
+	/* For the cgroup attaching logic to work in conjunction with pid and user namespaces,
+	 * we need to have the following hierarchy:
+	 *
+	 *     lxc-attach [process executed externally]
+	 *         | socketpair(cgroup_ipc_sockets)
+	 *         | fork()           -> child
+	 *         |                       | setns()
+	 *         |                       | fork()    -> grandchild
+	 *         |                       |                   | initialize
+	 *         |                       |                   | signal parent
+	 *         |                       |<------------------|----+
+	 *         |                       | signal parent     |
+	 *         |<----------------------|-----+             |
+	 *         | add to cgroups        |                   |
+	 *         | signal child -------->|                   |
+	 *         |                       | signal child ---->|
+	 *         | waitpid()             | waitpid()         | exec()
+	 *         |                       |<------------------| exit()
+	 *         |<----------------------| exit()
+	 *         | exit()
+	 *
+	 * The rationale is the following: The first parent is needed because after
+	 * setns() (mount + user namespace) we can't access the cgroup filesystem
+	 * to add the pid to the corresponding cgroup. Therefore, we need to do that
+	 * in a process executed on the host, so that's why we need to fork and wait
+	 * for it to have done some initialization (cgroups may restrict certain
+	 * operations so we have to do that in the end) and use IPC for signaling.
+	 *
+	 * Then in the child process we do the setns(). However, a process is never
+	 * really attached to a pid namespace (never changes its pid, doesn't appear
+	 * in the pid namespace /proc), only child processes of that process are
+	 * truely inside the new pid namespace. That's why we need to fork() again
+	 * after setns() before performing final initializations, then signal our
+	 * parent, which signals the primary process, which does cgroup adding,
+	 * which then signals to the grandchild that it can exec().
+	 */
+	ret = socketpair(PF_LOCAL, SOCK_STREAM, 0, cgroup_ipc_sockets);
+	if (ret < 0) {
+		SYSERROR("could not set up required IPC mechanism for attaching");
+		return -1;
+	}
+
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("failed to create first subprocess");
+		return -1;
+	}
+
+	if (pid) {
+		int status;
+		pid_t grandchild;
+
+		close(cgroup_ipc_sockets[1]);
+
+	gparent_reread:
+		ret = read(cgroup_ipc_sockets[0], &grandchild, sizeof(grandchild));
+		if (ret <= 0) {
+			if (ret < 0 && (errno == EAGAIN || errno == EINTR))
+				goto gparent_reread;
+			ERROR("failed to get pid of attached process to add to cgroup");
+			return -1;
+		}
+
+		if (!elevated_privileges) {
+			ret = lxc_cgroup_attach(grandchild, my_args.name, my_args.lxcpath);
+			if (ret < 0) {
+				ERROR("failed to attach process to cgroup");
+				return -1;
+			}
+		}
+
+		status = 0;
+		ret = write(cgroup_ipc_sockets[0], &status, sizeof(status));
+		if (ret <= 0) {
+			ERROR("failed to signal child that cgroup logic has finished");
+			return -1;
+		}
+
+		close(cgroup_ipc_sockets[0]);
+
+	gparent_again:
+		ret = waitpid(pid, &status, 0);
+		if (ret < 0) {
+			if (errno == EINTR)
+				goto gparent_again;
+			SYSERROR("failed to wait for process '%d'", pid);
+			return -1;
+		}
+
+		if (WIFEXITED(status))
+			return WEXITSTATUS(status);
+
+		return -1;
+	}
+
+	/* at this point we are in the 'parent' process so we need to close the
+	 * socket reserved for the 'grandparent' process
+	 */
+	close(cgroup_ipc_sockets[0]);
 
 	/* we need to attach before we fork since certain namespaces
 	 * (such as pid namespaces) only really affect children of the
@@ -200,7 +289,10 @@ int main(int argc, char *argv[])
 
 	free(curdir);
 
-	/* hack: we need sync.h infrastructure - and that needs a handler */
+	/* hack: we need sync.h infrastructure - and that needs a handler
+	 * FIXME: perhaps we should also just use a very simple socketpair()
+	 * here? - like with the grandparent <-> parent communication?
+	 */
 	handler = calloc(1, sizeof(*handler));
 
 	if (lxc_sync_init(handler)) {
@@ -226,22 +318,39 @@ int main(int argc, char *argv[])
 		if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 			return -1;
 
-		/* now that we are done with all privileged operations,
-		 * we can add ourselves to the cgroup. Since we smuggled in
-		 * the fds earlier, we still have write permission
+		/* ask grandparent to add child to cgroups, the grandparent will
+		 * itself check whether that's actually necessary
 		 */
-		if (!elevated_privileges) {
-			/* since setns() for pid namespaces only really
-			 * affects child processes, the pid we have is
-			 * still valid outside the container, so this is
-			 * fine
-			 */
-			ret = lxc_cgroup_finish_attach(cgroup_data, pid);
-			if (ret < 0) {
-				ERROR("failed to attach process to cgroup");
-				return -1;
-			}
+		ret = write(cgroup_ipc_sockets[1], &pid, sizeof(pid));
+		if (ret != sizeof(pid)) {
+			ERROR("error using IPC to notify main process of pid to add to the cgroups of the container");
+			return -1;
 		}
+
+	parent_reread:
+		/* we need some mechanism to check whether the grandparent could
+		 * add us to the cgroups or not - so we await a dummy integer
+		 * on the same socket (that's why we don't use a pipe - we need
+		 * two-way communication). So if the parent fails and exits, that
+		 * will close the socket, which will cause a read of 0 bytes for
+		 * us, so we just terminate. If we read at least a byte, we don't
+		 * care about the contents...
+		 */
+		ret = read(cgroup_ipc_sockets[1], &status, sizeof(status));
+		if (ret <= 0) {
+			if (ret < 0 && (errno == EAGAIN || errno == EINTR))
+				goto parent_reread;
+			/* only print someting if we can't assume the parent already
+			 * gave an error message, that will reduce confusion for the
+			 * user
+			 */
+			if (ret != 0)
+				ERROR("failed to get notification that the child process was added to the container's cgroups");
+			return -1;
+		}
+
+		/* we don't need that IPC interface anymore */
+		close(cgroup_ipc_sockets[1]);
 
 		/* tell the child we are done initializing */
 		if (lxc_sync_wake_child(handler, LXC_SYNC_POST_CONFIGURE))
@@ -265,7 +374,14 @@ int main(int argc, char *argv[])
 
 	if (!pid) {
 		lxc_sync_fini_parent(handler);
-		lxc_cgroup_dispose_attach(cgroup_data);
+		close(cgroup_ipc_sockets[1]);
+
+		if ((namespace_flags & CLONE_NEWNS)) {
+			if (attach_apparmor(init_ctx->aa_profile) < 0) {
+				ERROR("failed switching apparmor profiles");
+				return -1;
+			}
+		}
 
 		/* A description of the purpose of this functionality is
 		 * provided in the lxc-attach(1) manual page. We have to
@@ -303,6 +419,26 @@ int main(int argc, char *argv[])
 
 		lxc_sync_fini(handler);
 
+		if (namespace_flags & CLONE_NEWUSER) {
+			uid_t init_uid = 0;
+			gid_t init_gid = 0;
+
+			/* ignore errors, we will fall back to root in that case
+			 * (/proc was not mounted etc.)
+			 */
+			lxc_attach_get_init_uidgid(&init_uid, &init_gid);
+
+			/* try to set the uid/gid combination */
+			if (setgid(init_gid)) {
+				SYSERROR("switching to container gid");
+				return -1;
+			}
+			if (setuid(init_uid)) {
+				SYSERROR("switching to container uid");
+				return -1;
+			}
+		}
+
 		if (my_args.argc) {
 			execvp(my_args.argv[0], my_args.argv);
 			SYSERROR("failed to exec '%s'", my_args.argv[0]);
@@ -312,15 +448,34 @@ int main(int argc, char *argv[])
 		uid = getuid();
 
 		passwd = getpwuid(uid);
-		if (!passwd) {
-			SYSERROR("failed to get passwd "		\
-				 "entry for uid '%d'", uid);
-			return -1;
+
+		/* this probably happens because of incompatible nss
+		 * implementations in host and container (remember, this
+		 * code is still using the host's glibc but our mount
+		 * namespace is in the container)
+		 * we may try to get the information by spawning a
+		 * [getent passwd uid] process and parsing the result
+		 */
+		if (!passwd)
+		        user_shell = lxc_attach_getpwshell(uid);
+                else
+                        user_shell = passwd->pw_shell;
+
+                if (user_shell) {
+			char *const args[] = {
+				user_shell,
+				NULL,
+			};
+
+			(void) execvp(args[0], args);
 		}
 
+		/* executed if either no passwd entry or execvp fails,
+		 * we will fall back on /bin/sh as a default shell
+		 */
 		{
 			char *const args[] = {
-				passwd->pw_shell,
+				"/bin/sh",
 				NULL,
 			};
 

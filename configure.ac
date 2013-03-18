@@ -5,7 +5,7 @@ AC_INIT([lxc], [0.9.0.alpha3])
 
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_AUX_DIR([config])
-AM_CONFIG_HEADER([src/config.h])
+AC_CONFIG_HEADERS([src/config.h])
 AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability])
 AC_CANONICAL_HOST
 AM_PROG_CC_C_O
@@ -161,7 +161,7 @@ AC_ARG_ENABLE([tests],
 AM_CONDITIONAL([ENABLE_TESTS], [test "x$enable_tests" = "xyes"])
 
 # LXC container path, where the containers are actually stored
-# This is overriden by an entry in the file called LXCCONF
+# This is overridden by an entry in the file called LXCCONF
 # (i.e. /etc/lxc/lxc.conf)
 AC_ARG_WITH([config-path],
 	[AC_HELP_STRING(
@@ -219,6 +219,7 @@ AS_AC_EXPAND(LXCPATH, "$with_config_path")
 AS_AC_EXPAND(LXC_GLOBAL_CONF, "$with_global_conf")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "$with_rootfs_path")
 AS_AC_EXPAND(LXCTEMPLATEDIR, "$datadir/lxc/templates")
+AS_AC_EXPAND(LXCHOOKDIR, "$datadir/lxc/hooks")
 AS_AC_EXPAND(LXCINITDIR, "$libexecdir")
 AS_AC_EXPAND(LOGPATH, "$with_log_path")
 
@@ -286,6 +287,10 @@ AC_CHECK_FUNCS([fgetln],
 	AC_DEFINE(HAVE_FGETLN,1,[Have fgetln]),
 	AM_CONDITIONAL(HAVE_FGETLN, false))
 
+# Check for some libraries
+AC_SEARCH_LIBS(sem_open, [rt pthread])
+AC_SEARCH_LIBS(clock_gettime, [rt])
+
 # Check for some standard binaries
 AC_PROG_GCC_TRADITIONAL
 AC_PROG_SED
@@ -347,8 +352,9 @@ AC_CONFIG_FILES([
 	doc/examples/lxc-veth.conf
 	doc/examples/lxc-complex.conf
 
+	hooks/Makefile
+
 	templates/Makefile
-	templates/lxc-lenny
 	templates/lxc-debian
 	templates/lxc-ubuntu
 	templates/lxc-ubuntu-cloud
@@ -376,8 +382,6 @@ AC_CONFIG_FILES([
 	src/lxc/lxc.functions
 
 	src/python-lxc/Makefile
-	src/python-lxc/lxc/__init__.py
-	src/python-lxc/examples/api_test.py
 
 	src/lua-lxc/Makefile
 

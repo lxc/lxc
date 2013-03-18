@@ -15,7 +15,8 @@ pkginclude_HEADERS = \
 		state.h \
 		attach.h \
 		lxccontainer.h \
-		lxclock.h
+		lxclock.h \
+		version.h
 
 if IS_BIONIC
 pkginclude_HEADERS += \
@@ -71,7 +72,8 @@ liblxc_so_SOURCES = \
 	lxcutmp.c lxcutmp.h \
 	apparmor.c apparmor.h \
 	lxclock.h lxclock.c \
-	lxccontainer.c lxccontainer.h
+	lxccontainer.c lxccontainer.h \
+	version.c version.h
 
 if IS_BIONIC
 liblxc_so_SOURCES += \
@@ -113,10 +115,6 @@ liblxc_so_LDFLAGS = \
 	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,$(VERSION)))
 
 liblxc_so_LDADD = $(CAP_LIBS) $(APPARMOR_LIBS) $(SECCOMP_LIBS)
-
-if !IS_BIONIC
-liblxc_so_LDADD += -lutil -lrt
-endif
 
 bin_SCRIPTS = \
 	lxc-ps \
@@ -171,10 +169,6 @@ if ENABLE_RPATH
 AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
 endif
 LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@ @SECCOMP_LIBS@
-
-if !IS_BIONIC
-LDADD += -lrt
-endif
 
 lxc_attach_SOURCES = lxc_attach.c
 lxc_cgroup_SOURCES = lxc_cgroup.c

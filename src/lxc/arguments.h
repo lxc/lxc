@@ -47,6 +47,7 @@ struct lxc_arguments {
 	const char *console;
 	const char *console_log;
 	const char *pidfile;
+	const char *lxcpath;
 
 	/* for lxc-checkpoint/restart */
 	const char *statefile;
@@ -79,6 +80,7 @@ struct lxc_arguments {
 	{"quiet", no_argument,	0, 'q'}, \
 	{"logfile", required_argument, 0, 'o'}, \
 	{"logpriority", required_argument, 0, 'l'}, \
+	{"lxcpath", required_argument, 0, 'P'}, \
 	{0, 0, 0, 0}
 
 /* option keys for long only options */

@@ -212,10 +212,15 @@ static char *copypath(char *p)
 	return retbuf;
 }
 
-char *default_lxc_path(void)
+char *default_lxcpath;
+
+const char *default_lxc_path(void)
 {
-	char buf[1024], *p, *retbuf;
+	char buf[1024], *p;
 	FILE *fin;
+
+	if (default_lxcpath)
+		return default_lxcpath;
 
 	fin = fopen(LXC_GLOBAL_CONF, "r");
 	if (fin) {
@@ -232,20 +237,16 @@ char *default_lxc_path(void)
 			while (*p && (*p == ' ' || *p == '\t')) p++;
 			if (!*p)
 				continue;
-			retbuf = copypath(p);
+			default_lxcpath = copypath(p);
 			goto out;
 		}
 	}
 	/* we couldn't open the file, or didn't find a lxcpath
 	 * entry there.  Return @LXCPATH@ */
-	retbuf = malloc(strlen(LXCPATH)+1);
-	if (!retbuf)
-		goto out;
-	strcpy(retbuf, LXCPATH);
+	default_lxcpath = LXCPATH;
 
 out:
 	if (fin)
 		fclose(fin);
-	INFO("returning %s", (retbuf ? retbuf : "null"));
-	return retbuf;
+	return default_lxcpath;
 }

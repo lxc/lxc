@@ -32,7 +32,9 @@
 #include <sys/prctl.h>
 #include <sys/mount.h>
 #include <sys/syscall.h>
+#include <sys/wait.h>
 #include <linux/unistd.h>
+#include <pwd.h>
 
 #if !HAVE_DECL_PR_CAPBSET_DROP
 #define PR_CAPBSET_DROP 24
@@ -42,8 +44,8 @@
 #include "log.h"
 #include "attach.h"
 #include "caps.h"
-#include "cgroup.h"
 #include "config.h"
+#include "apparmor.h"
 
 lxc_log_define(lxc_attach, lxc);
 
@@ -137,6 +139,7 @@ struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 		errno = ENOENT;
 		goto out_error;
 	}
+	info->aa_profile = aa_get_profile(pid);
 
 	return info;
 
@@ -272,4 +275,205 @@ int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
 	}
 
 	return 0;
+}
+
+char *lxc_attach_getpwshell(uid_t uid)
+{
+	/* local variables */
+	pid_t pid;
+	int pipes[2];
+	int ret;
+	int fd;
+	char *result = NULL;
+
+	/* we need to fork off a process that runs the
+	 * getent program, and we need to capture its
+	 * output, so we use a pipe for that purpose
+	 */
+	ret = pipe(pipes);
+	if (ret < 0)
+		return NULL;
+
+	pid = fork();
+	if (pid < 0) {
+		close(pipes[0]);
+		close(pipes[1]);
+		return NULL;
+	}
+
+	if (pid) {
+		/* parent process */
+		FILE *pipe_f;
+		char *line = NULL;
+		size_t line_bufsz = 0;
+		int found = 0;
+		int status;
+
+		close(pipes[1]);
+
+		pipe_f = fdopen(pipes[0], "r");
+		while (getline(&line, &line_bufsz, pipe_f) != -1) {
+			char *token;
+			char *saveptr = NULL;
+			long value;
+			char *endptr = NULL;
+			int i;
+
+			/* if we already found something, just continue
+			 * to read until the pipe doesn't deliver any more
+			 * data, but don't modify the existing data
+			 * structure
+			 */
+			if (found)
+				continue;
+
+			/* trim line on the right hand side */
+			for (i = strlen(line); line && i > 0 && (line[i - 1] == '\n' || line[i - 1] == '\r'); --i)
+				line[i - 1] = '\0';
+
+			/* split into tokens: first user name */
+			token = strtok_r(line, ":", &saveptr);
+			if (!token)
+				continue;
+			/* next: dummy password field */
+			token = strtok_r(NULL, ":", &saveptr);
+			if (!token)
+				continue;
+			/* next: user id */
+			token = strtok_r(NULL, ":", &saveptr);
+			value = token ? strtol(token, &endptr, 10) : 0;
+			if (!token || !endptr || *endptr || value == LONG_MIN || value == LONG_MAX)
+				continue;
+			/* dummy sanity check: user id matches */
+			if ((uid_t) value != uid)
+				continue;
+			/* skip fields: gid, gecos, dir, go to next field 'shell' */
+			for (i = 0; i < 4; i++) {
+				token = strtok_r(NULL, ":", &saveptr);
+				if (!token)
+					break;
+			}
+			if (!token)
+				continue;
+			if (result)
+				free(result);
+			result = strdup(token);
+
+			/* sanity check that there are no fields after that */
+			token = strtok_r(NULL, ":", &saveptr);
+			if (token)
+				continue;
+
+			found = 1;
+		}
+
+		free(line);
+		fclose(pipe_f);
+	again:
+		if (waitpid(pid, &status, 0) < 0) {
+			if (errno == EINTR)
+				goto again;
+			return NULL;
+		}
+
+		/* some sanity checks: if anything even hinted at going
+		 * wrong: we can't be sure we have a valid result, so
+		 * we assume we don't
+		 */
+
+		if (!WIFEXITED(status))
+			return NULL;
+
+		if (WEXITSTATUS(status) != 0)
+			return NULL;
+
+		if (!found)
+			return NULL;
+
+		return result;
+	} else {
+		/* child process */
+		char uid_buf[32];
+		char *arguments[] = {
+			"getent",
+			"passwd",
+			uid_buf,
+			NULL
+		};
+
+		close(pipes[0]);
+
+		/* we want to capture stdout */
+		dup2(pipes[1], 1);
+		close(pipes[1]);
+
+		/* get rid of stdin/stderr, so we try to associate it
+		 * with /dev/null
+		 */
+		fd = open("/dev/null", O_RDWR);
+		if (fd < 0) {
+			close(0);
+			close(2);
+		} else {
+			dup2(fd, 0);
+			dup2(fd, 2);
+			close(fd);
+		}
+
+		/* finish argument list */
+		ret = snprintf(uid_buf, sizeof(uid_buf), "%ld", (long) uid);
+		if (ret <= 0)
+			exit(-1);
+
+		/* try to run getent program */
+		(void) execvp("getent", arguments);
+		exit(-1);
+	}
+}
+
+void lxc_attach_get_init_uidgid(uid_t* init_uid, gid_t* init_gid)
+{
+	FILE *proc_file;
+	char proc_fn[MAXPATHLEN];
+	char *line = NULL;
+	size_t line_bufsz = 0;
+	int ret;
+	long value = -1;
+	uid_t uid = (uid_t)-1;
+	gid_t gid = (gid_t)-1;
+
+	/* read capabilities */
+	snprintf(proc_fn, MAXPATHLEN, "/proc/%d/status", 1);
+
+	proc_file = fopen(proc_fn, "r");
+	if (!proc_file)
+		return;
+
+	while (getline(&line, &line_bufsz, proc_file) != -1) {
+		/* format is: real, effective, saved set user, fs
+		 * we only care about real uid
+		 */
+		ret = sscanf(line, "Uid: %ld", &value);
+		if (ret != EOF && ret > 0) {
+			uid = (uid_t) value;
+		} else {
+			ret = sscanf(line, "Gid: %ld", &value);
+			if (ret != EOF && ret > 0)
+				gid = (gid_t) value;
+		}
+		if (uid != (uid_t)-1 && gid != (gid_t)-1)
+			break;
+	}
+
+	fclose(proc_file);
+	free(line);
+
+	/* only override arguments if we found something */
+	if (uid != (uid_t)-1)
+		*init_uid = uid;
+	if (gid != (gid_t)-1)
+		*init_gid = gid;
+
+	/* TODO: we should also parse supplementary groups and use
+	 * setgroups() to set them */
 }

@@ -29,6 +29,7 @@ enum {
 	LXC_COMMAND_STATE,
 	LXC_COMMAND_PID,
 	LXC_COMMAND_CLONE_FLAGS,
+	LXC_COMMAND_CGROUP,
 	LXC_COMMAND_MAX,
 };
 
@@ -41,6 +42,8 @@ struct lxc_answer {
 	int fd;
 	int ret; /* 0 on success, -errno on failure */
 	pid_t pid;
+	int pathlen;
+	const char *path;
 };
 
 struct lxc_command {

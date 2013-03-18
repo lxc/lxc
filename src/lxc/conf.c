@@ -578,7 +578,7 @@ int pin_rootfs(const char *rootfs)
 	int ret, fd;
 
 	if (rootfs == NULL || strlen(rootfs) == 0)
-		return 0;
+		return -2;
 
 	if (!realpath(rootfs, absrootfs)) {
 		SYSERROR("failed to get real path for '%s'", rootfs);
@@ -1375,7 +1375,7 @@ static int setup_kmsg(const struct lxc_rootfs *rootfs,
 	return 0;
 }
 
-int setup_cgroup(const char *name, struct lxc_list *cgroups)
+int setup_cgroup(const char *cgpath, struct lxc_list *cgroups)
 {
 	struct lxc_list *iterator;
 	struct lxc_cgroup *cg;
@@ -1388,8 +1388,11 @@ int setup_cgroup(const char *name, struct lxc_list *cgroups)
 
 		cg = iterator->elem;
 
-		if (lxc_cgroup_set(name, cg->subsystem, cg->value))
+		if (lxc_cgroup_set_bypath(cgpath, cg->subsystem, cg->value)) {
+			ERROR("Error setting %s to %s for %s\n", cg->subsystem,
+				cg->value, cgpath);
 			goto out;
+		}
 
 		DEBUG("cgroup '%s' set to '%s'", cg->subsystem, cg->value);
 	}
@@ -1519,7 +1522,7 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	unsigned long mntflags;
 	char *mntdata;
 	int r, ret = 0, offset;
-	char *lxcpath;
+	const char *lxcpath;
 
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
 		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
@@ -1535,7 +1538,6 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	/* if rootfs->path is a blockdev path, allow container fstab to
 	 * use $lxcpath/CN/rootfs as the target prefix */
 	r = snprintf(path, MAXPATHLEN, "%s/%s/rootfs", lxcpath, lxc_name);
-	free(lxcpath);
 	if (r < 0 || r >= MAXPATHLEN)
 		goto skipvarlib;
 
@@ -2066,6 +2068,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.name[0] = '\0';
 	new->maincmd_fd = -1;
 	new->rootfs.mount = default_rootfs_mount;
+	new->kmsg = 1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
@@ -2445,10 +2448,11 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 	return 0;
 }
 
-int add_id_mapping(enum idtype idtype, pid_t pid, uid_t host_start, uid_t ns_start, int range)
+static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
+			    size_t buf_size)
 {
 	char path[PATH_MAX];
-	int ret;
+	int ret, closeret;
 	FILE *f;
 
 	ret = snprintf(path, PATH_MAX, "/proc/%d/%cid_map", pid, idtype == ID_TYPE_UID ? 'u' : 'g');
@@ -2461,11 +2465,13 @@ int add_id_mapping(enum idtype idtype, pid_t pid, uid_t host_start, uid_t ns_sta
 		perror("open");
 		return -EINVAL;
 	}
-	ret = fprintf(f, "%d %d %d", ns_start, host_start, range);
+	ret = fwrite(buf, buf_size, 1, f);
 	if (ret < 0)
-		perror("write");
-	fclose(f);
-	return ret < 0 ? ret : 0;
+		SYSERROR("writing id mapping");
+	closeret = fclose(f);
+	if (closeret)
+		SYSERROR("writing id mapping");
+	return ret < 0 ? ret : closeret;
 }
 
 int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
@@ -2473,13 +2479,39 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	struct lxc_list *iterator;
 	struct id_map *map;
 	int ret = 0;
+	enum idtype type;
+	char *buf = NULL, *pos;
 
-	lxc_list_for_each(iterator, idmap) {
-		map = iterator->elem;
-		ret = add_id_mapping(map->idtype, pid, map->hostid, map->nsid, map->range);
+	for(type = ID_TYPE_UID; type <= ID_TYPE_GID; type++) {
+		int left, fill;
+
+		pos = buf;
+		lxc_list_for_each(iterator, idmap) {
+			/* The kernel only takes <= 4k for writes to /proc/<nr>/[ug]id_map */
+			if (!buf)
+				buf = pos = malloc(4096);
+			if (!buf)
+				return -ENOMEM;
+
+			map = iterator->elem;
+			if (map->idtype == type) {
+				left = 4096 - (pos - buf);
+				fill = snprintf(pos, left, "%lu %lu %lu\n",
+					map->nsid, map->hostid, map->range);
+				if (fill <= 0 || fill >= left)
+					SYSERROR("snprintf failed, too many mappings");
+				pos += fill;
+			}
+		}
+		if (pos == buf) // no mappings were found
+			continue;
+		ret = write_id_mapping(type, pid, buf, pos-buf);
 		if (ret)
 			break;
 	}
+
+	if (buf)
+		free(buf);
 	return ret;
 }
 
@@ -2742,8 +2774,10 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_kmsg(&lxc_conf->rootfs, &lxc_conf->console))  // don't fail
-		ERROR("failed to setup kmsg for '%s'", name);
+	if (lxc_conf->kmsg) {
+		if (setup_kmsg(&lxc_conf->rootfs, &lxc_conf->console))  // don't fail
+			ERROR("failed to setup kmsg for '%s'", name);
+	}
 
 	if (setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info, lxc_conf->ttydir)) {
 		ERROR("failed to setup the ttys for '%s'", name);

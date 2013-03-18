@@ -19,7 +19,7 @@
 
 usage()
 {
-    echo "usage: $(basename $0) [--lxc | --name NAME] [--] [PS_OPTIONS...]" >&2
+    echo "usage: $(basename $0) [--lxc | --host | --name NAME] [--] [PS_OPTIONS...]" >&2
 }
 
 help() {
@@ -28,6 +28,7 @@ help() {
     echo "List current processes with container names." >&2
     echo >&2
     echo "  --lxc         show processes in all containers" >&2
+    echo "  --host        show processes not related to any container, i.e. to the host" >&2
     echo "  --name NAME   show processes in the specified container" >&2
     echo "                 (multiple containers can be separated by commas)" >&2
     echo "  PS_OPTIONS    ps command options (see \`ps --help')" >&2
@@ -80,6 +81,8 @@ while true; do
             containers=$2; list_container_processes=1; shift 2;;
         --lxc)
             list_container_processes=1; shift;;
+        --host)
+            list_container_processes=-1; shift;;
         --)
             shift; break;;
         *)
@@ -118,6 +121,7 @@ ps "$@" | awk -v container_field_width="$container_field_width" \
     -v list_container_processes="$list_container_processes" '
 # first line is PS header
 NR == 1 {
+    header = $0
     # find pid field index
     for (i = 1; i<=NF; i++)
         if ($i == "PID") {
@@ -126,9 +130,9 @@ NR == 1 {
         }
     if (pididx == "") {
         print("No PID field found") > "/dev/stderr"
+        header = ""  # to signal error condition to the END rule
         exit 1
     }
-    header = $0
     next
 }
 
@@ -152,10 +156,11 @@ FNR == 1 {
 }
 
 END {
+    if (!header) exit 1 # quit due to internal error
     printf("%-" container_field_width "s %s\n", "CONTAINER", header)
     for (i in ps_line) {
-	container = container_of_pid[pid_of_line[i]]
-        if (list_container_processes == 0 || container != "")
+        container = container_of_pid[pid_of_line[i]]
+        if (list_container_processes == 0 || (container != "") == (list_container_processes > 0) )
             printf("%-" container_field_width "s %s\n", container, ps_line[i])
     }
 }

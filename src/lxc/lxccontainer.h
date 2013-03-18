@@ -86,7 +86,8 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 int lxc_container_get(struct lxc_container *c);
 int lxc_container_put(struct lxc_container *c);
 int lxc_get_wait_states(const char **states);
-char *lxc_get_default_config_path(void);
+const char *lxc_get_default_config_path(void);
+const char *lxc_get_version(void);
 
 #if 0
 char ** lxc_get_valid_keys();

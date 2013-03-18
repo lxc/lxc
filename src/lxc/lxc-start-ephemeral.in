@@ -64,6 +64,9 @@ container when exiting (with ctrl-a-q).
 If no COMMAND is given and -d is used, the name and IP addresses of the
 container will be printed to the console."""))
 
+parser.add_argument("--lxcpath", "-P", dest="lxcpath", metavar="PATH",
+                    help=_("Use specified container path"), default=None)
+
 parser.add_argument("--orig", "-o", type=str, required=True,
                     help=_("name of the original container"))
 
@@ -104,16 +107,21 @@ if not os.geteuid() == 0:
                    % (sys.argv[0])))
 
 # Load the orig container
-orig = lxc.Container(args.orig)
+orig = lxc.Container(args.orig, args.lxcpath)
 if not orig.defined:
     parser.error(_("Source container '%s' doesn't exist." % args.orig))
 
 # Create the new container paths
-dest_path = tempfile.mkdtemp(prefix="%s-" % args.orig, dir="@LXCPATH@")
+if not args.lxcpath:
+    lxc_path = lxc.default_config_path
+else:
+    lxc_path = args.lxcpath
+
+dest_path = tempfile.mkdtemp(prefix="%s-" % args.orig, dir=lxc_path)
 os.mkdir(os.path.join(dest_path, "rootfs"))
 
 # Setup the new container's configuration
-dest = lxc.Container(os.path.basename(dest_path))
+dest = lxc.Container(os.path.basename(dest_path), args.lxcpath)
 dest.load_config(orig.config_file_name)
 dest.set_config_item("lxc.utsname", dest.name)
 dest.set_config_item("lxc.rootfs", os.path.join(dest_path, "rootfs"))

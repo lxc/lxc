@@ -31,9 +31,11 @@ warnings.filterwarnings("ignore", "The python-lxc API isn't yet stable")
 
 import argparse
 import gettext
+import json
 import lxc
 import os
 import re
+import subprocess
 import sys
 
 _ = gettext.gettext
@@ -85,12 +87,33 @@ def getTerminalSize():
 
     return int(cr[1]), int(cr[0])
 
+
+def getSubContainers(container, lxcpath):
+    attach = ['lxc-attach', '-R', '-s', 'NETWORK|PID', '-n', container,
+              '--', sys.argv[0], "--nesting"]
+
+    with open(os.devnull, "w") as fd:
+        newenv = dict(os.environ)
+        newenv['NESTED'] = "/proc/1/root/%s" % lxcpath
+        sp = subprocess.Popen(attach, stderr=fd, stdout=subprocess.PIPE,
+                              env=newenv, universal_newlines=True)
+        sp.wait()
+        out = sp.stdout.read()
+        if out:
+            return json.loads(out)
+    return None
+
+
 # Begin parsing the command line
 parser = argparse.ArgumentParser(description=_("LXC: List containers"),
                                  formatter_class=argparse.RawTextHelpFormatter)
 
 parser.add_argument("-1", dest="one", action="store_true",
                     help=_("list one container per line (default when piped)"))
+
+parser.add_argument("-P", "--lxcpath", dest="lxcpath", metavar="PATH",
+                    help=_("Use specified container path"),
+                    default=lxc.default_config_path)
 
 parser.add_argument("--active", action="store_true",
                     help=_("list only active containers "
@@ -111,6 +134,9 @@ parser.add_argument("--fancy", action="store_true",
 parser.add_argument("--fancy-format", type=str, default="name,state,ipv4,ipv6",
                     help=_("comma separated list of fields to show"))
 
+parser.add_argument("--nesting", dest="nesting", action="store_true",
+                    help=_("show nested containers"))
+
 parser.add_argument("filter", metavar='FILTER', type=str, nargs="?",
                     help=_("regexp to be applied on the container list"))
 
@@ -126,6 +152,9 @@ if args.active:
 if not sys.stdout.isatty():
     args.one = True
 
+# Set the lookup path for the containers
+lxcpath = os.environ.get('NESTED', args.lxcpath)
+
 # Turn args.fancy_format into a list
 args.fancy_format = args.fancy_format.strip().split(",")
 
@@ -138,7 +167,7 @@ if not os.geteuid() == 0 and (args.fancy or args.state):
 
 # List of containers, stored as dictionaries
 containers = []
-for container_name in lxc.list_containers():
+for container_name in lxc.list_containers(config_path=lxcpath):
     entry = {}
     entry['name'] = container_name
 
@@ -147,39 +176,58 @@ for container_name in lxc.list_containers():
         continue
 
     # Return before grabbing the object (non-root)
-    if not args.state and not args.fancy:
+    if not args.state and not args.fancy and not args.nesting:
         containers.append(entry)
         continue
 
-    container = lxc.Container(container_name)
+    container = lxc.Container(container_name, args.lxcpath)
 
     # Filter by status
     if args.state and container.state not in args.state:
         continue
 
     # Nothing more is needed if we're not printing some fancy output
-    if not args.fancy:
+    if not args.fancy and not args.nesting:
         containers.append(entry)
         continue
 
     # Some extra field we may want
-    if 'state' in args.fancy_format:
+    if 'state' in args.fancy_format or args.nesting:
         entry['state'] = container.state
-    if 'pid' in args.fancy_format:
+
+    if 'pid' in args.fancy_format or args.nesting:
         entry['pid'] = "-"
         if container.init_pid != -1:
             entry['pid'] = str(container.init_pid)
 
     # Get the IPs
     for protocol in ('ipv4', 'ipv6'):
-        if protocol in args.fancy_format:
+        if protocol in args.fancy_format or args.nesting:
             entry[protocol] = "-"
             ips = container.get_ips(protocol=protocol, timeout=1)
             if ips:
                 entry[protocol] = ", ".join(ips)
 
+    # Append the container
     containers.append(entry)
 
+    # Nested containers
+    if args.nesting:
+        sub = getSubContainers(container_name, args.lxcpath)
+        if sub:
+            for entry in sub:
+                if 'nesting_parent' not in entry:
+                    entry['nesting_parent'] = []
+                entry['nesting_parent'].insert(0, container_name)
+                entry['nesting_real_name'] = entry.get('nesting_real_name',
+                                                       entry['name'])
+                entry['name'] = "%s/%s" % (container_name, entry['name'])
+            containers += sub
+
+# Deal with json output:
+if 'NESTED' in os.environ:
+    print(json.dumps(containers))
+    sys.exit(0)
 
 # Print the list
 ## Standard list with one entry per line
@@ -223,7 +271,12 @@ if args.fancy:
 
     for container in containers:
         for field in args.fancy_format:
-            if len(container[field]) > field_maxlength[field]:
+            if field == 'name' and 'nesting_real_name' in container:
+                fieldlen = len(" " * ((len(container['nesting_parent']) - 1)
+                               * 4) + " \_ " + container['nesting_real_name'])
+                if fieldlen > field_maxlength[field]:
+                    field_maxlength[field] = fieldlen
+            elif len(container[field]) > field_maxlength[field]:
                 field_maxlength[field] = len(container[field])
 
     # Generate the line format string based on the maximum length and
@@ -247,5 +300,12 @@ if args.fancy:
     # Print the entries
     for container in sorted(containers,
                             key=lambda container: container['name']):
-        fields = [container[field] for field in args.fancy_format]
+        fields = []
+        for field in args.fancy_format:
+            if field == 'name' and 'nesting_real_name' in container:
+                prefix = " " * ((len(container['nesting_parent']) - 1) * 4)
+                fields.append(prefix + " \_ " + container['nesting_real_name'])
+            else:
+                fields.append(container[field])
+
         print(line_format.format(fields=fields))

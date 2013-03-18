@@ -40,16 +40,11 @@
 
 lxc_log_define(lxc_freezer, lxc);
 
-static int freeze_unfreeze(const char *name, int freeze)
+static int do_unfreeze(const char *nsgroup, int freeze, const char *name, const char *lxcpath)
 {
-	char *nsgroup;
 	char freezer[MAXPATHLEN], *f;
 	char tmpf[32];
 	int fd, ret;
-	
-	ret = lxc_cgroup_path_get(&nsgroup, "freezer", name);
-	if (ret)
-		return -1;
 
 	ret = snprintf(freezer, MAXPATHLEN, "%s/freezer.state", nsgroup);
 	if (ret >= MAXPATHLEN) {
@@ -59,7 +54,7 @@ static int freeze_unfreeze(const char *name, int freeze)
 
 	fd = open(freezer, O_RDWR);
 	if (fd < 0) {
-		SYSERROR("failed to open freezer for '%s'", name);
+		SYSERROR("failed to open freezer at '%s'", nsgroup);
 		return -1;
 	}
 
@@ -98,7 +93,8 @@ static int freeze_unfreeze(const char *name, int freeze)
 		ret = strncmp(f, tmpf, strlen(f));
 		if (!ret)
 		{
-			lxc_monitor_send_state(name, freeze ? FROZEN : THAWED);
+			if (name)
+				lxc_monitor_send_state(name, freeze ? FROZEN : THAWED, lxcpath);
 			break;		/* Success */
 		}
 
@@ -122,14 +118,37 @@ out:
 	return ret;
 }
 
-int lxc_freeze(const char *name)
+static int freeze_unfreeze(const char *name, int freeze, const char *lxcpath)
 {
-	lxc_monitor_send_state(name, FREEZING);
-	return freeze_unfreeze(name, 1);
+	char *nsgroup;
+	int ret;
+	
+	ret = lxc_cgroup_path_get(&nsgroup, "freezer", name, lxcpath);
+	if (ret)
+		return -1;
+
+	return do_unfreeze(nsgroup, freeze, name, lxcpath);
 }
 
-int lxc_unfreeze(const char *name)
+int lxc_freeze(const char *name, const char *lxcpath)
 {
-	return freeze_unfreeze(name, 0);
+	lxc_monitor_send_state(name, FREEZING, lxcpath);
+	return freeze_unfreeze(name, 1, lxcpath);
 }
 
+int lxc_unfreeze(const char *name, const char *lxcpath)
+{
+	return freeze_unfreeze(name, 0, lxcpath);
+}
+
+int lxc_unfreeze_bypath(const char *cgpath)
+{
+	char *nsgroup;
+	int ret;
+	
+	ret = cgroup_path_get(&nsgroup, "freezer", cgpath);
+	if (ret)
+		return -1;
+
+	return do_unfreeze(nsgroup, 0, NULL, NULL);
+}

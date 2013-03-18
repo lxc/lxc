@@ -25,6 +25,7 @@
 #include "confile.h"
 #include "cgroup.h"
 #include "commands.h"
+#include "version.h"
 #include "log.h"
 #include <unistd.h>
 #include <sys/types.h>
@@ -195,7 +196,7 @@ static bool lxcapi_freeze(struct lxc_container *c)
 
 	if (lxclock(c->slock, 0))
 		return false;
-	ret = lxc_freeze(c->name);
+	ret = lxc_freeze(c->name, c->config_path);
 	lxcunlock(c->slock);
 	if (ret)
 		return false;
@@ -210,7 +211,7 @@ static bool lxcapi_unfreeze(struct lxc_container *c)
 
 	if (lxclock(c->slock, 0))
 		return false;
-	ret = lxc_unfreeze(c->name);
+	ret = lxc_unfreeze(c->name, c->config_path);
 	lxcunlock(c->slock);
 	if (ret)
 		return false;
@@ -272,7 +273,7 @@ static bool lxcapi_wait(struct lxc_container *c, const char *state, int timeout)
 	if (!c)
 		return false;
 
-	ret = lxc_wait(c->name, state, timeout);
+	ret = lxc_wait(c->name, state, timeout, c->config_path);
 	return ret == 0;
 }
 
@@ -367,21 +368,6 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		open("/dev/null", O_RDWR);
 		open("/dev/null", O_RDWR);
 		setsid();
-	}
-
-	if (clearenv()) {
-		SYSERROR("failed to clear environment");
-		/* don't error out though */
-	}
-
-	if (putenv("container=lxc")) {
-		fprintf(stderr, "failed to set environment variable");
-		if (daemonize) {
-			lxc_container_put(c);
-			exit(1);
-		} else {
-			return false;
-		}
 	}
 
 reboot:
@@ -707,7 +693,8 @@ static bool lxcapi_createl(struct lxc_container *c, char *t, ...)
 		args[nargs - 1] = arg;
 	}
 	va_end(ap);
-	args[nargs] = NULL;
+	if (args)
+		args[nargs] = NULL;
 
 	bret = c->create(c, t, args);
 
@@ -805,7 +792,7 @@ static bool lxcapi_destroy(struct lxc_container *c)
 	if (pid < 0)
 		return false;
 	if (pid == 0) { // child
-		ret = execlp("lxc-destroy", "lxc-destroy", "-n", c->name, NULL);
+		ret = execlp("lxc-destroy", "lxc-destroy", "-n", c->name, "-P", c->config_path, NULL);
 		perror("execl");
 		exit(1);
 	}
@@ -959,7 +946,7 @@ static bool lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, 
 	if (is_stopped_nolock(c))
 		goto err;
 
-	ret = lxc_cgroup_set(c->name, subsys, value);
+	ret = lxc_cgroup_set(c->name, subsys, value, c->config_path);
 	if (!ret)
 		b = true;
 err:
@@ -980,16 +967,21 @@ static int lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, c
 	if (is_stopped_nolock(c))
 		goto out;
 
-	ret = lxc_cgroup_get(c->name, subsys, retv, inlen);
+	ret = lxc_cgroup_get(c->name, subsys, retv, inlen, c->config_path);
 
 out:
 	lxcunlock(c->privlock);
 	return ret;
 }
 
-char *lxc_get_default_config_path(void)
+const char *lxc_get_default_config_path(void)
 {
 	return default_lxc_path();
+}
+
+const char *lxc_get_version(void)
+{
+	return lxc_version();
 }
 
 struct lxc_container *lxc_container_new(const char *name, const char *configpath)
@@ -1006,7 +998,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	if (configpath)
 		c->config_path = strdup(configpath);
 	else
-		c->config_path = default_lxc_path();
+		c->config_path = strdup(default_lxc_path());
 
 	if (!c->config_path) {
 		fprintf(stderr, "Out of memory");

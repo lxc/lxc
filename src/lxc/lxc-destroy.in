@@ -26,7 +26,7 @@
 #
 
 usage() {
-    echo "usage: $(basename $0) -n NAME [-f]" >&2
+    echo "usage: $(basename $0) -n NAME [-f] [-P lxcpath]" >&2
 }
 
 help() {
@@ -35,8 +35,9 @@ help() {
     echo "Remove an existing container on the system." >&2
     echo >&2
     echo "Options:" >&2
-    echo "  -n NAME   specify the name of the container" >&2
-    echo "  -f        stop the container if it is running (rather than abort)" >&2
+    echo "  -n NAME    specify the name of the container" >&2
+    echo "  -f         stop the container if it is running (rather than abort)" >&2
+    echo "  -P lxcpath container is in specified lxcpath" >&2
 }
 
 usage_err() {
@@ -65,6 +66,11 @@ while [ $# -gt 0 ]; do
             -n|--name)
                 optarg_check "$opt" "$1"
                 lxc_name=$1
+                shift
+            ;;
+            -P|--lxcpath)
+                optarg_check "$opt" "$1"
+                lxc_path=$1
                 shift
             ;;
             -f)
@@ -104,12 +110,12 @@ if [ ! -d "$lxc_path/$lxc_name" ]; then
 fi
 
 # make sure the container is stopped
-if ! lxc-info -n $lxc_name --state-is "STOPPED"; then
+if ! lxc-info -n $lxc_name -P $lxc_path --state-is "STOPPED"; then
     if [ $force -eq 1 ]; then
-        lxc-stop -n $lxc_name
-        lxc-wait -n $lxc_name -s STOPPED
+        lxc-stop -P $lxc_path -n $lxc_name
+        lxc-wait -P $lxc_path -n $lxc_name -s STOPPED
     else
-        echo "$(basename $0): '$lxc_name' $(lxc-info -n $lxc_name -s); aborted" >&2
+        echo "$(basename $0): '$lxc_name' $(lxc-info -P $lxc_path -n $lxc_name -s); aborted" >&2
         exit 1
     fi
 fi

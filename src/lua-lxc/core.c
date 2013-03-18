@@ -366,10 +366,9 @@ static int lxc_version_get(lua_State *L) {
 }
 
 static int lxc_default_config_path_get(lua_State *L) {
-    char *lxcpath = lxc_get_default_config_path();
+    const char *lxcpath = lxc_get_default_config_path();
 
     lua_pushstring(L, lxcpath);
-    free(lxcpath);
     return 1;
 }
 

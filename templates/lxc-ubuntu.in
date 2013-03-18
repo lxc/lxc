@@ -319,22 +319,21 @@ copy_configuration()
     # associated hwaddr.
     nics=`grep -e '^lxc\.network\.type[ \t]*=[ \t]*veth' $path/config | wc -l`
     if [ $nics -eq 1 ]; then
-        grep -q "^lxc.network.hwaddr" $path/config || cat <<EOF >> $path/config
-lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')
-EOF
+        grep -q "^lxc.network.hwaddr" $path/config || sed -i -e "/^lxc\.network\.type[ \t]*=[ \t]*veth/a lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')" $path/config
     fi
 
     grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
     cat <<EOF >> $path/config
-lxc.utsname = $name
+lxc.mount = $path/fstab
+lxc.pivotdir = lxc_putold
 
 lxc.devttydir =$ttydir
 lxc.tty = 4
 lxc.pts = 1024
-lxc.mount = $path/fstab
+
+lxc.utsname = $name
 lxc.arch = $arch
 lxc.cap.drop = sys_module mac_admin mac_override
-lxc.pivotdir = lxc_putold
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined

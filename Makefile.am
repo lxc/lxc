@@ -2,8 +2,8 @@
 
 ACLOCAL_AMFLAGS = -I config
 
-SUBDIRS = config src templates doc
-DIST_SUBDIRS = config src templates doc
+SUBDIRS = config src templates doc hooks
+DIST_SUBDIRS = config src templates doc hooks
 EXTRA_DIST = autogen.sh lxc.spec CONTRIBUTING MAINTAINERS ChangeLog
 RPMARGS =
 

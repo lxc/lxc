@@ -30,7 +30,6 @@ import uuid
 import sys
 
 # Some constants
-LXC_PATH_LIB = "@LXCPATH@"
 LXC_TEMPLATE = "ubuntu"
 
 # Let's pick a random name, avoiding clashes
@@ -43,7 +42,7 @@ container = lxc.Container(CONTAINER_NAME)
 
 # A few basic checks of the current state
 assert(container.config_file_name == "%s/%s/config" %
-       (LXC_PATH_LIB, CONTAINER_NAME))
+       (lxc.default_config_path, CONTAINER_NAME))
 assert(not container.defined)
 assert(container.init_pid == -1)
 assert(container.name == CONTAINER_NAME)

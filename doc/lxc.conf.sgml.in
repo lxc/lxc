@@ -130,6 +130,29 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </refsect2>
 
     <refsect2>
+      <title>Stop signal</title>
+      <para>
+    Allows to specify signal name or number, sent by lxc-stop to
+    shutdown the container. Different init systems could use
+    different signals to perform clean shutdown sequence. Option
+    allows signal to be specified in kill(1) fashion, e.g.
+    SIGKILL, SIGRTMIN+14, SIGRTMAX-10 or plain number.
+      </para>
+      <variablelist>
+    <varlistentry>
+      <term>
+        <option>lxc.stopsignal</option>
+      </term>
+      <listitem>
+        <para>
+          specify the signal used to stop the container
+        </para>
+      </listitem>
+    </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Network</title>
       <para>
 	The network section defines how the network is virtualized in
@@ -531,6 +554,25 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </refsect2>
 
     <refsect2>
+      <title>Enable kmsg symlink</title>
+      <para>
+      Enable creating /dev/kmsg as symlink to /dev/console.  This defaults to 1.
+      </para>
+      <variablelist>
+    <varlistentry>
+      <term>
+        <option>lxc.kmsg</option>
+      </term>
+      <listitem>
+        <para>
+          Set this to 0 to disable /dev/kmsg symlinking.
+        </para>
+      </listitem>
+    </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Mount points</title>
       <para>
 	The mount points section specifies the different places to be
@@ -709,21 +751,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  <listitem>
 	    <para>
 	      Four values must be provided.  First a character, either
-	      'U', or 'G', to specify whether user or group ids are
-	      being mapped.  Next is the first userid as seen on the
-	      host.  Next is the userid to be mapped in the container.
-	      Finally, a range indicating the number of consecutive
-	      ids to map.  For instance
+	      'u', or 'g', to specify whether user or group ids are
+	      being mapped.  Next is the first userid as seen in the
+	      user namespace of the container.  Next is the userid as
+	      seen on the host.  Finally, a range indicating the number
+	      of consecutive ids to map.
 	     </para>
-<programlisting>
-	lxc.id_map = U 200000 0 20000
-	lxc.id_map = G 200000 0 20000
-</programlisting>
-	    <para>
-	      will map both user and group ids in the
-	      range 0-19999 in the container to the ids
-	      200000-219999 on the host.
-	    </para>
 	  </listitem>
 	</varlistentry>
       </variablelist>
@@ -949,6 +982,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	lxc.network.hwaddr = 4a:49:43:49:79:bf
 	lxc.network.ipv4 = 10.2.3.5/24 10.2.3.255
 	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+      </programlisting>
+    </refsect2>
+
+    <refsect2>
+      <title>UID/GID mapping</title>
+      <para>This configuration will map both user and group ids in the
+        range 0-9999 in the container to the ids 100000-109999 on the host.
+      </para>
+      <programlisting>
+	lxc.id_map = u 0 100000 10000
+	lxc.id_map = g 0 100000 10000
       </programlisting>
     </refsect2>
 

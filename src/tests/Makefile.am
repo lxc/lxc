@@ -2,10 +2,6 @@ if ENABLE_TESTS
 
 LDADD = ../lxc/liblxc.so
 
-if !IS_BIONIC
-LDADD += -lpthread
-endif
-
 lxc_test_containertests_SOURCES = containertests.c
 lxc_test_locktests_SOURCES = locktests.c
 lxc_test_startone_SOURCES = startone.c
@@ -16,6 +12,7 @@ lxc_test_shutdowntest_SOURCES = shutdowntest.c
 lxc_test_get_item_SOURCES = get_item.c
 lxc_test_getkeys_SOURCES = getkeys.c
 lxc_test_lxcpath_SOURCES = lxcpath.c
+lxc_test_cgpath_SOURCES = cgpath.c
 
 AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
@@ -25,6 +22,20 @@ AM_CFLAGS=-I$(top_srcdir)/src \
 
 bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-destroytest lxc-test-saveconfig lxc-test-createtest \
-	lxc-test-shutdowntest lxc-test-get_item lxc-test-getkeys lxc-test-lxcpath
+	lxc-test-shutdowntest lxc-test-get_item lxc-test-getkeys lxc-test-lxcpath \
+	lxc-test-cgpath
 
 endif
+
+EXTRA_DIST = \
+	cgpath.c \
+	containertests.c \
+	createtest.c \
+	destroytest.c \
+	get_item.c \
+	getkeys.c \
+	locktests.c \
+	lxcpath.c \
+	saveconfig.c \
+	shutdowntest.c \
+	startone.c

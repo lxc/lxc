@@ -23,6 +23,8 @@
 #ifndef __lxc_state_h
 #define __lxc_state_h
 
+#include "config.h"
+
 #include <lxc/state.h>
 #include <sys/param.h>
 
@@ -50,6 +52,8 @@ struct lxc_handler {
 	int aa_enabled;
 #endif
 	int pinfd;
+	const char *lxcpath;
+	char *cgroup;
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *, const char *);
@@ -57,7 +61,6 @@ extern int lxc_spawn(struct lxc_handler *);
 
 extern int lxc_poll(const char *name, struct lxc_handler *handler);
 extern void lxc_abort(const char *name, struct lxc_handler *handler);
-extern void lxc_fini(const char *name, struct lxc_handler *handler);
 extern int lxc_set_state(const char *, struct lxc_handler *, lxc_state_t);
 extern int lxc_check_inherited(struct lxc_conf *conf, int fd_to_ignore);
 int __lxc_start(const char *, struct lxc_conf *, struct lxc_operations *,

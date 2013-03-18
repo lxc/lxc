@@ -38,6 +38,7 @@
 
 #include "error.h"
 #include "config.h"
+#include "commands.h"
 
 #include <lxc/log.h>
 #include <lxc/cgroup.h>
@@ -52,11 +53,6 @@
 lxc_log_define(lxc_cgroup, lxc);
 
 #define MTAB "/proc/mounts"
-
-enum {
-	CGROUP_NS_CGROUP = 1,
-	CGROUP_CLONE_CHILDREN,
-};
 
 /* Check if a mount is a cgroup hierarchy for any subsystem.
  * Return the first subsystem found (or NULL if none).
@@ -92,81 +88,19 @@ static char *mount_has_subsystem(const struct mntent *mntent)
 }
 
 /*
- * get_init_cgroup: get the cgroup init is in.
- *  dsg: preallocated buffer to put the output in
- *  subsystem: the exact cgroup subsystem to look up
- *  mntent: a mntent (from getmntent) whose mntopts contains the
- *          subsystem to look up.
+ * Determine mountpoint for a cgroup subsystem.
+ * @subsystem: cgroup subsystem (i.e. freezer).  If this is NULL, the first
+ * cgroup mountpoint with any subsystems is used.
+ * @mnt: a passed-in buffer of at least size MAXPATHLEN into which the path
+ * is copied.
  *
- * subsystem and mntent can both be NULL, in which case we return
- * the first entry in /proc/1/cgroup.
- *
- * Returns a pointer to the answer, which may be "".
+ * Returns 0 on success, -1 on error.
  */
-static char *get_init_cgroup(const char *subsystem, struct mntent *mntent,
-			     char *dsg)
-{
-	FILE *f;
-	char *c, *c2;
-	char line[MAXPATHLEN];
-
-	*dsg = '\0';
-	f = fopen("/proc/1/cgroup", "r");
-	if (!f)
-		return dsg;
-
-	while (fgets(line, MAXPATHLEN, f)) {
-		c = index(line, ':');
-		if (!c)
-			continue;
-		c++;
-		c2 = index(c, ':');
-		if (!c2)
-			continue;
-		*c2 = '\0';
-		c2++;
-		if (!subsystem && !mntent)
-			goto good;
-		if (subsystem && strcmp(c, subsystem) != 0)
-			continue;
-		if (mntent && !hasmntopt(mntent, c))
-			continue;
-good:
-		DEBUG("get_init_cgroup: found init cgroup for subsys %s at %s\n",
-			subsystem, c2);
-		strncpy(dsg, c2, MAXPATHLEN);
-		c = &dsg[strlen(dsg)-1];
-		if (*c == '\n')
-			*c = '\0';
-		goto found;
-	}
-
-found:
-	fclose(f);
-	return dsg;
-}
-
-static int get_cgroup_flags(struct mntent *mntent)
-{
-	int flags = 0;
-
-
-	if (hasmntopt(mntent, "ns"))
-		flags |= CGROUP_NS_CGROUP;
-
-	if (hasmntopt(mntent, "clone_children"))
-		flags |= CGROUP_CLONE_CHILDREN;
-
-	DEBUG("cgroup %s has flags 0x%x", mntent->mnt_dir, flags);
-	return flags;
-}
-
 static int get_cgroup_mount(const char *subsystem, char *mnt)
 {
 	struct mntent *mntent;
-	char initcgroup[MAXPATHLEN];
 	FILE *file = NULL;
-	int ret, flags, err = -1;
+	int ret, err = -1;
 
 	file = setmntent(MTAB, "r");
 	if (!file) {
@@ -181,16 +115,12 @@ static int get_cgroup_mount(const char *subsystem, char *mnt)
 		if (subsystem) {
 			if (!hasmntopt(mntent, subsystem))
 				continue;
-		}
-		else {
+		} else {
 			if (!mount_has_subsystem(mntent))
 				continue;
 		}
 
-		flags = get_cgroup_flags(mntent);
-		ret = snprintf(mnt, MAXPATHLEN, "%s%s%s", mntent->mnt_dir,
-			       get_init_cgroup(subsystem, NULL, initcgroup),
-		               (flags & CGROUP_NS_CGROUP) ? "" : "/lxc");
+		ret = snprintf(mnt, MAXPATHLEN, "%s", mntent->mnt_dir);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto fail;
 
@@ -207,383 +137,342 @@ out:
 	return err;
 }
 
-int lxc_ns_is_mounted(void)
+/*
+ * cgroup_path_get: Calculate the full path for a particular subsystem, plus
+ * a passed-in (to be appended) relative cgpath for a container.
+ * @path: a char** into which a pointer to the answer is copied
+ * @subsystem: subsystem of interest (i.e. freezer).
+ * @cgpath: a container's (relative) cgroup path, i.e. "/lxc/c1".
+ *
+ * Returns 0 on success, -1 on error.
+ *
+ * The answer is written in a static char[MAXPATHLEN] in this function and
+ * should not be freed.
+ */
+extern int cgroup_path_get(char **path, const char *subsystem, const char *cgpath)
 {
 	static char        buf[MAXPATHLEN];
+	static char        retbuf[MAXPATHLEN];
+	int rc;
 
-	return (get_cgroup_mount("ns", buf) == 0);
-}
-
-static int cgroup_rename_nsgroup(const char *mnt, const char *name, pid_t pid)
-{
-	char oldname[MAXPATHLEN];
-	char newname[MAXPATHLEN];
-	int ret;
-
-	ret = snprintf(oldname, MAXPATHLEN, "%s/%d", mnt, pid);
-	if (ret >= MAXPATHLEN)
-		return -1;
-
-	ret = snprintf(newname, MAXPATHLEN, "%s/%s", mnt, name);
-	if (ret >= MAXPATHLEN)
-		return -1;
-
-	if (rename(oldname, newname)) {
-		SYSERROR("failed to rename cgroup %s->%s", oldname, newname);
+	/* lxc_cgroup_set passes a state object for the subsystem,
+	 * so trim it to just the subsystem part */
+	if (subsystem) {
+		rc = snprintf(retbuf, MAXPATHLEN, "%s", subsystem);
+		if (rc < 0 || rc >= MAXPATHLEN) {
+			ERROR("subsystem name too long");
+			return -1;
+		}
+		char *s = index(retbuf, '.');
+		if (s)
+			*s = '\0';
+		DEBUG("%s: called for subsys %s name %s\n", __func__, retbuf, cgpath);
+	}
+	if (get_cgroup_mount(subsystem ? retbuf : NULL, buf)) {
+		ERROR("cgroup is not mounted");
 		return -1;
 	}
 
-	DEBUG("'%s' renamed to '%s'", oldname, newname);
+	rc = snprintf(retbuf, MAXPATHLEN, "%s/%s", buf, cgpath);
+	if (rc < 0 || rc >= MAXPATHLEN) {
+		ERROR("name too long");
+		return -1;
+	}
+
+	DEBUG("%s: returning %s for subsystem %s", __func__, retbuf, subsystem);
+
+	*path = retbuf;
+	return 0;
+}
+
+/*
+ * Calculate a container's cgroup path for a particular subsystem.  This
+ * is the cgroup path relative to the root of the cgroup filesystem.
+ * @path: A char ** into which we copy the char* containing the answer
+ * @subsystem: the cgroup subsystem of interest (i.e. freezer)
+ * @name: container name
+ * @lxcpath: the lxcpath in which the container is running.
+ *
+ * Returns 0 on success, -1 on error.
+ *
+ * Note that the char* copied into *path is a static char[MAXPATHLEN] in
+ * commands.c:receive_answer().  It should not be freed.
+ */
+extern int lxc_get_cgpath(const char **path, const char *subsystem, const char *name, const char *lxcpath)
+{
+	struct lxc_command command = {
+		.request = { .type = LXC_COMMAND_CGROUP },
+	};
+
+	int ret, stopped = 0;
+
+	ret = lxc_command(name, &command, &stopped, lxcpath);
+	if (ret < 0) {
+		if (!stopped)
+			ERROR("failed to send command");
+		return -1;
+	}
+
+	if (!ret) {
+		WARN("'%s' has stopped before sending its state", name);
+		return -1;
+	}
+
+	if (command.answer.ret < 0 || command.answer.pathlen < 0) {
+		ERROR("failed to get state for '%s': %s",
+			name, strerror(-command.answer.ret));
+		return -1;
+	}
+
+	*path = command.answer.path;
 
 	return 0;
 }
 
-static int cgroup_enable_clone_children(const char *path)
+/*
+ * lxc_cgroup_path_get: determine full pathname for a cgroup
+ * file for a specific container.
+ * @path: char ** used to return the answer.  The char * will point
+ * into the static char* retuf from cgroup_path_get() (so no need
+ * to free it).
+ * @subsystem: cgroup subsystem (i.e. "freezer") for which to
+ * return an answer.  If NULL, then the first cgroup entry in
+ * mtab will be used.
+ *
+ * This is the exported function, which determines cgpath from the
+ * monitor running in lxcpath.
+ *
+ * Returns 0 on success, < 0 on error.
+ */
+int lxc_cgroup_path_get(char **path, const char *subsystem, const char *name, const char *lxcpath)
 {
-	FILE *f;
-	int ret = 0;
+	const char *cgpath;
 
-	f = fopen(path, "w");
-	if (!f) {
-		SYSERROR("failed to open '%s'", path);
+	if (lxc_get_cgpath(&cgpath, subsystem, name, lxcpath) < 0)
+		return -1;
+
+	return cgroup_path_get(path, subsystem, cgpath);
+}
+
+/*
+ * small helper which simply write a value into a (cgroup) file
+ */
+static int do_cgroup_set(const char *path, const char *value)
+{
+	int fd, ret;
+
+	if ((fd = open(path, O_WRONLY)) < 0) {
+		SYSERROR("open %s : %s", path, strerror(errno));
 		return -1;
 	}
 
-	if (fprintf(f, "1") < 1) {
-		ERROR("failed to write flag to '%s'", path);
-		ret = -1;
+	if ((ret = write(fd, value, strlen(value))) < 0) {
+		close(fd);
+		SYSERROR("write %s : %s", path, strerror(errno));
+		return ret;
 	}
 
-	fclose(f);
-
-	return ret;
+	if ((ret = close(fd)) < 0) {
+		SYSERROR("close %s : %s", path, strerror(errno));
+		return ret;
+	}
+	return 0;
 }
 
-static int lxc_one_cgroup_finish_attach(int fd, pid_t pid)
+/*
+ * small helper to write a value into a file in a particular directory.
+ * @cgpath: the directory in which to find the file
+ * @filename: the file (under cgpath) to which to write
+ * @value: what to write
+ *
+ * Returns 0 on success, < 0 on error.
+ */
+int lxc_cgroup_set_bypath(const char *cgpath, const char *filename, const char *value)
 {
-       char buf[32];
-       int ret;
+	int ret;
+	char *dirpath;
+	char path[MAXPATHLEN];
 
-       snprintf(buf, 32, "%ld", (long)pid);
+	ret = cgroup_path_get(&dirpath, filename, cgpath);
+	if (ret)
+		return -1;
 
-       ret = write(fd, buf, strlen(buf));
-       if (ret <= 0) {
-               SYSERROR("failed to write pid '%ld' to fd '%d'", (long)pid, fd);
-               ret = -1;
-       } else {
-               ret = 0;
-       }
+	ret = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("pathname too long");
+		return -1;
+	}
 
-       close(fd);
-       return ret;
+	return do_cgroup_set(path, value);
 }
 
-static int lxc_one_cgroup_dispose_attach(int fd)
+/*
+ * set a cgroup value for a container
+ *
+ * @name: name of the container
+ * @filename: the cgroup file (i.e. freezer.state) whose value to change
+ * @value: the value to write to the file
+ * @lxcpath: the lxcpath under which the container is running.
+ *
+ * Returns 0 on success, < 0 on error.
+ */
+
+int lxc_cgroup_set(const char *name, const char *filename, const char *value,
+		   const char *lxcpath)
 {
-       close(fd);
-       return 0;
+	int ret;
+	char *dirpath;
+	char path[MAXPATHLEN];
+
+	ret = lxc_cgroup_path_get(&dirpath, filename, name, lxcpath);
+	if (ret)
+		return -1;
+
+	ret = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("pathname too long");
+		return -1;
+	}
+
+	return do_cgroup_set(path, value);
 }
 
-static int lxc_one_cgroup_prepare_attach(const char *name,
-					 struct mntent *mntent)
+/*
+ * Get value of a cgroup setting for a container.
+ *
+ * @name: name of the container
+ * @filename: the cgroup file to read (i.e. 'freezer.state')
+ * @value: a preallocated char* into which to copy the answer
+ * @len: the length of pre-allocated @value
+ * @lxcpath: the lxcpath in which the container is running (i.e.
+ * /var/lib/lxc)
+ *
+ * Returns < 0 on error, or the number of bytes read.
+ *
+ * If you pass in NULL value or 0 len, then you are asking for the size of the
+ * file.
+ *
+ * Note that we can't get the file size quickly through stat or lseek.
+ * Therefore if you pass in len > 0 but less than the file size, your only
+ * indication will be that the return value will be equal to the passed-in ret.
+ * We will not return the actual full file size.
+ */
+int lxc_cgroup_get(const char *name, const char *filename, char *value,
+		   size_t len, const char *lxcpath)
 {
-	int fd;
-	char tasks[MAXPATHLEN], initcgroup[MAXPATHLEN];
-	char *cgmnt = mntent->mnt_dir;
-	int flags;
+	int fd, ret = -1;
+	char *dirpath;
+	char path[MAXPATHLEN];
 	int rc;
 
-	flags = get_cgroup_flags(mntent);
+	ret = lxc_cgroup_path_get(&dirpath, filename, name, lxcpath);
+	if (ret)
+		return -1;
 
-	rc = snprintf(tasks, MAXPATHLEN, "%s%s%s/%s/tasks", cgmnt,
-	         get_init_cgroup(NULL, mntent, initcgroup),
-	         (flags & CGROUP_NS_CGROUP) ? "" : "/lxc",
-	         name);
+	rc = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
 	if (rc < 0 || rc >= MAXPATHLEN) {
 		ERROR("pathname too long");
 		return -1;
 	}
 
-	fd = open(tasks, O_WRONLY);
+	fd = open(path, O_RDONLY);
 	if (fd < 0) {
-		SYSERROR("failed to open '%s'", tasks);
+		ERROR("open %s : %s", path, strerror(errno));
 		return -1;
 	}
 
-	return fd;
-}
-
-static int lxc_one_cgroup_attach(const char *name, struct mntent *mntent, pid_t pid)
-{
-	int fd;
-
-	fd = lxc_one_cgroup_prepare_attach(name, mntent);
-	if (fd < 0) {
-		return -1;
+	if (!len || !value) {
+		char buf[100];
+		int count = 0;
+		while ((ret = read(fd, buf, 100)) > 0)
+			count += ret;
+		if (ret >= 0)
+			ret = count;
+	} else {
+		memset(value, 0, len);
+		ret = read(fd, value, len);
 	}
 
-	return lxc_one_cgroup_finish_attach(fd, pid);
-}
+	if (ret < 0)
+		ERROR("read %s : %s", path, strerror(errno));
 
-int lxc_cgroup_dispose_attach(void *data)
-{
-	int *fds = data;
-	int ret, err;
-
-	if (!fds) {
-		return 0;
-	}
-
-	ret = 0;
-
-	for (; *fds >= 0; fds++) {
-		err = lxc_one_cgroup_dispose_attach(*fds);
-		if (err) {
-			ret = err;
-		}
-	}
-
-	free(data);
-
+	close(fd);
 	return ret;
 }
 
-int lxc_cgroup_finish_attach(void *data, pid_t pid)
+int lxc_cgroup_nrtasks(const char *cgpath)
 {
-	int *fds = data;
-	int err;
+	char *dpath;
+	char path[MAXPATHLEN];
+	int pid, ret, count = 0;
+	FILE *file;
+	int rc;
 
-	if (!fds) {
-		return 0;
-	}
+	ret = cgroup_path_get(&dpath, NULL, cgpath);
+	if (ret)
+		return -1;
 
-	for (; *fds >= 0; fds++) {
-		err = lxc_one_cgroup_finish_attach(*fds, pid);
-		if (err) {
-			/* get rid of the rest of them */
-			lxc_cgroup_dispose_attach(data);
-			return -1;
-		}
-		*fds = -1;
-	}
-
-	free(data);
-
-	return 0;
-}
-
-int lxc_cgroup_prepare_attach(const char *name, void **data)
-{
-	struct mntent *mntent;
-	FILE *file = NULL;
-	int err = -1;
-	int found = 0;
-	int *fds;
-	int i;
-	static const int MAXFDS = 256;
-
-	file = setmntent(MTAB, "r");
-	if (!file) {
-		SYSERROR("failed to open %s", MTAB);
+	rc = snprintf(path, MAXPATHLEN, "%s/tasks", dpath);
+	if (rc < 0 || rc >= MAXPATHLEN) {
+		ERROR("pathname too long");
 		return -1;
 	}
 
-	/* create a large enough buffer for all practical
-	 * use cases
-	 */
-	fds = malloc(sizeof(int) * MAXFDS);
-	if (!fds) {
-		err = -1;
-		goto out;
-	}
-	for (i = 0; i < MAXFDS; i++) {
-		fds[i] = -1;
+	file = fopen(path, "r");
+	if (!file) {
+		SYSERROR("fopen '%s' failed", path);
+		return -1;
 	}
 
-	err = 0;
-	i = 0;
-	while ((mntent = getmntent(file))) {
-		if (i >= MAXFDS - 1) {
-			ERROR("too many cgroups to attach to, aborting");
-			lxc_cgroup_dispose_attach(fds);
-			errno = ENOMEM;
-			err = -1;
-			goto out;
-		}
+	while (fscanf(file, "%d", &pid) != EOF)
+		count++;
 
-		DEBUG("checking '%s' (%s)", mntent->mnt_dir, mntent->mnt_type);
+	fclose(file);
 
-		if (strcmp(mntent->mnt_type, "cgroup"))
-			continue;
-		if (!mount_has_subsystem(mntent))
-			continue;
-
-		INFO("[%d] found cgroup mounted at '%s',opts='%s'",
-		     ++found, mntent->mnt_dir, mntent->mnt_opts);
-
-		fds[i] = lxc_one_cgroup_prepare_attach(name, mntent);
-		if (fds[i] < 0) {
-			err = fds[i];
-			lxc_cgroup_dispose_attach(fds);
-			goto out;
-		}
-		i++;
-	};
-
-	if (!found)
-		ERROR("No cgroup mounted on the system");
-
-	*data = fds;
-
-out:
-	endmntent(file);
-	return err;
+	return count;
 }
 
 /*
- * for each mounted cgroup, attach a pid to the cgroup for the container
+ * If first creating the /sys/fs/cgroup/$subsys/lxc container, then
+ * try to set clone_children to 1.  Some kernels don't support
+ * clone_children, and cgroup maintainer wants to deprecate it.  So
+ * XXX TODO we should instead after each cgroup mkdir (here and in
+ * hooks/mountcgroup) check if cpuset is in the subsystems, and if so
+ * manually copy over mems and cpus.
  */
-int lxc_cgroup_attach(const char *name, pid_t pid)
+static void set_clone_children(const char *mntdir)
 {
-	void *data = NULL;
+	char path[MAXPATHLEN];
+	FILE *fout;
 	int ret;
 
-	ret = lxc_cgroup_prepare_attach(name, &data);
-	if (ret < 0) {
-		return ret;
-	}
-
-	return lxc_cgroup_finish_attach(data, pid);
+	ret = snprintf(path, MAXPATHLEN, "%s/cgroup.clone_children", mntdir);
+	INFO("writing to %s\n", path);
+	if (ret < 0 || ret > MAXPATHLEN)
+		return;
+	fout = fopen(path, "w");
+	if (!fout)
+		return;
+	fprintf(fout, "1\n");
+	fclose(fout);
 }
 
 /*
- * rename cgname, which is under cgparent, to a new name starting
- * with 'cgparent/dead'.  That way cgname can be reused.  Return
- * 0 on success, -1 on failure.
+ * Make sure the 'cgroup group' exists, so that we don't have to worry about
+ * that later.
+ *
+ * @lxcgroup: the cgroup group, i.e. 'lxc' by default.
+ *
+ * See detailed comments at lxc_cgroup_path_create for more information.
+ *
+ * Returns 0 on success, -1 on error.
  */
-int try_to_move_cgname(char *cgparent, char *cgname)
+static int create_lxcgroups(const char *lxcgroup)
 {
-	char *newdir;
-
-	/* tempnam problems don't matter here - cgroupfs will prevent
-	 * duplicates if we race, and we'll just fail at that (unlikely)
-	 * point
-	 */
-
-	newdir = tempnam(cgparent, "dead");
-	if (!newdir)
-		return -1;
-	if (rename(cgname, newdir))
-		return -1;
-	WARN("non-empty cgroup %s renamed to %s, please manually inspect it\n",
-		cgname, newdir);
-
-	return 0;
-}
-
-/*
- * create a cgroup for the container in a particular subsystem.
- */
-static int lxc_one_cgroup_create(const char *name,
-				 struct mntent *mntent, pid_t pid)
-{
-	char cginit[MAXPATHLEN], cgname[MAXPATHLEN], cgparent[MAXPATHLEN];
-	char clonechild[MAXPATHLEN];
-	char initcgroup[MAXPATHLEN];
-	int flags, ret;
-
-	/* cgparent is the parent dir, e.g., /sys/fs/cgroup/<cgroup>/<init-cgroup>/lxc */
-	/* (remember get_init_cgroup() returns a path starting with '/') */
-	/* cgname is the full name, e.g., /sys/fs/cgroup/<cgroup>/<init-cgroup>/lxc/name */
-	ret = snprintf(cginit, MAXPATHLEN, "%s%s", mntent->mnt_dir,
-		get_init_cgroup(NULL, mntent, initcgroup));
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		SYSERROR("Failed creating pathname for init's cgroup (%d)\n", ret);
-		return -1;
-	}
-
-	flags = get_cgroup_flags(mntent);
-
-	ret = snprintf(cgparent, MAXPATHLEN, "%s%s", cginit,
-		       (flags & CGROUP_NS_CGROUP) ? "" : "/lxc");
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		SYSERROR("Failed creating pathname for cgroup parent (%d)\n", ret);
-		return -1;
-	}
-	ret = snprintf(cgname, MAXPATHLEN, "%s/%s", cgparent, name);
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		SYSERROR("Failed creating pathname for cgroup (%d)\n", ret);
-		return -1;
-	}
-
-	/* Do we have the deprecated ns_cgroup subsystem? */
-	if (flags & CGROUP_NS_CGROUP) {
-		WARN("using deprecated ns_cgroup");
-		return cgroup_rename_nsgroup(cginit, name, pid);
-	}
-
-	ret = snprintf(clonechild, MAXPATHLEN, "%s/cgroup.clone_children",
-		       cginit);
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		SYSERROR("Failed creating pathname for clone_children (%d)\n", ret);
-		return -1;
-	}
-
-	/* we check if the kernel has clone_children, at this point if there
-	 * no clone_children neither ns_cgroup, that means the cgroup is mounted
-	 * without the ns_cgroup and it has not the compatibility flag
-	 */
-	if (access(clonechild, F_OK)) {
-		ERROR("no ns_cgroup option specified");
-		return -1;
-	}
-
-	/* enable the clone_children flag of the cgroup */
-	if (cgroup_enable_clone_children(clonechild)) {
-		SYSERROR("failed to enable 'clone_children flag");
-		return -1;
-	}
-
-	/* if cgparent does not exist, create it */
-	if (access(cgparent, F_OK)) {
-		ret = mkdir(cgparent, 0755);
-		if (ret == -1 && errno != EEXIST) {
-			SYSERROR("failed to create '%s' directory", cgparent);
-			return -1;
-		}
-	}
-
-	/*
-	 * There is a previous cgroup.  Try to delete it.  If that fails
-	 * (i.e. it is not empty) try to move it out of the way.
-	 */
-	if (!access(cgname, F_OK) && rmdir(cgname)) {
-		if (try_to_move_cgname(cgparent, cgname)) {
-			SYSERROR("failed to remove previous cgroup '%s'", cgname);
-			return -1;
-		}
-	}
-
-	/* Let's create the cgroup */
-	if (mkdir(cgname, 0755)) {
-		SYSERROR("failed to create '%s' directory", cgname);
-		return -1;
-	}
-
-	INFO("created cgroup '%s'", cgname);
-
-	return 0;
-}
-
-/*
- * for each mounted cgroup, create a cgroup for the container and attach a pid
- */
-int lxc_cgroup_create(const char *name, pid_t pid)
-{
-	struct mntent *mntent;
 	FILE *file = NULL;
-	int err = -1;
-	int found = 0;
+	struct mntent *mntent;
+	int ret, retv = -1;
+	char path[MAXPATHLEN];
 
 	file = setmntent(MTAB, "r");
 	if (!file) {
@@ -592,31 +481,165 @@ int lxc_cgroup_create(const char *name, pid_t pid)
 	}
 
 	while ((mntent = getmntent(file))) {
-		DEBUG("checking '%s' (%s)", mntent->mnt_dir, mntent->mnt_type);
 
 		if (strcmp(mntent->mnt_type, "cgroup"))
 			continue;
 		if (!mount_has_subsystem(mntent))
 			continue;
 
-		INFO("[%d] found cgroup mounted at '%s',opts='%s'",
-		     ++found, mntent->mnt_dir, mntent->mnt_opts);
+		/* 
+		 * TODO - handle case where lxcgroup has subdirs?  (i.e. build/l1)
+		 * We probably only want to support that for /users/joe
+		 */
+		ret = snprintf(path, MAXPATHLEN, "%s/%s",
+			       mntent->mnt_dir, lxcgroup ? lxcgroup : "lxc");
+		if (ret < 0 || ret >= MAXPATHLEN)
+			goto fail;
+		if (access(path, F_OK)) {
+			set_clone_children(mntent->mnt_dir);
+			ret = mkdir(path, 0755);
+			if (ret == -1 && errno != EEXIST) {
+				SYSERROR("failed to create '%s' directory", path);
+				goto fail;
+			}
+		}
 
-		err = lxc_one_cgroup_create(name, mntent, pid);
-		if (err)
+	}
+
+	retv = 0;
+fail:
+	endmntent(file);
+	return retv;
+}
+
+/*
+ * For a new container, find a cgroup path which is unique in all cgroup mounts.
+ * I.e. if r1 is already running, then /lxc/r1-1 may be used.
+ *
+ * @lxcgroup: the cgroup 'group' the contaienr should run in.  By default, this
+ * is just 'lxc'.  Admins may wish to group some containers into other groups,
+ * i.e. 'build', to take advantage of cgroup hierarchy to simplify group
+ * administration.  Also, unprivileged users who are placed into a cgroup by
+ * libcgroup_pam will be using that cgroup rather than the system-wide 'lxc'
+ * group.
+ * @name: the name of the container
+ *
+ * The chosen cgpath is returned as a strdup'd string.  The caller will have to
+ * free that eventually, however the lxc monitor will keep that string so as to
+ * return it in response to a LXC_COMMAND_CGROUP query.
+ *
+ * Note the path is relative to cgroup mounts.  I.e. if the freezer subsystem
+ * is at /sys/fs/cgroup/freezer, and this fn returns '/lxc/r1', then the
+ * freezer cgroup's full path will be /sys/fs/cgroup/freezer/lxc/r1/.
+ *
+ * XXX This should probably be locked globally
+ * 
+ * Races won't be determintal, you'll just end up with leftover unused cgroups
+ */
+char *lxc_cgroup_path_create(const char *lxcgroup, const char *name)
+{
+	int i = 0, ret;
+	char *retpath, path[MAXPATHLEN];
+	char tail[12];
+	FILE *file = NULL;
+	struct mntent *mntent;
+
+	if (create_lxcgroups(lxcgroup) < 0)
+		return NULL;
+
+again:
+	file = setmntent(MTAB, "r");
+	if (!file) {
+		SYSERROR("failed to open %s", MTAB);
+		return NULL;
+	}
+
+	if (i)
+		snprintf(tail, 12, "-%d", i);
+	else
+		*tail = '\0';
+
+	while ((mntent = getmntent(file))) {
+
+		if (strcmp(mntent->mnt_type, "cgroup"))
+			continue;
+		if (!mount_has_subsystem(mntent))
+			continue;
+
+		/* find unused mnt_dir + lxcgroup + name + -$i */
+		ret = snprintf(path, MAXPATHLEN, "%s/%s/%s%s", mntent->mnt_dir,
+			       lxcgroup ? lxcgroup : "lxc", name, tail);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			goto fail;
+
+		if (access(path, F_OK) == 0) goto next;
+
+		if (mkdir(path, 0755)) {
+			ERROR("Error creating cgroups");
+			goto fail;
+		}
+
+	}
+
+	endmntent(file);
+
+	// print out the cgpath part
+	ret = snprintf(path, MAXPATHLEN, "%s/%s%s",
+		       lxcgroup ? lxcgroup : "lxc", name, tail);
+	if (ret < 0 || ret >= MAXPATHLEN) // can't happen
+		goto fail;
+
+	retpath = strdup(path);
+
+	return retpath;
+
+next:
+	endmntent(file);
+	i++;
+	goto again;
+
+fail:
+	endmntent(file);
+	return NULL;
+}
+
+int lxc_cgroup_enter(const char *cgpath, pid_t pid)
+{
+	char path[MAXPATHLEN];
+	FILE *file = NULL, *fout;
+	struct mntent *mntent;
+	int ret, retv = -1;
+
+	file = setmntent(MTAB, "r");
+	if (!file) {
+		SYSERROR("failed to open %s", MTAB);
+		return -1;
+	}
+
+	while ((mntent = getmntent(file))) {
+		if (strcmp(mntent->mnt_type, "cgroup"))
+			continue;
+		if (!mount_has_subsystem(mntent))
+			continue;
+		ret = snprintf(path, MAXPATHLEN, "%s/%s/tasks",
+			       mntent->mnt_dir, cgpath);
+		if (ret < 0 || ret >= MAXPATHLEN) {
+			ERROR("entering cgroup");
 			goto out;
-
-		err = lxc_one_cgroup_attach(name, mntent, pid);
-		if (err)
+		}
+		fout = fopen(path, "w");
+		if (!fout) {
+			ERROR("entering cgroup");
 			goto out;
-	};
-
-	if (!found)
-		ERROR("No cgroup mounted on the system");
+		}
+		fprintf(fout, "%d\n", (int)pid);
+		fclose(fout);
+	}
+	retv = 0;
 
 out:
 	endmntent(file);
-	return err;
+	return retv;
 }
 
 int recursive_rmdir(char *dirname)
@@ -664,16 +687,13 @@ int recursive_rmdir(char *dirname)
 
 }
 
-int lxc_one_cgroup_destroy(struct mntent *mntent, const char *name)
+static int lxc_one_cgroup_destroy(struct mntent *mntent, const char *cgpath)
 {
-	char cgname[MAXPATHLEN], initcgroup[MAXPATHLEN];
+	char cgname[MAXPATHLEN];
 	char *cgmnt = mntent->mnt_dir;
-	int flags = get_cgroup_flags(mntent);
 	int rc;
 
-	rc = snprintf(cgname, MAXPATHLEN, "%s%s%s/%s", cgmnt,
-		get_init_cgroup(NULL, mntent, initcgroup),
-		(flags & CGROUP_NS_CGROUP) ? "" : "/lxc", name);
+	rc = snprintf(cgname, MAXPATHLEN, "%s/%s", cgmnt, cgpath);
 	if (rc < 0 || rc >= MAXPATHLEN) {
 		ERROR("name too long");
 		return -1;
@@ -692,11 +712,11 @@ int lxc_one_cgroup_destroy(struct mntent *mntent, const char *name)
 /*
  * for each mounted cgroup, destroy the cgroup for the container
  */
-int lxc_cgroup_destroy(const char *name)
+int lxc_cgroup_destroy(const char *cgpath)
 {
 	struct mntent *mntent;
 	FILE *file = NULL;
-	int err = -1;
+	int err, retv  = 0;
 
 	file = setmntent(MTAB, "r");
 	if (!file) {
@@ -710,168 +730,24 @@ int lxc_cgroup_destroy(const char *name)
 		if (!mount_has_subsystem(mntent))
 			continue;
 
-		err = lxc_one_cgroup_destroy(mntent, name);
-		if (err)
-			break;
+		err = lxc_one_cgroup_destroy(mntent, cgpath);
+		if (err)  // keep trying to clean up the others
+			retv = -1;
 	}
 
 	endmntent(file);
-	return err;
-}
-/*
- * lxc_cgroup_path_get: put into *path the pathname for
- * %subsystem and cgroup %name.  If %subsystem is NULL, then
- * the first mounted cgroup will be used (for nr_tasks)
- */
-int lxc_cgroup_path_get(char **path, const char *subsystem, const char *name)
-{
-	static char        buf[MAXPATHLEN];
-	static char        retbuf[MAXPATHLEN];
-	int rc;
-
-	/* lxc_cgroup_set passes a state object for the subsystem,
-	 * so trim it to just the subsystem part */
-	if (subsystem) {
-		rc = snprintf(retbuf, MAXPATHLEN, "%s", subsystem);
-		if (rc < 0 || rc >= MAXPATHLEN) {
-			ERROR("subsystem name too long");
-			return -1;
-		}
-		char *s = index(retbuf, '.');
-		if (s)
-			*s = '\0';
-		DEBUG("%s: called for subsys %s name %s\n", __func__, retbuf, name);
-	}
-	if (get_cgroup_mount(subsystem ? retbuf : NULL, buf)) {
-		ERROR("cgroup is not mounted");
-		return -1;
-	}
-
-	rc = snprintf(retbuf, MAXPATHLEN, "%s/%s", buf, name);
-	if (rc < 0 || rc >= MAXPATHLEN) {
-		ERROR("name too long");
-		return -1;
-	}
-
-	DEBUG("%s: returning %s for subsystem %s", __func__, retbuf, subsystem);
-
-	*path = retbuf;
-	return 0;
+	return retv;
 }
 
-int lxc_cgroup_set(const char *name, const char *filename, const char *value)
+int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath)
 {
-	int fd, ret;
-	char *dirpath;
-	char path[MAXPATHLEN];
-	int rc;
+	const char *dirpath;
 
-	ret = lxc_cgroup_path_get(&dirpath, filename, name);
-	if (ret)
-		return -1;
-
-	rc = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
-	if (rc < 0 || rc >= MAXPATHLEN) {
-		ERROR("pathname too long");
+	if (lxc_get_cgpath(&dirpath, NULL, name, lxcpath) < 0) {
+		ERROR("Error getting cgroup for container %s: %s", lxcpath, name);
 		return -1;
 	}
+	INFO("joining pid %d to cgroup %s", pid, dirpath);
 
-	fd = open(path, O_WRONLY);
-	if (fd < 0) {
-		ERROR("open %s : %s", path, strerror(errno));
-		return -1;
-	}
-
-	ret = write(fd, value, strlen(value));
-	if (ret < 0) {
-		ERROR("write %s : %s", path, strerror(errno));
-		goto out;
-	}
-
-	ret = 0;
-out:
-	close(fd);
-	return ret;
-}
-
-/*
- * If you pass in NULL value or 0 len, then you are asking for the size
- * of the file.  Note that we can't get the file size quickly through stat
- * or lseek.  Therefore if you pass in len > 0 but less than the file size,
- * your only indication will be that the return value will be equal to the
- * passed-in ret.  We will not return the actual full file size.
- */
-int lxc_cgroup_get(const char *name, const char *filename,
-		   char *value, size_t len)
-{
-	int fd, ret = -1;
-	char *dirpath;
-	char path[MAXPATHLEN];
-	int rc;
-
-	ret = lxc_cgroup_path_get(&dirpath, filename, name);
-	if (ret)
-		return -1;
-
-	rc = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
-	if (rc < 0 || rc >= MAXPATHLEN) {
-		ERROR("pathname too long");
-		return -1;
-	}
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		ERROR("open %s : %s", path, strerror(errno));
-		return -1;
-	}
-
-    if (!len || !value) {
-        char buf[100];
-        int count = 0;
-        while ((ret = read(fd, buf, 100)) > 0)
-            count += ret;
-        if (ret >= 0)
-            ret = count;
-    } else {
-        memset(value, 0, len);
-        ret = read(fd, value, len);
-    }
-
-	if (ret < 0)
-		ERROR("read %s : %s", path, strerror(errno));
-
-	close(fd);
-	return ret;
-}
-
-int lxc_cgroup_nrtasks(const char *name)
-{
-	char *dpath;
-	char path[MAXPATHLEN];
-	int pid, ret, count = 0;
-	FILE *file;
-	int rc;
-
-	ret = lxc_cgroup_path_get(&dpath, NULL, name);
-	if (ret)
-		return -1;
-
-	rc = snprintf(path, MAXPATHLEN, "%s/tasks", dpath);
-	if (rc < 0 || rc >= MAXPATHLEN) {
-		ERROR("pathname too long");
-		return -1;
-	}
-
-	file = fopen(path, "r");
-	if (!file) {
-		SYSERROR("fopen '%s' failed", path);
-		return -1;
-	}
-
-	while (fscanf(file, "%d", &pid) != EOF)
-		count++;
-
-	fclose(file);
-
-	return count;
+	return lxc_cgroup_enter(dirpath, pid);
 }

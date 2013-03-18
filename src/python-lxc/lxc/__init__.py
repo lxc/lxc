@@ -26,14 +26,14 @@ import glob
 import os
 import subprocess
 import stat
-import tempfile
 import time
 import warnings
 
 warnings.warn("The python-lxc API isn't yet stable "
               "and may change at any point in the future.", Warning, 2)
 
-default_config_path = "@LXCPATH@"
+default_config_path = _lxc.get_default_config_path()
+version = _lxc.get_version()
 
 
 class ContainerNetwork():
@@ -238,7 +238,8 @@ class Container(_lxc.Container):
         if not self.running:
             return False
 
-        attach = ["lxc-attach", "-n", self.name]
+        attach = ["lxc-attach", "-n", self.name,
+                  "-P", self.get_config_path()]
         if namespace != "ALL":
             attach += ["-s", namespace]
 
@@ -299,7 +300,8 @@ class Container(_lxc.Container):
         if not self.running:
             return False
 
-        if subprocess.call(["lxc-console", "-n", self.name, "-t", "%s" % tty],
+        if subprocess.call(["lxc-console", "-n", self.name, "-t", "%s" % tty,
+                            "-P", self.get_config_path()],
                            universal_newlines=True) != 0:
             return False
         return True
@@ -335,17 +337,8 @@ class Container(_lxc.Container):
             Returns the list of IP addresses for the container.
         """
 
-        if not self.defined or not self.running:
+        if not self.running:
             return False
-
-        try:
-            os.makedirs("/run/netns")
-        except:
-            pass
-
-        path = tempfile.mktemp(dir="/run/netns")
-
-        os.symlink("/proc/%s/ns/net" % self.init_pid, path)
 
         ips = []
 
@@ -354,7 +347,8 @@ class Container(_lxc.Container):
             if count != 0:
                 time.sleep(1)
 
-            base_cmd = ["ip", "netns", "exec", path.split("/")[-1], "ip"]
+            base_cmd = ["lxc-attach", "-s", "NETWORK", "-n", self.name, "--",
+                        "ip"]
 
             # Get IPv6
             if protocol in ("ipv6", None):
@@ -395,7 +389,6 @@ class Container(_lxc.Container):
 
             count += 1
 
-        os.remove(path)
         return ips
 
     def get_keys(self, key=None):

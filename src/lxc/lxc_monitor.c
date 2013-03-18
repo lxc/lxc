@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	fd = lxc_monitor_open();
+	fd = lxc_monitor_open(my_args.lxcpath);
 	if (fd < 0)
 		return -1;
 

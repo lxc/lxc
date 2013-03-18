@@ -76,22 +76,42 @@ copy_configuration() {
     if [ -n "$lxc_arch" ]; then
         echo "lxc.arch = $lxc_arch" >> $path/config
     fi
+
+    lxc_network_link_line="# lxc.network.link = br0"
+    for br in lxcbr0 virbr0 br0; do
+        if [ -d /sys/class/net/$br/bridge ]; then
+            lxc_network_link_line="lxc.network.link = $br"
+            break
+        fi
+    done
+
+    if ! grep -q "^lxc.network.type" $path/config 2>/dev/null; then
+        cat <<EOF >> $path/config
+lxc.network.type = veth
+$lxc_network_link_line
+lxc.network.flags = up
+EOF
+    fi
+
+    # if there is exactly one veth network entry, make sure it has an
+    # associated mac address.
+    nics=$(grep -e '^lxc\.network\.type[ \t]*=[ \t]*veth' $path/config | wc -l)
+    if [ "$nics" -eq 1 ] && ! grep -q "^lxc.network.hwaddr" $path/config; then
+        # see http://sourceforge.net/tracker/?func=detail&aid=3411497&group_id=163076&atid=826303
+        hwaddr="fe:$(dd if=/dev/urandom bs=8 count=1 2>/dev/null |od -t x8 | \
+                      head -1 |awk '{print $2}' | cut -c1-10 |\
+                      sed 's/\(..\)/\1:/g; s/.$//')"
+        echo "lxc.network.hwaddr = $hwaddr" >> $path/config
+    fi
+
     cat <<EOF >> $path/config
+
 lxc.tty = 4
 lxc.pts = 1024
 lxc.utsname = $hostname
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
-
-# network interface
-lxc.network.name = eth0
-lxc.network.type = veth
-lxc.network.flags = up
-# enable for bridging
-#lxc.network.link = br0
-#lxc.network.ipv4 = n.n.n.n
-#lxc.network.ipv4.gateway = auto
 
 # devices
 lxc.cgroup.devices.deny = a

@@ -58,6 +58,6 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	return lxc_freeze(my_args.name);
+	return lxc_freeze(my_args.name, my_args.lxcpath);
 }
 

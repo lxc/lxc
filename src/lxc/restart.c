@@ -64,14 +64,13 @@ static struct lxc_operations restart_ops = {
 	.post_start = post_restart
 };
 
-int lxc_restart(const char *name, int sfd, struct lxc_conf *conf, int flags)
+int lxc_restart(const char *name, int sfd, struct lxc_conf *conf, int flags,
+		const char *lxcpath)
 {
 	struct restart_args restart_arg = {
 		.sfd = sfd,
 		.flags = flags
 	};
-	/* TODO - make lxcpath a cmdline arg */
-	const char *lxcpath = NULL;
 
 	if (lxc_check_inherited(conf, sfd))
 		return -1;

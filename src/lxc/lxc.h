@@ -74,7 +74,7 @@ extern int lxc_execute(const char *name, char *const argv[], int quiet,
  * The function will return an fd corresponding to the events
  * Returns a file descriptor on success, < 0 otherwise
  */
-extern int lxc_monitor_open(void);
+extern int lxc_monitor_open(const char *lxcpath);
 
 /*
  * Read the state of the container if this one has changed
@@ -108,14 +108,22 @@ extern int lxc_console(const char *name, int ttynum, int *fd, const char *lxcpat
  * @name : the container name
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_freeze(const char *name);
+extern int lxc_freeze(const char *name, const char *lxcpath);
 
 /*
  * Unfreeze all previously frozen tasks.
  * @name : the name of the container
  * Return 0 on sucess, < 0 otherwise
  */
-extern int lxc_unfreeze(const char *name);
+extern int lxc_unfreeze(const char *name, const char *lxcpath);
+
+/*
+ * Unfreeze all previously frozen tasks.
+ * This is the function to use from inside the monitor
+ * @name : the name of the container
+ * Return 0 on sucess, < 0 otherwise
+ */
+extern int lxc_unfreeze_bypath(const char *cgpath);
 
 /*
  * Retrieve the container state
@@ -127,24 +135,36 @@ extern lxc_state_t lxc_state(const char *name, const char *lxcpath);
 /*
  * Set a specified value for a specified subsystem. The specified
  * subsystem must be fully specified, eg. "cpu.shares"
- * @name      : the name of the container
- * @filename : the cgroup attribute filename
+ * @cgpath    : the cgroup path of the container
+ * @filename  : the cgroup attribute filename
  * @value     : the value to be set
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_cgroup_set(const char *name, const char *filename, const char *value);
+extern int lxc_cgroup_set_bypath(const char *cgpath, const char *filename, const char *value);
+
+/*
+ * Set a specified value for a specified subsystem. The specified
+ * subsystem must be fully specified, eg. "cpu.shares"
+ * @name      : the name of the container
+ * @filename  : the cgroup attribute filename
+ * @value     : the value to be set
+ * @lxcpath   : lxc config path for container
+ * Returns 0 on success, < 0 otherwise
+ */
+extern int lxc_cgroup_set(const char *name, const char *filename, const char *value, const char *lxcpath);
 
 /*
  * Get a specified value for a specified subsystem. The specified
  * subsystem must be fully specified, eg. "cpu.shares"
  * @name      : the name of the container
- * @filename : the cgroup attribute filename
+ * @filename  : the cgroup attribute filename
  * @value     : the value to be set
  * @len       : the len of the value variable
+ * @lxcpath   : lxc config path for container
  * Returns the number of bytes read, < 0 on error
  */
 extern int lxc_cgroup_get(const char *name, const char *filename,
-			  char *value, size_t len);
+			  char *value, size_t len, const char *lxcpath);
 
 /*
  * Retrieve the error string associated with the error returned by
@@ -171,14 +191,10 @@ extern int lxc_checkpoint(const char *name, int sfd, int flags);
  * @sfd: fd from which the container is restarted
  * @conf: lxc_conf structure.
  * @flags : restart flags (an ORed value)
+ * @lxcpath: container path
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_restart(const char *, int, struct lxc_conf *, int);
-
-/*
- * Returns the version number of the library
- */
-extern const char const *lxc_version(void);
+extern int lxc_restart(const char *, int, struct lxc_conf *, int, const char *);
 
 /*
  * Create and return a new lxccontainer struct.

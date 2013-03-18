@@ -2,7 +2,6 @@ templatesdir=@LXCTEMPLATEDIR@
 
 templates_SCRIPTS = \
 	lxc-debian \
-	lxc-lenny \
 	lxc-ubuntu \
 	lxc-ubuntu-cloud \
 	lxc-opensuse \

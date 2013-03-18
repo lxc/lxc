@@ -20,43 +20,12 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-#include <stdio.h>
-#include <libgen.h>
-#include <unistd.h>
-#include <sys/types.h>
+#ifndef _version_h
+#define _version_h
 
-#include <lxc/lxc.h>
-#include <lxc/log.h>
+/*
+ * Returns the version number of the library
+ */
+extern const char const *lxc_version(void);
 
-#include "arguments.h"
-#include "utils.h"
-
-static const struct option my_longopts[] = {
-	LXC_COMMON_OPTIONS
-};
-
-static struct lxc_arguments my_args = {
-	.progname = "lxc-stop",
-	.help     = "\
---name=NAME\n\
-\n\
-lxc-stop stops a container with the identifier NAME\n\
-\n\
-Options :\n\
-  -n, --name=NAME   NAME for name of the container\n",
-	.options  = my_longopts,
-	.parser   = NULL,
-	.checker  = NULL,
-};
-
-int main(int argc, char *argv[])
-{
-	if (lxc_arguments_parse(&my_args, argc, argv))
-		return -1;
-
-	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet))
-		return -1;
-
-	return lxc_stop(my_args.name, my_args.lxcpath);
-}
+#endif

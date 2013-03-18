@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# (C) Copyright Canonical 2011,2012
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+#
+# This is an example hook to mount all mounted cgroups in the
+# container.  Only the container's own cgroup (not parents) will be
+# accessible to the container.  You can enable this by adding
+# lxc.hook.mount = /usr/share/lxc/hooks/mountcgroups
+# to your container's configuration file.
+
+set -e
+
+c=$1
+d=/sys/fs/cgroup
+d2=$LXC_ROOTFS_MOUNT/${d}
+if [ ! -d "$d" ]; then
+    exit 0
+fi
+
+mount -n -t tmpfs tmpfs ${d2}
+
+# XXX TODO - we'll need to account for other cgroup groups beside 'lxc',
+# i.e. 'build' or 'users/joe'.
+for dir in `/bin/ls $d`; do
+    mkdir -p "${d}/${dir}/lxc/${c}/${c}.real"
+    echo 1 > "${d}/${dir}/lxc/${c}/${c}.real/tasks"
+    mkdir -p ${d2}/${dir}
+    mount -n --bind "${d}/${dir}/lxc/${c}/${c}.real" "${d2}/${dir}"
+done
