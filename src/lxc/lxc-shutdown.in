@@ -28,6 +28,7 @@ usage() {
 }
 
 alarm() {
+    trap 'exit 0' TERM
     pid=$1
     timeout=$2
     sleep $timeout
@@ -139,6 +140,7 @@ while ! lxc-info -n $lxc_name --state-is STOPPED; do
 done
 
 if [ $timeout != "-1" ]; then
+    trap - EXIT
     kill $alarmpid
 fi
 
