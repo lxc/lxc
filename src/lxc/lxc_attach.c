@@ -411,6 +411,11 @@ int main(int argc, char *argv[])
 			return -1;
 		}
 
+		if (lxc_attach_set_environment()) {
+			ERROR("could not set environment");
+			return -1;
+		}
+
 		/* tell parent we are done setting up the container and wait
 		 * until we have been put in the container's cgroup, if
 		 * applicable */

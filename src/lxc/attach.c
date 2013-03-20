@@ -277,6 +277,21 @@ int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
 	return 0;
 }
 
+int lxc_attach_set_environment()
+{
+	if (clearenv()) {
+		SYSERROR("failed to clear environment");
+		/* don't error out though */
+	}
+
+	if (putenv("container=lxc")) {
+		SYSERROR("failed to set environment variable");
+		return -1;
+	}
+
+	return 0;
+}
+
 char *lxc_attach_getpwshell(uid_t uid)
 {
 	/* local variables */
