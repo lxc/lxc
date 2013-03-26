@@ -96,13 +96,13 @@ Container_init(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-get_default_config_path(Container *self, PyObject *args, PyObject *kwds)
+LXC_get_default_config_path(PyObject *self, PyObject *args)
 {
     return PyUnicode_FromString(lxc_get_default_config_path());
 }
 
 static PyObject *
-get_version(Container *self, PyObject *args, PyObject *kwds)
+LXC_get_version(PyObject *self, PyObject *args)
 {
     return PyUnicode_FromString(lxc_get_version());
 }
@@ -496,6 +496,7 @@ static PyGetSetDef Container_getseters[] = {
      (getter)Container_state, 0,
      "Container state",
      NULL},
+    {NULL, NULL, NULL, NULL, NULL}
 };
 
 static PyMethodDef Container_methods[] = {
@@ -595,7 +596,7 @@ static PyMethodDef Container_methods[] = {
      "\n"
      "Wait for the container to reach a given state or timeout."
     },
-    {NULL}  /* Sentinel */
+    {NULL, NULL, 0, NULL}
 };
 
 static PyTypeObject _lxc_ContainerType = {
@@ -641,9 +642,9 @@ PyVarObject_HEAD_INIT(NULL, 0)
 };
 
 static PyMethodDef LXC_methods[] = {
-    {"get_default_config_path",  (PyCFunction)get_default_config_path, METH_NOARGS,
+    {"get_default_config_path", (PyCFunction)LXC_get_default_config_path, METH_NOARGS,
      "Returns the current LXC config path"},
-    {"get_version",  (PyCFunction)get_version, METH_NOARGS,
+    {"get_version", (PyCFunction)LXC_get_version, METH_NOARGS,
      "Returns the current LXC library version"},
     {NULL, NULL, 0, NULL}
 };
