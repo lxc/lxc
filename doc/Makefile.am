@@ -60,6 +60,6 @@ endif
 
 lxc-%.sgml : common_options.sgml see_also.sgml
 
-maintainer-clean-local:
+clean-local:
 	$(RM) manpage.* *.7 *.5 *.1 $(man_MANS)
 endif

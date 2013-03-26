@@ -16,7 +16,7 @@ install:
 		$(PYTHON) setup.py install --root=$(DESTDIR) --prefix=$(prefix) --no-compile $(DISTSETUPOPTS); \
 	fi
 
-clean:
+clean-local:
 	rm -rf build
 
 endif
