@@ -166,7 +166,7 @@ else
         # precise and later;  and are not supported by the query, so we don't actually
         # support them yet (see check later on).  When Query2 is available,
         # we'll use that to enable arm images.
-        arch="armel"
+        arch="armhf"
     fi
 fi
 
@@ -206,13 +206,29 @@ if [ "$arch" == "i686" ]; then
     arch=i386
 fi
 
-if [ $hostarch = "i386" -a $arch = "amd64" ]; then
-    echo "can't create amd64 container on i386"
+if [ $arch != "i386" -a $arch != "amd64" -a $arch != "armhf" -a $arch != "armel" ]; then
+    echo "Only i386, amd64, armel and armhf are supported by the ubuntu cloud template."
     exit 1
 fi
 
-if [ $arch != "i386" -a $arch != "amd64" ]; then
-    echo "Only i386 and amd64 are supported by the ubuntu cloud template."
+if [ $hostarch != "i386" -a $hostarch != "amd64" -a $hostarch != "armhf" -a $hostarch != "armel" ]; then
+    echo "Only i386, amd64, armel and armhf are supported as host."
+    exit 1
+fi
+
+if [ $hostarch = "amd64" -a $arch != "amd64" -a $arch != "i386" ]; then
+    echo "can't create $arch container on $hostarch"
+    exit 1
+fi
+
+if [ $hostarch = "i386" -a $arch != "i386" ]; then
+    echo "can't create $arch container on $hostarch"
+    exit 1
+fi
+
+if [ $hostarch = "armhf" -o $hostarch = "armel" ] && \
+   [ $arch != "armhf" -a $arch != "armel" ]; then
+    echo "can't create $arch container on $hostarch"
     exit 1
 fi
 
