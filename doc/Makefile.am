@@ -2,8 +2,7 @@ SUBDIRS = examples rootfs
 DIST_SUBDIRS = examples rootfs
 
 EXTRA_DIST = \
-	FAQ.txt \
-	$(man_MANS)
+	FAQ.txt
 
 if ENABLE_DOCBOOK
 man_MANS = \

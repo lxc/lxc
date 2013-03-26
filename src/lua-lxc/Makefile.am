@@ -4,7 +4,6 @@ luadir=$(datadir)/lua/5.1
 sodir=$(libdir)/lua/5.1/lxc
 
 lua_SCRIPTS=lxc.lua
-EXTRA_DIST=lxc.lua
 
 so_PROGRAMS = core.so
 
@@ -24,3 +23,7 @@ core_so_LDADD = -llxc $(LUA_LIBS)
 lxc.lua:
 
 endif
+
+EXTRA_DIST= \
+	lxc.lua \
+	test/apitest.lua

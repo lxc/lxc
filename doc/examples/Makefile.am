@@ -1,5 +1,3 @@
-EXTRA_DIST = $(pkgexamples_DATA)
-
 if ENABLE_EXAMPLES
 pkgexamplesdir=$(docdir)/examples
 
