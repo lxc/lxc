@@ -1129,8 +1129,13 @@ static int setup_rootfs(struct lxc_conf *conf)
 {
 	const struct lxc_rootfs *rootfs = &conf->rootfs;
 
-	if (!rootfs->path)
+	if (!rootfs->path) {
+		if (mount("", "/", NULL, MS_SLAVE|MS_REC, 0)) {
+			SYSERROR("Failed to make / rslave");
+			return -1;
+		}
 		return 0;
+	}
 
 	if (access(rootfs->mount, F_OK)) {
 		SYSERROR("failed to access to '%s', check it is present",
