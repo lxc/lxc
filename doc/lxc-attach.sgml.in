@@ -54,6 +54,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <arg choice="opt">-e</arg>
       <arg choice="opt">-s <replaceable>namespaces</replaceable></arg>
       <arg choice="opt">-R</arg>
+      <arg choice="opt">--keep-env</arg>
+      <arg choice="opt">--clear-env</arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -169,6 +171,37 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  <para>
 	    This option will be ignored if one tries to attach to the
 	    mount namespace anyway.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--keep-env</option>
+	</term>
+	<listitem>
+	  <para>
+	    Keep the current environment for attached programs. This is
+	    the current default behaviour (as of version 0.9), but is
+	    is likely to change in the future, since this may leak
+	    undesirable information into the container. If you rely on
+	    the environment being available for the attached program,
+	    please use this option to be future-proof. In addition to
+	    current environment variables, container=lxc will be set.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--clear-env</option>
+	</term>
+	<listitem>
+	  <para>
+	    Clear the environment before attaching, so no undesired
+	    environment variables leak into the container. The variable
+	    container=lxc will be the only environment with which the
+	    attached program starts.
 	  </para>
 	</listitem>
       </varlistentry>

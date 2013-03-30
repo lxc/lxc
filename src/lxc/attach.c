@@ -277,11 +277,26 @@ int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
 	return 0;
 }
 
-int lxc_attach_set_environment()
+int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char** extra_env, char** extra_keep)
 {
-	if (clearenv()) {
-		SYSERROR("failed to clear environment");
-		/* don't error out though */
+	/* TODO: implement extra_env, extra_keep
+	 * Rationale:
+	 *  - extra_env is an array of strings of the form
+	 *    "VAR=VALUE", which are to be set (after clearing or not,
+	 *    depending on the value of the policy variable)
+	 *  - extra_keep is an array of strings of the form
+	 *    "VAR", which are extra environment variables to be kept
+	 *    around after clearing (if that is done, otherwise, the
+	 *    remain anyway)
+	 */
+	(void) extra_env;
+	(void) extra_keep;
+
+	if (policy == LXC_ATTACH_CLEAR_ENV) {
+		if (clearenv()) {
+			SYSERROR("failed to clear environment");
+			/* don't error out though */
+		}
 	}
 
 	if (putenv("container=lxc")) {

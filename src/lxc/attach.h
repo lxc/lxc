@@ -34,10 +34,15 @@ struct lxc_proc_context_info {
 
 extern struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid);
 
+typedef enum lxc_attach_env_policy_t {
+	LXC_ATTACH_KEEP_ENV,
+	LXC_ATTACH_CLEAR_ENV
+} lxc_attach_env_policy_t;
+
 extern int lxc_attach_to_ns(pid_t other_pid, int which);
 extern int lxc_attach_remount_sys_proc();
 extern int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx);
-extern int lxc_attach_set_environment();
+extern int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char** extra_env, char** extra_keep);
 
 extern char *lxc_attach_getpwshell(uid_t uid);
 

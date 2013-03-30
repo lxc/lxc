@@ -55,6 +55,9 @@ static const struct option my_longopts[] = {
 	{"arch", required_argument, 0, 'a'},
 	{"namespaces", required_argument, 0, 's'},
 	{"remount-sys-proc", no_argument, 0, 'R'},
+	/* TODO: decide upon short option names */
+	{"clear-env", no_argument, 0, 500},
+	{"keep-env", no_argument, 0, 501},
 	LXC_COMMON_OPTIONS
 };
 
@@ -62,6 +65,7 @@ static int elevated_privileges = 0;
 static signed long new_personality = -1;
 static int namespace_flags = -1;
 static int remount_sys_proc = 0;
+static lxc_attach_env_policy_t env_policy = LXC_ATTACH_KEEP_ENV;
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
@@ -85,6 +89,12 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 		/* -s implies -e */
 		elevated_privileges = 1;
 		break;
+        case 500: /* clear-env */
+                env_policy = LXC_ATTACH_CLEAR_ENV;
+                break;
+        case 501: /* keep-env */
+                env_policy = LXC_ATTACH_KEEP_ENV;
+                break;
 	}
 
 	return 0;
@@ -116,7 +126,15 @@ Options :\n\
                     Remount /sys and /proc if not attaching to the\n\
                     mount namespace when using -s in order to properly\n\
                     reflect the correct namespace context. See the\n\
-                    lxc-attach(1) manual page for details.\n",
+                    lxc-attach(1) manual page for details.\n\
+      --clear-env\n\
+                    Clear all environment variables before attaching.\n\
+                    The attached shell/program will start with only\n\
+                    container=lxc set.\n\
+      --keep-env\n\
+                    Keep all current enivornment variables. This\n\
+                    is the current default behaviour, but is likely to\n\
+                    change in the future.\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
@@ -411,7 +429,7 @@ int main(int argc, char *argv[])
 			return -1;
 		}
 
-		if (lxc_attach_set_environment()) {
+		if (lxc_attach_set_environment(env_policy, NULL, NULL)) {
 			ERROR("could not set environment");
 			return -1;
 		}
