@@ -291,7 +291,7 @@ fi
 
 if [ ! -z "$lxc_template" ]; then
     # Allow for a path to be provided as the template name
-    if [ -x "$lxc_template" ]; then
+    if [ -x "$lxc_template" -a $(echo "$lxc_template" | cut -c 1) = '/' ]; then
         template_path=$lxc_template
     else
         template_path=${templatedir}/lxc-$lxc_template
