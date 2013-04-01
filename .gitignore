@@ -47,6 +47,7 @@ src/lxc/lxc-create
 src/lxc/lxc-destroy
 src/lxc/lxc-execute
 src/lxc/lxc-freeze
+src/lxc/lxc.functions
 src/lxc/lxc-info
 src/lxc/lxc-init
 src/lxc/lxc-kill
