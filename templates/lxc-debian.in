@@ -172,7 +172,18 @@ install_debian()
             return 1
         fi
 
-        arch=$(dpkg --print-architecture)
+        if which dpkg >/dev/null 2>&1 ; then
+            arch=$(dpkg --print-architecture)
+        else
+            arch=$(arch)
+            if [ "$arch" = "i686" ]; then
+                arch="i386"
+            elif [ "$arch" = "x86_64" ]; then
+                arch="amd64"
+            elif [ "$arch" = "armv7l" ]; then
+                arch="armhf"
+            fi
+        fi
 
         echo "Checking cache download in $cache/rootfs-$SUITE-$arch ... "
         if [ ! -e "$cache/rootfs-$SUITE-$arch" ]; then
