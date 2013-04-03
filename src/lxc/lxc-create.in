@@ -336,7 +336,7 @@ if [ "$backingstore" = "lvm" ]; then
 fi
 
 if [ ! -z "$lxc_template" ]; then
-    $template_path --path=$lxc_path/$lxc_name --name=$lxc_name $*
+    $template_path --path=$lxc_path/$lxc_name --name=$lxc_name "$@"
     if [ $? -ne 0 ]; then
         echo "$(basename $0): failed to execute template '$lxc_template'" >&2
         cleanup

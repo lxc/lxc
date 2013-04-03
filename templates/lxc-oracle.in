@@ -511,7 +511,7 @@ container_rootfs_create()
 
         # we unshare the mount namespace because yum installing the ol4
         # packages causes $rootfs/proc to be mounted on
-        lxc-unshare -s MOUNT yum -- $yum_args install $min_pkgs
+        lxc-unshare -s MOUNT yum -- $yum_args install $min_pkgs $user_pkgs
         if [ $? -ne 0 ]; then
             die "Failed to download and install the rootfs, aborting."
         fi
@@ -599,6 +599,7 @@ usage()
     cat <<EOF
   -a|--arch=<arch>        architecture (ie. i386, x86_64)
   -R|--release=<release>  release to download for the new container
+  -r|--rpms=<rpm name>    additional rpms to install into container
   -u|--url=<url>          replace yum repo url (ie. local yum mirror)
   -t|--templatefs=<path>  copy/clone rootfs at path instead of downloading
   -h|--help
@@ -608,7 +609,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:R:u:t: -l help,path:,name:,arch:,release:,url:,templatefs: -- "$@")
+options=$(getopt -o hp:n:a:R:r:u:t: -l help,path:,name:,arch:,release:,rpms:,url:,templatefs: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -624,7 +625,8 @@ do
         -n|--name)		name=$2; shift 2;;
         -a|--arch)		arch=$2; shift 2;;
         -R|--release)		container_release_version=$2; shift 2;;
-        -u|--url)		repourl=$2; shift;;
+        -r|--rpms)		user_pkgs=$2; shift 2;;
+        -u|--url)		repourl=$2; shift 2;;
         -t|--templatefs)	template_rootfs=$2; shift 2;;
         --)             	shift 1; break ;;
         *)              	break ;;
