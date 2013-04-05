@@ -4,7 +4,13 @@ ACLOCAL_AMFLAGS = -I config
 
 SUBDIRS = config src templates doc hooks
 DIST_SUBDIRS = config src templates doc hooks
-EXTRA_DIST = autogen.sh lxc.spec CONTRIBUTING MAINTAINERS ChangeLog
+EXTRA_DIST = \
+	autogen.sh \
+	lxc.spec \
+	CONTRIBUTING \
+	MAINTAINERS \
+	runapitests.sh
+
 RPMARGS =
 
 if ENABLE_LUA

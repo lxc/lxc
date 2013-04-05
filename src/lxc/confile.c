@@ -1422,6 +1422,9 @@ int lxc_config_readline(char *buffer, struct lxc_conf *conf)
 
 int lxc_config_read(const char *file, struct lxc_conf *conf)
 {
+	if( access(file, R_OK) == -1 ) {
+		return -1;
+	}
 	/* Catch only the top level config file name in the structure */
 	if( ! conf->rcfile ) {
 		conf->rcfile = strdup( file );

@@ -70,6 +70,9 @@ parser.add_argument("--lxcpath", "-P", dest="lxcpath", metavar="PATH",
 parser.add_argument("--orig", "-o", type=str, required=True,
                     help=_("name of the original container"))
 
+parser.add_argument("--name", "-n", type=str,
+                    help=_("name of the target container"))
+
 parser.add_argument("--bdir", "-b", type=str,
                     help=_("directory to bind mount into container"))
 
@@ -117,7 +120,13 @@ if not args.lxcpath:
 else:
     lxc_path = args.lxcpath
 
-dest_path = tempfile.mkdtemp(prefix="%s-" % args.orig, dir=lxc_path)
+if args.name:
+    if os.path.exists("%s/%s" % (lxc_path, args.name)):
+        parser.error(_("A container named '%s' already exists." % args.name))
+    dest_path = "%s/%s" % (lxc_path, args.name)
+    os.mkdir(dest_path)
+else:
+    dest_path = tempfile.mkdtemp(prefix="%s-" % args.orig, dir=lxc_path)
 os.mkdir(os.path.join(dest_path, "rootfs"))
 
 # Setup the new container's configuration

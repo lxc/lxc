@@ -96,7 +96,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       provided by the kernel which needs to be active. Depending of
       the missing functionalities the <command>lxc</command> will
       work with a restricted number of functionalities or will simply
-      fails.
+      fail.
     </para>
 
     <para>

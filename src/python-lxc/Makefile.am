@@ -1,7 +1,5 @@
 if ENABLE_PYTHON
 
-EXTRA_DIST = setup.py lxc.c
-
 if HAVE_DEBIAN
     DISTSETUPOPTS=--install-layout=deb
 else
@@ -18,7 +16,12 @@ install:
 		$(PYTHON) setup.py install --root=$(DESTDIR) --prefix=$(prefix) --no-compile $(DISTSETUPOPTS); \
 	fi
 
-clean:
+clean-local:
 	rm -rf build
 
 endif
+EXTRA_DIST = \
+	setup.py \
+	lxc.c \
+	lxc/__init__.py \
+	examples/api_test.py

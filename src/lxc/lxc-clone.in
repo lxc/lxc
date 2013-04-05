@@ -251,6 +251,23 @@ elif which btrfs >/dev/null 2>&1 && btrfs subvolume list $oldroot >/dev/null 2>&
     # if oldroot is a btrfs subvolume, assume they want a snapshot
     btrfs subvolume snapshot "$oldroot" "$rootfs" 2>&1 || { echo "$(basename $0): btrfs snapshot failed" >&2; false; }
     echo "lxc.rootfs = $rootfs" >> "$lxc_path/$lxc_new/config"
+elif [ -d $lxc_path/$lxc_orig/delta0 ]; then # this is a quasi-ephemeral container
+    if [ $container_running = "True" ]; then
+        echo "$(basename $0): container $lxc_orig is running." >&2
+        cleanup
+    fi
+    rsync -Hax $lxc_path/$lxc_orig/delta0 $lxc_path/$lxc_new/
+    touch $lxc_path/$lxc_new/configured
+    cp -f $lxc_path/$lxc_orig/pre-mount $lxc_path/$lxc_new/
+    sed -i "s@$lxc_path/$lxc_orig@$lxc_path/$lxc_new@g" $lxc_path/$lxc_new/config
+    sed -i "s@$lxc_path/$lxc_orig@$lxc_path/$lxc_new@g" $lxc_path/$lxc_new/pre-mount
+    sed -i "s@LXC_NAME=\"$lxc_orig@LXC_NAME=\"$lxc_new@" $lxc_path/$lxc_new/pre-mount
+    # lxc-start-ephemeral will have updated /etc/hostname and such under the
+    # delta0, so just mounting the delta should suffice.
+    mkdir -p $rootfs
+    mount --bind $lxc_path/$lxc_new/delta0 $rootfs
+    mounted=1
+    echo "lxc.rootfs = $rootfs" >> "$lxc_path/$lxc_new/config"
 else
     if [ $snapshot = "yes" ]; then
         echo "$(basename $0): cannot snapshot a directory" >&2

@@ -2,8 +2,7 @@ SUBDIRS = examples rootfs
 DIST_SUBDIRS = examples rootfs
 
 EXTRA_DIST = \
-	FAQ.txt \
-	$(man_MANS)
+	FAQ.txt
 
 if ENABLE_DOCBOOK
 man_MANS = \
@@ -61,6 +60,6 @@ endif
 
 lxc-%.sgml : common_options.sgml see_also.sgml
 
-maintainer-clean-local:
+clean-local:
 	$(RM) manpage.* *.7 *.5 *.1 $(man_MANS)
 endif

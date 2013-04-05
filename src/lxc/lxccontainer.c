@@ -523,13 +523,14 @@ static bool lxcapi_create(struct lxc_container *c, char *t, char *const argv[])
 		goto out;
 	}
 
-	if (!create_container_dir(c))
-		goto out;
-
 	if (!c->save_config(c, NULL)) {
 		ERROR("failed to save starting configuration for %s\n", c->name);
 		goto out;
 	}
+
+	/* container is already created if we have a config and rootfs.path is accessible */
+	if (lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) == 0) 
+		return false;
 
 	/* we're going to fork.  but since we'll wait for our child, we
 	   don't need to lxc_container_get */
@@ -767,6 +768,9 @@ static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 			return false;
 		}
 
+	if (!create_container_dir(c))
+		return false;
+
 	FILE *fout = fopen(alt_file, "w");
 	if (!fout)
 		return false;
@@ -786,6 +790,10 @@ static bool lxcapi_destroy(struct lxc_container *c)
 	int ret, status;
 
 	if (!c)
+		return false;
+
+	/* container is already destroyed if we don't have a config and rootfs.path is not accessible */
+	if (!lxcapi_is_defined(c) && (!c->lxc_conf || !c->lxc_conf->rootfs.path || access(c->lxc_conf->rootfs.path, F_OK) != 0)) 
 		return false;
 
 	pid = fork();

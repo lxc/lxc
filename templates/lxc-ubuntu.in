@@ -617,7 +617,7 @@ else
     elif [ "$arch" = "x86_64" ]; then
         arch="amd64"
     elif [ "$arch" = "armv7l" ]; then
-        arch="armel"
+        arch="armhf"
     fi
 fi
 
@@ -661,7 +661,18 @@ if [ "$arch" == "i686" ]; then
 fi
 
 if [ $hostarch = "i386" -a $arch = "amd64" ]; then
-    echo "can't create amd64 container on i386"
+    echo "can't create $arch container on $hostarch"
+    exit 1
+fi
+
+if [ $hostarch = "armhf" -o $hostarch = "armel" ] && \
+   [ $arch != "armhf" -a $arch != "armel" ]; then
+    echo "can't create $arch container on $hostarch"
+    exit 1
+fi
+
+if [ $hostarch = "powerpc" -a $arch != "powerpc" ]; then
+    echo "can't create $arch container on $hostarch"
     exit 1
 fi
 

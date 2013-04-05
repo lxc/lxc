@@ -28,6 +28,7 @@ usage() {
 }
 
 alarm() {
+    trap 'exit 0' TERM
     pid=$1
     timeout=$2
     sleep $timeout
@@ -130,7 +131,7 @@ fi
 
 if [ $timeout != "-1" ]; then
     trap dolxcstop EXIT
-    alarm $$ $timeout &
+    alarm $$ $timeout 2>/dev/null &
     alarmpid=$!
 fi
 
@@ -139,7 +140,10 @@ while ! lxc-info -n $lxc_name --state-is STOPPED; do
 done
 
 if [ $timeout != "-1" ]; then
-    kill $alarmpid
+    trap - EXIT
+    # include subprocesses; otherwise, we may have to wait until sleep completes
+    # if called from a non-interactive context
+    kill $alarmpid $(ps --no-headers --ppid $alarmpid -o pid) 2>/dev/null || :
 fi
 
 echo "Container $lxc_name has shut down"

@@ -564,7 +564,7 @@ static int must_drop_cap_sys_boot(void)
 	FILE *f = fopen("/proc/sys/kernel/ctrl-alt-del", "r");
 	int ret, cmd, v;
         long stack_size = 4096;
-        void *stack = alloca(stack_size) + stack_size;
+        void *stack = alloca(stack_size);
         int status;
         pid_t pid;
 
@@ -581,7 +581,12 @@ static int must_drop_cap_sys_boot(void)
 	}
 	cmd = v ? LINUX_REBOOT_CMD_CAD_ON : LINUX_REBOOT_CMD_CAD_OFF;
 
+#ifdef __ia64__
+        pid = __clone2(container_reboot_supported, stack, stack_size, CLONE_NEWPID | SIGCHLD, &cmd);
+#else
+        stack += stack_size;
         pid = clone(container_reboot_supported, stack, CLONE_NEWPID | SIGCHLD, &cmd);
+#endif
         if (pid < 0) {
                 SYSERROR("failed to clone\n");
                 return -1;
@@ -785,7 +790,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	handler->pinfd = pin_rootfs(handler->conf->rootfs.path);
 	if (handler->pinfd == -1) {
 		ERROR("failed to pin the container's rootfs");
-		goto out_abort;
+		goto out_delete_net;
 	}
 
 	/* Create a process in a new set of namespaces */

@@ -194,7 +194,7 @@ AM_CONDITIONAL([USE_CONFIGPATH_LOGS], [test "$use_configpath_logs" = "yes"])
 if test "$use_configpath_logs" = "yes"; then
 	default_log_path="${with_config_path}"
 else
-	default_log_path="/var/log/lxc"
+	default_log_path="${localstatedir}/log/lxc"
 fi
 
 AC_ARG_WITH([log-path],
