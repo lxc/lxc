@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 	int err = -1;
 	char **aargv;
 	sigset_t mask, omask;
-	int i, shutdown = 0;
+	int i, have_status = 0, shutdown = 0;
 
 	while (1) {
 		int ret = getopt_long_only(argc, argv, "", options, NULL);
@@ -162,7 +162,6 @@ int main(int argc, char *argv[])
 	err = 0;
 	for (;;) {
 		int status;
-		int orphan = 0;
 		pid_t waited_pid;
 
 		switch (was_interrupted) {
@@ -209,10 +208,10 @@ int main(int argc, char *argv[])
 		 * (not wrapped pid) and continue to wait for
 		 * the end of the orphan group.
 		 */
-		if ((waited_pid != pid) || (orphan ==1))
-			continue;
-		orphan = 1;
-		err = lxc_error_set_and_log(waited_pid, status);
+		if (waited_pid == pid && !have_status) {
+			err = lxc_error_set_and_log(waited_pid, status);
+			have_status = 1;
+		}
 	}
 out:
 	return err;
