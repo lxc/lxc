@@ -52,7 +52,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <arg choice="opt">--name <replaceable>name</replaceable></arg>
       <arg choice="opt">--lxc</arg>
       <arg choice="opt">--host</arg>
-      <arg choice="opt">-- ps option</arg>
+      <arg choice="opt">-- <replaceable>ps options</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -69,7 +69,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	the container associated to processes.
     </para>
     <para>
-	The additionnal specified ps options must not
+	The additional specified <replaceable>ps options</replaceable> must not
 	remove the default ps header and the pid information,
 	to be able to have the <command>lxc-ps</command> to find
 	the container associated to processes.
@@ -119,7 +119,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
       <varlistentry>
 	<term>
-	  <option><optional>ps options</optional></option>
+	  <option><optional><replaceable>ps options</replaceable></optional></option>
 	</term>
 	<listitem>
 	  <para>
