@@ -26,7 +26,7 @@ templatedir=@LXCTEMPLATEDIR@
 lxcinitdir=@LXCINITDIR@
 
 get_default_lxcpath() {
-	LXC_PATH=$(grep -v "^#" "$globalconf" 2>/dev/null | grep "[ \t]*lxcpath[ \t]*=")
+	LXC_PATH=$(grep -v "^#" "$globalconf" 2>/dev/null | grep "[ \t]*lxcpath[ \t]*=") || true
 	if [ -n "$LXC_PATH" ]; then
 		echo $LXC_PATH | awk -F= '{ print $2 }'
 	else
