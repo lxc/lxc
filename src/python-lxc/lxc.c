@@ -1,7 +1,7 @@
 /*
  * python-lxc: Python bindings for LXC
  *
- * (C) Copyright Canonical Ltd. 2012
+ * (C) Copyright Canonical Ltd. 2012-2013
  *
  * Authors:
  * Stéphane Graber <stgraber@ubuntu.com>
@@ -43,9 +43,10 @@ convert_tuple_to_char_pointer_array(PyObject *argv) {
         PyObject *pyobj = PyTuple_GetItem(argv, i);
 
         char *str = NULL;
-        PyObject *pystr;
+        PyObject *pystr = NULL;
         if (!PyUnicode_Check(pyobj)) {
             PyErr_SetString(PyExc_ValueError, "Expected a string");
+            free(result);
             return NULL;
         }
 
@@ -62,6 +63,7 @@ convert_tuple_to_char_pointer_array(PyObject *argv) {
 static void
 Container_dealloc(Container* self)
 {
+    lxc_container_put(self->container);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -190,9 +192,11 @@ Container_create(Container *self, PyObject *args, PyObject *kwds)
     }
 
     if (self->container->create(self->container, template_name, create_args)) {
+        free(create_args);
         Py_RETURN_TRUE;
     }
 
+    free(create_args);
     Py_RETURN_FALSE;
 }
 
@@ -222,6 +226,7 @@ Container_get_cgroup_item(Container *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"key", NULL};
     char* key = NULL;
     int len = 0;
+    PyObject *ret = NULL;
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
                                       &key))
@@ -235,10 +240,13 @@ Container_get_cgroup_item(Container *self, PyObject *args, PyObject *kwds)
 
     char* value = (char*) malloc(sizeof(char)*len + 1);
     if (self->container->get_cgroup_item(self->container, key, value, len + 1) != len) {
+        free(value);
         Py_RETURN_FALSE;
     }
 
-    return PyUnicode_FromString(value);
+    ret = PyUnicode_FromString(value);
+    free(value);
+    return ret;
 }
 
 static PyObject *
@@ -247,6 +255,7 @@ Container_get_config_item(Container *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"key", NULL};
     char* key = NULL;
     int len = 0;
+    PyObject *ret = NULL;
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
                                       &key))
@@ -260,10 +269,13 @@ Container_get_config_item(Container *self, PyObject *args, PyObject *kwds)
 
     char* value = (char*) malloc(sizeof(char)*len + 1);
     if (self->container->get_config_item(self->container, key, value, len + 1) != len) {
+        free(value); 
         Py_RETURN_FALSE;
     }
 
-    return PyUnicode_FromString(value);
+    ret = PyUnicode_FromString(value);
+    free(value);
+    return ret;
 }
 
 static PyObject *
@@ -278,6 +290,7 @@ Container_get_keys(Container *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"key", NULL};
     char* key = NULL;
     int len = 0;
+    PyObject *ret = NULL;
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s", kwlist,
                                       &key))
@@ -291,10 +304,13 @@ Container_get_keys(Container *self, PyObject *args, PyObject *kwds)
 
     char* value = (char*) malloc(sizeof(char)*len + 1);
     if (self->container->get_keys(self->container, key, value, len + 1) != len) {
+        free(value);
         Py_RETURN_FALSE;
     }
 
-    return PyUnicode_FromString(value);
+    ret = PyUnicode_FromString(value);
+    free(value);
+    return ret;
 }
 
 static PyObject *
@@ -427,9 +443,11 @@ Container_start(Container *self, PyObject *args, PyObject *kwds)
     self->container->want_daemonize(self->container);
 
     if (self->container->start(self->container, init_useinit, init_args)) {
+        free(init_args);
         Py_RETURN_TRUE;
     }
 
+    free(init_args);
     Py_RETURN_FALSE;
 }
 
