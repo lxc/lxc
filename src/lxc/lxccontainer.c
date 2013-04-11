@@ -72,9 +72,10 @@ static void lxc_container_free(struct lxc_container *c)
 		c->slock = NULL;
 	}
 	if (c->privlock) {
-		sem_destroy(c->privlock);
-		free(c->privlock);
+		sem_t *l = c->privlock;
 		c->privlock = NULL;
+		sem_destroy(l);
+		free(l);
 	}
 	if (c->name) {
 		free(c->name);
@@ -91,9 +92,37 @@ static void lxc_container_free(struct lxc_container *c)
 	free(c);
 }
 
+/*
+ * Consider the following case:
+freer                         |    racing get()er
+==================================================================
+lxc_container_put()           |   lxc_container_get()
+\ lxclock(c->privlock)        |   c->numthreads < 1? (no)
+\ c->numthreads = 0           |   \ lxclock(c->privlock) -> waits
+\ lxcunlock()                 |   \
+\ lxc_container_free()        |   \ lxclock() returns
+                              |   \ c->numthreads < 1 -> return 0
+\ \ (free stuff)              |
+\ \ sem_destroy(privlock)     |
+
+ * When the get()er checks numthreads the first time, one of the following
+ * is true:
+ * 1. freer has set numthreads = 0.  get() returns 0
+ * 2. freer is between lxclock and setting numthreads to 0.  get()er will
+ *    sem_wait on privlock, get lxclock after freer() drops it, then see
+ *    numthreads is 0 and exit without touching lxclock again..
+ * 3. freer has not yet locked privlock.  If get()er runs first, then put()er
+ *    will see --numthreads = 1 and not call lxc_container_free().
+*/
+
 int lxc_container_get(struct lxc_container *c)
 {
 	if (!c)
+		return 0;
+
+	// if someone else has already started freeing the container, don't
+	// try to take the lock, which may be invalid
+	if (c->numthreads < 1)
 		return 0;
 
 	if (lxclock(c->privlock, 0))
