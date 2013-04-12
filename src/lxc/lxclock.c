@@ -58,8 +58,10 @@ static sem_t *lxc_new_unnamed_sem(void)
 	if (!s)
 		return NULL;
 	ret = sem_init(s, 0, 1);
-	if (ret)
+	if (ret) {
+		free(s);
 		return NULL;
+	}
 	return s;
 }
 
