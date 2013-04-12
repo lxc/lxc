@@ -51,16 +51,16 @@ static void lxcfree_name(char *name)
 
 static sem_t *lxc_new_unnamed_sem(void)
 {
-    sem_t *s;
-    int ret;
+	sem_t *s;
+	int ret;
 
-    s = malloc(sizeof(*s));
-    if (!s)
-        return NULL;
-    ret = sem_init(s, 0, 1);
-    if (ret)
-        return NULL;
-    return s;
+	s = malloc(sizeof(*s));
+	if (!s)
+		return NULL;
+	ret = sem_init(s, 0, 1);
+	if (ret)
+		return NULL;
+	return s;
 }
 
 sem_t *lxc_newlock(const char *name)
@@ -76,8 +76,8 @@ sem_t *lxc_newlock(const char *name)
 		return NULL;
 	lock = sem_open(lname, OFLAG, SEMMODE, SEMVALUE);
 	lxcfree_name(lname);
-    if (lock == SEM_FAILED)
-        return NULL;
+	if (lock == SEM_FAILED)
+		return NULL;
 	return lock;
 }
 
@@ -90,7 +90,7 @@ int lxclock(sem_t *sem, int timeout)
 	} else {
 		struct timespec ts;
 		if (clock_gettime(CLOCK_REALTIME, &ts) == -1)
-		       return -2;
+			return -2;
 		ts.tv_sec += timeout;
 		ret = sem_timedwait(sem, &ts);
 	}
