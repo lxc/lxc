@@ -34,13 +34,19 @@ typedef struct {
 
 char**
 convert_tuple_to_char_pointer_array(PyObject *argv) {
-    int argc = PyTuple_Size(argv);
+    int argc = PyTuple_GET_SIZE(argv);
     int i;
 
     char **result = (char**) malloc(sizeof(char*)*argc + 1);
 
+    if (result == NULL) {
+        PyErr_SetNone(PyExc_MemoryError);
+        return NULL;
+    }
+
     for (i = 0; i < argc; i++) {
-        PyObject *pyobj = PyTuple_GetItem(argv, i);
+        PyObject *pyobj = PyTuple_GET_ITEM(argv, i);
+        assert(pyobj != NULL);
 
         char *str = NULL;
         PyObject *pystr = NULL;
@@ -51,8 +57,17 @@ convert_tuple_to_char_pointer_array(PyObject *argv) {
         }
 
         pystr = PyUnicode_AsUTF8String(pyobj);
+        if (pystr == NULL) {
+            PyErr_SetString(PyExc_ValueError, "Unable to convert to UTF-8");
+            free(result);
+            return NULL;
+        }
+
         str = PyBytes_AsString(pystr);
+        assert(str != NULL);
+
         memcpy((char *) &result[i], (char *) &str, sizeof(str));
+        Py_DECREF(pystr);
     }
 
     result[argc] = NULL;
@@ -82,18 +97,27 @@ Container_init(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"name", "config_path", NULL};
     char *name = NULL;
+    PyObject *fs_config_path = NULL;
     char *config_path = NULL;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|s", kwlist,
-                                      &name, &config_path))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|O&", kwlist,
+                                      &name,
+                                      PyUnicode_FSConverter, &fs_config_path))
         return -1;
+
+    if (fs_config_path != NULL) {
+        config_path = PyBytes_AS_STRING(fs_config_path);
+        assert(config_path != NULL);
+    }
 
     self->container = lxc_container_new(name, config_path);
     if (!self->container) {
-        fprintf(stderr, "%d: error creating lxc_container %s\n", __LINE__, name);
+        Py_XDECREF(fs_config_path);
+        fprintf(stderr, "%d: error creating container %s\n", __LINE__, name);
         return -1;
     }
 
+    Py_XDECREF(fs_config_path);
     return 0;
 }
 
@@ -111,13 +135,14 @@ LXC_get_version(PyObject *self, PyObject *args)
 
 // Container properties
 static PyObject *
-Container_config_file_name(Container *self, PyObject *args, PyObject *kwds)
+Container_config_file_name(Container *self, void *closure)
 {
-    return PyUnicode_FromString(self->container->config_file_name(self->container));
+    return PyUnicode_FromString(
+                self->container->config_file_name(self->container));
 }
 
 static PyObject *
-Container_defined(Container *self, PyObject *args, PyObject *kwds)
+Container_defined(Container *self, void *closure)
 {
     if (self->container->is_defined(self->container)) {
         Py_RETURN_TRUE;
@@ -127,19 +152,19 @@ Container_defined(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-Container_init_pid(Container *self, PyObject *args, PyObject *kwds)
+Container_init_pid(Container *self, void *closure)
 {
-    return Py_BuildValue("i", self->container->init_pid(self->container));
+    return PyLong_FromLong(self->container->init_pid(self->container));
 }
 
 static PyObject *
-Container_name(Container *self, PyObject *args, PyObject *kwds)
+Container_name(Container *self, void *closure)
 {
     return PyUnicode_FromString(self->container->name);
 }
 
 static PyObject *
-Container_running(Container *self, PyObject *args, PyObject *kwds)
+Container_running(Container *self, void *closure)
 {
     if (self->container->is_running(self->container)) {
         Py_RETURN_TRUE;
@@ -149,7 +174,7 @@ Container_running(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-Container_state(Container *self, PyObject *args, PyObject *kwds)
+Container_state(Container *self, void *closure)
 {
     return PyUnicode_FromString(self->container->state(self->container));
 }
@@ -161,9 +186,9 @@ Container_clear_config_item(Container *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"key", NULL};
     char *key = NULL;
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s", kwlist,
                                       &key))
-        Py_RETURN_FALSE;
+        return NULL;
 
     if (self->container->clear_config_item(self->container, key)) {
         Py_RETURN_TRUE;
@@ -177,27 +202,40 @@ Container_create(Container *self, PyObject *args, PyObject *kwds)
 {
     char* template_name = NULL;
     char** create_args = {NULL};
-    PyObject *vargs = NULL;
+    PyObject *retval = NULL, *vargs = NULL;
     static char *kwlist[] = {"template", "args", NULL};
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|O", kwlist,
                                       &template_name, &vargs))
-        Py_RETURN_FALSE;
+        return NULL;
 
-    if (vargs && PyTuple_Check(vargs)) {
-        create_args = convert_tuple_to_char_pointer_array(vargs);
-        if (!create_args) {
+    if (vargs) {
+        if (PyTuple_Check(vargs)) {
+            create_args = convert_tuple_to_char_pointer_array(vargs);
+            if (!create_args) {
+                return NULL;
+            }
+        }
+        else {
+            PyErr_SetString(PyExc_ValueError, "args needs to be a tuple");
             return NULL;
         }
     }
 
-    if (self->container->create(self->container, template_name, create_args)) {
+    if (self->container->create(self->container, template_name, create_args))
+        retval = Py_True;
+    else
+        retval = Py_False;
+
+    if (vargs) {
+        /* We cannot have gotten here unless vargs was given and create_args
+         * was successfully allocated.
+         */
         free(create_args);
-        Py_RETURN_TRUE;
     }
 
-    free(create_args);
-    Py_RETURN_FALSE;
+    Py_INCREF(retval);
+    return retval;
 }
 
 static PyObject *
@@ -228,20 +266,26 @@ Container_get_cgroup_item(Container *self, PyObject *args, PyObject *kwds)
     int len = 0;
     PyObject *ret = NULL;
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s", kwlist,
                                       &key))
-        Py_RETURN_FALSE;
+        return NULL;
 
     len = self->container->get_cgroup_item(self->container, key, NULL, 0);
 
-    if (len <= 0) {
-        Py_RETURN_FALSE;
+    if (len < 0) {
+        PyErr_SetString(PyExc_KeyError, "Invalid cgroup entry");
+        return NULL;
     }
 
     char* value = (char*) malloc(sizeof(char)*len + 1);
-    if (self->container->get_cgroup_item(self->container, key, value, len + 1) != len) {
+    if (value == NULL)
+        return PyErr_NoMemory();
+
+    if (self->container->get_cgroup_item(self->container,
+                                            key, value, len + 1) != len) {
+        PyErr_SetString(PyExc_ValueError, "Unable to read config value");
         free(value);
-        Py_RETURN_FALSE;
+        return NULL;
     }
 
     ret = PyUnicode_FromString(value);
@@ -259,18 +303,24 @@ Container_get_config_item(Container *self, PyObject *args, PyObject *kwds)
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
                                       &key))
-        Py_RETURN_FALSE;
+        return NULL;
 
     len = self->container->get_config_item(self->container, key, NULL, 0);
 
-    if (len <= 0) {
-        Py_RETURN_FALSE;
+    if (len < 0) {
+        PyErr_SetString(PyExc_KeyError, "Invalid configuration key");
+        return NULL;
     }
 
     char* value = (char*) malloc(sizeof(char)*len + 1);
-    if (self->container->get_config_item(self->container, key, value, len + 1) != len) {
-        free(value); 
-        Py_RETURN_FALSE;
+    if (value == NULL)
+        return PyErr_NoMemory();
+
+    if (self->container->get_config_item(self->container,
+                                            key, value, len + 1) != len) {
+        PyErr_SetString(PyExc_ValueError, "Unable to read config value");
+        free(value);
+        return NULL;
     }
 
     ret = PyUnicode_FromString(value);
@@ -281,7 +331,8 @@ Container_get_config_item(Container *self, PyObject *args, PyObject *kwds)
 static PyObject *
 Container_get_config_path(Container *self, PyObject *args, PyObject *kwds)
 {
-    return PyUnicode_FromString(self->container->get_config_path(self->container));
+    return PyUnicode_FromString(
+                self->container->get_config_path(self->container));
 }
 
 static PyObject *
@@ -294,18 +345,24 @@ Container_get_keys(Container *self, PyObject *args, PyObject *kwds)
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s", kwlist,
                                       &key))
-        Py_RETURN_FALSE;
+        return NULL;
 
     len = self->container->get_keys(self->container, key, NULL, 0);
 
-    if (len <= 0) {
-        Py_RETURN_FALSE;
+    if (len < 0) {
+        PyErr_SetString(PyExc_KeyError, "Invalid configuration key");
+        return NULL;
     }
 
     char* value = (char*) malloc(sizeof(char)*len + 1);
-    if (self->container->get_keys(self->container, key, value, len + 1) != len) {
+    if (value == NULL)
+        return PyErr_NoMemory();
+
+    if (self->container->get_keys(self->container,
+                                    key, value, len + 1) != len) {
+        PyErr_SetString(PyExc_ValueError, "Unable to read config keys");
         free(value);
-        Py_RETURN_FALSE;
+        return NULL;
     }
 
     ret = PyUnicode_FromString(value);
@@ -317,16 +374,24 @@ static PyObject *
 Container_load_config(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"path", NULL};
+    PyObject *fs_path = NULL;
     char* path = NULL;
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s", kwlist,
-                                      &path))
-        Py_RETURN_FALSE;
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|O&", kwlist,
+                                      PyUnicode_FSConverter, &fs_path))
+        return NULL;
+
+    if (fs_path != NULL) {
+        path = PyBytes_AS_STRING(fs_path);
+        assert(path != NULL);
+    }
 
     if (self->container->load_config(self->container, path)) {
+        Py_XDECREF(fs_path);
         Py_RETURN_TRUE;
     }
 
+    Py_XDECREF(fs_path);
     Py_RETURN_FALSE;
 }
 
@@ -334,16 +399,24 @@ static PyObject *
 Container_save_config(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"path", NULL};
+    PyObject *fs_path = NULL;
     char* path = NULL;
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s", kwlist,
-                                      &path))
-        Py_RETURN_FALSE;
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|O&", kwlist,
+                                      PyUnicode_FSConverter, &fs_path))
+        return NULL;
+
+    if (fs_path != NULL) {
+        path = PyBytes_AS_STRING(fs_path);
+        assert(path != NULL);
+    }
 
     if (self->container->save_config(self->container, path)) {
+        Py_XDECREF(fs_path);
         Py_RETURN_TRUE;
     }
 
+    Py_XDECREF(fs_path);
     Py_RETURN_FALSE;
 }
 
@@ -354,9 +427,9 @@ Container_set_cgroup_item(Container *self, PyObject *args, PyObject *kwds)
     char *key = NULL;
     char *value = NULL;
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "ss|", kwlist,
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "ss", kwlist,
                                       &key, &value))
-        Py_RETURN_FALSE;
+        return NULL;
 
     if (self->container->set_cgroup_item(self->container, key, value)) {
         Py_RETURN_TRUE;
@@ -372,9 +445,9 @@ Container_set_config_item(Container *self, PyObject *args, PyObject *kwds)
     char *key = NULL;
     char *value = NULL;
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "ss|", kwlist,
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "ss", kwlist,
                                       &key, &value))
-        Py_RETURN_FALSE;
+        return NULL;
 
     if (self->container->set_config_item(self->container, key, value)) {
         Py_RETURN_TRUE;
@@ -389,9 +462,9 @@ Container_set_config_path(Container *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"path", NULL};
     char *path = NULL;
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s", kwlist,
                                       &path))
-        Py_RETURN_FALSE;
+        return NULL;
 
     if (self->container->set_config_path(self->container, path)) {
         Py_RETURN_TRUE;
@@ -408,7 +481,7 @@ Container_shutdown(Container *self, PyObject *args, PyObject *kwds)
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|i", kwlist,
                                       &timeout))
-        Py_RETURN_FALSE;
+        return NULL;
 
     if (self->container->shutdown(self->container, timeout)) {
         Py_RETURN_TRUE;
@@ -421,13 +494,13 @@ static PyObject *
 Container_start(Container *self, PyObject *args, PyObject *kwds)
 {
     char** init_args = {NULL};
-    PyObject *useinit = NULL, *vargs = NULL;
+    PyObject *useinit = NULL, *retval = NULL, *vargs = NULL;
     int init_useinit = 0;
     static char *kwlist[] = {"useinit", "cmd", NULL};
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|OO", kwlist,
                                       &useinit, &vargs))
-        Py_RETURN_FALSE;
+        return NULL;
 
     if (useinit && useinit == Py_True) {
         init_useinit = 1;
@@ -442,13 +515,20 @@ Container_start(Container *self, PyObject *args, PyObject *kwds)
 
     self->container->want_daemonize(self->container);
 
-    if (self->container->start(self->container, init_useinit, init_args)) {
+    if (self->container->start(self->container, init_useinit, init_args))
+        retval = Py_True;
+    else
+        retval = Py_False;
+
+    if (vargs) {
+        /* We cannot have gotten here unless vargs was given and create_args
+         * was successfully allocated.
+         */
         free(init_args);
-        Py_RETURN_TRUE;
     }
 
-    free(init_args);
-    Py_RETURN_FALSE;
+    Py_INCREF(retval);
+    return retval;
 }
 
 static PyObject *
@@ -480,7 +560,7 @@ Container_wait(Container *self, PyObject *args, PyObject *kwds)
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|i", kwlist,
                                       &state, &timeout))
-        Py_RETURN_FALSE;
+        return NULL;
 
     if (self->container->wait(self->container, state, timeout)) {
         Py_RETURN_TRUE;
@@ -491,125 +571,143 @@ Container_wait(Container *self, PyObject *args, PyObject *kwds)
 
 static PyGetSetDef Container_getseters[] = {
     {"config_file_name",
-     (getter)Container_config_file_name, 0,
+     (getter)Container_config_file_name, NULL,
      "Path to the container configuration",
      NULL},
     {"defined",
-     (getter)Container_defined, 0,
+     (getter)Container_defined, NULL,
      "Boolean indicating whether the container configuration exists",
      NULL},
     {"init_pid",
-     (getter)Container_init_pid, 0,
+     (getter)Container_init_pid, NULL,
      "PID of the container's init process in the host's PID namespace",
      NULL},
     {"name",
-     (getter)Container_name, 0,
+     (getter)Container_name, NULL,
      "Container name",
      NULL},
     {"running",
-     (getter)Container_running, 0,
+     (getter)Container_running, NULL,
      "Boolean indicating whether the container is running or not",
      NULL},
     {"state",
-     (getter)Container_state, 0,
+     (getter)Container_state, NULL,
      "Container state",
      NULL},
     {NULL, NULL, NULL, NULL, NULL}
 };
 
 static PyMethodDef Container_methods[] = {
-    {"clear_config_item", (PyCFunction)Container_clear_config_item, METH_VARARGS | METH_KEYWORDS,
+    {"clear_config_item", (PyCFunction)Container_clear_config_item,
+     METH_VARARGS|METH_KEYWORDS,
      "clear_config_item(key) -> boolean\n"
      "\n"
      "Clear the current value of a config key."
     },
-    {"create", (PyCFunction)Container_create, METH_VARARGS | METH_KEYWORDS,
+    {"create", (PyCFunction)Container_create,
+     METH_VARARGS|METH_KEYWORDS,
      "create(template, args = (,)) -> boolean\n"
      "\n"
      "Create a new rootfs for the container, using the given template "
      "and passing some optional arguments to it."
     },
-    {"destroy", (PyCFunction)Container_destroy, METH_NOARGS,
+    {"destroy", (PyCFunction)Container_destroy,
+     METH_NOARGS,
      "destroy() -> boolean\n"
      "\n"
      "Destroys the container."
     },
-    {"freeze", (PyCFunction)Container_freeze, METH_NOARGS,
+    {"freeze", (PyCFunction)Container_freeze,
+     METH_NOARGS,
      "freeze() -> boolean\n"
      "\n"
      "Freezes the container and returns its return code."
     },
-    {"get_cgroup_item", (PyCFunction)Container_get_cgroup_item, METH_VARARGS | METH_KEYWORDS,
+    {"get_cgroup_item", (PyCFunction)Container_get_cgroup_item,
+     METH_VARARGS|METH_KEYWORDS,
      "get_cgroup_item(key) -> string\n"
      "\n"
      "Get the current value of a cgroup entry."
     },
-    {"get_config_item", (PyCFunction)Container_get_config_item, METH_VARARGS | METH_KEYWORDS,
+    {"get_config_item", (PyCFunction)Container_get_config_item,
+     METH_VARARGS|METH_KEYWORDS,
      "get_config_item(key) -> string\n"
      "\n"
      "Get the current value of a config key."
     },
-    {"get_config_path", (PyCFunction)Container_get_config_path, METH_NOARGS,
+    {"get_config_path", (PyCFunction)Container_get_config_path,
+     METH_NOARGS,
      "get_config_path() -> string\n"
      "\n"
      "Return the LXC config path (where the containers are stored)."
     },
-    {"get_keys", (PyCFunction)Container_get_keys, METH_VARARGS | METH_KEYWORDS,
+    {"get_keys", (PyCFunction)Container_get_keys,
+     METH_VARARGS|METH_KEYWORDS,
      "get_keys(key) -> string\n"
      "\n"
      "Get a list of valid sub-keys for a key."
     },
-    {"load_config", (PyCFunction)Container_load_config, METH_VARARGS | METH_KEYWORDS,
+    {"load_config", (PyCFunction)Container_load_config,
+     METH_VARARGS|METH_KEYWORDS,
      "load_config(path = DEFAULT) -> boolean\n"
      "\n"
      "Read the container configuration from its default "
      "location or from an alternative location if provided."
     },
-    {"save_config", (PyCFunction)Container_save_config, METH_VARARGS | METH_KEYWORDS,
+    {"save_config", (PyCFunction)Container_save_config,
+     METH_VARARGS|METH_KEYWORDS,
      "save_config(path = DEFAULT) -> boolean\n"
      "\n"
      "Save the container configuration to its default "
      "location or to an alternative location if provided."
     },
-    {"set_cgroup_item", (PyCFunction)Container_set_cgroup_item, METH_VARARGS | METH_KEYWORDS,
+    {"set_cgroup_item", (PyCFunction)Container_set_cgroup_item,
+     METH_VARARGS|METH_KEYWORDS,
      "set_cgroup_item(key, value) -> boolean\n"
      "\n"
      "Set a cgroup entry to the provided value."
     },
-    {"set_config_item", (PyCFunction)Container_set_config_item, METH_VARARGS | METH_KEYWORDS,
+    {"set_config_item", (PyCFunction)Container_set_config_item,
+     METH_VARARGS|METH_KEYWORDS,
      "set_config_item(key, value) -> boolean\n"
      "\n"
      "Set a config key to the provided value."
     },
-    {"set_config_path", (PyCFunction)Container_set_config_path, METH_VARARGS | METH_KEYWORDS,
+    {"set_config_path", (PyCFunction)Container_set_config_path,
+     METH_VARARGS|METH_KEYWORDS,
      "set_config_path(path) -> boolean\n"
      "\n"
      "Set the LXC config path (where the containers are stored)."
     },
-    {"shutdown", (PyCFunction)Container_shutdown, METH_VARARGS | METH_KEYWORDS,
+    {"shutdown", (PyCFunction)Container_shutdown,
+     METH_VARARGS|METH_KEYWORDS,
      "shutdown(timeout = -1) -> boolean\n"
      "\n"
      "Sends SIGPWR to the container and wait for it to shutdown "
      "unless timeout is set to a positive value, in which case "
      "the container will be killed when the timeout is reached."
     },
-    {"start", (PyCFunction)Container_start, METH_VARARGS | METH_KEYWORDS,
+    {"start", (PyCFunction)Container_start,
+     METH_VARARGS|METH_KEYWORDS,
      "start(useinit = False, cmd = (,)) -> boolean\n"
      "\n"
      "Start the container, optionally using lxc-init and "
      "an alternate init command, then returns its return code."
     },
-    {"stop", (PyCFunction)Container_stop, METH_NOARGS,
+    {"stop", (PyCFunction)Container_stop,
+     METH_NOARGS,
      "stop() -> boolean\n"
      "\n"
      "Stop the container and returns its return code."
     },
-    {"unfreeze", (PyCFunction)Container_unfreeze, METH_NOARGS,
+    {"unfreeze", (PyCFunction)Container_unfreeze,
+     METH_NOARGS,
      "unfreeze() -> boolean\n"
      "\n"
      "Unfreezes the container and returns its return code."
     },
-    {"wait", (PyCFunction)Container_wait, METH_VARARGS | METH_KEYWORDS,
+    {"wait", (PyCFunction)Container_wait,
+     METH_VARARGS|METH_KEYWORDS,
      "wait(state, timeout = -1) -> boolean\n"
      "\n"
      "Wait for the container to reach a given state or timeout."
