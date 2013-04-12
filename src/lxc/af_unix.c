@@ -75,7 +75,7 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 int lxc_af_unix_close(int fd)
 {
 	struct sockaddr_un addr;
-	socklen_t addrlen;
+	socklen_t addrlen = sizeof(addr);
 	
 	if (!getsockname(fd, (struct sockaddr *)&addr, &addrlen) &&
 	    addr.sun_path[0])
