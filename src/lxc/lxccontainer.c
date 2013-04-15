@@ -561,7 +561,7 @@ static bool lxcapi_create(struct lxc_container *c, char *t, char *const argv[])
 
 	/* container is already created if we have a config and rootfs.path is accessible */
 	if (lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) == 0) 
-		return false;
+		goto out;
 
 	/* we're going to fork.  but since we'll wait for our child, we
 	   don't need to lxc_container_get */
