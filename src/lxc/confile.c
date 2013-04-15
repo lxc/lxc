@@ -611,6 +611,7 @@ static int config_network_ipv4(const char *key, const char *value,
 	list = malloc(sizeof(*list));
 	if (!list) {
 		SYSERROR("failed to allocate memory");
+		free(inetdev);
 		return -1;
 	}
 
@@ -620,6 +621,8 @@ static int config_network_ipv4(const char *key, const char *value,
 	addr = strdup(value);
 	if (!addr) {
 		ERROR("no address specified");
+		free(inetdev);
+		free(list);
 		return -1;
 	}
 
@@ -637,12 +640,16 @@ static int config_network_ipv4(const char *key, const char *value,
 
 	if (!inet_pton(AF_INET, addr, &inetdev->addr)) {
 		SYSERROR("invalid ipv4 address: %s", value);
+		free(inetdev);
 		free(addr);
+		free(list);
 		return -1;
 	}
 
 	if (bcast && !inet_pton(AF_INET, bcast, &inetdev->bcast)) {
 		SYSERROR("invalid ipv4 broadcast address: %s", value);
+		free(inetdev);
+		free(list);
 		free(addr);
 		return -1;
 	}
@@ -684,6 +691,7 @@ static int config_network_ipv4_gateway(const char *key, const char *value,
 
 	if (!value) {
 		ERROR("no ipv4 gateway address specified");
+		free(gw);
 		return -1;
 	}
 
@@ -693,6 +701,7 @@ static int config_network_ipv4_gateway(const char *key, const char *value,
 	} else {
 		if (!inet_pton(AF_INET, value, gw)) {
 			SYSERROR("invalid ipv4 gateway address: %s", value);
+			free(gw);
 			return -1;
 		}
 
