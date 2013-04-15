@@ -719,8 +719,10 @@ static bool lxcapi_createl(struct lxc_container *c, char *t, ...)
 			break;
 		nargs++;
 		temp = realloc(args, (nargs+1) * sizeof(*args));
-		if (!temp)
+		if (!temp) {
+			va_end(ap);
 			goto out;
+		}
 		args = temp;
 		args[nargs - 1] = arg;
 	}
