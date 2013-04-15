@@ -440,8 +440,10 @@ static bool lxcapi_startl(struct lxc_container *c, int useinit, ...)
 			break;
 		n_inargs++;
 		temp = realloc(inargs, n_inargs * sizeof(*inargs));
-		if (!temp)
+		if (!temp) {
+			va_end(ap);
 			goto out;
+		}
 		inargs = temp;
 		inargs[n_inargs - 1] = strdup(arg);  // not sure if it's safe not to copy
 	}
