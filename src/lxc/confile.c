@@ -726,6 +726,7 @@ static int config_network_ipv6(const char *key, const char *value,
 	list = malloc(sizeof(*list));
 	if (!list) {
 		SYSERROR("failed to allocate memory");
+		free(inet6dev);
 		return -1;
 	}
 
@@ -735,6 +736,8 @@ static int config_network_ipv6(const char *key, const char *value,
 	valdup = strdup(value);
 	if (!valdup) {
 		ERROR("no address specified");
+		free(list);
+		free(inet6dev);
 		return -1;
 	}
 
@@ -748,6 +751,8 @@ static int config_network_ipv6(const char *key, const char *value,
 
 	if (!inet_pton(AF_INET6, value, &inet6dev->addr)) {
 		SYSERROR("invalid ipv6 address: %s", value);
+		free(list);
+		free(inet6dev);
 		free(valdup);
 		return -1;
 	}
@@ -785,6 +790,7 @@ static int config_network_ipv6_gateway(const char *key, const char *value,
 	} else {
 		if (!inet_pton(AF_INET6, value, gw)) {
 			SYSERROR("invalid ipv6 gateway address: %s", value);
+			free(gw);
 			return -1;
 		}
 
