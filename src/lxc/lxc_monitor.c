@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
 		if (lxc_monitor_read(fd, &msg) < 0)
 			return -1;
 
+		msg.name[sizeof(msg.name)-1] = '\0';
 		if (regexec(&preg, msg.name, 0, NULL, 0))
 			continue;
 
