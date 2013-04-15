@@ -272,6 +272,7 @@ static int config_network_type(const char *key, const char *value,
 	list = malloc(sizeof(*list));
 	if (!list) {
 		SYSERROR("failed to allocate memory");
+		free(netdev);
 		return -1;
 	}
 
