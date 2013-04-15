@@ -700,7 +700,8 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 				SYSERROR("error creating %s\n", lxcpath);
 				return -1;
 			}
-			close(ret);
+			if (ret >= 0)
+				close(ret);
 			ret = unlink(path);
 			if (ret && errno != ENOENT) {
 				SYSERROR("error unlinking %s\n", path);
@@ -1314,7 +1315,8 @@ static int setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		SYSERROR("error %d creating %s\n", errno, lxcpath);
 		return -1;
 	}
-	close(ret);
+	if (ret >= 0)
+		close(ret);
 
 	if (console->peer == -1) {
 		INFO("no console output required");
