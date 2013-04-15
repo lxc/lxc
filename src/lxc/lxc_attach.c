@@ -103,9 +103,9 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 static struct lxc_arguments my_args = {
 	.progname = "lxc-attach",
 	.help     = "\
---name=NAME\n\
+--name=NAME [-- COMMAND]\n\
 \n\
-Execute the specified command - enter the container NAME\n\
+Execute the specified COMMAND - enter the container NAME\n\
 \n\
 Options :\n\
   -n, --name=NAME   NAME for name of the container\n\
