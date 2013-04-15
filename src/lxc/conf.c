@@ -299,6 +299,7 @@ static int run_buffer(char *buffer)
 {
 	FILE *f;
 	char *output;
+	int ret;
 
 	f = popen(buffer, "r");
 	if (!f) {
@@ -318,8 +319,16 @@ static int run_buffer(char *buffer)
 
 	free(output);
 
-	if (pclose(f) == -1) {
+	ret = pclose(f);
+	if (ret == -1) {
 		SYSERROR("Script exited on error");
+		return -1;
+	} else if (WIFEXITED(ret) && WEXITSTATUS(ret) != 0) {
+		ERROR("Script exited with status %d", WEXITSTATUS(ret));
+		return -1;
+	} else if (WIFSIGNALED(ret)) {
+		ERROR("Script terminated by signal %d (%s)", WTERMSIG(ret),
+		      strsignal(WTERMSIG(ret)));
 		return -1;
 	}
 
