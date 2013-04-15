@@ -358,7 +358,6 @@ static int run_script(const char *name, const char *section,
 	ret = snprintf(buffer, size, "%s %s %s", script, name, section);
 	if (ret < 0 || ret >= size) {
 		ERROR("Script name too long");
-		free(buffer);
 		return -1;
 	}
 
@@ -368,7 +367,6 @@ static int run_script(const char *name, const char *section,
 		int rc;
 		rc = snprintf(buffer + ret, len, " %s", p);
 		if (rc < 0 || rc >= len) {
-			free(buffer);
 			ERROR("Script args too long");
 			return -1;
 		}
