@@ -165,14 +165,18 @@ static int master_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 {
 	char buf[1024];
 	int *peer = (int *)data;
-	int r;
+	int r,w;
 
 	r = read(fd, buf, sizeof(buf));
 	if (r < 0) {
 		SYSERROR("failed to read");
 		return 1;
 	}
-	r = write(*peer, buf, r);
+	w = write(*peer, buf, r);
+	if (w < 0 || w != r) {
+		SYSERROR("failed to write");
+		return 1;
+	}
 
 	return 0;
 }
