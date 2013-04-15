@@ -750,7 +750,7 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
 {
 	struct lxc_list	*mountlist, *listentry, *iterator;
-	char *pivotdir, *mountpoint, *mountentry;
+	char *pivotdir, *mountpoint, *mountentry, *saveptr;
 	int found;
 	void **cbparm;
 
@@ -761,12 +761,12 @@ static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
 	pivotdir  = cbparm[1];
 
 	/* parse entry, first field is mountname, ignore */
-	mountpoint = strtok(mountentry, " ");
+	mountpoint = strtok_r(mountentry, " ", &saveptr);
 	if (!mountpoint)
 		return -1;
 
 	/* second field is mountpoint */
-	mountpoint = strtok(NULL, " ");
+	mountpoint = strtok_r(NULL, " ", &saveptr);
 	if (!mountpoint)
 		return -1;
 
