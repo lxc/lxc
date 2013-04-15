@@ -1249,8 +1249,10 @@ static int config_mount(const char *key, const char *value,
 		return -1;
 
 	mntelem = strdup(value);
-	if (!mntelem)
+	if (!mntelem) {
+		free(mntlist);
 		return -1;
+	}
 	mntlist->elem = mntelem;
 
 	lxc_list_add_tail(&lxc_conf->mount_list, mntlist);

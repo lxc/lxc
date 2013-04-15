@@ -309,6 +309,7 @@ static int run_buffer(char *buffer)
 	output = malloc(LXC_LOG_BUFFER_SIZE);
 	if (!output) {
 		ERROR("failed to allocate memory for script output");
+		pclose(f);
 		return -1;
 	}
 
@@ -535,6 +536,7 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 		if (errno != ENXIO) {
 			WARN("unexpected error for ioctl on '%s': %m",
 			     direntp->d_name);
+			close(fd);
 			continue;
 		}
 
@@ -792,6 +794,7 @@ static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
 	listentry->elem = strdup(mountpoint);
 	if (!listentry->elem) {
 		SYSERROR("strdup failed");
+		free(listentry);
 		return -1;
 	}
 	lxc_list_add_tail(mountlist, listentry);
@@ -1053,8 +1056,10 @@ int detect_shared_rootfs(void)
 		if (strcmp(p+1, "/") == 0) {
 			// this is '/'.  is it shared?
 			p = index(p2+1, ' ');
-			if (strstr(p, "shared:"))
+			if (strstr(p, "shared:")) {
+				fclose(f);
 				return 1;
+			}
 		}
 	}
 	fclose(f);

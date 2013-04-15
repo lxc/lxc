@@ -69,8 +69,10 @@ static char *mount_has_subsystem(const struct mntent *mntent)
 		return 0;
 
 	/* skip the first line, which contains column headings */
-	if (!fgets(line, MAXPATHLEN, f))
+	if (!fgets(line, MAXPATHLEN, f)) {
+		fclose(f);
 		return 0;
+	}
 
 	while (fgets(line, MAXPATHLEN, f)) {
 		c = strchr(line, '\t');

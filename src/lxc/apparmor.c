@@ -36,6 +36,8 @@ again:
 	f = fopen(path, "r");
 	if (!f) {
 		SYSERROR("opening %s\n", path);
+		if (buf)
+			free(buf);
 		return NULL;
 	}
 	sz += 1024;
