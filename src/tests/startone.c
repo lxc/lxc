@@ -222,6 +222,7 @@ int main(int argc, char *argv[])
 	c->stop(c);
 
     /* feh - multilib has moved the lxc-init crap */
+#if 0
     goto ok;
 
 	ret = system("mkdir -p " LXCPATH "/lxctest1/rootfs//usr/local/libexec/lxc");
@@ -251,6 +252,7 @@ int main(int argc, char *argv[])
 	//  auto-check result?  ('bobo' is printed on stdout)
 
 ok:
+#endif
 	fprintf(stderr, "all lxc_container tests passed for %s\n", c->name);
 	ret = 0;
 
