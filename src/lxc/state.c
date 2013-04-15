@@ -56,7 +56,8 @@ const char *lxc_state2str(lxc_state_t state)
 
 lxc_state_t lxc_str2state(const char *state)
 {
-	int i, len;
+	size_t len;
+	lxc_state_t i;
 	len = sizeof(strstate)/sizeof(strstate[0]);
 	for (i = 0; i < len; i++)
 		if (!strcmp(strstate[i], state))
@@ -66,7 +67,7 @@ lxc_state_t lxc_str2state(const char *state)
 	return -1;
 }
 
-static int freezer_state(const char *name, const char *lxcpath)
+static lxc_state_t freezer_state(const char *name, const char *lxcpath)
 {
 	char *nsgroup;
 	char freezer[MAXPATHLEN];
@@ -132,7 +133,7 @@ static lxc_state_t __lxc_getstate(const char *name, const char *lxcpath)
 
 lxc_state_t lxc_getstate(const char *name, const char *lxcpath)
 {
-	int state = freezer_state(name, lxcpath);
+	lxc_state_t state = freezer_state(name, lxcpath);
 	if (state != FROZEN && state != FREEZING)
 		state = __lxc_getstate(name, lxcpath);
 	return state;

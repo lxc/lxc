@@ -172,7 +172,7 @@ __lxc_log(const struct lxc_log_category* category,
 }
 
 /*
- * Helper macro to define log fonctions.
+ * Helper macro to define log functions.
  */
 #define lxc_log_priority_define(acategory, PRIORITY)			\
 									\

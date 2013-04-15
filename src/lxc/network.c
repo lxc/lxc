@@ -836,7 +836,6 @@ static int ip_addr_get(int family, int ifindex, void **res)
 	err = netlink_send(&nlh, nlmsg);
 	if (err < 0)
 		goto out;
-	err = 0;
 
 	do {
 		/* Restore the answer buffer length, it might have been

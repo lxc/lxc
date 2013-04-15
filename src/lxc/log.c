@@ -244,7 +244,6 @@ extern int lxc_log_init(const char *name, const char *file,
 		lxc_log_setprefix(prefix);
 
 	if (file && strcmp(file, "none") == 0) {
-		want_lxc_log_specified = 1;
 		return 0;
 	}
 

@@ -630,7 +630,7 @@ static bool lxcapi_create(struct lxc_container *c, char *t, char *const argv[])
 		newargv[nargs - 1] = NULL;
 
 		/* execute */
-		ret = execv(tpath, newargv);
+		execv(tpath, newargv);
 		SYSERROR("failed to execute template %s", tpath);
 		exit(1);
 	}
@@ -833,7 +833,7 @@ static bool lxcapi_destroy(struct lxc_container *c)
 	if (pid < 0)
 		return false;
 	if (pid == 0) { // child
-		ret = execlp("lxc-destroy", "lxc-destroy", "-n", c->name, "-P", c->config_path, NULL);
+		execlp("lxc-destroy", "lxc-destroy", "-n", c->name, "-P", c->config_path, NULL);
 		perror("execl");
 		exit(1);
 	}
