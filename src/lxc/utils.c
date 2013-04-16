@@ -106,30 +106,30 @@ static int is_all_slashes(char *path)
 
 extern int mkdir_p(char *dir, mode_t mode)
 {
-        int ret;
-        char *d;
+	int ret;
+	char *d;
 
 	if (is_all_slashes(dir))
-                return 0;
+		return 0;
 
-        d = strdup(dir);
-        if (!d)
-                return -1;
+	d = strdup(dir);
+	if (!d)
+		return -1;
 
-        ret = mkdir_p(dirname(d), mode);
-        free(d);
-        if (ret)
-                return -1;
+	ret = mkdir_p(dirname(d), mode);
+	free(d);
+	if (ret)
+		return -1;
 
-        if (!access(dir, F_OK))
-                return 0;
+	if (!access(dir, F_OK))
+		return 0;
 
-        if (mkdir(dir, mode)) {
-                SYSERROR("failed to create directory '%s'\n", dir);
-                return -1;
-        }
+	if (mkdir(dir, mode)) {
+		SYSERROR("failed to create directory '%s'\n", dir);
+		return -1;
+	}
 
-        return 0;
+	return 0;
 }
 
 static char *copypath(char *p)
