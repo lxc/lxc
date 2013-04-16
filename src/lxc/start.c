@@ -198,6 +198,7 @@ static int setup_signal_fd(sigset_t *oldmask)
 	    sigdelset(&mask, SIGILL) ||
 	    sigdelset(&mask, SIGSEGV) ||
 	    sigdelset(&mask, SIGBUS) ||
+	    sigdelset(&mask, SIGCHLD) ||
 	    sigprocmask(SIG_BLOCK, &mask, oldmask)) {
 		SYSERROR("failed to set signal mask");
 		return -1;
@@ -739,10 +740,29 @@ int save_phys_nics(struct lxc_conf *conf)
 	return 0;
 }
 
+static void sigchild_handler(int sig)
+{
+	int status;
+	pid_t child;
+
+	child = wait(&status);
+	if (child < 0) {
+		SYSERROR("SIGCHLD caught but wait() failed: %m\n");
+		return;
+	}
+
+	if (WIFSIGNALED(status))
+		ERROR("Process in the new namespace died before execve()"
+		      " due to signal: %i", WTERMSIG(status));
+	else if (WIFEXITED(status))
+		ERROR("Process in the new namespace died before execve()"
+		      " with exit code: %i", WIFEXITED(status));
+}
 
 int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
+	struct sigaction act;
 	const char *name = handler->name;
 
 	if (lxc_sync_init(handler))
@@ -792,6 +812,14 @@ int lxc_spawn(struct lxc_handler *handler)
 		ERROR("failed to pin the container's rootfs");
 		goto out_delete_net;
 	}
+
+	/*
+	 * Install a SIGCHLD handler to detect the death of the new child between
+	 * clone() and execve().
+	 */
+	memset(&act, 0, sizeof(act));
+	act.sa_handler = sigchild_handler;
+	sigaction(SIGCHLD, &act, NULL);
 
 	/* Create a process in a new set of namespaces */
 	handler->pid = lxc_clone(do_start, handler, handler->clone_flags);
