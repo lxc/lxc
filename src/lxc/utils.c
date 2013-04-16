@@ -95,12 +95,21 @@ extern int get_u16(unsigned short *val, const char *arg, int base)
 	return 0;
 }
 
+static int is_all_slashes(char *path)
+{
+	while (*path && *path == '/')
+		path++;
+	if (*path)
+		return 0;
+	return 1;
+}
+
 extern int mkdir_p(char *dir, mode_t mode)
 {
         int ret;
         char *d;
 
-        if (!strcmp(dir, "/"))
+	if (is_all_slashes(dir))
                 return 0;
 
         d = strdup(dir);
