@@ -759,7 +759,7 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
 {
 	struct lxc_list	*mountlist, *listentry, *iterator;
-	char *pivotdir, *mountpoint, *mountentry, *saveptr;
+	char *pivotdir, *mountpoint, *mountentry, *saveptr = NULL;
 	int found;
 	void **cbparm;
 
