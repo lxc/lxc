@@ -58,4 +58,9 @@ extern int __build_bug_on_failed;
 	} while(0)
 #endif
 
+/*
+ * wait on a child we forked
+ */
+extern int wait_for_pid(pid_t pid);
+
 #endif

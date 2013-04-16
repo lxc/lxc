@@ -1,8 +1,16 @@
+#ifndef __LXC_CONTAINER_H
+#define __LXC_CONTAINER_H
 #include "lxclock.h"
 #include <stdlib.h>
 #include <malloc.h>
 
 #include <stdbool.h>
+
+#define LXC_CLONE_KEEPNAME        (1 << 0)
+#define LXC_CLONE_COPYHOOKS       (1 << 1)
+#define LXC_CLONE_KEEPMACADDR     (1 << 2)
+#define LXC_CLONE_SNAPSHOT        (1 << 3)
+#define LXC_CLONE_MAXFLAGS        (1 << 4)
 
 struct lxc_container {
 	// private fields
@@ -72,6 +80,33 @@ struct lxc_container {
 	const char *(*get_config_path)(struct lxc_container *c);
 	bool (*set_config_path)(struct lxc_container *c, const char *path);
 
+	/*
+	 * @c: the original container
+	 * @newname: new name for the container.  If NULL, the same name is used, and
+	 *  a new lxcpath MUST be specified.
+	 * @lxcpath: lxcpath in which to create the new container.  If NULL, then the
+	 *  original container's lxcpath will be used.  (Shoudl we use the default
+	 *  instead?)
+	 * @flags: additional flags to modify cloning behavior.
+	 *  LXC_CLONE_KEEPNAME: don't edit the rootfs to change the hostname.
+	 *  LXC_CLONE_COPYHOOKS: copy all hooks into the container dir
+	 *  LXC_CLONE_KEEPMACADDR: don't change the mac address on network interfaces.
+	 *  LXC_CLONE_SNAPSHOT: snapshot the original filesystem(s).  If @devtype was not
+	 *   specified, then do so with the native bdevtype if possible, else use an
+	 *   overlayfs.
+	 * @bdevtype: optionally force the cloned bdevtype to a specified plugin.  By
+	 *  default the original  is used (subject to snapshot requirements).
+	 * @bdevdata: information about how to create the new storage (i.e. fstype and
+	 *  fsdata)
+	 * @newsize: in case of a block device backing store, an optional size.  If 0,
+	 *  then the original backing store's size will be used if possible.  Note this
+	 *  only applies to the rootfs.  For any other filesystems, the original size
+	 *  will be duplicated.
+	 */
+	struct lxc_container *(*clone)(struct lxc_container *c, const char *newname,
+		const char *lxcpath, int flags, const char *bdevtype,
+		const char *bdevdata, unsigned long newsize);
+
 #if 0
 	bool (*commit_cgroups)(struct lxc_container *c);
 	bool (*reread_cgroups)(struct lxc_container *c);
@@ -92,4 +127,5 @@ const char *lxc_get_version(void);
 #if 0
 char ** lxc_get_valid_keys();
 char ** lxc_get_valid_values(char *key);
+#endif
 #endif

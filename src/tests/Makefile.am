@@ -13,6 +13,7 @@ lxc_test_get_item_SOURCES = get_item.c
 lxc_test_getkeys_SOURCES = getkeys.c
 lxc_test_lxcpath_SOURCES = lxcpath.c
 lxc_test_cgpath_SOURCES = cgpath.c
+lxc_test_clonetest_SOURCES = clonetest.c
 
 AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
@@ -23,7 +24,7 @@ AM_CFLAGS=-I$(top_srcdir)/src \
 bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-destroytest lxc-test-saveconfig lxc-test-createtest \
 	lxc-test-shutdowntest lxc-test-get_item lxc-test-getkeys lxc-test-lxcpath \
-	lxc-test-cgpath
+	lxc-test-cgpath lxc-test-clonetest
 
 endif
 
@@ -38,4 +39,5 @@ EXTRA_DIST = \
 	lxcpath.c \
 	saveconfig.c \
 	shutdowntest.c \
+	clonetest.c \
 	startone.c

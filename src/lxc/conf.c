@@ -64,6 +64,7 @@
 #include "log.h"
 #include "lxc.h"	/* for lxc_cgroup_set() */
 #include "caps.h"       /* for lxc_caps_last_cap() */
+#include "bdev.h"
 
 #if HAVE_APPARMOR
 #include <apparmor.h>
@@ -590,8 +591,8 @@ int pin_rootfs(const char *rootfs)
 		return -2;
 
 	if (!realpath(rootfs, absrootfs)) {
-		SYSERROR("failed to get real path for '%s'", rootfs);
-		return -1;
+		INFO("failed to get real path for '%s', not pinning", rootfs);
+		return -2;
 	}
 
 	if (access(absrootfs, F_OK)) {
@@ -1163,6 +1164,12 @@ static int setup_rootfs(struct lxc_conf *conf)
 		}
 	}
 
+	// First try mounting rootfs using a bdev
+	struct bdev *bdev = bdev_init(rootfs->path, rootfs->mount, NULL);
+	if (bdev && bdev->ops->mount(bdev) == 0) {
+		DEBUG("mounted '%s' on '%s'", rootfs->path, rootfs->mount);
+		return 0;
+	}
 	if (mount_rootfs(rootfs->path, rootfs->mount)) {
 		ERROR("failed to mount rootfs");
 		return -1;

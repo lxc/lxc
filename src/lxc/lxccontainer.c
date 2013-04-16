@@ -17,22 +17,41 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <errno.h>
+#include <sched.h>
+#include "config.h"
 #include "lxc.h"
 #include "state.h"
 #include "lxccontainer.h"
 #include "conf.h"
-#include "config.h"
 #include "confile.h"
 #include "cgroup.h"
 #include "commands.h"
 #include "version.h"
 #include "log.h"
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <errno.h>
+#include "bdev.h"
 #include <lxc/utils.h>
 #include <lxc/monitor.h>
+
+/* Define unshare() if missing from the C library */
+/* this is also in attach.c and lxccontainer.c: commonize it in utils.c */
+#ifndef HAVE_UNSHARE
+static int unshare(int flags)
+{
+#ifdef __NR_unshare
+	return syscall(__NR_unshare, flags);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+#else
+int unshare(int);
+#endif
 
 lxc_log_define(lxc_container, lxc);
 
@@ -536,10 +555,8 @@ static bool lxcapi_create(struct lxc_container *c, char *t, char *const argv[])
 {
 	bool bret = false;
 	pid_t pid;
-	int ret, status;
-	char *tpath = NULL;
-	int len, nargs = 0;
-	char **newargv;
+	char *tpath = NULL, **newargv;
+	int ret, len, nargs = 0;
 
 	if (!c)
 		return false;
@@ -566,7 +583,7 @@ static bool lxcapi_create(struct lxc_container *c, char *t, char *const argv[])
 		goto out;
 
 	/* we're going to fork.  but since we'll wait for our child, we
-	   don't need to lxc_container_get */
+	 * don't need to lxc_container_get */
 
 	if (lxclock(c->slock, 0)) {
 		ERROR("failed to grab global container lock for %s\n", c->name);
@@ -637,26 +654,8 @@ static bool lxcapi_create(struct lxc_container *c, char *t, char *const argv[])
 		exit(1);
 	}
 
-again:
-	ret = waitpid(pid, &status, 0);
-	if (ret == -1) {
-		if (errno == -EINTR)
-			goto again;
-		SYSERROR("waitpid failed");
-		goto out_unlock;
-	}
-	if (ret != pid)
-		goto again;
-	if (!WIFEXITED(status))  { // did not exit normally
-		// we could set an error code and string inside the
-		// container_struct here if we like
-		ERROR("container creation template exited abnormally\n");
-		goto out_unlock;
-	}
-
-	if (WEXITSTATUS(status) != 0) {
-		ERROR("container creation template for %s exited with %d\n",
-		      c->name, WEXITSTATUS(status));
+	if (wait_for_pid(pid) != 0) {
+		ERROR("container creation template for %s failed\n", c->name);
 		goto out_unlock;
 	}
 
@@ -822,7 +821,6 @@ static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 static bool lxcapi_destroy(struct lxc_container *c)
 {
 	pid_t pid;
-	int ret, status;
 
 	if (!c)
 		return false;
@@ -840,23 +838,12 @@ static bool lxcapi_destroy(struct lxc_container *c)
 		exit(1);
 	}
 
-again:
-	ret = waitpid(pid, &status, 0);
-	if (ret == -1) {
-		if (errno == -EINTR)
-			goto again;
-		perror("waitpid");
-		return false;
-	}
-	if (ret != pid)
-		goto again;
-	if (!WIFEXITED(status))  { // did not exit normally
-		// we could set an error code and string inside the
-		// container_struct here if we like
+	if (wait_for_pid(pid) < 0) {
+		ERROR("Error destroying container %s", c->name);
 		return false;
 	}
 
-	return WEXITSTATUS(status) == 0;
+	return true;
 }
 
 static bool lxcapi_set_config_item(struct lxc_container *c, const char *key, const char *v)
@@ -1027,6 +1014,518 @@ const char *lxc_get_version(void)
 	return lxc_version();
 }
 
+static int copy_file(char *old, char *new)
+{
+	int in, out;
+	ssize_t len, ret;
+	char buf[8096];
+	struct stat sbuf;
+
+	if (file_exists(new)) {
+		ERROR("copy destination %s exists", new);
+		return -1;
+	}
+	ret = stat(old, &sbuf);
+	if (ret < 0) {
+		SYSERROR("stat'ing %s", old);
+		return -1;
+	}
+
+	in = open(old, O_RDONLY);
+	if (in < 0) {
+		SYSERROR("opening original file %s", old);
+		return -1;
+	}
+	out = open(new, O_CREAT | O_EXCL | O_WRONLY, 0644);
+	if (out < 0) {
+		SYSERROR("opening new file %s", new);
+		close(in);
+		return -1;
+	}
+
+	while (1) {
+		len = read(in, buf, 8096);
+		if (len < 0) {
+			SYSERROR("reading old file %s", old);
+			goto err;
+		}
+		if (len == 0)
+			break;
+		ret = write(out, buf, len);
+		if (ret < len) {  // should we retry?
+			SYSERROR("write to new file %s was interrupted", new);
+			goto err;
+		}
+	}
+	close(in);
+	close(out);
+
+	// we set mode, but not owner/group
+	ret = chmod(new, sbuf.st_mode);
+	if (ret) {
+		SYSERROR("setting mode on %s", new);
+		return -1;
+	}
+
+	return 0;
+
+err:
+	close(in);
+	close(out);
+	return -1;
+}
+
+/*
+ * we're being passed result of two strstrs(x, y).  We want to write
+ * all data up to the first found string, or to end of the string if
+ * neither string was found.
+ * This function will return the earliest found string if any, or else
+ * NULL
+ */
+static const char *lowest_nonnull(const char *p1, const char *p2)
+{
+	if (!p1)
+		return p2;
+	if (!p2)
+		return p1;
+	return p1 < p2 ? p1 : p2;
+}
+
+static int is_word_sep(char c)
+{
+	switch(c) {
+	case '\0':
+	case '\n':
+	case '\r':
+	case '\t':
+	case ' ':
+	case '=':
+	case '/':
+		return 1;
+	default: return 0;
+	}
+}
+
+static const char *find_first_wholeword(const char *p, const char *word)
+{
+	if (!p)
+		return NULL;
+
+	while ((p = strstr(p, word)) != NULL) {
+		if (is_word_sep(*(p-1)) && is_word_sep(p[strlen(word)]))
+			return p;
+		p++;
+	}
+	return NULL;
+}
+
+static int update_name_and_paths(const char *path, struct lxc_container *oldc,
+		const char *newname, const char *newpath)
+{
+	FILE *f;
+	size_t flen;
+	char *contents;
+	const char *p0, *p1, *p2, *end;
+	const char *oldpath = oldc->get_config_path(oldc);
+	const char *oldname = oldc->name;
+
+	f = fopen(path, "r");
+	if (!f) {
+		SYSERROR("opening old config");
+		return -1;
+	}
+	if (fseek(f, 0, SEEK_END) < 0) {
+		SYSERROR("seeking to end of old config");
+		fclose(f);
+		return -1;
+	}
+	flen = ftell(f);
+	if (flen < 0) {
+		fclose(f);
+		SYSERROR("telling size of old config");
+		return -1;
+	}
+	if (fseek(f, 0, SEEK_SET) < 0) {
+		fclose(f);
+		SYSERROR("rewinding old config");
+		return -1;
+	}
+	contents = malloc(flen);
+	if (!contents) {
+		SYSERROR("out of memory");
+		fclose(f);
+	}
+	if (fread(contents, 1, flen, f) != flen) {
+		free(contents);
+		fclose(f);
+		SYSERROR("reading old config");
+		return -1;
+	}
+	if (fclose(f) < 0) {
+		free(contents);
+		SYSERROR("closing old config");
+		return -1;
+	}
+
+	f = fopen(path, "w");
+	if (!f) {
+		SYSERROR("reopening config");
+		free(contents);
+		return -1;
+	}
+
+	p0 = contents;
+	end = contents + flen;
+	while (1) {
+		p1 = find_first_wholeword(p0, oldpath);
+		p2 = find_first_wholeword(p0, oldname);
+		if (!p1 && !p2) {
+			// write the rest and be done
+			if (fwrite(p0, 1, (end-p0), f) != (end-p0)) {
+				SYSERROR("writing new config");
+				free(contents);
+				fclose(f);
+				return -1;
+			}
+			free(contents);
+			fclose(f);
+			// success
+			return 0;
+		} else {
+			const char *p = lowest_nonnull(p1, p2);
+			const char *new = (p == p2) ? newname : newpath;
+			if (fwrite(p0, 1, (p-p0), f) != (p-p0)) {
+				SYSERROR("writing new config");
+				free(contents);
+				fclose(f);
+				return -1;
+			}
+			p0 = p;
+			// now write the newpath or newname
+			if (fwrite(new, 1, strlen(new), f) != strlen(new)) {
+				SYSERROR("writing new name or path in new config");
+				free(contents);
+				fclose(f);
+				return -1;
+			}
+			p0 += (p == p2) ? strlen(oldname) : strlen(oldpath);
+		}
+	}
+}
+
+static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
+{
+	int i;
+	int ret;
+	struct lxc_list *it;
+
+	for (i=0; i<NUM_LXC_HOOKS; i++) {
+		lxc_list_for_each(it, &c->lxc_conf->hooks[i]) {
+			char *hookname = it->elem;
+			char *fname = rindex(hookname, '/');
+			char tmppath[MAXPATHLEN];
+			if (!fname) // relative path - we don't support, but maybe we should
+				return 0;
+			// copy the script, and change the entry in confile
+			ret = snprintf(tmppath, MAXPATHLEN, "%s/%s/%s",
+					c->config_path, c->name, fname+1);
+			if (ret < 0 || ret >= MAXPATHLEN)
+				return -1;
+			ret = copy_file(it->elem, tmppath);
+			if (ret < 0)
+				return -1;
+			free(it->elem);
+			it->elem = strdup(tmppath);
+			if (!it->elem) {
+				ERROR("out of memory copying hook path");
+				return -1;
+			}
+			update_name_and_paths(it->elem, oldc, c->name, c->get_config_path(c));
+		}
+	}
+
+	c->save_config(c, NULL);
+	return 0;
+}
+
+static void new_hwaddr(char *hwaddr)
+{
+	FILE *f = fopen("/dev/urandom", "r");
+	if (f) {
+		unsigned int seed;
+		int ret = fread(&seed, sizeof(seed), 1, f);
+		if (ret != 1)
+			seed = time(NULL);
+		fclose(f);
+		srand(seed);
+	} else
+		srand(time(NULL));
+	snprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x",
+			rand() % 255, rand() % 255, rand() % 255);
+}
+
+static void network_new_hwaddrs(struct lxc_container *c)
+{
+	struct lxc_list *it;
+
+	lxc_list_for_each(it, &c->lxc_conf->network) {
+		struct lxc_netdev *n = it->elem;
+		if (n->hwaddr)
+			new_hwaddr(n->hwaddr);
+	}
+}
+
+static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
+{
+	char newpath[MAXPATHLEN];
+	char *oldpath = oldc->lxc_conf->fstab;
+	int ret;
+
+	if (!oldpath)
+		return 0;
+
+	char *p = rindex(oldpath, '/');
+	if (!p)
+		return -1;
+	ret = snprintf(newpath, MAXPATHLEN, "%s/%s%s",
+			c->config_path, c->name, p);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("error printing new path for %s", oldpath);
+		return -1;
+	}
+	if (file_exists(newpath)) {
+		ERROR("error: fstab file %s exists", newpath);
+		return -1;
+	}
+
+	if (copy_file(oldpath, newpath) < 0) {
+		ERROR("error: copying %s to %s", oldpath, newpath);
+		return -1;
+	}
+	free(c->lxc_conf->fstab);
+	c->lxc_conf->fstab = strdup(newpath);
+	if (!c->lxc_conf->fstab) {
+		ERROR("error: allocating pathname");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
+		const char *newtype, int flags, const char *bdevdata, unsigned long newsize)
+{
+	struct bdev *bdev;
+
+	bdev = bdev_copy(c0->lxc_conf->rootfs.path, c0->name, c->name,
+			c0->config_path, c->config_path, newtype, !!(flags & LXC_CLONE_SNAPSHOT),
+			bdevdata, newsize);
+	if (!bdev) {
+		ERROR("error copying storage");
+		return -1;
+	}
+	free(c->lxc_conf->rootfs.path);
+	c->lxc_conf->rootfs.path = strdup(bdev->src);
+	bdev_put(bdev);
+	if (!c->lxc_conf->rootfs.path)
+		return -1;
+	// here we could also update all lxc.mount.entries or even
+	// items in the lxc.mount fstab list.  As discussed on m-l,
+	// we could do either any source paths starting with the
+	// lxcpath/oldname, or simply anythign which is not a virtual
+	// fs or a bind mount.
+	return 0;
+}
+
+static int clone_update_rootfs(struct lxc_container *c, int flags)
+{
+	int ret = -1;
+	char path[MAXPATHLEN];
+	struct bdev *bdev;
+	FILE *fout;
+	pid_t pid;
+
+	if (flags & LXC_CLONE_KEEPNAME)
+		return 0;
+
+	/* update hostname in rootfs */
+	/* we're going to mount, so run in a clean namespace to simplify cleanup */
+
+	pid = fork();
+	if (pid < 0)
+		return -1;
+	if (pid > 0)
+		return wait_for_pid(pid);
+
+	if (unshare(CLONE_NEWNS) < 0) {
+		ERROR("error unsharing mounts");
+		exit(1);
+	}
+	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	if (!bdev)
+		exit(1);
+	if (bdev->ops->mount(bdev) < 0)
+		exit(1);
+	ret = snprintf(path, MAXPATHLEN, "%s/etc/hostname", bdev->dest);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		exit(1);
+	if (!(fout = fopen(path, "w"))) {
+		SYSERROR("unable to open %s: ignoring\n", path);
+		exit(0);
+	}
+	if (fprintf(fout, "%s", c->name) < 0)
+		exit(1);
+	if (fclose(fout) < 0)
+		exit(1);
+	exit(0);
+}
+
+/*
+ * We want to support:
+sudo lxc-clone -o o1 -n n1 -s -L|-fssize fssize -v|--vgname vgname \
+        -p|--lvprefix lvprefix -t|--fstype fstype  -B backingstore
+
+-s [ implies overlayfs]
+-s -B overlayfs
+-s -B aufs
+
+only rootfs gets converted (copied/snapshotted) on clone.
+*/
+
+static int create_file_dirname(char *path)
+{
+	char *p = rindex(path, '/');
+	int ret;
+
+	if (!p)
+		return -1;
+	*p = '\0';
+	ret = mkdir(path, 0755);
+	if (ret && errno != EEXIST)
+		SYSERROR("creating container path %s\n", path);
+	*p = '/';
+	return ret;
+}
+
+struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
+		const char *lxcpath, int flags,
+		const char *bdevtype, const char *bdevdata, unsigned long newsize)
+{
+	struct lxc_container *c2 = NULL;
+	char newpath[MAXPATHLEN];
+	int ret;
+	const char *n, *l;
+	FILE *fout;
+
+	if (!c || !c->is_defined(c))
+		return NULL;
+
+	if (lxclock(c->privlock, 0))
+		return NULL;
+
+	if (c->is_running(c)) {
+		ERROR("error: Original container (%s) is running", c->name);
+		goto out;
+	}
+
+	// Make sure the container doesn't yet exist.
+	n = newname ? newname : c->name;
+	l = lxcpath ? lxcpath : c->get_config_path(c);
+	ret = snprintf(newpath, MAXPATHLEN, "%s/%s/config", l, n);
+	if (ret < 0  || ret >= MAXPATHLEN) {
+		SYSERROR("clone: failed making config pathname");
+		goto out;
+	}
+	if (file_exists(newpath)) {
+		ERROR("error: clone: %s exists", newpath);
+		goto out;
+	}
+
+	if (create_file_dirname(newpath) < 0) {
+		ERROR("Error creating container dir for %s", newpath);
+		goto out;
+	}
+
+	// copy the configuration, tweak it as needed,
+	fout = fopen(newpath, "w");
+	if (!fout) {
+		SYSERROR("open %s", newpath);
+		goto out;
+	}
+	write_config(fout, c->lxc_conf);
+	fclose(fout);
+
+	if (update_name_and_paths(newpath, c, n, l) < 0) {
+		ERROR("Error updating name in cloned config");
+		goto out;
+	}
+
+	sprintf(newpath, "%s/%s/rootfs", l, n);
+	if (mkdir(newpath, 0755) < 0) {
+		SYSERROR("error creating %s", newpath);
+		goto out;
+	}
+
+	c2 = lxc_container_new(n, l);
+	if (!c) {
+		ERROR("clone: failed to create new container (%s %s)", n, l);
+		goto out;
+	}
+
+	// copy hooks if requested
+	if (flags & LXC_CLONE_COPYHOOKS) {
+		ret = copyhooks(c, c2);
+		if (ret < 0) {
+			ERROR("error copying hooks");
+			c2->destroy(c2);
+			lxc_container_put(c2);
+			goto out;
+		}
+	}
+
+	if (copy_fstab(c, c2) < 0) {
+		ERROR("error copying fstab");
+		c2->destroy(c2);
+		lxc_container_put(c2);
+		goto out;
+	}
+
+	// update macaddrs
+	if (!(flags & LXC_CLONE_KEEPMACADDR))
+		network_new_hwaddrs(c2);
+
+	// copy/snapshot rootfs's
+	ret = copy_storage(c, c2, bdevtype, flags, bdevdata, newsize);
+	if (ret < 0) {
+		c2->destroy(c2);
+		lxc_container_put(c2);
+		goto out;
+	}
+
+	if (!c2->save_config(c2, NULL)) {
+		c2->destroy(c2);
+		lxc_container_put(c2);
+		goto out;
+	}
+
+	if (clone_update_rootfs(c2, flags) < 0) {
+		//c2->destroy(c2);
+		lxc_container_put(c2);
+		goto out;
+	}
+
+	// TODO: update c's lxc.snapshot = count
+	lxcunlock(c->privlock);
+	return c2;
+
+out:
+	lxcunlock(c->privlock);
+	if (c2)
+		lxc_container_put(c2);
+
+	return NULL;
+}
+
 struct lxc_container *lxc_container_new(const char *name, const char *configpath)
 {
 	struct lxc_container *c;
@@ -1103,6 +1602,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->set_cgroup_item = lxcapi_set_cgroup_item;
 	c->get_config_path = lxcapi_get_config_path;
 	c->set_config_path = lxcapi_set_config_path;
+	c->clone = lxcapi_clone;
 
 	/* we'll allow the caller to update these later */
 	if (lxc_log_init(NULL, "none", NULL, "lxc_container", 0, c->config_path)) {

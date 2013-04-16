@@ -16,6 +16,7 @@ pkginclude_HEADERS = \
 		attach.h \
 		lxccontainer.h \
 		lxclock.h \
+		bdev.h \
 		version.h
 
 if IS_BIONIC
@@ -36,6 +37,7 @@ so_PROGRAMS = liblxc.so
 
 liblxc_so_SOURCES = \
 	arguments.c arguments.h \
+	bdev.c bdev.h \
 	commands.c commands.h \
 	start.c start.h \
 	stop.c \
@@ -122,7 +124,7 @@ bin_SCRIPTS = \
 	lxc-checkconfig \
 	lxc-version \
 	lxc-create \
-	lxc-clone \
+	lxc-clone-sh \
 	lxc-shutdown \
 	lxc-destroy
 
@@ -148,6 +150,7 @@ bin_PROGRAMS = \
 	lxc-unshare \
 	lxc-stop \
 	lxc-start \
+	lxc-clone \
 	lxc-execute \
 	lxc-monitor \
 	lxc-monitord \
@@ -184,6 +187,7 @@ lxc_init_SOURCES = lxc_init.c
 lxc_monitor_SOURCES = lxc_monitor.c
 lxc_monitord_SOURCES = lxc_monitord.c
 lxc_restart_SOURCES = lxc_restart.c
+lxc_clone_SOURCES = lxc_clone.c
 lxc_start_SOURCES = lxc_start.c
 lxc_stop_SOURCES = lxc_stop.c
 lxc_unfreeze_SOURCES = lxc_unfreeze.c
