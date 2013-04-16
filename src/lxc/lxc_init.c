@@ -49,15 +49,14 @@ static struct option options[] = {
 
 static	int was_interrupted = 0;
 
+static void interrupt_handler(int sig)
+{
+	if (!was_interrupted)
+		was_interrupted = sig;
+}
+
 int main(int argc, char *argv[])
 {
-
-	void interrupt_handler(int sig)
-	{
-		if (!was_interrupted)
-			was_interrupted = sig;
-	}
-
 	pid_t pid;
 	int nbargs = 0;
 	int err = -1;
