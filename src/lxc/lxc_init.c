@@ -47,7 +47,7 @@ static struct option options[] = {
 	{ 0, 0, 0, 0 },
 };
 
-static	int was_interrupted = 0;
+static int was_interrupted = 0;
 
 static void interrupt_handler(int sig)
 {
