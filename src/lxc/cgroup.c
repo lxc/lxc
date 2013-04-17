@@ -54,6 +54,11 @@ lxc_log_define(lxc_cgroup, lxc);
 
 #define MTAB "/proc/mounts"
 
+/* In the case of a bind mount, there could be two long pathnames in the
+ * mntent plus options so use large enough buffer size
+ */
+#define LARGE_MAXPATHLEN 4 * MAXPATHLEN
+
 /* Check if a mount is a cgroup hierarchy for any subsystem.
  * Return the first subsystem found (or NULL if none).
  */
@@ -100,9 +105,11 @@ static char *mount_has_subsystem(const struct mntent *mntent)
  */
 static int get_cgroup_mount(const char *subsystem, char *mnt)
 {
-	struct mntent *mntent;
+	struct mntent *mntent, mntent_r;
 	FILE *file = NULL;
 	int ret, err = -1;
+
+	char buf[LARGE_MAXPATHLEN] = {0};
 
 	file = setmntent(MTAB, "r");
 	if (!file) {
@@ -110,19 +117,19 @@ static int get_cgroup_mount(const char *subsystem, char *mnt)
 		return -1;
 	}
 
-	while ((mntent = getmntent(file))) {
-		if (strcmp(mntent->mnt_type, "cgroup"))
+	while ((mntent = getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
+		if (strcmp(mntent_r.mnt_type, "cgroup") != 0)
 			continue;
-
+		
 		if (subsystem) {
-			if (!hasmntopt(mntent, subsystem))
+			if (!hasmntopt(&mntent_r, subsystem))
 				continue;
 		} else {
-			if (!mount_has_subsystem(mntent))
+			if (!mount_has_subsystem(&mntent_r))
 				continue;
 		}
 
-		ret = snprintf(mnt, MAXPATHLEN, "%s", mntent->mnt_dir);
+		ret = snprintf(mnt, MAXPATHLEN, "%s", mntent_r.mnt_dir);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto fail;
 
@@ -148,14 +155,25 @@ out:
  *
  * Returns 0 on success, -1 on error.
  *
- * The answer is written in a static char[MAXPATHLEN] in this function and
- * should not be freed.
  */
 extern int cgroup_path_get(char **path, const char *subsystem, const char *cgpath)
 {
-	static char        buf[MAXPATHLEN];
-	static char        retbuf[MAXPATHLEN];
 	int rc;
+
+	char *buf = NULL;
+	char *retbuf = NULL;
+
+	buf = malloc(MAXPATHLEN * sizeof(char));
+	if (!buf) {
+		ERROR("malloc failed");
+		goto fail;
+	}
+
+	retbuf = malloc(MAXPATHLEN * sizeof(char));
+	if (!retbuf) {
+		ERROR("malloc failed");
+		goto fail;
+	}
 
 	/* lxc_cgroup_set passes a state object for the subsystem,
 	 * so trim it to just the subsystem part */
@@ -163,7 +181,7 @@ extern int cgroup_path_get(char **path, const char *subsystem, const char *cgpat
 		rc = snprintf(retbuf, MAXPATHLEN, "%s", subsystem);
 		if (rc < 0 || rc >= MAXPATHLEN) {
 			ERROR("subsystem name too long");
-			return -1;
+			goto fail;
 		}
 		char *s = index(retbuf, '.');
 		if (s)
@@ -172,19 +190,28 @@ extern int cgroup_path_get(char **path, const char *subsystem, const char *cgpat
 	}
 	if (get_cgroup_mount(subsystem ? retbuf : NULL, buf)) {
 		ERROR("cgroup is not mounted");
-		return -1;
+		goto fail;
 	}
 
 	rc = snprintf(retbuf, MAXPATHLEN, "%s/%s", buf, cgpath);
 	if (rc < 0 || rc >= MAXPATHLEN) {
 		ERROR("name too long");
-		return -1;
+		goto fail;
 	}
 
 	DEBUG("%s: returning %s for subsystem %s", __func__, retbuf, subsystem);
 
+	if(buf)
+		free(buf);
+
 	*path = retbuf;
 	return 0;
+fail:
+	if (buf)
+		free(buf);
+	if (retbuf)
+		free(retbuf);
+	return -1;
 }
 
 /*
@@ -292,20 +319,25 @@ static int do_cgroup_set(const char *path, const char *value)
 int lxc_cgroup_set_bypath(const char *cgpath, const char *filename, const char *value)
 {
 	int ret;
-	char *dirpath;
+	char *dirpath = NULL;
 	char path[MAXPATHLEN];
 
 	ret = cgroup_path_get(&dirpath, filename, cgpath);
 	if (ret)
-		return -1;
+		goto fail;
 
 	ret = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		ERROR("pathname too long");
-		return -1;
+		goto fail;
 	}
 
 	return do_cgroup_set(path, value);
+
+fail:
+	if(dirpath)
+		free(dirpath);
+	return -1;
 }
 
 /*
@@ -323,20 +355,25 @@ int lxc_cgroup_set(const char *name, const char *filename, const char *value,
 		   const char *lxcpath)
 {
 	int ret;
-	char *dirpath;
+	char *dirpath = NULL;
 	char path[MAXPATHLEN];
 
 	ret = lxc_cgroup_path_get(&dirpath, filename, name, lxcpath);
 	if (ret)
-		return -1;
+		goto fail;
 
 	ret = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		ERROR("pathname too long");
-		return -1;
+		goto fail;
 	}
 
 	return do_cgroup_set(path, value);
+
+fail:
+	if(dirpath)
+		free(dirpath);
+	return -1;
 }
 
 /*
@@ -363,24 +400,24 @@ int lxc_cgroup_get(const char *name, const char *filename, char *value,
 		   size_t len, const char *lxcpath)
 {
 	int fd, ret = -1;
-	char *dirpath;
+	char *dirpath = NULL;
 	char path[MAXPATHLEN];
 	int rc;
 
 	ret = lxc_cgroup_path_get(&dirpath, filename, name, lxcpath);
 	if (ret)
-		return -1;
+		goto fail;
 
 	rc = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
 	if (rc < 0 || rc >= MAXPATHLEN) {
 		ERROR("pathname too long");
-		return -1;
+		goto fail;
 	}
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
 		ERROR("open %s : %s", path, strerror(errno));
-		return -1;
+		goto fail;
 	}
 
 	if (!len || !value) {
@@ -400,24 +437,28 @@ int lxc_cgroup_get(const char *name, const char *filename, char *value,
 
 	close(fd);
 	return ret;
+fail:
+	if(dirpath)
+		free(dirpath);
+	return -1;
 }
 
 int lxc_cgroup_nrtasks(const char *cgpath)
 {
-	char *dpath;
+	char *dirpath = NULL;
 	char path[MAXPATHLEN];
 	int pid, ret, count = 0;
 	FILE *file;
 	int rc;
 
-	ret = cgroup_path_get(&dpath, NULL, cgpath);
+	ret = cgroup_path_get(&dirpath, NULL, cgpath);
 	if (ret)
-		return -1;
+		goto fail;
 
-	rc = snprintf(path, MAXPATHLEN, "%s/tasks", dpath);
+	rc = snprintf(path, MAXPATHLEN, "%s/tasks", dirpath);
 	if (rc < 0 || rc >= MAXPATHLEN) {
 		ERROR("pathname too long");
-		return -1;
+		goto fail;
 	}
 
 	file = fopen(path, "r");
@@ -432,6 +473,10 @@ int lxc_cgroup_nrtasks(const char *cgpath)
 	fclose(file);
 
 	return count;
+fail:
+	if(dirpath)
+		free(dirpath);
+	return -1;
 }
 
 /*
@@ -472,9 +517,11 @@ static void set_clone_children(const char *mntdir)
 static int create_lxcgroups(const char *lxcgroup)
 {
 	FILE *file = NULL;
-	struct mntent *mntent;
+	struct mntent *mntent, mntent_r;
 	int ret, retv = -1;
 	char path[MAXPATHLEN];
+
+	char buf[LARGE_MAXPATHLEN] = {0};
 
 	file = setmntent(MTAB, "r");
 	if (!file) {
@@ -482,23 +529,23 @@ static int create_lxcgroups(const char *lxcgroup)
 		return -1;
 	}
 
-	while ((mntent = getmntent(file))) {
+	while ((mntent = getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
 
-		if (strcmp(mntent->mnt_type, "cgroup"))
+		if (strcmp(mntent_r.mnt_type, "cgroup"))
 			continue;
-		if (!mount_has_subsystem(mntent))
+		if (!mount_has_subsystem(&mntent_r))
 			continue;
 
-		/* 
+		/*
 		 * TODO - handle case where lxcgroup has subdirs?  (i.e. build/l1)
 		 * We probably only want to support that for /users/joe
 		 */
 		ret = snprintf(path, MAXPATHLEN, "%s/%s",
-			       mntent->mnt_dir, lxcgroup ? lxcgroup : "lxc");
+			       mntent_r.mnt_dir, lxcgroup ? lxcgroup : "lxc");
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto fail;
 		if (access(path, F_OK)) {
-			set_clone_children(mntent->mnt_dir);
+			set_clone_children(mntent_r.mnt_dir);
 			ret = mkdir(path, 0755);
 			if (ret == -1 && errno != EEXIST) {
 				SYSERROR("failed to create '%s' directory", path);
@@ -535,7 +582,7 @@ fail:
  * freezer cgroup's full path will be /sys/fs/cgroup/freezer/lxc/r1/.
  *
  * XXX This should probably be locked globally
- * 
+ *
  * Races won't be determintal, you'll just end up with leftover unused cgroups
  */
 char *lxc_cgroup_path_create(const char *lxcgroup, const char *name)
@@ -544,7 +591,9 @@ char *lxc_cgroup_path_create(const char *lxcgroup, const char *name)
 	char *retpath, path[MAXPATHLEN];
 	char tail[12];
 	FILE *file = NULL;
-	struct mntent *mntent;
+	struct mntent *mntent, mntent_r;
+
+	char buf[LARGE_MAXPATHLEN] = {0};
 
 	if (create_lxcgroups(lxcgroup) < 0)
 		return NULL;
@@ -561,15 +610,15 @@ again:
 	else
 		*tail = '\0';
 
-	while ((mntent = getmntent(file))) {
+	while ((mntent = getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
 
-		if (strcmp(mntent->mnt_type, "cgroup"))
+		if (strcmp(mntent_r.mnt_type, "cgroup"))
 			continue;
-		if (!mount_has_subsystem(mntent))
+		if (!mount_has_subsystem(&mntent_r))
 			continue;
 
 		/* find unused mnt_dir + lxcgroup + name + -$i */
-		ret = snprintf(path, MAXPATHLEN, "%s/%s/%s%s", mntent->mnt_dir,
+		ret = snprintf(path, MAXPATHLEN, "%s/%s/%s%s", mntent_r.mnt_dir,
 			       lxcgroup ? lxcgroup : "lxc", name, tail);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto fail;
@@ -609,8 +658,9 @@ int lxc_cgroup_enter(const char *cgpath, pid_t pid)
 {
 	char path[MAXPATHLEN];
 	FILE *file = NULL, *fout;
-	struct mntent *mntent;
+	struct mntent *mntent, mntent_r;
 	int ret, retv = -1;
+	char buf[LARGE_MAXPATHLEN] = {0};
 
 	file = setmntent(MTAB, "r");
 	if (!file) {
@@ -618,13 +668,13 @@ int lxc_cgroup_enter(const char *cgpath, pid_t pid)
 		return -1;
 	}
 
-	while ((mntent = getmntent(file))) {
-		if (strcmp(mntent->mnt_type, "cgroup"))
+	while ((mntent = getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
+		if (strcmp(mntent_r.mnt_type, "cgroup"))
 			continue;
-		if (!mount_has_subsystem(mntent))
+		if (!mount_has_subsystem(&mntent_r))
 			continue;
 		ret = snprintf(path, MAXPATHLEN, "%s/%s/tasks",
-			       mntent->mnt_dir, cgpath);
+			       mntent_r.mnt_dir, cgpath);
 		if (ret < 0 || ret >= MAXPATHLEN) {
 			ERROR("entering cgroup");
 			goto out;
@@ -716,9 +766,11 @@ static int lxc_one_cgroup_destroy(struct mntent *mntent, const char *cgpath)
  */
 int lxc_cgroup_destroy(const char *cgpath)
 {
-	struct mntent *mntent;
+	struct mntent *mntent, mntent_r;
 	FILE *file = NULL;
 	int err, retv  = 0;
+
+	char buf[LARGE_MAXPATHLEN] = {0};
 
 	file = setmntent(MTAB, "r");
 	if (!file) {
@@ -726,13 +778,13 @@ int lxc_cgroup_destroy(const char *cgpath)
 		return -1;
 	}
 
-	while ((mntent = getmntent(file))) {
-		if (strcmp(mntent->mnt_type, "cgroup"))
+	while ((mntent = getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
+		if (strcmp(mntent_r.mnt_type, "cgroup"))
 			continue;
-		if (!mount_has_subsystem(mntent))
+		if (!mount_has_subsystem(&mntent_r))
 			continue;
 
-		err = lxc_one_cgroup_destroy(mntent, cgpath);
+		err = lxc_one_cgroup_destroy(&mntent_r, cgpath);
 		if (err)  // keep trying to clean up the others
 			retv = -1;
 	}
