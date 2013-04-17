@@ -95,39 +95,23 @@ extern int get_u16(unsigned short *val, const char *arg, int base)
 	return 0;
 }
 
-static int is_all_slashes(char *path)
-{
-	while (*path && *path == '/')
-		path++;
-	if (*path)
-		return 0;
-	return 1;
-}
-
 extern int mkdir_p(char *dir, mode_t mode)
 {
-	int ret;
-	char *d;
+	char *tmp = dir;
+	char *orig = dir;
+	char *makeme;
 
-	if (is_all_slashes(dir))
-		return 0;
-
-	d = strdup(dir);
-	if (!d)
-		return -1;
-
-	ret = mkdir_p(dirname(d), mode);
-	free(d);
-	if (ret)
-		return -1;
-
-	if (!access(dir, F_OK))
-		return 0;
-
-	if (mkdir(dir, mode)) {
-		SYSERROR("failed to create directory '%s'\n", dir);
-		return -1;
-	}
+	do {
+		dir = tmp + strspn(tmp, "/");
+		tmp = dir + strcspn(dir, "/");
+		makeme = strndupa(orig, dir - orig);
+		if (*makeme) {
+			if (mkdir(makeme, mode) && errno != EEXIST) {
+				SYSERROR("failed to create directory '%s'\n", makeme);
+				return -1;
+			}
+		}
+	} while(tmp != dir);
 
 	return 0;
 }
