@@ -412,7 +412,10 @@ class Container(_lxc.Container):
             Set a config key to a provided value.
             The value can be a list for the keys supporting multiple values.
         """
-        old_value = self.get_config_item(key)
+        try:
+            old_value = self.get_config_item(key)
+        except KeyError:
+            old_value = None
 
         # Check if it's a list
         def set_key(key, value):

@@ -134,7 +134,9 @@ dest = lxc.Container(os.path.basename(dest_path), args.lxcpath)
 dest.load_config(orig.config_file_name)
 dest.set_config_item("lxc.utsname", dest.name)
 dest.set_config_item("lxc.rootfs", os.path.join(dest_path, "rootfs"))
-dest.set_config_item("lxc.network.hwaddr", randomMAC())
+for nic in dest.network:
+    if hasattr(nic, 'hwaddr'):
+        nic.hwaddr = randomMAC()
 
 overlay_dirs = [(orig.get_config_item("lxc.rootfs"), "%s/rootfs/" % dest_path)]
 
