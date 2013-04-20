@@ -67,7 +67,7 @@ if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
 	db2xman=""
 
 	AC_MSG_CHECKING(for docbook2x-man)
-	for name in docbook2x-man db2x_docbook2man; do
+	for name in docbook2x-man db2x_docbook2man docbook2man; do
 		if "$name" --help >/dev/null 2>&1; then
 			db2xman="$name"
 			break;
