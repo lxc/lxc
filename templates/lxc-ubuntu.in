@@ -605,7 +605,7 @@ if [ -f /etc/lsb-release ]; then
 fi
 
 bindhome=
-arch=$(arch)
+arch=$(uname -m)
 
 # Code taken from debootstrap
 if [ -x /usr/bin/dpkg ] && /usr/bin/dpkg --print-architecture >/dev/null 2>&1; then
@@ -613,7 +613,7 @@ if [ -x /usr/bin/dpkg ] && /usr/bin/dpkg --print-architecture >/dev/null 2>&1; t
 elif which udpkg >/dev/null 2>&1 && udpkg --print-architecture >/dev/null 2>&1; then
     arch=`/usr/bin/udpkg --print-architecture`
 else
-    arch=$(arch)
+    arch=$(uname -m)
     if [ "$arch" = "i686" ]; then
         arch="i386"
     elif [ "$arch" = "x86_64" ]; then
