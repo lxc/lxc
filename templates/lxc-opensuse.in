@@ -212,7 +212,7 @@ install_opensuse()
             return 1
         fi
 
-        arch=$(arch)
+        arch=$(uname -m)
 
         echo "Checking cache download in $cache/rootfs-$arch ... "
         if [ ! -e "$cache/rootfs-$arch" ]; then

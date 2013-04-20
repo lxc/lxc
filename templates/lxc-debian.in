@@ -175,7 +175,7 @@ install_debian()
         if which dpkg >/dev/null 2>&1 ; then
             arch=$(dpkg --print-architecture)
         else
-            arch=$(arch)
+            arch=$(uname -m)
             if [ "$arch" = "i686" ]; then
                 arch="i386"
             elif [ "$arch" = "x86_64" ]; then
