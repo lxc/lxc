@@ -36,7 +36,7 @@ configure_ubuntu()
     hostname=$2
     release=$3
 
-   # configure the network using the dhcp
+    # configure the network using the dhcp
     cat <<EOF > $rootfs/etc/network/interfaces
 # This file describes the network interfaces available on your system
 # and how to activate them. For more information, see interfaces(5).
@@ -89,6 +89,14 @@ EOF
             chroot $rootfs locale-gen $LANG
             chroot $rootfs update-locale LANG=$LANG
         fi
+    fi
+
+    # generate new SSH keys
+    if [ -x $rootfs@LOCALSTATEDIR@/lib/dpkg/info/openssh-server.postinst ]; then
+        rm -f $rootfs/etc/ssh/ssh_host_*key*
+        mv $rootfs/etc/init/ssh.conf $rootfs/etc/init/ssh.conf.disabled
+        chroot $rootfs @LOCALSTATEDIR@/lib/dpkg/info/openssh-server.postinst configure
+        mv $rootfs/etc/init/ssh.conf.disabled $rootfs/etc/init/ssh.conf
     fi
 
     return 0
@@ -350,8 +358,6 @@ lxc.cgroup.devices.allow = c 1:5 rwm
 # consoles
 lxc.cgroup.devices.allow = c 5:1 rwm
 lxc.cgroup.devices.allow = c 5:0 rwm
-#lxc.cgroup.devices.allow = c 4:0 rwm
-#lxc.cgroup.devices.allow = c 4:1 rwm
 # /dev/{,u}random
 lxc.cgroup.devices.allow = c 1:9 rwm
 lxc.cgroup.devices.allow = c 1:8 rwm
@@ -359,15 +365,15 @@ lxc.cgroup.devices.allow = c 136:* rwm
 lxc.cgroup.devices.allow = c 5:2 rwm
 # rtc
 lxc.cgroup.devices.allow = c 254:0 rwm
-#fuse
+# fuse
 lxc.cgroup.devices.allow = c 10:229 rwm
-#tun
+# tun
 lxc.cgroup.devices.allow = c 10:200 rwm
-#full
+# full
 lxc.cgroup.devices.allow = c 1:7 rwm
-#hpet
+# hpet
 lxc.cgroup.devices.allow = c 10:228 rwm
-#kvm
+# kvm
 lxc.cgroup.devices.allow = c 10:232 rwm
 EOF
 
@@ -605,7 +611,6 @@ if [ -f /etc/lsb-release ]; then
 fi
 
 bindhome=
-arch=$(uname -m)
 
 # Code taken from debootstrap
 if [ -x /usr/bin/dpkg ] && /usr/bin/dpkg --print-architecture >/dev/null 2>&1; then

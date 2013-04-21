@@ -70,8 +70,6 @@ lxc.cgroup.devices.allow = c 1:5 rwm
 # consoles
 lxc.cgroup.devices.allow = c 5:1 rwm
 lxc.cgroup.devices.allow = c 5:0 rwm
-#lxc.cgroup.devices.allow = c 4:0 rwm
-#lxc.cgroup.devices.allow = c 4:1 rwm
 # /dev/{,u}random
 lxc.cgroup.devices.allow = c 1:9 rwm
 lxc.cgroup.devices.allow = c 1:8 rwm
@@ -79,15 +77,15 @@ lxc.cgroup.devices.allow = c 136:* rwm
 lxc.cgroup.devices.allow = c 5:2 rwm
 # rtc
 lxc.cgroup.devices.allow = c 254:0 rwm
-#fuse
+# fuse
 lxc.cgroup.devices.allow = c 10:229 rwm
-#tun
+# tun
 lxc.cgroup.devices.allow = c 10:200 rwm
-#full
+# full
 lxc.cgroup.devices.allow = c 1:7 rwm
-#hpet
+# hpet
 lxc.cgroup.devices.allow = c 10:228 rwm
-#kvm
+# kvm
 lxc.cgroup.devices.allow = c 10:232 rwm
 EOF
 
@@ -147,8 +145,6 @@ if [ -f /etc/lsb-release ]; then
         ;;
     esac
 fi
-
-arch=$(uname -m)
 
 # Code taken from debootstrap
 if [ -x /usr/bin/dpkg ] && /usr/bin/dpkg --print-architecture >/dev/null 2>&1; then
