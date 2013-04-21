@@ -347,7 +347,8 @@ class Container(_lxc.Container):
             if count != 0:
                 time.sleep(1)
 
-            base_cmd = ["lxc-attach", "-s", "NETWORK", "-n", self.name, "--",
+            base_cmd = ["lxc-attach", "-s", "NETWORK",
+                        "-P", self.get_config_path(), "-n", self.name, "--",
                         "ip"]
 
             # Get IPv6
