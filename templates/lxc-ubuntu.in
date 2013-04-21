@@ -201,9 +201,9 @@ download_ubuntu()
     # download a mini ubuntu into a cache
     echo "Downloading ubuntu $release minimal ..."
     if [ -n "$(which qemu-debootstrap)" ]; then
-        qemu-debootstrap --verbose --components=main,universe --arch=$arch --include=$packages $release $cache/partial-$arch $MIRROR
+        qemu-debootstrap --verbose --components=main,universe --arch=$arch --include=$packages --exclude=console-setup,kbd,ubuntu-minimal $release $cache/partial-$arch $MIRROR
     else
-        debootstrap --verbose --components=main,universe --arch=$arch --include=$packages $release $cache/partial-$arch $MIRROR
+        debootstrap --verbose --components=main,universe --arch=$arch --include=$packages --exclude=console-setup,kbd,ubuntu-minimal $release $cache/partial-$arch $MIRROR
     fi
 
     if [ $? -ne 0 ]; then
