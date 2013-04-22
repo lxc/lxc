@@ -63,8 +63,7 @@ int main()
 	free(path);
 
 	path = lxc_cgroup_path_create("ab", MYNAME);
-	len = strlen(path);
-	if (!path || !len) {
+	if (!path || !(len = strlen(path))) {
 		TSTERR("zero result from lxc_cgroup_path_create");
 		exit(1);
 	}
@@ -89,7 +88,7 @@ int main()
 	c->set_config_item(c, "lxc.network.type", "empty");
 	if (!c->createl(c, "ubuntu", NULL)) {
 		TSTERR("creating first container");
-		exit(1);
+		goto out;
 	}
 	c->load_config(c, NULL);
 	c->want_daemonize(c);
@@ -141,7 +140,7 @@ int main()
 	const char *dirpath;
 	if (lxc_get_cgpath(&dirpath, NULL, c2->name, c2->config_path) < 0) {
 		TSTERR("getting second container's cgpath");
-		return -1;
+		goto out;
 	}
 
 	if (lxc_cgroup_nrtasks(dirpath) < 1) {
