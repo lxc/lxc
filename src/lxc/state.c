@@ -236,8 +236,11 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout, const 
 				goto out_close;
 			curtime = tv.tv_sec;
 		}
-		if (lxc_monitor_read_timeout(fd, &msg, timeout) < 0)
-			goto out_close;
+		if (lxc_monitor_read_timeout(fd, &msg, timeout) < 0) {
+			/* try again if select interrupted by signal */
+			if (errno != EINTR)
+				goto out_close;
+		}
 
 		if (timeout != -1) {
 			retval = gettimeofday(&tv, NULL);
