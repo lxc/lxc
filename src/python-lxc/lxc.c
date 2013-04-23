@@ -35,7 +35,7 @@ typedef struct {
 char**
 convert_tuple_to_char_pointer_array(PyObject *argv) {
     int argc = PyTuple_GET_SIZE(argv);
-    int i;
+    int i, j;
 
     char **result = (char**) malloc(sizeof(char*)*argc + 1);
 
@@ -49,30 +49,46 @@ convert_tuple_to_char_pointer_array(PyObject *argv) {
         assert(pyobj != NULL);
 
         char *str = NULL;
-        PyObject *pystr = NULL;
+
         if (!PyUnicode_Check(pyobj)) {
             PyErr_SetString(PyExc_ValueError, "Expected a string");
-            free(result);
-            return NULL;
+            goto error;
         }
 
-        pystr = PyUnicode_AsUTF8String(pyobj);
-        if (pystr == NULL) {
-            PyErr_SetString(PyExc_ValueError, "Unable to convert to UTF-8");
-            free(result);
-            return NULL;
+        str = PyUnicode_AsUTF8(pyobj);
+        if (!str) {
+            /* Maybe it wasn't UTF-8 encoded.  An exception is already set. */
+            goto error;
         }
 
-        str = PyBytes_AsString(pystr);
-        assert(str != NULL);
+        /* We must make a copy of str, because it points into internal memory
+         * which we do not own.  Assume it's NULL terminated, otherwise we'd
+         * have to use PyUnicode_AsUTF8AndSize() and be explicit about copying
+         * the memory.
+         */
+        result[i] = strdup(str);
 
-        memcpy((char *) &result[i], (char *) &str, sizeof(str));
-        Py_DECREF(pystr);
+        /* Do not decref pyobj since we stole a reference by using
+         * PyTuple_GET_ITEM().
+         */
+        if (result[i] == NULL) {
+            PyErr_SetNone(PyExc_MemoryError);
+            goto error;
+        }
     }
 
     result[argc] = NULL;
-
     return result;
+
+error:
+    /* We can only iterate up to but not including i because malloc() does not
+     * initialize its memory.  Thus if we got here, i points to the index
+     * after the last strdup'd entry in result.
+     */
+    for (j = 0; j < i; j++)
+        free(result[j]);
+    free(result);
+    return NULL;
 }
 
 static void
@@ -203,6 +219,7 @@ Container_create(Container *self, PyObject *args, PyObject *kwds)
     char* template_name = NULL;
     char** create_args = {NULL};
     PyObject *retval = NULL, *vargs = NULL;
+    int i = 0;
     static char *kwlist[] = {"template", "args", NULL};
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|O", kwlist,
@@ -231,6 +248,8 @@ Container_create(Container *self, PyObject *args, PyObject *kwds)
         /* We cannot have gotten here unless vargs was given and create_args
          * was successfully allocated.
          */
+        for (i = 0; i < PyTuple_GET_SIZE(vargs); i++)
+            free(create_args[i]);
         free(create_args);
     }
 
@@ -495,7 +514,7 @@ Container_start(Container *self, PyObject *args, PyObject *kwds)
 {
     char** init_args = {NULL};
     PyObject *useinit = NULL, *retval = NULL, *vargs = NULL;
-    int init_useinit = 0;
+    int init_useinit = 0, i = 0;
     static char *kwlist[] = {"useinit", "cmd", NULL};
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|OO", kwlist,
@@ -524,6 +543,8 @@ Container_start(Container *self, PyObject *args, PyObject *kwds)
         /* We cannot have gotten here unless vargs was given and create_args
          * was successfully allocated.
          */
+        for (i = 0; i < PyTuple_GET_SIZE(vargs); i++)
+            free(init_args[i]);
         free(init_args);
     }
 
