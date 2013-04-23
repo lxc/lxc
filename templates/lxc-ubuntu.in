@@ -134,11 +134,47 @@ finalize_user()
     return 0
 }
 
+#
+# Choose proxies for container
+# http_proxy will be used by debootstrap on the host.
+# APT_PROXY will be used to set /etc/apt/apt.conf.d/70proxy in the container.
+#
+choose_container_proxy()
+{
+    local rootfs=$1
+    local arch=$2
+
+    if [ -z "$HTTP_PROXY" ]; then
+        HTTP_PROXY="none"
+    fi
+    case "$HTTP_PROXY" in
+    none)
+        APT_PROXY=
+        ;;
+    apt)
+        RES=`apt-config shell APT_PROXY Acquire::http::Proxy`
+        eval $RES
+        [ -z "$APT_PROXY" ] || export http_proxy=$APT_PROXY
+        ;;
+    *)
+        APT_PROXY=$HTTP_PROXY
+        export http_proxy=$HTTP_PROXY
+        ;;
+    esac
+}
+
 write_sourceslist()
 {
     # $1 => path to the rootfs
     # $2 => architecture we want to add
     # $3 => whether to use the multi-arch syntax or not
+
+    if [ -n "$APT_PROXY" ]; then
+        mkdir -p $rootfs/etc/apt/apt.conf.d
+        cat > $rootfs/etc/apt/apt.conf.d/70proxy << EOF
+Acquire::http::Proxy "$APT_PROXY" ;
+EOF
+    fi
 
     case $2 in
       amd64|i386)
@@ -206,6 +242,7 @@ download_ubuntu()
         return 1
     fi
 
+    choose_container_proxy $cache/partial-$arch/ $arch
     # download a mini ubuntu into a cache
     echo "Downloading ubuntu $release minimal ..."
     if [ -n "$(which qemu-debootstrap)" ]; then
