@@ -38,7 +38,7 @@ struct mainloop_handler {
 
 #define MAX_EVENTS 10
 
-int lxc_mainloop(struct lxc_epoll_descr *descr)
+int lxc_mainloop(struct lxc_epoll_descr *descr, int timeout_ms)
 {
 	int i, nfds;
 	struct mainloop_handler *handler;
@@ -46,7 +46,7 @@ int lxc_mainloop(struct lxc_epoll_descr *descr)
 
 	for (;;) {
 
-		nfds = epoll_wait(descr->epfd, events, MAX_EVENTS, -1);
+		nfds = epoll_wait(descr->epfd, events, MAX_EVENTS, timeout_ms);
 		if (nfds < 0) {
 			if (errno == EINTR)
 				continue;
@@ -63,6 +63,9 @@ int lxc_mainloop(struct lxc_epoll_descr *descr)
 					      descr) > 0)
 				return 0;
 		}
+
+		if (nfds == 0 && timeout_ms != 0)
+			return 0;
 
 		if (lxc_list_empty(&descr->handlers))
 			return 0;

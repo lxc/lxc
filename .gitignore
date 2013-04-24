@@ -52,6 +52,7 @@ src/lxc/lxc-info
 src/lxc/lxc-init
 src/lxc/lxc-kill
 src/lxc/lxc-monitor
+src/lxc/lxc-monitord
 src/lxc/lxc-netstat
 src/lxc/lxc-ps
 src/lxc/lxc-restart

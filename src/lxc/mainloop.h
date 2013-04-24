@@ -21,6 +21,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
+#ifndef _mainloop_h
+#define _mainloop_h
+
 #include "list.h"
 
 struct lxc_epoll_descr {
@@ -31,7 +34,7 @@ struct lxc_epoll_descr {
 typedef int (*lxc_mainloop_callback_t)(int fd, void *data,
 				       struct lxc_epoll_descr *descr);
 
-extern int lxc_mainloop(struct lxc_epoll_descr *descr);
+extern int lxc_mainloop(struct lxc_epoll_descr *descr, int timeout_ms);
 
 extern int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
 				    lxc_mainloop_callback_t callback,
@@ -42,3 +45,5 @@ extern int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd);
 extern int lxc_mainloop_open(struct lxc_epoll_descr *descr);
 
 extern int lxc_mainloop_close(struct lxc_epoll_descr *descr);
+
+#endif

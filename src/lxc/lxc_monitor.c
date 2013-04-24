@@ -87,6 +87,8 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	lxc_monitord_spawn(my_args.lxcpath);
+
 	fd = lxc_monitor_open(my_args.lxcpath);
 	if (fd < 0)
 		return -1;

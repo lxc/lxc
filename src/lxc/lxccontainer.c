@@ -32,6 +32,7 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <lxc/utils.h>
+#include <lxc/monitor.h>
 
 lxc_log_define(lxc_container, lxc);
 
@@ -370,6 +371,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 	if (daemonize) {
 		if (!lxc_container_get(c))
 			return false;
+		lxc_monitord_spawn(c->config_path);
 		pid_t pid = fork();
 		if (pid < 0) {
 			lxc_container_put(c);
@@ -560,7 +562,7 @@ static bool lxcapi_create(struct lxc_container *c, char *t, char *const argv[])
 	}
 
 	/* container is already created if we have a config and rootfs.path is accessible */
-	if (lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) == 0) 
+	if (lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) == 0)
 		goto out;
 
 	/* we're going to fork.  but since we'll wait for our child, we
@@ -826,7 +828,7 @@ static bool lxcapi_destroy(struct lxc_container *c)
 		return false;
 
 	/* container is already destroyed if we don't have a config and rootfs.path is not accessible */
-	if (!lxcapi_is_defined(c) && (!c->lxc_conf || !c->lxc_conf->rootfs.path || access(c->lxc_conf->rootfs.path, F_OK) != 0)) 
+	if (!lxcapi_is_defined(c) && (!c->lxc_conf || !c->lxc_conf->rootfs.path || access(c->lxc_conf->rootfs.path, F_OK) != 0))
 		return false;
 
 	pid = fork();

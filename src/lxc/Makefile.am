@@ -150,6 +150,7 @@ bin_PROGRAMS = \
 	lxc-start \
 	lxc-execute \
 	lxc-monitor \
+	lxc-monitord \
 	lxc-wait \
 	lxc-console \
 	lxc-freeze \
@@ -181,6 +182,7 @@ lxc_freeze_SOURCES = lxc_freeze.c
 lxc_info_SOURCES = lxc_info.c
 lxc_init_SOURCES = lxc_init.c
 lxc_monitor_SOURCES = lxc_monitor.c
+lxc_monitord_SOURCES = lxc_monitord.c
 lxc_restart_SOURCES = lxc_restart.c
 lxc_start_SOURCES = lxc_start.c
 lxc_stop_SOURCES = lxc_stop.c

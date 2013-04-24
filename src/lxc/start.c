@@ -390,7 +390,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		#endif
 	}
 
-	return lxc_mainloop(&descr);
+	return lxc_mainloop(&descr, -1);
 
 out_mainloop_open:
 	lxc_mainloop_close(&descr);
@@ -808,7 +808,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	/* TODO - pass lxc.cgroup.dir (or user's pam cgroup) in for first argument */
 	if ((handler->cgroup = lxc_cgroup_path_create(NULL, name)) == NULL)
 		goto out_delete_net;
-	
+
 	if (lxc_cgroup_enter(handler->cgroup, handler->pid) < 0)
 		goto out_delete_net;
 

@@ -241,7 +241,7 @@ Type <Ctrl+%1$c q> to exit the console, \
 		goto out_mainloop_open;
 	}
 
-	err = lxc_mainloop(&descr);
+	err = lxc_mainloop(&descr, -1);
 	if (err) {
 		ERROR("mainloop returned an error");
 		goto out_mainloop_open;
@@ -255,7 +255,7 @@ out_mainloop_open:
 out:
 	/* Restore previous terminal parameter */
 	tcsetattr(0, TCSAFLUSH, &oldtios);
-	
+
 	/* Return to line it is */
 	printf("\n");
 
