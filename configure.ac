@@ -229,9 +229,12 @@ fi
 AM_CONDITIONAL([ENABLE_SECCOMP], [test "x$enable_seccomp" = "xyes"])
 
 AM_COND_IF([ENABLE_SECCOMP],
-	[AC_CHECK_HEADER([seccomp.h],[],[AC_MSG_ERROR([You must install the seccomp development package in order to compile lxc])])
-	AC_CHECK_LIB([seccomp], [seccomp_init],[],[AC_MSG_ERROR([You must install the seccomp development package in order to compile lxc])])
-	AC_SUBST([SECCOMP_LIBS], [-lseccomp])])
+	[PKG_CHECK_MODULES([SECCOMP],[libseccomp],[],[
+		AC_CHECK_HEADER([seccomp.h],[],[AC_MSG_ERROR([You must install the seccomp development package in order to compile lxc])])
+		AC_CHECK_LIB([seccomp], [seccomp_init],[],[AC_MSG_ERROR([You must install the seccomp development package in order to compile lxc])])
+		AC_SUBST([SECCOMP_LIBS], [-lseccomp])
+		])
+	])
 
 # Linux capabilities
 AC_ARG_ENABLE([capabilities],
@@ -248,7 +251,10 @@ AM_COND_IF([ENABLE_CAP],
 	AC_SUBST([CAP_LIBS], [-lcap])])
 
 # HAVE_SCMP_FILTER_CTX=1 will tell us we have libseccomp api >= 1.0.0
+OLD_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $SECCOMP_CFLAGS"
 AC_CHECK_TYPES([scmp_filter_ctx], [], [], [[#include <seccomp.h>]])
+CFLAGS="$OLD_CFLAGS"
 
 # Configuration examples
 AC_ARG_ENABLE([examples],
