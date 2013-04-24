@@ -286,7 +286,7 @@ fi
 
 if [ ! -r "$lxc_config" ]; then
     echo "$(basename $0): '$lxc_config' configuration file not found" >&2
-    exit 1
+    cleanup
 fi
 
 if [ ! -z "$lxc_template" ]; then
@@ -317,11 +317,11 @@ echo "" >> $lxc_path/$lxc_name/config
 if [ -n "$custom_rootfs" ]; then
     if grep -q "lxc.rootfs" $lxc_path/$lxc_name/config ; then
         echo "configuration file already specifies a lxc.rootfs"
-        exit 1
+        cleanup
     fi
     if [ -d "$custom_rootfs" ]; then
         echo "specified rootfs ($custom_rootfs) already exists.  Bailing."
-        exit 1
+        cleanup
     fi
     echo "lxc.rootfs = $custom_rootfs" >> $lxc_path/$lxc_name/config
 fi
@@ -329,9 +329,9 @@ fi
 # Create the fs as needed
 if [ "$backingstore" = "lvm" ]; then
     [ -d "$rootfs" ] || mkdir $rootfs
-    lvcreate -L $fssize -n $lvname $vgname || exit 1
+    lvcreate -L $fssize -n $lvname $vgname || cleanup
     udevadm settle
-    mkfs -t $fstype $rootdev || exit 1
+    mkfs -t $fstype $rootdev || cleanup
     mount -t $fstype $rootdev $rootfs
 fi
 
