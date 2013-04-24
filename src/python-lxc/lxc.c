@@ -49,15 +49,24 @@ convert_tuple_to_char_pointer_array(PyObject *argv) {
         assert(pyobj != NULL);
 
         char *str = NULL;
+        PyObject *pystr = NULL;
 
         if (!PyUnicode_Check(pyobj)) {
             PyErr_SetString(PyExc_ValueError, "Expected a string");
             goto error;
         }
 
-        str = PyUnicode_AsUTF8(pyobj);
-        if (!str) {
+        pystr = PyUnicode_AsUTF8String(pyobj);
+        if (!pystr) {
             /* Maybe it wasn't UTF-8 encoded.  An exception is already set. */
+            goto error;
+        }
+
+        str = PyBytes_AsString(pystr);
+        if (!str) {
+            /* Maybe pystr wasn't a valid object. An exception is already set.
+             */
+            Py_DECREF(pystr);
             goto error;
         }
 
@@ -71,6 +80,7 @@ convert_tuple_to_char_pointer_array(PyObject *argv) {
         /* Do not decref pyobj since we stole a reference by using
          * PyTuple_GET_ITEM().
          */
+        Py_DECREF(pystr);
         if (result[i] == NULL) {
             PyErr_SetNone(PyExc_MemoryError);
             goto error;
