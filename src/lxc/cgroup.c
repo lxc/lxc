@@ -105,7 +105,7 @@ static char *mount_has_subsystem(const struct mntent *mntent)
  */
 static int get_cgroup_mount(const char *subsystem, char *mnt)
 {
-	struct mntent *mntent, mntent_r;
+	struct mntent mntent_r;
 	FILE *file = NULL;
 	int ret, err = -1;
 
@@ -117,7 +117,7 @@ static int get_cgroup_mount(const char *subsystem, char *mnt)
 		return -1;
 	}
 
-	while ((mntent = getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
+	while ((getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
 		if (strcmp(mntent_r.mnt_type, "cgroup") != 0)
 			continue;
 		
@@ -517,7 +517,7 @@ static void set_clone_children(const char *mntdir)
 static int create_lxcgroups(const char *lxcgroup)
 {
 	FILE *file = NULL;
-	struct mntent *mntent, mntent_r;
+	struct mntent mntent_r;
 	int ret, retv = -1;
 	char path[MAXPATHLEN];
 
@@ -529,7 +529,7 @@ static int create_lxcgroups(const char *lxcgroup)
 		return -1;
 	}
 
-	while ((mntent = getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
+	while ((getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
 
 		if (strcmp(mntent_r.mnt_type, "cgroup"))
 			continue;
@@ -591,7 +591,7 @@ char *lxc_cgroup_path_create(const char *lxcgroup, const char *name)
 	char *retpath, path[MAXPATHLEN];
 	char tail[12];
 	FILE *file = NULL;
-	struct mntent *mntent, mntent_r;
+	struct mntent mntent_r;
 
 	char buf[LARGE_MAXPATHLEN] = {0};
 
@@ -610,7 +610,7 @@ again:
 	else
 		*tail = '\0';
 
-	while ((mntent = getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
+	while ((getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
 
 		if (strcmp(mntent_r.mnt_type, "cgroup"))
 			continue;
@@ -658,7 +658,7 @@ int lxc_cgroup_enter(const char *cgpath, pid_t pid)
 {
 	char path[MAXPATHLEN];
 	FILE *file = NULL, *fout;
-	struct mntent *mntent, mntent_r;
+	struct mntent mntent_r;
 	int ret, retv = -1;
 	char buf[LARGE_MAXPATHLEN] = {0};
 
@@ -668,7 +668,7 @@ int lxc_cgroup_enter(const char *cgpath, pid_t pid)
 		return -1;
 	}
 
-	while ((mntent = getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
+	while ((getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
 		if (strcmp(mntent_r.mnt_type, "cgroup"))
 			continue;
 		if (!mount_has_subsystem(&mntent_r))
@@ -766,7 +766,7 @@ static int lxc_one_cgroup_destroy(struct mntent *mntent, const char *cgpath)
  */
 int lxc_cgroup_destroy(const char *cgpath)
 {
-	struct mntent *mntent, mntent_r;
+	struct mntent mntent_r;
 	FILE *file = NULL;
 	int err, retv  = 0;
 
@@ -778,7 +778,7 @@ int lxc_cgroup_destroy(const char *cgpath)
 		return -1;
 	}
 
-	while ((mntent = getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
+	while ((getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
 		if (strcmp(mntent_r.mnt_type, "cgroup"))
 			continue;
 		if (!mount_has_subsystem(&mntent_r))
