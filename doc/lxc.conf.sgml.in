@@ -1069,8 +1069,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <citerefentry>
 	<refentrytitle><filename>fstab</filename></refentrytitle>
 	<manvolnum>5</manvolnum>
-      </citerefentry>
+      </citerefentry>,
 
+      <citerefentry>
+	<refentrytitle><filename>capabilities</filename></refentrytitle>
+	<manvolnum>7</manvolnum>
+      </citerefentry>
     </simpara>
   </refsect1>
 
