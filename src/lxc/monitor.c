@@ -207,8 +207,7 @@ int lxc_monitord_spawn(const char *lxcpath)
 	}
 
 	if (pid1) {
-		if (waitpid(pid1, NULL, 0) != pid1)
-			SYSERROR("unexpected waitpid return value on double-fork");
+		waitpid(pid1, NULL, 0);
 		return 0;
 	}
 
