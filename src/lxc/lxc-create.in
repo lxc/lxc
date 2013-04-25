@@ -22,6 +22,59 @@
 
 . @DATADIR@/lxc/lxc.functions
 
+verify_btrfs() {
+    if which btrfs >/dev/null 2>&1 && \
+        btrfs filesystem df "$lxc_path/" >/dev/null 2>&1; then
+        echo "btrfs"
+    else
+        echo "no"
+    fi
+}
+
+verify_zfs() {
+    if which zfs >/dev/null 2>&1 && zfs get all "$zfs_root" >/dev/null 2>&1; then
+        echo zfs
+    else
+        echo no
+    fi
+}
+
+verify_lvm() {
+    which vgscan > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "vgscan not found (is lvm2 installed?)" >&2
+        echo no
+        return
+    fi
+
+    grep -q "\<$fstype\>" /proc/filesystems
+    if [ $? -ne 0 ]; then
+        echo "$fstype is not listed in /proc/filesystems" >&2
+        echo no
+        return
+    fi
+
+    vgscan | grep -q "Found volume group \"$vgname\""
+    if [ $? -ne 0 ]; then
+        echo "could not find volume group \"$vgname\"" >&2
+        echo no
+        return
+    fi
+
+    echo lvm
+}
+
+# if no backingstore is specified, auto-detect if $lxc_path is btrfs or zfs
+detect_backingstore() {
+    if [ `verify_btrfs` = "btrfs" ]; then
+        echo btrfs
+    elif [ `verify_zfs` = "zfs" ]; then
+        echo zfs
+    else
+        echo none
+    fi
+}
+
 usage() {
     echo "usage: $(basename $0) -n NAME [-f CONFIG_FILE] [-t TEMPLATE] [FS_OPTIONS] --" >&2
     echo "         [-P lxcpath] [TEMPLATE_OPTIONS]" >&2
@@ -32,6 +85,7 @@ usage() {
     echo "  -B lvm [--lvname LV_NAME] [--vgname VG_NAME] [--fstype FS_TYPE]" >&2
     echo "    [--fssize FS_SIZE]" >&2
     echo "  -B btrfs" >&2
+    echo "  -B zfs [--zfsroot PATH]" >&2
 }
 
 help() {
@@ -51,6 +105,7 @@ help() {
     echo "  --vgname VG_NAME   specify the LVM volume group name (default: lxc)" >&2
     echo "  --fstype FS_TYPE   specify the filesystem type (default: ext4)" >&2
     echo "  --fssize FS_SIZE   specify the filesystem size (default: 500M)" >&2
+    echo "  --zfsroot PATH     specify the zfs path for lxcpath (default: tank/lxc)" >&2
     echo >&2
     if [ -z "$lxc_template" ]; then
         echo "To see template-specific options, specify a template. For example:" >&2
@@ -140,6 +195,11 @@ while [ $# -gt 0 ]; do
             fssize=$1
             shift
             ;;
+        --zfsroot)
+            optarg_check $opt "$1"
+            zfs_root=$1
+            shift
+            ;;
         --)
             break;;
         -?)
@@ -187,6 +247,10 @@ if [ -z "$lvname" ]; then
     lvname="$lxc_name"
 fi
 
+if [ -z "$zfs_root" ]; then
+    zfs_root="tank/lxc"
+fi
+
 if [ "$(id -u)" != "0" ]; then
    echo "$(basename $0): must be run as root" >&2
    exit 1
@@ -196,10 +260,39 @@ if [ -n "$custom_rootfs" ] && [ "$backingstore" != "dir" ]; then
    echo "--dir is only valid with -B dir"
 fi
 
+# detect / verify backing store
 case "$backingstore" in
-    dir|lvm|none|btrfs|_unset) :;;
+    btrfs)
+        if [ `verify_btrfs` != 'btrfs' ]; then
+            echo "missing 'btrfs' command or $lxc_path is not btrfs" >&2
+            exit 1
+        fi
+        ;;
+    zfs)
+        if [ `verify_zfs` != 'zfs' ]; then
+            echo "missing 'zfs' command or $zfs_root is not zfs" >&2
+            exit 1
+        fi
+        ;;
+    lvm)
+        if [ `verify_lvm` != 'lvm' ]; then
+            echo "system is missing 'lvm' support, or VG does not exist." >&2
+            exit 1
+        fi
+        rootdev=/dev/$vgname/$lvname
+        lvdisplay $rootdev > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            echo "LV $rootdev already exists" >&2
+            exit 1
+        fi
+        ;;
+    _unset)
+        backingstore=`detect_backingstore`
+        ;;
+    dir|lvm|none)
+        :;;
     *)
-        echo "$(basename $0): '$backingstore' is not known (try 'none', 'dir', 'lvm', 'btrfs')" >&2
+        echo "$(basename $0): '$backingstore' is not known (try 'none', 'dir', 'lvm', 'btrfs', 'zfs')" >&2
         usage
         exit 1
         ;;
@@ -212,61 +305,14 @@ fi
 
 rootfs="$lxc_path/$lxc_name/rootfs"
 
-if [ "$backingstore" = "_unset" ] || [ "$backingstore" = "btrfs" ]; then
-# if no backing store was given, then see if btrfs would work
-    if which btrfs >/dev/null 2>&1 && \
-        btrfs filesystem df "$lxc_path/" >/dev/null 2>&1; then
-        backingstore="btrfs"
-    else
-        if [ "$backingstore" = "btrfs" ]; then
-            echo "$(basename $0): missing 'btrfs' command or $lxc_path is not btrfs" >&2
-            exit 1;
-        fi
-        backingstore="none"
-    fi
-fi
-
-if [ "$backingstore" = "lvm" ]; then
-    which vgscan > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "$(basename $0): vgscan not found (is lvm2 installed?)" >&2
-        exit 1
-    fi
-
-    grep -q "\<$fstype\>" /proc/filesystems
-    if [ $? -ne 0 ]; then
-        echo "$(basename $0): $fstype is not listed in /proc/filesystems" >&2
-        exit 1
-    fi
-
-    vgscan | grep -q "Found volume group \"$vgname\""
-    if [ $? -ne 0 ]; then
-        echo "$(basename $0): could not find volume group \"$vgname\"" >&2
-        exit 1
-    fi
-
-    rootdev=/dev/$vgname/$lvname
-    lvdisplay $rootdev > /dev/null 2>&1
-    if [ $? -eq 0 ]; then
-        echo "$(basename $0): backing store already exists: $rootdev" >&2
-        echo "please delete it (using \"lvremove $rootdev\") and try again" >&2
-        exit 1
-    fi
-
-elif [ "$backingstore" = "btrfs" ]; then
-    mkdir "$lxc_path/$lxc_name"
-    if ! out=$(btrfs subvolume create "$rootfs" 2>&1); then
-        echo "$(basename $0): failed to create subvolume in $rootfs: $out" >&2
-        exit 1;
-    fi
-fi
-
 cleanup() {
     if [ "$backingstore" = "lvm" ]; then
-        umount $rootfs
-        lvremove -f $rootdev
+        umount -l $rootfs || true
+        lvremove -f $rootdev || true
     elif [ "$backingstore" = "btrfs" ]; then
-        btrfs subvolume delete "$rootfs"
+        btrfs subvolume delete "$rootfs" || true
+    elif [ "$backingstore" = "zfs" ]; then
+        zfs destroy "$zfs_root/$lxc_name" || true
     fi
 
     ${bindir}/lxc-destroy -n $lxc_name
@@ -276,7 +322,18 @@ cleanup() {
 
 trap cleanup HUP INT TERM
 
-mkdir -p $lxc_path/$lxc_name
+# set up container dir per backing store
+if [ "$backingstore" = "zfs" ]; then
+    zfs create -omountpoint=$lxc_path/$lxc_name/rootfs "$zfs_root/$lxc_name"
+elif [ "$backingstore" = "btrfs" ]; then
+    mkdir "$lxc_path/$lxc_name"
+    if ! out=$(btrfs subvolume create "$rootfs" 2>&1); then
+        echo "$(basename $0): failed to create subvolume in $rootfs: $out" >&2
+        exit 1;
+    fi
+else
+    mkdir -p $lxc_path/$lxc_name
+fi
 
 if [ -z "$lxc_config" ]; then
     lxc_config="@SYSCONFDIR@/lxc/default.conf"

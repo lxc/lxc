@@ -46,6 +46,15 @@ usage_err() {
     exit 1
 }
 
+verify_zfs() {
+    path=$1
+    if which zfs >/dev/null 2>&1 && zfs list | grep -q $path; then
+        echo zfs
+    else
+        echo no
+    fi
+}
+
 optarg_check() {
     if [ -z "$2" ]; then
         usage_err "option '$1' requires an argument"
@@ -123,7 +132,7 @@ fi
 # Deduce the type of rootfs
 # If LVM partition, destroy it. For btrfs, we delete the subvolue. If anything
 # else, ignore it. We'll support deletion of others later.
-rootdev=`grep lxc.rootfs $lxc_path/$lxc_name/config 2>/dev/null | sed -e 's/^[^/]*/\//'`
+rootdev=`grep lxc.rootfs $lxc_path/$lxc_name/config 2>/dev/null | sed -e 's/^[^/]*//'`
 if [ -n "$rootdev" ]; then
     if [ -b "$rootdev" -o -h "$rootdev" ]; then
         lvdisplay $rootdev > /dev/null 2>&1
@@ -131,6 +140,8 @@ if [ -n "$rootdev" ]; then
             echo "removing backing store: $rootdev"
             lvremove -f $rootdev
         fi
+    elif [ `verify_zfs $rootdev` = "zfs" ]; then
+        zfs destroy $(zfs list | grep $rootdev | awk '{ print $1 }')
     elif [ -h "$rootdev" -o -d "$rootdev" ]; then
         if which btrfs >/dev/null 2>&1 &&
            btrfs subvolume list "$rootdev" >/dev/null 2>&1; then
