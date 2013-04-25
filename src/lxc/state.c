@@ -207,6 +207,9 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout, const 
 	if (fillwaitedstates(states, s))
 		return -1;
 
+	if (lxc_monitord_spawn(lxcpath))
+		return -1;
+
 	fd = lxc_monitor_open(lxcpath);
 	if (fd < 0)
 		return -1;
