@@ -66,8 +66,14 @@ AC_ARG_ENABLE([doc],
 if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
 	db2xman=""
 
+	if test "x$with_distro" = "xdebian" -o "x$with_distro" = "xubuntu"; then
+		dbparsers="docbook2x-man db2x_docbook2man"
+	else
+		dbparsers="docbook2x-man db2x_docbook2man docbook2man"
+	fi
+
 	AC_MSG_CHECKING(for docbook2x-man)
-	for name in docbook2x-man db2x_docbook2man; do
+	for name in ${dbparsers}; do
 		if "$name" --help >/dev/null 2>&1; then
 			db2xman="$name"
 			break;
