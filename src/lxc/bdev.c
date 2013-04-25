@@ -427,6 +427,182 @@ struct bdev_ops dir_ops = {
 	.clone_paths = &dir_clonepaths,
 };
 
+
+//
+// XXXXXXX zfs ops
+// There are two ways we could do this.  We could always specify the
+// 'zfs device' (i.e. tank/lxc lxc/container) as rootfs.  But instead
+// (at least right now) we have lxc-create specify $lxcpath/$lxcname/rootfs
+// as the mountpoint, so that it is always mounted.
+//
+// That means 'mount' is really never needed and could be noop, but for the
+// sake of flexibility let's always bind-mount.
+//
+
+static int zfs_list_entry(const char *path, char *output)
+{
+	FILE *f;
+	int found=0;
+
+	if ((f = popen("zfs list", "r")) == NULL) {
+		SYSERROR("popen failed");
+		return 0;
+	}
+	while (fgets(output, LXC_LOG_BUFFER_SIZE, f)) {
+		if (strstr(output, path)) {
+			found = 1;
+			break;
+		}
+	}
+	(void) pclose(f);
+
+	return found;
+}
+
+static int zfs_detect(const char *path)
+{
+	char *output = malloc(LXC_LOG_BUFFER_SIZE);
+	int found;
+
+	if (!output) {
+		ERROR("out of memory");
+		return 0;
+	}
+	found = zfs_list_entry(path, output);
+	free(output);
+	return found;
+}
+
+int zfs_mount(struct bdev *bdev)
+{
+	if (strcmp(bdev->type, "zfs"))
+		return -22;
+	if (!bdev->src || !bdev->dest)
+		return -22;
+	return mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC, NULL);
+}
+
+int zfs_umount(struct bdev *bdev)
+{
+	if (strcmp(bdev->type, "zfs"))
+		return -22;
+	if (!bdev->src || !bdev->dest)
+		return -22;
+	return umount(bdev->dest);
+}
+
+static int zfs_clone(const char *opath, const char *npath, const char *oname,
+			const char *nname, const char *lxcpath, int snapshot)
+{
+	// use the 'zfs list | grep opath' entry to get the zfsroot
+	char output[MAXPATHLEN], option[MAXPATHLEN], *p;
+	int ret;
+	pid_t pid;
+
+	if (zfs_list_entry(opath, output) < 0)
+		return -1;
+
+	if ((p = index(output, ' ')) == NULL)
+		return -1;
+	*p = '\0';
+	if ((p = rindex(output, '/')) == NULL)
+		return -1;
+	*p = '\0';
+
+	ret = snprintf(option, MAXPATHLEN, "-omountpoint=%s/%s/rootfs",
+		lxcpath, nname);
+	if (ret < 0  || ret >= MAXPATHLEN)
+		return -1;
+
+	// zfsroot is output up to ' '
+	// zfs create -omountpoint=$lxcpath/$lxcname $zfsroot/$nname
+	if (!snapshot) {
+		if ((pid = fork()) < 0)
+			return -1;
+		if (!pid) {
+			char dev[MAXPATHLEN];
+			ret = snprintf(dev, MAXPATHLEN, "%s/%s", output, nname);
+			if (ret < 0  || ret >= MAXPATHLEN)
+				exit(1);
+			return execlp("zfs", "zfs", "create", option, dev, NULL);
+		}
+		return wait_for_pid(pid);
+	} else {
+		// if snapshot, do
+		// 'zfs snapshot zfsroot/oname@nname
+		// zfs clone zfsroot/oname@nname zfsroot/nname
+		char path1[MAXPATHLEN], path2[MAXPATHLEN];
+
+		ret = snprintf(path1, MAXPATHLEN, "%s/%s@%s", output,
+			oname, nname);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			return -1;
+		(void) snprintf(path2, MAXPATHLEN, "%s/%s", output, nname);
+
+		// if the snapshot exists, delete it
+		if ((pid = fork()) < 0)
+			return -1;
+		if (!pid) {
+			return execlp("zfs", "zfs", "destroy", path1, NULL);
+		}
+		// it probably doesn't exist so destroy probably will fail.
+		(void) wait_for_pid(pid);
+
+		// run first (snapshot) command
+		if ((pid = fork()) < 0)
+			return -1;
+		if (!pid) {
+			return execlp("zfs", "zfs", "snapshot", path1, NULL);
+		}
+		if (wait_for_pid(pid) < 0)
+			return -1;
+
+		// run second (clone) command
+		if ((pid = fork()) < 0)
+			return -1;
+		if (!pid) {
+			return execlp("zfs", "zfs", "clone", option, path1, path2, NULL);
+		}
+		return wait_for_pid(pid);
+	}
+}
+
+static int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
+		const char *cname, const char *oldpath, const char *lxcpath, int snap,
+		unsigned long newsize)
+{
+	if (!orig->src || !orig->dest)
+		return -1;
+
+	if (strcmp(orig->type, "zfs")) {
+		ERROR("zfs clone from %s backing store is not supported",
+			orig->type);
+		return -1;
+	}
+
+	if (orig->data) {
+		new->data = strdup(orig->data);
+		if (!new->data)
+			return -1;
+	}
+	new->dest = dir_new_path(orig->dest, oldname, cname, oldpath, lxcpath);
+	if (!new->dest)
+		return -1;
+
+	new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath);
+	if (!new->src)
+		return -1;
+
+	return zfs_clone(orig->src, new->src, oldname, cname, lxcpath, snap);
+}
+
+struct bdev_ops zfs_ops = {
+	.detect = &zfs_detect,
+	.mount = &zfs_mount,
+	.umount = &zfs_umount,
+	.clone_paths = &zfs_clonepaths,
+};
+
 //
 // LVM ops
 //
@@ -1021,6 +1197,7 @@ struct bdev_ops overlayfs_ops = {
 };
 
 struct bdev_type bdevs[] = {
+	{.name = "zfs", .ops = &zfs_ops,},
 	{.name = "lvm", .ops = &lvm_ops,},
 	{.name = "btrfs", .ops = &btrfs_ops,},
 	{.name = "dir", .ops = &dir_ops,},
