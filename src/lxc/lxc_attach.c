@@ -140,17 +140,148 @@ Options :\n\
 	.checker  = NULL,
 };
 
+struct child_data {
+	struct lxc_proc_context_info *init_ctx;
+	struct lxc_handler *handler;
+	int ipc_socket;
+};
+
+static int child_main(void* data)
+{
+	struct child_data* child_data = data;
+	struct lxc_proc_context_info *init_ctx = child_data->init_ctx;
+	struct lxc_handler *handler = child_data->handler;
+	int ipc_socket = child_data->ipc_socket;
+	struct passwd *passwd;
+	char *user_shell;
+	uid_t uid;
+	int ret;
+
+	lxc_sync_fini_parent(handler);
+	close(ipc_socket);
+
+	if ((namespace_flags & CLONE_NEWNS)) {
+		if (attach_apparmor(init_ctx->aa_profile) < 0) {
+			ERROR("failed switching apparmor profiles");
+			return -1;
+		}
+	}
+
+	/* A description of the purpose of this functionality is
+	 * provided in the lxc-attach(1) manual page. We have to
+	 * remount here and not in the parent process, otherwise
+	 * /proc may not properly reflect the new pid namespace.
+	 */
+	if (!(namespace_flags & CLONE_NEWNS) && remount_sys_proc) {
+		ret = lxc_attach_remount_sys_proc();
+		if (ret < 0) {
+			return -1;
+		}
+	}
+
+#if HAVE_SYS_PERSONALITY_H
+	if (new_personality < 0)
+		new_personality = init_ctx->personality;
+
+	if (personality(new_personality) == -1) {
+		ERROR("could not ensure correct architecture: %s",
+		      strerror(errno));
+		return -1;
+	}
+#endif
+
+	if (!elevated_privileges && lxc_attach_drop_privs(init_ctx)) {
+		ERROR("could not drop privileges");
+		return -1;
+	}
+
+	if (lxc_attach_set_environment(env_policy, NULL, NULL)) {
+		ERROR("could not set environment");
+		return -1;
+	}
+
+	/* tell parent we are done setting up the container and wait
+	 * until we have been put in the container's cgroup, if
+	 * applicable */
+	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
+		return -1;
+
+	lxc_sync_fini(handler);
+
+	if (namespace_flags & CLONE_NEWUSER) {
+		uid_t init_uid = 0;
+		gid_t init_gid = 0;
+
+		/* ignore errors, we will fall back to root in that case
+		 * (/proc was not mounted etc.)
+		 */
+		lxc_attach_get_init_uidgid(&init_uid, &init_gid);
+
+		/* try to set the uid/gid combination */
+		if (setgid(init_gid)) {
+			SYSERROR("switching to container gid");
+			return -1;
+		}
+		if (setuid(init_uid)) {
+			SYSERROR("switching to container uid");
+			return -1;
+		}
+	}
+
+	if (my_args.argc) {
+		execvp(my_args.argv[0], my_args.argv);
+		SYSERROR("failed to exec '%s'", my_args.argv[0]);
+		return -1;
+	}
+
+	uid = getuid();
+
+	passwd = getpwuid(uid);
+
+	/* this probably happens because of incompatible nss
+	 * implementations in host and container (remember, this
+	 * code is still using the host's glibc but our mount
+	 * namespace is in the container)
+	 * we may try to get the information by spawning a
+	 * [getent passwd uid] process and parsing the result
+	 */
+	if (!passwd)
+		user_shell = lxc_attach_getpwshell(uid);
+	else
+		user_shell = passwd->pw_shell;
+
+	if (user_shell) {
+		char *const args[] = {
+			user_shell,
+			NULL,
+		};
+
+		(void) execvp(args[0], args);
+	}
+
+	/* executed if either no passwd entry or execvp fails,
+	 * we will fall back on /bin/sh as a default shell
+	 */
+	{
+		char *const args[] = {
+			"/bin/sh",
+			NULL,
+		};
+
+		execvp(args[0], args);
+		SYSERROR("failed to exec '%s'", args[0]);
+		return -1;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	int ret;
 	pid_t pid, init_pid;
-	struct passwd *passwd;
 	struct lxc_proc_context_info *init_ctx;
 	struct lxc_handler *handler;
-	uid_t uid;
 	char *curdir;
 	int cgroup_ipc_sockets[2];
-	char *user_shell;
 
 	ret = lxc_caps_init();
 	if (ret)
@@ -318,7 +449,14 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	pid = fork();
+	{
+		struct child_data child_data = {
+			.init_ctx = init_ctx,
+			.handler = handler,
+			.ipc_socket = cgroup_ipc_sockets[1]
+		};
+		pid = lxc_clone(child_main, &child_data, 0);
+	}
 
 	if (pid < 0) {
 		SYSERROR("failed to fork");
@@ -390,124 +528,6 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (!pid) {
-		lxc_sync_fini_parent(handler);
-		close(cgroup_ipc_sockets[1]);
-
-		if ((namespace_flags & CLONE_NEWNS)) {
-			if (attach_apparmor(init_ctx->aa_profile) < 0) {
-				ERROR("failed switching apparmor profiles");
-				return -1;
-			}
-		}
-
-		/* A description of the purpose of this functionality is
-		 * provided in the lxc-attach(1) manual page. We have to
-		 * remount here and not in the parent process, otherwise
-		 * /proc may not properly reflect the new pid namespace.
-		 */
-		if (!(namespace_flags & CLONE_NEWNS) && remount_sys_proc) {
-			ret = lxc_attach_remount_sys_proc();
-			if (ret < 0) {
-				return -1;
-			}
-		}
-
-		#if HAVE_SYS_PERSONALITY_H
-		if (new_personality < 0)
-			new_personality = init_ctx->personality;
-
-		if (personality(new_personality) == -1) {
-			ERROR("could not ensure correct architecture: %s",
-			      strerror(errno));
-			return -1;
-		}
-		#endif
-
-		if (!elevated_privileges && lxc_attach_drop_privs(init_ctx)) {
-			ERROR("could not drop privileges");
-			return -1;
-		}
-
-		if (lxc_attach_set_environment(env_policy, NULL, NULL)) {
-			ERROR("could not set environment");
-			return -1;
-		}
-
-		/* tell parent we are done setting up the container and wait
-		 * until we have been put in the container's cgroup, if
-		 * applicable */
-		if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
-			return -1;
-
-		lxc_sync_fini(handler);
-
-		if (namespace_flags & CLONE_NEWUSER) {
-			uid_t init_uid = 0;
-			gid_t init_gid = 0;
-
-			/* ignore errors, we will fall back to root in that case
-			 * (/proc was not mounted etc.)
-			 */
-			lxc_attach_get_init_uidgid(&init_uid, &init_gid);
-
-			/* try to set the uid/gid combination */
-			if (setgid(init_gid)) {
-				SYSERROR("switching to container gid");
-				return -1;
-			}
-			if (setuid(init_uid)) {
-				SYSERROR("switching to container uid");
-				return -1;
-			}
-		}
-
-		if (my_args.argc) {
-			execvp(my_args.argv[0], my_args.argv);
-			SYSERROR("failed to exec '%s'", my_args.argv[0]);
-			return -1;
-		}
-
-		uid = getuid();
-
-		passwd = getpwuid(uid);
-
-		/* this probably happens because of incompatible nss
-		 * implementations in host and container (remember, this
-		 * code is still using the host's glibc but our mount
-		 * namespace is in the container)
-		 * we may try to get the information by spawning a
-		 * [getent passwd uid] process and parsing the result
-		 */
-		if (!passwd)
-		        user_shell = lxc_attach_getpwshell(uid);
-                else
-                        user_shell = passwd->pw_shell;
-
-                if (user_shell) {
-			char *const args[] = {
-				user_shell,
-				NULL,
-			};
-
-			(void) execvp(args[0], args);
-		}
-
-		/* executed if either no passwd entry or execvp fails,
-		 * we will fall back on /bin/sh as a default shell
-		 */
-		{
-			char *const args[] = {
-				"/bin/sh",
-				NULL,
-			};
-
-			execvp(args[0], args);
-			SYSERROR("failed to exec '%s'", args[0]);
-			return -1;
-		}
-
-	}
-
-	return 0;
+	/* shouldn't happen, because clone should never return 0 */
+	return -1;
 }
