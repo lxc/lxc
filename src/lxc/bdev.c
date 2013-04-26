@@ -81,7 +81,8 @@ static int do_rsync(const char *src, const char *dest)
 	s[l-2] = '/';
 	s[l-1] = '\0';
 
-	return execlp("rsync", "rsync", "-a", s, dest, (char *)NULL);
+	execlp("rsync", "rsync", "-a", s, dest, (char *)NULL);
+	exit(1);
 }
 
 static int blk_getsize(const char *path, unsigned long *size)
@@ -189,7 +190,8 @@ static int do_mkfs(const char *path, const char *fstype)
 	if (pid > 0)
 		return wait_for_pid(pid);
 
-	return execlp("mkfs", "mkfs", "-t", fstype, path, NULL);
+	execlp("mkfs", "mkfs", "-t", fstype, path, NULL);
+	exit(1);
 }
 
 static char *linkderef(char *path, char *dest)
@@ -391,30 +393,24 @@ static int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
 		unsigned long newsize)
 {
+	int len, ret;
+
 	if (snap) {
 		ERROR("directories cannot be snapshotted.  Try overlayfs.");
 		return -1;
 	}
 
-	if (strcmp(orig->type, "dir")) {
-		ERROR("Directory clone from %s backing store is not supported",
-			orig->type);
-		return -1;
-	}
-
 	if (!orig->dest || !orig->src)
 		return -1;
-	if (orig->data) {
-		new->data = strdup(orig->data);
-		if (!new->data)
-			return -1;
-	}
 
-	new->dest = dir_new_path(orig->dest, oldname, cname, oldpath, lxcpath);
-	if (!new->dest)
-		return -1;
-	new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath);
+	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 3;
+	new->src = malloc(len);
 	if (!new->src)
+		return -1;
+	ret = snprintf(new->src, len, "%s/%s/rootfs", lxcpath, cname);
+	if (ret < 0 || ret >= len)
+		return -1;
+	if ((new->dest = strdup(new->src)) == NULL)
 		return -1;
 
 	return 0;
@@ -499,8 +495,10 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 	int ret;
 	pid_t pid;
 
-	if (zfs_list_entry(opath, output) < 0)
-		return -1;
+	if (!zfs_list_entry(opath, output))
+		// default is tank.  I'd prefer lxc, but apparently this is
+		// tradition.
+		sprintf(output, "tank");
 
 	if ((p = index(output, ' ')) == NULL)
 		return -1;
@@ -524,7 +522,8 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 			ret = snprintf(dev, MAXPATHLEN, "%s/%s", output, nname);
 			if (ret < 0  || ret >= MAXPATHLEN)
 				exit(1);
-			return execlp("zfs", "zfs", "create", option, dev, NULL);
+			execlp("zfs", "zfs", "create", option, dev, NULL);
+			exit(1);
 		}
 		return wait_for_pid(pid);
 	} else {
@@ -543,7 +542,8 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
-			return execlp("zfs", "zfs", "destroy", path1, NULL);
+			execlp("zfs", "zfs", "destroy", path1, NULL);
+			exit(1);
 		}
 		// it probably doesn't exist so destroy probably will fail.
 		(void) wait_for_pid(pid);
@@ -552,7 +552,8 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
-			return execlp("zfs", "zfs", "snapshot", path1, NULL);
+			execlp("zfs", "zfs", "snapshot", path1, NULL);
+			exit(1);
 		}
 		if (wait_for_pid(pid) < 0)
 			return -1;
@@ -561,7 +562,8 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
-			return execlp("zfs", "zfs", "clone", option, path1, path2, NULL);
+			execlp("zfs", "zfs", "clone", option, path1, path2, NULL);
+			exit(1);
 		}
 		return wait_for_pid(pid);
 	}
@@ -571,26 +573,25 @@ static int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
 		unsigned long newsize)
 {
+	int len, ret;
+
 	if (!orig->src || !orig->dest)
 		return -1;
 
-	if (strcmp(orig->type, "zfs")) {
-		ERROR("zfs clone from %s backing store is not supported",
+	if (snap && strcmp(orig->type, "zfs")) {
+		ERROR("zfs snapshot from %s backing store is not supported",
 			orig->type);
 		return -1;
 	}
 
-	if (orig->data) {
-		new->data = strdup(orig->data);
-		if (!new->data)
-			return -1;
-	}
-	new->dest = dir_new_path(orig->dest, oldname, cname, oldpath, lxcpath);
-	if (!new->dest)
-		return -1;
-
-	new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath);
+	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 3;
+	new->src = malloc(len);
 	if (!new->src)
+		return -1;
+	ret = snprintf(new->src, len, "%s/%s/rootfs", lxcpath, cname);
+	if (ret < 0 || ret >= len)
+		return -1;
+	if ((new->dest = strdup(new->src)) == NULL)
 		return -1;
 
 	return zfs_clone(orig->src, new->src, oldname, cname, lxcpath, snap);
@@ -699,9 +700,9 @@ static int lvm_create(const char *path, unsigned long size)
 	if (!vg)
 		exit(1);
 	vg++;
-	ret = execlp("lvcreate", "lvcreate", "-L", sz, vg, "-n", lv, (char *)NULL);
+	execlp("lvcreate", "lvcreate", "-L", sz, vg, "-n", lv, (char *)NULL);
 	free(pathdup);
-	return ret;
+	exit(1);
 }
 
 static int lvm_snapshot(const char *orig, const char *path, unsigned long size)
@@ -733,7 +734,16 @@ static int lvm_snapshot(const char *orig, const char *path, unsigned long size)
 
 	ret = execlp("lvcreate", "lvcreate", "-s", "-L", sz, "-n", lv, orig, (char *)NULL);
 	free(pathdup);
-	return ret;
+	exit(1);
+}
+
+// this will return 1 for physical disks, qemu-nbd, loop, etc
+// right now only lvm is a block device
+static int is_blktype(struct bdev *b)
+{
+	if (strcmp(b->type, "lvm") == 0)
+		return 1;
+	return 0;
 }
 
 static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
@@ -742,14 +752,30 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 {
 	char fstype[100];
 	unsigned long size = newsize;
+	int len, ret;
 
 	if (!orig->src || !orig->dest)
 		return -1;
 
 	if (strcmp(orig->type, "lvm")) {
-		ERROR("LVM clone from %s backing store is not supported",
-			orig->type);
-		return -1;
+		if (snap) {
+			ERROR("LVM snapshot from %s backing store is not supported",
+				orig->type);
+			return -1;
+		}
+		// Use VG 'lxc' by default
+		// We will want to support custom VGs, at least as specified through
+		// /etc/lxc/lxc.conf, preferably also over cmdline
+		len = strlen("/dev/lxc/") + strlen(cname) + 1;
+		if ((new->src = malloc(len)) == NULL)
+			return -1;
+		ret = snprintf(new->src, len, "/dev/lxc/%s", cname);
+		if (ret < 0 || ret >= len)
+			return -1;
+	} else {
+		new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath);
+		if (!new->src)
+			return -1;
 	}
 
 	if (orig->data) {
@@ -757,21 +783,32 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 		if (!new->data)
 			return -1;
 	}
-	new->dest = dir_new_path(orig->dest, oldname, cname, oldpath, lxcpath);
+
+	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 3;
+	new->dest = malloc(len);
 	if (!new->dest)
+		return -1;
+	ret = snprintf(new->dest, len, "%s/%s/rootfs", lxcpath, cname);
+	if (ret < 0 || ret >= len)
 		return -1;
 	if (mkdir_p(new->dest, 0755) < 0)
 		return -1;
 
-
-	new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath);
-	if (!new->src)
-		return -1;
-
-	if (!newsize && blk_getsize(orig->src, &size) < 0) {
-		ERROR("Error getting size of %s", orig->src);
-		return -1;
+	if (is_blktype(orig)) {
+		if (!newsize && blk_getsize(orig->src, &size) < 0) {
+			ERROR("Error getting size of %s", orig->src);
+			return -1;
+		}
+		if (detect_fs(orig, fstype, 100) < 0) {
+			INFO("could not find fstype for %s, using ext3", orig->src);
+			return -1;
+		}
+	} else {
+		sprintf(fstype, "ext3");
+		if (!newsize)
+			size = 1000000000; // default to 1G
 	}
+
 	if (snap) {
 		if (lvm_snapshot(orig->src, new->src, size) < 0) {
 			ERROR("could not create %s snapshot of %s", new->src, orig->src);
@@ -780,10 +817,6 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 	} else {
 		if (lvm_create(new->src, size) < 0) {
 			ERROR("Error creating new lvm blockdev");
-			return -1;
-		}
-		if (detect_fs(orig, fstype, 100) < 0) {
-			ERROR("could not find fstype for %s", orig->src);
 			return -1;
 		}
 		if (do_mkfs(new->src, fstype) < 0) {
@@ -997,15 +1030,27 @@ static int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *old
 		return -1;
 
 	if (strcmp(orig->type, "btrfs")) {
-		ERROR("btrfs cloen from %s backing store is not supported",
-			orig->type);
-		return -1;
+		int len, ret;
+		if (snap) {
+			ERROR("btrfs snapshot from %s backing store is not supported",
+				orig->type);
+			return -1;
+		}
+		len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 3;
+		new->src = malloc(len);
+		if (!new->src)
+			return -1;
+		ret = snprintf(new->src, len, "%s/%s/rootfs", lxcpath, cname);
+		if (ret < 0 || ret >= len)
+			return -1;
+	} else {
+		// in case rootfs is in custom path, reuse it
+		if ((new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath)) == NULL)
+			return -1;
+
 	}
 
-	if ((new->dest = dir_new_path(orig->dest, oldname, cname, oldpath, lxcpath)) == NULL)
-		return -1;
-
-	if ((new->src = strdup(new->dest)) == NULL)
+	if ((new->dest = strdup(new->src)) == NULL)
 		return -1;
 
 	if (orig->data && (new->data = strdup(orig->data)) == NULL)

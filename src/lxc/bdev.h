@@ -22,6 +22,13 @@ struct bdev_ops {
 			int snap, unsigned long newsize);
 };
 
+/*
+ * When lxc-start (conf.c) is mounting a rootfs, then src will be the
+ * 'lxc.rootfs' value, dest will be mount dir (i.e. $libdir/lxc)  When clone
+ * or create is doing so, then dest will be $lxcpath/$lxcname/rootfs, since
+ * we may need to rsync from one to the other.
+ * data is so far unused.
+ */
 struct bdev {
 	struct bdev_ops *ops;
 	char *type;
