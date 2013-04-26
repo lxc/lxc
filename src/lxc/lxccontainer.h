@@ -58,6 +58,7 @@ struct lxc_container {
 	 * the length which was our would be printed. */
 	int (*get_config_item)(struct lxc_container *c, const char *key, char *retv, int inlen);
 	int (*get_keys)(struct lxc_container *c, const char *key, char *retv, int inlen);
+	char** (*get_ips)(struct lxc_container *c, char* interface, char* family, int scope);
 	/*
 	 * get_cgroup_item returns the number of bytes read, or an error (<0).
 	 * If retv NULL or inlen 0 is passed in, then the length of the cgroup

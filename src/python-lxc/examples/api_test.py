@@ -28,6 +28,7 @@ warnings.filterwarnings("ignore", "The python-lxc API isn't yet stable")
 import lxc
 import uuid
 import sys
+import time
 
 # Some constants
 LXC_TEMPLATE = "ubuntu"
@@ -90,7 +91,13 @@ assert(container.state == "RUNNING")
 
 ## Checking IP address
 print("Getting the IP addresses")
-ips = container.get_ips(timeout=10)
+
+count = 0
+ips = []
+while not ips or count == 10:
+    ips = container.get_ips()
+    time.sleep(1)
+    count += 1
 container.attach("NETWORK|UTSNAME", "/sbin/ifconfig", "eth0")
 
 # A few basic checks of the current state

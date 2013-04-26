@@ -37,6 +37,10 @@
 #include "bdev.h"
 #include <lxc/utils.h>
 #include <lxc/monitor.h>
+#include <sched.h>
+#include <fcntl.h>
+#include <arpa/inet.h>
+#include <ifaddrs.h>
 
 static pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -766,6 +770,117 @@ static bool lxcapi_clear_config_item(struct lxc_container *c, const char *key)
 	ret = lxc_clear_config_item(c->lxc_conf, key);
 	lxcunlock(c->privlock);
 	return ret == 0;
+}
+
+char** lxcapi_get_ips(struct lxc_container *c, char* interface, char* family, int scope)
+{
+	int count = 0;
+	struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
+	char addressOutputBuffer[INET6_ADDRSTRLEN];
+	void *tempAddrPtr = NULL;
+	char **addresses = NULL, **temp;
+	char *address = NULL;
+	char new_netns_path[MAXPATHLEN];
+	int old_netns = -1, new_netns = -1, ret = 0;
+
+	if (!c->is_running(c))
+		goto out;
+
+	/* Save reference to old netns */
+	old_netns = open("/proc/self/ns/net", O_RDONLY);
+	if (old_netns < 0) {
+		SYSERROR("failed to open /proc/self/ns/net");
+		goto out;
+	}
+
+	/* Switch to new netns */
+	ret = snprintf(new_netns_path, MAXPATHLEN, "/proc/%d/ns/net", c->init_pid(c));
+	if (ret < 0 || ret >= MAXPATHLEN)
+		goto out;
+
+	new_netns = open(new_netns_path, O_RDONLY);
+	if (new_netns < 0) {
+		SYSERROR("failed to open %s", new_netns_path);
+		goto out;
+	}
+
+	if (setns(new_netns, CLONE_NEWNET)) {
+		SYSERROR("failed to setns");
+		goto out;
+	}
+
+	/* Grab the list of interfaces */
+	if (getifaddrs(&interfaceArray)) {
+		SYSERROR("failed to get interfaces list");
+		goto out;
+	}
+
+	/* Iterate through the interfaces */
+	for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
+		if(tempIfAddr->ifa_addr->sa_family == AF_INET) {
+			if (family && strcmp(family, "inet"))
+				continue;
+			tempAddrPtr = &((struct sockaddr_in *)tempIfAddr->ifa_addr)->sin_addr;
+		}
+		else {
+			if (family && strcmp(family, "inet6"))
+				continue;
+
+			if (((struct sockaddr_in6 *)tempIfAddr->ifa_addr)->sin6_scope_id != scope)
+				continue;
+
+			tempAddrPtr = &((struct sockaddr_in6 *)tempIfAddr->ifa_addr)->sin6_addr;
+		}
+
+		if (interface && strcmp(interface, tempIfAddr->ifa_name))
+			continue;
+		else if (!interface && strcmp("lo", tempIfAddr->ifa_name) == 0)
+			continue;
+
+		address = (char *)inet_ntop(tempIfAddr->ifa_addr->sa_family,
+					   tempAddrPtr,
+					   addressOutputBuffer,
+					   sizeof(addressOutputBuffer));
+		if (!address)
+			continue;
+
+		count += 1;
+		temp = realloc(addresses, count * sizeof(*addresses));
+		if (!temp) {
+			count--;
+			goto out;
+		}
+		addresses = temp;
+		addresses[count - 1] = strdup(address);
+	}
+
+out:
+	if(interfaceArray)
+		freeifaddrs(interfaceArray);
+
+	/* Switch back to original netns */
+	if (old_netns >= 0 && setns(old_netns, CLONE_NEWNET))
+		SYSERROR("failed to setns");
+	if (new_netns >= 0)
+		close(new_netns);
+	if (old_netns >= 0)
+		close(old_netns);
+
+	/* Append NULL to the array */
+	if (count) {
+		count++;
+		temp = realloc(addresses, count * sizeof(*addresses));
+		if (!temp) {
+			for (int i = 0; i < count-1; i++)
+				free(addresses[i]);
+			free(addresses);
+			return NULL;
+		}
+		addresses = temp;
+		addresses[count - 1] = NULL;
+	}
+
+	return addresses;
 }
 
 static int lxcapi_get_config_item(struct lxc_container *c, const char *key, char *retv, int inlen)
@@ -1642,6 +1757,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->get_config_path = lxcapi_get_config_path;
 	c->set_config_path = lxcapi_set_config_path;
 	c->clone = lxcapi_clone;
+	c->get_ips = lxcapi_get_ips;
 
 	/* we'll allow the caller to update these later */
 	if (lxc_log_init(NULL, "none", NULL, "lxc_container", 0, c->config_path)) {

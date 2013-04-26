@@ -26,7 +26,6 @@ import glob
 import os
 import subprocess
 import stat
-import time
 import warnings
 
 warnings.warn("The python-lxc API isn't yet stable "
@@ -331,66 +330,6 @@ class Container(_lxc.Container):
             return value.rstrip("\n").split("\n")
         else:
             return value
-
-    def get_ips(self, timeout=60, interface=None, protocol=None):
-        """
-            Returns the list of IP addresses for the container.
-        """
-
-        if not self.running:
-            return False
-
-        ips = []
-
-        count = 0
-        while count < timeout:
-            if count != 0:
-                time.sleep(1)
-
-            base_cmd = ["lxc-attach", "-s", "NETWORK",
-                        "-P", self.get_config_path(), "-n", self.name, "--",
-                        "ip"]
-
-            # Get IPv6
-            if protocol in ("ipv6", None):
-                ip6_cmd = base_cmd + ["-6", "addr", "show", "scope", "global"]
-                if interface:
-                    ip = subprocess.Popen(ip6_cmd + ["dev", interface],
-                                          stdout=subprocess.PIPE,
-                                          universal_newlines=True)
-                else:
-                    ip = subprocess.Popen(ip6_cmd, stdout=subprocess.PIPE,
-                                          universal_newlines=True)
-
-                ip.wait()
-                for line in ip.stdout.read().split("\n"):
-                    fields = line.split()
-                    if len(fields) > 2 and fields[0] == "inet6":
-                        ips.append(fields[1].split('/')[0])
-
-            # Get IPv4
-            if protocol in ("ipv4", None):
-                ip4_cmd = base_cmd + ["-4", "addr", "show", "scope", "global"]
-                if interface:
-                    ip = subprocess.Popen(ip4_cmd + ["dev", interface],
-                                          stdout=subprocess.PIPE,
-                                          universal_newlines=True)
-                else:
-                    ip = subprocess.Popen(ip4_cmd, stdout=subprocess.PIPE,
-                                          universal_newlines=True)
-
-                ip.wait()
-                for line in ip.stdout.read().split("\n"):
-                    fields = line.split()
-                    if len(fields) > 2 and fields[0] == "inet":
-                        ips.append(fields[1].split('/')[0])
-
-            if ips:
-                break
-
-            count += 1
-
-        return ips
 
     def get_keys(self, key=None):
         """

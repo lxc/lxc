@@ -400,6 +400,61 @@ Container_get_keys(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+Container_get_ips(Container *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"interface", "family", "scope", NULL};
+    char* interface = NULL;
+    char* family = NULL;
+    int scope = 0;
+
+    int i = 0;
+    char** ips = NULL;
+
+    PyObject* ret;
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|ssi", kwlist,
+                                      &interface, &family, &scope))
+        return NULL;
+
+    /* Get the IPs */
+    ips = self->container->get_ips(self->container, interface, family, scope);
+    if (!ips)
+        return PyTuple_New(0);
+
+    /* Count the entries */
+    while (ips[i])
+        i++;
+
+    /* Create the new tuple */
+    ret = PyTuple_New(i);
+    if (!ret)
+        return NULL;
+
+    /* Add the entries to the tuple and free the memory */
+    i = 0;
+    while (ips[i]) {
+        PyObject *unicode = PyUnicode_FromString(ips[i]);
+        if (!unicode) {
+            Py_DECREF(ret);
+            ret = NULL;
+            break;
+        }
+        PyTuple_SET_ITEM(ret, i, unicode);
+        i++;
+    }
+
+    /* Free the list of IPs */
+    i = 0;
+    while (ips[i]) {
+        free(ips[i]);
+        i++;
+    }
+    free(ips);
+
+    return ret;
+}
+
+static PyObject *
 Container_load_config(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"path", NULL};
@@ -677,6 +732,12 @@ static PyMethodDef Container_methods[] = {
      "get_keys(key) -> string\n"
      "\n"
      "Get a list of valid sub-keys for a key."
+    },
+    {"get_ips", (PyCFunction)Container_get_ips,
+     METH_VARARGS|METH_KEYWORDS,
+     "get_ips(interface, family, scope) -> tuple\n"
+     "\n"
+     "Get a tuple of IPs for the container."
     },
     {"load_config", (PyCFunction)Container_load_config,
      METH_VARARGS|METH_KEYWORDS,
