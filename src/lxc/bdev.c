@@ -492,34 +492,33 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 {
 	// use the 'zfs list | grep opath' entry to get the zfsroot
 	char output[MAXPATHLEN], option[MAXPATHLEN], *p;
+	const char *zfsroot = output;
 	int ret;
 	pid_t pid;
 
-	if (!zfs_list_entry(opath, output))
-		// default is tank.  I'd prefer lxc, but apparently this is
-		// tradition.
-		sprintf(output, "tank");
-
-	if ((p = index(output, ' ')) == NULL)
-		return -1;
-	*p = '\0';
-	if ((p = rindex(output, '/')) == NULL)
-		return -1;
-	*p = '\0';
+	if (zfs_list_entry(opath, output)) {
+		// zfsroot is output up to ' '
+		if ((p = index(output, ' ')) == NULL)
+			return -1;
+		*p = '\0';
+		if ((p = rindex(output, '/')) == NULL)
+			return -1;
+		*p = '\0';
+	} else
+		zfsroot = default_zfs_root();
 
 	ret = snprintf(option, MAXPATHLEN, "-omountpoint=%s/%s/rootfs",
 		lxcpath, nname);
 	if (ret < 0  || ret >= MAXPATHLEN)
 		return -1;
 
-	// zfsroot is output up to ' '
 	// zfs create -omountpoint=$lxcpath/$lxcname $zfsroot/$nname
 	if (!snapshot) {
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
 			char dev[MAXPATHLEN];
-			ret = snprintf(dev, MAXPATHLEN, "%s/%s", output, nname);
+			ret = snprintf(dev, MAXPATHLEN, "%s/%s", zfsroot, nname);
 			if (ret < 0  || ret >= MAXPATHLEN)
 				exit(1);
 			execlp("zfs", "zfs", "create", option, dev, NULL);
@@ -532,11 +531,11 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 		// zfs clone zfsroot/oname@nname zfsroot/nname
 		char path1[MAXPATHLEN], path2[MAXPATHLEN];
 
-		ret = snprintf(path1, MAXPATHLEN, "%s/%s@%s", output,
+		ret = snprintf(path1, MAXPATHLEN, "%s/%s@%s", zfsroot,
 			oname, nname);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
-		(void) snprintf(path2, MAXPATHLEN, "%s/%s", output, nname);
+		(void) snprintf(path2, MAXPATHLEN, "%s/%s", zfsroot, nname);
 
 		// if the snapshot exists, delete it
 		if ((pid = fork()) < 0)
@@ -758,18 +757,18 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 		return -1;
 
 	if (strcmp(orig->type, "lvm")) {
+		const char *vg;
+
 		if (snap) {
 			ERROR("LVM snapshot from %s backing store is not supported",
 				orig->type);
 			return -1;
 		}
-		// Use VG 'lxc' by default
-		// We will want to support custom VGs, at least as specified through
-		// /etc/lxc/lxc.conf, preferably also over cmdline
-		len = strlen("/dev/lxc/") + strlen(cname) + 1;
+		vg = default_lvm_vg();
+		len = strlen("/dev/") + strlen(vg) + strlen(cname) + 2;
 		if ((new->src = malloc(len)) == NULL)
 			return -1;
-		ret = snprintf(new->src, len, "/dev/lxc/%s", cname);
+		ret = snprintf(new->src, len, "/dev/%s/%s", vg, cname);
 		if (ret < 0 || ret >= len)
 			return -1;
 	} else {

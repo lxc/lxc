@@ -137,7 +137,80 @@ static char *copypath(char *p)
 }
 
 char *default_lxcpath;
+#define DEFAULT_VG "lxc"
+char *default_lvmvg;
+#define DEFAULT_ZFSROOT "lxc"
+char *default_zfsroot;
 
+const char *default_lvm_vg(void)
+{
+	char buf[1024], *p;
+	FILE *fin;
+
+	if (default_lvmvg)
+		return default_lvmvg;
+
+	fin = fopen(LXC_GLOBAL_CONF, "r");
+	if (fin) {
+		while (fgets(buf, 1024, fin)) {
+			if (buf[0] == '#')
+				continue;
+			p = strstr(buf, "lvm_vg");
+			if (!p)
+				continue;
+			p = strchr(p, '=');
+			if (!p)
+				continue;
+			p++;
+			while (*p && (*p == ' ' || *p == '\t')) p++;
+			if (!*p)
+				continue;
+			default_lvmvg = copypath(p);
+			goto out;
+		}
+	}
+	default_lvmvg = DEFAULT_VG;
+
+out:
+	if (fin)
+		fclose(fin);
+	return default_lvmvg;
+}
+
+const char *default_zfs_root(void)
+{
+	char buf[1024], *p;
+	FILE *fin;
+
+	if (default_zfsroot)
+		return default_zfsroot;
+
+	fin = fopen(LXC_GLOBAL_CONF, "r");
+	if (fin) {
+		while (fgets(buf, 1024, fin)) {
+			if (buf[0] == '#')
+				continue;
+			p = strstr(buf, "zfsroot");
+			if (!p)
+				continue;
+			p = strchr(p, '=');
+			if (!p)
+				continue;
+			p++;
+			while (*p && (*p == ' ' || *p == '\t')) p++;
+			if (!*p)
+				continue;
+			default_zfsroot = copypath(p);
+			goto out;
+		}
+	}
+	default_zfsroot = DEFAULT_ZFSROOT;
+
+out:
+	if (fin)
+		fclose(fin);
+	return default_zfsroot;
+}
 const char *default_lxc_path(void)
 {
 	char buf[1024], *p;

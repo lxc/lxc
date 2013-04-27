@@ -31,6 +31,8 @@ extern int mkdir_p(const char *dir, mode_t mode);
  * path.  Caller must free this buffer.
  */
 extern const char *default_lxc_path(void);
+extern const char *default_zfs_root(void);
+extern const char *default_lvm_vg(void);
 
 /**
  * BUILD_BUG_ON - break compile if a condition is true.
