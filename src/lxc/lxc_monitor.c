@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 		return -1;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet))
+			 my_args.progname, my_args.quiet, my_args.lxcpath))
 		return -1;
 
 	len = strlen(my_args.name) + 3;

@@ -343,7 +343,7 @@ int main(int argc, char *argv[])
 	if (ret < 0 || ret >= sizeof(logpath))
 		return EXIT_FAILURE;
 
-	ret = lxc_log_init(NULL, logpath, "NOTICE", "lxc-monitord", 0);
+	ret = lxc_log_init(NULL, logpath, "NOTICE", "lxc-monitord", 0, lxcpath);
 	if (ret)
 		return ret;
 

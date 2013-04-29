@@ -1105,7 +1105,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->set_config_path = lxcapi_set_config_path;
 
 	/* we'll allow the caller to update these later */
-	if (lxc_log_init(NULL, "none", NULL, "lxc_container", 0)) {
+	if (lxc_log_init(NULL, "none", NULL, "lxc_container", 0, c->config_path)) {
 		fprintf(stderr, "failed to open log\n");
 		goto err;
 	}

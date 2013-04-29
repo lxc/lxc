@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 	if (lxc_caps_init())
 		exit(err);
 
-	if (lxc_log_init(NULL, "none", 0, basename(argv[0]), quiet))
+	if (lxc_log_init(NULL, "none", 0, basename(argv[0]), quiet, NULL))
 		exit(err);
 
 	if (!argv[optind]) {

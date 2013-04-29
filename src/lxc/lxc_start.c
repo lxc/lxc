@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
 		args = my_args.argv;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet))
+			 my_args.progname, my_args.quiet, my_args.lxcpath))
 		return err;
 
 	/* rcfile is specified in the cli option */

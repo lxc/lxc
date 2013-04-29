@@ -288,11 +288,13 @@ extern struct lxc_log_category lxc_log_category_lxc;
 extern int lxc_log_fd;
 
 extern int lxc_log_init(const char *name, const char *file,
-			const char *priority, const char *prefix, int quiet);
+			const char *priority, const char *prefix, int quiet,
+			const char *lxcpath);
 
-extern void lxc_log_setprefix(const char *a_prefix);
-extern int lxc_log_set_level(int level);
 extern int lxc_log_set_file(const char *fname);
-extern int lxc_log_get_level(void);
+extern int lxc_log_set_level(int level);
+extern void lxc_log_set_prefix(const char *prefix);
 extern const char *lxc_log_get_file(void);
+extern int lxc_log_get_level(void);
+extern const char *lxc_log_get_prefix(void);
 #endif
