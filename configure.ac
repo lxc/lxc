@@ -60,17 +60,12 @@ AM_CONDITIONAL([ENABLE_RPATH], [test "x$enable_rpath" = "xyes"])
 
 # Documentation (manpages)
 AC_ARG_ENABLE([doc],
-	[AC_HELP_STRING([--enable-doc], [make mans (require docbook2x-man installed) [default=auto]])],
+	[AC_HELP_STRING([--enable-doc], [make mans (requires docbook2man or docbook2x-man to be installed) [default=auto]])],
 	[], [enable_doc=auto])
 
 if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
 	db2xman=""
-
-	if test "x$with_distro" = "xdebian" -o "x$with_distro" = "xubuntu"; then
-		dbparsers="docbook2x-man db2x_docbook2man"
-	else
-		dbparsers="docbook2x-man db2x_docbook2man docbook2man"
-	fi
+	dbparsers="docbook2x-man db2x_docbook2man docbook2man"
 
 	AC_MSG_CHECKING(for docbook2x-man)
 	for name in ${dbparsers}; do
@@ -92,6 +87,13 @@ if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
 	AC_SUBST(db2xman)
 fi
 AM_CONDITIONAL([ENABLE_DOCBOOK], [test "x$db2xman" != "x"])
+
+if test "x$db2xman" = "xdocbook2man"; then
+	docdtd="\"-//Davenport//DTD DocBook V3.0//EN\""
+else
+	docdtd="\"-//OASIS//DTD DocBook XML\" \"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd\""
+fi
+AC_SUBST(docdtd)
 
 # Apparmor
 AC_ARG_ENABLE([apparmor],

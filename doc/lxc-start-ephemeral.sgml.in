@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+<!DOCTYPE refentry PUBLIC @docdtd@ [
 
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
 ]>
