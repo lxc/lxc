@@ -1009,6 +1009,16 @@ const char *lxc_get_default_config_path(void)
 	return default_lxc_path();
 }
 
+const char *lxc_get_default_lvm_vg(void)
+{
+	return default_lvm_vg();
+}
+
+const char *lxc_get_default_zfs_root(void)
+{
+	return default_zfs_root();
+}
+
 const char *lxc_get_version(void)
 {
 	return lxc_version();

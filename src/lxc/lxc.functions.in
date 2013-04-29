@@ -25,33 +25,6 @@ bindir=@BINDIR@
 templatedir=@LXCTEMPLATEDIR@
 lxcinitdir=@LXCINITDIR@
 
-get_default_lxcpath() {
-	LXC_PATH=$(grep -v "^#" "$globalconf" 2>/dev/null | grep "[ \t]*lxcpath[ \t]*=") || true
-	if [ -n "$LXC_PATH" ]; then
-		echo $LXC_PATH | awk -F= '{ print $2 }'
-	else
-		echo @LXCPATH@
-	fi
-}
-
-get_default_vg() {
-	LXC_VG=$(grep -v "^#" "$globalconf" 2>/dev/null | grep "[ \t]*lvm_vg[ \t]*=") || true
-	if [ -n "$LXC_VG" ]; then
-		echo $LXC_VG | awk -F= '{ print $2 }'
-	else
-		echo "lxc"
-	fi
-}
-
-get_default_zfsroot() {
-	LXC_ZFSROOT=$(grep -v "^#" "$globalconf" 2>/dev/null | grep "[ \t]*zfsroot[ \t]*=") || true
-	if [ -n "$LXC_ZFSROOT" ]; then
-		echo $LXC_ZFSROOT | awk -F= '{ print $2 }'
-	else
-		echo "tank/lxc"
-	fi
-}
-
-lxc_path=`get_default_lxcpath`
-lxc_vg=`get_default_vg`
-lxc_zfsroot=`get_default_zfsroot`
+lxc_path=`lxc-config default_path`
+lxc_vg=`lxc-config lvm_vg`
+lxc_zfsroot=`lxc-config zfsroot`
