@@ -134,7 +134,8 @@ optarg_check() {
 backingstore=_unset
 fstype=ext4
 fssize=500M
-vgname=lxc
+vgname=$lxc_vg
+zfsroot=$lxc_zfsroot
 custom_rootfs=""
 
 while [ $# -gt 0 ]; do
