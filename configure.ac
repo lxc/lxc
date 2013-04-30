@@ -382,7 +382,6 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-checkconfig
 	src/lxc/lxc-version
 	src/lxc/lxc-create
-	src/lxc/lxc-clone-sh
 	src/lxc/lxc-shutdown
 	src/lxc/lxc-start-ephemeral
 	src/lxc/lxc-destroy

@@ -124,7 +124,6 @@ bin_SCRIPTS = \
 	lxc-checkconfig \
 	lxc-version \
 	lxc-create \
-	lxc-clone-sh \
 	lxc-shutdown \
 	lxc-destroy
 
