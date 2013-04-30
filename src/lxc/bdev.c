@@ -440,7 +440,7 @@ static int zfs_list_entry(const char *path, char *output)
 	FILE *f;
 	int found=0;
 
-	if ((f = popen("zfs list", "r")) == NULL) {
+	if ((f = popen("zfs list 2> /dev/null", "r")) == NULL) {
 		SYSERROR("popen failed");
 		return 0;
 	}
