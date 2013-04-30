@@ -25,6 +25,6 @@ bindir=@BINDIR@
 templatedir=@LXCTEMPLATEDIR@
 lxcinitdir=@LXCINITDIR@
 
-lxc_path=`lxc-config default_path`
+lxc_path=`lxc-config lxcpath
 lxc_vg=`lxc-config lvm_vg`
 lxc_zfsroot=`lxc-config zfsroot`
