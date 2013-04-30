@@ -187,31 +187,41 @@ static int log_open(const char *name)
 static char *build_log_path(const char *name, const char *lxcpath)
 {
 	char *p;
-	int len, ret;
+	int len, ret, use_dir;
+
+#if USE_CONFIGPATH_LOGS
+	use_dir = 1;
+#else
+	use_dir = 0;
+#endif
 
 	/*
-	 * If USE_CONFIGPATH_LOGS is true the resulting path will be:
+	 * If USE_CONFIGPATH_LOGS is true or lxcpath is given, the resulting
+	 * path will be:
 	 * '$logpath' + '/' + '$name' + '/' + '$name' + '.log' + '\0'
 	 *
 	 * If USE_CONFIGPATH_LOGS is false the resulting path will be:
 	 * '$logpath' + '/' + '$name' + '.log' + '\0'
 	 */
 	len = strlen(name) + 6; /* 6 == '/' + '.log' + '\0' */
-	if (!lxcpath)
+	if (lxcpath)
+		use_dir = 1;
+	else
 		lxcpath = LOGPATH;
-#if USE_CONFIGPATH_LOGS
-	len += strlen(lxcpath) + 1 + strlen(name) + 1;  /* add "/$container_name/" */
-#else
-	len += strlen(lxcpath) + 1;
-#endif
+
+	if (use_dir)
+		len += strlen(lxcpath) + 1 + strlen(name) + 1;  /* add "/$container_name/" */
+	else
+		len += strlen(lxcpath) + 1;
 	p = malloc(len);
 	if (!p)
 		return p;
-#if USE_CONFIGPATH_LOGS
-	ret = snprintf(p, len, "%s/%s/%s.log", lxcpath, name, name);
-#else
-	ret = snprintf(p, len, "%s/%s.log", lxcpath, name);
-#endif
+
+	if (use_dir)
+		ret = snprintf(p, len, "%s/%s/%s.log", lxcpath, name, name);
+	else
+		ret = snprintf(p, len, "%s/%s.log", lxcpath, name);
+
 	if (ret < 0 || ret >= len) {
 		free(p);
 		return NULL;
