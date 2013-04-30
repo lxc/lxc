@@ -42,7 +42,9 @@ src/lxc/lxc-cgroup
 src/lxc/lxc-checkconfig
 src/lxc/lxc-checkpoint
 src/lxc/lxc-clone
+src/lxc/lxc-clone-sh
 src/lxc/lxc-console
+src/lxc/lxc-config
 src/lxc/lxc-create
 src/lxc/lxc-destroy
 src/lxc/lxc-execute
