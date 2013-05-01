@@ -218,6 +218,7 @@ copy_configuration()
 lxc.tty = 4
 lxc.pts = 1024
 lxc.utsname = $hostname
+lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
@@ -237,7 +238,7 @@ lxc.cgroup.devices.allow = c 1:8 rwm
 lxc.cgroup.devices.allow = c 136:* rwm
 lxc.cgroup.devices.allow = c 5:2 rwm
 # rtc
-lxc.cgroup.devices.allow = c 254:0 rwm
+lxc.cgroup.devices.allow = c 254:0 rm
 
 # mounts point
 lxc.mount.entry = proc proc proc nodev,noexec,nosuid 0 0

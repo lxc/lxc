@@ -261,6 +261,7 @@ cat <<EOF >> $path/config
 lxc.utsname = $name
 lxc.tty = 1
 lxc.pts = 1
+lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
