@@ -43,7 +43,10 @@ lxc_log_define(lxc_init, lxc);
 static int quiet;
 
 static struct option options[] = {
-	{ "quiet", no_argument, &quiet, 1 },
+	{ "name",        required_argument, NULL, 'n' },
+	{ "logpriority", required_argument, NULL, 'l' },
+	{ "quiet",       no_argument,       NULL, 'q' },
+	{ "lxcpath",     required_argument, NULL, 'P' },
 	{ 0, 0, 0, 0 },
 };
 
@@ -55,39 +58,66 @@ static void interrupt_handler(int sig)
 		was_interrupted = sig;
 }
 
+static void usage(void) {
+	fprintf(stderr, "Usage: lxc-init [OPTION]...\n\n"
+		"Common options :\n"
+		"  -n, --name=NAME          NAME for name of the container\n"
+		"  -l, --logpriority=LEVEL  Set log priority to LEVEL\n"
+		"  -q, --quiet              Don't produce any output\n"
+		"  -P, --lxcpath=PATH       Use specified container path\n"
+		"  -?, --help               Give this help list\n"
+		"\n"
+		"Mandatory or optional arguments to long options are also mandatory or optional\n"
+		"for any corresponding short options.\n"
+		"\n"
+		"NOTE: lxc-init is intended for use by lxc internally\n"
+		"      and does not need to be run by hand\n\n");
+}
+
 int main(int argc, char *argv[])
 {
 	pid_t pid;
-	int nbargs = 0;
-	int err = -1;
+	int err;
 	char **aargv;
 	sigset_t mask, omask;
 	int i, have_status = 0, shutdown = 0;
+	int opt;
+	char *lxcpath = NULL, *name = NULL, *logpriority = NULL;
 
-	while (1) {
-		int ret = getopt_long_only(argc, argv, "", options, NULL);
-		if (ret == -1) {
+	while ((opt = getopt_long(argc, argv, "n:l:qP:", options, NULL)) != -1) {
+		switch(opt) {
+		case 'n':
+			name = optarg;
 			break;
+		case 'l':
+			logpriority = optarg;
+			break;
+		case 'q':
+			quiet = 1;
+ 			break;
+		case 'P':
+			lxcpath = optarg;
+			break;
+		default: /* '?' */
+			usage();
+			exit(EXIT_FAILURE);
 		}
-		if  (ret == '?')
-			exit(err);
-
-		nbargs++;
 	}
 
 	if (lxc_caps_init())
-		exit(err);
+		exit(EXIT_FAILURE);
 
-	if (lxc_log_init(NULL, "none", 0, basename(argv[0]), quiet, NULL))
-		exit(err);
+	err = lxc_log_init(name, name ? NULL : "none", logpriority,
+			   basename(argv[0]), quiet, lxcpath);
+	if (err < 0)
+		exit(EXIT_FAILURE);
 
 	if (!argv[optind]) {
 		ERROR("missing command to launch");
-		exit(err);
+		exit(EXIT_FAILURE);
 	}
 
 	aargv = &argv[optind];
-	argc -= nbargs;
 
         /*
 	 * mask all the signals so we are safe to install a
@@ -125,15 +155,15 @@ int main(int argc, char *argv[])
 	}
 
 	if (lxc_setup_fs())
-		exit(err);
+		exit(EXIT_FAILURE);
 
 	if (lxc_caps_reset())
-		exit(err);
+		exit(EXIT_FAILURE);
 
 	pid = fork();
 
 	if (pid < 0)
-		exit(err);
+		exit(EXIT_FAILURE);
 
 	if (!pid) {
 
@@ -158,7 +188,7 @@ int main(int argc, char *argv[])
 	close(fileno(stdin));
 	close(fileno(stdout));
 
-	err = 0;
+	err = EXIT_SUCCESS;
 	for (;;) {
 		int status;
 		pid_t waited_pid;

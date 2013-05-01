@@ -318,6 +318,9 @@ extern int lxc_log_init(const char *name, const char *file,
 	} else {
 		ret = -1;
 
+		if (!lxcpath)
+			lxcpath = LOGPATH;
+
 		/* try LOGPATH if lxcpath is the default */
 		if (strcmp(lxcpath, default_lxc_path()) == 0)
 			ret = _lxc_log_set_file(name, NULL, 0);

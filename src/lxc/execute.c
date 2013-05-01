@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include "conf.h"
 #include "log.h"
 #include "start.h"
 
@@ -85,23 +86,37 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	int j, i = 0;
 	struct execute_args *my_args = data;
 	char **argv;
-	int argc = 0;
+	int argc = 0, argc_add;
 	char *initpath;
 
 	while (my_args->argv[argc++]);
 
-	argv = malloc((argc + my_args->quiet ? 5 : 4) * sizeof(*argv));
+	argc_add = 4;
+	if (my_args->quiet)
+		argc_add++;
+	if (!handler->conf->rootfs.path)
+		argc_add+=6;
+
+	argv = malloc((argc + argc_add) * sizeof(*argv));
 	if (!argv)
-		return 1;
+		goto out1;
 
 	initpath = choose_init();
 	if (!initpath) {
 		ERROR("Failed to find an lxc-init");
-		return 1;
+		goto out2;
 	}
 	argv[i++] = initpath;
 	if (my_args->quiet)
 		argv[i++] = "--quiet";
+	if (!handler->conf->rootfs.path) {
+		argv[i++] = "--name";
+		argv[i++] = (char *)handler->name;
+		argv[i++] = "--lxcpath";
+		argv[i++] = (char *)handler->lxcpath;
+		argv[i++] = "--logpriority";
+		argv[i++] = (char *)lxc_log_priority_to_string(lxc_log_get_level());
+	}
 	argv[i++] = "--";
 	for (j = 0; j < argc; j++)
 		argv[i++] = my_args->argv[j];
@@ -111,6 +126,10 @@ static int execute_start(struct lxc_handler *handler, void* data)
 
 	execvp(argv[0], argv);
 	SYSERROR("failed to exec %s", argv[0]);
+	free(initpath);
+out2:
+	free(argv);
+out1:
 	return 1;
 }
 
