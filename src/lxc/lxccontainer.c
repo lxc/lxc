@@ -1477,7 +1477,7 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 	}
 
 	c2 = lxc_container_new(n, l);
-	if (!c) {
+	if (!c2) {
 		ERROR("clone: failed to create new container (%s %s)", n, l);
 		goto out;
 	}
@@ -1487,16 +1487,12 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 		ret = copyhooks(c, c2);
 		if (ret < 0) {
 			ERROR("error copying hooks");
-			c2->destroy(c2);
-			lxc_container_put(c2);
 			goto out;
 		}
 	}
 
 	if (copy_fstab(c, c2) < 0) {
 		ERROR("error copying fstab");
-		c2->destroy(c2);
-		lxc_container_put(c2);
 		goto out;
 	}
 
@@ -1506,23 +1502,14 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 
 	// copy/snapshot rootfs's
 	ret = copy_storage(c, c2, bdevtype, flags, bdevdata, newsize);
-	if (ret < 0) {
-		c2->destroy(c2);
-		lxc_container_put(c2);
+	if (ret < 0)
 		goto out;
-	}
 
-	if (!c2->save_config(c2, NULL)) {
-		c2->destroy(c2);
-		lxc_container_put(c2);
+	if (!c2->save_config(c2, NULL))
 		goto out;
-	}
 
-	if (clone_update_rootfs(c2, flags) < 0) {
-		//c2->destroy(c2);
-		lxc_container_put(c2);
+	if (clone_update_rootfs(c2, flags) < 0)
 		goto out;
-	}
 
 	// TODO: update c's lxc.snapshot = count
 	lxcunlock(c->privlock);
@@ -1530,8 +1517,10 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 
 out:
 	lxcunlock(c->privlock);
-	if (c2)
+	if (c2) {
+		c2->destroy(c2);
 		lxc_container_put(c2);
+	}
 
 	return NULL;
 }

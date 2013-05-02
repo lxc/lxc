@@ -1186,11 +1186,6 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		free(delta);
 		if (ret < 0 || ret >= len)
 			return -ENOMEM;
-	} else if (strcmp(orig->type, "lvm") == 0) {
-		ERROR("overlayfs clone of lvm container is not yet supported");
-		// Note, supporting this will require overlayfs_mount supporting
-		// mounting of the underlay.  No big deal, just needs to be done.
-		return -1;
 	} else if (strcmp(orig->type, "overlayfs") == 0) {
 		// What exactly do we want to do here?
 		// I think we want to use the original lowerdir, with a
@@ -1228,6 +1223,12 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		free(ndelta);
 		if (ret < 0 || ret >= len)
 			return -ENOMEM;
+	} else {
+		ERROR("overlayfs clone of %s container is not yet supported",
+			orig->type);
+		// Note, supporting this will require overlayfs_mount supporting
+		// mounting of the underlay.  No big deal, just needs to be done.
+		return -1;
 	}
 
 	return 0;
