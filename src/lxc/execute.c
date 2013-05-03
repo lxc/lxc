@@ -55,7 +55,7 @@ static char *choose_init(void)
 	ret = snprintf(retv, PATH_MAX, LXCINITDIR "/lxc/lxc-init");
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
-		return NULL;
+		goto out1;
 	}
 
 	ret = stat(retv, &mystat);
@@ -65,7 +65,7 @@ static char *choose_init(void)
 	ret = snprintf(retv, PATH_MAX, "/usr/lib/lxc/lxc-init");
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
-		return NULL;
+		goto out1;
 	}
 	ret = stat(retv, &mystat);
 	if (ret == 0)
@@ -73,11 +73,13 @@ static char *choose_init(void)
 	ret = snprintf(retv, PATH_MAX, "/sbin/lxc-init");
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
-		return NULL;
+		goto out1;
 	}
 	ret = stat(retv, &mystat);
 	if (ret == 0)
 		return retv;
+out1:
+	free(retv);
 	return NULL;
 }
 
