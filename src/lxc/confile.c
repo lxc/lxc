@@ -776,7 +776,6 @@ static int config_network_ipv6_gateway(const char *key, const char *value,
 			               struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
-	struct in6_addr *gw;
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
@@ -791,6 +790,8 @@ static int config_network_ipv6_gateway(const char *key, const char *value,
 		netdev->ipv6_gateway = NULL;
 		netdev->ipv6_gateway_auto = true;
 	} else {
+		struct in6_addr *gw;
+
 		gw = malloc(sizeof(*gw));
 		if (!gw) {
 			SYSERROR("failed to allocate ipv6 gateway address");
