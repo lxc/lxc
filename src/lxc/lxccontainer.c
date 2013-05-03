@@ -1133,7 +1133,7 @@ static int update_name_and_paths(const char *path, struct lxc_container *oldc,
 		const char *newname, const char *newpath)
 {
 	FILE *f;
-	size_t flen;
+	long flen;
 	char *contents;
 	const char *p0, *p1, *p2, *end;
 	const char *oldpath = oldc->get_config_path(oldc);
