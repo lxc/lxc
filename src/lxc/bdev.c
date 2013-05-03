@@ -964,11 +964,6 @@ static int btrfs_subvolume_create(const char *path)
 	args.name[BTRFS_SUBVOL_NAME_MAX-1] = 0;
 	ret = ioctl(fd, BTRFS_IOC_SUBVOL_CREATE, &args);
 	INFO("btrfs: snapshot create ioctl returned %d", ret);
-{
-	FILE *f = fopen("/tmp/a", "a");
-	fprintf(f, "ioctl returned %d\n", ret);
-	fclose(f);
-}
 
 	free(newfull);
 	close(fd);
