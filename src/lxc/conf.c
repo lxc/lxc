@@ -1067,10 +1067,11 @@ int detect_shared_rootfs(void)
 		if (strcmp(p+1, "/") == 0) {
 			// this is '/'.  is it shared?
 			p = index(p2+1, ' ');
-			if (strstr(p, "shared:")) {
+			if (p && strstr(p, "shared:")) {
 				fclose(f);
 				return 1;
 			}
+			break;
 		}
 	}
 	fclose(f);
