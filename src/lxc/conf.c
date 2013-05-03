@@ -3115,6 +3115,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 		free(conf->ttydir);
 	if (conf->fstab)
 		free(conf->fstab);
+	if (conf->rcfile)
+		free(conf->rcfile);
 	lxc_clear_config_network(conf);
 #if HAVE_APPARMOR
 	if (conf->aa_profile)
