@@ -1160,10 +1160,11 @@ static int update_name_and_paths(const char *path, struct lxc_container *oldc,
 		SYSERROR("rewinding old config");
 		return -1;
 	}
-	contents = malloc(flen);
+	contents = malloc(flen+1);
 	if (!contents) {
 		SYSERROR("out of memory");
 		fclose(f);
+		return -1;
 	}
 	if (fread(contents, 1, flen, f) != flen) {
 		free(contents);
@@ -1171,6 +1172,7 @@ static int update_name_and_paths(const char *path, struct lxc_container *oldc,
 		SYSERROR("reading old config");
 		return -1;
 	}
+	contents[flen] = '\0';
 	if (fclose(f) < 0) {
 		free(contents);
 		SYSERROR("closing old config");
