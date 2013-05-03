@@ -316,7 +316,7 @@ cleanup() {
         zfs destroy "$zfs_root/$lxc_name" || true
     fi
 
-    ${bindir}/lxc-destroy -n $lxc_name
+    ${bindir}/lxc-destroy -n $lxc_name -P "$lxc_path"
     echo "$(basename $0): aborted" >&2
     exit 1
 }
