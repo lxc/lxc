@@ -51,8 +51,7 @@ int main()
 
 	printf("Basic cgroup path tests...\n");
 	path = lxc_cgroup_path_create(NULL, MYNAME);
-	len = strlen(path);
-	if (!path || !len) {
+	if (!path || !(len = strlen(path))) {
 		TSTERR("zero result from lxc_cgroup_path_create");
 		exit(1);
 	}
@@ -110,7 +109,7 @@ int main()
 
 	/* start second container */
 	if ((c2 = lxc_container_new(MYNAME2, ALTBASE)) == NULL) {
-		TSTERR("instantiating first container");
+		TSTERR("instantiating second container");
 		goto out;
 	}
 	if (c2->is_defined(c2)) {
@@ -120,14 +119,14 @@ int main()
 	}
 	c2->set_config_item(c2, "lxc.network.type", "empty");
 	if (!c2->createl(c2, "ubuntu", NULL)) {
-		TSTERR("creating first container");
+		TSTERR("creating second container");
 		goto out;
 	}
 
 	c2->load_config(c2, NULL);
 	c2->want_daemonize(c2);
 	if (!c2->startl(c2, 0, NULL)) {
-		TSTERR("starting first container");
+		TSTERR("starting second container");
 		goto out;
 	}
 
