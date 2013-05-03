@@ -18,13 +18,16 @@
 
 set -e
 
+. @DATADIR@/lxc/lxc.functions
+
 usage() {
-    echo "usage: lxc-shutdown -n name [-w] [-r]"
+    echo "usage: lxc-shutdown -n name [-w] [-r] [-P lxcpath]"
     echo "  Cleanly shut down a container."
     echo "  -w: wait for shutdown to complete."
     echo "  -r: reboot (ignore -w)."
     echo "  -t timeout: wait at most timeout seconds (implies -w), then kill"
     echo "              the container."
+    echo "  -P lxcpath: path to the lxc container directories."
 }
 
 alarm() {
@@ -38,7 +41,7 @@ alarm() {
 dolxcstop()
 {
     echo "Calling lxc-stop on $lxc_name"
-    lxc-stop -n $lxc_name
+    lxc-stop -n $lxc_name -P "$lxcpath"
     exit 0
 }
 
@@ -82,6 +85,12 @@ while [ $# -gt 0 ]; do
         dowait=1
         shift
         ;;
+    -P|--lxcpath)
+        optarg_check $opt "$1"
+        lxcpath=$1
+        dowait=1
+        shift
+        ;;
     --)
         break;;
     -?)
@@ -104,6 +113,11 @@ if [ -z "$lxc_name" ]; then
     exit 1
 fi
 
+if [ ! -d "$lxcpath" ]; then
+    echo "$lxcpath: no such directory"
+    exit 1
+fi
+
 if [ "$(id -u)" != "0" ]; then
    echo "This command has to be run as root"
    exit 1
@@ -112,7 +126,7 @@ fi
 which lxc-info > /dev/null 2>&1 || { echo "lxc-info not found."; exit 1; }
 which lxc-wait > /dev/null 2>&1 || { echo "lxc-wait not found."; exit 1; }
 
-pid=`lxc-info -n $lxc_name -p 2>/dev/null | awk '{ print $2 }'`
+pid=`lxc-info -n $lxc_name -P "$lxcpath" -p 2>/dev/null | awk '{ print $2 }'`
 if [ "$pid" = "-1" ]; then
     echo "$lxc_name is not running"
     exit 1
@@ -135,7 +149,7 @@ if [ $timeout != "-1" ]; then
     alarmpid=$!
 fi
 
-while ! lxc-info -n $lxc_name --state-is STOPPED; do
+while ! lxc-info -n $lxc_name -P "$lxcpath" --state-is STOPPED; do
     sleep 1
 done
 
