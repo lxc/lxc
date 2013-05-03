@@ -782,12 +782,6 @@ static int config_network_ipv6_gateway(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	gw = malloc(sizeof(*gw));
-	if (!gw) {
-		SYSERROR("failed to allocate ipv6 gateway address");
-		return -1;
-	}
-
 	if (!value) {
 		ERROR("no ipv6 gateway address specified");
 		return -1;
@@ -797,6 +791,12 @@ static int config_network_ipv6_gateway(const char *key, const char *value,
 		netdev->ipv6_gateway = NULL;
 		netdev->ipv6_gateway_auto = true;
 	} else {
+		gw = malloc(sizeof(*gw));
+		if (!gw) {
+			SYSERROR("failed to allocate ipv6 gateway address");
+			return -1;
+		}
+
 		if (!inet_pton(AF_INET6, value, gw)) {
 			SYSERROR("invalid ipv6 gateway address: %s", value);
 			free(gw);
