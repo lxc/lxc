@@ -47,7 +47,10 @@ struct lxc_arguments {
 	const char *console;
 	const char *console_log;
 	const char *pidfile;
-	const char *lxcpath;
+	const char **lxcpath;
+	int lxcpath_cnt;
+	/* set to 0 to accept only 1 lxcpath, -1 for unlimited */
+	int lxcpath_additional;
 
 	/* for lxc-checkpoint/restart */
 	const char *statefile;

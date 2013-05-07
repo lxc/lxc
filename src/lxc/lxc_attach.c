@@ -292,11 +292,11 @@ int main(int argc, char *argv[])
 		return ret;
 
 	ret = lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			   my_args.progname, my_args.quiet, my_args.lxcpath);
+			   my_args.progname, my_args.quiet, my_args.lxcpath[0]);
 	if (ret)
 		return ret;
 
-	init_pid = get_init_pid(my_args.name, my_args.lxcpath);
+	init_pid = get_init_pid(my_args.name, my_args.lxcpath[0]);
 	if (init_pid < 0) {
 		ERROR("failed to get the init pid");
 		return -1;
@@ -314,7 +314,7 @@ int main(int argc, char *argv[])
 	 * by asking lxc-start
 	 */
 	if (namespace_flags == -1) {
-		namespace_flags = lxc_get_clone_flags(my_args.name, my_args.lxcpath);
+		namespace_flags = lxc_get_clone_flags(my_args.name, my_args.lxcpath[0]);
 		/* call failed */
 		if (namespace_flags == -1) {
 			ERROR("failed to automatically determine the "
@@ -387,7 +387,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (!elevated_privileges) {
-			ret = lxc_cgroup_attach(grandchild, my_args.name, my_args.lxcpath);
+			ret = lxc_cgroup_attach(grandchild, my_args.name, my_args.lxcpath[0]);
 			if (ret < 0) {
 				ERROR("failed to attach process to cgroup");
 				return -1;

@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
 		return -1;
 
 	err = lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			   my_args.progname, my_args.quiet, my_args.lxcpath);
+			   my_args.progname, my_args.quiet, my_args.lxcpath[0]);
 	if (err)
 		return -1;
 
@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	err = lxc_console(my_args.name, my_args.ttynum, &master, my_args.lxcpath);
+	err = lxc_console(my_args.name, my_args.ttynum, &master, my_args.lxcpath[0]);
 	if (err)
 		goto out;
 

@@ -55,8 +55,8 @@ int main(int argc, char *argv[])
 		return -1;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet, my_args.lxcpath))
+			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return -1;
 
-	return lxc_stop(my_args.name, my_args.lxcpath);
+	return lxc_stop(my_args.name, my_args.lxcpath[0]);
 }

@@ -147,33 +147,50 @@ err1:
 	return ret;
 }
 
-int lxc_monitor_read_timeout(int fd, struct lxc_msg *msglxc, int timeout)
+int lxc_monitor_read_fdset(fd_set *rfds, int nfds, struct lxc_msg *msg,
+			   int timeout)
 {
-	fd_set rfds;
-	struct timeval tv;
-	int ret;
+	struct timeval tval,*tv = NULL;
+	int ret,i;
 
 	if (timeout != -1) {
-		FD_ZERO(&rfds);
-		FD_SET(fd, &rfds);
-
-		tv.tv_sec = timeout;
-		tv.tv_usec = 0;
-
-		ret = select(fd+1, &rfds, NULL, NULL, &tv);
-		if (ret == -1)
-			return -1;
-		else if (!ret)
-			return -2;  // timed out
+		tv = &tval;
+		tv->tv_sec = timeout;
+		tv->tv_usec = 0;
 	}
 
-	ret = recv(fd, msglxc, sizeof(*msglxc), 0);
-	if (ret <= 0) {
-		SYSERROR("client failed to recv (monitord died?) %s",
-			 strerror(errno));
+	ret = select(nfds, rfds, NULL, NULL, tv);
+	if (ret == -1)
 		return -1;
+	else if (ret == 0)
+		return -2;  // timed out
+
+	/* only read from the first ready fd, the others will remain ready
+	 * for when this routine is called again
+	 */
+	for (i = 0; i < nfds; i++) {
+		if (FD_ISSET(i, rfds)) {
+			ret = recv(i, msg, sizeof(*msg), 0);
+			if (ret <= 0) {
+				SYSERROR("client failed to recv (monitord died?) %s",
+					 strerror(errno));
+				return -1;
+			}
+			return ret;
+		}
 	}
-	return ret;
+	SYSERROR("no ready fd found?");
+	return -1;
+}
+
+int lxc_monitor_read_timeout(int fd, struct lxc_msg *msg, int timeout)
+{
+	fd_set rfds;
+
+	FD_ZERO(&rfds);
+	FD_SET(fd, &rfds);
+
+	return lxc_monitor_read_fdset(&rfds, fd+1, msg, timeout);
 }
 
 int lxc_monitor_read(int fd, struct lxc_msg *msg)

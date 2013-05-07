@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
 		args = my_args.argv;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet, my_args.lxcpath))
+			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return err;
 
 	/* rcfile is specified in the cli option */
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 	else {
 		int rc;
 
-		rc = asprintf(&rcfile, "%s/%s/config", my_args.lxcpath, my_args.name);
+		rc = asprintf(&rcfile, "%s/%s/config", my_args.lxcpath[0], my_args.name);
 		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
 			return err;
@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
 	if (my_args.close_all_fds)
 		conf->close_all_fds = 1;
 
-	err = lxc_start(my_args.name, args, conf, my_args.lxcpath);
+	err = lxc_start(my_args.name, args, conf, my_args.lxcpath[0]);
 
 	/*
 	 * exec ourself, that requires to have all opened fd

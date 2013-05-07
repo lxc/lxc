@@ -63,6 +63,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       to monitor all the containers, several of them or just one.
     </para>
 
+    <para>
+      The <option>-P, --lxcpath</option>=PATH option may be specified multiple
+      times to monitor more than one container path. Note however that
+      containers with the same name in multiple paths will be
+      indistinguishable in the output.
+    </para>
+
   </refsect1>
 
   &commonoptions;
