@@ -783,8 +783,11 @@ static int ifa_get_local_ip(int family, struct ip_req *ip_info, void** res) {
 
 			/* We might have found an IFA_ADDRESS before,
 			 * which we now overwrite with an IFA_LOCAL. */
-			if (!*res)
+			if (!*res) {
 				*res = malloc(addrlen);
+				if (!*res)
+					return -1;
+			}
 
 			memcpy(*res, RTA_DATA(rta), addrlen);
 
