@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (!c2->is_defined(c)) {
+	if (!c2->is_defined(c2)) {
 		fprintf(stderr, "%d: %s not defined after clone\n", __LINE__, MYNAME2);
 		goto out;
 	}
