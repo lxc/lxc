@@ -1151,8 +1151,7 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 	if (strcmp(orig->type, "dir") == 0) {
 		char *delta;
 		int ret, len;
-		if (!snap)
-			return -1;
+
 		// if we have /var/lib/lxc/c2/rootfs, then delta will be
 		//            /var/lib/lxc/c2/delta0
 		delta = strdup(new->dest);
