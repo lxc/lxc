@@ -90,7 +90,7 @@ static int blk_getsize(const char *path, unsigned long *size)
 	int fd, ret;
 
 	fd = open(path, O_RDONLY);
-	if (!fd)
+	if (fd < 0)
 		return -1;
 	ret = ioctl(fd, BLKGETSIZE64, size);
 	close(fd);
