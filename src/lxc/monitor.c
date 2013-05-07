@@ -207,7 +207,8 @@ int lxc_monitord_spawn(const char *lxcpath)
 	}
 
 	if (pid1) {
-		waitpid(pid1, NULL, 0);
+		if (waitpid(pid1, NULL, 0) != pid1)
+			return -1;
 		return 0;
 	}
 
