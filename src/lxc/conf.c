@@ -1071,7 +1071,6 @@ int detect_shared_rootfs(void)
 				fclose(f);
 				return 1;
 			}
-			break;
 		}
 	}
 	fclose(f);
