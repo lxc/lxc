@@ -1203,6 +1203,8 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 			return -ENOMEM;
 		}
 		if (do_rsync(odelta, ndelta) < 0) {
+			free(osrc);
+			free(ndelta);
 			ERROR("copying overlayfs delta");
 			return -1;
 		}
