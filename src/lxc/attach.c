@@ -47,6 +47,12 @@
 #include "config.h"
 #include "apparmor.h"
 #include "utils.h"
+#include "commands.h"
+#include "cgroup.h"
+
+#if HAVE_SYS_PERSONALITY_H
+#include <sys/personality.h>
+#endif
 
 lxc_log_define(lxc_attach, lxc);
 
@@ -151,7 +157,7 @@ int lxc_attach_to_ns(pid_t pid, int which)
 		}
 
 		snprintf(path, MAXPATHLEN, "/proc/%d/ns/%s", pid, ns[i]);
-		fd[i] = open(path, O_RDONLY);
+		fd[i] = open(path, O_RDONLY | O_CLOEXEC);
 		if (fd[i] < 0) {
 			saved_errno = errno;
 
@@ -475,4 +481,491 @@ void lxc_attach_get_init_uidgid(uid_t* init_uid, gid_t* init_gid)
 
 	/* TODO: we should also parse supplementary groups and use
 	 * setgroups() to set them */
+}
+
+struct attach_clone_payload {
+	int ipc_socket;
+	lxc_attach_options_t* options;
+	struct lxc_proc_context_info* init_ctx;
+	lxc_attach_exec_t exec_function;
+	void* exec_payload;
+};
+
+static int attach_child_main(void* data);
+
+/* help the optimizer along if it doesn't know that exit always exits */
+#define rexit(c)  do { int __c = (c); exit(__c); return __c; } while(0)
+
+/* define default options if no options are supplied by the user */
+static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
+
+int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_function, void* exec_payload, lxc_attach_options_t* options, pid_t* attached_process)
+{
+	int ret, status;
+	pid_t init_pid, pid, attached_pid;
+	struct lxc_proc_context_info *init_ctx;
+	char* cwd;
+	char* new_cwd;
+	int ipc_sockets[2];
+
+	if (!options)
+		options = &attach_static_default_options;
+
+	init_pid = lxc_cmd_get_init_pid(name, lxcpath);
+	if (init_pid < 0) {
+		ERROR("failed to get the init pid");
+		return -1;
+	}
+
+	init_ctx = lxc_proc_get_context_info(init_pid);
+	if (!init_ctx) {
+		ERROR("failed to get context of the init process, pid = %ld", (long)init_pid);
+		return -1;
+	}
+
+	cwd = getcwd(NULL, 0);
+
+	/* determine which namespaces the container was created with
+	 * by asking lxc-start, if necessary
+	 */
+	if (options->namespaces == -1) {
+		options->namespaces = lxc_cmd_get_clone_flags(name, lxcpath);
+		/* call failed */
+		if (options->namespaces == -1) {
+			ERROR("failed to automatically determine the "
+			      "namespaces which the container unshared");
+			free(cwd);
+			free(init_ctx->aa_profile);
+			free(init_ctx);
+			return -1;
+		}
+	}
+
+	/* create a socket pair for IPC communication; set SOCK_CLOEXEC in order
+	 * to make sure we don't irritate other threads that want to fork+exec away
+	 *
+	 * IMPORTANT: if the initial process is multithreaded and another call
+	 * just fork()s away without exec'ing directly after, the socket fd will
+	 * exist in the forked process from the other thread and any close() in
+	 * our own child process will not really cause the socket to close properly,
+	 * potentiall causing the parent to hang.
+	 *
+	 * For this reason, while IPC is still active, we have to use shutdown()
+	 * if the child exits prematurely in order to signal that the socket
+	 * is closed and cannot assume that the child exiting will automatically
+	 * do that.
+	 *
+	 * IPC mechanism: (X is receiver)
+	 *   initial process        intermediate          attached
+	 *        X           <---  send pid of
+	 *                          attached proc,
+	 *                          then exit
+	 *    send 0 ------------------------------------>    X
+	 *                                              [do initialization]
+	 *        X  <------------------------------------  send 1
+	 *   [add to cgroup, ...]
+	 *    send 2 ------------------------------------>    X
+	 *   close socket                                 close socket
+	 *                                                run program
+	 */
+	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, ipc_sockets);
+	if (ret < 0) {
+		SYSERROR("could not set up required IPC mechanism for attaching");
+		free(cwd);
+		free(init_ctx->aa_profile);
+		free(init_ctx);
+		return -1;
+	}
+
+	/* create intermediate subprocess, three reasons:
+	 *       1. runs all pthread_atfork handlers and the
+	 *          child will no longer be threaded
+	 *          (we can't properly setns() in a threaded process)
+	 *       2. we can't setns() in the child itself, since
+	 *          we want to make sure we are properly attached to
+	 *          the pidns
+	 *       3. also, the initial thread has to put the attached
+	 *          process into the cgroup, which we can only do if
+	 *          we didn't already setns() (otherwise, user
+	 *          namespaces will hate us)
+	 */
+	pid = fork();
+
+	if (pid < 0) {
+		SYSERROR("failed to create first subprocess");
+		free(cwd);
+		free(init_ctx->aa_profile);
+		free(init_ctx);
+		return -1;
+	}
+
+	if (pid) {
+		pid_t to_cleanup_pid = pid;
+		int expected = 0;
+
+		/* inital thread, we close the socket that is for the
+		 * subprocesses
+		 */
+		close(ipc_sockets[1]);
+		free(cwd);
+
+		/* get pid from intermediate process */
+		ret = lxc_read_nointr_expect(ipc_sockets[0], &attached_pid, sizeof(attached_pid), NULL);
+		if (ret <= 0) {
+			if (ret != 0)
+				ERROR("error using IPC to receive pid of attached process");
+			goto cleanup_error;
+		}
+
+		/* reap intermediate process */
+		ret = wait_for_pid(pid);
+		if (ret < 0)
+			goto cleanup_error;
+
+		/* we will always have to reap the grandchild now */
+		to_cleanup_pid = attached_pid;
+
+		/* tell attached process it may start initializing */
+		status = 0;
+		ret = lxc_write_nointr(ipc_sockets[0], &status, sizeof(status));
+		if (ret <= 0) {
+			ERROR("error using IPC to notify attached process for initialization (0)");
+			goto cleanup_error;
+		}
+
+		/* wait for the attached process to finish initializing */
+		expected = 1;
+		ret = lxc_read_nointr_expect(ipc_sockets[0], &status, sizeof(status), &expected);
+		if (ret <= 0) {
+			if (ret != 0)
+				ERROR("error using IPC to receive notification from attached process (1)");
+			goto cleanup_error;
+		}
+
+		/* attach to cgroup, if requested */
+		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
+			ret = lxc_cgroup_attach(attached_pid, name, lxcpath);
+			if (ret < 0) {
+				ERROR("could not move attached process %ld to cgroup of container", (long)attached_pid);
+				goto cleanup_error;
+			}
+		}
+
+		/* tell attached process we're done */
+		status = 2;
+		ret = lxc_write_nointr(ipc_sockets[0], &status, sizeof(status));
+		if (ret <= 0) {
+			ERROR("error using IPC to notify attached process for initialization (2)");
+			goto cleanup_error;
+		}
+
+		/* now shut down communication with child, we're done */
+		shutdown(ipc_sockets[0], SHUT_RDWR);
+		close(ipc_sockets[0]);
+		free(init_ctx->aa_profile);
+		free(init_ctx);
+
+		/* we're done, the child process should now execute whatever
+		 * it is that the user requested. The parent can now track it
+		 * with waitpid() or similar.
+		 */
+
+		*attached_process = attached_pid;
+		return 0;
+
+	cleanup_error:
+		/* first shut down the socket, then wait for the pid,
+		 * otherwise the pid we're waiting for may never exit
+		 */
+		shutdown(ipc_sockets[0], SHUT_RDWR);
+		close(ipc_sockets[0]);
+		if (to_cleanup_pid)
+			(void) wait_for_pid(to_cleanup_pid);
+		free(init_ctx->aa_profile);
+		free(init_ctx);
+		return -1;
+	}
+
+	/* first subprocess begins here, we close the socket that is for the
+	 * initial thread
+	 */
+	close(ipc_sockets[0]);
+
+	/* attach now, create another subprocess later, since pid namespaces
+	 * only really affect the children of the current process
+	 */
+	ret = lxc_attach_to_ns(init_pid, options->namespaces);
+	if (ret < 0) {
+		ERROR("failed to enter the namespace");
+		shutdown(ipc_sockets[1], SHUT_RDWR);
+		rexit(-1);
+	}
+
+	/* attach succeeded, try to cwd */
+	if (options->initial_cwd)
+		new_cwd = options->initial_cwd;
+	else
+		new_cwd = cwd;
+	ret = chdir(new_cwd);
+	if (ret < 0)
+		WARN("could not change directory to '%s'", new_cwd);
+	free(cwd);
+
+	/* now create the real child process */
+	{
+		struct attach_clone_payload payload = {
+			.ipc_socket = ipc_sockets[1],
+			.options = options,
+			.init_ctx = init_ctx,
+			.exec_function = exec_function,
+			.exec_payload = exec_payload
+		};
+		/* We use clone_parent here to make this subprocess a direct child of
+		 * the initial process. Then this intermediate process can exit and
+		 * the parent can directly track the attached process.
+		 */
+		pid = lxc_clone(attach_child_main, &payload, CLONE_PARENT);
+	}
+
+	/* shouldn't happen, clone() should always return positive pid */
+	if (pid <= 0) {
+		SYSERROR("failed to create subprocess");
+		shutdown(ipc_sockets[1], SHUT_RDWR);
+		rexit(-1);
+	}
+
+	/* tell grandparent the pid of the pid of the newly created child */
+	ret = lxc_write_nointr(ipc_sockets[1], &pid, sizeof(pid));
+	if (ret != sizeof(pid)) {
+		/* if this really happens here, this is very unfortunate, since the
+		 * parent will not know the pid of the attached process and will
+		 * not be able to wait for it (and we won't either due to CLONE_PARENT)
+		 * so the parent won't be able to reap it and the attached process
+		 * will remain a zombie
+		 */
+		ERROR("error using IPC to notify main process of pid of the attached process");
+		shutdown(ipc_sockets[1], SHUT_RDWR);
+		rexit(-1);
+	}
+
+	/* the rest is in the hands of the initial and the attached process */
+	rexit(0);
+}
+
+int attach_child_main(void* data)
+{
+	struct attach_clone_payload* payload = (struct attach_clone_payload*)data;
+	int ipc_socket = payload->ipc_socket;
+	lxc_attach_options_t* options = payload->options;
+	struct lxc_proc_context_info* init_ctx = payload->init_ctx;
+	long new_personality;
+	int ret;
+	int status;
+	int expected;
+	long flags;
+	int fd;
+	uid_t new_uid;
+	gid_t new_gid;
+
+	/* wait for the initial thread to signal us that it's ready
+	 * for us to start initializing
+	 */
+	expected = 0;
+	status = -1;
+	ret = lxc_read_nointr_expect(ipc_socket, &status, sizeof(status), &expected);
+	if (ret <= 0) {
+		ERROR("error using IPC to receive notification from initial process (0)");
+		shutdown(ipc_socket, SHUT_RDWR);
+		rexit(-1);
+	}
+
+	/* load apparmor profile */
+	if ((options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_APPARMOR)) {
+		ret = attach_apparmor(init_ctx->aa_profile);
+		if (ret < 0) {
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+	}
+
+	/* A description of the purpose of this functionality is
+	 * provided in the lxc-attach(1) manual page. We have to
+	 * remount here and not in the parent process, otherwise
+	 * /proc may not properly reflect the new pid namespace.
+	 */
+	if (!(options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_REMOUNT_PROC_SYS)) {
+		ret = lxc_attach_remount_sys_proc();
+		if (ret < 0) {
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+	}
+
+	/* now perform additional attachments*/
+#if HAVE_SYS_PERSONALITY_H
+	if (options->personality < 0)
+		new_personality = init_ctx->personality;
+	else
+		new_personality = options->personality;
+
+	if (options->attach_flags & LXC_ATTACH_SET_PERSONALITY) {
+		ret = personality(new_personality);
+		if (ret < 0) {
+			SYSERROR("could not ensure correct architecture");
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+	}
+#endif
+
+	if (options->attach_flags & LXC_ATTACH_DROP_CAPABILITIES) {
+		ret = lxc_attach_drop_privs(init_ctx);
+		if (ret < 0) {
+			ERROR("could not drop privileges");
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+	}
+
+	/* always set the environment (specify (LXC_ATTACH_KEEP_ENV, NULL, NULL) if you want this to be a no-op) */
+	ret = lxc_attach_set_environment(options->env_policy, options->extra_env_vars, options->extra_keep_env);
+	if (ret < 0) {
+		ERROR("could not set initial environment for attached process");
+		shutdown(ipc_socket, SHUT_RDWR);
+		rexit(-1);
+	}
+
+	/* set user / group id */
+	new_uid = 0;
+	new_gid = 0;
+	/* ignore errors, we will fall back to root in that case
+	 * (/proc was not mounted etc.)
+	 */
+	if (options->namespaces & CLONE_NEWUSER)
+		lxc_attach_get_init_uidgid(&new_uid, &new_gid);
+
+	if (options->uid != (uid_t)-1)
+		new_uid = options->uid;
+	if (options->gid != (gid_t)-1)
+		new_gid = options->gid;
+
+	/* try to set the uid/gid combination */
+	if ((new_gid != 0 || options->namespaces & CLONE_NEWUSER) && setgid(new_gid)) {
+		SYSERROR("switching to container gid");
+		shutdown(ipc_socket, SHUT_RDWR);
+		rexit(-1);
+	}
+	if ((new_uid != 0 || options->namespaces & CLONE_NEWUSER) && setuid(new_uid)) {
+		SYSERROR("switching to container uid");
+		shutdown(ipc_socket, SHUT_RDWR);
+		rexit(-1);
+	}
+
+	/* tell initial process it may now put us into the cgroups */
+	status = 1;
+	ret = lxc_write_nointr(ipc_socket, &status, sizeof(status));
+	if (ret != sizeof(status)) {
+		ERROR("error using IPC to notify initial process for initialization (1)");
+		shutdown(ipc_socket, SHUT_RDWR);
+		rexit(-1);
+	}
+
+	/* wait for the initial thread to signal us that it has done
+	 * everything for us when it comes to cgroups etc.
+	 */
+	expected = 2;
+	status = -1;
+	ret = lxc_read_nointr_expect(ipc_socket, &status, sizeof(status), &expected);
+	if (ret <= 0) {
+		ERROR("error using IPC to receive final notification from initial process (2)");
+		shutdown(ipc_socket, SHUT_RDWR);
+		rexit(-1);
+	}
+
+	shutdown(ipc_socket, SHUT_RDWR);
+	close(ipc_socket);
+	free(init_ctx->aa_profile);
+	free(init_ctx);
+
+	/* The following is done after the communication socket is
+	 * shut down. That way, all errors that might (though
+	 * unlikely) occur up until this point will have their messages
+	 * printed to the original stderr (if logging is so configured)
+	 * and not the fd the user supplied, if any.
+	 */
+
+	/* fd handling for stdin, stdout and stderr;
+	 * ignore errors here, user may want to make sure
+	 * the fds are closed, for example */
+	if (options->stdin_fd >= 0 && options->stdin_fd != 0)
+		dup2(options->stdin_fd, 0);
+	if (options->stdout_fd >= 0 && options->stdout_fd != 1)
+		dup2(options->stdout_fd, 1);
+	if (options->stderr_fd >= 0 && options->stderr_fd != 2)
+		dup2(options->stderr_fd, 2);
+
+	/* close the old fds */
+	if (options->stdin_fd > 2)
+		close(options->stdin_fd);
+	if (options->stdout_fd > 2)
+		close(options->stdout_fd);
+	if (options->stderr_fd > 2)
+		close(options->stderr_fd);
+
+	/* try to remove CLOEXEC flag from stdin/stdout/stderr,
+	 * but also here, ignore errors */
+	for (fd = 0; fd <= 2; fd++) {
+		flags = fcntl(fd, F_GETFL);
+		if (flags < 0)
+			continue;
+		if (flags & FD_CLOEXEC)
+			fcntl(fd, F_SETFL, flags & ~FD_CLOEXEC);
+	}
+
+	/* we're done, so we can now do whatever the user intended us to do */
+	rexit(payload->exec_function(payload->exec_payload));
+}
+
+int lxc_attach_run_command(void* payload)
+{
+	lxc_attach_command_t* cmd = (lxc_attach_command_t*)payload;
+
+	execvp(cmd->program, cmd->argv);
+	SYSERROR("failed to exec '%s'", cmd->program);
+	return -1;
+}
+
+int lxc_attach_run_shell(void* payload)
+{
+	uid_t uid;
+	struct passwd *passwd;
+	char *user_shell;
+
+	/* ignore payload parameter */
+	(void)payload;
+
+	uid = getuid();
+	passwd = getpwuid(uid);
+
+	/* this probably happens because of incompatible nss
+	 * implementations in host and container (remember, this
+	 * code is still using the host's glibc but our mount
+	 * namespace is in the container)
+	 * we may try to get the information by spawning a
+	 * [getent passwd uid] process and parsing the result
+	 */
+	if (!passwd)
+		user_shell = lxc_attach_getpwshell(uid);
+	else
+		user_shell = passwd->pw_shell;
+
+	if (user_shell)
+		execlp(user_shell, user_shell, NULL);
+
+	/* executed if either no passwd entry or execvp fails,
+	 * we will fall back on /bin/sh as a default shell
+	 */
+	execlp("/bin/sh", "/bin/sh", NULL);
+	SYSERROR("failed to exec shell");
+	return -1;
 }
