@@ -250,6 +250,12 @@ default_path=@LXCPATH@
 release=
 arch=$(uname -m)
 
+# template mknods, requires root
+if [ $(id -u) -ne 0 ]; then
+   echo "$(basename $0): must be run as root" >&2
+   exit 1
+fi
+
 while [ $# -gt 0 ]; do
     opt="$1"
     shift
