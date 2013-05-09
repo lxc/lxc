@@ -171,13 +171,6 @@ int main(int argc, char *argv[])
 	struct bdev_specs spec;
 	int flags = 0;
 
-	/* this is a short term test.  We'll probably want to check for
-	 * write access to lxcpath instead */
-	if (geteuid()) {
-		fprintf(stderr, "%s must be run as root\n", argv[0]);
-		exit(1);
-	}
-
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(1);
 
@@ -190,6 +183,18 @@ int main(int argc, char *argv[])
 		my_args.bdevtype = "_unset";
 	if (!validate_bdev_args(&my_args))
 		exit(1);
+
+	if (geteuid()) {
+		if (access(my_args.lxcpath[0], O_RDWR) < 0) {
+			fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
+			exit(1);
+		}
+		if (strcmp(my_args.bdevtype, "dir") && strcmp(my_args.bdevtype, "_unset")) {
+			fprintf(stderr, "Unprivileged users can only create directory backed containers\n");
+			exit(1);
+		}
+	}
+
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
