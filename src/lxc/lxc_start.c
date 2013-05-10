@@ -227,14 +227,6 @@ int main(int argc, char *argv[])
 	}
 
 	if (my_args.daemonize) {
-		/* do an early check for needed privs, since otherwise the
-		 * user won't see the error */
-
-		if (!lxc_caps_check()) {
-			ERROR("Not running with sufficient privilege");
-			goto out;
-		}
-
 		if (daemon(0, 0)) {
 			SYSERROR("failed to daemonize '%s'", my_args.name);
 			goto out;

@@ -30,7 +30,6 @@ extern int lxc_caps_reset(void);
 extern int lxc_caps_down(void);
 extern int lxc_caps_up(void);
 extern int lxc_caps_init(void);
-extern int lxc_caps_check(void);
 
 extern int lxc_caps_last_cap(void);
 #else
@@ -45,9 +44,6 @@ static inline int lxc_caps_up(void) {
 }
 static inline int lxc_caps_init(void) {
         return 0;
-}
-static inline int lxc_caps_check(void) {
-        return 1;
 }
 
 static inline int lxc_caps_last_cap(void) {

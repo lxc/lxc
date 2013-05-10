@@ -253,16 +253,9 @@ out_sigfd:
 	return -1;
 }
 
-extern int lxc_caps_check(void);
-
 struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char *lxcpath)
 {
 	struct lxc_handler *handler;
-
-	if (!lxc_caps_check()) {
-		ERROR("Not running with sufficient privilege");
-		return NULL;
-	}
 
 	handler = malloc(sizeof(*handler));
 	if (!handler)
@@ -417,10 +410,10 @@ static int container_reboot_supported(void *arg)
 	return 0;
 }
 
-static int must_drop_cap_sys_boot(void)
+static int must_drop_cap_sys_boot(struct lxc_conf *conf)
 {
 	FILE *f = fopen("/proc/sys/kernel/ctrl-alt-del", "r");
-	int ret, cmd, v;
+	int ret, cmd, v, flags;
         long stack_size = 4096;
         void *stack = alloca(stack_size);
         int status;
@@ -439,11 +432,15 @@ static int must_drop_cap_sys_boot(void)
 	}
 	cmd = v ? LINUX_REBOOT_CMD_CAD_ON : LINUX_REBOOT_CMD_CAD_OFF;
 
+	flags = CLONE_NEWPID | SIGCHLD;
+	if (!lxc_list_empty(&conf->id_map))
+		flags |= CLONE_NEWUSER;
+
 #ifdef __ia64__
-        pid = __clone2(container_reboot_supported, stack, stack_size, CLONE_NEWPID | SIGCHLD, &cmd);
+        pid = __clone2(container_reboot_supported, stack, stack_size, flags,  &cmd);
 #else
         stack += stack_size;
-        pid = clone(container_reboot_supported, stack, CLONE_NEWPID | SIGCHLD, &cmd);
+        pid = clone(container_reboot_supported, stack, flags, &cmd);
 #endif
         if (pid < 0) {
                 SYSERROR("failed to clone\n");
@@ -668,6 +665,9 @@ int lxc_spawn(struct lxc_handler *handler)
 		curcgroup = alloca(len);
 		if (lxc_curcgroup(curcgroup, len) <= 1)
 			curcgroup = NULL;
+		FILE *f = fopen("/tmp/a", "a");
+		fprintf(f, "curcgroup is %s\n", curcgroup);
+		fclose(f);
 	}
 	if ((handler->cgroup = lxc_cgroup_path_create(curcgroup, name)) == NULL)
 		goto out_delete_net;
@@ -776,7 +776,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	handler->ops = ops;
 	handler->data = data;
 
-	if (must_drop_cap_sys_boot()) {
+	if (must_drop_cap_sys_boot(handler->conf)) {
 		#if HAVE_SYS_CAPABILITY_H
 		DEBUG("Dropping cap_sys_boot\n");
 		#else
