@@ -363,6 +363,7 @@ AC_CONFIG_FILES([
 	hooks/Makefile
 
 	templates/Makefile
+	templates/lxc-cirros
 	templates/lxc-debian
 	templates/lxc-ubuntu
 	templates/lxc-ubuntu-cloud
