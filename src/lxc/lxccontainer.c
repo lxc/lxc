@@ -18,6 +18,7 @@
  */
 
 #define _GNU_SOURCE
+#include <pthread.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -36,6 +37,8 @@
 #include "bdev.h"
 #include <lxc/utils.h>
 #include <lxc/monitor.h>
+
+static pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Define unshare() if missing from the C library */
 /* this is also in attach.c and lxccontainer.c: commonize it in utils.c */
@@ -58,6 +61,7 @@ lxc_log_define(lxc_container, lxc);
 /* LOCKING
  * c->privlock protects the struct lxc_container from multiple threads.
  * c->slock protects the on-disk container data
+ * thread_mutex protects process data (ex: fd table) from multiple threads
  * NOTHING mutexes two independent programs with their own struct
  * lxc_container for the same c->name, between API calls.  For instance,
  * c->config_read(); c->start();  Between those calls, data on disk
@@ -391,13 +395,24 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		if (!lxc_container_get(c))
 			return false;
 		lxc_monitord_spawn(c->config_path);
+
+		ret = pthread_mutex_lock(&thread_mutex);
+		if (ret != 0) {
+			ERROR("pthread_mutex_lock returned:%d %s", ret, strerror(ret));
+			return false;
+		}
 		pid_t pid = fork();
 		if (pid < 0) {
 			lxc_container_put(c);
+			pthread_mutex_unlock(&thread_mutex);
 			return false;
 		}
-		if (pid != 0)
-			return wait_on_daemonized_start(c);
+		if (pid != 0) {
+			ret = wait_on_daemonized_start(c);
+			pthread_mutex_unlock(&thread_mutex);
+			return ret;
+		}
+		pthread_mutex_unlock(&thread_mutex);
 		/* second fork to be reparented by init */
 		pid = fork();
 		if (pid < 0) {
