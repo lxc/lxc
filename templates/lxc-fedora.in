@@ -32,11 +32,27 @@ default_path=@LXCPATH@
 root_password=root
 
 # is this fedora?
-[ -f /etc/fedora-release ] && is_fedora=true
-
-if [ "$arch" = "i686" ]; then
-    arch=i386
+# Alow for weird remixes like the Raspberry Pi
+if [ -e /etc/redhat-release ]
+then
+    fedora_host_ver=$( sed -e '/^Fedora /!d' -e 's/Fedora.*\srelease\s*\([0-9][0-9]*\)\s.*/\1/' < /etc/redhat-release )
+    if [ "$fedora_host_ver" != "" ]
+    then
+        is_fedora=true
+    fi
 fi
+
+# Map a few architectures to their generic Fedora repository archs.
+# The two ARM archs are a bit of a guesstimate for the v5 and v6
+# archs.  V6 should have hardware floating point (Rasberry Pi).
+# The "arm" arch is safer (no hardware floating point).  So
+# there may be cases where we "get it wrong" for some v6 other
+# than RPi.
+case "$arch" in
+i686) arch=i386 ;;
+armv3l|armv4l|armv5l) arch=arm ;;
+armv6l|armv7l|armv8l) arch=armhfp ;;
+esac
 
 configure_fedora()
 {
@@ -62,9 +78,15 @@ NETWORKING=yes
 HOSTNAME=${name}
 EOF
 
+    # set hostname on systemd Fedora systems
+    if [ $release -gt 14 ]; then
+        echo "${name}" > ${rootfs_path}/etc/hostname
+    fi
+
     # set minimal hosts
     cat <<EOF > $rootfs_path/etc/hosts
 127.0.0.1 localhost $name
+::1                 localhost6.localdomain6 localhost6
 EOF
 
     dev_path="${rootfs_path}/dev"
@@ -254,6 +276,8 @@ lxc.pts = 1024
 lxc.mount = $config_path/fstab
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
+lxc.autodev = $auto_dev
+
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
 
@@ -321,7 +345,7 @@ Mandatory args:
 Optional args:
   -p,--path         path to where the container rootfs will be created, defaults to @LXCPATH@. The container config will go under @LXCPATH@ in that case
   -c,--clean        clean the cache
-  -R,--release      Fedora release for the new container. if the host is Fedora, then it will defaultto the host's release.
+  -R,--release      Fedora release for the new container. if the host is Fedora, then it will default to the host's release.
   -A,--arch         NOT USED YET. Define what arch the container will be [i686,x86_64]
   -h,--help         print this help
 EOF
@@ -366,7 +390,7 @@ fi
 
 if [ -n "$needed_pkgs" ]; then
     echo "Missing commands: $needed_pkgs"
-    echo "Please install these using \"sudo apt-get install $needed_pkgs\""
+    echo "Please install these using \"sudo yum install $needed_pkgs\""
     exit 1
 fi
 
@@ -375,12 +399,20 @@ if [ -z "$path" ]; then
 fi
 
 if [ -z "$release" ]; then
-    if [ "$is_fedora" ]; then
-        release=$(cat /etc/fedora-release |awk '/^Fedora/ {print $3}')
+    if [ "$is_fedora" -a "$fedora_host_ver" ]; then
+        release=$fedora_host_ver
     else
-        echo "This is not a fedora host and release missing, defaulting to 14. use -R|--release to specify release"
-        release=14
+        echo "This is not a fedora host and release missing, defaulting to 17. use -R|--release to specify release"
+        release=17
     fi
+fi
+
+# Fedora 15 and above run systemd.  We need autodev enabled to keep
+# systemd from causing problems.
+if [ $release -gt 14 ]; then
+    auto_dev="1"
+else
+    auto_dev="0"
 fi
 
 if [ "$(id -u)" != "0" ]; then
