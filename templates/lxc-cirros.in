@@ -21,18 +21,17 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 VERBOSITY=0
-TEMP_D=""
 DOWNLOAD_URL="http://download.cirros-cloud.net/"
-CACHE_D="/var/cache/lxc/cirros"
 CACHE_D="@LOCALSTATEDIR@/cache/lxc/cirros"
-TMP_FILE=""
 
 UNAME_M=$(uname -m)
 ARCHES=( i386 x86_64 amd64 arm )
 STREAMS=( released devel )
+SOURCES=( nocloud none )
 BUILD="standard"
 
 DEF_VERSION="released"
+DEF_SOURCE="nocloud"
 case "${UNAME_M}" in
     i?86) DEF_ARCH="i386";;
     x86_64) DEF_ARCH="x86_64";;
@@ -40,11 +39,7 @@ case "${UNAME_M}" in
     *) DEF_ARCH="i386";;
 esac
 
-
 error() { echo "$@" 1>&2; }
-errorp() { printf "$@" 1>&2; }
-fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
-failp() { [ $# -eq 0 ] || errorp "$@"; exit 1; }
 inargs() {
     local needle="$1" x=""
     shift
@@ -58,7 +53,7 @@ Usage() {
     cat <<EOF
 ${0##*/} [options]
 
-   -a | --arch     A  architecture to use [${ARCHES}]
+   -a | --arch     A  architecture to use [${ARCHES[*]}]
                       default: ${DEF_ARCH}
    -h | --help        this usage
    -v | --verbose     increase verbosity
@@ -66,14 +61,14 @@ ${0##*/} [options]
    -v | --version  V  version [${STREAMS[*]}]
                       default: ${DEF_VERSION}
    -u | --userdata U  user-data file
+        --tarball  T  read from tarball 'T' rather than downloading
+                      or using cache.
+        --source   S  insert userdata/metadata via source S
+                      [${SOURCES[*]}]
 EOF
 }
 
-bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || error "$@"; exit 1; }
-cleanup() {
-    [ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
-    [ -z "${TEMP_FILE}" ] || rm -Rf "${TEMP_FILE}"
-}
+bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || error "$@"; return 1; }
 
 debug() {
     local level=${1}; shift;
@@ -144,8 +139,8 @@ lxc.cgroup.devices.allow = c 10:232 rwm
 EOF
 }
 
-insert_ds() {
-    local root_d="$1" dstype="$2" authkey="$3" userdata="$4"
+insert_ds_nocloud() {
+    local root_d="$1" authkey="$2" udfile="$3"
     local sdir="$root_d/var/lib/cloud/seed/nocloud"
 
     mkdir -p "$sdir" ||
@@ -158,9 +153,19 @@ insert_ds() {
         ${authkeys:+"public-keys=${authkeys}"} > "$sdir/meta-data" ||
         { error "failed to write metadata to $sdir/meta-data"; return 1; }
 
-    [ -z "$userdata" ] ||
-        echo "$userdata" > "$sdir/user-data" ||
-        { error "failed to write user-data to $sdir"; return 1; }
+    if [ -n "$udfile" ]; then
+        cat "$udfile" > "$sdir/user-data" ||
+            { error "failed to write user-data to $sdir"; return 1; }
+    else
+        rm -f "$sdir/user-data"
+    fi
+}
+
+insert_ds() {
+    local dstype="$1" root_d="$2" authkey="$3" udfile="$4"
+    case "$dstype" in
+        nocloud) insert_ds_nocloud "$root_d" "$authkey" "$udfile"
+    esac
 }
 
 extract_rootfs() {
@@ -187,6 +192,7 @@ download_tarball() {
     mkdir -p "${outd}" ||
         { error "failed to create ${outd}"; return 1; }
 
+    debug 1 "downloading ${baseurl%/}/$dlpath" to "${cached}/$dlpath"
     wget "${baseurl%/}/$dlpath" -O "$cached/${dlpath}.$$" &&
         mv "$cached/$dlpath.$$" "$cached/$dlpath" || {
             rm -f "$cached/$dlpath.$$";
@@ -196,93 +202,118 @@ download_tarball() {
     _RET="$cached/$dlpath"
 }
 
-short_opts="a:n:p:S:huV"
-long_opts="arch:,auth-key:,name:,path:,userdata:,verbose,version:"
-getopt_out=$(getopt --name "${0##*/}" \
-    --options "${short_opts}" --long "${long_opts}" -- "$@") &&
-    eval set -- "${getopt_out}" ||
-    bad_Usage
+create_main() {
+    local short_opts="a:hn:p:S:uvV"
+    local long_opts="arch:,auth-key:,name:,path:,tarball:,userdata:,verbose,version:"
+    local getopt_out=""
+    getopt_out=$(getopt --name "${0##*/}" \
+        --options "${short_opts}" --long "${long_opts}" -- "$@") &&
+        eval set -- "${getopt_out}" ||
+        { bad_Usage; return; }
 
-arch="${DEF_ARCH}"
-version="${DEF_VERSION}"
-authkey_f=""
-authkeys=""
-userdata=""
-seed=true
-path=""
+    local arch="${DEF_ARCH}" dsource="${DEF_SOURCE}" version="${DEF_VERSION}"
+    local authkey_f="" authkeys="" userdata_f="" path="" tarball=""
+    local cur="" next=""
 
-while [ $# -ne 0 ]; do
-    cur=$1; next=$2;
-    case "$cur" in
-        -a|--arch) arch="$next"; shift;;
-        -h|--help) Usage ; exit 0;;
-        -n|--name) name="$next"; shift;;
-        -v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
-        -S|--auth-key) authkey_f="$next"; shift;;
-        -p|--path) path=$next; shift;;
-        -v|--version) version=$next; shift;;
-        -u|--userdata) userdata="$next"; shift;;
-        --) shift; break;;
-    esac
-    shift;
-done
+    while [ $# -ne 0 ]; do
+        cur=$1; next=$2;
+        case "$cur" in
+            -a|--arch) arch="$next"; shift;;
+            -h|--help) Usage ; return 0;;
+            -n|--name) name="$next"; shift;;
+            -v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+            -S|--auth-key) authkey_f="$next"; shift;;
+            -p|--path) path=$next; shift;;
+            -v|--version) version=$next; shift;;
+            -u|--userdata) userdata_f="$next"; shift;;
+               --tarball) tarball="$next"; shift;;
+               --source) dsource="$next"; shift;;
+            --) shift; break;;
+        esac
+        shift;
+    done
 
-[ $# -eq 0 ] || bad_Usage "unexpected arguments: $*"
-[ -n "$path" ] || fail "'path' parameter is required"
+    [ $# -eq 0 ] || { bad_Usage "unexpected arguments: $*"; return; }
+    [ -n "$path" ] || { error "'path' parameter is required"; return 1; }
 
-if [ "$(id -u)" != "0" ]; then
-    fail "must be run as root"
-fi
-
-case "$arch" in
-    i?86) arch="i386";;
-    amd64) arch="x86_65";;
-esac
-
-inargs "$arch" "${ARCHES[@]}" ||
-    fail "bad arch '$arch'. allowed: ${ARCHES[*]}"
-
-if inargs "$version" "${STREAMS[@]}"; then
-    out=$(wget -O - -q "${DOWNLOAD_URL%/}/version/$version") ||
-        fail "failed to convert 'version=$version'"
-    version="$out"
-fi
-
-if [ -n "$authkey_f" ]; then
-    if [ ! -f "$authkey_f" ]; then
-        echo "--auth-key=${authkey_f} must reference a file"
-        exit 1
+    if [ "$(id -u)" != "0" ]; then
+        { error "must be run as root"; return 1; }
     fi
-    authkeys=$(cat "$authkey")
-fi
 
-trap cleanup EXIT
+    case "$arch" in
+        i?86) arch="i386";;
+        amd64) arch="x86_64";;
+    esac
 
-download_tarball "$arch" "$version" "${CACHE_D}" "${DOWNLOAD_URL}" || fail
-tarball="$_RET"
+    inargs "$arch" "${ARCHES[@]}" ||
+        { error "bad arch '$arch'. allowed: ${ARCHES[*]}"; return 1; }
 
-rootfs_d="$path/rootfs"
-extract_rootfs "${tarball}" "${rootfs_d}" || fail
+    inargs "$dsource" "${SOURCES[@]}" ||
+        { error "bad source '$dsource'. allowed: ${SOURCES[*]}"; return 1; }
 
-# oopsie - some cirros tarballs ship random as a blockdev, breaking
-# dropbear.
-if [ -b ${rootfs_d}/dev/random ]; then
-    rm -f ${rootfs_d}/dev/random
-    rm -f ${rootfs_d}/dev/urandom
-    mknod ${rootfs_d}/dev/random c 1 8
-    mknod ${rootfs_d}/dev/urandom c 1 9
-    chmod 777 ${rootfs_d}/dev/random ${rootfs_d}/dev/urandom
-fi
+    if [ "$dsource" = "none" ] && [ -n "$userdata_f" -o -n "$authkey_f" ]; then
+        error "userdata and authkey are incompatible with --source=none";
+        return 1;
+    fi
 
-if false; then
-    insert_ds "$path/rootfs" "nocloud" "$authkeys" "$userdata" ||
-        fail "failed to insert userdata to $path/rootfs"
-else
-    # disable ec2, because its annoying
-    sed -i 's,ec2,,' "$path/rootfs/etc/cirros-init/config"
-fi
+    if [ -n "$authkey_f" ]; then
+        if [ ! -f "$authkey_f" ]; then
+            error "--auth-key=${authkey_f} must reference a file"
+            return 1
+        fi
+        authkeys=$(cat "$authkey_f") ||
+            { error "failed to read ${authkey_f}"; return 1; }
+    fi
 
-copy_configuration "$path" "$path/rootfs" "$name" "$arch" "$release"
+    if [ -n "$userdata_f" -a ! -f "${userdata_f}" ]; then
+        error "${userdata_f}: --userdata arg not a file"
+        return 1
+    fi
 
+    if [ -z "$tarball" ]; then
+        if inargs "$version" "${STREAMS[@]}"; then
+            out=$(wget -O - -q "${DOWNLOAD_URL%/}/version/$version") ||
+                { error "failed to convert 'version=$version'"; return 1; }
+            version="$out"
+        fi
+        download_tarball "$arch" "$version" "${CACHE_D}" "${DOWNLOAD_URL}" ||
+            return
+        tarball="$_RET"
+    fi
+
+    local rootfs_d="$path/rootfs"
+    extract_rootfs "${tarball}" "${rootfs_d}" || return
+
+    # cirros 0.3.1 was broken for /dev/random and /dev/urandom
+    if [ -b "$rootfs_d/dev/random" ]; then
+        rm -f "$rootfs_d/dev/random" &&
+            mknod --mode=666 "$rootfs_d/dev/random" c 1 8 ||
+           { error "failed to fix /dev/random"; return 1; } 
+    fi
+    if [ -b "$rootfs_d/dev/urandom" ]; then
+        rm -f "$rootfs_d/dev/urandom" &&
+        mknod --mode=666 "$rootfs_d/dev/urandom" c 1 9 ||
+           { error "failed to fix /dev/urandom"; return 1; } 
+    fi
+
+    if [ "$version" = "0.3.2~pre1" ]; then
+        debug 1 "fixing console for lxc and '$version'"
+        sed -i 's,^\(#console.* 115200 \)# /dev/console,\1 console,g' \
+            "$rootfs_d/etc/inittab" ||
+            { error "failed to fix console entry for $version"; return 1; }
+    fi
+
+    if [ "$dsource" != "none" ]; then
+        insert_ds "$dsource" "$path/rootfs" "$authkeys" "$userdata_f" || {
+            error "failed to insert userdata to $path/rootfs"
+            return 1
+        }
+    fi
+
+    copy_configuration "$path" "$path/rootfs" "$name" "$arch" "$release"
+    return
+}
+
+create_main "$@"
 
 # vi: ts=4 expandtab
