@@ -1364,16 +1364,14 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 	return 0;
 }
 
-static int clone_update_rootfs(struct lxc_container *c, int flags)
+static int clone_update_rootfs(struct lxc_container *c, int flags, char **hookargs)
 {
 	int ret = -1;
 	char path[MAXPATHLEN];
 	struct bdev *bdev;
 	FILE *fout;
 	pid_t pid;
-
-	if (flags & LXC_CLONE_KEEPNAME)
-		return 0;
+	struct lxc_conf *conf = c->lxc_conf;
 
 	/* update hostname in rootfs */
 	/* we're going to mount, so run in a clean namespace to simplify cleanup */
@@ -1393,17 +1391,41 @@ static int clone_update_rootfs(struct lxc_container *c, int flags)
 		exit(1);
 	if (bdev->ops->mount(bdev) < 0)
 		exit(1);
-	ret = snprintf(path, MAXPATHLEN, "%s/etc/hostname", bdev->dest);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		exit(1);
-	if (!(fout = fopen(path, "w"))) {
-		SYSERROR("unable to open %s: ignoring\n", path);
-		exit(0);
+
+	if (!lxc_list_empty(&conf->hooks[LXCHOOK_CLONE])) {
+		/* Start of environment variable setup for hooks */
+		if (setenv("LXC_NAME", c->name, 1)) {
+			SYSERROR("failed to set environment variable for container name");
+		}
+		if (setenv("LXC_CONFIG_FILE", conf->rcfile, 1)) {
+			SYSERROR("failed to set environment variable for config path");
+		}
+		if (setenv("LXC_ROOTFS_MOUNT", conf->rootfs.mount, 1)) {
+			SYSERROR("failed to set environment variable for rootfs mount");
+		}
+		if (setenv("LXC_ROOTFS_PATH", conf->rootfs.path, 1)) {
+			SYSERROR("failed to set environment variable for rootfs mount");
+		}
+
+		if (run_lxc_hooks(c->name, "clone", conf, hookargs)) {
+			ERROR("Error executing clone hook for %s", c->name);
+			exit(1);
+		}
 	}
-	if (fprintf(fout, "%s", c->name) < 0)
-		exit(1);
-	if (fclose(fout) < 0)
-		exit(1);
+
+	if (!(flags & LXC_CLONE_KEEPNAME)) {
+		ret = snprintf(path, MAXPATHLEN, "%s/etc/hostname", bdev->dest);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			exit(1);
+		if (!(fout = fopen(path, "w"))) {
+			SYSERROR("unable to open %s: ignoring\n", path);
+			exit(0);
+		}
+		if (fprintf(fout, "%s", c->name) < 0)
+			exit(1);
+		if (fclose(fout) < 0)
+			exit(1);
+	}
 	exit(0);
 }
 
@@ -1436,7 +1458,8 @@ static int create_file_dirname(char *path)
 
 struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 		const char *lxcpath, int flags,
-		const char *bdevtype, const char *bdevdata, unsigned long newsize)
+		const char *bdevtype, const char *bdevdata, unsigned long newsize,
+		char **hookargs)
 {
 	struct lxc_container *c2 = NULL;
 	char newpath[MAXPATHLEN];
@@ -1525,7 +1548,7 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 	if (!c2->save_config(c2, NULL))
 		goto out;
 
-	if (clone_update_rootfs(c2, flags) < 0)
+	if (clone_update_rootfs(c2, flags, hookargs) < 0)
 		goto out;
 
 	// TODO: update c's lxc.snapshot = count

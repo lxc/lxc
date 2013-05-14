@@ -461,7 +461,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 	}
 	/* End of environment variable setup for hooks */
 
-	if (run_lxc_hooks(name, "pre-start", conf)) {
+	if (run_lxc_hooks(name, "pre-start", conf, NULL)) {
 		ERROR("failed to run pre-start hooks for container '%s'.", name);
 		goto out_aborting;
 	}
@@ -513,7 +513,7 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_set_state(name, handler, STOPPING);
 	lxc_set_state(name, handler, STOPPED);
 
-	if (run_lxc_hooks(name, "post-stop", handler->conf))
+	if (run_lxc_hooks(name, "post-stop", handler->conf, NULL))
 		ERROR("failed to run post-stop hooks for container '%s'.", name);
 
 	/* reset mask set by setup_signal_fd */
@@ -676,7 +676,7 @@ static int do_start(void *data)
 	if (lxc_seccomp_load(handler->conf) != 0)
 		goto out_warn_father;
 
-	if (run_lxc_hooks(handler->name, "start", handler->conf)) {
+	if (run_lxc_hooks(handler->name, "start", handler->conf, NULL)) {
 		ERROR("failed to run start hooks for container '%s'.", handler->name);
 		goto out_warn_father;
 	}

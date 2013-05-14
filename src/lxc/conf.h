@@ -237,7 +237,7 @@ struct lxc_rootfs {
  */
 enum lxchooks {
 	LXCHOOK_PRESTART, LXCHOOK_PREMOUNT, LXCHOOK_MOUNT, LXCHOOK_AUTODEV,
-	LXCHOOK_START, LXCHOOK_POSTSTOP, NUM_LXC_HOOKS};
+	LXCHOOK_START, LXCHOOK_POSTSTOP, LXCHOOK_CLONE, NUM_LXC_HOOKS};
 extern char *lxchook_names[NUM_LXC_HOOKS];
 
 struct saved_nic {
@@ -284,7 +284,7 @@ struct lxc_conf {
 	char *rcfile;	// Copy of the top level rcfile we read
 };
 
-int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);
+int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf, char *argv[]);
 
 extern int setup_cgroup(const char *cgpath, struct lxc_list *cgroups);
 extern int setup_cgroup_devices(const char *cgpath, struct lxc_list *cgroups);

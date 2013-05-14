@@ -105,7 +105,7 @@ struct lxc_container {
 	 */
 	struct lxc_container *(*clone)(struct lxc_container *c, const char *newname,
 		const char *lxcpath, int flags, const char *bdevtype,
-		const char *bdevdata, unsigned long newsize);
+		const char *bdevdata, unsigned long newsize, char **hookargs);
 
 #if 0
 	bool (*commit_cgroups)(struct lxc_container *c);

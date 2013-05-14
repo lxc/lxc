@@ -117,6 +117,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.hook.autodev",         config_hook                 },
 	{ "lxc.hook.start",           config_hook                 },
 	{ "lxc.hook.post-stop",       config_hook                 },
+	{ "lxc.hook.clone",           config_hook                 },
 	{ "lxc.network.type",         config_network_type         },
 	{ "lxc.network.flags",        config_network_flags        },
 	{ "lxc.network.link",         config_network_link         },
@@ -894,6 +895,8 @@ static int config_hook(const char *key, const char *value,
 		return add_hook(lxc_conf, LXCHOOK_START, copy);
 	else if (strcmp(key, "lxc.hook.post-stop") == 0)
 		return add_hook(lxc_conf, LXCHOOK_POSTSTOP, copy);
+	else if (strcmp(key, "lxc.hook.clone") == 0)
+		return add_hook(lxc_conf, LXCHOOK_CLONE, copy);
 	SYSERROR("Unknown key: %s", key);
 	free(copy);
 	return -1;

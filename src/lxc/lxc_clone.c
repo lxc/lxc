@@ -16,7 +16,7 @@
 
 lxc_log_define(lxc_clone, lxc);
 
-void usage(char *me)
+void usage(const char *me)
 {
 	printf("Usage: %s [-s] [-B backingstore] [-L size] [-K] [-M] [-H]\n", me);
 	printf("          [-p lxcpath] [-P newlxcpath] orig new\n");
@@ -60,6 +60,7 @@ int main(int argc, char *argv[])
 	long newsize = 0;
 	char *bdevtype = NULL, *lxcpath = NULL, *newpath = NULL, *fstype = NULL;
 	char *orig = NULL, *new = NULL, *vgname = NULL;
+	char **args = NULL;
 	char c;
 
 	if (argc < 3)
@@ -86,14 +87,13 @@ int main(int argc, char *argv[])
 		default: break;
 		}
 	}
-	if (optind == argc-2 && !orig)
+    if (optind < argc && !orig)
 		orig = argv[optind++];
-	if (optind == argc-1 && !new)
+    if (optind < argc && !new)
 		new = argv[optind++];
-	if (optind < argc) {
-		printf("%d extraneous arguments\n", argc-optind);
-		usage(argv[0]);
-	}
+	if (optind < argc)
+		/* arguments for the clone hook */
+		args = &argv[optind];
 	if (!new || !orig) {
 		printf("Error: you must provide orig and new names\n");
 		usage(argv[0]);
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 		lxc_container_put(c1);
 		exit(1);
 	}
-	c2 = c1->clone(c1, new, newpath, flags, bdevtype, NULL, newsize);
+	c2 = c1->clone(c1, new, newpath, flags, bdevtype, NULL, newsize, args);
 	if (c2 == NULL) {
 		lxc_container_put(c1);
 		fprintf(stderr, "clone failed\n");
