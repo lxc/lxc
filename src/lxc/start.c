@@ -809,6 +809,11 @@ int lxc_spawn(struct lxc_handler *handler)
 	if ((handler->cgroup = lxc_cgroup_path_create(NULL, name)) == NULL)
 		goto out_delete_net;
 
+	if (setup_cgroup(handler->cgroup, &handler->conf->cgroup)) {
+		ERROR("failed to setup the cgroups for '%s'", name);
+		goto out_delete_net;
+	}
+
 	if (lxc_cgroup_enter(handler->cgroup, handler->pid) < 0)
 		goto out_delete_net;
 
@@ -839,11 +844,10 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
 		goto out_delete_net;
 
-	if (setup_cgroup(handler->cgroup, &handler->conf->cgroup)) {
-		ERROR("failed to setup the cgroups for '%s'", name);
+	if (setup_cgroup_devices(handler->cgroup, &handler->conf->cgroup)) {
+		ERROR("failed to setup the devices cgroup for '%s'", name);
 		goto out_delete_net;
 	}
-
 
 	/* Tell the child to complete its initialization and wait for
 	 * it to exec or return an error.  (the child will never

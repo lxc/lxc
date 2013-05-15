@@ -287,6 +287,7 @@ struct lxc_conf {
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf);
 
 extern int setup_cgroup(const char *cgpath, struct lxc_list *cgroups);
+extern int setup_cgroup_devices(const char *cgpath, struct lxc_list *cgroups);
 extern int detect_shared_rootfs(void);
 
 /*
@@ -312,8 +313,6 @@ extern int lxc_clear_config_caps(struct lxc_conf *c);
 extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key);
 extern int lxc_clear_mount_entries(struct lxc_conf *c);
 extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
-
-extern int setup_cgroup(const char *name, struct lxc_list *cgroups);
 
 extern int uid_shift_ttys(int pid, struct lxc_conf *conf);
 
