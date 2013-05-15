@@ -504,6 +504,103 @@ static void set_clone_children(const char *mntdir)
 	fclose(fout);
 }
 
+static char *get_all_cgroups(void)
+{
+	FILE *f;
+	char *line = NULL, *ret = NULL;
+	size_t len;
+	int first = 1;
+
+	/* read the list of subsystems from the kernel */
+	f = fopen("/proc/cgroups", "r");
+	if (!f)
+		return NULL;
+
+	while (getline(&line, &len, f) != -1) {
+		char *c;
+		int oldlen, newlen, inc;
+
+		/* skip the first line */
+		if (first) {
+			first=0;
+			continue;
+		}
+
+		c = strchr(line, '\t');
+		if (!c)
+			continue;
+		*c = '\0';
+
+		oldlen = ret ? strlen(ret) : 0;
+		newlen = oldlen + strlen(line) + 2;
+		ret = realloc(ret, newlen);
+		if (!ret)
+			goto out;
+		inc = snprintf(ret + oldlen, newlen, ",%s", line);
+		if (inc < 0 || inc >= newlen) {
+			free(ret);
+			ret = NULL;
+			goto out;
+		}
+	}
+
+out:
+	fclose(f);
+	return ret;
+}
+
+static int in_cgroup_list(char *s, char *list)
+{
+	char *token, *str, *saveptr;
+
+	if (!list || !s)
+		return 0;
+
+	for (str = strdupa(list); (token = strtok_r(str, ",", &saveptr)); str = NULL) {
+		if (strcmp(s, token) == 0)
+			return 1;
+	}
+
+	return 0;
+}
+
+static int have_visited(char *opts, char *visited, char *allcgroups)
+{
+	char *str, *s, *token;
+
+	for (str = strdupa(opts); (token = strtok_r(str, ",", &s)); str = NULL) {
+		if (!in_cgroup_list(token, allcgroups))
+			continue;
+		if (visited && in_cgroup_list(token, visited))
+			return 1;
+	}
+
+	return 0;
+}
+
+static int record_visited(char *opts, char **visitedp, char *allcgroups)
+{
+	char *s, *token, *str;
+	int oldlen, newlen, ret;
+
+	for (str = strdupa(opts); (token = strtok_r(str, ",", &s)); str = NULL) {
+		if (!in_cgroup_list(token, allcgroups))
+			continue;
+		if (*visitedp && in_cgroup_list(token, *visitedp))
+			continue;
+		oldlen = (*visitedp) ? strlen(*visitedp) : 0;
+		newlen = oldlen + strlen(token) + 2;
+		(*visitedp) = realloc(*visitedp, newlen);
+		if (!(*visitedp))
+			return -1;
+		ret = snprintf((*visitedp)+oldlen, newlen, ",%s", token);
+		if (ret < 0 || ret >= newlen)
+			return -1;
+	}
+
+	return 0;
+}
+
 /*
  * Make sure the 'cgroup group' exists, so that we don't have to worry about
  * that later.
@@ -592,16 +689,29 @@ char *lxc_cgroup_path_create(const char *lxcgroup, const char *name)
 	char tail[12];
 	FILE *file = NULL;
 	struct mntent mntent_r;
+	char *allcgroups = get_all_cgroups();
+	char *visited = NULL;
 
 	char buf[LARGE_MAXPATHLEN] = {0};
 
 	if (create_lxcgroups(lxcgroup) < 0)
 		return NULL;
 
+	if (!allcgroups)
+		return NULL;
+
 again:
+	if (visited) {
+		/* we're checking for a new name, so start over with all cgroup
+		 * mounts */
+		free(visited);
+		visited = NULL;
+	}
 	file = setmntent(MTAB, "r");
 	if (!file) {
 		SYSERROR("failed to open %s", MTAB);
+		if (allcgroups)
+			free(allcgroups);
 		return NULL;
 	}
 
@@ -616,6 +726,12 @@ again:
 			continue;
 		if (!mount_has_subsystem(&mntent_r))
 			continue;
+
+		/* make sure we haven't checked this subsystem already */
+		if (have_visited(mntent_r.mnt_opts, visited, allcgroups))
+			continue;
+		if (record_visited(mntent_r.mnt_opts, &visited, allcgroups) < 0)
+			goto fail;
 
 		/* find unused mnt_dir + lxcgroup + name + -$i */
 		ret = snprintf(path, MAXPATHLEN, "%s/%s/%s%s", mntent_r.mnt_dir,
@@ -641,6 +757,9 @@ again:
 		goto fail;
 
 	retpath = strdup(path);
+	free(allcgroups);
+	if (visited)
+		free(visited);
 
 	return retpath;
 
@@ -651,6 +770,9 @@ next:
 
 fail:
 	endmntent(file);
+	free(allcgroups);
+	if (visited)
+		free(visited);
 	return NULL;
 }
 
