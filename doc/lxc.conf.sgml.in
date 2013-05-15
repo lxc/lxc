@@ -65,8 +65,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <para>
       The configuration file defines the different system resources to
       be assigned for the container. At present, the utsname, the
-      network, the mount points, the root file system and the control
-      groups are supported.
+      network, the mount points, the root file system, the user namespace,
+      and the control groups are supported.
     </para>
 
     <para>
@@ -80,7 +80,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <para>
 	Allows to set the architecture for the container. For example,
 	set a 32bits architecture for a container running 32bits
-	binaries on a 64bits host. That fix the container scripts
+	binaries on a 64bits host. This fixes the container scripts
 	which rely on the architecture to do some work like
 	downloading the packages.
       </para>
@@ -258,7 +258,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      specify an action to do for the
 	      network.
 	    </para>
-	
+
 	    <para><option>up:</option> activates the interface.
 	    </para>
 	  </listitem>
@@ -448,7 +448,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <para>
 	If the container is configured with a root filesystem and the
 	inittab file is setup to use the console, you may want to specify
-	where goes the output of this console.
+	where the output of this console goes.
       </para>
       <variablelist>
 	<varlistentry>
@@ -471,14 +471,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <refsect2>
       <title>Console through the ttys</title>
       <para>
-	If the container is configured with a root filesystem and the
-	inittab file is setup to launch a getty on the ttys. This
-	option will specify the number of ttys to be available for the
-	container. The number of getty in the inittab file of the
-	container should not be greater than the number of ttys
-	specified in this configuration file, otherwise the excess
-	getty sessions will die and respawn indefinitly giving
-	annoying messages on the console.
+	This option is useful if the container is configured with a root
+	filesystem and the inittab file is setup to launch a getty on the
+	ttys. The option specifies the number of ttys to be available for
+	the container. The number of gettys in the inittab file of the
+	container should not be greater than the number of ttys	specified
+	in this option, otherwise the excess getty sessions will die and
+	respawn indefinitely giving annoying messages on the console or in
+	<filename>/var/log/messages</filename>.
       </para>
       <variablelist>
 	<varlistentry>
@@ -590,13 +590,20 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    <para>
 	      specify a file location in
 	      the <filename>fstab</filename> format, containing the
-	      mount informations. If the rootfs is an image file or a
-	      device block and the fstab is used to mount a point
+	      mount information. If the rootfs is an image file or a
+	      block device and the fstab is used to mount a point
 	      somewhere in this rootfs, the path of the rootfs mount
 	      point should be prefixed with the
 	      <filename>@LXCROOTFSMOUNT@</filename> default path or
 	      the value of <option>lxc.rootfs.mount</option> if
-	      specified.
+	      specified. Note that when mounting a filesystem from an
+	      image file or block device the third field (fs_vfstype)
+	      cannot be auto as with
+              <citerefentry>
+		<refentrytitle>mount</refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>
+              but must be explicitly specified.
 	    </para>
 	  </listitem>
 	</varlistentry>
