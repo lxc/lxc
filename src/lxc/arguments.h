@@ -61,9 +61,13 @@ struct lxc_arguments {
 	int ttynum;
 	char escape;
 
-	/* for lxc-wait */
+	/* for lxc-wait and lxc-shutdown */
 	char *states;
 	long timeout;
+	int nowait;
+	int reboot;
+	int hardstop;
+	int shutdown;
 
 	/* close fds from parent? */
 	int close_all_fds;

@@ -50,6 +50,8 @@ struct lxc_container {
 	bool (*save_config)(struct lxc_container *c, const char *alt_file);
 	bool (*create)(struct lxc_container *c, const char *t, char *const argv[]);
 	bool (*createl)(struct lxc_container *c, const char *t, ...);
+	/* send SIGINT to ask container to reboot */
+	bool (*reboot)(struct lxc_container *c);
 	/* send SIGPWR.  if timeout is not 0 or -1, do a hard stop after timeout seconds */
 	bool (*shutdown)(struct lxc_container *c, int timeout);
 	/* clear all network or capability items in the in-memory configuration */

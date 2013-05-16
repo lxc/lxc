@@ -123,7 +123,6 @@ bin_SCRIPTS = \
 	lxc-checkconfig \
 	lxc-version \
 	lxc-create \
-	lxc-shutdown \
 	lxc-destroy
 
 EXTRA_DIST = \

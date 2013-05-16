@@ -45,6 +45,105 @@
 
 lxc_log_define(lxc_container, lxc);
 
+static bool file_exists(char *f)
+{
+	struct stat statbuf;
+
+	return stat(f, &statbuf) == 0;
+}
+
+/*
+ * A few functions to help detect when a container creation failed.
+ * If a container creation was killed partway through, then trying
+ * to actually start that container could harm the host.  We detect
+ * this by creating a 'partial' file under the container directory,
+ * and keeping an advisory lock.  When container creation completes,
+ * we remove that file.  When we load or try to start a container, if
+ * we find that file, without a flock, we remove the container.
+ */
+int ongoing_create(struct lxc_container *c)
+{
+	int len = strlen(c->config_path) + strlen(c->name) + 10;
+	char *path = alloca(len);
+	int fd, ret;
+	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
+	if (ret < 0 || ret >= len) {
+		ERROR("Error writing partial pathname");
+		return -1;
+	}
+
+	if (!file_exists(path))
+		return 0;
+	if (process_lock())
+		return -1;
+	if ((fd = open(path, O_RDWR)) < 0) {
+		// give benefit of the doubt
+		SYSERROR("Error opening partial file");
+		process_unlock();
+		return 0;
+	}
+	if ((ret = flock(fd, LOCK_EX | LOCK_NB)) == -1 &&
+			errno == EWOULDBLOCK) {
+		// create is still ongoing
+		close(fd);
+		process_unlock();
+		return 1;
+	}
+	// create completed but partial is still there.
+	close(fd);
+	process_unlock();
+	return 2;
+}
+
+int create_partial(struct lxc_container *c)
+{
+	// $lxcpath + '/' + $name + '/partial' + \0
+	int len = strlen(c->config_path) + strlen(c->name) + 10;
+	char *path = alloca(len);
+	int fd, ret;
+	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
+	if (ret < 0 || ret >= len) {
+		ERROR("Error writing partial pathname");
+		return -1;
+	}
+	if (process_lock() < 0)
+		return -1;
+	if ((fd=open(path, O_CREAT | O_EXCL, 0755)) < 0) {
+		SYSERROR("Erorr creating partial file");
+		process_unlock();
+		return -1;
+	}
+	if (flock(fd, LOCK_EX) < 0) {
+		SYSERROR("Error locking partial file %s", path);
+		close(fd);
+		process_unlock();
+		return -1;
+	}
+	process_unlock();
+
+	return fd;
+}
+
+void remove_partial(struct lxc_container *c, int fd)
+{
+	// $lxcpath + '/' + $name + '/partial' + \0
+	int len = strlen(c->config_path) + strlen(c->name) + 10;
+	char *path = alloca(len);
+	int ret;
+
+	close(fd);
+	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
+	if (ret < 0 || ret >= len) {
+		ERROR("Error writing partial pathname");
+		return;
+	}
+	if (process_lock())
+		return;
+	if (unlink(path) < 0)
+		SYSERROR("Error unlink partial file %s", path);
+	process_unlock();
+}
+
 /* LOCKING
  * 1. c->privlock protects the struct lxc_container from multiple threads.
  * 2. c->slock protects the on-disk container data
@@ -161,13 +260,6 @@ int lxc_container_put(struct lxc_container *c)
 	}
 	container_mem_unlock(c);
 	return 0;
-}
-
-static bool file_exists(char *f)
-{
-	struct stat statbuf;
-
-	return stat(f, &statbuf) == 0;
 }
 
 static bool lxcapi_is_defined(struct lxc_container *c)
@@ -348,6 +440,19 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 	/* container has been setup */
 	if (!c->lxc_conf)
 		return false;
+
+	if ((ret = ongoing_create(c)) < 0) {
+		ERROR("Error checking for incomplete creation");
+		return false;
+	}
+	if (ret == 2) {
+		ERROR("Error: %s creation was not completed", c->name);
+		c->destroy(c);
+		return false;
+	} else if (ret == 1) {
+		ERROR("Error: creation of %s is ongoing", c->name);
+		return false;
+	}
 
 	/* is this app meant to be run through lxcinit, as in lxc-execute? */
 	if (useinit && !argv)
@@ -550,7 +655,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t, char *const ar
 	bool bret = false;
 	pid_t pid;
 	char *tpath = NULL, **newargv;
-	int ret, len, nargs = 0;
+	int partial_fd, ret, len, nargs = 0;
 
 	if (!c)
 		return false;
@@ -574,6 +679,10 @@ static bool lxcapi_create(struct lxc_container *c, const char *t, char *const ar
 
 	/* container is already created if we have a config and rootfs.path is accessible */
 	if (lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) == 0)
+		goto out;
+
+	/* Mark that this container is being created */
+	if ((partial_fd = create_partial(c)) < 0)
 		goto out;
 
 	/* we're going to fork.  but since we'll wait for our child, we
@@ -659,11 +768,30 @@ static bool lxcapi_create(struct lxc_container *c, const char *t, char *const ar
 	bret = load_config_locked(c, c->configfile);
 
 out_unlock:
+	if (partial_fd >= 0)
+		remove_partial(c, partial_fd);
 	container_disk_unlock(c);
 out:
 	if (tpath)
 		free(tpath);
 	return bret;
+}
+
+static bool lxcapi_reboot(struct lxc_container *c)
+{
+	pid_t pid;
+
+	if (!c)
+		return false;
+	if (!c->is_running(c))
+		return false;
+	pid = c->init_pid(c);
+	if (pid <= 0)
+		return false;
+	if (kill(pid, SIGINT) < 0)
+		return false;
+	return true;
+
 }
 
 static bool lxcapi_shutdown(struct lxc_container *c, int timeout)
@@ -1699,6 +1827,12 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	if (file_exists(c->configfile))
 		lxcapi_load_config(c, NULL);
 
+	if (ongoing_create(c) == 2) {
+		ERROR("Error: %s creation was not completed", c->name);
+		c->destroy(c);
+		goto err;
+	}
+
 	// assign the member functions
 	c->is_defined = lxcapi_is_defined;
 	c->state = lxcapi_state;
@@ -1720,6 +1854,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->create = lxcapi_create;
 	c->createl = lxcapi_createl;
 	c->shutdown = lxcapi_shutdown;
+	c->reboot = lxcapi_reboot;
 	c->clear_config_item = lxcapi_clear_config_item;
 	c->get_config_item = lxcapi_get_config_item;
 	c->get_cgroup_item = lxcapi_get_cgroup_item;

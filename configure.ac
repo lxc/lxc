@@ -334,7 +334,6 @@ AC_CONFIG_FILES([
 	doc/lxc-netstat.sgml
 	doc/lxc-ps.sgml
 	doc/lxc-restart.sgml
-	doc/lxc-shutdown.sgml
 	doc/lxc-start-ephemeral.sgml
 	doc/lxc-start.sgml
 	doc/lxc-stop.sgml
@@ -383,7 +382,6 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-checkconfig
 	src/lxc/lxc-version
 	src/lxc/lxc-create
-	src/lxc/lxc-shutdown
 	src/lxc/lxc-start-ephemeral
 	src/lxc/lxc-destroy
 	src/lxc/legacy/lxc-ls
