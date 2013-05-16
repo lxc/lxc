@@ -60,6 +60,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <arg choice="opt">-P <replaceable>newlxcpath</replaceable></arg>
       <arg choice="req">-o <replaceable>orig</replaceable></arg>
       <arg choice="req">-n <replaceable>new</replaceable></arg>
+      <arg choice="opt">-- hook arguments</arg>
     </cmdsynopsis>
     <cmdsynopsis>
       <command>lxc-clone</command>
@@ -73,6 +74,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <arg choice="opt">-P <replaceable>newlxcpath</replaceable></arg>
       <arg choice="req">orig</arg>
       <arg choice="req">new</arg>
+      <arg choice="opt">-- hook arguments</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -240,6 +242,22 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
     </variablelist>
 
+  </refsect1>
+
+  <refsect1>
+    <title>Clone hook</title>
+    <para>
+      If the container being cloned has one or more <filename>lxc.hook.clone</filename>
+      specified, then the specified hooks will be called for the new container.  The
+      first 3 arguments passed to the clone hook will be the container name, a section
+      ('lxc'), and the hook type ('clone').  Extra arguments passed
+      <command>lxc-clone</command> will be passed to the hook program starting at
+      argument 4.  The <filename>LXC_ROOTFS_MOUNT</filename> environment variable gives
+      the path under which the container's root filesystem is mounted.  The
+      configuration file pathname is stored in <filename>LXC_CONFIG_FILE</filename>, the
+      container name in <filename>LXC_NAME</filename>, and the path or device on which
+      the rootfs is located is in <filename>LXC_ROOTFS_PATH</filename>.
+    </para>
   </refsect1>
 
   &seealso;

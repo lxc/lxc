@@ -770,9 +770,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </refsect2>
 
     <refsect2>
-      <title>Startup hooks</title>
+      <title>Container hooks</title>
       <para>
-        Startup hooks are programs or scripts which can be executed
+        Container hooks are programs or scripts which can be executed
 	at various times in a container's lifetime.
       </para>
       <variablelist>
@@ -866,10 +866,24 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  </listitem>
 	</varlistentry>
       </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.clone</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      A hook to be run when the container is cloned to a new one.
+	      See <refentrytitle><command>lxc-clone</command></refentrytitle>
+	      <manvolnum>1</manvolnum> for more information.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
     </refsect2>
 
     <refsect2>
-      <title>Startup hooks Environment Variables</title>
+      <title>Container hooks Environment Variables</title>
       <para>
         A number of environment variables are made available to the startup
         hooks to provide configuration information and assist in the
