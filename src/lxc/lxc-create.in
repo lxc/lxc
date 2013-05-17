@@ -32,7 +32,7 @@ verify_btrfs() {
 }
 
 verify_zfs() {
-    if which zfs >/dev/null 2>&1 && zfs get all "$zfs_root" >/dev/null 2>&1; then
+    if which zfs >/dev/null 2>&1 && zfs get all "$zfsroot" >/dev/null 2>&1; then
         echo zfs
     else
         echo no
@@ -198,7 +198,7 @@ while [ $# -gt 0 ]; do
             ;;
         --zfsroot)
             optarg_check $opt "$1"
-            zfs_root=$1
+            zfsroot=$1
             shift
             ;;
         --)
@@ -248,8 +248,8 @@ if [ -z "$lvname" ]; then
     lvname="$lxc_name"
 fi
 
-if [ -z "$zfs_root" ]; then
-    zfs_root="tank/lxc"
+if [ -z "$zfsroot" ]; then
+    zfsroot="tank/lxc"
 fi
 
 if [ "$(id -u)" != "0" ]; then
@@ -271,7 +271,7 @@ case "$backingstore" in
         ;;
     zfs)
         if [ `verify_zfs` != 'zfs' ]; then
-            echo "missing 'zfs' command or $zfs_root is not zfs" >&2
+            echo "missing 'zfs' command or $zfsroot is not zfs" >&2
             exit 1
         fi
         ;;
@@ -313,7 +313,7 @@ cleanup() {
     elif [ "$backingstore" = "btrfs" ]; then
         btrfs subvolume delete "$rootfs" || true
     elif [ "$backingstore" = "zfs" ]; then
-        zfs destroy "$zfs_root/$lxc_name" || true
+        zfs destroy "$zfsroot/$lxc_name" || true
     fi
 
     ${bindir}/lxc-destroy -n $lxc_name -P "$lxc_path"
@@ -325,7 +325,7 @@ trap cleanup HUP INT TERM
 
 # set up container dir per backing store
 if [ "$backingstore" = "zfs" ]; then
-    zfs create -omountpoint=$lxc_path/$lxc_name/rootfs "$zfs_root/$lxc_name"
+    zfs create -omountpoint=$lxc_path/$lxc_name/rootfs "$zfsroot/$lxc_name"
 elif [ "$backingstore" = "btrfs" ]; then
     mkdir "$lxc_path/$lxc_name"
     if ! out=$(btrfs subvolume create "$rootfs" 2>&1); then
