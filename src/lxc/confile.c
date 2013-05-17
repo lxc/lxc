@@ -1705,8 +1705,12 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 			strprint(retv, inlen, "%s", mode);
 		}
 	} else if (strcmp(p1, "veth.pair") == 0) {
-		if (netdev->type == LXC_NET_VETH && netdev->priv.veth_attr.pair)
-			strprint(retv, inlen, "%s", netdev->priv.veth_attr.pair);
+		if (netdev->type == LXC_NET_VETH) {
+			strprint(retv, inlen, "%s",
+				 netdev->priv.veth_attr.pair ?
+				  netdev->priv.veth_attr.pair :
+				  netdev->priv.veth_attr.veth1);
+		}
 	} else if (strcmp(p1, "vlan") == 0) {
 		if (netdev->type == LXC_NET_VLAN) {
 			strprint(retv, inlen, "%d", netdev->priv.vlan_attr.vid);
