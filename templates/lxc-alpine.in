@@ -150,7 +150,8 @@ die() {
 usage() {
     cat >&2 <<EOF
 Usage: $(basename $0) [-h|--help] [-r|--repository <url>] [-a|--arch <arch>]
-                   -p|--path <path> -n|--name <name> [PKG...]
+                   [--rootfs <rootfs>] -p|--path <path> -n|--name <name>
+                   [PKG...]
 EOF
 }
 
@@ -178,6 +179,11 @@ while [ $# -gt 0 ]; do
     -n|--name)
         optarg_check $opt "$1"
         name=$1
+        shift
+        ;;
+    --rootfs)
+        optarg_check $opt "$1"
+        rootfs=$1
         shift
         ;;
     -p|--path)
@@ -218,9 +224,11 @@ if [ -z "${path}" ]; then
     path="${default_path}/${name}"
 fi
 
-rootfs=`awk -F= '$1 ~ /^lxc.rootfs/ { print $2 }' "$path/config" 2>/dev/null`
 if [ -z "$rootfs" ]; then
-    rootfs="${path}/rootfs"
+    rootfs=`awk -F= '$1 ~ /^lxc.rootfs/ { print $2 }' "$path/config" 2>/dev/null`
+    if [ -z "$rootfs" ]; then
+        rootfs="${path}/rootfs"
+    fi
 fi
 
 lxc_arch=$arch

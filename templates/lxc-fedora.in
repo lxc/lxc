@@ -360,7 +360,8 @@ usage:
 Mandatory args:
   -n,--name         container name, used to as an identifier for that container from now on
 Optional args:
-  -p,--path         path to where the container rootfs will be created, defaults to @LXCPATH@. The container config will go under @LXCPATH@ in that case
+  -p,--path         path to where the container will be created, defaults to @LXCPATH@. The container config will go under @LXCPATH@ in that case
+  --rootfs          path for actual rootfs.
   -c,--clean        clean the cache
   -R,--release      Fedora release for the new container. if the host is Fedora, then it will default to the host's release.
   -A,--arch         NOT USED YET. Define what arch the container will be [i686,x86_64]
@@ -369,7 +370,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:cR: -l help,path:,name:,clean,release: -- "$@")
+options=$(getopt -o hp:n:cR: -l help,path:,rootfs:,name:,clean,release: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -381,6 +382,7 @@ do
     case "$1" in
         -h|--help)      usage $0 && exit 0;;
         -p|--path)      path=$2; shift 2;;
+        --rootfs)       rootfs=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
         -c|--clean)     clean=$2; shift 2;;
         -R|--release)   release=$2; shift 2;;
@@ -438,10 +440,12 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 
-rootfs_path=$path/rootfs
-# check for 'lxc.rootfs' passed in through default config by lxc-create
-if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
-    rootfs_path=`grep 'lxc.rootfs =' $path/config | awk -F= '{ print $2 }'`
+if [ -z "$rootfs_path" ]; then
+    rootfs_path=$path/rootfs
+    # check for 'lxc.rootfs' passed in through default config by lxc-create
+    if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
+        rootfs_path=`grep 'lxc.rootfs =' $path/config | awk -F= '{ print $2 }'`
+    fi
 fi
 config_path=$default_path/$name
 cache=$cache_base/$release

@@ -10,6 +10,23 @@
 
 struct bdev;
 
+/*
+ * specifications for how to create a new backing store
+ */
+struct bdev_specs {
+	union {
+		struct {
+			char *zfsroot;
+		} zfs;
+		struct {
+			char *vg;
+			char *lv;
+			char *fstype;
+			unsigned long fssize;  // fs size in bytes
+		} lvm;
+	} u;
+};
+
 struct bdev_ops {
 	/* detect whether path is of this bdev type */
 	int (*detect)(const char *path);
@@ -17,6 +34,8 @@ struct bdev_ops {
 	int (*mount)(struct bdev *bdev);
 	int (*umount)(struct bdev *bdev);
 	int (*destroy)(struct bdev *bdev);
+	int (*create)(struct bdev *bdev, const char *dest, const char *n,
+			struct bdev_specs *specs);
 	/* given original mount, rename the paths for cloned container */
 	int (*clone_paths)(struct bdev *orig, struct bdev *new, const char *oldname,
 			const char *cname, const char *oldpath, const char *lxcpath,
@@ -38,6 +57,8 @@ struct bdev {
 	char *data;
 };
 
+char *overlayfs_getlower(char *p);
+
 /*
  * Instantiate a bdev object.  The src is used to determine which blockdev
  * type this should be.  The dst and data are optional, and will be used
@@ -54,6 +75,8 @@ struct bdev *bdev_init(const char *src, const char *dst, const char *data);
 struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 			const char *oldpath, const char *lxcpath, const char *bdevtype,
 			int snap, const char *bdevdata, unsigned long newsize);
+struct bdev *bdev_create(const char *dest, const char *type,
+			const char *cname, struct bdev_specs *specs);
 void bdev_put(struct bdev *bdev);
 
 /* define constants if the kernel/glibc headers don't define them */

@@ -348,7 +348,6 @@ lxc.utsname = $name
 lxc.devttydir = lxc
 lxc.tty = 4
 lxc.pts = 1024
-lxc.rootfs = $container_rootfs
 lxc.mount = $cfg_dir/fstab
 # Uncomment these if you don't run anything that needs the capability, and
 # would like the container to run with less privilege.
@@ -370,6 +369,7 @@ lxc.cap.drop = mac_admin mac_override setfcap setpcap
 lxc.cap.drop = sys_module sys_nice sys_pacct
 lxc.cap.drop = sys_rawio sys_time
 EOF
+    grep -q "^lxc.rootfs" $cfg_dir/config 2>/dev/null || echo "lxc.rootfs = $container_rootfs" >> $cfg_dir/config
 
     if [ $container_release_major != "4" ]; then
         echo "lxc.cap.drop = sys_resource" >>$cfg_dir/config
@@ -610,6 +610,7 @@ usage()
     cat <<EOF
   -a|--arch=<arch>        architecture (ie. i386, x86_64)
   -R|--release=<release>  release to download for the new container
+  --rootfs=<path>         rootfs path
   -r|--rpms=<rpm name>    additional rpms to install into container
   -u|--url=<url>          replace yum repo url (ie. local yum mirror)
   -t|--templatefs=<path>  copy/clone rootfs at path instead of downloading
@@ -620,7 +621,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:R:r:u:t: -l help,path:,name:,arch:,release:,rpms:,url:,templatefs: -- "$@")
+options=$(getopt -o hp:n:a:R:r:u:t: -l help,rootfs:,path:,name:,arch:,release:,rpms:,url:,templatefs: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -633,6 +634,7 @@ do
     case "$1" in
         -h|--help)		usage $0 && exit 0;;
         -p|--path)		cfg_dir=$2; shift 2;;
+        --rootfs)		container_rootfs=$2; shift 2;;
         -n|--name)		name=$2; shift 2;;
         -a|--arch)		arch=$2; shift 2;;
         -R|--release)		container_release_version=$2; shift 2;;
@@ -696,7 +698,9 @@ else
 fi
 echo "Host is $host_distribution $host_release_version"
 
-container_rootfs="$cfg_dir/rootfs"
+if [ -z "$container_rootfs" ]; then
+    container_rootfs="$cfg_dir/rootfs"
+fi
 
 if [ -n "$template_rootfs" ]; then
     container_release_get $template_rootfs

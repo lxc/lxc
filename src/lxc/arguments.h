@@ -75,6 +75,13 @@ struct lxc_arguments {
 	/* close fds from parent? */
 	int close_all_fds;
 
+	/* lxc-create */
+	char *bdevtype, *configfile, *template;
+	char *fstype;
+	unsigned long fssize;
+	char *lvname, *vgname;
+	char *zfsroot, *lowerdir, *dir;
+
 	/* remaining arguments */
 	char *const *argv;
 	int argc;

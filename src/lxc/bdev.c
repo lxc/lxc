@@ -410,12 +410,35 @@ static int dir_destroy(struct bdev *orig)
 	return 0;
 }
 
+static int dir_create(struct bdev *bdev, const char *dest, const char *n,
+			struct bdev_specs *specs)
+{
+	bdev->src = strdup(dest);
+	bdev->dest = strdup(dest);
+	if (!bdev->src || !bdev->dest) {
+		ERROR("Out of memory");
+		return -1;
+	}
+
+	if (mkdir_p(bdev->src, 0755) < 0) {
+		ERROR("Error creating %s\n", bdev->src);
+		return -1;
+	}
+	if (mkdir_p(bdev->dest, 0755) < 0) {
+		ERROR("Error creating %s\n", bdev->dest);
+		return -1;
+	}
+
+	return 0;
+}
+
 struct bdev_ops dir_ops = {
 	.detect = &dir_detect,
 	.mount = &dir_mount,
 	.umount = &dir_umount,
 	.clone_paths = &dir_clonepaths,
 	.destroy = &dir_destroy,
+	.create = &dir_create,
 };
 
 
@@ -620,12 +643,51 @@ static int zfs_destroy(struct bdev *orig)
 	exit(1);
 }
 
+static int zfs_create(struct bdev *bdev, const char *dest, const char *n,
+			struct bdev_specs *specs)
+{
+	const char *zfsroot;
+	char option[MAXPATHLEN];
+	int ret;
+	pid_t pid;
+
+	if (!specs || !specs->u.zfs.zfsroot)
+		zfsroot = default_zfs_root();
+	else
+		zfsroot = specs->u.zfs.zfsroot;
+
+	if (!(bdev->dest = strdup(dest))) {
+		ERROR("No mount target specified or out of memory");
+		return -1;
+	}
+	if (!(bdev->src = strdup(bdev->dest))) {
+		ERROR("out of memory");
+		return -1;
+	}
+
+	ret = snprintf(option, MAXPATHLEN, "-omountpoint=%s", bdev->dest);
+	if (ret < 0  || ret >= MAXPATHLEN)
+		return -1;
+	if ((pid = fork()) < 0)
+		return -1;
+	if (pid)
+		return wait_for_pid(pid);
+
+	char dev[MAXPATHLEN];
+	ret = snprintf(dev, MAXPATHLEN, "%s/%s", zfsroot, n);
+	if (ret < 0  || ret >= MAXPATHLEN)
+		exit(1);
+	execlp("zfs", "zfs", "create", option, dev, NULL);
+	exit(1);
+}
+
 struct bdev_ops zfs_ops = {
 	.detect = &zfs_detect,
 	.mount = &zfs_mount,
 	.umount = &zfs_umount,
 	.clone_paths = &zfs_clonepaths,
 	.destroy = &zfs_destroy,
+	.create = &zfs_create,
 };
 
 //
@@ -693,7 +755,7 @@ static int lvm_umount(struct bdev *bdev)
  * not yet exist.  This function will attempt to create /dev/$vg/$lv of
  * size $size.
  */
-static int lvm_create(const char *path, unsigned long size)
+static int do_lvm_create(const char *path, unsigned long size)
 {
 	int ret, pid;
 	char sz[24], *pathdup, *vg, *lv;
@@ -839,7 +901,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 			return -1;
 		}
 	} else {
-		if (lvm_create(new->src, size) < 0) {
+		if (do_lvm_create(new->src, size) < 0) {
 			ERROR("Error creating new lvm blockdev");
 			return -1;
 		}
@@ -866,12 +928,71 @@ static int lvm_destroy(struct bdev *orig)
 	return wait_for_pid(pid);
 }
 
+#define DEFAULT_LVM_SZ 1024000000
+#define DEFAULT_LVM_FSTYPE "ext3"
+static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
+			struct bdev_specs *specs)
+{
+	const char *vg, *fstype, *lv = n;
+	unsigned long sz;
+	int ret, len;
+
+	if (!specs)
+		return -1;
+
+	vg = specs->u.lvm.vg;
+	if (!vg)
+		vg = default_lvm_vg();
+
+	/* /dev/$vg/$lv */
+	if (specs->u.lvm.lv)
+		lv = specs->u.lvm.lv;
+	len = strlen(vg) + strlen(lv) + 7;
+	bdev->src = malloc(len);
+	if (!bdev->src)
+		return -1;
+
+	ret = snprintf(bdev->src, len, "/dev/%s/%s", vg, lv);
+	if (ret < 0 || ret >= len)
+		return -1;
+
+	// lvm.fssize is in bytes.
+	sz = specs->u.lvm.fssize;
+	if (!sz)
+		sz = DEFAULT_LVM_SZ;
+
+	INFO("Error creating new lvm blockdev %s size %lu", bdev->src, sz);
+	if (do_lvm_create(bdev->src, sz) < 0) {
+		ERROR("Error creating new lvm blockdev %s size %lu", bdev->src, sz);
+		return -1;
+	}
+
+	fstype = specs->u.lvm.fstype;
+	if (!fstype)
+		fstype = DEFAULT_LVM_FSTYPE;
+	if (do_mkfs(bdev->src, fstype) < 0) {
+		ERROR("Error creating filesystem type %s on %s", fstype,
+			bdev->src);
+		return -1;
+	}
+	if (!(bdev->dest = strdup(dest)))
+		return -1;
+
+	if (mkdir_p(bdev->dest, 0755) < 0) {
+		ERROR("Error creating %s\n", bdev->dest);
+		return -1;
+	}
+
+	return 0;
+}
+
 struct bdev_ops lvm_ops = {
 	.detect = &lvm_detect,
 	.mount = &lvm_mount,
 	.umount = &lvm_umount,
 	.clone_paths = &lvm_clonepaths,
 	.destroy = &lvm_destroy,
+	.create = &lvm_create,
 };
 
 //
@@ -895,21 +1016,31 @@ struct btrfs_ioctl_space_args {
 #define BTRFS_IOC_SPACE_INFO _IOWR(BTRFS_IOCTL_MAGIC, 20, \
                                     struct btrfs_ioctl_space_args)
 
-static int btrfs_detect(const char *path)
+static bool is_btrfs_fs(const char *path)
 {
-	struct stat st;
 	int fd, ret;
 	struct btrfs_ioctl_space_args sargs;
 
 	// make sure this is a btrfs filesystem
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
-		return 0;
+		return false;
 	sargs.space_slots = 0;
 	sargs.total_spaces = 0;
 	ret = ioctl(fd, BTRFS_IOC_SPACE_INFO, &sargs);
 	close(fd);
 	if (ret < 0)
+		return false;
+
+	return true;
+}
+
+static int btrfs_detect(const char *path)
+{
+	struct stat st;
+	int ret;
+
+	if (!is_btrfs_fs(path))
 		return 0;
 
 	// and make sure it's a subvolume.
@@ -1138,12 +1269,23 @@ static int btrfs_destroy(struct bdev *orig)
 	return ret;
 }
 
+static int btrfs_create(struct bdev *bdev, const char *dest, const char *n,
+			struct bdev_specs *specs)
+{
+	bdev->src = strdup(dest);
+	bdev->dest = strdup(dest);
+	if (!bdev->src || !bdev->dest)
+		return -1;
+	return btrfs_subvolume_create(bdev->dest);
+}
+
 struct bdev_ops btrfs_ops = {
 	.detect = &btrfs_detect,
 	.mount = &btrfs_mount,
 	.umount = &btrfs_umount,
 	.clone_paths = &btrfs_clonepaths,
 	.destroy = &btrfs_destroy,
+	.create = &btrfs_create,
 };
 
 //
@@ -1321,12 +1463,60 @@ int overlayfs_destroy(struct bdev *orig)
 	return lxc_rmdir_onedev(upper);
 }
 
+/*
+ * to say 'lxc-create -t ubuntu -n o1 -B overlayfs' means you want
+ * $lxcpath/$lxcname/rootfs to have the created container, while all
+ * changes after starting the container are written to
+ * $lxcpath/$lxcname/delta0
+ */
+static int overlayfs_create(struct bdev *bdev, const char *dest, const char *n,
+			struct bdev_specs *specs)
+{
+	char *delta;
+	int ret, len = strlen(dest), newlen;
+
+	if (len < 8 || strcmp(dest+len-7, "/rootfs") != 0)
+		return -1;
+
+	if (!(bdev->dest = strdup(dest))) {
+		ERROR("Out of memory");
+		return -1;
+	}
+
+	delta = strdupa(dest);
+	strcpy(delta+len-6, "delta0");
+
+	if (mkdir_p(delta, 0755) < 0) {
+		ERROR("Error creating %s\n", delta);
+		return -1;
+	}
+
+	/* overlayfs:lower:upper */
+	newlen = (2 * len) + strlen("overlayfs:") + 2;
+	bdev->src = malloc(newlen);
+	if (!bdev->src) {
+		ERROR("Out of memory");
+		return -1;
+	}
+	ret = snprintf(bdev->src, newlen, "overlayfs:%s:%s", dest, delta);
+	if (ret < 0 || ret >= newlen)
+		return -1;
+
+	if (mkdir_p(bdev->dest, 0755) < 0) {
+		ERROR("Error creating %s\n", bdev->dest);
+		return -1;
+	}
+
+	return 0;
+}
+
 struct bdev_ops overlayfs_ops = {
 	.detect = &overlayfs_detect,
 	.mount = &overlayfs_mount,
 	.umount = &overlayfs_umount,
 	.clone_paths = &overlayfs_clonepaths,
 	.destroy = &overlayfs_destroy,
+	.create = &overlayfs_create,
 };
 
 struct bdev_type bdevs[] = {
@@ -1496,4 +1686,61 @@ struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 	// don't bother umounting, ns exit will do that
 
 	exit(0);
+}
+
+/*
+ * bdev_create:
+ * Create a backing store for a container.
+ * If successfull, return a struct bdev *, with the bdev mounted and ready
+ * for use.  Before completing, the caller will need to call the
+ * umount operation and bdev_put().
+ * @dest: the mountpoint (i.e. /var/lib/lxc/$name/rootfs)
+ * @type: the bdevtype (dir, btrfs, zfs, etc)
+ * @cname: the container name
+ * @specs: details about the backing store to create, like fstype
+ */
+struct bdev *bdev_create(const char *dest, const char *type,
+			const char *cname, struct bdev_specs *specs)
+{
+	struct bdev *bdev;
+
+	if (!type) {
+		char *p, *p1;
+
+		type = "dir";
+
+		/*
+		 * $lxcpath/$lxcname/rootfs doesn't yet exist.  Check
+		 * whether $lxcpath/$lxcname is btrfs.  If so, specify
+		 * btrfs backing store for the container.
+		 */
+		p = strdupa(dest);
+		p1 = rindex(p, '/');
+		if (p1) {
+			*p1 = '\0';
+			if (is_btrfs_fs(p))
+				type = "btrfs";
+		}
+	}
+
+	bdev = bdev_get(type);
+	if (!bdev) {
+		ERROR("Unknown fs type: %s\n", type);
+		return NULL;
+	}
+
+	if (bdev->ops->create(bdev, dest, cname, specs) < 0) {
+		 bdev_put(bdev);
+		 return NULL;
+	}
+
+	return bdev;
+}
+
+char *overlayfs_getlower(char *p)
+{
+	char *p1 = index(p, ':');
+	if (p1)
+		*p1 = '\0';
+	return p;
 }

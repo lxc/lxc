@@ -116,6 +116,7 @@ LXC Container configuration for Ubuntu Cloud images.
 
 Generic Options
 [ -r | --release <release> ]: Release name of container, defaults to host
+[ --rootfs <path> ]: Path in which rootfs will be placed
 [ -a | --arch ]: Arhcitecture of container, defaults to host arcitecture
 [ -C | --cloud ]: Configure container for use with meta-data service, defaults to no
 [ -T | --tarball ]: Location of tarball
@@ -132,7 +133,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds:u: -l arch:,help,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata: -- "$@")
+options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds:u: -l arch:,help,rootfs:,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -266,10 +267,12 @@ fi
 
 # detect rootfs
 config="$path/config"
-if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
-    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
-else
-    rootfs=$path/rootfs
+if [ -z "$rootfs" ]; then
+    if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+        rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+    else
+        rootfs=$path/rootfs
+    fi
 fi
 
 type ubuntu-cloudimg-query

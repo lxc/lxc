@@ -111,7 +111,7 @@ static int container_create(lua_State *L)
 	argv[i] = strdupa(luaL_checkstring(L, i+3));
     argv[i] = NULL;
 
-    lua_pushboolean(L, !!c->create(c, template_name, argv));
+    lua_pushboolean(L, !!c->create(c, template_name, NULL, NULL, argv));
     return 1;
 }
 

@@ -381,7 +381,6 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-netstat
 	src/lxc/lxc-checkconfig
 	src/lxc/lxc-version
-	src/lxc/lxc-create
 	src/lxc/lxc-start-ephemeral
 	src/lxc/legacy/lxc-ls
 	src/lxc/lxc.functions

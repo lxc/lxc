@@ -622,6 +622,7 @@ usage()
     cat <<EOF
 $1 -h|--help [-a|--arch] [-b|--bindhome <user>] [--trim] [-d|--debug]
    [-F | --flush-cache] [-r|--release <release>] [ -S | --auth-key <keyfile>]
+   [--rootfs <rootfs>]
 release: the ubuntu release (e.g. precise): defaults to host release on ubuntu, otherwise uses latest LTS
 trim: make a minimal (faster, but not upgrade-safe) container
 bindhome: bind <user>'s home into the container
@@ -633,7 +634,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:b:hp:r:xn:FS:d -l arch:,bindhome:,help,path:,release:,trim,name:,flush-cache,auth-key:,debug -- "$@")
+options=$(getopt -o a:b:hp:r:xn:FS:d -l arch:,bindhome:,help,path:,release:,trim,name:,flush-cache,auth-key:,debug,rootfs: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -674,6 +675,7 @@ while true
 do
     case "$1" in
     -h|--help)      usage $0 && exit 0;;
+    --rootfs)       rootfs=$2; shift 2;;
     -p|--path)      path=$2; shift 2;;
     -n|--name)      name=$2; shift 2;;
     -F|--flush-cache) flushcache=1; shift 1;;
@@ -735,10 +737,13 @@ fi
 
 # detect rootfs
 config="$path/config"
-if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
-    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
-else
-    rootfs=$path/rootfs
+# if $rootfs exists here, it was passed in with --rootfs
+if [ -z "$rootfs" ]; then
+    if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+        rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+    else
+        rootfs=$path/rootfs
+    fi
 fi
 
 install_ubuntu $rootfs $release $flushcache

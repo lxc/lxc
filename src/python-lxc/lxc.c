@@ -249,7 +249,7 @@ Container_create(Container *self, PyObject *args, PyObject *kwds)
         }
     }
 
-    if (self->container->create(self->container, template_name, create_args))
+    if (self->container->create(self->container, template_name, NULL, NULL, create_args))
         retval = Py_True;
     else
         retval = Py_False;

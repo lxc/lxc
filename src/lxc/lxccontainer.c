@@ -106,7 +106,7 @@ int create_partial(struct lxc_container *c)
 		ERROR("Error writing partial pathname");
 		return -1;
 	}
-	if (process_lock() < 0)
+	if (process_lock())
 		return -1;
 	if ((fd=open(path, O_CREAT | O_EXCL, 0755)) < 0) {
 		SYSERROR("Erorr creating partial file");
@@ -645,12 +645,54 @@ static bool create_container_dir(struct lxc_container *c)
 	return ret == 0;
 }
 
+static const char *lxcapi_get_config_path(struct lxc_container *c);
+static bool lxcapi_set_config_item(struct lxc_container *c, const char *key, const char *v);
+
 /*
- * backing stores not (yet) supported
- * for ->create, argv contains the arguments to pass to the template,
- * terminated by NULL.  If no arguments, you can just pass NULL.
+ * do_bdev_create: thin wrapper around bdev_create().  Like bdev_create(),
+ * it returns a mounted bdev on success, NULL on error.
  */
-static bool lxcapi_create(struct lxc_container *c, const char *t, char *const argv[])
+static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
+			 struct bdev_specs *specs)
+{
+	char *dest;
+	const char *lxcpath = lxcapi_get_config_path(c);
+	size_t len;
+	struct bdev *bdev;
+	int ret;
+
+	/* lxcpath/lxcname/rootfs */
+	len = strlen(c->name) + strlen(lxcpath) + 9;
+	dest = alloca(len);
+	ret = snprintf(dest, len, "%s/%s/rootfs", lxcpath, c->name);
+	if (ret < 0 || ret >= len)
+		return NULL;
+
+	bdev = bdev_create(dest, type, c->name, specs);
+	if (!bdev)
+		return NULL;
+	lxcapi_set_config_item(c, "lxc.rootfs", bdev->src);
+	return bdev;
+}
+
+static bool lxcapi_destroy(struct lxc_container *c);
+/*
+ * lxcapi_create:
+ * create a container with the given parameters.
+ * @c: container to be created.  It has the lxcpath, name, and a starting
+ *     configuration already set
+ * @t: the template to execute to instantiate the root filesystem and
+ *     adjust the configuration.
+ * @bdevtype: backing store type to use.  If NULL, dir will be used.
+ * @specs: additional parameters for the backing store, i.e. LVM vg to
+ *         use.
+ *
+ * @argv: the arguments to pass to the template, terminated by NULL.  If no
+ * arguments, you can just pass NULL.
+ */
+static bool lxcapi_create(struct lxc_container *c, const char *t,
+		const char *bdevtype, struct bdev_specs *specs,
+		char *const argv[])
 {
 	bool bret = false;
 	pid_t pid;
@@ -685,12 +727,15 @@ static bool lxcapi_create(struct lxc_container *c, const char *t, char *const ar
 	if ((partial_fd = create_partial(c)) < 0)
 		goto out;
 
-	/* we're going to fork.  but since we'll wait for our child, we
-	 * don't need to lxc_container_get */
+	/* no need to get disk lock bc we have the partial locked */
 
-	if (container_disk_lock(c))
-		goto out;
-
+	/*
+	 * Create the backing store
+	 * Note we can't do this in the same task as we use to execute the
+	 * template because of the way zfs works.
+	 * After you 'zfs create', zfs mounts the fs only in the initial
+	 * namespace.
+	 */
 	pid = fork();
 	if (pid < 0) {
 		SYSERROR("failed to fork task for container creation template\n");
@@ -698,7 +743,46 @@ static bool lxcapi_create(struct lxc_container *c, const char *t, char *const ar
 	}
 
 	if (pid == 0) { // child
-		char *patharg, *namearg;
+		struct bdev *bdev = NULL;
+
+		if (!(bdev = do_bdev_create(c, bdevtype, specs))) {
+			ERROR("Error creating backing store type %s for %s",
+				bdevtype ? bdevtype : "(none)", c->name);
+			exit(1);
+		}
+
+		/* save config file again to store the new rootfs location */
+		if (!c->save_config(c, NULL)) {
+			ERROR("failed to save starting configuration for %s\n", c->name);
+			// parent task won't see bdev in config so we delete it
+			bdev->ops->umount(bdev);
+			bdev->ops->destroy(bdev);
+			exit(1);
+		}
+		exit(0);
+	}
+	if (wait_for_pid(pid) != 0)
+		goto out;
+
+	/* reload config to get the rootfs */
+	if (c->lxc_conf)
+		lxc_conf_free(c->lxc_conf);
+	c->lxc_conf = NULL;
+	if (!load_config_locked(c, c->configfile))
+		goto out;
+
+	/*
+	 * now execute the template
+	 */
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("failed to fork task for container creation template\n");
+		goto out_unlock;
+	}
+
+	if (pid == 0) { // child
+		char *patharg, *namearg, *rootfsarg, *src;
+		struct bdev *bdev = NULL;
 		int i;
 
 		close(0);
@@ -708,13 +792,38 @@ static bool lxcapi_create(struct lxc_container *c, const char *t, char *const ar
 		open("/dev/null", O_RDWR);
 		open("/dev/null", O_RDWR);
 
+		if (unshare(CLONE_NEWNS) < 0) {
+			ERROR("error unsharing mounts");
+			exit(1);
+		}
+
+		src = c->lxc_conf->rootfs.path;
+		/*
+		 * for an overlayfs create, what the user wants is the template to fill
+		 * in what will become the readonly lower layer.  So don't mount for
+		 * the template
+		 */
+		if (strncmp(src, "overlayfs:", 10) == 0) {
+			src = overlayfs_getlower(src+10);
+		}
+		bdev = bdev_init(src, c->lxc_conf->rootfs.mount, NULL);
+		if (!bdev) {
+			ERROR("Error opening rootfs");
+			exit(1);
+		}
+
+		if (bdev->ops->mount(bdev) < 0) {
+			ERROR("Error mounting rootfs");
+			exit(1);
+		}
+
 		/*
 		 * create our new array, pre-pend the template name and
 		 * base args
 		 */
 		if (argv)
-			for (; argv[nargs]; nargs++) ;
-		nargs += 3;  // template, path and name args
+			for (nargs = 0; argv[nargs]; nargs++) ;
+		nargs += 4;  // template, path, rootfs and name args
 		newargv = malloc(nargs * sizeof(*newargv));
 		if (!newargv)
 			exit(1);
@@ -737,10 +846,19 @@ static bool lxcapi_create(struct lxc_container *c, const char *t, char *const ar
 			exit(1);
 		newargv[2] = namearg;
 
+		len = strlen("--rootfs=") + 1 + strlen(bdev->dest);
+		rootfsarg = malloc(len);
+		if (!rootfsarg)
+			exit(1);
+		ret = snprintf(rootfsarg, len, "--rootfs=%s", bdev->dest);
+		if (ret < 0 || ret >= len)
+			exit(1);
+		newargv[3] = rootfsarg;
+
 		/* add passed-in args */
 		if (argv)
-			for (i = 3; i < nargs; i++)
-				newargv[i] = argv[i-3];
+			for (i = 4; i < nargs; i++)
+				newargv[i] = argv[i-4];
 
 		/* add trailing NULL */
 		nargs++;
@@ -774,6 +892,8 @@ out_unlock:
 out:
 	if (tpath)
 		free(tpath);
+	if (!bret && c)
+		lxcapi_destroy(c);
 	return bret;
 }
 
@@ -818,7 +938,8 @@ static bool lxcapi_shutdown(struct lxc_container *c, int timeout)
 	return retv;
 }
 
-static bool lxcapi_createl(struct lxc_container *c, const char *t, ...)
+static bool lxcapi_createl(struct lxc_container *c, const char *t,
+		const char *bdevtype, struct bdev_specs *specs, ...)
 {
 	bool bret = false;
 	char **args = NULL, **temp;
@@ -832,7 +953,7 @@ static bool lxcapi_createl(struct lxc_container *c, const char *t, ...)
 	 * since we're going to wait for create to finish, I don't think we
 	 * need to get a copy of the arguments.
 	 */
-	va_start(ap, t);
+	va_start(ap, specs);
 	while (1) {
 		char *arg;
 		arg = va_arg(ap, char *);
@@ -851,7 +972,7 @@ static bool lxcapi_createl(struct lxc_container *c, const char *t, ...)
 	if (args)
 		args[nargs] = NULL;
 
-	bret = c->create(c, t, args);
+	bret = c->create(c, t, bdevtype, specs, args);
 
 out:
 	if (args)
@@ -1048,15 +1169,13 @@ static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	return true;
 }
 
-static const char *lxcapi_get_config_path(struct lxc_container *c);
 // do we want the api to support --force, or leave that to the caller?
 static bool lxcapi_destroy(struct lxc_container *c)
 {
-	struct bdev *r;
+	struct bdev *r = NULL;
 	bool ret = false;
 
-	/* container is already destroyed if we don't have a config and rootfs.path is not accessible */
-	if (!c || !lxcapi_is_defined(c) || !c->lxc_conf || !c->lxc_conf->rootfs.path)
+	if (!c || !lxcapi_is_defined(c))
 		return false;
 
 	if (lxclock(c->privlock, 0))
@@ -1072,7 +1191,8 @@ static bool lxcapi_destroy(struct lxc_container *c)
 		goto out;
 	}
 
-	r = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	if (c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount)
+		r = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (r) {
 		if (r->ops->destroy(r) < 0) {
 			ERROR("Error destroying rootfs for %s", c->name);
@@ -1848,8 +1968,9 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 
 	if (ongoing_create(c) == 2) {
 		ERROR("Error: %s creation was not completed", c->name);
-		c->destroy(c);
-		goto err;
+		lxcapi_destroy(c);
+		lxc_conf_free(c->lxc_conf);
+		c->lxc_conf = NULL;
 	}
 
 	// assign the member functions

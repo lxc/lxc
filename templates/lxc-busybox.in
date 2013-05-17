@@ -288,7 +288,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n: -l help,path:,name: -- "$@")
+options=$(getopt -o hp:n: -l help,rootfs:,path:,name: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -300,6 +300,7 @@ do
     case "$1" in
         -h|--help)      usage $0 && exit 0;;
         -p|--path)      path=$2; shift 2;;
+        --rootfs)       rootfs=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
@@ -318,10 +319,12 @@ fi
 
 # detect rootfs
 config="$path/config"
-if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
-    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
-else
-    rootfs=$path/rootfs
+if [ -z "$rootfs" ]; then
+    if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+        rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+    else
+        rootfs=$path/rootfs
+    fi
 fi
 
 install_busybox $rootfs $name

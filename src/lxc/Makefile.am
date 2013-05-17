@@ -121,8 +121,7 @@ bin_SCRIPTS = \
 	lxc-ps \
 	lxc-netstat \
 	lxc-checkconfig \
-	lxc-version \
-	lxc-create
+	lxc-version
 
 EXTRA_DIST = \
 	lxc-device \
@@ -160,7 +159,8 @@ bin_PROGRAMS = \
 	lxc-restart \
 	lxc-kill \
 	lxc-config \
-	lxc-destroy
+	lxc-destroy \
+    lxc-create
 
 pkglibexec_PROGRAMS = \
 	lxc-init
@@ -194,6 +194,7 @@ lxc_unfreeze_SOURCES = lxc_unfreeze.c
 lxc_unshare_SOURCES = lxc_unshare.c
 lxc_wait_SOURCES = lxc_wait.c
 lxc_kill_SOURCES = lxc_kill.c
+lxc_create_SOURCES = lxc_create.c
 
 install-exec-local: install-soPROGRAMS
 	mkdir -p $(DESTDIR)$(datadir)/lxc
