@@ -41,6 +41,81 @@
 
 lxc_log_define(lxc_utils, lxc);
 
+static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
+{
+	struct dirent dirent, *direntp;
+	DIR *dir;
+	int ret, failed=0;
+	char pathname[MAXPATHLEN];
+
+	dir = opendir(dirname);
+	if (!dir) {
+		ERROR("%s: failed to open %s", __func__, dirname);
+		return 0;
+	}
+
+	while (!readdir_r(dir, &dirent, &direntp)) {
+		struct stat mystat;
+		int rc;
+
+		if (!direntp)
+			break;
+
+		if (!strcmp(direntp->d_name, ".") ||
+		    !strcmp(direntp->d_name, ".."))
+			continue;
+
+		rc = snprintf(pathname, MAXPATHLEN, "%s/%s", dirname, direntp->d_name);
+		if (rc < 0 || rc >= MAXPATHLEN) {
+			ERROR("pathname too long");
+			failed=1;
+			continue;
+		}
+		ret = lstat(pathname, &mystat);
+		if (ret) {
+			ERROR("%s: failed to stat %s", __func__, pathname);
+			failed=1;
+			continue;
+		}
+		if (mystat.st_dev != pdev)
+			continue;
+		if (S_ISDIR(mystat.st_mode)) {
+			if (!_recursive_rmdir_onedev(pathname, pdev))
+				failed=1;
+		} else {
+			if (unlink(pathname) < 0) {
+				ERROR("%s: failed to delete %s", __func__, pathname);
+				failed=1;
+			}
+		}
+	}
+
+	if (rmdir(dirname) < 0) {
+		ERROR("%s: failed to delete %s", __func__, dirname);
+		failed=1;
+	}
+
+	if (closedir(dir)) {
+		ERROR("%s: failed to close directory %s", __func__, dirname);
+		failed=1;
+	}
+
+	return !failed;
+}
+
+/* returns 1 on success, 0 if there were any failures */
+extern int lxc_rmdir_onedev(char *path)
+{
+	struct stat mystat;
+
+	if (lstat(path, &mystat) < 0) {
+		ERROR("%s: failed to stat %s", __func__, path);
+		return 0;
+	}
+
+	return _recursive_rmdir_onedev(path, mystat.st_dev);
+}
+
 static int mount_fs(const char *source, const char *target, const char *type)
 {
 	/* the umount may fail */

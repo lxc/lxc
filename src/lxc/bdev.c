@@ -312,7 +312,7 @@ static int dir_detect(const char *path)
 //
 // XXXXXXX plain directory bind mount ops
 //
-int dir_mount(struct bdev *bdev)
+static int dir_mount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "dir"))
 		return -22;
@@ -321,7 +321,7 @@ int dir_mount(struct bdev *bdev)
 	return mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC, NULL);
 }
 
-int dir_umount(struct bdev *bdev)
+static int dir_umount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "dir"))
 		return -22;
@@ -403,11 +403,19 @@ static int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 	return 0;
 }
 
+static int dir_destroy(struct bdev *orig)
+{
+	if (!lxc_rmdir_onedev(orig->src))
+		return -1;
+	return 0;
+}
+
 struct bdev_ops dir_ops = {
 	.detect = &dir_detect,
 	.mount = &dir_mount,
 	.umount = &dir_umount,
 	.clone_paths = &dir_clonepaths,
+	.destroy = &dir_destroy,
 };
 
 
@@ -422,7 +430,7 @@ struct bdev_ops dir_ops = {
 // sake of flexibility let's always bind-mount.
 //
 
-static int zfs_list_entry(const char *path, char *output)
+static int zfs_list_entry(const char *path, char *output, size_t inlen)
 {
 	FILE *f;
 	int found=0;
@@ -431,7 +439,7 @@ static int zfs_list_entry(const char *path, char *output)
 		SYSERROR("popen failed");
 		return 0;
 	}
-	while (fgets(output, LXC_LOG_BUFFER_SIZE, f)) {
+	while (fgets(output, inlen, f)) {
 		if (strstr(output, path)) {
 			found = 1;
 			break;
@@ -451,12 +459,12 @@ static int zfs_detect(const char *path)
 		ERROR("out of memory");
 		return 0;
 	}
-	found = zfs_list_entry(path, output);
+	found = zfs_list_entry(path, output, LXC_LOG_BUFFER_SIZE);
 	free(output);
 	return found;
 }
 
-int zfs_mount(struct bdev *bdev)
+static int zfs_mount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "zfs"))
 		return -22;
@@ -465,7 +473,7 @@ int zfs_mount(struct bdev *bdev)
 	return mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC, NULL);
 }
 
-int zfs_umount(struct bdev *bdev)
+static int zfs_umount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "zfs"))
 		return -22;
@@ -483,7 +491,7 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 	int ret;
 	pid_t pid;
 
-	if (zfs_list_entry(opath, output)) {
+	if (zfs_list_entry(opath, output, MAXPATHLEN)) {
 		// zfsroot is output up to ' '
 		if ((p = index(output, ' ')) == NULL)
 			return -1;
@@ -583,11 +591,41 @@ static int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 	return zfs_clone(orig->src, new->src, oldname, cname, lxcpath, snap);
 }
 
+/*
+ * TODO: detect whether this was a clone, and if so then also delete the
+ * snapshot it was based on, so that we don't hold the original
+ * container busy.
+ */
+static int zfs_destroy(struct bdev *orig)
+{
+	pid_t pid;
+	char output[MAXPATHLEN], *p;
+
+	if ((pid = fork()) < 0)
+		return -1;
+	if (pid)
+		return wait_for_pid(pid);
+
+	if (!zfs_list_entry(orig->src, output, MAXPATHLEN)) {
+		ERROR("Error: zfs entry for %s not found", orig->src);
+		return -1;
+	}
+
+	// zfs mount is output up to ' '
+	if ((p = index(output, ' ')) == NULL)
+		return -1;
+	*p = '\0';
+
+	execlp("zfs", "zfs", "destroy", output, NULL);
+	exit(1);
+}
+
 struct bdev_ops zfs_ops = {
 	.detect = &zfs_detect,
 	.mount = &zfs_mount,
 	.umount = &zfs_umount,
 	.clone_paths = &zfs_clonepaths,
+	.destroy = &zfs_destroy,
 };
 
 //
@@ -815,11 +853,25 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 	return 0;
 }
 
+static int lvm_destroy(struct bdev *orig)
+{
+	pid_t pid;
+
+	if ((pid = fork()) < 0)
+		return -1;
+	if (!pid) {
+		execlp("lvremove", "lvremove", "-f", orig->src, NULL);
+		exit(1);
+	}
+	return wait_for_pid(pid);
+}
+
 struct bdev_ops lvm_ops = {
 	.detect = &lvm_detect,
 	.mount = &lvm_mount,
 	.umount = &lvm_umount,
 	.clone_paths = &lvm_clonepaths,
+	.destroy = &lvm_destroy,
 };
 
 //
@@ -871,7 +923,7 @@ static int btrfs_detect(const char *path)
 	return 0;
 }
 
-int btrfs_mount(struct bdev *bdev)
+static int btrfs_mount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "btrfs"))
 		return -22;
@@ -880,7 +932,7 @@ int btrfs_mount(struct bdev *bdev)
 	return mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC, NULL);
 }
 
-int btrfs_umount(struct bdev *bdev)
+static int btrfs_umount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "btrfs"))
 		return -22;
@@ -903,6 +955,8 @@ struct btrfs_ioctl_vol_args {
 #define BTRFS_IOC_SNAP_CREATE_V2 _IOW(BTRFS_IOCTL_MAGIC, 23, \
                                    struct btrfs_ioctl_vol_args_v2)
 #define BTRFS_IOC_SUBVOL_CREATE _IOW(BTRFS_IOCTL_MAGIC, 14, \
+                                   struct btrfs_ioctl_vol_args)
+#define BTRFS_IOC_SNAP_DESTROY _IOW(BTRFS_IOCTL_MAGIC, 15, \
                                    struct btrfs_ioctl_vol_args)
 
 #define BTRFS_QGROUP_INHERIT_SET_LIMITS (1ULL << 0)
@@ -1048,11 +1102,48 @@ static int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *old
 	return btrfs_subvolume_create(new->dest);
 }
 
+static int btrfs_destroy(struct bdev *orig)
+{
+	int ret, fd = -1;
+	struct btrfs_ioctl_vol_args  args;
+	char *path = orig->src;
+	char *p, *newfull = strdup(path);
+
+	if (!newfull) {
+		ERROR("Error: out of memory");
+		return -1;
+	}
+
+	p = rindex(newfull, '/');
+	if (!p) {
+		ERROR("bad path: %s", path);
+		return -1;
+	}
+	*p = '\0';
+
+	if ((fd = open(newfull, O_RDONLY)) < 0) {
+		ERROR("Error opening %s", newfull);
+		free(newfull);
+		return -1;
+	}
+
+	memset(&args, 0, sizeof(args));
+	strncpy(args.name, p+1, BTRFS_SUBVOL_NAME_MAX);
+	args.name[BTRFS_SUBVOL_NAME_MAX-1] = 0;
+	ret = ioctl(fd, BTRFS_IOC_SNAP_DESTROY, &args);
+	INFO("btrfs: snapshot create ioctl returned %d", ret);
+
+	free(newfull);
+	close(fd);
+	return ret;
+}
+
 struct bdev_ops btrfs_ops = {
 	.detect = &btrfs_detect,
 	.mount = &btrfs_mount,
 	.umount = &btrfs_umount,
 	.clone_paths = &btrfs_clonepaths,
+	.destroy = &btrfs_destroy,
 };
 
 //
@@ -1069,7 +1160,7 @@ static int overlayfs_detect(const char *path)
 //
 // XXXXXXX plain directory bind mount ops
 //
-int overlayfs_mount(struct bdev *bdev)
+static int overlayfs_mount(struct bdev *bdev)
 {
 	char *options, *dup, *lower, *upper;
 	int len;
@@ -1108,7 +1199,7 @@ int overlayfs_mount(struct bdev *bdev)
 	return ret;
 }
 
-int overlayfs_umount(struct bdev *bdev)
+static int overlayfs_umount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "overlayfs"))
 		return -22;
@@ -1217,11 +1308,25 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 	return 0;
 }
 
+int overlayfs_destroy(struct bdev *orig)
+{
+	char *upper;
+
+	if (strncmp(orig->src, "overlayfs:", 10) != 0)
+		return -22;
+	upper = index(orig->src + 10, ':');
+	if (!upper)
+		return -22;
+	upper++;
+	return lxc_rmdir_onedev(upper);
+}
+
 struct bdev_ops overlayfs_ops = {
 	.detect = &overlayfs_detect,
 	.mount = &overlayfs_mount,
 	.umount = &overlayfs_umount,
 	.clone_paths = &overlayfs_clonepaths,
+	.destroy = &overlayfs_destroy,
 };
 
 struct bdev_type bdevs[] = {

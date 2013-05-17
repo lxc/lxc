@@ -383,7 +383,6 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-version
 	src/lxc/lxc-create
 	src/lxc/lxc-start-ephemeral
-	src/lxc/lxc-destroy
 	src/lxc/legacy/lxc-ls
 	src/lxc/lxc.functions
 

@@ -16,6 +16,7 @@ struct bdev_ops {
 	// mount requires src and dest to be set.
 	int (*mount)(struct bdev *bdev);
 	int (*umount)(struct bdev *bdev);
+	int (*destroy)(struct bdev *bdev);
 	/* given original mount, rename the paths for cloned container */
 	int (*clone_paths)(struct bdev *orig, struct bdev *new, const char *oldname,
 			const char *cname, const char *oldpath, const char *lxcpath,

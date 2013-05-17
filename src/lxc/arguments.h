@@ -69,6 +69,9 @@ struct lxc_arguments {
 	int hardstop;
 	int shutdown;
 
+	/* for lxc-destroy */
+	int force;
+
 	/* close fds from parent? */
 	int close_all_fds;
 

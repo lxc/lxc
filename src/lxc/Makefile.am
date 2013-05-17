@@ -122,8 +122,7 @@ bin_SCRIPTS = \
 	lxc-netstat \
 	lxc-checkconfig \
 	lxc-version \
-	lxc-create \
-	lxc-destroy
+	lxc-create
 
 EXTRA_DIST = \
 	lxc-device \
@@ -160,7 +159,8 @@ bin_PROGRAMS = \
 	lxc-checkpoint \
 	lxc-restart \
 	lxc-kill \
-	lxc-config
+	lxc-config \
+	lxc-destroy
 
 pkglibexec_PROGRAMS = \
 	lxc-init
@@ -179,6 +179,7 @@ lxc_cgroup_SOURCES = lxc_cgroup.c
 lxc_checkpoint_SOURCES = lxc_checkpoint.c
 lxc_config_SOURCES = lxc_config.c
 lxc_console_SOURCES = lxc_console.c
+lxc_destroy_SOURCES = lxc_destroy.c
 lxc_execute_SOURCES = lxc_execute.c
 lxc_freeze_SOURCES = lxc_freeze.c
 lxc_info_SOURCES = lxc_info.c

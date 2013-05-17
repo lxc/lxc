@@ -301,7 +301,7 @@ static const char *lxcapi_state(struct lxc_container *c)
 	return ret;
 }
 
-static bool is_stopped_nolock(struct lxc_container *c)
+static bool is_stopped_locked(struct lxc_container *c)
 {
 	lxc_state_t s;
 	s = lxc_getstate(c->name, c->config_path);
@@ -1048,32 +1048,51 @@ static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	return true;
 }
 
+static const char *lxcapi_get_config_path(struct lxc_container *c);
+// do we want the api to support --force, or leave that to the caller?
 static bool lxcapi_destroy(struct lxc_container *c)
 {
-	pid_t pid;
-
-	if (!c)
-		return false;
+	struct bdev *r;
+	bool ret = false;
 
 	/* container is already destroyed if we don't have a config and rootfs.path is not accessible */
-	if (!lxcapi_is_defined(c) && (!c->lxc_conf || !c->lxc_conf->rootfs.path || access(c->lxc_conf->rootfs.path, F_OK) != 0))
+	if (!c || !lxcapi_is_defined(c) || !c->lxc_conf || !c->lxc_conf->rootfs.path)
 		return false;
 
-	pid = fork();
-	if (pid < 0)
+	if (lxclock(c->privlock, 0))
 		return false;
-	if (pid == 0) { // child
-		execlp("lxc-destroy", "lxc-destroy", "-n", c->name, "-P", c->config_path, NULL);
-		perror("execl");
-		exit(1);
-	}
-
-	if (wait_for_pid(pid) < 0) {
-		ERROR("Error destroying container %s", c->name);
+	if (lxclock(c->slock, 0)) {
+		lxcunlock(c->privlock);
 		return false;
 	}
 
-	return true;
+	if (!is_stopped_locked(c)) {
+		// we should queue some sort of error - in c->error_string?
+		ERROR("container %s is not stopped", c->name);
+		goto out;
+	}
+
+	r = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	if (r) {
+		if (r->ops->destroy(r) < 0) {
+			ERROR("Error destroying rootfs for %s", c->name);
+			goto out;
+		}
+	}
+
+	const char *p1 = lxcapi_get_config_path(c);
+	char *path = alloca(strlen(p1) + strlen(c->name) + 2);
+	sprintf(path, "%s/%s", p1, c->name);
+	if (lxc_rmdir_onedev(path) < 0) {
+		ERROR("Error destroying container directory for %s", c->name);
+		goto out;
+	}
+	ret = true;
+
+out:
+	lxcunlock(c->privlock);
+	lxcunlock(c->slock);
+	return ret;
 }
 
 static bool lxcapi_set_config_item(struct lxc_container *c, const char *key, const char *v)
@@ -1203,7 +1222,7 @@ static bool lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, 
 	if (container_mem_lock(c))
 		return false;
 
-	if (is_stopped_nolock(c))
+	if (is_stopped_locked(c))
 		goto err;
 
 	ret = lxc_cgroup_set(c->name, subsys, value, c->config_path);
@@ -1224,7 +1243,7 @@ static int lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, c
 	if (container_mem_lock(c))
 		return -1;
 
-	if (is_stopped_nolock(c))
+	if (is_stopped_locked(c))
 		goto out;
 
 	ret = lxc_cgroup_get(c->name, subsys, retv, inlen, c->config_path);

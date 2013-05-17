@@ -27,6 +27,8 @@
 #include <sys/types.h>
 #include "config.h"
 
+/* returns 1 on success, 0 if there were any failures */
+extern int lxc_rmdir_onedev(char *path);
 extern int lxc_setup_fs(void);
 extern int get_u16(unsigned short *val, const char *arg, int base);
 extern int mkdir_p(const char *dir, mode_t mode);

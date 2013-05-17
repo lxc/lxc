@@ -784,7 +784,7 @@ out:
 	return retv;
 }
 
-int recursive_rmdir(char *dirname)
+static int cgroup_rmdir(char *dirname)
 {
 	struct dirent dirent, *direntp;
 	DIR *dir;
@@ -817,7 +817,7 @@ int recursive_rmdir(char *dirname)
 		if (ret)
 			continue;
 		if (S_ISDIR(mystat.st_mode))
-			recursive_rmdir(pathname);
+			cgroup_rmdir(pathname);
 	}
 
 	ret = rmdir(dirname);
@@ -825,8 +825,6 @@ int recursive_rmdir(char *dirname)
 	if (closedir(dir))
 		ERROR("failed to close directory");
 	return ret;
-
-
 }
 
 static int lxc_one_cgroup_destroy(struct mntent *mntent, const char *cgpath)
@@ -841,7 +839,7 @@ static int lxc_one_cgroup_destroy(struct mntent *mntent, const char *cgpath)
 		return -1;
 	}
 	DEBUG("destroying %s\n", cgname);
-	if (recursive_rmdir(cgname)) {
+	if (cgroup_rmdir(cgname)) {
 		SYSERROR("failed to remove cgroup '%s'", cgname);
 		return -1;
 	}
