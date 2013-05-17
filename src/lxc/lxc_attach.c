@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	init_pid = get_init_pid(my_args.name, my_args.lxcpath[0]);
+	init_pid = lxc_cmd_get_init_pid(my_args.name, my_args.lxcpath[0]);
 	if (init_pid < 0) {
 		ERROR("failed to get the init pid");
 		return -1;
@@ -314,7 +314,7 @@ int main(int argc, char *argv[])
 	 * by asking lxc-start
 	 */
 	if (namespace_flags == -1) {
-		namespace_flags = lxc_get_clone_flags(my_args.name, my_args.lxcpath[0]);
+		namespace_flags = lxc_cmd_get_clone_flags(my_args.name, my_args.lxcpath[0]);
 		/* call failed */
 		if (namespace_flags == -1) {
 			ERROR("failed to automatically determine the "

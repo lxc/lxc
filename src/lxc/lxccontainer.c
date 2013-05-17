@@ -283,7 +283,7 @@ static pid_t lxcapi_init_pid(struct lxc_container *c)
 
 	if (lxclock(c->slock, 0))
 		return -1;
-	ret = get_init_pid(c->name, c->config_path);
+	ret = lxc_cmd_get_init_pid(c->name, c->config_path);
 	lxcunlock(c->slock);
 	return ret;
 }
@@ -521,7 +521,7 @@ static bool lxcapi_stop(struct lxc_container *c)
 	if (!c)
 		return false;
 
-	ret = lxc_stop(c->name, c->config_path);
+	ret = lxc_cmd_stop(c->name, c->config_path);
 
 	return ret == 0;
 }

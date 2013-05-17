@@ -46,49 +46,6 @@
 
 lxc_log_define(lxc_console, lxc);
 
-extern int lxc_console(const char *name, int ttynum, int *fd, const char *lxcpath)
-{
-	int ret, stopped = 0;
-	struct lxc_command command = {
-		.request = { .type = LXC_COMMAND_TTY, .data = ttynum },
-	};
-
-	ret = lxc_command_connected(name, &command, &stopped, lxcpath);
-	if (ret < 0 && stopped) {
-		ERROR("'%s' is stopped", name);
-		return -1;
-	}
-
-	if (ret < 0) {
-		ERROR("failed to send command");
-		return -1;
-	}
-
-	if (!ret) {
-		ERROR("console denied by '%s'", name);
-		return -1;
-	}
-
-	if (command.answer.ret) {
-		ERROR("console access denied: %s",
-			strerror(-command.answer.ret));
-		return -1;
-	}
-
-	*fd = command.answer.fd;
-	if (*fd <0) {
-		ERROR("unable to allocate fd for tty %d", ttynum);
-		return -1;
-	}
-
-	INFO("tty %d allocated", ttynum);
-	return 0;
-}
-
-/*----------------------------------------------------------------------------
- * functions used by lxc-start mainloop
- * to handle above command request.
- *--------------------------------------------------------------------------*/
 extern void lxc_console_remove_fd(int fd, struct lxc_tty_info *tty_info)
 {
 	int i;
@@ -102,47 +59,6 @@ extern void lxc_console_remove_fd(int fd, struct lxc_tty_info *tty_info)
 	}
 
 	return;
-}
-
-extern int lxc_console_callback(int fd, struct lxc_request *request,
-				struct lxc_handler *handler)
-{
-	int ttynum = request->data;
-	struct lxc_tty_info *tty_info = &handler->conf->tty_info;
-
-	if (ttynum > 0) {
-		if (ttynum > tty_info->nbtty)
-			goto out_close;
-
-		if (tty_info->pty_info[ttynum - 1].busy)
-			goto out_close;
-
-		goto out_send;
-	}
-
-	/* fixup index tty1 => [0] */
-	for (ttynum = 1;
-	     ttynum <= tty_info->nbtty && tty_info->pty_info[ttynum - 1].busy;
-	     ttynum++);
-
-	/* we didn't find any available slot for tty */
-	if (ttynum > tty_info->nbtty)
-		goto out_close;
-
-out_send:
-	if (lxc_af_unix_send_fd(fd, tty_info->pty_info[ttynum - 1].master,
-				&ttynum, sizeof(ttynum)) < 0) {
-		ERROR("failed to send tty to client");
-		goto out_close;
-	}
-
-	tty_info->pty_info[ttynum - 1].busy = fd;
-
-	return 0;
-
-out_close:
-	/* the close fd and related cleanup will be done by caller */
-	return 1;
 }
 
 static int get_default_console(char **console)

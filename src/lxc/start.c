@@ -262,90 +262,6 @@ static int signal_handler(int fd, void *data,
 	return 1;
 }
 
-int lxc_pid_callback(int fd, struct lxc_request *request,
-		     struct lxc_handler *handler)
-{
-	struct lxc_answer answer;
-	int ret;
-
-	memset(&answer, 0, sizeof(answer));
-	answer.pid = handler->pid;
-	answer.ret = 0;
-
-	ret = send(fd, &answer, sizeof(answer), 0);
-	if (ret < 0) {
-		WARN("failed to send answer to the peer");
-		return -1;
-	}
-
-	if (ret != sizeof(answer)) {
-		ERROR("partial answer sent");
-		return -1;
-	}
-
-	return 0;
-}
-
-int lxc_cgroup_callback(int fd, struct lxc_request *request,
-		     struct lxc_handler *handler)
-{
-	struct lxc_answer answer;
-	int ret;
-
-	memset(&answer, 0, sizeof(answer));
-	answer.pathlen = strlen(handler->cgroup) + 1;
-	answer.path = handler->cgroup;
-	answer.ret = 0;
-
-	ret = send(fd, &answer, sizeof(answer), 0);
-	if (ret < 0) {
-		WARN("failed to send answer to the peer");
-		return -1;
-	}
-
-	if (ret != sizeof(answer)) {
-		ERROR("partial answer sent");
-		return -1;
-	}
-
-	ret = send(fd, answer.path, answer.pathlen, 0);
-	if (ret < 0) {
-		WARN("failed to send answer to the peer");
-		return -1;
-	}
-
-	if (ret != answer.pathlen) {
-		ERROR("partial answer sent");
-		return -1;
-	}
-
-	return 0;
-}
-
-int lxc_clone_flags_callback(int fd, struct lxc_request *request,
-			     struct lxc_handler *handler)
-{
-	struct lxc_answer answer;
-	int ret;
-
-	memset(&answer, 0, sizeof(answer));
-	answer.pid = 0;
-	answer.ret = handler->clone_flags;
-
-	ret = send(fd, &answer, sizeof(answer), 0);
-	if (ret < 0) {
-		WARN("failed to send answer to the peer");
-		return -1;
-	}
-
-	if (ret != sizeof(answer)) {
-		ERROR("partial answer sent");
-		return -1;
-	}
-
-	return 0;
-}
-
 int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state)
 {
 	handler->state = state;
@@ -374,7 +290,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_open;
 	}
 
-	if (lxc_command_mainloop_add(name, &descr, handler)) {
+	if (lxc_cmd_mainloop_add(name, &descr, handler)) {
 		ERROR("failed to add command handler to mainloop");
 		goto out_mainloop_open;
 	}
@@ -426,7 +342,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 		goto out_free;
 	}
 
-	if (lxc_command_init(name, handler, lxcpath))
+	if (lxc_cmd_init(name, handler, lxcpath))
 		goto out_free_name;
 
 	if (lxc_read_seccomp_config(conf) != 0) {

@@ -43,6 +43,7 @@
 #include "log.h"
 #include "mainloop.h"
 #include "arguments.h"
+#include "commands.h"
 
 lxc_log_define(lxc_console_ui, lxc_console);
 
@@ -202,13 +203,14 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	err = lxc_console(my_args.name, my_args.ttynum, &master, my_args.lxcpath[0]);
+	err = lxc_cmd_console(my_args.name, &my_args.ttynum, &master, my_args.lxcpath[0]);
 	if (err)
 		goto out;
 
 	fprintf(stderr, "\n\
-Type <Ctrl+%1$c q> to exit the console, \
-<Ctrl+%1$c Ctrl+%1$c> to enter Ctrl+%1$c itself\n",
+Connected to tty %1$d\n\
+Type <Ctrl+%2$c q> to exit the console, \
+<Ctrl+%2$c Ctrl+%2$c> to enter Ctrl+%2$c itself\n", my_args.ttynum,
                 'a' + my_args.escape - 1);
 
 	err = setsid();

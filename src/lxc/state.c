@@ -103,73 +103,12 @@ fail:
 	return -1;
 }
 
-static lxc_state_t __lxc_getstate(const char *name, const char *lxcpath)
-{
-	struct lxc_command command = {
-		.request = { .type = LXC_COMMAND_STATE },
-	};
-
-	int ret, stopped = 0;
-
-	ret = lxc_command(name, &command, &stopped, lxcpath);
-	if (ret < 0 && stopped)
-		return STOPPED;
-
-	if (ret < 0) {
-		ERROR("failed to send command");
-		return -1;
-	}
-
-	if (!ret) {
-		WARN("'%s' has stopped before sending its state", name);
-		return -1;
-	}
-
-	if (command.answer.ret < 0) {
-		ERROR("failed to get state for '%s': %s",
-			name, strerror(-command.answer.ret));
-		return -1;
-	}
-
-	DEBUG("'%s' is in '%s' state", name, lxc_state2str(command.answer.ret));
-
-	return command.answer.ret;
-}
-
 lxc_state_t lxc_getstate(const char *name, const char *lxcpath)
 {
 	lxc_state_t state = freezer_state(name, lxcpath);
 	if (state != FROZEN && state != FREEZING)
-		state = __lxc_getstate(name, lxcpath);
+		state = lxc_cmd_get_state(name, lxcpath);
 	return state;
-}
-
-/*----------------------------------------------------------------------------
- * functions used by lxc-start mainloop
- * to handle above command request.
- *--------------------------------------------------------------------------*/
-extern int lxc_state_callback(int fd, struct lxc_request *request,
-			struct lxc_handler *handler)
-{
-	struct lxc_answer answer;
-	int ret;
-
-	memset(&answer, 0, sizeof(answer));
-	answer.ret = handler->state;
-
-	ret = send(fd, &answer, sizeof(answer), 0);
-	if (ret < 0) {
-		WARN("failed to send answer to the peer");
-		goto out;
-	}
-
-	if (ret != sizeof(answer)) {
-		ERROR("partial answer sent");
-		goto out;
-	}
-
-out:
-	return ret;
 }
 
 static int fillwaitedstates(const char *strstates, int *states)

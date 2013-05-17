@@ -76,7 +76,7 @@ int main(int argc, char *argv[], char *envp[])
 	} else
 		sig=SIGKILL;
 
-	pid = get_init_pid(my_args.name, my_args.lxcpath[0]);
+	pid = lxc_cmd_get_init_pid(my_args.name, my_args.lxcpath[0]);
 	if (pid < 0) {
 		ERROR("failed to get the init pid");
 		return -1;

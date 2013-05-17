@@ -34,5 +34,4 @@ extern char *lxc_cgroup_path_create(const char *lxcgroup, const char *name);
 extern int lxc_cgroup_enter(const char *cgpath, pid_t pid);
 extern int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath);
 extern int cgroup_path_get(char **path, const char *subsystem, const char *cgpath);
-extern int lxc_get_cgpath(const char **path, const char *subsystem, const char *name, const char *lxcpath);
 #endif

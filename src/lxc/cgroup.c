@@ -120,7 +120,7 @@ static int get_cgroup_mount(const char *subsystem, char *mnt)
 	while ((getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
 		if (strcmp(mntent_r.mnt_type, "cgroup") != 0)
 			continue;
-		
+
 		if (subsystem) {
 			if (!hasmntopt(&mntent_r, subsystem))
 				continue;
@@ -215,55 +215,9 @@ fail:
 }
 
 /*
- * Calculate a container's cgroup path for a particular subsystem.  This
- * is the cgroup path relative to the root of the cgroup filesystem.
- * @path: A char ** into which we copy the char* containing the answer
- * @subsystem: the cgroup subsystem of interest (i.e. freezer)
- * @name: container name
- * @lxcpath: the lxcpath in which the container is running.
- *
- * Returns 0 on success, -1 on error.
- *
- * Note that the char* copied into *path is a static char[MAXPATHLEN] in
- * commands.c:receive_answer().  It should not be freed.
- */
-extern int lxc_get_cgpath(const char **path, const char *subsystem, const char *name, const char *lxcpath)
-{
-	struct lxc_command command = {
-		.request = { .type = LXC_COMMAND_CGROUP },
-	};
-
-	int ret, stopped = 0;
-
-	ret = lxc_command(name, &command, &stopped, lxcpath);
-	if (ret < 0) {
-		if (!stopped)
-			ERROR("failed to send command");
-		return -1;
-	}
-
-	if (!ret) {
-		WARN("'%s' has stopped before sending its state", name);
-		return -1;
-	}
-
-	if (command.answer.ret < 0 || command.answer.pathlen < 0) {
-		ERROR("failed to get state for '%s': %s",
-			name, strerror(-command.answer.ret));
-		return -1;
-	}
-
-	*path = command.answer.path;
-
-	return 0;
-}
-
-/*
  * lxc_cgroup_path_get: determine full pathname for a cgroup
  * file for a specific container.
- * @path: char ** used to return the answer.  The char * will point
- * into the static char* retuf from cgroup_path_get() (so no need
- * to free it).
+ * @path: char ** used to return the answer.
  * @subsystem: cgroup subsystem (i.e. "freezer") for which to
  * return an answer.  If NULL, then the first cgroup entry in
  * mtab will be used.
@@ -275,12 +229,16 @@ extern int lxc_get_cgpath(const char **path, const char *subsystem, const char *
  */
 int lxc_cgroup_path_get(char **path, const char *subsystem, const char *name, const char *lxcpath)
 {
-	const char *cgpath;
+	int ret;
+	char *cgpath;
 
-	if (lxc_get_cgpath(&cgpath, subsystem, name, lxcpath) < 0)
+	cgpath = lxc_cmd_get_cgroup_path(subsystem, name, lxcpath);
+	if (!cgpath)
 		return -1;
 
-	return cgroup_path_get(path, subsystem, cgpath);
+	ret = cgroup_path_get(path, subsystem, cgpath);
+	free(cgpath);
+	return ret;
 }
 
 /*
@@ -917,13 +875,17 @@ int lxc_cgroup_destroy(const char *cgpath)
 
 int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath)
 {
-	const char *dirpath;
+	int ret;
+	char *dirpath;
 
-	if (lxc_get_cgpath(&dirpath, NULL, name, lxcpath) < 0) {
+	dirpath = lxc_cmd_get_cgroup_path(NULL, name, lxcpath);
+	if (!dirpath) {
 		ERROR("Error getting cgroup for container %s: %s", lxcpath, name);
 		return -1;
 	}
 	INFO("joining pid %d to cgroup %s", pid, dirpath);
 
-	return lxc_cgroup_enter(dirpath, pid);
+	ret = lxc_cgroup_enter(dirpath, pid);
+	free(dirpath);
+	return ret;
 }

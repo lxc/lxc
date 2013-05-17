@@ -40,7 +40,6 @@ liblxc_so_SOURCES = \
 	bdev.c bdev.h \
 	commands.c commands.h \
 	start.c start.h \
-	stop.c \
 	execute.c \
 	monitor.c monitor.h \
 	console.c \

@@ -137,7 +137,8 @@ int main()
 	}
 
 	const char *dirpath;
-	if (lxc_get_cgpath(&dirpath, NULL, c2->name, c2->config_path) < 0) {
+	dirpath = lxc_cmd_get_cgroup_path(NULL, c2->name, c2->config_path);
+	if (!dirpath) {
 		TSTERR("getting second container's cgpath");
 		goto out;
 	}
@@ -150,6 +151,8 @@ int main()
 
 	retv = 0;
 out:
+	if (dirpath)
+		free(dirpath);
 	if (c2) {
 		c2->stop(c2);
 		c2->destroy(c2);

@@ -52,14 +52,6 @@ extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf
 		     const char *lxcpath);
 
 /*
- * Stop the container previously started with lxc_start, all
- * the processes running inside this container will be killed.
- * @name : the name of the container
- * Returns 0 on success, < 0 otherwise
- */
-extern int lxc_stop(const char *name, const char *lxcpath);
-
-/*
  * Start the specified command inside an application container
  * @name     : the name of the container
  * @argv     : an array of char * corresponding to the commande line

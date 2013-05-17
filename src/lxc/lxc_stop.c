@@ -29,6 +29,7 @@
 #include <lxc/log.h>
 
 #include "arguments.h"
+#include "commands.h"
 #include "utils.h"
 
 static const struct option my_longopts[] = {
@@ -58,5 +59,5 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return -1;
 
-	return lxc_stop(my_args.name, my_args.lxcpath[0]);
+	return lxc_cmd_stop(my_args.name, my_args.lxcpath[0]);
 }
