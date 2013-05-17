@@ -551,7 +551,7 @@ out:
 
 static int in_cgroup_list(char *s, char *list)
 {
-	char *token, *str, *saveptr;
+	char *token, *str, *saveptr = NULL;
 
 	if (!list || !s)
 		return 0;
@@ -566,7 +566,7 @@ static int in_cgroup_list(char *s, char *list)
 
 static int have_visited(char *opts, char *visited, char *allcgroups)
 {
-	char *str, *s, *token;
+	char *str, *s = NULL, *token;
 
 	for (str = strdupa(opts); (token = strtok_r(str, ",", &s)); str = NULL) {
 		if (!in_cgroup_list(token, allcgroups))
@@ -580,7 +580,7 @@ static int have_visited(char *opts, char *visited, char *allcgroups)
 
 static int record_visited(char *opts, char **visitedp, char *allcgroups)
 {
-	char *s, *token, *str;
+	char *s = NULL, *token, *str;
 	int oldlen, newlen, ret;
 
 	for (str = strdupa(opts); (token = strtok_r(str, ",", &s)); str = NULL) {
