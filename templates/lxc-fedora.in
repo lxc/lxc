@@ -143,7 +143,24 @@ configure_fedora_systemd()
     chroot ${rootfs_path} ln -s /dev/null //etc/systemd/system/udev.service
     chroot ${rootfs_path} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
     #dependency on a device unit fails it specially that we disabled udev
-    sed -i 's/After=dev-%i.device/After=/' ${rootfs_path}/lib/systemd/system/getty\@.service
+    # sed -i 's/After=dev-%i.device/After=/' ${rootfs_path}/lib/systemd/system/getty\@.service
+    #
+    # Actually, the After=dev-%i.device line does not appear in the
+    # Fedora 17 or Fedora 18 systemd getty\@.service file.  It may be left
+    # over from an earlier version and it's not doing any harm.  We do need
+    # to disable the "ConditionalPathExists=/dev/tty0" line or no gettys are
+    # started on the ttys in the container.  Lets do it in an override copy of
+    # the service so it can still pass rpm verifies and not be automatically
+    # updated by a new systemd version.  --  mhw  /\/\|=mhw=|\/\/
+
+    sed -e 's/^ConditionPathExists=/# ConditionPathExists=/' \
+        -e 's/After=dev-%i.device/After=/' \
+	< ${rootfs_path}/lib/systemd/system/getty\@.service \
+	> ${rootfs_path}/etc/systemd/system/getty\@.service
+    # Setup getty service on the 4 ttys we are going to allow in the
+    # default config.  Number should match lxc.tty
+    ( cd ${rootfs_path}/etc/systemd/system/getty.target.wants
+        for i in 1 2 3 4 ; do ln -sf ../getty\@.service getty@tty${i}.service; done )
 }
 
 download_fedora()
