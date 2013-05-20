@@ -255,7 +255,7 @@ int wait_for_pid(pid_t pid)
 again:
 	ret = waitpid(pid, &status, 0);
 	if (ret == -1) {
-		if (errno == -EINTR)
+		if (errno == EINTR)
 			goto again;
 		return -1;
 	}
