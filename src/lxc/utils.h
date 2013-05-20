@@ -23,6 +23,8 @@
 #ifndef _utils_h
 #define _utils_h
 
+#include <sys/types.h>
+
 extern int lxc_setup_fs(void);
 extern int get_u16(unsigned short *val, const char *arg, int base);
 extern int mkdir_p(const char *dir, mode_t mode);
@@ -64,5 +66,6 @@ extern int __build_bug_on_failed;
  * wait on a child we forked
  */
 extern int wait_for_pid(pid_t pid);
+extern int lxc_wait_for_pid_status(pid_t pid);
 
 #endif
