@@ -54,4 +54,30 @@ struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 			const char *oldpath, const char *lxcpath, const char *bdevtype,
 			int snap, const char *bdevdata, unsigned long newsize);
 void bdev_put(struct bdev *bdev);
+
+/* define constants if the kernel/glibc headers don't define them */
+#ifndef MS_DIRSYNC
+#define MS_DIRSYNC  128
+#endif
+
+#ifndef MS_REC
+#define MS_REC 16384
+#endif
+
+#ifndef MNT_DETACH
+#define MNT_DETACH 2
+#endif
+
+#ifndef MS_SLAVE
+#define MS_SLAVE (1<<19)
+#endif
+
+#ifndef MS_RELATIME
+#define MS_RELATIME (1 << 21)
+#endif
+
+#ifndef MS_STRICTATIME
+#define MS_STRICTATIME (1 << 24)
+#endif
+
 #endif
