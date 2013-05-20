@@ -68,4 +68,9 @@ extern int __build_bug_on_failed;
 extern int wait_for_pid(pid_t pid);
 extern int lxc_wait_for_pid_status(pid_t pid);
 
+/* send and receive buffers completely */
+extern int lxc_write_nointr(int fd, const void* buf, size_t count);
+extern int lxc_read_nointr(int fd, void* buf, size_t count);
+extern int lxc_read_nointr_expect(int fd, void* buf, size_t count, const void* expected_buf);
+
 #endif
