@@ -140,7 +140,7 @@ configure_fedora_systemd()
 {
     unlink ${rootfs_path}/etc/systemd/system/default.target
     touch ${rootfs_path}/etc/fstab
-    chroot ${rootfs_path} ln -s /dev/null //etc/systemd/system/udev.service
+    chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/udev.service
     chroot ${rootfs_path} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
     #dependency on a device unit fails it specially that we disabled udev
     # sed -i 's/After=dev-%i.device/After=/' ${rootfs_path}/lib/systemd/system/getty\@.service
@@ -412,7 +412,7 @@ if [ -n "$needed_pkgs" ]; then
 fi
 
 if [ -z "$path" ]; then
-    path=$default_path
+    path=$default_path/$name
 fi
 
 if [ -z "$release" ]; then
@@ -438,7 +438,7 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 
-rootfs_path=$path/$name/rootfs
+rootfs_path=$path/rootfs
 # check for 'lxc.rootfs' passed in through default config by lxc-create
 if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
     rootfs_path=`grep 'lxc.rootfs =' $path/config | awk -F= '{ print $2 }'`
