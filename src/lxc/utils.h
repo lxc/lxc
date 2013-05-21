@@ -24,6 +24,7 @@
 #define _utils_h
 
 #include <errno.h>
+#include <stdarg.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include "config.h"
@@ -181,5 +182,9 @@ extern ssize_t lxc_read_nointr_expect(int fd, void* buf, size_t count, const voi
 #define SHA_DIGEST_LENGTH 20
 extern int sha1sum_file(char *fnam, unsigned char *md_value);
 #endif
+
+/* convert variadic argument lists to arrays (for execl type argument lists) */
+extern char** lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup);
+extern const char** lxc_va_arg_list_to_argv_const(va_list ap, size_t skip);
 
 #endif
