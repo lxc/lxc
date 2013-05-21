@@ -359,9 +359,9 @@ again:
 	return status;
 }
 
-int lxc_write_nointr(int fd, const void* buf, size_t count)
+ssize_t lxc_write_nointr(int fd, const void* buf, size_t count)
 {
-	int ret;
+	ssize_t ret;
 again:
 	ret = write(fd, buf, count);
 	if (ret < 0 && errno == EINTR)
@@ -369,9 +369,9 @@ again:
 	return ret;
 }
 
-int lxc_read_nointr(int fd, void* buf, size_t count)
+ssize_t lxc_read_nointr(int fd, void* buf, size_t count)
 {
-	int ret;
+	ssize_t ret;
 again:
 	ret = read(fd, buf, count);
 	if (ret < 0 && errno == EINTR)
@@ -379,13 +379,13 @@ again:
 	return ret;
 }
 
-int lxc_read_nointr_expect(int fd, void* buf, size_t count, const void* expected_buf)
+ssize_t lxc_read_nointr_expect(int fd, void* buf, size_t count, const void* expected_buf)
 {
-	int ret;
+	ssize_t ret;
 	ret = lxc_read_nointr(fd, buf, count);
 	if (ret <= 0)
 		return ret;
-	if (ret != count)
+	if ((size_t)ret != count)
 		return -1;
 	if (expected_buf && memcmp(buf, expected_buf, count) != 0) {
 		errno = EINVAL;
