@@ -871,7 +871,8 @@ out:
 		count++;
 		temp = realloc(addresses, count * sizeof(*addresses));
 		if (!temp) {
-			for (int i = 0; i < count-1; i++)
+			int i;
+			for (i = 0; i < count-1; i++)
 				free(addresses[i]);
 			free(addresses);
 			return NULL;
