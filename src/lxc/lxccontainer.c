@@ -18,6 +18,7 @@
  */
 
 #define _GNU_SOURCE
+#include <stdarg.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -38,6 +39,7 @@
 #include "log.h"
 #include "bdev.h"
 #include "utils.h"
+#include "attach.h"
 #include <lxc/utils.h>
 #include <lxc/monitor.h>
 #include <sched.h>
@@ -583,51 +585,30 @@ reboot:
 static bool lxcapi_startl(struct lxc_container *c, int useinit, ...)
 {
 	va_list ap;
-	char **inargs = NULL, **temp;
-	int n_inargs = 0;
+	char **inargs = NULL;
 	bool bret = false;
 
 	/* container exists */
 	if (!c)
 		return false;
 
-	/* build array of arguments if any */
 	va_start(ap, useinit);
-	while (1) {
-		char *arg;
-		arg = va_arg(ap, char *);
-		if (!arg)
-			break;
-		n_inargs++;
-		temp = realloc(inargs, n_inargs * sizeof(*inargs));
-		if (!temp) {
-			va_end(ap);
-			goto out;
-		}
-		inargs = temp;
-		inargs[n_inargs - 1] = strdup(arg);  // not sure if it's safe not to copy
-	}
+	inargs = lxc_va_arg_list_to_argv(ap, 0, 1);
 	va_end(ap);
 
-	/* add trailing NULL */
-	if (n_inargs) {
-		n_inargs++;
-		temp = realloc(inargs, n_inargs * sizeof(*inargs));
-		if (!temp)
-			goto out;
-		inargs = temp;
-		inargs[n_inargs - 1] = NULL;
+	if (!inargs) {
+		ERROR("Memory allocation error.");
+		goto out;
 	}
 
-	bret = lxcapi_start(c, useinit, inargs);
+	/* pass NULL if no arguments were supplied */
+	bret = lxcapi_start(c, useinit, *inargs ? inargs : NULL);
 
 out:
 	if (inargs) {
-		int i;
-		for (i = 0; i < n_inargs; i++) {
-			if (inargs[i])
-				free(inargs[i]);
-		}
+		char *arg;
+		for (arg = *inargs; arg; arg++)
+			free(arg);
 		free(inargs);
 	}
 
@@ -1133,9 +1114,8 @@ static bool lxcapi_createl(struct lxc_container *c, const char *t,
 		const char *bdevtype, struct bdev_specs *specs, int flags, ...)
 {
 	bool bret = false;
-	char **args = NULL, **temp;
+	char **args = NULL;
 	va_list ap;
-	int nargs = 0;
 
 	if (!c)
 		return false;
@@ -1145,29 +1125,17 @@ static bool lxcapi_createl(struct lxc_container *c, const char *t,
 	 * need to get a copy of the arguments.
 	 */
 	va_start(ap, flags);
-	while (1) {
-		char *arg;
-		arg = va_arg(ap, char *);
-		if (!arg)
-			break;
-		nargs++;
-		temp = realloc(args, (nargs+1) * sizeof(*args));
-		if (!temp) {
-			va_end(ap);
-			goto out;
-		}
-		args = temp;
-		args[nargs - 1] = arg;
-	}
+	args = lxc_va_arg_list_to_argv(ap, 0, 0);
 	va_end(ap);
-	if (args)
-		args[nargs] = NULL;
+	if (!args) {
+		ERROR("Memory allocation error.");
+		goto out;
+	}
 
 	bret = c->create(c, t, bdevtype, specs, flags, args);
 
 out:
-	if (args)
-		free(args);
+	free(args);
 	return bret;
 }
 
@@ -2000,6 +1968,57 @@ out:
 	return NULL;
 }
 
+static int lxcapi_attach(struct lxc_container *c, lxc_attach_exec_t exec_function, void *exec_payload, lxc_attach_options_t *options, pid_t *attached_process)
+{
+	if (!c)
+		return -1;
+
+	return lxc_attach(c->name, c->config_path, exec_function, exec_payload, options, attached_process);
+}
+
+static int lxcapi_attach_run_wait(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char * const argv[])
+{
+	lxc_attach_command_t command;
+	pid_t pid;
+	int r;
+
+	if (!c)
+		return -1;
+
+	command.program = (char*)program;
+	command.argv = (char**)argv;
+	r = lxc_attach(c->name, c->config_path, lxc_attach_run_command, &command, options, &pid);
+	if (r < 0) {
+		ERROR("ups");
+		return r;
+	}
+	return lxc_wait_for_pid_status(pid);
+}
+
+static int lxcapi_attach_run_waitl(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char *arg, ...)
+{
+	va_list ap;
+	const char **argv;
+	int ret;
+
+	if (!c)
+		return -1;
+
+	va_start(ap, arg);
+	argv = lxc_va_arg_list_to_argv_const(ap, 1);
+	va_end(ap);
+
+	if (!argv) {
+		ERROR("Memory allocation error.");
+		return -1;
+	}
+	argv[0] = arg;
+
+	ret = lxcapi_attach_run_wait(c, options, program, (const char * const *)argv);
+	free((void*)argv);
+	return ret;
+}
+
 struct lxc_container *lxc_container_new(const char *name, const char *configpath)
 {
 	struct lxc_container *c;
@@ -2086,6 +2105,9 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->set_config_path = lxcapi_set_config_path;
 	c->clone = lxcapi_clone;
 	c->get_ips = lxcapi_get_ips;
+	c->attach = lxcapi_attach;
+	c->attach_run_wait = lxcapi_attach_run_wait;
+	c->attach_run_waitl = lxcapi_attach_run_waitl;
 
 	/* we'll allow the caller to update these later */
 	if (lxc_log_init(NULL, "none", NULL, "lxc_container", 0, c->config_path)) {
