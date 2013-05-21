@@ -230,28 +230,6 @@ class Container(_lxc.Container):
 
         return _lxc.Container.set_config_item(self, key, value)
 
-    def attach(self, namespace="ALL", *cmd):
-        """
-            Attach to a running container.
-        """
-
-        if not self.running:
-            return False
-
-        attach = ["lxc-attach", "-n", self.name,
-                  "-P", self.get_config_path()]
-        if namespace != "ALL":
-            attach += ["-s", namespace]
-
-        if cmd:
-            attach += ["--"] + list(cmd)
-
-        if subprocess.call(
-                attach,
-                universal_newlines=True) != 0:
-            return False
-        return True
-
     def create(self, template, args={}):
         """
             Create a new rootfs for the container.
@@ -446,3 +424,38 @@ def list_containers(as_object=False, config_path=None):
         else:
             containers.append(entry.split("/")[-2])
     return containers
+
+def attach_run_command(cmd):
+    """
+        Run a command when attaching
+        
+        Please do not call directly, this will execvp the command.
+        This is to be used in conjunction with the attach method
+        of a container.
+    """
+    if isinstance(cmd, tuple):
+        return _lxc.attach_run_command(cmd)
+    elif isinstance(cmd, list):
+        return _lxc.attach_run_command((cmd[0], cmd))
+    else:
+        return _lxc.attach_run_command((cmd, [cmd]))
+
+def attach_run_shell():
+    """
+        Run a shell when attaching
+        
+        Please do not call directly, this will execvp the shell.
+        This is to be used in conjunction with the attach method
+        of a container.
+    """
+    return _lxc.attach_run_shell(None)
+
+# Some constants for attach
+LXC_ATTACH_KEEP_ENV = _lxc.LXC_ATTACH_KEEP_ENV
+LXC_ATTACH_CLEAR_ENV = _lxc.LXC_ATTACH_CLEAR_ENV
+LXC_ATTACH_MOVE_TO_CGROUP = _lxc.LXC_ATTACH_MOVE_TO_CGROUP
+LXC_ATTACH_DROP_CAPABILITIES = _lxc.LXC_ATTACH_DROP_CAPABILITIES
+LXC_ATTACH_SET_PERSONALITY = _lxc.LXC_ATTACH_SET_PERSONALITY
+LXC_ATTACH_APPARMOR = _lxc.LXC_ATTACH_APPARMOR
+LXC_ATTACH_REMOUNT_PROC_SYS = _lxc.LXC_ATTACH_REMOUNT_PROC_SYS
+LXC_ATTACH_DEFAULT = _lxc.LXC_ATTACH_DEFAULT
