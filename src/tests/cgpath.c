@@ -27,6 +27,7 @@
 #include <errno.h>
 #include "../lxc/cgroup.h"
 #include "../lxc/lxc.h"
+#include "../lxc/commands.h"
 
 #define MYNAME "lxctest1"
 #define MYNAME2 "lxctest2"
@@ -39,6 +40,7 @@ int main()
 {
 	struct lxc_container *c = NULL, *c2 = NULL;
 	char *path;
+	char *dirpath = NULL;
 	int len;
 	int ret, retv = -1;
 
@@ -136,7 +138,6 @@ int main()
 		goto out;
 	}
 
-	const char *dirpath;
 	dirpath = lxc_cmd_get_cgroup_path(NULL, c2->name, c2->config_path);
 	if (!dirpath) {
 		TSTERR("getting second container's cgpath");

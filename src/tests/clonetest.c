@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	c2 = c->clone(c, MYNAME2, NULL, 0, NULL, NULL, 0);
+	c2 = c->clone(c, MYNAME2, NULL, 0, NULL, NULL, 0, NULL);
 	if (!c2) {
 		fprintf(stderr, "%d: %s clone returned NULL\n", __LINE__, MYNAME2);
 		goto out;
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if ((c2 = c->clone(c, "clonetestlvm2", NULL, 0, NULL, NULL, 0)) == NULL) {
+	if ((c2 = c->clone(c, "clonetestlvm2", NULL, 0, NULL, NULL, 0, NULL)) == NULL) {
 		fprintf(stderr, "lvm clone failed\n");
 		goto out;
 	}
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 		c2 = NULL;
 	}
 
-	if ((c2 = c->clone(c, "clonetestlvm3", NULL, LXC_CLONE_SNAPSHOT, NULL, NULL, 0)) == NULL) {
+	if ((c2 = c->clone(c, "clonetestlvm3", NULL, LXC_CLONE_SNAPSHOT, NULL, NULL, 0, NULL)) == NULL) {
 		fprintf(stderr, "lvm clone failed\n");
 		goto out;
 	}
@@ -148,13 +148,13 @@ int main(int argc, char *argv[])
 	}
 
 	// Now create an overlayfs clone of a dir-backed container
-	if ((c2 = c->clone(c, "clonetest-o1", NULL, LXC_CLONE_SNAPSHOT, "overlayfs", NULL, 0)) == NULL) {
+	if ((c2 = c->clone(c, "clonetest-o1", NULL, LXC_CLONE_SNAPSHOT, "overlayfs", NULL, 0, NULL)) == NULL) {
 		fprintf(stderr, "overlayfs clone of dir failed\n");
 		goto out;
 	}
 
 	// Now create an overlayfs clone of the overlayfs clone
-	if ((c3 = c2->clone(c2, "clonetest-o2", NULL, LXC_CLONE_SNAPSHOT, "overlayfs", NULL, 0)) == NULL) {
+	if ((c3 = c2->clone(c2, "clonetest-o2", NULL, LXC_CLONE_SNAPSHOT, "overlayfs", NULL, 0, NULL)) == NULL) {
 		fprintf(stderr, "overlayfs clone of overlayfs failed\n");
 		goto out;
 	}

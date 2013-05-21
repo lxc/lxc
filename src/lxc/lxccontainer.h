@@ -103,6 +103,7 @@ struct lxc_container {
 	 *  then the original backing store's size will be used if possible.  Note this
 	 *  only applies to the rootfs.  For any other filesystems, the original size
 	 *  will be duplicated.
+	 * @hookargs: additional arguments to pass to the clone hook script
 	 */
 	struct lxc_container *(*clone)(struct lxc_container *c, const char *newname,
 		const char *lxcpath, int flags, const char *bdevtype,
