@@ -43,14 +43,16 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 
-static pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+extern pthread_mutex_t thread_mutex;
 
 lxc_log_define(lxc_container, lxc);
 
 /* LOCKING
- * c->privlock protects the struct lxc_container from multiple threads.
- * c->slock protects the on-disk container data
- * thread_mutex protects process data (ex: fd table) from multiple threads
+ * 1. c->privlock protects the struct lxc_container from multiple threads.
+ * 2. c->slock protects the on-disk container data
+ * 3. thread_mutex protects process data (ex: fd table) from multiple threads
+ * slock is an flock, which does not exclude threads.  Therefore slock should
+ * always be wrapped inside privlock.
  * NOTHING mutexes two independent programs with their own struct
  * lxc_container for the same c->name, between API calls.  For instance,
  * c->config_read(); c->start();  Between those calls, data on disk
@@ -81,14 +83,12 @@ static void lxc_container_free(struct lxc_container *c)
 		c->error_string = NULL;
 	}
 	if (c->slock) {
-		sem_close(c->slock);
+		lxc_putlock(c->slock);
 		c->slock = NULL;
 	}
 	if (c->privlock) {
-		sem_t *l = c->privlock;
+		lxc_putlock(c->privlock);
 		c->privlock = NULL;
-		sem_destroy(l);
-		free(l);
 	}
 	if (c->name) {
 		free(c->name);
@@ -202,11 +202,15 @@ static const char *lxcapi_state(struct lxc_container *c)
 
 	if (!c)
 		return NULL;
-	if (lxclock(c->slock, 0))
+	if (lxclock(c->privlock, 0))
 		return NULL;
+	if (lxclock(c->slock, 0))
+		goto bad;
 	s = lxc_getstate(c->name, c->config_path);
 	ret = lxc_state2str(s);
 	lxcunlock(c->slock);
+bad:
+	lxcunlock(c->privlock);
 
 	return ret;
 }
@@ -236,10 +240,15 @@ static bool lxcapi_freeze(struct lxc_container *c)
 	if (!c)
 		return false;
 
-	if (lxclock(c->slock, 0))
+	if (lxclock(c->privlock, 0))
 		return false;
+	if (lxclock(c->slock, 0)) {
+		lxcunlock(c->privlock);
+		return false;
+	}
 	ret = lxc_freeze(c->name, c->config_path);
 	lxcunlock(c->slock);
+	lxcunlock(c->privlock);
 	if (ret)
 		return false;
 	return true;
@@ -251,10 +260,15 @@ static bool lxcapi_unfreeze(struct lxc_container *c)
 	if (!c)
 		return false;
 
-	if (lxclock(c->slock, 0))
+	if (lxclock(c->privlock, 0))
 		return false;
+	if (lxclock(c->slock, 0)) {
+		lxcunlock(c->privlock);
+		return false;
+	}
 	ret = lxc_unfreeze(c->name, c->config_path);
 	lxcunlock(c->slock);
+	lxcunlock(c->privlock);
 	if (ret)
 		return false;
 	return true;
@@ -266,10 +280,15 @@ static pid_t lxcapi_init_pid(struct lxc_container *c)
 	if (!c)
 		return -1;
 
-	if (lxclock(c->slock, 0))
+	if (lxclock(c->privlock, 0))
 		return -1;
+	if (lxclock(c->slock, 0)) {
+		lxcunlock(c->privlock);
+		return -1;
+	}
 	ret = lxc_cmd_get_init_pid(c->name, c->config_path);
 	lxcunlock(c->slock);
+	lxcunlock(c->privlock);
 	return ret;
 }
 
@@ -294,10 +313,15 @@ static bool lxcapi_load_config(struct lxc_container *c, const char *alt_file)
 		fname = alt_file;
 	if (!fname)
 		return false;
-	if (lxclock(c->slock, 0))
+	if (lxclock(c->privlock, 0))
 		return false;
+	if (lxclock(c->slock, 0)) {
+		lxcunlock(c->privlock);
+		return false;
+	}
 	ret = load_config_locked(c, fname);
 	lxcunlock(c->slock);
+	lxcunlock(c->privlock);
 	return ret;
 }
 
@@ -589,9 +613,12 @@ static bool lxcapi_create(struct lxc_container *c, const char *t, char *const ar
 	/* we're going to fork.  but since we'll wait for our child, we
 	 * don't need to lxc_container_get */
 
+	if (lxclock(c->privlock, 0))
+		goto out;
 	if (lxclock(c->slock, 0)) {
 		ERROR("failed to grab global container lock for %s\n", c->name);
-		goto out;
+		lxcunlock(c->privlock);
+		goto out_unlock1;
 	}
 
 	pid = fork();
@@ -672,6 +699,8 @@ static bool lxcapi_create(struct lxc_container *c, const char *t, char *const ar
 
 out_unlock:
 	lxcunlock(c->slock);
+out_unlock1:
+	lxcunlock(c->privlock);
 out:
 	if (tpath)
 		free(tpath);
@@ -1695,14 +1724,12 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	strcpy(c->name, name);
 
 	c->numthreads = 1;
-	c->slock = lxc_newlock(name);
-	if (!c->slock) {
+	if (!(c->slock = lxc_newlock(c->config_path, name))) {
 		fprintf(stderr, "failed to create lock\n");
 		goto err;
 	}
 
-	c->privlock = lxc_newlock(NULL);
-	if (!c->privlock) {
+	if (!(c->privlock = lxc_newlock(NULL, NULL))) {
 		fprintf(stderr, "failed to alloc privlock\n");
 		goto err;
 	}

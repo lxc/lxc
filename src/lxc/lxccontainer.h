@@ -16,8 +16,8 @@ struct lxc_container {
 	// private fields
 	char *name;
 	char *configfile;
-	sem_t *slock;
-	sem_t *privlock;
+	struct lxc_lock *slock;
+	struct lxc_lock *privlock;
 	int numthreads; /* protected by privlock. */
 	struct lxc_conf *lxc_conf; // maybe we'll just want the whole lxc_handler?
 
