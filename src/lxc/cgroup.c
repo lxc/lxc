@@ -503,7 +503,8 @@ static char *get_all_cgroups(void)
 	}
 
 out:
-	free(line);
+	if (line)
+		free(line);
 	fclose(f);
 	return ret;
 }

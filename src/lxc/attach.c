@@ -114,7 +114,8 @@ struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 		}
 	}
 
-	free(line);
+	if (line)
+		free(line);
 	fclose(proc_file);
 
 	if (!found) {
