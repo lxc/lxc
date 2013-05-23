@@ -202,10 +202,10 @@ for container_name in lxc.list_containers(config_path=lxcpath):
             entry['pid'] = str(container.init_pid)
 
     # Get the IPs
-    for protocol in ('ipv4', 'ipv6'):
+    for family, protocol in {'inet': 'ipv4', 'inet6': 'ipv6'}.items():
         if protocol in args.fancy_format or args.nesting:
             entry[protocol] = "-"
-            ips = container.get_ips(protocol=protocol, timeout=1)
+            ips = container.get_ips(family=family)
             if ips:
                 entry[protocol] = ", ".join(ips)
 
