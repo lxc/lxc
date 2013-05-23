@@ -35,6 +35,7 @@
 #include "version.h"
 #include "log.h"
 #include "bdev.h"
+#include "utils.h"
 #include <lxc/utils.h>
 #include <lxc/monitor.h>
 #include <sched.h>
@@ -43,22 +44,6 @@
 #include <ifaddrs.h>
 
 static pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-/* Define unshare() if missing from the C library */
-/* this is also in attach.c and lxccontainer.c: commonize it in utils.c */
-#ifndef HAVE_UNSHARE
-static int unshare(int flags)
-{
-#ifdef __NR_unshare
-	return syscall(__NR_unshare, flags);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
-}
-#else
-int unshare(int);
-#endif
 
 lxc_log_define(lxc_container, lxc);
 

@@ -23,7 +23,9 @@
 #ifndef _utils_h
 #define _utils_h
 
+#include <errno.h>
 #include <sys/types.h>
+#include "config.h"
 
 extern int lxc_setup_fs(void);
 extern int get_u16(unsigned short *val, const char *arg, int base);
@@ -35,6 +37,41 @@ extern int mkdir_p(const char *dir, mode_t mode);
 extern const char *default_lxc_path(void);
 extern const char *default_zfs_root(void);
 extern const char *default_lvm_vg(void);
+
+/* Define getline() if missing from the C library */
+#ifndef HAVE_GETLINE
+#ifdef HAVE_FGETLN
+#include <../include/getline.h>
+#endif
+#endif
+
+/* Define setns() if missing from the C library */
+#ifndef HAVE_SETNS
+static inline int setns(int fd, int nstype)
+{
+#ifdef __NR_setns
+	return syscall(__NR_setns, fd, nstype);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+#endif
+
+/* Define unshare() if missing from the C library */
+#ifndef HAVE_UNSHARE
+static inline int unshare(int flags)
+{
+#ifdef __NR_unshare
+	return syscall(__NR_unshare, flags);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+#else
+int unshare(int);
+#endif
 
 /**
  * BUILD_BUG_ON - break compile if a condition is true.

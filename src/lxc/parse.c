@@ -30,14 +30,8 @@
 
 #include "parse.h"
 #include "config.h"
+#include "utils.h"
 #include <lxc/log.h>
-
-/* Define getline() if missing from the C library */
-#ifndef HAVE_GETLINE
-#ifdef HAVE_FGETLN
-#include <../include/getline.h>
-#endif
-#endif
 
 /* Workaround for the broken signature of alphasort() in bionic.
    This was fixed upstream in 40e467ec668b59be25491bd44bf348a884d6a68d so the

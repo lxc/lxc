@@ -44,22 +44,9 @@
 #include "utils.h"
 #include "namespace.h"
 #include "parse.h"
+#include "utils.h"
 
 lxc_log_define(bdev, lxc);
-
-/* Define unshare() if missing from the C library */
-/* this is also in attach.c and lxccontainer.c: commonize it in utils.c */
-#ifndef HAVE_UNSHARE
-static int unshare(int flags)
-{
-#ifdef __NR_unshare
-return syscall(__NR_unshare, flags);
-#else
-errno = ENOSYS;
-return -1;
-#endif
-}
-#endif
 
 static int do_rsync(const char *src, const char *dest)
 {

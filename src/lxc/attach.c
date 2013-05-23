@@ -46,41 +46,9 @@
 #include "caps.h"
 #include "config.h"
 #include "apparmor.h"
+#include "utils.h"
 
 lxc_log_define(lxc_attach, lxc);
-
-/* Define setns() if missing from the C library */
-#ifndef HAVE_SETNS
-static int setns(int fd, int nstype)
-{
-#ifdef __NR_setns
-return syscall(__NR_setns, fd, nstype);
-#else
-errno = ENOSYS;
-return -1;
-#endif
-}
-#endif
-
-/* Define unshare() if missing from the C library */
-#ifndef HAVE_UNSHARE
-static int unshare(int flags)
-{
-#ifdef __NR_unshare
-return syscall(__NR_unshare, flags);
-#else
-errno = ENOSYS;
-return -1;
-#endif
-}
-#endif
-
-/* Define getline() if missing from the C library */
-#ifndef HAVE_GETLINE
-#ifdef HAVE_FGETLN
-#include <../include/getline.h>
-#endif
-#endif
 
 struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 {
