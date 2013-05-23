@@ -147,102 +147,113 @@ out:
 }
 
 /*
- * cgroup_path_get: Calculate the full path for a particular subsystem, plus
- * a passed-in (to be appended) relative cgpath for a container.
- * @path: a char** into which a pointer to the answer is copied
- * @subsystem: subsystem of interest (i.e. freezer).
- * @cgpath: a container's (relative) cgroup path, i.e. "/lxc/c1".
+ * cgroup_path_get: Get the absolute path to a particular subsystem,
+ * plus a passed-in (to be appended) relative cgpath for a container.
  *
- * Returns 0 on success, -1 on error.
+ * @subsystem : subsystem of interest (e.g. "freezer")
+ * @cgrelpath : a container's relative cgroup path (e.g. "lxc/c1")
  *
+ * Returns absolute path on success, NULL on error. The caller must free()
+ * the returned path.
+ *
+ * Note that @subsystem may be the name of an item (e.g. "freezer.state")
+ * in which case the subsystem will be determined by taking the string up
+ * to the first '.'
  */
-extern int cgroup_path_get(char **path, const char *subsystem, const char *cgpath)
+char *cgroup_path_get(const char *subsystem, const char *cgrelpath)
 {
 	int rc;
 
 	char *buf = NULL;
-	char *retbuf = NULL;
+	char *cgabspath = NULL;
 
 	buf = malloc(MAXPATHLEN * sizeof(char));
 	if (!buf) {
 		ERROR("malloc failed");
-		goto fail;
+		goto out1;
 	}
 
-	retbuf = malloc(MAXPATHLEN * sizeof(char));
-	if (!retbuf) {
+	cgabspath = malloc(MAXPATHLEN * sizeof(char));
+	if (!cgabspath) {
 		ERROR("malloc failed");
-		goto fail;
+		goto out2;
 	}
 
 	/* lxc_cgroup_set passes a state object for the subsystem,
 	 * so trim it to just the subsystem part */
 	if (subsystem) {
-		rc = snprintf(retbuf, MAXPATHLEN, "%s", subsystem);
+		rc = snprintf(cgabspath, MAXPATHLEN, "%s", subsystem);
 		if (rc < 0 || rc >= MAXPATHLEN) {
 			ERROR("subsystem name too long");
-			goto fail;
+			goto err3;
 		}
-		char *s = index(retbuf, '.');
+		char *s = index(cgabspath, '.');
 		if (s)
 			*s = '\0';
-		DEBUG("%s: called for subsys %s name %s\n", __func__, retbuf, cgpath);
+		DEBUG("%s: called for subsys %s name %s\n", __func__,
+		      subsystem, cgrelpath);
 	}
-	if (get_cgroup_mount(subsystem ? retbuf : NULL, buf)) {
+	if (get_cgroup_mount(subsystem ? cgabspath : NULL, buf)) {
 		ERROR("cgroup is not mounted");
-		goto fail;
+		goto err3;
 	}
 
-	rc = snprintf(retbuf, MAXPATHLEN, "%s/%s", buf, cgpath);
+	rc = snprintf(cgabspath, MAXPATHLEN, "%s/%s", buf, cgrelpath);
 	if (rc < 0 || rc >= MAXPATHLEN) {
 		ERROR("name too long");
-		goto fail;
+		goto err3;
 	}
 
-	DEBUG("%s: returning %s for subsystem %s", __func__, retbuf, subsystem);
+	DEBUG("%s: returning %s for subsystem %s relpath %s", __func__,
+		cgabspath, subsystem, cgrelpath);
+	goto out2;
 
-	if(buf)
-		free(buf);
-
-	*path = retbuf;
-	return 0;
-fail:
-	if (buf)
-		free(buf);
-	if (retbuf)
-		free(retbuf);
-	return -1;
+err3:
+	free(cgabspath);
+	cgabspath = NULL;
+out2:
+	free(buf);
+out1:
+	return cgabspath;
 }
 
 /*
- * lxc_cgroup_path_get: determine full pathname for a cgroup
- * file for a specific container.
- * @path: char ** used to return the answer.
- * @subsystem: cgroup subsystem (i.e. "freezer") for which to
- * return an answer.  If NULL, then the first cgroup entry in
- * mtab will be used.
+ * lxc_cgroup_path_get: Get the absolute pathname for a cgroup
+ * file for a running container.
+ *
+ * @subsystem : subsystem of interest (e.g. "freezer"). If NULL, then
+ *              the first cgroup entry in mtab will be used.
+ * @name      : name of container to connect to
+ * @lxcpath   : the lxcpath in which the container is running
  *
  * This is the exported function, which determines cgpath from the
- * monitor running in lxcpath.
+ * lxc-start of the @name container running in @lxcpath.
  *
- * Returns 0 on success, < 0 on error.
+ * Returns path on success, NULL on error. The caller must free()
+ * the returned path.
  */
-int lxc_cgroup_path_get(char **path, const char *subsystem, const char *name, const char *lxcpath)
+char *lxc_cgroup_path_get(const char *subsystem, const char *name,
+			  const char *lxcpath)
 {
-	int ret;
-	char *cgpath;
+	char *cgabspath;
+	char *cgrelpath;
 
-	cgpath = lxc_cmd_get_cgroup_path(subsystem, name, lxcpath);
-	if (!cgpath)
-		return -1;
+	cgrelpath = lxc_cmd_get_cgroup_path(name, lxcpath);
+	if (!cgrelpath)
+		return NULL;
 
-	ret = cgroup_path_get(path, subsystem, cgpath);
-	free(cgpath);
-	return ret;
+	cgabspath = cgroup_path_get(subsystem, cgrelpath);
+	free(cgrelpath);
+	return cgabspath;
 }
 
 /*
- * small helper which simply write a value into a (cgroup) file
+ * do_cgroup_set: Write a value into a cgroup file
+ *
+ * @path      : absolute path to cgroup file
+ * @value     : value to write into file
+ *
+ * Returns 0 on success, < 0 on error.
  */
 static int do_cgroup_set(const char *path, const char *value)
 {
@@ -267,87 +278,86 @@ static int do_cgroup_set(const char *path, const char *value)
 }
 
 /*
- * small helper to write a value into a file in a particular directory.
- * @cgpath: the directory in which to find the file
- * @filename: the file (under cgpath) to which to write
- * @value: what to write
+ * lxc_cgroup_set_bypath: Write a value into a cgroup file
+ *
+ * @cgrelpath : a container's relative cgroup path (e.g. "lxc/c1")
+ * @filename  : the cgroup file to write (e.g. "freezer.state")
+ * @value     : value to write into file
  *
  * Returns 0 on success, < 0 on error.
  */
-int lxc_cgroup_set_bypath(const char *cgpath, const char *filename, const char *value)
+int lxc_cgroup_set_bypath(const char *cgrelpath, const char *filename, const char *value)
 {
 	int ret;
-	char *dirpath = NULL;
+	char *cgabspath;
 	char path[MAXPATHLEN];
 
-	ret = cgroup_path_get(&dirpath, filename, cgpath);
-	if (ret)
-		goto fail;
+	cgabspath = cgroup_path_get(filename, cgrelpath);
+	if (!cgabspath)
+		return -1;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
+	ret = snprintf(path, MAXPATHLEN, "%s/%s", cgabspath, filename);
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		ERROR("pathname too long");
-		goto fail;
+		ret = -1;
+		goto out;
 	}
 
-	return do_cgroup_set(path, value);
+	ret = do_cgroup_set(path, value);
 
-fail:
-	if(dirpath)
-		free(dirpath);
-	return -1;
+out:
+	free(cgabspath);
+	return ret;
 }
 
 /*
- * set a cgroup value for a container
+ * lxc_cgroup_set: Write a value into a cgroup file
  *
- * @name: name of the container
- * @filename: the cgroup file (i.e. freezer.state) whose value to change
- * @value: the value to write to the file
- * @lxcpath: the lxcpath under which the container is running.
+ * @name      : name of container to connect to
+ * @filename  : the cgroup file to write (e.g. "freezer.state")
+ * @value     : value to write into file
+ * @lxcpath   : the lxcpath in which the container is running
  *
  * Returns 0 on success, < 0 on error.
  */
-
 int lxc_cgroup_set(const char *name, const char *filename, const char *value,
 		   const char *lxcpath)
 {
 	int ret;
-	char *dirpath = NULL;
+	char *cgabspath;
 	char path[MAXPATHLEN];
 
-	ret = lxc_cgroup_path_get(&dirpath, filename, name, lxcpath);
-	if (ret)
-		goto fail;
+	cgabspath = lxc_cgroup_path_get(filename, name, lxcpath);
+	if (!cgabspath)
+		return -1;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
+	ret = snprintf(path, MAXPATHLEN, "%s/%s", cgabspath, filename);
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		ERROR("pathname too long");
-		goto fail;
+		ret = -1;
+		goto out;
 	}
 
-	return do_cgroup_set(path, value);
+	ret = do_cgroup_set(path, value);
 
-fail:
-	if(dirpath)
-		free(dirpath);
-	return -1;
+out:
+	free(cgabspath);
+	return ret;
 }
 
 /*
- * Get value of a cgroup setting for a container.
+ * lxc_cgroup_get: Read value from a cgroup file
  *
- * @name: name of the container
- * @filename: the cgroup file to read (i.e. 'freezer.state')
- * @value: a preallocated char* into which to copy the answer
- * @len: the length of pre-allocated @value
- * @lxcpath: the lxcpath in which the container is running (i.e.
- * /var/lib/lxc)
+ * @name      : name of container to connect to
+ * @filename  : the cgroup file to read (e.g. "freezer.state")
+ * @value     : a pre-allocated buffer to copy the answer into
+ * @len       : the length of pre-allocated @value
+ * @lxcpath   : the lxcpath in which the container is running
  *
- * Returns < 0 on error, or the number of bytes read.
+ * Returns the number of bytes read on success, < 0 on error
  *
- * If you pass in NULL value or 0 len, then you are asking for the size of the
- * file.
+ * If you pass in NULL value or 0 len, the return value will be the size of
+ * the file, and @value will not contain the contents.
  *
  * Note that we can't get the file size quickly through stat or lseek.
  * Therefore if you pass in len > 0 but less than the file size, your only
@@ -357,25 +367,26 @@ fail:
 int lxc_cgroup_get(const char *name, const char *filename, char *value,
 		   size_t len, const char *lxcpath)
 {
-	int fd, ret = -1;
-	char *dirpath = NULL;
+	int fd, ret;
+	char *cgabspath;
 	char path[MAXPATHLEN];
-	int rc;
 
-	ret = lxc_cgroup_path_get(&dirpath, filename, name, lxcpath);
-	if (ret)
-		goto fail;
+	cgabspath = lxc_cgroup_path_get(filename, name, lxcpath);
+	if (!cgabspath)
+		return -1;
 
-	rc = snprintf(path, MAXPATHLEN, "%s/%s", dirpath, filename);
-	if (rc < 0 || rc >= MAXPATHLEN) {
+	ret = snprintf(path, MAXPATHLEN, "%s/%s", cgabspath, filename);
+	if (ret < 0 || ret >= MAXPATHLEN) {
 		ERROR("pathname too long");
-		goto fail;
+		ret = -1;
+		goto out;
 	}
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
 		ERROR("open %s : %s", path, strerror(errno));
-		goto fail;
+		ret = -1;
+		goto out;
 	}
 
 	if (!len || !value) {
@@ -394,47 +405,45 @@ int lxc_cgroup_get(const char *name, const char *filename, char *value,
 		ERROR("read %s : %s", path, strerror(errno));
 
 	close(fd);
+out:
+	free(cgabspath);
 	return ret;
-fail:
-	if(dirpath)
-		free(dirpath);
-	return -1;
 }
 
-int lxc_cgroup_nrtasks(const char *cgpath)
+int lxc_cgroup_nrtasks(const char *cgrelpath)
 {
-	char *dirpath = NULL;
+	char *cgabspath = NULL;
 	char path[MAXPATHLEN];
-	int pid, ret, count = 0;
+	int pid, ret;
 	FILE *file;
-	int rc;
 
-	ret = cgroup_path_get(&dirpath, NULL, cgpath);
-	if (ret)
-		goto fail;
+	cgabspath = cgroup_path_get(NULL, cgrelpath);
+	if (!cgabspath)
+		return -1;
 
-	rc = snprintf(path, MAXPATHLEN, "%s/tasks", dirpath);
-	if (rc < 0 || rc >= MAXPATHLEN) {
+	ret = snprintf(path, MAXPATHLEN, "%s/tasks", cgabspath);
+	if (ret < 0 || ret >= MAXPATHLEN) {
 		ERROR("pathname too long");
-		goto fail;
+		ret = -1;
+		goto out;
 	}
 
 	file = fopen(path, "r");
 	if (!file) {
 		SYSERROR("fopen '%s' failed", path);
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
+	ret = 0;
 	while (fscanf(file, "%d", &pid) != EOF)
-		count++;
+		ret++;
 
 	fclose(file);
 
-	return count;
-fail:
-	if(dirpath)
-		free(dirpath);
-	return -1;
+out:
+	free(cgabspath);
+	return ret;
 }
 
 /*
@@ -654,11 +663,11 @@ char *lxc_cgroup_path_create(const char *lxcgroup, const char *name)
 
 	char buf[LARGE_MAXPATHLEN] = {0};
 
-	if (create_lxcgroups(lxcgroup) < 0)
-		return NULL;
-
 	if (!allcgroups)
 		return NULL;
+
+	if (create_lxcgroups(lxcgroup) < 0)
+		goto err1;
 
 again:
 	if (visited) {
@@ -670,9 +679,7 @@ again:
 	file = setmntent(MTAB, "r");
 	if (!file) {
 		SYSERROR("failed to open %s", MTAB);
-		if (allcgroups)
-			free(allcgroups);
-		return NULL;
+		goto err1;
 	}
 
 	if (i)
@@ -730,6 +737,7 @@ next:
 
 fail:
 	endmntent(file);
+err1:
 	free(allcgroups);
 	if (visited)
 		free(visited);
@@ -880,7 +888,7 @@ int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath)
 	int ret;
 	char *dirpath;
 
-	dirpath = lxc_cmd_get_cgroup_path(NULL, name, lxcpath);
+	dirpath = lxc_cmd_get_cgroup_path(name, lxcpath);
 	if (!dirpath) {
 		ERROR("Error getting cgroup for container %s: %s", lxcpath, name);
 		return -1;

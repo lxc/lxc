@@ -120,19 +120,16 @@ out:
 
 static int freeze_unfreeze(const char *name, int freeze, const char *lxcpath)
 {
-	char *nsgroup = NULL;
+	char *cgabspath;
 	int ret;
-	
-	ret = lxc_cgroup_path_get(&nsgroup, "freezer", name, lxcpath);
-	if (ret)
-		goto fail;
 
-	return do_unfreeze(nsgroup, freeze, name, lxcpath);
+	cgabspath = lxc_cgroup_path_get("freezer", name, lxcpath);
+	if (!cgabspath)
+		return -1;
 
-fail:
-	if (nsgroup)
-		free(nsgroup);
-	return -1;
+	ret = do_unfreeze(cgabspath, freeze, name, lxcpath);
+	free(cgabspath);
+	return ret;
 }
 
 int lxc_freeze(const char *name, const char *lxcpath)
@@ -146,19 +143,16 @@ int lxc_unfreeze(const char *name, const char *lxcpath)
 	return freeze_unfreeze(name, 0, lxcpath);
 }
 
-int lxc_unfreeze_bypath(const char *cgpath)
+int lxc_unfreeze_bypath(const char *cgrelpath)
 {
-	char *nsgroup = NULL;
+	char *cgabspath;
 	int ret;
-	
-	ret = cgroup_path_get(&nsgroup, "freezer", cgpath);
-	if (ret)
-		goto fail;
 
-	return do_unfreeze(nsgroup, 0, NULL, NULL);
+	cgabspath = cgroup_path_get("freezer", cgrelpath);
+	if (!cgabspath)
+		return -1;
 
-fail:
-	if (nsgroup)
-		free(nsgroup);
-	return -1;
+	ret = do_unfreeze(cgabspath, 0, NULL, NULL);
+	free(cgabspath);
+	return ret;
 }

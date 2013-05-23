@@ -48,8 +48,8 @@ struct lxc_container {
 	bool (*set_config_item)(struct lxc_container *c, const char *key, const char *value);
 	bool (*destroy)(struct lxc_container *c);
 	bool (*save_config)(struct lxc_container *c, const char *alt_file);
-	bool (*create)(struct lxc_container *c, char *t, char *const argv[]);
-	bool (*createl)(struct lxc_container *c, char *t, ...);
+	bool (*create)(struct lxc_container *c, const char *t, char *const argv[]);
+	bool (*createl)(struct lxc_container *c, const char *t, ...);
 	/* send SIGPWR.  if timeout is not 0 or -1, do a hard stop after timeout seconds */
 	bool (*shutdown)(struct lxc_container *c, int timeout);
 	/* clear all network or capability items in the in-memory configuration */

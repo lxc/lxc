@@ -335,15 +335,13 @@ static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
  * particular subsystem. This is the cgroup path relative to the root
  * of the cgroup filesystem.
  *
- * @subsystem : the cgroup subsystem of interest (i.e. freezer)
  * @name      : name of container to connect to
  * @lxcpath   : the lxcpath in which the container is running
  *
  * Returns the path on success, NULL on failure. The caller must free() the
  * returned path.
  */
-char *lxc_cmd_get_cgroup_path(const char *subsystem, const char *name,
-			      const char *lxcpath)
+char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath)
 {
 	int ret, stopped = 0;
 	struct lxc_cmd_rr cmd = {

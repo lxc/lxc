@@ -69,38 +69,40 @@ lxc_state_t lxc_str2state(const char *state)
 
 static lxc_state_t freezer_state(const char *name, const char *lxcpath)
 {
-	char *nsgroup = NULL;
+	char *cgabspath = NULL;
 	char freezer[MAXPATHLEN];
 	char status[MAXPATHLEN];
 	FILE *file;
-	int err;
+	int ret;
 
-	err = lxc_cgroup_path_get(&nsgroup, "freezer", name, lxcpath);
-	if (err)
-		goto fail;
+	cgabspath = lxc_cgroup_path_get("freezer", name, lxcpath);
+	if (!cgabspath)
+		return -1;
 
-	err = snprintf(freezer, MAXPATHLEN, "%s/freezer.state", nsgroup);
-	if (err < 0 || err >= MAXPATHLEN)
-		goto fail;
+	ret = snprintf(freezer, MAXPATHLEN, "%s/freezer.state", cgabspath);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		goto out;
 
 	file = fopen(freezer, "r");
-	if (!file)
-		goto fail;
-
-	err = fscanf(file, "%s", status);
-	fclose(file);
-
-	if (err == EOF) {
-		SYSERROR("failed to read %s", freezer);
-		goto fail;
+	if (!file) {
+		ret = -1;
+		goto out;
 	}
 
-	return lxc_str2state(status);
+	ret = fscanf(file, "%s", status);
+	fclose(file);
 
-fail:
-	if (nsgroup)
-		free(nsgroup);
-	return -1;
+	if (ret == EOF) {
+		SYSERROR("failed to read %s", freezer);
+		ret = -1;
+		goto out;
+	}
+
+	ret = lxc_str2state(status);
+
+out:
+	free(cgabspath);
+	return ret;
 }
 
 lxc_state_t lxc_getstate(const char *name, const char *lxcpath)

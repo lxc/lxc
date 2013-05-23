@@ -555,7 +555,7 @@ static bool create_container_dir(struct lxc_container *c)
  * for ->create, argv contains the arguments to pass to the template,
  * terminated by NULL.  If no arguments, you can just pass NULL.
  */
-static bool lxcapi_create(struct lxc_container *c, char *t, char *const argv[])
+static bool lxcapi_create(struct lxc_container *c, const char *t, char *const argv[])
 {
 	bool bret = false;
 	pid_t pid;
@@ -621,7 +621,7 @@ static bool lxcapi_create(struct lxc_container *c, char *t, char *const argv[])
 		newargv = malloc(nargs * sizeof(*newargv));
 		if (!newargv)
 			exit(1);
-		newargv[0] = t;
+		newargv[0] = (char *)t;
 
 		len = strlen(c->config_path) + strlen(c->name) + strlen("--path=") + 2;
 		patharg = malloc(len);
@@ -702,7 +702,7 @@ static bool lxcapi_shutdown(struct lxc_container *c, int timeout)
 	return retv;
 }
 
-static bool lxcapi_createl(struct lxc_container *c, char *t, ...)
+static bool lxcapi_createl(struct lxc_container *c, const char *t, ...)
 {
 	bool bret = false;
 	char **args = NULL, **temp;
