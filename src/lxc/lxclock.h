@@ -1,3 +1,5 @@
+#ifndef __LXCLOCK_H
+#define __LXCLOCK_H
 /* liblxcapi
  *
  * Copyright © 2012 Serge Hallyn <serge.hallyn@ubuntu.com>.
@@ -53,7 +55,7 @@ struct lxc_lock {
  * We use that to protect the containers as represented on disk.
  * lxc_newlock() for the named lock only allocates the pathname in
  * memory so we can quickly open+lock it at lxclock.
- * l->u.f.fname will container the malloc'ed name (which must be
+ * l->u.f.fname will contain the malloc'ed name (which must be
  * freed when the container is freed), and u.f.fd = -1.
  *
  * return lxclock on success, NULL on failure.
@@ -81,3 +83,12 @@ extern int lxclock(struct lxc_lock *lock, int timeout);
 extern int lxcunlock(struct lxc_lock *lock);
 
 extern void lxc_putlock(struct lxc_lock *l);
+
+extern int process_lock(void);
+extern void process_unlock(void);
+struct lxc_container;
+extern int container_mem_lock(struct lxc_container *c);
+extern void container_mem_unlock(struct lxc_container *c);
+extern int container_disk_lock(struct lxc_container *c);
+extern void container_disk_unlock(struct lxc_container *c);
+#endif

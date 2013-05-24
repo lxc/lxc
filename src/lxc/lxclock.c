@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <lxc/utils.h>
 #include <lxc/log.h>
+#include <lxc/lxccontainer.h>
 
 #define OFLAG (O_CREAT | O_RDWR)
 #define SEMMODE 0660
@@ -48,7 +49,10 @@ static char *lxclock_name(const char *p, const char *n)
 		free(dest);
 		return NULL;
 	}
-	if (mkdir_p(dest, 0755) < 0) {
+	process_lock();
+	ret = mkdir_p(dest, 0755);
+	process_unlock();
+	if (ret < 0) {
 		free(dest);
 		return NULL;
 	}
@@ -80,11 +84,6 @@ static sem_t *lxc_new_unnamed_sem(void)
 struct lxc_lock *lxc_newlock(const char *lxcpath, const char *name)
 {
 	struct lxc_lock *l;
-	int ret = pthread_mutex_lock(&thread_mutex);
-	if (ret != 0) {
-		ERROR("pthread_mutex_lock returned:%d %s", ret, strerror(ret));
-		return NULL;
-	}
 
 	l = malloc(sizeof(*l));
 	if (!l)
@@ -106,18 +105,12 @@ struct lxc_lock *lxc_newlock(const char *lxcpath, const char *name)
 	l->u.f.fd = -1;
 
 out:
-	pthread_mutex_unlock(&thread_mutex);
 	return l;
 }
 
 int lxclock(struct lxc_lock *l, int timeout)
 {
-	int saved_errno = errno;
-	int ret = pthread_mutex_lock(&thread_mutex);
-	if (ret != 0) {
-		ERROR("pthread_mutex_lock returned:%d %s", ret, strerror(ret));
-		return ret;
-	}
+	int ret = -1, saved_errno = errno;
 
 	switch(l->type) {
 	case LXC_LOCK_ANON_SEM:
@@ -149,35 +142,31 @@ int lxclock(struct lxc_lock *l, int timeout)
 			ret = -2;
 			goto out;
 		}
+		process_lock();
 		if (l->u.f.fd == -1) {
 			l->u.f.fd = open(l->u.f.fname, O_RDWR|O_CREAT,
 					S_IWUSR | S_IRUSR);
 			if (l->u.f.fd == -1) {
+				process_unlock();
 				ERROR("Error opening %s", l->u.f.fname);
 				goto out;
 			}
 		}
 		ret = flock(l->u.f.fd, LOCK_EX);
+		process_unlock();
 		if (ret == -1)
 			saved_errno = errno;
 		break;
 	}
 
 out:
-	pthread_mutex_unlock(&thread_mutex);
 	errno = saved_errno;
 	return ret;
 }
 
 int lxcunlock(struct lxc_lock *l)
 {
-	int saved_errno = errno;
-	int ret = pthread_mutex_lock(&thread_mutex);
-
-	if (ret != 0) {
-		ERROR("pthread_mutex_lock returned:%d %s", ret, strerror(ret));
-		return ret;
-	}
+	int ret = 0, saved_errno = errno;
 
 	switch(l->type) {
 	case LXC_LOCK_ANON_SEM:
@@ -188,6 +177,7 @@ int lxcunlock(struct lxc_lock *l)
 			saved_errno = errno;
 		break;
 	case LXC_LOCK_FLOCK:
+		process_lock();
 		if (l->u.f.fd != -1) {
 			if ((ret = flock(l->u.f.fd, LOCK_UN)) < 0)
 				saved_errno = errno;
@@ -195,40 +185,84 @@ int lxcunlock(struct lxc_lock *l)
 			l->u.f.fd = -1;
 		} else
 			ret = -2;
+		process_unlock();
 		break;
 	}
 
-	pthread_mutex_unlock(&thread_mutex);
 	errno = saved_errno;
 	return ret;
 }
 
+/*
+ * lxc_putlock() is only called when a container_new() fails,
+ * or during container_put(), which is already guaranteed to
+ * only be done by one task.
+ * So the only exclusion we need to provide here is for regular
+ * thread safety (i.e. file descriptor table changes).
+ */
 void lxc_putlock(struct lxc_lock *l)
 {
-	int ret = pthread_mutex_lock(&thread_mutex);
-	if (ret != 0) {
-		ERROR("pthread_mutex_lock returned:%d %s", ret, strerror(ret));
-		return;
-	}
-
 	if (!l)
-		goto out;
+		return;
 	switch(l->type) {
 	case LXC_LOCK_ANON_SEM:
 		if (l->u.sem)
 			sem_close(l->u.sem);
 		break;
 	case LXC_LOCK_FLOCK:
+		process_lock();
 		if (l->u.f.fd != -1) {
 			close(l->u.f.fd);
 			l->u.f.fd = -1;
 		}
+		process_unlock();
 		if (l->u.f.fname) {
 			free(l->u.f.fname);
 			l->u.f.fname = NULL;
 		}
 		break;
 	}
-out:
+}
+
+int process_lock(void)
+{
+	int ret;
+	ret = pthread_mutex_lock(&thread_mutex);
+	if (ret != 0)
+		ERROR("pthread_mutex_lock returned:%d %s", ret, strerror(ret));
+	return ret;
+}
+
+void process_unlock(void)
+{
 	pthread_mutex_unlock(&thread_mutex);
+}
+
+int container_mem_lock(struct lxc_container *c)
+{
+	return lxclock(c->privlock, 0);
+}
+
+void container_mem_unlock(struct lxc_container *c)
+{
+	lxcunlock(c->privlock);
+}
+
+int container_disk_lock(struct lxc_container *c)
+{
+	int ret;
+
+	if ((ret = lxclock(c->privlock, 0)))
+		return ret;
+	if ((ret = lxclock(c->slock, 0))) {
+		lxcunlock(c->privlock);
+		return ret;
+	}
+	return 0;
+}
+
+void container_disk_unlock(struct lxc_container *c)
+{
+	lxcunlock(c->slock);
+	lxcunlock(c->privlock);
 }

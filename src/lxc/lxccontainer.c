@@ -43,8 +43,6 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 
-extern pthread_mutex_t thread_mutex;
-
 lxc_log_define(lxc_container, lxc);
 
 /* LOCKING
@@ -138,7 +136,7 @@ int lxc_container_get(struct lxc_container *c)
 	if (c->numthreads < 1)
 		return 0;
 
-	if (lxclock(c->privlock, 0))
+	if (container_mem_lock(c))
 		return 0;
 	if (c->numthreads < 1) {
 		// bail without trying to unlock, bc the privlock is now probably
@@ -146,7 +144,7 @@ int lxc_container_get(struct lxc_container *c)
 		return 0;
 	}
 	c->numthreads++;
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	return 1;
 }
 
@@ -154,14 +152,14 @@ int lxc_container_put(struct lxc_container *c)
 {
 	if (!c)
 		return -1;
-	if (lxclock(c->privlock, 0))
+	if (container_mem_lock(c))
 		return -1;
 	if (--c->numthreads < 1) {
-		lxcunlock(c->privlock);
+		container_mem_unlock(c);
 		lxc_container_free(c);
 		return 1;
 	}
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	return 0;
 }
 
@@ -181,7 +179,7 @@ static bool lxcapi_is_defined(struct lxc_container *c)
 	if (!c)
 		return false;
 
-	if (lxclock(c->privlock, 0))
+	if (container_mem_lock(c))
 		return false;
 	if (!c->configfile)
 		goto out;
@@ -191,7 +189,7 @@ static bool lxcapi_is_defined(struct lxc_container *c)
 	ret = true;
 
 out:
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	return ret;
 }
 
@@ -202,15 +200,11 @@ static const char *lxcapi_state(struct lxc_container *c)
 
 	if (!c)
 		return NULL;
-	if (lxclock(c->privlock, 0))
+	if (container_disk_lock(c))
 		return NULL;
-	if (lxclock(c->slock, 0))
-		goto bad;
 	s = lxc_getstate(c->name, c->config_path);
 	ret = lxc_state2str(s);
-	lxcunlock(c->slock);
-bad:
-	lxcunlock(c->privlock);
+	container_disk_unlock(c);
 
 	return ret;
 }
@@ -240,15 +234,10 @@ static bool lxcapi_freeze(struct lxc_container *c)
 	if (!c)
 		return false;
 
-	if (lxclock(c->privlock, 0))
+	if (container_disk_lock(c))
 		return false;
-	if (lxclock(c->slock, 0)) {
-		lxcunlock(c->privlock);
-		return false;
-	}
 	ret = lxc_freeze(c->name, c->config_path);
-	lxcunlock(c->slock);
-	lxcunlock(c->privlock);
+	container_disk_unlock(c);
 	if (ret)
 		return false;
 	return true;
@@ -260,15 +249,10 @@ static bool lxcapi_unfreeze(struct lxc_container *c)
 	if (!c)
 		return false;
 
-	if (lxclock(c->privlock, 0))
+	if (container_disk_lock(c))
 		return false;
-	if (lxclock(c->slock, 0)) {
-		lxcunlock(c->privlock);
-		return false;
-	}
 	ret = lxc_unfreeze(c->name, c->config_path);
-	lxcunlock(c->slock);
-	lxcunlock(c->privlock);
+	container_disk_unlock(c);
 	if (ret)
 		return false;
 	return true;
@@ -276,20 +260,10 @@ static bool lxcapi_unfreeze(struct lxc_container *c)
 
 static pid_t lxcapi_init_pid(struct lxc_container *c)
 {
-	pid_t ret;
 	if (!c)
 		return -1;
 
-	if (lxclock(c->privlock, 0))
-		return -1;
-	if (lxclock(c->slock, 0)) {
-		lxcunlock(c->privlock);
-		return -1;
-	}
-	ret = lxc_cmd_get_init_pid(c->name, c->config_path);
-	lxcunlock(c->slock);
-	lxcunlock(c->privlock);
-	return ret;
+	return lxc_cmd_get_init_pid(c->name, c->config_path);
 }
 
 static bool load_config_locked(struct lxc_container *c, const char *fname)
@@ -313,15 +287,10 @@ static bool lxcapi_load_config(struct lxc_container *c, const char *alt_file)
 		fname = alt_file;
 	if (!fname)
 		return false;
-	if (lxclock(c->privlock, 0))
+	if (container_disk_lock(c))
 		return false;
-	if (lxclock(c->slock, 0)) {
-		lxcunlock(c->privlock);
-		return false;
-	}
 	ret = load_config_locked(c, fname);
-	lxcunlock(c->slock);
-	lxcunlock(c->privlock);
+	container_disk_unlock(c);
 	return ret;
 }
 
@@ -384,11 +353,11 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 	if (useinit && !argv)
 		return false;
 
-	if (lxclock(c->privlock, 0))
+	if (container_mem_lock(c))
 		return false;
 	conf = c->lxc_conf;
 	daemonize = c->daemonize;
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 
 	if (useinit) {
 		ret = lxc_execute(c->name, argv, 1, conf, c->config_path);
@@ -409,23 +378,20 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 			return false;
 		lxc_monitord_spawn(c->config_path);
 
-		ret = pthread_mutex_lock(&thread_mutex);
-		if (ret != 0) {
-			ERROR("pthread_mutex_lock returned:%d %s", ret, strerror(ret));
+		if (process_lock())
 			return false;
-		}
 		pid_t pid = fork();
 		if (pid < 0) {
 			lxc_container_put(c);
-			pthread_mutex_unlock(&thread_mutex);
+			process_unlock();
 			return false;
 		}
 		if (pid != 0) {
 			ret = wait_on_daemonized_start(c);
-			pthread_mutex_unlock(&thread_mutex);
+			process_unlock();
 			return ret;
 		}
-		pthread_mutex_unlock(&thread_mutex);
+		process_unlock();
 		/* second fork to be reparented by init */
 		pid = fork();
 		if (pid < 0) {
@@ -613,13 +579,8 @@ static bool lxcapi_create(struct lxc_container *c, const char *t, char *const ar
 	/* we're going to fork.  but since we'll wait for our child, we
 	 * don't need to lxc_container_get */
 
-	if (lxclock(c->privlock, 0))
+	if (container_disk_lock(c))
 		goto out;
-	if (lxclock(c->slock, 0)) {
-		ERROR("failed to grab global container lock for %s\n", c->name);
-		lxcunlock(c->privlock);
-		goto out_unlock1;
-	}
 
 	pid = fork();
 	if (pid < 0) {
@@ -698,9 +659,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t, char *const ar
 	bret = load_config_locked(c, c->configfile);
 
 out_unlock:
-	lxcunlock(c->slock);
-out_unlock1:
-	lxcunlock(c->privlock);
+	container_disk_unlock(c);
 out:
 	if (tpath)
 		free(tpath);
@@ -778,11 +737,10 @@ static bool lxcapi_clear_config_item(struct lxc_container *c, const char *key)
 
 	if (!c || !c->lxc_conf)
 		return false;
-	if (lxclock(c->privlock, 0)) {
+	if (container_mem_lock(c))
 		return false;
-	}
 	ret = lxc_clear_config_item(c->lxc_conf, key);
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	return ret == 0;
 }
 
@@ -904,11 +862,10 @@ static int lxcapi_get_config_item(struct lxc_container *c, const char *key, char
 
 	if (!c || !c->lxc_conf)
 		return -1;
-	if (lxclock(c->privlock, 0)) {
+	if (container_mem_lock(c))
 		return -1;
-	}
 	ret = lxc_get_config_item(c->lxc_conf, key, retv, inlen);
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	return ret;
 }
 
@@ -923,12 +880,12 @@ static int lxcapi_get_keys(struct lxc_container *c, const char *key, char *retv,
 	 */
 	if (!c || !c->lxc_conf)
 		return -1;
-	if (lxclock(c->privlock, 0))
+	if (container_mem_lock(c))
 		return -1;
 	int ret = -1;
 	if (strncmp(key, "lxc.network.", 12) == 0)
 		ret =  lxc_list_nicconfigs(c->lxc_conf, key, retv, inlen);
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	return ret;
 }
 
@@ -953,13 +910,13 @@ static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	FILE *fout = fopen(alt_file, "w");
 	if (!fout)
 		return false;
-	if (lxclock(c->privlock, 0)) {
+	if (container_mem_lock(c)) {
 		fclose(fout);
 		return false;
 	}
 	write_config(fout, c->lxc_conf);
 	fclose(fout);
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	return true;
 }
 
@@ -1000,7 +957,7 @@ static bool lxcapi_set_config_item(struct lxc_container *c, const char *key, con
 	if (!c)
 		return false;
 
-	if (lxclock(c->privlock, 0))
+	if (container_mem_lock(c))
 		return false;
 
 	if (!c->lxc_conf)
@@ -1015,7 +972,7 @@ static bool lxcapi_set_config_item(struct lxc_container *c, const char *key, con
 		b = true;
 
 err:
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	return b;
 }
 
@@ -1076,7 +1033,7 @@ static bool lxcapi_set_config_path(struct lxc_container *c, const char *path)
 	if (!c)
 		return b;
 
-	if (lxclock(c->privlock, 0))
+	if (container_mem_lock(c))
 		return b;
 
 	p = strdup(path);
@@ -1102,7 +1059,7 @@ static bool lxcapi_set_config_path(struct lxc_container *c, const char *path)
 err:
 	if (oldpath)
 		free(oldpath);
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	return b;
 }
 
@@ -1115,7 +1072,7 @@ static bool lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, 
 	if (!c)
 		return false;
 
-	if (lxclock(c->privlock, 0))
+	if (container_mem_lock(c))
 		return false;
 
 	if (is_stopped_nolock(c))
@@ -1125,7 +1082,7 @@ static bool lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, 
 	if (!ret)
 		b = true;
 err:
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	return b;
 }
 
@@ -1136,7 +1093,7 @@ static int lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, c
 	if (!c || !c->lxc_conf)
 		return -1;
 
-	if (lxclock(c->privlock, 0))
+	if (container_mem_lock(c))
 		return -1;
 
 	if (is_stopped_nolock(c))
@@ -1145,7 +1102,7 @@ static int lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, c
 	ret = lxc_cgroup_get(c->name, subsys, retv, inlen, c->config_path);
 
 out:
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	return ret;
 }
 
@@ -1600,7 +1557,7 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 	if (!c || !c->is_defined(c))
 		return NULL;
 
-	if (lxclock(c->privlock, 0))
+	if (container_mem_lock(c))
 		return NULL;
 
 	if (c->is_running(c)) {
@@ -1682,11 +1639,11 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 		goto out;
 
 	// TODO: update c's lxc.snapshot = count
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	return c2;
 
 out:
-	lxcunlock(c->privlock);
+	container_mem_unlock(c);
 	if (c2) {
 		c2->destroy(c2);
 		lxc_container_put(c2);
