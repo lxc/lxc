@@ -109,7 +109,7 @@ static int setup_tios(int fd, struct termios *newtios, struct termios *oldtios)
 	}
 
 	/* Get current termios */
-	if (tcgetattr(0, oldtios)) {
+	if (tcgetattr(fd, oldtios)) {
 		SYSERROR("failed to get current terminal settings");
 		return -1;
 	}
@@ -125,7 +125,7 @@ static int setup_tios(int fd, struct termios *newtios, struct termios *oldtios)
 	newtios->c_cc[VTIME] = 0;
 
 	/* Set new attributes */
-	if (tcsetattr(0, TCSAFLUSH, newtios)) {
+	if (tcsetattr(fd, TCSAFLUSH, newtios)) {
 		ERROR("failed to set new terminal settings");
 		return -1;
 	}
