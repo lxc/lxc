@@ -61,7 +61,7 @@ struct lxc_cmd_rr {
 };
 
 struct lxc_cmd_console_rsp_data {
-	int fd;
+	int masterfd;
 	int ttynum;
 };
 

@@ -184,7 +184,7 @@ static int master_handler(int fd, void *data, struct lxc_epoll_descr *descr)
 
 int main(int argc, char *argv[])
 {
-	int err, std_in = 1;
+	int err, ttyfd, std_in = 1;
 	struct lxc_epoll_descr descr;
 	struct termios newtios, oldtios;
 
@@ -203,9 +203,11 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	err = lxc_cmd_console(my_args.name, &my_args.ttynum, &master, my_args.lxcpath[0]);
-	if (err)
+	ttyfd = lxc_cmd_console(my_args.name, &my_args.ttynum, &master, my_args.lxcpath[0]);
+	if (ttyfd < 0) {
+		err = ttyfd;
 		goto out;
+	}
 
 	fprintf(stderr, "\n\
 Connected to tty %1$d\n\
@@ -249,6 +251,7 @@ Type <Ctrl+%2$c q> to exit the console, \
 		goto out_mainloop_open;
 	}
 
+	close(ttyfd);
 	err =  0;
 
 out_mainloop_open:

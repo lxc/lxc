@@ -350,6 +350,16 @@ static bool lxcapi_unfreeze(struct lxc_container *c)
 	return true;
 }
 
+static int lxcapi_console(struct lxc_container *c, int *ttynum, int *masterfd)
+{
+	int ttyfd;
+	if (!c)
+		return -1;
+
+	ttyfd = lxc_cmd_console(c->name, ttynum, masterfd, c->config_path);
+	return ttyfd;
+}
+
 static pid_t lxcapi_init_pid(struct lxc_container *c)
 {
 	if (!c)
@@ -1979,6 +1989,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->is_running = lxcapi_is_running;
 	c->freeze = lxcapi_freeze;
 	c->unfreeze = lxcapi_unfreeze;
+	c->console = lxcapi_console;
 	c->init_pid = lxcapi_init_pid;
 	c->load_config = lxcapi_load_config;
 	c->want_daemonize = lxcapi_want_daemonize;

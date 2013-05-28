@@ -115,7 +115,8 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
  * stored directly in data and datalen will be 0.
  *
  * As a special case, the response for LXC_CMD_CONSOLE is created
- * here as it contains an fd passed through the unix socket.
+ * here as it contains an fd for the master pty passed through the
+ * unix socket.
  */
 static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 {
@@ -132,13 +133,19 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	if (cmd->req.cmd == LXC_CMD_CONSOLE) {
 		struct lxc_cmd_console_rsp_data *rspdata;
 
+		/* recv() returns 0 bytes when a tty cannot be allocated,
+		 * rsp->ret is < 0 when the peer permission check failed
+		 */
+		if (ret == 0 || rsp->ret < 0)
+			return 0;
+
 		rspdata = malloc(sizeof(*rspdata));
 		if (!rspdata) {
 			ERROR("command %s couldn't allocate response buffer",
 			      lxc_cmd_str(cmd->req.cmd));
 			return -1;
 		}
-		rspdata->fd = rspfd;
+		rspdata->masterfd = rspfd;
 		rspdata->ttynum = PTR_TO_INT(rsp->data);
 		rsp->data = rspdata;
 	}
@@ -214,8 +221,9 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
  * the fd cannot be closed because it is used as a placeholder to indicate
  * that a particular tty slot is in use. The fd is also used as a signal to
  * the container that when the caller dies or closes the fd, the container
- * will notice the fd in its mainloop select and then free the slot with
- * lxc_cmd_fd_cleanup().
+ * will notice the fd on its side of the socket in its mainloop select and
+ * then free the slot with lxc_cmd_fd_cleanup(). The socket fd will be
+ * returned in the cmd response structure.
  */
 static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 		   const char *lxcpath)
@@ -262,8 +270,10 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 
 	ret = lxc_cmd_rsp_recv(sock, cmd);
 out:
-	if (!stay_connected || ret < 0)
+	if (!stay_connected || ret <= 0)
 		close(sock);
+	if (stay_connected && ret > 0)
+		cmd->rsp.ret = sock;
 
 	return ret;
 }
@@ -544,7 +554,7 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
  * @fd             : out: file descriptor for master side of pty
  * @lxcpath        : the lxcpath in which the container is running
  *
- * Returns 0 on success, < 0 on failure
+ * Returns fd holding tty allocated on success, < 0 on failure
  */
 int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath)
 {
@@ -557,31 +567,29 @@ int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath)
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
 	if (ret < 0)
 		return ret;
-	if (ret == 0) {
-		ERROR("console %d invalid or all consoles busy", *ttynum);
+
+	if (cmd.rsp.ret < 0) {
+		ERROR("console access denied: %s", strerror(-cmd.rsp.ret));
 		ret = -1;
 		goto out;
 	}
 
-	ret = -1;
-	#if 1 /* FIXME: how can this happen? */
-	if (cmd.rsp.ret) {
-		ERROR("console access denied: %s",
-			strerror(-cmd.rsp.ret));
+	if (ret == 0) {
+		ERROR("console %d invalid,busy or all consoles busy", *ttynum);
+		ret = -1;
 		goto out;
 	}
-	#endif
 
 	rspdata = cmd.rsp.data;
-	if (rspdata->fd < 0) {
+	if (rspdata->masterfd < 0) {
 		ERROR("unable to allocate fd for tty %d", rspdata->ttynum);
 		goto out;
 	}
 
-	ret = 0;
-	*fd = rspdata->fd;
+	ret = cmd.rsp.ret;	/* sock fd */
+	*fd = rspdata->masterfd;
 	*ttynum = rspdata->ttynum;
-	INFO("tty %d allocated", rspdata->ttynum);
+	INFO("tty %d allocated fd %d sock %d", rspdata->ttynum, *fd, ret);
 out:
 	free(cmd.rsp.data);
 	return ret;

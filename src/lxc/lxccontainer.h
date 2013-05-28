@@ -115,6 +115,21 @@ struct lxc_container {
 		const char *lxcpath, int flags, const char *bdevtype,
 		const char *bdevdata, unsigned long newsize, char **hookargs);
 
+	/* lxcapi_console: allocate a console tty from container @c
+	 *
+	 * @c        : the running container
+	 * @ttynum   : in : tty number to attempt to allocate or -1 to
+	 *                  allocate the first available tty
+	 *             out: the tty number that was allocated
+	 * @masterfd : out: fd refering to the master side of pty
+	 *
+	 * Returns "ttyfd" on success, -1 on failure. The returned "ttyfd" is
+	 * used to keep the tty allocated. The caller should close "ttyfd" to
+	 * indicate that it is done with the allocated console so that it can
+	 * be allocated by another caller.
+	 */
+	int (*console)(struct lxc_container *c, int *ttynum, int *masterfd);
+
 #if 0
 	bool (*commit_cgroups)(struct lxc_container *c);
 	bool (*reread_cgroups)(struct lxc_container *c);
