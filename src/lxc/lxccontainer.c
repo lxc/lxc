@@ -287,21 +287,15 @@ out:
 
 static const char *lxcapi_state(struct lxc_container *c)
 {
-	const char *ret;
 	lxc_state_t s;
 
 	if (!c)
 		return NULL;
-	if (container_disk_lock(c))
-		return NULL;
 	s = lxc_getstate(c->name, c->config_path);
-	ret = lxc_state2str(s);
-	container_disk_unlock(c);
-
-	return ret;
+	return lxc_state2str(s);
 }
 
-static bool is_stopped_locked(struct lxc_container *c)
+static bool is_stopped(struct lxc_container *c)
 {
 	lxc_state_t s;
 	s = lxc_getstate(c->name, c->config_path);
@@ -326,10 +320,7 @@ static bool lxcapi_freeze(struct lxc_container *c)
 	if (!c)
 		return false;
 
-	if (container_disk_lock(c))
-		return false;
 	ret = lxc_freeze(c->name, c->config_path);
-	container_disk_unlock(c);
 	if (ret)
 		return false;
 	return true;
@@ -341,10 +332,7 @@ static bool lxcapi_unfreeze(struct lxc_container *c)
 	if (!c)
 		return false;
 
-	if (container_disk_lock(c))
-		return false;
 	ret = lxc_unfreeze(c->name, c->config_path);
-	container_disk_unlock(c);
 	if (ret)
 		return false;
 	return true;
@@ -379,7 +367,8 @@ static bool load_config_locked(struct lxc_container *c, const char *fname)
 
 static bool lxcapi_load_config(struct lxc_container *c, const char *alt_file)
 {
-	bool ret = false;
+	bool ret = false, need_disklock = false;
+	int lret;
 	const char *fname;
 	if (!c)
 		return false;
@@ -389,10 +378,27 @@ static bool lxcapi_load_config(struct lxc_container *c, const char *alt_file)
 		fname = alt_file;
 	if (!fname)
 		return false;
-	if (container_disk_lock(c))
+	/*
+	 * If we're reading something other than the container's config,
+	 * we only need to lock the in-memory container.  If loading the
+	 * container's config file, take the disk lock.
+	 */
+	if (strcmp(fname, c->configfile) == 0)
+		need_disklock = true;
+
+	if (need_disklock)
+		lret = container_disk_lock(c);
+	else
+		lret = container_mem_lock(c);
+	if (lret)
 		return false;
+
 	ret = load_config_locked(c, fname);
-	container_disk_unlock(c);
+
+	if (need_disklock)
+		container_disk_unlock(c);
+	else
+		container_mem_unlock(c);
 	return ret;
 }
 
@@ -898,7 +904,6 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 out_unlock:
 	if (partial_fd >= 0)
 		remove_partial(c, partial_fd);
-	container_disk_unlock(c);
 out:
 	if (tpath)
 		free(tpath);
@@ -1153,30 +1158,55 @@ static int lxcapi_get_keys(struct lxc_container *c, const char *key, char *retv,
 #define LXC_DEFAULT_CONFIG "/etc/lxc/default.conf"
 static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 {
+	FILE *fout;
+	bool ret = false, need_disklock = false;
+	int lret;
+
 	if (!alt_file)
 		alt_file = c->configfile;
 	if (!alt_file)
 		return false;  // should we write to stdout if no file is specified?
-	if (!c->lxc_conf)
+
+	// If we haven't yet loaded a config, load the stock config
+	if (!c->lxc_conf) {
 		if (!c->load_config(c, LXC_DEFAULT_CONFIG)) {
 			ERROR("Error loading default configuration file %s while saving %s\n", LXC_DEFAULT_CONFIG, c->name);
 			return false;
 		}
+	}
 
 	if (!create_container_dir(c))
 		return false;
 
-	FILE *fout = fopen(alt_file, "w");
+	/*
+	 * If we're writing to the container's config file, take the
+	 * disk lock.  Otherwise just take the memlock to protect the
+	 * struct lxc_container while we're traversing it.
+	 */
+	if (strcmp(c->configfile, alt_file) == 0)
+		need_disklock = true;
+
+	if (need_disklock)
+		lret = container_disk_lock(c);
+	else
+		lret = container_mem_lock(c);
+
+	if (lret)
+		return false;
+
+	fout = fopen(alt_file, "w");
 	if (!fout)
-		return false;
-	if (container_mem_lock(c)) {
-		fclose(fout);
-		return false;
-	}
+		goto out;
 	write_config(fout, c->lxc_conf);
 	fclose(fout);
-	container_mem_unlock(c);
-	return true;
+	ret = true;
+
+out:
+	if (need_disklock)
+		container_disk_unlock(c);
+	else
+		container_mem_unlock(c);
+	return ret;
 }
 
 // do we want the api to support --force, or leave that to the caller?
@@ -1195,7 +1225,7 @@ static bool lxcapi_destroy(struct lxc_container *c)
 		return false;
 	}
 
-	if (!is_stopped_locked(c)) {
+	if (!is_stopped(c)) {
 		// we should queue some sort of error - in c->error_string?
 		ERROR("container %s is not stopped", c->name);
 		goto out;
@@ -1352,7 +1382,7 @@ static bool lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, 
 	if (container_mem_lock(c))
 		return false;
 
-	if (is_stopped_locked(c))
+	if (is_stopped(c))
 		goto err;
 
 	ret = lxc_cgroup_set(c->name, subsys, value, c->config_path);
@@ -1373,7 +1403,7 @@ static int lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, c
 	if (container_mem_lock(c))
 		return -1;
 
-	if (is_stopped_locked(c))
+	if (is_stopped(c))
 		goto out;
 
 	ret = lxc_cgroup_get(c->name, subsys, retv, inlen, c->config_path);
@@ -1837,7 +1867,7 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 	if (container_mem_lock(c))
 		return NULL;
 
-	if (!is_stopped_locked(c)) {
+	if (!is_stopped(c)) {
 		ERROR("error: Original container (%s) is running", c->name);
 		goto out;
 	}
