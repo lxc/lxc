@@ -451,9 +451,12 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 
 void lxc_abort(const char *name, struct lxc_handler *handler)
 {
+	int ret, status;
+
 	lxc_set_state(name, handler, ABORTING);
 	if (handler->pid > 0)
 		kill(handler->pid, SIGKILL);
+	while ((ret = waitpid(-1, &status, 0)) > 0) ;
 }
 
 #include <sys/reboot.h>
