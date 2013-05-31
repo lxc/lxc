@@ -145,11 +145,11 @@ void remove_partial(struct lxc_container *c, int fd)
 }
 
 /* LOCKING
- * 1. c->privlock protects the struct lxc_container from multiple threads.
- * 2. c->slock protects the on-disk container data
- * 3. thread_mutex protects process data (ex: fd table) from multiple threads
- * slock is an flock, which does not exclude threads.  Therefore slock should
- * always be wrapped inside privlock.
+ * 1. container_mem_lock(c) protects the struct lxc_container from multiple threads.
+ * 2. container_disk_lock(c) protects the on-disk container data - in particular the
+ *    container configuration file.
+ *    The container_disk_lock also takes the container_mem_lock.
+ * 3. thread_mutex protects process data (ex: fd table) from multiple threads.
  * NOTHING mutexes two independent programs with their own struct
  * lxc_container for the same c->name, between API calls.  For instance,
  * c->config_read(); c->start();  Between those calls, data on disk
@@ -160,7 +160,7 @@ void remove_partial(struct lxc_container *c, int fd)
  * due to hung callers.  So I prefer to keep the locks only within our own
  * functions, not across functions.
  *
- * If you're going to fork while holding a lxccontainer, increment
+ * If you're going to clone while holding a lxccontainer, increment
  * c->numthreads (under privlock) before forking.  When deleting,
  * decrement numthreads under privlock, then if it hits 0 you can delete.
  * Do not ever use a lxccontainer whose numthreads you did not bump.
@@ -406,7 +406,12 @@ static void lxcapi_want_daemonize(struct lxc_container *c)
 {
 	if (!c)
 		return;
+	if (!container_mem_lock(c)) {
+		ERROR("Error getting mem lock");
+		return;
+	}
 	c->daemonize = 1;
+	container_mem_unlock(c);
 }
 
 static bool lxcapi_wait(struct lxc_container *c, const char *state, int timeout)
@@ -1218,12 +1223,8 @@ static bool lxcapi_destroy(struct lxc_container *c)
 	if (!c || !lxcapi_is_defined(c))
 		return false;
 
-	if (lxclock(c->privlock, 0))
+	if (container_disk_lock(c))
 		return false;
-	if (lxclock(c->slock, 0)) {
-		lxcunlock(c->privlock);
-		return false;
-	}
 
 	if (!is_stopped(c)) {
 		// we should queue some sort of error - in c->error_string?
@@ -1231,7 +1232,7 @@ static bool lxcapi_destroy(struct lxc_container *c)
 		goto out;
 	}
 
-	if (c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount)
+	if (c->lxc_conf && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount)
 		r = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (r) {
 		if (r->ops->destroy(r) < 0) {
@@ -1250,8 +1251,7 @@ static bool lxcapi_destroy(struct lxc_container *c)
 	ret = true;
 
 out:
-	lxcunlock(c->privlock);
-	lxcunlock(c->slock);
+	container_disk_unlock(c);
 	return ret;
 }
 
@@ -1374,42 +1374,38 @@ err:
 static bool lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, const char *value)
 {
 	int ret;
-	bool b = false;
 
 	if (!c)
 		return false;
 
-	if (container_mem_lock(c))
+	if (is_stopped(c))
 		return false;
 
-	if (is_stopped(c))
-		goto err;
+	if (container_disk_lock(c))
+		return false;
 
-	ret = lxc_cgroup_set(c->name, subsys, value, c->config_path);
-	if (!ret)
-		b = true;
-err:
-	container_mem_unlock(c);
-	return b;
+	ret = lxc_cgroup_set(c->name, subsys, value, c->config_path) == 0;
+
+	container_disk_unlock(c);
+	return ret == 0;
 }
 
 static int lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, char *retv, int inlen)
 {
-	int ret = -1;
+	int ret;
 
 	if (!c || !c->lxc_conf)
 		return -1;
 
-	if (container_mem_lock(c))
+	if (is_stopped(c))
 		return -1;
 
-	if (is_stopped(c))
-		goto out;
+	if (container_disk_lock(c))
+		return -1;
 
 	ret = lxc_cgroup_get(c->name, subsys, retv, inlen, c->config_path);
 
-out:
-	container_mem_unlock(c);
+	container_disk_unlock(c);
 	return ret;
 }
 
