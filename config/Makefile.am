@@ -1,11 +1,11 @@
 configdir = $(sysconfdir)/lxc
 config_DATA = default.conf
-defaultconf = @LXC_DEFAULT_CONF@
+distroconf = @LXC_DISTRO_CONF@
 
 EXTRA_DIST = default.conf.ubuntu default.conf.libvirt default.conf.unknown
 
 default.conf:
-	cp $(defaultconf) $@
+	cp $(distroconf) $@
 
 clean-local:
 	@$(RM) -f default.conf

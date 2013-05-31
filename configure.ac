@@ -39,14 +39,14 @@ if test "z$with_distro" = "z"; then
 fi
 case $with_distro in
 	ubuntu)
-		defaultconf=default.conf.ubuntu
+		distroconf=default.conf.ubuntu
 		;;
 	redhat|fedora|oracle|oracleserver)
-		defaultconf=default.conf.libvirt
+		distroconf=default.conf.libvirt
 		;;
 	*)
 		echo -n "Linux distribution network config unknown, defaulting to lxc.network.type = empty"
-		defaultconf=default.conf.unknown
+		distroconf=default.conf.unknown
 		;;
 esac
 AC_MSG_RESULT([$with_distro])
@@ -221,7 +221,7 @@ AS_AC_EXPAND(SYSCONFDIR, "$sysconfdir")
 AS_AC_EXPAND(DATADIR, "$datadir")
 AS_AC_EXPAND(LOCALSTATEDIR, "$localstatedir")
 AS_AC_EXPAND(DOCDIR, "$docdir")
-AS_AC_EXPAND(LXC_DEFAULT_CONF, "$defaultconf")
+AS_AC_EXPAND(LXC_DISTRO_CONF, "$distroconf")
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 AS_AC_EXPAND(LXCPATH, "$with_config_path")
 AS_AC_EXPAND(LXC_GLOBAL_CONF, "$with_global_conf")
