@@ -20,7 +20,8 @@ AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
 	-DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
-	-DLXCINITDIR=\"$(LXCINITDIR)\"
+	-DLXCINITDIR=\"$(LXCINITDIR)\" \
+	-DLXC_DEFAULT_CONFIG=\"$(LXC_DEFAULT_CONFIG)\"
 
 bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-destroytest lxc-test-saveconfig lxc-test-createtest \

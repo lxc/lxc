@@ -135,8 +135,6 @@ bool validate_bdev_args(struct lxc_arguments *a)
 	return true;
 }
 
-/* grab this through autoconf from @config-path@ ? */
-#define DEFAULT_CONFIG "/etc/lxc/default.conf"
 int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
@@ -174,7 +172,7 @@ int main(int argc, char *argv[])
 	if (my_args.configfile)
 		c->load_config(c, my_args.configfile);
 	else
-		c->load_config(c, DEFAULT_CONFIG);
+		c->load_config(c, LXC_DEFAULT_CONFIG);
 
 	if (strcmp(my_args.bdevtype, "zfs") == 0) {
 		if (my_args.zfsroot)
