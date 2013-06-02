@@ -125,7 +125,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</term>
 	<listitem>
 	  <para>
-	    'backingstore' is one of 'none', 'dir', 'lvm', or 'btrfs'.  The
+	    'backingstore' is one of 'none', 'dir', 'lvm', 'loop', or 'btrfs'.  The
 	    default is 'none', meaning that the container root filesystem
 	    will be a directory under <filename>@LXCPATH@/container/rootfs</filename>.
 	    'dir' has the same meaning as 'none', but also allows the optional

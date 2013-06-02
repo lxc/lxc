@@ -211,7 +211,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    default the same as the original container's is used.  Note that
 	    currently changing the backingstore is only supported for
 	    overlayfs snapshots of directory backed containers.  Valid
-	    backing stores include dir (directory), btrfs, lvm, zfs
+	    backing stores include dir (directory), btrfs, lvm, zfs, loop
 	    and overlayfs.
 	  </para>
 	</listitem>

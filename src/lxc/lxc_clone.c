@@ -24,7 +24,7 @@ void usage(const char *me)
 	printf("  -s: snapshot rather than copy\n");
 	printf("  -B: use specified new backingstore.  Default is the same as\n");
 	printf("      the original.  Options include btrfs, lvm, overlayfs, \n");
-	printf("      dir\n");
+	printf("      dir and loop\n");
 	printf("  -L: for blockdev-backed backingstore, use specified size\n");
 	printf("  -K: Keep name - do not change the container name\n");
 	printf("  -M: Keep macaddr - do not choose a random new mac address\n");

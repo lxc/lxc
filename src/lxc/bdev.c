@@ -35,6 +35,8 @@
 #include <sys/mount.h>
 #include <sys/wait.h>
 #include <libgen.h>
+#include <linux/loop.h>
+#include <dirent.h>
 #include "lxc.h"
 #include "config.h"
 #include "conf.h"
@@ -72,9 +74,16 @@ static int do_rsync(const char *src, const char *dest)
 	exit(1);
 }
 
-static int blk_getsize(const char *path, unsigned long *size)
+/*
+ * return block size of dev->src
+ */
+static int blk_getsize(struct bdev *bdev, unsigned long *size)
 {
 	int fd, ret;
+	char *path = bdev->src;
+
+	if (strcmp(bdev->type, "loop") == 0)
+		path = bdev->src + 5;
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
@@ -177,6 +186,14 @@ static int do_mkfs(const char *path, const char *fstype)
 	if (pid > 0)
 		return wait_for_pid(pid);
 
+	// If the file is not a block device, we don't want mkfs to ask
+	// us about whether to proceed.
+	close(0);
+	close(1);
+	close(2);
+	open("/dev/zero", O_RDONLY);
+	open("/dev/null", O_RDWR);
+	open("/dev/null", O_RDWR);
 	execlp("mkfs", "mkfs", "-t", fstype, path, NULL);
 	exit(1);
 }
@@ -218,9 +235,13 @@ static int detect_fs(struct bdev *bdev, char *type, int len)
 	pid_t pid;
 	FILE *f;
 	char *sp1, *sp2, *sp3, *line = NULL;
+	char *srcdev = bdev->src;
 
 	if (!bdev || !bdev->src || !bdev->dest)
 		return -1;
+
+	if (strcmp(bdev->type, "loop") == 0)
+		srcdev = bdev->src + 5;
 
 	if (pipe(p) < 0)
 		return -1;
@@ -243,21 +264,21 @@ static int detect_fs(struct bdev *bdev, char *type, int len)
 		}
 		wait(&status);
 		type[len-1] = '\0';
-		INFO("detected fstype %s for %s", type, bdev->src);
+		INFO("detected fstype %s for %s", type, srcdev);
 		return ret;
 	}
 
 	if (unshare(CLONE_NEWNS) < 0)
 		exit(1);
 
-	ret = mount_unknow_fs(bdev->src, bdev->dest, 0);
+	ret = mount_unknow_fs(srcdev, bdev->dest, 0);
 	if (ret < 0) {
-		ERROR("failed mounting %s onto %s to detect fstype", bdev->src, bdev->dest);
+		ERROR("failed mounting %s onto %s to detect fstype", srcdev, bdev->dest);
 		exit(1);
 	}
 	// if symlink, get the real dev name
 	char devpath[MAXPATHLEN];
-	char *l = linkderef(bdev->src, devpath);
+	char *l = linkderef(srcdev, devpath);
 	if (!l)
 		exit(1);
 	f = fopen("/proc/self/mounts", "r");
@@ -881,7 +902,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 		return -1;
 
 	if (is_blktype(orig)) {
-		if (!newsize && blk_getsize(orig->src, &size) < 0) {
+		if (!newsize && blk_getsize(orig, &size) < 0) {
 			ERROR("Error getting size of %s", orig->src);
 			return -1;
 		}
@@ -928,8 +949,8 @@ static int lvm_destroy(struct bdev *orig)
 	return wait_for_pid(pid);
 }
 
-#define DEFAULT_LVM_SZ 1024000000
-#define DEFAULT_LVM_FSTYPE "ext3"
+#define DEFAULT_FS_SIZE 1024000000
+#define DEFAULT_FSTYPE "ext3"
 static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 			struct bdev_specs *specs)
 {
@@ -959,7 +980,7 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	// lvm.fssize is in bytes.
 	sz = specs->u.lvm.fssize;
 	if (!sz)
-		sz = DEFAULT_LVM_SZ;
+		sz = DEFAULT_FS_SIZE;
 
 	INFO("Error creating new lvm blockdev %s size %lu", bdev->src, sz);
 	if (do_lvm_create(bdev->src, sz) < 0) {
@@ -969,7 +990,7 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 
 	fstype = specs->u.lvm.fstype;
 	if (!fstype)
-		fstype = DEFAULT_LVM_FSTYPE;
+		fstype = DEFAULT_FSTYPE;
 	if (do_mkfs(bdev->src, fstype) < 0) {
 		ERROR("Error creating filesystem type %s on %s", fstype,
 			bdev->src);
@@ -1289,6 +1310,272 @@ struct bdev_ops btrfs_ops = {
 };
 
 //
+// loopback dev ops
+//
+static int loop_detect(const char *path)
+{
+	if (strncmp(path, "loop:", 5) == 0)
+		return 1;
+	return 0;
+}
+
+static int find_free_loopdev(int *retfd, char *namep)
+{
+	struct dirent dirent, *direntp;
+	struct loop_info64 lo;
+	DIR *dir;
+	int fd = -1;
+
+	if (!(dir = opendir("/dev"))) {
+		SYSERROR("Error opening /dev");
+		return -1;
+	}
+	while (!readdir_r(dir, &dirent, &direntp)) {
+
+		if (!direntp)
+			break;
+		if (strncmp(direntp->d_name, "loop", 4) != 0)
+			continue;
+		if ((fd = openat(dirfd(dir), direntp->d_name, O_RDWR)) < 0)
+			continue;
+		if (ioctl(fd, LOOP_GET_STATUS64, &lo) == 0 || errno != ENXIO) {
+			close(fd);
+			fd = -1;
+			continue;
+		}
+		// We can use this fd
+		snprintf(namep, 100, "/dev/%s", direntp->d_name);
+		break;
+	}
+	if (fd == -1) {
+		ERROR("No loop device found");
+		return -1;
+	}
+	closedir(dir);
+
+	*retfd = fd;
+	return 0;
+}
+
+static int loop_mount(struct bdev *bdev)
+{
+	int lfd, ffd = -1, ret = -1;
+	struct loop_info64 lo;
+	char loname[100];
+
+	if (strcmp(bdev->type, "loop"))
+		return -22;
+	if (!bdev->src || !bdev->dest)
+		return -22;
+	if (find_free_loopdev(&lfd, loname) < 0)
+		return -22;
+
+	if ((ffd = open(bdev->src + 5, O_RDWR)) < 0) {
+		SYSERROR("Error opening backing file %s\n", bdev->src);
+		goto out;
+	}
+
+	if (ioctl(lfd, LOOP_SET_FD, ffd) < 0) {
+		SYSERROR("Error attaching backing file to loop dev");
+		goto out;
+	}
+	memset(&lo, 0, sizeof(lo));
+	lo.lo_flags = LO_FLAGS_AUTOCLEAR;
+	if (ioctl(lfd, LOOP_SET_STATUS64, &lo) < 0) {
+		SYSERROR("Error setting autoclear on loop dev\n");
+		goto out;
+	}
+
+	ret = mount_unknow_fs(loname, bdev->dest, 0);
+	if (ret < 0)
+		ERROR("Error mounting %s\n", bdev->src);
+	else
+		bdev->lofd = lfd;
+
+out:
+	if (ffd > -1)
+		close(ffd);
+	if (ret < 0) {
+		close(lfd);
+		bdev->lofd = -1;
+	}
+	return ret;
+}
+
+static int loop_umount(struct bdev *bdev)
+{
+	int ret;
+
+	if (strcmp(bdev->type, "loop"))
+		return -22;
+	if (!bdev->src || !bdev->dest)
+		return -22;
+	ret = umount(bdev->dest);
+	if (bdev->lofd >= 0) {
+		close(bdev->lofd);
+		bdev->lofd = -1;
+	}
+	return ret;
+}
+
+static int do_loop_create(const char *path, unsigned long size, const char *fstype)
+{
+	int fd;
+	// create the new loopback file.
+	fd = creat(path, S_IRUSR|S_IWUSR);
+	if (fd < 0)
+		return -1;
+	if (lseek(fd, size, SEEK_SET) < 0) {
+		SYSERROR("Error seeking to set new loop file size");
+		close(fd);
+		return -1;
+	}
+	if (write(fd, "1", 1) != 1) {
+		SYSERROR("Error creating new loop file");
+		close(fd);
+		return -1;
+	}
+	if (close(fd) < 0) {
+		SYSERROR("Error closing new loop file");
+		return -1;
+	}
+
+	// create an fs in the loopback file
+	if (do_mkfs(path, fstype) < 0) {
+		ERROR("Error creating filesystem type %s on %s", fstype,
+			path);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * No idea what the original blockdev will be called, but the copy will be
+ * called $lxcpath/$lxcname/rootdev
+ */
+static int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
+		const char *cname, const char *oldpath, const char *lxcpath, int snap,
+		unsigned long newsize)
+{
+	char fstype[100];
+	unsigned long size = newsize;
+	int len, ret;
+	char *srcdev;
+
+	if (snap) {
+		ERROR("loop devices cannot be snapshotted.");
+		return -1;
+	}
+
+	if (!orig->dest || !orig->src)
+		return -1;
+
+	len = strlen(lxcpath) + strlen(cname) + strlen("rootdev") + 3;
+	srcdev = alloca(len);
+	ret = snprintf(srcdev, len, "%s/%s/rootdev", lxcpath, cname);
+	if (ret < 0 || ret >= len)
+		return -1;
+
+	new->src = malloc(len + 5);
+	if (!new->src)
+		return -1;
+	ret = snprintf(new->src, len + 5, "loop:%s", srcdev);
+	if (ret < 0 || ret >= len + 5)
+		return -1;
+
+	new->dest = malloc(len);
+	if (!new->dest)
+		return -1;
+	ret = snprintf(new->dest, len, "%s/%s/rootfs", lxcpath, cname);
+	if (ret < 0 || ret >= len)
+		return -1;
+
+	// it's tempting to say: if orig->src == loopback and !newsize, then
+	// copy the loopback file.  However, we'd have to make sure to
+	// correctly keep holes!  So punt for now.
+
+	if (is_blktype(orig)) {
+		if (!newsize && blk_getsize(orig, &size) < 0) {
+			ERROR("Error getting size of %s", orig->src);
+			return -1;
+		}
+		if (detect_fs(orig, fstype, 100) < 0) {
+			INFO("could not find fstype for %s, using %s", orig->src,
+				DEFAULT_FSTYPE);
+			return -1;
+		}
+	} else {
+		sprintf(fstype, "%s", DEFAULT_FSTYPE);
+		if (!newsize)
+			size = DEFAULT_FS_SIZE; // default to 1G
+	}
+	return do_loop_create(srcdev, size, fstype);
+}
+
+static int loop_create(struct bdev *bdev, const char *dest, const char *n,
+			struct bdev_specs *specs)
+{
+	const char *fstype;
+	unsigned long sz;
+	int ret, len;
+	char *srcdev;
+
+	if (!specs)
+		return -1;
+
+	// dest is passed in as $lxcpath / $lxcname / rootfs
+	// srcdev will be:      $lxcpath / $lxcname / rootdev
+	// src will be 'loop:$srcdev'
+	len = strlen(dest) + 2;
+	srcdev = alloca(len);
+
+	ret = snprintf(srcdev, len, "%s", dest);
+	if (ret < 0 || ret >= len)
+		return -1;
+	sprintf(srcdev + len - 4, "dev");
+
+	bdev->src = malloc(len + 5);
+	if (!bdev->src)
+		return -1;
+	ret = snprintf(bdev->src, len + 5, "loop:%s", srcdev);
+	if (ret < 0 || ret >= len + 5)
+		return -1;
+
+	sz = specs->u.loop.fssize;
+	if (!sz)
+		sz = DEFAULT_FS_SIZE;
+
+	fstype = specs->u.loop.fstype;
+	if (!fstype)
+		fstype = DEFAULT_FSTYPE;
+
+	if (!(bdev->dest = strdup(dest)))
+		return -1;
+
+	if (mkdir_p(bdev->dest, 0755) < 0) {
+		ERROR("Error creating %s\n", bdev->dest);
+		return -1;
+	}
+
+	return do_loop_create(srcdev, sz, fstype);
+}
+
+static int loop_destroy(struct bdev *orig)
+{
+	return unlink(orig->src + 5);
+}
+
+struct bdev_ops loop_ops = {
+	.detect = &loop_detect,
+	.mount = &loop_mount,
+	.umount = &loop_umount,
+	.clone_paths = &loop_clonepaths,
+	.destroy = &loop_destroy,
+	.create = &loop_create,
+};
+
+//
 // overlayfs ops
 //
 
@@ -1525,6 +1812,7 @@ struct bdev_type bdevs[] = {
 	{.name = "btrfs", .ops = &btrfs_ops,},
 	{.name = "dir", .ops = &dir_ops,},
 	{.name = "overlayfs", .ops = &overlayfs_ops,},
+	{.name = "loop", .ops = &loop_ops,},
 };
 
 static const size_t numbdevs = sizeof(bdevs) / sizeof(struct bdev_type);
@@ -1571,6 +1859,7 @@ struct bdev *bdev_init(const char *src, const char *dst, const char *data)
 		if (r)
 			break;
 	}
+
 	if (i == numbdevs)
 		return NULL;
 	bdev = malloc(sizeof(struct bdev));

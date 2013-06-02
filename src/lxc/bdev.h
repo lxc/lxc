@@ -24,6 +24,10 @@ struct bdev_specs {
 			char *fstype;
 			unsigned long fssize;  // fs size in bytes
 		} lvm;
+		struct {
+			char *fstype;
+			unsigned long fssize; // fs size in bytes
+		} loop;
 	} u;
 };
 
@@ -55,6 +59,9 @@ struct bdev {
 	char *src;
 	char *dest;
 	char *data;
+	// turn the following into a union if need be
+	// lofd is the open fd for the mounted loopback file
+	int lofd;
 };
 
 char *overlayfs_getlower(char *p);

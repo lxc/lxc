@@ -534,7 +534,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		close(0);
 		close(1);
 		close(2);
-		open("/dev/null", O_RDONLY);
+		open("/dev/zero", O_RDONLY);
 		open("/dev/null", O_RDWR);
 		open("/dev/null", O_RDWR);
 		setsid();

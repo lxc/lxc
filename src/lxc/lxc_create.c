@@ -143,11 +143,14 @@ Options :\n\
 
 bool validate_bdev_args(struct lxc_arguments *a)
 {
-	if (strcmp(a->bdevtype, "lvm") != 0) {
-		if (a->fstype || a->fssize) {
+	if (a->fstype || a->fssize) {
+		if (strcmp(a->bdevtype, "lvm") != 0 &&
+		    strcmp(a->bdevtype, "loop") != 0) {
 			fprintf(stderr, "filesystem type and size are only valid with block devices\n");
 			return false;
 		}
+	}
+	if (strcmp(a->bdevtype, "lvm") != 0) {
 		if (a->lvname || a->vgname) {
 			fprintf(stderr, "--lvname and --vgname are only valid with -B lvm\n");
 			return false;
@@ -209,6 +212,11 @@ int main(int argc, char *argv[])
 			spec.u.lvm.lv = my_args.lvname;
 		if (my_args.vgname)
 			spec.u.lvm.vg = my_args.vgname;
+		if (my_args.fstype)
+			spec.u.lvm.fstype = my_args.fstype;
+		if (my_args.fssize)
+			spec.u.lvm.fssize = my_args.fssize;
+	} else if (strcmp(my_args.bdevtype, "loop") == 0) {
 		if (my_args.fstype)
 			spec.u.lvm.fstype = my_args.fstype;
 		if (my_args.fssize)
