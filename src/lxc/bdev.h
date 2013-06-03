@@ -1,7 +1,7 @@
 #ifndef __LXC_BDEV_H
 #define __LXC_BDEV_H
 /* blockdev operations for:
- * dir, raw, btrfs, overlayfs, aufs, lvm, loop, zfs, btrfs
+ * dir, raw, btrfs, overlayfs, aufs, lvm, loop, zfs
  * someday: qemu-nbd, qcow2, qed
  */
 

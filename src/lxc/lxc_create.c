@@ -90,7 +90,7 @@ static struct lxc_arguments my_args = {
 	.help     = "\
 --name=NAME [-w] [-r] [-t timeout] [-P lxcpath]\n\
 \n\
-lxc-creae creates a container\n\
+lxc-create creates a container\n\
 \n\
 Options :\n\
   -n, --name=NAME   NAME for name of the container\n\
