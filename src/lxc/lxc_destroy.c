@@ -50,7 +50,7 @@ static struct lxc_arguments my_args = {
 	.help     = "\
 --name=NAME [-f] [-P lxcpath]\n\
 \n\
-lxc-stop stops a container with the identifier NAME\n\
+lxc-destroy destroys a container with the identifier NAME\n\
 \n\
 Options :\n\
   -n, --name=NAME   NAME for name of the container\n\
