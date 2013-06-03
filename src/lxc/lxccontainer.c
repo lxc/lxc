@@ -806,13 +806,6 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 		struct bdev *bdev = NULL;
 		int i;
 
-		close(0);
-		close(1);
-		close(2);
-		open("/dev/null", O_RDONLY);
-		open("/dev/null", O_RDWR);
-		open("/dev/null", O_RDWR);
-
 		if (unshare(CLONE_NEWNS) < 0) {
 			ERROR("error unsharing mounts");
 			exit(1);
