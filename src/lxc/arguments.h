@@ -33,6 +33,7 @@ typedef int (*lxc_arguments_checker_t) (const struct lxc_arguments *);
 
 struct lxc_arguments {
 	const char *help;
+	void(*helpfn)(const struct lxc_arguments *);
 	const char *progname;
 	const struct option* options;
 	lxc_arguments_parser_t parser;

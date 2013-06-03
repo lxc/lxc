@@ -147,6 +147,8 @@ for any corresponding short options.\n\
 See the %s man page for further information.\n\n",
 	args->progname, args->help, args->progname);
 
+	if (args->helpfn)
+		args->helpfn(args);
 	exit(code);
 }
 

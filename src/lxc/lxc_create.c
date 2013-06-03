@@ -85,8 +85,35 @@ static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
 };
 
+static void create_helpfn(const struct lxc_arguments *args) {
+	char *argv[3], *path;
+	size_t len;
+	int ret;
+	pid_t pid;
+
+	if (!args->template)
+		return;
+	if ((pid = fork()) < 0)
+		return;
+	if (pid)
+		wait_for_pid(pid);
+	len = strlen(LXCTEMPLATEDIR) + strlen(args->template) + strlen("/lxc-") + 1;
+	path = alloca(len);
+	ret = snprintf(path, len,  "%s/lxc-%s", LXCTEMPLATEDIR, args->template);
+	if (ret < 0 || ret >= len)
+		return;
+
+	argv[0] = path;
+	argv[1] = "-h";
+	argv[2] = NULL;
+	execv(path, argv);
+	ERROR("Error executing %s -h", path);
+	exit(1);
+}
+
 static struct lxc_arguments my_args = {
 	.progname = "lxc-create",
+	.helpfn   = create_helpfn,
 	.help     = "\
 --name=NAME [-w] [-r] [-t timeout] [-P lxcpath]\n\
 \n\
