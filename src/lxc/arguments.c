@@ -164,7 +164,7 @@ static int lxc_arguments_lxcpath_add(struct lxc_arguments *args,
 				 sizeof(args->lxcpath[0]));
 	if (args->lxcpath == NULL) {
 		lxc_error(args, "no memory");
-		return ENOMEM;
+		return -ENOMEM;
 	}
 	args->lxcpath[args->lxcpath_cnt++] = lxcpath;
 	return 0;
