@@ -39,9 +39,10 @@ help() {
 
 get_parent_cgroup()
 {
-    local hierarchies hierarchy fields subsystems init_cgroup mountpoint
+    local hierarchies hierarchy fields init_cgroup mountpoint
 
     parent_cgroup=""
+    subsystems=""
 
     # Obtain a list of hierarchies that contain one or more subsystems
     hierarchies=$(tail -n +2 /proc/cgroups | cut -f 2)
@@ -65,11 +66,7 @@ get_parent_cgroup()
         if [ -z "$mountpoint" ]; then continue; fi
 
         # Return the absolute path to the containers' parent cgroup
-        # (do not append '/lxc' if the hierarchy contains the 'ns' subsystem)
-        case ",$subsystems," in
-            *,ns,*) parent_cgroup="${mountpoint}${init_cgroup%/}";;
-            *) parent_cgroup="${mountpoint}${init_cgroup%/}";;
-        esac
+        parent_cgroup="${mountpoint}${init_cgroup%/}";
         break
     done
 }
@@ -106,7 +103,10 @@ if [ ! -d "$parent_cgroup" ]; then
 fi
 
 if [ -z "$containers" ]; then
-    containers="$(find $parent_cgroup -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sed 's:.*/::')"
+    case ",$subsystems," in
+	*,ns,*) containers="$(find $parent_cgroup -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sed 's:.*/::')";;
+        *) containers="$(find $parent_cgroup/lxc -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sed 's:.*/::')";;
+    esac
 fi
 
 container_field_width=9
