@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <sched.h>
 #include "config.h"
 #include "lxc.h"
@@ -39,7 +40,6 @@
 #include <lxc/utils.h>
 #include <lxc/monitor.h>
 #include <sched.h>
-#include <fcntl.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 
@@ -66,6 +66,8 @@ int ongoing_create(struct lxc_container *c)
 	int len = strlen(c->config_path) + strlen(c->name) + 10;
 	char *path = alloca(len);
 	int fd, ret;
+	struct flock lk;
+
 	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
 	if (ret < 0 || ret >= len) {
 		ERROR("Error writing partial pathname");
@@ -82,8 +84,12 @@ int ongoing_create(struct lxc_container *c)
 		process_unlock();
 		return 0;
 	}
-	if ((ret = flock(fd, LOCK_EX | LOCK_NB)) == -1 &&
-			errno == EWOULDBLOCK) {
+	lk.l_type = F_WRLCK;
+	lk.l_whence = SEEK_SET;
+	lk.l_start = 0;
+	lk.l_len = 0;
+	lk.l_pid = -1;
+	if (fcntl(fd, F_GETLK, &lk) == 0 && lk.l_pid != -1) {
 		// create is still ongoing
 		close(fd);
 		process_unlock();
@@ -101,6 +107,8 @@ int create_partial(struct lxc_container *c)
 	int len = strlen(c->config_path) + strlen(c->name) + 10;
 	char *path = alloca(len);
 	int fd, ret;
+	struct flock lk;
+
 	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
 	if (ret < 0 || ret >= len) {
 		ERROR("Error writing partial pathname");
@@ -108,12 +116,16 @@ int create_partial(struct lxc_container *c)
 	}
 	if (process_lock())
 		return -1;
-	if ((fd=open(path, O_CREAT | O_EXCL, 0755)) < 0) {
+	if ((fd=open(path, O_RDWR | O_CREAT | O_EXCL, 0755)) < 0) {
 		SYSERROR("Erorr creating partial file");
 		process_unlock();
 		return -1;
 	}
-	if (flock(fd, LOCK_EX) < 0) {
+	lk.l_type = F_WRLCK;
+	lk.l_whence = SEEK_SET;
+	lk.l_start = 0;
+	lk.l_len = 0;
+	if (fcntl(fd, F_SETLKW, &lk) < 0) {
 		SYSERROR("Error locking partial file %s", path);
 		close(fd);
 		process_unlock();

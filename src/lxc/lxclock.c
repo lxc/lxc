@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <lxc/utils.h>
 #include <lxc/log.h>
 #include <lxc/lxccontainer.h>
@@ -111,6 +112,7 @@ out:
 int lxclock(struct lxc_lock *l, int timeout)
 {
 	int ret = -1, saved_errno = errno;
+	struct flock lk;
 
 	switch(l->type) {
 	case LXC_LOCK_ANON_SEM:
@@ -152,7 +154,11 @@ int lxclock(struct lxc_lock *l, int timeout)
 				goto out;
 			}
 		}
-		ret = flock(l->u.f.fd, LOCK_EX);
+		lk.l_type = F_WRLCK;
+		lk.l_whence = SEEK_SET;
+		lk.l_start = 0;
+		lk.l_len = 0;
+		ret = fcntl(l->u.f.fd, F_SETLKW, &lk);
 		process_unlock();
 		if (ret == -1)
 			saved_errno = errno;
@@ -167,6 +173,7 @@ out:
 int lxcunlock(struct lxc_lock *l)
 {
 	int ret = 0, saved_errno = errno;
+	struct flock lk;
 
 	switch(l->type) {
 	case LXC_LOCK_ANON_SEM:
@@ -179,7 +186,12 @@ int lxcunlock(struct lxc_lock *l)
 	case LXC_LOCK_FLOCK:
 		process_lock();
 		if (l->u.f.fd != -1) {
-			if ((ret = flock(l->u.f.fd, LOCK_UN)) < 0)
+			lk.l_type = F_UNLCK;
+			lk.l_whence = SEEK_SET;
+			lk.l_start = 0;
+			lk.l_len = 0;
+			ret = fcntl(l->u.f.fd, F_SETLK, &lk);
+			if (ret < 0)
 				saved_errno = errno;
 			close(l->u.f.fd);
 			l->u.f.fd = -1;
