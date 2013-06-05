@@ -40,12 +40,14 @@ pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char *lxclock_name(const char *p, const char *n)
 {
 	int ret;
-	// $lxcpath/locks/$lxcname + '\0'
-	int len = strlen(p) + strlen(n) + strlen("/locks/") + 1;
+	// /run/lock/lxc/$lxcpath/$lxcname + '\0'
+	int len = strlen(p) + strlen(n) + strlen("/run/lock/lxc/") + 2;
 	char *dest = malloc(len);
+	struct stat sb;
+
 	if (!dest)
 		return NULL;
-	ret = snprintf(dest, len, "%s/locks", p);
+	ret = snprintf(dest, len, "/run/lock/lxc/%s", p);
 	if (ret < 0 || ret >= len) {
 		free(dest);
 		return NULL;
@@ -58,7 +60,16 @@ static char *lxclock_name(const char *p, const char *n)
 		return NULL;
 	}
 
-	ret = snprintf(dest, len, "%s/locks/%s", p, n);
+	ret = stat(p, &sb);
+	if (ret == 0) {
+		// best effort.  If this fails, ignore it
+		if (chown(dest, sb.st_uid, sb.st_gid) < 0)
+			ERROR("Failed ot set owner for lockdir %s\n", dest);
+		if (chmod(dest, sb.st_mode) < 0)
+			ERROR("Failed to set mode for lockdir %s\n", dest);
+	}
+
+	ret = snprintf(dest, len, "/run/lock/lxc/%s/%s", p, n);
 	if (ret < 0 || ret >= len) {
 		free(dest);
 		return NULL;

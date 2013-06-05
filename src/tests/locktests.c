@@ -121,7 +121,10 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	struct stat sb;
-	char *pathname = "/var/lib/lxc/locks/" mycontainername;
+	// we don't create the file until the container is running, so this
+	// bit of the test needs to be changed
+	//char *pathname = "/run/lock/lxc/var/lib/lxc/" mycontainername;
+	char *pathname = "/run/lock/lxc/var/lib/lxc/";
 	ret = stat(pathname, &sb);
 	if (ret != 0) {
 		fprintf(stderr, "%d: filename %s not created\n", __LINE__,
