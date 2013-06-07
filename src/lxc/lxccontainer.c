@@ -418,7 +418,7 @@ static void lxcapi_want_daemonize(struct lxc_container *c)
 {
 	if (!c)
 		return;
-	if (!container_mem_lock(c)) {
+	if (container_mem_lock(c)) {
 		ERROR("Error getting mem lock");
 		return;
 	}
