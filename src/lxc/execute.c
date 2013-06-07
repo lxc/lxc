@@ -96,8 +96,11 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	argc_add = 4;
 	if (my_args->quiet)
 		argc_add++;
-	if (!handler->conf->rootfs.path)
-		argc_add+=6;
+	if (!handler->conf->rootfs.path) {
+		argc_add += 4;
+		if (lxc_log_has_valid_level())
+			argc_add += 2;
+	}
 
 	argv = malloc((argc + argc_add) * sizeof(*argv));
 	if (!argv)
@@ -116,8 +119,12 @@ static int execute_start(struct lxc_handler *handler, void* data)
 		argv[i++] = (char *)handler->name;
 		argv[i++] = "--lxcpath";
 		argv[i++] = (char *)handler->lxcpath;
-		argv[i++] = "--logpriority";
-		argv[i++] = (char *)lxc_log_priority_to_string(lxc_log_get_level());
+
+		if (lxc_log_has_valid_level()) {
+			argv[i++] = "--logpriority";
+			argv[i++] = (char *)
+				lxc_log_priority_to_string(lxc_log_get_level());
+		}
 	}
 	argv[i++] = "--";
 	for (j = 0; j < argc; j++)

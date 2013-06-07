@@ -370,6 +370,14 @@ extern int lxc_log_get_level(void)
 	return lxc_log_category_lxc.priority;
 }
 
+extern bool lxc_log_has_valid_level(void)
+{
+	int log_level = lxc_log_get_level();
+	if (log_level < 0 || log_level >= LXC_LOG_PRIORITY_NOTSET)
+		return false;
+	return true;
+}
+
 /*
  * This is called when we read a lxc.logfile entry in a lxc.conf file.  This
  * happens after processing command line arguments, which override the .conf
