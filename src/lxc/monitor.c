@@ -210,7 +210,7 @@ int lxc_monitord_spawn(const char *lxcpath)
 	char pipefd_str[11];
 
 	char * const args[] = {
-		"/usr/bin/lxc-monitord",
+		"lxc-monitord",
 		(char *)lxcpath,
 		pipefd_str,
 		NULL,
