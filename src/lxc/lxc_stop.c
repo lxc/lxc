@@ -166,7 +166,8 @@ int main(int argc, char *argv[])
 			ret = c->wait(c, "STOPPED", -1) ? 0 : -1;
 		else
 			ret = -1; // fail
-	}
+	} else
+		ret = 0;
 
 out:
 	lxc_container_put(c);
