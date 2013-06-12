@@ -108,15 +108,6 @@ extern int lxc_monitor_read_fdset(fd_set *rfds, int nfds, struct lxc_msg *msg, i
 extern int lxc_monitor_close(int fd);
 
 /*
- * Show the console of the container.
- * @name : the name of container
- * @tty  : the tty number
- * @fd   : a pointer to a tty file descriptor
- * Returns 0 on sucess, < 0 otherwise
- */
-extern int lxc_console(const char *name, int ttynum, int *fd, const char *lxcpath);
-
-/*
  * Freeze all the tasks running inside the container <name>
  * @name : the container name
  * Returns 0 on success, < 0 otherwise

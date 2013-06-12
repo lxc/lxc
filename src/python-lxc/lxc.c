@@ -638,6 +638,40 @@ Container_unfreeze(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+Container_console(Container *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"ttynum", "stdinfd", "stdoutfd", "stderrfd", "escape", NULL};
+    int ttynum = -1, stdinfd = 0, stdoutfd = 1, stderrfd = 2, escape = 1;
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|iiiii", kwlist,
+                                      &ttynum, &stdinfd, &stdoutfd, &stderrfd,
+                                      &escape))
+        return NULL;
+
+    if (self->container->console(self->container, ttynum,
+				 stdinfd, stdoutfd, stderrfd, escape) == 0) {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
+static PyObject *
+Container_console_getfd(Container *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"ttynum", NULL};
+    int ttynum = -1, masterfd;
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|i", kwlist, &ttynum))
+        return NULL;
+
+    if (self->container->console_getfd(self->container, &ttynum, &masterfd) < 0) {
+        PyErr_SetString(PyExc_ValueError, "Unable to allocate tty");
+        return NULL;
+    }
+    return PyLong_FromLong(masterfd);
+}
+
+static PyObject *
 Container_wait(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"state", "timeout", NULL};
@@ -803,6 +837,18 @@ static PyMethodDef Container_methods[] = {
      "wait(state, timeout = -1) -> boolean\n"
      "\n"
      "Wait for the container to reach a given state or timeout."
+    },
+    {"console", (PyCFunction)Container_console,
+     METH_VARARGS|METH_KEYWORDS,
+     "console(ttynum = -1, stdinfd = 0, stdoutfd = 1, stderrfd = 2, escape = 0) -> boolean\n"
+     "\n"
+     "Attach to container's console."
+    },
+    {"console_getfd", (PyCFunction)Container_console_getfd,
+     METH_VARARGS|METH_KEYWORDS,
+     "console(ttynum = -1) -> boolean\n"
+     "\n"
+     "Attach to container's console."
     },
     {NULL, NULL, 0, NULL}
 };

@@ -50,69 +50,6 @@
 #include <sys/capability.h>
 #endif
 
-#ifdef HAVE_SYS_SIGNALFD_H
-#  include <sys/signalfd.h>
-#else
-/* assume kernel headers are too old */
-#include <stdint.h>
-struct signalfd_siginfo
-{
-	uint32_t ssi_signo;
-	int32_t ssi_errno;
-	int32_t ssi_code;
-	uint32_t ssi_pid;
-	uint32_t ssi_uid;
-	int32_t ssi_fd;
-	uint32_t ssi_tid;
-	uint32_t ssi_band;
-	uint32_t ssi_overrun;
-	uint32_t ssi_trapno;
-	int32_t ssi_status;
-	int32_t ssi_int;
-	uint64_t ssi_ptr;
-	uint64_t ssi_utime;
-	uint64_t ssi_stime;
-	uint64_t ssi_addr;
-	uint8_t __pad[48];
-};
-
-#  ifndef __NR_signalfd4
-/* assume kernel headers are too old */
-#    if __i386__
-#      define __NR_signalfd4 327
-#    elif __x86_64__
-#      define __NR_signalfd4 289
-#    elif __powerpc__
-#      define __NR_signalfd4 313
-#    elif __s390x__
-#      define __NR_signalfd4 322
-#    endif
-#endif
-
-#  ifndef __NR_signalfd
-/* assume kernel headers are too old */
-#    if __i386__
-#      define __NR_signalfd 321
-#    elif __x86_64__
-#      define __NR_signalfd 282
-#    elif __powerpc__
-#      define __NR_signalfd 305
-#    elif __s390x__
-#      define __NR_signalfd 316
-#    endif
-#endif
-
-int signalfd(int fd, const sigset_t *mask, int flags)
-{
-	int retval;
-
-	retval = syscall (__NR_signalfd4, fd, mask, _NSIG / 8, flags);
-	if (errno == ENOSYS && flags == 0)
-		retval = syscall (__NR_signalfd, fd, mask, _NSIG / 8);
-	return retval;
-}
-#endif
-
 #if !HAVE_DECL_PR_CAPBSET_DROP
 #define PR_CAPBSET_DROP 24
 #endif
@@ -198,6 +135,7 @@ static int setup_signal_fd(sigset_t *oldmask)
 	    sigdelset(&mask, SIGILL) ||
 	    sigdelset(&mask, SIGSEGV) ||
 	    sigdelset(&mask, SIGBUS) ||
+	    sigdelset(&mask, SIGWINCH) ||
 	    sigprocmask(SIG_BLOCK, &mask, oldmask)) {
 		SYSERROR("failed to set signal mask");
 		return -1;
@@ -387,25 +325,26 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 		goto out_aborting;
 	}
 
-	if (lxc_create_console(conf)) {
-		ERROR("failed to create console");
-		goto out_delete_tty;
-	}
-
 	/* the signal fd has to be created before forking otherwise
 	 * if the child process exits before we setup the signal fd,
 	 * the event will be lost and the command will be stuck */
 	handler->sigfd = setup_signal_fd(&handler->oldmask);
 	if (handler->sigfd < 0) {
 		ERROR("failed to set sigchild fd handler");
-		goto out_delete_console;
+		goto out_delete_tty;
+	}
+
+	/* do this after setting up signals since it might unblock SIGWINCH */
+	if (lxc_console_create(conf)) {
+		ERROR("failed to create console");
+		goto out_restore_sigmask;
 	}
 
 	INFO("'%s' is initialized", name);
 	return handler;
 
-out_delete_console:
-	lxc_delete_console(&conf->console);
+out_restore_sigmask:
+	sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
 out_delete_tty:
 	lxc_delete_tty(&conf->tty_info);
 out_aborting:
@@ -436,7 +375,7 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL))
 		WARN("failed to restore sigprocmask");
 
-	lxc_delete_console(&handler->conf->console);
+	lxc_console_delete(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
 	close(handler->conf->maincmd_fd);
 	handler->conf->maincmd_fd = -1;

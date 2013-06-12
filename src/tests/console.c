@@ -61,7 +61,7 @@ static int test_console_running_container(struct lxc_container *c)
 		ttynum[i] = ttyfd[i] = masterfd[i] = -1;
 
 	ttynum[0] = 1;
-	ret = c->console(c, &ttynum[0], &masterfd[0]);
+	ret = c->console_getfd(c, &ttynum[0], &masterfd[0]);
 	if (ret < 0) {
 		TSTERR("console allocate failed");
 		goto err1;
@@ -73,7 +73,7 @@ static int test_console_running_container(struct lxc_container *c)
 	}
 
 	/* attempt to alloc same ttynum */
-	ret = c->console(c, &ttynum[0], &masterfd[1]);
+	ret = c->console_getfd(c, &ttynum[0], &masterfd[1]);
 	if (ret != -1) {
 		TSTERR("console allocate should fail for allocated ttynum %d", ttynum[0]);
 		goto err2;
@@ -86,7 +86,7 @@ static int test_console_running_container(struct lxc_container *c)
 	 */
 	for (i = 0; i < 10; i++) {
 		for (nrconsoles = 0; nrconsoles < MAXCONSOLES; nrconsoles++) {
-			ret = c->console(c, &ttynum[nrconsoles], &masterfd[nrconsoles]);
+			ret = c->console_getfd(c, &ttynum[nrconsoles], &masterfd[nrconsoles]);
 			if (ret < 0)
 				break;
 			ttyfd[nrconsoles] = ret;

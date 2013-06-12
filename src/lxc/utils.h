@@ -75,6 +75,71 @@ static inline int unshare(int flags)
 int unshare(int);
 #endif
 
+/* Define signalfd() if missing from the C library */
+#ifdef HAVE_SYS_SIGNALFD_H
+#  include <sys/signalfd.h>
+#else
+/* assume kernel headers are too old */
+#include <stdint.h>
+struct signalfd_siginfo
+{
+	uint32_t ssi_signo;
+	int32_t ssi_errno;
+	int32_t ssi_code;
+	uint32_t ssi_pid;
+	uint32_t ssi_uid;
+	int32_t ssi_fd;
+	uint32_t ssi_tid;
+	uint32_t ssi_band;
+	uint32_t ssi_overrun;
+	uint32_t ssi_trapno;
+	int32_t ssi_status;
+	int32_t ssi_int;
+	uint64_t ssi_ptr;
+	uint64_t ssi_utime;
+	uint64_t ssi_stime;
+	uint64_t ssi_addr;
+	uint8_t __pad[48];
+};
+
+#  ifndef __NR_signalfd4
+/* assume kernel headers are too old */
+#    if __i386__
+#      define __NR_signalfd4 327
+#    elif __x86_64__
+#      define __NR_signalfd4 289
+#    elif __powerpc__
+#      define __NR_signalfd4 313
+#    elif __s390x__
+#      define __NR_signalfd4 322
+#    endif
+#endif
+
+#  ifndef __NR_signalfd
+/* assume kernel headers are too old */
+#    if __i386__
+#      define __NR_signalfd 321
+#    elif __x86_64__
+#      define __NR_signalfd 282
+#    elif __powerpc__
+#      define __NR_signalfd 305
+#    elif __s390x__
+#      define __NR_signalfd 316
+#    endif
+#endif
+
+static inline int signalfd(int fd, const sigset_t *mask, int flags)
+{
+	int retval;
+
+	retval = syscall (__NR_signalfd4, fd, mask, _NSIG / 8, flags);
+	if (errno == ENOSYS && flags == 0)
+		retval = syscall (__NR_signalfd, fd, mask, _NSIG / 8);
+	return retval;
+}
+#endif
+
+
 /**
  * BUILD_BUG_ON - break compile if a condition is true.
  * @condition: the condition which the compiler should know is false.

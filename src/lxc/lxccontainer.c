@@ -31,6 +31,7 @@
 #include "lxccontainer.h"
 #include "conf.h"
 #include "confile.h"
+#include "console.h"
 #include "cgroup.h"
 #include "commands.h"
 #include "version.h"
@@ -350,14 +351,20 @@ static bool lxcapi_unfreeze(struct lxc_container *c)
 	return true;
 }
 
-static int lxcapi_console(struct lxc_container *c, int *ttynum, int *masterfd)
+static int lxcapi_console_getfd(struct lxc_container *c, int *ttynum, int *masterfd)
 {
 	int ttyfd;
 	if (!c)
 		return -1;
 
-	ttyfd = lxc_cmd_console(c->name, ttynum, masterfd, c->config_path);
+	ttyfd = lxc_console_getfd(c, ttynum, masterfd);
 	return ttyfd;
+}
+
+static int lxcapi_console(struct lxc_container *c, int ttynum, int stdinfd,
+			  int stdoutfd, int stderrfd, int escape)
+{
+	return lxc_console(c, ttynum, stdinfd, stdoutfd, stderrfd, escape);
 }
 
 static pid_t lxcapi_init_pid(struct lxc_container *c)
@@ -2018,6 +2025,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->freeze = lxcapi_freeze;
 	c->unfreeze = lxcapi_unfreeze;
 	c->console = lxcapi_console;
+	c->console_getfd = lxcapi_console_getfd;
 	c->init_pid = lxcapi_init_pid;
 	c->load_config = lxcapi_load_config;
 	c->want_daemonize = lxcapi_want_daemonize;

@@ -1293,8 +1293,8 @@ static int setup_dev_console(const struct lxc_rootfs *rootfs,
 		return 0;
 	}
 
-	if (console->peer == -1) {
-		INFO("no console output required");
+	if (console->master < 0) {
+		INFO("no console");
 		return 0;
 	}
 
@@ -1359,8 +1359,8 @@ static int setup_ttydir_console(const struct lxc_rootfs *rootfs,
 	if (ret >= 0)
 		close(ret);
 
-	if (console->peer == -1) {
-		INFO("no console output required");
+	if (console->master < 0) {
+		INFO("no console");
 		return 0;
 	}
 
@@ -2127,6 +2127,9 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.log_fd = -1;
 	new->console.path = NULL;
 	new->console.peer = -1;
+	new->console.peerpty.busy = -1;
+	new->console.peerpty.master = -1;
+	new->console.peerpty.slave = -1;
 	new->console.master = -1;
 	new->console.slave = -1;
 	new->console.name[0] = '\0';

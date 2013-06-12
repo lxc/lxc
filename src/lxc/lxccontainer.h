@@ -115,7 +115,7 @@ struct lxc_container {
 		const char *lxcpath, int flags, const char *bdevtype,
 		const char *bdevdata, unsigned long newsize, char **hookargs);
 
-	/* lxcapi_console: allocate a console tty from container @c
+	/* lxcapi_console_getfd: allocate a console tty from container @c
 	 *
 	 * @c        : the running container
 	 * @ttynum   : in : tty number to attempt to allocate or -1 to
@@ -128,7 +128,24 @@ struct lxc_container {
 	 * indicate that it is done with the allocated console so that it can
 	 * be allocated by another caller.
 	 */
-	int (*console)(struct lxc_container *c, int *ttynum, int *masterfd);
+	int (*console_getfd)(struct lxc_container *c, int *ttynum, int *masterfd);
+
+	/* lxcapi_console: allocate and run a console tty from container @c
+	 *
+	 * @c        : the running container
+	 * @ttynum   : tty number to attempt to allocate, -1 to
+	 *             allocate the first available tty, or 0 to allocate
+	 *             the console
+	 * @stdinfd  : fd to read input from
+	 * @stdoutfd : fd to write output to
+	 * @stderrfd : fd to write error output to
+	 * @escape   : the escape character (1 == 'a', 2 == 'b', ...)
+	 *
+	 * Returns 0 on success, -1 on failure. This function will not return
+	 * until the console has been exited by the user.
+	 */
+	int (*console)(struct lxc_container *c, int ttynum,
+		       int stdinfd, int stdoutfd, int stderrfd, int escape);
 
 #if 0
 	bool (*commit_cgroups)(struct lxc_container *c);

@@ -291,19 +291,25 @@ class Container(_lxc.Container):
         self.load_config()
         return True
 
-    def console(self, tty="1"):
+    def console(self, ttynum = -1, stdinfd = 0, stdoutfd = 1, stderrfd = 2, escape = 1):
         """
-            Access the console of a container.
+            Attach to console of running container.
         """
 
         if not self.running:
             return False
 
-        if subprocess.call(["lxc-console", "-n", self.name, "-t", "%s" % tty,
-                            "-P", self.get_config_path()],
-                           universal_newlines=True) != 0:
+        return _lxc.Container.console(self, ttynum, stdinfd, stdoutfd, stderrfd, escape)
+
+    def console_getfd(self, ttynum = -1):
+        """
+            Attach to console of running container.
+        """
+
+        if not self.running:
             return False
-        return True
+
+        return _lxc.Container.console_getfd(self, ttynum)
 
     def get_cgroup_item(self, key):
         """

@@ -38,6 +38,7 @@
 #include <sys/poll.h>
 #include <sys/ioctl.h>
 
+#include "../lxc/lxccontainer.h"
 #include "error.h"
 #include "lxc.h"
 #include "log.h"
@@ -87,184 +88,34 @@ Options :\n\
 	.escape = 1,
 };
 
-static int master = -1;
-
-static void winsz(void)
-{
-	struct winsize wsz;
-	if (ioctl(0, TIOCGWINSZ, &wsz) == 0)
-		ioctl(master, TIOCSWINSZ, &wsz);
-}
-
-static void sigwinch(int sig)
-{
-	winsz();
-}
-
-static int setup_tios(int fd, struct termios *newtios, struct termios *oldtios)
-{
-	if (!isatty(fd)) {
-		ERROR("'%d' is not a tty", fd);
-		return -1;
-	}
-
-	/* Get current termios */
-	if (tcgetattr(fd, oldtios)) {
-		SYSERROR("failed to get current terminal settings");
-		return -1;
-	}
-
-	*newtios = *oldtios;
-
-	/* Remove the echo characters and signal reception, the echo
-	 * will be done below with master proxying */
-	newtios->c_iflag &= ~IGNBRK;
-	newtios->c_iflag &= BRKINT;
-	newtios->c_lflag &= ~(ECHO|ICANON|ISIG);
-	newtios->c_cc[VMIN] = 1;
-	newtios->c_cc[VTIME] = 0;
-
-	/* Set new attributes */
-	if (tcsetattr(fd, TCSAFLUSH, newtios)) {
-		ERROR("failed to set new terminal settings");
-		return -1;
-	}
-
-	return 0;
-}
-
-static int stdin_handler(int fd, void *data, struct lxc_epoll_descr *descr)
-{
-	static int wait4q = 0;
-	int *peer = (int *)data;
-	char c;
-
-	if (read(0, &c, 1) < 0) {
-		SYSERROR("failed to read");
-		return 1;
-	}
-
-	/* we want to exit the console with Ctrl+a q */
-	if (c == my_args.escape && !wait4q) {
-		wait4q = !wait4q;
-		return 0;
-	}
-
-	if (c == 'q' && wait4q)
-		return 1;
-
-	wait4q = 0;
-	if (write(*peer, &c, 1) < 0) {
-		SYSERROR("failed to write");
-		return 1;
-	}
-
-	return 0;
-}
-
-static int master_handler(int fd, void *data, struct lxc_epoll_descr *descr)
-{
-	char buf[1024];
-	int *peer = (int *)data;
-	int r,w;
-
-	r = read(fd, buf, sizeof(buf));
-	if (r < 0) {
-		SYSERROR("failed to read");
-		return 1;
-	}
-	w = write(*peer, buf, r);
-	if (w < 0 || w != r) {
-		SYSERROR("failed to write");
-		return 1;
-	}
-
-	return 0;
-}
-
 int main(int argc, char *argv[])
 {
-	int err, ttyfd, std_in = 1;
-	struct lxc_epoll_descr descr;
-	struct termios newtios, oldtios;
+	int ret;
+	struct lxc_container *c;
 
-	err = lxc_arguments_parse(&my_args, argc, argv);
-	if (err)
-		return -1;
+	ret = lxc_arguments_parse(&my_args, argc, argv);
+	if (ret)
+		return EXIT_FAILURE;
 
-	err = lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
+	ret = lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			   my_args.progname, my_args.quiet, my_args.lxcpath[0]);
-	if (err)
-		return -1;
+	if (ret)
+		return EXIT_FAILURE;
 
-	err = setup_tios(0, &newtios, &oldtios);
-	if (err) {
-		ERROR("failed to setup tios");
-		return -1;
+	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
+	if (!c) {
+		fprintf(stderr, "System error loading container\n");
+		exit(EXIT_FAILURE);
 	}
 
-	ttyfd = lxc_cmd_console(my_args.name, &my_args.ttynum, &master, my_args.lxcpath[0]);
-	if (ttyfd < 0) {
-		err = ttyfd;
-		goto out;
+	if (!c->is_running(c)) {
+		fprintf(stderr, "%s is not running\n", my_args.name);
+		exit(EXIT_FAILURE);
 	}
 
-	fprintf(stderr, "\n\
-Connected to tty %1$d\n\
-Type <Ctrl+%2$c q> to exit the console, \
-<Ctrl+%2$c Ctrl+%2$c> to enter Ctrl+%2$c itself\n", my_args.ttynum,
-                'a' + my_args.escape - 1);
-
-	err = setsid();
-	if (err)
-		INFO("already group leader");
-
-	if (signal(SIGWINCH, sigwinch) == SIG_ERR) {
-		SYSERROR("failed to set SIGWINCH handler");
-		err = -1;
-		goto out;
+	ret = c->console(c, my_args.ttynum, 0, 1, 2, my_args.escape);
+	if (ret < 0) {
+		exit(EXIT_FAILURE);
 	}
-
-	winsz();
-
-	err = lxc_mainloop_open(&descr);
-	if (err) {
-		ERROR("failed to create mainloop");
-		goto out;
-	}
-
-	err = lxc_mainloop_add_handler(&descr, 0, stdin_handler, &master);
-	if (err) {
-		ERROR("failed to add handler for the stdin");
-		goto out_mainloop_open;
-	}
-
-	err = lxc_mainloop_add_handler(&descr, master, master_handler, &std_in);
-	if (err) {
-		ERROR("failed to add handler for the master");
-		goto out_mainloop_open;
-	}
-
-	err = lxc_mainloop(&descr, -1);
-	if (err) {
-		ERROR("mainloop returned an error");
-		goto out_mainloop_open;
-	}
-
-	close(ttyfd);
-	err =  0;
-
-out_mainloop_open:
-	lxc_mainloop_close(&descr);
-
-out:
-	/* Restore previous terminal parameter */
-	tcsetattr(0, TCSAFLUSH, &oldtios);
-
-	/* Return to line it is */
-	printf("\n");
-
-	close(master);
-
-	return err;
+	return EXIT_SUCCESS;
 }

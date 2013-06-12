@@ -40,6 +40,7 @@
 #include <lxc/utils.h>
 
 #include "commands.h"
+#include "console.h"
 #include "confile.h"
 #include "mainloop.h"
 #include "af_unix.h"
@@ -546,6 +547,37 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 }
 
 /*
+ * lxc_cmd_console_winch: To process as if a SIGWINCH were received
+ *
+ * @name      : name of container to connect to
+ * @lxcpath   : the lxcpath in which the container is running
+ *
+ * Returns 0 on success, < 0 on failure
+ */
+int lxc_cmd_console_winch(const char *name, const char *lxcpath)
+{
+	int ret, stopped = 0;
+	struct lxc_cmd_rr cmd = {
+		.req = { .cmd = LXC_CMD_CONSOLE_WINCH },
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
+static int lxc_cmd_console_winch_callback(int fd, struct lxc_cmd_req *req,
+					  struct lxc_handler *handler)
+{
+	struct lxc_cmd_rsp rsp = { .data = 0 };
+
+	lxc_console_sigwinch(SIGWINCH);
+	return lxc_cmd_rsp_send(fd, &rsp);
+}
+
+/*
  * lxc_cmd_console: Open an fd to a tty in the container
  *
  * @name           : name of container to connect to
@@ -599,39 +631,21 @@ static int lxc_cmd_console_callback(int fd, struct lxc_cmd_req *req,
 				    struct lxc_handler *handler)
 {
 	int ttynum = PTR_TO_INT(req->data);
-	struct lxc_tty_info *tty_info = &handler->conf->tty_info;
+	int masterfd;
 	struct lxc_cmd_rsp rsp;
 
-	if (ttynum > 0) {
-		if (ttynum > tty_info->nbtty)
-			goto out_close;
-
-		if (tty_info->pty_info[ttynum - 1].busy)
-			goto out_close;
-
-		/* the requested tty is available */
-		goto out_send;
-	}
-
-	/* search for next available tty, fixup index tty1 => [0] */
-	for (ttynum = 1;
-	     ttynum <= tty_info->nbtty && tty_info->pty_info[ttynum - 1].busy;
-	     ttynum++);
-
-	/* we didn't find any available slot for tty */
-	if (ttynum > tty_info->nbtty)
+	masterfd = lxc_console_allocate(handler->conf, fd, &ttynum);
+	if (masterfd < 0)
 		goto out_close;
 
-out_send:
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.data = INT_TO_PTR(ttynum);
-	if (lxc_af_unix_send_fd(fd, tty_info->pty_info[ttynum - 1].master,
-				&rsp, sizeof(rsp)) < 0) {
+	if (lxc_af_unix_send_fd(fd, masterfd, &rsp, sizeof(rsp)) < 0) {
 		ERROR("failed to send tty to client");
+		lxc_console_free(handler->conf, fd);
 		goto out_close;
 	}
 
-	tty_info->pty_info[ttynum - 1].busy = fd;
 	return 0;
 
 out_close:
@@ -650,6 +664,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 
 	callback cb[LXC_CMD_MAX] = {
 		[LXC_CMD_CONSOLE]         = lxc_cmd_console_callback,
+		[LXC_CMD_CONSOLE_WINCH]   = lxc_cmd_console_winch_callback,
 		[LXC_CMD_STOP]            = lxc_cmd_stop_callback,
 		[LXC_CMD_GET_STATE]       = lxc_cmd_get_state_callback,
 		[LXC_CMD_GET_INIT_PID]    = lxc_cmd_get_init_pid_callback,
@@ -668,8 +683,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 			       struct lxc_epoll_descr *descr)
 {
-	extern void lxc_console_remove_fd(int, struct lxc_tty_info *);
-	lxc_console_remove_fd(fd, &handler->conf->tty_info);
+	lxc_console_free(handler->conf, fd);
 	lxc_mainloop_del_handler(descr, fd);
 	close(fd);
 }

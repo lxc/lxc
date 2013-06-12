@@ -188,6 +188,8 @@ struct lxc_tty_info {
 	struct lxc_pty_info *pty_info;
 };
 
+struct lxc_tty_state;
+
 /*
  * Defines the structure to store the console information
  * @peer   : the file descriptor put/get console traffic
@@ -197,11 +199,14 @@ struct lxc_console {
 	int slave;
 	int master;
 	int peer;
+	struct lxc_pty_info peerpty;
+	struct lxc_epoll_descr *descr;
 	char *path;
 	char *log_path;
 	int log_fd;
 	char name[MAXPATHLEN];
 	struct termios *tios;
+	struct lxc_tty_state *tty_state;
 };
 
 /*

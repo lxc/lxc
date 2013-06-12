@@ -21,6 +21,18 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-extern int lxc_create_console(struct lxc_conf *);
-extern void lxc_delete_console(struct lxc_console *);
-extern int lxc_console_mainloop_add(struct lxc_epoll_descr *, struct lxc_handler *);
+struct lxc_epoll_descr;
+struct lxc_container;
+
+extern int  lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttynum);
+extern int  lxc_console_create(struct lxc_conf *);
+extern void lxc_console_delete(struct lxc_console *);
+extern void lxc_console_free(struct lxc_conf *conf, int fd);
+
+extern int  lxc_console_mainloop_add(struct lxc_epoll_descr *, struct lxc_handler *);
+extern void lxc_console_sigwinch(int sig);
+extern int  lxc_console(struct lxc_container *c, int ttynum,
+		        int stdinfd, int stdoutfd, int stderrfd,
+		        int escape);
+extern int  lxc_console_getfd(struct lxc_container *c, int *ttynum,
+			      int *masterfd);
