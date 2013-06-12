@@ -148,8 +148,9 @@ extern int lxc_setup_fs(void)
 		return 0;
 	}
 
+	/* continue even without posix message queue support */
 	if (mount_fs("mqueue", "/dev/mqueue", "mqueue"))
-		return -1;
+		INFO("failed to mount /dev/mqueue");
 
 	return 0;
 }
