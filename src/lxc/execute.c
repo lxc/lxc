@@ -165,5 +165,6 @@ int lxc_execute(const char *name, char *const argv[], int quiet,
 	if (lxc_check_inherited(conf, -1))
 		return -1;
 
+	conf->is_execute = 1;
 	return __lxc_start(name, conf, &execute_start_ops, &args, lxcpath);
 }

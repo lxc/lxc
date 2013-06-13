@@ -251,6 +251,7 @@ struct saved_nic {
 };
 
 struct lxc_conf {
+	int is_execute;
 	char *fstab;
 	int tty;
 	int pts;

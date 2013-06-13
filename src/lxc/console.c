@@ -272,6 +272,11 @@ int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_console *console = &conf->console;
 
+	if (conf->is_execute) {
+		INFO("no console for lxc-execute.");
+		return 0;
+	}
+
 	if (!conf->rootfs.path) {
 		INFO("no rootfs, no console.");
 		return 0;
@@ -558,6 +563,11 @@ void lxc_console_delete(struct lxc_console *console)
 int lxc_console_create(struct lxc_conf *conf)
 {
 	struct lxc_console *console = &conf->console;
+
+	if (conf->is_execute) {
+		INFO("no console for lxc-execute.");
+		return 0;
+	}
 
 	if (!conf->rootfs.path)
 		return 0;

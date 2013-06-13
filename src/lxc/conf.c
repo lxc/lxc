@@ -2836,7 +2836,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		}
 	}
 
-	if (setup_console(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->ttydir)) {
+	if (!lxc_conf->is_execute && setup_console(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->ttydir)) {
 		ERROR("failed to setup the console for '%s'", name);
 		return -1;
 	}
@@ -2846,7 +2846,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 			ERROR("failed to setup kmsg for '%s'", name);
 	}
 
-	if (setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info, lxc_conf->ttydir)) {
+	if (!lxc_conf->is_execute && setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info, lxc_conf->ttydir)) {
 		ERROR("failed to setup the ttys for '%s'", name);
 		return -1;
 	}
