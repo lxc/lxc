@@ -85,6 +85,7 @@ static int config_network_script(const char *, const char *, struct lxc_conf *);
 static int config_network_ipv6(const char *, const char *, struct lxc_conf *);
 static int config_network_ipv6_gateway(const char *, const char *, struct lxc_conf *);
 static int config_cap_drop(const char *, const char *, struct lxc_conf *);
+static int config_cap_keep(const char *, const char *, struct lxc_conf *);
 static int config_console(const char *, const char *, struct lxc_conf *);
 static int config_seccomp(const char *, const char *, struct lxc_conf *);
 static int config_includefile(const char *, const char *, struct lxc_conf *);
@@ -136,6 +137,7 @@ static struct lxc_config_t config[] = {
 	/* config_network_nic must come after all other 'lxc.network.*' entries */
 	{ "lxc.network.",             config_network_nic          },
 	{ "lxc.cap.drop",             config_cap_drop             },
+	{ "lxc.cap.keep",             config_cap_keep             },
 	{ "lxc.console",              config_console              },
 	{ "lxc.seccomp",              config_seccomp              },
 	{ "lxc.include",              config_includefile          },
@@ -1272,6 +1274,52 @@ static int config_mount(const char *key, const char *value,
 	return 0;
 }
 
+static int config_cap_keep(const char *key, const char *value,
+			   struct lxc_conf *lxc_conf)
+{
+	char *keepcaps, *keepptr, *sptr, *token;
+	struct lxc_list *keeplist;
+	int ret = -1;
+
+	if (!strlen(value))
+		return -1;
+
+	keepcaps = strdup(value);
+	if (!keepcaps) {
+		SYSERROR("failed to dup '%s'", value);
+		return -1;
+	}
+
+	/* in case several capability keep is specified in a single line
+	 * split these caps in a single element for the list */
+	for (keepptr = keepcaps;;keepptr = NULL) {
+                token = strtok_r(keepptr, " \t", &sptr);
+                if (!token) {
+			ret = 0;
+                        break;
+		}
+
+		keeplist = malloc(sizeof(*keeplist));
+		if (!keeplist) {
+			SYSERROR("failed to allocate keepcap list");
+			break;
+		}
+
+		keeplist->elem = strdup(token);
+		if (!keeplist->elem) {
+			SYSERROR("failed to dup '%s'", token);
+			free(keeplist);
+			break;
+		}
+
+		lxc_list_add_tail(&lxc_conf->keepcaps, keeplist);
+        }
+
+	free(keepcaps);
+
+	return ret;
+}
+
 static int config_cap_drop(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
@@ -1638,6 +1686,22 @@ static int lxc_get_item_cap_drop(struct lxc_conf *c, char *retv, int inlen)
 	return fulllen;
 }
 
+static int lxc_get_item_cap_keep(struct lxc_conf *c, char *retv, int inlen)
+{
+	int len, fulllen = 0;
+	struct lxc_list *it;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	lxc_list_for_each(it, &c->keepcaps) {
+		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	}
+	return fulllen;
+}
+
 static int lxc_get_mount_entries(struct lxc_conf *c, char *retv, int inlen)
 {
 	int len, fulllen = 0;
@@ -1818,6 +1882,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->rootfs.pivot;
 	else if (strcmp(key, "lxc.cap.drop") == 0)
 		return lxc_get_item_cap_drop(c, retv, inlen);
+	else if (strcmp(key, "lxc.cap.keep") == 0)
+		return lxc_get_item_cap_keep(c, retv, inlen);
 	else if (strncmp(key, "lxc.hook", 8) == 0)
 		return lxc_get_item_hooks(c, retv, inlen, key);
 	else if (strcmp(key, "lxc.network") == 0)
@@ -1841,6 +1907,8 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		return lxc_clear_nic(c, key + 12);
 	else if (strcmp(key, "lxc.cap.drop") == 0)
 		return lxc_clear_config_caps(c);
+	else if (strcmp(key, "lxc.cap.keep") == 0)
+		return lxc_clear_config_keepcaps(c);
 	else if (strncmp(key, "lxc.cgroup", 10) == 0)
 		return lxc_clear_cgroups(c, key);
 	else if (strcmp(key, "lxc.mount.entries") == 0)
@@ -1953,6 +2021,8 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	}
 	lxc_list_for_each(it, &c->caps)
 		fprintf(fout, "lxc.cap.drop = %s\n", (char *)it->elem);
+	lxc_list_for_each(it, &c->keepcaps)
+		fprintf(fout, "lxc.cap.keep = %s\n", (char *)it->elem);
 	lxc_list_for_each(it, &c->id_map) {
 		struct id_map *idmap = it->elem;
 		fprintf(fout, "lxc.id_map = %c %lu %lu %lu\n",

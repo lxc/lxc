@@ -1838,7 +1838,73 @@ static int setup_caps(struct lxc_list *caps)
 
 	}
 
-	DEBUG("capabilities has been setup");
+	DEBUG("capabilities have been setup");
+
+	return 0;
+}
+
+static int dropcaps_except(struct lxc_list *caps)
+{
+	struct lxc_list *iterator;
+	char *keep_entry;
+	char *ptr;
+	int i, capid;
+	int numcaps = lxc_caps_last_cap() + 1;
+	INFO("found %d capabilities\n", numcaps);
+
+	// caplist[i] is 1 if we keep capability i
+	int *caplist = alloca(numcaps * sizeof(int));
+	memset(caplist, 0, numcaps * sizeof(int));
+
+	lxc_list_for_each(iterator, caps) {
+
+		keep_entry = iterator->elem;
+
+		capid = -1;
+
+		for (i = 0; i < sizeof(caps_opt)/sizeof(caps_opt[0]); i++) {
+
+			if (strcmp(keep_entry, caps_opt[i].name))
+				continue;
+
+			capid = caps_opt[i].value;
+			break;
+		}
+
+		if (capid < 0) {
+			/* try to see if it's numeric, so the user may specify
+			* capabilities  that the running kernel knows about but
+			* we don't */
+			capid = strtol(keep_entry, &ptr, 10);
+			if (!ptr || *ptr != '\0' ||
+			capid == LONG_MIN || capid == LONG_MAX)
+				/* not a valid number */
+				capid = -1;
+			else if (capid > lxc_caps_last_cap())
+				/* we have a number but it's not a valid
+				* capability */
+				capid = -1;
+		}
+
+	        if (capid < 0) {
+			ERROR("unknown capability %s", keep_entry);
+			return -1;
+		}
+
+		DEBUG("drop capability '%s' (%d)", keep_entry, capid);
+
+		caplist[capid] = 1;
+	}
+	for (i=0; i<numcaps; i++) {
+		if (caplist[i])
+			continue;
+		if (prctl(PR_CAPBSET_DROP, i, 0, 0, 0)) {
+                       SYSERROR("failed to remove capability %d", i);
+                       return -1;
+                }
+	}
+
+	DEBUG("capabilities have been setup");
 
 	return 0;
 }
@@ -2180,6 +2246,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
 	lxc_list_init(&new->caps);
+	lxc_list_init(&new->keepcaps);
 	lxc_list_init(&new->id_map);
 	for (i=0; i<NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
@@ -2926,7 +2993,16 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath)
 	}
 
 	if (lxc_list_empty(&lxc_conf->id_map)) {
-		if (setup_caps(&lxc_conf->caps)) {
+		if (!lxc_list_empty(&lxc_conf->keepcaps)) {
+			if (!lxc_list_empty(&lxc_conf->caps)) {
+				ERROR("Simultaneously requested dropping and keeping caps");
+				return -1;
+			}
+			if (dropcaps_except(&lxc_conf->keepcaps)) {
+				ERROR("failed to keep requested caps\n");
+				return -1;
+			}
+		} else if (setup_caps(&lxc_conf->caps)) {
 			ERROR("failed to drop capabilities");
 			return -1;
 		}
@@ -3125,6 +3201,18 @@ int lxc_clear_idmaps(struct lxc_conf *c)
 	return 0;
 }
 
+int lxc_clear_config_keepcaps(struct lxc_conf *c)
+{
+	struct lxc_list *it,*next;
+
+	lxc_list_for_each_safe(it, &c->keepcaps, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+	return 0;
+}
+
 int lxc_clear_cgroups(struct lxc_conf *c, const char *key)
 {
 	struct lxc_list *it,*next;
@@ -3224,6 +3312,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 #endif
 	lxc_seccomp_free(conf);
 	lxc_clear_config_caps(conf);
+	lxc_clear_config_keepcaps(conf);
 	lxc_clear_cgroups(conf, "lxc.cgroup");
 	lxc_clear_hooks(conf, "lxc.hook");
 	lxc_clear_mount_entries(conf);

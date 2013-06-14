@@ -771,6 +771,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    </para>
 	  </listitem>
 	</varlistentry>
+	<varlistentry>
+	  <term>
+	    <option>lxc.cap.keep</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Specify the capability to be kept in the container. All other
+	      capabilities will be dropped.
+	    </para>
+	  </listitem>
+	</varlistentry>
       </variablelist>
     </refsect2>
 

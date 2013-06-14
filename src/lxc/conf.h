@@ -232,7 +232,8 @@ struct lxc_rootfs {
  * @network    : network configuration
  * @utsname    : container utsname
  * @fstab      : path to a fstab file format
- * @caps       : list of the capabilities
+ * @caps       : list of the capabilities to drop
+ * @keepcaps   : list of the capabilities to keep
  * @tty_info   : tty data
  * @console    : console data
  * @ttydir     : directory (under /dev) in which to create console and ttys
@@ -266,6 +267,7 @@ struct lxc_conf {
 	int num_savednics;
 	struct lxc_list mount_list;
 	struct lxc_list caps;
+	struct lxc_list keepcaps;
 	struct lxc_tty_info tty_info;
 	struct lxc_console console;
 	struct lxc_rootfs rootfs;
@@ -323,6 +325,7 @@ extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
 extern int lxc_clear_config_network(struct lxc_conf *c);
 extern int lxc_clear_nic(struct lxc_conf *c, const char *key);
 extern int lxc_clear_config_caps(struct lxc_conf *c);
+extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
 extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key);
 extern int lxc_clear_mount_entries(struct lxc_conf *c);
 extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
