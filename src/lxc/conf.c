@@ -2134,7 +2134,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.slave = -1;
 	new->console.name[0] = '\0';
 	new->maincmd_fd = -1;
-	new->rootfs.mount = default_rootfs_mount;
+	new->rootfs.mount = strdup(default_rootfs_mount);
 	new->kmsg = 1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
@@ -3152,7 +3152,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 		return;
 	if (conf->console.path)
 		free(conf->console.path);
-	if (conf->rootfs.mount != default_rootfs_mount)
+	if (conf->rootfs.mount)
 		free(conf->rootfs.mount);
 	if (conf->rootfs.path)
 		free(conf->rootfs.path);
