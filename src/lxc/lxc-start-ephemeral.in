@@ -36,6 +36,7 @@ import os
 import sys
 import subprocess
 import tempfile
+import time
 
 _ = gettext.gettext
 gettext.textdomain("lxc-start-ephemeral")
@@ -259,7 +260,12 @@ if not args.command and not args.daemon:
     sys.exit(0)
 
 # Try to get the IP addresses
-ips = dest.get_ips(timeout=10)
+ips = None
+timeout = 5
+while not ips and timeout != 0:
+    ips = dest.get_ips()
+    time.sleep(1)
+    timeout -= 1
 
 # Deal with the case where we just print info about the container
 if args.daemon:
