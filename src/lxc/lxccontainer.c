@@ -1866,7 +1866,7 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 {
 	struct lxc_container *c2 = NULL;
 	char newpath[MAXPATHLEN];
-	int ret;
+	int ret, storage_copied = 0;
 	const char *n, *l;
 	FILE *fout;
 
@@ -1948,6 +1948,10 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 	if (ret < 0)
 		goto out;
 
+	// We've now successfully created c2's storage, so clear it out if we
+	// fail after this
+	storage_copied = 1;
+
 	if (!c2->save_config(c2, NULL))
 		goto out;
 
@@ -1961,6 +1965,8 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 out:
 	container_mem_unlock(c);
 	if (c2) {
+		if (!storage_copied)
+			c2->lxc_conf->rootfs.path = NULL;
 		c2->destroy(c2);
 		lxc_container_put(c2);
 	}
