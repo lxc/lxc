@@ -1524,6 +1524,10 @@ static int is_word_sep(char c)
 	case '\t':
 	case ' ':
 	case '=':
+	case '.':
+	case ',':
+	case '_':
+	case '-':
 	case '/':
 		return 1;
 	default: return 0;
