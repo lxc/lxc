@@ -10,14 +10,16 @@ get_static_apk () {
 
     if [ -z "$repository" ]; then
         url=http://wiki.alpinelinux.org/cgi-bin/dl.cgi
-        echo -n "Determining the latest release... "
-        release=$($wget $url/.latest.$apk_arch.txt | \
-            cut -d " " -f 3 | cut -d / -f 1 | uniq)
         if [ -z "$release" ]; then
-            echo failed
-            return 1
+            echo -n "Determining the latest release... "
+            release=$($wget $url/.latest.$apk_arch.txt | \
+                cut -d " " -f 3 | cut -d / -f 1 | uniq)
+            if [ -z "$release" ]; then
+                echo failed
+                return 1
+            fi
+            echo $release
         fi
-        echo $release
         auto_repo_dir=$release/main
         repository=$url/$auto_repo_dir
         pkglist=$pkglist:alpine-mirrors
@@ -222,7 +224,8 @@ die() {
 
 usage() {
     cat >&2 <<EOF
-Usage: $(basename $0) [-h|--help] [-r|--repository <url>] [-a|--arch <arch>]
+Usage: $(basename $0) [-h|--help] [-r|--repository <url>]
+                   [-R|--release <release>] [-a|--arch <arch>]
                    [--rootfs <rootfs>] -p|--path <path> -n|--name <name>
                    [PKG...]
 EOF
@@ -240,6 +243,7 @@ optarg_check() {
 }
 
 default_path=@LXCPATH@
+release=
 arch=$(uname -m)
 
 while [ $# -gt 0 ]; do
@@ -270,6 +274,11 @@ while [ $# -gt 0 ]; do
         repository=$1
         shift
 	;;
+    -R|--release)
+        optarg_check $opt "$1"
+        release=$1
+        shift
+        ;;
     -a|--arch)
         optarg_check $opt "$1"
         arch=$1
