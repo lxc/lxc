@@ -104,7 +104,7 @@ if [ -z "$lxc_path" ]; then
 fi
 
 if [ -z "$exec" ]; then
-    exec @BINDIR@/lxc-unshare -s MOUNT -- $0 -n $name -P "$lxc_path" --exec "$@"
+    exec @BINDIR@/lxc-unshare -s MOUNT -- $0 -n $name -P "$lxc_path" --exec -- "$@"
 fi
 
 if lxc-info -n $name -P "$lxc_path" --state-is 'STOPPED'; then
