@@ -74,7 +74,17 @@ while true; do
     case $1 in
         -h|--help)
             help; exit 1;;
-        -n|--name)
+        -n)
+            # If we already have a value for $name, treat -n as being an
+            # argument for netstat
+            if [ -n "$name" ]
+            then
+                break
+            else
+                name="$2"; shift 2;
+            fi
+            ;;
+        --name)
             name=$2; shift 2;;
 	-P|--lxcpath)
             lxc_path="$2"; shift 2;;
