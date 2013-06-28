@@ -84,6 +84,10 @@ install_alpine() {
         echo "$repository" > "$rootfs"/etc/apk/repositories
     else
         cp /etc/apk/repositories "$rootfs"/etc/apk/repositories || return 1
+        if [ -n "$release" ]; then
+            sed -i -e "s:/[^/]\+/\([^/]\+\)$:/$release/\1:" \
+                "$rootfs"/etc/apk/repositories
+        fi
     fi
     opt_arch=
     if [ -n "$apk_arch" ]; then
