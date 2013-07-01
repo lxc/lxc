@@ -195,7 +195,6 @@ extern int lxc_arguments_parse(struct lxc_arguments *args,
 		case 'n': 	args->name = optarg; break;
 		case 'o':	args->log_file = optarg; break;
 		case 'l':	args->log_priority = optarg; break;
-		case 'c':	args->console = optarg; break;
 		case 'q':	args->quiet = 1; break;
 		case 'P':
 			ret = lxc_arguments_lxcpath_add(args, optarg);
