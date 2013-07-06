@@ -1861,7 +1861,7 @@ static int clone_update_rootfs(struct lxc_container *c0,
 			SYSERROR("failed to set environment variable for rootfs mount");
 		}
 
-		if (run_lxc_hooks(c->name, "clone", conf, hookargs)) {
+		if (run_lxc_hooks(c->name, "clone", conf, c->get_config_path(c), hookargs)) {
 			ERROR("Error executing clone hook for %s", c->name);
 			exit(1);
 		}

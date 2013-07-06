@@ -28,15 +28,37 @@ set -e
 c=$1
 d=/sys/fs/cgroup
 d2=$LXC_ROOTFS_MOUNT/${d}
+# name lxc hook lxcpath
+lxcpath=$4
 if [ ! -d "$d" ]; then
     exit 0
 fi
 
 mount -n -t tmpfs tmpfs ${d2}
 
+do_devices_setup() {
+    local devdir="$1"
+    local c="$2"
+    local line
+    local w  # which (allow or deny)
+    local v  # value
+    egrep "^lxc.cgroup.devices.(allow|deny)[ \t]*=" ${lxcpath}/${c}/config | while read line; do
+        w=`echo $line | awk -F. '{ print $4 }' | awk '{ print $1 }'`
+        v=`echo $line | awk -F= '{ print $2 }'`
+        echo "$v" >> "$devdir"/devices.$w
+    done
+}
+
 # XXX TODO - we'll need to account for other cgroup groups beside 'lxc',
 # i.e. 'build' or 'users/joe'.
 for dir in `/bin/ls $d`; do
+    if [ "$dir" = "devices" ]; then
+        devicesdir="${d}/${dir}/lxc/${c}"
+        mkdir -p "$devicesdir"
+        # set the devices cgroup perms now - we can't change from blacklist to
+        # whitelist, or add perms, once we have children.
+        do_devices_setup "$devicesdir" "${c}"
+    fi
     mkdir -p "${d}/${dir}/lxc/${c}/${c}.real"
     echo 1 > "${d}/${dir}/lxc/${c}/${c}.real/tasks"
     mkdir -p ${d2}/${dir}

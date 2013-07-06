@@ -22,6 +22,7 @@
  */
 #ifndef _cgroup_h
 #define _cgroup_h
+#include <stdbool.h>
 
 struct lxc_handler;
 extern int lxc_cgroup_destroy(const char *cgpath);
@@ -32,4 +33,5 @@ extern char *lxc_cgroup_path_create(const char *lxcgroup, const char *name);
 extern int lxc_cgroup_enter(const char *cgpath, pid_t pid);
 extern int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath);
 extern char *cgroup_path_get(const char *subsystem, const char *cgpath);
+extern bool is_in_subcgroup(int pid, const char *subsystem, const char *cgpath);
 #endif

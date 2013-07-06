@@ -315,7 +315,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 	}
 	/* End of environment variable setup for hooks */
 
-	if (run_lxc_hooks(name, "pre-start", conf, NULL)) {
+	if (run_lxc_hooks(name, "pre-start", conf, handler->lxcpath, NULL)) {
 		ERROR("failed to run pre-start hooks for container '%s'.", name);
 		goto out_aborting;
 	}
@@ -368,7 +368,7 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_set_state(name, handler, STOPPING);
 	lxc_set_state(name, handler, STOPPED);
 
-	if (run_lxc_hooks(name, "post-stop", handler->conf, NULL))
+	if (run_lxc_hooks(name, "post-stop", handler->conf, handler->lxcpath, NULL))
 		ERROR("failed to run post-stop hooks for container '%s'.", name);
 
 	/* reset mask set by setup_signal_fd */
@@ -519,7 +519,7 @@ static int do_start(void *data)
 	#endif
 
 	/* Setup the container, ip, names, utsname, ... */
-	if (lxc_setup(handler->name, handler->conf)) {
+	if (lxc_setup(handler->name, handler->conf, handler->lxcpath)) {
 		ERROR("failed to setup the container");
 		goto out_warn_father;
 	}
@@ -534,7 +534,7 @@ static int do_start(void *data)
 	if (lxc_seccomp_load(handler->conf) != 0)
 		goto out_warn_father;
 
-	if (run_lxc_hooks(handler->name, "start", handler->conf, NULL)) {
+	if (run_lxc_hooks(handler->name, "start", handler->conf, handler->lxcpath, NULL)) {
 		ERROR("failed to run start hooks for container '%s'.", handler->name);
 		goto out_warn_father;
 	}
@@ -597,7 +597,7 @@ int save_phys_nics(struct lxc_conf *conf)
 	return 0;
 }
 
-
+extern bool is_in_subcgroup(int pid, const char *subsystem, const char *cgpath);
 int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
@@ -703,8 +703,14 @@ int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 
 	if (setup_cgroup_devices(handler->cgroup, &handler->conf->cgroup)) {
-		ERROR("failed to setup the devices cgroup for '%s'", name);
-		goto out_delete_net;
+		/* an unfortunate special case: startup hooks may have already
+		 * setup the cgroup.  If a setting fails, and this is the devices
+		 * subsystem, *and* we are already in a subset of the cgroup,
+		 * then ignore the failure */
+		if (!is_in_subcgroup(handler->pid, "devices", handler->cgroup)) {
+			ERROR("failed to setup the devices cgroup for '%s'", name);
+			goto out_delete_net;
+		}
 	}
 
 	/* Tell the child to complete its initialization and wait for

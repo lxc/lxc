@@ -313,7 +313,8 @@ static int run_buffer(char *buffer)
 }
 
 static int run_script_argv(const char *name, const char *section,
-		      const char *script, const char *hook, char **argsin)
+		      const char *script, const char *hook, const char *lxcpath,
+		      char **argsin)
 {
 	int ret, i;
 	char *buffer;
@@ -2782,7 +2783,7 @@ int uid_shift_ttys(int pid, struct lxc_conf *conf)
 	return 0;
 }
 
-int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
+int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath)
 {
 #if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
 	int mounted;
@@ -2798,7 +2799,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (run_lxc_hooks(name, "pre-mount", lxc_conf, NULL)) {
+	if (run_lxc_hooks(name, "pre-mount", lxc_conf, lxcpath, NULL)) {
 		ERROR("failed to run pre-mount hooks for container '%s'.", name);
 		return -1;
 	}
@@ -2825,13 +2826,13 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (run_lxc_hooks(name, "mount", lxc_conf, NULL)) {
+	if (run_lxc_hooks(name, "mount", lxc_conf, lxcpath, NULL)) {
 		ERROR("failed to run mount hooks for container '%s'.", name);
 		return -1;
 	}
 
 	if (lxc_conf->autodev) {
-		if (run_lxc_hooks(name, "autodev", lxc_conf, NULL)) {
+		if (run_lxc_hooks(name, "autodev", lxc_conf, lxcpath, NULL)) {
 			ERROR("failed to run autodev hooks for container '%s'.", name);
 			return -1;
 		}
@@ -2902,7 +2903,8 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf, char *argv[])
+int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
+		  const char *lxcpath, char *argv[])
 {
 	int which = -1;
 	struct lxc_list *it;
@@ -2926,7 +2928,7 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf, char *arg
 	lxc_list_for_each(it, &conf->hooks[which]) {
 		int ret;
 		char *hookname = it->elem;
-		ret = run_script_argv(name, "lxc", hookname, hook, argv);
+		ret = run_script_argv(name, "lxc", hookname, hook, lxcpath, argv);
 		if (ret)
 			return ret;
 	}

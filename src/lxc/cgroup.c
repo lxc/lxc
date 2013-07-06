@@ -897,3 +897,40 @@ int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath)
 	free(dirpath);
 	return ret;
 }
+
+bool is_in_subcgroup(int pid, const char *subsystem, const char *cgpath)
+{
+	char filepath[MAXPATHLEN], *line = NULL, v1[MAXPATHLEN], v2[MAXPATHLEN];
+	FILE *f;
+	int ret, junk;
+	size_t sz = 0, l1 = strlen(cgpath), l2;
+	char *end = index(subsystem, '.');
+	int len = end ? (end - subsystem) : strlen(subsystem);
+
+	ret = snprintf(filepath, MAXPATHLEN, "/proc/%d/cgroup", pid);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return false;
+	if ((f = fopen(filepath, "r")) == NULL)
+		return false;
+	while (getline(&line, &sz, f) != -1) {
+		// nr:subsystem:path
+		v2[0] = v2[1] = '\0';
+		ret = sscanf(line, "%d:%[^:]:%s", &junk, v1, v2);
+		if (ret != 3) {
+			fclose(f);
+			return false;
+		}
+		len = end ? end - subsystem : strlen(subsystem);
+		if (strncmp(v1, subsystem, len) != 0)
+			continue;
+		// v2 will start with '/', skip it by using v2+1
+		// we must be in SUBcgroup, so make sure l2 > l1
+		l2 = strlen(v2+1);
+		if (l2 > l1 && strncmp(v2+1, cgpath, l1) == 0) {
+			fclose(f);
+			return true;
+		}
+	}
+	fclose(f);
+	return false;
+}

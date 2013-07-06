@@ -290,7 +290,8 @@ struct lxc_conf {
 	char *rcfile;	// Copy of the top level rcfile we read
 };
 
-int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf, char *argv[]);
+int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
+		  const char *lxcpath, char *argv[]);
 
 extern int setup_cgroup(const char *cgpath, struct lxc_list *cgroups);
 extern int setup_cgroup_devices(const char *cgpath, struct lxc_list *cgroups);
@@ -326,7 +327,8 @@ extern int uid_shift_ttys(int pid, struct lxc_conf *conf);
  * Configure the container from inside
  */
 
-extern int lxc_setup(const char *name, struct lxc_conf *lxc_conf);
+extern int lxc_setup(const char *name, struct lxc_conf *lxc_conf,
+			const char *lxcpath);
 
 extern void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf);
 #endif
