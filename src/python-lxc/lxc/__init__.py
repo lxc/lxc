@@ -292,7 +292,7 @@ class Container(_lxc.Container):
         self.load_config()
         return True
 
-    def console(self, ttynum = -1, stdinfd = 0, stdoutfd = 1, stderrfd = 2, escape = 1):
+    def console(self, ttynum=-1, stdinfd=0, stdoutfd=1, stderrfd=2, escape=1):
         """
             Attach to console of running container.
         """
@@ -300,9 +300,10 @@ class Container(_lxc.Container):
         if not self.running:
             return False
 
-        return _lxc.Container.console(self, ttynum, stdinfd, stdoutfd, stderrfd, escape)
+        return _lxc.Container.console(self, ttynum, stdinfd, stdoutfd,
+                                      stderrfd, escape)
 
-    def console_getfd(self, ttynum = -1):
+    def console_getfd(self, ttynum=-1):
         """
             Attach to console of running container.
         """

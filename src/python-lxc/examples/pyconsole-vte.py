@@ -11,8 +11,10 @@ import vte
 import lxc
 import sys
 
+
 def gtk_exit_cb(terminal):
     gtk.main_quit()
+
 
 def vte_con(ct, ttynum):
     print("Doing console in a VTE widget...")

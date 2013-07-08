@@ -22,7 +22,8 @@ if __name__ == '__main__':
 
     ct = lxc.Container(sys.argv[1])
 
-    print("Container:%s tty:%d Ctrl-%c q to quit" % (ct.name, ttynum, ord('a') + escape-1))
+    print("Container:%s tty:%d Ctrl-%c q to quit" %
+          (ct.name, ttynum, ord('a') + escape-1))
     time.sleep(1)
     if not ct.defined:
         sys.exit("Container %s not defined" % ct.name)
