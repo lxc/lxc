@@ -91,10 +91,18 @@ EOF
 
     # generate new SSH keys
     if [ -x $rootfs@LOCALSTATEDIR@/lib/dpkg/info/openssh-server.postinst ]; then
+        cat > $rootfs/usr/sbin/policy-rc.d << EOF
+#!/bin/sh
+exit 101
+EOF
+        chmod +x $rootfs/usr/sbin/policy-rc.d
+
         rm -f $rootfs/etc/ssh/ssh_host_*key*
         mv $rootfs/etc/init/ssh.conf $rootfs/etc/init/ssh.conf.disabled
-        chroot $rootfs @LOCALSTATEDIR@/lib/dpkg/info/openssh-server.postinst configure
+        DPKG_MAINTSCRIPT_PACKAGE=openssh DPKG_MAINTSCRIPT_NAME=postinst chroot $rootfs @LOCALSTATEDIR@/lib/dpkg/info/openssh-server.postinst configure
         mv $rootfs/etc/init/ssh.conf.disabled $rootfs/etc/init/ssh.conf
+
+        rm -f $rootfs/usr/sbin/policy-rc.d
     fi
 
     return 0
