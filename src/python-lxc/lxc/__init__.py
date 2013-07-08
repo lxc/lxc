@@ -26,6 +26,7 @@ import glob
 import os
 import subprocess
 import stat
+import time
 import warnings
 
 warnings.warn("The python-lxc API isn't yet stable "
@@ -352,6 +353,31 @@ class Container(_lxc.Container):
             return value.rstrip("\n").split("\n")
         else:
             return value
+
+    def get_ips(self, interface=None, family=None, scope=None, timeout=0):
+        """
+            Get a tuple of IPs for the container.
+        """
+
+        kwargs = {}
+        if interface:
+            kwargs['interface'] = interface
+        if family:
+            kwargs['family'] = family
+        if scope:
+            kwargs['scope'] = scope
+
+        ips = None
+
+        while not ips:
+            ips = _lxc.Container.get_ips(self, **kwargs)
+            if timeout == 0:
+                break
+
+            timeout -= 1
+            time.sleep(1)
+
+        return ips
 
     def set_config_item(self, key, value):
         """
