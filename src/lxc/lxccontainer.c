@@ -1534,13 +1534,16 @@ static int is_word_sep(char c)
 	}
 }
 
-static const char *find_first_wholeword(const char *p, const char *word)
+static const char *find_first_wholeword(const char *p0, const char *word)
 {
+	const char *p = p0;
+
 	if (!p)
 		return NULL;
 
 	while ((p = strstr(p, word)) != NULL) {
-		if (is_word_sep(*(p-1)) && is_word_sep(p[strlen(word)]))
+		if ((p == p0 || is_word_sep(*(p-1))) &&
+		    is_word_sep(p[strlen(word)]))
 			return p;
 		p++;
 	}
