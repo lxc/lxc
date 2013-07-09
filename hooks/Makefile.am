@@ -1,6 +1,7 @@
 hooksdir=@LXCHOOKDIR@
 
 hooks_SCRIPTS = \
+	clonehostname \
 	mountcgroups \
 	mountecryptfsroot
 

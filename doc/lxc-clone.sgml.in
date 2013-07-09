@@ -255,7 +255,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       argument 4.  The <filename>LXC_ROOTFS_MOUNT</filename> environment variable gives
       the path under which the container's root filesystem is mounted.  The
       configuration file pathname is stored in <filename>LXC_CONFIG_FILE</filename>, the
-      container name in <filename>LXC_NAME</filename>, and the path or device on which
+      new container name in <filename>LXC_NAME</filename>, the old container name in
+      <filename>LXC_SRC_NAME</filename>, and the path or device on which
       the rootfs is located is in <filename>LXC_ROOTFS_PATH</filename>.
     </para>
   </refsect1>

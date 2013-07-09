@@ -1770,7 +1770,9 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 	return 0;
 }
 
-static int clone_update_rootfs(struct lxc_container *c, int flags, char **hookargs)
+static int clone_update_rootfs(struct lxc_container *c0,
+			       struct lxc_container *c, int flags,
+			       char **hookargs)
 {
 	int ret = -1;
 	char path[MAXPATHLEN];
@@ -1800,6 +1802,9 @@ static int clone_update_rootfs(struct lxc_container *c, int flags, char **hookar
 
 	if (!lxc_list_empty(&conf->hooks[LXCHOOK_CLONE])) {
 		/* Start of environment variable setup for hooks */
+		if (setenv("LXC_SRC_NAME", c0->name, 1)) {
+			SYSERROR("failed to set environment variable for source container name");
+		}
 		if (setenv("LXC_NAME", c->name, 1)) {
 			SYSERROR("failed to set environment variable for container name");
 		}
@@ -1958,7 +1963,7 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 	if (!c2->save_config(c2, NULL))
 		goto out;
 
-	if (clone_update_rootfs(c2, flags, hookargs) < 0)
+	if (clone_update_rootfs(c, c2, flags, hookargs) < 0)
 		goto out;
 
 	// TODO: update c's lxc.snapshot = count
