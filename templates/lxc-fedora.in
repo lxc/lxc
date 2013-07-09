@@ -33,8 +33,43 @@ root_password=root
 
 # is this fedora?
 # Alow for weird remixes like the Raspberry Pi
-if [ -e /etc/redhat-release ]
+#
+# Use the Mitre standard CPE identifier for the release ID if possible...
+# This may be in /etc/os-release or /etc/system-release-cpe.  We
+# should be able to use EITHER.  Give preference to /etc/os-release for now.
+
+if [ -e /etc/os-release ]
 then
+# This is a shell friendly configuration file.  We can just source it.
+# What we're looking for in here is the ID, VERSION_ID and the CPE_NAME
+    . /etc/os-release
+    echo "Host CPE ID from /etc/os-release: ${CPE_NAME}"
+fi
+
+if [ "${CPE_NAME}" = "" -a -e /etc/system-release-cpe ]
+then
+    CPE_NAME=$(head -n1 /etc/system-release-cpe)
+    CPE_URI=$(expr ${CPE_NAME} : '\([^:]*:[^:*]\)')
+    if [ "${CPE_URI}" != "cpe:/o" ]
+    then
+        CPE_NAME=
+    else
+        echo "Host CPE ID from /etc/system-release-cpe: ${CPE_NAME}"
+        # Probably a better way to do this but sill remain posix
+        # compatible but this works, shrug...
+        # Must be nice and not introduce convenient bashisms here.
+        ID=$(expr ${CPE_NAME} : '[^:]*:[^:]*:[^:]*:\([^:]*\)')
+        VERSION_ID=$(expr ${CPE_NAME} : '[^:]*:[^:]*:[^:]*:[^:]*:\([^:]*\)')
+    fi
+fi
+
+if [ ${CPE_NAME} != "" -a ${ID} = "fedora" -a ${VERSION_ID} != "" ]
+then
+    fedora_host_ver=${VERSION_ID}
+    is_fedora=true
+elif [ -e /etc/redhat-release ]
+then
+    # Only if all other methods fail, try to parse the redhat-release file.
     fedora_host_ver=$( sed -e '/^Fedora /!d' -e 's/Fedora.*\srelease\s*\([0-9][0-9]*\)\s.*/\1/' < /etc/redhat-release )
     if [ "$fedora_host_ver" != "" ]
     then
@@ -66,7 +101,7 @@ configure_fedora()
 DEVICE=eth0
 BOOTPROTO=dhcp
 ONBOOT=yes
-HOSTNAME=${name}
+HOSTNAME=${utsname}
 NM_CONTROLLED=no
 TYPE=Ethernet
 MTU=${MTU}
@@ -75,17 +110,17 @@ EOF
     # set the hostname
     cat <<EOF > ${rootfs_path}/etc/sysconfig/network
 NETWORKING=yes
-HOSTNAME=${name}
+HOSTNAME=${utsname}
 EOF
 
     # set hostname on systemd Fedora systems
     if [ $release -gt 14 ]; then
-        echo "${name}" > ${rootfs_path}/etc/hostname
+        echo "${utsname}" > ${rootfs_path}/etc/hostname
     fi
 
     # set minimal hosts
     cat <<EOF > $rootfs_path/etc/hosts
-127.0.0.1 localhost $name
+127.0.0.1 localhost.localdomain localhost $utsname
 ::1                 localhost6.localdomain6 localhost6
 EOF
 
@@ -181,27 +216,53 @@ download_fedora()
     MIRRORLIST_URL="http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$release&arch=$arch"
 
     DOWNLOAD_OK=no
-    for trynumber in 1 2 3; do
+
+    # We're splitting the old loop into two loops plus a directory retrival.
+    # First loop...  Try and retrive a mirror list with retries and a slight
+    # delay between attempts...
+    for trynumber in 1 2 3 4; do
         [ $trynumber != 1 ] && echo "Trying again..."
-        MIRROR_URL=$(curl -s -S -f "$MIRRORLIST_URL" | head -n2 | tail -n1)
-        if [ $? -ne 0 ] || [ -z "$MIRROR_URL" ]; then
-            echo "Failed to get a mirror"
-            continue
-        fi
+	# This code is mildly "brittle" in that it assumes a certain
+        # page format and parsing HTML.  I've done worse.  :-P
+        MIRROR_URLS=$(curl -s -S -f "$MIRRORLIST_URL" | sed -e '/^http:/!d' -e '2,6!d')
+        if [ $? -eq 0 ] && [ -n "$MIRROR_URLS" ]
+        then
+		break
+	fi
+
+        echo "Failed to get a mirror on try $trynumber"
+        sleep 3
+     done
+
+     # This will fall through if we didn't get any URLS above
+     for MIRROR_URL in ${MIRROR_URLS}
+     do
         if [ "$release" -gt "16" ]; then
-            RELEASE_URL="$MIRROR_URL/Packages/f/fedora-release-$release-1.noarch.rpm"
+            RELEASE_URL="$MIRROR_URL/Packages/f"
         else
-            RELEASE_URL="$MIRROR_URL/Packages/fedora-release-$release-1.noarch.rpm"
+            RELEASE_URL="$MIRROR_URL/Packages/"
         fi
-        echo "Fetching from $RELEASE_URL"
-        curl -f "$RELEASE_URL" > $INSTALL_ROOT/fedora-release-$release.noarch.rpm
-        if [ $? -ne 0 ]; then
-            echo "Failed to download fedora release rpm"
+
+        echo "Fetching rpm name from $RELEASE_URL..."
+	# This code is mildly "brittle" in that it assumes a certain directory
+        # page format and parsing HTML.  I've done worse.  :-P
+	RELEASE_RPM=$(curl -L -f "$RELEASE_URL" | sed -e "/fedora-release-${release}-/!d" -e 's/.*<a href=\"//' -e 's/\">.*//' )
+        if [ $? -ne 0  -o "${RELEASE_RPM}" = "" ]; then
+            echo "Failed to identify fedora release rpm."
             continue
         fi
+
+        echo "Fetching fedora release rpm from ${RELEASE_URL}/${RELEASE_RPM}......"
+        curl -L -f "${RELEASE_URL}/${RELEASE_RPM}" > ${INSTALL_ROOT}/${RELEASE_RPM}
+        if [ $? -ne 0 ]; then
+            echo "Failed to download fedora release rpm ${RELEASE_RPM}."
+            continue
+        fi
+
         DOWNLOAD_OK=yes
         break
     done
+
     if [ $DOWNLOAD_OK != yes ]; then
         echo "Aborting"
         return 1
@@ -209,7 +270,7 @@ download_fedora()
 
     mkdir -p $INSTALL_ROOT/var/lib/rpm
     rpm --root $INSTALL_ROOT  --initdb
-    rpm --root $INSTALL_ROOT -ivh $INSTALL_ROOT/fedora-release-$release.noarch.rpm
+    rpm --root $INSTALL_ROOT -ivh ${INSTALL_ROOT}/${RELEASE_RPM}
     $YUM install $PKG_LIST
 
     if [ $? -ne 0 ]; then
@@ -287,7 +348,7 @@ copy_configuration()
     mkdir -p $config_path
     grep -q "^lxc.rootfs" $config_path/config 2>/dev/null || echo "lxc.rootfs = $rootfs_path" >> $config_path/config
     cat <<EOF >> $config_path/config
-lxc.utsname = $name
+lxc.utsname = $utsname
 lxc.tty = 4
 lxc.pts = 1024
 lxc.mount = $config_path/fstab
@@ -355,7 +416,7 @@ usage()
     cat <<EOF
 usage:
     $1 -n|--name=<container_name>
-        [-p|--path=<path>] [-c|--clean] [-R|--release=<Fedora_release>] [-A|--arch=<arch of the container>]
+        [-p|--path=<path>] [-c|--clean] [-R|--release=<Fedora_release>] [--fqdn=<network name of container>] [-A|--arch=<arch of the container>]
         [-h|--help]
 Mandatory args:
   -n,--name         container name, used to as an identifier for that container from now on
@@ -364,13 +425,14 @@ Optional args:
   --rootfs          path for actual rootfs.
   -c,--clean        clean the cache
   -R,--release      Fedora release for the new container. if the host is Fedora, then it will default to the host's release.
+     --fqdn         fully qualified domain name (FQDN) for DNS and system naming
   -A,--arch         NOT USED YET. Define what arch the container will be [i686,x86_64]
   -h,--help         print this help
 EOF
     return 0
 }
 
-options=$(getopt -o hp:n:cR: -l help,path:,rootfs:,name:,clean,release: -- "$@")
+options=$(getopt -o hp:n:cR: -l help,path:,rootfs:,name:,clean,release:,fqdn: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -386,6 +448,7 @@ do
         -n|--name)      name=$2; shift 2;;
         -c|--clean)     clean=$2; shift 2;;
         -R|--release)   release=$2; shift 2;;
+        --fqdn)         utsname=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
     esac
@@ -394,6 +457,29 @@ done
 if [ ! -z "$clean" -a -z "$path" ]; then
     clean || exit 1
     exit 0
+fi
+
+if [ -z "${utsname}" ]; then
+    utsname=${name}
+fi
+
+# This follows a standard "resolver" convention that an FQDN must have
+# at least two dots or it is considered a local relative host name.
+# If it doesn't, append the dns domain name of the host system.
+#
+# This changes one significant behavior when running
+# "lxc_create -n Container_Name" without using the
+# --fqdn option.
+#
+# Old behavior:
+#    utsname and hostname = Container_Name
+# New behavior:
+#    utsname and hostname = Container_Name.Domain_Name
+
+if [ $(expr "$utsname" : '.*\..*\.') = 0 ]; then
+    if [ -n "$(dnsdomainname)" ]; then
+        utsname=${utsname}.$(dnsdomainname)
+    fi
 fi
 
 needed_pkgs=""
@@ -421,8 +507,8 @@ if [ -z "$release" ]; then
     if [ "$is_fedora" -a "$fedora_host_ver" ]; then
         release=$fedora_host_ver
     else
-        echo "This is not a fedora host and release missing, defaulting to 17. use -R|--release to specify release"
-        release=17
+        echo "This is not a fedora host and release missing, defaulting to 18. use -R|--release to specify release"
+        release=18
     fi
 fi
 
