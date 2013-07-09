@@ -390,6 +390,7 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
+
 # To support container nesting on an Ubuntu host, uncomment next two lines:
 #lxc.aa_profile = lxc-container-default-with-nesting
 #lxc.hook.mount = /usr/share/lxc/hooks/mountcgroups
