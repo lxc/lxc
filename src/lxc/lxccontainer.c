@@ -646,17 +646,6 @@ static bool lxcapi_stop(struct lxc_container *c)
 	return ret == 0;
 }
 
-static bool valid_template(char *t)
-{
-	struct stat statbuf;
-	int statret;
-
-	statret = stat(t, &statbuf);
-	if (statret == 0)
-		return true;
-	return false;
-}
-
 /*
  * create the standard expected container dir
  */
@@ -713,6 +702,46 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 		return NULL;
 	lxcapi_set_config_item(c, "lxc.rootfs", bdev->src);
 	return bdev;
+}
+
+/*
+ * Given the '-t' template option to lxc-create, figure out what to
+ * do.  If the template is a full executable path, use that.  If it
+ * is something like 'sshd', then return $templatepath/lxc-sshd.  If
+ * no template was passed in, return NULL  (this is ok).
+ * On error return (char *) -1.
+ */
+char *get_template_path(const char *t)
+{
+	int ret, len;
+	char *tpath;
+
+	if (!t)
+		return NULL;
+
+	if (t[0] == '/' && access(t, X_OK) == 0) {
+		tpath = strdup(t);
+		if (!tpath)
+			return (char *) -1;
+		return tpath;
+	}
+
+	len = strlen(LXCTEMPLATEDIR) + strlen(t) + strlen("/lxc-") + 1;
+	tpath = malloc(len);
+	if (!tpath)
+		return (char *) -1;
+	ret = snprintf(tpath, len, "%s/lxc-%s", LXCTEMPLATEDIR, t);
+	if (ret < 0 || ret >= len) {
+		free(tpath);
+		return (char *) -1;
+	}
+	if (access(tpath, X_OK) < 0) {
+		SYSERROR("bad template: %s\n", t);
+		free(tpath);
+		return (char *) -1;
+	}
+
+	return tpath;
 }
 
 static char *lxcbasename(char *path)
@@ -854,20 +883,13 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 {
 	bool bret = false;
 	pid_t pid;
-	char *tpath = NULL;
-	int partial_fd, ret, len;
+	char *tpath;
+	int partial_fd;
 
 	if (!c)
 		return false;
 
-	len = strlen(LXCTEMPLATEDIR) + strlen(t) + strlen("/lxc-") + 1;
-	tpath = malloc(len);
-	if (!tpath)
-		return false;
-	ret = snprintf(tpath, len, "%s/lxc-%s", LXCTEMPLATEDIR, t);
-	if (ret < 0 || ret >= len)
-		goto out;
-	if (!valid_template(tpath)) {
+	if ((tpath = get_template_path(t)) < 0) {
 		ERROR("bad template: %s\n", t);
 		goto out;
 	}
