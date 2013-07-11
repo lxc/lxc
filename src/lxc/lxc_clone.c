@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include "log.h"
 #include "config.h"
@@ -15,6 +16,27 @@
 #include "lxccontainer.h"
 
 lxc_log_define(lxc_clone, lxc);
+
+static unsigned long get_fssize(char *s)
+{
+       unsigned long ret;
+       char *end;
+
+       ret = strtoul(s, &end, 0);
+       if (end == s)
+               return 0;
+       while (isblank(*end))
+               end++;
+       if (!(*end))
+               return ret;
+       if (*end == 'g' || *end == 'G')
+               ret *= 1000000000;
+       else if (*end == 'm' || *end == 'M')
+               ret *= 1000000;
+       else if (*end == 'k' || *end == 'K')
+               ret *= 1000;
+       return ret;
+}
 
 void usage(const char *me)
 {
@@ -73,7 +95,7 @@ int main(int argc, char *argv[])
 		switch (c) {
 		case 's': snapshot = 1; break;
 		case 'B': bdevtype = optarg; break;
-		case 'L': newsize = atol(optarg); break;
+		case 'L': newsize = get_fssize(optarg); break;
 		case 'o': orig = optarg; break;
 		case 'n': new = optarg; break;
 		case 'v': vgname = optarg; break;
