@@ -715,6 +715,124 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 	return bdev;
 }
 
+static char *lxcbasename(char *path)
+{
+	char *p = path + strlen(path) - 1;
+	while (*p != '/' && p > path)
+		p--;
+	return p;
+}
+
+static bool create_run_template(struct lxc_container *c, char *tpath,
+				char *const argv[])
+{
+	pid_t pid;
+
+	if (!tpath)
+		return true;
+
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("failed to fork task for container creation template\n");
+		return false;
+	}
+
+	if (pid == 0) { // child
+		char *patharg, *namearg, *rootfsarg, *src;
+		struct bdev *bdev = NULL;
+		int i;
+		int ret, len, nargs = 0;
+		char **newargv;
+
+		if (unshare(CLONE_NEWNS) < 0) {
+			ERROR("error unsharing mounts");
+			exit(1);
+		}
+
+		src = c->lxc_conf->rootfs.path;
+		/*
+		 * for an overlayfs create, what the user wants is the template to fill
+		 * in what will become the readonly lower layer.  So don't mount for
+		 * the template
+		 */
+		if (strncmp(src, "overlayfs:", 10) == 0) {
+			src = overlayfs_getlower(src+10);
+		}
+		bdev = bdev_init(src, c->lxc_conf->rootfs.mount, NULL);
+		if (!bdev) {
+			ERROR("Error opening rootfs");
+			exit(1);
+		}
+
+		if (bdev->ops->mount(bdev) < 0) {
+			ERROR("Error mounting rootfs");
+			exit(1);
+		}
+
+		/*
+		 * create our new array, pre-pend the template name and
+		 * base args
+		 */
+		if (argv)
+			for (nargs = 0; argv[nargs]; nargs++) ;
+		nargs += 4;  // template, path, rootfs and name args
+		newargv = malloc(nargs * sizeof(*newargv));
+		if (!newargv)
+			exit(1);
+		newargv[0] = lxcbasename(tpath);
+
+		len = strlen(c->config_path) + strlen(c->name) + strlen("--path=") + 2;
+		patharg = malloc(len);
+		if (!patharg)
+			exit(1);
+		ret = snprintf(patharg, len, "--path=%s/%s", c->config_path, c->name);
+		if (ret < 0 || ret >= len)
+			exit(1);
+		newargv[1] = patharg;
+		len = strlen("--name=") + strlen(c->name) + 1;
+		namearg = malloc(len);
+		if (!namearg)
+			exit(1);
+		ret = snprintf(namearg, len, "--name=%s", c->name);
+		if (ret < 0 || ret >= len)
+			exit(1);
+		newargv[2] = namearg;
+
+		len = strlen("--rootfs=") + 1 + strlen(bdev->dest);
+		rootfsarg = malloc(len);
+		if (!rootfsarg)
+			exit(1);
+		ret = snprintf(rootfsarg, len, "--rootfs=%s", bdev->dest);
+		if (ret < 0 || ret >= len)
+			exit(1);
+		newargv[3] = rootfsarg;
+
+		/* add passed-in args */
+		if (argv)
+			for (i = 4; i < nargs; i++)
+				newargv[i] = argv[i-4];
+
+		/* add trailing NULL */
+		nargs++;
+		newargv = realloc(newargv, nargs * sizeof(*newargv));
+		if (!newargv)
+			exit(1);
+		newargv[nargs - 1] = NULL;
+
+		/* execute */
+		execv(tpath, newargv);
+		SYSERROR("failed to execute template %s", tpath);
+		exit(1);
+	}
+
+	if (wait_for_pid(pid) != 0) {
+		ERROR("container creation template for %s failed\n", c->name);
+		return false;
+	}
+
+	return true;
+}
+
 static bool lxcapi_destroy(struct lxc_container *c);
 /*
  * lxcapi_create:
@@ -736,8 +854,8 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 {
 	bool bret = false;
 	pid_t pid;
-	char *tpath = NULL, **newargv;
-	int partial_fd, ret, len, nargs = 0;
+	char *tpath = NULL;
+	int partial_fd, ret, len;
 
 	if (!c)
 		return false;
@@ -811,105 +929,8 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	if (!load_config_locked(c, c->configfile))
 		goto out;
 
-	/*
-	 * now execute the template
-	 */
-	pid = fork();
-	if (pid < 0) {
-		SYSERROR("failed to fork task for container creation template\n");
+	if (!create_run_template(c, tpath, argv))
 		goto out_unlock;
-	}
-
-	if (pid == 0) { // child
-		char *patharg, *namearg, *rootfsarg, *src;
-		struct bdev *bdev = NULL;
-		int i;
-
-		if (unshare(CLONE_NEWNS) < 0) {
-			ERROR("error unsharing mounts");
-			exit(1);
-		}
-
-		src = c->lxc_conf->rootfs.path;
-		/*
-		 * for an overlayfs create, what the user wants is the template to fill
-		 * in what will become the readonly lower layer.  So don't mount for
-		 * the template
-		 */
-		if (strncmp(src, "overlayfs:", 10) == 0) {
-			src = overlayfs_getlower(src+10);
-		}
-		bdev = bdev_init(src, c->lxc_conf->rootfs.mount, NULL);
-		if (!bdev) {
-			ERROR("Error opening rootfs");
-			exit(1);
-		}
-
-		if (bdev->ops->mount(bdev) < 0) {
-			ERROR("Error mounting rootfs");
-			exit(1);
-		}
-
-		/*
-		 * create our new array, pre-pend the template name and
-		 * base args
-		 */
-		if (argv)
-			for (nargs = 0; argv[nargs]; nargs++) ;
-		nargs += 4;  // template, path, rootfs and name args
-		newargv = malloc(nargs * sizeof(*newargv));
-		if (!newargv)
-			exit(1);
-		newargv[0] = (char *)t;
-
-		len = strlen(c->config_path) + strlen(c->name) + strlen("--path=") + 2;
-		patharg = malloc(len);
-		if (!patharg)
-			exit(1);
-		ret = snprintf(patharg, len, "--path=%s/%s", c->config_path, c->name);
-		if (ret < 0 || ret >= len)
-			exit(1);
-		newargv[1] = patharg;
-		len = strlen("--name=") + strlen(c->name) + 1;
-		namearg = malloc(len);
-		if (!namearg)
-			exit(1);
-		ret = snprintf(namearg, len, "--name=%s", c->name);
-		if (ret < 0 || ret >= len)
-			exit(1);
-		newargv[2] = namearg;
-
-		len = strlen("--rootfs=") + 1 + strlen(bdev->dest);
-		rootfsarg = malloc(len);
-		if (!rootfsarg)
-			exit(1);
-		ret = snprintf(rootfsarg, len, "--rootfs=%s", bdev->dest);
-		if (ret < 0 || ret >= len)
-			exit(1);
-		newargv[3] = rootfsarg;
-
-		/* add passed-in args */
-		if (argv)
-			for (i = 4; i < nargs; i++)
-				newargv[i] = argv[i-4];
-
-		/* add trailing NULL */
-		nargs++;
-		newargv = realloc(newargv, nargs * sizeof(*newargv));
-		if (!newargv)
-			exit(1);
-		newargv[nargs - 1] = NULL;
-
-		/* execute */
-		execv(tpath, newargv);
-		SYSERROR("failed to execute template %s", tpath);
-		exit(1);
-	}
-
-	if (wait_for_pid(pid) != 0) {
-		ERROR("container creation template for %s failed\n", c->name);
-		goto out_unlock;
-	}
 
 	// now clear out the lxc_conf we have, reload from the created
 	// container
