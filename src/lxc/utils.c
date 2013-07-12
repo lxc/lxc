@@ -37,6 +37,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include "utils.h"
 #include "log.h"
 
 lxc_log_define(lxc_utils, lxc);
@@ -173,10 +174,10 @@ extern int get_u16(unsigned short *val, const char *arg, int base)
 	return 0;
 }
 
-extern int mkdir_p(char *dir, mode_t mode)
+extern int mkdir_p(const char *dir, mode_t mode)
 {
-	char *tmp = dir;
-	char *orig = dir;
+	const char *tmp = dir;
+	const char *orig = dir;
 	char *makeme;
 
 	do {
@@ -392,3 +393,57 @@ int lxc_read_nointr_expect(int fd, void* buf, size_t count, const void* expected
 	}
 	return ret;
 }
+
+#if HAVE_LIBGNUTLS
+#include <gnutls/gnutls.h>
+#include <gnutls/crypto.h>
+int sha1sum_file(char *fnam, unsigned char *digest)
+{
+	char *buf;
+	int ret;
+	FILE *f;
+	long flen;
+
+	if (!fnam)
+		return -1;
+	if ((f = fopen(fnam, "r")) < 0) {
+		SYSERROR("Error opening template");
+		return -1;
+	}
+	if (fseek(f, 0, SEEK_END) < 0) {
+		SYSERROR("Error seeking to end of template");
+		fclose(f);
+		return -1;
+	}
+	if ((flen = ftell(f)) < 0) {
+		SYSERROR("Error telling size of template");
+		fclose(f);
+		return -1;
+	}
+	if (fseek(f, 0, SEEK_SET) < 0) {
+		SYSERROR("Error seeking to start of template");
+		fclose(f);
+		return -1;
+	}
+	if ((buf = malloc(flen+1)) == NULL) {
+		SYSERROR("Out of memory");
+		fclose(f);
+		return -1;
+	}
+	if (fread(buf, 1, flen, f) != flen) {
+		SYSERROR("Failure reading template");
+		free(buf);
+		fclose(f);
+		return -1;
+	}
+	if (fclose(f) < 0) {
+		SYSERROR("Failre closing template");
+		free(buf);
+		return -1;
+	}
+	buf[flen] = '\0';
+	ret = gnutls_hash_fast(GNUTLS_DIG_SHA1, buf, flen, (void *)digest);
+	free(buf);
+	return ret;
+}
+#endif

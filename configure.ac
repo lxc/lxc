@@ -105,6 +105,8 @@ if test "$enable_apparmor" = "check" ; then
 fi
 AM_CONDITIONAL([ENABLE_APPARMOR], [test "x$enable_apparmor" = "xyes"])
 
+AC_CHECK_LIB([gnutls], [gnutls_hash_fast])
+
 AM_COND_IF([ENABLE_APPARMOR],
 	[AC_CHECK_HEADER([sys/apparmor.h],[],[AC_MSG_ERROR([You must install the AppArmor development package in order to compile lxc])])
 	AC_CHECK_LIB([apparmor], [aa_change_profile],[],[AC_MSG_ERROR([You must install the AppArmor development package in order to compile lxc])])

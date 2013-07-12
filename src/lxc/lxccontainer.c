@@ -870,6 +870,107 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 	return true;
 }
 
+bool prepend_lxc_header(char *path, const char *t, char *const argv[])
+{
+	size_t flen;
+	char *contents, *tpath;
+	int i, ret;
+	FILE *f;
+	unsigned char md_value[SHA_DIGEST_LENGTH];
+	bool have_tpath = false;
+
+	if ((f = fopen(path, "r")) == NULL) {
+		SYSERROR("Opening old config");
+		return false;
+	}
+	if (fseek(f, 0, SEEK_END) < 0) {
+		SYSERROR("Seeking to end of old config file");
+		fclose(f);
+		return false;
+	}
+	if ((flen = ftell(f)) < 0) {
+		SYSERROR("telling size of old config");
+		fclose(f);
+		return false;
+	}
+	if (fseek(f, 0, SEEK_SET) < 0) {
+		SYSERROR("rewinding old config");
+		fclose(f);
+		return false;
+	}
+	if ((contents = malloc(flen + 1)) == NULL) {
+		SYSERROR("out of memory");
+		fclose(f);
+		return false;
+	}
+	if (fread(contents, 1, flen, f) != flen) {
+		SYSERROR("Reading old config");
+		free(contents);
+		fclose(f);
+		return false;
+	}
+	contents[flen] = '\0';
+	if (fclose(f) < 0) {
+		SYSERROR("closing old config");
+		free(contents);
+		return false;
+	}
+
+	if ((tpath = get_template_path(t)) < 0) {
+		ERROR("bad template: %s\n", t);
+		free(contents);
+		return false;
+	}
+
+#if HAVE_LIBGNUTLS
+	if (tpath) {
+		have_tpath = true;
+		ret = sha1sum_file(tpath, md_value);
+		if (ret < 0) {
+			ERROR("Error getting sha1sum of %s", tpath);
+			free(contents);
+			return false;
+		}
+		free(tpath);
+	}
+#endif
+
+	if ((f = fopen(path, "w")) == NULL) {
+		SYSERROR("reopening config for writing");
+		free(contents);
+		return false;
+	}
+	fprintf(f, "# Template used to create this container: %s\n", t);
+	if (argv) {
+		fprintf(f, "# Parameters passed to the template:");
+		while (*argv) {
+			fprintf(f, " %s", *argv);
+			argv++;
+		}
+		fprintf(f, "\n");
+	}
+#if HAVE_LIBGNUTLS
+	if (have_tpath) {
+		fprintf(f, "# Template script checksum (SHA-1): ");
+		for (i=0; i<SHA_DIGEST_LENGTH; i++)
+			fprintf(f, "%02x", md_value[i]);
+		fprintf(f, "\n");
+	}
+#endif
+	if (fwrite(contents, 1, flen, f) != flen) {
+		SYSERROR("Writing original contents");
+		free(contents);
+		fclose(f);
+		return false;
+	}
+	free(contents);
+	if (fclose(f) < 0) {
+		SYSERROR("Closing config file after write");
+		return false;
+	}
+	return true;
+}
+
 static bool lxcapi_destroy(struct lxc_container *c);
 /*
  * lxcapi_create:
@@ -967,6 +1068,11 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	if (c->lxc_conf)
 		lxc_conf_free(c->lxc_conf);
 	c->lxc_conf = NULL;
+
+	if (!prepend_lxc_header(c->configfile, tpath, argv)) {
+		ERROR("Error prepending header to configuration file");
+		goto out_unlock;
+	}
 	bret = load_config_locked(c, c->configfile);
 
 out_unlock:
@@ -1623,13 +1729,13 @@ static int update_name_and_paths(const char *path, struct lxc_container *oldc,
 	}
 	flen = ftell(f);
 	if (flen < 0) {
-		fclose(f);
 		SYSERROR("telling size of old config");
+		fclose(f);
 		return -1;
 	}
 	if (fseek(f, 0, SEEK_SET) < 0) {
-		fclose(f);
 		SYSERROR("rewinding old config");
+		fclose(f);
 		return -1;
 	}
 	contents = malloc(flen+1);
@@ -1639,15 +1745,15 @@ static int update_name_and_paths(const char *path, struct lxc_container *oldc,
 		return -1;
 	}
 	if (fread(contents, 1, flen, f) != flen) {
+		SYSERROR("reading old config");
 		free(contents);
 		fclose(f);
-		SYSERROR("reading old config");
 		return -1;
 	}
 	contents[flen] = '\0';
 	if (fclose(f) < 0) {
-		free(contents);
 		SYSERROR("closing old config");
+		free(contents);
 		return -1;
 	}
 
