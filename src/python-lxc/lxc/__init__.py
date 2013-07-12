@@ -369,6 +369,7 @@ class Container(_lxc.Container):
             kwargs['scope'] = scope
 
         ips = None
+        timeout = int(os.environ.get('LXC_GETIP_TIMEOUT', timeout))
 
         while not ips:
             ips = _lxc.Container.get_ips(self, **kwargs)

@@ -273,7 +273,7 @@ if not args.command and not args.daemon:
     sys.exit(0)
 
 # Try to get the IP addresses
-ips = dest.get_ips(timeout=5)
+ips = dest.get_ips(timeout=10)
 
 # Deal with the case where we just print info about the container
 if args.daemon:
