@@ -169,6 +169,7 @@ int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	struct bdev_specs spec;
+	int flags = 0;
 
 	/* this is a short term test.  We'll probably want to check for
 	 * write access to lxcpath instead */
@@ -228,7 +229,9 @@ int main(int argc, char *argv[])
 
 	if (strcmp(my_args.bdevtype, "_unset") == 0)
 		my_args.bdevtype = NULL;
-	if (!c->create(c, my_args.template, my_args.bdevtype, &spec, &argv[optind])) {
+	if (my_args.quiet)
+		flags = LXC_CREATE_QUIET;
+	if (!c->create(c, my_args.template, my_args.bdevtype, &spec, flags, &argv[optind])) {
 		ERROR("Error creating container %s", c->name);
 		lxc_container_put(c);
 		exit(1);

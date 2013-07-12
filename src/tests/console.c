@@ -137,7 +137,7 @@ static int test_console(const char *lxcpath,
 		c->destroy(c);
 		c = lxc_container_new(name, lxcpath);
 	}
-	if (!c->createl(c, template, NULL, NULL, NULL)) {
+	if (!c->createl(c, template, NULL, NULL, 0, NULL)) {
 		TSTERR("creating container %s", name);
 		goto out2;
 	}

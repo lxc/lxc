@@ -752,7 +752,7 @@ static char *lxcbasename(char *path)
 	return p;
 }
 
-static bool create_run_template(struct lxc_container *c, char *tpath,
+static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet,
 				char *const argv[])
 {
 	pid_t pid;
@@ -773,6 +773,14 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 		int ret, len, nargs = 0;
 		char **newargv;
 
+		if (quiet) {
+			close(0);
+			close(1);
+			close(2);
+			open("/dev/zero", O_RDONLY);
+			open("/dev/null", O_RDWR);
+			open("/dev/null", O_RDWR);
+		}
 		if (unshare(CLONE_NEWNS) < 0) {
 			ERROR("error unsharing mounts");
 			exit(1);
@@ -878,7 +886,7 @@ static bool lxcapi_destroy(struct lxc_container *c);
  * arguments, you can just pass NULL.
  */
 static bool lxcapi_create(struct lxc_container *c, const char *t,
-		const char *bdevtype, struct bdev_specs *specs,
+		const char *bdevtype, struct bdev_specs *specs, int flags,
 		char *const argv[])
 {
 	bool bret = false;
@@ -951,7 +959,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	if (!load_config_locked(c, c->configfile))
 		goto out;
 
-	if (!create_run_template(c, tpath, argv))
+	if (!create_run_template(c, tpath, !!(flags & LXC_CREATE_QUIET), argv))
 		goto out_unlock;
 
 	// now clear out the lxc_conf we have, reload from the created
@@ -1014,7 +1022,7 @@ static bool lxcapi_shutdown(struct lxc_container *c, int timeout)
 }
 
 static bool lxcapi_createl(struct lxc_container *c, const char *t,
-		const char *bdevtype, struct bdev_specs *specs, ...)
+		const char *bdevtype, struct bdev_specs *specs, int flags, ...)
 {
 	bool bret = false;
 	char **args = NULL, **temp;
@@ -1028,7 +1036,7 @@ static bool lxcapi_createl(struct lxc_container *c, const char *t,
 	 * since we're going to wait for create to finish, I don't think we
 	 * need to get a copy of the arguments.
 	 */
-	va_start(ap, specs);
+	va_start(ap, flags);
 	while (1) {
 		char *arg;
 		arg = va_arg(ap, char *);
@@ -1047,7 +1055,7 @@ static bool lxcapi_createl(struct lxc_container *c, const char *t,
 	if (args)
 		args[nargs] = NULL;
 
-	bret = c->create(c, t, bdevtype, specs, args);
+	bret = c->create(c, t, bdevtype, specs, flags, args);
 
 out:
 	if (args)

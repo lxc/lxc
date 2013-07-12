@@ -12,6 +12,9 @@
 #define LXC_CLONE_SNAPSHOT        (1 << 3)
 #define LXC_CLONE_MAXFLAGS        (1 << 4)
 
+#define LXC_CREATE_QUIET	  (1 << 0)
+#define LXC_CREATE_MAXFLAGS       (1 << 1)
+
 struct bdev_specs;
 
 struct lxc_container {
@@ -51,9 +54,9 @@ struct lxc_container {
 	bool (*destroy)(struct lxc_container *c);
 	bool (*save_config)(struct lxc_container *c, const char *alt_file);
 	bool (*create)(struct lxc_container *c, const char *t, const char *bdevtype,
-			struct bdev_specs *specs, char *const argv[]);
+			struct bdev_specs *specs, int flags, char *const argv[]);
 	bool (*createl)(struct lxc_container *c, const char *t, const char *bdevtype,
-			struct bdev_specs *specs, ...);
+			struct bdev_specs *specs, int flags, ...);
 	/* send SIGINT to ask container to reboot */
 	bool (*reboot)(struct lxc_container *c);
 	/* send SIGPWR.  if timeout is not 0 or -1, do a hard stop after timeout seconds */
