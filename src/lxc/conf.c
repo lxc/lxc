@@ -3079,6 +3079,18 @@ int lxc_clear_config_caps(struct lxc_conf *c)
 	return 0;
 }
 
+int lxc_clear_idmaps(struct lxc_conf *c)
+{
+	struct lxc_list *it, *next;
+
+	lxc_list_for_each_safe(it, &c->id_map, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+	return 0;
+}
+
 int lxc_clear_cgroups(struct lxc_conf *c, const char *key)
 {
 	struct lxc_list *it,*next;
@@ -3182,5 +3194,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_hooks(conf, "lxc.hook");
 	lxc_clear_mount_entries(conf);
 	lxc_clear_saved_nics(conf);
+	lxc_clear_idmaps(conf);
 	free(conf);
 }

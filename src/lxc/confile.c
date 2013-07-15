@@ -1945,6 +1945,12 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	}
 	lxc_list_for_each(it, &c->caps)
 		fprintf(fout, "lxc.cap.drop = %s\n", (char *)it->elem);
+	lxc_list_for_each(it, &c->id_map) {
+		struct id_map *idmap = it->elem;
+		fprintf(fout, "lxc.id_map = %c %lu %lu %lu\n",
+			idmap->idtype == ID_TYPE_UID ? 'u' : 'g', idmap->nsid,
+			idmap->hostid, idmap->range);
+	}
 	for (i=0; i<NUM_LXC_HOOKS; i++) {
 		lxc_list_for_each(it, &c->hooks[i])
 			fprintf(fout, "lxc.hook.%s = %s\n",
