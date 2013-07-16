@@ -25,6 +25,18 @@ if [ -r /etc/default/lxc ]; then
     . /etc/default/lxc
 fi
 
+am_in_userns() {
+    [ -e /proc/self/uid_map ] || { echo no; return; }
+    [ "$(wc -l /proc/self/uid_map | awk '{ print $1 }')" -eq 1 ] || { echo yes; return; }
+    line=$(awk '{ print $1 " " $2 " " $3 }' /proc/self/uid_map)
+    [ "$line" = "0 0 4294967295" ] && { echo no; return; }
+    echo yes
+}
+
+in_userns=0
+[ $(am_in_userns) = "yes" ] && in_userns=1
+echo "am_in_userns returns $(am_in_userns)" >> /tmp/xa
+
 copy_configuration()
 {
     path=$1
@@ -100,6 +112,16 @@ sysfs           sys          sysfs defaults  0 0
 /sys/kernel/debug sys/kernel/debug none bind 0 0
 /sys/kernel/security sys/kernel/security none bind 0 0
 EOF
+
+    # unprivileged user can't mknod these.  One day we may allow
+    # that in the kernel, but not right now.  So let's just bind
+    # mount the files from the host.
+    if [ $in_userns -eq 1 ]; then
+        for dev in null tty urandom console; do
+            touch $rootfs/dev/$dev
+            echo "/dev/$dev dev/$dev    none bind 0 0" >> $path/fstab
+        done
+    fi
 
     # rmdir /dev/shm for containers that have /run/shm
     # I'm afraid of doing rm -rf $rootfs/dev/shm, in case it did
@@ -341,9 +363,7 @@ build_root_tgz()
     trap SIGTERM
 }
 
-mkdir -p @LOCALSTATEDIR@/lock/subsys/
-(
-    flock -x 200
+do_extract_rootfs() {
 
     cd $cache
     if [ $flushcache -eq 1 ]; then
@@ -418,7 +438,17 @@ EOF
         echo "If you do not have a meta-data service, this container will likely be useless."
 
     fi
-) 200>@LOCALSTATEDIR@/lock/subsys/lxc-ubuntu-cloud
+}
+
+if [ -n "$tarball" ]; then
+    do_extract_rootfs
+else
+    mkdir -p @LOCALSTATEDIR@/lock/subsys/
+    (
+        flock -x 200
+        do_extract_rootfs
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-ubuntu-cloud
+fi
 
 copy_configuration $path $rootfs $name $arch $release
 
