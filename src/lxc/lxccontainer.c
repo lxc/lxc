@@ -874,10 +874,12 @@ bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 {
 	size_t flen;
 	char *contents, *tpath;
-	int i, ret;
 	FILE *f;
+#if HAVE_LIBGNUTLS
+	int i, ret;
 	unsigned char md_value[SHA_DIGEST_LENGTH];
 	bool have_tpath = false;
+#endif
 
 	if ((f = fopen(path, "r")) == NULL) {
 		SYSERROR("Opening old config");
