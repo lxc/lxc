@@ -1987,6 +1987,8 @@ static int clone_update_rootfs(struct lxc_container *c0,
 		ret = snprintf(path, MAXPATHLEN, "%s/etc/hostname", bdev->dest);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			exit(1);
+		if (!file_exists(path))
+			exit(0);
 		if (!(fout = fopen(path, "w"))) {
 			SYSERROR("unable to open %s: ignoring\n", path);
 			exit(0);
