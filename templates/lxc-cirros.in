@@ -204,7 +204,7 @@ download_tarball() {
 
 create_main() {
     local short_opts="a:hn:p:S:uvV"
-    local long_opts="arch:,auth-key:,name:,path:,tarball:,userdata:,verbose,version:"
+    local long_opts="arch:,auth-key:,name:,path:,tarball:,userdata:,verbose,version:,rootfs:"
     local getopt_out=""
     getopt_out=$(getopt --name "${0##*/}" \
         --options "${short_opts}" --long "${long_opts}" -- "$@") &&
@@ -214,6 +214,7 @@ create_main() {
     local arch="${DEF_ARCH}" dsource="${DEF_SOURCE}" version="${DEF_VERSION}"
     local authkey_f="" authkeys="" userdata_f="" path="" tarball=""
     local cur="" next=""
+    local rootfs_d=""
 
     while [ $# -ne 0 ]; do
         cur=$1; next=$2;
@@ -228,11 +229,13 @@ create_main() {
             -u|--userdata) userdata_f="$next"; shift;;
                --tarball) tarball="$next"; shift;;
                --source) dsource="$next"; shift;;
+               --rootfs) rootfs_d="$next"; shift;;
             --) shift; break;;
         esac
         shift;
     done
 
+    [ -n "$rootfs_d" ] || rootfs_d="$path/rootfs"
     [ $# -eq 0 ] || { bad_Usage "unexpected arguments: $*"; return; }
     [ -n "$path" ] || { error "'path' parameter is required"; return 1; }
 
@@ -281,7 +284,6 @@ create_main() {
         tarball="$_RET"
     fi
 
-    local rootfs_d="$path/rootfs"
     extract_rootfs "${tarball}" "${rootfs_d}" || return
 
     # cirros 0.3.1 was broken for /dev/random and /dev/urandom
