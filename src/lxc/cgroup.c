@@ -706,10 +706,13 @@ again:
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto fail;
 
+		INFO("lxcgroup %s name %s tail %s, makes path .%s.",
+			lxcgroup ? lxcgroup : "lxc", name, tail, path);
+
 		if (access(path, F_OK) == 0) goto next;
 
 		if (mkdir(path, 0755)) {
-			ERROR("Error creating cgroups");
+			ERROR("Error creating cgroup %s", path);
 			goto fail;
 		}
 
@@ -933,4 +936,50 @@ bool is_in_subcgroup(int pid, const char *subsystem, const char *cgpath)
 	}
 	fclose(f);
 	return false;
+}
+
+/*
+ * Return cgroup of current task.
+ * This assumes that task is in the same cgroup for each controller.  This
+ * may or may not *always* be a reasonable assumption - it generally is,
+ * and handling or at least checking for this condition is a TODO.
+ */
+int lxc_curcgroup(char *cgroup, int inlen)
+{
+	FILE *f;
+	char *line = NULL, *p, *p2;
+	int ret = 0;
+	size_t len;
+
+	f = fopen("/proc/self/cgroup", "r");
+	if (!f)
+		return -1;
+
+	while (getline(&line, &len, f) != -1) {
+		if (strstr(line, ":freezer:") == NULL && strstr(line, ":devices:") == NULL)
+			continue;
+		p = rindex(line, ':');
+		if (!p)
+			continue;
+		p++;
+		len = strlen(p) + 1;
+		p2 = p + len - 2;
+		while (*p2 == '\n') { len--; *p2 = '\0'; p2--; }
+		if (!cgroup || inlen <= 0) {
+			ret = len;
+			break;
+		}
+		if (cgroup && len > inlen) {
+			ret = -1;
+			break;
+		}
+		strncpy(cgroup, p, len);
+		ret = len;
+		cgroup[len-1] = '\0';
+		break;
+	}
+
+	if (line)
+		free(line);
+	return ret;
 }

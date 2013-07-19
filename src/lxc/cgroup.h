@@ -34,4 +34,5 @@ extern int lxc_cgroup_enter(const char *cgpath, pid_t pid);
 extern int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath);
 extern char *cgroup_path_get(const char *subsystem, const char *cgpath);
 extern bool is_in_subcgroup(int pid, const char *subsystem, const char *cgpath);
+extern int lxc_curcgroup(char *cgroup, int inlen);
 #endif

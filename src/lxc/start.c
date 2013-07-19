@@ -600,8 +600,9 @@ int save_phys_nics(struct lxc_conf *conf)
 extern bool is_in_subcgroup(int pid, const char *subsystem, const char *cgpath);
 int lxc_spawn(struct lxc_handler *handler)
 {
-	int failed_before_rename = 0;
+	int failed_before_rename = 0, len;
 	const char *name = handler->name;
+	char *curcgroup = NULL;
 
 	if (lxc_sync_init(handler))
 		return -1;
@@ -663,8 +664,12 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 		failed_before_rename = 1;
 
-	/* TODO - pass lxc.cgroup.dir (or user's pam cgroup) in for first argument */
-	if ((handler->cgroup = lxc_cgroup_path_create(NULL, name)) == NULL)
+	if ((len = lxc_curcgroup(NULL, 0)) > 1) {
+		curcgroup = alloca(len);
+		if (lxc_curcgroup(curcgroup, len) <= 1)
+			curcgroup = NULL;
+	}
+	if ((handler->cgroup = lxc_cgroup_path_create(curcgroup, name)) == NULL)
 		goto out_delete_net;
 
 	if (setup_cgroup(handler->cgroup, &handler->conf->cgroup)) {
