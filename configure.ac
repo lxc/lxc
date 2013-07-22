@@ -52,6 +52,9 @@ esac
 AC_MSG_RESULT([$with_distro])
 AM_CONDITIONAL([HAVE_DEBIAN], [test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu"])
 
+AC_CHECK_PROG([NEWUIDMAP], [newuidmap], [newuidmap])
+AM_CONDITIONAL([HAVE_NEWUIDMAP], [test -n "$NEWUIDMAP"])
+
 # Allow disabling rpath
 AC_ARG_ENABLE([rpath],
 	[AC_HELP_STRING([--disable-rpath], [do not set rpath in executables])],

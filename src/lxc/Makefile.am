@@ -101,6 +101,10 @@ if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
 endif
 
+if HAVE_NEWUIDMAP
+AM_CFLAGS += -DHAVE_NEWUIDMAP
+endif
+
 if USE_CONFIGPATH_LOGS
 AM_CFLAGS += -DUSE_CONFIGPATH_LOGS
 endif
@@ -163,6 +167,10 @@ bin_PROGRAMS = \
 	lxc-destroy \
     lxc-create
 
+if HAVE_NEWUIDMAP
+bin_PROGRAMS += lxc-usernsexec
+endif
+
 pkglibexec_PROGRAMS = \
 	lxc-init
 
@@ -196,6 +204,7 @@ lxc_unshare_SOURCES = lxc_unshare.c
 lxc_wait_SOURCES = lxc_wait.c
 lxc_kill_SOURCES = lxc_kill.c
 lxc_create_SOURCES = lxc_create.c
+lxc_usernsexec_SOURCES = lxc_usernsexec.c
 
 install-exec-local: install-soPROGRAMS
 	mkdir -p $(DESTDIR)$(datadir)/lxc
