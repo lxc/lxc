@@ -24,6 +24,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#define _GNU_SOURCE
+#include <stdlib.h>
 #include <lxc/utils.h>
 #include <lxc/log.h>
 #include <lxc/lxccontainer.h>
@@ -40,14 +42,29 @@ pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char *lxclock_name(const char *p, const char *n)
 {
 	int ret;
-	// /run/lock/lxc/$lxcpath/$lxcname + '\0'
-	int len = strlen(p) + strlen(n) + strlen("/run/lock/lxc/") + 2;
-	char *dest = malloc(len);
+	int len;
+	char *dest;
+	const char *rundir;
 	struct stat sb;
 
-	if (!dest)
+	/* lockfile will be:
+	 * "/run" + "/lock/lxc/$lxcpath/$lxcname + '\0' if root
+	 * or
+	 * $XDG_RUNTIME_DIR + "/lock/lxc/$lxcpath/$lxcname + '\0' if non-root
+	 */
+
+	/* length of "/lock/lxc/" + $lxcpath + "/" + $lxcname + '\0' */
+	len = strlen("/lock/lxc/") + strlen(n) + strlen(p) + 2;
+	rundir = getenv("XDG_RUNTIME_DIR");
+	if (geteuid() == 0 || rundir == NULL)
+		rundir = "/run";
+
+	len += strlen(rundir);
+
+	if ((dest = malloc(len)) == NULL)
 		return NULL;
-	ret = snprintf(dest, len, "/run/lock/lxc/%s", p);
+
+	ret = snprintf(dest, len, "%s/lock/lxc/%s", rundir, p);
 	if (ret < 0 || ret >= len) {
 		free(dest);
 		return NULL;
@@ -69,7 +86,7 @@ static char *lxclock_name(const char *p, const char *n)
 			ERROR("Failed to set mode for lockdir %s\n", dest);
 	}
 
-	ret = snprintf(dest, len, "/run/lock/lxc/%s/%s", p, n);
+	ret = snprintf(dest, len, "%s/lock/lxc/%s/%s", rundir, p, n);
 	if (ret < 0 || ret >= len) {
 		free(dest);
 		return NULL;
