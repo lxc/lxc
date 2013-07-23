@@ -769,16 +769,23 @@ int lxc_cgroup_enter(const char *cgpath, pid_t pid)
 		ret = snprintf(path, MAXPATHLEN, "%s/%s/tasks",
 			       mntent_r.mnt_dir, cgpath);
 		if (ret < 0 || ret >= MAXPATHLEN) {
-			ERROR("entering cgroup");
+			ERROR("Error entering cgroup");
 			goto out;
 		}
 		fout = fopen(path, "w");
 		if (!fout) {
-			ERROR("entering cgroup");
+			SYSERROR("Error entering cgroup");
 			goto out;
 		}
-		fprintf(fout, "%d\n", (int)pid);
-		fclose(fout);
+		if (fprintf(fout, "%d\n", (int)pid) < 0) {
+			ERROR("Error writing pid to %s", path);
+			fclose(fout);
+			goto out;
+		}
+		if (fclose(fout) < 0) {
+			SYSERROR("Error writing pid to %s", path);
+			goto out;
+		}
 	}
 	retv = 0;
 
