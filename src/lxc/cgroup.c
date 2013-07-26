@@ -606,8 +606,7 @@ static int create_lxcgroups(const char *lxcgroup)
 		 * TODO - handle case where lxcgroup has subdirs?  (i.e. build/l1)
 		 * We probably only want to support that for /users/joe
 		 */
-		ret = snprintf(path, MAXPATHLEN, "%s/%s",
-			       mntent_r.mnt_dir, lxcgroup ? lxcgroup : "lxc");
+		ret = snprintf(path, MAXPATHLEN, "%s/%s", mntent_r.mnt_dir, lxcgroup);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto fail;
 		if (access(path, F_OK)) {
@@ -663,6 +662,8 @@ char *lxc_cgroup_path_create(const char *lxcgroup, const char *name)
 
 	char buf[LARGE_MAXPATHLEN] = {0};
 
+	if (!lxcgroup || strlen(lxcgroup) == 0 || strcmp(lxcgroup, "/") == 0)
+		lxcgroup = "lxc";
 	if (!allcgroups)
 		return NULL;
 
@@ -702,12 +703,12 @@ again:
 
 		/* find unused mnt_dir + lxcgroup + name + -$i */
 		ret = snprintf(path, MAXPATHLEN, "%s/%s/%s%s", mntent_r.mnt_dir,
-			       lxcgroup ? lxcgroup : "lxc", name, tail);
+			       lxcgroup, name, tail);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto fail;
 
 		INFO("lxcgroup %s name %s tail %s, makes path .%s.",
-			lxcgroup ? lxcgroup : "lxc", name, tail, path);
+			lxcgroup, name, tail, path);
 
 		if (access(path, F_OK) == 0) goto next;
 
@@ -721,8 +722,7 @@ again:
 	endmntent(file);
 
 	// print out the cgpath part
-	ret = snprintf(path, MAXPATHLEN, "%s/%s%s",
-		       lxcgroup ? lxcgroup : "lxc", name, tail);
+	ret = snprintf(path, MAXPATHLEN, "%s/%s%s", lxcgroup, name, tail);
 	if (ret < 0 || ret >= MAXPATHLEN) // can't happen
 		goto fail;
 
