@@ -1423,11 +1423,23 @@ out:
 	return ret;
 }
 
+static bool set_config_item_locked(struct lxc_container *c, const char *key, const char *v)
+{
+	struct lxc_config_t *config;
+
+	if (!c->lxc_conf)
+		c->lxc_conf = lxc_conf_init();
+	if (!c->lxc_conf)
+		return false;
+	config = lxc_getconfig(key);
+	if (!config)
+		return false;
+	return (0 == config->cb(key, v, c->lxc_conf));
+}
+
 static bool lxcapi_set_config_item(struct lxc_container *c, const char *key, const char *v)
 {
-	int ret;
 	bool b = false;
-	struct lxc_config_t *config;
 
 	if (!c)
 		return false;
@@ -1435,18 +1447,8 @@ static bool lxcapi_set_config_item(struct lxc_container *c, const char *key, con
 	if (container_mem_lock(c))
 		return false;
 
-	if (!c->lxc_conf)
-		c->lxc_conf = lxc_conf_init();
-	if (!c->lxc_conf)
-		goto err;
-	config = lxc_getconfig(key);
-	if (!config)
-		goto err;
-	ret = config->cb(key, v, c->lxc_conf);
-	if (!ret)
-		b = true;
+	b = set_config_item_locked(c, key, v);
 
-err:
 	container_mem_unlock(c);
 	return b;
 }
@@ -1658,153 +1660,6 @@ err:
 	return -1;
 }
 
-/*
- * we're being passed result of two strstrs(x, y).  We want to write
- * all data up to the first found string, or to end of the string if
- * neither string was found.
- * This function will return the earliest found string if any, or else
- * NULL
- */
-static const char *lowest_nonnull(const char *p1, const char *p2)
-{
-	if (!p1)
-		return p2;
-	if (!p2)
-		return p1;
-	return p1 < p2 ? p1 : p2;
-}
-
-static int is_word_sep(char c)
-{
-	switch(c) {
-	case '\0':
-	case '\n':
-	case '\r':
-	case '\t':
-	case ' ':
-	case '=':
-	case '.':
-	case ',':
-	case '_':
-	case '-':
-	case '/':
-		return 1;
-	default: return 0;
-	}
-}
-
-static const char *find_first_wholeword(const char *p0, const char *word)
-{
-	const char *p = p0;
-
-	if (!p)
-		return NULL;
-
-	while ((p = strstr(p, word)) != NULL) {
-		if ((p == p0 || is_word_sep(*(p-1))) &&
-		    is_word_sep(p[strlen(word)]))
-			return p;
-		p++;
-	}
-	return NULL;
-}
-
-static int update_name_and_paths(const char *path, struct lxc_container *oldc,
-		const char *newname, const char *newpath)
-{
-	FILE *f;
-	long flen;
-	char *contents;
-	const char *p0, *p1, *p2, *end;
-	const char *oldpath = oldc->get_config_path(oldc);
-	const char *oldname = oldc->name;
-
-	f = fopen(path, "r");
-	if (!f) {
-		SYSERROR("opening old config");
-		return -1;
-	}
-	if (fseek(f, 0, SEEK_END) < 0) {
-		SYSERROR("seeking to end of old config");
-		fclose(f);
-		return -1;
-	}
-	flen = ftell(f);
-	if (flen < 0) {
-		SYSERROR("telling size of old config");
-		fclose(f);
-		return -1;
-	}
-	if (fseek(f, 0, SEEK_SET) < 0) {
-		SYSERROR("rewinding old config");
-		fclose(f);
-		return -1;
-	}
-	contents = malloc(flen+1);
-	if (!contents) {
-		SYSERROR("out of memory");
-		fclose(f);
-		return -1;
-	}
-	if (fread(contents, 1, flen, f) != flen) {
-		SYSERROR("reading old config");
-		free(contents);
-		fclose(f);
-		return -1;
-	}
-	contents[flen] = '\0';
-	if (fclose(f) < 0) {
-		SYSERROR("closing old config");
-		free(contents);
-		return -1;
-	}
-
-	f = fopen(path, "w");
-	if (!f) {
-		SYSERROR("reopening config");
-		free(contents);
-		return -1;
-	}
-
-	p0 = contents;
-	end = contents + flen;
-	while (1) {
-		p1 = find_first_wholeword(p0, oldpath);
-		p2 = find_first_wholeword(p0, oldname);
-		if (!p1 && !p2) {
-			// write the rest and be done
-			if (fwrite(p0, 1, (end-p0), f) != (end-p0)) {
-				SYSERROR("writing new config");
-				free(contents);
-				fclose(f);
-				return -1;
-			}
-			free(contents);
-			fclose(f);
-			// success
-			return 0;
-		} else {
-			const char *p = lowest_nonnull(p1, p2);
-			const char *new = (p == p2) ? newname : newpath;
-			if (fwrite(p0, 1, (p-p0), f) != (p-p0)) {
-				SYSERROR("writing new config");
-				free(contents);
-				fclose(f);
-				return -1;
-			}
-			p0 = p;
-			// now write the newpath or newname
-			if (fwrite(new, 1, strlen(new), f) != strlen(new)) {
-				SYSERROR("writing new name or path in new config");
-				free(contents);
-				fclose(f);
-				return -1;
-			}
-			p0 += (p == p2) ? strlen(oldname) : strlen(oldpath);
-		}
-	}
-}
-
 static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 {
 	int i;
@@ -1832,7 +1687,6 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 				ERROR("out of memory copying hook path");
 				return -1;
 			}
-			update_name_and_paths(it->elem, oldc, c->name, c->get_config_path(c));
 		}
 	}
 
@@ -2063,7 +1917,8 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 		goto out;
 	}
 
-	if (create_file_dirname(newpath) < 0) {
+	ret = create_file_dirname(newpath);
+	if (ret < 0 && errno != EEXIST) {
 		ERROR("Error creating container dir for %s", newpath);
 		goto out;
 	}
@@ -2077,11 +1932,6 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 	write_config(fout, c->lxc_conf);
 	fclose(fout);
 
-	if (update_name_and_paths(newpath, c, n, l) < 0) {
-		ERROR("Error updating name in cloned config");
-		goto out;
-	}
-
 	sprintf(newpath, "%s/%s/rootfs", l, n);
 	if (mkdir(newpath, 0755) < 0) {
 		SYSERROR("error creating %s", newpath);
@@ -2093,6 +1943,13 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 		ERROR("clone: failed to create new container (%s %s)", n, l);
 		goto out;
 	}
+
+	// update utsname
+	if (!set_config_item_locked(c2, "lxc.utsname", newname)) {
+		ERROR("Error setting new hostname");
+		goto out;
+	}
+
 
 	// copy hooks if requested
 	if (flags & LXC_CLONE_COPYHOOKS) {
