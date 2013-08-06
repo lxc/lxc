@@ -288,6 +288,14 @@ struct lxc_conf {
 	int stopsignal; // signal used to stop container
 	int kmsg;  // if 1, create /dev/kmsg symlink
 	char *rcfile;	// Copy of the top level rcfile we read
+
+	// Logfile and logleve can be set in a container config file.
+	// Those function as defaults.  The defaults can be overriden
+	// by command line.  However we don't want the command line
+	// specified values to be saved on c->save_config().  So we
+	// store the config file specified values here.
+	char *logfile;  // the logfile as specifed in config
+	int loglevel;   // loglevel as specifed in config (if any)
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,

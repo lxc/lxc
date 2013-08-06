@@ -990,6 +990,11 @@ static int config_aa_profile(const char *key, const char *value,
 static int config_logfile(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
 {
+	// store these values in the lxc_conf, and then try to set for
+	// actual current logging.
+	if (lxc_conf->logfile)
+		free(lxc_conf->logfile);
+	lxc_conf->logfile = strdup(value);
 	return lxc_log_set_file(value);
 }
 
@@ -1009,6 +1014,9 @@ static int config_loglevel(const char *key, const char *value,
 		newlevel = atoi(value);
 	else
 		newlevel = lxc_log_priority_to_int(value);
+	// store these values in the lxc_conf, and then try to set for
+	// actual current logging.
+	lxc_conf->loglevel = newlevel;
 	return lxc_log_set_level(newlevel);
 }
 
@@ -1873,10 +1881,10 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	if (c->aa_profile)
 		fprintf(fout, "lxc.aa_profile = %s\n", c->aa_profile);
 #endif
-	if (lxc_log_get_level() != LXC_LOG_PRIORITY_NOTSET)
-		fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(lxc_log_get_level()));
-	if (lxc_log_get_file())
-		fprintf(fout, "lxc.logfile = %s\n", lxc_log_get_file());
+	if (c->loglevel != LXC_LOG_PRIORITY_NOTSET)
+		fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(c->loglevel));
+	if (c->logfile)
+		fprintf(fout, "lxc.logfile = %s\n", c->logfile);
 	lxc_list_for_each(it, &c->cgroup) {
 		struct lxc_cgroup *cg = it->elem;
 		fprintf(fout, "lxc.cgroup.%s = %s\n", cg->subsystem, cg->value);
