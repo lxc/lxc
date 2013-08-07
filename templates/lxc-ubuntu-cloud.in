@@ -35,7 +35,6 @@ am_in_userns() {
 
 in_userns=0
 [ $(am_in_userns) = "yes" ] && in_userns=1
-echo "am_in_userns returns $(am_in_userns)" >> /tmp/xa
 
 copy_configuration()
 {
