@@ -15,6 +15,8 @@ lxc_test_lxcpath_SOURCES = lxcpath.c
 lxc_test_cgpath_SOURCES = cgpath.c
 lxc_test_clonetest_SOURCES = clonetest.c
 lxc_test_console_SOURCES = console.c
+lxc_usernic_test_SOURCES = ../lxc/lxc_user_nic.c ../lxc/nl.c
+lxc_usernic_test_CFLAGS = -DISTEST
 
 AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
@@ -26,7 +28,9 @@ AM_CFLAGS=-I$(top_srcdir)/src \
 bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-destroytest lxc-test-saveconfig lxc-test-createtest \
 	lxc-test-shutdowntest lxc-test-get_item lxc-test-getkeys lxc-test-lxcpath \
-	lxc-test-cgpath lxc-test-clonetest lxc-test-console
+	lxc-test-cgpath lxc-test-clonetest lxc-test-console lxc-usernic-test
+
+bin_SCRIPTS = lxc-test-usernic
 
 endif
 
