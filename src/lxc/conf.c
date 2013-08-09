@@ -31,6 +31,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/syscall.h>
+#include <ifaddrs.h>
+#include <time.h>
 
 #if HAVE_PTY_H
 #include <pty.h>
@@ -271,6 +273,64 @@ static struct caps_opt caps_opt[] = {
 #else
 static struct caps_opt caps_opt[] = {};
 #endif
+
+static char padchar[] =
+"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+static char *mkifname(char *template)
+{
+	char *name = NULL;
+	int i = 0;
+	FILE *urandom;
+	unsigned int seed;
+	char randstate[2048];
+	struct ifaddrs *ifaddr, *ifa;
+	int ifexists = 0;
+
+	/* Get all the network interfaces */
+	getifaddrs(&ifaddr);
+
+	/* Initialize the random number generator */
+	urandom = fopen ("/dev/urandom", "r");
+	if (urandom != NULL) {
+		if (fread (&seed, sizeof(seed), 1, urandom) <= 0)
+			seed = time(0);
+		fclose(urandom);
+	}
+	else
+		seed = time(0);
+	initstate(seed, randstate, 256);
+
+	/* Generate random names until we find one that doesn't exist */
+	while(1) {
+		ifexists = 0;
+		name = strdup(template);
+
+		if (name == NULL)
+			return NULL;
+
+		for (i = 0; i < strlen(name); i++) {
+			if (name[i] == 'X') {
+				name[i] = padchar[random() % (strlen(padchar) - 1)];
+			}
+		}
+
+		for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+			if (strcmp(ifa->ifa_name, name) == 0) {
+				ifexists = 1;
+				break;
+			}
+		}
+
+		if (ifexists == 0)
+			break;
+
+		free(name);
+	}
+
+	freeifaddrs(ifaddr);
+	return name;
+}
 
 static int run_buffer(char *buffer)
 {
@@ -2174,13 +2234,13 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			ERROR("veth1 name too long");
 			return -1;
 		}
-		veth1 = mktemp(veth1buf);
+		veth1 = mkifname(veth1buf);
 		/* store away for deconf */
 		memcpy(netdev->priv.veth_attr.veth1, veth1, IFNAMSIZ);
 	}
 
 	snprintf(veth2buf, sizeof(veth2buf), "vethXXXXXX");
-	veth2 = mktemp(veth2buf);
+	veth2 = mkifname(veth2buf);
 
 	if (!strlen(veth1) || !strlen(veth2)) {
 		ERROR("failed to allocate a temporary name");
@@ -2286,7 +2346,7 @@ static int instanciate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	if (err >= sizeof(peerbuf))
 		return -1;
 
-	peer = mktemp(peerbuf);
+	peer = mkifname(peerbuf);
 	if (!strlen(peer)) {
 		ERROR("failed to make a temporary name");
 		return -1;
