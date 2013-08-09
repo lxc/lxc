@@ -12,7 +12,7 @@
 ##  LXC_SRC_NAME: old container name
 ##  LXC_ROOTFS_PATH: path or device on which the root fs is located
 
-VERBOSITY=""
+VERBOSITY="0"
 
 error() { echo "$@" 1>&2; }
 debug() { [ "$1" -ge "$VERBOSITY" ] || return; shift; error "$@"; }
