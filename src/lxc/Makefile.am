@@ -165,7 +165,8 @@ bin_PROGRAMS = \
 	lxc-kill \
 	lxc-config \
 	lxc-destroy \
-	lxc-create
+	lxc-create \
+	lxc-user-nic
 
 if HAVE_NEWUIDMAP
 bin_PROGRAMS += lxc-usernsexec
@@ -202,6 +203,7 @@ lxc_wait_SOURCES = lxc_wait.c
 lxc_kill_SOURCES = lxc_kill.c
 lxc_create_SOURCES = lxc_create.c
 lxc_usernsexec_SOURCES = lxc_usernsexec.c
+lxc_user_nic_SOURCES = lxc_user_nic.c
 
 install-exec-local: install-soPROGRAMS
 	mkdir -p $(DESTDIR)$(datadir)/lxc
