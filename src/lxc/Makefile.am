@@ -61,9 +61,9 @@ liblxc_so_SOURCES = \
 	attach.c attach.h \
 	\
 	network.c network.h \
-        nl.c nl.h \
-        rtnl.c rtnl.h \
-        genl.c genl.h \
+	nl.c nl.h \
+	rtnl.c rtnl.h \
+	genl.c genl.h \
 	\
 	caps.c caps.h \
 	lxcseccomp.h \
@@ -134,15 +134,15 @@ EXTRA_DIST = \
 	lxc-top
 
 if ENABLE_PYTHON
-    bin_SCRIPTS += lxc-device
-    bin_SCRIPTS += lxc-ls
-    bin_SCRIPTS += lxc-start-ephemeral
+bin_SCRIPTS += lxc-device
+bin_SCRIPTS += lxc-ls
+bin_SCRIPTS += lxc-start-ephemeral
 else
-    bin_SCRIPTS += legacy/lxc-ls
+bin_SCRIPTS += legacy/lxc-ls
 endif
 
 if ENABLE_LUA
-    bin_SCRIPTS += lxc-top
+bin_SCRIPTS += lxc-top
 endif
 
 bin_PROGRAMS = \
@@ -165,7 +165,7 @@ bin_PROGRAMS = \
 	lxc-kill \
 	lxc-config \
 	lxc-destroy \
-    lxc-create
+	lxc-create
 
 if HAVE_NEWUIDMAP
 bin_PROGRAMS += lxc-usernsexec
@@ -173,9 +173,6 @@ endif
 
 pkglibexec_PROGRAMS = \
 	lxc-init
-
-#pkglibexec_SCRIPTS = \
-#	lxc.functions
 
 AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
