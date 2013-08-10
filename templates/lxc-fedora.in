@@ -567,7 +567,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-type /bin/systemd >/dev/null 2>&1
+test $(ps --noheaders -o comm 1) = 'systemd'
 if [ $? -ne 0 ]; then
     configure_fedora_init
 else
