@@ -37,102 +37,6 @@
 } while (0)
 
 /*
- * test_same_name: Create the same named container within a group
- *
- * @group : name of the container group or NULL for default "lxc"
- * @name  : name of the container
- *
- * Note, lxc will append a -<nr> to duplicate container names. This is what
- * is tested here.
- *
- * Returns 0 on success, < 0 on failure
- */
-static int test_same_name(const char *group, const char *name)
-{
-	int ret = -1;
-	char *cgrelpath1;
-	char *cgrelpath2;
-	char  relpath[PATH_MAX+1];
-
-	sprintf(relpath, "%s/%s-1", group ? group : "lxc", name);
-
-	cgrelpath1 = lxc_cgroup_path_create(group, name);
-	if (!cgrelpath1) {
-		TSTERR("lxc_cgroup_path_create returned NULL");
-		goto err1;
-	}
-	cgrelpath2 = lxc_cgroup_path_create(group, name);
-	if (!cgrelpath2) {
-		TSTERR("lxc_cgroup_path_create returned NULL");
-		goto err2;
-	}
-	if (strcmp(cgrelpath2, relpath)) {
-		TSTERR("unexpected name for duplicate %s", cgrelpath2);
-		goto err3;
-	}
-
-	ret = 0;
-err3:
-	lxc_cgroup_destroy(cgrelpath2);
-	free(cgrelpath2);
-err2:
-	lxc_cgroup_destroy(cgrelpath1);
-	free(cgrelpath1);
-err1:
-	return ret;
-}
-
-/*
- * test_basic: Test cgroup functions that don't require a running container
- *
- * @group : name of the container group or NULL for default "lxc"
- * @name  : name of the container
- *
- * Returns 0 on success, < 0 on failure
- */
-static int test_basic(const char *group, const char *name)
-{
-	int ret = -1;
-	char *cgabspath;
-	char *cgrelpath;
-	char  relpath[PATH_MAX+1];
-
-	sprintf(relpath, "%s/%s", group ? group : "lxc", name);
-
-	cgrelpath = lxc_cgroup_path_create(group, name);
-	if (!cgrelpath) {
-		TSTERR("lxc_cgroup_path_create returned NULL");
-		goto err1;
-	}
-	if (!strstr(cgrelpath, relpath)) {
-		TSTERR("lxc_cgroup_path_create %s not in %s", relpath, cgrelpath);
-		goto err2;
-	}
-
-	cgabspath = cgroup_path_get("freezer", cgrelpath);
-	if (!cgabspath) {
-		TSTERR("cgroup_path_get returned NULL");
-		goto err2;
-	}
-	if (!strstr(cgabspath, relpath)) {
-		TSTERR("cgroup_path_get %s not in %s", relpath, cgabspath);
-		goto err3;
-	}
-
-	ret = lxc_cgroup_destroy(cgrelpath);
-	if (ret < 0) {
-		TSTERR("lxc_cgroup_destroy failed");
-		goto err3;
-	}
-err3:
-	free(cgabspath);
-err2:
-	free(cgrelpath);
-err1:
-	return ret;
-}
-
-/*
  * test_running_container: test cgroup functions against a running container
  *
  * @group : name of the container group or NULL for default "lxc"
@@ -141,7 +45,7 @@ err1:
 static int test_running_container(const char *lxcpath,
 				  const char *group, const char *name)
 {
-	int nrtasks, ret = -1;
+	int ret = -1;
 	struct lxc_container *c = NULL;
 	char *cgrelpath;
 	char *cgabspath;
@@ -160,7 +64,7 @@ static int test_running_container(const char *lxcpath,
 		goto err2;
 	}
 
-	cgrelpath = lxc_cmd_get_cgroup_path(c->name, c->config_path);
+	cgrelpath = lxc_cmd_get_cgroup_path(c->name, c->config_path, "freezer");
 	if (!cgrelpath) {
 		TSTERR("lxc_cmd_get_cgroup_path returned NULL");
 		goto err2;
@@ -179,7 +83,7 @@ static int test_running_container(const char *lxcpath,
 	}
 	strcpy(value_save, value);
 
-	ret = lxc_cgroup_set_bypath(cgrelpath, "memory.swappiness", "100");
+	ret = lxc_cgroup_set(c->name, "memory.swappiness", "100", c->config_path);
 	if (ret < 0) {
 		TSTERR("lxc_cgroup_set_bypath failed");
 		goto err3;
@@ -210,12 +114,6 @@ static int test_running_container(const char *lxcpath,
 	}
 	if (strcmp(value, value_save)) {
 		TSTERR("lxc_cgroup_set failed to set value >%s<", value);
-		goto err3;
-	}
-
-	nrtasks = lxc_cgroup_nrtasks(cgrelpath);
-	if (nrtasks < 1) {
-		TSTERR("failed getting nrtasks");
 		goto err3;
 	}
 
@@ -311,18 +209,6 @@ int main()
 		TSTERR("requires privilege");
 		exit(0);
 	}
-
-	if (test_basic(NULL, MYNAME) < 0)
-		goto out;
-	if (test_basic("ab", MYNAME) < 0)
-		goto out;
-	printf("Basic cgroup path tests...Passed\n");
-
-	if (test_same_name(NULL, MYNAME) < 0)
-		goto out;
-	if (test_same_name("ab", MYNAME) < 0)
-		goto out;
-	printf("Same name tests...Passed\n");
 
 	#if TEST_ALREADY_RUNNING_CT
 

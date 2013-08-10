@@ -1487,47 +1487,6 @@ static int setup_kmsg(const struct lxc_rootfs *rootfs,
 	return 0;
 }
 
-static int _setup_cgroup(const char *cgpath, struct lxc_list *cgroups,
-			  int devices)
-{
-	struct lxc_list *iterator;
-	struct lxc_cgroup *cg;
-	int ret = -1;
-
-	if (lxc_list_empty(cgroups))
-		return 0;
-
-	lxc_list_for_each(iterator, cgroups) {
-		cg = iterator->elem;
-
-		if (devices == !strncmp("devices", cg->subsystem, 7)) {
-			if (lxc_cgroup_set_bypath(cgpath, cg->subsystem,
-			    cg->value)) {
-				ERROR("Error setting %s to %s for %s\n",
-				      cg->subsystem, cg->value, cgpath);
-				goto out;
-			}
-		}
-
-		DEBUG("cgroup '%s' set to '%s'", cg->subsystem, cg->value);
-	}
-
-	ret = 0;
-	INFO("cgroup has been setup");
-out:
-	return ret;
-}
-
-int setup_cgroup_devices(const char *cgpath, struct lxc_list *cgroups)
-{
-	return _setup_cgroup(cgpath, cgroups, 1);
-}
-
-int setup_cgroup(const char *cgpath, struct lxc_list *cgroups)
-{
-	return _setup_cgroup(cgpath, cgroups, 0);
-}
-
 static void parse_mntopt(char *opt, unsigned long *flags, char **data)
 {
 	struct mount_opt *mo;

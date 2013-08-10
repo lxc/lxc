@@ -341,6 +341,7 @@ static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
 
+extern char *cgroup_get_subsys_path(struct lxc_handler *handler, const char *subsys);
 /*
  * lxc_cmd_get_cgroup_path: Calculate a container's cgroup path for a
  * particular subsystem. This is the cgroup path relative to the root
@@ -348,15 +349,21 @@ static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
  *
  * @name      : name of container to connect to
  * @lxcpath   : the lxcpath in which the container is running
+ * @subsystem : the subsystem being asked about
  *
  * Returns the path on success, NULL on failure. The caller must free() the
  * returned path.
  */
-char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath)
+char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
+	const char *subsystem)
 {
 	int ret, stopped = 0;
 	struct lxc_cmd_rr cmd = {
-		.req = { .cmd = LXC_CMD_GET_CGROUP },
+		.req = {
+			.cmd = LXC_CMD_GET_CGROUP,
+			.datalen = strlen(subsystem)+1,
+			.data = subsystem,
+		},
 	};
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
@@ -381,10 +388,17 @@ char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath)
 static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 				       struct lxc_handler *handler)
 {
-	struct lxc_cmd_rsp rsp = {
-		.datalen = strlen(handler->cgroup) + 1,
-		.data = handler->cgroup,
-	};
+	struct lxc_cmd_rsp rsp;
+	char *path;
+
+	if (req->datalen < 1)
+		return -1;
+
+	path = cgroup_get_subsys_path(handler, req->data);
+	if (!path)
+		return -1;
+	rsp.datalen = strlen(path) + 1,
+	rsp.data = path;
 
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
@@ -535,7 +549,13 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.ret = kill(handler->pid, stopsignal);
 	if (!rsp.ret) {
-		ret = lxc_unfreeze_bypath(handler->cgroup);
+		char *path = cgroup_get_subsys_path(handler, "freezer");
+		if (!path) {
+			ERROR("container %s:%s is not in a freezer cgroup",
+				handler->lxcpath, handler->name);
+			return 0;
+		}
+		ret = lxc_unfreeze_bypath(path);
 		if (!ret)
 			return 0;
 

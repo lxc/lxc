@@ -301,8 +301,6 @@ struct lxc_conf {
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
 		  const char *lxcpath, char *argv[]);
 
-extern int setup_cgroup(const char *cgpath, struct lxc_list *cgroups);
-extern int setup_cgroup_devices(const char *cgpath, struct lxc_list *cgroups);
 extern int detect_shared_rootfs(void);
 
 /*

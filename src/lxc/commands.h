@@ -69,7 +69,12 @@ struct lxc_cmd_console_rsp_data {
 extern int lxc_cmd_console_winch(const char *name, const char *lxcpath);
 extern int lxc_cmd_console(const char *name, int *ttynum, int *fd,
 			   const char *lxcpath);
-extern char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath);
+/*
+ * Get the 'real' cgroup path (as seen in /proc/self/cgroup) for a container
+ * for a particular subsystem
+ */
+extern char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
+			const char *subsystem);
 extern int lxc_cmd_get_clone_flags(const char *name, const char *lxcpath);
 extern char *lxc_cmd_get_config_item(const char *name, const char *item, const char *lxcpath);
 extern pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath);

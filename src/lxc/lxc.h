@@ -136,15 +136,17 @@ extern int lxc_unfreeze_bypath(const char *cgpath);
  */
 extern lxc_state_t lxc_state(const char *name, const char *lxcpath);
 
+struct lxc_handler;
 /*
  * Set a specified value for a specified subsystem. The specified
  * subsystem must be fully specified, eg. "cpu.shares"
- * @cgpath    : the cgroup path of the container
+ * @d         : the cgroup descriptor for the container
  * @filename  : the cgroup attribute filename
  * @value     : the value to be set
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_cgroup_set_bypath(const char *cgpath, const char *filename, const char *value);
+extern int lxc_cgroup_set_value(struct lxc_handler *hander, const char *filename,
+				const char *value);
 
 /*
  * Set a specified value for a specified subsystem. The specified

@@ -374,8 +374,7 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 	handler->conf->maincmd_fd = -1;
 	free(handler->name);
 	if (handler->cgroup) {
-		lxc_cgroup_destroy(handler->cgroup);
-		free(handler->cgroup);
+		lxc_cgroup_destroy_desc(handler->cgroup);
 		handler->cgroup = NULL;
 	}
 	free(handler);
@@ -594,12 +593,11 @@ int save_phys_nics(struct lxc_conf *conf)
 	return 0;
 }
 
-extern bool is_in_subcgroup(int pid, const char *subsystem, const char *cgpath);
+extern bool is_in_subcgroup(int pid, const char *subsystem, struct cgroup_desc *d);
 int lxc_spawn(struct lxc_handler *handler)
 {
-	int failed_before_rename = 0, len;
+	int failed_before_rename = 0;
 	const char *name = handler->name;
-	char *curcgroup = NULL;
 
 	if (lxc_sync_init(handler))
 		return -1;
@@ -661,18 +659,10 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 		failed_before_rename = 1;
 
-	if ((len = lxc_curcgroup(NULL, 0)) > 1) {
-		curcgroup = alloca(len);
-		if (lxc_curcgroup(curcgroup, len) <= 1)
-			curcgroup = NULL;
-		FILE *f = fopen("/tmp/a", "a");
-		fprintf(f, "curcgroup is %s\n", curcgroup);
-		fclose(f);
-	}
-	if ((handler->cgroup = lxc_cgroup_path_create(curcgroup, name)) == NULL)
+	if ((handler->cgroup = lxc_cgroup_path_create(name)) == NULL)
 		goto out_delete_net;
 
-	if (setup_cgroup(handler->cgroup, &handler->conf->cgroup)) {
+	if (setup_cgroup(handler, &handler->conf->cgroup)) {
 		ERROR("failed to setup the cgroups for '%s'", name);
 		goto out_delete_net;
 	}
@@ -707,15 +697,9 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
 		goto out_delete_net;
 
-	if (setup_cgroup_devices(handler->cgroup, &handler->conf->cgroup)) {
-		/* an unfortunate special case: startup hooks may have already
-		 * setup the cgroup.  If a setting fails, and this is the devices
-		 * subsystem, *and* we are already in a subset of the cgroup,
-		 * then ignore the failure */
-		if (!is_in_subcgroup(handler->pid, "devices", handler->cgroup)) {
-			ERROR("failed to setup the devices cgroup for '%s'", name);
-			goto out_delete_net;
-		}
+	if (setup_cgroup_devices(handler, &handler->conf->cgroup)) {
+		ERROR("failed to setup the devices cgroup for '%s'", name);
+		goto out_delete_net;
 	}
 
 	/* Tell the child to complete its initialization and wait for
