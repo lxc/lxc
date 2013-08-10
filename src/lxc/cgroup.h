@@ -24,15 +24,25 @@
 #define _cgroup_h
 #include <stdbool.h>
 
+/*
+ * cgroup_desc: describe a container's cgroup membership
+ */
+struct cgroup_desc {
+	char *mntpt; /* where this is mounted */
+	char *subsystems; /* comma-separated list of subsystems, or NULL */
+	char *curcgroup; /* task's current cgroup */
+	char *fullpath; /* full path of task's current cgroup */
+	struct cgroup_desc *next;
+};
+
 struct lxc_handler;
-extern int lxc_cgroup_destroy(const char *cgpath);
+extern int lxc_cgroup_destroy_desc(struct cgroup_desc *cgroups);
 extern char *lxc_cgroup_path_get(const char *subsystem, const char *name,
 			      const char *lxcpath);
 extern int lxc_cgroup_nrtasks(const char *cgpath);
 extern char *lxc_cgroup_path_create(const char *lxcgroup, const char *name);
-extern int lxc_cgroup_enter(const char *cgpath, pid_t pid);
+extern int lxc_cgroup_enter(struct cgroup_desc *cgroups, pid_t pid);
 extern int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath);
 extern char *cgroup_path_get(const char *subsystem, const char *cgpath);
 extern bool is_in_subcgroup(int pid, const char *subsystem, const char *cgpath);
-extern int lxc_curcgroup(char *cgroup, int inlen);
 #endif

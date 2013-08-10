@@ -37,6 +37,8 @@ struct lxc_operations {
 	int (*post_start)(struct lxc_handler *, void *);
 };
 
+struct cgroup_desc;
+
 struct lxc_handler {
 	pid_t pid;
 	char *name;
@@ -53,7 +55,7 @@ struct lxc_handler {
 #endif
 	int pinfd;
 	const char *lxcpath;
-	char *cgroup;
+	struct cgroup_desc *cgroup;
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *, const char *);

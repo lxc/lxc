@@ -747,51 +747,37 @@ err1:
 	return NULL;
 }
 
-int lxc_cgroup_enter(const char *cgpath, pid_t pid)
+int lxc_cgroup_enter(struct cgroup_desc *cgroups, pid_t pid)
 {
 	char path[MAXPATHLEN];
-	FILE *file = NULL, *fout;
-	struct mntent mntent_r;
-	int ret, retv = -1;
-	char buf[LARGE_MAXPATHLEN] = {0};
 
-	file = setmntent(MTAB, "r");
-	if (!file) {
-		SYSERROR("failed to open %s", MTAB);
-		return -1;
-	}
-
-	while ((getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
-		if (strcmp(mntent_r.mnt_type, "cgroup"))
-			continue;
-		if (!mount_has_subsystem(&mntent_r))
-			continue;
-		ret = snprintf(path, MAXPATHLEN, "%s/%s/tasks",
-			       mntent_r.mnt_dir, cgpath);
+	while (cgroups) {
+		if (!cgroups->subsystems)
+			goto next;
+		ret = snprintf(path, MAXPATHLEN, "%s/tasks", cgroups->fullpath);
 		if (ret < 0 || ret >= MAXPATHLEN) {
 			ERROR("Error entering cgroup");
-			goto out;
+			return -1;
 		}
 		fout = fopen(path, "w");
 		if (!fout) {
 			SYSERROR("Error entering cgroup");
-			goto out;
+			return -1;
 		}
 		if (fprintf(fout, "%d\n", (int)pid) < 0) {
 			ERROR("Error writing pid to %s", path);
 			fclose(fout);
-			goto out;
+			return -1;
 		}
 		if (fclose(fout) < 0) {
 			SYSERROR("Error writing pid to %s", path);
-			goto out;
+			return -1;
 		}
-	}
-	retv = 0;
 
-out:
-	endmntent(file);
-	return retv;
+next:
+		cgroups = cgroups->next;
+	}
+	return 0;
 }
 
 static int cgroup_rmdir(char *dirname)
@@ -837,58 +823,22 @@ static int cgroup_rmdir(char *dirname)
 	return ret;
 }
 
-static int lxc_one_cgroup_destroy(struct mntent *mntent, const char *cgpath)
-{
-	char cgname[MAXPATHLEN];
-	char *cgmnt = mntent->mnt_dir;
-	int rc;
-
-	rc = snprintf(cgname, MAXPATHLEN, "%s/%s", cgmnt, cgpath);
-	if (rc < 0 || rc >= MAXPATHLEN) {
-		ERROR("name too long");
-		return -1;
-	}
-	DEBUG("destroying %s\n", cgname);
-	if (cgroup_rmdir(cgname)) {
-		SYSERROR("failed to remove cgroup '%s'", cgname);
-		return -1;
-	}
-
-	DEBUG("'%s' unlinked", cgname);
-
-	return 0;
-}
-
 /*
  * for each mounted cgroup, destroy the cgroup for the container
  */
-int lxc_cgroup_destroy(const char *cgpath)
+int lxc_cgroup_destroy_desc(struct cgroup_desc *cgroups)
 {
-	struct mntent mntent_r;
-	FILE *file = NULL;
-	int err, retv  = 0;
-
-	char buf[LARGE_MAXPATHLEN] = {0};
-
-	file = setmntent(MTAB, "r");
-	if (!file) {
-		SYSERROR("failed to open %s", MTAB);
-		return -1;
+	while (cgroups) {
+		char *next = cgroups->next;
+		if (cgroup_rmdir(cgroups->fullpath) < 0)
+			SYSERROR("removing cgroup directory %s", cgroups->fullpath);
+		free(cgroups->mntpt);
+		free(cgroups->subsystems);
+		free(cgroups->curcgroup);
+		free(cgroups->fullpath);
+		free(cgroups);
+		cgroups = next;
 	}
-
-	while ((getmntent_r(file, &mntent_r, buf, sizeof(buf)))) {
-		if (strcmp(mntent_r.mnt_type, "cgroup"))
-			continue;
-		if (!mount_has_subsystem(&mntent_r))
-			continue;
-
-		err = lxc_one_cgroup_destroy(&mntent_r, cgpath);
-		if (err)  // keep trying to clean up the others
-			retv = -1;
-	}
-
-	endmntent(file);
-	return retv;
 }
 
 int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath)
@@ -943,50 +893,4 @@ bool is_in_subcgroup(int pid, const char *subsystem, const char *cgpath)
 	}
 	fclose(f);
 	return false;
-}
-
-/*
- * Return cgroup of current task.
- * This assumes that task is in the same cgroup for each controller.  This
- * may or may not *always* be a reasonable assumption - it generally is,
- * and handling or at least checking for this condition is a TODO.
- */
-int lxc_curcgroup(char *cgroup, int inlen)
-{
-	FILE *f;
-	char *line = NULL, *p, *p2;
-	int ret = 0;
-	size_t len;
-
-	f = fopen("/proc/self/cgroup", "r");
-	if (!f)
-		return -1;
-
-	while (getline(&line, &len, f) != -1) {
-		if (strstr(line, ":freezer:") == NULL && strstr(line, ":devices:") == NULL)
-			continue;
-		p = rindex(line, ':');
-		if (!p)
-			continue;
-		p++;
-		len = strlen(p) + 1;
-		p2 = p + len - 2;
-		while (*p2 == '\n') { len--; *p2 = '\0'; p2--; }
-		if (!cgroup || inlen <= 0) {
-			ret = len;
-			break;
-		}
-		if (cgroup && len > inlen) {
-			ret = -1;
-			break;
-		}
-		strncpy(cgroup, p, len);
-		ret = len;
-		cgroup[len-1] = '\0';
-		break;
-	}
-
-	if (line)
-		free(line);
-	return ret;
 }

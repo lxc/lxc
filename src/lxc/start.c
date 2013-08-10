@@ -374,8 +374,7 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 	handler->conf->maincmd_fd = -1;
 	free(handler->name);
 	if (handler->cgroup) {
-		lxc_cgroup_destroy(handler->cgroup);
-		free(handler->cgroup);
+		lxc_cgroup_destroy_desc(handler->cgroup);
 		handler->cgroup = NULL;
 	}
 	free(handler);
@@ -599,7 +598,6 @@ int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0, len;
 	const char *name = handler->name;
-	char *curcgroup = NULL;
 
 	if (lxc_sync_init(handler))
 		return -1;
@@ -661,15 +659,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 		failed_before_rename = 1;
 
-	if ((len = lxc_curcgroup(NULL, 0)) > 1) {
-		curcgroup = alloca(len);
-		if (lxc_curcgroup(curcgroup, len) <= 1)
-			curcgroup = NULL;
-		FILE *f = fopen("/tmp/a", "a");
-		fprintf(f, "curcgroup is %s\n", curcgroup);
-		fclose(f);
-	}
-	if ((handler->cgroup = lxc_cgroup_path_create(curcgroup, name)) == NULL)
+	if ((handler->cgroup = lxc_cgroup_path_create(name)) == NULL)
 		goto out_delete_net;
 
 	if (setup_cgroup(handler->cgroup, &handler->conf->cgroup)) {
