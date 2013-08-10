@@ -45,9 +45,8 @@
 #define CONF_FILE "/tmp/lxc-usernet"
 #define DB_FILE "/tmp/nics"
 #else
-/* TODO These should be set through configure.ac */
-#define CONF_FILE "/etc/lxc/lxc-usernet"
-#define DB_FILE "/var/lib/lxc/nics"
+#define CONF_FILE LXC_USERNIC_CONF
+#define DB_FILE LXC_USERNIC_DB
 #endif
 
 
@@ -87,7 +86,7 @@
 
 void usage(char *me, bool fail)
 {
-	printf("Usage: %s pid type bridge\n", me);
+	fprintf(stderr, "Usage: %s pid type bridge\n", me);
 	exit(fail ? 1 : 0);
 }
 
@@ -716,6 +715,27 @@ bool get_nic_if_avail(int fd, char *me, char *pid, char *intype, char *br, int a
 	return true;
 }
 
+bool create_db_dir(char *fnam)
+{
+	char *p = alloca(strlen(fnam)+1);
+
+	strcpy(p, fnam);
+	fnam = p;
+	p = p + 1;
+again:
+	while (*p && *p != '/') p++;
+	if (!*p)
+		return true;
+	*p = '\0';
+	if (mkdir(fnam, 0755) && errno != EEXIST) {
+		fprintf(stderr, "failed to create %s\n", fnam);
+		*p = '/';
+		return false;
+	}
+	*(p++) = '/';
+	goto again;
+}
+
 int main(int argc, char *argv[])
 {
 	int n, fd;
@@ -724,15 +744,20 @@ int main(int argc, char *argv[])
 	char *nicname = alloca(40);
 
 	if ((me = get_username(&buf)) == NULL) {
-		printf("Failed to get username\n");
+		fprintf(stderr, "Failed to get username\n");
 		exit(1);
 	}
 
 	if (argc != 4)
 		usage(argv[0], true);
 
+	if (!create_db_dir(DB_FILE)) {
+		fprintf(stderr, "Failed to create directory for db file\n");
+		exit(1);
+	}
+
 	if ((fd = open_and_lock(DB_FILE)) < 0) {
-		printf("Failed to lock %s\n", DB_FILE);
+		fprintf(stderr, "Failed to lock %s\n", DB_FILE);
 		exit(1);
 	}
 
@@ -741,10 +766,9 @@ int main(int argc, char *argv[])
 		gotone = get_nic_if_avail(fd, me, argv[1], argv[2], argv[3], n, &nicname);
 	close(fd);
 	if (!gotone) {
-		printf("Quota reached\n");
+		fprintf(stderr, "Quota reached\n");
 		exit(1);
 	}
-	printf("got nic name %s\n", nicname);
 
 	// Now create the link
 

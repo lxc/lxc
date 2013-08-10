@@ -189,6 +189,18 @@ AC_ARG_WITH([global-conf],
 		[global lxc configuration file]
 	)], [], [with_global_conf=['${sysconfdir}/lxc/lxc.conf']])
 
+AC_ARG_WITH([usernic-conf],
+	[AC_HELP_STRING(
+		[--with-usernic-conf],
+		[user network interface configuration file]
+	)], [], [with_usernic_conf=['${sysconfdir}/lxc/lxc-usernet']])
+
+AC_ARG_WITH([usernic-db],
+	[AC_HELP_STRING(
+		[--with-usernic-db],
+		[lxc user nic database]
+	)], [], [with_usernic_db=['/run/lxc/nics']])
+
 # Rootfs path, where the container mount structure is assembled
 AC_ARG_WITH([rootfs-path],
 	[AC_HELP_STRING(
@@ -231,6 +243,8 @@ AS_AC_EXPAND(LXC_DISTRO_CONF, "$distroconf")
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 AS_AC_EXPAND(LXCPATH, "$with_config_path")
 AS_AC_EXPAND(LXC_GLOBAL_CONF, "$with_global_conf")
+AS_AC_EXPAND(LXC_USERNIC_CONF, "$with_usernic_conf")
+AS_AC_EXPAND(LXC_USERNIC_DB, "$with_usernic_db")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "$with_rootfs_path")
 AS_AC_EXPAND(LXCTEMPLATEDIR, "$datadir/lxc/templates")
 AS_AC_EXPAND(LXCHOOKDIR, "$datadir/lxc/hooks")
