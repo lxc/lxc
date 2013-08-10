@@ -1,21 +1,21 @@
 #!/bin/bash
-## If the container being cloned has one or more lxc.hook.clone specified,
-## then the specified hooks will be called for the new  container.  The first
-## 3 arguments passed to the clone hook will be:
+## If the container being cloned has one or more lxc.hook.clone
+## specified, then the specified hooks will be called for the new
+## container.  The arguments passed to the clone hook are:
 ##  1. the container name
 ##  2. a section ('lxc')
 ##  3. hook type ('clone')
 ##  4. .. additional arguments to lxc-clone
 ## Environment variables:
-##  LXC_ROOTFS_MOUNT: path under which the container's root fs is mounted.
-##  LXC_CONFIG_FILE:  The configuration file pathname
-##  LXC_SRC_NAME: old container name
-##  LXC_ROOTFS_PATH: path or device on which the root fs is located
+##  LXC_ROOTFS_MOUNT: path to the root filesystem
+##  LXC_CONFIG_FILE:  path to config file
+##  LXC_SRC_NAME:     old container name
+##  LXC_ROOTFS_PATH:  path or device on which the root fs is located
 
 VERBOSITY="0"
 
 error() { echo "$@" 1>&2; }
-debug() { [ "$1" -ge "$VERBOSITY" ] || return; shift; error "$@"; }
+debug() { [ "$VERBOSITY" -ge "$1" ] || return; shift; error "$@"; }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
 prep_usage() {
@@ -122,7 +122,10 @@ prep() {
             MIRROR="http://archive.ubuntu.com/ubuntu"
         fi
 
-        {
+        if [ -n "$userdata" ]; then
+            cp "$userdata" "$seed_d/user-data"
+        else
+            {
             local lc=$(locale | awk -F= '/LANG=/ {print $NF; }')
             echo "#cloud-config"
             echo "output: {all: '| tee -a /var/log/cloud-init-output.log'}"
@@ -131,8 +134,8 @@ prep() {
             [ -z "$LANG" ] || echo "locale: $LANG";
             echo "password: ubuntu"
             echo "chpasswd: { expire: false; }"
-            
-        } > "$seed_d/user-data"
+            } > "$seed_d/user-data"
+        fi
         [ $? -eq 0 ] || {
             error "failed to write user-data write to '$seed_d/user-data'";
             return 1;
