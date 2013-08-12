@@ -157,9 +157,9 @@ if ! lxc-info -n $lxc_name -P $lxc_path --state-is "STOPPED"; then
 fi
 
 # Deduce the type of rootfs
-# If LVM partition, destroy it. For btrfs, we delete the subvolue. If anything
+# If LVM partition, destroy it. For btrfs, we delete the subvolume. If anything
 # else, ignore it. We'll support deletion of others later.
-rootdev=`grep lxc.rootfs $lxc_path/$lxc_name/config 2>/dev/null | sed -e 's/^[^/]*//'`
+rootdev=`grep '^\s*lxc\.rootfs' $lxc_path/$lxc_name/config 2>/dev/null | sed -e 's/^[^/]*//'`
 if [ -n "$rootdev" ]; then
     if [ `verify_lvm $rootdev` = "lvm" ]; then
         if [ `busy_lvm $rootdev` = "busy" ]; then
