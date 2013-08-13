@@ -26,6 +26,7 @@
 set -e
 
 c=$1
+configfile=$LXC_CONFIG_FILE
 d=/sys/fs/cgroup
 d2=$LXC_ROOTFS_MOUNT/${d}
 # name lxc hook lxcpath
@@ -42,7 +43,7 @@ do_devices_setup() {
     local line
     local w  # which (allow or deny)
     local v  # value
-    egrep "^lxc.cgroup.devices.(allow|deny)[ \t]*=" ${lxcpath}/${c}/config | while read line; do
+    egrep "^lxc.cgroup.devices.(allow|deny)[ \t]*=" ${configfile} | while read line; do
         w=`echo $line | awk -F. '{ print $4 }' | awk '{ print $1 }'`
         v=`echo $line | awk -F= '{ print $2 }'`
         echo "$v" >> "$devdir"/devices.$w
