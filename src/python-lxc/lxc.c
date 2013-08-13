@@ -34,10 +34,18 @@ typedef struct {
 
 char**
 convert_tuple_to_char_pointer_array(PyObject *argv) {
-    int argc = PyTuple_GET_SIZE(argv);
+    int argc;
     int i, j;
+    
+    /* not a list or tuple */
+    if (!PyList_Check(argv) && !PyTuple_Check(argv)) {
+        PyErr_SetString(PyExc_TypeError, "Expected list or tuple.");
+        return NULL;
+    }
 
-    char **result = (char**) malloc(sizeof(char*)*argc + 1);
+    argc = PySequence_Fast_GET_SIZE(argv);
+
+    char **result = (char**) calloc(argc + 1, sizeof(char*));
 
     if (result == NULL) {
         PyErr_SetNone(PyExc_MemoryError);
@@ -45,7 +53,7 @@ convert_tuple_to_char_pointer_array(PyObject *argv) {
     }
 
     for (i = 0; i < argc; i++) {
-        PyObject *pyobj = PyTuple_GET_ITEM(argv, i);
+        PyObject *pyobj = PySequence_Fast_GET_ITEM(argv, i);
         assert(pyobj != NULL);
 
         char *str = NULL;
