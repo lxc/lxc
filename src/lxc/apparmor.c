@@ -42,12 +42,13 @@ again:
 	}
 	sz += 1024;
 	buf = realloc(buf, sz);
+	memset(buf, 0, sz);
 	if (!buf) {
 		ERROR("out of memory");
 		fclose(f);
 		return NULL;
 	}
-	ret = fread(buf, 1, sz, f);
+	ret = fread(buf, 1, sz - 1, f);
 	fclose(f);
 	if (ret >= sz)
 		goto again;
