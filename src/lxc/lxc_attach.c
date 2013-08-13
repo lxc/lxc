@@ -24,6 +24,7 @@
 #define _GNU_SOURCE
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <stdlib.h>
 
 #include "attach.h"
 #include "arguments.h"
@@ -44,6 +45,8 @@ static const struct option my_longopts[] = {
 	/* TODO: decide upon short option names */
 	{"clear-env", no_argument, 0, 500},
 	{"keep-env", no_argument, 0, 501},
+	{"keep-var", required_argument, 0, 502},
+	{"set-var", required_argument, 0, 'v'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -52,6 +55,32 @@ static signed long new_personality = -1;
 static int namespace_flags = -1;
 static int remount_sys_proc = 0;
 static lxc_attach_env_policy_t env_policy = LXC_ATTACH_KEEP_ENV;
+static char **extra_env = NULL;
+static ssize_t extra_env_size = 0;
+static char **extra_keep = NULL;
+static ssize_t extra_keep_size = 0;
+
+static int add_to_simple_array(char ***array, ssize_t *capacity, char *value)
+{
+	ssize_t count = 0;
+
+	if (*array)
+		for (; (*array)[count]; count++);
+
+	/* we have to reallocate */
+	if (count >= *capacity - 1) {
+		ssize_t new_capacity = ((count + 1) / 32 + 1) * 32;
+		char **new_array = realloc((void*)*array, sizeof(char *) * new_capacity);
+		if (!new_array)
+			return -1;
+		memset(&new_array[count], 0, sizeof(char*)*(new_capacity - count));
+		*array = new_array;
+		*capacity = new_capacity;
+	}
+
+	(*array)[count] = value;
+	return 0;
+}
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
@@ -81,6 +110,20 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
         case 501: /* keep-env */
                 env_policy = LXC_ATTACH_KEEP_ENV;
                 break;
+	case 502: /* keep-var */
+		ret = add_to_simple_array(&extra_keep, &extra_keep_size, arg);
+		if (ret < 0) {
+			lxc_error(args, "memory allocation error");
+			return -1;
+		}
+		break;
+	case 'v':
+		ret = add_to_simple_array(&extra_env, &extra_env_size, arg);
+		if (ret < 0) {
+			lxc_error(args, "memory allocation error");
+			return -1;
+		}
+		break;
 	}
 
 	return 0;
@@ -113,14 +156,18 @@ Options :\n\
                     mount namespace when using -s in order to properly\n\
                     reflect the correct namespace context. See the\n\
                     lxc-attach(1) manual page for details.\n\
-      --clear-env\n\
-                    Clear all environment variables before attaching.\n\
+      --clear-env   Clear all environment variables before attaching.\n\
                     The attached shell/program will start with only\n\
                     container=lxc set.\n\
-      --keep-env\n\
-                    Keep all current enivornment variables. This\n\
+      --keep-env    Keep all current enivornment variables. This\n\
                     is the current default behaviour, but is likely to\n\
-                    change in the future.\n",
+                    change in the future.\n\
+  -v, --set-var     Set an additional variable that is seen by the\n\
+                    attached program in the container. May be specified\n\
+                    multiple times.\n\
+      --keep-var    Keep an additional environment variable. Only\n\
+                    applicable if --clear-env is specified. May be used\n\
+                    multiple times.\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
@@ -153,6 +200,8 @@ int main(int argc, char *argv[])
 	attach_options.namespaces = namespace_flags;
 	attach_options.personality = new_personality;
 	attach_options.env_policy = env_policy;
+	attach_options.extra_env_vars = extra_env;
+	attach_options.extra_keep_env = extra_keep;
 
 	if (my_args.argc) {
 		command.program = my_args.argv[0];

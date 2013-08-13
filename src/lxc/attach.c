@@ -254,29 +254,96 @@ int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
 
 int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char** extra_env, char** extra_keep)
 {
-	/* TODO: implement extra_env, extra_keep
-	 * Rationale:
-	 *  - extra_env is an array of strings of the form
-	 *    "VAR=VALUE", which are to be set (after clearing or not,
-	 *    depending on the value of the policy variable)
-	 *  - extra_keep is an array of strings of the form
-	 *    "VAR", which are extra environment variables to be kept
-	 *    around after clearing (if that is done, otherwise, the
-	 *    remain anyway)
-	 */
-	(void) extra_env;
-	(void) extra_keep;
-
 	if (policy == LXC_ATTACH_CLEAR_ENV) {
+		char **extra_keep_store = NULL;
+		char *path_env;
+		size_t n;
+		int path_kept = 0;
+
+		if (extra_keep) {
+			size_t count, i;
+
+			for (count = 0; extra_keep[count]; count++);
+
+			extra_keep_store = calloc(count, sizeof(char *));
+			if (!extra_keep_store) {
+				SYSERROR("failed to allocate memory for storing current "
+				         "environment variable values that will be kept");
+				return -1;
+			}
+			for (i = 0; i < count; i++) {
+				char *v = getenv(extra_keep[i]);
+				if (v) {
+					extra_keep_store[i] = strdup(v);
+					if (!extra_keep_store[i]) {
+						SYSERROR("failed to allocate memory for storing current "
+						         "environment variable values that will be kept");
+						while (i > 0)
+							free(extra_keep_store[--i]);
+						free(extra_keep_store);
+						return -1;
+					}
+					if (strcmp(extra_keep[i], "PATH") == 0)
+						path_kept = 1;
+				}
+				/* calloc sets entire array to zero, so we don't
+				 * need an else */
+			}
+		}
+
 		if (clearenv()) {
 			SYSERROR("failed to clear environment");
-			/* don't error out though */
+			return -1;
+		}
+
+		if (extra_keep_store) {
+			size_t i;
+			for (i = 0; extra_keep[i]; i++) {
+				if (extra_keep_store[i])
+					setenv(extra_keep[i], extra_keep_store[i], 1);
+				free(extra_keep_store[i]);
+			}
+			free(extra_keep_store);
+		}
+
+		/* always set a default path; shells and execlp tend
+		 * to be fine without it, but there is a disturbing
+		 * number of C programs out there that just assume
+		 * that getenv("PATH") is never NULL and then die a
+		 * painful segfault death. */
+		if (!path_kept) {
+			n = confstr(_CS_PATH, NULL, 0);
+			path_env = malloc(n);
+			if (path_env) {
+				confstr(_CS_PATH, path_env, n);
+				setenv("PATH", path_env, 1);
+				free(path_env);
+			}
+			/* don't error out, this is just an extra service */
 		}
 	}
 
 	if (putenv("container=lxc")) {
 		SYSERROR("failed to set environment variable");
 		return -1;
+	}
+
+	/* set extra environment variables */
+	if (extra_env) {
+		for (; *extra_env; extra_env++) {
+			/* duplicate the string, just to be on
+			 * the safe side, because putenv does not
+			 * do it for us */
+			char *p = strdup(*extra_env);
+			/* we just assume the user knows what they
+			 * are doing, so we don't do any checks */
+			if (!p) {
+				SYSERROR("failed to allocate memory for additional environment "
+				         "variables");
+				return -1;
+			}
+			putenv(p);
+		}
 	}
 
 	return 0;
