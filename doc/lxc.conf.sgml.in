@@ -862,6 +862,27 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	at various times in a container's lifetime.
       </para>
       <para>
+        When a container hook is executed, information is passed both
+	as command line arguments and through environment variables.
+	The arguments are:
+	<itemizedlist>
+	  <listitem> Container name. </listitem>
+	  <listitem> Section (always 'lxc'). </listitem>
+	  <listitem> The hook type (i.e. 'clone' or 'pre-mount'). </listitem>
+	  <listitem> Additional arguments In the
+	  case of the clone hook, any extra arguments passed to
+	  lxc-clone will appear as further arguments to the hook. </listitem> 
+	</itemizedlist>
+	The following environment variables are set:
+	<itemizedlist>
+	  <listitem> LXC_NAME: is the container's name. </listitem>
+	  <listitem> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </listitem>
+	  <listitem> LXC_CONFIG_FILE: the path to the container configuration file. </listitem>
+	  <listitem> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </listitem>
+	  <listitem> LXC_ROOTFS_PATH: this is the lxc.rootfs enty for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </listitem>
+	</itemizedlist>
+      </para>
+      <para>
         Standard output from the hooks is logged at debug level.
         Standard error is not logged, but can be captured by the
         hook redirecting its standard error to standard output.
