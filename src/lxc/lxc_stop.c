@@ -130,14 +130,14 @@ int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	bool s;
-	int ret = -1;
+	int ret = 1;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		return -1;
+		return 1;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		return -1;
+		return 1;
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
@@ -147,12 +147,12 @@ int main(int argc, char *argv[])
 
 	if (!c->is_running(c)) {
 		fprintf(stderr, "%s is not running\n", c->name);
-		ret = -2;
+		ret = 2;
 		goto out;
 	}
 
 	if (my_args.hardstop) {
-		ret = c->stop(c) ? 0 : -1;
+		ret = c->stop(c) ? 0 : 1;
 		goto out;
 	}
 	if (my_args.reboot) {
@@ -163,9 +163,9 @@ int main(int argc, char *argv[])
 	s = c->shutdown(c, my_args.timeout);
 	if (!s) {
 		if (!my_args.shutdown)
-			ret = c->wait(c, "STOPPED", -1) ? 0 : -1;
+			ret = c->wait(c, "STOPPED", -1) ? 0 : 1;
 		else
-			ret = -1; // fail
+			ret = 1; // fail
 	} else
 		ret = 0;
 
