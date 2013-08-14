@@ -84,9 +84,16 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	if (!c->is_defined(c)) {
+		fprintf(stderr, "Container is not defined\n");
+		lxc_container_put(c);
+		exit(1);
+	}
+
 	if (c->is_running(c)) {
 		if (!my_args.force) {
 			fprintf(stderr, "%s is running\n", my_args.name);
+			lxc_container_put(c);
 			exit(1);
 		}
 		c->stop(c);
