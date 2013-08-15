@@ -1977,6 +1977,22 @@ struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 	exit(0);
 }
 
+static struct bdev * do_bdev_create(const char *dest, const char *type,
+			const char *cname, struct bdev_specs *specs)
+{
+	struct bdev *bdev = bdev_get(type);
+	if (!bdev) {
+		return NULL;
+	}
+
+	if (bdev->ops->create(bdev, dest, cname, specs) < 0) {
+		 bdev_put(bdev);
+		 return NULL;
+	}
+
+	return bdev;
+}
+
 /*
  * bdev_create:
  * Create a backing store for a container.
@@ -1992,22 +2008,34 @@ struct bdev *bdev_create(const char *dest, const char *type,
 			const char *cname, struct bdev_specs *specs)
 {
 	struct bdev *bdev;
+	char *best_options[] = {"btrfs", "zfs", "lvm", "dir", NULL};
 
 	if (!type)
-		type = "dir";
+		return do_bdev_create(dest, "dir", cname, specs);
 
-	bdev = bdev_get(type);
-	if (!bdev) {
-		ERROR("Unknown fs type: %s\n", type);
-		return NULL;
+	if (strcmp(type, "best") == 0) {
+		int i;
+		// try for the best backing store type, according to our
+		// opinionated preferences
+		for (i=0; best_options[i]; i++) {
+			if ((bdev = do_bdev_create(dest, best_options[i], cname, specs)))
+				return bdev;
+		}
+		return NULL;  // 'dir' should never fail, so this shouldn't happen
 	}
 
-	if (bdev->ops->create(bdev, dest, cname, specs) < 0) {
-		 bdev_put(bdev);
-		 return NULL;
+	// -B lvm,dir
+	if (index(type, ',') != NULL) {
+		char *dup = alloca(strlen(type)+1), *saveptr, *token;
+		strcpy(dup, type);
+		for (token = strtok_r(dup, ",", &saveptr); token;
+				token = strtok_r(NULL, ",", &saveptr)) {
+			if ((bdev = do_bdev_create(dest, token, cname, specs)))
+				return bdev;
+		}
 	}
 
-	return bdev;
+	return do_bdev_create(dest, type, cname, specs);
 }
 
 char *overlayfs_getlower(char *p)

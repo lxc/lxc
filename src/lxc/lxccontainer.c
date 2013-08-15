@@ -679,8 +679,11 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 		return NULL;
 
 	bdev = bdev_create(dest, type, c->name, specs);
-	if (!bdev)
+	if (!bdev) {
+		ERROR("Failed to create backing store type %s\n", type);
 		return NULL;
+	}
+
 	lxcapi_set_config_item(c, "lxc.rootfs", bdev->src);
 	return bdev;
 }
