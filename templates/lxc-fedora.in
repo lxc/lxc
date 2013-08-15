@@ -567,11 +567,18 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-type /bin/systemd >/dev/null 2>&1
-if [ $? -ne 0 ]; then
-    configure_fedora_init
-else
+# If the systemd configuration directory exists - set it up for what we need.
+if [ -d ${rootfs_path}/etc/systemd/system ]
+then
     configure_fedora_systemd
+fi
+
+# This configuration (rc.sysinit) is not inconsistent with the systemd stuff
+# above and may actually coexist on some upgraded systems.  Let's just make
+# sure that, if it exists, we update this file, even if it's not used...
+if [ -f ${rootfs_path}/etc/rc.sysinit ]
+then
+    configure_fedora_init
 fi
 
 if [ ! -z $clean ]; then
