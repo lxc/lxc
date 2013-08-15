@@ -1993,24 +1993,8 @@ struct bdev *bdev_create(const char *dest, const char *type,
 {
 	struct bdev *bdev;
 
-	if (!type) {
-		char *p, *p1;
-
+	if (!type)
 		type = "dir";
-
-		/*
-		 * $lxcpath/$lxcname/rootfs doesn't yet exist.  Check
-		 * whether $lxcpath/$lxcname is btrfs.  If so, specify
-		 * btrfs backing store for the container.
-		 */
-		p = strdupa(dest);
-		p1 = rindex(p, '/');
-		if (p1) {
-			*p1 = '\0';
-			if (is_btrfs_fs(p))
-				type = "btrfs";
-		}
-	}
 
 	bdev = bdev_get(type);
 	if (!bdev) {
