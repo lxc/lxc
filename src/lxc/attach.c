@@ -261,8 +261,6 @@ int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char** extra
 {
 	if (policy == LXC_ATTACH_CLEAR_ENV) {
 		char **extra_keep_store = NULL;
-		char *path_env;
-		size_t n;
 		int path_kept = 0;
 
 		if (extra_keep) {
@@ -317,6 +315,10 @@ int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char** extra
 		 * that getenv("PATH") is never NULL and then die a
 		 * painful segfault death. */
 		if (!path_kept) {
+#ifdef HAVE_CONFSTR
+			size_t n;
+			char *path_env;
+
 			n = confstr(_CS_PATH, NULL, 0);
 			path_env = malloc(n);
 			if (path_env) {
@@ -325,6 +327,9 @@ int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char** extra
 				free(path_env);
 			}
 			/* don't error out, this is just an extra service */
+#else
+			setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 1);
+#endif
 		}
 	}
 
