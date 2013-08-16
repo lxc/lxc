@@ -1602,7 +1602,8 @@ static int overlayfs_mount(struct bdev *bdev)
 
 	//  separately mount it first
 	//  mount -t overlayfs -oupperdir=${upper},lowerdir=${lower} lower dest
-	dup = strdupa(bdev->src);
+	dup = alloca(strlen(bdev->src)+1);
+	strcpy(dup, bdev->src);
 	if (!(lower = index(dup, ':')))
 		return -22;
 	if (!(upper = index(++lower, ':')))
@@ -1770,7 +1771,8 @@ static int overlayfs_create(struct bdev *bdev, const char *dest, const char *n,
 		return -1;
 	}
 
-	delta = strdupa(dest);
+	delta = alloca(strlen(dest)+1);
+	strcpy(delta, dest);
 	strcpy(delta+len-6, "delta0");
 
 	if (mkdir_p(delta, 0755) < 0) {

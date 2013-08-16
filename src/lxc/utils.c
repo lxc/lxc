@@ -184,13 +184,15 @@ extern int mkdir_p(const char *dir, mode_t mode)
 	do {
 		dir = tmp + strspn(tmp, "/");
 		tmp = dir + strcspn(dir, "/");
-		makeme = strndupa(orig, dir - orig);
+		makeme = strndup(orig, dir - orig);
 		if (*makeme) {
 			if (mkdir(makeme, mode) && errno != EEXIST) {
 				SYSERROR("failed to create directory '%s'\n", makeme);
+				free(makeme);
 				return -1;
 			}
 		}
+		free(makeme);
 	} while(tmp != dir);
 
 	return 0;
