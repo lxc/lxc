@@ -48,6 +48,14 @@
 #include "parse.h"
 #include "utils.h"
 
+#ifndef BLKGETSIZE64
+#define BLKGETSIZE64 _IOR(0x12,114,size_t)
+#endif
+
+#ifndef LO_FLAGS_AUTOCLEAR
+#define LO_FLAGS_AUTOCLEAR 4
+#endif
+
 lxc_log_define(bdev, lxc);
 
 static int do_rsync(const char *src, const char *dest)
