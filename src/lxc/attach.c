@@ -830,7 +830,9 @@ int attach_child_main(void* data)
 	int ipc_socket = payload->ipc_socket;
 	lxc_attach_options_t* options = payload->options;
 	struct lxc_proc_context_info* init_ctx = payload->init_ctx;
+#if HAVE_SYS_PERSONALITY_H
 	long new_personality;
+#endif
 	int ret;
 	int status;
 	int expected;
