@@ -114,6 +114,8 @@ struct signalfd_siginfo
 #      define __NR_signalfd4 313
 #    elif __s390x__
 #      define __NR_signalfd4 322
+#    elif __arm__
+#      define __NR_signalfd4 355
 #    endif
 #endif
 
@@ -127,6 +129,8 @@ struct signalfd_siginfo
 #      define __NR_signalfd 305
 #    elif __s390x__
 #      define __NR_signalfd 316
+#    elif __arm__
+#      define __NR_signalfd 349
 #    endif
 #endif
 
