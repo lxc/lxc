@@ -288,7 +288,6 @@ static char *mkifname(char *template)
 	int i = 0;
 	FILE *urandom;
 	unsigned int seed;
-	char randstate[2048];
 	struct ifaddrs *ifaddr, *ifa;
 	int ifexists = 0;
 
@@ -304,7 +303,10 @@ static char *mkifname(char *template)
 	}
 	else
 		seed = time(0);
-	initstate(seed, randstate, 256);
+
+#ifndef HAVE_RAND_R
+	srand(seed);
+#endif
 
 	/* Generate random names until we find one that doesn't exist */
 	while(1) {
@@ -316,7 +318,11 @@ static char *mkifname(char *template)
 
 		for (i = 0; i < strlen(name); i++) {
 			if (name[i] == 'X') {
-				name[i] = padchar[random() % (strlen(padchar) - 1)];
+#ifdef HAVE_RAND_R
+				name[i] = padchar[rand_r(&seed) % (strlen(padchar) - 1)];
+#else
+				name[i] = padchar[rand() % (strlen(padchar) - 1)];
+#endif
 			}
 		}
 
