@@ -15,6 +15,7 @@ struct mntent
 };
 
 extern struct mntent *getmntent (FILE *stream);
+extern struct mntent *getmntent_r (FILE *stream, struct mntent *mp, char *buffer, int bufsiz);
 #endif
 
 #ifndef HAVE_SETMNTENT
