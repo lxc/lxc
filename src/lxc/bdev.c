@@ -1922,6 +1922,12 @@ struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 		}
 	}
 
+	/*
+	 * If newtype is NULL and snapshot is set, then use overlayfs
+	 */
+	if (!bdevtype && snap && strcmp(orig->type , "dir") == 0)
+		bdevtype = "overlayfs";
+
 	new = bdev_get(bdevtype ? bdevtype : orig->type);
 	if (!new) {
 		ERROR("no such block device type: %s", bdevtype ? bdevtype : orig->type);
