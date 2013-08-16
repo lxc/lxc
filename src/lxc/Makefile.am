@@ -1,22 +1,23 @@
 pkginclude_HEADERS = \
 		arguments.h \
-		start.h \
-		console.h \
-		error.h \
-		monitor.h \
-		utils.h \
-		namespace.h \
+		attach.h \
+		attach_options.h \
+		bdev.h \
 		caps.h \
-		lxc.h \
 		cgroup.h \
 		conf.h \
+		console.h \
+		error.h \
 		list.h \
 		log.h \
-		state.h \
-		attach.h \
 		lxccontainer.h \
+		lxc.h \
 		lxclock.h \
-		bdev.h \
+		monitor.h \
+		namespace.h \
+		start.h \
+		state.h \
+		utils.h \
 		version.h
 
 if IS_BIONIC
