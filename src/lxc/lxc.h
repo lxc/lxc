@@ -28,6 +28,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include <sys/select.h>
 #include <sys/types.h>
 #include <lxc/state.h>
 
