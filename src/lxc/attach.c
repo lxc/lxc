@@ -54,6 +54,10 @@
 #include <sys/personality.h>
 #endif
 
+#ifndef SOCK_CLOEXEC
+#  define SOCK_CLOEXEC                02000000
+#endif
+
 lxc_log_define(lxc_attach, lxc);
 
 struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
