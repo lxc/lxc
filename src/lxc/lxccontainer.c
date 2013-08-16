@@ -42,6 +42,7 @@
 #include "attach.h"
 #include <lxc/utils.h>
 #include <lxc/monitor.h>
+#include <lxc/namespace.h>
 #include <sched.h>
 #include <arpa/inet.h>
 
