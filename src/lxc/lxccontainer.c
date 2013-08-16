@@ -1645,7 +1645,7 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 	for (i=0; i<NUM_LXC_HOOKS; i++) {
 		lxc_list_for_each(it, &c->lxc_conf->hooks[i]) {
 			char *hookname = it->elem;
-			char *fname = rindex(hookname, '/');
+			char *fname = strrchr(hookname, '/');
 			char tmppath[MAXPATHLEN];
 			if (!fname) // relative path - we don't support, but maybe we should
 				return 0;
@@ -1706,7 +1706,7 @@ static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 	if (!oldpath)
 		return 0;
 
-	char *p = rindex(oldpath, '/');
+	char *p = strrchr(oldpath, '/');
 	if (!p)
 		return -1;
 	ret = snprintf(newpath, MAXPATHLEN, "%s/%s%s",
@@ -1845,7 +1845,7 @@ only rootfs gets converted (copied/snapshotted) on clone.
 
 static int create_file_dirname(char *path)
 {
-	char *p = rindex(path, '/');
+	char *p = strrchr(path, '/');
 	int ret;
 
 	if (!p)

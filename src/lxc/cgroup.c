@@ -246,7 +246,7 @@ char *lxc_cgroup_path_get(const char *subsystem, const char *name,
 		return strdup("/");
 	}
 	// path still has 'tasks' on the end, drop it
-	if ((p = rindex(path, '/')) != NULL)
+	if ((p = strrchr(path, '/')) != NULL)
 		*p = '\0';
 	return strdup(path);
 }
@@ -841,7 +841,7 @@ static char *find_free_cgroup(struct cgroup_desc *d, const char *lxc_name)
 	}
 	// found it
 	// path has '/tasks' at end, drop that
-	if (!(cgp = rindex(path, '/'))) {
+	if (!(cgp = strrchr(path, '/'))) {
 		ERROR("Got nonsensical path name %s\n", path);
 		return NULL;
 	}
