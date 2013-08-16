@@ -31,8 +31,13 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/syscall.h>
-#include <ifaddrs.h>
 #include <time.h>
+
+#if HAVE_IFADDRS_H
+#include <ifaddrs.h>
+#else
+#include <../include/ifaddrs.h>
+#endif
 
 #if HAVE_PTY_H
 #include <pty.h>

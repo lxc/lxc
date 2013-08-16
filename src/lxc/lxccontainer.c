@@ -44,7 +44,12 @@
 #include <lxc/monitor.h>
 #include <sched.h>
 #include <arpa/inet.h>
+
+#if HAVE_IFADDRS_H
 #include <ifaddrs.h>
+#else
+#include <../include/ifaddrs.h>
+#endif
 
 lxc_log_define(lxc_container, lxc);
 
