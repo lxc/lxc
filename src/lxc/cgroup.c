@@ -198,11 +198,8 @@ char *lxc_cgroup_path_get(const char *subsystem, const char *name,
 	pid_t initpid = lxc_cmd_get_init_pid(name, lxcpath);
 	int ret;
 
-	if (initpid < 0) {
-		ERROR("Error getting init pid for container %s:%s",
-			lxcpath, name);
+	if (initpid < 0)
 		return NULL;
-	}
 
 	cgpath = lxc_cmd_get_cgroup_path(name, lxcpath, subsystem);
 	if (!cgpath)
@@ -307,10 +304,8 @@ static bool cgroup_devices_has_deny(struct lxc_handler *h, char *v)
 		return -1;
 	}
 
-	if (!(f = fopen(path, "r"))) {
-		SYSERROR("Error opening devices.list");
+	if (!(f = fopen(path, "r")))
 		return -1;
-	}
 
 	while (getline(&line, &len, f) != -1) {
 		size_t len = strlen(line);
@@ -347,10 +342,8 @@ static bool cgroup_devices_has_allow(struct lxc_handler *h, char *v)
 		return -1;
 	}
 
-	if (!(f = fopen(path, "r"))) {
-		SYSERROR("Error opening devices.list");
+	if (!(f = fopen(path, "r")))
 		return -1;
-	}
 
 	while (getline(&line, &len, f) != -1) {
 		size_t len = strlen(line);
