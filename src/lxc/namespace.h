@@ -53,9 +53,6 @@
 #if defined(__ia64__)
 int __clone2(int (*__fn) (void *__arg), void *__child_stack_base,
              size_t __child_stack_size, int __flags, void *__arg, ...);
-#elif defined(IS_BIONIC)
-int clone(int (*fn)(void *), void *child_stack,
-	int flags, void *arg);
 #else
 int clone(int (*fn)(void *), void *child_stack,
 	int flags, void *arg, ...
