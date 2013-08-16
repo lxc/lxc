@@ -53,6 +53,12 @@
 #include <mntent.h>
 #endif
 
+#ifndef HAVE_GETLINE
+#ifdef HAVE_FGETLN
+#include <../include/getline.h>
+#endif
+#endif
+
 lxc_log_define(lxc_cgroup, lxc);
 
 #define MTAB "/proc/mounts"
