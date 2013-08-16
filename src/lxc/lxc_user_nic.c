@@ -28,6 +28,7 @@
 #include <alloca.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <errno.h>
 #include <ctype.h>
 #include <sys/stat.h>
@@ -40,6 +41,13 @@
 #include <linux/if_bridge.h>
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
+#include "config.h"
+
+#ifndef HAVE_GETLINE
+#ifdef HAVE_FGETLN
+#include <../include/getline.h>
+#endif
+#endif
 
 #if ISTEST
 #define CONF_FILE "/tmp/lxc-usernet"
@@ -116,16 +124,14 @@ int open_and_lock(char *path)
 
 char *get_username(char **buf)
 {
-	struct passwd pwd;
-	struct passwd *result;
-	int ret = getpwuid_r(getuid(), &pwd, *buf, 400, &result);
+	struct passwd *pwd = getpwuid(getuid());
 
-	if (ret < 0) {
-		perror("getpwuid_r");
+	if (pwd == NULL) {
+		perror("getpwuid");
 		return NULL;
 	}
 
-	return pwd.pw_name;
+	return pwd->pw_name;
 }
 
 /* The configuration file consists of lines of the form:
