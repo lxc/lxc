@@ -295,7 +295,13 @@ int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char** extra
 		}
 
 		if (clearenv()) {
+			char **p;
 			SYSERROR("failed to clear environment");
+			if (extra_keep_store) {
+				for (p = extra_keep_store; *p; p++)
+					free(*p);
+				free(extra_keep_store);
+			}
 			return -1;
 		}
 
