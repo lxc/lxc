@@ -450,6 +450,14 @@ def attach_run_shell():
     """
     return _lxc.attach_run_shell(None)
 
+def arch_to_personality(arch):
+    """
+        Determine the process personality corresponding to the architecture
+    """
+    if isinstance(arch, bytes):
+        arch = str(arch, 'utf-8')
+    return _lxc.arch_to_personality(arch)
+
 # Some constants for attach
 LXC_ATTACH_KEEP_ENV = _lxc.LXC_ATTACH_KEEP_ENV
 LXC_ATTACH_CLEAR_ENV = _lxc.LXC_ATTACH_CLEAR_ENV

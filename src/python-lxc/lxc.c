@@ -26,6 +26,7 @@
 #include <lxc/lxccontainer.h>
 #include <lxc/utils.h>
 #include <lxc/namespace.h>
+#include <lxc/confile.h>
 #include <stdio.h>
 #include <sys/wait.h>
 
@@ -887,6 +888,35 @@ LXC_attach_run_shell(PyObject *self, PyObject *arg)
 }
 
 static PyObject *
+LXC_arch_to_personality(PyObject *self, PyObject *arg)
+{
+    long rv = -1;
+    PyObject *pystr;
+    char *str;
+
+    if (!PyUnicode_Check(arg)) {
+        PyErr_SetString(PyExc_ValueError, "Expected a string");
+        return NULL;
+    }
+    
+    pystr = PyUnicode_AsUTF8String(arg);
+    if (!pystr)
+        return NULL;
+    
+    str = PyBytes_AsString(pystr);
+    if (!str)
+        goto out;
+    
+    rv = lxc_config_parse_arch(str);
+    if (rv == -1)
+        PyErr_SetString(PyExc_KeyError, "Failed to lookup architecture.");
+
+out:
+    Py_DECREF(pystr);
+    return rv == -1 ? NULL : PyLong_FromLong(rv);
+}
+
+static PyObject *
 LXC_attach_run_command(PyObject *self, PyObject *arg)
 {
     PyObject *args_obj = NULL;
@@ -1140,6 +1170,8 @@ static PyMethodDef LXC_methods[] = {
      "Starts up a shell when attaching, to use as the run parameter for attach or attach_wait"},
     {"attach_run_command", (PyCFunction)LXC_attach_run_command, METH_O,
      "Runs a command when attaching, to use as the run parameter for attach or attach_wait"},
+    {"arch_to_personality", (PyCFunction)LXC_arch_to_personality, METH_O,
+     "Returns the process personality of the corresponding architecture"},
     {"get_default_config_path", (PyCFunction)LXC_get_default_config_path, METH_NOARGS,
      "Returns the current LXC config path"},
     {"get_version", (PyCFunction)LXC_get_version, METH_NOARGS,
