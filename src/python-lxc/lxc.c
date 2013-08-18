@@ -759,8 +759,10 @@ static lxc_attach_options_t *lxc_attach_parse_options(PyObject *kwds)
     /* immediately get rid of the dummy tuple */
     Py_DECREF(dummy);
 
-    if (!parse_result)
+    if (!parse_result) {
+        lxc_attach_free_options(options);
         return NULL;
+    }
 
     /* duplicate the string, so we don't depend on some random Python object */
     if (initial_cwd_obj != NULL) {
@@ -779,18 +781,24 @@ static lxc_attach_options_t *lxc_attach_parse_options(PyObject *kwds)
         options->extra_keep_env = convert_tuple_to_char_pointer_array(extra_keep_env_obj);
     if (stdin_obj) {
         options->stdin_fd = PyObject_AsFileDescriptor(stdin_obj);
-        if (options->stdin_fd < 0)
+        if (options->stdin_fd < 0) {
+            lxc_attach_free_options(options);
             return NULL;
+        }
     }
     if (stdout_obj) {
         options->stdout_fd = PyObject_AsFileDescriptor(stdout_obj);
-        if (options->stdout_fd < 0)
+        if (options->stdout_fd < 0) {
+            lxc_attach_free_options(options);
             return NULL;
+        }
     }
     if (stderr_obj) {
         options->stderr_fd = PyObject_AsFileDescriptor(stderr_obj);
-        if (options->stderr_fd < 0)
+        if (options->stderr_fd < 0) {
+            lxc_attach_free_options(options);
             return NULL;
+        }
     }
 
     return options;
