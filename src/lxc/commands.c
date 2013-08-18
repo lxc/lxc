@@ -393,12 +393,13 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 
 	if (req->datalen < 1)
 		return -1;
-
+        
 	path = cgroup_get_subsys_path(handler, req->data);
 	if (!path)
 		return -1;
 	rsp.datalen = strlen(path) + 1,
 	rsp.data = path;
+	rsp.ret = 0;
 
 	return lxc_cmd_rsp_send(fd, &rsp);
 }

@@ -561,6 +561,26 @@ static int in_subsys_list(const char *s, const char *list)
 	return 0;
 }
 
+static int subsys_lists_match(const char *list1, const char *list2)
+{
+	char *token, *str, *saveptr = NULL;
+
+	if (!list1 || !list2)
+		return 0;
+
+        if (strlen(list1) != strlen(list2))
+                return 0;
+
+	str = alloca(strlen(list1)+1);
+	strcpy(str, list1);
+	for (; (token = strtok_r(str, ",", &saveptr)); str = NULL) {
+		if (in_subsys_list(token, list2) == 0)
+			return 0;
+	}
+
+	return 1;
+}
+
 static void set_clone_children(struct mntent *m)
 {
 	char path[MAXPATHLEN];
@@ -626,6 +646,7 @@ static char *record_visited(char *opts, char *all_subsystems)
 		else
 			*visited = '\0';
 		strcat(visited, token);
+		oldlen += toklen + (oldlen ? 1 : 0);
 	}
 
 	return visited;
@@ -774,9 +795,12 @@ static bool find_real_cgroup(struct cgroup_desc *d, char *path)
 		if (!(p2 = index(++p, ':')))
 			continue;
 		*p2 = '\0';
+		// remove trailing newlines
+		if (*(p2 + 1) && p2[strlen(p2 + 1)] == '\n')
+		        p2[strlen(p2 + 1)] = '\0';
 		// in case of multiple mounts it may be more correct to
 		// insist all subsystems be the same
-		if (in_subsys_list(p, d->subsystems))
+		if (subsys_lists_match(p, d->subsystems))
 			goto found;
        }
 
@@ -1134,7 +1158,7 @@ void lxc_cgroup_destroy_desc(struct cgroup_desc *cgroups)
 int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath)
 {
 	FILE *f;
-	char *line = NULL, ret = -1;
+	char *line = NULL, ret = 0;
 	size_t len = 0;
 	int first = 1;
 	char *dirpath;
@@ -1162,8 +1186,9 @@ int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath)
 			continue;
 
 		INFO("joining pid %d to cgroup %s", pid, dirpath);
-		if (lxc_cgroup_enter_one(dirpath, pid)) {
+		if (!lxc_cgroup_enter_one(dirpath, pid)) {
 			ERROR("Failed joining %d to %s\n", pid, dirpath);
+			ret = -1;
 			continue;
 		}
 	}
