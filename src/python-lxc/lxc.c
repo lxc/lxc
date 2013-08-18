@@ -25,6 +25,7 @@
 #include "structmember.h"
 #include <lxc/lxccontainer.h>
 #include <lxc/utils.h>
+#include <lxc/namespace.h>
 #include <stdio.h>
 #include <sys/wait.h>
 
@@ -718,6 +719,8 @@ static int lxc_attach_python_exec(void* _payload)
         return -1;
 }
 
+static void lxc_attach_free_options(lxc_attach_options_t *options);
+
 static lxc_attach_options_t *lxc_attach_parse_options(PyObject *kwds)
 {
     static char *kwlist[] = {"attach_flags", "namespaces", "personality", "initial_cwd", "uid", "gid", "env_policy", "extra_env_vars", "extra_keep_env", "stdin", "stdout", "stderr", NULL};
@@ -1170,14 +1173,31 @@ PyInit__lxc(void)
 
     /* add constants */
     d = PyModule_GetDict(m);
-    PyDict_SetItemString(d, "LXC_ATTACH_KEEP_ENV", PyLong_FromLong(LXC_ATTACH_KEEP_ENV));
-    PyDict_SetItemString(d, "LXC_ATTACH_CLEAR_ENV", PyLong_FromLong(LXC_ATTACH_CLEAR_ENV));
-    PyDict_SetItemString(d, "LXC_ATTACH_MOVE_TO_CGROUP", PyLong_FromLong(LXC_ATTACH_MOVE_TO_CGROUP));
-    PyDict_SetItemString(d, "LXC_ATTACH_DROP_CAPABILITIES", PyLong_FromLong(LXC_ATTACH_DROP_CAPABILITIES));
-    PyDict_SetItemString(d, "LXC_ATTACH_SET_PERSONALITY", PyLong_FromLong(LXC_ATTACH_SET_PERSONALITY));
-    PyDict_SetItemString(d, "LXC_ATTACH_APPARMOR", PyLong_FromLong(LXC_ATTACH_APPARMOR));
-    PyDict_SetItemString(d, "LXC_ATTACH_REMOUNT_PROC_SYS", PyLong_FromLong(LXC_ATTACH_REMOUNT_PROC_SYS));
-    PyDict_SetItemString(d, "LXC_ATTACH_DEFAULT", PyLong_FromLong(LXC_ATTACH_DEFAULT));
+ 
+    #define PYLXC_EXPORT_CONST(c) PyDict_SetItemString(d, #c, PyLong_FromLong(c))
+
+    /* environment variable handling */
+    PYLXC_EXPORT_CONST(LXC_ATTACH_KEEP_ENV);
+    PYLXC_EXPORT_CONST(LXC_ATTACH_CLEAR_ENV);
+
+    /* attach options */
+    PYLXC_EXPORT_CONST(LXC_ATTACH_MOVE_TO_CGROUP);
+    PYLXC_EXPORT_CONST(LXC_ATTACH_DROP_CAPABILITIES);
+    PYLXC_EXPORT_CONST(LXC_ATTACH_SET_PERSONALITY);
+    PYLXC_EXPORT_CONST(LXC_ATTACH_APPARMOR);
+    PYLXC_EXPORT_CONST(LXC_ATTACH_REMOUNT_PROC_SYS);
+    PYLXC_EXPORT_CONST(LXC_ATTACH_DEFAULT);
+
+    /* namespace flags (no other python lib exports this) */
+    PYLXC_EXPORT_CONST(CLONE_NEWUTS);
+    PYLXC_EXPORT_CONST(CLONE_NEWIPC);
+    PYLXC_EXPORT_CONST(CLONE_NEWUSER);
+    PYLXC_EXPORT_CONST(CLONE_NEWPID);
+    PYLXC_EXPORT_CONST(CLONE_NEWNET);
+    PYLXC_EXPORT_CONST(CLONE_NEWNS);
+
+    #undef PYLXC_EXPORT_CONST
+
     return m;
 }
 
