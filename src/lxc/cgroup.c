@@ -287,6 +287,35 @@ static int do_cgroup_set(const char *path, const char *value)
 	return 0;
 }
 
+static int in_subsys_list(const char *s, const char *list)
+{
+	char *token, *str, *saveptr = NULL;
+
+	if (!list || !s)
+		return 0;
+
+	str = alloca(strlen(list)+1);
+	strcpy(str, list);
+	for (; (token = strtok_r(str, ",", &saveptr)); str = NULL) {
+		if (strcmp(s, token) == 0)
+			return 1;
+	}
+
+	return 0;
+}
+
+static char *cgroup_get_subsys_abspath(struct lxc_handler *handler, const char *subsys)
+{
+	struct cgroup_desc *d;
+
+	for (d = handler->cgroup; d; d = d->next) {
+		if (in_subsys_list(subsys, d->subsystems))
+			return d->curcgroup;
+	}
+
+	return NULL;
+}
+
 static bool cgroup_devices_has_deny(struct lxc_handler *h, char *v)
 {
 	char *cgabspath, path[MAXPATHLEN];
@@ -294,24 +323,25 @@ static bool cgroup_devices_has_deny(struct lxc_handler *h, char *v)
 	char *line = NULL;
 	size_t len = 0;
 	bool ret = true;
+	int r;
 
 	// XXX FIXME if users could use something other than 'lxc.devices.deny = a'.
 	// not sure they ever do, but they *could*
 	// right now, I'm assuming they do NOT
 	if (strcmp(v, "a") && strcmp(v, "a *:* rwm"))
 		return false;
-	cgabspath = cgroup_get_subsys_path(h, "devices");
+	cgabspath = cgroup_get_subsys_abspath(h, "devices");
 	if (!cgabspath)
-		return -1;
+		return false;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/devices.list", cgabspath);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	r = snprintf(path, MAXPATHLEN, "%s/devices.list", cgabspath);
+	if (r < 0 || r >= MAXPATHLEN) {
 		ERROR("pathname too long for devices.list");
-		return -1;
+		return false;
 	}
 
 	if (!(f = fopen(path, "r")))
-		return -1;
+		return false;
 
 	while (getline(&line, &len, f) != -1) {
 		size_t len = strlen(line);
@@ -333,29 +363,31 @@ out:
 static bool cgroup_devices_has_allow(struct lxc_handler *h, char *v)
 {
 	char *cgabspath, path[MAXPATHLEN];
+	int r;
 	bool ret = false;
 	FILE *f;
 	char *line = NULL;
 	size_t len = 0;
 
-	cgabspath = cgroup_get_subsys_path(h, "devices");
+	cgabspath = cgroup_get_subsys_abspath(h, "devices");
 	if (!cgabspath)
-		return -1;
+		return false;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/devices.list", cgabspath);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	r = snprintf(path, MAXPATHLEN, "%s/devices.list", cgabspath);
+	if (r < 0 || r >= MAXPATHLEN) {
 		ERROR("pathname too long to for devices.list");
-		return -1;
+		return false;
 	}
 
 	if (!(f = fopen(path, "r")))
-		return -1;
+		return false;
 
 	while (getline(&line, &len, f) != -1) {
-		size_t len = strlen(line);
-		if (len > 0 && line[len-1] == '\n')
+		if (len < 1)
+			goto out;
+		if (line[len-1] == '\n')
 			line[len-1] = '\0';
-		if (strcmp(line, v) == 0) {
+		if (strcmp(line, "a *:* rwm") == 0 || strcmp(line, v) == 0) {
 			ret = true;
 			goto out;
 		}
@@ -388,7 +420,7 @@ int lxc_cgroup_set_value(struct lxc_handler *handler, const char *filename,
 		return -1;
 	if ((p = index(path, '.')) != NULL)
 		*p = '\0';
-	cgabspath = cgroup_get_subsys_path(handler, path);
+	cgabspath = cgroup_get_subsys_abspath(handler, path);
 	if (!cgabspath)
 		return -1;
 
@@ -544,23 +576,6 @@ int lxc_cgroup_nrtasks(struct lxc_handler *handler)
 	return ret;
 }
 
-static int in_subsys_list(const char *s, const char *list)
-{
-	char *token, *str, *saveptr = NULL;
-
-	if (!list || !s)
-		return 0;
-
-	str = alloca(strlen(list)+1);
-	strcpy(str, list);
-	for (; (token = strtok_r(str, ",", &saveptr)); str = NULL) {
-		if (strcmp(s, token) == 0)
-			return 1;
-	}
-
-	return 0;
-}
-
 static int subsys_lists_match(const char *list1, const char *list2)
 {
 	char *token, *str, *saveptr = NULL;
@@ -646,7 +661,7 @@ static char *record_visited(char *opts, char *all_subsystems)
 		else
 			*visited = '\0';
 		strcat(visited, token);
-		oldlen += toklen + (oldlen ? 1 : 0);
+		oldlen = newlen;
 	}
 
 	return visited;
@@ -1166,7 +1181,7 @@ int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath)
 	/* read the list of subsystems from the kernel */
 	f = fopen("/proc/cgroups", "r");
 	if (!f)
-		return ret;
+		return -1;
 
 	while (getline(&line, &len, f) != -1) {
 		char *c;
