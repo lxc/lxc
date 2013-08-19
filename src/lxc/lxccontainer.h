@@ -245,6 +245,7 @@ int lxc_container_put(struct lxc_container *c);
 int lxc_get_wait_states(const char **states);
 const char *lxc_get_default_config_path(void);
 const char *lxc_get_default_lvm_vg(void);
+const char *lxc_get_default_lvm_thin_pool(void);
 const char *lxc_get_default_zfs_root(void);
 const char *lxc_get_version(void);
 

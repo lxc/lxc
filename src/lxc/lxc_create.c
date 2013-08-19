@@ -64,10 +64,11 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 't': args->template = arg; break;
 	case '0': args->lvname = arg; break;
 	case '1': args->vgname = arg; break;
-	case '2': args->fstype = arg; break;
-	case '3': args->fssize = get_fssize(arg); break;
-	case '4': args->zfsroot = arg; break;
-	case '5': args->dir = arg; break;
+	case '2': args->thinpool = arg; break;
+	case '3': args->fstype = arg; break;
+	case '4': args->fssize = get_fssize(arg); break;
+	case '5': args->zfsroot = arg; break;
+	case '6': args->dir = arg; break;
 	}
 	return 0;
 }
@@ -78,10 +79,11 @@ static const struct option my_longopts[] = {
 	{"template", required_argument, 0, 't'},
 	{"lvname", required_argument, 0, '0'},
 	{"vgname", required_argument, 0, '1'},
-	{"fstype", required_argument, 0, '2'},
-	{"fssize", required_argument, 0, '3'},
-	{"zfsroot", required_argument, 0, '4'},
-	{"dir", required_argument, 0, '5'},
+	{"thinpool", required_argument, 0, '2'},
+	{"fstype", required_argument, 0, '3'},
+	{"fssize", required_argument, 0, '4'},
+	{"zfsroot", required_argument, 0, '5'},
+	{"dir", required_argument, 0, '6'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -129,6 +131,8 @@ Options :\n\
                      (Default: container name)\n\
   --vgname=VG        Use LVM vg called VG\n\
                      (Default: lxc))\n\
+  --thinpool=TP      Use LVM thin pool called TP\n\
+                     (Default: none))\n\
   --fstype=TYPE      Create fstype TYPE\n\
                      (Default: ext3))\n\
   --fssize=SIZE      Create filesystem of size SIZE\n\
@@ -151,8 +155,8 @@ bool validate_bdev_args(struct lxc_arguments *a)
 		}
 	}
 	if (strcmp(a->bdevtype, "lvm") != 0) {
-		if (a->lvname || a->vgname) {
-			fprintf(stderr, "--lvname and --vgname are only valid with -B lvm\n");
+		if (a->lvname || a->vgname || a->thinpool) {
+			fprintf(stderr, "--lvname, --vgname and --thinpool are only valid with -B lvm\n");
 			return false;
 		}
 	}
@@ -221,6 +225,8 @@ int main(int argc, char *argv[])
 			spec.u.lvm.lv = my_args.lvname;
 		if (my_args.vgname)
 			spec.u.lvm.vg = my_args.vgname;
+		if (my_args.thinpool)
+			spec.u.lvm.thinpool = my_args.thinpool;
 		if (my_args.fstype)
 			spec.u.lvm.fstype = my_args.fstype;
 		if (my_args.fssize)

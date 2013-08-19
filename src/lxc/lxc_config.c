@@ -31,6 +31,7 @@ struct lxc_config_items items[] =
 {
 	{ .name = "lxcpath", .fn = &lxc_get_default_config_path, },
 	{ .name = "lvm_vg", .fn = &lxc_get_default_lvm_vg, },
+	{ .name = "lvm_thin_pool", .fn = &lxc_get_default_lvm_thin_pool, },
 	{ .name = "zfsroot", .fn = &lxc_get_default_zfs_root, },
 	{ .name = NULL, },
 };

@@ -816,7 +816,7 @@ static int lvm_umount(struct bdev *bdev)
  * not yet exist.  This function will attempt to create /dev/$vg/$lv of
  * size $size.
  */
-static int do_lvm_create(const char *path, unsigned long size)
+static int do_lvm_create(const char *path, unsigned long size, const char *thinpool)
 {
 	int ret, pid;
 	char sz[24], *pathdup, *vg, *lv;
@@ -848,9 +848,59 @@ static int do_lvm_create(const char *path, unsigned long size)
 	if (!vg)
 		exit(1);
 	vg++;
-	execlp("lvcreate", "lvcreate", "-L", sz, vg, "-n", lv, (char *)NULL);
+	if (!thinpool) {
+	    execlp("lvcreate", "lvcreate", "-L", sz, vg, "-n", lv, (char *)NULL);
+	} else {
+	    execlp("lvcreate", "lvcreate", "--thinpool", thinpool, "-V", sz, vg, "-n", lv, (char *)NULL);
+	}
 	free(pathdup);
 	exit(1);
+}
+
+static int lvm_is_thin_volume(const char *path)
+{
+	FILE *f;
+	int ret, len, start=0;
+	char *cmd, output[12];
+	const char *lvscmd = "lvs --unbuffered --noheadings -o lv_attr %s 2>/dev/null";
+
+	len = strlen(lvscmd) + strlen(path) - 1;
+	cmd = malloc(len);
+	if (!cmd)
+		return -1;
+
+	ret = snprintf(cmd, len, lvscmd, path);
+	if (ret < 0 || ret >= len)
+		return -1;
+
+	process_lock();
+	f = popen(cmd, "r");
+	process_unlock();
+
+	if (f == NULL) {
+		SYSERROR("popen failed");
+		return -1;
+	}
+
+	if (fgets(output, 12, f) == NULL)
+		return -1;
+
+	process_lock();
+	ret = pclose(f);
+	process_unlock();
+
+	if (!WIFEXITED(ret)) {
+		SYSERROR("error executing lvs");
+		return -1;
+	}
+
+	len = strlen(output);
+	while(start < len && output[start] == ' ') start++;
+
+	if (start + 6 < len && output[start + 6] == 't')
+		return 1;
+
+	return 0;
 }
 
 static int lvm_snapshot(const char *orig, const char *path, unsigned long size)
@@ -882,7 +932,18 @@ static int lvm_snapshot(const char *orig, const char *path, unsigned long size)
 	*lv = '\0';
 	lv++;
 
-	ret = execlp("lvcreate", "lvcreate", "-s", "-L", sz, "-n", lv, orig, (char *)NULL);
+	// check if the original lv is backed by a thin pool, in which case we
+	// cannot specify a size that's different from the original size.
+	ret = lvm_is_thin_volume(orig);
+	if (ret == -1)
+		return -1;
+
+	if (!ret) {
+		ret = execlp("lvcreate", "lvcreate", "-s", "-L", sz, "-n", lv, orig, (char *)NULL);
+	} else {
+		ret = execlp("lvcreate", "lvcreate", "-s", "-n", lv, orig, (char *)NULL);
+	}
+
 	free(pathdup);
 	exit(1);
 }
@@ -965,7 +1026,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 			return -1;
 		}
 	} else {
-		if (do_lvm_create(new->src, size) < 0) {
+		if (do_lvm_create(new->src, size, NULL) < 0) {
 			ERROR("Error creating new lvm blockdev");
 			return -1;
 		}
@@ -998,7 +1059,7 @@ static int lvm_destroy(struct bdev *orig)
 static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 			struct bdev_specs *specs)
 {
-	const char *vg, *fstype, *lv = n;
+	const char *vg, *thinpool, *fstype, *lv = n;
 	unsigned long sz;
 	int ret, len;
 
@@ -1008,6 +1069,8 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	vg = specs->u.lvm.vg;
 	if (!vg)
 		vg = default_lvm_vg();
+
+	thinpool = specs->u.lvm.thinpool;
 
 	/* /dev/$vg/$lv */
 	if (specs->u.lvm.lv)
@@ -1027,7 +1090,7 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 		sz = DEFAULT_FS_SIZE;
 
 	INFO("Error creating new lvm blockdev %s size %lu", bdev->src, sz);
-	if (do_lvm_create(bdev->src, sz) < 0) {
+	if (do_lvm_create(bdev->src, sz, thinpool) < 0) {
 		ERROR("Error creating new lvm blockdev %s size %lu", bdev->src, sz);
 		return -1;
 	}
