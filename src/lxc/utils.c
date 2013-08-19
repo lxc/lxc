@@ -243,6 +243,7 @@ const char *lxc_global_config_value(const char *option_name)
 {
 	static const char *options[][2] = {
 		{ "lvm_vg",          DEFAULT_VG      },
+		{ "lvm_thin_pool",   NULL            },
 		{ "zfsroot",         DEFAULT_ZFSROOT },
 		{ "lxcpath",         LXCPATH         },
 		{ "cgroup.pattern",  DEFAULT_CGROUP_PATTERN },
@@ -324,6 +325,11 @@ out:
 const char *default_lvm_vg(void)
 {
 	return lxc_global_config_value("lvm_vg");
+}
+
+const char *default_lvm_thin_pool(void)
+{
+	return lxc_global_config_value("lvm_thin_pool");
 }
 
 const char *default_zfs_root(void)

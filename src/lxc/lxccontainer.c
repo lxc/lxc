@@ -1807,6 +1807,11 @@ const char *lxc_get_default_lvm_vg(void)
 	return default_lvm_vg();
 }
 
+const char *lxc_get_default_lvm_thin_pool(void)
+{
+	return default_lvm_thin_pool();
+}
+
 const char *lxc_get_default_zfs_root(void)
 {
 	return default_zfs_root();
