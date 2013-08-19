@@ -428,7 +428,7 @@ def list_containers(as_object=False, config_path=None):
 def attach_run_command(cmd):
     """
         Run a command when attaching
-        
+
         Please do not call directly, this will execvp the command.
         This is to be used in conjunction with the attach method
         of a container.
@@ -443,7 +443,7 @@ def attach_run_command(cmd):
 def attach_run_shell():
     """
         Run a shell when attaching
-        
+
         Please do not call directly, this will execvp the shell.
         This is to be used in conjunction with the attach method
         of a container.

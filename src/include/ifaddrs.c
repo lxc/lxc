@@ -48,7 +48,7 @@ static int netlink_socket(void)
     {
         return -1;
     }
-    
+
     struct sockaddr_nl l_addr;
     memset(&l_addr, 0, sizeof(l_addr));
     l_addr.nl_family = AF_NETLINK;
@@ -57,7 +57,7 @@ static int netlink_socket(void)
         close(l_socket);
         return -1;
     }
-    
+
     return l_socket;
 }
 
@@ -67,14 +67,14 @@ static int netlink_send(int p_socket, int p_request)
     memset(l_buffer, 0, sizeof(l_buffer));
     struct nlmsghdr *l_hdr = (struct nlmsghdr *)l_buffer;
     struct rtgenmsg *l_msg = (struct rtgenmsg *)NLMSG_DATA(l_hdr);
-    
+
     l_hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*l_msg));
     l_hdr->nlmsg_type = p_request;
     l_hdr->nlmsg_flags = NLM_F_ROOT | NLM_F_MATCH | NLM_F_REQUEST;
     l_hdr->nlmsg_pid = 0;
     l_hdr->nlmsg_seq = p_socket;
     l_msg->rtgen_family = AF_UNSPEC;
-    
+
     struct sockaddr_nl l_addr;
     memset(&l_addr, 0, sizeof(l_addr));
     l_addr.nl_family = AF_NETLINK;
@@ -97,7 +97,7 @@ static int netlink_recv(int p_socket, void *p_buffer, size_t p_len)
         l_msg.msg_controllen = 0;
         l_msg.msg_flags = 0;
         int l_result = recvmsg(p_socket, &l_msg, 0);
-        
+
         if(l_result < 0)
         {
             if(errno == EINTR)
@@ -106,7 +106,7 @@ static int netlink_recv(int p_socket, void *p_buffer, size_t p_len)
             }
             return -2;
         }
-        
+
         if(l_msg.msg_flags & MSG_TRUNC)
         { // buffer was too small
             return -1;
@@ -119,12 +119,12 @@ static struct nlmsghdr *getNetlinkResponse(int p_socket, int *p_size, int *p_don
 {
     size_t l_size = 4096;
     void *l_buffer = NULL;
-    
+
     for(;;)
     {
         free(l_buffer);
         l_buffer = malloc(l_size);
-        
+
         int l_read = netlink_recv(p_socket, l_buffer, l_size);
         *p_size = l_read;
         if(l_read == -2)
@@ -142,13 +142,13 @@ static struct nlmsghdr *getNetlinkResponse(int p_socket, int *p_size, int *p_don
                 {
                     continue;
                 }
-                
+
                 if(l_hdr->nlmsg_type == NLMSG_DONE)
                 {
                     *p_done = 1;
                     break;
                 }
-                
+
                 if(l_hdr->nlmsg_type == NLMSG_ERROR)
                 {
                     free(l_buffer);
@@ -157,7 +157,7 @@ static struct nlmsghdr *getNetlinkResponse(int p_socket, int *p_size, int *p_don
             }
             return l_buffer;
         }
-        
+
         l_size *= 2;
     }
 }
@@ -202,7 +202,7 @@ static NetlinkList *getResultList(int p_socket, int p_request)
             freeResultList(l_list);
             return NULL;
         }
-        
+
         NetlinkList *l_item = newListItem(l_hdr, l_size);
         if(!l_list)
         {
@@ -282,7 +282,7 @@ static void interpretLink(struct nlmsghdr *p_hdr, struct ifaddrs **p_links, stru
     size_t l_nameSize = 0;
     size_t l_addrSize = 0;
     size_t l_dataSize = 0;
-    
+
     size_t l_rtaSize = NLMSG_PAYLOAD(p_hdr, sizeof(struct ifinfomsg));
     struct rtattr *l_rta;
     for(l_rta = (struct rtattr *)(((char *)l_info) + NLMSG_ALIGN(sizeof(struct ifinfomsg))); RTA_OK(l_rta, l_rtaSize); l_rta = RTA_NEXT(l_rta, l_rtaSize))
@@ -304,17 +304,17 @@ static void interpretLink(struct nlmsghdr *p_hdr, struct ifaddrs **p_links, stru
                 break;
         }
     }
-    
+
     struct ifaddrs *l_entry = malloc(sizeof(struct ifaddrs) + l_nameSize + l_addrSize + l_dataSize);
     memset(l_entry, 0, sizeof(struct ifaddrs));
     l_entry->ifa_name = "";
-    
+
     char *l_name = ((char *)l_entry) + sizeof(struct ifaddrs);
     char *l_addr = l_name + l_nameSize;
     char *l_data = l_addr + l_addrSize;
-    
+
     l_entry->ifa_flags = l_info->ifi_flags;
-    
+
     l_rtaSize = NLMSG_PAYLOAD(p_hdr, sizeof(struct ifinfomsg));
     for(l_rta = (struct rtattr *)(((char *)l_info) + NLMSG_ALIGN(sizeof(struct ifinfomsg))); RTA_OK(l_rta, l_rtaSize); l_rta = RTA_NEXT(l_rta, l_rtaSize))
     {
@@ -353,7 +353,7 @@ static void interpretLink(struct nlmsghdr *p_hdr, struct ifaddrs **p_links, stru
                 break;
         }
     }
-    
+
     addToEnd(p_resultList, l_entry);
     p_links[l_info->ifi_index - 1] = l_entry;
 }
@@ -364,9 +364,9 @@ static void interpretAddr(struct nlmsghdr *p_hdr, struct ifaddrs **p_links, stru
 
     size_t l_nameSize = 0;
     size_t l_addrSize = 0;
-    
+
     int l_addedNetmask = 0;
-    
+
     size_t l_rtaSize = NLMSG_PAYLOAD(p_hdr, sizeof(struct ifaddrmsg));
     struct rtattr *l_rta;
     for(l_rta = (struct rtattr *)(((char *)l_info) + NLMSG_ALIGN(sizeof(struct ifaddrmsg))); RTA_OK(l_rta, l_rtaSize); l_rta = RTA_NEXT(l_rta, l_rtaSize))
@@ -376,7 +376,7 @@ static void interpretAddr(struct nlmsghdr *p_hdr, struct ifaddrs **p_links, stru
         {
             continue;
         }
-        
+
         switch(l_rta->rta_type)
         {
             case IFA_ADDRESS:
@@ -396,16 +396,16 @@ static void interpretAddr(struct nlmsghdr *p_hdr, struct ifaddrs **p_links, stru
                 break;
         }
     }
-    
+
     struct ifaddrs *l_entry = malloc(sizeof(struct ifaddrs) + l_nameSize + l_addrSize);
     memset(l_entry, 0, sizeof(struct ifaddrs));
     l_entry->ifa_name = p_links[l_info->ifa_index - 1]->ifa_name;
-    
+
     char *l_name = ((char *)l_entry) + sizeof(struct ifaddrs);
     char *l_addr = l_name + l_nameSize;
-    
+
     l_entry->ifa_flags = l_info->ifa_flags | p_links[l_info->ifa_index - 1]->ifa_flags;
-    
+
     l_rtaSize = NLMSG_PAYLOAD(p_hdr, sizeof(struct ifaddrmsg));
     for(l_rta = (struct rtattr *)(((char *)l_info) + NLMSG_ALIGN(sizeof(struct ifaddrmsg))); RTA_OK(l_rta, l_rtaSize); l_rta = RTA_NEXT(l_rta, l_rtaSize))
     {
@@ -426,7 +426,7 @@ static void interpretAddr(struct nlmsghdr *p_hdr, struct ifaddrs **p_links, stru
                         ((struct sockaddr_in6 *)l_addr)->sin6_scope_id = l_info->ifa_index;
                     }
                 }
-                
+
                 if(l_rta->rta_type == IFA_ADDRESS)
                 { // apparently in a point-to-point network IFA_ADDRESS contains the dest address and IFA_LOCAL contains the local address
                     if(l_entry->ifa_addr)
@@ -462,7 +462,7 @@ static void interpretAddr(struct nlmsghdr *p_hdr, struct ifaddrs **p_links, stru
                 break;
         }
     }
-    
+
     if(l_entry->ifa_addr && (l_entry->ifa_addr->sa_family == AF_INET || l_entry->ifa_addr->sa_family == AF_INET6))
     {
         unsigned l_maxPrefix = (l_entry->ifa_addr->sa_family == AF_INET ? 32 : 128);
@@ -474,11 +474,11 @@ static void interpretAddr(struct nlmsghdr *p_hdr, struct ifaddrs **p_links, stru
             l_mask[i] = 0xff;
         }
         l_mask[i] = 0xff << (8 - (l_prefix % 8));
-        
+
         makeSockaddr(l_entry->ifa_addr->sa_family, (struct sockaddr *)l_addr, l_mask, l_maxPrefix / 8);
         l_entry->ifa_netmask = (struct sockaddr *)l_addr;
     }
-    
+
     addToEnd(p_resultList, l_entry);
 }
 
@@ -495,12 +495,12 @@ static void interpret(int p_socket, NetlinkList *p_netlinkList, struct ifaddrs *
             {
                 continue;
             }
-            
+
             if(l_hdr->nlmsg_type == NLMSG_DONE)
             {
                 break;
             }
-            
+
             if(l_hdr->nlmsg_type == RTM_NEWLINK)
             {
                 interpretLink(l_hdr, p_links, p_resultList);
@@ -527,19 +527,19 @@ static unsigned countLinks(int p_socket, NetlinkList *p_netlinkList)
             {
                 continue;
             }
-            
+
             if(l_hdr->nlmsg_type == NLMSG_DONE)
             {
                 break;
             }
-            
+
             if(l_hdr->nlmsg_type == RTM_NEWLINK)
             {
                 ++l_links;
             }
         }
     }
-    
+
     return l_links;
 }
 
@@ -550,20 +550,20 @@ int getifaddrs(struct ifaddrs **ifap)
         return -1;
     }
     *ifap = NULL;
-    
+
     int l_socket = netlink_socket();
     if(l_socket < 0)
     {
         return -1;
     }
-    
+
     NetlinkList *l_linkResults = getResultList(l_socket, RTM_GETLINK);
     if(!l_linkResults)
     {
         close(l_socket);
         return -1;
     }
-    
+
     NetlinkList *l_addrResults = getResultList(l_socket, RTM_GETADDR);
     if(!l_addrResults)
     {
@@ -571,11 +571,11 @@ int getifaddrs(struct ifaddrs **ifap)
         freeResultList(l_linkResults);
         return -1;
     }
-    
+
     unsigned l_numLinks = countLinks(l_socket, l_linkResults) + countLinks(l_socket, l_addrResults);
     struct ifaddrs *l_links[l_numLinks];
     memset(l_links, 0, l_numLinks * sizeof(struct ifaddrs *));
-    
+
     interpret(l_socket, l_linkResults, l_links, ifap);
     interpret(l_socket, l_addrResults, l_links, ifap);
 

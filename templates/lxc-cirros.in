@@ -290,12 +290,12 @@ create_main() {
     if [ -b "$rootfs_d/dev/random" ]; then
         rm -f "$rootfs_d/dev/random" &&
             mknod --mode=666 "$rootfs_d/dev/random" c 1 8 ||
-           { error "failed to fix /dev/random"; return 1; } 
+           { error "failed to fix /dev/random"; return 1; }
     fi
     if [ -b "$rootfs_d/dev/urandom" ]; then
         rm -f "$rootfs_d/dev/urandom" &&
         mknod --mode=666 "$rootfs_d/dev/urandom" c 1 9 ||
-           { error "failed to fix /dev/urandom"; return 1; } 
+           { error "failed to fix /dev/urandom"; return 1; }
     fi
 
     if [ "$version" = "0.3.2~pre1" ]; then

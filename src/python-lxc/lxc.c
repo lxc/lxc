@@ -37,7 +37,7 @@ char**
 convert_tuple_to_char_pointer_array(PyObject *argv) {
     int argc;
     int i, j;
-    
+
     /* not a list or tuple */
     if (!PyList_Check(argv) && !PyTuple_Check(argv)) {
         PyErr_SetString(PyExc_TypeError, "Expected list or tuple.");
@@ -707,7 +707,7 @@ static int lxc_attach_python_exec(void* _payload)
 {
     struct lxc_attach_python_payload *payload = (struct lxc_attach_python_payload *)_payload;
     PyObject *result = PyObject_CallFunctionObjArgs(payload->fn, payload->arg, NULL);
-    
+
     if (!result) {
         PyErr_Print();
         return -1;
@@ -741,7 +741,7 @@ static lxc_attach_options_t *lxc_attach_parse_options(PyObject *kwds)
     }
     memcpy(options, &default_options, sizeof(*options));
 
-    /* we need some dummy variables because we can't be sure 
+    /* we need some dummy variables because we can't be sure
      * the data types match completely */
     temp_uid = -1;
     temp_gid = -1;

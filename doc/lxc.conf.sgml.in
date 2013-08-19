@@ -871,7 +871,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  <listitem> The hook type (i.e. 'clone' or 'pre-mount'). </listitem>
 	  <listitem> Additional arguments In the
 	  case of the clone hook, any extra arguments passed to
-	  lxc-clone will appear as further arguments to the hook. </listitem> 
+	  lxc-clone will appear as further arguments to the hook. </listitem>
 	</itemizedlist>
 	The following environment variables are set:
 	<itemizedlist>

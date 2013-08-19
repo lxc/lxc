@@ -630,7 +630,7 @@ static char *record_visited(char *opts, char *all_subsystems)
 
 	return visited;
 }
- 
+
 static char *get_all_subsystems(void)
 {
 	FILE *f;
