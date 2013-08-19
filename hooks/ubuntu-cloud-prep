@@ -35,56 +35,9 @@ Usage: ${0##*/} [options] root-dir
 EOF
 }
 
-write_patched_start() {
-    cat > "$1" <<"EOF"
-#!/bin/bash
-## This is a wrapper around upstart's /sbin/start to ensure that
-## calling 'start' on a job after writing it to /etc/init will function
-## correctly despite broken/missing support for inotify in overlayfs.
-##
-real() { exec -a /sbin/start "/sbin/start.real" "$@"; }
-
-# no args or not root
-[ $# -ne 0 -a "$UID" = "0" ] || real "$@"
-
-job=""
-# find first argument that doesn't start with '-' as 'job'
-for x in "$@"; do
-  [ "${x#-}" = "$x" ] && { job="$x"; break; }
-done
-
-# if job isn't there, no reason to check further
-[ -n "$job" ] && [ -f "/etc/init/$job.conf" ] || real "$@"
-
-# on Unknown, 'status' exits 1, and prints 'Unknown job' to stderr.
-out=$(status "$@" 2>&1)
-[ $? -eq 1 -a "${out#*nknown job}" != "$out" ] || real "$@"
-
-initctl reload-configuration >/dev/null 2>&1
-real "$@"
-EOF
-    chmod 755 "$1"
-}
-
-patch_start() {
-    # patch /sbin/start inside root_d to deal with lack of inotify
-    local root_d="$1"
-
-    # already patched
-    [ -f "$root_d/sbin/start.real" ] &&
-        { debug 1 "$root_d 'start' seems already patched"; return 1; }
-
-    debug 1 "patching /sbin/start in $root_d"
-    chroot "$root_d" dpkg-divert --local --rename \
-        --divert /sbin/start.real --add /sbin/start ||
-        { error "failed to patch /sbin/start for overlayfs"; return 1; }
-
-    write_patched_start "$root_d/sbin/start"
-}
-
 prep() {
     local short_opts="Chi:L:S:u:v"
-    local long_opts="auth-key:,cloud,help,hostid:,name:,nolocales:,patch-start,userdata:,verbose"
+    local long_opts="auth-key:,cloud,help,hostid:,name:,nolocales:,create-etc-init,userdata:,verbose"
     local getopt_out getopt_ret
     getopt_out=$(getopt --name "${0##*/}" \
         --options "${short_opts}" --long "${long_opts}" -- "$@" 2>/dev/null) ||
@@ -97,7 +50,7 @@ prep() {
 
     local cur="" next=""
     local userdata="" hostid="" authkey="" locales=1 cloud=0 name=""
-    local patch_start=0
+    local create_etc_init=0
 
     while [ $# -ne 0 ]; do
         cur="$1"; next="$2";
@@ -107,7 +60,7 @@ prep() {
                --name) name="$next";;
             -i|--hostid) hostid="$next";;
             -L|--nolocales) locales=0;;
-               --patch-start) patch_start=1;;
+               --create-etc-init) create_etc_init=1;;
             -S|--auth-key)
                 [ -f "$next" ] ||
                     { error "--auth-key: '$next' not a file"; return 1; }
@@ -137,8 +90,10 @@ prep() {
         error "${0##*}: usage failed, continuing with defaults"
     fi
 
-    [ "$patch_start" -eq 0 ] || patch_start "$root_d" ||
-        { error "failed to patch start for overlayfs"; return 1; }
+    [ "$create_etc_init" -eq 0 ] ||
+        echo "#upstart needs help for overlayfs (LP: #1213925)." > \
+            "$root_d/etc/init/.overlayfs-upstart-helper" ||
+        { error "failed to create /etc/init in overlay"; return 1; }
 
     local seed_d=""
     seed_d="$root_d/var/lib/cloud/seed/nocloud-net"
@@ -203,13 +158,13 @@ main() {
     local _LXC_HOOK
     if [ -n "$LXC_ROOTFS_MOUNT" -a "$3" = "clone" ]; then
         _LXC_HOOK="clone"
-        local name="$1" pstart=""
+        local name="$1" create_etc_init=""
         shift 3
-        # if mountpoint is overlayfs then add '--patch-start'
+        # if mountpoint is overlayfs then add '--create-etc-init'
         [ "${LXC_ROOTFS_PATH#overlayfs}" != "${LXC_ROOTFS_PATH}" ] &&
-           pstart="--patch-start"
-        debug 1 prep "--name=$name" $pstart "$LXC_ROOTFS_MOUNT" "$@"
-        prep "--name=$name" $pstart "$LXC_ROOTFS_MOUNT" "$@"
+           create_etc_init="--create-etc-init"
+        debug 1 prep "--name=$name" $create_etc_init "$LXC_ROOTFS_MOUNT" "$@"
+        prep "--name=$name" $create_etc_init "$LXC_ROOTFS_MOUNT" "$@"
     else
         _LXC_HOOK=""
         prep "$@"
