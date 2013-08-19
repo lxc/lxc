@@ -395,9 +395,9 @@ static char *dir_new_path(char *src, const char *oldname, const char *name,
 		strncpy(p, src, p2-src); // copy text up to oldname
 		p += p2-src; // move target pointer (p)
 		p += sprintf(p, "%s", name); // print new name in place of oldname
-		src = p2 + l2;  // move src to end of oldname
+		src = p2 + l2;	// move src to end of oldname
 	}
-	sprintf(p, "%s", src);  // copy the rest of src
+	sprintf(p, "%s", src);	// copy the rest of src
 	return ret;
 }
 
@@ -784,7 +784,7 @@ static int lvm_umount(struct bdev *bdev)
  * not yet exist.  This function will attempt to create /dev/$vg/$lv of
  * size $size.
  */
-static int do_lvm_create(const char *path, unsigned long size)
+static int do_lvm_create(const char *path, unsigned long size, const char *thinpool)
 {
 	int ret, pid;
 	char sz[24], *pathdup, *vg, *lv;
@@ -815,7 +815,11 @@ static int do_lvm_create(const char *path, unsigned long size)
 	if (!vg)
 		exit(1);
 	vg++;
-	execlp("lvcreate", "lvcreate", "-L", sz, vg, "-n", lv, (char *)NULL);
+	if (strcmp(thinpool, "") == 0) {
+	    execlp("lvcreate", "lvcreate", "-L", sz, vg, "-n", lv, (char *)NULL);
+	} else {
+	    execlp("lvcreate", "lvcreate", "--thinpool", thinpool, "-V", sz, vg, "-n", lv, (char *)NULL);
+	}
 	free(pathdup);
 	exit(1);
 }
@@ -865,6 +869,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
 		unsigned long newsize)
 {
+	const char *thinpool = "";
 	char fstype[100];
 	unsigned long size = newsize;
 	int len, ret;
@@ -930,7 +935,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 			return -1;
 		}
 	} else {
-		if (do_lvm_create(new->src, size) < 0) {
+		if (do_lvm_create(new->src, size, thinpool) < 0) {
 			ERROR("Error creating new lvm blockdev");
 			return -1;
 		}
@@ -962,7 +967,7 @@ static int lvm_destroy(struct bdev *orig)
 static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 			struct bdev_specs *specs)
 {
-	const char *vg, *fstype, *lv = n;
+	const char *vg, *thinpool, *fstype, *lv = n;
 	unsigned long sz;
 	int ret, len;
 
@@ -972,6 +977,10 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	vg = specs->u.lvm.vg;
 	if (!vg)
 		vg = default_lvm_vg();
+
+	thinpool = specs->u.lvm.thinpool;
+	if (!thinpool)
+	    thinpool = "";
 
 	/* /dev/$vg/$lv */
 	if (specs->u.lvm.lv)
@@ -991,7 +1000,7 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 		sz = DEFAULT_FS_SIZE;
 
 	INFO("Error creating new lvm blockdev %s size %lu", bdev->src, sz);
-	if (do_lvm_create(bdev->src, sz) < 0) {
+	if (do_lvm_create(bdev->src, sz, thinpool) < 0) {
 		ERROR("Error creating new lvm blockdev %s size %lu", bdev->src, sz);
 		return -1;
 	}
@@ -1043,7 +1052,7 @@ struct btrfs_ioctl_space_args {
 #define BTRFS_IOCTL_MAGIC 0x94
 #define BTRFS_IOC_SUBVOL_GETFLAGS _IOR(BTRFS_IOCTL_MAGIC, 25, unsigned long long)
 #define BTRFS_IOC_SPACE_INFO _IOWR(BTRFS_IOCTL_MAGIC, 20, \
-                                    struct btrfs_ioctl_space_args)
+				    struct btrfs_ioctl_space_args)
 
 static bool is_btrfs_fs(const char *path)
 {
@@ -1111,13 +1120,13 @@ struct btrfs_ioctl_vol_args {
 
 #define BTRFS_IOCTL_MAGIC 0x94
 #define BTRFS_IOC_SUBVOL_CREATE_V2 _IOW(BTRFS_IOCTL_MAGIC, 24, \
-                                   struct btrfs_ioctl_vol_args_v2)
+				   struct btrfs_ioctl_vol_args_v2)
 #define BTRFS_IOC_SNAP_CREATE_V2 _IOW(BTRFS_IOCTL_MAGIC, 23, \
-                                   struct btrfs_ioctl_vol_args_v2)
+				   struct btrfs_ioctl_vol_args_v2)
 #define BTRFS_IOC_SUBVOL_CREATE _IOW(BTRFS_IOCTL_MAGIC, 14, \
-                                   struct btrfs_ioctl_vol_args)
+				   struct btrfs_ioctl_vol_args)
 #define BTRFS_IOC_SNAP_DESTROY _IOW(BTRFS_IOCTL_MAGIC, 15, \
-                                   struct btrfs_ioctl_vol_args)
+				   struct btrfs_ioctl_vol_args)
 
 #define BTRFS_QGROUP_INHERIT_SET_LIMITS (1ULL << 0)
 
@@ -1174,7 +1183,7 @@ static int btrfs_subvolume_create(const char *path)
 static int btrfs_snapshot(const char *orig, const char *new)
 {
 	int fd = -1, fddst = -1, ret = -1;
-	struct btrfs_ioctl_vol_args_v2  args;
+	struct btrfs_ioctl_vol_args_v2	args;
 	char *newdir, *newname, *newfull = NULL;
 
 	newfull = strdup(new);
@@ -1533,7 +1542,7 @@ static int loop_create(struct bdev *bdev, const char *dest, const char *n,
 		return -1;
 
 	// dest is passed in as $lxcpath / $lxcname / rootfs
-	// srcdev will be:      $lxcpath / $lxcname / rootdev
+	// srcdev will be:	$lxcpath / $lxcname / rootdev
 	// src will be 'loop:$srcdev'
 	len = strlen(dest) + 2;
 	srcdev = alloca(len);
@@ -1669,7 +1678,7 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		int ret, len;
 
 		// if we have /var/lib/lxc/c2/rootfs, then delta will be
-		//            /var/lib/lxc/c2/delta0
+		//	      /var/lib/lxc/c2/delta0
 		delta = strdup(new->dest);
 		if (!delta) {
 			return -1;
