@@ -824,7 +824,7 @@ static int do_lvm_create(const char *path, unsigned long size, const char *thinp
 	exit(1);
 }
 
-static int lvm_snapshot(const char *orig, const char *path, unsigned long size)
+static int lvm_snapshot(const char *orig, const char *path, unsigned long size, const char *thinpool)
 {
 	int ret, pid;
 	char sz[24], *pathdup, *lv;
@@ -851,7 +851,12 @@ static int lvm_snapshot(const char *orig, const char *path, unsigned long size)
 	*lv = '\0';
 	lv++;
 
-	ret = execlp("lvcreate", "lvcreate", "-s", "-L", sz, "-n", lv, orig, (char *)NULL);
+	if (strcmp(thinpool, "") == 0) {
+	    ret = execlp("lvcreate", "lvcreate", "-s", "-L", sz, "-n", lv, orig, (char *)NULL);
+	} else {
+	    ret = execlp("lvcreate", "lvcreate", "--thinpool", thinpool, "-s", "-n", lv, orig, (char *)NULL);
+	}
+
 	free(pathdup);
 	exit(1);
 }
@@ -869,7 +874,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
 		unsigned long newsize)
 {
-	const char *thinpool = "";
+	const char *thinpool = default_lvm_thin_pool();
 	char fstype[100];
 	unsigned long size = newsize;
 	int len, ret;
@@ -930,7 +935,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 	}
 
 	if (snap) {
-		if (lvm_snapshot(orig->src, new->src, size) < 0) {
+		if (lvm_snapshot(orig->src, new->src, size, thinpool) < 0) {
 			ERROR("could not create %s snapshot of %s", new->src, orig->src);
 			return -1;
 		}
@@ -980,7 +985,7 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 
 	thinpool = specs->u.lvm.thinpool;
 	if (!thinpool)
-	    thinpool = "";
+		thinpool = default_lvm_thin_pool();
 
 	/* /dev/$vg/$lv */
 	if (specs->u.lvm.lv)
