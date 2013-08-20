@@ -243,11 +243,12 @@ static int detect_fs(struct bdev *bdev, char *type, int len)
 	pid_t pid;
 	FILE *f;
 	char *sp1, *sp2, *sp3, *line = NULL;
-	char *srcdev = bdev->src;
+	char *srcdev;
 
 	if (!bdev || !bdev->src || !bdev->dest)
 		return -1;
 
+	srcdev = bdev->src;
 	if (strcmp(bdev->type, "loop") == 0)
 		srcdev = bdev->src + 5;
 
