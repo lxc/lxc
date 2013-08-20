@@ -910,7 +910,8 @@ bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	}
 
 #if HAVE_LIBGNUTLS
-	if ((tpath = get_template_path(t)) < 0) {
+	tpath = get_template_path(t);
+	if (tpath == (char *) -1) {
 		ERROR("bad template: %s\n", t);
 		free(contents);
 		return false;
@@ -991,7 +992,8 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	if (!c)
 		return false;
 
-	if ((tpath = get_template_path(t)) < 0) {
+	tpath = get_template_path(t);
+	if (tpath == (char *) -1) {
 		ERROR("bad template: %s\n", t);
 		goto out;
 	}
