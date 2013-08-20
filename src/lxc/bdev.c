@@ -1355,11 +1355,11 @@ static int find_free_loopdev(int *retfd, char *namep)
 		snprintf(namep, 100, "/dev/%s", direntp->d_name);
 		break;
 	}
+	closedir(dir);
 	if (fd == -1) {
 		ERROR("No loop device found");
 		return -1;
 	}
-	closedir(dir);
 
 	*retfd = fd;
 	return 0;
