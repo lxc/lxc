@@ -207,9 +207,10 @@ int lxcunlock(struct lxc_lock *l)
 	case LXC_LOCK_ANON_SEM:
 		if (!l->u.sem)
 			ret = -2;
-		else
+		else {
 			ret = sem_post(l->u.sem);
 			saved_errno = errno;
+		}
 		break;
 	case LXC_LOCK_FLOCK:
 		process_lock();
