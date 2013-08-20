@@ -62,11 +62,12 @@ static int ensure_path(char **confpath, const char *path)
 	if (path) {
 		if (access(path, W_OK)) {
 			fd = creat(path, 0600);
-			if (fd < 0) {
+			if (fd < 0 && errno != EEXIST) {
 				SYSERROR("failed to create '%s'", path);
 				goto err;
 			}
-			close(fd);
+			if (fd >= 0)
+				close(fd);
 		}
 
 		fullpath = realpath(path, NULL);
