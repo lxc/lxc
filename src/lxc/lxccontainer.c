@@ -1046,14 +1046,14 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 		exit(0);
 	}
 	if (wait_for_pid(pid) != 0)
-		goto out;
+		goto out_unlock;
 
 	/* reload config to get the rootfs */
 	if (c->lxc_conf)
 		lxc_conf_free(c->lxc_conf);
 	c->lxc_conf = NULL;
 	if (!load_config_locked(c, c->configfile))
-		goto out;
+		goto out_unlock;
 
 	if (!create_run_template(c, tpath, !!(flags & LXC_CREATE_QUIET), argv))
 		goto out_unlock;
