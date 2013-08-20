@@ -862,7 +862,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 
 bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 {
-	size_t flen;
+	long flen;
 	char *contents;
 	FILE *f;
 #if HAVE_LIBGNUTLS
