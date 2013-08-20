@@ -863,11 +863,12 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 {
 	size_t flen;
-	char *contents, *tpath;
+	char *contents;
 	FILE *f;
 #if HAVE_LIBGNUTLS
 	int i, ret;
 	unsigned char md_value[SHA_DIGEST_LENGTH];
+	char *tpath;
 	bool have_tpath = false;
 #endif
 
@@ -908,13 +909,13 @@ bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 		return false;
 	}
 
+#if HAVE_LIBGNUTLS
 	if ((tpath = get_template_path(t)) < 0) {
 		ERROR("bad template: %s\n", t);
 		free(contents);
 		return false;
 	}
 
-#if HAVE_LIBGNUTLS
 	if (tpath) {
 		have_tpath = true;
 		ret = sha1sum_file(tpath, md_value);
