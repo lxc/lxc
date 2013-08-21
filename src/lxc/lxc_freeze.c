@@ -28,8 +28,11 @@
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>
+#include <lxc/lxccontainer.h>
 
 #include "arguments.h"
+
+lxc_log_define(lxc_freeze_ui, lxc_cgroup);
 
 static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
@@ -51,13 +54,28 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
+	struct lxc_container *c;
+
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		return -1;
+		exit(1);
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		return -1;
+		exit(1);
 
-	return lxc_freeze(my_args.name, my_args.lxcpath[0]);
+	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
+	if (!c) {
+		ERROR("No such container: %s:%s", my_args.lxcpath[0], my_args.name);
+		exit(1);
+	}
+
+	if (!c->freeze(c)) {
+		ERROR("Failed to freeze %s:%s", my_args.lxcpath[0], my_args.name);
+		lxc_container_put(c);
+		exit(1);
+	}
+
+	lxc_container_put(c);
+
+	return 0;
 }
-
