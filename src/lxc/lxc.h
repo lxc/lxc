@@ -227,6 +227,11 @@ extern int lxc_container_put(struct lxc_container *c);
  */
 extern int lxc_get_wait_states(const char **states);
 
+/*
+ * Add a dependency to a container
+ */
+extern int add_rdepend(struct lxc_conf *lxc_conf, char *rdepend);
+
 #ifdef __cplusplus
 }
 #endif

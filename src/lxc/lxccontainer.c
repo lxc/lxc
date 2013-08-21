@@ -52,6 +52,12 @@
 #include <../include/ifaddrs.h>
 #endif
 
+#ifndef HAVE_GETLINE
+#ifdef HAVE_FGETLN
+#include <../include/getline.h>
+#endif
+#endif
+
 lxc_log_define(lxc_container, lxc);
 
 static bool file_exists(char *f)
@@ -1362,6 +1368,121 @@ out:
 	return ret;
 }
 
+static bool mod_rdep(struct lxc_container *c, bool inc)
+{
+	char path[MAXPATHLEN];
+	int ret, v = 0;
+	FILE *f;
+	bool bret = false;
+
+	if (container_disk_lock(c))
+		return false;
+	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path,
+			c->name);
+	if (ret < 0 || ret > MAXPATHLEN)
+		goto out;
+	f = fopen(path, "r");
+	if (f) {
+		ret = fscanf(f, "%d", &v);
+		fclose(f);
+		if (ret != 1) {
+			ERROR("Corrupted file %s", path);
+			goto out;
+		}
+	}
+	v += inc ? 1 : -1;
+	f = fopen(path, "w");
+	if (!f)
+		goto out;
+	if (fprintf(f, "%d\n", v) < 0) {
+		ERROR("Error writing new snapshots value");
+		fclose(f);
+		goto out;
+	}
+	if (fclose(f) != 0) {
+		SYSERROR("Error writing to or closing snapshots file");
+		goto out;
+	}
+
+	bret = true;
+
+out:
+	container_disk_unlock(c);
+	return bret;
+}
+
+static void strip_newline(char *p)
+{
+	size_t len = strlen(p);
+	if (len < 1)
+		return;
+	if (p[len-1] == '\n')
+		p[len-1] = '\0';
+}
+
+static void mod_all_rdeps(struct lxc_container *c, bool inc)
+{
+	struct lxc_container *p;
+	char *lxcpath = NULL, *lxcname = NULL, path[MAXPATHLEN];
+	size_t pathlen = 0, namelen = 0;
+	FILE *f;
+	int ret;
+
+	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_rdepends",
+		c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("Path name too long");
+		return;
+	}
+	if ((f = fopen(path, "r")) == NULL)
+		return;
+	while (getline(&lxcpath, &pathlen, f) != -1) {
+		if (getline(&lxcname, &namelen, f) == -1) {
+			ERROR("badly formatted file %s\n", path);
+			goto out;
+		}
+		strip_newline(lxcpath);
+		strip_newline(lxcname);
+		if ((p = lxc_container_new(lxcname, lxcpath)) == NULL) {
+			ERROR("Unable to find dependent container %s:%s",
+				lxcpath, lxcname);
+			continue;
+		}
+		if (!mod_rdep(p, inc))
+			ERROR("Failed to increase numsnapshots for %s:%s",
+				lxcpath, lxcname);
+		lxc_container_put(p);
+	}
+out:
+	if (lxcpath) free(lxcpath);
+	if (lxcname) free(lxcname);
+	fclose(f);
+}
+
+static bool has_snapshots(struct lxc_container *c)
+{
+	char path[MAXPATHLEN];
+	int ret, v;
+	FILE *f;
+	bool bret = false;
+
+	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path,
+			c->name);
+	if (ret < 0 || ret > MAXPATHLEN)
+		goto out;
+	f = fopen(path, "r");
+	if (!f)
+		goto out;
+	ret = fscanf(f, "%d", &v);
+	fclose(f);
+	if (ret != 1)
+		goto out;
+	bret = v != 0;
+
+out:
+	return bret;
+}
+
 // do we want the api to support --force, or leave that to the caller?
 static bool lxcapi_destroy(struct lxc_container *c)
 {
@@ -1380,6 +1501,11 @@ static bool lxcapi_destroy(struct lxc_container *c)
 		goto out;
 	}
 
+	if (c->lxc_conf && has_snapshots(c)) {
+		ERROR("conatiner %s has dependent snapshots", c->name);
+		goto out;
+	}
+
 	if (c->lxc_conf && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount)
 		r = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (r) {
@@ -1388,6 +1514,8 @@ static bool lxcapi_destroy(struct lxc_container *c)
 			goto out;
 		}
 	}
+
+	mod_all_rdeps(c, false);
 
 	const char *p1 = lxcapi_get_config_path(c);
 	char *path = alloca(strlen(p1) + strlen(c->name) + 2);
@@ -1592,18 +1720,18 @@ static int copy_file(char *old, char *new)
 	}
 	ret = stat(old, &sbuf);
 	if (ret < 0) {
-		SYSERROR("stat'ing %s", old);
+		INFO("Error stat'ing %s", old);
 		return -1;
 	}
 
 	in = open(old, O_RDONLY);
 	if (in < 0) {
-		SYSERROR("opening original file %s", old);
+		SYSERROR("Error opening original file %s", old);
 		return -1;
 	}
 	out = open(new, O_CREAT | O_EXCL | O_WRONLY, 0644);
 	if (out < 0) {
-		SYSERROR("opening new file %s", new);
+		SYSERROR("Error opening new file %s", new);
 		close(in);
 		return -1;
 	}
@@ -1611,14 +1739,14 @@ static int copy_file(char *old, char *new)
 	while (1) {
 		len = read(in, buf, 8096);
 		if (len < 0) {
-			SYSERROR("reading old file %s", old);
+			SYSERROR("Error reading old file %s", old);
 			goto err;
 		}
 		if (len == 0)
 			break;
 		ret = write(out, buf, len);
 		if (ret < len) {  // should we retry?
-			SYSERROR("write to new file %s was interrupted", new);
+			SYSERROR("Error: write to new file %s was interrupted", new);
 			goto err;
 		}
 	}
@@ -1628,7 +1756,7 @@ static int copy_file(char *old, char *new)
 	// we set mode, but not owner/group
 	ret = chmod(new, sbuf.st_mode);
 	if (ret) {
-		SYSERROR("setting mode on %s", new);
+		SYSERROR("Error setting mode on %s", new);
 		return -1;
 	}
 
@@ -1738,28 +1866,81 @@ static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 	return 0;
 }
 
+static void copy_rdepends(struct lxc_container *c, struct lxc_container *c0)
+{
+	char path0[MAXPATHLEN], path1[MAXPATHLEN];
+	int ret;
+
+	ret = snprintf(path0, MAXPATHLEN, "%s/%s/lxc_rdepends", c0->config_path,
+		c0->name);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		WARN("Error copying reverse dependencies");
+		return;
+	}
+	ret = snprintf(path1, MAXPATHLEN, "%s/%s/lxc_rdepends", c->config_path,
+		c->name);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		WARN("Error copying reverse dependencies");
+		return;
+	}
+	if (copy_file(path0, path1) < 0) {
+		INFO("Error copying reverse dependencies");
+		return;
+	}
+}
+
+static bool add_rdepends(struct lxc_container *c, struct lxc_container *c0)
+{
+	int ret;
+	char path[MAXPATHLEN];
+	FILE *f;
+	bool bret;
+
+	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_rdepends", c->config_path,
+		c->name);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return false;
+	f = fopen(path, "a");
+	if (!f)
+		return false;
+	bret = true;
+	// if anything goes wrong, just return an error
+	if (fprintf(f, "%s\n%s\n", c0->config_path, c0->name) < 0)
+		bret = false;
+	if (fclose(f) != 0)
+		bret = false;
+	return bret;
+}
+
 static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 		const char *newtype, int flags, const char *bdevdata, unsigned long newsize)
 {
 	struct bdev *bdev;
+	int need_rdep;
 
 	bdev = bdev_copy(c0->lxc_conf->rootfs.path, c0->name, c->name,
 			c0->config_path, c->config_path, newtype, !!(flags & LXC_CLONE_SNAPSHOT),
-			bdevdata, newsize);
+			bdevdata, newsize, &need_rdep);
 	if (!bdev) {
-		ERROR("error copying storage");
+		ERROR("Error copying storage");
 		return -1;
 	}
 	free(c->lxc_conf->rootfs.path);
 	c->lxc_conf->rootfs.path = strdup(bdev->src);
 	bdev_put(bdev);
-	if (!c->lxc_conf->rootfs.path)
+	if (!c->lxc_conf->rootfs.path) {
+		ERROR("Out of memory while setting storage path");
 		return -1;
-	// here we could also update all lxc.mount.entries or even
-	// items in the lxc.mount fstab list.  As discussed on m-l,
-	// we could do either any source paths starting with the
-	// lxcpath/oldname, or simply anythign which is not a virtual
-	// fs or a bind mount.
+	}
+	copy_rdepends(c, c0);
+	if (need_rdep) {
+		if (!add_rdepends(c, c0))
+			WARN("Error adding reverse dependency from %s to %s",
+				c->name, c0->name);
+	}
+
+	mod_all_rdeps(c, true);
+
 	return 0;
 }
 

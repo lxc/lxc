@@ -1895,7 +1895,8 @@ struct bdev *bdev_init(const char *src, const char *dst, const char *data)
  */
 struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 			const char *oldpath, const char *lxcpath, const char *bdevtype,
-			int snap, const char *bdevdata, unsigned long newsize)
+			int snap, const char *bdevdata, unsigned long newsize,
+			int *needs_rdep)
 {
 	struct bdev *orig, *new;
 	pid_t pid;
@@ -1936,6 +1937,11 @@ struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 	 */
 	if (!bdevtype && snap && strcmp(orig->type , "dir") == 0)
 		bdevtype = "overlayfs";
+
+	*needs_rdep = 0;
+	if (strcmp(orig->type, "dir") == 0 &&
+			strcmp(bdevtype, "overlayfs") == 0)
+		*needs_rdep = 1;
 
 	new = bdev_get(bdevtype ? bdevtype : orig->type);
 	if (!new) {
