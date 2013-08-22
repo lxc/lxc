@@ -49,8 +49,8 @@ prep() {
     fi
 
     local cur="" next=""
-    local userdata="" hostid="" authkey="" locales=1 cloud=0 name=""
-    local create_etc_init=0
+    local userdata="" hostid="" authkey="" locales=1 cloud=0
+    local create_etc_init=0 name="ubuntucloud-lxc"
 
     while [ $# -ne 0 ]; do
         cur="$1"; next="$2";
@@ -97,6 +97,10 @@ prep() {
 
     local seed_d=""
     seed_d="$root_d/var/lib/cloud/seed/nocloud-net"
+
+    echo "$name" > "$root_d/etc/hostname" ||
+        { error "failed to write /etc/hostname"; return 1; }
+
     if [ $cloud -eq 1 ]; then
         debug 1 "--cloud provided, not modifying seed in '$seed_d'"
     else
@@ -108,6 +112,9 @@ prep() {
             { error "failed to create '$seed_d'"; return 1; }
 
         echo "instance-id: lxc-$hostid" > "$seed_d/meta-data" ||
+            { error "failed to write to $seed_d/meta-data"; return 1; }
+
+        echo "local-hostname: $name" >> "$seed_d/meta-data" ||
             { error "failed to write to $seed_d/meta-data"; return 1; }
 
         if [ -n "$authkey" ]; then
