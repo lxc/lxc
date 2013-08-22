@@ -43,6 +43,7 @@
 #include "log.h"
 #include "caps.h"
 #include "lxc.h"
+#include "lxccontainer.h"
 #include "conf.h"
 #include "cgroup.h"
 #include "utils.h"
@@ -151,6 +152,8 @@ int main(int argc, char *argv[])
 		'\0',
 	};
 	FILE *pid_fp = NULL;
+	struct lxc_container *c;
+	char *anonpath;
 
 	lxc_list_init(&defines);
 
@@ -169,13 +172,32 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return err;
 
+	anonpath = alloca(strlen(LXCPATH) + 6);
+	sprintf(anonpath, "%s_anon", LXCPATH);
+	/*
+	 * rcfile possibilities:
+	 * 1. rcfile from random path specified in cli option
+	 * 2. rcfile not specified, use $lxcpath/$lxcname/config
+	 * 3. rcfile not specified and does not exist.
+	 */
 	/* rcfile is specified in the cli option */
-	if (my_args.rcfile)
+	if (my_args.rcfile) {
 		rcfile = (char *)my_args.rcfile;
-	else {
+		c = lxc_container_new(my_args.name, anonpath);
+		if (!c) {
+			ERROR("Failed to create lxc_container");
+			return err;
+		}
+		if (!c->load_config(c, rcfile)) {
+			ERROR("Failed to load rcfile");
+			lxc_container_put(c);
+			return err;
+		}
+	} else {
 		int rc;
+		const char *lxcpath = my_args.lxcpath[0];
 
-		rc = asprintf(&rcfile, "%s/%s/config", my_args.lxcpath[0], my_args.name);
+		rc = asprintf(&rcfile, "%s/%s/config", lxcpath, my_args.name);
 		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
 			return err;
@@ -186,25 +208,28 @@ int main(int argc, char *argv[])
 		if (access(rcfile, F_OK)) {
 			free(rcfile);
 			rcfile = NULL;
+			lxcpath = anonpath;
+		}
+		c = lxc_container_new(my_args.name, lxcpath);
+		if (!c) {
+			ERROR("Failed to create lxc_container");
+			return err;
 		}
 	}
 
-	conf = lxc_conf_init();
-	if (!conf) {
-		ERROR("failed to initialize configuration");
-		return err;
-	}
-
-	if (rcfile && lxc_config_read(rcfile, conf)) {
-		ERROR("failed to read configuration file");
-		goto out;
-	}
+	/*
+	 * We should use set_config_item() over &defines, which would handle
+	 * unset c->lxc_conf for us and let us not use lxc_config_define_load()
+	 */
+	if (!c->lxc_conf)
+		c->lxc_conf = lxc_conf_init();
+	conf = c->lxc_conf;
 
 	if (lxc_config_define_load(&defines, conf))
 		goto out;
 
 	if (!rcfile && !strcmp("/sbin/init", args[0])) {
-		ERROR("no configuration file for '/sbin/init' (may crash the host)");
+		ERROR("Executing '/sbin/init' with no configuration file may crash the host");
 		goto out;
 	}
 
@@ -228,10 +253,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (my_args.daemonize) {
-		if (daemon(0, 0)) {
-			SYSERROR("failed to daemonize '%s'", my_args.name);
-			goto out;
-		}
+		c->want_daemonize(c);
 	}
 
 	if (pid_fp != NULL) {
@@ -245,23 +267,13 @@ int main(int argc, char *argv[])
 	if (my_args.close_all_fds)
 		conf->close_all_fds = 1;
 
-	err = lxc_start(my_args.name, args, conf, my_args.lxcpath[0]);
-
-	/*
-	 * exec ourself, that requires to have all opened fd
-	 * with the close-on-exec flag set
-	 */
-	if (conf->reboot) {
-		INFO("rebooting container");
-		execvp(argv[0], argv);
-		SYSERROR("failed to exec");
-		err = -1;
-	}
+	err = c->start(c, 0, args) ? 0 : -1;
 
 	if (my_args.pidfile)
 		unlink(my_args.pidfile);
+
 out:
-	lxc_conf_free(conf);
+	lxc_container_put(c);
 	return err;
 }
 
