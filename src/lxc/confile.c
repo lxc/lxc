@@ -759,8 +759,8 @@ static int config_network_ipv6(const char *key, const char *value,
 		inet6dev->prefix = atoi(netmask);
 	}
 
-	if (!inet_pton(AF_INET6, value, &inet6dev->addr)) {
-		SYSERROR("invalid ipv6 address: %s", value);
+	if (!inet_pton(AF_INET6, valdup, &inet6dev->addr)) {
+		SYSERROR("invalid ipv6 address: %s", valdup);
 		free(list);
 		free(inet6dev);
 		free(valdup);
