@@ -162,8 +162,10 @@ static int signal_handler(int fd, void *data,
 			   struct lxc_epoll_descr *descr)
 {
 	struct signalfd_siginfo siginfo;
+	siginfo_t info;
 	int ret;
 	pid_t *pid = data;
+	bool init_died = false;
 
 	ret = read(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0) {
@@ -176,16 +178,23 @@ static int signal_handler(int fd, void *data,
 		return -1;
 	}
 
+	// check whether init is running
+	info.si_pid = 0;
+	ret = waitid(P_PID, *pid, &info, WEXITED | WNOWAIT | WNOHANG);
+	if (ret == 0 && info.si_pid == *pid) {
+		init_died = true;
+	}
+
 	if (siginfo.ssi_signo != SIGCHLD) {
 		kill(*pid, siginfo.ssi_signo);
 		INFO("forwarded signal %d to pid %d", siginfo.ssi_signo, *pid);
-		return 0;
+		return init_died ? 1 : 0;
 	}
 
 	if (siginfo.ssi_code == CLD_STOPPED ||
 	    siginfo.ssi_code == CLD_CONTINUED) {
 		INFO("container init process was stopped/continued");
-		return 0;
+		return init_died ? 1 : 0;
 	}
 
 	/* more robustness, protect ourself from a SIGCHLD sent
@@ -193,7 +202,7 @@ static int signal_handler(int fd, void *data,
 	 */
 	if (siginfo.ssi_pid != *pid) {
 		WARN("invalid pid for SIGCHLD");
-		return 0;
+		return init_died ? 1 : 0;
 	}
 
 	DEBUG("container init process exited");
