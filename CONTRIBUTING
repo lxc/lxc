@@ -40,6 +40,30 @@ You can submit your patches to the lxc-devel@lists.sourceforge.net mailing
 list. Use https://lists.sourceforge.net/lists/listinfo/lxc-devel to subscribe
 to the list.
 
+
+Licensing for new files:
+------------------------
+
+LXC is made of files shipped under a few different licenses.
+
+Anything that ends up being part of the LXC library needs to be released
+under LGPLv2.1+ or a license compatible with it (though the latter will
+only be accepted for cases where the code originated elsewhere and was
+imported into LXC).
+
+Language bindings for the libraries need to be released under LGPLv2.1+.
+
+Anything else (non-libaries) needs to be Free Software and needs to be
+allowed to link with LGPLv2.1+ code (if needed). LXC upstream prefers
+LGPLv2.1+ or GPLv2 for those.
+
+
+When introducing a new file into the project, please make sure it has a
+copyright header making clear under which license it's being released
+and if it doesn't match the criteria described above, please explain
+your decision on the lxc-devel mailing-list when submitting your patch.
+
+
 Developer Certificate of Origin:
 --------------------------------
 
