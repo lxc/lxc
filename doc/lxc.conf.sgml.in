@@ -255,7 +255,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      bridge is set up as a reflective relay.  Broadcast
 	      frames coming in from the upper_dev get flooded to all
 	      macvlan interfaces in VEPA mode, local frames are not
-	      delivered locallay, or <option>bridge</option>, it
+	      delivered locally, or <option>bridge</option>, it
 	      provides the behavior of a simple bridge between
 	      different macvlan interfaces on the same port. Frames
 	      from one interface to another one get delivered directly
@@ -570,7 +570,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
 	(limited to 100k) and fill in a minimal set of initial devices.
         This is generally required when starting a container containing
-        a "systemd" based "init" but may be optional at other times.  Addional
+        a "systemd" based "init" but may be optional at other times.  Additional
         devices in the containers /dev directory may be created through the
         use of the <option>lxc.hook.autodev</option> hook.
       </para>
@@ -1026,7 +1026,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      Host relative path to the container configuration file.  This
 	      gives the container to reference the original, top level,
 	      configuration file for the container in order to locate any
-	      addotional configuration information not otherwise made
+	      additional configuration information not otherwise made
 	      available.  [<option>-f</option>]
 	    </para>
 	  </listitem>
