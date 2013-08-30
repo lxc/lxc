@@ -157,13 +157,6 @@ struct lxc_container {
 	/* run program in container, wait for it to exit */
 	int (*attach_run_wait)(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char * const argv[]);
 	int (*attach_run_waitl)(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char *arg, ...);
-#if 0
-	bool (*commit_cgroups)(struct lxc_container *c);
-	bool (*reread_cgroups)(struct lxc_container *c);
-	// question with clone: how do we handle non-standard config file in orig?
-	struct lxc_container (*clone)(struct container *c);
-	// we'll need some plumbing to support lxc-console
-#endif
 };
 
 struct lxc_container *lxc_container_new(const char *name, const char *configpath);
