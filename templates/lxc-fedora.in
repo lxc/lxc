@@ -63,7 +63,7 @@ then
     fi
 fi
 
-if [ ${CPE_NAME} != "" -a ${ID} = "fedora" -a ${VERSION_ID} != "" ]
+if [ "${CPE_NAME}" != "" -a "${ID}" = "fedora" -a "${VERSION_ID}" != "" ]
 then
     fedora_host_ver=${VERSION_ID}
     is_fedora=true
