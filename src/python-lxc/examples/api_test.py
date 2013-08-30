@@ -98,7 +98,8 @@ while not ips or count == 10:
     ips = container.get_ips()
     time.sleep(1)
     count += 1
-container.attach("NETWORK|UTSNAME", "/sbin/ifconfig", "eth0")
+container.attach_wait(lxc.attach_run_command, ["ifconfig", "eth0"],
+                      namespaces=(lxc.CLONE_NEWNET + lxc.CLONE_NEWUTS))
 
 # A few basic checks of the current state
 assert(len(ips) > 0)
