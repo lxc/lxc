@@ -59,6 +59,16 @@
  * Each command is wrapped in a ancillary message in order to pass
  * a credential making possible to the server to check if the client
  * is allowed to ask for this command or not.
+ *
+ * IMPORTANTLY: Note that semantics for current commands are fixed.  If you
+ * wish to make any changes to how, say, LXC_CMD_GET_CONFIG_ITEM works by
+ * adding information to the end of cmd.data, then you must introduce a new
+ * LXC_CMD_GET_CONFIG_ITEM_V2 define with a new number.  You may wish to
+ * also mark LXC_CMD_GET_CONFIG_ITEM deprecated in commands.h.
+ *
+ * This is necessary in order to avoid having a newly compiled lxc command
+ * communicating with a running (old) monitor from crashing the running
+ * container.
  */
 
 lxc_log_define(lxc_commands, lxc);
