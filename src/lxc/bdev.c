@@ -1939,7 +1939,7 @@ struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 		bdevtype = "overlayfs";
 
 	*needs_rdep = 0;
-	if (strcmp(orig->type, "dir") == 0 &&
+	if (bdevtype && strcmp(orig->type, "dir") == 0 &&
 			strcmp(bdevtype, "overlayfs") == 0)
 		*needs_rdep = 1;
 
