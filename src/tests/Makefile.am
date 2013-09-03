@@ -47,4 +47,5 @@ EXTRA_DIST = \
 	shutdowntest.c \
 	clonetest.c \
 	startone.c \
-	console.c
+	console.c \
+	lxc-test-usernic
