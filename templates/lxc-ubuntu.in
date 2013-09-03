@@ -577,8 +577,14 @@ post_process()
         write_sourceslist $rootfs $hostarch "multiarch"
 
         # Finally update the lists and install upstart using the host architecture
+        HOST_PACKAGES="upstart:${hostarch} mountall:${hostarch} isc-dhcp-client:${hostarch}"
         chroot $rootfs apt-get update
-        chroot $rootfs apt-get install --force-yes -y --no-install-recommends upstart:${hostarch} mountall:${hostarch} iproute:${hostarch} isc-dhcp-client:${hostarch}
+        if chroot $rootfs dpkg -l iproute2 | grep -q ^ii; then
+            HOST_PACKAGES="$HOST_PACKAGES iproute2:${hostarch}"
+        else
+            HOST_PACKAGES="$HOST_PACKAGES iproute:${hostarch}"
+        fi
+        chroot $rootfs apt-get install --force-yes -y --no-install-recommends $HOST_PACKAGES
     fi
 
     # rmdir /dev/shm for containers that have /run/shm
