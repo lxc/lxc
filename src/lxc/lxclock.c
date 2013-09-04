@@ -122,6 +122,10 @@ struct lxc_lock *lxc_newlock(const char *lxcpath, const char *name)
 	if (!name) {
 		l->type = LXC_LOCK_ANON_SEM;
 		l->u.sem = lxc_new_unnamed_sem();
+		if (!l->u.sem) {
+			free(l);
+			l = NULL;
+		}
 		goto out;
 	}
 
@@ -248,8 +252,11 @@ void lxc_putlock(struct lxc_lock *l)
 		return;
 	switch(l->type) {
 	case LXC_LOCK_ANON_SEM:
-		if (l->u.sem)
+		if (l->u.sem) {
 			sem_close(l->u.sem);
+			free(l->u.sem);
+			l->u.sem = NULL;
+		}
 		break;
 	case LXC_LOCK_FLOCK:
 		process_lock();
@@ -264,6 +271,7 @@ void lxc_putlock(struct lxc_lock *l)
 		}
 		break;
 	}
+	free(l);
 }
 
 int process_lock(void)
