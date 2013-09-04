@@ -42,6 +42,7 @@ extern int mkdir_p(const char *dir, mode_t mode);
 extern const char *default_lxc_path(void);
 extern const char *default_zfs_root(void);
 extern const char *default_lvm_vg(void);
+extern const char *default_lvm_thin_pool(void);
 
 /* Define getline() if missing from the C library */
 #ifndef HAVE_GETLINE

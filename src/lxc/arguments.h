@@ -80,7 +80,7 @@ struct lxc_arguments {
 	char *bdevtype, *configfile, *template;
 	char *fstype;
 	unsigned long fssize;
-	char *lvname, *vgname;
+	char *lvname, *vgname, *thinpool;
 	char *zfsroot, *lowerdir, *dir;
 
 	/* remaining arguments */

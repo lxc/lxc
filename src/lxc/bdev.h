@@ -46,6 +46,7 @@ struct bdev_specs {
 			char *lv;
 			char *fstype;
 			unsigned long fssize;  // fs size in bytes
+			char *thinpool; // lvm thin pool to use, if any
 		} lvm;
 		struct {
 			char *fstype;

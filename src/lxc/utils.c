@@ -219,6 +219,8 @@ static char *copypath(char *p)
 char *default_lxcpath;
 #define DEFAULT_VG "lxc"
 char *default_lvmvg;
+#define DEFAULT_THIN_POOL "pool"
+char *default_lvmthinpool;
 #define DEFAULT_ZFSROOT "lxc"
 char *default_zfsroot;
 
@@ -255,6 +257,41 @@ out:
 	if (fin)
 		fclose(fin);
 	return default_lvmvg;
+}
+
+const char *default_lvm_thin_pool(void)
+{
+	char buf[1024], *p;
+	FILE *fin;
+
+	if (default_lvmthinpool)
+		return default_lvmthinpool;
+
+	fin = fopen(LXC_GLOBAL_CONF, "r");
+	if (fin) {
+		while (fgets(buf, 1024, fin)) {
+			if (buf[0] == '#')
+				continue;
+			p = strstr(buf, "lvm_thin_pool");
+			if (!p)
+				continue;
+			p = strchr(p, '=');
+			if (!p)
+				continue;
+			p++;
+			while (*p && (*p == ' ' || *p == '\t')) p++;
+			if (!*p)
+				continue;
+			default_lvmthinpool = copypath(p);
+			goto out;
+		}
+	}
+	default_lvmthinpool = DEFAULT_THIN_POOL;
+
+out:
+	if (fin)
+		fclose(fin);
+	return default_lvmthinpool;
 }
 
 const char *default_zfs_root(void)
