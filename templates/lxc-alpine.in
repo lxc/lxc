@@ -173,9 +173,11 @@ lxc.network.flags = up
 EOF
     fi
 
-    # if there is exactly one veth network entry, make sure it has an
-    # associated mac address.
-    nics=$(grep -e '^lxc\.network\.type[ \t]*=[ \t]*veth' $path/config | wc -l)
+    # if there is exactly one veth or macvlan network entry, make sure
+    # it has an associated mac address.
+    nics=$(awk -F '[ \t]*=[ \t]*' \
+        '$1=="lxc.network.type" && ($2=="veth" || $2=="macvlan") {print $2}' \
+        $path/config | wc -l)
     if [ "$nics" -eq 1 ] && ! grep -q "^lxc.network.hwaddr" $path/config; then
         # see http://sourceforge.net/tracker/?func=detail&aid=3411497&group_id=163076&atid=826303
         hwaddr="fe:$(dd if=/dev/urandom bs=8 count=1 2>/dev/null |od -t x8 | \
