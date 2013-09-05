@@ -1,0 +1,191 @@
+
+<!-- 
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+Translated into Japanese 
+by KATOH Yasufumi <karma at jazz.email.ne.jp>
+
+-->
+
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-wait</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-wait</refname>
+
+    <refpurpose>
+      <!--
+      wait for a specific container state
+      -->
+      指定したコンテナの状態を待つ
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-wait</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="req">-s <replaceable>states</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->説明</title>
+    <para>
+      <!--
+      <command>lxc-wait</command> waits for a specific container state
+      before exiting, this is useful for scripting.
+      -->
+      <command>lxc-wait</command> は，コンテナが指定した状態になるのを待って終了します．スクリプトで使用するときに役に立ちます．
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options -->オプション</title>
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-s <replaceable>states</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the container state(s) to wait for. The container
+	    states can be ORed to specify several states.
+            -->
+            待つ対象のコンテナの状態を指定します．コンテナの状態として，いくつかの状態を OR で指定することが可能です．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-t <replaceable>timeout</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Wait timeout seconds for desired state to be reached.
+            -->
+            期待した状態になるまで timeout 秒待ちます．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title>Examples</title>
+    <variablelist>
+      <varlistentry>
+	<term>lxc-wait -n foo -s RUNNING</term>
+	<listitem>
+	<para>
+          <!--
+	  exits when 'RUNNING' is reached.
+          -->
+          状態が 'RUNNING' になった時点で終了します．
+	</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>lxc-wait -n foo -s 'RUNNING|STOPPED'</term>
+	<listitem>
+	<para>
+          <!--
+	  exits when 'RUNNING' or 'STOPPED' state is reached.
+          -->
+          状態が 'RUNNING' もしくは 'STOPPED' になった時点で終了します．
+	</para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Diagnostic -->診断</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>The container was not found</term>
+        <listitem>
+          <para>
+            <!--
+	    The specified container was not created before with
+	    the <command>lxc-create</command> command.
+            -->
+            指定したコンテナが <command>lxc-create</command> で作成されておらず存在しません．
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+    </variablelist>
+
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->作者</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

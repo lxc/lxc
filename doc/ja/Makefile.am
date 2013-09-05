@@ -1,5 +1,7 @@
-SUBDIRS = examples rootfs ja
-DIST_SUBDIRS = examples rootfs ja
+mandir = @mandir@/ja
+
+SUBDIRS =
+DIST_SUBDIRS =
 
 EXTRA_DIST = \
 	FAQ.txt
@@ -46,15 +48,15 @@ if ENABLE_LUA
 endif
 
 %.1 : %.sgml
-	$(db2xman) $<
+	$(db2xman) --encoding=UTF-8 $<
 	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true
 
 %.5 : %.sgml
-	$(db2xman) $<
+	$(db2xman) --encoding=UTF-8 $<
 	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true
 
 %.7 : %.sgml
-	$(db2xman) $<
+	$(db2xman) --encoding=UTF-8 $<
 	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true
 
 lxc-%.sgml : common_options.sgml see_also.sgml
