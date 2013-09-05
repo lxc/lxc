@@ -1935,7 +1935,8 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 		ERROR("Out of memory while setting storage path");
 		return -1;
 	}
-	copy_rdepends(c, c0);
+	if (flags & LXC_CLONE_SNAPSHOT)
+		copy_rdepends(c, c0);
 	if (need_rdep) {
 		if (!add_rdepends(c, c0))
 			WARN("Error adding reverse dependency from %s to %s",
