@@ -1511,9 +1511,11 @@ static bool lxcapi_destroy(struct lxc_container *c)
 		r = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (r) {
 		if (r->ops->destroy(r) < 0) {
+			bdev_put(r);
 			ERROR("Error destroying rootfs for %s", c->name);
 			goto out;
 		}
+		bdev_put(r);
 	}
 
 	mod_all_rdeps(c, false);
