@@ -70,22 +70,6 @@ function string:split(delim, max_cols)
     return cols
 end
 
-function dirname(path)
-    local f,output
-    f = io.popen("dirname " .. path)
-    output = f:read('*all')
-    f:close()
-    return output:sub(1,-2)
-end
-
-function basename(path, suffix)
-    local f,output
-    f = io.popen("basename " .. path .. " " .. (suffix or ""))
-    output = f:read('*all')
-    f:close()
-    return output:sub(1,-2)
-end
-
 function cgroup_path_get()
     local f,line,cgroup_path
 
@@ -99,7 +83,7 @@ function cgroup_path_get()
 	    end
 	    c = line:split(" ", 6)
 	    if (c[1] == "cgroup") then
-		cgroup_path = dirname(c[2])
+		cgroup_path = core.dirname(c[2])
 		break
 	    end
 	end
