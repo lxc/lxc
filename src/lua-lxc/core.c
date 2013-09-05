@@ -25,8 +25,14 @@
 #define _GNU_SOURCE
 #include <lua.h>
 #include <lauxlib.h>
+#include <assert.h>
 #include <string.h>
 #include <lxc/lxccontainer.h>
+
+#if LUA_VERSION_NUM < 502
+#define luaL_newlib(L,l) (lua_newtable(L), luaL_register(L,NULL,l))
+#define luaL_setfuncs(L,l,n) (assert(n==0), luaL_register(L,NULL,l))
+#endif
 
 #ifdef NO_CHECK_UDATA
 #define checkudata(L,i,tname)	lua_touserdata(L, i)
@@ -389,7 +395,7 @@ static int lxc_lib_uninit(lua_State *L) {
 LUALIB_API int luaopen_lxc_core(lua_State *L) {
     /* this is where we would initialize liblxc.so if we needed to */
 
-    luaL_register(L, "lxc", lxc_lib_methods);
+    luaL_newlib(L, lxc_lib_methods);
 
     lua_newuserdata(L, 0);
     lua_newtable(L);  /* metatable */
@@ -401,12 +407,12 @@ LUALIB_API int luaopen_lxc_core(lua_State *L) {
     lua_rawset(L, -3);
 
     luaL_newmetatable(L, CONTAINER_TYPENAME);
+    luaL_setfuncs(L, lxc_container_methods, 0);
     lua_pushvalue(L, -1);  /* push metatable */
     lua_pushstring(L, "__gc");
     lua_pushcfunction(L, container_gc);
     lua_settable(L, -3);
     lua_setfield(L, -2, "__index");  /* metatable.__index = metatable */
-    luaL_register(L, NULL, lxc_container_methods);
     lua_pop(L, 1);
     return 1;
 }
