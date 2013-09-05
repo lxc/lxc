@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <string.h>
 #include <unistd.h>
+#include <libgen.h>
 #include <lxc/lxccontainer.h>
 
 #if LUA_VERSION_NUM < 502
@@ -387,11 +388,18 @@ static int lxc_util_usleep(lua_State *L) {
     return 0;
 }
 
+static int lxc_util_dirname(lua_State *L) {
+    char *path = strdupa(luaL_checkstring(L, 1));
+    lua_pushstring(L, dirname(path));
+    return 1;
+}
+
 static luaL_Reg lxc_lib_methods[] = {
     {"version_get",		lxc_version_get},
     {"default_config_path_get",	lxc_default_config_path_get},
     {"container_new",		container_new},
     {"usleep",			lxc_util_usleep},
+    {"dirname",			lxc_util_dirname},
     {NULL, NULL}
 };
 
