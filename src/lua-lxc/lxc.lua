@@ -254,7 +254,7 @@ end
 -- methods for stats collection from various cgroup files
 -- read integers at given coordinates from a cgroup file
 function container:stat_get_ints(controller, item, coords)
-    local f = io.open(cgroup_path.."/"..controller.."/lxc/"..self.ctname.."/"..item, "r")
+    local f = io.open(cgroup_path.."/"..controller.."/"..self.ctname.."/"..item, "r")
     local lines = {}
     local result = {}
 
@@ -280,7 +280,7 @@ end
 
 -- read an integer from a cgroup file
 function container:stat_get_int(controller, item)
-    local f = io.open(cgroup_path.."/"..controller.."/lxc/"..self.ctname.."/"..item, "r")
+    local f = io.open(cgroup_path.."/"..controller.."/"..self.ctname.."/"..item, "r")
     if (not f) then
 	return 0
     end
@@ -294,19 +294,17 @@ end
 
 function container:stat_match_get_int(controller, item, match, column)
     local val
-    local f = io.open(cgroup_path.."/"..controller.."/lxc/"..self.ctname.."/"..item, "r")
+    local f = io.open(cgroup_path.."/"..controller.."/"..self.ctname.."/"..item, "r")
     if (not f) then
 	return 0
     end
 
     for line in f:lines() do
-	printf("matching line:%s with match:%s\n", line, match)
 	if (string.find(line, match)) then
 	    local col
 
 	    col = line:split(" ", 80)
 	    val = tonumber(col[column]) or 0
-	    printf("found line!! val:%d\n", val)
 	end
     end
     f:close()
@@ -350,6 +348,17 @@ function M.stats_clear(stat)
     stat.blkio         = 0
 end
 
+function M.stats_clear(stat)
+    stat.mem_used      = 0
+    stat.mem_limit     = 0
+    stat.memsw_used    = 0
+    stat.memsw_limit   = 0
+    stat.cpu_use_nanos = 0
+    stat.cpu_use_user  = 0
+    stat.cpu_use_sys   = 0
+    stat.blkio         = 0
+end
+
 -- return configured containers found in LXC_PATH directory
 function M.containers_configured(names_only)
     local containers = {}
@@ -381,34 +390,22 @@ end
 -- return running containers found in cgroup fs
 function M.containers_running(names_only)
     local containers = {}
-    local attr
+    local names = M.containers_configured(true)
 
-    -- the lxc directory won't exist if no containers has ever been started
-    attr = lfs.attributes(cgroup_path .. "/cpu/lxc")
-    if (not attr) then
-	return containers
-    end
-
-    for file in lfs.dir(cgroup_path .. "/cpu/lxc") do
-	if (file ~= "." and file ~= "..")
-	then
-	    local pathfile = cgroup_path .. "/cpu/lxc/" .. file
-	    local attr = lfs.attributes(pathfile)
-
-	    if (attr.mode == "directory") then
+    for _,name in ipairs(names) do
+	local ct = container:new(name)
+	if ct:running() then
+		-- note, this is a "mixed" table, ie both dictionary and list
+		table.insert(containers, name)
 		if (names_only) then
-		    -- note, this is a "mixed" table, ie both dictionary and list
-		    containers[file] = true
-		    table.insert(containers, file)
+		    containers[name] = true
+		    ct = nil
 		else
-		    local ct = container:new(file)
-		    -- note, this is a "mixed" table, ie both dictionary and list
-		    containers[file] = ct
-		    table.insert(containers, file)
+		    containers[name] = ct
 		end
-	    end
 	end
     end
+
     table.sort(containers, function (a,b) return (a < b) end)
     return containers
 end

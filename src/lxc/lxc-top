@@ -130,7 +130,6 @@ end
 function container_list_update()
     local now_running
 
-    lxc.stats_clear(stats_total)
     now_running = lxc.containers_running(true)
 
     -- check for newly started containers
