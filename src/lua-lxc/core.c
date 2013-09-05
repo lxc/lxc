@@ -27,11 +27,13 @@
 #include <lauxlib.h>
 #include <assert.h>
 #include <string.h>
+#include <unistd.h>
 #include <lxc/lxccontainer.h>
 
 #if LUA_VERSION_NUM < 502
 #define luaL_newlib(L,l) (lua_newtable(L), luaL_register(L,NULL,l))
 #define luaL_setfuncs(L,l,n) (assert(n==0), luaL_register(L,NULL,l))
+#define luaL_checkunsigned(L,n) luaL_checknumber(L,n)
 #endif
 
 #ifdef NO_CHECK_UDATA
@@ -379,10 +381,17 @@ static int lxc_default_config_path_get(lua_State *L) {
     return 1;
 }
 
+/* utility functions */
+static int lxc_util_usleep(lua_State *L) {
+    usleep((useconds_t)luaL_checkunsigned(L, 1));
+    return 0;
+}
+
 static luaL_Reg lxc_lib_methods[] = {
     {"version_get",		lxc_version_get},
     {"default_config_path_get",	lxc_default_config_path_get},
     {"container_new",		container_new},
+    {"usleep",			lxc_util_usleep},
     {NULL, NULL}
 };
 

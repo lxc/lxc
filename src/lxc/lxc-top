@@ -22,6 +22,7 @@
 --
 
 local lxc    = require("lxc")
+local core   = require("lxc.core")
 local getopt = require("alt_getopt")
 local lfs    = require("lfs")
 
@@ -93,15 +94,6 @@ function strsisize(size, width)
 	return string.format("%d.%2.2d KB", size / KiB, (math.floor(size % KiB) * 1000) / (KiB * 10))
     end
     return string.format("%3d.00   ", size)
-end
-
-function usleep(n)
-    if (n ~= 0) then
-	ret = os.execute("usleep " .. tonumber(n))
-	if (ret ~= 0) then
-	    os.exit(0)
-	end
-    end
 end
 
 function tty_lines()
@@ -238,5 +230,5 @@ do
     end
     stats_print(string.format("TOTAL (%-2d)", #containers), stats_total)
     io.flush()
-    usleep(optarg["d"] * 1000000)
+    core.usleep(optarg["d"] * 1000000)
 end
