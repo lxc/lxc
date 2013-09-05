@@ -1,7 +1,7 @@
 if ENABLE_LUA
 
-luadir=$(datadir)/lua/5.1
-sodir=$(libdir)/lua/5.1/lxc
+luadir=$(LUA_INSTALL_LMOD)
+sodir=$(LUA_INSTALL_CMOD)/lxc
 
 lua_SCRIPTS=lxc.lua
 

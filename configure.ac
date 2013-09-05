@@ -150,22 +150,51 @@ AM_COND_IF([ENABLE_PYTHON],
 	PKG_CHECK_MODULES([PYTHONDEV], [python3 >= 3.2],[],[AC_MSG_ERROR([You must install python3-dev])])
 	AC_DEFINE_UNQUOTED([ENABLE_PYTHON], 1, [Python3 is available])])
 
-# Lua module and scripts
-if test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu" ; then
-    LUAPKGCONFIG=lua5.1
-else
-    LUAPKGCONFIG=lua
-fi
+dnl PKG_CHECK_VAR was introduced with pkg-config 0.28
+m4_ifdef([PKG_CHECK_VAR], [],
+[AC_DEFUN([PKG_CHECK_VAR],
+    [AC_REQUIRE([PKG_PROG_PKG_CONFIG])dnl
+     AC_ARG_VAR([$1], [value of $3 for $2, overriding pkg-config])dnl
+     _PKG_CONFIG([$1], [variable="][$3]["], [$2])
+     AS_VAR_COPY([$1], [pkg_cv_][$1])
+     AS_VAR_IF([$1], [""], [$5], [$4])dnl
+    ])# PKG_CHECK_VAR
+])
 
+# Lua module and scripts
 AC_ARG_ENABLE([lua],
 	[AC_HELP_STRING([--enable-lua], [enable lua binding])],
 	[enable_lua=yes], [enable_lua=no])
 
-AM_CONDITIONAL([ENABLE_LUA], [test "x$enable_lua" = "xyes"])
+AC_ARG_WITH([lua-pc],
+	[AS_HELP_STRING(
+		[--with-lua-pc=PKG],
+		[Specify pkg-config package name for lua]
+	)],
+	[LUAPKGCONFIG=$with_lua_pc
+	enable_lua=yes], [with_lua_pc=auto])
+
+AM_CONDITIONAL([ENABLE_LUA],
+	[test "x$enable_lua" = "xyes" -o "xwith_lua_pc != xno"])
 
 AM_COND_IF([ENABLE_LUA],
-	[PKG_CHECK_MODULES([LUA], [$LUAPKGCONFIG >= 5.1],[],[AC_MSG_ERROR([You must install lua-devel for lua 5.1])])
-	AC_DEFINE_UNQUOTED([ENABLE_LUA], 1, [Lua is available])])
+	[AS_IF([test "x$with_lua_pc" = "xauto"],
+		[PKG_CHECK_MODULES([LUA], [lua],[LUAPKGCONFIG=lua],
+			[PKG_CHECK_MODULES([LUA], [lua5.2],[LUAPKGCONFIG=lua5.2],
+				[PKG_CHECK_MODULES([LUA], [lua5.1],
+					[LUAPKGCONFIG=lua5.1])]
+			)]
+		)],
+		[PKG_CHECK_MODULES([LUA], [$with_lua_pc])])
+	AC_MSG_CHECKING([Lua version])
+	PKG_CHECK_VAR([LUA_VERSION], [$LUAPKGCONFIG], [V],,
+		[PKG_CHECK_VAR([LUA_VERSION], [$LUAPKGCONFIG], [major_version])])
+	AC_MSG_RESULT([$LUA_VERSION])
+	PKG_CHECK_VAR([LUA_INSTALL_CMOD], [$LUAPKGCONFIG], [INSTALL_CMOD],,
+		[LUA_INSTALL_CMOD=$libdir/lua/$LUA_VERSION])
+	PKG_CHECK_VAR([LUA_INSTALL_LMOD], [$LUAPKGCONFIG], [INSTALL_LMOD],,
+		[LUA_INSTALL_LMOD=$datadir/lua/$LUA_VERSION])
+	])
 
 # Optional test binaries
 AC_ARG_ENABLE([tests],
