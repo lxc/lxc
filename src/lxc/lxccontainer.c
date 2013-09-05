@@ -1503,7 +1503,7 @@ static bool lxcapi_destroy(struct lxc_container *c)
 	}
 
 	if (c->lxc_conf && has_snapshots(c)) {
-		ERROR("conatiner %s has dependent snapshots", c->name);
+		ERROR("container %s has dependent snapshots", c->name);
 		goto out;
 	}
 
