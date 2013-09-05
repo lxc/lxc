@@ -32,6 +32,11 @@ local lxc_path
 local cgroup_path
 local log_level = 3
 
+-- lua 5.1 compat
+if table.unpack == nil then
+    table.unpack = unpack
+end
+
 -- the following two functions can be useful for debugging
 function printf(...)
     local function wrapper(...) io.write(string.format(...)) end
@@ -286,7 +291,7 @@ function container:stat_get_ints(controller, item, coords)
 	    table.insert(result, val)
 	end
     end
-    return unpack(result)
+    return table.unpack(result)
 end
 
 -- read an integer from a cgroup file
@@ -324,17 +329,6 @@ function container:stat_match_get_int(controller, item, match, column)
     return val
 end
 
-function stats_clear(stat)
-    stat.mem_used      = 0
-    stat.mem_limit     = 0
-    stat.memsw_used    = 0
-    stat.memsw_limit   = 0
-    stat.cpu_use_nanos = 0
-    stat.cpu_use_user  = 0
-    stat.cpu_use_sys   = 0
-    stat.blkio         = 0
-end
-
 function container:stats_get(total)
     local stat = {}
     stat.mem_used      = self:stat_get_int("memory",  "memory.usage_in_bytes")
@@ -359,10 +353,21 @@ function container:stats_get(total)
     return stat
 end
 
+local M = { container = container }
 
+function M.stats_clear(stat)
+    stat.mem_used      = 0
+    stat.mem_limit     = 0
+    stat.memsw_used    = 0
+    stat.memsw_limit   = 0
+    stat.cpu_use_nanos = 0
+    stat.cpu_use_user  = 0
+    stat.cpu_use_sys   = 0
+    stat.blkio         = 0
+end
 
 -- return configured containers found in LXC_PATH directory
-function containers_configured(names_only)
+function M.containers_configured(names_only)
     local containers = {}
 
     for dir in lfs.dir(lxc_path) do
@@ -390,7 +395,7 @@ function containers_configured(names_only)
 end
 
 -- return running containers found in cgroup fs
-function containers_running(names_only)
+function M.containers_running(names_only)
     local containers = {}
     local attr
 
@@ -426,3 +431,5 @@ end
 
 lxc_path = core.default_config_path_get()
 cgroup_path = cgroup_path_get()
+
+return M
