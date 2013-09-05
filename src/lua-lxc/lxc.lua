@@ -89,6 +89,9 @@ function cgroup_path_get()
 	while true do
 	    local c
 	    line = f:read()
+	    if line == nil then
+	        break
+	    end
 	    c = line:split(" ", 6)
 	    if (c[1] == "cgroup") then
 		cgroup_path = dirname(c[2])
