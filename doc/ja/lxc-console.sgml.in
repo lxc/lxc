@@ -1,0 +1,193 @@
+<!-- 
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+Translated into Japanese 
+by KATOH Yasufumi <karma at jazz.email.ne.jp>
+
+-->
+
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-console</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-console</refname>
+
+    <refpurpose>
+      <!--
+      Launch a console for the specified container
+      -->
+      指定されたコンテナのコンソールの起動
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-console</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-e <replaceable>escape character</replaceable></arg>
+      <arg choice="opt">-t <replaceable>ttynum</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->説明</title>
+
+    <para>
+      <!--
+      If the tty service has been configured and is available for the
+      container specified as parameter, this command will launch a
+      console allowing to log on the container.
+      -->
+      パラメータで指定されたコンテナで tty サービスが設定され，利用可能である場合，このコマンドはコンテナにログイン出来るコンソールを起動します．
+    </para>
+
+    <para>
+      <!--
+      The available tty are free slots taken by this command. That
+      means if the container has four ttys available and the command
+      has been launched four times each taking a different tty, the
+      fifth command will fail because no console will be available.
+      -->
+      利用可能な tty は，このコマンドが取得した空いている tty です．これは，コンテナに 4 つの利用可能な tty がある場合，コマンドは 4 個までそれぞれ異なる tty を取得して開きます．5 回目のコマンドは利用可能なコンソールがないため，失敗します．
+    </para>
+
+    <para>
+      <!--
+      The command will connect to a tty. If the connection is lost or
+      broken, the command can be launched again and regain the tty at
+      the state it was before the disconnection.
+      -->
+      コマンドは tty に接続します．もし，接続が失われたり，切断された場合，コマンドは再度起動し，切断前の状態で tty の再取得をしようとします．
+    </para>
+
+    <para>
+      <!--
+      A keyboard escape sequence may be used to disconnect from the tty
+      and quit lxc-console. The default escape sequence is &lt;Ctrl+a q&gt;.
+      -->
+      tty からの接続を切断し，lxc-console を抜ける時に，キーボードのエスケープシーケンスを使います．デフォルトのエスケープシーケンスは &lt;Ctrl+a q&gt; です．
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options -->オプション</title>
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-e <optional><replaceable>escape character</replaceable></optional></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the escape sequence prefix to use instead of
+            &lt;Ctrl a&gt;.
+            This may be given as '^letter' or just 'letter'. For example
+            to use &lt;Ctrl+b q&gt; as the escape sequence use -e '^b'.
+            -->
+            &lt;Ctrl a&gt; の代わりに使用するエスケープシーケンスのプレフィックスを指定します．これは '^文字' または単なる '文字' で指定します．例えば，&lt;Ctrl+b q&gt; をエスケープシーケンスとして使うには -e '^b' とします．
+	  </para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>
+	  <option>-t <optional><replaceable>ttynum</replaceable></optional></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the tty number to connect, if not specified a tty
+	    number will be automatically choosen by the container.
+            -->
+            接続する tty の番号を指定します．指定しない場合は，コンテナが自動的に tty 番号を選択します．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title><!-- Diagnostic -->診断</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>tty service denied</term>
+        <listitem>
+          <para>
+            <!--
+	    No tty is available or there is not enough privilege to
+	    use the console. For example, the container belongs to
+	    user "foo" and "bar" is trying to open a console to it.
+            -->
+            利用可能な tty がないか，コンソールを使うのに十分な権限がありません．例えば，コンテナが "foo" ユーザの所有であるのに，"bar" ユーザがコンソールを開こうとしている場合などです．
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->作者</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

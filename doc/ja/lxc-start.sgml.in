@@ -1,0 +1,281 @@
+<!-- 
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+Translated into Japanese 
+by KATOH Yasufumi <karma at jazz.email.ne.jp>
+
+-->
+
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-start</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-start</refname>
+
+    <refpurpose>
+      <!--
+      run an application inside a container.
+      -->
+      コンテナの内部でアプリケーションを実行する．
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-start</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
+      <arg choice="opt">-c <replaceable>console_device</replaceable></arg>
+      <arg choice="opt">-L <replaceable>console_logfile</replaceable></arg>
+      <arg choice="opt">-d</arg>
+      <arg choice="opt">-p <replaceable>pid_file</replaceable></arg>
+      <arg choice="opt">-s KEY=VAL</arg>
+      <arg choice="opt">-C</arg>
+      <arg choice="opt">command</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->説明</title>
+
+    <para>
+      <!--
+      <command>lxc-start</command> runs the specified
+      <replaceable>command</replaceable> inside the container
+      specified by <replaceable>name</replaceable>.
+      -->
+      <command>lxc-start</command> は <replaceable>command</replaceable> で指定されたコマンドを，<replaceable>name</replaceable> で指定されたコンテナ内で実行します．
+    </para>
+    <para>
+      <!--
+      It will setup the container
+      according to the configuration previously defined with the
+      lxc-create command or with the configuration file parameter.
+      If no configuration is
+      defined, the default isolation is used.
+      -->
+      このコマンドは，lxc-create コマンドもしくは設定ファイルのパラメータであらかじめ定義された設定に従ってコンテナをセットアップします．もし設定が定義されていない場合は，デフォルトの隔離状態を使用します．
+    </para>
+    <para>
+      <!--
+      If no command is specified, <command>lxc-start</command> will
+      use the default
+      <command>"/sbin/init"</command> command to run a system
+      container.
+      -->
+      もし command が指定されない場合は，<command>lxc-start</command> はシステムコンテナを実行するためのコマンドとして，デフォルトで <command>"/sbin/init"</command> を使用します．
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+
+    <title><!-- Options -->オプション</title>
+
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-d, --daemon</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Run the container as a daemon. As the container has no
+	    more tty, if an error occurs nothing will be displayed,
+	    the log file can be used to check the error.
+            -->
+            コンテナをデーモンとして実行します．コンテナはそれ以上の tty を持ちませんので，もしエラーが起きても何も表示されません．エラーのチェックにはログファイルを使用することができます．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-p, --pidfile <replaceable>pid_file</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Create a file with the process id.
+            -->
+            プロセス ID を含むファイルを作製します．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-f, --rcfile <replaceable>config_file</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the configuration file to configure the virtualization
+	    and isolation functionalities for the container.
+            -->
+            コンテナの仮想化，隔離機能の設定のための設定ファイルを指定します．
+	  </para>
+	  <para>
+            <!--
+	   This configuration file if present will be used even if there is
+	   already a configuration file present in the previously created
+	   container (via lxc-create).
+           -->
+            (lxc-create 経由で) 前もってコンテナが作られた際の設定ファイルが既にあった場合でも，このオプションが指定された場合は，指定した設定ファイルが使用されます．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-c,
+	  --console <replaceable>console_device</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify a device to use for the container's console, for example
+            /dev/tty8. If this option is not specified the current terminal
+            will be used unless <option>-d</option> is specified.
+            -->
+            コンテナのコンソールに使用するデバイスを指定します．例えば /dev/tty8 のように指定します．このオプションが指定されない時は，<option>-d</option> が指定されない限りは，現在のターミナルを使用します．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-L,
+	  --console-log <replaceable>console_logfile</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify a file to log the container's console output to.
+            -->
+            コンテナのコンソール出力のログを出力するファイルを指定します．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-s, --define <replaceable>KEY=VAL</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Assign value <replaceable>VAL</replaceable> to configuration
+	    variable <replaceable>KEY</replaceable>. This overrides any
+	    assignment done in <replaceable>config_file</replaceable>.
+            -->
+            設定変数 <replaceable>KEY</replaceable> に対する設定値として <replaceable>VAL</replaceable> を設定します．この設定は，<replaceable>config_file</replaceable> で既に設定されている値も上書きします．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-C,
+	  --close-all-fds</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	  If any file descriptors are inherited, close them.  If this option
+	  is not specified, then <command>lxc-start</command> will exit with
+	  failure instead. Note: <replaceable>&#045;&#045;daemon</replaceable> implies
+	  <replaceable>&#045;&#045;close-all-fds</replaceable>.
+          -->
+            継承しているファイルディスクリプタが存在する場合，それをクローズします．このオプションが指定されない場合，<command>lxc-start</command> の実行は失敗して終了します．注意: <replaceable>--daemon</replaceable> オプションは，<replaceable>--close-all-fds</replaceable> オプションを指定しなくても指定している場合と同様の動きをします．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title><!-- Diagnostic -->診断</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>The container is busy</term>
+        <listitem>
+          <para>
+            <!--
+	    The specified container is already running an
+	    application. You should stop it before reuse this
+	    container or create a new one.
+            -->
+            指定したコンテナは既に実行済みです．このコンテナを使用するまえに既に起動しているコンテナを停止するか，新しいものを作成する必要があります．
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->作者</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->
