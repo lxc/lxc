@@ -1852,6 +1852,9 @@ static int dropcaps_except(struct lxc_list *caps)
 	int numcaps = lxc_caps_last_cap() + 1;
 	INFO("found %d capabilities\n", numcaps);
 
+	if (numcaps <= 0 || numcaps > 200)
+		return -1;
+
 	// caplist[i] is 1 if we keep capability i
 	int *caplist = alloca(numcaps * sizeof(int));
 	memset(caplist, 0, numcaps * sizeof(int));
