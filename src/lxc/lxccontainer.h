@@ -38,6 +38,8 @@
 
 struct bdev_specs;
 
+struct lxc_snapshot;
+
 struct lxc_container {
 	// private fields
 	char *name;
@@ -177,6 +179,54 @@ struct lxc_container {
 	/* run program in container, wait for it to exit */
 	int (*attach_run_wait)(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char * const argv[]);
 	int (*attach_run_waitl)(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char *arg, ...);
+
+	/*
+	* snapshot:
+	* If you have /var/lib/lxc/c1 and call c->snapshot() the firs time, it
+	* will return 0, and the container will be /var/lib/lxcsnaps/c1/snap0.
+	* The second call will return 1, and the snapshot will be
+	* /var/lib/lxcsnaps/c1/snap1.
+	*
+	* On error, returns -1.
+	*/
+	int (*snapshot)(struct lxc_container *c, char *commentfile);
+
+	/*
+	 * snapshot_list() will return a description of all snapshots of c in
+	 * a simple array.  See src/tests/snapshot.c for the proper way to
+	 * free the allocated results.
+	 *
+	 * Returns the number of snapshots.
+	 */
+	int (*snapshot_list)(struct lxc_container *, struct lxc_snapshot **);
+
+	/*
+	 * snapshot_restore() will create a new container based on a snapshot.
+	 * c is the container whose snapshot we look for, and snapname is the
+	 * specific snapshot name (i.e. "snap0").  newname is the name to be
+	 * used for the restored container.  If newname is the same as
+	 * c->name, then c will first be destroyed.  That will fail if the
+	 * snapshot is overlayfs-based, since the snapshots will pin the
+	 * original container.
+	 *
+	 * The restored container will be a copy (not snapshot) of the snapshot,
+	 * and restored in the lxcpath of the original container.
+	 *
+	 * As an example, c might be /var/lib/lxc/c1, snapname  might be 'snap0'
+	 * which stands for /var/lib/lxcsnaps/c1/snap0.  If newname is c2,
+	 * then snap0 will be copied to /var/lib/lxc/c2.
+	 *
+	 * Returns true on success, false on failure.
+	 */
+	bool (*snapshot_restore)(struct lxc_container *c, char *snapname, char *newname);
+};
+
+struct lxc_snapshot {
+	char *name;
+	char *comment_pathname;
+	char *timestamp;
+	char *lxcpath;
+	void (*free)(struct lxc_snapshot *);
 };
 
 struct lxc_container *lxc_container_new(const char *name, const char *configpath);

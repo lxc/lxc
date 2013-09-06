@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sched.h>
+#include <dirent.h>
 #include "config.h"
 #include "lxc.h"
 #include "state.h"
@@ -66,6 +67,13 @@ static bool file_exists(char *f)
 	struct stat statbuf;
 
 	return stat(f, &statbuf) == 0;
+}
+
+static void remove_trailing_slashes(char *p)
+{
+	int l = strlen(p);
+	while (--l >= 0 && (p[l] == '/' || p[l] == '\n'))
+		p[l] = '\0';
 }
 
 /*
@@ -2192,6 +2200,272 @@ static int lxcapi_attach_run_wait(struct lxc_container *c, lxc_attach_options_t 
 	return lxc_wait_for_pid_status(pid);
 }
 
+int get_next_index(const char *lxcpath, char *cname)
+{
+	char *fname;
+	struct stat sb;
+	int i = 0, ret;
+
+	fname = alloca(strlen(lxcpath) + 20);
+	while (1) {
+		sprintf(fname, "%s/snap%d", lxcpath, i);
+		ret = stat(fname, &sb);
+		if (ret != 0)
+			return i;
+		i++;
+	}
+}
+
+static int lxcapi_snapshot(struct lxc_container *c, char *commentfile)
+{
+	int i, flags, ret;
+	struct lxc_container *c2;
+	char snappath[MAXPATHLEN], newname[20];
+
+	// /var/lib/lxc -> /var/lib/lxcsnaps \0
+	ret = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return -1;
+	i = get_next_index(snappath, c->name);
+
+	if (mkdir_p(snappath, 0755) < 0) {
+		ERROR("Failed to create snapshot directory %s", snappath);
+		return -1;
+	}
+
+	ret = snprintf(newname, 20, "snap%d", i);
+	if (ret < 0 || ret >= 20)
+		return -1;
+
+	flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_KEEPMACADDR | LXC_CLONE_KEEPNAME;
+	c2 = c->clone(c, newname, snappath, flags, NULL, NULL, 0, NULL);
+	if (!c2) {
+		ERROR("clone of %s:%s failed\n", c->config_path, c->name);
+		return -1;
+	}
+
+	lxc_container_put(c2);
+
+	// Now write down the creation time
+	time_t timer;
+	char buffer[25];
+	struct tm* tm_info;
+
+	time(&timer);
+	tm_info = localtime(&timer);
+
+	strftime(buffer, 25, "%Y:%m:%d %H:%M:%S", tm_info);
+
+	char *dfnam = alloca(strlen(snappath) + strlen(newname) + 5);
+	sprintf(dfnam, "%s/%s/ts", snappath, newname);
+	FILE *f = fopen(dfnam, "w");
+	if (!f) {
+		ERROR("Failed to open %s\n", dfnam);
+		return -1;
+	}
+	if (fprintf(f, "%s", buffer) < 0) {
+		SYSERROR("Writing timestamp");
+		fclose(f);
+		return -1;
+	}
+	if (fclose(f) != 0) {
+		SYSERROR("Writing timestamp");
+		return -1;
+	}
+
+	if (commentfile) {
+		// $p / $name / comment \0
+		int len = strlen(snappath) + strlen(newname) + 10;
+		char *path = alloca(len);
+		sprintf(path, "%s/%s/comment", snappath, newname);
+		return copy_file(commentfile, path) < 0 ? -1 : i;
+	}
+
+	return i;
+}
+
+static void lxcsnap_free(struct lxc_snapshot *s)
+{
+	if (s->name)
+		free(s->name);
+	if (s->comment_pathname)
+		free(s->comment_pathname);
+	if (s->timestamp)
+		free(s->timestamp);
+	if (s->lxcpath)
+		free(s->lxcpath);
+}
+
+static char *get_snapcomment_path(char* snappath, char *name)
+{
+	// $snappath/$name/comment
+	int ret, len = strlen(snappath) + strlen(name) + 10;
+	char *s = malloc(len);
+
+	if (s) {
+		ret = snprintf(s, len, "%s/%s/comment", snappath, name);
+		if (ret < 0 || ret >= len) {
+			free(s);
+			s = NULL;
+		}
+	}
+	return s;
+}
+
+static char *get_timestamp(char* snappath, char *name)
+{
+	char path[MAXPATHLEN], *s = NULL;
+	int ret, len;
+	FILE *fin;
+
+	ret = snprintf(path, MAXPATHLEN, "%s/%s/ts", snappath, name);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return NULL;
+	if ((fin = fopen(path, "r")) == NULL)
+		return NULL;
+	(void) fseek(fin, 0, SEEK_END);
+	len = ftell(fin);
+	(void) fseek(fin, 0, SEEK_SET);
+	if (len > 0) {
+		s = malloc(len+1);
+		if (s) {
+			s[len] = '\0';
+			if (fread(s, 1, len, fin) != len) {
+				SYSERROR("reading timestamp");
+				free(s);
+				s = NULL;
+			}
+		}
+	}
+	fclose(fin);
+	return s;
+}
+
+static int lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **ret_snaps)
+{
+	char snappath[MAXPATHLEN], path2[MAXPATHLEN];
+	int dirlen, count = 0, ret;
+	struct dirent dirent, *direntp;
+	struct lxc_snapshot *snaps =NULL, *nsnaps;
+	DIR *dir;
+
+	if (!c || !lxcapi_is_defined(c))
+		return -1;
+	// snappath is ${lxcpath}snaps/${lxcname}/
+	dirlen = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
+	if (dirlen < 0 || dirlen >= MAXPATHLEN) {
+		ERROR("path name too long");
+		return -1;
+	}
+	if (!(dir = opendir(snappath))) {
+		INFO("failed to open %s - assuming no snapshots", snappath);
+		return 0;
+	}
+
+	while (!readdir_r(dir, &dirent, &direntp)) {
+		if (!direntp)
+			break;
+
+		if (!strcmp(direntp->d_name, "."))
+			continue;
+
+		if (!strcmp(direntp->d_name, ".."))
+			continue;
+
+		ret = snprintf(path2, MAXPATHLEN, "%s/%s/config", snappath, direntp->d_name);
+		if (ret < 0 || ret >= MAXPATHLEN) {
+			ERROR("pathname too long");
+			goto out_free;
+		}
+		if (!file_exists(path2))
+			continue;
+		nsnaps = realloc(snaps, (count + 1)*sizeof(*snaps));
+		if (!nsnaps) {
+			SYSERROR("Out of memory");
+			goto out_free;
+		}
+		snaps = nsnaps;
+		snaps[count].free = lxcsnap_free;
+		snaps[count].name = strdup(direntp->d_name);
+		if (!snaps[count].name)
+			goto out_free;
+		snaps[count].lxcpath = strdup(snappath);
+		if (!snaps[count].lxcpath) {
+			free(snaps[count].name);
+			goto out_free;
+		}
+		snaps[count].comment_pathname = get_snapcomment_path(snappath, direntp->d_name);
+		snaps[count].timestamp = get_timestamp(snappath, direntp->d_name);
+		count++;
+	}
+
+	if (closedir(dir))
+		WARN("failed to close directory");
+
+	*ret_snaps = snaps;
+	return count;
+
+out_free:
+	if (snaps) {
+		int i;
+		for (i=0; i<count; i++)
+			lxcsnap_free(&snaps[i]);
+		free(snaps);
+	}
+	return -1;
+}
+
+static bool lxcapi_snapshot_restore(struct lxc_container *c, char *snapname, char *newname)
+{
+	char clonelxcpath[MAXPATHLEN];
+	int ret;
+	struct lxc_container *snap, *rest;
+	struct bdev *bdev;
+	bool b = false;
+
+	if (!c || !c->name || !c->config_path)
+		return false;
+
+	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	if (!bdev) {
+		ERROR("Failed to find original backing store type");
+		return false;
+	}
+
+	if (!newname)
+		newname = c->name;
+	if (strcmp(c->name, newname) == 0) {
+		if (!lxcapi_destroy(c)) {
+			ERROR("Could not destroy existing container %s", newname);
+			bdev_put(bdev);
+			return false;
+		}
+	}
+	ret = snprintf(clonelxcpath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		bdev_put(bdev);
+		return false;
+	}
+	// how should we lock this?
+
+	snap = lxc_container_new(snapname, clonelxcpath);
+	if (!snap || !lxcapi_is_defined(snap)) {
+		ERROR("Could not open snapshot %s", snapname);
+		if (snap) lxc_container_put(snap);
+		bdev_put(bdev);
+		return false;
+	}
+
+	rest = lxcapi_clone(snap, newname, c->config_path, 0, bdev->type, NULL, 0, NULL);
+	bdev_put(bdev);
+	if (rest && lxcapi_is_defined(rest))
+		b = true;
+	if (rest)
+		lxc_container_put(rest);
+	lxc_container_put(snap);
+	return b;
+}
+
 static int lxcapi_attach_run_waitl(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char *arg, ...)
 {
 	va_list ap;
@@ -2237,6 +2511,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 		goto err;
 	}
 
+	remove_trailing_slashes(c->config_path);
 	c->name = malloc(strlen(name)+1);
 	if (!c->name) {
 		fprintf(stderr, "Error allocating lxc_container name\n");
@@ -2305,6 +2580,9 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->attach = lxcapi_attach;
 	c->attach_run_wait = lxcapi_attach_run_wait;
 	c->attach_run_waitl = lxcapi_attach_run_waitl;
+	c->snapshot = lxcapi_snapshot;
+	c->snapshot_list = lxcapi_snapshot_list;
+	c->snapshot_restore = lxcapi_snapshot_restore;
 
 	/* we'll allow the caller to update these later */
 	if (lxc_log_init(NULL, "none", NULL, "lxc_container", 0, c->config_path)) {
