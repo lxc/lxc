@@ -182,13 +182,13 @@ AC_ARG_WITH([lua-pc],
 		[Specify pkg-config package name for lua]
 	)],
 	[LUAPKGCONFIG=$with_lua_pc
-	enable_lua=yes], [with_lua_pc=auto])
+	enable_lua=yes])
 
 AM_CONDITIONAL([ENABLE_LUA],
-	[test "x$enable_lua" = "xyes" -o "xwith_lua_pc != xno"])
+	[test "x$enable_lua" = "xyes"])
 
 AM_COND_IF([ENABLE_LUA],
-	[AS_IF([test "x$with_lua_pc" = "xauto"],
+	[AS_IF([test "x$with_lua_pc" = "xyes"],
 		[PKG_CHECK_MODULES([LUA], [lua],[LUAPKGCONFIG=lua],
 			[PKG_CHECK_MODULES([LUA], [lua5.2],[LUAPKGCONFIG=lua5.2],
 				[PKG_CHECK_MODULES([LUA], [lua5.1],
