@@ -171,7 +171,8 @@ bin_PROGRAMS = \
 	lxc-config \
 	lxc-destroy \
 	lxc-create \
-	lxc-user-nic
+	lxc-user-nic \
+	lxc-snapshot
 
 if HAVE_NEWUIDMAP
 bin_PROGRAMS += lxc-usernsexec
@@ -207,6 +208,7 @@ lxc_unshare_SOURCES = lxc_unshare.c
 lxc_wait_SOURCES = lxc_wait.c
 lxc_kill_SOURCES = lxc_kill.c
 lxc_create_SOURCES = lxc_create.c
+lxc_snapshot_SOURCES = lxc_snapshot.c
 lxc_usernsexec_SOURCES = lxc_usernsexec.c
 lxc_user_nic_SOURCES = lxc_user_nic.c
 
