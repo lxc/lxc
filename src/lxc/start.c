@@ -274,6 +274,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
+	handler->pinfd = -1;
 
 	apparmor_handler_init(handler);
 	handler->name = strdup(name);
@@ -740,9 +741,6 @@ int lxc_spawn(struct lxc_handler *handler)
 
 	lxc_sync_fini(handler);
 
-	if (handler->pinfd >= 0)
-		close(handler->pinfd);
-
 	return 0;
 
 out_delete_net:
@@ -751,6 +749,11 @@ out_delete_net:
 out_abort:
 	lxc_abort(name, handler);
 	lxc_sync_fini(handler);
+	if (handler->pinfd >= 0) {
+		close(handler->pinfd);
+		handler->pinfd = -1;
+	}
+
 	return -1;
 }
 
@@ -817,6 +820,11 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
         }
 
 	lxc_rename_phys_nics_on_shutdown(handler->conf);
+
+	if (handler->pinfd >= 0) {
+		close(handler->pinfd);
+		handler->pinfd = -1;
+	}
 
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
