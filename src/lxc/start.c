@@ -384,7 +384,7 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 	handler->conf->maincmd_fd = -1;
 	free(handler->name);
 	if (handler->cgroup) {
-		lxc_cgroup_destroy_desc(handler->cgroup);
+		lxc_cgroup_process_info_free_and_remove(handler->cgroup);
 		handler->cgroup = NULL;
 	}
 	free(handler);
@@ -603,11 +603,12 @@ int save_phys_nics(struct lxc_conf *conf)
 	return 0;
 }
 
-extern bool is_in_subcgroup(int pid, const char *subsystem, struct cgroup_desc *d);
 int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
 	const char *name = handler->name;
+	struct cgroup_meta_data *cgroup_meta = NULL;
+	const char *cgroup_pattern = NULL;
 
 	if (lxc_sync_init(handler))
 		return -1;
@@ -646,6 +647,22 @@ int lxc_spawn(struct lxc_handler *handler)
 		goto out_abort;
 	}
 
+	cgroup_meta = lxc_cgroup_load_meta();
+	if (!cgroup_meta) {
+		ERROR("failed to detect cgroup metadata");
+		goto out_delete_net;
+	}
+
+	/* if we are running as root, use system cgroup pattern, otherwise
+	 * just create a cgroup under the current one. But also fall back to
+	 * that if for some reason reading the configuration fails and no
+	 * default value is available
+	 */
+	if (getuid() == 0)
+		cgroup_pattern = lxc_global_config_value("cgroup.pattern");
+	if (!cgroup_pattern)
+		cgroup_pattern = "%n";
+
 	/*
 	 * if the rootfs is not a blockdev, prevent the container from
 	 * marking it readonly.
@@ -669,15 +686,17 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 		failed_before_rename = 1;
 
-	if ((handler->cgroup = lxc_cgroup_path_create(name)) == NULL)
+	if ((handler->cgroup = lxc_cgroup_create(name, cgroup_pattern, cgroup_meta, NULL)) == NULL) {
+		ERROR("failed to create cgroups for '%s'", name);
 		goto out_delete_net;
+	}
 
-	if (setup_cgroup(handler, &handler->conf->cgroup)) {
+	if (lxc_setup_cgroup_without_devices(handler, &handler->conf->cgroup)) {
 		ERROR("failed to setup the cgroups for '%s'", name);
 		goto out_delete_net;
 	}
 
-	if (lxc_cgroup_enter(handler->cgroup, handler->pid) < 0)
+	if (lxc_cgroup_enter(handler->cgroup, handler->pid, false) < 0)
 		goto out_delete_net;
 
 	if (failed_before_rename)
@@ -707,7 +726,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
 		goto out_delete_net;
 
-	if (setup_cgroup_devices(handler, &handler->conf->cgroup)) {
+	if (lxc_setup_cgroup_devices(handler, &handler->conf->cgroup)) {
 		ERROR("failed to setup the devices cgroup for '%s'", name);
 		goto out_delete_net;
 	}
@@ -739,6 +758,7 @@ int lxc_spawn(struct lxc_handler *handler)
 		goto out_abort;
 	}
 
+	lxc_cgroup_put_meta(cgroup_meta);
 	lxc_sync_fini(handler);
 
 	return 0;
@@ -747,6 +767,7 @@ out_delete_net:
 	if (handler->clone_flags & CLONE_NEWNET)
 		lxc_delete_network(handler);
 out_abort:
+	lxc_cgroup_put_meta(cgroup_meta);
 	lxc_abort(name, handler);
 	lxc_sync_fini(handler);
 	if (handler->pinfd >= 0) {

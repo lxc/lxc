@@ -75,7 +75,7 @@ static lxc_state_t freezer_state(const char *name, const char *lxcpath)
 	FILE *file;
 	int ret;
 
-	cgabspath = lxc_cgroup_path_get("freezer", name, lxcpath);
+	cgabspath = lxc_cgroup_get_hierarchy_abs_path("freezer", name, lxcpath);
 	if (!cgabspath)
 		return -1;
 

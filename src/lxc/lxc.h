@@ -141,37 +141,35 @@ struct lxc_handler;
 /*
  * Set a specified value for a specified subsystem. The specified
  * subsystem must be fully specified, eg. "cpu.shares"
- * @d         : the cgroup descriptor for the container
  * @filename  : the cgroup attribute filename
  * @value     : the value to be set
+ * @handler   : the lxc_handler structure of the container
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_cgroup_set_value(struct lxc_handler *hander, const char *filename,
-				const char *value);
+extern int lxc_cgroup_set_handler(const char *filename, const char *value, struct lxc_handler *handler);
 
 /*
  * Set a specified value for a specified subsystem. The specified
  * subsystem must be fully specified, eg. "cpu.shares"
- * @name      : the name of the container
  * @filename  : the cgroup attribute filename
  * @value     : the value to be set
+ * @name      : the name of the container
  * @lxcpath   : lxc config path for container
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_cgroup_set(const char *name, const char *filename, const char *value, const char *lxcpath);
+extern int lxc_cgroup_set(const char *filename, const char *value, const char *name, const char *lxcpath);
 
 /*
  * Get a specified value for a specified subsystem. The specified
  * subsystem must be fully specified, eg. "cpu.shares"
- * @name      : the name of the container
  * @filename  : the cgroup attribute filename
  * @value     : the value to be set
  * @len       : the len of the value variable
+ * @name      : the name of the container
  * @lxcpath   : lxc config path for container
  * Returns the number of bytes read, < 0 on error
  */
-extern int lxc_cgroup_get(const char *name, const char *filename,
-			  char *value, size_t len, const char *lxcpath);
+extern int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath);
 
 /*
  * Retrieve the error string associated with the error returned by

@@ -75,21 +75,21 @@ static int test_running_container(const char *lxcpath,
 	}
 
 	/* test get/set value using memory.swappiness file */
-	ret = lxc_cgroup_get(c->name, "memory.swappiness", value,
-			     sizeof(value), c->config_path);
+	ret = lxc_cgroup_get("memory.swappiness", value, sizeof(value),
+			     c->name, c->config_path);
 	if (ret < 0) {
 		TSTERR("lxc_cgroup_get failed");
 		goto err3;
 	}
 	strcpy(value_save, value);
 
-	ret = lxc_cgroup_set(c->name, "memory.swappiness", "100", c->config_path);
+	ret = lxc_cgroup_set("memory.swappiness", "100", c->name, c->config_path);
 	if (ret < 0) {
 		TSTERR("lxc_cgroup_set_bypath failed");
 		goto err3;
 	}
-	ret = lxc_cgroup_get(c->name, "memory.swappiness", value,
-			     sizeof(value), c->config_path);
+	ret = lxc_cgroup_get("memory.swappiness", value, sizeof(value),
+			     c->name, c->config_path);
 	if (ret < 0) {
 		TSTERR("lxc_cgroup_get failed");
 		goto err3;
@@ -100,14 +100,14 @@ static int test_running_container(const char *lxcpath,
 	}
 
 	/* restore original value */
-	ret = lxc_cgroup_set(c->name, "memory.swappiness", value_save,
-			     c->config_path);
+	ret = lxc_cgroup_set("memory.swappiness", value_save,
+			     c->name, c->config_path);
 	if (ret < 0) {
 		TSTERR("lxc_cgroup_set failed");
 		goto err3;
 	}
-	ret = lxc_cgroup_get(c->name, "memory.swappiness", value,
-			     sizeof(value), c->config_path);
+	ret = lxc_cgroup_get("memory.swappiness", value, sizeof(value),
+			     c->name, c->config_path);
 	if (ret < 0) {
 		TSTERR("lxc_cgroup_get failed");
 		goto err3;

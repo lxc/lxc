@@ -38,6 +38,7 @@
 #include <lxc/conf.h>
 #include <lxc/start.h>	/* for struct lxc_handler */
 #include <lxc/utils.h>
+#include <lxc/cgroup.h>
 
 #include "commands.h"
 #include "console.h"
@@ -351,7 +352,6 @@ static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
 
-extern char *cgroup_get_subsys_path(struct lxc_handler *handler, const char *subsys);
 /*
  * lxc_cmd_get_cgroup_path: Calculate a container's cgroup path for a
  * particular subsystem. This is the cgroup path relative to the root
@@ -404,7 +404,7 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 	if (req->datalen < 1)
 		return -1;
         
-	path = cgroup_get_subsys_path(handler, req->data);
+	path = lxc_cgroup_get_hierarchy_path_handler(req->data, handler);
 	if (!path)
 		return -1;
 	rsp.datalen = strlen(path) + 1,
@@ -560,7 +560,7 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.ret = kill(handler->pid, stopsignal);
 	if (!rsp.ret) {
-		char *path = cgroup_get_subsys_path(handler, "freezer");
+		char *path = lxc_cgroup_get_hierarchy_path_handler("freezer", handler);
 		if (!path) {
 			ERROR("container %s:%s is not in a freezer cgroup",
 				handler->lxcpath, handler->name);

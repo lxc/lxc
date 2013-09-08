@@ -1673,7 +1673,7 @@ static bool lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, 
 	if (container_disk_lock(c))
 		return false;
 
-	ret = lxc_cgroup_set(c->name, subsys, value, c->config_path);
+	ret = lxc_cgroup_set(subsys, value, c->name, c->config_path);
 
 	container_disk_unlock(c);
 	return ret == 0;
@@ -1692,7 +1692,7 @@ static int lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, c
 	if (container_disk_lock(c))
 		return -1;
 
-	ret = lxc_cgroup_get(c->name, subsys, retv, inlen, c->config_path);
+	ret = lxc_cgroup_get(subsys, retv, inlen, c->name, c->config_path);
 
 	container_disk_unlock(c);
 	return ret;

@@ -55,7 +55,7 @@ struct lxc_handler {
 #endif
 	int pinfd;
 	const char *lxcpath;
-	struct cgroup_desc *cgroup;
+	struct cgroup_process_info *cgroup;
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *, const char *);

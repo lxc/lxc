@@ -727,7 +727,24 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 
 		/* attach to cgroup, if requested */
 		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
-			ret = lxc_cgroup_attach(attached_pid, name, lxcpath);
+			struct cgroup_meta_data *meta_data;
+			struct cgroup_process_info *container_info;
+
+			meta_data = lxc_cgroup_load_meta();
+			if (!meta_data) {
+				ERROR("could not move attached process %ld to cgroup of container", (long)attached_pid);
+				goto cleanup_error;
+			}
+
+			container_info = lxc_cgroup_get_container_info(name, lxcpath, meta_data);
+			lxc_cgroup_put_meta(meta_data);
+			if (!container_info) {
+				ERROR("could not move attached process %ld to cgroup of container", (long)attached_pid);
+				goto cleanup_error;
+			}
+
+			ret = lxc_cgroup_enter(container_info, attached_pid, false);
+			lxc_cgroup_process_info_free(container_info);
 			if (ret < 0) {
 				ERROR("could not move attached process %ld to cgroup of container", (long)attached_pid);
 				goto cleanup_error;

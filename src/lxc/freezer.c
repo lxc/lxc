@@ -123,7 +123,7 @@ static int freeze_unfreeze(const char *name, int freeze, const char *lxcpath)
 	char *cgabspath;
 	int ret;
 
-	cgabspath = lxc_cgroup_path_get("freezer", name, lxcpath);
+	cgabspath = lxc_cgroup_get_hierarchy_abs_path("freezer", name, lxcpath);
 	if (!cgabspath)
 		return -1;
 
@@ -145,17 +145,14 @@ int lxc_unfreeze(const char *name, const char *lxcpath)
 
 int lxc_unfreeze_bypath(const char *cgrelpath)
 {
-	char cgabspath[MAXPATHLEN];
-	int len, ret;
+	char *cgabspath;
+	int ret;
 
-	if (!get_subsys_mount(cgabspath, "freezer"))
+	cgabspath = lxc_cgroup_find_abs_path("freezer", cgrelpath, true, NULL);
+	if (!cgabspath)
 		return -1;
-	len = strlen(cgabspath);
-	ret = snprintf(cgabspath+len, MAXPATHLEN-len, "/%s", cgrelpath);
-	if (ret < 0 || ret >= MAXPATHLEN-len) {
-		ERROR("freezer path name too long");
-		return -1;
-	}
 
-	return do_unfreeze(cgabspath, 0, NULL, NULL);
+	ret = do_unfreeze(cgabspath, 0, NULL, NULL);
+	free(cgabspath);
+	return ret;
 }
