@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -36,9 +37,10 @@ extern int lxc_setup_fs(void);
 extern int get_u16(unsigned short *val, const char *arg, int base);
 extern int mkdir_p(const char *dir, mode_t mode);
 /*
- * Return a newly allocated buffer containing the default container
- * path.  Caller must free this buffer.
+ * Return a buffer containing the default container path.
+ * Caller must NOT free this buffer, since it may be static.
  */
+extern const char *lxc_global_config_value(const char *option_name);
 extern const char *default_lxc_path(void);
 extern const char *default_zfs_root(void);
 extern const char *default_lvm_vg(void);

@@ -198,7 +198,7 @@ extern int mkdir_p(const char *dir, mode_t mode)
 	return 0;
 }
 
-static char *copypath(char *p)
+static char *copy_global_config_value(char *p)
 {
 	int len = strlen(p);
 	char *retbuf;
@@ -216,116 +216,97 @@ static char *copypath(char *p)
 	return retbuf;
 }
 
-char *default_lxcpath;
 #define DEFAULT_VG "lxc"
-char *default_lvmvg;
 #define DEFAULT_ZFSROOT "lxc"
-char *default_zfsroot;
 
-const char *default_lvm_vg(void)
+const char *lxc_global_config_value(const char *option_name)
 {
-	char buf[1024], *p;
-	FILE *fin;
+	static const char *options[][2] = {
+		{ "lvm_vg",          DEFAULT_VG      },
+		{ "zfsroot",         DEFAULT_ZFSROOT },
+		{ "lxcpath",         LXCPATH         },
+		{ NULL, NULL },
+	};
+	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
+	const char *(*ptr)[2];
+	size_t i;
+	char buf[1024], *p, *p2;
+	FILE *fin = NULL;
 
-	if (default_lvmvg)
-		return default_lvmvg;
+	for (i = 0, ptr = options; (*ptr)[0]; ptr++, i++) {
+		if (!strcmp(option_name, (*ptr)[0]))
+			break;
+	}
+	if (!(*ptr)[0]) {
+		errno = EINVAL;
+		return NULL;
+	}
+	if (values[i])
+		return values[i];
 
 	fin = fopen(LXC_GLOBAL_CONF, "r");
 	if (fin) {
 		while (fgets(buf, 1024, fin)) {
 			if (buf[0] == '#')
 				continue;
-			p = strstr(buf, "lvm_vg");
+			p = strstr(buf, option_name);
 			if (!p)
+				continue;
+			/* see if there was just white space in front
+			 * of the option name
+			 */
+			for (p2 = buf; p2 < p; p2++) {
+				if (*p2 != ' ' && *p2 != '\t')
+					break;
+			}
+			if (p2 < p)
 				continue;
 			p = strchr(p, '=');
 			if (!p)
+				continue;
+			/* see if there was just white space after
+			 * the option name
+			 */
+			for (p2 += strlen(option_name); p2 < p; p2++) {
+				if (*p2 != ' ' && *p2 != '\t')
+					break;
+			}
+			if (p2 < p)
 				continue;
 			p++;
 			while (*p && (*p == ' ' || *p == '\t')) p++;
 			if (!*p)
 				continue;
-			default_lvmvg = copypath(p);
+			values[i] = copy_global_config_value(p);
 			goto out;
 		}
 	}
-	default_lvmvg = DEFAULT_VG;
+	/* could not find value, use default */
+	values[i] = (*ptr)[1];
+	/* special case: if default value is NULL,
+	 * and there is no config, don't view that
+	 * as an error... */
+	if (!values[i])
+		errno = 0;
 
 out:
 	if (fin)
 		fclose(fin);
-	return default_lvmvg;
+	return values[i];
+}
+
+const char *default_lvm_vg(void)
+{
+	return lxc_global_config_value("lvm_vg");
 }
 
 const char *default_zfs_root(void)
 {
-	char buf[1024], *p;
-	FILE *fin;
-
-	if (default_zfsroot)
-		return default_zfsroot;
-
-	fin = fopen(LXC_GLOBAL_CONF, "r");
-	if (fin) {
-		while (fgets(buf, 1024, fin)) {
-			if (buf[0] == '#')
-				continue;
-			p = strstr(buf, "zfsroot");
-			if (!p)
-				continue;
-			p = strchr(p, '=');
-			if (!p)
-				continue;
-			p++;
-			while (*p && (*p == ' ' || *p == '\t')) p++;
-			if (!*p)
-				continue;
-			default_zfsroot = copypath(p);
-			goto out;
-		}
-	}
-	default_zfsroot = DEFAULT_ZFSROOT;
-
-out:
-	if (fin)
-		fclose(fin);
-	return default_zfsroot;
+	return lxc_global_config_value("zfsroot");
 }
 const char *default_lxc_path(void)
 {
-	char buf[1024], *p;
-	FILE *fin;
-
-	if (default_lxcpath)
-		return default_lxcpath;
-
-	fin = fopen(LXC_GLOBAL_CONF, "r");
-	if (fin) {
-		while (fgets(buf, 1024, fin)) {
-			if (buf[0] == '#')
-				continue;
-			p = strstr(buf, "lxcpath");
-			if (!p)
-				continue;
-			p = strchr(p, '=');
-			if (!p)
-				continue;
-			p++;
-			while (*p && (*p == ' ' || *p == '\t')) p++;
-			if (!*p)
-				continue;
-			default_lxcpath = copypath(p);
-			goto out;
-		}
-	}
-	/* we couldn't open the file, or didn't find a lxcpath
-	 * entry there.  Return @LXCPATH@ */
-	default_lxcpath = LXCPATH;
-
-out:
-	if (fin)
-		fclose(fin);
-	return default_lxcpath;
+	return lxc_global_config_value("lxcpath");
 }
 
 int wait_for_pid(pid_t pid)
