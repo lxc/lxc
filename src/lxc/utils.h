@@ -194,6 +194,11 @@ extern ssize_t lxc_read_nointr_expect(int fd, void* buf, size_t count, const voi
 extern int sha1sum_file(char *fnam, unsigned char *md_value);
 #endif
 
+/* read and write whole files */
+extern int lxc_write_to_file(const char *filename, const void* buf, size_t count, bool add_newline);
+extern int lxc_read_from_file(const char *filename, void* buf, size_t count);
+extern char *lxc_read_line_from_file(const char *filename);
+
 /* convert variadic argument lists to arrays (for execl type argument lists) */
 extern char** lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup);
 extern const char** lxc_va_arg_list_to_argv_const(va_list ap, size_t skip);

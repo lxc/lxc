@@ -39,6 +39,12 @@
 #include <sys/wait.h>
 #include <assert.h>
 
+#ifndef HAVE_GETLINE
+#ifdef HAVE_FGETLN
+#include <../include/getline.h>
+#endif
+#endif
+
 #include "utils.h"
 #include "log.h"
 
@@ -804,4 +810,89 @@ void **lxc_dup_array(void **array, lxc_dup_fn element_dup_fn, lxc_free_fn elemen
 	}
 
 	return result;
+}
+
+int lxc_write_to_file(const char *filename, const void* buf, size_t count, bool add_newline)
+{
+	int fd, saved_errno;
+	ssize_t ret;
+
+	fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, 0666);
+	if (fd < 0)
+		return -1;
+	ret = lxc_write_nointr(fd, buf, count);
+	if (ret < 0)
+		goto out_error; 
+	if ((size_t)ret != count)
+		goto out_error;
+	if (add_newline) {
+		ret = lxc_write_nointr(fd, "\n", 1);
+		if (ret != 1)
+			goto out_error;
+	}
+	close(fd);
+	return 0;
+
+out_error:
+	saved_errno = errno;
+	close(fd);
+	errno = saved_errno;
+	return -1;
+}
+
+int lxc_read_from_file(const char *filename, void* buf, size_t count)
+{
+	int fd = -1, saved_errno;
+	ssize_t ret;
+
+	fd = open(filename, O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return -1;
+
+	if (!buf || !count) {
+		char buf2[100];
+		size_t count2 = 0;
+		while ((ret = read(fd, buf2, 100)) > 0)
+			count2 += ret;
+		if (ret >= 0)
+			ret = count2;
+	} else {
+		memset(buf, 0, count);
+		ret = read(fd, buf, count);
+	}
+
+	if (ret < 0)
+		ERROR("read %s: %s", filename, strerror(errno));
+
+	saved_errno = errno;
+	close(fd);
+	errno = saved_errno;
+	return ret;
+}
+
+char *lxc_read_line_from_file(const char *filename)
+{
+	FILE *f;
+	char *line = NULL;
+	int saved_errno;
+	size_t sz = 0;
+
+	f = fopen_cloexec(filename, "r");
+	if (!f)
+		return NULL;
+
+	if (getline(&line, &sz, f) == -1) {
+		saved_errno = errno;
+		fclose(f);
+		errno = saved_errno;
+		return NULL;
+	}
+
+	fclose(f);
+
+	/* trim line, if necessary */
+	if (strlen(line) > 0 && line[strlen(line) - 1] == '\n')
+		line[strlen(line) - 1] = '\0';
+
+	return line;
 }
