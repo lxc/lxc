@@ -225,6 +225,7 @@ const char *lxc_global_config_value(const char *option_name)
 		{ "lvm_vg",          DEFAULT_VG      },
 		{ "zfsroot",         DEFAULT_ZFSROOT },
 		{ "lxcpath",         LXCPATH         },
+		{ "cgroup.pattern",  DEFAULT_CGROUP_PATTERN },
 		{ NULL, NULL },
 	};
 	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };

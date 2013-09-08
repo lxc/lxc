@@ -260,6 +260,12 @@ AC_ARG_WITH([rootfs-path],
 		[--with-rootfs-path=dir],
 		[lxc rootfs mount point]
 	)], [], [with_rootfs_path=['${libdir}/lxc/rootfs']])
+# cgroup pattern specification
+AC_ARG_WITH([cgroup-pattern],
+	[AC_HELP_STRING(
+		[--with-cgroup-pattern=pattern],
+		[pattern for container cgroups]
+	)], [], [with_cgroup_pattern=['/lxc/%n']])
 
 # Container log path.  By default, use $lxcpath.
 AC_MSG_CHECKING([Whether to place logfiles in container config path])
@@ -303,6 +309,7 @@ AS_AC_EXPAND(LXCTEMPLATEDIR, "$datadir/lxc/templates")
 AS_AC_EXPAND(LXCHOOKDIR, "$datadir/lxc/hooks")
 AS_AC_EXPAND(LXCINITDIR, "$libexecdir")
 AS_AC_EXPAND(LOGPATH, "$with_log_path")
+AC_SUBST(DEFAULT_CGROUP_PATTERN, ["$with_cgroup_pattern"])
 
 # Check for some standard kernel headers
 AC_CHECK_HEADERS([linux/unistd.h linux/netlink.h linux/genetlink.h],
