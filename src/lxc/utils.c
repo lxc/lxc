@@ -245,7 +245,7 @@ const char *lxc_global_config_value(const char *option_name)
 	if (values[i])
 		return values[i];
 
-	fin = fopen(LXC_GLOBAL_CONF, "r");
+	fin = fopen_cloexec(LXC_GLOBAL_CONF, "r");
 	if (fin) {
 		while (fgets(buf, 1024, fin)) {
 			if (buf[0] == '#')
@@ -391,7 +391,7 @@ int sha1sum_file(char *fnam, unsigned char *digest)
 
 	if (!fnam)
 		return -1;
-	if ((f = fopen(fnam, "r")) < 0) {
+	if ((f = fopen_cloexec(fnam, "r")) < 0) {
 		SYSERROR("Error opening template");
 		return -1;
 	}
@@ -476,4 +476,50 @@ oom:
 const char** lxc_va_arg_list_to_argv_const(va_list ap, size_t skip)
 {
 	return (const char**)lxc_va_arg_list_to_argv(ap, skip, 0);
+}
+
+FILE *fopen_cloexec(const char *path, const char *mode)
+{
+	int open_mode = 0;
+	int step = 0;
+	int fd;
+	int saved_errno = 0;
+	FILE *ret;
+
+	if (!strncmp(mode, "r+", 2)) {
+		open_mode = O_RDWR;
+		step = 2;
+	} else if (!strncmp(mode, "r", 1)) {
+		open_mode = O_RDONLY;
+		step = 1;
+	} else if (!strncmp(mode, "w+", 2)) {
+		open_mode = O_RDWR | O_TRUNC | O_CREAT;
+		step = 2;
+	} else if (!strncmp(mode, "w", 1)) {
+		open_mode = O_WRONLY | O_TRUNC | O_CREAT;
+		step = 1;
+	} else if (!strncmp(mode, "a+", 2)) {
+		open_mode = O_RDWR | O_CREAT | O_APPEND;
+		step = 2;
+	} else if (!strncmp(mode, "a", 1)) {
+		open_mode = O_WRONLY | O_CREAT | O_APPEND;
+		step = 1;
+	}
+	for (; mode[step]; step++)
+		if (mode[step] == 'x')
+			open_mode |= O_EXCL;
+	open_mode |= O_CLOEXEC;
+
+	fd = (open_mode & O_CREAT) ?
+		open(path, open_mode, 0666) :
+		open(path, open_mode);
+	if (fd < 0)
+		return NULL;
+
+	ret = fdopen(fd, mode);
+	saved_errno = errno;
+	if (!ret)
+		close(fd);
+	errno = saved_errno;
+	return ret;
 }

@@ -148,6 +148,9 @@ static inline int signalfd(int fd, const sigset_t *mask, int flags)
 }
 #endif
 
+/* open a file with O_CLOEXEC */
+FILE *fopen_cloexec(const char *path, const char *mode);
+
 
 /**
  * BUILD_BUG_ON - break compile if a condition is true.
