@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -196,5 +197,36 @@ extern int sha1sum_file(char *fnam, unsigned char *md_value);
 /* convert variadic argument lists to arrays (for execl type argument lists) */
 extern char** lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup);
 extern const char** lxc_va_arg_list_to_argv_const(va_list ap, size_t skip);
+
+/* Some simple string functions; if they return pointers, they are allocated buffers. */
+extern char *lxc_string_replace(const char *needle, const char *replacement, const char *haystack);
+extern bool lxc_string_in_array(const char *needle, const char **haystack);
+extern char *lxc_string_join(const char *sep, const char **parts, bool use_as_prefix);
+/* Normalize and split path: Leading and trailing / are removed, multiple
+ * / are compactified, .. and . are resolved (.. on the top level is considered
+ * identical to .).
+ * Examples:
+ *     /            ->   { NULL }
+ *     foo/../bar   ->   { bar, NULL }
+ *     ../../       ->   { NULL }
+ *     ./bar/baz/.. ->   { bar, NULL }
+ *     foo//bar     ->   { foo, bar, NULL }
+ */
+extern char **lxc_normalize_path(const char *path);
+/* Note: the following two functions use strtok(), so they will never
+ *       consider an empty element, even if two delimiters are next to
+ *       each other.
+ */
+extern bool lxc_string_in_list(const char *needle, const char *haystack, char sep);
+extern char **lxc_string_split(const char *string, char sep);
+extern char **lxc_string_split_and_trim(const char *string, char sep);
+
+/* some simple array manipulation utilities */
+typedef void (*lxc_free_fn)(void *);
+typedef void *(*lxc_dup_fn)(void *);
+extern int lxc_grow_array(void ***array, size_t* capacity, size_t new_size, size_t capacity_increment);
+extern void lxc_free_array(void **array, lxc_free_fn element_free_fn);
+extern size_t lxc_array_len(void **array);
+extern void **lxc_dup_array(void **array, lxc_dup_fn element_dup_fn, lxc_free_fn element_free_fn);
 
 #endif

@@ -37,6 +37,7 @@
 #include <libgen.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <assert.h>
 
 #include "utils.h"
 #include "log.h"
@@ -520,4 +521,287 @@ FILE *fopen_cloexec(const char *path, const char *mode)
 		close(fd);
 	errno = saved_errno;
 	return ret;
+}
+
+char *lxc_string_replace(const char *needle, const char *replacement, const char *haystack)
+{
+	ssize_t len = -1, saved_len = -1;
+	char *result = NULL;
+	size_t replacement_len = strlen(replacement);
+	size_t needle_len = strlen(needle);
+
+	/* should be executed exactly twice */
+	while (len == -1 || result == NULL) {
+		char *p;
+		char *last_p;
+		ssize_t part_len;
+
+		if (len != -1) {
+			result = calloc(1, len + 1);
+			if (!result)
+				return NULL;
+			saved_len = len;
+		}
+
+		len = 0;
+
+		for (last_p = (char *)haystack, p = strstr(last_p, needle); p; last_p = p, p = strstr(last_p, needle)) {
+			part_len = (ssize_t)(p - last_p);
+			if (result && part_len > 0)
+				memcpy(&result[len], last_p, part_len);
+			len += part_len;
+			if (result && replacement_len > 0)
+				memcpy(&result[len], replacement, replacement_len);
+			len += replacement_len;
+			p += needle_len;
+		}
+		part_len = strlen(last_p);
+		if (result && part_len > 0)
+			memcpy(&result[len], last_p, part_len);
+		len += part_len;
+	}
+
+	/* make sure we did the same thing twice,
+	 * once for calculating length, the other
+	 * time for copying data */
+	assert(saved_len == len);
+	/* make sure we didn't overwrite any buffer,
+	 * due to calloc the string should be 0-terminated */
+	assert(result[len] == '\0');
+
+	return result;
+}
+
+bool lxc_string_in_array(const char *needle, const char **haystack)
+{
+	for (; haystack && *haystack; haystack++)
+		if (!strcmp(needle, *haystack))
+			return true;
+	return false;
+}
+
+char *lxc_string_join(const char *sep, const char **parts, bool use_as_prefix)
+{
+	char *result;
+	char **p;
+	size_t sep_len = strlen(sep);
+	size_t result_len = use_as_prefix * sep_len;
+
+	/* calculate new string length */
+	for (p = (char **)parts; *p; p++)
+		result_len += (p > (char **)parts) * sep_len + strlen(*p);
+
+	result = calloc(result_len + 1, 1);
+	if (!result)
+		return NULL;
+
+	if (use_as_prefix)
+		strcpy(result, sep);
+	for (p = (char **)parts; *p; p++) {
+		if (p > (char **)parts)
+			strcat(result, sep);
+		strcat(result, *p);
+	}
+
+	return result;
+}
+
+char **lxc_normalize_path(const char *path)
+{
+	char **components;
+	char **p;
+	size_t components_len = 0;
+	size_t pos = 0;
+
+	components = lxc_string_split(path, '/');
+	if (!components)
+		return NULL;
+	for (p = components; *p; p++)
+		components_len++;
+
+	/* resolve '.' and '..' */
+	for (pos = 0; pos < components_len; ) {
+		if (!strcmp(components[pos], ".") || (!strcmp(components[pos], "..") && pos == 0)) {
+			/* eat this element */
+			free(components[pos]);
+			memmove(&components[pos], &components[pos+1], sizeof(char *) * (components_len - pos));
+			components_len--;
+		} else if (!strcmp(components[pos], "..")) {
+			/* eat this and the previous element */
+			free(components[pos - 1]);
+			free(components[pos]);
+			memmove(&components[pos-1], &components[pos+1], sizeof(char *) * (components_len - pos));
+			components_len -= 2;
+			pos--;
+		} else {
+			pos++;
+		}
+	}
+
+	return components;
+}
+
+bool lxc_string_in_list(const char *needle, const char *haystack, char _sep)
+{
+	char *token, *str, *saveptr = NULL;
+	char sep[2] = { _sep, '\0' };
+
+	if (!haystack || !needle)
+		return 0;
+
+	str = alloca(strlen(haystack)+1);
+	strcpy(str, haystack);
+	for (; (token = strtok_r(str, sep, &saveptr)); str = NULL) {
+		if (strcmp(needle, token) == 0)
+			return 1;
+	}
+
+	return 0;
+}
+
+char **lxc_string_split(const char *string, char _sep)
+{
+	char *token, *str, *saveptr = NULL;
+	char sep[2] = { _sep, '\0' };
+	char **result = NULL;
+	size_t result_capacity = 0;
+	size_t result_count = 0;
+	int r, saved_errno;
+
+	if (!string)
+		return calloc(1, sizeof(char *));
+
+	str = alloca(strlen(string)+1);
+	strcpy(str, string);
+	for (; (token = strtok_r(str, sep, &saveptr)); str = NULL) {
+		r = lxc_grow_array((void ***)&result, &result_capacity, result_count + 1, 16);
+		if (r < 0)
+			goto error_out;
+		result[result_count] = strdup(token);
+		if (!result[result_count])
+			goto error_out;
+		result_count++;
+	}
+
+	/* if we allocated too much, reduce it */
+	return realloc(result, (result_count + 1) * sizeof(char *));
+error_out:
+	saved_errno = errno;
+	lxc_free_array((void **)result, free);
+	errno = saved_errno;
+	return NULL;
+}
+
+char **lxc_string_split_and_trim(const char *string, char _sep)
+{
+	char *token, *str, *saveptr = NULL;
+	char sep[2] = { _sep, '\0' };
+	char **result = NULL;
+	size_t result_capacity = 0;
+	size_t result_count = 0;
+	int r, saved_errno;
+	size_t i = 0;
+
+	if (!string)
+		return calloc(1, sizeof(char *));
+
+	str = alloca(strlen(string)+1);
+	strcpy(str, string);
+	for (; (token = strtok_r(str, sep, &saveptr)); str = NULL) {
+		while (token[0] == ' ' || token[0] == '\t')
+			token++;
+		i = strlen(token);
+		while (i > 0 && (token[i - 1] == ' ' || token[i - 1] == '\t')) {
+			token[i - 1] = '\0';
+			i--;
+		}
+		r = lxc_grow_array((void ***)&result, &result_capacity, result_count + 1, 16);
+		if (r < 0)
+			goto error_out;
+		result[result_count] = strdup(token);
+		if (!result[result_count])
+			goto error_out;
+		result_count++;
+	}
+
+	/* if we allocated too much, reduce it */
+	return realloc(result, (result_count + 1) * sizeof(char *));
+error_out:
+	saved_errno = errno;
+	lxc_free_array((void **)result, free);
+	errno = saved_errno;
+	return NULL;
+}
+
+void lxc_free_array(void **array, lxc_free_fn element_free_fn)
+{
+	void **p;
+	for (p = array; p && *p; p++)
+		element_free_fn(*p);
+	free((void*)array);
+}
+
+int lxc_grow_array(void ***array, size_t* capacity, size_t new_size, size_t capacity_increment)
+{
+	size_t new_capacity;
+	void **new_array;
+
+	/* first time around, catch some trivial mistakes of the user
+	 * only initializing one of these */
+	if (!*array || !*capacity) {
+		*array = NULL;
+		*capacity = 0;
+	}
+
+	new_capacity = *capacity;
+	while (new_size + 1 > new_capacity)
+		new_capacity += capacity_increment;
+	if (new_capacity != *capacity) {
+		/* we have to reallocate */
+		new_array = realloc(*array, new_capacity * sizeof(void *));
+		if (!new_array)
+			return -1;
+		memset(&new_array[*capacity], 0, (new_capacity - (*capacity)) * sizeof(void *));
+		*array = new_array;
+		*capacity = new_capacity;
+	}
+
+	/* array has sufficient elements */
+	return 0;
+}
+
+size_t lxc_array_len(void **array)
+{
+	void **p;
+	size_t result = 0;
+
+	for (p = array; p && *p; p++)
+		result++;
+
+	return result;
+}
+
+void **lxc_dup_array(void **array, lxc_dup_fn element_dup_fn, lxc_free_fn element_free_fn)
+{
+	size_t l = lxc_array_len(array);
+	void **result = calloc(l + 1, sizeof(void *));
+	void **pp;
+	void *p;
+	int saved_errno = 0;
+
+	if (!result)
+		return NULL;
+
+	for (l = 0, pp = array; pp && *pp; pp++, l++) {
+		p = element_dup_fn(*pp);
+		if (!p) {
+			saved_errno = errno;
+			lxc_free_array(result, element_free_fn);
+			errno = saved_errno;
+			return NULL;
+		}
+		result[l] = p;
+	}
+
+	return result;
 }
