@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include <stdio.h>
 #include <string.h>
@@ -38,7 +38,7 @@ struct mainloop_handler {
 
 #define MAX_EVENTS 10
 
-int lxc_mainloop(struct lxc_epoll_descr *descr)
+int lxc_mainloop(struct lxc_epoll_descr *descr, int timeout_ms)
 {
 	int i, nfds;
 	struct mainloop_handler *handler;
@@ -46,7 +46,7 @@ int lxc_mainloop(struct lxc_epoll_descr *descr)
 
 	for (;;) {
 
-		nfds = epoll_wait(descr->epfd, events, MAX_EVENTS, -1);
+		nfds = epoll_wait(descr->epfd, events, MAX_EVENTS, timeout_ms);
 		if (nfds < 0) {
 			if (errno == EINTR)
 				continue;
@@ -63,6 +63,9 @@ int lxc_mainloop(struct lxc_epoll_descr *descr)
 					      descr) > 0)
 				return 0;
 		}
+
+		if (nfds == 0 && timeout_ms != 0)
+			return 0;
 
 		if (lxc_list_empty(&descr->handlers))
 			return 0;

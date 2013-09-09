@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #ifndef __lxc_h
 #define __lxc_h
@@ -28,6 +28,8 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include <sys/select.h>
+#include <sys/types.h>
 #include <lxc/state.h>
 
 struct lxc_msg;
@@ -51,14 +53,6 @@ extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf
 		     const char *lxcpath);
 
 /*
- * Stop the container previously started with lxc_start, all
- * the processes running inside this container will be killed.
- * @name : the name of the container
- * Returns 0 on success, < 0 otherwise
- */
-extern int lxc_stop(const char *name, const char *lxcpath);
-
-/*
  * Start the specified command inside an application container
  * @name     : the name of the container
  * @argv     : an array of char * corresponding to the commande line
@@ -77,15 +71,35 @@ extern int lxc_execute(const char *name, char *const argv[], int quiet,
 extern int lxc_monitor_open(const char *lxcpath);
 
 /*
- * Read the state of the container if this one has changed
- * The function will block until there is an event available
- * @fd : the file descriptor provided by lxc_monitor_open
- * @state : the variable which will be filled with the state
+ * Blocking read for the next container state change
+ * @fd  : the file descriptor provided by lxc_monitor_open
+ * @msg : the variable which will be filled with the state
  * Returns 0 if the monitored container has exited, > 0 if
- * data was readen, < 0 otherwise
+ * data was read, < 0 otherwise
  */
 extern int lxc_monitor_read(int fd, struct lxc_msg *msg);
+
+/*
+ * Blocking read for the next container state change with timeout
+ * @fd      : the file descriptor provided by lxc_monitor_open
+ * @msg     : the variable which will be filled with the state
+ * @timeout : the timeout in seconds to wait for a state change
+ * Returns 0 if the monitored container has exited, > 0 if
+ * data was read, < 0 otherwise
+ */
 extern int lxc_monitor_read_timeout(int fd, struct lxc_msg *msg, int timeout);
+
+/*
+ * Blocking read from multiple monitors for the next container state
+ * change with timeout
+ * @rfds    : an fd_set of file descriptors provided by lxc_monitor_open
+ * @nfds    : the maximum fd number in rfds + 1
+ * @msg     : the variable which will be filled with the state
+ * @timeout : the timeout in seconds to wait for a state change
+ * Returns 0 if the monitored container has exited, > 0 if
+ * data was read, < 0 otherwise
+ */
+extern int lxc_monitor_read_fdset(fd_set *rfds, int nfds, struct lxc_msg *msg, int timeout);
 
 /*
  * Close the fd associated with the monitoring
@@ -93,15 +107,6 @@ extern int lxc_monitor_read_timeout(int fd, struct lxc_msg *msg, int timeout);
  * Returns 0 on success, < 0 otherwise
  */
 extern int lxc_monitor_close(int fd);
-
-/*
- * Show the console of the container.
- * @name : the name of container
- * @tty  : the tty number
- * @fd   : a pointer to a tty file descriptor
- * Returns 0 on sucess, < 0 otherwise
- */
-extern int lxc_console(const char *name, int ttynum, int *fd, const char *lxcpath);
 
 /*
  * Freeze all the tasks running inside the container <name>
@@ -132,15 +137,17 @@ extern int lxc_unfreeze_bypath(const char *cgpath);
  */
 extern lxc_state_t lxc_state(const char *name, const char *lxcpath);
 
+struct lxc_handler;
 /*
  * Set a specified value for a specified subsystem. The specified
  * subsystem must be fully specified, eg. "cpu.shares"
- * @cgpath    : the cgroup path of the container
+ * @d         : the cgroup descriptor for the container
  * @filename  : the cgroup attribute filename
  * @value     : the value to be set
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_cgroup_set_bypath(const char *cgpath, const char *filename, const char *value);
+extern int lxc_cgroup_set_value(struct lxc_handler *hander, const char *filename,
+				const char *value);
 
 /*
  * Set a specified value for a specified subsystem. The specified
@@ -219,6 +226,11 @@ extern int lxc_container_put(struct lxc_container *c);
  * If states is NULL, simply return the number of states
  */
 extern int lxc_get_wait_states(const char **states);
+
+/*
+ * Add a dependency to a container
+ */
+extern int add_rdepend(struct lxc_conf *lxc_conf, char *rdepend);
 
 #ifdef __cplusplus
 }

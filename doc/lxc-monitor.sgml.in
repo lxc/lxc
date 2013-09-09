@@ -19,11 +19,11 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+<!DOCTYPE refentry PUBLIC @docdtd@ [
 
 <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
@@ -63,22 +63,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       to monitor all the containers, several of them or just one.
     </para>
 
+    <para>
+      The <option>-P, --lxcpath</option>=PATH option may be specified multiple
+      times to monitor more than one container path. Note however that
+      containers with the same name in multiple paths will be
+      indistinguishable in the output.
+    </para>
+
   </refsect1>
 
   &commonoptions;
 
-  <refsect1>
-    <title>Bugs</title>
-
-    <para>
-      Only one <command>lxc-monitor</command> can run at a time. Other
-      invocations will fail with the following error:
-    </para>
-    <para>
-      lxc-monitor: bind : Address already in use
-    </para>
-
-  </refsect1>
   <refsect1>
     <title>Examples</title>
     <variablelist>

@@ -1,0 +1,184 @@
+#!/bin/bash
+## If the container being cloned has one or more lxc.hook.clone
+## specified, then the specified hooks will be called for the new
+## container.  The arguments passed to the clone hook are:
+##  1. the container name
+##  2. a section ('lxc')
+##  3. hook type ('clone')
+##  4. .. additional arguments to lxc-clone
+## Environment variables:
+##  LXC_ROOTFS_MOUNT: path to the root filesystem
+##  LXC_CONFIG_FILE:  path to config file
+##  LXC_SRC_NAME:     old container name
+##  LXC_ROOTFS_PATH:  path or device on which the root fs is located
+
+set -f
+VERBOSITY="0"
+
+error() { echo "$@" 1>&2; }
+debug() { [ "$VERBOSITY" -ge "$1" ] || return; shift; error "$@"; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+
+prep_usage() {
+cat <<EOF
+Usage: ${0##*/} [options] root-dir
+
+  root-dir is the root directory to operate on
+
+  [ -C | --cloud  ]:       do not configure a datasource.  incompatible with
+                           options marked '[ds]'
+  [ -i | --instance-id]:   instance-id for cloud-init, defaults to random [ds]
+  [ -L | --nolocales ]:    Do not copy host's locales into container
+  [ -S | --auth-key ]:     ssh public key file for datasource [ds]
+  [ -u | --userdata ]:     user-data file for cloud-init [ds]
+
+EOF
+}
+
+prep() {
+    local short_opts="Chi:L:S:u:v"
+    local long_opts="auth-key:,cloud,help,hostid:,name:,nolocales:,create-etc-init,userdata:,verbose"
+    local getopt_out getopt_ret
+    getopt_out=$(getopt --name "${0##*/}" \
+        --options "${short_opts}" --long "${long_opts}" -- "$@" 2>/dev/null) ||
+        :
+    getopt_ret=$?
+    if [ $getopt_ret -eq 0 ]; then
+        eval set -- "${getopt_out}" ||
+        { error "Unexpected error reading usage"; return 1; }
+    fi
+
+    local cur="" next=""
+    local userdata="" hostid="" authkey="" locales=1 cloud=0
+    local create_etc_init=0 name="ubuntucloud-lxc"
+
+    while [ $# -ne 0 ]; do
+        cur="$1"; next="$2";
+        case "$cur" in
+            -C|--cloud) cloud=1;;
+            -h|--help) prep_usage; return 0;;
+               --name) name="$next";;
+            -i|--hostid) hostid="$next";;
+            -L|--nolocales) locales=0;;
+               --create-etc-init) create_etc_init=1;;
+            -S|--auth-key)
+                [ -f "$next" ] ||
+                    { error "--auth-key: '$next' not a file"; return 1; }
+                authkey="$next";;
+            -u|--userdata)
+                [ -f "$next" ] ||
+                    { error "--userdata: '$next' not a file"; return 1; }
+                userdata="$next";;
+            -v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+            --) shift; break;;
+        esac
+        shift;
+    done
+
+    [ $# -eq 1 ] || {
+        prep_usage 1>&2;
+        error "expected 1 arguments, got ($_LXC_HOOK) $#: $*";
+        return 1;
+    }
+
+    local root_d="$1";
+
+    if [ $getopt_ret -ne 0 -a "$_LXC_HOOK" = "clone" ]; then
+        # getopt above failed, but we were called from lxc clone. there might
+        # be multiple clone hooks and the args provided here not for us.  This
+        # seems like not the greatest interface, so all we'll do is mention it.
+        error "${0##*}: usage failed, continuing with defaults"
+    fi
+
+    [ "$create_etc_init" -eq 0 ] ||
+        echo "#upstart needs help for overlayfs (LP: #1213925)." > \
+            "$root_d/etc/init/.overlayfs-upstart-helper" ||
+        { error "failed to create /etc/init in overlay"; return 1; }
+
+    local seed_d=""
+    seed_d="$root_d/var/lib/cloud/seed/nocloud-net"
+
+    echo "$name" > "$root_d/etc/hostname" ||
+        { error "failed to write /etc/hostname"; return 1; }
+
+    if [ $cloud -eq 1 ]; then
+        debug 1 "--cloud provided, not modifying seed in '$seed_d'"
+    else
+        if [ -z "$hostid" ]; then
+            hostid=$(uuidgen | cut -c -8) && [ -n "$hostid" ] ||
+                { error "failed to get hostid"; return 1; }
+        fi
+        mkdir -p "$seed_d" ||
+            { error "failed to create '$seed_d'"; return 1; }
+
+        echo "instance-id: lxc-$hostid" > "$seed_d/meta-data" ||
+            { error "failed to write to $seed_d/meta-data"; return 1; }
+
+        echo "local-hostname: $name" >> "$seed_d/meta-data" ||
+            { error "failed to write to $seed_d/meta-data"; return 1; }
+
+        if [ -n "$authkey" ]; then
+            {
+                echo "public-keys:" &&
+                sed -e '/^$/d' -e 's,^,- ,' "$authkey"
+            } >> "$seed_d/meta-data"
+            [ $? -eq 0 ] ||
+                { error "failed to write public keys to metadata"; return 1; }
+        fi
+
+        local larch="usr/lib/locale/locale-archive"
+        if [ $locales -eq 1 ]; then
+            cp "/$larch" "$root_d/$larch" || {
+                error "failed to cp '/$larch' '$root_d/$larch'";
+                return 1;
+            }
+        fi
+
+        if [ -z "$MIRROR" ]; then
+            MIRROR="http://archive.ubuntu.com/ubuntu"
+        fi
+
+        if [ -n "$userdata" ]; then
+            cp "$userdata" "$seed_d/user-data"
+        else
+            {
+            local lc=$(locale | awk -F= '/LANG=/ {print $NF; }')
+            echo "#cloud-config"
+            echo "output: {all: '| tee -a /var/log/cloud-init-output.log'}"
+            echo "apt_mirror: $MIRROR"
+            echo "manage_etc_hosts: localhost"
+            [ -z "$LANG" ] || echo "locale: $LANG";
+            echo "password: ubuntu"
+            echo "chpasswd: { expire: false; }"
+            } > "$seed_d/user-data"
+        fi
+        [ $? -eq 0 ] || {
+            error "failed to write user-data write to '$seed_d/user-data'";
+            return 1;
+        }
+    fi
+
+}
+
+main() {
+    # main just joins 2 modes of being called.  from user one from lxc clone
+    local _LXC_HOOK
+    if [ -n "$LXC_ROOTFS_MOUNT" -a "$3" = "clone" ]; then
+        _LXC_HOOK="clone"
+        local name="$1" create_etc_init=""
+        shift 3
+        # if mountpoint is overlayfs then add '--create-etc-init'
+        [ "${LXC_ROOTFS_PATH#overlayfs}" != "${LXC_ROOTFS_PATH}" ] &&
+           create_etc_init="--create-etc-init"
+        debug 1 prep "--name=$name" $create_etc_init "$LXC_ROOTFS_MOUNT" "$@"
+        prep "--name=$name" $create_etc_init "$LXC_ROOTFS_MOUNT" "$@"
+    else
+        _LXC_HOOK=""
+        prep "$@"
+    fi
+    return $?
+}
+
+main "$@"
+
+# vi: ts=4 expandtab

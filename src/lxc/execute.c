@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include <sys/types.h>
@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include "conf.h"
 #include "log.h"
 #include "start.h"
 
@@ -54,7 +55,7 @@ static char *choose_init(void)
 	ret = snprintf(retv, PATH_MAX, LXCINITDIR "/lxc/lxc-init");
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
-		return NULL;
+		goto out1;
 	}
 
 	ret = stat(retv, &mystat);
@@ -64,7 +65,7 @@ static char *choose_init(void)
 	ret = snprintf(retv, PATH_MAX, "/usr/lib/lxc/lxc-init");
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
-		return NULL;
+		goto out1;
 	}
 	ret = stat(retv, &mystat);
 	if (ret == 0)
@@ -72,11 +73,13 @@ static char *choose_init(void)
 	ret = snprintf(retv, PATH_MAX, "/sbin/lxc-init");
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
-		return NULL;
+		goto out1;
 	}
 	ret = stat(retv, &mystat);
 	if (ret == 0)
 		return retv;
+out1:
+	free(retv);
 	return NULL;
 }
 
@@ -85,23 +88,44 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	int j, i = 0;
 	struct execute_args *my_args = data;
 	char **argv;
-	int argc = 0;
+	int argc = 0, argc_add;
 	char *initpath;
 
 	while (my_args->argv[argc++]);
 
-	argv = malloc((argc + my_args->quiet ? 5 : 4) * sizeof(*argv));
+	argc_add = 4;
+	if (my_args->quiet)
+		argc_add++;
+	if (!handler->conf->rootfs.path) {
+		argc_add += 4;
+		if (lxc_log_has_valid_level())
+			argc_add += 2;
+	}
+
+	argv = malloc((argc + argc_add) * sizeof(*argv));
 	if (!argv)
-		return 1;
+		goto out1;
 
 	initpath = choose_init();
 	if (!initpath) {
 		ERROR("Failed to find an lxc-init");
-		return 1;
+		goto out2;
 	}
 	argv[i++] = initpath;
 	if (my_args->quiet)
 		argv[i++] = "--quiet";
+	if (!handler->conf->rootfs.path) {
+		argv[i++] = "--name";
+		argv[i++] = (char *)handler->name;
+		argv[i++] = "--lxcpath";
+		argv[i++] = (char *)handler->lxcpath;
+
+		if (lxc_log_has_valid_level()) {
+			argv[i++] = "--logpriority";
+			argv[i++] = (char *)
+				lxc_log_priority_to_string(lxc_log_get_level());
+		}
+	}
 	argv[i++] = "--";
 	for (j = 0; j < argc; j++)
 		argv[i++] = my_args->argv[j];
@@ -111,6 +135,10 @@ static int execute_start(struct lxc_handler *handler, void* data)
 
 	execvp(argv[0], argv);
 	SYSERROR("failed to exec %s", argv[0]);
+	free(initpath);
+out2:
+	free(argv);
+out1:
 	return 1;
 }
 
@@ -137,5 +165,6 @@ int lxc_execute(const char *name, char *const argv[], int quiet,
 	if (lxc_check_inherited(conf, -1))
 		return -1;
 
+	conf->is_execute = 1;
 	return __lxc_start(name, conf, &execute_start_ops, &args, lxcpath);
 }

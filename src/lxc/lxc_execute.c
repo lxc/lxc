@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 		return -1;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet))
+			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return -1;
 
 	/* rcfile is specified in the cli option */
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 	else {
 		int rc;
 
-		rc = asprintf(&rcfile, "%s/%s/config", my_args.lxcpath, my_args.name);
+		rc = asprintf(&rcfile, "%s/%s/config", my_args.lxcpath[0], my_args.name);
 		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
 			return -1;
@@ -137,5 +137,5 @@ int main(int argc, char *argv[])
 	if (lxc_config_define_load(&defines, conf))
 		return -1;
 
-	return lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf, my_args.lxcpath);
+	return lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf, my_args.lxcpath[0]);
 }

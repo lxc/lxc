@@ -20,11 +20,11 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+<!DOCTYPE refentry PUBLIC @docdtd@ [
 
 <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
@@ -50,13 +50,31 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-clone</command>
+      <arg choice="opt">-s </arg>
+      <arg choice="opt">-K </arg>
+      <arg choice="opt">-M </arg>
+      <arg choice="opt">-H </arg>
+      <arg choice="opt">-B <replaceable>backingstore</replaceable></arg>
+      <arg choice="opt">-L <replaceable>fssize</replaceable></arg>
+      <arg choice="opt">-p <replaceable>lxcpath</replaceable></arg>
+      <arg choice="opt">-P <replaceable>newlxcpath</replaceable></arg>
       <arg choice="req">-o <replaceable>orig</replaceable></arg>
       <arg choice="req">-n <replaceable>new</replaceable></arg>
+      <arg choice="opt">-- hook arguments</arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-clone</command>
       <arg choice="opt">-s </arg>
+      <arg choice="opt">-K </arg>
+      <arg choice="opt">-M </arg>
+      <arg choice="opt">-H </arg>
+      <arg choice="opt">-B <replaceable>backingstore</replaceable></arg>
       <arg choice="opt">-L <replaceable>fssize</replaceable></arg>
-      <arg choice="opt">-v <replaceable>vgname</replaceable></arg>
-      <arg choice="opt">-p <replaceable>lxc_lv_prefix</replaceable></arg>
-      <arg choice="opt">-t <replaceable>fstype</replaceable></arg>
+      <arg choice="opt">-p <replaceable>lxcpath</replaceable></arg>
+      <arg choice="opt">-P <replaceable>newlxcpath</replaceable></arg>
+      <arg choice="req">orig</arg>
+      <arg choice="req">new</arg>
+      <arg choice="opt">-- hook arguments</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -64,10 +82,29 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <title>Description</title>
 
     <para>
-      <command>lxc-clone</command> Creates a new container as a copy of an existing
-      container.  When the original container's rootfs is an LVM block device or
-      is on a btrfs filesystem, then a snapshotted clone can be created, taking up
-      very little initial disk space.
+      <command>lxc-clone</command> Creates a new container as a clone of an existing
+      container.  Two types of clones are supported: copy and snapshot.  A copy
+      clone copies the root filessytem from the original container to the new.  A
+      snapshot filesystem uses the backing store's snapshot functionality to create
+      a very small copy-on-write snapshot of the original container.  Snapshot
+      clones require the new container backing store to support snapshotting.  Currently
+      this includes only btrfs, lvm, overlayfs and zfs.  LVM devices do not support
+      snapshots fo snapshots.
+    </para>
+
+    <para>
+      The backing store of the new container will be the same type as the
+      original container,
+      with one exception:  overlayfs snapshots can be created of directory backed
+      containers.  This can be requested by using the <replaceable>-B overlayfs</replaceable>
+      arguments.
+    </para>
+
+    <para>
+      The names of the original and new container can be given (in that order)
+      after all options, or can be specified with the
+      <replaceable>-o</replaceable> and <replaceable>-n</replaceable> options,
+      respectively.
     </para>
 
   </refsect1>
@@ -77,6 +114,108 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <title>Options</title>
 
     <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-s, --snapshot</option>
+	</term>
+	<listitem>
+	  <para>
+	    The new container's rootfs should be a LVM or btrfs snapshot of the original.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-K, --keepname</option>
+	</term>
+	<listitem>
+	  <para>
+	    Do not change the hostname of the container (in the root
+	    filesystem).
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-M, --keepmac</option>
+	</term>
+	<listitem>
+	  <para>
+	    Use the same MAC address as the original container, rather tahn
+	    generating a new random one.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-H, --copyhooks</option>
+	</term>
+	<listitem>
+	  <para>
+	    Copy all mount hooks into the new container's directory, and
+	    update any lxcpaths and container names as needed.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-L, --fssize <replaceable>fssize</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    In the case of a block device backed container, a size for the new
+	    block device.  By default, the new device will be made the
+	    same size as the original.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-p, --lxcpath <replaceable>fssize</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    The lxcpath of the original container.  By default, the system
+	    wide configured lxcpath will be used.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-P, --newpath <replaceable>fssize</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    The lxcpath for the new container.  By default the same lxcpath
+	    as the original will be used.  Note that with btrfs snapshots,
+	    changing lxcpaths may not be possible, as subvolume snapshots
+	    must be in the same btrfs filesystem.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-B, --backingstore <replaceable>fssize</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Select a different backing store for the new container.  By
+	    default the same as the original container's is used.  Note that
+	    currently changing the backingstore is only supported for
+	    overlayfs snapshots of directory backed containers.  Valid
+	    backing stores include dir (directory), btrfs, lvm, zfs, loop
+	    and overlayfs.
+	  </para>
+	</listitem>
+      </varlistentry>
 
       <varlistentry>
 	<term>
@@ -100,71 +239,26 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</listitem>
       </varlistentry>
 
-      <varlistentry>
-	<term>
-	  <option>-s, --snapshot</option>
-	</term>
-	<listitem>
-	  <para>
-	    The new container's rootfs should be a LVM or btrfs snapshot of the original.
-	  </para>
-	</listitem>
-      </varlistentry>
-
-      <varlistentry>
-	<term>
-	  <option>-L, --fssize <replaceable>fssize</replaceable></option>
-	</term>
-	<listitem>
-	  <para>
-	    In the case of a LVM-backed container, a size for the new
-	    block device.  By default, the new device will be made the
-	    same size as the original.
-	  </para>
-	</listitem>
-      </varlistentry>
-
-      <varlistentry>
-	<term>
-	  <option>-v, --vgname <replaceable>vgname</replaceable></option>
-	</term>
-	<listitem>
-	  <para>
-	    For an LVM-backed container, the volume group name to use.  By
-	    default it is 'lxc'.
-	  </para>
-	</listitem>
-      </varlistentry>
-
-      <varlistentry>
-	<term>
-	  <option>-p, --lvprefix <replaceable>lxc_lv_prefix</replaceable></option>
-	</term>
-	<listitem>
-	  <para>
-	    For an LVM-backed container, a string to prefix to the container name to
-	    form the logical volume name.  For instance, specifying
-	    <command>-n c1 -p lxc_</command> will cause the container rootfs to
-	    be on a logical volume called <replaceable>lxc_c1</replaceable>.
-	  </para>
-	</listitem>
-      </varlistentry>
-
-      <varlistentry>
-	<term>
-	  <option>-t, --fstype <replaceable>fstype</replaceable></option>
-	</term>
-	<listitem>
-	  <para>
-	    For a non-snapshot LVM clone, the file system to use for the new
-	    container.  Note this option is ignored when requesting a
-	    snapshotted container.
-	  </para>
-	</listitem>
-      </varlistentry>
 
     </variablelist>
 
+  </refsect1>
+
+  <refsect1>
+    <title>Clone hook</title>
+    <para>
+      If the container being cloned has one or more <filename>lxc.hook.clone</filename>
+      specified, then the specified hooks will be called for the new container.  The
+      first 3 arguments passed to the clone hook will be the container name, a section
+      ('lxc'), and the hook type ('clone').  Extra arguments passed
+      <command>lxc-clone</command> will be passed to the hook program starting at
+      argument 4.  The <filename>LXC_ROOTFS_MOUNT</filename> environment variable gives
+      the path under which the container's root filesystem is mounted.  The
+      configuration file pathname is stored in <filename>LXC_CONFIG_FILE</filename>, the
+      new container name in <filename>LXC_NAME</filename>, the old container name in
+      <filename>LXC_SRC_NAME</filename>, and the path or device on which
+      the rootfs is located is in <filename>LXC_ROOTFS_PATH</filename>.
+    </para>
   </refsect1>
 
   &seealso;

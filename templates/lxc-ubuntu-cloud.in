@@ -1,29 +1,44 @@
 #!/bin/bash
 
-# template script for generating ubuntu container for LXC based on released cloud
-# images
+# template script for generating ubuntu container for LXC based on released
+# cloud images.
 #
 # Copyright © 2012 Serge Hallyn <serge.hallyn@canonical.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2, as
-# published by the Free Software Foundation.
+#  This library is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU Lesser General Public
+#  License as published by the Free Software Foundation; either
+#  version 2.1 of the License, or (at your option) any later version.
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#  This library is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#  Lesser General Public License for more details.
 
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-#
+#  You should have received a copy of the GNU Lesser General Public
+#  License along with this library; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 set -e
+
+STATE_DIR="@LOCALSTATEDIR@"
+HOOK_DIR="@LXCHOOKDIR@"
+CLONE_HOOK_FN="$HOOK_DIR/ubuntu-cloud-prep"
 
 if [ -r /etc/default/lxc ]; then
     . /etc/default/lxc
 fi
+
+am_in_userns() {
+    [ -e /proc/self/uid_map ] || { echo no; return; }
+    [ "$(wc -l /proc/self/uid_map | awk '{ print $1 }')" -eq 1 ] || { echo yes; return; }
+    line=$(awk '{ print $1 " " $2 " " $3 }' /proc/self/uid_map)
+    [ "$line" = "0 0 4294967295" ] && { echo no; return; }
+    echo yes
+}
+
+in_userns=0
+[ $(am_in_userns) = "yes" ] && in_userns=1
 
 copy_configuration()
 {
@@ -55,10 +70,16 @@ lxc.pts = 1024
 
 lxc.utsname = $name
 lxc.arch = $arch
-lxc.cap.drop = sys_module mac_admin mac_override
+lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
+
+# To support container nesting on an Ubuntu host, uncomment next two lines:
+#lxc.aa_profile = lxc-container-default-with-nesting
+#lxc.hook.mount = /usr/share/lxc/hooks/mountcgroups
+
+lxc.hook.clone = ${CLONE_HOOK_FN}
 
 lxc.cgroup.devices.deny = a
 # Allow any mknod (but not using the node)
@@ -70,31 +91,42 @@ lxc.cgroup.devices.allow = c 1:5 rwm
 # consoles
 lxc.cgroup.devices.allow = c 5:1 rwm
 lxc.cgroup.devices.allow = c 5:0 rwm
-#lxc.cgroup.devices.allow = c 4:0 rwm
-#lxc.cgroup.devices.allow = c 4:1 rwm
 # /dev/{,u}random
 lxc.cgroup.devices.allow = c 1:9 rwm
 lxc.cgroup.devices.allow = c 1:8 rwm
 lxc.cgroup.devices.allow = c 136:* rwm
 lxc.cgroup.devices.allow = c 5:2 rwm
 # rtc
-lxc.cgroup.devices.allow = c 254:0 rwm
-#fuse
+lxc.cgroup.devices.allow = c 254:0 rm
+# fuse
 lxc.cgroup.devices.allow = c 10:229 rwm
-#tun
+# tun
 lxc.cgroup.devices.allow = c 10:200 rwm
-#full
+# full
 lxc.cgroup.devices.allow = c 1:7 rwm
-#hpet
+# hpet
 lxc.cgroup.devices.allow = c 10:228 rwm
-#kvm
+# kvm
 lxc.cgroup.devices.allow = c 10:232 rwm
 EOF
 
     cat <<EOF > $path/fstab
 proc            proc         proc    nodev,noexec,nosuid 0 0
 sysfs           sys          sysfs defaults  0 0
+/sys/fs/fuse/connections sys/fs/fuse/connections none bind 0 0
+/sys/kernel/debug sys/kernel/debug none bind 0 0
+/sys/kernel/security sys/kernel/security none bind 0 0
 EOF
+
+    # unprivileged user can't mknod these.  One day we may allow
+    # that in the kernel, but not right now.  So let's just bind
+    # mount the files from the host.
+    if [ $in_userns -eq 1 ]; then
+        for dev in null tty urandom console; do
+            touch $rootfs/dev/$dev
+            echo "/dev/$dev dev/$dev    none bind 0 0" >> $path/fstab
+        done
+    fi
 
     # rmdir /dev/shm for containers that have /run/shm
     # I'm afraid of doing rm -rf $rootfs/dev/shm, in case it did
@@ -115,40 +147,36 @@ LXC Container configuration for Ubuntu Cloud images.
 
 Generic Options
 [ -r | --release <release> ]: Release name of container, defaults to host
-[ -a | --arch ]: Arhcitecture of container, defaults to host arcitecture
-[ -C | --cloud ]: Configure container for use with meta-data service, defaults to no
+[ --rootfs <path> ]: Path in which rootfs will be placed
+[ -a | --arch ]: Arhcitecture of container, defaults to host architecture
 [ -T | --tarball ]: Location of tarball
 [ -d | --debug ]: Run with 'set -x' to debug errors
 [ -s | --stream]: Use specified stream rather than 'released'
 
-Options, mutually exclusive of "-C" and "--cloud":
-  [ -i | --hostid ]:    HostID for cloud-init, defaults to random string
-  [ -u | --userdata ]:  Cloud-init user-data file to configure container on start
-  [ -S | --auth-key ]:  SSH Public key file to inject into container
-  [ -L | --nolocales ]: Do not copy host's locales into container
-
+Additionally, clone hooks can be passed through (ie, --userdata).  For those,
+see:
+  $CLONE_HOOK_FN --help
 EOF
     return 0
 }
 
-options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds:u: -l arch:,help,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata: -- "$@")
+options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds:u: -l arch:,help,rootfs:,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
 fi
 eval set -- "$options"
 
-release=lucid
+# default release is precise, or the systems release if recognized
+release=precise
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
-    case "$DISTRIB_CODENAME" in
-        lucid|natty|oneiric|precise|quantal)
-            release=$DISTRIB_CODENAME
-        ;;
-    esac
+    rels=$(ubuntu-distro-info --supported 2>/dev/null) ||
+        rels="lucid natty oneiric precise quantal raring saucy"
+    for r in $rels; do
+        [ "$DISTRIB_CODENAME" = "$r" ] && release="$r"
+    done
 fi
-
-arch=$(arch)
 
 # Code taken from debootstrap
 if [ -x /usr/bin/dpkg ] && /usr/bin/dpkg --print-architecture >/dev/null 2>&1; then
@@ -156,7 +184,7 @@ if [ -x /usr/bin/dpkg ] && /usr/bin/dpkg --print-architecture >/dev/null 2>&1; t
 elif type udpkg >/dev/null 2>&1 && udpkg --print-architecture >/dev/null 2>&1; then
     arch=`/usr/bin/udpkg --print-architecture`
 else
-    arch=$(arch)
+    arch=$(uname -m)
     if [ "$arch" = "i686" ]; then
         arch="i386"
     elif [ "$arch" = "x86_64" ]; then
@@ -176,6 +204,7 @@ cloud=0
 locales=1
 flushcache=0
 stream="released"
+cloneargs=()
 while true
 do
     case "$1" in
@@ -185,18 +214,21 @@ do
     -F|--flush-cache)  flushcache=1; shift 1;;
     -r|--release)      release=$2; shift 2;;
     -a|--arch)         arch=$2; shift 2;;
-    -i|--hostid)       host_id=$2; shift 2;;
-    -u|--userdata)     userdata=$2; shift 2;;
-    -C|--cloud)        cloud=1; shift 1;;
-    -S|--auth-key)     auth_key=$2; shift 2;;
-    -L|--no_locales)   locales=0; shift 1;;
     -T|--tarball)      tarball=$2; shift 2;;
     -d|--debug)        debug=1; shift 1;;
     -s|--stream)       stream=$2; shift 2;;
+    --rootfs)          rootfs=$2; shift 2;;
+    -L|--no?locales)   cloneargs[${#cloneargs[@]}]="--no-locales"; shift 1;;
+    -i|--hostid)       cloneargs[${#cloneargs[@]}]="--hostid=$2"; shift 2;;
+    -u|--userdata)     cloneargs[${#cloneargs[@]}]="--userdata=$2"; shift 2;;
+    -C|--cloud)        cloneargs[${#cloneargs[@]}]="--cloud"; shift 1;;
+    -S|--auth-key)     cloneargs[${#cloneargs[@]}]="--auth-key=$2"; shift 2;;
     --)                shift 1; break ;;
         *)              break ;;
     esac
 done
+
+cloneargs=( "--name=$name" "${cloneargs[@]}" )
 
 if [ $debug -eq 1 ]; then
     set -x
@@ -237,24 +269,6 @@ if [ "$stream" != "daily" -a "$stream" != "released" ]; then
     exit 1
 fi
 
-if [ -n "$userdata" ]; then
-    if [ ! -f "$userdata" ]; then
-        echo "Userdata ($userdata) does not exist"
-        exit 1
-    else
-        userdata=`readlink -f $userdata`
-    fi
-fi
-
-if [ -n "$auth_key" ]; then
-    if [ ! -f "$auth_key" ]; then
-        echo "--auth-key=${auth_key} must reference a file"
-        exit 1
-    fi
-    auth_key=$(readlink -f "${auth_key}") ||
-        { echo "failed to get full path for auth_key"; exit 1; }
-fi
-
 if [ -z "$path" ]; then
     echo "'path' parameter is required"
     exit 1
@@ -267,10 +281,12 @@ fi
 
 # detect rootfs
 config="$path/config"
-if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
-    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
-else
-    rootfs=$path/rootfs
+if [ -z "$rootfs" ]; then
+    if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+        rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+    else
+        rootfs=$path/rootfs
+    fi
 fi
 
 type ubuntu-cloudimg-query
@@ -278,7 +294,7 @@ type wget
 
 # determine the url, tarball, and directory names
 # download if needed
-cache="@LOCALSTATEDIR@/cache/lxc/cloud-$release"
+cache="$STATE_DIR/cache/lxc/cloud-$release"
 
 mkdir -p $cache
 
@@ -334,9 +350,7 @@ build_root_tgz()
     trap SIGTERM
 }
 
-mkdir -p @LOCALSTATEDIR@/lock/subsys/
-(
-    flock -x 200
+do_extract_rootfs() {
 
     cd $cache
     if [ $flushcache -eq 1 ]; then
@@ -357,63 +371,21 @@ mkdir -p @LOCALSTATEDIR@/lock/subsys/
     mkdir -p $rootfs
     cd $rootfs
     tar -zxf $cache/$filename
+}
 
-
-    if [ $cloud -eq 0 ]; then
-        echo "Configuring for running outside of a cloud environment"
-        echo "If you want to configure for a cloud evironment, please use '-- -C' to create the container"
-
-        seed_d=$rootfs/var/lib/cloud/seed/nocloud-net
-        rhostid=$(uuidgen | cut -c -8)
-        host_id=${hostid:-$rhostid}
-        mkdir -p $seed_d
-
-        cat > "$seed_d/meta-data" <<EOF
-instance-id: lxc-$host_id
-EOF
-        if [ -n "$auth_key" ]; then
-            {
-            echo "public-keys:" &&
-            sed -e '/^$/d' -e 's,^,- ,' "$auth_key" "$auth_key"
-            } >> "$seed_d/meta-data"
-            [ $? -eq 0 ] ||
-                { echo "failed to write public keys to metadata"; exit 1; }
-        fi
-
-        rm $rootfs/etc/hostname
-
-        if [ $locales -eq 1 ]; then
-            cp /usr/lib/locale/locale-archive $rootfs/usr/lib/locale/locale-archive
-        fi
-
-        if [ -f "$userdata" ]; then
-            echo "Using custom user-data"
-            cp $userdata $seed_d/user-data
-        else
-
-            if [ -z "$MIRROR" ]; then
-                MIRROR="http://archive.ubuntu.com/ubuntu"
-            fi
-
-            cat > "$seed_d/user-data" <<EOF
-#cloud-config
-output: {all: '| tee -a /var/log/cloud-init-output.log'}
-apt_mirror: $MIRROR
-manage_etc_hosts: localhost
-locale: $(/usr/bin/locale | awk -F= '/LANG=/ {print$NF}')
-password: ubuntu
-chpasswd: { expire: False }
-EOF
-        fi
-    else
-
-        echo "Configured for running in a cloud environment."
-        echo "If you do not have a meta-data service, this container will likely be useless."
-
-    fi
-) 200>@LOCALSTATEDIR@/lock/subsys/lxc-ubuntu-cloud
+if [ -n "$tarball" ]; then
+    do_extract_rootfs
+else
+    mkdir -p "$STATE_DIR/lock/subsys/"
+    (
+        flock -x 200
+        do_extract_rootfs
+    ) 200>"$STATE_DIR/lock/subsys/lxc-ubuntu-cloud"
+fi
 
 copy_configuration $path $rootfs $name $arch $release
+
+"$CLONE_HOOK_FN" "${cloneargs[@]}" "$rootfs"
 
 echo "Container $name created."
 exit 0

@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -85,6 +85,7 @@ static int config_network_script(const char *, const char *, struct lxc_conf *);
 static int config_network_ipv6(const char *, const char *, struct lxc_conf *);
 static int config_network_ipv6_gateway(const char *, const char *, struct lxc_conf *);
 static int config_cap_drop(const char *, const char *, struct lxc_conf *);
+static int config_cap_keep(const char *, const char *, struct lxc_conf *);
 static int config_console(const char *, const char *, struct lxc_conf *);
 static int config_seccomp(const char *, const char *, struct lxc_conf *);
 static int config_includefile(const char *, const char *, struct lxc_conf *);
@@ -117,6 +118,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.hook.autodev",         config_hook                 },
 	{ "lxc.hook.start",           config_hook                 },
 	{ "lxc.hook.post-stop",       config_hook                 },
+	{ "lxc.hook.clone",           config_hook                 },
 	{ "lxc.network.type",         config_network_type         },
 	{ "lxc.network.flags",        config_network_flags        },
 	{ "lxc.network.link",         config_network_link         },
@@ -135,6 +137,7 @@ static struct lxc_config_t config[] = {
 	/* config_network_nic must come after all other 'lxc.network.*' entries */
 	{ "lxc.network.",             config_network_nic          },
 	{ "lxc.cap.drop",             config_cap_drop             },
+	{ "lxc.cap.keep",             config_cap_keep             },
 	{ "lxc.console",              config_console              },
 	{ "lxc.seccomp",              config_seccomp              },
 	{ "lxc.include",              config_includefile          },
@@ -272,6 +275,7 @@ static int config_network_type(const char *key, const char *value,
 	list = malloc(sizeof(*list));
 	if (!list) {
 		SYSERROR("failed to allocate memory");
+		free(netdev);
 		return -1;
 	}
 
@@ -610,6 +614,7 @@ static int config_network_ipv4(const char *key, const char *value,
 	list = malloc(sizeof(*list));
 	if (!list) {
 		SYSERROR("failed to allocate memory");
+		free(inetdev);
 		return -1;
 	}
 
@@ -619,6 +624,8 @@ static int config_network_ipv4(const char *key, const char *value,
 	addr = strdup(value);
 	if (!addr) {
 		ERROR("no address specified");
+		free(inetdev);
+		free(list);
 		return -1;
 	}
 
@@ -636,12 +643,16 @@ static int config_network_ipv4(const char *key, const char *value,
 
 	if (!inet_pton(AF_INET, addr, &inetdev->addr)) {
 		SYSERROR("invalid ipv4 address: %s", value);
+		free(inetdev);
 		free(addr);
+		free(list);
 		return -1;
 	}
 
 	if (bcast && !inet_pton(AF_INET, bcast, &inetdev->bcast)) {
 		SYSERROR("invalid ipv4 broadcast address: %s", value);
+		free(inetdev);
+		free(list);
 		free(addr);
 		return -1;
 	}
@@ -683,6 +694,7 @@ static int config_network_ipv4_gateway(const char *key, const char *value,
 
 	if (!value) {
 		ERROR("no ipv4 gateway address specified");
+		free(gw);
 		return -1;
 	}
 
@@ -692,6 +704,7 @@ static int config_network_ipv4_gateway(const char *key, const char *value,
 	} else {
 		if (!inet_pton(AF_INET, value, gw)) {
 			SYSERROR("invalid ipv4 gateway address: %s", value);
+			free(gw);
 			return -1;
 		}
 
@@ -725,6 +738,7 @@ static int config_network_ipv6(const char *key, const char *value,
 	list = malloc(sizeof(*list));
 	if (!list) {
 		SYSERROR("failed to allocate memory");
+		free(inet6dev);
 		return -1;
 	}
 
@@ -734,6 +748,8 @@ static int config_network_ipv6(const char *key, const char *value,
 	valdup = strdup(value);
 	if (!valdup) {
 		ERROR("no address specified");
+		free(list);
+		free(inet6dev);
 		return -1;
 	}
 
@@ -745,8 +761,10 @@ static int config_network_ipv6(const char *key, const char *value,
 		inet6dev->prefix = atoi(netmask);
 	}
 
-	if (!inet_pton(AF_INET6, value, &inet6dev->addr)) {
-		SYSERROR("invalid ipv6 address: %s", value);
+	if (!inet_pton(AF_INET6, valdup, &inet6dev->addr)) {
+		SYSERROR("invalid ipv6 address: %s", valdup);
+		free(list);
+		free(inet6dev);
 		free(valdup);
 		return -1;
 	}
@@ -761,17 +779,10 @@ static int config_network_ipv6_gateway(const char *key, const char *value,
 			               struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
-	struct in6_addr *gw;
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
-
-	gw = malloc(sizeof(*gw));
-	if (!gw) {
-		SYSERROR("failed to allocate ipv6 gateway address");
-		return -1;
-	}
 
 	if (!value) {
 		ERROR("no ipv6 gateway address specified");
@@ -782,8 +793,17 @@ static int config_network_ipv6_gateway(const char *key, const char *value,
 		netdev->ipv6_gateway = NULL;
 		netdev->ipv6_gateway_auto = true;
 	} else {
+		struct in6_addr *gw;
+
+		gw = malloc(sizeof(*gw));
+		if (!gw) {
+			SYSERROR("failed to allocate ipv6 gateway address");
+			return -1;
+		}
+
 		if (!inet_pton(AF_INET6, value, gw)) {
 			SYSERROR("invalid ipv6 gateway address: %s", value);
+			free(gw);
 			return -1;
 		}
 
@@ -877,6 +897,8 @@ static int config_hook(const char *key, const char *value,
 		return add_hook(lxc_conf, LXCHOOK_START, copy);
 	else if (strcmp(key, "lxc.hook.post-stop") == 0)
 		return add_hook(lxc_conf, LXCHOOK_POSTSTOP, copy);
+	else if (strcmp(key, "lxc.hook.clone") == 0)
+		return add_hook(lxc_conf, LXCHOOK_CLONE, copy);
 	SYSERROR("Unknown key: %s", key);
 	free(copy);
 	return -1;
@@ -970,6 +992,11 @@ static int config_aa_profile(const char *key, const char *value,
 static int config_logfile(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
 {
+	// store these values in the lxc_conf, and then try to set for
+	// actual current logging.
+	if (lxc_conf->logfile)
+		free(lxc_conf->logfile);
+	lxc_conf->logfile = strdup(value);
 	return lxc_log_set_file(value);
 }
 
@@ -989,6 +1016,9 @@ static int config_loglevel(const char *key, const char *value,
 		newlevel = atoi(value);
 	else
 		newlevel = lxc_log_priority_to_int(value);
+	// store these values in the lxc_conf, and then try to set for
+	// actual current logging.
+	lxc_conf->loglevel = newlevel;
 	return lxc_log_set_level(newlevel);
 }
 
@@ -1233,13 +1263,61 @@ static int config_mount(const char *key, const char *value,
 		return -1;
 
 	mntelem = strdup(value);
-	if (!mntelem)
+	if (!mntelem) {
+		free(mntlist);
 		return -1;
+	}
 	mntlist->elem = mntelem;
 
 	lxc_list_add_tail(&lxc_conf->mount_list, mntlist);
 
 	return 0;
+}
+
+static int config_cap_keep(const char *key, const char *value,
+			   struct lxc_conf *lxc_conf)
+{
+	char *keepcaps, *keepptr, *sptr, *token;
+	struct lxc_list *keeplist;
+	int ret = -1;
+
+	if (!strlen(value))
+		return -1;
+
+	keepcaps = strdup(value);
+	if (!keepcaps) {
+		SYSERROR("failed to dup '%s'", value);
+		return -1;
+	}
+
+	/* in case several capability keep is specified in a single line
+	 * split these caps in a single element for the list */
+	for (keepptr = keepcaps;;keepptr = NULL) {
+                token = strtok_r(keepptr, " \t", &sptr);
+                if (!token) {
+			ret = 0;
+                        break;
+		}
+
+		keeplist = malloc(sizeof(*keeplist));
+		if (!keeplist) {
+			SYSERROR("failed to allocate keepcap list");
+			break;
+		}
+
+		keeplist->elem = strdup(token);
+		if (!keeplist->elem) {
+			SYSERROR("failed to dup '%s'", token);
+			free(keeplist);
+			break;
+		}
+
+		lxc_list_add_tail(&lxc_conf->keepcaps, keeplist);
+        }
+
+	free(keepcaps);
+
+	return ret;
 }
 
 static int config_cap_drop(const char *key, const char *value,
@@ -1344,6 +1422,7 @@ static int config_utsname(const char *key, const char *value,
 	if (strlen(value) >= sizeof(utsname->nodename)) {
 		ERROR("node name '%s' is too long",
 			      utsname->nodename);
+		free(utsname);
 		return -1;
 	}
 
@@ -1607,6 +1686,22 @@ static int lxc_get_item_cap_drop(struct lxc_conf *c, char *retv, int inlen)
 	return fulllen;
 }
 
+static int lxc_get_item_cap_keep(struct lxc_conf *c, char *retv, int inlen)
+{
+	int len, fulllen = 0;
+	struct lxc_list *it;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	lxc_list_for_each(it, &c->keepcaps) {
+		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	}
+	return fulllen;
+}
+
 static int lxc_get_mount_entries(struct lxc_conf *c, char *retv, int inlen)
 {
 	int len, fulllen = 0;
@@ -1682,8 +1777,12 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 			strprint(retv, inlen, "%s", mode);
 		}
 	} else if (strcmp(p1, "veth.pair") == 0) {
-		if (netdev->type == LXC_NET_VETH && netdev->priv.veth_attr.pair)
-			strprint(retv, inlen, "%s", netdev->priv.veth_attr.pair);
+		if (netdev->type == LXC_NET_VETH) {
+			strprint(retv, inlen, "%s",
+				 netdev->priv.veth_attr.pair ?
+				  netdev->priv.veth_attr.pair :
+				  netdev->priv.veth_attr.veth1);
+		}
 	} else if (strcmp(p1, "vlan") == 0) {
 		if (netdev->type == LXC_NET_VLAN) {
 			strprint(retv, inlen, "%d", netdev->priv.vlan_attr.vid);
@@ -1783,6 +1882,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->rootfs.pivot;
 	else if (strcmp(key, "lxc.cap.drop") == 0)
 		return lxc_get_item_cap_drop(c, retv, inlen);
+	else if (strcmp(key, "lxc.cap.keep") == 0)
+		return lxc_get_item_cap_keep(c, retv, inlen);
 	else if (strncmp(key, "lxc.hook", 8) == 0)
 		return lxc_get_item_hooks(c, retv, inlen, key);
 	else if (strcmp(key, "lxc.network") == 0)
@@ -1806,6 +1907,8 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		return lxc_clear_nic(c, key + 12);
 	else if (strcmp(key, "lxc.cap.drop") == 0)
 		return lxc_clear_config_caps(c);
+	else if (strcmp(key, "lxc.cap.keep") == 0)
+		return lxc_clear_config_keepcaps(c);
 	else if (strncmp(key, "lxc.cgroup", 10) == 0)
 		return lxc_clear_cgroups(c, key);
 	else if (strcmp(key, "lxc.mount.entries") == 0)
@@ -1846,10 +1949,10 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	if (c->aa_profile)
 		fprintf(fout, "lxc.aa_profile = %s\n", c->aa_profile);
 #endif
-	if (lxc_log_get_level() != LXC_LOG_PRIORITY_NOTSET)
-		fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(lxc_log_get_level()));
-	if (lxc_log_get_file())
-		fprintf(fout, "lxc.logfile = %s\n", lxc_log_get_file());
+	if (c->loglevel != LXC_LOG_PRIORITY_NOTSET)
+		fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(c->loglevel));
+	if (c->logfile)
+		fprintf(fout, "lxc.logfile = %s\n", c->logfile);
 	lxc_list_for_each(it, &c->cgroup) {
 		struct lxc_cgroup *cg = it->elem;
 		fprintf(fout, "lxc.cgroup.%s = %s\n", cg->subsystem, cg->value);
@@ -1918,6 +2021,14 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	}
 	lxc_list_for_each(it, &c->caps)
 		fprintf(fout, "lxc.cap.drop = %s\n", (char *)it->elem);
+	lxc_list_for_each(it, &c->keepcaps)
+		fprintf(fout, "lxc.cap.keep = %s\n", (char *)it->elem);
+	lxc_list_for_each(it, &c->id_map) {
+		struct id_map *idmap = it->elem;
+		fprintf(fout, "lxc.id_map = %c %lu %lu %lu\n",
+			idmap->idtype == ID_TYPE_UID ? 'u' : 'g', idmap->nsid,
+			idmap->hostid, idmap->range);
+	}
 	for (i=0; i<NUM_LXC_HOOKS; i++) {
 		lxc_list_for_each(it, &c->hooks[i])
 			fprintf(fout, "lxc.hook.%s = %s\n",

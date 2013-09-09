@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include <unistd.h>
@@ -62,7 +62,7 @@ int main(int argc, char *argv[], char *envp[])
 		return ret;
 
 	ret = lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			   my_args.progname, my_args.quiet);
+			   my_args.progname, my_args.quiet, my_args.lxcpath[0]);
 	if (ret)
 		return ret;
 
@@ -76,7 +76,7 @@ int main(int argc, char *argv[], char *envp[])
 	} else
 		sig=SIGKILL;
 
-	pid = get_init_pid(my_args.name, my_args.lxcpath);
+	pid = lxc_cmd_get_init_pid(my_args.name, my_args.lxcpath[0]);
 	if (pid < 0) {
 		ERROR("failed to get the init pid");
 		return -1;

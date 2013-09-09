@@ -18,7 +18,7 @@
 
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 install_sshd()
 {
@@ -28,10 +28,14 @@ install_sshd()
 $rootfs/var/run/sshd \
 $rootfs/var/empty/sshd \
 $rootfs/var/lib/empty/sshd \
+$rootfs/etc/init.d \
+$rootfs/etc/rc.d \
 $rootfs/etc/ssh \
+$rootfs/etc/sysconfig/network-scripts \
 $rootfs/dev/shm \
 $rootfs/run/shm \
 $rootfs/proc \
+$rootfs/sys \
 $rootfs/bin \
 $rootfs/sbin \
 $rootfs/usr \
@@ -63,8 +67,8 @@ root:x:0:root
 sshd:x:74:
 EOF
 
-ssh-keygen -t rsa -f $rootfs/etc/ssh/ssh_host_rsa_key
-ssh-keygen -t dsa -f $rootfs/etc/ssh/ssh_host_dsa_key
+ssh-keygen -t rsa -N "" -f $rootfs/etc/ssh/ssh_host_rsa_key
+ssh-keygen -t dsa -N "" -f $rootfs/etc/ssh/ssh_host_dsa_key
 
     # by default setup root password with no password
     cat <<EOF > $rootfs/etc/ssh/sshd_config
@@ -112,6 +116,8 @@ copy_configuration()
 cat <<EOF >> $path/config
 lxc.utsname = $name
 lxc.pts = 1024
+lxc.kmsg = 0
+lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
@@ -123,8 +129,23 @@ lxc.mount.entry = /usr usr none ro,bind 0 0
 lxc.mount.entry = /sbin sbin none ro,bind 0 0
 lxc.mount.entry = tmpfs var/run/sshd tmpfs mode=0644 0 0
 lxc.mount.entry = @LXCTEMPLATEDIR@/lxc-sshd sbin/init none bind 0 0
-lxc.mount.entry = proc $rootfs/proc proc nodev,noexec,nosuid 0 0
+lxc.mount.entry = proc proc proc nodev,noexec,nosuid 0 0
+lxc.mount.entry = sysfs sys sysfs ro 0 0
+lxc.mount.entry = /etc/init.d etc/init.d none ro,bind 0 0
 EOF
+
+    # Oracle Linux and Fedora need the following two bind mounted
+    if [ -d /etc/sysconfig/network-scripts ]; then
+        cat <<EOF >> $path/config
+lxc.mount.entry = /etc/sysconfig/network-scripts etc/sysconfig/network-scripts none ro,bind 0 0
+EOF
+    fi
+
+    if [ -d /etc/rc.d ]; then
+        cat <<EOF >> $path/config
+lxc.mount.entry = /etc/rc.d etc/rc.d none ro,bind 0 0
+EOF
+    fi
 
     # if no .ipv4 section in config, then have the container run dhcp
     grep -q "^lxc.network.ipv4" $path/config || touch $rootfs/run-dhcp
@@ -139,12 +160,24 @@ EOF
 usage()
 {
     cat <<EOF
-$1 -h|--help -p|--path=<path>
+$1 -h|--help -p|--path=<path> [--rootfs=<path>]
 EOF
     return 0
 }
 
-options=$(getopt -o hp:n:S: -l help,path:,name:,auth-key: -- "$@")
+check_for_cmd()
+{
+    cmd_path=`type $1`
+    if [ $? -ne 0 ]; then
+        echo "The command '$1' $cmd_path is not accessible on the system"
+        exit 1
+    fi
+    # we use cut instead of awk because awk is alternatives symlink on ubuntu
+    # and /etc/alternatives isn't bind mounted
+    cmd_path=`echo $cmd_path |cut -d ' ' -f 3`
+}
+
+options=$(getopt -o hp:n:S: -l help,rootfs:,path:,name:,auth-key: -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
     exit 1
@@ -156,6 +189,7 @@ do
     case "$1" in
         -h|--help)      usage $0 && exit 0;;
         -p|--path)      path=$2; shift 2;;
+        --rootfs)       rootfs=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
         -S|--auth-key)  auth_key=$2; shift 2;;
         --)             shift 1; break ;;
@@ -170,25 +204,15 @@ fi
 
 if [ $0 == "/sbin/init" ]; then
 
-    type @LXCINITDIR@/lxc-init
-    if [ $? -ne 0 ]; then
-        echo "'lxc-init is not accessible on the system"
-        exit 1
-    fi
-
-    type sshd
-    if [ $? -ne 0 ]; then
-        echo "'sshd' is not accessible on the system "
-        exit 1
-    fi
+    PATH="$PATH:/bin:/sbin:/usr/sbin"
+    check_for_cmd @LXCINITDIR@/lxc/lxc-init
+    check_for_cmd sshd
+    sshd_path=$cmd_path
 
     # run dhcp?
     if [ -f /run-dhcp ]; then
-        type dhclient
-        if [ $? -ne 0 ]; then
-            echo "can't find dhclient"
-            exit 1
-        fi
+        check_for_cmd dhclient
+        check_for_cmd ifconfig
         touch /etc/fstab
         rm -f /dhclient.conf
         cat > /dhclient.conf << EOF
@@ -196,9 +220,11 @@ send host-name "<hostname>";
 EOF
         ifconfig eth0 up
         dhclient eth0 -cf /dhclient.conf
+	echo "Container IP address:"
+        ifconfig eth0 |grep inet
     fi
 
-    exec @LXCINITDIR@/lxc-init -- /usr/sbin/sshd
+    exec @LXCINITDIR@/lxc/lxc-init -- $sshd_path
     exit 1
 fi
 
@@ -209,10 +235,12 @@ fi
 
 # detect rootfs
 config="$path/config"
-if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
-    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
-else
-    rootfs=$path/rootfs
+if [ -z "$rootfs" ]; then
+    if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+        rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+    else
+        rootfs=$path/rootfs
+    fi
 fi
 
 install_sshd $rootfs

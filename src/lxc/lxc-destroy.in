@@ -18,7 +18,7 @@
 
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 #
 # This script allows to set or remove the capabilities on the lxc tools.
@@ -40,10 +40,47 @@ help() {
     echo "  -P lxcpath container is in specified lxcpath" >&2
 }
 
+. @DATADIR@/lxc/lxc.functions
+
 usage_err() {
     [ -n "$1" ] && echo "$1" >&2
     usage
     exit 1
+}
+
+verify_zfs() {
+    local path=$1
+    which zfs > /dev/null 2>&1 || { echo no; return; }
+    if zfs list -H $path >/dev/null 2>&1; then
+        echo zfs
+    else
+        echo no
+    fi
+}
+
+busy_zfs() {
+    local path=$1
+    local dev
+    dev=`zfs list -H $path 2>/dev/null | awk '{ print $1 }'`
+    if zfs list -t snapshot | grep -q "$dev"; then
+        echo busy
+    else
+        echo zfs
+    fi
+}
+
+verify_lvm() {
+    local path=$1
+    if [ -b $path -o -h $path ]; then
+        lvdisplay $path > /dev/null 2>&1 && { echo lvm; return; }
+    fi
+    echo no
+}
+
+busy_lvm() {
+    local path=$1
+    lvdisplay $path | grep -q "LV snapshot status.*source of" && { echo busy; return; }
+    echo lvm
 }
 
 optarg_check() {
@@ -52,7 +89,6 @@ optarg_check() {
     fi
 }
 
-. @DATADIR@/lxc/lxc.functions
 force=0
 
 while [ $# -gt 0 ]; do
@@ -121,15 +157,28 @@ if ! lxc-info -n $lxc_name -P $lxc_path --state-is "STOPPED"; then
 fi
 
 # Deduce the type of rootfs
-# If LVM partition, destroy it. For btrfs, we delete the subvolue. If anything
+# If LVM partition, destroy it. For btrfs, we delete the subvolume. If anything
 # else, ignore it. We'll support deletion of others later.
-rootdev=`grep lxc.rootfs $lxc_path/$lxc_name/config 2>/dev/null | sed -e 's/^[^/]*/\//'`
+rootdev=`grep '^\s*lxc\.rootfs' $lxc_path/$lxc_name/config 2>/dev/null | sed -e 's/^[^/]*//'`
 if [ -n "$rootdev" ]; then
-    if [ -b "$rootdev" -o -h "$rootdev" ]; then
-        lvdisplay $rootdev > /dev/null 2>&1
-        if [ $? -eq 0 ]; then
+    if [ `verify_lvm $rootdev` = "lvm" ]; then
+        if [ `busy_lvm $rootdev` = "busy" ]; then
+            echo "$rootdev has lvm snapshots - not deleting"
+            exit 1
+        else
             echo "removing backing store: $rootdev"
             lvremove -f $rootdev
+        fi
+    elif [ `verify_zfs $rootdev` = "zfs" ]; then
+        if [ `busy_zfs $rootdev` = "busy" ]; then
+            echo "$rootdev has zfs snapshots - not deleting"
+            exit 1
+        else
+            zfs destroy $(zfs list | grep $rootdev | awk '{ print $1 }')
+            if [ $? -ne 0 ]; then
+                echo "zfs destroy failed - please wait a bit and try again"
+                exit 1
+            fi
         fi
     elif [ -h "$rootdev" -o -d "$rootdev" ]; then
         if which btrfs >/dev/null 2>&1 &&

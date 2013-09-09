@@ -1,25 +1,28 @@
 pkginclude_HEADERS = \
 		arguments.h \
-		start.h \
-		console.h \
-		error.h \
-		monitor.h \
-		utils.h \
-		namespace.h \
+		attach.h \
+		attach_options.h \
+		bdev.h \
 		caps.h \
-		lxc.h \
 		cgroup.h \
 		conf.h \
+		console.h \
+		error.h \
 		list.h \
 		log.h \
-		state.h \
-		attach.h \
 		lxccontainer.h \
+		lxc.h \
 		lxclock.h \
+		monitor.h \
+		namespace.h \
+		start.h \
+		state.h \
+		utils.h \
 		version.h
 
 if IS_BIONIC
 pkginclude_HEADERS += \
+	../include/ifaddrs.h \
 	../include/openpty.h \
 	../include/lxcmntent.h
 endif
@@ -36,9 +39,9 @@ so_PROGRAMS = liblxc.so
 
 liblxc_so_SOURCES = \
 	arguments.c arguments.h \
+	bdev.c bdev.h \
 	commands.c commands.h \
 	start.c start.h \
-	stop.c \
 	execute.c \
 	monitor.c monitor.h \
 	console.c \
@@ -60,9 +63,9 @@ liblxc_so_SOURCES = \
 	attach.c attach.h \
 	\
 	network.c network.h \
-        nl.c nl.h \
-        rtnl.c rtnl.h \
-        genl.c genl.h \
+	nl.c nl.h \
+	rtnl.c rtnl.h \
+	genl.c genl.h \
 	\
 	caps.c caps.h \
 	lxcseccomp.h \
@@ -77,6 +80,7 @@ liblxc_so_SOURCES = \
 
 if IS_BIONIC
 liblxc_so_SOURCES += \
+	../include/ifaddrs.c ../include/ifaddrs.h \
 	../include/openpty.c ../include/openpty.h \
 	../include/lxcmntent.c ../include/lxcmntent.h
 endif
@@ -93,10 +97,17 @@ AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
 	-DLXCINITDIR=\"$(LXCINITDIR)\" \
 	-DLXCTEMPLATEDIR=\"$(LXCTEMPLATEDIR)\" \
-	-DLOGPATH=\"$(LOGPATH)\"
+	-DLOGPATH=\"$(LOGPATH)\" \
+	-DLXC_DEFAULT_CONFIG=\"$(LXC_DEFAULT_CONFIG)\" \
+	-DLXC_USERNIC_DB=\"$(LXC_USERNIC_DB)\" \
+	-DLXC_USERNIC_CONF=\"$(LXC_USERNIC_CONF)\"
 
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
+endif
+
+if HAVE_NEWUIDMAP
+AM_CFLAGS += -DHAVE_NEWUIDMAP
 endif
 
 if USE_CONFIGPATH_LOGS
@@ -120,11 +131,7 @@ bin_SCRIPTS = \
 	lxc-ps \
 	lxc-netstat \
 	lxc-checkconfig \
-	lxc-version \
-	lxc-create \
-	lxc-clone \
-	lxc-shutdown \
-	lxc-destroy
+	lxc-version
 
 EXTRA_DIST = \
 	lxc-device \
@@ -132,15 +139,15 @@ EXTRA_DIST = \
 	lxc-top
 
 if ENABLE_PYTHON
-    bin_SCRIPTS += lxc-device
-    bin_SCRIPTS += lxc-ls
-    bin_SCRIPTS += lxc-start-ephemeral
+bin_SCRIPTS += lxc-device
+bin_SCRIPTS += lxc-ls
+bin_SCRIPTS += lxc-start-ephemeral
 else
-    bin_SCRIPTS += legacy/lxc-ls
+bin_SCRIPTS += legacy/lxc-ls
 endif
 
 if ENABLE_LUA
-    bin_SCRIPTS += lxc-top
+bin_SCRIPTS += lxc-top
 endif
 
 bin_PROGRAMS = \
@@ -148,8 +155,10 @@ bin_PROGRAMS = \
 	lxc-unshare \
 	lxc-stop \
 	lxc-start \
+	lxc-clone \
 	lxc-execute \
 	lxc-monitor \
+	lxc-monitord \
 	lxc-wait \
 	lxc-console \
 	lxc-freeze \
@@ -158,13 +167,18 @@ bin_PROGRAMS = \
 	lxc-unfreeze \
 	lxc-checkpoint \
 	lxc-restart \
-	lxc-kill
+	lxc-kill \
+	lxc-config \
+	lxc-destroy \
+	lxc-create \
+	lxc-user-nic
+
+if HAVE_NEWUIDMAP
+bin_PROGRAMS += lxc-usernsexec
+endif
 
 pkglibexec_PROGRAMS = \
 	lxc-init
-
-#pkglibexec_SCRIPTS = \
-#	lxc.functions
 
 AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
@@ -175,19 +189,26 @@ LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@ @SECCOMP_LIBS@
 lxc_attach_SOURCES = lxc_attach.c
 lxc_cgroup_SOURCES = lxc_cgroup.c
 lxc_checkpoint_SOURCES = lxc_checkpoint.c
+lxc_config_SOURCES = lxc_config.c
 lxc_console_SOURCES = lxc_console.c
+lxc_destroy_SOURCES = lxc_destroy.c
 lxc_execute_SOURCES = lxc_execute.c
 lxc_freeze_SOURCES = lxc_freeze.c
 lxc_info_SOURCES = lxc_info.c
 lxc_init_SOURCES = lxc_init.c
 lxc_monitor_SOURCES = lxc_monitor.c
+lxc_monitord_SOURCES = lxc_monitord.c
 lxc_restart_SOURCES = lxc_restart.c
+lxc_clone_SOURCES = lxc_clone.c
 lxc_start_SOURCES = lxc_start.c
 lxc_stop_SOURCES = lxc_stop.c
 lxc_unfreeze_SOURCES = lxc_unfreeze.c
 lxc_unshare_SOURCES = lxc_unshare.c
 lxc_wait_SOURCES = lxc_wait.c
 lxc_kill_SOURCES = lxc_kill.c
+lxc_create_SOURCES = lxc_create.c
+lxc_usernsexec_SOURCES = lxc_usernsexec.c
+lxc_user_nic_SOURCES = lxc_user_nic.c
 
 install-exec-local: install-soPROGRAMS
 	mkdir -p $(DESTDIR)$(datadir)/lxc

@@ -11,4 +11,5 @@ templates_SCRIPTS = \
 	lxc-busybox \
 	lxc-sshd \
 	lxc-archlinux \
-	lxc-alpine
+	lxc-alpine \
+	lxc-cirros

@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -31,6 +31,13 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/syscall.h>
+#include <time.h>
+
+#if HAVE_IFADDRS_H
+#include <ifaddrs.h>
+#else
+#include <../include/ifaddrs.h>
+#endif
 
 #if HAVE_PTY_H
 #include <pty.h>
@@ -64,6 +71,7 @@
 #include "log.h"
 #include "lxc.h"	/* for lxc_cgroup_set() */
 #include "caps.h"       /* for lxc_caps_last_cap() */
+#include "bdev.h"
 
 #if HAVE_APPARMOR
 #include <apparmor.h>
@@ -91,30 +99,6 @@ lxc_log_define(lxc_conf, lxc);
 #define MAXINDEXLEN 20
 #define MAXMTULEN   16
 #define MAXLINELEN  128
-
-#ifndef MS_DIRSYNC
-#define MS_DIRSYNC  128
-#endif
-
-#ifndef MS_REC
-#define MS_REC 16384
-#endif
-
-#ifndef MNT_DETACH
-#define MNT_DETACH 2
-#endif
-
-#ifndef MS_SLAVE
-#define MS_SLAVE (1<<19)
-#endif
-
-#ifndef MS_RELATIME
-#define MS_RELATIME (1 << 21)
-#endif
-
-#ifndef MS_STRICTATIME
-#define MS_STRICTATIME (1 << 24)
-#endif
 
 #if HAVE_SYS_CAPABILITY_H
 #ifndef CAP_SETFCAP
@@ -172,7 +156,7 @@ return -1;
 #endif
 
 char *lxchook_names[NUM_LXC_HOOKS] = {
-	"pre-start", "pre-mount", "mount", "autodev", "start", "post-stop" };
+	"pre-start", "pre-mount", "mount", "autodev", "start", "post-stop", "clone" };
 
 typedef int (*instanciate_cb)(struct lxc_handler *, struct lxc_netdev *);
 
@@ -295,10 +279,75 @@ static struct caps_opt caps_opt[] = {
 static struct caps_opt caps_opt[] = {};
 #endif
 
+static char padchar[] =
+"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+static char *mkifname(char *template)
+{
+	char *name = NULL;
+	int i = 0;
+	FILE *urandom;
+	unsigned int seed;
+	struct ifaddrs *ifaddr, *ifa;
+	int ifexists = 0;
+
+	/* Get all the network interfaces */
+	getifaddrs(&ifaddr);
+
+	/* Initialize the random number generator */
+	urandom = fopen ("/dev/urandom", "r");
+	if (urandom != NULL) {
+		if (fread (&seed, sizeof(seed), 1, urandom) <= 0)
+			seed = time(0);
+		fclose(urandom);
+	}
+	else
+		seed = time(0);
+
+#ifndef HAVE_RAND_R
+	srand(seed);
+#endif
+
+	/* Generate random names until we find one that doesn't exist */
+	while(1) {
+		ifexists = 0;
+		name = strdup(template);
+
+		if (name == NULL)
+			return NULL;
+
+		for (i = 0; i < strlen(name); i++) {
+			if (name[i] == 'X') {
+#ifdef HAVE_RAND_R
+				name[i] = padchar[rand_r(&seed) % (strlen(padchar) - 1)];
+#else
+				name[i] = padchar[rand() % (strlen(padchar) - 1)];
+#endif
+			}
+		}
+
+		for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+			if (strcmp(ifa->ifa_name, name) == 0) {
+				ifexists = 1;
+				break;
+			}
+		}
+
+		if (ifexists == 0)
+			break;
+
+		free(name);
+	}
+
+	freeifaddrs(ifaddr);
+	return name;
+}
+
 static int run_buffer(char *buffer)
 {
 	FILE *f;
 	char *output;
+	int ret;
 
 	f = popen(buffer, "r");
 	if (!f) {
@@ -309,6 +358,7 @@ static int run_buffer(char *buffer)
 	output = malloc(LXC_LOG_BUFFER_SIZE);
 	if (!output) {
 		ERROR("failed to allocate memory for script output");
+		pclose(f);
 		return -1;
 	}
 
@@ -317,12 +367,70 @@ static int run_buffer(char *buffer)
 
 	free(output);
 
-	if (pclose(f) == -1) {
+	ret = pclose(f);
+	if (ret == -1) {
 		SYSERROR("Script exited on error");
+		return -1;
+	} else if (WIFEXITED(ret) && WEXITSTATUS(ret) != 0) {
+		ERROR("Script exited with status %d", WEXITSTATUS(ret));
+		return -1;
+	} else if (WIFSIGNALED(ret)) {
+		ERROR("Script terminated by signal %d (%s)", WTERMSIG(ret),
+		      strsignal(WTERMSIG(ret)));
 		return -1;
 	}
 
 	return 0;
+}
+
+static int run_script_argv(const char *name, const char *section,
+		      const char *script, const char *hook, const char *lxcpath,
+		      char **argsin)
+{
+	int ret, i;
+	char *buffer;
+	size_t size = 0;
+
+	INFO("Executing script '%s' for container '%s', config section '%s'",
+	     script, name, section);
+
+	for (i=0; argsin && argsin[i]; i++)
+		size += strlen(argsin[i]) + 1;
+
+	size += strlen(hook) + 1;
+
+	size += strlen(script);
+	size += strlen(name);
+	size += strlen(section);
+	size += 3;
+
+	if (size > INT_MAX)
+		return -1;
+
+	buffer = alloca(size);
+	if (!buffer) {
+		ERROR("failed to allocate memory");
+		return -1;
+	}
+
+	ret = snprintf(buffer, size, "%s %s %s %s", script, name, section, hook);
+	if (ret < 0 || ret >= size) {
+		ERROR("Script name too long");
+		return -1;
+	}
+
+	for (i=0; argsin && argsin[i]; i++) {
+		int len = size-ret;
+		int rc;
+		rc = snprintf(buffer + ret, len, " %s", argsin[i]);
+		if (rc < 0 || rc >= len) {
+			ERROR("Script args too long");
+			return -1;
+		}
+		ret += rc;
+	}
+
+	return run_buffer(buffer);
 }
 
 static int run_script(const char *name, const char *section,
@@ -358,7 +466,6 @@ static int run_script(const char *name, const char *section,
 	ret = snprintf(buffer, size, "%s %s %s", script, name, section);
 	if (ret < 0 || ret >= size) {
 		ERROR("Script name too long");
-		free(buffer);
 		return -1;
 	}
 
@@ -368,7 +475,6 @@ static int run_script(const char *name, const char *section,
 		int rc;
 		rc = snprintf(buffer + ret, len, " %s", p);
 		if (rc < 0 || rc >= len) {
-			free(buffer);
 			ERROR("Script args too long");
 			return -1;
 		}
@@ -537,6 +643,7 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 		if (errno != ENXIO) {
 			WARN("unexpected error for ioctl on '%s': %m",
 			     direntp->d_name);
+			close(fd);
 			continue;
 		}
 
@@ -581,8 +688,8 @@ int pin_rootfs(const char *rootfs)
 		return -2;
 
 	if (!realpath(rootfs, absrootfs)) {
-		SYSERROR("failed to get real path for '%s'", rootfs);
-		return -1;
+		INFO("failed to get real path for '%s', not pinning", rootfs);
+		return -2;
 	}
 
 	if (access(absrootfs, F_OK)) {
@@ -700,7 +807,8 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 				SYSERROR("error creating %s\n", lxcpath);
 				return -1;
 			}
-			close(ret);
+			if (ret >= 0)
+				close(ret);
 			ret = unlink(path);
 			if (ret && errno != ENOENT) {
 				SYSERROR("error unlinking %s\n", path);
@@ -749,7 +857,7 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
 {
 	struct lxc_list	*mountlist, *listentry, *iterator;
-	char *pivotdir, *mountpoint, *mountentry;
+	char *pivotdir, *mountpoint, *mountentry, *saveptr = NULL;
 	int found;
 	void **cbparm;
 
@@ -760,12 +868,12 @@ static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
 	pivotdir  = cbparm[1];
 
 	/* parse entry, first field is mountname, ignore */
-	mountpoint = strtok(mountentry, " ");
+	mountpoint = strtok_r(mountentry, " ", &saveptr);
 	if (!mountpoint)
 		return -1;
 
 	/* second field is mountpoint */
-	mountpoint = strtok(NULL, " ");
+	mountpoint = strtok_r(NULL, " ", &saveptr);
 	if (!mountpoint)
 		return -1;
 
@@ -794,6 +902,7 @@ static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
 	listentry->elem = strdup(mountpoint);
 	if (!listentry->elem) {
 		SYSERROR("strdup failed");
+		free(listentry);
 		return -1;
 	}
 	lxc_list_add_tail(mountlist, listentry);
@@ -1055,8 +1164,10 @@ int detect_shared_rootfs(void)
 		if (strcmp(p+1, "/") == 0) {
 			// this is '/'.  is it shared?
 			p = index(p2+1, ' ');
-			if (strstr(p, "shared:"))
+			if (p && strstr(p, "shared:")) {
+				fclose(f);
 				return 1;
+			}
 		}
 	}
 	fclose(f);
@@ -1150,6 +1261,15 @@ static int setup_rootfs(struct lxc_conf *conf)
 		}
 	}
 
+	// First try mounting rootfs using a bdev
+	struct bdev *bdev = bdev_init(rootfs->path, rootfs->mount, NULL);
+	if (bdev && bdev->ops->mount(bdev) == 0) {
+		bdev_put(bdev);
+		DEBUG("mounted '%s' on '%s'", rootfs->path, rootfs->mount);
+		return 0;
+	}
+	if (bdev)
+		bdev_put(bdev);
 	if (mount_rootfs(rootfs->path, rootfs->mount)) {
 		ERROR("failed to mount rootfs");
 		return -1;
@@ -1248,8 +1368,8 @@ static int setup_dev_console(const struct lxc_rootfs *rootfs,
 		return 0;
 	}
 
-	if (console->peer == -1) {
-		INFO("no console output required");
+	if (console->master < 0) {
+		INFO("no console");
 		return 0;
 	}
 
@@ -1311,10 +1431,11 @@ static int setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		SYSERROR("error %d creating %s\n", errno, lxcpath);
 		return -1;
 	}
-	close(ret);
+	if (ret >= 0)
+		close(ret);
 
-	if (console->peer == -1) {
-		INFO("no console output required");
+	if (console->master < 0) {
+		INFO("no console");
 		return 0;
 	}
 
@@ -1378,34 +1499,6 @@ static int setup_kmsg(const struct lxc_rootfs *rootfs,
 	}
 
 	return 0;
-}
-
-int setup_cgroup(const char *cgpath, struct lxc_list *cgroups)
-{
-	struct lxc_list *iterator;
-	struct lxc_cgroup *cg;
-	int ret = -1;
-
-	if (lxc_list_empty(cgroups))
-		return 0;
-
-	lxc_list_for_each(iterator, cgroups) {
-
-		cg = iterator->elem;
-
-		if (lxc_cgroup_set_bypath(cgpath, cg->subsystem, cg->value)) {
-			ERROR("Error setting %s to %s for %s\n", cg->subsystem,
-				cg->value, cgpath);
-			goto out;
-		}
-
-		DEBUG("cgroup '%s' set to '%s'", cg->subsystem, cg->value);
-	}
-
-	ret = 0;
-	INFO("cgroup has been setup");
-out:
-	return ret;
 }
 
 static void parse_mntopt(char *opt, unsigned long *flags, char **data)
@@ -1745,7 +1838,76 @@ static int setup_caps(struct lxc_list *caps)
 
 	}
 
-	DEBUG("capabilities has been setup");
+	DEBUG("capabilities have been setup");
+
+	return 0;
+}
+
+static int dropcaps_except(struct lxc_list *caps)
+{
+	struct lxc_list *iterator;
+	char *keep_entry;
+	char *ptr;
+	int i, capid;
+	int numcaps = lxc_caps_last_cap() + 1;
+	INFO("found %d capabilities\n", numcaps);
+
+	if (numcaps <= 0 || numcaps > 200)
+		return -1;
+
+	// caplist[i] is 1 if we keep capability i
+	int *caplist = alloca(numcaps * sizeof(int));
+	memset(caplist, 0, numcaps * sizeof(int));
+
+	lxc_list_for_each(iterator, caps) {
+
+		keep_entry = iterator->elem;
+
+		capid = -1;
+
+		for (i = 0; i < sizeof(caps_opt)/sizeof(caps_opt[0]); i++) {
+
+			if (strcmp(keep_entry, caps_opt[i].name))
+				continue;
+
+			capid = caps_opt[i].value;
+			break;
+		}
+
+		if (capid < 0) {
+			/* try to see if it's numeric, so the user may specify
+			* capabilities  that the running kernel knows about but
+			* we don't */
+			capid = strtol(keep_entry, &ptr, 10);
+			if (!ptr || *ptr != '\0' ||
+			capid == LONG_MIN || capid == LONG_MAX)
+				/* not a valid number */
+				capid = -1;
+			else if (capid > lxc_caps_last_cap())
+				/* we have a number but it's not a valid
+				* capability */
+				capid = -1;
+		}
+
+	        if (capid < 0) {
+			ERROR("unknown capability %s", keep_entry);
+			return -1;
+		}
+
+		DEBUG("drop capability '%s' (%d)", keep_entry, capid);
+
+		caplist[capid] = 1;
+	}
+	for (i=0; i<numcaps; i++) {
+		if (caplist[i])
+			continue;
+		if (prctl(PR_CAPBSET_DROP, i, 0, 0, 0)) {
+                       SYSERROR("failed to remove capability %d", i);
+                       return -1;
+                }
+	}
+
+	DEBUG("capabilities have been setup");
 
 	return 0;
 }
@@ -2063,21 +2225,31 @@ struct lxc_conf *lxc_conf_init(void)
 	}
 	memset(new, 0, sizeof(*new));
 
+	new->loglevel = LXC_LOG_PRIORITY_NOTSET;
 	new->personality = -1;
 	new->console.log_path = NULL;
 	new->console.log_fd = -1;
 	new->console.path = NULL;
 	new->console.peer = -1;
+	new->console.peerpty.busy = -1;
+	new->console.peerpty.master = -1;
+	new->console.peerpty.slave = -1;
 	new->console.master = -1;
 	new->console.slave = -1;
 	new->console.name[0] = '\0';
 	new->maincmd_fd = -1;
-	new->rootfs.mount = default_rootfs_mount;
+	new->rootfs.mount = strdup(default_rootfs_mount);
+	if (!new->rootfs.mount) {
+		ERROR("lxc_conf_init : %m");
+		free(new);
+		return NULL;
+	}
 	new->kmsg = 1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
 	lxc_list_init(&new->caps);
+	lxc_list_init(&new->keepcaps);
 	lxc_list_init(&new->id_map);
 	for (i=0; i<NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
@@ -2105,13 +2277,13 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			ERROR("veth1 name too long");
 			return -1;
 		}
-		veth1 = mktemp(veth1buf);
+		veth1 = mkifname(veth1buf);
 		/* store away for deconf */
 		memcpy(netdev->priv.veth_attr.veth1, veth1, IFNAMSIZ);
 	}
 
 	snprintf(veth2buf, sizeof(veth2buf), "vethXXXXXX");
-	veth2 = mktemp(veth2buf);
+	veth2 = mkifname(veth2buf);
 
 	if (!strlen(veth1) || !strlen(veth2)) {
 		ERROR("failed to allocate a temporary name");
@@ -2217,7 +2389,7 @@ static int instanciate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	if (err >= sizeof(peerbuf))
 		return -1;
 
-	peer = mktemp(peerbuf);
+	peer = mkifname(peerbuf);
 	if (!strlen(peer)) {
 		ERROR("failed to make a temporary name");
 		return -1;
@@ -2715,7 +2887,7 @@ int uid_shift_ttys(int pid, struct lxc_conf *conf)
 	return 0;
 }
 
-int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
+int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath)
 {
 #if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
 	int mounted;
@@ -2731,7 +2903,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (run_lxc_hooks(name, "pre-mount", lxc_conf)) {
+	if (run_lxc_hooks(name, "pre-mount", lxc_conf, lxcpath, NULL)) {
 		ERROR("failed to run pre-mount hooks for container '%s'.", name);
 		return -1;
 	}
@@ -2758,13 +2930,13 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (run_lxc_hooks(name, "mount", lxc_conf)) {
+	if (run_lxc_hooks(name, "mount", lxc_conf, lxcpath, NULL)) {
 		ERROR("failed to run mount hooks for container '%s'.", name);
 		return -1;
 	}
 
 	if (lxc_conf->autodev) {
-		if (run_lxc_hooks(name, "autodev", lxc_conf)) {
+		if (run_lxc_hooks(name, "autodev", lxc_conf, lxcpath, NULL)) {
 			ERROR("failed to run autodev hooks for container '%s'.", name);
 			return -1;
 		}
@@ -2774,7 +2946,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		}
 	}
 
-	if (setup_console(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->ttydir)) {
+	if (!lxc_conf->is_execute && setup_console(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->ttydir)) {
 		ERROR("failed to setup the console for '%s'", name);
 		return -1;
 	}
@@ -2784,7 +2956,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 			ERROR("failed to setup kmsg for '%s'", name);
 	}
 
-	if (setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info, lxc_conf->ttydir)) {
+	if (!lxc_conf->is_execute && setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info, lxc_conf->ttydir)) {
 		ERROR("failed to setup the ttys for '%s'", name);
 		return -1;
 	}
@@ -2792,9 +2964,13 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 #if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
 	INFO("rootfs path is .%s., mount is .%s.", lxc_conf->rootfs.path,
 		lxc_conf->rootfs.mount);
-	if (lxc_conf->rootfs.path == NULL || strlen(lxc_conf->rootfs.path) == 0)
-		mounted = 0;
-	else
+	if (lxc_conf->rootfs.path == NULL || strlen(lxc_conf->rootfs.path) == 0) {
+		if (mount("proc", "/proc", "proc", 0, NULL)) {
+			SYSERROR("Failed mounting /proc, proceeding");
+			mounted = 0;
+		} else
+			mounted = 1;
+	} else
 		mounted = lsm_mount_proc_if_needed(lxc_conf->rootfs.path, lxc_conf->rootfs.mount);
 	if (mounted == -1) {
 		SYSERROR("failed to mount /proc in the container.");
@@ -2820,7 +2996,16 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 	}
 
 	if (lxc_list_empty(&lxc_conf->id_map)) {
-		if (setup_caps(&lxc_conf->caps)) {
+		if (!lxc_list_empty(&lxc_conf->keepcaps)) {
+			if (!lxc_list_empty(&lxc_conf->caps)) {
+				ERROR("Simultaneously requested dropping and keeping caps");
+				return -1;
+			}
+			if (dropcaps_except(&lxc_conf->keepcaps)) {
+				ERROR("failed to keep requested caps\n");
+				return -1;
+			}
+		} else if (setup_caps(&lxc_conf->caps)) {
 			ERROR("failed to drop capabilities");
 			return -1;
 		}
@@ -2831,7 +3016,8 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 	return 0;
 }
 
-int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf)
+int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
+		  const char *lxcpath, char *argv[])
 {
 	int which = -1;
 	struct lxc_list *it;
@@ -2848,12 +3034,14 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf)
 		which = LXCHOOK_START;
 	else if (strcmp(hook, "post-stop") == 0)
 		which = LXCHOOK_POSTSTOP;
+	else if (strcmp(hook, "clone") == 0)
+		which = LXCHOOK_CLONE;
 	else
 		return -1;
 	lxc_list_for_each(it, &conf->hooks[which]) {
 		int ret;
 		char *hookname = it->elem;
-		ret = run_script(name, "lxc", hookname, hook, NULL);
+		ret = run_script_argv(name, "lxc", hookname, hook, lxcpath, argv);
 		if (ret)
 			return ret;
 	}
@@ -3004,6 +3192,30 @@ int lxc_clear_config_caps(struct lxc_conf *c)
 	return 0;
 }
 
+int lxc_clear_idmaps(struct lxc_conf *c)
+{
+	struct lxc_list *it, *next;
+
+	lxc_list_for_each_safe(it, &c->id_map, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+	return 0;
+}
+
+int lxc_clear_config_keepcaps(struct lxc_conf *c)
+{
+	struct lxc_list *it,*next;
+
+	lxc_list_for_each_safe(it, &c->keepcaps, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+	return 0;
+}
+
 int lxc_clear_cgroups(struct lxc_conf *c, const char *key)
 {
 	struct lxc_list *it,*next;
@@ -3084,7 +3296,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 		return;
 	if (conf->console.path)
 		free(conf->console.path);
-	if (conf->rootfs.mount != default_rootfs_mount)
+	if (conf->rootfs.mount)
 		free(conf->rootfs.mount);
 	if (conf->rootfs.path)
 		free(conf->rootfs.path);
@@ -3094,6 +3306,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 		free(conf->ttydir);
 	if (conf->fstab)
 		free(conf->fstab);
+	if (conf->rcfile)
+		free(conf->rcfile);
 	lxc_clear_config_network(conf);
 #if HAVE_APPARMOR
 	if (conf->aa_profile)
@@ -3101,9 +3315,11 @@ void lxc_conf_free(struct lxc_conf *conf)
 #endif
 	lxc_seccomp_free(conf);
 	lxc_clear_config_caps(conf);
+	lxc_clear_config_keepcaps(conf);
 	lxc_clear_cgroups(conf, "lxc.cgroup");
 	lxc_clear_hooks(conf, "lxc.hook");
 	lxc_clear_mount_entries(conf);
 	lxc_clear_saved_nics(conf);
+	lxc_clear_idmaps(conf);
 	free(conf);
 }

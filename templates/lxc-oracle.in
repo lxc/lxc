@@ -24,7 +24,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 # use virbr0 that is setup by default by libvirtd
@@ -140,6 +140,17 @@ EOF
         sed -i 's|action $"Configuring kernel parameters|# LXC action $"Configuring kernel parameters|' $container_rootfs/etc/rc.d/rc.sysinit
         sed -i 's|action $"Setting network parameters|# LXC action $"Setting network parameters|' $container_rootfs/etc/init.d/network 2>/dev/null
         sed -i 's|action $"Setting network parameters|# LXC action $"Setting network parameters|' $container_rootfs/etc/init.d/NetworkManager 2>/dev/null
+    fi
+
+    # sem_open(3) checks that /dev/shm is SHMFS_SUPER_MAGIC, so make sure to mount /dev/shm (normally done by dracut initrd) as tmpfs
+    if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
+        echo "mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.sysinit
+        echo "mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.d/rc.sysinit
+    fi
+
+    if [ $container_release_major = "6" ]; then
+        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.sysinit
+        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.d/rc.sysinit
     fi
 
     # no need to attempt to mount /
@@ -337,8 +348,8 @@ lxc.utsname = $name
 lxc.devttydir = lxc
 lxc.tty = 4
 lxc.pts = 1024
-lxc.rootfs = $container_rootfs
 lxc.mount = $cfg_dir/fstab
+lxc.hook.clone = @DATADIR@/lxc/hooks/clonehostname
 # Uncomment these if you don't run anything that needs the capability, and
 # would like the container to run with less privilege.
 #
@@ -359,6 +370,7 @@ lxc.cap.drop = mac_admin mac_override setfcap setpcap
 lxc.cap.drop = sys_module sys_nice sys_pacct
 lxc.cap.drop = sys_rawio sys_time
 EOF
+    grep -q "^lxc.rootfs" $cfg_dir/config 2>/dev/null || echo "lxc.rootfs = $container_rootfs" >> $cfg_dir/config
 
     if [ $container_release_major != "4" ]; then
         echo "lxc.cap.drop = sys_resource" >>$cfg_dir/config
@@ -511,7 +523,7 @@ container_rootfs_create()
 
         # we unshare the mount namespace because yum installing the ol4
         # packages causes $rootfs/proc to be mounted on
-        lxc-unshare -s MOUNT yum -- $yum_args install $min_pkgs
+        lxc-unshare -s MOUNT yum -- $yum_args install $min_pkgs $user_pkgs
         if [ $? -ne 0 ]; then
             die "Failed to download and install the rootfs, aborting."
         fi
@@ -599,6 +611,8 @@ usage()
     cat <<EOF
   -a|--arch=<arch>        architecture (ie. i386, x86_64)
   -R|--release=<release>  release to download for the new container
+  --rootfs=<path>         rootfs path
+  -r|--rpms=<rpm name>    additional rpms to install into container
   -u|--url=<url>          replace yum repo url (ie. local yum mirror)
   -t|--templatefs=<path>  copy/clone rootfs at path instead of downloading
   -h|--help
@@ -608,23 +622,25 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:R:u:t: -l help,path:,name:,arch:,release:,url:,templatefs: -- "$@")
+options=$(getopt -o hp:n:a:R:r:u:t: -l help,rootfs:,path:,name:,arch:,release:,rpms:,url:,templatefs: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
 fi
 
-arch=$(arch)
+arch=$(uname -m)
 eval set -- "$options"
 while true
 do
     case "$1" in
         -h|--help)		usage $0 && exit 0;;
         -p|--path)		cfg_dir=$2; shift 2;;
+        --rootfs)		container_rootfs=$2; shift 2;;
         -n|--name)		name=$2; shift 2;;
         -a|--arch)		arch=$2; shift 2;;
         -R|--release)		container_release_version=$2; shift 2;;
-        -u|--url)		repourl=$2; shift;;
+        -r|--rpms)		user_pkgs=$2; shift 2;;
+        -u|--url)		repourl=$2; shift 2;;
         -t|--templatefs)	template_rootfs=$2; shift 2;;
         --)             	shift 1; break ;;
         *)              	break ;;
@@ -683,7 +699,9 @@ else
 fi
 echo "Host is $host_distribution $host_release_version"
 
-container_rootfs="$cfg_dir/rootfs"
+if [ -z "$container_rootfs" ]; then
+    container_rootfs="$cfg_dir/rootfs"
+fi
 
 if [ -n "$template_rootfs" ]; then
     container_release_get $template_rootfs

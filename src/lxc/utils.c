@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #define _GNU_SOURCE
@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -34,80 +35,87 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <libgen.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
+#include "utils.h"
 #include "log.h"
 
 lxc_log_define(lxc_utils, lxc);
 
-int lxc_copy_file(const char *srcfile, const char *dstfile)
+static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
 {
-	void *srcaddr = NULL, *dstaddr;
-	struct stat stat;
-	int srcfd, dstfd, ret = -1;
-	char c = '\0';
+	struct dirent dirent, *direntp;
+	DIR *dir;
+	int ret, failed=0;
+	char pathname[MAXPATHLEN];
 
-	dstfd = open(dstfile, O_CREAT | O_EXCL | O_RDWR, 0600);
-	if (dstfd < 0) {
-		SYSERROR("failed to creat '%s'", dstfile);
-		goto out;
+	dir = opendir(dirname);
+	if (!dir) {
+		ERROR("%s: failed to open %s", __func__, dirname);
+		return 0;
 	}
 
-	srcfd = open(srcfile, O_RDONLY);
-	if (srcfd < 0) {
-		SYSERROR("failed to open '%s'", srcfile);
-		goto err;
+	while (!readdir_r(dir, &dirent, &direntp)) {
+		struct stat mystat;
+		int rc;
+
+		if (!direntp)
+			break;
+
+		if (!strcmp(direntp->d_name, ".") ||
+		    !strcmp(direntp->d_name, ".."))
+			continue;
+
+		rc = snprintf(pathname, MAXPATHLEN, "%s/%s", dirname, direntp->d_name);
+		if (rc < 0 || rc >= MAXPATHLEN) {
+			ERROR("pathname too long");
+			failed=1;
+			continue;
+		}
+		ret = lstat(pathname, &mystat);
+		if (ret) {
+			ERROR("%s: failed to stat %s", __func__, pathname);
+			failed=1;
+			continue;
+		}
+		if (mystat.st_dev != pdev)
+			continue;
+		if (S_ISDIR(mystat.st_mode)) {
+			if (!_recursive_rmdir_onedev(pathname, pdev))
+				failed=1;
+		} else {
+			if (unlink(pathname) < 0) {
+				ERROR("%s: failed to delete %s", __func__, pathname);
+				failed=1;
+			}
+		}
 	}
 
-	if (fstat(srcfd, &stat)) {
-		SYSERROR("failed to stat '%s'", srcfile);
-		goto err;
+	if (rmdir(dirname) < 0) {
+		ERROR("%s: failed to delete %s", __func__, dirname);
+		failed=1;
 	}
 
-	if (!stat.st_size) {
-		INFO("copy '%s' which is an empty file", srcfile);
-		ret = 0;
-		goto out_close;
+	if (closedir(dir)) {
+		ERROR("%s: failed to close directory %s", __func__, dirname);
+		failed=1;
 	}
 
-	if (lseek(dstfd, stat.st_size - 1, SEEK_SET) < 0) {
-		SYSERROR("failed to seek dest file '%s'", dstfile);
-		goto err;
+	return !failed;
+}
+
+/* returns 1 on success, 0 if there were any failures */
+extern int lxc_rmdir_onedev(char *path)
+{
+	struct stat mystat;
+
+	if (lstat(path, &mystat) < 0) {
+		ERROR("%s: failed to stat %s", __func__, path);
+		return 0;
 	}
 
-	/* fixup length */
-	if (write(dstfd, &c, 1) < 0) {
-		SYSERROR("failed to write to '%s'", dstfile);
-		goto err;
-	}
-
-	srcaddr = mmap(NULL, stat.st_size, PROT_READ, MAP_SHARED, srcfd, 0L);
-	if (srcaddr == MAP_FAILED) {
-		SYSERROR("failed to mmap '%s'", srcfile);
-		goto err;
-	}
-
-	dstaddr = mmap(NULL, stat.st_size, PROT_WRITE, MAP_SHARED, dstfd, 0L);
-	if (dstaddr == MAP_FAILED) {
-		SYSERROR("failed to mmap '%s'", dstfile);
-		goto err;
-	}
-
-	ret = 0;
-
-	memcpy(dstaddr, srcaddr, stat.st_size);
-
-	munmap(dstaddr, stat.st_size);
-out_mmap:
-	if (srcaddr)
-		munmap(srcaddr, stat.st_size);
-out_close:
-	close(dstfd);
-	close(srcfd);
-out:
-	return ret;
-err:
-	unlink(dstfile);
-	goto out_mmap;
+	return _recursive_rmdir_onedev(path, mystat.st_dev);
 }
 
 static int mount_fs(const char *source, const char *target, const char *type)
@@ -142,8 +150,9 @@ extern int lxc_setup_fs(void)
 		return 0;
 	}
 
+	/* continue even without posix message queue support */
 	if (mount_fs("mqueue", "/dev/mqueue", "mqueue"))
-		return -1;
+		INFO("failed to mount /dev/mqueue");
 
 	return 0;
 }
@@ -166,32 +175,27 @@ extern int get_u16(unsigned short *val, const char *arg, int base)
 	return 0;
 }
 
-extern int mkdir_p(char *dir, mode_t mode)
+extern int mkdir_p(const char *dir, mode_t mode)
 {
-        int ret;
-        char *d;
+	const char *tmp = dir;
+	const char *orig = dir;
+	char *makeme;
 
-        if (!strcmp(dir, "/"))
-                return 0;
+	do {
+		dir = tmp + strspn(tmp, "/");
+		tmp = dir + strcspn(dir, "/");
+		makeme = strndup(orig, dir - orig);
+		if (*makeme) {
+			if (mkdir(makeme, mode) && errno != EEXIST) {
+				SYSERROR("failed to create directory '%s'\n", makeme);
+				free(makeme);
+				return -1;
+			}
+		}
+		free(makeme);
+	} while(tmp != dir);
 
-        d = strdup(dir);
-        if (!d)
-                return -1;
-
-        ret = mkdir_p(dirname(d), mode);
-        free(d);
-        if (ret)
-                return -1;
-
-        if (!access(dir, F_OK))
-                return 0;
-
-        if (mkdir(dir, mode)) {
-                SYSERROR("failed to create directory '%s'\n", dir);
-                return -1;
-        }
-
-        return 0;
+	return 0;
 }
 
 static char *copypath(char *p)
@@ -213,7 +217,80 @@ static char *copypath(char *p)
 }
 
 char *default_lxcpath;
+#define DEFAULT_VG "lxc"
+char *default_lvmvg;
+#define DEFAULT_ZFSROOT "lxc"
+char *default_zfsroot;
 
+const char *default_lvm_vg(void)
+{
+	char buf[1024], *p;
+	FILE *fin;
+
+	if (default_lvmvg)
+		return default_lvmvg;
+
+	fin = fopen(LXC_GLOBAL_CONF, "r");
+	if (fin) {
+		while (fgets(buf, 1024, fin)) {
+			if (buf[0] == '#')
+				continue;
+			p = strstr(buf, "lvm_vg");
+			if (!p)
+				continue;
+			p = strchr(p, '=');
+			if (!p)
+				continue;
+			p++;
+			while (*p && (*p == ' ' || *p == '\t')) p++;
+			if (!*p)
+				continue;
+			default_lvmvg = copypath(p);
+			goto out;
+		}
+	}
+	default_lvmvg = DEFAULT_VG;
+
+out:
+	if (fin)
+		fclose(fin);
+	return default_lvmvg;
+}
+
+const char *default_zfs_root(void)
+{
+	char buf[1024], *p;
+	FILE *fin;
+
+	if (default_zfsroot)
+		return default_zfsroot;
+
+	fin = fopen(LXC_GLOBAL_CONF, "r");
+	if (fin) {
+		while (fgets(buf, 1024, fin)) {
+			if (buf[0] == '#')
+				continue;
+			p = strstr(buf, "zfsroot");
+			if (!p)
+				continue;
+			p = strchr(p, '=');
+			if (!p)
+				continue;
+			p++;
+			while (*p && (*p == ' ' || *p == '\t')) p++;
+			if (!*p)
+				continue;
+			default_zfsroot = copypath(p);
+			goto out;
+		}
+	}
+	default_zfsroot = DEFAULT_ZFSROOT;
+
+out:
+	if (fin)
+		fclose(fin);
+	return default_zfsroot;
+}
 const char *default_lxc_path(void)
 {
 	char buf[1024], *p;
@@ -249,4 +326,172 @@ out:
 	if (fin)
 		fclose(fin);
 	return default_lxcpath;
+}
+
+int wait_for_pid(pid_t pid)
+{
+	int status, ret;
+
+again:
+	ret = waitpid(pid, &status, 0);
+	if (ret == -1) {
+		if (errno == EINTR)
+			goto again;
+		return -1;
+	}
+	if (ret != pid)
+		goto again;
+	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+		return -1;
+	return 0;
+}
+
+int lxc_wait_for_pid_status(pid_t pid)
+{
+	int status, ret;
+
+again:
+	ret = waitpid(pid, &status, 0);
+	if (ret == -1) {
+		if (errno == EINTR)
+			goto again;
+		return -1;
+	}
+	if (ret != pid)
+		goto again;
+	return status;
+}
+
+ssize_t lxc_write_nointr(int fd, const void* buf, size_t count)
+{
+	ssize_t ret;
+again:
+	ret = write(fd, buf, count);
+	if (ret < 0 && errno == EINTR)
+		goto again;
+	return ret;
+}
+
+ssize_t lxc_read_nointr(int fd, void* buf, size_t count)
+{
+	ssize_t ret;
+again:
+	ret = read(fd, buf, count);
+	if (ret < 0 && errno == EINTR)
+		goto again;
+	return ret;
+}
+
+ssize_t lxc_read_nointr_expect(int fd, void* buf, size_t count, const void* expected_buf)
+{
+	ssize_t ret;
+	ret = lxc_read_nointr(fd, buf, count);
+	if (ret <= 0)
+		return ret;
+	if ((size_t)ret != count)
+		return -1;
+	if (expected_buf && memcmp(buf, expected_buf, count) != 0) {
+		errno = EINVAL;
+		return -1;
+	}
+	return ret;
+}
+
+#if HAVE_LIBGNUTLS
+#include <gnutls/gnutls.h>
+#include <gnutls/crypto.h>
+int sha1sum_file(char *fnam, unsigned char *digest)
+{
+	char *buf;
+	int ret;
+	FILE *f;
+	long flen;
+
+	if (!fnam)
+		return -1;
+	if ((f = fopen(fnam, "r")) < 0) {
+		SYSERROR("Error opening template");
+		return -1;
+	}
+	if (fseek(f, 0, SEEK_END) < 0) {
+		SYSERROR("Error seeking to end of template");
+		fclose(f);
+		return -1;
+	}
+	if ((flen = ftell(f)) < 0) {
+		SYSERROR("Error telling size of template");
+		fclose(f);
+		return -1;
+	}
+	if (fseek(f, 0, SEEK_SET) < 0) {
+		SYSERROR("Error seeking to start of template");
+		fclose(f);
+		return -1;
+	}
+	if ((buf = malloc(flen+1)) == NULL) {
+		SYSERROR("Out of memory");
+		fclose(f);
+		return -1;
+	}
+	if (fread(buf, 1, flen, f) != flen) {
+		SYSERROR("Failure reading template");
+		free(buf);
+		fclose(f);
+		return -1;
+	}
+	if (fclose(f) < 0) {
+		SYSERROR("Failre closing template");
+		free(buf);
+		return -1;
+	}
+	buf[flen] = '\0';
+	ret = gnutls_hash_fast(GNUTLS_DIG_SHA1, buf, flen, (void *)digest);
+	free(buf);
+	return ret;
+}
+#endif
+
+char** lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup)
+{
+	va_list ap2;
+	size_t count = 1 + skip;
+	char **result;
+
+	/* first determine size of argument list, we don't want to reallocate
+	 * constantly...
+	 */
+	va_copy(ap2, ap);
+	while (1) {
+		char* arg = va_arg(ap2, char*);
+		if (!arg)
+			break;
+		count++;
+	}
+	va_end(ap2);
+
+	result = calloc(count, sizeof(char*));
+	if (!result)
+		return NULL;
+	count = skip;
+	while (1) {
+		char* arg = va_arg(ap, char*);
+		if (!arg)
+			break;
+		arg = do_strdup ? strdup(arg) : arg;
+		if (!arg)
+			goto oom;
+		result[count++] = arg;
+	}
+
+	/* calloc has already set last element to NULL*/
+	return result;
+
+oom:
+	free(result);
+	return NULL;
+}
+
+const char** lxc_va_arg_list_to_argv_const(va_list ap, size_t skip)
+{
+	return (const char**)lxc_va_arg_list_to_argv(ap, skip, 0);
 }

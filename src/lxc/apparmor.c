@@ -1,3 +1,23 @@
+/* apparmor
+ *
+ * Copyright © 2012 Serge Hallyn <serge.hallyn@ubuntu.com>.
+ * Copyright © 2012 Canonical Ltd.
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -36,16 +56,19 @@ again:
 	f = fopen(path, "r");
 	if (!f) {
 		SYSERROR("opening %s\n", path);
+		if (buf)
+			free(buf);
 		return NULL;
 	}
 	sz += 1024;
 	buf = realloc(buf, sz);
+	memset(buf, 0, sz);
 	if (!buf) {
 		ERROR("out of memory");
 		fclose(f);
 		return NULL;
 	}
-	ret = fread(buf, 1, sz, f);
+	ret = fread(buf, 1, sz - 1, f);
 	fclose(f);
 	if (ret >= sz)
 		goto again;

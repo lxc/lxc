@@ -18,21 +18,40 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #ifndef _cgroup_h
 #define _cgroup_h
+#include <stdbool.h>
 
-#define MAXPRIOLEN 24
+/*
+ * cgroup_desc: describe a container's cgroup membership
+ */
+struct cgroup_desc {
+	char *mntpt; /* where this is mounted */
+	char *subsystems; /* comma-separated list of subsystems, or NULL */
+	char *curcgroup; /* task's current cgroup, full pathanme */
+	char *realcgroup; /* the cgroup as known in /proc/self/cgroup */
+	struct cgroup_desc *next;
+};
 
 struct lxc_handler;
-extern int lxc_cgroup_destroy(const char *cgpath);
-extern int lxc_cgroup_path_get(char **path, const char *subsystem, const char *name,
+extern void lxc_cgroup_destroy_desc(struct cgroup_desc *cgroups);
+extern char *lxc_cgroup_path_get(const char *subsystem, const char *name,
 			      const char *lxcpath);
-extern int lxc_cgroup_nrtasks(const char *cgpath);
-extern char *lxc_cgroup_path_create(const char *lxcgroup, const char *name);
-extern int lxc_cgroup_enter(const char *cgpath, pid_t pid);
+extern int lxc_cgroup_nrtasks(struct lxc_handler *handler);
+struct cgroup_desc *lxc_cgroup_path_create(const char *name);
+extern int lxc_cgroup_enter(struct cgroup_desc *cgroups, pid_t pid);
 extern int lxc_cgroup_attach(pid_t pid, const char *name, const char *lxcpath);
-extern int cgroup_path_get(char **path, const char *subsystem, const char *cgpath);
-extern int lxc_get_cgpath(const char **path, const char *subsystem, const char *name, const char *lxcpath);
+extern char *cgroup_path_get(const char *subsystem, const char *cgpath);
+extern bool get_subsys_mount(char *dest, const char *subsystem);
+extern bool is_in_subcgroup(int pid, const char *subsystem, struct cgroup_desc *d);
+/*
+ * Called by commands.c by a container's monitor to find out the
+ * container's cgroup path in a specific subsystem
+ */
+extern char *cgroup_get_subsys_path(struct lxc_handler *handler, const char *subsys);
+struct lxc_list;
+extern int setup_cgroup(struct lxc_handler *h, struct lxc_list *cgroups);
+extern int setup_cgroup_devices(struct lxc_handler *h, struct lxc_list *cgroups);
 #endif

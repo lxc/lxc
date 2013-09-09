@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -783,8 +783,11 @@ static int ifa_get_local_ip(int family, struct ip_req *ip_info, void** res) {
 
 			/* We might have found an IFA_ADDRESS before,
 			 * which we now overwrite with an IFA_LOCAL. */
-			if (!*res)
+			if (!*res) {
 				*res = malloc(addrlen);
+				if (!*res)
+					return -1;
+			}
 
 			memcpy(*res, RTA_DATA(rta), addrlen);
 
@@ -836,7 +839,6 @@ static int ip_addr_get(int family, int ifindex, void **res)
 	err = netlink_send(&nlh, nlmsg);
 	if (err < 0)
 		goto out;
-	err = 0;
 
 	do {
 		/* Restore the answer buffer length, it might have been

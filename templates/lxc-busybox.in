@@ -18,7 +18,7 @@
 
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 install_busybox()
 {
@@ -189,9 +189,35 @@ configure_busybox()
     # passwd exec must be setuid
     chmod +s $rootfs/bin/passwd
     touch $rootfs/etc/shadow
-    echo "setting root passwd to root"
-    echo "root:root" | chroot $rootfs chpasswd
 
+    # setting passwd for root
+    CHPASSWD_FILE=$rootfs/root/chpasswd.sh
+
+    cat <<EOF >$CHPASSWD_FILE
+echo "setting root password to \"root\""
+
+mount --bind /lib $rootfs/lib
+if [ \$? -ne 0 ]; then
+    echo "Failed bind-mounting /lib at $rootfs/lib"
+    exit 1
+fi
+
+chroot $rootfs chpasswd <<EOFF 2>/dev/null
+root:root
+EOFF
+
+
+if [ \$? -ne 0 ]; then
+    echo "Failed to change root password"
+    exit 1
+fi
+
+umount $rootfs/lib
+
+EOF
+
+    lxc-unshare -s MOUNT -- /bin/sh < $CHPASSWD_FILE
+    rm $CHPASSWD_FILE
 
     # add ssh functionality if dropbear package available on host
     which dropbear >/dev/null 2>&1
@@ -235,17 +261,11 @@ cat <<EOF >> $path/config
 lxc.utsname = $name
 lxc.tty = 1
 lxc.pts = 1
+lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
 EOF
-
-if [ -d "$rootfs/lib" ]; then
-cat <<EOF >> $path/config
-lxc.mount.entry = /lib $rootfs/lib none ro,bind 0 0
-lxc.mount.entry = /usr/lib $rootfs/usr/lib none ro,bind 0 0
-EOF
-fi
 
     libdirs="\
         lib \
@@ -268,7 +288,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n: -l help,path:,name: -- "$@")
+options=$(getopt -o hp:n: -l help,rootfs:,path:,name: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -280,6 +300,7 @@ do
     case "$1" in
         -h|--help)      usage $0 && exit 0;;
         -p|--path)      path=$2; shift 2;;
+        --rootfs)       rootfs=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
@@ -298,10 +319,12 @@ fi
 
 # detect rootfs
 config="$path/config"
-if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
-    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
-else
-    rootfs=$path/rootfs
+if [ -z "$rootfs" ]; then
+    if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+        rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+    else
+        rootfs=$path/rootfs
+    fi
 fi
 
 install_busybox $rootfs $name

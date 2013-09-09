@@ -6,18 +6,19 @@
 -- Authors:
 -- Dwight Engen <dwight.engen@oracle.com>
 --
--- This library is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License version 2, as
--- published by the Free Software Foundation.
+--  This library is free software; you can redistribute it and/or
+--  modify it under the terms of the GNU Lesser General Public
+--  License as published by the Free Software Foundation; either
+--  version 2.1 of the License, or (at your option) any later version.
 --
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
--- GNU General Public License for more details.
+--  This library is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+--  Lesser General Public License for more details.
 --
--- You should have received a copy of the GNU General Public License along
--- with this program; if not, write to the Free Software Foundation, Inc.,
--- 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+--  You should have received a copy of the GNU Lesser General Public
+--  License along with this library; if not, write to the Free Software
+--  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 --
 
 local core   = require("lxc.core")
@@ -30,6 +31,11 @@ module("lxc", package.seeall)
 local lxc_path
 local cgroup_path
 local log_level = 3
+
+-- lua 5.1 compat
+if table.unpack == nil then
+    table.unpack = unpack
+end
 
 -- the following two functions can be useful for debugging
 function printf(...)
@@ -64,22 +70,6 @@ function string:split(delim, max_cols)
     return cols
 end
 
-function dirname(path)
-    local f,output
-    f = io.popen("dirname " .. path)
-    output = f:read('*all')
-    f:close()
-    return output:sub(1,-2)
-end
-
-function basename(path, suffix)
-    local f,output
-    f = io.popen("basename " .. path .. " " .. (suffix or ""))
-    output = f:read('*all')
-    f:close()
-    return output:sub(1,-2)
-end
-
 function cgroup_path_get()
     local f,line,cgroup_path
 
@@ -88,9 +78,12 @@ function cgroup_path_get()
 	while true do
 	    local c
 	    line = f:read()
+	    if line == nil then
+	        break
+	    end
 	    c = line:split(" ", 6)
 	    if (c[1] == "cgroup") then
-		cgroup_path = dirname(c[2])
+		cgroup_path = core.dirname(c[2])
 		break
 	    end
 	end
@@ -261,7 +254,7 @@ end
 -- methods for stats collection from various cgroup files
 -- read integers at given coordinates from a cgroup file
 function container:stat_get_ints(controller, item, coords)
-    local f = io.open(cgroup_path.."/"..controller.."/lxc/"..self.ctname.."/"..item, "r")
+    local f = io.open(cgroup_path.."/"..controller.."/"..self.ctname.."/"..item, "r")
     local lines = {}
     local result = {}
 
@@ -282,12 +275,12 @@ function container:stat_get_ints(controller, item, coords)
 	    table.insert(result, val)
 	end
     end
-    return unpack(result)
+    return table.unpack(result)
 end
 
 -- read an integer from a cgroup file
 function container:stat_get_int(controller, item)
-    local f = io.open(cgroup_path.."/"..controller.."/lxc/"..self.ctname.."/"..item, "r")
+    local f = io.open(cgroup_path.."/"..controller.."/"..self.ctname.."/"..item, "r")
     if (not f) then
 	return 0
     end
@@ -301,34 +294,21 @@ end
 
 function container:stat_match_get_int(controller, item, match, column)
     local val
-    local f = io.open(cgroup_path.."/"..controller.."/lxc/"..self.ctname.."/"..item, "r")
+    local f = io.open(cgroup_path.."/"..controller.."/"..self.ctname.."/"..item, "r")
     if (not f) then
 	return 0
     end
 
     for line in f:lines() do
-	printf("matching line:%s with match:%s\n", line, match)
 	if (string.find(line, match)) then
 	    local col
 
 	    col = line:split(" ", 80)
 	    val = tonumber(col[column]) or 0
-	    printf("found line!! val:%d\n", val)
 	end
     end
     f:close()
     return val
-end
-
-function stats_clear(stat)
-    stat.mem_used      = 0
-    stat.mem_limit     = 0
-    stat.memsw_used    = 0
-    stat.memsw_limit   = 0
-    stat.cpu_use_nanos = 0
-    stat.cpu_use_user  = 0
-    stat.cpu_use_sys   = 0
-    stat.blkio         = 0
 end
 
 function container:stats_get(total)
@@ -355,10 +335,32 @@ function container:stats_get(total)
     return stat
 end
 
+local M = { container = container }
 
+function M.stats_clear(stat)
+    stat.mem_used      = 0
+    stat.mem_limit     = 0
+    stat.memsw_used    = 0
+    stat.memsw_limit   = 0
+    stat.cpu_use_nanos = 0
+    stat.cpu_use_user  = 0
+    stat.cpu_use_sys   = 0
+    stat.blkio         = 0
+end
+
+function M.stats_clear(stat)
+    stat.mem_used      = 0
+    stat.mem_limit     = 0
+    stat.memsw_used    = 0
+    stat.memsw_limit   = 0
+    stat.cpu_use_nanos = 0
+    stat.cpu_use_user  = 0
+    stat.cpu_use_sys   = 0
+    stat.blkio         = 0
+end
 
 -- return configured containers found in LXC_PATH directory
-function containers_configured(names_only)
+function M.containers_configured(names_only)
     local containers = {}
 
     for dir in lfs.dir(lxc_path) do
@@ -386,39 +388,29 @@ function containers_configured(names_only)
 end
 
 -- return running containers found in cgroup fs
-function containers_running(names_only)
+function M.containers_running(names_only)
     local containers = {}
-    local attr
+    local names = M.containers_configured(true)
 
-    -- the lxc directory won't exist if no containers has ever been started
-    attr = lfs.attributes(cgroup_path .. "/cpu/lxc")
-    if (not attr) then
-	return containers
-    end
-
-    for file in lfs.dir(cgroup_path .. "/cpu/lxc") do
-	if (file ~= "." and file ~= "..")
-	then
-	    local pathfile = cgroup_path .. "/cpu/lxc/" .. file
-	    local attr = lfs.attributes(pathfile)
-
-	    if (attr.mode == "directory") then
+    for _,name in ipairs(names) do
+	local ct = container:new(name)
+	if ct:running() then
+		-- note, this is a "mixed" table, ie both dictionary and list
+		table.insert(containers, name)
 		if (names_only) then
-		    -- note, this is a "mixed" table, ie both dictionary and list
-		    containers[file] = true
-		    table.insert(containers, file)
+		    containers[name] = true
+		    ct = nil
 		else
-		    local ct = container:new(file)
-		    -- note, this is a "mixed" table, ie both dictionary and list
-		    containers[file] = ct
-		    table.insert(containers, file)
+		    containers[name] = ct
 		end
-	    end
 	end
     end
+
     table.sort(containers, function (a,b) return (a < b) end)
     return containers
 end
 
 lxc_path = core.default_config_path_get()
 cgroup_path = cgroup_path_get()
+
+return M

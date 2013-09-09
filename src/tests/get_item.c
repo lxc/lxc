@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 		ret = 1;
 		goto out;
 	}
-	if (!c->createl(c, "ubuntu", "-r", "lucid", NULL)) {
+	if (!c->createl(c, "ubuntu", NULL, NULL, 0, "-r", "lucid", NULL)) {
 		fprintf(stderr, "%d: failed to create a lucid container\n", __LINE__);
 		ret = 1;
 		goto out;

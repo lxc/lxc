@@ -22,7 +22,6 @@ man_MANS = \
 	lxc-netstat.1 \
 	lxc-ps.1 \
 	lxc-restart.1 \
-	lxc-shutdown.1 \
 	lxc-start.1 \
 	lxc-stop.1 \
 	lxc-unfreeze.1 \

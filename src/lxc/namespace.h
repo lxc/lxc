@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #ifndef __namespace_h
 #define __namespace_h
@@ -53,9 +53,6 @@
 #if defined(__ia64__)
 int __clone2(int (*__fn) (void *__arg), void *__child_stack_base,
              size_t __child_stack_size, int __flags, void *__arg, ...);
-#elif defined(IS_BIONIC)
-int clone(int (*fn)(void *), void *child_stack,
-	int flags, void *arg);
 #else
 int clone(int (*fn)(void *), void *child_stack,
 	int flags, void *arg, ...

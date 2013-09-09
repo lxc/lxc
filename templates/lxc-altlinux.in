@@ -22,10 +22,10 @@
 
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 #Configurations
-arch=$(arch)
+arch=$(uname -m)
 cache_base=@LOCALSTATEDIR@/cache/lxc/altlinux/$arch
 default_path=@LXCPATH@
 default_profile=default
@@ -243,6 +243,7 @@ lxc.utsname = $name
 lxc.tty = 4
 lxc.pts = 1024
 lxc.mount = $config_path/fstab
+lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
@@ -336,7 +337,7 @@ usage:
         [-p|--path=<path>] [-c|--clean] [-R|--release=<ALTLinux_release>]
         [-4|--ipv4=<ipv4 address>] [-6|--ipv6=<ipv6 address>]
         [-g|--gw=<gw address>] [-d|--dns=<dns address>]
-        [-P|--profile=<name of the profile>]
+        [-P|--profile=<name of the profile>] [--rootfs=<path>]
         [-A|--arch=<arch of the container>]
         [-h|--help]
 Mandatory args:
@@ -352,12 +353,13 @@ Optional args:
   -d,--dns          specify the DNS server, eg. 192.168.1.2
   -P,--profile      Profile name is the file name in /etc/lxc/profiles contained packages name for install to cache.
   -A,--arch         NOT USED YET. Define what arch the container will be [i686,x86_64]
+  ---rootfs         rootfs path
   -h,--help         print this help
 EOF
     return 0
 }
 
-options=$(getopt -o hp:n:P:cR:4:6:g:d: -l help,path:,name:,profile:,clean,release:ipv4:ipv6:gw:dns: -- "$@")
+options=$(getopt -o hp:n:P:cR:4:6:g:d: -l help,rootfs:,path:,name:,profile:,clean,release:ipv4:ipv6:gw:dns: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -369,6 +371,7 @@ do
     case "$1" in
         -h|--help)      usage $0 && exit 0;;
         -p|--path)      path=$2; shift 2;;
+        --rootfs)       rootfs_path=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
         -P|--profile)   profile=$2; shift 2;;
         -c|--clean)     clean=$2; shift 2;;
@@ -421,18 +424,21 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-rootfs_path=$path/$name/rootfs
+# check for 'lxc.rootfs' passed in through default config by lxc-create
+if [ -z "$rootfs_path" ]; then
+    if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
+        rootfs_path=`grep 'lxc.rootfs =' $path/config | awk -F= '{ print $2 }'`
+    else
+        rootfs_path=$path/$name/rootfs
+    fi
+fi
+
 config_path=$default_path/$name
 cache=$cache_base/$release/$profile
 
 if [ -f $config_path/config ]; then
     echo "A container with that name exists, chose a different name"
     exit 1
-fi
-
-# check for 'lxc.rootfs' passed in through default config by lxc-create
-if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
-    rootfs_path=`grep 'lxc.rootfs =' $path/config | awk -F= '{ print $2 }'`
 fi
 
 install_altlinux

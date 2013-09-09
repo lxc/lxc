@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -43,6 +43,7 @@
 #include "log.h"
 #include "caps.h"
 #include "lxc.h"
+#include "lxccontainer.h"
 #include "conf.h"
 #include "cgroup.h"
 #include "utils.h"
@@ -62,11 +63,12 @@ static int ensure_path(char **confpath, const char *path)
 	if (path) {
 		if (access(path, W_OK)) {
 			fd = creat(path, 0600);
-			if (fd < 0) {
+			if (fd < 0 && errno != EEXIST) {
 				SYSERROR("failed to create '%s'", path);
 				goto err;
 			}
-			close(fd);
+			if (fd >= 0)
+				close(fd);
 		}
 
 		fullpath = realpath(path, NULL);
@@ -150,6 +152,8 @@ int main(int argc, char *argv[])
 		'\0',
 	};
 	FILE *pid_fp = NULL;
+	struct lxc_container *c;
+	char *anonpath;
 
 	lxc_list_init(&defines);
 
@@ -165,16 +169,35 @@ int main(int argc, char *argv[])
 		args = my_args.argv;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet))
+			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return err;
 
+	anonpath = alloca(strlen(LXCPATH) + 6);
+	sprintf(anonpath, "%s_anon", LXCPATH);
+	/*
+	 * rcfile possibilities:
+	 * 1. rcfile from random path specified in cli option
+	 * 2. rcfile not specified, use $lxcpath/$lxcname/config
+	 * 3. rcfile not specified and does not exist.
+	 */
 	/* rcfile is specified in the cli option */
-	if (my_args.rcfile)
+	if (my_args.rcfile) {
 		rcfile = (char *)my_args.rcfile;
-	else {
+		c = lxc_container_new(my_args.name, anonpath);
+		if (!c) {
+			ERROR("Failed to create lxc_container");
+			return err;
+		}
+		if (!c->load_config(c, rcfile)) {
+			ERROR("Failed to load rcfile");
+			lxc_container_put(c);
+			return err;
+		}
+	} else {
 		int rc;
+		const char *lxcpath = my_args.lxcpath[0];
 
-		rc = asprintf(&rcfile, "%s/%s/config", my_args.lxcpath, my_args.name);
+		rc = asprintf(&rcfile, "%s/%s/config", lxcpath, my_args.name);
 		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
 			return err;
@@ -185,36 +208,39 @@ int main(int argc, char *argv[])
 		if (access(rcfile, F_OK)) {
 			free(rcfile);
 			rcfile = NULL;
+			lxcpath = anonpath;
+		}
+		c = lxc_container_new(my_args.name, lxcpath);
+		if (!c) {
+			ERROR("Failed to create lxc_container");
+			return err;
 		}
 	}
 
-	conf = lxc_conf_init();
-	if (!conf) {
-		ERROR("failed to initialize configuration");
-		return err;
-	}
-
-	if (rcfile && lxc_config_read(rcfile, conf)) {
-		ERROR("failed to read configuration file");
-		return err;
-	}
+	/*
+	 * We should use set_config_item() over &defines, which would handle
+	 * unset c->lxc_conf for us and let us not use lxc_config_define_load()
+	 */
+	if (!c->lxc_conf)
+		c->lxc_conf = lxc_conf_init();
+	conf = c->lxc_conf;
 
 	if (lxc_config_define_load(&defines, conf))
-		return err;
+		goto out;
 
 	if (!rcfile && !strcmp("/sbin/init", args[0])) {
-		ERROR("no configuration file for '/sbin/init' (may crash the host)");
-		return err;
+		ERROR("Executing '/sbin/init' with no configuration file may crash the host");
+		goto out;
 	}
 
 	if (ensure_path(&conf->console.path, my_args.console) < 0) {
 		ERROR("failed to ensure console path '%s'", my_args.console);
-		return err;
+		goto out;
 	}
 
 	if (ensure_path(&conf->console.log_path, my_args.console_log) < 0) {
 		ERROR("failed to ensure console log '%s'", my_args.console_log);
-		return err;
+		goto out;
 	}
 
 	if (my_args.pidfile != NULL) {
@@ -222,29 +248,18 @@ int main(int argc, char *argv[])
 		if (pid_fp == NULL) {
 			SYSERROR("failed to create pidfile '%s' for '%s'",
 				 my_args.pidfile, my_args.name);
-			return err;
+			goto out;
 		}
 	}
 
 	if (my_args.daemonize) {
-		/* do an early check for needed privs, since otherwise the
-		 * user won't see the error */
-
-		if (!lxc_caps_check()) {
-			ERROR("Not running with sufficient privilege");
-			return err;
-		}
-
-		if (daemon(0, 0)) {
-			SYSERROR("failed to daemonize '%s'", my_args.name);
-			return err;
-		}
+		c->want_daemonize(c);
 	}
 
 	if (pid_fp != NULL) {
 		if (fprintf(pid_fp, "%d\n", getpid()) < 0) {
 			SYSERROR("failed to write '%s'", my_args.pidfile);
-			return err;
+			goto out;
 		}
 		fclose(pid_fp);
 	}
@@ -252,22 +267,13 @@ int main(int argc, char *argv[])
 	if (my_args.close_all_fds)
 		conf->close_all_fds = 1;
 
-	err = lxc_start(my_args.name, args, conf, my_args.lxcpath);
-
-	/*
-	 * exec ourself, that requires to have all opened fd
-	 * with the close-on-exec flag set
-	 */
-	if (conf->reboot) {
-		INFO("rebooting container");
-		execvp(argv[0], argv);
-		SYSERROR("failed to exec");
-		err = -1;
-	}
+	err = c->start(c, 0, args) ? 0 : -1;
 
 	if (my_args.pidfile)
 		unlink(my_args.pidfile);
 
+out:
+	lxc_container_put(c);
 	return err;
 }
 

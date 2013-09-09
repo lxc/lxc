@@ -18,7 +18,7 @@
 
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 SUITE=${SUITE:-squeeze}
 MIRROR=${MIRROR:-http://cdn.debian.net/debian}
@@ -172,7 +172,18 @@ install_debian()
             return 1
         fi
 
-        arch=$(dpkg --print-architecture)
+        if which dpkg >/dev/null 2>&1 ; then
+            arch=$(dpkg --print-architecture)
+        else
+            arch=$(uname -m)
+            if [ "$arch" = "i686" ]; then
+                arch="i386"
+            elif [ "$arch" = "x86_64" ]; then
+                arch="amd64"
+            elif [ "$arch" = "armv7l" ]; then
+                arch="armhf"
+            fi
+        fi
 
         echo "Checking cache download in $cache/rootfs-$SUITE-$arch ... "
         if [ ! -e "$cache/rootfs-$SUITE-$arch" ]; then
@@ -207,6 +218,7 @@ copy_configuration()
 lxc.tty = 4
 lxc.pts = 1024
 lxc.utsname = $hostname
+lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
@@ -226,7 +238,7 @@ lxc.cgroup.devices.allow = c 1:8 rwm
 lxc.cgroup.devices.allow = c 136:* rwm
 lxc.cgroup.devices.allow = c 5:2 rwm
 # rtc
-lxc.cgroup.devices.allow = c 254:0 rwm
+lxc.cgroup.devices.allow = c 254:0 rm
 
 # mounts point
 lxc.mount.entry = proc proc proc nodev,noexec,nosuid 0 0
@@ -272,7 +284,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:c -l help,path:,name:,clean -- "$@")
+options=$(getopt -o hp:n:c -l help,rootfs:,path:,name:,clean -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
         exit 1
@@ -284,6 +296,7 @@ do
     case "$1" in
         -h|--help)      usage $0 && exit 0;;
         -p|--path)      path=$2; shift 2;;
+        --rootfs)       rootfs=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
         -c|--clean)     clean=$2; shift 2;;
         --)             shift 1; break ;;
@@ -314,10 +327,12 @@ fi
 
 # detect rootfs
 config="$path/config"
-if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
-    rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
-else
-    rootfs=$path/rootfs
+if [ -z "$rootfs" ]; then
+    if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+        rootfs=`grep 'lxc.rootfs =' $config | awk -F= '{ print $2 }'`
+    else
+        rootfs=$path/rootfs
+    fi
 fi
 
 

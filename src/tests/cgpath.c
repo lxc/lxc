@@ -18,6 +18,7 @@
  */
 #include "../lxc/lxccontainer.h"
 
+#include <limits.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdio.h>
@@ -27,20 +28,180 @@
 #include <errno.h>
 #include "../lxc/cgroup.h"
 #include "../lxc/lxc.h"
+#include "../lxc/commands.h"
 
 #define MYNAME "lxctest1"
-#define MYNAME2 "lxctest2"
 
-#define TSTERR(x) do { \
-	fprintf(stderr, "%d: %s\n", __LINE__, x); \
+#define TSTERR(fmt, ...) do { \
+	fprintf(stderr, "%s:%d " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
 } while (0)
+
+/*
+ * test_running_container: test cgroup functions against a running container
+ *
+ * @group : name of the container group or NULL for default "lxc"
+ * @name  : name of the container
+ */
+static int test_running_container(const char *lxcpath,
+				  const char *group, const char *name)
+{
+	int ret = -1;
+	struct lxc_container *c = NULL;
+	char *cgrelpath;
+	char *cgabspath;
+	char  relpath[PATH_MAX+1];
+	char  abspath[PATH_MAX+1];
+	char  value[NAME_MAX], value_save[NAME_MAX];
+
+	sprintf(relpath, "%s/%s", group ? group : "lxc", name);
+
+	if ((c = lxc_container_new(name, lxcpath)) == NULL) {
+		TSTERR("container %s couldn't instantiate", name);
+		goto err1;
+	}
+	if (!c->is_defined(c)) {
+		TSTERR("container %s does not exist", name);
+		goto err2;
+	}
+
+	cgrelpath = lxc_cmd_get_cgroup_path(c->name, c->config_path, "freezer");
+	if (!cgrelpath) {
+		TSTERR("lxc_cmd_get_cgroup_path returned NULL");
+		goto err2;
+	}
+	if (!strstr(cgrelpath, relpath)) {
+		TSTERR("lxc_cmd_get_cgroup_path %s not in %s", relpath, cgrelpath);
+		goto err3;
+	}
+
+	/* test get/set value using memory.swappiness file */
+	ret = lxc_cgroup_get(c->name, "memory.swappiness", value,
+			     sizeof(value), c->config_path);
+	if (ret < 0) {
+		TSTERR("lxc_cgroup_get failed");
+		goto err3;
+	}
+	strcpy(value_save, value);
+
+	ret = lxc_cgroup_set(c->name, "memory.swappiness", "100", c->config_path);
+	if (ret < 0) {
+		TSTERR("lxc_cgroup_set_bypath failed");
+		goto err3;
+	}
+	ret = lxc_cgroup_get(c->name, "memory.swappiness", value,
+			     sizeof(value), c->config_path);
+	if (ret < 0) {
+		TSTERR("lxc_cgroup_get failed");
+		goto err3;
+	}
+	if (strcmp(value, "100\n")) {
+		TSTERR("lxc_cgroup_set_bypath failed to set value >%s<", value);
+		goto err3;
+	}
+
+	/* restore original value */
+	ret = lxc_cgroup_set(c->name, "memory.swappiness", value_save,
+			     c->config_path);
+	if (ret < 0) {
+		TSTERR("lxc_cgroup_set failed");
+		goto err3;
+	}
+	ret = lxc_cgroup_get(c->name, "memory.swappiness", value,
+			     sizeof(value), c->config_path);
+	if (ret < 0) {
+		TSTERR("lxc_cgroup_get failed");
+		goto err3;
+	}
+	if (strcmp(value, value_save)) {
+		TSTERR("lxc_cgroup_set failed to set value >%s<", value);
+		goto err3;
+	}
+
+	cgabspath = lxc_cgroup_path_get("freezer", c->name, c->config_path);
+	if (!cgabspath) {
+		TSTERR("lxc_cgroup_path_get returned NULL");
+		goto err3;
+	}
+	sprintf(abspath, "%s/%s/%s", "freezer", group ? group : "lxc", c->name);
+	if (!strstr(cgabspath, abspath)) {
+		TSTERR("lxc_cgroup_path_get %s not in %s", abspath, cgabspath);
+		goto err4;
+	}
+
+	free(cgabspath);
+	cgabspath = lxc_cgroup_path_get("freezer.state", c->name, c->config_path);
+	if (!cgabspath) {
+		TSTERR("lxc_cgroup_path_get returned NULL");
+		goto err3;
+	}
+	sprintf(abspath, "%s/%s/%s", "freezer", group ? group : "lxc", c->name);
+	if (!strstr(cgabspath, abspath)) {
+		TSTERR("lxc_cgroup_path_get %s not in %s", abspath, cgabspath);
+		goto err4;
+	}
+
+	ret = 0;
+err4:
+	free(cgabspath);
+err3:
+	free(cgrelpath);
+err2:
+	lxc_container_put(c);
+err1:
+	return ret;
+}
+
+static int test_container(const char *lxcpath,
+			  const char *group, const char *name,
+			  const char *template)
+{
+	int ret;
+	struct lxc_container *c = NULL;
+
+	if (lxcpath) {
+		ret = mkdir(lxcpath, 0755);
+		if (ret < 0 && errno != EEXIST) {
+			TSTERR("failed to mkdir %s %s", lxcpath, strerror(errno));
+			goto out1;
+		}
+	}
+	ret = -1;
+
+	if ((c = lxc_container_new(name, lxcpath)) == NULL) {
+		TSTERR("instantiating container %s", name);
+		goto out1;
+	}
+	if (c->is_defined(c)) {
+		c->stop(c);
+		c->destroy(c);
+		c = lxc_container_new(name, lxcpath);
+	}
+	c->set_config_item(c, "lxc.network.type", "empty");
+	if (!c->createl(c, template, NULL, NULL, 0, NULL)) {
+		TSTERR("creating container %s", name);
+		goto out2;
+	}
+	c->load_config(c, NULL);
+	c->want_daemonize(c);
+	if (!c->startl(c, 0, NULL)) {
+		TSTERR("starting container %s", name);
+		goto out3;
+	}
+
+	ret = test_running_container(lxcpath, group, name);
+
+	c->stop(c);
+out3:
+	c->destroy(c);
+out2:
+	lxc_container_put(c);
+out1:
+	return ret;
+}
 
 int main()
 {
-	struct lxc_container *c = NULL, *c2 = NULL;
-	char *path;
-	int len;
-	int ret, retv = -1;
+	int ret = EXIT_FAILURE;
 
 	/* won't require privilege necessarily once users are classified by
 	 * pam_cgroup */
@@ -49,116 +210,31 @@ int main()
 		exit(0);
 	}
 
-	printf("Basic cgroup path tests...\n");
-	path = lxc_cgroup_path_create(NULL, MYNAME);
-	len = strlen(path);
-	if (!path || !len) {
-		TSTERR("zero result from lxc_cgroup_path_create");
-		exit(1);
-	}
-	if (!strstr(path, "lxc/" MYNAME)) {
-		TSTERR("lxc_cgroup_path_create NULL lxctest1");
-		exit(1);
-	}
-	free(path);
+	#if TEST_ALREADY_RUNNING_CT
 
-	path = lxc_cgroup_path_create("ab", MYNAME);
-	len = strlen(path);
-	if (!path || !len) {
-		TSTERR("zero result from lxc_cgroup_path_create");
-		exit(1);
-	}
-	if (!strstr(path, "ab/" MYNAME)) {
-		TSTERR("lxc_cgroup_path_create ab lxctest1");
-		exit(1);
-	}
-	free(path);
-	printf("... passed\n");
-
-	printf("Container creation tests...\n");
-
-	if ((c = lxc_container_new(MYNAME, NULL)) == NULL) {
-		TSTERR("instantiating first container");
-		exit(1);
-	}
-	if (c->is_defined(c)) {
-		c->stop(c);
-		c->destroy(c);
-		c = lxc_container_new(MYNAME, NULL);
-	}
-	c->set_config_item(c, "lxc.network.type", "empty");
-	if (!c->createl(c, "ubuntu", NULL)) {
-		TSTERR("creating first container");
-		exit(1);
-	}
-	c->load_config(c, NULL);
-	c->want_daemonize(c);
-	if (!c->startl(c, 0, NULL)) {
-		TSTERR("starting first container");
+	/*
+	 * This is useful for running with valgrind to test for memory
+	 * leaks. The container should already be running, we can't start
+	 * the container ourselves because valgrind gets confused by lxc's
+	 * internal calls to clone.
+	 */
+	if (test_running_container(NULL, NULL, "bb01") < 0)
 		goto out;
-	}
-	printf("first container passed.  Now two containers...\n");
+	printf("Running container cgroup tests...Passed\n");
 
-	char *nsgroup;
-#define ALTBASE "/var/lib/lxctest2"
-	ret = mkdir(ALTBASE, 0755);
+	#else
 
-	ret = lxc_cgroup_path_get(&nsgroup, "freezer", MYNAME, c->get_config_path(c));
-	if (ret < 0 || !strstr(nsgroup, "lxc/" MYNAME)) {
-		TSTERR("getting first cgroup path from lxc_command");
+	if (test_container(NULL, NULL, MYNAME, "busybox") < 0)
 		goto out;
-	}
+	printf("Container creation tests...Passed\n");
 
-	/* start second container */
-	if ((c2 = lxc_container_new(MYNAME2, ALTBASE)) == NULL) {
-		TSTERR("instantiating first container");
+	if (test_container("/var/lib/lxctest2", NULL, MYNAME, "busybox") < 0)
 		goto out;
-	}
-	if (c2->is_defined(c2)) {
-		c2->stop(c2);
-		c2->destroy(c2);
-		c2 = lxc_container_new(MYNAME2, ALTBASE);
-	}
-	c2->set_config_item(c2, "lxc.network.type", "empty");
-	if (!c2->createl(c2, "ubuntu", NULL)) {
-		TSTERR("creating first container");
-		goto out;
-	}
+	printf("Container creation with LXCPATH tests...Passed\n");
 
-	c2->load_config(c2, NULL);
-	c2->want_daemonize(c2);
-	if (!c2->startl(c2, 0, NULL)) {
-		TSTERR("starting first container");
-		goto out;
-	}
+	#endif
 
-	ret = lxc_cgroup_path_get(&nsgroup, "freezer", MYNAME2, c2->get_config_path(c2));
-	if (ret < 0 || !strstr(nsgroup, "lxc/" MYNAME2)) {
-		TSTERR("getting second cgroup path from lxc_command");
-		goto out;
-	}
-
-	const char *dirpath;
-	if (lxc_get_cgpath(&dirpath, NULL, c2->name, c2->config_path) < 0) {
-		TSTERR("getting second container's cgpath");
-		return -1;
-	}
-
-	if (lxc_cgroup_nrtasks(dirpath) < 1) {
-		TSTERR("getting nrtasks");
-		goto out;
-	}
-	printf("...passed\n");
-
-	retv = 0;
+	ret = EXIT_SUCCESS;
 out:
-	if (c2) {
-		c2->stop(c2);
-		c2->destroy(c2);
-	}
-	if (c) {
-		c->stop(c);
-		c->destroy(c);
-	}
-	return retv;
+	return ret;
 }

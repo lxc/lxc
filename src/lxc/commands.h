@@ -18,54 +18,75 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
 #ifndef __commands_h
 #define __commands_h
 
-enum {
-	LXC_COMMAND_TTY,
-	LXC_COMMAND_STOP,
-	LXC_COMMAND_STATE,
-	LXC_COMMAND_PID,
-	LXC_COMMAND_CLONE_FLAGS,
-	LXC_COMMAND_CGROUP,
-	LXC_COMMAND_MAX,
+#include "state.h"
+
+#define LXC_CMD_DATA_MAX (MAXPATHLEN*2)
+
+/* https://developer.gnome.org/glib/2.28/glib-Type-Conversion-Macros.html */
+#define INT_TO_PTR(n) ((void *) (long) (n))
+#define PTR_TO_INT(p) ((int) (long) (p))
+
+typedef enum {
+	LXC_CMD_CONSOLE,
+	LXC_CMD_CONSOLE_WINCH,
+	LXC_CMD_STOP,
+	LXC_CMD_GET_STATE,
+	LXC_CMD_GET_INIT_PID,
+	LXC_CMD_GET_CLONE_FLAGS,
+	LXC_CMD_GET_CGROUP,
+	LXC_CMD_GET_CONFIG_ITEM,
+	LXC_CMD_MAX,
+} lxc_cmd_t;
+
+struct lxc_cmd_req {
+	lxc_cmd_t cmd;
+	int datalen;
+	const void *data;
 };
 
-struct lxc_request {
-	int type;
-	int data;
-};
-
-struct lxc_answer {
-	int fd;
+struct lxc_cmd_rsp {
 	int ret; /* 0 on success, -errno on failure */
-	pid_t pid;
-	int pathlen;
-	const char *path;
+	int datalen;
+	void *data;
 };
 
-struct lxc_command {
-	struct lxc_request request;
-	struct lxc_answer answer;
+struct lxc_cmd_rr {
+	struct lxc_cmd_req req;
+	struct lxc_cmd_rsp rsp;
 };
 
-extern pid_t get_init_pid(const char *name, const char *lxcpath);
-extern int lxc_get_clone_flags(const char *name, const char *lxcpath);
+struct lxc_cmd_console_rsp_data {
+	int masterfd;
+	int ttynum;
+};
 
-extern int lxc_command(const char *name, struct lxc_command *command,
-			int *stopped, const char *lxcpath);
-
-extern int lxc_command_connected(const char *name, struct lxc_command *command,
-				 int *stopped, const char *lxcpath);
+extern int lxc_cmd_console_winch(const char *name, const char *lxcpath);
+extern int lxc_cmd_console(const char *name, int *ttynum, int *fd,
+			   const char *lxcpath);
+/*
+ * Get the 'real' cgroup path (as seen in /proc/self/cgroup) for a container
+ * for a particular subsystem
+ */
+extern char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
+			const char *subsystem);
+extern int lxc_cmd_get_clone_flags(const char *name, const char *lxcpath);
+extern char *lxc_cmd_get_config_item(const char *name, const char *item, const char *lxcpath);
+extern pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath);
+extern lxc_state_t lxc_cmd_get_state(const char *name, const char *lxcpath);
+extern int lxc_cmd_stop(const char *name, const char *lxcpath);
 
 struct lxc_epoll_descr;
 struct lxc_handler;
 
-extern int lxc_command_init(const char *name, struct lxc_handler *handler,
+extern int lxc_cmd_init(const char *name, struct lxc_handler *handler,
 			    const char *lxcpath);
-extern int lxc_command_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
+extern int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 				    struct lxc_handler *handler);
 
-#endif
+#endif /* __commands_h */

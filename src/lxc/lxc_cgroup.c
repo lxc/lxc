@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include <stdio.h>
@@ -29,6 +29,7 @@
 #include <lxc/lxc.h>
 #include <lxc/log.h>
 
+#include <lxc/lxccontainer.h>
 #include "arguments.h"
 
 lxc_log_define(lxc_cgroup_ui, lxc_cgroup);
@@ -64,39 +65,47 @@ Options :\n\
 int main(int argc, char *argv[])
 {
 	char *state_object = NULL, *value = NULL;
+	struct lxc_container *c;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet))
+			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return -1;
 
 	state_object = my_args.argv[0];
 
-	if ((argc) > 1)
-		value = my_args.argv[1];
+	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
+	if (!c)
+		return -1;
+	if (!c->is_running(c)) {
+		ERROR("'%s:%s' is not running", my_args.lxcpath[0], my_args.name);
+		lxc_container_put(c);
+		return -1;
+	}
 
-	if (value) {
-		if (lxc_cgroup_set(my_args.name, state_object, value, my_args.lxcpath)) {
+	if ((my_args.argc) > 1) {
+		value = my_args.argv[1];
+		if (!c->set_cgroup_item(c, state_object, value)) {
 			ERROR("failed to assign '%s' value to '%s' for '%s'",
 				value, state_object, my_args.name);
+			lxc_container_put(c);
 			return -1;
 		}
 	} else {
-		const unsigned long len = 4096;
-		int ret;
+		int len = 4096;
 		char buffer[len];
-
-		ret = lxc_cgroup_get(my_args.name, state_object, buffer, len, my_args.lxcpath);
+		int ret = c->get_cgroup_item(c, state_object, buffer, len);
 		if (ret < 0) {
-			ERROR("failed to retrieve value of '%s' for '%s'",
-			      state_object, my_args.name);
+			ERROR("failed to retrieve value of '%s' for '%s:%s'",
+			      state_object, my_args.lxcpath[0], my_args.name);
+			lxc_container_put(c);
 			return -1;
 		}
-
 		printf("%*s", ret, buffer);
 	}
 
+	lxc_container_put(c);
 	return 0;
 }

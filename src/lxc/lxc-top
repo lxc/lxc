@@ -22,6 +22,7 @@
 --
 
 local lxc    = require("lxc")
+local core   = require("lxc.core")
 local getopt = require("alt_getopt")
 local lfs    = require("lfs")
 
@@ -95,15 +96,6 @@ function strsisize(size, width)
     return string.format("%3d.00   ", size)
 end
 
-function usleep(n)
-    if (n ~= 0) then
-	ret = os.execute("usleep " .. tonumber(n))
-	if (ret ~= 0) then
-	    os.exit(0)
-	end
-    end
-end
-
 function tty_lines()
     local rows = 25
     local f = assert(io.popen("stty -a | head -n 1"))
@@ -138,7 +130,6 @@ end
 function container_list_update()
     local now_running
 
-    lxc.stats_clear(stats_total)
     now_running = lxc.containers_running(true)
 
     -- check for newly started containers
@@ -238,5 +229,5 @@ do
     end
     stats_print(string.format("TOTAL (%-2d)", #containers), stats_total)
     io.flush()
-    usleep(optarg["d"] * 1000000)
+    core.usleep(optarg["d"] * 1000000)
 end

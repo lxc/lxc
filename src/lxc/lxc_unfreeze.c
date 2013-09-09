@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include <stdio.h>
 #include <unistd.h>
@@ -27,8 +27,11 @@
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>
+#include <lxc/lxccontainer.h>
 
 #include "arguments.h"
+
+lxc_log_define(lxc_unfreeze_ui, lxc_cgroup);
 
 static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
@@ -50,13 +53,28 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
+	struct lxc_container *c;
+
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		return -1;
+		exit(1);
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet))
-		return -1;
+			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
+		exit(1);
 
-	return lxc_unfreeze(my_args.name, my_args.lxcpath);
+	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
+	if (!c) {
+		ERROR("No such container: %s:%s", my_args.lxcpath[0], my_args.name);
+		exit(1);
+	}
+
+	if (!c->unfreeze(c)) {
+		ERROR("Failed to unfreeze %s:%s", my_args.lxcpath[0], my_args.name);
+		lxc_container_put(c);
+		exit(1);
+	}
+
+	lxc_container_put(c);
+
+	return 0;
 }
-

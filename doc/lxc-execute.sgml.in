@@ -19,11 +19,11 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+<!DOCTYPE refentry PUBLIC @docdtd@ [
 
 <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
@@ -132,12 +132,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  <para>
 	    Signal the end of options and disables further option
 	    processing. Any arguments after the -- are treated as
-	    arguments.
+	    arguments to <replaceable>command</replaceable>.
 	  </para>
 	  <para>
-	    This option is useful when you want to execute, with the
-	    command <command>lxc-execute</command>, a command line
-	    with its own options.
+	    This option is useful when you want specify options
+	    to <replaceable>command</replaceable> and don't want
+	    <command>lxc-execute</command> to interpret them.
 	  </para>
 	</listitem>
       </varlistentry>

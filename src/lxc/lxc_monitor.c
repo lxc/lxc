@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,6 +52,7 @@ Options :\n\
 	.options  = my_longopts,
 	.parser   = NULL,
 	.checker  = NULL,
+	.lxcpath_additional = -1,
 };
 
 int main(int argc, char *argv[])
@@ -59,14 +60,14 @@ int main(int argc, char *argv[])
 	char *regexp;
 	struct lxc_msg msg;
 	regex_t preg;
-	int fd;
-	int len, rc;
+	fd_set rfds, rfds_save;
+	int len, rc, i, nfds = -1;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet))
+			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return -1;
 
 	len = strlen(my_args.name) + 3;
@@ -87,16 +88,36 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	fd = lxc_monitor_open(my_args.lxcpath);
-	if (fd < 0)
-		return -1;
+	if (my_args.lxcpath_cnt > FD_SETSIZE) {
+		ERROR("too many paths requested, only the first %d will be monitored", FD_SETSIZE);
+		my_args.lxcpath_cnt = FD_SETSIZE;
+	}
+
+	FD_ZERO(&rfds);
+	for (i = 0; i < my_args.lxcpath_cnt; i++) {
+		int fd;
+
+		lxc_monitord_spawn(my_args.lxcpath[i]);
+
+		fd = lxc_monitor_open(my_args.lxcpath[i]);
+		if (fd < 0)
+			return -1;
+		FD_SET(fd, &rfds);
+		if (fd > nfds)
+			nfds = fd;
+	}
+	memcpy(&rfds_save, &rfds, sizeof(rfds_save));
+	nfds++;
 
 	setlinebuf(stdout);
 
 	for (;;) {
-		if (lxc_monitor_read(fd, &msg) < 0)
+		memcpy(&rfds, &rfds_save, sizeof(rfds));
+
+		if (lxc_monitor_read_fdset(&rfds, nfds, &msg, -1) < 0)
 			return -1;
 
+		msg.name[sizeof(msg.name)-1] = '\0';
 		if (regexec(&preg, msg.name, 0, NULL, 0))
 			continue;
 
@@ -115,4 +136,3 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
-

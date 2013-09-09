@@ -20,11 +20,11 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+<!DOCTYPE refentry PUBLIC @docdtd@ [
 
 <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
@@ -49,7 +49,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-clone</command>
+      <command>lxc-unshare</command>
       <arg choice="req">-s <replaceable>namespaces</replaceable></arg>
       <arg choice="req">-u <replaceable>user</replaceable></arg>
       <arg choice="req">command</arg>
@@ -115,7 +115,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <para>
         To spawn a new shell with its own UTS (hostname) namespace,
         <programlisting>
-          lxc-clone -s UTSNAME /bin/bash
+          lxc-unshare -s UTSNAME /bin/bash
         </programlisting>
 	If the hostname is changed in that shell, the change will not be
 	reflected on the host.
@@ -123,7 +123,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <para>
         To spawn a shell in a new network, pid, and mount namespace,
         <programlisting>
-          lxc-clone -s "NETWORK|PID|MOUNT" /bin/bash
+          lxc-unshare -s "NETWORK|PID|MOUNT" /bin/bash
         </programlisting>
 	The resulting shell will have pid 1 and will see no network interfaces.
 	After re-mounting /proc in that shell,

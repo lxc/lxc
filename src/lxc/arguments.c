@@ -19,7 +19,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -147,7 +147,29 @@ for any corresponding short options.\n\
 See the %s man page for further information.\n\n",
 	args->progname, args->help, args->progname);
 
+	if (args->helpfn)
+		args->helpfn(args);
 	exit(code);
+}
+
+static int lxc_arguments_lxcpath_add(struct lxc_arguments *args,
+				     const char *lxcpath)
+{
+	if (args->lxcpath_additional != -1 &&
+	    args->lxcpath_cnt > args->lxcpath_additional) {
+		fprintf(stderr, "This command only accepts %d -P,--lxcpath arguments\n",
+			args->lxcpath_additional + 1);
+		exit(EXIT_FAILURE);
+	}
+
+	args->lxcpath = realloc(args->lxcpath, (args->lxcpath_cnt + 1) *
+				 sizeof(args->lxcpath[0]));
+	if (args->lxcpath == NULL) {
+		lxc_error(args, "no memory");
+		return -ENOMEM;
+	}
+	args->lxcpath[args->lxcpath_cnt++] = lxcpath;
+	return 0;
 }
 
 extern int lxc_arguments_parse(struct lxc_arguments *args,
@@ -156,7 +178,6 @@ extern int lxc_arguments_parse(struct lxc_arguments *args,
 	char shortopts[256];
 	int  ret = 0;
 
-	args->lxcpath = default_lxc_path();
 	ret = build_shortopts(args->options, shortopts, sizeof(shortopts));
 	if (ret < 0) {
 		lxc_error(args, "build_shortopts() failed : %s",
@@ -174,9 +195,12 @@ extern int lxc_arguments_parse(struct lxc_arguments *args,
 		case 'n': 	args->name = optarg; break;
 		case 'o':	args->log_file = optarg; break;
 		case 'l':	args->log_priority = optarg; break;
-		case 'c':	args->console = optarg; break;
 		case 'q':	args->quiet = 1; break;
-		case 'P':	args->lxcpath = optarg; break;
+		case 'P':
+			ret = lxc_arguments_lxcpath_add(args, optarg);
+			if (ret < 0)
+				return ret;
+			break;
 		case OPT_USAGE: print_usage(args->options, args);
 		case '?':	print_help(args, 1);
 		case 'h': 	print_help(args, 0);
@@ -194,6 +218,13 @@ extern int lxc_arguments_parse(struct lxc_arguments *args,
 	 */
 	args->argv = &argv[optind];
 	args->argc = argc - optind;
+
+	/* If no lxcpaths were given, use default */
+	if (!args->lxcpath_cnt) {
+		ret = lxc_arguments_lxcpath_add(args, default_lxc_path());
+		if (ret < 0)
+			return ret;
+	}
 
 	/* Check the command options */
 

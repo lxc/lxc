@@ -6,7 +6,7 @@ AC_INIT([lxc], [0.9.0])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_HEADERS([src/config.h])
-AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability])
+AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability subdir-objects])
 AC_CANONICAL_HOST
 AM_PROG_CC_C_O
 AC_GNU_SOURCE
@@ -39,18 +39,21 @@ if test "z$with_distro" = "z"; then
 fi
 case $with_distro in
 	ubuntu)
-		defaultconf=default.conf.ubuntu
+		distroconf=default.conf.ubuntu
 		;;
 	redhat|fedora|oracle|oracleserver)
-		defaultconf=default.conf.libvirt
+		distroconf=default.conf.libvirt
 		;;
 	*)
 		echo -n "Linux distribution network config unknown, defaulting to lxc.network.type = empty"
-		defaultconf=default.conf.unknown
+		distroconf=default.conf.unknown
 		;;
 esac
 AC_MSG_RESULT([$with_distro])
 AM_CONDITIONAL([HAVE_DEBIAN], [test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu"])
+
+AC_CHECK_PROG([NEWUIDMAP], [newuidmap], [newuidmap])
+AM_CONDITIONAL([HAVE_NEWUIDMAP], [test -n "$NEWUIDMAP"])
 
 # Allow disabling rpath
 AC_ARG_ENABLE([rpath],
@@ -60,14 +63,15 @@ AM_CONDITIONAL([ENABLE_RPATH], [test "x$enable_rpath" = "xyes"])
 
 # Documentation (manpages)
 AC_ARG_ENABLE([doc],
-	[AC_HELP_STRING([--enable-doc], [make mans (require docbook2x-man installed) [default=auto]])],
+	[AC_HELP_STRING([--enable-doc], [make mans (requires docbook2man or docbook2x-man to be installed) [default=auto]])],
 	[], [enable_doc=auto])
 
 if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
 	db2xman=""
+	dbparsers="docbook2x-man db2x_docbook2man docbook2man"
 
 	AC_MSG_CHECKING(for docbook2x-man)
-	for name in docbook2x-man db2x_docbook2man; do
+	for name in ${dbparsers}; do
 		if "$name" --help >/dev/null 2>&1; then
 			db2xman="$name"
 			break;
@@ -87,6 +91,13 @@ if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
 fi
 AM_CONDITIONAL([ENABLE_DOCBOOK], [test "x$db2xman" != "x"])
 
+if test "x$db2xman" = "xdocbook2man"; then
+	docdtd="\"-//Davenport//DTD DocBook V3.0//EN\""
+else
+	docdtd="\"-//OASIS//DTD DocBook XML\" \"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd\""
+fi
+AC_SUBST(docdtd)
+
 # Apparmor
 AC_ARG_ENABLE([apparmor],
 	[AC_HELP_STRING([--enable-apparmor], [enable apparmor])],
@@ -96,6 +107,8 @@ if test "$enable_apparmor" = "check" ; then
 	AC_CHECK_LIB([apparmor],[aa_change_profile],[enable_apparmor=yes], [enable_apparmor=no])
 fi
 AM_CONDITIONAL([ENABLE_APPARMOR], [test "x$enable_apparmor" = "xyes"])
+
+AC_CHECK_LIB([gnutls], [gnutls_hash_fast])
 
 AM_COND_IF([ENABLE_APPARMOR],
 	[AC_CHECK_HEADER([sys/apparmor.h],[],[AC_MSG_ERROR([You must install the AppArmor development package in order to compile lxc])])
@@ -137,22 +150,75 @@ AM_COND_IF([ENABLE_PYTHON],
 	PKG_CHECK_MODULES([PYTHONDEV], [python3 >= 3.2],[],[AC_MSG_ERROR([You must install python3-dev])])
 	AC_DEFINE_UNQUOTED([ENABLE_PYTHON], 1, [Python3 is available])])
 
-# Lua module and scripts
-if test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu" ; then
-    LUAPKGCONFIG=lua5.1
-else
-    LUAPKGCONFIG=lua
-fi
+# Not in older autoconf versions
+# AS_VAR_COPY(DEST, SOURCE)
+# -------------------------
+# Set the polymorphic shell variable DEST to the contents of the polymorphic
+# shell variable SOURCE.
+m4_ifdef([AS_VAR_COPY], [],
+[AC_DEFUN([AS_VAR_COPY],
+    [AS_LITERAL_IF([$1[]$2], [$1=$$2], [eval $1=\$$2])])
+])
 
+dnl PKG_CHECK_VAR was introduced with pkg-config 0.28
+m4_ifdef([PKG_CHECK_VAR], [],
+[AC_DEFUN([PKG_CHECK_VAR],
+    [AC_REQUIRE([PKG_PROG_PKG_CONFIG])dnl
+     AC_ARG_VAR([$1], [value of $3 for $2, overriding pkg-config])dnl
+     _PKG_CONFIG([$1], [variable="][$3]["], [$2])
+     AS_VAR_COPY([$1], [pkg_cv_][$1])
+     AS_VAR_IF([$1], [""], [$5], [$4])dnl
+    ])# PKG_CHECK_VAR
+])
+
+# Lua module and scripts
 AC_ARG_ENABLE([lua],
 	[AC_HELP_STRING([--enable-lua], [enable lua binding])],
-	[enable_lua=yes], [enable_lua=no])
+	[], [enable_lua=check])
 
-AM_CONDITIONAL([ENABLE_LUA], [test "x$enable_lua" = "xyes"])
+AC_ARG_WITH([lua-pc],
+	[AS_HELP_STRING(
+		[--with-lua-pc=PKG],
+		[Specify pkg-config package name for lua]
+	)], [], [with_lua_pc=no])
+
+if test "x$enable_lua" = "xyes" -a "x$with_lua_pc" != "xno"; then
+	# exit with error if not found
+	PKG_CHECK_MODULES([LUA], [$with_lua_pc], [LUAPKGCONFIG=$with_lua_pc])
+fi
+
+if test "x$enable_lua" = "xcheck" -a "x$with_lua_pc" != "xno"; then
+	PKG_CHECK_MODULES([LUA], [$with_lua_pc],
+		[LUAPKGCONFIG=$with_lua_pc
+		enable_lua=yes],
+		[enable_lua=no])
+fi
+
+if test "x$enable_lua" != "xno"; then
+	PKG_CHECK_MODULES([LUA], [lua], [LUAPKGCONFIG=lua],
+		[PKG_CHECK_MODULES([LUA], [lua5.2], [LUAPKGCONFIG=lua5.2],
+			[PKG_CHECK_MODULES([LUA], [lua5.1], [LUAPKGCONFIG=lua5.1],
+				[AS_IF([test "x$enable_lua" = "xyes"],
+					[AC_MSG_ERROR([Lua not found. Please use --with-lua-pc=PKG])],
+					[enable_lua=no])]
+			)]
+		)])
+	AS_IF([test "x$LUAPKGCONFIG" != "x"], [enable_lua=yes])
+fi
+
+AM_CONDITIONAL([ENABLE_LUA],
+	[test "x$enable_lua" = "xyes"])
 
 AM_COND_IF([ENABLE_LUA],
-	[PKG_CHECK_MODULES([LUA], [$LUAPKGCONFIG >= 5.1],[],[AC_MSG_ERROR([You must install lua-devel for lua 5.1])])
-	AC_DEFINE_UNQUOTED([ENABLE_LUA], 1, [Lua is available])])
+	[AC_MSG_CHECKING([Lua version])
+	PKG_CHECK_VAR([LUA_VERSION], [$LUAPKGCONFIG], [V],,
+		[PKG_CHECK_VAR([LUA_VERSION], [$LUAPKGCONFIG], [major_version])])
+	AC_MSG_RESULT([$LUA_VERSION])
+	PKG_CHECK_VAR([LUA_INSTALL_CMOD], [$LUAPKGCONFIG], [INSTALL_CMOD],,
+		[LUA_INSTALL_CMOD=$libdir/lua/$LUA_VERSION])
+	PKG_CHECK_VAR([LUA_INSTALL_LMOD], [$LUAPKGCONFIG], [INSTALL_LMOD],,
+		[LUA_INSTALL_LMOD=$datadir/lua/$LUA_VERSION])
+	])
 
 # Optional test binaries
 AC_ARG_ENABLE([tests],
@@ -175,6 +241,18 @@ AC_ARG_WITH([global-conf],
 		[--with-global-conf=dir],
 		[global lxc configuration file]
 	)], [], [with_global_conf=['${sysconfdir}/lxc/lxc.conf']])
+
+AC_ARG_WITH([usernic-conf],
+	[AC_HELP_STRING(
+		[--with-usernic-conf],
+		[user network interface configuration file]
+	)], [], [with_usernic_conf=['${sysconfdir}/lxc/lxc-usernet']])
+
+AC_ARG_WITH([usernic-db],
+	[AC_HELP_STRING(
+		[--with-usernic-db],
+		[lxc user nic database]
+	)], [], [with_usernic_db=['/run/lxc/nics']])
 
 # Rootfs path, where the container mount structure is assembled
 AC_ARG_WITH([rootfs-path],
@@ -210,13 +288,16 @@ AS_AC_EXPAND(BINDIR, "$bindir")
 AS_AC_EXPAND(LIBEXECDIR, "$libexecdir")
 AS_AC_EXPAND(INCLUDEDIR, "$includedir")
 AS_AC_EXPAND(SYSCONFDIR, "$sysconfdir")
+AS_AC_EXPAND(LXC_DEFAULT_CONFIG, "$sysconfdir/lxc/default.conf")
 AS_AC_EXPAND(DATADIR, "$datadir")
 AS_AC_EXPAND(LOCALSTATEDIR, "$localstatedir")
 AS_AC_EXPAND(DOCDIR, "$docdir")
-AS_AC_EXPAND(LXC_DEFAULT_CONF, "$defaultconf")
+AS_AC_EXPAND(LXC_DISTRO_CONF, "$distroconf")
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 AS_AC_EXPAND(LXCPATH, "$with_config_path")
 AS_AC_EXPAND(LXC_GLOBAL_CONF, "$with_global_conf")
+AS_AC_EXPAND(LXC_USERNIC_CONF, "$with_usernic_conf")
+AS_AC_EXPAND(LXC_USERNIC_DB, "$with_usernic_db")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "$with_rootfs_path")
 AS_AC_EXPAND(LXCTEMPLATEDIR, "$datadir/lxc/templates")
 AS_AC_EXPAND(LXCHOOKDIR, "$datadir/lxc/hooks")
@@ -270,10 +351,10 @@ AM_CONDITIONAL([IS_BIONIC], [test "x$is_bionic" = "xyes"])
 AC_CHECK_DECLS([PR_CAPBSET_DROP], [], [], [#include <sys/prctl.h>])
 
 # Check for some headers
-AC_CHECK_HEADERS([sys/signalfd.h pty.h sys/capability.h sys/personality.h utmpx.h sys/timerfd.h])
+AC_CHECK_HEADERS([sys/signalfd.h pty.h ifaddrs.h sys/capability.h sys/personality.h utmpx.h sys/timerfd.h])
 
 # Check for some syscalls functions
-AC_CHECK_FUNCS([setns pivot_root sethostname unshare])
+AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr])
 
 # Check for some functions
 AC_CHECK_LIB(util, openpty)
@@ -326,7 +407,6 @@ AC_CONFIG_FILES([
 	doc/lxc-netstat.sgml
 	doc/lxc-ps.sgml
 	doc/lxc-restart.sgml
-	doc/lxc-shutdown.sgml
 	doc/lxc-start-ephemeral.sgml
 	doc/lxc-start.sgml
 	doc/lxc-stop.sgml
@@ -355,6 +435,7 @@ AC_CONFIG_FILES([
 	hooks/Makefile
 
 	templates/Makefile
+	templates/lxc-cirros
 	templates/lxc-debian
 	templates/lxc-ubuntu
 	templates/lxc-ubuntu-cloud
@@ -373,11 +454,7 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-netstat
 	src/lxc/lxc-checkconfig
 	src/lxc/lxc-version
-	src/lxc/lxc-create
-	src/lxc/lxc-clone
-	src/lxc/lxc-shutdown
 	src/lxc/lxc-start-ephemeral
-	src/lxc/lxc-destroy
 	src/lxc/legacy/lxc-ls
 	src/lxc/lxc.functions
 

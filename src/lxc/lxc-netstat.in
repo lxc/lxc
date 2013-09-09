@@ -15,10 +15,12 @@
 
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+. @DATADIR@/lxc/lxc.functions
 
 usage() {
-    echo "usage: $(basename $0) -n|--name <name> -- [netstat_options]" >&2
+    echo "usage: $(basename $0) -n|--name <name> [-P|--lxcpath <lxc_path>] -- [netstat_options]" >&2
 }
 
 help() {
@@ -26,8 +28,9 @@ help() {
     echo >&2
     echo "Execute 'netstat' for the specified container." >&2
     echo >&2
-    echo "  --name NAME       specify the container name" >&2
-    echo "  NETSTAT_OPTIONS   netstat command options (see \`netstat --help')" >&2
+    echo "  --name NAME               specify the container name" >&2
+    echo "  --lxcpath LXC_PATH        use an alternate container path" >&2
+    echo "  NETSTAT_OPTIONS           netstat command options (see \`netstat --help')" >&2
 }
 
 get_parent_cgroup()
@@ -71,8 +74,20 @@ while true; do
     case $1 in
         -h|--help)
             help; exit 1;;
-        -n|--name)
+        -n)
+            # If we already have a value for $name, treat -n as being an
+            # argument for netstat
+            if [ -n "$name" ]
+            then
+                break
+            else
+                name="$2"; shift 2;
+            fi
+            ;;
+        --name)
             name=$2; shift 2;;
+	-P|--lxcpath)
+            lxc_path="$2"; shift 2;;
         --exec)
             exec="exec"; shift;;
         --)
@@ -92,11 +107,17 @@ if [ -z "$name" ]; then
     exit 1
 fi
 
-if [ -z "$exec" ]; then
-    exec @BINDIR@/lxc-unshare -s MOUNT -- $0 -n $name --exec "$@"
+if [ -z "$lxc_path" ]; then
+    echo "$(basename $0): no configuration path defined" >&2
+    usage
+    exit 1
 fi
 
-if lxc-info -n $name --state-is 'STOPPED'; then
+if [ -z "$exec" ]; then
+    exec @BINDIR@/lxc-unshare -s MOUNT -- $0 -n $name -P "$lxc_path" --exec -- "$@"
+fi
+
+if lxc-info -n $name -P "$lxc_path" --state-is 'STOPPED'; then
     echo "$(basename $0): container '$name' is not running" >&2
     exit 1
 fi

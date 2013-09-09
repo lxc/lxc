@@ -28,6 +28,7 @@ templates/lxc-alpine
 templates/lxc-altlinux
 templates/lxc-archlinux
 templates/lxc-busybox
+templates/lxc-cirros
 templates/lxc-debian
 templates/lxc-fedora
 templates/lxc-opensuse
@@ -43,6 +44,7 @@ src/lxc/lxc-checkconfig
 src/lxc/lxc-checkpoint
 src/lxc/lxc-clone
 src/lxc/lxc-console
+src/lxc/lxc-config
 src/lxc/lxc-create
 src/lxc/lxc-destroy
 src/lxc/lxc-execute
@@ -52,6 +54,7 @@ src/lxc/lxc-info
 src/lxc/lxc-init
 src/lxc/lxc-kill
 src/lxc/lxc-monitor
+src/lxc/lxc-monitord
 src/lxc/lxc-netstat
 src/lxc/lxc-ps
 src/lxc/lxc-restart
@@ -64,20 +67,25 @@ src/lxc/lxc-unshare
 src/lxc/lxc-version
 src/lxc/lxc-wait
 src/lxc/legacy/lxc-ls
+src/lxc/lxc-user-nic
 
 src/python-lxc/build/
 src/python-lxc/lxc/__pycache__/
 
+src/tests/lxc-test-cgpath
+src/tests/lxc-test-clonetest
+src/tests/lxc-test-console
 src/tests/lxc-test-containertests
 src/tests/lxc-test-createtest
 src/tests/lxc-test-destroytest
 src/tests/lxc-test-get_item
 src/tests/lxc-test-getkeys
 src/tests/lxc-test-locktests
+src/tests/lxc-test-lxcpath
 src/tests/lxc-test-saveconfig
 src/tests/lxc-test-shutdowntest
 src/tests/lxc-test-startone
-
+src/tests/lxc-usernic-test
 
 config/compile
 config/config.guess
@@ -104,3 +112,5 @@ src/stamp-h1
 
 .pc
 patches
+*.orig
+*.rej

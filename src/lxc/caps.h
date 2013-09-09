@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "config.h"
 
@@ -30,7 +30,6 @@ extern int lxc_caps_reset(void);
 extern int lxc_caps_down(void);
 extern int lxc_caps_up(void);
 extern int lxc_caps_init(void);
-extern int lxc_caps_check(void);
 
 extern int lxc_caps_last_cap(void);
 #else
@@ -45,9 +44,6 @@ static inline int lxc_caps_up(void) {
 }
 static inline int lxc_caps_init(void) {
         return 0;
-}
-static inline int lxc_caps_check(void) {
-        return 1;
 }
 
 static inline int lxc_caps_last_cap(void) {

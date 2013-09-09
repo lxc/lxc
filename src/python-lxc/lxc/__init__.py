@@ -18,7 +18,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
 import _lxc
@@ -230,28 +230,6 @@ class Container(_lxc.Container):
 
         return _lxc.Container.set_config_item(self, key, value)
 
-    def attach(self, namespace="ALL", *cmd):
-        """
-            Attach to a running container.
-        """
-
-        if not self.running:
-            return False
-
-        attach = ["lxc-attach", "-n", self.name,
-                  "-P", self.get_config_path()]
-        if namespace != "ALL":
-            attach += ["-s", namespace]
-
-        if cmd:
-            attach += ["--"] + list(cmd)
-
-        if subprocess.call(
-                attach,
-                universal_newlines=True) != 0:
-            return False
-        return True
-
     def create(self, template, args={}):
         """
             Create a new rootfs for the container.
@@ -292,19 +270,26 @@ class Container(_lxc.Container):
         self.load_config()
         return True
 
-    def console(self, tty="1"):
+    def console(self, ttynum=-1, stdinfd=0, stdoutfd=1, stderrfd=2, escape=1):
         """
-            Access the console of a container.
+            Attach to console of running container.
         """
 
         if not self.running:
             return False
 
-        if subprocess.call(["lxc-console", "-n", self.name, "-t", "%s" % tty,
-                            "-P", self.get_config_path()],
-                           universal_newlines=True) != 0:
+        return _lxc.Container.console(self, ttynum, stdinfd, stdoutfd,
+                                      stderrfd, escape)
+
+    def console_getfd(self, ttynum=-1):
+        """
+            Attach to console of running container.
+        """
+
+        if not self.running:
             return False
-        return True
+
+        return _lxc.Container.console_getfd(self, ttynum)
 
     def get_cgroup_item(self, key):
         """
@@ -332,65 +317,6 @@ class Container(_lxc.Container):
         else:
             return value
 
-    def get_ips(self, timeout=60, interface=None, protocol=None):
-        """
-            Returns the list of IP addresses for the container.
-        """
-
-        if not self.running:
-            return False
-
-        ips = []
-
-        count = 0
-        while count < timeout:
-            if count != 0:
-                time.sleep(1)
-
-            base_cmd = ["lxc-attach", "-s", "NETWORK", "-n", self.name, "--",
-                        "ip"]
-
-            # Get IPv6
-            if protocol in ("ipv6", None):
-                ip6_cmd = base_cmd + ["-6", "addr", "show", "scope", "global"]
-                if interface:
-                    ip = subprocess.Popen(ip6_cmd + ["dev", interface],
-                                          stdout=subprocess.PIPE,
-                                          universal_newlines=True)
-                else:
-                    ip = subprocess.Popen(ip6_cmd, stdout=subprocess.PIPE,
-                                          universal_newlines=True)
-
-                ip.wait()
-                for line in ip.stdout.read().split("\n"):
-                    fields = line.split()
-                    if len(fields) > 2 and fields[0] == "inet6":
-                        ips.append(fields[1].split('/')[0])
-
-            # Get IPv4
-            if protocol in ("ipv4", None):
-                ip4_cmd = base_cmd + ["-4", "addr", "show", "scope", "global"]
-                if interface:
-                    ip = subprocess.Popen(ip4_cmd + ["dev", interface],
-                                          stdout=subprocess.PIPE,
-                                          universal_newlines=True)
-                else:
-                    ip = subprocess.Popen(ip4_cmd, stdout=subprocess.PIPE,
-                                          universal_newlines=True)
-
-                ip.wait()
-                for line in ip.stdout.read().split("\n"):
-                    fields = line.split()
-                    if len(fields) > 2 and fields[0] == "inet":
-                        ips.append(fields[1].split('/')[0])
-
-            if ips:
-                break
-
-            count += 1
-
-        return ips
-
     def get_keys(self, key=None):
         """
             Returns a list of valid sub-keys.
@@ -407,12 +333,41 @@ class Container(_lxc.Container):
         else:
             return value
 
+    def get_ips(self, interface=None, family=None, scope=None, timeout=0):
+        """
+            Get a tuple of IPs for the container.
+        """
+
+        kwargs = {}
+        if interface:
+            kwargs['interface'] = interface
+        if family:
+            kwargs['family'] = family
+        if scope:
+            kwargs['scope'] = scope
+
+        ips = None
+        timeout = int(os.environ.get('LXC_GETIP_TIMEOUT', timeout))
+
+        while not ips:
+            ips = _lxc.Container.get_ips(self, **kwargs)
+            if timeout == 0:
+                break
+
+            timeout -= 1
+            time.sleep(1)
+
+        return ips
+
     def set_config_item(self, key, value):
         """
             Set a config key to a provided value.
             The value can be a list for the keys supporting multiple values.
         """
-        old_value = self.get_config_item(key)
+        try:
+            old_value = self.get_config_item(key)
+        except KeyError:
+            old_value = None
 
         # Check if it's a list
         def set_key(key, value):
@@ -469,3 +424,52 @@ def list_containers(as_object=False, config_path=None):
         else:
             containers.append(entry.split("/")[-2])
     return containers
+
+def attach_run_command(cmd):
+    """
+        Run a command when attaching
+
+        Please do not call directly, this will execvp the command.
+        This is to be used in conjunction with the attach method
+        of a container.
+    """
+    if isinstance(cmd, tuple):
+        return _lxc.attach_run_command(cmd)
+    elif isinstance(cmd, list):
+        return _lxc.attach_run_command((cmd[0], cmd))
+    else:
+        return _lxc.attach_run_command((cmd, [cmd]))
+
+def attach_run_shell():
+    """
+        Run a shell when attaching
+
+        Please do not call directly, this will execvp the shell.
+        This is to be used in conjunction with the attach method
+        of a container.
+    """
+    return _lxc.attach_run_shell(None)
+
+def arch_to_personality(arch):
+    """
+        Determine the process personality corresponding to the architecture
+    """
+    if isinstance(arch, bytes):
+        arch = str(arch, 'utf-8')
+    return _lxc.arch_to_personality(arch)
+
+# Some constants for attach
+LXC_ATTACH_KEEP_ENV = _lxc.LXC_ATTACH_KEEP_ENV
+LXC_ATTACH_CLEAR_ENV = _lxc.LXC_ATTACH_CLEAR_ENV
+LXC_ATTACH_MOVE_TO_CGROUP = _lxc.LXC_ATTACH_MOVE_TO_CGROUP
+LXC_ATTACH_DROP_CAPABILITIES = _lxc.LXC_ATTACH_DROP_CAPABILITIES
+LXC_ATTACH_SET_PERSONALITY = _lxc.LXC_ATTACH_SET_PERSONALITY
+LXC_ATTACH_APPARMOR = _lxc.LXC_ATTACH_APPARMOR
+LXC_ATTACH_REMOUNT_PROC_SYS = _lxc.LXC_ATTACH_REMOUNT_PROC_SYS
+LXC_ATTACH_DEFAULT = _lxc.LXC_ATTACH_DEFAULT
+CLONE_NEWUTS = _lxc.CLONE_NEWUTS
+CLONE_NEWIPC = _lxc.CLONE_NEWIPC
+CLONE_NEWUSER = _lxc.CLONE_NEWUSER
+CLONE_NEWPID = _lxc.CLONE_NEWPID
+CLONE_NEWNET = _lxc.CLONE_NEWNET
+CLONE_NEWNS = _lxc.CLONE_NEWNS

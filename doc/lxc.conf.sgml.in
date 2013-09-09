@@ -19,11 +19,11 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+<!DOCTYPE refentry PUBLIC @docdtd@ [
 
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
 ]>
@@ -65,8 +65,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <para>
       The configuration file defines the different system resources to
       be assigned for the container. At present, the utsname, the
-      network, the mount points, the root file system and the control
-      groups are supported.
+      network, the mount points, the root file system, the user namespace,
+      and the control groups are supported.
     </para>
 
     <para>
@@ -76,11 +76,37 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </para>
 
     <refsect2>
+      <title>Configuration</title>
+      <para>
+	In order to ease administration of multiple related containers, it
+	is possible to have a container configuration file cause another
+	file to be loaded.  For instance, network configuration
+	can be defined in one common file which is included by multiple
+	containers.  Then, if the containers are moved to another host,
+	only one file may need to be updated.
+      </para>
+
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.include</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Specify the file to be included.  The included file must be
+	      in the same valid lxc configuration file format.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Architecture</title>
       <para>
 	Allows to set the architecture for the container. For example,
 	set a 32bits architecture for a container running 32bits
-	binaries on a 64bits host. That fix the container scripts
+	binaries on a 64bits host. This fixes the container scripts
 	which rely on the architecture to do some work like
 	downloading the packages.
       </para>
@@ -229,7 +255,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      bridge is set up as a reflective relay.  Broadcast
 	      frames coming in from the upper_dev get flooded to all
 	      macvlan interfaces in VEPA mode, local frames are not
-	      delivered locallay, or <option>bridge</option>, it
+	      delivered locally, or <option>bridge</option>, it
 	      provides the behavior of a simple bridge between
 	      different macvlan interfaces on the same port. Frames
 	      from one interface to another one get delivered directly
@@ -258,7 +284,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      specify an action to do for the
 	      network.
 	    </para>
-	
+
 	    <para><option>up:</option> activates the interface.
 	    </para>
 	  </listitem>
@@ -395,6 +421,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      type, other arguments may be passed:
 	      veth/macvlan/phys. And finally (host-sided) device name.
 	    </para>
+	    <para>
+	      Standard output from the script is logged at debug level.
+	      Standard error is not logged, but can be captured by the
+	      hook redirecting its standard error to standard output.
+	    </para>
 	  </listitem>
 	</varlistentry>
 
@@ -414,6 +445,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      (empty/veth/macvlan/phys), Depending on the network
 	      type, other arguments may be passed:
 	      veth/macvlan/phys. And finally (host-sided) device name.
+	    </para>
+	    <para>
+	      Standard output from the script is logged at debug level.
+	      Standard error is not logged, but can be captured by the
+	      hook redirecting its standard error to standard output.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -448,7 +484,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <para>
 	If the container is configured with a root filesystem and the
 	inittab file is setup to use the console, you may want to specify
-	where goes the output of this console.
+	where the output of this console goes.
       </para>
       <variablelist>
 	<varlistentry>
@@ -471,14 +507,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <refsect2>
       <title>Console through the ttys</title>
       <para>
-	If the container is configured with a root filesystem and the
-	inittab file is setup to launch a getty on the ttys. This
-	option will specify the number of ttys to be available for the
-	container. The number of getty in the inittab file of the
-	container should not be greater than the number of ttys
-	specified in this configuration file, otherwise the excess
-	getty sessions will die and respawn indefinitly giving
-	annoying messages on the console.
+	This option is useful if the container is configured with a root
+	filesystem and the inittab file is setup to launch a getty on the
+	ttys. The option specifies the number of ttys to be available for
+	the container. The number of gettys in the inittab file of the
+	container should not be greater than the number of ttys	specified
+	in this option, otherwise the excess getty sessions will die and
+	respawn indefinitely giving annoying messages on the console or in
+	<filename>/var/log/messages</filename>.
       </para>
       <variablelist>
 	<varlistentry>
@@ -534,7 +570,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
 	(limited to 100k) and fill in a minimal set of initial devices.
         This is generally required when starting a container containing
-        a "systemd" based "init" but may be optional at other times.  Addional
+        a "systemd" based "init" but may be optional at other times.  Additional
         devices in the containers /dev directory may be created through the
         use of the <option>lxc.hook.autodev</option> hook.
       </para>
@@ -590,13 +626,20 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    <para>
 	      specify a file location in
 	      the <filename>fstab</filename> format, containing the
-	      mount informations. If the rootfs is an image file or a
-	      device block and the fstab is used to mount a point
+	      mount information. If the rootfs is an image file or a
+	      block device and the fstab is used to mount a point
 	      somewhere in this rootfs, the path of the rootfs mount
 	      point should be prefixed with the
 	      <filename>@LXCROOTFSMOUNT@</filename> default path or
 	      the value of <option>lxc.rootfs.mount</option> if
-	      specified.
+	      specified. Note that when mounting a filesystem from an
+	      image file or block device the third field (fs_vfstype)
+	      cannot be auto as with
+              <citerefentry>
+		<refentrytitle>mount</refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>
+              but must be explicitly specified.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -728,6 +771,67 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	    </para>
 	  </listitem>
 	</varlistentry>
+	<varlistentry>
+	  <term>
+	    <option>lxc.cap.keep</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Specify the capability to be kept in the container. All other
+	      capabilities will be dropped.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>Apparmor profile</title>
+      <para>
+	If lxc was compiled and installed with apparmor support, and the host
+	system has apparmor enabled, then the apparmor profile under which the
+	container should be run can be specified in the container
+	configuration.  The default is <command>lxc-container-default</command>.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.aa_profile</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Specify the apparmor profile under which the container should
+	      be run.  To specify that the container should be unconfined,
+	      use
+	    </para>
+	      <programlisting>lxc.aa_profile = unconfined</programlisting>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>Seccomp configuration</title>
+      <para>
+        A container can be started with a reduced set of available
+	system calls by loading a seccomp profile at startup.  The
+	seccomp configuration file should begin with a version number
+	(which currently must be 1) on the first line, a policy type
+	(which must be 'whitelist') on the second line, followed by a
+	list of allowed system call numbers, one per line.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.seccomp</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Specify a file containing the seccomp configuration to
+	      load before the container starts.
+	     </para>
+	  </listitem>
+	</varlistentry>
       </variablelist>
     </refsect2>
 
@@ -763,10 +867,36 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </refsect2>
 
     <refsect2>
-      <title>Startup hooks</title>
+      <title>Container hooks</title>
       <para>
-        Startup hooks are programs or scripts which can be executed
+        Container hooks are programs or scripts which can be executed
 	at various times in a container's lifetime.
+      </para>
+      <para>
+        When a container hook is executed, information is passed both
+	as command line arguments and through environment variables.
+	The arguments are:
+	<itemizedlist>
+	  <listitem> Container name. </listitem>
+	  <listitem> Section (always 'lxc'). </listitem>
+	  <listitem> The hook type (i.e. 'clone' or 'pre-mount'). </listitem>
+	  <listitem> Additional arguments In the
+	  case of the clone hook, any extra arguments passed to
+	  lxc-clone will appear as further arguments to the hook. </listitem>
+	</itemizedlist>
+	The following environment variables are set:
+	<itemizedlist>
+	  <listitem> LXC_NAME: is the container's name. </listitem>
+	  <listitem> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </listitem>
+	  <listitem> LXC_CONFIG_FILE: the path to the container configuration file. </listitem>
+	  <listitem> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </listitem>
+	  <listitem> LXC_ROOTFS_PATH: this is the lxc.rootfs enty for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </listitem>
+	</itemizedlist>
+      </para>
+      <para>
+        Standard output from the hooks is logged at debug level.
+        Standard error is not logged, but can be captured by the
+        hook redirecting its standard error to standard output.
       </para>
       <variablelist>
 	<varlistentry>
@@ -859,10 +989,24 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	  </listitem>
 	</varlistentry>
       </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.clone</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      A hook to be run when the container is cloned to a new one.
+	      See <refentrytitle><command>lxc-clone</command></refentrytitle>
+	      <manvolnum>1</manvolnum> for more information.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
     </refsect2>
 
     <refsect2>
-      <title>Startup hooks Environment Variables</title>
+      <title>Container hooks Environment Variables</title>
       <para>
         A number of environment variables are made available to the startup
         hooks to provide configuration information and assist in the
@@ -893,7 +1037,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	      Host relative path to the container configuration file.  This
 	      gives the container to reference the original, top level,
 	      configuration file for the container in order to locate any
-	      addotional configuration information not otherwise made
+	      additional configuration information not otherwise made
 	      available.  [<option>-f</option>]
 	    </para>
 	  </listitem>
@@ -956,6 +1100,54 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</varlistentry>
       </variablelist>
 
+    </refsect2>
+    <refsect2>
+    <title> Logging</title>
+    <para>
+      Logging can be configured on a per-container basis.  By default,
+      depending upon how the lxc package was compiled, container startup
+      is logged only at the ERROR level, and logged to a file named after
+      the container (with '.log' appended) either under the container path,
+      or under @LOGPATH@.
+    </para>
+    <para>
+      Both the default log level and the log file can be specified in the
+      container configuration file, overriding the default behavior.  Note
+      that the configuration file entries can in turn be overridden by the
+      command line options to <command>lxc-start</command>.
+    </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.loglevel</option>
+	  </term>
+	  <listitem>
+	    <para>
+	    The level at which to log.  The log level is an integer in
+	    the range of 0..8 inclusive, where a lower number means more
+	    verbose debugging.  In particular 0 = trace, 1 = debug, 2 =
+	    info, 3 = notice, 4 = warn, 5 = error, 6 = critical, 7 =
+	    alert, and 8 = fatal.  If unspecified, the level defaults
+	    to 5 (error), so that only errors and above are logged.
+	    </para>
+	    <para>
+	    Note that when a script (such as either a hook script or a
+	    network interface up or down script) is called, the script's
+	    standard output is logged at level 1, debug.
+	    </para>
+	  </listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>
+	    <option>lxc.logfile</option>
+	  </term>
+	  <listitem>
+	    <para>
+	    The file to which logging info should be written.
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
     </refsect2>
 
   </refsect1>
@@ -1069,8 +1261,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
       <citerefentry>
 	<refentrytitle><filename>fstab</filename></refentrytitle>
 	<manvolnum>5</manvolnum>
-      </citerefentry>
+      </citerefentry>,
 
+      <citerefentry>
+	<refentrytitle><filename>capabilities</filename></refentrytitle>
+	<manvolnum>7</manvolnum>
+      </citerefentry>
     </simpara>
   </refsect1>
 

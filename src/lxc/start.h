@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #ifndef __lxc_state_h
 #define __lxc_state_h
@@ -37,6 +37,8 @@ struct lxc_operations {
 	int (*post_start)(struct lxc_handler *, void *);
 };
 
+struct cgroup_desc;
+
 struct lxc_handler {
 	pid_t pid;
 	char *name;
@@ -53,7 +55,7 @@ struct lxc_handler {
 #endif
 	int pinfd;
 	const char *lxcpath;
-	char *cgroup;
+	struct cgroup_desc *cgroup;
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *, const char *);

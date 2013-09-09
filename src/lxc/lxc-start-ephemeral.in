@@ -22,7 +22,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 # NOTE: To remove once the API is stabilized
@@ -85,13 +85,17 @@ parser.add_argument("--key", "-S", type=str,
 parser.add_argument("--daemon", "-d", action="store_true",
                     help=_("run in the background"))
 
+parser.add_argument("--storage-type", "-s", type=str, default=None,
+                    choices=("tmpfs", "dir"),
+                    help=("type of storage use by the container"))
+
 parser.add_argument("--union-type", "-U", type=str, default="overlayfs",
                     choices=("overlayfs", "aufs"),
                     help=_("type of union (overlayfs or aufs), "
                            "defaults to overlayfs."))
 
 parser.add_argument("--keep-data", "-k", action="store_true",
-                    help=_("Use a persistent backend instead of tmpfs."))
+                    help=_("don't wipe everything clean at the end"))
 
 parser.add_argument("command", metavar='CMD', type=str, nargs="*",
                     help=_("Run specific command in container "
@@ -103,6 +107,16 @@ args = parser.parse_args()
 ## Check that -d and CMD aren't used at the same time
 if args.command and args.daemon:
     parser.error(_("You can't use -d and a command at the same time."))
+
+## Check that -k isn't used with -s tmpfs
+if not args.storage_type:
+    if args.keep_data:
+        args.storage_type = "dir"
+    else:
+        args.storage_type = "tmpfs"
+
+if args.keep_data and args.storage_type == "tmpfs":
+    parser.error(_("You can't use -k with the tmpfs storage type."))
 
 ## The user needs to be uid 0
 if not os.geteuid() == 0:
@@ -134,7 +148,9 @@ dest = lxc.Container(os.path.basename(dest_path), args.lxcpath)
 dest.load_config(orig.config_file_name)
 dest.set_config_item("lxc.utsname", dest.name)
 dest.set_config_item("lxc.rootfs", os.path.join(dest_path, "rootfs"))
-dest.set_config_item("lxc.network.hwaddr", randomMAC())
+for nic in dest.network:
+    if hasattr(nic, 'hwaddr'):
+        nic.hwaddr = randomMAC()
 
 overlay_dirs = [(orig.get_config_item("lxc.rootfs"), "%s/rootfs/" % dest_path)]
 
@@ -188,7 +204,7 @@ LXC_NAME="%s"
         target = "%s/delta%s" % (dest_path, count)
         fd.write("mkdir -p %s %s\n" % (target, entry[1]))
 
-        if not args.keep_data:
+        if args.storage_type == "tmpfs":
             fd.write("mount -n -t tmpfs none %s\n" % (target))
 
         if args.union_type == "overlayfs":
@@ -252,7 +268,7 @@ if not dest.start() or not dest.wait("RUNNING", timeout=5):
 
 # Deal with the case where we just attach to the container's console
 if not args.command and not args.daemon:
-    dest.console(tty=1)
+    dest.console()
     dest.shutdown(timeout=5)
     sys.exit(0)
 
@@ -287,7 +303,7 @@ if args.user:
     cmd += ["-l", args.user]
 
 if args.key:
-    cmd += ["-k", args.key]
+    cmd += ["-i", args.key]
 
 for ip in ips:
     ssh_cmd = cmd + [ip] + args.command

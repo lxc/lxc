@@ -17,11 +17,11 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+<!DOCTYPE refentry PUBLIC @docdtd@ [
 
 <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
@@ -48,9 +48,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     <cmdsynopsis>
       <command>lxc-info</command>
       <arg choice="req">-n <replaceable>name</replaceable></arg>
-      <arg choice="req">-s</arg>
-      <arg choice="req">-p</arg>
-      <arg choice="req">-t <replaceable>state</replaceable></arg>
+      <arg choice="opt">-c <replaceable>KEY</replaceable></arg>
+      <arg choice="opt">-s</arg>
+      <arg choice="opt">-p</arg>
+      <arg choice="opt">-t <replaceable>state</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -73,6 +74,18 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
         <listitem>
           <para>
             The container name.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-c <replaceable>KEY</replaceable></optional></option>
+        </term>
+        <listitem>
+          <para>
+            Print a configuration key from the running container. This option
+            may be given mulitple times to print out multiple key = value pairs.
           </para>
         </listitem>
       </varlistentry>
@@ -131,6 +144,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
         <listitem>
           <para>
             exits 0 if foo is RUNNING, 1 otherwise.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>lxc-info -n foo -c lxc.network.0.veth.pair</term>
+        <listitem>
+          <para>
+            prints the veth pair name of foo.
           </para>
         </listitem>
       </varlistentry>

@@ -18,9 +18,21 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-extern int lxc_create_console(struct lxc_conf *);
-extern void lxc_delete_console(struct lxc_console *);
-extern int lxc_console_mainloop_add(struct lxc_epoll_descr *, struct lxc_handler *);
+struct lxc_epoll_descr;
+struct lxc_container;
+
+extern int  lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttynum);
+extern int  lxc_console_create(struct lxc_conf *);
+extern void lxc_console_delete(struct lxc_console *);
+extern void lxc_console_free(struct lxc_conf *conf, int fd);
+
+extern int  lxc_console_mainloop_add(struct lxc_epoll_descr *, struct lxc_handler *);
+extern void lxc_console_sigwinch(int sig);
+extern int  lxc_console(struct lxc_container *c, int ttynum,
+		        int stdinfd, int stdoutfd, int stderrfd,
+		        int escape);
+extern int  lxc_console_getfd(struct lxc_container *c, int *ttynum,
+			      int *masterfd);

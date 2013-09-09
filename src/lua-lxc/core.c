@@ -6,26 +6,36 @@
  * Authors:
  * Dwight Engen <dwight.engen@oracle.com>
  *
- * This library is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2, as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 #define LUA_LIB
 #define _GNU_SOURCE
 #include <lua.h>
 #include <lauxlib.h>
+#include <assert.h>
 #include <string.h>
+#include <unistd.h>
+#include <libgen.h>
 #include <lxc/lxccontainer.h>
+
+#if LUA_VERSION_NUM < 502
+#define luaL_newlib(L,l) (lua_newtable(L), luaL_register(L,NULL,l))
+#define luaL_setfuncs(L,l,n) (assert(n==0), luaL_register(L,NULL,l))
+#define luaL_checkunsigned(L,n) luaL_checknumber(L,n)
+#endif
 
 #ifdef NO_CHECK_UDATA
 #define checkudata(L,i,tname)	lua_touserdata(L, i)
@@ -111,7 +121,7 @@ static int container_create(lua_State *L)
 	argv[i] = strdupa(luaL_checkstring(L, i+3));
     argv[i] = NULL;
 
-    lua_pushboolean(L, !!c->create(c, template_name, argv));
+    lua_pushboolean(L, !!c->create(c, template_name, NULL, NULL, 0, argv));
     return 1;
 }
 
@@ -372,10 +382,24 @@ static int lxc_default_config_path_get(lua_State *L) {
     return 1;
 }
 
+/* utility functions */
+static int lxc_util_usleep(lua_State *L) {
+    usleep((useconds_t)luaL_checkunsigned(L, 1));
+    return 0;
+}
+
+static int lxc_util_dirname(lua_State *L) {
+    char *path = strdupa(luaL_checkstring(L, 1));
+    lua_pushstring(L, dirname(path));
+    return 1;
+}
+
 static luaL_Reg lxc_lib_methods[] = {
     {"version_get",		lxc_version_get},
     {"default_config_path_get",	lxc_default_config_path_get},
     {"container_new",		container_new},
+    {"usleep",			lxc_util_usleep},
+    {"dirname",			lxc_util_dirname},
     {NULL, NULL}
 };
 
@@ -388,7 +412,7 @@ static int lxc_lib_uninit(lua_State *L) {
 LUALIB_API int luaopen_lxc_core(lua_State *L) {
     /* this is where we would initialize liblxc.so if we needed to */
 
-    luaL_register(L, "lxc", lxc_lib_methods);
+    luaL_newlib(L, lxc_lib_methods);
 
     lua_newuserdata(L, 0);
     lua_newtable(L);  /* metatable */
@@ -400,12 +424,12 @@ LUALIB_API int luaopen_lxc_core(lua_State *L) {
     lua_rawset(L, -3);
 
     luaL_newmetatable(L, CONTAINER_TYPENAME);
+    luaL_setfuncs(L, lxc_container_methods, 0);
     lua_pushvalue(L, -1);  /* push metatable */
     lua_pushstring(L, "__gc");
     lua_pushcfunction(L, container_gc);
     lua_settable(L, -3);
     lua_setfield(L, -2, "__index");  /* metatable.__index = metatable */
-    luaL_register(L, NULL, lxc_container_methods);
     lua_pop(L, 1);
     return 1;
 }

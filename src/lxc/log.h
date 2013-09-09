@@ -19,7 +19,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #ifndef _log_h
 #define _log_h
@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <string.h>
+#include <stdbool.h>
 
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 02000000
@@ -172,7 +173,7 @@ __lxc_log(const struct lxc_log_category* category,
 }
 
 /*
- * Helper macro to define log fonctions.
+ * Helper macro to define log functions.
  */
 #define lxc_log_priority_define(acategory, PRIORITY)			\
 									\
@@ -288,11 +289,14 @@ extern struct lxc_log_category lxc_log_category_lxc;
 extern int lxc_log_fd;
 
 extern int lxc_log_init(const char *name, const char *file,
-			const char *priority, const char *prefix, int quiet);
+			const char *priority, const char *prefix, int quiet,
+			const char *lxcpath);
 
-extern void lxc_log_setprefix(const char *a_prefix);
-extern int lxc_log_set_level(int level);
 extern int lxc_log_set_file(const char *fname);
-extern int lxc_log_get_level(void);
+extern int lxc_log_set_level(int level);
+extern void lxc_log_set_prefix(const char *prefix);
 extern const char *lxc_log_get_file(void);
+extern int lxc_log_get_level(void);
+extern bool lxc_log_has_valid_level(void);
+extern const char *lxc_log_get_prefix(void);
 #endif

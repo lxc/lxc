@@ -19,11 +19,11 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 -->
 
-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+<!DOCTYPE refentry PUBLIC @docdtd@ [
 
 <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
@@ -78,6 +78,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
     </para>
 
     <para>
+      A <replaceable>ttynum</replaceable> of 0 may be given to attach
+      to the container's /dev/console instead of its
+      dev/tty&lt;<replaceable>ttynum</replaceable>&gt;.
+    </para>
+
+    <para>
       A keyboard escape sequence may be used to disconnect from the tty
       and quit lxc-console. The default escape sequence is &lt;Ctrl+a q&gt;.
     </para>
@@ -107,8 +113,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 	</term>
 	<listitem>
 	  <para>
-	    Specify the tty number to connect, if not specified a tty
-	    number will be automatically choosen by the container.
+	    Specify the tty number to connect to or 0 for the console. If not
+	    specified the next available tty number will be automatically
+	    choosen by the container.
 	  </para>
 	</listitem>
       </varlistentry>

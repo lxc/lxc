@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include <stdio.h>
 #include <string.h>
@@ -30,7 +30,7 @@
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>
-#include <lxc/monitor.h>
+#include <lxc/lxccontainer.h>
 #include "arguments.h"
 
 lxc_log_define(lxc_wait_ui, lxc_monitor);
@@ -80,12 +80,22 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
+	struct lxc_container *c;
+
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return -1;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet))
+			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return -1;
 
-	return lxc_wait(strdup(my_args.name), my_args.states, my_args.timeout, my_args.lxcpath);
+	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
+	if (!c)
+		return -1;
+
+	if (!c->wait(c, my_args.states, my_args.timeout)) {
+		lxc_container_put(c);
+		return -1;
+	}
+	return 0;
 }

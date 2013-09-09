@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #define _GNU_SOURCE
@@ -227,42 +227,4 @@ int lxc_caps_last_cap(void)
 	return last_cap;
 }
 
-/*
- * check if we have the caps needed to start a container.  returns 1 on
- * success, 0 on error.  (I'd prefer this be a bool, but am afraid that
- * might fail to build on some distros).
- */
-int lxc_caps_check(void)
-{
-	uid_t uid = getuid();
-	cap_t caps;
-	cap_flag_value_t value;
-	int i, ret;
-
-	cap_value_t needed_caps[] = { CAP_SYS_ADMIN, CAP_NET_ADMIN, CAP_SETUID, CAP_SETGID };
-
-#define NUMCAPS ((int) (sizeof(needed_caps) / sizeof(cap_t)))
-
-	if (!uid)
-		return 1;
-
-	caps = cap_get_proc();
-	if (!caps) {
-		ERROR("failed to cap_get_proc: %m");
-		return 0;
-	}
-
-	for (i=0; i<NUMCAPS; i++) {
-		ret = cap_get_flag(caps, needed_caps[i], CAP_EFFECTIVE, &value);
-		if (ret) {
-			ERROR("Failed to cap_get_flag: %m");
-			return 0;
-		}
-		if (!value) {
-			return 0;
-		}
-	}
-
-	return 1;
-}
 #endif

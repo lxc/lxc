@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include <string.h>
 #include <unistd.h>
@@ -36,6 +36,7 @@ lxc_log_define(lxc_af_unix, lxc);
 int lxc_af_unix_open(const char *path, int type, int flags)
 {
 	int fd;
+	size_t len;
 	struct sockaddr_un addr;
 
 	if (flags & O_TRUNC)
@@ -52,8 +53,16 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 
 	addr.sun_family = AF_UNIX;
 	/* copy entire buffer in case of abstract socket */
-	memcpy(addr.sun_path, path,
-	       path[0]?strlen(path):sizeof(addr.sun_path));
+	len = sizeof(addr.sun_path);
+	if (path[0]) {
+		len = strlen(path);
+		if (len >= sizeof(addr.sun_path)) {
+			close(fd);
+			errno = ENAMETOOLONG;
+			return -1;
+		}
+	}
+	memcpy(addr.sun_path, path, len);
 
 	if (bind(fd, (struct sockaddr *)&addr, sizeof(addr))) {
 		int tmp = errno;
@@ -61,7 +70,7 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 		errno = tmp;
 		return -1;
 	}
-	
+
 	if (type == SOCK_STREAM && listen(fd, 100)) {
 		int tmp = errno;
 		close(fd);
@@ -75,8 +84,8 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 int lxc_af_unix_close(int fd)
 {
 	struct sockaddr_un addr;
-	socklen_t addrlen;
-	
+	socklen_t addrlen = sizeof(addr);
+
 	if (!getsockname(fd, (struct sockaddr *)&addr, &addrlen) &&
 	    addr.sun_path[0])
 		unlink(addr.sun_path);

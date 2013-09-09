@@ -18,12 +18,15 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #ifndef __monitor_h
 #define __monitor_h
 
 #include <sys/param.h>
+#include <sys/un.h>
+
+#include <lxc/conf.h>
 
 typedef enum {
 	lxc_msg_state,
@@ -32,11 +35,14 @@ typedef enum {
 
 struct lxc_msg {
 	lxc_msg_type_t type;
-	char name[MAXPATHLEN];
+	char name[NAME_MAX+1];
 	int value;
 };
 
-void lxc_monitor_send_state(const char *name, lxc_state_t state,
+extern int lxc_monitor_open(const char *lxcpath);
+extern int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr);
+extern void lxc_monitor_send_state(const char *name, lxc_state_t state,
 			    const char *lxcpath);
+extern int lxc_monitord_spawn(const char *lxcpath);
 
 #endif

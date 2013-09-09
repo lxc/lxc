@@ -19,7 +19,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
 import warnings
@@ -28,6 +28,7 @@ warnings.filterwarnings("ignore", "The python-lxc API isn't yet stable")
 import lxc
 import uuid
 import sys
+import time
 
 # Some constants
 LXC_TEMPLATE = "ubuntu"
@@ -90,8 +91,15 @@ assert(container.state == "RUNNING")
 
 ## Checking IP address
 print("Getting the IP addresses")
-ips = container.get_ips(timeout=10)
-container.attach("NETWORK|UTSNAME", "/sbin/ifconfig", "eth0")
+
+count = 0
+ips = []
+while not ips or count == 10:
+    ips = container.get_ips()
+    time.sleep(1)
+    count += 1
+container.attach_wait(lxc.attach_run_command, ["ifconfig", "eth0"],
+                      namespaces=(lxc.CLONE_NEWNET + lxc.CLONE_NEWUTS))
 
 # A few basic checks of the current state
 assert(len(ips) > 0)

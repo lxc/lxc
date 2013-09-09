@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -120,14 +120,16 @@ out:
 
 static int freeze_unfreeze(const char *name, int freeze, const char *lxcpath)
 {
-	char *nsgroup;
+	char *cgabspath;
 	int ret;
-	
-	ret = lxc_cgroup_path_get(&nsgroup, "freezer", name, lxcpath);
-	if (ret)
+
+	cgabspath = lxc_cgroup_path_get("freezer", name, lxcpath);
+	if (!cgabspath)
 		return -1;
 
-	return do_unfreeze(nsgroup, freeze, name, lxcpath);
+	ret = do_unfreeze(cgabspath, freeze, name, lxcpath);
+	free(cgabspath);
+	return ret;
 }
 
 int lxc_freeze(const char *name, const char *lxcpath)
@@ -141,14 +143,19 @@ int lxc_unfreeze(const char *name, const char *lxcpath)
 	return freeze_unfreeze(name, 0, lxcpath);
 }
 
-int lxc_unfreeze_bypath(const char *cgpath)
+int lxc_unfreeze_bypath(const char *cgrelpath)
 {
-	char *nsgroup;
-	int ret;
-	
-	ret = cgroup_path_get(&nsgroup, "freezer", cgpath);
-	if (ret)
-		return -1;
+	char cgabspath[MAXPATHLEN];
+	int len, ret;
 
-	return do_unfreeze(nsgroup, 0, NULL, NULL);
+	if (!get_subsys_mount(cgabspath, "freezer"))
+		return -1;
+	len = strlen(cgabspath);
+	ret = snprintf(cgabspath+len, MAXPATHLEN-len, "/%s", cgrelpath);
+	if (ret < 0 || ret >= MAXPATHLEN-len) {
+		ERROR("freezer path name too long");
+		return -1;
+	}
+
+	return do_unfreeze(cgabspath, 0, NULL, NULL);
 }

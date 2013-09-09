@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -30,14 +30,8 @@
 
 #include "parse.h"
 #include "config.h"
+#include "utils.h"
 #include <lxc/log.h>
-
-/* Define getline() if missing from the C library */
-#ifndef HAVE_GETLINE
-#ifdef HAVE_FGETLN
-#include <../include/getline.h>
-#endif
-#endif
 
 /* Workaround for the broken signature of alphasort() in bionic.
    This was fixed upstream in 40e467ec668b59be25491bd44bf348a884d6a68d so the

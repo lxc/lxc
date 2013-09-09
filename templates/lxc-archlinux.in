@@ -22,7 +22,7 @@
 
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # defaults
 arch=$(uname -m)
@@ -125,9 +125,8 @@ lxc.utsname=${name}
 lxc.autodev=1
 lxc.tty=1
 lxc.pts=1024
-lxc.rootfs=${rootfs_path}
 lxc.mount=${config_path}/fstab
-lxc.cap.drop=mknod sys_module mac_admin mac_override
+lxc.cap.drop=mknod sys_module mac_admin mac_override sys_time
 lxc.kmsg=0
 lxc.stopsignal=SIGRTMIN+4
 #networking
@@ -152,6 +151,8 @@ lxc.cgroup.devices.allow = c 5:1 rwm
 lxc.cgroup.devices.allow = c 5:2 rwm
 lxc.cgroup.devices.allow = c 136:* rwm
 EOF
+
+    grep -q "^lxc.rootfs" ${config_path}/config 2>/dev/null || echo "lxc.rootfs = ${rootfs_path}" >> ${config_path}/config
 
     cat > "${config_path}/fstab" << EOF
 sysfs sys sysfs ro,defaults 0 0
@@ -191,7 +192,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:P:n:c:l:t: -l help,path:,packages:,name:,config:,network_type:,network_link: -- "${@}")
+options=$(getopt -o hp:P:n:c:l:t: -l help,rootfs:,path:,packages:,name:,config:,network_type:,network_link: -- "${@}")
 if [ ${?} -ne 0 ]; then
     usage $(basename ${0})
     exit 1
@@ -204,6 +205,7 @@ do
     -h|--help)          usage ${0} && exit 0;;
     -p|--path)          path=${2}; shift 2;;
     -n|--name)          name=${2}; shift 2;;
+    --rootfs)           rootfs_path=${2}; shift 2;;
     -P|--packages)      additional_packages=${2}; shift 2;;
     -c|--config)        pacman_config=${2}; shift 2;;
     -t|--network_type)  lxc_network_type=${2}; shift 2;;
@@ -238,7 +240,9 @@ if [ "${EUID}" != "0" ]; then
     exit 1
 fi
 
-rootfs_path="${path}/rootfs"
+if [ -z "$rootfs_path" ]; then
+    rootfs_path="${path}/rootfs"
+fi
 config_path="${default_path}/${name}"
 
 revert() {

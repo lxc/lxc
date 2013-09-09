@@ -15,11 +15,13 @@
 
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+. @DATADIR@/lxc/lxc.functions
 
 usage()
 {
-    echo "usage: $(basename $0) [--lxc | --host | --name NAME] [--] [PS_OPTIONS...]" >&2
+    echo "usage: $(basename $0) [-P PATH] [--lxc | --host | --name NAME] [[--] [PS_OPTIONS...]" >&2
 }
 
 help() {
@@ -31,14 +33,16 @@ help() {
     echo "  --host        show processes not related to any container, i.e. to the host" >&2
     echo "  --name NAME   show processes in the specified container" >&2
     echo "                 (multiple containers can be separated by commas)" >&2
+    echo "  -P PATH       show container in lxcpath PATH" >&2
     echo "  PS_OPTIONS    ps command options (see \`ps --help')" >&2
 }
 
 get_parent_cgroup()
 {
-    local hierarchies hierarchy fields subsystems init_cgroup mountpoint
+    local hierarchies hierarchy fields init_cgroup mountpoint
 
     parent_cgroup=""
+    subsystems=""
 
     # Obtain a list of hierarchies that contain one or more subsystems
     hierarchies=$(tail -n +2 /proc/cgroups | cut -f 2)
@@ -62,11 +66,7 @@ get_parent_cgroup()
         if [ -z "$mountpoint" ]; then continue; fi
 
         # Return the absolute path to the containers' parent cgroup
-        # (do not append '/lxc' if the hierarchy contains the 'ns' subsystem)
-        case ",$subsystems," in
-            *,ns,*) parent_cgroup="${mountpoint}${init_cgroup%/}";;
-            *) parent_cgroup="${mountpoint}${init_cgroup%/}/lxc";;
-        esac
+        parent_cgroup="${mountpoint}${init_cgroup%/}";
         break
     done
 }
@@ -83,6 +83,8 @@ while true; do
             list_container_processes=1; shift;;
         --host)
             list_container_processes=-1; shift;;
+        -P|--lxcpath)
+            lxc_path=$2; shift 2;;
         --)
             shift; break;;
         *)
@@ -101,7 +103,10 @@ if [ ! -d "$parent_cgroup" ]; then
 fi
 
 if [ -z "$containers" ]; then
-    containers="$(find $parent_cgroup -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sed 's:.*/::')"
+    case ",$subsystems," in
+	*,ns,*) containers="$(find $parent_cgroup -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sed 's:.*/::')";;
+        *) containers="$(find $parent_cgroup/lxc -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sed 's:.*/::')";;
+    esac
 fi
 
 container_field_width=9
@@ -111,8 +116,12 @@ for container in ${containers}; do
         container_field_width=${#container}
     fi
 
-    if [ -f "$parent_cgroup/$container/tasks" ]; then
-        tasks_files="$tasks_files $parent_cgroup/$container/tasks"
+    if ! lxc-info -P $lxc_path -t STOPPED -n $container; then
+        initpid=`lxc-info -P $lxc_path -p -n $container | awk -F: '{ print $2 }' | awk '{ print $1 }'`
+        cgroup=`head -n 1 /proc/$initpid/cgroup | awk -F: '{ print $3}'`
+        if [ -f "$parent_cgroup/$cgroup/tasks" ]; then
+            tasks_files="$tasks_files $parent_cgroup$cgroup/tasks"
+        fi
     fi
 done
 

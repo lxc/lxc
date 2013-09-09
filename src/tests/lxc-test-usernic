@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# lxc: linux Container library
+
+# Authors:
+# Serge Hallyn <serge.hallyn@ubuntu.com>
+#
+# This is a test script for the lxc-user-nic program
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+conffile="/tmp/lxc-usernet"
+dbfile="/tmp/nics"
+sysfsdir=/tmp/lxcnettest
+
+rm -f $conffile $dbfile
+
+rm -rf $sysfsdir
+mkdir -p $sysfsdir
+
+# there is no conffile, so we have no permissions
+lxc-usernic-test 1111 veth lxcbr0 > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+	echo "Fail: empty conffile should not allow me a nic"
+	exit 1
+fi
+
+cat > $conffile << EOF
+$(id -un) veth lxcbr0 1
+EOF
+
+# Should be allowed one but not two
+lxc-usernic-test 1111 veth lxcbr0 > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+	echo "Failed to get one allowed nic"
+	exit 1
+fi
+
+lxc-usernic-test 1111 veth lxcbr0 > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+	echo "Fail: was able to get a second nic"
+	exit 1
+fi
+
+# now remove the 'existing nic' and make sure we're allowed to create
+# a new one
+lxc-usernic-test 1111 veth lxcbr0 > /dev/null 2>&1
+rm -rf $sysfsdir
+mkdir -p $sysfsdir
+if [ $? -ne 0 ]; then
+	echo "Fail: was unable to get a replacement nic"
+	exit 1
+fi
+
+echo "All tests passed"

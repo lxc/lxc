@@ -19,7 +19,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #ifndef __arguments_h
 #define __arguments_h
@@ -33,6 +33,7 @@ typedef int (*lxc_arguments_checker_t) (const struct lxc_arguments *);
 
 struct lxc_arguments {
 	const char *help;
+	void(*helpfn)(const struct lxc_arguments *);
 	const char *progname;
 	const struct option* options;
 	lxc_arguments_parser_t parser;
@@ -47,7 +48,10 @@ struct lxc_arguments {
 	const char *console;
 	const char *console_log;
 	const char *pidfile;
-	const char *lxcpath;
+	const char **lxcpath;
+	int lxcpath_cnt;
+	/* set to 0 to accept only 1 lxcpath, -1 for unlimited */
+	int lxcpath_additional;
 
 	/* for lxc-checkpoint/restart */
 	const char *statefile;
@@ -58,12 +62,26 @@ struct lxc_arguments {
 	int ttynum;
 	char escape;
 
-	/* for lxc-wait */
+	/* for lxc-wait and lxc-shutdown */
 	char *states;
 	long timeout;
+	int nowait;
+	int reboot;
+	int hardstop;
+	int shutdown;
+
+	/* for lxc-destroy */
+	int force;
 
 	/* close fds from parent? */
 	int close_all_fds;
+
+	/* lxc-create */
+	char *bdevtype, *configfile, *template;
+	char *fstype;
+	unsigned long fssize;
+	char *lvname, *vgname;
+	char *zfsroot, *lowerdir, *dir;
 
 	/* remaining arguments */
 	char *const *argv;
