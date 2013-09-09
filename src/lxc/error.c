@@ -50,7 +50,6 @@ extern int  lxc_error_set_and_log(int pid, int status)
 
 	if (WIFSIGNALED(status)) {
 		int signal = WTERMSIG(status);
-		ret = ret + 128 + signal;
 
 		INFO("child <%d> ended on signal (%d)", pid, signal);
 	}
