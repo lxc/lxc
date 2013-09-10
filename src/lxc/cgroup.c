@@ -904,7 +904,7 @@ void lxc_cgroup_process_info_free_and_remove(struct cgroup_process_info *info)
 	free(info->cgroup_path);
 	free(info->cgroup_path_sub);
 	free(info);
-	lxc_cgroup_process_info_free(next);
+	lxc_cgroup_process_info_free_and_remove(next);
 }
 
 char *lxc_cgroup_get_hierarchy_path_handler(const char *subsystem, struct lxc_handler *handler)
