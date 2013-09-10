@@ -538,7 +538,7 @@ struct cgroup_process_info *lxc_cgroup_process_info_get_self(struct cgroup_meta_
 /* create a new cgroup */
 extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const char *path_pattern, struct cgroup_meta_data *meta_data, const char *sub_pattern)
 {
-	char **cgroup_path_components;
+	char **cgroup_path_components = NULL;
 	char **p = NULL;
 	char *path_so_far = NULL;
 	char **new_cgroup_paths = NULL;
