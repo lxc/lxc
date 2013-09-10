@@ -77,6 +77,9 @@ again:
 		free(buf);
 		return NULL;
 	}
+	space = index(buf, '\n');
+	if (space)
+		*space = '\0';
 	space = index(buf, ' ');
 	if (space)
 		*space = '\0';
