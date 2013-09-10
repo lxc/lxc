@@ -510,9 +510,7 @@ FILE *fopen_cloexec(const char *path, const char *mode)
 			open_mode |= O_EXCL;
 	open_mode |= O_CLOEXEC;
 
-	fd = (open_mode & O_CREAT) ?
-		open(path, open_mode, 0666) :
-		open(path, open_mode);
+	fd = open(path, open_mode, 0666);
 	if (fd < 0)
 		return NULL;
 
