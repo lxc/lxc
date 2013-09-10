@@ -432,6 +432,40 @@ AC_CONFIG_FILES([
 	doc/examples/lxc-veth.conf
 	doc/examples/lxc-complex.conf
 
+	doc/ja/Makefile
+	doc/ja/legacy/lxc-ls.sgml
+	doc/ja/lxc-attach.sgml
+	doc/ja/lxc-cgroup.sgml
+	doc/ja/lxc-checkconfig.sgml
+	doc/ja/lxc-checkpoint.sgml
+	doc/ja/lxc-clone.sgml
+	doc/ja/lxc-console.sgml
+	doc/ja/lxc-create.sgml
+	doc/ja/lxc-destroy.sgml
+	doc/ja/lxc-device.sgml
+	doc/ja/lxc-execute.sgml
+	doc/ja/lxc-freeze.sgml
+	doc/ja/lxc-info.sgml
+	doc/ja/lxc-kill.sgml
+	doc/ja/lxc-ls.sgml
+	doc/ja/lxc-monitor.sgml
+	doc/ja/lxc-netstat.sgml
+	doc/ja/lxc-ps.sgml
+	doc/ja/lxc-restart.sgml
+	doc/ja/lxc-start-ephemeral.sgml
+	doc/ja/lxc-start.sgml
+	doc/ja/lxc-stop.sgml
+	doc/ja/lxc-top.sgml
+	doc/ja/lxc-unfreeze.sgml
+	doc/ja/lxc-unshare.sgml
+	doc/ja/lxc-version.sgml
+	doc/ja/lxc-wait.sgml
+
+	doc/ja/lxc.conf.sgml
+	doc/ja/lxc.sgml
+	doc/ja/common_options.sgml
+	doc/ja/see_also.sgml
+
 	hooks/Makefile
 
 	templates/Makefile

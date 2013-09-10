@@ -1,0 +1,418 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+Translated into Japanese 
+by KATOH Yasufumi <karma at jazz.email.ne.jp>
+
+-->
+
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-attach</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-attach</refname>
+
+    <refpurpose>
+      <!--
+      start a process inside a running container.
+      -->
+      実行中のコンテナ内でプロセスを開始する
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-attach</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-a <replaceable>arch</replaceable></arg>
+      <arg choice="opt">-e</arg>
+      <arg choice="opt">-s <replaceable>namespaces</replaceable></arg>
+      <arg choice="opt">-R</arg>
+      <arg choice="opt">--keep-env</arg>
+      <arg choice="opt">--clear-env</arg>
+      <arg choice="opt">-- <replaceable>command</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->説明</title>
+
+    <para>
+      <!--
+      <command>lxc-attach</command> runs the specified
+      <replaceable>command</replaceable> inside the container
+      specified by <replaceable>name</replaceable>. The container
+      has to be running already.
+      -->
+      <command>lxc-attach</command> は <replaceable>name</replaceable> で指定したコンテナ内で指定した <replaceable>command</replaceable> を実行します．実行する時点でコンテナが実行中でなければなりません．
+    </para>
+    <para>
+      <!--
+      If no <replaceable>command</replaceable> is specified, the
+      current default shell of the user running
+      <command>lxc-attach</command> will be looked up inside the
+      container and executed. This will fail if no such user exists
+      inside the container or the container does not have a working
+      nsswitch mechanism.
+      -->
+      もし <replaceable>command</replaceable> が指定されていない場合，<command>lxc-attach</command> コマンドを実行したユーザのデフォルトシェルをコンテナ内で調べて実行します．もしコンテナ内にユーザが存在しない場合や，コンテナで nsswitch 機構が働いていない場合はこの動作は失敗します．
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+
+    <title><!-- Options -->オプション</title>
+
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-a, --arch <replaceable>arch</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the architecture which the kernel should appear to be
+	    running as to the command executed. This option will accept the
+	    same settings as the <option>lxc.arch</option> option in
+	    container configuration files, see
+	    <citerefentry>
+	      <refentrytitle><filename>lxc.conf</filename></refentrytitle>
+	      <manvolnum>5</manvolnum>
+	    </citerefentry>. By default, the current archictecture of the
+	    running container will be used.
+            -->
+            コマンドを実行するコンテナのアーキテクチャを指定します．このオプションは，コンテナの設定ファイルで指定する <option>lxc.arch</option> オプションと同じものとして受け入れられます．
+            <citerefentry>
+	      <refentrytitle><filename>lxc.conf</filename></refentrytitle>
+	      <manvolnum>5</manvolnum>
+	    </citerefentry> を参照してください．デフォルトでは，実行しているコンテナのアーキテクチャになります．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-e, --elevated-privileges</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Do not drop privileges when running
+	    <replaceable>command</replaceable> inside the container. If
+	    this option is specified, the new process will
+	    <emphasis>not</emphasis> be added to the container's cgroup(s)
+	    and it will not drop its capabilities before executing.
+            -->
+            コンテナの内部で <replaceable>command</replaceable> を実行する時に特権を削除しません．もしこのオプションが指定された場合，新しいプロセスはコンテナの cgroup に追加 <emphasis>されず</emphasis>，実行する前にケーパビリティ (capability) も削除しません．
+	  </para>
+	  <para>
+            <!--
+	    <emphasis>Warning:</emphasis> This may leak privileges into the
+	    container if the command starts subprocesses that remain active
+	    after the main process that was attached is terminated. The
+	    (re-)starting of daemons inside the container is problematic,
+	    especially if the daemon starts a lot of subprocesses such as
+	    <command>cron</command> or <command>sshd</command>.
+	    <emphasis>Use with great care.</emphasis>
+            -->
+            <emphasis>警告：</emphasis>もし実行するコマンドが，アタッチするメインプロセスが終了した後も実行されたままのサブプロセスを開始するような場合，このオプションの指定はコンテナ内への特権のリークとなる可能性があります．コンテナ内でのデーモンの開始(もしくは再起動)は問題となります．デーモンが多数のサブプロセスを開始する <command>cron</command> や <command>sshd</command> のような場合は特に問題となります．<emphasis>充分な注意を払って使用してください．</emphasis>
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-s, --namespaces <replaceable>namespaces</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the namespaces to attach to, as a pipe-separated list,
+	    e.g. <replaceable>NETWORK|IPC</replaceable>. Allowed values are
+	    <replaceable>MOUNT</replaceable>, <replaceable>PID</replaceable>,
+	    <replaceable>UTSNAME</replaceable>, <replaceable>IPC</replaceable>,
+	    <replaceable>USER </replaceable> and
+	    <replaceable>NETWORK</replaceable>. This allows one to change
+	    the context of the process to e.g. the network namespace of the
+	    container while retaining the other namespaces as those of the
+	    host.
+            -->
+            アタッチする名前空間をパイプで連結したリストで指定します．例えば <replaceable>NETWORK|IPC</replaceable> のようにです．ここで使用可能な値は <replaceable>MOUNT</replaceable>, <replaceable>PID</replaceable>, <replaceable>UTSNAME</replaceable>, <replaceable>IPC</replaceable>, <replaceable>USER </replaceable>, <replaceable>NETWORK</replaceable> です．これにより指定した名前空間にプロセスのコンテキストを変更できます．例えばコンテナのネットワーク名前空間に変更する一方で，他の名前空間はホストの名前空間のままにするというような事が可能です．
+	  </para>
+	  <para>
+            <!--
+	    <emphasis>Important:</emphasis> This option implies
+	    <option>&#045;e</option>.
+            -->
+            <emphasis>重要:</emphasis> このオプションは <option>-e</option> オプションを指定しなくても指定している場合と同様の動作をします．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-R, --remount-sys-proc</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    When using <option>&#045;s</option> and the mount namespace is not
+	    included, this flag will cause <command>lxc-attach</command>
+	    to remount <replaceable>/proc</replaceable> and
+	    <replaceable>/sys</replaceable> to reflect the current other
+	    namespace contexts.
+            -->
+            <option>-s</option> を指定し，そこにマウント名前空間が含まれない時，このオプションにより <command>lxc-attach</command> は <replaceable>/proc</replaceable> と <replaceable>/sys</replaceable> をリマウントします．これは現在の他の名前空間のコンテキストを反映させるためです．
+	  </para>
+	  <para>
+            <!--
+	    Please see the <emphasis>Notes</emphasis> section for more
+	    details.
+            -->
+            もっと詳細な説明は <emphasis>注意</emphasis> を参照してください．
+	  </para>
+	  <para>
+            <!--
+	    This option will be ignored if one tries to attach to the
+	    mount namespace anyway.
+            -->
+            このオプションは，マウント名前空間へのアタッチが行われる場合は無視されます．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--keep-env</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Keep the current environment for attached programs. This is
+	    the current default behaviour (as of version 0.9), but is
+	    is likely to change in the future, since this may leak
+	    undesirable information into the container. If you rely on
+	    the environment being available for the attached program,
+	    please use this option to be future-proof. In addition to
+	    current environment variables, container=lxc will be set.
+            -->
+            アタッチされるプログラムに対して現在の環境を保持したままにします．これは現在 (バージョン 0.9 時点) のデフォルトの動作ですが，将来は変更される予定です．この動作がコンテナ内への望ましくない情報の漏洩につながる可能性があるためです．アタッチするプログラムで環境変数が利用可能であることを期待している場合，将来的にもそれが保証されるようにこのオプションを使用するようにしてください．現在の環境変数に加えて，container=lxc が設定されます．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--clear-env</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Clear the environment before attaching, so no undesired
+	    environment variables leak into the container. The variable
+	    container=lxc will be the only environment with which the
+	    attached program starts.
+            -->
+            アタッチする前に環境変数をクリアします．これによりコンテナへの不要な環境変数の漏洩が起こらなくなります．変数 container=lxc のみがアタッチするプログラムの開始の時の環境変数となります．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title><!-- Examples -->例</title>
+      <para>
+        <!--
+        To spawn a new shell running inside an existing container, use
+        <programlisting>
+          lxc-attach -n container
+        </programlisting>
+        -->
+        存在するコンテナ内で新しいシェルを生成するには，以下のようにします．
+        <programlisting>
+          lxc-attach -n container
+        </programlisting>
+      </para>
+      <para>
+        <!--
+        To restart the cron service of a running Debian container, use
+        <programlisting>
+          lxc-attach -n container &#045;&#045; /etc/init.d/cron restart
+        </programlisting>
+        -->
+        実行中の Debian コンテナの cron サービスを再起動するには，以下のように実行します．
+        <programlisting>
+          lxc-attach -n container -- /etc/init.d/cron restart
+        </programlisting>
+      </para>
+      <para>
+        <!--
+        To deactivate the network link eth1 of a running container that
+        does not have the NET_ADMIN capability, use either the
+        <option>-e</option> option to use increased capabilities,
+        assuming the <command>ip</command> tool is installed:
+        <programlisting>
+          lxc-attach -n container -e &#045;&#045; /sbin/ip link delete eth1
+        </programlisting>
+        -->
+        NET_ADMIN ケーパビリティを持たない実行中のコンテナのネットワークインターフェース eth1 の動作を停止させるには，ケーパビリティを増加させるために <option>-e</option> オプションを指定し，<command>ip</command> ツールがインストールされていることを前提に，以下のように実行します．
+        <programlisting>
+          lxc-attach -n container -e -- /sbin/ip link delete eth1
+        </programlisting>
+      </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Compatibility -->互換性</title>
+    <para>
+      <!--
+      Attaching completely (including the pid and mount namespaces) to a
+      container requires a patched kernel, please see the lxc website for
+      details. <command>lxc-attach</command> will fail in that case if
+      used with an unpatched kernel.
+      -->
+      (pid とマウント名前空間を含む) コンテナに対する完全なアタッチを行うにはパッチを適用したカーネルが必要となります．詳しくは lxc のウェブサイトを参照してください．(訳注: 3.8 カーネルから PID, マウント名前空間に対するアタッチも可能になっている)
+    </para>
+    <para>
+      <!--
+      Nevertheless, it will succeed on an unpatched kernel of version 3.0
+      or higher if the <option>-s</option> option is used to restrict the
+      namespaces that the process is to be attached to to one or more of
+      <replaceable>NETWORK</replaceable>, <replaceable>IPC</replaceable>
+      and <replaceable>UTSNAME</replaceable>.
+      -->
+      しかし，もし <option>-s</option> を使用して，アタッチするものを <replaceable>NETWORK</replaceable>, <replaceable>IPC</replaceable>, <replaceable>UTSNAME</replaceable> の 1 つか複数の名前空間に限定して使用すれば，バージョン 3.0 以上のパッチを適用していないカーネルでもアタッチが成功するでしょう．
+    </para>
+    <para>
+      <!--
+      Attaching to user namespaces is currently completely unsupported
+      by the kernel. <command>lxc-attach</command> should however be able
+      to do this once once future kernel versions implement this.
+      -->
+      ユーザ名前空間へのアタッチは，現時点ではカーネルで完全にサポートされていません．しかし，<command>lxc-attach</command> は，将来のカーネルがこの機能を実装した時点ですぐに，アタッチが可能になるはずです．
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Notes -->注意</title>
+    <para>
+      <!--
+      The Linux <replaceable>/proc</replaceable> and
+      <replaceable>/sys</replaceable> filesystems contain information
+      about some quantities that are affected by namespaces, such as
+      the directories named after process ids in
+      <replaceable>/proc</replaceable> or the network interface infromation
+      in <replaceable>/sys/class/net</replaceable>. The namespace of the
+      process mounting the pseudo-filesystems determines what information
+      is shown, <emphasis>not</emphasis> the namespace of the process
+      accessing <replaceable>/proc</replaceable> or
+      <replaceable>/sys</replaceable>.
+      -->
+      Linux の <replaceable>/proc</replaceable> と <replaceable>/sys</replaceable> ファイルシステムは名前空間によって影響を受けるいくつかの情報を持っています．これは <replaceable>/proc</replaceable> 内のプロセス ID の名前のディレクトリや，<replaceable>/sys/class/net</replaceable> 内のネットワークインターフェース名のディレクトリなどです．擬似ファイルシステムをマウントしているプロセスの名前空間が，どのような情報を表示するかを決定します．<replaceable>/proc</replaceable> や <replaceable>/sys</replaceable> にアクセスしているプロセスの名前空間が決定するのではありません．
+    </para>
+    <para>
+      <!--
+      If one uses the <option>-s</option> option to only attach to
+      the pid namespace of a container, but not its mount namespace
+      (which will contain the <replaceable>/proc</replaceable> of the
+      container and not the host), the contents of <option>/proc</option>
+      will reflect that of the host and not the container. Analogously,
+      the same issue occurs when reading the contents of
+      <replaceable>/sys/class/net</replaceable> and attaching to just
+      the network namespace.
+      -->
+      <option>-s</option> を使ってコンテナの pid 名前空間のみをアタッチし，マウント名前空間 (これはコンテナの <replaceable>/proc</replaceable> を含み，ホストのは含まないでしょう) はアタッチしない場合，<option>/proc</option> のコンテンツはコンテナのものではなく，ホストのものとなります．似たような事例として，ネットワーク名前空間のみをアタッチして，<replaceable>/sys/class/net</replaceable> のコンテンツを読んだ場合も同じような事が起こるでしょう．
+    </para>
+    <para>
+      <!--
+      To work around this problem, the <option>-R</option> flag provides
+      the option to remount <replaceable>/proc</replaceable> and
+      <replaceable>/sys</replaceable> in order for them to reflect the
+      network/pid namespace context of the attached process. In order
+      not to interfere with the host's actual filesystem, the mount
+      namespace will be unshared (like <command>lxc-unshare</command>
+      does) before this is done, esentially giving the process a new
+      mount namespace, which is identical to the hosts's mount namespace
+      except for the <replaceable>/proc</replaceable> and
+      <replaceable>/sys</replaceable> filesystems.
+      -->
+      この問題への対処のために，<option>-R</option> オプションが <replaceable>/proc</replaceable> と <replaceable>/sys</replaceable> が提供されています．これにより，アタッチするプロセスのネットワーク/pid 名前空間のコンテキストを反映させることができます．ホストの実際のファイルシステムに影響を与えないために，実行前にはマウント名前空間は unshare されます (<command>lxc-unshare</command> のように)．これは，<replaceable>/proc</replaceable> と <replaceable>/sys</replaceable> ファイルシステム以外はホストのマウント名前空間と同じである，新しいマウント名前空間がプロセスに与えられるということです．
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Security -->セキュリティ</title>
+    <para>
+      <!--
+      The <option>-e</option> and <option>-s</option> options should
+      be used with care, as it may break the isolation of the containers
+      if used improperly.
+      -->
+      <option>-e</option> と <option>-s</option> オプションの使用には注意を払うべきです．不適切に使用した場合，コンテナの隔離を破壊してしまう可能性があります．
+    </para>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->作者</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

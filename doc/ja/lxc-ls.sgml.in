@@ -1,0 +1,285 @@
+
+<!-- 
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+Translated into Japanese 
+by KATOH Yasufumi <karma at jazz.email.ne.jp>
+
+-->
+
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-ls</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-ls</refname>
+
+    <refpurpose>
+      <!--
+      list the containers existing on the system
+      -->
+      システム上に存在するコンテナをリスト表示する．
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-ls</command>
+      <arg choice="opt">-1</arg>
+      <arg choice="opt">--active</arg>
+      <arg choice="opt">--frozen</arg>
+      <arg choice="opt">--running</arg>
+      <arg choice="opt">--stopped</arg>
+      <arg choice="opt">--fancy</arg>
+      <arg choice="opt">--fancy-format</arg>
+      <arg choice="opt">--nesting</arg>
+      <arg choice="opt">filter</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->説明</title>
+    <para>
+      <!--
+      <command>lxc-ls</command> list the containers existing on the
+      system.
+      -->
+      <command>lxc-ls</command> はシステム上に存在するコンテナをリスト表示します．
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options -->オプション</title>
+    <variablelist>
+      <varlistentry>
+        <term>
+          <option><optional>-1</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Show one entry per line. (default when /dev/stdout isn't a tty)
+            -->
+            1 行に 1 エントリ表示します．(/dev/stdout が tty でない場合のデフォルト)
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option><optional>--active</optional></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+            List only active containers (same as &#045;&#045;frozen &#045;&#045;running).
+            -->
+            アクティブなコンテナのみリスト表示します．(--frozen --running と同じです)
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--frozen</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            List only frozen containers.
+            -->
+            凍結 (frozen) 状態のコンテナのみをリスト表示します．
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--running</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            List only running containers.
+            -->
+            実行 (running) 状態のコンテナのみをリスト表示します．
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--stopped</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            List only stopped containers.
+            -->
+            停止状態のコンテナのみをリスト表示します．
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--fancy</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Use a fancy, column-based output.
+            -->
+            装飾付きのカラムベースの出力を使用します．
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--fancy-format</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Comma separate list of column to show in the fancy output.
+            Valid values are: name, state, ipv4, ipv6 and pid
+            Default is: name,state,ipv4,ipv6
+            -->
+            装飾付き出力で表示するカラムのコンマ区切りのリスト．
+            有効な値は name,state,ipv4,ipv6,pid．
+            デフォルトは name,state,ipv4,ipv6
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--nesting</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Show nested containers.
+            -->
+            ネストされたコンテナを表示します．
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>filter</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            The filter passed to <command>lxc-ls</command> will be
+            applied to the container name. The format is a regular expression.
+            -->
+            コンテナ名に対して適用する <command>lxc-ls</command> に与えるフィルタ．フォーマットは正規表現です．
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Examples -->例</title>
+    <variablelist>
+      <varlistentry>
+	<term>lxc-ls -l</term>
+	<listitem>
+	<para>
+          <!--
+	  list all the container and their permissions.
+          -->
+          全てのコンテナとそのパーミッションをリスト表示します．
+	</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>lxc-ls --active -1</term>
+	<listitem>
+	<para>
+          <!--
+	  list active containers and display the list in one column.
+          -->
+          稼働中のコンテナを一列にリスト表示します．
+	</para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>See Also</title>
+
+    <simpara>    
+      <citerefentry>
+	<refentrytitle>ls</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>,
+    </simpara>
+
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->作者</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

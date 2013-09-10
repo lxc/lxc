@@ -1,0 +1,224 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+Serge Hallyn <serge.hallyn at ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+Translated into Japanese 
+by KATOH Yasufumi <karma at jazz.email.ne.jp>
+
+-->
+
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-clone</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-clone</refname>
+
+    <refpurpose>
+      <!--
+      clone a new container from an existing one.
+      -->
+      新しいコンテナを存在するコンテナからクローンする．
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-clone</command>
+      <arg choice="req">-o <replaceable>orig</replaceable></arg>
+      <arg choice="req">-n <replaceable>new</replaceable></arg>
+      <arg choice="opt">-s </arg>
+      <arg choice="opt">-L <replaceable>fssize</replaceable></arg>
+      <arg choice="opt">-v <replaceable>vgname</replaceable></arg>
+      <arg choice="opt">-p <replaceable>lxc_lv_prefix</replaceable></arg>
+      <arg choice="opt">-t <replaceable>fstype</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->説明</title>
+
+    <para>
+      <!--
+      <command>lxc-clone</command> Creates a new container as a copy of an existing
+      container.  When the original container's rootfs is an LVM block device or
+      is on a btrfs filesystem, then a snapshotted clone can be created, taking up
+      very little initial disk space.
+      -->
+      <command>lxc-clone</command> は，新しいコンテナを既に存在するコンテナのコピーとして作製する．元のコンテナの rootfs が LVM ブロックデバイスか btrfs 上にある場合は，非常に少ないディスクスペースで済むスナップショットによりクローンを作製する．
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+
+    <title><!-- Options -->オプション</title>
+
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-o, --orig <replaceable>orig</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    The name of the original container to clone.
+            -->
+            クローン元のコンテナの名前．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-n, --new <replaceable>new</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    The name of the new container to create.
+            -->
+            新しく作製するコンテナの名前．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-s, --snapshot</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    The new container's rootfs should be a LVM or btrfs snapshot of the original.
+            -->
+            新しいコンテナの rootfs を，元のコンテナの LVM もしくは btrfs のスナップショットとする．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-L, --fssize <replaceable>fssize</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    In the case of a LVM-backed container, a size for the new
+	    block device.  By default, the new device will be made the
+	    same size as the original.
+            -->
+            LVM 上のコンテナの場合の新しいブロックデバイスのサイズ．デフォルトでは，新しいデバイスは元のデバイスと同じサイズとなる．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-v, --vgname <replaceable>vgname</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    For an LVM-backed container, the volume group name to use.  By
+	    default it is 'lxc'.
+            -->
+            LVM 上のコンテナに対して使用するボリュームグループの名前．デフォルトは 'lxc' である．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-p, --lvprefix <replaceable>lxc_lv_prefix</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    For an LVM-backed container, a string to prefix to the container name to
+	    form the logical volume name.  For instance, specifying
+	    <command>-n c1 -p lxc_</command> will cause the container rootfs to
+	    be on a logical volume called <replaceable>lxc_c1</replaceable>.
+            -->
+            LVM 上のコンテナで，論理ボリューム名を生成するためにコンテナ名の前に付与するプレフィックス．例えば <command>-n c1 -p lxc_</command> と指定すると，コンテナの rootfs は，論理ボリューム名 <replaceable>lxc_c1</replaceable> という論理ボリューム上に作製される．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-t, --fstype <replaceable>fstype</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    For a non-snapshot LVM clone, the file system to use for the new
+	    container.  Note this option is ignored when requesting a
+	    snapshotted container.
+            -->
+            LVM スナップショットで作製しないクローンで，新しいコンテナで使用するファイルシステム．このオプションはスナップショットで作製する場合は無視される．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->作者</title>
+    <para>Serge Hallyn <email>serge.hallyn@ubuntu.com</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->
