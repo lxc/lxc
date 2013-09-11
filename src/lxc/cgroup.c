@@ -542,11 +542,11 @@ struct cgroup_process_info *lxc_cgroup_process_info_get_self(struct cgroup_meta_
  * name is c1. .  We want to rename the cgroup directory to /sys/fs/cgroup/lxc/c1,
  * and return the string /sys/fs/cgroup/lxc/c1.
  */
-static char *cgroup_rename_nsgroup(char *mountpath, const char *oldname, int pid, const char *name)
+static char *cgroup_rename_nsgroup(const char *mountpath, const char *oldname, pid_t pid, const char *name)
 {
 	char *dir, *fulloldpath;
 	char *newname, *fullnewpath;
-	int len;
+	int len, newlen, ret;
 
 	/*
 	 * if cgroup is mounted at /cgroup and task is in cgroup /ab/, pid 2375 and
@@ -559,8 +559,11 @@ static char *cgroup_rename_nsgroup(char *mountpath, const char *oldname, int pid
 	dir = alloca(strlen(oldname) + 1);
 	strcpy(dir, oldname);
 
-	fulloldpath = alloca(strlen(oldname) + strlen(mountpath) + 22);
-	sprintf(fulloldpath, "%s/%s/%d", mountpath, oldname, pid);
+	len = strlen(oldname) + strlen(mountpath) + 22;
+	fulloldpath = alloca(len);
+	ret = snprintf(fulloldpath, len, "%s/%s/%ld", mountpath, oldname, (unsigned long)pid);
+	if (ret < 0 || ret >= len)
+		return NULL;
 
 	len = strlen(dir) + strlen(name) + 2;
 	newname = malloc(len);
@@ -568,10 +571,19 @@ static char *cgroup_rename_nsgroup(char *mountpath, const char *oldname, int pid
 		SYSERROR("Out of memory");
 		return NULL;
 	}
-	sprintf(newname, "%s/%s", dir, name);
+	ret = snprintf(newname, len, "%s/%s", dir, name);
+	if (ret < 0 || ret >= len) {
+		free(newname);
+		return NULL;
+	}
 
-	fullnewpath = alloca(strlen(mountpath) + len + 2);
-	sprintf(fullnewpath, "%s/%s", mountpath, newname);
+	newlen = strlen(mountpath) + len + 2;
+	fullnewpath = alloca(newlen);
+	ret = snprintf(fullnewpath, newlen, "%s/%s", mountpath, newname);
+	if (ret < 0 || ret >= newlen) {
+		free(newname);
+		return NULL;
+	}
 
 	if (access(fullnewpath, F_OK) == 0) {
 		if (rmdir(fullnewpath) != 0) {
@@ -592,7 +604,7 @@ static char *cgroup_rename_nsgroup(char *mountpath, const char *oldname, int pid
 }
 
 /* create a new cgroup */
-extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const char *path_pattern, struct cgroup_meta_data *meta_data, const char *sub_pattern, int pid)
+extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const char *path_pattern, struct cgroup_meta_data *meta_data, const char *sub_pattern, pid_t pid)
 {
 	char **cgroup_path_components = NULL;
 	char **p = NULL;
@@ -820,7 +832,7 @@ extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const cha
 		 * the cgroup name and record that.
 		 */
 		if (lxc_string_in_array("ns", (const char **)info_ptr->hierarchy->subsystems)) {
-			char *tmp = cgroup_rename_nsgroup(info_ptr->designated_mount_point->mount_point,
+			char *tmp = cgroup_rename_nsgroup((const char *)info_ptr->designated_mount_point->mount_point,
 					info_ptr->cgroup_path, pid, name);
 			if (!tmp)
 				goto out_initial_error;
