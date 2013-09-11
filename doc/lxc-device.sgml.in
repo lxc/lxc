@@ -40,7 +40,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refname>lxc-device</refname>
 
     <refpurpose>
-      manage deices of running containers
+      manage devices of running containers
     </refpurpose>
   </refnamediv>
 

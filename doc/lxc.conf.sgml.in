@@ -1022,7 +1022,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  <listitem>
 	    <para>
 	      The LXC name of the container.  Useful for logging messages
-	      in commmon log environments.  [<option>-n</option>]
+	      in common log environments.  [<option>-n</option>]
 	    </para>
 	  </listitem>
 	</varlistentry>
