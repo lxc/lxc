@@ -219,6 +219,7 @@ extern char *lxc_string_join(const char *sep, const char **parts, bool use_as_pr
  *     foo//bar     ->   { foo, bar, NULL }
  */
 extern char **lxc_normalize_path(const char *path);
+extern char *lxc_append_paths(const char *first, const char *second);
 /* Note: the following two functions use strtok(), so they will never
  *       consider an empty element, even if two delimiters are next to
  *       each other.
