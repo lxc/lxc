@@ -669,10 +669,8 @@ int lxc_spawn(struct lxc_handler *handler)
 	 */
 
 	handler->pinfd = pin_rootfs(handler->conf->rootfs.path);
-	if (handler->pinfd == -1) {
-		ERROR("failed to pin the container's rootfs");
-		goto out_delete_net;
-	}
+	if (handler->pinfd == -1)
+		INFO("failed to pin the container's rootfs");
 
 	/* Create a process in a new set of namespaces */
 	handler->pid = lxc_clone(do_start, handler, handler->clone_flags);

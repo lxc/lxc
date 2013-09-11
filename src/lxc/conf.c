@@ -687,32 +687,23 @@ int pin_rootfs(const char *rootfs)
 	if (rootfs == NULL || strlen(rootfs) == 0)
 		return -2;
 
-	if (!realpath(rootfs, absrootfs)) {
-		INFO("failed to get real path for '%s', not pinning", rootfs);
+	if (!realpath(rootfs, absrootfs))
 		return -2;
-	}
 
-	if (access(absrootfs, F_OK)) {
-		SYSERROR("'%s' is not accessible", absrootfs);
+	if (access(absrootfs, F_OK))
 		return -1;
-	}
 
-	if (stat(absrootfs, &s)) {
-		SYSERROR("failed to stat '%s'", absrootfs);
+	if (stat(absrootfs, &s))
 		return -1;
-	}
 
 	if (!S_ISDIR(s.st_mode))
 		return -2;
 
 	ret = snprintf(absrootfspin, MAXPATHLEN, "%s%s", absrootfs, ".hold");
-	if (ret >= MAXPATHLEN) {
-		SYSERROR("pathname too long for rootfs hold file");
+	if (ret >= MAXPATHLEN)
 		return -1;
-	}
 
 	fd = open(absrootfspin, O_CREAT | O_RDWR, S_IWUSR|S_IRUSR);
-	INFO("opened %s as fd %d\n", absrootfspin, fd);
 	return fd;
 }
 
