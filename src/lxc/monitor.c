@@ -28,6 +28,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <inttypes.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -123,38 +125,56 @@ int lxc_monitor_close(int fd)
 	return close(fd);
 }
 
+/* Note we don't use SHA-1 here as we don't want to depend on HAVE_GNUTLS.
+ * FNV has good anti collision properties and we're not worried
+ * about pre-image resistance or one-way-ness, we're just trying to make
+ * the name unique in the 108 bytes of space we have.
+ */
+#define FNV1A_64_INIT ((uint64_t)0xcbf29ce484222325ULL)
+static uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval)
+{
+	unsigned char *bp;
+
+	for(bp = buf; bp < (unsigned char *)buf + len; bp++)
+	{
+		/* xor the bottom with the current octet */
+		hval ^= (uint64_t)*bp;
+
+		/* gcc optimised:
+		 * multiply by the 64 bit FNV magic prime mod 2^64
+		 */
+		hval += (hval << 1) + (hval << 4) + (hval << 5) +
+			(hval << 7) + (hval << 8) + (hval << 40);
+	}
+
+	return hval;
+}
+
 int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 	size_t len;
 	int ret;
-	char *sockname = &addr->sun_path[0]; // 1 for abstract
-	const char *rundir;
+	char *sockname = &addr->sun_path[1];
+	char path[PATH_MAX+18];
+	uint64_t hash;
 
-	/* addr.sun_path is only 108 bytes.
-	 * should we take a hash of lxcpath? a subset of it? ftok()? we need
-	 * to make sure it is unique.
+	/* addr.sun_path is only 108 bytes, so we hash the full name and
+	 * then append as much of the name as we can fit.
 	 */
 	memset(addr, 0, sizeof(*addr));
 	addr->sun_family = AF_UNIX;
 	len = sizeof(addr->sun_path) - 1;
-	rundir = get_rundir();
-	ret = snprintf(sockname, len, "%s/lxc/%s", rundir, lxcpath);
-	if (ret < 0 || ret >= len) {
-		ERROR("rundir/lxcpath (%s/%s) too long for monitor unix socket", rundir, lxcpath);
+	ret = snprintf(path, sizeof(path), "lxc/%s/monitor-sock", lxcpath);
+	if (ret < 0 || ret >= sizeof(path)) {
+		ERROR("lxcpath %s too long for monitor unix socket", lxcpath);
 		return -1;
-	}
-	process_lock();
-	ret = mkdir_p(sockname, 0755);
-	process_unlock();
-	if (ret < 0) {
-		ERROR("unable to create monitor sock %s", sockname);
-		return ret;
 	}
 
-	ret = snprintf(sockname, len, "%s/lxc/%s/monitor-sock", rundir, lxcpath);
-	if (ret < 0 || ret >= len) {
-		ERROR("rundir/lxcpath (%s/%s) too long for monitor unix socket", rundir, lxcpath);
+	hash = fnv_64a_buf(path, ret, FNV1A_64_INIT);
+	ret = snprintf(sockname, len, "lxc/%016" PRIx64 "/%s", hash, lxcpath);
+	if (ret < 0)
 		return -1;
-	}
+	sockname[sizeof(addr->sun_path)-2] = '\0';
+	INFO("using monitor sock name %s", sockname);
 	return 0;
 }
 
