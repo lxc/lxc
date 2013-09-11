@@ -525,7 +525,7 @@ static int do_start(void *data)
 	#endif
 
 	/* Setup the container, ip, names, utsname, ... */
-	if (lxc_setup(handler->name, handler->conf, handler->lxcpath)) {
+	if (lxc_setup(handler->name, handler->conf, handler->lxcpath, handler->cgroup)) {
 		ERROR("failed to setup the container");
 		goto out_warn_father;
 	}

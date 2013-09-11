@@ -1235,11 +1235,60 @@ static int config_fstab(const char *key, const char *value,
 	return config_path_item(key, value, lxc_conf, &lxc_conf->fstab);
 }
 
+static int config_mount_auto(const char *key, const char *value,
+			     struct lxc_conf *lxc_conf)
+{
+	char *autos, *autoptr, *sptr, *token;
+	static struct { const char *token; int flag; } allowed_auto_mounts[] = {
+		{ "proc",   LXC_AUTO_PROC },
+		{ "sysrq",  LXC_AUTO_PROC_SYSRQ },
+		{ "sys",    LXC_AUTO_SYS },
+		{ "cgroup", LXC_AUTO_CGROUP },
+		{ NULL, 0 }
+	};
+	int i;
+	int ret = -1;
+
+	if (!strlen(value))
+		return -1;
+
+	autos = strdup(value);
+	if (!autos) {
+		SYSERROR("failed to dup '%s'", value);
+		return -1;
+	}
+
+	for (autoptr = autos; ; autoptr = NULL) {
+                token = strtok_r(autoptr, " \t", &sptr);
+                if (!token) {
+			ret = 0;
+                        break;
+		}
+
+		for (i = 0; allowed_auto_mounts[i].token; i++) {
+			if (!strcmp(allowed_auto_mounts[i].token, token))
+				break;
+		}
+
+		if (!allowed_auto_mounts[i].token) {
+			ERROR("Invalid filesystem to automount: %s", token);
+			break;
+		}
+
+		lxc_conf->auto_mounts |= allowed_auto_mounts[i].flag;
+        }
+
+	free(autos);
+
+	return ret;
+}
+
 static int config_mount(const char *key, const char *value,
 			struct lxc_conf *lxc_conf)
 {
 	char *fstab_token = "lxc.mount";
 	char *token = "lxc.mount.entry";
+	char *auto_token = "lxc.mount.auto";
 	char *subkey;
 	char *mntelem;
 	struct lxc_list *mntlist;
@@ -1247,12 +1296,18 @@ static int config_mount(const char *key, const char *value,
 	subkey = strstr(key, token);
 
 	if (!subkey) {
-		subkey = strstr(key, fstab_token);
+		subkey = strstr(key, auto_token);
 
-		if (!subkey)
-			return -1;
+		if (!subkey) {
+			subkey = strstr(key, fstab_token);
 
-		return config_fstab(key, value, lxc_conf);
+			if (!subkey)
+				return -1;
+
+			return config_fstab(key, value, lxc_conf);
+		}
+
+		return config_mount_auto(key, value, lxc_conf);
 	}
 
 	if (!strlen(subkey))

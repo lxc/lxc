@@ -222,6 +222,16 @@ struct lxc_rootfs {
 };
 
 /*
+ * Automatic mounts for LXC to perform inside the container
+ */
+enum {
+	LXC_AUTO_PROC        = 0x01,   /* /proc */
+	LXC_AUTO_SYS         = 0x02,   /* /sys*/
+	LXC_AUTO_CGROUP      = 0x04,   /* /sys/fs/cgroup */
+	LXC_AUTO_PROC_SYSRQ  = 0x08,   /* /proc/sysrq-trigger over-bind-mounted with /dev/null */
+};
+
+/*
  * Defines the global container configuration
  * @rootfs     : root directory to run the container
  * @pivotdir   : pivotdir path, if not set default will be used
@@ -265,6 +275,7 @@ struct lxc_conf {
 	struct lxc_list network;
 	struct saved_nic *saved_nics;
 	int num_savednics;
+	int auto_mounts;
 	struct lxc_list mount_list;
 	struct lxc_list caps;
 	struct lxc_list keepcaps;
@@ -336,8 +347,9 @@ extern int uid_shift_ttys(int pid, struct lxc_conf *conf);
  * Configure the container from inside
  */
 
+struct cgroup_process_info;
 extern int lxc_setup(const char *name, struct lxc_conf *lxc_conf,
-			const char *lxcpath);
+			const char *lxcpath, struct cgroup_process_info *cgroup_info);
 
 extern void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf);
 #endif

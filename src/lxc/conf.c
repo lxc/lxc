@@ -72,6 +72,7 @@
 #include "lxc.h"	/* for lxc_cgroup_set() */
 #include "caps.h"       /* for lxc_caps_last_cap() */
 #include "bdev.h"
+#include "cgroup.h"
 
 #if HAVE_APPARMOR
 #include <apparmor.h>
@@ -705,6 +706,89 @@ int pin_rootfs(const char *rootfs)
 
 	fd = open(absrootfspin, O_CREAT | O_RDWR, S_IWUSR|S_IRUSR);
 	return fd;
+}
+
+static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct cgroup_process_info *cgroup_info)
+{
+	char *path = NULL;
+	char *dev_null = NULL;
+	int r;
+
+	dev_null = lxc_append_paths(conf->rootfs.mount, "/dev/null");
+	if (!dev_null) {
+		SYSERROR("memory allocation error");
+		goto cleanup;
+	}
+
+	if (flags & LXC_AUTO_PROC) {
+		path = lxc_append_paths(conf->rootfs.mount, "/proc");
+		if (!path) {
+			SYSERROR("memory allocation error trying to automatically mount /proc");
+			goto cleanup;
+		}
+
+		r = mount("proc", path, "proc", MS_NODEV|MS_NOEXEC|MS_NOSUID, NULL);
+		if (r < 0) {
+			SYSERROR("error mounting /proc");
+			goto cleanup;
+		}
+
+		free(path);
+		path = NULL;
+	}
+
+	if (flags & LXC_AUTO_PROC_SYSRQ) {
+		path = lxc_append_paths(conf->rootfs.mount, "/proc/sysrq-trigger");
+		if (!path) {
+			SYSERROR("memory allocation error trying to automatically mount /proc");
+			goto cleanup;
+		}
+
+		/* safety measure, mount /dev/null over /proc/sysrq-trigger,
+		 * otherwise, a container may trigger a host reboot or such
+		 */
+		r = mount(dev_null, path, NULL, MS_BIND, NULL);
+		if (r < 0)
+			WARN("error mounting /dev/null over /proc/sysrq-trigger: %s", strerror(errno));
+
+		free(path);
+		path = NULL;
+	}
+
+	if (flags & LXC_AUTO_SYS) {
+		path = lxc_append_paths(conf->rootfs.mount, "/sys");
+		if (!path) {
+			SYSERROR("memory allocation error trying to automatically mount /sys");
+			goto cleanup;
+		}
+
+		r = mount("sysfs", path, "sysfs", MS_RDONLY, NULL);
+		if (r < 0) {
+			SYSERROR("error mounting /sys");
+			goto cleanup;
+		}
+
+		free(path);
+		path = NULL;
+	}
+
+	if (flags & LXC_AUTO_CGROUP) {
+		r = lxc_setup_mount_cgroup(conf->rootfs.mount, cgroup_info);
+		if (r < 0) {
+			SYSERROR("error mounting /sys/fs/cgroup");
+			goto cleanup;
+		}
+	}
+
+	free(dev_null);
+	free(path);
+
+	return 0;
+
+cleanup:
+	free(dev_null);
+	free(path);
+	return -1;
 }
 
 static int mount_rootfs(const char *rootfs, const char *target)
@@ -2878,7 +2962,7 @@ int uid_shift_ttys(int pid, struct lxc_conf *conf)
 	return 0;
 }
 
-int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath)
+int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath, struct cgroup_process_info *cgroup_info)
 {
 #if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
 	int mounted;
@@ -2911,6 +2995,14 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath)
 		}
 	}
 
+	/* do automatic mounts (mainly /proc and /sys), but exclude
+	 * those that need to wait until other stuff has finished
+	 */
+	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & ~LXC_AUTO_CGROUP & ~LXC_AUTO_PROC_SYSRQ, cgroup_info) < 0) {
+		ERROR("failed to setup the automatic mounts for '%s'", name);
+		return -1;
+	}
+
 	if (setup_mount(&lxc_conf->rootfs, lxc_conf->fstab, name)) {
 		ERROR("failed to setup the mounts for '%s'", name);
 		return -1;
@@ -2918,6 +3010,15 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath)
 
 	if (!lxc_list_empty(&lxc_conf->mount_list) && setup_mount_entries(&lxc_conf->rootfs, &lxc_conf->mount_list, name)) {
 		ERROR("failed to setup the mount entries for '%s'", name);
+		return -1;
+	}
+
+	/* now mount only cgroup, if wanted;
+	 * before, /sys could not have been mounted
+	 * (is either mounted automatically or via fstab entries)
+	 */
+	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & LXC_AUTO_CGROUP, cgroup_info) < 0) {
+		ERROR("failed to setup the automatic mounts for '%s'", name);
 		return -1;
 	}
 
@@ -2935,6 +3036,14 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath)
 			ERROR("failed to populate /dev in the container");
 			return -1;
 		}
+	}
+
+	/* over-mount /proc/sysrq-trigger with /dev/null now, if wanted;
+	 * before /dev/null did not necessarily exist
+	 */
+	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & LXC_AUTO_PROC_SYSRQ, cgroup_info) < 0) {
+		ERROR("failed to setup the automatic mounts for '%s'", name);
+		return -1;
 	}
 
 	if (!lxc_conf->is_execute && setup_console(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->ttydir)) {
