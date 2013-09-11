@@ -34,6 +34,7 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <sys/inotify.h>
+#include <sys/mount.h>
 #include <netinet/in.h>
 #include <net/if.h>
 
@@ -1198,6 +1199,132 @@ int lxc_setup_cgroup_without_devices(struct lxc_handler *h, struct lxc_list *cgr
 int lxc_setup_cgroup_devices(struct lxc_handler *h, struct lxc_list *cgroup_settings)
 {
 	return do_setup_cgroup(h, cgroup_settings, true);
+}
+
+int lxc_setup_mount_cgroup(const char *root, struct cgroup_process_info *base_info)
+{
+	size_t bufsz = strlen(root) + sizeof("/sys/fs/cgroup");
+	char *path = NULL;
+	char **parts = NULL;
+	char *dirname = NULL;
+	char *abs_path = NULL;
+	char *abs_path2 = NULL;
+	struct cgroup_process_info *info;
+	int r, saved_errno = 0;
+
+	path = calloc(1, bufsz);
+	if (!path)
+		return -1;
+	snprintf(path, bufsz, "%s/sys/fs/cgroup", root);
+	r = mount("cgroup_root", path, "tmpfs", MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_RELATIME, "size=10240k,mode=755");
+	if (r < 0) {
+		SYSERROR("could not mount tmpfs to /sys/fs/cgroup in the container");
+		return -1;
+	}
+
+	/* now mount all the hierarchies we care about */
+	for (info = base_info; info; info = info->next) {
+		size_t subsystem_count, i;
+		struct cgroup_mount_point *mp = info->designated_mount_point;
+		if (!mp)
+			mp = lxc_cgroup_find_mount_point(info->hierarchy, info->cgroup_path, true);
+		if (!mp) {
+			SYSERROR("could not find original mount point for cgroup hierarchy while trying to mount cgroup filesystem");
+			goto out_error;
+		}
+
+		subsystem_count = lxc_array_len((void **)info->hierarchy->subsystems);
+		parts = calloc(subsystem_count + 1, sizeof(char *));
+		if (!parts)
+			goto out_error;
+
+		for (i = 0; i < subsystem_count; i++) {
+			if (!strncmp(info->hierarchy->subsystems[i], "name=", 5))
+				parts[i] = info->hierarchy->subsystems[i] + 5;
+			else
+				parts[i] = info->hierarchy->subsystems[i];
+		}
+		dirname = lxc_string_join(",", (const char **)parts, false);
+		if (!dirname)
+			goto out_error;
+
+		/* create subsystem directory */
+		abs_path = lxc_append_paths(path, dirname);
+		if (!abs_path)
+			goto out_error;
+		r = mkdir_p(abs_path, 0755);
+		if (r < 0 && errno != EEXIST) {
+			SYSERROR("could not create cgroup subsystem directory /sys/fs/cgroup/%s", dirname);
+			goto out_error;
+		}
+
+		/* create path for container's cgroup */
+		abs_path2 = lxc_append_paths(abs_path, info->cgroup_path);
+		if (!abs_path2)
+			goto out_error;
+		r = mkdir_p(abs_path2, 0755);
+		if (r < 0 && errno != EEXIST) {
+			SYSERROR("could not create cgroup directory /sys/fs/cgroup/%s%s", dirname, info->cgroup_path);
+			goto out_error;
+		}
+
+		free(abs_path);
+		abs_path = NULL;
+
+		/* bind-mount container's cgroup to that directory */
+		abs_path = cgroup_to_absolute_path(mp, info->cgroup_path, NULL);
+		if (!abs_path)
+			goto out_error;
+		r = mount(abs_path, abs_path2, "none", MS_BIND, 0);
+		if (r < 0) {
+			SYSERROR("error bind-mounting %s to %s", abs_path, abs_path2);
+			goto out_error;
+		}
+
+		free(abs_path);
+		free(abs_path2);
+		abs_path = NULL;
+		abs_path2 = NULL;
+
+		/* add symlinks for every single subsystem */
+		if (subsystem_count > 1) {
+			for (i = 0; i < subsystem_count; i++) {
+				abs_path = lxc_append_paths(path, parts[i]);
+				if (!abs_path)
+					goto out_error;
+				r = symlink(dirname, abs_path);
+				if (r < 0)
+					WARN("could not create symlink %s -> %s in /sys/fs/cgroup of container", parts[i], dirname);
+				free(abs_path);
+				abs_path = NULL;
+			}
+		}
+		free(dirname);
+		free(parts);
+		dirname = NULL;
+		parts = NULL;
+	}
+
+	/* try to remount the tmpfs readonly, since the container shouldn't
+	 * change anything (this will also make sure that trying to create
+	 * new cgroups outside the allowed area fails with an error instead
+	 * of simply causing this to create directories in the tmpfs itself)
+	 */
+	mount(NULL, path, NULL, MS_REMOUNT|MS_RDONLY, NULL);
+
+	free(path);
+
+	return 0;
+
+out_error:
+	saved_errno = errno;
+	free(path);
+	free(dirname);
+	free(parts);
+	free(abs_path);
+	free(abs_path2);
+	errno = saved_errno;
+	return -1;
 }
 
 int lxc_cgroup_nrtasks_handler(struct lxc_handler *handler)

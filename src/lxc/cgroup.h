@@ -160,6 +160,8 @@ struct lxc_list;
 extern int lxc_setup_cgroup_without_devices(struct lxc_handler *h, struct lxc_list *cgroup_settings);
 extern int lxc_setup_cgroup_devices(struct lxc_handler *h, struct lxc_list *cgroup_settings);
 
+extern int lxc_setup_mount_cgroup(const char *root, struct cgroup_process_info *base_info);
+
 extern int lxc_cgroup_nrtasks_handler(struct lxc_handler *handler);
 
 #endif
