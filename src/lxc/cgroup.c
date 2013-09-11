@@ -535,8 +535,64 @@ struct cgroup_process_info *lxc_cgroup_process_info_get_self(struct cgroup_meta_
 	return i;
 }
 
+/*
+ * If a controller has ns cgroup mounted, then in that cgroup the handler->pid
+ * is already in a new cgroup named after the pid.  'mnt' is passed in as
+ * the full current cgroup.  Say that is /sys/fs/cgroup/lxc/2975 and the container
+ * name is c1. .  We want to rename the cgroup directory to /sys/fs/cgroup/lxc/c1,
+ * and return the string /sys/fs/cgroup/lxc/c1.
+ */
+static char *cgroup_rename_nsgroup(char *mountpath, const char *oldname, int pid, const char *name)
+{
+	char *dir, *fulloldpath;
+	char *newname, *fullnewpath;
+	int len;
+
+	/*
+	 * if cgroup is mounted at /cgroup and task is in cgroup /ab/, pid 2375 and
+	 * name is c1,
+	 * dir: /ab
+	 * fulloldpath = /cgroup/ab/2375
+	 * fullnewpath = /cgroup/ab/c1
+	 * newname = /ab/c1
+	 */
+	dir = alloca(strlen(oldname) + 1);
+	strcpy(dir, oldname);
+
+	fulloldpath = alloca(strlen(oldname) + strlen(mountpath) + 22);
+	sprintf(fulloldpath, "%s/%s/%d", mountpath, oldname, pid);
+
+	len = strlen(dir) + strlen(name) + 2;
+	newname = malloc(len);
+	if (!newname) {
+		SYSERROR("Out of memory");
+		return NULL;
+	}
+	sprintf(newname, "%s/%s", dir, name);
+
+	fullnewpath = alloca(strlen(mountpath) + len + 2);
+	sprintf(fullnewpath, "%s/%s", mountpath, newname);
+
+	if (access(fullnewpath, F_OK) == 0) {
+		if (rmdir(fullnewpath) != 0) {
+			SYSERROR("container cgroup %s already exists.", fullnewpath);
+			free(newname);
+			return NULL;
+		}
+	}
+	if (rename(fulloldpath, fullnewpath)) {
+		SYSERROR("failed to rename cgroup %s->%s", fulloldpath, fullnewpath);
+		free(newname);
+		return NULL;
+	}
+
+	DEBUG("'%s' renamed to '%s'", oldname, newname);
+
+	return newname;
+}
+
 /* create a new cgroup */
-extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const char *path_pattern, struct cgroup_meta_data *meta_data, const char *sub_pattern)
+extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const char *path_pattern, struct cgroup_meta_data *meta_data, const char *sub_pattern, int pid)
 {
 	char **cgroup_path_components = NULL;
 	char **p = NULL;
@@ -592,6 +648,8 @@ extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const cha
 		}
 		info_ptr->designated_mount_point = mp;
 
+		if (lxc_string_in_array("ns", (const char **)h->subsystems))
+			continue;
 		if (handle_clone_children(mp, info_ptr->cgroup_path) < 0) {
 			ERROR("Could not set clone_children to 1 for cpuset hierarchy in parent cgroup.");
 			goto out_initial_error;
@@ -669,6 +727,9 @@ extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const cha
 		 */
 		for (i = 0, info_ptr = base_info; info_ptr; info_ptr = info_ptr->next, i++) {
 			char *parts2[3];
+
+			if (lxc_string_in_array("ns", (const char **)info_ptr->hierarchy->subsystems))
+				continue;
 			current_entire_path = NULL;
 
 			parts2[0] = !strcmp(info_ptr->cgroup_path, "/") ? "" : info_ptr->cgroup_path;
@@ -753,9 +814,27 @@ extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const cha
 
 	/* we're done, now update the paths */
 	for (i = 0, info_ptr = base_info; info_ptr; info_ptr = info_ptr->next, i++) {
-		free(info_ptr->cgroup_path);
-		info_ptr->cgroup_path = new_cgroup_paths[i];
-		info_ptr->cgroup_path_sub = new_cgroup_paths_sub[i];
+		/*
+		 * For any path which has ns cgroup mounted, handler->pid is already
+		 * moved into a container called '%d % (handler->pid)'.  Rename it to
+		 * the cgroup name and record that.
+		 */
+		if (lxc_string_in_array("ns", (const char **)info_ptr->hierarchy->subsystems)) {
+			char *tmp = cgroup_rename_nsgroup(info_ptr->designated_mount_point->mount_point,
+					info_ptr->cgroup_path, pid, name);
+			if (!tmp)
+				goto out_initial_error;
+			free(info_ptr->cgroup_path);
+			info_ptr->cgroup_path = tmp;
+			r = lxc_grow_array((void ***)&info_ptr->created_paths, &info_ptr->created_paths_capacity, info_ptr->created_paths_count + 1, 8);
+			if (r < 0)
+				goto out_initial_error;
+			info_ptr->created_paths[info_ptr->created_paths_count++] = strdup(tmp);
+		} else {
+			free(info_ptr->cgroup_path);
+			info_ptr->cgroup_path = new_cgroup_paths[i];
+			info_ptr->cgroup_path_sub = new_cgroup_paths_sub[i];
+		}
 	}
 	/* don't use lxc_free_array since we used the array members
 	 * to store them in our result...

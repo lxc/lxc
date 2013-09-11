@@ -684,7 +684,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 		failed_before_rename = 1;
 
-	if ((handler->cgroup = lxc_cgroup_create(name, cgroup_pattern, cgroup_meta, NULL)) == NULL) {
+	if ((handler->cgroup = lxc_cgroup_create(name, cgroup_pattern, cgroup_meta, NULL, handler->pid)) == NULL) {
 		ERROR("failed to create cgroups for '%s'", name);
 		goto out_delete_net;
 	}
