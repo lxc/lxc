@@ -113,7 +113,8 @@ extern struct cgroup_process_info *lxc_cgroup_process_info_get_init(struct cgrou
 extern struct cgroup_process_info *lxc_cgroup_process_info_get_self(struct cgroup_meta_data *meta);
 
 /* create a new cgroup */
-extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const char *path_pattern, struct cgroup_meta_data *meta_data, const char *sub_pattern, int pid);
+extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const char *path_pattern, struct cgroup_meta_data *meta_data, const char *sub_pattern);
+extern int lxc_cgroup_create_legacy(struct cgroup_process_info *base_info, const char *name, pid_t pid);
 
 /* get the cgroup membership of a given container */
 extern struct cgroup_process_info *lxc_cgroup_get_container_info(const char *name, const char *lxcpath, struct cgroup_meta_data *meta_data);

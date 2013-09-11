@@ -663,6 +663,14 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (!cgroup_pattern)
 		cgroup_pattern = "%n";
 
+	/* Create cgroup before doing clone(), so the child will know from
+	 * handler which cgroup it is going to be put in later.
+	 */
+	if ((handler->cgroup = lxc_cgroup_create(name, cgroup_pattern, cgroup_meta, NULL)) == NULL) {
+		ERROR("failed to create cgroups for '%s'", name);
+		goto out_delete_net;
+	}
+
 	/*
 	 * if the rootfs is not a blockdev, prevent the container from
 	 * marking it readonly.
@@ -684,8 +692,11 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 		failed_before_rename = 1;
 
-	if ((handler->cgroup = lxc_cgroup_create(name, cgroup_pattern, cgroup_meta, NULL, handler->pid)) == NULL) {
-		ERROR("failed to create cgroups for '%s'", name);
+	/* In case there is still legacy ns cgroup support in the kernel.
+	 * Should be removed at some later point in time.
+	 */
+	if (lxc_cgroup_create_legacy(handler->cgroup, name, handler->pid) < 0) {
+		ERROR("failed to create legacy ns cgroups for '%s'", name);
 		goto out_delete_net;
 	}
 
