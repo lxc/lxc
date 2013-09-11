@@ -76,11 +76,9 @@ static int lxc_monitord_fifo_create(struct lxc_monitor *mon)
 	char fifo_path[PATH_MAX];
 	int ret;
 
-	ret = snprintf(fifo_path, sizeof(fifo_path), "%s/monitor-fifo", mon->lxcpath);
-	if (ret < 0 || ret >= sizeof(fifo_path)) {
-		ERROR("lxcpath too long to monitor fifo");
-		return -1;
-	}
+	ret = lxc_monitor_fifo_name(mon->lxcpath, fifo_path, sizeof(fifo_path), 1);
+	if (ret < 0)
+		return ret;
 
 	ret = mknod(fifo_path, S_IFIFO|S_IRUSR|S_IWUSR, 0);
 	if (ret < 0) {
@@ -102,11 +100,10 @@ static int lxc_monitord_fifo_delete(struct lxc_monitor *mon)
 	char fifo_path[PATH_MAX];
 	int ret;
 
-	ret = snprintf(fifo_path, sizeof(fifo_path), "%s/monitor-fifo", mon->lxcpath);
-	if (ret < 0 || ret >= sizeof(fifo_path)) {
-		ERROR("lxcpath too long to monitor fifo");
-		return -1;
-	}
+	ret = lxc_monitor_fifo_name(mon->lxcpath, fifo_path, sizeof(fifo_path), 0);
+	if (ret < 0)
+		return ret;
+
 	unlink(fifo_path);
 	return 0;
 }

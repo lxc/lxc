@@ -56,10 +56,7 @@ static char *lxclock_name(const char *p, const char *n)
 
 	/* length of "/lock/lxc/" + $lxcpath + "/" + $lxcname + '\0' */
 	len = strlen("/lock/lxc/") + strlen(n) + strlen(p) + 2;
-	rundir = getenv("XDG_RUNTIME_DIR");
-	if (geteuid() == 0 || rundir == NULL)
-		rundir = "/run";
-
+	rundir = get_rundir();
 	len += strlen(rundir);
 
 	if ((dest = malloc(len)) == NULL)

@@ -318,6 +318,16 @@ const char *default_lxc_path(void)
 	return lxc_global_config_value("lxcpath");
 }
 
+const char *get_rundir()
+{
+	const char *rundir;
+
+	rundir = getenv("XDG_RUNTIME_DIR");
+	if (geteuid() == 0 || rundir == NULL)
+		rundir = "/run";
+	return rundir;
+}
+
 int wait_for_pid(pid_t pid)
 {
 	int status, ret;

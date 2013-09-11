@@ -40,6 +40,7 @@
 #include "af_unix.h"
 
 #include <lxc/log.h>
+#include <lxc/lxclock.h>
 #include <lxc/state.h>
 #include <lxc/monitor.h>
 #include <lxc/utils.h>
@@ -47,17 +48,45 @@
 lxc_log_define(lxc_monitor, lxc);
 
 /* routines used by monitor publishers (containers) */
+int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path, size_t fifo_path_sz,
+			  int do_mkdirp)
+{
+	int ret;
+	const char *rundir;
+
+	rundir = get_rundir();
+	if (do_mkdirp) {
+		ret = snprintf(fifo_path, fifo_path_sz, "%s/lxc/%s", rundir, lxcpath);
+		if (ret < 0 || ret >= fifo_path_sz) {
+			ERROR("rundir/lxcpath (%s/%s) too long for monitor fifo", rundir, lxcpath);
+			return -1;
+		}
+		process_lock();
+		ret = mkdir_p(fifo_path, 0755);
+		process_unlock();
+		if (ret < 0) {
+			ERROR("unable to create monitor fifo dir %s", fifo_path);
+			return ret;
+		}
+	}
+	ret = snprintf(fifo_path, fifo_path_sz, "%s/lxc/%s/monitor-fifo", rundir, lxcpath);
+	if (ret < 0 || ret >= fifo_path_sz) {
+		ERROR("rundir/lxcpath (%s/%s) too long for monitor fifo", rundir, lxcpath);
+		return -1;
+	}
+	return 0;
+}
+
 static void lxc_monitor_fifo_send(struct lxc_msg *msg, const char *lxcpath)
 {
 	int fd,ret;
 	char fifo_path[PATH_MAX];
 
 	BUILD_BUG_ON(sizeof(*msg) > PIPE_BUF); /* write not guaranteed atomic */
-	ret = snprintf(fifo_path, sizeof(fifo_path), "%s/monitor-fifo", lxcpath);
-	if (ret < 0 || ret >= sizeof(fifo_path)) {
-		ERROR("lxcpath too long to open monitor fifo");
+
+	ret = lxc_monitor_fifo_name(lxcpath, fifo_path, sizeof(fifo_path), 0);
+	if (ret < 0)
 		return;
-	}
 
 	fd = open(fifo_path, O_WRONLY);
 	if (fd < 0) {
@@ -98,6 +127,7 @@ int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 	size_t len;
 	int ret;
 	char *sockname = &addr->sun_path[0]; // 1 for abstract
+	const char *rundir;
 
 	/* addr.sun_path is only 108 bytes.
 	 * should we take a hash of lxcpath? a subset of it? ftok()? we need
@@ -106,9 +136,23 @@ int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 	memset(addr, 0, sizeof(*addr));
 	addr->sun_family = AF_UNIX;
 	len = sizeof(addr->sun_path) - 1;
-	ret = snprintf(sockname, len, "%s/monitor-sock", lxcpath);
+	rundir = get_rundir();
+	ret = snprintf(sockname, len, "%s/lxc/%s", rundir, lxcpath);
 	if (ret < 0 || ret >= len) {
-		ERROR("lxcpath too long for unix socket");
+		ERROR("rundir/lxcpath (%s/%s) too long for monitor unix socket", rundir, lxcpath);
+		return -1;
+	}
+	process_lock();
+	ret = mkdir_p(sockname, 0755);
+	process_unlock();
+	if (ret < 0) {
+		ERROR("unable to create monitor sock %s", sockname);
+		return ret;
+	}
+
+	ret = snprintf(sockname, len, "%s/lxc/%s/monitor-sock", rundir, lxcpath);
+	if (ret < 0 || ret >= len) {
+		ERROR("rundir/lxcpath (%s/%s) too long for monitor unix socket", rundir, lxcpath);
 		return -1;
 	}
 	return 0;
