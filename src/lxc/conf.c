@@ -671,9 +671,10 @@ static int mount_rootfs_block(const char *rootfs, const char *target)
 
 /*
  * pin_rootfs
- * if rootfs is a directory, then open ${rootfs}.hold for writing for the
- * duration of the container run, to prevent the container from marking the
- * underlying fs readonly on shutdown.
+ * if rootfs is a directory, then open ${rootfs}/lxc.hold for writing for
+ * the duration of the container run, to prevent the container from marking
+ * the underlying fs readonly on shutdown. unlink the file immediately so
+ * no name pollution is happens
  * return -1 on error.
  * return -2 if nothing needed to be pinned.
  * return an open fd (>=0) if we pinned it.
@@ -700,11 +701,14 @@ int pin_rootfs(const char *rootfs)
 	if (!S_ISDIR(s.st_mode))
 		return -2;
 
-	ret = snprintf(absrootfspin, MAXPATHLEN, "%s%s", absrootfs, ".hold");
+	ret = snprintf(absrootfspin, MAXPATHLEN, "%s/lxc.hold", absrootfs);
 	if (ret >= MAXPATHLEN)
 		return -1;
 
 	fd = open(absrootfspin, O_CREAT | O_RDWR, S_IWUSR|S_IRUSR);
+	if (fd < 0)
+		return fd;
+	(void)unlink(absrootfspin);
 	return fd;
 }
 
