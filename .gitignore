@@ -10,6 +10,7 @@
 
 .deps
 .libs
+.dirstamp
 
 Makefile.in
 Makefile
@@ -75,6 +76,7 @@ src/python-lxc/lxc/__pycache__/
 
 src/tests/lxc-test-cgpath
 src/tests/lxc-test-clonetest
+src/tests/lxc-test-concurrent
 src/tests/lxc-test-console
 src/tests/lxc-test-containertests
 src/tests/lxc-test-createtest
@@ -85,6 +87,7 @@ src/tests/lxc-test-locktests
 src/tests/lxc-test-lxcpath
 src/tests/lxc-test-saveconfig
 src/tests/lxc-test-shutdowntest
+src/tests/lxc-test-snapshot
 src/tests/lxc-test-startone
 src/tests/lxc-usernic-test
 
