@@ -1,0 +1,152 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright Canonical Inc. 2007, 2008
+
+Authors:
+Serge Hallyn <serge.hallyn at ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-snapshot</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-snapshot</refname>
+
+    <refpurpose>
+      Snapshot an existing container.
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-snapshot</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-c, --comment <replaceable>file</replaceable></arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-snapshot</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="req">-L, --list </arg>
+      <arg choice="opt">-C, --showcomments </arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-snapshot</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="req">-r, -restore <replaceable>snapshot-name</replaceable></arg>
+      <arg choice="opt"> <replaceable> newname</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title>Description</title>
+
+    <para>
+      <command>lxc-snapshot</command> creates, lists, and restores
+      container snapshots.
+    </para>
+    <para>
+    Snapshots are stored as snapshotted containers under a private configuration path.  For instance, if the container's configuration path is <filename>/var/lib/lxc</filename> and the container is <filename>c1</filename>, then the first snapshot will be stored as container <filename>snap0</filename> under configuration path <filename>/var/lib/lxcsnaps/c1</filename>.
+    </para>
+  </refsect1>
+
+  <refsect1>
+
+    <title>Options</title>
+
+    <variablelist>
+
+	  <varlistentry>
+	    <term> <option>-c,--comment <replaceable>comment_file</replaceable></option> </term>
+	   <listitem>
+	    <para> Associate the comment in <replaceable>comment_file</replaceable> with the newly created snapshot.</para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-L,--list </option> </term>
+	   <listitem>
+	    <para> List existing snapshots. </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-C,--showcomments </option> </term>
+	   <listitem>
+	    <para> Show snapshot comments in the snapshots listings. </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-r,--restore snapshot-name</option> </term>
+	   <listitem>
+	    <para> Restore the named snapshot, meaning a full new container is created which is a copy of the snapshot.</para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>newname</option> </term>
+	   <listitem>
+	    <para> When restoring a snapshot, the last optional argument is the name to use for the restored container.  If no name is given, then the original container will be destroyed and the restored container will take its place.  Note that deleting the original snapshot is not possible in the case of overlayfs or zfs backed snapshots.</para>
+	   </listitem>
+	  </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  &seealso;
+
+  <refsect1>
+    <title>Author</title>
+    <para>Serge Hallyn <email>serge.hallyn@ubuntu.com </email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

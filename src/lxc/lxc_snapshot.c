@@ -129,13 +129,14 @@ static const struct option my_longopts[] = {
 
 
 static struct lxc_arguments my_args = {
-	.progname = "lxc-create",
+	.progname = "lxc-snapshot",
 	.help     = "\
---name=NAME [-w] [-r] [-t timeout] [-P lxcpath]\n\
+--name=NAME [-P lxcpath] [-L [-C]] [-c commentfile] [-r snapname [newname]]\n\
 \n\
-lxc-create creates a container\n\
+lxc-snapshot snapshots a container\n\
 \n\
 Options :\n\
+  -n, --name=NAME   NAME for name of the container\n\
   -L, --list          list snapshots\n\
   -C, --showcomments  show snapshot comments in list\n\
   -c, --comment=file  add file as a comment\n\

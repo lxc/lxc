@@ -414,6 +414,7 @@ AC_CONFIG_FILES([
 	doc/lxc-netstat.sgml
 	doc/lxc-ps.sgml
 	doc/lxc-restart.sgml
+	doc/lxc-snapshot.sgml
 	doc/lxc-start-ephemeral.sgml
 	doc/lxc-start.sgml
 	doc/lxc-stop.sgml
