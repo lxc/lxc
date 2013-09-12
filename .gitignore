@@ -59,6 +59,7 @@ src/lxc/lxc-netstat
 src/lxc/lxc-ps
 src/lxc/lxc-restart
 src/lxc/lxc-shutdown
+src/lxc/lxc-snapshot
 src/lxc/lxc-start
 src/lxc/lxc-start-ephemeral
 src/lxc/lxc-stop
