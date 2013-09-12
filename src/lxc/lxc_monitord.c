@@ -342,7 +342,7 @@ int main(int argc, char *argv[])
 
 	ret = lxc_log_init(NULL, logpath, "NOTICE", "lxc-monitord", 0, lxcpath);
 	if (ret)
-		return ret;
+		INFO("Failed to open log file %s, log will be lost", lxcpath);
 
 	pipefd = atoi(argv[2]);
 
