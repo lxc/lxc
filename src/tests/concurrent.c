@@ -40,7 +40,7 @@ void * concurrent(void *arguments) {
     args->return_code = 1;
     if (strcmp(args->mode, "create") == 0) {
         if (!c->is_defined(c)) {
-            if (!c->create(c, "ubuntu", NULL, NULL, 1, NULL)) {
+            if (!c->create(c, "busybox", NULL, NULL, 1, NULL)) {
                 fprintf(stderr, "Creating the container (%s) failed...\n", name);
                 goto out;
             }
@@ -52,11 +52,19 @@ void * concurrent(void *arguments) {
                 fprintf(stderr, "Starting the container (%s) failed...\n", name);
                 goto out;
             }
+            if (!c->wait(c, "RUNNING", -1)) {
+                fprintf(stderr, "Waiting the container (%s) to start failed...\n", name);
+                goto out;
+            }
         }
     } else if(strcmp(args->mode, "stop") == 0) {
         if (c->is_defined(c) && c->is_running(c)) {
             if (!c->stop(c)) {
                 fprintf(stderr, "Stopping the container (%s) failed...\n", name);
+                goto out;
+            }
+            if (!c->wait(c, "STOPPED", -1)) {
+                fprintf(stderr, "Waiting the container (%s) to stop failed...\n", name);
                 goto out;
             }
         }
