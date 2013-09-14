@@ -47,7 +47,6 @@
 
 #include "utils.h"
 #include "log.h"
-#include "lxclock.h"
 
 lxc_log_define(lxc_utils, lxc);
 
@@ -410,10 +409,7 @@ int sha1sum_file(char *fnam, unsigned char *digest)
 
 	if (!fnam)
 		return -1;
-	process_lock();
-	f = fopen_cloexec(fnam, "r");
-	process_unlock();
-	if (f < 0) {
+	if ((f = fopen_cloexec(fnam, "r")) < 0) {
 		SYSERROR("Error opening template");
 		return -1;
 	}
@@ -443,10 +439,7 @@ int sha1sum_file(char *fnam, unsigned char *digest)
 		fclose(f);
 		return -1;
 	}
-	process_lock();
-	ret = fclose(f);
-	process_unlock();
-	if (ret < 0) {
+	if (fclose(f) < 0) {
 		SYSERROR("Failre closing template");
 		free(buf);
 		return -1;

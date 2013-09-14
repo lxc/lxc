@@ -31,7 +31,6 @@
 #include "parse.h"
 #include "config.h"
 #include "utils.h"
-#include "lxclock.h"
 #include <lxc/log.h>
 
 /* Workaround for the broken signature of alphasort() in bionic.
@@ -91,9 +90,7 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 	char *line = NULL;
 	size_t len = 0;
 
-	process_lock();
 	f = fopen(file, "r");
-	process_unlock();
 	if (!f) {
 		SYSERROR("failed to open %s", file);
 		return -1;
@@ -107,9 +104,7 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 
 	if (line)
 		free(line);
-	process_lock();
 	fclose(f);
-	process_unlock();
 	return err;
 }
 
