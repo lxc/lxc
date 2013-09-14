@@ -22,6 +22,8 @@
 
 #define NTHREADS 5
 
+char *template = "busybox";
+
 struct thread_args {
     int thread_id;
     int return_code;
@@ -40,7 +42,7 @@ void * concurrent(void *arguments) {
     args->return_code = 1;
     if (strcmp(args->mode, "create") == 0) {
         if (!c->is_defined(c)) {
-            if (!c->create(c, "busybox", NULL, NULL, 1, NULL)) {
+            if (!c->create(c, template, NULL, NULL, 1, NULL)) {
                 fprintf(stderr, "Creating the container (%s) failed...\n", name);
                 goto out;
             }
@@ -90,6 +92,9 @@ int main(int argc, char *argv[]) {
     struct thread_args args[NTHREADS];
 
     char *modes[] = {"create", "start", "stop", "destroy", NULL};
+
+    if (argc > 1)
+	    template = argv[1];
 
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
