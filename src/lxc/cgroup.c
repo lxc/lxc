@@ -44,6 +44,7 @@
 #include "list.h"
 #include "conf.h"
 #include "utils.h"
+#include "bdev.h"
 
 #include <lxc/log.h>
 #include <lxc/cgroup.h>
