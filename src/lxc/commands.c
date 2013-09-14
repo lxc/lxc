@@ -46,6 +46,7 @@
 #include "mainloop.h"
 #include "af_unix.h"
 #include "config.h"
+#include "lxclock.h"
 
 /*
  * This file provides the different functions for clients to
@@ -282,8 +283,11 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 
 	ret = lxc_cmd_rsp_recv(sock, cmd);
 out:
-	if (!stay_connected || ret <= 0)
+	if (!stay_connected || ret <= 0) {
+		process_lock();
 		close(sock);
+		process_unlock();
+	}
 	if (stay_connected && ret > 0)
 		cmd->rsp.ret = sock;
 

@@ -30,6 +30,7 @@
 #include <sys/un.h>
 
 #include "log.h"
+#include "lxclock.h"
 
 lxc_log_define(lxc_af_unix, lxc);
 
@@ -100,7 +101,9 @@ int lxc_af_unix_connect(const char *path)
 	int fd;
 	struct sockaddr_un addr;
 
+	process_lock();
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
+	process_unlock();
 	if (fd < 0)
 		return -1;
 
@@ -113,7 +116,9 @@ int lxc_af_unix_connect(const char *path)
 
 	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr))) {
 		int tmp = errno;
+		process_lock();
 		close(fd);
+		process_unlock();
 		errno = tmp;
 		return -1;
 	}
