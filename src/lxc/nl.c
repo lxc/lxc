@@ -31,6 +31,7 @@
 #include <linux/rtnetlink.h>
 
 #include "nl.h"
+#include "lxclock.h"
 
 #define NLMSG_TAIL(nmsg) \
         ((struct rtattr *) (((void *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
@@ -222,7 +223,9 @@ extern int netlink_open(struct nl_handler *handler, int protocol)
 
         memset(handler, 0, sizeof(*handler));
 
+	process_lock();
         handler->fd = socket(AF_NETLINK, SOCK_RAW, protocol);
+	process_unlock();
         if (handler->fd < 0)
                 return -errno;
 
@@ -260,7 +263,9 @@ extern int netlink_open(struct nl_handler *handler, int protocol)
 
 extern int netlink_close(struct nl_handler *handler)
 {
+	process_lock();
 	close(handler->fd);
+	process_unlock();
 	handler->fd = -1;
 	return 0;
 }

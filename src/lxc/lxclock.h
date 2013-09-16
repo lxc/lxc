@@ -85,7 +85,7 @@ extern int lxcunlock(struct lxc_lock *lock);
 
 extern void lxc_putlock(struct lxc_lock *l);
 
-extern int process_lock(void);
+extern void process_lock(void);
 extern void process_unlock(void);
 struct lxc_container;
 extern int container_mem_lock(struct lxc_container *c);

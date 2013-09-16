@@ -28,6 +28,7 @@
 
 #include "log.h"
 #include "apparmor.h"
+#include "lxclock.h"
 
 lxc_log_define(lxc_apparmor, lxc);
 
@@ -53,7 +54,9 @@ extern char *aa_get_profile(pid_t pid)
 		return NULL;
 	}
 again:
+	process_lock();
 	f = fopen(path, "r");
+	process_unlock();
 	if (!f) {
 		SYSERROR("opening %s\n", path);
 		if (buf)
@@ -65,11 +68,15 @@ again:
 	memset(buf, 0, sz);
 	if (!buf) {
 		ERROR("out of memory");
+		process_lock();
 		fclose(f);
+		process_unlock();
 		return NULL;
 	}
 	ret = fread(buf, 1, sz - 1, f);
+	process_lock();
 	fclose(f);
+	process_unlock();
 	if (ret >= sz)
 		goto again;
 	if (ret < 0) {
@@ -108,11 +115,15 @@ static int check_apparmor_enabled(void)
 	ret = stat(AA_MOUNT_RESTR, &statbuf);
 	if (ret != 0)
 		return 0;
+	process_lock();
 	fin = fopen(AA_ENABLED_FILE, "r");
+	process_unlock();
 	if (!fin)
 		return 0;
 	ret = fscanf(fin, "%c", &e);
+	process_lock();
 	fclose(fin);
+	process_unlock();
 	if (ret == 1 && e == 'Y')
 		return 1;
 	return 0;

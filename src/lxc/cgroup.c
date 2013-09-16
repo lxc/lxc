@@ -45,6 +45,7 @@
 #include "conf.h"
 #include "utils.h"
 #include "bdev.h"
+#include "lxclock.h"
 
 #include <lxc/log.h>
 #include <lxc/cgroup.h>
@@ -148,7 +149,9 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 	meta_data->ref = 1;
 
 	/* Step 1: determine all kernel subsystems */
+	process_lock();
 	proc_cgroups = fopen_cloexec("/proc/cgroups", "r");
+	process_unlock();
 	if (!proc_cgroups)
 		goto out_error;
 
@@ -186,18 +189,22 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 		kernel_subsystems_count++;
 	}
 
+	process_lock();
 	fclose(proc_cgroups);
+	process_unlock();
 	proc_cgroups = NULL;
 
 	/* Step 2: determine all hierarchies (by reading /proc/self/cgroup),
 	 *         since mount points don't specify hierarchy number and
 	 *         /proc/cgroups does not contain named hierarchies
 	 */
+	process_lock();
 	proc_self_cgroup = fopen_cloexec("/proc/self/cgroup", "r");
 	/* if for some reason (because of setns() and pid namespace for example),
 	 * /proc/self is not valid, we try /proc/1/cgroup... */
 	if (!proc_self_cgroup)
 		proc_self_cgroup = fopen_cloexec("/proc/1/cgroup", "r");
+	process_unlock();
 	if (!proc_self_cgroup)
 		goto out_error;
 
@@ -274,15 +281,19 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 		}
 	}
 
+	process_lock();
 	fclose(proc_self_cgroup);
+	process_unlock();
 	proc_self_cgroup = NULL;
 	
 	/* Step 3: determine all mount points of each hierarchy */
+	process_lock();
 	proc_self_mountinfo = fopen_cloexec("/proc/self/mountinfo", "r");
 	/* if for some reason (because of setns() and pid namespace for example),
 	 * /proc/self is not valid, we try /proc/1/cgroup... */
 	if (!proc_self_mountinfo)
 		proc_self_mountinfo = fopen_cloexec("/proc/1/mountinfo", "r");
+	process_unlock();
 	if (!proc_self_mountinfo)
 		goto out_error;
 
@@ -395,12 +406,14 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 
 out_error:
 	saved_errno = errno;
+	process_lock();
 	if (proc_cgroups)
 		fclose(proc_cgroups);
 	if (proc_self_cgroup)
 		fclose(proc_self_cgroup);
 	if (proc_self_mountinfo)
 		fclose(proc_self_mountinfo);
+	process_unlock();
 	free(line);
 	free(tokens);
 	lxc_free_array((void **)kernel_subsystems, free);
@@ -1367,7 +1380,9 @@ struct cgroup_process_info *lxc_cgroup_process_info_getx(const char *proc_pid_cg
 	struct cgroup_process_info **cptr = &result;
 	struct cgroup_process_info *entry = NULL;
 
+	process_lock();
 	proc_pid_cgroup = fopen_cloexec(proc_pid_cgroup_str, "r");
+	process_unlock();
 	if (!proc_pid_cgroup)
 		return NULL;
 
@@ -1437,14 +1452,18 @@ struct cgroup_process_info *lxc_cgroup_process_info_getx(const char *proc_pid_cg
 		entry = NULL;
 	}
 
+	process_lock();
 	fclose(proc_pid_cgroup);
+	process_unlock();
 	free(line);
 	return result;
 
 out_error:
 	saved_errno = errno;
+	process_lock();
 	if (proc_pid_cgroup)
 		fclose(proc_pid_cgroup);
+	process_unlock();
 	lxc_cgroup_process_info_free(result);
 	lxc_cgroup_process_info_free(entry);
 	free(line);
@@ -1702,7 +1721,9 @@ bool cgroup_devices_has_allow_or_deny(struct lxc_handler *h, char *v, bool for_a
 		return false;
 	}
 
+	process_lock();
 	devices_list = fopen_cloexec(path, "r");
+	process_unlock();
 	if (!devices_list) {
 		free(path);
 		return false;
@@ -1722,7 +1743,9 @@ bool cgroup_devices_has_allow_or_deny(struct lxc_handler *h, char *v, bool for_a
 	}
 
 out:
+	process_lock();
 	fclose(devices_list);
+	process_unlock();
 	free(line);
 	free(path);
 	return ret;
@@ -1744,7 +1767,9 @@ int cgroup_recursive_task_count(const char *cgroup_path)
 	if (!dent_buf)
 		return -1;
 
+	process_lock();
 	d = opendir(cgroup_path);
+	process_unlock();
 	if (!d)
 		return 0;
 
@@ -1761,13 +1786,17 @@ int cgroup_recursive_task_count(const char *cgroup_path)
 			continue;
 		sub_path = lxc_string_join("/", parts, false);
 		if (!sub_path) {
+			process_lock();
 			closedir(d);
+			process_unlock();
 			free(dent_buf);
 			return -1;
 		}
 		r = stat(sub_path, &st);
 		if (r < 0) {
+			process_lock();
 			closedir(d);
+			process_unlock();
 			free(dent_buf);
 			free(sub_path);
 			return -1;
@@ -1783,7 +1812,9 @@ int cgroup_recursive_task_count(const char *cgroup_path)
 		}
 		free(sub_path);
 	}
+	process_lock();
 	closedir(d);
+	process_unlock();
 	free(dent_buf);
 
 	return n;
@@ -1796,7 +1827,9 @@ int count_lines(const char *fn)
 	size_t sz = 0;
 	int n = 0;
 
+	process_lock();
 	f = fopen_cloexec(fn, "r");
+	process_unlock();
 	if (!f)
 		return -1;
 
@@ -1804,7 +1837,9 @@ int count_lines(const char *fn)
 		n++;
 	}
 	free(line);
+	process_lock();
 	fclose(f);
+	process_unlock();
 	return n;
 }
 

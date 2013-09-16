@@ -271,13 +271,14 @@ void lxc_putlock(struct lxc_lock *l)
 	free(l);
 }
 
-int process_lock(void)
+void process_lock(void)
 {
 	int ret;
-	ret = pthread_mutex_lock(&thread_mutex);
-	if (ret != 0)
+
+	if ((ret = pthread_mutex_lock(&thread_mutex)) != 0) {
 		ERROR("pthread_mutex_lock returned:%d %s", ret, strerror(ret));
-	return ret;
+		exit(1);
+	}
 }
 
 void process_unlock(void)

@@ -30,6 +30,7 @@
 #include <sys/un.h>
 
 #include "log.h"
+#include "lxclock.h"
 
 lxc_log_define(lxc_af_unix, lxc);
 
@@ -42,7 +43,9 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 	if (flags & O_TRUNC)
 		unlink(path);
 
+	process_lock();
 	fd = socket(PF_UNIX, type, 0);
+	process_unlock();
 	if (fd < 0)
 		return -1;
 
@@ -57,7 +60,9 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 	if (path[0]) {
 		len = strlen(path);
 		if (len >= sizeof(addr.sun_path)) {
+			process_lock();
 			close(fd);
+			process_unlock();
 			errno = ENAMETOOLONG;
 			return -1;
 		}
@@ -66,14 +71,18 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 
 	if (bind(fd, (struct sockaddr *)&addr, sizeof(addr))) {
 		int tmp = errno;
+		process_lock();
 		close(fd);
+		process_unlock();
 		errno = tmp;
 		return -1;
 	}
 
 	if (type == SOCK_STREAM && listen(fd, 100)) {
 		int tmp = errno;
+		process_lock();
 		close(fd);
+		process_unlock();
 		errno = tmp;
 		return -1;
 	}
@@ -90,7 +99,9 @@ int lxc_af_unix_close(int fd)
 	    addr.sun_path[0])
 		unlink(addr.sun_path);
 
+	process_lock();
 	close(fd);
+	process_unlock();
 
 	return 0;
 }
@@ -100,7 +111,9 @@ int lxc_af_unix_connect(const char *path)
 	int fd;
 	struct sockaddr_un addr;
 
+	process_lock();
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
+	process_unlock();
 	if (fd < 0)
 		return -1;
 
@@ -113,7 +126,9 @@ int lxc_af_unix_connect(const char *path)
 
 	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr))) {
 		int tmp = errno;
+		process_lock();
 		close(fd);
+		process_unlock();
 		errno = tmp;
 		return -1;
 	}

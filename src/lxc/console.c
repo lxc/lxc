@@ -100,16 +100,16 @@ static void lxc_console_winch(struct lxc_tty_state *ts)
 
 void lxc_console_sigwinch(int sig)
 {
-	if (process_lock() == 0) {
-		struct lxc_list *it;
-		struct lxc_tty_state *ts;
+	struct lxc_list *it;
+	struct lxc_tty_state *ts;
 
-		lxc_list_for_each(it, &lxc_ttys) {
-			ts = it->elem;
-			lxc_console_winch(ts);
-		}
-		process_unlock();
+	process_lock();
+
+	lxc_list_for_each(it, &lxc_ttys) {
+		ts = it->elem;
+		lxc_console_winch(ts);
 	}
+	process_unlock();
 }
 
 static int lxc_console_cb_sigwinch_fd(int fd, void *cbdata,
@@ -204,8 +204,11 @@ out:
  */
 static void lxc_console_sigwinch_fini(struct lxc_tty_state *ts)
 {
-	if (ts->sigfd >= 0)
+	if (ts->sigfd >= 0) {
+		process_lock();
 		close(ts->sigfd);
+		process_unlock();
+	}
 	lxc_list_del(&ts->node);
 	sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
 	free(ts);
@@ -227,7 +230,9 @@ static int lxc_console_cb_con(int fd, void *data,
 	if (!r) {
 		INFO("console client on fd %d has exited", fd);
 		lxc_mainloop_del_handler(descr, fd);
+		process_lock();
 		close(fd);
+		process_unlock();
 		return 0;
 	}
 
@@ -343,8 +348,10 @@ static void lxc_console_peer_proxy_free(struct lxc_console *console)
 		lxc_console_sigwinch_fini(console->tty_state);
 		console->tty_state = NULL;
 	}
+	process_lock();
 	close(console->peerpty.master);
 	close(console->peerpty.slave);
+	process_unlock();
 	console->peerpty.master = -1;
 	console->peerpty.slave = -1;
 	console->peerpty.busy = -1;
@@ -356,6 +363,7 @@ static int lxc_console_peer_proxy_alloc(struct lxc_console *console, int sockfd)
 {
 	struct termios oldtermio;
 	struct lxc_tty_state *ts;
+	int ret;
 
 	if (console->master < 0) {
 		ERROR("console not set up");
@@ -373,8 +381,11 @@ static int lxc_console_peer_proxy_alloc(struct lxc_console *console, int sockfd)
 	/* this is the proxy pty that will be given to the client, and that
 	 * the real pty master will send to / recv from
 	 */
-	if (openpty(&console->peerpty.master, &console->peerpty.slave,
-		    console->peerpty.name, NULL, NULL)) {
+	process_lock();
+	ret = openpty(&console->peerpty.master, &console->peerpty.slave,
+		    console->peerpty.name, NULL, NULL);
+	process_unlock();
+	if (ret) {
 		SYSERROR("failed to create proxy pty");
 		return -1;
 	}
@@ -488,19 +499,23 @@ static void lxc_console_peer_default(struct lxc_console *console)
 	 */
 	if (!path && !access("/dev/tty", F_OK)) {
 		int fd;
+		process_lock();
 		fd = open("/dev/tty", O_RDWR);
 		if (fd >= 0) {
 			close(fd);
 			path = "/dev/tty";
 		}
+		process_unlock();
 	}
 
 	if (!path)
 		goto out;
 
 	DEBUG("opening %s for console peer", path);
+	process_lock();
 	console->peer = lxc_unpriv(open(path, O_CLOEXEC | O_RDWR | O_CREAT |
 					O_APPEND, 0600));
+	process_unlock();
 	if (console->peer < 0)
 		goto out;
 
@@ -531,7 +546,9 @@ err2:
 	free(console->tios);
 	console->tios = NULL;
 err1:
+	process_lock();
 	close(console->peer);
+	process_unlock();
 	console->peer = -1;
 out:
 	DEBUG("no console peer");
@@ -545,24 +562,24 @@ void lxc_console_delete(struct lxc_console *console)
 	free(console->tios);
 	console->tios = NULL;
 
+	process_lock();
 	close(console->peer);
-	console->peer = -1;
-
-	if (console->log_fd >= 0) {
-		close(console->log_fd);
-		console->log_fd = -1;
-	}
-
 	close(console->master);
-	console->master = -1;
-
 	close(console->slave);
+	if (console->log_fd >= 0)
+		close(console->log_fd);
+	process_unlock();
+
+	console->peer = -1;
+	console->master = -1;
 	console->slave = -1;
+	console->log_fd = -1;
 }
 
 int lxc_console_create(struct lxc_conf *conf)
 {
 	struct lxc_console *console = &conf->console;
+	int ret;
 
 	if (conf->is_execute) {
 		INFO("no console for lxc-execute.");
@@ -575,8 +592,11 @@ int lxc_console_create(struct lxc_conf *conf)
 	if (console->path && !strcmp(console->path, "none"))
 		return 0;
 
-	if (openpty(&console->master, &console->slave,
-		    console->name, NULL, NULL)) {
+	process_lock();
+	ret = openpty(&console->master, &console->slave,
+		    console->name, NULL, NULL);
+	process_unlock();
+	if (ret) {
 		SYSERROR("failed to allocate a pty");
 		return -1;
 	}
@@ -594,9 +614,11 @@ int lxc_console_create(struct lxc_conf *conf)
 	lxc_console_peer_default(console);
 
 	if (console->log_path) {
+		process_lock();
 		console->log_fd = lxc_unpriv(open(console->log_path,
 						  O_CLOEXEC | O_RDWR |
 						  O_CREAT | O_APPEND, 0600));
+		process_unlock();
 		if (console->log_fd < 0) {
 			SYSERROR("failed to open '%s'", console->log_path);
 			goto err;
@@ -693,6 +715,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 
 	process_lock();
 	ttyfd = lxc_cmd_console(c->name, &ttynum, &masterfd, c->config_path);
+	process_unlock();
 	if (ttyfd < 0) {
 		ret = ttyfd;
 		goto err1;
@@ -747,9 +770,9 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		goto err4;
 	}
 
-	process_unlock();
-	ret = lxc_mainloop(&descr, -1);
 	process_lock();
+	ret = lxc_mainloop(&descr, -1);
+	process_unlock();
 	if (ret) {
 		ERROR("mainloop returned an error");
 		goto err4;
@@ -762,11 +785,12 @@ err4:
 err3:
 	lxc_console_sigwinch_fini(ts);
 err2:
+	process_lock();
 	close(masterfd);
 	close(ttyfd);
+	process_unlock();
 err1:
 	tcsetattr(stdinfd, TCSAFLUSH, &oldtios);
-	process_unlock();
 
 	return ret;
 }

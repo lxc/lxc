@@ -62,6 +62,7 @@ static int timerfd_settime (int __ufd, int __flags,
 #include "mainloop.h"
 #include "lxc.h"
 #include "log.h"
+#include "lxclock.h"
 
 #ifndef __USE_GNU
 #define __USE_GNU
@@ -342,7 +343,9 @@ run_ok:
 
 	memset(utmp_data, 0, sizeof(struct lxc_utmp));
 
+	process_lock();
 	fd = inotify_init();
+	process_unlock();
 	if (fd < 0) {
 		SYSERROR("failed to inotify_init");
 		goto out;
@@ -376,7 +379,9 @@ run_ok:
 
 	return 0;
 out_close:
+	process_lock();
 	close(fd);
+	process_unlock();
 out:
 	free(utmp_data);
 	return -1;
@@ -426,7 +431,9 @@ int lxc_utmp_add_timer(struct lxc_epoll_descr *descr,
 	struct itimerspec timeout;
 	struct lxc_utmp *utmp_data = (struct lxc_utmp *)data;
 
+	process_lock();
 	fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+	process_unlock();
 	if (fd < 0) {
 		SYSERROR("failed to create timer");
 		return -1;
@@ -450,7 +457,9 @@ int lxc_utmp_add_timer(struct lxc_epoll_descr *descr,
 
 	if (lxc_mainloop_add_handler(descr, fd, callback, utmp_data)) {
 		SYSERROR("failed to add utmp timer to mainloop");
+		process_lock();
 		close(fd);
+		process_unlock();
 		return -1;
 	}
 
@@ -471,7 +480,9 @@ int lxc_utmp_del_timer(struct lxc_epoll_descr *descr,
 		SYSERROR("failed to del utmp timer from mainloop");
 
 	/* shutdown timer_fd */
+	process_lock();
 	close(utmp_data->timer_fd);
+	process_unlock();
 	utmp_data->timer_fd = -1;
 
 	if (result < 0)

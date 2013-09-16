@@ -36,6 +36,7 @@
 #include "log.h"
 #include "caps.h"
 #include "utils.h"
+#include "lxclock.h"
 
 #define LXC_LOG_PREFIX_SIZE	32
 #define LXC_LOG_BUFFER_SIZE	512
@@ -159,8 +160,10 @@ static int log_open(const char *name)
 	int fd;
 	int newfd;
 
+	process_lock();
 	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY |
 			     O_APPEND | O_CLOEXEC, 0666));
+	process_unlock();
 	if (fd == -1) {
 		ERROR("failed to open log file \"%s\" : %s", name,
 		      strerror(errno));
@@ -174,7 +177,9 @@ static int log_open(const char *name)
 	if (newfd == -1)
 		ERROR("failed to dup log fd %d : %s", fd, strerror(errno));
 
+	process_lock();
 	close(fd);
+	process_unlock();
 	return newfd;
 }
 
@@ -241,7 +246,9 @@ static int __lxc_log_set_file(const char *fname, int create_dirs)
 {
 	if (lxc_log_fd != -1) {
 		// we are overriding the default.
+		process_lock();
 		close(lxc_log_fd);
+		process_unlock();
 		free(log_fname);
 	}
 

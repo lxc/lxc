@@ -29,6 +29,7 @@
 
 #include "log.h"
 #include "start.h"
+#include "lxclock.h"
 
 lxc_log_define(lxc_sync, lxc);
 
@@ -99,7 +100,12 @@ int lxc_sync_wake_child(struct lxc_handler *handler, int sequence)
 
 int lxc_sync_init(struct lxc_handler *handler)
 {
-	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, handler->sv)) {
+	int ret;
+
+	process_lock();
+	ret = socketpair(AF_LOCAL, SOCK_STREAM, 0, handler->sv);
+	process_unlock();
+	if (ret) {
 		SYSERROR("failed to create synchronization socketpair");
 		return -1;
 	}
@@ -113,7 +119,9 @@ int lxc_sync_init(struct lxc_handler *handler)
 void lxc_sync_fini_child(struct lxc_handler *handler)
 {
 	if (handler->sv[0] != -1) {
+		process_lock();
 		close(handler->sv[0]);
+		process_unlock();
 		handler->sv[0] = -1;
 	}
 }
@@ -121,7 +129,9 @@ void lxc_sync_fini_child(struct lxc_handler *handler)
 void lxc_sync_fini_parent(struct lxc_handler *handler)
 {
 	if (handler->sv[1] != -1) {
+		process_lock();
 		close(handler->sv[1]);
+		process_unlock();
 		handler->sv[1] = -1;
 	}
 }

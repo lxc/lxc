@@ -47,6 +47,7 @@
 
 #include "utils.h"
 #include "log.h"
+#include "lxclock.h"
 
 lxc_log_define(lxc_utils, lxc);
 
@@ -57,7 +58,9 @@ static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
 	int ret, failed=0;
 	char pathname[MAXPATHLEN];
 
+	process_lock();
 	dir = opendir(dirname);
+	process_unlock();
 	if (!dir) {
 		ERROR("%s: failed to open %s", __func__, dirname);
 		return 0;
@@ -104,7 +107,10 @@ static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
 		failed=1;
 	}
 
-	if (closedir(dir)) {
+	process_lock();
+	ret = closedir(dir);
+	process_unlock();
+	if (ret) {
 		ERROR("%s: failed to close directory %s", __func__, dirname);
 		failed=1;
 	}
@@ -253,7 +259,9 @@ const char *lxc_global_config_value(const char *option_name)
 	if (values[i])
 		return values[i];
 
+	process_lock();
 	fin = fopen_cloexec(LXC_GLOBAL_CONF, "r");
+	process_unlock();
 	if (fin) {
 		while (fgets(buf, 1024, fin)) {
 			if (buf[0] == '#')
@@ -299,8 +307,10 @@ const char *lxc_global_config_value(const char *option_name)
 		errno = 0;
 
 out:
+	process_lock();
 	if (fin)
 		fclose(fin);
+	process_unlock();
 	return values[i];
 }
 
@@ -397,6 +407,15 @@ ssize_t lxc_read_nointr_expect(int fd, void* buf, size_t count, const void* expe
 	return ret;
 }
 
+static inline int lock_fclose(FILE *f)
+{
+	int ret;
+	process_lock();
+	ret = fclose(f);
+	process_unlock();
+	return ret;
+}
+
 #if HAVE_LIBGNUTLS
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
@@ -409,37 +428,40 @@ int sha1sum_file(char *fnam, unsigned char *digest)
 
 	if (!fnam)
 		return -1;
-	if ((f = fopen_cloexec(fnam, "r")) < 0) {
+	process_lock();
+	f = fopen_cloexec(fnam, "r");
+	process_unlock();
+	if (f < 0) {
 		SYSERROR("Error opening template");
 		return -1;
 	}
 	if (fseek(f, 0, SEEK_END) < 0) {
 		SYSERROR("Error seeking to end of template");
-		fclose(f);
+		lock_fclose(f);
 		return -1;
 	}
 	if ((flen = ftell(f)) < 0) {
 		SYSERROR("Error telling size of template");
-		fclose(f);
+		lock_fclose(f);
 		return -1;
 	}
 	if (fseek(f, 0, SEEK_SET) < 0) {
 		SYSERROR("Error seeking to start of template");
-		fclose(f);
+		lock_fclose(f);
 		return -1;
 	}
 	if ((buf = malloc(flen+1)) == NULL) {
 		SYSERROR("Out of memory");
-		fclose(f);
+		lock_fclose(f);
 		return -1;
 	}
 	if (fread(buf, 1, flen, f) != flen) {
 		SYSERROR("Failure reading template");
 		free(buf);
-		fclose(f);
+		lock_fclose(f);
 		return -1;
 	}
-	if (fclose(f) < 0) {
+	if (lock_fclose(f) < 0) {
 		SYSERROR("Failre closing template");
 		free(buf);
 		return -1;
@@ -496,6 +518,10 @@ const char** lxc_va_arg_list_to_argv_const(va_list ap, size_t skip)
 	return (const char**)lxc_va_arg_list_to_argv(ap, skip, 0);
 }
 
+/*
+ * fopen_cloexec: must be called with process_lock() held
+ * if it is needed.
+ */
 FILE *fopen_cloexec(const char *path, const char *mode)
 {
 	int open_mode = 0;
@@ -847,7 +873,9 @@ int lxc_write_to_file(const char *filename, const void* buf, size_t count, bool 
 	int fd, saved_errno;
 	ssize_t ret;
 
+	process_lock();
 	fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, 0666);
+	process_unlock();
 	if (fd < 0)
 		return -1;
 	ret = lxc_write_nointr(fd, buf, count);
@@ -860,12 +888,16 @@ int lxc_write_to_file(const char *filename, const void* buf, size_t count, bool 
 		if (ret != 1)
 			goto out_error;
 	}
+	process_lock();
 	close(fd);
+	process_unlock();
 	return 0;
 
 out_error:
 	saved_errno = errno;
+	process_lock();
 	close(fd);
+	process_unlock();
 	errno = saved_errno;
 	return -1;
 }
@@ -875,7 +907,9 @@ int lxc_read_from_file(const char *filename, void* buf, size_t count)
 	int fd = -1, saved_errno;
 	ssize_t ret;
 
+	process_lock();
 	fd = open(filename, O_RDONLY | O_CLOEXEC);
+	process_unlock();
 	if (fd < 0)
 		return -1;
 
@@ -895,7 +929,9 @@ int lxc_read_from_file(const char *filename, void* buf, size_t count)
 		ERROR("read %s: %s", filename, strerror(errno));
 
 	saved_errno = errno;
+	process_lock();
 	close(fd);
+	process_unlock();
 	errno = saved_errno;
 	return ret;
 }
