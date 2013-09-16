@@ -104,6 +104,9 @@ config/lt*.m4
 doc/*.1
 doc/*.5
 doc/*.7
+doc/ja/*.1
+doc/ja/*.5
+doc/ja/*.7
 doc/legacy/*.1
 doc/manpage.links
 doc/manpage.refs
