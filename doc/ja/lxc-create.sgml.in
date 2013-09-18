@@ -1,4 +1,4 @@
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -21,7 +21,7 @@ You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-Translated into Japanese 
+Translated into Japanese
 by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
 -->
@@ -160,7 +160,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    The option 'btrfs' need not be specified as it will be used
 	    automatically if the <filename>@LXCPATH@</filename> filesystem is found to
 	    be btrfs.  If backingstore is 'lvm', then an lvm block device will be
-	    used and the following further options are available: 
+	    used and the following further options are available:
             <replaceable>&#045;&#045;lvname lvname1</replaceable> will create an LV
 	    named <filename>lvname1</filename> rather than the default, which
 	    is the container name.  <replaceable>&#045;&#045;vgname vgname1</replaceable>
@@ -169,7 +169,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <replaceable>&#045;&#045;fstype FSTYPE</replaceable> will create an FSTYPE
 	    filesystem on the LV, rather than the default, which is ext4.
 	    <replaceable>&#045;&#045;fssize SIZE</replaceable> will create a LV (and
-	    filesystem) of size SIZE rather than the default, which is 1G. 
+	    filesystem) of size SIZE rather than the default, which is 1G.
             -->
             <replaceable>backingstore</replaceable> には 'none' か 'dir' か 'lvm' か 'btrfs' のいずれかを指定します．デフォルトは 'none' で，コンテナのルートファイルシステムが <filename>@LXCPATH@/container/rootfs</filename> 以下のディレクトリであることを意味します．
 'dir' は 'none' と同じ意味ですが，オプションとして <replaceable>--dir ROOTFS</replaceable> を指定することも可能です．このオプションは，デフォルトの代わりに特定のパス以下にコンテナの rootfs を置くということになります．
@@ -217,7 +217,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             メッセージの通り，コンテナを作成しようとしたけれども，同じ名前のコンテナが存在しています．<command>lxc-ls -l</command> コマンドを使って，システム上に存在する利用可能なコンテナのリストが表示できます．
           </para>
         </listitem>
-      </varlistentry>    
+      </varlistentry>
 
     </variablelist>
 

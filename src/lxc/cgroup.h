@@ -146,7 +146,7 @@ extern int lxc_cgroup_get(const char *filename, char *value, size_t len, const c
  *              will be returned
  * @name      : name of container to connect to
  * @lxcpath   : the lxcpath in which the container is running
- * 
+ *
  * This is the exported function, which determines cgpath from the
  * lxc-start of the @name container running in @lxcpath.
  *

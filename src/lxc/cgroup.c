@@ -167,7 +167,7 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 
 		tab1 = strchr(line, '\t');
 		if (!tab1)
-			continue;  
+			continue;
 		*tab1++ = '\0';
 		tab2 = strchr(tab1, '\t');
 		if (!tab2)
@@ -223,7 +223,7 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 
 		colon1 = strchr(line, ':');
 		if (!colon1)
-			continue;  
+			continue;
 		*colon1++ = '\0';
 		colon2 = strchr(colon1, ':');
 		if (!colon2)
@@ -319,7 +319,7 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 		 *      1: parent id
 		 *      2: device major:minor
 		 *      3: mount prefix
-		 *      4: mount point 
+		 *      4: mount point
 		 *      5: per-mount options
 		 *    [optional X]: additional data
 		 *    X+7: "-"
@@ -1052,7 +1052,7 @@ char *lxc_cgroup_get_hierarchy_abs_path_handler(const char *subsystem, struct lx
 	if (!info)
 		return NULL;
 	if (info->designated_mount_point) {
-		mp = info->designated_mount_point; 
+		mp = info->designated_mount_point;
 	} else {
 		mp = lxc_cgroup_find_mount_point(info->hierarchy, info->cgroup_path, true);
 		if (!mp)
@@ -1079,7 +1079,7 @@ char *lxc_cgroup_get_hierarchy_abs_path(const char *subsystem, const char *name,
 	if (!info)
 		return NULL;
 	if (info->designated_mount_point) {
-		mp = info->designated_mount_point; 
+		mp = info->designated_mount_point;
 	} else {
 		mp = lxc_cgroup_find_mount_point(info->hierarchy, info->cgroup_path, true);
 		if (!mp)
@@ -1175,7 +1175,7 @@ int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *na
  *              will be returned
  * @name      : name of container to connect to
  * @lxcpath   : the lxcpath in which the container is running
- * 
+ *
  * This is the exported function, which determines cgpath from the
  * lxc-start of the @name container running in @lxcpath.
  *
@@ -1354,7 +1354,7 @@ int lxc_cgroup_nrtasks_handler(struct lxc_handler *handler)
 	}
 
 	if (info->designated_mount_point) {
-		mp = info->designated_mount_point; 
+		mp = info->designated_mount_point;
 	} else {
 		mp = lxc_cgroup_find_mount_point(info->hierarchy, info->cgroup_path, false);
 		if (!mp)
@@ -1402,7 +1402,7 @@ struct cgroup_process_info *lxc_cgroup_process_info_getx(const char *proc_pid_cg
 
 		colon1 = strchr(line, ':');
 		if (!colon1)
-			continue;  
+			continue;
 		*colon1++ = '\0';
 		colon2 = strchr(colon1, ':');
 		if (!colon2)
@@ -1476,7 +1476,7 @@ char **subsystems_from_mount_options(const char *mount_options, char **kernel_li
 	char *token, *str, *saveptr = NULL;
 	char **result = NULL;
 	size_t result_capacity = 0;
-	size_t result_count = 0;   
+	size_t result_count = 0;
 	int saved_errno;
 	int r;
 
@@ -1595,10 +1595,10 @@ char *cgroup_to_absolute_path(struct cgroup_mount_point *mp, const char *path, c
 	len = strlen(mp->mount_point) + strlen(path) + (suffix ? strlen(suffix) : 0);
 	buf = calloc(len + 1, 1);
 	rv = snprintf(buf, len + 1, "%s%s%s", mp->mount_point, path, suffix ? suffix : "");
-	if (rv > len) { 
+	if (rv > len) {
 		free(buf);
 		errno = ENOMEM;
-		return NULL; 
+		return NULL;
 	}
 
 	return buf;
@@ -1697,7 +1697,7 @@ bool cgroup_devices_has_allow_or_deny(struct lxc_handler *h, char *v, bool for_a
 {
 	char *path;
 	FILE *devices_list;
-	char *line = NULL; 
+	char *line = NULL;
 	size_t sz = 0;
 	bool ret = !for_allow;
 	const char *parts[3] = {
@@ -1738,7 +1738,7 @@ bool cgroup_devices_has_allow_or_deny(struct lxc_handler *h, char *v, bool for_a
 			goto out;
 		} else if (for_allow && strcmp(line, v) == 0) {
 			ret = true;
-			goto out;  
+			goto out;
 		}
 	}
 
@@ -1756,7 +1756,7 @@ int cgroup_recursive_task_count(const char *cgroup_path)
 	DIR *d;
 	struct dirent *dent_buf;
 	struct dirent *dent;
-	ssize_t name_max;   
+	ssize_t name_max;
 	int n = 0, r;
 
 	/* see man readdir_r(3) */
@@ -1820,7 +1820,7 @@ int cgroup_recursive_task_count(const char *cgroup_path)
 	return n;
 }
 
-int count_lines(const char *fn)  
+int count_lines(const char *fn)
 {
 	FILE *f;
 	char *line = NULL;

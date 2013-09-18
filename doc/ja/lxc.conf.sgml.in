@@ -1,4 +1,4 @@
-<!-- 
+<!--
 
 lxc: linux Container library
 
@@ -21,7 +21,7 @@ You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-Translated into Japanese 
+Translated into Japanese
 by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
 -->
@@ -322,7 +322,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               -->
               ネットワークに対して行うアクションを指定します．
 	    </para>
-	 
+	
 	    <para>
               <!--
               <option>up:</option> activates the interface.
@@ -465,7 +465,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      <option>macvlan</option> network types.
               -->
               コンテナでゲートウェイとして使う IPv6 アドレスを指定します．アドレスは x::y というフォーマットです．例えば，2003:db8:1:0::1．
-              
+
               <option>auto</option> という特別な値を記述する事も可能です．これは (<option>lxc.network.link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し，それをゲートウェイに使うという意味になります．<option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります．
 	    </para>
 	  </listitem>

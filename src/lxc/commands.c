@@ -404,7 +404,7 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 
 	if (req->datalen < 1)
 		return -1;
-        
+
 	path = lxc_cgroup_get_hierarchy_path_handler(req->data, handler);
 	if (!path)
 		return -1;
