@@ -880,7 +880,7 @@ int lxc_write_to_file(const char *filename, const void* buf, size_t count, bool 
 		return -1;
 	ret = lxc_write_nointr(fd, buf, count);
 	if (ret < 0)
-		goto out_error; 
+		goto out_error;
 	if ((size_t)ret != count)
 		goto out_error;
 	if (add_newline) {
@@ -934,4 +934,24 @@ int lxc_read_from_file(const char *filename, void* buf, size_t count)
 	process_unlock();
 	errno = saved_errno;
 	return ret;
+}
+
+void **lxc_append_null_to_array(void **array, size_t count)
+{
+	void **temp;
+
+	/* Append NULL to the array */
+	if (count) {
+		temp = realloc(array, (count + 1) * sizeof(*array));
+		if (!temp) {
+			int i;
+			for (i = 0; i < count; i++)
+				free(array[i]);
+			free(array);
+			return NULL;
+		}
+		array = temp;
+		array[count] = NULL;
+	}
+	return array;
 }

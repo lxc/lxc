@@ -1179,25 +1179,30 @@ static bool lxcapi_clear_config_item(struct lxc_container *c, const char *key)
 	return ret == 0;
 }
 
-char** lxcapi_get_ips(struct lxc_container *c, char* interface, char* family, int scope)
-{
-	int count = 0;
-	struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
-	char addressOutputBuffer[INET6_ADDRSTRLEN];
-	void *tempAddrPtr = NULL;
-	char **addresses = NULL, **temp;
-	char *address = NULL;
+static inline void exit_from_ns(struct lxc_container *c, int *old_netns, int *new_netns) {
+	/* Switch back to original netns */
+	if (*old_netns >= 0 && setns(*old_netns, CLONE_NEWNET))
+		SYSERROR("failed to setns");
+	process_lock();
+	if (*new_netns >= 0)
+		close(*new_netns);
+	if (*old_netns >= 0)
+		close(*old_netns);
+	process_unlock();
+}
+
+static inline bool enter_to_ns(struct lxc_container *c, int *old_netns, int *new_netns) {
+	int ret = 0;
 	char new_netns_path[MAXPATHLEN];
-	int old_netns = -1, new_netns = -1, ret = 0;
 
 	if (!c->is_running(c))
 		goto out;
 
 	/* Save reference to old netns */
 	process_lock();
-	old_netns = open("/proc/self/ns/net", O_RDONLY);
+	*old_netns = open("/proc/self/ns/net", O_RDONLY);
 	process_unlock();
-	if (old_netns < 0) {
+	if (*old_netns < 0) {
 		SYSERROR("failed to open /proc/self/ns/net");
 		goto out;
 	}
@@ -1208,17 +1213,92 @@ char** lxcapi_get_ips(struct lxc_container *c, char* interface, char* family, in
 		goto out;
 
 	process_lock();
-	new_netns = open(new_netns_path, O_RDONLY);
+	*new_netns = open(new_netns_path, O_RDONLY);
 	process_unlock();
-	if (new_netns < 0) {
+	if (*new_netns < 0) {
 		SYSERROR("failed to open %s", new_netns_path);
 		goto out;
 	}
 
-	if (setns(new_netns, CLONE_NEWNET)) {
+	if (setns(*new_netns, CLONE_NEWNET)) {
 		SYSERROR("failed to setns");
 		goto out;
 	}
+	return true;
+out:
+	exit_from_ns(c, old_netns, new_netns);
+	return false;
+}
+
+static char** lxcapi_get_interfaces(struct lxc_container *c)
+{
+	int count = 0, i;
+	bool found = false;
+	struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
+	char **interfaces = NULL, **temp;
+	int old_netns = -1, new_netns = -1;
+
+	if (!enter_to_ns(c, &old_netns, &new_netns))
+		goto out;
+
+	/* Grab the list of interfaces */
+	if (getifaddrs(&interfaceArray)) {
+		SYSERROR("failed to get interfaces list");
+		goto out;
+	}
+
+	/* Iterate through the interfaces */
+	for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
+		/*
+		 * WARNING: Following "for" loop does a linear search over the interfaces array
+		 * For the containers with lots of interfaces this may be problematic.
+		 * I'm not expecting this to be the common usage but if it turns out to be
+		 *     than using binary search or a hash table could be more elegant solution.
+		 */
+		for (i = 0; i < count; i++) {
+			if (strcmp(interfaces[i], tempIfAddr->ifa_name) == 0) {
+				found = true;
+				break;
+			}
+		}
+
+		if (!found) {
+			count += 1;
+			temp = realloc(interfaces, count * sizeof(*interfaces));
+			if (!temp) {
+				count -= 1;
+				goto out;
+			}
+			interfaces = temp;
+			interfaces[count - 1] = strdup(tempIfAddr->ifa_name);
+		}
+		found = false;
+    }
+
+out:
+       if (interfaceArray)
+               freeifaddrs(interfaceArray);
+
+       exit_from_ns(c, &old_netns, &new_netns);
+
+       /* Append NULL to the array */
+       interfaces = (char **)lxc_append_null_to_array((void **)interfaces, count);
+
+       return interfaces;
+}
+
+static char** lxcapi_get_ips(struct lxc_container *c, char* interface, char* family, int scope)
+{
+	int count = 0;
+	struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
+	char addressOutputBuffer[INET6_ADDRSTRLEN];
+	void *tempAddrPtr = NULL;
+	char **addresses = NULL, **temp;
+	char *address = NULL;
+	int old_netns = -1, new_netns = -1;
+
+	if (!enter_to_ns(c, &old_netns, &new_netns))
+		goto out;
 
 	/* Grab the list of interfaces */
 	if (getifaddrs(&interfaceArray)) {
@@ -1269,30 +1349,10 @@ out:
 	if(interfaceArray)
 		freeifaddrs(interfaceArray);
 
-	/* Switch back to original netns */
-	if (old_netns >= 0 && setns(old_netns, CLONE_NEWNET))
-		SYSERROR("failed to setns");
-	process_lock();
-	if (new_netns >= 0)
-		close(new_netns);
-	if (old_netns >= 0)
-		close(old_netns);
-	process_unlock();
+	exit_from_ns(c, &old_netns, &new_netns);
 
 	/* Append NULL to the array */
-	if (count) {
-		count++;
-		temp = realloc(addresses, count * sizeof(*addresses));
-		if (!temp) {
-			int i;
-			for (i = 0; i < count-1; i++)
-				free(addresses[i]);
-			free(addresses);
-			return NULL;
-		}
-		addresses = temp;
-		addresses[count - 1] = NULL;
-	}
+	addresses = (char **)lxc_append_null_to_array((void **)addresses, count);
 
 	return addresses;
 }
@@ -2642,6 +2702,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->get_config_path = lxcapi_get_config_path;
 	c->set_config_path = lxcapi_set_config_path;
 	c->clone = lxcapi_clone;
+	c->get_interfaces = lxcapi_get_interfaces;
 	c->get_ips = lxcapi_get_ips;
 	c->attach = lxcapi_attach;
 	c->attach_run_wait = lxcapi_attach_run_wait;

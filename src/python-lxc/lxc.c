@@ -411,6 +411,52 @@ Container_get_keys(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+Container_get_interfaces(Container *self)
+{
+    int i = 0;
+    char** interfaces = NULL;
+
+    PyObject* ret;
+
+    /* Get the interfaces */
+    interfaces = self->container->get_interfaces(self->container);
+    if (!interfaces)
+        return PyTuple_New(0);
+
+    /* Count the entries */
+    while (interfaces[i])
+        i++;
+
+    /* Create the new tuple */
+    ret = PyTuple_New(i);
+    if (!ret)
+        return NULL;
+
+    /* Add the entries to the tuple and free the memory */
+    i = 0;
+    while (interfaces[i]) {
+        PyObject *unicode = PyUnicode_FromString(interfaces[i]);
+        if (!unicode) {
+            Py_DECREF(ret);
+            ret = NULL;
+            break;
+        }
+        PyTuple_SET_ITEM(ret, i, unicode);
+        i++;
+    }
+
+    /* Free the list of IPs */
+    i = 0;
+    while (interfaces[i]) {
+        free(interfaces[i]);
+        i++;
+    }
+    free(interfaces);
+
+    return ret;
+}
+
+static PyObject *
 Container_get_ips(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"interface", "family", "scope", NULL};
@@ -898,15 +944,15 @@ LXC_arch_to_personality(PyObject *self, PyObject *arg)
         PyErr_SetString(PyExc_ValueError, "Expected a string");
         return NULL;
     }
-    
+
     pystr = PyUnicode_AsUTF8String(arg);
     if (!pystr)
         return NULL;
-    
+
     str = PyBytes_AsString(pystr);
     if (!str)
         goto out;
-    
+
     rv = lxc_config_parse_arch(str);
     if (rv == -1)
         PyErr_SetString(PyExc_KeyError, "Failed to lookup architecture.");
@@ -1024,6 +1070,12 @@ static PyMethodDef Container_methods[] = {
      "get_keys(key) -> string\n"
      "\n"
      "Get a list of valid sub-keys for a key."
+    },
+    {"get_interfaces", (PyCFunction)Container_get_interfaces,
+     METH_NOARGS,
+     "get_interface() -> tuple\n"
+     "\n"
+     "Get a tuple of interfaces for the container."
     },
     {"get_ips", (PyCFunction)Container_get_ips,
      METH_VARARGS|METH_KEYWORDS,
@@ -1205,7 +1257,7 @@ PyInit__lxc(void)
 
     /* add constants */
     d = PyModule_GetDict(m);
- 
+
     #define PYLXC_EXPORT_CONST(c) PyDict_SetItemString(d, #c, PyLong_FromLong(c))
 
     /* environment variable handling */

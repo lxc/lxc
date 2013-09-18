@@ -90,6 +90,9 @@ struct lxc_container {
 	 * the length which was our would be printed. */
 	int (*get_config_item)(struct lxc_container *c, const char *key, char *retv, int inlen);
 	int (*get_keys)(struct lxc_container *c, const char *key, char *retv, int inlen);
+	// Return interface names.  The result is strdup()d, so free the result.
+	char** (*get_interfaces)(struct lxc_container *c);
+	// Return IP addresses.  The result is strdup()d, so free the result.
 	char** (*get_ips)(struct lxc_container *c, char* interface, char* family, int scope);
 	/*
 	 * get_cgroup_item returns the number of bytes read, or an error (<0).

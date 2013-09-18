@@ -333,6 +333,14 @@ class Container(_lxc.Container):
         else:
             return value
 
+    def get_interfaces(self):
+        """
+            Get a tuple of interfaces for the container.
+        """
+
+        return _lxc.Container.get_interfaces(self)
+
+
     def get_ips(self, interface=None, family=None, scope=None, timeout=0):
         """
             Get a tuple of IPs for the container.

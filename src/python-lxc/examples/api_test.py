@@ -89,6 +89,11 @@ assert(container.init_pid > 1)
 assert(container.running)
 assert(container.state == "RUNNING")
 
+
+## Checking IP address
+print("Getting the interface names")
+assert(container.get_interfaces() == ('lo', 'eth0'))
+
 ## Checking IP address
 print("Getting the IP addresses")
 
