@@ -120,22 +120,22 @@ static struct lxc_arguments my_args = {
 lxc-create creates a container\n\
 \n\
 Options :\n\
-  -n, --name=NAME   NAME for name of the container\n\
-  -f, --config=file initial configuration file\n\
-  -t, --template=t  template to use to setup container\n\
-  -B, --bdev=BDEV   backing store type to use\n\
-  --lxcpath=PATH    place container under PATH\n\
-  --lvname=LVNAME   Use LVM lv name LVNAME\n\
-                    (Default: container name)\n\
-  --vgname=VG       Use LVM vg called VG\n\
-                    (Default: lxc))\n\
-  --fstype=TYPE     Create fstype TYPE\n\
-                    (Default: ext3))\n\
-  --fssize=SIZE     Create filesystem of size SIZE\n\
-                    (Default: 1G))\n\
-  --dir=DIR         Place rootfs directory under DIR\n\
-  --zfsroot=PATH    Create zfs under given zfsroot\n\
-                    (Default: tank/lxc))\n",
+  -n, --name=NAME    NAME for name of the container\n\
+  -f, --config=file  Initial configuration file\n\
+  -t, --template=t   Template to use to setup container\n\
+  -B, --bdev=BDEV    Backing store type to use\n\
+  -P, --lxcpath=PATH Place container under PATH\n\
+  --lvname=LVNAME    Use LVM lv name LVNAME\n\
+                     (Default: container name)\n\
+  --vgname=VG        Use LVM vg called VG\n\
+                     (Default: lxc))\n\
+  --fstype=TYPE      Create fstype TYPE\n\
+                     (Default: ext3))\n\
+  --fssize=SIZE      Create filesystem of size SIZE\n\
+                     (Default: 1G))\n\
+  --dir=DIR          Place rootfs directory under DIR\n\
+  --zfsroot=PATH     Create zfs under given zfsroot\n\
+                     (Default: tank/lxc))\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
