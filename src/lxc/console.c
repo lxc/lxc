@@ -103,13 +103,10 @@ void lxc_console_sigwinch(int sig)
 	struct lxc_list *it;
 	struct lxc_tty_state *ts;
 
-	process_lock();
-
 	lxc_list_for_each(it, &lxc_ttys) {
 		ts = it->elem;
 		lxc_console_winch(ts);
 	}
-	process_unlock();
 }
 
 static int lxc_console_cb_sigwinch_fd(int fd, void *cbdata,
@@ -423,7 +420,6 @@ int lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	struct lxc_tty_info *tty_info = &conf->tty_info;
 	struct lxc_console *console = &conf->console;
 
-	process_lock();
 	if (*ttyreq == 0) {
 		if (lxc_console_peer_proxy_alloc(console, sockfd) < 0)
 			goto out;
@@ -458,7 +454,6 @@ out_tty:
 	tty_info->pty_info[ttynum - 1].busy = sockfd;
 	masterfd = tty_info->pty_info[ttynum - 1].master;
 out:
-	process_unlock();
 	return masterfd;
 }
 
@@ -476,7 +471,6 @@ void lxc_console_free(struct lxc_conf *conf, int fd)
 	struct lxc_tty_info *tty_info = &conf->tty_info;
 	struct lxc_console *console = &conf->console;
 
-	process_lock();
 	for (i = 0; i < tty_info->nbtty; i++) {
 		if (tty_info->pty_info[i].busy == fd)
 			tty_info->pty_info[i].busy = 0;
@@ -486,7 +480,6 @@ void lxc_console_free(struct lxc_conf *conf, int fd)
 		lxc_mainloop_del_handler(console->descr, console->peerpty.slave);
 		lxc_console_peer_proxy_free(console);
 	}
-	process_unlock();
 }
 
 static void lxc_console_peer_default(struct lxc_console *console)
@@ -713,9 +706,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		return -1;
 	}
 
-	process_lock();
 	ttyfd = lxc_cmd_console(c->name, &ttynum, &masterfd, c->config_path);
-	process_unlock();
 	if (ttyfd < 0) {
 		ret = ttyfd;
 		goto err1;
@@ -770,9 +761,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		goto err4;
 	}
 
-	process_lock();
 	ret = lxc_mainloop(&descr, -1);
-	process_unlock();
 	if (ret) {
 		ERROR("mainloop returned an error");
 		goto err4;
