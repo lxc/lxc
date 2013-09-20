@@ -456,6 +456,18 @@ static void lxcapi_want_daemonize(struct lxc_container *c)
 	container_mem_unlock(c);
 }
 
+static void lxcapi_want_close_all_fds(struct lxc_container *c)
+{
+	if (!c || !c->lxc_conf)
+		return;
+	if (container_mem_lock(c)) {
+		ERROR("Error getting mem lock");
+		return;
+	}
+	c->lxc_conf->close_all_fds = 1;
+	container_mem_unlock(c);
+}
+
 static bool lxcapi_wait(struct lxc_container *c, const char *state, int timeout)
 {
 	int ret;
@@ -2682,6 +2694,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->init_pid = lxcapi_init_pid;
 	c->load_config = lxcapi_load_config;
 	c->want_daemonize = lxcapi_want_daemonize;
+	c->want_close_all_fds = lxcapi_want_close_all_fds;
 	c->start = lxcapi_start;
 	c->startl = lxcapi_startl;
 	c->stop = lxcapi_stop;
