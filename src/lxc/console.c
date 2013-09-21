@@ -31,7 +31,7 @@
 #include <sys/types.h>
 #include <termios.h>
 
-#include "lxccontainer.h"
+#include <lxc/lxccontainer.h>
 #include "log.h"
 #include "conf.h"
 #include "config.h"

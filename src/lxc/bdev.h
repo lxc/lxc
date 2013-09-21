@@ -29,7 +29,7 @@
  */
 
 #include "config.h"
-#include "lxccontainer.h"
+#include <lxc/lxccontainer.h>
 
 struct bdev;
 

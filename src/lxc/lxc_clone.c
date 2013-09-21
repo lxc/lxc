@@ -32,7 +32,7 @@
 #include "lxc.h"
 #include "conf.h"
 #include "state.h"
-#include "lxccontainer.h"
+#include <lxc/lxccontainer.h>
 
 lxc_log_define(lxc_clone, lxc);
 

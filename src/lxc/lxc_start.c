@@ -43,7 +43,7 @@
 #include "log.h"
 #include "caps.h"
 #include "lxc.h"
-#include "lxccontainer.h"
+#include <lxc/lxccontainer.h>
 #include "conf.h"
 #include "cgroup.h"
 #include "utils.h"

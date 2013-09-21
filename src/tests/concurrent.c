@@ -23,7 +23,7 @@
 #define _GNU_SOURCE
 #include <getopt.h>
 
-#include "../lxc/lxccontainer.h"
+#include <lxc/lxccontainer.h>
 
 static int nthreads = 5;
 static int iterations = 1;

@@ -38,7 +38,7 @@
 #include <sys/poll.h>
 #include <sys/ioctl.h>
 
-#include "../lxc/lxccontainer.h"
+#include <lxc/lxccontainer.h>
 #include "error.h"
 #include "lxc.h"
 #include "log.h"

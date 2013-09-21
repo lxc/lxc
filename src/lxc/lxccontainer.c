@@ -31,7 +31,7 @@
 #include "config.h"
 #include "lxc.h"
 #include "state.h"
-#include "lxccontainer.h"
+#include <lxc/lxccontainer.h>
 #include "conf.h"
 #include "confile.h"
 #include "console.h"

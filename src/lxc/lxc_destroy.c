@@ -17,7 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "../lxc/lxccontainer.h"
+#include <lxc/lxccontainer.h>
 
 #include <stdio.h>
 #include <libgen.h>

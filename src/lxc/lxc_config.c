@@ -20,7 +20,7 @@
 
 #include <stdio.h>
 #include "config.h"
-#include "lxccontainer.h"
+#include <lxc/lxccontainer.h>
 
 struct lxc_config_items {
 	char *name;
