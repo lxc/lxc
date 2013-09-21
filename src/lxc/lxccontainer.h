@@ -68,7 +68,7 @@ struct lxc_container {
 	bool (*startl)(struct lxc_container *c, int useinit, ...);
 	bool (*stop)(struct lxc_container *c);
 	void (*want_daemonize)(struct lxc_container *c);
-	void (*want_close_all_fds)(struct lxc_container *c);
+	bool (*want_close_all_fds)(struct lxc_container *c);
 	// Return current config file name.  The result is strdup()d, so free the result.
 	char *(*config_file_name)(struct lxc_container *c);
 	// for wait, timeout == -1 means wait forever, timeout == 0 means don't wait.

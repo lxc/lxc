@@ -456,16 +456,17 @@ static void lxcapi_want_daemonize(struct lxc_container *c)
 	container_mem_unlock(c);
 }
 
-static void lxcapi_want_close_all_fds(struct lxc_container *c)
+static bool lxcapi_want_close_all_fds(struct lxc_container *c)
 {
 	if (!c || !c->lxc_conf)
-		return;
+		return false;
 	if (container_mem_lock(c)) {
 		ERROR("Error getting mem lock");
-		return;
+		return false;
 	}
 	c->lxc_conf->close_all_fds = 1;
 	container_mem_unlock(c);
+	return true;
 }
 
 static bool lxcapi_wait(struct lxc_container *c, const char *state, int timeout)
