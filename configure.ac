@@ -52,6 +52,7 @@ esac
 AC_MSG_RESULT([$with_distro])
 AM_CONDITIONAL([HAVE_DEBIAN], [test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu"])
 
+# Detect the newuidmap tool (required for userns)
 AC_CHECK_PROG([NEWUIDMAP], [newuidmap], [newuidmap])
 AM_CONDITIONAL([HAVE_NEWUIDMAP], [test -n "$NEWUIDMAP"])
 
@@ -242,12 +243,14 @@ AC_ARG_WITH([global-conf],
 		[global lxc configuration file]
 	)], [], [with_global_conf=['${sysconfdir}/lxc/lxc.conf']])
 
+# The path of the userns network configuration file
 AC_ARG_WITH([usernic-conf],
 	[AC_HELP_STRING(
 		[--with-usernic-conf],
 		[user network interface configuration file]
 	)], [], [with_usernic_conf=['${sysconfdir}/lxc/lxc-usernet']])
 
+# The path of the runtime usernic database
 AC_ARG_WITH([usernic-db],
 	[AC_HELP_STRING(
 		[--with-usernic-db],
@@ -260,6 +263,7 @@ AC_ARG_WITH([rootfs-path],
 		[--with-rootfs-path=dir],
 		[lxc rootfs mount point]
 	)], [], [with_rootfs_path=['${libdir}/lxc/rootfs']])
+
 # cgroup pattern specification
 AC_ARG_WITH([cgroup-pattern],
 	[AC_HELP_STRING(
