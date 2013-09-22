@@ -323,6 +323,11 @@ struct lxc_conf {
 	int loglevel;   // loglevel as specifed in config (if any)
 
 	int inherit_ns_fd[LXC_NS_MAX];
+
+	int start_auto;
+	int start_delay;
+	int start_order;
+	struct lxc_list groups;
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
@@ -356,6 +361,7 @@ extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key);
 extern int lxc_clear_mount_entries(struct lxc_conf *c);
 extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
 extern int lxc_clear_idmaps(struct lxc_conf *c);
+extern int lxc_clear_groups(struct lxc_conf *c);
 
 /*
  * Configure the container from inside

@@ -92,6 +92,8 @@ static int config_includefile(const char *, const char *, struct lxc_conf *);
 static int config_network_nic(const char *, const char *, struct lxc_conf *);
 static int config_autodev(const char *, const char *, struct lxc_conf *);
 static int config_stopsignal(const char *, const char *, struct lxc_conf *);
+static int config_start(const char *, const char *, struct lxc_conf *);
+static int config_group(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 
@@ -142,6 +144,10 @@ static struct lxc_config_t config[] = {
 	{ "lxc.include",              config_includefile          },
 	{ "lxc.autodev",              config_autodev              },
 	{ "lxc.stopsignal",           config_stopsignal           },
+	{ "lxc.start.auto",           config_start                },
+	{ "lxc.start.delay",          config_start                },
+	{ "lxc.start.order",          config_start                },
+	{ "lxc.group",                config_group                },
 };
 
 struct signame {
@@ -923,6 +929,71 @@ static int config_pts(const char *key, const char *value,
 	lxc_conf->pts = maxpts;
 
 	return 0;
+}
+
+static int config_start(const char *key, const char *value,
+		      struct lxc_conf *lxc_conf)
+{
+	if(strcmp(key, "lxc.start.auto") == 0) {
+		lxc_conf->start_auto = atoi(value);
+		return 0;
+	}
+	else if (strcmp(key, "lxc.start.delay") == 0) {
+		lxc_conf->start_delay = atoi(value);
+		return 0;
+	}
+	else if (strcmp(key, "lxc.start.order") == 0) {
+		lxc_conf->start_order = atoi(value);
+		return 0;
+	}
+	SYSERROR("Unknown key: %s", key);
+	return -1;
+}
+
+static int config_group(const char *key, const char *value,
+		      struct lxc_conf *lxc_conf)
+{
+	char *groups, *groupptr, *sptr, *token;
+	struct lxc_list *grouplist;
+	int ret = -1;
+
+	if (!strlen(value))
+		return lxc_clear_groups(lxc_conf);
+
+	groups = strdup(value);
+	if (!groups) {
+		SYSERROR("failed to dup '%s'", value);
+		return -1;
+	}
+
+	/* in case several groups are specified in a single line
+	 * split these groups in a single element for the list */
+	for (groupptr = groups;;groupptr = NULL) {
+                token = strtok_r(groupptr, " \t", &sptr);
+                if (!token) {
+			ret = 0;
+                        break;
+		}
+
+		grouplist = malloc(sizeof(*grouplist));
+		if (!grouplist) {
+			SYSERROR("failed to allocate groups list");
+			break;
+		}
+
+		grouplist->elem = strdup(token);
+		if (!grouplist->elem) {
+			SYSERROR("failed to dup '%s'", token);
+			free(grouplist);
+			break;
+		}
+
+		lxc_list_add_tail(&lxc_conf->groups, grouplist);
+        }
+
+	free(groups);
+
+	return ret;
 }
 
 static int config_tty(const char *key, const char *value,
@@ -1729,6 +1800,22 @@ static int lxc_get_item_hooks(struct lxc_conf *c, char *retv, int inlen,
 	return fulllen;
 }
 
+static int lxc_get_item_groups(struct lxc_conf *c, char *retv, int inlen)
+{
+	int len, fulllen = 0;
+	struct lxc_list *it;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	lxc_list_for_each(it, &c->groups) {
+		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	}
+	return fulllen;
+}
+
 static int lxc_get_item_cap_drop(struct lxc_conf *c, char *retv, int inlen)
 {
 	int len, fulllen = 0;
@@ -1952,6 +2039,14 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_item_network(c, retv, inlen);
 	else if (strncmp(key, "lxc.network.", 12) == 0)
 		return lxc_get_item_nic(c, retv, inlen, key + 12);
+	else if (strcmp(key, "lxc.start.auto") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->start_auto);
+	else if (strcmp(key, "lxc.start.delay") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->start_delay);
+	else if (strcmp(key, "lxc.start.order") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->start_order);
+	else if (strcmp(key, "lxc.group") == 0)
+		return lxc_get_item_groups(c, retv, inlen);
 	else return -1;
 
 	if (!v)
@@ -1977,6 +2072,8 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		return lxc_clear_mount_entries(c);
 	else if (strncmp(key, "lxc.hook", 8) == 0)
 		return lxc_clear_hooks(c, key);
+	else if (strncmp(key, "lxc.group", 9) == 0)
+		return lxc_clear_groups(c);
 
 	return -1;
 }

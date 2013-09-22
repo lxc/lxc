@@ -1246,7 +1246,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
     </refsect2>
     <refsect2>
-    <title> Logging</title>
+    <title>Logging</title>
     <para>
       Logging can be configured on a per-container basis.  By default,
       depending upon how the lxc package was compiled, container startup
@@ -1294,6 +1294,63 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       </variablelist>
     </refsect2>
 
+    <refsect2>
+    <title>Autostart</title>
+    <para>
+        The autostart options support marking which containers should be
+        auto-started and in what order. These options may be used by LXC tools
+        directly or by external tooling provided by the distributions.
+    </para>
+
+    <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.start.auto</option>
+          </term>
+          <listitem>
+            <para>
+              Whether the container should be auto-started.
+              Valid values are 0 (off) and 1 (on).
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.start.delay</option>
+          </term>
+          <listitem>
+            <para>
+              How long to wait (in seconds) after the container is
+              started before starting the next one.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.start.order</option>
+          </term>
+          <listitem>
+            <para>
+              An integer used to sort the containers when auto-starting
+              a series of containers at once.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.group</option>
+          </term>
+          <listitem>
+            <para>
+              A multi-value key (can be used multiple times) to put the
+              container in a container group. Those groups can then be
+              used (amongst other things) to start a series of related
+              containers.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
   </refsect1>
 
   <refsect1>

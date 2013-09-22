@@ -2642,6 +2642,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->id_map);
 	for (i=0; i<NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
+	lxc_list_init(&new->groups);
 	new->lsm_aa_profile = NULL;
 	new->lsm_se_context = NULL;
 	new->lsm_umount_proc = 0;
@@ -3883,6 +3884,18 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key)
 	return 0;
 }
 
+int lxc_clear_groups(struct lxc_conf *c)
+{
+	struct lxc_list *it,*next;
+
+	lxc_list_for_each_safe(it, &c->groups, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+	return 0;
+}
+
 int lxc_clear_mount_entries(struct lxc_conf *c)
 {
 	struct lxc_list *it,*next;
@@ -3970,6 +3983,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_mount_entries(conf);
 	lxc_clear_saved_nics(conf);
 	lxc_clear_idmaps(conf);
+	lxc_clear_groups(conf);
 	free(conf);
 }
 
