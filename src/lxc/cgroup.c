@@ -296,7 +296,7 @@ static bool find_hierarchy_mountpts( struct cgroup_meta_data *meta_data, char **
 		return false;
 
 	while (getline(&line, &sz, proc_self_mountinfo) != -1) {
-		char *token, *saveptr = NULL;
+		char *token, *line_tok, *saveptr = NULL;
 		size_t i, j, k;
 		struct cgroup_mount_point *mount_point;
 		struct cgroup_hierarchy *h;
@@ -305,7 +305,7 @@ static bool find_hierarchy_mountpts( struct cgroup_meta_data *meta_data, char **
 		if (line[0] && line[strlen(line) - 1] == '\n')
 			line[strlen(line) - 1] = '\0';
 
-		for (i = 0; (token = strtok_r(line, " ", &saveptr)); line = NULL) {
+		for (i = 0, line_tok = line; (token = strtok_r(line_tok, " ", &saveptr)); line_tok = NULL) {
 			r = lxc_grow_array((void ***)&tokens, &token_capacity, i + 1, 64);
 			if (r < 0)
 				goto out;
@@ -477,6 +477,7 @@ struct cgroup_meta_data *lxc_cgroup_put_meta(struct cgroup_meta_data *meta_data)
 			lxc_cgroup_hierarchy_free(meta_data->hierarchies[i]);
 	}
 	free(meta_data->hierarchies);
+	free(meta_data);
 	return NULL;
 }
 
@@ -1103,29 +1104,30 @@ char *lxc_cgroup_get_hierarchy_abs_path(const char *subsystem, const char *name,
 	struct cgroup_process_info *base_info, *info;
 	struct cgroup_mount_point *mp;
 	char *result = NULL;
-	int saved_errno;
 
 	meta = lxc_cgroup_load_meta();
 	if (!meta)
 		return NULL;
 	base_info = lxc_cgroup_get_container_info(name, lxcpath, meta);
 	if (!base_info)
-		return NULL;
+		goto out1;
 	info = find_info_for_subsystem(base_info, subsystem);
 	if (!info)
-		return NULL;
+		goto out2;
 	if (info->designated_mount_point) {
 		mp = info->designated_mount_point;
 	} else {
 		mp = lxc_cgroup_find_mount_point(info->hierarchy, info->cgroup_path, true);
 		if (!mp)
-			return NULL;
+			goto out3;
 	}
 	result = cgroup_to_absolute_path(mp, info->cgroup_path, NULL);
-	saved_errno = errno;
+out3:
+	lxc_cgroup_process_info_free(info);
+out2:
 	lxc_cgroup_process_info_free(base_info);
+out1:
 	lxc_cgroup_put_meta(meta);
-	errno = saved_errno;
 	return result;
 }
 
