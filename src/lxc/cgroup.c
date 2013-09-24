@@ -107,53 +107,22 @@ struct cgroup_meta_data *lxc_cgroup_load_meta()
 	return md;
 }
 
-struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
+/* Step 1: determine all kernel subsystems */
+static bool find_cgroup_subsystems(char ***kernel_subsystems)
 {
-	FILE *proc_cgroups = NULL;
-	FILE *proc_self_cgroup = NULL;
-	FILE *proc_self_mountinfo = NULL;
-	bool all_kernel_subsystems = true;
-	bool all_named_subsystems = false;
-	struct cgroup_meta_data *meta_data = NULL;
-	char **kernel_subsystems = NULL;
-	size_t kernel_subsystems_count = 0;
-	size_t kernel_subsystems_capacity = 0;
-	size_t hierarchy_capacity = 0;
-	size_t mount_point_capacity = 0;
-	size_t mount_point_count = 0;
-	char **tokens = NULL;
-	size_t token_capacity = 0;
+	FILE *proc_cgroups;
+	bool bret = false;
 	char *line = NULL;
 	size_t sz = 0;
-	int r, saved_errno = 0;
+	size_t kernel_subsystems_count = 0;
+	size_t kernel_subsystems_capacity = 0;
+	int r;
 
-	/* if the subsystem whitelist is not specified, include all
-	 * hierarchies that contain kernel subsystems by default but
-	 * no hierarchies that only contain named subsystems
-	 *
-	 * if it is specified, the specifier @all will select all
-	 * hierarchies, @kernel will select all hierarchies with
-	 * kernel subsystems and @named will select all named
-	 * hierarchies
-	 */
-	all_kernel_subsystems = subsystem_whitelist ?
-		(lxc_string_in_array("@kernel", subsystem_whitelist) || lxc_string_in_array("@all", subsystem_whitelist)) :
-		true;
-	all_named_subsystems = subsystem_whitelist ?
-		(lxc_string_in_array("@named", subsystem_whitelist) || lxc_string_in_array("@all", subsystem_whitelist)) :
-		false;
-
-	meta_data = calloc(1, sizeof(struct cgroup_meta_data));
-	if (!meta_data)
-		return NULL;
-	meta_data->ref = 1;
-
-	/* Step 1: determine all kernel subsystems */
 	process_lock();
 	proc_cgroups = fopen_cloexec("/proc/cgroups", "r");
 	process_unlock();
 	if (!proc_cgroups)
-		goto out_error;
+		return false;
 
 	while (getline(&line, &sz, proc_cgroups) != -1) {
 		char *tab1;
@@ -180,24 +149,38 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 			continue;
 		(void)hierarchy_number;
 
-		r = lxc_grow_array((void ***)&kernel_subsystems, &kernel_subsystems_capacity, kernel_subsystems_count + 1, 12);
+		r = lxc_grow_array((void ***)kernel_subsystems, &kernel_subsystems_capacity, kernel_subsystems_count + 1, 12);
 		if (r < 0)
-			goto out_error;
-		kernel_subsystems[kernel_subsystems_count] = strdup(line);
-		if (!kernel_subsystems[kernel_subsystems_count])
-			goto out_error;
+			goto out;
+		(*kernel_subsystems)[kernel_subsystems_count] = strdup(line);
+		if (!(*kernel_subsystems)[kernel_subsystems_count])
+			goto out;
 		kernel_subsystems_count++;
 	}
+	bret = true;
 
+out:
 	process_lock();
 	fclose(proc_cgroups);
 	process_unlock();
-	proc_cgroups = NULL;
+	return bret;
+}
 
-	/* Step 2: determine all hierarchies (by reading /proc/self/cgroup),
-	 *         since mount points don't specify hierarchy number and
-	 *         /proc/cgroups does not contain named hierarchies
-	 */
+/* Step 2: determine all hierarchies (by reading /proc/self/cgroup),
+ *         since mount points don't specify hierarchy number and
+ *         /proc/cgroups does not contain named hierarchies
+ */
+static bool find_cgroup_hierarchies(struct cgroup_meta_data *meta_data,
+	bool all_kernel_subsystems, bool all_named_subsystems,
+	const char **subsystem_whitelist)
+{
+	FILE *proc_self_cgroup;
+	char *line = NULL;
+	size_t sz = 0;
+	int r;
+	bool bret = false;
+	size_t hierarchy_capacity = 0;
+
 	process_lock();
 	proc_self_cgroup = fopen_cloexec("/proc/self/cgroup", "r");
 	/* if for some reason (because of setns() and pid namespace for example),
@@ -206,7 +189,7 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 		proc_self_cgroup = fopen_cloexec("/proc/1/cgroup", "r");
 	process_unlock();
 	if (!proc_self_cgroup)
-		goto out_error;
+		return false;
 
 	while (getline(&line, &sz, proc_self_cgroup) != -1) {
 		/* file format: hierarchy:subsystems:group,
@@ -241,25 +224,25 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 			*/
 			r = lxc_grow_array((void ***)&meta_data->hierarchies, &hierarchy_capacity, hierarchy_number + 1, 12);
 			if (r < 0)
-				goto out_error;
+				goto out;
 
 			meta_data->maximum_hierarchy = hierarchy_number;
 		}
 
 		/* this shouldn't happen, we had this already */
 		if (meta_data->hierarchies[hierarchy_number])
-			goto out_error;
+			goto out;
 
 		h = calloc(1, sizeof(struct cgroup_hierarchy));
 		if (!h)
-			goto out_error;
+			goto out;
 
 		meta_data->hierarchies[hierarchy_number] = h;
 
 		h->index = hierarchy_number;
 		h->subsystems = lxc_string_split_and_trim(colon1, ',');
 		if (!h->subsystems)
-			goto out_error;
+			goto out;
 		/* see if this hierarchy should be considered */
 		if (!all_kernel_subsystems || !all_named_subsystems) {
 			for (p = h->subsystems; *p; p++) {
@@ -280,13 +263,28 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 			h->used = true;
 		}
 	}
+	bret = true;
 
+out:
 	process_lock();
 	fclose(proc_self_cgroup);
 	process_unlock();
-	proc_self_cgroup = NULL;
-	
-	/* Step 3: determine all mount points of each hierarchy */
+	return bret;
+}
+
+/* Step 3: determine all mount points of each hierarchy */
+static bool find_hierarchy_mountpts( struct cgroup_meta_data *meta_data, char **kernel_subsystems)
+{
+	bool bret = false;
+	FILE *proc_self_mountinfo;
+	char *line = NULL;
+	size_t sz = 0;
+	char **tokens = NULL;
+	size_t mount_point_count = 0;
+	size_t mount_point_capacity = 0;
+	size_t token_capacity = 0;
+	int r;
+
 	process_lock();
 	proc_self_mountinfo = fopen_cloexec("/proc/self/mountinfo", "r");
 	/* if for some reason (because of setns() and pid namespace for example),
@@ -295,7 +293,7 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 		proc_self_mountinfo = fopen_cloexec("/proc/1/mountinfo", "r");
 	process_unlock();
 	if (!proc_self_mountinfo)
-		goto out_error;
+		return false;
 
 	while (getline(&line, &sz, proc_self_mountinfo) != -1) {
 		char *token, *saveptr = NULL;
@@ -310,7 +308,7 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 		for (i = 0; (token = strtok_r(line, " ", &saveptr)); line = NULL) {
 			r = lxc_grow_array((void ***)&tokens, &token_capacity, i + 1, 64);
 			if (r < 0)
-				goto out_error;
+				goto out;
 			tokens[i++] = token;
 		}
 
@@ -346,7 +344,7 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 
 		subsystems = subsystems_from_mount_options(tokens[j + 3], kernel_subsystems);
 		if (!subsystems)
-			goto out_error;
+			goto out;
 
 		h = NULL;
 		for (k = 1; k <= meta_data->maximum_hierarchy; k++) {
@@ -363,12 +361,12 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 
 		r = lxc_grow_array((void ***)&meta_data->mount_points, &mount_point_capacity, mount_point_count + 1, 12);
 		if (r < 0)
-			goto out_error;
+			goto out;
 
 		/* create mount point object */
 		mount_point = calloc(1, sizeof(*mount_point));
 		if (!mount_point)
-			goto out_error;
+			goto out;
 
 		meta_data->mount_points[mount_point_count++] = mount_point;
 
@@ -376,7 +374,7 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 		mount_point->mount_point = strdup(tokens[4]);
 		mount_point->mount_prefix = strdup(tokens[3]);
 		if (!mount_point->mount_point || !mount_point->mount_prefix)
-			goto out_error;
+			goto out;
 		mount_point->read_only = !lxc_string_in_list("rw", tokens[5], ',');
 
 		if (!strcmp(mount_point->mount_prefix, "/")) {
@@ -392,9 +390,57 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 		k = lxc_array_len((void **)h->all_mount_points);
 		r = lxc_grow_array((void ***)&h->all_mount_points, &h->all_mount_point_capacity, k + 1, 4);
 		if (r < 0)
-			goto out_error;
+			goto out;
 		h->all_mount_points[k] = mount_point;
 	}
+	bret = true;
+
+out:
+	process_lock();
+	fclose(proc_self_mountinfo);
+	process_unlock();
+	free(tokens);
+	return bret;
+}
+
+struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
+{
+	bool all_kernel_subsystems = true;
+	bool all_named_subsystems = false;
+	struct cgroup_meta_data *meta_data = NULL;
+	char **kernel_subsystems = NULL;
+	int saved_errno = 0;
+
+	/* if the subsystem whitelist is not specified, include all
+	 * hierarchies that contain kernel subsystems by default but
+	 * no hierarchies that only contain named subsystems
+	 *
+	 * if it is specified, the specifier @all will select all
+	 * hierarchies, @kernel will select all hierarchies with
+	 * kernel subsystems and @named will select all named
+	 * hierarchies
+	 */
+	all_kernel_subsystems = subsystem_whitelist ?
+		(lxc_string_in_array("@kernel", subsystem_whitelist) || lxc_string_in_array("@all", subsystem_whitelist)) :
+		true;
+	all_named_subsystems = subsystem_whitelist ?
+		(lxc_string_in_array("@named", subsystem_whitelist) || lxc_string_in_array("@all", subsystem_whitelist)) :
+		false;
+
+	meta_data = calloc(1, sizeof(struct cgroup_meta_data));
+	if (!meta_data)
+		return NULL;
+	meta_data->ref = 1;
+
+	if (!find_cgroup_subsystems(&kernel_subsystems))
+		goto out_error;
+
+	if (!find_cgroup_hierarchies(meta_data, all_kernel_subsystems,
+				all_named_subsystems, subsystem_whitelist))
+		goto out_error;
+
+	if (!find_hierarchy_mountpts(meta_data, kernel_subsystems))
+		goto out_error;
 
 	/* oops, we couldn't find anything */
 	if (!meta_data->hierarchies || !meta_data->mount_points) {
@@ -406,16 +452,6 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 
 out_error:
 	saved_errno = errno;
-	process_lock();
-	if (proc_cgroups)
-		fclose(proc_cgroups);
-	if (proc_self_cgroup)
-		fclose(proc_self_cgroup);
-	if (proc_self_mountinfo)
-		fclose(proc_self_mountinfo);
-	process_unlock();
-	free(line);
-	free(tokens);
 	lxc_free_array((void **)kernel_subsystems, free);
 	lxc_cgroup_put_meta(meta_data);
 	errno = saved_errno;
