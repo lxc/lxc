@@ -2018,6 +2018,29 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	lxc_list_for_each(it, &c->mount_list) {
 		fprintf(fout, "lxc.mount.entry = %s\n", (char *)it->elem);
 	}
+	if (c->auto_mounts & LXC_AUTO_ALL_MASK) {
+		fprintf(fout, "lxc.mount.auto =");
+		switch (c->auto_mounts & LXC_AUTO_PROC_MASK) {
+			case LXC_AUTO_PROC_MIXED:        fprintf(fout, " proc:mixed");        break;
+			case LXC_AUTO_PROC_RW:           fprintf(fout, " proc:rw");           break;
+			default: break;
+		}
+		switch (c->auto_mounts & LXC_AUTO_SYS_MASK) {
+			case LXC_AUTO_SYS_RO:            fprintf(fout, " sys:ro");            break;
+			case LXC_AUTO_SYS_RW:            fprintf(fout, " sys:rw");            break;
+			default: break;
+		}
+		switch (c->auto_mounts & LXC_AUTO_CGROUP_MASK) {
+			case LXC_AUTO_CGROUP_MIXED:      fprintf(fout, " cgroup:mixed");      break;
+			case LXC_AUTO_CGROUP_RO:         fprintf(fout, " cgroup:ro");         break;
+			case LXC_AUTO_CGROUP_RW:         fprintf(fout, " cgroup:rw");         break;
+			case LXC_AUTO_CGROUP_FULL_MIXED: fprintf(fout, " cgroup-full:mixed"); break;
+			case LXC_AUTO_CGROUP_FULL_RO:    fprintf(fout, " cgroup-full:ro");    break;
+			case LXC_AUTO_CGROUP_FULL_RW:    fprintf(fout, " cgroup-full:rw");    break;
+			default: break;
+		}
+		fprintf(fout, "\n");
+	}
 	if (c->tty)
 		fprintf(fout, "lxc.tty = %d\n", c->tty);
 	if (c->pts)
