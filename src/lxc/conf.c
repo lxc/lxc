@@ -811,7 +811,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct cgroup
 	}
 
 	if (flags & LXC_AUTO_CGROUP_MASK) {
-		r = lxc_setup_mount_cgroup(conf->rootfs.mount, cgroup_info);
+		r = lxc_setup_mount_cgroup(conf->rootfs.mount, cgroup_info, flags & LXC_AUTO_CGROUP_MASK);
 		if (r < 0) {
 			SYSERROR("error mounting /sys/fs/cgroup");
 			return -1;

@@ -1256,7 +1256,7 @@ int lxc_setup_cgroup_devices(struct lxc_handler *h, struct lxc_list *cgroup_sett
 	return do_setup_cgroup(h, cgroup_settings, true);
 }
 
-int lxc_setup_mount_cgroup(const char *root, struct cgroup_process_info *base_info)
+int lxc_setup_mount_cgroup(const char *root, struct cgroup_process_info *base_info, int type)
 {
 	size_t bufsz = strlen(root) + sizeof("/sys/fs/cgroup");
 	char *path = NULL;
@@ -1266,6 +1266,12 @@ int lxc_setup_mount_cgroup(const char *root, struct cgroup_process_info *base_in
 	char *abs_path2 = NULL;
 	struct cgroup_process_info *info;
 	int r, saved_errno = 0;
+
+	if (type < LXC_AUTO_CGROUP_RO || type > LXC_AUTO_CGROUP_FULL_MIXED) {
+		ERROR("could not mount cgroups into container: invalid type specified internally");
+		errno = EINVAL;
+		return -1;
+	}
 
 	path = calloc(1, bufsz);
 	if (!path)
@@ -1313,27 +1319,71 @@ int lxc_setup_mount_cgroup(const char *root, struct cgroup_process_info *base_in
 			goto out_error;
 		}
 
-		/* create path for container's cgroup */
 		abs_path2 = lxc_append_paths(abs_path, info->cgroup_path);
 		if (!abs_path2)
 			goto out_error;
-		r = mkdir_p(abs_path2, 0755);
-		if (r < 0 && errno != EEXIST) {
-			SYSERROR("could not create cgroup directory /sys/fs/cgroup/%s%s", dirname, info->cgroup_path);
-			goto out_error;
-		}
 
-		free(abs_path);
-		abs_path = NULL;
+		if (type == LXC_AUTO_CGROUP_FULL_RO || type == LXC_AUTO_CGROUP_FULL_RW || type == LXC_AUTO_CGROUP_FULL_MIXED) {
+			/* bind-mount the cgroup entire filesystem there */
+			if (strcmp(mp->mount_prefix, "/") != 0) {
+				/* FIXME: maybe we should just try to remount the entire hierarchy
+				 *        with a regular mount command? may that works? */
+				ERROR("could not automatically mount cgroup-full to /sys/fs/cgroup/%s: host has no mount point for this cgroup filesystem that has access to the root cgroup", dirname);
+				goto out_error;
+			}
+			r = mount(mp->mount_point, abs_path, "none", MS_BIND, 0);
+			if (r < 0) {
+				SYSERROR("error bind-mounting %s to %s", mp->mount_point, abs_path);
+				goto out_error;
+			}
+			/* main cgroup path should be read-only */
+			if (type == LXC_AUTO_CGROUP_FULL_RO || type == LXC_AUTO_CGROUP_FULL_MIXED) {
+				r = mount(NULL, abs_path, NULL, MS_REMOUNT|MS_BIND|MS_RDONLY, NULL);
+				if (r < 0) {
+					SYSERROR("error re-mounting %s readonly", abs_path);
+					goto out_error;
+				}
+			}
+			/* own cgroup should be read-write */
+			if (type == LXC_AUTO_CGROUP_FULL_MIXED) {
+				r = mount(abs_path2, abs_path2, NULL, MS_BIND, NULL);
+				if (r < 0) {
+					SYSERROR("error bind-mounting %s onto itself", abs_path2);
+					goto out_error;
+				}
+				r = mount(NULL, abs_path2, NULL, MS_REMOUNT|MS_BIND, NULL);
+				if (r < 0) {
+					SYSERROR("error re-mounting %s readwrite", abs_path2);
+					goto out_error;
+				}
+			}
+		} else {
+			/* create path for container's cgroup */
+			r = mkdir_p(abs_path2, 0755);
+			if (r < 0 && errno != EEXIST) {
+				SYSERROR("could not create cgroup directory /sys/fs/cgroup/%s%s", dirname, info->cgroup_path);
+				goto out_error;
+			}
 
-		/* bind-mount container's cgroup to that directory */
-		abs_path = cgroup_to_absolute_path(mp, info->cgroup_path, NULL);
-		if (!abs_path)
-			goto out_error;
-		r = mount(abs_path, abs_path2, "none", MS_BIND, 0);
-		if (r < 0) {
-			SYSERROR("error bind-mounting %s to %s", abs_path, abs_path2);
-			goto out_error;
+			free(abs_path);
+			abs_path = NULL;
+
+			/* bind-mount container's cgroup to that directory */
+			abs_path = cgroup_to_absolute_path(mp, info->cgroup_path, NULL);
+			if (!abs_path)
+				goto out_error;
+			r = mount(abs_path, abs_path2, "none", MS_BIND, 0);
+			if (r < 0) {
+				SYSERROR("error bind-mounting %s to %s", abs_path, abs_path2);
+				goto out_error;
+			}
+			if (type == LXC_AUTO_CGROUP_RO) {
+				r = mount(NULL, abs_path2, NULL, MS_REMOUNT|MS_BIND|MS_RDONLY, NULL);
+				if (r < 0) {
+					SYSERROR("error re-mounting %s readonly", abs_path2);
+					goto out_error;
+				}
+			}
 		}
 
 		free(abs_path);
@@ -1365,7 +1415,8 @@ int lxc_setup_mount_cgroup(const char *root, struct cgroup_process_info *base_in
 	 * new cgroups outside the allowed area fails with an error instead
 	 * of simply causing this to create directories in the tmpfs itself)
 	 */
-	mount(NULL, path, NULL, MS_REMOUNT|MS_RDONLY, NULL);
+	if (type != LXC_AUTO_CGROUP_RW && type != LXC_AUTO_CGROUP_FULL_RW)
+		mount(NULL, path, NULL, MS_REMOUNT|MS_RDONLY, NULL);
 
 	free(path);
 
