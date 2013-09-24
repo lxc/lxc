@@ -225,10 +225,23 @@ struct lxc_rootfs {
  * Automatic mounts for LXC to perform inside the container
  */
 enum {
-	LXC_AUTO_PROC        = 0x01,   /* /proc */
-	LXC_AUTO_SYS         = 0x02,   /* /sys*/
-	LXC_AUTO_CGROUP      = 0x04,   /* /sys/fs/cgroup */
-	LXC_AUTO_PROC_SYSRQ  = 0x08,   /* /proc/sysrq-trigger over-bind-mounted with /dev/null */
+	LXC_AUTO_PROC_RW              = 0x001,   /* /proc read-write */
+	LXC_AUTO_PROC_MIXED           = 0x002,   /* /proc/sys and /proc/sysrq-trigger read-only */
+	LXC_AUTO_PROC_MASK            = 0x003,
+
+	LXC_AUTO_SYS_RW               = 0x004,   /* /sys */
+	LXC_AUTO_SYS_RO               = 0x008,   /* /sys read-only */
+	LXC_AUTO_SYS_MASK             = 0x00C,
+
+	LXC_AUTO_CGROUP_RO            = 0x010,   /* /sys/fs/cgroup (partial mount, read-only) */
+	LXC_AUTO_CGROUP_RW            = 0x020,   /* /sys/fs/cgroup (partial mount, read-write) */
+	LXC_AUTO_CGROUP_MIXED         = 0x030,   /* /sys/fs/cgroup (partial mount, paths r/o, cgroup r/w) */
+	LXC_AUTO_CGROUP_FULL_RO       = 0x040,   /* /sys/fs/cgroup (full mount, read-only) */
+	LXC_AUTO_CGROUP_FULL_RW       = 0x050,   /* /sys/fs/cgroup (full mount, read-write) */
+	LXC_AUTO_CGROUP_FULL_MIXED    = 0x060,   /* /sys/fs/cgroup (full mount, parent r/o, own r/w) */
+	LXC_AUTO_CGROUP_MASK          = 0x070,
+
+	LXC_AUTO_ALL_MASK             = 0x07F,   /* all known settings */
 };
 
 /*

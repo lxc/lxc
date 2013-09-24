@@ -1255,11 +1255,25 @@ static int config_mount_auto(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
 {
 	char *autos, *autoptr, *sptr, *token;
-	static struct { const char *token; int flag; } allowed_auto_mounts[] = {
-		{ "proc",   LXC_AUTO_PROC },
-		{ "sysrq",  LXC_AUTO_PROC_SYSRQ },
-		{ "sys",    LXC_AUTO_SYS },
-		{ "cgroup", LXC_AUTO_CGROUP },
+	static struct { const char *token; int mask; int flag; } allowed_auto_mounts[] = {
+		{ "proc",               LXC_AUTO_PROC_MASK,      LXC_AUTO_PROC_MIXED        },
+		{ "proc:mixed",         LXC_AUTO_PROC_MASK,      LXC_AUTO_PROC_MIXED        },
+		{ "proc:rw",            LXC_AUTO_PROC_MASK,      LXC_AUTO_PROC_RW           },
+		{ "sys",                LXC_AUTO_SYS_MASK,       LXC_AUTO_SYS_RO            },
+		{ "sys:ro",             LXC_AUTO_SYS_MASK,       LXC_AUTO_SYS_RO            },
+		{ "sys:rw",             LXC_AUTO_SYS_MASK,       LXC_AUTO_SYS_RW            },
+		{ "cgroup",             LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_MIXED      },
+		{ "cgroup:mixed",       LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_MIXED      },
+		{ "cgroup:ro",          LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_RO         },
+		{ "cgroup:rw",          LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_RW         },
+		{ "cgroup-full",        LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_MIXED },
+		{ "cgroup-full:mixed",  LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_MIXED },
+		{ "cgroup-full:ro",     LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_RO    },
+		{ "cgroup-full:rw",     LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_RW    },
+		/* NB: For adding anything that ist just a single on/off, but has
+		 *     no options: keep mask and flag identical and just define the
+		 *     enum value as an unused bit so far
+		 */
 		{ NULL, 0 }
 	};
 	int i;
@@ -1291,6 +1305,7 @@ static int config_mount_auto(const char *key, const char *value,
 			break;
 		}
 
+		lxc_conf->auto_mounts &= ~allowed_auto_mounts[i].mask;
 		lxc_conf->auto_mounts |= allowed_auto_mounts[i].flag;
         }
 

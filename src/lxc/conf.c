@@ -740,85 +740,85 @@ int pin_rootfs(const char *rootfs)
 
 static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct cgroup_process_info *cgroup_info)
 {
-	char *path = NULL;
-	char *dev_null = NULL;
 	int r;
-
-	dev_null = lxc_append_paths(conf->rootfs.mount, "/dev/null");
-	if (!dev_null) {
-		SYSERROR("memory allocation error");
-		goto cleanup;
-	}
-
-	if (flags & LXC_AUTO_PROC) {
-		path = lxc_append_paths(conf->rootfs.mount, "/proc");
-		if (!path) {
-			SYSERROR("memory allocation error trying to automatically mount /proc");
-			goto cleanup;
-		}
-
-		r = mount("proc", path, "proc", MS_NODEV|MS_NOEXEC|MS_NOSUID, NULL);
-		if (r < 0) {
-			SYSERROR("error mounting /proc");
-			goto cleanup;
-		}
-
-		free(path);
-		path = NULL;
-	}
-
-	if (flags & LXC_AUTO_PROC_SYSRQ) {
-		path = lxc_append_paths(conf->rootfs.mount, "/proc/sysrq-trigger");
-		if (!path) {
-			SYSERROR("memory allocation error trying to automatically mount /proc");
-			goto cleanup;
-		}
-
-		/* safety measure, mount /dev/null over /proc/sysrq-trigger,
-		 * otherwise, a container may trigger a host reboot or such
+	size_t i;
+	static struct {
+		int match_mask;
+		int match_flag;
+		const char *source;
+		const char *destination;
+		const char *fstype;
+		unsigned long flags;
+		const char *options;
+	} default_mounts[] = {
+		/* Read-only bind-mounting... In older kernels, doing that required
+		 * to do one MS_BIND mount and then MS_REMOUNT|MS_RDONLY the same
+		 * one. According to mount(2) manpage, MS_BIND honors MS_RDONLY from
+		 * kernel 2.6.26 onwards. However, this apparently does not work on
+		 * kernel 3.8. Unfortunately, on that very same kernel, doing the
+		 * same trick as above doesn't seem to work either, there one needs
+		 * to ALSO specify MS_BIND for the remount, otherwise the entire
+		 * fs is remounted read-only or the mount fails because it's busy...
+		 * MS_REMOUNT|MS_BIND|MS_RDONLY seems to work for kernels as low as
+		 * 2.6.32...
 		 */
-		r = mount(dev_null, path, NULL, MS_BIND, NULL);
-		if (r < 0)
-			WARN("error mounting /dev/null over /proc/sysrq-trigger: %s", strerror(errno));
+		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, "proc",                  "%r/proc",               "proc",  MS_NODEV|MS_NOEXEC|MS_NOSUID, NULL },
+		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, "%r/proc/sys",           "%r/proc/sys",           NULL,    MS_BIND,                      NULL },
+		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, NULL,                    "%r/proc/sys",           NULL,    MS_REMOUNT|MS_BIND|MS_RDONLY, NULL },
+		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, "%r/proc/sysrq-trigger", "%r/proc/sysrq-trigger", NULL,    MS_BIND,                      NULL },
+		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, NULL,                    "%r/proc/sysrq-trigger", NULL,    MS_REMOUNT|MS_BIND|MS_RDONLY, NULL },
+		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_RW,    "proc",                  "%r/proc",               "proc",  MS_NODEV|MS_NOEXEC|MS_NOSUID, NULL },
+		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_RW,     "sysfs",                 "%r/sys",                "sysfs", 0,                            NULL },
+		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_RO,     "sysfs",                 "%r/sys",                "sysfs", MS_RDONLY,                    NULL },
+		{ 0,                  0,                   NULL,                    NULL,                    NULL,    0,                            NULL }
+	};
 
-		free(path);
-		path = NULL;
+	for (i = 0; default_mounts[i].match_mask; i++) {
+		if ((flags & default_mounts[i].match_mask) == default_mounts[i].match_flag) {
+			char *source = NULL;
+			char *destination = NULL;
+			int saved_errno;
+
+			if (default_mounts[i].source) {
+				/* will act like strdup if %r is not present */
+				source = lxc_string_replace("%r", conf->rootfs.mount, default_mounts[i].source);
+				if (!source) {
+					SYSERROR("memory allocation error");
+					return -1;
+				}
+			}
+			if (default_mounts[i].destination) {
+				/* will act like strdup if %r is not present */
+				destination = lxc_string_replace("%r", conf->rootfs.mount, default_mounts[i].destination);
+				if (!destination) {
+					saved_errno = errno;
+					SYSERROR("memory allocation error");
+					free(source);
+					errno = saved_errno;
+					return -1;
+				}
+			}
+			r = mount(source, destination, default_mounts[i].fstype, default_mounts[i].flags, default_mounts[i].options);
+			saved_errno = errno;
+			free(source);
+			free(destination);
+			if (r < 0) {
+				SYSERROR("error mounting %s", default_mounts[i].destination);
+				errno = saved_errno;
+				return -1;
+			}
+		}
 	}
 
-	if (flags & LXC_AUTO_SYS) {
-		path = lxc_append_paths(conf->rootfs.mount, "/sys");
-		if (!path) {
-			SYSERROR("memory allocation error trying to automatically mount /sys");
-			goto cleanup;
-		}
-
-		r = mount("sysfs", path, "sysfs", MS_RDONLY, NULL);
-		if (r < 0) {
-			SYSERROR("error mounting /sys");
-			goto cleanup;
-		}
-
-		free(path);
-		path = NULL;
-	}
-
-	if (flags & LXC_AUTO_CGROUP) {
+	if (flags & LXC_AUTO_CGROUP_MASK) {
 		r = lxc_setup_mount_cgroup(conf->rootfs.mount, cgroup_info);
 		if (r < 0) {
 			SYSERROR("error mounting /sys/fs/cgroup");
-			goto cleanup;
+			return -1;
 		}
 	}
 
-	free(dev_null);
-	free(path);
-
 	return 0;
-
-cleanup:
-	free(dev_null);
-	free(path);
-	return -1;
 }
 
 static int mount_rootfs(const char *rootfs, const char *target)
@@ -3067,7 +3067,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath, 
 	/* do automatic mounts (mainly /proc and /sys), but exclude
 	 * those that need to wait until other stuff has finished
 	 */
-	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & ~LXC_AUTO_CGROUP & ~LXC_AUTO_PROC_SYSRQ, cgroup_info) < 0) {
+	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & ~LXC_AUTO_CGROUP_MASK, cgroup_info) < 0) {
 		ERROR("failed to setup the automatic mounts for '%s'", name);
 		return -1;
 	}
@@ -3086,7 +3086,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath, 
 	 * before, /sys could not have been mounted
 	 * (is either mounted automatically or via fstab entries)
 	 */
-	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & LXC_AUTO_CGROUP, cgroup_info) < 0) {
+	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & LXC_AUTO_CGROUP_MASK, cgroup_info) < 0) {
 		ERROR("failed to setup the automatic mounts for '%s'", name);
 		return -1;
 	}
@@ -3105,14 +3105,6 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath, 
 			ERROR("failed to populate /dev in the container");
 			return -1;
 		}
-	}
-
-	/* over-mount /proc/sysrq-trigger with /dev/null now, if wanted;
-	 * before /dev/null did not necessarily exist
-	 */
-	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & LXC_AUTO_PROC_SYSRQ, cgroup_info) < 0) {
-		ERROR("failed to setup the automatic mounts for '%s'", name);
-		return -1;
 	}
 
 	if (!lxc_conf->is_execute && setup_console(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->ttydir)) {
