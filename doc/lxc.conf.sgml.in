@@ -656,6 +656,105 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  </listitem>
 	</varlistentry>
 
+	<varlistentry>
+	  <term>
+	    <option>lxc.mount.auto</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify which standard kernel file systems should be
+	      automatically mounted. This may dramatically simplify
+	      the configuration. The file systems are:
+	    </para>
+	    <itemizedlist>
+	      <listitem>
+	        <option>proc:mixed</option> (or <option>proc</option>):
+	        mount <filename>/proc</filename> as read-write, but
+	        remount <filename>/proc/sys</filename> and
+	        <filename>/proc/sysrq-trigger</filename> read-only
+	        for security / container isolation purposes.
+	      </listitem>
+	      <listitem>
+	        <option>proc:rw</option>: mount
+	        <filename>/proc</filename> as read-write
+	      </listitem>
+	      <listitem>
+	        <option>sys:ro</option> (or <option>sys</option>):
+	        mount <filename>/sys</filename> as read-only
+	        for security / container isolation purposes.
+	      </listitem>
+	      <listitem>
+	        <option>sys:rw</option>: mount
+	        <filename>/sys</filename> as read-write
+	      </listitem>
+	      <listitem>
+	        <option>cgroup:mixed</option> (or
+	        <option>cgroup</option>):
+	        mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
+	        create directories for all hierarchies to which
+	        the container is added, create subdirectories
+	        there with the name of the cgroup, and bind-mount
+	        the container's own cgroup into that directory.
+	        The container will be able to write to its own
+	        cgroup directory, but not the parents, since they
+	        will be remounted read-only
+	      </listitem>
+	      <listitem>
+	        <option>cgroup:ro</option>: similar to
+	        <option>cgroup:mixed</option>, but everything will
+	        be mounted read-only.
+	      </listitem>
+	      <listitem>
+	        <option>cgroup:rw</option>: similar to
+	        <option>cgroup:mixed</option>, but everything will
+	        be mounted read-write. Note that the paths leading
+	        up to the container's own cgroup will be writable,
+	        but will not be a cgroup filesystem but just part
+	        of the tmpfs of <filename>/sys/fs/cgroup</filename>
+	      </listitem>
+	      <listitem>
+	        <option>cgroup-full:mixed</option> (or
+	        <option>cgroup-full</option>):
+	        mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
+	        create directories for all hierarchies to which
+	        the container is added, bind-mount the hierarchies
+	        from the host to the container and make everything
+	        read-only except the container's own cgroup. Note
+	        that compared to <option>cgroup</option>, where
+	        all paths leading up to the container's own cgroup
+	        are just simple directories in the underlying
+	        tmpfs, here
+	        <filename>/sys/fs/cgroup/$hierarchy</filename>
+	        will contain the host's full cgroup hierarchy,
+	        albeit read-only outside the container's own cgroup.
+	        This may leak quite a bit of information into the
+	        container.
+	      </listitem>
+	      <listitem>
+	        <option>cgroup-full:ro</option>: similar to
+	        <option>cgroup-full:mixed</option>, but everything
+	        will be mounted read-only.
+	      </listitem>
+	      <listitem>
+	        <option>cgroup-full:rw</option>: similar to
+	        <option>cgroup-full:mixed</option>, but everything
+	        will be mounted read-write. Note that in this case,
+	        the container may escape its own cgroup. (Note also
+	        that if the container has CAP_SYS_ADMIN support
+	        and can mount the cgroup filesystem itself, it may
+	        do so anyway.)
+	      </listitem>
+	    </itemizedlist>
+	    <para>
+	      Examples:
+	    </para>
+	    <programlisting>
+	      lxc.mount.auto = proc sys cgroup
+	      lxc.mount.auto = proc:rw sys:rw cgroup-full:rw
+	    </programlisting>
+	  </listitem>
+	</varlistentry>
+
       </variablelist>
     </refsect2>
 
