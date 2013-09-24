@@ -197,6 +197,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args,
 		case 'l':	args->log_priority = optarg; break;
 		case 'q':	args->quiet = 1; break;
 		case 'P':
+			remove_trailing_slashes(optarg);
 			ret = lxc_arguments_lxcpath_add(args, optarg);
 			if (ret < 0)
 				return ret;
