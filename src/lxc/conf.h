@@ -247,9 +247,8 @@ enum {
  * @tty_info   : tty data
  * @console    : console data
  * @ttydir     : directory (under /dev) in which to create console and ttys
-#if HAVE_APPARMOR
- * @aa_profile : apparmor profile to switch to
-#endif
+ * @lsm_aa_profile : apparmor profile to switch to or NULL
+ * @lsm_se_context : selinux type to switch to or NULL
  */
 enum lxchooks {
 	LXCHOOK_PRESTART, LXCHOOK_PREMOUNT, LXCHOOK_MOUNT, LXCHOOK_AUTODEV,
@@ -285,13 +284,10 @@ struct lxc_conf {
 	char *ttydir;
 	int close_all_fds;
 	struct lxc_list hooks[NUM_LXC_HOOKS];
-#if HAVE_APPARMOR
-	char *aa_profile;
-#endif
 
-#if HAVE_APPARMOR /* || HAVE_SELINUX || HAVE_SMACK */
+	char *lsm_aa_profile;
+	char *lsm_se_context;
 	int lsm_umount_proc;
-#endif
 	char *seccomp;  // filename with the seccomp rules
 #if HAVE_SCMP_FILTER_CTX
 	scmp_filter_ctx *seccomp_ctx;

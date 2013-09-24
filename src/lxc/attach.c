@@ -46,11 +46,11 @@
 #include "attach.h"
 #include "caps.h"
 #include "config.h"
-#include "apparmor.h"
 #include "utils.h"
 #include "commands.h"
 #include "cgroup.h"
 #include "lxclock.h"
+#include "lsm/lsm.h"
 
 #if HAVE_SYS_PERSONALITY_H
 #include <sys/personality.h>
@@ -129,13 +129,20 @@ struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 		errno = ENOENT;
 		goto out_error;
 	}
-	info->aa_profile = aa_get_profile(pid);
+	info->lsm_label = lsm_process_label_get(pid);
 
 	return info;
 
 out_error:
 	free(info);
 	return NULL;
+}
+
+static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
+{
+	if (ctx->lsm_label)
+		free(ctx->lsm_label);
+	free(ctx);
 }
 
 int lxc_attach_to_ns(pid_t pid, int which)
@@ -644,8 +651,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 			ERROR("failed to automatically determine the "
 			      "namespaces which the container unshared");
 			free(cwd);
-			free(init_ctx->aa_profile);
-			free(init_ctx);
+			lxc_proc_put_context_info(init_ctx);
 			return -1;
 		}
 	}
@@ -683,8 +689,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	if (ret < 0) {
 		SYSERROR("could not set up required IPC mechanism for attaching");
 		free(cwd);
-		free(init_ctx->aa_profile);
-		free(init_ctx);
+		lxc_proc_put_context_info(init_ctx);
 		return -1;
 	}
 
@@ -705,8 +710,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	if (pid < 0) {
 		SYSERROR("failed to create first subprocess");
 		free(cwd);
-		free(init_ctx->aa_profile);
-		free(init_ctx);
+		lxc_proc_put_context_info(init_ctx);
 		return -1;
 	}
 
@@ -794,8 +798,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		process_lock();
 		close(ipc_sockets[0]);
 		process_unlock();
-		free(init_ctx->aa_profile);
-		free(init_ctx);
+		lxc_proc_put_context_info(init_ctx);
 
 		/* we're done, the child process should now execute whatever
 		 * it is that the user requested. The parent can now track it
@@ -815,8 +818,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		process_unlock();
 		if (to_cleanup_pid)
 			(void) wait_for_pid(to_cleanup_pid);
-		free(init_ctx->aa_profile);
-		free(init_ctx);
+		lxc_proc_put_context_info(init_ctx);
 		return -1;
 	}
 
@@ -918,7 +920,7 @@ int attach_child_main(void* data)
 
 	/* load apparmor profile */
 	if ((options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_APPARMOR)) {
-		ret = attach_apparmor(init_ctx->aa_profile);
+		ret = lsm_process_label_set(init_ctx->lsm_label, 0);
 		if (ret < 0) {
 			shutdown(ipc_socket, SHUT_RDWR);
 			rexit(-1);
@@ -1021,8 +1023,7 @@ int attach_child_main(void* data)
 
 	shutdown(ipc_socket, SHUT_RDWR);
 	close(ipc_socket);
-	free(init_ctx->aa_profile);
-	free(init_ctx);
+	lxc_proc_put_context_info(init_ctx);
 
 	/* The following is done after the communication socket is
 	 * shut down. That way, all errors that might (though

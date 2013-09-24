@@ -74,10 +74,7 @@
 #include "bdev.h"
 #include "cgroup.h"
 #include "lxclock.h"
-
-#if HAVE_APPARMOR
-#include <apparmor.h>
-#endif
+#include "lsm/lsm.h"
 
 #if HAVE_SYS_CAPABILITY_H
 #include <sys/capability.h>
@@ -2398,12 +2395,9 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->id_map);
 	for (i=0; i<NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
-#if HAVE_APPARMOR
-	new->aa_profile = NULL;
-#endif
-#if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
+	new->lsm_aa_profile = NULL;
+	new->lsm_se_context = NULL;
 	new->lsm_umount_proc = 0;
-#endif
 
 	return new;
 }
@@ -3043,10 +3037,6 @@ int uid_shift_ttys(int pid, struct lxc_conf *conf)
 
 int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath, struct cgroup_process_info *cgroup_info)
 {
-#if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
-	int mounted;
-#endif
-
 	if (setup_utsname(lxc_conf->utsname)) {
 		ERROR("failed to setup the utsname for '%s'", name);
 		return -1;
@@ -3140,24 +3130,11 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath, 
 		return -1;
 	}
 
-#if HAVE_APPARMOR /* || HAVE_SMACK || HAVE_SELINUX */
-	INFO("rootfs path is .%s., mount is .%s.", lxc_conf->rootfs.path,
-		lxc_conf->rootfs.mount);
-	if (lxc_conf->rootfs.path == NULL || strlen(lxc_conf->rootfs.path) == 0) {
-		if (mount("proc", "/proc", "proc", 0, NULL)) {
-			SYSERROR("Failed mounting /proc, proceeding");
-			mounted = 0;
-		} else
-			mounted = 1;
-	} else
-		mounted = lsm_mount_proc_if_needed(lxc_conf->rootfs.path, lxc_conf->rootfs.mount);
-	if (mounted == -1) {
-		SYSERROR("failed to mount /proc in the container.");
+	/* mount /proc if needed for LSM transition */
+	if (lsm_proc_mount(lxc_conf) < 0) {
+		ERROR("failed to LSM mount proc for '%s'", name);
 		return -1;
-	} else if (mounted == 1) {
-		lxc_conf->lsm_umount_proc = 1;
 	}
-#endif
 
 	if (setup_pivot_root(&lxc_conf->rootfs)) {
 		ERROR("failed to set rootfs for '%s'", name);
@@ -3488,10 +3465,10 @@ void lxc_conf_free(struct lxc_conf *conf)
 	if (conf->rcfile)
 		free(conf->rcfile);
 	lxc_clear_config_network(conf);
-#if HAVE_APPARMOR
-	if (conf->aa_profile)
-		free(conf->aa_profile);
-#endif
+	if (conf->lsm_aa_profile)
+		free(conf->lsm_aa_profile);
+	if (conf->lsm_se_context)
+		free(conf->lsm_se_context);
 	lxc_seccomp_free(conf);
 	lxc_clear_config_caps(conf);
 	lxc_clear_config_keepcaps(conf);

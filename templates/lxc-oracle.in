@@ -110,10 +110,8 @@ EOF
     # this file has to exist for libvirt/Virtual machine monitor to boot the container
     touch $container_rootfs/etc/mtab
 
-    # don't put devpts in here, it will already be mounted for us by lxc/libvirt
+    # don't put devpts,proc, nor sysfs in here, it will already be mounted for us by lxc/libvirt
     cat <<EOF > $container_rootfs/etc/fstab
-proc    /proc     proc   nodev,noexec,nosuid 0 0
-sysfs   /sys      sysfs  defaults 0 0
 EOF
 
     # remove module stuff for iptables it just shows errors that are not
@@ -404,9 +402,8 @@ lxc.cgroup.devices.allow = c 5:2 rwm	# /dev/ptmx pty master
 EOF
 
     cat <<EOF > $cfg_dir/fstab || die "unable to create $cfg_dir/fstab"
-proc    $container_rootfs/proc     proc   nodev,noexec,nosuid 0 0
-devpts  $container_rootfs/dev/pts  devpts defaults 0 0
-sysfs   $container_rootfs/sys      sysfs  defaults  0 0
+proc    proc     proc   nodev,noexec,nosuid 0 0
+sysfs   sys      sysfs  defaults  0 0
 EOF
 }
 

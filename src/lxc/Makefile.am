@@ -37,6 +37,18 @@ sodir=$(libdir)
 # use PROGRAMS to avoid complains from automake
 so_PROGRAMS = liblxc.so
 
+LSM_SOURCES = \
+	lsm/nop.c \
+	lsm/lsm.h lsm/lsm.c
+
+if ENABLE_APPARMOR
+LSM_SOURCES += lsm/apparmor.c
+endif
+
+if ENABLE_SELINUX
+LSM_SOURCES += lsm/selinux.c
+endif
+
 liblxc_so_SOURCES = \
 	arguments.c arguments.h \
 	bdev.c bdev.h \
@@ -73,10 +85,11 @@ liblxc_so_SOURCES = \
 	af_unix.c af_unix.h \
 	\
 	lxcutmp.c lxcutmp.h \
-	apparmor.c apparmor.h \
 	lxclock.h lxclock.c \
 	lxccontainer.c lxccontainer.h \
-	version.c version.h
+	version.c version.h \
+	\
+	$(LSM_SOURCES)
 
 if IS_BIONIC
 liblxc_so_SOURCES += \
@@ -105,6 +118,10 @@ AM_CFLAGS=-I$(top_srcdir)/src \
 
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
+endif
+
+if ENABLE_SELINUX
+AM_CFLAGS += -DHAVE_SELINUX
 endif
 
 if HAVE_NEWUIDMAP

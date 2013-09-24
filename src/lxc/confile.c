@@ -57,9 +57,8 @@ static int config_pts(const char *, const char *, struct lxc_conf *);
 static int config_tty(const char *, const char *, struct lxc_conf *);
 static int config_ttydir(const char *, const char *, struct lxc_conf *);
 static int config_kmsg(const char *, const char *, struct lxc_conf *);
-#if HAVE_APPARMOR
-static int config_aa_profile(const char *, const char *, struct lxc_conf *);
-#endif
+static int config_lsm_aa_profile(const char *, const char *, struct lxc_conf *);
+static int config_lsm_se_context(const char *, const char *, struct lxc_conf *);
 static int config_cgroup(const char *, const char *, struct lxc_conf *);
 static int config_idmap(const char *, const char *, struct lxc_conf *);
 static int config_loglevel(const char *, const char *, struct lxc_conf *);
@@ -100,9 +99,8 @@ static struct lxc_config_t config[] = {
 	{ "lxc.tty",                  config_tty                  },
 	{ "lxc.devttydir",            config_ttydir               },
 	{ "lxc.kmsg",                 config_kmsg                 },
-#if HAVE_APPARMOR
-	{ "lxc.aa_profile",            config_aa_profile          },
-#endif
+	{ "lxc.aa_profile",           config_lsm_aa_profile       },
+	{ "lxc.se_context",           config_lsm_se_context       },
 	{ "lxc.cgroup",               config_cgroup               },
 	{ "lxc.id_map",               config_idmap                },
 	{ "lxc.loglevel",             config_loglevel             },
@@ -967,9 +965,8 @@ static int config_kmsg(const char *key, const char *value,
 	return 0;
 }
 
-#if HAVE_APPARMOR
-static int config_aa_profile(const char *key, const char *value,
-			     struct lxc_conf *lxc_conf)
+static int config_lsm_aa_profile(const char *key, const char *value,
+				 struct lxc_conf *lxc_conf)
 {
 	char *path;
 
@@ -981,13 +978,32 @@ static int config_aa_profile(const char *key, const char *value,
 		return -1;
 	}
 
-	if (lxc_conf->aa_profile)
-		free(lxc_conf->aa_profile);
-	lxc_conf->aa_profile = path;
+	if (lxc_conf->lsm_aa_profile)
+		free(lxc_conf->lsm_aa_profile);
+	lxc_conf->lsm_aa_profile = path;
 
 	return 0;
 }
-#endif
+
+static int config_lsm_se_context(const char *key, const char *value,
+				 struct lxc_conf *lxc_conf)
+{
+	char *path;
+
+	if (!value || strlen(value) == 0)
+		return 0;
+	path = strdup(value);
+	if (!path) {
+		SYSERROR("failed to strdup '%s': %m", value);
+		return -1;
+	}
+
+	if (lxc_conf->lsm_se_context)
+		free(lxc_conf->lsm_se_context);
+	lxc_conf->lsm_se_context = path;
+
+	return 0;
+}
 
 static int config_logfile(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
@@ -1913,10 +1929,10 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->ttydir;
 	else if (strcmp(key, "lxc.arch") == 0)
 		return lxc_get_arch_entry(c, retv, inlen);
-#if HAVE_APPARMOR
 	else if (strcmp(key, "lxc.aa_profile") == 0)
-		v = c->aa_profile;
-#endif
+		v = c->lsm_aa_profile;
+	else if (strcmp(key, "lxc.se_context") == 0)
+		v = c->lsm_se_context;
 	else if (strcmp(key, "lxc.logfile") == 0)
 		v = lxc_log_get_file();
 	else if (strcmp(key, "lxc.loglevel") == 0)
@@ -2000,10 +2016,10 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	default: break;
 	}
 	#endif
-#if HAVE_APPARMOR
-	if (c->aa_profile)
-		fprintf(fout, "lxc.aa_profile = %s\n", c->aa_profile);
-#endif
+	if (c->lsm_aa_profile)
+		fprintf(fout, "lxc.aa_profile = %s\n", c->lsm_aa_profile);
+	if (c->lsm_se_context)
+		fprintf(fout, "lxc.se_context = %s\n", c->lsm_se_context);
 	if (c->loglevel != LXC_LOG_PRIORITY_NOTSET)
 		fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(c->loglevel));
 	if (c->logfile)

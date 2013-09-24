@@ -68,10 +68,10 @@
 #include "console.h"
 #include "sync.h"
 #include "namespace.h"
-#include "apparmor.h"
 #include "lxcseccomp.h"
 #include "caps.h"
 #include "lxclock.h"
+#include "lsm/lsm.h"
 
 lxc_log_define(lxc_start, lxc);
 
@@ -285,7 +285,8 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
 
-	apparmor_handler_init(handler);
+	lsm_init();
+
 	handler->name = strdup(name);
 	if (!handler->name) {
 		ERROR("failed to allocate memory");
@@ -555,8 +556,16 @@ static int do_start(void *data)
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP))
 		return -1;
 
-	if (apparmor_load(handler) < 0)
+	/* XXX: hmm apparmor switches right away since it uses
+	 * aa_change_profile() and not aa_change_onexec(). SELinux on the other
+	 * hand is going to transition on exec(). Is it bad to run the stuff
+	 * between here and exec() in the more privileged context?
+	 */
+	if (lsm_process_label_set(handler->conf->lsm_aa_profile ?
+				  handler->conf->lsm_aa_profile :
+				  handler->conf->lsm_se_context, 1) < 0)
 		goto out_warn_father;
+	lsm_proc_unmount(handler->conf);
 
 	if (lxc_seccomp_load(handler->conf) != 0)
 		goto out_warn_father;

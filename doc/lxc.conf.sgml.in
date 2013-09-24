@@ -811,6 +811,31 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </refsect2>
 
     <refsect2>
+      <title>SELinux context</title>
+      <para>
+	If lxc was compiled and installed with SELinux support, and the host
+	system has SELinux enabled, then the SELinux context under which the
+	container should be run can be specified in the container
+	configuration.  The default is <command>unconfined_t</command>,
+	which means that lxc will not attempt to change contexts.
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.se_context</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Specify the SELinux context under which the container should
+	      be run or <command>unconfined_t</command>. For example
+	    </para>
+	    <programlisting>lxc.se_context = unconfined_u:unconfined_r:lxc_t:s0-s0:c0.c1023</programlisting>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Seccomp configuration</title>
       <para>
         A container can be started with a reduced set of available

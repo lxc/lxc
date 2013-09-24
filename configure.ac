@@ -117,6 +117,20 @@ AM_COND_IF([ENABLE_APPARMOR],
 	AC_CHECK_LIB([apparmor], [aa_change_profile],[],[AC_MSG_ERROR([You must install the AppArmor development package in order to compile lxc])])
 	AC_SUBST([APPARMOR_LIBS], [-lapparmor])])
 
+# SELinux
+AC_ARG_ENABLE([selinux],
+	[AC_HELP_STRING([--enable-selinux], [enable SELinux support])],
+	[], [enable_selinux=check])
+
+if test "x$enable_selinux" = xcheck; then
+	AC_CHECK_LIB([selinux],[setexeccon_raw],[enable_selinux=yes],[enable_selinux=no])
+fi
+AM_CONDITIONAL([ENABLE_SELINUX], [test "x$enable_selinux" = "xyes"])
+AM_COND_IF([ENABLE_SELINUX],
+	[AC_CHECK_HEADER([selinux/selinux.h],[],[AC_MSG_ERROR([You must install the SELinux development package in order to compile lxc])])
+	AC_CHECK_LIB([selinux], [setexeccon_raw],[],[AC_MSG_ERROR([You must install the SELinux development package in order to compile lxc])])
+	AC_SUBST([SELINUX_LIBS])])
+
 # Seccomp syscall filter
 AC_ARG_ENABLE([seccomp],
 	[AC_HELP_STRING([--enable-seccomp], [enable seccomp])],

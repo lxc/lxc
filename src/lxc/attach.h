@@ -28,7 +28,7 @@
 #include "attach_options.h"
 
 struct lxc_proc_context_info {
-	char *aa_profile;
+	char *lsm_label;
 	unsigned long personality;
 	unsigned long long capability_mask;
 };
