@@ -211,6 +211,13 @@ extern int mkdir_p(const char *dir, mode_t mode)
 	return 0;
 }
 
+extern void remove_trailing_slashes(char *p)
+{
+	int l = strlen(p);
+	while (--l >= 0 && (p[l] == '/' || p[l] == '\n'))
+		p[l] = '\0';
+}
+
 static char *copy_global_config_value(char *p)
 {
 	int len = strlen(p);

@@ -69,13 +69,6 @@ static bool file_exists(char *f)
 	return stat(f, &statbuf) == 0;
 }
 
-static void remove_trailing_slashes(char *p)
-{
-	int l = strlen(p);
-	while (--l >= 0 && (p[l] == '/' || p[l] == '\n'))
-		p[l] = '\0';
-}
-
 /*
  * A few functions to help detect when a container creation failed.
  * If a container creation was killed partway through, then trying
