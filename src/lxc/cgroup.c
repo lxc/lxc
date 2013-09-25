@@ -163,6 +163,7 @@ out:
 	process_lock();
 	fclose(proc_cgroups);
 	process_unlock();
+	free(line);
 	return bret;
 }
 
@@ -269,6 +270,7 @@ out:
 	process_lock();
 	fclose(proc_self_cgroup);
 	process_unlock();
+	free(line);
 	return bret;
 }
 
