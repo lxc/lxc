@@ -713,38 +713,32 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 /*
  * Given the '-t' template option to lxc-create, figure out what to
  * do.  If the template is a full executable path, use that.  If it
- * is something like 'sshd', then return $templatepath/lxc-sshd.  If
- * no template was passed in, return NULL  (this is ok).
- * On error return (char *) -1.
+ * is something like 'sshd', then return $templatepath/lxc-sshd.
+ * On success return the template, on error return NULL.
  */
-char *get_template_path(const char *t)
+static char *get_template_path(const char *t)
 {
 	int ret, len;
 	char *tpath;
 
-	if (!t)
-		return NULL;
-
 	if (t[0] == '/' && access(t, X_OK) == 0) {
 		tpath = strdup(t);
-		if (!tpath)
-			return (char *) -1;
 		return tpath;
 	}
 
 	len = strlen(LXCTEMPLATEDIR) + strlen(t) + strlen("/lxc-") + 1;
 	tpath = malloc(len);
 	if (!tpath)
-		return (char *) -1;
+		return NULL;
 	ret = snprintf(tpath, len, "%s/lxc-%s", LXCTEMPLATEDIR, t);
 	if (ret < 0 || ret >= len) {
 		free(tpath);
-		return (char *) -1;
+		return NULL;
 	}
 	if (access(tpath, X_OK) < 0) {
 		SYSERROR("bad template: %s\n", t);
 		free(tpath);
-		return (char *) -1;
+		return NULL;
 	}
 
 	return tpath;
@@ -917,20 +911,19 @@ bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 
 #if HAVE_LIBGNUTLS
 	tpath = get_template_path(t);
-	if (tpath == (char *) -1) {
+	if (!tpath) {
 		ERROR("bad template: %s\n", t);
 		goto out_free_contents;
 	}
 
-	if (tpath) {
-		have_tpath = true;
-		ret = sha1sum_file(tpath, md_value);
-		if (ret < 0) {
-			ERROR("Error getting sha1sum of %s", tpath);
-			goto out_free_contents;
-		}
+	have_tpath = true;
+	ret = sha1sum_file(tpath, md_value);
+	if (ret < 0) {
+		ERROR("Error getting sha1sum of %s", tpath);
 		free(tpath);
+		goto out_free_contents;
 	}
+	free(tpath);
 #endif
 
 	process_lock();
@@ -1006,16 +999,18 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 {
 	bool bret = false;
 	pid_t pid;
-	char *tpath;
+	char *tpath = NULL;
 	int partial_fd;
 
 	if (!c)
 		return false;
 
-	tpath = get_template_path(t);
-	if (tpath == (char *) -1) {
-		ERROR("bad template: %s\n", t);
-		goto out;
+	if (t) {
+		tpath = get_template_path(t);
+		if (!tpath) {
+			ERROR("bad template: %s\n", t);
+			goto out;
+		}
 	}
 
 	if (!c->save_config(c, NULL)) {
