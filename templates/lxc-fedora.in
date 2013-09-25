@@ -237,7 +237,9 @@ download_fedora()
      # This will fall through if we didn't get any URLS above
      for MIRROR_URL in ${MIRROR_URLS}
      do
-        if [ "$release" -gt "16" ]; then
+     	if [ "$release" -eq "19" ]; then
+            RELEASE_URL="$MIRROR_URL/Packages/f/fedora-release-$release-2.noarch.rpm"
+        elif [ "$release" -gt "16" ]; then
             RELEASE_URL="$MIRROR_URL/Packages/f"
         else
             RELEASE_URL="$MIRROR_URL/Packages/"
