@@ -1,5 +1,10 @@
-SUBDIRS = examples rootfs ja
-DIST_SUBDIRS = examples rootfs ja
+SUBDIRS = examples rootfs
+DIST_SUBDIRS = examples rootfs
+
+if USE_DOCBOOK2X
+SUBDIRS += ja
+DIST_SUBDIRS += ja
+endif
 
 EXTRA_DIST = \
 	FAQ.txt

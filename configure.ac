@@ -91,6 +91,7 @@ if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
 	AC_SUBST(db2xman)
 fi
 AM_CONDITIONAL([ENABLE_DOCBOOK], [test "x$db2xman" != "x"])
+AM_CONDITIONAL([USE_DOCBOOK2X], [test "x$db2xman" != "xdocbook2man"])
 
 if test "x$db2xman" = "xdocbook2man"; then
 	docdtd="\"-//Davenport//DTD DocBook V3.0//EN\""
