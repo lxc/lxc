@@ -451,6 +451,7 @@ struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whitelist)
 		goto out_error;
 	}
 
+	lxc_free_array((void **)kernel_subsystems, free);
 	return meta_data;
 
 out_error:
