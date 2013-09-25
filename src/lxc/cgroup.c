@@ -400,6 +400,7 @@ out:
 	fclose(proc_self_mountinfo);
 	process_unlock();
 	free(tokens);
+	free(line);
 	return bret;
 }
 
@@ -1123,7 +1124,6 @@ char *lxc_cgroup_get_hierarchy_abs_path(const char *subsystem, const char *name,
 	}
 	result = cgroup_to_absolute_path(mp, info->cgroup_path, NULL);
 out3:
-	lxc_cgroup_process_info_free(info);
 out2:
 	lxc_cgroup_process_info_free(base_info);
 out1:
