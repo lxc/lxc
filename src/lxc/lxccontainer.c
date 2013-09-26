@@ -881,7 +881,6 @@ bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	int i;
 	unsigned char md_value[SHA_DIGEST_LENGTH];
 	char *tpath;
-	bool have_tpath = false;
 #endif
 
 	process_lock();
@@ -916,7 +915,6 @@ bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 		goto out_free_contents;
 	}
 
-	have_tpath = true;
 	ret = sha1sum_file(tpath, md_value);
 	if (ret < 0) {
 		ERROR("Error getting sha1sum of %s", tpath);
@@ -944,12 +942,10 @@ bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 		fprintf(f, "\n");
 	}
 #if HAVE_LIBGNUTLS
-	if (have_tpath) {
-		fprintf(f, "# Template script checksum (SHA-1): ");
-		for (i=0; i<SHA_DIGEST_LENGTH; i++)
-			fprintf(f, "%02x", md_value[i]);
-		fprintf(f, "\n");
-	}
+	fprintf(f, "# Template script checksum (SHA-1): ");
+	for (i=0; i<SHA_DIGEST_LENGTH; i++)
+		fprintf(f, "%02x", md_value[i]);
+	fprintf(f, "\n");
 #endif
 	if (fwrite(contents, 1, flen, f) != flen) {
 		SYSERROR("Writing original contents");
