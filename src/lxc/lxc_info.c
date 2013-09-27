@@ -20,6 +20,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -34,6 +35,7 @@
 #include "commands.h"
 #include "arguments.h"
 
+static bool ips;
 static bool state;
 static bool pid;
 static char *test_state = NULL;
@@ -48,6 +50,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 		key[keys] = arg;
 		keys++;
 		break;
+	case 'i': ips = true; break;
 	case 's': state = true; break;
 	case 'p': pid = true; break;
 	case 't': test_state = arg; break;
@@ -57,6 +60,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 
 static const struct option my_longopts[] = {
 	{"config", required_argument, 0, 'c'},
+	{"ips", no_argument, 0, 'i'},
 	{"state", no_argument, 0, 's'},
 	{"pid", no_argument, 0, 'p'},
 	{"state-is", required_argument, 0, 't'},
@@ -73,6 +77,7 @@ lxc-info display some information about a container with the identifier NAME\n\
 Options :\n\
   -n, --name=NAME       NAME for name of the container\n\
   -c, --config=KEY      show configuration variable KEY from running container\n\
+  -i, --ips             shows the IP addresses\n\
   -p, --pid             shows the process id of the init container\n\
   -s, --state           shows the state of the container\n\
   -t, --state-is=STATE  test if current state is STATE\n\
@@ -99,14 +104,14 @@ int main(int argc, char *argv[])
 	if (!c)
 		return -1;
 
-	if (!state && !pid && keys <= 0)
-		state = pid = true;
+	if (!state && !pid && !ips && keys <= 0)
+		state = pid = ips = true;
 
 	if (state || test_state) {
 		if (test_state)
 			return strcmp(c->state(c), test_state) != 0;
 
-		printf("state:%10s\n", c->state(c));
+		printf("state: \t%s\n", c->state(c));
 	}
 
 	if (pid) {
@@ -114,7 +119,18 @@ int main(int argc, char *argv[])
 
 		initpid = c->init_pid(c);
 		if (initpid >= 0)
-			printf("pid:%10d\n", initpid);
+			printf("pid: \t%d\n", initpid);
+	}
+
+	if (ips) {
+		char **addresses = c->get_ips(c, NULL, NULL, 0);
+		char *address;
+		i = 0;
+		while (addresses[i]) {
+			address = addresses[i];
+			printf("ip: \t%s\n", address);
+			i++;
+		}
 	}
 
 	for(i = 0; i < keys; i++) {
