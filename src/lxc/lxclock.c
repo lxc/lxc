@@ -79,7 +79,7 @@ static char *lxclock_name(const char *p, const char *n)
 	if (ret == 0) {
 		// best effort.  If this fails, ignore it
 		if (chown(dest, sb.st_uid, sb.st_gid) < 0)
-			ERROR("Failed ot set owner for lockdir %s\n", dest);
+			ERROR("Failed to set owner for lockdir %s\n", dest);
 		if (chmod(dest, sb.st_mode) < 0)
 			ERROR("Failed to set mode for lockdir %s\n", dest);
 	}
