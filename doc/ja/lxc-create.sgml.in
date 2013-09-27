@@ -19,7 +19,7 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 Translated into Japanese
 by KATOH Yasufumi <karma at jazz.email.ne.jp>
@@ -150,16 +150,18 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	<listitem>
           <para>
             <!--
-	    'backingstore' is one of 'none', 'dir', 'lvm', or 'btrfs'.  The
+	    'backingstore' is one of 'none', 'dir', 'lvm', 'loop', or 'btrfs'.  The
 	    default is 'none', meaning that the container root filesystem
 	    will be a directory under <filename>@LXCPATH@/container/rootfs</filename>.
 	    'dir' has the same meaning as 'none', but also allows the optional
 	    <replaceable>&#045;&#045;dir ROOTFS</replaceable> to be specified, meaning
 	    that the container rootfs should be placed under the specified path,
-	    rather than the default.
-	    The option 'btrfs' need not be specified as it will be used
-	    automatically if the <filename>@LXCPATH@</filename> filesystem is found to
-	    be btrfs.  If backingstore is 'lvm', then an lvm block device will be
+	    rather than the default.  If 'btrfs' is specified, then the
+	    target filesystem must be btrfs, and the container rootfs will be
+	    created as a new subvolume.  This allows snapshotted clones to be
+	    created, but also causes rsync &#045;&#045;one-filesystem to treat it as a
+	    separate filesystem.
+	    If backingstore is 'lvm', then an lvm block device will be
 	    used and the following further options are available:
             <replaceable>&#045;&#045;lvname lvname1</replaceable> will create an LV
 	    named <filename>lvname1</filename> rather than the default, which
@@ -172,8 +174,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    filesystem) of size SIZE rather than the default, which is 1G.
             -->
             <replaceable>backingstore</replaceable> には 'none' か 'dir' か 'lvm' か 'btrfs' のいずれかを指定します．デフォルトは 'none' で，コンテナのルートファイルシステムが <filename>@LXCPATH@/container/rootfs</filename> 以下のディレクトリであることを意味します．
-'dir' は 'none' と同じ意味ですが，オプションとして <replaceable>--dir ROOTFS</replaceable> を指定することも可能です．このオプションは，デフォルトの代わりに特定のパス以下にコンテナの rootfs を置くということになります．
-            'btrfs' オプションは，もし <filename>@LXCPATH@</filename> のファイルシステムが btrfs であることがわかれば，自動的にこの値が使われますので指定する必要はありません．もし backingstore が 'lvm' である場合，lvm ブロックデバイスを使用します．この時，以下のオプションが有効になります: <replaceable>--lvname lvname1</replaceable> はデフォルト値のコンテナ名の LV の代わりに <filename>lvname1</filename> という名前の LV を作成します．<replaceable>--vgname vgname1</replaceable> は，デフォルト値である <filename>lxc</filename> という volume group の代わりに <filename>vgname1</filename> という名前の volume group 内に LV を作成します．<replaceable>--fstype FSTYPE</replaceable> は LV 上のファイルシステムをデフォルト値である ext4 の代わりに FSTYPE で指定したもので作成します．<replaceable>--fssize SIZE</replaceable> はデフォルト値である 1G の代わりに SIZE で指定したサイズで LV を作成します．
+'dir' は 'none' と同じ意味ですが，オプションとして <replaceable>--dir ROOTFS</replaceable> を指定することも可能です．このオプションは，デフォルトの代わりに特定のパス以下にコンテナの rootfs を置くということになります．'btrfs' が指定された場合，ターゲットのファイルシステムは btrfs でなければいけません．そして，コンテナの rootfs は新しい subvolume として作製されます．このことにより，スナップショットによるクローンが作製可能になりますが，rsync --one-filesystem が，別々のファイルシステムとして取り扱ってしまうことも引き起こします．
+backingstore が 'lvm' である場合，lvm ブロックデバイスを使用します．この時，以下のオプションが有効になります: <replaceable>--lvname lvname1</replaceable> はデフォルト値のコンテナ名の LV の代わりに <filename>lvname1</filename> という名前の LV を作成します．<replaceable>--vgname vgname1</replaceable> は，デフォルト値である <filename>lxc</filename> という volume group の代わりに <filename>vgname1</filename> という名前の volume group 内に LV を作成します．<replaceable>--fstype FSTYPE</replaceable> は LV 上のファイルシステムをデフォルト値である ext4 の代わりに FSTYPE で指定したもので作成します．<replaceable>--fssize SIZE</replaceable> はデフォルト値である 1G の代わりに SIZE で指定したサイズで LV を作成します．
 	  </para>
 	</listitem>
       </varlistentry>

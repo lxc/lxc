@@ -19,7 +19,7 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 Translated into Japanese
 by KATOH Yasufumi <karma at jazz.email.ne.jp>
@@ -57,7 +57,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">--name <replaceable>name</replaceable></arg>
       <arg choice="opt">--lxc</arg>
       <arg choice="opt">--host</arg>
-      <arg choice="opt">-- ps option</arg>
+      <arg choice="opt">-- <replaceable>ps options</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -81,12 +81,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </para>
     <para>
       <!--
-	The additionnal specified ps options must not
+	The additional specified <replaceable>ps options</replaceable> must not
 	remove the default ps header and the pid information,
 	to be able to have the <command>lxc-ps</command> to find
 	the container associated to processes.
         -->
-      <command>lxc-ps</command> がコンテナに関連したプロセスを見つけるためには，追加で指定された ps コマンドのオプションが，標準の ps コマンドのヘッダや pid 情報を削除してはいけません．
+      <command>lxc-ps</command> がコンテナに関連したプロセスを見つけるためには，追加で指定された <replaceable>ps options</replaceable> が，標準の ps コマンドのヘッダや pid 情報を削除してはいけません．
     </para>
   </refsect1>
 
@@ -105,7 +105,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    to limit the output to the processes belonging
 	    to this container name.
             -->
-            <replaceable>name</replaceable> で指定したコンテナに属するプロセスのみ出力する．
+            <replaceable>name</replaceable> で指定したコンテナに属するプロセスのみ出力します．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -120,7 +120,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    limit the output to the processes belonging
 	    to all lxc containers.
             -->
-            全ての lxc コンテナに属するプロセスを出力する．
+            全ての lxc コンテナに属するプロセスを出力します．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -135,14 +135,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    limit the output to the processes belonging
 	    to the host.
             -->
-            ホスト (訳注: コンテナ以外) に属するプロセスのみを出力する．
+            ホスト (訳注: コンテナ以外) に属するプロセスのみを出力します．
 	  </para>
 	</listitem>
       </varlistentry>
 
       <varlistentry>
 	<term>
-	  <option><optional>ps options</optional></option>
+	  <option><optional><replaceable>ps options</replaceable></optional></option>
 	</term>
 	<listitem>
 	  <para>

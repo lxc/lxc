@@ -19,7 +19,7 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 Translated into Japanese
 by KATOH Yasufumi <karma at jazz.email.ne.jp>
@@ -56,6 +56,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <cmdsynopsis>
       <command>lxc-stop</command>
       <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-W</arg>
+      <arg choice="opt">-r</arg>
+      <arg choice="opt">-t <replaceable>timeout</replaceable></arg>
+      <arg choice="opt">-k</arg>
+      <arg choice="opt">-s</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -64,16 +69,112 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
     <para>
       <!--
-      <command>lxc-stop</command> kills all the processes inside the
-      container. This command should be used if the processes are no
-      longer accessible and can no be exited normally.
+      <command>lxc-stop</command> reboots, cleanly shuts down, or kills
+      all the processes inside the container.  By default, it will
+      request a clean shutdown of the container (by sending SIGPWR to
+      the container), wait 60 seconds for the container to exit, and
+      returns.  If the container fails to cleanly exit, then after 60
+      seconds the container will be sent the
+      <command>lxc.stopsignal</command> to force it to shut down.
       -->
-      <command>lxc-stop</command> はコンテナ内の全てのプロセスを kill します．もし，プロセスにアクセスできない場合や，普通に停止できない場合は，このコマンドを使うべきです．
+      <command>lxc-stop</command> は，リブート，クリーンシャットダウン，コンテナ内の全てのプロセスの kill のどれかを行います．デフォルトでは，コンテナのクリーンなシャットダウンを (SIGPWR をコンテナに送ることで) 行い，コンテナの終了を 60 秒待ち，return します．コンテナがクリーンに終了するのに失敗した場合，60 秒待った後，コンテナに <command>lxc.stopsignal</command> で指定したシグナルを送り，強制的にシャットダウンします．
+    </para>
+
+    <para>
+      <!--
+      The <optional>-W</optional>, <optional>-r</optional>, <optional>-s</optional>
+      and <optional>-k</optional> options specify the action to perform.
+      <optional>-W</optional> indicates that after performing the specified
+      action, <command>lxc-stop</command> should immediately exit, while
+      <optional>-t TIMEOUT</optional> specifies the maximum amount of time
+      to wait for the container to complete the shutdown or reboot.
+      -->
+      <optional>-W</optional>, <optional>-r</optional>, <optional>-s</optional>, <optional>-k</optional> オプションは実行する際のアクションを指定します．<optional>-W</optional> は，指定したアクションの後に，<command>lxc-stop</command> は速やかに終了します．一方，<optional>-t TIMEOUT</optional> はコンテナが完全にシャットダウンやリブートするのを待つ時間の最大値を設定します．
     </para>
 
   </refsect1>
 
-  &commonoptions;
+  <refsect1>
+    <title>Options</title>
+    <variablelist>
+
+    <varlistentry>
+	<term>
+	  <option>-r,--reboot </option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Request a reboot of the container.
+            -->
+            コンテナのリブートをリクエストします．
+	  </para>
+	</listitem>
+	</varlistentry>
+
+    <varlistentry>
+	<term>
+	  <option>-s,--shutdown </option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Only request a clean shutdown, do not kill the container tasks if the
+		clean shutdown fails.
+              -->
+            クリーンシャットダウンだけをリクエストします．クリーンシャットダウンが失敗した場合，コンテナのタスクを kill しません．
+	  </para>
+	</listitem>
+	</varlistentry>
+
+    <varlistentry>
+	<term>
+	  <option>-k,--kill </option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+        Rather than requesting a clean shutdown of the container, explicitly
+        kill all tasks in the container.  This is the legacy
+        <command>lxc-stop</command> behavior.
+        -->
+           コンテナのクリーンシャットダウンをリクエストするのでなく，明確にコンテナ内の全てのタスクを kill します．これは，以前の <command>lxc-stop</command> の動作です．
+	  </para>
+	</listitem>
+	</varlistentry>
+
+    <varlistentry>
+	<term>
+	  <option>-W,--nowait </option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Simply perform the requestion action (reboot, shutdown, or hard
+		kill) and exit.
+              -->
+            リクエストされたアクション (reboot, shutdown, 強制的な kill) を実行するだけで (すぐに) 終了します．
+	  </para>
+	</listitem>
+	</varlistentry>
+
+    <varlistentry>
+	<term>
+	  <option>-t,--timeout <replaceable>TIMEOUT</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Wait TIMEOUT seconds before hard-stopping the container of (in
+		the reboot case) returning failure.
+              -->
+            コンテナの強制停止，失敗をを返して強制停止 (リブートの場合) まで TIMEOUT 秒待ちます．
+	  </para>
+	</listitem>
+	</varlistentry>
+
+  </variablelist>
+  </refsect1>
 
   <refsect1>
     <title><!-- Diagnostic -->診断</title>
@@ -106,7 +207,6 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           </para>
         </listitem>
       </varlistentry>
-
 
     </variablelist>
 
