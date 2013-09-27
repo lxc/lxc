@@ -19,7 +19,7 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 Translated into Japanese
 by KATOH Yasufumi <karma at jazz.email.ne.jp>
@@ -163,17 +163,17 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    Signal the end of options and disables further option
 	    processing. Any arguments after the &#045;&#045; are treated as
-	    arguments.
+	    arguments to <replaceable>command</replaceable>.
             -->
-            オプション指定の最後の印で，それ以上のオプションの処理を止めます．-- の後の引数は実行するコマンドとその引数として扱われます．
+            オプション指定の最後の印で，それ以上のオプションの処理を止めます．-- の後の引数は実行する <replaceable>command</replaceable> の引数として扱われます．
 	  </para>
 	  <para>
             <!--
-	    This option is useful when you want to execute, with the
-	    command <command>lxc-execute</command>, a command line
-	    with its own options.
+	    This option is useful when you want specify options
+	    to <replaceable>command</replaceable> and don't want
+	    <command>lxc-execute</command> to interpret them.
             -->
-            このオプションは，<command>lxc-execute</command> で実行するコマンドが，コマンドラインオプションを持つ場合に役に立ちます．
+            このオプションは，<replaceable>command</replaceable> にオプションを指定したいときに，<command>lxc-execute</command> がそのオプションを読み取ってほしくないときに役に立ちます．
 	  </para>
 	</listitem>
       </varlistentry>

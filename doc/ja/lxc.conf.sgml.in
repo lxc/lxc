@@ -19,7 +19,7 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 Translated into Japanese
 by KATOH Yasufumi <karma at jazz.email.ne.jp>
@@ -75,10 +75,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       The configuration file defines the different system resources to
       be assigned for the container. At present, the utsname, the
-      network, the mount points, the root file system and the control
-      groups are supported.
+      network, the mount points, the root file system, the user namespace,
+      and the control groups are supported.
       -->
-      設定ファイルは，コンテナに割り当てられる様々なシステムリソースを定義します．現時点では，utsname，ネットワーク，マウントポイント，root ファイルシステム，control groups がサポートされます．
+      設定ファイルは，コンテナに割り当てられる様々なシステムリソースを定義します．現時点では，utsname，ネットワーク，マウントポイント，root ファイルシステム，ユーザ名前空間，control groups がサポートされます．
     </para>
 
     <para>
@@ -91,12 +91,44 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </para>
 
     <refsect2>
+      <title><!-- Configuration -->設定</title>
+      <para>
+        <!--
+	In order to ease administration of multiple related containers, it
+	is possible to have a container configuration file cause another
+	file to be loaded.  For instance, network configuration
+	can be defined in one common file which is included by multiple
+	containers.  Then, if the containers are moved to another host,
+	only one file may need to be updated.
+        -->
+        複数の関係するコンテナの管理を容易にするために，コンテナの設定ファイルに別のファイルをロードすることが可能です．例えば，ネットワークの設定を，複数のコンテナから include させるように 1 つのファイルに定義することが可能です．その場合，コンテナが他のホストに移動すると，そのファイルだけを更新する必要があるかもしれません．
+      </para>
+
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.include</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify the file to be included.  The included file must be
+	      in the same valid lxc configuration file format.
+              -->
+              include させたいファイルを指定します．include するファイルは，lxc 設定ファイルのフォーマットとして有効でなければいけません．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title><!-- Architecture -->アーキテクチャ</title>
       <para>
         <!--
 	Allows to set the architecture for the container. For example,
 	set a 32bits architecture for a container running 32bits
-	binaries on a 64bits host. That fix the container scripts
+	binaries on a 64bits host. That fixes the container scripts
 	which rely on the architecture to do some work like
 	downloading the packages.
         -->
@@ -285,7 +317,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      bridge is set up as a reflective relay.  Broadcast
 	      frames coming in from the upper_dev get flooded to all
 	      macvlan interfaces in VEPA mode, local frames are not
-	      delivered locallay, or <option>bridge</option>, it
+	      delivered locally, or <option>bridge</option>, it
 	      provides the behavior of a simple bridge between
 	      different macvlan interfaces on the same port. Frames
 	      from one interface to another one get delivered directly
@@ -322,7 +354,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               -->
               ネットワークに対して行うアクションを指定します．
 	    </para>
-	
+
 	    <para>
               <!--
               <option>up:</option> activates the interface.
@@ -490,13 +522,17 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      veth/macvlan/phys. And finally (host-sided) device name.
               -->
               ホスト側から使われる，ネットワークの作成と設定が済んだ後に実行するスクリプトを指定します．以下の引数がスクリプトに渡されます: コンテナ名，設定セクション名(net)．
-	    </para>
-            <para>
               その後の引数はスクリプトのフックで使われる設定セクションに依存します．以下がネットワークシステムによって使われます: 実行コンテキスト (up)，ネットワークのタイプ (empty/veth/macvlan/phys)
-            </para>
-            <para>
               ネットワークのタイプによっては，更に別の引数が渡されるかもしれません: veth/macvlan/phys の場合 (ホスト側の) デバイス名
             </para>
+	    <para>
+              <!--
+	      Standard output from the script is logged at debug level.
+	      Standard error is not logged, but can be captured by the
+	      hook redirecting its standard error to standard output.
+              -->
+              スクリプトからの標準出力は debug レベルでロギングされます．標準エラー出力はロギングされません．しかし，フックの標準エラー出力を標準出力にリダイレクトすることにより保存することは可能です．
+	    </para>
 	  </listitem>
 	</varlistentry>
 
@@ -522,6 +558,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               その後の引数はスクリプトのフックで使われる設定セクションに依存します．以下がネットワークシステムによって使われます: 実行コンテキスト (up)，ネットワークのタイプ (empty/veth/macvlan/phys)．
               ネットワークのタイプによっては，更に別の引数が渡されるかもしれません: veth/macvlan/phys．そして最後に (ホスト側の) デバイス名が渡されます．
             </para>
+	    <para>
+              <!--
+	      Standard output from the script is logged at debug level.
+	      Standard error is not logged, but can be captured by the
+	      hook redirecting its standard error to standard output.
+              -->
+              スクリプトからの標準出力は debug レベルでロギングされます．標準エラー出力はロギングされません．しかし，フックの標準エラー出力を標準出力にリダイレクトすることにより保存することは可能です．
+	    </para>
 	  </listitem>
 	</varlistentry>
       </variablelist>
@@ -563,7 +607,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         <!--
 	If the container is configured with a root filesystem and the
 	inittab file is setup to use the console, you may want to specify
-	where goes the output of this console.
+	where the output of this console goes.
         -->
         コンテナでルートファイルシステムを持つように設定されており，inittab ファイルでコンソールの使用が設定されている場合，このコンソールの出力がどこになされるのかを指定したいと思うでしょう．
       </para>
@@ -589,16 +633,16 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <title><!-- Console through the ttys -->tty を通したコンソール</title>
       <para>
         <!--
-	If the container is configured with a root filesystem and the
-	inittab file is setup to launch a getty on the ttys. This
-	option will specify the number of ttys to be available for the
-	container. The number of getty in the inittab file of the
-	container should not be greater than the number of ttys
-	specified in this configuration file, otherwise the excess
-	getty sessions will die and respawn indefinitly giving
-	annoying messages on the console.
+	This option is useful if the container is configured with a root
+	filesystem and the inittab file is setup to launch a getty on the
+	ttys. The option specifies the number of ttys to be available for
+	the container. The number of gettys in the inittab file of the
+	container should not be greater than the number of ttys	specified
+	in this option, otherwise the excess getty sessions will die and
+	respawn indefinitely giving annoying messages on the console or in
+	<filename>/var/log/messages</filename>.
         -->
-        コンテナがルートファイルシステムで設定されており，inittab ファイルで tty 上に getty の開始が設定されている場合，このオプションはコンテナが利用出来る tty の数を指定します．コンテナの inittab ファイル内の getty の数と，この設定ファイルに指定される tty の数は等しくする必要があります．さもないと，getty は最終的にコンソールにうっとおしいメッセージを多数表示しながら生死を繰り返すでしょう．
+        このオプションはコンテナが root ファイルシステムを持つように設定されており，inittab ファイルで tty 上に getty の起動が設定されている場合に役に立ちます．このオプションはコンテナで利用できる tty の数を指定します．inittab ファイルに設定する getty の数は，このオプションの指定する tty の数より大きくしてはいけません．さもなければ，超過した分の getty セッションはコンソールか /var/log/messages にうっとうしいメッセージを生死を表示しながら，永久に生死を繰り返すでしょう．
       </para>
       <variablelist>
 	<varlistentry>
@@ -664,7 +708,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
 	(limited to 100k) and fill in a minimal set of initial devices.
         This is generally required when starting a container containing
-        a "systemd" based "init" but may be optional at other times.  Addional
+        a "systemd" based "init" but may be optional at other times.  Additional
         devices in the containers /dev directory may be created through the
         use of the <option>lxc.hook.autodev</option> hook.
         -->
@@ -735,15 +779,27 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
 	      specify a file location in
 	      the <filename>fstab</filename> format, containing the
-	      mount informations. If the rootfs is an image file or a
-	      device block and the fstab is used to mount a point
+	      mount information. If the rootfs is an image file or a
+	      block device and the fstab is used to mount a point
 	      somewhere in this rootfs, the path of the rootfs mount
 	      point should be prefixed with the
 	      <filename>@LXCROOTFSMOUNT@</filename> default path or
 	      the value of <option>lxc.rootfs.mount</option> if
-	      specified.
+	      specified. Note that when mounting a filesystem from an
+	      image file or block device the third field (fs_vfstype)
+	      cannot be auto as with
+              <citerefentry>
+		<refentrytitle>mount</refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>
+              but must be explicitly specified.
               -->
-              マウントに関する情報が書かれた <filename>fstab</filename> フォーマットのファイルの場所を指定します．rootfs がイメージファイルやデバイスブロックで，fstab ファイルがこの rootfs 内のどこかをマウントするために使われる場合，rootfs のマウントポイントのパスはデフォルトパスである <filename>@LXCROOTFSMOUNT@</filename> か，もしくは <option>lxc.rootfs.mount</option> が指定されている場合は，その値を前に付ける必要があります．
+              マウントに関する情報が書かれた <filename>fstab</filename> フォーマットのファイルの場所を指定します．rootfs がイメージファイルやブロックデバイスで，fstab ファイルがこの rootfs 内のどこかをマウントするために使われる場合，rootfs のマウントポイントのパスはデフォルトパスである <filename>@LXCROOTFSMOUNT@</filename> か，もしくは <option>lxc.rootfs.mount</option> が指定されている場合は，その値を前に付ける必要があります．ファイルシステムがイメージファイルやブロックデバイスからマウントされている場合，3 つ目のフィールド (fs_vfstype) は
+              <citerefentry>
+		<refentrytitle>mount</refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>
+              のように auto を指定することはできず，明確に指定しなければいけません．
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -912,8 +968,113 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    </para>
 	  </listitem>
 	</varlistentry>
+	<varlistentry>
+	  <term>
+	    <option>lxc.cap.keep</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify the capability to be kept in the container. All other
+	      capabilities will be dropped.
+              -->
+              コンテナ内で維持するケーパビリティを指定します．指定した以外の全てのケーパビリティはドロップされます．
+	    </para>
+	  </listitem>
+	</varlistentry>
       </variablelist>
     </refsect2>
+
+    <refsect2>
+      <title><!-- Apparmor profile -->Apparmor プロファイル</title>
+      <para>
+        <!--
+	If lxc was compiled and installed with apparmor support, and the host
+	system has apparmor enabled, then the apparmor profile under which the
+	container should be run can be specified in the container
+	configuration.  The default is <command>lxc-container-default</command>.
+        -->
+        lxc が apparmor サポートでコンパイルされ，インストールされている場合で，ホストで apparmor が有効な場合，コンテナが従って動くべき apparmor プロファイルは，コンテナの設定で指定することが可能です．デフォルトは <command>lxc-container-default</command> です．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.aa_profile</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify the apparmor profile under which the container should
+	      be run.  To specify that the container should be unconfined,
+	      use
+              -->
+              コンテナが従うべき apparmor プロファイルを指定します．コンテナが apparmor による制限を受けないように設定するには，以下のように設定します．
+	    </para>
+	      <programlisting>lxc.aa_profile = unconfined</programlisting>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- SELinux context -->SELinux コンテキスト</title>
+      <para>
+        <!--
+	If lxc was compiled and installed with SELinux support, and the host
+	system has SELinux enabled, then the SELinux context under which the
+	container should be run can be specified in the container
+	configuration.  The default is <command>unconfined_t</command>,
+	which means that lxc will not attempt to change contexts.
+        -->
+        lxc が SELinux サポートでコンパイルされ，インストールされている場合で，ホストで SELinux が有効な場合，コンテナが従って動くべき SELinux コンテキストは，コンテナの設定で指定することが可能です．デフォルトは <command>unconfined_t</command> であり，これは lxc がコンテキストを変えないという意味になります．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.se_context</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Specify the SELinux context under which the container should
+	      be run or <command>unconfined_t</command>. For example
+	    </para>
+	    <programlisting>lxc.se_context = unconfined_u:unconfined_r:lxc_t:s0-s0:c0.c1023</programlisting>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Seccomp configuration -->Seccomp の設定</title>
+      <para>
+        <!--
+        A container can be started with a reduced set of available
+	system calls by loading a seccomp profile at startup.  The
+	seccomp configuration file should begin with a version number
+	(which currently must be 1) on the first line, a policy type
+	(which must be 'whitelist') on the second line, followed by a
+	list of allowed system call numbers, one per line.
+        -->
+        コンテナは，起動時に seccomp プロファイルをロードすることで，利用可能なシステムコールを減らして起動することが可能です．seccomp の設定ファイルは，最初の行がバージョン番号 (現在は 1 でなければならない) で，2 行目はポリシーのタイプ ('whitelist' でなければならない)，で始まる必要があり，その後に 1 行ごとに利用可能なシステムコールの番号が書かれたリストが続きます．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.seccomp</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify a file containing the seccomp configuration to
+	      load before the container starts.
+              -->
+              コンテナがスタートする前にロードする seccomp の設定を含むファイルを指定します．
+	     </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
     <refsect2>
       <title><!-- UID mappings -->UID のマッピング</title>
       <para>
@@ -952,13 +1113,59 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
-      <title><!-- Startup hooks -->スタート時のフック</title>
+      <title><!-- Container hooks -->コンテナのフック</title>
       <para>
         <!--
-        Startup hooks are programs or scripts which can be executed
+        Container hooks are programs or scripts which can be executed
 	at various times in a container's lifetime.
         -->
-        起動時のフックは，コンテナの存続期間の色々な場面で実行することのできるプログラムやスクリプトです．
+        コンテナのフックは，コンテナの存続期間の色々な場面で実行することのできるプログラムやスクリプトです．
+      </para>
+      <para>
+        <!--
+        When a container hook is executed, information is passed both
+	as command line arguments and through environment variables.
+	The arguments are:
+	<itemizedlist>
+	  <listitem> Container name. </listitem>
+	  <listitem> Section (always 'lxc'). </listitem>
+	  <listitem> The hook type (i.e. 'clone' or 'pre-mount'). </listitem>
+	  <listitem> Additional arguments In the
+	  case of the clone hook, any extra arguments passed to
+	  lxc-clone will appear as further arguments to the hook. </listitem>
+	</itemizedlist>
+	The following environment variables are set:
+	<itemizedlist>
+	  <listitem> LXC_NAME: is the container's name. </listitem>
+	  <listitem> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </listitem>
+	  <listitem> LXC_CONFIG_FILE: the path to the container configuration file. </listitem>
+	  <listitem> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </listitem>
+	  <listitem> LXC_ROOTFS_PATH: this is the lxc.rootfs enty for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </listitem>
+	</itemizedlist>
+        -->
+        コンテナのフックが実行されるとき，情報がコマンドライン引数と環境変数の両方を通して渡されます．引数は:
+	<itemizedlist>
+	  <listitem>コンテナ名</listitem>
+	  <listitem>セクション (常に 'lxc')</listitem>
+	  <listitem>フックのタイプ ('clone' や 'pre-mount' など)</listitem>
+	  <listitem>追加の引数．clone フックの場合，lxc-clone に渡される追加の引数は，フックへの引数として追加されます．</listitem>
+	</itemizedlist>
+        以下の環境変数がセットされます．
+	<itemizedlist>
+	  <listitem> LXC_NAME: コンテナ名</listitem>
+	  <listitem> LXC_ROOTFS_MOUNT: マウントされた root ファイルシステムへのパス</listitem>
+	  <listitem> LXC_CONFIG_FILE: コンテナの設定ファイルのパス </listitem>
+	  <listitem> LXC_SRC_NAME: clone フックの場合，元のコンテナの名前</listitem>
+	  <listitem> LXC_ROOTFS_PATH: コンテナの lxc.rootfs エントリ．これはマウントされた rootfs が存在する場所にはならないでしょう．それには LXC_ROOTFS_MOUNT を使用してください．</listitem>
+        </itemizedlist>
+      </para>
+      <para>
+        <!--
+        Standard output from the hooks is logged at debug level.
+        Standard error is not logged, but can be captured by the
+        hook redirecting its standard error to standard output.
+        -->
+        スクリプトからの標準出力は debug レベルでロギングされます．標準エラー出力はロギングされません．しかし，フックの標準エラー出力を標準出力にリダイレクトすることにより保存することは可能です．
       </para>
       <variablelist>
 	<varlistentry>
@@ -1070,10 +1277,30 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  </listitem>
 	</varlistentry>
       </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.clone</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      A hook to be run when the container is cloned to a new one.
+	      See <refentrytitle><command>lxc-clone</command></refentrytitle>
+	      <manvolnum>1</manvolnum> for more information.
+              -->
+              コンテナが新しいコンテナにクローンされる際に実行されるフック．詳しくは
+              <refentrytitle><command>lxc-clone</command></refentrytitle>
+              <manvolnum>1</manvolnum>
+              を参照してください．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
     </refsect2>
 
     <refsect2>
-      <title><!-- Startup hooks Environment Variables -->スタート時のフックで使える環境変数</title>
+      <title><!-- Container hooks Environment Variables -->コンテナのフックで使える環境変数</title>
       <para>
         <!--
         A number of environment variables are made available to the startup
@@ -1093,7 +1320,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <para>
               <!--
 	      The LXC name of the container.  Useful for logging messages
-	      in commmon log environments.  [<option>-n</option>]
+	      in common log environments.  [<option>-n</option>]
               -->
               LXC コンテナの名前．共通のログ環境内でのログメッセージに使うときに便利です．[<option>-n</option>]
 	    </para>
@@ -1111,7 +1338,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      Host relative path to the container configuration file.  This
 	      gives the container to reference the original, top level,
 	      configuration file for the container in order to locate any
-	      addotional configuration information not otherwise made
+	      additional configuration information not otherwise made
 	      available.  [<option>-f</option>]
               -->
               コンテナの設定ファイルのホスト上でのパス．これは，他の方法では得られない追加の設定情報を見つけるために，コンテナに，元の，トップレベルの設定ファイルの位置を与えるものです． [<option>-f</option>]
@@ -1191,6 +1418,70 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	</varlistentry>
       </variablelist>
 
+    </refsect2>
+
+    <refsect2>
+    <title><!-- Logging -->ロギング</title>
+    <para>
+      <!--
+      Logging can be configured on a per-container basis.  By default,
+      depending upon how the lxc package was compiled, container startup
+      is logged only at the ERROR level, and logged to a file named after
+      the container (with '.log' appended) either under the container path,
+      or under @LOGPATH@.
+      -->
+      ロギングはコンテナごとに設定することが可能です．デフォルトでは，lxc パッケージのコンパイル条件に依存し，コンテナのスタートアップは ERROR レベルでのみロギングされ，コンテナのパス以下か，@LOGPATH@ 以下のどちらかにコンテナ名 (の後に '.log' が付与される) をもとにした名前でロギングされます．
+    </para>
+    <para>
+      <!--
+      Both the default log level and the log file can be specified in the
+      container configuration file, overriding the default behavior.  Note
+      that the configuration file entries can in turn be overridden by the
+      command line options to <command>lxc-start</command>.
+      -->
+      デフォルトのログレベルとログファイルは両方とも，コンテナの設定ファイル内で指定され，デフォルトの値を上書きします．同様に，設定ファイルのエントリは <command>lxc-start</command> のコマンドラインオプションで上書きすることも可能です．
+    </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.loglevel</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	    The level at which to log.  The log level is an integer in
+	    the range of 0..8 inclusive, where a lower number means more
+	    verbose debugging.  In particular 0 = trace, 1 = debug, 2 =
+	    info, 3 = notice, 4 = warn, 5 = error, 6 = critical, 7 =
+	    alert, and 8 = fatal.  If unspecified, the level defaults
+	    to 5 (error), so that only errors and above are logged.
+            -->
+              ログを取得するレベル．ログレベルは 0..8 の範囲の整数です．数字が小さいほど冗長なデバッグを意味します．具体的には，0 = trace, 1 = debug, 2 = info, 3 = notice, 4 = warn, 5 = error, 6 = critical, 7 = alert, and 8 = fatal です．指定されない場合，レベルのデフォルトは 5 (error) で，それ以上のエラーがロギングされます．
+	    </para>
+	    <para>
+              <!--
+	    Note that when a script (such as either a hook script or a
+	    network interface up or down script) is called, the script's
+	    standard output is logged at level 1, debug.
+            -->
+              (フックスクリプトやネットワークインターフェースの起動，停止時のスクリプトのような) スクリプトが呼ばれた時，スクリプトの標準出力は level 1 の debug でロギングされます．
+	    </para>
+	  </listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>
+	    <option>lxc.logfile</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	    The file to which logging info should be written.
+            -->
+              ログ情報を書き込むファイル．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
     </refsect2>
 
   </refsect1>
@@ -1319,6 +1610,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <citerefentry>
 	<refentrytitle><filename>fstab</filename></refentrytitle>
 	<manvolnum>5</manvolnum>
+      </citerefentry>
+
+      <citerefentry>
+	<refentrytitle><filename>capabilities</filename></refentrytitle>
+	<manvolnum>7</manvolnum>
       </citerefentry>
 
     </simpara>

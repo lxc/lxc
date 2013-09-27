@@ -19,7 +19,7 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 Translated into Japanese
 by KATOH Yasufumi <karma at jazz.email.ne.jp>
@@ -72,25 +72,20 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-monitor</command> は指定されたコンテナの状態をモニタします．<replaceable>name</replaceable> は posix2 準拠の正規表現が使用可能ですので，全てのコンテナ，いくつかのコンテナ，一つだけのコンテナをモニタリングすることが可能です．
     </para>
 
+    <para>
+      <!--
+      The <option>-P, &#045;&#045;lxcpath</option>=PATH option may be specified multiple
+      times to monitor more than one container path. Note however that
+      containers with the same name in multiple paths will be
+      indistinguishable in the output.
+      -->
+      1 つ以上のコンテナパスをモニタリングするために，複数回の <option>-P, --lxcpath</option>=PATH オプションを指定することが可能です．しかし，複数のパスで同じ名前のコンテナの場合は，出力の見分けがつかない事に注意が必要です．
+    </para>
+
   </refsect1>
 
   &commonoptions;
 
-  <refsect1>
-    <title><!-- Bugs -->バグ</title>
-
-    <para>
-      <!--
-      Only one <command>lxc-monitor</command> can run at a time. Other
-      invocations will fail with the following error:
-      -->
-      一度に一つの <command>lxc-monitor</command> しか実行できません．それ以上起動しようとすると，以下のようなエラーで失敗します．
-    </para>
-    <para>
-      lxc-monitor: bind : Address already in use
-    </para>
-
-  </refsect1>
   <refsect1>
     <title>Examples</title>
     <variablelist>

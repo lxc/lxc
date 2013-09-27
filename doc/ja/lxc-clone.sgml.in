@@ -20,7 +20,7 @@ Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 Translated into Japanese
 by KATOH Yasufumi <karma at jazz.email.ne.jp>
@@ -56,13 +56,31 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-clone</command>
+      <arg choice="opt">-s </arg>
+      <arg choice="opt">-K </arg>
+      <arg choice="opt">-M </arg>
+      <arg choice="opt">-H </arg>
+      <arg choice="opt">-B <replaceable>backingstore</replaceable></arg>
+      <arg choice="opt">-L <replaceable>fssize</replaceable></arg>
+      <arg choice="opt">-p <replaceable>lxcpath</replaceable></arg>
+      <arg choice="opt">-P <replaceable>newlxcpath</replaceable></arg>
       <arg choice="req">-o <replaceable>orig</replaceable></arg>
       <arg choice="req">-n <replaceable>new</replaceable></arg>
+      <arg choice="opt">-- hook arguments</arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-clone</command>
       <arg choice="opt">-s </arg>
+      <arg choice="opt">-K </arg>
+      <arg choice="opt">-M </arg>
+      <arg choice="opt">-H </arg>
+      <arg choice="opt">-B <replaceable>backingstore</replaceable></arg>
       <arg choice="opt">-L <replaceable>fssize</replaceable></arg>
-      <arg choice="opt">-v <replaceable>vgname</replaceable></arg>
-      <arg choice="opt">-p <replaceable>lxc_lv_prefix</replaceable></arg>
-      <arg choice="opt">-t <replaceable>fstype</replaceable></arg>
+      <arg choice="opt">-p <replaceable>lxcpath</replaceable></arg>
+      <arg choice="opt">-P <replaceable>newlxcpath</replaceable></arg>
+      <arg choice="req">orig</arg>
+      <arg choice="req">new</arg>
+      <arg choice="opt">-- hook arguments</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -71,12 +89,37 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
     <para>
       <!--
-      <command>lxc-clone</command> Creates a new container as a copy of an existing
-      container.  When the original container's rootfs is an LVM block device or
-      is on a btrfs filesystem, then a snapshotted clone can be created, taking up
-      very little initial disk space.
+      <command>lxc-clone</command> Creates a new container as a clone of an existing
+      container.  Two types of clones are supported: copy and snapshot.  A copy
+      clone copies the root filessytem from the original container to the new.  A
+      snapshot filesystem uses the backing store's snapshot functionality to create
+      a very small copy-on-write snapshot of the original container.  Snapshot
+      clones require the new container backing store to support snapshotting.  Currently
+      this includes only btrfs, lvm, overlayfs and zfs.  LVM devices do not support
+      snapshots fo snapshots.
       -->
-      <command>lxc-clone</command> は，新しいコンテナを既に存在するコンテナのコピーとして作製する．元のコンテナの rootfs が LVM ブロックデバイスか btrfs 上にある場合は，非常に少ないディスクスペースで済むスナップショットによりクローンを作製する．
+      <command>lxc-clone</command> は，新しいコンテナを既に存在するコンテナのクローンとして作製します．クローンは 2 つのタイプをサポートします: コピーとスナップショットです．コピータイプのクローンは元のコンテナから新しいコンテナへ root ファイルシステムをコピーします．スナップショットファイルシステムは，バッキングストアのスナップショット機能を使い，元のコンテナの非常に小さな copy-on-write でのスナップショットを作製します．スナップショットでのクローンは，新しいコンテナのバッキングストアとしてスナップショット機能のサポートが必要になります．現時点では，このようなバッキングストアとしては btrfs, lvm, overlayfs, zfs のみをサポートします．LVM デバイスはスナップショットのスナップショットはサポートしていません．
+    </para>
+
+    <para>
+      <!--
+      The backing store of the new container will be the same type as the
+      original container,
+      with one exception:  overlayfs snapshots can be created of directory backed
+      containers.  This can be requested by using the <replaceable>-B overlayfs</replaceable>
+      arguments.
+      -->
+      新しいコンテナのバッキングストアは，一つの例外を除いては，元のコンテナのタイプと同じになります: overlayfs では，ディレクトリバックエンドのコンテナのスナップショットを作製することが可能です．これは，<replaceable>-B overlayfs</replaceable> という引数を使って指定することが可能です．
+    </para>
+
+    <para>
+      <!--
+      The names of the original and new container can be given (in that order)
+      after all options, or can be specified with the
+      <replaceable>-o</replaceable> and <replaceable>-n</replaceable> options,
+      respectively.
+      -->
+      元のコンテナと新しいコンテナの名前は，全てのオプションの後に順番に与えることも，<replaceable>-o</replaceable> と <replaceable>-n</replaceable> オプションを使ってそれぞれ指定することも可能です．
     </para>
 
   </refsect1>
@@ -89,6 +132,132 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
 	<term>
+	  <option>-s, --snapshot</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+            The new container's rootfs should be a LVM or btrfs snapshot of the original.
+            -->
+            新しいコンテナの rootfs は，オリジナルの LVM か btrfs のスナップショットになります．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-K, --keepname</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Do not change the hostname of the container (in the root
+	    filesystem).
+            -->
+            コンテナのホスト名を変更しません (root ファイルシステム内では)．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-M, --keepmac</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Use the same MAC address as the original container, rather tahn
+	    generating a new random one.
+            -->
+            新しい MAC アドレスをランダムに生成せずに，元のコンテナと同じ MAC アドレスを使用します．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-H, --copyhooks</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Copy all mount hooks into the new container's directory, and
+	    update any lxcpaths and container names as needed.
+            -->
+            全てのマウントフックを新しいコンテナのディレクトリにコピーします．そして，lxcpath とコンテナ名を必要に応じて更新します．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-L, --fssize <replaceable>fssize</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    In the case of a block device backed container, a size for the new
+	    block device.  By default, the new device will be made the
+	    same size as the original.
+            -->
+            ブロックデバイスのバックエンドのコンテナの場合，新しいブロックデバイスのサイズ．デフォルトでは，新しいデバイスは元のデバイスと同じサイズとなります．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-p, --lxcpath <replaceable>fssize</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    The lxcpath of the original container.  By default, the system
+	    wide configured lxcpath will be used.
+            -->
+            オリジナルのコンテナの lxcpath．デフォルトでは，システム全体で設定された lxcpath が使われます．            
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-P, --newpath <replaceable>fssize</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    The lxcpath for the new container.  By default the same lxcpath
+	    as the original will be used.  Note that with btrfs snapshots,
+	    changing lxcpaths may not be possible, as subvolume snapshots
+	    must be in the same btrfs filesystem.
+            -->
+            新しいコンテナの lxcpath．デフォルトでは，オリジナルの lxcpath と同じものが使われます．btrfs のスナップショットの場合は注意が必要で，lxcpath の変更はできない可能性があります．これは subvolume のスナップショットが，同じ btrfs ファイルシステム上に存在しなければならないからです．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-B, --backingstore <replaceable>fssize</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Select a different backing store for the new container.  By
+	    default the same as the original container's is used.  Note that
+	    currently changing the backingstore is only supported for
+	    overlayfs snapshots of directory backed containers.  Valid
+	    backing stores include dir (directory), btrfs, lvm, zfs, loop
+	    and overlayfs.
+            -->
+            新しいコンテナで元のコンテナと違うバッキングストアを使う場合のバッキングストアを選択します．デフォルトでは元のコンテナと同じものが使われます．現時点では，バッキングストアの変更は，ディレクトリバックエンドのコンテナに対する overlayfs スナップショットに対してのみサポートされます．有効なバッキングストアは dir(directory), btrfs, lvm, zfs, loop, overlayfs を含みます．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
 	  <option>-o, --orig <replaceable>orig</replaceable></option>
 	</term>
 	<listitem>
@@ -96,7 +265,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    The name of the original container to clone.
             -->
-            クローン元のコンテナの名前．
+            クローンしたい元のコンテナの名前．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -110,91 +279,34 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    The name of the new container to create.
             -->
-            新しく作製するコンテナの名前．
+            作製する新しいコンテナの名前．
 	  </para>
 	</listitem>
       </varlistentry>
 
-      <varlistentry>
-	<term>
-	  <option>-s, --snapshot</option>
-	</term>
-	<listitem>
-	  <para>
-            <!--
-	    The new container's rootfs should be a LVM or btrfs snapshot of the original.
-            -->
-            新しいコンテナの rootfs を，元のコンテナの LVM もしくは btrfs のスナップショットとする．
-	  </para>
-	</listitem>
-      </varlistentry>
-
-      <varlistentry>
-	<term>
-	  <option>-L, --fssize <replaceable>fssize</replaceable></option>
-	</term>
-	<listitem>
-	  <para>
-            <!--
-	    In the case of a LVM-backed container, a size for the new
-	    block device.  By default, the new device will be made the
-	    same size as the original.
-            -->
-            LVM 上のコンテナの場合の新しいブロックデバイスのサイズ．デフォルトでは，新しいデバイスは元のデバイスと同じサイズとなる．
-	  </para>
-	</listitem>
-      </varlistentry>
-
-      <varlistentry>
-	<term>
-	  <option>-v, --vgname <replaceable>vgname</replaceable></option>
-	</term>
-	<listitem>
-	  <para>
-            <!--
-	    For an LVM-backed container, the volume group name to use.  By
-	    default it is 'lxc'.
-            -->
-            LVM 上のコンテナに対して使用するボリュームグループの名前．デフォルトは 'lxc' である．
-	  </para>
-	</listitem>
-      </varlistentry>
-
-      <varlistentry>
-	<term>
-	  <option>-p, --lvprefix <replaceable>lxc_lv_prefix</replaceable></option>
-	</term>
-	<listitem>
-	  <para>
-            <!--
-	    For an LVM-backed container, a string to prefix to the container name to
-	    form the logical volume name.  For instance, specifying
-	    <command>-n c1 -p lxc_</command> will cause the container rootfs to
-	    be on a logical volume called <replaceable>lxc_c1</replaceable>.
-            -->
-            LVM 上のコンテナで，論理ボリューム名を生成するためにコンテナ名の前に付与するプレフィックス．例えば <command>-n c1 -p lxc_</command> と指定すると，コンテナの rootfs は，論理ボリューム名 <replaceable>lxc_c1</replaceable> という論理ボリューム上に作製される．
-	  </para>
-	</listitem>
-      </varlistentry>
-
-      <varlistentry>
-	<term>
-	  <option>-t, --fstype <replaceable>fstype</replaceable></option>
-	</term>
-	<listitem>
-	  <para>
-            <!--
-	    For a non-snapshot LVM clone, the file system to use for the new
-	    container.  Note this option is ignored when requesting a
-	    snapshotted container.
-            -->
-            LVM スナップショットで作製しないクローンで，新しいコンテナで使用するファイルシステム．このオプションはスナップショットで作製する場合は無視される．
-	  </para>
-	</listitem>
-      </varlistentry>
 
     </variablelist>
 
+  </refsect1>
+
+  <refsect1>
+    <title>Clone hook</title>
+    <para>
+      <!--
+      If the container being cloned has one or more <filename>lxc.hook.clone</filename>
+      specified, then the specified hooks will be called for the new container.  The
+      first 3 arguments passed to the clone hook will be the container name, a section
+      ('lxc'), and the hook type ('clone').  Extra arguments passed
+      <command>lxc-clone</command> will be passed to the hook program starting at
+      argument 4.  The <filename>LXC_ROOTFS_MOUNT</filename> environment variable gives
+      the path under which the container's root filesystem is mounted.  The
+      configuration file pathname is stored in <filename>LXC_CONFIG_FILE</filename>, the
+      new container name in <filename>LXC_NAME</filename>, the old container name in
+      <filename>LXC_SRC_NAME</filename>, and the path or device on which
+      the rootfs is located is in <filename>LXC_ROOTFS_PATH</filename>.
+      -->
+      クローンされたコンテナに 1 つ以上の <filename>lxc.hook.clone</filename> の指定が存在する場合，指定されたフックは新しいコンテナに対して呼ばれます．クローンフックに渡される最初の 3 つの引数は，コンテナ名，セクション ('lxc')，フックタイプ ('clone') となります．<command>lxc-clone</command> に渡される追加の引数は，フックプログラムに渡される引数の 4 番目以降となります．<filename>LXC_ROOTFS_MOUNT</filename> 環境変数には，コンテナの root ファイルシステムがマウントされるパスが与えられます．設定ファイルのパス名は <filename>LXC_CONFIG_FILE</filename> に，新しいコンテナ名は <filename>LXC_NAME</filename>，古いコンテナ名は <filename>LXC_SRC_NAME</filename> に，rootfs のあるパスまたはデバイスは <filename>LXC_ROOTFS_PATH</filename> に保存されます．
+    </para>
   </refsect1>
 
   &seealso;
