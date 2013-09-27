@@ -29,6 +29,7 @@
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>
+#include <lxc/lxccontainer.h>
 
 #include "commands.h"
 #include "arguments.h"
@@ -83,43 +84,50 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	int ret,i;
+	struct lxc_container *c;
 
-	ret = lxc_arguments_parse(&my_args, argc, argv);
-	if (ret)
-		return 1;
+	int i;
+
+	if (lxc_arguments_parse(&my_args, argc, argv))
+		return -1;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		return 1;
+		return -1;
+
+	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
+	if (!c)
+		return -1;
 
 	if (!state && !pid && keys <= 0)
 		state = pid = true;
 
 	if (state || test_state) {
-		ret = lxc_getstate(my_args.name, my_args.lxcpath[0]);
-		if (ret < 0)
-			return 1;
 		if (test_state)
-			return strcmp(lxc_state2str(ret), test_state) != 0;
+			return strcmp(c->state(c), test_state) != 0;
 
-		printf("state:%10s\n", lxc_state2str(ret));
+		printf("state:%10s\n", c->state(c));
 	}
 
 	if (pid) {
 		pid_t initpid;
 
-		initpid = lxc_cmd_get_init_pid(my_args.name, my_args.lxcpath[0]);
+		initpid = c->init_pid(c);
 		if (initpid >= 0)
 			printf("pid:%10d\n", initpid);
 	}
 
 	for(i = 0; i < keys; i++) {
-		char *val;
+		int len = c->get_config_item(c, key[i], NULL, 0);
 
-		val = lxc_cmd_get_config_item(my_args.name, key[i], my_args.lxcpath[0]);
-		if (val) {
-			printf("%s = %s\n", key[i], val);
+		if (len >= 0) {
+			char *val = (char*) malloc(sizeof(char)*len + 1);
+
+			if (c->get_config_item(c, key[i], val, len + 1) != len) {
+				fprintf(stderr, "unable to read %s from configuration\n", key[i]);
+			} else {
+				printf("%s = %s\n", key[i], val);
+			}
 			free(val);
 		} else {
 			fprintf(stderr, "%s unset or invalid\n", key[i]);
