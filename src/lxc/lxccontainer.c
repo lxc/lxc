@@ -2592,6 +2592,11 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, char *snapname, cha
 	return b;
 }
 
+static bool lxcapi_may_control(struct lxc_container *c)
+{
+	return lxc_try_cmd(c->name, c->config_path) == 0;
+}
+
 static int lxcapi_attach_run_waitl(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char *arg, ...)
 {
 	va_list ap;
@@ -2711,6 +2716,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->snapshot = lxcapi_snapshot;
 	c->snapshot_list = lxcapi_snapshot_list;
 	c->snapshot_restore = lxcapi_snapshot_restore;
+	c->may_control = lxcapi_may_control;
 
 	/* we'll allow the caller to update these later */
 	if (lxc_log_init(NULL, "none", NULL, "lxc_container", 0, c->config_path)) {

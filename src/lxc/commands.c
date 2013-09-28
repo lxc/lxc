@@ -291,6 +291,36 @@ out:
 	return ret;
 }
 
+int lxc_try_cmd(const char *name, const char *lxcpath)
+{
+	int stopped, ret;
+	struct lxc_cmd_rr cmd = {
+		.req = { .cmd = LXC_CMD_GET_INIT_PID },
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
+
+	if (stopped)
+		return 0;
+	if (ret > 0 && cmd.rsp.ret < 0) {
+		errno = cmd.rsp.ret;
+		return -1;
+	}
+	if (ret > 0)
+		return 0;
+
+	/*
+	 * At this point we weren't denied access, and the
+	 * container *was* started.  There was some inexplicable
+	 * error in the protocol.
+	 * I'm not clear on whether we should return -1 here, but
+	 * we didn't receive a -EACCES, so technically it's not that
+	 * we're not allowed to control the container - it's just not
+	 * behaving.
+	 */
+	return 0;
+}
+
 /* Implentations of the commands and their callbacks */
 
 /*

@@ -88,5 +88,6 @@ extern int lxc_cmd_init(const char *name, struct lxc_handler *handler,
 			    const char *lxcpath);
 extern int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 				    struct lxc_handler *handler);
+extern int lxc_try_cmd(const char *name, const char *lxcpath);
 
 #endif /* __commands_h */

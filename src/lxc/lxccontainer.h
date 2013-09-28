@@ -223,6 +223,12 @@ struct lxc_container {
 	 * Returns true on success, false on failure.
 	 */
 	bool (*snapshot_restore)(struct lxc_container *c, char *snapname, char *newname);
+
+	/*
+	 * Return false if there is a control socket for the container monitor,
+	 * and the caller may not access it.  Return true otherwise.
+	 */
+	bool (*may_control)(struct lxc_container *c);
 };
 
 struct lxc_snapshot {
