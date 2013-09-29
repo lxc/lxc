@@ -1305,6 +1305,9 @@ static char** lxcapi_get_ips(struct lxc_container *c, char* interface, char* fam
 
 	/* Iterate through the interfaces */
 	for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
+		if (tempIfAddr->ifa_addr == NULL)
+			continue;
+
 		if(tempIfAddr->ifa_addr->sa_family == AF_INET) {
 			if (family && strcmp(family, "inet"))
 				continue;
