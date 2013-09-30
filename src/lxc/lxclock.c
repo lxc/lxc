@@ -46,7 +46,6 @@ static char *lxclock_name(const char *p, const char *n)
 	int len;
 	char *dest;
 	const char *rundir;
-	struct stat sb;
 
 	/* lockfile will be:
 	 * "/run" + "/lock/lxc/$lxcpath/$lxcname + '\0' if root
@@ -73,15 +72,6 @@ static char *lxclock_name(const char *p, const char *n)
 	if (ret < 0) {
 		free(dest);
 		return NULL;
-	}
-
-	ret = stat(p, &sb);
-	if (ret == 0) {
-		// best effort.  If this fails, ignore it
-		if (chown(dest, sb.st_uid, sb.st_gid) < 0)
-			ERROR("Failed to set owner for lockdir %s\n", dest);
-		if (chmod(dest, sb.st_mode) < 0)
-			ERROR("Failed to set mode for lockdir %s\n", dest);
 	}
 
 	ret = snprintf(dest, len, "%s/lock/lxc/%s/%s", rundir, p, n);
