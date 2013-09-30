@@ -819,6 +819,153 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  </listitem>
 	</varlistentry>
 
+	<varlistentry>
+	  <term>
+	    <option>lxc.mount.auto</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify which standard kernel file systems should be
+	      automatically mounted. This may dramatically simplify
+	      the configuration. The file systems are:
+              -->
+              標準のカーネルファイルシステムで自動的にマウントするものを指定します．これは劇的に設定を容易にする可能性があります．
+	    </para>
+	    <itemizedlist>
+	      <listitem>
+                <!--
+	        <option>proc:mixed</option> (or <option>proc</option>):
+	        mount <filename>/proc</filename> as read-write, but
+	        remount <filename>/proc/sys</filename> and
+	        <filename>/proc/sysrq-trigger</filename> read-only
+	        for security / container isolation purposes.
+                -->
+                <option>proc:mixed</option> (or <option>proc</option>):
+                <filename>/proc</filename> を読み書き可能でマウントします．ただし，<filename>/proc/sys</filename> と <filename>/proc/sysrq-trigger</filename> は，セキュリティとコンテナの隔離の目的でリードオンリーで再マウントされます．
+	      </listitem>
+	      <listitem>
+                <!--
+	        <option>proc:rw</option>: mount
+	        <filename>/proc</filename> as read-write
+                -->
+	        <option>proc:rw</option>:
+                <filename>/proc</filename> を読み書き可能でマウントします．
+	      </listitem>
+	      <listitem>
+                <!--
+	        <option>sys:ro</option> (or <option>sys</option>):
+	        mount <filename>/sys</filename> as read-only
+	        for security / container isolation purposes.
+                -->
+                <option>sys:ro</option> (or <option>sys</option>):
+                <filename>/sys</filename> を，セキュリティとコンテナの隔離の目的でリードオンリーでマウントします．
+	      </listitem>
+	      <listitem>
+                <!--
+	        <option>sys:rw</option>: mount
+	        <filename>/sys</filename> as read-write
+                -->
+	        <option>sys:rw</option>:
+                <filename>/sys</filename> を読み書き可能でマウントします．
+	      </listitem>
+	      <listitem>
+                <!--
+	        <option>cgroup:mixed</option> (or
+	        <option>cgroup</option>):
+	        mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
+	        create directories for all hierarchies to which
+	        the container is added, create subdirectories
+	        there with the name of the cgroup, and bind-mount
+	        the container's own cgroup into that directory.
+	        The container will be able to write to its own
+	        cgroup directory, but not the parents, since they
+	        will be remounted read-only
+                -->
+	        <option>cgroup:mixed</option> (or
+	        <option>cgroup</option>):
+                <filename>/sys/fs/cgroup</filename> を tmpfs でマウントし，そのコンテナの追加が行われた全ての階層構造に対するディレクトリを作製し，その cgroup の名前でその中にサブディレクトリを作製し，そのコンテナ自身の cgroup をそのディレクトリにバインドマウントします．コンテナは自身の cgroup ディレクトリに書き込みが可能ですが，親ディレクトリはリードオンリーで再マウントされているため書き込めません．
+	      </listitem>
+	      <listitem>
+                <!--
+	        <option>cgroup:ro</option>: similar to
+	        <option>cgroup:mixed</option>, but everything will
+	        be mounted read-only.
+                -->
+	        <option>cgroup:ro</option>:
+                <option>cgroup:mixed</option> と同様にマウントされますが，全てリードオンリーでマウントされます．
+	      </listitem>
+	      <listitem>
+                <!--
+	        <option>cgroup:rw</option>: similar to
+	        <option>cgroup:mixed</option>, but everything will
+	        be mounted read-write. Note that the paths leading
+	        up to the container's own cgroup will be writable,
+	        but will not be a cgroup filesystem but just part
+	        of the tmpfs of <filename>/sys/fs/cgroup</filename>
+                -->
+	        <option>cgroup:rw</option>:
+                <option>cgroup:mixed</option> と同様にマウントされますが，全て読み書き可能でマウントされます．コンテナ自身の cgroup に至るまでのパスも書き込み可能になることに注意が必要ですが，cgroup ファイルシステムにはならず，<filename>/sys/fs/cgroup</filename> の tmpfs の一部分になるでしょう．
+	      </listitem>
+	      <listitem>
+                <!--
+	        <option>cgroup-full:mixed</option> (or
+	        <option>cgroup-full</option>):
+	        mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
+	        create directories for all hierarchies to which
+	        the container is added, bind-mount the hierarchies
+	        from the host to the container and make everything
+	        read-only except the container's own cgroup. Note
+	        that compared to <option>cgroup</option>, where
+	        all paths leading up to the container's own cgroup
+	        are just simple directories in the underlying
+	        tmpfs, here
+	        <filename>/sys/fs/cgroup/$hierarchy</filename>
+	        will contain the host's full cgroup hierarchy,
+	        albeit read-only outside the container's own cgroup.
+	        This may leak quite a bit of information into the
+	        container.
+                -->
+	        <option>cgroup-full:mixed</option> (or
+	        <option>cgroup-full</option>):
+                <filename>/sys/fs/cgroup</filename> を tmpfs でマウントし，そのコンテナの追加が行われた全ての階層構造に対するディレクトリを作製し，ホストからコンテナまでの階層構造を全てバインドマウントし，コンテナ自身の cgroup を除いてリードオンリーにします．<option>cgroup</option> と比べると，コンテナ自身の cgroup に至るまでの全てのパスが tmpfs の下層のシンプルなディレクトリとなり，コンテナ自身の cgroup の外ではリードオンリーになりますが，<filename>/sys/fs/cgroup/$hierarchy</filename> はホストの全ての cgroup 階層構造を含みます．これにより，コンテナにはかなりの情報が漏洩します．
+	      </listitem>
+	      <listitem>
+                <!--
+	        <option>cgroup-full:ro</option>: similar to
+	        <option>cgroup-full:mixed</option>, but everything
+	        will be mounted read-only.
+                -->
+	        <option>cgroup-full:ro</option>:
+                <option>cgroup-full:mixed</option> と同様にマウントされますが，全てリードオンリーでマウントされます．
+	      </listitem>
+	      <listitem>
+                <!--
+	        <option>cgroup-full:rw</option>: similar to
+	        <option>cgroup-full:mixed</option>, but everything
+	        will be mounted read-write. Note that in this case,
+	        the container may escape its own cgroup. (Note also
+	        that if the container has CAP_SYS_ADMIN support
+	        and can mount the cgroup filesystem itself, it may
+	        do so anyway.)
+                -->
+	        <option>cgroup-full:rw</option>:
+	        <option>cgroup-full:mixed</option>と同様にマウントされますが，全て読み書き可能でマウントされます．この場合，コンテナは自身の cgroup から脱出する可能性があることに注意してください (コンテナが CAP_SYS_ADMIN を持ち，自身で cgroup ファイルシステムをマウント可能なら，いずれにせよそのようにするかもしれないことにも注意してください)．
+	      </listitem>
+	    </itemizedlist>
+	    <para>
+              <!--
+	      Examples:
+              -->
+              例:
+	    </para>
+	    <programlisting>
+	      lxc.mount.auto = proc sys cgroup
+	      lxc.mount.auto = proc:rw sys:rw cgroup-full:rw
+	    </programlisting>
+	  </listitem>
+	</varlistentry>
+
       </variablelist>
     </refsect2>
 
