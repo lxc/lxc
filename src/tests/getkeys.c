@@ -64,6 +64,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 	printf("get_keys for nic 1 returned %d\n%s", ret, v3);
+	ret = 0;
 
 out:
 	lxc_container_put(c);
