@@ -57,6 +57,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">-c <replaceable>KEY</replaceable></arg>
       <arg choice="opt">-s</arg>
       <arg choice="opt">-p</arg>
+      <arg choice="opt">-i</arg>
       <arg choice="opt">-t <replaceable>state</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -129,6 +130,20 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             Just print the container's pid.
             -->
             コンテナの pid のみを表示する．
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-i</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Just print the container's IP addresses.
+            -->
+            コンテナの IP アドレスを表示する．
           </para>
         </listitem>
       </varlistentry>
