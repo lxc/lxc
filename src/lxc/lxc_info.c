@@ -20,6 +20,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -29,10 +30,12 @@
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>
+#include <lxc/lxccontainer.h>
 
 #include "commands.h"
 #include "arguments.h"
 
+static bool ips;
 static bool state;
 static bool pid;
 static char *test_state = NULL;
@@ -47,6 +50,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 		key[keys] = arg;
 		keys++;
 		break;
+	case 'i': ips = true; break;
 	case 's': state = true; break;
 	case 'p': pid = true; break;
 	case 't': test_state = arg; break;
@@ -56,6 +60,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 
 static const struct option my_longopts[] = {
 	{"config", required_argument, 0, 'c'},
+	{"ips", no_argument, 0, 'i'},
 	{"state", no_argument, 0, 's'},
 	{"pid", no_argument, 0, 'p'},
 	{"state-is", required_argument, 0, 't'},
@@ -72,6 +77,7 @@ lxc-info display some information about a container with the identifier NAME\n\
 Options :\n\
   -n, --name=NAME       NAME for name of the container\n\
   -c, --config=KEY      show configuration variable KEY from running container\n\
+  -i, --ips             shows the IP addresses\n\
   -p, --pid             shows the process id of the init container\n\
   -s, --state           shows the state of the container\n\
   -t, --state-is=STATE  test if current state is STATE\n\
@@ -83,43 +89,61 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	int ret,i;
+	struct lxc_container *c;
 
-	ret = lxc_arguments_parse(&my_args, argc, argv);
-	if (ret)
-		return 1;
+	int i;
+
+	if (lxc_arguments_parse(&my_args, argc, argv))
+		return -1;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		return 1;
+		return -1;
 
-	if (!state && !pid && keys <= 0)
-		state = pid = true;
+	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
+	if (!c)
+		return -1;
+
+	if (!state && !pid && !ips && keys <= 0)
+		state = pid = ips = true;
 
 	if (state || test_state) {
-		ret = lxc_getstate(my_args.name, my_args.lxcpath[0]);
-		if (ret < 0)
-			return 1;
 		if (test_state)
-			return strcmp(lxc_state2str(ret), test_state) != 0;
+			return strcmp(c->state(c), test_state) != 0;
 
-		printf("state:%10s\n", lxc_state2str(ret));
+		printf("state: \t%s\n", c->state(c));
 	}
 
 	if (pid) {
 		pid_t initpid;
 
-		initpid = lxc_cmd_get_init_pid(my_args.name, my_args.lxcpath[0]);
+		initpid = c->init_pid(c);
 		if (initpid >= 0)
-			printf("pid:%10d\n", initpid);
+			printf("pid: \t%d\n", initpid);
+	}
+
+	if (ips) {
+		char **addresses = c->get_ips(c, NULL, NULL, 0);
+		char *address;
+		i = 0;
+		while (addresses[i]) {
+			address = addresses[i];
+			printf("ip: \t%s\n", address);
+			i++;
+		}
 	}
 
 	for(i = 0; i < keys; i++) {
-		char *val;
+		int len = c->get_config_item(c, key[i], NULL, 0);
 
-		val = lxc_cmd_get_config_item(my_args.name, key[i], my_args.lxcpath[0]);
-		if (val) {
-			printf("%s = %s\n", key[i], val);
+		if (len >= 0) {
+			char *val = (char*) malloc(sizeof(char)*len + 1);
+
+			if (c->get_config_item(c, key[i], val, len + 1) != len) {
+				fprintf(stderr, "unable to read %s from configuration\n", key[i]);
+			} else {
+				printf("%s = %s\n", key[i], val);
+			}
 			free(val);
 		} else {
 			fprintf(stderr, "%s unset or invalid\n", key[i]);

@@ -51,6 +51,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-c <replaceable>KEY</replaceable></arg>
       <arg choice="opt">-s</arg>
       <arg choice="opt">-p</arg>
+      <arg choice="opt">-i</arg>
       <arg choice="opt">-t <replaceable>state</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -108,6 +109,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <listitem>
           <para>
             Just print the container's pid.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-i</optional></option>
+        </term>
+        <listitem>
+          <para>
+            Just print the container's IP addresses.
           </para>
         </listitem>
       </varlistentry>
