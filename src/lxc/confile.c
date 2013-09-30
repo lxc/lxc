@@ -212,6 +212,41 @@ int lxc_listconfigs(char *retv, int inlen)
 	return fulllen;
 }
 
+static int config_string_item(char **conf_item, const char *value)
+{
+	char *new_value;
+
+	if (!value || strlen(value) == 0)
+		return 0;
+
+	new_value = strdup(value);
+	if (!new_value) {
+		SYSERROR("failed to strdup '%s': %m", value);
+		return -1;
+	}
+
+	if (*conf_item)
+		free(*conf_item);
+	*conf_item = new_value;
+	return 0;
+}
+
+static int config_string_item_max(char **conf_item, const char *value,
+				  size_t max)
+{
+	if (strlen(value) >= max) {
+		ERROR("%s is too long (>= %lu)", value, max);
+		return -1;
+	}
+
+	return config_string_item(conf_item, value);
+}
+
+static int config_path_item(char **conf_item, const char *value)
+{
+	return config_string_item_max(conf_item, value, PATH_MAX);
+}
+
 /*
  * config entry is something like "lxc.network.0.ipv4"
  * the key 'lxc.network.' was found.  So we make sure next
@@ -535,22 +570,12 @@ static int config_network_hwaddr(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
-	char *hwaddr;
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
-	hwaddr = strdup(value);
-	if (!hwaddr) {
-		SYSERROR("failed to dup string '%s'", value);
-		return -1;
-	}
-
-	if (netdev->hwaddr)
-		free(netdev->hwaddr);
-	netdev->hwaddr = hwaddr;
-	return 0;
+	return config_string_item(&netdev->hwaddr, value);
 }
 
 static int config_network_vlan_id(const char *key, const char *value,
@@ -572,22 +597,12 @@ static int config_network_mtu(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
-	char *mtu;
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
-	mtu = strdup(value);
-	if (!mtu) {
-		SYSERROR("failed to dup string '%s'", value);
-		return -1;
-	}
-
-	if (netdev->mtu)
-		free(netdev->mtu);
-	netdev->mtu = mtu;
-	return 0;
+	return config_string_item(&netdev->mtu, value);
 }
 
 static int config_network_ipv4(const char *key, const char *value,
@@ -856,23 +871,7 @@ static int add_hook(struct lxc_conf *lxc_conf, int which, char *hook)
 static int config_seccomp(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	char *path;
-
-	if (lxc_conf->seccomp) {
-		ERROR("seccomp already defined");
-		return -1;
-	}
-	path = strdup(value);
-	if (!path) {
-		SYSERROR("failed to strdup '%s': %m", value);
-		return -1;
-	}
-
-	if (lxc_conf->seccomp)
-		free(lxc_conf->seccomp);
-	lxc_conf->seccomp = path;
-
-	return 0;
+	return config_path_item(&lxc_conf->seccomp, value);
 }
 
 static int config_hook(const char *key, const char *value,
@@ -938,21 +937,7 @@ static int config_tty(const char *key, const char *value,
 static int config_ttydir(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
-	char *path;
-
-	if (!value || strlen(value) == 0)
-		return 0;
-	path = strdup(value);
-	if (!path) {
-		SYSERROR("failed to strdup '%s': %m", value);
-		return -1;
-	}
-
-	if (lxc_conf->ttydir)
-		free(lxc_conf->ttydir);
-	lxc_conf->ttydir = path;
-
-	return 0;
+	return config_string_item_max(&lxc_conf->ttydir, value, NAME_MAX+1);
 }
 
 static int config_kmsg(const char *key, const char *value,
@@ -968,52 +953,26 @@ static int config_kmsg(const char *key, const char *value,
 static int config_lsm_aa_profile(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	char *path;
-
-	if (!value || strlen(value) == 0)
-		return 0;
-	path = strdup(value);
-	if (!path) {
-		SYSERROR("failed to strdup '%s': %m", value);
-		return -1;
-	}
-
-	if (lxc_conf->lsm_aa_profile)
-		free(lxc_conf->lsm_aa_profile);
-	lxc_conf->lsm_aa_profile = path;
-
-	return 0;
+	return config_string_item(&lxc_conf->lsm_aa_profile, value);
 }
 
 static int config_lsm_se_context(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	char *path;
-
-	if (!value || strlen(value) == 0)
-		return 0;
-	path = strdup(value);
-	if (!path) {
-		SYSERROR("failed to strdup '%s': %m", value);
-		return -1;
-	}
-
-	if (lxc_conf->lsm_se_context)
-		free(lxc_conf->lsm_se_context);
-	lxc_conf->lsm_se_context = path;
-
-	return 0;
+	return config_string_item(&lxc_conf->lsm_se_context, value);
 }
 
 static int config_logfile(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
 {
+	int ret;
+
 	// store these values in the lxc_conf, and then try to set for
 	// actual current logging.
-	if (lxc_conf->logfile)
-		free(lxc_conf->logfile);
-	lxc_conf->logfile = strdup(value);
-	return lxc_log_set_file(value);
+	ret = config_path_item(&lxc_conf->logfile, value);
+	if (ret == 0)
+		ret = lxc_log_set_file(lxc_conf->logfile);
+	return ret;
 }
 
 static int config_loglevel(const char *key, const char *value,
@@ -1224,31 +1183,10 @@ out:
 	return -1;
 }
 
-static int config_path_item(const char *key, const char *value,
-			    struct lxc_conf *lxc_conf, char **conf_item)
-{
-	char *valdup;
-	if (strlen(value) >= MAXPATHLEN) {
-		ERROR("%s path is too long", value);
-		return -1;
-	}
-
-	valdup = strdup(value);
-	if (!valdup) {
-		SYSERROR("failed to duplicate string %s", value);
-		return -1;
-	}
-	if (*conf_item)
-		free(*conf_item);
-	*conf_item = valdup;
-
-	return 0;
-}
-
 static int config_fstab(const char *key, const char *value,
 			struct lxc_conf *lxc_conf)
 {
-	return config_path_item(key, value, lxc_conf, &lxc_conf->fstab);
+	return config_path_item(&lxc_conf->fstab, value);
 }
 
 static int config_mount_auto(const char *key, const char *value,
@@ -1455,19 +1393,7 @@ static int config_cap_drop(const char *key, const char *value,
 static int config_console(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
-	char *path;
-
-	path = strdup(value);
-	if (!path) {
-		SYSERROR("failed to strdup '%s': %m", value);
-		return -1;
-	}
-
-	if (lxc_conf->console.path)
-		free(lxc_conf->console.path);
-	lxc_conf->console.path = path;
-
-	return 0;
+	return config_path_item(&lxc_conf->console.path, value);
 }
 
 static int config_includefile(const char *key, const char *value,
@@ -1479,19 +1405,19 @@ static int config_includefile(const char *key, const char *value,
 static int config_rootfs(const char *key, const char *value,
 			 struct lxc_conf *lxc_conf)
 {
-	return config_path_item(key, value, lxc_conf, &lxc_conf->rootfs.path);
+	return config_path_item(&lxc_conf->rootfs.path, value);
 }
 
 static int config_rootfs_mount(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
-	return config_path_item(key, value, lxc_conf, &lxc_conf->rootfs.mount);
+	return config_path_item(&lxc_conf->rootfs.mount, value);
 }
 
 static int config_pivotdir(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
-	return config_path_item(key, value, lxc_conf, &lxc_conf->rootfs.pivot);
+	return config_path_item(&lxc_conf->rootfs.pivot, value);
 }
 
 static int config_utsname(const char *key, const char *value,
