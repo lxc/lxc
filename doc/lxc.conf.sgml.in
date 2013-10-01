@@ -1014,7 +1014,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  <listitem> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </listitem>
 	  <listitem> LXC_CONFIG_FILE: the path to the container configuration file. </listitem>
 	  <listitem> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </listitem>
-	  <listitem> LXC_ROOTFS_PATH: this is the lxc.rootfs enty for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </listitem>
+	  <listitem> LXC_ROOTFS_PATH: this is the lxc.rootfs entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </listitem>
 	</itemizedlist>
       </para>
       <para>

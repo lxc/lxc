@@ -1287,7 +1287,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  <listitem> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </listitem>
 	  <listitem> LXC_CONFIG_FILE: the path to the container configuration file. </listitem>
 	  <listitem> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </listitem>
-	  <listitem> LXC_ROOTFS_PATH: this is the lxc.rootfs enty for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </listitem>
+	  <listitem> LXC_ROOTFS_PATH: this is the lxc.rootfs entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </listitem>
 	</itemizedlist>
         -->
         コンテナのフックが実行されるとき，情報がコマンドライン引数と環境変数の両方を通して渡されます．引数は:
