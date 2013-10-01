@@ -89,7 +89,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       a very small copy-on-write snapshot of the original container.  Snapshot
       clones require the new container backing store to support snapshotting.  Currently
       this includes only btrfs, lvm, overlayfs and zfs.  LVM devices do not support
-      snapshots fo snapshots.
+      snapshots of snapshots.
     </para>
 
     <para>
@@ -144,7 +144,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</term>
 	<listitem>
 	  <para>
-	    Use the same MAC address as the original container, rather tahn
+	    Use the same MAC address as the original container, rather than
 	    generating a new random one.
 	  </para>
 	</listitem>
