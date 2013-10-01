@@ -153,17 +153,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <variablelist>
 
       <varlistentry>
-        <term>The container is busy</term>
-        <listitem>
-          <para>
-	    The specified container is already running an
-	    application. You should stop it before reuse this
-	    container or create a new one.
-          </para>
-        </listitem>
-      </varlistentry>
-
-      <varlistentry>
         <term>The container was not found</term>
         <listitem>
           <para>
