@@ -42,13 +42,14 @@ static const struct option my_longopts[] = {
 static struct lxc_arguments my_args = {
 	.progname = "lxc-monitor",
 	.help     = "\
---name=NAME\n\
+[--name=NAME]\n\
 \n\
 lxc-monitor monitors the state of the NAME container\n\
 \n\
 Options :\n\
   -n, --name=NAME   NAME for name of the container\n\
                     NAME may be a regular expression",
+	.name     = ".*",
 	.options  = my_longopts,
 	.parser   = NULL,
 	.checker  = NULL,

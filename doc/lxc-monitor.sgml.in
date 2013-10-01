@@ -49,7 +49,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-monitor</command>
-      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-n <replaceable>name</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -57,10 +57,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <title>Description</title>
 
     <para>
-      <command>lxc-monitor</command> monitors the state of the
-      specified containers. The <replaceable>name</replaceable> can be
-      a regular expression, conforming with posix2, so it is possible
-      to monitor all the containers, several of them or just one.
+      <command>lxc-monitor</command> monitors the state of containers. The
+      <replaceable>name</replaceable> argument may be used to specify
+      which containers to monitor. It is a regular expression, conforming
+      with posix2, so it is possible to monitor all the containers,
+      several of them or just one. If not specified,
+      <replaceable>name</replaceable> will default to '.*' which will
+      monitor all containers in <command>lxcpath</command>.
     </para>
 
     <para>
