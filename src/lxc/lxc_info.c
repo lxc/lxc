@@ -124,12 +124,14 @@ int main(int argc, char *argv[])
 
 	if (ips) {
 		char **addresses = c->get_ips(c, NULL, NULL, 0);
-		char *address;
-		i = 0;
-		while (addresses[i]) {
-			address = addresses[i];
-			printf("ip: \t%s\n", address);
-			i++;
+		if (addresses) {
+			char *address;
+			i = 0;
+			while (addresses[i]) {
+				address = addresses[i];
+				printf("ip: \t%s\n", address);
+				i++;
+			}
 		}
 	}
 
