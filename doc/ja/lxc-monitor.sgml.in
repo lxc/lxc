@@ -48,14 +48,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       monitor the container state
       -->
-      コンテナの状態をモニタリングする．
+      コンテナの状態を監視する．
     </refpurpose>
   </refnamediv>
 
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-monitor</command>
-      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-n <replaceable>name</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -64,12 +64,15 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
     <para>
       <!--
-      <command>lxc-monitor</command> monitors the state of the
-      specified containers. The <replaceable>name</replaceable> can be
-      a regular expression, conforming with posix2, so it is possible
-      to monitor all the containers, several of them or just one.
+      <command>lxc-monitor</command> monitors the state of containers. The
+      <replaceable>name</replaceable> argument may be used to specify
+      which containers to monitor. It is a regular expression, conforming
+      with posix2, so it is possible to monitor all the containers,
+      several of them or just one. If not specified,
+      <replaceable>name</replaceable> will default to '.*' which will
+      monitor all containers in <command>lxcpath</command>.
       -->
-      <command>lxc-monitor</command> は指定されたコンテナの状態をモニタします．<replaceable>name</replaceable> は posix2 準拠の正規表現が使用可能ですので，全てのコンテナ，いくつかのコンテナ，一つだけのコンテナをモニタリングすることが可能です．
+      <command>lxc-monitor</command> はコンテナの状態を監視します．<replaceable>name</replaceable> をモニタ対象のコンテナを指定するために使うことも可能です．これは posix2 準拠の正規表現であり，全てのコンテナの監視を行ったり，いくつかのコンテナの監視を行ったり，1 つだけのコンテナの監視を行ったりすることが可能です．<replaceable>name</replaceable> を指定しない場合，デフォルトで '.' となり，<command>lxcpath</command> 以下の全てのコンテナの監視を行います．
     </para>
 
     <para>
@@ -96,7 +99,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  will monitor the different states for container foo.
           -->
-          foo という名前のコンテナの様々な状態をモニタリングします．
+          foo という名前のコンテナの様々な状態を監視します．
 	</para>
 	</listitem>
       </varlistentry>
@@ -108,7 +111,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  will monitor the different states for container foo and bar.
           -->
-          foo と bar という名前のコンテナの様々な状態をモニタリングします．
+          foo と bar という名前のコンテナの様々な状態を監視します．
 	</para>
 	</listitem>
       </varlistentry>
@@ -121,7 +124,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  will monitor the different states for container with the
 	  name beginning with letter 'f' or 'b'.
           -->
-          'f' もしくは 'b' という文字で始まるコンテナの様々な状態をモニタリングします．
+          'f' もしくは 'b' という文字で始まるコンテナの様々な状態を監視します．
 	</para>
 	</listitem>
       </varlistentry>
@@ -133,7 +136,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  will monitor the different states for all containers.
           -->
-          全てのコンテナの様々な状態をモニタリングします．
+          全てのコンテナの様々な状態を監視します．
 	</para>
 	</listitem>
       </varlistentry>
