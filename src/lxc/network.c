@@ -882,7 +882,11 @@ static int ip_addr_get(int family, int ifindex, void **res)
 
 			ip_info = (struct ip_req *)msg;
 			if (ip_info->ifa.ifa_index == ifindex) {
-				ifa_get_local_ip(family, ip_info, res);
+				if (ifa_get_local_ip(family, ip_info, res) < 0) {
+					err = -1;
+					goto out;
+				}
+
 				/* Found a result, stop searching */
 				if (*res)
 					goto out;
