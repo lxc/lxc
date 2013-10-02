@@ -10,6 +10,7 @@
 # Authors:
 # Daniel Lezcano <daniel.lezcano@free.fr>
 # Ramez Hanna <rhanna@informatiq.org>
+# Michael H. Warfield <mhw@WittsEnd.com>
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -29,6 +30,7 @@
 arch=$(uname -m)
 cache_base=@LOCALSTATEDIR@/cache/lxc/fedora/$arch
 default_path=@LXCPATH@
+# We really need something better here!
 root_password=root
 
 # is this fedora?
@@ -148,8 +150,19 @@ EOF
     echo "root:$root_password" | chroot $rootfs_path chpasswd
 
     # specifying this in the initial packages doesn't always work.
+    # Even though it should have...
     echo "installing fedora-release package"
-    chroot ${rootfs_path} yum --releasever=${release} -y install fedora-release
+    mount -o bind /dev ${rootfs_path}/dev
+    mount -t proc proc ${rootfs_path}/proc
+    # Always make sure /etc/resolv.conf is up to date in the target!
+    cp /etc/resolv.conf ${rootfs_path}/etc/
+    # Rebuild the rpm database based on the target rpm version...
+    rm -f ${rootfs_path}/var/lib/rpm/__db*
+    chroot ${rootfs_path} rpm --rebuilddb
+    chroot ${rootfs_path} yum -y install fedora-release
+    # This just makes sure the rpm db is synced to that version...
+    umount ${rootfs_path}/proc
+    umount ${rootfs_path}/dev
 
     # silence some needless startup errors
     touch ${rootfs_path}/etc/fstab
@@ -198,6 +211,396 @@ configure_fedora_systemd()
         for i in 1 2 3 4 ; do ln -sf ../getty\@.service getty@tty${i}.service; done )
 }
 
+### BEGIN Bootstrap Environment Code...  Michael H. Warfield /\/\|=mhw=|\/\/
+
+# Ok...  Heads up.  If you're reading these comments, you're either a
+# template owner or someone wondering how the hell I did this (or, worse,
+# someone in the future trying to maintain it).  This code is slightly
+# "evil coding bastard" code with one significant hack / dirty trick
+# that you would probably miss just reading the code below.  I'll mark
+# it out with comments.
+# 
+# Because of what this code does, it deserves a lot of comments so people
+# can understand WHY I did it this way...
+#
+# Ultimate Objective - Build a Fedora container on a host system which does
+# not have a (complete compatible) version of rpm and/or yum.  That basically
+# means damn near any distro other than Fedora and Ubuntu (which has rpm and
+# yum available).  Only requirements for this function are rsync and
+# squashfs available to the kernel.  If you don't have those, why are you
+# even attempting to build containers?
+#
+# Challenge for this function - Bootstrap a Fedora install bootstrap
+# run time environment which has all the pieces to run rpm and yum and
+# from which we can build targets containers even where the host system
+# has no support for rpm, yum, or fedora.
+#
+# Steps:
+#       Stage 0 - Download a Fedora LiveOS squashfs core (netinst core).
+#       Stage 1 - Extract filesystem from Stage 0 and update to full rpm & yum
+#       Stage 2 - Use Stage 1 to build a rootfs with python, rpm, and yum.
+#
+#       Stage 2 becomes our bootstrap file system which can be cached
+#       and then used to build other arbitrary vesions of Fedora of a
+#       given architecture.  Not that this only has to run once for
+#       Fedora on a given architecture since rpm and yum can build other
+#       versions.  We'll arbitrarily pick Fedora 19 to build this.  This
+#       will need to change as time goes on.
+
+# Programmers Note...  A future fall back may be to download the netinst
+#       iso image instead of the LiveOS squasfs image and work from that.
+#       That may be more general but will introduce another substep
+#       (mounting the iso) to the stage0 setup.
+
+# This system is designed to be as autonomous as possible so all whitelists
+# and controlls are self-contained.
+
+# Initial testing - Whitelist nobody.  Build for everybody...
+# Initial deployment - Whitelist Fedora.
+# Long term - Whitelist Fedora, Debian, Ubuntu, CentOs, Scientific, and NST.
+
+# List of distros which do not (should not) need a bootstrap (but we will test
+# for rpm and yum none the less...  OS SHOULD be taken from CPE values but
+# Debian / Ubuntu doesn't support CPE yet.
+
+# BOOTSTRAP_WHITE_LIST=""
+BOOTSTRAP_WHITE_LIST="fedora"
+# BOOTSTRAP_WHITE_LIST="fedora debian ubuntu centos scientific sl nst"
+
+BOOTSTRAP=0
+BOOTSTRAP_DIR=
+BOOTSTRAP_CHROOT=
+
+fedora_get_bootstrap()
+{
+    echo "Bootstrap Environment testing..."
+
+    WHITE_LISTED=1
+
+    # We need rpm.  No rpm - not possible to white list...
+    if ! which rpm > /dev/null 2>&1
+    then
+        WHITE_LISTED=0
+    fi
+
+    # We need yum  No yum - not possible to white list...
+    if ! which yum > /dev/null 2>&1
+    then
+        WHITE_LISTED=0
+    fi
+
+    if [[ ${WHITE_LISTED} != 0 ]]
+    then
+        for OS in ${BOOTSTRAP_WHITE_LIST}
+        do
+            if [[ ${ID} = ${OS} ]]
+            then
+                echo "
+OS ${ID} is whitelisted.  Installation Bootstrap Environment not required.
+"
+                return 0;
+            fi
+        done
+    fi
+
+    echo "
+Fedora Installation Bootstrap Build..."
+
+    if ! which rsync > /dev/null 2>&1
+    then
+        echo "
+Unable to locate rsync.  Cravely bailing out before even attempting to build
+an Installation Bootstrap  Please install rsync and then rerun this process.
+"
+
+        return 255
+    fi
+
+    [[ -d ${cache_base} ]] || mkdir -p ${cache_base}
+
+    cd ${cache_base}
+
+    # We know we don't have a cache directory of this version or we
+    # would have never reached this code to begin with.  But we may
+    # have another Fedora cache directory from which we could run...
+    # We'll give a preference for close matches prefering higher over
+    # lower - which makes for really ugly code...
+
+    # Is this a "bashism" that will need cleaning up????
+    BOOTSTRAP_LIST="$(( $release + 1 ))/rootfs $(( $release - 1 ))/rootfs \
+$(( $release + 2 ))/rootfs $(( $release - 2 ))/rootfs \
+$(( $release + 3 ))/rootfs $(( $release - 3 ))/rootfs \
+bootstrap"
+
+    for bootstrap in ${BOOTSTRAP_LIST}
+    do
+        if [[ -d ${bootstrap} ]]
+        then
+            echo "
+Existing Bootstrap found.  Testing..."
+
+            mount -o bind /dev ${bootstrap}/dev
+            mount -t proc proc ${bootstrap}/proc
+            # Always make sure /etc/resolv.conf is up to date in the target!
+            cp /etc/resolv.conf ${bootstrap}/etc/
+            rm -f ${bootstrap}/var/lib/rpm/__db*
+            chroot ${bootstrap} rpm --rebuilddb
+            chroot ${bootstrap} yum -y update
+            RC=$?
+            umount ${bootstrap}/proc
+            umount ${bootstrap}/dev
+
+            if [[ 0 == ${RC} ]]
+            then
+                BOOTSTRAP=1
+                BOOTSTRAP_DIR="${cache_base}/${bootstrap}"
+                BOOTSTRAP_CHROOT="chroot ${BOOTSTRAP_DIR} "
+                BOOTSTRAP_INSTALL_ROOT=/run/install
+
+            echo "
+Functional Installation Bootstrap exists and appears to be completed.
+Will use existing Bootstrap:  ${BOOTSTRAP_DIR}
+"
+            return 0
+        fi
+        echo "
+Installation Bootstrap in ${BOOTSTRAP_DIR} exists
+but appears to be non-functional.  Skipping...  It should be removed.
+"
+    fi
+    done
+
+    TMP_BOOTSTRAP_DIR=$( mktemp -d --tmpdir=${cache_base} bootstrap_XXXXXX )
+
+    cd ${TMP_BOOTSTRAP_DIR}
+
+    mkdir squashfs stage0 stage1 bootstrap
+
+### Stage 0 setup.
+#       Download the LiveOS squashfs image
+#       mount image to "squashfs"
+#       mount contained LiveOS to stage0
+
+# We're going to use the kernel.org mirror for the initial stages...
+#       1 - It's generally up to date and comnplete
+#       2 - It's has high bandwidth access
+#       3 - It supports rsync and wildcarding (and we need both)
+#       4 - Not all the mirrors carry the LiveOS images
+
+    if [[ ! -f ../LiveOS/squashfs.img ]]
+    then
+        echo "
+Downloading stage 0 LiveOS squashfs file system from mirrors.kernel.org...
+Have a beer or a cup of coffee.  This will take a bit (~300MB).
+"
+        sleep 3 # let him read it...
+
+        # Right now, we are using Fedora 19 for the inial bootstrap.
+        # We could make this the "current" Fedora rev (F > 15).
+
+        rsync -av mirrors.kernel.org::fedora/releases/19/Fedora/x86_64/os/LiveOS .
+
+        if [[ 0 == $? ]]
+        then
+            echo "Download of squashfs image complete."
+            mv LiveOS ..
+        else
+            echo "
+Download of squashfs image failed.
+"
+            return 255
+        fi
+    else
+        echo "Using cached stage 0 LiveOS squashfs file system."
+    fi
+
+    mount -o loop ../LiveOS/squashfs.img squashfs
+
+    if [[ $? != 0 ]]
+    then
+        echo "
+Mount of LiveOS squashfs image failed!  You mush have squashfs support
+available to mount image.  Unable to continue.  Correct and retry
+process later!  LiveOS image not removed.  Process may be rerun
+without penalty of downloading LiveOS again.  If LiveOS is corrupt,
+remove ${cache_base}/LiveOS before rerunning to redownload.
+"
+        return 255
+    fi
+
+    mount -o loop squashfs/LiveOS/rootfs.img stage0
+
+    if [[ $? != 0 ]]
+    then
+        echo "
+Mount of LiveOS stage0 rootfs image failed!  LiveOS download may be corrupt.
+Remove ${cache_base}/LiveOS to force a new download or
+troubleshoot cached image and then rerun process.
+"
+        return 255
+    fi
+
+
+### Stage 1 setup.
+#       Copy stage0 (which is ro) to stage1 area (rw) for modification.
+#       Unmount stage0 mounts - we're done with stage 0 at this point.
+#       Download our rpm and yum rpm packages.
+#       Force install of rpm and yum into stage1 image (dirty hack!)
+
+    echo "Stage 0 complete, building Stage 1 image...
+This will take a couple of minutes.  Patience..."
+
+    echo "Creating Stage 1 r/w copy of r/o Stage 0 squashfs image from LiveOS."
+
+    rsync -aAHS stage0/. stage1/
+
+    umount stage0
+    umount squashfs
+
+    cd stage1
+
+    # Setup stage1 image with pieces to run installs...
+
+
+    mount -o bind /dev dev
+    mount -t proc proc proc
+    # Always make sure /etc/resolv.conf is up to date in the target!
+    cp /etc/resolv.conf etc/
+
+    mkdir run/install
+
+    echo "Updating Stage 1 image with full rpm and yum packages"
+
+    # Retrieve our 2 rpm packages we need to force down the throat
+    # of this LiveOS image we're camped out on.  This is the beginning
+    # of the butt ugly hack.  Look close or you may missing it...
+
+    rsync -av mirrors.kernel.org::fedora/releases/19/Fedora/x86_64/os/Packages/r/rpm-[0-9]* \
+        mirrors.kernel.org::fedora/releases/19/Fedora/x86_64/os/Packages/y/yum-[0-9]* .
+
+    # And here it is...
+    # The --nodeps is STUPID but F15 had a bogus dependency on RawHide?!?!
+    chroot . rpm -ivh --nodeps rpm-* yum-*
+    # Did you catch it?
+
+    # The LiveOS image contains rpm (but not rpmdb) and yum (but not
+    # yummain.py - What the hell good does yum do with no
+    # yummain.py?!?! - Sigh...).  It contains all the supporting
+    # pieces but the rpm database has not be initialized and it
+    # doesn't know all the dependences (seem to) have been met.
+    # So we do a "--nodeps" rpm install in the chrooted environment
+    # to force the installation of the full rpm and yum packages.
+    #
+    # For the purists - Yes, I know the rpm database is wildly out
+    # of whack now.  That's why this is a butt ugly hack / dirty trick.
+    # But, this is just the stage1 image that we are going to discard as
+    # soon as the stage2 image is built, so we don't care.  All we care
+    # is that the stage2 image ends up with all the pieces it need to
+    # run yum and rpm and that the stage2 rpm database is coherent.
+    #
+    # NOW we can really go to work!
+
+### Stage 2 setup.
+#       Download our Fedora Release rpm packages.
+#       Install fedora-release into bootstrap to initialize fs and databases.
+#       Install rpm, and yum into bootstrap image using yum
+
+    echo "Stage 1 creation complete.  Building stage 2 Installation Bootstrap"
+
+    mount -o bind ../bootstrap run/install
+    rsync -av mirrors.kernel.org::fedora/releases/19/Fedora/x86_64/os/Packages/f/fedora-release-19* .
+
+    # The --nodeps is STUPID but F15 had a bogus dependency on RawHide?!?!
+    chroot . rpm --root /run/install --nodeps -ivh fedora-release-*
+    chroot . yum -y --nogpgcheck --installroot /run/install install python rpm yum
+
+    umount run/install
+    umount proc
+    umount dev
+
+#       That's it!  We should now have a viable installation BOOTSTRAP in
+#       bootstrap  We'll do a yum update in that to verify and then
+#       move it to the cache location before cleaning up.
+
+    cd ../bootstrap
+    mount -o bind /dev dev
+    mount -t proc proc proc
+    # Always make sure /etc/resolv.conf is up to date in the target!
+    cp /etc/resolv.conf etc/
+
+    chroot . yum -y update
+
+    RC=$?
+
+    umount proc
+    umount dev
+
+    cd ..
+
+    if [[ ${RC} != 0 ]]
+    then
+        echo "
+Build of Installation Bootstrap failed.  Temp directory
+not removed so it can be investigated.
+"
+        return 255
+    fi
+
+    # We know have a working run time environment in rootfs...
+    mv bootstrap ..
+    cd ..
+    rm -rf ${TMP_BOOTSTRAP_DIR}
+
+    echo "
+Build of Installation Bootstrap complete!  We now return you to your
+normally scheduled template creation.
+"
+
+    BOOTSTRAP=1
+    BOOTSTRAP_DIR="${cache_base}/bootstrap"
+    BOOTSTRAP_CHROOT="chroot ${BOOTSTRAP_DIR} "
+    BOOTSTRAP_INSTALL_ROOT=/run/install
+
+    return 0
+}
+
+
+fedora_bootstrap_mounts()
+{
+    if [[ ${BOOTSTRAP} -ne 1 ]]
+    then
+        return 0
+    fi
+
+    BOOTSTRAP_CHROOT="chroot ${BOOTSTRAP_DIR} "
+
+    echo "Mounting Bootstrap mount points"
+
+    [[ -d ${BOOTSTRAP_DIR}/run/install ]] || mkdir -p ${BOOTSTRAP_DIR}/run/install
+
+    mount -o bind ${INSTALL_ROOT} ${BOOTSTRAP_DIR}/run/install
+    mount -o bind /dev ${BOOTSTRAP_DIR}/dev
+    mount -t proc proc ${BOOTSTRAP_DIR}/proc
+    # Always make sure /etc/resolv.conf is up to date in the target!
+    cp /etc/resolv.conf ${BOOTSTRAP_DIR}/etc/
+}
+
+fedora_bootstrap_umounts()
+{
+    if [[ ${BOOTSTRAP} -ne 1 ]]
+    then
+        return 0
+    fi
+
+    umount ${BOOTSTRAP_DIR}/proc
+    umount ${BOOTSTRAP_DIR}/dev
+    umount ${BOOTSTRAP_DIR}/run/install
+}
+
+
+# This is the code to create the initial roofs for Fedora.  It may
+# require a run time environment by calling the routines above...
+
 download_fedora()
 {
 
@@ -211,9 +614,23 @@ download_fedora()
 
     # download a mini fedora into a cache
     echo "Downloading fedora minimal ..."
-    YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
+
+    # These will get changed if it's decided that we need a 
+    # boostrap environment (can not build natively)
+
+    BOOTSTRAP_INSTALL_ROOT=${INSTALL_ROOT}
+    BOOTSTRAP_CHROOT=
+
     PKG_LIST="yum initscripts passwd rsyslog vim-minimal dhclient chkconfig rootfiles policycoreutils fedora-release"
     MIRRORLIST_URL="http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$release&arch=$arch"
+
+    if [[ ${release} -lt 17 ]]
+    then
+        # The reflects the move of db_dump and db_load from db4_utils to
+        # libdb_utils in Fedora 17 and above and it's inclusion as a dep...
+        # Prior to Fedora 11, we need to explicitly include it!
+        PKG_LIST="${PKG_LIST} db4-utils"
+    fi
 
     DOWNLOAD_OK=no
 
@@ -237,9 +654,7 @@ download_fedora()
      # This will fall through if we didn't get any URLS above
      for MIRROR_URL in ${MIRROR_URLS}
      do
-        if [ "$release" -eq "19" ]; then
-            RELEASE_URL="$MIRROR_URL/Packages/f/fedora-release-$release-2.noarch.rpm"
-        elif [ "$release" -gt "16" ]; then
+        if [ "$release" -gt "16" ]; then
             RELEASE_URL="$MIRROR_URL/Packages/f"
         else
             RELEASE_URL="$MIRROR_URL/Packages/"
@@ -270,12 +685,82 @@ download_fedora()
         return 1
     fi
 
-    mkdir -p $INSTALL_ROOT/var/lib/rpm
-    rpm --root $INSTALL_ROOT  --initdb
-    rpm --root $INSTALL_ROOT -ivh ${INSTALL_ROOT}/${RELEASE_RPM}
-    $YUM install $PKG_LIST
+    mkdir -p ${INSTALL_ROOT}/var/lib/rpm
 
-    if [ $? -ne 0 ]; then
+    if ! fedora_get_bootstrap
+    then
+        echo "Fedora Bootstrap setup failed"
+        return 1
+    fi
+
+    fedora_bootstrap_mounts
+
+    ${BOOTSTRAP_CHROOT}rpm --root ${BOOTSTRAP_INSTALL_ROOT} --initdb
+    # The --nodeps is STUPID but F15 had a bogus dependency on RawHide?!?!
+    ${BOOTSTRAP_CHROOT}rpm --root ${BOOTSTRAP_INSTALL_ROOT} --nodeps -ivh ${BOOTSTRAP_INSTALL_ROOT}/${RELEASE_RPM}
+    ${BOOTSTRAP_CHROOT}yum --installroot ${BOOTSTRAP_INSTALL_ROOT} -y --nogpgcheck install ${PKG_LIST}
+
+    RC=$?
+
+    if [[ ${BOOTSTRAP} -eq 1 ]]
+    then
+    # Here we have a bit of a sticky problem.  We MIGHT have just installed
+    # this template cache using versions of yum and rpm in the bootstrap
+    # chroot that use a different database version than the target version.
+    # That can be a very big problem.  Solution is to rebuild the rpmdatabase
+    # with the target database now that we are done building the cache.  In the
+    # vast majority of cases, this is a do-not-care with no harm done if we
+    # didn't do it.  But it catches several corner cases with older unsupported
+    # releases and it really doesn't cost us a lot of time for a one shot
+    # install that will never be done again for this rev.
+    #
+    # Thanks and appreciation to Dwight Engen and the Oracle template for the
+    # database rewrite hint!
+
+        echo "Fixing up rpm databases"
+
+        # Change to our target install directory (if we're not already
+        # there) just to simplify some of the logic to follow...
+        cd ${INSTALL_ROOT}
+
+        rm -f var/lib/rpm/__db*
+        # Programmers Note (warning):
+        #
+        # Pay careful attention to the following commands!  It
+        # crosses TWO chroot boundaries linked by a bind mount!
+        # In the bootstrap case, that's the bind mount of ${INSTALL_ROOT}
+        # to the ${BOOTSTRAP_CHROOT}/run/install directory!  This is
+        # a deliberate hack across that bind mount to do a database
+        # translation between two environments, neither of which may
+        # be the host environment!  It's ugly and hard to follow but,
+        # if you don't understand it, don't mess with it!  The pipe
+        # is in host space between the two chrooted environments!
+        # This is also why we cd'ed into the INSTALL_ROOT directory
+        # in advance of this loop, so everything is relative to the
+        # current working directory and congruent with the same working
+        # space in both chrooted environments.  The output into the new
+        # db is also done in INSTALL_ROOT space but works in either host
+        # space or INSTALL_ROOT space for the mv, so we don't care.  It's
+        # just not obvious what's happening in the db_dump and db_load
+        # commands...
+        #
+        for db in var/lib/rpm/* ; do
+            ${BOOTSTRAP_CHROOT} db_dump ${BOOTSTRAP_INSTALL_ROOT}/$db | chroot . db_load $db.new
+            mv $db.new $db
+        done
+        # finish up by rebuilding the database...
+        # This should be redundant but we do it for completeness and
+        # any corner cases I may have missed...
+        mount -t proc proc proc
+        mount -o bind /dev dev
+        chroot . rpm --rebuilddb
+        umount dev
+        umount proc
+    fi
+
+    fedora_bootstrap_umounts
+
+    if [ ${RC} -ne 0 ]; then
         echo "Failed to download the rootfs, aborting."
         return 1
     fi
@@ -300,8 +785,13 @@ copy_fedora()
 
 update_fedora()
 {
-    YUM="yum --installroot $cache/rootfs -y --nogpgcheck"
-    $YUM update
+    mount -o bind /dev ${cache}/rootfs/dev
+    mount -t proc proc ${cache}/rootfs/proc
+    # Always make sure /etc/resolv.conf is up to date in the target!
+    cp /etc/resolv.conf ${cache}/rootfs/etc/
+    chroot ${cache}/rootfs yum -y update
+    umount ${cache}/rootfs/proc
+    umount  ${cache}/rootfs/dev
 }
 
 install_fedora()
@@ -456,11 +946,6 @@ do
     esac
 done
 
-if [ -z "$name" ]; then
-    usage $(basename $0)
-    exit 1
-fi
-
 if [ ! -z "$clean" -a -z "$path" ]; then
     clean || exit 1
     exit 0
@@ -490,10 +975,6 @@ if [ $(expr "$utsname" : '.*\..*\.') = 0 ]; then
 fi
 
 needed_pkgs=""
-type yum >/dev/null 2>&1
-if [ $? -ne 0 ]; then
-    needed_pkgs="yum $needed_pkgs"
-fi
 
 type curl >/dev/null 2>&1
 if [ $? -ne 0 ]; then
@@ -593,3 +1074,21 @@ if [ ! -z $clean ]; then
     exit 0
 fi
 echo "container rootfs and config created"
+
+if [[ -d ${cache_base}/bootstrap ]]
+then
+    echo "
+You have successfully built a Fedora container and cache.  This cache may
+be used to create future containers of various revisions.  The directory
+${cache_base}/bootstrap contains a bootstrap
+which may no longer needed and can be removed.
+"
+fi
+
+if [[ -e ${cache_base}/LiveOS ]]
+then
+    echo "A LiveOS directory exists at ${cache_base}/LiveOS.
+This is only used in the creation of the bootstrap run-time-environment
+and may be removed.
+"
+fi
