@@ -3,6 +3,7 @@
 # Allow environment variables to override grep and config
 : ${CONFIG:=/proc/config.gz}
 : ${GREP:=zgrep}
+: ${MODNAME:=configs}
 
 SETCOLOR_SUCCESS="printf \\033[1;32m"
 SETCOLOR_FAILURE="printf \\033[1;31m"
@@ -38,10 +39,19 @@ if [ ! -f $CONFIG ]; then
     BOOT_CONFIG="/boot/config-$KVER"
     [ -f "${HEADERS_CONFIG}" ] && CONFIG=${HEADERS_CONFIG}
     [ -f "${BOOT_CONFIG}" ] && CONFIG=${BOOT_CONFIG}
+    if [ ! -f "$CONFIG" ]; then
+        MODULEFILE=$(modinfo -k $KVER -n $MODNAME 2> /dev/null)
+        # don't want to modprobe, so give user a hint
+        # altho scripts/extract-ikconfig could be used to extract contents without loading kernel module
+        # http://svn.pld-linux.org/trac/svn/browser/geninitrd/trunk/geninitrd?rev=12696#L327
+    fi
     GREP=grep
     if [ ! -f $CONFIG ]; then
         echo "$(basename $0): unable to retrieve kernel configuration" >&2
         echo >&2
+        if [ -f "$MODULEFILE" ]; then
+            echo "Try modprobe $MODNAME module, or" >&2
+        fi
         echo "Try recompiling with IKCONFIG_PROC, installing the kernel headers," >&2
         echo "or specifying the kernel configuration path with:" >&2
         echo "  CONFIG=<path> $(basename $0)" >&2
