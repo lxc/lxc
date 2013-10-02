@@ -160,6 +160,12 @@ int main(int argc, char *argv[])
 	c1 = lxc_container_new(orig, lxcpath);
 	if (!c1)
 		exit(1);
+
+	if (!c1->may_control(c1)) {
+		fprintf(stderr, "Insufficent privileges to control %s\n", orig);
+		return -1;
+	}
+
 	if (!c1->is_defined(c1)) {
 		fprintf(stderr, "Error: container %s is not defined\n", orig);
 		lxc_container_put(c1);

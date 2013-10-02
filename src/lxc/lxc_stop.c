@@ -145,6 +145,11 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	if (!c->may_control(c)) {
+		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
+		goto out;
+	}
+
 	if (!c->is_running(c)) {
 		fprintf(stderr, "%s is not running\n", c->name);
 		ret = 2;

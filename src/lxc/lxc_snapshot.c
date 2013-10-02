@@ -160,6 +160,9 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(1);
 
+	if (!my_args.log_file)
+		my_args.log_file = "none";
+
 	if (my_args.argc > 1) {
 		ERROR("Too many arguments");
 		return -1;
@@ -182,6 +185,11 @@ int main(int argc, char *argv[])
 	if (!c) {
 		fprintf(stderr, "System error loading container\n");
 		exit(1);
+	}
+
+	if (!c->may_control(c)) {
+		fprintf(stderr, "Insufficent privileges to control %s\n", my_args.name);
+		return -1;
 	}
 
 	switch(action) {
