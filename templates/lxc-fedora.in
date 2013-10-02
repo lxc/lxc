@@ -456,6 +456,11 @@ do
     esac
 done
 
+if [ -z "$name" ]; then
+    usage $(basename $0)
+    exit 1
+fi
+
 if [ ! -z "$clean" -a -z "$path" ]; then
     clean || exit 1
     exit 0
