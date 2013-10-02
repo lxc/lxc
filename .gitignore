@@ -90,6 +90,8 @@ src/tests/lxc-test-shutdowntest
 src/tests/lxc-test-snapshot
 src/tests/lxc-test-startone
 src/tests/lxc-usernic-test
+src/tests/lxc-test-may-control
+src/tests/lxc-test-reboot
 
 config/compile
 config/config.guess
