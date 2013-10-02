@@ -190,8 +190,8 @@ configure_fedora_systemd()
 
     sed -e 's/^ConditionPathExists=/# ConditionPathExists=/' \
         -e 's/After=dev-%i.device/After=/' \
-	< ${rootfs_path}/lib/systemd/system/getty\@.service \
-	> ${rootfs_path}/etc/systemd/system/getty\@.service
+        < ${rootfs_path}/lib/systemd/system/getty\@.service \
+        > ${rootfs_path}/etc/systemd/system/getty\@.service
     # Setup getty service on the 4 ttys we are going to allow in the
     # default config.  Number should match lxc.tty
     ( cd ${rootfs_path}/etc/systemd/system/getty.target.wants
@@ -222,13 +222,13 @@ download_fedora()
     # delay between attempts...
     for trynumber in 1 2 3 4; do
         [ $trynumber != 1 ] && echo "Trying again..."
-	# This code is mildly "brittle" in that it assumes a certain
+        # This code is mildly "brittle" in that it assumes a certain
         # page format and parsing HTML.  I've done worse.  :-P
         MIRROR_URLS=$(curl -s -S -f "$MIRRORLIST_URL" | sed -e '/^http:/!d' -e '2,6!d')
         if [ $? -eq 0 ] && [ -n "$MIRROR_URLS" ]
         then
-		break
-	fi
+            break
+        fi
 
         echo "Failed to get a mirror on try $trynumber"
         sleep 3
@@ -237,7 +237,7 @@ download_fedora()
      # This will fall through if we didn't get any URLS above
      for MIRROR_URL in ${MIRROR_URLS}
      do
-     	if [ "$release" -eq "19" ]; then
+        if [ "$release" -eq "19" ]; then
             RELEASE_URL="$MIRROR_URL/Packages/f/fedora-release-$release-2.noarch.rpm"
         elif [ "$release" -gt "16" ]; then
             RELEASE_URL="$MIRROR_URL/Packages/f"
@@ -246,9 +246,9 @@ download_fedora()
         fi
 
         echo "Fetching rpm name from $RELEASE_URL..."
-	# This code is mildly "brittle" in that it assumes a certain directory
+        # This code is mildly "brittle" in that it assumes a certain directory
         # page format and parsing HTML.  I've done worse.  :-P
-	RELEASE_RPM=$(curl -L -f "$RELEASE_URL" | sed -e "/fedora-release-${release}-/!d" -e 's/.*<a href=\"//' -e 's/\">.*//' )
+        RELEASE_RPM=$(curl -L -f "$RELEASE_URL" | sed -e "/fedora-release-${release}-/!d" -e 's/.*<a href=\"//' -e 's/\">.*//' )
         if [ $? -ne 0  -o "${RELEASE_RPM}" = "" ]; then
             echo "Failed to identify fedora release rpm."
             continue
