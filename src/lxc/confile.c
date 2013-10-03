@@ -235,7 +235,7 @@ static int config_string_item_max(char **conf_item, const char *value,
 				  size_t max)
 {
 	if (strlen(value) >= max) {
-		ERROR("%s is too long (>= %lu)", value, max);
+		ERROR("%s is too long (>= %lu)", value, (unsigned long)max);
 		return -1;
 	}
 
