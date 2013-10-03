@@ -51,6 +51,7 @@ case $with_distro in
 esac
 AC_MSG_RESULT([$with_distro])
 AM_CONDITIONAL([HAVE_DEBIAN], [test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu"])
+AM_CONDITIONAL([DISTRO_UBUNTU], [test "x$with_distro" = "xubuntu"])
 
 # Detect the newuidmap tool (required for userns)
 AC_CHECK_PROG([NEWUIDMAP], [newuidmap], [newuidmap])

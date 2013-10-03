@@ -38,6 +38,10 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 
 bin_SCRIPTS = lxc-test-usernic
 
+if DISTRO_UBUNTU
+bin_SCRIPTS += lxc-test-ubuntu
+endif
+
 endif
 
 EXTRA_DIST = \
