@@ -441,99 +441,12 @@ EOF
     return 0
 }
 
-trim()
-{
-    rootfs=$1
-    release=$2
-
-    # provide the lxc service
-    cat <<EOF > $rootfs/etc/init/lxc.conf
-# fake some events needed for correct startup other services
-
-description     "Container Upstart"
-
-start on startup
-
-script
-        rm -rf /var/run/*.pid
-        rm -rf /var/run/network/*
-        /sbin/initctl emit stopped JOB=udevtrigger --no-wait
-        /sbin/initctl emit started JOB=udev --no-wait
-end script
-EOF
-
-    # fix buggus runlevel with sshd
-    cat <<EOF > $rootfs/etc/init/ssh.conf
-# ssh - OpenBSD Secure Shell server
-#
-# The OpenSSH server provides secure shell access to the system.
-
-description	"OpenSSH server"
-
-start on filesystem
-stop on runlevel [!2345]
-
-expect fork
-respawn
-respawn limit 10 5
-umask 022
-# replaces SSHD_OOM_ADJUST in /etc/default/ssh
-oom never
-
-pre-start script
-    test -x /usr/sbin/sshd || { stop; exit 0; }
-    test -e /etc/ssh/sshd_not_to_be_run && { stop; exit 0; }
-    test -c /dev/null || { stop; exit 0; }
-
-    mkdir -p -m0755 /var/run/sshd
-end script
-
-# if you used to set SSHD_OPTS in /etc/default/ssh, you can change the
-# 'exec' line here instead
-exec /usr/sbin/sshd
-EOF
-
-    cat <<EOF > $rootfs/etc/init/console.conf
-# console - getty
-#
-# This service maintains a console on tty1 from the point the system is
-# started until it is shut down again.
-
-start on stopped rc RUNLEVEL=[2345]
-stop on runlevel [!2345]
-
-respawn
-exec /sbin/getty -8 38400 /dev/console
-EOF
-
-    cat <<EOF > $rootfs/lib/init/fstab
-# /lib/init/fstab: cleared out for bare-bones lxc
-EOF
-
-    # remove pointless services in a container
-    chroot $rootfs /usr/sbin/update-rc.d -f ondemand remove
-
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls u*.conf); do mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls tty[2-9].conf); do mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls plymouth*.conf); do mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls hwclock*.conf); do mv $f $f.orig; done'
-    chroot $rootfs /bin/bash -c 'cd /etc/init; for f in $(ls module*.conf); do mv $f $f.orig; done'
-
-    # if this isn't lucid, then we need to twiddle the network upstart bits :(
-    if [ $release != "lucid" ]; then
-        sed -i 's/^.*emission handled.*$/echo Emitting lo/' $rootfs/etc/network/if-up.d/upstart
-    fi
-}
-
 post_process()
 {
     rootfs=$1
     release=$2
-    trim_container=$3
 
-    if [ $trim_container -eq 1 ]; then
-        trim $rootfs $release
-    elif [ ! -f $rootfs/etc/init/container-detect.conf ]; then
+    if [ ! -f $rootfs/etc/init/container-detect.conf ]; then
         # Make sure we have a working resolv.conf
         cresolvonf="${rootfs}/etc/resolv.conf"
         mv $cresolvonf ${cresolvonf}.lxcbak
@@ -639,11 +552,10 @@ do_bindhome()
 usage()
 {
     cat <<EOF
-$1 -h|--help [-a|--arch] [-b|--bindhome <user>] [--trim] [-d|--debug]
+$1 -h|--help [-a|--arch] [-b|--bindhome <user>] [-d|--debug]
    [-F | --flush-cache] [-r|--release <release>] [ -S | --auth-key <keyfile>]
    [--rootfs <rootfs>]
 release: the ubuntu release (e.g. precise): defaults to host release on ubuntu, otherwise uses latest LTS
-trim: make a minimal (faster, but not upgrade-safe) container
 bindhome: bind <user>'s home into the container
           The ubuntu user will not be created, and <user> will have
           sudo access.
@@ -653,7 +565,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:b:hp:r:xn:FS:d -l arch:,bindhome:,help,path:,release:,trim,name:,flush-cache,auth-key:,debug,rootfs: -- "$@")
+options=$(getopt -o a:b:hp:r:n:FS:d -l arch:,bindhome:,help,path:,release:,name:,flush-cache,auth-key:,debug,rootfs: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -687,7 +599,6 @@ else
 fi
 
 debug=0
-trim_container=0
 hostarch=$arch
 flushcache=0
 while true
@@ -701,7 +612,6 @@ do
     -r|--release)   release=$2; shift 2;;
     -b|--bindhome)  bindhome=$2; shift 2;;
     -a|--arch)      arch=$2; shift 2;;
-    -x|--trim)      trim_container=1; shift 1;;
     -S|--auth-key)  auth_key=$2; shift 2;;
     -d|--debug)     debug=1; shift 1;;
     --)             shift 1; break ;;
