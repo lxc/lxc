@@ -219,7 +219,7 @@ configure_fedora_systemd()
 # "evil coding bastard" code with one significant hack / dirty trick
 # that you would probably miss just reading the code below.  I'll mark
 # it out with comments.
-# 
+#
 # Because of what this code does, it deserves a lot of comments so people
 # can understand WHY I did it this way...
 #
@@ -615,7 +615,7 @@ download_fedora()
     # download a mini fedora into a cache
     echo "Downloading fedora minimal ..."
 
-    # These will get changed if it's decided that we need a 
+    # These will get changed if it's decided that we need a
     # boostrap environment (can not build natively)
 
     BOOTSTRAP_INSTALL_ROOT=${INSTALL_ROOT}
