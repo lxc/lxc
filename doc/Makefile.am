@@ -1,9 +1,8 @@
 SUBDIRS = examples rootfs
-DIST_SUBDIRS = examples rootfs
+DIST_SUBDIRS = examples rootfs ja
 
 if USE_DOCBOOK2X
 SUBDIRS += ja
-DIST_SUBDIRS += ja
 endif
 
 EXTRA_DIST = \
