@@ -516,7 +516,7 @@ container_rootfs_create()
         mkdir -p $container_rootfs/var/lib/rpm
         rpm --root $container_rootfs --initdb
         yum_args="--installroot $container_rootfs --disablerepo=* --enablerepo=$repo -y --nogpgcheck"
-        min_pkgs="yum initscripts passwd rsyslog vim-minimal openssh-server dhclient chkconfig rootfiles policycoreutils oraclelinux-release"
+        min_pkgs="yum initscripts passwd rsyslog vim-minimal openssh-server openssh-clients dhclient chkconfig rootfiles policycoreutils oraclelinux-release"
 
         # we unshare the mount namespace because yum installing the ol4
         # packages causes $rootfs/proc to be mounted on
