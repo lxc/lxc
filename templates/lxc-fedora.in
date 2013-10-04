@@ -98,7 +98,13 @@ configure_fedora()
     mkdir -p $rootfs_path/selinux
     echo 0 > $rootfs_path/selinux/enforce
 
-   # configure the network using the dhcp
+    # This may be related to disabling selinux above but this is
+    # a known problem and documented in RedHat bugzilla as relating
+    # to a problem with auditing enabled.  This prevents an error in
+    # the container "Cannot make/remove an entry for the specified session"
+    sed -i '/^session.*pam_loginuid.so/s/^session/# session/' ${rootfs_path}/etc/pam.d/login
+
+    # configure the network using the dhcp
     cat <<EOF > ${rootfs_path}/etc/sysconfig/network-scripts/ifcfg-eth0
 DEVICE=eth0
 BOOTPROTO=dhcp
@@ -160,7 +166,15 @@ EOF
     rm -f ${rootfs_path}/var/lib/rpm/__db*
     chroot ${rootfs_path} rpm --rebuilddb
     chroot ${rootfs_path} yum -y install fedora-release
-    # This just makes sure the rpm db is synced to that version...
+
+    if [[ ! -e ${rootfs_path}/sbin/NetworkManager ]]
+    then
+        # NetworkManager has not been installed.  Use the
+        # legacy chkconfig command to enable the network startup
+        # scripts in the container.
+        chroot ${rootfs_path} chkconfig network on
+    fi
+
     umount ${rootfs_path}/proc
     umount ${rootfs_path}/dev
 
