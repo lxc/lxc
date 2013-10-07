@@ -1864,8 +1864,10 @@ int cgroup_recursive_task_count(const char *cgroup_path)
 	process_lock();
 	d = opendir(cgroup_path);
 	process_unlock();
-	if (!d)
+	if (!d) {
+		free(dent_buf);
 		return 0;
+	}
 
 	while (readdir_r(d, dent_buf, &dent) == 0 && dent) {
 		const char *parts[3] = {
