@@ -1020,6 +1020,7 @@ int lxc_cgroup_enter(struct cgroup_process_info *info, pid_t pid, bool enter_sub
 		}
 
 		r = lxc_write_to_file(cgroup_tasks_fn, pid_buf, strlen(pid_buf), false);
+		free(cgroup_tasks_fn);
 		if (r < 0) {
 			SYSERROR("Could not add pid %lu to cgroup %s: internal error", (unsigned long)pid, cgroup_path);
 			return -1;
