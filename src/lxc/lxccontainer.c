@@ -2538,6 +2538,10 @@ out_free:
 			lxcsnap_free(&snaps[i]);
 		free(snaps);
 	}
+	process_lock();
+	if (closedir(dir))
+		WARN("failed to close directory");
+	process_unlock();
 	return -1;
 }
 
