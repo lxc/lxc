@@ -6,6 +6,7 @@ templates_SCRIPTS = \
 	lxc-ubuntu-cloud \
 	lxc-opensuse \
 	lxc-fedora \
+	lxc-openmandriva \
 	lxc-oracle \
 	lxc-altlinux \
 	lxc-busybox \
