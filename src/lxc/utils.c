@@ -426,6 +426,13 @@ static inline int lock_fclose(FILE *f)
 #if HAVE_LIBGNUTLS
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
+
+__attribute__((constructor))
+static void gnutls_lxc_init(void)
+{
+	gnutls_global_init();
+}
+
 int sha1sum_file(char *fnam, unsigned char *digest)
 {
 	char *buf;
