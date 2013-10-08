@@ -340,7 +340,7 @@ build_root_tgz()
     echo "Creating new cached cloud image rootfs"
     tar --wildcards -zxf $tarname $imgname
     mount -o loop $imgname $xdir
-    (cd $xdir; tar zcf ../$filename .)
+    (cd $xdir; tar --numeric-owner -cpzf ../$filename .)
     umount $xdir
     rm -f $tarname $imgname
     rmdir $xdir
@@ -371,7 +371,7 @@ do_extract_rootfs() {
     echo "Extracting container rootfs"
     mkdir -p $rootfs
     cd $rootfs
-    tar -zxf $cache/$filename
+    tar --numeric-owner -xpzf $cache/$filename
 }
 
 if [ -n "$tarball" ]; then
