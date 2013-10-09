@@ -1,0 +1,388 @@
+#!/bin/bash
+
+#
+# template script for generating Plamo Linux container for LXC
+#
+
+#
+# lxc: linux Container library
+
+# Authors:
+# KATOH Yasufumi <karma@jazz.email.ne.jp>
+# TAMUKI Shoichi <tamuki@linet.gr.jp>
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+# ref. https://github.com/Ponce/lxc-slackware/blob/master/lxc-slackware
+#      lxc-ubuntu script
+
+[ -r /etc/default/lxc ] && . /etc/default/lxc
+
+MIRRORSRV=${MIRRORSRV:-"ftp.ne.jp"}
+MIRRORPATH=${MIRRORPATH:-"/Linux/distributions/plamolinux"}
+CATEGORY[0]=${CATEGORY:-"00_base"}
+PACKAGES[0]=${PACKAGES:-"aaa_base acl at attr bash btrfs_progs bzip2
+    coreutils cracklib dcron devs dhcp dialog dosfstools dump e2fsprogs
+    ed eject etc extipl file findutils gawk glibc grep groff grub gzip
+    hdsetup hibernate_script iproute2 iputils kbd kmod less libcap
+    libgcc libtirpc lilo linux_pam logrotate lvm2 man
+    mdadm microcode_ctl mlocate ncurses net_tools netkit_combo
+    network_configs nvi openbsd_inetd openssh openssl os_prober pciutils
+    pm_utils procinfo_ng procps_ng readline reiserfsprogs rsyslog sed
+    shadow sudo sysfsutils syslinux sysvinit tar tcp_wrappers tcsh
+    timezone traceroute udev unicon_tools util_linux xz zlib"}
+CATEGORY[1]="01_minimum"
+PACKAGES[1]="FDclone autofs bc berkeley_db bsd_games cpio cpufreqd
+    cpufrequtils fortune_mod gc gdbm gpm hddtemp hdparm keyutils libelf
+    libieee1284 libusb libusb_compat libxml2 libzip linux_howto lm_sensors
+    lshw lsof lv man_pages man_pages_ja nilfs_utils nkf pcre perl popt
+    psmisc python recode rpm2targz ruby screen sg3_utils sharutils sqlite
+    squashfs_lzma sysstat texinfo time tree unzip usbutils utempter which
+    yaml zip zsh"
+CATEGORY[2]="01_minimum/alsa.txz"
+PACKAGES[2]="alsa_lib alsa_plugins alsa_utils"
+CATEGORY[3]="01_minimum/aspell.txz"
+PACKAGES[3]="aspell aspell6_en"
+CATEGORY[4]="01_minimum/devel.txz"
+PACKAGES[4]="autoconf automake binutils bison cloog cvs diffutils flex
+    g++ gcc gdb gettext gmp indent intltool kernel_headers libc libtool
+    m4 make mpc mpfr onig patch pkg_config ppl pth slang strace yasm"
+CATEGORY[5]="01_minimum/gnupg_tls.txz"
+PACKAGES[5]="gnupg gnutls gpgme libassuan libgcrypt libgpg_error libksba
+    libtasn1"
+CATEGORY[6]="01_minimum/network.txz"
+PACKAGES[6]="bind bridge_utils curl cyrus_sasl dnsmasq ethtool fetchmail
+    heimdal hostapd iptables iw libidn libiec61883 libnl3 libpcap
+    libraw1394 libssh2 mailx metamail ncftp ntrack parprouted postfix
+    ppp procmail rsync setserial uml_utilities w3m wget wireless_tools
+    wpa_supplicant"
+CATEGORY[7]="01_minimum/nfs.txz"
+PACKAGES[7]="libevent libnfsidmap nfs_utils rpcbind"
+CATEGORY[8]="01_minimum/tcl.txz"
+PACKAGES[8]="expect itcl tcl tclx"
+
+download_plamo() {
+  # check the mini plamo was not already downloaded
+  if ! mkdir -p $ptcache ; then
+    echo "Failed to create '$ptcache' directory."
+    return 1
+  fi
+  # download a mini plamo into a cache
+  echo "Downloading Plamo-$release minimal..."
+  echo "open $MIRRORSRV" > /tmp/getpkg
+  for i in `seq 0 $((${#CATEGORY[@]} - 1))` ; do
+    for p in ${PACKAGES[$i]} ; do
+      cat <<- EOF >> /tmp/getpkg
+	mget $MIRRORPATH/Plamo-$release/$arch/plamo/${CATEGORY[$i]}/$p-*.t?z
+	EOF
+    done
+  done
+  echo "close" >> /tmp/getpkg
+  cd $ptcache
+  if ! lftp -f /tmp/getpkg ; then
+    echo "Failed to download the rootfs, aborting."
+    return 1
+  fi
+  rm -f /tmp/getpkg
+  mv $ptcache $dlcache
+  echo "Download complete."
+  return 0
+}
+
+copy_plamo() {
+  # make a local copy of the mini plamo
+  echo "Copying $rtcache to $rootfs..."
+  mkdir -p $rootfs
+  find $rtcache -mindepth 1 -maxdepth 1 -exec cp -a {} $rootfs \; || return 1
+  return 0
+}
+
+install_plamo() {
+  mkdir -p @LOCALSTATEDIR@/lock/subsys
+  (
+    if ! flock -n 200 ; then
+      echo "Cache repository is busy."
+      return 1
+    fi
+    echo "Checking cache download in $dlcache..."
+    if [ ! -d $dlcache ] ; then
+      if ! download_plamo ; then
+        echo "Failed to download plamo $release base packages."
+        return 1
+      fi
+    fi
+    echo "Installing packages to $rtcache..."
+    if [ ! -d $rtcache ] ; then
+      mkdir -p $rtcache
+      for i in `seq 0 $((${#CATEGORY[@]} - 1))` ; do
+        for p in ${PACKAGES[$i]} ; do
+          installpkg -root $rtcache -priority ADD $dlcache/$p-*.t?z
+        done
+      done
+    fi
+    echo "Copy $rtcache to $rootfs..."
+    if ! copy_plamo ; then
+      echo "Failed to copy rootfs."
+      return 1
+    fi
+    return 0
+  ) 200> @LOCALSTATEDIR@/lock/subsys/lxc
+}
+
+configure_plamo() {
+  # create /dev
+  mknod -m 666 $rootfs/dev/zero c 1 5
+  chmod    666 $rootfs/dev/random
+  mknod -m 666 $rootfs/dev/urandom c 1 9
+  mkdir -m 755 $rootfs/dev/pts
+  chmod    666 $rootfs/dev/tty
+  chmod    600 $rootfs/dev/console
+  mknod -m 666 $rootfs/dev/tty0 c 4 0
+  mknod -m 666 $rootfs/dev/tty1 c 4 1
+  mknod -m 666 $rootfs/dev/tty2 c 4 2
+  mknod -m 666 $rootfs/dev/tty3 c 4 3
+  mknod -m 666 $rootfs/dev/tty4 c 4 4
+  mknod -m 666 $rootfs/dev/full c 1 7
+  mknod -m 600 $rootfs/dev/initctl p
+  mknod -m 666 $rootfs/dev/ptmx c 5 2
+  # suppress log level output for udev
+  sed -i 's/="err"/=0/' $rootfs/etc/udev/udev.conf
+  # /etc/fstab
+  cat <<- "EOF" > $rootfs/etc/fstab
+	none             /proc    proc        defaults   0   0
+	none             /sys     sysfs       defaults   0   0
+	none             /dev     tmpfs       defaults   0   0
+	none		    /tmp     tmpfs       defaults   0   0
+	none            /dev/pts        devpts  gid=5,mode=620    0 0
+	none            /proc/bus/usb             usbfs        noauto   0   0
+	none             /var/lib/nfs/rpc_pipefs rpc_pipefs  defaults   0   0
+	EOF
+  # /etc/inittab
+  cat <<- "EOF" | patch $rootfs/etc/inittab
+	47a48
+	> 1:1235:respawn:/sbin/agetty 38400 console
+	52,53d52
+	< c5:1235:respawn:/sbin/agetty 38400 tty5 linux
+	< c6:12345:respawn:/sbin/agetty 38400 tty6 linux
+	EOF
+  # set the hostname
+  echo "$name" > $rootfs/etc/HOSTNAME
+  # set minimal hosts
+  echo "127.0.0.1 localhost $name" > $rootfs/etc/hosts
+  # configure the network using the dhcp
+  echo "DHCP" > $rootfs/var/run/inet1-scheme
+  # localtime (JST)
+  ln -s ../usr/share/zoneinfo/Asia/Tokyo $rootfs/etc/localtime
+  # disable pam_loginuid.so in /etc/pam.d/login (for libvirt's lxc driver)
+  sed -i '/pam_loginuid/s/^/#/' $rootfs/etc/pam.d/login
+  # root password
+  echo "Setting root password to 'root'..."
+  echo "root:root" | chroot $rootfs chpasswd
+  echo "Please change root password!"
+  # /etc/rc.d/rc.S
+  ed - $rootfs/etc/rc.d/rc.S <<- "EOF"
+	230,261d
+	156,163d
+	26,147d
+	16,22d
+	w
+	EOF
+  # /etc/rc.d/rc.M
+  ed - $rootfs/etc/rc.d/rc.M <<- "EOF"
+	247,248d
+	56,79d
+	31,38d
+	w
+	EOF
+  # /etc/rc.d/rc.inet1.tradnet
+  head -n-93 $rootfs/sbin/netconfig.tradnet > /tmp/netconfig.rconly
+  cat <<- EOF >> /tmp/netconfig.rconly
+	PCMCIA=n
+	RC=$rootfs/etc/rc.d/rc.inet1.tradnet
+	IFCONFIG=sbin/ifconfig
+	ROUTE=sbin/route
+	INET1SCHEME=var/run/inet1-scheme
+	IPADDR=127.0.0.1
+	NETWORK=127.0.0.0
+	DHCPCD=usr/sbin/dhclient
+	LOOPBACK=y
+	make_config_file
+	EOF
+  rm -f $rootfs/etc/rc.d/rc.inet1.tradnet
+  sh /tmp/netconfig.rconly
+  rm -f /tmp/netconfig.rconly
+  return 0
+}
+
+copy_configuration() {
+  if ! cat <<- EOF >> $path/config ; then
+	lxc.utsname = $name
+	
+	lxc.tty = 4
+	lxc.pts = 1024
+	lxc.mount.auto = proc sys cgroup
+	lxc.arch = $arch
+	lxc.cap.drop = sys_module mac_admin mac_override sys_time
+	
+	lxc.cgroup.devices.deny = a
+	# /dev/null and zero
+	lxc.cgroup.devices.allow = c 1:3 rwm
+	lxc.cgroup.devices.allow = c 1:5 rwm
+	# consoles
+	lxc.cgroup.devices.allow = c 5:0 rwm
+	lxc.cgroup.devices.allow = c 5:1 rwm
+	# /dev/{,u}random
+	lxc.cgroup.devices.allow = c 1:8 rwm
+	lxc.cgroup.devices.allow = c 1:9 rwm
+	lxc.cgroup.devices.allow = c 5:2 rwm
+	lxc.cgroup.devices.allow = c 136:* rwm
+	# rtc
+	lxc.cgroup.devices.allow = c 254:0 rm
+	# fuse
+	lxc.cgroup.devices.allow = c 10:229 rwm
+	EOF
+    echo "Failed to add configuration."
+    return 1
+  fi
+  return 0
+}
+
+post_process() {
+  # nothing do in Plamo Linux
+  true
+}
+
+do_bindhome() {
+  # bind-mount the user's path into the container's /home
+  h=`getent passwd $bindhome | cut -d: -f6`
+  mkdir -p $rootfs/$h
+  echo "$h $rootfs/$h none bind 0 0" >> $path/fstab
+  # copy /etc/passwd, /etc/shadow, and /etc/group entries into container
+  if ! pwd=`getent passwd $bindhome` ; then
+    echo "Warning: failed to copy password entry for $bindhome."
+  else
+    echo $pwd >> $rootfs/etc/passwd
+  fi
+  echo `getent shadow $bindhome` >> $rootfs/etc/shadow
+}
+
+cleanup() {
+  [ -d $dlcache -a -d $rtcache ] || return 0
+  # lock, so we won't purge while someone is creating a repository
+  (
+    if ! flock -n 200 ; then
+      echo "Cache repository is busy."
+      return 1
+    fi
+    echo "Purging the download cache..."
+    rm -rf --one-file-system $dlcache $rtcache || return 1
+    echo "Done."
+    return 0
+  ) 200> @LOCALSTATEDIR@/lock/subsys/lxc
+}
+
+usage() {
+  cat <<- EOF
+	$prog [-h|--help] -p|--path=<path> -n|--name=<name> --rootfs=<rootfs>
+	          [--clean] [-r|--release=<release>] [-b|--bindhome=<user>]
+	          [-a|--arch=<arch>]
+	release: $release
+	bindhome: bind <user>'s home into the container
+	arch: x86 or x86_64: defaults to host arch
+	EOF
+}
+
+prog=`basename $0`
+path="" ; name="" ; rootfs=""
+clean=0
+release=${release:-5.x}
+bindhome=""
+arch=`uname -m | sed 's/i.86/x86/'` ; hostarch=$arch
+sopts=hp:n:cr:b:a:
+lopts=help,path:,name:,rootfs:,clean,release:,bindhome:,arch:
+if ! options=`getopt -o $sopts -l $lopts -- "$@"` ; then
+  usage
+  exit 1
+fi
+eval set -- "$options"
+while true ; do
+  case "$1" in
+  -h|--help) usage && exit 0 ;;
+  -p|--path) path=$2 ; shift 2 ;;
+  -n|--name) name=$2 ; shift 2 ;;
+  --rootfs) rootfs=$2 ; shift 2 ;;
+  -c|--clean) clean=1 ; shift 1 ;;
+  -r|--release) release=$2 ; shift 2 ;;
+  -b|--bindhome) bindhome=$2 ; shift 2 ;;
+  -a|--arch) arch=$2 ; shift 2 ;;
+  --) shift 1 ; break ;;
+  *) break ;;
+  esac
+done
+if [ $clean -eq 1 -a -z "$path" ] ; then
+  cleanup || exit 1
+  exit 0
+fi
+if [ $hostarch == "x86" -a $arch == "x86_64" ] ; then
+  echo "Can't create x86_64 container on x86."
+  exit 1
+fi
+if ! type installpkg ; then
+  echo "'installpkg' command is missing."
+  exit 1
+fi
+if [ -z "$path" ] ; then
+  echo "'path' parameter is required."
+  exit 1
+fi
+if [ -z "$name" ] ; then
+  echo "'name' parameter is required."
+  exit 1
+fi
+if [ `id -u` -ne 0 ] ; then
+  echo "This script should be run as 'root'."
+  exit 1
+fi
+cache=@LOCALSTATEDIR@/cache/lxc
+ptcache=$cache/partial-${prog##*-}-$release-$arch
+dlcache=$cache/cache-${prog##*-}-$release-$arch
+rtcache=$cache/rootfs-${prog##*-}-$release-$arch
+if [ -z "$rootfs" ] ; then
+  if grep -q "^lxc.rootfs" $path/config ; then
+    rootfs=`grep "^lxc.rootfs" $path/config | awk -F= '{print $2}'`
+  else
+    rootfs=$path/rootfs
+  fi
+fi
+if ! install_plamo ; then
+  echo "Failed to install plamo $release."
+  exit 1
+fi
+if ! configure_plamo ; then
+  echo "Failed to configure plamo $release for a container."
+  exit 1
+fi
+if ! copy_configuration ; then
+  echo "Failed to write configuration file."
+  exit 1
+fi
+post_process
+if [ -n "$bindhome" ] ; then
+  do_bindhome
+fi
+if [ $clean -eq 1 ] ; then
+  cleanup || exit 1
+  exit 0
+fi

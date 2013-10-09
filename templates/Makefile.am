@@ -12,4 +12,5 @@ templates_SCRIPTS = \
 	lxc-sshd \
 	lxc-archlinux \
 	lxc-alpine \
-	lxc-cirros
+	lxc-cirros \
+	lxc-plamo
