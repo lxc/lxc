@@ -16,7 +16,7 @@ set -f
 VERBOSITY="0"
 
 error() { echo "$@" 1>&2; }
-debug() { [ "$VERBOSITY" -ge "$1" ] || return; shift; error "$@"; }
+debug() { [ "$VERBOSITY" -ge "$1" ] || return 0; shift; error "$@"; }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
 prep_usage() {
