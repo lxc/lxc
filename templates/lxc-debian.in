@@ -20,7 +20,6 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-SUITE=${SUITE:-squeeze}
 MIRROR=${MIRROR:-http://cdn.debian.net/debian}
 
 configure_debian()
@@ -99,8 +98,8 @@ EOF
 
 cleanup()
 {
-    rm -rf $cache/partial-$SUITE-$arch
-    rm -rf $cache/rootfs-$SUITE-$arch
+    rm -rf $cache/partial-$release-$arch
+    rm -rf $cache/rootfs-$release-$arch
 }
 
 download_debian()
@@ -118,12 +117,13 @@ openssh-server
 
     cache=$1
     arch=$2
+    release=$3
 
     trap cleanup EXIT SIGHUP SIGINT SIGTERM
     # check the mini debian was not already downloaded
-    mkdir -p "$cache/partial-$SUITE-$arch"
+    mkdir -p "$cache/partial-$release-$arch"
     if [ $? -ne 0 ]; then
-        echo "Failed to create '$cache/partial-$SUITE-$arch' directory"
+        echo "Failed to create '$cache/partial-$release-$arch' directory"
         return 1
     fi
 
@@ -131,13 +131,13 @@ openssh-server
     echo "Downloading debian minimal ..."
     debootstrap --verbose --variant=minbase --arch=$arch \
         --include=$packages \
-        "$SUITE" "$cache/partial-$SUITE-$arch" $MIRROR
+        "$release" "$cache/partial-$release-$arch" $MIRROR
     if [ $? -ne 0 ]; then
         echo "Failed to download the rootfs, aborting."
         return 1
     fi
 
-    mv "$1/partial-$SUITE-$arch" "$1/rootfs-$SUITE-$arch"
+    mv "$1/partial-$release-$arch" "$1/rootfs-$release-$arch"
     echo "Download complete."
     trap EXIT
     trap SIGINT
@@ -152,11 +152,12 @@ copy_debian()
     cache=$1
     arch=$2
     rootfs=$3
+    release=$4
 
     # make a local copy of the minidebian
     echo -n "Copying rootfs to $rootfs..."
     mkdir -p $rootfs
-    rsync -Ha "$cache/rootfs-$SUITE-$arch"/ $rootfs/ || return 1
+    rsync -Ha "$cache/rootfs-$release-$arch"/ $rootfs/ || return 1
     return 0
 }
 
@@ -164,6 +165,7 @@ install_debian()
 {
     cache="@LOCALSTATEDIR@/cache/lxc/debian"
     rootfs=$1
+    release=$2
     mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
         flock -x 200
@@ -185,16 +187,16 @@ install_debian()
             fi
         fi
 
-        echo "Checking cache download in $cache/rootfs-$SUITE-$arch ... "
-        if [ ! -e "$cache/rootfs-$SUITE-$arch" ]; then
-            download_debian $cache $arch
+        echo "Checking cache download in $cache/rootfs-$release-$arch ... "
+        if [ ! -e "$cache/rootfs-$release-$arch" ]; then
+            download_debian $cache $arch $release
             if [ $? -ne 0 ]; then
                 echo "Failed to download 'debian base'"
                 return 1
             fi
         fi
 
-        copy_debian $cache $arch $rootfs
+        copy_debian $cache $arch $rootfs $release
         if [ $? -ne 0 ]; then
             echo "Failed to copy rootfs"
             return 1
@@ -279,12 +281,12 @@ clean()
 usage()
 {
     cat <<EOF
-$1 -h|--help -p|--path=<path> --clean
+$1 -h|--help -p|--path=<path> -r|--release=<suite> --clean
 EOF
     return 0
 }
 
-options=$(getopt -o hp:n:c -l help,rootfs:,path:,name:,clean -- "$@")
+options=$(getopt -o hp:n:r:c -l help,rootfs:,path:,name:,release:,clean -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
         exit 1
@@ -294,9 +296,10 @@ eval set -- "$options"
 while true
 do
     case "$1" in
-        -h|--help)      usage $0 && exit 0;;
+        -h|--help)      usage $0 && exit 1;;
         -p|--path)      path=$2; shift 2;;
         --rootfs)       rootfs=$2; shift 2;;
+        -r|--release)   release=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
         -c|--clean)     clean=$2; shift 2;;
         --)             shift 1; break ;;
@@ -325,6 +328,16 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
+current_release=`wget ${MIRROR}/dists/stable/Release -O - 2>/dev/null |\
+head |awk '/^Codename: (.*)$/ { print $2; }'`
+release=${release:-${current_release}}
+valid_releases=('squeeze' 'wheezy' 'jessie' 'sid')
+if [[ ! "${valid_releases[*]}" =~ (^|[^[:alpha:]])$release([^[:alpha:]]|$) ]]
+then
+    echo "Invalid release ${release}, valid ones are: ${valid_releases[*]}"
+    exit 1
+fi
+
 # detect rootfs
 config="$path/config"
 if [ -z "$rootfs" ]; then
@@ -336,7 +349,7 @@ if [ -z "$rootfs" ]; then
 fi
 
 
-install_debian $rootfs
+install_debian $rootfs $release
 if [ $? -ne 0 ]; then
     echo "failed to install debian"
     exit 1
