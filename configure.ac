@@ -505,6 +505,7 @@ AC_CONFIG_FILES([
 	templates/lxc-opensuse
 	templates/lxc-busybox
 	templates/lxc-fedora
+	templates/lxc-openmandriva
 	templates/lxc-oracle
 	templates/lxc-altlinux
 	templates/lxc-sshd
