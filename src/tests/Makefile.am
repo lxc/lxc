@@ -61,4 +61,5 @@ EXTRA_DIST = \
 	lxc-test-usernic \
 	snapshot.c \
 	concurrent.c \
-	may_control.c
+	may_control.c \
+	lxc-test-ubuntu
