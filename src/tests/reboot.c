@@ -30,7 +30,7 @@
 #include <linux/sched.h>
 #include <linux/reboot.h>
 
-int clone(int (*fn)(void *), void *child_stack, int flags, void *arg);
+int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ...);
 
 static int do_reboot(void *arg)
 {
