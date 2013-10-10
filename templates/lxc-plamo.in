@@ -123,6 +123,13 @@ install_plamo() {
         return 1
       fi
     fi
+    if [ ! -x /sbin/installpkg  ] ; then
+      echo "'installpkg' command is missing."
+      echo "Installing 'installpkg' command into $dlcache/sbin..."
+      ( cd $dlcache ; tar xpJf hdsetup-*.txz ; rm -rf tmp usr var )
+      sed -i "/ldconfig/!s@/sbin@$dlcache&@g" $dlcache/sbin/installpkg*
+      PATH=$dlcache/sbin:$PATH
+    fi
     echo "Installing packages to $rtcache..."
     if [ ! -d $rtcache ] ; then
       mkdir -p $rtcache
@@ -337,10 +344,6 @@ if [ $clean -eq 1 -a -z "$path" ] ; then
 fi
 if [ $hostarch == "x86" -a $arch == "x86_64" ] ; then
   echo "Can't create x86_64 container on x86."
-  exit 1
-fi
-if ! type installpkg ; then
-  echo "'installpkg' command is missing."
   exit 1
 fi
 if [ -z "$path" ] ; then
