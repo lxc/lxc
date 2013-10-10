@@ -427,7 +427,7 @@ if [ -z "$rootfs_path" ]; then
 fi
 
 config_path=$default_path/$name
-cache=$cache_base/$release/$profile
+cache=$cache_base/$release/$arch/$profile
 
 if [ ! -f $config_path/config ]; then
     echo "A container with that name exists, chose a different name"
