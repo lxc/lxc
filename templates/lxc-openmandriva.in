@@ -69,6 +69,7 @@ EOF
 
 populate_dev()
 {
+    echo -n "Create devices in /dev/"
     dev_path="${rootfs_path}/dev"
     rm -rf $dev_path
     mkdir -p $dev_path
@@ -89,22 +90,8 @@ populate_dev()
     mknod -m 600 ${dev_path}/initctl p
     mknod -m 666 ${dev_path}/ptmx c 5 2
     mkdir -m 755 ${dev_path}/net
-    mknod -m 666 ${dev_path}/net/tun	c 10 200
-    return 0
+    mknod -m 666 ${dev_path}/net/tun c 10 200
 
-}
-
-configure_openmandriva_systemd()
-{
-    unlink ${rootfs_path}/etc/systemd/system/default.target
-    chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/udev.service
-    chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/proc-sys-fs-binfmt_misc.automount
-    chroot ${rootfs_path} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
-    # copy host poweroff target as sigpwr target to make shutdown work
-    # see https://wiki.archlinux.org/index.php/Linux_Containers#Container_cannot_be_shutdown_if_using_systemd
-    cp /lib/systemd/system/poweroff.target ${rootfs_path}/lib/systemd/system/sigpwr.target
-    ( cd ${rootfs_path}/etc/systemd/system/getty.target.wants
-    for i in 1 2 3 4 ; do ln -sf ../getty\@.service getty@tty${i}.service; done )
 }
 
 set_guest_root_password()
@@ -112,7 +99,7 @@ set_guest_root_password()
     [[ -z "$root_password" ]] && return # pass is empty, abort
 
     echo -n " - setting guest root password.."
-    echo "root passwd is: $root_password"
+    echo -n "root passwd is: $root_password"
     echo "root:$root_password" | chroot "$rootfs_path" chpasswd
     echo "done."
 }
@@ -127,10 +114,9 @@ create_chroot_openmandriva()
         return 1
     fi
     # package list to install
-    PKG_LIST="basesystem-minimal locales locales-en initscripts urpmi cronie dhcp-client"
+    PKG_LIST="basesystem-minimal locales locales-en initscripts urpmi cronie dhcp-client kbd"
     # download a mini openmandriva into a cache
     echo "Downloading openmandriva minimal ..."
-    #URPMI="/usr/sbin/urpmi.addmedia --urpmi-root $INSTALL_ROOT main http://abf.rosalinux.ru/downloads/$distro/repository/$arch/main/release"
     URPMI="/usr/sbin/urpmi.addmedia --urpmi-root $INSTALL_ROOT main http://abf.rosalinux.ru/downloads/$release/repository/$arch/main/release"
     echo $URPMI
     URPMI_BASE="/usr/sbin/urpmi --no-suggests --no-verify-rpm --ignorearch --root $INSTALL_ROOT --urpmi-root $INSTALL_ROOT --auto $PKG_LIST"
@@ -163,8 +149,25 @@ copy_openmandriva()
 update_openmandriva()
 {
     echo "automated update in progress..."
-#    chroot $cache/rootfs urpmi --auto --auto-update
+    urpmi --root $cache/rootfs urpmi-root $cache/rootfs --auto --auto-update --ignorearch
 }
+
+configure_openmandriva_systemd()
+{
+    chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/proc-sys-fs-binfmt_misc.automount
+    chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/systemd-udevd.service
+    chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/systemd-udevd-control.socket
+    chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/systemd-udevd-kernel.socket
+    # remove numlock service
+    # KDGKBLED: Inappropriate ioctl for device
+    rm -f ${rootfs_path}/etc/systemd/system/getty@.service.d/enable-numlock.conf
+
+    unlink ${rootfs_path}/etc/systemd/system/default.target
+    chroot ${rootfs_path} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+    sed -i 's!ConditionPathExists=/dev/tty0!ConditionPathExists=|/dev/tty0\nConditionVirtualization=|lxc!' \
+	    ${rootfs_path}/lib/systemd/system/getty\@.service
+}
+
 
 install_openmandriva()
 {
