@@ -98,8 +98,8 @@ set_guest_root_password()
 {
     [[ -z "$root_password" ]] && return # pass is empty, abort
 
-    echo -n " - setting guest root password.."
-    echo -n "root passwd is: $root_password"
+    echo " - setting guest root password.."
+    echo "root passwd is: $root_password"
     echo "root:$root_password" | chroot "$rootfs_path" chpasswd
     echo "done."
 }
@@ -149,7 +149,7 @@ copy_openmandriva()
 update_openmandriva()
 {
     echo "automated update in progress..."
-    urpmi --root $cache/rootfs urpmi-root $cache/rootfs --auto --auto-update --ignorearch
+    urpmi --root $cache/rootfs --urpmi-root $cache/rootfs --auto --auto-update --ignorearch
 }
 
 configure_openmandriva_systemd()
