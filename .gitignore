@@ -94,6 +94,7 @@ src/tests/lxc-test-startone
 src/tests/lxc-usernic-test
 src/tests/lxc-test-may-control
 src/tests/lxc-test-reboot
+src/tests/lxc-test-list
 
 config/compile
 config/config.guess

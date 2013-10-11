@@ -69,6 +69,19 @@ static bool file_exists(char *f)
 	return stat(f, &statbuf) == 0;
 }
 
+static bool config_file_exists(const char *lxcpath, const char *cname)
+{
+	/* $lxcpath + '/' + $cname + '/config' + \0 */
+	int ret, len = strlen(lxcpath) + strlen(cname) + 9;
+	char *fname = alloca(len);
+
+	ret = snprintf(fname, len,  "%s/%s/config", lxcpath, cname);
+	if (ret < 0 || ret >= len)
+		return false;
+
+	return file_exists(fname);
+}
+
 /*
  * A few functions to help detect when a container creation failed.
  * If a container creation was killed partway through, then trying
@@ -2743,4 +2756,226 @@ int lxc_get_wait_states(const char **states)
 		for (i=0; i<MAX_STATE; i++)
 			states[i] = lxc_state2str(i);
 	return MAX_STATE;
+}
+
+
+static bool add_to_names(char ***names, char *cname, int pos)
+{
+	char **newnames = realloc(*names, (pos+1) * sizeof(char *));
+	if (!newnames) {
+		ERROR("Out of memory");
+		return false;
+	}
+	*names = newnames;
+	newnames[pos] = strdup(cname);
+	if (!newnames[pos])
+		return false;
+	return true;
+}
+
+static bool add_to_clist(struct lxc_container ***list, struct lxc_container *c, int pos)
+{
+	struct lxc_container **newlist = realloc(*list, (pos+1) * sizeof(struct lxc_container *));
+	if (!newlist) {
+		ERROR("Out of memory");
+		return false;
+	}
+
+	*list = newlist;
+	newlist[pos] = c;
+	return true;
+}
+
+/*
+ * These next two could probably be done smarter with reusing a common function
+ * with different iterators and tests...
+ */
+int list_defined_containers(const char *lxcpath, char ***names, struct lxc_container ***cret)
+{
+	DIR *dir;
+	int i, cfound = 0, nfound = 0;
+	struct dirent dirent, *direntp;
+	struct lxc_container *c;
+
+	if (!lxcpath)
+		lxcpath = default_lxc_path();
+
+	process_lock();
+	dir = opendir(lxcpath);
+	process_unlock();
+
+	if (!dir) {
+		SYSERROR("opendir on lxcpath");
+		return -1;
+	}
+
+	if (cret)
+		*cret = NULL;
+	if (names)
+		*names = NULL;
+
+	while (!readdir_r(dir, &dirent, &direntp)) {
+		if (!direntp)
+			break;
+		if (!strcmp(direntp->d_name, "."))
+			continue;
+		if (!strcmp(direntp->d_name, ".."))
+			continue;
+
+		if (!config_file_exists(lxcpath, direntp->d_name))
+			continue;
+
+		if (names) {
+			if (!add_to_names(names, direntp->d_name, cfound))
+				goto free_bad;
+		}
+		cfound++;
+
+		if (!cret) {
+			nfound++;
+			continue;
+		}
+
+		c = lxc_container_new(direntp->d_name, lxcpath);
+		if (!c) {
+			INFO("Container %s:%s has a config but could not be loaded",
+				lxcpath, direntp->d_name);
+			if (names)
+				free((*names)[cfound--]);
+			continue;
+		}
+		if (!lxcapi_is_defined(c)) {
+			INFO("Container %s:%s has a config but is not defined",
+				lxcpath, direntp->d_name);
+			if (names)
+				free((*names)[cfound--]);
+			lxc_container_put(c);
+			continue;
+		}
+
+		if (!add_to_clist(cret, c, nfound)) {
+			lxc_container_put(c);
+			goto free_bad;
+		}
+		nfound++;
+	}
+
+	process_lock();
+	closedir(dir);
+	process_unlock();
+	return nfound;
+
+free_bad:
+	if (names && *names) {
+		for (i=0; i<cfound; i++)
+			free((*names)[i]);
+		free(*names);
+	}
+	if (cret && *cret) {
+		for (i=0; i<nfound; i++)
+			lxc_container_put((*cret)[i]);
+		free(*cret);
+	}
+	process_lock();
+	closedir(dir);
+	process_unlock();
+	return -1;
+}
+
+int list_active_containers(const char *lxcpath, char ***names, struct lxc_container ***cret)
+{
+	int i, cfound = 0, nfound = 0;
+	int lxcpath_len;
+	char *line = NULL;
+	size_t len = 0;
+	struct lxc_container *c;
+
+	if (!lxcpath)
+		lxcpath = default_lxc_path();
+	lxcpath_len = strlen(lxcpath);
+
+	if (cret)
+		*cret = NULL;
+	if (names)
+		*names = NULL;
+
+	process_lock();
+	FILE *f = fopen("/proc/net/unix", "r");
+	process_unlock();
+	if (!f)
+		return -1;
+
+	while (getline(&line, &len, f) != -1) {
+		char *p = rindex(line, ' '), *p2;
+		if (!p)
+			continue;
+		p++;
+		if (*p != 0x40)
+			continue;
+		p++;
+		if (strncmp(p, lxcpath, lxcpath_len) != 0)
+			continue;
+		p += lxcpath_len;
+		while (*p == '/')
+			p++;
+
+		// Now p is the start of lxc_name
+		p2 = index(p, '/');
+		if (!p2 || strncmp(p2, "/command", 8) != 0)
+			continue;
+		*p2 = '\0';
+
+		if (names) {
+			if (!add_to_names(names, p, nfound))
+				goto free_bad;
+		}
+		cfound++;
+
+		if (!cret) {
+			nfound++;
+			continue;
+		}
+
+		c = lxc_container_new(p, lxcpath);
+		if (!c) {
+			INFO("Container %s:%s is running but could not be loaded",
+				lxcpath, p);
+			if (names)
+				free((*names)[cfound--]);
+			continue;
+		}
+
+		/*
+		 * If this is an anonymous container, then is_defined *can*
+		 * return false.  So we don't do that check.  Count on the
+		 * fact that the command socket exists.
+		 */
+
+		if (!add_to_clist(cret, c, nfound)) {
+			lxc_container_put(c);
+			goto free_bad;
+		}
+		nfound++;
+	}
+
+	process_lock();
+	fclose(f);
+	process_unlock();
+	return nfound;
+
+free_bad:
+	if (names && *names) {
+		for (i=0; i<cfound; i++)
+			free((*names)[i]);
+		free(*names);
+	}
+	if (cret && *cret) {
+		for (i=0; i<nfound; i++)
+			lxc_container_put((*cret)[i]);
+		free(*cret);
+	}
+	process_lock();
+	fclose(f);
+	process_unlock();
+	return -1;
 }

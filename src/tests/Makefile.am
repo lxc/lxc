@@ -21,6 +21,7 @@ lxc_test_snapshot_SOURCES = snapshot.c
 lxc_test_concurrent_SOURCES = concurrent.c
 lxc_test_may_control_SOURCES = may_control.c
 lxc_test_reboot_SOURCES = reboot.c
+lxc_test_list_SOURCES = list.c
 
 AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
@@ -34,7 +35,7 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-shutdowntest lxc-test-get_item lxc-test-getkeys lxc-test-lxcpath \
 	lxc-test-cgpath lxc-test-clonetest lxc-test-console lxc-usernic-test \
 	lxc-test-snapshot lxc-test-concurrent lxc-test-may-control \
-	lxc-test-reboot
+	lxc-test-reboot lxc-test-list
 
 bin_SCRIPTS = lxc-test-usernic
 
@@ -62,4 +63,5 @@ EXTRA_DIST = \
 	snapshot.c \
 	concurrent.c \
 	may_control.c \
-	lxc-test-ubuntu
+	lxc-test-ubuntu \
+	list.c

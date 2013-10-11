@@ -248,6 +248,27 @@ const char *lxc_get_default_lvm_vg(void);
 const char *lxc_get_default_zfs_root(void);
 const char *lxc_get_version(void);
 
+/*
+ * Get a list of defined containers in a lxcpath.
+ * @lxcpath: lxcpath under which to look.
+ * @names: if not null, then a list of container names will be returned here.
+ * @cret: if not null, then a list of lxc_containers will be returned here.
+ *
+ * Returns the number of containers found, or -1 on error.
+ */
+int list_defined_containers(const char *lxcpath, char ***names, struct lxc_container ***cret);
+
+/*
+ * Get a list of active containers in a lxcpath.  Note that some of these
+ * containers may not be "defined".
+ * @lxcpath: lxcpath under which to look
+ * @names: if not null, then a list of container names will be returned here.
+ * @cret: if not null, then a list of lxc_containers will be returned here.
+ *
+ * Returns the number of containers found, or -1 on error.
+ */
+int list_active_containers(const char *lxcpath, char ***names, struct lxc_container ***cret);
+
 #if 0
 char ** lxc_get_valid_keys();
 char ** lxc_get_valid_values(char *key);
