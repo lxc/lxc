@@ -901,8 +901,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	        </para>
                 -->
                 <para>
-	          <option>cgroup:mixed</option> (or
-	          <option>cgroup</option>):
+	          <option>cgroup:mixed</option> (or <option>cgroup</option>):
                   <filename>/sys/fs/cgroup</filename> を tmpfs でマウントし，そのコンテナの追加が行われた全ての階層構造に対するディレクトリを作製し，その cgroup の名前でその中にサブディレクトリを作製し，そのコンテナ自身の cgroup をそのディレクトリにバインドマウントします．コンテナは自身の cgroup ディレクトリに書き込みが可能ですが，親ディレクトリはリードオンリーで再マウントされているため書き込めません．
                 </para>
 	      </listitem>
@@ -957,8 +956,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	        </para>
                 -->
                 <para>
-	          <option>cgroup-full:mixed</option> (or
-	          <option>cgroup-full</option>):
+	          <option>cgroup-full:mixed</option> (or <option>cgroup-full</option>):
                   <filename>/sys/fs/cgroup</filename> を tmpfs でマウントし，そのコンテナの追加が行われた全ての階層構造に対するディレクトリを作製し，ホストからコンテナまでの階層構造を全てバインドマウントし，コンテナ自身の cgroup を除いてリードオンリーにします．<option>cgroup</option> と比べると，コンテナ自身の cgroup に至るまでの全てのパスが tmpfs の下層のシンプルなディレクトリとなり，コンテナ自身の cgroup の外ではリードオンリーになりますが，<filename>/sys/fs/cgroup/$hierarchy</filename> はホストの全ての cgroup 階層構造を含みます．これにより，コンテナにはかなりの情報が漏洩します．
                 </para>
 	      </listitem>
