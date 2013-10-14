@@ -166,25 +166,13 @@ install_debian()
     cache="@LOCALSTATEDIR@/cache/lxc/debian"
     rootfs=$1
     release=$2
+    arch=$3
     mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
         flock -x 200
         if [ $? -ne 0 ]; then
             echo "Cache repository is busy."
             return 1
-        fi
-
-        if which dpkg >/dev/null 2>&1 ; then
-            arch=$(dpkg --print-architecture)
-        else
-            arch=$(uname -m)
-            if [ "$arch" = "i686" ]; then
-                arch="i386"
-            elif [ "$arch" = "x86_64" ]; then
-                arch="amd64"
-            elif [ "$arch" = "armv7l" ]; then
-                arch="armhf"
-            fi
         fi
 
         echo "Checking cache download in $cache/rootfs-$release-$arch ... "
@@ -214,11 +202,13 @@ copy_configuration()
     path=$1
     rootfs=$2
     hostname=$3
+    arch=$4
 
     grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
     cat <<EOF >> $path/config
 lxc.tty = 4
 lxc.pts = 1024
+lxc.arch = $arch
 lxc.utsname = $hostname
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
@@ -281,17 +271,33 @@ clean()
 usage()
 {
     cat <<EOF
-$1 -h|--help -p|--path=<path> -r|--release=<suite> --clean
+$1 -h|--help -p|--path=<path> [-a|--arch] [-r|--release=<release>] [-c|--clean]
+release: the debian release (e.g. wheezy): defaults to current stable
+arch: the container architecture (e.g. amd64): defaults to host arch
 EOF
     return 0
 }
 
-options=$(getopt -o hp:n:r:c -l help,rootfs:,path:,name:,release:,clean -- "$@")
+options=$(getopt -o hp:n:a:r:c -l help,rootfs:,path:,name:,arch:,release:,clean -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
         exit 1
 fi
 eval set -- "$options"
+
+if which dpkg >/dev/null 2>&1 ; then
+    arch=$(dpkg --print-architecture)
+else
+    arch=$(uname -m)
+    if [ "$arch" = "i686" ]; then
+        arch="i386"
+    elif [ "$arch" = "x86_64" ]; then
+        arch="amd64"
+    elif [ "$arch" = "armv7l" ]; then
+        arch="armhf"
+    fi
+fi
+hostarch=$arch
 
 while true
 do
@@ -299,6 +305,7 @@ do
         -h|--help)      usage $0 && exit 1;;
         -p|--path)      path=$2; shift 2;;
         --rootfs)       rootfs=$2; shift 2;;
+        -a|--arch)      arch=$2; shift 2;;
         -r|--release)   release=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
         -c|--clean)     clean=$2; shift 2;;
@@ -310,6 +317,30 @@ done
 if [ ! -z "$clean" -a -z "$path" ]; then
     clean || exit 1
     exit 0
+fi
+
+if [ "$arch" == "i686" ]; then
+    arch=i386
+fi
+
+if [ "$arch" == "x86_64" ]; then
+    arch=amd64
+fi
+
+if [ $hostarch = "i386" -a $arch = "amd64" ]; then
+    echo "can't create $arch container on $hostarch"
+    exit 1
+fi
+
+if [ $hostarch = "armhf" -o $hostarch = "armel" ] && \
+   [ $arch != "armhf" -a $arch != "armel" ]; then
+    echo "can't create $arch container on $hostarch"
+    exit 1
+fi
+
+if [ $hostarch = "powerpc" -a $arch != "powerpc" ]; then
+    echo "can't create $arch container on $hostarch"
+    exit 1
 fi
 
 type debootstrap
@@ -349,7 +380,7 @@ if [ -z "$rootfs" ]; then
 fi
 
 
-install_debian $rootfs $release
+install_debian $rootfs $release $arch
 if [ $? -ne 0 ]; then
     echo "failed to install debian"
     exit 1
@@ -361,7 +392,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-copy_configuration $path $rootfs $name
+copy_configuration $path $rootfs $name $arch
 if [ $? -ne 0 ]; then
     echo "failed write configuration file"
     exit 1
