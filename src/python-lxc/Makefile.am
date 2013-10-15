@@ -24,4 +24,6 @@ EXTRA_DIST = \
 	setup.py \
 	lxc.c \
 	lxc/__init__.py \
-	examples/api_test.py
+	examples/api_test.py \
+	examples/pyconsole.py \
+	examples/pyconsole-vte.py
