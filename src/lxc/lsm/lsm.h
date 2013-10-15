@@ -31,18 +31,21 @@ struct lxc_conf;
 struct lsm_drv {
 	const char *name;
 
+	int   (*enabled)(void);
 	char *(*process_label_get)(pid_t pid);
 	int   (*process_label_set)(const char *label, int use_default);
 };
 
 #if HAVE_APPARMOR || HAVE_SELINUX
 void  lsm_init(void);
+int   lsm_enabled(void);
 char *lsm_process_label_get(pid_t pid);
 int   lsm_process_label_set(const char *label, int use_default);
 int   lsm_proc_mount(struct lxc_conf *lxc_conf);
 void  lsm_proc_unmount(struct lxc_conf *lxc_conf);
 #else
 static inline void  lsm_init(void) { }
+static inline int   lsm_enabled(void) { return 0; }
 static inline char *lsm_process_label_get(pid_t pid) { return NULL; }
 static inline int   lsm_process_label_set(char *label, int use_default) { return 0; }
 static inline int   lsm_proc_mount(struct lxc_conf *lxc_conf) { return 0; }

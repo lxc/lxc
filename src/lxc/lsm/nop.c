@@ -34,8 +34,14 @@ static int nop_process_label_set(const char *label, int use_default)
 	return 0;
 }
 
+static int nop_enabled(void)
+{
+	return 0;
+}
+
 static struct lsm_drv nop_drv = {
 	.name = "nop",
+	.enabled           = nop_enabled,
 	.process_label_get = nop_process_label_get,
 	.process_label_set = nop_process_label_set,
 };

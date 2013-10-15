@@ -62,6 +62,13 @@ void lsm_init(void)
 	INFO("Initialized LSM security driver %s", drv->name);
 }
 
+int lsm_enabled()
+{
+	if (drv)
+		return drv->enabled();
+	return 0;
+}
+
 char *lsm_process_label_get(pid_t pid)
 {
 	if (!drv) {

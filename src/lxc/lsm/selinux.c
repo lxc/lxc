@@ -89,6 +89,7 @@ static int selinux_process_label_set(const char *label, int use_default)
 
 static struct lsm_drv selinux_drv = {
 	.name = "SELinux",
+	.enabled           = is_selinux_enabled,
 	.process_label_get = selinux_process_label_get,
 	.process_label_set = selinux_process_label_set,
 };

@@ -167,6 +167,7 @@ static int apparmor_process_label_set(const char *label, int use_default)
 
 static struct lsm_drv apparmor_drv = {
 	.name = "AppArmor",
+	.enabled           = apparmor_enabled,
 	.process_label_get = apparmor_process_label_get,
 	.process_label_set = apparmor_process_label_set,
 };
