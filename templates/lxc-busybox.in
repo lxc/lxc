@@ -37,6 +37,7 @@ $rootfs/usr/bin \
 $rootfs/sbin \
 $rootfs/usr/sbin \
 $rootfs/proc \
+$rootfs/sys \
 $rootfs/mnt \
 $rootfs/tmp \
 $rootfs/var/log \
@@ -92,7 +93,6 @@ EOF
 
     # mount points
     cat <<EOF >> $rootfs/etc/fstab
-proc  /proc      proc    defaults     0      0
 shm   /dev/shm   tmpfs   defaults     0      0
 EOF
 
@@ -278,6 +278,8 @@ EOF
             echo "lxc.mount.entry = /$dir $dir none ro,bind 0 0" >> $path/config
         fi
     done
+    echo "lxc.mount.entry = /sys/kernel/security sys/kernel/security none ro,bind 0 0" >>$path/config
+    echo "lxc.mount.auto = proc:mixed sys" >>$path/config
 }
 
 usage()
