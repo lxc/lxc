@@ -800,10 +800,11 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct cgroup
 			}
 			r = mount(source, destination, default_mounts[i].fstype, default_mounts[i].flags, default_mounts[i].options);
 			saved_errno = errno;
+			if (r < 0)
+				SYSERROR("error mounting %s on %s", source, destination);
 			free(source);
 			free(destination);
 			if (r < 0) {
-				SYSERROR("error mounting %s", default_mounts[i].destination);
 				errno = saved_errno;
 				return -1;
 			}
