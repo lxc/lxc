@@ -1427,7 +1427,7 @@ static int setup_pts(int pts)
 	}
 
 	if (mount("devpts", "/dev/pts", "devpts", MS_MGC_VAL,
-		  "newinstance,ptmxmode=0666")) {
+		  "newinstance,ptmxmode=0666,mode=0620,gid=5")) {
 		SYSERROR("failed to mount a new instance of '/dev/pts'");
 		return -1;
 	}
