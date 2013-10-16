@@ -141,7 +141,7 @@ Options :\n\
   -e, --elevated-privileges\n\
                     Use elevated privileges (capabilities, cgroup\n\
                     restrictions) instead of those of the container.\n\
-                    WARNING: This may leak privleges into the container.\n\
+                    WARNING: This may leak privileges into the container.\n\
                     Use with care.\n\
   -a, --arch=ARCH   Use ARCH for program instead of container's own\n\
                     architecture.\n\
