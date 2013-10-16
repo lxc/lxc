@@ -110,9 +110,8 @@ EOF
     grep nameserver /etc/resolv.conf > "$rootfs/etc/resolv.conf"
 
     # configure the network using the dhcp
-    # note that lxc will set up lo interface
     cat <<EOF > $rootfs/etc/network/interfaces
-#auto lo
+auto lo
 iface lo inet loopback
 
 auto eth0
