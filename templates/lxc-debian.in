@@ -80,7 +80,10 @@ EOF
         chroot $rootfs locale-gen en_US.UTF-8 UTF-8
         chroot $rootfs update-locale LANG=en_US.UTF-8
     else
-        chroot $rootfs locale-gen $LANG $(echo $LANG | cut -d. -f2)
+        encoding=$(echo $LANG | cut -d. -f2)
+        chroot $rootfs perl -pe "s/^# (${LANG} ${encoding})/\1/" \
+            -i /etc/locale.gen 2>/dev/null
+        chroot $rootfs locale-gen $LANG $encoding
         chroot $rootfs update-locale LANG=$LANG
     fi
 
