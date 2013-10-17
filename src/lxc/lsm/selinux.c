@@ -61,13 +61,14 @@ static char *selinux_process_label_get(pid_t pid)
  *
  * @label   : the context to set
  * @default : use the default context if label is NULL
+ * @on_exec : the new context will take effect on exec(2) not immediately
  *
  * Returns 0 on success, < 0 on failure
  *
- * Notes: This relies on /proc being available. The new context
- * will take effect on the next exec(2).
+ * Notes: This relies on /proc being available.
  */
-static int selinux_process_label_set(const char *label, int use_default)
+static int selinux_process_label_set(const char *label, int use_default,
+				     int on_exec)
 {
 	if (!label) {
 		if (use_default)
@@ -78,12 +79,19 @@ static int selinux_process_label_set(const char *label, int use_default)
 	if (!strcmp(label, "unconfined_t"))
 		return 0;
 
-	if (setexeccon_raw((char *)label) < 0) {
-		SYSERROR("failed to set new SELinux context %s", label);
-		return -1;
+	if (on_exec) {
+		if (setexeccon_raw((char *)label) < 0) {
+			SYSERROR("failed to set new SELinux exec context %s", label);
+			return -1;
+		}
+	} else {
+		if (setcon_raw((char *)label) < 0) {
+			SYSERROR("failed to set new SELinux context %s", label);
+			return -1;
+		}
 	}
 
-	INFO("changed SELinux context to %s", label);
+	INFO("changed SELinux%s context to %s", on_exec ? " exec" : "", label);
 	return 0;
 }
 

@@ -130,13 +130,14 @@ static int apparmor_am_unconfined(void)
  *
  * @label   : the profile to set
  * @default : use the default profile if label is NULL
+ * @on_exec : the new profile will take effect on exec(2) not immediately
  *
  * Returns 0 on success, < 0 on failure
  *
- * Notes: This relies on /proc being available. The new context
- * will take effect immediately.
+ * Notes: This relies on /proc being available.
  */
-static int apparmor_process_label_set(const char *label, int use_default)
+static int apparmor_process_label_set(const char *label, int use_default,
+				      int on_exec)
 {
 	if (!apparmor_enabled())
 		return 0;
@@ -153,15 +154,19 @@ static int apparmor_process_label_set(const char *label, int use_default)
 		return 0;
 	}
 
-	/* XXX: instant instead of aa_change_onexec(), may be used by attach
-	 * when using a function that doesn't exec
-	 */
-	if (aa_change_profile(label) < 0) {
-		SYSERROR("failed to change apparmor profile to %s", label);
-		return -1;
+	if (on_exec) {
+		if (aa_change_onexec(label) < 0) {
+			SYSERROR("failed to change exec apparmor profile to %s", label);
+			return -1;
+		}
+	} else {
+		if (aa_change_profile(label) < 0) {
+			SYSERROR("failed to change apparmor profile to %s", label);
+			return -1;
+		}
 	}
 
-	INFO("changed apparmor profile to %s", label);
+	INFO("changed apparmor%s profile to %s", on_exec ? " exec" : "", label);
 	return 0;
 }
 

@@ -556,14 +556,10 @@ static int do_start(void *data)
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP))
 		return -1;
 
-	/* XXX: hmm apparmor switches right away since it uses
-	 * aa_change_profile() and not aa_change_onexec(). SELinux on the other
-	 * hand is going to transition on exec(). Is it bad to run the stuff
-	 * between here and exec() in the more privileged context?
-	 */
+	/* Set the label to change to when we exec(2) the container's init */
 	if (lsm_process_label_set(handler->conf->lsm_aa_profile ?
 				  handler->conf->lsm_aa_profile :
-				  handler->conf->lsm_se_context, 1) < 0)
+				  handler->conf->lsm_se_context, 1, 1) < 0)
 		goto out_warn_father;
 	lsm_proc_unmount(handler->conf);
 

@@ -33,7 +33,8 @@ struct lsm_drv {
 
 	int   (*enabled)(void);
 	char *(*process_label_get)(pid_t pid);
-	int   (*process_label_set)(const char *label, int use_default);
+	int   (*process_label_set)(const char *label, int use_default,
+				   int on_exec);
 };
 
 #if HAVE_APPARMOR || HAVE_SELINUX
@@ -41,7 +42,7 @@ void        lsm_init(void);
 int         lsm_enabled(void);
 const char *lsm_name(void);
 char       *lsm_process_label_get(pid_t pid);
-int         lsm_process_label_set(const char *label, int use_default);
+int         lsm_process_label_set(const char *label, int use_default, int on_exec);
 int         lsm_proc_mount(struct lxc_conf *lxc_conf);
 void        lsm_proc_unmount(struct lxc_conf *lxc_conf);
 #else
@@ -49,7 +50,7 @@ static inline void        lsm_init(void) { }
 static inline int         lsm_enabled(void) { return 0; }
 static inline const char *lsm_name(void) { return "none"; }
 static inline char       *lsm_process_label_get(pid_t pid) { return NULL; }
-static inline int         lsm_process_label_set(char *label, int use_default) { return 0; }
+static inline int         lsm_process_label_set(char *label, int use_default, int on_exec) { return 0; }
 static inline int         lsm_proc_mount(struct lxc_conf *lxc_conf) { return 0; }
 static inline void        lsm_proc_unmount(struct lxc_conf *lxc_conf) { }
 #endif

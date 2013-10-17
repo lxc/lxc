@@ -36,10 +36,11 @@ enum {
 	LXC_ATTACH_MOVE_TO_CGROUP        = 0x00000001,
 	LXC_ATTACH_DROP_CAPABILITIES     = 0x00000002,
 	LXC_ATTACH_SET_PERSONALITY       = 0x00000004,
-	LXC_ATTACH_APPARMOR              = 0x00000008,
+	LXC_ATTACH_LSM_EXEC              = 0x00000008,
 
 	/* the following are off by default */
 	LXC_ATTACH_REMOUNT_PROC_SYS      = 0x00010000,
+	LXC_ATTACH_LSM_NOW               = 0x00020000,
 
 	/* we have 16 bits for things that are on by default
 	 * and 16 bits that are off by default, that should
@@ -48,6 +49,8 @@ enum {
 	 */
 	LXC_ATTACH_DEFAULT               = 0x0000FFFF
 };
+
+#define LXC_ATTACH_LSM (LXC_ATTACH_LSM_EXEC | LXC_ATTACH_LSM_NOW)
 
 typedef struct lxc_attach_options_t lxc_attach_options_t;
 typedef int (*lxc_attach_exec_t)(void* payload);

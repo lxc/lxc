@@ -85,13 +85,13 @@ char *lsm_process_label_get(pid_t pid)
 	return drv->process_label_get(pid);
 }
 
-int lsm_process_label_set(const char *label, int use_default)
+int lsm_process_label_set(const char *label, int use_default, int on_exec)
 {
 	if (!drv) {
 		ERROR("LSM driver not inited");
 		return -1;
 	}
-	return drv->process_label_set(label, use_default);
+	return drv->process_label_set(label, use_default, on_exec);
 }
 
 /*

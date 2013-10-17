@@ -22,6 +22,7 @@ lxc_test_concurrent_SOURCES = concurrent.c
 lxc_test_may_control_SOURCES = may_control.c
 lxc_test_reboot_SOURCES = reboot.c
 lxc_test_list_SOURCES = list.c
+lxc_test_attach_SOURCES = attach.c
 
 AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
@@ -30,12 +31,20 @@ AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCINITDIR=\"$(LXCINITDIR)\" \
 	-DLXC_DEFAULT_CONFIG=\"$(LXC_DEFAULT_CONFIG)\"
 
+if ENABLE_APPARMOR
+AM_CFLAGS += -DHAVE_APPARMOR
+endif
+
+if ENABLE_SELINUX
+AM_CFLAGS += -DHAVE_SELINUX
+endif
+
 bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-destroytest lxc-test-saveconfig lxc-test-createtest \
 	lxc-test-shutdowntest lxc-test-get_item lxc-test-getkeys lxc-test-lxcpath \
 	lxc-test-cgpath lxc-test-clonetest lxc-test-console lxc-usernic-test \
 	lxc-test-snapshot lxc-test-concurrent lxc-test-may-control \
-	lxc-test-reboot lxc-test-list
+	lxc-test-reboot lxc-test-list lxc-test-attach
 
 bin_SCRIPTS = lxc-test-usernic
 

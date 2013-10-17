@@ -918,15 +918,6 @@ int attach_child_main(void* data)
 		rexit(-1);
 	}
 
-	/* load apparmor profile */
-	if ((options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_APPARMOR)) {
-		ret = lsm_process_label_set(init_ctx->lsm_label, 0);
-		if (ret < 0) {
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
-	}
-
 	/* A description of the purpose of this functionality is
 	 * provided in the lxc-attach(1) manual page. We have to
 	 * remount here and not in the parent process, otherwise
@@ -1023,6 +1014,17 @@ int attach_child_main(void* data)
 
 	shutdown(ipc_socket, SHUT_RDWR);
 	close(ipc_socket);
+
+	/* set new apparmor profile/selinux context */
+	if ((options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_LSM)) {
+		int on_exec;
+
+		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
+		ret = lsm_process_label_set(init_ctx->lsm_label, 0, on_exec);
+		if (ret < 0) {
+			rexit(-1);
+		}
+	}
 	lxc_proc_put_context_info(init_ctx);
 
 	/* The following is done after the communication socket is

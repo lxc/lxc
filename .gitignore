@@ -76,6 +76,7 @@ src/lxc/lxc-user-nic
 src/python-lxc/build/
 src/python-lxc/lxc/__pycache__/
 
+src/tests/lxc-test-attach
 src/tests/lxc-test-cgpath
 src/tests/lxc-test-clonetest
 src/tests/lxc-test-concurrent

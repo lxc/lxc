@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
 	if (remount_sys_proc)
 		attach_options.attach_flags |= LXC_ATTACH_REMOUNT_PROC_SYS;
 	if (elevated_privileges)
-		attach_options.attach_flags &= ~(LXC_ATTACH_MOVE_TO_CGROUP | LXC_ATTACH_DROP_CAPABILITIES | LXC_ATTACH_APPARMOR);
+		attach_options.attach_flags &= ~(LXC_ATTACH_MOVE_TO_CGROUP | LXC_ATTACH_DROP_CAPABILITIES | LXC_ATTACH_LSM_EXEC);
 	attach_options.namespaces = namespace_flags;
 	attach_options.personality = new_personality;
 	attach_options.env_policy = env_policy;
