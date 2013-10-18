@@ -2911,7 +2911,7 @@ int list_active_containers(const char *lxcpath, char ***names, struct lxc_contai
 		return -1;
 
 	while (getline(&line, &len, f) != -1) {
-		char *p = rindex(line, ' '), *p2;
+		char *p = strrchr(line, ' '), *p2;
 		if (!p)
 			continue;
 		p++;
