@@ -865,9 +865,7 @@ static int lvm_is_thin_volume(const char *path)
 	const char *lvscmd = "lvs --unbuffered --noheadings -o lv_attr %s 2>/dev/null";
 
 	len = strlen(lvscmd) + strlen(path) - 1;
-	cmd = malloc(len);
-	if (!cmd)
-		return -1;
+	cmd = alloca(len);
 
 	ret = snprintf(cmd, len, lvscmd, path);
 	if (ret < 0 || ret >= len)
@@ -882,8 +880,12 @@ static int lvm_is_thin_volume(const char *path)
 		return -1;
 	}
 
-	if (fgets(output, 12, f) == NULL)
+	if (fgets(output, 12, f) == NULL) {
+		process_lock();
+		(void) pclose(f);
+		process_unlock();
 		return -1;
+	}
 
 	process_lock();
 	ret = pclose(f);
