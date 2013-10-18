@@ -164,30 +164,32 @@ if orig.get_config_item("lxc.mount"):
                 line.replace(orig.get_config_item("lxc.rootfs"),
                              dest.get_config_item("lxc.rootfs"))
 
-                # Skip any line that's not a bind mount
                 fields = line.split()
+
+                # Skip invalid entries
                 if len(fields) < 4:
+                    continue
+
+                # Non-bind mounts are kept as-is
+                if "bind" not in fields[3]:
                     dest_fd.write("%s\n" % line)
                     continue
 
-                if fields[2] != "bind" and "bind" not in fields[3]:
+                # Bind mounts of virtual filesystems are also kept as-is
+                src_path = fields[0].split("/")
+                if len(src_path) > 1 and src_path[1] in ("proc", "sys"):
                     dest_fd.write("%s\n" % line)
                     continue
 
-                # Process any remaining line
+                # Skip invalid mount points
                 dest_mount = os.path.abspath(os.path.join("%s/rootfs/" % (
                                              dest_path), fields[1]))
-
-                if dest_mount == os.path.abspath("%s/rootfs/%s" % (
-                                                 dest_path, args.bdir)):
-
-                    dest_fd.write("%s\n" % line)
-                    continue
 
                 if "%s/rootfs/" % dest_path not in dest_mount:
                     print(_("Skipping mount entry '%s' as it's outside "
                             "of the container rootfs.") % line)
 
+                # Setup an overlay for anything remaining
                 overlay_dirs += [(fields[0], dest_mount)]
 
 # Generate pre-mount script
