@@ -2614,6 +2614,38 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, char *snapname, cha
 	return b;
 }
 
+static bool lxcapi_snapshot_destroy(struct lxc_container *c, char *snapname)
+{
+	int ret;
+	char clonelxcpath[MAXPATHLEN];
+	struct lxc_container *snap = NULL;
+
+	if (!c || !c->name || !c->config_path)
+		return false;
+
+	ret = snprintf(clonelxcpath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		goto err;
+
+	snap = lxc_container_new(snapname, clonelxcpath);
+	if (!snap || !lxcapi_is_defined(snap)) {
+		ERROR("Could not find snapshot %s", snapname);
+		goto err;
+	}
+
+	if (!lxcapi_destroy(snap)) {
+		ERROR("Could not destroy snapshot %s", snapname);
+		goto err;
+	}
+	lxc_container_put(snap);
+
+	return true;
+err:
+	if (snap)
+		lxc_container_put(snap);
+	return false;
+}
+
 static bool lxcapi_may_control(struct lxc_container *c)
 {
 	return lxc_try_cmd(c->name, c->config_path) == 0;
@@ -2738,6 +2770,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->snapshot = lxcapi_snapshot;
 	c->snapshot_list = lxcapi_snapshot_list;
 	c->snapshot_restore = lxcapi_snapshot_restore;
+	c->snapshot_destroy = lxcapi_snapshot_destroy;
 	c->may_control = lxcapi_may_control;
 
 	/* we'll allow the caller to update these later */

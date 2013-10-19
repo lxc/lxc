@@ -225,6 +225,13 @@ struct lxc_container {
 	bool (*snapshot_restore)(struct lxc_container *c, char *snapname, char *newname);
 
 	/*
+	 * snapshot_destroy() will destroy the given snapshot of c
+	 *
+	 * Returns true on success, false on failure.
+	 */
+	bool (*snapshot_destroy)(struct lxc_container *c, char *snapname);
+
+	/*
 	 * Return false if there is a control socket for the container monitor,
 	 * and the caller may not access it.  Return true otherwise.
 	 */
