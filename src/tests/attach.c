@@ -31,7 +31,6 @@
 	fprintf(stderr, "%s:%d " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
 } while (0)
 
-#if HAVE_APPARMOR || HAVE_SELINUX
 static const char *lsm_config_key = NULL;
 static const char *lsm_label = NULL;
 
@@ -53,6 +52,7 @@ static void test_lsm_detect(void)
 	}
 }
 
+#if HAVE_APPARMOR || HAVE_SELINUX
 static void test_attach_lsm_set_config(struct lxc_container *ct)
 {
 	ct->load_config(ct, NULL);
