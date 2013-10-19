@@ -108,5 +108,12 @@ int main(int argc, char *argv[])
 		c->stop(c);
 	}
 
-	exit(c->destroy(c) ? 0 : 1);
+	if (!c->destroy(c)) {
+		fprintf(stderr, "Destroying %s failed\n", my_args.name);
+		lxc_container_put(c);
+		exit(1);
+	}
+
+	lxc_container_put(c);
+	return 0;
 }
