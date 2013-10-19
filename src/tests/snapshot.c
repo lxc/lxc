@@ -118,13 +118,25 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
-	printf("All tests passed\n");
-	lxc_container_put(c);
-	exit(0);
+	if (!c->snapshot_destroy(c, "snap0")) {
+		fprintf(stderr, "%s: %d: failed to destroy snapshot\n", __FILE__, __LINE__);
+		goto err;
+	}
 
+	if (!c->destroy(c)) {
+		fprintf(stderr, "%s: %d: failed to destroy container\n", __FILE__, __LINE__);
+		goto err;
+	}
+
+	lxc_container_put(c);
+	try_to_remove();
+
+	printf("All tests passed\n");
+	exit(0);
 err:
 	lxc_container_put(c);
-	fprintf(stderr, "Exiting on error\n");
 	try_to_remove();
+
+	fprintf(stderr, "Exiting on error\n");
 	exit(1);
 }
