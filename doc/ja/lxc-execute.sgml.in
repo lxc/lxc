@@ -97,7 +97,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       process, <command>lxc-init</command>.
       This lxc-init after launching  the specified command,
       will wait for its end and all other reparented processes.
-      (that allows to support daemons in the container).
+      (to support daemons in the container).
       In other words, in the
       container, <command>lxc-init</command> has the pid 1 and the
       first process of the application has the pid 2.

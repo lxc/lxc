@@ -69,7 +69,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <para>
       <!--
       <command>lxc-create</command> creates a system object where is
-      stored the configuration informations and where can be stored
+      stored the configuration information and where can be stored
       user information. The identifier <replaceable>name</replaceable>
       is used to specify the container to be used with the different
       lxc commands.
@@ -88,7 +88,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       The object is the definition of the different resources an
       application can use or can see. The more the configuration file
-      contains informations, the more the container is isolated and
+      contains information, the more the container is isolated and
       the more the application is jailed.
       -->
       オブジェクトは，アプリケーションが使用したり，参照したりする様々なリソースの定義です．設定ファイルがより多くの情報を持つほど，コンテナやアプリケーションはより隔離されたものになります．

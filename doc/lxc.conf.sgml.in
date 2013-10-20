@@ -104,7 +104,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refsect2>
       <title>Architecture</title>
       <para>
-	Allows to set the architecture for the container. For example,
+	Allows one to set the architecture for the container. For example,
 	set a 32bits architecture for a container running 32bits
 	binaries on a 64bits host. This fixes the container scripts
 	which rely on the architecture to do some work like
@@ -158,7 +158,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refsect2>
       <title>Stop signal</title>
       <para>
-    Allows to specify signal name or number, sent by lxc-stop to
+    Allows one to specify signal name or number, sent by lxc-stop to
     shutdown the container. Different init systems could use
     different signals to perform clean shutdown sequence. Option
     allows signal to be specified in kill(1) fashion, e.g.

@@ -736,7 +736,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 	};
 
 	if (req->cmd < 0 || req->cmd >= LXC_CMD_MAX) {
-		ERROR("bad cmd %d recieved", req->cmd);
+		ERROR("bad cmd %d received", req->cmd);
 		return -1;
 	}
 	return cb[req->cmd](fd, req, handler);

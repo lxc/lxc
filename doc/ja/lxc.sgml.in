@@ -531,7 +531,7 @@ rootfs
 	process, <command>lxc-init</command>.
 	This lxc-init after launching  the specified command,
 	will wait for its end and all other reparented processes.
-        (that allows to support daemons in the container).
+        (to support daemons in the container).
 	In other words, in the
 	container, <command>lxc-init</command> has the pid 1 and the
 	first process of the application has the pid 2.
@@ -641,7 +641,7 @@ rootfs
         When there are a lot of containers, it is hard to follow
       what has been created or destroyed, what is running or what are
       the pids running into a specific container. For this reason, the
-      following commands may be usefull:
+      following commands may be useful:
 	<programlisting>
 	  lxc-ls
 	  lxc-ps &#045;&#045;name foo
@@ -704,7 +704,7 @@ rootfs
 
       <para>
         <!--
-	<command>lxc-info</command> gives informations for a specific
+	<command>lxc-info</command> gives information for a specific
 	container, at present time, only the state of the container is
 	displayed.
         -->
@@ -757,7 +757,7 @@ rootfs
 
       <para>
         <!--
-	The following command will display the socket informations for
+	The following command will display the socket information for
 	the container 'foo'.
 	<programlisting>
 	  lxc-netstat -n foo -tano

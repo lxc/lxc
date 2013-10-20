@@ -115,7 +115,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  <para>
 	    Specify the tty number to connect to or 0 for the console. If not
 	    specified the next available tty number will be automatically
-	    choosen by the container.
+	    chosen by the container.
 	  </para>
 	</listitem>
       </varlistentry>

@@ -140,7 +140,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Specify the tty number to connect to or 0 for the console. If not
 	    specified the next available tty number will be automatically
-	    choosen by the container.
+	    chosen by the container.
             -->
             接続する tty の番号か，コンソールに接続するために 0 を指定します．指定しない場合は，次に利用可能な tty 番号を自動的にコンテナが選択します．
 	  </para>

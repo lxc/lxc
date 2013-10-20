@@ -126,7 +126,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <title><!-- Architecture -->アーキテクチャ</title>
       <para>
         <!--
-	Allows to set the architecture for the container. For example,
+	Allows one to set the architecture for the container. For example,
 	set a 32bits architecture for a container running 32bits
 	binaries on a 64bits host. That fixes the container scripts
 	which rely on the architecture to do some work like
@@ -199,7 +199,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <title><!-- Stop signal -->停止時のシグナル</title>
       <para>
         <!--
-    Allows to specify signal name or number, sent by lxc-stop to
+    Allows one to specify signal name or number, sent by lxc-stop to
     shutdown the container. Different init systems could use
     different signals to perform clean shutdown sequence. Option
     allows signal to be specified in kill(1) fashion, e.g.

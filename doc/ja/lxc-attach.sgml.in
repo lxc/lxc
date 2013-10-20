@@ -340,7 +340,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <replaceable>/sys</replaceable> filesystems contain information
       about some quantities that are affected by namespaces, such as
       the directories named after process ids in
-      <replaceable>/proc</replaceable> or the network interface infromation
+      <replaceable>/proc</replaceable> or the network interface information
       in <replaceable>/sys/class/net</replaceable>. The namespace of the
       process mounting the pseudo-filesystems determines what information
       is shown, <emphasis>not</emphasis> the namespace of the process

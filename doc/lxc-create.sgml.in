@@ -62,7 +62,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
     <para>
       <command>lxc-create</command> creates a system object where is
-      stored the configuration informations and where can be stored
+      stored the configuration information and where can be stored
       user information. The identifier <replaceable>name</replaceable>
       is used to specify the container to be used with the different
       lxc commands.
@@ -75,7 +75,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <para>
       The object is the definition of the different resources an
       application can use or can see. The more the configuration file
-      contains informations, the more the container is isolated and
+      contains information, the more the container is isolated and
       the more the application is jailed.
     </para>
 

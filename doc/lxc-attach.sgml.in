@@ -271,7 +271,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <replaceable>/sys</replaceable> filesystems contain information
       about some quantities that are affected by namespaces, such as
       the directories named after process ids in
-      <replaceable>/proc</replaceable> or the network interface infromation
+      <replaceable>/proc</replaceable> or the network interface information
       in <replaceable>/sys/class/net</replaceable>. The namespace of the
       process mounting the pseudo-filesystems determines what information
       is shown, <emphasis>not</emphasis> the namespace of the process
