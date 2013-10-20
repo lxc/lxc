@@ -24,14 +24,9 @@ Using lxc:
 Downloading the current source code:
 
   Source for the latest released version can always be downloaded from
-  http://lxc.sourceforge.net/download/lxc
+  http://linuxcontainers.org/downloads/
 
   You can browse the up to the minute source code and change history online.
-  http://lxc.git.sourceforge.net
-
-  For an even more bleeding edge experience, you may want to look at the
-  staging branch where all changes aimed at the next release land before
-  getting pulled into the master branch.
   http://github.com/lxc/lxc
 
   For detailed build instruction refer to INSTALL and man lxc man page

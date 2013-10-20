@@ -7,6 +7,6 @@ rootfsmountdir=@LXCROOTFSMOUNT@
 Name: lxc
 Description: linux container tools
 Version: @PACKAGE_VERSION@
-URL: http://lxc.sourceforge.net
+URL: http://linuxcontainers.org
 Libs: -L${libdir} -llxc -lutil
 Cflags: -I${includedir}

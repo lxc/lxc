@@ -23,8 +23,8 @@
 Name: @PACKAGE@
 Version: @VERSION@
 Release: 1%{?dist}
-URL: http://lxc.sourceforge.net
-Source: http://dl.sourceforge.net/sourceforge/%{name}/%{name}-%{version}.tar.gz
+URL: http://linuxcontainers.org
+Source: http://linuxcontainers.org/downloads/%{name}-%{version}.tar.gz
 Summary: %{name} : Linux Container
 Group: Applications/System
 License: LGPL
