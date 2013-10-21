@@ -237,13 +237,14 @@ static char *copy_global_config_value(char *p)
 }
 
 #define DEFAULT_VG "lxc"
+#define DEFAULT_THIN_POOL "lxc"
 #define DEFAULT_ZFSROOT "lxc"
 
 const char *lxc_global_config_value(const char *option_name)
 {
 	static const char *options[][2] = {
 		{ "lvm_vg",          DEFAULT_VG      },
-		{ "lvm_thin_pool",   NULL            },
+		{ "lvm_thin_pool",   DEFAULT_THIN_POOL },
 		{ "zfsroot",         DEFAULT_ZFSROOT },
 		{ "lxcpath",         LXCPATH         },
 		{ "cgroup.pattern",  DEFAULT_CGROUP_PATTERN },

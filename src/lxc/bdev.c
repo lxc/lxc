@@ -811,54 +811,7 @@ static int lvm_umount(struct bdev *bdev)
 	return umount(bdev->dest);
 }
 
-/*
- * path must be '/dev/$vg/$lv', $vg must be an existing VG, and $lv must
- * not yet exist.  This function will attempt to create /dev/$vg/$lv of
- * size $size.
- */
-static int do_lvm_create(const char *path, unsigned long size, const char *thinpool)
-{
-	int ret, pid;
-	char sz[24], *pathdup, *vg, *lv;
-
-	if ((pid = fork()) < 0) {
-		SYSERROR("failed fork");
-		return -1;
-	}
-	if (pid > 0)
-		return wait_for_pid(pid);
-
-	process_unlock(); // we're no longer sharing
-	// lvcreate default size is in M, not bytes.
-	ret = snprintf(sz, 24, "%lu", size/1000000);
-	if (ret < 0 || ret >= 24)
-		exit(1);
-
-	pathdup = strdup(path);
-	if (!pathdup)
-		exit(1);
-	lv = strrchr(pathdup, '/');
-	if (!lv) {
-		free(pathdup);
-		exit(1);
-	}
-	*lv = '\0';
-	lv++;
-	vg = strrchr(pathdup, '/');
-	if (!vg)
-		exit(1);
-	vg++;
-	if (!thinpool) {
-	    execlp("lvcreate", "lvcreate", "-L", sz, vg, "-n", lv, (char *)NULL);
-	} else {
-	    execlp("lvcreate", "lvcreate", "--thinpool", thinpool, "-V", sz, vg, "-n", lv, (char *)NULL);
-	}
-	free(pathdup);
-	exit(1);
-}
-
-static int lvm_is_thin_volume(const char *path)
-{
+static int lvm_compare_lv_attr(const char *path, int pos, const char expected) {
 	FILE *f;
 	int ret, len, start=0;
 	char *cmd, output[12];
@@ -899,10 +852,91 @@ static int lvm_is_thin_volume(const char *path)
 	len = strlen(output);
 	while(start < len && output[start] == ' ') start++;
 
-	if (start + 6 < len && output[start + 6] == 't')
+	if (start + pos < len && output[start + pos] == expected)
 		return 1;
 
 	return 0;
+}
+
+static int lvm_is_thin_volume(const char *path)
+{
+	return lvm_compare_lv_attr(path, 6, 't');
+}
+
+static int lvm_is_thin_pool(const char *path)
+{
+	return lvm_compare_lv_attr(path, 0, 't');
+}
+
+/*
+ * path must be '/dev/$vg/$lv', $vg must be an existing VG, and $lv must not
+ * yet exist.  This function will attempt to create /dev/$vg/$lv of size
+ * $size. If thinpool is specified, we'll check for it's existence and if it's
+ * a valid thin pool, and if so, we'll create the requested lv from that thin
+ * pool.
+ */
+static int do_lvm_create(const char *path, unsigned long size, const char *thinpool)
+{
+	int ret, pid, len;
+	char sz[24], *pathdup, *vg, *lv, *tp;
+
+	if ((pid = fork()) < 0) {
+		SYSERROR("failed fork");
+		return -1;
+	}
+	if (pid > 0)
+		return wait_for_pid(pid);
+
+	process_unlock(); // we're no longer sharing
+	// lvcreate default size is in M, not bytes.
+	ret = snprintf(sz, 24, "%lu", size/1000000);
+	if (ret < 0 || ret >= 24)
+		exit(1);
+
+	pathdup = strdup(path);
+	if (!pathdup)
+		exit(1);
+
+	lv = strrchr(pathdup, '/');
+	if (!lv) {
+		free(pathdup);
+		exit(1);
+	}
+	*lv = '\0';
+	lv++;
+
+	vg = strrchr(pathdup, '/');
+	if (!vg)
+		exit(1);
+	vg++;
+
+	if (thinpool) {
+		len = strlen(pathdup) + strlen(thinpool) + 2;
+		tp = alloca(len);
+
+		INFO("checking for thin pool at path: %s", tp);
+		ret = snprintf(tp, len, "%s/%s", pathdup, thinpool);
+		if (ret < 0 || ret >= len)
+			return -1;
+
+		ret = lvm_is_thin_pool(tp);
+		INFO("got %d for thin pool at path: %s", ret, tp);
+		if (ret < 0)
+			return ret;
+
+		if (!ret)
+			thinpool = NULL;
+	}
+
+
+	if (!thinpool) {
+	    execlp("lvcreate", "lvcreate", "-L", sz, vg, "-n", lv, (char *)NULL);
+	} else {
+	    execlp("lvcreate", "lvcreate", "--thinpool", thinpool, "-V", sz, vg, "-n", lv, (char *)NULL);
+	}
+
+	free(pathdup);
+	exit(1);
 }
 
 static int lvm_snapshot(const char *orig, const char *path, unsigned long size)
@@ -1028,7 +1062,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 			return -1;
 		}
 	} else {
-		if (do_lvm_create(new->src, size, NULL) < 0) {
+		if (do_lvm_create(new->src, size, default_lvm_thin_pool()) < 0) {
 			ERROR("Error creating new lvm blockdev");
 			return -1;
 		}
@@ -1073,6 +1107,8 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 		vg = default_lvm_vg();
 
 	thinpool = specs->u.lvm.thinpool;
+	if (!thinpool)
+		thinpool = default_lvm_thin_pool();
 
 	/* /dev/$vg/$lv */
 	if (specs->u.lvm.lv)
@@ -1091,7 +1127,6 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	if (!sz)
 		sz = DEFAULT_FS_SIZE;
 
-	INFO("Error creating new lvm blockdev %s size %lu", bdev->src, sz);
 	if (do_lvm_create(bdev->src, sz, thinpool) < 0) {
 		ERROR("Error creating new lvm blockdev %s size %lu", bdev->src, sz);
 		return -1;
