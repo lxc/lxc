@@ -813,7 +813,7 @@ static int lvm_umount(struct bdev *bdev)
 
 static int lvm_compare_lv_attr(const char *path, int pos, const char expected) {
 	FILE *f;
-	int ret, len, start=0;
+	int ret, len, status, start=0;
 	char *cmd, output[12];
 	const char *lvscmd = "lvs --unbuffered --noheadings -o lv_attr %s 2>/dev/null";
 
@@ -833,21 +833,16 @@ static int lvm_compare_lv_attr(const char *path, int pos, const char expected) {
 		return -1;
 	}
 
-	if (fgets(output, 12, f) == NULL) {
-		process_lock();
-		(void) pclose(f);
-		process_unlock();
-		return -1;
-	}
+	ret = fgets(output, 12, f) == NULL;
 
 	process_lock();
-	ret = pclose(f);
+	status = pclose(f);
 	process_unlock();
 
-	if (!WIFEXITED(ret)) {
-		SYSERROR("error executing lvs");
-		return -1;
-	}
+	if (ret || WEXITSTATUS(status))
+		// Assume either vg or lvs do not exist, default
+		// comparison to false.
+		return 0;
 
 	len = strlen(output);
 	while(start < len && output[start] == ' ') start++;
