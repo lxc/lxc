@@ -132,7 +132,7 @@ Options :\n\
   --vgname=VG        Use LVM vg called VG\n\
                      (Default: lxc))\n\
   --thinpool=TP      Use LVM thin pool called TP\n\
-                     (Default: none))\n\
+                     (Default: lxc))\n\
   --fstype=TYPE      Create fstype TYPE\n\
                      (Default: ext3))\n\
   --fssize=SIZE      Create filesystem of size SIZE\n\

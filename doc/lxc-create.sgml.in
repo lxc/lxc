@@ -145,7 +145,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    rather than the default, <filename>lxc</filename>.
 	    <replaceable>--thinpool thinpool1</replaceable> will create the
 	    LV as a thin-provisioned volume in the pool named
-	    <filename>thinpool1</filename>.
+	    <filename>thinpool1</filename> rather than the
+	    default, <filename>lxc</filename>.
 	    <replaceable>--fstype FSTYPE</replaceable> will create an FSTYPE
 	    filesystem on the LV, rather than the default, which is ext4.
 	    <replaceable>--fssize SIZE</replaceable> will create a LV (and
