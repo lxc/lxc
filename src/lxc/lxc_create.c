@@ -233,9 +233,9 @@ int main(int argc, char *argv[])
 			spec.u.lvm.fssize = my_args.fssize;
 	} else if (strcmp(my_args.bdevtype, "loop") == 0) {
 		if (my_args.fstype)
-			spec.u.lvm.fstype = my_args.fstype;
+			spec.u.loop.fstype = my_args.fstype;
 		if (my_args.fssize)
-			spec.u.lvm.fssize = my_args.fssize;
+			spec.u.loop.fssize = my_args.fssize;
 	} else if (my_args.dir) {
 		ERROR("--dir is not yet supported");
 		exit(1);
