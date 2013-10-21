@@ -153,7 +153,6 @@ int main(int argc, char *argv[])
 	};
 	FILE *pid_fp = NULL;
 	struct lxc_container *c;
-	char *anonpath;
 
 	lxc_list_init(&defines);
 
@@ -172,8 +171,8 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return err;
 
-	anonpath = alloca(strlen(LXCPATH) + 6);
-	sprintf(anonpath, "%s_anon", LXCPATH);
+	const char *lxcpath = my_args.lxcpath[0];
+
 	/*
 	 * rcfile possibilities:
 	 * 1. rcfile from random path specified in cli option
@@ -183,7 +182,7 @@ int main(int argc, char *argv[])
 	/* rcfile is specified in the cli option */
 	if (my_args.rcfile) {
 		rcfile = (char *)my_args.rcfile;
-		c = lxc_container_new(my_args.name, anonpath);
+		c = lxc_container_new(my_args.name, lxcpath);
 		if (!c) {
 			ERROR("Failed to create lxc_container");
 			return err;
@@ -195,7 +194,6 @@ int main(int argc, char *argv[])
 		}
 	} else {
 		int rc;
-		const char *lxcpath = my_args.lxcpath[0];
 
 		rc = asprintf(&rcfile, "%s/%s/config", lxcpath, my_args.name);
 		if (rc == -1) {
@@ -208,7 +206,6 @@ int main(int argc, char *argv[])
 		if (access(rcfile, F_OK)) {
 			free(rcfile);
 			rcfile = NULL;
-			lxcpath = anonpath;
 		}
 		c = lxc_container_new(my_args.name, lxcpath);
 		if (!c) {
