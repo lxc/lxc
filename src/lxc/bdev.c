@@ -893,18 +893,15 @@ static int do_lvm_create(const char *path, unsigned long size, const char *thinp
 		exit(1);
 
 	lv = strrchr(pathdup, '/');
-	if (!lv) {
-		free(pathdup);
+	if (!lv)
 		exit(1);
-	}
+
 	*lv = '\0';
 	lv++;
 
 	vg = strrchr(pathdup, '/');
-	if (!vg) {
-		free(pathdup);
+	if (!vg)
 		exit(1);
-	}
 	vg++;
 
 	if (thinpool) {
@@ -912,29 +909,24 @@ static int do_lvm_create(const char *path, unsigned long size, const char *thinp
 		tp = alloca(len);
 
 		ret = snprintf(tp, len, "%s/%s", pathdup, thinpool);
-		if (ret < 0 || ret >= len) {
-			free(pathdup);
+		if (ret < 0 || ret >= len)
 			exit(1);
-		}
 
 		ret = lvm_is_thin_pool(tp);
 		INFO("got %d for thin pool at path: %s", ret, tp);
-		if (ret < 0) {
-			free(pathdup);
+		if (ret < 0)
 			exit(1);
-		}
 
 		if (!ret)
 			tp = NULL;
 	}
 
-	if (!tp) {
+	if (!tp)
 	    execlp("lvcreate", "lvcreate", "-L", sz, vg, "-n", lv, (char *)NULL);
-	} else {
+	else
 	    execlp("lvcreate", "lvcreate", "--thinpool", tp, "-V", sz, vg, "-n", lv, (char *)NULL);
-	}
 
-	free(pathdup);
+	SYSERROR("execlp");
 	exit(1);
 }
 
