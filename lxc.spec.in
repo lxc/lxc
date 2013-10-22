@@ -20,59 +20,62 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+%global with_python %{?_with_python: 1} %{?!_with_python: 0}
+%global with_lua %{?_with_lua: 1} %{?!_with_lua: 0}
+
 Name: @PACKAGE@
 Version: @VERSION@
 Release: 1%{?dist}
 URL: http://linuxcontainers.org
 Source: http://linuxcontainers.org/downloads/%{name}-%{version}.tar.gz
-Summary: %{name} : Linux Container
+Summary: Linux Containers userspace tools
 Group: Applications/System
-License: LGPL
+License: LGPLv2+
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
-Requires: libcap openssl rsync
+Requires: openssl rsync
 BuildRequires: libcap libcap-devel docbook2X
 
-%define with_python %{?_with_python: 1} %{?!_with_python: 0}
 %if %{with_python}
 Requires: python3
 BuildRequires: python3-devel
 %endif
 
-%define with_lua %{?_with_lua: 1} %{?!_with_lua: 0}
-%if %{with_lua}
-Requires: lua-filesystem
-BuildRequires: lua-devel
-%endif
-
 %description
+Containers are insulated areas inside a system, which have their own namespace
+for filesystem, network, PID, IPC, CPU and memory allocation and which can be 
+created using the Control Group and Namespace features included in the Linux  
+kernel.
 
-The package "%{name}" provides the command lines to create and manage
-containers.  It contains a full featured container with the isolation
-/ virtualization of the pids, the ipc, the utsname, the mount points,
-/proc, /sys, the network and it takes into account the control groups.
-It is very light, flexible, and provides a set of tools around the
-container like the monitoring with asynchronous events notification,
-or the freeze of the container. This package is useful to create
-Virtual Private Server, or to run isolated applications like bash or
-sshd.
+This package provides the lxc-* tools, which can be used to start a single
+daemon in a container, or to boot an entire "containerized" system, and to
+manage and debug your containers.
 
-%package        libs
-Summary:        runtime library files for %{name}
-Group:          System Environment/Libraries
-
-%description    libs
+%package	libs
+Summary:	Shared library files for %{name}
+Group:		System Environment/Libraries
+%description	libs
 The %{name}-libs package contains libraries for running %{name} applications.
 
-%package devel
-Summary: development library for %{name}
-Group: Development/Libraries
-
-%description devel
+%package	devel
+Summary:	Development library for %{name}
+Group:		Development/Libraries
+Requires:	%{name} = %{version}-%{release}, pkgconfig
+%description	devel
 The %{name}-devel package contains header files and library needed for
-development of the linux containers.
+development of the Linux containers.
+
+%if %{with_lua}
+%package	lua
+Summary:	Lua bindings for %{name}
+Group:		System Environment/Libraries
+Requires:	lua-filesystem
+BuildRequires:	lua-devel
+%description	lua
+The %{name}-lua package contains %{name} bindings for lua.
+%endif
 
 %prep
-%setup
+%setup -q
 %build
 PATH=$PATH:/usr/sbin:/sbin %configure $args \
 %if %{with_lua}
@@ -93,6 +96,8 @@ find %{buildroot} -type f -name '*.la' -exec rm -f {} ';'
 rm -rf %{buildroot}
 
 %post
+%post   libs -p /sbin/ldconfig
+%postun libs -p /sbin/ldconfig
 
 %files
 %defattr(-,root,root)
@@ -106,24 +111,32 @@ rm -rf %{buildroot}
 %attr(4111,root,root) %{_bindir}/lxc-execute
 %attr(4111,root,root) %{_bindir}/lxc-checkpoint
 %attr(4111,root,root) %{_bindir}/lxc-restart
-%{_mandir}/*
+%{_mandir}/man1/lxc*
+%{_mandir}/man5/lxc*
+%{_mandir}/man7/lxc*
+%{_mandir}/ja/man1/lxc*
+%{_mandir}/ja/man5/lxc*
+%{_mandir}/ja/man7/lxc*
 %{_datadir}/doc/*
 %{_datadir}/lxc/*
-%{_sysconfdir}/lxc/*
+%config(noreplace) %{_sysconfdir}/lxc/*
 
 %files libs
 %defattr(-,root,root)
 %{_libdir}/*.so.*
 %{_libdir}/%{name}
-%if %{with_lua}
-%{_datadir}/lua
-%{_libdir}/lua
-%endif
 %if %{with_python}
 %{_libdir}/python*
 %endif
 %{_localstatedir}/*
 %attr(4555,root,root) %{_libexecdir}/%{name}/lxc-init
+
+%if %{with_lua}
+%files lua
+%defattr(-,root,root)
+%{_datadir}/lua
+%{_libdir}/lua
+%endif
 
 %files devel
 %defattr(-,root,root)
@@ -132,29 +145,33 @@ rm -rf %{buildroot}
 %{_libdir}/pkgconfig/*
 
 %changelog
-* Mon Sep 10 2012 Dwight Engen <dwight.engen@oracle.com> - Version 0.8.0
+* Tue Oct 22 2013 Dwight Engen <dwight.engen@oracle.com> - 1.0.0-0.1.alpha2
+- fix some rpmlint warnings/errors
+- split lua bits into seperate package
+
+* Mon Sep 10 2012 Dwight Engen <dwight.engen@oracle.com> - 0.8.0
 - fix lxc-init moved to libexec
 - .pc moved to _libdir
 - package template files /usr/share/lxc/templates
 
-* Thu Sep  8 2011 Greg Kurz <gkurz@fr.ibm.com> - Version 0.7.5.1
+* Thu Sep  8 2011 Greg Kurz <gkurz@fr.ibm.com> - 0.7.5.1
 - fix installed files for rpmbuild
 - introduce lxc-libs package
 
-* Fri Jul 23 2010 Daniel Lezcano <dlezcano@fr.ibm.com> - Version 0.7.2
+* Fri Jul 23 2010 Daniel Lezcano <dlezcano@fr.ibm.com> - 0.7.2
 - set attribute for installed files
 - fix libraries installation
 
-* Mon Mar 24 2009 Daniel Lezcano <daniel.lezcano@free.fr> - Version 0.6.1
+* Mon Mar 24 2009 Daniel Lezcano <daniel.lezcano@free.fr> - 0.6.1
 - Removed capability setting, let the user to do that through "lxc-setcap"
 
-* Mon Feb 16 2009 Daniel Lezcano <daniel.lezcano@free.fr> - Version 0.6.0
+* Mon Feb 16 2009 Daniel Lezcano <daniel.lezcano@free.fr> - 0.6.0
 - Added more capabilities to the executables
 
-* Sun Jan 25 2009 Daniel Lezcano <daniel.lezcano@free.fr> - Version 0.6.0
+* Sun Jan 25 2009 Daniel Lezcano <daniel.lezcano@free.fr> - 0.6.0
 - Reduced spec file
 
-* Sun Aug 3 2008 Daniel Lezcano <dlezcano@fr.ibm.com> - Version 0.1.0
+* Sun Aug 3 2008 Daniel Lezcano <dlezcano@fr.ibm.com> - 0.1.0
 - Initial RPM release.
 
 # Local variables:
