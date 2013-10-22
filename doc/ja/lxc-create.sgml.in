@@ -170,7 +170,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    rather than the default, <filename>lxc</filename>.
 	    <replaceable>&#045;&#045;thinpool thinpool1</replaceable> will create the
 	    LV as a thin-provisioned volume in the pool named
-	    <filename>thinpool1</filename>.
+	    <filename>thinpool1</filename> rather than the
+	    default, <filename>lxc</filename>.
 	    <replaceable>&#045;&#045;fstype FSTYPE</replaceable> will create an FSTYPE
 	    filesystem on the LV, rather than the default, which is ext4.
 	    <replaceable>&#045;&#045;fssize SIZE</replaceable> will create a LV (and
@@ -179,7 +180,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <replaceable>backingstore</replaceable> には 'none' か 'dir' か 'lvm' か 'btrfs' のいずれかを指定します．デフォルトは 'none' で，コンテナのルートファイルシステムが <filename>@LXCPATH@/container/rootfs</filename> 以下のディレクトリであることを意味します．
 'dir' は 'none' と同じ意味ですが，オプションとして <replaceable>--dir ROOTFS</replaceable> を指定することも可能です．このオプションは，デフォルトの代わりに特定のパス以下にコンテナの rootfs を置くということになります．'btrfs' が指定された場合，ターゲットのファイルシステムは btrfs でなければいけません．そして，コンテナの rootfs は新しい subvolume として作製されます．このことにより，スナップショットによるクローンが作製可能になりますが，rsync --one-filesystem が，別々のファイルシステムとして取り扱ってしまうことも引き起こします．
 backingstore が 'lvm' である場合，lvm ブロックデバイスを使用します．この時，以下のオプションが有効になります: <replaceable>--lvname lvname1</replaceable> はデフォルト値のコンテナ名の LV の代わりに <filename>lvname1</filename> という名前の LV を作成します．<replaceable>--vgname vgname1</replaceable> は，デフォルト値である <filename>lxc</filename> という volume group の代わりに <filename>vgname1</filename> という名前の volume group 内に LV を作成します．
-            <replaceable>--thinpool thinpool1</replaceable> は <filename>thinpool1</filename> という名前のプール内にシンプロビジョニングされたボリュームとして LV を作成します．
+            <replaceable>--thinpool thinpool1</replaceable> は，デフォルトである <filename>lxc</filename> のという名前のプールの代わりに <filename>thinpool1</filename> という名前のプール内にシンプロビジョニングされたボリュームとして LV を作成します．
             <replaceable>--fstype FSTYPE</replaceable> は LV 上のファイルシステムをデフォルト値である ext4 の代わりに FSTYPE で指定したもので作成します．<replaceable>--fssize SIZE</replaceable> はデフォルト値である 1G の代わりに SIZE で指定したサイズで LV を作成します．
 	  </para>
 	</listitem>
