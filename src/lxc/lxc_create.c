@@ -147,23 +147,25 @@ Options :\n\
 
 bool validate_bdev_args(struct lxc_arguments *a)
 {
-	if (a->fstype || a->fssize) {
-		if (strcmp(a->bdevtype, "lvm") != 0 &&
-		    strcmp(a->bdevtype, "loop") != 0) {
-			fprintf(stderr, "filesystem type and size are only valid with block devices\n");
-			return false;
+	if (strcmp(a->bdevtype, "best") != 0) {
+		if (a->fstype || a->fssize) {
+			if (strcmp(a->bdevtype, "lvm") != 0 &&
+			    strcmp(a->bdevtype, "loop") != 0) {
+				fprintf(stderr, "filesystem type and size are only valid with block devices\n");
+				return false;
+			}
 		}
-	}
-	if (strcmp(a->bdevtype, "lvm") != 0) {
-		if (a->lvname || a->vgname || a->thinpool) {
-			fprintf(stderr, "--lvname, --vgname and --thinpool are only valid with -B lvm\n");
-			return false;
+		if (strcmp(a->bdevtype, "lvm") != 0) {
+			if (a->lvname || a->vgname || a->thinpool) {
+				fprintf(stderr, "--lvname, --vgname and --thinpool are only valid with -B lvm\n");
+				return false;
+			}
 		}
-	}
-	if (strcmp(a->bdevtype, "zfs") != 0) {
-		if (a->zfsroot) {
-			fprintf(stderr, "zfsroot is only valid with -B zfs\n");
-			return false;
+		if (strcmp(a->bdevtype, "zfs") != 0) {
+			if (a->zfsroot) {
+				fprintf(stderr, "zfsroot is only valid with -B zfs\n");
+				return false;
+			}
 		}
 	}
 	return true;
@@ -217,26 +219,24 @@ int main(int argc, char *argv[])
 	else
 		c->load_config(c, LXC_DEFAULT_CONFIG);
 
-	if (strcmp(my_args.bdevtype, "zfs") == 0) {
+	if (my_args.fstype)
+		spec.fstype = my_args.fstype;
+	if (my_args.fssize)
+		spec.fssize = my_args.fssize;
+
+	if (strcmp(my_args.bdevtype, "zfs") == 0 || strcmp(my_args.bdevtype, "best") == 0) {
 		if (my_args.zfsroot)
-			spec.u.zfs.zfsroot = my_args.zfsroot;
-	} else if (strcmp(my_args.bdevtype, "lvm") == 0) {
+			spec.zfs.zfsroot = my_args.zfsroot;
+	}
+	if (strcmp(my_args.bdevtype, "lvm") == 0 || strcmp(my_args.bdevtype, "best") == 0) {
 		if (my_args.lvname)
-			spec.u.lvm.lv = my_args.lvname;
+			spec.lvm.lv = my_args.lvname;
 		if (my_args.vgname)
-			spec.u.lvm.vg = my_args.vgname;
+			spec.lvm.vg = my_args.vgname;
 		if (my_args.thinpool)
-			spec.u.lvm.thinpool = my_args.thinpool;
-		if (my_args.fstype)
-			spec.u.lvm.fstype = my_args.fstype;
-		if (my_args.fssize)
-			spec.u.lvm.fssize = my_args.fssize;
-	} else if (strcmp(my_args.bdevtype, "loop") == 0) {
-		if (my_args.fstype)
-			spec.u.loop.fstype = my_args.fstype;
-		if (my_args.fssize)
-			spec.u.loop.fssize = my_args.fssize;
-	} else if (my_args.dir) {
+			spec.lvm.thinpool = my_args.thinpool;
+	}
+	if (my_args.dir) {
 		ERROR("--dir is not yet supported");
 		exit(1);
 	}
