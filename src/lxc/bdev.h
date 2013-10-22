@@ -37,22 +37,16 @@ struct bdev;
  * specifications for how to create a new backing store
  */
 struct bdev_specs {
-	union {
-		struct {
-			char *zfsroot;
-		} zfs;
-		struct {
-			char *vg;
-			char *lv;
-			char *fstype;
-			unsigned long fssize;  // fs size in bytes
-			char *thinpool; // lvm thin pool to use, if any
-		} lvm;
-		struct {
-			char *fstype;
-			unsigned long fssize; // fs size in bytes
-		} loop;
-	} u;
+	char *fstype;
+	unsigned long fssize;  // fs size in bytes
+	struct {
+		char *zfsroot;
+	} zfs;
+	struct {
+		char *vg;
+		char *lv;
+		char *thinpool; // lvm thin pool to use, if any
+	} lvm;
 };
 
 struct bdev_ops {

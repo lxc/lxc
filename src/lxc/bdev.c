@@ -707,10 +707,10 @@ static int zfs_create(struct bdev *bdev, const char *dest, const char *n,
 	int ret;
 	pid_t pid;
 
-	if (!specs || !specs->u.zfs.zfsroot)
+	if (!specs || !specs->zfs.zfsroot)
 		zfsroot = default_zfs_root();
 	else
-		zfsroot = specs->u.zfs.zfsroot;
+		zfsroot = specs->zfs.zfsroot;
 
 	if (!(bdev->dest = strdup(dest))) {
 		ERROR("No mount target specified or out of memory");
@@ -873,7 +873,7 @@ static int lvm_is_thin_pool(const char *path)
 static int do_lvm_create(const char *path, unsigned long size, const char *thinpool)
 {
 	int ret, pid, len;
-	char sz[24], *pathdup, *vg, *lv, *tp;
+	char sz[24], *pathdup, *vg, *lv, *tp = NULL;
 
 	if ((pid = fork()) < 0) {
 		SYSERROR("failed fork");
@@ -901,33 +901,37 @@ static int do_lvm_create(const char *path, unsigned long size, const char *thinp
 	lv++;
 
 	vg = strrchr(pathdup, '/');
-	if (!vg)
+	if (!vg) {
+		free(pathdup);
 		exit(1);
+	}
 	vg++;
 
 	if (thinpool) {
 		len = strlen(pathdup) + strlen(thinpool) + 2;
 		tp = alloca(len);
 
-		INFO("checking for thin pool at path: %s", tp);
 		ret = snprintf(tp, len, "%s/%s", pathdup, thinpool);
-		if (ret < 0 || ret >= len)
-			return -1;
+		if (ret < 0 || ret >= len) {
+			free(pathdup);
+			exit(1);
+		}
 
 		ret = lvm_is_thin_pool(tp);
 		INFO("got %d for thin pool at path: %s", ret, tp);
-		if (ret < 0)
-			return ret;
+		if (ret < 0) {
+			free(pathdup);
+			exit(1);
+		}
 
 		if (!ret)
-			thinpool = NULL;
+			tp = NULL;
 	}
 
-
-	if (!thinpool) {
+	if (!tp) {
 	    execlp("lvcreate", "lvcreate", "-L", sz, vg, "-n", lv, (char *)NULL);
 	} else {
-	    execlp("lvcreate", "lvcreate", "--thinpool", thinpool, "-V", sz, vg, "-n", lv, (char *)NULL);
+	    execlp("lvcreate", "lvcreate", "--thinpool", tp, "-V", sz, vg, "-n", lv, (char *)NULL);
 	}
 
 	free(pathdup);
@@ -1097,17 +1101,18 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	if (!specs)
 		return -1;
 
-	vg = specs->u.lvm.vg;
+	vg = specs->lvm.vg;
 	if (!vg)
 		vg = default_lvm_vg();
 
-	thinpool = specs->u.lvm.thinpool;
+	thinpool = specs->lvm.thinpool;
 	if (!thinpool)
 		thinpool = default_lvm_thin_pool();
 
 	/* /dev/$vg/$lv */
-	if (specs->u.lvm.lv)
-		lv = specs->u.lvm.lv;
+	if (specs->lvm.lv)
+		lv = specs->lvm.lv;
+
 	len = strlen(vg) + strlen(lv) + 7;
 	bdev->src = malloc(len);
 	if (!bdev->src)
@@ -1117,8 +1122,8 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	if (ret < 0 || ret >= len)
 		return -1;
 
-	// lvm.fssize is in bytes.
-	sz = specs->u.lvm.fssize;
+	// fssize is in bytes.
+	sz = specs->fssize;
 	if (!sz)
 		sz = DEFAULT_FS_SIZE;
 
@@ -1127,7 +1132,7 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 		return -1;
 	}
 
-	fstype = specs->u.lvm.fstype;
+	fstype = specs->fstype;
 	if (!fstype)
 		fstype = DEFAULT_FSTYPE;
 	if (do_mkfs(bdev->src, fstype) < 0) {
@@ -1721,11 +1726,11 @@ static int loop_create(struct bdev *bdev, const char *dest, const char *n,
 	if (ret < 0 || ret >= len + 5)
 		return -1;
 
-	sz = specs->u.loop.fssize;
+	sz = specs->fssize;
 	if (!sz)
 		sz = DEFAULT_FS_SIZE;
 
-	fstype = specs->u.loop.fstype;
+	fstype = specs->fstype;
 	if (!fstype)
 		fstype = DEFAULT_FSTYPE;
 
