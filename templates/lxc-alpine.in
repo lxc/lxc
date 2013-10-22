@@ -197,9 +197,10 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # devices
 lxc.cgroup.devices.deny = a
-# /dev/null and zero
+# /dev/null, zero and full
 lxc.cgroup.devices.allow = c 1:3 rwm
 lxc.cgroup.devices.allow = c 1:5 rwm
+lxc.cgroup.devices.allow = c 1:7 rwm
 # consoles
 lxc.cgroup.devices.allow = c 5:1 rwm
 lxc.cgroup.devices.allow = c 5:0 rwm
