@@ -196,7 +196,7 @@ configure_busybox()
     cat <<EOF >$CHPASSWD_FILE
 echo "setting root password to \"root\""
 
-mount --bind /lib $rootfs/lib
+mount -n --bind /lib $rootfs/lib
 if [ \$? -ne 0 ]; then
     echo "Failed bind-mounting /lib at $rootfs/lib"
     exit 1
