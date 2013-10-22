@@ -3,7 +3,7 @@ if ENABLE_LUA
 luadir=$(LUA_INSTALL_LMOD)
 sodir=$(LUA_INSTALL_CMOD)/lxc
 
-lua_SCRIPTS=lxc.lua
+lua_DATA=lxc.lua
 
 so_PROGRAMS = core.so
 
