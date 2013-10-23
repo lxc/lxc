@@ -207,6 +207,13 @@ copy_configuration()
     hostname=$3
     arch=$4
 
+    # if there is exactly one veth network entry, make sure it has an
+    # associated hwaddr.
+    nics=`grep -e '^lxc\.network\.type[ \t]*=[ \t]*veth' $path/config | wc -l`
+    if [ $nics -eq 1 ]; then
+        grep -q "^lxc.network.hwaddr" $path/config || sed -i -e "/^lxc\.network\.type[ \t]*=[ \t]*veth/a lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')" $path/config
+    fi
+
     grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
     cat <<EOF >> $path/config
 lxc.tty = 4
