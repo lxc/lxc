@@ -1089,9 +1089,11 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 		lxc_conf_free(c->lxc_conf);
 	c->lxc_conf = NULL;
 
-	if (!prepend_lxc_header(c->configfile, tpath, argv)) {
-		ERROR("Error prepending header to configuration file");
-		goto out_unlock;
+	if (t) {
+		if (!prepend_lxc_header(c->configfile, tpath, argv)) {
+			ERROR("Error prepending header to configuration file");
+			goto out_unlock;
+		}
 	}
 	bret = load_config_locked(c, c->configfile);
 
