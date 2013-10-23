@@ -194,6 +194,9 @@ configure_plamo() {
   ln -s ../usr/share/zoneinfo/Asia/Tokyo $rootfs/etc/localtime
   # disable pam_loginuid.so in /etc/pam.d/login (for libvirt's lxc driver)
   sed -i '/pam_loginuid/s/^/#/' $rootfs/etc/pam.d/login
+  # glibc configure
+  cp $rootfs/etc/ld.so.conf.new $rootfs/etc/ld.so.conf
+  chroot $rootfs ldconfig
   # root password
   echo "Setting root password to 'root'..."
   echo "root:root" | chroot $rootfs chpasswd
