@@ -361,4 +361,8 @@ extern int lxc_setup(const char *name, struct lxc_conf *lxc_conf,
 			const char *lxcpath, struct cgroup_process_info *cgroup_info);
 
 extern void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf);
+
+extern int get_mapped_rootid(struct lxc_conf *conf);
+extern int find_unmapped_nsuid(struct lxc_conf *conf);
+extern bool hostid_is_mapped(int id, struct lxc_conf *conf);
 #endif

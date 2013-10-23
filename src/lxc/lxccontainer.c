@@ -694,6 +694,49 @@ static const char *lxcapi_get_config_path(struct lxc_container *c);
 static bool lxcapi_set_config_item(struct lxc_container *c, const char *key, const char *v);
 
 /*
+ * chown_mapped: for an unprivileged user with uid X to chown a dir
+ * to subuid Y, he needs to run chown as root in a userns where
+ * nsid 0 is mapped to hostuid Y, and nsid Y is mapped to hostuid
+ * X.  That way, the container root is privileged with respect to
+ * hostuid X, allowing him to do the chown.
+ */
+static int chown_mapped(int nsrootid, char *path)
+{
+	if (nsrootid < 0)
+		return nsrootid;
+	pid_t pid = fork();
+	if (pid < 0) {
+		SYSERROR("Failed forking");
+		return -1;
+	}
+	if (!pid) {
+		int hostuid = geteuid(), ret;
+		char map1[100], map2[100];
+		char *args[] = {"lxc-usernsexec", "-m", map1, "-m", map2, "--", "chown",
+				 "0", path, NULL};
+
+		// "b:0:nsrootid:1"
+		ret = snprintf(map1, 100, "b:0:%d:1", nsrootid);
+		if (ret < 0 || ret >= 100) {
+			ERROR("Error uid printing map string");
+			return -1;
+		}
+
+		// "b:hostuid:hostuid:1"
+		ret = snprintf(map2, 100, "b:%d:%d:1", hostuid, hostuid);
+		if (ret < 0 || ret >= 100) {
+			ERROR("Error uid printing map string");
+			return -1;
+		}
+
+		ret = execvp("lxc-usernsexec", args);
+		SYSERROR("Failed executing lxc-usernsexec");
+		exit(1);
+	}
+	return wait_for_pid(pid);
+}
+
+/*
  * do_bdev_create: thin wrapper around bdev_create().  Like bdev_create(),
  * it returns a mounted bdev on success, NULL on error.
  */
@@ -720,6 +763,25 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 	}
 
 	lxcapi_set_config_item(c, "lxc.rootfs", bdev->src);
+
+	/* if we are not root, chown the rootfs dir to root in the
+	 * target uidmap */
+
+	if (geteuid() != 0) {
+		int rootid;
+		if ((rootid = get_mapped_rootid(c->lxc_conf)) <= 0) {
+			ERROR("No mapping for container root");
+			bdev_put(bdev);
+			return NULL;
+		}
+		ret = chown_mapped(rootid, bdev->dest);
+		if (ret < 0) {
+			ERROR("Error chowning %s to %d\n", bdev->dest, rootid);
+			bdev_put(bdev);
+			return NULL;
+		}
+	}
+
 	return bdev;
 }
 
@@ -785,6 +847,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 		int i;
 		int ret, len, nargs = 0;
 		char **newargv;
+		struct lxc_conf *conf = c->lxc_conf;
 
 		process_unlock(); // we're no longer sharing
 		if (quiet) {
@@ -794,10 +857,6 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 			open("/dev/zero", O_RDONLY);
 			open("/dev/null", O_RDWR);
 			open("/dev/null", O_RDWR);
-		}
-		if (unshare(CLONE_NEWNS) < 0) {
-			ERROR("error unsharing mounts");
-			exit(1);
 		}
 
 		src = c->lxc_conf->rootfs.path;
@@ -815,9 +874,19 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 			exit(1);
 		}
 
-		if (bdev->ops->mount(bdev) < 0) {
-			ERROR("Error mounting rootfs");
-			exit(1);
+		if (strcmp(bdev->type, "dir") != 0) {
+			if (unshare(CLONE_NEWNS) < 0) {
+				ERROR("error unsharing mounts");
+				exit(1);
+			}
+			if (bdev->ops->mount(bdev) < 0) {
+				ERROR("Error mounting rootfs");
+				exit(1);
+			}
+		} else { // TODO come up with a better way here!
+			if (bdev->dest)
+				free(bdev->dest);
+			bdev->dest = strdup(bdev->src);
 		}
 
 		/*
@@ -827,6 +896,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 		if (argv)
 			for (nargs = 0; argv[nargs]; nargs++) ;
 		nargs += 4;  // template, path, rootfs and name args
+
 		newargv = malloc(nargs * sizeof(*newargv));
 		if (!newargv)
 			exit(1);
@@ -870,8 +940,68 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 			exit(1);
 		newargv[nargs - 1] = NULL;
 
+		/*
+		 * If we're running the template in a mapped userns, then
+		 * we prepend the template command with:
+		 * lxc-usernsexec <-m map1> ... <-m mapn> --
+		 */
+		if (geteuid() != 0 && !lxc_list_empty(&conf->id_map)) {
+			int n2args = 1;
+			char **n2 = malloc(n2args * sizeof(*n2));
+			struct lxc_list *it;
+			struct id_map *map;
+
+			newargv[0] = tpath;
+			tpath = "lxc-usernsexec";
+			n2[0] = "lxc-usernsexec";
+			lxc_list_for_each(it, &conf->id_map) {
+				map = it->elem;
+				n2args += 2;
+				n2 = realloc(n2, n2args * sizeof(*n2));
+				if (!n2)
+					exit(1);
+				n2[n2args-2] = "-m";
+				n2[n2args-1] = malloc(200);
+				if (!n2[n2args-1])
+					exit(1);
+				ret = snprintf(n2[n2args-1], 200, "%c:%lu:%lu:%lu",
+					map->idtype == ID_TYPE_UID ? 'u' : 'g',
+					map->nsid, map->hostid, map->range);
+				if (ret < 0 || ret >= 200)
+					exit(1);
+			}
+			bool hostid_mapped = hostid_is_mapped(geteuid(), conf);
+			int extraargs = hostid_mapped ?  1 : 3;
+			n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(*n2));
+			if (!n2)
+				exit(1);
+			if (!hostid_mapped) {
+				int free_id = find_unmapped_nsuid(conf);
+				n2[n2args++] = "-m";
+				if (free_id < 0) {
+					ERROR("Could not find free uid to map");
+					exit(1);
+				}
+				n2[n2args++] = malloc(200);
+				if (!n2[n2args-1]) {
+					SYSERROR("out of memory");
+					exit(1);
+				}
+				ret = snprintf(n2[n2args-1], 200, "u:%d:%d:1",
+					free_id, geteuid());
+				if (ret < 0 || ret >= 200) {
+					ERROR("string too long");
+					exit(1);
+				}
+			}
+			n2[n2args++] = "--";
+			for (i = 0; i < nargs; i++)
+				n2[i + n2args] = newargv[i];
+			free(newargv);
+			newargv = n2;
+		}
 		/* execute */
-		execv(tpath, newargv);
+		execvp(tpath, newargv);
 		SYSERROR("failed to execute template %s", tpath);
 		exit(1);
 	}
@@ -2102,15 +2232,21 @@ static int clone_update_rootfs(struct lxc_container *c0,
 		return wait_for_pid(pid);
 
 	process_unlock(); // we're no longer sharing
-	if (unshare(CLONE_NEWNS) < 0) {
-		ERROR("error unsharing mounts");
-		exit(1);
-	}
 	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev)
 		exit(1);
-	if (bdev->ops->mount(bdev) < 0)
-		exit(1);
+	if (strcmp(bdev->type, "dir") != 0) {
+		if (unshare(CLONE_NEWNS) < 0) {
+			ERROR("error unsharing mounts");
+			exit(1);
+		}
+		if (bdev->ops->mount(bdev) < 0)
+			exit(1);
+	} else { // TODO come up with a better way
+		if (bdev->dest)
+			free(bdev->dest);
+		bdev->dest = strdup(bdev->src);
+	}
 
 	if (!lxc_list_empty(&conf->hooks[LXCHOOK_CLONE])) {
 		/* Start of environment variable setup for hooks */

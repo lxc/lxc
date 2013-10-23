@@ -2802,31 +2802,49 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	int ret = 0;
 	enum idtype type;
 	char *buf = NULL, *pos;
+	int am_root = (getuid() == 0);
 
 	for(type = ID_TYPE_UID; type <= ID_TYPE_GID; type++) {
 		int left, fill;
-
-		pos = buf;
-		lxc_list_for_each(iterator, idmap) {
-			/* The kernel only takes <= 4k for writes to /proc/<nr>/[ug]id_map */
-			if (!buf)
-				buf = pos = malloc(4096);
+		int had_entry = 0;
+		if (!buf) {
+			buf = pos = malloc(4096);
 			if (!buf)
 				return -ENOMEM;
-
-			map = iterator->elem;
-			if (map->idtype == type) {
-				left = 4096 - (pos - buf);
-				fill = snprintf(pos, left, "%lu %lu %lu\n",
-					map->nsid, map->hostid, map->range);
-				if (fill <= 0 || fill >= left)
-					SYSERROR("snprintf failed, too many mappings");
-				pos += fill;
-			}
 		}
-		if (pos == buf) // no mappings were found
+		pos = buf;
+		if (!am_root)
+			pos += sprintf(buf, "new%cidmap %d ",
+				type == ID_TYPE_UID ? 'u' : 'g',
+				pid);
+
+		lxc_list_for_each(iterator, idmap) {
+			/* The kernel only takes <= 4k for writes to /proc/<nr>/[ug]id_map */
+			map = iterator->elem;
+			if (map->idtype != type)
+				continue;
+
+			had_entry = 1;
+			left = 4096 - (pos - buf);
+			fill = snprintf(pos, left, " %lu %lu %lu", map->nsid,
+					map->hostid, map->range);
+			if (fill <= 0 || fill >= left)
+				SYSERROR("snprintf failed, too many mappings");
+			pos += fill;
+		}
+		if (!had_entry)
 			continue;
-		ret = write_id_mapping(type, pid, buf, pos-buf);
+		left = 4096 - (pos - buf);
+		fill = snprintf(pos, left, "\n");
+		if (fill <= 0 || fill >= left)
+			SYSERROR("snprintf failed, too many mappings");
+		pos += fill;
+
+		if (am_root)
+			ret = write_id_mapping(type, pid, buf, pos-buf);
+		else
+			ret = system(buf);
+
 		if (ret)
 			break;
 	}
@@ -2834,6 +2852,58 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	if (buf)
 		free(buf);
 	return ret;
+}
+
+/*
+ * return the host uid to which the container root is mapped, or -1 on
+ * error
+ */
+int get_mapped_rootid(struct lxc_conf *conf)
+{
+	struct lxc_list *it;
+	struct id_map *map;
+
+	lxc_list_for_each(it, &conf->id_map) {
+		map = it->elem;
+		if (map->idtype != ID_TYPE_UID)
+			continue;
+		if (map->nsid != 0)
+			continue;
+		return map->hostid;
+	}
+	return -1;
+}
+
+bool hostid_is_mapped(int id, struct lxc_conf *conf)
+{
+	struct lxc_list *it;
+	struct id_map *map;
+	lxc_list_for_each(it, &conf->id_map) {
+		map = it->elem;
+		if (map->idtype != ID_TYPE_UID)
+			continue;
+		if (id >= map->hostid && id < map->hostid + map->range)
+			return true;
+	}
+	return false;
+}
+
+int find_unmapped_nsuid(struct lxc_conf *conf)
+{
+	struct lxc_list *it;
+	struct id_map *map;
+	uid_t freeid = 0;
+again:
+	lxc_list_for_each(it, &conf->id_map) {
+		map = it->elem;
+		if (map->idtype != ID_TYPE_UID)
+			continue;
+		if (freeid >= map->nsid && freeid < map->nsid + map->range) {
+			freeid = map->nsid + map->range;
+			goto again;
+		}
+	}
+	return freeid;
 }
 
 int lxc_find_gateway_addresses(struct lxc_handler *handler)
