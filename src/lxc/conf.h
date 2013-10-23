@@ -350,8 +350,6 @@ extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key);
 extern int lxc_clear_mount_entries(struct lxc_conf *c);
 extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
 
-extern int uid_shift_ttys(int pid, struct lxc_conf *conf);
-
 /*
  * Configure the container from inside
  */
@@ -362,7 +360,9 @@ extern int lxc_setup(const char *name, struct lxc_conf *lxc_conf,
 
 extern void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf);
 
-extern int get_mapped_rootid(struct lxc_conf *conf);
+extern uid_t get_mapped_rootid(struct lxc_conf *conf);
 extern int find_unmapped_nsuid(struct lxc_conf *conf);
 extern bool hostid_is_mapped(int id, struct lxc_conf *conf);
+extern int chown_mapped_root(char *path, struct lxc_conf *conf);
+extern int ttys_shift_ids(struct lxc_conf *c);
 #endif

@@ -2858,7 +2858,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
  * return the host uid to which the container root is mapped, or -1 on
  * error
  */
-int get_mapped_rootid(struct lxc_conf *conf)
+uid_t get_mapped_rootid(struct lxc_conf *conf)
 {
 	struct lxc_list *it;
 	struct id_map *map;
@@ -2869,9 +2869,9 @@ int get_mapped_rootid(struct lxc_conf *conf)
 			continue;
 		if (map->nsid != 0)
 			continue;
-		return map->hostid;
+		return (uid_t) map->hostid;
 	}
-	return -1;
+	return (uid_t)-1;
 }
 
 bool hostid_is_mapped(int id, struct lxc_conf *conf)
@@ -3020,87 +3020,79 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 }
 
 /*
- * given a host uid, return the ns uid if it is mapped.
- * if it is not mapped, return the original host id.
+ * chown_mapped_root: for an unprivileged user with uid X to chown a dir
+ * to subuid Y, he needs to run chown as root in a userns where
+ * nsid 0 is mapped to hostuid Y, and nsid Y is mapped to hostuid
+ * X.  That way, the container root is privileged with respect to
+ * hostuid X, allowing him to do the chown.
  */
-static int shiftid(struct lxc_conf *c, int uid, enum idtype w)
+int chown_mapped_root(char *path, struct lxc_conf *conf)
 {
-	struct lxc_list *iterator;
-	struct id_map *map;
-	int low, high;
+	uid_t rootid;
+	pid_t pid;
 
-	lxc_list_for_each(iterator, &c->id_map) {
-		map = iterator->elem;
-		if (map->idtype != w)
-			continue;
-
-		low = map->nsid;
-		high = map->nsid + map->range;
-		if (uid < low || uid >= high)
-			continue;
-
-		return uid - low + map->hostid;
-	}
-
-	return uid;
-}
-
-/*
- * Take a pathname for a file created on the host, and map the uid and gid
- * into the container if needed.  (Used for ttys)
- */
-static int uid_shift_file(char *path, struct lxc_conf *c)
-{
-	struct stat statbuf;
-	int newuid, newgid;
-
-	if (stat(path, &statbuf)) {
-		SYSERROR("stat(%s)", path);
+	if ((rootid = get_mapped_rootid(conf)) <= 0) {
+		ERROR("No mapping for container root");
 		return -1;
 	}
-
-	newuid = shiftid(c, statbuf.st_uid, ID_TYPE_UID);
-	newgid = shiftid(c, statbuf.st_gid, ID_TYPE_GID);
-	if (newuid != statbuf.st_uid || newgid != statbuf.st_gid) {
-		DEBUG("chowning %s from %d:%d to %d:%d\n", path, (int)statbuf.st_uid, (int)statbuf.st_gid, newuid, newgid);
-		if (chown(path, newuid, newgid)) {
-			SYSERROR("chown(%s)", path);
+	if (geteuid() == 0) {
+		if (chown(path, rootid, -1) < 0) {
+			ERROR("Error chowning %s", path);
 			return -1;
 		}
-	}
-	return 0;
-}
-
-int uid_shift_ttys(int pid, struct lxc_conf *conf)
-{
-	int i, ret;
-	struct lxc_tty_info *tty_info = &conf->tty_info;
-	char path[MAXPATHLEN];
-	char *ttydir = conf->ttydir;
-
-	if (!conf->rootfs.path)
 		return 0;
-	/* first the console */
-	ret = snprintf(path, sizeof(path), "/proc/%d/root/dev/%s/console", pid, ttydir ? ttydir : "");
-	if (ret < 0 || ret >= sizeof(path)) {
-		ERROR("console path too long\n");
+	}
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("Failed forking");
 		return -1;
 	}
-	if (uid_shift_file(path, conf)) {
-		DEBUG("Failed to chown the console %s.\n", path);
-		return -1;
+	if (!pid) {
+		int hostuid = geteuid(), ret;
+		char map1[100], map2[100];
+		char *args[] = {"lxc-usernsexec", "-m", map1, "-m", map2, "--", "chown",
+				 "0", path, NULL};
+
+		// "b:0:rootid:1"
+		ret = snprintf(map1, 100, "b:0:%d:1", rootid);
+		if (ret < 0 || ret >= 100) {
+			ERROR("Error uid printing map string");
+			return -1;
+		}
+
+		// "b:hostuid:hostuid:1"
+		ret = snprintf(map2, 100, "b:%d:%d:1", hostuid, hostuid);
+		if (ret < 0 || ret >= 100) {
+			ERROR("Error uid printing map string");
+			return -1;
+		}
+
+		ret = execvp("lxc-usernsexec", args);
+		SYSERROR("Failed executing usernsexec");
+		exit(1);
 	}
-	for (i=0; i< tty_info->nbtty; i++) {
-		ret = snprintf(path, sizeof(path), "/proc/%d/root/dev/%s/tty%d",
-			pid, ttydir ? ttydir : "", i + 1);
-		if (ret < 0 || ret >= sizeof(path)) {
-			ERROR("pathname too long for ttys");
+	return wait_for_pid(pid);
+}
+
+int ttys_shift_ids(struct lxc_conf *c)
+{
+	int i;
+
+	if (lxc_list_empty(&c->id_map))
+		return 0;
+
+	for (i = 0; i < c->tty_info.nbtty; i++) {
+		struct lxc_pty_info *pty_info = &c->tty_info.pty_info[i];
+
+		if (chown_mapped_root(pty_info->name, c) < 0) {
+			ERROR("Failed to chown %s", pty_info->name);
 			return -1;
 		}
-		if (uid_shift_file(path, conf)) {
-			DEBUG("Failed to chown pty %s.\n", path);
-			return -1;
-		}
+	}
+
+	if (chown_mapped_root(c->console.name, c) < 0) {
+		ERROR("Failed to chown %s", c->console.name);
+		return -1;
 	}
 
 	return 0;

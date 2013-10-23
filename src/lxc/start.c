@@ -353,6 +353,11 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 		goto out_restore_sigmask;
 	}
 
+	if (ttys_shift_ids(conf) < 0) {
+		ERROR("Failed to shift tty into container");
+		goto out_restore_sigmask;
+	}
+
 	INFO("'%s' is initialized", name);
 	return handler;
 
@@ -783,11 +788,6 @@ int lxc_spawn(struct lxc_handler *handler)
 
 	if (detect_shared_rootfs())
 		umount2(handler->conf->rootfs.mount, MNT_DETACH);
-
-	/* If child is in a fresh user namespace, chown his ptys for
-	 * it */
-	if (uid_shift_ttys(handler->pid, handler->conf))
-		DEBUG("Failed to chown ptys.\n");
 
 	if (handler->ops->post_start(handler, handler->data))
 		goto out_abort;

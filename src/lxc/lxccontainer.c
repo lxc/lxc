@@ -694,49 +694,6 @@ static const char *lxcapi_get_config_path(struct lxc_container *c);
 static bool lxcapi_set_config_item(struct lxc_container *c, const char *key, const char *v);
 
 /*
- * chown_mapped: for an unprivileged user with uid X to chown a dir
- * to subuid Y, he needs to run chown as root in a userns where
- * nsid 0 is mapped to hostuid Y, and nsid Y is mapped to hostuid
- * X.  That way, the container root is privileged with respect to
- * hostuid X, allowing him to do the chown.
- */
-static int chown_mapped(int nsrootid, char *path)
-{
-	if (nsrootid < 0)
-		return nsrootid;
-	pid_t pid = fork();
-	if (pid < 0) {
-		SYSERROR("Failed forking");
-		return -1;
-	}
-	if (!pid) {
-		int hostuid = geteuid(), ret;
-		char map1[100], map2[100];
-		char *args[] = {"lxc-usernsexec", "-m", map1, "-m", map2, "--", "chown",
-				 "0", path, NULL};
-
-		// "b:0:nsrootid:1"
-		ret = snprintf(map1, 100, "b:0:%d:1", nsrootid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error uid printing map string");
-			return -1;
-		}
-
-		// "b:hostuid:hostuid:1"
-		ret = snprintf(map2, 100, "b:%d:%d:1", hostuid, hostuid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error uid printing map string");
-			return -1;
-		}
-
-		ret = execvp("lxc-usernsexec", args);
-		SYSERROR("Failed executing lxc-usernsexec");
-		exit(1);
-	}
-	return wait_for_pid(pid);
-}
-
-/*
  * do_bdev_create: thin wrapper around bdev_create().  Like bdev_create(),
  * it returns a mounted bdev on success, NULL on error.
  */
@@ -768,15 +725,8 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 	 * target uidmap */
 
 	if (geteuid() != 0) {
-		int rootid;
-		if ((rootid = get_mapped_rootid(c->lxc_conf)) <= 0) {
-			ERROR("No mapping for container root");
-			bdev_put(bdev);
-			return NULL;
-		}
-		ret = chown_mapped(rootid, bdev->dest);
-		if (ret < 0) {
-			ERROR("Error chowning %s to %d\n", bdev->dest, rootid);
+		if (chown_mapped_root(bdev->dest, c->lxc_conf) < 0) {
+			ERROR("Error chowning %s to container root\n", bdev->dest);
 			bdev_put(bdev);
 			return NULL;
 		}
