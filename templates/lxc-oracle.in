@@ -350,7 +350,7 @@ lxc.utsname = $name
 lxc.devttydir = lxc
 lxc.tty = 4
 lxc.pts = 1024
-lxc.mount = $cfg_dir/fstab
+lxc.mount.auto = proc:mixed sys:ro
 lxc.hook.clone = @DATADIR@/lxc/hooks/clonehostname
 # Uncomment these if you don't run anything that needs the capability, and
 # would like the container to run with less privilege.
@@ -403,11 +403,6 @@ lxc.cgroup.devices.allow = c 1:8 rwm	# /dev/random
 lxc.cgroup.devices.allow = c 1:9 rwm	# /dev/urandom
 lxc.cgroup.devices.allow = c 136:* rwm	# /dev/tty[1-4] ptys and lxc console
 lxc.cgroup.devices.allow = c 5:2 rwm	# /dev/ptmx pty master
-EOF
-
-    cat <<EOF > $cfg_dir/fstab || die "unable to create $cfg_dir/fstab"
-proc    proc     proc   nodev,noexec,nosuid 0 0
-sysfs   sys      sysfs  defaults  0 0
 EOF
 }
 
