@@ -2687,6 +2687,10 @@ int lxc_create_network(struct lxc_handler *handler)
 	struct lxc_list *network = &handler->conf->network;
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
+	int am_root = (getuid() == 0);
+
+	if (!am_root)
+		return 0;
 
 	lxc_list_for_each(iterator, network) {
 
@@ -2738,16 +2742,51 @@ void lxc_delete_network(struct lxc_handler *handler)
 	}
 }
 
+int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
+{
+	pid_t child;
+
+	if (netdev->type != LXC_NET_VETH) {
+		ERROR("nic type %d not support for unprivileged use",
+			netdev->type);
+		return -1;
+	}
+
+	if ((child = fork()) < 0) {
+		SYSERROR("fork");
+		return -1;
+	}
+
+	if (child > 0)
+		return wait_for_pid(child);
+
+	// Call lxc-user-nic pid type bridge
+	char pidstr[20];
+	char *args[] = { "lxc-user-nic", pidstr, "veth", netdev->link, NULL };
+	snprintf(pidstr, 19, "%lu", (unsigned long) pid);
+	pidstr[19] = '\0';
+	execvp("lxc-user-nic", args);
+	SYSERROR("execvp lxc-user-nic");
+	exit(1);
+}
+
 int lxc_assign_network(struct lxc_list *network, pid_t pid)
 {
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
+	int am_root = (getuid() == 0);
 	int err;
 
 	lxc_list_for_each(iterator, network) {
 
 		netdev = iterator->elem;
 
+		if (!am_root) {
+			if (unpriv_assign_nic(netdev, pid))
+				return -1;
+			// TODO fill in netdev->ifindex and name
+			continue;
+		}
 		/* empty network namespace, nothing to move */
 		if (!netdev->ifindex)
 			continue;
