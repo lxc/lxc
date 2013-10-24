@@ -103,6 +103,9 @@ configure_alpine() {
 ::sysinit:/sbin/rc sysinit
 ::wait:/sbin/rc default
 tty1:12345:respawn:/sbin/getty 38400 tty1
+tty2:12345:respawn:/sbin/getty 38400 tty2
+tty3:12345:respawn:/sbin/getty 38400 tty3
+tty4:12345:respawn:/sbin/getty 38400 tty4
 ::ctrlaltdel:/sbin/reboot
 ::shutdown:/sbin/rc shutdown
 EOF
