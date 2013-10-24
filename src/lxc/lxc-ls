@@ -35,7 +35,7 @@ import json
 import lxc
 import os
 import re
-import subprocess
+import tempfile
 import sys
 
 _ = gettext.gettext
@@ -89,17 +89,23 @@ def getTerminalSize():
 
 
 def getSubContainers(container, lxcpath):
-    attach = ['lxc-attach', '-P', lxcpath, '-R', '-s', 'NETWORK|PID',
-              '-n', container,
-              '--', sys.argv[0], "--nesting"]
-
     with open(os.devnull, "w") as fd:
-        newenv = dict(os.environ)
-        newenv['NESTED'] = "/proc/1/root/%s" % lxc.default_config_path
-        sp = subprocess.Popen(attach, stderr=fd, stdout=subprocess.PIPE,
-                              env=newenv, universal_newlines=True)
-        sp.wait()
-        out = sp.stdout.read()
+        fdnum, path = tempfile.mkstemp()
+        os.remove(path)
+
+        fd = os.fdopen(fdnum)
+
+        container.attach_wait(
+            lxc.attach_run_command, [sys.argv[0], "--nesting"],
+            attach_flags=(lxc.LXC_ATTACH_REMOUNT_PROC_SYS),
+            namespaces=(lxc.CLONE_NEWNET + lxc.CLONE_NEWPID),
+            extra_env_vars=["NESTED=/proc/1/root/%s" %
+                            lxc.default_config_path],
+            stdout=fd)
+
+        fd.seek(0)
+        out = fd.read()
+        fd.close()
         if out:
             return json.loads(out)
     return None
@@ -213,8 +219,8 @@ for container_name in lxc.list_containers(config_path=lxcpath):
     containers.append(entry)
 
     # Nested containers
-    if args.nesting:
-        sub = getSubContainers(container_name, args.lxcpath)
+    if args.nesting and container.state == "RUNNING":
+        sub = getSubContainers(container, args.lxcpath)
         if sub:
             for entry in sub:
                 if 'nesting_parent' not in entry:
