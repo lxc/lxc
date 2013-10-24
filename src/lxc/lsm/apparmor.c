@@ -32,6 +32,9 @@
 
 lxc_log_define(lxc_apparmor, lxc);
 
+/* set by lsm_apparmor_drv_init if true */
+static int aa_enabled = 0;
+
 #define AA_DEF_PROFILE "lxc-container-default"
 #define AA_MOUNT_RESTR "/sys/kernel/security/apparmor/features/mount/mask"
 #define AA_ENABLED_FILE "/sys/module/apparmor/parameters/enabled"
@@ -139,7 +142,7 @@ static int apparmor_am_unconfined(void)
 static int apparmor_process_label_set(const char *label, int use_default,
 				      int on_exec)
 {
-	if (!apparmor_enabled())
+	if (!aa_enabled)
 		return 0;
 
 	if (!label) {
@@ -181,5 +184,6 @@ struct lsm_drv *lsm_apparmor_drv_init(void)
 {
 	if (!apparmor_enabled())
 		return NULL;
+	aa_enabled = 1;
 	return &apparmor_drv;
 }
