@@ -140,7 +140,8 @@ EOF
     mknod -m 666 "$rootfs/dev/ptmx" c 5 2
 
     # start services
-    ln -s /etc/init.d/syslog "$rootfs"/etc/runlevels/default/syslog
+    ln -s /etc/init.d/bootmisc "$rootfs"/etc/runlevels/boot/bootmisc
+    ln -s /etc/init.d/syslog "$rootfs"/etc/runlevels/boot/syslog
 
     return 0
 }
