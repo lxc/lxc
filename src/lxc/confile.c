@@ -901,7 +901,7 @@ static int config_hook(const char *key, const char *value,
 	return -1;
 }
 
-static int config_personality(const char *key, const const char *value,
+static int config_personality(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf)
 {
 	signed long personality = lxc_config_parse_arch(value);

@@ -23,7 +23,7 @@
 
 #include "../config.h"
 
-const char const* lxc_version(void)
+const char *lxc_version(void)
 {
 	return PACKAGE_VERSION;
 }

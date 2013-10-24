@@ -26,6 +26,6 @@
 /*
  * Returns the version number of the library
  */
-extern const char const *lxc_version(void);
+extern const char *lxc_version(void);
 
 #endif

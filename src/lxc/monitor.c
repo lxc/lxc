@@ -328,7 +328,8 @@ int lxc_monitord_spawn(const char *lxcpath)
 		 * synced with the child process. the if-empty-statement
 		 * construct is to quiet the warn-unused-result warning.
 		 */
-		if (read(pipefd[0], &c, 1)) ;
+		if (read(pipefd[0], &c, 1))
+			;
 		close(pipefd[0]);
 		exit(EXIT_SUCCESS);
 	}

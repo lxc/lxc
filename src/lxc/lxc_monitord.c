@@ -47,8 +47,6 @@
 
 lxc_log_define(lxc_monitord, lxc);
 
-static struct lxc_monitor mon;
-
 static void lxc_monitord_cleanup(void);
 
 /*
@@ -70,6 +68,8 @@ struct lxc_monitor {
 	int clientfds_cnt;
 	struct lxc_epoll_descr descr;
 };
+
+static struct lxc_monitor mon;
 
 static int lxc_monitord_fifo_create(struct lxc_monitor *mon)
 {
@@ -379,7 +379,8 @@ int main(int argc, char *argv[])
 	 * if-empty-statement construct is to quiet the
 	 * warn-unused-result warning.
 	 */
-	if (write(pipefd, "S", 1)) ;
+	if (write(pipefd, "S", 1))
+		;
 	close(pipefd);
 
 	if (lxc_monitord_mainloop_add(&mon)) {
