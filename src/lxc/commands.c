@@ -109,7 +109,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_GET_CONFIG_ITEM] = "get_config_item",
 	};
 
-	if (cmd < 0 || cmd >= LXC_CMD_MAX)
+	if (cmd >= LXC_CMD_MAX)
 		return "Unknown cmd";
 	return cmdname[cmd];
 }
@@ -735,7 +735,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_CONFIG_ITEM] = lxc_cmd_get_config_item_callback,
 	};
 
-	if (req->cmd < 0 || req->cmd >= LXC_CMD_MAX) {
+	if (req->cmd >= LXC_CMD_MAX) {
 		ERROR("bad cmd %d received", req->cmd);
 		return -1;
 	}

@@ -1948,7 +1948,7 @@ static int setup_caps(struct lxc_list *caps)
 			* we don't */
 			capid = strtol(drop_entry, &ptr, 10);
 			if (!ptr || *ptr != '\0' ||
-			capid == LONG_MIN || capid == LONG_MAX)
+			capid == INT_MIN || capid == INT_MAX)
 				/* not a valid number */
 				capid = -1;
 			else if (capid > lxc_caps_last_cap())
@@ -2013,7 +2013,7 @@ static int dropcaps_except(struct lxc_list *caps)
 			* we don't */
 			capid = strtol(keep_entry, &ptr, 10);
 			if (!ptr || *ptr != '\0' ||
-			capid == LONG_MIN || capid == LONG_MAX)
+			capid == INT_MIN || capid == INT_MAX)
 				/* not a valid number */
 				capid = -1;
 			else if (capid > lxc_caps_last_cap())

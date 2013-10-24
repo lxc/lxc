@@ -204,7 +204,7 @@ static int _real_caps_last_cap(void)
 			buf[n] = '\0';
 			result = strtol(buf, &ptr, 10);
 			if (!ptr || (*ptr != '\0' && *ptr != '\n') ||
-			    result == LONG_MIN || result == LONG_MAX)
+			    result == INT_MIN || result == INT_MAX)
 				result = -1;
 		}
 
