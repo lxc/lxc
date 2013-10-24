@@ -1322,12 +1322,81 @@ out:
 	return false;
 }
 
+// used by qsort and bsearch functions for comparing names
+static inline int string_cmp(char **first, char **second)
+{
+	return strcmp(*first, *second);
+}
+
+// used by qsort and bsearch functions for comparing container names
+static inline int container_cmp(struct lxc_container **first, struct lxc_container **second)
+{
+	return strcmp((*first)->name, (*second)->name);
+}
+
+static bool add_to_array(char ***names, char *cname, int pos)
+{
+	char **newnames = realloc(*names, (pos+1) * sizeof(char *));
+	if (!newnames) {
+		ERROR("Out of memory");
+		return false;
+	}
+
+	*names = newnames;
+	newnames[pos] = strdup(cname);
+	if (!newnames[pos])
+		return false;
+
+	// sort the arrray as we will use binary search on it
+	qsort(newnames, pos + 1, sizeof(char *), (int (*)(const void *,const void *))string_cmp);
+
+	return true;
+}
+
+static bool add_to_clist(struct lxc_container ***list, struct lxc_container *c, int pos)
+{
+	struct lxc_container **newlist = realloc(*list, (pos+1) * sizeof(struct lxc_container *));
+	if (!newlist) {
+		ERROR("Out of memory");
+		return false;
+	}
+
+	*list = newlist;
+	newlist[pos] = c;
+
+	// sort the arrray as we will use binary search on it
+	qsort(newlist, pos + 1, sizeof(struct lxc_container *), (int (*)(const void *,const void *))container_cmp);
+
+	return true;
+}
+
+static char** get_from_array(char ***names, char *cname, int size)
+{
+	return (char **)bsearch(&cname, *names, size, sizeof(char *), (int (*)(const void *, const void *))string_cmp);
+}
+
+
+static bool array_contains(char ***names, char *cname, int size) {
+	if(get_from_array(names, cname, size) != NULL)
+		return true;
+	return false;
+}
+
+static bool remove_from_array(char ***names, char *cname, int size)
+{
+	char **result = get_from_array(names, cname, size);
+	if (result != NULL) {
+		free(result);
+		return true;
+	}
+	return false;
+}
+
 static char** lxcapi_get_interfaces(struct lxc_container *c)
 {
-	int count = 0, i;
-	bool found = false;
+	int i, count = 0;
 	struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
-	char **interfaces = NULL, **temp;
+	char **interfaces = NULL;
 	int old_netns = -1, new_netns = -1;
 
 	if (!enter_to_ns(c, &old_netns, &new_netns))
@@ -1341,51 +1410,41 @@ static char** lxcapi_get_interfaces(struct lxc_container *c)
 
 	/* Iterate through the interfaces */
 	for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
-		/*
-		 * WARNING: Following "for" loop does a linear search over the interfaces array
-		 * For the containers with lots of interfaces this may be problematic.
-		 * I'm not expecting this to be the common usage but if it turns out to be
-		 *     than using binary search or a hash table could be more elegant solution.
-		 */
-		for (i = 0; i < count; i++) {
-			if (strcmp(interfaces[i], tempIfAddr->ifa_name) == 0) {
-				found = true;
-				break;
-			}
-		}
+		if (array_contains(&interfaces, tempIfAddr->ifa_name, count))
+			continue;
 
-		if (!found) {
-			count += 1;
-			temp = realloc(interfaces, count * sizeof(*interfaces));
-			if (!temp) {
-				count -= 1;
-				goto out;
-			}
-			interfaces = temp;
-			interfaces[count - 1] = strdup(tempIfAddr->ifa_name);
-		}
-		found = false;
-    }
+		if(!add_to_array(&interfaces, tempIfAddr->ifa_name, count))
+			goto err;
+		count++;
+	}
 
 out:
-       if (interfaceArray)
-               freeifaddrs(interfaceArray);
+	if (interfaceArray)
+		freeifaddrs(interfaceArray);
 
-       exit_from_ns(c, &old_netns, &new_netns);
+	exit_from_ns(c, &old_netns, &new_netns);
 
-       /* Append NULL to the array */
-       interfaces = (char **)lxc_append_null_to_array((void **)interfaces, count);
+	/* Append NULL to the array */
+	if(interfaces)
+		interfaces = (char **)lxc_append_null_to_array((void **)interfaces, count);
 
-       return interfaces;
+	return interfaces;
+
+err:
+	for(i=0;i<count;i++)
+		free(interfaces[i]);
+	free(interfaces);
+	interfaces = NULL;
+	goto out;
 }
 
 static char** lxcapi_get_ips(struct lxc_container *c, char* interface, char* family, int scope)
 {
-	int count = 0;
+	int i, count = 0;
 	struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
 	char addressOutputBuffer[INET6_ADDRSTRLEN];
 	void *tempAddrPtr = NULL;
-	char **addresses = NULL, **temp;
+	char **addresses = NULL;
 	char *address = NULL;
 	int old_netns = -1, new_netns = -1;
 
@@ -1430,14 +1489,9 @@ static char** lxcapi_get_ips(struct lxc_container *c, char* interface, char* fam
 		if (!address)
 			continue;
 
-		count += 1;
-		temp = realloc(addresses, count * sizeof(*addresses));
-		if (!temp) {
-			count--;
-			goto out;
-		}
-		addresses = temp;
-		addresses[count - 1] = strdup(address);
+		if(!add_to_array(&addresses, address, count))
+			goto err;
+		count++;
 	}
 
 out:
@@ -1447,9 +1501,18 @@ out:
 	exit_from_ns(c, &old_netns, &new_netns);
 
 	/* Append NULL to the array */
-	addresses = (char **)lxc_append_null_to_array((void **)addresses, count);
+	if(addresses)
+		addresses = (char **)lxc_append_null_to_array((void **)addresses, count);
 
 	return addresses;
+
+err:
+	for(i=0;i<count;i++)
+		free(addresses[i]);
+	free(addresses);
+	addresses = NULL;
+
+	goto out;
 }
 
 static int lxcapi_get_config_item(struct lxc_container *c, const char *key, char *retv, int inlen)
@@ -2884,34 +2947,6 @@ int lxc_get_wait_states(const char **states)
 	return MAX_STATE;
 }
 
-
-static bool add_to_names(char ***names, char *cname, int pos)
-{
-	char **newnames = realloc(*names, (pos+1) * sizeof(char *));
-	if (!newnames) {
-		ERROR("Out of memory");
-		return false;
-	}
-	*names = newnames;
-	newnames[pos] = strdup(cname);
-	if (!newnames[pos])
-		return false;
-	return true;
-}
-
-static bool add_to_clist(struct lxc_container ***list, struct lxc_container *c, int pos)
-{
-	struct lxc_container **newlist = realloc(*list, (pos+1) * sizeof(struct lxc_container *));
-	if (!newlist) {
-		ERROR("Out of memory");
-		return false;
-	}
-
-	*list = newlist;
-	newlist[pos] = c;
-	return true;
-}
-
 /*
  * These next two could probably be done smarter with reusing a common function
  * with different iterators and tests...
@@ -2952,7 +2987,7 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 			continue;
 
 		if (names) {
-			if (!add_to_names(names, direntp->d_name, cfound))
+			if (!add_to_array(names, direntp->d_name, cfound))
 				goto free_bad;
 		}
 		cfound++;
@@ -2967,14 +3002,16 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 			INFO("Container %s:%s has a config but could not be loaded",
 				lxcpath, direntp->d_name);
 			if (names)
-				free((*names)[cfound--]);
+				if(!remove_from_array(names, direntp->d_name, cfound--))
+					goto free_bad;
 			continue;
 		}
 		if (!lxcapi_is_defined(c)) {
 			INFO("Container %s:%s has a config but is not defined",
 				lxcpath, direntp->d_name);
 			if (names)
-				free((*names)[cfound--]);
+				if(!remove_from_array(names, direntp->d_name, cfound--))
+					goto free_bad;
 			lxc_container_put(c);
 			continue;
 		}
@@ -3013,6 +3050,7 @@ int list_active_containers(const char *lxcpath, char ***names, struct lxc_contai
 	int i, cfound = 0, nfound = 0;
 	int lxcpath_len;
 	char *line = NULL;
+	char **unique_names = NULL;
 	size_t len = 0;
 	struct lxc_container *c;
 
@@ -3051,10 +3089,12 @@ int list_active_containers(const char *lxcpath, char ***names, struct lxc_contai
 			continue;
 		*p2 = '\0';
 
-		if (names) {
-			if (!add_to_names(names, p, nfound))
-				goto free_bad;
-		}
+		if (array_contains(&unique_names, p, nfound))
+			continue;
+
+		if (!add_to_array(&unique_names, p, nfound))
+			goto free_bad;
+
 		cfound++;
 
 		if (!cret) {
@@ -3066,8 +3106,10 @@ int list_active_containers(const char *lxcpath, char ***names, struct lxc_contai
 		if (!c) {
 			INFO("Container %s:%s is running but could not be loaded",
 				lxcpath, p);
-			if (names)
-				free((*names)[cfound--]);
+			if (names) {
+				if(!remove_from_array(&unique_names, p, cfound--))
+					goto free_bad;
+			}
 			continue;
 		}
 
@@ -3083,6 +3125,9 @@ int list_active_containers(const char *lxcpath, char ***names, struct lxc_contai
 		}
 		nfound++;
 	}
+
+	if (names)
+		*names = unique_names;
 
 	process_lock();
 	fclose(f);
