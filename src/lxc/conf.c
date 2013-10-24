@@ -1946,9 +1946,9 @@ static int setup_caps(struct lxc_list *caps)
 			/* try to see if it's numeric, so the user may specify
 			* capabilities  that the running kernel knows about but
 			* we don't */
+			errno = 0;
 			capid = strtol(drop_entry, &ptr, 10);
-			if (!ptr || *ptr != '\0' ||
-			capid == INT_MIN || capid == INT_MAX)
+			if (!ptr || *ptr != '\0' || errno != 0)
 				/* not a valid number */
 				capid = -1;
 			else if (capid > lxc_caps_last_cap())

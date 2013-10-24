@@ -202,9 +202,9 @@ static int _real_caps_last_cap(void)
 
 		if ((n = read(fd, buf, 31)) >= 0) {
 			buf[n] = '\0';
+			errno = 0;
 			result = strtol(buf, &ptr, 10);
-			if (!ptr || (*ptr != '\0' && *ptr != '\n') ||
-			    result == INT_MIN || result == INT_MAX)
+			if (!ptr || (*ptr != '\0' && *ptr != '\n') || errno != 0)
 				result = -1;
 		}
 
