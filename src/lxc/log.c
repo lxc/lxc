@@ -71,15 +71,17 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 {
 	char buffer[LXC_LOG_BUFFER_SIZE];
 	int n;
+	int ms;
 
 	if (lxc_log_fd == -1)
 		return 0;
 
+	ms = event->timestamp.tv_usec / 1000;
 	n = snprintf(buffer, sizeof(buffer),
-		     "%15s %10ld.%03ld %-8s %s - ",
+		     "%15s %10ld.%03d %-8s %s - ",
 		     log_prefix,
 		     event->timestamp.tv_sec,
-		     event->timestamp.tv_usec / 1000,
+		     ms,
 		     lxc_log_priority_to_string(event->priority),
 		     event->category);
 
