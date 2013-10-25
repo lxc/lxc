@@ -162,7 +162,7 @@ rm -rf %{buildroot}
 - set attribute for installed files
 - fix libraries installation
 
-* Mon Mar 24 2009 Daniel Lezcano <daniel.lezcano@free.fr> - 0.6.1
+* Tue Mar 24 2009 Daniel Lezcano <daniel.lezcano@free.fr> - 0.6.1
 - Removed capability setting, let the user to do that through "lxc-setcap"
 
 * Mon Feb 16 2009 Daniel Lezcano <daniel.lezcano@free.fr> - 0.6.0
