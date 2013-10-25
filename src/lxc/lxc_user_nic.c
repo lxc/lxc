@@ -17,6 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -27,6 +28,7 @@
 #include <sys/file.h>
 #include <alloca.h>
 #include <string.h>
+#include <sched.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -39,14 +41,31 @@
 #include <net/if_arp.h>
 #include <netinet/in.h>
 #include <linux/if_bridge.h>
+#include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
+#include <sys/param.h>
+#include <sched.h>
 #include "config.h"
+#include "utils.h"
 
 #ifndef HAVE_GETLINE
 #ifdef HAVE_FGETLN
 #include <../include/getline.h>
 #endif
+#endif
+
+/* Define setns() if missing from the C library */
+#ifndef HAVE_SETNS
+static inline int setns(int fd, int nstype)
+{
+#ifdef __NR_setns
+	return syscall(__NR_setns, fd, nstype);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
 #endif
 
 #if ISTEST
@@ -94,7 +113,8 @@
 
 void usage(char *me, bool fail)
 {
-	fprintf(stderr, "Usage: %s pid type bridge\n", me);
+	fprintf(stderr, "Usage: %s pid type bridge nicname\n", me);
+	fprintf(stderr, " nicname is the name to use inside the container\n");
 	exit(fail ? 1 : 0);
 }
 
@@ -237,11 +257,12 @@ bool nic_exists(char *nic)
 	return true;
 }
 
-#if ! ISTEST
 struct link_req {
 	struct nlmsg nlmsg;
 	struct ifinfomsg ifinfomsg;
 };
+
+#if ! ISTEST
 
 int lxc_veth_create(const char *name1, const char *name2)
 {
@@ -539,7 +560,7 @@ int lxc_netdev_delete_by_name(const char *name)
 
 #endif
 
-bool create_nic(char *nic, char *br, char *pidstr)
+bool create_nic(char *nic, char *br, char *pidstr, char **cnic)
 {
 #if ISTEST
 	char path[200];
@@ -559,7 +580,7 @@ bool create_nic(char *nic, char *br, char *pidstr)
 
 	ret = snprintf(veth1buf, IFNAMSIZ, "%s", nic);
 	if (ret < 0 || ret >= IFNAMSIZ) {
-		fprintf(stderr, "nic name too long\n");
+		fprintf(stderr, "host nic name too long\n");
 		exit(1);
 	}
 
@@ -581,6 +602,7 @@ bool create_nic(char *nic, char *br, char *pidstr)
 		fprintf(stderr, "Error moving %s to netns %d\n", veth2buf, pid);
 		goto out_del;
 	}
+	*cnic = strdup(veth2buf);
 	return true;
 
 out_del:
@@ -589,14 +611,19 @@ out_del:
 #endif
 }
 
-void get_new_nicname(char **dest, char *br, char *pid)
+/*
+ * Get a new nic.
+ * *dest will container the name (lxcuser-%d) which is attached
+ * on the host to the lxc bridge
+ */
+void get_new_nicname(char **dest, char *br, char *pid, char **cnic)
 {
 	int i = 0;
 	// TODO - speed this up.  For large installations we won't
 	// want n stats for every nth container startup.
 	while (1) {
 		sprintf(*dest, "lxcuser-%d", i);
-		if (!nic_exists(*dest) && create_nic(*dest, br, pid))
+		if (!nic_exists(*dest) && create_nic(*dest, br, pid, cnic))
 			return;
 		i++;
 	}
@@ -672,7 +699,7 @@ int count_entries(char *buf, off_t len, char *me, char *t, char *br)
  * The dbfile has lines of the format:
  * user type bridge nicname
  */
-bool get_nic_if_avail(int fd, char *me, char *pid, char *intype, char *br, int allowed, char **nicname)
+bool get_nic_if_avail(int fd, char *me, char *pid, char *intype, char *br, int allowed, char **nicname, char **cnic)
 {
 	off_t len, slen;
 	struct stat sb;
@@ -696,7 +723,7 @@ bool get_nic_if_avail(int fd, char *me, char *pid, char *intype, char *br, int a
 	}
 
 
-	get_new_nicname(nicname, br, pid);
+	get_new_nicname(nicname, br, pid, cnic);
 	/* me  ' ' intype ' ' br ' ' *nicname + '\n' + '\0' */
 	slen = strlen(me) + strlen(intype) + strlen(br) + strlen(*nicname) + 5;
 	newline = alloca(slen);
@@ -743,20 +770,134 @@ again:
 	goto again;
 }
 
+static int lxc_netdev_rename_by_index(int ifindex, const char *newname)
+{
+	struct nl_handler nlh;
+	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	struct link_req *link_req;
+	int len, err;
+
+	err = netlink_open(&nlh, NETLINK_ROUTE);
+	if (err)
+		return err;
+
+	len = strlen(newname);
+	if (len == 1 || len >= IFNAMSIZ)
+		goto out;
+
+	err = -ENOMEM;
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		goto out;
+
+	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!answer)
+		goto out;
+
+	link_req = (struct link_req *)nlmsg;
+	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
+	link_req->ifinfomsg.ifi_index = ifindex;
+	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_ACK|NLM_F_REQUEST;
+	nlmsg->nlmsghdr.nlmsg_type = RTM_NEWLINK;
+
+	if (nla_put_string(nlmsg, IFLA_IFNAME, newname))
+		goto out;
+
+	err = netlink_transaction(&nlh, nlmsg, answer);
+out:
+	netlink_close(&nlh);
+	nlmsg_free(answer);
+	nlmsg_free(nlmsg);
+	return err;
+}
+
+static int lxc_netdev_rename_by_name(const char *oldname, const char *newname)
+{
+	int len, index;
+
+	len = strlen(oldname);
+	if (len == 1 || len >= IFNAMSIZ)
+		return -EINVAL;
+
+	index = if_nametoindex(oldname);
+	if (!index) {
+		fprintf(stderr, "Error getting ifindex for %s\n", oldname);
+		return -EINVAL;
+	}
+
+	return lxc_netdev_rename_by_index(index, newname);
+}
+
+int rename_in_ns(int pid, char *oldname, char *newname)
+{
+	char nspath[MAXPATHLEN];
+	int fd = -1, ofd = -1, ret;
+
+	ret = snprintf(nspath, MAXPATHLEN, "/proc/%d/ns/net", getpid());
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return -1;
+	if ((ofd = open(nspath, O_RDONLY)) < 0) {
+		fprintf(stderr, "Opening %s\n", nspath);
+		return -1;
+	}
+	ret = snprintf(nspath, MAXPATHLEN, "/proc/%d/ns/net", pid);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		goto out_err;
+
+	if ((fd = open(nspath, O_RDONLY)) < 0) {
+		fprintf(stderr, "Opening %s\n", nspath);
+		goto out_err;
+	}
+	if (setns(fd, 0) < 0) {
+		fprintf(stderr, "setns to container network namespace\n");
+		goto out_err;
+	}
+	close(fd); fd = -1;
+	if ((ret = lxc_netdev_rename_by_name(oldname, newname)) < 0) {
+		fprintf(stderr, "Error %d renaming netdev %s to %s in container\n", ret, oldname, newname);
+		goto out_err;
+	}
+	if (setns(ofd, 0) < 0) {
+		fprintf(stderr, "Error returning to original netns\n");
+		close(ofd);
+		return -1;
+	}
+	close(ofd);
+
+	return 0;
+
+out_err:
+	if (ofd >= 0)
+		close(ofd);
+	if (setns(ofd, 0) < 0)
+		fprintf(stderr, "Error returning to original network namespace\n");
+	if (fd >= 0)
+		close(fd);
+	return -1;
+}
+
 int main(int argc, char *argv[])
 {
 	int n, fd;
 	bool gotone = false;
 	char *me, *buf = alloca(400);
 	char *nicname = alloca(40);
+	char *cnic; // created nic name in container is returned here.
+	char *vethname;
+	int pid;
 
 	if ((me = get_username(&buf)) == NULL) {
 		fprintf(stderr, "Failed to get username\n");
 		exit(1);
 	}
 
-	if (argc != 4)
+	if (argc < 4)
 		usage(argv[0], true);
+	if (argc >= 5)
+		vethname = argv[4];
+	else
+		vethname = "eth0";
 
 	if (!create_db_dir(DB_FILE)) {
 		fprintf(stderr, "Failed to create directory for db file\n");
@@ -770,14 +911,19 @@ int main(int argc, char *argv[])
 
 	n = get_alloted(me, argv[2], argv[3]);
 	if (n > 0)
-		gotone = get_nic_if_avail(fd, me, argv[1], argv[2], argv[3], n, &nicname);
+		gotone = get_nic_if_avail(fd, me, argv[1], argv[2], argv[3], n, &nicname, &cnic);
 	close(fd);
 	if (!gotone) {
 		fprintf(stderr, "Quota reached\n");
 		exit(1);
 	}
 
-	// Now create the link
+	pid = atoi(argv[1]);
+	// Now rename the link
+	if (rename_in_ns(pid, cnic, vethname) < 0) {
+		fprintf(stderr, "Failed to rename the link\n");
+		exit(1);
+	}
 
 	exit(0);
 }

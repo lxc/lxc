@@ -2761,7 +2761,7 @@ int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 
 	// Call lxc-user-nic pid type bridge
 	char pidstr[20];
-	char *args[] = { "lxc-user-nic", pidstr, "veth", netdev->link, NULL };
+	char *args[] = { "lxc-user-nic", pidstr, "veth", netdev->link, netdev->name, NULL };
 	snprintf(pidstr, 19, "%lu", (unsigned long) pid);
 	pidstr[19] = '\0';
 	execvp("lxc-user-nic", args);
