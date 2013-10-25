@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <stdint.h>
@@ -194,6 +195,7 @@ int lxc_monitor_open(const char *lxcpath)
 	struct sockaddr_un addr;
 	int fd,ret;
 	int retry,backoff_ms[] = {10, 50, 100};
+	size_t len;
 
 	if (lxc_monitor_sock_name(lxcpath, &addr) < 0)
 		return -1;
@@ -206,8 +208,15 @@ int lxc_monitor_open(const char *lxcpath)
 		return -1;
 	}
 
+	len = strlen(&addr.sun_path[1]) + 1;
+	if (len >= sizeof(addr.sun_path) - 1) {
+		ret = -1;
+		errno = ENAMETOOLONG;
+		goto err1;
+	}
+
 	for (retry = 0; retry < sizeof(backoff_ms)/sizeof(backoff_ms[0]); retry++) {
-		ret = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
+		ret = connect(fd, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + len);
 		if (ret == 0 || errno != ECONNREFUSED)
 			break;
 		ERROR("connect : backing off %d", backoff_ms[retry]);

@@ -210,7 +210,7 @@ static int lxc_monitord_sock_create(struct lxc_monitor *mon)
 	if (lxc_monitor_sock_name(mon->lxcpath, &addr) < 0)
 		return -1;
 
-	fd = lxc_af_unix_open(addr.sun_path, SOCK_STREAM, O_TRUNC);
+	fd = lxc_abstract_unix_open(addr.sun_path, SOCK_STREAM, O_TRUNC);
 	if (fd < 0) {
 		ERROR("failed to open unix socket : %s", strerror(errno));
 		return -1;

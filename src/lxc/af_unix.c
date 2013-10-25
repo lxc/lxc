@@ -20,6 +20,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+#include <stddef.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -34,7 +35,7 @@
 
 lxc_log_define(lxc_af_unix, lxc);
 
-int lxc_af_unix_open(const char *path, int type, int flags)
+int lxc_abstract_unix_open(const char *path, int type, int flags)
 {
 	int fd;
 	size_t len;
@@ -49,27 +50,26 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 	if (fd < 0)
 		return -1;
 
+	/* Clear address structure */
 	memset(&addr, 0, sizeof(addr));
 
 	if (!path)
 		return fd;
 
 	addr.sun_family = AF_UNIX;
-	/* copy entire buffer in case of abstract socket */
-	len = sizeof(addr.sun_path);
-	if (path[0]) {
-		len = strlen(path);
-		if (len >= sizeof(addr.sun_path)) {
-			process_lock();
-			close(fd);
-			process_unlock();
-			errno = ENAMETOOLONG;
-			return -1;
-		}
-	}
-	memcpy(addr.sun_path, path, len);
 
-	if (bind(fd, (struct sockaddr *)&addr, sizeof(addr))) {
+	len = strlen(&path[1]) + 1;
+	if (len >= sizeof(addr.sun_path) - 1) {
+		process_lock();
+		close(fd);
+		process_unlock();
+		errno = ENAMETOOLONG;
+		return -1;
+	}
+	/* addr.sun_path[0] has already been set to 0 by memset() */
+	strncpy(&addr.sun_path[1], &path[1], strlen(&path[1]));
+
+	if (bind(fd, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + len)) {
 		int tmp = errno;
 		process_lock();
 		close(fd);
@@ -90,7 +90,7 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 	return fd;
 }
 
-int lxc_af_unix_close(int fd)
+int lxc_abstract_unix_close(int fd)
 {
 	struct sockaddr_un addr;
 	socklen_t addrlen = sizeof(addr);
@@ -106,9 +106,10 @@ int lxc_af_unix_close(int fd)
 	return 0;
 }
 
-int lxc_af_unix_connect(const char *path)
+int lxc_abstract_unix_connect(const char *path)
 {
 	int fd;
+	size_t len;
 	struct sockaddr_un addr;
 
 	process_lock();
@@ -120,11 +121,19 @@ int lxc_af_unix_connect(const char *path)
 	memset(&addr, 0, sizeof(addr));
 
 	addr.sun_family = AF_UNIX;
-	/* copy entire buffer in case of abstract socket */
-	memcpy(addr.sun_path, path,
-	       path[0]?strlen(path):sizeof(addr.sun_path));
 
-	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr))) {
+	len = strlen(&path[1]) + 1;
+	if (len >= sizeof(addr.sun_path) - 1) {
+		process_lock();
+		close(fd);
+		process_unlock();
+		errno = ENAMETOOLONG;
+		return -1;
+	}
+	/* addr.sun_path[0] has already been set to 0 by memset() */
+	strncpy(&addr.sun_path[1], &path[1], strlen(&path[1]));
+
+	if (connect(fd, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + len)) {
 		int tmp = errno;
 		process_lock();
 		close(fd);
@@ -136,7 +145,7 @@ int lxc_af_unix_connect(const char *path)
 	return fd;
 }
 
-int lxc_af_unix_send_fd(int fd, int sendfd, void *data, size_t size)
+int lxc_abstract_unix_send_fd(int fd, int sendfd, void *data, size_t size)
 {
         struct msghdr msg = { 0 };
         struct iovec iov;
@@ -166,7 +175,7 @@ int lxc_af_unix_send_fd(int fd, int sendfd, void *data, size_t size)
         return sendmsg(fd, &msg, 0);
 }
 
-int lxc_af_unix_recv_fd(int fd, int *recvfd, void *data, size_t size)
+int lxc_abstract_unix_recv_fd(int fd, int *recvfd, void *data, size_t size)
 {
         struct msghdr msg = { 0 };
         struct iovec iov;
@@ -205,7 +214,7 @@ out:
         return ret;
 }
 
-int lxc_af_unix_send_credential(int fd, void *data, size_t size)
+int lxc_abstract_unix_send_credential(int fd, void *data, size_t size)
 {
         struct msghdr msg = { 0 };
         struct iovec iov;
@@ -238,7 +247,7 @@ int lxc_af_unix_send_credential(int fd, void *data, size_t size)
         return sendmsg(fd, &msg, 0);
 }
 
-int lxc_af_unix_rcv_credential(int fd, void *data, size_t size)
+int lxc_abstract_unix_rcv_credential(int fd, void *data, size_t size)
 {
         struct msghdr msg = { 0 };
         struct iovec iov;
