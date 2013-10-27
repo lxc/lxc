@@ -701,15 +701,23 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 			 struct bdev_specs *specs)
 {
 	char *dest;
-	const char *lxcpath = lxcapi_get_config_path(c);
+	const char *lxcpath;
 	size_t len;
 	struct bdev *bdev;
 	int ret;
 
-	/* lxcpath/lxcname/rootfs */
-	len = strlen(c->name) + strlen(lxcpath) + 9;
-	dest = alloca(len);
-	ret = snprintf(dest, len, "%s/%s/rootfs", lxcpath, c->name);
+	/* rootfs.path or lxcpath/lxcname/rootfs */
+	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) == 0) {
+		lxcpath = c->lxc_conf->rootfs.path;
+		len = strlen(lxcpath) + 1;
+		dest = alloca(len);
+		ret = snprintf(dest, len, "%s", lxcpath);
+	} else {
+		lxcpath = lxcapi_get_config_path(c);
+		len = strlen(c->name) + strlen(lxcpath) + 9;
+		dest = alloca(len);
+		ret = snprintf(dest, len, "%s/%s/rootfs", lxcpath, c->name);
+	}
 	if (ret < 0 || ret >= len)
 		return NULL;
 
@@ -1107,8 +1115,16 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 		goto out;
 	}
 
-	/* container is already created if we have a config and rootfs.path is accessible */
-	if (lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) == 0 && !tpath) {
+	/*
+	 * either template or rootfs.path should be set.
+	 * if both template and rootfs.path are set, template is setup as rootfs.path.
+	 * container is already created if we have a config and rootfs.path is accessible
+	 */
+	if (c->lxc_conf && !c->lxc_conf->rootfs.path && !tpath)
+		goto out;
+	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) != 0)
+		goto out;
+	if (lxcapi_is_defined(c) && c->lxc_conf->rootfs.path && !tpath) {
 		ret = true;
 		goto out;
 	}
