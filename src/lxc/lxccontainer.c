@@ -1086,7 +1086,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 		const char *bdevtype, struct bdev_specs *specs, int flags,
 		char *const argv[])
 {
-	bool bret = false;
+	bool ret = false;
 	pid_t pid;
 	char *tpath = NULL;
 	int partial_fd;
@@ -1108,8 +1108,10 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	}
 
 	/* container is already created if we have a config and rootfs.path is accessible */
-	if (lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) == 0)
+	if (lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) == 0 && !tpath) {
+		ret = true;
 		goto out;
+	}
 
 	/* Mark that this container is being created */
 	if ((partial_fd = create_partial(c)) < 0)
@@ -1175,7 +1177,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 			goto out_unlock;
 		}
 	}
-	bret = load_config_locked(c, c->configfile);
+	ret = load_config_locked(c, c->configfile);
 
 out_unlock:
 	if (partial_fd >= 0)
@@ -1183,9 +1185,9 @@ out_unlock:
 out:
 	if (tpath)
 		free(tpath);
-	if (!bret && c)
+	if (!ret && c)
 		lxcapi_destroy(c);
-	return bret;
+	return ret;
 }
 
 static bool lxcapi_reboot(struct lxc_container *c)
