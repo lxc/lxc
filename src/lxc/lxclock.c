@@ -240,7 +240,7 @@ void lxc_putlock(struct lxc_lock *l)
 	switch(l->type) {
 	case LXC_LOCK_ANON_SEM:
 		if (l->u.sem) {
-			sem_close(l->u.sem);
+			sem_destroy(l->u.sem);
 			free(l->u.sem);
 			l->u.sem = NULL;
 		}
