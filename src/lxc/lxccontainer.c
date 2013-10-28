@@ -3129,6 +3129,9 @@ int list_active_containers(const char *lxcpath, char ***names, struct lxc_contai
 	if (names)
 		*names = unique_names;
 
+	if (line)
+		free(line);
+
 	process_lock();
 	fclose(f);
 	process_unlock();
@@ -3145,6 +3148,9 @@ free_bad:
 			lxc_container_put((*cret)[i]);
 		free(*cret);
 	}
+	if (line)
+		free(line);
+
 	process_lock();
 	fclose(f);
 	process_unlock();
