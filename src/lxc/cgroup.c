@@ -1242,7 +1242,7 @@ char *lxc_cgroup_path_get(const char *filename, const char *name,
 	if (!group)
 		return NULL;
 
-	path = lxc_cgroup_find_abs_path(subsystem, group, true, *p ? longer_file : NULL);
+	path = lxc_cgroup_find_abs_path(subsystem, group, true, p ? longer_file : NULL);
 	free(group);
 	return path;
 }
