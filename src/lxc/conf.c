@@ -2059,6 +2059,7 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	}
 
 	memcpy(ifr.ifr_name, ifname, IFNAMSIZ);
+	ifr.ifr_name[IFNAMSIZ-1] = '\0';
 	memcpy((char *) &ifr.ifr_hwaddr, (char *) &sockaddr, sizeof(sockaddr));
 
 	process_lock();
@@ -2076,7 +2077,7 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	if (ret)
 		ERROR("ioctl failure : %s", strerror(errno));
 
-	DEBUG("mac address '%s' on '%s' has been setup", hwaddr, ifname);
+	DEBUG("mac address '%s' on '%s' has been setup", hwaddr, ifr.ifr_name);
 
 	return ret;
 }

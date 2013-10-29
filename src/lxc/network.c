@@ -1009,7 +1009,8 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 	if (fd < 0)
 		return -errno;
 
-	strncpy(ifr.ifr_name, bridge, IFNAMSIZ);
+	strncpy(ifr.ifr_name, bridge, IFNAMSIZ-1);
+	ifr.ifr_name[IFNAMSIZ-1] = '\0';
 	ifr.ifr_ifindex = index;
 	err = ioctl(fd, SIOCBRADDIF, &ifr);
 	process_lock();
