@@ -641,9 +641,9 @@ static bool lxcapi_startl(struct lxc_container *c, int useinit, ...)
 
 out:
 	if (inargs) {
-		char *arg;
-		for (arg = *inargs; arg; arg++)
-			free(arg);
+		char **arg;
+		for (arg = inargs; *arg; arg++)
+			free(*arg);
 		free(inargs);
 	}
 
