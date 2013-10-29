@@ -23,11 +23,21 @@
 %global with_python %{?_with_python: 1} %{?!_with_python: 0}
 %global with_lua %{?_with_lua: 1} %{?!_with_lua: 0}
 
+# RPM needs alpha/beta/rc in Release: not Version: to ensure smooth
+# package upgrades from alpha->beta->rc->release. For more info see:
+# http://fedoraproject.org/wiki/Packaging%3aNamingGuidelines#NonNumericRelease
+%if "x@LXC_VERSION_BETA@" != "x"
+%global beta_rel @LXC_VERSION_BETA@
+%global beta_dot .%{beta_rel}
+%else
+%global norm_rel 1
+%endif
+
 Name: @PACKAGE@
-Version: @VERSION@
-Release: 1%{?dist}
+Version: @LXC_VERSION_BASE@
+Release: %{?beta_rel:0.1.%{beta_rel}}%{?!beta_rel:%{norm_rel}}%{?dist}
 URL: http://linuxcontainers.org
-Source: http://linuxcontainers.org/downloads/%{name}-%{version}.tar.gz
+Source: http://linuxcontainers.org/downloads/%{name}-%{version}%{?beta_dot}.tar.gz
 Summary: Linux Containers userspace tools
 Group: Applications/System
 License: LGPLv2+
@@ -75,7 +85,7 @@ The %{name}-lua package contains %{name} bindings for lua.
 %endif
 
 %prep
-%setup -q
+%setup -q -n %{name}-%{version}%{?beta_dot}
 %build
 PATH=$PATH:/usr/sbin:/sbin %configure $args \
 %if %{with_lua}
