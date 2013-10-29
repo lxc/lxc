@@ -74,8 +74,8 @@ static int test_running_container(const char *lxcpath,
 		goto err3;
 	}
 
-	/* test get/set value using memory.swappiness file */
-	ret = lxc_cgroup_get("memory.swappiness", value, sizeof(value),
+	/* test get/set value using memory.soft_limit_in_bytes file */
+	ret = lxc_cgroup_get("memory.soft_limit_in_bytes", value, sizeof(value),
 			     c->name, c->config_path);
 	if (ret < 0) {
 		TSTERR("lxc_cgroup_get failed");
@@ -83,37 +83,28 @@ static int test_running_container(const char *lxcpath,
 	}
 	strcpy(value_save, value);
 
-	ret = lxc_cgroup_set("memory.swappiness", "100", c->name, c->config_path);
+	ret = lxc_cgroup_set("memory.soft_limit_in_bytes", "512M", c->name, c->config_path);
 	if (ret < 0) {
-		TSTERR("lxc_cgroup_set_bypath failed");
+		TSTERR("lxc_cgroup_set failed %d %d", ret, errno);
+		getchar();
 		goto err3;
 	}
-	ret = lxc_cgroup_get("memory.swappiness", value, sizeof(value),
+	ret = lxc_cgroup_get("memory.soft_limit_in_bytes", value, sizeof(value),
 			     c->name, c->config_path);
 	if (ret < 0) {
 		TSTERR("lxc_cgroup_get failed");
 		goto err3;
 	}
-	if (strcmp(value, "100\n")) {
+	if (strcmp(value, "536870912\n")) {
 		TSTERR("lxc_cgroup_set_bypath failed to set value >%s<", value);
 		goto err3;
 	}
 
 	/* restore original value */
-	ret = lxc_cgroup_set("memory.swappiness", value_save,
+	ret = lxc_cgroup_set("memory.soft_limit_in_bytes", value_save,
 			     c->name, c->config_path);
 	if (ret < 0) {
 		TSTERR("lxc_cgroup_set failed");
-		goto err3;
-	}
-	ret = lxc_cgroup_get("memory.swappiness", value, sizeof(value),
-			     c->name, c->config_path);
-	if (ret < 0) {
-		TSTERR("lxc_cgroup_get failed");
-		goto err3;
-	}
-	if (strcmp(value, value_save)) {
-		TSTERR("lxc_cgroup_set failed to set value >%s<", value);
 		goto err3;
 	}
 
