@@ -998,6 +998,66 @@ int lxc_ipv6_gateway_add(int ifindex, struct in6_addr *gw)
 	return ip_gateway_add(AF_INET6, ifindex, gw);
 }
 
+static int ip_route_dest_add(int family, int ifindex, void *dest)
+{
+	struct nl_handler nlh;
+	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	struct rt_req *rt_req;
+	int addrlen;
+	int err;
+	
+	addrlen = family == AF_INET ? sizeof(struct in_addr) :
+		sizeof(struct in6_addr);
+	
+	err = netlink_open(&nlh, NETLINK_ROUTE);
+	if (err)
+		return err;
+	
+	err = -ENOMEM;
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		goto out;
+	
+	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!answer)
+		goto out;
+	
+	rt_req = (struct rt_req *)nlmsg;
+	rt_req->nlmsg.nlmsghdr.nlmsg_len =
+		NLMSG_LENGTH(sizeof(struct rtmsg));
+	rt_req->nlmsg.nlmsghdr.nlmsg_flags =
+		NLM_F_ACK|NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL;
+	rt_req->nlmsg.nlmsghdr.nlmsg_type = RTM_NEWROUTE;
+	rt_req->rt.rtm_family = family;
+	rt_req->rt.rtm_table = RT_TABLE_MAIN;
+	rt_req->rt.rtm_scope = RT_SCOPE_LINK;
+	rt_req->rt.rtm_protocol = RTPROT_BOOT;
+	rt_req->rt.rtm_type = RTN_UNICAST;
+	rt_req->rt.rtm_dst_len = addrlen*8;
+	
+	err = -EINVAL;
+	if (nla_put_buffer(nlmsg, RTA_DST, dest, addrlen))
+		goto out;
+	if (nla_put_u32(nlmsg, RTA_OIF, ifindex))
+		goto out;
+	err = netlink_transaction(&nlh, nlmsg, answer);
+out:
+	netlink_close(&nlh);
+	nlmsg_free(answer);
+	nlmsg_free(nlmsg);
+	return err;
+}
+
+int lxc_ipv4_dest_add(int ifindex, struct in_addr *dest)
+{
+	return ip_route_dest_add(AF_INET, ifindex, dest);
+}
+
+int lxc_ipv6_dest_add(int ifindex, struct in6_addr *dest)
+{
+	return ip_route_dest_add(AF_INET6, ifindex, dest);
+}
+
 /*
  * There is a lxc_bridge_attach, but no need of a bridge detach
  * as automatically done by kernel when a netdev is deleted.

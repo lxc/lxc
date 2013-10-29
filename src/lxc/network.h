@@ -93,6 +93,12 @@ extern int lxc_ipv4_addr_get(int ifindex, struct in_addr **res);
 extern int lxc_ipv6_addr_get(int ifindex, struct in6_addr **res);
 
 /*
+ * Set a destination route to an interface
+ */
+extern int lxc_ipv4_dest_add(int ifindex, struct in_addr *dest);
+extern int lxc_ipv6_dest_add(int ifindex, struct in6_addr *dest);
+
+/*
  * Set default route.
  */
 extern int lxc_ipv4_gateway_add(int ifindex, struct in_addr *gw);

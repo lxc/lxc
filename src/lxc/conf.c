@@ -2504,6 +2504,12 @@ static int setup_netdev(struct lxc_netdev *netdev)
 			return -1;
 		}
 
+		err = lxc_ipv4_dest_add(netdev->ifindex, netdev->ipv4_gateway);
+		if (err) {
+			ERROR("failed to add ipv4 dest for '%s': %s",
+				      ifname, strerror(-err));
+		}
+
 		err = lxc_ipv4_gateway_add(netdev->ifindex, netdev->ipv4_gateway);
 		if (err) {
 			ERROR("failed to setup ipv4 gateway for '%s': %s",
@@ -2527,6 +2533,12 @@ static int setup_netdev(struct lxc_netdev *netdev)
 		if (lxc_list_empty(&netdev->ipv6) && !IN6_IS_ADDR_LINKLOCAL(netdev->ipv6_gateway)) {
 			ERROR("Cannot add ipv6 gateway for %s when not assigning an address", ifname);
 			return -1;
+		}
+
+		err = lxc_ipv6_dest_add(netdev->ifindex, netdev->ipv6_gateway);
+		if (err) {
+			ERROR("failed to add ipv6 dest for '%s': %s",
+			      ifname, strerror(-err));
 		}
 
 		err = lxc_ipv6_gateway_add(netdev->ifindex, netdev->ipv6_gateway);
