@@ -459,6 +459,8 @@ static void lxcapi_want_daemonize(struct lxc_container *c)
 		return;
 	}
 	c->daemonize = 1;
+	/* daemonize implies close_all_fds so set it */
+	c->lxc_conf->close_all_fds = 1;
 	container_mem_unlock(c);
 }
 
