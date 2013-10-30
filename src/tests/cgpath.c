@@ -86,7 +86,6 @@ static int test_running_container(const char *lxcpath,
 	ret = lxc_cgroup_set("memory.soft_limit_in_bytes", "512M", c->name, c->config_path);
 	if (ret < 0) {
 		TSTERR("lxc_cgroup_set failed %d %d", ret, errno);
-		getchar();
 		goto err3;
 	}
 	ret = lxc_cgroup_get("memory.soft_limit_in_bytes", value, sizeof(value),
