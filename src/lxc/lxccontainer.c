@@ -1128,24 +1128,22 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 		goto out;
 	}
 
-	if (c->lxc_conf) {
-		/*
-		 * either template or rootfs.path should be set.
-		 * if both template and rootfs.path are set, template is setup as rootfs.path.
-		 * container is already created if we have a config and rootfs.path is accessible
-		 */
-		if (!c->lxc_conf->rootfs.path && !tpath)
-			/* no template passed in and rootfs does not exist: error */
-			goto out;
-		if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) != 0)
-			/* rootfs passed into configuration, but does not exist: error */
-			goto out;
-		if (lxcapi_is_defined(c) && c->lxc_conf->rootfs.path && !tpath) {
-			/* Rootfs already existed, user just wanted to save the
-			 * loaded configuration */
-			ret = true;
-			goto out;
-		}
+	/*
+	 * either template or rootfs.path should be set.
+	 * if both template and rootfs.path are set, template is setup as rootfs.path.
+	 * container is already created if we have a config and rootfs.path is accessible
+	 */
+	if (!c->lxc_conf->rootfs.path && !tpath)
+		/* no template passed in and rootfs does not exist: error */
+		goto out;
+	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) != 0)
+		/* rootfs passed into configuration, but does not exist: error */
+		goto out;
+	if (lxcapi_is_defined(c) && c->lxc_conf->rootfs.path && !tpath) {
+		/* Rootfs already existed, user just wanted to save the
+		 * loaded configuration */
+		ret = true;
+		goto out;
 	}
 
 	/* Mark that this container is being created */
