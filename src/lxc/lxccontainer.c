@@ -701,19 +701,18 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 			 struct bdev_specs *specs)
 {
 	char *dest;
-	const char *lxcpath;
 	size_t len;
 	struct bdev *bdev;
 	int ret;
 
 	/* rootfs.path or lxcpath/lxcname/rootfs */
 	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) == 0) {
-		lxcpath = c->lxc_conf->rootfs.path;
-		len = strlen(lxcpath) + 1;
+		const char *rpath = c->lxc_conf->rootfs.path;
+		len = strlen(rpath) + 1;
 		dest = alloca(len);
-		ret = snprintf(dest, len, "%s", lxcpath);
+		ret = snprintf(dest, len, "%s", rpath);
 	} else {
-		lxcpath = lxcapi_get_config_path(c);
+		const char *lxcpath = lxcapi_get_config_path(c);
 		len = strlen(c->name) + strlen(lxcpath) + 9;
 		dest = alloca(len);
 		ret = snprintf(dest, len, "%s/%s/rootfs", lxcpath, c->name);
@@ -1110,23 +1109,43 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 		}
 	}
 
+	/*
+	 * If a template is passed in, and the rootfs already is defined in
+	 * the container config and exists, then * caller is trying to create
+	 * an existing container.  Return an error, but do NOT delete the
+	 * container.
+	 */
+	if (lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path &&
+			access(c->lxc_conf->rootfs.path, F_OK) == 0 && tpath) {
+		ERROR("Container %s:%s already exists", c->config_path, c->name);
+		free(tpath);
+		return false;
+	}
+
+	/* Save the loaded configuration to disk */
 	if (!c->save_config(c, NULL)) {
 		ERROR("failed to save starting configuration for %s\n", c->name);
 		goto out;
 	}
 
-	/*
-	 * either template or rootfs.path should be set.
-	 * if both template and rootfs.path are set, template is setup as rootfs.path.
-	 * container is already created if we have a config and rootfs.path is accessible
-	 */
-	if (c->lxc_conf && !c->lxc_conf->rootfs.path && !tpath)
-		goto out;
-	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) != 0)
-		goto out;
-	if (lxcapi_is_defined(c) && c->lxc_conf->rootfs.path && !tpath) {
-		ret = true;
-		goto out;
+	if (c->lxc_conf) {
+		/*
+		 * either template or rootfs.path should be set.
+		 * if both template and rootfs.path are set, template is setup as rootfs.path.
+		 * container is already created if we have a config and rootfs.path is accessible
+		 */
+		if (!c->lxc_conf->rootfs.path && !tpath)
+			/* no template passed in and rootfs does not exist: error */
+			goto out;
+		if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) != 0)
+			/* rootfs passed into configuration, but does not exist: error */
+			goto out;
+		if (lxcapi_is_defined(c) && c->lxc_conf->rootfs.path && !tpath) {
+			/* Rootfs already existed, user just wanted to save the
+			 * loaded configuration */
+			ret = true;
+			goto out;
+		}
 	}
 
 	/* Mark that this container is being created */
