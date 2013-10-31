@@ -189,6 +189,10 @@ function container:clear_config_item(key)
     return self.core:clear_config_item(key)
 end
 
+function container:get_cgroup_item(key)
+    return self.core:get_cgroup_item(key)
+end
+
 function container:get_config_item(key)
     local value
     local vals = {}
@@ -207,6 +211,10 @@ function container:get_config_item(key)
 	vals[v] = true
     end
     return vals
+end
+
+function container:set_cgroup_item(key, value)
+    return self.core:set_cgroup_item(key, value)
 end
 
 function container:set_config_item(key, value)
@@ -408,6 +416,14 @@ function M.containers_running(names_only)
 
     table.sort(containers, function (a,b) return (a < b) end)
     return containers
+end
+
+function M.version_get()
+    return core.version_get()
+end
+
+function M.default_config_path_get()
+    return core.default_config_path_get()
 end
 
 lxc_path = core.default_config_path_get()
