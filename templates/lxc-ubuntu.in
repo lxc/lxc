@@ -35,6 +35,8 @@ configure_ubuntu()
     rootfs=$1
     hostname=$2
     release=$3
+    user=$4
+    password=$5
 
     # configure the network using the dhcp
     cat <<EOF > $rootfs/etc/network/interfaces
@@ -76,8 +78,8 @@ EOF
     fi
 
     if [ -z "$bindhome" ]; then
-        chroot $rootfs useradd --create-home -s /bin/bash ubuntu
-        echo "ubuntu:ubuntu" | chroot $rootfs chpasswd
+        chroot $rootfs useradd --create-home -s /bin/bash $user
+        echo "$user:$password" | chroot $rootfs chpasswd
     fi
 
     # make sure we have the current locale defined in the container
@@ -224,8 +226,7 @@ download_ubuntu()
     cache=$1
     arch=$2
     release=$3
-
-    packages=vim,ssh
+    packages=$4
 
     # Try to guess a list of langpacks to install
     langpacks="language-pack-en"
@@ -330,7 +331,7 @@ install_ubuntu()
 
         echo "Checking cache download in $cache/rootfs-$arch ... "
         if [ ! -e "$cache/rootfs-$arch" ]; then
-            download_ubuntu $cache $arch $release
+            download_ubuntu $cache $arch $release $packages
             if [ $? -ne 0 ]; then
                 echo "Failed to download 'ubuntu $release base'"
                 return 1
@@ -554,18 +555,19 @@ usage()
     cat <<EOF
 $1 -h|--help [-a|--arch] [-b|--bindhome <user>] [-d|--debug]
    [-F | --flush-cache] [-r|--release <release>] [ -S | --auth-key <keyfile>]
-   [--rootfs <rootfs>]
+   [--rootfs <rootfs>] [--packages <packages>] [-u|--user <user>] [--password <password>]
 release: the ubuntu release (e.g. precise): defaults to host release on ubuntu, otherwise uses latest LTS
 bindhome: bind <user>'s home into the container
           The ubuntu user will not be created, and <user> will have
           sudo access.
 arch: the container architecture (e.g. amd64): defaults to host arch
 auth-key: SSH Public key file to inject into container
+packages: list of packages to add comma separated
 EOF
     return 0
 }
 
-options=$(getopt -o a:b:hp:r:n:FS:d -l arch:,bindhome:,help,path:,release:,name:,flush-cache,auth-key:,debug,rootfs: -- "$@")
+options=$(getopt -o a:b:hp:r:n:FS:du: -l arch:,bindhome:,help,path:,release:,name:,flush-cache,auth-key:,debug,rootfs:,packages:,user:,password: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -601,6 +603,9 @@ fi
 debug=0
 hostarch=$arch
 flushcache=0
+packages="vim,ssh"
+user="ubuntu"
+password="ubuntu"
 while true
 do
     case "$1" in
@@ -608,8 +613,11 @@ do
     --rootfs)       rootfs=$2; shift 2;;
     -p|--path)      path=$2; shift 2;;
     -n|--name)      name=$2; shift 2;;
+    -u|--user)      user=$2; shift 2;;
+    --password)     password=$2; shift 2;;
     -F|--flush-cache) flushcache=1; shift 1;;
     -r|--release)   release=$2; shift 2;;
+    --packages)     packages=$2; shift 2;;
     -b|--bindhome)  bindhome=$2; shift 2;;
     -a|--arch)      arch=$2; shift 2;;
     -S|--auth-key)  auth_key=$2; shift 2;;
@@ -675,13 +683,13 @@ if [ -z "$rootfs" ]; then
     fi
 fi
 
-install_ubuntu $rootfs $release $flushcache
+install_ubuntu $rootfs $release $flushcache $packages
 if [ $? -ne 0 ]; then
     echo "failed to install ubuntu $release"
     exit 1
 fi
 
-configure_ubuntu $rootfs $name $release
+configure_ubuntu $rootfs $name $release $user $password
 if [ $? -ne 0 ]; then
     echo "failed to configure ubuntu $release for a container"
     exit 1
@@ -699,7 +707,7 @@ if [ -n "$bindhome" ]; then
     do_bindhome $rootfs $bindhome
     finalize_user $bindhome
 else
-    finalize_user ubuntu
+    finalize_user $user
 fi
 
 echo ""
@@ -707,7 +715,7 @@ echo "##"
 if [ -n "$bindhome" ]; then
     echo "# Log in as user $bindhome"
 else
-    echo "# The default user is 'ubuntu' with password 'ubuntu'!"
+    echo "# The default user is '$user' with password '$password'!"
     echo "# Use the 'sudo' command to run tasks as root in the container."
 fi
 echo "##"
