@@ -289,6 +289,8 @@ function container:stats_get(total)
     stat.mem_limit     = self:stat_get_int("memory.limit_in_bytes")
     stat.memsw_used    = self:stat_get_int("memory.memsw.usage_in_bytes")
     stat.memsw_limit   = self:stat_get_int("memory.memsw.limit_in_bytes")
+    stat.kmem_used     = self:stat_get_int("memory.kmem.usage_in_bytes")
+    stat.kmem_limit    = self:stat_get_int("memory.kmem.limit_in_bytes")
     stat.cpu_use_nanos = self:stat_get_int("cpuacct.usage")
     stat.cpu_use_user,
     stat.cpu_use_sys   = self:stat_get_ints("cpuacct.stat", {{1, 2}, {2, 2}})
@@ -299,6 +301,8 @@ function container:stats_get(total)
 	total.mem_limit     = total.mem_limit     + stat.mem_limit
 	total.memsw_used    = total.memsw_used    + stat.memsw_used
 	total.memsw_limit   = total.memsw_limit   + stat.memsw_limit
+	total.kmem_used     = total.kmem_used     + stat.kmem_used
+	total.kmem_limit    = total.kmem_limit    + stat.kmem_limit
 	total.cpu_use_nanos = total.cpu_use_nanos + stat.cpu_use_nanos
 	total.cpu_use_user  = total.cpu_use_user  + stat.cpu_use_user
 	total.cpu_use_sys   = total.cpu_use_sys   + stat.cpu_use_sys
@@ -314,17 +318,8 @@ function M.stats_clear(stat)
     stat.mem_limit     = 0
     stat.memsw_used    = 0
     stat.memsw_limit   = 0
-    stat.cpu_use_nanos = 0
-    stat.cpu_use_user  = 0
-    stat.cpu_use_sys   = 0
-    stat.blkio         = 0
-end
-
-function M.stats_clear(stat)
-    stat.mem_used      = 0
-    stat.mem_limit     = 0
-    stat.memsw_used    = 0
-    stat.memsw_limit   = 0
+    stat.kmem_used     = 0
+    stat.kmem_limit    = 0
     stat.cpu_use_nanos = 0
     stat.cpu_use_user  = 0
     stat.cpu_use_sys   = 0

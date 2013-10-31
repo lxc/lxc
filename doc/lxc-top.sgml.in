@@ -58,11 +58,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <title>Description</title>
     <para>
       <command>lxc-top</command> displays container statistics. The output
-        is updated every <replaceable>delay</replaceable> seconds, and is
-        ordered according to the <replaceable>sortby</replaceable> value
-        given. Specifying <replaceable>count</replaceable> will limit the
-        number of containers displayed, otherwise <command>lxc-top</command>
-        will display as many containers as can fit in your terminal.
+      is updated every <replaceable>delay</replaceable> seconds, and is
+      ordered according to the <replaceable>sortby</replaceable> value
+      given. Specifying <replaceable>count</replaceable> will limit the
+      number of containers displayed, otherwise <command>lxc-top</command>
+      will display as many containers as can fit in your terminal.
     </para>
   </refsect1>
 
@@ -103,8 +103,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <para>
             Sort the containers by name, cpu use, or memory use. The
             <replaceable>sortby</replaceable> argument should be one of
-            the letters n,c,d,m to sort by name, cpu use, disk I/O, or
-            memory use respectively. The default is 'n'.
+            the letters n,c,d,m,k to sort by name, cpu use, disk I/O, memory,
+            or kernel memory use respectively. The default is 'n'.
           </para>
         </listitem>
       </varlistentry>
@@ -135,6 +135,25 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </listitem>
       </varlistentry>
     </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>Notes</title>
+    <para>
+      For performance reasons the kernel does not account kernel memory use
+      unless a kernel memory limit is set. If a limit is not set, <command>
+      lxc-top</command> will display kernel memory use as 0. If no containers
+      are being accounted, the KMem column will not be displayed. A limit can
+      be set by specifying
+      <programlisting>
+      lxc.cgroup.memory.kmem.limit_in_bytes = <replaceable>number</replaceable>
+      </programlisting>
+      in your container configuration file, see
+      <citerefentry>
+        <refentrytitle>lxc.conf</refentrytitle>
+        <manvolnum>5</manvolnum>
+      </citerefentry>.
+    </para>
   </refsect1>
 
   &seealso;

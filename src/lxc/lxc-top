@@ -117,12 +117,14 @@ function container_sort(a, b)
 	elseif (optarg["s"] == "c") then return (stats[a].cpu_use_nanos < stats[b].cpu_use_nanos)
 	elseif (optarg["s"] == "d") then return (stats[a].blkio < stats[b].blkio)
 	elseif (optarg["s"] == "m") then return (stats[a].mem_used < stats[b].mem_used)
+	elseif (optarg["s"] == "k") then return (stats[a].kmem_used < stats[b].kmem_used)
 	end
     else
 	if     (optarg["s"] == "n") then return (a < b)
 	elseif (optarg["s"] == "c") then return (stats[a].cpu_use_nanos > stats[b].cpu_use_nanos)
 	elseif (optarg["s"] == "d") then return (stats[a].blkio > stats[b].blkio)
 	elseif (optarg["s"] == "m") then return (stats[a].mem_used > stats[b].mem_used)
+	elseif (optarg["s"] == "k") then return (stats[a].kmem_used > stats[b].kmem_used)
 	end
     end
 end
@@ -163,14 +165,19 @@ function container_list_update()
     table.sort(containers, container_sort)
 end
 
-function stats_print_header()
+function stats_print_header(stats_total)
     printf(TERMRVRS .. TERMBOLD)
-    printf("%-15s %8s %8s %8s %10s %10s\n", "Container", "CPU",  "CPU",  "CPU",  "BlkIO", "Mem")
-    printf("%-15s %8s %8s %8s %10s %10s\n", "Name",      "Used", "Sys",  "User", "Total", "Used")
+    printf("%-15s %8s %8s %8s %10s %10s", "Container", "CPU",  "CPU",  "CPU",  "BlkIO", "Mem")
+    if (stats_total.kmem_used > 0) then printf(" %10s", "KMem") end
+    printf("\n")
+
+    printf("%-15s %8s %8s %8s %10s %10s", "Name",      "Used", "Sys",  "User", "Total", "Used")
+    if (stats_total.kmem_used > 0) then printf(" %10s", "Used") end
+    printf("\n")
     printf(TERMNORM)
 end
 
-function stats_print(name, stats)
+function stats_print(name, stats, stats_total)
     printf("%-15s %8.2f %8.2f %8.2f %10s %10s",
 	   name,
 	   stats.cpu_use_nanos / 1000000000,
@@ -178,6 +185,9 @@ function stats_print(name, stats)
 	   stats.cpu_use_user / USER_HZ,
 	   strsisize(stats.blkio),
 	   strsisize(stats.mem_used))
+    if (stats_total.kmem_used > 0) then
+	printf(" %10s", strsisize(stats.kmem_used))
+    end
 end
 
 function usage()
@@ -190,6 +200,7 @@ function usage()
 	"                 c = CPU use\n" ..
 	"                 d = Disk I/O use\n" ..
 	"                 m = Memory use\n" ..
+	"                 k = Kernel memory use\n" ..
 	"  -r|--reverse   sort in reverse (descending) order\n"
     )
     os.exit(1)
@@ -219,15 +230,15 @@ do
     -- may fall back to this, or ncurses. ug.
     --os.execute("tput clear")
     printf(TERMCLEAR)
-    stats_print_header()
+    stats_print_header(stats_total)
     for index,ctname in ipairs(containers) do
-	stats_print(ctname, stats[ctname])
+	stats_print(ctname, stats[ctname], stats_total)
 	printf("\n")
 	if (index >= optarg["m"]) then
 	    break
 	end
     end
-    stats_print(string.format("TOTAL (%-2d)", #containers), stats_total)
+    stats_print(string.format("TOTAL (%-2d)", #containers), stats_total, stats_total)
     io.flush()
     core.usleep(optarg["d"] * 1000000)
 end
