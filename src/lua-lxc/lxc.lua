@@ -29,7 +29,6 @@ local io     = require("io")
 module("lxc", package.seeall)
 
 local lxc_path
-local cgroup_path
 local log_level = 3
 
 -- lua 5.1 compat
@@ -68,31 +67,6 @@ function string:split(delim, max_cols)
 	end
     until nextc == nil or start > #self
     return cols
-end
-
-function cgroup_path_get()
-    local f,line,cgroup_path
-
-    f = io.open("/proc/mounts", "r")
-    if (f) then
-	while true do
-	    local c
-	    line = f:read()
-	    if line == nil then
-	        break
-	    end
-	    c = line:split(" ", 6)
-	    if (c[1] == "cgroup") then
-		cgroup_path = core.dirname(c[2])
-		break
-	    end
-	end
-	f:close()
-    end
-    if (not cgroup_path) then
-	cgroup_path = "/sys/fs/cgroup"
-    end
-    return cgroup_path
 end
 
 -- container class
@@ -261,20 +235,19 @@ end
 
 -- methods for stats collection from various cgroup files
 -- read integers at given coordinates from a cgroup file
-function container:stat_get_ints(controller, item, coords)
-    local f = io.open(cgroup_path.."/"..controller.."/"..self.ctname.."/"..item, "r")
+function container:stat_get_ints(item, coords)
     local lines = {}
     local result = {}
+    local flines = self:get_cgroup_item(item)
 
-    if (not f) then
+    if (flines == nil) then
 	for k,c in ipairs(coords) do
 	    table.insert(result, 0)
 	end
     else
-	for line in f:lines() do
+	for line in flines:gmatch("[^\r\n]+") do
 	    table.insert(lines, line)
 	end
-	f:close()
 	for k,c in ipairs(coords) do
 	    local col
 
@@ -287,27 +260,18 @@ function container:stat_get_ints(controller, item, coords)
 end
 
 -- read an integer from a cgroup file
-function container:stat_get_int(controller, item)
-    local f = io.open(cgroup_path.."/"..controller.."/"..self.ctname.."/"..item, "r")
-    if (not f) then
-	return 0
-    end
-
-    local line = f:read()
-    f:close()
+function container:stat_get_int(item)
+    local line = self:get_cgroup_item(item)
     -- if line is nil (on an error like Operation not supported because
     -- CONFIG_MEMCG_SWAP_ENABLED isn't enabled) return 0
     return tonumber(line) or 0
 end
 
-function container:stat_match_get_int(controller, item, match, column)
+function container:stat_match_get_int(item, match, column)
     local val
-    local f = io.open(cgroup_path.."/"..controller.."/"..self.ctname.."/"..item, "r")
-    if (not f) then
-	return 0
-    end
+    local lines = self:get_cgroup_item(item)
 
-    for line in f:lines() do
+    for line in lines:gmatch("[^\r\n]+") do
 	if (string.find(line, match)) then
 	    local col
 
@@ -315,20 +279,20 @@ function container:stat_match_get_int(controller, item, match, column)
 	    val = tonumber(col[column]) or 0
 	end
     end
-    f:close()
+
     return val
 end
 
 function container:stats_get(total)
     local stat = {}
-    stat.mem_used      = self:stat_get_int("memory",  "memory.usage_in_bytes")
-    stat.mem_limit     = self:stat_get_int("memory",  "memory.limit_in_bytes")
-    stat.memsw_used    = self:stat_get_int("memory",  "memory.memsw.usage_in_bytes")
-    stat.memsw_limit   = self:stat_get_int("memory",  "memory.memsw.limit_in_bytes")
-    stat.cpu_use_nanos = self:stat_get_int("cpuacct", "cpuacct.usage")
+    stat.mem_used      = self:stat_get_int("memory.usage_in_bytes")
+    stat.mem_limit     = self:stat_get_int("memory.limit_in_bytes")
+    stat.memsw_used    = self:stat_get_int("memory.memsw.usage_in_bytes")
+    stat.memsw_limit   = self:stat_get_int("memory.memsw.limit_in_bytes")
+    stat.cpu_use_nanos = self:stat_get_int("cpuacct.usage")
     stat.cpu_use_user,
-    stat.cpu_use_sys   = self:stat_get_ints("cpuacct", "cpuacct.stat", {{1, 2}, {2, 2}})
-    stat.blkio         = self:stat_match_get_int("blkio", "blkio.throttle.io_service_bytes", "Total", 2)
+    stat.cpu_use_sys   = self:stat_get_ints("cpuacct.stat", {{1, 2}, {2, 2}})
+    stat.blkio         = self:stat_match_get_int("blkio.throttle.io_service_bytes", "Total", 2)
 
     if (total) then
 	total.mem_used      = total.mem_used      + stat.mem_used
@@ -427,6 +391,5 @@ function M.default_config_path_get()
 end
 
 lxc_path = core.default_config_path_get()
-cgroup_path = cgroup_path_get()
 
 return M
