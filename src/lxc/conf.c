@@ -1268,7 +1268,6 @@ int detect_shared_rootfs(void)
 	if (!f)
 		return 0;
 	while ((p = fgets(buf, LINELEN, f))) {
-		INFO("looking at .%s.", p);
 		for (p = buf, i=0; p && i < 4; i++)
 			p = index(p+1, ' ');
 		if (!p)
@@ -1277,7 +1276,6 @@ int detect_shared_rootfs(void)
 		if (!p2)
 			continue;
 		*p2 = '\0';
-		INFO("now p is .%s.", p);
 		if (strcmp(p+1, "/") == 0) {
 			// this is '/'.  is it shared?
 			p = index(p2+1, ' ');
