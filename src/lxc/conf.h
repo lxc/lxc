@@ -362,7 +362,7 @@ extern void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf);
 
 extern uid_t get_mapped_rootid(struct lxc_conf *conf);
 extern int find_unmapped_nsuid(struct lxc_conf *conf);
-extern bool hostid_is_mapped(int id, struct lxc_conf *conf);
+extern int mapped_hostid(int id, struct lxc_conf *conf);
 extern int chown_mapped_root(char *path, struct lxc_conf *conf);
 extern int ttys_shift_ids(struct lxc_conf *c);
 #endif

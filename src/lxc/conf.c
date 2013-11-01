@@ -2912,7 +2912,7 @@ uid_t get_mapped_rootid(struct lxc_conf *conf)
 	return (uid_t)-1;
 }
 
-bool hostid_is_mapped(int id, struct lxc_conf *conf)
+int mapped_hostid(int id, struct lxc_conf *conf)
 {
 	struct lxc_list *it;
 	struct id_map *map;
@@ -2921,9 +2921,9 @@ bool hostid_is_mapped(int id, struct lxc_conf *conf)
 		if (map->idtype != ID_TYPE_UID)
 			continue;
 		if (id >= map->hostid && id < map->hostid + map->range)
-			return true;
+			return (id - map->hostid) + map->nsid;
 	}
-	return false;
+	return -1;
 }
 
 int find_unmapped_nsuid(struct lxc_conf *conf)

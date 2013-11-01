@@ -80,7 +80,11 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 #lxc.hook.mount = /usr/share/lxc/hooks/mountcgroups
 
 lxc.hook.clone = ${CLONE_HOOK_FN}
+EOF
 
+    # can't write to devices.deny without CAP_SYS_ADMIN in init-user-ns
+    if [ $in_userns -ne 1 ]; then
+	    cat <<EOF >> $path/config
 lxc.cgroup.devices.deny = a
 # Allow any mknod (but not using the node)
 lxc.cgroup.devices.allow = c *:* m
@@ -109,6 +113,7 @@ lxc.cgroup.devices.allow = c 10:228 rwm
 # kvm
 lxc.cgroup.devices.allow = c 10:232 rwm
 EOF
+    fi
 
     cat <<EOF > $path/fstab
 proc            proc         proc    nodev,noexec,nosuid 0 0
@@ -123,6 +128,7 @@ EOF
     # that in the kernel, but not right now.  So let's just bind
     # mount the files from the host.
     if [ $in_userns -eq 1 ]; then
+        mkdir -p $rootfs/dev/pts
         for dev in null tty urandom console; do
             touch $rootfs/dev/$dev
             echo "/dev/$dev dev/$dev    none bind 0 0" >> $path/fstab
@@ -161,13 +167,14 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds:u: -l arch:,help,rootfs:,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata: -- "$@")
+options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds:u: -l arch:,help,rootfs:,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata:,mapped-uid: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
 fi
 eval set -- "$options"
 
+mapped_uid=-1
 # default release is precise, or the systems release if recognized
 release=precise
 if [ -f /etc/lsb-release ]; then
@@ -224,11 +231,13 @@ do
     -u|--userdata)     cloneargs[${#cloneargs[@]}]="--userdata=$2"; shift 2;;
     -C|--cloud)        cloneargs[${#cloneargs[@]}]="--cloud"; shift 1;;
     -S|--auth-key)     cloneargs[${#cloneargs[@]}]="--auth-key=$2"; shift 2;;
+    --mapped-uid)      mapped_uid=$2; shift 2;;
     --)                shift 1; break ;;
         *)              break ;;
     esac
 done
 
+echo "mapped_uid is .$mapped_uid."
 cloneargs=( "--name=$name" "${cloneargs[@]}" )
 
 if [ $debug -eq 1 ]; then
@@ -296,6 +305,8 @@ type wget
 # determine the url, tarball, and directory names
 # download if needed
 cache="$STATE_DIR/cache/lxc/cloud-$release"
+STATE_DIR="$HOME/.cache/lxc/"
+cache="$HOME/.cache/lxc/cloud-$release"
 
 mkdir -p $cache
 
@@ -371,7 +382,11 @@ do_extract_rootfs() {
     echo "Extracting container rootfs"
     mkdir -p $rootfs
     cd $rootfs
-    tar --numeric-owner -xpzf "$cache/$filename"
+    if [ $in_userns -eq 1 ]; then
+        tar --anchored --exclude="dev/*" --numeric-owner -xpzf "$cache/$filename"
+    else
+        tar --numeric-owner -xpzf "$cache/$filename"
+    fi
 }
 
 if [ -n "$tarball" ]; then
@@ -387,6 +402,12 @@ fi
 copy_configuration $path $rootfs $name $arch $release
 
 "$CLONE_HOOK_FN" "${cloneargs[@]}" "$rootfs"
+
+if [ $mapped_uid -ne -1 ]; then
+	chown $mapped_uid $path/config
+	chown -R $mapped_uid $STATE_DIR
+	chown -R $mapped_uid $cache
+fi
 
 echo "Container $name created."
 exit 0

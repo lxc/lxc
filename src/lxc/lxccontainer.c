@@ -917,20 +917,27 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 		 * If we're running the template in a mapped userns, then
 		 * we prepend the template command with:
 		 * lxc-usernsexec <-m map1> ... <-m mapn> --
+		 * and we append "--mapped-uid x", where x is the mapped uid
+		 * for our geteuid()
 		 */
 		if (geteuid() != 0 && !lxc_list_empty(&conf->id_map)) {
 			int n2args = 1;
+			char txtuid[20];
 			char **n2 = malloc(n2args * sizeof(*n2));
 			struct lxc_list *it;
 			struct id_map *map;
 
+			if (!n2) {
+				SYSERROR("out of memory");
+				exit(1);
+			}
 			newargv[0] = tpath;
 			tpath = "lxc-usernsexec";
 			n2[0] = "lxc-usernsexec";
 			lxc_list_for_each(it, &conf->id_map) {
 				map = it->elem;
 				n2args += 2;
-				n2 = realloc(n2, n2args * sizeof(*n2));
+				n2 = realloc(n2, n2args * sizeof(char *));
 				if (!n2)
 					exit(1);
 				n2[n2args-2] = "-m";
@@ -943,15 +950,15 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 				if (ret < 0 || ret >= 200)
 					exit(1);
 			}
-			bool hostid_mapped = hostid_is_mapped(geteuid(), conf);
-			int extraargs = hostid_mapped ?  1 : 3;
-			n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(*n2));
+			int hostid_mapped = mapped_hostid(geteuid(), conf);
+			int extraargs = hostid_mapped >= 0 ?  1 : 3;
+			n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(char *));
 			if (!n2)
 				exit(1);
-			if (!hostid_mapped) {
-				int free_id = find_unmapped_nsuid(conf);
+			if (hostid_mapped < 0) {
+				hostid_mapped = find_unmapped_nsuid(conf);
 				n2[n2args++] = "-m";
-				if (free_id < 0) {
+				if (hostid_mapped < 0) {
 					ERROR("Could not find free uid to map");
 					exit(1);
 				}
@@ -961,7 +968,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 					exit(1);
 				}
 				ret = snprintf(n2[n2args-1], 200, "u:%d:%d:1",
-					free_id, geteuid());
+					hostid_mapped, geteuid());
 				if (ret < 0 || ret >= 200) {
 					ERROR("string too long");
 					exit(1);
@@ -970,6 +977,20 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 			n2[n2args++] = "--";
 			for (i = 0; i < nargs; i++)
 				n2[i + n2args] = newargv[i];
+			n2args += nargs;
+			// Finally add "--mapped-uid $uid" to tell template what to chown
+			// cached images to
+			n2args += 2;
+			n2 = realloc(n2, n2args * sizeof(char *));
+			if (!n2) {
+				SYSERROR("out of memory");
+				exit(1);
+			}
+			// note n2[n2args-1] is NULL
+			n2[n2args-3] = "--mapped-uid";
+			snprintf(txtuid, 20, "%d", hostid_mapped);
+			n2[n2args-2] = txtuid;
+			n2[n2args-1] = NULL;
 			free(newargv);
 			newargv = n2;
 		}
