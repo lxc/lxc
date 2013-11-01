@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/mount.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sched.h>
@@ -833,9 +834,21 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 			exit(1);
 		}
 
-		if (strcmp(bdev->type, "dir") != 0) {
+		if (geteuid() == 0) {
 			if (unshare(CLONE_NEWNS) < 0) {
 				ERROR("error unsharing mounts");
+				exit(1);
+			}
+			if (detect_shared_rootfs()) {
+				if (mount("", "", NULL, MS_SLAVE|MS_REC, 0)) {
+					SYSERROR("Failed to make / rslave to run template");
+					ERROR("Continuing...");
+				}
+			}
+		}
+		if (strcmp(bdev->type, "dir") != 0) {
+			if (geteuid() != 0) {
+				ERROR("non-root users can only create directory-backed containers");
 				exit(1);
 			}
 			if (bdev->ops->mount(bdev) < 0) {
