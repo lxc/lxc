@@ -178,6 +178,15 @@ AM_COND_IF([ENABLE_PYTHON],
 	PKG_CHECK_MODULES([PYTHONDEV], [python3 >= 3.2],[],[AC_MSG_ERROR([You must install python3-dev])])
 	AC_DEFINE_UNQUOTED([ENABLE_PYTHON], 1, [Python3 is available])])
 
+# Enable dumping stack traces
+AC_ARG_ENABLE([mutex-debugging],
+	[AC_HELP_STRING([--enable-mutex-debugging], [Makes mutexes to report error and provide stack trace])],
+	[enable_mutex_debugging=yes], [enable_mutex_debugging=no])
+AM_CONDITIONAL([MUTEX_DEBUGGING], [test "x$enable_mutex_debugging" = "xyes"])
+
+AM_COND_IF([MUTEX_DEBUGGING],
+	AC_DEFINE_UNQUOTED([MUTEX_DEBUGGING], 1, [Enabling mutex debugging]))
+
 # Not in older autoconf versions
 # AS_VAR_COPY(DEST, SOURCE)
 # -------------------------

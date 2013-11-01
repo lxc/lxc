@@ -49,7 +49,8 @@ extern const char *default_lxc_path(void);
 extern const char *default_zfs_root(void);
 extern const char *default_lvm_vg(void);
 extern const char *default_lvm_thin_pool(void);
-
+extern const char *default_cgroup_use(void);
+extern const char *default_cgroup_pattern(void);
 /* Define getline() if missing from the C library */
 #ifndef HAVE_GETLINE
 #ifdef HAVE_FGETLN
@@ -239,4 +240,6 @@ extern size_t lxc_array_len(void **array);
 extern void **lxc_dup_array(void **array, lxc_dup_fn element_dup_fn, lxc_free_fn element_free_fn);
 
 extern void **lxc_append_null_to_array(void **array, size_t count);
+
+extern void dump_stacktrace(void);
 #endif

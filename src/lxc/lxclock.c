@@ -18,15 +18,15 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include <pthread.h>
+#define _GNU_SOURCE
 #include "lxclock.h"
 #include <malloc.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
-#define _GNU_SOURCE
 #include <stdlib.h>
+#include <pthread.h>
 #include <lxc/utils.h>
 #include <lxc/log.h>
 #include <lxc/lxccontainer.h>
@@ -38,7 +38,11 @@
 
 lxc_log_define(lxc_lock, lxc);
 
+#ifdef MUTEX_DEBUGGING
+pthread_mutex_t thread_mutex = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
+#else
 pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 static char *lxclock_name(const char *p, const char *n)
 {
@@ -267,13 +271,20 @@ void process_lock(void)
 
 	if ((ret = pthread_mutex_lock(&thread_mutex)) != 0) {
 		ERROR("pthread_mutex_lock returned:%d %s", ret, strerror(ret));
+		dump_stacktrace();
 		exit(1);
 	}
 }
 
 void process_unlock(void)
 {
-	pthread_mutex_unlock(&thread_mutex);
+	int ret;
+
+	if ((ret = pthread_mutex_unlock(&thread_mutex)) != 0) {
+		ERROR("pthread_mutex_unlock returned:%d %s", ret, strerror(ret));
+		dump_stacktrace();
+		exit(1);
+	}
 }
 
 int container_mem_lock(struct lxc_container *c)

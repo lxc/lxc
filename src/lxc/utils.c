@@ -21,7 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
+#include "config.h"
+
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -38,6 +39,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <assert.h>
+#include <pthread.h>
+#include <execinfo.h>
 
 #ifndef HAVE_GETLINE
 #ifdef HAVE_FGETLN
@@ -49,7 +52,60 @@
 #include "log.h"
 #include "lxclock.h"
 
+#define MAX_STACKDEPTH 25
+
 lxc_log_define(lxc_utils, lxc);
+
+
+#ifdef MUTEX_DEBUGGING
+static pthread_mutex_t static_mutex = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
+
+inline void dump_stacktrace(void)
+{
+	void *array[MAX_STACKDEPTH];
+	size_t size;
+	char **strings;
+	size_t i;
+
+	size = backtrace(array, MAX_STACKDEPTH);
+	strings = backtrace_symbols(array, size);
+
+	// Using fprintf here as our logging module is not thread safe
+	fprintf(stderr, "\tObtained %zd stack frames.\n", size);
+
+	for (i = 0; i < size; i++)
+		fprintf(stderr, "\t\t%s\n", strings[i]);
+
+	free (strings);
+}
+#else
+static pthread_mutex_t static_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+inline void dump_stacktrace(void) {;}
+#endif
+
+/* Protects static const values inside the lxc_global_config_value funtion */
+static void static_lock(void)
+{
+	int ret;
+
+	if ((ret = pthread_mutex_lock(&static_mutex)) != 0) {
+		ERROR("pthread_mutex_lock returned:%d %s", ret, strerror(ret));
+		dump_stacktrace();
+		exit(1);
+	}
+}
+
+static void static_unlock(void)
+{
+	int ret;
+
+	if ((ret = pthread_mutex_unlock(&static_mutex)) != 0) {
+		ERROR("pthread_mutex_unlock returned:%d %s", ret, strerror(ret));
+		dump_stacktrace();
+		exit(1);
+	}
+}
 
 static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
 {
@@ -252,8 +308,10 @@ const char *lxc_global_config_value(const char *option_name)
 		{ "cgroup.use",      NULL            },
 		{ NULL, NULL },
 	};
+	/* Protected by a mutex to eliminate conflicting load and store operations */ 
 	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
 	const char *(*ptr)[2];
+	const char *value;
 	size_t i;
 	char buf[1024], *p, *p2;
 	FILE *fin = NULL;
@@ -266,8 +324,14 @@ const char *lxc_global_config_value(const char *option_name)
 		errno = EINVAL;
 		return NULL;
 	}
-	if (values[i])
-		return values[i];
+
+	static_lock();
+	if (values[i]) {
+		value = values[i];
+		static_unlock();
+		return value;
+	}
+	static_unlock();
 
 	process_lock();
 	fin = fopen_cloexec(LXC_GLOBAL_CONF, "r");
@@ -304,24 +368,31 @@ const char *lxc_global_config_value(const char *option_name)
 			while (*p && (*p == ' ' || *p == '\t')) p++;
 			if (!*p)
 				continue;
+			static_lock();
 			values[i] = copy_global_config_value(p);
+			static_unlock();
 			goto out;
 		}
 	}
 	/* could not find value, use default */
+	static_lock();
 	values[i] = (*ptr)[1];
 	/* special case: if default value is NULL,
 	 * and there is no config, don't view that
 	 * as an error... */
 	if (!values[i])
 		errno = 0;
+	static_unlock();
 
 out:
 	process_lock();
 	if (fin)
 		fclose(fin);
 	process_unlock();
-	return values[i];
+	static_lock();
+	value = values[i];
+	static_unlock();
+	return value;
 }
 
 const char *default_lvm_vg(void)
@@ -338,9 +409,20 @@ const char *default_zfs_root(void)
 {
 	return lxc_global_config_value("zfsroot");
 }
+
 const char *default_lxc_path(void)
 {
 	return lxc_global_config_value("lxcpath");
+}
+
+const char *default_cgroup_use(void)
+{
+	return lxc_global_config_value("cgroup.use");
+}
+
+const char *default_cgroup_pattern(void)
+{
+	return lxc_global_config_value("cgroup.pattern");
 }
 
 const char *get_rundir()

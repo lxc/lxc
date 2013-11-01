@@ -91,7 +91,7 @@ struct cgroup_meta_data *lxc_cgroup_load_meta()
 	int saved_errno;
 
 	errno = 0;
-	cgroup_use = lxc_global_config_value("cgroup.use");
+	cgroup_use = default_cgroup_use();
 	if (!cgroup_use && errno != 0)
 		return NULL;
 	if (cgroup_use) {

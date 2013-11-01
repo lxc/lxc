@@ -695,7 +695,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	 * default value is available
 	 */
 	if (getuid() == 0)
-		cgroup_pattern = lxc_global_config_value("cgroup.pattern");
+		cgroup_pattern = default_cgroup_pattern();
 	if (!cgroup_pattern)
 		cgroup_pattern = "%n";
 
