@@ -128,3 +128,4 @@ src/stamp-h1
 patches
 *.orig
 *.rej
+tags
