@@ -453,7 +453,7 @@ static bool lxcapi_load_config(struct lxc_container *c, const char *alt_file)
 
 static void lxcapi_want_daemonize(struct lxc_container *c)
 {
-	if (!c)
+	if (!c || !c->lxc_conf)
 		return;
 	if (container_mem_lock(c)) {
 		ERROR("Error getting mem lock");
