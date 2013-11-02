@@ -301,13 +301,13 @@ extern int lxc_log_init(const char *name, const char *file,
 	}
 
 	if (priority) {
-		lxc_loglevel_specified = 1;
-		lxc_priority = lxc_log_priority_to_int(priority);
-
 		if (lxc_priority == LXC_LOG_PRIORITY_NOTSET) {
 			ERROR("invalid log priority %s", priority);
 			return -1;
 		}
+
+		lxc_loglevel_specified = 1;
+		lxc_priority = lxc_log_priority_to_int(priority);
 	}
 
 	lxc_log_category_lxc.priority = lxc_priority;
@@ -320,9 +320,9 @@ extern int lxc_log_init(const char *name, const char *file,
 		lxc_log_set_prefix(prefix);
 
 	if (file) {
-		lxc_logfile_specified = 1;
 		if (strcmp(file, "none") == 0)
 			return 0;
+		lxc_logfile_specified = 1;
 		ret = __lxc_log_set_file(file, 1);
 	} else {
 		ret = -1;
@@ -368,6 +368,7 @@ extern int lxc_log_set_level(int level)
 		ERROR("invalid log priority %d", level);
 		return -1;
 	}
+	lxc_loglevel_specified = 1;
 	lxc_log_category_lxc.priority = level;
 	return 0;
 }
@@ -396,6 +397,7 @@ extern int lxc_log_set_file(const char *fname)
 {
 	if (lxc_logfile_specified)
 		return 0;
+	lxc_logfile_specified = 1;
 	return __lxc_log_set_file(fname, 0);
 }
 
