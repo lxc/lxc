@@ -1977,7 +1977,7 @@ static int lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, c
 {
 	int ret;
 
-	if (!c || !c->lxc_conf)
+	if (!c)
 		return -1;
 
 	if (is_stopped(c))
