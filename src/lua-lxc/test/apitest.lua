@@ -217,6 +217,12 @@ function test_container_cgroup()
     assert(container:set_cgroup_item("memory.limit_in_bytes", "-1"))
 end
 
+function test_container_cmd()
+    log(0, "Test get config from running container...")
+    veth_pair = lxc.cmd_get_config_item(optarg["n"], "lxc.network.0.veth.pair")
+    log(0, "  veth.pair:%s", veth_pair)
+end
+
 function test_config_items()
     log(0, "Test set/clear configuration items...")
 
@@ -325,6 +331,7 @@ test_container_start()
 test_container_started()
 
 test_container_cgroup()
+test_container_cmd()
 
 test_container_freeze()
 test_container_frozen()

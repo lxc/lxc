@@ -385,6 +385,14 @@ function M.default_config_path_get()
     return core.default_config_path_get()
 end
 
+function M.cmd_get_config_item(name, item, lxcpath)
+    if (lxcpath) then
+	return core.cmd_get_config_item(name, item, lxcpath)
+    else
+	return core.cmd_get_config_item(name, item)
+    end
+end
+
 lxc_path = core.default_config_path_get()
 
 return M

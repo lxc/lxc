@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <lxc/lxccontainer.h>
+#include <lxc/commands.h>
 
 #if LUA_VERSION_NUM < 502
 #define luaL_newlib(L,l) (lua_newtable(L), luaL_register(L,NULL,l))
@@ -417,6 +418,29 @@ static int lxc_default_config_path_get(lua_State *L) {
     return 1;
 }
 
+static int cmd_get_config_item(lua_State *L)
+{
+    int arg_cnt = lua_gettop(L);
+    const char *name = luaL_checkstring(L, 1);
+    const char *key = luaL_checkstring(L, 2);
+    const char *lxcpath = NULL;
+    char *value;
+
+    if (arg_cnt > 2)
+	lxcpath = luaL_checkstring(L, 3);
+
+    value = lxc_cmd_get_config_item(name, key, lxcpath);
+    if (!value)
+	goto not_found;
+
+    lua_pushstring(L, value);
+    return 1;
+
+not_found:
+    lua_pushnil(L);
+    return 1;
+}
+
 /* utility functions */
 static int lxc_util_usleep(lua_State *L) {
     usleep((useconds_t)luaL_checkunsigned(L, 1));
@@ -432,6 +456,7 @@ static int lxc_util_dirname(lua_State *L) {
 static luaL_Reg lxc_lib_methods[] = {
     {"version_get",		lxc_version_get},
     {"default_config_path_get",	lxc_default_config_path_get},
+    {"cmd_get_config_item",	cmd_get_config_item},
     {"container_new",		container_new},
     {"usleep",			lxc_util_usleep},
     {"dirname",			lxc_util_dirname},
