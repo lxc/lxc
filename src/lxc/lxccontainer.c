@@ -19,6 +19,7 @@
  */
 
 #define _GNU_SOURCE
+#include <assert.h>
 #include <stdarg.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -3096,12 +3097,13 @@ free_bad:
 	return -1;
 }
 
-int list_active_containers(const char *lxcpath, char ***names, struct lxc_container ***cret)
+int list_active_containers(const char *lxcpath, char ***nret,
+			   struct lxc_container ***cret)
 {
-	int i, cfound = 0, nfound = 0;
+	int i, ret = -1, cret_cnt = 0, ct_name_cnt = 0;
 	int lxcpath_len;
 	char *line = NULL;
-	char **unique_names = NULL;
+	char **ct_name = NULL;
 	size_t len = 0;
 	struct lxc_container *c;
 
@@ -3111,8 +3113,8 @@ int list_active_containers(const char *lxcpath, char ***names, struct lxc_contai
 
 	if (cret)
 		*cret = NULL;
-	if (names)
-		*names = NULL;
+	if (nret)
+		*nret = NULL;
 
 	process_lock();
 	FILE *f = fopen("/proc/net/unix", "r");
@@ -3140,27 +3142,22 @@ int list_active_containers(const char *lxcpath, char ***names, struct lxc_contai
 			continue;
 		*p2 = '\0';
 
-		if (array_contains(&unique_names, p, nfound))
+		if (array_contains(&ct_name, p, ct_name_cnt))
 			continue;
 
-		if (!add_to_array(&unique_names, p, nfound))
-			goto free_bad;
+		if (!add_to_array(&ct_name, p, ct_name_cnt))
+			goto free_cret_list;
 
-		cfound++;
+		ct_name_cnt++;
 
-		if (!cret) {
-			nfound++;
+		if (!cret)
 			continue;
-		}
 
 		c = lxc_container_new(p, lxcpath);
 		if (!c) {
 			INFO("Container %s:%s is running but could not be loaded",
 				lxcpath, p);
-			if (names) {
-				if(!remove_from_array(&unique_names, p, cfound--))
-					goto free_bad;
-			}
+			remove_from_array(&ct_name, p, ct_name_cnt--);
 			continue;
 		}
 
@@ -3170,42 +3167,43 @@ int list_active_containers(const char *lxcpath, char ***names, struct lxc_contai
 		 * fact that the command socket exists.
 		 */
 
-		if (!add_to_clist(cret, c, nfound, true)) {
+		if (!add_to_clist(cret, c, cret_cnt, true)) {
 			lxc_container_put(c);
-			goto free_bad;
+			goto free_cret_list;
 		}
-		nfound++;
+		cret_cnt++;
 	}
 
-	if (names)
-		*names = unique_names;
+	assert(!nret || !cret || cret_cnt == ct_name_cnt);
+	ret = ct_name_cnt;
+	if (nret)
+		*nret = ct_name;
+	else
+		goto free_ct_name;
+	goto out;
 
-	if (line)
-		free(line);
-
-	process_lock();
-	fclose(f);
-	process_unlock();
-	return nfound;
-
-free_bad:
-	if (names && *names) {
-		for (i=0; i<cfound; i++)
-			free((*names)[i]);
-		free(*names);
-	}
+free_cret_list:
 	if (cret && *cret) {
-		for (i=0; i<nfound; i++)
+		for (i = 0; i < cret_cnt; i++)
 			lxc_container_put((*cret)[i]);
 		free(*cret);
 	}
+
+free_ct_name:
+	if (ct_name) {
+		for (i = 0; i < ct_name_cnt; i++)
+			free(ct_name[i]);
+		free(ct_name);
+	}
+
+out:
 	if (line)
 		free(line);
 
 	process_lock();
 	fclose(f);
 	process_unlock();
-	return -1;
+	return ret;
 }
 
 int list_all_containers(const char *lxcpath, char ***nret,
