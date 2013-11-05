@@ -40,7 +40,10 @@
 #include <sys/wait.h>
 #include <assert.h>
 #include <pthread.h>
+
+#ifdef MUTEX_DEBUGGING
 #include <execinfo.h>
+#endif
 
 #ifndef HAVE_GETLINE
 #ifdef HAVE_FGETLN
