@@ -277,6 +277,16 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
  */
 int list_active_containers(const char *lxcpath, char ***names, struct lxc_container ***cret);
 
+/*
+ * Get an array sorted by name of defined and active containers in a lxcpath.
+ * @lxcpath: lxcpath under which to look
+ * @names: if not null, then an array of container names will be returned here.
+ * @cret: if not null, then an array of lxc_containers will be returned here.
+ *
+ * Returns the number of containers found, or -1 on error.
+ */
+int list_all_containers(const char *lxcpath, char ***names, struct lxc_container ***cret);
+
 #if 0
 char ** lxc_get_valid_keys();
 char ** lxc_get_valid_values(char *key);
