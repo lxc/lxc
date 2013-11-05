@@ -3308,6 +3308,8 @@ static void lxc_remove_nic(struct lxc_list *it)
 		free(netdev->link);
 	if (netdev->name)
 		free(netdev->name);
+	if (netdev->type == LXC_NET_VETH && netdev->priv.veth_attr.pair)
+		free(netdev->priv.veth_attr.pair);
 	if (netdev->upscript)
 		free(netdev->upscript);
 	if (netdev->hwaddr)
