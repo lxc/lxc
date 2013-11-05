@@ -62,11 +62,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <para>
       <!--
       <command>lxc-top</command> displays container statistics. The output
-        is updated every <replaceable>delay</replaceable> seconds, and is
-        ordered according to the <replaceable>sortby</replaceable> value
-        given. Specifying <replaceable>count</replaceable> will limit the
-        number of containers displayed, otherwise <command>lxc-top</command>
-        will display as many containers as can fit in your terminal.
+      is updated every <replaceable>delay</replaceable> seconds, and is
+      ordered according to the <replaceable>sortby</replaceable> value
+      given. Specifying <replaceable>count</replaceable> will limit the
+      number of containers displayed, otherwise <command>lxc-top</command>
+      will display as many containers as can fit in your terminal.
       -->
       <command>lxc-top</command> はコンテナの統計情報を表示します．出力は <replaceable>delay</replaceable> 秒ごとに更新されます．そして，<replaceable>sortby</replaceable> で指定した値に従ってソートされます．<replaceable>count</replaceable> を指定すると表示するコンテナ数を制限しますが，指定しなければ使用しているターミナルに合うようなコンテナ数で表示します．
     </para>
@@ -116,10 +116,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <!--
             Sort the containers by name, cpu use, or memory use. The
             <replaceable>sortby</replaceable> argument should be one of
-            the letters n,c,d,m to sort by name, cpu use, disk I/O, or
-            memory use respectively. The default is 'n'.
+            the letters n,c,d,m,k to sort by name, cpu use, disk I/O, memory,
+            or kernel memory use respectively. The default is 'n'.
             -->
-            名前，CPU 使用量，メモリ使用量でコンテナをソートします．<replaceable>sortby</replaceable> で指定する引数は n,c,d,m のどれかでなければなりません．これはそれぞれ名前，CPU 使用量，disk I/O，メモリ使用量を表します．デフォルトは 'n' です．
+            名前，CPU 使用量，メモリ使用量でコンテナをソートします．<replaceable>sortby</replaceable> で指定する引数は n,c,d,m,k のどれかでなければなりません．これはそれぞれ名前，CPU 使用量，disk I/O，メモリ使用量，カーネルメモリ使用量を表します．デフォルトは 'n' です．
           </para>
         </listitem>
       </varlistentry>
@@ -156,6 +156,37 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </listitem>
       </varlistentry>
     </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Notes -->注意</title>
+    <para>
+      <!--
+      For performance reasons the kernel does not account kernel memory use
+      unless a kernel memory limit is set. If a limit is not set, <command>
+      lxc-top</command> will display kernel memory use as 0. If no containers
+      are being accounted, the KMem column will not be displayed. A limit can
+      be set by specifying
+      <programlisting>
+      lxc.cgroup.memory.kmem.limit_in_bytes = <replaceable>number</replaceable>
+      </programlisting>
+      in your container configuration file, see
+      <citerefentry>
+        <refentrytitle>lxc.conf</refentrytitle>
+        <manvolnum>5</manvolnum>
+      </citerefentry>.
+      -->
+      パフォーマンスへの影響を考慮して，カーネルメモリの使用量は，カーネルメモリの制限値が設定されない限りはカウントされません．もし，制限が設定されていない場合，<command>lxc-top</command> はカーネルメモリの使用量を 0 と表示します．もし，カウントされているコンテナが存在しない場合，KMem カラムは表示されません．制限は
+      <programlisting>
+      lxc.cgroup.memory.kmem.limit_in_bytes = <replaceable>number</replaceable>
+      </programlisting>
+      のように，コンテナの設定ファイルで指定することができます．詳しくは，
+      <citerefentry>
+        <refentrytitle>lxc.conf</refentrytitle>
+        <manvolnum>5</manvolnum>
+      </citerefentry>
+      を参照してください．
+    </para>
   </refsect1>
 
   &seealso;
