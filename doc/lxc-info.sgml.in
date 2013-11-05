@@ -47,20 +47,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-info</command>
-      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-n <replaceable>name</replaceable></arg>
       <arg choice="opt">-c <replaceable>KEY</replaceable></arg>
       <arg choice="opt">-s</arg>
       <arg choice="opt">-p</arg>
       <arg choice="opt">-i</arg>
       <arg choice="opt">-t <replaceable>state</replaceable></arg>
+      <arg choice="opt">-S</arg>
+      <arg choice="opt">-H</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
   <refsect1>
     <title>Description</title>
     <para>
-      <command>lxc-info</command> queries and shows information about a
-      container.
+      <command>lxc-info</command> queries and shows information about
+      containers.
     </para>
   </refsect1>
 
@@ -70,11 +72,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option>-n <replaceable>name</replaceable></option>
+          <option><optional>-n <replaceable>name</replaceable></optional></option>
         </term>
         <listitem>
           <para>
-            The container name.
+            The container name. It is interpreted as a regular expression,
+            so it is possible to get information on all containers, several
+            of them or just one. See
+            <citerefentry>
+             <refentrytitle><command>regex</command></refentrytitle>
+	     <manvolnum>7</manvolnum>
+            </citerefentry> for regular expression syntax. If not specified,
+            <replaceable>name</replaceable> will default to '.*' which
+            will give information on all containers in
+            <command>lxcpath</command>.
           </para>
         </listitem>
       </varlistentry>
@@ -126,6 +137,41 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
+          <option><optional>-S</optional></option>
+        </term>
+        <listitem>
+          <para>
+            Just print the container's statistics.
+            Note that for performance reasons the kernel does not account
+            kernel memory use unless a kernel memory limit is set. If a limit
+            is not set, <command>lxc-info</command> will display kernel memory
+            use as 0. A limit can be set by specifying
+            <programlisting>
+            lxc.cgroup.memory.kmem.limit_in_bytes = <replaceable>number</replaceable>
+            </programlisting>
+            in your container configuration file, see
+            <citerefentry>
+              <refentrytitle>lxc.conf</refentrytitle>
+              <manvolnum>5</manvolnum>
+            </citerefentry>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-H</optional></option>
+        </term>
+        <listitem>
+          <para>
+            Print the container's statistics in raw, non-humanized form. The
+            default is to print statistics in humanized form.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
           <option><optional>-t <replaceable>state</replaceable></optional></option>
         </term>
         <listitem>
@@ -147,6 +193,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <listitem>
           <para>
             Show information for foo.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>lxc-info -n 'ubuntu.*'</term>
+        <listitem>
+          <para>
+            Show information for all containers whose name starts with ubuntu.
           </para>
         </listitem>
       </varlistentry>
