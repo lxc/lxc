@@ -125,6 +125,8 @@ static void *concurrent(void *arguments)
 {
     do_function(arguments);
     pthread_exit(NULL);
+
+    return NULL;
 }
 
 int main(int argc, char *argv[]) {

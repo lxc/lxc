@@ -20,6 +20,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "../lxc/lxc.h"
 
 #define MYNAME "snapxxx1"

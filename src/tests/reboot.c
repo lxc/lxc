@@ -25,7 +25,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#define _GNU_SOURCE
+#include <lxc/namespace.h>
+
 #include <sched.h>
 #include <linux/sched.h>
 #include <linux/reboot.h>

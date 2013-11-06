@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #define TTYCNT      4
 #define TTYCNT_STR "4"
