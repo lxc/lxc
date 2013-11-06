@@ -318,6 +318,8 @@ struct lxc_conf {
 	// store the config file specified values here.
 	char *logfile;  // the logfile as specifed in config
 	int loglevel;   // loglevel as specifed in config (if any)
+
+	int inherit_ns_fd[LXC_NS_MAX];
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,

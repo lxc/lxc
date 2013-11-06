@@ -51,6 +51,8 @@
 #include "confile.h"
 #include "arguments.h"
 
+#define OPT_SHARE_NET OPT_USAGE+1
+
 lxc_log_define(lxc_start_ui, lxc_start);
 
 static struct lxc_list defines;
@@ -101,6 +103,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'C': args->close_all_fds = 1; break;
 	case 's': return lxc_config_define_add(&defines, arg);
 	case 'p': args->pidfile = arg; break;
+	case OPT_SHARE_NET: args->share_net = arg; break;
 	}
 	return 0;
 }
@@ -113,6 +116,7 @@ static const struct option my_longopts[] = {
 	{"console-log", required_argument, 0, 'L'},
 	{"close-all-fds", no_argument, 0, 'C'},
 	{"pidfile", required_argument, 0, 'p'},
+	{"share-net", required_argument, 0, OPT_SHARE_NET},
 	LXC_COMMON_OPTIONS
 };
 
@@ -133,7 +137,9 @@ Options :\n\
   -C, --close-all-fds    If any fds are inherited, close them\n\
                          If not specified, exit with failure instead\n\
 		         Note: --daemon implies --close-all-fds\n\
-  -s, --define KEY=VAL   Assign VAL to configuration variable KEY\n",
+  -s, --define KEY=VAL   Assign VAL to configuration variable KEY\n\
+      --share-net=PID    Share a network namespace with another container\n\
+",
 	.options   = my_longopts,
 	.parser    = my_parser,
 	.checker   = NULL,
@@ -247,6 +253,27 @@ int main(int argc, char *argv[])
 				 my_args.pidfile, my_args.name);
 			goto out;
 		}
+	}
+
+	if (my_args.share_net != NULL) {
+		char *eptr;
+		int fd;
+		int pid = strtol(my_args.share_net, &eptr, 10);
+		if (*eptr != '\0') {
+			SYSERROR("'%s' is not a valid pid number", my_args.share_net);
+			goto out;
+		}
+		char path[MAXPATHLEN];
+		int ret = snprintf(path, MAXPATHLEN, "/proc/%d/ns/net", pid);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			goto out;
+
+		fd = open(path, O_RDONLY);
+		if (fd < 0) {
+			SYSERROR("failed to open %s", path);
+			goto out;
+		}
+		conf->inherit_ns_fd[LXC_NS_NET] = fd;
 	}
 
 	if (my_args.daemonize) {

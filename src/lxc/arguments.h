@@ -53,6 +53,9 @@ struct lxc_arguments {
 	/* set to 0 to accept only 1 lxcpath, -1 for unlimited */
 	int lxcpath_additional;
 
+	/* for lxc-start */
+	const char *share_net;
+
 	/* for lxc-checkpoint/restart */
 	const char *statefile;
 	int statefd;

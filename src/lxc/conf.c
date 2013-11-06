@@ -2399,6 +2399,9 @@ struct lxc_conf *lxc_conf_init(void)
 	new->lsm_se_context = NULL;
 	new->lsm_umount_proc = 0;
 
+	for (i = 0; i < LXC_NS_MAX; i++)
+		new->inherit_ns_fd[i] = -1;
+
 	return new;
 }
 
