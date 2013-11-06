@@ -255,10 +255,8 @@ static int print_info(const char *name, const char *lxcpath)
 	struct lxc_container *c;
 
 	c = lxc_container_new(name, lxcpath);
-	if (!c) {
-		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
+	if (!c)
 		return -1;
-	}
 
 	if (!c->may_control(c)) {
 		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
