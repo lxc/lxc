@@ -53,12 +53,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-info</command>
-      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-n <replaceable>name</replaceable></arg>
       <arg choice="opt">-c <replaceable>KEY</replaceable></arg>
       <arg choice="opt">-s</arg>
       <arg choice="opt">-p</arg>
       <arg choice="opt">-i</arg>
       <arg choice="opt">-t <replaceable>state</replaceable></arg>
+      <arg choice="opt">-S</arg>
+      <arg choice="opt">-H</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -66,8 +68,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <title><!-- Description -->説明</title>
     <para>
       <!--
-      <command>lxc-info</command> queries and shows information about a
-      container.
+      <command>lxc-info</command> queries and shows information about
+      containers.
       -->
       <command>lxc-info</command> は，コンテナに関する情報を問い合わせ，表示します．
     </para>
@@ -79,14 +81,27 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option>-n <replaceable>name</replaceable></option>
+          <option><optional>-n <replaceable>name</replaceable></optional></option>
         </term>
         <listitem>
           <para>
             <!--
-            The container name.
+            The container name. It is interpreted as a regular expression,
+            so it is possible to get information on all containers, several
+            of them or just one. See
+            <citerefentry>
+             <refentrytitle><command>regex</command></refentrytitle>
+	     <manvolnum>7</manvolnum>
+            </citerefentry> for regular expression syntax. If not specified,
+            <replaceable>name</replaceable> will default to '.*' which
+            will give information on all containers in
+            <command>lxcpath</command>.
             -->
-            コンテナ名
+            コンテナ名．正規表現として解釈され，全てのコンテナ，指定したいくつかのコンテナ，特定のコンテナのいずれかの情報を取得できます．正規表現については
+            <citerefentry>
+             <refentrytitle><command>regex</command></refentrytitle>
+	     <manvolnum>7</manvolnum>
+            </citerefentry> を参照してください．もし指定しなければ，<replaceable>name</replaceable> はデフォルトで <command>lxcpath</command> に存在する全てのコンテナの情報を取得する '.*' を指定したことになります．
           </para>
         </listitem>
       </varlistentry>
@@ -150,6 +165,56 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
+          <option><optional>-S</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Just print the container's statistics.
+            Note that for performance reasons the kernel does not account
+            kernel memory use unless a kernel memory limit is set. If a limit
+            is not set, <command>lxc-info</command> will display kernel memory
+            use as 0. A limit can be set by specifying
+            <programlisting>
+            lxc.cgroup.memory.kmem.limit_in_bytes = <replaceable>number</replaceable>
+            </programlisting>
+            in your container configuration file, see
+            <citerefentry>
+              <refentrytitle>lxc.conf</refentrytitle>
+              <manvolnum>5</manvolnum>
+            </citerefentry>.
+            -->
+            コンテナの統計情報を表示します．パフォーマンスへの影響を考慮して，カーネルメモリの使用量は，カーネルメモリの制限値が設定されない限りはカウントされません．もし，制限が設定されていない場合，<command>lxc-info</command> はカーネルメモリの使用量を 0 と表示します．制限は
+            <programlisting>
+            lxc.cgroup.memory.kmem.limit_in_bytes = <replaceable>number</replaceable>
+            </programlisting>
+            のように，コンテナの設定ファイルで指定することができます．詳しくは，
+            <citerefentry>
+              <refentrytitle>lxc.conf</refentrytitle>
+              <manvolnum>5</manvolnum>
+            </citerefentry>
+            を参照してください．
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-H</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Print the container's statistics in raw, non-humanized form. The
+            default is to print statistics in humanized form.
+            -->
+            コンテナの統計情報を人間が読みやすい形に加工しないでそのまま表示します．デフォルトは人間が読みやすい形の統計情報を表示します．
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
           <option><optional>-t <replaceable>state</replaceable></optional></option>
         </term>
         <listitem>
@@ -177,6 +242,18 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             Show information for foo.
             -->
             foo という名前のコンテナの情報を表示する．
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>lxc-info -n 'ubuntu.*'</term>
+        <listitem>
+          <para>
+            <!--
+            Show information for all containers whose name starts with ubuntu.
+            -->
+            ubuntu という文字列で始まる名前の全てのコンテナの情報を表示します．
           </para>
         </listitem>
       </varlistentry>
