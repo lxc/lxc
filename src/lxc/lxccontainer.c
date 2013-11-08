@@ -491,7 +491,7 @@ static bool lxcapi_wait(struct lxc_container *c, const char *state, int timeout)
 }
 
 
-static bool wait_on_daemonized_start(struct lxc_container *c)
+static bool wait_on_daemonized_start(struct lxc_container *c, int pid)
 {
 	/* we'll probably want to make this timeout configurable? */
 	int timeout = 5, ret, status;
@@ -500,7 +500,7 @@ static bool wait_on_daemonized_start(struct lxc_container *c)
 	 * our child is going to fork again, then exit.  reap the
 	 * child
 	 */
-	ret = wait(&status);
+	ret = waitpid(pid, &status, 0);
 	if (ret == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0)
 		DEBUG("failed waiting for first dual-fork child");
 	return lxcapi_wait(c, "RUNNING", timeout);
@@ -607,7 +607,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 			return false;
 		}
 		if (pid != 0)
-			return wait_on_daemonized_start(c);
+			return wait_on_daemonized_start(c, pid);
 
 		process_unlock(); // we're no longer sharing
 		/* second fork to be reparented by init */
