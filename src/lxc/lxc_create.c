@@ -117,7 +117,7 @@ static struct lxc_arguments my_args = {
 	.progname = "lxc-create",
 	.helpfn   = create_helpfn,
 	.help     = "\
---name=NAME [-w] [-r] [-t timeout] [-P lxcpath]\n\
+--name=NAME [-w] [-r] [-t template] [-P lxcpath]\n\
 \n\
 lxc-create creates a container\n\
 \n\
