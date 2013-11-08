@@ -506,6 +506,38 @@ static bool wait_on_daemonized_start(struct lxc_container *c)
 	return lxcapi_wait(c, "RUNNING", timeout);
 }
 
+static bool am_single_threaded(void)
+{
+	struct dirent dirent, *direntp;
+	DIR *dir;
+	int count=0;
+
+	process_lock();
+	dir = opendir("/proc/self/task");
+	process_unlock();
+	if (!dir) {
+		INFO("failed to open /proc/self/task");
+		return false;
+	}
+
+	while (!readdir_r(dir, &dirent, &direntp)) {
+		if (!direntp)
+			break;
+
+		if (!strcmp(direntp->d_name, "."))
+			continue;
+
+		if (!strcmp(direntp->d_name, ".."))
+			continue;
+		if (++count > 1)
+			break;
+	}
+	process_lock();
+	closedir(dir);
+	process_unlock();
+	return count == 1;
+}
+
 /*
  * I can't decide if it'd be more convenient for callers if we accept '...',
  * or a null-terminated array (i.e. execl vs execv)
@@ -598,6 +630,11 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		open("/dev/null", O_RDWR);
 		open("/dev/null", O_RDWR);
 		setsid();
+	} else {
+		if (!am_single_threaded()) {
+			ERROR("Cannot start non-daemonized container when threaded");
+			return false;
+		}
 	}
 
 reboot:
