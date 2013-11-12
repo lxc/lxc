@@ -36,6 +36,7 @@ static struct option options[] = {
     { "iterations",  required_argument, NULL, 'i' },
     { "template",    required_argument, NULL, 't' },
     { "delay",       required_argument, NULL, 'd' },
+    { "modes",       required_argument, NULL, 'm' },
     { "quiet",       no_argument,       NULL, 'q' },
     { "help",        no_argument,       NULL, '?' },
     { 0, 0, 0, 0 },
@@ -44,13 +45,14 @@ static struct option options[] = {
 static void usage(void) {
     fprintf(stderr, "Usage: lxc-test-concurrent [OPTION]...\n\n"
         "Common options :\n"
-        "  -j, --threads=N      Threads to run concurrently\n"
-        "                       (default: 5, use 1 for no threading)\n"
-        "  -i, --iterations=N   Number times to run the test (default: 1)\n"
-        "  -t, --template=t     Template to use (default: busybox)\n"
-        "  -d, --delay=N        Delay in seconds between start and stop\n"
-        "  -q, --quiet          Don't produce any output\n"
-        "  -?, --help           Give this help list\n"
+        "  -j, --threads=N              Threads to run concurrently\n"
+        "                               (default: 5, use 1 for no threading)\n"
+        "  -i, --iterations=N           Number times to run the test (default: 1)\n"
+        "  -t, --template=t             Template to use (default: busybox)\n"
+        "  -d, --delay=N                Delay in seconds between start and stop\n"
+        "  -m, --modes=<mode,mode,...>  Modes to run (create, start, stop, destroy)\n"
+        "  -q, --quiet                  Don't produce any output\n"
+        "  -?, --help                   Give this help list\n"
         "\n"
         "Mandatory or optional arguments to long options are also mandatory or optional\n"
         "for any corresponding short options.\n\n");
@@ -135,11 +137,12 @@ int main(int argc, char *argv[]) {
     pthread_t *threads;
     struct thread_args *args;
 
-    char *modes[] = {"create", "start", "stop", "destroy", NULL};
+    char *modes_default[] = {"create", "start", "stop", "destroy", NULL};
+    char **modes = modes_default;
 
     pthread_attr_init(&attr);
 
-    while ((opt = getopt_long(argc, argv, "j:i:t:d:q", options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "j:i:t:d:m:q", options, NULL)) != -1) {
         switch(opt) {
         case 'j':
             nthreads = atoi(optarg);
@@ -156,6 +159,19 @@ int main(int argc, char *argv[]) {
         case 'q':
             quiet = 1;
             break;
+        case 'm': {
+            char *mode_tok, *tok, *saveptr;
+
+            modes = NULL;
+            for (i = 0, mode_tok = optarg;
+                 (tok = strtok_r(mode_tok, ",", &saveptr));
+                i++, mode_tok = NULL) {
+                modes = realloc(modes, sizeof(*modes) * (i+2));
+                modes[i] = tok;
+	    }
+            modes[i] = NULL;
+            break;
+	}
         default: /* '?' */
             usage();
             exit(EXIT_FAILURE);

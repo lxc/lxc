@@ -491,7 +491,7 @@ static bool lxcapi_wait(struct lxc_container *c, const char *state, int timeout)
 }
 
 
-static bool wait_on_daemonized_start(struct lxc_container *c)
+static bool wait_on_daemonized_start(struct lxc_container *c, int pid)
 {
 	/* we'll probably want to make this timeout configurable? */
 	int timeout = 5, ret, status;
@@ -500,10 +500,42 @@ static bool wait_on_daemonized_start(struct lxc_container *c)
 	 * our child is going to fork again, then exit.  reap the
 	 * child
 	 */
-	ret = wait(&status);
+	ret = waitpid(pid, &status, 0);
 	if (ret == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0)
 		DEBUG("failed waiting for first dual-fork child");
 	return lxcapi_wait(c, "RUNNING", timeout);
+}
+
+static bool am_single_threaded(void)
+{
+	struct dirent dirent, *direntp;
+	DIR *dir;
+	int count=0;
+
+	process_lock();
+	dir = opendir("/proc/self/task");
+	process_unlock();
+	if (!dir) {
+		INFO("failed to open /proc/self/task");
+		return false;
+	}
+
+	while (!readdir_r(dir, &dirent, &direntp)) {
+		if (!direntp)
+			break;
+
+		if (!strcmp(direntp->d_name, "."))
+			continue;
+
+		if (!strcmp(direntp->d_name, ".."))
+			continue;
+		if (++count > 1)
+			break;
+	}
+	process_lock();
+	closedir(dir);
+	process_unlock();
+	return count == 1;
 }
 
 /*
@@ -575,7 +607,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 			return false;
 		}
 		if (pid != 0)
-			return wait_on_daemonized_start(c);
+			return wait_on_daemonized_start(c, pid);
 
 		process_unlock(); // we're no longer sharing
 		/* second fork to be reparented by init */
@@ -598,6 +630,11 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		open("/dev/null", O_RDWR);
 		open("/dev/null", O_RDWR);
 		setsid();
+	} else {
+		if (!am_single_threaded()) {
+			ERROR("Cannot start non-daemonized container when threaded");
+			return false;
+		}
 	}
 
 reboot:

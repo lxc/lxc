@@ -135,6 +135,9 @@ int lxc_abstract_unix_connect(const char *path)
 
 	if (connect(fd, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + len)) {
 		int tmp = errno;
+		/* special case to connect to older containers */
+		if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0)
+			return fd;
 		process_lock();
 		close(fd);
 		process_unlock();

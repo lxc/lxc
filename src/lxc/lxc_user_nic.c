@@ -49,25 +49,6 @@
 #include "config.h"
 #include "utils.h"
 
-#ifndef HAVE_GETLINE
-#ifdef HAVE_FGETLN
-#include <../include/getline.h>
-#endif
-#endif
-
-/* Define setns() if missing from the C library */
-#ifndef HAVE_SETNS
-static inline int setns(int fd, int nstype)
-{
-#ifdef __NR_setns
-	return syscall(__NR_setns, fd, nstype);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
-}
-#endif
-
 #if ISTEST
 #define CONF_FILE "/tmp/lxc-usernet"
 #define DB_FILE "/tmp/nics"
@@ -75,7 +56,6 @@ static inline int setns(int fd, int nstype)
 #define CONF_FILE LXC_USERNIC_CONF
 #define DB_FILE LXC_USERNIC_DB
 #endif
-
 
 #include "nl.h"
 
