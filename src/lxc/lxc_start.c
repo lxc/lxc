@@ -151,8 +151,8 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'C': args->close_all_fds = 1; break;
 	case 's': return lxc_config_define_add(&defines, arg);
 	case 'p': args->pidfile = arg; break;
-	case OPT_SHARE_NET: args->share_net = arg; break;
-	case OPT_SHARE_IPC: args->share_ipc = arg; break;
+	case OPT_SHARE_NET: args->share_ns[LXC_NS_NET] = arg; break;
+	case OPT_SHARE_IPC: args->share_ns[LXC_NS_IPC] = arg; break;
 	}
 	return 0;
 }
@@ -306,26 +306,19 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (my_args.share_net != NULL) {
-		int pid = pid_from_lxcname(my_args.share_net, lxcpath);
+	int i;
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		if (my_args.share_ns[i] == NULL)
+			continue;
+
+		int pid = pid_from_lxcname(my_args.share_ns[i], lxcpath);
 		if (pid < 1)
 			goto out;
 
-		int fd = open_ns(pid, "net");
+		int fd = open_ns(pid, ns_info[i].proc_name);
 		if (fd < 0)
 			goto out;
-		conf->inherit_ns_fd[LXC_NS_NET] = fd;
-	}
-
-	if (my_args.share_ipc != NULL) {
-		int pid = pid_from_lxcname(my_args.share_ipc, lxcpath);
-		if (pid < 1)
-			goto out;
-
-		int fd = open_ns(pid, "ipc");
-		if (fd < 0)
-			goto out;
-		conf->inherit_ns_fd[LXC_NS_IPC] = fd;
+		conf->inherit_ns_fd[i] = fd;
 	}
 
 	if (my_args.daemonize) {
