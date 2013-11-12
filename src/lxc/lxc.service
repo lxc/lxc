@@ -1,0 +1,17 @@
+[Unit]
+Description=LXC Container Initialization and Autoboot Code
+After=syslog.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/usr/libexec/lxc/lxc-devsetup
+ExecStart=/usr/libexec/lxc/lxc-startup start
+ExecStop=/usr/libexec/lxc/lxc-startup stop
+# Environment=BOOTUP=serial
+# Environment=CONSOLETYPE=serial
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target

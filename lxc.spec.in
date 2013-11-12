@@ -102,6 +102,11 @@ rm -rf %{buildroot}
 make install DESTDIR=%{buildroot}
 find %{buildroot} -type f -name '*.la' -exec rm -f {} ';'
 
+# Install some of our systemd stuff...
+install -d -m 755 %{buildroot}/lib/systemd/system
+install -c -m 644 src/lxc/lxc.service %{buildroot}/lib/systemd/system
+install -c -m 755 src/lxc/lxc-devsetup %{buildroot}/%{_libexecdir}/%{name}
+
 %clean
 rm -rf %{buildroot}
 
@@ -131,6 +136,8 @@ rm -rf %{buildroot}
 %{_datadir}/lxc/*
 %config(noreplace) %{_sysconfdir}/lxc/*
 
+/lib/systemd/system/*
+
 %files libs
 %defattr(-,root,root)
 %{_libdir}/*.so.*
@@ -140,6 +147,7 @@ rm -rf %{buildroot}
 %endif
 %{_localstatedir}/*
 %attr(4555,root,root) %{_libexecdir}/%{name}/lxc-init
+%attr(555,root,root) %{_libexecdir}/%{name}/lxc-devsetup
 
 %if %{with_lua}
 %files lua
