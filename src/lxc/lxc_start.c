@@ -107,26 +107,31 @@ static int pid_from_lxcname(const char *lxcname_or_pid, const char *lxcpath) {
 
 		if (!s->may_control(s)) {
 			SYSERROR("Insufficient privileges to control container '%s'", s->name);
+			lxc_container_put(s);
 			return -1;
 		}
 
 		pid = s->init_pid(s);
 		if (pid < 1) {
 			SYSERROR("Is container '%s' running?", s->name);
+			lxc_container_put(s);
 			return -1;
 		}
+
+		lxc_container_put(s);
 	}
 	if (kill(pid, 0) < 0) {
 		SYSERROR("Can't send signal to pid %d", pid);
 		return -1;
 	}
+
 	return pid;
 }
 
 static int open_ns(int pid, const char *ns_proc_name) {
 	int fd;
 	char path[MAXPATHLEN];
-	snprintf(path, MAXPATHLEN, "/proc/%d/ns/net", pid);
+	snprintf(path, MAXPATHLEN, "/proc/%d/ns/%s", pid, ns_proc_name);
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
