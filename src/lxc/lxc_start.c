@@ -298,12 +298,11 @@ int main(int argc, char *argv[])
 	}
 
 	if (my_args.share_net != NULL) {
-		int fd;
 		int pid = pid_from_lxcname(my_args.share_net, lxcpath);
 		if (pid < 1)
 			goto out;
 
-		fd = open_ns(pid, "net");
+		int fd = open_ns(pid, "net");
 		if (fd < 0)
 			goto out;
 		conf->inherit_ns_fd[LXC_NS_NET] = fd;
