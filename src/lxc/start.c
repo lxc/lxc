@@ -727,7 +727,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_init(handler))
 		return -1;
 
-	handler->clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
+	handler->clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWNS;
 	if (!lxc_list_empty(&handler->conf->id_map)) {
 		INFO("Cloning a new user namespace");
 		handler->clone_flags |= CLONE_NEWUSER;
@@ -764,6 +764,12 @@ int lxc_spawn(struct lxc_handler *handler)
 		}
 	} else {
 		INFO("Inheriting a net namespace");
+	}
+
+	if (handler->conf->inherit_ns_fd[LXC_NS_IPC] == -1) {
+		handler->clone_flags |= CLONE_NEWIPC;
+	} else {
+		INFO("Inheriting an IPC namespace");
 	}
 
 

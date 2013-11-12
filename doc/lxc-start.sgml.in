@@ -58,6 +58,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-s KEY=VAL</arg>
       <arg choice="opt">-C</arg>
       <arg choice="opt">--share-net <replaceable>name|pid</replaceable></arg>
+      <arg choice="opt">--share-ipc <replaceable>name|pid</replaceable></arg>
       <arg choice="opt">command</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -203,6 +204,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</listitem>
       </varlistentry>
 
+      <varlistentry>
+	<term>
+	  <option>--share-ipc <replaceable>name|pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            Inherit an IPC namespace from
+	    a <replaceable>name</replaceable> container or
+	    a <replaceable>pid</replaceable>.
 	  </para>
 	</listitem>
       </varlistentry>

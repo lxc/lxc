@@ -52,6 +52,7 @@
 #include "arguments.h"
 
 #define OPT_SHARE_NET OPT_USAGE+1
+#define OPT_SHARE_IPC OPT_USAGE+2
 
 lxc_log_define(lxc_start_ui, lxc_start);
 
@@ -146,6 +147,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 's': return lxc_config_define_add(&defines, arg);
 	case 'p': args->pidfile = arg; break;
 	case OPT_SHARE_NET: args->share_net = arg; break;
+	case OPT_SHARE_IPC: args->share_ipc = arg; break;
 	}
 	return 0;
 }
@@ -159,6 +161,7 @@ static const struct option my_longopts[] = {
 	{"close-all-fds", no_argument, 0, 'C'},
 	{"pidfile", required_argument, 0, 'p'},
 	{"share-net", required_argument, 0, OPT_SHARE_NET},
+	{"share-ipc", required_argument, 0, OPT_SHARE_IPC},
 	LXC_COMMON_OPTIONS
 };
 
@@ -181,6 +184,7 @@ Options :\n\
 		         Note: --daemon implies --close-all-fds\n\
   -s, --define KEY=VAL   Assign VAL to configuration variable KEY\n\
       --share-net=NAME   Share a network namespace with another container or pid\n\
+      --share-ipc=NAME   Share an IPC namespace with another container or pid\n\
 ",
 	.options   = my_longopts,
 	.parser    = my_parser,
@@ -306,6 +310,17 @@ int main(int argc, char *argv[])
 		if (fd < 0)
 			goto out;
 		conf->inherit_ns_fd[LXC_NS_NET] = fd;
+	}
+
+	if (my_args.share_ipc != NULL) {
+		int pid = pid_from_lxcname(my_args.share_ipc, lxcpath);
+		if (pid < 1)
+			goto out;
+
+		int fd = open_ns(pid, "ipc");
+		if (fd < 0)
+			goto out;
+		conf->inherit_ns_fd[LXC_NS_IPC] = fd;
 	}
 
 	if (my_args.daemonize) {

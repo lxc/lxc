@@ -55,6 +55,7 @@ struct lxc_arguments {
 
 	/* for lxc-start */
 	const char *share_net;
+	const char *share_ipc;
 
 	/* for lxc-checkpoint/restart */
 	const char *statefile;
