@@ -1700,11 +1700,15 @@ static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	if (lret)
 		return false;
 
+	process_lock();
 	fout = fopen(alt_file, "w");
+	process_unlock();
 	if (!fout)
 		goto out;
 	write_config(fout, c->lxc_conf);
+	process_lock();
 	fclose(fout);
+	process_unlock();
 	ret = true;
 
 out:
