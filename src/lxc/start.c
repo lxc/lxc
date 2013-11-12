@@ -752,7 +752,7 @@ int lxc_spawn(struct lxc_handler *handler)
 			 * fill the netdev index and use them in the child
 			 */
 			if (lxc_create_network(handler)) {
-				ERROR("failed to create the network IW WAS ERE");
+				ERROR("failed to create the network");
 				lxc_sync_fini(handler);
 				return -1;
 			}
