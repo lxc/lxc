@@ -427,9 +427,9 @@ EOF
     cat <<EOF > $path/fstab
 proc            proc         proc    nodev,noexec,nosuid 0 0
 sysfs           sys          sysfs defaults  0 0
-/sys/fs/fuse/connections sys/fs/fuse/connections none bind 0 0
-/sys/kernel/debug sys/kernel/debug none bind 0 0
-/sys/kernel/security sys/kernel/security none bind 0 0
+/sys/fs/fuse/connections sys/fs/fuse/connections none bind,optional 0 0
+/sys/kernel/debug sys/kernel/debug none bind,optional 0 0
+/sys/kernel/security sys/kernel/security none bind,optional 0 0
 /sys/fs/pstore sys/fs/pstore none bind,optional 0 0
 EOF
 
