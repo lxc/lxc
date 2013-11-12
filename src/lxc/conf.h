@@ -356,7 +356,9 @@ extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
 
 struct cgroup_process_info;
 extern int lxc_setup(const char *name, struct lxc_conf *lxc_conf,
-			const char *lxcpath, struct cgroup_process_info *cgroup_info);
+			const char *lxcpath,
+			struct cgroup_process_info *cgroup_info,
+			void *data);
 
 extern void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf);
 
