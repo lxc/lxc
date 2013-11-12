@@ -1192,15 +1192,18 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	if (lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path &&
 			access(c->lxc_conf->rootfs.path, F_OK) == 0 && tpath) {
 		ERROR("Container %s:%s already exists", c->config_path, c->name);
-		free(tpath);
-		return false;
+		goto free_tpath;
 	}
 
-	/* Save the loaded configuration to disk */
-	if (!c->save_config(c, NULL)) {
-		ERROR("failed to save starting configuration for %s\n", c->name);
-		goto out;
+	if (!c->lxc_conf) {
+		if (!c->load_config(c, LXC_DEFAULT_CONFIG)) {
+			ERROR("Error loading default configuration file %s\n", LXC_DEFAULT_CONFIG);
+			goto free_tpath;
+		}
 	}
+
+	if (!create_container_dir(c))
+		goto free_tpath;
 
 	/*
 	 * either template or rootfs.path should be set.
@@ -1290,10 +1293,11 @@ out_unlock:
 	if (partial_fd >= 0)
 		remove_partial(c, partial_fd);
 out:
-	if (tpath)
-		free(tpath);
 	if (!ret && c)
 		lxcapi_destroy(c);
+free_tpath:
+	if (tpath)
+		free(tpath);
 	return ret;
 }
 
