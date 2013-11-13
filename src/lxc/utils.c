@@ -39,11 +39,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <assert.h>
-#include <pthread.h>
-
-#ifdef MUTEX_DEBUGGING
-#include <execinfo.h>
-#endif
 
 #ifndef HAVE_GETLINE
 #ifdef HAVE_FGETLN
@@ -58,57 +53,6 @@
 #define MAX_STACKDEPTH 25
 
 lxc_log_define(lxc_utils, lxc);
-
-
-#ifdef MUTEX_DEBUGGING
-static pthread_mutex_t static_mutex = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
-
-inline void dump_stacktrace(void)
-{
-	void *array[MAX_STACKDEPTH];
-	size_t size;
-	char **strings;
-	size_t i;
-
-	size = backtrace(array, MAX_STACKDEPTH);
-	strings = backtrace_symbols(array, size);
-
-	// Using fprintf here as our logging module is not thread safe
-	fprintf(stderr, "\tObtained %zd stack frames.\n", size);
-
-	for (i = 0; i < size; i++)
-		fprintf(stderr, "\t\t%s\n", strings[i]);
-
-	free (strings);
-}
-#else
-static pthread_mutex_t static_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-inline void dump_stacktrace(void) {;}
-#endif
-
-/* Protects static const values inside the lxc_global_config_value funtion */
-static void static_lock(void)
-{
-	int ret;
-
-	if ((ret = pthread_mutex_lock(&static_mutex)) != 0) {
-		ERROR("pthread_mutex_lock returned:%d %s", ret, strerror(ret));
-		dump_stacktrace();
-		exit(1);
-	}
-}
-
-static void static_unlock(void)
-{
-	int ret;
-
-	if ((ret = pthread_mutex_unlock(&static_mutex)) != 0) {
-		ERROR("pthread_mutex_unlock returned:%d %s", ret, strerror(ret));
-		dump_stacktrace();
-		exit(1);
-	}
-}
 
 static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
 {
@@ -392,6 +336,7 @@ out:
 	if (fin)
 		fclose(fin);
 	process_unlock();
+
 	static_lock();
 	value = values[i];
 	static_unlock();
