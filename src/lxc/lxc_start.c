@@ -191,9 +191,7 @@ Options :\n\
                          If not specified, exit with failure instead\n\
 		         Note: --daemon implies --close-all-fds\n\
   -s, --define KEY=VAL   Assign VAL to configuration variable KEY\n\
-      --share-net=NAME   Share a network namespace with another container or pid\n\
-      --share-ipc=NAME   Share an IPC namespace with another container or pid\n\
-      --share-uts=NAME   Share a UTS namespace with another container or pid\n\
+      --share-[net|ipc|uts]=NAME Share a namespace with another container or pid\n\
 ",
 	.options   = my_longopts,
 	.parser    = my_parser,

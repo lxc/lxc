@@ -57,8 +57,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-p <replaceable>pid_file</replaceable></arg>
       <arg choice="opt">-s KEY=VAL</arg>
       <arg choice="opt">-C</arg>
-      <arg choice="opt">--share-net <replaceable>name|pid</replaceable></arg>
-      <arg choice="opt">--share-ipc <replaceable>name|pid</replaceable></arg>
+      <arg choice="opt">--share-[net|ipc|uts] <replaceable>name|pid</replaceable></arg>
       <arg choice="opt">command</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
