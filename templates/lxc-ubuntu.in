@@ -243,7 +243,7 @@ download_ubuntu()
     arch=$2
     release=$3
 
-    packages_template="ssh"
+    packages_template=${packages_template:-"ssh"}
 
     # Try to guess a list of langpacks to install
     langpacks="language-pack-en"
@@ -593,7 +593,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:b:hp:r:n:FS:du: -l arch:,bindhome:,help,path:,release:,name:,flush-cache,auth-key:,debug,rootfs:,packages:,user:,password: -- "$@")
+options=$(getopt -o a:b:hp:r:n:FS:du: -l arch:,bindhome:,help,path:,release:,name:,flush-cache,auth-key:,debug,rootfs:,packages:,user:,password:,mirror:,security-mirror: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -648,6 +648,8 @@ do
     -a|--arch)      arch=$2; shift 2;;
     -S|--auth-key)  auth_key=$2; shift 2;;
     -d|--debug)     debug=1; shift 1;;
+    --mirror)       MIRROR=$2; shift 2;;
+    --security-mirror) SECURITY_MIRROR=$2; shift 2;;
     --)             shift 1; break ;;
         *)              break ;;
     esac
