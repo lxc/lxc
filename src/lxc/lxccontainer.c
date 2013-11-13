@@ -49,6 +49,7 @@
 #include <lxc/namespace.h>
 #include <sched.h>
 #include <arpa/inet.h>
+#include <libgen.h>
 
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
@@ -61,6 +62,8 @@
 #include <../include/getline.h>
 #endif
 #endif
+
+#define MAX_BUFFER 4096
 
 lxc_log_define(lxc_container, lxc);
 
@@ -2920,6 +2923,101 @@ static bool lxcapi_may_control(struct lxc_container *c)
 	return lxc_try_cmd(c->name, c->config_path) == 0;
 }
 
+static bool add_remove_device_node(struct lxc_container *c, char *src_path, char *dest_path, bool add)
+{
+	int ret;
+	struct stat st;
+	char path[MAXPATHLEN];
+	char value[MAX_BUFFER];
+	char *directory_path = NULL, *p;
+
+	/* make sure container is running */
+	if (!c->is_running(c)) {
+		ERROR("container is not running");
+		goto out;
+	}
+
+	/* use src_path if dest_path is NULL otherwise use dest_path */
+	p = dest_path ? dest_path : src_path;
+
+	/* prepare the path */
+	ret = snprintf(path, MAXPATHLEN, "/proc/%d/root/%s", c->init_pid(c), p);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		goto out;
+	remove_trailing_slashes(path);
+
+	p = add ? src_path : path;
+	/* make sure we can access p */
+	if(access(p, F_OK) < 0 || stat(p, &st) < 0)
+		goto out;
+
+	/* continue if path is character device or block device */
+	if S_ISCHR(st.st_mode)
+		ret = snprintf(value, MAX_BUFFER, "c %d:%d rwm", major(st.st_rdev), minor(st.st_rdev));
+	else if S_ISBLK(st.st_mode)
+		ret = snprintf(value, MAX_BUFFER, "b %d:%d rwm", major(st.st_rdev), minor(st.st_rdev));
+	else
+		goto out;
+
+	/* check snprintf return code */
+	if (ret < 0 || ret >= MAX_BUFFER)
+		goto out;
+
+	directory_path = dirname(strdup(path));
+	/* remove path and directory_path (if empty) */
+	if(access(path, F_OK) == 0) {
+		if (unlink(path) < 0) {
+			ERROR("unlink failed");
+			goto out;
+		}
+		if (rmdir(directory_path) < 0 && errno != ENOTEMPTY) {
+			ERROR("rmdir failed");
+			goto out;
+		}
+	}
+
+	if (add) {
+		/* create the missing directories */
+		if (mkdir_p(directory_path, 0755) < 0) {
+			ERROR("failed to create directory");
+			goto out;
+		}
+
+		/* create the device node */
+		if (mknod(path, st.st_mode, st.st_rdev) < 0) {
+			ERROR("mknod failed");
+            goto out;
+		}
+
+		/* add device node to device list */
+		if (!c->set_cgroup_item(c, "devices.allow", value)) {
+			ERROR("set_cgroup_item failed while adding the device node");
+			goto out;
+		}
+	} else {
+		/* remove device node from device list */
+		if (!c->set_cgroup_item(c, "devices.deny", value)) {
+			ERROR("set_cgroup_item failed while removing the device node");
+			goto out;
+		}
+	}
+	return true;
+out:
+	if (directory_path)
+		free(directory_path);
+	return false;
+}
+
+static bool lxcapi_add_device_node(struct lxc_container *c, char *src_path, char *dest_path)
+{
+	return add_remove_device_node(c, src_path, dest_path, true);
+}
+
+static bool lxcapi_remove_device_node(struct lxc_container *c, char *src_path, char *dest_path)
+{
+	return add_remove_device_node(c, src_path, dest_path, false);
+}
+
 static int lxcapi_attach_run_waitl(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char *arg, ...)
 {
 	va_list ap;
@@ -3041,6 +3139,8 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->snapshot_restore = lxcapi_snapshot_restore;
 	c->snapshot_destroy = lxcapi_snapshot_destroy;
 	c->may_control = lxcapi_may_control;
+	c->add_device_node = lxcapi_add_device_node;
+	c->remove_device_node = lxcapi_remove_device_node;
 
 	/* we'll allow the caller to update these later */
 	if (lxc_log_init(NULL, "none", NULL, "lxc_container", 0, c->config_path)) {

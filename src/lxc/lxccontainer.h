@@ -236,6 +236,25 @@ struct lxc_container {
 	 * and the caller may not access it.  Return true otherwise.
 	 */
 	bool (*may_control)(struct lxc_container *c);
+
+	/*
+	 * add_device_node:
+	 * @c        : the running container
+	 * @src_path : the path of the device
+	 * @dest_path: the alternate path in the container. If NULL, the src_path is used
+	 *
+	 * Returns true if given device succesfully added to container
+	 */
+	bool (*add_device_node)(struct lxc_container *c, char *src_path, char *dest_path);
+	/*
+	 * remove_device_node:
+	 * @c        : the running container
+	 * @src_path : the path of the device
+	 * @dest_path: the alternate path in the container. If NULL, the src_path is used
+	 *
+	 * Returns true if given device succesfully removed from container
+	 */
+	bool (*remove_device_node)(struct lxc_container *c, char *src_path, char *dest_path);
 };
 
 struct lxc_snapshot {
