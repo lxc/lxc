@@ -53,6 +53,7 @@
 
 #define OPT_SHARE_NET OPT_USAGE+1
 #define OPT_SHARE_IPC OPT_USAGE+2
+#define OPT_SHARE_UTS OPT_USAGE+3
 
 lxc_log_define(lxc_start_ui, lxc_start);
 
@@ -153,6 +154,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'p': args->pidfile = arg; break;
 	case OPT_SHARE_NET: args->share_ns[LXC_NS_NET] = arg; break;
 	case OPT_SHARE_IPC: args->share_ns[LXC_NS_IPC] = arg; break;
+	case OPT_SHARE_UTS: args->share_ns[LXC_NS_UTS] = arg; break;
 	}
 	return 0;
 }
@@ -167,6 +169,7 @@ static const struct option my_longopts[] = {
 	{"pidfile", required_argument, 0, 'p'},
 	{"share-net", required_argument, 0, OPT_SHARE_NET},
 	{"share-ipc", required_argument, 0, OPT_SHARE_IPC},
+	{"share-uts", required_argument, 0, OPT_SHARE_UTS},
 	LXC_COMMON_OPTIONS
 };
 
@@ -190,6 +193,7 @@ Options :\n\
   -s, --define KEY=VAL   Assign VAL to configuration variable KEY\n\
       --share-net=NAME   Share a network namespace with another container or pid\n\
       --share-ipc=NAME   Share an IPC namespace with another container or pid\n\
+      --share-uts=NAME   Share a UTS namespace with another container or pid\n\
 ",
 	.options   = my_longopts,
 	.parser    = my_parser,

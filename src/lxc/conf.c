@@ -3141,9 +3141,11 @@ int ttys_shift_ids(struct lxc_conf *c)
 
 int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath, struct cgroup_process_info *cgroup_info)
 {
-	if (setup_utsname(lxc_conf->utsname)) {
-		ERROR("failed to setup the utsname for '%s'", name);
-		return -1;
+	if (lxc_conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
+		if (setup_utsname(lxc_conf->utsname)) {
+			ERROR("failed to setup the utsname for '%s'", name);
+			return -1;
+		}
 	}
 
 	if (setup_network(&lxc_conf->network)) {

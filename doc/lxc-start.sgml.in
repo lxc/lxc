@@ -217,6 +217,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</listitem>
       </varlistentry>
 
+      <varlistentry>
+	<term>
+	  <option>--share-uts <replaceable>name|pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            Inherit a UTS namespace from
+	    a <replaceable>name</replaceable> container or
+	    a <replaceable>pid</replaceable>. The starting LXC will
+	    not set the hostname, but the container OS may do it
+	    anyway.
+	  </para>
+	</listitem>
+      </varlistentry>
+
     </variablelist>
 
   </refsect1>
