@@ -209,6 +209,22 @@ EOF
     fi
 }
 
+install_packages()
+{
+    local rootfs="$1"
+    shift
+    local packages="$*"
+    if [ -z $update ]
+    then
+        chroot $rootfs apt-get update
+        update=true
+    fi
+    if [ -n "${packages}" ]
+    then
+        chroot $rootfs apt-get install --force-yes -y --no-install-recommends ${packages}
+    fi
+}
+
 cleanup()
 {
     rm -rf $cache/partial-$arch
@@ -226,7 +242,8 @@ download_ubuntu()
     cache=$1
     arch=$2
     release=$3
-    packages=$4
+
+    packages_template="ssh"
 
     # Try to guess a list of langpacks to install
     langpacks="language-pack-en"
@@ -236,10 +253,10 @@ download_ubuntu()
                     dpkg -l | grep -E "^ii  language-pack-[a-z]* " |
                         cut -d ' ' -f3) | sort -u`
     fi
-    packages="$packages,$(echo $langpacks | sed 's/ /,/g')"
+    packages_template="${packages_template},$(echo $langpacks | sed 's/ /,/g')"
 
 
-    echo "installing packages: $packages"
+    echo "Installing packages in template: ${packages_template}"
 
     trap cleanup EXIT SIGHUP SIGINT SIGTERM
     # check the mini ubuntu was not already downloaded
@@ -253,9 +270,9 @@ download_ubuntu()
     # download a mini ubuntu into a cache
     echo "Downloading ubuntu $release minimal ..."
     if [ -n "$(which qemu-debootstrap)" ]; then
-        qemu-debootstrap --verbose --components=main,universe --arch=$arch --include=$packages $release $cache/partial-$arch $MIRROR
+        qemu-debootstrap --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
     else
-        debootstrap --verbose --components=main,universe --arch=$arch --include=$packages $release $cache/partial-$arch $MIRROR
+        debootstrap --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
     fi
 
     if [ $? -ne 0 ]; then
@@ -331,7 +348,7 @@ install_ubuntu()
 
         echo "Checking cache download in $cache/rootfs-$arch ... "
         if [ ! -e "$cache/rootfs-$arch" ]; then
-            download_ubuntu $cache $arch $release $packages
+            download_ubuntu $cache $arch $release
             if [ $? -ne 0 ]; then
                 echo "Failed to download 'ubuntu $release base'"
                 return 1
@@ -446,6 +463,7 @@ post_process()
 {
     rootfs=$1
     release=$2
+    packages=$3
 
     if [ ! -f $rootfs/etc/init/container-detect.conf ]; then
         # Make sure we have a working resolv.conf
@@ -457,7 +475,7 @@ post_process()
         # ppa and install lxcguest
         if [ $release = "lucid" ]; then
             chroot $rootfs apt-get update
-            chroot $rootfs apt-get install --force-yes -y python-software-properties
+            install_packages $rootfs "python-software-properties"
             chroot $rootfs add-apt-repository ppa:ubuntu-virt/ppa
         fi
 
@@ -499,7 +517,15 @@ post_process()
         else
             HOST_PACKAGES="$HOST_PACKAGES iproute:${hostarch}"
         fi
-        chroot $rootfs apt-get install --force-yes -y --no-install-recommends $HOST_PACKAGES
+        install_packages $rootfs $HOST_PACKAGES
+    fi
+
+    # Install Packages in container
+    if [ -n $packages ]
+    then
+        local packages="`echo $packages | sed 's/,/ /g'`"
+        echo "Installing packages: ${packages}"
+        install_packages $rootfs $packages
     fi
 
     # rmdir /dev/shm for containers that have /run/shm
@@ -527,7 +553,7 @@ do_bindhome()
         echo "shell $shell for user $user was not found in the container."
         pkg=`dpkg -S $(readlink -m $shell) | cut -d ':' -f1`
         echo "Installing $pkg"
-        chroot $rootfs apt-get --force-yes -y install $pkg
+        install_packages $rootfs $pkg
     fi
 
     shad=`getent shadow $user`
@@ -683,7 +709,7 @@ if [ -z "$rootfs" ]; then
     fi
 fi
 
-install_ubuntu $rootfs $release $flushcache $packages
+install_ubuntu $rootfs $release $flushcache
 if [ $? -ne 0 ]; then
     echo "failed to install ubuntu $release"
     exit 1
@@ -701,7 +727,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-post_process $rootfs $release $trim_container
+post_process $rootfs $release $trim_container $packages
 
 if [ -n "$bindhome" ]; then
     do_bindhome $rootfs $bindhome
