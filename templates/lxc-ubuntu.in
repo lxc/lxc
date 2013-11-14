@@ -26,6 +26,8 @@
 
 set -e
 
+LOCALSTATEDIR=@LOCALSTATEDIR@
+
 if [ -r /etc/default/lxc ]; then
     . /etc/default/lxc
 fi
@@ -92,7 +94,7 @@ EOF
     fi
 
     # generate new SSH keys
-    if [ -x $rootfs@LOCALSTATEDIR@/lib/dpkg/info/openssh-server.postinst ]; then
+    if [ -x $rootfs$LOCALSTATEDIR/lib/dpkg/info/openssh-server.postinst ]; then
         cat > $rootfs/usr/sbin/policy-rc.d << EOF
 #!/bin/sh
 exit 101
@@ -101,7 +103,7 @@ EOF
 
         rm -f $rootfs/etc/ssh/ssh_host_*key*
         mv $rootfs/etc/init/ssh.conf $rootfs/etc/init/ssh.conf.disabled
-        DPKG_MAINTSCRIPT_PACKAGE=openssh DPKG_MAINTSCRIPT_NAME=postinst chroot $rootfs @LOCALSTATEDIR@/lib/dpkg/info/openssh-server.postinst configure
+        DPKG_MAINTSCRIPT_PACKAGE=openssh DPKG_MAINTSCRIPT_NAME=postinst chroot $rootfs $LOCALSTATEDIR/lib/dpkg/info/openssh-server.postinst configure
         mv $rootfs/etc/init/ssh.conf.disabled $rootfs/etc/init/ssh.conf
 
         rm -f $rootfs/usr/sbin/policy-rc.d
@@ -329,8 +331,8 @@ install_ubuntu()
     rootfs=$1
     release=$2
     flushcache=$3
-    cache="@LOCALSTATEDIR@/cache/lxc/$release"
-    mkdir -p @LOCALSTATEDIR@/lock/subsys/
+    cache="$LOCALSTATEDIR/cache/lxc/$release"
+    mkdir -p $LOCALSTATEDIR/lock/subsys/
 
     (
         flock -x 200
@@ -364,7 +366,7 @@ install_ubuntu()
 
         return 0
 
-    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-ubuntu
+    ) 200>$LOCALSTATEDIR/lock/subsys/lxc-ubuntu
 
     return $?
 }
