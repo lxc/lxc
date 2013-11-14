@@ -1151,6 +1151,14 @@ out_error:
 	return true;
 }
 
+static void lxcapi_clear_config(struct lxc_container *c)
+{
+	if (c && c->lxc_conf) {
+		lxc_conf_free(c->lxc_conf);
+		c->lxc_conf = NULL;
+	}
+}
+
 static bool lxcapi_destroy(struct lxc_container *c);
 /*
  * lxcapi_create:
@@ -1280,9 +1288,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 
 	// now clear out the lxc_conf we have, reload from the created
 	// container
-	if (c->lxc_conf)
-		lxc_conf_free(c->lxc_conf);
-	c->lxc_conf = NULL;
+	lxcapi_clear_config(c);
 
 	if (t) {
 		if (!prepend_lxc_header(c->configfile, tpath, argv)) {
@@ -3093,8 +3099,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	if (ongoing_create(c) == 2) {
 		ERROR("Error: %s creation was not completed", c->name);
 		lxcapi_destroy(c);
-		lxc_conf_free(c->lxc_conf);
-		c->lxc_conf = NULL;
+		lxcapi_clear_config(c);
 	}
 
 	// assign the member functions
@@ -3122,6 +3127,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->createl = lxcapi_createl;
 	c->shutdown = lxcapi_shutdown;
 	c->reboot = lxcapi_reboot;
+	c->clear_config = lxcapi_clear_config;
 	c->clear_config_item = lxcapi_clear_config_item;
 	c->get_config_item = lxcapi_get_config_item;
 	c->get_cgroup_item = lxcapi_get_cgroup_item;

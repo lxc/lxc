@@ -85,6 +85,8 @@ struct lxc_container {
 	bool (*reboot)(struct lxc_container *c);
 	/* send SIGPWR.  if timeout is not 0 or -1, do a hard stop after timeout seconds */
 	bool (*shutdown)(struct lxc_container *c, int timeout);
+	/* completely clear a configuration */
+	void (*clear_config)(struct lxc_container *c);
 	/* clear all network or capability items in the in-memory configuration */
 	bool (*clear_config_item)(struct lxc_container *c, const char *key);
 	/* print a config item to a in-memory string allocated by the caller.  Return

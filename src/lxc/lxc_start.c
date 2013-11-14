@@ -187,6 +187,7 @@ int main(int argc, char *argv[])
 			ERROR("Failed to create lxc_container");
 			return err;
 		}
+		c->clear_config(c);
 		if (!c->load_config(c, rcfile)) {
 			ERROR("Failed to load rcfile");
 			lxc_container_put(c);
