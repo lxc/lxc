@@ -2144,6 +2144,14 @@ static int setup_netdev(struct lxc_netdev *netdev)
 		return 0;
 	}
 
+	/* get the new ifindex in case of physical netdev */
+	if (netdev->type == LXC_NET_PHYS)
+		if (!(netdev->ifindex = if_nametoindex(netdev->link))) {
+			ERROR("failed to get ifindex for %s",
+				netdev->link);
+			return -1;
+		}
+
 	/* retrieve the name of the interface */
 	if (!if_indextoname(netdev->ifindex, current_ifname)) {
 		ERROR("no interface corresponding to index '%d'",
