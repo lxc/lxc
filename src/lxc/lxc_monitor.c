@@ -89,8 +89,10 @@ int main(int argc, char *argv[])
 
 	if (regcomp(&preg, regexp, REG_NOSUB|REG_EXTENDED)) {
 		ERROR("failed to compile the regex '%s'", my_args.name);
+		free(regexp);
 		return -1;
 	}
+	free(regexp);
 
 	if (my_args.lxcpath_cnt > FD_SETSIZE) {
 		ERROR("too many paths requested, only the first %d will be monitored", FD_SETSIZE);
@@ -104,8 +106,10 @@ int main(int argc, char *argv[])
 		lxc_monitord_spawn(my_args.lxcpath[i]);
 
 		fd = lxc_monitor_open(my_args.lxcpath[i]);
-		if (fd < 0)
+		if (fd < 0) {
+			regfree(&preg);
 			return -1;
+		}
 		FD_SET(fd, &rfds);
 		if (fd > nfds)
 			nfds = fd;
@@ -118,8 +122,10 @@ int main(int argc, char *argv[])
 	for (;;) {
 		memcpy(&rfds, &rfds_save, sizeof(rfds));
 
-		if (lxc_monitor_read_fdset(&rfds, nfds, &msg, -1) < 0)
+		if (lxc_monitor_read_fdset(&rfds, nfds, &msg, -1) < 0) {
+			regfree(&preg);
 			return -1;
+		}
 
 		msg.name[sizeof(msg.name)-1] = '\0';
 		if (regexec(&preg, msg.name, 0, NULL, 0))
