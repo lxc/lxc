@@ -962,8 +962,10 @@ static int lvm_snapshot(const char *orig, const char *path, unsigned long size)
 	// check if the original lv is backed by a thin pool, in which case we
 	// cannot specify a size that's different from the original size.
 	ret = lvm_is_thin_volume(orig);
-	if (ret == -1)
+	if (ret == -1) {
+		free(pathdup);
 		return -1;
+	}
 
 	if (!ret) {
 		ret = execlp("lvcreate", "lvcreate", "-s", "-L", sz, "-n", lv, orig, (char *)NULL);
@@ -1282,6 +1284,7 @@ static int btrfs_subvolume_create(const char *path)
 	p = strrchr(newfull, '/');
 	if (!p) {
 		ERROR("bad path: %s", path);
+		free(newfull);
 		return -1;
 	}
 	*p = '\0';
@@ -1418,6 +1421,7 @@ static int btrfs_destroy(struct bdev *orig)
 	p = strrchr(newfull, '/');
 	if (!p) {
 		ERROR("bad path: %s", path);
+		free(newfull);
 		return -1;
 	}
 	*p = '\0';
