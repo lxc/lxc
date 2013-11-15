@@ -2958,9 +2958,9 @@ static bool add_remove_device_node(struct lxc_container *c, char *src_path, char
 		goto out;
 
 	/* continue if path is character device or block device */
-	if S_ISCHR(st.st_mode)
+	if (S_ISCHR(st.st_mode))
 		ret = snprintf(value, MAX_BUFFER, "c %d:%d rwm", major(st.st_rdev), minor(st.st_rdev));
-	else if S_ISBLK(st.st_mode)
+	else if (S_ISBLK(st.st_mode))
 		ret = snprintf(value, MAX_BUFFER, "b %d:%d rwm", major(st.st_rdev), minor(st.st_rdev));
 	else
 		goto out;
