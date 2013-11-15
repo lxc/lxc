@@ -68,7 +68,7 @@ static char *apparmor_process_label_get(pid_t pid)
 {
 	char path[100], *space;
 	int ret;
-	char *buf = NULL;
+	char *buf = NULL, *newbuf;
 	int sz = 0;
 	FILE *f;
 
@@ -88,14 +88,16 @@ again:
 		return NULL;
 	}
 	sz += 1024;
-	buf = realloc(buf, sz);
-	if (!buf) {
+	newbuf = realloc(buf, sz);
+	if (!newbuf) {
+		free(buf);
 		ERROR("out of memory");
 		process_lock();
 		fclose(f);
 		process_unlock();
 		return NULL;
 	}
+	buf = newbuf;
 	memset(buf, 0, sz);
 	ret = fread(buf, 1, sz - 1, f);
 	process_lock();
