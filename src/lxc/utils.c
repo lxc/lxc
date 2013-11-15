@@ -483,7 +483,7 @@ int sha1sum_file(char *fnam, unsigned char *digest)
 	process_lock();
 	f = fopen_cloexec(fnam, "r");
 	process_unlock();
-	if (f < 0) {
+	if (!f) {
 		SYSERROR("Error opening template");
 		return -1;
 	}
