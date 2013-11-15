@@ -116,7 +116,7 @@ for container in ${containers}; do
         container_field_width=${#container}
     fi
 
-    if ! lxc-info -P $lxc_path -t STOPPED -n $container; then
+    if ! lxc-wait -P $lxc_path -s STOPPED -n $container -t 0; then
         initpid=`lxc-info -P $lxc_path -p -n $container | awk -F: '{ print $2 }' | awk '{ print $1 }'`
         cgroup=`head -n 1 /proc/$initpid/cgroup | awk -F: '{ print $3}'`
         if [ -f "$parent_cgroup/$cgroup/tasks" ]; then

@@ -117,7 +117,7 @@ if [ -z "$exec" ]; then
     exec @BINDIR@/lxc-unshare -s MOUNT -- $0 -n $name -P "$lxc_path" --exec -- "$@"
 fi
 
-if lxc-info -n $name -P "$lxc_path" --state-is 'STOPPED'; then
+if lxc-wait -n $name -P "$lxc_path" -s 'STOPPED' -t 0; then
     echo "$(basename $0): container '$name' is not running" >&2
     exit 1
 fi

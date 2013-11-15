@@ -25,7 +25,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <regex.h>
 #include <limits.h>
 #include <libgen.h>
 #include <sys/types.h>
@@ -43,9 +42,9 @@ static bool state;
 static bool pid;
 static bool stats;
 static bool humanize = true;
-static char *test_state = NULL;
 static char **key = NULL;
 static int keys = 0;
+static int filter_count = 0;
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
@@ -55,12 +54,11 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 		key[keys] = arg;
 		keys++;
 		break;
-	case 'i': ips = true; break;
-	case 's': state = true; break;
-	case 'p': pid = true; break;
-	case 'S': stats = true; break;
+	case 'i': ips = true; filter_count += 1; break;
+	case 's': state = true; filter_count += 1; break;
+	case 'p': pid = true; filter_count += 1; break;
+	case 'S': stats = true; filter_count += 5; break;
 	case 'H': humanize = false; break;
-	case 't': test_state = arg; break;
 	}
 	return 0;
 }
@@ -72,7 +70,6 @@ static const struct option my_longopts[] = {
 	{"pid", no_argument, 0, 'p'},
 	{"stats", no_argument, 0, 'S'},
 	{"no-humanize", no_argument, 0, 'H'},
-	{"state-is", required_argument, 0, 't'},
 	LXC_COMMON_OPTIONS,
 };
 
@@ -90,10 +87,8 @@ Options :\n\
   -p, --pid             shows the process id of the init container\n\
   -S, --stats           shows usage stats\n\
   -H, --no-humanize     shows stats as raw numbers, not humanized\n\
-  -s, --state           shows the state of the container\n\
-  -t, --state-is=STATE  test if current state is STATE\n\
-                        returns success if it matches, false otherwise\n",
-	.name     = ".*",
+  -s, --state           shows the state of the container\n",
+	.name     = NULL,
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
@@ -249,14 +244,40 @@ static void print_stats(struct lxc_container *c)
 	}
 }
 
+void print_info_msg_int(const char *key, int value)
+{
+	if (humanize)
+		printf("%-15s %d\n", key, value);
+	else {
+		if (filter_count == 1)
+			printf("%d\n", value);
+		else
+			printf("%-15s %d\n", key, value);
+	}
+}
+
+void print_info_msg_str(const char *key, const char *value)
+{
+	if (humanize)
+		printf("%-15s %s\n", key, value);
+	else {
+		if (filter_count == 1)
+			printf("%s\n", value);
+		else
+			printf("%-15s %s\n", key, value);
+	}
+}
+
 static int print_info(const char *name, const char *lxcpath)
 {
 	int i;
 	struct lxc_container *c;
 
 	c = lxc_container_new(name, lxcpath);
-	if (!c)
+	if (!c) {
+		fprintf(stderr, "Failure to retrieve information on %s\n", c->name);
 		return -1;
+	}
 
 	if (!c->may_control(c)) {
 		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
@@ -264,16 +285,19 @@ static int print_info(const char *name, const char *lxcpath)
 		return -1;
 	}
 
-	if (!state && !pid && !ips && !stats && keys <= 0)
+	if (!c->is_running(c) && !c->is_defined(c)) {
+		fprintf(stderr, "%s doesn't exist\n", c->name);
+		lxc_container_put(c);
+		return -1;
+	}
+
+	if (!state && !pid && !ips && !stats && keys <= 0) {
 		state = pid = ips = stats = true;
+		print_info_msg_str("Name:", c->name);
+	}
 
-	printf("%-15s %s\n", "Name:", c->name);
-
-	if (state || test_state) {
-		if (test_state)
-			return strcmp(c->state(c), test_state) != 0;
-
-		printf("%-15s %s\n", "State:", c->state(c));
+	if (state) {
+		print_info_msg_str("State:", c->state(c));
 	}
 
 	if (pid) {
@@ -281,7 +305,7 @@ static int print_info(const char *name, const char *lxcpath)
 
 		initpid = c->init_pid(c);
 		if (initpid >= 0)
-			printf("%-15s %d\n", "Pid:", initpid);
+			print_info_msg_int("PID:", initpid);
 	}
 
 	if (ips) {
@@ -291,7 +315,7 @@ static int print_info(const char *name, const char *lxcpath)
 			i = 0;
 			while (addresses[i]) {
 				address = addresses[i];
-				printf("%-15s %s\n", "IP:", address);
+				print_info_msg_str("IP:", address);
 				i++;
 			}
 		}
@@ -325,63 +349,20 @@ static int print_info(const char *name, const char *lxcpath)
 
 int main(int argc, char *argv[])
 {
-	int rc, i, len, ret = EXIT_FAILURE;
-	char *regexp;
-	regex_t preg;
-	int ct_cnt;
-	char **ct_name;
-	bool printed;
+	int ret = EXIT_FAILURE;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		goto err1;
+		return ret;
 
 	if (!my_args.log_file)
 		my_args.log_file = "none";
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		goto err1;
+		return ret;
 
-	len = strlen(my_args.name) + 3;
-	regexp = malloc(len + 3);
-	if (!regexp) {
-		fprintf(stderr, "failed to allocate memory");
-		goto err1;
-	}
-	rc = snprintf(regexp, len, "^%s$", my_args.name);
-	if (rc < 0 || rc >= len) {
-		fprintf(stderr, "Name too long");
-		goto err2;
-	}
+	if (print_info(my_args.name, my_args.lxcpath[0]) == 0)
+		ret = EXIT_SUCCESS;
 
-	if (regcomp(&preg, regexp, REG_NOSUB|REG_EXTENDED)) {
-		fprintf(stderr, "failed to compile the regex '%s'", my_args.name);
-		goto err2;
-	}
-
-	printed = false;
-	ct_cnt = list_all_containers(my_args.lxcpath[0], &ct_name, NULL);
-	if (ct_cnt < 0)
-		goto err3;
-
-	for (i = 0; i < ct_cnt; i++) {
-		if (regexec(&preg, ct_name[i], 0, NULL, 0) == 0)
-		{
-			if (printed)
-				printf("\n");
-			print_info(ct_name[i], my_args.lxcpath[0]);
-			printed = true;
-		}
-		free(ct_name[i]);
-	}
-	if (ct_name)
-		free(ct_name);
-	ret = EXIT_SUCCESS;
-
-err3:
-	regfree(&preg);
-err2:
-	free(regexp);
-err1:
 	return ret;
 }
