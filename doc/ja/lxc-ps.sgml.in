@@ -47,7 +47,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       list the processes belonging to a specific container.
       -->
-      指定したコンテナに属するプロセスをリスト表示する．
+      指定したコンテナに属するプロセスのリスト表示
     </refpurpose>
   </refnamediv>
 

@@ -48,7 +48,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       stop the application running inside a container
       -->
-      コンテナ内で動作しているアプリケーションを停止する
+      コンテナ内で動作しているアプリケーションの停止
     </refpurpose>
   </refnamediv>
 

@@ -48,7 +48,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       freeze all the container's processes
       -->
-      コンテナのプロセスを全て凍結します．
+      コンテナ内のプロセス全ての凍結
     </refpurpose>
   </refnamediv>
 

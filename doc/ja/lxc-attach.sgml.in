@@ -48,7 +48,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       start a process inside a running container.
       -->
-      実行中のコンテナ内でプロセスを開始する
+      実行中のコンテナ内でプロセスの開始
     </refpurpose>
   </refnamediv>
 

@@ -49,7 +49,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       checkpoint a running container (not implemented yet)
       -->
-      実行中のコンテナのチェックポイントを作成する (未実装)
+      実行中のコンテナのチェックポイントの作成 (未実装)
     </refpurpose>
   </refnamediv>
 

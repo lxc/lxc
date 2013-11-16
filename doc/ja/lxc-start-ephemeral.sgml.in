@@ -46,7 +46,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       start an ephemeral copy of an existing container
       -->
-      存在するコンテナの一時的なコピーを開始する
+      存在するコンテナの一時的なコピーを起動
     </refpurpose>
   </refnamediv>
 
@@ -72,7 +72,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-start-ephemeral</command> start an ephemeral copy of an
       existing container.
       -->
-      <command>lxc-start-ephemeral</command> は，存在するコンテナの一時的なコピーを開始します．
+      <command>lxc-start-ephemeral</command> は，存在するコンテナの一時的なコピーからコンテナを起動します．
     </para>
   </refsect1>
 

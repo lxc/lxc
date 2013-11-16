@@ -47,7 +47,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       Snapshot an existing container.
       -->
-      既存のコンテナのスナップショットを取得する
+      存在するコンテナのスナップショットの取得
     </refpurpose>
   </refnamediv>
 
@@ -114,7 +114,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               List existing snapshots. 
               -->
-              存在するスナップショットをリスト表示する．
+              存在するスナップショットをリスト表示します．
             </para>
 	   </listitem>
 	  </varlistentry>
@@ -126,7 +126,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               Show snapshot comments in the snapshots listings. 
               -->
-              スナップショットのリスト表示でスナップショットに対するコメントを表示する．
+              スナップショットのリスト表示でスナップショットに対するコメントを表示します．
             </para>
 	   </listitem>
 	  </varlistentry>

@@ -49,7 +49,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       Send a signal to the process 1 of the container.
       -->
-      コンテナの最初のプロセスにシグナルを送る．
+      コンテナの最初のプロセスへのシグナルの送出
     </refpurpose>
   </refnamediv>
 

@@ -47,7 +47,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       list the containers existing on the system
       -->
-      システム上に存在するコンテナをリスト表示する．
+      システム上に存在するコンテナのリスト表示
     </refpurpose>
   </refnamediv>
 

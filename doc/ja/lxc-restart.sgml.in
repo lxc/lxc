@@ -49,7 +49,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       restart a container from a file (not implemented yet)
       -->
-      ファイルからコンテナを再起動する (未実装)
+      ファイルからのコンテナの再起動 (未実装)
     </refpurpose>
   </refnamediv>
 

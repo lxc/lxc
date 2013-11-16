@@ -46,7 +46,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       query information about a container
       -->
-      コンテナに関する情報を問い合わせる
+      コンテナに関する情報の問い合わせ
     </refpurpose>
   </refnamediv>
 
@@ -129,7 +129,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Just print the container's state.
             -->
-            コンテナの状態のみを表示する．
+            コンテナの状態のみを表示します．
           </para>
         </listitem>
       </varlistentry>
@@ -143,7 +143,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Just print the container's pid.
             -->
-            コンテナの pid のみを表示する．
+            コンテナの pid のみを表示します．
           </para>
         </listitem>
       </varlistentry>
@@ -157,7 +157,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Just print the container's IP addresses.
             -->
-            コンテナの IP アドレスを表示する．
+            コンテナの IP アドレスを表示します．．
           </para>
         </listitem>
       </varlistentry>
@@ -226,7 +226,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Show information for foo.
             -->
-            foo という名前のコンテナの情報を表示する．
+            foo という名前のコンテナの情報を表示します．
           </para>
         </listitem>
       </varlistentry>

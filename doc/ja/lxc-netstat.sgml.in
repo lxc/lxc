@@ -45,7 +45,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       run netstat for the specified container
       -->
-      指定したコンテナに対する netstat を実行する
+      指定したコンテナに対する netstat の実行
     </refpurpose>
   </refnamediv>
 

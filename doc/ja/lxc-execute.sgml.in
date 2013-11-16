@@ -48,7 +48,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       run an application inside a container.
       -->
-      コンテナ内でアプリケーションを実行する．
+      コンテナ内でのアプリケーションの実行
     </refpurpose>
   </refnamediv>
 

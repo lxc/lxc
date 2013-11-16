@@ -48,7 +48,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       wait for a specific container state
       -->
-      指定したコンテナの状態を待つ
+      指定したコンテナ状態への遷移への待機
     </refpurpose>
   </refnamediv>
 

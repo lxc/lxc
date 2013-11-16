@@ -49,7 +49,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       clone a new container from an existing one.
       -->
-      新しいコンテナを存在するコンテナからクローンする．
+      既存のコンテナからの新しいコンテナのクローン
     </refpurpose>
   </refnamediv>
 

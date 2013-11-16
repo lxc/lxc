@@ -45,7 +45,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       print the currently installed lxc version
       -->
-      現在インストールされている lxc のバージョンを表示する
+      現在インストールされている lxc のバージョンの表示
     </refpurpose>
   </refnamediv>
 
