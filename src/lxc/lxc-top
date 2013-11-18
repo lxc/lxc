@@ -24,7 +24,6 @@
 local lxc    = require("lxc")
 local core   = require("lxc.core")
 local getopt = require("alt_getopt")
-local lfs    = require("lfs")
 
 local USER_HZ   = 100
 local ESC       = string.format("%c", 27)
