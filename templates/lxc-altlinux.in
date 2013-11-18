@@ -427,7 +427,7 @@ fi
 # check for 'lxc.rootfs' passed in through default config by lxc-create
 if [ -z "$rootfs_path" ]; then
     if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
-        rootfs_path=`grep 'lxc.rootfs =' $path/config | awk -F= '{ print $2 }'`
+        rootfs_path=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $path/config)
     else
         rootfs_path=$path/$name/rootfs
     fi
