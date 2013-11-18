@@ -72,6 +72,10 @@ container_rootfs_configure()
     fi
     sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/login
     sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*open|#session required pam_selinux.so open|' $container_rootfs/etc/pam.d/login
+
+    # setting /proc/$$/loginuid doesn't work under user namespace, which
+    # prevents logins from working
+    sed -i 's|session[ \t]*required[ \t]*pam_loginuid.so|#session required pam_loginuid.so|' $container_rootfs/etc/pam.d/sshd
     sed -i 's|session[ \t]*required[ \t]*pam_loginuid.so|#session required pam_loginuid.so|' $container_rootfs/etc/pam.d/login
 
     if [ -f $container_rootfs/usr/sbin/selinuxenabled ]; then
@@ -82,6 +86,11 @@ container_rootfs_configure()
     # silence error in checking for selinux
     sed -i 's|cat /proc/self/attr/current|cat /proc/self/attr/current 2>/dev/null|' $container_rootfs/etc/rc.sysinit
     sed -i 's|cat /proc/self/attr/current|cat /proc/self/attr/current 2>/dev/null|' $container_rootfs/etc/rc.d/rc.sysinit
+
+    # on ol4 pam_limits prevents logins when using user namespaces
+    if [ $container_release_major = "4" ]; then
+        sed -i 's|session[ \t]*required[ \t]*/lib/security/\$ISA/pam_limits.so|#session required /lib/security/$ISA/pam_limits.so|' $container_rootfs/etc/pam.d/system-auth
+    fi
 
     # configure the network to use dhcp. we set DHCP_HOSTNAME so the guest
     # will report its name and be resolv'able by the hosts dnsmasq
