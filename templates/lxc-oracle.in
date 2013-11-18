@@ -51,11 +51,17 @@ container_rootfs_configure()
 {
     echo "Configuring container for Oracle Linux $container_release_major.$container_release_minor"
 
-    # "disable" selinux. init in OL 5 honors /etc/selinux/config. note that
+    # "disable" selinux in the guest. The policy in the container isn't
+    # likely to match the hosts (unless host == guest exactly) and the
+    # kernel can only be enforcing one policy.
+    #
+    # The OL 5 init honors /etc/selinux/config, but note that
     # this doesnt actually disable it if it's enabled in the host, since
     # libselinux::is_selinux_enabled() in the guest will check
     # /proc/filesystems and see selinuxfs, thus reporting that it is on
-    # (ie. check the output of sestatus in the guest)
+    # (ie. check the output of sestatus in the guest). We also replace
+    # /usr/sbin/selinuxenabled with a symlink to /bin/false so that init
+    # scripts (ie. mcstransd) that call that think selinux is disabled.
     mkdir -p $container_rootfs/selinux
     echo 0 > $container_rootfs/selinux/enforce
     if [ -e $container_rootfs/etc/selinux/config ]; then
@@ -67,6 +73,11 @@ container_rootfs_configure()
     sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/login
     sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*open|#session required pam_selinux.so open|' $container_rootfs/etc/pam.d/login
     sed -i 's|session[ \t]*required[ \t]*pam_loginuid.so|#session required pam_loginuid.so|' $container_rootfs/etc/pam.d/login
+
+    if [ -f $container_rootfs/usr/sbin/selinuxenabled ]; then
+        mv $container_rootfs/usr/sbin/selinuxenabled $container_rootfs/usr/sbin/selinuxenabled.lxcorig
+        ln -s /bin/false $container_rootfs/usr/sbin/selinuxenabled
+    fi
 
     # silence error in checking for selinux
     sed -i 's|cat /proc/self/attr/current|cat /proc/self/attr/current 2>/dev/null|' $container_rootfs/etc/rc.sysinit
