@@ -238,7 +238,7 @@ EOF
     # start a getty on /dev/console, /dev/tty[1-4]
     if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
         sed -i 's|mingetty|mingetty --nohangup|' $container_rootfs/etc/inittab
-        sed -i '/1:2345:respawn/i cns:2345:respawn:/sbin/mingetty --nohangup console' $container_rootfs/etc/inittab
+        sed -i '/1:2345:respawn/i cns:2345:respawn:/sbin/mingetty --nohangup --noclear console' $container_rootfs/etc/inittab
         sed -i '/5:2345:respawn/d' $container_rootfs/etc/inittab
         sed -i '/6:2345:respawn/d' $container_rootfs/etc/inittab
     fi
@@ -254,7 +254,7 @@ start on stopped rc RUNLEVEL=[2345]
 stop on runlevel [!2345]
 
 respawn
-exec /sbin/mingetty --nohangup /dev/console
+exec /sbin/mingetty --nohangup --noclear /dev/console
 EOF
     fi
 
