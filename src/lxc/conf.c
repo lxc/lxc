@@ -2425,23 +2425,26 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			return -1;
 		}
 		veth1 = mkifname(veth1buf);
+		if (!veth1) {
+			ERROR("failed to allocate a temporary name");
+			return -1;
+		}
 		/* store away for deconf */
 		memcpy(netdev->priv.veth_attr.veth1, veth1, IFNAMSIZ);
 	}
 
 	snprintf(veth2buf, sizeof(veth2buf), "vethXXXXXX");
 	veth2 = mkifname(veth2buf);
-
-	if (!strlen(veth1) || !strlen(veth2)) {
+	if (!veth2) {
 		ERROR("failed to allocate a temporary name");
-		return -1;
+		goto out_delete;
 	}
 
 	err = lxc_veth_create(veth1, veth2);
 	if (err) {
 		ERROR("failed to create %s-%s : %s", veth1, veth2,
 		      strerror(-err));
-		return -1;
+		goto out_delete;
 	}
 
 	/* changing the high byte of the mac address to 0xfe, the bridge interface
@@ -2500,6 +2503,10 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 
 out_delete:
 	lxc_netdev_delete_by_name(veth1);
+	if (!netdev->priv.veth_attr.pair && veth1)
+		free(veth1);
+	if(veth2)
+		free(veth2);
 	return -1;
 }
 
@@ -2537,7 +2544,7 @@ static int instanciate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 		return -1;
 
 	peer = mkifname(peerbuf);
-	if (!strlen(peer)) {
+	if (!peer) {
 		ERROR("failed to make a temporary name");
 		return -1;
 	}
@@ -2547,27 +2554,30 @@ static int instanciate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	if (err) {
 		ERROR("failed to create macvlan interface '%s' on '%s' : %s",
 		      peer, netdev->link, strerror(-err));
-		return -1;
+		goto out;
 	}
 
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
 		ERROR("failed to retrieve the index for %s", peer);
-		lxc_netdev_delete_by_name(peer);
-		return -1;
+		goto out;
 	}
 
 	if (netdev->upscript) {
 		err = run_script(handler->name, "net", netdev->upscript, "up",
 				 "macvlan", netdev->link, (char*) NULL);
 		if (err)
-			return -1;
+			goto out;
 	}
 
 	DEBUG("instanciated macvlan '%s', index is '%d' and mode '%d'",
 	      peer, netdev->ifindex, netdev->priv.macvlan_attr.mode);
 
 	return 0;
+out:
+	lxc_netdev_delete_by_name(peer);
+	free(peer);
+	return -1;
 }
 
 static int shutdown_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
