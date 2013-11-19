@@ -633,7 +633,7 @@ bool cull_entries(int fd, char *me, char *t, char *br)
 		return true;
 	buf = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	if (buf == MAP_FAILED) {
-		fprintf(stderr, "Failed to create mapping: error %d\n", errno);
+		fprintf(stderr, "Failed to create mapping: %s\n", strerror(errno));
 		return false;
 	}
 
@@ -718,7 +718,7 @@ bool get_nic_if_avail(int fd, char *me, int pid, char *intype, char *br, int all
 		fprintf(stderr, "Failed to set new file size\n");
 	buf = mmap(NULL, len + slen, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	if (buf == MAP_FAILED) {
-		fprintf(stderr, "Failed to create mapping after extending: error %d\n", errno);
+		fprintf(stderr, "Failed to create mapping after extending: %s\n", strerror(errno));
 		if (lxc_netdev_delete_by_name(*nicname) != 0)
 			fprintf(stderr, "Error unlinking %s!\n", *nicname);
 		return false;
