@@ -105,7 +105,8 @@ int open_and_lock(char *path)
 
 	fd = open(path, O_RDWR|O_CREAT, S_IWUSR | S_IRUSR);
 	if (fd < 0) {
-		perror("open");
+		fprintf(stderr, "Failed to open %s: %s\n",
+			path, strerror(errno));
 		return(fd);
 	}
 
@@ -114,7 +115,8 @@ int open_and_lock(char *path)
 	lk.l_start = 0;
 	lk.l_len = 0;
 	if (fcntl(fd, F_SETLKW, &lk) < 0) {
-		perror("fcntl lock");
+		fprintf(stderr, "Failed to lock %s: %s\n",
+			path, strerror(errno));
 		return -1;
 	}
 
