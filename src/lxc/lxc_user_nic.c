@@ -540,7 +540,7 @@ int lxc_netdev_delete_by_name(const char *name)
 
 #endif
 
-bool create_nic(char *nic, char *br, char *pidstr, char **cnic)
+bool create_nic(char *nic, char *br, int pid, char **cnic)
 {
 #if ISTEST
 	char path[200];
@@ -556,7 +556,6 @@ bool create_nic(char *nic, char *br, char *pidstr, char **cnic)
 	veth1buf = alloca(IFNAMSIZ);
 	veth2buf = alloca(IFNAMSIZ);
 	int ret;
-	int pid = atoi(pidstr);
 
 	ret = snprintf(veth1buf, IFNAMSIZ, "%s", nic);
 	if (ret < 0 || ret >= IFNAMSIZ) {
@@ -596,7 +595,7 @@ out_del:
  * *dest will container the name (lxcuser-%d) which is attached
  * on the host to the lxc bridge
  */
-void get_new_nicname(char **dest, char *br, char *pid, char **cnic)
+void get_new_nicname(char **dest, char *br, int pid, char **cnic)
 {
 	int i = 0;
 	// TODO - speed this up.  For large installations we won't
@@ -679,7 +678,7 @@ int count_entries(char *buf, off_t len, char *me, char *t, char *br)
  * The dbfile has lines of the format:
  * user type bridge nicname
  */
-bool get_nic_if_avail(int fd, char *me, char *pid, char *intype, char *br, int allowed, char **nicname, char **cnic)
+bool get_nic_if_avail(int fd, char *me, int pid, char *intype, char *br, int allowed, char **nicname, char **cnic)
 {
 	off_t len, slen;
 	struct stat sb;
@@ -857,6 +856,47 @@ out_err:
 	return -1;
 }
 
+/*
+ * If the caller (real uid, not effective uid) may read the
+ * /proc/pid/net/ns, then it is either the caller's netns or one
+ * which it created.
+ */
+static bool may_access_netns(int pid)
+{
+	int ret;
+	char s[200];
+	uid_t ruid, suid, euid;
+	bool may_access = false;
+
+	ret = getresuid(&ruid, &euid, &suid);
+	if (ret) {
+		fprintf(stderr, "Failed to get my uids: %s\n", strerror(errno));
+		return false;
+	}
+	ret = setresuid(ruid, ruid, euid);
+	if (ret) {
+		fprintf(stderr, "Failed to set temp uids to (%d,%d,%d): %s\n",
+				(int)ruid, (int)ruid, (int)euid, strerror(errno));
+		return false;
+	}
+	ret = snprintf(s, 200, "/proc/%d/ns/net", pid);
+	if (ret < 0 || ret >= 200)  // can't happen
+		return false;
+	ret = access(s, R_OK);
+	if (ret) {
+		fprintf(stderr, "Uid %d may not access %s: %s\n",
+				(int)ruid, s, strerror(errno));
+	}
+	may_access = ret == 0;
+	ret = setresuid(ruid, euid, suid);
+	if (ret) {
+		fprintf(stderr, "Failed to restore uids to (%d,%d,%d): %s\n",
+				(int)ruid, (int)euid, (int)suid, strerror(errno));
+		may_access = false;
+	}
+	return may_access;
+}
+
 int main(int argc, char *argv[])
 {
 	int n, fd;
@@ -879,6 +919,13 @@ int main(int argc, char *argv[])
 	else
 		vethname = "eth0";
 
+	errno = 0;
+	pid = (int) strtol(argv[1], NULL, 10);
+	if (errno) {
+		fprintf(stderr, "Could not read pid: %s\n", argv[1]);
+		exit(1);
+	}
+
 	if (!create_db_dir(DB_FILE)) {
 		fprintf(stderr, "Failed to create directory for db file\n");
 		exit(1);
@@ -889,16 +936,21 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	if (!may_access_netns(pid)) {
+		fprintf(stderr, "User %s may not modify netns for pid %d\n",
+				me, pid);
+		exit(1);
+	}
+
 	n = get_alloted(me, argv[2], argv[3]);
 	if (n > 0)
-		gotone = get_nic_if_avail(fd, me, argv[1], argv[2], argv[3], n, &nicname, &cnic);
+		gotone = get_nic_if_avail(fd, me, pid, argv[2], argv[3], n, &nicname, &cnic);
 	close(fd);
 	if (!gotone) {
 		fprintf(stderr, "Quota reached\n");
 		exit(1);
 	}
 
-	pid = atoi(argv[1]);
 	// Now rename the link
 	if (rename_in_ns(pid, cnic, vethname) < 0) {
 		fprintf(stderr, "Failed to rename the link\n");
