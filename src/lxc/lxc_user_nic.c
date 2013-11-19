@@ -117,6 +117,7 @@ static int open_and_lock(char *path)
 	if (fcntl(fd, F_SETLKW, &lk) < 0) {
 		fprintf(stderr, "Failed to lock %s: %s\n",
 			path, strerror(errno));
+		close(fd);
 		return -1;
 	}
 
