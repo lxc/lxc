@@ -115,7 +115,7 @@ int open_and_lock(char *path)
 	lk.l_len = 0;
 	if (fcntl(fd, F_SETLKW, &lk) < 0) {
 		perror("fcntl lock");
-		exit(1);
+		return -1;
 	}
 
 	return fd;
@@ -220,17 +220,17 @@ next:
 
 bool nic_exists(char *nic)
 {
-	char path[200];
+	char path[MAXPATHLEN];
 	int ret;
 	struct stat sb;
 
 #if ISTEST
-	ret = snprintf(path, 200, "/tmp/lxcnettest/%s", nic);
+	ret = snprintf(path, MAXPATHLEN, "/tmp/lxcnettest/%s", nic);
 #else
-	ret = snprintf(path, 200, "/sys/class/net/%s", nic);
+	ret = snprintf(path, MAXPATHLEN, "/sys/class/net/%s", nic);
 #endif
-	if (ret < 0 || ret >= 200)
-		exit(1);
+	if (ret < 0 || ret >= MAXPATHLEN) // should never happen!
+		return true;
 	ret = stat(path, &sb);
 	if (ret != 0)
 		return false;
@@ -436,14 +436,14 @@ static int instanciate_veth(char *n1, char **n2)
 	err = snprintf(*n2, IFNAMSIZ, "%sp", n1);
 	if (err < 0 || err >= IFNAMSIZ) {
 		fprintf(stderr, "nic name too long\n");
-		exit(1);
+		return -1;
 	}
 
 	err = lxc_veth_create(n1, *n2);
 	if (err) {
 		fprintf(stderr, "failed to create %s-%s : %s\n", n1, *n2,
 		      strerror(-err));
-		exit(1);
+		return -1;
 	}
 
 	/* changing the high byte of the mac address to 0xfe, the bridge interface
@@ -551,7 +551,6 @@ bool create_nic(char *nic, char *br, int pid, char **cnic)
 	close(fd);
 	return true;
 #else
-	// not yet implemented
 	char *veth1buf, *veth2buf;
 	veth1buf = alloca(IFNAMSIZ);
 	veth2buf = alloca(IFNAMSIZ);
@@ -560,7 +559,7 @@ bool create_nic(char *nic, char *br, int pid, char **cnic)
 	ret = snprintf(veth1buf, IFNAMSIZ, "%s", nic);
 	if (ret < 0 || ret >= IFNAMSIZ) {
 		fprintf(stderr, "host nic name too long\n");
-		exit(1);
+		return false;
 	}
 
 	/* create the nics */
@@ -586,7 +585,7 @@ bool create_nic(char *nic, char *br, int pid, char **cnic)
 
 out_del:
 	lxc_netdev_delete_by_name(veth1buf);
-	exit(1);
+	return false;
 #endif
 }
 
