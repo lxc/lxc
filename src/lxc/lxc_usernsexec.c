@@ -201,6 +201,7 @@ static int read_default_map(char *fnam, char which, char *username)
 	if (line)
 		free(line);
 	fclose(fin);
+	free(newmap);
 	return 0;
 }
 
@@ -241,6 +242,7 @@ static int run_cmd(char **argv)
 static int map_child_uids(int pid, struct id_map *map)
 {
 	char **uidargs = NULL, **gidargs = NULL;
+	char **newuidargs = NULL, **newgidargs = NULL;
 	int i, nuargs = 2, ngargs = 2;
 	struct id_map *m;
 
@@ -263,9 +265,12 @@ static int map_child_uids(int pid, struct id_map *map)
 	for (m=map; m; m = m->next) {
 		if (m->which == 'b' || m->which == 'u') {
 			nuargs += 3;
-			uidargs = realloc(uidargs, (nuargs+1) * sizeof(*uidargs));
-			if (!uidargs)
+			newuidargs = realloc(uidargs, (nuargs+1) * sizeof(*uidargs));
+			if (!newuidargs) {
+				free(uidargs)
 				return -1;
+			}
+			uidargs = newuidargs;
 			uidargs[nuargs - 3] = malloc(21);
 			uidargs[nuargs - 2] = malloc(21);
 			uidargs[nuargs - 1] = malloc(21);
@@ -278,9 +283,12 @@ static int map_child_uids(int pid, struct id_map *map)
 		}
 		if (m->which == 'b' || m->which == 'g') {
 			ngargs += 3;
-			gidargs = realloc(gidargs, (ngargs+1) * sizeof(*gidargs));
-			if (!gidargs)
+			newgidargs = realloc(gidargs, (ngargs+1) * sizeof(*gidargs));
+			if (!newgidargs){
+				free(gidargs);
 				return -1;
+			}
+			gidargs = newgidargs;
 			gidargs[ngargs - 3] = malloc(21);
 			gidargs[ngargs - 2] = malloc(21);
 			gidargs[ngargs - 1] = malloc(21);
