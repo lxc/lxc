@@ -138,12 +138,10 @@ char *get_username(void)
 
 /* The configuration file consists of lines of the form:
  *
- * user type bridge nic-name count
+ * user type bridge count
  *
- * We simply count the number of lines in the file, making sure that
- * every listed nic is still present.  Any nics which have disappeared
- * is removed when we count, in case the container died a harsh death
- * without being able to clean up after itself.
+ * Return the count entry for the calling user if there is one.  Else
+ * return -1.
  */
 int get_alloted(char *me, char *intype, char *link)
 {
@@ -153,8 +151,11 @@ int get_alloted(char *me, char *intype, char *link)
 	size_t len = 0;
 	int n = -1, ret;
 
-	if (!fin)
+	if (!fin) {
+		fprintf(stderr, "Failed to open %s: %s\n", CONF_FILE,
+			strerror(errno));
 		return -1;
+	}
 
 	while ((getline(&line, &len, fin)) != -1) {
 		ret = sscanf(line, "%99[^ \t] %99[^ \t] %99[^ \t] %d", user, type, br, &n);
@@ -168,6 +169,7 @@ int get_alloted(char *me, char *intype, char *link)
 		if (strcmp(link, br) != 0)
 			continue;
 		free(line);
+		fclose(fin);
 		return n;
 	}
 	fclose(fin);
