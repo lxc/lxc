@@ -906,7 +906,7 @@ int main(int argc, char *argv[])
 	bool gotone = false;
 	char *me;
 	char *nicname = alloca(40);
-	char *cnic; // created nic name in container is returned here.
+	char *cnic = NULL; // created nic name in container is returned here.
 	char *vethname;
 	int pid;
 
