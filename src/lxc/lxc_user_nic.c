@@ -122,7 +122,7 @@ int open_and_lock(char *path)
 }
 
 
-char *get_username(char **buf)
+char *get_username(void)
 {
 	struct passwd *pwd = getpwuid(getuid());
 
@@ -901,13 +901,13 @@ int main(int argc, char *argv[])
 {
 	int n, fd;
 	bool gotone = false;
-	char *me, *buf = alloca(400);
+	char *me;
 	char *nicname = alloca(40);
 	char *cnic; // created nic name in container is returned here.
 	char *vethname;
 	int pid;
 
-	if ((me = get_username(&buf)) == NULL) {
+	if ((me = get_username()) == NULL) {
 		fprintf(stderr, "Failed to get username\n");
 		exit(1);
 	}
