@@ -622,11 +622,19 @@ static bool get_nic_from_line(char *p, char **nic)
 	return true;
 }
 
+struct entry_line {
+	char *start;
+	int len;
+	bool keep;
+};
+
 static bool cull_entries(int fd, char *me, char *t, char *br)
 {
 	struct stat sb;
 	char *buf, *p, *e, *nic;
 	off_t len;
+	struct entry_line *entry_lines = NULL;
+	int i, n = 0;
 
 	nic = alloca(100);
 
@@ -643,22 +651,36 @@ static bool cull_entries(int fd, char *me, char *t, char *br)
 	p = buf;
 	e = buf + len;
 	while ((p = find_line(p, e, me, t, br)) != NULL) {
+		struct entry_line *newe = realloc(entry_lines, n+1);
+		if (!newe) {
+			free(entry_lines);
+			return false;
+		}
+		entry_lines = newe;
+		entry_lines[n].start = p;
+		entry_lines[n].len = get_eol(p) - entry_lines[n].start;
+		entry_lines[n].keep = true;
+		n++;
 		if (!get_nic_from_line(p, &nic))
 			continue;
-		if (nic && !nic_exists(nic)) {
-			// copy from eol(p)+1..e to p
-			char *src = get_eol(p) + 1, *dest = p;
-			int diff = src - p;
-			while (src < e)
-				*(dest++) = *(src)++;
-			e -= diff;
-		} else
-			p = get_eol(p) + 1;
+		if (nic && !nic_exists(nic))
+			entry_lines[n-1].keep = false;
+		p += entry_lines[n-1].len + 1;
 		if (p >= e)
 			break;
 	}
+	p = buf;
+	for (i=0; i<n; i++) {
+		if (!entry_lines[i].keep)
+			continue;
+		memcpy(p, entry_lines[i].start, entry_lines[i].len);
+		p += entry_lines[i].len;
+		*p = '\n';
+		p++;
+	}
+	free(entry_lines);
 	munmap(buf, sb.st_size);
-	if (ftruncate(fd, e-buf))
+	if (ftruncate(fd, p-buf))
 		fprintf(stderr, "Failed to set new file size\n");
 	return true;
 }
