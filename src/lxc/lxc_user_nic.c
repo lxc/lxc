@@ -98,7 +98,7 @@ void usage(char *me, bool fail)
 	exit(fail ? 1 : 0);
 }
 
-int open_and_lock(char *path)
+static int open_and_lock(char *path)
 {
 	int fd;
 	struct flock lk;
@@ -124,7 +124,7 @@ int open_and_lock(char *path)
 }
 
 
-char *get_username(void)
+static char *get_username(void)
 {
 	struct passwd *pwd = getpwuid(getuid());
 
@@ -143,7 +143,7 @@ char *get_username(void)
  * Return the count entry for the calling user if there is one.  Else
  * return -1.
  */
-int get_alloted(char *me, char *intype, char *link)
+static int get_alloted(char *me, char *intype, char *link)
 {
 	FILE *fin = fopen(CONF_FILE, "r");
 	char *line = NULL;
@@ -178,21 +178,21 @@ int get_alloted(char *me, char *intype, char *link)
 	return -1;
 }
 
-char *get_eol(char *s)
+static char *get_eol(char *s)
 {
 	while (*s && *s != '\n')
 		s++;
 	return s;
 }
 
-char *get_eow(char *s)
+static char *get_eow(char *s)
 {
 	while (*s && !isblank(*s) && *s != '\n')
 		s++;
 	return s;
 }
 
-char *find_line(char *p, char *e, char *u, char *t, char *l)
+static char *find_line(char *p, char *e, char *u, char *t, char *l)
 {
 	char *p1, *p2, *ret;
 	
@@ -222,7 +222,7 @@ next:
 	return NULL;
 }
 
-bool nic_exists(char *nic)
+static bool nic_exists(char *nic)
 {
 	char path[MAXPATHLEN];
 	int ret;
@@ -248,7 +248,7 @@ struct link_req {
 
 #if ! ISTEST
 
-int lxc_veth_create(const char *name1, const char *name2)
+static int lxc_veth_create(const char *name1, const char *name2)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -323,7 +323,7 @@ out:
 	return err;
 }
 
-int lxc_netdev_move(char *ifname, pid_t pid)
+static int lxc_netdev_move(char *ifname, pid_t pid)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL;
@@ -462,7 +462,7 @@ static int instanciate_veth(char *n1, char **n2)
 	return netdev_set_flag(n1, IFF_UP);
 }
 
-int lxc_bridge_attach(const char *bridge, const char *ifname)
+static int lxc_bridge_attach(const char *bridge, const char *ifname)
 {
 	int fd, index, err;
 	struct ifreq ifr;
@@ -489,7 +489,7 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 	return err;
 }
 
-int lxc_netdev_delete_by_index(int ifindex)
+static int lxc_netdev_delete_by_index(int ifindex)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -524,7 +524,7 @@ out:
 	return err;
 }
 
-int lxc_netdev_delete_by_name(const char *name)
+static int lxc_netdev_delete_by_name(const char *name)
 {
 	int index;
 
@@ -535,7 +535,7 @@ int lxc_netdev_delete_by_name(const char *name)
 	return lxc_netdev_delete_by_index(index);
 }
 #else
-int lxc_netdev_delete_by_name(const char *name)
+static int lxc_netdev_delete_by_name(const char *name)
 {
 	char path[200];
 	sprintf(path, "/tmp/lxcnettest/%s", name);
@@ -544,7 +544,7 @@ int lxc_netdev_delete_by_name(const char *name)
 
 #endif
 
-bool create_nic(char *nic, char *br, int pid, char **cnic)
+static bool create_nic(char *nic, char *br, int pid, char **cnic)
 {
 #if ISTEST
 	char path[200];
@@ -598,7 +598,7 @@ out_del:
  * *dest will container the name (lxcuser-%d) which is attached
  * on the host to the lxc bridge
  */
-void get_new_nicname(char **dest, char *br, int pid, char **cnic)
+static void get_new_nicname(char **dest, char *br, int pid, char **cnic)
 {
 	int i = 0;
 	// TODO - speed this up.  For large installations we won't
@@ -611,7 +611,7 @@ void get_new_nicname(char **dest, char *br, int pid, char **cnic)
 	}
 }
 
-bool get_nic_from_line(char *p, char **nic)
+static bool get_nic_from_line(char *p, char **nic)
 {
 	char user[100], type[100], br[100];
 	int ret;
@@ -622,7 +622,7 @@ bool get_nic_from_line(char *p, char **nic)
 	return true;
 }
 
-bool cull_entries(int fd, char *me, char *t, char *br)
+static bool cull_entries(int fd, char *me, char *t, char *br)
 {
 	struct stat sb;
 	char *buf, *p, *e, *nic;
@@ -663,7 +663,7 @@ bool cull_entries(int fd, char *me, char *t, char *br)
 	return true;
 }
 
-int count_entries(char *buf, off_t len, char *me, char *t, char *br)
+static int count_entries(char *buf, off_t len, char *me, char *t, char *br)
 {
 	char *e = &buf[len];
 	int count = 0;
@@ -681,7 +681,7 @@ int count_entries(char *buf, off_t len, char *me, char *t, char *br)
  * The dbfile has lines of the format:
  * user type bridge nicname
  */
-bool get_nic_if_avail(int fd, char *me, int pid, char *intype, char *br, int allowed, char **nicname, char **cnic)
+static bool get_nic_if_avail(int fd, char *me, int pid, char *intype, char *br, int allowed, char **nicname, char **cnic)
 {
 	off_t len, slen;
 	struct stat sb;
@@ -731,7 +731,7 @@ bool get_nic_if_avail(int fd, char *me, int pid, char *intype, char *br, int all
 	return true;
 }
 
-bool create_db_dir(char *fnam)
+static bool create_db_dir(char *fnam)
 {
 	char *p = alloca(strlen(fnam)+1);
 
@@ -811,7 +811,7 @@ static int lxc_netdev_rename_by_name(const char *oldname, const char *newname)
 	return lxc_netdev_rename_by_index(index, newname);
 }
 
-int rename_in_ns(int pid, char *oldname, char *newname)
+static int rename_in_ns(int pid, char *oldname, char *newname)
 {
 	char nspath[MAXPATHLEN];
 	int fd = -1, ofd = -1, ret;
