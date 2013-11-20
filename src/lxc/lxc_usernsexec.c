@@ -158,9 +158,13 @@ out_free_map:
 }
 
 /*
- * go through /etc/subuids and /etc/subgids to find this user's
- * allowed map.  We only use the first one (bc otherwise we're
- * not sure which ns ids he wants to use).
+ * This is called if the user did not pass any uid ranges in
+ * through -m flags.  It's called once to get the default uid
+ * map, and once for the default gid map.
+ * Go through /etc/subuids and /etc/subgids to find this user's
+ * allowed map.  We only use the first one for each of uid and
+ * gid, because otherwise we're not sure which entries the user
+ * wanted.
  */
 static int read_default_map(char *fnam, char which, char *username)
 {
@@ -168,7 +172,7 @@ static int read_default_map(char *fnam, char which, char *username)
 	char *line = NULL;
 	size_t sz = 0;
 	struct id_map *newmap;
-    char *p1, *p2;
+	char *p1, *p2;
 
 	fin = fopen(fnam, "r");
 	if (!fin)
@@ -185,8 +189,11 @@ static int read_default_map(char *fnam, char which, char *username)
 		if (!p2)
 			continue;
 		newmap = malloc(sizeof(*newmap));
-		if (!newmap)
+		if (!newmap)  {
+			fclose(fin);
+			free(line);
 			return -1;
+		}
 		newmap->host_id = atol(p1+1);
 		newmap->range = atol(p2+1);
 		newmap->ns_id = 0;
@@ -195,13 +202,13 @@ static int read_default_map(char *fnam, char which, char *username)
 			newmap->next = active_map;
 		else
 			newmap->next = NULL;
+		active_map = newmap;
 		break;
 	}
 
 	if (line)
 		free(line);
 	fclose(fin);
-	free(newmap);
 	return 0;
 }
 
