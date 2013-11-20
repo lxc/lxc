@@ -38,7 +38,7 @@
 lxc_log_define(lxc_attach_ui, lxc);
 
 static const struct option my_longopts[] = {
-	{"elevated-privileges", no_argument, 0, 'e'},
+	{"elevated-privileges", optional_argument, 0, 'e'},
 	{"arch", required_argument, 0, 'a'},
 	{"namespaces", required_argument, 0, 's'},
 	{"remount-sys-proc", no_argument, 0, 'R'},
@@ -87,7 +87,11 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	int ret;
 
 	switch (c) {
-	case 'e': elevated_privileges = 1; break;
+	case 'e':
+		ret = lxc_fill_elevated_privileges(arg, &elevated_privileges);
+		if (ret)
+			return -1;
+		break;
 	case 'R': remount_sys_proc = 1; break;
 	case 'a':
 		new_personality = lxc_config_parse_arch(arg);
@@ -102,7 +106,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 		if (ret)
 			return -1;
 		/* -s implies -e */
-		elevated_privileges = 1;
+		lxc_fill_elevated_privileges(NULL, &elevated_privileges);
 		break;
         case 500: /* clear-env */
                 env_policy = LXC_ATTACH_CLEAR_ENV;
@@ -138,9 +142,12 @@ Execute the specified COMMAND - enter the container NAME\n\
 \n\
 Options :\n\
   -n, --name=NAME   NAME for name of the container\n\
-  -e, --elevated-privileges\n\
-                    Use elevated privileges (capabilities, cgroup\n\
-                    restrictions) instead of those of the container.\n\
+  -e, --elevated-privileges=PRIVILEGES\n\
+                    Use elevated privileges instead of those of the\n\
+                    container. If you don't specify privileges to be\n\
+                    elevated as OR'd list: CAP, CGROUP and LSM (capabilities,\n\
+                    cgroup and restrictions, respectively) then all of them\n\
+                    will be elevated.\n\
                     WARNING: This may leak privileges into the container.\n\
                     Use with care.\n\
   -a, --arch=ARCH   Use ARCH for program instead of container's own\n\
@@ -148,9 +155,10 @@ Options :\n\
   -s, --namespaces=FLAGS\n\
                     Don't attach to all the namespaces of the container\n\
                     but just to the following OR'd list of flags:\n\
-                    MOUNT, PID, UTSNAME, IPC, USER or NETWORK\n\
-                    WARNING: Using -s implies -e, it may therefore\n\
-                    leak privileges into the container. Use with care.\n\
+                    MOUNT, PID, UTSNAME, IPC, USER or NETWORK.\n\
+                    WARNING: Using -s implies -e with all privileges\n\
+                    elevated, it may therefore leak privileges into the\n\
+                    container. Use with care.\n\
   -R, --remount-sys-proc\n\
                     Remount /sys and /proc if not attaching to the\n\
                     mount namespace when using -s in order to properly\n\
@@ -199,7 +207,7 @@ int main(int argc, char *argv[])
 	if (remount_sys_proc)
 		attach_options.attach_flags |= LXC_ATTACH_REMOUNT_PROC_SYS;
 	if (elevated_privileges)
-		attach_options.attach_flags &= ~(LXC_ATTACH_MOVE_TO_CGROUP | LXC_ATTACH_DROP_CAPABILITIES | LXC_ATTACH_LSM_EXEC);
+		attach_options.attach_flags &= ~(elevated_privileges);
 	attach_options.namespaces = namespace_flags;
 	attach_options.personality = new_personality;
 	attach_options.env_policy = env_policy;

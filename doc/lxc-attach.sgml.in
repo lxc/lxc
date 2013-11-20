@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 -->
 
+
 <!DOCTYPE refentry PUBLIC @docdtd@ [
 
 <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
@@ -107,7 +108,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-e, --elevated-privileges</option>
+	  <option>
+      -e, --elevated-privileges <replaceable>privileges</replaceable>
+    </option>
 	</term>
 	<listitem>
 	  <para>
@@ -117,6 +120,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    <emphasis>not</emphasis> be added to the container's cgroup(s)
 	    and it will not drop its capabilities before executing.
 	  </para>
+    <para>
+      You may specify privileges, in case you do not want to elevate all of
+      them, as a pipe-separated list, e.g.
+      <replaceable>CGROUP|LSM</replaceable>. Allowed values are
+      <replaceable>CGROUP</replaceable>, <replaceable>CAP</replaceable> and
+      <replaceable>LSM</replaceable> representing cgroup, capabilities and
+      restriction privileges respectively.
+    </para>
 	  <para>
 	    <emphasis>Warning:</emphasis> This may leak privileges into the
 	    container if the command starts subprocesses that remain active
