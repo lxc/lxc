@@ -2399,7 +2399,7 @@ static int clone_update_rootfs(struct lxc_container *c0,
 		if (setenv("LXC_CONFIG_FILE", conf->rcfile, 1)) {
 			SYSERROR("failed to set environment variable for config path");
 		}
-		if (setenv("LXC_ROOTFS_MOUNT", conf->rootfs.mount, 1)) {
+		if (setenv("LXC_ROOTFS_MOUNT", bdev->dest, 1)) {
 			SYSERROR("failed to set environment variable for rootfs mount");
 		}
 		if (setenv("LXC_ROOTFS_PATH", conf->rootfs.path, 1)) {
