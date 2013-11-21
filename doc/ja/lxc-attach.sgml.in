@@ -126,7 +126,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
 	<term>
-	  <option>-e, --elevated-privileges</option>
+	  <option>
+	    -e, --elevated-privileges <replaceable>privileges</replaceable>
+	  </option>
 	</term>
 	<listitem>
 	  <para>
@@ -139,6 +141,18 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             -->
             コンテナの内部で <replaceable>command</replaceable> を実行する時に特権を削除しません．もしこのオプションが指定された場合，新しいプロセスはコンテナの cgroup に追加 <emphasis>されず</emphasis>，実行する前にケーパビリティ (capability) も削除しません．
 	  </para>
+          <para>
+	    <!--
+	    You may specify privileges, in case you do not want to elevate all of
+	    them, as a pipe-separated list, e.g.
+	    <replaceable>CGROUP|LSM</replaceable>. Allowed values are
+	    <replaceable>CGROUP</replaceable>, <replaceable>CAP</replaceable> and
+	    <replaceable>LSM</replaceable> representing cgroup, capabilities and
+	    restriction privileges respectively.
+	    -->
+            全ての特権の取得したくない場合は，パイプで連結したリストとして，例えば <replaceable>CGROUP|LSM</replaceable> のように，特権を指定することが可能です．
+            指定できる値は，それぞれ cgroup，ケーパビリティ，特権の制限を表す <replaceable>CGROUP</replaceable>，<replaceable>CAP</replaceable>，<replaceable>LSM</replaceable> です．
+          </para>
 	  <para>
             <!--
 	    <emphasis>Warning:</emphasis> This may leak privileges into the
