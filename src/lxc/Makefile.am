@@ -150,7 +150,8 @@ bin_SCRIPTS = \
 EXTRA_DIST = \
 	lxc-device \
 	lxc-ls \
-	lxc-top
+	lxc-top \
+	lxc.service
 
 if ENABLE_PYTHON
 bin_SCRIPTS += lxc-device
