@@ -68,6 +68,7 @@ src/lxc/lxc-start-ephemeral
 src/lxc/lxc-stop
 src/lxc/lxc-unfreeze
 src/lxc/lxc-unshare
+src/lxc/lxc-usernsexec
 src/lxc/lxc-version
 src/lxc/lxc-wait
 src/lxc/legacy/lxc-ls
