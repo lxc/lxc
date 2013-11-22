@@ -274,7 +274,7 @@ static int map_child_uids(int pid, struct id_map *map)
 			nuargs += 3;
 			newuidargs = realloc(uidargs, (nuargs+1) * sizeof(*uidargs));
 			if (!newuidargs) {
-				free(uidargs)
+				free(uidargs);
 				return -1;
 			}
 			uidargs = newuidargs;
