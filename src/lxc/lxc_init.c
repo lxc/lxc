@@ -154,8 +154,7 @@ int main(int argc, char *argv[])
 		sigaction(i, &act, NULL);
 	}
 
-	if (lxc_setup_fs())
-		exit(EXIT_FAILURE);
+	lxc_setup_fs();
 
 	if (lxc_caps_reset())
 		exit(EXIT_FAILURE);

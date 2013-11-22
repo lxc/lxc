@@ -150,10 +150,10 @@ static int mount_fs(const char *source, const char *target, const char *type)
 	return 0;
 }
 
-extern int lxc_setup_fs(void)
+extern void lxc_setup_fs(void)
 {
 	if (mount_fs("proc", "/proc", "proc"))
-		return -1;
+		INFO("failed to remount proc");
 
 	/* if we can't mount /dev/shm, continue anyway */
 	if (mount_fs("shmfs", "/dev/shm", "tmpfs"))
@@ -163,14 +163,12 @@ extern int lxc_setup_fs(void)
 	/* Sure, but it's read-only per config :) */
 	if (access("/dev/mqueue", F_OK) && mkdir("/dev/mqueue", 0666)) {
 		DEBUG("failed to create '/dev/mqueue'");
-		return 0;
+		return;
 	}
 
 	/* continue even without posix message queue support */
 	if (mount_fs("mqueue", "/dev/mqueue", "mqueue"))
 		INFO("failed to mount /dev/mqueue");
-
-	return 0;
 }
 
 /* borrowed from iproute2 */
