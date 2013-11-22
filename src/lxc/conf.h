@@ -164,6 +164,8 @@ struct id_map {
 	unsigned long hostid, nsid, range;
 };
 
+extern int lxc_free_idmap(struct lxc_list *idmap);
+
 /*
  * Defines a structure containing a pty information for
  * virtualizing a tty
@@ -367,4 +369,5 @@ extern int find_unmapped_nsuid(struct lxc_conf *conf);
 extern int mapped_hostid(int id, struct lxc_conf *conf);
 extern int chown_mapped_root(char *path, struct lxc_conf *conf);
 extern int ttys_shift_ids(struct lxc_conf *c);
+extern int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data);
 #endif

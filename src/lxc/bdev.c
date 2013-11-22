@@ -450,7 +450,7 @@ static int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 
 static int dir_destroy(struct bdev *orig)
 {
-	if (!lxc_rmdir_onedev(orig->src))
+	if (lxc_rmdir_onedev(orig->src) < 0)
 		return -1;
 	return 0;
 }

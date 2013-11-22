@@ -64,13 +64,6 @@ int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 
-	/* this is a short term test.  We'll probably want to check for
-	 * write access to lxcpath instead */
-	if (geteuid()) {
-		fprintf(stderr, "%s must be run as root\n", argv[0]);
-		exit(1);
-	}
-
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(1);
 

@@ -75,6 +75,7 @@
 #include "bdev.h"
 #include "cgroup.h"
 #include "lxclock.h"
+#include "namespace.h"
 #include "lsm/lsm.h"
 
 #if HAVE_SYS_CAPABILITY_H
@@ -3810,16 +3811,20 @@ int lxc_clear_config_caps(struct lxc_conf *c)
 	return 0;
 }
 
-int lxc_clear_idmaps(struct lxc_conf *c)
-{
+int lxc_free_idmap(struct lxc_list *id_map) {
 	struct lxc_list *it, *next;
 
-	lxc_list_for_each_safe(it, &c->id_map, next) {
+	lxc_list_for_each_safe(it, id_map, next) {
 		lxc_list_del(it);
 		free(it->elem);
 		free(it);
 	}
 	return 0;
+}
+
+int lxc_clear_idmaps(struct lxc_conf *c)
+{
+	return lxc_free_idmap(&c->id_map);
 }
 
 int lxc_clear_config_keepcaps(struct lxc_conf *c)
@@ -3940,4 +3945,148 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_saved_nics(conf);
 	lxc_clear_idmaps(conf);
 	free(conf);
+}
+
+struct userns_fn_data {
+	int (*fn)(void *);
+	void *arg;
+	int p[2];
+};
+
+static int run_userns_fn(void *data)
+{
+	struct userns_fn_data *d = data;
+	char c;
+	// we're not sharing with the parent any more, if it was a thread
+
+	close(d->p[1]);
+	if (read(d->p[0], &c, 1) != 1)
+		return -1;
+	close(d->p[0]);
+	return d->fn(d->arg);
+}
+
+/*
+ * Add a ID_TYPE_UID entry to an existing lxc_conf, if it is not
+ * alread there.
+ * We may want to generalize this to do gids as well as uids, but right now
+ * it's not necessary.
+ */
+static struct lxc_list *idmap_add_id(struct lxc_conf *conf, uid_t uid)
+{
+	int hostid_mapped = mapped_hostid(uid, conf);
+	struct lxc_list *new = NULL, *tmp, *it, *next;
+	struct id_map *entry;
+
+	if (hostid_mapped < 0) {
+		hostid_mapped = find_unmapped_nsuid(conf);
+		if (hostid_mapped < 0) {
+			ERROR("Could not find free uid to map");
+			return NULL;
+		}
+		new = malloc(sizeof(*new));
+		if (!new) {
+			ERROR("Out of memory building id map");
+			return NULL;
+		}
+		entry = malloc(sizeof(*entry));
+		if (!entry) {
+			free(new);
+			ERROR("Out of memory building idmap entry");
+			return NULL;
+		}
+		new->elem = entry;
+		entry->idtype = ID_TYPE_UID;
+		entry->nsid = hostid_mapped;
+		entry->hostid = (unsigned long)uid;
+		entry->range = 1;
+		lxc_list_init(new);
+	}
+	lxc_list_for_each_safe(it, &conf->id_map, next) {
+		tmp = malloc(sizeof(*tmp));
+		if (!tmp)
+			goto err;
+		entry = malloc(sizeof(*entry));
+		if (!entry) {
+			free(tmp);
+			goto err;
+		}
+		memset(entry, 0, sizeof(*entry));
+		memcpy(entry, it->elem, sizeof(*entry));
+		tmp->elem = entry;
+		if (!new) {
+			new = tmp;
+			lxc_list_init(new);
+		} else
+			lxc_list_add_tail(new, tmp);
+	}
+
+	return new;
+
+err:
+	ERROR("Out of memory building a new uid map");
+	lxc_free_idmap(new);
+	return NULL;
+}
+
+/*
+ * Run a function in a new user namespace.
+ * The caller's euid will be mapped in if it is not already.
+ */
+int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
+{
+	int ret, pid;
+	struct userns_fn_data d;
+	char c = '1';
+	int p[2];
+	struct lxc_list *idmap;
+
+	process_lock();
+	ret = pipe(p);
+	process_unlock();
+	if (ret < 0) {
+		SYSERROR("opening pipe");
+		return -1;
+	}
+	d.fn = fn;
+	d.arg = data;
+	d.p[0] = p[0];
+	d.p[1] = p[1];
+	pid = lxc_clone(run_userns_fn, &d, CLONE_NEWUSER);
+	if (pid < 0)
+		goto err;
+	process_lock();
+	close(p[0]);
+	process_unlock();
+	p[0] = -1;
+
+	if ((idmap = idmap_add_id(conf, geteuid())) == NULL) {
+		ERROR("Error adding self to container uid map");
+		goto err;
+	}
+
+	ret = lxc_map_ids(idmap, pid);
+	lxc_free_idmap(idmap);
+	if (ret < 0) {
+		ERROR("Error setting up child mappings");
+		goto err;
+	}
+
+	// kick the child
+	if (write(p[1], &c, 1) != 1) {
+		SYSERROR("writing to pipe to child");
+		goto err;
+	}
+
+	if ((ret = wait_for_pid(pid)) < 0) {
+		ERROR("Child returned an error: %d\n", ret);
+		goto err;
+	}
+err:
+	process_lock();
+	if (p[0] != -1)
+		close(p[0]);
+	close(p[1]);
+	process_unlock();
+	return -1;
 }

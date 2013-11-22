@@ -66,7 +66,7 @@ static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
 	process_unlock();
 	if (!dir) {
 		ERROR("%s: failed to open %s", __func__, dirname);
-		return 0;
+		return -1;
 	}
 
 	while (!readdir_r(dir, &dirent, &direntp)) {
@@ -95,7 +95,7 @@ static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
 		if (mystat.st_dev != pdev)
 			continue;
 		if (S_ISDIR(mystat.st_mode)) {
-			if (!_recursive_rmdir_onedev(pathname, pdev))
+			if (_recursive_rmdir_onedev(pathname, pdev) < 0)
 				failed=1;
 		} else {
 			if (unlink(pathname) < 0) {
@@ -118,17 +118,17 @@ static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
 		failed=1;
 	}
 
-	return !failed;
+	return failed ? -1 : 0;
 }
 
-/* returns 1 on success, 0 if there were any failures */
+/* returns 0 on success, -1 if there were any failures */
 extern int lxc_rmdir_onedev(char *path)
 {
 	struct stat mystat;
 
 	if (lstat(path, &mystat) < 0) {
 		ERROR("%s: failed to stat %s", __func__, path);
-		return 0;
+		return -1;
 	}
 
 	return _recursive_rmdir_onedev(path, mystat.st_dev);

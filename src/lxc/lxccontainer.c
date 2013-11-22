@@ -1863,11 +1863,18 @@ out:
 	return bret;
 }
 
+static int lxc_rmdir_onedev_wrapper(void *data)
+{
+	char *arg = (char *) data;
+	return lxc_rmdir_onedev(arg);
+}
+
 // do we want the api to support --force, or leave that to the caller?
 static bool lxcapi_destroy(struct lxc_container *c)
 {
 	struct bdev *r = NULL;
 	bool ret = false;
+	bool am_unpriv;
 
 	if (!c || !lxcapi_is_defined(c))
 		return false;
@@ -1881,20 +1888,23 @@ static bool lxcapi_destroy(struct lxc_container *c)
 		goto out;
 	}
 
+	am_unpriv = c->lxc_conf && geteuid() != 0 && !lxc_list_empty(&c->lxc_conf->id_map);
+
 	if (c->lxc_conf && has_snapshots(c)) {
 		ERROR("container %s has dependent snapshots", c->name);
 		goto out;
 	}
 
-	if (c->lxc_conf && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount)
+	if (!am_unpriv && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount) {
 		r = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
-	if (r) {
-		if (r->ops->destroy(r) < 0) {
+		if (r) {
+			if (r->ops->destroy(r) < 0) {
+				bdev_put(r);
+				ERROR("Error destroying rootfs for %s", c->name);
+				goto out;
+			}
 			bdev_put(r);
-			ERROR("Error destroying rootfs for %s", c->name);
-			goto out;
 		}
-		bdev_put(r);
 	}
 
 	mod_all_rdeps(c, false);
@@ -1902,7 +1912,11 @@ static bool lxcapi_destroy(struct lxc_container *c)
 	const char *p1 = lxcapi_get_config_path(c);
 	char *path = alloca(strlen(p1) + strlen(c->name) + 2);
 	sprintf(path, "%s/%s", p1, c->name);
-	if (lxc_rmdir_onedev(path) < 0) {
+	if (am_unpriv)
+		ret = userns_exec_1(c->lxc_conf, lxc_rmdir_onedev_wrapper, path);
+	else
+		ret = lxc_rmdir_onedev(path);
+	if (ret < 0) {
 		ERROR("Error destroying container directory for %s", c->name);
 		goto out;
 	}
