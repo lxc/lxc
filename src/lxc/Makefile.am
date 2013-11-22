@@ -124,10 +124,6 @@ if ENABLE_SELINUX
 AM_CFLAGS += -DHAVE_SELINUX
 endif
 
-if HAVE_NEWUIDMAP
-AM_CFLAGS += -DHAVE_NEWUIDMAP
-endif
-
 if USE_CONFIGPATH_LOGS
 AM_CFLAGS += -DUSE_CONFIGPATH_LOGS
 endif
@@ -190,11 +186,8 @@ bin_PROGRAMS = \
 	lxc-destroy \
 	lxc-create \
 	lxc-user-nic \
-	lxc-snapshot
-
-if HAVE_NEWUIDMAP
-bin_PROGRAMS += lxc-usernsexec
-endif
+	lxc-snapshot \
+	lxc-usernsexec
 
 pkglibexec_PROGRAMS = \
 	lxc-init
