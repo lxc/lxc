@@ -45,51 +45,9 @@
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
 #include <sys/param.h>
-#include <sched.h>
 #include "config.h"
 #include "utils.h"
-
-#if ISTEST
-#define CONF_FILE "/tmp/lxc-usernet"
-#define DB_FILE "/tmp/nics"
-#else
-#define CONF_FILE LXC_USERNIC_CONF
-#define DB_FILE LXC_USERNIC_DB
-#endif
-
-#include "nl.h"
-
-#ifndef IFLA_LINKMODE
-#  define IFLA_LINKMODE 17
-#endif
-
-#ifndef IFLA_LINKINFO
-#  define IFLA_LINKINFO 18
-#endif
-
-#ifndef IFLA_NET_NS_PID
-#  define IFLA_NET_NS_PID 19
-#endif
-
-#ifndef IFLA_INFO_KIND
-# define IFLA_INFO_KIND 1
-#endif
-
-#ifndef IFLA_VLAN_ID
-# define IFLA_VLAN_ID 1
-#endif
-
-#ifndef IFLA_INFO_DATA
-#  define IFLA_INFO_DATA 2
-#endif
-
-#ifndef VETH_INFO_PEER
-# define VETH_INFO_PEER 1
-#endif
-
-#ifndef IFLA_MACVLAN_MODE
-# define IFLA_MACVLAN_MODE 1
-#endif
+#include "network.h"
 
 void usage(char *me, bool fail)
 {
@@ -146,14 +104,14 @@ static char *get_username(void)
  */
 static int get_alloted(char *me, char *intype, char *link)
 {
-	FILE *fin = fopen(CONF_FILE, "r");
+	FILE *fin = fopen(LXC_USERNIC_CONF, "r");
 	char *line = NULL;
 	char user[100], type[100], br[100];
 	size_t len = 0;
 	int n = -1, ret;
 
 	if (!fin) {
-		fprintf(stderr, "Failed to open %s: %s\n", CONF_FILE,
+		fprintf(stderr, "Failed to open %s: %s\n", LXC_USERNIC_CONF,
 			strerror(errno));
 		return -1;
 	}
@@ -229,209 +187,13 @@ static bool nic_exists(char *nic)
 	int ret;
 	struct stat sb;
 
-#if ISTEST
-	ret = snprintf(path, MAXPATHLEN, "/tmp/lxcnettest/%s", nic);
-#else
 	ret = snprintf(path, MAXPATHLEN, "/sys/class/net/%s", nic);
-#endif
 	if (ret < 0 || ret >= MAXPATHLEN) // should never happen!
 		return true;
 	ret = stat(path, &sb);
 	if (ret != 0)
 		return false;
 	return true;
-}
-
-struct link_req {
-	struct nlmsg nlmsg;
-	struct ifinfomsg ifinfomsg;
-};
-
-#if ! ISTEST
-
-static int lxc_veth_create(const char *name1, const char *name2)
-{
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
-	struct link_req *link_req;
-	struct rtattr *nest1, *nest2, *nest3;
-	int len, err;
-
-	err = netlink_open(&nlh, NETLINK_ROUTE);
-	if (err)
-		return err;
-
-	err = -EINVAL;
-	len = strlen(name1);
-	if (len == 1 || len >= IFNAMSIZ)
-		goto out;
-
-	len = strlen(name2);
-	if (len == 1 || len >= IFNAMSIZ)
-		goto out;
-
-	err = -ENOMEM;
-	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!nlmsg)
-		goto out;
-
-	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!answer)
-		goto out;
-
-	link_req = (struct link_req *)nlmsg;
-	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
-	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-	nlmsg->nlmsghdr.nlmsg_flags =
-		NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL|NLM_F_ACK;
-	nlmsg->nlmsghdr.nlmsg_type = RTM_NEWLINK;
-
-	err = -EINVAL;
-	nest1 = nla_begin_nested(nlmsg, IFLA_LINKINFO);
-	if (!nest1)
-		goto out;
-
-	if (nla_put_string(nlmsg, IFLA_INFO_KIND, "veth"))
-		goto out;
-
-	nest2 = nla_begin_nested(nlmsg, IFLA_INFO_DATA);
-	if (!nest2)
-		goto out;
-
-	nest3 = nla_begin_nested(nlmsg, VETH_INFO_PEER);
-	if (!nest3)
-		goto out;
-
-	nlmsg->nlmsghdr.nlmsg_len += sizeof(struct ifinfomsg);
-
-	if (nla_put_string(nlmsg, IFLA_IFNAME, name2))
-		goto out;
-
-	nla_end_nested(nlmsg, nest3);
-
-	nla_end_nested(nlmsg, nest2);
-
-	nla_end_nested(nlmsg, nest1);
-
-	if (nla_put_string(nlmsg, IFLA_IFNAME, name1))
-		goto out;
-
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(answer);
-	nlmsg_free(nlmsg);
-	return err;
-}
-
-static int lxc_netdev_move(char *ifname, pid_t pid)
-{
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL;
-	struct link_req *link_req;
-	int err, index;
-
-	index = if_nametoindex(ifname);
-	if (!ifname)
-		return -EINVAL;
-
-	err = netlink_open(&nlh, NETLINK_ROUTE);
-	if (err)
-		return err;
-
-	err = -ENOMEM;
-	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!nlmsg)
-		goto out;
-
-	link_req = (struct link_req *)nlmsg;
-	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
-	link_req->ifinfomsg.ifi_index = index;
-	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_REQUEST|NLM_F_ACK;
-	nlmsg->nlmsghdr.nlmsg_type = RTM_NEWLINK;
-
-	if (nla_put_u32(nlmsg, IFLA_NET_NS_PID, pid))
-		goto out;
-
-	err = netlink_transaction(&nlh, nlmsg, nlmsg);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(nlmsg);
-	return err;
-}
-
-static int setup_private_host_hw_addr(char *veth1)
-{
-	struct ifreq ifr;
-	int err;
-	int sockfd;
-
-	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (sockfd < 0)
-		return -errno;
-
-	snprintf((char *)ifr.ifr_name, IFNAMSIZ, "%s", veth1);
-	err = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
-	if (err < 0) {
-		close(sockfd);
-		return -errno;
-	}
-
-	ifr.ifr_hwaddr.sa_data[0] = 0xfe;
-	err = ioctl(sockfd, SIOCSIFHWADDR, &ifr);
-	close(sockfd);
-	if (err < 0)
-		return -errno;
-
-	return 0;
-}
-
-static int netdev_set_flag(const char *name, int flag)
-{
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
-	struct link_req *link_req;
-	int index, len, err;
-
-	err = netlink_open(&nlh, NETLINK_ROUTE);
-	if (err)
-		return err;
-
-	err = -EINVAL;
-	len = strlen(name);
-	if (len == 1 || len >= IFNAMSIZ)
-		goto out;
-
-	err = -ENOMEM;
-	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!nlmsg)
-		goto out;
-
-	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!answer)
-		goto out;
-
-	err = -EINVAL;
-	index = if_nametoindex(name);
-	if (!index)
-		goto out;
-
-	link_req = (struct link_req *)nlmsg;
-	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
-	link_req->ifinfomsg.ifi_index = index;
-	link_req->ifinfomsg.ifi_change |= IFF_UP;
-	link_req->ifinfomsg.ifi_flags |= flag;
-	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_REQUEST|NLM_F_ACK;
-	nlmsg->nlmsghdr.nlmsg_type = RTM_NEWLINK;
-
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(nlmsg);
-	nlmsg_free(answer);
-	return err;
 }
 
 static int instanciate_veth(char *n1, char **n2)
@@ -463,99 +225,8 @@ static int instanciate_veth(char *n1, char **n2)
 	return netdev_set_flag(n1, IFF_UP);
 }
 
-static int lxc_bridge_attach(const char *bridge, const char *ifname)
-{
-	int fd, index, err;
-	struct ifreq ifr;
-
-	if (strlen(ifname) >= IFNAMSIZ)
-		return -EINVAL;
-
-	index = if_nametoindex(ifname);
-	if (!index)
-		return -EINVAL;
-
-	fd = socket(AF_INET, SOCK_STREAM, 0);
-	if (fd < 0)
-		return -errno;
-
-	strncpy(ifr.ifr_name, bridge, IFNAMSIZ-1);
-	ifr.ifr_name[IFNAMSIZ-1] = '\0';
-	ifr.ifr_ifindex = index;
-	err = ioctl(fd, SIOCBRADDIF, &ifr);
-	close(fd);
-	if (err)
-		err = -errno;
-
-	return err;
-}
-
-static int lxc_netdev_delete_by_index(int ifindex)
-{
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
-	struct link_req *link_req;
-	int err;
-
-	err = netlink_open(&nlh, NETLINK_ROUTE);
-	if (err)
-		return err;
-
-	err = -ENOMEM;
-	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!nlmsg)
-		goto out;
-
-	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!answer)
-		goto out;
-
-	link_req = (struct link_req *)nlmsg;
-	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
-	link_req->ifinfomsg.ifi_index = ifindex;
-	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_ACK|NLM_F_REQUEST;
-	nlmsg->nlmsghdr.nlmsg_type = RTM_DELLINK;
-
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(answer);
-	nlmsg_free(nlmsg);
-	return err;
-}
-
-static int lxc_netdev_delete_by_name(const char *name)
-{
-	int index;
-
-	index = if_nametoindex(name);
-	if (!index)
-		return -EINVAL;
-
-	return lxc_netdev_delete_by_index(index);
-}
-#else
-static int lxc_netdev_delete_by_name(const char *name)
-{
-	char path[200];
-	sprintf(path, "/tmp/lxcnettest/%s", name);
-	return unlink(path);
-}
-
-#endif
-
 static bool create_nic(char *nic, char *br, int pid, char **cnic)
 {
-#if ISTEST
-	char path[200];
-	sprintf(path, "/tmp/lxcnettest/%s", nic);
-	int fd = open(path, O_RDWR|O_CREAT, S_IWUSR | S_IRUSR);
-	if (fd < 0)
-		return false;
-	close(fd);
-	return true;
-#else
 	char *veth1buf, *veth2buf;
 	veth1buf = alloca(IFNAMSIZ);
 	veth2buf = alloca(IFNAMSIZ);
@@ -580,7 +251,7 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 	}
 
 	/* pass veth2 to target netns */
-	ret = lxc_netdev_move(veth2buf, pid);
+	ret = lxc_netdev_move_by_name(veth2buf, pid);
 	if (ret < 0) {
 		fprintf(stderr, "Error moving %s to netns %d\n", veth2buf, pid);
 		goto out_del;
@@ -591,7 +262,6 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 out_del:
 	lxc_netdev_delete_by_name(veth1buf);
 	return false;
-#endif
 }
 
 /*
@@ -775,65 +445,6 @@ again:
 	goto again;
 }
 
-static int lxc_netdev_rename_by_index(int ifindex, const char *newname)
-{
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
-	struct link_req *link_req;
-	int len, err;
-
-	err = netlink_open(&nlh, NETLINK_ROUTE);
-	if (err)
-		return err;
-
-	len = strlen(newname);
-	if (len == 1 || len >= IFNAMSIZ)
-		goto out;
-
-	err = -ENOMEM;
-	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!nlmsg)
-		goto out;
-
-	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!answer)
-		goto out;
-
-	link_req = (struct link_req *)nlmsg;
-	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
-	link_req->ifinfomsg.ifi_index = ifindex;
-	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_ACK|NLM_F_REQUEST;
-	nlmsg->nlmsghdr.nlmsg_type = RTM_NEWLINK;
-
-	if (nla_put_string(nlmsg, IFLA_IFNAME, newname))
-		goto out;
-
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(answer);
-	nlmsg_free(nlmsg);
-	return err;
-}
-
-static int lxc_netdev_rename_by_name(const char *oldname, const char *newname)
-{
-	int len, index;
-
-	len = strlen(oldname);
-	if (len == 1 || len >= IFNAMSIZ)
-		return -EINVAL;
-
-	index = if_nametoindex(oldname);
-	if (!index) {
-		fprintf(stderr, "Error getting ifindex for %s\n", oldname);
-		return -EINVAL;
-	}
-
-	return lxc_netdev_rename_by_index(index, newname);
-}
-
 static int rename_in_ns(int pid, char *oldname, char *newname)
 {
 	char nspath[MAXPATHLEN];
@@ -952,13 +563,13 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (!create_db_dir(DB_FILE)) {
+	if (!create_db_dir(LXC_USERNIC_DB)) {
 		fprintf(stderr, "Failed to create directory for db file\n");
 		exit(1);
 	}
 
-	if ((fd = open_and_lock(DB_FILE)) < 0) {
-		fprintf(stderr, "Failed to lock %s\n", DB_FILE);
+	if ((fd = open_and_lock(LXC_USERNIC_DB)) < 0) {
+		fprintf(stderr, "Failed to lock %s\n", LXC_USERNIC_DB);
 		exit(1);
 	}
 

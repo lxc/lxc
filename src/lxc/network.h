@@ -32,6 +32,7 @@ extern int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr);
  * Move a device between namespaces
  */
 extern int lxc_netdev_move_by_index(int ifindex, pid_t pid);
+extern int lxc_netdev_move_by_name(char *ifname, pid_t pid);
 
 /*
  * Delete a network device
@@ -44,6 +45,8 @@ extern int lxc_netdev_delete_by_index(int ifindex);
  */
 extern int lxc_netdev_rename_by_name(const char *oldname, const char *newname);
 extern int lxc_netdev_rename_by_index(int ifindex, const char *newname);
+
+extern int netdev_set_flag(const char *name, int flag);
 
 /*
  * Set the device network up or down
@@ -123,4 +126,5 @@ extern int lxc_neigh_proxy_on(const char *name, int family);
 extern int lxc_neigh_proxy_off(const char *name, int family);
 
 extern const char *lxc_net_type_to_str(int type);
+extern int setup_private_host_hw_addr(char *veth1);
 #endif

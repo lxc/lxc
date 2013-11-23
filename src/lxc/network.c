@@ -130,6 +130,17 @@ out:
 	return err;
 }
 
+int lxc_netdev_move_by_name(char *ifname, pid_t pid)
+{
+	int index;
+
+	index = if_nametoindex(ifname);
+	if (!ifname)
+		return -EINVAL;
+
+	return lxc_netdev_move_by_index(index, pid);
+}
+
 int lxc_netdev_delete_by_index(int ifindex)
 {
 	struct nl_handler nlh;
@@ -233,7 +244,7 @@ int lxc_netdev_rename_by_name(const char *oldname, const char *newname)
 	return lxc_netdev_rename_by_index(index, newname);
 }
 
-static int netdev_set_flag(const char *name, int flag)
+int netdev_set_flag(const char *name, int flag)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -1035,4 +1046,36 @@ const char *lxc_net_type_to_str(int type)
 	if (type < 0 || type > LXC_NET_MAXCONFTYPE)
 		return NULL;
 	return lxc_network_types[type];
+}
+
+int setup_private_host_hw_addr(char *veth1)
+{
+	struct ifreq ifr;
+	int err;
+	int sockfd;
+
+	process_lock();
+	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	process_unlock();
+	if (sockfd < 0)
+		return -errno;
+
+	snprintf((char *)ifr.ifr_name, IFNAMSIZ, "%s", veth1);
+	err = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
+	if (err < 0) {
+		process_lock();
+		close(sockfd);
+		process_unlock();
+		return -errno;
+	}
+
+	ifr.ifr_hwaddr.sa_data[0] = 0xfe;
+	err = ioctl(sockfd, SIOCSIFHWADDR, &ifr);
+	process_lock();
+	close(sockfd);
+	process_unlock();
+	if (err < 0)
+		return -errno;
+
+	return 0;
 }

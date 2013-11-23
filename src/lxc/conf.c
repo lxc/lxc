@@ -2583,47 +2583,6 @@ void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf)
 	free(conf->saved_nics);
 }
 
-static int setup_private_host_hw_addr(char *veth1)
-{
-	struct ifreq ifr;
-	int err;
-	int sockfd;
-
-	process_lock();
-	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-	process_unlock();
-	if (sockfd < 0)
-		return -errno;
-
-	snprintf((char *)ifr.ifr_name, IFNAMSIZ, "%s", veth1);
-	err = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
-	if (err < 0) {
-		process_lock();
-		close(sockfd);
-		process_unlock();
-		return -errno;
-	}
-
-	ifr.ifr_hwaddr.sa_data[0] = 0xfe;
-	err = ioctl(sockfd, SIOCSIFHWADDR, &ifr);
-	process_lock();
-	close(sockfd);
-	process_unlock();
-	if (err < 0)
-		return -errno;
-
-	DEBUG("mac address of host interface '%s' changed to private "
-	      "%02x:%02x:%02x:%02x:%02x:%02x", veth1,
-	      ifr.ifr_hwaddr.sa_data[0] & 0xff,
-	      ifr.ifr_hwaddr.sa_data[1] & 0xff,
-	      ifr.ifr_hwaddr.sa_data[2] & 0xff,
-	      ifr.ifr_hwaddr.sa_data[3] & 0xff,
-	      ifr.ifr_hwaddr.sa_data[4] & 0xff,
-	      ifr.ifr_hwaddr.sa_data[5] & 0xff);
-
-	return 0;
-}
-
 static char *default_rootfs_mount = LXCROOTFSMOUNT;
 
 struct lxc_conf *lxc_conf_init(void)

@@ -223,7 +223,7 @@ lxc_kill_SOURCES = lxc_kill.c
 lxc_create_SOURCES = lxc_create.c
 lxc_snapshot_SOURCES = lxc_snapshot.c
 lxc_usernsexec_SOURCES = lxc_usernsexec.c
-lxc_user_nic_SOURCES = lxc_user_nic.c
+lxc_user_nic_SOURCES = lxc_user_nic.c network.c network.h
 
 install-exec-local: install-soPROGRAMS
 	mkdir -p $(DESTDIR)$(datadir)/lxc
