@@ -179,16 +179,16 @@ static int get_alloted(char *me, char *intype, char *link)
 	return -1;
 }
 
-static char *get_eol(char *s)
+static char *get_eol(char *s, char *e)
 {
-	while (*s && *s != '\n')
+	while (s<e && *s && *s != '\n')
 		s++;
 	return s;
 }
 
-static char *get_eow(char *s)
+static char *get_eow(char *s, char *e)
 {
-	while (*s && !isblank(*s) && *s != '\n')
+	while (s<e && *s && !isblank(*s) && *s != '\n')
 		s++;
 	return s;
 }
@@ -197,22 +197,22 @@ static char *find_line(char *p, char *e, char *u, char *t, char *l)
 {
 	char *p1, *p2, *ret;
 	
-	while (p < e  && (p1 = get_eol(p)) < e) {
+	while (p<e  && (p1 = get_eol(p, e)) < e) {
 		ret = p;
 		if (*p == '#')
 			goto next;
-		while (isblank(*p)) p++;
-		p2 = get_eow(p);
+		while (p<e && isblank(*p)) p++;
+		p2 = get_eow(p, e);
 		if (!p2 || p2-p != strlen(u) || strncmp(p, u, strlen(u)) != 0)
 			goto next;
 		p = p2+1;
-		while (isblank(*p)) p++;
-		p2 = get_eow(p);
+		while (p<e && isblank(*p)) p++;
+		p2 = get_eow(p, e);
 		if (!p2 || p2-p != strlen(t) || strncmp(p, t, strlen(t)) != 0)
 			goto next;
 		p = p2+1;
-		while (isblank(*p)) p++;
-		p2 = get_eow(p);
+		while (p<e && isblank(*p)) p++;
+		p2 = get_eow(p, e);
 		if (!p2 || p2-p != strlen(l) || strncmp(p, l, strlen(l)) != 0)
 			goto next;
 		return ret;
@@ -659,7 +659,7 @@ static bool cull_entries(int fd, char *me, char *t, char *br)
 		}
 		entry_lines = newe;
 		entry_lines[n].start = p;
-		entry_lines[n].len = get_eol(p) - entry_lines[n].start;
+		entry_lines[n].len = get_eol(p, e) - entry_lines[n].start;
 		entry_lines[n].keep = true;
 		n++;
 		if (!get_nic_from_line(p, &nic))
@@ -692,7 +692,7 @@ static int count_entries(char *buf, off_t len, char *me, char *t, char *br)
 	int count = 0;
 	while ((buf = find_line(buf, e, me, t, br)) != NULL) {
 		count++;
-		buf = get_eol(buf)+1;
+		buf = get_eol(buf, e)+1;
 		if (buf >= e)
 			break;
 	}
