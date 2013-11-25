@@ -98,11 +98,24 @@ configure_fedora()
     mkdir -p $rootfs_path/selinux
     echo 0 > $rootfs_path/selinux/enforce
 
-    # This may be related to disabling selinux above but this is
-    # a known problem and documented in RedHat bugzilla as relating
+    # Also kill it in the /etc/selinux/config file if it's there...
+    if [[ -f $rootfs_path/etc/selinux/config ]]
+    then
+        sed -i '/^SELINUX=/s/.*/SELINUX=disabled/' $rootfs_path/etc/selinux/config
+    fi
+
+    # Nice catch from Dwight Engen in the Oracle template.
+    # Wantonly plagerized here with much appreciation.
+    if [ -f $rootfs_path/usr/sbin/selinuxenabled ]; then
+        mv $rootfs_path/usr/sbin/selinuxenabled $rootfs_path/usr/sbin/selinuxenabled.lxcorig
+        ln -s /bin/false $rootfs_path/usr/sbin/selinuxenabled
+    fi
+
+    # This is a known problem and documented in RedHat bugzilla as relating
     # to a problem with auditing enabled.  This prevents an error in
     # the container "Cannot make/remove an entry for the specified session"
     sed -i '/^session.*pam_loginuid.so/s/^session/# session/' ${rootfs_path}/etc/pam.d/login
+    sed -i '/^session.*pam_loginuid.so/s/^session/# session/' ${rootfs_path}/etc/pam.d/sshd
 
     # configure the network using the dhcp
     cat <<EOF > ${rootfs_path}/etc/sysconfig/network-scripts/ifcfg-eth0
@@ -132,6 +145,9 @@ EOF
 ::1                 localhost6.localdomain6 localhost6
 EOF
 
+    # These mknod's really don't make any sense with modern releases of
+    # Fedora with systemd, devtmpfs, and autodev enabled.  They are left
+    # here for legacy reasons and older releases with upstart and sysv init.
     dev_path="${rootfs_path}/dev"
     rm -rf $dev_path
     mkdir -p $dev_path
@@ -187,6 +203,7 @@ EOF
 
     return 0
 }
+
 configure_fedora_init()
 {
     sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.sysinit
@@ -635,7 +652,7 @@ download_fedora()
     BOOTSTRAP_INSTALL_ROOT=${INSTALL_ROOT}
     BOOTSTRAP_CHROOT=
 
-    PKG_LIST="yum initscripts passwd rsyslog vim-minimal dhclient chkconfig rootfiles policycoreutils fedora-release"
+    PKG_LIST="yum initscripts passwd rsyslog vim-minimal openssh-server openssh-clients dhclient chkconfig rootfiles policycoreutils fedora-release"
     MIRRORLIST_URL="http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$release&arch=$arch"
 
     if [[ ${release} -lt 17 ]]
