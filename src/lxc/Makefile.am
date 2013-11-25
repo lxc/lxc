@@ -149,6 +149,7 @@ bin_SCRIPTS = \
 
 EXTRA_DIST = \
 	lxc-device \
+	lxc-devsetup \
 	lxc-ls \
 	lxc-top \
 	lxc.service
