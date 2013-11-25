@@ -108,6 +108,19 @@ else
 fi
 AC_SUBST(docdtd)
 
+# Documentation (API)
+AC_ARG_ENABLE([api-docs],
+	[AC_HELP_STRING([--enable-api-docs],
+	[make API documentation (requires doxygen to be installed) [default=auto]])],
+	[], [enable_api_docs=auto])
+
+if test "x$enable_api_docs" = "xyes" -o "x$enable_api_docs" = "xauto"; then
+    AC_CHECK_PROGS([HAVE_DOXYGEN],[doxygen])
+    AC_SUBST([HAVE_DOXYGEN])
+fi
+
+AM_CONDITIONAL([ENABLE_API_DOCS], [test ! -z "$HAVE_DOXYGEN"])
+
 # Apparmor
 AC_ARG_ENABLE([apparmor],
 	[AC_HELP_STRING([--enable-apparmor], [enable apparmor])],
@@ -431,6 +444,7 @@ AC_CONFIG_FILES([
 	config/Makefile
 
 	doc/Makefile
+	doc/api/Makefile
 	doc/legacy/lxc-ls.sgml
 	doc/lxc-attach.sgml
 	doc/lxc-cgroup.sgml

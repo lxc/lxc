@@ -1,8 +1,12 @@
 SUBDIRS = examples rootfs
-DIST_SUBDIRS = examples rootfs ja
+DIST_SUBDIRS = examples rootfs ja api
 
 if USE_DOCBOOK2X
 SUBDIRS += ja
+endif
+
+if ENABLE_API_DOCS
+SUBDIRS += api
 endif
 
 EXTRA_DIST = \
