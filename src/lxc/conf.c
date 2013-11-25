@@ -2504,22 +2504,25 @@ static int setup_netdev(struct lxc_netdev *netdev)
 			return -1;
 		}
 
-		err = lxc_ipv4_dest_add(netdev->ifindex, netdev->ipv4_gateway);
-		if (err) {
-			ERROR("failed to add ipv4 dest for '%s': %s",
-				      ifname, strerror(-err));
-		}
-
 		err = lxc_ipv4_gateway_add(netdev->ifindex, netdev->ipv4_gateway);
 		if (err) {
-			ERROR("failed to setup ipv4 gateway for '%s': %s",
-				      ifname, strerror(-err));
-			if (netdev->ipv4_gateway_auto) {
-				char buf[INET_ADDRSTRLEN];
-				inet_ntop(AF_INET, netdev->ipv4_gateway, buf, sizeof(buf));
-				ERROR("tried to set autodetected ipv4 gateway '%s'", buf);
+			err = lxc_ipv4_dest_add(netdev->ifindex, netdev->ipv4_gateway);
+			if (err) {
+				ERROR("failed to add ipv4 dest for '%s': %s",
+					      ifname, strerror(-err));
 			}
-			return -1;
+
+			err = lxc_ipv4_gateway_add(netdev->ifindex, netdev->ipv4_gateway);
+			if (err) {
+				ERROR("failed to setup ipv4 gateway for '%s': %s",
+					      ifname, strerror(-err));
+				if (netdev->ipv4_gateway_auto) {
+					char buf[INET_ADDRSTRLEN];
+					inet_ntop(AF_INET, netdev->ipv4_gateway, buf, sizeof(buf));
+					ERROR("tried to set autodetected ipv4 gateway '%s'", buf);
+				}
+				return -1;
+			}
 		}
 	}
 
@@ -2535,22 +2538,25 @@ static int setup_netdev(struct lxc_netdev *netdev)
 			return -1;
 		}
 
-		err = lxc_ipv6_dest_add(netdev->ifindex, netdev->ipv6_gateway);
-		if (err) {
-			ERROR("failed to add ipv6 dest for '%s': %s",
-			      ifname, strerror(-err));
-		}
-
 		err = lxc_ipv6_gateway_add(netdev->ifindex, netdev->ipv6_gateway);
 		if (err) {
-			ERROR("failed to setup ipv6 gateway for '%s': %s",
+			err = lxc_ipv6_dest_add(netdev->ifindex, netdev->ipv6_gateway);
+			if (err) {
+				ERROR("failed to add ipv6 dest for '%s': %s",
 				      ifname, strerror(-err));
-			if (netdev->ipv6_gateway_auto) {
-				char buf[INET6_ADDRSTRLEN];
-				inet_ntop(AF_INET6, netdev->ipv6_gateway, buf, sizeof(buf));
-				ERROR("tried to set autodetected ipv6 gateway '%s'", buf);
 			}
-			return -1;
+
+			err = lxc_ipv6_gateway_add(netdev->ifindex, netdev->ipv6_gateway);
+			if (err) {
+				ERROR("failed to setup ipv6 gateway for '%s': %s",
+					      ifname, strerror(-err));
+				if (netdev->ipv6_gateway_auto) {
+					char buf[INET6_ADDRSTRLEN];
+					inet_ntop(AF_INET6, netdev->ipv6_gateway, buf, sizeof(buf));
+					ERROR("tried to set autodetected ipv6 gateway '%s'", buf);
+				}
+				return -1;
+			}
 		}
 	}
 
