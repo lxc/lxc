@@ -40,6 +40,7 @@
 #include <grp.h>
 #include "config.h"
 #include "namespace.h"
+#include "utils.h"
 
 #ifndef HAVE_GETLINE
 #ifdef HAVE_FGETLN
