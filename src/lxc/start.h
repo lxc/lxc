@@ -27,6 +27,7 @@
 
 #include <lxc/state.h>
 #include <sys/param.h>
+#include "namespace.h"
 
 struct lxc_conf;
 
@@ -38,6 +39,23 @@ struct lxc_operations {
 };
 
 struct cgroup_desc;
+
+enum {
+	LXC_NS_MNT,
+	LXC_NS_PID,
+	LXC_NS_UTS,
+	LXC_NS_IPC,
+	LXC_NS_USER,
+	LXC_NS_NET,
+	LXC_NS_MAX
+};
+
+struct ns_info {
+	const char *proc_name;
+	int clone_flag;
+};
+
+const struct ns_info ns_info[LXC_NS_MAX];
 
 struct lxc_handler {
 	pid_t pid;

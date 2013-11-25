@@ -57,6 +57,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-p <replaceable>pid_file</replaceable></arg>
       <arg choice="opt">-s KEY=VAL</arg>
       <arg choice="opt">-C</arg>
+      <arg choice="opt">--share-[net|ipc|uts] <replaceable>name|pid</replaceable></arg>
       <arg choice="opt">command</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -182,6 +183,50 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  is not specified, then <command>lxc-start</command> will exit with
 	  failure instead. Note: <replaceable>--daemon</replaceable> implies
 	  <replaceable>--close-all-fds</replaceable>.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--share-net <replaceable>name|pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            Inherit a network namespace from
+	    a <replaceable>name</replaceable> container or
+	    a <replaceable>pid</replaceable>. The network namespace
+	    will continue to be managed by the original owner. The
+	    network configuration of the starting container is ignored
+	    and the up/down scripts won't be executed.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--share-ipc <replaceable>name|pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            Inherit an IPC namespace from
+	    a <replaceable>name</replaceable> container or
+	    a <replaceable>pid</replaceable>.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--share-uts <replaceable>name|pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            Inherit a UTS namespace from
+	    a <replaceable>name</replaceable> container or
+	    a <replaceable>pid</replaceable>. The starting LXC will
+	    not set the hostname, but the container OS may do it
+	    anyway.
 	  </para>
 	</listitem>
       </varlistentry>
