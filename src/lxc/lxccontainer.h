@@ -1,4 +1,6 @@
-/* liblxcapi
+/*! \file
+ *
+ * liblxcapi
  *
  * Copyright © 2012 Serge Hallyn <serge.hallyn@ubuntu.com>.
  * Copyright © 2012 Canonical Ltd.
@@ -27,289 +29,835 @@
 
 #include <stdbool.h>
 
-#define LXC_CLONE_KEEPNAME        (1 << 0)
-#define LXC_CLONE_COPYHOOKS       (1 << 1)
-#define LXC_CLONE_KEEPMACADDR     (1 << 2)
-#define LXC_CLONE_SNAPSHOT        (1 << 3)
-#define LXC_CLONE_MAXFLAGS        (1 << 4)
-
-#define LXC_CREATE_QUIET	  (1 << 0)
-#define LXC_CREATE_MAXFLAGS       (1 << 1)
+#define LXC_CLONE_KEEPNAME        (1 << 0) /*!< Do not edit the rootfs to change the hostname */
+#define LXC_CLONE_COPYHOOKS       (1 << 1) /*!< Copy all hooks into the container directory */
+#define LXC_CLONE_KEEPMACADDR     (1 << 2) /*!< Do not change the MAC address on network interfaces */
+#define LXC_CLONE_SNAPSHOT        (1 << 3) /*!< Snapshot the original filesystem(s) */
+#define LXC_CLONE_MAXFLAGS        (1 << 4) /*!< Number of \c LXC_CLONE_* flags */
+#define LXC_CREATE_QUIET          (1 << 0) /*!< Redirect \c stdin to \c /dev/zero and \c stdout and \c stderr to \c /dev/null */
+#define LXC_CREATE_MAXFLAGS       (1 << 1) /*!< Number of \c LXC_CREATE* flags */
 
 struct bdev_specs;
 
 struct lxc_snapshot;
 
+/*!
+ * An LXC container.
+ */
 struct lxc_container {
 	// private fields
+	/*!
+	 * \private
+	 * Name of container.
+	 */
 	char *name;
+
+	/*!
+	 * \private
+	 * Full path to configuration file.
+	 */
 	char *configfile;
+
+	/*!
+	 * \private
+	 * Container semaphore lock.
+	 */
 	struct lxc_lock *slock;
+
+	/*!
+	 * \private
+	 * Container private lock.
+	 */
 	struct lxc_lock *privlock;
-	int numthreads; /* protected by privlock. */
-	struct lxc_conf *lxc_conf; // maybe we'll just want the whole lxc_handler?
+
+	/*!
+	 * \private
+	 * Number of references to this container.
+	 * \note protected by privlock.
+	 */
+	int numthreads;
+
+	/*!
+	 * \private
+	 * Container configuration.
+	 *
+	 * \internal FIXME: do we want the whole lxc_handler?
+	 */
+	struct lxc_conf *lxc_conf;
 
 	// public fields
+	/*! Human-readable string representing last error */
 	char *error_string;
+
+	/*! Last error number */
 	int error_num;
+
+	/*! Whether container wishes to be daemonized */
 	int daemonize;
 
+	/*! Full path to configuration file */
 	char *config_path;
 
-	bool (*is_defined)(struct lxc_container *c);  // did /var/lib/lxc/$name/config exist
+	/*!
+	 * \brief Determine if \c /var/lib/lxc/$name/config exists.
+	 *
+	 * \param c Container.
+	 *
+	 * \return \c true if container is defined, else \c false.
+	 */
+	bool (*is_defined)(struct lxc_container *c);
+
+	/*!
+	 * \brief Determine state of container.
+	 *
+	 * \param c Container.
+	 *
+	 * \return Static upper-case string representing state of container.
+	 *
+	 * \note Returned string must not be freed.
+	 */
 	const char *(*state)(struct lxc_container *c);
-	bool (*is_running)(struct lxc_container *c);  // true so long as defined and not stopped
+
+	/*!
+	 * \brief Determine if container is running.
+	 *
+	 * \param c Container.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
+	bool (*is_running)(struct lxc_container *c);
+
+	/*!
+	 * \brief Freeze running container.
+	 *
+	 * \param c Container.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
 	bool (*freeze)(struct lxc_container *c);
+
+	/*!
+	 * \brief Thaw a frozen container.
+	 *
+	 * \param c Container.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
 	bool (*unfreeze)(struct lxc_container *c);
+
+	/*!
+	 * \brief Determine process ID of the containers init process.
+	 *
+	 * \param c Container.
+	 * 
+	 * \return pid of init process as seen from outside the
+	 *  container.
+	 */
 	pid_t (*init_pid)(struct lxc_container *c);
+
+	/*!
+	 * \brief Load the specified configuration for the container.
+	 *
+	 * \param c Container.
+	 * \param alt_file Full path to alternate configuration file, or
+	 *  \c NULL to use the default configuration file.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
 	bool (*load_config)(struct lxc_container *c, const char *alt_file);
-	/* The '...' is the command line.  If provided, it must be ended with a NULL */
+
+	/*!
+	 * \brief Start the container.
+	 *
+	 * \param c Container.
+	 * \param useinit Use lxcinit rather than \c /sbin/init.
+	 * \param argv Array of arguments to pass to init.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
 	bool (*start)(struct lxc_container *c, int useinit, char * const argv[]);
+
+	/*!
+	 * \brief Start the container (list variant).
+	 *
+	 * \param c Container.
+	 * \param useinit Use lxcinit rather than \c /sbin/init.
+	 * \param ... Command-line to pass to init (must end in \c NULL).
+	 *
+	 * \return \c true on success, else \c false.
+	 *
+	 * \note Identical to \ref start except that that the init
+	 *  arguments are specified via a list rather than an array of
+	 *  pointers.
+	 */
 	bool (*startl)(struct lxc_container *c, int useinit, ...);
+
+	/*!
+	 * \brief Stop the container.
+	 *
+	 * \param c Container.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
 	bool (*stop)(struct lxc_container *c);
+
+	/*!
+	 * \brief Determine if the container wants to run disconnected
+	 * from the terminal.
+	 *
+	 * \param c Container.
+	 *
+	 * \return \c true if container wants to be daemonised, else \c false.
+	 */
 	void (*want_daemonize)(struct lxc_container *c);
+
+	/*!
+	 * \brief Determine whether container wishes all file descriptors
+	 *  to be closed on startup.
+	 *
+	 * \param c Container.
+	 *
+	 * \return \c true if container wants all file descriptors closed,
+	 *  else \c false.
+	 */
 	bool (*want_close_all_fds)(struct lxc_container *c);
-	// Return current config file name.  The result is strdup()d, so free the result.
+
+	/*!
+	 * \brief Return current config file name.
+	 *
+	 * \param c Container.
+	 *
+	 * \return config file name, or \c NULL on error.
+	 *
+	 * \note The result is allocated, so the caller must free the result.
+	 */
 	char *(*config_file_name)(struct lxc_container *c);
-	// for wait, timeout == -1 means wait forever, timeout == 0 means don't wait.
-	// otherwise timeout is seconds to wait.
+
+	/*!
+	 * \brief Wait for container to reach a particular state.
+	 *
+	 * \param c Container.
+	 * \param state State to wait for.
+	 * \param timeout Timeout in seconds.
+	 *
+	 * \return \c true if state reached within \p timeout, else \c false.
+	 *
+	 * \note A \p timeout of \c -1 means wait forever. A \p timeout
+	 *  of \c 0 means do not wait.
+	 */
 	bool (*wait)(struct lxc_container *c, const char *state, int timeout);
+
+	/*!
+	 * \brief Set a key/value configuration option.
+	 *
+	 * \param c Container.
+	 * \param key Name of option to set.
+	 * \param value Value of \p name to set.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
 	bool (*set_config_item)(struct lxc_container *c, const char *key, const char *value);
+
+	/*!
+	 * \brief Delete the container.
+	 *
+	 * \param c Container.
+	 *
+	 * \return \c true on success, else \c false.
+	 *
+	 * \note Container must be stopped and have no dependent snapshots.
+	 */
 	bool (*destroy)(struct lxc_container *c);
+
+	/*!
+	 * \brief Save configuaration to a file.
+	 *
+	 * \param c Container.
+	 * \param alt_file Full path to file to save configuration in.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
 	bool (*save_config)(struct lxc_container *c, const char *alt_file);
+
+	/*!
+	 * \brief Create a container.
+	 *
+	 * \param c Container (with lxcpath, name and a starting
+	 *  configuration set).
+	 * \param t Template to execute to instantiate the root
+	 *  filesystem and adjust the configuration.
+	 * \param bdevtype Backing store type to use (if \c NULL, \c dir will be used).
+	 * \param specs Additional parameters for the backing store (for
+	 *  example LVM volume group to use).
+	 * \param flags \c LXC_CREATE_* options (currently only \ref
+	 *  LXC_CREATE_QUIET is supported).
+	 * \param argv Arguments to pass to the template, terminated by \c NULL (if no
+	 *  arguments are required, just pass \c NULL).
+	 *
+	 * \return \c true on success, else \c false.
+	 */
 	bool (*create)(struct lxc_container *c, const char *t, const char *bdevtype,
 			struct bdev_specs *specs, int flags, char *const argv[]);
+
+	/*!
+	 * \brief Create a container (list variant).
+	 *
+	 * \param c Container (with lxcpath, name and a starting
+	 *  configuration set).
+	 * \param t Template to execute to instantiate the root
+	 *  filesystem and adjust the configuration.
+	 * \param bdevtype Backing store type to use (if \c NULL, \c dir will be used).
+	 * \param specs Additional parameters for the backing store (for
+	 *  example LVM volume group to use).
+	 * \param flags \c LXC_CREATE_* options (currently only \ref
+	 *  LXC_CREATE_QUIET is supported).
+	 * \param ... Command-line to pass to init (must end in \c NULL).
+	 *
+	 * \return \c true on success, else \c false.
+	 *
+	 * \note Identical to \ref create except that the template
+	 *  arguments are specified as a list rather than an array of
+	 *  pointers.
+	 */
 	bool (*createl)(struct lxc_container *c, const char *t, const char *bdevtype,
 			struct bdev_specs *specs, int flags, ...);
-	/* send SIGINT to ask container to reboot */
+
+	/*!
+	 * \brief Request the container reboot by sending it \c SIGINT.
+	 *
+	 * \param c Container.
+	 *
+	 * \return \c true if reboot request successful, else \c false.
+	 */
 	bool (*reboot)(struct lxc_container *c);
-	/* send SIGPWR.  if timeout is not 0 or -1, do a hard stop after timeout seconds */
+
+	/*!
+	 * \brief Request the container shutdown by sending it \c
+	 * SIGPWR.
+	 *
+	 * \param c Container.
+	 * \param timeout Seconds to wait before forcing a hard stop
+	 *  (value must be >0).
+	 *
+	 * \return \c true if configuration was loaded successfully, else \c false.
+	 *
+	 * \note A \p timeout of \c 0 means do not wait.
+	 */
 	bool (*shutdown)(struct lxc_container *c, int timeout);
-	/* completely clear a configuration */
+
+	/*!
+	 * \brief Completely clear the containers in-memory configuration.
+	 *
+	 * \param c Container.
+	 */
 	void (*clear_config)(struct lxc_container *c);
-	/* clear all network or capability items in the in-memory configuration */
+
+	/*!
+	 * \brief Clear a configuration item.
+	 *
+	 * \param c Container.
+	 * \param key Name of option to clear.
+	 *
+	 * \return \c true on success, else \c false.
+	 *
+	 * \note Analog of \ref set_config_item.
+	 */
 	bool (*clear_config_item)(struct lxc_container *c, const char *key);
-	/* print a config item to a in-memory string allocated by the caller.  Return
-	 * the length which was our would be printed. */
+
+	/*!
+	 * \brief Retrieve the value of a config item.
+	 *
+	 * \param c Container.
+	 * \param key Name of option to get.
+	 * \param[out] retv Caller-allocated buffer to write value of \p key
+	 * into (or \c NULL to determine length of value).
+	 * \param inlen Length of \p retv (may be zero).
+	 *
+	 * \return Length of config items value, or < 0 on error.
+	 *
+	 * \note The caller can (and should) determine how large a buffer to allocate for
+	 *  \p retv by initially passing its value as \c NULL and considering the return value.
+	 *  This function can then be called again passing a newly-allocated suitably-sized buffer.
+	 * \note If \p retv is NULL, \p inlen is ignored.
+	 * \note If \p inlen is smaller than required, the value written
+	 *  to \p retv will be truncated.
+	 */
 	int (*get_config_item)(struct lxc_container *c, const char *key, char *retv, int inlen);
+
+	/*!
+	 * \brief Retrieve a list of config item keys given a key
+	 * prefix.
+	 *
+	 * \param c Container.
+	 * \param key Name of option to get.
+	 * \param[out] retv Caller-allocated buffer to write list of keys to
+	 *  (or \c NULL to determine overall length of keys list).
+	 * \param inlen Length of \p retv (may be zero).
+	 *
+	 * \return Length of keys list, or < 0 on error.
+	 *
+	 * \note The list values written to \p retv are separated by
+	 *  a newline character ('\\n').
+	 * \note The caller can (and should) determine how large a buffer to allocate for
+	 *  \p retv by initially passing its value as \c NULL and considering the return value.
+	 *  This function can then be called again passing a newly-allocated suitably-sized buffer.
+	 * \note If \p retv is NULL, \p inlen is ignored.
+	 * \note If \p inlen is smaller than required, the value written
+	 *  to \p retv will be truncated.
+	 */
 	int (*get_keys)(struct lxc_container *c, const char *key, char *retv, int inlen);
-	// Return interface names.  The result is strdup()d, so free the result.
+
+	/*!
+	 * \brief Obtain a list of network interfaces.
+	 * \param c Container.
+	 *
+	 * \return Newly-allocated array of network interfaces, or \c
+	 *  NULL on error.
+	 *
+	 * \note The returned array is allocated, so the caller must free it.
+	 * \note The returned array is terminated with a \c NULL entry.
+	 */
 	char** (*get_interfaces)(struct lxc_container *c);
-	// Return IP addresses.  The result is strdup()d, so free the result.
+
+	/*!
+	 * \brief Determine the list of container IP addresses.
+	 *
+	 * \param c Container.
+	 * \param interface Network interface name to consider.
+	 * \param family Network family (for example "inet", "inet6").
+	 * \param scope IPv6 scope id (ignored if \p family is not "inet6").
+	 *
+	 * \return Newly-allocated array of network interfaces, or \c
+	 *  NULL on error.
+	 *
+	 * \note The returned array is allocated, so the caller must free it.
+	 * \note The returned array is terminated with a \c NULL entry.
+	 */
 	char** (*get_ips)(struct lxc_container *c, char* interface, char* family, int scope);
-	/*
-	 * get_cgroup_item returns the number of bytes read, or an error (<0).
-	 * If retv NULL or inlen 0 is passed in, then the length of the cgroup
-	 * file will be returned.  *   Otherwise it will return the # of bytes read.
-	 * If inlen is less than the number of bytes available, then the returned
-	 * value will be inlen, not the full available size of the file.
+
+	/*!
+	 * \brief Retrieve the specified cgroup subsystem value for the container.
+	 *
+	 * \param c Container.
+	 * \param subsys cgroup subsystem to retrieve.
+	 * \param[out] retv Caller-allocated buffer to write value of \p
+	 *  subsys into (or \c NULL to determine length of value).
+	 * \param inlen length of \p retv (may be zero).
+	 *
+	 * \return Length of \p subsys value, or < 0 on error.
+	 *
+	 * \note If \p retv is \c NULL, \p inlen is ignored.
+	 * \note If \p inlen is smaller than required, the value written
+	 *  to \p retv will be truncated.
 	 */
 	int (*get_cgroup_item)(struct lxc_container *c, const char *subsys, char *retv, int inlen);
+
+	/*!
+	 * \brief Set the specified cgroup subsystem value for the container.
+	 *
+	 * \param c Container.
+	 * \param subsys cgroup subsystem to consider.
+	 * \param value Value to set for \p subsys.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
 	bool (*set_cgroup_item)(struct lxc_container *c, const char *subsys, const char *value);
 
-	/*
-	 * Each container can have a custom configuration path.  However
-	 * by default it will be set to either the LXCPATH configure
-	 * variable, or the lxcpath value in the LXC_GLOBAL_CONF configuration
-	 * file (i.e. /etc/lxc/lxc.conf).
-	 * You can change the value for a specific container with
-	 * set_config_path().  Note there is no other way to specify this in
-	 * general at the moment.
+	/*!
+	 * \brief Determine full path to the containers configuration file.
+	 * Each container can have a custom configuration path. However
+	 * by default it will be set to either the \c LXCPATH configure
+	 * variable, or the lxcpath value in the \c LXC_GLOBAL_CONF configuration
+	 * file (i.e. \c /etc/lxc/lxc.conf).
+	 * The value for a specific container can be changed using
+	 * \ref set_config_path. There is no other way to specify this in general at the moment.
+	 *
+	 * \param c Container.
+	 *
+	 * \return Static string representing full path to configuration
+	 * file.
+	 *
+	 * \note Returned string must not be freed.
 	 */
 	const char *(*get_config_path)(struct lxc_container *c);
+
+	/*!
+	 * \brief Set the full path to the containers configuration
+	 * file.
+	 *
+	 * \param c Container.
+	 * \param path Full path to configuration file.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
 	bool (*set_config_path)(struct lxc_container *c, const char *path);
 
-	/*
-	 * @c: the original container
-	 * @newname: new name for the container.  If NULL, the same name is used, and
-	 *  a new lxcpath MUST be specified.
-	 * @lxcpath: lxcpath in which to create the new container.  If NULL, then the
-	 *  original container's lxcpath will be used.  (Shoudl we use the default
-	 *  instead?)
-	 * @flags: additional flags to modify cloning behavior.
-	 *  LXC_CLONE_KEEPNAME: don't edit the rootfs to change the hostname.
-	 *  LXC_CLONE_COPYHOOKS: copy all hooks into the container dir
-	 *  LXC_CLONE_KEEPMACADDR: don't change the mac address on network interfaces.
-	 *  LXC_CLONE_SNAPSHOT: snapshot the original filesystem(s).  If @devtype was not
-	 *   specified, then do so with the native bdevtype if possible, else use an
-	 *   overlayfs.
-	 * @bdevtype: optionally force the cloned bdevtype to a specified plugin.  By
-	 *  default the original  is used (subject to snapshot requirements).
-	 * @bdevdata: information about how to create the new storage (i.e. fstype and
-	 *  fsdata)
-	 * @newsize: in case of a block device backing store, an optional size.  If 0,
-	 *  then the original backing store's size will be used if possible.  Note this
-	 *  only applies to the rootfs.  For any other filesystems, the original size
-	 *  will be duplicated.
-	 * @hookargs: additional arguments to pass to the clone hook script
+	/*!
+	 * \brief Copy a stopped container.
+	 *
+	 * \param c Original container.
+	 * \param newname New name for the container. If \c NULL, the same
+	 *  name is used and a new lxcpath MUST be specified.
+	 * \param lxcpath lxcpath in which to create the new container. If
+	 *  \c NULL, the original container's lxcpath will be used.
+	 *  (XXX: should we use the default instead?)
+	 * \param flags Additional \c LXC_CLONE* flags to change the cloning behaviour:
+	 *  - \ref LXC_CLONE_KEEPNAME
+	 *  - \ref LXC_CLONE_COPYHOOKS
+	 *  - \ref LXC_CLONE_KEEPMACADDR
+	 *  - \ref LXC_CLONE_SNAPSHOT
+	 * \param bdevtype Optionally force the cloned bdevtype to a specified plugin.
+	 *  By default the original is used (subject to snapshot requirements).
+	 * \param bdevdata Information about how to create the new storage
+	 *  (i.e. fstype and fsdata).
+	 *  \param newsize In case of a block device backing store, an
+	 *  optional size. If \c 0, the original backing store's size will
+	 *  be used if possible. Note this only applies to the rootfs. For
+	 *  any other filesystems, the original size will be duplicated.
+	 * \param hookargs Additional arguments to pass to the clone hook script.
+	 *
+	 * \return Newly-allocated copy of container \p c, or \p NULL on
+	 * error.
+	 *
+	 * \note If devtype was not specified, and \p flags contains \ref
+	 * LXC_CLONE_SNAPSHOT then use the native \p bdevtype if possible,
+	 * else use an overlayfs.
 	 */
 	struct lxc_container *(*clone)(struct lxc_container *c, const char *newname,
-		const char *lxcpath, int flags, const char *bdevtype,
-		const char *bdevdata, unsigned long newsize, char **hookargs);
+			const char *lxcpath, int flags, const char *bdevtype,
+			const char *bdevdata, unsigned long newsize, char **hookargs);
 
-	/* lxcapi_console_getfd: allocate a console tty from container @c
+	/*!
+	 * \brief Allocate a console tty for the container.
 	 *
-	 * @c        : the running container
-	 * @ttynum   : in : tty number to attempt to allocate or -1 to
-	 *                  allocate the first available tty
-	 *             out: the tty number that was allocated
-	 * @masterfd : out: fd refering to the master side of pty
+	 * \param c Container.
+	 * \param[in,out] ttynum Terminal number to attempt to allocate,
+	 *  or \c -1 to allocate the first available tty.
+	 * \param[out] masterfd File descriptor refering to the master side of the pty.
 	 *
-	 * Returns "ttyfd" on success, -1 on failure. The returned "ttyfd" is
-	 * used to keep the tty allocated. The caller should close "ttyfd" to
-	 * indicate that it is done with the allocated console so that it can
-	 * be allocated by another caller.
+	 * \return tty file descriptor number on success, or \c -1 on
+	 *  failure.
+	 *
+	 * \note On successful return, \p ttynum will contain the tty number
+	 *  that was allocated.
+	 * \note The returned file descriptor is used to keep the tty
+	 *  allocated. The caller should call close(2) on the returned file
+	 *  descriptor when no longer required so that it may be allocated
+	 *  by another caller.
 	 */
 	int (*console_getfd)(struct lxc_container *c, int *ttynum, int *masterfd);
 
-	/* lxcapi_console: allocate and run a console tty from container @c
+	/*!
+	 * \brief Allocate and run a console tty.
 	 *
-	 * @c        : the running container
-	 * @ttynum   : tty number to attempt to allocate, -1 to
-	 *             allocate the first available tty, or 0 to allocate
-	 *             the console
-	 * @stdinfd  : fd to read input from
-	 * @stdoutfd : fd to write output to
-	 * @stderrfd : fd to write error output to
-	 * @escape   : the escape character (1 == 'a', 2 == 'b', ...)
+	 * \param c Container.
+	 * \param ttynum Terminal number to attempt to allocate, \c -1 to
+	 *  allocate the first available tty or \c 0 to allocate the
+	 *  console.
+	 * \param stdinfd File descriptor to read input from.
+	 * \param stdoutfd File descriptor to write output to.
+	 * \param stderrfd File descriptor to write error output to.
+	 * \param escape The escape character (1 == 'a', 2 == 'b', ...).
 	 *
-	 * Returns 0 on success, -1 on failure. This function will not return
-	 * until the console has been exited by the user.
+	 * \return \c 0 on success, \c -1 on failure.
+	 *
+	 * \note This function will not return until the console has been
+	 *  exited by the user.
 	 */
 	int (*console)(struct lxc_container *c, int ttynum,
-		       int stdinfd, int stdoutfd, int stderrfd, int escape);
+			int stdinfd, int stdoutfd, int stderrfd, int escape);
 
-	/* create subprocess and attach it to the container, run exec_function inside */
-	int (*attach)(struct lxc_container *c, lxc_attach_exec_t exec_function, void *exec_payload, lxc_attach_options_t *options, pid_t *attached_process);
+	/*!
+	 * \brief Create a sub-process attached to a container and run
+	 *  a function inside it.
+	 *
+	 * \param c Container.
+	 * \param exec_function Function to run.
+	 * \param exec_payload Data to pass to \p exec_function.
+	 * \param options \ref lxc_attach_options_t.
+	 * \param[out] attached_process Process ID of process running inside
+	 *  container \p c that is running \p exec_function.
+	 *
+	 * \return \c 0 on success, \c -1 on error.
+	 */
+	int (*attach)(struct lxc_container *c, lxc_attach_exec_t exec_function,
+			void *exec_payload, lxc_attach_options_t *options, pid_t *attached_process);
 
-	/* run program in container, wait for it to exit */
+	/*!
+	 * \brief Run a program inside a container and wait for it to exit.
+	 *
+	 * \param c Container.
+	 * \param options See \ref attach options.
+	 * \param program Full path inside container of program to run.
+	 * \param argv Array of arguments to pass to \p program.
+	 *
+	 * \return \c waitpid(2) status of exited process that ran \p
+	 * program, or \c -1 on error.
+	 */
 	int (*attach_run_wait)(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char * const argv[]);
+
+	/*!
+	 * \brief Run a program inside a container and wait for it to exit (list variant).
+	 *
+	 * \param c Container.
+	 * \param options See \ref attach options.
+	 * \param program Full path inside container of program to run.
+	 * \param ... Command-line to pass to \p program (must end in \c NULL).
+	 *
+	 * \return \c waitpid(2) status of exited process that ran \p
+	 * program, or \c -1 on error.
+	 */
 	int (*attach_run_waitl)(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char *arg, ...);
 
-	/*
-	* snapshot:
-	* If you have /var/lib/lxc/c1 and call c->snapshot() the firs time, it
-	* will return 0, and the container will be /var/lib/lxcsnaps/c1/snap0.
-	* The second call will return 1, and the snapshot will be
-	* /var/lib/lxcsnaps/c1/snap1.
-	*
-	* On error, returns -1.
-	*/
+	/*!
+	 * \brief Create a container snapshot.
+	 *
+	 * Assuming default paths, snapshots will be created as
+	 * \c /var/lib/lxcsnaps/\<c\>/snap\<n\>
+	 * where \c \<c\> represents the container name and \c \<n\>
+	 * represents the zero-based snapshot number.
+	 *
+	 * \param c Container.
+	 * \param commentfile Full path to file containing a description
+	 *  of the snapshot.
+	 *
+	 * \return -1 on error, or zero-based snapshot number.
+	 *
+	 * \note \p commentfile may be \c NULL but this is discouraged.
+	 */
 	int (*snapshot)(struct lxc_container *c, char *commentfile);
 
-	/*
-	 * snapshot_list() will return a description of all snapshots of c in
-	 * a simple array.  See src/tests/snapshot.c for the proper way to
-	 * free the allocated results.
+	/*!
+	 * \brief Obtain a list of container snapshots.
 	 *
-	 * Returns the number of snapshots.
+	 * \param c Container.
+	 * \param[out] snapshots Dynamically-allocated Array of lxc_snapshot's.
+	 *
+	 * \return Number of snapshots.
+	 *
+	 * \note The array returned in \p snapshots is allocated, so the caller must free it.
+	 * \note To free an individual snapshot as returned in \p
+	 * snapshots, call the snapshots \c free function (see \c src/tests/snapshot.c for an example).
 	 */
-	int (*snapshot_list)(struct lxc_container *, struct lxc_snapshot **);
+	int (*snapshot_list)(struct lxc_container *c, struct lxc_snapshot **snapshots);
 
-	/*
-	 * snapshot_restore() will create a new container based on a snapshot.
-	 * c is the container whose snapshot we look for, and snapname is the
-	 * specific snapshot name (i.e. "snap0").  newname is the name to be
-	 * used for the restored container.  If newname is the same as
-	 * c->name, then c will first be destroyed.  That will fail if the
-	 * snapshot is overlayfs-based, since the snapshots will pin the
-	 * original container.
+	/*!
+	 * \brief Create a new container based on a snapshot.
 	 *
-	 * The restored container will be a copy (not snapshot) of the snapshot,
-	 * and restored in the lxcpath of the original container.
-	 *
-	 * As an example, c might be /var/lib/lxc/c1, snapname  might be 'snap0'
-	 * which stands for /var/lib/lxcsnaps/c1/snap0.  If newname is c2,
-	 * then snap0 will be copied to /var/lib/lxc/c2.
-	 *
-	 * Returns true on success, false on failure.
+	 *  The restored container will be a copy (not snapshot) of the snapshot,
+	 *  and restored in the lxcpath of the original container.
+	 * \param c Container.
+	 * \param snapname Name of snapshot.
+	 * \param newname Name to be used for the restored snapshot.
+	 * \return \c true on success, else \c false.
+	 * \warning If \p newname is the same as the current container
+	 *  name, the container will be destroyed. However, this will
+	 *  fail if the  snapshot is overlayfs-based, since the snapshots
+	 *  will pin the original container.
+	 * \note As an example, if the container exists as \c /var/lib/lxc/c1, snapname might be \c 'snap0'
+	 *  (representing \c /var/lib/lxcsnaps/c1/snap0). If \p newname is \p c2,
+	 *  then \c snap0 will be copied to \c /var/lib/lxc/c2.
 	 */
 	bool (*snapshot_restore)(struct lxc_container *c, char *snapname, char *newname);
 
-	/*
-	 * snapshot_destroy() will destroy the given snapshot of c
+	/*!
+	 * \brief Destroy the specified snapshot.
 	 *
-	 * Returns true on success, false on failure.
+	 * \param c Container.
+	 * \param snapname Name of snapshot.
+	 *
+	 * \return \c true on success, else \c false.
 	 */
 	bool (*snapshot_destroy)(struct lxc_container *c, char *snapname);
 
-	/*
-	 * Return false if there is a control socket for the container monitor,
-	 * and the caller may not access it.  Return true otherwise.
+	/*!
+	 * \brief Determine if the caller may control the container.
+	 *
+	 * \param c Container.
+	 *
+	 * \return \c false if there is a control socket for the
+	 *  container monitor and the caller may not access it, otherwise
+	 * returns \c true.
 	 */
 	bool (*may_control)(struct lxc_container *c);
 
-	/*
-	 * add_device_node:
-	 * @c        : the running container
-	 * @src_path : the path of the device
-	 * @dest_path: the alternate path in the container. If NULL, the src_path is used
+	/*!
+	 * \brief Add specified device to the container.
 	 *
-	 * Returns true if given device succesfully added to container
+	 * \param c Container.
+	 * \param src_path Full path of the device.
+	 * \param dest_path Alternate path in the container (or \p NULL
+	 *  to use \p src_path).
+	 *
+	 * \return \c true on success, else \c false.
 	 */
 	bool (*add_device_node)(struct lxc_container *c, char *src_path, char *dest_path);
-	/*
-	 * remove_device_node:
-	 * @c        : the running container
-	 * @src_path : the path of the device
-	 * @dest_path: the alternate path in the container. If NULL, the src_path is used
+
+	/*!
+	 * \brief Remove specified device from the container.
 	 *
-	 * Returns true if given device succesfully removed from container
+	 * \param c Container.
+	 * \param src_path Full path of the device.
+	 * \param dest_path Alternate path in the container (or \p NULL
+	 *  to use \p src_path).
+	 *
+	 * \return \c true on success, else \c false.
 	 */
 	bool (*remove_device_node)(struct lxc_container *c, char *src_path, char *dest_path);
 };
 
+/*!
+ * \brief An LXC container snapshot.
+ */
 struct lxc_snapshot {
-	char *name;
-	char *comment_pathname;
-	char *timestamp;
-	char *lxcpath;
-	void (*free)(struct lxc_snapshot *);
+	char *name; /*!< Name of snapshot */
+	char *comment_pathname; /*!< Full path to snapshots comment file (may be \c NULL) */
+	char *timestamp; /*!< Time snapshot was created */
+	char *lxcpath; /*!< Full path to LXCPATH for snapshot */
+
+	/*!
+	 * \brief De-allocate the snapshot.
+	 * \param s snapshot.
+	 */
+	void (*free)(struct lxc_snapshot *s);
 };
 
+/*!
+ * \brief Create a new container.
+ *
+ * \param name Name to use for container.
+ * \param configpath Full path to configuration file to use.
+ *
+ * \return Newly-allocated container, or \c NULL on error.
+ */
 struct lxc_container *lxc_container_new(const char *name, const char *configpath);
+
+/*!
+ * \brief Add a reference to the specified container.
+ *
+ * \param c Container.
+ *
+ * \return \c true on success, \c false on error.
+ */
 int lxc_container_get(struct lxc_container *c);
+
+/*!
+ * \brief Drop a reference to the specified container.
+ *
+ * \param c Container.
+ *
+ * \return \c 0 on success, \c 1 if reference was successfully dropped
+ * and container has been freed, and \c -1 on error.
+ *
+ * \warning If \c 1 is returned, \p c is no longer valid.
+ */
 int lxc_container_put(struct lxc_container *c);
+
+/*!
+ * \brief Obtain a list of all container states.
+ * \param[out] states Caller-allocated array to hold all states (may be \c NULL).
+ *
+ * \return Number of container states.
+ *
+ * \note Passing \c NULL for \p states allows the caller to first
+ *  calculate how many states there are before calling the function again, the second time
+ *  providing a suitably-sized array to store the static string pointers
+ *  in.
+ * \note The \p states array should be freed by the caller, but not the strings the elements point to.
+ */
 int lxc_get_wait_states(const char **states);
+
+/*!
+ * \brief Determine path to default configuration file.
+ *
+ * \return Static string representing full path to default configuration
+ *  file.
+ *
+ * \note Returned string must not be freed.
+ */
 const char *lxc_get_default_config_path(void);
+
+/*!
+ * \brief Determine default LVM volume group.
+ *
+ * \return Static string representing default volume group,
+ *  or \c NULL on error.
+ *
+ * \note Returned string must not be freed.
+ */
 const char *lxc_get_default_lvm_vg(void);
+
+/*!
+ * \brief Determine default LVM thin pool.
+ *
+ * \return Static string representing default lvm thin pool,
+ *  or \c NULL on error.
+ *
+ * \note Returned string must not be freed.
+ */
 const char *lxc_get_default_lvm_thin_pool(void);
+
+/*!
+ * \brief Determine default ZFS root.
+ *
+ * \return Static string representing default ZFS root,
+ *  or \c NULL on error.
+ *
+ * \note Returned string must not be freed.
+ */
 const char *lxc_get_default_zfs_root(void);
+
+/*!
+ * \brief Determine version of LXC.
+ * \return Static string representing version of LXC in use.
+ *
+ * \note Returned string must not be freed.
+ */
 const char *lxc_get_version(void);
 
-/*
- * Get a list of defined containers in a lxcpath.
- * @lxcpath: lxcpath under which to look.
- * @names: if not null, then a list of container names will be returned here.
- * @cret: if not null, then a list of lxc_containers will be returned here.
+/*!
+ * \brief Get a list of defined containers in a lxcpath.
  *
- * Returns the number of containers found, or -1 on error.
+ * \param lxcpath lxcpath under which to look.
+ * \param names If not \c NULL, then a list of container names will be returned here.
+ * \param cret If not \c NULL, then a list of lxc_containers will be returned here.
+ *
+ * \return Number of containers found, or \c -1 on error.
+ *
+ * \note Values returned in \p cret are sorted by container name.
  */
 int list_defined_containers(const char *lxcpath, char ***names, struct lxc_container ***cret);
 
-/*
- * Get a list of active containers in a lxcpath.  Note that some of these
- * containers may not be "defined".
- * @lxcpath: lxcpath under which to look
- * @names: if not null, then a list of container names will be returned here.
- * @cret: if not null, then a list of lxc_containers will be returned here.
+/*!
+ * \brief Get a list of active containers for a given lxcpath.
  *
- * Returns the number of containers found, or -1 on error.
+ * \param lxcpath Full \c LXCPATH path to consider.
+ * \param[out] names Dynamically-allocated array of container names.
+ * \param[out] cret Dynamically-allocated list of containers.
+ *
+ * \return Number of containers found, or -1 on error.
+ *
+ * \note Some of the containers may not be "defined".
+ * \note Values returned in \p cret are sorted by container name.
+ * \note \p names and \p cret may both (or either) be specified as \c NULL.
+ * \note \p names and \p cret must be freed by the caller.
  */
 int list_active_containers(const char *lxcpath, char ***names, struct lxc_container ***cret);
 
-/*
- * Get an array sorted by name of defined and active containers in a lxcpath.
- * @lxcpath: lxcpath under which to look
- * @names: if not null, then an array of container names will be returned here.
- * @cret: if not null, then an array of lxc_containers will be returned here.
+/*!
+ * \brief Get a complete list of all containers for a given lxcpath.
  *
- * Returns the number of containers found, or -1 on error.
+ * \param lxcpath Full \c LXCPATH path to consider.
+ * \param[out] names Dynamically-allocated array of container name.
+ * \param[out] cret Dynamically-allocated list of containers.
+ *
+ * \return Number of containers, or -1 on error.
+ *
+ * \note Some of the containers may not be "defined".
+ * \note Values returned in \p cret are sorted by container name.
+ * \note \p names and \p cret may both (or either) be specified as \c NULL.
+ * \note \p names and \p cret must be freed by the caller.
  */
 int list_all_containers(const char *lxcpath, char ***names, struct lxc_container ***cret);
 
-#if 0
-char ** lxc_get_valid_keys();
-char ** lxc_get_valid_values(char *key);
-#endif
 #endif

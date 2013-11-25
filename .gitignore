@@ -118,6 +118,7 @@ doc/ja/legacy/*.1
 doc/legacy/*.1
 doc/manpage.links
 doc/manpage.refs
+doc/api/html/*
 
 m4/
 

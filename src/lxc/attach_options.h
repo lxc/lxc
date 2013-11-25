@@ -1,4 +1,5 @@
-/*
+/*! \file
+ *
  * lxc: linux Container library
  *
  * (C) Copyright IBM Corp. 2007, 2008
@@ -26,74 +27,107 @@
 
 #include <sys/types.h>
 
+/*!
+ * LXC environment policy.
+ */
 typedef enum lxc_attach_env_policy_t {
-	LXC_ATTACH_KEEP_ENV,
-	LXC_ATTACH_CLEAR_ENV
+	LXC_ATTACH_KEEP_ENV,   //!< Retain the environment
+	LXC_ATTACH_CLEAR_ENV   //!< Clear the environment
 } lxc_attach_env_policy_t;
 
 enum {
 	/* the following are on by default: */
-	LXC_ATTACH_MOVE_TO_CGROUP        = 0x00000001,
-	LXC_ATTACH_DROP_CAPABILITIES     = 0x00000002,
-	LXC_ATTACH_SET_PERSONALITY       = 0x00000004,
-	LXC_ATTACH_LSM_EXEC              = 0x00000008,
+	LXC_ATTACH_MOVE_TO_CGROUP        = 0x00000001, //!< Move to cgroup
+	LXC_ATTACH_DROP_CAPABILITIES     = 0x00000002, //!< Drop capabilities
+	LXC_ATTACH_SET_PERSONALITY       = 0x00000004, //!< Set personality
+	LXC_ATTACH_LSM_EXEC              = 0x00000008, //!< Execute under a Linux Security Module 
 
 	/* the following are off by default */
-	LXC_ATTACH_REMOUNT_PROC_SYS      = 0x00010000,
-	LXC_ATTACH_LSM_NOW               = 0x00020000,
+	LXC_ATTACH_REMOUNT_PROC_SYS      = 0x00010000, //!< Remount /proc filesystem
+	LXC_ATTACH_LSM_NOW               = 0x00020000, //!< FIXME: unknown
 
 	/* we have 16 bits for things that are on by default
 	 * and 16 bits that are off by default, that should
 	 * be sufficient to keep binary compatibility for
 	 * a while
 	 */
-	LXC_ATTACH_DEFAULT               = 0x0000FFFF
+	LXC_ATTACH_DEFAULT               = 0x0000FFFF  //!< Mask of flags to apply by default
 };
 
+/*! All Linux Security Module flags */
 #define LXC_ATTACH_LSM (LXC_ATTACH_LSM_EXEC | LXC_ATTACH_LSM_NOW)
 
-typedef struct lxc_attach_options_t lxc_attach_options_t;
+/*! LXC attach function type.
+ *
+ * Function to run in container.
+ *
+ * \param payload \ref lxc_attach_command_t to run.
+ *
+ * \return Function should return \c 0 on success, and any other value to denote failure.
+ */
 typedef int (*lxc_attach_exec_t)(void* payload);
 
-struct lxc_attach_options_t {
-	/* any combination of the above enum */
+/*!
+ * LXC attach options for \ref lxc_container \c attach().
+ */
+typedef struct lxc_attach_options_t {
+	/*! Any combination of LXC_ATTACH_* flags */
 	int attach_flags;
-	/* the namespaces to attach to (CLONE_NEW... flags) */
+
+	/*! The namespaces to attach to (CLONE_NEW... flags) */
 	int namespaces;
-	/* initial personality, -1 to autodetect
-	 * (may be ignored if lxc is compiled w/o personality support) */
+
+	/*! Initial personality (\c -1 to autodetect).
+	 * \warning This may be ignored if lxc is compiled without personality support)
+	 */
 	long personality;
 
-	/* inital current directory, use NULL to use cwd
-	 * (might not exist in container, then / will be
-	 * used because of kernel defaults)
+	/*! Inital current directory, use \c NULL to use cwd.
+	 * If the current directory does not exist in the container, the
+	 * root directory will be used instead because of kernel defaults.
 	 */
 	char* initial_cwd;
 
-	/* the uid and gid to attach to,
-	 * -1 for default (init uid/gid for userns containers,
-	 * otherwise or if detection fails 0/0)
+	/*! The user-id to run as.
+	 *
+	 * \note Set to \c -1 for default behaviour (init uid for userns
+	 * containers or \c 0 (super-user) if detection fails).
 	 */
 	uid_t uid;
+
+	/*! The group-id to run as.
+	 *
+	 * \note Set to \c -1 for default behaviour (init gid for userns
+	 * containers or \c 0 (super-user) if detection fails).
+	 */
 	gid_t gid;
 
-	/* environment handling */
+	/*! Environment policy */
 	lxc_attach_env_policy_t env_policy;
+
+	/*! Extra environment variables to set in the container environment */
 	char** extra_env_vars;
+
+	/*! Names of environment variables in existing environment to retain
+	 * in container environment.
+	 */
 	char** extra_keep_env;
 
-	/* file descriptors for stdin, stdout and stderr,
-	 * dup2() will be used before calling exec_function,
-	 * (assuming not 0, 1 and 2 are specified) and the
+	/**@{*/
+	/*! File descriptors for stdin, stdout and stderr,
+	 * \c dup2() will be used before calling exec_function,
+	 * (assuming not \c 0, \c 1 and \c 2 are specified) and the
 	 * original fds are closed before passing control
-	 * over. Any O_CLOEXEC flag will be removed after
-	 * that
+	 * over. Any \c O_CLOEXEC flag will be removed after
+	 * that.
 	 */
-	int stdin_fd;
-	int stdout_fd;
-	int stderr_fd;
-};
+	int stdin_fd; /*!< stdin file descriptor */
+	int stdout_fd; /*!< stdout file descriptor */
+	int stderr_fd; /*!< stderr file descriptor */
+	/**@}*/
+} lxc_attach_options_t;
 
+/*! Default attach options to use */
 #define LXC_ATTACH_OPTIONS_DEFAULT \
 	{ \
 		/* .attach_flags = */   LXC_ATTACH_DEFAULT, \
@@ -108,16 +142,30 @@ struct lxc_attach_options_t {
 		/* .stdin_fd = */       0, 1, 2 \
 	}
 
+/*!
+ * Representation of a command to run in a container.
+ */
 typedef struct lxc_attach_command_t {
-	char* program; /* the program to run (passed to execvp) */
-	char** argv;   /* the argv pointer of that program, including the program itself in argv[0] */
+	char* program; /*!< The program to run (passed to execvp) */
+	char** argv;   /*!< The argv pointer of that program, including the program itself in argv[0] */
 } lxc_attach_command_t;
 
-/* default execution functions:
- *   run_command: pointer to lxc_attach_command_t
- *   run_shell:   no payload, will be ignored
+/*!
+ * \brief Run a command in the container.
+ *
+ * \param payload \ref lxc_attach_command_t to run.
+ *
+ * \return \c -1 on error, exit code of lxc_attach_command_t program on success.
  */
 extern int lxc_attach_run_command(void* payload);
+
+/*!
+ * \brief Run a shell command in the container.
+ *
+ * \param payload Not used.
+ *
+ * \return Exit code of shell.
+ */
 extern int lxc_attach_run_shell(void* payload);
 
 #endif
