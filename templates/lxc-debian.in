@@ -93,6 +93,10 @@ EOF
     chroot $rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
     chroot $rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
 
+    # Set timezone as on host
+    cp /etc/localtime $rootfs/etc/localtime
+    cp /etc/timezone $rootfs/etc/timezone
+    
     echo "root:root" | chroot $rootfs chpasswd
     echo "Root password is 'root', please change !"
 
