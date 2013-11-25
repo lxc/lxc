@@ -1,6 +1,6 @@
 /* control.c
  *
- * Copyright © 2013 Canonical, Inc
+ * Copyright Â© 2013 Canonical, Inc
  * Author: Serge Hallyn <serge.hallyn@ubuntu.com>
  *
  * This program is free software; you can redistribute it and/or modify

@@ -3,8 +3,8 @@
 # Template script for generating Oracle Enterprise Linux container for LXC
 # based on lxc-fedora, lxc-ubuntu
 #
-# Copyright © 2011 Wim Coekaerts <wim.coekaerts@oracle.com>
-# Copyright © 2012 Dwight Engen <dwight.engen@oracle.com>
+# Copyright Â© 2011 Wim Coekaerts <wim.coekaerts@oracle.com>
+# Copyright Â© 2012 Dwight Engen <dwight.engen@oracle.com>
 #
 # Modified for Oracle Linux 5
 # Wim Coekaerts <wim.coekaerts@oracle.com>

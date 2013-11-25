@@ -6,8 +6,8 @@
 # This script consolidates and extends the existing lxc ubuntu scripts
 #
 
-# Copyright © 2011 Serge Hallyn <serge.hallyn@canonical.com>
-# Copyright © 2010 Wilhelm Meier
+# Copyright Â© 2011 Serge Hallyn <serge.hallyn@canonical.com>
+# Copyright Â© 2010 Wilhelm Meier
 # Author: Wilhelm Meier <wilhelm.meier@fh-kl.de>
 #
 #  This library is free software; you can redistribute it and/or
