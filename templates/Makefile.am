@@ -5,6 +5,7 @@ templates_SCRIPTS = \
 	lxc-ubuntu \
 	lxc-ubuntu-cloud \
 	lxc-opensuse \
+	lxc-centos \
 	lxc-fedora \
 	lxc-openmandriva \
 	lxc-oracle \

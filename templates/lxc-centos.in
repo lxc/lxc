@@ -1,0 +1,614 @@
+#!/bin/bash
+
+#
+# template script for generating centos container for LXC
+
+#
+# lxc: linux Container library
+
+# Authors:
+# Daniel Lezcano <daniel.lezcano@free.fr>
+# Ramez Hanna <rhanna@informatiq.org>
+# Fajar A. Nugraha <github@fajar.net>
+# Michael H. Warfield <mhw@WittsEnd.com>
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+#Configurations
+arch=$(arch)
+cache_base=@LOCALSTATEDIR@/cache/lxc/centos/$arch
+default_path=@LXCPATH@
+# We really need something better here!
+root_password=root
+
+lxc_network_type=veth
+lxc_network_link=lxcbr0
+
+# is this centos?
+# Alow for weird remixes like the Raspberry Pi
+#
+# Use the Mitre standard CPE identifier for the release ID if possible...
+# This may be in /etc/os-release or /etc/system-release-cpe.  We
+# should be able to use EITHER.  Give preference to /etc/os-release for now.
+
+if [ -e /etc/os-release ]
+then
+# This is a shell friendly configuration file.  We can just source it.
+# What we're looking for in here is the ID, VERSION_ID and the CPE_NAME
+    . /etc/os-release
+    echo "Host CPE ID from /etc/os-release: ${CPE_NAME}"
+fi
+
+if [ "${CPE_NAME}" = "" -a -e /etc/system-release-cpe ]
+then
+    CPE_NAME=$(head -n1 /etc/system-release-cpe)
+    CPE_URI=$(expr ${CPE_NAME} : '\([^:]*:[^:*]\)')
+    if [ "${CPE_URI}" != "cpe:/o" ]
+    then
+        CPE_NAME=
+    else
+        echo "Host CPE ID from /etc/system-release-cpe: ${CPE_NAME}"
+        # Probably a better way to do this but sill remain posix
+        # compatible but this works, shrug...
+        # Must be nice and not introduce convenient bashisms here.
+        ID=$(expr ${CPE_NAME} : '[^:]*:[^:]*:[^:]*:\([^:]*\)')
+        VERSION_ID=$(expr ${CPE_NAME} : '[^:]*:[^:]*:[^:]*:[^:]*:\([^:]*\)')
+    fi
+fi
+
+if [ "${CPE_NAME}" != "" -a "${ID}" = "centos" -a "${VERSION_ID}" != "" ]
+then
+    centos_host_ver=${VERSION_ID}
+    is_centos=true
+elif [ -e /etc/redhat-release ]
+then
+    # Only if all other methods fail, try to parse the redhat-release file.
+    centos_host_ver=$( sed -e '/^CentOS /!d' -e 's/CentOS*\srelease\s*\([0-9][0-9]*\)\s.*/\1/' < /etc/redhat-release )
+    if [ "$centos_host_ver" != "" ]
+    then
+        is_centos=true
+    fi
+fi
+
+# Map a few architectures to their generic Centos repository archs.
+#
+# CentOS currently doesn't support ARM but it's copied here from
+# the Fedora template for completeness and that it will in the future.
+#
+# The two ARM archs are a bit of a guesstimate for the v5 and v6
+# archs.  V6 should have hardware floating point (Rasberry Pi).
+# The "arm" arch is safer (no hardware floating point).  So
+# there may be cases where we "get it wrong" for some v6 other
+# than RPi.
+case "$arch" in
+i686) arch=i386 ;;
+armv3l|armv4l|armv5l) arch=arm ;;
+armv6l|armv7l|armv8l) arch=armhfp ;;
+esac
+
+force_mknod()
+{
+    # delete a device node if exists, and create a new one
+    rm -f $2 && mknod -m $1 $2 $3 $4 $5
+}
+
+configure_centos()
+{
+
+    # disable selinux in centos
+    mkdir -p $rootfs_path/selinux
+    echo 0 > $rootfs_path/selinux/enforce
+
+    # Also kill it in the /etc/selinux/config file if it's there...
+    if [[ -f $rootfs_path/etc/selinux/config ]]
+    then
+        sed -i '/^SELINUX=/s/.*/SELINUX=disabled/' $rootfs_path/etc/selinux/config
+    fi
+
+    # Nice catch from Dwight Engen in the Oracle template.
+    # Wantonly plagerized here with much appreciation.
+    if [ -f $rootfs_path/usr/sbin/selinuxenabled ]; then
+        mv $rootfs_path/usr/sbin/selinuxenabled $rootfs_path/usr/sbin/selinuxenabled.lxcorig
+        ln -s /bin/false $rootfs_path/usr/sbin/selinuxenabled
+    fi
+
+    # This is a known problem and documented in RedHat bugzilla as relating
+    # to a problem with auditing enabled.  This prevents an error in
+    # the container "Cannot make/remove an entry for the specified session"
+    sed -i '/^session.*pam_loginuid.so/s/^session/# session/' ${rootfs_path}/etc/pam.d/login
+    sed -i '/^session.*pam_loginuid.so/s/^session/# session/' ${rootfs_path}/etc/pam.d/sshd
+
+   # configure the network using the dhcp
+    cat <<EOF > ${rootfs_path}/etc/sysconfig/network-scripts/ifcfg-eth0
+DEVICE=eth0
+BOOTPROTO=dhcp
+ONBOOT=yes
+HOSTNAME=${UTSNAME}
+NM_CONTROLLED=no
+TYPE=Ethernet
+MTU=${MTU}
+EOF
+
+    # set the hostname
+    cat <<EOF > ${rootfs_path}/etc/sysconfig/network
+NETWORKING=yes
+HOSTNAME=${UTSNAME}
+EOF
+
+    # set minimal hosts
+    cat <<EOF > $rootfs_path/etc/hosts
+127.0.0.1 localhost $name
+EOF
+
+    # set minimal fstab
+    cat <<EOF > $rootfs_path/etc/fstab
+/dev/root               /                       rootfs   defaults        0 0
+none                    /dev/shm                tmpfs    nosuid,nodev    0 0
+EOF
+
+    # create lxc compatibility init script
+    if [ "$release" = "6" ]; then
+        cat <<EOF > $rootfs_path/etc/init/lxc-sysinit.conf
+start on startup
+env container
+
+pre-start script
+        if [ "x$container" != "xlxc" -a "x$container" != "xlibvirt" ]; then
+                stop;
+        fi
+        initctl start tty TTY=console
+        rm -f /var/lock/subsys/*
+        rm -f /var/run/*.pid
+        telinit 3
+        exit 0;
+end script
+EOF
+    elif [ "$release" = "5" ]; then
+        cat <<EOF > $rootfs_path/etc/rc.d/lxc.sysinit
+#! /bin/bash
+rm -f /etc/mtab /var/run/*.{pid,lock} /var/lock/subsys/*
+rm -rf {/,/var}/tmp/*
+echo "/dev/root               /                       rootfs   defaults        0 0" > /etc/mtab
+exit 0
+EOF
+        chmod 755 $rootfs_path/etc/rc.d/lxc.sysinit
+        sed -i 's|si::sysinit:/etc/rc.d/rc.sysinit|si::bootwait:/etc/rc.d/lxc.sysinit|'  $rootfs_path/etc/inittab
+        sed -i 's|^1:|co:2345:respawn:/sbin/mingetty console\n1:|' $rootfs_path/etc/inittab
+        sed -i 's|^\([56]:\)|#\1|' $rootfs_path/etc/inittab
+    fi
+
+    dev_path="${rootfs_path}/dev"
+    rm -rf $dev_path
+    mkdir -p $dev_path
+    mknod -m 666 ${dev_path}/null c 1 3
+    mknod -m 666 ${dev_path}/zero c 1 5
+    mknod -m 666 ${dev_path}/random c 1 8
+    mknod -m 666 ${dev_path}/urandom c 1 9
+    mkdir -m 755 ${dev_path}/pts
+    mkdir -m 1777 ${dev_path}/shm
+    mknod -m 666 ${dev_path}/tty c 5 0
+    mknod -m 666 ${dev_path}/tty0 c 4 0
+    mknod -m 666 ${dev_path}/tty1 c 4 1
+    mknod -m 666 ${dev_path}/tty2 c 4 2
+    mknod -m 666 ${dev_path}/tty3 c 4 3
+    mknod -m 666 ${dev_path}/tty4 c 4 4
+    mknod -m 600 ${dev_path}/console c 5 1
+    mknod -m 666 ${dev_path}/full c 1 7
+    mknod -m 600 ${dev_path}/initctl p
+    mknod -m 666 ${dev_path}/ptmx c 5 2
+
+    echo "setting root passwd to $root_password"
+    echo "root:$root_password" | chroot $rootfs_path chpasswd
+
+    # This will need to be enhanced for CentOS 7 when systemd
+    # comes into play...   /\/\|=mhw=|\/\/
+
+    return 0
+}
+
+configure_centos_init()
+{
+    sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.sysinit
+    sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.d/rc.sysinit
+    if [ "$release" = "6" ]; then
+        chroot ${rootfs_path} chkconfig udev-post off
+    fi
+    chroot ${rootfs_path} chkconfig network on
+}
+
+download_centos()
+{
+
+    # check the mini centos was not already downloaded
+    INSTALL_ROOT=$cache/partial
+    mkdir -p $INSTALL_ROOT
+    if [ $? -ne 0 ]; then
+    echo "Failed to create '$INSTALL_ROOT' directory"
+    return 1
+    fi
+
+    # download a mini centos into a cache
+    echo "Downloading centos minimal ..."
+    YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
+    PKG_LIST="yum initscripts passwd rsyslog vim-minimal openssh-server openssh-clients dhclient chkconfig rootfiles policycoreutils"
+
+    # use temporary repository definition
+    REPO_FILE=$INSTALL_ROOT/etc/yum.repos.d/lxc-centos-temp.repo
+    mkdir -p $(dirname $REPO_FILE)
+    cat <<EOF > $REPO_FILE
+[base]
+name=CentOS-$release - Base
+mirrorlist=http://mirrorlist.centos.org/?release=$release&arch=$arch&repo=os
+
+[updates]
+name=CentOS-$release - Updates
+mirrorlist=http://mirrorlist.centos.org/?release=$release&arch=$arch&repo=updates
+EOF
+
+    # create minimal device nodes, needed for "yum install" and "yum update" process
+    mkdir -p $INSTALL_ROOT/dev
+    force_mknod 666 $INSTALL_ROOT/dev/null c 1 3
+    force_mknod 666 $INSTALL_ROOT/dev/urandom c 1 9
+
+    $YUM install $PKG_LIST
+
+    if [ $? -ne 0 ]; then
+        echo "Failed to download the rootfs, aborting."
+        return 1
+    fi
+
+    # use same nameservers as hosts, needed for "yum update later"
+    cp /etc/resolv.conf $INSTALL_ROOT/etc/
+
+    # check whether rpmdb is under $HOME
+    if [ ! -e $INSTALL_ROOT/var/lib/rpm/Packages -a -e $INSTALL_ROOT/$HOME/.rpmdb/Packages ]; then
+        echo "Fixing rpmdb location ..."
+        mv $INSTALL_ROOT/$HOME/.rpmdb/[A-Z]* $INSTALL_ROOT/var/lib/rpm/
+        rm -rf $INSTALL_ROOT/$HOME/.rpmdb
+        chroot $INSTALL_ROOT rpm --rebuilddb 2>/dev/null
+    fi
+
+    # check whether rpmdb version is correct
+    chroot $INSTALL_ROOT rpm --quiet -q yum 2>/dev/null
+    ret=$?
+
+    # if "rpm -q" doesn't work due to rpmdb version difference,
+    # then we need to redo the process using the newly-installed yum
+    if [ $ret -gt 0 ]; then
+        echo "Reinstalling packages ..."
+        mv $REPO_FILE $REPO_FILE.tmp
+        mkdir $INSTALL_ROOT/etc/yum.repos.disabled
+        mv $INSTALL_ROOT/etc/yum.repos.d/*.repo $INSTALL_ROOT/etc/yum.repos.disabled/
+        mv $REPO_FILE.tmp $REPO_FILE
+        mkdir -p $INSTALL_ROOT/$INSTALL_ROOT/etc
+        cp /etc/resolv.conf $INSTALL_ROOT/$INSTALL_ROOT/etc/
+        mkdir -p $INSTALL_ROOT/$INSTALL_ROOT/dev
+        mknod -m 666 $INSTALL_ROOT/$INSTALL_ROOT/dev/null c 1 3
+        mknod -m 666 $INSTALL_ROOT/$INSTALL_ROOT/dev/urandom c 1 9
+        mkdir -p $INSTALL_ROOT/$INSTALL_ROOT/var/cache/yum
+        cp -al $INSTALL_ROOT/var/cache/yum/* $INSTALL_ROOT/$INSTALL_ROOT/var/cache/yum/
+        chroot $INSTALL_ROOT $YUM install $PKG_LIST
+        if [ $? -ne 0 ]; then
+            echo "Failed to download the rootfs, aborting."
+            return 1
+        fi
+        mv $INSTALL_ROOT/$INSTALL_ROOT $INSTALL_ROOT.tmp
+        rm -rf $INSTALL_ROOT
+        mv $INSTALL_ROOT.tmp $INSTALL_ROOT
+    fi
+
+    rm -f $REPO_FILE
+    rm -rf $INSTALL_ROOT/var/cache/yum/*
+
+    mv "$INSTALL_ROOT" "$cache/rootfs"
+    echo "Download complete."
+
+    return 0
+}
+
+copy_centos()
+{
+
+    # make a local copy of the mini centos
+    echo -n "Copying rootfs to $rootfs_path ..."
+    #cp -a $cache/rootfs-$arch $rootfs_path || return 1
+    # i prefer rsync (no reason really)
+    mkdir -p $rootfs_path
+    rsync -a $cache/rootfs/ $rootfs_path/
+    return 0
+}
+
+update_centos()
+{
+    YUM="chroot $cache/rootfs yum -y --nogpgcheck"
+    $YUM update
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    $YUM clean packages
+}
+
+install_centos()
+{
+    mkdir -p /var/lock/subsys/
+    (
+    flock -x 200
+    if [ $? -ne 0 ]; then
+        echo "Cache repository is busy."
+        return 1
+    fi
+
+    echo "Checking cache download in $cache/rootfs ... "
+    if [ ! -e "$cache/rootfs" ]; then
+        download_centos
+        if [ $? -ne 0 ]; then
+            echo "Failed to download 'centos base'"
+            return 1
+        fi
+    else
+        echo "Cache found. Updating..."
+        update_centos
+        if [ $? -ne 0 ]; then
+            echo "Failed to update 'centos base', continuing with last known good cache"
+        else
+            echo "Update finished"
+        fi
+    fi
+
+    echo "Copy $cache/rootfs to $rootfs_path ... "
+    copy_centos
+    if [ $? -ne 0 ]; then
+        echo "Failed to copy rootfs"
+        return 1
+    fi
+
+    return 0
+
+    ) 200>/var/lock/subsys/lxc
+
+    return $?
+}
+
+copy_configuration()
+{
+
+    mkdir -p $config_path
+    cat <<EOF >> $config_path/config
+lxc.utsname = $utsname
+lxc.tty = 4
+lxc.pts = 1024
+lxc.rootfs = $rootfs_path
+lxc.mount  = $config_path/fstab
+lxc.cap.drop = sys_module mac_admin mac_override sys_time
+
+lxc.autodev = $auto_dev
+
+# example simple networking setup, uncomment to enable
+#lxc.network.type = $lxc_network_type
+#lxc.network.flags = up
+#lxc.network.link = $lxc_network_link
+#lxc.network.name = eth0
+# additional example for veth network type, static MAC address,
+# and persistent veth device name on host side
+#lxc.network.hwaddr = 00:16:3e:77:52:20
+#lxc.network.veth.pair = v-$name-e0
+
+#cgroups
+lxc.cgroup.devices.deny = a
+# /dev/null and zero
+lxc.cgroup.devices.allow = c 1:3 rwm
+lxc.cgroup.devices.allow = c 1:5 rwm
+# consoles
+lxc.cgroup.devices.allow = c 5:1 rwm
+lxc.cgroup.devices.allow = c 5:0 rwm
+lxc.cgroup.devices.allow = c 4:0 rwm
+lxc.cgroup.devices.allow = c 4:1 rwm
+# /dev/{,u}random
+lxc.cgroup.devices.allow = c 1:9 rwm
+lxc.cgroup.devices.allow = c 1:8 rwm
+lxc.cgroup.devices.allow = c 136:* rwm
+lxc.cgroup.devices.allow = c 5:2 rwm
+# rtc
+lxc.cgroup.devices.allow = c 254:0 rwm
+EOF
+
+    cat <<EOF > $config_path/fstab
+proc            proc         proc    nodev,noexec,nosuid 0 0
+devpts          dev/pts      devpts defaults 0 0
+sysfs           sys          sysfs defaults  0 0
+EOF
+
+    if [ $? -ne 0 ]; then
+    echo "Failed to add configuration"
+    return 1
+    fi
+
+    return 0
+}
+
+clean()
+{
+
+    if [ ! -e $cache ]; then
+    exit 0
+    fi
+
+    # lock, so we won't purge while someone is creating a repository
+    (
+    flock -x 200
+    if [ $? != 0 ]; then
+        echo "Cache repository is busy."
+        exit 1
+    fi
+
+    echo -n "Purging the download cache for centos-$release..."
+    rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
+    exit 0
+
+    ) 200>/var/lock/subsys/lxc
+}
+
+usage()
+{
+    cat <<EOF
+usage:
+    $1 -n|--name=<container_name>
+        [-p|--path=<path>] [-c|--clean] [-R|--release=<CentOS_release>] [-A|--arch=<arch of the container>]
+        [-h|--help]
+Mandatory args:
+  -n,--name         container name, used to as an identifier for that container from now on
+Optional args:
+  -p,--path         path to where the container rootfs will be created, defaults to /var/lib/lxc. The container config will go under /var/lib/lxc in that case
+  -c,--clean        clean the cache
+  -R,--release      Centos release for the new container. if the host is Centos, then it will defaultto the host's release.
+     --fqdn         fully qualified domain name (FQDN) for DNS and system naming
+  -A,--arch         NOT USED YET. Define what arch the container will be [i686,x86_64]
+  -h,--help         print this help
+EOF
+    return 0
+}
+
+options=$(getopt -o hp:n:cR: -l help,path:,rootfs:,name:,clean,release:,fqdn: -- "$@")
+if [ $? -ne 0 ]; then
+    usage $(basename $0)
+    exit 1
+fi
+eval set -- "$options"
+
+while true
+do
+    case "$1" in
+        -h|--help)      usage $0 && exit 0;;
+        -p|--path)      path=$2; shift 2;;
+        --rootfs)       rootfs=$2; shift 2;;
+        -n|--name)      name=$2; shift 2;;
+        -c|--clean)     clean=$2; shift 2;;
+        -R|--release)   release=$2; shift 2;;
+        --fqdn)         utsname=$2; shift 2;;
+        --)             shift 1; break ;;
+        *)              break ;;
+    esac
+done
+
+if [ ! -z "$clean" -a -z "$path" ]; then
+    clean || exit 1
+    exit 0
+fi
+
+if [ -z "${utsname}" ]; then
+    utsname=${name}
+fi
+
+# This follows a standard "resolver" convention that an FQDN must have
+# at least two dots or it is considered a local relative host name.
+# If it doesn't, append the dns domain name of the host system.
+#
+# This changes one significant behavior when running
+# "lxc_create -n Container_Name" without using the
+# --fqdn option.
+#
+# Old behavior:
+#    utsname and hostname = Container_Name
+# New behavior:
+#    utsname and hostname = Container_Name.Domain_Name
+
+if [ $(expr "$utsname" : '.*\..*\.') = 0 ]; then
+    if [ -n "$(dnsdomainname)" ]; then
+        utsname=${utsname}.$(dnsdomainname)
+    fi
+fi
+
+type yum >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "'yum' command is missing"
+    exit 1
+fi
+
+if [ -z "$path" ]; then
+    path=$default_path/$name
+fi
+
+if [ -z "$release" ]; then
+    if [ "$is_centos" -a "$centos_host_ver" ]; then
+        release=$centos_host_ver
+    else
+        echo "This is not a centos host and release missing, defaulting to 6 use -R|--release to specify release"
+        release=6
+    fi
+fi
+
+# CentOS 7 and above should run systemd.  We need autodev enabled to keep
+# systemd from causing problems.
+if [ $release -gt 6 ]; then
+    auto_dev="1"
+else
+    auto_dev="0"
+fi
+
+if [ "$(id -u)" != "0" ]; then
+    echo "This script should be run as 'root'"
+    exit 1
+fi
+
+
+if [ -z "$rootfs_path" ]; then
+    rootfs_path=$path/rootfs
+    # check for 'lxc.rootfs' passed in through default config by lxc-create
+    if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
+        rootfs_path=`grep 'lxc.rootfs =' $path/config | awk -F= '{ print $2 }'`
+    fi
+fi
+config_path=$default_path/$name
+cache=$cache_base/$release
+
+revert()
+{
+    echo "Interrupted, so cleaning up"
+    lxc-destroy -n $name
+    # maybe was interrupted before copy config
+    rm -rf $path
+    rm -rf $default_path/$name
+    echo "exiting..."
+    exit 1
+}
+
+trap revert SIGHUP SIGINT SIGTERM
+
+copy_configuration
+if [ $? -ne 0 ]; then
+    echo "failed write configuration file"
+    exit 1
+fi
+
+install_centos
+if [ $? -ne 0 ]; then
+    echo "failed to install centos"
+    exit 1
+fi
+
+configure_centos
+if [ $? -ne 0 ]; then
+    echo "failed to configure centos for a container"
+    exit 1
+fi
+
+configure_centos_init
+
+if [ ! -z $clean ]; then
+    clean || exit 1
+    exit 0
+fi
+echo "container rootfs and config created, default root password is '$root_password'"
+echo "edit the config file to check/enable networking setup"

@@ -25,13 +25,14 @@ AC_GNU_SOURCE
 # Detect the distribution. This is used for the default configuration and
 # for some distro-specific build options.
 AC_MSG_CHECKING([host distribution])
-AC_ARG_WITH(distro, AS_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, oracle, fedora, suse, gentoo, debian, arch, slackware, paldo, openmandriva or pardus.]))
+AC_ARG_WITH(distro, AS_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, oracle, centos, fedora, suse, gentoo, debian, arch, slackware, paldo, openmandriva or pardus.]))
 if test "z$with_distro" = "z"; then
 	with_distro=`lsb_release -is`
 fi
 if test "z$with_distro" = "z"; then
 	AC_CHECK_FILE(/etc/redhat-release,with_distro="redhat")
 	AC_CHECK_FILE(/etc/oracle-release,with_distro="oracle")
+	AC_CHECK_FILE(/etc/centos-release,with_distro="centos")
 	AC_CHECK_FILE(/etc/fedora-release,with_distro="fedora")
 	AC_CHECK_FILE(/etc/SuSE-release,with_distro="suse")
 	AC_CHECK_FILE(/etc/gentoo-release,with_distro="gentoo")
@@ -52,7 +53,7 @@ case $with_distro in
 	ubuntu)
 		distroconf=default.conf.ubuntu
 		;;
-	redhat|fedora|oracle|oracleserver)
+	redhat|centos|fedora|oracle|oracleserver)
 		distroconf=default.conf.libvirt
 		;;
 	*)
@@ -534,6 +535,7 @@ AC_CONFIG_FILES([
 	templates/lxc-ubuntu-cloud
 	templates/lxc-opensuse
 	templates/lxc-busybox
+	templates/lxc-centos
 	templates/lxc-fedora
 	templates/lxc-openmandriva
 	templates/lxc-oracle
