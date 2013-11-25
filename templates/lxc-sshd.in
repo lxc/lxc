@@ -220,7 +220,7 @@ send host-name "<hostname>";
 EOF
         ifconfig eth0 up
         dhclient eth0 -cf /dhclient.conf
-	echo "Container IP address:"
+        echo "Container IP address:"
         ifconfig eth0 |grep inet
     fi
 

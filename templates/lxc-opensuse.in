@@ -246,29 +246,29 @@ copy_configuration()
     name=$3
 
     if grep -q "^lxc.network.type" $path/config; then
-	TYPE=$(sed '/^#/d; /lxc.network.type/!d; s/.*=[ \t]*//' $path/config)
-	grep -q "^lxc.network.ipv4" $path/config
-	IPV4_NOT_CONFIGURED=$?
+        TYPE=$(sed '/^#/d; /lxc.network.type/!d; s/.*=[ \t]*//' $path/config)
+        grep -q "^lxc.network.ipv4" $path/config
+        IPV4_NOT_CONFIGURED=$?
 
-	if [ ! grep -q "^lxc.network.*.gateway" $path/config ]; then
-	    [ $IPV4_NOT_CONFIGURED -eq 0 ] && IPV4=$(sed '/^#/d; /lxc.network.ipv4/!d; /gateway/d; s/.*=[ \t]*//; s/\([[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+\).*/\1/' $path/config)
-	    if [ "$TYPE" = "veth" -o "$TYPE" = "macvlan" ]; then
-		if [ $IPV4_NOT_CONFIGURED -eq 0 -a "$IPV4" != "0.0.0.0" ]; then
-		    # set default route
-		    IP=$(/sbin/ip route | awk '/default/ { print $3 }')
-		    echo "lxc.network.ipv4.gateway = $IP " >> $path/config
-		else
-		    # set network as dhcp
-		    sed -i -e 's/BOOTPROTO=.*/BOOTPROTO=dhcp/' $rootfs/etc/sysconfig/network/ifcfg-eth0
-		fi
-	    fi
-	fi
-	if [ "$TYPE" != "empty" ]; then
-	    echo "#remove next line if host DNS configuration should not be available to container" >> $path/config
-	    echo "lxc.mount.entry = /etc/resolv.conf etc/resolv.conf none bind,ro 0 0" >> $path/config
-	fi
+        if [ ! grep -q "^lxc.network.*.gateway" $path/config ]; then
+            [ $IPV4_NOT_CONFIGURED -eq 0 ] && IPV4=$(sed '/^#/d; /lxc.network.ipv4/!d; /gateway/d; s/.*=[ \t]*//; s/\([[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+\).*/\1/' $path/config)
+            if [ "$TYPE" = "veth" -o "$TYPE" = "macvlan" ]; then
+                if [ $IPV4_NOT_CONFIGURED -eq 0 -a "$IPV4" != "0.0.0.0" ]; then
+                    # set default route
+                    IP=$(/sbin/ip route | awk '/default/ { print $3 }')
+                    echo "lxc.network.ipv4.gateway = $IP " >> $path/config
+                else
+                    # set network as dhcp
+                    sed -i -e 's/BOOTPROTO=.*/BOOTPROTO=dhcp/' $rootfs/etc/sysconfig/network/ifcfg-eth0
+                fi
+            fi
+        fi
+        if [ "$TYPE" != "empty" ]; then
+            echo "#remove next line if host DNS configuration should not be available to container" >> $path/config
+            echo "lxc.mount.entry = /etc/resolv.conf etc/resolv.conf none bind,ro 0 0" >> $path/config
+        fi
     else
-	echo 'lxc.network.type = empty' >> $path/config
+        echo 'lxc.network.type = empty' >> $path/config
     fi
 
     grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config

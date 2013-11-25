@@ -181,7 +181,7 @@ install_openmandriva()
 
         echo "Checking cache download in $cache/rootfs ... "
         if [ ! -e "$cache/rootfs" ]; then
-	    echo $cache/rootfs
+            echo $cache/rootfs
             create_chroot_openmandriva
             if [ $? -ne 0 ]; then
                 echo "Failed to download 'openmandriva basesystem-minimal'"
@@ -349,9 +349,9 @@ if [ -f /etc/lsb-release ]; then
     if [ "$DISTRIB_ID" = "OpenMandrivaLinux" ]; then
         release=openmandriva2013.0
     elif [ "$DISTRIB_ID" = "RosaDesktop.Fresh" ]; then
-	release=rosa2012.1
+        release=rosa2012.1
     else
-	echo "This is not an OpenMandriva or ROSA release"
+        echo "This is not an OpenMandriva or ROSA release"
         exit 1
     fi
 fi
@@ -366,7 +366,7 @@ do
         -P|--profile)   profile=$2; shift 2;;
         -c|--clean)     clean=$2; shift 2;;
         -R|--release)   release=$2; shift 2;;
-	-a|--arch)      arch=$2; shift 2;;
+        -a|--arch)      arch=$2; shift 2;;
         -4|--ipv4)      ipv4=$2; shift 2;;
         -6|--ipv6)      ipv6=$2; shift 2;;
         -g|--gw)        gw=$2; shift 2;;

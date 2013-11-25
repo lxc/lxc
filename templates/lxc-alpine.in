@@ -300,7 +300,7 @@ while [ $# -gt 0 ]; do
         optarg_check $opt "$1"
         arch=$1
         shift
-	;;
+        ;;
     --)
         break;;
     --*=*)
@@ -335,12 +335,17 @@ lxc_arch=$arch
 apk_arch=$arch
 
 case "$arch" in
-	i[3-6]86)
-		apk_arch=x86;;
-	x86)
-		lxc_arch=i686;;
-	x86_64|"") ;;
-	*)	die "unsupported architecture: $arch";;
+    i[3-6]86)
+        apk_arch=x86
+        ;;
+    x86)
+        lxc_arch=i686
+        ;;
+    x86_64|"")
+        ;;
+    *)
+        die "unsupported architecture: $arch"
+        ;;
 esac
 
 : ${APK:=apk}

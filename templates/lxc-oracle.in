@@ -67,7 +67,7 @@ container_rootfs_configure()
     if [ -e $container_rootfs/etc/selinux/config ]; then
         sed -i 's|SELINUX=enforcing|SELINUX=disabled|' $container_rootfs/etc/selinux/config
     else
-	mkdir -p $container_rootfs/etc/selinux
+        mkdir -p $container_rootfs/etc/selinux
         echo "SELINUX=disabled" >$container_rootfs/etc/selinux/config
     fi
     sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/login

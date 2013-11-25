@@ -404,9 +404,9 @@ copy_configuration $path $rootfs $name $arch $release
 "$CLONE_HOOK_FN" "${cloneargs[@]}" "$rootfs"
 
 if [ $mapped_uid -ne -1 ]; then
-	chown $mapped_uid $path/config
-	chown -R $mapped_uid $STATE_DIR
-	chown -R $mapped_uid $cache
+    chown $mapped_uid $path/config
+    chown -R $mapped_uid $STATE_DIR
+    chown -R $mapped_uid $cache
 fi
 
 echo "Container $name created."
