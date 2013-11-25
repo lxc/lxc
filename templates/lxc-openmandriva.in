@@ -343,7 +343,7 @@ if [ $? -ne 0 ]; then
 fi
 eval set -- "$options"
 
-release=${release:-"cooker"} 
+release=${release:-"cooker"}
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
     if [ "$DISTRIB_ID" = "OpenMandrivaLinux" ]; then

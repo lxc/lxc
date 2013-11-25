@@ -253,7 +253,7 @@ const char *lxc_global_config_value(const char *option_name)
 		{ "cgroup.use",      NULL            },
 		{ NULL, NULL },
 	};
-	/* Protected by a mutex to eliminate conflicting load and store operations */ 
+	/* Protected by a mutex to eliminate conflicting load and store operations */
 	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
 	const char *(*ptr)[2];
 	const char *value;

@@ -112,7 +112,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	   <listitem>
 	    <para>
               <!--
-              List existing snapshots. 
+              List existing snapshots.
               -->
               存在するスナップショットをリスト表示します．
             </para>
@@ -124,7 +124,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	   <listitem>
 	    <para>
               <!--
-              Show snapshot comments in the snapshots listings. 
+              Show snapshot comments in the snapshots listings.
               -->
               スナップショットのリスト表示でスナップショットに対するコメントを表示します．
             </para>

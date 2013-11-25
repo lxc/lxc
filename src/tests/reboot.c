@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright © 2012 Serge Hallyn <serge.hallyn@ubuntu.com>.
  * Copyright © 2012 Canonical Ltd.
  *

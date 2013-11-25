@@ -52,8 +52,8 @@ BuildRequires: python3-devel
 
 %description
 Containers are insulated areas inside a system, which have their own namespace
-for filesystem, network, PID, IPC, CPU and memory allocation and which can be 
-created using the Control Group and Namespace features included in the Linux  
+for filesystem, network, PID, IPC, CPU and memory allocation and which can be
+created using the Control Group and Namespace features included in the Linux
 kernel.
 
 This package provides the lxc-* tools, which can be used to start a single

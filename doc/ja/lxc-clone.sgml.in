@@ -215,7 +215,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    The lxcpath of the original container.  By default, the system
 	    wide configured lxcpath will be used.
             -->
-            オリジナルのコンテナの lxcpath．デフォルトでは，システム全体で設定された lxcpath が使われます．            
+            オリジナルのコンテナの lxcpath．デフォルトでは，システム全体で設定された lxcpath が使われます．
 	  </para>
 	</listitem>
       </varlistentry>

@@ -40,7 +40,7 @@ enum {
 	LXC_ATTACH_MOVE_TO_CGROUP        = 0x00000001, //!< Move to cgroup
 	LXC_ATTACH_DROP_CAPABILITIES     = 0x00000002, //!< Drop capabilities
 	LXC_ATTACH_SET_PERSONALITY       = 0x00000004, //!< Set personality
-	LXC_ATTACH_LSM_EXEC              = 0x00000008, //!< Execute under a Linux Security Module 
+	LXC_ATTACH_LSM_EXEC              = 0x00000008, //!< Execute under a Linux Security Module
 
 	/* the following are off by default */
 	LXC_ATTACH_REMOUNT_PROC_SYS      = 0x00010000, //!< Remount /proc filesystem

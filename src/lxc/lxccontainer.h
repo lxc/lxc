@@ -149,7 +149,7 @@ struct lxc_container {
 	 * \brief Determine process ID of the containers init process.
 	 *
 	 * \param c Container.
-	 * 
+	 *
 	 * \return pid of init process as seen from outside the
 	 *  container.
 	 */
