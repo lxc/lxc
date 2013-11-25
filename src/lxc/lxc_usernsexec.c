@@ -38,7 +38,14 @@
 #include <sched.h>
 #include <pwd.h>
 #include <grp.h>
+#include "config.h"
 #include "namespace.h"
+
+#ifndef HAVE_GETLINE
+#ifdef HAVE_FGETLN
+#include <../include/getline.h>
+#endif
+#endif
 
 int unshare(int flags);
 
