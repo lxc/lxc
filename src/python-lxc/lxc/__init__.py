@@ -417,21 +417,23 @@ class Container(_lxc.Container):
         return _lxc.Container.wait(self, state, timeout)
 
 
-def list_containers(as_object=False, config_path=None):
+def list_containers(active=True, defined=True,
+                    as_object=False, config_path=None):
     """
         List the containers on the system.
     """
 
-    if not config_path:
-        config_path = default_config_path
+    if config_path:
+        entries = _lxc.list_containers(active=active, defined=defined,
+                                       config_path=config_path)
+    else:
+        entries = _lxc.list_containers(active=active, defined=defined)
 
-    containers = []
-    for entry in glob.glob("%s/*/config" % config_path):
-        if as_object:
-            containers.append(Container(entry.split("/")[-2], config_path))
-        else:
-            containers.append(entry.split("/")[-2])
-    return containers
+    if as_object:
+        return tuple([Container(name, config_path) for name in entries])
+    else:
+        return entries
+
 
 def attach_run_command(cmd):
     """

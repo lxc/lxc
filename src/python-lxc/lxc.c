@@ -170,6 +170,65 @@ LXC_get_version(PyObject *self, PyObject *args)
     return PyUnicode_FromString(lxc_get_version());
 }
 
+static PyObject *
+LXC_list_containers(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    char **names = NULL;
+    PyObject *list = NULL;
+    int list_count = 0;
+
+    int list_active = 1;
+    int list_defined = 1;
+
+    PyObject *py_list_active = NULL;
+    PyObject *py_list_defined = NULL;
+
+    char* config_path = NULL;
+
+    int i = 0;
+    PyObject *vargs = NULL;
+    static char *kwlist[] = {"active", "defined", "config_path", NULL};
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|OOs", kwlist,
+                                      &py_list_active,
+                                      &py_list_defined,
+                                      &config_path, &vargs))
+        return NULL;
+
+    /* We default to listing everything */
+    if (py_list_active && py_list_active != Py_True) {
+        list_active = 0;
+    }
+
+    if (py_list_defined && py_list_defined != Py_True) {
+        list_defined = 0;
+    }
+
+    /* Call the right API function based on filters */
+    if (list_active == 1 && list_defined == 1)
+        list_count = list_all_containers(config_path, &names, NULL);
+    else if (list_active == 1)
+        list_count = list_active_containers(config_path, &names, NULL);
+    else if (list_defined == 1)
+        list_count = list_defined_containers(config_path, &names, NULL);
+
+    /* Handle failure */
+    if (list_count < 0) {
+        PyErr_SetString(PyExc_ValueError, "failure to list containers");
+        return NULL;
+    }
+
+    /* Generate the tuple */
+    list = PyTuple_New(list_count);
+    for (i = 0; i < list_count; i++) {
+        PyTuple_SET_ITEM(list, i, PyUnicode_FromString(names[i]));
+        free(names[i]);
+    }
+    free(names);
+
+    return list;
+}
+
 // Container properties
 static PyObject *
 Container_config_file_name(Container *self, void *closure)
@@ -1219,15 +1278,21 @@ PyVarObject_HEAD_INIT(NULL, 0)
 
 static PyMethodDef LXC_methods[] = {
     {"attach_run_shell", (PyCFunction)LXC_attach_run_shell, METH_O,
-     "Starts up a shell when attaching, to use as the run parameter for attach or attach_wait"},
+     "Starts up a shell when attaching, to use as the run parameter for "
+     "attach or attach_wait"},
     {"attach_run_command", (PyCFunction)LXC_attach_run_command, METH_O,
-     "Runs a command when attaching, to use as the run parameter for attach or attach_wait"},
+     "Runs a command when attaching, to use as the run parameter for attach "
+     "or attach_wait"},
     {"arch_to_personality", (PyCFunction)LXC_arch_to_personality, METH_O,
      "Returns the process personality of the corresponding architecture"},
-    {"get_default_config_path", (PyCFunction)LXC_get_default_config_path, METH_NOARGS,
+    {"get_default_config_path", (PyCFunction)LXC_get_default_config_path,
+     METH_NOARGS,
      "Returns the current LXC config path"},
     {"get_version", (PyCFunction)LXC_get_version, METH_NOARGS,
      "Returns the current LXC library version"},
+    {"list_containers", (PyCFunction)LXC_list_containers,
+     METH_VARARGS|METH_KEYWORDS,
+     "Returns a list of container names or objects"},
     {NULL, NULL, 0, NULL}
 };
 
