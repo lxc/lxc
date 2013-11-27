@@ -456,6 +456,16 @@ Container_config_file_name(Container *self, void *closure)
 }
 
 static PyObject *
+Container_controllable(Container *self, void *closure)
+{
+    if (self->container->may_control(self->container)) {
+        Py_RETURN_TRUE;
+    }
+
+    Py_RETURN_FALSE;
+}
+
+static PyObject *
 Container_defined(Container *self, void *closure)
 {
     if (self->container->is_defined(self->container)) {
@@ -1100,6 +1110,10 @@ static PyGetSetDef Container_getseters[] = {
     {"config_file_name",
      (getter)Container_config_file_name, NULL,
      "Path to the container configuration",
+     NULL},
+    {"controllable",
+     (getter)Container_controllable, NULL,
+     "Boolean indicating whether the container may be controlled",
      NULL},
     {"defined",
      (getter)Container_defined, NULL,
