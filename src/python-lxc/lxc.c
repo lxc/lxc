@@ -18,7 +18,8 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ * USA
  */
 
 #include <Python.h>
@@ -319,7 +320,8 @@ Container_create(Container *self, PyObject *args, PyObject *kwds)
         }
     }
 
-    if (self->container->create(self->container, template_name, NULL, NULL, 0, create_args))
+    if (self->container->create(self->container, template_name, NULL, NULL, 0,
+                                create_args))
         retval = Py_True;
     else
         retval = Py_False;
@@ -756,7 +758,8 @@ Container_unfreeze(Container *self, PyObject *args, PyObject *kwds)
 static PyObject *
 Container_console(Container *self, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = {"ttynum", "stdinfd", "stdoutfd", "stderrfd", "escape", NULL};
+    static char *kwlist[] = {"ttynum", "stdinfd", "stdoutfd", "stderrfd",
+                             "escape", NULL};
     int ttynum = -1, stdinfd = 0, stdoutfd = 1, stderrfd = 2, escape = 1;
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|iiiii", kwlist,
@@ -765,7 +768,7 @@ Container_console(Container *self, PyObject *args, PyObject *kwds)
         return NULL;
 
     if (self->container->console(self->container, ttynum,
-				 stdinfd, stdoutfd, stderrfd, escape) == 0) {
+            stdinfd, stdoutfd, stderrfd, escape) == 0) {
         Py_RETURN_TRUE;
     }
     Py_RETURN_FALSE;
@@ -780,7 +783,8 @@ Container_console_getfd(Container *self, PyObject *args, PyObject *kwds)
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|i", kwlist, &ttynum))
         return NULL;
 
-    if (self->container->console_getfd(self->container, &ttynum, &masterfd) < 0) {
+    if (self->container->console_getfd(self->container, &ttynum,
+                                       &masterfd) < 0) {
         PyErr_SetString(PyExc_ValueError, "Unable to allocate tty");
         return NULL;
     }
@@ -812,8 +816,10 @@ struct lxc_attach_python_payload {
 
 static int lxc_attach_python_exec(void* _payload)
 {
-    struct lxc_attach_python_payload *payload = (struct lxc_attach_python_payload *)_payload;
-    PyObject *result = PyObject_CallFunctionObjArgs(payload->fn, payload->arg, NULL);
+    struct lxc_attach_python_payload *payload =
+        (struct lxc_attach_python_payload *)_payload;
+    PyObject *result = PyObject_CallFunctionObjArgs(payload->fn,
+                                                    payload->arg, NULL);
 
     if (!result) {
         PyErr_Print();
@@ -829,7 +835,10 @@ static void lxc_attach_free_options(lxc_attach_options_t *options);
 
 static lxc_attach_options_t *lxc_attach_parse_options(PyObject *kwds)
 {
-    static char *kwlist[] = {"attach_flags", "namespaces", "personality", "initial_cwd", "uid", "gid", "env_policy", "extra_env_vars", "extra_keep_env", "stdin", "stdout", "stderr", NULL};
+    static char *kwlist[] = {"attach_flags", "namespaces", "personality",
+                             "initial_cwd", "uid", "gid", "env_policy",
+                             "extra_env_vars", "extra_keep_env", "stdin",
+                             "stdout", "stderr", NULL};
     long temp_uid, temp_gid;
     int temp_env_policy;
     PyObject *extra_env_vars_obj = NULL;
@@ -859,11 +868,17 @@ static lxc_attach_options_t *lxc_attach_parse_options(PyObject *kwds)
     /* we need a dummy tuple */
     dummy = PyTuple_New(0);
 
-    parse_result = PyArg_ParseTupleAndKeywords(dummy, kwds, "|iilO&lliOOOOO", kwlist,
-                                               &options->attach_flags, &options->namespaces, &options->personality,
-                                               PyUnicode_FSConverter, &initial_cwd_obj, &temp_uid, &temp_gid,
-                                               &temp_env_policy, &extra_env_vars_obj, &extra_keep_env_obj,
-                                               &stdin_obj, &stdout_obj, &stderr_obj);
+    parse_result = PyArg_ParseTupleAndKeywords(dummy, kwds, "|iilO&lliOOOOO",
+                                               kwlist, &options->attach_flags,
+                                               &options->namespaces,
+                                               &options->personality,
+                                               PyUnicode_FSConverter,
+                                               &initial_cwd_obj, &temp_uid,
+                                               &temp_gid, &temp_env_policy,
+                                               &extra_env_vars_obj,
+                                               &extra_keep_env_obj,
+                                               &stdin_obj, &stdout_obj,
+                                               &stderr_obj);
 
     /* immediately get rid of the dummy tuple */
     Py_DECREF(dummy);
@@ -875,7 +890,8 @@ static lxc_attach_options_t *lxc_attach_parse_options(PyObject *kwds)
 
     /* duplicate the string, so we don't depend on some random Python object */
     if (initial_cwd_obj != NULL) {
-        options->initial_cwd = strndup(PyBytes_AsString(initial_cwd_obj), PyBytes_Size(initial_cwd_obj));
+        options->initial_cwd = strndup(PyBytes_AsString(initial_cwd_obj),
+                                       PyBytes_Size(initial_cwd_obj));
         Py_DECREF(initial_cwd_obj);
     }
 
@@ -885,9 +901,11 @@ static lxc_attach_options_t *lxc_attach_parse_options(PyObject *kwds)
     options->env_policy = (lxc_attach_env_policy_t)temp_env_policy;
 
     if (extra_env_vars_obj)
-        options->extra_env_vars = convert_tuple_to_char_pointer_array(extra_env_vars_obj);
+        options->extra_env_vars =
+            convert_tuple_to_char_pointer_array(extra_env_vars_obj);
     if (extra_keep_env_obj)
-        options->extra_keep_env = convert_tuple_to_char_pointer_array(extra_keep_env_obj);
+        options->extra_keep_env =
+            convert_tuple_to_char_pointer_array(extra_keep_env_obj);
     if (stdin_obj) {
         options->stdin_fd = PyObject_AsFileDescriptor(stdin_obj);
         if (options->stdin_fd < 0) {
@@ -934,7 +952,8 @@ void lxc_attach_free_options(lxc_attach_options_t *options)
 }
 
 static PyObject *
-Container_attach_and_possibly_wait(Container *self, PyObject *args, PyObject *kwds, int wait)
+Container_attach_and_possibly_wait(Container *self, PyObject *args,
+                                   PyObject *kwds, int wait)
 {
     struct lxc_attach_python_payload payload = { NULL, NULL };
     lxc_attach_options_t *options = NULL;
@@ -952,7 +971,8 @@ Container_attach_and_possibly_wait(Container *self, PyObject *args, PyObject *kw
     if (!options)
         return NULL;
 
-    ret = self->container->attach(self->container, lxc_attach_python_exec, &payload, options, &pid);
+    ret = self->container->attach(self->container, lxc_attach_python_exec,
+                                  &payload, options, &pid);
     if (ret < 0)
         goto out;
 
@@ -1036,7 +1056,8 @@ LXC_attach_run_command(PyObject *self, PyObject *arg)
     if (args_obj && PyList_Check(args_obj)) {
         cmd.argv = convert_tuple_to_char_pointer_array(args_obj);
     } else {
-        PyErr_Format(PyExc_TypeError, "Second part of tuple passed to attach_run_command must be a list.");
+        PyErr_Format(PyExc_TypeError, "Second part of tuple passed to "
+                                      "attach_run_command must be a list.");
         return NULL;
     }
 
@@ -1209,7 +1230,8 @@ static PyMethodDef Container_methods[] = {
     },
     {"console", (PyCFunction)Container_console,
      METH_VARARGS|METH_KEYWORDS,
-     "console(ttynum = -1, stdinfd = 0, stdoutfd = 1, stderrfd = 2, escape = 0) -> boolean\n"
+     "console(ttynum = -1, stdinfd = 0, stdoutfd = 1, stderrfd = 2, "
+     "escape = 0) -> boolean\n"
      "\n"
      "Attach to container's console."
     },
@@ -1323,7 +1345,8 @@ PyInit__lxc(void)
     /* add constants */
     d = PyModule_GetDict(m);
 
-    #define PYLXC_EXPORT_CONST(c) PyDict_SetItemString(d, #c, PyLong_FromLong(c))
+    #define PYLXC_EXPORT_CONST(c) \
+        PyDict_SetItemString(d, #c, PyLong_FromLong(c))
 
     /* environment variable handling */
     PYLXC_EXPORT_CONST(LXC_ATTACH_KEEP_ENV);
