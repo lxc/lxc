@@ -546,6 +546,14 @@ Container_attach_wait(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+Container_clear_config(Container *self, PyObject *args, PyObject *kwds)
+{
+    self->container->clear_config(self->container);
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *
 Container_clear_config_item(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"key", NULL};
@@ -1128,6 +1136,12 @@ static PyMethodDef Container_methods[] = {
      "attach(run, payload) -> int\n"
      "\n"
      "Attach to the container. Returns the exit code of the process."
+    },
+    {"clear_config", (PyCFunction)Container_clear_config,
+     METH_NOARGS,
+     "clear_config()\n"
+     "\n"
+     "Clear any container configuration."
     },
     {"clear_config_item", (PyCFunction)Container_clear_config_item,
      METH_VARARGS|METH_KEYWORDS,
