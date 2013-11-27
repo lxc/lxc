@@ -505,6 +505,25 @@ Container_state(Container *self, void *closure)
 
 /* Container Functions */
 static PyObject *
+Container_add_device_node(Container *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"src_path", "dest_path", NULL};
+    char *src_path = NULL;
+    char *dst_path = NULL;
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|s", kwlist,
+                                      &src_path, &dst_path))
+        return NULL;
+
+    if (self->container->add_device_node(self->container, src_path,
+                                         dst_path)) {
+        Py_RETURN_TRUE;
+    }
+
+    Py_RETURN_FALSE;
+}
+
+static PyObject *
 Container_attach_and_possibly_wait(Container *self, PyObject *args,
                                    PyObject *kwds, int wait)
 {
@@ -930,6 +949,25 @@ Container_reboot(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+Container_remove_device_node(Container *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"src_path", "dest_path", NULL};
+    char *src_path = NULL;
+    char *dst_path = NULL;
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|s", kwlist,
+                                      &src_path, &dst_path))
+        return NULL;
+
+    if (self->container->remove_device_node(self->container, src_path,
+                                            dst_path)) {
+        Py_RETURN_TRUE;
+    }
+
+    Py_RETURN_FALSE;
+}
+
+static PyObject *
 Container_save_config(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"path", NULL};
@@ -1139,6 +1177,12 @@ static PyGetSetDef Container_getseters[] = {
 };
 
 static PyMethodDef Container_methods[] = {
+    {"add_device_node", (PyCFunction)Container_add_device_node,
+     METH_VARARGS|METH_KEYWORDS,
+     "add_device_node(src_path, dest_path) -> boolean\n"
+     "\n"
+     "Pass a new device to the container."
+    },
     {"attach", (PyCFunction)Container_attach,
      METH_VARARGS|METH_KEYWORDS,
      "attach(run, payload) -> int\n"
@@ -1243,6 +1287,12 @@ static PyMethodDef Container_methods[] = {
      "reboot() -> boolean\n"
      "\n"
      "Ask the container to reboot."
+    },
+    {"remove_device_node", (PyCFunction)Container_remove_device_node,
+     METH_VARARGS|METH_KEYWORDS,
+     "remove_device_node(src_path, dest_path) -> boolean\n"
+     "\n"
+     "Remove a device from the container."
     },
     {"save_config", (PyCFunction)Container_save_config,
      METH_VARARGS|METH_KEYWORDS,
