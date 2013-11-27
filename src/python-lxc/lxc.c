@@ -598,6 +598,16 @@ Container_load_config(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+Container_reboot(Container *self, PyObject *args, PyObject *kwds)
+{
+    if (self->container->reboot(self->container)) {
+        Py_RETURN_TRUE;
+    }
+
+    Py_RETURN_FALSE;
+}
+
+static PyObject *
 Container_save_config(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"path", NULL};
@@ -1194,6 +1204,12 @@ static PyMethodDef Container_methods[] = {
      "\n"
      "Read the container configuration from its default "
      "location or from an alternative location if provided."
+    },
+    {"reboot", (PyCFunction)Container_reboot,
+     METH_NOARGS,
+     "reboot() -> boolean\n"
+     "\n"
+     "Ask the container to reboot."
     },
     {"save_config", (PyCFunction)Container_save_config,
      METH_VARARGS|METH_KEYWORDS,
