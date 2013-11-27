@@ -22,7 +22,6 @@
 #
 
 import _lxc
-import glob
 import os
 import subprocess
 import stat
@@ -247,28 +246,28 @@ class Container(_lxc.Container):
 
         return _lxc.Container.create(self, template, tuple(template_args))
 
-    def clone(self, container):
+    def clone(self, newname, config_path=None, flags=0, bdevtype=None,
+              bdevdata=None, newsize=0, hookargs=()):
         """
-            Clone an existing container into a new one.
+            Clone the current container.
         """
 
-        if self.defined:
-            return False
+        args = {}
+        args['newname'] = newname
+        args['flags'] = 0
+        args['newsize'] = 0
+        args['hookargs'] = hookargs
+        if config_path:
+            args['config_path'] = config_path
+        if bdevtype:
+            args['bdevtype'] = bdevtype
+        if bdevdata:
+            args['bdevdata'] = bdevdata
 
-        if isinstance(container, Container):
-            source = container
+        if _lxc.Container.clone(self, **args):
+            return Container(newname, config_path=config_path)
         else:
-            source = Container(container)
-
-        if not source.defined:
             return False
-
-        if subprocess.call(["lxc-clone", "-o", source.name, "-n", self.name],
-                           universal_newlines=True) != 0:
-            return False
-
-        self.load_config()
-        return True
 
     def console(self, ttynum=-1, stdinfd=0, stdoutfd=1, stderrfd=2, escape=1):
         """

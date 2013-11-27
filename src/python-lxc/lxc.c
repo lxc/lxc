@@ -600,6 +600,61 @@ Container_clear_config_item(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+Container_clone(Container *self, PyObject *args, PyObject *kwds)
+{
+    char *newname = NULL;
+    char *config_path = NULL;
+    int flags = 0;
+    char *bdevtype = NULL;
+    char *bdevdata = NULL;
+    unsigned long newsize = 0;
+    char **hookargs = NULL;
+
+    PyObject *py_hookargs = NULL;
+    struct lxc_container *new_container = NULL;
+    int i = 0;
+
+    static char *kwlist[] = {"newname", "config_path", "flags", "bdevtype",
+                             "bdevdata", "newsize", "hookargs", NULL};
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|sisskO", kwlist,
+                                      &newname, &config_path, &flags,
+                                      &bdevtype, &bdevdata, &newsize,
+                                      &py_hookargs))
+        return NULL;
+
+    if (py_hookargs) {
+        if (PyTuple_Check(py_hookargs)) {
+            hookargs = convert_tuple_to_char_pointer_array(py_hookargs);
+            if (!hookargs) {
+                return NULL;
+            }
+        }
+        else {
+            PyErr_SetString(PyExc_ValueError, "hookargs needs to be a tuple");
+            return NULL;
+        }
+    }
+
+    new_container = self->container->clone(self->container, newname,
+                                           config_path, flags, bdevtype,
+                                           bdevdata, newsize, hookargs);
+
+    if (hookargs) {
+        for (i = 0; i < PyTuple_GET_SIZE(py_hookargs); i++)
+            free(hookargs[i]);
+        free(hookargs);
+    }
+
+    if (new_container == NULL) {
+        Py_RETURN_FALSE;
+    }
+
+    lxc_container_put(new_container);
+
+    Py_RETURN_TRUE;
+}
+
+static PyObject *
 Container_console(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"ttynum", "stdinfd", "stdoutfd", "stderrfd",
@@ -1220,6 +1275,13 @@ static PyMethodDef Container_methods[] = {
      "\n"
      "Attach to container's console."
     },
+    {"clone", (PyCFunction)Container_clone,
+     METH_VARARGS|METH_KEYWORDS,
+     "clone(newname, config_path, flags, bdevtype, bdevdata, newsize, "
+     "hookargs) -> boolean\n"
+     "\n"
+     "Create a new container based on the current one."
+    },
     {"create", (PyCFunction)Container_create,
      METH_VARARGS|METH_KEYWORDS,
      "create(template, args = (,)) -> boolean\n"
@@ -1467,6 +1529,12 @@ PyInit__lxc(void)
     PYLXC_EXPORT_CONST(LXC_ATTACH_MOVE_TO_CGROUP);
     PYLXC_EXPORT_CONST(LXC_ATTACH_REMOUNT_PROC_SYS);
     PYLXC_EXPORT_CONST(LXC_ATTACH_SET_PERSONALITY);
+
+    /* clone: clone flags */
+    PYLXC_EXPORT_CONST(LXC_CLONE_COPYHOOKS);
+    PYLXC_EXPORT_CONST(LXC_CLONE_KEEPMACADDR);
+    PYLXC_EXPORT_CONST(LXC_CLONE_KEEPNAME);
+    PYLXC_EXPORT_CONST(LXC_CLONE_SNAPSHOT);
 
     #undef PYLXC_EXPORT_CONST
 
