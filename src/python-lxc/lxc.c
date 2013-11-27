@@ -1102,11 +1102,36 @@ static PyGetSetDef Container_getseters[] = {
 };
 
 static PyMethodDef Container_methods[] = {
+    {"attach", (PyCFunction)Container_attach,
+     METH_VARARGS|METH_KEYWORDS,
+     "attach(run, payload) -> int\n"
+     "\n"
+     "Attach to the container. Returns the pid of the attached process."
+    },
+    {"attach_wait", (PyCFunction)Container_attach_wait,
+     METH_VARARGS|METH_KEYWORDS,
+     "attach(run, payload) -> int\n"
+     "\n"
+     "Attach to the container. Returns the exit code of the process."
+    },
     {"clear_config_item", (PyCFunction)Container_clear_config_item,
      METH_VARARGS|METH_KEYWORDS,
      "clear_config_item(key) -> boolean\n"
      "\n"
      "Clear the current value of a config key."
+    },
+    {"console", (PyCFunction)Container_console,
+     METH_VARARGS|METH_KEYWORDS,
+     "console(ttynum = -1, stdinfd = 0, stdoutfd = 1, stderrfd = 2, "
+     "escape = 0) -> boolean\n"
+     "\n"
+     "Attach to container's console."
+    },
+    {"console_getfd", (PyCFunction)Container_console_getfd,
+     METH_VARARGS|METH_KEYWORDS,
+     "console(ttynum = -1) -> boolean\n"
+     "\n"
+     "Attach to container's console."
     },
     {"create", (PyCFunction)Container_create,
      METH_VARARGS|METH_KEYWORDS,
@@ -1228,31 +1253,6 @@ static PyMethodDef Container_methods[] = {
      "\n"
      "Wait for the container to reach a given state or timeout."
     },
-    {"console", (PyCFunction)Container_console,
-     METH_VARARGS|METH_KEYWORDS,
-     "console(ttynum = -1, stdinfd = 0, stdoutfd = 1, stderrfd = 2, "
-     "escape = 0) -> boolean\n"
-     "\n"
-     "Attach to container's console."
-    },
-    {"console_getfd", (PyCFunction)Container_console_getfd,
-     METH_VARARGS|METH_KEYWORDS,
-     "console(ttynum = -1) -> boolean\n"
-     "\n"
-     "Attach to container's console."
-    },
-    {"attach", (PyCFunction)Container_attach,
-     METH_VARARGS|METH_KEYWORDS,
-     "attach(run, payload) -> int\n"
-     "\n"
-     "Attach to the container. Returns the pid of the attached process."
-    },
-    {"attach_wait", (PyCFunction)Container_attach_wait,
-     METH_VARARGS|METH_KEYWORDS,
-     "attach(run, payload) -> int\n"
-     "\n"
-     "Attach to the container. Returns the exit code of the process."
-    },
     {NULL, NULL, 0, NULL}
 };
 
@@ -1299,14 +1299,14 @@ PyVarObject_HEAD_INIT(NULL, 0)
 };
 
 static PyMethodDef LXC_methods[] = {
-    {"attach_run_shell", (PyCFunction)LXC_attach_run_shell, METH_O,
-     "Starts up a shell when attaching, to use as the run parameter for "
-     "attach or attach_wait"},
+    {"arch_to_personality", (PyCFunction)LXC_arch_to_personality, METH_O,
+     "Returns the process personality of the corresponding architecture"},
     {"attach_run_command", (PyCFunction)LXC_attach_run_command, METH_O,
      "Runs a command when attaching, to use as the run parameter for attach "
      "or attach_wait"},
-    {"arch_to_personality", (PyCFunction)LXC_arch_to_personality, METH_O,
-     "Returns the process personality of the corresponding architecture"},
+    {"attach_run_shell", (PyCFunction)LXC_attach_run_shell, METH_O,
+     "Starts up a shell when attaching, to use as the run parameter for "
+     "attach or attach_wait"},
     {"get_default_config_path", (PyCFunction)LXC_get_default_config_path,
      METH_NOARGS,
      "Returns the current LXC config path"},
