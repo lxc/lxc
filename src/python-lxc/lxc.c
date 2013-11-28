@@ -510,16 +510,33 @@ Container_add_device_node(Container *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"src_path", "dest_path", NULL};
     char *src_path = NULL;
     char *dst_path = NULL;
+    PyObject *py_src_path = NULL;
+    PyObject *py_dst_path = NULL;
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|s", kwlist,
-                                      &src_path, &dst_path))
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "O&|O&", kwlist,
+                                      PyUnicode_FSConverter, &py_src_path,
+                                      PyUnicode_FSConverter, &py_dst_path))
         return NULL;
+
+    if (py_src_path != NULL) {
+        src_path = PyBytes_AS_STRING(py_src_path);
+        assert(src_path != NULL);
+    }
+
+    if (py_dst_path != NULL) {
+        dst_path = PyBytes_AS_STRING(py_dst_path);
+        assert(dst_path != NULL);
+    }
 
     if (self->container->add_device_node(self->container, src_path,
                                          dst_path)) {
+        Py_XDECREF(py_src_path);
+        Py_XDECREF(py_dst_path);
         Py_RETURN_TRUE;
     }
 
+    Py_XDECREF(py_src_path);
+    Py_XDECREF(py_dst_path);
     Py_RETURN_FALSE;
 }
 
@@ -611,14 +628,16 @@ Container_clone(Container *self, PyObject *args, PyObject *kwds)
     char **hookargs = NULL;
 
     PyObject *py_hookargs = NULL;
+    PyObject *py_config_path = NULL;
     struct lxc_container *new_container = NULL;
     int i = 0;
 
     static char *kwlist[] = {"newname", "config_path", "flags", "bdevtype",
                              "bdevdata", "newsize", "hookargs", NULL};
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|sisskO", kwlist,
-                                      &newname, &config_path, &flags,
-                                      &bdevtype, &bdevdata, &newsize,
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|O&isskO", kwlist,
+                                      &newname,
+                                      PyUnicode_FSConverter, &py_config_path,
+                                      &flags, &bdevtype, &bdevdata, &newsize,
                                       &py_hookargs))
         return NULL;
 
@@ -635,9 +654,16 @@ Container_clone(Container *self, PyObject *args, PyObject *kwds)
         }
     }
 
+    if (py_config_path != NULL) {
+        config_path = PyBytes_AS_STRING(py_config_path);
+        assert(config_path != NULL);
+    }
+
     new_container = self->container->clone(self->container, newname,
                                            config_path, flags, bdevtype,
                                            bdevdata, newsize, hookargs);
+
+    Py_XDECREF(py_config_path);
 
     if (hookargs) {
         for (i = 0; i < PyTuple_GET_SIZE(py_hookargs); i++)
@@ -1010,16 +1036,33 @@ Container_remove_device_node(Container *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"src_path", "dest_path", NULL};
     char *src_path = NULL;
     char *dst_path = NULL;
+    PyObject *py_src_path = NULL;
+    PyObject *py_dst_path = NULL;
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|s", kwlist,
-                                      &src_path, &dst_path))
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "O&|O&", kwlist,
+                                      PyUnicode_FSConverter, &py_src_path,
+                                      PyUnicode_FSConverter, &py_dst_path))
         return NULL;
+
+    if (py_src_path != NULL) {
+        src_path = PyBytes_AS_STRING(py_src_path);
+        assert(src_path != NULL);
+    }
+
+    if (py_dst_path != NULL) {
+        dst_path = PyBytes_AS_STRING(py_dst_path);
+        assert(dst_path != NULL);
+    }
 
     if (self->container->remove_device_node(self->container, src_path,
                                             dst_path)) {
+        Py_XDECREF(py_src_path);
+        Py_XDECREF(py_dst_path);
         Py_RETURN_TRUE;
     }
 
+    Py_XDECREF(py_src_path);
+    Py_XDECREF(py_dst_path);
     Py_RETURN_FALSE;
 }
 
@@ -1126,12 +1169,20 @@ Container_snapshot(Container *self, PyObject *args, PyObject *kwds)
     int retval = 0;
     int ret = 0;
     char newname[20];
+    PyObject *py_comment_path;
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s", kwlist,
-                                      &comment_path))
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|O&", kwlist,
+                                      PyUnicode_FSConverter, &py_comment_path))
         return NULL;
 
+    if (py_comment_path != NULL) {
+        comment_path = PyBytes_AS_STRING(py_comment_path);
+        assert(comment_path != NULL);
+    }
+
     retval = self->container->snapshot(self->container, comment_path);
+
+    Py_XDECREF(py_comment_path);
 
     if (retval < 0) {
         Py_RETURN_FALSE;
