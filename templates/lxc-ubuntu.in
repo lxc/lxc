@@ -467,6 +467,13 @@ post_process()
     release=$2
     packages=$3
 
+    # Disable service startup
+    cat > $rootfs/usr/sbin/policy-rc.d << EOF
+#!/bin/sh
+exit 101
+EOF
+    chmod +x $rootfs/usr/sbin/policy-rc.d
+
     if [ ! -f $rootfs/etc/init/container-detect.conf ]; then
         # Make sure we have a working resolv.conf
         cresolvonf="${rootfs}/etc/resolv.conf"
@@ -538,6 +545,9 @@ post_process()
         mv $rootfs/dev/shm $rootfs/dev/shm.bak
         ln -s /run/shm $rootfs/dev/shm
     fi
+
+    # Re-enable service startup
+    rm $rootfs/usr/sbin/policy-rc.d
 }
 
 do_bindhome()
