@@ -1119,6 +1119,106 @@ Container_shutdown(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+Container_snapshot(Container *self, PyObject *args, PyObject *kwds)
+{
+    char *comment_path = NULL;
+    static char *kwlist[] = {"comment_path", NULL};
+    int retval = 0;
+    int ret = 0;
+    char newname[20];
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s", kwlist,
+                                      &comment_path))
+        return NULL;
+
+    retval = self->container->snapshot(self->container, comment_path);
+
+    if (retval < 0) {
+        Py_RETURN_FALSE;
+    }
+
+    ret = snprintf(newname, 20, "snap%d", retval);
+    if (ret < 0 || ret >= 20)
+        return NULL;
+
+
+    return PyUnicode_FromString(newname);
+}
+
+static PyObject *
+Container_snapshot_destroy(Container *self, PyObject *args, PyObject *kwds)
+{
+    char *name = NULL;
+    static char *kwlist[] = {"name", NULL};
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
+                                      &name))
+        return NULL;
+
+    if (self->container->snapshot_destroy(self->container, name)) {
+        Py_RETURN_TRUE;
+    }
+
+    Py_RETURN_FALSE;
+}
+
+static PyObject *
+Container_snapshot_list(Container *self, PyObject *args, PyObject *kwds)
+{
+    struct lxc_snapshot *snap;
+    int snap_count = 0;
+    PyObject *list = NULL;
+    int i = 0;
+
+    snap_count = self->container->snapshot_list(self->container, &snap);
+
+    if (snap_count < 0) {
+        PyErr_SetString(PyExc_KeyError, "Unable to list snapshots");
+        return NULL;
+    }
+
+    list = PyTuple_New(snap_count);
+    for (i = 0; i < snap_count; i++) {
+        PyObject *list_entry = NULL;
+
+        list_entry = PyTuple_New(4);
+        PyTuple_SET_ITEM(list_entry, 0,
+                         PyUnicode_FromString(snap[i].name));
+        PyTuple_SET_ITEM(list_entry, 1,
+                         PyUnicode_FromString(snap[i].comment_pathname));
+        PyTuple_SET_ITEM(list_entry, 2,
+                         PyUnicode_FromString(snap[i].timestamp));
+        PyTuple_SET_ITEM(list_entry, 3,
+                         PyUnicode_FromString(snap[i].lxcpath));
+
+        snap[i].free(&snap[i]);
+
+        PyTuple_SET_ITEM(list, i, list_entry);
+    }
+
+    return list;
+}
+
+
+static PyObject *
+Container_snapshot_restore(Container *self, PyObject *args, PyObject *kwds)
+{
+    char *name = NULL;
+    char *newname = NULL;
+    static char *kwlist[] = {"name", "newname", NULL};
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|s", kwlist,
+                                      &name, &newname))
+        return NULL;
+
+    if (self->container->snapshot_restore(self->container, name, newname)) {
+        Py_RETURN_TRUE;
+    }
+
+    Py_RETURN_FALSE;
+}
+
+static PyObject *
 Container_start(Container *self, PyObject *args, PyObject *kwds)
 {
     char** init_args = {NULL};
@@ -1389,6 +1489,33 @@ static PyMethodDef Container_methods[] = {
      "Sends SIGPWR to the container and wait for it to shutdown "
      "unless timeout is set to a positive value, in which case "
      "the container will be killed when the timeout is reached."
+    },
+    {"snapshot", (PyCFunction)Container_snapshot,
+     METH_VARARGS|METH_KEYWORDS,
+     "snapshot(comment_path = None) -> string\n"
+     "\n"
+     "Snapshot the container and return the snapshot name "
+     "(or False on error)."
+    },
+    {"snapshot_destroy", (PyCFunction)Container_snapshot_destroy,
+     METH_VARARGS|METH_KEYWORDS,
+     "snapshot_destroy(name) -> boolean\n"
+     "\n"
+     "Destroy a snapshot."
+    },
+    {"snapshot_list", (PyCFunction)Container_snapshot_list,
+     METH_NOARGS,
+     "snapshot_list() -> tuple of snapshot tuples\n"
+     "\n"
+     "List all snapshots for a container."
+    },
+    {"snapshot_restore", (PyCFunction)Container_snapshot_restore,
+     METH_VARARGS|METH_KEYWORDS,
+     "snapshot_restore(name, newname = None) -> boolean\n"
+     "\n"
+     "Restore a container snapshot. If newname is provided a new "
+     "container will be created from the snapshot, otherwise an in-place "
+     "restore will be attempted."
     },
     {"start", (PyCFunction)Container_start,
      METH_VARARGS|METH_KEYWORDS,
