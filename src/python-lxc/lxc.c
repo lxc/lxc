@@ -1221,13 +1221,21 @@ Container_snapshot_restore(Container *self, PyObject *args, PyObject *kwds)
 static PyObject *
 Container_start(Container *self, PyObject *args, PyObject *kwds)
 {
-    char** init_args = {NULL};
-    PyObject *useinit = NULL, *retval = NULL, *vargs = NULL;
-    int init_useinit = 0, i = 0;
-    static char *kwlist[] = {"useinit", "cmd", NULL};
+    PyObject *useinit = NULL;
+    PyObject *daemonize = NULL;
+    PyObject *close_fds = NULL;
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|OO", kwlist,
-                                      &useinit, &vargs))
+    PyObject *vargs = NULL;
+    char** init_args = {NULL};
+
+    PyObject *retval = NULL;
+    int init_useinit = 0, i = 0;
+    static char *kwlist[] = {"useinit", "daemonize", "close_fds",
+                             "cmd", NULL};
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|OOOO", kwlist,
+                                      &useinit, &daemonize, &close_fds,
+                                      &vargs))
         return NULL;
 
     if (useinit && useinit == Py_True) {
@@ -1241,7 +1249,13 @@ Container_start(Container *self, PyObject *args, PyObject *kwds)
         }
     }
 
-    self->container->want_daemonize(self->container);
+    if (close_fds && close_fds == Py_True) {
+        self->container->want_close_all_fds(self->container);
+    }
+
+    if (!daemonize || daemonize == Py_True) {
+        self->container->want_daemonize(self->container);
+    }
 
     if (self->container->start(self->container, init_useinit, init_args))
         retval = Py_True;
@@ -1519,10 +1533,13 @@ static PyMethodDef Container_methods[] = {
     },
     {"start", (PyCFunction)Container_start,
      METH_VARARGS|METH_KEYWORDS,
-     "start(useinit = False, cmd = (,)) -> boolean\n"
+     "start(useinit = False, daemonize=True, close_fds=False, "
+     "cmd = (,)) -> boolean\n"
      "\n"
-     "Start the container, optionally using lxc-init and "
-     "an alternate init command, then returns its return code."
+     "Start the container, return True on success.\n"
+     "When set useinit will make LXC use lxc-init to start the container.\n"
+     "The container can be started in the foreground with daemonize=False.\n"
+     "All fds may also be closed by passing close_fds=True."
     },
     {"stop", (PyCFunction)Container_stop,
      METH_NOARGS,
