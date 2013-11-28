@@ -694,13 +694,14 @@ static PyObject *
 Container_create(Container *self, PyObject *args, PyObject *kwds)
 {
     char* template_name = NULL;
+    int flags = 0;
     char** create_args = {NULL};
     PyObject *retval = NULL, *vargs = NULL;
     int i = 0;
-    static char *kwlist[] = {"template", "args", NULL};
+    static char *kwlist[] = {"template", "flags", "args", NULL};
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|O", kwlist,
-                                      &template_name, &vargs))
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|iO", kwlist,
+                                      &template_name, &flags, &vargs))
         return NULL;
 
     if (vargs) {
@@ -716,8 +717,8 @@ Container_create(Container *self, PyObject *args, PyObject *kwds)
         }
     }
 
-    if (self->container->create(self->container, template_name, NULL, NULL, 0,
-                                create_args))
+    if (self->container->create(self->container, template_name, NULL, NULL,
+                                flags, create_args))
         retval = Py_True;
     else
         retval = Py_False;
@@ -1535,6 +1536,9 @@ PyInit__lxc(void)
     PYLXC_EXPORT_CONST(LXC_CLONE_KEEPMACADDR);
     PYLXC_EXPORT_CONST(LXC_CLONE_KEEPNAME);
     PYLXC_EXPORT_CONST(LXC_CLONE_SNAPSHOT);
+
+    /* create: create flags */
+    PYLXC_EXPORT_CONST(LXC_CREATE_QUIET);
 
     #undef PYLXC_EXPORT_CONST
 

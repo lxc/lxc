@@ -229,22 +229,29 @@ class Container(_lxc.Container):
 
         return _lxc.Container.set_config_item(self, key, value)
 
-    def create(self, template, args={}):
+    def create(self, template, flags=0, args=()):
         """
             Create a new rootfs for the container.
 
             "template" must be a valid template name.
 
-            "args" (optional) is a dictionary of parameters and values to pass
-            to the template.
+            "flags" (optional) is an integer representing the optional
+            create flags to be passed.
+
+            "args" (optional) is a tuple of arguments to pass to the
+            template. It can also be provided as a dict.
         """
 
-        template_args = []
-        for item in args.items():
-            template_args.append("--%s" % item[0])
-            template_args.append("%s" % item[1])
+        if isinstance(args, dict):
+            template_args = []
+            for item in args.items():
+                template_args.append("--%s" % item[0])
+                template_args.append("%s" % item[1])
+        else:
+            template_args = args
 
-        return _lxc.Container.create(self, template, tuple(template_args))
+        return _lxc.Container.create(self, template=template,
+                                     flags=flags, args=tuple(template_args))
 
     def clone(self, newname, config_path=None, flags=0, bdevtype=None,
               bdevdata=None, newsize=0, hookargs=()):
