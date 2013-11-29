@@ -206,6 +206,7 @@ struct lxc_container {
 	 * from the terminal.
 	 *
 	 * \param c Container.
+	 * \param state Value for the daemonize bit (0 or 1).
 	 *
 	 * \return \c true if container wants to be daemonised, else \c false.
 	 */
@@ -216,6 +217,7 @@ struct lxc_container {
 	 *  to be closed on startup.
 	 *
 	 * \param c Container.
+	 * \param state Value for the close_all_fds bit (0 or 1).
 	 *
 	 * \return \c true if container wants all file descriptors closed,
 	 *  else \c false.
