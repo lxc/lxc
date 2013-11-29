@@ -88,7 +88,7 @@ static void do_function(void *arguments)
         }
     } else if(strcmp(args->mode, "start") == 0) {
         if (c->is_defined(c) && !c->is_running(c)) {
-            c->want_daemonize(c);
+            c->want_daemonize(c, true);
             if (!c->start(c, false, NULL)) {
                 fprintf(stderr, "Starting the container (%s) failed...\n", name);
                 goto out;

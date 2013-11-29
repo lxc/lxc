@@ -315,7 +315,7 @@ static struct lxc_container *test_ct_create(const char *lxcpath,
 	if (lsm_enabled())
 		test_attach_lsm_set_config(ct);
 
-	ct->want_daemonize(ct);
+	ct->want_daemonize(ct, true);
 	if (!ct->startl(ct, 0, NULL)) {
 		TSTERR("starting container %s", name);
 		goto out2;

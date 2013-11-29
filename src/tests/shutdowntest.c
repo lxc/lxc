@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 	}
 
 	c->load_config(c, NULL);
-	c->want_daemonize(c);
+	c->want_daemonize(c, true);
 	if (!c->startl(c, 0, NULL)) {
 		fprintf(stderr, "%d: failed to start %s\n", __LINE__, MYNAME);
 		goto out;

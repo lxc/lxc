@@ -172,7 +172,7 @@ static int test_container(const char *lxcpath,
 		goto out2;
 	}
 	c->load_config(c, NULL);
-	c->want_daemonize(c);
+	c->want_daemonize(c, true);
 	if (!c->startl(c, 0, NULL)) {
 		TSTERR("starting container %s", name);
 		goto out3;

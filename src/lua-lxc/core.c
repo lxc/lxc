@@ -156,7 +156,7 @@ static int container_start(lua_State *L)
 	argv[j] = NULL;
     }
 
-    c->want_daemonize(c);
+    c->want_daemonize(c, true);
     lua_pushboolean(L, !!c->start(c, useinit, argv));
     return 1;
 }

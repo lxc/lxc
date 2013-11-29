@@ -93,7 +93,7 @@ struct lxc_container {
 	int error_num;
 
 	/*! Whether container wishes to be daemonized */
-	int daemonize;
+	bool daemonize;
 
 	/*! Full path to configuration file */
 	char *config_path;
@@ -209,7 +209,7 @@ struct lxc_container {
 	 *
 	 * \return \c true if container wants to be daemonised, else \c false.
 	 */
-	void (*want_daemonize)(struct lxc_container *c);
+	bool (*want_daemonize)(struct lxc_container *c, bool state);
 
 	/*!
 	 * \brief Determine whether container wishes all file descriptors
@@ -220,7 +220,7 @@ struct lxc_container {
 	 * \return \c true if container wants all file descriptors closed,
 	 *  else \c false.
 	 */
-	bool (*want_close_all_fds)(struct lxc_container *c);
+	bool (*want_close_all_fds)(struct lxc_container *c, bool state);
 
 	/*!
 	 * \brief Return current config file name.

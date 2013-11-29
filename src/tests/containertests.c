@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
 		goto out;
 
 	/* non-daemonized is tested in 'startone' */
-	c->want_daemonize(c);
+	c->want_daemonize(c, true);
 	if (!c->startl(c, 0, NULL, NULL)) {
 		fprintf(stderr, "%d: %s failed to start daemonized\n", __LINE__, c->name);
 		goto out;

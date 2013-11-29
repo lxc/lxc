@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (my_args.daemonize) {
-		c->want_daemonize(c);
+		c->want_daemonize(c, true);
 	}
 
 	if (pid_fp != NULL) {
@@ -337,7 +337,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (my_args.close_all_fds)
-		c->want_close_all_fds(c);
+		c->want_close_all_fds(c, true);
 
 	err = c->start(c, 0, args) ? 0 : -1;
 

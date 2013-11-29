@@ -1301,11 +1301,17 @@ Container_start(Container *self, PyObject *args, PyObject *kwds)
     }
 
     if (close_fds && close_fds == Py_True) {
-        self->container->want_close_all_fds(self->container);
+        self->container->want_close_all_fds(self->container, true);
+    }
+    else {
+        self->container->want_close_all_fds(self->container, false);
     }
 
     if (!daemonize || daemonize == Py_True) {
-        self->container->want_daemonize(self->container);
+        self->container->want_daemonize(self->container, true);
+    }
+    else {
+        self->container->want_daemonize(self->container, false);
     }
 
     if (self->container->start(self->container, init_useinit, init_args))
