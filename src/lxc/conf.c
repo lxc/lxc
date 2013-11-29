@@ -3349,19 +3349,26 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 	}
 	if (!pid) {
 		int hostuid = geteuid(), ret;
-		char map1[100], map2[100];
-		char *args[] = {"lxc-usernsexec", "-m", map1, "-m", map2, "--", "chown",
-				 "0", path, NULL};
+		char map1[100], map2[100], map3[100];
+		char *args[] = {"lxc-usernsexec", "-m", map1, "-m", map2, "-m",
+				 map3, "--", "chown", "0", path, NULL};
 
-		// "b:0:rootid:1"
-		ret = snprintf(map1, 100, "b:0:%d:1", rootid);
+		// "u:0:rootid:1"
+		ret = snprintf(map1, 100, "u:0:%d:1", rootid);
 		if (ret < 0 || ret >= 100) {
 			ERROR("Error uid printing map string");
 			return -1;
 		}
 
-		// "b:hostuid:hostuid:1"
-		ret = snprintf(map2, 100, "b:%d:%d:1", hostuid, hostuid);
+		// "u:hostuid:hostuid:1"
+		ret = snprintf(map2, 100, "u:%d:%d:1", hostuid, hostuid);
+		if (ret < 0 || ret >= 100) {
+			ERROR("Error uid printing map string");
+			return -1;
+		}
+
+		// "g:0:hostgid:1"
+		ret = snprintf(map3, 100, "g:0:%d:1", getgid());
 		if (ret < 0 || ret >= 100) {
 			ERROR("Error uid printing map string");
 			return -1;
