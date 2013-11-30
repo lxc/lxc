@@ -541,8 +541,9 @@ EOF
     # I'm afraid of doing rm -rf $rootfs/dev/shm, in case it did
     # get bind mounted to the host's /run/shm.  So try to rmdir
     # it, and in case that fails move it out of the way.
+    # NOTE: This can only be removed once 12.04 goes out of support
     if [ ! -L $rootfs/dev/shm ] && [ -d $rootfs/run/shm ] && [ -e $rootfs/dev/shm ]; then
-        mv $rootfs/dev/shm $rootfs/dev/shm.bak
+        rmdir $rootfs/dev/shm 2>/dev/null || mv $rootfs/dev/shm $rootfs/dev/shm.bak
         ln -s /run/shm $rootfs/dev/shm
     fi
 
