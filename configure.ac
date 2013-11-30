@@ -361,6 +361,7 @@ AS_AC_EXPAND(LXC_USERNIC_CONF, "$with_usernic_conf")
 AS_AC_EXPAND(LXC_USERNIC_DB, "$with_usernic_db")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "$with_rootfs_path")
 AS_AC_EXPAND(LXCTEMPLATEDIR, "$datadir/lxc/templates")
+AS_AC_EXPAND(LXCTEMPLATECONFIG, "$datadir/lxc/config")
 AS_AC_EXPAND(LXCHOOKDIR, "$datadir/lxc/hooks")
 AS_AC_EXPAND(LXCINITDIR, "$libexecdir")
 AS_AC_EXPAND(LOGPATH, "$with_log_path")
@@ -447,7 +448,15 @@ AC_CONFIG_FILES([
 	Makefile
 	lxc.pc
 	lxc.spec
+
 	config/Makefile
+	config/etc/Makefile
+	config/templates/Makefile
+	config/templates/ubuntu-cloud.common.conf
+	config/templates/ubuntu-cloud.lucid.conf
+	config/templates/ubuntu-cloud.userns.conf
+	config/templates/ubuntu.common.conf
+	config/templates/ubuntu.lucid.conf
 
 	doc/Makefile
 	doc/api/Makefile

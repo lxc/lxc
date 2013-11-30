@@ -1,0 +1,2 @@
+# Ubuntu 10.04 LTS doesn't have /dev/lxc/
+lxc.devttydir =

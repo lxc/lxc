@@ -1,0 +1,4 @@
+# This derives from the main Ubuntu config
+lxc.include = @LXCTEMPLATECONFIG@/ubuntu.common.conf
+
+lxc.hook.clone = @LXCHOOKDIR@/ubuntu-cloud-prep
