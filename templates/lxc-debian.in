@@ -93,16 +93,16 @@ EOF
     chroot $rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
     chroot $rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
 
-    # set initial timezone as on host if host has /etc/localtime and /etc/timezone files
-    if [ -f /etc/localtime ]; then
-        if [ -f $rootfs/etc/localtime -a ! -L $rootfs/etc/localtime ]; then
-            cp -L /etc/localtime $rootfs/etc/localtime
-        fi
-        if [ -f $rootfs/etc/localtime -a   -L $rootfs/etc/localtime ]; then
-            cp -L /etc/localtime $(readlink $rootfs/etc/localtime)
-        fi
+    # set initial timezone as on host
+    if [ -f /etc/timezone ]; then
+        echo $(cat /etc/timezone) > $rootfs/etc/timezone
+        chroot $rootfs dpkg-reconfigure -f noninteractive tzdata
+    elif [ -f /etc/sysconfig/clock ]; then
+        source /etc/sysconfig/clock
+        echo $ZONE > $rootfs/etc/timezone
+        chroot $rootfs dpkg-reconfigure -f noninteractive tzdata
     else
-        echo "Timezone is not configured in container. Adjust it manually."
+        echo "Timezone in container is not configured. Adjust it manually."
     fi
 
     echo "root:root" | chroot $rootfs chpasswd
