@@ -353,6 +353,7 @@ extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
 extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key);
 extern int lxc_clear_mount_entries(struct lxc_conf *c);
 extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
+extern int lxc_clear_idmaps(struct lxc_conf *c);
 
 /*
  * Configure the container from inside

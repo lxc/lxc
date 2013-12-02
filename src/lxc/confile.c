@@ -295,6 +295,9 @@ static int config_network_type(const char *key, const char *value,
 	struct lxc_netdev *netdev;
 	struct lxc_list *list;
 
+	if (!value || strlen(value) == 0)
+		return lxc_clear_config_network(lxc_conf);
+
 	netdev = malloc(sizeof(*netdev));
 	if (!netdev) {
 		SYSERROR("failed to allocate memory");
@@ -865,7 +868,12 @@ static int config_seccomp(const char *key, const char *value,
 static int config_hook(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	char *copy = strdup(value);
+	char *copy;
+	
+	if (!value || strlen(value) == 0)
+		return lxc_clear_hooks(lxc_conf, key);
+
+	copy = strdup(value);
 	if (!copy) {
 		SYSERROR("failed to dup string '%s'", value);
 		return -1;
@@ -1062,6 +1070,9 @@ static int config_cgroup(const char *key, const char *value,
 	struct lxc_list *cglist = NULL;
 	struct lxc_cgroup *cgelem = NULL;
 
+	if (!value || strlen(value) == 0)
+		return lxc_clear_cgroups(lxc_conf, key);
+
 	subkey = strstr(key, token);
 
 	if (!subkey)
@@ -1122,6 +1133,9 @@ static int config_idmap(const char *key, const char *value, struct lxc_conf *lxc
 	unsigned long hostid, nsid, range;
 	char type;
 	int ret;
+
+	if (!value || strlen(value) == 0)
+		return lxc_clear_idmaps(lxc_conf);
 
 	subkey = strstr(key, token);
 
@@ -1250,6 +1264,9 @@ static int config_mount(const char *key, const char *value,
 	char *mntelem;
 	struct lxc_list *mntlist;
 
+	if (!value || strlen(value) == 0)
+		return lxc_clear_mount_entries(lxc_conf);
+
 	subkey = strstr(key, token);
 
 	if (!subkey) {
@@ -1294,7 +1311,7 @@ static int config_cap_keep(const char *key, const char *value,
 	int ret = -1;
 
 	if (!strlen(value))
-		return -1;
+		return lxc_clear_config_keepcaps(lxc_conf);
 
 	keepcaps = strdup(value);
 	if (!keepcaps) {
@@ -1340,7 +1357,7 @@ static int config_cap_drop(const char *key, const char *value,
 	int ret = -1;
 
 	if (!strlen(value))
-		return -1;
+		return lxc_clear_config_caps(lxc_conf);
 
 	dropcaps = strdup(value);
 	if (!dropcaps) {
