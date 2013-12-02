@@ -24,6 +24,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
 
 #define TTYCNT      4
 #define TTYCNT_STR "4"

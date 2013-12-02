@@ -23,6 +23,7 @@
 #include <libgen.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <fcntl.h>
 #include <sys/types.h>
 
 #include <lxc/lxc.h>

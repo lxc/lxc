@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <sys/types.h>
+#include <fcntl.h>
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>

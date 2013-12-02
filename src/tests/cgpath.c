@@ -26,6 +26,8 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
+#include <sys/stat.h>
 #include "../lxc/cgroup.h"
 #include "../lxc/lxc.h"
 #include "../lxc/commands.h"

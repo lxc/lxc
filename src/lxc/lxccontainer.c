@@ -50,6 +50,7 @@
 #include <sched.h>
 #include <arpa/inet.h>
 #include <libgen.h>
+#include "lxclock.h"
 
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
@@ -2107,7 +2108,7 @@ const char *lxc_get_default_zfs_root(void)
 
 const char *lxc_get_version(void)
 {
-	return lxc_version();
+	return LXC_VERSION;
 }
 
 static int copy_file(char *old, char *new)

@@ -1,23 +1,6 @@
 pkginclude_HEADERS = \
-		arguments.h \
-		attach.h \
 		attach_options.h \
-		bdev.h \
-		caps.h \
-		cgroup.h \
-		conf.h \
-		console.h \
-		error.h \
-		list.h \
-		log.h \
 		lxccontainer.h \
-		lxc.h \
-		lxclock.h \
-		monitor.h \
-		namespace.h \
-		start.h \
-		state.h \
-		utils.h \
 		version.h
 
 if IS_BIONIC
@@ -87,7 +70,7 @@ liblxc_so_SOURCES = \
 	lxcutmp.c lxcutmp.h \
 	lxclock.h lxclock.c \
 	lxccontainer.c lxccontainer.h \
-	version.c version.h \
+	version.h \
 	\
 	$(LSM_SOURCES)
 

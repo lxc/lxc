@@ -47,6 +47,7 @@
 #include "namespace.h"
 #include "parse.h"
 #include "utils.h"
+#include "lxclock.h"
 
 #ifndef BLKGETSIZE64
 #define BLKGETSIZE64 _IOR(0x12,114,size_t)

@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <lxc/lxccontainer.h>
 
 static void test_list_func(const char *lxcpath, const char *type,

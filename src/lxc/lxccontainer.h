@@ -22,12 +22,11 @@
 
 #ifndef __LXC_CONTAINER_H
 #define __LXC_CONTAINER_H
-#include "lxclock.h"
 #include "attach_options.h"
-#include <stdlib.h>
 #include <malloc.h>
-
+#include <semaphore.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define LXC_CLONE_KEEPNAME        (1 << 0) /*!< Do not edit the rootfs to change the hostname */
 #define LXC_CLONE_COPYHOOKS       (1 << 1) /*!< Copy all hooks into the container directory */
@@ -40,6 +39,8 @@
 struct bdev_specs;
 
 struct lxc_snapshot;
+
+struct lxc_lock;
 
 /*!
  * An LXC container.

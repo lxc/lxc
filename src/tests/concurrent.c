@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <string.h>
+#include <fcntl.h>
 #define _GNU_SOURCE
 #include <getopt.h>
 

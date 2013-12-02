@@ -28,9 +28,4 @@
 #define LXC_VERSION_MICRO @LXC_VERSION_MICRO@
 #define LXC_VERSION "@LXC_VERSION@"
 
-/*
- * Returns the version number of the library
- */
-extern const char *lxc_version(void);
-
 #endif
