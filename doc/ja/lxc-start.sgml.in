@@ -63,6 +63,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">-p <replaceable>pid_file</replaceable></arg>
       <arg choice="opt">-s KEY=VAL</arg>
       <arg choice="opt">-C</arg>
+      <arg choice="opt">--share-[net|ipc|uts] <replaceable>name|pid</replaceable></arg>
       <arg choice="opt">command</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -221,6 +222,59 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  <replaceable>&#045;&#045;close-all-fds</replaceable>.
           -->
             継承しているファイルディスクリプタが存在する場合，それをクローズします．このオプションが指定されない場合，<command>lxc-start</command> の実行は失敗して終了します．注意: <replaceable>--daemon</replaceable> オプションは，<replaceable>--close-all-fds</replaceable> オプションを指定しなくても指定している場合と同様の動きをします．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--share-net <replaceable>name|pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+            Inherit a network namespace from
+	    a <replaceable>name</replaceable> container or
+	    a <replaceable>pid</replaceable>. The network namespace
+	    will continue to be managed by the original owner. The
+	    network configuration of the starting container is ignored
+	    and the up/down scripts won't be executed.
+            -->
+            名前が <replaceable>name</replaceable> である，もしくは PID が <replaceable>pid</replaceable> であるコンテナとネットワーク名前空間を共有します．ネットワーク名前空間は引き続き元の所有者が管理します．開始するコンテナのネットワーク設定は無視され，up/down のスクリプトは実行されません．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--share-ipc <replaceable>name|pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+            Inherit an IPC namespace from
+	    a <replaceable>name</replaceable> container or
+	    a <replaceable>pid</replaceable>.
+            -->
+            名前が <replaceable>name</replaceable> である，もしくは PID が <replaceable>pid</replaceable> であるコンテナと IPC 名前空間を共有します．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--share-uts <replaceable>name|pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+            Inherit a UTS namespace from
+	    a <replaceable>name</replaceable> container or
+	    a <replaceable>pid</replaceable>. The starting LXC will
+	    not set the hostname, but the container OS may do it
+	    anyway.
+            -->
+            名前が <replaceable>name</replaceable> である，もしくは PID が <replaceable>pid</replaceable> であるコンテナと UTS 名前空間を共有します．LXC は開始するときににはホスト名を設定しませんが，コンテナ内の OS が何らかの方法でホスト名を設定するかもしれません．
 	  </para>
 	</listitem>
       </varlistentry>
