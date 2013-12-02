@@ -537,6 +537,18 @@ EOF
         install_packages $rootfs $packages
     fi
 
+    # Set initial timezone as on host
+    if [ -f /etc/timezone ]; then
+        cat /etc/timezone > $rootfs/etc/timezone
+        chroot $rootfs dpkg-reconfigure -f noninteractive tzdata
+    elif [ -f /etc/sysconfig/clock ]; then
+        source /etc/sysconfig/clock
+        echo $ZONE > $rootfs/etc/timezone
+        chroot $rootfs dpkg-reconfigure -f noninteractive tzdata
+    else
+        echo "Timezone in container is not configured. Adjust it manually."
+    fi
+
     # rmdir /dev/shm for containers that have /run/shm
     # I'm afraid of doing rm -rf $rootfs/dev/shm, in case it did
     # get bind mounted to the host's /run/shm.  So try to rmdir

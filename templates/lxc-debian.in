@@ -95,7 +95,7 @@ EOF
 
     # set initial timezone as on host
     if [ -f /etc/timezone ]; then
-        echo $(cat /etc/timezone) > $rootfs/etc/timezone
+        cat /etc/timezone > $rootfs/etc/timezone
         chroot $rootfs dpkg-reconfigure -f noninteractive tzdata
     elif [ -f /etc/sysconfig/clock ]; then
         source /etc/sysconfig/clock
