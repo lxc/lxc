@@ -14,6 +14,11 @@ AC_INIT([lxc], [lxc_version])
 AC_SUBST(LXC_VERSION_BASE, lxc_version_base)
 AC_SUBST(LXC_VERSION_BETA, lxc_version_beta)
 
+AC_SUBST([LXC_VERSION_MAJOR], [lxc_version_major])
+AC_SUBST([LXC_VERSION_MINOR], [lxc_version_minor])
+AC_SUBST([LXC_VERSION_MICRO], [lxc_version_micro])
+AC_SUBST([LXC_VERSION], [lxc_version])
+
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_HEADERS([src/config.h])
@@ -554,7 +559,7 @@ AC_CONFIG_FILES([
 	src/lxc/lxc-start-ephemeral
 	src/lxc/legacy/lxc-ls
 	src/lxc/lxc.functions
-
+	src/lxc/version.h
 	src/python-lxc/Makefile
 
 	src/lua-lxc/Makefile
