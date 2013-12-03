@@ -93,6 +93,13 @@ EOF
     chroot $rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
     chroot $rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
 
+    # regenerate ssh keys
+    rm $rootfs/etc/ssh/ssh_host_*
+    chroot $rootfs /usr/sbin/dpkg-reconfigure openssh-server
+
+    # change hostname comment in newly generated keys
+    sed -i "s/root@$HOSTNAME/root@$hostname/g" $rootfs/etc/ssh/ssh_host_*.pub
+
     echo "root:root" | chroot $rootfs chpasswd
     echo "Root password is 'root', please change !"
 
