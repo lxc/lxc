@@ -513,9 +513,7 @@ static int setup_lodev(const char *rootfs, int fd, struct loop_info64 *loinfo)
 	int rfd;
 	int ret = -1;
 
-	process_lock();
 	rfd = open(rootfs, O_RDWR);
-	process_unlock();
 	if (rfd < 0) {
 		SYSERROR("failed to open '%s'", rootfs);
 		return -1;
@@ -537,9 +535,7 @@ static int setup_lodev(const char *rootfs, int fd, struct loop_info64 *loinfo)
 
 	ret = 0;
 out:
-	process_lock();
 	close(rfd);
-	process_unlock();
 
 	return ret;
 }
@@ -578,25 +574,19 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 		if (rc < 0 || rc >= MAXPATHLEN)
 			continue;
 
-		process_lock();
 		fd = open(path, O_RDWR);
-		process_unlock();
 		if (fd < 0)
 			continue;
 
 		if (ioctl(fd, LOOP_GET_STATUS64, &loinfo) == 0) {
-			process_lock();
 			close(fd);
-			process_unlock();
 			continue;
 		}
 
 		if (errno != ENXIO) {
 			WARN("unexpected error for ioctl on '%s': %m",
 			     direntp->d_name);
-			process_lock();
 			close(fd);
-			process_unlock();
 			continue;
 		}
 
@@ -605,9 +595,7 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 		ret = setup_lodev(rootfs, fd, &loinfo);
 		if (!ret)
 			ret = mount_unknow_fs(path, target, 0);
-		process_lock();
 		close(fd);
-		process_unlock();
 
 		break;
 	}
@@ -661,9 +649,7 @@ int pin_rootfs(const char *rootfs)
 	if (ret >= MAXPATHLEN)
 		return -1;
 
-	process_lock();
 	fd = open(absrootfspin, O_CREAT | O_RDWR, S_IWUSR|S_IRUSR);
-	process_unlock();
 	if (fd < 0)
 		return fd;
 	(void)unlink(absrootfspin);
@@ -840,17 +826,13 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 				ERROR("pathname too long for ttys");
 				return -1;
 			}
-			process_lock();
 			ret = creat(lxcpath, 0660);
-			process_unlock();
 			if (ret==-1 && errno != EEXIST) {
 				SYSERROR("error creating %s\n", lxcpath);
 				return -1;
 			}
-			process_lock();
 			if (ret >= 0)
 				close(ret);
-			process_unlock();
 			ret = unlink(path);
 			if (ret && errno != ENOENT) {
 				SYSERROR("error unlinking %s\n", path);
@@ -876,16 +858,12 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 		} else {
 			/* If we populated /dev, then we need to create /dev/ttyN */
 			if (access(path, F_OK)) {
-				process_lock();
 				ret = creat(path, 0660);
-				process_unlock();
 				if (ret==-1) {
 					SYSERROR("error creating %s\n", path);
 					/* this isn't fatal, continue */
 				} else {
-					process_lock();
 					close(ret);
-					process_unlock();
 				}
 			}
 			if (mount(pty_info->name, path, "none", MS_BIND, 0)) {
@@ -1738,17 +1716,13 @@ static int setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		return -1;
 	}
 
-	process_lock();
 	ret = creat(lxcpath, 0660);
-	process_unlock();
 	if (ret==-1 && errno != EEXIST) {
 		SYSERROR("error %d creating %s\n", errno, lxcpath);
 		return -1;
 	}
-	process_lock();
 	if (ret >= 0)
 		close(ret);
-	process_unlock();
 
 	if (console->master < 0) {
 		INFO("no console");
@@ -2321,18 +2295,14 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	ifr.ifr_name[IFNAMSIZ-1] = '\0';
 	memcpy((char *) &ifr.ifr_hwaddr, (char *) &sockaddr, sizeof(sockaddr));
 
-	process_lock();
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
-	process_unlock();
 	if (fd < 0) {
 		ERROR("socket failure : %s", strerror(errno));
 		return -1;
 	}
 
 	ret = ioctl(fd, SIOCSIFHWADDR, &ifr);
-	process_lock();
 	close(fd);
-	process_unlock();
 	if (ret)
 		ERROR("ioctl failure : %s", strerror(errno));
 
@@ -3307,10 +3277,8 @@ int lxc_create_tty(const char *name, struct lxc_conf *conf)
 
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
-		process_lock();
 		ret = openpty(&pty_info->master, &pty_info->slave,
 			    pty_info->name, NULL, NULL);
-		process_unlock();
 		if (ret) {
 			SYSERROR("failed to create pty #%d", i);
 			tty_info->nbtty = i;
@@ -3342,10 +3310,8 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 	for (i = 0; i < tty_info->nbtty; i++) {
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
-		process_lock();
 		close(pty_info->master);
 		close(pty_info->slave);
-		process_unlock();
 	}
 
 	free(tty_info->pty_info);
@@ -4065,9 +4031,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	int p[2];
 	struct lxc_list *idmap;
 
-	process_lock();
 	ret = pipe(p);
-	process_unlock();
 	if (ret < 0) {
 		SYSERROR("opening pipe");
 		return -1;
@@ -4079,9 +4043,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	pid = lxc_clone(run_userns_fn, &d, CLONE_NEWUSER);
 	if (pid < 0)
 		goto err;
-	process_lock();
 	close(p[0]);
-	process_unlock();
 	p[0] = -1;
 
 	if ((idmap = idmap_add_id(conf, geteuid())) == NULL) {
@@ -4108,10 +4070,8 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 		goto err;
 	}
 err:
-	process_lock();
 	if (p[0] != -1)
 		close(p[0]);
 	close(p[1]);
-	process_unlock();
 	return -1;
 }

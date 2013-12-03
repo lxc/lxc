@@ -87,14 +87,12 @@ const struct ns_info ns_info[LXC_NS_MAX] = {
 static void close_ns(int ns_fd[LXC_NS_MAX]) {
 	int i;
 
-	process_lock();
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (ns_fd[i] > -1) {
 			close(ns_fd[i]);
 			ns_fd[i] = -1;
 		}
 	}
-	process_unlock();
 }
 
 static int preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags) {
@@ -113,9 +111,7 @@ static int preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags) {
 		if ((clone_flags & ns_info[i].clone_flag) == 0)
 			continue;
 		snprintf(path, MAXPATHLEN, "/proc/self/ns/%s", ns_info[i].proc_name);
-		process_lock();
 		ns_fd[i] = open(path, O_RDONLY | O_CLOEXEC);
-		process_unlock();
 		if (ns_fd[i] < 0)
 			goto error;
 	}
@@ -188,8 +184,8 @@ restart:
 			continue;
 
 		if (conf->close_all_fds) {
-			process_lock();
 			close(fd);
+			process_lock();
 			closedir(dir);
 			process_unlock();
 			INFO("closed inherited fd %d", fd);
@@ -337,9 +333,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 out_mainloop_open:
 	lxc_mainloop_close(&descr);
 out_sigfd:
-	process_lock();
 	close(sigfd);
-	process_unlock();
 	return -1;
 }
 
@@ -440,9 +434,7 @@ out_delete_tty:
 out_aborting:
 	lxc_set_state(name, handler, ABORTING);
 out_close_maincmd_fd:
-	process_lock();
 	close(conf->maincmd_fd);
-	process_unlock();
 	conf->maincmd_fd = -1;
 out_free_name:
 	free(handler->name);
@@ -469,9 +461,7 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	lxc_console_delete(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
-	process_lock();
 	close(handler->conf->maincmd_fd);
-	process_unlock();
 	handler->conf->maincmd_fd = -1;
 	free(handler->name);
 	if (handler->cgroup) {
@@ -587,9 +577,7 @@ static int do_start(void *data)
 
 	/* don't leak the pinfd to the container */
 	if (handler->pinfd >= 0) {
-		process_lock();
 		close(handler->pinfd);
-		process_unlock();
 	}
 
 	/* Tell the parent task it can begin to configure the
@@ -666,9 +654,7 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
-	process_lock();
 	close(handler->sigfd);
-	process_unlock();
 
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
@@ -913,9 +899,7 @@ out_abort:
 	lxc_abort(name, handler);
 	lxc_sync_fini(handler);
 	if (handler->pinfd >= 0) {
-		process_lock();
 		close(handler->pinfd);
-		process_unlock();
 		handler->pinfd = -1;
 	}
 
@@ -987,9 +971,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	lxc_rename_phys_nics_on_shutdown(handler->conf);
 
 	if (handler->pinfd >= 0) {
-		process_lock();
 		close(handler->pinfd);
-		process_unlock();
 		handler->pinfd = -1;
 	}
 

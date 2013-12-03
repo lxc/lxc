@@ -1054,9 +1054,7 @@ int lxc_write_to_file(const char *filename, const void* buf, size_t count, bool 
 	int fd, saved_errno;
 	ssize_t ret;
 
-	process_lock();
 	fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, 0666);
-	process_unlock();
 	if (fd < 0)
 		return -1;
 	ret = lxc_write_nointr(fd, buf, count);
@@ -1069,16 +1067,12 @@ int lxc_write_to_file(const char *filename, const void* buf, size_t count, bool 
 		if (ret != 1)
 			goto out_error;
 	}
-	process_lock();
 	close(fd);
-	process_unlock();
 	return 0;
 
 out_error:
 	saved_errno = errno;
-	process_lock();
 	close(fd);
-	process_unlock();
 	errno = saved_errno;
 	return -1;
 }
@@ -1088,9 +1082,7 @@ int lxc_read_from_file(const char *filename, void* buf, size_t count)
 	int fd = -1, saved_errno;
 	ssize_t ret;
 
-	process_lock();
 	fd = open(filename, O_RDONLY | O_CLOEXEC);
-	process_unlock();
 	if (fd < 0)
 		return -1;
 
@@ -1110,9 +1102,7 @@ int lxc_read_from_file(const char *filename, void* buf, size_t count)
 		ERROR("read %s: %s", filename, strerror(errno));
 
 	saved_errno = errno;
-	process_lock();
 	close(fd);
-	process_unlock();
 	errno = saved_errno;
 	return ret;
 }

@@ -96,15 +96,11 @@ static int blk_getsize(struct bdev *bdev, unsigned long *size)
 	if (strcmp(bdev->type, "loop") == 0)
 		path = bdev->src + 5;
 
-	process_lock();
 	fd = open(path, O_RDONLY);
-	process_unlock();
 	if (fd < 0)
 		return -1;
 	ret = ioctl(fd, BLKGETSIZE64, size);
-	process_lock();
 	close(fd);
-	process_unlock();
 	return ret;
 }
 
@@ -260,23 +256,17 @@ static int detect_fs(struct bdev *bdev, char *type, int len)
 	if (strcmp(bdev->type, "loop") == 0)
 		srcdev = bdev->src + 5;
 
-	process_lock();
 	ret = pipe(p);
-	process_unlock();
 	if (ret < 0)
 		return -1;
 	if ((pid = fork()) < 0)
 		return -1;
 	if (pid > 0) {
 		int status;
-		process_lock();
 		close(p[1]);
-		process_unlock();
 		memset(type, 0, len);
 		ret = read(p[0], type, len-1);
-		process_lock();
 		close(p[0]);
-		process_unlock();
 		if (ret < 0) {
 			SYSERROR("error reading from pipe");
 			wait(&status);
@@ -1182,17 +1172,13 @@ static bool is_btrfs_fs(const char *path)
 	struct btrfs_ioctl_space_args sargs;
 
 	// make sure this is a btrfs filesystem
-	process_lock();
 	fd = open(path, O_RDONLY);
-	process_unlock();
 	if (fd < 0)
 		return false;
 	sargs.space_slots = 0;
 	sargs.total_spaces = 0;
 	ret = ioctl(fd, BTRFS_IOC_SPACE_INFO, &sargs);
-	process_lock();
 	close(fd);
-	process_unlock();
 	if (ret < 0)
 		return false;
 
@@ -1290,9 +1276,7 @@ static int btrfs_subvolume_create(const char *path)
 	}
 	*p = '\0';
 
-	process_lock();
 	fd = open(newfull, O_RDONLY);
-	process_unlock();
 	if (fd < 0) {
 		ERROR("Error opening %s", newfull);
 		free(newfull);
@@ -1306,9 +1290,7 @@ static int btrfs_subvolume_create(const char *path)
 	INFO("btrfs: snapshot create ioctl returned %d", ret);
 
 	free(newfull);
-	process_lock();
 	close(fd);
-	process_unlock();
 	return ret;
 }
 
@@ -1330,14 +1312,12 @@ static int btrfs_snapshot(const char *orig, const char *new)
 	}
 	newname = basename(newfull);
 	newdir = dirname(newfull);
-	process_lock();
 	fd = open(orig, O_RDONLY);
-	fddst = open(newdir, O_RDONLY);
-	process_unlock();
 	if (fd < 0) {
 		SYSERROR("Error opening original rootfs %s", orig);
 		goto out;
 	}
+	fddst = open(newdir, O_RDONLY);
 	if (fddst < 0) {
 		SYSERROR("Error opening new container dir %s", newdir);
 		goto out;
@@ -1351,12 +1331,10 @@ static int btrfs_snapshot(const char *orig, const char *new)
 	INFO("btrfs: snapshot create ioctl returned %d", ret);
 
 out:
-	process_lock();
 	if (fddst != -1)
 		close(fddst);
 	if (fd != -1)
 		close(fd);
-	process_unlock();
 	if (newfull)
 		free(newfull);
 	return ret;
@@ -1427,9 +1405,7 @@ static int btrfs_destroy(struct bdev *orig)
 	}
 	*p = '\0';
 
-	process_lock();
 	fd = open(newfull, O_RDONLY);
-	process_unlock();
 	if (fd < 0) {
 		ERROR("Error opening %s", newfull);
 		free(newfull);
@@ -1443,9 +1419,7 @@ static int btrfs_destroy(struct bdev *orig)
 	INFO("btrfs: snapshot create ioctl returned %d", ret);
 
 	free(newfull);
-	process_lock();
 	close(fd);
-	process_unlock();
 	return ret;
 }
 
@@ -1498,15 +1472,11 @@ static int find_free_loopdev(int *retfd, char *namep)
 			break;
 		if (strncmp(direntp->d_name, "loop", 4) != 0)
 			continue;
-		process_lock();
 		fd = openat(dirfd(dir), direntp->d_name, O_RDWR);
-		process_unlock();
 		if (fd < 0)
 			continue;
 		if (ioctl(fd, LOOP_GET_STATUS64, &lo) == 0 || errno != ENXIO) {
-			process_lock();
 			close(fd);
-			process_unlock();
 			fd = -1;
 			continue;
 		}
@@ -1539,9 +1509,7 @@ static int loop_mount(struct bdev *bdev)
 	if (find_free_loopdev(&lfd, loname) < 0)
 		return -22;
 
-	process_lock();
 	ffd = open(bdev->src + 5, O_RDWR);
-	process_unlock();
 	if (ffd < 0) {
 		SYSERROR("Error opening backing file %s\n", bdev->src);
 		goto out;
@@ -1565,14 +1533,12 @@ static int loop_mount(struct bdev *bdev)
 		bdev->lofd = lfd;
 
 out:
-	process_lock();
 	if (ffd > -1)
 		close(ffd);
 	if (ret < 0) {
 		close(lfd);
 		bdev->lofd = -1;
 	}
-	process_unlock();
 	return ret;
 }
 
@@ -1586,9 +1552,7 @@ static int loop_umount(struct bdev *bdev)
 		return -22;
 	ret = umount(bdev->dest);
 	if (bdev->lofd >= 0) {
-		process_lock();
 		close(bdev->lofd);
-		process_unlock();
 		bdev->lofd = -1;
 	}
 	return ret;
@@ -1598,9 +1562,7 @@ static int do_loop_create(const char *path, unsigned long size, const char *fsty
 {
 	int fd, ret;
 	// create the new loopback file.
-	process_lock();
 	fd = creat(path, S_IRUSR|S_IWUSR);
-	process_unlock();
 	if (fd < 0)
 		return -1;
 	if (lseek(fd, size, SEEK_SET) < 0) {
@@ -1613,9 +1575,7 @@ static int do_loop_create(const char *path, unsigned long size, const char *fsty
 		close(fd);
 		return -1;
 	}
-	process_lock();
 	ret = close(fd);
-	process_unlock();
 	if (ret < 0) {
 		SYSERROR("Error closing new loop file");
 		return -1;

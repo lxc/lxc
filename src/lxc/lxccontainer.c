@@ -112,9 +112,7 @@ int ongoing_create(struct lxc_container *c)
 
 	if (!file_exists(path))
 		return 0;
-	process_lock();
 	fd = open(path, O_RDWR);
-	process_unlock();
 	if (fd < 0) {
 		// give benefit of the doubt
 		SYSERROR("Error opening partial file");
@@ -127,15 +125,11 @@ int ongoing_create(struct lxc_container *c)
 	lk.l_pid = -1;
 	if (fcntl(fd, F_GETLK, &lk) == 0 && lk.l_pid != -1) {
 		// create is still ongoing
-		process_lock();
 		close(fd);
-		process_unlock();
 		return 1;
 	}
 	// create completed but partial is still there.
-	process_lock();
 	close(fd);
-	process_unlock();
 	return 2;
 }
 
@@ -152,10 +146,8 @@ int create_partial(struct lxc_container *c)
 		ERROR("Error writing partial pathname");
 		return -1;
 	}
-	process_lock();
 	if ((fd=open(path, O_RDWR | O_CREAT | O_EXCL, 0755)) < 0) {
 		SYSERROR("Erorr creating partial file");
-		process_unlock();
 		return -1;
 	}
 	lk.l_type = F_WRLCK;
@@ -165,10 +157,8 @@ int create_partial(struct lxc_container *c)
 	if (fcntl(fd, F_SETLKW, &lk) < 0) {
 		SYSERROR("Error locking partial file %s", path);
 		close(fd);
-		process_unlock();
 		return -1;
 	}
-	process_unlock();
 
 	return fd;
 }
@@ -180,9 +170,7 @@ void remove_partial(struct lxc_container *c, int fd)
 	char *path = alloca(len);
 	int ret;
 
-	process_lock();
 	close(fd);
-	process_unlock();
 	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
 	if (ret < 0 || ret >= len) {
 		ERROR("Error writing partial pathname");
@@ -1400,12 +1388,10 @@ static inline void exit_from_ns(struct lxc_container *c, int *old_netns, int *ne
 	/* Switch back to original netns */
 	if (*old_netns >= 0 && setns(*old_netns, CLONE_NEWNET))
 		SYSERROR("failed to setns");
-	process_lock();
 	if (*new_netns >= 0)
 		close(*new_netns);
 	if (*old_netns >= 0)
 		close(*old_netns);
-	process_unlock();
 }
 
 static inline bool enter_to_ns(struct lxc_container *c, int *old_netns, int *new_netns) {
@@ -1416,9 +1402,7 @@ static inline bool enter_to_ns(struct lxc_container *c, int *old_netns, int *new
 		goto out;
 
 	/* Save reference to old netns */
-	process_lock();
 	*old_netns = open("/proc/self/ns/net", O_RDONLY);
-	process_unlock();
 	if (*old_netns < 0) {
 		SYSERROR("failed to open /proc/self/ns/net");
 		goto out;
@@ -1429,9 +1413,7 @@ static inline bool enter_to_ns(struct lxc_container *c, int *old_netns, int *new
 	if (ret < 0 || ret >= MAXPATHLEN)
 		goto out;
 
-	process_lock();
 	*new_netns = open(new_netns_path, O_RDONLY);
-	process_unlock();
 	if (*new_netns < 0) {
 		SYSERROR("failed to open %s", new_netns_path);
 		goto out;
@@ -2128,21 +2110,15 @@ static int copy_file(const char *old, const char *new)
 		return -1;
 	}
 
-	process_lock();
 	in = open(old, O_RDONLY);
-	process_unlock();
 	if (in < 0) {
 		SYSERROR("Error opening original file %s", old);
 		return -1;
 	}
-	process_lock();
 	out = open(new, O_CREAT | O_EXCL | O_WRONLY, 0644);
-	process_unlock();
 	if (out < 0) {
 		SYSERROR("Error opening new file %s", new);
-		process_lock();
 		close(in);
-		process_unlock();
 		return -1;
 	}
 
@@ -2160,10 +2136,8 @@ static int copy_file(const char *old, const char *new)
 			goto err;
 		}
 	}
-	process_lock();
 	close(in);
 	close(out);
-	process_unlock();
 
 	// we set mode, but not owner/group
 	ret = chmod(new, sbuf.st_mode);
@@ -2175,10 +2149,8 @@ static int copy_file(const char *old, const char *new)
 	return 0;
 
 err:
-	process_lock();
 	close(in);
 	close(out);
-	process_unlock();
 	return -1;
 }
 
