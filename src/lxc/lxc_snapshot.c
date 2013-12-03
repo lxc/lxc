@@ -41,6 +41,7 @@ char *snapshot;
 #define DO_SNAP 0
 #define DO_LIST 1
 #define DO_RESTORE 2
+#define DO_DESTROY 3
 int action;
 int print_comments;
 char *commentfile;
@@ -100,7 +101,7 @@ int do_list_snapshots(struct lxc_container *c)
 	return 0;
 }
 
-int do_restore_snapshots(struct lxc_container *c, char *snap, char *new)
+int do_restore_snapshots(struct lxc_container *c)
 {
 	if (c->snapshot_restore(c, snapshot, newname))
 		return 0;
@@ -109,11 +110,21 @@ int do_restore_snapshots(struct lxc_container *c, char *snap, char *new)
 	return -1;
 }
 
+int do_destroy_snapshots(struct lxc_container *c)
+{
+	if (c->snapshot_destroy(c, snapshot))
+		return 0;
+
+	ERROR("Error destroying snapshot %s", snapshot);
+	return -1;
+}
+
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
 	case 'L': action = DO_LIST; break;
 	case 'r': snapshot = arg; action = DO_RESTORE; break;
+	case 'd': snapshot = arg; action = DO_DESTROY; break;
 	case 'c': commentfile = arg; break;
 	case 'C': print_comments = true; break;
 	}
@@ -123,6 +134,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 static const struct option my_longopts[] = {
 	{"list", no_argument, 0, 'L'},
 	{"restore", required_argument, 0, 'r'},
+	{"destroy", required_argument, 0, 'd'},
 	{"comment", required_argument, 0, 'c'},
 	{"showcomments", no_argument, 0, 'C'},
 	LXC_COMMON_OPTIONS
@@ -141,7 +153,8 @@ Options :\n\
   -L, --list          list snapshots\n\
   -C, --showcomments  show snapshot comments in list\n\
   -c, --comment=file  add file as a comment\n\
-  -r, --restore=name  restore snapshot name, i.e. 'snap0'\n",
+  -r, --restore=name  restore snapshot name, i.e. 'snap0'\n\
+  -d, --destroy=name  destroy snapshot name, i.e. 'snap0'\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
@@ -202,7 +215,10 @@ int main(int argc, char *argv[])
 		ret = do_list_snapshots(c);
 		break;
 	case DO_RESTORE:
-		ret = do_restore_snapshots(c, snapshot, newname);
+		ret = do_restore_snapshots(c);
+		break;
+	case DO_DESTROY:
+		ret = do_destroy_snapshots(c);
 		break;
 	}
 
