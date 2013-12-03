@@ -93,6 +93,9 @@ EOF
     chroot $rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
     chroot $rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
 
+    # avoid annoying error '/etc/init.d/mountall.sh: 59: kill: Illegal number: 3 1' message during boot
+    sed -i 's/PID="\$(pidof \/sbin\/init || echo 1)"/PID="\$(pidof -s \/sbin\/init || echo 1)"/' $rootfs/etc/init.d/mountall.sh
+
     echo "root:root" | chroot $rootfs chpasswd
     echo "Root password is 'root', please change !"
 
