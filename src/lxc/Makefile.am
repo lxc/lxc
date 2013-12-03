@@ -1,10 +1,29 @@
 pkginclude_HEADERS = \
-		attach_options.h \
-		lxccontainer.h \
-		version.h
+	attach_options.h \
+	lxccontainer.h \
+	version.h
+
+noinst_HEADERS = \
+	arguments.h \
+	attach.h \
+	bdev.h \
+	caps.h \
+	cgroup.h \
+	conf.h \
+	console.h \
+	error.h \
+	list.h \
+	log.h \
+	lxc.h \
+	lxclock.h \
+	monitor.h \
+	namespace.h \
+	start.h \
+	state.h \
+	utils.h
 
 if IS_BIONIC
-pkginclude_HEADERS += \
+noinst_HEADERS += \
 	../include/ifaddrs.h \
 	../include/openpty.h \
 	../include/lxcmntent.h
@@ -12,7 +31,7 @@ endif
 
 if !HAVE_GETLINE
 if HAVE_FGETLN
-pkginclude_HEADERS += ../include/getline.h
+noinst_HEADERS += ../include/getline.h
 endif
 endif
 
