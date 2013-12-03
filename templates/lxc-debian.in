@@ -93,6 +93,28 @@ EOF
     chroot $rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
     chroot $rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
 
+    # create convenient uptime utility for container
+    chroot $rootfs /bin/cat <<'EOF' > $rootfs/usr/local/bin/uptime
+#!/usr/bin/perl -w
+
+## Shows correct uptime in container (doesn't get from kernel - /proc/uptime)
+
+$uptime = `/usr/bin/uptime`;
+@s = lstat '/dev/pts' or die $uptime;
+$s = time - $s[10];
+if ($s>172800) {
+    $d = int($s/86400);
+    $uptime =~ s/up .*?,/up $d days,/;
+} else {
+    $h = int($s/3600);
+    $m = int(($s-$h*3600)/60);
+    $uptime =~ s/up .*?,/sprintf("up %02d:%02d,",$h,$m)/e;
+}
+print $uptime;
+EOF
+
+    chmod +x $rootfs/usr/local/bin/uptime
+
     echo "root:root" | chroot $rootfs chpasswd
     echo "Root password is 'root', please change !"
 
