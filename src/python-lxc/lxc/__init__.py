@@ -160,49 +160,6 @@ class Container(_lxc.Container):
 
         self.network = ContainerNetworkList(self)
 
-    def add_device_node(self, path, destpath=None):
-        """
-            Add block/char device to running container.
-        """
-
-        if not self.running:
-            return False
-
-        if not destpath:
-            destpath = path
-
-        if not os.path.exists(path):
-            return False
-
-        # Lookup the source
-        path_stat = os.stat(path)
-        mode = stat.S_IMODE(path_stat.st_mode)
-
-        # Allow the target
-        if stat.S_ISBLK(path_stat.st_mode):
-            self.set_cgroup_item("devices.allow",
-                                 "b %s:%s rwm" %
-                                 (int(path_stat.st_rdev / 256),
-                                  int(path_stat.st_rdev % 256)))
-        elif stat.S_ISCHR(path_stat.st_mode):
-            self.set_cgroup_item("devices.allow",
-                                 "c %s:%s rwm" %
-                                 (int(path_stat.st_rdev / 256),
-                                  int(path_stat.st_rdev % 256)))
-
-        # Create the target
-        rootfs = "/proc/%s/root/" % self.init_pid
-        container_path = "%s/%s" % (rootfs, destpath)
-
-        if os.path.exists(container_path):
-            os.remove(container_path)
-
-        os.mknod(container_path, path_stat.st_mode, path_stat.st_rdev)
-        os.chmod(container_path, mode)
-        os.chown(container_path, 0, 0)
-
-        return True
-
     def add_device_net(self, name, destname=None):
         """
             Add network device to running container.
