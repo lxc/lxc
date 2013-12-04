@@ -97,7 +97,8 @@ static int do_start(void *arg)
 	int flags = *start_arg->flags;
 	uid_t uid = *start_arg->uid;
 
-	if (flags & CLONE_NEWUSER && setuid(uid)) {
+	// Setuid is useful even without a new user id space
+	if ( uid >= 0 && setuid(uid)) {
 		ERROR("failed to set uid %d: %s", uid, strerror(errno));
 		exit(1);
 	}
@@ -153,8 +154,6 @@ int main(int argc, char *argv[])
 	if (ret)
 		usage(argv[0]);
 
-	if (!(flags & CLONE_NEWUSER) && uid != -1) {
-		ERROR("-u <uid> needs -s USER option");
 		return 1;
 	}
 

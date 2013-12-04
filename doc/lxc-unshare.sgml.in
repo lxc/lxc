@@ -51,7 +51,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <cmdsynopsis>
       <command>lxc-unshare</command>
       <arg choice="req">-s <replaceable>namespaces</replaceable></arg>
-      <arg choice="req">-u <replaceable>user</replaceable></arg>
+      <arg choice="opt">-u <replaceable>user</replaceable></arg>
       <arg choice="req">command</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -100,8 +100,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</term>
 	<listitem>
 	  <para>
-	    Specify a user which the new task should become.  This option is
-	    only valid if a user namespace is unshared.
+	    Specify a userid which the new task should become.
 	  </para>
 	</listitem>
       </varlistentry>
