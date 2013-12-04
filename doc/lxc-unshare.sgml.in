@@ -52,6 +52,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <command>lxc-unshare</command>
       <arg choice="req">-s <replaceable>namespaces</replaceable></arg>
       <arg choice="opt">-u <replaceable>user</replaceable></arg>
+      <arg choice="opt">-H <replaceable>hostname</replaceable></arg>
+      <arg choice="opt">-i <replaceable>ifname</replaceable></arg>
+      <arg choice="opt">-d</arg>
+      <arg choice="opt">-M</arg>
       <arg choice="req">command</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -105,6 +109,55 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</listitem>
       </varlistentry>
 
+      <varlistentry>
+	<term>
+	  <option>-H <replaceable>hostname</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Set the hostname in the new container.  Only allowed if
+	    the UTSNAME namespace is set.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-i <replaceable>interfacename</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Move the named interface into the container.  Only allowed
+	    if the NETWORK namespace is set.  You may specify this
+	    argument multiple times to move multiple interfaces into
+	    container.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-d</option>
+	</term>
+	<listitem>
+	  <para>
+	    Daemonize (do not wait for the container to exit before exiting)
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-M</option>
+	</term>
+	<listitem>
+	  <para>
+	    Mount default filesystems (/proc /dev/shm and /dev/mqueue)
+	    in the container.  Only allowed if MOUNT namespace is set.
+	  </para>
+	</listitem>
+      </varlistentry>
+
     </variablelist>
 
   </refsect1>
@@ -130,6 +183,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           mount -t proc proc /proc
         </programlisting>
 	ps output will show there are no other processes in the namespace.
+      </para>
+      <para>
+        To spawn a shell in a new network, pid, mount, and hostname
+        namespace.
+        <programlisting>
+          lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H slave -i veth1 /bin/bash
+        </programlisting>
+
+	The resulting shell will have pid 1 and will see two network
+	interfaces (lo and veth1).  The hostname will be "slave" and
+	/proc will have been remounted.  ps output will show there are
+	no other processes in the namespace.
       </para>
   </refsect1>
 
