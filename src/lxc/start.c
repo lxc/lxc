@@ -155,9 +155,7 @@ int lxc_check_inherited(struct lxc_conf *conf, int fd_to_ignore)
 	DIR *dir;
 
 restart:
-	process_lock();
-	dir = opendir("/proc/self/fd");
-	process_unlock();
+	dir = lxc_opendir("/proc/self/fd");
 	if (!dir) {
 		WARN("failed to open directory: %m");
 		return -1;
@@ -185,18 +183,14 @@ restart:
 
 		if (conf->close_all_fds) {
 			close(fd);
-			process_lock();
-			closedir(dir);
-			process_unlock();
+			lxc_closedir(dir);
 			INFO("closed inherited fd %d", fd);
 			goto restart;
 		}
 		WARN("inherited fd %d", fd);
 	}
 
-	process_lock();
-	closedir(dir); /* cannot fail */
-	process_unlock();
+	lxc_closedir(dir); /* cannot fail */
 	return 0;
 }
 
@@ -509,18 +503,14 @@ static int must_drop_cap_sys_boot(struct lxc_conf *conf)
         int status;
         pid_t pid;
 
-	process_lock();
-	f = fopen("/proc/sys/kernel/ctrl-alt-del", "r");
-	process_unlock();
+	f = lxc_fopen("/proc/sys/kernel/ctrl-alt-del", "r");
 	if (!f) {
 		DEBUG("failed to open /proc/sys/kernel/ctrl-alt-del");
 		return 1;
 	}
 
 	ret = fscanf(f, "%d", &v);
-	process_lock();
-	fclose(f);
-	process_unlock();
+	lxc_fclose(f);
 	if (ret != 1) {
 		DEBUG("Failed to read /proc/sys/kernel/ctrl-alt-del");
 		return 1;

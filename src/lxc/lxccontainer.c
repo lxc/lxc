@@ -506,9 +506,7 @@ static bool am_single_threaded(void)
 	DIR *dir;
 	int count=0;
 
-	process_lock();
-	dir = opendir("/proc/self/task");
-	process_unlock();
+	dir = lxc_opendir("/proc/self/task");
 	if (!dir) {
 		INFO("failed to open /proc/self/task");
 		return false;
@@ -526,9 +524,7 @@ static bool am_single_threaded(void)
 		if (++count > 1)
 			break;
 	}
-	process_lock();
-	closedir(dir);
-	process_unlock();
+	lxc_closedir(dir);
 	return count == 1;
 }
 
@@ -1051,9 +1047,7 @@ bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	char *tpath;
 #endif
 
-	process_lock();
-	f = fopen(path, "r");
-	process_unlock();
+	f = lxc_fopen(path, "r");
 	if (f == NULL)
 		return false;
 
@@ -1069,9 +1063,7 @@ bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 		goto out_free_contents;
 
 	contents[flen] = '\0';
-	process_lock();
-	ret = fclose(f);
-	process_unlock();
+	ret = lxc_fclose(f);
 	f = NULL;
 	if (ret < 0)
 		goto out_free_contents;
@@ -1092,9 +1084,7 @@ bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	free(tpath);
 #endif
 
-	process_lock();
-	f = fopen(path, "w");
-	process_unlock();
+	f = lxc_fopen(path, "w");
 	if (f == NULL) {
 		SYSERROR("reopening config for writing");
 		free(contents);
@@ -1119,9 +1109,7 @@ bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	if (fwrite(contents, 1, flen, f) != flen) {
 		SYSERROR("Writing original contents");
 		free(contents);
-		process_lock();
-		fclose(f);
-		process_unlock();
+		lxc_fclose(f);
 		return false;
 	}
 	ret = 0;
@@ -1130,9 +1118,7 @@ out_free_contents:
 out_error:
 	if (f) {
 		int newret;
-		process_lock();
-		newret = fclose(f);
-		process_unlock();
+		newret = lxc_fclose(f);
 		if (ret == 0)
 			ret = newret;
 	}
@@ -1694,15 +1680,11 @@ static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	if (lret)
 		return false;
 
-	process_lock();
-	fout = fopen(alt_file, "w");
-	process_unlock();
+	fout = lxc_fopen(alt_file, "w");
 	if (!fout)
 		goto out;
 	write_config(fout, c->lxc_conf);
-	process_lock();
-	fclose(fout);
-	process_unlock();
+	lxc_fclose(fout);
 	ret = true;
 
 out:
@@ -1726,35 +1708,25 @@ static bool mod_rdep(struct lxc_container *c, bool inc)
 			c->name);
 	if (ret < 0 || ret > MAXPATHLEN)
 		goto out;
-	process_lock();
-	f = fopen(path, "r");
-	process_unlock();
+	f = lxc_fopen(path, "r");
 	if (f) {
 		ret = fscanf(f, "%d", &v);
-		process_lock();
-		fclose(f);
-		process_unlock();
+		lxc_fclose(f);
 		if (ret != 1) {
 			ERROR("Corrupted file %s", path);
 			goto out;
 		}
 	}
 	v += inc ? 1 : -1;
-	process_lock();
-	f = fopen(path, "w");
-	process_unlock();
+	f = lxc_fopen(path, "w");
 	if (!f)
 		goto out;
 	if (fprintf(f, "%d\n", v) < 0) {
 		ERROR("Error writing new snapshots value");
-		process_lock();
-		fclose(f);
-		process_unlock();
+		lxc_fclose(f);
 		goto out;
 	}
-	process_lock();
-	ret = fclose(f);
-	process_unlock();
+	ret = lxc_fclose(f);
 	if (ret != 0) {
 		SYSERROR("Error writing to or closing snapshots file");
 		goto out;
@@ -1790,9 +1762,7 @@ static void mod_all_rdeps(struct lxc_container *c, bool inc)
 		ERROR("Path name too long");
 		return;
 	}
-	process_lock();
-	f = fopen(path, "r");
-	process_unlock();
+	f = lxc_fopen(path, "r");
 	if (f == NULL)
 		return;
 	while (getline(&lxcpath, &pathlen, f) != -1) {
@@ -1815,9 +1785,7 @@ static void mod_all_rdeps(struct lxc_container *c, bool inc)
 out:
 	if (lxcpath) free(lxcpath);
 	if (lxcname) free(lxcname);
-	process_lock();
-	fclose(f);
-	process_unlock();
+	lxc_fclose(f);
 }
 
 static bool has_snapshots(struct lxc_container *c)
@@ -1831,15 +1799,11 @@ static bool has_snapshots(struct lxc_container *c)
 			c->name);
 	if (ret < 0 || ret > MAXPATHLEN)
 		goto out;
-	process_lock();
-	f = fopen(path, "r");
-	process_unlock();
+	f = lxc_fopen(path, "r");
 	if (!f)
 		goto out;
 	ret = fscanf(f, "%d", &v);
-	process_lock();
-	fclose(f);
-	process_unlock();
+	lxc_fclose(f);
 	if (ret != 1)
 		goto out;
 	bret = v != 0;
@@ -2191,17 +2155,13 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 static void new_hwaddr(char *hwaddr)
 {
 	FILE *f;
-	process_lock();
-	f = fopen("/dev/urandom", "r");
-	process_unlock();
+	f = lxc_fopen("/dev/urandom", "r");
 	if (f) {
 		unsigned int seed;
 		int ret = fread(&seed, sizeof(seed), 1, f);
 		if (ret != 1)
 			seed = time(NULL);
-		process_lock();
-		fclose(f);
-		process_unlock();
+		lxc_fclose(f);
 		srand(seed);
 	} else
 		srand(time(NULL));
@@ -2291,19 +2251,15 @@ static bool add_rdepends(struct lxc_container *c, struct lxc_container *c0)
 		c->name);
 	if (ret < 0 || ret >= MAXPATHLEN)
 		return false;
-	process_lock();
-	f = fopen(path, "a");
-	process_unlock();
+	f = lxc_fopen(path, "a");
 	if (!f)
 		return false;
 	bret = true;
 	// if anything goes wrong, just return an error
 	if (fprintf(f, "%s\n%s\n", c0->config_path, c0->name) < 0)
 		bret = false;
-	process_lock();
-	if (fclose(f) != 0)
+	if (lxc_fclose(f) != 0)
 		bret = false;
-	process_unlock();
 	return bret;
 }
 
@@ -2488,17 +2444,13 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 	}
 
 	// copy the configuration, tweak it as needed,
-	process_lock();
-	fout = fopen(newpath, "w");
-	process_unlock();
+	fout = lxc_fopen(newpath, "w");
 	if (!fout) {
 		SYSERROR("open %s", newpath);
 		goto out;
 	}
 	write_config(fout, c->lxc_conf);
-	process_lock();
-	fclose(fout);
-	process_unlock();
+	lxc_fclose(fout);
 
 	sprintf(newpath, "%s/%s/rootfs", l, n);
 	if (mkdir(newpath, 0755) < 0) {
@@ -2654,21 +2606,17 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 
 	char *dfnam = alloca(strlen(snappath) + strlen(newname) + 5);
 	sprintf(dfnam, "%s/%s/ts", snappath, newname);
-	process_lock();
-	f = fopen(dfnam, "w");
-	process_unlock();
+	f = lxc_fopen(dfnam, "w");
 	if (!f) {
 		ERROR("Failed to open %s\n", dfnam);
 		return -1;
 	}
 	if (fprintf(f, "%s", buffer) < 0) {
 		SYSERROR("Writing timestamp");
-		fclose(f);
+		lxc_fclose(f);
 		return -1;
 	}
-	process_lock();
-	ret = fclose(f);
-	process_unlock();
+	ret = lxc_fclose(f);
 	if (ret != 0) {
 		SYSERROR("Writing timestamp");
 		return -1;
@@ -2722,9 +2670,7 @@ static char *get_timestamp(char* snappath, char *name)
 	ret = snprintf(path, MAXPATHLEN, "%s/%s/ts", snappath, name);
 	if (ret < 0 || ret >= MAXPATHLEN)
 		return NULL;
-	process_lock();
-	fin = fopen(path, "r");
-	process_unlock();
+	fin = lxc_fopen(path, "r");
 	if (!fin)
 		return NULL;
 	(void) fseek(fin, 0, SEEK_END);
@@ -2741,9 +2687,7 @@ static char *get_timestamp(char* snappath, char *name)
 			}
 		}
 	}
-	process_lock();
-	fclose(fin);
-	process_unlock();
+	lxc_fclose(fin);
 	return s;
 }
 
@@ -2763,9 +2707,7 @@ static int lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **r
 		ERROR("path name too long");
 		return -1;
 	}
-	process_lock();
-	dir = opendir(snappath);
-	process_unlock();
+	dir = lxc_opendir(snappath);
 	if (!dir) {
 		INFO("failed to open %s - assuming no snapshots", snappath);
 		return 0;
@@ -2808,10 +2750,8 @@ static int lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **r
 		count++;
 	}
 
-	process_lock();
-	if (closedir(dir))
+	if (lxc_closedir(dir))
 		WARN("failed to close directory");
-	process_unlock();
 
 	*ret_snaps = snaps;
 	return count;
@@ -2823,10 +2763,8 @@ out_free:
 			lxcsnap_free(&snaps[i]);
 		free(snaps);
 	}
-	process_lock();
-	if (closedir(dir))
+	if (lxc_closedir(dir))
 		WARN("failed to close directory");
-	process_unlock();
 	return -1;
 }
 
@@ -3175,9 +3113,7 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 	if (!lxcpath)
 		lxcpath = default_lxc_path();
 
-	process_lock();
-	dir = opendir(lxcpath);
-	process_unlock();
+	dir = lxc_opendir(lxcpath);
 
 	if (!dir) {
 		SYSERROR("opendir on lxcpath");
@@ -3237,9 +3173,7 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 		nfound++;
 	}
 
-	process_lock();
-	closedir(dir);
-	process_unlock();
+	lxc_closedir(dir);
 	return nfound;
 
 free_bad:
@@ -3253,9 +3187,7 @@ free_bad:
 			lxc_container_put((*cret)[i]);
 		free(*cret);
 	}
-	process_lock();
-	closedir(dir);
-	process_unlock();
+	lxc_closedir(dir);
 	return -1;
 }
 
@@ -3278,9 +3210,7 @@ int list_active_containers(const char *lxcpath, char ***nret,
 	if (nret)
 		*nret = NULL;
 
-	process_lock();
-	FILE *f = fopen("/proc/net/unix", "r");
-	process_unlock();
+	FILE *f = lxc_fopen("/proc/net/unix", "r");
 	if (!f)
 		return -1;
 
@@ -3362,9 +3292,7 @@ out:
 	if (line)
 		free(line);
 
-	process_lock();
-	fclose(f);
-	process_unlock();
+	lxc_fclose(f);
 	return ret;
 }
 

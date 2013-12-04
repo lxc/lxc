@@ -494,9 +494,7 @@ static int zfs_list_entry(const char *path, char *output, size_t inlen)
 	struct lxc_popen_FILE *f;
 	int found=0;
 
-	process_lock();
 	f = lxc_popen("zfs list 2> /dev/null");
-	process_unlock();
 	if (f == NULL) {
 		SYSERROR("popen failed");
 		return 0;
@@ -507,9 +505,7 @@ static int zfs_list_entry(const char *path, char *output, size_t inlen)
 			break;
 		}
 	}
-	process_lock();
 	(void) lxc_pclose(f);
-	process_unlock();
 
 	return found;
 }
@@ -768,15 +764,11 @@ static int lvm_detect(const char *path)
 		ERROR("lvm uuid pathname too long");
 		return 0;
 	}
-	process_lock();
-	fout = fopen(devp, "r");
-	process_unlock();
+	fout = lxc_fopen(devp, "r");
 	if (!fout)
 		return 0;
 	ret = fread(buf, 1, 4, fout);
-	process_lock();
-	fclose(fout);
-	process_unlock();
+	lxc_fclose(fout);
 	if (ret != 4 || strncmp(buf, "LVM-", 4) != 0)
 		return 0;
 	return 1;
@@ -815,9 +807,7 @@ static int lvm_compare_lv_attr(const char *path, int pos, const char expected) {
 	if (ret < 0 || ret >= len)
 		return -1;
 
-	process_lock();
 	f = lxc_popen(cmd);
-	process_unlock();
 
 	if (f == NULL) {
 		SYSERROR("popen failed");
@@ -826,9 +816,7 @@ static int lvm_compare_lv_attr(const char *path, int pos, const char expected) {
 
 	ret = fgets(output, 12, f->f) == NULL;
 
-	process_lock();
 	status = lxc_pclose(f);
-	process_unlock();
 
 	if (ret || WEXITSTATUS(status))
 		// Assume either vg or lvs do not exist, default
@@ -1459,9 +1447,7 @@ static int find_free_loopdev(int *retfd, char *namep)
 	DIR *dir;
 	int fd = -1;
 
-	process_lock();
-	dir = opendir("/dev");
-	process_unlock();
+	dir = lxc_opendir("/dev");
 	if (!dir) {
 		SYSERROR("Error opening /dev");
 		return -1;
@@ -1484,9 +1470,7 @@ static int find_free_loopdev(int *retfd, char *namep)
 		snprintf(namep, 100, "/dev/%s", direntp->d_name);
 		break;
 	}
-	process_lock();
-	closedir(dir);
-	process_unlock();
+	lxc_closedir(dir);
 	if (fd == -1) {
 		ERROR("No loop device found");
 		return -1;

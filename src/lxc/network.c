@@ -48,6 +48,7 @@
 #include "nl.h"
 #include "network.h"
 #include "conf.h"
+#include "utils.h"
 
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
@@ -1122,15 +1123,11 @@ char *lxc_mkifname(char *template)
 	getifaddrs(&ifaddr);
 
 	/* Initialize the random number generator */
-	process_lock();
-	urandom = fopen ("/dev/urandom", "r");
-	process_unlock();
+	urandom = lxc_fopen("/dev/urandom", "r");
 	if (urandom != NULL) {
 		if (fread (&seed, sizeof(seed), 1, urandom) <= 0)
 			seed = time(0);
-		process_lock();
-		fclose(urandom);
-		process_unlock();
+		lxc_fclose(urandom);
 	}
 	else
 		seed = time(0);

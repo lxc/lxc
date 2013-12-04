@@ -79,9 +79,7 @@ struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 	/* read capabilities */
 	snprintf(proc_fn, MAXPATHLEN, "/proc/%d/status", pid);
 
-	process_lock();
-	proc_file = fopen(proc_fn, "r");
-	process_unlock();
+	proc_file = lxc_fopen(proc_fn, "r");
 	if (!proc_file) {
 		SYSERROR("Could not open %s", proc_fn);
 		goto out_error;
@@ -98,9 +96,7 @@ struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 
 	if (line)
 		free(line);
-	process_lock();
-	fclose(proc_file);
-	process_unlock();
+	lxc_fclose(proc_file);
 
 	if (!found) {
 		SYSERROR("Could not read capability bounding set from %s", proc_fn);
@@ -111,18 +107,14 @@ struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 	/* read personality */
 	snprintf(proc_fn, MAXPATHLEN, "/proc/%d/personality", pid);
 
-	process_lock();
-	proc_file = fopen(proc_fn, "r");
-	process_unlock();
+	proc_file = lxc_fopen(proc_fn, "r");
 	if (!proc_file) {
 		SYSERROR("Could not open %s", proc_fn);
 		goto out_error;
 	}
 
 	ret = fscanf(proc_file, "%lx", &info->personality);
-	process_lock();
-	fclose(proc_file);
-	process_unlock();
+	lxc_fclose(proc_file);
 
 	if (ret == EOF || ret == 0) {
 		SYSERROR("Could not read personality from %s", proc_fn);
@@ -415,9 +407,7 @@ char *lxc_attach_getpwshell(uid_t uid)
 
 		close(pipes[1]);
 
-		process_lock();
-		pipe_f = fdopen(pipes[0], "r");
-		process_unlock();
+		pipe_f = lxc_fdopen(pipes[0], "r");
 		while (getline(&line, &line_bufsz, pipe_f) != -1) {
 			char *token;
 			char *saveptr = NULL;
@@ -474,9 +464,7 @@ char *lxc_attach_getpwshell(uid_t uid)
 		}
 
 		free(line);
-		process_lock();
-		fclose(pipe_f);
-		process_unlock();
+		lxc_fclose(pipe_f);
 	again:
 		if (waitpid(pid, &status, 0) < 0) {
 			if (errno == EINTR)

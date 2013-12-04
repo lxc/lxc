@@ -61,9 +61,7 @@ static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
 	int ret, failed=0;
 	char pathname[MAXPATHLEN];
 
-	process_lock();
-	dir = opendir(dirname);
-	process_unlock();
+	dir = lxc_opendir(dirname);
 	if (!dir) {
 		ERROR("%s: failed to open %s", __func__, dirname);
 		return -1;
@@ -110,9 +108,7 @@ static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
 		failed=1;
 	}
 
-	process_lock();
-	ret = closedir(dir);
-	process_unlock();
+	ret = lxc_closedir(dir);
 	if (ret) {
 		ERROR("%s: failed to close directory %s", __func__, dirname);
 		failed=1;
@@ -278,9 +274,7 @@ const char *lxc_global_config_value(const char *option_name)
 	}
 	static_unlock();
 
-	process_lock();
-	fin = fopen_cloexec(LXC_GLOBAL_CONF, "r");
-	process_unlock();
+	fin = lxc_fopen_cloexec(LXC_GLOBAL_CONF, "r");
 	if (fin) {
 		while (fgets(buf, 1024, fin)) {
 			if (buf[0] == '#')
@@ -330,10 +324,8 @@ const char *lxc_global_config_value(const char *option_name)
 	static_unlock();
 
 out:
-	process_lock();
 	if (fin)
-		fclose(fin);
-	process_unlock();
+		lxc_fclose(fin);
 
 	static_lock();
 	value = values[i];
@@ -450,15 +442,6 @@ ssize_t lxc_read_nointr_expect(int fd, void* buf, size_t count, const void* expe
 	return ret;
 }
 
-static inline int lock_fclose(FILE *f)
-{
-	int ret;
-	process_lock();
-	ret = fclose(f);
-	process_unlock();
-	return ret;
-}
-
 #if HAVE_LIBGNUTLS
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
@@ -478,40 +461,38 @@ int sha1sum_file(char *fnam, unsigned char *digest)
 
 	if (!fnam)
 		return -1;
-	process_lock();
-	f = fopen_cloexec(fnam, "r");
-	process_unlock();
+	f = lxc_fopen_cloexec(fnam, "r");
 	if (!f) {
 		SYSERROR("Error opening template");
 		return -1;
 	}
 	if (fseek(f, 0, SEEK_END) < 0) {
 		SYSERROR("Error seeking to end of template");
-		lock_fclose(f);
+		lxc_fclose(f);
 		return -1;
 	}
 	if ((flen = ftell(f)) < 0) {
 		SYSERROR("Error telling size of template");
-		lock_fclose(f);
+		lxc_fclose(f);
 		return -1;
 	}
 	if (fseek(f, 0, SEEK_SET) < 0) {
 		SYSERROR("Error seeking to start of template");
-		lock_fclose(f);
+		lxc_fclose(f);
 		return -1;
 	}
 	if ((buf = malloc(flen+1)) == NULL) {
 		SYSERROR("Out of memory");
-		lock_fclose(f);
+		lxc_fclose(f);
 		return -1;
 	}
 	if (fread(buf, 1, flen, f) != flen) {
 		SYSERROR("Failure reading template");
 		free(buf);
-		lock_fclose(f);
+		lxc_fclose(f);
 		return -1;
 	}
-	if (lock_fclose(f) < 0) {
+	if (lxc_fclose(f) < 0) {
 		SYSERROR("Failre closing template");
 		free(buf);
 		return -1;
@@ -568,11 +549,7 @@ const char** lxc_va_arg_list_to_argv_const(va_list ap, size_t skip)
 	return (const char**)lxc_va_arg_list_to_argv(ap, skip, 0);
 }
 
-/*
- * fopen_cloexec: must be called with process_lock() held
- * if it is needed.
- */
-FILE *fopen_cloexec(const char *path, const char *mode)
+FILE *lxc_fopen_cloexec(const char *path, const char *mode)
 {
 	int open_mode = 0;
 	int step = 0;
@@ -608,7 +585,7 @@ FILE *fopen_cloexec(const char *path, const char *mode)
 	if (fd < 0)
 		return NULL;
 
-	ret = fdopen(fd, mode);
+	ret = lxc_fdopen(fd, mode);
 	saved_errno = errno;
 	if (!ret)
 		close(fd);
@@ -616,7 +593,6 @@ FILE *fopen_cloexec(const char *path, const char *mode)
 	return ret;
 }
 
-/* must be called with process_lock() held */
 extern struct lxc_popen_FILE *lxc_popen(const char *command)
 {
 	struct lxc_popen_FILE *fp = NULL;
@@ -639,6 +615,8 @@ extern struct lxc_popen_FILE *lxc_popen(const char *command)
 	if (child_pid == 0) {
 		/* child */
 		int child_std_end = STDOUT_FILENO;
+
+		process_unlock(); // we're no longer sharing
 
 		if (child_end != child_std_end) {
 			/* dup2() doesn't dup close-on-exec flag */
@@ -687,7 +665,7 @@ extern struct lxc_popen_FILE *lxc_popen(const char *command)
 		goto error;
 	}
 
-	fp->f = fdopen(parent_end, "r");
+	fp->f = lxc_fdopen(parent_end, "r");
 	if (!fp->f) {
 		ERROR("fdopen failure");
 		goto error;
@@ -701,7 +679,7 @@ error:
 
 	if (fp) {
 		if (fp->f) {
-			fclose(fp->f);
+			lxc_fclose(fp->f);
 			parent_end = -1; /* so we do not close it second time */
 		}
 
@@ -714,7 +692,6 @@ error:
 	return NULL;
 }
 
-/* must be called with process_lock() held */
 extern int lxc_pclose(struct lxc_popen_FILE *fp)
 {
 	FILE *f = NULL;
@@ -730,7 +707,7 @@ extern int lxc_pclose(struct lxc_popen_FILE *fp)
 		fp = NULL;
 	}
 
-	if (!f || fclose(f)) {
+	if (!f || lxc_fclose(f)) {
 		ERROR("fclose failure");
 		return -1;
 	}

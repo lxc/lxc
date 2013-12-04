@@ -68,7 +68,6 @@
 #include "caps.h"       /* for lxc_caps_last_cap() */
 #include "bdev.h"
 #include "cgroup.h"
-#include "lxclock.h"
 #include "namespace.h"
 #include "lsm/lsm.h"
 
@@ -284,9 +283,7 @@ static int run_buffer(char *buffer)
 	char *output;
 	int ret;
 
-	process_lock();
 	f = lxc_popen(buffer);
-	process_unlock();
 	if (!f) {
 		SYSERROR("popen failed");
 		return -1;
@@ -295,9 +292,7 @@ static int run_buffer(char *buffer)
 	output = malloc(LXC_LOG_BUFFER_SIZE);
 	if (!output) {
 		ERROR("failed to allocate memory for script output");
-		process_lock();
 		lxc_pclose(f);
-		process_unlock();
 		return -1;
 	}
 
@@ -306,9 +301,7 @@ static int run_buffer(char *buffer)
 
 	free(output);
 
-	process_lock();
 	ret = lxc_pclose(f);
-	process_unlock();
 	if (ret == -1) {
 		SYSERROR("Script exited on error");
 		return -1;
@@ -548,9 +541,7 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 	DIR *dir;
 	char path[MAXPATHLEN];
 
-	process_lock();
-	dir = opendir("/dev");
-	process_unlock();
+	dir = lxc_opendir("/dev");
 	if (!dir) {
 		SYSERROR("failed to open '/dev'");
 		return -1;
@@ -600,10 +591,8 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 		break;
 	}
 
-	process_lock();
-	if (closedir(dir))
+	if (lxc_closedir(dir))
 		WARN("failed to close directory");
-	process_unlock();
 
 	return ret;
 }
@@ -1135,9 +1124,7 @@ int mount_check_fs( const char *dir, char *fstype )
 		return 0;
 	}
 
-	process_lock();
-	f = fopen("/proc/self/mounts", "r");
-	process_unlock();
+	f = lxc_fopen("/proc/self/mounts", "r");
 	if (!f)
 		return 0;
 	while ((p = fgets(buf, LINELEN, f))) {
@@ -1171,9 +1158,7 @@ int mount_check_fs( const char *dir, char *fstype )
 		}
 	}
 
-	process_lock();
-	fclose(f);
-	process_unlock();
+	lxc_fclose(f);
 
 	DEBUG("mount_check_fs returning %d last %s\n", found_fs, fstype);
 
@@ -1433,9 +1418,7 @@ int detect_shared_rootfs(void)
 	int i;
 	char *p2;
 
-	process_lock();
-	f = fopen("/proc/self/mountinfo", "r");
-	process_unlock();
+	f = lxc_fopen("/proc/self/mountinfo", "r");
 	if (!f)
 		return 0;
 	while ((p = fgets(buf, LINELEN, f))) {
@@ -1451,16 +1434,12 @@ int detect_shared_rootfs(void)
 			// this is '/'.  is it shared?
 			p = index(p2+1, ' ');
 			if (p && strstr(p, "shared:")) {
-				process_lock();
-				fclose(f);
-				process_unlock();
+				lxc_fclose(f);
 				return 1;
 			}
 		}
 	}
-	process_lock();
-	fclose(f);
-	process_unlock();
+	lxc_fclose(f);
 	return 0;
 }
 
@@ -2106,9 +2085,7 @@ static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab,
 	if (!fstab)
 		return 0;
 
-	process_lock();
-	file = setmntent(fstab, "r");
-	process_unlock();
+	file = lxc_setmntent(fstab, "r");
 	if (!file) {
 		SYSERROR("failed to use '%s'", fstab);
 		return -1;
@@ -2116,9 +2093,7 @@ static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab,
 
 	ret = mount_file_entries(rootfs, file, lxc_name);
 
-	process_lock();
-	endmntent(file);
-	process_unlock();
+	lxc_endmntent(file);
 	return ret;
 }
 
@@ -2130,9 +2105,7 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list 
 	char *mount_entry;
 	int ret;
 
-	process_lock();
-	file = tmpfile();
-	process_unlock();
+	file = lxc_tmpfile();
 	if (!file) {
 		ERROR("tmpfile error: %m");
 		return -1;
@@ -2147,9 +2120,7 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list 
 
 	ret = mount_file_entries(rootfs, file, lxc_name);
 
-	process_lock();
-	fclose(file);
-	process_unlock();
+	lxc_fclose(file);
 	return ret;
 }
 
@@ -3080,9 +3051,7 @@ static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		fprintf(stderr, "%s: path name too long", __func__);
 		return -E2BIG;
 	}
-	process_lock();
-	f = fopen(path, "w");
-	process_unlock();
+	f = lxc_fopen(path, "w");
 	if (!f) {
 		perror("open");
 		return -EINVAL;
@@ -3090,9 +3059,7 @@ static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 	ret = fwrite(buf, buf_size, 1, f);
 	if (ret < 0)
 		SYSERROR("writing id mapping");
-	process_lock();
-	closeret = fclose(f);
-	process_unlock();
+	closeret = lxc_fclose(f);
 	if (closeret)
 		SYSERROR("writing id mapping");
 	return ret < 0 ? ret : closeret;
