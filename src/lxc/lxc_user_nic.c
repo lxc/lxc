@@ -266,20 +266,16 @@ out_del:
 
 /*
  * Get a new nic.
- * *dest will container the name (lxcuser-%d) which is attached
+ * *dest will container the name (vethXXXXXX) which is attached
  * on the host to the lxc bridge
  */
 static void get_new_nicname(char **dest, char *br, int pid, char **cnic)
 {
-	int i = 0;
-	// TODO - speed this up.  For large installations we won't
-	// want n stats for every nth container startup.
-	while (1) {
-		sprintf(*dest, "lxcuser-%d", i);
-		if (!nic_exists(*dest) && create_nic(*dest, br, pid, cnic))
-			return;
-		i++;
-	}
+	char template[IFNAMSIZ];
+	snprintf(template, sizeof(template), "vethXXXXXX");
+	*dest = lxc_mkifname(template);
+
+	create_nic(*dest, br, pid, cnic);
 }
 
 static bool get_nic_from_line(char *p, char **nic)

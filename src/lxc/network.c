@@ -50,6 +50,12 @@
 #include "conf.h"
 #include "lxclock.h"
 
+#if HAVE_IFADDRS_H
+#include <ifaddrs.h>
+#else
+#include <../include/ifaddrs.h>
+#endif
+
 #ifndef IFLA_LINKMODE
 #  define IFLA_LINKMODE 17
 #endif
@@ -1106,6 +1112,74 @@ const char *lxc_net_type_to_str(int type)
 	if (type < 0 || type > LXC_NET_MAXCONFTYPE)
 		return NULL;
 	return lxc_network_types[type];
+}
+
+static char padchar[] =
+"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+char *lxc_mkifname(char *template)
+{
+	char *name = NULL;
+	int i = 0;
+	FILE *urandom;
+	unsigned int seed;
+	struct ifaddrs *ifaddr, *ifa;
+	int ifexists = 0;
+
+	/* Get all the network interfaces */
+	getifaddrs(&ifaddr);
+
+	/* Initialize the random number generator */
+	process_lock();
+	urandom = fopen ("/dev/urandom", "r");
+	process_unlock();
+	if (urandom != NULL) {
+		if (fread (&seed, sizeof(seed), 1, urandom) <= 0)
+			seed = time(0);
+		process_lock();
+		fclose(urandom);
+		process_unlock();
+	}
+	else
+		seed = time(0);
+
+#ifndef HAVE_RAND_R
+	srand(seed);
+#endif
+
+	/* Generate random names until we find one that doesn't exist */
+	while(1) {
+		ifexists = 0;
+		name = strdup(template);
+
+		if (name == NULL)
+			return NULL;
+
+		for (i = 0; i < strlen(name); i++) {
+			if (name[i] == 'X') {
+#ifdef HAVE_RAND_R
+				name[i] = padchar[rand_r(&seed) % (strlen(padchar) - 1)];
+#else
+				name[i] = padchar[rand() % (strlen(padchar) - 1)];
+#endif
+			}
+		}
+
+		for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+			if (strcmp(ifa->ifa_name, name) == 0) {
+				ifexists = 1;
+				break;
+			}
+		}
+
+		if (ifexists == 0)
+			break;
+
+		free(name);
+	}
+
+	freeifaddrs(ifaddr);
+	return name;
 }
 
 int setup_private_host_hw_addr(char *veth1)
