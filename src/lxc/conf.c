@@ -1906,10 +1906,32 @@ static inline int mount_entry_on_systemfs(struct mntent *mntent)
 	unsigned long mntflags;
 	char *mntdata;
 	int ret;
+	FILE *pathfile = NULL;
+	char* pathdirname = NULL;
 
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
 		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
 		return -1;
+	}
+
+	if (hasmntopt(mntent, "create=dir")) {
+		if (!mkdir_p(mntent->mnt_dir, 0755)) {
+			WARN("Failed to create mount target '%s'", mntent->mnt_dir);
+			ret = -1;
+		}
+	}
+
+	if (hasmntopt(mntent, "create=file") && access(mntent->mnt_dir, F_OK)) {
+		pathdirname = strdup(mntent->mnt_dir);
+		pathdirname = dirname(pathdirname);
+		mkdir_p(pathdirname, 0755);
+		pathfile = fopen(mntent->mnt_dir, "wb");
+		if (!pathfile) {
+			WARN("Failed to create mount target '%s'", mntent->mnt_dir);
+			ret = -1;
+		}
+		else
+			fclose(pathfile);
 	}
 
 	ret = mount_entry(mntent->mnt_fsname, mntent->mnt_dir,
@@ -1918,6 +1940,7 @@ static inline int mount_entry_on_systemfs(struct mntent *mntent)
 	if (hasmntopt(mntent, "optional") != NULL)
 		ret = 0;
 
+	free(pathdirname);
 	free(mntdata);
 
 	return ret;
@@ -1933,6 +1956,8 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	char *mntdata;
 	int r, ret = 0, offset;
 	const char *lxcpath;
+	FILE *pathfile = NULL;
+	char *pathdirname = NULL;
 
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
 		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
@@ -1975,6 +2000,25 @@ skipabs:
 		goto out;
 	}
 
+	if (hasmntopt(mntent, "create=dir")) {
+		if (!mkdir_p(path, 0755)) {
+			WARN("Failed to create mount target '%s'", path);
+			ret = -1;
+		}
+	}
+
+	if (hasmntopt(mntent, "create=file") && access(path, F_OK)) {
+		pathdirname = strdup(path);
+		pathdirname = dirname(pathdirname);
+		mkdir_p(pathdirname, 0755);
+		pathfile = fopen(path, "wb");
+		if (!pathfile) {
+			WARN("Failed to create mount target '%s'", path);
+			ret = -1;
+		}
+		else
+			fclose(pathfile);
+	}
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
 			  mntflags, mntdata);
@@ -1983,6 +2027,7 @@ skipabs:
 		ret = 0;
 
 out:
+	free(pathdirname);
 	free(mntdata);
 	return ret;
 }
@@ -1994,17 +2039,39 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	unsigned long mntflags;
 	char *mntdata;
 	int ret;
+	FILE *pathfile = NULL;
+	char *pathdirname = NULL;
 
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
 		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
 		return -1;
 	}
 
-        /* relative to root mount point */
+	/* relative to root mount point */
 	ret = snprintf(path, sizeof(path), "%s/%s", rootfs, mntent->mnt_dir);
 	if (ret >= sizeof(path)) {
 		ERROR("path name too long");
 		return -1;
+	}
+
+	if (hasmntopt(mntent, "create=dir")) {
+		if (!mkdir_p(path, 0755)) {
+			WARN("Failed to create mount target '%s'", path);
+			ret = -1;
+		}
+	}
+
+	if (hasmntopt(mntent, "create=file") && access(path, F_OK)) {
+		pathdirname = strdup(path);
+		pathdirname = dirname(pathdirname);
+		mkdir_p(pathdirname, 0755);
+		pathfile = fopen(path, "wb");
+		if (!pathfile) {
+			WARN("Failed to create mount target '%s'", path);
+			ret = -1;
+		}
+		else
+			fclose(pathfile);
 	}
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
@@ -2013,6 +2080,7 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	if (hasmntopt(mntent, "optional") != NULL)
 		ret = 0;
 
+	free(pathdirname);
 	free(mntdata);
 
 	return ret;
