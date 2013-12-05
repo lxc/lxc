@@ -216,8 +216,12 @@ static int config_string_item(char **conf_item, const char *value)
 {
 	char *new_value;
 
-	if (!value || strlen(value) == 0)
+	if (!value || strlen(value) == 0) {
+		if (*conf_item)
+			free(*conf_item);
+		*conf_item = NULL;
 		return 0;
+	}
 
 	new_value = strdup(value);
 	if (!new_value) {
