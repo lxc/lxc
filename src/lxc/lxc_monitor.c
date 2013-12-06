@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <regex.h>
 #include <sys/types.h>
+#include <errno.h>
 
 #include <lxc/lxc.h>
 #include <lxc/log.h>
