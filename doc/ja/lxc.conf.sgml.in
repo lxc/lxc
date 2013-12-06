@@ -1220,8 +1220,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  </term>
 	  <listitem>
 	    <para>
+              <!--
 	      Specify the SELinux context under which the container should
 	      be run or <command>unconfined_t</command>. For example
+              -->
+              コンテナが従うべき SELinux コンテキストを指定するか，<command>unconfined_t</command> を指定します．例えば以下のように設定します．
 	    </para>
 	    <programlisting>lxc.se_context = unconfined_u:unconfined_r:lxc_t:s0-s0:c0.c1023</programlisting>
 	  </listitem>
