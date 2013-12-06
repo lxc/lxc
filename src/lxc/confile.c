@@ -2096,7 +2096,7 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		lxc_list_for_each(it2, &n->ipv6) {
 			struct lxc_inet6dev *i = it2->elem;
 			char buf[INET6_ADDRSTRLEN];
-			inet_ntop(AF_INET, &i->addr, buf, sizeof(buf));
+			inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf));
 			fprintf(fout, "lxc.network.ipv6 = %s\n", buf);
 		}
 	}
