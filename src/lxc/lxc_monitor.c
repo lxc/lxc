@@ -35,7 +35,18 @@
 
 lxc_log_define(lxc_monitor_ui, lxc_monitor);
 
+static bool quit_monitord;
+
+static int my_parser(struct lxc_arguments* args, int c, char* arg)
+{
+	switch (c) {
+	case 'Q': quit_monitord = true; break;
+	}
+	return 0;
+}
+
 static const struct option my_longopts[] = {
+	{"quit", no_argument, 0, 'Q'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -48,10 +59,11 @@ lxc-monitor monitors the state of the NAME container\n\
 \n\
 Options :\n\
   -n, --name=NAME   NAME for name of the container\n\
-                    NAME may be a regular expression",
+                    NAME may be a regular expression\n\
+  -Q, --quit        tell lxc-monitord to quit\n",
 	.name     = ".*",
 	.options  = my_longopts,
-	.parser   = NULL,
+	.parser   = my_parser,
 	.checker  = NULL,
 	.lxcpath_additional = -1,
 };
@@ -73,6 +85,23 @@ int main(int argc, char *argv[])
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return -1;
+
+	if (quit_monitord) {
+		int ret = EXIT_SUCCESS;
+		for (i = 0; i < my_args.lxcpath_cnt; i++) {
+			int fd;
+
+			fd = lxc_monitor_open(my_args.lxcpath[i]);
+			if (fd < 0) {
+				ERROR("Unable to open monitor on path:%s", my_args.lxcpath[i]);
+				ret = EXIT_FAILURE;
+				continue;
+			}
+			write(fd, "quit", 4);
+			close(fd);
+		}
+		return ret;
+	}
 
 	len = strlen(my_args.name) + 3;
 	regexp = malloc(len + 3);

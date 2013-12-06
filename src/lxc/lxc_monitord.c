@@ -29,6 +29,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -70,6 +71,7 @@ struct lxc_monitor {
 };
 
 static struct lxc_monitor mon;
+static int quit;
 
 static int lxc_monitord_fifo_create(struct lxc_monitor *mon)
 {
@@ -135,8 +137,18 @@ static int lxc_monitord_sock_handler(int fd, uint32_t events, void *data,
 {
 	struct lxc_monitor *mon = data;
 
-	lxc_monitord_sockfd_remove(mon, fd);
-	return 0;
+	if (events & EPOLLIN) {
+		int rc;
+		char buf[4];
+
+		rc = read(fd, buf, sizeof(buf));
+		if (rc > 0 && !strncmp(buf, "quit", 4))
+			quit = 1;
+	}
+
+	if (events & EPOLLHUP)
+		lxc_monitord_sockfd_remove(mon, fd);
+	return quit;
 }
 
 static int lxc_monitord_sock_accept(int fd, uint32_t events, void *data,
@@ -393,7 +405,7 @@ int main(int argc, char *argv[])
 		ret = lxc_mainloop(&mon.descr, 1000 * 30);
 		if (mon.clientfds_cnt <= 0)
 		{
-			NOTICE("no clients for 30 seconds, exiting");
+			NOTICE("no remaining clients, exiting");
 			break;
 		}
 	}

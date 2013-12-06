@@ -50,6 +50,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <cmdsynopsis>
       <command>lxc-monitor</command>
       <arg choice="opt">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-Q <replaceable>name</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -73,6 +74,27 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       indistinguishable in the output.
     </para>
 
+  </refsect1>
+
+  <refsect1>
+    <title>Options</title>
+
+    <variablelist>
+      <varlistentry>
+	<term>
+	  <option>-Q, --quit</option>
+	</term>
+	<listitem>
+	  <para>
+	    Ask the lxc-monitord daemon on each given <command>lxcpath</command>
+	    to quit. After receiving this command, lxc-monitord will exit
+	    immediately as soon as it has no clients instead of waiting the
+	    normal 30 seconds for new clients. This is useful if you need to
+	    unmount the filesystem <command>lxcpath</command> is on.
+	  </para>
+	</listitem>
+      </varlistentry>
+     </variablelist>
   </refsect1>
 
   &commonoptions;
