@@ -93,11 +93,16 @@ int main(int argc, char *argv[])
 
 			fd = lxc_monitor_open(my_args.lxcpath[i]);
 			if (fd < 0) {
-				ERROR("Unable to open monitor on path:%s", my_args.lxcpath[i]);
+				ERROR("Unable to open monitor on path: %s", my_args.lxcpath[i]);
 				ret = EXIT_FAILURE;
 				continue;
 			}
-			write(fd, "quit", 4);
+			if (write(fd, "quit", 4) < 0) {
+				SYSERROR("Unable to close monitor on path: %s", my_args.lxcpath[i]);
+				ret = EXIT_FAILURE;
+				close(fd);
+				continue;
+			}
 			close(fd);
 		}
 		return ret;
