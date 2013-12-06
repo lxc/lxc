@@ -130,7 +130,7 @@ static void lxc_monitord_sockfd_remove(struct lxc_monitor *mon, int fd) {
 	mon->clientfds_cnt--;
 }
 
-static int lxc_monitord_sock_handler(int fd, void *data,
+static int lxc_monitord_sock_handler(int fd, uint32_t events, void *data,
 				     struct lxc_epoll_descr *descr)
 {
 	struct lxc_monitor *mon = data;
@@ -139,7 +139,7 @@ static int lxc_monitord_sock_handler(int fd, void *data,
 	return 0;
 }
 
-static int lxc_monitord_sock_accept(int fd, void *data,
+static int lxc_monitord_sock_accept(int fd, uint32_t events, void *data,
 				    struct lxc_epoll_descr *descr)
 {
 	int ret,clientfd;
@@ -262,7 +262,7 @@ static void lxc_monitord_delete(struct lxc_monitor *mon)
 	mon->clientfds_cnt = 0;
 }
 
-static int lxc_monitord_fifo_handler(int fd, void *data,
+static int lxc_monitord_fifo_handler(int fd, uint32_t events, void *data,
 				     struct lxc_epoll_descr *descr)
 {
 	int ret,i;

@@ -752,7 +752,8 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 	process_unlock();
 }
 
-static int lxc_cmd_handler(int fd, void *data, struct lxc_epoll_descr *descr)
+static int lxc_cmd_handler(int fd, uint32_t events, void *data,
+			   struct lxc_epoll_descr *descr)
 {
 	int ret;
 	struct lxc_cmd_req req;
@@ -816,7 +817,8 @@ out_close:
 	goto out;
 }
 
-static int lxc_cmd_accept(int fd, void *data, struct lxc_epoll_descr *descr)
+static int lxc_cmd_accept(int fd, uint32_t events, void *data,
+			  struct lxc_epoll_descr *descr)
 {
 	int opt = 1, ret = -1, connection;
 

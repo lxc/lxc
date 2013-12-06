@@ -237,7 +237,7 @@ static int setup_signal_fd(sigset_t *oldmask)
 	return fd;
 }
 
-static int signal_handler(int fd, void *data,
+static int signal_handler(int fd, uint32_t events, void *data,
 			   struct lxc_epoll_descr *descr)
 {
 	struct signalfd_siginfo siginfo;

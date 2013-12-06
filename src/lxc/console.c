@@ -109,7 +109,7 @@ void lxc_console_sigwinch(int sig)
 	}
 }
 
-static int lxc_console_cb_sigwinch_fd(int fd, void *cbdata,
+static int lxc_console_cb_sigwinch_fd(int fd, uint32_t events, void *cbdata,
 				      struct lxc_epoll_descr *descr)
 {
 	struct signalfd_siginfo siginfo;
@@ -211,7 +211,7 @@ static void lxc_console_sigwinch_fini(struct lxc_tty_state *ts)
 	free(ts);
 }
 
-static int lxc_console_cb_con(int fd, void *data,
+static int lxc_console_cb_con(int fd, uint32_t events, void *data,
 			      struct lxc_epoll_descr *descr)
 {
 	struct lxc_console *console = (struct lxc_console *)data;
@@ -628,7 +628,7 @@ err:
 
 
 
-static int lxc_console_cb_tty_stdin(int fd, void *cbdata,
+static int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
 				    struct lxc_epoll_descr *descr)
 {
 	struct lxc_tty_state *ts = cbdata;
@@ -658,7 +658,7 @@ static int lxc_console_cb_tty_stdin(int fd, void *cbdata,
 	return 0;
 }
 
-static int lxc_console_cb_tty_master(int fd, void *cbdata,
+static int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
 				     struct lxc_epoll_descr *descr)
 {
 	struct lxc_tty_state *ts = cbdata;

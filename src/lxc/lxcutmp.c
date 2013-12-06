@@ -134,14 +134,15 @@ typedef void (*lxc_mainloop_timer_t) (void *data);
 
 static int utmp_get_runlevel(struct lxc_utmp *utmp_data);
 static int utmp_get_ntasks(struct lxc_handler *handler);
-static int utmp_shutdown_handler(int fd, void *data,
+static int utmp_shutdown_handler(int fd, uint32_t events, void *data,
 				 struct lxc_epoll_descr *descr);
 static int lxc_utmp_add_timer(struct lxc_epoll_descr *descr,
 			      lxc_mainloop_callback_t callback, void *data);
 static int lxc_utmp_del_timer(struct lxc_epoll_descr *descr,
 			      struct lxc_utmp *utmp_data);
 
-static int utmp_handler(int fd, void *data, struct lxc_epoll_descr *descr)
+static int utmp_handler(int fd, uint32_t events, void *data,
+			struct lxc_epoll_descr *descr)
 {
 	struct inotify_event *ie;
 	int size, ret, length;
@@ -387,7 +388,7 @@ out:
 	return -1;
 }
 
-static int utmp_shutdown_handler(int fd, void *data,
+static int utmp_shutdown_handler(int fd, uint32_t events, void *data,
 				 struct lxc_epoll_descr *descr)
 {
 	int ntasks;

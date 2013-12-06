@@ -60,8 +60,8 @@ int lxc_mainloop(struct lxc_epoll_descr *descr, int timeout_ms)
 
 			/* If the handler returns a positive value, exit
 			   the mainloop */
-			if (handler->callback(handler->fd, handler->data,
-					      descr) > 0)
+			if (handler->callback(handler->fd, events[i].events,
+					      handler->data, descr) > 0)
 				return 0;
 		}
 
