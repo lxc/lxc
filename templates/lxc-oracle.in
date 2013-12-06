@@ -46,6 +46,15 @@ is_btrfs_subvolume()
     return 1
 }
 
+can_chcon()
+{
+    if which chcon >/dev/null 2>&1; then
+        selinuxenabled >/dev/null 2>&1
+        return $?
+    fi
+    return 1
+}
+
 # fix up the container_rootfs
 container_rootfs_configure()
 {
@@ -312,7 +321,7 @@ EOF
     if [ $container_rootfs != "/" -a -d $dev_path ]; then
         rm -rf $dev_path
         mkdir -p $dev_path
-        if which chcon >/dev/null 2>&1 ; then
+        if can_chcon; then
             # ensure symlinks created in /dev have the right context
             chcon -t device_t $dev_path
         fi
@@ -333,7 +342,7 @@ EOF
     mknod -m 600  $dev_path/initctl p
 
     # set selinux labels same as host
-    if which chcon >/dev/null 2>&1 ; then
+    if can_chcon; then
         for node in null zero random urandom pts shm \
                     tty tty0 tty1 tty2 tty3 tty4 full ;
         do
