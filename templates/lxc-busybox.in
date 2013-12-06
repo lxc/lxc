@@ -72,19 +72,15 @@ $rootfs/usr/lib64"
             echo "/dev/$dev dev/$dev    none bind 0 0" >> $path/fstab
         done
     else
-        mknod tty c 5 0       || res=1
-        mknod console c 5 1   || res=1
-        chmod 666 tty console || res=1
-        mknod tty0 c 4 0      || res=1
-        mknod tty1 c 4 0      || res=1
-        mknod tty5 c 4 0      || res=1
-        chmod 666 tty0        || res=1
-        mknod ram0 b 1 0      || res=1
-        chmod 600 ram0        || res=1
-        mknod null c 1 3      || res=1
-        chmod 666 null        || res=1
-        mknod urandom c 1 9   || res=1
-        chmod 666 urandom     || res=1
+        mknod -m 666 tty c 5 0       || res=1
+        mknod -m 666 console c 5 1   || res=1
+        mknod -m 666 tty0 c 4 0      || res=1
+        mknod -m 666 tty1 c 4 0      || res=1
+        mknod -m 666 tty5 c 4 0      || res=1
+        mknod -m 600 ram0 b 1 0      || res=1
+        mknod -m 666 null c 1 3      || res=1
+        mknod -m 666 zero c 1 5      || res=1
+        mknod -m 666 urandom c 1 9   || res=1
     fi
 
     popd > /dev/null
