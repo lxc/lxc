@@ -369,7 +369,7 @@ install_ubuntu()
 
         return 0
 
-    ) 200>$LOCALSTATEDIR/lock/subsys/lxc-ubuntu
+    ) 200>$LOCALSTATEDIR/lock/subsys/lxc-ubuntu$release
 
     return $?
 }
