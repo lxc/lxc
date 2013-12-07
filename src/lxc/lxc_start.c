@@ -346,6 +346,8 @@ int main(int argc, char *argv[])
 
 out:
 	lxc_container_put(c);
+	if (pid_fp)
+		fclose(pid_fp);
 	return err;
 }
 
