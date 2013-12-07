@@ -376,7 +376,7 @@ install_centos()
 
     return 0
 
-    ) 200>/var/lock/subsys/lxc
+    ) 200>/var/lock/subsys/lxc-centos
 
     return $?
 }
@@ -457,7 +457,7 @@ clean()
     rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
     exit 0
 
-    ) 200>/var/lock/subsys/lxc
+    ) 200>/var/lock/subsys/lxc-centos
 }
 
 usage()
