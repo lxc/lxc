@@ -5,7 +5,7 @@ Maintainer
 ----------
 
 Person          : Daniel Lezcano, Serge Hallyn, Stéphane Graber
-Mail patches to : lxc-devel@lists.sourceforge.net
-Mailing lists   : lxc-devel@lists.sourceforge.net, lxc-users@lists.sourceforge.net
+Mail patches to : lxc-devel@lists.linuxcontainers.org
+Mailing lists   : lxc-devel@lists.linuxcontainers.org, lxc-users@lists.linuxcontainers.org
 Web page        : http://linuxcontainers.org
 GIT location    : git://github.com/lxc/lxc
