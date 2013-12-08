@@ -296,8 +296,8 @@ lxc.cgroup.devices.allow = c 10:135 rwm
 EOF
 
     cat <<EOF > $config_path/fstab
-proc            $rootfs_path/proc         proc    nodev,noexec,nosuid 0 0
-sysfs           $rootfs_path/sys          sysfs defaults  0 0
+proc            proc         proc    nodev,noexec,nosuid 0 0
+sysfs           sys          sysfs   defaults  0 0
 EOF
 
     if [ $? -ne 0 ]; then
@@ -429,7 +429,7 @@ if [ -z "$rootfs_path" ]; then
     if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
         rootfs_path=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $path/config)
     else
-        rootfs_path=$path/$name/rootfs
+        rootfs_path=$path/rootfs
     fi
 fi
 
