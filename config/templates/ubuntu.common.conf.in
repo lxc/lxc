@@ -27,6 +27,11 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 #lxc.aa_profile = lxc-container-default-with-nesting
 #lxc.hook.mount = /usr/share/lxc/hooks/mountcgroups
 
+# If you wish to allow mounting block filesystems, then use the following
+# line instead, and make sure to grant access to the block device and/or loop
+# devices below in lxc.cgroup.devices.allow.
+#lxc.aa_profile = lxc-container-default-with-mounting
+
 # Default cgroup limits
 lxc.cgroup.devices.deny = a
 ## Allow any mknod (but not using the node)
@@ -56,3 +61,6 @@ lxc.cgroup.devices.allow = c 1:7 rwm
 lxc.cgroup.devices.allow = c 10:228 rwm
 ## kvm
 lxc.cgroup.devices.allow = c 10:232 rwm
+## To use loop devices, copy the following line to the container's
+## configuration file (uncommented).
+#lxc.cgroup.devices.allow = b 7:* rwm
