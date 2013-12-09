@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 	char *bdevtype = NULL, *lxcpath = NULL, *newpath = NULL, *fstype = NULL;
 	char *orig = NULL, *new = NULL, *vgname = NULL;
 	char **args = NULL;
-	char c;
+	int c;
 
 	if (argc < 3)
 		usage(argv[0]);
