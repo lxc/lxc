@@ -56,6 +56,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <cmdsynopsis>
       <command>lxc-monitor</command>
       <arg choice="opt">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-Q <replaceable>name</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -85,6 +86,30 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       1 つ以上のコンテナパスをモニタリングするために，複数回の <option>-P, --lxcpath</option>=PATH オプションを指定することが可能です．しかし，複数のパスで同じ名前のコンテナの場合は，出力の見分けがつかない事に注意が必要です．
     </para>
 
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options -->オプション</title>
+
+    <variablelist>
+      <varlistentry>
+	<term>
+	  <option>-Q, --quit</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Ask the lxc-monitord daemon on each given <command>lxcpath</command>
+	    to quit. After receiving this command, lxc-monitord will exit
+	    immediately as soon as it has no clients instead of waiting the
+	    normal 30 seconds for new clients. This is useful if you need to
+	    unmount the filesystem <command>lxcpath</command> is on.
+            -->
+            指定したそれぞれの <command>lxcpath</command> に対する lxc-monitord デーモンを終了させる要求を行います．lxc-monitord は通常は新しいクライアントを 30 秒待ちますが，このコマンドを受け取ると，クライアントがいなくなるとすぐに終了します．このオプションは，<command>lxcpath</command> のファイルシステムをアンマウントする必要があるときに役に立ちます．
+	  </para>
+	</listitem>
+      </varlistentry>
+     </variablelist>
   </refsect1>
 
   &commonoptions;
