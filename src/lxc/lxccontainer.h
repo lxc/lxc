@@ -436,7 +436,7 @@ struct lxc_container {
 	 * \note The returned array is allocated, so the caller must free it.
 	 * \note The returned array is terminated with a \c NULL entry.
 	 */
-	char** (*get_ips)(struct lxc_container *c, char* interface, char* family, int scope);
+	char** (*get_ips)(struct lxc_container *c, const char* interface, const char* family, int scope);
 
 	/*!
 	 * \brief Retrieve the specified cgroup subsystem value for the container.
@@ -628,7 +628,7 @@ struct lxc_container {
 	 *
 	 * \note \p commentfile may be \c NULL but this is discouraged.
 	 */
-	int (*snapshot)(struct lxc_container *c, char *commentfile);
+	int (*snapshot)(struct lxc_container *c, const char *commentfile);
 
 	/*!
 	 * \brief Obtain a list of container snapshots.
@@ -661,7 +661,7 @@ struct lxc_container {
 	 *  (representing \c /var/lib/lxcsnaps/c1/snap0). If \p newname is \p c2,
 	 *  then \c snap0 will be copied to \c /var/lib/lxc/c2.
 	 */
-	bool (*snapshot_restore)(struct lxc_container *c, char *snapname, char *newname);
+	bool (*snapshot_restore)(struct lxc_container *c, const char *snapname, const char *newname);
 
 	/*!
 	 * \brief Destroy the specified snapshot.
@@ -671,7 +671,7 @@ struct lxc_container {
 	 *
 	 * \return \c true on success, else \c false.
 	 */
-	bool (*snapshot_destroy)(struct lxc_container *c, char *snapname);
+	bool (*snapshot_destroy)(struct lxc_container *c, const char *snapname);
 
 	/*!
 	 * \brief Determine if the caller may control the container.
@@ -694,7 +694,7 @@ struct lxc_container {
 	 *
 	 * \return \c true on success, else \c false.
 	 */
-	bool (*add_device_node)(struct lxc_container *c, char *src_path, char *dest_path);
+	bool (*add_device_node)(struct lxc_container *c, const char *src_path, const char *dest_path);
 
 	/*!
 	 * \brief Remove specified device from the container.
@@ -706,7 +706,7 @@ struct lxc_container {
 	 *
 	 * \return \c true on success, else \c false.
 	 */
-	bool (*remove_device_node)(struct lxc_container *c, char *src_path, char *dest_path);
+	bool (*remove_device_node)(struct lxc_container *c, const char *src_path, const char *dest_path);
 };
 
 /*!

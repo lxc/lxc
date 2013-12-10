@@ -68,7 +68,7 @@
 
 lxc_log_define(lxc_container, lxc);
 
-static bool file_exists(char *f)
+static bool file_exists(const char *f)
 {
 	struct stat statbuf;
 
@@ -1565,7 +1565,7 @@ err:
 	goto out;
 }
 
-static char** lxcapi_get_ips(struct lxc_container *c, char* interface, char* family, int scope)
+static char** lxcapi_get_ips(struct lxc_container *c, const char* interface, const char* family, int scope)
 {
 	int i, count = 0;
 	struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
@@ -2112,7 +2112,7 @@ const char *lxc_get_version(void)
 	return LXC_VERSION;
 }
 
-static int copy_file(char *old, char *new)
+static int copy_file(const char *old, const char *new)
 {
 	int in, out;
 	ssize_t len, ret;
@@ -2640,7 +2640,7 @@ int get_next_index(const char *lxcpath, char *cname)
 	}
 }
 
-static int lxcapi_snapshot(struct lxc_container *c, char *commentfile)
+static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 {
 	int i, flags, ret;
 	struct lxc_container *c2;
@@ -2859,7 +2859,7 @@ out_free:
 	return -1;
 }
 
-static bool lxcapi_snapshot_restore(struct lxc_container *c, char *snapname, char *newname)
+static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapname, const char *newname)
 {
 	char clonelxcpath[MAXPATHLEN];
 	int ret;
@@ -2910,7 +2910,7 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, char *snapname, cha
 	return b;
 }
 
-static bool lxcapi_snapshot_destroy(struct lxc_container *c, char *snapname)
+static bool lxcapi_snapshot_destroy(struct lxc_container *c, const char *snapname)
 {
 	int ret;
 	char clonelxcpath[MAXPATHLEN];
@@ -2947,13 +2947,14 @@ static bool lxcapi_may_control(struct lxc_container *c)
 	return lxc_try_cmd(c->name, c->config_path) == 0;
 }
 
-static bool add_remove_device_node(struct lxc_container *c, char *src_path, char *dest_path, bool add)
+static bool add_remove_device_node(struct lxc_container *c, const char *src_path, const char *dest_path, bool add)
 {
 	int ret;
 	struct stat st;
 	char path[MAXPATHLEN];
 	char value[MAX_BUFFER];
-	char *directory_path = NULL, *p;
+	char *directory_path = NULL;
+	const char *p;
 
 	/* make sure container is running */
 	if (!c->is_running(c)) {
@@ -3032,12 +3033,12 @@ out:
 	return false;
 }
 
-static bool lxcapi_add_device_node(struct lxc_container *c, char *src_path, char *dest_path)
+static bool lxcapi_add_device_node(struct lxc_container *c, const char *src_path, const char *dest_path)
 {
 	return add_remove_device_node(c, src_path, dest_path, true);
 }
 
-static bool lxcapi_remove_device_node(struct lxc_container *c, char *src_path, char *dest_path)
+static bool lxcapi_remove_device_node(struct lxc_container *c, const char *src_path, const char *dest_path)
 {
 	return add_remove_device_node(c, src_path, dest_path, false);
 }
