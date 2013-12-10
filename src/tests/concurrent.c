@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
             quiet = 1;
             break;
         case 'm': {
-            char *mode_tok, *tok, *saveptr;
+            char *mode_tok, *tok, *saveptr = NULL;
 
             modes = NULL;
             for (i = 0, mode_tok = optarg;
