@@ -293,7 +293,7 @@ out:
 
 int lxc_try_cmd(const char *name, const char *lxcpath)
 {
-	int stopped, ret;
+	int stopped = 0, ret;
 	struct lxc_cmd_rr cmd = {
 		.req = { .cmd = LXC_CMD_GET_INIT_PID },
 	};
