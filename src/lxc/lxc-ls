@@ -172,6 +172,20 @@ if not os.geteuid() == 0 and (args.fancy or args.state):
                    "Try running: sudo %s"
                    % (sys.argv[0])))
 
+## Nesting requires setns to pid and net ns
+if args.nesting:
+    if not os.path.exists("/proc/self/ns/"):
+        parser.error(_("Showing nested containers requires setns support "
+                       "which your kernel doesn't support."))
+
+    if not "pid" in os.listdir("/proc/self/ns/"):
+        parser.error(_("Showing nested containers requires setns to the "
+                       "PID namespace which your kernel doesn't support."))
+
+    if not "net" in os.listdir("/proc/self/ns/"):
+        parser.error(_("Showing nested containers requires setns to the "
+                       "network namespace which your kernel doesn't support."))
+
 # List of containers, stored as dictionaries
 containers = []
 for container_name in lxc.list_containers(config_path=lxcpath):
