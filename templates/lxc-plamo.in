@@ -195,7 +195,7 @@ configure_plamo() {
   # disable pam_loginuid.so in /etc/pam.d/login (for libvirt's lxc driver)
   sed -i '/pam_loginuid/s/^/#/' $rootfs/etc/pam.d/login
   # glibc configure
-  cp $rootfs/etc/ld.so.conf.new $rootfs/etc/ld.so.conf
+  mv $rootfs/etc/ld.so.conf{.new,}
   chroot $rootfs ldconfig
   # root password
   echo "Setting root password to 'root'..."
@@ -211,7 +211,7 @@ configure_plamo() {
 	EOF
   # /etc/rc.d/rc.M
   ed - $rootfs/etc/rc.d/rc.M <<- "EOF"
-	247,248d
+	259,260d
 	56,79d
 	31,38d
 	w
