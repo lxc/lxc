@@ -80,7 +80,8 @@ static int config_network_vlan_id(const char *, const char *, struct lxc_conf *)
 static int config_network_mtu(const char *, const char *, struct lxc_conf *);
 static int config_network_ipv4(const char *, const char *, struct lxc_conf *);
 static int config_network_ipv4_gateway(const char *, const char *, struct lxc_conf *);
-static int config_network_script(const char *, const char *, struct lxc_conf *);
+static int config_network_script_up(const char *, const char *, struct lxc_conf *);
+static int config_network_script_down(const char *, const char *, struct lxc_conf *);
 static int config_network_ipv6(const char *, const char *, struct lxc_conf *);
 static int config_network_ipv6_gateway(const char *, const char *, struct lxc_conf *);
 static int config_cap_drop(const char *, const char *, struct lxc_conf *);
@@ -123,8 +124,8 @@ static struct lxc_config_t config[] = {
 	{ "lxc.network.name",         config_network_name         },
 	{ "lxc.network.macvlan.mode", config_network_macvlan_mode },
 	{ "lxc.network.veth.pair",    config_network_veth_pair    },
-	{ "lxc.network.script.up",    config_network_script       },
-	{ "lxc.network.script.down",  config_network_script       },
+	{ "lxc.network.script.up",    config_network_script_up    },
+	{ "lxc.network.script.down",  config_network_script_down  },
 	{ "lxc.network.hwaddr",       config_network_hwaddr       },
 	{ "lxc.network.mtu",          config_network_mtu          },
 	{ "lxc.network.vlan.id",      config_network_vlan_id      },
@@ -408,6 +409,7 @@ extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key,
 		memset(retv, 0, inlen);
 
 	strprint(retv, inlen, "script.up\n");
+	strprint(retv, inlen, "script.down\n");
 	if (netdev->type != LXC_NET_EMPTY) {
 		strprint(retv, inlen, "flags\n");
 		strprint(retv, inlen, "link\n");
@@ -824,31 +826,28 @@ static int config_network_ipv6_gateway(const char *key, const char *value,
 	return 0;
 }
 
-static int config_network_script(const char *key, const char *value,
-				 struct lxc_conf *lxc_conf)
+static int config_network_script_up(const char *key, const char *value,
+				    struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
-	return -1;
+ 		return -1;
 
-	char *copy = strdup(value);
-	if (!copy) {
-		SYSERROR("failed to dup string '%s'", value);
-		return -1;
-	}
-	if (strstr(key, "script.up") != NULL) {
-		netdev->upscript = copy;
-		return 0;
-	}
-	if (strcmp(key, "lxc.network.script.down") == 0) {
-		netdev->downscript = copy;
-		return 0;
-	}
-	SYSERROR("Unknown key: %s", key);
-	free(copy);
-	return -1;
+	return config_string_item(&netdev->upscript, value);
+}
+
+static int config_network_script_down(const char *key, const char *value,
+				      struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+
+	netdev = network_netdev(key, value, &lxc_conf->network);
+	if (!netdev)
+ 		return -1;
+
+	return config_string_item(&netdev->downscript, value);
 }
 
 static int add_hook(struct lxc_conf *lxc_conf, int which, char *hook)
@@ -1780,7 +1779,7 @@ static int lxc_get_mount_entries(struct lxc_conf *c, char *retv, int inlen)
 
 /*
  * lxc.network.0.XXX, where XXX can be: name, type, link, flags, type,
- * macvlan.mode, veth.pair, vlan, ipv4, ipv6, upscript, hwaddr, mtu,
+ * macvlan.mode, veth.pair, vlan, ipv4, ipv6, script.up, hwaddr, mtu,
  * ipv4_gateway, ipv6_gateway.  ipvX_gateway can return 'auto' instead
  * of an address.  ipv4 and ipv6 return lists (newline-separated).
  * things like veth.pair return '' if invalid (i.e. if called for vlan
@@ -1816,9 +1815,12 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 	} else if (strcmp(p1, "flags") == 0) {
 		if (netdev->flags & IFF_UP)
 			strprint(retv, inlen, "up");
-	} else if (strcmp(p1, "upscript") == 0) {
+	} else if (strcmp(p1, "script.up") == 0) {
 		if (netdev->upscript)
 			strprint(retv, inlen, "%s", netdev->upscript);
+	} else if (strcmp(p1, "script.down") == 0) {
+		if (netdev->downscript)
+			strprint(retv, inlen, "%s", netdev->downscript);
 	} else if (strcmp(p1, "hwaddr") == 0) {
 		if (netdev->hwaddr)
 			strprint(retv, inlen, "%s", netdev->hwaddr);
@@ -2071,6 +2073,8 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		}
 		if (n->upscript)
 			fprintf(fout, "lxc.network.script.up = %s\n", n->upscript);
+		if (n->downscript)
+			fprintf(fout, "lxc.network.script.down = %s\n", n->downscript);
 		if (n->hwaddr)
 			fprintf(fout, "lxc.network.hwaddr = %s\n", n->hwaddr);
 		if (n->mtu)
