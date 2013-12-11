@@ -66,13 +66,9 @@ subparser_add.add_argument(dest="name", metavar="NAME", nargs="?",
 args = parser.parse_args()
 
 # Some basic checks
+## Check for valid action
 if not hasattr(args, "action"):
     parser.error(_("You must specify an action."))
-
-## The user needs to be uid 0
-if not os.geteuid() == 0:
-    parser.error(_("You must be root to run this script. Try running: sudo %s"
-                   % (sys.argv[0])))
 
 ## Don't rename if no alternative name
 if not args.name:
@@ -81,6 +77,11 @@ if not args.name:
 ## Check that the container is ready
 container = lxc.Container(args.container, args.lxcpath)
 
+## Check that we have control over the container
+if not container.controllable:
+    parser.error("Insufficent privileges to control: %s" % container.name)
+
+## Check that the container is running
 if not container.running:
     parser.error("The container must be running.")
 

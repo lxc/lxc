@@ -118,11 +118,6 @@ if not args.storage_type:
 if args.keep_data and args.storage_type == "tmpfs":
     parser.error(_("You can't use -k with the tmpfs storage type."))
 
-## The user needs to be uid 0
-if not os.geteuid() == 0:
-    parser.error(_("You must be root to run this script. Try running: sudo %s"
-                   % (sys.argv[0])))
-
 # Load the orig container
 orig = lxc.Container(args.orig, args.lxcpath)
 if not orig.defined:

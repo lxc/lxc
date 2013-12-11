@@ -123,8 +123,7 @@ parser.add_argument("-P", "--lxcpath", dest="lxcpath", metavar="PATH",
                     default=lxc.default_config_path)
 
 parser.add_argument("--active", action="store_true",
-                    help=_("list only active containers "
-                           "(same as --running --frozen)"))
+                    help=_("list only active containers"))
 
 parser.add_argument("--frozen", dest="state", action="append_const",
                     const="FROZEN", help=_("list only frozen containers"))
@@ -153,7 +152,7 @@ args = parser.parse_args()
 if args.active:
     if not args.state:
         args.state = []
-    args.state += ["RUNNING", "FROZEN"]
+    args.state += ["RUNNING", "FROZEN", "UNKNOWN"]
 
 # If the output is piped, default to --one
 if not sys.stdout.isatty():
@@ -166,25 +165,27 @@ lxcpath = os.environ.get('NESTED', args.lxcpath)
 args.fancy_format = args.fancy_format.strip().split(",")
 
 # Basic checks
-## The user needs to be uid 0
-if not os.geteuid() == 0 and (args.fancy or args.state):
-    parser.error(_("You must be root to access advanced container properties. "
-                   "Try running: sudo %s"
-                   % (sys.argv[0])))
+## Check for setns
+SUPPORT_SETNS = os.path.exists("/proc/self/ns")
+SUPPORT_SETNS_NET = False
+SUPPORT_SETNS_PID = False
+if SUPPORT_SETNS:
+    SUPPORT_SETNS_NET = os.path.exists("/proc/self/ns/net")
+    SUPPORT_SETNS_PID = os.path.exists("/proc/self/ns/pid")
 
 ## Nesting requires setns to pid and net ns
 if args.nesting:
-    if not os.path.exists("/proc/self/ns/"):
+    if not SUPPORT_SETNS:
         parser.error(_("Showing nested containers requires setns support "
                        "which your kernel doesn't support."))
 
-    if not "pid" in os.listdir("/proc/self/ns/"):
-        parser.error(_("Showing nested containers requires setns to the "
-                       "PID namespace which your kernel doesn't support."))
-
-    if not "net" in os.listdir("/proc/self/ns/"):
+    if not SUPPORT_SETNS_NET:
         parser.error(_("Showing nested containers requires setns to the "
                        "network namespace which your kernel doesn't support."))
+
+    if not SUPPORT_SETNS_PID:
+        parser.error(_("Showing nested containers requires setns to the "
+                       "PID namespace which your kernel doesn't support."))
 
 # List of containers, stored as dictionaries
 containers = []
@@ -203,8 +204,13 @@ for container_name in lxc.list_containers(config_path=lxcpath):
 
     container = lxc.Container(container_name, args.lxcpath)
 
+    if container.controllable:
+        state = container.state
+    else:
+        state = 'UNKNOWN'
+
     # Filter by status
-    if args.state and container.state not in args.state:
+    if args.state and state not in args.state:
         continue
 
     # Nothing more is needed if we're not printing some fancy output
@@ -214,17 +220,30 @@ for container_name in lxc.list_containers(config_path=lxcpath):
 
     # Some extra field we may want
     if 'state' in args.fancy_format or args.nesting:
-        entry['state'] = container.state
+        entry['state'] = state
 
     if 'pid' in args.fancy_format or args.nesting:
         entry['pid'] = "-"
-        if container.init_pid != -1:
+        if state == 'UNKNOWN':
+            entry['pid'] = state
+        elif container.init_pid != -1:
             entry['pid'] = str(container.init_pid)
 
     # Get the IPs
     for family, protocol in {'inet': 'ipv4', 'inet6': 'ipv6'}.items():
         if protocol in args.fancy_format or args.nesting:
             entry[protocol] = "-"
+
+            if state == 'UNKNOWN':
+                entry[protocol] = state
+                continue
+
+            # FIXME: We should get get_ips working as non-root
+            if container.running and (not SUPPORT_SETNS_NET \
+                    or os.geteuid() != 0):
+                entry[protocol] = 'UNKNOWN'
+                continue
+
             ips = container.get_ips(family=family)
             if ips:
                 entry[protocol] = ", ".join(ips)

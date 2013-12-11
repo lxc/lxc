@@ -150,9 +150,6 @@ class Container(_lxc.Container):
             Creates a new Container instance.
         """
 
-        if os.geteuid() != 0:
-            raise Exception("Running as non-root.")
-
         if config_path:
             _lxc.Container.__init__(self, name, config_path)
         else:
