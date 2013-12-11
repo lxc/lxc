@@ -247,6 +247,8 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	int len;
 	int stay_connected = cmd->req.cmd == LXC_CMD_CONSOLE;
 
+	*stopped = 0;
+
 	len = sizeof(path)-1;
 	if (fill_sock_name(offset, len, name, lxcpath))
 		return -1;
@@ -293,7 +295,7 @@ out:
 
 int lxc_try_cmd(const char *name, const char *lxcpath)
 {
-	int stopped = 0, ret;
+	int stopped, ret;
 	struct lxc_cmd_rr cmd = {
 		.req = { .cmd = LXC_CMD_GET_INIT_PID },
 	};
@@ -333,7 +335,7 @@ int lxc_try_cmd(const char *name, const char *lxcpath)
  */
 pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 {
-	int ret, stopped = 0;
+	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = { .cmd = LXC_CMD_GET_INIT_PID },
 	};
@@ -363,7 +365,7 @@ static int lxc_cmd_get_init_pid_callback(int fd, struct lxc_cmd_req *req,
  */
 int lxc_cmd_get_clone_flags(const char *name, const char *lxcpath)
 {
-	int ret, stopped = 0;
+	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = { .cmd = LXC_CMD_GET_CLONE_FLAGS },
 	};
@@ -398,7 +400,7 @@ static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
 char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
 	const char *subsystem)
 {
-	int ret, stopped = 0;
+	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = {
 			.cmd = LXC_CMD_GET_CGROUP,
@@ -458,7 +460,7 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 char *lxc_cmd_get_config_item(const char *name, const char *item,
 			      const char *lxcpath)
 {
-	int ret, stopped = 0;
+	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = { .cmd = LXC_CMD_GET_CONFIG_ITEM,
 			 .data = item,
@@ -512,7 +514,7 @@ out:
  */
 lxc_state_t lxc_cmd_get_state(const char *name, const char *lxcpath)
 {
-	int ret, stopped = 0;
+	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = { .cmd = LXC_CMD_GET_STATE }
 	};
@@ -553,7 +555,7 @@ static int lxc_cmd_get_state_callback(int fd, struct lxc_cmd_req *req,
  */
 int lxc_cmd_stop(const char *name, const char *lxcpath)
 {
-	int ret, stopped = 0;
+	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = { .cmd = LXC_CMD_STOP },
 	};
@@ -618,7 +620,7 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
  */
 int lxc_cmd_console_winch(const char *name, const char *lxcpath)
 {
-	int ret, stopped = 0;
+	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = { .cmd = LXC_CMD_CONSOLE_WINCH },
 	};
@@ -652,7 +654,7 @@ static int lxc_cmd_console_winch_callback(int fd, struct lxc_cmd_req *req,
  */
 int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath)
 {
-	int ret, stopped = 0;
+	int ret, stopped;
 	struct lxc_cmd_console_rsp_data *rspdata;
 	struct lxc_cmd_rr cmd = {
 		.req = { .cmd = LXC_CMD_CONSOLE, .data = INT_TO_PTR(*ttynum) },
