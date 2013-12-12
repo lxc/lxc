@@ -4009,6 +4009,7 @@ static struct lxc_list *idmap_add_id(struct lxc_conf *conf, uid_t uid)
 err:
 	ERROR("Out of memory building a new uid map");
 	lxc_free_idmap(new);
+	free(new);
 	return NULL;
 }
 
