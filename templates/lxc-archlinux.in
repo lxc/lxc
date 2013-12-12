@@ -9,6 +9,7 @@
 
 # Authors:
 # Alexander Vladimirov <idkfa@vlan1.ru>
+# John Lane <lxc@jelmail.com>
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -211,12 +212,13 @@ Optional args:
   -a,--arch         use specified architecture instead of host's architecture 
   -t,--network_type set container network interface type (${lxc_network_type})
   -l,--network_link set network link device (${lxc_network_link})
+  -r,--root_passwd  set container root password
   -h,--help         print this help
 EOF
     return 0
 }
 
-options=$(getopt -o hp:P:e:n:c:a:l:t: -l help,rootfs:,path:,packages:,enable_units:,name:,config:,arch:,network_type:,network_link: -- "${@}")
+options=$(getopt -o hp:P:e:n:c:a:l:t:r: -l help,rootfs:,path:,packages:,enable_units:,name:,config:,arch:,network_type:,network_link:,root_passwd: -- "${@}")
 if [ ${?} -ne 0 ]; then
     usage $(basename ${0})
     exit 1
@@ -236,6 +238,7 @@ do
     -a|--arch)          arch=${2}; shift 2;;
     -t|--network_type)  lxc_network_type=${2}; shift 2;;
     -l|--network_link)  lxc_network_link=${2}; shift 2;;
+    -r|--root_passwd)   root_passwd=${2}; shift 2;;
     --)             shift 1; break ;;
     *)              break ;;
     esac
@@ -315,6 +318,10 @@ if [ ${#enable_units[@]} -gt 0 ]; then
         ln -s /usr/lib/systemd/system/"${unit}" \
             "${rootfs_path}"/etc/systemd/system/multi-user.target.wants
     done
+fi
+
+if [ -n "${root_passwd}" ]; then
+    echo "root:${root_passwd}" | chroot "${rootfs_path}" chpasswd
 fi
 
 echo "container config is ${config_path}/config"
