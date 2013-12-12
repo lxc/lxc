@@ -275,7 +275,8 @@ static int print_info(const char *name, const char *lxcpath)
 
 	c = lxc_container_new(name, lxcpath);
 	if (!c) {
-		fprintf(stderr, "Failure to retrieve information on %s\n", c->name);
+		fprintf(stderr, "Failure to retrieve information on %s:%s\n", lxcpath ? lxcpath : "null",
+				name ? name : "null");
 		return -1;
 	}
 
