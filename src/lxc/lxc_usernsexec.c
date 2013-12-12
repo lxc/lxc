@@ -349,6 +349,7 @@ int main(int argc, char *argv[])
 	int ret;
 	int pid;
 	char *default_args[] = {"/bin/sh", NULL};
+	char buf[1];
 	int pipe1[2],  // child tells parent it has unshared
 	    pipe2[2];  // parent tells child it is mapped and may proceed
 
@@ -398,16 +399,16 @@ int main(int argc, char *argv[])
 			perror("unshare");
 			return 1;
 		}
-		ret = 1;
-		if (write(pipe1[1], &ret, 1) < 1) {
+		buf[0] = '1';
+		if (write(pipe1[1], buf, 1) < 1) {
 			perror("write pipe");
 			exit(1);
 		}
-		if (read(pipe2[0], &ret, 1) < 1) {
+		if (read(pipe2[0], buf, 1) < 1) {
 			perror("read pipe");
 			exit(1);
 		}
-		if (ret != 1) {
+		if (buf[0] != '1') {
 			fprintf(stderr, "parent had an error, child exiting\n");
 			exit(1);
 		}
@@ -419,17 +420,17 @@ int main(int argc, char *argv[])
 
 	close(pipe1[1]);
 	close(pipe2[0]);
-	if (read(pipe1[0], &ret, 1) < 1) {
+	if (read(pipe1[0], buf, 1) < 1) {
 		perror("read pipe");
 		exit(1);
 	}
 
-	ret = 1;
+	buf[0] = 1;
 	if (map_child_uids(pid, active_map)) {
 		fprintf(stderr, "error mapping child\n");
 		ret = 0;
 	}
-	if (write(pipe2[1], &ret, 1) < 0) {
+	if (write(pipe2[1], buf, 1) < 0) {
 		perror("write to pipe");
 		exit(1);
 	}
