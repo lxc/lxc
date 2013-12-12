@@ -1877,8 +1877,8 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 static bool lxcapi_destroy(struct lxc_container *c)
 {
 	struct bdev *r = NULL;
-	bool ret = false;
-	bool am_unpriv;
+	bool bret = false, am_unpriv;
+	int ret;
 
 	if (!c || !lxcapi_is_defined(c))
 		return false;
@@ -1924,11 +1924,11 @@ static bool lxcapi_destroy(struct lxc_container *c)
 		ERROR("Error destroying container directory for %s", c->name);
 		goto out;
 	}
-	ret = true;
+	bret = true;
 
 out:
 	container_disk_unlock(c);
-	return ret;
+	return bret;
 }
 
 static bool set_config_item_locked(struct lxc_container *c, const char *key, const char *v)
