@@ -1281,8 +1281,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 		goto out_unlock;
 
 	/* reload config to get the rootfs */
-	if (c->lxc_conf)
-		lxc_conf_free(c->lxc_conf);
+	lxc_conf_free(c->lxc_conf);
 	c->lxc_conf = NULL;
 	if (!load_config_locked(c, c->configfile))
 		goto out_unlock;
