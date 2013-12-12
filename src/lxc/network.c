@@ -140,9 +140,10 @@ int lxc_netdev_move_by_name(char *ifname, pid_t pid)
 {
 	int index;
 
-	index = if_nametoindex(ifname);
 	if (!ifname)
 		return -EINVAL;
+
+	index = if_nametoindex(ifname);
 
 	return lxc_netdev_move_by_index(index, pid);
 }
