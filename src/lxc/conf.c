@@ -3036,15 +3036,15 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 
 		netdev = iterator->elem;
 
+		/* empty network namespace, nothing to move */
+		if (!netdev->ifindex)
+			continue;
 		if (!am_root) {
 			if (unpriv_assign_nic(netdev, pid))
 				return -1;
 			// TODO fill in netdev->ifindex and name
 			continue;
 		}
-		/* empty network namespace, nothing to move */
-		if (!netdev->ifindex)
-			continue;
 
 		err = lxc_netdev_move_by_index(netdev->ifindex, pid);
 		if (err) {
