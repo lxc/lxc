@@ -362,7 +362,7 @@ do_extract_rootfs() {
     cd $rootfs
     if [ $in_userns -eq 1 ]; then
         tar --anchored --exclude="dev/*" --numeric-owner -xpzf "$cache/$filename"
-        mkdir -p $cache/$filename/dev/pts/
+        mkdir -p $rootfs/dev/pts/
     else
         tar --numeric-owner -xpzf "$cache/$filename"
     fi
