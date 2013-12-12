@@ -126,7 +126,7 @@ lxc.autodev=1
 lxc.tty=1
 lxc.pts=1024
 lxc.mount=${config_path}/fstab
-lxc.cap.drop=mknod sys_module mac_admin mac_override sys_time
+lxc.cap.drop=sys_module mac_admin mac_override sys_time
 lxc.kmsg=0
 lxc.stopsignal=SIGRTMIN+4
 #networking
