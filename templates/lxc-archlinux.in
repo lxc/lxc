@@ -206,6 +206,7 @@ Mandatory args:
 Optional args:
   -p,--path         path to where the container rootfs will be created, defaults to ${default_path}/rootfs. The container config will go under ${default_path} in that case
   -P,--packages     preinstall additional packages, comma-separated list
+  -e,--enable_units Enable additional systemd units, comma-separated list
   -c,--config       use specified pacman config when installing container packages
   -a,--arch         use specified architecture instead of host's architecture 
   -t,--network_type set container network interface type (${lxc_network_type})
@@ -215,7 +216,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:P:n:c:a:l:t: -l help,rootfs:,path:,packages:,name:,config:,arch:,network_type:,network_link: -- "${@}")
+options=$(getopt -o hp:P:e:n:c:a:l:t: -l help,rootfs:,path:,packages:,enable_units:,name:,config:,arch:,network_type:,network_link: -- "${@}")
 if [ ${?} -ne 0 ]; then
     usage $(basename ${0})
     exit 1
@@ -230,6 +231,7 @@ do
     -n|--name)          name=${2}; shift 2;;
     --rootfs)           rootfs_path=${2}; shift 2;;
     -P|--packages)      additional_packages=${2}; shift 2;;
+    -e|--enable_units)  enable_units=${2}; shift 2;;
     -c|--config)        pacman_config=${2}; shift 2;;
     -a|--arch)          arch=${2}; shift 2;;
     -t|--network_type)  lxc_network_type=${2}; shift 2;;
@@ -304,6 +306,15 @@ if [ ${?} -ne 0 ]; then
     echo "failed to configure Arch Linux for a container"
     rm -rf "${config_path}" "${path}"
     exit 1
+fi
+
+if [ ${#enable_units[@]} -gt 0 ]; then
+    split_string ${enable_units}
+    for unit in ${result[@]}; do
+        [ "${unit}" = *'.'* ] || unit="${unit}.service"
+        ln -s /usr/lib/systemd/system/"${unit}" \
+            "${rootfs_path}"/etc/systemd/system/multi-user.target.wants
+    done
 fi
 
 echo "container config is ${config_path}/config"
