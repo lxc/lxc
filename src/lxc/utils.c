@@ -708,8 +708,6 @@ error:
 		free(fp);
 	}
 
-	if (child_end != -1)
-		close(child_end);
 	if (parent_end != -1)
 		close(parent_end);
 
