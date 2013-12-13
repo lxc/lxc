@@ -318,7 +318,7 @@ static bool cull_entries(int fd, char *me, char *t, char *br)
 	p = buf;
 	e = buf + len;
 	while ((p = find_line(p, e, me, t, br)) != NULL) {
-		struct entry_line *newe = realloc(entry_lines, n+1);
+		struct entry_line *newe = realloc(entry_lines, sizeof(*entry_lines)*(n+1));
 		if (!newe) {
 			free(entry_lines);
 			return false;
