@@ -501,24 +501,24 @@ struct bdev_ops dir_ops = {
 
 static int zfs_list_entry(const char *path, char *output, size_t inlen)
 {
-	FILE *f;
+	struct lxc_popen_FILE *f;
 	int found=0;
 
 	process_lock();
-	f = popen("zfs list 2> /dev/null", "r");
+	f = lxc_popen("zfs list 2> /dev/null");
 	process_unlock();
 	if (f == NULL) {
 		SYSERROR("popen failed");
 		return 0;
 	}
-	while (fgets(output, inlen, f)) {
+	while (fgets(output, inlen, f->f)) {
 		if (strstr(output, path)) {
 			found = 1;
 			break;
 		}
 	}
 	process_lock();
-	(void) pclose(f);
+	(void) lxc_pclose(f);
 	process_unlock();
 
 	return found;
@@ -813,7 +813,7 @@ static int lvm_umount(struct bdev *bdev)
 }
 
 static int lvm_compare_lv_attr(const char *path, int pos, const char expected) {
-	FILE *f;
+	struct lxc_popen_FILE *f;
 	int ret, len, status, start=0;
 	char *cmd, output[12];
 	const char *lvscmd = "lvs --unbuffered --noheadings -o lv_attr %s 2>/dev/null";
@@ -826,7 +826,7 @@ static int lvm_compare_lv_attr(const char *path, int pos, const char expected) {
 		return -1;
 
 	process_lock();
-	f = popen(cmd, "r");
+	f = lxc_popen(cmd);
 	process_unlock();
 
 	if (f == NULL) {
@@ -834,10 +834,10 @@ static int lvm_compare_lv_attr(const char *path, int pos, const char expected) {
 		return -1;
 	}
 
-	ret = fgets(output, 12, f) == NULL;
+	ret = fgets(output, 12, f->f) == NULL;
 
 	process_lock();
-	status = pclose(f);
+	status = lxc_pclose(f);
 	process_unlock();
 
 	if (ret || WEXITSTATUS(status))

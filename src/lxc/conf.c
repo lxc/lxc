@@ -280,12 +280,12 @@ static struct caps_opt caps_opt[] = {};
 
 static int run_buffer(char *buffer)
 {
-	FILE *f;
+	struct lxc_popen_FILE *f;
 	char *output;
 	int ret;
 
 	process_lock();
-	f = popen(buffer, "r");
+	f = lxc_popen(buffer);
 	process_unlock();
 	if (!f) {
 		SYSERROR("popen failed");
@@ -296,18 +296,18 @@ static int run_buffer(char *buffer)
 	if (!output) {
 		ERROR("failed to allocate memory for script output");
 		process_lock();
-		pclose(f);
+		lxc_pclose(f);
 		process_unlock();
 		return -1;
 	}
 
-	while(fgets(output, LXC_LOG_BUFFER_SIZE, f))
+	while(fgets(output, LXC_LOG_BUFFER_SIZE, f->f))
 		DEBUG("script output: %s", output);
 
 	free(output);
 
 	process_lock();
-	ret = pclose(f);
+	ret = lxc_pclose(f);
 	process_unlock();
 	if (ret == -1) {
 		SYSERROR("Script exited on error");
