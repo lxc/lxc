@@ -189,7 +189,7 @@ hostarch=$arch
 cloud=0
 locales=1
 flushcache=0
-stream="released"
+stream="tryreleased"
 cloneargs=()
 while true
 do
@@ -252,8 +252,8 @@ if [ $hostarch = "armhf" -o $hostarch = "armel" ] && \
     exit 1
 fi
 
-if [ "$stream" != "daily" -a "$stream" != "released" ]; then
-    echo "Only 'daily' and 'released' streams are supported"
+if [ "$stream" != "daily" -a "$stream" != "released" -a "$stream" != "tryreleased" ]; then
+    echo "Only 'daily' and 'released' and 'tryreleased' streams are supported"
     exit 1
 fi
 
@@ -289,6 +289,11 @@ if [ $in_userns -eq 1 ]; then
 fi
 
 mkdir -p $cache
+
+if [ "$stream" = "tryreleased" ]; then
+    stream=released
+    ubuntu-cloudimg-query $release $stream $arch 1>/dev/null 2>/dev/null || stream=daily
+fi
 
 if [ -n "$tarball" ]; then
     url2="$tarball"
