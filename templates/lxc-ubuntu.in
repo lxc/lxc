@@ -248,7 +248,7 @@ download_ubuntu()
     arch=$2
     release=$3
 
-    packages_template=${packages_template:-"ssh vim"}
+    packages_template=${packages_template:-"ssh,vim"}
 
     # Try to guess a list of langpacks to install
     langpacks="language-pack-en"
