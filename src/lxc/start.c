@@ -734,9 +734,10 @@ int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	if (handler->conf->inherit_ns_fd[LXC_NS_NET] == -1) {
-		if (!lxc_list_empty(&handler->conf->network)) {
-
+		if (!lxc_requests_empty_network(handler))
 			handler->clone_flags |= CLONE_NEWNET;
+
+		if (!lxc_list_empty(&handler->conf->network)) {
 
 			/* Find gateway addresses from the link device, which is
 			 * no longer accessible inside the container. Do this

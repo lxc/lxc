@@ -334,6 +334,8 @@ static int config_network_type(const char *key, const char *value,
 		netdev->type = LXC_NET_PHYS;
 	else if (!strcmp(value, "empty"))
 		netdev->type = LXC_NET_EMPTY;
+	else if (!strcmp(value, "none"))
+		netdev->type = LXC_NET_NONE;
 	else {
 		ERROR("invalid network type %s", value);
 		return -1;

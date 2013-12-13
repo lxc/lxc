@@ -45,6 +45,7 @@ enum {
 	LXC_NET_MACVLAN,
 	LXC_NET_PHYS,
 	LXC_NET_VLAN,
+	LXC_NET_NONE,
 	LXC_NET_MAXCONFTYPE,
 };
 
@@ -337,6 +338,7 @@ extern void lxc_conf_free(struct lxc_conf *conf);
 
 extern int pin_rootfs(const char *rootfs);
 
+extern int lxc_requests_empty_network(struct lxc_handler *handler);
 extern int lxc_create_network(struct lxc_handler *handler);
 extern void lxc_delete_network(struct lxc_handler *handler);
 extern int lxc_assign_network(struct lxc_list *networks, pid_t pid);

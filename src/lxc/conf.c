@@ -171,6 +171,7 @@ static int instanciate_macvlan(struct lxc_handler *, struct lxc_netdev *);
 static int instanciate_vlan(struct lxc_handler *, struct lxc_netdev *);
 static int instanciate_phys(struct lxc_handler *, struct lxc_netdev *);
 static int instanciate_empty(struct lxc_handler *, struct lxc_netdev *);
+static int instanciate_none(struct lxc_handler *, struct lxc_netdev *);
 
 static  instanciate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_VETH]    = instanciate_veth,
@@ -178,6 +179,7 @@ static  instanciate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_VLAN]    = instanciate_vlan,
 	[LXC_NET_PHYS]    = instanciate_phys,
 	[LXC_NET_EMPTY]   = instanciate_empty,
+	[LXC_NET_NONE]    = instanciate_none,
 };
 
 static int shutdown_veth(struct lxc_handler *, struct lxc_netdev *);
@@ -185,6 +187,7 @@ static int shutdown_macvlan(struct lxc_handler *, struct lxc_netdev *);
 static int shutdown_vlan(struct lxc_handler *, struct lxc_netdev *);
 static int shutdown_phys(struct lxc_handler *, struct lxc_netdev *);
 static int shutdown_empty(struct lxc_handler *, struct lxc_netdev *);
+static int shutdown_none(struct lxc_handler *, struct lxc_netdev *);
 
 static  instanciate_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_VETH]    = shutdown_veth,
@@ -192,6 +195,7 @@ static  instanciate_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_VLAN]    = shutdown_vlan,
 	[LXC_NET_PHYS]    = shutdown_phys,
 	[LXC_NET_EMPTY]   = shutdown_empty,
+	[LXC_NET_NONE]    = shutdown_none,
 };
 
 static struct mount_opt mount_opt[] = {
@@ -2911,6 +2915,12 @@ static int shutdown_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 	return 0;
 }
 
+static int instanciate_none(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	netdev->ifindex = 0;
+	return 0;
+}
+
 static int instanciate_empty(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	netdev->ifindex = 0;
@@ -2934,6 +2944,35 @@ static int shutdown_empty(struct lxc_handler *handler, struct lxc_netdev *netdev
 		if (err)
 			return -1;
 	}
+	return 0;
+}
+
+static int shutdown_none(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	return 0;
+}
+
+int lxc_requests_empty_network(struct lxc_handler *handler)
+{
+	struct lxc_list *network = &handler->conf->network;
+	struct lxc_list *iterator;
+	struct lxc_netdev *netdev;
+	bool found_none = false, found_nic = false;
+
+	if (lxc_list_empty(network))
+		return 0;
+
+	lxc_list_for_each(iterator, network) {
+
+		netdev = iterator->elem;
+
+		if (netdev->type == LXC_NET_NONE)
+			found_none = true;
+		else
+			found_nic = true;
+	}
+	if (found_none && !found_nic)
+		return 1;
 	return 0;
 }
 
