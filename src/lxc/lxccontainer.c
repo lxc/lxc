@@ -2596,6 +2596,38 @@ out:
 	return NULL;
 }
 
+static bool lxcapi_rename(struct lxc_container *c, const char *newname)
+{
+	struct bdev *bdev;
+	struct lxc_container *newc;
+	int flags = LXC_CLONE_KEEPMACADDR | LXC_CLONE_COPYHOOKS;
+
+	if (!c || !c->name || !c->config_path)
+		return false;
+
+	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	if (!bdev) {
+		ERROR("Failed to find original backing store type");
+		return false;
+	}
+
+	newc = lxcapi_clone(c, newname, c->config_path, flags, NULL, bdev->type, 0, NULL);
+	bdev_put(bdev);
+	if (!newc) {
+		lxc_container_put(newc);
+		return false;
+	}
+
+	if (newc && lxcapi_is_defined(newc))
+		lxc_container_put(newc);
+
+	if (!lxcapi_destroy(c)) {
+		ERROR("Could not destroy existing container %s", c->name);
+		return false;
+	}
+	return true;
+}
+
 static int lxcapi_attach(struct lxc_container *c, lxc_attach_exec_t exec_function, void *exec_payload, lxc_attach_options_t *options, pid_t *attached_process)
 {
 	if (!c)
@@ -3139,6 +3171,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->wait = lxcapi_wait;
 	c->set_config_item = lxcapi_set_config_item;
 	c->destroy = lxcapi_destroy;
+	c->rename = lxcapi_rename;
 	c->save_config = lxcapi_save_config;
 	c->get_keys = lxcapi_get_keys;
 	c->create = lxcapi_create;

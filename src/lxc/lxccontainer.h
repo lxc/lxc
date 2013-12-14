@@ -326,6 +326,16 @@ struct lxc_container {
 			struct bdev_specs *specs, int flags, ...);
 
 	/*!
+	 * \brief Rename a container
+	 *
+	 * \param c Container.
+	 * \param newname New name to be used for the container.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
+	bool (*rename)(struct lxc_container *c, const char *newname);
+
+	/*!
 	 * \brief Request the container reboot by sending it \c SIGINT.
 	 *
 	 * \param c Container.
