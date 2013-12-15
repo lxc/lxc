@@ -43,7 +43,9 @@ do_devices_setup() {
     local line
     local w  # which (allow or deny)
     local v  # value
-    egrep "^lxc.cgroup.devices.(allow|deny)[ \t]*=" ${configfile} | while read line; do
+    # lxc.include provides common configuration options
+    local commonconfigfile=$(egrep "^lxc.include[ \t]*=" ${configfile} | awk -F= '{ print $2 }')
+    cat ${configfile} ${commonconfigfile} | egrep "^lxc.cgroup.devices.(allow|deny)[ \t]*=" | while read line; do
         w=`echo $line | awk -F. '{ print $4 }' | awk '{ print $1 }'`
         v=`echo $line | awk -F= '{ print $2 }'`
         echo "$v" >> "$devdir"/devices.$w
