@@ -72,13 +72,13 @@ AM_CONDITIONAL([DISTRO_UBUNTU], [test "x$with_distro" = "xubuntu"])
 
 # Allow disabling rpath
 AC_ARG_ENABLE([rpath],
-	[AC_HELP_STRING([--disable-rpath], [do not set rpath in executables])],
-	[], [enable_rpath=yes])
+	[AC_HELP_STRING([--enable-rpath], [set rpath in executables [default=no]])],
+	[], [enable_rpath=no])
 AM_CONDITIONAL([ENABLE_RPATH], [test "x$enable_rpath" = "xyes"])
 
 # Documentation (manpages)
 AC_ARG_ENABLE([doc],
-	[AC_HELP_STRING([--enable-doc], [make mans (requires docbook2man or docbook2x-man to be installed) [default=auto]])],
+	[AC_HELP_STRING([--enable-doc], [make man pages [default=auto]])],
 	[], [enable_doc=auto])
 
 if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
@@ -95,11 +95,13 @@ if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
 
 	if test -n "${db2xman}"; then
 		AC_MSG_RESULT([${db2xman}])
+		enable_doc="yes"
 	else
 		AC_MSG_RESULT([no])
 		if test "x$enable_doc" = "xyes"; then
-			AC_MSG_ERROR([docbook2x-man required by man request, but not found])
+			AC_MSG_ERROR([docbook2x-man is required, but could not be found])
 		fi
+		enable_doc="no"
 	fi
 
 	AC_SUBST(db2xman)
@@ -117,22 +119,31 @@ AC_SUBST(docdtd)
 # Documentation (API)
 AC_ARG_ENABLE([api-docs],
 	[AC_HELP_STRING([--enable-api-docs],
-	[make API documentation (requires doxygen to be installed) [default=auto]])],
+	[make API documentation [default=auto]])],
 	[], [enable_api_docs=auto])
 
 if test "x$enable_api_docs" = "xyes" -o "x$enable_api_docs" = "xauto"; then
-    AC_CHECK_PROGS([HAVE_DOXYGEN],[doxygen])
-    AC_SUBST([HAVE_DOXYGEN])
+	AC_CHECK_PROGS([HAVE_DOXYGEN],[doxygen])
+	AC_SUBST([HAVE_DOXYGEN])
+
+	if test "x$HAVE_DOXYGEN" != "x"; then
+		enable_api_docs="yes"
+	else
+		if test "x$enable_api_docs" = "xyes"; then
+			AC_MSG_ERROR([doxygen is required, but could not be found])
+		fi
+		enable_api_docs="no"
+	fi
 fi
 
-AM_CONDITIONAL([ENABLE_API_DOCS], [test ! -z "$HAVE_DOXYGEN"])
+AM_CONDITIONAL([ENABLE_API_DOCS], [test "x$HAVE_DOXYGEN" != "x"])
 
 # Apparmor
 AC_ARG_ENABLE([apparmor],
-	[AC_HELP_STRING([--enable-apparmor], [enable apparmor])],
-	[], [enable_apparmor=check])
+	[AC_HELP_STRING([--enable-apparmor], [enable apparmor support [default=auto]])],
+	[], [enable_apparmor=auto])
 
-if test "$enable_apparmor" = "check" ; then
+if test "$enable_apparmor" = "auto" ; then
 	AC_CHECK_LIB([apparmor],[aa_change_profile],[enable_apparmor=yes], [enable_apparmor=no])
 fi
 AM_CONDITIONAL([ENABLE_APPARMOR], [test "x$enable_apparmor" = "xyes"])
@@ -146,10 +157,10 @@ AM_COND_IF([ENABLE_APPARMOR],
 
 # SELinux
 AC_ARG_ENABLE([selinux],
-	[AC_HELP_STRING([--enable-selinux], [enable SELinux support])],
-	[], [enable_selinux=check])
+	[AC_HELP_STRING([--enable-selinux], [enable SELinux support [default=auto]])],
+	[], [enable_selinux=auto])
 
-if test "x$enable_selinux" = xcheck; then
+if test "x$enable_selinux" = xauto; then
 	AC_CHECK_LIB([selinux],[setexeccon_raw],[enable_selinux=yes],[enable_selinux=no])
 fi
 AM_CONDITIONAL([ENABLE_SELINUX], [test "x$enable_selinux" = "xyes"])
@@ -160,10 +171,10 @@ AM_COND_IF([ENABLE_SELINUX],
 
 # Seccomp syscall filter
 AC_ARG_ENABLE([seccomp],
-	[AC_HELP_STRING([--enable-seccomp], [enable seccomp])],
-	[], [enable_seccomp=check])
+	[AC_HELP_STRING([--enable-seccomp], [enable seccomp support [default=auto]])],
+	[], [enable_seccomp=auto])
 
-if test "$enable_seccomp" = "check" ; then
+if test "x$enable_seccomp" = "xauto" ; then
 	AC_CHECK_LIB([seccomp],[seccomp_init],[enable_seccomp=yes],[enable_seccomp=no])
 fi
 AM_CONDITIONAL([ENABLE_SECCOMP], [test "x$enable_seccomp" = "xyes"])
@@ -173,19 +184,41 @@ AM_COND_IF([ENABLE_SECCOMP],
 	AC_CHECK_LIB([seccomp], [seccomp_init],[],[AC_MSG_ERROR([You must install the seccomp development package in order to compile lxc])])
 	AC_SUBST([SECCOMP_LIBS], [-lseccomp])])
 
+# Linux capabilities
+AC_ARG_ENABLE([capabilities],
+	[AC_HELP_STRING([--enable-capabilities], [enable kernel capabilities support [default=auto]])],
+	[], [enable_capabilities=auto])
+
+if test "x$enable_capabilities" = "xauto"; then
+	AC_CHECK_LIB([cap],[cap_set_proc],[enable_capabilities=yes],[enable_capabilities=no])
+fi
+AM_CONDITIONAL([ENABLE_CAP], [test "x$enable_capabilities" = "xyes"])
+
+AM_COND_IF([ENABLE_CAP],
+	[AC_CHECK_LIB(cap,cap_set_proc,[],[AC_MSG_ERROR([You are missing libcap support.])])
+	AC_SUBST([CAP_LIBS], [-lcap])])
+
 # HAVE_SCMP_FILTER_CTX=1 will tell us we have libseccomp api >= 1.0.0
-AC_CHECK_TYPES([scmp_filter_ctx], [], [], [#include <seccomp.h>])
+AC_CHECK_TYPES([scmp_filter_ctx], [], [], [[#include <seccomp.h>]])
 
 # Configuration examples
 AC_ARG_ENABLE([examples],
-	[AC_HELP_STRING([--disable-examples], [do not install configuration examples])],
+	[AC_HELP_STRING([--enable-examples], [install examples [default=yes]])],
 	[], [enable_examples=yes])
 AM_CONDITIONAL([ENABLE_EXAMPLES], [test "x$enable_examples" = "xyes"])
 
+# We need pkg-config
+PKG_PROG_PKG_CONFIG
+
 # Python3 module and scripts
 AC_ARG_ENABLE([python],
-	[AC_HELP_STRING([--enable-python], [enable python binding])],
-	[enable_python=yes], [enable_python=no])
+	[AC_HELP_STRING([--enable-python], [enable python binding [default=auto]])],
+	[], [enable_python=auto])
+
+if test "x$enable_python" = "xauto"; then
+	PKG_CHECK_MODULES([PYTHONDEV], [python3 >= 3.2],[enable_python=yes],[enable_python=no])
+fi
+
 AM_CONDITIONAL([ENABLE_PYTHON], [test "x$enable_python" = "xyes"])
 
 AM_COND_IF([ENABLE_PYTHON],
@@ -195,8 +228,8 @@ AM_COND_IF([ENABLE_PYTHON],
 
 # Enable dumping stack traces
 AC_ARG_ENABLE([mutex-debugging],
-	[AC_HELP_STRING([--enable-mutex-debugging], [Makes mutexes to report error and provide stack trace])],
-	[enable_mutex_debugging=yes], [enable_mutex_debugging=no])
+	[AC_HELP_STRING([--enable-mutex-debugging], [Makes mutexes to report error and provide stack trace [default=no]])],
+	[], [enable_mutex_debugging=no])
 AM_CONDITIONAL([MUTEX_DEBUGGING], [test "x$enable_mutex_debugging" = "xyes"])
 
 AM_COND_IF([MUTEX_DEBUGGING],
@@ -225,8 +258,8 @@ m4_ifdef([PKG_CHECK_VAR], [],
 
 # Lua module and scripts
 AC_ARG_ENABLE([lua],
-	[AC_HELP_STRING([--enable-lua], [enable lua binding])],
-	[], [enable_lua=check])
+	[AC_HELP_STRING([--enable-lua], [enable lua binding [default=auto]])],
+	[], [enable_lua=auto])
 
 AC_ARG_WITH([lua-pc],
 	[AS_HELP_STRING(
@@ -239,7 +272,7 @@ if test "x$enable_lua" = "xyes" -a "x$with_lua_pc" != "xno"; then
 	PKG_CHECK_MODULES([LUA], [$with_lua_pc], [LUAPKGCONFIG=$with_lua_pc])
 fi
 
-if test "x$enable_lua" = "xcheck" -a "x$with_lua_pc" != "xno"; then
+if test "x$enable_lua" = "xauto" -a "x$with_lua_pc" != "xno"; then
 	PKG_CHECK_MODULES([LUA], [$with_lua_pc],
 		[LUAPKGCONFIG=$with_lua_pc
 		enable_lua=yes],
@@ -274,8 +307,8 @@ AM_COND_IF([ENABLE_LUA],
 
 # Optional test binaries
 AC_ARG_ENABLE([tests],
-	[AC_HELP_STRING([--enable-tests], [build test/example binaries])],
-	[enable_tests=yes], [enable_tests=no])
+	[AC_HELP_STRING([--enable-tests], [build test/example binaries [default=no]])],
+	[], [enable_tests=no])
 AM_CONDITIONAL([ENABLE_TESTS], [test "x$enable_tests" = "xyes"])
 
 # LXC container path, where the containers are actually stored
@@ -325,12 +358,12 @@ AC_ARG_WITH([cgroup-pattern],
 # Container log path.  By default, use $lxcpath.
 AC_MSG_CHECKING([Whether to place logfiles in container config path])
 AC_ARG_ENABLE([configpath-log],
-	[AC_HELP_STRING([--enable-configpath-log], [use logfiles in config path])],
-	[use_configpath_logs=yes], [use_configpath_logs=no])
-AC_MSG_RESULT([$use_configpath_logs])
-AM_CONDITIONAL([USE_CONFIGPATH_LOGS], [test "$use_configpath_logs" = "yes"])
+	[AC_HELP_STRING([--enable-configpath-log], [use logfiles in config path [default=no]])],
+	[], [enable_configpath_log=no])
+AC_MSG_RESULT([$enable_configpath_log])
+AM_CONDITIONAL([USE_CONFIGPATH_LOGS], [test "$enable_configpath_log" = "yes"])
 
-if test "$use_configpath_logs" = "yes"; then
+if test "$enable_configpath_log" = "yes"; then
 	default_log_path="${with_config_path}"
 else
 	default_log_path="${localstatedir}/log/lxc"
@@ -372,27 +405,6 @@ AC_CHECK_HEADERS([linux/unistd.h linux/netlink.h linux/genetlink.h],
 				[],
 				AC_MSG_ERROR([Please install the Linux kernel headers.]),
 				[#include <sys/socket.h>])
-
-# Allow disabling libcap support
-AC_ARG_ENABLE([capabilities],
-	[AC_HELP_STRING([--disable-capabilities], [disable kernel capabilities])],
-	[], [enable_capabilities=yes])
-
-# Check for libcap support
-if test "x$enable_capabilities" = "xyes"; then
-	AC_CHECK_LIB(cap,cap_set_proc,caplib=yes,caplib=no)
-	AC_MSG_CHECKING([linux capabilities])
-	if test "x$caplib" = "xyes" ; then
-		CAP_LIBS="-lcap"
-		AC_MSG_RESULT([$CAP_LIBS])
-	else
-		AC_MSG_RESULT([no])
-		AC_MSG_ERROR([You are missing libcap support. If you really want to build without kernel capabilities, use --disable-capabilities])
-	fi
-else
-	CAP_LIBS=""
-fi
-AC_SUBST([CAP_LIBS])
 
 # Check for alternate C libraries
 AC_MSG_CHECKING(for bionic libc)
@@ -577,3 +589,35 @@ AC_CONFIG_FILES([
 ])
 AC_CONFIG_COMMANDS([default],[[]],[[]])
 AC_OUTPUT
+
+# Configuration overview
+cat << EOF
+
+----------------------------
+Environment:
+ - compiler: $CC
+ - distribution: $with_distro
+ - rpath: $enable_rpath
+
+Security features:
+ - Apparmor: $enable_apparmor
+ - Linux capabilities: $enable_capabilities
+ - seccomp: $enable_seccomp
+ - SELinux: $enable_selinux
+
+Bindings:
+ - lua: $enable_lua
+ - python3: $enable_python
+
+Documentation:
+ - examples: $enable_examples
+ - API documentation: $enable_api_docs
+ - user documentation: $enable_doc
+
+Debugging:
+ - tests: $enable_tests
+ - mutex debugging: $enable_mutex_debugging
+
+Paths:
+ - Logs in configpath: $enable_configpath_log
+EOF
