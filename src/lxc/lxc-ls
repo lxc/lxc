@@ -88,7 +88,7 @@ def getTerminalSize():
     return int(cr[1]), int(cr[0])
 
 
-def getSubContainers(container, lxcpath):
+def getSubContainers(container):
     with open(os.devnull, "w") as fd:
         fdnum, path = tempfile.mkstemp()
         os.remove(path)
@@ -162,7 +162,9 @@ if not sys.stdout.isatty():
     args.one = True
 
 # Set the lookup path for the containers
-lxcpath = os.environ.get('NESTED', args.lxcpath)
+# This value will contain the full path for a nested containers
+# use args.lxcpath if you need the value relative to the container
+nest_lxcpath = os.environ.get('NESTED', args.lxcpath)
 
 # Turn args.fancy_format into a list
 args.fancy_format = args.fancy_format.strip().split(",")
@@ -196,7 +198,7 @@ if args.nesting:
 
 # List of containers, stored as dictionaries
 containers = []
-for container_name in lxc.list_containers(config_path=lxcpath):
+for container_name in lxc.list_containers(config_path=nest_lxcpath):
     entry = {}
     entry['name'] = container_name
 
@@ -210,6 +212,10 @@ for container_name in lxc.list_containers(config_path=lxcpath):
         continue
 
     container = lxc.Container(container_name, args.lxcpath)
+
+    if 'NESTED' in os.environ:
+        container.load_config(os.path.join(nest_lxcpath, container_name,
+                                           "config"))
 
     if container.controllable:
         state = container.state
@@ -272,7 +278,7 @@ for container_name in lxc.list_containers(config_path=lxcpath):
 
     # Nested containers
     if args.nesting and container.state == "RUNNING":
-        sub = getSubContainers(container, args.lxcpath)
+        sub = getSubContainers(container)
         if sub:
             for entry in sub:
                 if 'nesting_parent' not in entry:
