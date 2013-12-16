@@ -170,6 +170,7 @@ endif
 
 bin_PROGRAMS = \
 	lxc-attach \
+	lxc-autostart \
 	lxc-unshare \
 	lxc-stop \
 	lxc-start \
@@ -203,6 +204,7 @@ endif
 LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@ @SECCOMP_LIBS@
 
 lxc_attach_SOURCES = lxc_attach.c
+lxc_autostart_SOURCES = lxc_autostart.c
 lxc_cgroup_SOURCES = lxc_cgroup.c
 lxc_checkpoint_SOURCES = lxc_checkpoint.c
 lxc_config_SOURCES = lxc_config.c

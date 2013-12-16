@@ -43,6 +43,7 @@ templates/lxc-ubuntu-cloud
 
 
 src/lxc/lxc-attach
+src/lxc/lxc-autostart
 src/lxc/lxc-cgroup
 src/lxc/lxc-checkconfig
 src/lxc/lxc-checkpoint

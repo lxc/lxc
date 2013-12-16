@@ -229,7 +229,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args,
 
 	/* Check the command options */
 
-	if (!args->name) {
+	if (!args->name && strcmp(args->progname, "lxc-autostart") != 0) {
 		lxc_error(args, "missing container name, use --name option");
 		return -1;
 	}

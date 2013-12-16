@@ -89,6 +89,11 @@ struct lxc_arguments {
 	char *lvname, *vgname, *thinpool;
 	char *zfsroot, *lowerdir, *dir;
 
+	/* auto-start */
+	int all;
+	int list;
+	char *groups;
+
 	/* remaining arguments */
 	char *const *argv;
 	int argc;

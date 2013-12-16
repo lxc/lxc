@@ -474,6 +474,7 @@ AC_CONFIG_FILES([
 	doc/api/Makefile
 	doc/legacy/lxc-ls.sgml
 	doc/lxc-attach.sgml
+	doc/lxc-autostart.sgml
 	doc/lxc-cgroup.sgml
 	doc/lxc-checkconfig.sgml
 	doc/lxc-checkpoint.sgml
