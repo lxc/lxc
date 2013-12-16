@@ -33,6 +33,8 @@
 #include "commands.h"
 #include "utils.h"
 
+#define OPT_NO_LOCK OPT_USAGE+1
+
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
@@ -41,6 +43,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 't': args->timeout = atoi(arg); break;
 	case 'k': args->hardstop = 1; break;
 	case 's': args->shutdown = 1; break;
+	case OPT_NO_LOCK: args->nolock = 1; break;
 	}
 	return 0;
 }
@@ -51,6 +54,7 @@ static const struct option my_longopts[] = {
 	{"timeout", required_argument, 0, 't'},
 	{"kill", no_argument, 0, 'k'},
 	{"shutdown", no_argument, 0, 's'},
+	{"no-lock", no_argument, 0, OPT_NO_LOCK},
 	LXC_COMMON_OPTIONS
 };
 
@@ -67,6 +71,7 @@ Options :\n\
   -W, --nowait      don't wait for shutdown or reboot to complete\n\
   -t, --timeout=T   wait T seconds before hard-stopping\n\
   -k, --kill        kill container rather than request clean shutdown\n\
+      --nolock      Avoid using API locks\n\
   -s, --shutdown    Only request clean shutdown, don't later force kill\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
@@ -138,6 +143,11 @@ int main(int argc, char *argv[])
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return 1;
+
+	/* shortcut - if locking is bogus, we should be able to kill
+	 * containers at least */
+	if (my_args.nolock)
+		return lxc_cmd_stop(my_args.name, my_args.lxcpath[0]);
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {

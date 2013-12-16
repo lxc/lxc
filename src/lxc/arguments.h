@@ -73,6 +73,9 @@ struct lxc_arguments {
 	int hardstop;
 	int shutdown;
 
+	/* for lxc-stop */
+	int nolock;
+
 	/* for lxc-destroy */
 	int force;
 

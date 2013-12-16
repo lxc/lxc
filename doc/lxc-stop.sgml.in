@@ -122,6 +122,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
     <varlistentry>
 	<term>
+	  <option>--nolock </option>
+	</term>
+	<listitem>
+	  <para>
+	This option avoids the use of any of the API lxc locking, and should
+	only be used if <command>lxc-stop</command> is hanging due to a bad
+	system state.
+	  </para>
+	</listitem>
+	</varlistentry>
+
+    <varlistentry>
+	<term>
 	  <option>-W,--nowait </option>
 	</term>
 	<listitem>
