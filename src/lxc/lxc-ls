@@ -110,6 +110,8 @@ def getSubContainers(container, lxcpath):
             return json.loads(out)
     return None
 
+# Constants
+FIELDS = ("name", "state", "ipv4", "ipv6", "autostart", "pid")
 
 # Begin parsing the command line
 parser = argparse.ArgumentParser(description=_("LXC: List containers"),
@@ -137,7 +139,8 @@ parser.add_argument("--stopped", dest="state", action="append_const",
 parser.add_argument("--fancy", action="store_true",
                     help=_("use fancy output"))
 
-parser.add_argument("--fancy-format", type=str, default="name,state,ipv4,ipv6",
+parser.add_argument("--fancy-format", type=str,
+                    default="name,state,ipv4,ipv6,autostart",
                     help=_("comma separated list of fields to show"))
 
 parser.add_argument("--nesting", dest="nesting", action="store_true",
@@ -163,6 +166,10 @@ lxcpath = os.environ.get('NESTED', args.lxcpath)
 
 # Turn args.fancy_format into a list
 args.fancy_format = args.fancy_format.strip().split(",")
+
+if set(args.fancy_format) - set(FIELDS):
+    parser.error(_("Invalid field(s): %s" %
+                 ", ".join(list(set(args.fancy_format) - set(FIELDS)))))
 
 # Basic checks
 ## Check for setns
@@ -229,6 +236,18 @@ for container_name in lxc.list_containers(config_path=lxcpath):
         elif container.init_pid != -1:
             entry['pid'] = str(container.init_pid)
 
+    if 'autostart' in args.fancy_format or args.nesting:
+        entry['autostart'] = "NO"
+        try:
+            if container.get_config_item("lxc.start.auto") == "1":
+                entry['autostart'] = "YES"
+
+                groups = container.get_config_item("lxc.group")
+                if len(groups) > 0:
+                    entry['autostart'] = "YES (%s)" % ", ".join(groups)
+        except KeyError:
+            pass
+
     # Get the IPs
     for family, protocol in {'inet': 'ipv4', 'inet6': 'ipv6'}.items():
         if protocol in args.fancy_format or args.nesting:
@@ -239,8 +258,8 @@ for container_name in lxc.list_containers(config_path=lxcpath):
                 continue
 
             # FIXME: We should get get_ips working as non-root
-            if container.running and (not SUPPORT_SETNS_NET \
-                    or os.geteuid() != 0):
+            if container.running and (not SUPPORT_SETNS_NET
+                                      or os.geteuid() != 0):
                 entry[protocol] = 'UNKNOWN'
                 continue
 
