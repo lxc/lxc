@@ -189,7 +189,7 @@ static bool nic_exists(char *nic)
 
 	ret = snprintf(path, MAXPATHLEN, "/sys/class/net/%s", nic);
 	if (ret < 0 || ret >= MAXPATHLEN) // should never happen!
-		return true;
+		return false;
 	ret = stat(path, &sb);
 	if (ret != 0)
 		return false;
@@ -379,6 +379,9 @@ static bool get_nic_if_avail(int fd, char *me, int pid, char *intype, char *br, 
 
 	cull_entries(fd, me, intype, br);
 
+	if (allowed == 0)
+		return false;
+
 	fstat(fd, &sb);
 	len = sb.st_size;
 	if (len != 0) {
@@ -392,7 +395,6 @@ static bool get_nic_if_avail(int fd, char *me, int pid, char *intype, char *br, 
 		if (count >= allowed)
 			return false;
 	}
-
 
 	get_new_nicname(nicname, br, pid, cnic);
 	/* me  ' ' intype ' ' br ' ' *nicname + '\n' + '\0' */
