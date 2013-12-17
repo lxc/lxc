@@ -35,10 +35,12 @@ man_MANS = \
 	lxc-stop.1 \
 	lxc-unfreeze.1 \
 	lxc-unshare.1 \
+	lxc-user-nic.1 \
 	lxc-version.1 \
 	lxc-wait.1 \
 	\
 	lxc.conf.5 \
+	lxc-usernet.5 \
 	\
 	lxc.7
 

@@ -498,10 +498,12 @@ AC_CONFIG_FILES([
 	doc/lxc-top.sgml
 	doc/lxc-unfreeze.sgml
 	doc/lxc-unshare.sgml
+	doc/lxc-user-nic.sgml
 	doc/lxc-version.sgml
 	doc/lxc-wait.sgml
 
 	doc/lxc.conf.sgml
+	doc/lxc-usernet.sgml
 	doc/lxc.sgml
 	doc/common_options.sgml
 	doc/see_also.sgml

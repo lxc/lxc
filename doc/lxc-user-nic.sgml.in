@@ -1,0 +1,184 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright Canonical Ltd. 2013
+
+Authors:
+Serge Hallyn <serge.hallyn@ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-user-nic</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-user-nic</refname>
+
+    <refpurpose>
+      Create and attach a nic to another network namespace.
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-user-nic</command>
+      <arg choice="req"><replaceable>pid</replaceable></arg>
+      <arg choice="req"><replaceable>type</replaceable></arg>
+      <arg choice="req"><replaceable>bridge</replaceable></arg>
+      <arg choice="opt"><replaceable>nicname</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title>Description</title>
+
+    <para>
+      <command>lxc-user-nic</command> is a setuid-root program with which
+      unprivileged users may create network interfaces for use by a lxc container.
+    </para>
+    <para>
+      It will consult the configuration file <filename>@LXC_USERNIC_CONF@</filename>
+      to determine number of interfaces which the calling user is allowed to
+      create, and which bridge he may attach them to.  It tracks the
+      number of interfaces each user has created using the file
+      <filename>@LXC_USERNIC_DB@</filename>.  It ensures that the calling
+      user is privileged over the network namespace to which the interface
+      will be attached.
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+
+    <title>Options</title>
+
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option><replaceable>pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	  The process id for the task to whose network namespace the interface
+	  should be attached.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option><replaceable>type</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	  The network interface type to attach.  Currently only veth is
+	  supported.  With this type, two interfaces representing each
+	  tunnel endpoint are created.  One endpoint will be attached
+	  to the specified bridge, while the other will be passed into
+	  the container.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option><replaceable>bridge</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	  The bridge to which to attach the network interface, for
+	  instance <filename>lxcbr0</filename>.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option><replaceable>nicname</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	  The desired interface name in the container.  This will be
+	  <filename>eth0</filename> if unspecified.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title>See Also</title>
+
+    <simpara>
+      <citerefentry>
+	<refentrytitle><command>lxc</command></refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+	<refentrytitle><command>lxc-start</command></refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+	<refentrytitle><command>lxc-usernet.conf</command></refentrytitle>
+	<manvolnum>5</manvolnum>
+      </citerefentry>
+    </simpara>
+   </refsect1>
+
+  <refsect1>
+    <title>Author</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->
