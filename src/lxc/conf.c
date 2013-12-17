@@ -3945,6 +3945,10 @@ void lxc_conf_free(struct lxc_conf *conf)
 		free(conf->rootfs.mount);
 	if (conf->rootfs.path)
 		free(conf->rootfs.path);
+	if (conf->rootfs.pivot)
+		free(conf->rootfs.pivot);
+	if (conf->logfile)
+		free(conf->logfile);
 	if (conf->utsname)
 		free(conf->utsname);
 	if (conf->ttydir)
