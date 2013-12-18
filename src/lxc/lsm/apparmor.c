@@ -27,6 +27,7 @@
 #include <sys/mount.h>
 #include <sys/apparmor.h>
 #include "log.h"
+#include "utils.h"
 #include "lsm/lsm.h"
 
 lxc_log_define(lxc_apparmor, lxc);
