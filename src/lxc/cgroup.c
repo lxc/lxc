@@ -1944,6 +1944,7 @@ int count_lines(const char *fn)
 int handle_cgroup_settings(struct cgroup_mount_point *mp, char *cgroup_path)
 {
 	int r, saved_errno = 0;
+	char buf[2];
 
 	/* If this is the memory cgroup, we want to enforce hierarchy.
 	 * But don't fail if for some reason we can't.
@@ -1951,9 +1952,12 @@ int handle_cgroup_settings(struct cgroup_mount_point *mp, char *cgroup_path)
 	if (lxc_string_in_array("memory", (const char **)mp->hierarchy->subsystems)) {
 		char *cc_path = cgroup_to_absolute_path(mp, cgroup_path, "/memory.use_hierarchy");
 		if (cc_path) {
-			r = lxc_write_to_file(cc_path, "1", 1, false);
-			if (r < 0)
-				SYSERROR("failed to set memory.use_hiararchy to 1; continuing");
+			r = lxc_read_from_file(cc_path, buf, 1);
+			if (r < 1 || buf[0] != '1') {
+				r = lxc_write_to_file(cc_path, "1", 1, false);
+				if (r < 0)
+					SYSERROR("failed to set memory.use_hiararchy to 1; continuing");
+			}
 			free(cc_path);
 		}
 	}
@@ -1966,6 +1970,11 @@ int handle_cgroup_settings(struct cgroup_mount_point *mp, char *cgroup_path)
 		char *cc_path = cgroup_to_absolute_path(mp, cgroup_path, "/cgroup.clone_children");
 		if (!cc_path)
 			return -1;
+		r = lxc_read_from_file(cc_path, buf, 1);
+		if (r == 1 && buf[0] == '1') {
+			free(cc_path);
+			return 0;
+		}
 		r = lxc_write_to_file(cc_path, "1", 1, false);
 		saved_errno = errno;
 		free(cc_path);
