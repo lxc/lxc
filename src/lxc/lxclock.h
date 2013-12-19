@@ -123,16 +123,6 @@ extern void process_lock(void);
  */
 extern void process_unlock(void);
 
-/*!
- * \brief Lock global data.
- */
-extern void static_lock(void);
-
-/*!
- * \brief Unlock global data.
- */
-extern void static_unlock(void);
-
 struct lxc_container;
 
 /*!

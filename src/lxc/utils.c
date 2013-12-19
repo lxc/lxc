@@ -253,8 +253,8 @@ const char *lxc_global_config_value(const char *option_name)
 		{ "cgroup.use",      NULL            },
 		{ NULL, NULL },
 	};
-	/* Protected by a mutex to eliminate conflicting load and store operations */
-	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
+	/* placed in the thread local storage pool */
+	static __thread const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
 	const char *(*ptr)[2];
 	const char *value;
 	size_t i;
@@ -270,13 +270,10 @@ const char *lxc_global_config_value(const char *option_name)
 		return NULL;
 	}
 
-	static_lock();
 	if (values[i]) {
 		value = values[i];
-		static_unlock();
 		return value;
 	}
-	static_unlock();
 
 	process_lock();
 	fin = fopen_cloexec(LXC_GLOBAL_CONF, "r");
@@ -313,21 +310,17 @@ const char *lxc_global_config_value(const char *option_name)
 			while (*p && (*p == ' ' || *p == '\t')) p++;
 			if (!*p)
 				continue;
-			static_lock();
 			values[i] = copy_global_config_value(p);
-			static_unlock();
 			goto out;
 		}
 	}
 	/* could not find value, use default */
-	static_lock();
 	values[i] = (*ptr)[1];
 	/* special case: if default value is NULL,
 	 * and there is no config, don't view that
 	 * as an error... */
 	if (!values[i])
 		errno = 0;
-	static_unlock();
 
 out:
 	process_lock();
@@ -335,10 +328,7 @@ out:
 		fclose(fin);
 	process_unlock();
 
-	static_lock();
-	value = values[i];
-	static_unlock();
-	return value;
+	return values[i];
 }
 
 const char *default_lvm_vg(void)

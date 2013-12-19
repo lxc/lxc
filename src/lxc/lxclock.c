@@ -44,7 +44,6 @@ lxc_log_define(lxc_lock, lxc);
 
 #ifdef MUTEX_DEBUGGING
 pthread_mutex_t thread_mutex = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
-pthread_mutex_t static_mutex = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
 inline void dump_stacktrace(void)
 {
@@ -66,7 +65,6 @@ inline void dump_stacktrace(void)
 }
 #else
 pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t static_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 inline void dump_stacktrace(void) {;}
 #endif
@@ -322,17 +320,6 @@ void process_lock(void)
 void process_unlock(void)
 {
 	unlock_mutex(&thread_mutex);
-}
-
-/* Protects static const values inside the lxc_global_config_value funtion */
-void static_lock(void)
-{
-	lock_mutex(&static_mutex);
-}
-
-void static_unlock(void)
-{
-	unlock_mutex(&static_mutex);
 }
 
 int container_mem_lock(struct lxc_container *c)
