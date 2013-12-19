@@ -54,17 +54,34 @@ fi
 if [ "${CPE_NAME}" = "" -a -e /etc/system-release-cpe ]
 then
     CPE_NAME=$(head -n1 /etc/system-release-cpe)
-    CPE_URI=$(expr ${CPE_NAME} : '\([^:]*:[^:*]\)')
+    CPE_URI=$(expr ${CPE_NAME} : '\([^:]*:[^:]*\)')
     if [ "${CPE_URI}" != "cpe:/o" ]
     then
         CPE_NAME=
     else
-        echo "Host CPE ID from /etc/system-release-cpe: ${CPE_NAME}"
         # Probably a better way to do this but sill remain posix
         # compatible but this works, shrug...
         # Must be nice and not introduce convenient bashisms here.
+        #
+        # According to the official registration at Mitre and NIST,
+        # this should have been something like this for CentOS:
+        #    cpe:/o:centos:centos:6
+        # or this:
+        #    cpe:/o:centos:centos:6.5
+        #
         ID=$(expr ${CPE_NAME} : '[^:]*:[^:]*:[^:]*:\([^:]*\)')
+        # The "enterprise_linux" is a bone toss back to RHEL.
+        # Since CentOS and RHEL are so tightly coupled, we'll
+        # take the RHEL version if we're running on it and do the
+        # equivalent version for CentOS.
+        if [ ${ID} = "linux" -o ${ID} = "enterprise_linux" ]
+        then
+                # Instead we got this: cpe:/o:centos:linux:6
+                ID=$(expr ${CPE_NAME} : '[^:]*:[^:]*:\([^:]*\)')
+        fi
+
         VERSION_ID=$(expr ${CPE_NAME} : '[^:]*:[^:]*:[^:]*:[^:]*:\([^:]*\)')
+        echo "Host CPE ID from /etc/system-release-cpe: ${CPE_NAME}"
     fi
 fi
 
@@ -72,10 +89,14 @@ if [ "${CPE_NAME}" != "" -a "${ID}" = "centos" -a "${VERSION_ID}" != "" ]
 then
     centos_host_ver=${VERSION_ID}
     is_centos=true
-elif [ -e /etc/redhat-release ]
+elif [ "${CPE_NAME}" != "" -a "${ID}" = "redhat" -a "${VERSION_ID}" != "" ]
+then
+    redhat_host_ver=${VERSION_ID}
+    is_redhat=true
+elif [ -e /etc/centos-release ]
 then
     # Only if all other methods fail, try to parse the redhat-release file.
-    centos_host_ver=$( sed -e '/^CentOS /!d' -e 's/CentOS*\srelease\s*\([0-9][0-9]*\)\s.*/\1/' < /etc/redhat-release )
+    centos_host_ver=$( sed -e '/^CentOS /!d' -e 's/CentOS.*\srelease\s*\([0-9][0-9.]*\)\s.*/\1/' < /etc/centos-release )
     if [ "$centos_host_ver" != "" ]
     then
         is_centos=true
@@ -129,6 +150,32 @@ configure_centos()
     # the container "Cannot make/remove an entry for the specified session"
     sed -i '/^session.*pam_loginuid.so/s/^session/# session/' ${rootfs_path}/etc/pam.d/login
     sed -i '/^session.*pam_loginuid.so/s/^session/# session/' ${rootfs_path}/etc/pam.d/sshd
+
+    if [ -f ${rootfs_path}/etc/pam.d/crond ]
+    then
+        sed -i '/^session.*pam_loginuid.so/s/^session/# session/' ${rootfs_path}/etc/pam.d/crond
+    fi
+
+    # In addition to disabling pam_loginuid in the above config files
+    # we'll also disable it by linking it to pam_permit to catch any
+    # we missed or any that get installed after the container is built.
+    #
+    # Catch either or both 32 and 64 bit archs.
+    if [ -f ${rootfs_path}/lib/security/pam_loginuid.so ]
+    then
+        ( cd ${rootfs_path}/lib/security/
+        mv pam_loginuid.so pam_loginuid.so.disabled
+        ln -s pam_permit.so pam_loginuid.so
+        )
+    fi
+
+    if [ -f ${rootfs_path}/lib64/security/pam_loginuid.so ]
+    then
+        ( cd ${rootfs_path}/lib64/security/
+        mv pam_loginuid.so pam_loginuid.so.disabled
+        ln -s pam_permit.so pam_loginuid.so
+        )
+    fi
 
    # configure the network using the dhcp
     cat <<EOF > ${rootfs_path}/etc/sysconfig/network-scripts/ifcfg-eth0
@@ -543,15 +590,24 @@ fi
 if [ -z "$release" ]; then
     if [ "$is_centos" -a "$centos_host_ver" ]; then
         release=$centos_host_ver
+    elif [ "$is_redhat" -a "$redhat_host_ver" ]; then
+        # This is needed to clean out bullshit like 6workstation and 6server.
+        release=$(expr $redhat_host_ver : '\([0-9.]*\)')
     else
-        echo "This is not a centos host and release missing, defaulting to 6 use -R|--release to specify release"
+        echo "This is not a CentOS or Redhat host and release is missing, defaulting to 6 use -R|--release to specify release"
         release=6
     fi
 fi
 
 # CentOS 7 and above should run systemd.  We need autodev enabled to keep
 # systemd from causing problems.
-if [ $release -gt 6 ]; then
+#
+# There is some ambiguity here due to the differnce between versioning
+# of point specific releases such as 6.5 and the rolling release 6.  We
+# only want the major number here if it's a point release...
+
+mrelease=$(expr $release : '\([0-9]*\)')
+if [ $mrelease -gt 6 ]; then
     auto_dev="1"
 else
     auto_dev="0"
