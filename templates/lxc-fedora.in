@@ -51,7 +51,7 @@ fi
 if [ "${CPE_NAME}" = "" -a -e /etc/system-release-cpe ]
 then
     CPE_NAME=$(head -n1 /etc/system-release-cpe)
-    CPE_URI=$(expr ${CPE_NAME} : '\([^:]*:[^:*]\)')
+    CPE_URI=$(expr ${CPE_NAME} : '\([^:]*:[^:]*\)')
     if [ "${CPE_URI}" != "cpe:/o" ]
     then
         CPE_NAME=
@@ -116,6 +116,32 @@ configure_fedora()
     # the container "Cannot make/remove an entry for the specified session"
     sed -i '/^session.*pam_loginuid.so/s/^session/# session/' ${rootfs_path}/etc/pam.d/login
     sed -i '/^session.*pam_loginuid.so/s/^session/# session/' ${rootfs_path}/etc/pam.d/sshd
+
+    if [ -f ${rootfs_path}/etc/pam.d/crond ]
+    then
+        sed -i '/^session.*pam_loginuid.so/s/^session/# session/' ${rootfs_path}/etc/pam.d/crond
+    fi
+
+    # In addition to disabling pam_loginuid in the above config files
+    # we'll also disable it by linking it to pam_permit to catch any
+    # we missed or any that get installed after the container is built.
+    #
+    # Catch either or both 32 and 64 bit archs.
+    if [ -f ${rootfs_path}/lib/security/pam_loginuid.so ]
+    then
+        ( cd ${rootfs_path}/lib/security/
+        mv pam_loginuid.so pam_loginuid.so.disabled
+        ln -s pam_permit.so pam_loginuid.so
+        )
+    fi
+
+    if [ -f ${rootfs_path}/lib64/security/pam_loginuid.so ]
+    then
+        ( cd ${rootfs_path}/lib64/security/
+        mv pam_loginuid.so pam_loginuid.so.disabled
+        ln -s pam_permit.so pam_loginuid.so
+        )
+    fi
 
     # configure the network using the dhcp
     cat <<EOF > ${rootfs_path}/etc/sysconfig/network-scripts/ifcfg-eth0
@@ -1024,8 +1050,8 @@ if [ -z "$release" ]; then
     if [ "$is_fedora" -a "$fedora_host_ver" ]; then
         release=$fedora_host_ver
     else
-        echo "This is not a fedora host and release missing, defaulting to 18. use -R|--release to specify release"
-        release=18
+        echo "This is not a fedora host and release missing, defaulting to 19. use -R|--release to specify release"
+        release=19
     fi
 fi
 
