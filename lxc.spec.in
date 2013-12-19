@@ -149,6 +149,11 @@ rm -rf %{buildroot}
 %attr(4555,root,root) %{_libexecdir}/%{name}/lxc-init
 %attr(555,root,root) %{_libexecdir}/%{name}/lxc-devsetup
 
+%if %{with_python}
+%{_libdir}/python3.3/site-packages/_lxc*
+%{_libdir}/python3.3/site-packages/lxc/*
+%endif
+
 %if %{with_lua}
 %files lua
 %defattr(-,root,root)
