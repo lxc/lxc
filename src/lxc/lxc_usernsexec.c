@@ -425,7 +425,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	buf[0] = 1;
+	buf[0] = '1';
 	if (map_child_uids(pid, active_map)) {
 		fprintf(stderr, "error mapping child\n");
 		ret = 0;
