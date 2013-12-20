@@ -248,11 +248,36 @@ const char *lxc_global_config_value(const char *option_name)
 		{ "lvm_vg",          DEFAULT_VG      },
 		{ "lvm_thin_pool",   DEFAULT_THIN_POOL },
 		{ "zfsroot",         DEFAULT_ZFSROOT },
-		{ "lxcpath",         LXCPATH         },
+		{ "lxcpath",         NULL            },
 		{ "cgroup.pattern",  DEFAULT_CGROUP_PATTERN },
 		{ "cgroup.use",      NULL            },
 		{ NULL, NULL },
 	};
+
+	char *user_config_path = NULL;
+	char *user_lxc_path = NULL;
+	char *user_home = NULL;
+
+	if (geteuid() > 0) {
+		user_home = getenv("HOME");
+		if (user_home)
+			user_home = strdup(user_home);
+		else
+			user_home = "/";
+
+		user_config_path = malloc(sizeof(char) * (22 + strlen(user_home)));
+		user_lxc_path = malloc(sizeof(char) * (19 + strlen(user_home)));
+
+		sprintf(user_config_path, "%s/.config/lxc/lxc.conf", user_home);
+		sprintf(user_lxc_path, "%s/.local/share/lxc/", user_home);
+
+		free(user_home);
+	}
+	else {
+		user_config_path = strdup(LXC_GLOBAL_CONF);
+		user_lxc_path = strdup(LXCPATH);
+	}
+
 	/* placed in the thread local storage pool */
 	static __thread const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
 	const char *(*ptr)[2];
@@ -266,17 +291,23 @@ const char *lxc_global_config_value(const char *option_name)
 			break;
 	}
 	if (!(*ptr)[0]) {
+		free(user_config_path);
+		free(user_lxc_path);
 		errno = EINVAL;
 		return NULL;
 	}
 
 	if (values[i]) {
+		free(user_config_path);
+		free(user_lxc_path);
 		value = values[i];
+
 		return value;
 	}
 
 	process_lock();
-	fin = fopen_cloexec(LXC_GLOBAL_CONF, "r");
+	fin = fopen_cloexec(user_config_path, "r");
+	free(user_config_path);
 	process_unlock();
 	if (fin) {
 		while (fgets(buf, 1024, fin)) {
@@ -311,11 +342,17 @@ const char *lxc_global_config_value(const char *option_name)
 			if (!*p)
 				continue;
 			values[i] = copy_global_config_value(p);
+			free(user_lxc_path);
 			goto out;
 		}
 	}
 	/* could not find value, use default */
-	values[i] = (*ptr)[1];
+	if (strcmp(option_name, "lxcpath") == 0)
+		values[i] = user_lxc_path;
+	else {
+		free(user_lxc_path);
+		values[i] = (*ptr)[1];
+	}
 	/* special case: if default value is NULL,
 	 * and there is no config, don't view that
 	 * as an error... */
