@@ -523,6 +523,7 @@ AC_CONFIG_FILES([
 	doc/ja/Makefile
 	doc/ja/legacy/lxc-ls.sgml
 	doc/ja/lxc-attach.sgml
+	doc/ja/lxc-autostart.sgml
 	doc/ja/lxc-cgroup.sgml
 	doc/ja/lxc-checkconfig.sgml
 	doc/ja/lxc-checkpoint.sgml

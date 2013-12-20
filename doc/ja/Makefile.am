@@ -9,6 +9,7 @@ EXTRA_DIST = \
 if ENABLE_DOCBOOK
 man_MANS = \
 	lxc-attach.1 \
+	lxc-autostart.1 \
 	lxc-cgroup.1 \
 	lxc-checkconfig.1 \
 	lxc-checkpoint.1 \
