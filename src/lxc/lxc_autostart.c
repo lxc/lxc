@@ -109,8 +109,10 @@ struct lxc_list *get_list(char *input, char *delimiter) {
 	lxc_list_init(workstr_list);
 
 	workstr = strdup(input);
-	if (!workstr)
+	if (!workstr) {
+		free(workstr_list);
 		return NULL;
+	}
 
 	for (workptr = workstr;;workptr = NULL) {
 		token = strtok_r(workptr, delimiter, &sptr);
