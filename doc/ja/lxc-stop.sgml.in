@@ -122,7 +122,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Only request a clean shutdown, do not kill the container tasks if the
 		clean shutdown fails.
               -->
-            クリーンシャットダウンだけをリクエストします．クリーンシャットダウンが失敗した場合，コンテナのタスクを kill しません．
+            クリーンシャットダウンだけをリクエストします．クリーンなシャットダウンに失敗した場合でも，コンテナのタスクを kill しないでください．
 	  </para>
 	</listitem>
 	</varlistentry>
@@ -184,7 +184,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Wait TIMEOUT seconds before hard-stopping the container of (in
 		the reboot case) returning failure.
               -->
-            コンテナの強制停止，失敗をを返して強制停止 (リブートの場合) まで TIMEOUT 秒待ちます．
+            コンテナの強制停止まで TIMEOUT 秒待ちます．リブートの場合，失敗が返るのを TIMEOUT 秒待ちます．
 	  </para>
 	</listitem>
 	</varlistentry>
