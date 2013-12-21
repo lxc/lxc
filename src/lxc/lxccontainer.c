@@ -2184,9 +2184,15 @@ err:
 
 static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 {
-	int i;
-	int ret;
+	int i, len, ret;
 	struct lxc_list *it;
+	char *cpath;
+
+	len = strlen(oldc->config_path) + strlen(oldc->name) + 3;
+	cpath = alloca(len);
+	ret = snprintf(cpath, len, "%s/%s/", oldc->config_path, oldc->name);
+	if (ret < 0 || ret >= len)
+		return -1;
 
 	for (i=0; i<NUM_LXC_HOOKS; i++) {
 		lxc_list_for_each(it, &c->lxc_conf->hooks[i]) {
@@ -2195,6 +2201,10 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 			char tmppath[MAXPATHLEN];
 			if (!fname) // relative path - we don't support, but maybe we should
 				return 0;
+			if (strncmp(hookname, cpath, len - 1) != 0) {
+				// this hook is public - ignore
+				continue;
+			}
 			// copy the script, and change the entry in confile
 			ret = snprintf(tmppath, MAXPATHLEN, "%s/%s/%s",
 					c->config_path, c->name, fname+1);
@@ -2546,14 +2556,11 @@ struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 		goto out;
 	}
 
-
-	// copy hooks if requested
-	if (flags & LXC_CLONE_COPYHOOKS) {
-		ret = copyhooks(c, c2);
-		if (ret < 0) {
-			ERROR("error copying hooks");
-			goto out;
-		}
+	// copy hooks
+	ret = copyhooks(c, c2);
+	if (ret < 0) {
+		ERROR("error copying hooks");
+		goto out;
 	}
 
 	if (copy_fstab(c, c2) < 0) {
@@ -2600,7 +2607,6 @@ static bool lxcapi_rename(struct lxc_container *c, const char *newname)
 {
 	struct bdev *bdev;
 	struct lxc_container *newc;
-	int flags = LXC_CLONE_KEEPMACADDR | LXC_CLONE_COPYHOOKS;
 
 	if (!c || !c->name || !c->config_path)
 		return false;
@@ -2611,7 +2617,7 @@ static bool lxcapi_rename(struct lxc_container *c, const char *newname)
 		return false;
 	}
 
-	newc = lxcapi_clone(c, newname, c->config_path, flags, NULL, bdev->type, 0, NULL);
+	newc = lxcapi_clone(c, newname, c->config_path, LXC_CLONE_KEEPMACADDR, NULL, bdev->type, 0, NULL);
 	bdev_put(bdev);
 	if (!newc) {
 		lxc_container_put(newc);

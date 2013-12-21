@@ -29,10 +29,9 @@
 #include <stdlib.h>
 
 #define LXC_CLONE_KEEPNAME        (1 << 0) /*!< Do not edit the rootfs to change the hostname */
-#define LXC_CLONE_COPYHOOKS       (1 << 1) /*!< Copy all hooks into the container directory */
-#define LXC_CLONE_KEEPMACADDR     (1 << 2) /*!< Do not change the MAC address on network interfaces */
-#define LXC_CLONE_SNAPSHOT        (1 << 3) /*!< Snapshot the original filesystem(s) */
-#define LXC_CLONE_MAXFLAGS        (1 << 4) /*!< Number of \c LXC_CLONE_* flags */
+#define LXC_CLONE_KEEPMACADDR     (1 << 1) /*!< Do not change the MAC address on network interfaces */
+#define LXC_CLONE_SNAPSHOT        (1 << 2) /*!< Snapshot the original filesystem(s) */
+#define LXC_CLONE_MAXFLAGS        (1 << 3) /*!< Number of \c LXC_CLONE_* flags */
 #define LXC_CREATE_QUIET          (1 << 0) /*!< Redirect \c stdin to \c /dev/zero and \c stdout and \c stderr to \c /dev/null */
 #define LXC_CREATE_MAXFLAGS       (1 << 1) /*!< Number of \c LXC_CREATE* flags */
 
@@ -516,7 +515,6 @@ struct lxc_container {
 	 *  (XXX: should we use the default instead?)
 	 * \param flags Additional \c LXC_CLONE* flags to change the cloning behaviour:
 	 *  - \ref LXC_CLONE_KEEPNAME
-	 *  - \ref LXC_CLONE_COPYHOOKS
 	 *  - \ref LXC_CLONE_KEEPMACADDR
 	 *  - \ref LXC_CLONE_SNAPSHOT
 	 * \param bdevtype Optionally force the cloned bdevtype to a specified plugin.

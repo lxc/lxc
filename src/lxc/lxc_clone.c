@@ -69,8 +69,6 @@ void usage(const char *me)
 	printf("  -L: for blockdev-backed backingstore, use specified size\n");
 	printf("  -K: Keep name - do not change the container name\n");
 	printf("  -M: Keep macaddr - do not choose a random new mac address\n");
-	printf("  -H: copy Hooks - copy mount hooks into container directory\n");
-	printf("      and substitute container names and lxcpaths\n");
 	printf("  -p: use container orig from custom lxcpath\n");
 	printf("  -P: create container new in custom lxcpath\n");
 	exit(1);
@@ -85,7 +83,6 @@ static struct option options[] = {
 	{ "vgname", required_argument, 0, 'v'},
 	{ "keepname", no_argument, 0, 'K'},
 	{ "keepmac", no_argument, 0, 'M'},
-	{ "copyhooks", no_argument, 0, 'H'},  // should this be default?
 	{ "lxcpath", required_argument, 0, 'p'},
 	{ "newpath", required_argument, 0, 'P'},
 	{ "fstype", required_argument, 0, 't'},
@@ -96,7 +93,7 @@ static struct option options[] = {
 int main(int argc, char *argv[])
 {
 	struct lxc_container *c1 = NULL, *c2 = NULL;
-	int snapshot = 0, keepname = 0, keepmac = 0, copyhooks = 0;
+	int snapshot = 0, keepname = 0, keepmac = 0;
 	int flags = 0, option_index;
 	long newsize = 0;
 	char *bdevtype = NULL, *lxcpath = NULL, *newpath = NULL, *fstype = NULL;
@@ -120,7 +117,6 @@ int main(int argc, char *argv[])
 		case 'v': vgname = optarg; break;
 		case 'K': keepname = 1; break;
 		case 'M': keepmac = 1; break;
-		case 'H': copyhooks = 1; break;
 		case 'p': lxcpath = optarg; break;
 		case 'P': newpath = optarg; break;
 		case 't': fstype = optarg; break;
@@ -143,7 +139,6 @@ int main(int argc, char *argv[])
 	if (snapshot)  flags |= LXC_CLONE_SNAPSHOT;
 	if (keepname)  flags |= LXC_CLONE_KEEPNAME;
 	if (keepmac)   flags |= LXC_CLONE_KEEPMACADDR;
-	if (copyhooks) flags |= LXC_CLONE_COPYHOOKS;
 
 	// vgname and fstype could be supported by sending them through the
 	// bdevdata.  However, they currently are not yet.  I'm not convinced
