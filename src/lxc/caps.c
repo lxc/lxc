@@ -31,7 +31,6 @@
 
 #include "config.h"
 #include "log.h"
-#include "lxclock.h"
 
 lxc_log_define(lxc_caps, lxc);
 
@@ -192,9 +191,7 @@ static int _real_caps_last_cap(void)
 
 	/* try to get the maximum capability over the kernel
 	* interface introduced in v3.2 */
-	process_lock();
 	fd = open("/proc/sys/kernel/cap_last_cap", O_RDONLY);
-	process_unlock();
 	if (fd >= 0) {
 		char buf[32];
 		char *ptr;
@@ -208,9 +205,7 @@ static int _real_caps_last_cap(void)
 				result = -1;
 		}
 
-		process_lock();
 		close(fd);
-		process_unlock();
 	}
 
 	/* try to get it manually by trying to get the status of

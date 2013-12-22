@@ -29,7 +29,6 @@
 #include <sys/epoll.h>
 
 #include "mainloop.h"
-#include "lxclock.h"
 
 struct mainloop_handler {
 	lxc_mainloop_callback_t callback;
@@ -133,16 +132,12 @@ int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd)
 int lxc_mainloop_open(struct lxc_epoll_descr *descr)
 {
 	/* hint value passed to epoll create */
-	process_lock();
 	descr->epfd = epoll_create(2);
-	process_unlock();
 	if (descr->epfd < 0)
 		return -1;
 
 	if (fcntl(descr->epfd, F_SETFD, FD_CLOEXEC)) {
-		process_lock();
 		close(descr->epfd);
-		process_unlock();
 		return -1;
 	}
 
@@ -153,7 +148,6 @@ int lxc_mainloop_open(struct lxc_epoll_descr *descr)
 int lxc_mainloop_close(struct lxc_epoll_descr *descr)
 {
 	struct lxc_list *iterator, *next;
-	int ret;
 
 	iterator = descr->handlers.next;
 	while (iterator != &descr->handlers) {
@@ -165,9 +159,6 @@ int lxc_mainloop_close(struct lxc_epoll_descr *descr)
 		iterator = next;
 	}
 
-	process_lock();
-	ret = close(descr->epfd);
-	process_unlock();
-	return ret;
+	return close(descr->epfd);
 }
 

@@ -68,7 +68,6 @@
 #include "caps.h"       /* for lxc_caps_last_cap() */
 #include "bdev.h"
 #include "cgroup.h"
-#include "lxclock.h"
 #include "namespace.h"
 #include "lsm/lsm.h"
 
@@ -284,9 +283,7 @@ static int run_buffer(char *buffer)
 	char *output;
 	int ret;
 
-	process_lock();
 	f = lxc_popen(buffer);
-	process_unlock();
 	if (!f) {
 		SYSERROR("popen failed");
 		return -1;
@@ -295,9 +292,7 @@ static int run_buffer(char *buffer)
 	output = malloc(LXC_LOG_BUFFER_SIZE);
 	if (!output) {
 		ERROR("failed to allocate memory for script output");
-		process_lock();
 		lxc_pclose(f);
-		process_unlock();
 		return -1;
 	}
 
@@ -306,9 +301,7 @@ static int run_buffer(char *buffer)
 
 	free(output);
 
-	process_lock();
 	ret = lxc_pclose(f);
-	process_unlock();
 	if (ret == -1) {
 		SYSERROR("Script exited on error");
 		return -1;
@@ -513,9 +506,7 @@ static int setup_lodev(const char *rootfs, int fd, struct loop_info64 *loinfo)
 	int rfd;
 	int ret = -1;
 
-	process_lock();
 	rfd = open(rootfs, O_RDWR);
-	process_unlock();
 	if (rfd < 0) {
 		SYSERROR("failed to open '%s'", rootfs);
 		return -1;
@@ -537,9 +528,7 @@ static int setup_lodev(const char *rootfs, int fd, struct loop_info64 *loinfo)
 
 	ret = 0;
 out:
-	process_lock();
 	close(rfd);
-	process_unlock();
 
 	return ret;
 }
@@ -552,9 +541,7 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 	DIR *dir;
 	char path[MAXPATHLEN];
 
-	process_lock();
-	dir = opendir("/dev");
-	process_unlock();
+	dir = lxc_opendir("/dev");
 	if (!dir) {
 		SYSERROR("failed to open '/dev'");
 		return -1;
@@ -578,25 +565,19 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 		if (rc < 0 || rc >= MAXPATHLEN)
 			continue;
 
-		process_lock();
 		fd = open(path, O_RDWR);
-		process_unlock();
 		if (fd < 0)
 			continue;
 
 		if (ioctl(fd, LOOP_GET_STATUS64, &loinfo) == 0) {
-			process_lock();
 			close(fd);
-			process_unlock();
 			continue;
 		}
 
 		if (errno != ENXIO) {
 			WARN("unexpected error for ioctl on '%s': %m",
 			     direntp->d_name);
-			process_lock();
 			close(fd);
-			process_unlock();
 			continue;
 		}
 
@@ -605,17 +586,13 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 		ret = setup_lodev(rootfs, fd, &loinfo);
 		if (!ret)
 			ret = mount_unknow_fs(path, target, 0);
-		process_lock();
 		close(fd);
-		process_unlock();
 
 		break;
 	}
 
-	process_lock();
-	if (closedir(dir))
+	if (lxc_closedir(dir))
 		WARN("failed to close directory");
-	process_unlock();
 
 	return ret;
 }
@@ -661,9 +638,7 @@ int pin_rootfs(const char *rootfs)
 	if (ret >= MAXPATHLEN)
 		return -1;
 
-	process_lock();
 	fd = open(absrootfspin, O_CREAT | O_RDWR, S_IWUSR|S_IRUSR);
-	process_unlock();
 	if (fd < 0)
 		return fd;
 	(void)unlink(absrootfspin);
@@ -840,17 +815,13 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 				ERROR("pathname too long for ttys");
 				return -1;
 			}
-			process_lock();
 			ret = creat(lxcpath, 0660);
-			process_unlock();
 			if (ret==-1 && errno != EEXIST) {
 				SYSERROR("error creating %s\n", lxcpath);
 				return -1;
 			}
-			process_lock();
 			if (ret >= 0)
 				close(ret);
-			process_unlock();
 			ret = unlink(path);
 			if (ret && errno != ENOENT) {
 				SYSERROR("error unlinking %s\n", path);
@@ -876,16 +847,12 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 		} else {
 			/* If we populated /dev, then we need to create /dev/ttyN */
 			if (access(path, F_OK)) {
-				process_lock();
 				ret = creat(path, 0660);
-				process_unlock();
 				if (ret==-1) {
 					SYSERROR("error creating %s\n", path);
 					/* this isn't fatal, continue */
 				} else {
-					process_lock();
 					close(ret);
-					process_unlock();
 				}
 			}
 			if (mount(pty_info->name, path, "none", MS_BIND, 0)) {
@@ -1157,9 +1124,7 @@ int mount_check_fs( const char *dir, char *fstype )
 		return 0;
 	}
 
-	process_lock();
-	f = fopen("/proc/self/mounts", "r");
-	process_unlock();
+	f = lxc_fopen("/proc/self/mounts", "r");
 	if (!f)
 		return 0;
 	while ((p = fgets(buf, LINELEN, f))) {
@@ -1193,9 +1158,7 @@ int mount_check_fs( const char *dir, char *fstype )
 		}
 	}
 
-	process_lock();
-	fclose(f);
-	process_unlock();
+	lxc_fclose(f);
 
 	DEBUG("mount_check_fs returning %d last %s\n", found_fs, fstype);
 
@@ -1455,9 +1418,7 @@ int detect_shared_rootfs(void)
 	int i;
 	char *p2;
 
-	process_lock();
-	f = fopen("/proc/self/mountinfo", "r");
-	process_unlock();
+	f = lxc_fopen("/proc/self/mountinfo", "r");
 	if (!f)
 		return 0;
 	while ((p = fgets(buf, LINELEN, f))) {
@@ -1473,16 +1434,12 @@ int detect_shared_rootfs(void)
 			// this is '/'.  is it shared?
 			p = index(p2+1, ' ');
 			if (p && strstr(p, "shared:")) {
-				process_lock();
-				fclose(f);
-				process_unlock();
+				lxc_fclose(f);
 				return 1;
 			}
 		}
 	}
-	process_lock();
-	fclose(f);
-	process_unlock();
+	lxc_fclose(f);
 	return 0;
 }
 
@@ -1738,17 +1695,13 @@ static int setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		return -1;
 	}
 
-	process_lock();
 	ret = creat(lxcpath, 0660);
-	process_unlock();
 	if (ret==-1 && errno != EEXIST) {
 		SYSERROR("error %d creating %s\n", errno, lxcpath);
 		return -1;
 	}
-	process_lock();
 	if (ret >= 0)
 		close(ret);
-	process_unlock();
 
 	if (console->master < 0) {
 		INFO("no console");
@@ -2132,9 +2085,7 @@ static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab,
 	if (!fstab)
 		return 0;
 
-	process_lock();
-	file = setmntent(fstab, "r");
-	process_unlock();
+	file = lxc_setmntent(fstab, "r");
 	if (!file) {
 		SYSERROR("failed to use '%s'", fstab);
 		return -1;
@@ -2142,9 +2093,7 @@ static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab,
 
 	ret = mount_file_entries(rootfs, file, lxc_name);
 
-	process_lock();
-	endmntent(file);
-	process_unlock();
+	lxc_endmntent(file);
 	return ret;
 }
 
@@ -2156,9 +2105,7 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list 
 	char *mount_entry;
 	int ret;
 
-	process_lock();
-	file = tmpfile();
-	process_unlock();
+	file = lxc_tmpfile();
 	if (!file) {
 		ERROR("tmpfile error: %m");
 		return -1;
@@ -2173,9 +2120,7 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list 
 
 	ret = mount_file_entries(rootfs, file, lxc_name);
 
-	process_lock();
-	fclose(file);
-	process_unlock();
+	lxc_fclose(file);
 	return ret;
 }
 
@@ -2321,18 +2266,14 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	ifr.ifr_name[IFNAMSIZ-1] = '\0';
 	memcpy((char *) &ifr.ifr_hwaddr, (char *) &sockaddr, sizeof(sockaddr));
 
-	process_lock();
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
-	process_unlock();
 	if (fd < 0) {
 		ERROR("socket failure : %s", strerror(errno));
 		return -1;
 	}
 
 	ret = ioctl(fd, SIOCSIFHWADDR, &ifr);
-	process_lock();
 	close(fd);
-	process_unlock();
 	if (ret)
 		ERROR("ioctl failure : %s", strerror(errno));
 
@@ -3112,9 +3053,7 @@ static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		fprintf(stderr, "%s: path name too long", __func__);
 		return -E2BIG;
 	}
-	process_lock();
-	f = fopen(path, "w");
-	process_unlock();
+	f = lxc_fopen(path, "w");
 	if (!f) {
 		perror("open");
 		return -EINVAL;
@@ -3122,9 +3061,7 @@ static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 	ret = fwrite(buf, buf_size, 1, f);
 	if (ret < 0)
 		SYSERROR("writing id mapping");
-	process_lock();
-	closeret = fclose(f);
-	process_unlock();
+	closeret = lxc_fclose(f);
 	if (closeret)
 		SYSERROR("writing id mapping");
 	return ret < 0 ? ret : closeret;
@@ -3309,10 +3246,8 @@ int lxc_create_tty(const char *name, struct lxc_conf *conf)
 
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
-		process_lock();
 		ret = openpty(&pty_info->master, &pty_info->slave,
 			    pty_info->name, NULL, NULL);
-		process_unlock();
 		if (ret) {
 			SYSERROR("failed to create pty #%d", i);
 			tty_info->nbtty = i;
@@ -3344,10 +3279,8 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 	for (i = 0; i < tty_info->nbtty; i++) {
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
-		process_lock();
 		close(pty_info->master);
 		close(pty_info->slave);
-		process_unlock();
 	}
 
 	free(tty_info->pty_info);
@@ -4084,9 +4017,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	int p[2];
 	struct lxc_list *idmap;
 
-	process_lock();
 	ret = pipe(p);
-	process_unlock();
 	if (ret < 0) {
 		SYSERROR("opening pipe");
 		return -1;
@@ -4098,9 +4029,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	pid = lxc_clone(run_userns_fn, &d, CLONE_NEWUSER);
 	if (pid < 0)
 		goto err;
-	process_lock();
 	close(p[0]);
-	process_unlock();
 	p[0] = -1;
 
 	if ((idmap = idmap_add_id(conf, geteuid())) == NULL) {
@@ -4127,10 +4056,8 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 		goto err;
 	}
 err:
-	process_lock();
 	if (p[0] != -1)
 		close(p[0]);
 	close(p[1]);
-	process_unlock();
 	return -1;
 }

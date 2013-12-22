@@ -40,7 +40,6 @@
 #include "commands.h"
 #include "mainloop.h"
 #include "af_unix.h"
-#include "lxclock.h"
 #include "utils.h"
 
 #if HAVE_PTY_H
@@ -202,9 +201,7 @@ out:
 static void lxc_console_sigwinch_fini(struct lxc_tty_state *ts)
 {
 	if (ts->sigfd >= 0) {
-		process_lock();
 		close(ts->sigfd);
-		process_unlock();
 	}
 	lxc_list_del(&ts->node);
 	sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
@@ -227,9 +224,7 @@ static int lxc_console_cb_con(int fd, uint32_t events, void *data,
 	if (!r) {
 		INFO("console client on fd %d has exited", fd);
 		lxc_mainloop_del_handler(descr, fd);
-		process_lock();
 		close(fd);
-		process_unlock();
 		return 0;
 	}
 
@@ -345,10 +340,8 @@ static void lxc_console_peer_proxy_free(struct lxc_console *console)
 		lxc_console_sigwinch_fini(console->tty_state);
 		console->tty_state = NULL;
 	}
-	process_lock();
 	close(console->peerpty.master);
 	close(console->peerpty.slave);
-	process_unlock();
 	console->peerpty.master = -1;
 	console->peerpty.slave = -1;
 	console->peerpty.busy = -1;
@@ -378,10 +371,8 @@ static int lxc_console_peer_proxy_alloc(struct lxc_console *console, int sockfd)
 	/* this is the proxy pty that will be given to the client, and that
 	 * the real pty master will send to / recv from
 	 */
-	process_lock();
 	ret = openpty(&console->peerpty.master, &console->peerpty.slave,
 		    console->peerpty.name, NULL, NULL);
-	process_unlock();
 	if (ret) {
 		SYSERROR("failed to create proxy pty");
 		return -1;
@@ -492,23 +483,19 @@ static void lxc_console_peer_default(struct lxc_console *console)
 	 */
 	if (!path && !access("/dev/tty", F_OK)) {
 		int fd;
-		process_lock();
 		fd = open("/dev/tty", O_RDWR);
 		if (fd >= 0) {
 			close(fd);
 			path = "/dev/tty";
 		}
-		process_unlock();
 	}
 
 	if (!path)
 		goto out;
 
 	DEBUG("opening %s for console peer", path);
-	process_lock();
 	console->peer = lxc_unpriv(open(path, O_CLOEXEC | O_RDWR | O_CREAT |
 					O_APPEND, 0600));
-	process_unlock();
 	if (console->peer < 0)
 		goto out;
 
@@ -539,9 +526,7 @@ err2:
 	free(console->tios);
 	console->tios = NULL;
 err1:
-	process_lock();
 	close(console->peer);
-	process_unlock();
 	console->peer = -1;
 out:
 	DEBUG("no console peer");
@@ -555,13 +540,11 @@ void lxc_console_delete(struct lxc_console *console)
 	free(console->tios);
 	console->tios = NULL;
 
-	process_lock();
 	close(console->peer);
 	close(console->master);
 	close(console->slave);
 	if (console->log_fd >= 0)
 		close(console->log_fd);
-	process_unlock();
 
 	console->peer = -1;
 	console->master = -1;
@@ -585,10 +568,8 @@ int lxc_console_create(struct lxc_conf *conf)
 	if (console->path && !strcmp(console->path, "none"))
 		return 0;
 
-	process_lock();
 	ret = openpty(&console->master, &console->slave,
 		    console->name, NULL, NULL);
-	process_unlock();
 	if (ret) {
 		SYSERROR("failed to allocate a pty");
 		return -1;
@@ -607,11 +588,9 @@ int lxc_console_create(struct lxc_conf *conf)
 	lxc_console_peer_default(console);
 
 	if (console->log_path) {
-		process_lock();
 		console->log_fd = lxc_unpriv(open(console->log_path,
 						  O_CLOEXEC | O_RDWR |
 						  O_CREAT | O_APPEND, 0600));
-		process_unlock();
 		if (console->log_fd < 0) {
 			SYSERROR("failed to open '%s'", console->log_path);
 			goto err;
@@ -774,10 +753,8 @@ err4:
 err3:
 	lxc_console_sigwinch_fini(ts);
 err2:
-	process_lock();
 	close(masterfd);
 	close(ttyfd);
-	process_unlock();
 err1:
 	tcsetattr(stdinfd, TCSAFLUSH, &oldtios);
 

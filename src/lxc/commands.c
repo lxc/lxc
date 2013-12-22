@@ -46,7 +46,6 @@
 #include "mainloop.h"
 #include "af_unix.h"
 #include "config.h"
-#include "lxclock.h"
 
 /*
  * This file provides the different functions for clients to
@@ -749,9 +748,7 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 {
 	lxc_console_free(handler->conf, fd);
 	lxc_mainloop_del_handler(descr, fd);
-	process_lock();
 	close(fd);
-	process_unlock();
 }
 
 static int lxc_cmd_handler(int fd, uint32_t events, void *data,
@@ -824,9 +821,7 @@ static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 {
 	int opt = 1, ret = -1, connection;
 
-	process_lock();
 	connection = accept(fd, NULL, 0);
-	process_unlock();
 	if (connection < 0) {
 		SYSERROR("failed to accept connection");
 		return -1;
@@ -853,9 +848,7 @@ out:
 	return ret;
 
 out_close:
-	process_lock();
 	close(connection);
-	process_unlock();
 	goto out;
 }
 
@@ -884,9 +877,7 @@ int lxc_cmd_init(const char *name, struct lxc_handler *handler,
 
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
 		SYSERROR("failed to set sigfd to close-on-exec");
-		process_lock();
 		close(fd);
-		process_unlock();
 		return -1;
 	}
 
@@ -903,9 +894,7 @@ int lxc_cmd_mainloop_add(const char *name,
 	ret = lxc_mainloop_add_handler(descr, fd, lxc_cmd_accept, handler);
 	if (ret) {
 		ERROR("failed to add handler for command socket");
-		process_lock();
 		close(fd);
-		process_unlock();
 	}
 
 	return ret;

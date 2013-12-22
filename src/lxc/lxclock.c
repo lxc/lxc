@@ -117,9 +117,7 @@ static char *lxclock_name(const char *p, const char *n)
 		free(dest);
 		return NULL;
 	}
-	process_lock();
 	ret = mkdir_p(dest, 0755);
-	process_unlock();
 	if (ret < 0) {
 		free(dest);
 		return NULL;
@@ -215,12 +213,10 @@ int lxclock(struct lxc_lock *l, int timeout)
 			ret = -2;
 			goto out;
 		}
-		process_lock();
 		if (l->u.f.fd == -1) {
 			l->u.f.fd = open(l->u.f.fname, O_RDWR|O_CREAT,
 					S_IWUSR | S_IRUSR);
 			if (l->u.f.fd == -1) {
-				process_unlock();
 				ERROR("Error opening %s", l->u.f.fname);
 				goto out;
 			}
@@ -230,7 +226,6 @@ int lxclock(struct lxc_lock *l, int timeout)
 		lk.l_start = 0;
 		lk.l_len = 0;
 		ret = fcntl(l->u.f.fd, F_SETLKW, &lk);
-		process_unlock();
 		if (ret == -1)
 			saved_errno = errno;
 		break;
@@ -256,7 +251,6 @@ int lxcunlock(struct lxc_lock *l)
 		}
 		break;
 	case LXC_LOCK_FLOCK:
-		process_lock();
 		if (l->u.f.fd != -1) {
 			lk.l_type = F_UNLCK;
 			lk.l_whence = SEEK_SET;
@@ -269,7 +263,6 @@ int lxcunlock(struct lxc_lock *l)
 			l->u.f.fd = -1;
 		} else
 			ret = -2;
-		process_unlock();
 		break;
 	}
 
@@ -297,12 +290,10 @@ void lxc_putlock(struct lxc_lock *l)
 		}
 		break;
 	case LXC_LOCK_FLOCK:
-		process_lock();
 		if (l->u.f.fd != -1) {
 			close(l->u.f.fd);
 			l->u.f.fd = -1;
 		}
-		process_unlock();
 		if (l->u.f.fname) {
 			free(l->u.f.fname);
 			l->u.f.fname = NULL;

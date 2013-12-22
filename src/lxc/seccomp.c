@@ -29,7 +29,7 @@
 #include <seccomp.h>
 #include "config.h"
 #include "lxcseccomp.h"
-#include "lxclock.h"
+#include "utils.h"
 
 #include "log.h"
 
@@ -115,17 +115,13 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 		return -1;
 	}
 
-	process_lock();
-	f = fopen(conf->seccomp, "r");
-	process_unlock();
+	f = lxc_fopen(conf->seccomp, "r");
 	if (!f) {
 		SYSERROR("failed to open seccomp policy file %s\n", conf->seccomp);
 		return -1;
 	}
 	ret = parse_config(f, conf);
-	process_lock();
-	fclose(f);
-	process_unlock();
+	lxc_fclose(f);
 	return ret;
 }
 

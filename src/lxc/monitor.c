@@ -64,9 +64,7 @@ int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path, size_t fifo_path
 			ERROR("rundir/lxcpath (%s/%s) too long for monitor fifo", rundir, lxcpath);
 			return -1;
 		}
-		process_lock();
 		ret = mkdir_p(fifo_path, 0755);
-		process_unlock();
 		if (ret < 0) {
 			ERROR("unable to create monitor fifo dir %s", fifo_path);
 			return ret;
@@ -91,9 +89,7 @@ static void lxc_monitor_fifo_send(struct lxc_msg *msg, const char *lxcpath)
 	if (ret < 0)
 		return;
 
-	process_lock();
 	fd = open(fifo_path, O_WRONLY);
-	process_unlock();
 	if (fd < 0) {
 		/* it is normal for this open to fail when there is no monitor
 		 * running, so we don't log it
@@ -103,16 +99,12 @@ static void lxc_monitor_fifo_send(struct lxc_msg *msg, const char *lxcpath)
 
 	ret = write(fd, msg, sizeof(*msg));
 	if (ret != sizeof(*msg)) {
-		process_lock();
 		close(fd);
-		process_unlock();
 		SYSERROR("failed to write monitor fifo %s", fifo_path);
 		return;
 	}
 
-	process_lock();
 	close(fd);
-	process_unlock();
 }
 
 void lxc_monitor_send_state(const char *name, lxc_state_t state, const char *lxcpath)
@@ -129,12 +121,7 @@ void lxc_monitor_send_state(const char *name, lxc_state_t state, const char *lxc
 /* routines used by monitor subscribers (lxc-monitor) */
 int lxc_monitor_close(int fd)
 {
-	int ret;
-
-	process_lock();
-	ret = close(fd);
-	process_unlock();
-	return ret;
+	return close(fd);
 }
 
 /* Note we don't use SHA-1 here as we don't want to depend on HAVE_GNUTLS.
@@ -200,9 +187,7 @@ int lxc_monitor_open(const char *lxcpath)
 	if (lxc_monitor_sock_name(lxcpath, &addr) < 0)
 		return -1;
 
-	process_lock();
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
-	process_unlock();
 	if (fd < 0) {
 		ERROR("socket : %s", strerror(errno));
 		return -1;
@@ -229,9 +214,7 @@ int lxc_monitor_open(const char *lxcpath)
 	}
 	return fd;
 err1:
-	process_lock();
 	close(fd);
-	process_unlock();
 	return ret;
 }
 
