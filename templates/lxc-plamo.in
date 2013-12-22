@@ -211,8 +211,8 @@ configure_plamo() {
 	EOF
   # /etc/rc.d/rc.M
   ed - $rootfs/etc/rc.d/rc.M <<- "EOF"
-	259,260d
-	56,79d
+	269,270d
+	56,82d
 	31,38d
 	w
 	EOF
