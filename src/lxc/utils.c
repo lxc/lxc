@@ -254,6 +254,9 @@ const char *lxc_global_config_value(const char *option_name)
 		{ NULL, NULL },
 	};
 
+	/* Protected by a mutex to eliminate conflicting load and store operations */
+	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
+
 	char *user_config_path = NULL;
 	char *user_lxc_path = NULL;
 	char *user_home = NULL;
@@ -278,8 +281,6 @@ const char *lxc_global_config_value(const char *option_name)
 		user_lxc_path = strdup(LXCPATH);
 	}
 
-	/* placed in the thread local storage pool */
-	static __thread const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
 	const char *(*ptr)[2];
 	const char *value;
 	size_t i;
@@ -297,13 +298,15 @@ const char *lxc_global_config_value(const char *option_name)
 		return NULL;
 	}
 
+	static_lock();
 	if (values[i]) {
 		free(user_config_path);
 		free(user_lxc_path);
 		value = values[i];
-
+		static_unlock();
 		return value;
 	}
+	static_unlock();
 
 	process_lock();
 	fin = fopen_cloexec(user_config_path, "r");
@@ -341,12 +344,15 @@ const char *lxc_global_config_value(const char *option_name)
 			while (*p && (*p == ' ' || *p == '\t')) p++;
 			if (!*p)
 				continue;
+			static_lock();
 			values[i] = copy_global_config_value(p);
+			static_unlock();
 			free(user_lxc_path);
 			goto out;
 		}
 	}
 	/* could not find value, use default */
+	static_lock();
 	if (strcmp(option_name, "lxcpath") == 0)
 		values[i] = user_lxc_path;
 	else {
@@ -358,6 +364,7 @@ const char *lxc_global_config_value(const char *option_name)
 	 * as an error... */
 	if (!values[i])
 		errno = 0;
+	static_unlock();
 
 out:
 	process_lock();
@@ -365,7 +372,10 @@ out:
 		fclose(fin);
 	process_unlock();
 
-	return values[i];
+	static_lock();
+	value = values[i];
+	static_unlock();
+	return value;
 }
 
 const char *default_lvm_vg(void)
