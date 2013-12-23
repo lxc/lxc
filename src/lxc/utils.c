@@ -263,7 +263,7 @@ const char *lxc_global_config_value(const char *option_name)
 		if (user_home)
 			user_home = strdup(user_home);
 		else
-			user_home = "/";
+			user_home = strdup("/");
 
 		user_config_path = malloc(sizeof(char) * (22 + strlen(user_home)));
 		user_lxc_path = malloc(sizeof(char) * (19 + strlen(user_home)));
