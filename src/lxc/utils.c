@@ -259,13 +259,10 @@ const char *lxc_global_config_value(const char *option_name)
 
 	char *user_config_path = NULL;
 	char *user_lxc_path = NULL;
-	char *user_home = NULL;
 
 	if (geteuid() > 0) {
-		user_home = getenv("HOME");
-		if (user_home)
-			user_home = strdup(user_home);
-		else
+		const char *user_home = getenv("HOME");
+		if (!user_home)
 			user_home = "/";
 
 		user_config_path = malloc(sizeof(char) * (22 + strlen(user_home)));
@@ -273,8 +270,6 @@ const char *lxc_global_config_value(const char *option_name)
 
 		sprintf(user_config_path, "%s/.config/lxc/lxc.conf", user_home);
 		sprintf(user_lxc_path, "%s/.local/share/lxc/", user_home);
-
-		free(user_home);
 	}
 	else {
 		user_config_path = strdup(LXC_GLOBAL_CONF);
