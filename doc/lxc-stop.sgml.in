@@ -151,8 +151,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</term>
 	<listitem>
 	  <para>
-	    Wait TIMEOUT seconds before hard-stopping the container of (in
-		the reboot case) returning failure.
+	    Wait TIMEOUT seconds before hard-stopping the container.
 	  </para>
 	</listitem>
 	</varlistentry>

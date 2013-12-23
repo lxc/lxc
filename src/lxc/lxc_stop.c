@@ -175,6 +175,9 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	if (my_args.shutdown)
+		my_args.timeout = 0;
+
 	s = c->shutdown(c, my_args.timeout);
 	if (!s) {
 		if (!my_args.shutdown)
