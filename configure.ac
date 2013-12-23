@@ -217,6 +217,13 @@ AC_ARG_ENABLE([python],
 
 if test "x$enable_python" = "xauto"; then
 	PKG_CHECK_MODULES([PYTHONDEV], [python3 >= 3.2],[enable_python=yes],[enable_python=no])
+	if test "$CC" = "clang"; then
+		enable_python=no
+	fi
+fi
+
+if test "x$enable_python" = "xyes" && test "$CC" = "clang"; then
+	AC_MSG_ERROR([Python3 is incompatible with the clang compiler])
 fi
 
 AM_CONDITIONAL([ENABLE_PYTHON], [test "x$enable_python" = "xyes"])
