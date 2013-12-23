@@ -148,7 +148,7 @@ if test "$enable_apparmor" = "auto" ; then
 fi
 AM_CONDITIONAL([ENABLE_APPARMOR], [test "x$enable_apparmor" = "xyes"])
 
-AC_CHECK_LIB([gnutls], [gnutls_hash_fast])
+AC_CHECK_LIB([gnutls], [gnutls_hash_fast], [enable_gnutls=yes], [enable_gnutls=no])
 
 AM_COND_IF([ENABLE_APPARMOR],
 	[AC_CHECK_HEADER([sys/apparmor.h],[],[AC_MSG_ERROR([You must install the AppArmor development package in order to compile lxc])])
@@ -604,6 +604,7 @@ Environment:
  - compiler: $CC
  - distribution: $with_distro
  - rpath: $enable_rpath
+ - GnuTLS: $enable_gnutls
 
 Security features:
  - Apparmor: $enable_apparmor
