@@ -53,7 +53,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-info</command>
-      <arg choice="opt">-n <replaceable>name</replaceable></arg>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
       <arg choice="opt">-c <replaceable>KEY</replaceable></arg>
       <arg choice="opt">-s</arg>
       <arg choice="opt">-p</arg>
@@ -67,8 +67,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <title><!-- Description -->説明</title>
     <para>
       <!--
-      <command>lxc-info</command> queries and shows information about
-      containers.
+      <command>lxc-info</command> queries and shows information about a
+      container.
       -->
       <command>lxc-info</command> は，コンテナに関する情報を問い合わせ，表示します．
     </para>
@@ -77,33 +77,6 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
   <refsect1>
     <title><!-- Options --></title>
     <variablelist>
-
-      <varlistentry>
-        <term>
-          <option><optional>-n <replaceable>name</replaceable></optional></option>
-        </term>
-        <listitem>
-          <para>
-            <!--
-            The container name. It is interpreted as a regular expression,
-            so it is possible to get information on all containers, several
-            of them or just one. See
-            <citerefentry>
-             <refentrytitle><command>regex</command></refentrytitle>
-	     <manvolnum>7</manvolnum>
-            </citerefentry> for regular expression syntax. If not specified,
-            <replaceable>name</replaceable> will default to '.*' which
-            will give information on all containers in
-            <command>lxcpath</command>.
-            -->
-            コンテナ名．正規表現として解釈され，全てのコンテナ，指定したいくつかのコンテナ，特定のコンテナのいずれかの情報を取得できます．正規表現については
-            <citerefentry>
-             <refentrytitle><command>regex</command></refentrytitle>
-	     <manvolnum>7</manvolnum>
-            </citerefentry> を参照してください．もし指定しなければ，<replaceable>name</replaceable> はデフォルトで <command>lxcpath</command> に存在する全てのコンテナの情報を取得する '.*' を指定したことになります．
-          </para>
-        </listitem>
-      </varlistentry>
 
       <varlistentry>
         <term>

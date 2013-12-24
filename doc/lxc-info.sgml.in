@@ -47,7 +47,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-info</command>
-      <arg choice="opt">-n <replaceable>name</replaceable></arg>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
       <arg choice="opt">-c <replaceable>KEY</replaceable></arg>
       <arg choice="opt">-s</arg>
       <arg choice="opt">-p</arg>
@@ -60,34 +60,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
   <refsect1>
     <title>Description</title>
     <para>
-      <command>lxc-info</command> queries and shows information about
-      containers.
+      <command>lxc-info</command> queries and shows information about a
+      container.
     </para>
   </refsect1>
 
   <refsect1>
     <title>Options</title>
     <variablelist>
-
-      <varlistentry>
-        <term>
-          <option><optional>-n <replaceable>name</replaceable></optional></option>
-        </term>
-        <listitem>
-          <para>
-            The container name. It is interpreted as a regular expression,
-            so it is possible to get information on all containers, several
-            of them or just one. See
-            <citerefentry>
-             <refentrytitle><command>regex</command></refentrytitle>
-	     <manvolnum>7</manvolnum>
-            </citerefentry> for regular expression syntax. If not specified,
-            <replaceable>name</replaceable> will default to '.*' which
-            will give information on all containers in
-            <command>lxcpath</command>.
-          </para>
-        </listitem>
-      </varlistentry>
 
       <varlistentry>
         <term>
