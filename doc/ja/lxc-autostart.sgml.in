@@ -124,7 +124,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                         Only request a clean shutdown, do not kill the
                         container tasks if the clean shutdown fails.
                         -->
-                      クリーンなシャットダウンのみを要求します．クリーンなシャットダウンに失敗した場合でも，コンテナのタスクを kill しないでください．
+                      クリーンなシャットダウンのみを要求します．クリーンなシャットダウンに失敗した場合でも，コンテナのタスクを kill しません．
                     </para>
                 </listitem>
             </varlistentry>
@@ -166,10 +166,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                 <listitem>
                     <para>
                       <!--
-                        Wait TIMEOUT seconds before hard-stopping the
-                        container of (in the reboot case) returning failure.
+                        Wait TIMEOUT seconds before hard-stopping the container.
                         -->
-                      コンテナの強制停止まで TIMEOUT 秒待ちます．リブートの場合，失敗が返るのを TIMEOUT 秒待ちます．
+                      コンテナの強制停止まで TIMEOUT 秒待ちます．
                     </para>
                 </listitem>
             </varlistentry>

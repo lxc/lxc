@@ -273,6 +273,7 @@ int main(int argc, char *argv[])
 				if (my_args.list)
 					printf("%s\n", c->name);
 				else {
+					my_args.timeout = 0;
 					if (!c->shutdown(c, my_args.timeout))
 						fprintf(stderr, "Error shutting down container: %s\n", c->name);
 				}
