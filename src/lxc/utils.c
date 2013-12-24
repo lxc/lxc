@@ -61,9 +61,7 @@ static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
 	int ret, failed=0;
 	char pathname[MAXPATHLEN];
 
-	process_lock();
 	dir = opendir(dirname);
-	process_unlock();
 	if (!dir) {
 		ERROR("%s: failed to open %s", __func__, dirname);
 		return -1;
@@ -110,9 +108,7 @@ static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
 		failed=1;
 	}
 
-	process_lock();
 	ret = closedir(dir);
-	process_unlock();
 	if (ret) {
 		ERROR("%s: failed to close directory %s", __func__, dirname);
 		failed=1;
@@ -303,10 +299,8 @@ const char *lxc_global_config_value(const char *option_name)
 	}
 	static_unlock();
 
-	process_lock();
 	fin = fopen_cloexec(user_config_path, "r");
 	free(user_config_path);
-	process_unlock();
 	if (fin) {
 		while (fgets(buf, 1024, fin)) {
 			if (buf[0] == '#')
@@ -362,10 +356,8 @@ const char *lxc_global_config_value(const char *option_name)
 	static_unlock();
 
 out:
-	process_lock();
 	if (fin)
 		fclose(fin);
-	process_unlock();
 
 	static_lock();
 	value = values[i];
@@ -482,15 +474,6 @@ ssize_t lxc_read_nointr_expect(int fd, void* buf, size_t count, const void* expe
 	return ret;
 }
 
-static inline int lock_fclose(FILE *f)
-{
-	int ret;
-	process_lock();
-	ret = fclose(f);
-	process_unlock();
-	return ret;
-}
-
 #if HAVE_LIBGNUTLS
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
@@ -510,40 +493,38 @@ int sha1sum_file(char *fnam, unsigned char *digest)
 
 	if (!fnam)
 		return -1;
-	process_lock();
 	f = fopen_cloexec(fnam, "r");
-	process_unlock();
 	if (!f) {
 		SYSERROR("Error opening template");
 		return -1;
 	}
 	if (fseek(f, 0, SEEK_END) < 0) {
 		SYSERROR("Error seeking to end of template");
-		lock_fclose(f);
+		fclose(f);
 		return -1;
 	}
 	if ((flen = ftell(f)) < 0) {
 		SYSERROR("Error telling size of template");
-		lock_fclose(f);
+		fclose(f);
 		return -1;
 	}
 	if (fseek(f, 0, SEEK_SET) < 0) {
 		SYSERROR("Error seeking to start of template");
-		lock_fclose(f);
+		fclose(f);
 		return -1;
 	}
 	if ((buf = malloc(flen+1)) == NULL) {
 		SYSERROR("Out of memory");
-		lock_fclose(f);
+		fclose(f);
 		return -1;
 	}
 	if (fread(buf, 1, flen, f) != flen) {
 		SYSERROR("Failure reading template");
 		free(buf);
-		lock_fclose(f);
+		fclose(f);
 		return -1;
 	}
-	if (lock_fclose(f) < 0) {
+	if (fclose(f) < 0) {
 		SYSERROR("Failre closing template");
 		free(buf);
 		return -1;
@@ -600,10 +581,6 @@ const char** lxc_va_arg_list_to_argv_const(va_list ap, size_t skip)
 	return (const char**)lxc_va_arg_list_to_argv(ap, skip, 0);
 }
 
-/*
- * fopen_cloexec: must be called with process_lock() held
- * if it is needed.
- */
 FILE *fopen_cloexec(const char *path, const char *mode)
 {
 	int open_mode = 0;
@@ -648,7 +625,6 @@ FILE *fopen_cloexec(const char *path, const char *mode)
 	return ret;
 }
 
-/* must be called with process_lock() held */
 extern struct lxc_popen_FILE *lxc_popen(const char *command)
 {
 	struct lxc_popen_FILE *fp = NULL;
@@ -746,7 +722,6 @@ error:
 	return NULL;
 }
 
-/* must be called with process_lock() held */
 extern int lxc_pclose(struct lxc_popen_FILE *fp)
 {
 	FILE *f = NULL;
@@ -1086,9 +1061,7 @@ int lxc_write_to_file(const char *filename, const void* buf, size_t count, bool 
 	int fd, saved_errno;
 	ssize_t ret;
 
-	process_lock();
 	fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, 0666);
-	process_unlock();
 	if (fd < 0)
 		return -1;
 	ret = lxc_write_nointr(fd, buf, count);
@@ -1101,16 +1074,12 @@ int lxc_write_to_file(const char *filename, const void* buf, size_t count, bool 
 		if (ret != 1)
 			goto out_error;
 	}
-	process_lock();
 	close(fd);
-	process_unlock();
 	return 0;
 
 out_error:
 	saved_errno = errno;
-	process_lock();
 	close(fd);
-	process_unlock();
 	errno = saved_errno;
 	return -1;
 }
@@ -1120,9 +1089,7 @@ int lxc_read_from_file(const char *filename, void* buf, size_t count)
 	int fd = -1, saved_errno;
 	ssize_t ret;
 
-	process_lock();
 	fd = open(filename, O_RDONLY | O_CLOEXEC);
-	process_unlock();
 	if (fd < 0)
 		return -1;
 
@@ -1142,9 +1109,7 @@ int lxc_read_from_file(const char *filename, void* buf, size_t count)
 		ERROR("read %s: %s", filename, strerror(errno));
 
 	saved_errno = errno;
-	process_lock();
 	close(fd);
-	process_unlock();
 	errno = saved_errno;
 	return ret;
 }

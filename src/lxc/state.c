@@ -39,7 +39,6 @@
 #include <lxc/monitor.h>
 #include "commands.h"
 #include "config.h"
-#include "lxclock.h"
 
 lxc_log_define(lxc_state, lxc);
 
@@ -84,18 +83,14 @@ static lxc_state_t freezer_state(const char *name, const char *lxcpath)
 	if (ret < 0 || ret >= MAXPATHLEN)
 		goto out;
 
-	process_lock();
 	file = fopen(freezer, "r");
-	process_unlock();
 	if (!file) {
 		ret = -1;
 		goto out;
 	}
 
 	ret = fscanf(file, "%s", status);
-	process_lock();
 	fclose(file);
-	process_unlock();
 
 	if (ret == EOF) {
 		SYSERROR("failed to read %s", freezer);

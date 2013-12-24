@@ -30,6 +30,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -48,7 +49,6 @@
 #include "nl.h"
 #include "network.h"
 #include "conf.h"
-#include "lxclock.h"
 
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
@@ -588,18 +588,14 @@ static int proc_sys_net_write(const char *path, const char *value)
 {
 	int fd, err = 0;
 
-	process_lock();
 	fd = open(path, O_WRONLY);
-	process_unlock();
 	if (fd < 0)
 		return -errno;
 
 	if (write(fd, value, strlen(value)) < 0)
 		err = -errno;
 
-	process_lock();
 	close(fd);
-	process_unlock();
 	return err;
 }
 
@@ -1081,9 +1077,7 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 	if (!index)
 		return -EINVAL;
 
-	process_lock();
 	fd = socket(AF_INET, SOCK_STREAM, 0);
-	process_unlock();
 	if (fd < 0)
 		return -errno;
 
@@ -1091,9 +1085,7 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 	ifr.ifr_name[IFNAMSIZ-1] = '\0';
 	ifr.ifr_ifindex = index;
 	err = ioctl(fd, SIOCBRADDIF, &ifr);
-	process_lock();
 	close(fd);
-	process_unlock();
 	if (err)
 		err = -errno;
 
@@ -1131,15 +1123,11 @@ char *lxc_mkifname(char *template)
 	getifaddrs(&ifaddr);
 
 	/* Initialize the random number generator */
-	process_lock();
 	urandom = fopen ("/dev/urandom", "r");
-	process_unlock();
 	if (urandom != NULL) {
 		if (fread (&seed, sizeof(seed), 1, urandom) <= 0)
 			seed = time(0);
-		process_lock();
 		fclose(urandom);
-		process_unlock();
 	}
 	else
 		seed = time(0);
@@ -1189,26 +1177,20 @@ int setup_private_host_hw_addr(char *veth1)
 	int err;
 	int sockfd;
 
-	process_lock();
 	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-	process_unlock();
 	if (sockfd < 0)
 		return -errno;
 
 	snprintf((char *)ifr.ifr_name, IFNAMSIZ, "%s", veth1);
 	err = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
 	if (err < 0) {
-		process_lock();
 		close(sockfd);
-		process_unlock();
 		return -errno;
 	}
 
 	ifr.ifr_hwaddr.sa_data[0] = 0xfe;
 	err = ioctl(sockfd, SIOCSIFHWADDR, &ifr);
-	process_lock();
 	close(sockfd);
-	process_unlock();
 	if (err < 0)
 		return -errno;
 

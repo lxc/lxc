@@ -172,7 +172,6 @@ struct lxc_popen_FILE {
  * via sigprocmask(2) (unblocks all signals) after fork(2) but prior to calling exec(3).
  * In short, popen(command, "re") does pipe() + fork()                 + exec()
  * while lxc_popen(command)       does pipe() + fork() + sigprocmask() + exec().
- * Must be called with process_lock() held.
  * Returns pointer to struct lxc_popen_FILE, that should be freed with lxc_pclose().
  * On error returns NULL.
  */
@@ -182,7 +181,6 @@ extern struct lxc_popen_FILE *lxc_popen(const char *command);
  * returned by lxc_popen().
  * Waits for associated process to terminate, returns its exit status and
  * frees resources, pointed to by struct lxc_popen_FILE *.
- * Must be called with process_lock() held.
  */
 extern int lxc_pclose(struct lxc_popen_FILE *fp);
 
