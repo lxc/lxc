@@ -27,6 +27,10 @@
 
 #include <sys/types.h>
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 /*!
  * LXC environment policy.
  */
@@ -167,5 +171,9 @@ extern int lxc_attach_run_command(void* payload);
  * \return Exit code of shell.
  */
 extern int lxc_attach_run_shell(void* payload);
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif

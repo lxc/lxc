@@ -28,6 +28,10 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #define LXC_CLONE_KEEPNAME        (1 << 0) /*!< Do not edit the rootfs to change the hostname */
 #define LXC_CLONE_KEEPMACADDR     (1 << 1) /*!< Do not change the MAC address on network interfaces */
 #define LXC_CLONE_SNAPSHOT        (1 << 2) /*!< Snapshot the original filesystem(s) */
@@ -870,5 +874,9 @@ int list_active_containers(const char *lxcpath, char ***names, struct lxc_contai
  * \note \p names and \p cret must be freed by the caller.
  */
 int list_all_containers(const char *lxcpath, char ***names, struct lxc_container ***cret);
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif
