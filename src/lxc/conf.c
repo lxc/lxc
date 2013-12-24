@@ -1859,7 +1859,7 @@ static int mount_entry(const char *fsname, const char *target,
 	return 0;
 }
 
-static inline int mount_entry_on_systemfs(struct mntent *mntent)
+static inline int mount_entry_on_systemfs(const struct mntent *mntent)
 {
 	unsigned long mntflags;
 	char *mntdata;
@@ -1904,7 +1904,7 @@ static inline int mount_entry_on_systemfs(struct mntent *mntent)
 	return ret;
 }
 
-static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
+static int mount_entry_on_absolute_rootfs(const struct mntent *mntent,
 					  const struct lxc_rootfs *rootfs,
 					  const char *lxc_name)
 {
@@ -1990,7 +1990,7 @@ out:
 	return ret;
 }
 
-static int mount_entry_on_relative_rootfs(struct mntent *mntent,
+static int mount_entry_on_relative_rootfs(const struct mntent *mntent,
 					  const char *rootfs)
 {
 	char path[MAXPATHLEN];
@@ -2047,26 +2047,27 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
 	const char *lxc_name)
 {
-	struct mntent *mntent;
+	struct mntent mntent;
+	char buf[4096];
 	int ret = -1;
 
-	while ((mntent = getmntent(file))) {
+	while (getmntent_r(file, &mntent, buf, sizeof(buf))) {
 
 		if (!rootfs->path) {
-			if (mount_entry_on_systemfs(mntent))
+			if (mount_entry_on_systemfs(&mntent))
 				goto out;
 			continue;
 		}
 
 		/* We have a separate root, mounts are relative to it */
-		if (mntent->mnt_dir[0] != '/') {
-			if (mount_entry_on_relative_rootfs(mntent,
+		if (mntent.mnt_dir[0] != '/') {
+			if (mount_entry_on_relative_rootfs(&mntent,
 							   rootfs->mount))
 				goto out;
 			continue;
 		}
 
-		if (mount_entry_on_absolute_rootfs(mntent, rootfs, lxc_name))
+		if (mount_entry_on_absolute_rootfs(&mntent, rootfs, lxc_name))
 			goto out;
 	}
 
