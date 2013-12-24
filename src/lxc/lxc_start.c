@@ -334,6 +334,7 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 		fclose(pid_fp);
+		pid_fp = NULL;
 	}
 
 	if (my_args.close_all_fds)
