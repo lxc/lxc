@@ -42,7 +42,7 @@ lxc_log_define(lxc_init, lxc);
 
 static int quiet;
 
-static struct option options[] = {
+static const struct option options[] = {
 	{ "name",        required_argument, NULL, 'n' },
 	{ "logpriority", required_argument, NULL, 'l' },
 	{ "quiet",       no_argument,       NULL, 'q' },

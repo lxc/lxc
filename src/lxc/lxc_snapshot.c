@@ -34,18 +34,18 @@
 
 lxc_log_define(lxc_snapshot, lxc);
 
-char *newname;
-char *snapshot;
+static char *newname;
+static char *snapshot;
 
 #define DO_SNAP 0
 #define DO_LIST 1
 #define DO_RESTORE 2
 #define DO_DESTROY 3
-int action;
-int print_comments;
-char *commentfile;
+static int action;
+static int print_comments;
+static char *commentfile;
 
-int do_snapshot(struct lxc_container *c)
+static int do_snapshot(struct lxc_container *c)
 {
 	int ret;
 
@@ -59,7 +59,7 @@ int do_snapshot(struct lxc_container *c)
 	return 0;
 }
 
-void print_file(char *path)
+static void print_file(char *path)
 {
 	if (!path)
 		return;
@@ -76,7 +76,7 @@ void print_file(char *path)
 	fclose(f);
 }
 
-int do_list_snapshots(struct lxc_container *c)
+static int do_list_snapshots(struct lxc_container *c)
 {
 	struct lxc_snapshot *s;
 	int i, n;
@@ -100,7 +100,7 @@ int do_list_snapshots(struct lxc_container *c)
 	return 0;
 }
 
-int do_restore_snapshots(struct lxc_container *c)
+static int do_restore_snapshots(struct lxc_container *c)
 {
 	if (c->snapshot_restore(c, snapshot, newname))
 		return 0;
@@ -109,7 +109,7 @@ int do_restore_snapshots(struct lxc_container *c)
 	return -1;
 }
 
-int do_destroy_snapshots(struct lxc_container *c)
+static int do_destroy_snapshots(struct lxc_container *c)
 {
 	if (c->snapshot_destroy(c, snapshot))
 		return 0;

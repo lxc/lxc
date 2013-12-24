@@ -1111,7 +1111,7 @@ static uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval)
 
 #define LINELEN 4096
 #define MAX_FSTYPE_LEN 128
-int mount_check_fs( const char *dir, char *fstype )
+static int mount_check_fs( const char *dir, char *fstype )
 {
 	char buf[LINELEN], *p;
 	struct stat s;
@@ -1175,7 +1175,7 @@ int mount_check_fs( const char *dir, char *fstype )
  * the devtmpfs subdirectory.
  */
 
-char *mk_devtmpfs(const char *name, char *path, const char *lxcpath)
+static char *mk_devtmpfs(const char *name, char *path, const char *lxcpath)
 {
 	int ret;
 	struct stat s;
@@ -1353,13 +1353,13 @@ static int mount_autodev(const char *name, char *root, const char *lxcpath)
 }
 
 struct lxc_devs {
-	char *name;
+	const char *name;
 	mode_t mode;
 	int maj;
 	int min;
 };
 
-struct lxc_devs lxc_devs[] = {
+static const struct lxc_devs lxc_devs[] = {
 	{ "null",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 3	},
 	{ "zero",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 5	},
 	{ "full",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 7	},
@@ -1369,10 +1369,9 @@ struct lxc_devs lxc_devs[] = {
 	{ "console",	S_IFCHR | S_IRUSR | S_IWUSR,	       5, 1	},
 };
 
-static int setup_autodev(char *root)
+static int setup_autodev(const char *root)
 {
 	int ret;
-	struct lxc_devs *d;
 	char path[MAXPATHLEN];
 	int i;
 	mode_t cmask;
@@ -1388,7 +1387,7 @@ static int setup_autodev(char *root)
 	INFO("Populating /dev under %s\n", root);
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
-		d = &lxc_devs[i];
+		const struct lxc_devs *d = &lxc_devs[i];
 		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", root, d->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
@@ -1550,7 +1549,7 @@ static int setup_rootfs(struct lxc_conf *conf)
 	return 0;
 }
 
-int setup_pivot_root(const struct lxc_rootfs *rootfs)
+static int setup_pivot_root(const struct lxc_rootfs *rootfs)
 {
 	if (!rootfs->path)
 		return 0;
@@ -2980,7 +2979,7 @@ void lxc_delete_network(struct lxc_handler *handler)
 	}
 }
 
-int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
+static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 {
 	pid_t child;
 
@@ -3132,7 +3131,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
  * return the host uid to which the container root is mapped, or -1 on
  * error
  */
-uid_t get_mapped_rootid(struct lxc_conf *conf)
+static uid_t get_mapped_rootid(struct lxc_conf *conf)
 {
 	struct lxc_list *it;
 	struct id_map *map;
@@ -3398,7 +3397,7 @@ struct start_args {
 
 #define MAX_SYMLINK_DEPTH 32
 
-int check_autodev( const char *rootfs, void *data )
+static int check_autodev( const char *rootfs, void *data )
 {
 	struct start_args *arg = data;
 	int ret;
@@ -3772,7 +3771,7 @@ int lxc_clear_config_caps(struct lxc_conf *c)
 	return 0;
 }
 
-int lxc_free_idmap(struct lxc_list *id_map) {
+static int lxc_free_idmap(struct lxc_list *id_map) {
 	struct lxc_list *it, *next;
 
 	lxc_list_for_each_safe(it, id_map, next) {
@@ -3874,7 +3873,7 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 	return 0;
 }
 
-void lxc_clear_saved_nics(struct lxc_conf *conf)
+static void lxc_clear_saved_nics(struct lxc_conf *conf)
 {
 	int i;
 

@@ -151,10 +151,10 @@ static struct lxc_config_t config[] = {
 
 struct signame {
 	int num;
-	char *name;
+	const char *name;
 };
 
-struct signame signames[] = {
+static const struct signame signames[] = {
 	{ SIGHUP,    "HUP" },
 	{ SIGINT,    "INT" },
 	{ SIGQUIT,   "QUIT" },
@@ -1586,7 +1586,7 @@ out:
 	return ret;
 }
 
-int lxc_config_readline(char *buffer, struct lxc_conf *conf)
+static int lxc_config_readline(char *buffer, struct lxc_conf *conf)
 {
 	return parse_line(buffer, conf);
 }

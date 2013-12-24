@@ -42,7 +42,7 @@
 
 lxc_log_define(lxc_unshare_ui, lxc);
 
-void usage(char *cmd)
+static void usage(char *cmd)
 {
 	fprintf(stderr, "%s <options> command [command_arguments]\n", basename(cmd));
 	fprintf(stderr, "Options are:\n");

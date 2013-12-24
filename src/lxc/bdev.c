@@ -324,8 +324,8 @@ static int detect_fs(struct bdev *bdev, char *type, int len)
 }
 
 struct bdev_type {
-	char *name;
-	struct bdev_ops *ops;
+	const char *name;
+	const struct bdev_ops *ops;
 };
 
 static int is_dir(const char *path)
@@ -469,7 +469,7 @@ static int dir_create(struct bdev *bdev, const char *dest, const char *n,
 	return 0;
 }
 
-struct bdev_ops dir_ops = {
+static const struct bdev_ops dir_ops = {
 	.detect = &dir_detect,
 	.mount = &dir_mount,
 	.umount = &dir_umount,
@@ -726,7 +726,7 @@ static int zfs_create(struct bdev *bdev, const char *dest, const char *n,
 	exit(1);
 }
 
-struct bdev_ops zfs_ops = {
+static const struct bdev_ops zfs_ops = {
 	.detect = &zfs_detect,
 	.mount = &zfs_mount,
 	.umount = &zfs_umount,
@@ -1125,7 +1125,7 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	return 0;
 }
 
-struct bdev_ops lvm_ops = {
+static const struct bdev_ops lvm_ops = {
 	.detect = &lvm_detect,
 	.mount = &lvm_mount,
 	.umount = &lvm_umount,
@@ -1422,7 +1422,7 @@ static int btrfs_create(struct bdev *bdev, const char *dest, const char *n,
 	return btrfs_subvolume_create(bdev->dest);
 }
 
-struct bdev_ops btrfs_ops = {
+static const struct bdev_ops btrfs_ops = {
 	.detect = &btrfs_detect,
 	.mount = &btrfs_mount,
 	.umount = &btrfs_umount,
@@ -1692,7 +1692,7 @@ static int loop_destroy(struct bdev *orig)
 	return unlink(orig->src + 5);
 }
 
-struct bdev_ops loop_ops = {
+static const struct bdev_ops loop_ops = {
 	.detect = &loop_detect,
 	.mount = &loop_mount,
 	.umount = &loop_umount,
@@ -1864,7 +1864,7 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 	return 0;
 }
 
-int overlayfs_destroy(struct bdev *orig)
+static int overlayfs_destroy(struct bdev *orig)
 {
 	char *upper;
 
@@ -1925,7 +1925,7 @@ static int overlayfs_create(struct bdev *bdev, const char *dest, const char *n,
 	return 0;
 }
 
-struct bdev_ops overlayfs_ops = {
+static const struct bdev_ops overlayfs_ops = {
 	.detect = &overlayfs_detect,
 	.mount = &overlayfs_mount,
 	.umount = &overlayfs_umount,
@@ -1934,7 +1934,7 @@ struct bdev_ops overlayfs_ops = {
 	.create = &overlayfs_create,
 };
 
-struct bdev_type bdevs[] = {
+static const struct bdev_type bdevs[] = {
 	{.name = "zfs", .ops = &zfs_ops,},
 	{.name = "lvm", .ops = &lvm_ops,},
 	{.name = "btrfs", .ops = &btrfs_ops,},

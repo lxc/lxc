@@ -97,7 +97,7 @@ static int fill_sock_name(char *path, int len, const char *name,
 
 static const char *lxc_cmd_str(lxc_cmd_t cmd)
 {
-	static const char *cmdname[LXC_CMD_MAX] = {
+	static const char * const cmdname[LXC_CMD_MAX] = {
 		[LXC_CMD_CONSOLE]         = "console",
 		[LXC_CMD_STOP]            = "stop",
 		[LXC_CMD_GET_STATE]       = "get_state",

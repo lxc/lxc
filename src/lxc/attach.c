@@ -62,7 +62,7 @@
 
 lxc_log_define(lxc_attach, lxc);
 
-struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
+static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 {
 	struct lxc_proc_context_info *info = calloc(1, sizeof(*info));
 	FILE *proc_file;
@@ -137,7 +137,7 @@ static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
 	free(ctx);
 }
 
-int lxc_attach_to_ns(pid_t pid, int which)
+static int lxc_attach_to_ns(pid_t pid, int which)
 {
 	char path[MAXPATHLEN];
 	/* according to <http://article.gmane.org/gmane.linux.kernel.containers.lxc.devel/1429>,
@@ -204,7 +204,7 @@ int lxc_attach_to_ns(pid_t pid, int which)
 	return 0;
 }
 
-int lxc_attach_remount_sys_proc()
+static int lxc_attach_remount_sys_proc(void)
 {
 	int ret;
 
@@ -247,7 +247,7 @@ int lxc_attach_remount_sys_proc()
 	return 0;
 }
 
-int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
+static int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
 {
 	int last_cap = lxc_caps_last_cap();
 	int cap;
@@ -265,7 +265,7 @@ int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
 	return 0;
 }
 
-int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char** extra_env, char** extra_keep)
+static int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char** extra_env, char** extra_keep)
 {
 	if (policy == LXC_ATTACH_CLEAR_ENV) {
 		char **extra_keep_store = NULL;
@@ -373,7 +373,7 @@ int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char** extra
 	return 0;
 }
 
-char *lxc_attach_getpwshell(uid_t uid)
+static char *lxc_attach_getpwshell(uid_t uid)
 {
 	/* local variables */
 	pid_t pid;
@@ -528,7 +528,7 @@ char *lxc_attach_getpwshell(uid_t uid)
 	}
 }
 
-void lxc_attach_get_init_uidgid(uid_t* init_uid, gid_t* init_gid)
+static void lxc_attach_get_init_uidgid(uid_t* init_uid, gid_t* init_gid)
 {
 	FILE *proc_file;
 	char proc_fn[MAXPATHLEN];
@@ -857,7 +857,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	rexit(0);
 }
 
-int attach_child_main(void* data)
+static int attach_child_main(void* data)
 {
 	struct attach_clone_payload* payload = (struct attach_clone_payload*)data;
 	int ipc_socket = payload->ipc_socket;

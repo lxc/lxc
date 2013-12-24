@@ -72,8 +72,8 @@ struct bdev_ops {
  * data is so far unused.
  */
 struct bdev {
-	struct bdev_ops *ops;
-	char *type;
+	const struct bdev_ops *ops;
+	const char *type;
 	char *src;
 	char *dest;
 	char *data;

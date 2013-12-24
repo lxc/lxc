@@ -127,7 +127,7 @@ struct id_map {
 	struct id_map *next;
 };
 
-struct id_map default_map = {
+static struct id_map default_map = {
 	.which = 'b',
 	.host_id = 100000,
 	.ns_id = 0,

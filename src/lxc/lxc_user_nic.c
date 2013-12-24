@@ -50,7 +50,7 @@
 #include "utils.h"
 #include "network.h"
 
-void usage(char *me, bool fail)
+static void usage(char *me, bool fail)
 {
 	fprintf(stderr, "Usage: %s pid type bridge nicname\n", me);
 	fprintf(stderr, " nicname is the name to use inside the container\n");

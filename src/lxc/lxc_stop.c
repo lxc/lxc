@@ -80,7 +80,7 @@ Options :\n\
 };
 
 /* returns -1 on failure, 0 on success */
-int do_reboot_and_check(struct lxc_arguments *a, struct lxc_container *c)
+static int do_reboot_and_check(struct lxc_arguments *a, struct lxc_container *c)
 {
 	int ret;
 	pid_t pid;

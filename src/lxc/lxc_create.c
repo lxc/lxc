@@ -145,7 +145,7 @@ Options :\n\
 	.checker  = NULL,
 };
 
-bool validate_bdev_args(struct lxc_arguments *a)
+static bool validate_bdev_args(struct lxc_arguments *a)
 {
 	if (strcmp(a->bdevtype, "best") != 0) {
 		if (a->fstype || a->fssize) {

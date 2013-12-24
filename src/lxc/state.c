@@ -42,7 +42,7 @@
 
 lxc_log_define(lxc_state, lxc);
 
-static char *strstate[] = {
+static const char * const strstate[] = {
 	"STOPPED", "STARTING", "RUNNING", "STOPPING",
 	"ABORTING", "FREEZING", "FROZEN", "THAWED",
 };

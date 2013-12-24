@@ -45,10 +45,10 @@
 lxc_log_define(lxc_lock, lxc);
 
 #ifdef MUTEX_DEBUGGING
-pthread_mutex_t thread_mutex = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
-pthread_mutex_t static_mutex = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
+static pthread_mutex_t thread_mutex = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
+static pthread_mutex_t static_mutex = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
-inline void dump_stacktrace(void)
+static inline void dump_stacktrace(void)
 {
 	void *array[MAX_STACKDEPTH];
 	size_t size;
@@ -67,13 +67,13 @@ inline void dump_stacktrace(void)
 	free (strings);
 }
 #else
-pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t static_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t static_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-inline void dump_stacktrace(void) {;}
+static inline void dump_stacktrace(void) {;}
 #endif
 
-void lock_mutex(pthread_mutex_t *l)
+static void lock_mutex(pthread_mutex_t *l)
 {
 	int ret;
 
@@ -84,7 +84,7 @@ void lock_mutex(pthread_mutex_t *l)
 	}
 }
 
-void unlock_mutex(pthread_mutex_t *l)
+static void unlock_mutex(pthread_mutex_t *l)
 {
 	int ret;
 

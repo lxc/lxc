@@ -277,14 +277,14 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	return 1;
 }
 
-int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state)
+static int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state)
 {
 	handler->state = state;
 	lxc_monitor_send_state(name, state, handler->lxcpath);
 	return 0;
 }
 
-int lxc_poll(const char *name, struct lxc_handler *handler)
+static int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int sigfd = handler->sigfd;
 	int pid = handler->pid;
@@ -464,7 +464,7 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 	free(handler);
 }
 
-void lxc_abort(const char *name, struct lxc_handler *handler)
+static void lxc_abort(const char *name, struct lxc_handler *handler)
 {
 	int ret, status;
 
@@ -656,7 +656,7 @@ out_warn_father:
 	return -1;
 }
 
-int save_phys_nics(struct lxc_conf *conf)
+static int save_phys_nics(struct lxc_conf *conf)
 {
 	struct lxc_list *iterator;
 
@@ -686,7 +686,7 @@ int save_phys_nics(struct lxc_conf *conf)
 	return 0;
 }
 
-int lxc_spawn(struct lxc_handler *handler)
+static int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
 	const char *name = handler->name;

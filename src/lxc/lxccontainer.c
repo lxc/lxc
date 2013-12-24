@@ -99,7 +99,7 @@ static bool config_file_exists(const char *lxcpath, const char *cname)
  * we remove that file.  When we load or try to start a container, if
  * we find that file, without a flock, we remove the container.
  */
-int ongoing_create(struct lxc_container *c)
+static int ongoing_create(struct lxc_container *c)
 {
 	int len = strlen(c->config_path) + strlen(c->name) + 10;
 	char *path = alloca(len);
@@ -135,7 +135,7 @@ int ongoing_create(struct lxc_container *c)
 	return 2;
 }
 
-int create_partial(struct lxc_container *c)
+static int create_partial(struct lxc_container *c)
 {
 	// $lxcpath + '/' + $name + '/partial' + \0
 	int len = strlen(c->config_path) + strlen(c->name) + 10;
@@ -165,7 +165,7 @@ int create_partial(struct lxc_container *c)
 	return fd;
 }
 
-void remove_partial(struct lxc_container *c, int fd)
+static void remove_partial(struct lxc_container *c, int fd)
 {
 	// $lxcpath + '/' + $name + '/partial' + \0
 	int len = strlen(c->config_path) + strlen(c->name) + 10;
@@ -1037,7 +1037,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 	return true;
 }
 
-bool prepend_lxc_header(char *path, const char *t, char *const argv[])
+static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 {
 	long flen;
 	char *contents;
@@ -2414,7 +2414,7 @@ static int create_file_dirname(char *path)
 	return ret;
 }
 
-struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
+static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 		const char *lxcpath, int flags,
 		const char *bdevtype, const char *bdevdata, unsigned long newsize,
 		char **hookargs)
@@ -2587,7 +2587,7 @@ static int lxcapi_attach_run_wait(struct lxc_container *c, lxc_attach_options_t 
 	return lxc_wait_for_pid_status(pid);
 }
 
-int get_next_index(const char *lxcpath, char *cname)
+static int get_next_index(const char *lxcpath, char *cname)
 {
 	char *fname;
 	struct stat sb;

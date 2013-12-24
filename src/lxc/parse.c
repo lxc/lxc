@@ -65,7 +65,7 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 	return err;
 }
 
-int lxc_char_left_gc(char *buffer, size_t len)
+int lxc_char_left_gc(const char *buffer, size_t len)
 {
 	int i;
 	for (i = 0; i < len; i++) {
@@ -77,7 +77,7 @@ int lxc_char_left_gc(char *buffer, size_t len)
 	return 0;
 }
 
-int lxc_char_right_gc(char *buffer, size_t len)
+int lxc_char_right_gc(const char *buffer, size_t len)
 {
 	int i;
 	for (i = len - 1; i >= 0; i--) {
@@ -91,7 +91,7 @@ int lxc_char_right_gc(char *buffer, size_t len)
 	return 0;
 }
 
-int lxc_is_line_empty(char *line)
+int lxc_is_line_empty(const char *line)
 {
 	int i;
 	size_t len = strlen(line);

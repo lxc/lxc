@@ -233,8 +233,6 @@ static inline void LXC_##PRIORITY(struct lxc_log_locinfo* locinfo,	\
 /*
  * top categories
  */
-extern struct lxc_log_category lxc_log_category_lxc;
-
 #define TRACE(format, ...) do {						\
 	struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
 	LXC_TRACE(&locinfo, format, ##__VA_ARGS__);			\

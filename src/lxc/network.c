@@ -1092,7 +1092,7 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 	return err;
 }
 
-static char* lxc_network_types[LXC_NET_MAXCONFTYPE + 1] = {
+static const char* const lxc_network_types[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_VETH]    = "veth",
 	[LXC_NET_MACVLAN] = "macvlan",
 	[LXC_NET_VLAN]    = "vlan",
@@ -1107,7 +1107,7 @@ const char *lxc_net_type_to_str(int type)
 	return lxc_network_types[type];
 }
 
-static char padchar[] =
+static const char padchar[] =
 "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 char *lxc_mkifname(char *template)

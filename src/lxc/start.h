@@ -55,7 +55,7 @@ struct ns_info {
 	int clone_flag;
 };
 
-const struct ns_info ns_info[LXC_NS_MAX];
+extern const struct ns_info ns_info[LXC_NS_MAX];
 
 struct lxc_handler {
 	pid_t pid;
@@ -74,11 +74,7 @@ struct lxc_handler {
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *, const char *);
-extern int lxc_spawn(struct lxc_handler *);
 
-extern int lxc_poll(const char *name, struct lxc_handler *handler);
-extern void lxc_abort(const char *name, struct lxc_handler *handler);
-extern int lxc_set_state(const char *, struct lxc_handler *, lxc_state_t);
 extern int lxc_check_inherited(struct lxc_conf *conf, int fd_to_ignore);
 int __lxc_start(const char *, struct lxc_conf *, struct lxc_operations *,
 		void *, const char *);

@@ -30,7 +30,7 @@ struct lxc_config_items {
 	const char *(*fn)(void);
 };
 
-struct lxc_config_items items[] =
+static struct lxc_config_items items[] =
 {
 	{ .name = "lxcpath", .fn = &lxc_get_default_config_path, },
 	{ .name = "lvm_vg", .fn = &lxc_get_default_lvm_vg, },
@@ -39,14 +39,14 @@ struct lxc_config_items items[] =
 	{ .name = NULL, },
 };
 
-void usage(char *me)
+static void usage(char *me)
 {
 	printf("Usage: %s -l: list all available configuration items\n", me);
 	printf("       %s item: print configuration item\n", me);
 	exit(1);
 }
 
-void list_config_items(void)
+static void list_config_items(void)
 {
 	struct lxc_config_items *i;
 

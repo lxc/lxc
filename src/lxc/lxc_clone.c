@@ -58,7 +58,7 @@ static unsigned long get_fssize(char *s)
        return ret;
 }
 
-void usage(const char *me)
+static void usage(const char *me)
 {
 	printf("Usage: %s [-s] [-B backingstore] [-L size] [-K] [-M] [-H]\n", me);
 	printf("          [-p lxcpath] [-P newlxcpath] orig new\n");

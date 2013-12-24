@@ -45,7 +45,6 @@ extern const char *get_rundir(void);
  * Return a buffer containing the default container path.
  * Caller must NOT free this buffer, since it may be static.
  */
-extern const char *lxc_global_config_value(const char *option_name);
 extern const char *default_lxc_path(void);
 extern const char *default_zfs_root(void);
 extern const char *default_lvm_vg(void);
@@ -267,5 +266,4 @@ extern size_t lxc_array_len(void **array);
 
 extern void **lxc_append_null_to_array(void **array, size_t count);
 
-extern void dump_stacktrace(void);
 #endif

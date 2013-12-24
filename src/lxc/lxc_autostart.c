@@ -97,7 +97,7 @@ int lists_contain_common_entry(struct lxc_list *p1, struct lxc_list *p2) {
 	return 0;
 }
 
-struct lxc_list *get_list(char *input, char *delimiter) {
+static struct lxc_list *get_list(char *input, char *delimiter) {
 	char *workstr = NULL;
 	char *workptr = NULL;
 	char *sptr = NULL;
@@ -138,7 +138,7 @@ struct lxc_list *get_list(char *input, char *delimiter) {
 	return workstr_list;
 }
 
-struct lxc_list *get_config_list(struct lxc_container *c, char *key) {
+static struct lxc_list *get_config_list(struct lxc_container *c, char *key) {
 	int len = 0;
 	char* value = NULL;
 	struct lxc_list *config_list = NULL;
@@ -167,7 +167,7 @@ struct lxc_list *get_config_list(struct lxc_container *c, char *key) {
 	return config_list;
 }
 
-int get_config_integer(struct lxc_container *c, char *key) {
+static int get_config_integer(struct lxc_container *c, char *key) {
 	int len = 0;
 	int ret = 0;
 	char* value = NULL;

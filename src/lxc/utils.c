@@ -238,9 +238,9 @@ static char *copy_global_config_value(char *p)
 #define DEFAULT_THIN_POOL "lxc"
 #define DEFAULT_ZFSROOT "lxc"
 
-const char *lxc_global_config_value(const char *option_name)
+static const char *lxc_global_config_value(const char *option_name)
 {
-	static const char *options[][2] = {
+	static const char * const options[][2] = {
 		{ "lvm_vg",          DEFAULT_VG      },
 		{ "lvm_thin_pool",   DEFAULT_THIN_POOL },
 		{ "zfsroot",         DEFAULT_ZFSROOT },
@@ -272,7 +272,7 @@ const char *lxc_global_config_value(const char *option_name)
 		user_lxc_path = strdup(LXCPATH);
 	}
 
-	const char *(*ptr)[2];
+	const char * const (*ptr)[2];
 	const char *value;
 	size_t i;
 	char buf[1024], *p, *p2;

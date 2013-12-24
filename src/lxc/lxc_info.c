@@ -244,7 +244,7 @@ static void print_stats(struct lxc_container *c)
 	}
 }
 
-void print_info_msg_int(const char *key, int value)
+static void print_info_msg_int(const char *key, int value)
 {
 	if (humanize)
 		printf("%-15s %d\n", key, value);
@@ -256,7 +256,7 @@ void print_info_msg_int(const char *key, int value)
 	}
 }
 
-void print_info_msg_str(const char *key, const char *value)
+static void print_info_msg_str(const char *key, const char *value)
 {
 	if (humanize)
 		printf("%-15s %s\n", key, value);
