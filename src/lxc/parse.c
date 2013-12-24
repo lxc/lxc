@@ -33,55 +33,7 @@
 #include "utils.h"
 #include <lxc/log.h>
 
-/* Workaround for the broken signature of alphasort() in bionic.
-   This was fixed upstream in 40e467ec668b59be25491bd44bf348a884d6a68d so the
-   workaround can probably be dropped with the next version of the Android NDK.
- */
-#ifdef IS_BIONIC
-int bionic_alphasort(const struct dirent** a, const struct dirent** b) {
-       return strcoll((*a)->d_name, (*b)->d_name);
-}
-#endif
-
-
 lxc_log_define(lxc_parse, lxc);
-
-static int dir_filter(const struct dirent *dirent)
-{
-	if (!strcmp(dirent->d_name, ".") ||
-            !strcmp(dirent->d_name, ".."))
-                return 0;
-        return 1;
-}
-
-int lxc_dir_for_each(const char *name, const char *directory,
-		     lxc_dir_cb callback, void *data)
-{
-	struct dirent **namelist;
-	int n, ret = 0;
-
-#ifdef IS_BIONIC
-	n = scandir(directory, &namelist, dir_filter, bionic_alphasort);
-#else
-	n = scandir(directory, &namelist, dir_filter, alphasort);
-#endif
-	if (n < 0) {
-		SYSERROR("failed to scan %s directory", directory);
-		return -1;
-	}
-
-	while (n--) {
-		if (!ret &&
-		    callback(name, directory, namelist[n]->d_name, data)) {
-			ERROR("callback failed");
-			ret = -1;
-		}
-		free(namelist[n]);
-	}
-	free(namelist);
-
-	return ret;
-}
 
 int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 {

@@ -1031,31 +1031,6 @@ size_t lxc_array_len(void **array)
 	return result;
 }
 
-void **lxc_dup_array(void **array, lxc_dup_fn element_dup_fn, lxc_free_fn element_free_fn)
-{
-	size_t l = lxc_array_len(array);
-	void **result = calloc(l + 1, sizeof(void *));
-	void **pp;
-	void *p;
-	int saved_errno = 0;
-
-	if (!result)
-		return NULL;
-
-	for (l = 0, pp = array; pp && *pp; pp++, l++) {
-		p = element_dup_fn(*pp);
-		if (!p) {
-			saved_errno = errno;
-			lxc_free_array(result, element_free_fn);
-			errno = saved_errno;
-			return NULL;
-		}
-		result[l] = p;
-	}
-
-	return result;
-}
-
 int lxc_write_to_file(const char *filename, const void* buf, size_t count, bool add_newline)
 {
 	int fd, saved_errno;
