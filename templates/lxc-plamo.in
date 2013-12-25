@@ -178,6 +178,12 @@ configure_plamo() {
 	EOF
   # /etc/inittab
   cat <<- "EOF" | patch $rootfs/etc/inittab
+	32,33c32,33
+	< # What to do when power fails (shutdown to single user).
+	< pf::powerfail:/sbin/shutdown -f +5 "THE POWER IS FAILING"
+	---
+	> # What to do when power fails (shutdown).
+	> pf::powerfail:/sbin/shutdown -h +0 "THE POWER IS FAILING"
 	47a48
 	> 1:1235:respawn:/sbin/agetty 38400 console
 	52,53d52
