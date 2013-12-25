@@ -25,9 +25,9 @@
 #include <Python.h>
 #include "structmember.h"
 #include <lxc/lxccontainer.h>
-#include <lxc/utils.h>
-#include <lxc/namespace.h>
-#include <lxc/confile.h>
+#include "lxc/utils.h"
+#include "lxc/namespace.h"
+#include "lxc/confile.h"
 #include <stdio.h>
 #include <sys/wait.h>
 

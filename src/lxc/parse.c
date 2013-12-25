@@ -31,7 +31,7 @@
 #include "parse.h"
 #include "config.h"
 #include "utils.h"
-#include <lxc/log.h>
+#include "log.h"
 
 lxc_log_define(lxc_parse, lxc);
 

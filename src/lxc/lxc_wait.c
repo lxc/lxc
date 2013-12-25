@@ -28,9 +28,10 @@
 #include <signal.h>
 #include <sys/types.h>
 
-#include <lxc/lxc.h>
-#include <lxc/log.h>
 #include <lxc/lxccontainer.h>
+
+#include "lxc.h"
+#include "log.h"
 #include "arguments.h"
 
 lxc_log_define(lxc_wait_ui, lxc_monitor);

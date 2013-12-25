@@ -22,7 +22,7 @@
  */
 
 #include <stdio.h>
-#include "attach_options.h"
+#include <lxc/attach_options.h>
 
 #ifndef _confile_h
 #define _confile_h

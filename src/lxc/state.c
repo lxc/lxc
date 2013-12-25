@@ -32,11 +32,11 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 
-#include <lxc/lxc.h>
-#include <lxc/log.h>
-#include <lxc/start.h>
-#include <lxc/cgroup.h>
-#include <lxc/monitor.h>
+#include "lxc.h"
+#include "log.h"
+#include "start.h"
+#include "cgroup.h"
+#include "monitor.h"
 #include "commands.h"
 #include "config.h"
 

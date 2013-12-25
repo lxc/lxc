@@ -26,7 +26,7 @@
 #include <sys/param.h>
 #include <sys/un.h>
 
-#include <lxc/conf.h>
+#include "conf.h"
 
 typedef enum {
 	lxc_msg_state,

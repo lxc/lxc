@@ -17,8 +17,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <lxc/lxccontainer.h>
-
 #include <stdio.h>
 #include <libgen.h>
 #include <unistd.h>
@@ -26,10 +24,11 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
-#include <lxc/lxc.h>
-#include <lxc/log.h>
-#include <lxc/bdev.h>
+#include <lxc/lxccontainer.h>
 
+#include "lxc.h"
+#include "log.h"
+#include "bdev.h"
 #include "arguments.h"
 #include "utils.h"
 

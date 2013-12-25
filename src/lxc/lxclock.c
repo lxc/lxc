@@ -27,9 +27,11 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <lxc/utils.h>
-#include <lxc/log.h>
+
 #include <lxc/lxccontainer.h>
+
+#include "utils.h"
+#include "log.h"
 
 #ifdef MUTEX_DEBUGGING
 #include <execinfo.h>

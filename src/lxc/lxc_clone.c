@@ -27,12 +27,13 @@
 #include <errno.h>
 #include <ctype.h>
 
+#include <lxc/lxccontainer.h>
+
 #include "log.h"
 #include "config.h"
 #include "lxc.h"
 #include "conf.h"
 #include "state.h"
-#include <lxc/lxccontainer.h>
 
 lxc_log_define(lxc_clone, lxc);
 

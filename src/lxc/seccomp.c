@@ -27,9 +27,9 @@
 #include <seccomp.h>
 #include <errno.h>
 #include <seccomp.h>
+
 #include "config.h"
 #include "lxcseccomp.h"
-
 #include "log.h"
 
 lxc_log_define(lxc_seccomp, lxc);

@@ -41,12 +41,11 @@
 
 #include "error.h"
 #include "af_unix.h"
-
-#include <lxc/log.h>
-#include <lxc/lxclock.h>
-#include <lxc/state.h>
-#include <lxc/monitor.h>
-#include <lxc/utils.h>
+#include "log.h"
+#include "lxclock.h"
+#include "state.h"
+#include "monitor.h"
+#include "utils.h"
 
 lxc_log_define(lxc_monitor, lxc);
 

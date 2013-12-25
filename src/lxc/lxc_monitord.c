@@ -38,11 +38,11 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
-#include <lxc/af_unix.h>
-#include <lxc/log.h>
-#include <lxc/mainloop.h>
-#include <lxc/monitor.h>
-#include <lxc/utils.h>
+#include "af_unix.h"
+#include "log.h"
+#include "mainloop.h"
+#include "monitor.h"
+#include "utils.h"
 
 #define CLIENTFDS_CHUNK 64
 

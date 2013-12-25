@@ -45,10 +45,9 @@
 #include "conf.h"
 #include "utils.h"
 #include "bdev.h"
-
-#include <lxc/log.h>
-#include <lxc/cgroup.h>
-#include <lxc/start.h>
+#include "log.h"
+#include "cgroup.h"
+#include "start.h"
 
 #if IS_BIONIC
 #include <../include/lxcmntent.h>

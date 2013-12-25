@@ -26,10 +26,9 @@
 #include <fcntl.h>
 #include <sys/types.h>
 
-#include <lxc/lxc.h>
-#include <lxc/log.h>
-#include <lxc/bdev.h>
-
+#include "lxc.h"
+#include "log.h"
+#include "bdev.h"
 #include "arguments.h"
 #include "utils.h"
 

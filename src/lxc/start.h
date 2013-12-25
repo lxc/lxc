@@ -23,10 +23,10 @@
 #ifndef __lxc_state_h
 #define __lxc_state_h
 
-#include "config.h"
-
-#include <lxc/state.h>
 #include <sys/param.h>
+
+#include "config.h"
+#include "state.h"
 #include "namespace.h"
 
 struct lxc_conf;

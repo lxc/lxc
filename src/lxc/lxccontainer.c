@@ -30,26 +30,28 @@
 #include <fcntl.h>
 #include <sched.h>
 #include <dirent.h>
+#include <sched.h>
+#include <arpa/inet.h>
+#include <libgen.h>
+
+#include <lxc/lxccontainer.h>
+#include <lxc/version.h>
+
 #include "config.h"
 #include "lxc.h"
 #include "state.h"
-#include <lxc/lxccontainer.h>
 #include "conf.h"
 #include "confile.h"
 #include "console.h"
 #include "cgroup.h"
 #include "commands.h"
-#include "version.h"
 #include "log.h"
 #include "bdev.h"
 #include "utils.h"
 #include "attach.h"
-#include <lxc/utils.h>
-#include <lxc/monitor.h>
-#include <lxc/namespace.h>
-#include <sched.h>
-#include <arpa/inet.h>
-#include <libgen.h>
+#include "utils.h"
+#include "monitor.h"
+#include "namespace.h"
 #include "lxclock.h"
 
 #if HAVE_IFADDRS_H

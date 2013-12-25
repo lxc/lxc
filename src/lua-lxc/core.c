@@ -30,7 +30,7 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <lxc/lxccontainer.h>
-#include <lxc/commands.h>
+#include "lxc/commands.h"
 
 #if LUA_VERSION_NUM < 502
 #define luaL_newlib(L,l) (lua_newtable(L), luaL_register(L,NULL,l))

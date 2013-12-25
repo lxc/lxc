@@ -31,9 +31,8 @@
 #include <sys/types.h>
 #include <stdbool.h>
 
-#include <lxc/list.h>
-
-#include <lxc/start.h> /* for lxc_handler */
+#include "list.h"
+#include "start.h" /* for lxc_handler */
 
 #if HAVE_SCMP_FILTER_CTX
 typedef void * scmp_filter_ctx;

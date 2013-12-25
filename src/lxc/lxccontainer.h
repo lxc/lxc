@@ -22,11 +22,12 @@
 
 #ifndef __LXC_CONTAINER_H
 #define __LXC_CONTAINER_H
-#include "attach_options.h"
 #include <malloc.h>
 #include <semaphore.h>
 #include <stdbool.h>
 #include <stdlib.h>
+
+#include <lxc/attach_options.h>
 
 #ifdef  __cplusplus
 extern "C" {

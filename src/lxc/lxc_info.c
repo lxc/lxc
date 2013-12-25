@@ -29,11 +29,11 @@
 #include <libgen.h>
 #include <sys/types.h>
 
-#include <lxc/lxc.h>
-#include <lxc/log.h>
-#include <lxc/utils.h>
 #include <lxc/lxccontainer.h>
 
+#include "lxc.h"
+#include "log.h"
+#include "utils.h"
 #include "commands.h"
 #include "arguments.h"
 

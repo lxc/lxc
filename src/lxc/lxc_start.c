@@ -40,10 +40,11 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
+#include <lxc/lxccontainer.h>
+
 #include "log.h"
 #include "caps.h"
 #include "lxc.h"
-#include <lxc/lxccontainer.h>
 #include "conf.h"
 #include "cgroup.h"
 #include "utils.h"

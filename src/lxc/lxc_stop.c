@@ -25,10 +25,10 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include <lxc/lxc.h>
-#include <lxc/log.h>
-
 #include <lxc/lxccontainer.h>
+
+#include "lxc.h"
+#include "log.h"
 #include "arguments.h"
 #include "commands.h"
 #include "utils.h"

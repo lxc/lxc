@@ -30,10 +30,10 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include <lxc/log.h>
-#include <lxc/start.h>	/* for struct lxc_handler */
-#include <lxc/utils.h>
-#include <lxc/error.h>
+#include "log.h"
+#include "start.h"	/* for struct lxc_handler */
+#include "utils.h"
+#include "error.h"
 
 lxc_log_define(lxc_restart, lxc);
 

@@ -33,13 +33,12 @@
 #include <malloc.h>
 #include <stdlib.h>
 
-#include <lxc/log.h>
-#include <lxc/lxc.h>
-#include <lxc/conf.h>
-#include <lxc/start.h>	/* for struct lxc_handler */
-#include <lxc/utils.h>
-#include <lxc/cgroup.h>
-
+#include "log.h"
+#include "lxc.h"
+#include "conf.h"
+#include "start.h"	/* for struct lxc_handler */
+#include "utils.h"
+#include "cgroup.h"
 #include "commands.h"
 #include "console.h"
 #include "confile.h"

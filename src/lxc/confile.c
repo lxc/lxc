@@ -41,9 +41,8 @@
 #include "config.h"
 #include "confile.h"
 #include "utils.h"
-
-#include <lxc/log.h>
-#include <lxc/conf.h>
+#include "log.h"
+#include "conf.h"
 #include "network.h"
 
 #if HAVE_SYS_PERSONALITY_H

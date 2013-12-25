@@ -30,7 +30,7 @@ extern "C" {
 #include <stddef.h>
 #include <sys/select.h>
 #include <sys/types.h>
-#include <lxc/state.h>
+#include "state.h"
 
 struct lxc_msg;
 struct lxc_conf;

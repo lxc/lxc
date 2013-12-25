@@ -20,8 +20,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#include <lxc/lxc.h>
-#include <lxc/log.h>
+#include "lxc.h"
+#include "log.h"
 
 lxc_log_define(lxc_checkpoint, lxc);
 

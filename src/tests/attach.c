@@ -20,8 +20,8 @@
  */
 
 #include <lxc/lxccontainer.h>
-#include <lxc/utils.h>
-#include <lxc/lsm/lsm.h>
+#include "lxc/utils.h"
+#include "lxc/lsm/lsm.h"
 
 #include <string.h>
 #include <sys/stat.h>

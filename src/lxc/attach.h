@@ -25,7 +25,7 @@
 #define _attach_h
 
 #include <sys/types.h>
-#include "attach_options.h"
+#include <lxc/attach_options.h>
 
 struct lxc_proc_context_info {
 	char *lsm_label;

@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/apparmor.h>
+
 #include "log.h"
 #include "lsm/lsm.h"
 

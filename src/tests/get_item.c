@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#include <lxc/state.h>
+#include "lxc/state.h"
 
 #define MYNAME "lxctest1"
 

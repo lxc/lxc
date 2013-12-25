@@ -34,9 +34,8 @@
 #include "error.h"
 #include "state.h"
 #include "monitor.h"
-
-#include <lxc/log.h>
-#include <lxc/cgroup.h>
+#include "log.h"
+#include "cgroup.h"
 
 lxc_log_define(lxc_freezer, lxc);
 
