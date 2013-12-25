@@ -28,7 +28,7 @@
 #define MYNAME "snapxxx1"
 #define RESTNAME "snapxxx2"
 
-void try_to_remove()
+static void try_to_remove(void)
 {
 	struct lxc_container *c;
 	char snappath[1024];

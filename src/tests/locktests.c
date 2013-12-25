@@ -27,7 +27,7 @@
 #define mycontainername "lxctest.sem"
 #define TIMEOUT_SECS 3
 
-void test_two_locks(void)
+static void test_two_locks(void)
 {
 	struct lxc_lock *l;
 	pid_t pid;

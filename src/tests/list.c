@@ -80,7 +80,7 @@ static void test_list_func(const char *lxcpath, const char *type,
 
 int main(int argc, char *argv[])
 {
-	char *lxcpath = NULL;
+	const char *lxcpath = NULL;
 
 	if (argc > 1)
 		lxcpath = argv[1];

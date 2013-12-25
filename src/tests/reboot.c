@@ -42,7 +42,7 @@ static int do_reboot(void *arg)
 	return 0;
 }
 
-int test_reboot(int cmd, int sig)
+static int test_reboot(int cmd, int sig)
 {
         long stack_size = 4096;
         void *stack = alloca(stack_size) + stack_size;

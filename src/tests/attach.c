@@ -332,7 +332,7 @@ out1:
 }
 
 
-int test_attach(const char *lxcpath, const char *name, const char *template)
+static int test_attach(const char *lxcpath, const char *name, const char *template)
 {
 	int ret = -1;
 	struct lxc_container *ct;

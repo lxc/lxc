@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <lxc/lxccontainer.h>
 
-void usage(char *me)
+static void usage(const char *me)
 {
 	printf("Usage: %s name [lxcpath]\n", me);
 	exit(0);
@@ -29,7 +29,7 @@ void usage(char *me)
 
 int main(int argc, char *argv[])
 {
-	char *lxcpath = NULL, *name;
+	const char *lxcpath = NULL, *name;
 	bool may = false;
 	struct lxc_container *c;
 

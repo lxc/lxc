@@ -33,7 +33,7 @@ static int quiet = 0;
 static int delay = 0;
 static const char *template = "busybox";
 
-static struct option options[] = {
+static const struct option options[] = {
     { "threads",     required_argument, NULL, 'j' },
     { "iterations",  required_argument, NULL, 'i' },
     { "template",    required_argument, NULL, 't' },
@@ -63,7 +63,7 @@ static void usage(void) {
 struct thread_args {
     int thread_id;
     int return_code;
-    char *mode;
+    const char *mode;
 };
 
 static void do_function(void *arguments)
