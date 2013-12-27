@@ -123,7 +123,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      is the bridge to which the network interfaces may be attached, for
 	      instance <filename>lxcbr0</filename>.
               -->
-              ネットワークインターフェースが接続されるブリッジ．例えば <filename>lxcbr0</filename> のように指定します．
+              ネットワークインターフェースが接続されるブリッジ．
+              例えば <filename>lxcbr0</filename> のように指定します．
 	     </para>
 	  </listitem>
 	</varlistentry>
@@ -138,7 +139,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      is the number of network interfaces of the given type which the
 	      given user may attach to the given bridge, for instance <filename>2</filename>.
               -->
-              指定したユーザが，指定したブリッジに接続できる，指定した形式のネットワークインターフェースの数．例えば <filename>2</filename> のように指定します．
+              指定したユーザが，指定したブリッジに接続できる，指定した形式のネットワークインターフェースの数．
+              例えば <filename>2</filename> のように指定します．
 	     </para>
 	  </listitem>
 	</varlistentry>

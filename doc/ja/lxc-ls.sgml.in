@@ -206,7 +206,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             The filter passed to <command>lxc-ls</command> will be
             applied to the container name. The format is a regular expression.
             -->
-            コンテナ名に対して適用する <command>lxc-ls</command> に与えるフィルタ．フォーマットは正規表現です．
+            コンテナ名に対して適用する <command>lxc-ls</command> に与えるフィルタ．
+            フォーマットは正規表現です．
           </para>
         </listitem>
       </varlistentry>
@@ -219,15 +220,17 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <title><!-- Examples -->例</title>
     <variablelist>
       <varlistentry>
-	<term>lxc-ls -l</term>
-	<listitem>
-	<para>
+        <term>lxc-ls --fancy</term>
+        <listitem>
+        <para>
           <!--
-	  list all the container and their permissions.
+          list all the containers, listing one per line along with its
+          name, state, ipv4 and ipv6 addresses.
           -->
-          全てのコンテナとそのパーミッションをリスト表示します．
-	</para>
-	</listitem>
+          全てのコンテナをリスト表示します．
+          一行にはコンテナの名前，状態，IPv4 アドレス，IPv6 アドレスが表示されます．
+        </para>
+        </listitem>
       </varlistentry>
 
       <varlistentry>

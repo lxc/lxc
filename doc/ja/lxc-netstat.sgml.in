@@ -68,7 +68,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
   </refsect1>
 
   <refsect1>
-    <title><!-- Options --></title>
+    <title><!-- Options -->オプション</title>
     <variablelist>
 
       <varlistentry>
@@ -96,7 +96,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    from <command>lxc-netstat</command> options by
 	    the <option>&#045;&#045;</option> parameter.
             -->
-            <command>netstat</command> オプションは <command>lxc-netstat</command> のオプションと <option>--</option> で分けなければならない．
+            <command>netstat</command> オプションは <command>lxc-netstat</command> のオプションと <option>--</option> で分けなければなりません．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -115,7 +115,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  Call netstat -lnp for container foo.
           -->
-          コンテナ foo に対して netstat -lnp を呼び出す
+          コンテナ foo に対して netstat -lnp を呼び出します．
 	</para>
 	</listitem>
       </varlistentry>

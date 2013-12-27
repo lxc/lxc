@@ -71,7 +71,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <replaceable>command</replaceable> inside the container
       specified by <replaceable>name</replaceable>.
       -->
-      <command>lxc-execute</command> は特定の <replaceable>command</replaceable> を，<replaceable>name</replaceable> で指定したコンテナ内で実行します．
+      <command>lxc-execute</command> は指定した <replaceable>command</replaceable> を，<replaceable>name</replaceable> で指定したコンテナ内で実行します．
     </para>
     <para>
       <!--
@@ -81,7 +81,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       If no configuration is
       defined, the default isolation is used.
       -->
-      このコマンドは，lxc-create コマンドであらかじめ定義した設定，もしくはパラメータとして与えた設定ファイルを元にコンテナをセットアップします．もし設定が定義されていない場合，デフォルトの隔離を使用します．
+      このコマンドは，lxc-create コマンドであらかじめ定義した設定，もしくはパラメータとして与えた設定ファイルを元にコンテナをセットアップします．
+      もし設定が定義されていない場合，デフォルトの隔離を使用します．
     </para>
     <para>
       <!--
@@ -102,7 +103,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       container, <command>lxc-init</command> has the pid 1 and the
       first process of the application has the pid 2.
       -->
-      <command>lxc-execute</command> は，<command>lxc-init</command> を間にはさんで，コンテナ内で特定のコマンドを実行します．lxc-init は，指定されたコマンドが実行された後は，そのコマンドの終了と，そのコマンドから生成された全てのプロセスの終了を待ちます (これにより，コンテナ内でデーモンのサポートが可能になります)．言いかえると，コンテナ内では <command>lxc-init</command> が pid 1 となり，アプリケーションの最初のプロセスの pid が 2 となります．
+      <command>lxc-execute</command> は，<command>lxc-init</command> を間にはさんで，コンテナ内で特定のコマンドを実行します．
+      lxc-init は，指定されたコマンドが実行された後は，そのコマンドの終了と，そのコマンドから生成された全てのプロセスの終了を待ちます (これにより，コンテナ内でデーモンのサポートが可能になります)．
+      言いかえると，コンテナ内では <command>lxc-init</command> が pid 1 となり，アプリケーションの最初のプロセスの pid が 2 となります．
      </para>
      <para>
        <!--
@@ -111,7 +114,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       So <command>lxc-kill</command> (1) sent signal is received
       by the user specified command (pid 2 in the container).
        -->
-       前述の <command>lxc-init</command> は，受け取ったシグナルを開始したコマンドに送るように設計されています．なので，<command>lxc-kill</command> (1) が送ったシグナルは，ユーザが指定したコマンド (コンテナ内の pid 2 のプロセス) が受けとります．
+       前述の <command>lxc-init</command> は，受け取ったシグナルを開始したコマンドに送るように設計されています．
+       なので，<command>lxc-kill</command> (1) が送ったシグナルは，ユーザが指定したコマンド (コンテナ内の pid 2 のプロセス) が受けとります．
      </para>
   </refsect1>
 
@@ -165,7 +169,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    processing. Any arguments after the &#045;&#045; are treated as
 	    arguments to <replaceable>command</replaceable>.
             -->
-            オプション指定の最後の印で，それ以上のオプションの処理を止めます．-- の後の引数は実行する <replaceable>command</replaceable> の引数として扱われます．
+            オプション指定の最後の印で，それ以上のオプションの処理を止めます．
+            -- の後の引数は実行する <replaceable>command</replaceable> の引数として扱われます．
 	  </para>
 	  <para>
             <!--

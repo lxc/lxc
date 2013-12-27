@@ -74,9 +74,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             will be shown.
             -->
           <command>lxc-autostart</command> は lxc.start.auto が設定されたコンテナの処理を行います．
-          ユーザがコンテナの開始，シャットダウン，kill，再起動を，設定した時間待機を行い，正しい順番で行えるようにします．
+          ユーザがコンテナの開始，シャットダウン，kill，再起動を，設定した時間間隔で，設定した順番で行えるようにします．
           lxc.group でのフィルタリングによって，もしくは定義された全てのコンテナを実行します．
-          何の動作も行わず，対象のコンテナ (とコンテナに設定された待機時間) のリストを表示するリストモードを外部ツールから使用することも可能です．
+          何の動作も行わず，対象のコンテナ (とコンテナに設定された起動待機時間) のリストを表示するリストモードを外部ツールから使用することも可能です．
         </para>
 
         <para>
@@ -92,7 +92,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             or reboot.
             -->
           <optional>-r</optional>, <optional>-s</optional>, <optional>-k</optional> オプションは実行する動作を指定します．何も指定しない場合は，コンテナを起動します．
-          <optional>-a</optional>, <optional>-g</optional> は，どのコンテナを対象にするかを指定するのに使います．デフォルトでは，lxc.group が指定されていないコンテナにだけ影響します．
+          <optional>-a</optional>, <optional>-g</optional> は，どのコンテナを対象にするかを指定するのに使います．デフォルトでは，lxc.group が指定されていないコンテナにだけが対象となります．
           <optional>-t TIMEOUT</optional> はコンテナが完全にシャットダウンもしくはリブートを待つ最大時間を指定します．
         </para>
     </refsect1>

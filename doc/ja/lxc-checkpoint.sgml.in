@@ -64,7 +64,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
   </refsynopsisdiv>
 
   <refsect1>
-    <title>Description</title>
+    <title><!-- Description --></title>
 
     <para>
       <!--
@@ -80,7 +80,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       execution. The command <command>lxc-unfreeze</command> will
       resume its execution.
       -->
-      <command>lxc-checkpoint</command> は，<replaceable>NAME</replaceable> 指定したコンテナのチェックポイントを作成し，その状態を <replaceable>FILE</replaceable> で指定したファイルにダンプします．<option>--kill</option> が指定された場合，チェックポイントの取得後，コンテナ内で実行されているアプリケーションは，実行が再開する直前に終了します．<option>--pause</option> が指定された場合，チェックポイントの取得後，コンテナ内で実行されているアプリケーションは，実行が再開する直前に休止します．<command>lxc-unfreeze</command> コマンドで，実行を再開させます．
+      <command>lxc-checkpoint</command> は，<replaceable>NAME</replaceable> 指定したコンテナのチェックポイントを作成し，その状態を <replaceable>FILE</replaceable> で指定したファイルにダンプします．
+      <option>--kill</option> が指定された場合，チェックポイントの取得後，コンテナ内で実行されているアプリケーションは，実行が再開する直前に終了します．
+      <option>--pause</option> が指定された場合，チェックポイントの取得後，コンテナ内で実行されているアプリケーションは，実行が再開する直前に休止します．
+      <command>lxc-unfreeze</command> コマンドで，実行を再開させます．
     </para>
 
   </refsect1>
@@ -99,7 +102,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <replaceable>FILE</replaceable>.
 	    This option is exclusive with <option>&#045;&#045;statefd</option> below.
             -->
-            コンテナの実行状態を <replaceable>FILE</replaceable> に書き込みます．このオプションは以下の <option>--statefd</option> と同時に指定できません．
+            コンテナの実行状態を <replaceable>FILE</replaceable> に書き込みます．
+            このオプションは以下の <option>--statefd</option> と同時に指定できません．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -113,7 +117,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <replaceable>FD</replaceable> file descriptor.
 	    This option is exclusive with above <option>&#045;&#045;statefile</option>.
             -->
-            コンテナの実行状態を指定した <replaceable>FD</replaceable> ファイルディスクリプタに書き込みます．このオプションは前述の <option>--statefile</option> と同時に指定出来ません．
+            コンテナの実行状態を指定した <replaceable>FD</replaceable> ファイルディスクリプタに書き込みます．
+            このオプションは前述の <option>--statefile</option> と同時に指定出来ません．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -126,7 +131,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Kill container processes after checkpoint. the processes are sent
 	    a <literal>SIGKILL</literal> signal.
             -->
-            チェックポイントを取得した後，コンテナプロセスを kill します．プロセスには <literal>SIGKILL</literal> シグナルが送られます．
+            チェックポイントを取得した後，コンテナプロセスを kill します．
+            プロセスには <literal>SIGKILL</literal> シグナルが送られます．
 	  </para>
 	  <para>
             <!--
@@ -148,7 +154,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    mutually exclusive with previously mentionned
 	    <option>&#045;&#045;kill</option> option.
             -->
-            チェックポイントを取得した後，コンテナプロセスを休止させます．コンテナを再開させるまで止まったままとなります．このオプションは前述の <option>--kill</option> オプションと同時に指定することはできません．
+            チェックポイントを取得した後，コンテナプロセスを休止させます．
+            コンテナを再開させるまで止まったままとなります．
+            このオプションは前述の <option>--kill</option> オプションと同時に指定することはできません．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -165,7 +173,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       To start a new container <literal>123</literal> computing decimals of pi
       -->
-      円周率の小数点以下を計算する新しいコンテナを起動させるために，以下を実行します．
+      円周率の小数点以下を計算する新しいコンテナ <literal>123</literal> を起動させるために，以下を実行します．
     </para>
     <programlisting>
       lxc-execute -n 123 -- pi1 -d 500000
@@ -204,7 +212,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     helps to define a CLI api for future Checkpoint / Restart
     solution</para>
     -->
-    実際はこのコマンドは動作しません．この説明は将来的なチェックポイント/再起動機能の解決策となる CLI API を定義するのを助けるためのものです．
+    実際はこのコマンドは動作しません．
+    この説明は将来的なチェックポイント/再起動機能の解決策となる CLI API を定義するのを助けるためのものです．
   </refsect1>
 
   &seealso;
