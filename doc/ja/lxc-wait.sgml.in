@@ -67,7 +67,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-wait</command> waits for a specific container state
       before exiting, this is useful for scripting.
       -->
-      <command>lxc-wait</command> は，コンテナが指定した状態になるのを待って終了します．スクリプトで使用するときに役に立ちます．
+      <command>lxc-wait</command> は，コンテナが指定した状態になるのを待って終了します．
+      スクリプトで使用するときに役に立ちます．
     </para>
   </refsect1>
 
@@ -85,7 +86,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Specify the container state(s) to wait for. The container
 	    states can be ORed to specify several states.
             -->
-            待つ対象のコンテナの状態を指定します．コンテナの状態として，いくつかの状態を OR で指定することが可能です．
+            待つ対象のコンテナの状態を指定します．
+            コンテナの状態として，いくつかの状態を OR で指定することが可能です．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -111,7 +113,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
   &commonoptions;
 
   <refsect1>
-    <title>Examples</title>
+    <title><!-- Examples -->例</title>
     <variablelist>
       <varlistentry>
 	<term>lxc-wait -n foo -s RUNNING</term>

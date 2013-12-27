@@ -89,7 +89,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    not specified and the container is running, then
 	    <command>lxc-destroy</command> will be aborted.
             -->
-            コンテナが実行中の場合，まずコンテナを停止させます．このオプションが指定されていない場合でコンテナが実行中の場合，<command>lxc-destroy</command> コマンドは実行を中断します．
+            コンテナが実行中の場合，まずコンテナを停止させます．
+            このオプションが指定されていない場合でコンテナが実行中の場合，<command>lxc-destroy</command> コマンドは実行を中断します．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -125,7 +126,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    destroyed.You can use the <command>lxc-ls -l</command>
 	    command to list the available containers on the system.
             -->
-            破壊するために指定したコンテナが見つかりません．おそらくそのコンテナが存在しないのか，既に破壊された後なのでしょう．<command>lxc-ls -l</command> コマンドを使って，システム上に存在するコンテナのリストを得ることができます．
+            破壊するために指定したコンテナが見つかりません．
+            おそらくそのコンテナが存在しないのか，既に破壊された後なのでしょう．
+            <command>lxc-ls -l</command> コマンドを使って，システム上に存在するコンテナのリストを得ることができます．
           </para>
         </listitem>
       </varlistentry>

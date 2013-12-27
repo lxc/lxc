@@ -76,7 +76,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       specified by <replaceable>name</replaceable>. The container
       has to be running already.
       -->
-      <command>lxc-attach</command> は <replaceable>name</replaceable> で指定したコンテナ内で指定した <replaceable>command</replaceable> を実行します．実行する時点でコンテナが実行中でなければなりません．
+      <command>lxc-attach</command> は <replaceable>name</replaceable> で指定したコンテナ内で指定した <replaceable>command</replaceable> を実行します．
+      実行する時点でコンテナが実行中でなければなりません．
     </para>
     <para>
       <!--
@@ -87,7 +88,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       inside the container or the container does not have a working
       nsswitch mechanism.
       -->
-      もし <replaceable>command</replaceable> が指定されていない場合，<command>lxc-attach</command> コマンドを実行したユーザのデフォルトシェルをコンテナ内で調べて実行します．もしコンテナ内にユーザが存在しない場合や，コンテナで nsswitch 機構が働いていない場合はこの動作は失敗します．
+      もし <replaceable>command</replaceable> が指定されていない場合，<command>lxc-attach</command> コマンドを実行したユーザのデフォルトシェルをコンテナ内で調べて実行します．
+      もしコンテナ内にユーザが存在しない場合や，コンテナで nsswitch 機構が働いていない場合はこの動作は失敗します．
     </para>
 
   </refsect1>
@@ -115,7 +117,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    </citerefentry>. By default, the current archictecture of the
 	    running container will be used.
             -->
-            コマンドを実行するコンテナのアーキテクチャを指定します．このオプションは，コンテナの設定ファイルで指定する <option>lxc.arch</option> オプションと同じものとして受け入れられます．
+            コマンドを実行するコンテナのアーキテクチャを指定します．
+            このオプションは，コンテナの設定ファイルで指定する <option>lxc.arch</option> オプションと同じものが使用可能です．
             <citerefentry>
 	      <refentrytitle><filename>lxc.conf</filename></refentrytitle>
 	      <manvolnum>5</manvolnum>
@@ -139,7 +142,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <emphasis>not</emphasis> be added to the container's cgroup(s)
 	    and it will not drop its capabilities before executing.
             -->
-            コンテナの内部で <replaceable>command</replaceable> を実行する時に特権を削除しません．もしこのオプションが指定された場合，新しいプロセスはコンテナの cgroup に追加 <emphasis>されず</emphasis>，実行する前にケーパビリティ (capability) も削除しません．
+            コンテナの内部で <replaceable>command</replaceable> を実行する時に特権を削除しません．
+            もしこのオプションが指定された場合，新しいプロセスはコンテナの cgroup に追加 <emphasis>されず</emphasis>，実行する前にケーパビリティ (capability) も削除しません．
 	  </para>
           <para>
 	    <!--
@@ -163,7 +167,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <command>cron</command> or <command>sshd</command>.
 	    <emphasis>Use with great care.</emphasis>
             -->
-            <emphasis>警告：</emphasis>もし実行するコマンドが，アタッチするメインプロセスが終了した後も実行されたままのサブプロセスを開始するような場合，このオプションの指定はコンテナ内への特権のリークとなる可能性があります．コンテナ内でのデーモンの開始(もしくは再起動)は問題となります．デーモンが多数のサブプロセスを開始する <command>cron</command> や <command>sshd</command> のような場合は特に問題となります．<emphasis>充分な注意を払って使用してください．</emphasis>
+            <emphasis>警告：</emphasis>
+            もし実行するコマンドが，アタッチするメインプロセスが終了した後も実行されたままのサブプロセスを開始するような場合，このオプションの指定はコンテナ内への特権のリークとなる可能性があります．
+            コンテナ内でのデーモンの開始(もしくは再起動)は問題となります．
+            デーモンが多数のサブプロセスを開始する <command>cron</command> や <command>sshd</command> のような場合は特に問題となります．
+            <emphasis>充分な注意を払って使用してください．</emphasis>
 	  </para>
 	</listitem>
       </varlistentry>
@@ -185,7 +193,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    container while retaining the other namespaces as those of the
 	    host.
             -->
-            アタッチする名前空間をパイプで連結したリストで指定します．例えば <replaceable>NETWORK|IPC</replaceable> のようにです．ここで使用可能な値は <replaceable>MOUNT</replaceable>, <replaceable>PID</replaceable>, <replaceable>UTSNAME</replaceable>, <replaceable>IPC</replaceable>, <replaceable>USER </replaceable>, <replaceable>NETWORK</replaceable> です．これにより指定した名前空間にプロセスのコンテキストを変更できます．例えばコンテナのネットワーク名前空間に変更する一方で，他の名前空間はホストの名前空間のままにするというような事が可能です．
+            アタッチする名前空間をパイプで連結したリストで指定します．
+            例えば <replaceable>NETWORK|IPC</replaceable> のようにです．
+            ここで使用可能な値は <replaceable>MOUNT</replaceable>, <replaceable>PID</replaceable>, <replaceable>UTSNAME</replaceable>, <replaceable>IPC</replaceable>, <replaceable>USER </replaceable>, <replaceable>NETWORK</replaceable> です．
+            これにより指定した名前空間にプロセスのコンテキストを変更できます．
+            例えばコンテナのネットワーク名前空間に変更する一方で，他の名前空間はホストの名前空間のままにするというような事が可能です．
 	  </para>
 	  <para>
             <!--
@@ -210,7 +222,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <replaceable>/sys</replaceable> to reflect the current other
 	    namespace contexts.
             -->
-            <option>-s</option> を指定し，そこにマウント名前空間が含まれない時，このオプションにより <command>lxc-attach</command> は <replaceable>/proc</replaceable> と <replaceable>/sys</replaceable> をリマウントします．これは現在の他の名前空間のコンテキストを反映させるためです．
+            <option>-s</option> を指定し，そこにマウント名前空間が含まれない時，このオプションにより <command>lxc-attach</command> は <replaceable>/proc</replaceable> と <replaceable>/sys</replaceable> をリマウントします．
+            これは現在の他の名前空間のコンテキストを反映させるためです．
 	  </para>
 	  <para>
             <!--
@@ -244,7 +257,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    please use this option to be future-proof. In addition to
 	    current environment variables, container=lxc will be set.
             -->
-            アタッチされるプログラムに対して現在の環境を保持したままにします．これは現在 (バージョン 0.9 時点) のデフォルトの動作ですが，将来は変更される予定です．この動作がコンテナ内への望ましくない情報の漏洩につながる可能性があるためです．アタッチするプログラムで環境変数が利用可能であることを期待している場合，将来的にもそれが保証されるようにこのオプションを使用するようにしてください．現在の環境変数に加えて，container=lxc が設定されます．
+            アタッチされるプログラムに対して現在の環境を保持したままにします．
+            これは現在 (バージョン 0.9 時点) のデフォルトの動作ですが，将来は変更される予定です．
+            この動作がコンテナ内への望ましくない情報の漏洩につながる可能性があるためです．
+            アタッチするプログラムで環境変数が利用可能であることを期待している場合，将来的にもそれが保証されるようにこのオプションを使用するようにしてください．
+            現在の環境変数に加えて，container=lxc が設定されます．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -261,7 +278,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    container=lxc will be the only environment with which the
 	    attached program starts.
             -->
-            アタッチする前に環境変数をクリアします．これによりコンテナへの不要な環境変数の漏洩が起こらなくなります．変数 container=lxc のみがアタッチするプログラムの開始の時の環境変数となります．
+            アタッチする前に環境変数をクリアします．
+            これによりコンテナへの不要な環境変数の漏洩が起こらなくなります．
+            変数 container=lxc のみがアタッチするプログラムの開始の時の環境変数となります．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -324,7 +343,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       details. <command>lxc-attach</command> will fail in that case if
       used with an unpatched kernel.
       -->
-      (pid とマウント名前空間を含む) コンテナに対する完全なアタッチを行うにはパッチを適用したカーネルが必要となります．詳しくは lxc のウェブサイトを参照してください．(訳注: 3.8 カーネルから PID, マウント名前空間に対するアタッチも可能になっている)
+      (pid とマウント名前空間を含む) コンテナに対する完全なアタッチを行うにはパッチを適用したカーネルが必要となります．
+      詳しくは lxc のウェブサイトを参照してください．
+      (訳注: 3.8 カーネルから PID, マウント名前空間に対するアタッチも可能になっている)
     </para>
     <para>
       <!--
@@ -342,7 +363,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       by the kernel. <command>lxc-attach</command> should however be able
       to do this once once future kernel versions implement this.
       -->
-      ユーザ名前空間へのアタッチは，現時点ではカーネルで完全にサポートされていません．しかし，<command>lxc-attach</command> は，将来のカーネルがこの機能を実装した時点ですぐに，アタッチが可能になるはずです．
+      ユーザ名前空間へのアタッチは，現時点ではカーネルで完全にサポートされていません．
+      しかし，<command>lxc-attach</command> は，将来のカーネルがこの機能を実装した時点ですぐに，アタッチが可能になるはずです．
     </para>
   </refsect1>
 
@@ -361,7 +383,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       accessing <replaceable>/proc</replaceable> or
       <replaceable>/sys</replaceable>.
       -->
-      Linux の <replaceable>/proc</replaceable> と <replaceable>/sys</replaceable> ファイルシステムは名前空間によって影響を受けるいくつかの情報を持っています．これは <replaceable>/proc</replaceable> 内のプロセス ID の名前のディレクトリや，<replaceable>/sys/class/net</replaceable> 内のネットワークインターフェース名のディレクトリなどです．擬似ファイルシステムをマウントしているプロセスの名前空間が，どのような情報を表示するかを決定します．<replaceable>/proc</replaceable> や <replaceable>/sys</replaceable> にアクセスしているプロセスの名前空間が決定するのではありません．
+      Linux の <replaceable>/proc</replaceable> と <replaceable>/sys</replaceable> ファイルシステムは名前空間によって影響を受けるある程度の情報を持っています．
+      これは <replaceable>/proc</replaceable> 内のプロセス ID の名前のディレクトリや，<replaceable>/sys/class/net</replaceable> 内のネットワークインターフェース名のディレクトリなどです．
+      擬似ファイルシステムをマウントしているプロセスの名前空間が，どのような情報を表示するかを決定します．
+      <replaceable>/proc</replaceable> や <replaceable>/sys</replaceable> にアクセスしているプロセスの名前空間が決定するのではありません．
     </para>
     <para>
       <!--
@@ -374,7 +399,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <replaceable>/sys/class/net</replaceable> and attaching to just
       the network namespace.
       -->
-      <option>-s</option> を使ってコンテナの pid 名前空間のみをアタッチし，マウント名前空間 (これはコンテナの <replaceable>/proc</replaceable> を含み，ホストのは含まないでしょう) はアタッチしない場合，<option>/proc</option> のコンテンツはコンテナのものではなく，ホストのものとなります．似たような事例として，ネットワーク名前空間のみをアタッチして，<replaceable>/sys/class/net</replaceable> のコンテンツを読んだ場合も同じような事が起こるでしょう．
+      <option>-s</option> を使ってコンテナの pid 名前空間のみをアタッチし，マウント名前空間 (これはコンテナの <replaceable>/proc</replaceable> を含み，ホストのは含まないでしょう) はアタッチしない場合，<option>/proc</option> のコンテンツはコンテナのものではなく，ホストのものとなります．
+      似たような事例として，ネットワーク名前空間のみをアタッチして，<replaceable>/sys/class/net</replaceable> のコンテンツを読んだ場合も同じような事が起こるでしょう．
     </para>
     <para>
       <!--
@@ -389,7 +415,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       except for the <replaceable>/proc</replaceable> and
       <replaceable>/sys</replaceable> filesystems.
       -->
-      この問題への対処のために，<option>-R</option> オプションが <replaceable>/proc</replaceable> と <replaceable>/sys</replaceable> が提供されています．これにより，アタッチするプロセスのネットワーク/pid 名前空間のコンテキストを反映させることができます．ホストの実際のファイルシステムに影響を与えないために，実行前にはマウント名前空間は unshare されます (<command>lxc-unshare</command> のように)．これは，<replaceable>/proc</replaceable> と <replaceable>/sys</replaceable> ファイルシステム以外はホストのマウント名前空間と同じである，新しいマウント名前空間がプロセスに与えられるということです．
+      この問題への対処のために，<option>-R</option> オプションが <replaceable>/proc</replaceable> と <replaceable>/sys</replaceable> が提供されています．
+      これにより，アタッチするプロセスのネットワーク/pid 名前空間のコンテキストを反映させることができます．ホストの実際のファイルシステムに影響を与えないために，実行前にはマウント名前空間は unshare されます (<command>lxc-unshare</command> のように)．
+      これは，<replaceable>/proc</replaceable> と <replaceable>/sys</replaceable> ファイルシステム以外はホストのマウント名前空間と同じである，新しいマウント名前空間がプロセスに与えられるということです．
     </para>
   </refsect1>
 
@@ -401,7 +429,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       be used with care, as it may break the isolation of the containers
       if used improperly.
       -->
-      <option>-e</option> と <option>-s</option> オプションの使用には注意を払うべきです．不適切に使用した場合，コンテナの隔離を破壊してしまう可能性があります．
+      <option>-e</option> と <option>-s</option> オプションの使用には注意を払うべきです．
+      不適切に使用した場合，コンテナの隔離を破壊してしまう可能性があります．
     </para>
   </refsect1>
 

@@ -82,7 +82,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       user is privileged over the network namespace to which the interface
       will be attached.
       -->
-      このプログラムは，<filename>@LXC_USERNIC_CONF@</filename> という設定ファイルを参照して，呼び出したユーザが作成することができるインターフェースの数と，どのブリッジに接続するかを決定します．また，ユーザが作成したインターフェースの数を <filename>@LXC_USERNIC_DB@</filename> を使ってチェックします．これにより，呼び出したユーザが，インターフェースを割り当てるネットワーク名前空間上で特権を持つことが保証されます．
+      このプログラムは，<filename>@LXC_USERNIC_CONF@</filename> という設定ファイルを参照して，呼び出したユーザが作成することができるインターフェースの数と，どのブリッジに接続するかを決定します．
+      また，ユーザが作成したインターフェースの数を <filename>@LXC_USERNIC_DB@</filename> を使ってチェックします．
+      これにより，呼び出したユーザが，インターフェースを割り当てるネットワーク名前空間上で特権を持つことが保証されます．
     </para>
 
   </refsect1>
@@ -138,7 +140,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  The bridge to which to attach the network interface, for
 	  instance <filename>lxcbr0</filename>.
               -->
-            ネットワークインターフェースを接続するブリッジ．例えば <filename>lxcbr0</filename> のように指定します．
+            ネットワークインターフェースを接続するブリッジ．
+            例えば <filename>lxcbr0</filename> のように指定します．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -153,7 +156,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  The desired interface name in the container.  This will be
 	  <filename>eth0</filename> if unspecified.
           -->
-            コンテナ内に作られるインターフェースの名前．もし指定しない場合，<filename>eth0</filename> となります．
+            コンテナ内に作られるインターフェースの名前．
+            もし指定しない場合，<filename>eth0</filename> となります．
 	  </para>
 	</listitem>
       </varlistentry>

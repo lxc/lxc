@@ -69,7 +69,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	to report the name of lxc container associated
 	to reported processes.
       -->
-      <command>lxc-ps</command> は，プロセスと関連した lxc コンテナ名を報告する ps コマンドのラッパーです．
+      <command>lxc-ps</command> は，プロセスが属する lxc コンテナ名を報告する ps コマンドのラッパーです．
     </para>
     <para>
       <!--
@@ -161,7 +161,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
   </refsect1>
 
   <refsect1>
-    <title><!-- Example --></title>
+    <title><!-- Example -->例</title>
     <variablelist>
       <varlistentry>
 	<term>lxc-ps --name foo -- --forest</term>

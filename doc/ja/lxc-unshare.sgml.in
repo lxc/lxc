@@ -73,7 +73,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       the new task with fresh namespaces.  Apart from testing kernel
       regressions this should make no difference.
       -->
-      <command>lxc-unshare</command> はクローンされた名前空間の組の中でタスクを実行するのに使います．このコマンドは主にテスト目的で使います．このような名前であるにもかかわらず，このコマンドは常に，新しい名前空間で新しいタスクを作成するために unshare ではなく clone を使います．テスト中のカーネルの退行は別として，これで違いは生じないはずです．
+      <command>lxc-unshare</command> はクローンされた名前空間の組の中でタスクを実行するのに使います．
+      このコマンドは主にテスト目的で使います．
+      このような名前であるにもかかわらず，このコマンドは常に，新しい名前空間で新しいタスクを作成するために unshare ではなく clone を使います．
+      テスト中のカーネルの退行は別として，これで違いは生じないはずです．
     </para>
 
   </refsect1>
@@ -101,7 +104,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    container while retaining the other namespaces as those of the
 	    host.
             -->
-            アタッチする名前空間を，パイプでつなげたリストで指定します．例えば <replaceable>NETWORK|IPC</replaceable> のようにです．指定できる値は <replaceable>MOUNT</replaceable>，<replaceable>PID</replaceable>，<replaceable>UTSNAME</replaceable>，<replaceable>IPC</replaceable>，<replaceable>USER </replaceable>，<replaceable>NETWORK</replaceable> です．これにより，プロセスのコンテキストを変更することができます．例えば，コンテナのネットワーク名前空間だけを変更し，他の名前空間をホストのものと同じものに保ったままにするというようなことです．
+            アタッチする名前空間を，パイプでつなげたリストで指定します．
+            例えば <replaceable>NETWORK|IPC</replaceable> のようにです．
+            指定できる値は <replaceable>MOUNT</replaceable>，<replaceable>PID</replaceable>，<replaceable>UTSNAME</replaceable>，<replaceable>IPC</replaceable>，<replaceable>USER </replaceable>，<replaceable>NETWORK</replaceable> です．
+            これにより，プロセスのコンテキストを変更することができます．
+            例えば，コンテナのネットワーク名前空間だけを変更し，他の名前空間をホストのものと同じものに保ったままにするというようなことです．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -116,7 +123,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Specify a user which the new task should become.  This option is
 	    only valid if a user namespace is unshared.
             -->
-            新しいタスクを実行するユーザを指定します．このオプションはユーザ名前空間を unshare する時のみ有効です．
+            新しいタスクを実行するユーザを指定します．
+            このオプションはユーザ名前空間を unshare する時のみ有効です．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -159,7 +167,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         <programlisting>
           lxc-unshare -s "NETWORK|PID|MOUNT" /bin/bash
         </programlisting>
-        その結果起動するシェルは pid が 1 となり，ネットワークインターフェースがないでしょう．そのシェル上で /proc を再マウントした後
+        その結果起動するシェルは pid が 1 となり，ネットワークインターフェースがないでしょう．
+        そのシェル上で /proc を再マウントした後
         <programlisting>
           mount -t proc proc /proc
         </programlisting>
