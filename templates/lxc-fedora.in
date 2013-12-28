@@ -143,6 +143,37 @@ configure_fedora()
         )
     fi
 
+    # Deal with some dain bramage in the /etc/init.d/halt script.
+    # Trim it and make it our own and link it in before the default
+    # halt script so we can intercept it.  This also preventions package
+    # updates from interferring with our interferring with it.
+    #
+    # There's generally not much in the halt script that useful but what's
+    # in there from resetting the hardware clock down is generally very bad.
+    # So we just eliminate the whole bottom half of that script in making
+    # ourselves a copy.  That way a major update to the init scripts won't
+    # trash what we've set up.
+    #
+    # This is mostly for legacy distros since any modern systemd Fedora
+    # release will not have this script so we won't try to intercept it.
+    if [ -f ${rootfs_path}/etc/init.d/halt ]
+    then
+        sed -e '/hwclock/,$d' \
+            < ${rootfs_path}/etc/init.d/halt \
+            > ${rootfs_path}/etc/init.d/lxc-halt
+
+        echo '$command -f' >> ${rootfs_path}/etc/init.d/lxc-halt
+        chmod 755 ${rootfs_path}/etc/init.d/lxc-halt
+
+        # Link them into the rc directories...
+        (
+             cd ${rootfs_path}/etc/rc.d/rc0.d
+             ln -s ../init.d/lxc-halt S00lxc-halt
+             cd ${rootfs_path}/etc/rc.d/rc6.d
+             ln -s ../init.d/lxc-halt S00lxc-reboot
+        )
+    fi
+
     # configure the network using the dhcp
     cat <<EOF > ${rootfs_path}/etc/sysconfig/network-scripts/ifcfg-eth0
 DEVICE=eth0
