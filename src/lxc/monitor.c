@@ -299,7 +299,6 @@ int lxc_monitord_spawn(const char *lxcpath)
 		return 0;
 	}
 
-	process_unlock(); // we're no longer sharing
 	if (pipe(pipefd) < 0) {
 		SYSERROR("failed to create pipe");
 		exit(EXIT_FAILURE);
