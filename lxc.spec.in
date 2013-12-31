@@ -23,6 +23,17 @@
 %global with_python %{?_with_python: 1} %{?!_with_python: 0}
 %global with_lua %{?_with_lua: 1} %{?!_with_lua: 0}
 
+# Set with_systemd on distros that use it, so we can install the service
+# file, otherwise the sysvinit script will be installed
+%if 0%{?fedora} >= 14 || 0%{?rhel} >= 7 || 0%{?suse_version} >= 1210
+%global with_systemd 1
+%define init_script systemd
+BuildRequires: systemd-units
+%else
+%global with_systemd 0
+%define init_script sysv
+%endif
+
 # RPM needs alpha/beta/rc in Release: not Version: to ensure smooth
 # package upgrades from alpha->beta->rc->release. For more info see:
 # http://fedoraproject.org/wiki/Packaging%3aNamingGuidelines#NonNumericRelease
@@ -94,18 +105,14 @@ PATH=$PATH:/usr/sbin:/sbin %configure $args \
 %if %{with_python}
   --enable-python \
 %endif
-  --disable-rpath
+  --disable-rpath \
+  --with-init-script=%{init_script}
 make %{?_smp_mflags}
 
 %install
 rm -rf %{buildroot}
 make install DESTDIR=%{buildroot}
 find %{buildroot} -type f -name '*.la' -exec rm -f {} ';'
-
-# Install some of our systemd stuff...
-install -d -m 755 %{buildroot}/lib/systemd/system
-install -c -m 644 src/lxc/lxc.service %{buildroot}/lib/systemd/system
-install -c -m 755 src/lxc/lxc-devsetup %{buildroot}/%{_libexecdir}/%{name}
 
 %clean
 rm -rf %{buildroot}
@@ -136,7 +143,11 @@ rm -rf %{buildroot}
 %{_datadir}/lxc/*
 %config(noreplace) %{_sysconfdir}/lxc/*
 
-/lib/systemd/system/*
+%if %{with_systemd}
+%{_unitdir}/lxc.service
+%else
+%{_sysconfdir}/rc.d/init.d/lxc
+%endif
 
 %files libs
 %defattr(-,root,root)
@@ -147,7 +158,9 @@ rm -rf %{buildroot}
 %endif
 %{_localstatedir}/*
 %attr(4555,root,root) %{_libexecdir}/%{name}/lxc-init
+%if %{with_systemd}
 %attr(555,root,root) %{_libexecdir}/%{name}/lxc-devsetup
+%endif
 
 %if %{with_python}
 %{_libdir}/python3.3/site-packages/_lxc*

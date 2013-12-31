@@ -70,6 +70,50 @@ AC_MSG_RESULT([$with_distro])
 AM_CONDITIONAL([HAVE_DEBIAN], [test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu"])
 AM_CONDITIONAL([DISTRO_UBUNTU], [test "x$with_distro" = "xubuntu"])
 
+# Check for init system type
+AC_MSG_CHECKING([for init system type])
+AC_ARG_WITH([init-script],
+	    [AC_HELP_STRING([--with-init-script@<:@=TYPE@:>@],
+			    [Type of init script to install: sysv, systemd, upstart,
+			     distro, none @<:@default=distro@:>@])],[],[with_init_script=distro])
+case "$with_init_script" in
+	sysv)
+		init_script=sysv
+		;;
+	systemd)
+		init_script=systemd
+		;;
+	upstart)
+		init_script=upstart
+		;;
+	none)
+		;;
+	distro)
+		case $with_distro in
+			fedora)
+				init_script=systemd
+				;;
+			redhat|centos|oracle|oracleserver)
+				init_script=sysv
+				;;
+			ubuntu)
+				init_script=upstart
+				;;
+			*)
+				echo -n "Linux distribution init system unknown, defaulting to sysv"
+				init_script=sysv
+				;;
+		esac
+		;;
+	*)
+		AC_MSG_ERROR([Unknown init system type $with_init_script])
+		;;
+esac
+AM_CONDITIONAL([INIT_SCRIPT_SYSV], test "$init_script" = "sysv")
+AM_CONDITIONAL([INIT_SCRIPT_SYSTEMD], test "$init_script" = "systemd")
+AM_CONDITIONAL([INIT_SCRIPT_UPSTART], test "$init_script" = "upstart")
+AC_MSG_RESULT($init_script)
+
 # Allow disabling rpath
 AC_ARG_ENABLE([rpath],
 	[AC_HELP_STRING([--enable-rpath], [set rpath in executables [default=no]])],
@@ -610,6 +654,7 @@ cat << EOF
 Environment:
  - compiler: $CC
  - distribution: $with_distro
+ - init script type: $init_script
  - rpath: $enable_rpath
  - GnuTLS: $enable_gnutls
 

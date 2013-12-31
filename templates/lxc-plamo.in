@@ -145,7 +145,7 @@ install_plamo() {
       return 1
     fi
     return 0
-  ) 200> @LOCALSTATEDIR@/lock/subsys/lxc
+  ) 200> @LOCALSTATEDIR@/lock/subsys/lxc-plamo
 }
 
 configure_plamo() {
@@ -306,7 +306,7 @@ cleanup() {
     rm -rf --one-file-system $dlcache $rtcache || return 1
     echo "Done."
     return 0
-  ) 200> @LOCALSTATEDIR@/lock/subsys/lxc
+  ) 200> @LOCALSTATEDIR@/lock/subsys/lxc-plamo
 }
 
 usage() {
