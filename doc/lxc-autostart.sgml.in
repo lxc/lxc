@@ -103,8 +103,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                 </term>
                 <listitem>
                     <para>
-                        Only request a clean shutdown, do not kill the
-                        container tasks if the clean shutdown fails.
+                        Request a clean shutdown. If a
+                        <optional>-t timeout</optional> greater than 0 is
+                        given and the container has not shut down within
+                        this period, it will be killed as with the
+                        <optional>-k kill</optional> option.
                     </para>
                 </listitem>
             </varlistentry>
