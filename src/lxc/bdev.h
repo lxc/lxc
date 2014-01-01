@@ -62,6 +62,7 @@ struct bdev_ops {
 	int (*clone_paths)(struct bdev *orig, struct bdev *new, const char *oldname,
 			const char *cname, const char *oldpath, const char *lxcpath,
 			int snap, unsigned long newsize);
+	bool can_snapshot;
 };
 
 /*
@@ -99,7 +100,7 @@ struct bdev *bdev_init(const char *src, const char *dst, const char *data);
 
 struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 			const char *oldpath, const char *lxcpath, const char *bdevtype,
-			int snap, const char *bdevdata, unsigned long newsize,
+			int flags, const char *bdevdata, unsigned long newsize,
 			int *needs_rdep);
 struct bdev *bdev_create(const char *dest, const char *type,
 			const char *cname, struct bdev_specs *specs);

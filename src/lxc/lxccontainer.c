@@ -2282,7 +2282,7 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 	int need_rdep;
 
 	bdev = bdev_copy(c0->lxc_conf->rootfs.path, c0->name, c->name,
-			c0->config_path, c->config_path, newtype, !!(flags & LXC_CLONE_SNAPSHOT),
+			c0->config_path, c->config_path, newtype, flags,
 			bdevdata, newsize, &need_rdep);
 	if (!bdev) {
 		ERROR("Error copying storage");
@@ -2624,7 +2624,12 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	if (ret < 0 || ret >= 20)
 		return -1;
 
-	flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_KEEPMACADDR | LXC_CLONE_KEEPNAME;
+	/*
+	 * We pass LXC_CLONE_SNAPSHOT to make sure that a rdepends file entry is
+	 * created in the original container
+	 */
+	flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_KEEPMACADDR | LXC_CLONE_KEEPNAME |
+		LXC_CLONE_KEEPBDEVTYPE | LXC_CLONE_MAYBE_SNAPSHOT;
 	c2 = c->clone(c, newname, snappath, flags, NULL, NULL, 0, NULL);
 	if (!c2) {
 		ERROR("clone of %s:%s failed\n", c->config_path, c->name);

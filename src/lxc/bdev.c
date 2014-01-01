@@ -476,6 +476,7 @@ static const struct bdev_ops dir_ops = {
 	.clone_paths = &dir_clonepaths,
 	.destroy = &dir_destroy,
 	.create = &dir_create,
+	.can_snapshot = false,
 };
 
 
@@ -733,6 +734,7 @@ static const struct bdev_ops zfs_ops = {
 	.clone_paths = &zfs_clonepaths,
 	.destroy = &zfs_destroy,
 	.create = &zfs_create,
+	.can_snapshot = true,
 };
 
 //
@@ -1132,6 +1134,7 @@ static const struct bdev_ops lvm_ops = {
 	.clone_paths = &lvm_clonepaths,
 	.destroy = &lvm_destroy,
 	.create = &lvm_create,
+	.can_snapshot = true,
 };
 
 //
@@ -1429,6 +1432,7 @@ static const struct bdev_ops btrfs_ops = {
 	.clone_paths = &btrfs_clonepaths,
 	.destroy = &btrfs_destroy,
 	.create = &btrfs_create,
+	.can_snapshot = true,
 };
 
 //
@@ -1699,6 +1703,7 @@ static const struct bdev_ops loop_ops = {
 	.clone_paths = &loop_clonepaths,
 	.destroy = &loop_destroy,
 	.create = &loop_create,
+	.can_snapshot = false,
 };
 
 //
@@ -1932,6 +1937,7 @@ static const struct bdev_ops overlayfs_ops = {
 	.clone_paths = &overlayfs_clonepaths,
 	.destroy = &overlayfs_destroy,
 	.create = &overlayfs_create,
+	.can_snapshot = true,
 };
 
 static const struct bdev_type bdevs[] = {
@@ -2012,11 +2018,14 @@ struct bdev *bdev_init(const char *src, const char *dst, const char *data)
  */
 struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 			const char *oldpath, const char *lxcpath, const char *bdevtype,
-			int snap, const char *bdevdata, unsigned long newsize,
+			int flags, const char *bdevdata, unsigned long newsize,
 			int *needs_rdep)
 {
 	struct bdev *orig, *new;
 	pid_t pid;
+	bool snap = flags & LXC_CLONE_SNAPSHOT;
+	bool maybe_snap = flags & LXC_CLONE_MAYBE_SNAPSHOT;
+	bool keepbdevtype = flags & LXC_CLONE_KEEPBDEVTYPE;
 
 	/* if the container name doesn't show up in the rootfs path, then
 	 * we don't know how to come up with a new name
@@ -2050,9 +2059,17 @@ struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 	}
 
 	/*
+	 * special case for snapshot - if caller requested maybe_snapshot and
+	 * keepbdevtype and backing store is directory, then proceed with a copy
+	 * clone rather than returning error
+	 */
+	if (maybe_snap && keepbdevtype && !bdevtype && !orig->ops->can_snapshot)
+		snap = false;
+
+	/*
 	 * If newtype is NULL and snapshot is set, then use overlayfs
 	 */
-	if (!bdevtype && snap && strcmp(orig->type , "dir") == 0)
+	if (!bdevtype && !keepbdevtype && snap && strcmp(orig->type , "dir") == 0)
 		bdevtype = "overlayfs";
 
 	*needs_rdep = 0;
