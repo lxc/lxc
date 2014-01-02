@@ -22,6 +22,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <stdint.h>
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -37,37 +38,52 @@
 
 lxc_log_define(lxc_clone, lxc);
 
-static unsigned long get_fssize(char *s)
+/* we pass fssize in bytes */
+static uint64_t get_fssize(char *s)
 {
-       unsigned long ret;
-       char *end;
+	uint64_t ret;
+	char *end;
 
-       ret = strtoul(s, &end, 0);
-       if (end == s)
-               return 0;
-       while (isblank(*end))
-               end++;
-       if (!(*end))
-               return ret;
-       if (*end == 'g' || *end == 'G')
-               ret *= 1000000000;
-       else if (*end == 'm' || *end == 'M')
-               ret *= 1000000;
-       else if (*end == 'k' || *end == 'K')
-               ret *= 1000;
-       return ret;
+	ret = strtoull(s, &end, 0);
+	if (end == s)
+	{
+		fprintf(stderr, "Invalid blockdev size '%s', using default size\n", s);
+		return 0;
+	}
+	while (isblank(*end))
+		end++;
+	if (*end == '\0')
+		ret *= 1024ULL * 1024ULL; // MB by default
+	else if (*end == 'b' || *end == 'B')
+		ret *= 1ULL;
+	else if (*end == 'k' || *end == 'K')
+		ret *= 1024ULL;
+	else if (*end == 'm' || *end == 'M')
+		ret *= 1024ULL * 1024ULL;
+	else if (*end == 'g' || *end == 'G')
+		ret *= 1024ULL * 1024ULL * 1024ULL;
+	else if (*end == 't' || *end == 'T')
+		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
+	else
+	{		
+		fprintf(stderr, "Invalid blockdev unit size '%c' in '%s', using default size\n", *end, s);
+		return 0;
+	}
+	return ret;
 }
 
 static void usage(const char *me)
 {
-	printf("Usage: %s [-s] [-B backingstore] [-L size] [-K] [-M] [-H]\n", me);
+	printf("Usage: %s [-s] [-B backingstore] [-L size[unit]] [-K] [-M] [-H]\n", me);
 	printf("          [-p lxcpath] [-P newlxcpath] orig new\n");
 	printf("\n");
 	printf("  -s: snapshot rather than copy\n");
 	printf("  -B: use specified new backingstore.  Default is the same as\n");
 	printf("      the original.  Options include btrfs, lvm, overlayfs, \n");
 	printf("      dir and loop\n");
-	printf("  -L: for blockdev-backed backingstore, use specified size\n");
+	printf("  -L: for blockdev-backed backingstore, use specified size * specified\n");
+	printf("      unit. Default size is the size of the source blockdev, default\n");
+	printf("      unit is MB\n");
 	printf("  -K: Keep name - do not change the container name\n");
 	printf("  -M: Keep macaddr - do not choose a random new mac address\n");
 	printf("  -p: use container orig from custom lxcpath\n");
@@ -96,7 +112,7 @@ int main(int argc, char *argv[])
 	struct lxc_container *c1 = NULL, *c2 = NULL;
 	int snapshot = 0, keepname = 0, keepmac = 0;
 	int flags = 0, option_index;
-	long newsize = 0;
+	uint64_t newsize = 0;
 	char *bdevtype = NULL, *lxcpath = NULL, *newpath = NULL, *fstype = NULL;
 	char *orig = NULL, *new = NULL, *vgname = NULL;
 	char **args = NULL;

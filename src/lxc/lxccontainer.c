@@ -33,6 +33,7 @@
 #include <sched.h>
 #include <arpa/inet.h>
 #include <libgen.h>
+#include <stdint.h>
 
 #include <lxc/lxccontainer.h>
 #include <lxc/version.h>
@@ -2276,7 +2277,7 @@ static bool add_rdepends(struct lxc_container *c, struct lxc_container *c0)
 }
 
 static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
-		const char *newtype, int flags, const char *bdevdata, unsigned long newsize)
+		const char *newtype, int flags, const char *bdevdata, uint64_t newsize)
 {
 	struct bdev *bdev;
 	int need_rdep;
@@ -2415,7 +2416,7 @@ static int create_file_dirname(char *path)
 
 static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 		const char *lxcpath, int flags,
-		const char *bdevtype, const char *bdevdata, unsigned long newsize,
+		const char *bdevtype, const char *bdevdata, uint64_t newsize,
 		char **hookargs)
 {
 	struct lxc_container *c2 = NULL;

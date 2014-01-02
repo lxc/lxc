@@ -25,6 +25,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <stdint.h>
 
 #include "lxc.h"
 #include "log.h"
@@ -34,25 +35,36 @@
 
 lxc_log_define(lxc_create, lxc);
 
-/* we pass fssize in bytes */
-static unsigned long get_fssize(char *s)
+static uint64_t get_fssize(char *s)
 {
-	unsigned long ret;
+	uint64_t ret;
 	char *end;
 
-	ret = strtoul(s, &end, 0);
+	ret = strtoull(s, &end, 0);
 	if (end == s)
+	{
+		fprintf(stderr, "Invalid blockdev size '%s', using default size\n", s);
 		return 0;
+	}
 	while (isblank(*end))
 		end++;
-	if (!(*end))
-		return ret;
-	if (*end == 'g' || *end == 'G')
-		ret *= 1000000000;
-	else if (*end == 'm' || *end == 'M')
-		ret *= 1000000;
+	if (*end == '\0')
+		ret *= 1024ULL * 1024ULL; // MB by default
+	else if (*end == 'b' || *end == 'B')
+		ret *= 1ULL;
 	else if (*end == 'k' || *end == 'K')
-		ret *= 1000;
+		ret *= 1024ULL;
+	else if (*end == 'm' || *end == 'M')
+		ret *= 1024ULL * 1024ULL;
+	else if (*end == 'g' || *end == 'G')
+		ret *= 1024ULL * 1024ULL * 1024ULL;
+	else if (*end == 't' || *end == 'T')
+		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
+	else
+	{		
+		fprintf(stderr, "Invalid blockdev unit size '%c' in '%s', using default size\n", *end, s);
+		return 0;
+	}
 	return ret;
 }
 
@@ -130,16 +142,16 @@ Options :\n\
   --lvname=LVNAME    Use LVM lv name LVNAME\n\
                      (Default: container name)\n\
   --vgname=VG        Use LVM vg called VG\n\
-                     (Default: lxc))\n\
+                     (Default: lxc)\n\
   --thinpool=TP      Use LVM thin pool called TP\n\
-                     (Default: lxc))\n\
+                     (Default: lxc)\n\
   --fstype=TYPE      Create fstype TYPE\n\
-                     (Default: ext3))\n\
-  --fssize=SIZE      Create filesystem of size SIZE\n\
-                     (Default: 1G))\n\
+                     (Default: ext3)\n\
+  --fssize=SIZE[U]   Create filesystem of size SIZE * unit U (bBkKmMgGtT)\n\
+                     (Default: 1G, default unit: M)\n\
   --dir=DIR          Place rootfs directory under DIR\n\
   --zfsroot=PATH     Create zfs under given zfsroot\n\
-                     (Default: tank/lxc))\n",
+                     (Default: tank/lxc)\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,

@@ -29,6 +29,7 @@
  */
 
 #include "config.h"
+#include <stdint.h>
 #include <lxc/lxccontainer.h>
 
 struct bdev;
@@ -38,7 +39,7 @@ struct bdev;
  */
 struct bdev_specs {
 	char *fstype;
-	unsigned long fssize;  // fs size in bytes
+	uint64_t fssize;  // fs size in bytes
 	struct {
 		char *zfsroot;
 	} zfs;
@@ -61,7 +62,7 @@ struct bdev_ops {
 	/* given original mount, rename the paths for cloned container */
 	int (*clone_paths)(struct bdev *orig, struct bdev *new, const char *oldname,
 			const char *cname, const char *oldpath, const char *lxcpath,
-			int snap, unsigned long newsize);
+			int snap, uint64_t newsize);
 	bool can_snapshot;
 };
 
@@ -100,7 +101,7 @@ struct bdev *bdev_init(const char *src, const char *dst, const char *data);
 
 struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 			const char *oldpath, const char *lxcpath, const char *bdevtype,
-			int flags, const char *bdevdata, unsigned long newsize,
+			int flags, const char *bdevdata, uint64_t newsize,
 			int *needs_rdep);
 struct bdev *bdev_create(const char *dest, const char *type,
 			const char *cname, struct bdev_specs *specs);

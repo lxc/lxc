@@ -29,6 +29,8 @@
  */
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sched.h>
@@ -58,6 +60,9 @@
 #define LO_FLAGS_AUTOCLEAR 4
 #endif
 
+#define DEFAULT_FS_SIZE 1073741824
+#define DEFAULT_FSTYPE "ext3"
+
 lxc_log_define(bdev, lxc);
 
 static int do_rsync(const char *src, const char *dest)
@@ -86,9 +91,9 @@ static int do_rsync(const char *src, const char *dest)
 }
 
 /*
- * return block size of dev->src
+ * return block size of dev->src in units of bytes
  */
-static int blk_getsize(struct bdev *bdev, unsigned long *size)
+static int blk_getsize(struct bdev *bdev, uint64_t *size)
 {
 	int fd, ret;
 	char *path = bdev->src;
@@ -99,7 +104,8 @@ static int blk_getsize(struct bdev *bdev, unsigned long *size)
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
 		return -1;
-	ret = ioctl(fd, BLKGETSIZE64, size);
+
+	ret = ioctl(fd, BLKGETSIZE64, size); // size of device in bytes
 	close(fd);
 	return ret;
 }
@@ -412,7 +418,7 @@ static char *dir_new_path(char *src, const char *oldname, const char *name,
  */
 static int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		unsigned long newsize)
+		uint64_t newsize)
 {
 	int len, ret;
 
@@ -625,7 +631,7 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 
 static int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		unsigned long newsize)
+		uint64_t newsize)
 {
 	int len, ret;
 
@@ -843,7 +849,7 @@ static int lvm_is_thin_pool(const char *path)
  * a valid thin pool, and if so, we'll create the requested lv from that thin
  * pool.
  */
-static int do_lvm_create(const char *path, unsigned long size, const char *thinpool)
+static int do_lvm_create(const char *path, uint64_t size, const char *thinpool)
 {
 	int ret, pid, len;
 	char sz[24], *pathdup, *vg, *lv, *tp = NULL;
@@ -855,8 +861,8 @@ static int do_lvm_create(const char *path, unsigned long size, const char *thinp
 	if (pid > 0)
 		return wait_for_pid(pid);
 
-	// lvcreate default size is in M, not bytes.
-	ret = snprintf(sz, 24, "%lu", size/1000000);
+	// specify bytes to lvcreate
+	ret = snprintf(sz, 24, "%"PRIu64"b", size);
 	if (ret < 0 || ret >= 24)
 		exit(1);
 
@@ -902,7 +908,7 @@ static int do_lvm_create(const char *path, unsigned long size, const char *thinp
 	exit(1);
 }
 
-static int lvm_snapshot(const char *orig, const char *path, unsigned long size)
+static int lvm_snapshot(const char *orig, const char *path, uint64_t size)
 {
 	int ret, pid;
 	char sz[24], *pathdup, *lv;
@@ -914,8 +920,8 @@ static int lvm_snapshot(const char *orig, const char *path, unsigned long size)
 	if (pid > 0)
 		return wait_for_pid(pid);
 
-	// lvcreate default size is in M, not bytes.
-	ret = snprintf(sz, 24, "%lu", size/1000000);
+	// specify bytes to lvcreate
+	ret = snprintf(sz, 24, "%"PRIu64"b", size);
 	if (ret < 0 || ret >= 24)
 		exit(1);
 
@@ -959,10 +965,10 @@ static int is_blktype(struct bdev *b)
 
 static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		unsigned long newsize)
+		uint64_t newsize)
 {
 	char fstype[100];
-	unsigned long size = newsize;
+	uint64_t size = newsize;
 	int len, ret;
 
 	if (!orig->src || !orig->dest)
@@ -1017,7 +1023,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 	} else {
 		sprintf(fstype, "ext3");
 		if (!newsize)
-			size = 1000000000; // default to 1G
+			size = DEFAULT_FS_SIZE;
 	}
 
 	if (snap) {
@@ -1053,13 +1059,11 @@ static int lvm_destroy(struct bdev *orig)
 	return wait_for_pid(pid);
 }
 
-#define DEFAULT_FS_SIZE 1024000000
-#define DEFAULT_FSTYPE "ext3"
 static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 			struct bdev_specs *specs)
 {
 	const char *vg, *thinpool, *fstype, *lv = n;
-	unsigned long sz;
+	uint64_t sz;
 	int ret, len;
 
 	if (!specs)
@@ -1092,7 +1096,7 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 		sz = DEFAULT_FS_SIZE;
 
 	if (do_lvm_create(bdev->src, sz, thinpool) < 0) {
-		ERROR("Error creating new lvm blockdev %s size %lu", bdev->src, sz);
+		ERROR("Error creating new lvm blockdev %s size %"PRIu64" bytes", bdev->src, sz);
 		return -1;
 	}
 
@@ -1322,7 +1326,7 @@ out:
 
 static int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		unsigned long newsize)
+		uint64_t newsize)
 {
 	if (!orig->dest || !orig->src)
 		return -1;
@@ -1535,7 +1539,7 @@ static int loop_umount(struct bdev *bdev)
 	return ret;
 }
 
-static int do_loop_create(const char *path, unsigned long size, const char *fstype)
+static int do_loop_create(const char *path, uint64_t size, const char *fstype)
 {
 	int fd, ret;
 	// create the new loopback file.
@@ -1574,10 +1578,10 @@ static int do_loop_create(const char *path, unsigned long size, const char *fsty
  */
 static int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		unsigned long newsize)
+		uint64_t newsize)
 {
 	char fstype[100];
-	unsigned long size = newsize;
+	uint64_t size = newsize;
 	int len, ret;
 	char *srcdev;
 
@@ -1626,7 +1630,7 @@ static int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldn
 	} else {
 		sprintf(fstype, "%s", DEFAULT_FSTYPE);
 		if (!newsize)
-			size = DEFAULT_FS_SIZE; // default to 1G
+			size = DEFAULT_FS_SIZE;
 	}
 	return do_loop_create(srcdev, size, fstype);
 }
@@ -1635,7 +1639,7 @@ static int loop_create(struct bdev *bdev, const char *dest, const char *n,
 			struct bdev_specs *specs)
 {
 	const char *fstype;
-	unsigned long sz;
+	uint64_t sz;
 	int ret, len;
 	char *srcdev;
 
@@ -1759,7 +1763,7 @@ static int overlayfs_umount(struct bdev *bdev)
 
 static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		unsigned long newsize)
+		uint64_t newsize)
 {
 	if (!snap) {
 		ERROR("overlayfs is only for snapshot clones");
@@ -2006,7 +2010,7 @@ struct bdev *bdev_init(const char *src, const char *dst, const char *data)
  */
 struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 			const char *oldpath, const char *lxcpath, const char *bdevtype,
-			int flags, const char *bdevdata, unsigned long newsize,
+			int flags, const char *bdevdata, uint64_t newsize,
 			int *needs_rdep)
 {
 	struct bdev *orig, *new;
