@@ -135,10 +135,9 @@ AM_CFLAGS += -DHAVE_SECCOMP
 liblxc_so_SOURCES += seccomp.c
 endif
 
-liblxc_so_CFLAGS = -fPIC -DPIC $(AM_CFLAGS) -pthread
+liblxc_so_CFLAGS = -fPIC -DPIC $(AM_CFLAGS)
 
 liblxc_so_LDFLAGS = \
-	-pthread \
 	-shared \
 	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,$(VERSION)))
 

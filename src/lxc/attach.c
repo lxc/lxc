@@ -497,6 +497,7 @@ char *lxc_attach_getpwshell(uid_t uid)
 			NULL
 		};
 
+		process_unlock(); // we're no longer sharing
 		close(pipes[0]);
 
 		/* we want to capture stdout */
@@ -789,6 +790,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		return -1;
 	}
 
+	process_unlock(); // we're no longer sharing
 	/* first subprocess begins here, we close the socket that is for the
 	 * initial thread
 	 */

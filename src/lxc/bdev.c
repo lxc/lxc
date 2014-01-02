@@ -73,6 +73,7 @@ static int do_rsync(const char *src, const char *dest)
 	if (pid > 0)
 		return wait_for_pid(pid);
 
+	process_unlock(); // we're no longer sharing
 	l = strlen(src) + 2;
 	s = malloc(l);
 	if (!s)
@@ -197,6 +198,7 @@ static int do_mkfs(const char *path, const char *fstype)
 	if (pid > 0)
 		return wait_for_pid(pid);
 
+	process_unlock(); // we're no longer sharing
 	// If the file is not a block device, we don't want mkfs to ask
 	// us about whether to proceed.
 	close(0);
@@ -281,6 +283,7 @@ static int detect_fs(struct bdev *bdev, char *type, int len)
 		return ret;
 	}
 
+	process_unlock(); // we're no longer sharing
 	if (unshare(CLONE_NEWNS) < 0)
 		exit(1);
 
@@ -572,6 +575,7 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 		if (!pid) {
 			char dev[MAXPATHLEN];
 
+			process_unlock(); // we're no longer sharing
 			ret = snprintf(dev, MAXPATHLEN, "%s/%s", zfsroot, nname);
 			if (ret < 0  || ret >= MAXPATHLEN)
 				exit(1);
@@ -595,6 +599,7 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
+			process_unlock(); // we're no longer sharing
 			execlp("zfs", "zfs", "destroy", path1, NULL);
 			exit(1);
 		}
@@ -605,6 +610,7 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
+			process_unlock(); // we're no longer sharing
 			execlp("zfs", "zfs", "snapshot", path1, NULL);
 			exit(1);
 		}
@@ -615,6 +621,7 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
+			process_unlock(); // we're no longer sharing
 			execlp("zfs", "zfs", "clone", option, path1, path2, NULL);
 			exit(1);
 		}
@@ -665,6 +672,7 @@ static int zfs_destroy(struct bdev *orig)
 	if (pid)
 		return wait_for_pid(pid);
 
+	process_unlock(); // we're no longer sharing
 	if (!zfs_list_entry(orig->src, output, MAXPATHLEN)) {
 		ERROR("Error: zfs entry for %s not found", orig->src);
 		return -1;
@@ -709,6 +717,7 @@ static int zfs_create(struct bdev *bdev, const char *dest, const char *n,
 	if (pid)
 		return wait_for_pid(pid);
 
+	process_unlock(); // we're no longer sharing
 	char dev[MAXPATHLEN];
 	ret = snprintf(dev, MAXPATHLEN, "%s/%s", zfsroot, n);
 	if (ret < 0  || ret >= MAXPATHLEN)
@@ -853,6 +862,7 @@ static int do_lvm_create(const char *path, unsigned long size, const char *thinp
 	if (pid > 0)
 		return wait_for_pid(pid);
 
+	process_unlock(); // we're no longer sharing
 	// lvcreate default size is in M, not bytes.
 	ret = snprintf(sz, 24, "%lu", size/1000000);
 	if (ret < 0 || ret >= 24)
@@ -912,6 +922,7 @@ static int lvm_snapshot(const char *orig, const char *path, unsigned long size)
 	if (pid > 0)
 		return wait_for_pid(pid);
 
+	process_unlock(); // we're no longer sharing
 	// lvcreate default size is in M, not bytes.
 	ret = snprintf(sz, 24, "%lu", size/1000000);
 	if (ret < 0 || ret >= 24)
@@ -1045,6 +1056,7 @@ static int lvm_destroy(struct bdev *orig)
 	if ((pid = fork()) < 0)
 		return -1;
 	if (!pid) {
+		process_unlock(); // we're no longer sharing
 		execlp("lvremove", "lvremove", "-f", orig->src, NULL);
 		exit(1);
 	}
@@ -2080,6 +2092,7 @@ struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 		return new;
 	}
 
+	process_unlock(); // we're no longer sharing
 	if (unshare(CLONE_NEWNS) < 0) {
 		SYSERROR("unshare CLONE_NEWNS");
 		exit(1);
