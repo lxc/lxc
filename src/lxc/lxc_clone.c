@@ -50,17 +50,13 @@ static unsigned long get_fssize(char *s)
        if (!(*end))
                return ret;
        if (*end == 'g' || *end == 'G')
-               ret *= 1000000000;
-       else if (*end == 'm' || *end == 'M')
-               ret *= 1000000;
-       else if (*end == 'k' || *end == 'K')
                ret *= 1000;
        return ret;
 }
 
 static void usage(const char *me)
 {
-	printf("Usage: %s [-s] [-B backingstore] [-L size] [-K] [-M] [-H]\n", me);
+	printf("Usage: %s [-s] [-B backingstore] [-L size[MG]] [-K] [-M] [-H]\n", me);
 	printf("          [-p lxcpath] [-P newlxcpath] orig new\n");
 	printf("\n");
 	printf("  -s: snapshot rather than copy\n");
