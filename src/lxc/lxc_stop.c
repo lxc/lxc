@@ -34,6 +34,7 @@
 #include "utils.h"
 
 #define OPT_NO_LOCK OPT_USAGE+1
+#define OPT_NO_KILL OPT_USAGE+2
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
@@ -42,8 +43,8 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'W': args->nowait = 1; break;
 	case 't': args->timeout = atoi(arg); break;
 	case 'k': args->hardstop = 1; break;
-	case 's': args->shutdown = 1; break;
 	case OPT_NO_LOCK: args->nolock = 1; break;
+	case OPT_NO_KILL: args->nokill = 1; break;
 	}
 	return 0;
 }
@@ -53,7 +54,7 @@ static const struct option my_longopts[] = {
 	{"nowait", no_argument, 0, 'W'},
 	{"timeout", required_argument, 0, 't'},
 	{"kill", no_argument, 0, 'k'},
-	{"shutdown", no_argument, 0, 's'},
+	{"no-kill", no_argument, 0, OPT_NO_KILL},
 	{"no-lock", no_argument, 0, OPT_NO_LOCK},
 	LXC_COMMON_OPTIONS
 };
@@ -72,7 +73,7 @@ Options :\n\
   -t, --timeout=T   wait T seconds before hard-stopping\n\
   -k, --kill        kill container rather than request clean shutdown\n\
       --nolock      Avoid using API locks\n\
-  -s, --shutdown    Only request clean shutdown, don't later force kill\n",
+      --nokill      Only request clean shutdown, don't force kill after timeout\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
@@ -175,7 +176,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (my_args.shutdown)
+	if (my_args.nokill)
 		my_args.timeout = 0;
 
 	s = c->shutdown(c, my_args.timeout);

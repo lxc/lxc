@@ -54,7 +54,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-r</arg>
       <arg choice="opt">-t <replaceable>timeout</replaceable></arg>
       <arg choice="opt">-k</arg>
-      <arg choice="opt">-s</arg>
+      <arg choice="opt">--nokill</arg>
+      <arg choice="opt">--nolock</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -68,11 +69,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       the container), wait 60 seconds for the container to exit, and
       returns.  If the container fails to cleanly exit, then after 60
       seconds the container will be sent the
-      <command>lxc.stopsignal</command> to force it to shut down.
+      <command>lxc.stopsignal</command> to force it to shut down. If
+      <command>lxc.stopsignal</command> is not specified, the signal sent is
+      SIGKILL.
     </para>
 	<para>
-	The <optional>-W</optional>, <optional>-r</optional>, <optional>-s</optional>
-	and <optional>-k</optional> options specify the action to perform.
+	The <optional>-W</optional>, <optional>-r</optional>,
+	<optional>-k</optional> and <optional>--nokill</optional>
+	options specify the action to perform.
 	<optional>-W</optional> indicates that after performing the specified
 	action, <command>lxc-stop</command> should immediately exit, while
 	<optional>-t TIMEOUT</optional> specifies the maximum amount of time
@@ -97,18 +101,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
     <varlistentry>
 	<term>
-	  <option>-s,--shutdown </option>
-	</term>
-	<listitem>
-	  <para>
-	    Only request a clean shutdown, do not kill the container tasks if the
-		clean shutdown fails.
-	  </para>
-	</listitem>
-	</varlistentry>
-
-    <varlistentry>
-	<term>
 	  <option>-k,--kill </option>
 	</term>
 	<listitem>
@@ -116,6 +108,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         Rather than requesting a clean shutdown of the container, explicitly
         kill all tasks in the container.  This is the legacy
         <command>lxc-stop</command> behavior.
+	  </para>
+	</listitem>
+	</varlistentry>
+
+    <varlistentry>
+	<term>
+	  <option>--nokill</option>
+	</term>
+	<listitem>
+	  <para>
+	    Only request a clean shutdown, do not kill the container tasks if the
+		clean shutdown fails.
 	  </para>
 	</listitem>
 	</varlistentry>

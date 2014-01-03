@@ -65,16 +65,19 @@ struct lxc_arguments {
 	int ttynum;
 	char escape;
 
-	/* for lxc-wait and lxc-shutdown */
+	/* for lxc-wait */
 	char *states;
 	long timeout;
-	int nowait;
-	int reboot;
-	int hardstop;
+
+	/* for lxc-autostart */
 	int shutdown;
 
 	/* for lxc-stop */
+	int hardstop;
+	int nokill;
 	int nolock;
+	int nowait;
+	int reboot;
 
 	/* for lxc-destroy */
 	int force;
