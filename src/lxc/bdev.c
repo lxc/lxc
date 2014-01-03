@@ -87,7 +87,7 @@ static int do_rsync(const char *src, const char *dest)
 }
 
 /*
- * return block size of dev->src
+ * return block size of dev->src in units of megabytes (1024K)
  */
 static int blk_getsize(struct bdev *bdev, unsigned long *size)
 {
@@ -100,7 +100,10 @@ static int blk_getsize(struct bdev *bdev, unsigned long *size)
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
 		return -1;
-	ret = ioctl(fd, BLKGETSIZE64, size);
+
+	ret = ioctl(fd, BLKGETSIZE, size); // units of 512 bytes
+	*size /= 2; // units of 1024 bytes
+	*size /= 1024; // units of Mbytes (1024K)
 	close(fd);
 	return ret;
 }
@@ -865,8 +868,8 @@ static int do_lvm_create(const char *path, unsigned long size, const char *thinp
 		return wait_for_pid(pid);
 
 	process_unlock(); // we're no longer sharing
-	// lvcreate default size is in M, not bytes.
-	ret = snprintf(sz, 24, "%lu", size/1000000);
+	// lvcreate default size is in M, which is what we're passing
+	ret = snprintf(sz, 24, "%lu", size);
 	if (ret < 0 || ret >= 24)
 		exit(1);
 
@@ -925,8 +928,8 @@ static int lvm_snapshot(const char *orig, const char *path, unsigned long size)
 		return wait_for_pid(pid);
 
 	process_unlock(); // we're no longer sharing
-	// lvcreate default size is in M, not bytes.
-	ret = snprintf(sz, 24, "%lu", size/1000000);
+	// lvcreate default size is in M, which is what we're passing
+	ret = snprintf(sz, 24, "%lu", size);
 	if (ret < 0 || ret >= 24)
 		exit(1);
 
@@ -1028,7 +1031,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 	} else {
 		sprintf(fstype, "ext3");
 		if (!newsize)
-			size = 1000000000; // default to 1G
+			size = 1024; // default to 1G
 	}
 
 	if (snap) {
@@ -1065,7 +1068,7 @@ static int lvm_destroy(struct bdev *orig)
 	return wait_for_pid(pid);
 }
 
-#define DEFAULT_FS_SIZE 1024000000
+#define DEFAULT_FS_SIZE 1024
 #define DEFAULT_FSTYPE "ext3"
 static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 			struct bdev_specs *specs)
@@ -1098,13 +1101,13 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	if (ret < 0 || ret >= len)
 		return -1;
 
-	// fssize is in bytes.
+	// fssize is in megabytes.
 	sz = specs->fssize;
 	if (!sz)
 		sz = DEFAULT_FS_SIZE;
 
 	if (do_lvm_create(bdev->src, sz, thinpool) < 0) {
-		ERROR("Error creating new lvm blockdev %s size %lu", bdev->src, sz);
+		ERROR("Error creating new lvm blockdev %s size %luMB", bdev->src, sz);
 		return -1;
 	}
 

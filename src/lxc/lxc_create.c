@@ -48,11 +48,7 @@ static unsigned long get_fssize(char *s)
 	if (!(*end))
 		return ret;
 	if (*end == 'g' || *end == 'G')
-		ret *= 1000000000;
-	else if (*end == 'm' || *end == 'M')
-		ret *= 1000000;
-	else if (*end == 'k' || *end == 'K')
-		ret *= 1000;
+		ret *= 1024;
 	return ret;
 }
 
@@ -135,7 +131,7 @@ Options :\n\
                      (Default: lxc))\n\
   --fstype=TYPE      Create fstype TYPE\n\
                      (Default: ext3))\n\
-  --fssize=SIZE      Create filesystem of size SIZE\n\
+  --fssize=SIZE[MG]  Create filesystem of size SIZE\n\
                      (Default: 1G))\n\
   --dir=DIR          Place rootfs directory under DIR\n\
   --zfsroot=PATH     Create zfs under given zfsroot\n\
