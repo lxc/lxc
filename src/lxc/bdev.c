@@ -87,7 +87,7 @@ static int do_rsync(const char *src, const char *dest)
 }
 
 /*
- * return block size of dev->src
+ * return block size of dev->src in units of megabytes (1024K)
  */
 static int blk_getsize(struct bdev *bdev, unsigned long *size)
 {
@@ -100,7 +100,10 @@ static int blk_getsize(struct bdev *bdev, unsigned long *size)
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
 		return -1;
-	ret = ioctl(fd, BLKGETSIZE64, size);
+
+	ret = ioctl(fd, BLKGETSIZE, size); // units of 512 bytes
+	*size /= 2; // units of 1024 bytes
+	*size /= 1024; // units of Mbytes (1024K)
 	close(fd);
 	return ret;
 }
@@ -1026,7 +1029,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 	} else {
 		sprintf(fstype, "ext3");
 		if (!newsize)
-			size = 1000000000; // default to 1G
+			size = 1024; // default to 1G
 	}
 
 	if (snap) {

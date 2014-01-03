@@ -48,7 +48,7 @@ static unsigned long get_fssize(char *s)
 	if (!(*end))
 		return ret;
 	if (*end == 'g' || *end == 'G')
-		ret *= 1000;
+		ret *= 1024;
 	return ret;
 }
 
