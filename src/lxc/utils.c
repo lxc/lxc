@@ -250,9 +250,12 @@ static const char *lxc_global_config_value(const char *option_name)
 		{ NULL, NULL },
 	};
 
-	/* Protected by a mutex to eliminate conflicting load and store operations */
+	/* placed in the thread local storage pool for non-bionic targets */	
+#ifdef HAVE_TLS
+	static __thread const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
+#else
 	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
-
+#endif
 	char *user_config_path = NULL;
 	char *user_lxc_path = NULL;
 
@@ -273,7 +276,6 @@ static const char *lxc_global_config_value(const char *option_name)
 	}
 
 	const char * const (*ptr)[2];
-	const char *value;
 	size_t i;
 	char buf[1024], *p, *p2;
 	FILE *fin = NULL;
@@ -289,15 +291,11 @@ static const char *lxc_global_config_value(const char *option_name)
 		return NULL;
 	}
 
-	static_lock();
 	if (values[i]) {
 		free(user_config_path);
 		free(user_lxc_path);
-		value = values[i];
-		static_unlock();
-		return value;
+		return values[i];
 	}
-	static_unlock();
 
 	fin = fopen_cloexec(user_config_path, "r");
 	free(user_config_path);
@@ -333,15 +331,12 @@ static const char *lxc_global_config_value(const char *option_name)
 			while (*p && (*p == ' ' || *p == '\t')) p++;
 			if (!*p)
 				continue;
-			static_lock();
 			values[i] = copy_global_config_value(p);
-			static_unlock();
 			free(user_lxc_path);
 			goto out;
 		}
 	}
 	/* could not find value, use default */
-	static_lock();
 	if (strcmp(option_name, "lxcpath") == 0)
 		values[i] = user_lxc_path;
 	else {
@@ -353,16 +348,12 @@ static const char *lxc_global_config_value(const char *option_name)
 	 * as an error... */
 	if (!values[i])
 		errno = 0;
-	static_unlock();
 
 out:
 	if (fin)
 		fclose(fin);
 
-	static_lock();
-	value = values[i];
-	static_unlock();
-	return value;
+	return values[i];
 }
 
 const char *default_lvm_vg(void)

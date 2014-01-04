@@ -483,6 +483,8 @@ AC_CHECK_HEADERS([sys/signalfd.h pty.h ifaddrs.h sys/capability.h sys/personalit
 AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr])
 
 # Check for some functions
+AC_CHECK_LIB(pthread, main)
+AC_CHECK_FUNCS(pthread_atfork)
 AC_CHECK_LIB(util, openpty)
 AC_CHECK_FUNCS([openpty hasmntopt setmntent endmntent])
 AC_CHECK_FUNCS([getline],
@@ -501,6 +503,9 @@ AC_SEARCH_LIBS(clock_gettime, [rt])
 # Check for some standard binaries
 AC_PROG_GCC_TRADITIONAL
 AC_PROG_SED
+
+# See if we support thread-local storage.
+LXC_CHECK_TLS
 
 if test "x$GCC" = "xyes"; then
 	CFLAGS="$CFLAGS -Wall -Werror"
@@ -680,3 +685,13 @@ Debugging:
 Paths:
  - Logs in configpath: $enable_configpath_log
 EOF
+
+if test "x$ac_cv_func_pthread_atfork" = "xno" ; then
+cat << EOF
+
+WARNING: Threading not supported on your platform
+
+	You are compiling LXC for bionic target which lacks certain threading related functionality used by LXC API (like pthread_atfork).
+	Please note that, because of the missing functionality, multithreaded usage of LXC API cause some problems.
+EOF
+fi

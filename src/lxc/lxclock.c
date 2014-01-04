@@ -46,7 +46,6 @@ lxc_log_define(lxc_lock, lxc);
 
 #ifdef MUTEX_DEBUGGING
 static pthread_mutex_t thread_mutex = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
-static pthread_mutex_t static_mutex = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
 static inline void dump_stacktrace(void)
 {
@@ -68,7 +67,6 @@ static inline void dump_stacktrace(void)
 }
 #else
 static pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t static_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static inline void dump_stacktrace(void) {;}
 #endif
@@ -326,28 +324,13 @@ void process_unlock(void)
  * to unlock the mutex.
  * This forbids doing fork() while explicitly holding the lock.
  */
+#ifdef HAVE_PTHREAD_ATFORK
 __attribute__((constructor))
 static void process_lock_setup_atfork(void)
 {
 	pthread_atfork(process_lock, process_unlock, process_unlock);
 }
-
-/* Protects static const values inside the lxc_global_config_value funtion */
-void static_lock(void)
-{
-	lock_mutex(&static_mutex);
-}
-
-void static_unlock(void)
-{
-	unlock_mutex(&static_mutex);
-}
-
-__attribute__((constructor))
-static void static_lock_setup_atfork(void)
-{
-	pthread_atfork(static_lock, static_unlock, static_unlock);
-}
+#endif
 
 int container_mem_lock(struct lxc_container *c)
 {
