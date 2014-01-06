@@ -127,7 +127,7 @@ AC_ARG_ENABLE([doc],
 
 if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
 	db2xman=""
-	dbparsers="docbook2x-man db2x_docbook2man docbook2man"
+	dbparsers="docbook2x-man db2x_docbook2man docbook2man docbook-to-man"
 
 	AC_MSG_CHECKING(for docbook2x-man)
 	for name in ${dbparsers}; do
