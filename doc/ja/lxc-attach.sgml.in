@@ -339,13 +339,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <para>
       <!--
       Attaching completely (including the pid and mount namespaces) to a
-      container requires a patched kernel, please see the lxc website for
+      container requires a kernel of version 3.8 or higher, or a
+      patched kernel, please see the lxc website for
       details. <command>lxc-attach</command> will fail in that case if
-      used with an unpatched kernel.
+      used with an unpatched kernel of version 3.7 and prior.
       -->
-      (pid とマウント名前空間を含む) コンテナに対する完全なアタッチを行うにはパッチを適用したカーネルが必要となります．
+      (pid とマウント名前空間を含む) コンテナに対する完全なアタッチを行うには 3.8 以上，もしくはパッチを適用したカーネルが必要となります．
       詳しくは lxc のウェブサイトを参照してください．
-      (訳注: 3.8 カーネルから PID, マウント名前空間に対するアタッチも可能になっている)
+      パッチが当たっていない 3.8 より小さなバージョンのカーネルを使った場合は，<command>lxc-attach</command> の実行は失敗するでしょう．
     </para>
     <para>
       <!--
@@ -359,12 +360,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </para>
     <para>
       <!--
-      Attaching to user namespaces is currently completely unsupported
-      by the kernel. <command>lxc-attach</command> should however be able
-      to do this once once future kernel versions implement this.
+      Attaching to user namespaces is supported by kernel 3.8 or higher
+      with enabling user namespace.
       -->
-      ユーザ名前空間へのアタッチは，現時点ではカーネルで完全にサポートされていません．
-      しかし，<command>lxc-attach</command> は，将来のカーネルがこの機能を実装した時点ですぐに，アタッチが可能になるはずです．
+      ユーザ名前空間へのアタッチは，ユーザ名前空間機能を有効にした 3.8 以上のカーネルでサポートされます．
     </para>
   </refsect1>
 

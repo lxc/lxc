@@ -257,9 +257,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <title>Compatibility</title>
     <para>
       Attaching completely (including the pid and mount namespaces) to a
-      container requires a patched kernel, please see the lxc website for
+      container requires a kernel of version 3.8 or higher, or a
+      patched kernel, please see the lxc website for
       details. <command>lxc-attach</command> will fail in that case if
-      used with an unpatched kernel.
+      used with an unpatched kernel of version 3.7 and prior.
     </para>
     <para>
       Nevertheless, it will succeed on an unpatched kernel of version 3.0
@@ -269,9 +270,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       and <replaceable>UTSNAME</replaceable>.
     </para>
     <para>
-      Attaching to user namespaces is currently completely unsupported
-      by the kernel. <command>lxc-attach</command> should however be able
-      to do this once once future kernel versions implement this.
+      Attaching to user namespaces is supported by kernel 3.8 or higher
+      with enabling user namespace.
     </para>
   </refsect1>
 

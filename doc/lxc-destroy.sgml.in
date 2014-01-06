@@ -104,7 +104,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <para>
 	    The specified container for destruction was not found. It
 	    is probable it does not exists and was already
-	    destroyed.You can use the <command>lxc-ls -l</command>
+	    destroyed.You can use the <command>lxc-ls</command>
 	    command to list the available containers on the system.
           </para>
         </listitem>

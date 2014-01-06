@@ -463,22 +463,12 @@ rootfs
       </para>
       <para>
 	<command>lxc-ls</command> lists the containers of the
-	system. The command is a script built on top
-	of <command>ls</command>, so it accepts the options of the ls
-	commands, eg:
-	<programlisting>
-	  lxc-ls -C1
-	</programlisting>
-	will display the containers list in one column or:
-	<programlisting>
-	  lxc-ls -l
-	</programlisting>
-	will display the containers list and their permissions.
+	system.
       </para>
 
       <para>
 	<command>lxc-ps</command> will display the pids for a specific
-	container. Like <command>lxc-ls</command>, <command>lxc-ps</command>
+	container. <command>lxc-ps</command>
 	is built on top of <command>ps</command> and accepts the same
 	options, eg:
 	<programlisting>lxc-ps --name foo --forest</programlisting>
@@ -491,8 +481,7 @@ rootfs
 
       <para>
 	<command>lxc-info</command> gives information for a specific
-	container, at present time, only the state of the container is
-	displayed.
+	container.
       </para>
 
       <para>

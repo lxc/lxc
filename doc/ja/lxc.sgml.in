@@ -697,35 +697,15 @@ rootfs
       <para>
         <!--
 	<command>lxc-ls</command> lists the containers of the
-	system. The command is a script built on top
-	of <command>ls</command>, so it accepts the options of the ls
-	commands, eg:
-	<programlisting>
-	  lxc-ls -C1
-	</programlisting>
-	will display the containers list in one column or:
-	<programlisting>
-	  lxc-ls -l
-	</programlisting>
-	will display the containers list and their permissions.
+	system.
         -->
         <command>lxc-ls</command> は，システムのコンテナを一覧します．
-        このコマンドは <command>ls</command> をうまく利用して作られているスクリプトです．
-        なので，ls コマンドのオプションを受け付けます．例えば
-	<programlisting>
-	  lxc-ls -C1
-	</programlisting>
-        はコンテナのリストを 1 列で表示しますし，
-	<programlisting>
-	  lxc-ls -l
-	</programlisting>
-        はコンテナのリストとパーミッションを表示します．
       </para>
 
       <para>
         <!--
 	<command>lxc-ps</command> will display the pids for a specific
-	container. Like <command>lxc-ls</command>, <command>lxc-ps</command>
+	container. <command>lxc-ps</command>
 	is built on top of <command>ps</command> and accepts the same
 	options, eg:
 	<programlisting>lxc-ps &#045;&#045;name foo &#045;&#045;forest</programlisting>
@@ -736,7 +716,7 @@ rootfs
 	will display all the containers and their processes.
         -->
         <command>lxc-ps</command> は特定のコンテナに対する pid を表示します．
-        <command>lxc-ls</command> のように，<command>lxc-ps</command> は  <command>ps</command> コマンドをうまく利用して作られており，同じオプションを利用可能です．
+        <command>lxc-ps</command> は  <command>ps</command> コマンドをうまく利用して作られており，同じオプションを利用可能です．
         例えば，
         <programlisting>lxc-ps --name foo --forest</programlisting>
         は 'foo' という名前のコンテナに属するプロセスを階層構造で表示します．
@@ -748,11 +728,9 @@ rootfs
       <para>
         <!--
 	<command>lxc-info</command> gives information for a specific
-	container, at present time, only the state of the container is
-	displayed.
+	container.
         -->
-        <command>lxc-info</command> は，指定したコンテナに対する情報を与えます．
-        現時点では，コンテナの状態だけを表示します．
+        <command>lxc-info</command> は，指定したコンテナに関する情報を取得します．
       </para>
 
       <para>
