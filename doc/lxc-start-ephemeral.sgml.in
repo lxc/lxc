@@ -188,7 +188,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <manvolnum>1</manvolnum>
       </citerefentry>,
     </simpara>
+  </refsect1>
 
+  <refsect1>
     <title>Examples</title>
     <variablelist>
       <varlistentry>
