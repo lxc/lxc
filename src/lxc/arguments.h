@@ -25,6 +25,7 @@
 #define __arguments_h
 
 #include <getopt.h>
+#include <stdint.h>
 
 struct lxc_arguments;
 
@@ -85,7 +86,7 @@ struct lxc_arguments {
 	/* lxc-create */
 	char *bdevtype, *configfile, *template;
 	char *fstype;
-	unsigned long fssize;
+	uint64_t fssize;
 	char *lvname, *vgname, *thinpool;
 	char *zfsroot, *lowerdir, *dir;
 
