@@ -89,7 +89,7 @@ static void unlock_mutex(pthread_mutex_t *l)
 	int ret;
 
 	if ((ret = pthread_mutex_unlock(l)) != 0) {
-		fprintf(stderr, "pthread_mutex_lock returned:%d %s", ret, strerror(ret));
+		fprintf(stderr, "pthread_mutex_unlock returned:%d %s", ret, strerror(ret));
 		dump_stacktrace();
 		exit(1);
 	}
@@ -317,6 +317,21 @@ void process_unlock(void)
 	unlock_mutex(&thread_mutex);
 }
 
+/* One thread can do fork() while another one is holding a mutex.
+ * There is only one thread in child just after the fork(), so noone will ever release that mutex.
+ * We setup a "child" fork handler to unlock the mutex just after the fork().
+ * For several mutex types, unlocking an unlocked mutex can lead to undefined behavior.
+ * One way to deal with it is to setup "prepare" fork handler
+ * to lock the mutex before fork() and both "parent" and "child" fork handlers
+ * to unlock the mutex.
+ * This forbids doing fork() while explicitly holding the lock.
+ */
+__attribute__((constructor))
+static void process_lock_setup_atfork(void)
+{
+	pthread_atfork(process_lock, process_unlock, process_unlock);
+}
+
 /* Protects static const values inside the lxc_global_config_value funtion */
 void static_lock(void)
 {
@@ -326,6 +341,12 @@ void static_lock(void)
 void static_unlock(void)
 {
 	unlock_mutex(&static_mutex);
+}
+
+__attribute__((constructor))
+static void static_lock_setup_atfork(void)
+{
+	pthread_atfork(static_lock, static_unlock, static_unlock);
 }
 
 int container_mem_lock(struct lxc_container *c)

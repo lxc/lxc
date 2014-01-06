@@ -601,7 +601,6 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		if (pid != 0)
 			return wait_on_daemonized_start(c, pid);
 
-		process_unlock(); // we're no longer sharing
 		/* second fork to be reparented by init */
 		pid = fork();
 		if (pid < 0) {
@@ -839,7 +838,6 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 		char **newargv;
 		struct lxc_conf *conf = c->lxc_conf;
 
-		process_unlock(); // we're no longer sharing
 		if (quiet) {
 			close(0);
 			close(1);
@@ -1236,7 +1234,6 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	if (pid == 0) { // child
 		struct bdev *bdev = NULL;
 
-		process_unlock(); // we're no longer sharing
 		if (!(bdev = do_bdev_create(c, bdevtype, specs))) {
 			ERROR("Error creating backing store type %s for %s",
 				bdevtype ? bdevtype : "(none)", c->name);
@@ -2328,7 +2325,6 @@ static int clone_update_rootfs(struct lxc_container *c0,
 	if (pid > 0)
 		return wait_for_pid(pid);
 
-	process_unlock(); // we're no longer sharing
 	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev)
 		exit(1);
