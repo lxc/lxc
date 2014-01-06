@@ -73,21 +73,10 @@ AM_CONDITIONAL([DISTRO_UBUNTU], [test "x$with_distro" = "xubuntu"])
 # Check for init system type
 AC_MSG_CHECKING([for init system type])
 AC_ARG_WITH([init-script],
-	    [AC_HELP_STRING([--with-init-script@<:@=TYPE@:>@],
-			    [Type of init script to install: sysv, systemd, upstart,
-			     distro, none @<:@default=distro@:>@])],[],[with_init_script=distro])
+	    [AC_HELP_STRING([--with-init-script@<:@=TYPE@<:@,TYPE,...@:>@@:>@],
+			    [Type(s) of init script to install: sysv, systemd, upstart,
+			     distro @<:@default=distro@:>@])],[],[with_init_script=distro])
 case "$with_init_script" in
-	sysv)
-		init_script=sysv
-		;;
-	systemd)
-		init_script=systemd
-		;;
-	upstart)
-		init_script=upstart
-		;;
-	none)
-		;;
 	distro)
 		case $with_distro in
 			fedora)
@@ -95,6 +84,9 @@ case "$with_init_script" in
 				;;
 			redhat|centos|oracle|oracleserver)
 				init_script=sysv
+				;;
+			debian)
+				init_script=sysv,upstart,systemd
 				;;
 			ubuntu)
 				init_script=upstart
@@ -106,12 +98,25 @@ case "$with_init_script" in
 		esac
 		;;
 	*)
-		AC_MSG_ERROR([Unknown init system type $with_init_script])
+		init_script=$with_init_script
 		;;
 esac
-AM_CONDITIONAL([INIT_SCRIPT_SYSV], test "$init_script" = "sysv")
-AM_CONDITIONAL([INIT_SCRIPT_SYSTEMD], test "$init_script" = "systemd")
-AM_CONDITIONAL([INIT_SCRIPT_UPSTART], test "$init_script" = "upstart")
+
+# Check valid init systems were given, run in subshell so we don't mess up IFS
+(IFS="," ; for init_sys in $init_script;
+do
+	case "$init_sys" in
+		none|sysv|systemd|upstart)
+			;;
+		*)
+			exit 1
+			;;
+	esac
+done) || AC_MSG_ERROR([Unknown init system type in $init_script])
+
+AM_CONDITIONAL([INIT_SCRIPT_SYSV], [echo "$init_script" |grep -q "sysv"])
+AM_CONDITIONAL([INIT_SCRIPT_SYSTEMD], [echo "$init_script" |grep -q "systemd"])
+AM_CONDITIONAL([INIT_SCRIPT_UPSTART], [echo "$init_script" |grep -q "upstart"])
 AC_MSG_RESULT($init_script)
 
 # Allow disabling rpath
@@ -659,7 +664,7 @@ cat << EOF
 Environment:
  - compiler: $CC
  - distribution: $with_distro
- - init script type: $init_script
+ - init script type(s): $init_script
  - rpath: $enable_rpath
  - GnuTLS: $enable_gnutls
 
