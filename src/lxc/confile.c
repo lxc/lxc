@@ -90,6 +90,7 @@ static int config_seccomp(const char *, const char *, struct lxc_conf *);
 static int config_includefile(const char *, const char *, struct lxc_conf *);
 static int config_network_nic(const char *, const char *, struct lxc_conf *);
 static int config_autodev(const char *, const char *, struct lxc_conf *);
+static int config_haltsignal(const char *, const char *, struct lxc_conf *);
 static int config_stopsignal(const char *, const char *, struct lxc_conf *);
 static int config_start(const char *, const char *, struct lxc_conf *);
 static int config_group(const char *, const char *, struct lxc_conf *);
@@ -142,6 +143,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.seccomp",              config_seccomp              },
 	{ "lxc.include",              config_includefile          },
 	{ "lxc.autodev",              config_autodev              },
+	{ "lxc.haltsignal",           config_haltsignal           },
 	{ "lxc.stopsignal",           config_stopsignal           },
 	{ "lxc.start.auto",           config_start                },
 	{ "lxc.start.delay",          config_start                },
@@ -1108,6 +1110,16 @@ static int rt_sig_num(const char *signame)
 	return sig_n;
 }
 
+static const char *sig_name(int signum) {
+	int n;
+
+	for (n = 0; n < sizeof(signames) / sizeof((signames)[0]); n++) {
+		if (n == signames[n].num)
+			return signames[n].name;
+	}
+	return "";
+}
+
 static int sig_parse(const char *signame) {
 	int n;
 
@@ -1123,6 +1135,18 @@ static int sig_parse(const char *signame) {
 		}
 	}
 	return -1;
+}
+
+static int config_haltsignal(const char *key, const char *value,
+			     struct lxc_conf *lxc_conf)
+{
+	int sig_n = sig_parse(value);
+
+	if (sig_n < 0)
+		return -1;
+	lxc_conf->haltsignal = sig_n;
+
+	return 0;
 }
 
 static int config_stopsignal(const char *key, const char *value,
@@ -2119,6 +2143,10 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		fprintf(fout, "lxc.pts = %d\n", c->pts);
 	if (c->ttydir)
 		fprintf(fout, "lxc.devttydir = %s\n", c->ttydir);
+	if (c->haltsignal)
+		fprintf(fout, "lxc.haltsignal = SIG%s\n", sig_name(c->haltsignal));
+	if (c->stopsignal)
+		fprintf(fout, "lxc.stopsignal = SIG%s\n", sig_name(c->stopsignal));
 	#if HAVE_SYS_PERSONALITY_H
 	switch(c->personality) {
 	case PER_LINUX32: fprintf(fout, "lxc.arch = x86\n"); break;

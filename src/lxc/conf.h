@@ -307,7 +307,8 @@ struct lxc_conf {
 #endif
 	int maincmd_fd;
 	int autodev;  // if 1, mount and fill a /dev at start
-	int stopsignal; // signal used to stop container
+	int haltsignal; // signal used to halt container
+	int stopsignal; // signal used to hard stop container
 	int kmsg;  // if 1, create /dev/kmsg symlink
 	char *rcfile;	// Copy of the top level rcfile we read
 

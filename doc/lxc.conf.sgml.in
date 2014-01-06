@@ -156,13 +156,36 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </refsect2>
 
     <refsect2>
+      <title>Halt signal</title>
+      <para>
+    Allows one to specify signal name or number, sent by lxc-stop to the
+    container's init process to cleanly shutdown the container. Different
+    init systems could use different signals to perform clean shutdown
+    sequence. This option allows the signal to be specified in kill(1)
+    fashion, e.g. SIGPWR, SIGRTMIN+14, SIGRTMAX-10 or plain number. The
+    default signal is SIGPWR.
+      </para>
+      <variablelist>
+    <varlistentry>
+      <term>
+        <option>lxc.haltsignal</option>
+      </term>
+      <listitem>
+        <para>
+          specify the signal used to halt the container
+        </para>
+      </listitem>
+    </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Stop signal</title>
       <para>
-    Allows one to specify signal name or number, sent by lxc-stop to
-    shutdown the container. Different init systems could use
-    different signals to perform clean shutdown sequence. Option
-    allows signal to be specified in kill(1) fashion, e.g.
-    SIGKILL, SIGRTMIN+14, SIGRTMAX-10 or plain number.
+    Allows one to specify signal name or number, sent by lxc-stop to forcibly
+    shutdown the container. This option allows signal to be specified in
+    kill(1) fashion, e.g. SIGKILL, SIGRTMIN+14, SIGRTMAX-10 or plain number.
+    The default signal is SIGKILL.
       </para>
       <variablelist>
     <varlistentry>
