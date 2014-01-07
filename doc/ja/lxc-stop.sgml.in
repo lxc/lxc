@@ -87,7 +87,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <para>
       <!--
       The <optional>-W</optional>, <optional>-r</optional>,
-      <optional>-k</optional> and <optional>--nokill</optional>
+      <optional>-k</optional> and <optional>\-\-nokill</optional>
       options specify the action to perform.
       <optional>-W</optional> indicates that after performing the specified
       action, <command>lxc-stop</command> should immediately exit, while
