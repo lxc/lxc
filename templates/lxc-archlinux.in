@@ -9,6 +9,7 @@
 
 # Authors:
 # Alexander Vladimirov <idkfa@vlan1.ru>
+# John Lane <lxc@jelmail.com>
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -125,8 +126,7 @@ lxc.utsname=${name}
 lxc.autodev=1
 lxc.tty=1
 lxc.pts=1024
-lxc.mount=${config_path}/fstab
-lxc.cap.drop=mknod sys_module mac_admin mac_override sys_time
+lxc.cap.drop=sys_module mac_admin mac_override sys_time
 lxc.kmsg=0
 lxc.stopsignal=SIGRTMIN+4
 #networking
@@ -154,22 +154,38 @@ EOF
 
     grep -q "^lxc.rootfs" ${config_path}/config 2>/dev/null || echo "lxc.rootfs = ${rootfs_path}" >> ${config_path}/config
 
-    cat > "${config_path}/fstab" << EOF
-sysfs sys sysfs ro,defaults 0 0
-proc proc proc nodev,noexec,nosuid 0 0
-/proc/sys ${rootfs_path}/proc/sys none ro,bind 0 0
-#/var/log/journal ${rootfs_path}/var/log/journal none bind 0 0
-EOF
-
     return 0
 }
 
 # install packages within container chroot
 function install_arch {
+
+    [[ "${arch}" != $(uname -m) ]] && different_arch=true
+
+    if [[ "${different_arch}" == true ]]; then
+        container_pacman_config=$(mktemp)
+	container_mirrorlist=$(mktemp)
+	sed -e "s:Architecture =.*:Architecture = ${arch}:g"  \
+	    -e "s:/etc/pacman.d/mirrorlist:${container_mirrorlist}:g" \
+	    "${pacman_config}" > "${container_pacman_config}"
+	sed -e "s:\(x86_64\|\$arch\):${arch}:g" \
+            /etc/pacman.d/mirrorlist > "${container_mirrorlist}"
+
+	pacman_config="${container_pacman_config}"
+    fi
+
     if ! pacstrap -dcC "${pacman_config}" "${rootfs_path}" ${base_packages[@]}; then
         echo "Failed to install container packages"
         return 1
     fi
+
+    if [[ "${different_arch}" == true ]]; then
+        sed -i -e "s:Architecture =.*:Architecture = ${arch}:g" \
+            "${rootfs_path}"/etc/pacman.conf
+	cp "${container_mirrorlist}" "${rootfs_path}"/etc/pacman.d/mirrorlist
+	rm "${container_pacman_config}" "${container_mirrorlist}"
+    fi
+
     [ -d "${rootfs_path}/lib/modules" ] && ldconfig -r "${rootfs_path}"
     return 0
 }
@@ -184,15 +200,18 @@ Mandatory args:
 Optional args:
   -p,--path         path to where the container rootfs will be created, defaults to ${default_path}/rootfs. The container config will go under ${default_path} in that case
   -P,--packages     preinstall additional packages, comma-separated list
+  -e,--enable_units Enable additional systemd units, comma-separated list
   -c,--config       use specified pacman config when installing container packages
+  -a,--arch         use specified architecture instead of host's architecture 
   -t,--network_type set container network interface type (${lxc_network_type})
   -l,--network_link set network link device (${lxc_network_link})
+  -r,--root_passwd  set container root password
   -h,--help         print this help
 EOF
     return 0
 }
 
-options=$(getopt -o hp:P:n:c:l:t: -l help,rootfs:,path:,packages:,name:,config:,network_type:,network_link: -- "${@}")
+options=$(getopt -o hp:P:e:n:c:a:l:t:r: -l help,rootfs:,path:,packages:,enable_units:,name:,config:,arch:,network_type:,network_link:,root_passwd: -- "${@}")
 if [ ${?} -ne 0 ]; then
     usage $(basename ${0})
     exit 1
@@ -207,9 +226,12 @@ do
     -n|--name)          name=${2}; shift 2;;
     --rootfs)           rootfs_path=${2}; shift 2;;
     -P|--packages)      additional_packages=${2}; shift 2;;
+    -e|--enable_units)  enable_units=${2}; shift 2;;
     -c|--config)        pacman_config=${2}; shift 2;;
+    -a|--arch)          arch=${2}; shift 2;;
     -t|--network_type)  lxc_network_type=${2}; shift 2;;
     -l|--network_link)  lxc_network_link=${2}; shift 2;;
+    -r|--root_passwd)   root_passwd=${2}; shift 2;;
     --)             shift 1; break ;;
     *)              break ;;
     esac
@@ -280,6 +302,19 @@ if [ ${?} -ne 0 ]; then
     echo "failed to configure Arch Linux for a container"
     rm -rf "${config_path}" "${path}"
     exit 1
+fi
+
+if [ ${#enable_units[@]} -gt 0 ]; then
+    split_string ${enable_units}
+    for unit in ${result[@]}; do
+        [[ "${unit}" == *'.'* ]] || unit="${unit}.service"
+        ln -s /usr/lib/systemd/system/"${unit}" \
+            "${rootfs_path}"/etc/systemd/system/multi-user.target.wants
+    done
+fi
+
+if [ -n "${root_passwd}" ]; then
+    echo "root:${root_passwd}" | chroot "${rootfs_path}" chpasswd
 fi
 
 echo "container config is ${config_path}/config"
