@@ -228,7 +228,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         <manvolnum>1</manvolnum>
       </citerefentry>,
     </simpara>
+  </refsect1>
 
+  <refsect1>
     <title><!-- Examples -->例</title>
     <variablelist>
       <varlistentry>

@@ -210,19 +210,50 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
-      <title><!-- Stop signal -->停止時のシグナル</title>
+      <title><!-- Halt signal -->クリーンなシャットダウン時のシグナル</title>
       <para>
         <!--
-    Allows one to specify signal name or number, sent by lxc-stop to
-    shutdown the container. Different init systems could use
-    different signals to perform clean shutdown sequence. Option
-    allows signal to be specified in kill(1) fashion, e.g.
-    SIGKILL, SIGRTMIN+14, SIGRTMAX-10 or plain number.
+    Allows one to specify signal name or number, sent by lxc-stop to the
+    container's init process to cleanly shutdown the container. Different
+    init systems could use different signals to perform clean shutdown
+    sequence. This option allows the signal to be specified in kill(1)
+    fashion, e.g. SIGPWR, SIGRTMIN+14, SIGRTMAX-10 or plain number. The
+    default signal is SIGPWR.
+          -->
+        lxc-stop がコンテナをクリーンにシャットダウンするためにコンテナの init プロセスに送るシグナル名か番号を指定することができます．
+        init システムによって，クリーンなシャットダウンを行うために使うシグナルは異なります．
+        このオプションではシグナルとして kill(1) で使う形式を指定することができます．
+        例えば SIGKILL, SIGRTMIN+14, SIGRTMAX-10 のような形式，もしくは数字を指定します．デフォルトのシグナルは SIGPWR です．
+      </para>
+      <variablelist>
+    <varlistentry>
+      <term>
+        <option>lxc.haltsignal</option>
+      </term>
+      <listitem>
+        <para>
+          <!--
+          specify the signal used to halt the container
+          -->
+          コンテナをシャットダウンするのに使うシグナルを指定します
+        </para>
+      </listitem>
+    </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Stop signal -->強制停止時のシグナル</title>
+      <para>
+        <!--
+    Allows one to specify signal name or number, sent by lxc-stop to forcibly
+    shutdown the container. This option allows signal to be specified in
+    kill(1) fashion, e.g. SIGKILL, SIGRTMIN+14, SIGRTMAX-10 or plain number.
+    The default signal is SIGKILL.
     -->
-        lxc-stop がコンテナをシャットダウンするときに送出するシグナル名か番号を指定可能です．
-        様々な init システムが，クリーンなシャットダウンシーケンスを実行するために，様々なシグナルを用いる可能性があります．
-        オプションとして，シグナルを kill(1) の形式で指定することが可能です．
-        例えば SIGKILL, SIGRTMIN+14, SIGRTMAX-10 のような形式，もしくは数字を指定します．
+        lxc-stop がコンテナを強制的にシャットダウンするために送るシグナル名か番号を指定することができます．
+        このオプションではシグナルとして kill(1) で使う形式を指定することができます．
+        例えば SIGKILL, SIGRTMIN+14, SIGRTMAX-10 のような形式，もしくは数字を指定します．デフォルトのシグナルは SIGKILL です．
       </para>
       <variablelist>
     <varlistentry>
