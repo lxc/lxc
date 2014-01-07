@@ -11,4 +11,6 @@ notifications:
     recipients:
       - lxc-devel@lists.linuxcontainers.org
   irc:
+    channels:
       - "chat.freenode.net#lxcontainers"
+    use_notice: true
