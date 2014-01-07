@@ -123,16 +123,16 @@ static char *lxclock_name(const char *p, const char *n)
 	if (ret < 0) {
 		/* fall back to "/tmp/" $(id -u) "/lxc/" $lxcpath / $lxcname + '\0' */
 		int l2 = 33 + strlen(n) + strlen(p);
-		char *d;
 		if (l2 > len) {
+			char *d;
 			d = realloc(dest, l2);
 			if (!d) {
 				free(dest);
 				return NULL;
 			}
 			len = l2;
+			dest = d;
 		}
-		dest = d;
 		ret = snprintf(dest, len, "/tmp/%d/lxc/%s", geteuid(), p);
 		if (ret < 0 || ret >= len) {
 			free(dest);
