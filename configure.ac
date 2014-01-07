@@ -11,6 +11,10 @@ m4_define([lxc_version],
 	  [ifelse(lxc_version_beta, [], [lxc_version_base], [lxc_version_base.lxc_version_beta])])
 
 AC_INIT([lxc], [lxc_version])
+
+# We need pkg-config
+PKG_PROG_PKG_CONFIG
+
 AC_SUBST(LXC_VERSION_BASE, lxc_version_base)
 AC_SUBST(LXC_VERSION_BETA, lxc_version_beta)
 
@@ -261,9 +265,6 @@ AC_ARG_ENABLE([examples],
 	[AC_HELP_STRING([--enable-examples], [install examples [default=yes]])],
 	[], [enable_examples=yes])
 AM_CONDITIONAL([ENABLE_EXAMPLES], [test "x$enable_examples" = "xyes"])
-
-# We need pkg-config
-PKG_PROG_PKG_CONFIG
 
 # Python3 module and scripts
 AC_ARG_ENABLE([python],
