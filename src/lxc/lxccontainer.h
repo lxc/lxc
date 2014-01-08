@@ -26,6 +26,7 @@
 #include <semaphore.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include <lxc/attach_options.h>
 
@@ -543,7 +544,7 @@ struct lxc_container {
 	 */
 	struct lxc_container *(*clone)(struct lxc_container *c, const char *newname,
 			const char *lxcpath, int flags, const char *bdevtype,
-			const char *bdevdata, unsigned long newsize, char **hookargs);
+			const char *bdevdata, uint64_t newsize, char **hookargs);
 
 	/*!
 	 * \brief Allocate a console tty for the container.
