@@ -248,18 +248,6 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </variablelist>
   </refsect1>
 
-  <refsect1>
-    <title>See Also</title>
-
-    <simpara>
-      <citerefentry>
-	<refentrytitle>ls</refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-    </simpara>
-
-  </refsect1>
-
   &seealso;
 
   <refsect1>
