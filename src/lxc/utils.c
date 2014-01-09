@@ -238,7 +238,7 @@ static char *copy_global_config_value(char *p)
 #define DEFAULT_THIN_POOL "lxc"
 #define DEFAULT_ZFSROOT "lxc"
 
-static const char *lxc_global_config_value(const char *option_name)
+const char *lxc_global_config_value(const char *option_name)
 {
 	static const char * const options[][2] = {
 		{ "lxc.lvm_vg",          DEFAULT_VG      },
@@ -369,36 +369,6 @@ out:
 		fclose(fin);
 
 	return values[i];
-}
-
-const char *default_lvm_vg(void)
-{
-	return lxc_global_config_value("lxc.lvm_vg");
-}
-
-const char *default_lvm_thin_pool(void)
-{
-	return lxc_global_config_value("lxc.lvm_thin_pool");
-}
-
-const char *default_zfs_root(void)
-{
-	return lxc_global_config_value("lxc.zfsroot");
-}
-
-const char *default_lxc_path(void)
-{
-	return lxc_global_config_value("lxc.lxcpath");
-}
-
-const char *default_cgroup_use(void)
-{
-	return lxc_global_config_value("lxc.cgroup.use");
-}
-
-const char *default_cgroup_pattern(void)
-{
-	return lxc_global_config_value("lxc.cgroup.pattern");
 }
 
 const char *get_rundir()

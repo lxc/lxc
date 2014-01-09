@@ -80,7 +80,7 @@ static int fill_sock_name(char *path, int len, const char *name,
 	int ret;
 
 	if (!inpath) {
-		lxcpath = default_lxc_path();
+		lxcpath = lxc_global_config_value("lxc.lxcpath");
 		if (!lxcpath) {
 			ERROR("Out of memory getting lxcpath");
 			return -1;

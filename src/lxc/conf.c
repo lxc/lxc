@@ -1921,7 +1921,7 @@ static int mount_entry_on_absolute_rootfs(const struct mntent *mntent,
 		return -1;
 	}
 
-	lxcpath = default_lxc_path();
+	lxcpath = lxc_global_config_value("lxc.lxcpath");
 	if (!lxcpath) {
 		ERROR("Out of memory");
 		return -1;

@@ -222,7 +222,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args,
 
 	/* If no lxcpaths were given, use default */
 	if (!args->lxcpath_cnt) {
-		ret = lxc_arguments_lxcpath_add(args, default_lxc_path());
+		ret = lxc_arguments_lxcpath_add(args, lxc_global_config_value("lxc.lxcpath"));
 		if (ret < 0)
 			return ret;
 	}

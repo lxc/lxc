@@ -41,16 +41,8 @@ extern int mkdir_p(const char *dir, mode_t mode);
 extern void remove_trailing_slashes(char *p);
 extern const char *get_rundir(void);
 
-/*
- * Return a buffer containing the default container path.
- * Caller must NOT free this buffer, since it may be static.
- */
-extern const char *default_lxc_path(void);
-extern const char *default_zfs_root(void);
-extern const char *default_lvm_vg(void);
-extern const char *default_lvm_thin_pool(void);
-extern const char *default_cgroup_use(void);
-extern const char *default_cgroup_pattern(void);
+extern const char *lxc_global_config_value(const char *option_name);
+
 /* Define getline() if missing from the C library */
 #ifndef HAVE_GETLINE
 #ifdef HAVE_FGETLN

@@ -2035,24 +2035,9 @@ static int lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, c
 	return ret;
 }
 
-const char *lxc_get_default_config_path(void)
+const char *lxc_get_global_config_item(const char *key)
 {
-	return default_lxc_path();
-}
-
-const char *lxc_get_default_lvm_vg(void)
-{
-	return default_lvm_vg();
-}
-
-const char *lxc_get_default_lvm_thin_pool(void)
-{
-	return default_lvm_thin_pool();
-}
-
-const char *lxc_get_default_zfs_root(void)
-{
-	return default_zfs_root();
+	return lxc_global_config_value(key);
 }
 
 const char *lxc_get_version(void)
@@ -3035,7 +3020,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	if (configpath)
 		c->config_path = strdup(configpath);
 	else
-		c->config_path = strdup(default_lxc_path());
+		c->config_path = strdup(lxc_global_config_value("lxc.lxcpath"));
 
 	if (!c->config_path) {
 		fprintf(stderr, "Out of memory");
@@ -3157,7 +3142,7 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 	struct lxc_container *c;
 
 	if (!lxcpath)
-		lxcpath = default_lxc_path();
+		lxcpath = lxc_global_config_value("lxc.lxcpath");
 
 	dir = opendir(lxcpath);
 	if (!dir) {
@@ -3247,7 +3232,7 @@ int list_active_containers(const char *lxcpath, char ***nret,
 	struct lxc_container *c;
 
 	if (!lxcpath)
-		lxcpath = default_lxc_path();
+		lxcpath = lxc_global_config_value("lxc.lxcpath");
 	lxcpath_len = strlen(lxcpath);
 
 	if (cret)

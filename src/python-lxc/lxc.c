@@ -325,9 +325,16 @@ LXC_attach_run_shell(PyObject *self, PyObject *arg)
 }
 
 static PyObject *
-LXC_get_default_config_path(PyObject *self, PyObject *args)
+LXC_get_global_config_item(PyObject *self, PyObject *args, PyObject *kwds)
 {
-    return PyUnicode_FromString(lxc_get_default_config_path());
+    static char *kwlist[] = {"key", NULL};
+    char* key = NULL;
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
+                                      &key))
+        return NULL;
+
+    return PyUnicode_FromString(lxc_get_global_config_item(key));
 }
 
 static PyObject *
@@ -1670,8 +1677,8 @@ static PyMethodDef LXC_methods[] = {
     {"attach_run_shell", (PyCFunction)LXC_attach_run_shell, METH_O,
      "Starts up a shell when attaching, to use as the run parameter for "
      "attach or attach_wait"},
-    {"get_default_config_path", (PyCFunction)LXC_get_default_config_path,
-     METH_NOARGS,
+    {"get_global_config_item", (PyCFunction)LXC_get_global_config_item,
+     METH_VARARGS|METH_KEYWORDS,
      "Returns the current LXC config path"},
     {"get_version", (PyCFunction)LXC_get_version, METH_NOARGS,
      "Returns the current LXC library version"},

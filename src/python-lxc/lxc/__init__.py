@@ -32,7 +32,7 @@ import warnings
 warnings.warn("The python-lxc API isn't yet stable "
               "and may change at any point in the future.", Warning, 2)
 
-default_config_path = _lxc.get_default_config_path()
+default_config_path = _lxc.get_global_config_item("lxc.lxcpath")
 version = _lxc.get_version()
 
 

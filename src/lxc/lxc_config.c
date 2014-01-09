@@ -27,15 +27,15 @@
 
 struct lxc_config_items {
 	char *name;
-	const char *(*fn)(void);
 };
 
 static struct lxc_config_items items[] =
 {
-	{ .name = "lxc.lxcpath", .fn = &lxc_get_default_config_path, },
-	{ .name = "lxc.lvm_vg", .fn = &lxc_get_default_lvm_vg, },
-	{ .name = "lxc.lvm_thin_pool", .fn = &lxc_get_default_lvm_thin_pool, },
-	{ .name = "lxc.zfsroot", .fn = &lxc_get_default_zfs_root, },
+	{ .name = "lxc.default_config", },
+	{ .name = "lxc.lxcpath", },
+	{ .name = "lxc.lvm_vg", },
+	{ .name = "lxc.lvm_thin_pool", },
+	{ .name = "lxc.zfsroot", },
 	{ .name = NULL, },
 };
 
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 		list_config_items();
 	for (i = &items[0]; i->name; i++) {
 		if (strcmp(argv[1], i->name) == 0) {
-			printf("%s\n", i->fn());
+			printf("%s\n", lxc_get_global_config_item(i->name));
 			exit(0);
 		}
 	}

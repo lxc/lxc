@@ -786,45 +786,14 @@ int lxc_container_put(struct lxc_container *c);
  */
 int lxc_get_wait_states(const char **states);
 
-/*!
- * \brief Determine path to default configuration file.
+/*
+ * \brief Get the value for a global config key
  *
- * \return Static string representing full path to default configuration
- *  file.
+ * \param key The name of the config key
  *
- * \note Returned string must not be freed.
+ * \return String representing the current value for the key.
  */
-const char *lxc_get_default_config_path(void);
-
-/*!
- * \brief Determine default LVM volume group.
- *
- * \return Static string representing default volume group,
- *  or \c NULL on error.
- *
- * \note Returned string must not be freed.
- */
-const char *lxc_get_default_lvm_vg(void);
-
-/*!
- * \brief Determine default LVM thin pool.
- *
- * \return Static string representing default lvm thin pool,
- *  or \c NULL on error.
- *
- * \note Returned string must not be freed.
- */
-const char *lxc_get_default_lvm_thin_pool(void);
-
-/*!
- * \brief Determine default ZFS root.
- *
- * \return Static string representing default ZFS root,
- *  or \c NULL on error.
- *
- * \note Returned string must not be freed.
- */
-const char *lxc_get_default_zfs_root(void);
+const char *lxc_get_global_config_item(const char *key);
 
 /*!
  * \brief Determine version of LXC.
