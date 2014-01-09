@@ -245,6 +245,7 @@ static const char *lxc_global_config_value(const char *option_name)
 		{ "lxc.lvm_thin_pool",   DEFAULT_THIN_POOL },
 		{ "lxc.zfsroot",         DEFAULT_ZFSROOT },
 		{ "lxc.lxcpath",         NULL            },
+		{ "lxc.default_config",  NULL            },
 		{ "lxc.cgroup.pattern",  DEFAULT_CGROUP_PATTERN },
 		{ "lxc.cgroup.use",      NULL            },
 		{ NULL, NULL },
@@ -257,6 +258,7 @@ static const char *lxc_global_config_value(const char *option_name)
 	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
 #endif
 	char *user_config_path = NULL;
+	char *user_default_config_path = NULL;
 	char *user_lxc_path = NULL;
 
 	if (geteuid() > 0) {
@@ -265,13 +267,16 @@ static const char *lxc_global_config_value(const char *option_name)
 			user_home = "/";
 
 		user_config_path = malloc(sizeof(char) * (22 + strlen(user_home)));
+		user_default_config_path = malloc(sizeof(char) * (26 + strlen(user_home)));
 		user_lxc_path = malloc(sizeof(char) * (19 + strlen(user_home)));
 
 		sprintf(user_config_path, "%s/.config/lxc/lxc.conf", user_home);
+		sprintf(user_default_config_path, "%s/.config/lxc/default.conf", user_home);
 		sprintf(user_lxc_path, "%s/.local/share/lxc/", user_home);
 	}
 	else {
 		user_config_path = strdup(LXC_GLOBAL_CONF);
+		user_default_config_path = strdup(LXC_DEFAULT_CONFIG);
 		user_lxc_path = strdup(LXCPATH);
 	}
 
@@ -286,6 +291,7 @@ static const char *lxc_global_config_value(const char *option_name)
 	}
 	if (!(*ptr)[0]) {
 		free(user_config_path);
+		free(user_default_config_path);
 		free(user_lxc_path);
 		errno = EINVAL;
 		return NULL;
@@ -293,6 +299,7 @@ static const char *lxc_global_config_value(const char *option_name)
 
 	if (values[i]) {
 		free(user_config_path);
+		free(user_default_config_path);
 		free(user_lxc_path);
 		return values[i];
 	}
@@ -332,14 +339,22 @@ static const char *lxc_global_config_value(const char *option_name)
 			if (!*p)
 				continue;
 			values[i] = copy_global_config_value(p);
+			free(user_default_config_path);
 			free(user_lxc_path);
 			goto out;
 		}
 	}
 	/* could not find value, use default */
-	if (strcmp(option_name, "lxc.lxcpath") == 0)
+	if (strcmp(option_name, "lxc.lxcpath") == 0) {
 		values[i] = user_lxc_path;
+		free(user_default_config_path);
+	}
+	else if (strcmp(option_name, "lxc.default_config") == 0) {
+		values[i] = user_default_config_path;
+		free(user_lxc_path);
+	}
 	else {
+		free(user_default_config_path);
 		free(user_lxc_path);
 		values[i] = (*ptr)[1];
 	}
