@@ -147,6 +147,33 @@ finalize_user()
     return 0
 }
 
+# A function to try and autodetect squid-deb-proxy servers on the local network
+# if either the squid-deb-proxy-client package is installed on the host or
+# a parent container set the 50squid-deb-proxy-client file.
+squid_deb_proxy_autodetect()
+{
+    local apt_discover=/usr/share/squid-deb-proxy-client/apt-avahi-discover
+    local proxy_file=/etc/apt/apt.conf.d/50squid-deb-proxy-client
+    squid_proxy_line=  # That's a global :/
+
+    # Maybe the host is aware of a squid-deb-proxy?
+    if [ -f $apt_discover ]; then
+        echo -n "Discovering squid-deb-proxy..."
+        squid_proxy_line=$($apt_discover)
+        if [ -n "$squid_proxy_line" ]; then
+            echo "found squid-deb-proxy: $squid_proxy_line"
+        else
+            echo "no squid-deb-proxy found"
+        fi
+    fi
+
+    # Are we in a nested container, and the parent already knows of a proxy?
+    if [ -f $proxy_file ]; then
+        # Extract the squid URL from the file (whatever is between "")
+        squid_proxy_line=`cat $proxy_file | sed "s/.*\"\(.*\)\".*/\1/"`
+    fi
+}
+
 #
 # Choose proxies for container
 # http_proxy will be used by debootstrap on the host.
@@ -162,7 +189,13 @@ choose_container_proxy()
     fi
     case "$HTTP_PROXY" in
     none)
-        APT_PROXY=
+        squid_deb_proxy_autodetect
+        if [ -n "$squid_proxy_line" ]; then
+            APT_PROXY=$squid_proxy_line
+            export http_proxy=$squid_proxy_line
+        else
+            APT_PROXY=
+        fi
         ;;
     apt)
         RES=`apt-config shell APT_PROXY Acquire::http::Proxy`
