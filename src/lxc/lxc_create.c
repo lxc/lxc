@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
 	if (my_args.configfile)
 		c->load_config(c, my_args.configfile);
 	else
-		c->load_config(c, LXC_DEFAULT_CONFIG);
+		c->load_config(c, lxc_global_config_value("lxc.default_config"));
 
 	if (my_args.fstype)
 		spec.fstype = my_args.fstype;

@@ -1186,8 +1186,8 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	}
 
 	if (!c->lxc_conf) {
-		if (!c->load_config(c, LXC_DEFAULT_CONFIG)) {
-			ERROR("Error loading default configuration file %s\n", LXC_DEFAULT_CONFIG);
+		if (!c->load_config(c, lxc_global_config_value("lxc.default_config"))) {
+			ERROR("Error loading default configuration file %s\n", lxc_global_config_value("lxc.default_config"));
 			goto free_tpath;
 		}
 	}
@@ -1658,8 +1658,8 @@ static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 
 	// If we haven't yet loaded a config, load the stock config
 	if (!c->lxc_conf) {
-		if (!c->load_config(c, LXC_DEFAULT_CONFIG)) {
-			ERROR("Error loading default configuration file %s while saving %s\n", LXC_DEFAULT_CONFIG, c->name);
+		if (!c->load_config(c, lxc_global_config_value("lxc.default_config"))) {
+			ERROR("Error loading default configuration file %s while saving %s\n", lxc_global_config_value("lxc.default_config"), c->name);
 			return false;
 		}
 	}

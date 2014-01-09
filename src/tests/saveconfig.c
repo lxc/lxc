@@ -38,7 +38,7 @@ static int create_ubuntu(void)
 		return -1;
 	}
 	if (pid == 0) {
-		ret = execlp("lxc-create", "lxc-create", "-t", "ubuntu", "-f", LXC_DEFAULT_CONFIG, "-n", MYNAME, NULL);
+		ret = execlp("lxc-create", "lxc-create", "-t", "ubuntu", "-n", MYNAME, NULL);
 		// Should not return
 		perror("execl");
 		exit(1);
