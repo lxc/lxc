@@ -241,12 +241,12 @@ static char *copy_global_config_value(char *p)
 static const char *lxc_global_config_value(const char *option_name)
 {
 	static const char * const options[][2] = {
-		{ "lvm_vg",          DEFAULT_VG      },
-		{ "lvm_thin_pool",   DEFAULT_THIN_POOL },
-		{ "zfsroot",         DEFAULT_ZFSROOT },
-		{ "lxcpath",         NULL            },
-		{ "cgroup.pattern",  DEFAULT_CGROUP_PATTERN },
-		{ "cgroup.use",      NULL            },
+		{ "lxc.lvm_vg",          DEFAULT_VG      },
+		{ "lxc.lvm_thin_pool",   DEFAULT_THIN_POOL },
+		{ "lxc.zfsroot",         DEFAULT_ZFSROOT },
+		{ "lxc.lxcpath",         NULL            },
+		{ "lxc.cgroup.pattern",  DEFAULT_CGROUP_PATTERN },
+		{ "lxc.cgroup.use",      NULL            },
 		{ NULL, NULL },
 	};
 
@@ -337,7 +337,7 @@ static const char *lxc_global_config_value(const char *option_name)
 		}
 	}
 	/* could not find value, use default */
-	if (strcmp(option_name, "lxcpath") == 0)
+	if (strcmp(option_name, "lxc.lxcpath") == 0)
 		values[i] = user_lxc_path;
 	else {
 		free(user_lxc_path);
@@ -358,32 +358,32 @@ out:
 
 const char *default_lvm_vg(void)
 {
-	return lxc_global_config_value("lvm_vg");
+	return lxc_global_config_value("lxc.lvm_vg");
 }
 
 const char *default_lvm_thin_pool(void)
 {
-	return lxc_global_config_value("lvm_thin_pool");
+	return lxc_global_config_value("lxc.lvm_thin_pool");
 }
 
 const char *default_zfs_root(void)
 {
-	return lxc_global_config_value("zfsroot");
+	return lxc_global_config_value("lxc.zfsroot");
 }
 
 const char *default_lxc_path(void)
 {
-	return lxc_global_config_value("lxcpath");
+	return lxc_global_config_value("lxc.lxcpath");
 }
 
 const char *default_cgroup_use(void)
 {
-	return lxc_global_config_value("cgroup.use");
+	return lxc_global_config_value("lxc.cgroup.use");
 }
 
 const char *default_cgroup_pattern(void)
 {
-	return lxc_global_config_value("cgroup.pattern");
+	return lxc_global_config_value("lxc.cgroup.pattern");
 }
 
 const char *get_rundir()
