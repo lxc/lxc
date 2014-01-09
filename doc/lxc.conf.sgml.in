@@ -327,6 +327,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 	<varlistentry>
 	  <term>
+	    <option>lxc.network.mtu</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      specify the maximum transfer unit for this interface.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
 	    <option>lxc.network.name</option>
 	  </term>
 	  <listitem>

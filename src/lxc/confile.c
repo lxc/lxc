@@ -2158,6 +2158,12 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		fprintf(fout, "lxc.aa_profile = %s\n", c->lsm_aa_profile);
 	if (c->lsm_se_context)
 		fprintf(fout, "lxc.se_context = %s\n", c->lsm_se_context);
+	if (c->seccomp)
+		fprintf(fout, "lxc.seccomp = %s\n", c->seccomp);
+	if (c->kmsg == 0)
+		fprintf(fout, "lxc.kmsg = 0\n");
+	if (c->autodev)
+		fprintf(fout, "lxc.autodev = 1\n");
 	if (c->loglevel != LXC_LOG_PRIORITY_NOTSET)
 		fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(c->loglevel));
 	if (c->logfile)
@@ -2253,4 +2259,12 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		fprintf(fout, "lxc.rootfs.mount = %s\n", c->rootfs.mount);
 	if (c->rootfs.pivot)
 		fprintf(fout, "lxc.pivotdir = %s\n", c->rootfs.pivot);
+	if (c->start_auto)
+		fprintf(fout, "lxc.start.auto = %d\n", c->start_auto);
+	if (c->start_delay)
+		fprintf(fout, "lxc.start.delay = %d\n", c->start_delay);
+	if (c->start_order)
+		fprintf(fout, "lxc.start.order = %d\n", c->start_order);
+	lxc_list_for_each(it, &c->groups)
+		fprintf(fout, "lxc.group = %s\n", (char *)it->elem);
 }
