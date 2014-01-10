@@ -5,4 +5,5 @@ templatesconfig_DATA = \
 	ubuntu-cloud.lucid.conf \
 	ubuntu-cloud.userns.conf \
 	ubuntu.common.conf \
-	ubuntu.lucid.conf
+	ubuntu.lucid.conf \
+	ubuntu.userns.conf

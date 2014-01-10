@@ -32,6 +32,7 @@ templates/lxc-busybox
 templates/lxc-centos
 templates/lxc-cirros
 templates/lxc-debian
+templates/lxc-download
 templates/lxc-fedora
 templates/lxc-openmandriva
 templates/lxc-opensuse

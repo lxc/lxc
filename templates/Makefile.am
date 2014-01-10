@@ -1,18 +1,19 @@
 templatesdir=@LXCTEMPLATEDIR@
 
 templates_SCRIPTS = \
-	lxc-debian \
-	lxc-ubuntu \
-	lxc-ubuntu-cloud \
-	lxc-opensuse \
+	lxc-alpine \
+	lxc-altlinux \
+	lxc-archlinux \
+	lxc-busybox \
 	lxc-centos \
+	lxc-cirros \
+	lxc-debian \
+	lxc-download \
 	lxc-fedora \
 	lxc-openmandriva \
+	lxc-opensuse \
 	lxc-oracle \
-	lxc-altlinux \
-	lxc-busybox \
+	lxc-plamo \
 	lxc-sshd \
-	lxc-archlinux \
-	lxc-alpine \
-	lxc-cirros \
-	lxc-plamo
+	lxc-ubuntu \
+	lxc-ubuntu-cloud

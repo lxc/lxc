@@ -1,0 +1,415 @@
+#!/bin/sh
+
+# Client script for LXC container images.
+#
+# Copyright © 2014 Stéphane Graber <stgraber@ubuntu.com>
+#
+#  This library is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU Lesser General Public
+#  License as published by the Free Software Foundation; either
+#  version 2.1 of the License, or (at your option) any later version.
+
+#  This library is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#  Lesser General Public License for more details.
+
+#  You should have received a copy of the GNU Lesser General Public
+#  License along with this library; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+#  USA
+
+set -eu
+
+LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+LXC_HOOK_DIR="@LXCHOOKDIR@"
+LOCALSTATEDIR="@LOCALSTATEDIR@"
+
+# Defaults
+DOWNLOAD_DIST=
+DOWNLOAD_RELEASE=
+DOWNLOAD_ARCH=
+DOWNLOAD_VARIANT="default"
+DOWNLOAD_SERVER="images.linuxcontainers.org"
+DOWNLOAD_KEYID="0xBAEFF88C22F6E216"
+DOWNLOAD_KEYSERVER="pool.sks-keyservers.net"
+DOWNLOAD_VALIDATE="true"
+DOWNLOAD_FLUSH_CACHE="false"
+DOWNLOAD_MODE="system"
+DOWNLOAD_USE_CACHE="false"
+DOWNLOAD_URL=
+DOWNLOAD_SHOW_HTTP_WARNING="true"
+DOWNLOAD_SHOW_GPG_WARNING="true"
+DOWNLOAD_COMPAT_LEVEL=1
+
+LXC_NAME=
+LXC_PATH=
+LXC_ROOTFS=
+LXC_MAPPED_UID=
+
+# Some useful functions
+cleanup() {
+    if [ -d "$DOWNLOAD_TEMP" ]; then
+        rm -Rf $DOWNLOAD_TEMP
+    fi
+}
+
+download_file() {
+    if ! wget -q https://${DOWNLOAD_SERVER}/$1 -O $2 >/dev/null 2>&1; then
+        if ! wget -q http://${DOWNLOAD_SERVER}/$1 -O $2 >/dev/null 2>&1; then
+            if [ "$3" = "noexit" ]; then
+                return 1
+            else
+                echo "ERROR: Failed to download $1" 1>&2
+                exit 1
+            fi
+        elif [ "$DOWNLOAD_SHOW_HTTP_WARNING" = "true" ]; then
+            DOWNLOAD_SHOW_HTTP_WARNING="false"
+            echo "WARNING: Failed to download the file over HTTPs." 1>&2
+            echo -n "         The file was instead download over HTTP. " 1>&2
+            echo "A server replay attack may be possible!" 1>&2
+        fi
+    fi
+}
+
+gpg_setup() {
+    if [ "$DOWNLOAD_VALIDATE" = "false" ]; then
+        return
+    fi
+
+    echo "Setting up the GPG keyring"
+
+    mkdir -p "$DOWNLOAD_TEMP/gpg"
+    chmod 700 "$DOWNLOAD_TEMP/gpg"
+    export GNUPGHOME="$DOWNLOAD_TEMP/gpg"
+    if ! gpg --keyserver $DOWNLOAD_KEYSERVER \
+            --recv-keys ${DOWNLOAD_KEYID} >/dev/null 2>&1; then
+        echo "ERROR: Unable to fetch GPG key from keyserver."
+        exit 1
+    fi
+}
+
+gpg_validate() {
+    if [ "$DOWNLOAD_VALIDATE" = "false" ]; then
+        if [ "$DOWNLOAD_SHOW_GPG_WARNING" = "true" ]; then
+            echo "WARNING: Running without gpg validation!" 1>&2
+        fi
+        DOWNLOAD_SHOW_GPG_WARNING="false"
+        return 0
+    fi
+
+    if ! gpg --verify $1 >/dev/zero 2>&1; then
+        echo "ERROR: Invalid signature for $1" 1>&2
+        exit 1
+    fi
+}
+
+in_userns() {
+    [ -e /proc/self/uid_map ] || { echo no; return; }
+    [ "$(wc -l /proc/self/uid_map | awk '{ print $1 }')" -eq 1 ] || \
+        { echo yes; return; }
+    line=$(awk '{ print $1 " " $2 " " $3 }' /proc/self/uid_map)
+    [ "$line" = "0 0 4294967295" ] && { echo no; return; }
+    echo yes
+}
+
+relevant_file() {
+    FILE_PATH="${LXC_CACHE_PATH}/$1"
+    if [ -e "${FILE_PATH}-${DOWNLOAD_MODE}" ]; then
+        FILE_PATH="${FILE_PATH}-${DOWNLOAD_MODE}"
+    fi
+    if [ -e "$FILE_PATH.${DOWNLOAD_COMPAT_LEVEL}" ]; then
+        FILE_PATH="${FILE_PATH}.${DOWNLOAD_COMPAT_LEVEL}"
+    fi
+
+    echo $FILE_PATH
+}
+
+usage() {
+    cat <<EOF
+LXC container image downloader
+
+Required arguments:
+[ -d | --dist <distribution> ]: The name of the distribution
+[ -r | --release <release> ]: Release name/version
+[ -a | --arch <architecture> ]: Architecture of the container
+[ -h | --help ]: This help message
+
+Optional arguments:
+[ --variant <variant> ]: Variant of the image (default: "default")
+[ --server <server> ]: Image server (default: "images.linuxcontainers.org")
+[ --keyid <keyid> ]: GPG keyid (default: 0x...)
+[ --keyserver <keyserver> ]: GPG keyserver to use
+[ --no-validate ]: Disable GPG validation (not recommended)
+[ --flush-cache ]: Flush the local copy (if present)
+
+LXC internal arguments (do not pass manually!):
+[ --name <name> ]: The container name
+[ --path <path> ]: The path to the container
+[ --rootfs <rootfs> ]: The path to the container's rootfs
+[ --mapped-uid <map> ]: A uid/gid map (user namespaces)
+EOF
+    return 0
+}
+
+options=$(getopt -o d:r:a:h -l dist:,release:,arch:,help,variant:,server:,\
+keyid:,no-validate,flush-cache,name:,path:,rootfs:,mapped-uid: -- "$@")
+
+if [ $? -ne 0 ]; then
+    usage
+    exit 1
+fi
+eval set -- "$options"
+
+while :; do
+    case "$1" in
+        -h|--help)          usage $0 && exit 0;;
+        -d|--dist)          DOWNLOAD_DIST=$2; shift 2;;
+        -r|--release)       DOWNLOAD_RELEASE=$2; shift 2;;
+        -a|--arch)          DOWNLOAD_ARCH=$2; shift 2;;
+        --variant)          DOWNLOAD_VARIANT=$2; shift 2;;
+        --server)           DOWNLOAD_SERVER=$2; shift 2;;
+        --keyid)            DOWNLOAD_KEYID=$2; shift 2;;
+        --no-validate)      DOWNLOAD_VALIDATE="false"; shift 1;;
+        --flush-cache)      DOWNLOAD_FLUSH_CACHE="true"; shift 1;;
+        --name)             LXC_NAME=$2; shift 2;;
+        --path)             LXC_PATH=$2; shift 2;;
+        --rootfs)           LXC_ROOTFS=$2; shift 2;;
+        --mapped-uid)       LXC_MAPPED_UID=$2; shift 2;;
+        *)                  break;;
+    esac
+done
+
+# Check for required binaries
+for bin in tar xz wget; do
+    if ! type $bin >/dev/null 2>&1; then
+        echo "ERROR: Missing required tool: $bin" 1>&2
+        exit 1
+    fi
+done
+
+# Check for GPG
+if [ "$DOWNLOAD_VALIDATE" = "true" ]; then
+    if ! type gpg >/dev/null 2>&1; then
+        echo "ERROR: Missing recommended tool: gpg" 1>&2
+        echo "You can workaround this by using --no-validate." 1>&2
+        exit 1
+    fi
+fi
+
+# Check that we have all variables we need
+if [ -z "$LXC_NAME" ] || [ -z "$LXC_PATH" ] || [ -z "$LXC_ROOTFS" ]; then
+    echo "ERROR: Not running through LXC." 1>&2
+    exit 1
+fi
+
+if [ "$(in_userns)" = "yes" ]; then
+    if [ -z "$LXC_MAPPED_UID" ] || [ "$LXC_MAPPED_UID" = "-1" ]; then
+        echo "ERROR: In a user namespace without a map." 1>&2
+        exit 1
+    fi
+    DOWNLOAD_MODE="user"
+fi
+
+if [ -z "$DOWNLOAD_DIST" ] || [ -z "$DOWNLOAD_RELEASE" ] || \
+   [ -z "$DOWNLOAD_ARCH" ]; then
+    echo "ERROR: Missing required argument" 1>&2
+    usage
+    exit 1
+fi
+
+# Trap all exit signals
+trap cleanup EXIT HUP INT TERM
+DOWNLOAD_TEMP=$(mktemp -d)
+
+# Setup the cache
+if [ "$DOWNLOAD_MODE" = "system" ]; then
+    LXC_CACHE_BASE="$LOCALSTATEDIR/cache/"
+    LXC_CACHE_PATH="$LOCALSTATEDIR/cache/lxc/download/$DOWNLOAD_DIST"
+    LXC_CACHE_PATH="$LXC_CACHE_PATH/$DOWNLOAD_RELEASE/$DOWNLOAD_ARCH"
+else
+    LXC_CACHE_BASE="$HOME/.cache/lxc/"
+    LXC_CACHE_PATH="$HOME/.cache/lxc/download/$DOWNLOAD_DIST"
+    LXC_CACHE_PATH="$LXC_CACHE_PATH/$DOWNLOAD_RELEASE/$DOWNLOAD_ARCH"
+fi
+
+if [ -d "$LXC_CACHE_PATH" ]; then
+    if [ "$DOWNLOAD_FLUSH_CACHE" = "true" ]; then
+        echo "Flushing the cache..."
+        rm -Rf $LXC_CACHE_PATH
+    else
+        DOWNLOAD_USE_CACHE="true"
+        if [ -e "$(relevant_file expiry)" ]; then
+            if [ "$(cat $(relevant_file expiry))" -lt $(date +%s) ]; then
+                echo "The cached copy has expired, re-downloading..."
+                DOWNLOAD_USE_CACHE="false"
+                rm -Rf $LXC_CACHE_PATH
+            fi
+        fi
+    fi
+fi
+
+# Download what's needed
+if [ "$DOWNLOAD_USE_CACHE" = "false" ]; then
+    # Initialize GPG
+    gpg_setup
+
+    # Grab the index
+    DOWNLOAD_INDEX_PATH=/meta/1.0/index-${DOWNLOAD_MODE}
+
+    echo "Downloading the image index"
+    if ! download_file ${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL} \
+         ${DOWNLOAD_TEMP}/index noexit ||
+       ! download_file ${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL}.asc \
+            ${DOWNLOAD_TEMP}/index.asc noexit; then
+        download_file ${DOWNLOAD_INDEX_PATH} ${DOWNLOAD_TEMP}/index normal
+        download_file ${DOWNLOAD_INDEX_PATH}.asc \
+            ${DOWNLOAD_TEMP}/index.asc normal
+    fi
+
+    gpg_validate ${DOWNLOAD_TEMP}/index.asc
+
+    # Parse it
+    while read line; do
+        # Basic CSV parser
+        OLD_IFS=$IFS
+        IFS=";"
+        set -- $line
+        IFS=$OLD_IFS
+
+        if [ "$1" != "$DOWNLOAD_DIST" ] || \
+           [ "$2" != "$DOWNLOAD_RELEASE" ] || \
+           [ "$3" != "$DOWNLOAD_ARCH" ] || \
+           [ "$4" != "$DOWNLOAD_VARIANT" ] || \
+           [ -z "$6" ]; then
+            continue
+        fi
+
+        DOWNLOAD_URL=$6
+        break
+    done < ${DOWNLOAD_TEMP}/index
+
+    if [ -z "$DOWNLOAD_URL" ]; then
+        echo "ERROR: Couldn't find a matching image." 1>&1
+        exit 1
+    fi
+
+    # Download the actual files
+    echo "Downloading the rootfs"
+    download_file $DOWNLOAD_URL/rootfs.tar.xz \
+        ${DOWNLOAD_TEMP}/rootfs.tar.xz normal
+    download_file $DOWNLOAD_URL/rootfs.tar.xz.asc \
+         ${DOWNLOAD_TEMP}/rootfs.tar.xz.asc normal
+    gpg_validate ${DOWNLOAD_TEMP}/rootfs.tar.xz.asc
+
+    echo "Downloading the metadata"
+    download_file $DOWNLOAD_URL/meta.tar.xz \
+        ${DOWNLOAD_TEMP}/meta.tar.xz normal
+    download_file $DOWNLOAD_URL/meta.tar.xz.asc \
+        ${DOWNLOAD_TEMP}/meta.tar.xz.asc normal
+    gpg_validate ${DOWNLOAD_TEMP}/meta.tar.xz.asc
+
+    mkdir -p $LXC_CACHE_PATH
+    mv ${DOWNLOAD_TEMP}/rootfs.tar.xz $LXC_CACHE_PATH
+    if ! tar Jxf ${DOWNLOAD_TEMP}/meta.tar.xz -C $LXC_CACHE_PATH; then
+        echo "ERROR: Invalid rootfs tarball." 2>&1
+        exit 1
+    fi
+
+    if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
+        chown $LXC_MAPPED_UID -Rf $LXC_CACHE_BASE >/dev/null 2>&1 || true
+    fi
+    echo "The image cache is now ready"
+else
+    echo "Using image from local cache"
+fi
+
+# Unpack the rootfs
+echo "Unpacking the rootfs"
+if [ "$DOWNLOAD_MODE" = "system" ]; then
+    tar --numeric-owner -xpJf ${LXC_CACHE_PATH}/rootfs.tar.xz -C ${LXC_ROOTFS}
+else
+    tar  --anchored --exclude="./dev/*" --numeric-owner -xpJf \
+        ${LXC_CACHE_PATH}/rootfs.tar.xz -C ${LXC_ROOTFS}
+    mkdir -p ${LXC_ROOTFS}/dev/pts/
+fi
+
+# Setup the configuration
+configfile=$(relevant_file config)
+fstab=$(relevant_file fstab)
+if [ ! -e $configfile ]; then
+    echo "ERROR: meta tarball is missing the configuration file" 1>&2
+    exit 1
+fi
+
+## Extract all the network config entries
+sed -i -e "/lxc.network/{w ${LXC_PATH}/config-network" -e "d}" \
+    ${LXC_PATH}/config
+
+## Extract any other config entry
+sed -i -e "/lxc./{w ${LXC_PATH}/config-auto" -e "d}" ${LXC_PATH}/config
+
+## Append the defaults
+echo "" >> ${LXC_PATH}/config
+echo "# Distribution configuration" >> ${LXC_PATH}/config
+cat $configfile >> ${LXC_PATH}/config
+
+## Add the container-specific config
+echo "" >> ${LXC_PATH}/config
+echo "# Container specific configuration" >> ${LXC_PATH}/config
+if [ -e "${LXC_PATH}/config-auto" ]; then
+    cat ${LXC_PATH}/config-auto >> ${LXC_PATH}/config
+    rm ${LXC_PATH}/config-auto
+fi
+if [ -e "$fstab" ]; then
+    echo "lxc.mount = ${LXC_PATH}/fstab" >> ${LXC_PATH}/config
+fi
+echo "lxc.utsname = ${LXC_NAME}" >> ${LXC_PATH}/config
+
+## Re-add the previously removed network config
+if [ -e "${LXC_PATH}/config-network" ]; then
+    echo "" >> ${LXC_PATH}/config
+    echo "# Network configuration" >> ${LXC_PATH}/config
+    cat ${LXC_PATH}/config-network >> ${LXC_PATH}/config
+    rm ${LXC_PATH}/config-network
+fi
+
+TEMPLATE_FILES="${LXC_PATH}/config"
+
+# Setup the fstab
+if [ -e $fstab ]; then
+    cp ${fstab} ${LXC_PATH}/fstab
+    TEMPLATE_FILES="$TEMPLATE_FILES ${LXC_PATH}/fstab"
+fi
+
+# Look for extra templates
+if [ -e "$(relevant_file templates)" ]; then
+    while read line; do
+        fullpath=${LXC_ROOTFS}/$line
+        [ ! -e "$fullpath" ] && continue
+        TEMPLATE_FILES="$TEMPLATE_FILES $fullpath"
+    done < $(relevant_file templates)
+fi
+
+# Replace variables in all templates
+for file in $TEMPLATE_FILES; do
+    [ ! -e "$file" ] && continue
+
+    sed -i "s#LXC_NAME#$LXC_NAME#g" $file
+    sed -i "s#LXC_PATH#$LXC_PATH#g" $file
+    sed -i "s#LXC_ROOTFS#$LXC_ROOTFS#g" $file
+    sed -i "s#LXC_TEMPLATE_CONFIG#$LXC_TEMPLATE_CONFIG#g" $file
+    sed -i "s#LXC_HOOK_DIR#$LXC_HOOK_DIR#g" $file
+done
+
+if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
+    chown $LXC_MAPPED_UID -f $LXC_PATH/config $LXC_PATH/fstab || true
+fi
+
+if [ -e "$(relevant_file create-message)" ]; then
+    echo ""
+    echo "---"
+    cat "$(relevant_file create-message)"
+fi
+
+exit 0
