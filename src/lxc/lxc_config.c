@@ -33,9 +33,9 @@ static struct lxc_config_items items[] =
 {
 	{ .name = "lxc.default_config", },
 	{ .name = "lxc.lxcpath", },
-	{ .name = "lxc.lvm_vg", },
-	{ .name = "lxc.lvm_thin_pool", },
-	{ .name = "lxc.zfsroot", },
+	{ .name = "lxc.bdev.lvm.vg", },
+	{ .name = "lxc.bdev.lvm.thin_pool", },
+	{ .name = "lxc.bdev.zfs.root", },
 	{ .name = NULL, },
 };
 

@@ -565,7 +565,7 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 			return -1;
 		*p = '\0';
 	} else
-		zfsroot = lxc_global_config_value("lxc.zfsroot");
+		zfsroot = lxc_global_config_value("lxc.bdev.zfs.root");
 
 	ret = snprintf(option, MAXPATHLEN, "-omountpoint=%s/%s/rootfs",
 		lxcpath, nname);
@@ -695,7 +695,7 @@ static int zfs_create(struct bdev *bdev, const char *dest, const char *n,
 	pid_t pid;
 
 	if (!specs || !specs->zfs.zfsroot)
-		zfsroot = lxc_global_config_value("lxc.zfsroot");
+		zfsroot = lxc_global_config_value("lxc.bdev.zfs.root");
 	else
 		zfsroot = specs->zfs.zfsroot;
 
@@ -982,7 +982,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 				orig->type);
 			return -1;
 		}
-		vg = lxc_global_config_value("lxc.lvm_vg");
+		vg = lxc_global_config_value("lxc.bdev.lvm.vg");
 		len = strlen("/dev/") + strlen(vg) + strlen(cname) + 2;
 		if ((new->src = malloc(len)) == NULL)
 			return -1;
@@ -1032,7 +1032,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 			return -1;
 		}
 	} else {
-		if (do_lvm_create(new->src, size, lxc_global_config_value("lxc.lvm_thin_pool")) < 0) {
+		if (do_lvm_create(new->src, size, lxc_global_config_value("lxc.bdev.lvm.thin_pool")) < 0) {
 			ERROR("Error creating new lvm blockdev");
 			return -1;
 		}
@@ -1071,11 +1071,11 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 
 	vg = specs->lvm.vg;
 	if (!vg)
-		vg = lxc_global_config_value("lxc.lvm_vg");
+		vg = lxc_global_config_value("lxc.bdev.lvm.vg");
 
 	thinpool = specs->lvm.thinpool;
 	if (!thinpool)
-		thinpool = lxc_global_config_value("lxc.lvm_thin_pool");
+		thinpool = lxc_global_config_value("lxc.bdev.lvm.thin_pool");
 
 	/* /dev/$vg/$lv */
 	if (specs->lvm.lv)
