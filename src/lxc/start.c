@@ -98,13 +98,13 @@ static int preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags) {
 	int i, saved_errno;
 	char path[MAXPATHLEN];
 
-	if (access("/proc/self/ns", X_OK)) {
-		ERROR("Does this kernel version support 'attach'?");
-		return -1;
-	}
-
 	for (i = 0; i < LXC_NS_MAX; i++)
 		ns_fd[i] = -1;
+
+	if (access("/proc/self/ns", X_OK)) {
+		WARN("Kernel does not support attach; preserve_ns ignored");
+		return 0;
+	}
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if ((clone_flags & ns_info[i].clone_flag) == 0)
@@ -788,8 +788,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (handler->pinfd == -1)
 		INFO("failed to pin the container's rootfs");
 
-	preserve_ns(saved_ns_fd, preserve_mask);
-	attach_ns(handler->conf->inherit_ns_fd);
+	if (preserve_ns(saved_ns_fd, preserve_mask) < 0)
+		goto out_delete_net;
+	if (attach_ns(handler->conf->inherit_ns_fd) < 0)
+		goto out_delete_net;
 
 	/* Create a process in a new set of namespaces */
 	handler->pid = lxc_clone(do_start, handler, handler->clone_flags);
@@ -798,7 +800,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	attach_ns(saved_ns_fd);
+	if (attach_ns(saved_ns_fd))
+		WARN("failed to restore saved namespaces");
 
 	lxc_sync_fini_child(handler);
 
