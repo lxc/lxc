@@ -68,9 +68,9 @@ static char **subsystems_from_mount_options(const char *mount_options, char **ke
 static void lxc_cgroup_mount_point_free(struct cgroup_mount_point *mp);
 static void lxc_cgroup_hierarchy_free(struct cgroup_hierarchy *h);
 static bool is_valid_cgroup(const char *name);
-static int create_or_remove_cgroup(bool remove, struct cgroup_mount_point *mp, const char *path);
+static int create_or_remove_cgroup(bool remove, struct cgroup_mount_point *mp, const char *path, int recurse);
 static int create_cgroup(struct cgroup_mount_point *mp, const char *path);
-static int remove_cgroup(struct cgroup_mount_point *mp, const char *path);
+static int remove_cgroup(struct cgroup_mount_point *mp, const char *path, bool recurse);
 static char *cgroup_to_absolute_path(struct cgroup_mount_point *mp, const char *path, const char *suffix);
 static struct cgroup_process_info *find_info_for_subsystem(struct cgroup_process_info *info, const char *subsystem);
 static int do_cgroup_get(const char *cgroup_path, const char *sub_filename, char *value, size_t len);
@@ -80,6 +80,75 @@ static int do_setup_cgroup(struct lxc_handler *h, struct lxc_list *cgroup_settin
 static int cgroup_recursive_task_count(const char *cgroup_path);
 static int count_lines(const char *fn);
 static int handle_cgroup_settings(struct cgroup_mount_point *mp, char *cgroup_path);
+
+static int cgroup_rmdir(char *dirname)
+{
+	struct dirent dirent, *direntp;
+	int saved_errno = 0;
+	DIR *dir;
+	int ret, failed=0;
+	char pathname[MAXPATHLEN];
+
+	dir = opendir(dirname);
+	if (!dir) {
+		ERROR("%s: failed to open %s", __func__, dirname);
+		return -1;
+	}
+
+	while (!readdir_r(dir, &dirent, &direntp)) {
+		struct stat mystat;
+		int rc;
+
+		if (!direntp)
+			break;
+
+		if (!strcmp(direntp->d_name, ".") ||
+		    !strcmp(direntp->d_name, ".."))
+			continue;
+
+		rc = snprintf(pathname, MAXPATHLEN, "%s/%s", dirname, direntp->d_name);
+		if (rc < 0 || rc >= MAXPATHLEN) {
+			ERROR("pathname too long");
+			failed=1;
+			if (!saved_errno)
+				saved_errno = -ENOMEM;
+			continue;
+		}
+		ret = lstat(pathname, &mystat);
+		if (ret) {
+			SYSERROR("%s: failed to stat %s", __func__, pathname);
+			failed=1;
+			if (!saved_errno)
+				saved_errno = errno;
+			continue;
+		}
+		if (S_ISDIR(mystat.st_mode)) {
+			if (cgroup_rmdir(pathname) < 0) {
+				if (!saved_errno)
+					saved_errno = errno;
+				failed=1;
+			}
+		}
+	}
+
+	if (rmdir(dirname) < 0) {
+		SYSERROR("%s: failed to delete %s", __func__, dirname);
+		if (!saved_errno)
+			saved_errno = errno;
+		failed=1;
+	}
+
+	ret = closedir(dir);
+	if (ret) {
+		SYSERROR("%s: failed to close directory %s", __func__, dirname);
+		if (!saved_errno)
+			saved_errno = errno;
+		failed=1;
+	}
+
+	errno = saved_errno;
+	return failed ? -1 : 0;
+}
 
 struct cgroup_meta_data *lxc_cgroup_load_meta()
 {
@@ -745,7 +814,7 @@ extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const cha
 		 * In that case, remove the cgroup from all previous hierarchies
 		 */
 		for (j = 0, info_ptr = base_info; j < i && info_ptr; info_ptr = info_ptr->next, j++) {
-			r = remove_cgroup(info_ptr->designated_mount_point, info_ptr->created_paths[info_ptr->created_paths_count - 1]);
+			r = remove_cgroup(info_ptr->designated_mount_point, info_ptr->created_paths[info_ptr->created_paths_count - 1], false);
 			if (r < 0)
 				WARN("could not clean up cgroup we created when trying to create container");
 			free(info_ptr->created_paths[info_ptr->created_paths_count - 1]);
@@ -1039,8 +1108,7 @@ void lxc_cgroup_process_info_free_and_remove(struct cgroup_process_info *info)
 	if (!info)
 		return;
 	next = info->next;
-	for (pp = info->created_paths; pp && *pp; pp++);
-	for ((void)(pp && --pp); info->created_paths && pp >= info->created_paths; --pp) {
+	{
 		struct cgroup_mount_point *mp = info->designated_mount_point;
 		if (!mp)
 			mp = lxc_cgroup_find_mount_point(info->hierarchy, info->cgroup_path, true);
@@ -1049,7 +1117,10 @@ void lxc_cgroup_process_info_free_and_remove(struct cgroup_process_info *info)
 			 * '/lxc' cgroup in this container but another container
 			 * is still running (for example)
 			 */
-			(void)remove_cgroup(mp, *pp);
+			(void)remove_cgroup(mp, info->cgroup_path, true);
+	}
+	for (pp = info->created_paths; pp && *pp; pp++);
+	for ((void)(pp && --pp); info->created_paths && pp >= info->created_paths; --pp) {
 		free(*pp);
 	}
 	free(info->created_paths);
@@ -1609,7 +1680,7 @@ bool is_valid_cgroup(const char *name)
 	return strcmp(name, ".") != 0 && strcmp(name, "..") != 0;
 }
 
-int create_or_remove_cgroup(bool do_remove, struct cgroup_mount_point *mp, const char *path)
+int create_or_remove_cgroup(bool do_remove, struct cgroup_mount_point *mp, const char *path, int recurse)
 {
 	int r, saved_errno = 0;
 	char *buf = cgroup_to_absolute_path(mp, path, NULL);
@@ -1617,9 +1688,13 @@ int create_or_remove_cgroup(bool do_remove, struct cgroup_mount_point *mp, const
 		return -1;
 
 	/* create or remove directory */
-	r = do_remove ?
-		rmdir(buf) :
-		mkdir(buf, 0777);
+	if (do_remove) {
+		if (recurse)
+			r = cgroup_rmdir(buf);
+		else
+			r = rmdir(buf);
+	} else
+		r = mkdir(buf, 0777);
 	saved_errno = errno;
 	free(buf);
 	errno = saved_errno;
@@ -1628,12 +1703,12 @@ int create_or_remove_cgroup(bool do_remove, struct cgroup_mount_point *mp, const
 
 int create_cgroup(struct cgroup_mount_point *mp, const char *path)
 {
-	return create_or_remove_cgroup(false, mp, path);
+	return create_or_remove_cgroup(false, mp, path, false);
 }
 
-int remove_cgroup(struct cgroup_mount_point *mp, const char *path)
+int remove_cgroup(struct cgroup_mount_point *mp, const char *path, bool recurse)
 {
-	return create_or_remove_cgroup(true, mp, path);
+	return create_or_remove_cgroup(true, mp, path, recurse);
 }
 
 char *cgroup_to_absolute_path(struct cgroup_mount_point *mp, const char *path, const char *suffix)
