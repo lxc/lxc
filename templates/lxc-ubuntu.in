@@ -239,7 +239,7 @@ cleanup()
 suggest_flush()
 {
     echo "Container upgrade failed.  The container cache may be out of date,"
-    echo "in which case flushing the case (see -F in the hep output) may help."
+    echo "in which case flushing the cache (see -F in the help output) may help."
 }
 
 download_ubuntu()

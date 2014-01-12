@@ -133,7 +133,7 @@ LXC Container configuration for Ubuntu Cloud images.
 Generic Options
 [ -r | --release <release> ]: Release name of container, defaults to host
 [ --rootfs <path> ]: Path in which rootfs will be placed
-[ -a | --arch ]: Arhcitecture of container, defaults to host architecture
+[ -a | --arch ]: Architecture of container, defaults to host architecture
 [ -T | --tarball ]: Location of tarball
 [ -d | --debug ]: Run with 'set -x' to debug errors
 [ -s | --stream]: Use specified stream rather than 'released'
