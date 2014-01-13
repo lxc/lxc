@@ -30,8 +30,42 @@
 arch=$(uname -m)
 cache_base=@LOCALSTATEDIR@/cache/lxc/fedora/$arch
 default_path=@LXCPATH@
-# We really need something better here!
-root_password=root
+
+# Some combinations of the tunning knobs below do not exactly make sense.
+# but that's ok.
+#
+# If the "root_password" is non-blank, use it, else set a default.
+# This can be passed to the script as an environment variable and is
+# set by a shell conditional assignment.  Looks weird but it is what it is.
+#
+# If the root password contains a ding ($) then try to expand it.
+# That will pick up things like ${name} and ${RANDOM}.
+# If the root password contians more than 3 consecutive X's, pass it as
+# a template to mktemp and take the result.
+#
+# If root_display_password = yes, display the temporary root password at exit.
+# If root_store_password = yes, store it in the configuration directory
+# If root_prompt_password = yes, invoke "passwd" to force the user to change
+# the root password after the container is created.
+#
+# These are conditional assignments...  The can be overridden from the
+# preexisting environment variables...
+#
+# Make sure this is in single quotes to defer expansion to later!
+# :{root_password='Root-${name}-${RANDOM}'}
+: ${root_password='Root-${name}-XXXXXX'}
+
+# Now, it doesn't make much sense to display, store, and force change
+# together.  But, we gotta test, right???
+: ${root_display_password='no'}
+: ${root_store_password='yes'}
+# Prompting for something interactive has potential for mayhem
+# with users running under the API...  Don't default to "yes"
+: ${root_prompt_password='no'}
+
+# These are only going into comments in the resulting config...
+lxc_network_type=veth
+lxc_network_link=lxcbr0
 
 # is this fedora?
 # Alow for weird remixes like the Raspberry Pi
@@ -225,8 +259,21 @@ EOF
     mknod -m 600 ${dev_path}/initctl p
     mknod -m 666 ${dev_path}/ptmx c 5 2
 
-    echo "setting root passwd to $root_password"
+    if [ ${root_display_password} = "yes" ]
+    then
+        echo "Setting root password to '$root_password'"
+    fi
+    if [ ${root_store_password} = "yes" ]
+    then
+        touch ${config_path}/tmp_root_pass
+        chmod 600 ${config_path}/tmp_root_pass
+        echo ${root_password} > ${config_path}/tmp_root_pass
+        echo "Storing root password in '${config_path}/tmp_root_pass'"
+    fi
+
     echo "root:$root_password" | chroot $rootfs_path chpasswd
+    # Also set this password as expired to force the user to change it!
+    chroot $rootfs_path passwd -e root
 
     # specifying this in the initial packages doesn't always work.
     # Even though it should have...
@@ -274,7 +321,7 @@ configure_fedora_init()
 
 configure_fedora_systemd()
 {
-    unlink ${rootfs_path}/etc/systemd/system/default.target
+    rm -f ${rootfs_path}/etc/systemd/system/default.target
     touch ${rootfs_path}/etc/fstab
     chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/udev.service
     chroot ${rootfs_path} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
@@ -868,6 +915,7 @@ copy_fedora()
     # i prefer rsync (no reason really)
     mkdir -p $rootfs_path
     rsync -Ha $cache/rootfs/ $rootfs_path/
+    echo
     return 0
 }
 
@@ -922,11 +970,53 @@ install_fedora()
     return $?
 }
 
+# Generate a random hardware (MAC) address composed of FE followed by
+# 5 random bytes...
+create_hwaddr()
+{
+    echo $(dd if=/dev/urandom bs=8 count=1 2>/dev/null | md5sum |
+        sed -e 's/\(..\)\(..\)\(..\)\(..\)\(..\).*/fe:\1:\2:\3:\4:\5/')
+}
+
 copy_configuration()
 {
-
     mkdir -p $config_path
-    grep -q "^lxc.rootfs" $config_path/config 2>/dev/null || echo "lxc.rootfs = $rootfs_path" >> $config_path/config
+
+    grep -q "^lxc.rootfs" $config_path/config 2>/dev/null || echo "
+lxc.rootfs = $rootfs_path
+" >> $config_path/config
+
+    # The following code is to create static MAC addresses for each
+    # interface in the container.  This code will work for multiple
+    # interfaces in the default config.  It will also strip any
+    # hwaddr stanzas out of the default config since we can not share
+    # MAC addresses between containers.
+    mv $config_path/config $config_path/config.def
+    while read LINE
+    do
+        # This should catch variable expansions from the default config...
+        if expr "${LINE}" : '.*\$' > /dev/null 2>&1
+        then
+                LINE=$(eval "echo \"${LINE}\"")
+        fi
+
+        # There is a tab and a space in the regex bracket below!
+        # Seems that \s doesn't work in brackets.
+        KEY=$(expr "${LINE}" : '\s*\([^	 ]*\)\s*=')
+
+        if [[ "${KEY}" != "lxc.network.hwaddr" ]]
+        then
+            echo "${LINE}" >> $config_path/config
+
+            if [[ "${KEY}" == "lxc.network.link" ]]
+            then
+                echo "lxc.network.hwaddr = $(create_hwaddr)" >> $config_path/config
+            fi
+        fi
+    done < $config_path/config.def
+
+    rm -f $config_path/config.def
+
     cat <<EOF >> $config_path/config
 lxc.utsname = $utsname
 lxc.tty = 4
@@ -938,6 +1028,18 @@ lxc.autodev = $auto_dev
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
+
+# example simple networking setup, uncomment to enable
+#lxc.network.type = $lxc_network_type
+#lxc.network.flags = up
+#lxc.network.link = $lxc_network_link
+#lxc.network.name = eth0
+# Additional example for veth network type
+#    static MAC address,
+#lxc.network.hwaddr = 00:16:3e:77:52:20
+#    persistent veth device name on host side
+#        Note: This may potentially collide with other containers of same name!
+#lxc.network.veth.pair = v-$name-e0
 
 #cgroups
 lxc.cgroup.devices.deny = a
@@ -960,6 +1062,7 @@ EOF
 proc            proc         proc    nodev,noexec,nosuid 0 0
 sysfs           sys          sysfs defaults  0 0
 EOF
+
     if [ $? -ne 0 ]; then
         echo "Failed to add configuration"
         return 1
@@ -1037,6 +1140,28 @@ if [ ! -z "$clean" -a -z "$path" ]; then
     exit 0
 fi
 
+# Let's do something better for the initial root password.
+# It's not perfect but it will defeat common scanning brute force
+# attacks in the case where ssh is exposed.  It will also be set to
+# expired, forcing the user to change it at first login.
+if [ "${root_password}" = "" ]
+then
+    root_password=Root-${name}-${RANDOM}
+else
+    # If it's got a ding in it, try and expand it!
+    if [ $(expr "${root_password}" : '.*$.') != 0 ]
+    then
+        root_password=$(eval echo "${root_password}")
+    fi
+
+    # If it has more than 3 consequtive X's in it, feed it
+    # through mktemp as a template.
+    if [ $(expr "${root_password}" : '.*XXXX') != 0 ]
+    then
+        root_password=$(mktemp -u ${root_password})
+    fi
+fi
+
 if [ -z "${utsname}" ]; then
     utsname=${name}
 fi
@@ -1055,7 +1180,7 @@ fi
 #    utsname and hostname = Container_Name.Domain_Name
 
 if [ $(expr "$utsname" : '.*\..*\.') = 0 ]; then
-    if [ -n "$(dnsdomainname)" ]; then
+    if [[ "$(dnsdomainname)" != "" && "$(dnsdomainname)" != "localdomain" ]]; then
         utsname=${utsname}.$(dnsdomainname)
     fi
 fi
@@ -1159,12 +1284,14 @@ if [ ! -z $clean ]; then
     clean || exit 1
     exit 0
 fi
-echo "container rootfs and config created"
+echo "
+Container rootfs and config have been created.
+Edit the config file to check/enable networking setup.
+"
 
 if [[ -d ${cache_base}/bootstrap ]]
 then
-    echo "
-You have successfully built a Fedora container and cache.  This cache may
+    echo "You have successfully built a Fedora container and cache.  This cache may
 be used to create future containers of various revisions.  The directory
 ${cache_base}/bootstrap contains a bootstrap
 which may no longer needed and can be removed.
@@ -1176,5 +1303,40 @@ then
     echo "A LiveOS directory exists at ${cache_base}/LiveOS.
 This is only used in the creation of the bootstrap run-time-environment
 and may be removed.
+"
+fi
+
+if [ ${root_display_password} = "yes" ]
+then
+    echo "The temporary password for root is: '$root_password'
+
+You may want to note that password down before starting the container.
+"
+fi
+
+if [ ${root_store_password} = "yes" ]
+then
+    echo "The temporary root password is stored in:
+
+        '${config_path}/tmp_root_pass'
+"
+fi
+
+if [ ${root_prompt_password} = "yes" ]
+then
+    echo "Invoking the passwd command in the container to set the root password.
+
+        chroot ${rootfs_path} passwd
+"
+    chroot ${rootfs_path} passwd
+else
+    echo "
+The root password is set up as "expired" and will require it to be changed
+at first login, which you should do as soon as possible.  If you lose the
+root password or wish to change it without starting the container, you
+can change it from the host by running the following command (which will
+also reset the expired flag):
+
+        chroot ${rootfs_path} passwd
 "
 fi
