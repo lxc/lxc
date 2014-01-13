@@ -21,6 +21,7 @@ lxc_test_may_control_SOURCES = may_control.c
 lxc_test_reboot_SOURCES = reboot.c
 lxc_test_list_SOURCES = list.c
 lxc_test_attach_SOURCES = attach.c
+lxc_test_device_add_remove_SOURCES = device_add_remove.c
 
 AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
@@ -42,7 +43,7 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-shutdowntest lxc-test-get_item lxc-test-getkeys lxc-test-lxcpath \
 	lxc-test-cgpath lxc-test-clonetest lxc-test-console \
 	lxc-test-snapshot lxc-test-concurrent lxc-test-may-control \
-	lxc-test-reboot lxc-test-list lxc-test-attach
+	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove
 
 bin_SCRIPTS = lxc-test-usernic
 
@@ -72,4 +73,5 @@ EXTRA_DIST = \
 	may_control.c \
 	lxc-test-ubuntu \
 	lxc-test-unpriv \
+	device_add_remove.c \
 	list.c

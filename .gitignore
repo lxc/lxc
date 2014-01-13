@@ -81,6 +81,7 @@ src/lxc/version.h
 src/python-lxc/build/
 src/python-lxc/lxc/__pycache__/
 
+src/tests/lxc-test-device-add-remove
 src/tests/lxc-test-attach
 src/tests/lxc-test-cgpath
 src/tests/lxc-test-clonetest
@@ -91,16 +92,16 @@ src/tests/lxc-test-createtest
 src/tests/lxc-test-destroytest
 src/tests/lxc-test-get_item
 src/tests/lxc-test-getkeys
+src/tests/lxc-test-list
 src/tests/lxc-test-locktests
 src/tests/lxc-test-lxcpath
+src/tests/lxc-test-may-control
+src/tests/lxc-test-reboot
 src/tests/lxc-test-saveconfig
 src/tests/lxc-test-shutdowntest
 src/tests/lxc-test-snapshot
 src/tests/lxc-test-startone
 src/tests/lxc-usernic-test
-src/tests/lxc-test-may-control
-src/tests/lxc-test-reboot
-src/tests/lxc-test-list
 
 config/compile
 config/config.guess
