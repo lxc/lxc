@@ -533,6 +533,7 @@ AC_CONFIG_FILES([
 	config/etc/Makefile
 	config/templates/Makefile
 	config/templates/plamo.common.conf
+	config/templates/plamo.userns.conf
 	config/templates/ubuntu-cloud.common.conf
 	config/templates/ubuntu-cloud.lucid.conf
 	config/templates/ubuntu-cloud.userns.conf
