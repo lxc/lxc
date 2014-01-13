@@ -255,8 +255,8 @@ EOF
 
         # add necessary config files
         mkdir $rootfs/etc/dropbear
-        dropbearkey -t rsa -f $rootfs/etc/dropbear/dropbear_rsa_host_key &> /dev/null
-        dropbearkey -t dss -f $rootfs/etc/dropbear/dropbear_dss_host_key &> /dev/null
+        dropbearkey -t rsa -f $rootfs/etc/dropbear/dropbear_rsa_host_key > /dev/null 2>&1
+        dropbearkey -t dss -f $rootfs/etc/dropbear/dropbear_dss_host_key > /dev/null 2>&1
 
         echo "'dropbear' ssh utility installed"
     fi

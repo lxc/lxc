@@ -202,7 +202,7 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-if [ $0 == "/sbin/init" ]; then
+if [ $0 = "/sbin/init" ]; then
 
     PATH="$PATH:/bin:/sbin:/usr/sbin"
     check_for_cmd @LXCINITDIR@/lxc/lxc-init
