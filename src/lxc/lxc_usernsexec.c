@@ -76,9 +76,8 @@ static void opentty(const char * tty) {
 
 	fd = open(tty, O_RDWR | O_NONBLOCK);
 	if (fd == -1) {
-		printf("FATAL: can't reopen tty: %s", strerror(errno));
-		sleep(1);
-		exit(1);
+		printf("WARN: could not reopen tty: %s", strerror(errno));
+		return;
 	}
 
 	flags = fcntl(fd, F_GETFL);
