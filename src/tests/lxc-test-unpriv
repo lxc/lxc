@@ -1,0 +1,93 @@
+#!/bin/bash
+
+# lxc: linux Container library
+
+# Authors:
+# Serge Hallyn <serge.hallyn@ubuntu.com>
+#
+# This is a test script for unprivileged containers
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+if [ $(id -u) -ne 0 ]; then
+	echo 'run as root'
+	exit 1
+fi
+which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; exit 1; }
+
+DONE=0
+cleanup() {
+	lxc-stop -P $HDIR/lxcbase -n c1
+	sed -i '/usernic-user/d' /var/run/lxc/nics /etc/lxc/lxc-usernet
+	sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
+	sudo deluser $TUSER
+	rm -rf $HDIR
+	if [ $DONE -eq 0 ]; then
+		exit $1
+	fi
+}
+
+# create a test user
+TUSER=lxcunpriv
+HDIR=/home/$TUSER
+
+trap cleanup EXIT SIGHUP SIGINT SIGTERM
+
+deluser $TUSER || true
+useradd $TUSER
+sudo mkdir -p $HDIR
+sudo chown $TUSER $HDIR
+echo "$TUSER veth lxcbr0 2" > /etc/lxc/lxc-usernet
+sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
+usermod -v 910000-919999 -w 910000-919999 $TUSER
+mkdir -p $HDIR/lxcbase
+chown $TUSER $HDIR/lxcbase
+uid=$(id -u $TUSER)
+cat >> $HDIR/.bashrc << EOF
+export HOME=$HDIR
+export USER=$TUSER
+EOF
+chown $TUSER $HDIR/.bashrc
+
+cat > $HDIR/lxc-usernic.conf << EOF
+lxc.network.type = veth
+lxc.network.link = lxcbr0
+lxc.id_map = u 0 910000 9999
+lxc.id_map = g 0 910000 9999
+EOF
+chown $TUSER $HDIR/lxc-usernic.conf
+rm -rf /run/lock/lxc/home/$TUSER
+mkdir -p /run/lock/lxc/home/$TUSER
+chown $TUSER /run/lock/lxc/home/$TUSER
+
+for d in /sys/fs/cgroup/*; do
+	mkdir $d/lxctest
+	chown -R $TUSER $d/lxctest
+	echo $$ > $d/lxctest/tasks
+done
+cd $HDIR
+#export HOME=$HDIR
+env | awk -F= '{print $1}' | while read line; do export ${line}=; done
+echo "DOING: lxc-create -P $HDIR/lxcbase -t ubuntu-cloud -n c1 -f $HDIR/lxc-usernic.conf"
+sudo --set-home -u $TUSER lxc-create -P $HDIR/lxcbase -t ubuntu-cloud -n c1 -f $HDIR/lxc-usernic.conf -l outout -o /tmp/o1
+#read -p "c1 created, check it now" x
+sudo --set-home -u $TUSER lxc-start -P $HDIR/lxcbase -n c1 -d
+
+p1=`lxc-info -P $HDIR/lxcbase -n c1 -p | awk -F: '{ print $2 }'`
+[ "$p1" != "-1" ] || { echo "Failed to start container c1"; false; }
+lxc-attach -P $HDIR/lxcbase -n c1 -- ping -c 1 google.com
+
+echo "All tests passed"
+DONE=1

@@ -81,6 +81,8 @@ if [ $? -eq 0 ]; then
 fi
 
 # Give him a quota of two
+touch /etc/lxc/lxc-usernet
+sed -i '/^lxc-usernet/d' /etc/lxc/lxc-usernet
 echo "lxc-usernet veth usernic-br0 2" >> /etc/lxc/lxc-usernet
 
 # Assign one veth to second bridge, should fail
