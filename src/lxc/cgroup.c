@@ -55,12 +55,6 @@
 #include <mntent.h>
 #endif
 
-#ifndef HAVE_GETLINE
-#ifdef HAVE_FGETLN
-#include <../include/getline.h>
-#endif
-#endif
-
 lxc_log_define(lxc_cgroup, lxc);
 
 static struct cgroup_process_info *lxc_cgroup_process_info_getx(const char *proc_pid_cgroup_str, struct cgroup_meta_data *meta);

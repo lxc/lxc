@@ -40,12 +40,6 @@
 #include <sys/wait.h>
 #include <assert.h>
 
-#ifndef HAVE_GETLINE
-#ifdef HAVE_FGETLN
-#include <../include/getline.h>
-#endif
-#endif
-
 #include "utils.h"
 #include "log.h"
 #include "lxclock.h"

@@ -43,12 +43,6 @@
 #include "namespace.h"
 #include "utils.h"
 
-#ifndef HAVE_GETLINE
-#ifdef HAVE_FGETLN
-#include <../include/getline.h>
-#endif
-#endif
-
 int unshare(int flags);
 
 static void usage(const char *name)

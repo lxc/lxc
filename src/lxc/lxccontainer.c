@@ -61,12 +61,6 @@
 #include <../include/ifaddrs.h>
 #endif
 
-#ifndef HAVE_GETLINE
-#ifdef HAVE_FGETLN
-#include <../include/getline.h>
-#endif
-#endif
-
 #define MAX_BUFFER 4096
 
 lxc_log_define(lxc_container, lxc);
