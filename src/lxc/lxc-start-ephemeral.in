@@ -212,7 +212,7 @@ LXC_NAME="%s"
                      entry[1]))
         elif args.union_type == "aufs":
             fd.write("mount -n -t aufs "
-                     "-o br=${upper}=rw:${lower}=ro,noplink none %s\n" % (
+                     "-o br=%s=rw:%s=ro,noplink none %s\n" % (
                      target,
                      entry[0],
                      entry[1]))
