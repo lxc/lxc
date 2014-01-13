@@ -2209,7 +2209,7 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		fprintf(fout, "lxc.seccomp = %s\n", c->seccomp);
 	if (c->kmsg == 0)
 		fprintf(fout, "lxc.kmsg = 0\n");
-	if (c->autodev)
+	if (c->autodev > 0)
 		fprintf(fout, "lxc.autodev = 1\n");
 	if (c->loglevel != LXC_LOG_PRIORITY_NOTSET)
 		fprintf(fout, "lxc.loglevel = %s\n", lxc_log_priority_to_string(c->loglevel));
