@@ -361,6 +361,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	      default to the virtual interface, but in some cases,
 	      this is needed to resolve a mac address conflict or to
 	      always have the same link-local ipv6 address
+	      always have the same link-local ipv6 address.
+	      Any "x" in address will be replaced by random value,
+	      this allows setting hwaddr templates.
 	    </para>
 	  </listitem>
 	</varlistentry>

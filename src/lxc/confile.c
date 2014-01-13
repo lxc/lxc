@@ -510,6 +510,37 @@ static int macvlan_mode(int *valuep, const char *value)
 	return -1;
 }
 
+static int rand_complete_hwaddr(char *hwaddr)
+{
+	const char hex[] = "0123456789abcdef";
+	char *curs = hwaddr;
+
+#ifndef HAVE_RAND_R
+	randseed(true);
+#else
+	unsigned int seed=randseed(false);
+#endif
+	while (*curs != '\0')
+	{
+		if ( *curs == 'x' || *curs == 'X' ) {
+			if (curs - hwaddr == 1) {
+				//ensure address is unicast
+#ifdef HAVE_RAND_R
+				*curs = hex[rand_r(&seed) & 0x0E];
+			} else {
+				*curs = hex[rand_r(&seed) & 0x0F];
+#else
+				*curs = hex[rand() & 0x0E];
+			} else {
+				*curs = hex[rand() & 0x0F];
+#endif
+			}
+		}
+		curs++;
+	}
+	return 0;
+}
+
 static int config_network_flags(const char *key, const char *value,
 				struct lxc_conf *lxc_conf)
 {
@@ -577,11 +608,27 @@ static int config_network_hwaddr(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
-	if (!netdev)
+	char *new_value = strdup(value);
+	if (!new_value) {
+		SYSERROR("failed to strdup '%s': %m", value);
 		return -1;
+	}
+	rand_complete_hwaddr(new_value);
 
-	return config_string_item(&netdev->hwaddr, value);
+	netdev = network_netdev(key, new_value, &lxc_conf->network);
+	if (!netdev) {
+		free(new_value);
+		return -1;
+	};
+
+	if (!new_value || strlen(new_value) == 0) {
+		free(new_value);
+		netdev->hwaddr = NULL;
+		return 0;
+	}
+
+	netdev->hwaddr = new_value;
+	return 0;
 }
 
 static int config_network_vlan_id(const char *key, const char *value,

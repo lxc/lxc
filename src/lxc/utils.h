@@ -257,5 +257,7 @@ extern void lxc_free_array(void **array, lxc_free_fn element_free_fn);
 extern size_t lxc_array_len(void **array);
 
 extern void **lxc_append_null_to_array(void **array, size_t count);
+//initialize rand with urandom
+extern int randseed(bool);
 
 #endif
