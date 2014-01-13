@@ -325,8 +325,8 @@ int main(int argc, char *argv[])
 		conf->inherit_ns_fd[i] = fd;
 	}
 
-	if (my_args.daemonize) {
-		c->want_daemonize(c, true);
+	if (!my_args.daemonize) {
+		c->want_daemonize(c, false);
 	}
 
 	if (pid_fp != NULL) {

@@ -3052,6 +3052,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 		lxcapi_destroy(c);
 		lxcapi_clear_config(c);
 	}
+	c->daemonize = true;
 
 	// assign the member functions
 	c->is_defined = lxcapi_is_defined;
