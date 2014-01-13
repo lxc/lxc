@@ -48,6 +48,7 @@
 #include "log.h"
 #include "cgroup.h"
 #include "start.h"
+#include "state.h"
 
 #if IS_BIONIC
 #include <../include/lxcmntent.h>
@@ -2016,3 +2017,136 @@ int handle_cgroup_settings(struct cgroup_mount_point *mp, char *cgroup_path)
 	}
 	return 0;
 }
+
+extern void lxc_monitor_send_state(const char *name, lxc_state_t state,
+			    const char *lxcpath);
+int do_unfreeze(const char *nsgroup, int freeze, const char *name, const char *lxcpath)
+{
+	char freezer[MAXPATHLEN], *f;
+	char tmpf[32];
+	int fd, ret;
+
+	ret = snprintf(freezer, MAXPATHLEN, "%s/freezer.state", nsgroup);
+	if (ret >= MAXPATHLEN) {
+		ERROR("freezer.state name too long");
+		return -1;
+	}
+
+	fd = open(freezer, O_RDWR);
+	if (fd < 0) {
+		SYSERROR("failed to open freezer at '%s'", nsgroup);
+		return -1;
+	}
+
+	if (freeze) {
+		f = "FROZEN";
+		ret = write(fd, f, strlen(f) + 1);
+	} else {
+		f = "THAWED";
+		ret = write(fd, f, strlen(f) + 1);
+
+		/* compatibility code with old freezer interface */
+		if (ret < 0) {
+			f = "RUNNING";
+			ret = write(fd, f, strlen(f) + 1) < 0;
+		}
+	}
+
+	if (ret < 0) {
+		SYSERROR("failed to write '%s' to '%s'", f, freezer);
+		goto out;
+	}
+
+	while (1) {
+		ret = lseek(fd, 0L, SEEK_SET);
+		if (ret < 0) {
+			SYSERROR("failed to lseek on file '%s'", freezer);
+			goto out;
+		}
+
+		ret = read(fd, tmpf, sizeof(tmpf));
+		if (ret < 0) {
+			SYSERROR("failed to read to '%s'", freezer);
+			goto out;
+		}
+
+		ret = strncmp(f, tmpf, strlen(f));
+		if (!ret)
+		{
+			if (name)
+				lxc_monitor_send_state(name, freeze ? FROZEN : THAWED, lxcpath);
+			break;		/* Success */
+		}
+
+		sleep(1);
+
+		ret = lseek(fd, 0L, SEEK_SET);
+		if (ret < 0) {
+			SYSERROR("failed to lseek on file '%s'", freezer);
+			goto out;
+		}
+
+		ret = write(fd, f, strlen(f) + 1);
+		if (ret < 0) {
+			SYSERROR("failed to write '%s' to '%s'", f, freezer);
+			goto out;
+		}
+	}
+
+out:
+	close(fd);
+	return ret;
+}
+
+int freeze_unfreeze(const char *name, int freeze, const char *lxcpath)
+{
+	char *cgabspath;
+	int ret;
+
+	cgabspath = lxc_cgroup_get_hierarchy_abs_path("freezer", name, lxcpath);
+	if (!cgabspath)
+		return -1;
+
+	ret = do_unfreeze(cgabspath, freeze, name, lxcpath);
+	free(cgabspath);
+	return ret;
+}
+
+lxc_state_t freezer_state(const char *name, const char *lxcpath)
+{
+	char *cgabspath = NULL;
+	char freezer[MAXPATHLEN];
+	char status[MAXPATHLEN];
+	FILE *file;
+	int ret;
+
+	cgabspath = lxc_cgroup_get_hierarchy_abs_path("freezer", name, lxcpath);
+	if (!cgabspath)
+		return -1;
+
+	ret = snprintf(freezer, MAXPATHLEN, "%s/freezer.state", cgabspath);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		goto out;
+
+	file = fopen(freezer, "r");
+	if (!file) {
+		ret = -1;
+		goto out;
+	}
+
+	ret = fscanf(file, "%s", status);
+	fclose(file);
+
+	if (ret == EOF) {
+		SYSERROR("failed to read %s", freezer);
+		ret = -1;
+		goto out;
+	}
+
+	ret = lxc_str2state(status);
+
+out:
+	free(cgabspath);
+	return ret;
+}
+

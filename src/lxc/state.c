@@ -67,44 +67,6 @@ lxc_state_t lxc_str2state(const char *state)
 	return -1;
 }
 
-static lxc_state_t freezer_state(const char *name, const char *lxcpath)
-{
-	char *cgabspath = NULL;
-	char freezer[MAXPATHLEN];
-	char status[MAXPATHLEN];
-	FILE *file;
-	int ret;
-
-	cgabspath = lxc_cgroup_get_hierarchy_abs_path("freezer", name, lxcpath);
-	if (!cgabspath)
-		return -1;
-
-	ret = snprintf(freezer, MAXPATHLEN, "%s/freezer.state", cgabspath);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		goto out;
-
-	file = fopen(freezer, "r");
-	if (!file) {
-		ret = -1;
-		goto out;
-	}
-
-	ret = fscanf(file, "%s", status);
-	fclose(file);
-
-	if (ret == EOF) {
-		SYSERROR("failed to read %s", freezer);
-		ret = -1;
-		goto out;
-	}
-
-	ret = lxc_str2state(status);
-
-out:
-	free(cgabspath);
-	return ret;
-}
-
 lxc_state_t lxc_getstate(const char *name, const char *lxcpath)
 {
 	lxc_state_t state = freezer_state(name, lxcpath);
