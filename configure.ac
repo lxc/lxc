@@ -632,22 +632,23 @@ AC_CONFIG_FILES([
 	hooks/Makefile
 
 	templates/Makefile
+	templates/lxc-alpine
+	templates/lxc-altlinux
+	templates/lxc-archlinux
+	templates/lxc-busybox
+	templates/lxc-centos
 	templates/lxc-cirros
 	templates/lxc-debian
 	templates/lxc-download
+	templates/lxc-fedora
+	templates/lxc-gentoo
+	templates/lxc-openmandriva
+	templates/lxc-opensuse
+	templates/lxc-oracle
+	templates/lxc-plamo
+	templates/lxc-sshd
 	templates/lxc-ubuntu
 	templates/lxc-ubuntu-cloud
-	templates/lxc-opensuse
-	templates/lxc-busybox
-	templates/lxc-centos
-	templates/lxc-fedora
-	templates/lxc-openmandriva
-	templates/lxc-oracle
-	templates/lxc-altlinux
-	templates/lxc-sshd
-	templates/lxc-archlinux
-	templates/lxc-alpine
-	templates/lxc-plamo
 
 	src/Makefile
 	src/lxc/Makefile

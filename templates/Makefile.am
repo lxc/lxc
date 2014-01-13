@@ -10,6 +10,7 @@ templates_SCRIPTS = \
 	lxc-debian \
 	lxc-download \
 	lxc-fedora \
+	lxc-gentoo \
 	lxc-openmandriva \
 	lxc-opensuse \
 	lxc-oracle \

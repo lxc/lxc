@@ -34,6 +34,7 @@ templates/lxc-cirros
 templates/lxc-debian
 templates/lxc-download
 templates/lxc-fedora
+templates/lxc-gentoo
 templates/lxc-openmandriva
 templates/lxc-opensuse
 templates/lxc-oracle
