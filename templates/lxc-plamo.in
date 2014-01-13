@@ -28,6 +28,8 @@
 # ref. https://github.com/Ponce/lxc-slackware/blob/master/lxc-slackware
 #      lxc-ubuntu script
 
+LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+
 [ -r /etc/default/lxc ] && . /etc/default/lxc
 
 MIRRORSRV=${MIRRORSRV:-"ftp.ne.jp"}
@@ -243,35 +245,23 @@ configure_plamo() {
 }
 
 copy_configuration() {
+
+  # Create the fstab (empty by default)
+  touch $path/fstab
+
   if ! cat <<- EOF >> $path/config ; then
 	lxc.utsname = $name
-	
-	lxc.tty = 4
-	lxc.pts = 1024
-	lxc.mount.auto = proc sys cgroup
 	lxc.arch = $arch
-	lxc.cap.drop = sys_module mac_admin mac_override sys_time
-	
-	lxc.cgroup.devices.deny = a
-	# /dev/null and zero
-	lxc.cgroup.devices.allow = c 1:3 rwm
-	lxc.cgroup.devices.allow = c 1:5 rwm
-	# consoles
-	lxc.cgroup.devices.allow = c 5:0 rwm
-	lxc.cgroup.devices.allow = c 5:1 rwm
-	# /dev/{,u}random
-	lxc.cgroup.devices.allow = c 1:8 rwm
-	lxc.cgroup.devices.allow = c 1:9 rwm
-	lxc.cgroup.devices.allow = c 5:2 rwm
-	lxc.cgroup.devices.allow = c 136:* rwm
-	# rtc
-	lxc.cgroup.devices.allow = c 254:0 rm
-	# fuse
-	lxc.cgroup.devices.allow = c 10:229 rwm
+	lxc.mount = $path/fstab
 	EOF
     echo "Failed to add configuration."
     return 1
   fi
+
+  if [ -e "${LXC_TEMPLATE_CONFIG}/plamo.common.conf" ] ; then
+    echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/plamo.common.conf" >> $path/config
+  fi
+
   return 0
 }
 
