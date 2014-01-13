@@ -105,7 +105,7 @@ EOF
         cat /etc/timezone > $rootfs/etc/timezone
         chroot $rootfs dpkg-reconfigure -f noninteractive tzdata
     elif [ -f /etc/sysconfig/clock ]; then
-        source /etc/sysconfig/clock
+        . /etc/sysconfig/clock
         echo $ZONE > $rootfs/etc/timezone
         chroot $rootfs dpkg-reconfigure -f noninteractive tzdata
     else
@@ -222,7 +222,7 @@ if [ $debug -eq 1 ]; then
     set -x
 fi
 
-if [ "$arch" == "i686" ]; then
+if [ "$arch" = "i686" ]; then
     arch=i386
 fi
 
@@ -373,9 +373,9 @@ if [ -n "$tarball" ]; then
 else
     mkdir -p "$STATE_DIR/lock/subsys/"
     (
-        flock -x 200
+        flock -x 9
         do_extract_rootfs
-    ) 200>"$STATE_DIR/lock/subsys/lxc-ubuntu-cloud"
+    ) 9>"$STATE_DIR/lock/subsys/lxc-ubuntu-cloud"
 fi
 
 copy_configuration $path $rootfs $name $arch $release

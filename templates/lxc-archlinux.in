@@ -65,7 +65,7 @@ declare -a additional_packages
 # ${1} - string to split
 # ${2} - separator (default is ",")
 # ${result} - result value on success
-function split_string {
+split_string() {
     local ifs=${IFS}
     IFS="${2:-,}"
     read -a result < <(echo "${1}")
@@ -76,7 +76,7 @@ function split_string {
 [ -f /etc/arch-release ] && is_arch=true
 
 # Arch-specific preconfiguration for container
-function configure_arch {
+configure_arch() {
     # read locale and timezone defaults from system rc.conf if running on Arch
     if [ "${is_arch}" ]; then
         cp -p /etc/vconsole.conf /etc/locale.conf /etc/locale.gen "${rootfs_path}/etc/"
@@ -118,7 +118,7 @@ EOF
 }
 
 # write container configuration files
-function copy_configuration {
+copy_configuration() {
     mkdir -p "${config_path}"
     cat > "${config_path}/config" << EOF
 lxc.utsname=${name}
@@ -165,7 +165,7 @@ EOF
 }
 
 # install packages within container chroot
-function install_arch {
+install_arch() {
     if ! pacstrap -dcC "${pacman_config}" "${rootfs_path}" ${base_packages[@]}; then
         echo "Failed to install container packages"
         return 1

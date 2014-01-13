@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Template script for generating Oracle Enterprise Linux container for LXC
 # based on lxc-fedora, lxc-ubuntu
@@ -362,8 +362,8 @@ EOF
     chroot $container_rootfs useradd -m -s /bin/bash oracle
     echo "oracle:oracle" | chroot $container_rootfs chpasswd
     echo "root:root" | chroot $container_rootfs chpasswd
-    echo -e "Added container user:\033[1moracle\033[0m password:\033[1moracle\033[0m"
-    echo -e "Added container user:\033[1mroot\033[0m password:\033[1mroot\033[0m"
+    printf "Added container user:\033[1moracle\033[0m password:\033[1moracle\033[0m\n"
+    printf "Added container user:\033[1mroot\033[0m password:\033[1mroot\033[0m\n"
 }
 
 # create the container's lxc config file
@@ -478,7 +478,7 @@ container_rootfs_create()
 
     mkdir -p @LOCALSTATEDIR@/lock/subsys/lxc
     (
-        flock -x 200
+        flock -x 9
         if [ $? -ne 0 ]; then
             die "The template is busy."
         fi
@@ -612,7 +612,7 @@ container_rootfs_create()
         rm -f $container_rootfs/var/lib/rpm/__db*
         chroot $container_rootfs rpm --rebuilddb >/dev/null 2>&1
 
-    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-oracle-$name
+    ) 9>@LOCALSTATEDIR@/lock/subsys/lxc-oracle-$name
 }
 
 container_release_get()

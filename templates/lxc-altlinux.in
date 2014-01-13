@@ -198,7 +198,7 @@ install_altlinux()
 {
     mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
-        flock -x 200
+        flock -x 9
         if [ $? -ne 0 ]; then
             echo "Cache repository is busy."
             return 1
@@ -228,7 +228,7 @@ install_altlinux()
             return 1
         fi
         return 0
-    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-altlinux
+    ) 9>@LOCALSTATEDIR@/lock/subsys/lxc-altlinux
 
     return $?
 }
@@ -317,7 +317,7 @@ clean()
 
     # lock, so we won't purge while someone is creating a repository
     (
-        flock -x 200
+        flock -x 9
         if [ $? != 0 ]; then
             echo "Cache repository is busy."
             exit 1
@@ -326,7 +326,7 @@ clean()
         echo -n "Purging the download cache for ALTLinux-$release..."
         rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
         exit 0
-    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-altlinux
+    ) 9>@LOCALSTATEDIR@/lock/subsys/lxc-altlinux
 }
 
 usage()
