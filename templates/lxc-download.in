@@ -341,13 +341,19 @@ fi
 
 # Unpack the rootfs
 echo "Unpacking the rootfs"
-if [ "$DOWNLOAD_MODE" = "system" ]; then
-    tar --numeric-owner -xpJf ${LXC_CACHE_PATH}/rootfs.tar.xz -C ${LXC_ROOTFS}
-else
-    tar  --anchored --exclude="./dev/*" --numeric-owner -xpJf \
-        ${LXC_CACHE_PATH}/rootfs.tar.xz -C ${LXC_ROOTFS}
-    mkdir -p ${LXC_ROOTFS}/dev/pts/
+
+EXCLUDES=""
+excludelist=$(relevant_file excludes)
+if [ -f "${excludelist}" ]; then
+    while read line; do
+        EXCLUDES="$EXCLUDES --exclude=$line"
+    done < $excludelist
 fi
+
+tar  --anchored ${EXCLUDES} --numeric-owner -xpJf \
+    ${LXC_CACHE_PATH}/rootfs.tar.xz -C ${LXC_ROOTFS}
+
+mkdir -p ${LXC_ROOTFS}/dev/pts/
 
 # Setup the configuration
 configfile=$(relevant_file config)
