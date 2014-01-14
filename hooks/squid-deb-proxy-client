@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# Make the cloned container aware of squid-deb-proxy settings at start.
+#
+# Copyright ©  2014 Christopher Glass.
+#
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+# When starting a container, inject the squid-deb-proxy-client proxy
+# address in the container's apt configuration.
+# This script should be added to templates as a pre-start script, such as:
+#lxc.hook.pre-start=/usr/share/lxc/hooks/squid-deb-proxy-client
+
+discovery_script=/usr/share/squid-deb-proxy-client/apt-avahi-discover
+proxy_file=/etc/apt/apt.conf.d/50squid-deb-proxy
+
+if [ -f $proxy_file ]; then
+    # The host has a proxy file - let's propagate the config to the guest.
+    container_proxy_file=$LXC_ROOTFS_PATH$proxy_file
+    cat $proxy_file > $container_proxy_file
+    exit 0
+fi
+
+if [ ! -f $discovery_script ]; then
+    # There is no squid-deb-proxy-client package installed. Do nothing.
+    exit 0
+fi
+
+proxy_line=$($discovery_script)  #XXX: Could be multiline?
+
+if [ -n "$proxy_line" ]; then
+    doc="# Detected at container start from the host's squid-deb-proxy-client"
+    echo "Acquire::http::proxy \"$proxy_line\"; $doc" > $container_proxy_file
+else
+    if [ -f $proxy_file ]; then
+        rm $proxy_file
+    fi
+fi
+exit 0

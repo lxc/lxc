@@ -94,6 +94,11 @@ lxc.utsname = $name
 lxc.arch = $arch
 EOF
 
+    # Add the squid-deb-proxy autodetection hook
+    echo "" >> $path/config
+    echo "# This pre-start hook will attempt to detect squid-deb-proxy services"
+    echo "lxc.hook.pre-start = /usr/share/lxc/hooks/squid-deb-proxy-client"
+
     ## Re-add the previously removed network config
     echo "" >> $path/config
     echo "# Network configuration" >> $path/config
