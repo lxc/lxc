@@ -4054,10 +4054,11 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 		goto err;
 	}
 
-	if ((ret = wait_for_pid(pid)) < 0) {
-		ERROR("Child returned an error: %d\n", ret);
-		goto err;
-	}
+	ret = wait_for_pid(pid);
+
+	close(p[1]);
+	return ret;
+
 err:
 	if (p[0] != -1)
 		close(p[0]);
