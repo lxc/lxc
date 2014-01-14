@@ -60,7 +60,7 @@ download_file() {
             if [ "$3" = "noexit" ]; then
                 return 1
             else
-                echo "ERROR: Failed to download $1" 1>&2
+                echo "ERROR: Failed to download http://${DOWNLOAD_SERVER}/$1" 1>&2
                 exit 1
             fi
         elif [ "$DOWNLOAD_SHOW_HTTP_WARNING" = "true" ]; then
@@ -69,6 +69,14 @@ download_file() {
             echo -n "         The file was instead download over HTTP. " 1>&2
             echo "A server replay attack may be possible!" 1>&2
         fi
+    fi
+}
+
+download_sig() {
+    download_file $1 $2 noexit
+    if [ "$DOWNLOAD_VALIDATE" = "true" ]; then
+        echo "ERROR: Failed to download http://${DOWNLOAD_SERVER}/$1" 1>&2
+        exit 1
     fi
 }
 
@@ -263,8 +271,8 @@ if [ "$DOWNLOAD_USE_CACHE" = "false" ]; then
        ! download_file ${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL}.asc \
             ${DOWNLOAD_TEMP}/index.asc noexit; then
         download_file ${DOWNLOAD_INDEX_PATH} ${DOWNLOAD_TEMP}/index normal
-        download_file ${DOWNLOAD_INDEX_PATH}.asc \
-            ${DOWNLOAD_TEMP}/index.asc normal
+        download_sig  ${DOWNLOAD_INDEX_PATH}.asc \
+            ${DOWNLOAD_TEMP}/index.asc
     fi
 
     gpg_validate ${DOWNLOAD_TEMP}/index.asc
@@ -298,14 +306,14 @@ if [ "$DOWNLOAD_USE_CACHE" = "false" ]; then
     echo "Downloading the rootfs"
     download_file $DOWNLOAD_URL/rootfs.tar.xz \
         ${DOWNLOAD_TEMP}/rootfs.tar.xz normal
-    download_file $DOWNLOAD_URL/rootfs.tar.xz.asc \
+    download_sig  $DOWNLOAD_URL/rootfs.tar.xz.asc \
          ${DOWNLOAD_TEMP}/rootfs.tar.xz.asc normal
     gpg_validate ${DOWNLOAD_TEMP}/rootfs.tar.xz.asc
 
     echo "Downloading the metadata"
     download_file $DOWNLOAD_URL/meta.tar.xz \
         ${DOWNLOAD_TEMP}/meta.tar.xz normal
-    download_file $DOWNLOAD_URL/meta.tar.xz.asc \
+    download_sig  $DOWNLOAD_URL/meta.tar.xz.asc \
         ${DOWNLOAD_TEMP}/meta.tar.xz.asc normal
     gpg_validate ${DOWNLOAD_TEMP}/meta.tar.xz.asc
 
@@ -393,7 +401,7 @@ fi
 
 # Replace variables in all templates
 for file in $TEMPLATE_FILES; do
-    [ ! -e "$file" ] && continue
+    [ ! -f "$file" ] && continue
 
     sed -i "s#LXC_NAME#$LXC_NAME#g" $file
     sed -i "s#LXC_PATH#$LXC_PATH#g" $file
