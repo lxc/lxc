@@ -41,6 +41,7 @@ DOWNLOAD_URL=
 DOWNLOAD_SHOW_HTTP_WARNING="true"
 DOWNLOAD_SHOW_GPG_WARNING="true"
 DOWNLOAD_COMPAT_LEVEL=1
+DOWNLOAD_LIST_IMAGES="false"
 
 LXC_NAME=
 LXC_PATH=
@@ -148,9 +149,10 @@ Required arguments:
 [ -d | --dist <distribution> ]: The name of the distribution
 [ -r | --release <release> ]: Release name/version
 [ -a | --arch <architecture> ]: Architecture of the container
-[ -h | --help ]: This help message
 
 Optional arguments:
+[ -h | --help ]: This help message
+[ -l | --list ]: List all available images
 [ --variant <variant> ]: Variant of the image (default: "default")
 [ --server <server> ]: Image server (default: "images.linuxcontainers.org")
 [ --keyid <keyid> ]: GPG keyid (default: 0x...)
@@ -167,8 +169,8 @@ EOF
     return 0
 }
 
-options=$(getopt -o d:r:a:h -l dist:,release:,arch:,help,variant:,server:,\
-keyid:,no-validate,flush-cache,name:,path:,rootfs:,mapped-uid: -- "$@")
+options=$(getopt -o d:r:a:hl -l dist:,release:,arch:,help,list,variant:,\
+server:,keyid:,no-validate,flush-cache,name:,path:,rootfs:,mapped-uid: -- "$@")
 
 if [ $? -ne 0 ]; then
     usage
@@ -178,7 +180,8 @@ eval set -- "$options"
 
 while :; do
     case "$1" in
-        -h|--help)          usage $0 && exit 0;;
+        -h|--help)          usage && exit 1;;
+        -l|--list)          DOWNLOAD_LIST_IMAGES="true"; shift 1;;
         -d|--dist)          DOWNLOAD_DIST=$2; shift 2;;
         -r|--release)       DOWNLOAD_RELEASE=$2; shift 2;;
         -a|--arch)          DOWNLOAD_ARCH=$2; shift 2;;
@@ -226,8 +229,8 @@ if [ "$(in_userns)" = "yes" ]; then
     DOWNLOAD_MODE="user"
 fi
 
-if [ -z "$DOWNLOAD_DIST" ] || [ -z "$DOWNLOAD_RELEASE" ] || \
-   [ -z "$DOWNLOAD_ARCH" ]; then
+if ([ -z "$DOWNLOAD_DIST" ] || [ -z "$DOWNLOAD_RELEASE" ] || \
+    [ -z "$DOWNLOAD_ARCH" ]) && [ "$DOWNLOAD_LIST_IMAGES" = "false" ]; then
     echo "ERROR: Missing required argument" 1>&2
     usage
     exit 1
@@ -236,6 +239,51 @@ fi
 # Trap all exit signals
 trap cleanup EXIT HUP INT TERM
 DOWNLOAD_TEMP=$(mktemp -d)
+
+# Simply list images
+if [ "$DOWNLOAD_LIST_IMAGES" = "true" ]; then
+    # Initialize GPG
+    gpg_setup
+
+    # Grab the index
+    DOWNLOAD_INDEX_PATH=/meta/1.0/index-${DOWNLOAD_MODE}
+
+    echo "Downloading the image index"
+    if ! download_file ${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL} \
+         ${DOWNLOAD_TEMP}/index noexit ||
+       ! download_sig ${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL}.asc \
+            ${DOWNLOAD_TEMP}/index.asc noexit; then
+        download_file ${DOWNLOAD_INDEX_PATH} ${DOWNLOAD_TEMP}/index normal
+        download_sig  ${DOWNLOAD_INDEX_PATH}.asc \
+            ${DOWNLOAD_TEMP}/index.asc normal
+    fi
+
+    gpg_validate ${DOWNLOAD_TEMP}/index.asc
+
+    # Parse it
+    echo ""
+    echo "---"
+    echo "DIST\tRELEASE\tARCH\tVARIANT\tBUILD"
+    echo "---"
+    while read line; do
+        # Basic CSV parser
+        OLD_IFS=$IFS
+        IFS=";"
+        set -- $line
+        IFS=$OLD_IFS
+
+        [ -n "$DOWNLOAD_DIST" ] && [ "$1" != "$DOWNLOAD_DIST" ] && continue
+        [ -n "$DOWNLOAD_RELEASE" ] && [ "$2" != "$DOWNLOAD_RELEASE" ] && continue
+        [ -n "$DOWNLOAD_ARCH" ] && [ "$3" != "$DOWNLOAD_ARCH" ] && continue
+        [ -n "$DOWNLOAD_VARIANT" ] && [ "$4" != "$DOWNLOAD_VARIANT" ] && continue
+        [ -z "$5" ] || [ -z "$6" ] && continue
+
+        echo "$1\t$2\t$3\t$4\t$5"
+    done < ${DOWNLOAD_TEMP}/index
+    echo "---"
+
+    exit 1
+fi
 
 # Setup the cache
 if [ "$DOWNLOAD_MODE" = "system" ]; then
