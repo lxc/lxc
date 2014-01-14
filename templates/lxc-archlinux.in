@@ -156,10 +156,8 @@ EOF
     grep -q "^lxc.rootfs" ${config_path}/config 2>/dev/null || echo "lxc.rootfs = ${rootfs_path}" >> ${config_path}/config
 
     cat > "${config_path}/fstab" << EOF
-sysfs sys sysfs ro,defaults 0 0
+sysfs sys sysfs defaults 0 0
 proc proc proc nodev,noexec,nosuid 0 0
-/proc/sys ${rootfs_path}/proc/sys none ro,bind 0 0
-#/var/log/journal ${rootfs_path}/var/log/journal none bind 0 0
 EOF
 
     return 0
