@@ -42,6 +42,7 @@ DOWNLOAD_SHOW_HTTP_WARNING="true"
 DOWNLOAD_SHOW_GPG_WARNING="true"
 DOWNLOAD_COMPAT_LEVEL=1
 DOWNLOAD_LIST_IMAGES="false"
+DOWNLOAD_BUILD=
 
 LXC_NAME=
 LXC_PATH=
@@ -159,6 +160,7 @@ Optional arguments:
 [ --keyserver <keyserver> ]: GPG keyserver to use
 [ --no-validate ]: Disable GPG validation (not recommended)
 [ --flush-cache ]: Flush the local copy (if present)
+[ --force-cache ]; Force the use of the local copy even if expired
 
 LXC internal arguments (do not pass manually!):
 [ --name <name> ]: The container name
@@ -170,7 +172,8 @@ EOF
 }
 
 options=$(getopt -o d:r:a:hl -l dist:,release:,arch:,help,list,variant:,\
-server:,keyid:,no-validate,flush-cache,name:,path:,rootfs:,mapped-uid: -- "$@")
+server:,keyid:,no-validate,flush-cache,force-cache:,name:,path:,\
+rootfs:,mapped-uid: -- "$@")
 
 if [ $? -ne 0 ]; then
     usage
@@ -190,6 +193,7 @@ while :; do
         --keyid)            DOWNLOAD_KEYID=$2; shift 2;;
         --no-validate)      DOWNLOAD_VALIDATE="false"; shift 1;;
         --flush-cache)      DOWNLOAD_FLUSH_CACHE="true"; shift 1;;
+        --force-cache)      DOWNLOAD_FORCE_CACHE="true"; shift 1;;
         --name)             LXC_NAME=$2; shift 2;;
         --path)             LXC_PATH=$2; shift 2;;
         --rootfs)           LXC_ROOTFS=$2; shift 2;;
@@ -300,13 +304,14 @@ if [ -d "$LXC_CACHE_PATH" ]; then
     if [ "$DOWNLOAD_FLUSH_CACHE" = "true" ]; then
         echo "Flushing the cache..."
         rm -Rf $LXC_CACHE_PATH
+    elif [ "$DOWNLOAD_FORCE_CACHE" = "true" ]; then
+        DOWNLOAD_USE_CACHE="true"
     else
         DOWNLOAD_USE_CACHE="true"
         if [ -e "$(relevant_file expiry)" ]; then
             if [ "$(cat $(relevant_file expiry))" -lt $(date +%s) ]; then
                 echo "The cached copy has expired, re-downloading..."
                 DOWNLOAD_USE_CACHE="false"
-                rm -Rf $LXC_CACHE_PATH
             fi
         fi
     fi
@@ -348,6 +353,7 @@ if [ "$DOWNLOAD_USE_CACHE" = "false" ]; then
             continue
         fi
 
+        DOWNLOAD_BUILD=$5
         DOWNLOAD_URL=$6
         break
     done < ${DOWNLOAD_TEMP}/index
@@ -357,32 +363,43 @@ if [ "$DOWNLOAD_USE_CACHE" = "false" ]; then
         exit 1
     fi
 
-    # Download the actual files
-    echo "Downloading the rootfs"
-    download_file $DOWNLOAD_URL/rootfs.tar.xz \
-        ${DOWNLOAD_TEMP}/rootfs.tar.xz normal
-    download_sig  $DOWNLOAD_URL/rootfs.tar.xz.asc \
-         ${DOWNLOAD_TEMP}/rootfs.tar.xz.asc normal
-    gpg_validate ${DOWNLOAD_TEMP}/rootfs.tar.xz.asc
+    if [ -d "$LXC_CACHE_PATH" ] && [ -f "$LXC_CACHE_PATH/build_id" ] && \
+       [ "$(cat $LXC_CACHE_PATH/build_id)" = "$DOWNLOAD_BUILD" ]; then
+        echo "The cache is already up to date."
+        echo "Using image from local cache"
+    else
+        # Download the actual files
+        echo "Downloading the rootfs"
+        download_file $DOWNLOAD_URL/rootfs.tar.xz \
+            ${DOWNLOAD_TEMP}/rootfs.tar.xz normal
+        download_sig  $DOWNLOAD_URL/rootfs.tar.xz.asc \
+             ${DOWNLOAD_TEMP}/rootfs.tar.xz.asc normal
+        gpg_validate ${DOWNLOAD_TEMP}/rootfs.tar.xz.asc
 
-    echo "Downloading the metadata"
-    download_file $DOWNLOAD_URL/meta.tar.xz \
-        ${DOWNLOAD_TEMP}/meta.tar.xz normal
-    download_sig  $DOWNLOAD_URL/meta.tar.xz.asc \
-        ${DOWNLOAD_TEMP}/meta.tar.xz.asc normal
-    gpg_validate ${DOWNLOAD_TEMP}/meta.tar.xz.asc
+        echo "Downloading the metadata"
+        download_file $DOWNLOAD_URL/meta.tar.xz \
+            ${DOWNLOAD_TEMP}/meta.tar.xz normal
+        download_sig  $DOWNLOAD_URL/meta.tar.xz.asc \
+            ${DOWNLOAD_TEMP}/meta.tar.xz.asc normal
+        gpg_validate ${DOWNLOAD_TEMP}/meta.tar.xz.asc
 
-    mkdir -p $LXC_CACHE_PATH
-    mv ${DOWNLOAD_TEMP}/rootfs.tar.xz $LXC_CACHE_PATH
-    if ! tar Jxf ${DOWNLOAD_TEMP}/meta.tar.xz -C $LXC_CACHE_PATH; then
-        echo "ERROR: Invalid rootfs tarball." 2>&1
-        exit 1
+        if [ -d $LXC_CACHE_PATH ]; then
+            rm -Rf $LXC_CACHE_PATH
+        fi
+        mkdir -p $LXC_CACHE_PATH
+        mv ${DOWNLOAD_TEMP}/rootfs.tar.xz $LXC_CACHE_PATH
+        if ! tar Jxf ${DOWNLOAD_TEMP}/meta.tar.xz -C $LXC_CACHE_PATH; then
+            echo "ERROR: Invalid rootfs tarball." 2>&1
+            exit 1
+        fi
+
+        echo $DOWNLOAD_BUILD > $LXC_CACHE_PATH/build_id
+
+        if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
+            chown $LXC_MAPPED_UID -Rf $LXC_CACHE_BASE >/dev/null 2>&1 || true
+        fi
+        echo "The image cache is now ready"
     fi
-
-    if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
-        chown $LXC_MAPPED_UID -Rf $LXC_CACHE_BASE >/dev/null 2>&1 || true
-    fi
-    echo "The image cache is now ready"
 else
     echo "Using image from local cache"
 fi
