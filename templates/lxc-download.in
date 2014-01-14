@@ -73,10 +73,17 @@ download_file() {
 }
 
 download_sig() {
-    download_file $1 $2 noexit
-    if [ "$DOWNLOAD_VALIDATE" = "true" ]; then
-        echo "ERROR: Failed to download http://${DOWNLOAD_SERVER}/$1" 1>&2
-        exit 1
+    if ! download_file $1 $2 noexit; then
+        if [ "$DOWNLOAD_VALIDATE" = "true" ]; then
+            if [ "$3" = "normal" ]; then
+                echo "ERROR: Failed to download http://${DOWNLOAD_SERVER}/$1" 1>&2
+                exit 1
+            else
+                return 1
+            fi
+        else
+            return 0
+        fi
     fi
 }
 
@@ -268,11 +275,11 @@ if [ "$DOWNLOAD_USE_CACHE" = "false" ]; then
     echo "Downloading the image index"
     if ! download_file ${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL} \
          ${DOWNLOAD_TEMP}/index noexit ||
-       ! download_file ${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL}.asc \
+       ! download_sig ${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL}.asc \
             ${DOWNLOAD_TEMP}/index.asc noexit; then
         download_file ${DOWNLOAD_INDEX_PATH} ${DOWNLOAD_TEMP}/index normal
         download_sig  ${DOWNLOAD_INDEX_PATH}.asc \
-            ${DOWNLOAD_TEMP}/index.asc
+            ${DOWNLOAD_TEMP}/index.asc normal
     fi
 
     gpg_validate ${DOWNLOAD_TEMP}/index.asc
