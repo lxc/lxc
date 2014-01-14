@@ -748,7 +748,11 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 				goto cleanup_error;
 			}
 
-			ret = lxc_cgroup_enter(container_info, attached_pid, false);
+			/*
+			 * TODO - switch over to using a cgroup_operation.  We can't use
+			 * cgroup_enter() as that takes a handler.
+			 */
+			ret = lxc_cgroupfs_enter(container_info, attached_pid, false);
 			lxc_cgroup_process_info_free(container_info);
 			if (ret < 0) {
 				ERROR("could not move attached process %ld to cgroup of container", (long)attached_pid);

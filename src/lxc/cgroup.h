@@ -72,6 +72,9 @@ struct cgroup_mount_point {
  * cgroup_process_info: describes the membership of a
  *                      process to the different cgroup
  *                      hierarchies
+ *
+ * Note this is the per-process info tracked by the cgfs_ops.
+ * This is not used with cgmanager.
  */
 struct cgroup_process_info {
 	struct cgroup_process_info *next;
@@ -121,22 +124,19 @@ extern int lxc_cgroup_create_legacy(struct cgroup_process_info *base_info, const
 /* get the cgroup membership of a given container */
 extern struct cgroup_process_info *lxc_cgroup_get_container_info(const char *name, const char *lxcpath, struct cgroup_meta_data *meta_data);
 
-/* move a processs to the cgroups specified by the membership */
-extern int lxc_cgroup_enter(struct cgroup_process_info *info, pid_t pid, bool enter_sub);
+/* move a processs to the cgroups specified by the membership TODO - deprecated, switch users to cgroup_enter() */
+extern int lxc_cgroupfs_enter(struct cgroup_process_info *info, pid_t pid, bool enter_sub);
 
 /* free process membership information */
 extern void lxc_cgroup_process_info_free(struct cgroup_process_info *info);
 extern void lxc_cgroup_process_info_free_and_remove(struct cgroup_process_info *info);
 
 struct lxc_handler;
-extern char *lxc_cgroup_get_hierarchy_path_handler(const char *subsystem, struct lxc_handler *handler);
 extern char *lxc_cgroup_get_hierarchy_path(const char *subsystem, const char *name, const char *lxcpath);
 extern char *lxc_cgroup_get_hierarchy_abs_path_handler(const char *subsystem, struct lxc_handler *handler);
 extern char *lxc_cgroup_get_hierarchy_abs_path(const char *subsystem, const char *name, const char *lxcpath);
 extern int lxc_cgroup_set_handler(const char *filename, const char *value, struct lxc_handler *handler);
 extern int lxc_cgroup_get_handler(const char *filename, char *value, size_t len, struct lxc_handler *handler);
-extern int lxc_cgroup_set(const char *filename, const char *value, const char *name, const char *lxcpath);
-extern int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath);
 
 /*
  * lxc_cgroup_path_get: Get the absolute pathname for a cgroup
@@ -162,12 +162,57 @@ struct lxc_list;
 extern int lxc_setup_cgroup_without_devices(struct lxc_handler *h, struct lxc_list *cgroup_settings);
 extern int lxc_setup_cgroup_devices(struct lxc_handler *h, struct lxc_list *cgroup_settings);
 
-extern int lxc_setup_mount_cgroup(const char *root, struct cgroup_process_info *base_info, int type);
-
 extern int lxc_cgroup_nrtasks_handler(struct lxc_handler *handler);
 
-extern int do_unfreeze(const char *nsgroup, int freeze, const char *name, const char *lxcpath);
+extern int do_unfreeze(int freeze, const char *name, const char *lxcpath);
 extern int freeze_unfreeze(const char *name, int freeze, const char *lxcpath);
 extern const char *lxc_state2str(lxc_state_t state);
 extern lxc_state_t freezer_state(const char *name, const char *lxcpath);
+/* per-backend cgroup hooks */
+struct cgroup_ops {
+	void (*destroy)(struct lxc_handler *handler);
+	bool (*init)(struct lxc_handler *handler);
+	bool (*create)(struct lxc_handler *handler);
+	bool (*enter)(struct lxc_handler *handler);
+	bool (*create_legacy)(struct lxc_handler *handler);
+	char *(*get_cgroup)(struct lxc_handler *handler, const char *subsystem);
+	int (*set)(const char *filename, const char *value, const char *name, const char *lxcpath);
+	int (*get)(const char *filename, char *value, size_t len, const char *name, const char *lxcpath);
+	const char *name;
+};
+
+/*
+ * cgroup-related data for backend use in start/stop of a
+ * container.  This is tacked to the lxc_handler.
+ */
+struct lxc_cgroup_info {
+	/* handlers to actually do the cgroup stuff */
+	struct cgroup_ops *ops;
+	/* extra data for the cgroup_ops, i.e. mountpoints for fs backend */
+	void *data;
+	const char *cgroup_pattern;
+};
+
+extern int lxc_setup_mount_cgroup(const char *root, struct lxc_cgroup_info *base_info, int type);
+
+struct cgfs_data {
+	struct cgroup_meta_data *meta;
+	struct cgroup_process_info *info;
+};
+
+/*
+ * backend-independent cgroup handlers
+ */
+extern void cgroup_destroy(struct lxc_handler *handler);
+extern bool cgroup_init(struct lxc_handler *handler);
+extern bool cgroup_create(struct lxc_handler *handler);
+extern bool cgroup_setup_without_devices(struct lxc_handler *handler);
+extern bool cgroup_setup_devices(struct lxc_handler *handler);
+extern bool cgroup_enter(struct lxc_handler *handler);
+extern void cgroup_cleanup(struct lxc_handler *handler);
+extern bool cgroup_create_legacy(struct lxc_handler *handler);
+extern char *cgroup_get_cgroup(struct lxc_handler *handler, const char *subsystem);
+extern int lxc_cgroup_set(const char *filename, const char *value, const char *name, const char *lxcpath);
+extern int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath);
+
 #endif

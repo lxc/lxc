@@ -435,7 +435,7 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 	if (req->datalen < 1)
 		return -1;
 
-	path = lxc_cgroup_get_hierarchy_path_handler(req->data, handler);
+	path = cgroup_get_cgroup(handler, req->data);
 	if (!path)
 		return -1;
 	rsp.datalen = strlen(path) + 1,
@@ -591,17 +591,10 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.ret = kill(handler->pid, stopsignal);
 	if (!rsp.ret) {
-		char *path = lxc_cgroup_get_hierarchy_path_handler("freezer", handler);
-		if (!path) {
-			ERROR("container %s:%s is not in a freezer cgroup",
-				handler->lxcpath, handler->name);
-			return 0;
-		}
-		ret = lxc_unfreeze_bypath(path);
+		ret = lxc_unfreeze(handler->name, handler->lxcpath);
 		if (!ret)
 			return 0;
-
-		ERROR("failed to unfreeze container");
+		ERROR("Failed to unfreeze %s:%s", handler->lxcpath, handler->name);
 		rsp.ret = ret;
 	}
 

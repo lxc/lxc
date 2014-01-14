@@ -366,10 +366,7 @@ extern int lxc_clear_groups(struct lxc_conf *c);
  */
 
 struct cgroup_process_info;
-extern int lxc_setup(const char *name, struct lxc_conf *lxc_conf,
-			const char *lxcpath,
-			struct cgroup_process_info *cgroup_info,
-			void *data);
+extern int lxc_setup(struct lxc_handler *handler);
 
 extern void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf);
 

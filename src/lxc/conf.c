@@ -646,7 +646,7 @@ int pin_rootfs(const char *rootfs)
 	return fd;
 }
 
-static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct cgroup_process_info *cgroup_info)
+static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_cgroup_info *cgroup_info)
 {
 	int r;
 	size_t i;
@@ -3458,8 +3458,14 @@ static int check_autodev( const char *rootfs, void *data )
 	return 0;
 }
 
-int lxc_setup(const char *name, struct lxc_conf *lxc_conf, const char *lxcpath, struct cgroup_process_info *cgroup_info, void *data)
+int lxc_setup(struct lxc_handler *handler)
 {
+	const char *name = handler->name;
+	struct lxc_conf *lxc_conf = handler->conf;
+	const char *lxcpath = handler->lxcpath;
+	void *data = handler->data;
+	struct lxc_cgroup_info *cgroup_info = handler->cgroup_info;
+
 	if (lxc_conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
 		if (setup_utsname(lxc_conf->utsname)) {
 			ERROR("failed to setup the utsname for '%s'", name);

@@ -93,6 +93,10 @@ liblxc_so_SOURCES = \
 	\
 	$(LSM_SOURCES)
 
+if ENABLE_CGMANAGER
+liblxc_so_SOURCES += cgmanager.c
+endif
+
 if IS_BIONIC
 liblxc_so_SOURCES += \
 	../include/ifaddrs.c ../include/ifaddrs.h \
@@ -122,6 +126,10 @@ if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
 endif
 
+if ENABLE_CGMANAGER
+AM_CFLAGS += -DHAVE_CGMANAGER
+endif
+
 if ENABLE_SELINUX
 AM_CFLAGS += -DHAVE_SELINUX
 endif
@@ -143,6 +151,11 @@ liblxc_so_LDFLAGS = \
 	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,$(VERSION)))
 
 liblxc_so_LDADD = $(CAP_LIBS) $(APPARMOR_LIBS) $(SECCOMP_LIBS)
+
+#if ENABLE_CGMANAGER
+liblxc_so_LDADD += $(CGMANAGER_LIBS) $(DBUS_LIBS) $(NIH_LIBS) $(NIH_DBUS_LIBS)
+liblxc_so_CFLAGS += $(CGMANAGER_CFLAGS) $(DBUS_CFLAGS) $(NIH_CFLAGS) $(NIH_DBUS_CFLAGS)
+#endif
 
 bin_SCRIPTS = \
 	lxc-ps \
@@ -245,6 +258,11 @@ LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@ @SECCOMP_LIBS@
 lxc_attach_SOURCES = lxc_attach.c
 lxc_autostart_SOURCES = lxc_autostart.c
 lxc_cgroup_SOURCES = lxc_cgroup.c
+#if ENABLE_CGMANAGER
+lxc_cgroup_SOURCES += cgmanager.c
+lxc_cgroup_LDADD = $(CGMANAGER_LIBS) $(DBUS_LIBS) $(NIH_LIBS) $(NIH_DBUS_LIBS) $(LDADD)
+lxc_cgroup_CFLAGS = $(CGMANAGER_CFLAGS) $(DBUS_CFLAGS) $(NIH_CFLAGS) $(NIH_DBUS_CFLAGS)
+#endif
 lxc_checkpoint_SOURCES = lxc_checkpoint.c
 lxc_config_SOURCES = lxc_config.c
 lxc_console_SOURCES = lxc_console.c

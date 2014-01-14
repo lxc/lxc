@@ -457,10 +457,7 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 	close(handler->conf->maincmd_fd);
 	handler->conf->maincmd_fd = -1;
 	free(handler->name);
-	if (handler->cgroup) {
-		lxc_cgroup_process_info_free_and_remove(handler->cgroup);
-		handler->cgroup = NULL;
-	}
+	cgroup_destroy(handler);
 	free(handler);
 }
 
@@ -602,7 +599,7 @@ static int do_start(void *data)
 	#endif
 
 	/* Setup the container, ip, names, utsname, ... */
-	if (lxc_setup(handler->name, handler->conf, handler->lxcpath, handler->cgroup, handler->data) ){
+	if (lxc_setup(handler)) {
 		ERROR("failed to setup the container");
 		goto out_warn_father;
 	}
@@ -690,8 +687,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
 	const char *name = handler->name;
-	struct cgroup_meta_data *cgroup_meta = NULL;
-	const char *cgroup_pattern = NULL;
 	int saved_ns_fd[LXC_NS_MAX];
 	int preserve_mask = 0, i;
 
@@ -755,27 +750,13 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 
-	cgroup_meta = lxc_cgroup_load_meta();
-	if (!cgroup_meta) {
-		ERROR("failed to detect cgroup metadata");
+	if (!cgroup_init(handler)) {
+		ERROR("failed initializing cgroup support");
 		goto out_delete_net;
 	}
 
-	/* if we are running as root, use system cgroup pattern, otherwise
-	 * just create a cgroup under the current one. But also fall back to
-	 * that if for some reason reading the configuration fails and no
-	 * default value is available
-	 */
-	if (getuid() == 0)
-		cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
-	if (!cgroup_pattern)
-		cgroup_pattern = "%n";
-
-	/* Create cgroup before doing clone(), so the child will know from
-	 * handler which cgroup it is going to be put in later.
-	 */
-	if ((handler->cgroup = lxc_cgroup_create(name, cgroup_pattern, cgroup_meta, NULL)) == NULL) {
-		ERROR("failed to create cgroups for '%s'", name);
+	if (!cgroup_create(handler)) {
+		ERROR("failed creating cgroups");
 		goto out_delete_net;
 	}
 
@@ -808,20 +789,16 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 		failed_before_rename = 1;
 
-	/* In case there is still legacy ns cgroup support in the kernel.
-	 * Should be removed at some later point in time.
-	 */
-	if (lxc_cgroup_create_legacy(handler->cgroup, name, handler->pid) < 0) {
-		ERROR("failed to create legacy ns cgroups for '%s'", name);
+	if (!cgroup_create_legacy(handler)) {
+		ERROR("failed to setup the legacy cgroups for %s", name);
 		goto out_delete_net;
 	}
-
-	if (lxc_setup_cgroup_without_devices(handler, &handler->conf->cgroup)) {
+	if (!cgroup_setup_without_devices(handler)) {
 		ERROR("failed to setup the cgroups for '%s'", name);
 		goto out_delete_net;
 	}
 
-	if (lxc_cgroup_enter(handler->cgroup, handler->pid, false) < 0)
+	if (!cgroup_enter(handler))
 		goto out_delete_net;
 
 	if (failed_before_rename)
@@ -851,7 +828,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
 		goto out_delete_net;
 
-	if (lxc_setup_cgroup_devices(handler, &handler->conf->cgroup)) {
+	if (!cgroup_setup_devices(handler)) {
 		ERROR("failed to setup the devices cgroup for '%s'", name);
 		goto out_delete_net;
 	}
@@ -878,7 +855,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_abort;
 	}
 
-	lxc_cgroup_put_meta(cgroup_meta);
 	lxc_sync_fini(handler);
 
 	return 0;
@@ -887,7 +863,6 @@ out_delete_net:
 	if (handler->clone_flags & CLONE_NEWNET)
 		lxc_delete_network(handler);
 out_abort:
-	lxc_cgroup_put_meta(cgroup_meta);
 	lxc_abort(name, handler);
 	lxc_sync_fini(handler);
 	if (handler->pinfd >= 0) {

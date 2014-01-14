@@ -123,14 +123,6 @@ extern int lxc_freeze(const char *name, const char *lxcpath);
 extern int lxc_unfreeze(const char *name, const char *lxcpath);
 
 /*
- * Unfreeze all previously frozen tasks.
- * This is the function to use from inside the monitor
- * @name : the name of the container
- * Return 0 on sucess, < 0 otherwise
- */
-extern int lxc_unfreeze_bypath(const char *cgpath);
-
-/*
  * Retrieve the container state
  * @name : the name of the container
  * Returns the state of the container on success, < 0 otherwise

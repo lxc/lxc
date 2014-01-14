@@ -75,6 +75,21 @@ static int cgroup_recursive_task_count(const char *cgroup_path);
 static int count_lines(const char *fn);
 static int handle_cgroup_settings(struct cgroup_mount_point *mp, char *cgroup_path);
 
+static struct cgroup_ops cgfs_ops;
+struct cgroup_ops *active_cg_ops = &cgfs_ops;
+static void init_cg_ops(void);
+
+#ifdef HAVE_CGMANAGER
+/* this needs to be mutexed for api use */
+extern bool cgmanager_initialized;
+extern bool use_cgmanager;
+extern bool lxc_init_cgmanager(void);
+#else
+static bool cgmanager_initialized = false;
+static bool use_cgmanager = false;
+static bool lxc_init_cgmanager(void) { return false; }
+#endif
+
 static int cgroup_rmdir(char *dirname)
 {
 	struct dirent dirent, *direntp;
@@ -169,7 +184,7 @@ struct cgroup_meta_data *lxc_cgroup_load_meta()
 }
 
 /* Step 1: determine all kernel subsystems */
-static bool find_cgroup_subsystems(char ***kernel_subsystems)
+bool find_cgroup_subsystems(char ***kernel_subsystems)
 {
 	FILE *proc_cgroups;
 	bool bret = false;
@@ -709,7 +724,7 @@ static char *cgroup_rename_nsgroup(const char *mountpath, const char *oldname, p
 }
 
 /* create a new cgroup */
-extern struct cgroup_process_info *lxc_cgroup_create(const char *name, const char *path_pattern, struct cgroup_meta_data *meta_data, const char *sub_pattern)
+struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const char *path_pattern, struct cgroup_meta_data *meta_data, const char *sub_pattern)
 {
 	char **cgroup_path_components = NULL;
 	char **p = NULL;
@@ -1041,7 +1056,7 @@ out_error:
 }
 
 /* move a processs to the cgroups specified by the membership */
-int lxc_cgroup_enter(struct cgroup_process_info *info, pid_t pid, bool enter_sub)
+int lxc_cgroupfs_enter(struct cgroup_process_info *info, pid_t pid, bool enter_sub)
 {
 	char pid_buf[32];
 	char *cgroup_tasks_fn;
@@ -1125,9 +1140,11 @@ void lxc_cgroup_process_info_free_and_remove(struct cgroup_process_info *info)
 	lxc_cgroup_process_info_free_and_remove(next);
 }
 
-char *lxc_cgroup_get_hierarchy_path_handler(const char *subsystem, struct lxc_handler *handler)
+static char *lxc_cgroup_get_hierarchy_path_handler(const char *subsystem, struct lxc_handler *handler)
 {
-	struct cgroup_process_info *info = find_info_for_subsystem(handler->cgroup, subsystem);
+	struct cgfs_data *d = handler->cgroup_info->data;
+	struct cgroup_process_info *info = d->info;
+	info = find_info_for_subsystem(info, subsystem);
 	if (!info)
 		return NULL;
 	return info->cgroup_path;
@@ -1140,8 +1157,11 @@ char *lxc_cgroup_get_hierarchy_path(const char *subsystem, const char *name, con
 
 char *lxc_cgroup_get_hierarchy_abs_path_handler(const char *subsystem, struct lxc_handler *handler)
 {
+	struct cgfs_data *d = handler->cgroup_info->data;
+	struct cgroup_process_info *info = d->info;
 	struct cgroup_mount_point *mp = NULL;
-	struct cgroup_process_info *info = find_info_for_subsystem(handler->cgroup, subsystem);
+
+	info = find_info_for_subsystem(info, subsystem);
 	if (!info)
 		return NULL;
 	if (info->designated_mount_point) {
@@ -1222,7 +1242,7 @@ int lxc_cgroup_get_handler(const char *filename, char *value, size_t len, struct
 	return ret;
 }
 
-int lxc_cgroup_set(const char *filename, const char *value, const char *name, const char *lxcpath)
+int lxc_cgroupfs_set(const char *filename, const char *value, const char *name, const char *lxcpath)
 {
 	char *subsystem = NULL, *p, *path;
 	int ret = -1;
@@ -1240,7 +1260,7 @@ int lxc_cgroup_set(const char *filename, const char *value, const char *name, co
 	return ret;
 }
 
-int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
+int lxc_cgroupfs_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
 {
 	char *subsystem = NULL, *p, *path;
 	int ret = -1;
@@ -1298,17 +1318,7 @@ char *lxc_cgroup_path_get(const char *filename, const char *name,
 	return path;
 }
 
-int lxc_setup_cgroup_without_devices(struct lxc_handler *h, struct lxc_list *cgroup_settings)
-{
-	return do_setup_cgroup(h, cgroup_settings, false);
-}
-
-int lxc_setup_cgroup_devices(struct lxc_handler *h, struct lxc_list *cgroup_settings)
-{
-	return do_setup_cgroup(h, cgroup_settings, true);
-}
-
-int lxc_setup_mount_cgroup(const char *root, struct cgroup_process_info *base_info, int type)
+int lxc_setup_mount_cgroup(const char *root, struct lxc_cgroup_info *cgroup_info, int type)
 {
 	size_t bufsz = strlen(root) + sizeof("/sys/fs/cgroup");
 	char *path = NULL;
@@ -1316,8 +1326,19 @@ int lxc_setup_mount_cgroup(const char *root, struct cgroup_process_info *base_in
 	char *dirname = NULL;
 	char *abs_path = NULL;
 	char *abs_path2 = NULL;
-	struct cgroup_process_info *info;
+	struct cgfs_data *cgfs_d;
+	struct cgroup_process_info *info, *base_info;
 	int r, saved_errno = 0;
+
+	init_cg_ops();
+
+	if (strcmp(active_cg_ops->name, "cgmanager") == 0) {
+		// todo - offer to bind-mount /sys/fs/cgroup/cgmanager/
+		return 0;
+	}
+
+	cgfs_d = cgroup_info->data;
+	base_info = cgfs_d->info;
 
 	if (type < LXC_AUTO_CGROUP_RO || type > LXC_AUTO_CGROUP_FULL_MIXED) {
 		ERROR("could not mount cgroups into container: invalid type specified internally");
@@ -1487,7 +1508,8 @@ out_error:
 
 int lxc_cgroup_nrtasks_handler(struct lxc_handler *handler)
 {
-	struct cgroup_process_info *info = handler->cgroup;
+	struct cgfs_data *d = handler->cgroup_info->data;
+	struct cgroup_process_info *info = d->info;
 	struct cgroup_mount_point *mp = NULL;
 	char *abs_path = NULL;
 	int ret;
@@ -2035,133 +2057,227 @@ static int handle_cgroup_settings(struct cgroup_mount_point *mp,
 
 extern void lxc_monitor_send_state(const char *name, lxc_state_t state,
 			    const char *lxcpath);
-int do_unfreeze(const char *nsgroup, int freeze, const char *name, const char *lxcpath)
+int do_unfreeze(int freeze, const char *name, const char *lxcpath)
 {
-	char freezer[MAXPATHLEN], *f;
-	char tmpf[32];
-	int fd, ret;
+	char v[100];
+	const char *state = freeze ? "FROZEN" : "THAWED";
 
-	ret = snprintf(freezer, MAXPATHLEN, "%s/freezer.state", nsgroup);
-	if (ret >= MAXPATHLEN) {
-		ERROR("freezer.state name too long");
+	if (lxc_cgroup_set("freezer.state", state, name, lxcpath) < 0) {
+		ERROR("Failed to freeze %s:%s", lxcpath, name);
 		return -1;
 	}
-
-	fd = open(freezer, O_RDWR);
-	if (fd < 0) {
-		SYSERROR("failed to open freezer at '%s'", nsgroup);
-		return -1;
-	}
-
-	if (freeze) {
-		f = "FROZEN";
-		ret = write(fd, f, strlen(f) + 1);
-	} else {
-		f = "THAWED";
-		ret = write(fd, f, strlen(f) + 1);
-
-		/* compatibility code with old freezer interface */
-		if (ret < 0) {
-			f = "RUNNING";
-			ret = write(fd, f, strlen(f) + 1) < 0;
-		}
-	}
-
-	if (ret < 0) {
-		SYSERROR("failed to write '%s' to '%s'", f, freezer);
-		goto out;
-	}
-
 	while (1) {
-		ret = lseek(fd, 0L, SEEK_SET);
-		if (ret < 0) {
-			SYSERROR("failed to lseek on file '%s'", freezer);
-			goto out;
+		if (lxc_cgroup_get("freezer.state", v, 100, name, lxcpath) < 0) {
+			ERROR("Failed to get new freezer state for %s:%s", lxcpath, name);
+			return -1;
 		}
-
-		ret = read(fd, tmpf, sizeof(tmpf));
-		if (ret < 0) {
-			SYSERROR("failed to read to '%s'", freezer);
-			goto out;
-		}
-
-		ret = strncmp(f, tmpf, strlen(f));
-		if (!ret)
-		{
+		if (v[strlen(v)-1] == '\n')
+			v[strlen(v)-1] = '\0';
+		if (strncmp(v, state, strlen(state)) == 0) {
 			if (name)
 				lxc_monitor_send_state(name, freeze ? FROZEN : THAWED, lxcpath);
-			break;		/* Success */
+			return 0;
 		}
-
 		sleep(1);
-
-		ret = lseek(fd, 0L, SEEK_SET);
-		if (ret < 0) {
-			SYSERROR("failed to lseek on file '%s'", freezer);
-			goto out;
-		}
-
-		ret = write(fd, f, strlen(f) + 1);
-		if (ret < 0) {
-			SYSERROR("failed to write '%s' to '%s'", f, freezer);
-			goto out;
-		}
 	}
-
-out:
-	close(fd);
-	return ret;
 }
 
 int freeze_unfreeze(const char *name, int freeze, const char *lxcpath)
 {
-	char *cgabspath;
-	int ret;
-
-	cgabspath = lxc_cgroup_get_hierarchy_abs_path("freezer", name, lxcpath);
-	if (!cgabspath)
-		return -1;
-
-	ret = do_unfreeze(cgabspath, freeze, name, lxcpath);
-	free(cgabspath);
-	return ret;
+	return do_unfreeze(freeze, name, lxcpath);
 }
 
 lxc_state_t freezer_state(const char *name, const char *lxcpath)
 {
-	char *cgabspath = NULL;
-	char freezer[MAXPATHLEN];
-	char status[MAXPATHLEN];
-	FILE *file;
-	int ret;
-
-	cgabspath = lxc_cgroup_get_hierarchy_abs_path("freezer", name, lxcpath);
-	if (!cgabspath)
+	char v[100];
+	if (lxc_cgroup_get("freezer.state", v, 100, name, lxcpath) < 0) {
+		ERROR("Failed to get freezer state for %s:%s", lxcpath, name);
 		return -1;
-
-	ret = snprintf(freezer, MAXPATHLEN, "%s/freezer.state", cgabspath);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		goto out;
-
-	file = fopen(freezer, "r");
-	if (!file) {
-		ret = -1;
-		goto out;
 	}
 
-	ret = fscanf(file, "%s", status);
-	fclose(file);
-
-	if (ret == EOF) {
-		SYSERROR("failed to read %s", freezer);
-		ret = -1;
-		goto out;
-	}
-
-	ret = lxc_str2state(status);
-
-out:
-	free(cgabspath);
-	return ret;
+	if (v[strlen(v)-1] == '\n')
+		v[strlen(v)-1] = '\0';
+	return lxc_str2state(v);
 }
 
+static void cgfs_destroy(struct lxc_handler *handler)
+{
+	struct cgfs_data *d = handler->cgroup_info->data;
+	if (!d)
+		return;
+	if (d->info)
+		lxc_cgroup_process_info_free_and_remove(d->info);
+	if (d->meta)
+		lxc_cgroup_put_meta(d->meta);
+	free(d);
+	handler->cgroup_info->data = NULL;
+}
+
+static inline bool cgfs_init(struct lxc_handler *handler)
+{
+	struct cgfs_data *d = malloc(sizeof(*d));
+	if (!d)
+		return false;
+	d->info = NULL;
+	d->meta = lxc_cgroup_load_meta();
+
+	if (!d->meta) {
+		ERROR("cgroupfs failed to detect cgroup metadata");
+		return false;
+	}
+	handler->cgroup_info->data = d;
+	return true;
+}
+
+static inline bool cgfs_create(struct lxc_handler *handler)
+{
+	struct cgfs_data *d = handler->cgroup_info->data;
+	struct cgroup_process_info *i;
+	struct cgroup_meta_data *md = d->meta;
+	i = lxc_cgroupfs_create(handler->name, handler->cgroup_info->cgroup_pattern, md, NULL);
+	if (!i)
+		return false;
+	d->info = i;
+	return true;
+}
+
+static inline bool cgfs_enter(struct lxc_handler *handler)
+{
+	struct cgfs_data *d = handler->cgroup_info->data;
+	struct cgroup_process_info *i = d->info;
+	int ret;
+	
+	ret = lxc_cgroupfs_enter(i, handler->pid, false);
+
+	return ret == 0;
+}
+
+static inline bool cgfs_create_legacy(struct lxc_handler *handler)
+{
+	struct cgfs_data *d = handler->cgroup_info->data;
+	struct cgroup_process_info *i = d->info;
+	if (lxc_cgroup_create_legacy(i, handler->name, handler->pid) < 0) {
+		ERROR("failed to create legacy ns cgroups for '%s'", handler->name);
+		return false;
+	}
+	return true;
+}
+
+static char *cgfs_get_cgroup(struct lxc_handler *handler, const char *subsystem)
+{
+	return lxc_cgroup_get_hierarchy_path_handler(subsystem, handler);
+}
+
+static struct cgroup_ops cgfs_ops = {
+	.destroy = cgfs_destroy,
+	.init = cgfs_init,
+	.create = cgfs_create,
+	.enter = cgfs_enter,
+	.create_legacy = cgfs_create_legacy,
+	.get_cgroup = cgfs_get_cgroup,
+	.get = lxc_cgroupfs_get,
+	.set = lxc_cgroupfs_set,
+	.name = "cgroupfs",
+};
+static void init_cg_ops(void)
+{
+	if (!use_cgmanager)
+		return;
+	if (cgmanager_initialized)
+		return;
+	if (!lxc_init_cgmanager()) {
+		ERROR("Could not contact cgroup manager, falling back to cgroupfs");
+		active_cg_ops = &cgfs_ops;
+	}
+}
+
+/*
+ * These are the backend-independent cgroup handlers for container
+ * start and stop
+ */
+
+/* Free all cgroup info held by the handler */
+void cgroup_destroy(struct lxc_handler *handler)
+{
+	if (!handler->cgroup_info)
+		return;
+	if (active_cg_ops)
+		active_cg_ops->destroy(handler);
+}
+
+/*
+ * Allocate a lxc_cgroup_info for the active cgroup
+ * backend, and assign it to the handler
+ */
+bool cgroup_init(struct lxc_handler *handler)
+{
+	init_cg_ops();
+	handler->cgroup_info = malloc(sizeof(struct lxc_cgroup_info));
+	if (!handler->cgroup_info)
+		return false;
+	memset(handler->cgroup_info, 0, sizeof(struct lxc_cgroup_info));
+	/* if we are running as root, use system cgroup pattern, otherwise
+	 * just create a cgroup under the current one. But also fall back to
+	 * that if for some reason reading the configuration fails and no
+	 * default value is available
+	 */
+	if (geteuid() == 0)
+		handler->cgroup_info->cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
+	if (!handler->cgroup_info->cgroup_pattern)
+		handler->cgroup_info->cgroup_pattern = "%n";
+
+	return active_cg_ops->init(handler);
+}
+
+/* Create the container cgroups for all requested controllers */
+bool cgroup_create(struct lxc_handler *handler)
+{
+	return active_cg_ops->create(handler);
+}
+
+/*
+ * Set up per-controller configuration excluding the devices
+ * cgroup
+ */
+bool cgroup_setup_without_devices(struct lxc_handler *handler)
+{
+	return do_setup_cgroup(handler, &handler->conf->cgroup, false) == 0;
+}
+
+/* Set up the devices cgroup configuration for the container */
+bool cgroup_setup_devices(struct lxc_handler *handler)
+{
+	return do_setup_cgroup(handler, &handler->conf->cgroup, true) == 0;
+}
+
+/*
+ * Enter the container init into its new cgroups for all
+ * requested controllers */
+bool cgroup_enter(struct lxc_handler *handler)
+{
+	return active_cg_ops->enter(handler);
+}
+
+bool cgroup_create_legacy(struct lxc_handler *handler)
+{
+	if (active_cg_ops->create_legacy)
+		return active_cg_ops->create_legacy(handler);
+	return true;
+}
+
+char *cgroup_get_cgroup(struct lxc_handler *handler, const char *subsystem)
+{
+	return active_cg_ops->get_cgroup(handler, subsystem);
+}
+
+int lxc_cgroup_set(const char *filename, const char *value, const char *name, const char *lxcpath)
+{
+	init_cg_ops();
+	return active_cg_ops->set(filename, value, name, lxcpath);
+}
+
+int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
+{
+	init_cg_ops();
+	return active_cg_ops->get(filename, value, len, name, lxcpath);
+}

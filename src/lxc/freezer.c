@@ -50,17 +50,3 @@ int lxc_unfreeze(const char *name, const char *lxcpath)
 {
 	return freeze_unfreeze(name, 0, lxcpath);
 }
-
-int lxc_unfreeze_bypath(const char *cgrelpath)
-{
-	char *cgabspath;
-	int ret;
-
-	cgabspath = lxc_cgroup_find_abs_path("freezer", cgrelpath, true, NULL);
-	if (!cgabspath)
-		return -1;
-
-	ret = do_unfreeze(cgabspath, 0, NULL, NULL);
-	free(cgabspath);
-	return ret;
-}
