@@ -480,10 +480,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      the interface mac address is dynamically allocated by
 	      default to the virtual interface, but in some cases,
 	      this is needed to resolve a mac address conflict or to
-	      always have the same link-local ipv6 address
+	      always have the same link-local ipv6 address.
+	      Any "x" in address will be replaced by random value,
+	      this allows setting hwaddr templates.
               -->
-              インターフェースの MAC アドレスは，デフォルトでは動的に割り当てられます．
+              仮想インターフェースの MAC アドレスは，デフォルトでは動的に割り当てられます．
               しかし，MAC アドレスの衝突や，リンクローカルIPv6 アドレスを常に同じにした場合などは，このオプションが必要です．
+              アドレス中の "x" という文字は，ランダムな値に置き換えられます．
+              これによりテンプレートに hwaddr を設定することが可能になります．
 	    </para>
 	  </listitem>
 	</varlistentry>
