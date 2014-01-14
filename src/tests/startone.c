@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%d: failed to get extra ref to container\n", __LINE__);
 		exit(1);
 	}
-	c->want_daemonize(false);
+	c->want_daemonize(c, false);
 	pid_t pid = fork();
 	if (pid < 0) {
 		fprintf(stderr, "%d: fork failed\n", __LINE__);
