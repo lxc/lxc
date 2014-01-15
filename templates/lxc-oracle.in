@@ -245,7 +245,9 @@ EOF
     echo "pts/0"        >>$container_rootfs/etc/securetty
 
     # prevent mingetty from calling vhangup(2) since it fails with userns
-    sed -i 's|mingetty|mingetty --nohangup|' $container_rootfs/etc/init/tty.conf
+    if [ -f $container_rootfs/etc/init/tty.conf ]; then
+        sed -i 's|mingetty|mingetty --nohangup|' $container_rootfs/etc/init/tty.conf
+    fi
 
     # dont try to unmount /dev/lxc devices
     sed -i 's|&& $1 !~ /^\\/dev\\/ram/|\&\& $2 !~ /^\\/dev\\/lxc/ \&\& $1 !~ /^\\/dev\\/ram/|' $container_rootfs/etc/init.d/halt
