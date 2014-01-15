@@ -713,8 +713,8 @@ else
         if [ $host_distribution = "OracleServer" ]; then
             container_release_version=$host_release_version
         else
-            echo "No release specified with -R, defaulting to 6.4"
-            container_release_version="6.4"
+            echo "No release specified with -R, defaulting to 6.5"
+            container_release_version="6.5"
         fi
     fi
     container_release_major=`echo $container_release_version |awk -F '.' '{print $1}'`
