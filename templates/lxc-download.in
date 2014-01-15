@@ -172,7 +172,7 @@ EOF
 }
 
 options=$(getopt -o d:r:a:hl -l dist:,release:,arch:,help,list,variant:,\
-server:,keyid:,no-validate,flush-cache,force-cache:,name:,path:,\
+server:,keyid:,no-validate,flush-cache,force-cache,name:,path:,\
 rootfs:,mapped-uid: -- "$@")
 
 if [ $? -ne 0 ]; then
