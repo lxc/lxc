@@ -1,0 +1,62 @@
+# Default pivot location
+lxc.pivotdir = lxc_putold
+
+# Default mount entries
+lxc.mount.entry = proc proc proc nodev,noexec,nosuid 0 0
+lxc.mount.entry = sysfs sys sysfs defaults 0 0
+lxc.mount.entry = /sys/fs/fuse/connections sys/fs/fuse/connections none bind,optional 0 0
+
+# Default console settings
+lxc.tty = 4
+lxc.pts = 1024
+
+# Default capabilities
+lxc.cap.drop = sys_module mac_admin mac_override sys_time
+
+# When using LXC with apparmor, the container will be confined by default.
+# If you wish for it to instead run unconfined, copy the following line
+# (uncommented) to the container's configuration file.
+#lxc.aa_profile = unconfined
+
+# To support container nesting on an Ubuntu host while retaining most of
+# apparmor's added security, use the following two lines instead.
+#lxc.aa_profile = lxc-container-default-with-nesting
+#lxc.hook.mount = /usr/share/lxc/hooks/mountcgroups
+
+# If you wish to allow mounting block filesystems, then use the following
+# line instead, and make sure to grant access to the block device and/or loop
+# devices below in lxc.cgroup.devices.allow.
+#lxc.aa_profile = lxc-container-default-with-mounting
+
+# Default cgroup limits
+lxc.cgroup.devices.deny = a
+## Allow any mknod (but not using the node)
+lxc.cgroup.devices.allow = c *:* m
+lxc.cgroup.devices.allow = b *:* m
+## /dev/null and zero
+lxc.cgroup.devices.allow = c 1:3 rwm
+lxc.cgroup.devices.allow = c 1:5 rwm
+## consoles
+lxc.cgroup.devices.allow = c 5:0 rwm
+lxc.cgroup.devices.allow = c 5:1 rwm
+## /dev/{,u}random
+lxc.cgroup.devices.allow = c 1:8 rwm
+lxc.cgroup.devices.allow = c 1:9 rwm
+## /dev/pts/*
+lxc.cgroup.devices.allow = c 5:2 rwm
+lxc.cgroup.devices.allow = c 136:* rwm
+## rtc
+lxc.cgroup.devices.allow = c 254:0 rm
+## fuse
+lxc.cgroup.devices.allow = c 10:229 rwm
+## tun
+lxc.cgroup.devices.allow = c 10:200 rwm
+## full
+lxc.cgroup.devices.allow = c 1:7 rwm
+## hpet
+lxc.cgroup.devices.allow = c 10:228 rwm
+## kvm
+lxc.cgroup.devices.allow = c 10:232 rwm
+## To use loop devices, copy the following line to the container's
+## configuration file (uncommented).
+#lxc.cgroup.devices.allow = b 7:* rwm
