@@ -155,7 +155,7 @@ extern int lxc_cgroup_get(const char *filename, char *value, size_t len, const c
  * Returns path on success, NULL on error. The caller must free()
  * the returned path.
  */
-extern char *lxc_cgroup_path_get(const char *subsystem, const char *name,
+extern char *lxc_cgroup_path_get(const char *filename, const char *name,
                                  const char *lxcpath);
 
 struct lxc_list;
