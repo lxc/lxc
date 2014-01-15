@@ -124,15 +124,7 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root)
 %{_bindir}/*
-%attr(4111,root,root) %{_bindir}/lxc-attach
-%attr(4111,root,root) %{_bindir}/lxc-create
-%attr(4111,root,root) %{_bindir}/lxc-clone
-%attr(4111,root,root) %{_bindir}/lxc-start
-%attr(4111,root,root) %{_bindir}/lxc-netstat
-%attr(4111,root,root) %{_bindir}/lxc-unshare
-%attr(4111,root,root) %{_bindir}/lxc-execute
-%attr(4111,root,root) %{_bindir}/lxc-checkpoint
-%attr(4111,root,root) %{_bindir}/lxc-restart
+%attr(4111,root,root) %{_bindir}/lxc-user-nic
 %{_mandir}/man1/lxc*
 %{_mandir}/man5/lxc*
 %{_mandir}/man7/lxc*
