@@ -63,7 +63,6 @@ static char **subsystems_from_mount_options(const char *mount_options, char **ke
 static void lxc_cgroup_mount_point_free(struct cgroup_mount_point *mp);
 static void lxc_cgroup_hierarchy_free(struct cgroup_hierarchy *h);
 static bool is_valid_cgroup(const char *name);
-static int create_or_remove_cgroup(bool remove, struct cgroup_mount_point *mp, const char *path, int recurse);
 static int create_cgroup(struct cgroup_mount_point *mp, const char *path);
 static int remove_cgroup(struct cgroup_mount_point *mp, const char *path, bool recurse);
 static char *cgroup_to_absolute_path(struct cgroup_mount_point *mp, const char *path, const char *suffix);
@@ -1515,7 +1514,9 @@ int lxc_cgroup_nrtasks_handler(struct lxc_handler *handler)
 	return ret;
 }
 
-struct cgroup_process_info *lxc_cgroup_process_info_getx(const char *proc_pid_cgroup_str, struct cgroup_meta_data *meta)
+static struct cgroup_process_info *
+lxc_cgroup_process_info_getx(const char *proc_pid_cgroup_str,
+			     struct cgroup_meta_data *meta)
 {
 	struct cgroup_process_info *result = NULL;
 	FILE *proc_pid_cgroup = NULL;
@@ -1610,7 +1611,8 @@ out_error:
 	return NULL;
 }
 
-char **subsystems_from_mount_options(const char *mount_options, char **kernel_list)
+static char **subsystems_from_mount_options(const char *mount_options,
+					    char **kernel_list)
 {
 	char *token, *str, *saveptr = NULL;
 	char **result = NULL;
@@ -1647,7 +1649,7 @@ out_free:
 	return NULL;
 }
 
-void lxc_cgroup_mount_point_free(struct cgroup_mount_point *mp)
+static void lxc_cgroup_mount_point_free(struct cgroup_mount_point *mp)
 {
 	if (!mp)
 		return;
@@ -1656,7 +1658,7 @@ void lxc_cgroup_mount_point_free(struct cgroup_mount_point *mp)
 	free(mp);
 }
 
-void lxc_cgroup_hierarchy_free(struct cgroup_hierarchy *h)
+static void lxc_cgroup_hierarchy_free(struct cgroup_hierarchy *h)
 {
 	if (!h)
 		return;
@@ -1665,7 +1667,7 @@ void lxc_cgroup_hierarchy_free(struct cgroup_hierarchy *h)
 	free(h);
 }
 
-bool is_valid_cgroup(const char *name)
+static bool is_valid_cgroup(const char *name)
 {
 	const char *p;
 	for (p = name; *p; p++) {
@@ -1679,7 +1681,8 @@ bool is_valid_cgroup(const char *name)
 	return strcmp(name, ".") != 0 && strcmp(name, "..") != 0;
 }
 
-int create_or_remove_cgroup(bool do_remove, struct cgroup_mount_point *mp, const char *path, int recurse)
+static int create_or_remove_cgroup(bool do_remove,
+		struct cgroup_mount_point *mp, const char *path, int recurse)
 {
 	int r, saved_errno = 0;
 	char *buf = cgroup_to_absolute_path(mp, path, NULL);
@@ -1700,17 +1703,19 @@ int create_or_remove_cgroup(bool do_remove, struct cgroup_mount_point *mp, const
 	return r;
 }
 
-int create_cgroup(struct cgroup_mount_point *mp, const char *path)
+static int create_cgroup(struct cgroup_mount_point *mp, const char *path)
 {
 	return create_or_remove_cgroup(false, mp, path, false);
 }
 
-int remove_cgroup(struct cgroup_mount_point *mp, const char *path, bool recurse)
+static int remove_cgroup(struct cgroup_mount_point *mp,
+			 const char *path, bool recurse)
 {
 	return create_or_remove_cgroup(true, mp, path, recurse);
 }
 
-char *cgroup_to_absolute_path(struct cgroup_mount_point *mp, const char *path, const char *suffix)
+static char *cgroup_to_absolute_path(struct cgroup_mount_point *mp,
+				     const char *path, const char *suffix)
 {
 	/* first we have to make sure we subtract the mount point's prefix */
 	char *prefix = mp->mount_prefix;
@@ -1754,7 +1759,8 @@ char *cgroup_to_absolute_path(struct cgroup_mount_point *mp, const char *path, c
 	return buf;
 }
 
-struct cgroup_process_info *find_info_for_subsystem(struct cgroup_process_info *info, const char *subsystem)
+static struct cgroup_process_info *
+find_info_for_subsystem(struct cgroup_process_info *info, const char *subsystem)
 {
 	struct cgroup_process_info *info_ptr;
 	for (info_ptr = info; info_ptr; info_ptr = info_ptr->next) {
@@ -1766,7 +1772,8 @@ struct cgroup_process_info *find_info_for_subsystem(struct cgroup_process_info *
 	return NULL;
 }
 
-int do_cgroup_get(const char *cgroup_path, const char *sub_filename, char *value, size_t len)
+static int do_cgroup_get(const char *cgroup_path, const char *sub_filename,
+			 char *value, size_t len)
 {
 	const char *parts[3] = {
 		cgroup_path,
@@ -1787,7 +1794,8 @@ int do_cgroup_get(const char *cgroup_path, const char *sub_filename, char *value
 	return ret;
 }
 
-int do_cgroup_set(const char *cgroup_path, const char *sub_filename, const char *value)
+static int do_cgroup_set(const char *cgroup_path, const char *sub_filename,
+			 const char *value)
 {
 	const char *parts[3] = {
 		cgroup_path,
@@ -1808,7 +1816,8 @@ int do_cgroup_set(const char *cgroup_path, const char *sub_filename, const char 
 	return ret;
 }
 
-int do_setup_cgroup(struct lxc_handler *h, struct lxc_list *cgroup_settings, bool do_devices)
+static int do_setup_cgroup(struct lxc_handler *h,
+			   struct lxc_list *cgroup_settings, bool do_devices)
 {
 	struct lxc_list *iterator;
 	struct lxc_cgroup *cg;
@@ -1843,7 +1852,8 @@ out:
 	return ret;
 }
 
-bool cgroup_devices_has_allow_or_deny(struct lxc_handler *h, char *v, bool for_allow)
+static bool cgroup_devices_has_allow_or_deny(struct lxc_handler *h,
+					     char *v, bool for_allow)
 {
 	char *path;
 	FILE *devices_list;
@@ -1897,7 +1907,7 @@ out:
 	return ret;
 }
 
-int cgroup_recursive_task_count(const char *cgroup_path)
+static int cgroup_recursive_task_count(const char *cgroup_path)
 {
 	DIR *d;
 	struct dirent *dent_buf;
@@ -1960,7 +1970,7 @@ int cgroup_recursive_task_count(const char *cgroup_path)
 	return n;
 }
 
-int count_lines(const char *fn)
+static int count_lines(const char *fn)
 {
 	FILE *f;
 	char *line = NULL;
@@ -1979,7 +1989,8 @@ int count_lines(const char *fn)
 	return n;
 }
 
-int handle_cgroup_settings(struct cgroup_mount_point *mp, char *cgroup_path)
+static int handle_cgroup_settings(struct cgroup_mount_point *mp,
+				  char *cgroup_path)
 {
 	int r, saved_errno = 0;
 	char buf[2];
