@@ -318,6 +318,11 @@ extern int lxc_log_init(const char *name, const char *file,
 		lxc_logfile_specified = 1;
 		ret = __lxc_log_set_file(file, 1);
 	} else {
+
+		/* For now, unprivileged containers have to set -l to get logging */
+		if (geteuid())
+			return 0;
+
 		ret = -1;
 
 		if (!lxcpath)
