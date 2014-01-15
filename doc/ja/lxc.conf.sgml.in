@@ -453,6 +453,20 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
 	<varlistentry>
 	  <term>
+	    <option>lxc.network.mtu</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify the maximum transfer unit for this interface.
+              -->
+              インターフェースに対する MTU を指定します．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
 	    <option>lxc.network.name</option>
 	  </term>
 	  <listitem>
