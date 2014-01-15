@@ -28,52 +28,35 @@
 # ref. https://github.com/Ponce/lxc-slackware/blob/master/lxc-slackware
 #      lxc-ubuntu script
 
-LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+set -eu
 
 [ -r /etc/default/lxc ] && . /etc/default/lxc
 
+LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+
+DOWNLOAD_SCHEME=${DOWNLOAD_SCHEME:-"http"}
 MIRRORSRV=${MIRRORSRV:-"ftp.ne.jp"}
 MIRRORPATH=${MIRRORPATH:-"/Linux/distributions/plamolinux"}
 CATEGORY[0]=${CATEGORY:-"00_base"}
-PACKAGES[0]=${PACKAGES:-"aaa_base acl at attr bash btrfs_progs bzip2
-    coreutils cracklib dcron devs dhcp dialog dosfstools dump e2fsprogs
-    ed eject etc extipl file findutils gawk glibc grep groff grub gzip
-    hdsetup hibernate_script iproute2 iputils kbd kmod less libcap
-    libgcc libtirpc lilo linux_pam logrotate lvm2 man
-    mdadm microcode_ctl mlocate ncurses net_tools netkit_combo
-    network_configs nvi openbsd_inetd openssh openssl os_prober pciutils
-    pm_utils procinfo_ng procps_ng readline reiserfsprogs rsyslog sed
-    shadow sudo sysfsutils syslinux sysvinit tar tcp_wrappers tcsh
-    timezone traceroute udev unicon_tools util_linux xz zlib"}
+IGNOREPKG[0]=${IGNOREPKGS:-"grub kernel lilo linux_firmware microcode_ctl"}
 CATEGORY[1]="01_minimum"
-PACKAGES[1]="FDclone autofs bc berkeley_db bsd_games cpio cpufreqd
-    cpufrequtils fortune_mod gc gdbm gpm hddtemp hdparm keyutils libelf
-    libieee1284 libusb libusb_compat libxml2 libzip linux_howto lm_sensors
-    lshw lsof lv man_pages man_pages_ja nilfs_utils nkf pcre perl popt
-    psmisc python recode rpm2targz ruby screen sg3_utils sharutils sqlite
-    squashfs_lzma sysstat texinfo time tree unzip usbutils utempter which
-    yaml zip zsh"
+IGNOREPKG[1]="cpufreqd cpufrequtils gpm"
 CATEGORY[2]="01_minimum/alsa.txz"
-PACKAGES[2]="alsa_lib alsa_plugins alsa_utils"
+IGNOREPKG[2]=""
 CATEGORY[3]="01_minimum/aspell.txz"
-PACKAGES[3]="aspell aspell6_en"
+IGNOREPKG[3]=""
 CATEGORY[4]="01_minimum/devel.txz"
-PACKAGES[4]="autoconf automake binutils bison cloog cvs diffutils flex
-    g++ gcc gdb gettext gmp indent intltool kernel_headers libc libtool
-    m4 make mpc mpfr onig patch pkg_config ppl pth slang strace yasm"
+IGNOREPKG[4]=""
 CATEGORY[5]="01_minimum/gnupg_tls.txz"
-PACKAGES[5]="gnupg gnutls gpgme libassuan libgcrypt libgpg_error libksba
-    libtasn1"
+IGNOREPKG[5]=""
 CATEGORY[6]="01_minimum/network.txz"
-PACKAGES[6]="bind bridge_utils curl cyrus_sasl dnsmasq ethtool fetchmail
-    heimdal hostapd iptables iw libidn libiec61883 libnl3 libpcap
-    libraw1394 libssh2 mailx metamail ncftp ntrack parprouted postfix
-    ppp procmail rsync setserial uml_utilities w3m wget wireless_tools
-    wpa_supplicant"
+IGNOREPKG[6]=""
 CATEGORY[7]="01_minimum/nfs.txz"
-PACKAGES[7]="libevent libnfsidmap nfs_utils rpcbind"
+IGNOREPKG[7]=""
 CATEGORY[8]="01_minimum/tcl.txz"
-PACKAGES[8]="expect itcl tcl tclx"
+IGNOREPKG[8]=""
+
+CATEGORY_PATH=""
 
 download_plamo() {
   # check the mini plamo was not already downloaded
@@ -83,21 +66,36 @@ download_plamo() {
   fi
   # download a mini plamo into a cache
   echo "Downloading Plamo-$release minimal..."
-  echo "open $MIRRORSRV" > /tmp/getpkg
-  for i in `seq 0 $((${#CATEGORY[@]} - 1))` ; do
-    for p in ${PACKAGES[$i]} ; do
-      cat <<- EOF >> /tmp/getpkg
-	mget $MIRRORPATH/Plamo-$release/$arch/plamo/${CATEGORY[$i]}/$p-*.t?z
-	EOF
-    done
-  done
-  echo "close" >> /tmp/getpkg
   cd $ptcache
-  if ! lftp -f /tmp/getpkg ; then
-    echo "Failed to download the rootfs, aborting."
-    return 1
-  fi
-  rm -f /tmp/getpkg
+  for i in `seq 0 $((${#CATEGORY[@]} - 1))` ; do
+    CATEGORYPATH=${MIRRORPATH}/Plamo-${release}/${arch}/plamo/${CATEGORY[$i]}
+    WGETOPT="-nv -r -l1 -e robots=off -nd --no-parent -c --retr-symlinks -A .txz"
+    EXCLUDE_OPT=""
+    if [ $DOWNLOAD_SCHEME = "http" ] ; then
+      if [ -n "${IGNOREPKG[$i]}" ] ; then
+        for p in ${IGNOREPKG[$i]} ; do
+          EXCLUDE_OPT="${EXCLUDE_OPT} -R ${p}* "
+        done
+      fi
+      if ! wget ${WGETOPT} ${EXCLUDE_OPT} -X ${CATEGORY_PATH}/old http://${MIRRORSRV}${CATEGORYPATH} ; then
+        echo "Failed to download the rootfs, aborting."
+        return 1
+      fi
+    elif [ $DOWNLOAD_SCHEME = "ftp" ] ; then
+      if [ -n "${IGNOREPKG[$i]}" ] ; then
+        for p in ${IGNOREPKG[$i]} ; do
+          EXCLUDE_OPT="${EXCLUDE_OPT} -x ${p} "
+        done
+      fi
+      if ! lftp -c "open ${MIRRORSRV} && cd ${CATEGORYPATH} && mirror -i .txz -x old ${EXCLUDE_OPT} -r ." ; then
+        echo "Failed to download the rootfs, aborting."
+        return 1
+      fi
+    else
+      echo "Invalid DOWNLOAD_SCHEME value (can set http or ftp). "
+      return 1
+    fi
+  done
   mv $ptcache $dlcache
   echo "Download complete."
   return 0
@@ -135,10 +133,8 @@ install_plamo() {
     echo "Installing packages to $rtcache..."
     if [ ! -d $rtcache ] ; then
       mkdir -p $rtcache
-      for i in `seq 0 $((${#CATEGORY[@]} - 1))` ; do
-        for p in ${PACKAGES[$i]} ; do
-          installpkg -root $rtcache -priority ADD $dlcache/$p-*.t?z
-        done
+      for p in `ls $dlcache` ; do
+        installpkg -root $rtcache -priority ADD $p
       done
     fi
     echo "Copy $rtcache to $rootfs..."
