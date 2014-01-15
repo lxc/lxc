@@ -24,10 +24,10 @@
 
 discovery_script=/usr/share/squid-deb-proxy-client/apt-avahi-discover
 proxy_file=/etc/apt/apt.conf.d/50squid-deb-proxy
+container_proxy_file=$LXC_ROOTFS_PATH$proxy_file
 
 if [ -f $proxy_file ]; then
     # The host has a proxy file - let's propagate the config to the guest.
-    container_proxy_file=$LXC_ROOTFS_PATH$proxy_file
     cat $proxy_file > $container_proxy_file
     exit 0
 fi
