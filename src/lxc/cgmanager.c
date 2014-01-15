@@ -358,6 +358,18 @@ out_free:
 	return false;
 }
 
+static int cgm_unfreeze_fromhandler(struct lxc_handler *handler)
+{
+	struct cgm_data *d = handler->cgroup_info->data;
+
+	if (cgmanager_set_value_sync(NULL, cgroup_manager, "freezer", d->cgroup_path,
+			"freezer.state", "THAWED") != 0) {
+		ERROR("Error unfreezing %s", d->cgroup_path);
+		return false;
+	}
+	return true;
+}
+
 static struct cgroup_ops cgmanager_ops = {
 	.destroy = cgm_destroy,
 	.init = cgm_init,
@@ -367,6 +379,7 @@ static struct cgroup_ops cgmanager_ops = {
 	.get_cgroup = cgm_get_cgroup,
 	.get = cgm_get,
 	.set = cgm_set,
+	.unfreeze_fromhandler = cgm_unfreeze_fromhandler,
 	.name = "cgmanager"
 };
 #endif

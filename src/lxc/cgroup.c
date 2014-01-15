@@ -2168,6 +2168,21 @@ static char *cgfs_get_cgroup(struct lxc_handler *handler, const char *subsystem)
 	return lxc_cgroup_get_hierarchy_path_handler(subsystem, handler);
 }
 
+static int cgfs_unfreeze_fromhandler(struct lxc_handler *handler)
+{
+	char *cgabspath, *cgrelpath;
+	int ret;
+
+	cgrelpath = lxc_cgroup_get_hierarchy_path_handler("freezer", handler);
+	cgabspath = lxc_cgroup_find_abs_path("freezer", cgrelpath, true, NULL);
+	if (!cgabspath)
+		return -1;
+
+	ret = do_cgroup_set(cgabspath, "freezer.state", "THAWED");
+	free(cgabspath);
+	return ret;
+}
+
 static struct cgroup_ops cgfs_ops = {
 	.destroy = cgfs_destroy,
 	.init = cgfs_init,
@@ -2177,6 +2192,7 @@ static struct cgroup_ops cgfs_ops = {
 	.get_cgroup = cgfs_get_cgroup,
 	.get = lxc_cgroupfs_get,
 	.set = lxc_cgroupfs_set,
+	.unfreeze_fromhandler = cgfs_unfreeze_fromhandler,
 	.name = "cgroupfs",
 };
 static void init_cg_ops(void)
@@ -2280,4 +2296,9 @@ int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *na
 {
 	init_cg_ops();
 	return active_cg_ops->get(filename, value, len, name, lxcpath);
+}
+
+int lxc_unfreeze_fromhandler(struct lxc_handler *handler)
+{
+	return active_cg_ops->unfreeze_fromhandler(handler);
 }

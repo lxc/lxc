@@ -591,7 +591,7 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.ret = kill(handler->pid, stopsignal);
 	if (!rsp.ret) {
-		ret = lxc_unfreeze(handler->name, handler->lxcpath);
+		ret = lxc_unfreeze_fromhandler(handler);
 		if (!ret)
 			return 0;
 		ERROR("Failed to unfreeze %s:%s", handler->lxcpath, handler->name);

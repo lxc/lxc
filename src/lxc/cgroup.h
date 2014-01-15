@@ -178,6 +178,7 @@ struct cgroup_ops {
 	char *(*get_cgroup)(struct lxc_handler *handler, const char *subsystem);
 	int (*set)(const char *filename, const char *value, const char *name, const char *lxcpath);
 	int (*get)(const char *filename, char *value, size_t len, const char *name, const char *lxcpath);
+	int (*unfreeze_fromhandler)(struct lxc_handler *handler);
 	const char *name;
 };
 
@@ -214,5 +215,6 @@ extern bool cgroup_create_legacy(struct lxc_handler *handler);
 extern char *cgroup_get_cgroup(struct lxc_handler *handler, const char *subsystem);
 extern int lxc_cgroup_set(const char *filename, const char *value, const char *name, const char *lxcpath);
 extern int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath);
+extern int lxc_unfreeze_fromhandler(struct lxc_handler *handler);
 
 #endif
