@@ -396,7 +396,7 @@ if [ "$DOWNLOAD_USE_CACHE" = "false" ]; then
         echo $DOWNLOAD_BUILD > $LXC_CACHE_PATH/build_id
 
         if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
-            chown $LXC_MAPPED_UID -Rf $LXC_CACHE_BASE >/dev/null 2>&1 || true
+            chown -R $LXC_MAPPED_UID $LXC_CACHE_BASE >/dev/null 2>&1 || true
         fi
         echo "The image cache is now ready"
     fi
@@ -489,7 +489,7 @@ for file in $TEMPLATE_FILES; do
 done
 
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
-    chown $LXC_MAPPED_UID -f $LXC_PATH/config $LXC_PATH/fstab || true
+    chown $LXC_MAPPED_UID $LXC_PATH/config $LXC_PATH/fstab >/dev/null 2>&1 || true
 fi
 
 if [ -e "$(relevant_file create-message)" ]; then
