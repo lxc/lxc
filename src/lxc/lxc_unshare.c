@@ -23,26 +23,41 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #undef _GNU_SOURCE
-#include <stdlib.h>
-#include <unistd.h>
-#include <libgen.h>
-#include <getopt.h>
-#include <string.h>
-#include <signal.h>
 #include <errno.h>
+#include <getopt.h>
+#include <libgen.h>
+#include <netinet/in.h>
+#include <pwd.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <pwd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <unistd.h>
 
 #include "caps.h"
+#include "cgroup.h"
+#include "config.h"
+#include "error.h"
 #include "log.h"
 #include "namespace.h"
 #include "network.h"
 #include "utils.h"
-#include "cgroup.h"
-#include "error.h"
+
+/* Define sethostname() if missing from the C library */
+#ifndef HAVE_SETHOSTNAME
+static int sethostname(const char * name, size_t len)
+{
+#ifdef __NR_sethostname
+return syscall(__NR_sethostname, name, len);
+#else
+errno = ENOSYS;
+return -1;
+#endif
+}
+#endif
 
 lxc_log_define(lxc_unshare_ui, lxc);
 
