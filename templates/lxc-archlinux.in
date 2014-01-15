@@ -207,7 +207,7 @@ Optional args:
   -P,--packages     preinstall additional packages, comma-separated list
   -e,--enable_units Enable additional systemd units, comma-separated list
   -c,--config       use specified pacman config when installing container packages
-  -a,--arch         use specified architecture instead of host's architecture 
+  -a,--arch         use specified architecture instead of host's architecture
   -t,--network_type set container network interface type (${lxc_network_type})
   -l,--network_link set network link device (${lxc_network_link})
   -r,--root_passwd  set container root password
