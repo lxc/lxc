@@ -1,6 +1,8 @@
 templatesconfigdir=@LXCTEMPLATECONFIG@
 
 templatesconfig_DATA = \
+	oracle.common.conf \
+	oracle.userns.conf \
 	plamo.common.conf \
 	plamo.userns.conf \
 	ubuntu-cloud.common.conf \

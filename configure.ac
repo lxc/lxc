@@ -532,6 +532,8 @@ AC_CONFIG_FILES([
 	config/Makefile
 	config/etc/Makefile
 	config/templates/Makefile
+	config/templates/oracle.common.conf
+	config/templates/oracle.userns.conf
 	config/templates/plamo.common.conf
 	config/templates/plamo.userns.conf
 	config/templates/ubuntu-cloud.common.conf
