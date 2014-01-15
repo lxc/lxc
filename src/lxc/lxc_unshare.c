@@ -66,35 +66,33 @@ static void usage(char *cmd)
 	_exit(1);
 }
 
-static uid_t lookup_user(const char *optarg)
+static bool lookup_user(const char *optarg, uid_t *uid)
 {
 	char name[sysconf(_SC_LOGIN_NAME_MAX)];
-	uid_t uid = -1;
 	struct passwd *pwent = NULL;
 
 	if (!optarg || (optarg[0] == '\0'))
-		return uid;
+		return false;
 
-	if (sscanf(optarg, "%u", &uid) < 1) {
+	if (sscanf(optarg, "%u", uid) < 1) {
 		/* not a uid -- perhaps a username */
 		if (sscanf(optarg, "%s", name) < 1)
-			return uid;
+			return false;
 
 		pwent = getpwnam(name);
 		if (!pwent) {
 			ERROR("invalid username %s", name);
-			return uid;
+			return false;
 		}
-		uid = pwent->pw_uid;
+		*uid = pwent->pw_uid;
 	} else {
-		pwent = getpwuid(uid);
+		pwent = getpwuid(*uid);
 		if (!pwent) {
-			ERROR("invalid uid %d", uid);
-			uid = -1;
-			return uid;
+			ERROR("invalid uid %u", *uid);
+			return false;
 		}
 	}
-	return uid;
+	return true;
 }
 
 
@@ -102,6 +100,7 @@ struct start_arg {
 	char ***args;
 	int *flags;
 	uid_t *uid;
+	bool setuid;
         int want_default_mounts;
         const char *want_hostname;
 };
@@ -125,7 +124,7 @@ static int do_start(void *arg)
 		}
 
 	// Setuid is useful even without a new user id space
-	if ( uid >= 0 && setuid(uid)) {
+	if (start_arg->setuid && setuid(uid)) {
 		ERROR("failed to set uid %d: %s", uid, strerror(errno));
 		exit(1);
 	}
@@ -144,12 +143,13 @@ int main(int argc, char *argv[])
 	char **args;
 	int flags = 0;
 	int daemonize = 0;
-	uid_t uid = -1; /* valid only if (flags & CLONE_NEWUSER) */
+	uid_t uid = 0; /* valid only if (flags & CLONE_NEWUSER) */
 	pid_t pid;
 	struct my_iflist *tmpif, *my_iflist = NULL;
 	struct start_arg start_arg = {
 		.args = &args,
 		.uid = &uid,
+		.setuid = false,
 		.flags = &flags,
 		.want_hostname = NULL,
 		.want_default_mounts = 0,
@@ -182,9 +182,9 @@ int main(int argc, char *argv[])
 			usage(argv[0]);
 			break;
 		case 'u':
-			uid = lookup_user(optarg);
-			if (uid == -1)
+			if (!lookup_user(optarg, &uid))
 				return 1;
+			start_arg.setuid = true;
 		}
 	}
 
