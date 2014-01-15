@@ -130,10 +130,15 @@ struct cgm_data {
 	char *cgroup_path;
 };
 
-void cgmanager_remove_cgroup(const char *subsystem, const char *path)
+#define CG_REMOVE_RECURSIVE 1
+void cgmanager_remove_cgroup(const char *controller, const char *path)
 {
-	// TODO implement
-	WARN("%s: not yet implemented", __func__);
+	int existed;
+	if ( cgmanager_remove_sync(NULL, cgroup_manager, controller,
+				   path, CG_REMOVE_RECURSIVE, &existed) != 0)
+		ERROR("Error removing %s:%s", controller, path);
+	if (!existed)
+		INFO("cgroup removal attempt: %s:%s did not exist");
 }
 
 static void cgm_destroy(struct lxc_handler *handler)
