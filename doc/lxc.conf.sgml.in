@@ -230,6 +230,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    </para>
 
 	    <para>
+	      <option>none:</option> will cause the container to share
+	      the host's network namespace.  This means the host
+	      network devices are usable in the container.  It also
+	      means that if both the container and host have upstart as
+	      init, 'halt' in a container (for instance) will shut down the
+	      host.
+	    </para>
+
+	    <para>
 	      <option>empty:</option> will create only the loopback
 	      interface.
 	    </para>
