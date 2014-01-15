@@ -1313,7 +1313,7 @@ static bool lxcapi_shutdown(struct lxc_container *c, int timeout)
 	pid = c->init_pid(c);
 	if (pid <= 0)
 		return true;
-	if (c->lxc_conf->haltsignal)
+	if (c->lxc_conf && c->lxc_conf->haltsignal)
 		haltsignal = c->lxc_conf->haltsignal;
 	kill(pid, haltsignal);
 	retv = c->wait(c, "STOPPED", timeout);
