@@ -763,11 +763,14 @@ static int lxc_spawn(struct lxc_handler *handler)
 	/*
 	 * if the rootfs is not a blockdev, prevent the container from
 	 * marking it readonly.
+	 *
+	 * if the container is unprivileged then skip rootfs pinning
 	 */
-
-	handler->pinfd = pin_rootfs(handler->conf->rootfs.path);
-	if (handler->pinfd == -1)
-		INFO("failed to pin the container's rootfs");
+	if (lxc_list_empty(&handler->conf->id_map)) {
+		handler->pinfd = pin_rootfs(handler->conf->rootfs.path);
+		if (handler->pinfd == -1)
+			INFO("failed to pin the container's rootfs");
+	}
 
 	if (preserve_ns(saved_ns_fd, preserve_mask) < 0)
 		goto out_delete_net;
