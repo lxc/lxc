@@ -107,10 +107,13 @@ static void create_helpfn(const struct lxc_arguments *args) {
 
 	if (!args->template)
 		return;
-	if ((pid = fork()) < 0)
-		return;
-	if (pid)
+
+	pid = fork();
+	if (pid) {
 		wait_for_pid(pid);
+		return;
+	}
+
 	len = strlen(LXCTEMPLATEDIR) + strlen(args->template) + strlen("/lxc-") + 1;
 	path = alloca(len);
 	ret = snprintf(path, len,  "%s/lxc-%s", LXCTEMPLATEDIR, args->template);
