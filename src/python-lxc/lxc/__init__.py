@@ -327,6 +327,18 @@ class Container(_lxc.Container):
 
         return ips
 
+    def rename(self, new_name):
+        """
+            Rename the container.
+            On success, returns the new Container object.
+            On failure, returns False.
+        """
+
+        if _lxc.Container.rename(self, new_name):
+            return Container(new_name)
+
+        return False
+
     def set_config_item(self, key, value):
         """
             Set a config key to a provided value.
@@ -460,8 +472,10 @@ LXC_ATTACH_REMOUNT_PROC_SYS = _lxc.LXC_ATTACH_REMOUNT_PROC_SYS
 LXC_ATTACH_SET_PERSONALITY = _lxc.LXC_ATTACH_SET_PERSONALITY
 
 # clone: clone flags
+LXC_CLONE_KEEPBDEVTYPE = _lxc.LXC_CLONE_KEEPBDEVTYPE
 LXC_CLONE_KEEPMACADDR = _lxc.LXC_CLONE_KEEPMACADDR
 LXC_CLONE_KEEPNAME = _lxc.LXC_CLONE_KEEPNAME
+LXC_CLONE_MAYBE_SNAPSHOT = _lxc.LXC_CLONE_MAYBE_SNAPSHOT
 LXC_CLONE_SNAPSHOT = _lxc.LXC_CLONE_SNAPSHOT
 
 # create: create flags
