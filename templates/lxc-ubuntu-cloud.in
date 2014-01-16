@@ -283,8 +283,10 @@ type wget
 # determine the url, tarball, and directory names
 # download if needed
 cache="$STATE_DIR/cache/lxc/cloud-$release"
-STATE_DIR="$HOME/.cache/lxc/"
-cache="$HOME/.cache/lxc/cloud-$release"
+if [ $in_userns -eq 1 ]; then
+    STATE_DIR="$HOME/.cache/lxc/"
+    cache="$HOME/.cache/lxc/cloud-$release"
+fi
 
 mkdir -p $cache
 
