@@ -1,0 +1,18 @@
+# Do not load this file.  Rather, load /etc/apparmor.d/lxc-containers, which
+# will source all profiles under /etc/apparmor.d/lxc
+
+profile lxc-container-default-builder flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/lxc/container-base>
+
+  # pbuilder
+  mount options=(rw,bind) -> /var/cache/pbuilder/**,
+  mount fstype=devpts -> /var/cache/pbuilder/**,
+  mount fstype=proc -> /var/cache/pbuilder/**,
+  mount fstype=sysfs -> /var/cache/pbuilder/**,
+
+  # sbuild
+  mount options=(rw,bind) -> /var/lib/schroot/**,
+  mount fstype=devpts -> /var/lib/schroot/**,
+  mount fstype=proc -> /var/lib/schroot/**,
+  mount fstype=sysfs -> /var/lib/schroot/**,
+}

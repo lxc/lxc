@@ -1,0 +1,30 @@
+  network,
+  capability,
+  file,
+  dbus,
+
+  # currently blocked by apparmor bug
+  mount -> /usr/lib/*/lxc/{**,},
+  mount -> /usr/lib/lxc/{**,},
+  mount fstype=devpts -> /dev/pts/,
+  mount options=bind /dev/pts/ptmx/ -> /dev/ptmx/,
+  mount fstype=debugfs,
+  # allow pre-mount hooks to stage mounts under /var/lib/lxc/<container>/
+  mount -> /var/lib/lxc/{**,},
+
+  # required for some pre-mount hooks (like the new lxc-start-ephemeral)
+  mount fstype=overlayfs,
+  mount fstype=aufs,
+  mount fstype=ecryptfs,
+
+  # all umounts are under the original root's /mnt, but right now we
+  # can't allow those umounts after pivot_root.  So allow all umounts
+  # right now.  They'll be restricted for the container at least.
+  umount,
+  #umount /mnt/{**,},
+
+  pivot_root /usr/lib/*/lxc/,
+  pivot_root /usr/lib/lxc/root/,
+
+  change_profile -> lxc-*,
+  change_profile -> unconfined,

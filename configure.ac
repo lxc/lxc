@@ -547,6 +547,7 @@ AC_CONFIG_FILES([
 	lxc.spec
 
 	config/Makefile
+	config/apparmor/Makefile
 	config/init/Makefile
 	config/init/sysvinit/Makefile
 	config/init/systemd/Makefile

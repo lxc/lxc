@@ -1,0 +1,7 @@
+# This file exists only to ensure that all per-container policies
+# listed under /etc/apparmor.d/lxc get loaded at boot.  Please do
+# not edit this file.
+
+#include <tunables/global>
+
+#include <lxc>

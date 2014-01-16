@@ -1,1 +1,1 @@
-SUBDIRS = etc init templates
+SUBDIRS = apparmor etc init templates

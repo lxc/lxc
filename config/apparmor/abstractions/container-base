@@ -1,0 +1,50 @@
+  network,
+  capability,
+  file,
+  umount,
+  dbus,
+
+  # ignore DENIED message on / remount
+  deny mount options=(ro, remount) -> /,
+
+  # allow tmpfs mounts everywhere
+  mount fstype=tmpfs,
+
+  # allow mqueue mounts everywhere
+  mount fstype=mqueue,
+
+  # allow fuse mounts everywhere
+  mount fstype=fuse.*,
+
+  # allow bind mount of /lib/init/fstab for lxcguest
+  mount options=(rw, bind) /lib/init/fstab.lxc/ -> /lib/init/fstab/,
+
+  # deny writes in /proc/sys/fs but allow binfmt_misc to be mounted
+  mount fstype=binfmt_misc -> /proc/sys/fs/binfmt_misc/,
+  deny @{PROC}/sys/fs/** wklx,
+
+  # allow efivars to be mounted, writing to it will be blocked though
+  mount fstype=efivarfs -> /sys/firmware/efi/efivars/,
+
+  # block some other dangerous paths
+  deny @{PROC}/sysrq-trigger rwklx,
+  deny @{PROC}/mem rwklx,
+  deny @{PROC}/kmem rwklx,
+  deny @{PROC}/sys/kernel/[^s][^h][^m]* wklx,
+  deny @{PROC}/sys/kernel/*/** wklx,
+
+  # deny writes in /sys except for /sys/fs/cgroup, also allow
+  # fusectl, securityfs and debugfs to be mounted there (read-only)
+  mount fstype=fusectl -> /sys/fs/fuse/connections/,
+  mount fstype=securityfs -> /sys/kernel/security/,
+  mount fstype=debugfs -> /sys/kernel/debug/,
+  deny mount fstype=debugfs -> /var/lib/ureadahead/debugfs/,
+  mount fstype=proc -> /proc/,
+  mount fstype=sysfs -> /sys/,
+  deny /sys/[^f]*/** wklx,
+  deny /sys/f[^s]*/** wklx,
+  deny /sys/fs/[^c]*/** wklx,
+  deny /sys/fs/c[^g]*/** wklx,
+  deny /sys/fs/cg[^r]*/** wklx,
+  deny /sys/firmware/efi/efivars/** rwklx,
+  deny /sys/kernel/security/** rwklx,

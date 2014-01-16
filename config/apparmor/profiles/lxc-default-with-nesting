@@ -1,0 +1,13 @@
+# Do not load this file.  Rather, load /etc/apparmor.d/lxc-containers, which
+# will source all profiles under /etc/apparmor.d/lxc
+
+profile lxc-container-default-with-nesting flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/lxc/container-base>
+  #include <abstractions/lxc/start-container>
+
+  mount fstype=cgroup -> /sys/fs/cgroup/**,
+
+  mount fstype=proc -> /var/cache/lxc/**,
+  mount fstype=sysfs -> /var/cache/lxc/**,
+  mount options=(rw,bind) /var/cache/lxc/**/dev/shm/ -> /var/cache/lxc/**/run/shm/,
+}
