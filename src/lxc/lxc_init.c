@@ -143,7 +143,8 @@ int main(int argc, char *argv[])
 		    i == SIGSEGV ||
 		    i == SIGBUS ||
 		    i == SIGSTOP ||
-		    i == SIGKILL)
+		    i == SIGKILL ||
+		    i == 32 || i == 33)
 			continue;
 
 		if (sigfillset(&act.sa_mask) ||
