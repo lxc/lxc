@@ -57,7 +57,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <cmdsynopsis>
       <command>lxc-unshare</command>
       <arg choice="req">-s <replaceable>namespaces</replaceable></arg>
-      <arg choice="req">-u <replaceable>user</replaceable></arg>
+      <arg choice="opt">-u <replaceable>user</replaceable></arg>
+      <arg choice="opt">-H <replaceable>hostname</replaceable></arg>
+      <arg choice="opt">-i <replaceable>ifname</replaceable></arg>
+      <arg choice="opt">-d</arg>
+      <arg choice="opt">-M</arg>
       <arg choice="req">command</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -120,11 +124,70 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	<listitem>
 	  <para>
             <!--
-	    Specify a user which the new task should become.  This option is
-	    only valid if a user namespace is unshared.
+	    Specify a user which the new task should become.
             -->
             新しいタスクを実行するユーザを指定します．
-            このオプションはユーザ名前空間を unshare する時のみ有効です．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-H <replaceable>hostname</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Set the hostname in the new container.  Only allowed if
+	    the UTSNAME namespace is set.
+            -->
+            新しいコンテナ内でのホスト名を設定します．UTSNAME 名前空間を指定している時のみ有効です．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-i <replaceable>interfacename</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Move the named interface into the container.  Only allowed
+	    if the NETWORK namespace is set.  You may specify this
+	    argument multiple times to move multiple interfaces into
+	    container.
+            -->
+            指定したインターフェースをコンテナ内に移動させます．ネットワーク (NETWORK) 名前空間を指定している時のみ有効です．複数のインターフェースをコンテナに移動させるために複数回指定することも可能です．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-d</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Daemonize (do not wait for the container to exit before exiting)
+            -->
+            デーモンにします (コマンドはコンテナの終了を待ちません)．
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-M</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Mount default filesystems (/proc /dev/shm and /dev/mqueue)
+	    in the container.  Only allowed if MOUNT namespace is set.
+            -->
+            コンテナ内でデフォルトのファイルシステム (/proc, /dev/shm, /dev/mqueue) をマウントします．マウント (MOUNT) 名前空間を指定している時のみ有効です．
 	  </para>
 	</listitem>
       </varlistentry>
@@ -173,6 +236,28 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           mount -t proc proc /proc
         </programlisting>
         ps の出力は，その名前空間内には他のプロセスが存在しない事を表示するでしょう．
+      </para>
+      <para>
+        <!--
+        To spawn a shell in a new network, pid, mount, and hostname
+        namespace.
+        <programlisting>
+          lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H slave -i veth1 /bin/bash
+        </programlisting>
+        -->
+        新しいネットワーク，PID，マウント，ホスト名 (UTS) 名前空間でシェルを起動するには，
+        <programlisting>
+          lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H slave -i veth1 /bin/bash
+        </programlisting>
+
+        <!--
+	The resulting shell will have pid 1 and will see two network
+	interfaces (lo and veth1).  The hostname will be "slave" and
+	/proc will have been remounted.  ps output will show there are
+	no other processes in the namespace.
+        -->
+        起動したシェルは PID 1 を持ち，2 つのネットワークインターフェース (lo と veth1) を持ちます．
+        ホスト名は "slave" となり，/proc は再マウントされます．ps コマンドは，名前空間内には他のプロセスがない状態を表示するでしょう．
       </para>
   </refsect1>
 

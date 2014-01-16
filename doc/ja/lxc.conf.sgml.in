@@ -305,12 +305,26 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      several network virtualization types can be specified
 	      for the same container, as well as assigning several
 	      network interfaces for one container. The different
-	      virtualization types can be:
+	      virtualization types can sbe:
               -->
               コンテナがどの種類のネットワーク仮想化を使うかを指定します．
               一つのネットワークの設定ごとに <option>lxc.network.type</option> フィールドを指定します．
               このように，一つのコンテナに複数のネットワークインターフェースを割り当てることができるだけでなく，同じコンテナに対して複数のネットワーク仮想化の種類を指定することが出来ます．
               仮想化の種類は以下の値を取る事が出来ます:
+	    </para>
+
+	    <para>
+              <!--
+	      <option>none:</option> will cause the container to share
+	      the host's network namespace.  This means the host
+	      network devices are usable in the container.  It also
+	      means that if both the container and host have upstart as
+	      init, 'halt' in a container (for instance) will shut down the
+	      host.
+              -->
+              <option>none:</option> ホストのネットワーク名前空間を共有します．
+              これにより，ホストのネットワークデバイスをコンテナ内で使うことが可能になります．
+              もしコンテナもホストも init として upstart を使っている場合，(例えば) コンテナ内で 'halt' を実行すると，ホストがシャットダウンしてしまうことにもなります．
 	    </para>
 
 	    <para>
