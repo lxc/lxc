@@ -87,11 +87,11 @@ EOF
 
     # make sure we have the current locale defined in the container
     if [ -z "$LANG" ] || echo $LANG | grep -E -q "^C(\..+)*$"; then
-        chroot $rootfs locale-gen en_US.UTF-8
-        chroot $rootfs update-locale LANG=en_US.UTF-8
+        chroot $rootfs locale-gen en_US.UTF-8 || true
+        chroot $rootfs update-locale LANG=en_US.UTF-8 || true
     else
-        chroot $rootfs locale-gen $LANG
-        chroot $rootfs update-locale LANG=$LANG
+        chroot $rootfs locale-gen $LANG || true
+        chroot $rootfs update-locale LANG=$LANG || true
     fi
 
     # generate new SSH keys
