@@ -2090,10 +2090,8 @@ int freeze_unfreeze(const char *name, int freeze, const char *lxcpath)
 lxc_state_t freezer_state(const char *name, const char *lxcpath)
 {
 	char v[100];
-	if (lxc_cgroup_get("freezer.state", v, 100, name, lxcpath) < 0) {
-		ERROR("Failed to get freezer state for %s:%s", lxcpath, name);
+	if (lxc_cgroup_get("freezer.state", v, 100, name, lxcpath) < 0)
 		return -1;
-	}
 
 	if (v[strlen(v)-1] == '\n')
 		v[strlen(v)-1] = '\0';
