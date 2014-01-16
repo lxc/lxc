@@ -1,1 +1,1 @@
-SUBDIRS = etc templates
+SUBDIRS = etc init templates

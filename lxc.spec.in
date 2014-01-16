@@ -31,7 +31,7 @@
 BuildRequires: systemd-units
 %else
 %global with_systemd 0
-%define init_script sysv
+%define init_script sysvinit
 %endif
 
 # RPM needs alpha/beta/rc in Release: not Version: to ensure smooth

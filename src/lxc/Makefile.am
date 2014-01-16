@@ -165,11 +165,8 @@ bin_SCRIPTS = \
 
 EXTRA_DIST = \
 	lxc-device \
-	lxc-devsetup \
 	lxc-ls \
-	lxc-top \
-	lxc.service \
-	lxc.sysvinit
+	lxc-top
 
 if ENABLE_PYTHON
 bin_SCRIPTS += lxc-device
@@ -212,43 +209,6 @@ bin_PROGRAMS = \
 pkglibexec_PROGRAMS = \
 	lxc-init
 
-if INIT_SCRIPT_SYSV
-install-init: lxc.sysvinit
-	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/rc.d/init.d
-	$(INSTALL_SCRIPT) lxc.sysvinit $(DESTDIR)$(sysconfdir)/rc.d/init.d/lxc
-
-uninstall-init:
-	rm -f $(DESTDIR)$(sysconfdir)/rc.d/init.d/lxc
-	rmdir $(DESTDIR)$(sysconfdir)/rc.d/init.d || :
-else
-install-init:
-uninstall-init:
-endif
-
-if INIT_SCRIPT_SYSTEMD
-SYSTEMD_UNIT_DIR = /usr/lib/systemd/system
-install-systemd: lxc.service lxc-devsetup
-	$(MKDIR_P) $(DESTDIR)$(SYSTEMD_UNIT_DIR)
-	$(INSTALL_DATA) lxc.service $(DESTDIR)$(SYSTEMD_UNIT_DIR)/
-
-uninstall-systemd:
-	rm -f $(DESTDIR)$(SYSTEMD_UNIT_DIR)/lxc.service
-	rmdir $(DESTDIR)$(SYSTEMD_UNIT_DIR) || :
-pkglibexec_SCRIPTS = lxc-devsetup
-else
-install-systemd:
-uninstall-systemd:
-endif
-
-if INIT_SCRIPT_UPSTART
-# FIXME: install/uninstall upstart script here
-install-upstart:
-uninstall-upstart:
-else
-install-upstart:
-uninstall-upstart:
-endif
-
 AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
 AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
@@ -285,10 +245,6 @@ lxc_create_SOURCES = lxc_create.c
 lxc_snapshot_SOURCES = lxc_snapshot.c
 lxc_usernsexec_SOURCES = lxc_usernsexec.c
 lxc_user_nic_SOURCES = lxc_user_nic.c network.c network.h
-
-install-data-local: install-init install-systemd install-upstart
-
-uninstall-local: uninstall-init uninstall-systemd uninstall-upstart
 
 install-exec-local: install-soPROGRAMS
 	mkdir -p $(DESTDIR)$(datadir)/lxc
