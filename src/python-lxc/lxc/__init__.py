@@ -386,10 +386,16 @@ def list_containers(active=True, defined=True,
     if config_path:
         if not os.path.exists(config_path):
             return tuple()
-        entries = _lxc.list_containers(active=active, defined=defined,
-                                       config_path=config_path)
+        try:
+            entries = _lxc.list_containers(active=active, defined=defined,
+                                           config_path=config_path)
+        except ValueError:
+            return tuple()
     else:
-        entries = _lxc.list_containers(active=active, defined=defined)
+        try:
+            entries = _lxc.list_containers(active=active, defined=defined)
+        except ValueError:
+            return tuple()
 
     if as_object:
         return tuple([Container(name, config_path) for name in entries])
