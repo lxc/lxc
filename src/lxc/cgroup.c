@@ -2121,6 +2121,7 @@ static inline bool cgfs_init(struct lxc_handler *handler)
 
 	if (!d->meta) {
 		ERROR("cgroupfs failed to detect cgroup metadata");
+		free(d);
 		return false;
 	}
 	handler->cgroup_info->data = d;
