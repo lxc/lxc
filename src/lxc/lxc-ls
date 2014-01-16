@@ -136,10 +136,10 @@ parser.add_argument("--running", dest="state", action="append_const",
 parser.add_argument("--stopped", dest="state", action="append_const",
                     const="STOPPED", help=_("list only stopped containers"))
 
-parser.add_argument("--fancy", action="store_true",
+parser.add_argument("-f", "--fancy", action="store_true",
                     help=_("use fancy output"))
 
-parser.add_argument("--fancy-format", type=str,
+parser.add_argument("-F", "--fancy-format", type=str,
                     default="name,state,ipv4,ipv6,autostart",
                     help=_("comma separated list of fields to show"))
 

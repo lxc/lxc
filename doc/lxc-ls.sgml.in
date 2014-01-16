@@ -54,8 +54,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">--frozen</arg>
       <arg choice="opt">--running</arg>
       <arg choice="opt">--stopped</arg>
-      <arg choice="opt">--fancy</arg>
-      <arg choice="opt">--fancy-format</arg>
+      <arg choice="opt">-f</arg>
+      <arg choice="opt">-F <replaceable>format</replaceable></arg>
       <arg choice="opt">--nesting</arg>
       <arg choice="opt">filter</arg>
     </cmdsynopsis>
@@ -129,7 +129,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option><optional>--fancy</optional></option>
+          <option><optional>-f, --fancy</optional></option>
         </term>
         <listitem>
           <para>
@@ -140,7 +140,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option><optional>--fancy-format</optional></option>
+          <option><optional>-F, --fancy-format <replaceable>format</replaceable></optional></option>
         </term>
         <listitem>
           <para>
