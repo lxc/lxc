@@ -8,6 +8,7 @@ SYSTEMD_UNIT_DIR = /lib/systemd/system
 else
 SYSTEMD_UNIT_DIR = /usr/lib/systemd/system
 endif
+
 install-systemd: lxc.service lxc-devsetup
 	$(MKDIR_P) $(DESTDIR)$(SYSTEMD_UNIT_DIR)
 	$(INSTALL_DATA) lxc.service $(DESTDIR)$(SYSTEMD_UNIT_DIR)/
@@ -15,12 +16,9 @@ install-systemd: lxc.service lxc-devsetup
 uninstall-systemd:
 	rm -f $(DESTDIR)$(SYSTEMD_UNIT_DIR)/lxc.service
 	rmdir $(DESTDIR)$(SYSTEMD_UNIT_DIR) || :
+
 pkglibexec_SCRIPTS = lxc-devsetup
-else
-install-systemd:
-uninstall-systemd:
-endif
 
 install-data-local: install-systemd
-
 uninstall-local: uninstall-systemd
+endif

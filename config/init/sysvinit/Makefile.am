@@ -8,11 +8,7 @@ install-sysvinit: lxc
 uninstall-sysvinit:
 	rm -f $(DESTDIR)$(sysconfdir)/rc.d/init.d/lxc
 	rmdir $(DESTDIR)$(sysconfdir)/rc.d/init.d || :
-else
-install-sysvinit:
-uninstall-sysvinit:
-endif
 
 install-data-local: install-sysvinit
-
 uninstall-local: uninstall-sysvinit
+endif
