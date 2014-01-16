@@ -138,7 +138,7 @@ void cgmanager_remove_cgroup(const char *controller, const char *path)
 				   path, CG_REMOVE_RECURSIVE, &existed) != 0)
 		ERROR("Error removing %s:%s", controller, path);
 	if (!existed)
-		INFO("cgroup removal attempt: %s:%s did not exist");
+		INFO("cgroup removal attempt: %s:%s did not exist", controller, path);
 }
 
 static void cgm_destroy(struct lxc_handler *handler)
