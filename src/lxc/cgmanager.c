@@ -249,31 +249,28 @@ int cgm_get(const char *filename, char *value, size_t len, const char *name, con
 	char *result, *controller, *key, *cgroup;
 
 	controller = alloca(strlen(filename)+1);
+	strcpy(controller, filename);
 	key = strchr(controller, '.');
 	if (!key)
-		return false;
+		return -1;
 	*key = '\0';
-	key++;
 
 	/* use the command interface to look for the cgroup */
 	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
-	if (!cgroup) {
-		ERROR("Failed to get cgroup for controller %s for %s:%s",
-			controller, lxcpath, name);
-		return false;
-	}
-	if (cgmanager_get_value_sync(NULL, cgroup_manager, controller, cgroup, key, &result) != 0) {
+	if (!cgroup)
+		return -1;
+	if (cgmanager_get_value_sync(NULL, cgroup_manager, controller, cgroup, filename, &result) != 0) {
 		ERROR("Error getting value for %s from cgmanager for cgroup %s (%s:%s)",
 			filename, cgroup, lxcpath, name);
 		free(cgroup);
-		return false;
+		return -1;
 	}
 	free(cgroup);
 	strncpy(value, result, len);
 	if (strlen(result) >= len)
 		value[len-1] = '\0';
 	free(result);
-	return true;
+	return len;
 }
 
 int cgm_set(const char *filename, const char *value, const char *name, const char *lxcpath)
@@ -281,27 +278,27 @@ int cgm_set(const char *filename, const char *value, const char *name, const cha
 	char *controller, *key, *cgroup;
 
 	controller = alloca(strlen(filename)+1);
+	strcpy(controller, filename);
 	key = strchr(controller, '.');
 	if (!key)
-		return false;
+		return -1;
 	*key = '\0';
-	key++;
 
 	/* use the command interface to look for the cgroup */
 	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
 	if (!cgroup) {
 		ERROR("Failed to get cgroup for controller %s for %s:%s",
 			controller, lxcpath, name);
-		return false;
+		return -1;
 	}
-	if (cgmanager_set_value_sync(NULL, cgroup_manager, controller, cgroup, key, value) != 0) {
+	if (cgmanager_set_value_sync(NULL, cgroup_manager, controller, cgroup, filename, value) != 0) {
 		ERROR("Error setting value for %s from cgmanager for cgroup %s (%s:%s)",
 			filename, cgroup, lxcpath, name);
 		free(cgroup);
-		return false;
+		return -1;
 	}
 	free(cgroup);
-	return true;
+	return 0;
 }
 
 /*
@@ -365,9 +362,9 @@ static int cgm_unfreeze_fromhandler(struct lxc_handler *handler)
 	if (cgmanager_set_value_sync(NULL, cgroup_manager, "freezer", d->cgroup_path,
 			"freezer.state", "THAWED") != 0) {
 		ERROR("Error unfreezing %s", d->cgroup_path);
-		return false;
+		return -1;
 	}
-	return true;
+	return 0;
 }
 
 static struct cgroup_ops cgmanager_ops = {
