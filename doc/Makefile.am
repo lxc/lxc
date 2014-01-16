@@ -10,6 +10,7 @@ SUBDIRS += api
 endif
 
 EXTRA_DIST = \
+	lxc.conf \
 	FAQ.txt
 
 if ENABLE_DOCBOOK
