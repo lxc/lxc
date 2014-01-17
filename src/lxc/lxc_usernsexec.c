@@ -47,8 +47,7 @@ int unshare(int flags);
 
 static void usage(const char *name)
 {
-	printf("usage: %s [-h] [-c] [-mnuUip] [-P <pid-file>]"
-			"[command [arg ..]]\n", name);
+	printf("usage: %s [-h] [-m <uid-maps>] -- [command [arg ..]]\n", name);
 	printf("\n");
 	printf("  -h		this message\n");
 	printf("\n");

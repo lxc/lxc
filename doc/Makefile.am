@@ -38,6 +38,7 @@ man_MANS = \
 	lxc-unfreeze.1 \
 	lxc-unshare.1 \
 	lxc-user-nic.1 \
+	lxc-usernsexec.1 \
 	lxc-version.1 \
 	lxc-wait.1 \
 	\
