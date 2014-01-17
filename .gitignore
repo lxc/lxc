@@ -48,7 +48,6 @@ src/lxc/lxc-attach
 src/lxc/lxc-autostart
 src/lxc/lxc-cgroup
 src/lxc/lxc-checkconfig
-src/lxc/lxc-checkpoint
 src/lxc/lxc-clone
 src/lxc/lxc-console
 src/lxc/lxc-config
@@ -59,12 +58,10 @@ src/lxc/lxc-freeze
 src/lxc/lxc.functions
 src/lxc/lxc-info
 src/lxc/lxc-init
-src/lxc/lxc-kill
 src/lxc/lxc-monitor
 src/lxc/lxc-monitord
 src/lxc/lxc-netstat
 src/lxc/lxc-ps
-src/lxc/lxc-restart
 src/lxc/lxc-shutdown
 src/lxc/lxc-snapshot
 src/lxc/lxc-start

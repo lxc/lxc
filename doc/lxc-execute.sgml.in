@@ -89,8 +89,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
      <para>
       The above <command>lxc-init</command> is designed to forward received
       signals to the started command.
-      So <command>lxc-kill</command> (1) sent signal is received
-      by the user specified command (pid 2 in the container).
      </para>
   </refsect1>
 

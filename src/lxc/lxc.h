@@ -172,28 +172,6 @@ extern int lxc_cgroup_get(const char *filename, char *value, size_t len, const c
 extern const char *lxc_strerror(int error);
 
 /*
- * Checkpoint a container
- * @name : the name of the container being checkpointed
- * @sfd: fd on which the container is checkpointed
- * @flags : checkpoint flags (an ORed value)
- * Returns 0 on success, < 0 otherwise
- */
-extern int lxc_checkpoint(const char *name, int sfd, int flags);
-#define LXC_FLAG_PAUSE 1
-#define LXC_FLAG_HALT  2
-
-/*
- * Restart a container
- * @name : the name of the container being restarted
- * @sfd: fd from which the container is restarted
- * @conf: lxc_conf structure.
- * @flags : restart flags (an ORed value)
- * @lxcpath: container path
- * Returns 0 on success, < 0 otherwise
- */
-extern int lxc_restart(const char *, int, struct lxc_conf *, int, const char *);
-
-/*
  * Create and return a new lxccontainer struct.
  */
 extern struct lxc_container *lxc_container_new(const char *name, const char *configpath);

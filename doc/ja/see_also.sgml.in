@@ -61,11 +61,6 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       </citerefentry>,
 
       <citerefentry>
-	<refentrytitle><command>lxc-kill</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
 	<refentrytitle><command>lxc-console</command></refentrytitle>
 	<manvolnum>1</manvolnum>
       </citerefentry>,

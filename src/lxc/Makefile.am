@@ -60,8 +60,6 @@ liblxc_so_SOURCES = \
 	monitor.c monitor.h \
 	console.c \
 	freezer.c \
-	checkpoint.c \
-	restart.c \
 	error.h error.c \
 	parse.c parse.h \
 	cgroup.c cgroup.h \
@@ -196,9 +194,6 @@ bin_PROGRAMS = \
 	lxc-info \
 	lxc-cgroup \
 	lxc-unfreeze \
-	lxc-checkpoint \
-	lxc-restart \
-	lxc-kill \
 	lxc-config \
 	lxc-destroy \
 	lxc-create \
@@ -223,7 +218,6 @@ lxc_cgroup_SOURCES += cgmanager.c
 lxc_cgroup_LDADD = $(CGMANAGER_LIBS) $(DBUS_LIBS) $(NIH_LIBS) $(NIH_DBUS_LIBS) $(LDADD)
 lxc_cgroup_CFLAGS = $(CGMANAGER_CFLAGS) $(DBUS_CFLAGS) $(NIH_CFLAGS) $(NIH_DBUS_CFLAGS)
 #endif
-lxc_checkpoint_SOURCES = lxc_checkpoint.c
 lxc_config_SOURCES = lxc_config.c
 lxc_console_SOURCES = lxc_console.c
 lxc_destroy_SOURCES = lxc_destroy.c
@@ -233,14 +227,12 @@ lxc_info_SOURCES = lxc_info.c
 lxc_init_SOURCES = lxc_init.c
 lxc_monitor_SOURCES = lxc_monitor.c
 lxc_monitord_SOURCES = lxc_monitord.c
-lxc_restart_SOURCES = lxc_restart.c
 lxc_clone_SOURCES = lxc_clone.c
 lxc_start_SOURCES = lxc_start.c
 lxc_stop_SOURCES = lxc_stop.c
 lxc_unfreeze_SOURCES = lxc_unfreeze.c
 lxc_unshare_SOURCES = lxc_unshare.c
 lxc_wait_SOURCES = lxc_wait.c
-lxc_kill_SOURCES = lxc_kill.c
 lxc_create_SOURCES = lxc_create.c
 lxc_snapshot_SOURCES = lxc_snapshot.c
 lxc_usernsexec_SOURCES = lxc_usernsexec.c

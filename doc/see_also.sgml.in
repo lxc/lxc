@@ -58,11 +58,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       </citerefentry>,
 
       <citerefentry>
-	<refentrytitle><command>lxc-kill</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
 	<refentrytitle><command>lxc-console</command></refentrytitle>
 	<manvolnum>1</manvolnum>
       </citerefentry>,

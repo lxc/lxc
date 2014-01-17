@@ -574,7 +574,6 @@ AC_CONFIG_FILES([
 	doc/lxc-autostart.sgml
 	doc/lxc-cgroup.sgml
 	doc/lxc-checkconfig.sgml
-	doc/lxc-checkpoint.sgml
 	doc/lxc-clone.sgml
 	doc/lxc-console.sgml
 	doc/lxc-create.sgml
@@ -583,12 +582,10 @@ AC_CONFIG_FILES([
 	doc/lxc-execute.sgml
 	doc/lxc-freeze.sgml
 	doc/lxc-info.sgml
-	doc/lxc-kill.sgml
 	doc/lxc-ls.sgml
 	doc/lxc-monitor.sgml
 	doc/lxc-netstat.sgml
 	doc/lxc-ps.sgml
-	doc/lxc-restart.sgml
 	doc/lxc-snapshot.sgml
 	doc/lxc-start-ephemeral.sgml
 	doc/lxc-start.sgml
@@ -624,7 +621,6 @@ AC_CONFIG_FILES([
 	doc/ja/lxc-autostart.sgml
 	doc/ja/lxc-cgroup.sgml
 	doc/ja/lxc-checkconfig.sgml
-	doc/ja/lxc-checkpoint.sgml
 	doc/ja/lxc-clone.sgml
 	doc/ja/lxc-console.sgml
 	doc/ja/lxc-create.sgml
@@ -633,12 +629,10 @@ AC_CONFIG_FILES([
 	doc/ja/lxc-execute.sgml
 	doc/ja/lxc-freeze.sgml
 	doc/ja/lxc-info.sgml
-	doc/ja/lxc-kill.sgml
 	doc/ja/lxc-ls.sgml
 	doc/ja/lxc-monitor.sgml
 	doc/ja/lxc-netstat.sgml
 	doc/ja/lxc-ps.sgml
-	doc/ja/lxc-restart.sgml
 	doc/ja/lxc-snapshot.sgml
 	doc/ja/lxc-start-ephemeral.sgml
 	doc/ja/lxc-start.sgml
