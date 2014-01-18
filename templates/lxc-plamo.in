@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -eu
 
 #
 # template script for generating Plamo Linux container for LXC
@@ -28,35 +28,15 @@
 # ref. https://github.com/Ponce/lxc-slackware/blob/master/lxc-slackware
 #      lxc-ubuntu script
 
-set -eu
-
 [ -r /etc/default/lxc ] && . /etc/default/lxc
 
-LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
-
-DOWNLOAD_SCHEME=${DOWNLOAD_SCHEME:-"http"}
-MIRRORSRV=${MIRRORSRV:-"ftp.ne.jp"}
-MIRRORPATH=${MIRRORPATH:-"/Linux/distributions/plamolinux"}
-CATEGORY[0]=${CATEGORY:-"00_base"}
-IGNOREPKG[0]=${IGNOREPKGS:-"grub kernel lilo linux_firmware microcode_ctl"}
-CATEGORY[1]="01_minimum"
-IGNOREPKG[1]="cpufreqd cpufrequtils gpm"
-CATEGORY[2]="01_minimum/alsa.txz"
-IGNOREPKG[2]=""
-CATEGORY[3]="01_minimum/aspell.txz"
-IGNOREPKG[3]=""
-CATEGORY[4]="01_minimum/devel.txz"
-IGNOREPKG[4]=""
-CATEGORY[5]="01_minimum/gnupg_tls.txz"
-IGNOREPKG[5]=""
-CATEGORY[6]="01_minimum/network.txz"
-IGNOREPKG[6]=""
-CATEGORY[7]="01_minimum/nfs.txz"
-IGNOREPKG[7]=""
-CATEGORY[8]="01_minimum/tcl.txz"
-IGNOREPKG[8]=""
-
-CATEGORY_PATH=""
+DLSCHEME=${DLSCHEME:-"http"}
+MIRRORSRV=${MIRRORSRV:-"ftp.ring.gr.jp"}
+MIRRORPATH=${MIRRORPATH:-"/pub/linux/Plamo"}
+CATEGORIES=${CATEGORIES:-"00_base 01_minimum"}
+EXTRACTGRS=${EXTRACTGRS:-"Hamradio"}
+IGNOREPKGS=${IGNOREPKGS:-"grub kernel lilo linux_firmware microcode_ctl
+    cpufreqd cpufrequtils gpm cqrlog hamlib fldigi"}
 
 download_plamo() {
   # check the mini plamo was not already downloaded
@@ -67,32 +47,26 @@ download_plamo() {
   # download a mini plamo into a cache
   echo "Downloading Plamo-$release minimal..."
   cd $ptcache
-  for i in `seq 0 $((${#CATEGORY[@]} - 1))` ; do
-    CATEGORYPATH=${MIRRORPATH}/Plamo-${release}/${arch}/plamo/${CATEGORY[$i]}
-    WGETOPT="-nv -r -l1 -e robots=off -nd --no-parent -c --retr-symlinks -A .txz"
-    EXCLUDE_OPT=""
-    if [ $DOWNLOAD_SCHEME = "http" ] ; then
-      if [ -n "${IGNOREPKG[$i]}" ] ; then
-        for p in ${IGNOREPKG[$i]} ; do
-          EXCLUDE_OPT="${EXCLUDE_OPT} -R ${p}* "
-        done
-      fi
-      if ! wget ${WGETOPT} ${EXCLUDE_OPT} -X ${CATEGORY_PATH}/old http://${MIRRORSRV}${CATEGORYPATH} ; then
-        echo "Failed to download the rootfs, aborting."
-        return 1
-      fi
-    elif [ $DOWNLOAD_SCHEME = "ftp" ] ; then
-      if [ -n "${IGNOREPKG[$i]}" ] ; then
-        for p in ${IGNOREPKG[$i]} ; do
-          EXCLUDE_OPT="${EXCLUDE_OPT} -x ${p} "
-        done
-      fi
-      if ! lftp -c "open ${MIRRORSRV} && cd ${CATEGORYPATH} && mirror -i .txz -x old ${EXCLUDE_OPT} -r ." ; then
-        echo "Failed to download the rootfs, aborting."
-        return 1
-      fi
-    else
-      echo "Invalid DOWNLOAD_SCHEME value (can set http or ftp). "
+  case $DLSCHEME in http) depth=2 ;; ftp) depth=3 ;; esac
+  rej=${IGNOREPKGS%% *} ; [ -n "$rej" ] && rej="$rej-*"
+  for p in ${IGNOREPKGS#* } ; do rej="$rej,$p-*" ; done
+  for i in $CATEGORIES ; do
+    wget -nv -e robots=off -r -l $depth -nd -A .tgz,.txz -R $rej \
+        -I $MIRRORPATH/Plamo-$release/$arch/plamo/$i \
+        -X $MIRRORPATH/Plamo-$release/$arch/plamo/$i/old \
+        $DLSCHEME://$MIRRORSRV$MIRRORPATH/Plamo-$release/$arch/plamo/$i
+    if [ $? -ne 0 ] ; then
+      echo "Failed to download the rootfs, aborting."
+      return 1
+    fi
+  done
+  for i in $EXTRACTGRS ; do
+    wget -nv -e robots=off -r -l $depth -nd -A .tgz,.txz -R $rej \
+        -I $MIRRORPATH/Plamo-$release/$arch/contrib/$i \
+        -X $MIRRORPATH/Plamo-$release/$arch/contrib/$i/old \
+        $DLSCHEME://$MIRRORSRV$MIRRORPATH/Plamo-$release/$arch/contrib/$i
+    if [ $? -ne 0 ] ; then
+      echo "Failed to download the rootfs, aborting."
       return 1
     fi
   done
@@ -133,7 +107,7 @@ install_plamo() {
     echo "Installing packages to $rtcache..."
     if [ ! -d $rtcache ] ; then
       mkdir -p $rtcache
-      for p in `ls $dlcache` ; do
+      for p in `ls -cr $dlcache/*.t?z` ; do
         installpkg -root $rtcache -priority ADD $p
       done
     fi
@@ -241,23 +215,24 @@ configure_plamo() {
 }
 
 copy_configuration() {
-
-  # Create the fstab (empty by default)
-  touch $path/fstab
-
-  if ! cat <<- EOF >> $path/config ; then
+  ret=0
+  cat <<- EOF >> $path/config || let ret++
 	lxc.utsname = $name
-	lxc.arch = $arch
 	lxc.mount = $path/fstab
+	lxc.arch = $arch
 	EOF
+  if [ -f "@LXCTEMPLATECONFIG@/plamo.common.conf" ] ; then
+    cat <<- "EOF" >> $path/config || let ret++
+	
+	lxc.include = @LXCTEMPLATECONFIG@/plamo.common.conf
+	EOF
+  fi
+  # create the fstab (empty by default)
+  touch $path/fstab || let ret++
+  if [ $ret -ne 0 ] ; then
     echo "Failed to add configuration."
     return 1
   fi
-
-  if [ -e "${LXC_TEMPLATE_CONFIG}/plamo.common.conf" ] ; then
-    echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/plamo.common.conf" >> $path/config
-  fi
-
   return 0
 }
 
