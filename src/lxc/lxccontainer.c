@@ -632,12 +632,10 @@ reboot:
 		goto reboot;
 	}
 
-	if (daemonize) {
+	if (daemonize)
 		lxc_container_put(c);
-		exit (ret == 0 ? true : false);
-	} else {
-		return (ret == 0 ? true : false);
-	}
+	
+	return (ret == 0 ? true : false);
 }
 
 /*
