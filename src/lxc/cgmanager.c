@@ -137,7 +137,7 @@ void cgmanager_remove_cgroup(const char *controller, const char *path)
 	if ( cgmanager_remove_sync(NULL, cgroup_manager, controller,
 				   path, CG_REMOVE_RECURSIVE, &existed) != 0)
 		ERROR("Error removing %s:%s", controller, path);
-	if (!existed)
+	if (existed == -1)
 		INFO("cgroup removal attempt: %s:%s did not exist", controller, path);
 }
 
@@ -210,7 +210,7 @@ again:
 			cleanup_cgroups(d, tmp);
 			return false;
 		}
-		if (existed)
+		if (existed == 1)
 			goto next;
 	}
 	// success
