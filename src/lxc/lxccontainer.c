@@ -589,15 +589,11 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 	* while container is running...
 	*/
 	if (daemonize) {
-		if (!lxc_container_get(c))
-			return false;
 		lxc_monitord_spawn(c->config_path);
 
 		pid_t pid = fork();
-		if (pid < 0) {
-			lxc_container_put(c);
+		if (pid < 0)
 			return false;
-		}
 		if (pid != 0)
 			return wait_on_daemonized_start(c, pid);
 
@@ -638,12 +634,10 @@ reboot:
 		goto reboot;
 	}
 
-	if (daemonize) {
-		lxc_container_put(c);
+	if (daemonize)
 		exit (ret == 0 ? true : false);
-	} else {
+	else
 		return (ret == 0 ? true : false);
-	}
 }
 
 /*
