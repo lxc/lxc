@@ -310,15 +310,19 @@ static int print_info(const char *name, const char *lxcpath)
 	}
 
 	if (ips) {
-		char **addresses = c->get_ips(c, NULL, NULL, 0);
-		if (addresses) {
-			char *address;
-			i = 0;
-			while (addresses[i]) {
-				address = addresses[i];
-				print_info_msg_str("IP:", address);
-				i++;
+		if (geteuid() == 0) {
+			char **addresses = c->get_ips(c, NULL, NULL, 0);
+			if (addresses) {
+				char *address;
+				i = 0;
+				while (addresses[i]) {
+					address = addresses[i];
+					print_info_msg_str("IP:", address);
+					i++;
+				}
 			}
+		} else {
+			print_info_msg_str("IP:", "UNKNOWN");
 		}
 	}
 

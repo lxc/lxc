@@ -62,7 +62,13 @@
 
 #define MAX_BUFFER 4096
 
+#define NOT_SUPPORTED_ERROR "the requested function %s is not currently supported with unprivileged containers"
+
 lxc_log_define(lxc_container, lxc);
+
+inline static bool am_unpriv() {
+	return geteuid() != 0;
+}
 
 static bool file_exists(const char *f)
 {
@@ -1489,6 +1495,11 @@ static char** lxcapi_get_interfaces(struct lxc_container *c)
 	char **interfaces = NULL;
 	int old_netns = -1, new_netns = -1;
 
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		goto out;
+	}
+
 	if (!enter_to_ns(c, &old_netns, &new_netns))
 		goto out;
 
@@ -1537,6 +1548,11 @@ static char** lxcapi_get_ips(struct lxc_container *c, const char* interface, con
 	char **addresses = NULL;
 	char *address = NULL;
 	int old_netns = -1, new_netns = -1;
+
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		goto out;
+	}
 
 	if (!enter_to_ns(c, &old_netns, &new_netns))
 		goto out;
@@ -1818,7 +1834,7 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 static bool lxcapi_destroy(struct lxc_container *c)
 {
 	struct bdev *r = NULL;
-	bool bret = false, am_unpriv;
+	bool bret = false;
 	int ret;
 
 	if (!c || !lxcapi_is_defined(c))
@@ -1833,14 +1849,12 @@ static bool lxcapi_destroy(struct lxc_container *c)
 		goto out;
 	}
 
-	am_unpriv = c->lxc_conf && geteuid() != 0 && !lxc_list_empty(&c->lxc_conf->id_map);
-
 	if (c->lxc_conf && has_snapshots(c)) {
 		ERROR("container %s has dependent snapshots", c->name);
 		goto out;
 	}
 
-	if (!am_unpriv && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount) {
+	if (!am_unpriv() && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount) {
 		r = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 		if (r) {
 			if (r->ops->destroy(r) < 0) {
@@ -1857,7 +1871,7 @@ static bool lxcapi_destroy(struct lxc_container *c)
 	const char *p1 = lxcapi_get_config_path(c);
 	char *path = alloca(strlen(p1) + strlen(c->name) + 2);
 	sprintf(path, "%s/%s", p1, c->name);
-	if (am_unpriv)
+	if (am_unpriv())
 		ret = userns_exec_1(c->lxc_conf, lxc_rmdir_onedev_wrapper, path);
 	else
 		ret = lxc_rmdir_onedev(path);
@@ -2406,6 +2420,11 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	if (!c || !c->is_defined(c))
 		return NULL;
 
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return NULL;
+	}
+
 	if (container_mem_lock(c))
 		return NULL;
 
@@ -2515,6 +2534,11 @@ static bool lxcapi_rename(struct lxc_container *c, const char *newname)
 	if (!c || !c->name || !c->config_path)
 		return false;
 
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return false;
+	}
+
 	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
@@ -2543,6 +2567,11 @@ static int lxcapi_attach(struct lxc_container *c, lxc_attach_exec_t exec_functio
 	if (!c)
 		return -1;
 
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return -1;
+	}
+
 	return lxc_attach(c->name, c->config_path, exec_function, exec_payload, options, attached_process);
 }
 
@@ -2554,6 +2583,11 @@ static int lxcapi_attach_run_wait(struct lxc_container *c, lxc_attach_options_t 
 
 	if (!c)
 		return -1;
+
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return -1;
+	}
 
 	command.program = (char*)program;
 	command.argv = (char**)argv;
@@ -2586,6 +2620,11 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	int i, flags, ret;
 	struct lxc_container *c2;
 	char snappath[MAXPATHLEN], newname[20];
+
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return -1;
+	}
 
 	// /var/lib/lxc -> /var/lib/lxcsnaps \0
 	ret = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
@@ -2724,6 +2763,12 @@ static int lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **r
 
 	if (!c || !lxcapi_is_defined(c))
 		return -1;
+
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return -1;
+	}
+
 	// snappath is ${lxcpath}snaps/${lxcname}/
 	dirlen = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
 	if (dirlen < 0 || dirlen >= MAXPATHLEN) {
@@ -2802,6 +2847,11 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapnam
 	if (!c || !c->name || !c->config_path)
 		return false;
 
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return false;
+	}
+
 	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
@@ -2850,6 +2900,11 @@ static bool lxcapi_snapshot_destroy(struct lxc_container *c, const char *snapnam
 
 	if (!c || !c->name || !c->config_path)
 		return false;
+
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return false;
+	}
 
 	ret = snprintf(clonelxcpath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
 	if (ret < 0 || ret >= MAXPATHLEN)
@@ -2967,11 +3022,19 @@ out:
 
 static bool lxcapi_add_device_node(struct lxc_container *c, const char *src_path, const char *dest_path)
 {
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return false;
+	}
 	return add_remove_device_node(c, src_path, dest_path, true);
 }
 
 static bool lxcapi_remove_device_node(struct lxc_container *c, const char *src_path, const char *dest_path)
 {
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return false;
+	}
 	return add_remove_device_node(c, src_path, dest_path, false);
 }
 
@@ -2983,6 +3046,11 @@ static int lxcapi_attach_run_waitl(struct lxc_container *c, lxc_attach_options_t
 
 	if (!c)
 		return -1;
+
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return -1;
+	}
 
 	va_start(ap, arg);
 	argv = lxc_va_arg_list_to_argv_const(ap, 1);

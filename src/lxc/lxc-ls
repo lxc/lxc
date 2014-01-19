@@ -264,14 +264,14 @@ for container_name in lxc.list_containers(config_path=nest_lxcpath):
                 continue
 
             # FIXME: We should get get_ips working as non-root
-            if container.running and (not SUPPORT_SETNS_NET
-                                      or os.geteuid() != 0):
-                entry[protocol] = 'UNKNOWN'
-                continue
+            if container.running:
+                if not SUPPORT_SETNS_NET or os.geteuid() != 0:
+                    entry[protocol] = 'UNKNOWN'
+                    continue
 
-            ips = container.get_ips(family=family)
-            if ips:
-                entry[protocol] = ", ".join(ips)
+                ips = container.get_ips(family=family)
+                if ips:
+                    entry[protocol] = ", ".join(ips)
 
     # Append the container
     containers.append(entry)
