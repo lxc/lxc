@@ -641,6 +641,7 @@ AC_CONFIG_FILES([
 	doc/ja/lxc-unfreeze.sgml
 	doc/ja/lxc-unshare.sgml
 	doc/ja/lxc-user-nic.sgml
+	doc/ja/lxc-usernsexec.sgml
 	doc/ja/lxc-version.sgml
 	doc/ja/lxc-wait.sgml
 
