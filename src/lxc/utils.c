@@ -332,14 +332,25 @@ const char *lxc_global_config_value(const char *option_name)
 			while (*p && (*p == ' ' || *p == '\t')) p++;
 			if (!*p)
 				continue;
-			values[i] = copy_global_config_value(p);
+
 			free(user_default_config_path);
+
+			if (strcmp(option_name, "lxc.lxcpath") == 0) {
+				free(user_lxc_path);
+				user_lxc_path = copy_global_config_value(p);
+				remove_trailing_slashes(user_lxc_path);
+				values[i] = user_lxc_path;
+				goto out;
+			}
+
+			values[i] = copy_global_config_value(p);
 			free(user_lxc_path);
 			goto out;
 		}
 	}
 	/* could not find value, use default */
 	if (strcmp(option_name, "lxc.lxcpath") == 0) {
+		remove_trailing_slashes(user_lxc_path);
 		values[i] = user_lxc_path;
 		free(user_default_config_path);
 	}
