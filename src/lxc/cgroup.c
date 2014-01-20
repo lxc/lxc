@@ -70,7 +70,7 @@ static struct cgroup_process_info *find_info_for_subsystem(struct cgroup_process
 static int do_cgroup_get(const char *cgroup_path, const char *sub_filename, char *value, size_t len);
 static int do_cgroup_set(const char *cgroup_path, const char *sub_filename, const char *value);
 static bool cgroup_devices_has_allow_or_deny(struct lxc_handler *h, char *v, bool for_allow);
-static int do_setup_cgroup(struct lxc_handler *h, struct lxc_list *cgroup_settings, bool do_devices);
+static int do_setup_cgroup_limits(struct lxc_handler *h, struct lxc_list *cgroup_settings, bool do_devices);
 static int cgroup_recursive_task_count(const char *cgroup_path);
 static int count_lines(const char *fn);
 static int handle_cgroup_settings(struct cgroup_mount_point *mp, char *cgroup_path);
@@ -1838,7 +1838,7 @@ static int do_cgroup_set(const char *cgroup_path, const char *sub_filename,
 	return ret;
 }
 
-static int do_setup_cgroup(struct lxc_handler *h,
+static int do_setup_cgroup_limits(struct lxc_handler *h,
 			   struct lxc_list *cgroup_settings, bool do_devices)
 {
 	struct lxc_list *iterator;
@@ -2182,6 +2182,11 @@ static int cgfs_unfreeze_fromhandler(struct lxc_handler *handler)
 	return ret;
 }
 
+bool cgroupfs_setup_limits(struct lxc_handler *h, bool with_devices)
+{
+	return do_setup_cgroup_limits(h, &h->conf->cgroup, with_devices) == 0;
+}
+
 static struct cgroup_ops cgfs_ops = {
 	.destroy = cgfs_destroy,
 	.init = cgfs_init,
@@ -2192,6 +2197,7 @@ static struct cgroup_ops cgfs_ops = {
 	.get = lxc_cgroupfs_get,
 	.set = lxc_cgroupfs_set,
 	.unfreeze_fromhandler = cgfs_unfreeze_fromhandler,
+	.setup_limits = cgroupfs_setup_limits,
 	.name = "cgroupfs",
 };
 static void init_cg_ops(void)
@@ -2251,21 +2257,6 @@ bool cgroup_create(struct lxc_handler *handler)
 }
 
 /*
- * Set up per-controller configuration excluding the devices
- * cgroup
- */
-bool cgroup_setup_without_devices(struct lxc_handler *handler)
-{
-	return do_setup_cgroup(handler, &handler->conf->cgroup, false) == 0;
-}
-
-/* Set up the devices cgroup configuration for the container */
-bool cgroup_setup_devices(struct lxc_handler *handler)
-{
-	return do_setup_cgroup(handler, &handler->conf->cgroup, true) == 0;
-}
-
-/*
  * Enter the container init into its new cgroups for all
  * requested controllers */
 bool cgroup_enter(struct lxc_handler *handler)
@@ -2300,4 +2291,9 @@ int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *na
 int lxc_unfreeze_fromhandler(struct lxc_handler *handler)
 {
 	return active_cg_ops->unfreeze_fromhandler(handler);
+}
+
+bool cgroup_setup_limits(struct lxc_handler *handler, bool with_devices)
+{
+	return active_cg_ops->setup_limits(handler, with_devices);
 }

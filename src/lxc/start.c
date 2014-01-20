@@ -796,8 +796,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 		ERROR("failed to setup the legacy cgroups for %s", name);
 		goto out_delete_net;
 	}
-	if (!cgroup_setup_without_devices(handler)) {
-		ERROR("failed to setup the cgroups for '%s'", name);
+	if (!cgroup_setup_limits(handler, false)) {
+		ERROR("failed to setup the cgroup limits for '%s'", name);
 		goto out_delete_net;
 	}
 
@@ -831,7 +831,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
 		goto out_delete_net;
 
-	if (!cgroup_setup_devices(handler)) {
+	if (!cgroup_setup_limits(handler, true)) {
 		ERROR("failed to setup the devices cgroup for '%s'", name);
 		goto out_delete_net;
 	}

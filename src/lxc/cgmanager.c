@@ -55,6 +55,7 @@ lxc_log_define(lxc_cgmanager, lxc);
 
 #include <nih-dbus/dbus_connection.h>
 #include <cgmanager-client/cgmanager-client.h>
+#include <nih/alloc.h>
 NihDBusProxy *cgroup_manager = NULL;
 
 extern struct cgroup_ops *active_cg_ops;
@@ -269,13 +270,25 @@ int cgm_get(const char *filename, char *value, size_t len, const char *name, con
 	strncpy(value, result, len);
 	if (strlen(result) >= len)
 		value[len-1] = '\0';
-	free(result);
+	nih_free(result);
 	return len;
+}
+
+static int cgm_do_set(const char *controller, const char *file,
+			 const char *cgroup, const char *value)
+{
+	int ret;
+	ret = cgmanager_set_value_sync(NULL, cgroup_manager, controller,
+				 cgroup, file, value);
+	if (ret != 0)
+		ERROR("Error setting cgroup %s limit %s", file, cgroup);
+	return ret;
 }
 
 int cgm_set(const char *filename, const char *value, const char *name, const char *lxcpath)
 {
 	char *controller, *key, *cgroup;
+	int ret;
 
 	controller = alloca(strlen(filename)+1);
 	strcpy(controller, filename);
@@ -291,14 +304,9 @@ int cgm_set(const char *filename, const char *value, const char *name, const cha
 			controller, lxcpath, name);
 		return -1;
 	}
-	if (cgmanager_set_value_sync(NULL, cgroup_manager, controller, cgroup, filename, value) != 0) {
-		ERROR("Error setting value for %s from cgmanager for cgroup %s (%s:%s)",
-			filename, cgroup, lxcpath, name);
-		free(cgroup);
-		return -1;
-	}
+	ret = cgm_do_set(controller, filename, cgroup, value);
 	free(cgroup);
-	return 0;
+	return ret;
 }
 
 /*
@@ -367,6 +375,49 @@ static int cgm_unfreeze_fromhandler(struct lxc_handler *handler)
 	return 0;
 }
 
+static bool setup_limits(struct lxc_handler *h, bool do_devices)
+{
+	struct lxc_list *iterator;
+	struct lxc_cgroup *cg;
+	bool ret = false;
+	struct lxc_list *cgroup_settings = &h->conf->cgroup;
+	struct cgm_data *d = h->cgroup_info->data;
+
+	if (lxc_list_empty(cgroup_settings))
+		return 0;
+
+	lxc_list_for_each(iterator, cgroup_settings) {
+		char controller[100], *p;
+		cg = iterator->elem;
+		if (do_devices != !strncmp("devices", cg->subsystem, 7))
+			continue;
+		if (strlen(cg->subsystem) > 100) // i smell a rat
+			goto out;
+		strcpy(controller, cg->subsystem);
+		p = strchr(controller, '.');
+		if (p)
+			*p = '\0';
+		if (cgm_do_set(controller, cg->subsystem, d->cgroup_path
+				, cg->value) < 0) {
+			ERROR("Error setting %s to %s for %s\n",
+			      cg->subsystem, cg->value, h->name);
+			goto out;
+		}
+
+		DEBUG("cgroup '%s' set to '%s'", cg->subsystem, cg->value);
+	}
+
+	ret = true;
+	INFO("cgroup limits have been setup");
+out:
+	return ret;
+}
+
+static bool cgm_setup_limits(struct lxc_handler *handler, bool with_devices)
+{
+	return setup_limits(handler, with_devices);
+}
+
 static struct cgroup_ops cgmanager_ops = {
 	.destroy = cgm_destroy,
 	.init = cgm_init,
@@ -377,6 +428,7 @@ static struct cgroup_ops cgmanager_ops = {
 	.get = cgm_get,
 	.set = cgm_set,
 	.unfreeze_fromhandler = cgm_unfreeze_fromhandler,
+	.setup_limits = cgm_setup_limits,
 	.name = "cgmanager"
 };
 #endif

@@ -179,6 +179,7 @@ struct cgroup_ops {
 	int (*set)(const char *filename, const char *value, const char *name, const char *lxcpath);
 	int (*get)(const char *filename, char *value, size_t len, const char *name, const char *lxcpath);
 	int (*unfreeze_fromhandler)(struct lxc_handler *handler);
+	bool (*setup_limits)(struct lxc_handler *handler, bool with_devices);
 	const char *name;
 };
 
@@ -207,8 +208,7 @@ struct cgfs_data {
 extern void cgroup_destroy(struct lxc_handler *handler);
 extern bool cgroup_init(struct lxc_handler *handler);
 extern bool cgroup_create(struct lxc_handler *handler);
-extern bool cgroup_setup_without_devices(struct lxc_handler *handler);
-extern bool cgroup_setup_devices(struct lxc_handler *handler);
+extern bool cgroup_setup_limits(struct lxc_handler *handler, bool with_devices);
 extern bool cgroup_enter(struct lxc_handler *handler);
 extern void cgroup_cleanup(struct lxc_handler *handler);
 extern bool cgroup_create_legacy(struct lxc_handler *handler);
