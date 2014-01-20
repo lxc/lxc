@@ -144,10 +144,10 @@ static int lxc_attach_to_ns(pid_t pid, int which)
 	 * the file for user namepsaces in /proc/$pid/ns will be called
 	 * 'user' once the kernel supports it
 	 */
-	static char *ns[] = { "mnt", "pid", "uts", "ipc", "user", "net" };
+	static char *ns[] = { "user", "mnt", "pid", "uts", "ipc", "net" };
 	static int flags[] = {
-		CLONE_NEWNS, CLONE_NEWPID, CLONE_NEWUTS, CLONE_NEWIPC,
-		CLONE_NEWUSER, CLONE_NEWNET
+		CLONE_NEWUSER, CLONE_NEWNS, CLONE_NEWPID, CLONE_NEWUTS, CLONE_NEWIPC,
+		CLONE_NEWNET
 	};
 	static const int size = sizeof(ns) / sizeof(char *);
 	int fd[size];
@@ -593,7 +593,7 @@ static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_D
 int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_function, void* exec_payload, lxc_attach_options_t* options, pid_t* attached_process)
 {
 	int ret, status;
-	pid_t init_pid, pid, attached_pid;
+	pid_t init_pid, pid, attached_pid, expected;
 	struct lxc_proc_context_info *init_ctx;
 	char* cwd;
 	char* new_cwd;
@@ -689,13 +689,50 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 
 	if (pid) {
 		pid_t to_cleanup_pid = pid;
-		int expected = 0;
 
 		/* inital thread, we close the socket that is for the
 		 * subprocesses
 		 */
 		close(ipc_sockets[1]);
 		free(cwd);
+
+		/* attach to cgroup, if requested */
+		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
+			struct cgroup_meta_data *meta_data;
+			struct cgroup_process_info *container_info;
+
+			meta_data = lxc_cgroup_load_meta();
+			if (!meta_data) {
+				ERROR("could not move attached process %ld to cgroup of container", (long)pid);
+				goto cleanup_error;
+			}
+
+			container_info = lxc_cgroup_get_container_info(name, lxcpath, meta_data);
+			lxc_cgroup_put_meta(meta_data);
+			if (!container_info) {
+				ERROR("could not move attached process %ld to cgroup of container", (long)pid);
+				goto cleanup_error;
+			}
+
+			/*
+			 * TODO - switch over to using a cgroup_operation.  We can't use
+			 * cgroup_enter() as that takes a handler.
+			 */
+			ret = lxc_cgroupfs_enter(container_info, pid, false);
+			lxc_cgroup_process_info_free(container_info);
+			if (ret < 0) {
+				ERROR("could not move attached process %ld to cgroup of container", (long)pid);
+				goto cleanup_error;
+			}
+		}
+
+		/* Let the child process know to go ahead */
+		status = 0;
+		ret = lxc_write_nointr(ipc_sockets[0], &status, sizeof(status));
+		if (ret <= 0) {
+			ERROR("error using IPC to notify attached process for initialization (0)");
+			goto cleanup_error;
+		}
 
 		/* get pid from intermediate process */
 		ret = lxc_read_nointr_expect(ipc_sockets[0], &attached_pid, sizeof(attached_pid), NULL);
@@ -728,36 +765,6 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 			if (ret != 0)
 				ERROR("error using IPC to receive notification from attached process (1)");
 			goto cleanup_error;
-		}
-
-		/* attach to cgroup, if requested */
-		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
-			struct cgroup_meta_data *meta_data;
-			struct cgroup_process_info *container_info;
-
-			meta_data = lxc_cgroup_load_meta();
-			if (!meta_data) {
-				ERROR("could not move attached process %ld to cgroup of container", (long)attached_pid);
-				goto cleanup_error;
-			}
-
-			container_info = lxc_cgroup_get_container_info(name, lxcpath, meta_data);
-			lxc_cgroup_put_meta(meta_data);
-			if (!container_info) {
-				ERROR("could not move attached process %ld to cgroup of container", (long)attached_pid);
-				goto cleanup_error;
-			}
-
-			/*
-			 * TODO - switch over to using a cgroup_operation.  We can't use
-			 * cgroup_enter() as that takes a handler.
-			 */
-			ret = lxc_cgroupfs_enter(container_info, attached_pid, false);
-			lxc_cgroup_process_info_free(container_info);
-			if (ret < 0) {
-				ERROR("could not move attached process %ld to cgroup of container", (long)attached_pid);
-				goto cleanup_error;
-			}
 		}
 
 		/* tell attached process we're done */
@@ -797,6 +804,16 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	 * initial thread
 	 */
 	close(ipc_sockets[0]);
+
+	/* Wait for the parent to have setup cgroups */
+	expected = 0;
+	status = -1;
+	ret = lxc_read_nointr_expect(ipc_sockets[1], &status, sizeof(status), &expected);
+	if (ret <= 0) {
+		ERROR("error communicating with child process");
+		shutdown(ipc_sockets[1], SHUT_RDWR);
+		rexit(-1);
+	}
 
 	/* attach now, create another subprocess later, since pid namespaces
 	 * only really affect the children of the current process

@@ -2567,11 +2567,6 @@ static int lxcapi_attach(struct lxc_container *c, lxc_attach_exec_t exec_functio
 	if (!c)
 		return -1;
 
-	if (am_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
-		return -1;
-	}
-
 	return lxc_attach(c->name, c->config_path, exec_function, exec_payload, options, attached_process);
 }
 
@@ -2583,11 +2578,6 @@ static int lxcapi_attach_run_wait(struct lxc_container *c, lxc_attach_options_t 
 
 	if (!c)
 		return -1;
-
-	if (am_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
-		return -1;
-	}
 
 	command.program = (char*)program;
 	command.argv = (char**)argv;

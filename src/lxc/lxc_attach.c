@@ -188,11 +188,6 @@ int main(int argc, char *argv[])
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 	lxc_attach_command_t command;
 
-        if (geteuid() != 0) {
-                ERROR("lxc-attach is not currently supported with unprivileged containers");
-                return -1;
-        }
-
 	ret = lxc_caps_init();
 	if (ret)
 		return ret;
