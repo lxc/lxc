@@ -111,11 +111,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
        <!--
       The above <command>lxc-init</command> is designed to forward received
       signals to the started command.
-      So <command>lxc-kill</command> (1) sent signal is received
-      by the user specified command (pid 2 in the container).
        -->
        前述の <command>lxc-init</command> は，受け取ったシグナルを開始したコマンドに送るように設計されています．
-       なので，<command>lxc-kill</command> (1) が送ったシグナルは，ユーザが指定したコマンド (コンテナ内の pid 2 のプロセス) が受けとります．
      </para>
   </refsect1>
 
