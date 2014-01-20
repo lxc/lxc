@@ -2267,7 +2267,11 @@ void write_config(FILE *fout, struct lxc_conf *c)
 			struct lxc_inetdev *i = it2->elem;
 			char buf[INET_ADDRSTRLEN];
 			inet_ntop(AF_INET, &i->addr, buf, sizeof(buf));
-			fprintf(fout, "lxc.network.ipv4 = %s\n", buf);
+			if (i->prefix)
+				fprintf(fout, "lxc.network.ipv4 = %s/%d\n",
+					buf, i->prefix);
+			else
+				fprintf(fout, "lxc.network.ipv4 = %s\n", buf);
 		}
 		if (n->ipv6_gateway_auto)
 			fprintf(fout, "lxc.network.ipv6.gateway = auto\n");
@@ -2280,7 +2284,11 @@ void write_config(FILE *fout, struct lxc_conf *c)
 			struct lxc_inet6dev *i = it2->elem;
 			char buf[INET6_ADDRSTRLEN];
 			inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf));
-			fprintf(fout, "lxc.network.ipv6 = %s\n", buf);
+			if (i->prefix)
+				fprintf(fout, "lxc.network.ipv6 = %s/%d\n",
+					buf, i->prefix);
+			else
+				fprintf(fout, "lxc.network.ipv6 = %s\n", buf);
 		}
 	}
 	lxc_list_for_each(it, &c->caps)
