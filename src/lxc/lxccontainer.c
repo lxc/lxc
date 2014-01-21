@@ -1372,48 +1372,51 @@ static bool lxcapi_clear_config_item(struct lxc_container *c, const char *key)
 	return ret == 0;
 }
 
-static inline void exit_from_ns(struct lxc_container *c, int *old_netns, int *new_netns) {
-	/* Switch back to original netns */
-	if (*old_netns >= 0 && setns(*old_netns, CLONE_NEWNET))
-		SYSERROR("failed to setns");
-	if (*new_netns >= 0)
-		close(*new_netns);
-	if (*old_netns >= 0)
-		close(*old_netns);
-}
-
-static inline bool enter_to_ns(struct lxc_container *c, int *old_netns, int *new_netns) {
-	int ret = 0;
+static inline bool enter_to_ns(struct lxc_container *c) {
+	int netns, userns, ret = 0, init_pid = 0;;
 	char new_netns_path[MAXPATHLEN];
+	char new_userns_path[MAXPATHLEN];
 
 	if (!c->is_running(c))
 		goto out;
 
-	/* Save reference to old netns */
-	*old_netns = open("/proc/self/ns/net", O_RDONLY);
-	if (*old_netns < 0) {
-		SYSERROR("failed to open /proc/self/ns/net");
-		goto out;
+	init_pid = c->init_pid(c);
+
+	/* Switch to new userns */
+	if (geteuid() && access("/proc/self/ns/user", F_OK) == 0) {
+		ret = snprintf(new_userns_path, MAXPATHLEN, "/proc/%d/ns/user", init_pid);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			goto out;
+
+		userns = open(new_userns_path, O_RDONLY);
+		if (userns < 0) {
+			SYSERROR("failed to open %s", new_userns_path);
+			goto out;
+		}
+
+		if (setns(userns, CLONE_NEWUSER)) {
+			SYSERROR("failed to setns for CLONE_NEWUSER");
+			goto out;
+		}
 	}
 
 	/* Switch to new netns */
-	ret = snprintf(new_netns_path, MAXPATHLEN, "/proc/%d/ns/net", c->init_pid(c));
+	ret = snprintf(new_netns_path, MAXPATHLEN, "/proc/%d/ns/net", init_pid);
 	if (ret < 0 || ret >= MAXPATHLEN)
 		goto out;
 
-	*new_netns = open(new_netns_path, O_RDONLY);
-	if (*new_netns < 0) {
+	netns = open(new_netns_path, O_RDONLY);
+	if (netns < 0) {
 		SYSERROR("failed to open %s", new_netns_path);
 		goto out;
 	}
 
-	if (setns(*new_netns, CLONE_NEWNET)) {
-		SYSERROR("failed to setns");
+	if (setns(netns, CLONE_NEWNET)) {
+		SYSERROR("failed to setns for CLONE_NEWNET");
 		goto out;
 	}
 	return true;
 out:
-	exit_from_ns(c, old_netns, new_netns);
 	return false;
 }
 
@@ -1490,135 +1493,206 @@ static bool remove_from_array(char ***names, char *cname, int size)
 
 static char** lxcapi_get_interfaces(struct lxc_container *c)
 {
-	int i, count = 0;
-	struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
+	pid_t pid;
+	int i, count = 0, pipefd[2];
 	char **interfaces = NULL;
-	int old_netns = -1, new_netns = -1;
+	char interface[IFNAMSIZ];
 
-	if (am_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
-		goto out;
+	if(pipe(pipefd) < 0) {
+		SYSERROR("pipe failed");
+		return NULL;
 	}
 
-	if (!enter_to_ns(c, &old_netns, &new_netns))
-		goto out;
-
-	/* Grab the list of interfaces */
-	if (getifaddrs(&interfaceArray)) {
-		SYSERROR("failed to get interfaces list");
-		goto out;
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("failed to fork task to get interfaces information\n");
+		close(pipefd[0]);
+		close(pipefd[1]);
+		return NULL;
 	}
 
-	/* Iterate through the interfaces */
-	for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
-		if (array_contains(&interfaces, tempIfAddr->ifa_name, count))
-			continue;
+	if (pid == 0) { // child
+		int ret = 1, nbytes;
+		struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
 
-		if(!add_to_array(&interfaces, tempIfAddr->ifa_name, count))
-			goto err;
+		/* close the read-end of the pipe */
+		close(pipefd[0]);
+
+		if (!enter_to_ns(c)) {
+			SYSERROR("failed to enter namespace");
+			goto out;
+		}
+
+		/* Grab the list of interfaces */
+		if (getifaddrs(&interfaceArray)) {
+			SYSERROR("failed to get interfaces list");
+			goto out;
+		}
+
+		/* Iterate through the interfaces */
+		for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
+			nbytes = write(pipefd[1], tempIfAddr->ifa_name, IFNAMSIZ);
+			if (nbytes < 0) {
+				ERROR("write failed");
+				goto out;
+			}
+			count++;
+		}
+		ret = 0;
+
+	out:
+		if (interfaceArray)
+			freeifaddrs(interfaceArray);
+
+		/* close the write-end of the pipe, thus sending EOF to the reader */
+		close(pipefd[1]);
+		exit(ret);
+	}
+
+	/* close the write-end of the pipe */
+	close(pipefd[1]);
+
+	while (read(pipefd[0], &interface, IFNAMSIZ) > 0) {
+		if (array_contains(&interfaces, interface, count))
+				continue;
+
+		if(!add_to_array(&interfaces, interface, count))
+			ERROR("PARENT: add_to_array failed");
 		count++;
 	}
 
-out:
-	if (interfaceArray)
-		freeifaddrs(interfaceArray);
+	if (wait_for_pid(pid) != 0) {
+		for(i=0;i<count;i++)
+			free(interfaces[i]);
+		free(interfaces);
+		interfaces = NULL;
+	}
 
-	exit_from_ns(c, &old_netns, &new_netns);
+	/* close the read-end of the pipe */
+	close(pipefd[0]);
 
 	/* Append NULL to the array */
 	if(interfaces)
 		interfaces = (char **)lxc_append_null_to_array((void **)interfaces, count);
 
 	return interfaces;
-
-err:
-	for(i=0;i<count;i++)
-		free(interfaces[i]);
-	free(interfaces);
-	interfaces = NULL;
-	goto out;
 }
 
 static char** lxcapi_get_ips(struct lxc_container *c, const char* interface, const char* family, int scope)
 {
-	int i, count = 0;
-	struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
-	char addressOutputBuffer[INET6_ADDRSTRLEN];
-	void *tempAddrPtr = NULL;
+	pid_t pid;
+	int i, count = 0, pipefd[2];
 	char **addresses = NULL;
-	char *address = NULL;
-	int old_netns = -1, new_netns = -1;
+	char address[INET6_ADDRSTRLEN];
 
-	if (am_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
-		goto out;
+	if(pipe(pipefd) < 0) {
+		SYSERROR("pipe failed");
+		return NULL;
 	}
 
-	if (!enter_to_ns(c, &old_netns, &new_netns))
-		goto out;
-
-	/* Grab the list of interfaces */
-	if (getifaddrs(&interfaceArray)) {
-		SYSERROR("failed to get interfaces list");
-		goto out;
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("failed to fork task to get container ips\n");
+		close(pipefd[0]);
+		close(pipefd[1]);
+		return NULL;
 	}
 
-	/* Iterate through the interfaces */
-	for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
-		if (tempIfAddr->ifa_addr == NULL)
-			continue;
+	if (pid == 0) { // child
+		int ret = 1, nbytes;
+		struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
+		char addressOutputBuffer[INET6_ADDRSTRLEN];
+		void *tempAddrPtr = NULL;
+		char *address = NULL;
 
-		if(tempIfAddr->ifa_addr->sa_family == AF_INET) {
-			if (family && strcmp(family, "inet"))
-				continue;
-			tempAddrPtr = &((struct sockaddr_in *)tempIfAddr->ifa_addr)->sin_addr;
-		}
-		else {
-			if (family && strcmp(family, "inet6"))
-				continue;
+		/* close the read-end of the pipe */
+		close(pipefd[0]);
 
-			if (((struct sockaddr_in6 *)tempIfAddr->ifa_addr)->sin6_scope_id != scope)
-				continue;
-
-			tempAddrPtr = &((struct sockaddr_in6 *)tempIfAddr->ifa_addr)->sin6_addr;
+		if (!enter_to_ns(c)) {
+			SYSERROR("failed to enter namespace");
+			goto out;
 		}
 
-		if (interface && strcmp(interface, tempIfAddr->ifa_name))
-			continue;
-		else if (!interface && strcmp("lo", tempIfAddr->ifa_name) == 0)
-			continue;
+		/* Grab the list of interfaces */
+		if (getifaddrs(&interfaceArray)) {
+			SYSERROR("failed to get interfaces list");
+			goto out;
+		}
 
-		address = (char *)inet_ntop(tempIfAddr->ifa_addr->sa_family,
-					   tempAddrPtr,
-					   addressOutputBuffer,
-					   sizeof(addressOutputBuffer));
-		if (!address)
-			continue;
+		/* Iterate through the interfaces */
+		for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
+			if (tempIfAddr->ifa_addr == NULL)
+				continue;
 
+			if(tempIfAddr->ifa_addr->sa_family == AF_INET) {
+				if (family && strcmp(family, "inet"))
+					continue;
+				tempAddrPtr = &((struct sockaddr_in *)tempIfAddr->ifa_addr)->sin_addr;
+			}
+			else {
+				if (family && strcmp(family, "inet6"))
+					continue;
+
+				if (((struct sockaddr_in6 *)tempIfAddr->ifa_addr)->sin6_scope_id != scope)
+					continue;
+
+				tempAddrPtr = &((struct sockaddr_in6 *)tempIfAddr->ifa_addr)->sin6_addr;
+			}
+
+			if (interface && strcmp(interface, tempIfAddr->ifa_name))
+				continue;
+			else if (!interface && strcmp("lo", tempIfAddr->ifa_name) == 0)
+				continue;
+
+			address = (char *)inet_ntop(tempIfAddr->ifa_addr->sa_family,
+						tempAddrPtr,
+						addressOutputBuffer,
+						sizeof(addressOutputBuffer));
+			if (!address)
+					continue;
+
+			nbytes = write(pipefd[1], address, INET6_ADDRSTRLEN);
+			if (nbytes < 0) {
+				ERROR("write failed");
+				goto out;
+			}
+			count++;
+		}
+		ret = 0;
+
+	out:
+		if(interfaceArray)
+			freeifaddrs(interfaceArray);
+
+		/* close the write-end of the pipe, thus sending EOF to the reader */
+		close(pipefd[1]);
+		exit(ret);
+    }
+
+	/* close the write-end of the pipe */
+	close(pipefd[1]);
+
+	while (read(pipefd[0], &address, INET6_ADDRSTRLEN) > 0) {
 		if(!add_to_array(&addresses, address, count))
-			goto err;
+			ERROR("PARENT: add_to_array failed");
 		count++;
 	}
 
-out:
-	if(interfaceArray)
-		freeifaddrs(interfaceArray);
+	if (wait_for_pid(pid) != 0) {
+		for(i=0;i<count;i++)
+			free(addresses[i]);
+		free(addresses);
+		addresses = NULL;
+	}
 
-	exit_from_ns(c, &old_netns, &new_netns);
+	/* close the read-end of the pipe */
+	close(pipefd[0]);
 
 	/* Append NULL to the array */
 	if(addresses)
 		addresses = (char **)lxc_append_null_to_array((void **)addresses, count);
 
 	return addresses;
-
-err:
-	for(i=0;i<count;i++)
-		free(addresses[i]);
-	free(addresses);
-	addresses = NULL;
-
-	goto out;
 }
 
 static int lxcapi_get_config_item(struct lxc_container *c, const char *key, char *retv, int inlen)

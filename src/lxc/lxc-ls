@@ -265,7 +265,7 @@ for container_name in lxc.list_containers(config_path=nest_lxcpath):
 
             # FIXME: We should get get_ips working as non-root
             if container.running:
-                if not SUPPORT_SETNS_NET or os.geteuid() != 0:
+                if not SUPPORT_SETNS_NET:
                     entry[protocol] = 'UNKNOWN'
                     continue
 
