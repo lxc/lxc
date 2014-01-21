@@ -385,6 +385,12 @@ AM_COND_IF([ENABLE_LUA],
 		[LUA_INSTALL_LMOD=$datadir/lua/$LUA_VERSION])
 	])
 
+# Optional bash integration
+AC_ARG_ENABLE([bash],
+	[AC_HELP_STRING([--enable-bash], [build bash integration [default=yes]])],
+	[], [enable_bash=yes])
+AM_CONDITIONAL([ENABLE_BASH], [test "x$enable_bash" = "xyes"])
+
 # Optional test binaries
 AC_ARG_ENABLE([tests],
 	[AC_HELP_STRING([--enable-tests], [build test/example binaries [default=no]])],
@@ -548,6 +554,8 @@ AC_CONFIG_FILES([
 
 	config/Makefile
 	config/apparmor/Makefile
+	config/bash/Makefile
+	config/bash/lxc
 	config/init/Makefile
 	config/init/sysvinit/Makefile
 	config/init/systemd/Makefile
@@ -705,6 +713,7 @@ Environment:
  - init script type(s): $init_script
  - rpath: $enable_rpath
  - GnuTLS: $enable_gnutls
+ - Bash integration: $enable_bash
 
 Security features:
  - Apparmor: $enable_apparmor
