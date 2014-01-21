@@ -3037,11 +3037,6 @@ static int lxcapi_attach_run_waitl(struct lxc_container *c, lxc_attach_options_t
 	if (!c)
 		return -1;
 
-	if (am_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
-		return -1;
-	}
-
 	va_start(ap, arg);
 	argv = lxc_va_arg_list_to_argv_const(ap, 1);
 	va_end(ap);
