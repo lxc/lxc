@@ -315,6 +315,22 @@ EOF
     mknod -m 600 ${dev_path}/initctl p
     mknod -m 666 ${dev_path}/ptmx c 5 2
 
+    # setup console and tty[1-4] for login. note that /dev/console and
+    # /dev/tty[1-4] will be symlinks to the ptys /dev/lxc/console and
+    # /dev/lxc/tty[1-4] so that package updates can overwrite the symlinks.
+    # lxc will maintain these links and bind mount ptys over /dev/lxc/*
+    # since lxc.devttydir is specified in the config.
+
+    # allow root login on console, tty[1-4], and pts/0 for libvirt
+    echo "# LXC (Linux Containers)" >>${rootfs_path}/etc/securetty
+    echo "lxc/console"  >>${rootfs_path}/etc/securetty
+    echo "lxc/tty1"     >>${rootfs_path}/etc/securetty
+    echo "lxc/tty2"     >>${rootfs_path}/etc/securetty
+    echo "lxc/tty3"     >>${rootfs_path}/etc/securetty
+    echo "lxc/tty4"     >>${rootfs_path}/etc/securetty
+    echo "# For libvirt/Virtual Machine Monitor" >>${rootfs_path}/etc/securetty
+    echo "pts/0"        >>${rootfs_path}/etc/securetty
+
     if [ ${root_display_password} = "yes" ]
     then
         echo "Setting root password to '$root_password'"
@@ -544,12 +560,16 @@ lxc.rootfs = $rootfs_path
 
     rm -f $config_path/config.def
 
+    if [ -e "@LXCTEMPLATECONFIG@/centos.common.conf" ]; then
+        echo "
+# Include common configuration
+lxc.include = @LXCTEMPLATECONFIG@/centos.common.conf
+" >> $config_path/config
+    fi
+
+    # Append things which require expansion here...
     cat <<EOF >> $config_path/config
 lxc.utsname = $utsname
-lxc.tty = 4
-lxc.pts = 1024
-lxc.mount = $config_path/fstab
-lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 lxc.autodev = $auto_dev
 
@@ -568,26 +588,6 @@ lxc.autodev = $auto_dev
 #        Note: This may potentially collide with other containers of same name!
 #lxc.network.veth.pair = v-$name-e0
 
-#cgroups
-lxc.cgroup.devices.deny = a
-# /dev/null and zero
-lxc.cgroup.devices.allow = c 1:3 rwm
-lxc.cgroup.devices.allow = c 1:5 rwm
-# consoles
-lxc.cgroup.devices.allow = c 5:1 rwm
-lxc.cgroup.devices.allow = c 5:0 rwm
-# /dev/{,u}random
-lxc.cgroup.devices.allow = c 1:9 rwm
-lxc.cgroup.devices.allow = c 1:8 rwm
-lxc.cgroup.devices.allow = c 136:* rwm
-lxc.cgroup.devices.allow = c 5:2 rwm
-# rtc
-lxc.cgroup.devices.allow = c 254:0 rwm
-EOF
-
-    cat <<EOF > $config_path/fstab
-proc            proc         proc    nodev,noexec,nosuid 0 0
-sysfs           sys          sysfs defaults  0 0
 EOF
 
     if [ $? -ne 0 ]; then

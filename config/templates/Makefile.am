@@ -1,8 +1,12 @@
 templatesconfigdir=@LXCTEMPLATECONFIG@
 
 templatesconfig_DATA = \
+	centos.common.conf \
+	centos.userns.conf \
 	debian.common.conf \
 	debian.userns.conf \
+	fedora.common.conf \
+	fedora.userns.conf \
 	oracle.common.conf \
 	oracle.userns.conf \
 	plamo.common.conf \

@@ -259,6 +259,22 @@ EOF
     mknod -m 600 ${dev_path}/initctl p
     mknod -m 666 ${dev_path}/ptmx c 5 2
 
+    # setup console and tty[1-4] for login. note that /dev/console and
+    # /dev/tty[1-4] will be symlinks to the ptys /dev/lxc/console and
+    # /dev/lxc/tty[1-4] so that package updates can overwrite the symlinks.
+    # lxc will maintain these links and bind mount ptys over /dev/lxc/*
+    # since lxc.devttydir is specified in the config.
+
+    # allow root login on console, tty[1-4], and pts/0 for libvirt
+    echo "# LXC (Linux Containers)" >>${rootfs_path}/etc/securetty
+    echo "lxc/console"  >>${rootfs_path}/etc/securetty
+    echo "lxc/tty1"     >>${rootfs_path}/etc/securetty
+    echo "lxc/tty2"     >>${rootfs_path}/etc/securetty
+    echo "lxc/tty3"     >>${rootfs_path}/etc/securetty
+    echo "lxc/tty4"     >>${rootfs_path}/etc/securetty
+    echo "# For libvirt/Virtual Machine Monitor" >>${rootfs_path}/etc/securetty
+    echo "pts/0"        >>${rootfs_path}/etc/securetty
+
     if [ ${root_display_password} = "yes" ]
     then
         echo "Setting root password to '$root_password'"
@@ -324,6 +340,7 @@ configure_fedora_systemd()
     rm -f ${rootfs_path}/etc/systemd/system/default.target
     touch ${rootfs_path}/etc/fstab
     chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/udev.service
+    chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/systemd-journald.service
     chroot ${rootfs_path} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
     #dependency on a device unit fails it specially that we disabled udev
     # sed -i 's/After=dev-%i.device/After=/' ${rootfs_path}/lib/systemd/system/getty\@.service
@@ -379,7 +396,7 @@ configure_fedora_systemd()
 #       and then used to build other arbitrary vesions of Fedora of a
 #       given architecture.  Not that this only has to run once for
 #       Fedora on a given architecture since rpm and yum can build other
-#       versions.  We'll arbitrarily pick Fedora 19 to build this.  This
+#       versions.  We'll arbitrarily pick Fedora 20 to build this.  This
 #       will need to change as time goes on.
 
 # Programmers Note...  A future fall back may be to download the netinst
@@ -530,10 +547,10 @@ Have a beer or a cup of coffee.  This will take a bit (~300MB).
 "
         sleep 3 # let him read it...
 
-        # Right now, we are using Fedora 19 for the inial bootstrap.
+        # Right now, we are using Fedora 20 for the inial bootstrap.
         # We could make this the "current" Fedora rev (F > 15).
 
-        rsync -av mirrors.kernel.org::fedora/releases/19/Fedora/$arch/os/LiveOS .
+        rsync -av mirrors.kernel.org::fedora/releases/20/Fedora/$arch/os/LiveOS .
 
         if [[ 0 == $? ]]
         then
@@ -610,8 +627,8 @@ This will take a couple of minutes.  Patience..."
     # of this LiveOS image we're camped out on.  This is the beginning
     # of the butt ugly hack.  Look close or you may missing it...
 
-    rsync -av mirrors.kernel.org::fedora/releases/19/Fedora/$arch/os/Packages/r/rpm-[0-9]* \
-        mirrors.kernel.org::fedora/releases/19/Fedora/$arch/os/Packages/y/yum-[0-9]* .
+    rsync -av mirrors.kernel.org::fedora/releases/20/Fedora/$arch/os/Packages/r/rpm-[0-9]* \
+        mirrors.kernel.org::fedora/releases/20/Fedora/$arch/os/Packages/y/yum-[0-9]* .
 
     # And here it is...
     # The --nodeps is STUPID but F15 had a bogus dependency on RawHide?!?!
@@ -643,7 +660,7 @@ This will take a couple of minutes.  Patience..."
     echo "Stage 1 creation complete.  Building stage 2 Installation Bootstrap"
 
     mount -o bind ../bootstrap run/install
-    rsync -av mirrors.kernel.org::fedora/releases/19/Fedora/$arch/os/Packages/f/fedora-release-19* .
+    rsync -av mirrors.kernel.org::fedora/releases/20/Fedora/$arch/os/Packages/f/fedora-release-20* .
 
     # The --nodeps is STUPID but F15 had a bogus dependency on RawHide?!?!
     chroot . rpm --root /run/install --nodeps -ivh fedora-release-*
@@ -934,7 +951,7 @@ install_fedora()
 {
     mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
-        flock -x 200
+        flock -x 9
         if [ $? -ne 0 ]; then
             echo "Cache repository is busy."
             return 1
@@ -965,7 +982,7 @@ install_fedora()
         fi
 
         return 0
-    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-fedora
+    ) 9>@LOCALSTATEDIR@/lock/subsys/lxc-fedora
 
     return $?
 }
@@ -1017,12 +1034,16 @@ lxc.rootfs = $rootfs_path
 
     rm -f $config_path/config.def
 
+    if [ -e "@LXCTEMPLATECONFIG@/fedora.common.conf" ]; then
+        echo "
+# Include common configuration
+lxc.include = @LXCTEMPLATECONFIG@/fedora.common.conf
+" >> $config_path/config
+    fi
+
+    # Append things which require expansion here...
     cat <<EOF >> $config_path/config
 lxc.utsname = $utsname
-lxc.tty = 4
-lxc.pts = 1024
-lxc.mount = $config_path/fstab
-lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 lxc.autodev = $auto_dev
 
@@ -1041,26 +1062,6 @@ lxc.autodev = $auto_dev
 #        Note: This may potentially collide with other containers of same name!
 #lxc.network.veth.pair = v-$name-e0
 
-#cgroups
-lxc.cgroup.devices.deny = a
-# /dev/null and zero
-lxc.cgroup.devices.allow = c 1:3 rwm
-lxc.cgroup.devices.allow = c 1:5 rwm
-# consoles
-lxc.cgroup.devices.allow = c 5:1 rwm
-lxc.cgroup.devices.allow = c 5:0 rwm
-# /dev/{,u}random
-lxc.cgroup.devices.allow = c 1:9 rwm
-lxc.cgroup.devices.allow = c 1:8 rwm
-lxc.cgroup.devices.allow = c 136:* rwm
-lxc.cgroup.devices.allow = c 5:2 rwm
-# rtc
-lxc.cgroup.devices.allow = c 254:0 rm
-EOF
-
-    cat <<EOF > $config_path/fstab
-proc            proc         proc    nodev,noexec,nosuid 0 0
-sysfs           sys          sysfs defaults  0 0
 EOF
 
     if [ $? -ne 0 ]; then
@@ -1080,7 +1081,7 @@ clean()
 
     # lock, so we won't purge while someone is creating a repository
     (
-        flock -x 200
+        flock -x 9
         if [ $? != 0 ]; then
             echo "Cache repository is busy."
             exit 1
@@ -1089,7 +1090,7 @@ clean()
         echo -n "Purging the download cache for Fedora-$release..."
         rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
         exit 0
-    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-fedora
+    ) 9>@LOCALSTATEDIR@/lock/subsys/lxc-fedora
 }
 
 usage()
@@ -1206,8 +1207,8 @@ if [ -z "$release" ]; then
     if [ "$is_fedora" -a "$fedora_host_ver" ]; then
         release=$fedora_host_ver
     else
-        echo "This is not a fedora host and release missing, defaulting to 19. use -R|--release to specify release"
-        release=19
+        echo "This is not a fedora host and release missing, defaulting to 20 use -R|--release to specify release"
+        release=20
     fi
 fi
 

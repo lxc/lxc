@@ -554,8 +554,12 @@ AC_CONFIG_FILES([
 	config/init/upstart/Makefile
 	config/etc/Makefile
 	config/templates/Makefile
+	config/templates/centos.common.conf
+	config/templates/centos.userns.conf
 	config/templates/debian.common.conf
 	config/templates/debian.userns.conf
+	config/templates/fedora.common.conf
+	config/templates/fedora.userns.conf
 	config/templates/oracle.common.conf
 	config/templates/oracle.userns.conf
 	config/templates/plamo.common.conf
