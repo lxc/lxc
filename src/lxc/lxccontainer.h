@@ -786,7 +786,7 @@ int lxc_container_put(struct lxc_container *c);
  */
 int lxc_get_wait_states(const char **states);
 
-/*
+/*!
  * \brief Get the value for a global config key
  *
  * \param key The name of the config key
