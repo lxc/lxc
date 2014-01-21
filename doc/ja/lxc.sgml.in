@@ -682,7 +682,6 @@ rootfs
       following commands may be useful:
 	<programlisting>
 	  lxc-ls
-	  lxc-ps &#045;&#045;name foo
 	  lxc-info -n foo
 	</programlisting>
         -->
@@ -690,7 +689,6 @@ rootfs
         このような時には，以下のようなコマンドが役に立つかもしれません．
 	<programlisting>
 	  lxc-ls
-	  lxc-ps --name foo
 	  lxc-info -n foo
 	</programlisting>
       </para>
@@ -700,29 +698,6 @@ rootfs
 	system.
         -->
         <command>lxc-ls</command> は，システムのコンテナを一覧します．
-      </para>
-
-      <para>
-        <!--
-	<command>lxc-ps</command> will display the pids for a specific
-	container. <command>lxc-ps</command>
-	is built on top of <command>ps</command> and accepts the same
-	options, eg:
-	<programlisting>lxc-ps &#045;&#045;name foo &#045;&#045;forest</programlisting>
-	will display the processes hierarchy for the processes
-	belonging the 'foo' container.
-
-	<programlisting>lxc-ps &#045;&#045;lxc</programlisting>
-	will display all the containers and their processes.
-        -->
-        <command>lxc-ps</command> は特定のコンテナに対する pid を表示します．
-        <command>lxc-ps</command> は  <command>ps</command> コマンドをうまく利用して作られており，同じオプションを利用可能です．
-        例えば，
-        <programlisting>lxc-ps --name foo --forest</programlisting>
-        は 'foo' という名前のコンテナに属するプロセスを階層構造で表示します．
-
-	<programlisting>lxc-ps --lxc</programlisting>
-        は全てのコンテナとそのコンテナに属するプロセスを表示します．
       </para>
 
       <para>
@@ -742,53 +717,12 @@ rootfs
 	    lxc-info -n $i
 	  done
 	</programlisting>
-
-	And displaying all the pids of all the containers:
-
-	<programlisting>
-	  for i in $(lxc-ls -1); do
-	    lxc-ps &#045;&#045;name $i &#045;&#045;forest
-	  done
-	</programlisting>
         -->
         ここで，以上のコマンドを組み合わせて，どのようにしたら全てのコンテナのリストと，それぞれの状態が得られるかの例を示します．
 	<programlisting>
 	  for i in $(lxc-ls -1); do
 	    lxc-info -n $i
 	  done
-	</programlisting>
-
-        そして，全てのコンテナの全ての pid を表示させる例です．
-
-	<programlisting>
-	  for i in $(lxc-ls -1); do
-	    lxc-ps --name $i --forest
-	  done
-	</programlisting>
-      </para>
-
-      <para>
-        <!--
-	<command>lxc-netstat</command> display network information for
-	a specific container. This command is built on top of
-	the <command>netstat</command> command and will accept its
-	options
-        -->
-        <command>lxc-netstat</command> は，指定したコンテナのネットワークの情報を表示します．
-        このコマンドは <command>netstat</command> をうまく利用して作られており，<command>netstat</command> のオプションを受け付けます．
-      </para>
-
-      <para>
-        <!--
-	The following command will display the socket information for
-	the container 'foo'.
-	<programlisting>
-	  lxc-netstat -n foo -tano
-	</programlisting>
-        -->
-        以下のコマンドは，'foo' という名前のコンテナのソケット情報を表示します．
-	<programlisting>
-	  lxc-netstat -n foo -tano
 	</programlisting>
       </para>
 

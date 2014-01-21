@@ -156,11 +156,7 @@ liblxc_so_LDADD += $(CGMANAGER_LIBS) $(DBUS_LIBS) $(NIH_LIBS) $(NIH_DBUS_LIBS)
 liblxc_so_CFLAGS += $(CGMANAGER_CFLAGS) $(DBUS_CFLAGS) $(NIH_CFLAGS) $(NIH_DBUS_CFLAGS)
 #endif
 
-bin_SCRIPTS = \
-	lxc-ps \
-	lxc-netstat \
-	lxc-checkconfig \
-	lxc-version
+bin_SCRIPTS = lxc-checkconfig
 
 EXTRA_DIST = \
 	lxc-device \

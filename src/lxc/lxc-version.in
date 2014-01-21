@@ -1,3 +1,0 @@
-#!/bin/sh
-
-echo "lxc version: @PACKAGE_VERSION@"

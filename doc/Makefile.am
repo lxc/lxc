@@ -27,8 +27,6 @@ man_MANS = \
 	lxc-freeze.1 \
 	lxc-info.1 \
 	lxc-monitor.1 \
-	lxc-netstat.1 \
-	lxc-ps.1 \
 	lxc-snapshot.1 \
 	lxc-start.1 \
 	lxc-stop.1 \
@@ -36,7 +34,6 @@ man_MANS = \
 	lxc-unshare.1 \
 	lxc-user-nic.1 \
 	lxc-usernsexec.1 \
-	lxc-version.1 \
 	lxc-wait.1 \
 	\
 	lxc.conf.5 \

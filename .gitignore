@@ -60,8 +60,6 @@ src/lxc/lxc-info
 src/lxc/lxc-init
 src/lxc/lxc-monitor
 src/lxc/lxc-monitord
-src/lxc/lxc-netstat
-src/lxc/lxc-ps
 src/lxc/lxc-shutdown
 src/lxc/lxc-snapshot
 src/lxc/lxc-start
@@ -70,7 +68,6 @@ src/lxc/lxc-stop
 src/lxc/lxc-unfreeze
 src/lxc/lxc-unshare
 src/lxc/lxc-usernsexec
-src/lxc/lxc-version
 src/lxc/lxc-wait
 src/lxc/legacy/lxc-ls
 src/lxc/lxc-user-nic

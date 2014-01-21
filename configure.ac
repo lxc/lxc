@@ -596,8 +596,6 @@ AC_CONFIG_FILES([
 	doc/lxc-info.sgml
 	doc/lxc-ls.sgml
 	doc/lxc-monitor.sgml
-	doc/lxc-netstat.sgml
-	doc/lxc-ps.sgml
 	doc/lxc-snapshot.sgml
 	doc/lxc-start-ephemeral.sgml
 	doc/lxc-start.sgml
@@ -607,7 +605,6 @@ AC_CONFIG_FILES([
 	doc/lxc-unshare.sgml
 	doc/lxc-user-nic.sgml
 	doc/lxc-usernsexec.sgml
-	doc/lxc-version.sgml
 	doc/lxc-wait.sgml
 
 	doc/lxc.conf.sgml
@@ -643,8 +640,6 @@ AC_CONFIG_FILES([
 	doc/ja/lxc-info.sgml
 	doc/ja/lxc-ls.sgml
 	doc/ja/lxc-monitor.sgml
-	doc/ja/lxc-netstat.sgml
-	doc/ja/lxc-ps.sgml
 	doc/ja/lxc-snapshot.sgml
 	doc/ja/lxc-start-ephemeral.sgml
 	doc/ja/lxc-start.sgml
@@ -654,7 +649,6 @@ AC_CONFIG_FILES([
 	doc/ja/lxc-unshare.sgml
 	doc/ja/lxc-user-nic.sgml
 	doc/ja/lxc-usernsexec.sgml
-	doc/ja/lxc-version.sgml
 	doc/ja/lxc-wait.sgml
 
 	doc/ja/lxc.conf.sgml
@@ -686,10 +680,7 @@ AC_CONFIG_FILES([
 
 	src/Makefile
 	src/lxc/Makefile
-	src/lxc/lxc-ps
-	src/lxc/lxc-netstat
 	src/lxc/lxc-checkconfig
-	src/lxc/lxc-version
 	src/lxc/lxc-start-ephemeral
 	src/lxc/legacy/lxc-ls
 	src/lxc/lxc.functions

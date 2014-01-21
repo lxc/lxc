@@ -457,26 +457,12 @@ rootfs
       following commands may be useful:
 	<programlisting>
 	  lxc-ls
-	  lxc-ps --name foo
 	  lxc-info -n foo
 	</programlisting>
       </para>
       <para>
 	<command>lxc-ls</command> lists the containers of the
 	system.
-      </para>
-
-      <para>
-	<command>lxc-ps</command> will display the pids for a specific
-	container. <command>lxc-ps</command>
-	is built on top of <command>ps</command> and accepts the same
-	options, eg:
-	<programlisting>lxc-ps --name foo --forest</programlisting>
-	will display the processes hierarchy for the processes
-	belonging the 'foo' container.
-
-	<programlisting>lxc-ps --lxc</programlisting>
-	will display all the containers and their processes.
       </para>
 
       <para>
@@ -493,29 +479,6 @@ rootfs
 	  done
 	</programlisting>
 
-	And displaying all the pids of all the containers:
-
-	<programlisting>
-	  for i in $(lxc-ls -1); do
-	    lxc-ps --name $i --forest
-	  done
-	</programlisting>
-
-      </para>
-
-      <para>
-	<command>lxc-netstat</command> display network information for
-	a specific container. This command is built on top of
-	the <command>netstat</command> command and will accept its
-	options
-      </para>
-
-      <para>
-	The following command will display the socket information for
-	the container 'foo'.
-	<programlisting>
-	  lxc-netstat -n foo -tano
-	</programlisting>
       </para>
 
     </refsect2>

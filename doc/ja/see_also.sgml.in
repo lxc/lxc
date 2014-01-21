@@ -86,11 +86,6 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       </citerefentry>,
 
       <citerefentry>
-	<refentrytitle><command>lxc-ps</command></refentrytitle>
-	<manvolnum>1</manvolnum>
-      </citerefentry>,
-
-      <citerefentry>
 	<refentrytitle><command>lxc-info</command></refentrytitle>
 	<manvolnum>1</manvolnum>
       </citerefentry>,
