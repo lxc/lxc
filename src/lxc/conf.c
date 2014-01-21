@@ -2979,6 +2979,8 @@ void lxc_delete_network(struct lxc_handler *handler)
 	}
 }
 
+#define LXC_USERNIC_PATH LIBEXECDIR "/lxc/lxc-user-nic"
+
 static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 {
 	pid_t child;
@@ -2998,11 +3000,12 @@ static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 		return wait_for_pid(child);
 
 	// Call lxc-user-nic pid type bridge
+
 	char pidstr[20];
-	char *args[] = { "lxc-user-nic", pidstr, "veth", netdev->link, netdev->name, NULL };
+	char *args[] = {LXC_USERNIC_PATH, pidstr, "veth", netdev->link, netdev->name, NULL };
 	snprintf(pidstr, 19, "%lu", (unsigned long) pid);
 	pidstr[19] = '\0';
-	execvp("lxc-user-nic", args);
+	execvp(args[0], args);
 	SYSERROR("execvp lxc-user-nic");
 	exit(1);
 }

@@ -124,7 +124,6 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root)
 %{_bindir}/*
-%attr(4111,root,root) %{_bindir}/lxc-user-nic
 %{_mandir}/man1/lxc*
 %{_mandir}/man5/lxc*
 %{_mandir}/man7/lxc*
@@ -150,6 +149,7 @@ rm -rf %{buildroot}
 %endif
 %{_localstatedir}/*
 %attr(4555,root,root) %{_libexecdir}/%{name}/lxc-init
+%attr(4111,root,root) %{_libexecdir}/%{name}/lxc-user-nic
 %if %{with_systemd}
 %attr(555,root,root) %{_libexecdir}/%{name}/lxc-devsetup
 %endif

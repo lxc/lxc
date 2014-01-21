@@ -269,6 +269,7 @@ int lxc_monitor_read(int fd, struct lxc_msg *msg)
 }
 
 
+#define LXC_MONITORD_PATH LIBEXECDIR "/lxc/lxc-monitord"
 
 /* used to spawn a monitord either on startup of a daemon container, or when
  * lxc-monitor starts
@@ -280,7 +281,7 @@ int lxc_monitord_spawn(const char *lxcpath)
 	char pipefd_str[11];
 
 	char * const args[] = {
-		"lxc-monitord",
+		LXC_MONITORD_PATH,
 		(char *)lxcpath,
 		pipefd_str,
 		NULL,

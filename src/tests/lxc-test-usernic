@@ -68,13 +68,15 @@ brctl addbr usernic-br1
 ifconfig usernic-br0 0.0.0.0 up
 ifconfig usernic-br1 0.0.0.0 up
 
+LXC_USERNIC_PATH=$(ls -1 /usr/lib/*/lxc/lxc-user-nic | head -1)
+
 # Create three containers
 su -l usernic-user -c "lxc-create -P /tmp/usernic-test/lxcbase -t busybox -n b1 -f /tmp/lxc-usernic.conf"
 su -l usernic-user -c "lxc-start -P /tmp/usernic-test/lxcbase -n b1 -d"
 p1=`lxc-info -P /tmp/usernic-test/lxcbase -n b1 -p | awk -F: '{ print $2 }'`
 
 # Assign one veth, should fail as no allowed entries yet
-su -l usernic-user -c "lxc-user-nic $p1 veth usernic-br0 xx1"
+su -l usernic-user -c "$LXC_USERNIC_PATH $p1 veth usernic-br0 xx1"
 if [ $? -eq 0 ]; then
 	echo "FAIL: able to create nic with no entries"
 	cleanup 1
@@ -86,26 +88,26 @@ sed -i '/^lxc-usernet/d' /etc/lxc/lxc-usernet
 echo "lxc-usernet veth usernic-br0 2" >> /etc/lxc/lxc-usernet
 
 # Assign one veth to second bridge, should fail
-su -l usernic-user -c "lxc-user-nic $p1 veth usernic-br1 xx1"
+su -l usernic-user -c "$LXC_USERNIC_PATH $p1 veth usernic-br1 xx1"
 if [ $? -eq 0 ]; then
 	echo "FAIL: able to create nic with no entries"
 	cleanup 1
 fi
 
 # Assign two veths, should succeed
-su -l usernic-user -c "lxc-user-nic $p1 veth usernic-br0 xx2"
+su -l usernic-user -c "$LXC_USERNIC_PATH $p1 veth usernic-br0 xx2"
 if [ $? -ne 0 ]; then
 	echo "FAIL: unable to create first nic"
 	cleanup 1
 fi
-su -l usernic-user -c "lxc-user-nic $p1 veth usernic-br0 xx3"
+su -l usernic-user -c "$LXC_USERNIC_PATH $p1 veth usernic-br0 xx3"
 if [ $? -ne 0 ]; then
 	echo "FAIL: unable to create second nic"
 	cleanup 1
 fi
 
 # Assign one more veth, should fail.
-su -l usernic-user -c "lxc-user-nic $p1 veth usernic-br0 xx4"
+su -l usernic-user -c "$LXC_USERNIC_PATH $p1 veth usernic-br0 xx4"
 if [ $? -eq 0 ]; then
 	echo "FAIL: able to create third nic"
 	cleanup 1
@@ -115,7 +117,7 @@ fi
 su -l usernic-user -c "lxc-stop -P /tmp/usernic-test/lxcbase -n b1"
 su -l usernic-user -c "lxc-start -P /tmp/usernic-test/lxcbase -n b1 -d"
 p1=`lxc-info -P /tmp/usernic-test/lxcbase -n b1 -p | awk -F: '{ print $2 }'`
-su -l usernic-user -c "lxc-user-nic $p1 veth usernic-br0 xx5"
+su -l usernic-user -c "$LXC_USERNIC_PATH $p1 veth usernic-br0 xx5"
 if [ $? -ne 0 ]; then
 	echo "FAIL: unable to create nic after destroying the old"
 	cleanup 1
@@ -129,7 +131,7 @@ lxc-start -n usernic-c1 -d
 p2=`lxc-info -n usernic-c1 -p | awk -F: '{ print $2}'`
 
 # assign veth to it - should fail
-su -l usernic-user -c "lxc-user-nic $p2 veth usernic-br0 xx6"
+su -l usernic-user -c "$LXC_USERNIC_PATH $p2 veth usernic-br0 xx6"
 ret=$?
 lxc-stop -n usernic-c1
 lxc-destroy -n usernic-c1

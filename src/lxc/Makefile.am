@@ -113,6 +113,7 @@ AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCPATH=\"$(LXCPATH)\" \
 	-DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
 	-DLXCINITDIR=\"$(LXCINITDIR)\" \
+	-DLIBEXECDIR=\"$(LIBEXECDIR)\" \
 	-DLXCTEMPLATEDIR=\"$(LXCTEMPLATEDIR)\" \
 	-DLOGPATH=\"$(LOGPATH)\" \
 	-DLXC_DEFAULT_CONFIG=\"$(LXC_DEFAULT_CONFIG)\" \
@@ -181,28 +182,28 @@ endif
 bin_PROGRAMS = \
 	lxc-attach \
 	lxc-autostart \
-	lxc-unshare \
-	lxc-stop \
-	lxc-start \
+	lxc-cgroup \
 	lxc-clone \
-	lxc-execute \
-	lxc-monitor \
-	lxc-monitord \
-	lxc-wait \
+	lxc-config \
 	lxc-console \
+	lxc-create \
+	lxc-destroy \
+	lxc-execute \
 	lxc-freeze \
 	lxc-info \
-	lxc-cgroup \
-	lxc-unfreeze \
-	lxc-config \
-	lxc-destroy \
-	lxc-create \
-	lxc-user-nic \
+	lxc-monitor \
 	lxc-snapshot \
-	lxc-usernsexec
+	lxc-start \
+	lxc-stop \
+	lxc-unfreeze \
+	lxc-unshare \
+	lxc-usernsexec \
+	lxc-wait
 
 pkglibexec_PROGRAMS = \
-	lxc-init
+	lxc-init \
+	lxc-monitord \
+	lxc-user-nic
 
 AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
@@ -245,7 +246,9 @@ install-exec-local: install-soPROGRAMS
 	cd $(DESTDIR)$(libdir); \
 	ln -sf liblxc.so.$(VERSION) liblxc.so.$(firstword $(subst ., ,$(VERSION))); \
 	ln -sf liblxc.so.$(firstword $(subst ., ,$(VERSION))) liblxc.so
-	chmod u+s $(DESTDIR)$(bindir)/lxc-user-nic
+
+install-exec-hook:
+	chmod u+s $(DESTDIR)$(libexecdir)/lxc/lxc-user-nic
 
 uninstall-local:
 	$(RM) $(DESTDIR)$(libdir)/liblxc.so*
