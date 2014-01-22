@@ -4,7 +4,7 @@ lxc.cgroup.devices.deny =
 lxc.cgroup.devices.allow =
 
 # We can't move bind-mounts, so don't use /dev/lxc/
-# lxc.devttydir =
+lxc.devttydir =
 
 # Extra bind-mounts for userns
 lxc.mount.entry = /dev/console dev/console none bind,create=file 0 0
