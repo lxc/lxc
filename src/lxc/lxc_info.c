@@ -301,23 +301,25 @@ static int print_info(const char *name, const char *lxcpath)
 		print_info_msg_str("State:", c->state(c));
 	}
 
-	if (pid) {
-		pid_t initpid;
+	if (c->is_running(c)) {
+		if (pid) {
+			pid_t initpid;
 
-		initpid = c->init_pid(c);
-		if (initpid >= 0)
-			print_info_msg_int("PID:", initpid);
-	}
+			initpid = c->init_pid(c);
+			if (initpid >= 0)
+				print_info_msg_int("PID:", initpid);
+		}
 
-	if (ips) {
-		char **addresses = c->get_ips(c, NULL, NULL, 0);
-		if (addresses) {
-			char *address;
-			i = 0;
-			while (addresses[i]) {
-				address = addresses[i];
-				print_info_msg_str("IP:", address);
-				i++;
+		if (ips) {
+			char **addresses = c->get_ips(c, NULL, NULL, 0);
+			if (addresses) {
+				char *address;
+				i = 0;
+				while (addresses[i]) {
+					address = addresses[i];
+					print_info_msg_str("IP:", address);
+					i++;
+				}
 			}
 		}
 	}
