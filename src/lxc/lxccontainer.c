@@ -1413,8 +1413,10 @@ static inline bool enter_to_ns(struct lxc_container *c) {
 
 	if (setns(netns, CLONE_NEWNET)) {
 		SYSERROR("failed to setns for CLONE_NEWNET");
+		close(netns);
 		goto out;
 	}
+	close(netns);
 	return true;
 out:
 	return false;
