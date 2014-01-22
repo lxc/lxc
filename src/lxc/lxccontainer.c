@@ -545,6 +545,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 	int ret;
 	struct lxc_conf *conf;
 	bool daemonize = false;
+	FILE *pid_fp = NULL;
 	char *default_args[] = {
 		"/sbin/init",
 		'\0',
@@ -600,8 +601,14 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		pid_t pid = fork();
 		if (pid < 0)
 			return false;
-		if (pid != 0)
+
+		if (pid != 0) {
+			/* Set to NULL because we don't want father unlink
+			 * the PID file, child will do the free and unlink.
+			 */
+			c->pidfile = NULL;
 			return wait_on_daemonized_start(c, pid);
+		}
 
 		/* second fork to be reparented by init */
 		pid = fork();
@@ -628,6 +635,28 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 			ERROR("Cannot start non-daemonized container when threaded");
 			return false;
 		}
+	}
+
+	/* We need to write PID file after daeminize, so we always
+	 * write the right PID.
+	 */
+	if (c->pidfile) {
+		pid_fp = fopen(c->pidfile, "w");
+		if (pid_fp == NULL) {
+			SYSERROR("Failed to create pidfile '%s' for '%s'",
+				 c->pidfile, c->name);
+			return false;
+		}
+
+		if (fprintf(pid_fp, "%d\n", getpid()) < 0) {
+			SYSERROR("Failed to write '%s'", c->pidfile);
+			fclose(pid_fp);
+			pid_fp = NULL;
+			return false;
+		}
+
+		fclose(pid_fp);
+		pid_fp = NULL;
 	}
 
 reboot:
