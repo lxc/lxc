@@ -68,6 +68,12 @@ struct lxc_container {
 
 	/*!
 	 * \private
+	 * File to store pid.
+	 */
+	char *pidfile;
+
+	/*!
+	 * \private
 	 * Container semaphore lock.
 	 */
 	struct lxc_lock *slock;

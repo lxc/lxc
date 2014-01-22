@@ -237,6 +237,12 @@ static void lxc_container_free(struct lxc_container *c)
 		free(c->config_path);
 		c->config_path = NULL;
 	}
+	if (c->pidfile) {
+		unlink(c->pidfile);
+		free(c->pidfile);
+		c->pidfile = NULL;
+	}
+
 	free(c);
 }
 
@@ -3178,6 +3184,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 		lxcapi_clear_config(c);
 	}
 	c->daemonize = true;
+	c->pidfile = NULL;
 
 	// assign the member functions
 	c->is_defined = lxcapi_is_defined;

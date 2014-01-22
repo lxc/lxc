@@ -302,6 +302,11 @@ int main(int argc, char *argv[])
 	}
 
 	if (my_args.pidfile != NULL) {
+		if (ensure_path(&c->pidfile, my_args.pidfile) < 0) {
+			ERROR("failed to ensure pidfile '%s'", my_args.pidfile);
+			goto out;
+		}
+
 		pid_fp = fopen(my_args.pidfile, "w");
 		if (pid_fp == NULL) {
 			SYSERROR("failed to create pidfile '%s' for '%s'",
@@ -342,10 +347,6 @@ int main(int argc, char *argv[])
 		c->want_close_all_fds(c, true);
 
 	err = c->start(c, 0, args) ? 0 : -1;
-
-	if (my_args.pidfile)
-		unlink(my_args.pidfile);
-
 out:
 	lxc_container_put(c);
 	if (pid_fp)
