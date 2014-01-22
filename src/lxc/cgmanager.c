@@ -248,6 +248,7 @@ static char *cgm_get_cgroup(struct lxc_handler *handler, const char *subsystem)
 int cgm_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
 {
 	char *result, *controller, *key, *cgroup;
+	size_t newlen;
 
 	controller = alloca(strlen(filename)+1);
 	strcpy(controller, filename);
@@ -267,11 +268,18 @@ int cgm_get(const char *filename, char *value, size_t len, const char *name, con
 		return -1;
 	}
 	free(cgroup);
+	newlen = strlen(result);
 	strncpy(value, result, len);
-	if (strlen(result) >= len)
+	if (newlen >= len) {
 		value[len-1] = '\0';
+		newlen = len-1;
+	} else if (newlen+1 < len) {
+		// cgmanager doesn't add eol to last entry
+		value[newlen++] = '\n';
+		value[newlen] = '\0';
+	}
 	nih_free(result);
-	return len;
+	return newlen;
 }
 
 static int cgm_do_set(const char *controller, const char *file,
