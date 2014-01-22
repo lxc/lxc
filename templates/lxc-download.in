@@ -41,9 +41,11 @@ DOWNLOAD_USE_CACHE="false"
 DOWNLOAD_URL=
 DOWNLOAD_SHOW_HTTP_WARNING="true"
 DOWNLOAD_SHOW_GPG_WARNING="true"
+DOWNLOAD_READY_GPG="false"
 DOWNLOAD_COMPAT_LEVEL=1
 DOWNLOAD_LIST_IMAGES="false"
 DOWNLOAD_BUILD=
+DOWNLOAD_INTERACTIVE="false"
 
 LXC_NAME=
 LXC_PATH=
@@ -95,6 +97,10 @@ gpg_setup() {
         return
     fi
 
+    if [ "$DOWNLOAD_READY_GPG" = "true" ]; then
+        return
+    fi
+
     echo "Setting up the GPG keyring"
 
     mkdir -p "$DOWNLOAD_TEMP/gpg"
@@ -105,6 +111,8 @@ gpg_setup() {
         echo "ERROR: Unable to fetch GPG key from keyserver."
         exit 1
     fi
+
+    DOWNLOAD_READY_GPG="true"
 }
 
 gpg_validate() {
@@ -234,11 +242,9 @@ if [ "$(in_userns)" = "yes" ]; then
     DOWNLOAD_MODE="user"
 fi
 
-if ([ -z "$DOWNLOAD_DIST" ] || [ -z "$DOWNLOAD_RELEASE" ] || \
-    [ -z "$DOWNLOAD_ARCH" ]) && [ "$DOWNLOAD_LIST_IMAGES" = "false" ]; then
-    echo "ERROR: Missing required argument" 1>&2
-    usage
-    exit 1
+if [ -z "$DOWNLOAD_DIST" ] || [ -z "$DOWNLOAD_RELEASE" ] || \
+   [ -z "$DOWNLOAD_ARCH" ]; then
+    DOWNLOAD_INTERACTIVE="true"
 fi
 
 # Trap all exit signals
@@ -246,7 +252,8 @@ trap cleanup EXIT HUP INT TERM
 DOWNLOAD_TEMP=$(mktemp -d)
 
 # Simply list images
-if [ "$DOWNLOAD_LIST_IMAGES" = "true" ]; then
+if [ "$DOWNLOAD_LIST_IMAGES" = "true" ] || \
+   [ "$DOWNLOAD_INTERACTIVE" = "true" ]; then
     # Initialize GPG
     gpg_setup
 
@@ -287,7 +294,29 @@ if [ "$DOWNLOAD_LIST_IMAGES" = "true" ]; then
     done < ${DOWNLOAD_TEMP}/index
     echo "---"
 
-    exit 1
+    if [ "$DOWNLOAD_LIST_IMAGES" = "true" ]; then
+        exit 1
+    fi
+
+    # Interactive mode
+    echo ""
+
+    if [ -z "$DOWNLOAD_DIST" ]; then
+        echo -n "Distribution: "
+        read DOWNLOAD_DIST
+    fi
+
+    if [ -z "$DOWNLOAD_RELEASE" ]; then
+        echo -n "Release: "
+        read DOWNLOAD_RELEASE
+    fi
+
+    if [ -z "$DOWNLOAD_ARCH" ]; then
+        echo -n "Architecture: "
+        read DOWNLOAD_ARCH
+    fi
+
+    echo ""
 fi
 
 # Setup the cache
