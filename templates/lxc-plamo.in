@@ -33,11 +33,11 @@
 DLSCHEME=${DLSCHEME:-"http"}
 MIRRORSRV=${MIRRORSRV:-"www.ring.gr.jp"}
 MIRRORPATH=${MIRRORPATH:-"/pub/linux/Plamo"}
-CATEGORIES=${CATEGORIES:-"00_base 01_minimum"}
-EXTRACTGRS=${EXTRACTGRS:-""}
-IGNOREPKGS=${IGNOREPKGS:-"grub kernel lilo linux_firmware microcode_ctl
+CATEGORIES=${CATEGORIES-"00_base 01_minimum"}
+EXTRACTGRS=${EXTRACTGRS-""}
+IGNOREPKGS=${IGNOREPKGS-"grub kernel lilo linux_firmware microcode_ctl
     cpufreqd cpufrequtils gpm"}
-ADDONPKGS=${ADDONPKGS:-"`echo contrib/Hamradio/{morse,qrq}`"}
+ADDONPKGS=${ADDONPKGS-"`echo contrib/Hamradio/{morse,qrq}`"}
 
 download_plamo() {
   # check the mini plamo was not already downloaded
@@ -50,7 +50,7 @@ download_plamo() {
   cd $ptcache
   case $DLSCHEME in http) depth=2 ;; ftp) depth=3 ;; esac
   rej=${IGNOREPKGS%% *} ; [ -n "$rej" ] && rej="$rej-*"
-  if [ `echo $IGNOREPKGS | wc -w` -ne 1 ] ; then
+  if [ `echo $IGNOREPKGS | wc -w` -gt 1 ] ; then
     for p in ${IGNOREPKGS#* } ; do rej="$rej,$p-*" ; done
   fi
   for i in $CATEGORIES ; do
@@ -347,7 +347,7 @@ dlcache=$cache/cache-${prog##*-}-$release-$arch
 rtcache=$cache/rootfs-${prog##*-}-$release-$arch
 if [ -z "$rootfs" ] ; then
   if grep -q "^lxc.rootfs" $path/config ; then
-    rootfs=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $path/config)
+    rootfs=`awk -F= '/^lxc.rootfs =/{ print $2 }' $path/config`
   else
     rootfs=$path/rootfs
   fi
