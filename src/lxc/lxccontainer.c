@@ -1556,7 +1556,7 @@ static char** lxcapi_get_interfaces(struct lxc_container *c)
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	while (read(pipefd[0], &interface, IFNAMSIZ) > 0) {
+	while (read(pipefd[0], &interface, IFNAMSIZ) == IFNAMSIZ) {
 		if (array_contains(&interfaces, interface, count))
 				continue;
 
@@ -1676,7 +1676,7 @@ static char** lxcapi_get_ips(struct lxc_container *c, const char* interface, con
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	while (read(pipefd[0], &address, INET6_ADDRSTRLEN) > 0) {
+	while (read(pipefd[0], &address, INET6_ADDRSTRLEN) == INET6_ADDRSTRLEN) {
 		if(!add_to_array(&addresses, address, count))
 			ERROR("PARENT: add_to_array failed");
 		count++;
