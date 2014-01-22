@@ -332,7 +332,7 @@ static int print_info(const char *name, const char *lxcpath)
 	for(i = 0; i < keys; i++) {
 		int len = c->get_config_item(c, key[i], NULL, 0);
 
-		if (len >= 0) {
+		if (len > 0) {
 			char *val = (char*) malloc(sizeof(char)*len + 1);
 
 			if (c->get_config_item(c, key[i], val, len + 1) != len) {
@@ -341,8 +341,10 @@ static int print_info(const char *name, const char *lxcpath)
 				printf("%s = %s\n", key[i], val);
 			}
 			free(val);
+		} else if (len == 0) {
+			printf("%s =\n", key[i]);
 		} else {
-			fprintf(stderr, "%s unset or invalid\n", key[i]);
+			fprintf(stderr, "%s invalid\n", key[i]);
 		}
 	}
 

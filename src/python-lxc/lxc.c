@@ -843,6 +843,10 @@ Container_get_config_item(Container *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
+    if (len == 0) {
+        return PyUnicode_FromString("");
+    }
+
     char* value = (char*) malloc(sizeof(char)*len + 1);
     if (value == NULL)
         return PyErr_NoMemory();
