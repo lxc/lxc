@@ -765,6 +765,7 @@ static int config_network_ipv4_gateway(const char *key, const char *value,
 	}
 
 	if (!strcmp(value, "auto")) {
+		free(gw);
 		netdev->ipv4_gateway = NULL;
 		netdev->ipv4_gateway_auto = true;
 	} else {
