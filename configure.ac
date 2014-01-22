@@ -608,6 +608,8 @@ AC_CONFIG_FILES([
 	doc/lxc-wait.sgml
 
 	doc/lxc.conf.sgml
+	doc/lxc.container.conf.sgml
+	doc/lxc.system.conf.sgml
 	doc/lxc-usernet.sgml
 	doc/lxc.sgml
 	doc/common_options.sgml

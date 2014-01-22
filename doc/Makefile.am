@@ -10,7 +10,8 @@ SUBDIRS += api
 endif
 
 EXTRA_DIST = \
-	lxc.conf \
+	lxc.container.conf \
+	lxc.system.conf \
 	FAQ.txt
 
 if ENABLE_DOCBOOK
@@ -37,6 +38,8 @@ man_MANS = \
 	lxc-wait.1 \
 	\
 	lxc.conf.5 \
+	lxc.container.conf.5 \
+	lxc.system.conf.5 \
 	lxc-usernet.5 \
 	\
 	lxc.7
