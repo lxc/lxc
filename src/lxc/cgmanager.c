@@ -384,7 +384,7 @@ static bool setup_limits(struct lxc_handler *h, bool do_devices)
 	struct cgm_data *d = h->cgroup_info->data;
 
 	if (lxc_list_empty(cgroup_settings))
-		return 0;
+		return true;
 
 	lxc_list_for_each(iterator, cgroup_settings) {
 		char controller[100], *p;
