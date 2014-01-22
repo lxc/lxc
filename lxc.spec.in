@@ -54,7 +54,7 @@ Group: Applications/System
 License: LGPLv2+
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 Requires: openssl rsync
-BuildRequires: libcap libcap-devel docbook2X
+BuildRequires: libcap libcap-devel docbook2X graphviz
 
 %if %{with_python}
 Requires: python3
@@ -132,6 +132,7 @@ rm -rf %{buildroot}
 %{_mandir}/ja/man7/lxc*
 %{_datadir}/doc/*
 %{_datadir}/lxc/*
+%{_sysconfdir}/bash_completion.d
 %config(noreplace) %{_sysconfdir}/lxc/*
 
 %if %{with_systemd}
@@ -148,6 +149,7 @@ rm -rf %{buildroot}
 %{_libdir}/python*
 %endif
 %{_localstatedir}/*
+%{_libexecdir}/%{name}
 %attr(4555,root,root) %{_libexecdir}/%{name}/lxc-init
 %attr(4111,root,root) %{_libexecdir}/%{name}/lxc-user-nic
 %if %{with_systemd}
