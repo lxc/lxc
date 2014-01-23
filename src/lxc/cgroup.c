@@ -968,10 +968,8 @@ struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const char *pa
 				/* if we didn't create the cgroup, then we have to make sure that
 				 * further cgroups will be created properly
 				 */
-				if (handle_cgroup_settings(mp, info_ptr->cgroup_path) < 0) {
-					ERROR("Could not set clone_children to 1 for cpuset hierarchy in pre-existing cgroup.");
+				if (handle_cgroup_settings(mp, info_ptr->cgroup_path) < 0)
 					goto cleanup_from_error;
-				}
 
 				/* already existed but path component of pattern didn't contain '%n',
 				 * so this is not an error; but then we don't need current_entire_path
