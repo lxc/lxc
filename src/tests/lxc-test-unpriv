@@ -29,14 +29,27 @@ which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; 
 
 DONE=0
 cleanup() {
-	lxc-stop -P $HDIR/lxcbase -n c1
+	cd
+
+	run_cmd lxc-stop -n c1 -k
+	pkill -u $(id -u $TUSER) -9
+
 	sed -i '/usernic-user/d' /var/run/lxc/nics /etc/lxc/lxc-usernet
 	sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
-	sudo deluser $TUSER
-	rm -rf $HDIR
+
+	rm -Rf $HDIR /run/user/$(id -u $TUSER)
+
+	deluser $TUSER
+
 	if [ $DONE -eq 0 ]; then
-		exit $1
+		echo "FAIL"
+		exit 1
 	fi
+	echo "PASS"
+}
+
+run_cmd() {
+	sudo -i -u $TUSER env XDG_RUNTIME_DIR=/run/user/$(id -u $TUSER) $*
 }
 
 # create a test user
@@ -44,50 +57,44 @@ TUSER=lxcunpriv
 HDIR=/home/$TUSER
 
 trap cleanup EXIT SIGHUP SIGINT SIGTERM
+set -eu
 
-deluser $TUSER || true
+deluser $TUSER && rm -Rf $HDIR || true
 useradd $TUSER
-sudo mkdir -p $HDIR
-sudo chown $TUSER $HDIR
+
+mkdir -p $HDIR
 echo "$TUSER veth lxcbr0 2" > /etc/lxc/lxc-usernet
 sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
-usermod -v 910000-919999 -w 910000-919999 $TUSER
-mkdir -p $HDIR/lxcbase
-chown $TUSER $HDIR/lxcbase
-uid=$(id -u $TUSER)
-cat >> $HDIR/.bashrc << EOF
-export HOME=$HDIR
-export USER=$TUSER
-EOF
-chown $TUSER $HDIR/.bashrc
 
-cat > $HDIR/lxc-usernic.conf << EOF
+usermod -v 910000-919999 -w 910000-919999 $TUSER
+
+mkdir -p $HDIR/.config/lxc/
+cat > $HDIR/.config/lxc/default.conf << EOF
 lxc.network.type = veth
 lxc.network.link = lxcbr0
 lxc.id_map = u 0 910000 9999
 lxc.id_map = g 0 910000 9999
 EOF
-chown $TUSER $HDIR/lxc-usernic.conf
-rm -rf /run/lock/lxc/home/$TUSER
-mkdir -p /run/lock/lxc/home/$TUSER
-chown $TUSER /run/lock/lxc/home/$TUSER
+chown -R $TUSER $HDIR
+
+mkdir -p /run/user/$(id -u $TUSER)
+chown -R $TUSER /run/user/$(id -u $TUSER)
+
+cd $HDIR
 
 for d in /sys/fs/cgroup/*; do
-	mkdir $d/lxctest
+	[ ! -d $d/lxctest ] && mkdir $d/lxctest
 	chown -R $TUSER $d/lxctest
 	echo $$ > $d/lxctest/tasks
 done
-cd $HDIR
-#export HOME=$HDIR
-env | awk -F= '{print $1}' | while read line; do export ${line}=; done
-echo "DOING: lxc-create -P $HDIR/lxcbase -t ubuntu-cloud -n c1 -f $HDIR/lxc-usernic.conf"
-sudo --set-home -u $TUSER lxc-create -P $HDIR/lxcbase -t ubuntu-cloud -n c1 -f $HDIR/lxc-usernic.conf -l outout -o /tmp/o1
-#read -p "c1 created, check it now" x
-sudo --set-home -u $TUSER lxc-start -P $HDIR/lxcbase -n c1 -d
 
-p1=`lxc-info -P $HDIR/lxcbase -n c1 -p | awk -F: '{ print $2 }'`
+run_cmd lxc-create -t download -n c1 -- -d ubuntu -r trusty -a i386
+run_cmd lxc-start -n c1 -d
+
+p1=$(run_cmd lxc-info -n c1 -p -H)
 [ "$p1" != "-1" ] || { echo "Failed to start container c1"; false; }
-lxc-attach -P $HDIR/lxcbase -n c1 -- ping -c 1 google.com
 
-echo "All tests passed"
+run_cmd lxc-info -n c1
+run_cmd lxc-attach -n c1 -- /bin/true
+
 DONE=1
