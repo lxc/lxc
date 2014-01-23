@@ -21,6 +21,9 @@ You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+Translated into Japanese
+by KATOH Yasufumi <karma at jazz.email.ne.jp>
+
 -->
 
 <!DOCTYPE refentry PUBLIC @docdtd@ [
@@ -41,27 +44,37 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refname>lxc.system.conf</refname>
 
     <refpurpose>
+      <!--
       LXC system configuration file
+      -->
+      LXC のシステム設定ファイル
     </refpurpose>
   </refnamediv>
 
   <refsect1>
-    <title>Description</title>
+    <title><!-- Description -->説明</title>
 
     <para>
+      <!--
       The system configuration is located at
       <filename>@LXC_GLOBAL_CONF@</filename> or
       <filename>~/.config/lxc/lxc.conf</filename> for unprivileged
       containers.
+      -->
+      システム設定ファイルは <filename>@LXC_GLOBAL_CONF@</filename> を使用します．
+      非特権コンテナの場合には <filename>~/.config/lxc/lxc.conf</filename> を使用します．
     </para>
 
     <para>
+      <!--
       This configuration file is used to set values such as default
       lookup paths and storage backend settings for LXC.
+      -->
+      この設定ファイルは LXC のデフォルトパスやストレージバックエンドの設定のような値を設定する時に使用します．
     </para>
 
     <refsect2>
-      <title>Configuration paths</title>
+      <title><!-- Configuration paths -->パスの設定</title>
 
       <variablelist>
         <varlistentry>
@@ -70,7 +83,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
+              <!--
               The location in which all containers are stored.
+              -->
+              全てのコンテナが保存される場所．
             </para>
           </listitem>
         </varlistentry>
@@ -80,7 +96,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
+              <!--
               The path to the default container configuration.
+              -->
+              コンテナのデフォルト設定ファイルのパス．
             </para>
           </listitem>
         </varlistentry>
@@ -97,7 +116,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
+              <!--
               Comma separated list of cgroup controllers to setup.
+              -->
+              使用する cgroup コントローラのコンマ区切りのリスト．
             </para>
           </listitem>
         </varlistentry>
@@ -107,7 +129,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
+              <!--
               Format string used to generate the cgroup path (e.g. lxc/%n).
+              -->
+              コンテナ用の cgroup を生成する際に使うフォーマット文字列 (例. lxc/%n)．
             </para>
           </listitem>
         </varlistentry>
@@ -124,7 +149,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
+              <!--
               Default LVM volume group name.
+              -->
+              デフォルトの LVM の volume group 名．
             </para>
           </listitem>
         </varlistentry>
@@ -134,7 +162,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
+              <!--
               Default LVM thin pool name.
+              -->
+              デフォルトの LVM の thin pool 名．
             </para>
           </listitem>
         </varlistentry>
@@ -151,7 +182,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
+              <!--
               Default ZFS root name.
+              -->
+              デフォルトの ZFS root 名．
             </para>
           </listitem>
         </varlistentry>
