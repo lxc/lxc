@@ -3131,8 +3131,8 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 }
 
 /*
- * return the host uid to which the container root is mapped, or -1 on
- * error
+ * return the host uid to which the container root is mapped in *val.
+ * Return true if id was found, false otherwise.
  */
 bool get_mapped_rootid(struct lxc_conf *conf, enum idtype idtype,
                         unsigned long *val)
