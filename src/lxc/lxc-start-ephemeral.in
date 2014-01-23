@@ -104,6 +104,10 @@ parser.add_argument("command", metavar='CMD', type=str, nargs="*",
 args = parser.parse_args()
 
 # Basic requirements check
+## We only support privileged containers for now
+if os.geteuid() != 0:
+    parser.error(_("Unprivileged containers aren't supported at this time."))
+
 ## Check that -d and CMD aren't used at the same time
 if args.command and args.daemon:
     parser.error(_("You can't use -d and a command at the same time."))
