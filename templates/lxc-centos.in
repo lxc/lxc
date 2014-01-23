@@ -27,8 +27,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 #Configurations
-arch=$(arch)
-cache_base=@LOCALSTATEDIR@/cache/lxc/centos/$arch
 default_path=@LXCPATH@
 
 # Some combinations of the tunning knobs below do not exactly make sense.
@@ -133,22 +131,6 @@ then
         is_centos=true
     fi
 fi
-
-# Map a few architectures to their generic Centos repository archs.
-#
-# CentOS currently doesn't support ARM but it's copied here from
-# the Fedora template for completeness and that it will in the future.
-#
-# The two ARM archs are a bit of a guesstimate for the v5 and v6
-# archs.  V6 should have hardware floating point (Rasberry Pi).
-# The "arm" arch is safer (no hardware floating point).  So
-# there may be cases where we "get it wrong" for some v6 other
-# than RPi.
-case "$arch" in
-i686) arch=i386 ;;
-armv3l|armv4l|armv5l) arch=arm ;;
-armv6l|armv7l|armv8l) arch=armhfp ;;
-esac
 
 force_mknod()
 {
@@ -385,11 +367,11 @@ download_centos()
     cat <<EOF > $REPO_FILE
 [base]
 name=CentOS-$release - Base
-mirrorlist=http://mirrorlist.centos.org/?release=$release&arch=$arch&repo=os
+mirrorlist=http://mirrorlist.centos.org/?release=$release&arch=$basearch&repo=os
 
 [updates]
 name=CentOS-$release - Updates
-mirrorlist=http://mirrorlist.centos.org/?release=$release&arch=$arch&repo=updates
+mirrorlist=http://mirrorlist.centos.org/?release=$release&arch=$basearch&repo=updates
 EOF
 
     # create minimal device nodes, needed for "yum install" and "yum update" process
@@ -519,8 +501,7 @@ install_centos()
 
 create_hwaddr()
 {
-    echo $(dd if=/dev/urandom bs=8 count=1 2>/dev/null | md5sum |
-        sed -e 's/\(..\)\(..\)\(..\)\(..\)\(..\).*/fe:\1:\2:\3:\4:\5/')
+    openssl rand -hex 5 | sed -e 's/\(..\)/:\1/g; s/^/fe/'
 }
 
 copy_configuration()
@@ -630,23 +611,24 @@ usage:
 Mandatory args:
   -n,--name         container name, used to as an identifier for that container from now on
 Optional args:
-  -p,--path         path to where the container rootfs will be created, defaults to /var/lib/lxc. The container config will go under /var/lib/lxc in that case
+  -p,--path         path to where the container rootfs will be created, defaults to /var/lib/lxc/name.
   -c,--clean        clean the cache
   -R,--release      Centos release for the new container. if the host is Centos, then it will defaultto the host's release.
      --fqdn         fully qualified domain name (FQDN) for DNS and system naming
-  -A,--arch         NOT USED YET. Define what arch the container will be [i686,x86_64]
+  -a,--arch         Define what arch the container will be [i686,x86_64]
   -h,--help         print this help
 EOF
     return 0
 }
 
-options=$(getopt -o hp:n:cR: -l help,path:,rootfs:,name:,clean,release:,fqdn: -- "$@")
+options=$(getopt -o a:hp:n:cR: -l help,path:,rootfs:,name:,clean,release:,arch:,fqdn: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
 fi
-eval set -- "$options"
 
+arch=$(arch)
+eval set -- "$options"
 while true
 do
     case "$1" in
@@ -656,6 +638,7 @@ do
         -n|--name)      name=$2; shift 2;;
         -c|--clean)     clean=$2; shift 2;;
         -R|--release)   release=$2; shift 2;;
+        -a|--arch)      newarch=$2; shift 2;;
         --fqdn)         utsname=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
@@ -666,6 +649,51 @@ if [ ! -z "$clean" -a -z "$path" ]; then
     clean || exit 1
     exit 0
 fi
+
+basearch=${arch}
+# Map a few architectures to their generic CentOS repository archs.
+# The two ARM archs are a bit of a guesstimate for the v5 and v6
+# archs.  V6 should have hardware floating point (Rasberry Pi).
+# The "arm" arch is safer (no hardware floating point).  So
+# there may be cases where we "get it wrong" for some v6 other
+# than RPi.
+case "$arch" in
+i686) basearch=i386 ;;
+armv3l|armv4l|armv5l) basearch=arm ;;
+armv6l|armv7l|armv8l) basearch=armhfp ;;
+*) ;;
+esac
+
+# Somebody wants to specify an arch.  This is very limited case.
+#       i386/i586/i686 on i386/x86_64
+#           - or -
+#       x86_64 on x86_64
+if [ "${newarch}" != "" -a "${newarch}" != "${arch}" ]
+then
+    case "${newarch}" in
+        i386|i586|i686)
+            if [ "${basearch}" = "i386" -o "${basearch}" = "x86_64" ]
+            then
+                # Make the arch a generic x86 32 bit...
+                arch=${newarch}
+                basearch=i386
+            else
+                basearch=bad
+            fi
+            ;;
+        *)
+            basearch=bad
+            ;;
+    esac
+
+    if [ "${basearch}" = "bad" ]
+    then
+        echo "You cannot build a ${newarch} CentOS container on a ${arch} host.  Sorry!"
+        exit 1
+    fi
+fi
+
+cache_base=@LOCALSTATEDIR@/cache/lxc/centos/$basearch
 
 # Let's do something better for the initial root password.
 # It's not perfect but it will defeat common scanning brute force
@@ -758,10 +786,11 @@ if [ -z "$rootfs_path" ]; then
     rootfs_path=$path/rootfs
     # check for 'lxc.rootfs' passed in through default config by lxc-create
     if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
-        rootfs_path=`grep 'lxc.rootfs =' $path/config | awk -F= '{ print $2 }'`
+        rootfs_path=$(sed -e '/^lxc.rootfs\s*=/!d' -e 's/\s*#.*//' \
+            -e 's/^lxc.rootfs\s*=\s*//' -e q $path/config)
     fi
 fi
-config_path=$default_path/$name
+config_path=$path
 cache=$cache_base/$release
 
 revert()
@@ -770,7 +799,6 @@ revert()
     lxc-destroy -n $name
     # maybe was interrupted before copy config
     rm -rf $path
-    rm -rf $default_path/$name
     echo "exiting..."
     exit 1
 }
