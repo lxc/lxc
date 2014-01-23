@@ -1,0 +1,2117 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Japanese
+by KATOH Yasufumi <karma at jazz.email.ne.jp>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc.container.conf</refentrytitle>
+    <manvolnum>5</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc.container.conf</refname>
+
+    <refpurpose>
+      <!--
+      LXC container configuration file
+      -->
+      LXC コンテナ設定ファイル
+    </refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title><!-- Description -->説明</title>
+
+    <para>
+      <!--
+      The linux containers (<command>lxc</command>) are always created
+      before being used. This creation defines a set of system
+      resources to be virtualized / isolated when a process is using
+      the container. By default, the pids, sysv ipc and mount points
+      are virtualized and isolated. The other system resources are
+      shared across containers, until they are explicitly defined in
+      the configuration file. For example, if there is no network
+      configuration, the network will be shared between the creator of
+      the container and the container itself, but if the network is
+      specified, a new network stack is created for the container and
+      the container can no longer use the network of its ancestor.
+      -->
+      linux コンテナ (<command>lxc</command>) は，常に使用する前に作成されます．
+      コンテナは，プロセスがコンテナを使う時に仮想化/隔離するシステムリソースのセットを定義することによって作成します．
+      デフォルトでは，pid, sysv ipc, マウントポイントが仮想化され，隔離されます．
+      他のシステムリソースは，設定ファイルで明確に定義されない限りは，コンテナをまたいで共有されます．
+      例えば，もしネットワークが設定されていなければ，コンテナを作成する側とコンテナでネットワークを共有します．
+      しかし，ネットワークが指定されれば，新しいネットワークスタックがコンテナ用に作成され，コンテナは作成元の環境のネットワークを使いません．
+    </para>
+
+    <para>
+      <!--
+      The configuration file defines the different system resources to
+      be assigned for the container. At present, the utsname, the
+      network, the mount points, the root file system, the user namespace,
+      and the control groups are supported.
+      -->
+      設定ファイルは，コンテナに割り当てられる様々なシステムリソースを定義します．
+      現時点では，utsname，ネットワーク，マウントポイント，root ファイルシステム，ユーザ名前空間，control groups がサポートされます．
+    </para>
+
+    <para>
+      <!--
+      Each option in the configuration file has the form <command>key
+      = value</command> fitting in one line. The '#' character means
+      the line is a comment.
+      -->
+      設定ファイルのオプション一つを，<command>key = value</command> の形で一行で表します．
+      '#' は，その行はコメントであることを示します．
+    </para>
+
+    <refsect2>
+      <title><!-- Configuration -->設定</title>
+      <para>
+        <!--
+	In order to ease administration of multiple related containers, it
+	is possible to have a container configuration file cause another
+	file to be loaded.  For instance, network configuration
+	can be defined in one common file which is included by multiple
+	containers.  Then, if the containers are moved to another host,
+	only one file may need to be updated.
+        -->
+        複数の関係するコンテナの管理を容易にするために，コンテナの設定ファイルに別のファイルをロードすることが可能です．
+        例えば，ネットワークの設定を，複数のコンテナから include させるように 1 つのファイルに定義することが可能です．
+        その場合，コンテナが他のホストに移動すると，そのファイルだけを更新する必要があるかもしれません．
+      </para>
+
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.include</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify the file to be included.  The included file must be
+	      in the same valid lxc configuration file format.
+              -->
+              include させたいファイルを指定します．
+              include するファイルは，lxc 設定ファイルのフォーマットとして有効でなければいけません．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Architecture -->アーキテクチャ</title>
+      <para>
+        <!--
+	Allows one to set the architecture for the container. For example,
+	set a 32bits architecture for a container running 32bits
+	binaries on a 64bits host. That fixes the container scripts
+	which rely on the architecture to do some work like
+	downloading the packages.
+        -->
+        コンテナに対してアーキテクチャを設定することが可能です．
+        例えば，64 ビットのホスト上で 32 ビットのバイナリを動かすために 32 ビットアーキテクチャを設定することが可能です．
+        この設定を行うことにより，パッケージのダウンロードを行うなどの作業のうち，アーキテクチャ名に依存するような作業を行うコンテナスクリプトの修正を行います．
+      </para>
+
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.arch</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify the architecture for the container.
+              -->
+              コンテナに設定するアーキテクチャを指定します．
+	    </para>
+	    <para>
+              <!--
+	      Valid options are
+	      <option>x86</option>,
+	      <option>i686</option>,
+	      <option>x86_64</option>,
+	      <option>amd64</option>
+              -->
+              有効なオプションは以下です．
+	      <option>x86</option>,
+	      <option>i686</option>,
+	      <option>x86_64</option>,
+	      <option>amd64</option>
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Hostname -->ホスト名</title>
+      <para>
+        <!--
+	The utsname section defines the hostname to be set for the
+	container. That means the container can set its own hostname
+	without changing the one from the system. That makes the
+	hostname private for the container.
+        -->
+        utsname セクションは，コンテナに設定されるホスト名を定義します．
+        コンテナは，システムのホスト名を変えることなく，自身のホスト名を持つ事が可能です．
+        このことにより，ホスト名はコンテナ専用となります．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.utsname</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify the hostname for the container
+              -->
+              コンテナのホスト名を指定します．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Halt signal -->クリーンなシャットダウン時のシグナル</title>
+      <para>
+        <!--
+    Allows one to specify signal name or number, sent by lxc-stop to the
+    container's init process to cleanly shutdown the container. Different
+    init systems could use different signals to perform clean shutdown
+    sequence. This option allows the signal to be specified in kill(1)
+    fashion, e.g. SIGPWR, SIGRTMIN+14, SIGRTMAX-10 or plain number. The
+    default signal is SIGPWR.
+          -->
+        lxc-stop がコンテナをクリーンにシャットダウンするためにコンテナの init プロセスに送るシグナル名か番号を指定することができます．
+        init システムによって，クリーンなシャットダウンを行うために使うシグナルは異なります．
+        このオプションではシグナルとして kill(1) で使う形式を指定することができます．
+        例えば SIGKILL, SIGRTMIN+14, SIGRTMAX-10 のような形式，もしくは数字を指定します．デフォルトのシグナルは SIGPWR です．
+      </para>
+      <variablelist>
+    <varlistentry>
+      <term>
+        <option>lxc.haltsignal</option>
+      </term>
+      <listitem>
+        <para>
+          <!--
+          specify the signal used to halt the container
+          -->
+          コンテナをシャットダウンするのに使うシグナルを指定します
+        </para>
+      </listitem>
+    </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Stop signal -->強制停止時のシグナル</title>
+      <para>
+        <!--
+    Allows one to specify signal name or number, sent by lxc-stop to forcibly
+    shutdown the container. This option allows signal to be specified in
+    kill(1) fashion, e.g. SIGKILL, SIGRTMIN+14, SIGRTMAX-10 or plain number.
+    The default signal is SIGKILL.
+    -->
+        lxc-stop がコンテナを強制的にシャットダウンするために送るシグナル名か番号を指定することができます．
+        このオプションではシグナルとして kill(1) で使う形式を指定することができます．
+        例えば SIGKILL, SIGRTMIN+14, SIGRTMAX-10 のような形式，もしくは数字を指定します．デフォルトのシグナルは SIGKILL です．
+      </para>
+      <variablelist>
+    <varlistentry>
+      <term>
+        <option>lxc.stopsignal</option>
+      </term>
+      <listitem>
+        <para>
+          <!--
+          specify the signal used to stop the container
+          -->
+          コンテナを停止するのに使用するシグナルを指定します．
+        </para>
+      </listitem>
+    </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Network -->ネットワーク</title>
+      <para>
+        <!--
+	The network section defines how the network is virtualized in
+	the container. The network virtualization acts at layer
+	two. In order to use the network virtualization, parameters
+	must be specified to define the network interfaces of the
+	container. Several virtual interfaces can be assigned and used
+	in a container even if the system has only one physical
+	network interface.
+        -->
+        ネットワークセクションは，コンテナ内でどのようにネットワークを仮想化するかを定義します．
+        ネットワークの仮想化はレイヤー 2 で作動します．
+        ネットワークの仮想化を使用するためには，コンテナのネットワークインターフェースを定義しなければなりません．
+        いくつかの仮想インターフェースをアサインすることができます．
+        そして，仮に物理ネットワークインターフェースが一つしかなくても，コンテナ内でいくつもの仮想インターフェースを使うことができます．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.type</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify what kind of network virtualization to be used
+	      for the container. Each time
+	      a <option>lxc.network.type</option> field is found a new
+	      round of network configuration begins. In this way,
+	      several network virtualization types can be specified
+	      for the same container, as well as assigning several
+	      network interfaces for one container. The different
+	      virtualization types can sbe:
+              -->
+              コンテナがどの種類のネットワーク仮想化を使うかを指定します．
+              一つのネットワークの設定ごとに <option>lxc.network.type</option> フィールドを指定します．
+              このように，一つのコンテナに複数のネットワークインターフェースを割り当てることができるだけでなく，同じコンテナに対して複数のネットワーク仮想化の種類を指定することが出来ます．
+              仮想化の種類は以下の値を取る事が出来ます:
+	    </para>
+
+	    <para>
+              <!--
+	      <option>none:</option> will cause the container to share
+	      the host's network namespace.  This means the host
+	      network devices are usable in the container.  It also
+	      means that if both the container and host have upstart as
+	      init, 'halt' in a container (for instance) will shut down the
+	      host.
+              -->
+              <option>none:</option> ホストのネットワーク名前空間を共有します．
+              これにより，ホストのネットワークデバイスをコンテナ内で使うことが可能になります．
+              もしコンテナもホストも init として upstart を使っている場合，(例えば) コンテナ内で 'halt' を実行すると，ホストがシャットダウンしてしまうことにもなります．
+	    </para>
+
+	    <para>
+              <!--
+	      <option>empty:</option> will create only the loopback
+	      interface.
+              -->
+	      <option>empty:</option> ループバックインターフェースだけを作成します．
+	    </para>
+
+	    <para>
+              <!--
+	      <option>veth:</option> a peer network device is created
+	      with one side assigned to the container and the other
+	      side is attached to a bridge specified by
+	      the <option>lxc.network.link</option>. If the bridge is
+	      not specified, then the veth pair device will be created
+	      but not attached to any bridge. Otherwise, the bridge
+	      has to be setup before on the
+	      system, <command>lxc</command> won't handle any
+	      configuration outside of the container.  By
+	      default <command>lxc</command> choose a name for the
+	      network device belonging to the outside of the
+	      container, this name is handled
+	      by <command>lxc</command>, but if you wish to handle
+	      this name yourself, you can tell <command>lxc</command>
+	      to set a specific name with
+	      the <option>lxc.network.veth.pair</option> option.
+              -->
+              <option>veth:</option> 一方がコンテナに，もう一方が <option>lxc.network.link</option> で指定されるブリッジにアタッチされる，ピアネットワークデバイスを作成します．
+              もし，ブリッジが指定されていない場合，veth ペアデバイスは作成されますが，ブリッジにはアタッチされません．
+              ブリッジはシステムで事前に設定する必要があります．
+              さもなければ，<command>lxc</command> はコンテナ外のいかなる設定も扱うことはできないでしょう．
+              デフォルトでは，<command>lxc</command> はコンテナの外部に属するネットワークデバイスに対する名前を決定し，<command>lxc</command> はこの名前を使います．
+              しかし，もしこの名前を自分で指定したい場合，<option>lxc.network.veth.pair</option> オプションを使って名前を設定し，lxc に対して指定をすることができます．
+	    </para>
+
+	    <para>
+              <!--
+	      <option>vlan:</option> a vlan interface is linked with
+	      the interface specified by
+	      the <option>lxc.network.link</option> and assigned to
+	      the container. The vlan identifier is specified with the
+	      option <option>lxc.network.vlan.id</option>.
+              -->
+              <option>vlan:</option> vlan インターフェースは <option>lxc.network.link</option> で指定されたインターフェースとリンクし，コンテナに割り当てられます．
+              vlan の指定は <option>lxc.network.vlan.id</option> オプションで指定します．
+	    </para>
+
+	    <para>
+              <!--
+	      <option>macvlan:</option> a macvlan interface is linked
+	      with the interface specified by
+	      the <option>lxc.network.link</option> and assigned to
+	      the container.
+	      <option>lxc.network.macvlan.mode</option> specifies the
+	      mode the macvlan will use to communicate between
+	      different macvlan on the same upper device. The accepted
+	      modes are <option>private</option>, the device never
+	      communicates with any other device on the same upper_dev (default),
+	      <option>vepa</option>, the new Virtual Ethernet Port
+	      Aggregator (VEPA) mode, it assumes that the adjacent
+	      bridge returns all frames where both source and
+	      destination are local to the macvlan port, i.e. the
+	      bridge is set up as a reflective relay.  Broadcast
+	      frames coming in from the upper_dev get flooded to all
+	      macvlan interfaces in VEPA mode, local frames are not
+	      delivered locally, or <option>bridge</option>, it
+	      provides the behavior of a simple bridge between
+	      different macvlan interfaces on the same port. Frames
+	      from one interface to another one get delivered directly
+	      and are not sent out externally. Broadcast frames get
+	      flooded to all other bridge ports and to the external
+	      interface, but when they come back from a reflective
+	      relay, we don't deliver them again.  Since we know all
+	      the MAC addresses, the macvlan bridge mode does not
+	      require learning or STP like the bridge module does.
+              -->
+              <option>macvlan:</option> macvlan インターフェースは <option>lxc.network.link</option> により指定されるインターフェースとリンクし，コンテナに割り当てられます．
+              <option>lxc.network.macvlan.mode</option> でモードを指定すると，その macvlan の指定を，同じ上位デバイスで異なる macvlan の間の通信をする時に使います．
+              受け入れられたモードが <option>private</option> であれば，デバイスは同じ上位デバイスの他のデバイスとの通信を行いません (デフォルト)．
+              新しい仮想イーサネットポート集約モード (Virtual Ethernet Port Aggregator (VEPA)) である <option>vepa</option> は，隣接したポートが，ソースとデスティネーションの両方が macvlan ポートに対してローカルであるフレームを全て返すと仮定します．
+              すなわち，ブリッジが reflective relay として設定されているということです．
+              上位デバイスから入ってくるブロードキャストフレームは，VEPA モードである全ての macvlan インターフェースに送りつけられます．
+              ローカルのフレームはローカルには配送されません．
+              <option>bridge</option> の指定は，同じポートの異なる macvlan インターフェースの間のシンプルなブリッジとして動作します．
+              あるインターフェースから他のインターフェースへのフレームは，直接配送され，外部には送出されません．
+              ブロードキャストフレームは，全ての他のブリッジと外部のインターフェースに対して送られます．
+              しかし，reflective relay からフレームが返ってきたときは，再度それを配送することはしません．
+              全ての MAC アドレスを知っているので，ブリッジモジュールのように，macvlan ブリッジモードは学習や STP の必要はありません．
+	    </para>
+
+	    <para>
+              <!--
+	      <option>phys:</option> an already existing interface
+	      specified by the <option>lxc.network.link</option> is
+	      assigned to the container.
+              -->
+              <option>phys:</option> <option>lxc.network.link</option> で指定された，すでに存在しているインターフェースがコンテナに割り当てられます．
+	    </para>
+	  </listitem>
+	  </varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.flags</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify an action to do for the
+	      network.
+              -->
+              ネットワークに対して行うアクションを指定します．
+	    </para>
+
+	    <para>
+              <!--
+              <option>up:</option> activates the interface.
+              -->
+              <option>up:</option> インターフェースを起動させます．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.link</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify the interface to be used for real network
+	      traffic.
+              -->
+              実際のネットワークトラフィックに使うインターフェースを指定します．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.mtu</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify the maximum transfer unit for this interface.
+              -->
+              インターフェースに対する MTU を指定します．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.name</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      the interface name is dynamically allocated, but if
+	      another name is needed because the configuration files
+	      being used by the container use a generic name,
+	      eg. eth0, this option will rename the interface in the
+	      container.
+              -->
+              インターフェース名は動的に割り当てられます．
+              しかし，もしコンテナが使用する設定ファイルが一般的な名前を使用するために，他の特定の名前が必要であれば (例えば eth0 など)，コンテナ内のインターフェースは，このオプションで指定した名前にリネームされます．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.hwaddr</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      the interface mac address is dynamically allocated by
+	      default to the virtual interface, but in some cases,
+	      this is needed to resolve a mac address conflict or to
+	      always have the same link-local ipv6 address.
+	      Any "x" in address will be replaced by random value,
+	      this allows setting hwaddr templates.
+              -->
+              仮想インターフェースの MAC アドレスは，デフォルトでは動的に割り当てられます．
+              しかし，MAC アドレスの衝突や，リンクローカルIPv6 アドレスを常に同じにした場合などは，このオプションが必要です．
+              アドレス中の "x" という文字は，ランダムな値に置き換えられます．
+              これによりテンプレートに hwaddr を設定することが可能になります．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.ipv4</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify the ipv4 address to assign to the virtualized
+	      interface. Several lines specify several ipv4 addresses.
+	      The address is in format x.y.z.t/m,
+	      eg. 192.168.1.123/24.The broadcast address should be
+	      specified on the same line, right after the ipv4
+	      address.
+              -->
+              仮想インターフェースに割り当てる ipv4 アドレスを指定します．
+              複数行により複数の ipv4 アドレスを指定します．
+              このアドレスは x.y.z.t/m というフォーマットで指定します．
+              例えば，192.168.1.123/24．ブロードキャストアドレスも同じ行の ipv4 アドレスのすぐ後で指定しなくてはなりません．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.ipv4.gateway</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify the ipv4 address to use as the gateway inside the
+	      container. The address is in format x.y.z.t, eg.
+	      192.168.1.123.
+
+	      Can also have the special value <option>auto</option>,
+	      which means to take the primary address from the bridge
+	      interface (as specified by the
+	      <option>lxc.network.link</option> option) and use that as
+	      the gateway. <option>auto</option> is only available when
+	      using the <option>veth</option> and
+	      <option>macvlan</option> network types.
+              -->
+              コンテナでゲートウェイとして使う IPv4 アドレスを指定します．
+              アドレスは x.y.z.t というフォーマットです．
+              例えば，192.168.1.123．
+
+              <option>auto</option> という特別な値を記述する事も可能です．
+              これは (<option>lxc.network.link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し，それをゲートウェイに使うという意味になります．
+              <option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.ipv6</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify the ipv6 address to assign to the virtualized
+	      interface. Several lines specify several ipv6 addresses.
+	      The address is in format x::y/m,
+	      eg. 2003:db8:1:0:214:1234:fe0b:3596/64
+              -->
+              仮想インターフェースに割り当てる ipv6 アドレスを指定します．
+              複数行により複数の ipv6 アドレスを指定します．
+              このアドレスは x::y/m というフォーマットで指定します．
+              例えば，2003:db8:1:0:214:1234:fe0b:3596/64．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.ipv6.gateway</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify the ipv6 address to use as the gateway inside the
+	      container. The address is in format x::y,
+	      eg. 2003:db8:1:0::1
+
+	      Can also have the special value <option>auto</option>,
+	      which means to take the primary address from the bridge
+	      interface (as specified by the
+	      <option>lxc.network.link</option> option) and use that as
+	      the gateway. <option>auto</option> is only available when
+	      using the <option>veth</option> and
+	      <option>macvlan</option> network types.
+              -->
+              コンテナでゲートウェイとして使う IPv6 アドレスを指定します．
+              アドレスは x::y というフォーマットです．例えば，2003:db8:1:0::1．
+
+              <option>auto</option> という特別な値を記述する事も可能です．
+              これは (<option>lxc.network.link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し，それをゲートウェイに使うという意味になります．
+              <option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.script.up</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      add a configuration option to specify a script to be
+	      executed after creating and configuring the network used
+	      from the host side. The following arguments are passed
+	      to the script: container name and config section name
+	      (net) Additional arguments depend on the config section
+	      employing a script hook; the following are used by the
+	      network system: execution context (up), network type
+	      (empty/veth/macvlan/phys), Depending on the network
+	      type, other arguments may be passed:
+	      veth/macvlan/phys. And finally (host-sided) device name.
+              -->
+              ホスト側から使われる，ネットワークの作成と設定が済んだ後に実行するスクリプトを指定します．
+              以下の引数がスクリプトに渡されます: コンテナ名，設定セクション名(net)．
+              その後の引数はスクリプトのフックで使われる設定セクションに依存します．
+              以下がネットワークシステムによって使われます: 実行コンテキスト (up)，ネットワークのタイプ (empty/veth/macvlan/phys)
+              ネットワークのタイプによっては，更に別の引数が渡されるかもしれません: veth/macvlan/phys の場合 (ホスト側の) デバイス名
+            </para>
+	    <para>
+              <!--
+	      Standard output from the script is logged at debug level.
+	      Standard error is not logged, but can be captured by the
+	      hook redirecting its standard error to standard output.
+              -->
+              スクリプトからの標準出力は debug レベルでロギングされます．
+              標準エラー出力はロギングされません．
+              しかし，フックの標準エラー出力を標準出力にリダイレクトすることにより保存することは可能です．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.network.script.down</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      add a configuration option to specify a script to be
+	      executed before destroying the network used from the
+	      host side. The following arguments are passed to the
+	      script: container name and config section name (net)
+	      Additional arguments depend on the config section
+	      employing a script hook; the following are used by the
+	      network system: execution context (down), network type
+	      (empty/veth/macvlan/phys), Depending on the network
+	      type, other arguments may be passed:
+	      veth/macvlan/phys. And finally (host-sided) device name.
+              -->
+              ホスト側から使われる，ネットワークを破壊する前に実行するスクリプトを指定します．
+              以下の引数がスクリプトに渡されます: コンテナ名，設定セクション名(net)．
+              その後の引数はスクリプトのフックで使われる設定セクションに依存します．
+              以下がネットワークシステムによって使われます: 実行コンテキスト (up)，ネットワークのタイプ (empty/veth/macvlan/phys)．
+              ネットワークのタイプによっては，更に別の引数が渡されるかもしれません: veth/macvlan/phys．そして最後に (ホスト側の) デバイス名が渡されます．
+            </para>
+	    <para>
+              <!--
+	      Standard output from the script is logged at debug level.
+	      Standard error is not logged, but can be captured by the
+	      hook redirecting its standard error to standard output.
+              -->
+              スクリプトからの標準出力は debug レベルでロギングされます．
+              標準エラー出力はロギングされません．
+              しかし，フックの標準エラー出力を標準出力にリダイレクトすることにより保存することは可能です．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+
+    </refsect2>
+
+    <refsect2>
+      <title><!-- New pseudo tty instance (devpts) -->新しい擬似端末のインスタンス (devpts)</title>
+      <para>
+        <!--
+	For stricter isolation the container can have its own private
+	instance of the pseudo tty.
+        -->
+        さらに厳しい隔離のために，コンテナは自身のプライベートな pseudo tty (擬似端末) を持つことが可能です．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.pts</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      If set, the container will have a new pseudo tty
+	      instance, making this private to it. The value specifies
+              the maximum number of pseudo ttys allowed for a pts
+              instance (this limitation is not implemented yet).
+              -->
+              もし設定された場合，コンテナは新しい psuedo tty インスタンスを持ち，それを自身のプライベートとします．
+              この値は pts インスタンスに許可される pseudo tty の最大数を指定します (この制限はまだ実装されていません)．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Container system console -->コンテナのシステムコンソール</title>
+      <para>
+        <!--
+	If the container is configured with a root filesystem and the
+	inittab file is setup to use the console, you may want to specify
+	where the output of this console goes.
+        -->
+        コンテナでルートファイルシステムを持つように設定されており，inittab ファイルでコンソールの使用が設定されている場合，このコンソールの出力がどこになされるのかを指定したいと思うでしょう．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.console</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify a path to a file where the console output will
+	      be written. The keyword 'none' will simply disable the
+	      console. This is dangerous once if have a rootfs with a
+	      console device file where the application can write, the
+	      messages will fall in the host.
+              -->
+              コンソールの出力が書かれるファイルのパスを指定します．'none' というキーワードは，単純にコンソールを無効にします．
+              この設定は，アプリケーションが書き込む事ができるコンソールデバイスファイルが rootfs に存在する場合，メッセージがホスト側に出力されるので危険です．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Console through the ttys -->tty を通したコンソール</title>
+      <para>
+        <!--
+	This option is useful if the container is configured with a root
+	filesystem and the inittab file is setup to launch a getty on the
+	ttys. The option specifies the number of ttys to be available for
+	the container. The number of gettys in the inittab file of the
+	container should not be greater than the number of ttys	specified
+	in this option, otherwise the excess getty sessions will die and
+	respawn indefinitely giving annoying messages on the console or in
+	<filename>/var/log/messages</filename>.
+        -->
+        このオプションはコンテナが root ファイルシステムを持つように設定されており，inittab ファイルで tty 上に getty の起動が設定されている場合に役に立ちます．
+        このオプションはコンテナで利用できる tty の数を指定します．
+        inittab ファイルに設定する getty の数は，このオプションの指定する tty の数より大きくしてはいけません．
+        さもなければ，超過した分の getty セッションはコンソールか /var/log/messages にうっとうしいメッセージを生死を表示しながら，永久に生死を繰り返すでしょう．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.tty</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify the number of tty to make available to the
+	      container.
+              -->
+              コンテナに作成出来る tty の数を指定します．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Console devices location -->コンソールデバイスの位置</title>
+      <para>
+        <!--
+        LXC consoles are provided through Unix98 PTYs created on the
+	host and bind-mounted over the expected devices in the container.
+	By default, they are bind-mounted over <filename>/dev/console</filename>
+	and <filename>/dev/ttyN</filename>.  This can prevent package upgrades
+	in the guest.  Therefore you can specify a directory location (under
+	<filename>/dev</filename> under which LXC will create the files and
+	bind-mount over them.  These will then be symbolically linked to
+	<filename>/dev/console</filename> and <filename>/dev/ttyN</filename>.
+	A package upgrade can then succeed as it is able to remove and replace
+	the symbolic links.
+        -->
+        LXC のコンソールはホストによって作られ，コンテナ内で要求されたデバイスに bind マウントされた Unix98 PTY 経由で提供されます．
+        デフォルトでは <filename>/dev/console</filename> と <filename>/dev/ttyN</filename> に bind マウントされます．
+        これはゲスト内でのパッケージのアップグレードを妨げる可能性があります．
+        なので <filename>/dev</filename> 以下のディレクトリを指定することができます．
+        LXC はこのディレクトリ以下にファイルを作成し，これらのファイルを bind マウントします．
+        そして，これらの (作成された) ファイルは <filename>/dev/console</filename> と <filename>/dev/ttyN</filename> にシンボリックリンクされます．
+        シンボリックリンクを消去したり置き換えたりすることは可能ですから，パッケージのアップグレードは成功します．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.devttydir</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify a directory under <filename>/dev</filename>
+	      under which to create the container console devices.
+              -->
+              コンテナのコンソールデバイスを作成するための <filename>/dev</filename> 以下のディレクトリを指定します．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- /dev directory -->/dev ディレクトリ</title>
+      <para>
+        <!--
+	By default, lxc does nothing with the container's
+	<filename>/dev</filename>.  This allows the container's
+	<filename>/dev</filename> to be set up as needed in the container
+	rootfs.  If lxc.autodev is set to 1, then after mounting the container's
+	rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
+	(limited to 100k) and fill in a minimal set of initial devices.
+        This is generally required when starting a container containing
+        a "systemd" based "init" but may be optional at other times.  Additional
+        devices in the containers /dev directory may be created through the
+        use of the <option>lxc.hook.autodev</option> hook.
+        -->
+        デフォルトでは，lxc はコンテナの <filename>/dev</filename> については何も行いません．
+        これは，コンテナの rootfs で必要な設定を行えるようにするものです．
+        lxc.autodev が 1 に設定されている場合，コンテナの rootfs をマウントした後，LXC は新しい tmpfs を <filename>/dev</filename> 以下にマウントします (100k 制限の)．
+        そして初期デバイスの最小限のセットを作成します．
+        これは，"systemd" ベースの "init" 環境のコンテナを起動する時に通常必要ですが，他の環境の場合はオプショナルなものです．
+        コンテナの /dev ディレクトリ内の追加デバイスは <option>lxc.hook.autodev</option> フックを使用して作成されます．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.autodev</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Set this to 1 to have LXC mount and populate a minimal
+	      <filename>/dev</filename> when starting the container.
+              -->
+              コンテナの起動時に LXC が /dev をマウントして，最小限の /dev を作成しているようにするには，これを 1 に設定してください．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Enable kmsg symlink -->kmsg のシンボリックリンクの有効化</title>
+      <para>
+        <!--
+      Enable creating /dev/kmsg as symlink to /dev/console.  This defaults to 1.
+      -->
+        /dev/kmsg の /dev/console へのシンボリックリンクとしての作成を有効にします．デフォルトは 1 です．
+      </para>
+      <variablelist>
+    <varlistentry>
+      <term>
+        <option>lxc.kmsg</option>
+      </term>
+      <listitem>
+        <para>
+          <!--
+          Set this to 0 to disable /dev/kmsg symlinking.
+          -->
+          /dev/kmsg のシンボリックリンクを無効にするには 0 を設定してください．
+        </para>
+      </listitem>
+    </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Mount points -->マウントポイント</title>
+      <para>
+        <!--
+	The mount points section specifies the different places to be
+	mounted. These mount points will be private to the container
+	and won't be visible by the processes running outside of the
+	container. This is useful to mount /etc, /var or /home for
+	examples.
+        -->
+        マウントポイントセクションは，マウントするための区別された場所を指定します．
+        これらのマウントポイントは，コンテナだけに見え，コンテナ外で実行されるプロセスから見えることはありません．
+        例えば，/etc や /var や /home をマウントするときに役に立つでしょう．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.mount</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify a file location in
+	      the <filename>fstab</filename> format, containing the
+	      mount information. If the rootfs is an image file or a
+	      block device and the fstab is used to mount a point
+	      somewhere in this rootfs, the path of the rootfs mount
+	      point should be prefixed with the
+	      <filename>@LXCROOTFSMOUNT@</filename> default path or
+	      the value of <option>lxc.rootfs.mount</option> if
+	      specified. Note that when mounting a filesystem from an
+	      image file or block device the third field (fs_vfstype)
+	      cannot be auto as with
+              <citerefentry>
+		<refentrytitle>mount</refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>
+              but must be explicitly specified.
+              -->
+              マウントに関する情報が書かれた <filename>fstab</filename> フォーマットのファイルの場所を指定します．
+              rootfs がイメージファイルやブロックデバイスで，fstab ファイルがこの rootfs 内のどこかをマウントするために使われる場合，rootfs のマウントポイントのパスはデフォルトパスである <filename>@LXCROOTFSMOUNT@</filename> か，もしくは <option>lxc.rootfs.mount</option> が指定されている場合は，その値を前に付ける必要があります．
+              ファイルシステムがイメージファイルやブロックデバイスからマウントされている場合，3 つ目のフィールド (fs_vfstype) は
+              <citerefentry>
+		<refentrytitle>mount</refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>
+              のように auto を指定することはできず，明確に指定しなければいけません．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.mount.entry</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify a mount point corresponding to a line in the
+	      fstab format.
+              -->
+              fstab フォーマットの一行と同じフォーマットのマウントポイントの指定をします．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.mount.auto</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify which standard kernel file systems should be
+	      automatically mounted. This may dramatically simplify
+	      the configuration. The file systems are:
+              -->
+              標準のカーネルファイルシステムで自動的にマウントするものを指定します．
+              これは劇的に設定を容易にする可能性があります．
+	    </para>
+	    <itemizedlist>
+	      <listitem>
+                <!--
+	        <para>
+	          <option>proc:mixed</option> (or <option>proc</option>):
+	          mount <filename>/proc</filename> as read-write, but
+	          remount <filename>/proc/sys</filename> and
+	          <filename>/proc/sysrq-trigger</filename> read-only
+	          for security / container isolation purposes.
+	        </para>
+                -->
+                <para>
+                  <option>proc:mixed</option> (or <option>proc</option>):
+                  <filename>/proc</filename> を読み書き可能でマウントします．
+                  ただし，<filename>/proc/sys</filename> と <filename>/proc/sysrq-trigger</filename> は，セキュリティとコンテナの隔離の目的でリードオンリーで再マウントされます．
+                </para>
+	      </listitem>
+	      <listitem>
+                <!--
+	        <para>
+	          <option>proc:rw</option>: mount
+	          <filename>/proc</filename> as read-write
+	        </para>
+                -->
+                <para>
+	          <option>proc:rw</option>:
+                  <filename>/proc</filename> を読み書き可能でマウントします．
+                </para>
+	      </listitem>
+	      <listitem>
+                <!--
+	        <para>
+	          <option>sys:ro</option> (or <option>sys</option>):
+	          mount <filename>/sys</filename> as read-only
+	          for security / container isolation purposes.
+	        </para>
+                -->
+                <para>
+                  <option>sys:ro</option> (or <option>sys</option>):
+                  <filename>/sys</filename> を，セキュリティとコンテナの隔離の目的でリードオンリーでマウントします．
+                </para>
+	      </listitem>
+	      <listitem>
+                <!--
+	        <para>
+	          <option>sys:rw</option>: mount
+	          <filename>/sys</filename> as read-write
+	        </para>
+                -->
+                <para>
+	          <option>sys:rw</option>:
+                  <filename>/sys</filename> を読み書き可能でマウントします．
+                </para>
+	      </listitem>
+	      <listitem>
+                <!--
+	        <para>
+	          <option>cgroup:mixed</option> (or
+	          <option>cgroup</option>):
+	          mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
+	          create directories for all hierarchies to which
+	          the container is added, create subdirectories
+	          there with the name of the cgroup, and bind-mount
+	          the container's own cgroup into that directory.
+	          The container will be able to write to its own
+	          cgroup directory, but not the parents, since they
+	          will be remounted read-only
+	        </para>
+                -->
+                <para>
+	          <option>cgroup:mixed</option> (or <option>cgroup</option>):
+                  <filename>/sys/fs/cgroup</filename> を tmpfs でマウントし，そのコンテナの追加が行われた全ての階層構造に対するディレクトリを作製し，その cgroup の名前でその中にサブディレクトリを作製し，そのコンテナ自身の cgroup をそのディレクトリにバインドマウントします．
+                  コンテナは自身の cgroup ディレクトリに書き込みが可能ですが，親ディレクトリはリードオンリーで再マウントされているため書き込めません．
+                </para>
+	      </listitem>
+	      <listitem>
+                <!--
+	        <para>
+	          <option>cgroup:ro</option>: similar to
+	          <option>cgroup:mixed</option>, but everything will
+	        be mounted read-only.
+	        </para>
+                -->
+                <para>
+	          <option>cgroup:ro</option>:
+                  <option>cgroup:mixed</option> と同様にマウントされますが，全てリードオンリーでマウントされます．
+                </para>
+	      </listitem>
+	      <listitem>
+                <!--
+	        <para>
+	          <option>cgroup:rw</option>: similar to
+	          <option>cgroup:mixed</option>, but everything will
+	          be mounted read-write. Note that the paths leading
+	          up to the container's own cgroup will be writable,
+	          but will not be a cgroup filesystem but just part
+	          of the tmpfs of <filename>/sys/fs/cgroup</filename>
+	        </para>
+                -->
+                <para>
+	          <option>cgroup:rw</option>:
+                  <option>cgroup:mixed</option> と同様にマウントされますが，全て読み書き可能でマウントされます．
+                  コンテナ自身の cgroup に至るまでのパスも書き込み可能になることに注意が必要ですが，cgroup ファイルシステムにはならず，
+                  <filename>/sys/fs/cgroup</filename> の tmpfs の一部分になるでしょう．
+                </para>
+	      </listitem>
+	      <listitem>
+                <!--
+	        <para>
+	          <option>cgroup-full:mixed</option> (or
+	          <option>cgroup-full</option>):
+	          mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
+	          create directories for all hierarchies to which
+	          the container is added, bind-mount the hierarchies
+	          from the host to the container and make everything
+	          read-only except the container's own cgroup. Note
+	          that compared to <option>cgroup</option>, where
+	          all paths leading up to the container's own cgroup
+	          are just simple directories in the underlying
+	          tmpfs, here
+	          <filename>/sys/fs/cgroup/$hierarchy</filename>
+	          will contain the host's full cgroup hierarchy,
+	          albeit read-only outside the container's own cgroup.
+	          This may leak quite a bit of information into the
+	          container.
+	        </para>
+                -->
+                <para>
+	          <option>cgroup-full:mixed</option> (or <option>cgroup-full</option>):
+                  <filename>/sys/fs/cgroup</filename> を tmpfs でマウントし，そのコンテナの追加が行われた全ての階層構造に対するディレクトリを作製し，ホストからコンテナまでの階層構造を全てバインドマウントし，コンテナ自身の cgroup を除いてリードオンリーにします．
+                  <option>cgroup</option> と比べると，コンテナ自身の cgroup に至るまでの全てのパスが tmpfs の下層のシンプルなディレクトリとなり，コンテナ自身の cgroup の外ではリードオンリーになりますが，<filename>/sys/fs/cgroup/$hierarchy</filename> はホストの全ての cgroup 階層構造を含みます．
+                  これにより，コンテナにはかなりの情報が漏洩します．
+                </para>
+	      </listitem>
+	      <listitem>
+                <!--
+	        <para>
+	          <option>cgroup-full:ro</option>: similar to
+	          <option>cgroup-full:mixed</option>, but everything
+	          will be mounted read-only.
+	        </para>
+                -->
+                <para>
+	          <option>cgroup-full:ro</option>:
+                  <option>cgroup-full:mixed</option> と同様にマウントされますが，全てリードオンリーでマウントされます．
+                </para>
+	      </listitem>
+	      <listitem>
+                <!--
+	        <para>
+	          <option>cgroup-full:rw</option>: similar to
+	          <option>cgroup-full:mixed</option>, but everything
+	          will be mounted read-write. Note that in this case,
+	          the container may escape its own cgroup. (Note also
+	          that if the container has CAP_SYS_ADMIN support
+	          and can mount the cgroup filesystem itself, it may
+	          do so anyway.)
+	        </para>
+                -->
+                <para>
+	          <option>cgroup-full:rw</option>:
+	          <option>cgroup-full:mixed</option>と同様にマウントされますが，全て読み書き可能でマウントされます．
+                  この場合，コンテナは自身の cgroup から脱出する可能性があることに注意してください (コンテナが CAP_SYS_ADMIN を持ち，自身で cgroup ファイルシステムをマウント可能なら，いずれにせよそのようにするかもしれないことにも注意してください)．
+                </para>
+	      </listitem>
+	    </itemizedlist>
+	    <para>
+              <!--
+	      Examples:
+              -->
+              例:
+	    </para>
+	    <programlisting>
+	      lxc.mount.auto = proc sys cgroup
+	      lxc.mount.auto = proc:rw sys:rw cgroup-full:rw
+	    </programlisting>
+	  </listitem>
+	</varlistentry>
+
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Root file system -->ルートファイルシステム</title>
+      <para>
+        <!--
+	The root file system of the container can be different than that
+	of the host system.
+        -->
+        コンテナのルートファイルシステムは，ホストのルートファイルシステムと異なるようにすることも可能です．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.rootfs</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify the root file system for the container. It can
+	      be an image file, a directory or a block device. If not
+	      specified, the container shares its root file system
+	      with the host.
+              -->
+              コンテナのルートファイルシステムになるディレクトリを指定します．
+              この値はイメージファイル，ディレクトリ，ブロックデバイスのどれかを取ることができます．
+              もし指定されない場合，コンテナはホストとルートファイルシステムを共有します．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.rootfs.mount</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      where to recursively bind <option>lxc.rootfs</option>
+	      before pivoting.  This is to ensure success of the
+	      <citerefentry>
+		<refentrytitle><command>pivot_root</command></refentrytitle>
+		<manvolnum>8</manvolnum>
+	      </citerefentry>
+	      syscall.  Any directory suffices, the default should
+	      generally work.
+              -->
+              root ファイルシステムの変更の前に，<option>lxc.rootfs</option> を再帰的にどこにバインドするのかを指定します．これは
+	      <citerefentry>
+		<refentrytitle><command>pivot_root</command></refentrytitle>
+		<manvolnum>8</manvolnum>
+	      </citerefentry>
+              システムコールが確実に成功する事を保証します．
+              どんなディレクトリでも良く，デフォルトでも通常は動くはずです．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>lxc.pivotdir</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      where to pivot the original root file system under
+	      <option>lxc.rootfs</option>, specified relatively to
+	      that.  The default is <filename>mnt</filename>.
+	      It is created if necessary, and also removed after
+	      unmounting everything from it during container setup.
+              -->
+              元の root ファイルシステムを，<option>lxc.rootfs</option> 以下のどこに移動させるかを <option>lxc.rootfs</option> からの相対パスで指定します．
+              デフォルトは <filename>mnt</filename> です．
+              これはもし必要であれば作成され，そしてコンテナのセットアップの間，全てアンマウントされた後で消去されます．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>Control group</title>
+      <para>
+        <!--
+	The control group section contains the configuration for the
+	different subsystem. <command>lxc</command> does not check the
+	correctness of the subsystem name. This has the disadvantage
+	of not detecting configuration errors until the container is
+	started, but has the advantage of permitting any future
+	subsystem.
+        -->
+        CONTROL GROUP セクションは，(lxc とは) 別のサブシステムの設定を含みます．
+        <command>lxc</command> は，このサブシステム名の正しさはチェックしません．
+        実行時のエラーを検出するのに不便ですが，別の将来のサブシステムをサポート出来るという有利な点もあります．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.cgroup.[subsystem name]</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      specify the control group value to be set.  The
+	      subsystem name is the literal name of the control group
+	      subsystem.  The permitted names and the syntax of their
+	      values is not dictated by LXC, instead it depends on the
+	      features of the Linux kernel running at the time the
+	      container is started,
+	      eg. <option>lxc.cgroup.cpuset.cpus</option>
+              -->
+              設定する control group の値を指定します．
+              サブシステム名は，control group のそのままの名前です．
+              許される名前や値の書式は LXC が指示することはなく，コンテナが実行された時に実行されている Linux カーネルの機能に依存します．
+              例えば <option>lxc.cgroup.cpuset.cpus</option>
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Capabilities -->ケーパビリティ</title>
+      <para>
+        <!--
+	The capabilities can be dropped in the container if this one
+	is run as root.
+        -->
+        コンテナが root 権限で実行されていても，コンテナ内ではケーパビリティ (capabilities) を削除する事は可能です．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.cap.drop</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify the capability to be dropped in the container. A
+	      single line defining several capabilities with a space
+	      separation is allowed. The format is the lower case of
+	      the capability definition without the "CAP_" prefix,
+	      eg. CAP_SYS_MODULE should be specified as
+	      sys_module. See
+	      <citerefentry>
+		<refentrytitle><command>capabilities</command></refentrytitle>
+		<manvolnum>7</manvolnum>
+	      </citerefentry>,
+              -->
+              コンテナ内で削除するケーパビリティ (capability) を指定します．
+              一行でスペース区切りで複数のケーパビリティを指定することも可能です．
+              指定は，"CAP_" というプレフィックスなしで，小文字でケーパビリティを指定します．
+              例えば，CAP_SYS_MODULE というケーパビリティは sys_module と指定する必要があります．
+              詳しくは以下を参照してください．
+	      <citerefentry>
+		<refentrytitle><command>capabilities</command></refentrytitle>
+		<manvolnum>7</manvolnum>
+	      </citerefentry>
+	    </para>
+	  </listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>
+	    <option>lxc.cap.keep</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify the capability to be kept in the container. All other
+	      capabilities will be dropped.
+              -->
+              コンテナ内で維持するケーパビリティを指定します．
+              指定した以外の全てのケーパビリティはドロップされます．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Apparmor profile -->Apparmor プロファイル</title>
+      <para>
+        <!--
+	If lxc was compiled and installed with apparmor support, and the host
+	system has apparmor enabled, then the apparmor profile under which the
+	container should be run can be specified in the container
+	configuration.  The default is <command>lxc-container-default</command>.
+        -->
+        lxc が apparmor サポートでコンパイルされ，インストールされている場合で，ホストで apparmor が有効な場合，コンテナが従って動くべき apparmor プロファイルは，コンテナの設定で指定することが可能です．
+        デフォルトは <command>lxc-container-default</command> です．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.aa_profile</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify the apparmor profile under which the container should
+	      be run.  To specify that the container should be unconfined,
+	      use
+              -->
+              コンテナが従うべき apparmor プロファイルを指定します．
+              コンテナが apparmor による制限を受けないように設定するには，以下のように設定します．
+	    </para>
+	      <programlisting>lxc.aa_profile = unconfined</programlisting>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- SELinux context -->SELinux コンテキスト</title>
+      <para>
+        <!--
+	If lxc was compiled and installed with SELinux support, and the host
+	system has SELinux enabled, then the SELinux context under which the
+	container should be run can be specified in the container
+	configuration.  The default is <command>unconfined_t</command>,
+	which means that lxc will not attempt to change contexts.
+        -->
+        lxc が SELinux サポートでコンパイルされ，インストールされている場合で，ホストで SELinux が有効な場合，コンテナが従って動くべき SELinux コンテキストは，コンテナの設定で指定することが可能です．
+        デフォルトは <command>unconfined_t</command> であり，これは lxc がコンテキストを変えないという意味になります．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.se_context</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify the SELinux context under which the container should
+	      be run or <command>unconfined_t</command>. For example
+              -->
+              コンテナが従うべき SELinux コンテキストを指定するか，<command>unconfined_t</command> を指定します．例えば以下のように設定します．
+	    </para>
+	    <programlisting>lxc.se_context = unconfined_u:unconfined_r:lxc_t:s0-s0:c0.c1023</programlisting>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Seccomp configuration -->Seccomp の設定</title>
+      <para>
+        <!--
+        A container can be started with a reduced set of available
+	system calls by loading a seccomp profile at startup.  The
+	seccomp configuration file should begin with a version number
+	(which currently must be 1) on the first line, a policy type
+	(which must be 'whitelist') on the second line, followed by a
+	list of allowed system call numbers, one per line.
+        -->
+        コンテナは，起動時に seccomp プロファイルをロードすることで，利用可能なシステムコールを減らして起動することが可能です．
+        seccomp の設定ファイルは，最初の行がバージョン番号 (現在は 1 でなければならない) で，2 行目はポリシーのタイプ ('whitelist' でなければならない)，で始まる必要があり，その後に 1 行ごとに利用可能なシステムコールの番号が書かれたリストが続きます．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.seccomp</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify a file containing the seccomp configuration to
+	      load before the container starts.
+              -->
+              コンテナがスタートする前にロードする seccomp の設定を含むファイルを指定します．
+	     </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- UID mappings -->UID のマッピング</title>
+      <para>
+        <!--
+        A container can be started in a private user namespace with
+	user and group id mappings.  For instance, you can map userid
+	0 in the container to userid 200000 on the host.  The root
+	user in the container will be privileged in the container,
+	but unprivileged on the host.  Normally a system container
+	will want a range of ids, so you would map, for instance,
+	user and group ids 0 through 20,000 in the container to the
+	ids 200,000 through 220,000.
+        -->
+        コンテナは，ユーザとグループの id のマッピングを持った専用のユーザ名前空間で起動することが可能です．
+        たとえば，コンテナ内のユーザ id 0 を，ホストのユーザ id 200000 にマッピングすることが可能です．
+        コンテナの root ユーザはコンテナ内では特権を持ちますが，ホストでは特権を持ちません．
+        通常は，システムコンテナは id の範囲を要求し，それをマッピングします．
+        例えば，コンテナ内のユーザとグループの id 0 から 20,000 を 200,000 から 220,000 にマッピングします．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.id_map</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Four values must be provided.  First a character, either
+	      'u', or 'g', to specify whether user or group ids are
+	      being mapped.  Next is the first userid as seen in the
+	      user namespace of the container.  Next is the userid as
+	      seen on the host.  Finally, a range indicating the number
+	      of consecutive ids to map.
+              -->
+              4 つの値を記述する必要があります．
+              最初の文字は 'u' か 'g' のどちらかで，ユーザかグループの ID のどちらをマッピングするかを指定します．
+              次はコンテナのユーザ名前空間内に現れる最初のユーザ ID です．
+              その次は，そのユーザ ID のホスト上での値です．
+              最後は，ID のマッピングをいくつ連続して行うかの数を指定します．
+	     </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Container hooks -->コンテナのフック</title>
+      <para>
+        <!--
+        Container hooks are programs or scripts which can be executed
+	at various times in a container's lifetime.
+        -->
+        コンテナのフックは，コンテナの存続期間の色々な場面で実行することのできるプログラムやスクリプトです．
+      </para>
+      <para>
+        <!--
+        When a container hook is executed, information is passed both
+	as command line arguments and through environment variables.
+	The arguments are:
+	<itemizedlist>
+	  <listitem><para> Container name. </para></listitem>
+	  <listitem><para> Section (always 'lxc'). </para></listitem>
+	  <listitem><para> The hook type (i.e. 'clone' or 'pre-mount'). </para></listitem>
+	  <listitem><para> Additional arguments In the
+	  case of the clone hook, any extra arguments passed to
+	  lxc-clone will appear as further arguments to the hook. </para></listitem>
+	</itemizedlist>
+	The following environment variables are set:
+	<itemizedlist>
+	  <listitem><para> LXC_NAME: is the container's name. </para></listitem>
+	  <listitem><para> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </para></listitem>
+	  <listitem><para> LXC_CONFIG_FILE: the path to the container configuration file. </para></listitem>
+	  <listitem><para> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </para></listitem>
+	  <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
+	</itemizedlist>
+        -->
+        コンテナのフックが実行されるとき，情報がコマンドライン引数と環境変数の両方を通して渡されます．引数は:
+	<itemizedlist>
+	  <listitem><para>コンテナ名</para></listitem>
+	  <listitem><para>セクション (常に 'lxc')</para></listitem>
+	  <listitem><para>フックのタイプ ('clone' や 'pre-mount' など)</para></listitem>
+	  <listitem><para>追加の引数．clone フックの場合，lxc-clone に渡される追加の引数は，フックへの引数として追加されます．</para></listitem>
+	</itemizedlist>
+        以下の環境変数がセットされます．
+	<itemizedlist>
+	  <listitem><para> LXC_NAME: コンテナ名</para></listitem>
+	  <listitem><para> LXC_ROOTFS_MOUNT: マウントされた root ファイルシステムへのパス</para></listitem>
+	  <listitem><para> LXC_CONFIG_FILE: コンテナの設定ファイルのパス </para></listitem>
+	  <listitem><para> LXC_SRC_NAME: clone フックの場合，元のコンテナの名前</para></listitem>
+	  <listitem><para> LXC_ROOTFS_PATH: コンテナの lxc.rootfs エントリ．これはマウントされた rootfs が存在する場所にはならないでしょう．それには LXC_ROOTFS_MOUNT を使用してください．</para></listitem>
+        </itemizedlist>
+      </para>
+      <para>
+        <!--
+        Standard output from the hooks is logged at debug level.
+        Standard error is not logged, but can be captured by the
+        hook redirecting its standard error to standard output.
+        -->
+        スクリプトからの標準出力は debug レベルでロギングされます．
+        標準エラー出力はロギングされません．
+        しかし，フックの標準エラー出力を標準出力にリダイレクトすることにより保存することは可能です．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.pre-start</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      A hook to be run in the host's namespace before the
+	      container ttys, consoles, or mounts are up.
+              -->
+              コンテナの tty，コンソールの作成，マウントが実行される前に，ホストの名前空間内で実行するフック．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.pre-mount</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      A hook to be run in the container's fs namespace but before
+	      the rootfs has been set up.  This allows for manipulation
+	      of the rootfs, i.e. to mount an encrypted filesystem.  Mounts
+	      done in this hook will not be reflected on the host (apart from
+	      mounts propagation), so they will be automatically cleaned up
+	      when the container shuts down.
+              -->
+              コンテナのファイルシステムの名前空間で実行されますが，rootfs が設定される前に実行するフック．
+              これにより rootfs の操作が可能になります．
+              例えば，暗号化されたファイルシステムのマウントなどです．
+              このフック内でなされるマウントはホストには影響しません (mounts propagation を除いて)．
+              なので，それらはコンテナがシャットダウンする時に自動的にクリーンアップされます．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.mount</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      A hook to be run in the container's namespace after
+	      mounting has been done, but before the pivot_root.
+              -->
+              マウントが完了した後ですが，pivot_root の前にコンテナの名前空間で実行されるフック．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.autodev</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      A hook to be run in the container's namespace after
+	      mounting has been done and after any mount hooks have
+	      run, but before the pivot_root, if
+	      <option>lxc.autodev</option> == 1.
+	      The purpose of this hook is to assist in populating the
+	      /dev directory of the container when using the autodev
+	      option for systemd based containers.  The container's /dev
+	      directory is relative to the
+	      ${<option>LXC_ROOTFS_MOUNT</option>} environment
+	      variable available when the hook is run.
+              -->
+              <option>lxc.autodev</option> == 1 が設定されている場合で，マウントが完了し，マウント時のフックも実行された後ですが，pivot_root の前にコンテナの名前空間で実行するフック．
+              このフックの目的は，systemd ベースのコンテナ向けの autodev オプションが設定されている時に，コンテナの /dev ディレクトリを設定するのを支援することです．コンテナの /dev ディレクトリは，このフックが実行される時有効な ${<option>LXC_ROOTFS_MOUNT</option>} 環境変数からの相対パスとなります．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.start</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      A hook to be run in the container's namespace immediately
+	      before executing the container's init.  This requires the
+	      program to be available in the container.
+              -->
+              コンテナの init が実行される直前にコンテナの名前空間で実行されるフック．
+              コンテナ内で利用可能なプログラムである必要があります．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.post-stop</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      A hook to be run in the host's namespace after the
+	      container has been shut down.
+              -->
+              コンテナがシャットダウンされた後にホストの名前空間で実行するフック．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.hook.clone</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      A hook to be run when the container is cloned to a new one.
+	      See <citerefentry><refentrytitle><command>lxc-clone</command></refentrytitle>
+	      <manvolnum>1</manvolnum></citerefentry> for more information.
+              -->
+              コンテナが新しいコンテナにクローンされる際に実行されるフック．詳しくは
+              <citerefentry><refentrytitle><command>lxc-clone</command></refentrytitle>
+              <manvolnum>1</manvolnum></citerefentry>
+              を参照してください．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Container hooks Environment Variables -->コンテナのフックで使える環境変数</title>
+      <para>
+        <!--
+        A number of environment variables are made available to the startup
+        hooks to provide configuration information and assist in the
+        functioning of the hooks.  Not all variables are valid in all
+        contexts.  In particular, all paths are relative to the host system
+        and, as such, not valid during the <option>lxc.hook.start</option> hook.
+        -->
+        起動時のフックに設定情報を提供し，フックの機能を助けるための環境変数がいくつか利用可能です．
+        全ての変数が全てのコンテキストで利用可能なわけではありません．
+        具体的には，全てのパスはホストシステム上のパスであり，そのため，<option>lxc.hook.start</option> フックの時点では使用できません．
+      </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>LXC_NAME</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      The LXC name of the container.  Useful for logging messages
+	      in common log environments.  [<option>-n</option>]
+              -->
+              LXC コンテナの名前．共通のログ環境内でのログメッセージに使うときに便利です．[<option>-n</option>]
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>LXC_CONFIG_FILE</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Host relative path to the container configuration file.  This
+	      gives the container to reference the original, top level,
+	      configuration file for the container in order to locate any
+	      additional configuration information not otherwise made
+	      available.  [<option>-f</option>]
+              -->
+              コンテナの設定ファイルのホスト上でのパス．
+              これは，他の方法では得られない追加の設定情報を見つけるために，コンテナに，元の，トップレベルの設定ファイルの位置を与えるものです． [<option>-f</option>]
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>LXC_CONSOLE</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      The path to the console output of the container if not NULL.
+	      [<option>-c</option>] [<option>lxc.console</option>]
+              -->
+              設定されている場合のコンテナのコンソール出力のパス．
+	      [<option>-c</option>] [<option>lxc.console</option>]
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>LXC_CONSOLE_LOGPATH</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      The path to the console log output of the container if not NULL.
+	      [<option>-L</option>]
+              -->
+              設定されている場合のコンテナのコンソールログ出力のパス．
+	      [<option>-L</option>]
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>LXC_ROOTFS_MOUNT</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      The mount location to which the container is initially bound.
+	      This will be the host relative path to the container rootfs
+	      for the container instance being started and is where changes
+	      should be made for that instance.
+	      [<option>lxc.rootfs.mount</option>]
+              -->
+              初期にコンテナがマウントされる場所．
+              これは，コンテナインスタンスが起動するためのコンテナの rootfs へのホスト上のパスであり，インスタンスのための移行が行われる場所です．
+	      [<option>lxc.rootfs.mount</option>]
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>LXC_ROOTFS_PATH</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      The host relative path to the container root which has been
+	      mounted to the rootfs.mount location.
+	      [<option>lxc.rootfs</option>]
+              -->
+              rootfs.mount へマウントされるコンテナのルートへのホスト上のパスです．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+
+    </refsect2>
+
+    <refsect2>
+    <title><!-- Logging -->ロギング</title>
+    <para>
+      <!--
+      Logging can be configured on a per-container basis.  By default,
+      depending upon how the lxc package was compiled, container startup
+      is logged only at the ERROR level, and logged to a file named after
+      the container (with '.log' appended) either under the container path,
+      or under @LOGPATH@.
+      -->
+      ロギングはコンテナごとに設定することが可能です．
+      デフォルトでは，lxc パッケージのコンパイル条件に依存し，コンテナのスタートアップは ERROR レベルでのみロギングされ，コンテナのパス以下か，@LOGPATH@ 以下のどちらかにコンテナ名 (の後に '.log' が付与される) をもとにした名前でロギングされます．
+    </para>
+    <para>
+      <!--
+      Both the default log level and the log file can be specified in the
+      container configuration file, overriding the default behavior.  Note
+      that the configuration file entries can in turn be overridden by the
+      command line options to <command>lxc-start</command>.
+      -->
+      デフォルトのログレベルとログファイルは両方とも，コンテナの設定ファイル内で指定され，デフォルトの値を上書きします．
+      同様に，設定ファイルのエントリは <command>lxc-start</command> のコマンドラインオプションで上書きすることも可能です．
+    </para>
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.loglevel</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	    The level at which to log.  The log level is an integer in
+	    the range of 0..8 inclusive, where a lower number means more
+	    verbose debugging.  In particular 0 = trace, 1 = debug, 2 =
+	    info, 3 = notice, 4 = warn, 5 = error, 6 = critical, 7 =
+	    alert, and 8 = fatal.  If unspecified, the level defaults
+	    to 5 (error), so that only errors and above are logged.
+            -->
+              ログを取得するレベル．
+              ログレベルは 0..8 の範囲の整数です．
+              数字が小さいほど冗長なデバッグを意味します．
+              具体的には，0 = trace, 1 = debug, 2 = info, 3 = notice, 4 = warn, 5 = error, 6 = critical, 7 = alert, and 8 = fatal です．
+              指定されない場合，レベルのデフォルトは 5 (error) で，それ以上のエラーがロギングされます．
+	    </para>
+	    <para>
+              <!--
+	    Note that when a script (such as either a hook script or a
+	    network interface up or down script) is called, the script's
+	    standard output is logged at level 1, debug.
+            -->
+              (フックスクリプトやネットワークインターフェースの起動，停止時のスクリプトのような) スクリプトが呼ばれた時，スクリプトの標準出力は level 1 の debug でロギングされます．
+	    </para>
+	  </listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>
+	    <option>lxc.logfile</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	    The file to which logging info should be written.
+            -->
+              ログ情報を書き込むファイル．
+	    </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+    <title><!-- Autostart -->自動起動</title>
+    <para>
+      <!--
+        The autostart options support marking which containers should be
+        auto-started and in what order. These options may be used by LXC tools
+        directly or by external tooling provided by the distributions.
+        -->
+      自動起動オプションでは，自動起動させるコンテナと順番の設定が可能です．
+      このオプションは LXC ツールが直接使用するか，ディストリビューションが提供する外部ツールが使用するかもしれません．
+    </para>
+
+    <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.start.auto</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Whether the container should be auto-started.
+              Valid values are 0 (off) and 1 (on).
+              -->
+              コンテナを自動起動させるかどうかを設定します．
+              有効な値は 0(オフ) か 1(オン) です．
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.start.delay</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              How long to wait (in seconds) after the container is
+              started before starting the next one.
+              -->
+              コンテナを起動させた後，次のコンテナを起動させるまでにどれくらい (秒) 待つかを設定します．
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.start.order</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              An integer used to sort the containers when auto-starting
+              a series of containers at once.
+              -->
+              多数の自動起動させるコンテナがある場合のコンテナの起動順を決めるのに使う整数を指定します．
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.group</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              A multi-value key (can be used multiple times) to put the
+              container in a container group. Those groups can then be
+              used (amongst other things) to start a series of related
+              containers.
+              -->
+              コンテナを追加したいコンテナグループ名を指定します．
+              (複数回使用される可能性のある) 複数の値を設定可能です．
+              設定されたグループは，関連する一連のコンテナを起動させるために使われます．
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Examples -->例</title>
+      <para>
+        <!--
+	In addition to the few examples given below, you will find
+	some other examples of configuration file in @DOCDIR@/examples
+        -->
+        以下に紹介するいくつかの例に加えて，他の設定例が @DOCDIR@/examples にあります．
+      </para>
+    <refsect2>
+      <title><!-- Network -->ネットワーク</title>
+      <para>
+        <!--
+        This configuration sets up a container to use a veth pair
+	device with one side plugged to a bridge br0 (which has been
+	configured before on the system by the administrator). The
+	virtual network device visible in the container is renamed to
+	eth0.
+        -->
+        この設定は，片方をブリッジである br0 と接続される veth ペアデバイスを使うコンテナを設定します (ブリッジは管理者によりあらかじめシステム上に設定済みである必要があります)．
+        仮想ネットワークデバイスは，コンテナ内では eth0 とリネームされます．
+      </para>
+      <programlisting>
+	lxc.utsname = myhostname
+	lxc.network.type = veth
+	lxc.network.flags = up
+	lxc.network.link = br0
+	lxc.network.name = eth0
+	lxc.network.hwaddr = 4a:49:43:49:79:bf
+	lxc.network.ipv4 = 1.2.3.5/24 1.2.3.255
+	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+      </programlisting>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- UID/GID mapping -->UID/GID のマッピング</title>
+      <para><!-- This configuration will map both user and group ids in the
+        range 0-9999 in the container to the ids 100000-109999 on the host. -->
+        この設定は，コンテナ内のユーザとグループ両方の id 0-9999 の範囲を，ホスト上の 100000-109999 へマッピングします．
+      </para>
+      <programlisting>
+	lxc.id_map = u 0 100000 10000
+	lxc.id_map = g 0 100000 10000
+      </programlisting>
+    </refsect2>
+
+    <refsect2>
+      <title>Control group</title>
+      <para>
+        <!-- This configuration will setup several control groups for
+      the application, cpuset.cpus restricts usage of the defined cpu,
+      cpus.share prioritize the control group, devices.allow makes
+      usable the specified devices.-->
+        この設定は，アプリケーションのための control group をいくつか設定します．
+        cpuset.cpus は定義された cpu のみ使用できるように制限します．
+        cpus.share は，control group の (cpu) 優先度を指定します．
+        devices.allow は，特定のデバイスを使用可能にします．
+      </para>
+      <programlisting>
+	lxc.cgroup.cpuset.cpus = 0,1
+	lxc.cgroup.cpu.shares = 1234
+	lxc.cgroup.devices.deny = a
+	lxc.cgroup.devices.allow = c 1:3 rw
+	lxc.cgroup.devices.allow = b 8:0 rw
+      </programlisting>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Complex configuration -->複雑な設定</title>
+      <para>
+        <!-- This example show a complex configuration making a complex
+      network stack, using the control groups, setting a new hostname,
+      mounting some locations and a changing root file system. -->
+        この例は，control group を使って，複雑なネットワークスタックを作成し，新しいホスト名を指定し，いくつかの場所をマウントし，ルートファイルシステムを変更するような複雑な設定を示します．
+      </para>
+      <programlisting>
+	lxc.utsname = complex
+	lxc.network.type = veth
+	lxc.network.flags = up
+	lxc.network.link = br0
+	lxc.network.hwaddr = 4a:49:43:49:79:bf
+	lxc.network.ipv4 = 10.2.3.5/24 10.2.3.255
+	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+	lxc.network.ipv6 = 2003:db8:1:0:214:5432:feab:3588
+	lxc.network.type = macvlan
+	lxc.network.flags = up
+	lxc.network.link = eth0
+	lxc.network.hwaddr = 4a:49:43:49:79:bd
+	lxc.network.ipv4 = 10.2.3.4/24
+	lxc.network.ipv4 = 192.168.10.125/24
+	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
+	lxc.network.type = phys
+	lxc.network.flags = up
+	lxc.network.link = dummy0
+	lxc.network.hwaddr = 4a:49:43:49:79:ff
+	lxc.network.ipv4 = 10.2.3.6/24
+	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
+	lxc.cgroup.cpuset.cpus = 0,1
+	lxc.cgroup.cpu.shares = 1234
+	lxc.cgroup.devices.deny = a
+	lxc.cgroup.devices.allow = c 1:3 rw
+	lxc.cgroup.devices.allow = b 8:0 rw
+	lxc.mount = /etc/fstab.complex
+	lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0
+	lxc.rootfs = /mnt/rootfs.complex
+	lxc.cap.drop = sys_module mknod setuid net_raw
+	lxc.cap.drop = mac_override
+      </programlisting>
+    </refsect2>
+
+  </refsect1>
+
+  <refsect1>
+    <title>See Also</title>
+    <simpara>
+      <citerefentry>
+	<refentrytitle><command>chroot</command></refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+	<refentrytitle><command>pivot_root</command></refentrytitle>
+	<manvolnum>8</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+	<refentrytitle><filename>fstab</filename></refentrytitle>
+	<manvolnum>5</manvolnum>
+      </citerefentry>
+
+      <citerefentry>
+	<refentrytitle><filename>capabilities</filename></refentrytitle>
+	<manvolnum>7</manvolnum>
+      </citerefentry>
+
+    </simpara>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->作者</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->
