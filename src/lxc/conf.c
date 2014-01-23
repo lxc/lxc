@@ -3134,7 +3134,8 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
  * return the host uid to which the container root is mapped, or -1 on
  * error
  */
-static uid_t get_mapped_rootid(struct lxc_conf *conf)
+bool get_mapped_rootid(struct lxc_conf *conf, enum idtype idtype,
+                        unsigned long *val)
 {
 	struct lxc_list *it;
 	struct id_map *map;
@@ -3145,9 +3146,10 @@ static uid_t get_mapped_rootid(struct lxc_conf *conf)
 			continue;
 		if (map->nsid != 0)
 			continue;
-		return (uid_t) map->hostid;
+		*val = map->hostid;
+		return true;
 	}
-	return (uid_t)-1;
+	return false;
 }
 
 int mapped_hostid(int id, struct lxc_conf *conf)
@@ -3304,11 +3306,14 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 {
 	uid_t rootid;
 	pid_t pid;
+	unsigned long val;
 
-	if ((rootid = get_mapped_rootid(conf)) <= 0) {
+	if (!get_mapped_rootid(conf, ID_TYPE_UID, &val)) {
 		ERROR("No mapping for container root");
 		return -1;
 	}
+	rootid = (uid_t) val;
+
 	if (geteuid() == 0) {
 		if (chown(path, rootid, -1) < 0) {
 			ERROR("Error chowning %s", path);
