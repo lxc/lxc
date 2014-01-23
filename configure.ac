@@ -587,6 +587,7 @@ AC_CONFIG_FILES([
 	doc/lxc-cgroup.sgml
 	doc/lxc-checkconfig.sgml
 	doc/lxc-clone.sgml
+	doc/lxc-config.sgml
 	doc/lxc-console.sgml
 	doc/lxc-create.sgml
 	doc/lxc-destroy.sgml
