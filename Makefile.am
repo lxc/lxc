@@ -8,8 +8,7 @@ EXTRA_DIST = \
 	autogen.sh \
 	lxc.spec \
 	CONTRIBUTING \
-	MAINTAINERS \
-	runapitests.sh
+	MAINTAINERS
 
 RPMARGS =
 
