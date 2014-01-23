@@ -848,8 +848,10 @@ struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const char *pa
 
 		if (lxc_string_in_array("ns", (const char **)h->subsystems))
 			continue;
-		if (handle_cgroup_settings(mp, info_ptr->cgroup_path) < 0)
+		if (handle_cgroup_settings(mp, info_ptr->cgroup_path) < 0) {
+			ERROR("Could not set clone_children to 1 for cpuset hierarchy in parent cgroup.");
 			goto out_initial_error;
+		}
 	}
 
 	/* normalize the path */
@@ -2082,66 +2084,47 @@ static int handle_cgroup_settings(struct cgroup_mount_point *mp,
 {
 	int r, saved_errno = 0;
 	char buf[2];
-	const char **subsystems = (const char **)mp->hierarchy->subsystems;
 
 	/* If this is the memory cgroup, we want to enforce hierarchy.
 	 * But don't fail if for some reason we can't.
 	 */
-	if (lxc_string_in_array("memory", subsystems)) {
-		char *cc_path = cgroup_to_absolute_path(mp, cgroup_path,
-						"/memory.use_hierarchy");
-		if (!cc_path)
-			goto cpuset;
-
-		r = lxc_read_from_file(cc_path, buf, 1);
-		if (r == 1 && buf[0] == '1') {
+	if (lxc_string_in_array("memory", (const char **)mp->hierarchy->subsystems)) {
+		char *cc_path = cgroup_to_absolute_path(mp, cgroup_path, "/memory.use_hierarchy");
+		if (cc_path) {
+			r = lxc_read_from_file(cc_path, buf, 1);
+			if (r < 1 || buf[0] != '1') {
+				r = lxc_write_to_file(cc_path, "1", 1, false);
+				if (r < 0)
+					SYSERROR("failed to set memory.use_hiararchy to 1; continuing");
+			}
 			free(cc_path);
-			goto cpuset;
 		}
-
-		r = lxc_write_to_file(cc_path, "1", 1, false);
-		if (r < 0)
-			SYSERROR("Failed to set memory.use_hiararchy to 1; continuing");
-		free(cc_path);
- 	}
+	}
 
 	/* if this is a cpuset hierarchy, we have to set cgroup.clone_children in
 	 * the base cgroup, otherwise containers will start with an empty cpuset.mems
 	 * and cpuset.cpus and then
 	 */
-cpuset:
-	if (lxc_string_in_array("cpuset", subsystems)) {
+	if (lxc_string_in_array("cpuset", (const char **)mp->hierarchy->subsystems)) {
+		char *cc_path = cgroup_to_absolute_path(mp, cgroup_path, "/cgroup.clone_children");
 		struct stat sb;
-		char *cc_path = cgroup_to_absolute_path(mp, cgroup_path,
-						"/cgroup.clone_children");
 
 		if (!cc_path)
-			goto err;
-		if (stat(cc_path, &sb) != 0 && errno == ENOENT) {
-			free(cc_path);
-			goto out;
-		}
-
+			return -1;
+		if (stat(cc_path, &sb) != 0 && errno == ENOENT)
+			return 0;
 		r = lxc_read_from_file(cc_path, buf, 1);
 		if (r == 1 && buf[0] == '1') {
 			free(cc_path);
-			goto out;
+			return 0;
 		}
-
 		r = lxc_write_to_file(cc_path, "1", 1, false);
-		if (r < 0) {
-			SYSERROR("Failed to set clone_children to 1 for cpuset hierarchy in parent cgroup.");
-			saved_errno = errno;
-			free(cc_path);
-			errno = saved_errno;
-			goto err;
-		}
- 		free(cc_path);
+		saved_errno = errno;
+		free(cc_path);
+		errno = saved_errno;
+		return r < 0 ? -1 : 0;
 	}
-out:
 	return 0;
-err:
-	return -1;
 }
 
 extern void lxc_monitor_send_state(const char *name, lxc_state_t state,
