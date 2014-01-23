@@ -66,10 +66,6 @@
 
 lxc_log_define(lxc_container, lxc);
 
-inline static bool am_unpriv() {
-	return geteuid() != 0;
-}
-
 static bool file_exists(const char *f)
 {
 	struct stat statbuf;
@@ -2381,8 +2377,7 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 	struct bdev *bdev;
 	int need_rdep;
 
-	bdev = bdev_copy(c0->lxc_conf->rootfs.path, c0->name, c->name,
-			c0->config_path, c->config_path, newtype, flags,
+	bdev = bdev_copy(c0, c->name, c->config_path, newtype, flags,
 			bdevdata, newsize, &need_rdep);
 	if (!bdev) {
 		ERROR("Error copying storage");
@@ -2408,36 +2403,49 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 	return 0;
 }
 
-static int clone_update_rootfs(struct lxc_container *c0,
-			       struct lxc_container *c, int flags,
-			       char **hookargs)
+struct clone_update_data {
+	struct lxc_container *c0;
+	struct lxc_container *c1;
+	int flags;
+	char **hookargs;
+};
+
+static int clone_update_rootfs(struct clone_update_data *data)
 {
+	struct lxc_container *c0 = data->c0;
+	struct lxc_container *c = data->c1;
+	int flags = data->flags;
+	char **hookargs = data->hookargs;
 	int ret = -1;
 	char path[MAXPATHLEN];
 	struct bdev *bdev;
 	FILE *fout;
-	pid_t pid;
 	struct lxc_conf *conf = c->lxc_conf;
 
 	/* update hostname in rootfs */
 	/* we're going to mount, so run in a clean namespace to simplify cleanup */
 
-	pid = fork();
-	if (pid < 0)
+	if (setgid(0) < 0) {
+		ERROR("Failed to setgid to 0");
 		return -1;
-	if (pid > 0)
-		return wait_for_pid(pid);
+	}
+	if (setuid(0) < 0) {
+		ERROR("Failed to setuid to 0");
+		return -1;
+	}
 
+	if (unshare(CLONE_NEWNS) < 0)
+		return -1;
 	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev)
-		exit(1);
+		return -1;
 	if (strcmp(bdev->type, "dir") != 0) {
 		if (unshare(CLONE_NEWNS) < 0) {
 			ERROR("error unsharing mounts");
-			exit(1);
+			return -1;
 		}
 		if (bdev->ops->mount(bdev) < 0)
-			exit(1);
+			return -1;
 	} else { // TODO come up with a better way
 		if (bdev->dest)
 			free(bdev->dest);
@@ -2464,26 +2472,32 @@ static int clone_update_rootfs(struct lxc_container *c0,
 
 		if (run_lxc_hooks(c->name, "clone", conf, c->get_config_path(c), hookargs)) {
 			ERROR("Error executing clone hook for %s", c->name);
-			exit(1);
+			return -1;
 		}
 	}
 
 	if (!(flags & LXC_CLONE_KEEPNAME)) {
 		ret = snprintf(path, MAXPATHLEN, "%s/etc/hostname", bdev->dest);
 		if (ret < 0 || ret >= MAXPATHLEN)
-			exit(1);
+			return -1;
 		if (!file_exists(path))
-			exit(0);
+			return 0;
 		if (!(fout = fopen(path, "w"))) {
 			SYSERROR("unable to open %s: ignoring\n", path);
-			exit(0);
+			return 0;
 		}
 		if (fprintf(fout, "%s", c->name) < 0)
-			exit(1);
+			return -1;
 		if (fclose(fout) < 0)
-			exit(1);
+			return -1;
 	}
-	exit(0);
+	return 0;
+}
+
+static int clone_update_rootfs_wrapper(void *data)
+{
+	struct clone_update_data *arg = (struct clone_update_data *) data;
+	return clone_update_rootfs(arg);
 }
 
 /*
@@ -2522,15 +2536,12 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	char newpath[MAXPATHLEN];
 	int ret, storage_copied = 0;
 	const char *n, *l;
+	struct clone_update_data data;
 	FILE *fout;
+	pid_t pid;
 
 	if (!c || !c->is_defined(c))
 		return NULL;
-
-	if (am_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
-		return NULL;
-	}
 
 	if (container_mem_lock(c))
 		return NULL;
@@ -2574,6 +2585,13 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 		goto out;
 	}
 
+	if (am_unpriv()) {
+		if (chown_mapped_root(newpath, c->lxc_conf) < 0) {
+			ERROR("Error chowning %s to container root\n", newpath);
+			goto out;
+		}
+	}
+
 	c2 = lxc_container_new(n, l);
 	if (!c2) {
 		ERROR("clone: failed to create new container (%s %s)", n, l);
@@ -2614,12 +2632,31 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	if (!c2->save_config(c2, NULL))
 		goto out;
 
-	if (clone_update_rootfs(c, c2, flags, hookargs) < 0)
+	if ((pid = fork()) < 0) {
+		SYSERROR("fork");
 		goto out;
+	}
+	if (pid > 0) {
+		ret = wait_for_pid(pid);
+		if (ret)
+			goto out;
+		container_mem_unlock(c);
+		return c2;
+	}
+	data.c0 = c;
+	data.c1 = c2;
+	data.flags = flags;
+	data.hookargs = hookargs;
+	if (am_unpriv())
+		ret = userns_exec_1(c->lxc_conf, clone_update_rootfs_wrapper,
+				&data);
+	else
+		ret = clone_update_rootfs(&data);
+	if (ret < 0)
+		exit(1);
 
-	// TODO: update c's lxc.snapshot = count
 	container_mem_unlock(c);
-	return c2;
+	exit(0);
 
 out:
 	container_mem_unlock(c);
@@ -2640,11 +2677,6 @@ static bool lxcapi_rename(struct lxc_container *c, const char *newname)
 
 	if (!c || !c->name || !c->config_path)
 		return false;
-
-	if (am_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
-		return false;
-	}
 
 	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev) {
@@ -2717,11 +2749,6 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	int i, flags, ret;
 	struct lxc_container *c2;
 	char snappath[MAXPATHLEN], newname[20];
-
-	if (am_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
-		return -1;
-	}
 
 	// /var/lib/lxc -> /var/lib/lxcsnaps \0
 	ret = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
@@ -2861,11 +2888,6 @@ static int lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **r
 	if (!c || !lxcapi_is_defined(c))
 		return -1;
 
-	if (am_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
-		return -1;
-	}
-
 	// snappath is ${lxcpath}snaps/${lxcname}/
 	dirlen = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
 	if (dirlen < 0 || dirlen >= MAXPATHLEN) {
@@ -2944,11 +2966,6 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapnam
 	if (!c || !c->name || !c->config_path)
 		return false;
 
-	if (am_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
-		return false;
-	}
-
 	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
@@ -2997,11 +3014,6 @@ static bool lxcapi_snapshot_destroy(struct lxc_container *c, const char *snapnam
 
 	if (!c || !c->name || !c->config_path)
 		return false;
-
-	if (am_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
-		return false;
-	}
 
 	ret = snprintf(clonelxcpath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
 	if (ret < 0 || ret >= MAXPATHLEN)

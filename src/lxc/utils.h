@@ -260,4 +260,7 @@ extern void **lxc_append_null_to_array(void **array, size_t count);
 //initialize rand with urandom
 extern int randseed(bool);
 
+inline static bool am_unpriv(void) {
+	return geteuid() != 0;
+}
 #endif

@@ -2003,20 +2003,70 @@ struct bdev *bdev_init(const char *src, const char *dst, const char *data)
 	return bdev;
 }
 
+struct rsync_data {
+	struct bdev *orig;
+	struct bdev *new;
+};
+
+static int rsync_rootfs(struct rsync_data *data)
+{
+	struct bdev *orig = data->orig,
+		    *new = data->new;
+
+	if (unshare(CLONE_NEWNS) < 0) {
+		SYSERROR("unshare CLONE_NEWNS");
+		return -1;
+	}
+
+	// If not a snapshot, copy the fs.
+	if (orig->ops->mount(orig) < 0) {
+		ERROR("failed mounting %s onto %s\n", orig->src, orig->dest);
+		return -1;
+	}
+	if (new->ops->mount(new) < 0) {
+		ERROR("failed mounting %s onto %s\n", new->src, new->dest);
+		return -1;
+	}
+	if (setgid(0) < 0) {
+		ERROR("Failed to setgid to 0");
+		return -1;
+	}
+	if (setuid(0) < 0) {
+		ERROR("Failed to setuid to 0");
+		return -1;
+	}
+	if (do_rsync(orig->dest, new->dest) < 0) {
+		ERROR("rsyncing %s to %s\n", orig->src, new->src);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int rsync_rootfs_wrapper(void *data)
+{
+	struct rsync_data *arg = data;
+	return rsync_rootfs(arg);
+}
 /*
  * If we're not snaphotting, then bdev_copy becomes a simple case of mount
  * the original, mount the new, and rsync the contents.
  */
-struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
-			const char *oldpath, const char *lxcpath, const char *bdevtype,
+struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
+			const char *lxcpath, const char *bdevtype,
 			int flags, const char *bdevdata, uint64_t newsize,
 			int *needs_rdep)
 {
 	struct bdev *orig, *new;
 	pid_t pid;
+	int ret;
 	bool snap = flags & LXC_CLONE_SNAPSHOT;
 	bool maybe_snap = flags & LXC_CLONE_MAYBE_SNAPSHOT;
 	bool keepbdevtype = flags & LXC_CLONE_KEEPBDEVTYPE;
+	const char *src = c0->lxc_conf->rootfs.path;
+	const char *oldname = c0->name;
+	const char *oldpath = c0->config_path;
+	struct rsync_data data;
 
 	/* if the container name doesn't show up in the rootfs path, then
 	 * we don't know how to come up with a new name
@@ -2048,6 +2098,21 @@ struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 			return NULL;
 		}
 	}
+
+	/* check for privilege */
+	if (am_unpriv()) {
+		if (bdevtype && strcmp(bdevtype, "dir") != 0) {
+			ERROR("Unprivileged users can only make dir copy-clones");
+			bdev_put(orig);
+			return NULL;
+		}
+		if (strcmp(orig->type, "dir") != 0) {
+			ERROR("Unprivileged users can only make dir copy-clones");
+			bdev_put(orig);
+			return NULL;
+		}
+	}
+
 
 	/*
 	 * special case for snapshot - if caller requested maybe_snapshot and
@@ -2081,6 +2146,8 @@ struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 		bdev_put(new);
 		return NULL;
 	}
+	if (snap)
+		return new;
 
 	pid = fork();
 	if (pid < 0) {
@@ -2100,29 +2167,14 @@ struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
 		return new;
 	}
 
-	if (unshare(CLONE_NEWNS) < 0) {
-		SYSERROR("unshare CLONE_NEWNS");
-		exit(1);
-	}
-	if (snap)
-		exit(0);
+	data.orig = orig;
+	data.new = new;
+	if (am_unpriv())
+		ret = userns_exec_1(c0->lxc_conf, rsync_rootfs_wrapper, &data);
+	else
+		ret = rsync_rootfs(&data);
 
-	// If not a snapshot, copy the fs.
-	if (orig->ops->mount(orig) < 0) {
-		ERROR("failed mounting %s onto %s\n", src, orig->dest);
-		exit(1);
-	}
-	if (new->ops->mount(new) < 0) {
-		ERROR("failed mounting %s onto %s\n", new->src, new->dest);
-		exit(1);
-	}
-	if (do_rsync(orig->dest, new->dest) < 0) {
-		ERROR("rsyncing %s to %s\n", orig->src, new->src);
-		exit(1);
-	}
-	// don't bother umounting, ns exit will do that
-
-	exit(0);
+	exit(ret == 0 ? 0 : 1);
 }
 
 static struct bdev * do_bdev_create(const char *dest, const char *type,

@@ -99,8 +99,8 @@ char *overlayfs_getlower(char *p);
  */
 struct bdev *bdev_init(const char *src, const char *dst, const char *data);
 
-struct bdev *bdev_copy(const char *src, const char *oldname, const char *cname,
-			const char *oldpath, const char *lxcpath, const char *bdevtype,
+struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
+			const char *lxcpath, const char *bdevtype,
 			int flags, const char *bdevdata, uint64_t newsize,
 			int *needs_rdep);
 struct bdev *bdev_create(const char *dest, const char *type,
