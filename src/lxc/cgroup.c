@@ -74,7 +74,6 @@ static int do_setup_cgroup_limits(struct lxc_handler *h, struct lxc_list *cgroup
 static int cgroup_recursive_task_count(const char *cgroup_path);
 static int count_lines(const char *fn);
 static int handle_cgroup_settings(struct cgroup_mount_point *mp, char *cgroup_path);
-static void setup_cpuset_if_needed(char **subsystems, char *path);
 
 static struct cgroup_ops cgfs_ops;
 struct cgroup_ops *active_cg_ops = &cgfs_ops;
@@ -724,71 +723,6 @@ static char *cgroup_rename_nsgroup(const char *mountpath, const char *oldname, p
 	return newname;
 }
 
-static long get_value(const char *dir, const char *file)
-{
-	FILE *f;
-	char path[MAXPATHLEN];
-	int ret, retv;
-
-	retv = snprintf(path, MAXPATHLEN, "%s/%s", dir, file);
-	if (retv < 0 || retv >= MAXPATHLEN)
-		return 0;
-	f = fopen(path, "r");
-	ret = fscanf(f, "%d", &retv);
-	fclose(f);
-	if (ret != 1)
-		return 0;
-	return retv;
-}
-
-static void set_value(const char *dir, const char *file, long v)
-{
-	FILE *f;
-	char path[MAXPATHLEN];
-	int retv;
-
-	retv = snprintf(path, MAXPATHLEN, "%s/%s", dir, file);
-	if (retv < 0 || retv >= MAXPATHLEN)
-		return;
-	f = fopen(path, "w");
-	fprintf(f, "%ld\n", v);
-	fclose(f);
-}
-
-static bool file_exists(const char *dir, const char *file)
-{
-	char path[MAXPATHLEN];
-	struct stat sb;
-	int ret;
-
-	ret = snprintf(path, MAXPATHLEN, "%s/%s", dir, file);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return true;
-	ret = stat(path, &sb);
-	return ret == 0;
-}
-
-static void setup_cpuset_if_needed(char **subsystems, char *path)
-{
-	char *parentpath, *p;
-	long v;
-	
-	if (!lxc_string_in_array("cpuset", (const char **) subsystems))
-		return;
-	if (file_exists(path, "cgroup.clone_children"))
-		return;
-	parentpath = strdup(path);
-	if (!parentpath)
-		return;
-	if ((p = rindex(parentpath, '/')))
-		*p = '\0';
-	v = get_value(parentpath, "cpuset.mems");
-	set_value(path, "cpuset.mems", v);
-	v = get_value(parentpath, "cpuset.cpus");
-	set_value(path, "cpuset.cpus", v);
-	free(parentpath);
-}
-
 /* create a new cgroup */
 struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const char *path_pattern, struct cgroup_meta_data *meta_data, const char *sub_pattern)
 {
@@ -964,8 +898,6 @@ struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const char *pa
 				if (r < 0)
 					goto cleanup_from_error;
 				info_ptr->created_paths[info_ptr->created_paths_count++] = current_entire_path;
-				setup_cpuset_if_needed(info_ptr->hierarchy->subsystems,
-						current_entire_path);
 			} else {
 				/* if we didn't create the cgroup, then we have to make sure that
 				 * further cgroups will be created properly
@@ -2107,12 +2039,8 @@ static int handle_cgroup_settings(struct cgroup_mount_point *mp,
 	 */
 	if (lxc_string_in_array("cpuset", (const char **)mp->hierarchy->subsystems)) {
 		char *cc_path = cgroup_to_absolute_path(mp, cgroup_path, "/cgroup.clone_children");
-		struct stat sb;
-
 		if (!cc_path)
 			return -1;
-		if (stat(cc_path, &sb) != 0 && errno == ENOENT)
-			return 0;
 		r = lxc_read_from_file(cc_path, buf, 1);
 		if (r == 1 && buf[0] == '1') {
 			free(cc_path);
