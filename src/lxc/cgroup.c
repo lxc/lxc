@@ -958,12 +958,20 @@ struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const char *pa
 				goto cleanup_from_error;
 			} else if (r == 0) {
 				/* successfully created */
+				char *full_path = NULL;
 				r = lxc_grow_array((void ***)&info_ptr->created_paths, &info_ptr->created_paths_capacity, info_ptr->created_paths_count + 1, 8);
 				if (r < 0)
 					goto cleanup_from_error;
 				info_ptr->created_paths[info_ptr->created_paths_count++] = current_entire_path;
+
+				full_path = cgroup_to_absolute_path(
+						info_ptr->designated_mount_point,
+						current_entire_path, NULL);
+				if (!full_path)
+					goto cleanup_from_error;
 				setup_cpuset_if_needed(info_ptr->hierarchy->subsystems,
-						current_entire_path);
+						full_path);
+				free(full_path);
 			} else {
 				/* if we didn't create the cgroup, then we have to make sure that
 				 * further cgroups will be created properly
