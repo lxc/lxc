@@ -780,7 +780,7 @@ static void setup_cpuset_if_needed(char **subsystems, char *path)
 	parentpath = strdup(path);
 	if (!parentpath)
 		return;
-	if ((p = strrchr(parentpath, '/')))
+	if ((p = rindex(parentpath, '/')))
 		*p = '\0';
 	v = get_value(parentpath, "cpuset.mems");
 	set_value(path, "cpuset.mems", v);
