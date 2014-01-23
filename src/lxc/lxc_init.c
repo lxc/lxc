@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 
 		act.sa_flags = 0;
 		act.sa_handler = interrupt_handler;
-		if (sigaction(i, &act, NULL)) {
+		if (sigaction(i, &act, NULL) && errno != EINVAL) {
 			SYSERROR("failed to sigaction");
 			exit(EXIT_FAILURE);
 		}
