@@ -269,6 +269,12 @@ int cgm_get(const char *filename, char *value, size_t len, const char *name, con
 	}
 	free(cgroup);
 	newlen = strlen(result);
+	if (!value) {
+		// user queries the size
+		nih_free(result);
+		return newlen+1;
+	}
+
 	strncpy(value, result, len);
 	if (newlen >= len) {
 		value[len-1] = '\0';
