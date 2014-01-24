@@ -3709,51 +3709,51 @@ int lxc_clear_nic(struct lxc_conf *c, const char *key)
 
 	if (!p1) {
 		lxc_remove_nic(it);
-	} else if (strcmp(p1, "ipv4") == 0) {
+	} else if (strcmp(p1, ".ipv4") == 0) {
 		struct lxc_list *it2,*next;
 		lxc_list_for_each_safe(it2, &netdev->ipv4, next) {
 			lxc_list_del(it2);
 			free(it2->elem);
 			free(it2);
 		}
-	} else if (strcmp(p1, "ipv6") == 0) {
+	} else if (strcmp(p1, ".ipv6") == 0) {
 		struct lxc_list *it2,*next;
 		lxc_list_for_each_safe(it2, &netdev->ipv6, next) {
 			lxc_list_del(it2);
 			free(it2->elem);
 			free(it2);
 		}
-	} else if (strcmp(p1, "link") == 0) {
+	} else if (strcmp(p1, ".link") == 0) {
 		if (netdev->link) {
 			free(netdev->link);
 			netdev->link = NULL;
 		}
-	} else if (strcmp(p1, "name") == 0) {
+	} else if (strcmp(p1, ".name") == 0) {
 		if (netdev->name) {
 			free(netdev->name);
 			netdev->name = NULL;
 		}
-	} else if (strcmp(p1, "script.up") == 0) {
+	} else if (strcmp(p1, ".script.up") == 0) {
 		if (netdev->upscript) {
 			free(netdev->upscript);
 			netdev->upscript = NULL;
 		}
-	} else if (strcmp(p1, "hwaddr") == 0) {
+	} else if (strcmp(p1, ".hwaddr") == 0) {
 		if (netdev->hwaddr) {
 			free(netdev->hwaddr);
 			netdev->hwaddr = NULL;
 		}
-	} else if (strcmp(p1, "mtu") == 0) {
+	} else if (strcmp(p1, ".mtu") == 0) {
 		if (netdev->mtu) {
 			free(netdev->mtu);
 			netdev->mtu = NULL;
 		}
-	} else if (strcmp(p1, "ipv4_gateway") == 0) {
+	} else if (strcmp(p1, ".ipv4_gateway") == 0) {
 		if (netdev->ipv4_gateway) {
 			free(netdev->ipv4_gateway);
 			netdev->ipv4_gateway = NULL;
 		}
-	} else if (strcmp(p1, "ipv6_gateway") == 0) {
+	} else if (strcmp(p1, ".ipv6_gateway") == 0) {
 		if (netdev->ipv6_gateway) {
 			free(netdev->ipv6_gateway);
 			netdev->ipv6_gateway = NULL;
