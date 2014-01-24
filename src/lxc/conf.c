@@ -2170,9 +2170,9 @@ static int setup_caps(struct lxc_list *caps)
 		DEBUG("drop capability '%s' (%d)", drop_entry, capid);
 
 		if (prctl(PR_CAPBSET_DROP, capid, 0, 0, 0)) {
-                       SYSERROR("failed to remove %s capability", drop_entry);
-                       return -1;
-                }
+			SYSERROR("failed to remove %s capability", drop_entry);
+			return -1;
+		}
 
 	}
 
@@ -2240,9 +2240,9 @@ static int dropcaps_except(struct lxc_list *caps)
 		if (caplist[i])
 			continue;
 		if (prctl(PR_CAPBSET_DROP, i, 0, 0, 0)) {
-                       SYSERROR("failed to remove capability %d", i);
-                       return -1;
-                }
+			SYSERROR("failed to remove capability %d", i);
+			return -1;
+		}
 	}
 
 	DEBUG("capabilities have been setup");
@@ -3135,7 +3135,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
  * Return true if id was found, false otherwise.
  */
 bool get_mapped_rootid(struct lxc_conf *conf, enum idtype idtype,
-                        unsigned long *val)
+			unsigned long *val)
 {
 	struct lxc_list *it;
 	struct id_map *map;
@@ -3266,7 +3266,7 @@ int lxc_create_tty(const char *name, struct lxc_conf *conf)
 		DEBUG("allocated pty '%s' (%d/%d)",
 		      pty_info->name, pty_info->master, pty_info->slave);
 
-                /* Prevent leaking the file descriptors to the container */
+		/* Prevent leaking the file descriptors to the container */
 		fcntl(pty_info->master, F_SETFD, FD_CLOEXEC);
 		fcntl(pty_info->slave, F_SETFD, FD_CLOEXEC);
 
@@ -3969,29 +3969,31 @@ static struct lxc_list *idmap_add_id(struct lxc_conf *conf, uid_t uid)
 	struct lxc_list *new = NULL, *tmp, *it, *next;
 	struct id_map *entry;
 
+	new = malloc(sizeof(*new));
+	if (!new) {
+		ERROR("Out of memory building id map");
+		return NULL;
+	}
+	lxc_list_init(new);
+
 	if (hostid_mapped < 0) {
 		hostid_mapped = find_unmapped_nsuid(conf);
-		if (hostid_mapped < 0) {
-			ERROR("Could not find free uid to map");
-			return NULL;
-		}
-		new = malloc(sizeof(*new));
-		if (!new) {
-			ERROR("Out of memory building id map");
-			return NULL;
-		}
+		if (hostid_mapped < 0)
+			goto err;
+		tmp = malloc(sizeof(*tmp));
+		if (!tmp)
+			goto err;
 		entry = malloc(sizeof(*entry));
 		if (!entry) {
-			free(new);
-			ERROR("Out of memory building idmap entry");
-			return NULL;
+			free(tmp);
+			goto err;
 		}
-		new->elem = entry;
+		tmp->elem = entry;
 		entry->idtype = ID_TYPE_UID;
 		entry->nsid = hostid_mapped;
 		entry->hostid = (unsigned long)uid;
 		entry->range = 1;
-		lxc_list_init(new);
+		lxc_list_add_tail(new, tmp);
 	}
 	lxc_list_for_each_safe(it, &conf->id_map, next) {
 		tmp = malloc(sizeof(*tmp));
@@ -4005,11 +4007,7 @@ static struct lxc_list *idmap_add_id(struct lxc_conf *conf, uid_t uid)
 		memset(entry, 0, sizeof(*entry));
 		memcpy(entry, it->elem, sizeof(*entry));
 		tmp->elem = entry;
-		if (!new) {
-			new = tmp;
-			lxc_list_init(new);
-		} else
-			lxc_list_add_tail(new, tmp);
+		lxc_list_add_tail(new, tmp);
 	}
 
 	return new;
