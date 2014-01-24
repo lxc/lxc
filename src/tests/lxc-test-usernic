@@ -27,7 +27,7 @@ cleanup() {
 	(
 		set +e
 
-		lxc-stop -n usernic-c1
+		lxc-stop -n usernic-c1 -k
 		lxc-destroy -n usernic-c1
 
 		sed -i '/usernic-user/d' /var/run/lxc/nics /etc/lxc/lxc-usernet
@@ -36,7 +36,7 @@ cleanup() {
 		brctl delbr usernic-br0
 		brctl delbr usernic-br1
 
-		run_cmd "lxc-stop -n b1"
+		run_cmd "lxc-stop -n b1 -k"
 		pkill -u $(id -u usernic-user) -9
 
 		rm -rf /tmp/usernic-test /home/usernic-user /run/user/$(id -u usernic-user)
@@ -129,7 +129,7 @@ if run_cmd "lxc-user-nic $p1 veth usernic-br0 xx4"; then
 fi
 
 # Shut down and restart the container, should be able to assign more nics
-run_cmd "lxc-stop -n b1"
+run_cmd "lxc-stop -n b1 -k"
 run_cmd "lxc-start -n b1 -d"
 p1=$(run_cmd "lxc-info -n b1 -p -H")
 
@@ -138,7 +138,7 @@ if ! run_cmd "lxc-user-nic $p1 veth usernic-br0 xx5"; then
 	cleanup 1
 fi
 
-run_cmd "lxc-stop -n b1"
+run_cmd "lxc-stop -n b1 -k"
 
 # Create a root-owned ns
 lxc-create -t busybox -n usernic-c1
