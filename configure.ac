@@ -696,6 +696,7 @@ AC_CONFIG_FILES([
 	src/lua-lxc/Makefile
 
 	src/tests/Makefile
+	src/tests/lxc-test-usernic
 ])
 AC_CONFIG_COMMANDS([default],[[]],[[]])
 AC_OUTPUT
