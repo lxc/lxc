@@ -98,6 +98,16 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	if (!c->destroy(c)) {
+		fprintf(stderr, "%d: error deleting %s\n", __LINE__, MYNAME);
+		goto out;
+	}
+
+	if (c->is_defined(c)) {
+		fprintf(stderr, "%d: %s thought it was defined\n", __LINE__, MYNAME);
+		goto out;
+	}
+
 	fprintf(stderr, "all lxc_container tests passed for %s\n", c->name);
 	ret = 0;
 out:
