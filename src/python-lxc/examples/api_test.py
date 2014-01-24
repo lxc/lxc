@@ -93,7 +93,7 @@ assert(container.state == "RUNNING")
 
 ## Checking IP address
 print("Getting the interface names")
-assert(container.get_interfaces() == ('lo', 'eth0'))
+assert(set(container.get_interfaces()) == set(('lo', 'eth0')))
 
 ## Checking IP address
 print("Getting the IP addresses")
@@ -159,7 +159,7 @@ assert(container.state == "STOPPED")
 ## Cloning the container
 print("Cloning the container")
 clone = lxc.Container(CLONE_NAME)
-clone.clone(container)
+clone.clone(container.name)
 clone.start()
 clone.stop()
 clone.destroy()
