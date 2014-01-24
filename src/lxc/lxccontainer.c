@@ -233,11 +233,6 @@ static void lxc_container_free(struct lxc_container *c)
 		free(c->config_path);
 		c->config_path = NULL;
 	}
-	if (c->pidfile) {
-		unlink(c->pidfile);
-		free(c->pidfile);
-		c->pidfile = NULL;
-	}
 
 	free(c);
 }
@@ -663,6 +658,12 @@ reboot:
 		INFO("container requested reboot");
 		conf->reboot = 0;
 		goto reboot;
+	}
+
+	if (c->pidfile) {
+		unlink(c->pidfile);
+		free(c->pidfile);
+		c->pidfile = NULL;
 	}
 
 	if (daemonize)
