@@ -80,9 +80,9 @@ int main(int argc, char *argv[])
 	// now test with lvm
 	// Only do this if clonetestlvm1 exists - user has to set this up
 	// in advance
-	//c2->destroy(c2);
+	c2->destroy(c2);
 	lxc_container_put(c2);
-	//c->destroy(c);
+	c->destroy(c);
 	lxc_container_put(c);
 	c = NULL;
 
@@ -167,11 +167,11 @@ out:
 		lxc_container_put(c3);
 	}
 	if (c2) {
-		//c2->destroy(c2); // keep around to verify manuall
+		c2->destroy(c2);
 		lxc_container_put(c2);
 	}
 	if (c) {
-		//c->destroy(c);
+		c->destroy(c);
 		lxc_container_put(c);
 	}
 	exit(ret);
