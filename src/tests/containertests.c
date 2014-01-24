@@ -219,12 +219,6 @@ int main(int argc, char *argv[])
 	}
 	free(sstr);
 
-	printf("hit return to start container");
-	char mychar;
-	ret = scanf("%c", &mychar);
-	if (ret < 0)
-		goto out;
-
 	/* non-daemonized is tested in 'startone' */
 	c->want_daemonize(c, true);
 	if (!c->startl(c, 0, NULL, NULL)) {
@@ -243,12 +237,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%d: %s is in state %s, not in RUNNING.\n", __LINE__, c->name, s ? s : "undefined");
 		goto out;
 	}
-
-	printf("hit return to finish");
-	ret = scanf("%c", &mychar);
-	if (ret < 0)
-		goto out;
-
 
 	fprintf(stderr, "all lxc_container tests passed for %s\n", c->name);
 	ret = 0;
