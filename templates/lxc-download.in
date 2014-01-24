@@ -249,7 +249,13 @@ fi
 
 # Trap all exit signals
 trap cleanup EXIT HUP INT TERM
-DOWNLOAD_TEMP=$(mktemp -d)
+
+if ! type mktemp >/dev/null 2>&1; then
+    DOWNLOAD_TEMP=/tmp/lxc-download.$$
+    mkdir -p $DOWNLOAD_TEMP
+else
+    DOWNLOAD_TEMP=$(mktemp -d)
+fi
 
 # Simply list images
 if [ "$DOWNLOAD_LIST_IMAGES" = "true" ] || \
