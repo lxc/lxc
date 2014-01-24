@@ -1957,7 +1957,7 @@ static bool lxcapi_destroy(struct lxc_container *c)
 		goto out;
 	}
 
-	if (!am_unpriv() && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount) {
+	if (!am_unpriv() && c->lxc_conf && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount) {
 		r = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 		if (r) {
 			if (r->ops->destroy(r) < 0) {
