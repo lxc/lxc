@@ -21,17 +21,44 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+DONE=0
+
 cleanup() {
-	sed -i '/usernic-user/d' /var/run/lxc/nics /etc/lxc/lxc-usernet
-	ifconfig usernic-br0 down
-	ifconfig usernic-br1 down
-	sudo brctl delbr usernic-br0
-	sudo brctl delbr usernic-br1
-	sudo deluser usernic-user
-	su -l usernic-user -c "lxc-stop -P /tmp/usernic-test/lxcbase -n b1"
-	rm -rf /tmp/usernic-test
-	exit $1
+	(
+		set +e
+
+		lxc-stop -n usernic-c1
+		lxc-destroy -n usernic-c1
+
+		sed -i '/usernic-user/d' /var/run/lxc/nics /etc/lxc/lxc-usernet
+		ifconfig usernic-br0 down
+		ifconfig usernic-br1 down
+		brctl delbr usernic-br0
+		brctl delbr usernic-br1
+
+		run_cmd "lxc-stop -n b1"
+		pkill -u $(id -u usernic-user) -9
+
+		rm -rf /tmp/usernic-test /home/usernic-user /run/user/$(id -u usernic-user)
+
+		deluser usernic-user
+	) >/dev/null 2>&1
+
+	if [ "$DONE" = "1" ]; then
+		echo "PASS"
+		exit 0
+	fi
+
+	echo "FAIL"
+	exit 1
 }
+
+run_cmd() {
+	sudo -i -u usernic-user env XDG_RUNTIME_DIR=/run/user/$(id -u usernic-user) $*
+}
+
+set -eu
+trap cleanup EXIT SIGHUP SIGINT SIGTERM
 
 # create a test user
 deluser usernic-user || true
@@ -39,105 +66,90 @@ useradd usernic-user
 sudo mkdir -p /home/usernic-user
 sudo chown usernic-user /home/usernic-user
 usermod -v 910000-919999 -w 910000-919999 usernic-user
-mkdir -p /tmp/usernic-test/lxcbase
-chown usernic-user /tmp/usernic-test/lxcbase
-uid=$(id -u usernic-user)
-cat > /home/usernic-user/.bashrc << EOF
-export XDG_RUNTIME_DIR=/run/user/$uid
-EOF
-XDG_RUNTIME_DIR=/run/user/$uid
-export XDG_RUNTIME_DIR=/run/user/$uid
-mkdir -p /run/user/$uid
-chown usernic-user /run/user/$uid
-env
-echo XXX[
-su -l usernic-user -c "env"
-sleep 20
 
-#
-cat > /tmp/lxc-usernic.conf << EOF
+mkdir -p /home/usernic-user/.config/lxc/
+cat > /home/usernic-user/.config/lxc/default.conf << EOF
 lxc.network.type = empty
-lxc.id_map = u 0 911000 10000
-lxc.id_map = g 0 911000 10000
+lxc.id_map = u 0 910000 10000
+lxc.id_map = g 0 910000 10000
 EOF
+
+for d in /sys/fs/cgroup/*; do
+	[ ! -d $d/lxctest ] && mkdir $d/lxctest
+	chown -R usernic-user $d/lxctest
+	echo $$ > $d/lxctest/tasks
+done
+
+mkdir -p /run/user/$(id -u usernic-user)
+chown -R usernic-user /run/user/$(id -u usernic-user) /home/usernic-user
 
 # Create two test bridges
-
 brctl addbr usernic-br0
 brctl addbr usernic-br1
 ifconfig usernic-br0 0.0.0.0 up
 ifconfig usernic-br1 0.0.0.0 up
 
-LXC_USERNIC_PATH=$(ls -1 /usr/lib/*/lxc/lxc-user-nic | head -1)
-
 # Create three containers
-su -l usernic-user -c "lxc-create -P /tmp/usernic-test/lxcbase -t busybox -n b1 -f /tmp/lxc-usernic.conf"
-su -l usernic-user -c "lxc-start -P /tmp/usernic-test/lxcbase -n b1 -d"
-p1=`lxc-info -P /tmp/usernic-test/lxcbase -n b1 -p | awk -F: '{ print $2 }'`
+run_cmd "lxc-create -t download -n b1 -- -d ubuntu -r trusty -a i386"
+run_cmd "lxc-start -n b1 -d"
+p1=$(run_cmd "lxc-info -n b1 -p -H")
 
 # Assign one veth, should fail as no allowed entries yet
-su -l usernic-user -c "$LXC_USERNIC_PATH $p1 veth usernic-br0 xx1"
-if [ $? -eq 0 ]; then
+if run_cmd "lxc-user-nic $p1 veth usernic-br0 xx1"; then
 	echo "FAIL: able to create nic with no entries"
-	cleanup 1
+	exit 1
 fi
 
 # Give him a quota of two
 touch /etc/lxc/lxc-usernet
-sed -i '/^lxc-usernet/d' /etc/lxc/lxc-usernet
-echo "lxc-usernet veth usernic-br0 2" >> /etc/lxc/lxc-usernet
+sed -i '/^usernic-user/d' /etc/lxc/lxc-usernet
+echo "usernic-user veth usernic-br0 2" >> /etc/lxc/lxc-usernet
 
 # Assign one veth to second bridge, should fail
-su -l usernic-user -c "$LXC_USERNIC_PATH $p1 veth usernic-br1 xx1"
-if [ $? -eq 0 ]; then
+if run_cmd "lxc-user-nic $p1 veth usernic-br1 xx1"; then
 	echo "FAIL: able to create nic with no entries"
-	cleanup 1
+	exit 1
 fi
 
 # Assign two veths, should succeed
-su -l usernic-user -c "$LXC_USERNIC_PATH $p1 veth usernic-br0 xx2"
-if [ $? -ne 0 ]; then
+if ! run_cmd "lxc-user-nic $p1 veth usernic-br0 xx2"; then
 	echo "FAIL: unable to create first nic"
-	cleanup 1
+	exit 1
 fi
-su -l usernic-user -c "$LXC_USERNIC_PATH $p1 veth usernic-br0 xx3"
-if [ $? -ne 0 ]; then
+
+if ! run_cmd "lxc-user-nic $p1 veth usernic-br0 xx3"; then
 	echo "FAIL: unable to create second nic"
-	cleanup 1
+	exit 1
 fi
 
 # Assign one more veth, should fail.
-su -l usernic-user -c "$LXC_USERNIC_PATH $p1 veth usernic-br0 xx4"
-if [ $? -eq 0 ]; then
+if run_cmd "lxc-user-nic $p1 veth usernic-br0 xx4"; then
 	echo "FAIL: able to create third nic"
-	cleanup 1
+	exit 1
 fi
 
 # Shut down and restart the container, should be able to assign more nics
-su -l usernic-user -c "lxc-stop -P /tmp/usernic-test/lxcbase -n b1"
-su -l usernic-user -c "lxc-start -P /tmp/usernic-test/lxcbase -n b1 -d"
-p1=`lxc-info -P /tmp/usernic-test/lxcbase -n b1 -p | awk -F: '{ print $2 }'`
-su -l usernic-user -c "$LXC_USERNIC_PATH $p1 veth usernic-br0 xx5"
-if [ $? -ne 0 ]; then
+run_cmd "lxc-stop -n b1"
+run_cmd "lxc-start -n b1 -d"
+p1=$(run_cmd "lxc-info -n b1 -p -H")
+
+if ! run_cmd "lxc-user-nic $p1 veth usernic-br0 xx5"; then
 	echo "FAIL: unable to create nic after destroying the old"
 	cleanup 1
 fi
 
-su -l usernic-user -c "lxc-stop -P /tmp/usernic-test/lxcbase -n b1"
+run_cmd "lxc-stop -n b1"
 
 # Create a root-owned ns
 lxc-create -t busybox -n usernic-c1
 lxc-start -n usernic-c1 -d
-p2=`lxc-info -n usernic-c1 -p | awk -F: '{ print $2}'`
+p2=$(lxc-info -n usernic-c1 -p -H)
 
 # assign veth to it - should fail
-su -l usernic-user -c "$LXC_USERNIC_PATH $p2 veth usernic-br0 xx6"
-ret=$?
-lxc-stop -n usernic-c1
-lxc-destroy -n usernic-c1
-if [ $ret -eq 0 ]; then
+if run_cmd "lxc-user-nic $p2 veth usernic-br0 xx6"; then
 	echo "FAIL: able to attach nic to root-owned container"
 	cleanup 1
 fi
 
 echo "All tests passed"
+DONE=1
