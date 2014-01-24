@@ -60,14 +60,13 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	c->clear_config(c);
 	c->load_config(c, NULL);
 	c->want_daemonize(c, true);
 	if (!c->startl(c, 0, NULL)) {
 		fprintf(stderr, "%d: failed to start %s\n", __LINE__, MYNAME);
 		goto out;
 	}
-	fprintf(stderr, "%d: %s started, you have 60 seconds to test a console\n", __LINE__, MYNAME);
-	sleep(60);  // wait a minute to let user connect to console
 
 	if (!c->stop(c)) {
 		fprintf(stderr, "%d: failed to stop %s\n", __LINE__, MYNAME);
