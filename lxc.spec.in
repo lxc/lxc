@@ -89,7 +89,7 @@ development of the Linux containers.
 %package	lua
 Summary:	Lua bindings for %{name}
 Group:		System Environment/Libraries
-Requires:	lua-filesystem
+Requires:	lua-filesystem lua-alt-getopt
 BuildRequires:	lua-devel
 %description	lua
 The %{name}-lua package contains %{name} bindings for lua.
