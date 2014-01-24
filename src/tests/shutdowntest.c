@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	c->clear_config(c);
 	c->load_config(c, NULL);
 	c->want_daemonize(c, true);
 	if (!c->startl(c, 0, NULL)) {
