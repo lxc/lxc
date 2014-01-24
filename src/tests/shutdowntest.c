@@ -68,8 +68,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%d: failed to start %s\n", __LINE__, MYNAME);
 		goto out;
 	}
-	fprintf(stderr, "%d: %s started, you have 60 seconds to test a console\n", __LINE__, MYNAME);
-	sleep(60);  // wait a minute to let user connect to console
 
 	if (!c->shutdown(c, 60)) {
 		fprintf(stderr, "%d: failed to shut down %s\n", __LINE__, MYNAME);
