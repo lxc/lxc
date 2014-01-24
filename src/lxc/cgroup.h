@@ -180,6 +180,7 @@ struct cgroup_ops {
 	int (*get)(const char *filename, char *value, size_t len, const char *name, const char *lxcpath);
 	int (*unfreeze_fromhandler)(struct lxc_handler *handler);
 	bool (*setup_limits)(struct lxc_handler *handler, bool with_devices);
+	bool (*chown)(struct lxc_handler *handler);
 	const char *name;
 };
 
@@ -209,6 +210,7 @@ extern void cgroup_destroy(struct lxc_handler *handler);
 extern bool cgroup_init(struct lxc_handler *handler);
 extern bool cgroup_create(struct lxc_handler *handler);
 extern bool cgroup_setup_limits(struct lxc_handler *handler, bool with_devices);
+extern bool cgroup_chown(struct lxc_handler *handler);
 extern bool cgroup_enter(struct lxc_handler *handler);
 extern void cgroup_cleanup(struct lxc_handler *handler);
 extern bool cgroup_create_legacy(struct lxc_handler *handler);

@@ -804,6 +804,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (!cgroup_enter(handler))
 		goto out_delete_net;
 
+	if (!cgroup_chown(handler))
+		goto out_delete_net;
+
 	if (failed_before_rename)
 		goto out_delete_net;
 

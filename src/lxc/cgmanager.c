@@ -75,6 +75,44 @@ static void cgmanager_disconnected(DBusConnection *connection)
 	}
 }
 
+static int send_creds(int sock, int rpid, int ruid, int rgid)
+{
+	struct msghdr msg = { 0 };
+	struct iovec iov;
+	struct cmsghdr *cmsg;
+	struct ucred cred = {
+		.pid = rpid,
+		.uid = ruid,
+		.gid = rgid,
+	};
+	char cmsgbuf[CMSG_SPACE(sizeof(cred))];
+	char buf[1];
+	buf[0] = 'p';
+
+	msg.msg_control = cmsgbuf;
+	msg.msg_controllen = sizeof(cmsgbuf);
+
+	cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg->cmsg_len = CMSG_LEN(sizeof(struct ucred));
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_CREDENTIALS;
+	memcpy(CMSG_DATA(cmsg), &cred, sizeof(cred));
+
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+
+	iov.iov_base = buf;
+	iov.iov_len = sizeof(buf);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
+	if (sendmsg(sock, &msg, 0) < 0) {
+		perror("sendmsg");
+		return -1;
+	}
+	return 0;
+}
+
 #define CGMANAGER_DBUS_SOCK "unix:path=/sys/fs/cgroup/cgmanager/sock"
 bool lxc_init_cgmanager(void)
 {
@@ -120,10 +158,121 @@ static bool lxc_cgmanager_create(const char *controller, const char *cgroup_path
 		return false;
 	}
 
-	// TODO - try to chown the cgroup to the container root
 	return true;
 }
 
+struct chown_data {
+	const char *controller;
+	const char *cgroup_path;
+};
+
+static int do_chown_cgroup(const char *controller, const char *cgroup_path)
+{
+	int sv[2] = {-1, -1}, optval = 1;
+	char buf[1];
+
+	if (setgid(0) < 0)
+		WARN("Failed to setgid to 0");
+	if (setuid(0) < 0)
+		WARN("Failed to setuid to 0");
+
+	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sv) < 0) {
+		SYSERROR("Error creating socketpair");
+		return -1;
+	}
+	if (setsockopt(sv[1], SOL_SOCKET, SO_PASSCRED, &optval, sizeof(optval)) == -1) {
+		SYSERROR("setsockopt failed");
+		return -1;
+	}
+	if (setsockopt(sv[0], SOL_SOCKET, SO_PASSCRED, &optval, sizeof(optval)) == -1) {
+		SYSERROR("setsockopt failed");
+		return -1;
+	}
+	if ( cgmanager_chown_scm_sync(NULL, cgroup_manager, controller,
+				       cgroup_path, sv[1]) != 0) {
+		ERROR("call to cgmanager_chown_scm_sync failed");
+		return -1;
+	}
+	/* now send credentials */
+
+	fd_set rfds;
+	FD_ZERO(&rfds);
+	FD_SET(sv[0], &rfds);
+	if (select(sv[0]+1, &rfds, NULL, NULL, NULL) < 0) {
+		ERROR("Error getting go-ahead from server: %s", strerror(errno));
+		return -1;
+	}
+	if (read(sv[0], &buf, 1) != 1) {
+		ERROR("Error getting reply from server over socketpair");
+		return -1;
+	}
+	if (send_creds(sv[0], getpid(), getuid(), getgid())) {
+		ERROR("Error sending pid over SCM_CREDENTIAL");
+		return -1;
+	}
+	FD_ZERO(&rfds);
+	FD_SET(sv[0], &rfds);
+	if (select(sv[0]+1, &rfds, NULL, NULL, NULL) < 0) {
+		ERROR("Error getting go-ahead from server: %s", strerror(errno));
+		return -1;
+	}
+	if (read(sv[0], &buf, 1) != 1) {
+		ERROR("Error getting reply from server over socketpair");
+		return -1;
+	}
+	if (send_creds(sv[0], getpid(), 0, 0)) {
+		ERROR("Error sending pid over SCM_CREDENTIAL");
+		return -1;
+	}
+	FD_ZERO(&rfds);
+	FD_SET(sv[0], &rfds);
+	if (select(sv[0]+1, &rfds, NULL, NULL, NULL) < 0) {
+		ERROR("Error getting go-ahead from server: %s", strerror(errno));
+		return -1;
+	}
+	int ret = read(sv[0], buf, 1);
+	close(sv[0]);
+	close(sv[1]);
+	if (ret == 1 && *buf == '1')
+		return 0;
+	return -1;
+}
+
+static int chown_cgroup_wrapper(void *data)
+{
+	struct chown_data *arg = data;
+	return do_chown_cgroup(arg->controller, arg->cgroup_path);
+}
+
+static bool chown_cgroup(const char *controller, const char *cgroup_path,
+			struct lxc_conf *conf)
+{
+	pid_t pid;
+	struct chown_data data;
+	data.controller = controller;
+	data.cgroup_path = cgroup_path;
+
+	if (lxc_list_empty(&conf->id_map)) {
+		if (do_chown_cgroup(controller, cgroup_path) < 0)
+			return false;
+		return true;
+	}
+
+	if ((pid = fork()) < 0) {
+		SYSERROR("fork");
+		return false;
+	}
+	if (pid > 0) {
+		if (wait_for_pid(pid)) {
+			ERROR("Error chowning cgroup");
+			return false;
+		}
+		return true;
+	}
+	if (userns_exec_1(conf, chown_cgroup_wrapper, &data) < 0)
+		exit(1);
+	exit(0);
+}
 
 struct cgm_data {
 	int nr_subsystems;
@@ -432,6 +581,19 @@ static bool cgm_setup_limits(struct lxc_handler *handler, bool with_devices)
 	return setup_limits(handler, with_devices);
 }
 
+static bool cgm_chown(struct lxc_handler *handler)
+{
+	struct cgm_data *d = handler->cgroup_info->data;
+	int i;
+
+	for (i = 0; i < d->nr_subsystems; i++) {
+		if (!chown_cgroup(d->subsystems[i], d->cgroup_path, handler->conf))
+			WARN("Failed to chown %s:%s to container root",
+				d->subsystems[i], d->cgroup_path);
+	}
+	return true;
+}
+
 static struct cgroup_ops cgmanager_ops = {
 	.destroy = cgm_destroy,
 	.init = cgm_init,
@@ -443,6 +605,7 @@ static struct cgroup_ops cgmanager_ops = {
 	.set = cgm_set,
 	.unfreeze_fromhandler = cgm_unfreeze_fromhandler,
 	.setup_limits = cgm_setup_limits,
-	.name = "cgmanager"
+	.name = "cgmanager",
+	.chown = cgm_chown,
 };
 #endif

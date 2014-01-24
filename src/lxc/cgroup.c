@@ -2199,6 +2199,7 @@ static struct cgroup_ops cgfs_ops = {
 	.unfreeze_fromhandler = cgfs_unfreeze_fromhandler,
 	.setup_limits = cgroupfs_setup_limits,
 	.name = "cgroupfs",
+	.chown = NULL,
 };
 static void init_cg_ops(void)
 {
@@ -2296,4 +2297,11 @@ int lxc_unfreeze_fromhandler(struct lxc_handler *handler)
 bool cgroup_setup_limits(struct lxc_handler *handler, bool with_devices)
 {
 	return active_cg_ops->setup_limits(handler, with_devices);
+}
+
+bool cgroup_chown(struct lxc_handler *handler)
+{
+	if (active_cg_ops->chown)
+		return active_cg_ops->chown(handler);
+	return true;
 }
