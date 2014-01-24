@@ -34,7 +34,7 @@ cleanup() {
 	run_cmd lxc-stop -n c1 -k
 	pkill -u $(id -u $TUSER) -9
 
-	sed -i '/usernic-user/d' /var/run/lxc/nics /etc/lxc/lxc-usernet
+	sed -i '/lxcunpriv/d' /var/run/lxc/nics /etc/lxc/lxc-usernet
 	sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
 
 	rm -Rf $HDIR /run/user/$(id -u $TUSER)
