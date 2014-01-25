@@ -2486,8 +2486,10 @@ static int clone_update_rootfs(struct clone_update_data *data)
 			SYSERROR("unable to open %s: ignoring\n", path);
 			return 0;
 		}
-		if (fprintf(fout, "%s", c->name) < 0)
+		if (fprintf(fout, "%s", c->name) < 0) {
+			fclose(fout);
 			return -1;
+        }
 		if (fclose(fout) < 0)
 			return -1;
 	}
