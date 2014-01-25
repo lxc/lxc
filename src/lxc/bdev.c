@@ -2101,6 +2101,11 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 
 	/* check for privilege */
 	if (am_unpriv()) {
+		if (snap && !maybe_snap) {
+			ERROR("Unprivileged users cannot snapshot");
+			bdev_put(orig);
+			return NULL;
+		}
 		if (bdevtype && strcmp(bdevtype, "dir") != 0) {
 			ERROR("Unprivileged users can only make dir copy-clones");
 			bdev_put(orig);
