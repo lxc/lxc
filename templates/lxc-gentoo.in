@@ -531,7 +531,7 @@ container_net()
     # will fail to load
     if [[ -z "${nic_managed}" ]]; then
         #tell openrc that lxc already did the work
-        echo 'rc_provide="net"' >> "$CACHE/etc/rc.conf"
+        echo 'rc_provide="net"' >> "${rootfs}/etc/rc.conf"
     fi
 
     #No NIC ?
