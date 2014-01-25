@@ -109,6 +109,11 @@ tty4:12345:respawn:/sbin/getty 38400 tty4
 ::ctrlaltdel:/sbin/reboot
 ::shutdown:/sbin/rc shutdown
 EOF
+    # set up timezone
+    if [ -f /etc/TZ ]; then
+        cp /etc/TZ "$rootfs/etc/TZ"
+    fi
+
     # set up nameserver
     grep nameserver /etc/resolv.conf > "$rootfs/etc/resolv.conf"
 
