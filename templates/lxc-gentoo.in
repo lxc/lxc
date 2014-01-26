@@ -16,6 +16,8 @@
 # Ensure strict root's umask doesen't render the VM unusable
 umask 022
 
+LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+
 ################################################################################
 #                        Various helper functions
 ################################################################################
@@ -222,11 +224,11 @@ cache_dev()
 
     #Wait for https://bugs.gentoo.org/show_bug.cgi?id=496054
     mkdir "${partialfs}/dev/pts"
+    mkdir "${partialfs}/dev/shm"
+    mkdir "${partialfs}/dev/mqueue"
 
-    if [ -n "${nettun}" ]; then
-        mkdir -m 755 "${partialfs}/net"
-        mknod -m 666 "${partialfs}/net/tun"        c 10 200
-    fi
+    mkdir -m 755 "${partialfs}/net"
+    mknod -m 666 "${partialfs}/net/tun"        c 10 200
 
     return 0
 }
@@ -469,8 +471,7 @@ container_conf_net()
     OLDIFS=$IFS
     IFS="
 "
-    #I'll drink champagne the day we do templates in python
-    #let's do some drity bash things
+    #let's do some drity bash things to parse lxc network conf
     for line in $( sed -r "s/[ ]*=[ ]*/_real_ugly_sep_42_/" "${file}" ); do
         key=$(echo "${line}" | sed 's/_real_ugly_sep_42_.*$//')
         value=$(echo "${line}" | sed 's/^.*_real_ugly_sep_42_//')
@@ -554,10 +555,16 @@ lxc.network.hwaddr = fe:xx:xx:xx:xx:xx"
     fi
 
     #For each openrc managed nic, activate
+    sys_nic_index=1
     for nic in ${nic_managed}
     do
         chroot "${rootfs}" ln -s net.lo "/etc/init.d/net.${nic}"
         chroot "${rootfs}" rc-update add net.${nic} default
+        #fake sysfs for openrc, in case settings does not provide it
+        mkdir -p "${rootfs}/sys/class/net/${nic}"
+        echo ${sys_nic_index} > "${rootfs}/sys/class/net/${nic}/ifindex"
+        echo up > "${rootfs}/sys/class/net/${nic}/operstate"
+        let sys_nic_index=sys_nic_index+1
     done
 
         #Warn about dynamic hwaddr
@@ -638,86 +645,23 @@ container_conf()
         local conf_arch_line="# lxc.arch = ${arch}"
     fi
 
-    conf_lxc_cap_drop="sys_module mac_admin mac_override mknod sys_time"
-    conf_sysfs="lxc.mount.entry=sys sys sysfs defaults 0 0"
-
-    #more aggressive configuration, for your safety. But less things may work
-    if [ -n "${more_secure}" ]; then
-        conf_lxc_cap_drop="${conf_lxc_cap_drop} audit_control audit_write dac_read_search fsetid ipc_owner linux_immutable setfcap sys_admin sys_boot sys_pacct sys_ptrace sys_rawio sys_resource sys_tty_config syslog"
-        conf_sysfs="# disabled for security, see http://blog.bofh.it/debian/id_413
-#lxc.mount.entry=sys sys sysfs defaults 0 0"
-    fi
-
-        cat <<- EOF >> "${conf_file}"
+    cat <<- EOF >> "${conf_file}"
 # sets container architecture
 # If desired architecture != amd64 or x86, then we leave it unset as
 # LXC does not oficially support anything other than x86 or amd64.
 ${conf_arch_line}
 
-# console access
-lxc.tty = ${tty}
-lxc.pts = 1024
-
 # set the hostname
 lxc.utsname = ${name}
+lxc.tty = ${tty}
 
 ${conf_rootfs_line}
 ${portage_mount}
 ${conf_sysfs}
-
-# this part is based on 'linux capabilities', see: man 7 capabilities
-#  eg: you may also wish to drop 'cap_net_raw' (though it breaks ping)
-#
-# WARNING: the security vulnerability reported for 'cap_net_admin' at
-# http://mainisusuallyafunction.blogspot.com/2012/11/attacking-hardened-linux-systems-with.html
-# via JIT spraying (the BPF JIT module disabled on most systems was used
-# in the example, but others are suggested vulnerable) meant that users
-# with root in a container, that capability and kernel module may escape
-# the container. ALWAYS be extremely careful granting any process root
-# within a container, use a minimal configuration at all levels -
-# including the kernel - and multiple layers of security on any system
-# where security is a priority.  note that not only LXC but PAX (and
-# others?) were vulnerable to this issue.
-#
-# conservative: lxc.cap.drop = sys_module mknod mac_override sys_boot
-# aggressive follows. (leaves open: chown dac_override fowner ipc_lock kill lease net_admin net_bind_service net_broadcast net_raw setgid setuid sys_chroot)
-# lxc.cap.drop = audit_control audit_write dac_read_search fsetid ipc_owner linux_immutable mac_admin mac_override mknod setfcap sys_admin sys_boot sys_module sys_pacct sys_ptrace sys_rawio sys_resource sys_time sys_tty_config syslog
-
-lxc.cap.drop = ${conf_lxc_cap_drop}
-
 ${conf_mounts}
 
-# deny access to all devices by default, explicitly grant some permissions
-#
-# format is [c|b] [major|*]:[minor|*] [r][w][m]
-#            ^     ^                   ^
-# char/block -'     \`- device number    \`-- read, write, mknod
-#
-# first deny all...
-lxc.cgroup.devices.deny = a
-# /dev/null and zero
-lxc.cgroup.devices.allow = c 1:3 rw
-lxc.cgroup.devices.allow = c 1:5 rw
-# /dev/{,u}random
-lxc.cgroup.devices.allow = c 1:9 rw
-lxc.cgroup.devices.allow = c 1:8 r
-# /dev/pts/*
-lxc.cgroup.devices.allow = c 136:* rw
-lxc.cgroup.devices.allow = c 5:2 rw
-# /dev/tty{0,1}
-lxc.cgroup.devices.allow = c 4:1 rwm
-lxc.cgroup.devices.allow = c 4:0 rwm
-# /dev/tty
-lxc.cgroup.devices.allow = c 5:0 rwm
-# /dev/console
-lxc.cgroup.devices.allow = c 5:1 rwm
+lxc.include = ${LXC_TEMPLATE_CONFIG}/gentoo.${settings}.conf
 EOF
-    if [ -n "${nettun}" ]; then
-        cat <<- EOF >> "${conf_file}"
-# /dev/net/tun
-lxc.cgroup.devices.allow = c 10:200 rwm
-EOF
-    fi
     printf  " => done.\n"
 }
 
@@ -725,8 +669,8 @@ usage()
 {
     cat <<EOF
 $1 -h|--help [-a|--arch <arch>] [-v|--variant <variant>] [-P|--private-portage] [--portage-dir <protagedir>] [-t|--tarball <stage3file>]
- [-F|--flush-cache] [-c|--cache-only] [-u|--user <username>] [-w|--password <password>] [-S|--auth-key <keyfile>]
- [-s|--more-secure] [-m|--mirror <gentoomirror>] [--tty <number>] [--nettun]
+ [-F|--flush-cache] [-c|--cache-only] [-u|--user <username>] [-w|--password <password>] [--autologin] [-S|--auth-key <keyfile>]
+ [-s|--settings <name>] [-m|--mirror <gentoomirror>] [--tty <number>]
 
 arch: the container architecture (e.g. amd64): defaults to host arch (currently: '${arch}')
     If you choose one that needs emulation
@@ -763,13 +707,14 @@ autologin: enable autologin for user (currently: '${autologin}')
 auth-key: SSH Public key file to inject into container for user (currently: '${auth_key}')
     This unset default password setting
 
-more-secure: does some additional security agressive settings (may prevent things to run) (currently: '${more_secure}')
+settings: choose common configuration (currently: '${settings}')
+    see ${LXC_TEMPLATE_CONFIG}/gentoo.*.conf
+    Available settings:
+    $(ls -1 ${LXC_TEMPLATE_CONFIG}/gentoo.*.conf | xargs basename -a -s .conf | sed 's/^gentoo.//')
 
 mirror: gentoo mirror for download (currently: '${mirror}')
 
 tty: number of tty (6 max) (currently: '${tty}')
-
-nettun: enable creation of /dev/net/tun (for private container VPN) (currently: '${nettun}')
 EOF
     exit 0
 }
@@ -781,7 +726,8 @@ mirror="http://distfiles.gentoo.org"
 user="root"
 password="toor"
 tty=0
-options=$(getopt -o hp:n:a:FcPv:t:S:u:w:sm: -l help,rootfs:,path:,name:,arch:,flush-cache,cache-only,private-portage,variant:,portage-dir:,tarball:,auth_key:,user:,autologin,password:,more-secure,mirror:,tty:,nettun -- "$@")
+settings="common"
+options=$(getopt -o hp:n:a:FcPv:t:S:u:w:s:m: -l help,rootfs:,path:,name:,arch:,flush-cache,cache-only,private-portage,variant:,portage-dir:,tarball:,auth_key:,user:,autologin,password:,settings:,mirror:,tty: -- "$@")
 
 eval set -- "$options"
 
@@ -802,9 +748,8 @@ do
     -S|--auth-key)         auth_key=$2; shift 2;;
     -u|--user)             user=$2; shift 2;;
     -w|--password)         forced_password=1; password=$2; shift 2;;
-    -s|--more-secure)      more_secure=1; shift 1;;
+    -s|--settings)         settings=$2; shift 2;;
     -m|--mirror)           mirror=$2; shift 2;;
-    --nettun)              nettun=1; shift 1;;
     --tty)                 [[ $2 -lt 6 ]] && tty=$2; shift 2;;
     --autologin)            autologin=1; shift 1;;
     --) shift 1; break ;;

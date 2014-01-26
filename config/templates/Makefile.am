@@ -7,6 +7,8 @@ templatesconfig_DATA = \
 	debian.userns.conf \
 	fedora.common.conf \
 	fedora.userns.conf \
+	gentoo.common.conf \
+	gentoo.moresecure.conf \
 	oracle.common.conf \
 	oracle.userns.conf \
 	plamo.common.conf \
