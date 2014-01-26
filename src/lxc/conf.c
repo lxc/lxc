@@ -424,9 +424,11 @@ static int find_fstype_cb(char* buffer, void *data)
 	struct cbarg {
 		const char *rootfs;
 		const char *target;
-		int mntopt;
+		const char *options;
 	} *cbarg = data;
 
+	unsigned long mntflags;
+	char *mntdata;
 	char *fstype;
 
 	/* we don't try 'nodev' entries */
@@ -440,10 +442,17 @@ static int find_fstype_cb(char* buffer, void *data)
 	DEBUG("trying to mount '%s'->'%s' with fstype '%s'",
 	      cbarg->rootfs, cbarg->target, fstype);
 
-	if (mount(cbarg->rootfs, cbarg->target, fstype, cbarg->mntopt, NULL)) {
+	if (parse_mntopts(cbarg->options, &mntflags, &mntdata) < 0) {
+		free(mntdata);
+		return -1;
+	}
+
+	if (mount(cbarg->rootfs, cbarg->target, fstype, mntflags, mntdata)) {
 		DEBUG("mount failed with error: %s", strerror(errno));
+		free(mntdata);
 		return 0;
 	}
+	free(mntdata);
 
 	INFO("mounted '%s' on '%s', with fstype '%s'",
 	     cbarg->rootfs, cbarg->target, fstype);
@@ -451,18 +460,19 @@ static int find_fstype_cb(char* buffer, void *data)
 	return 1;
 }
 
-static int mount_unknown_fs(const char *rootfs, const char *target, int mntopt)
+static int mount_unknown_fs(const char *rootfs, const char *target,
+			                const char *options)
 {
 	int i;
 
 	struct cbarg {
 		const char *rootfs;
 		const char *target;
-		int mntopt;
+		const char *options;
 	} cbarg = {
 		.rootfs = rootfs,
 		.target = target,
-		.mntopt = mntopt,
+		.options = options,
 	};
 
 	/*
@@ -496,9 +506,22 @@ static int mount_unknown_fs(const char *rootfs, const char *target, int mntopt)
 	return -1;
 }
 
-static int mount_rootfs_dir(const char *rootfs, const char *target)
+static int mount_rootfs_dir(const char *rootfs, const char *target,
+			                const char *options)
 {
-	return mount(rootfs, target, "none", MS_BIND | MS_REC, NULL);
+	unsigned long mntflags;
+	char *mntdata;
+	int ret;
+
+	if (parse_mntopts(options, &mntflags, &mntdata) < 0) {
+		free(mntdata);
+		return -1;
+	}
+
+	ret = mount(rootfs, target, "none", MS_BIND | MS_REC | mntflags, mntdata);
+	free(mntdata);
+
+	return ret;
 }
 
 static int setup_lodev(const char *rootfs, int fd, struct loop_info64 *loinfo)
@@ -533,7 +556,8 @@ out:
 	return ret;
 }
 
-static int mount_rootfs_file(const char *rootfs, const char *target)
+static int mount_rootfs_file(const char *rootfs, const char *target,
+				             const char *options)
 {
 	struct dirent dirent, *direntp;
 	struct loop_info64 loinfo;
@@ -585,7 +609,7 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 
 		ret = setup_lodev(rootfs, fd, &loinfo);
 		if (!ret)
-			ret = mount_unknown_fs(path, target, 0);
+			ret = mount_unknown_fs(path, target, options);
 		close(fd);
 
 		break;
@@ -597,9 +621,10 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 	return ret;
 }
 
-static int mount_rootfs_block(const char *rootfs, const char *target)
+static int mount_rootfs_block(const char *rootfs, const char *target,
+			                  const char *options)
 {
-	return mount_unknown_fs(rootfs, target, 0);
+	return mount_unknown_fs(rootfs, target, options);
 }
 
 /*
@@ -729,13 +754,13 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_cg
 	return 0;
 }
 
-static int mount_rootfs(const char *rootfs, const char *target)
+static int mount_rootfs(const char *rootfs, const char *target, const char *options)
 {
 	char absrootfs[MAXPATHLEN];
 	struct stat s;
 	int i;
 
-	typedef int (*rootfs_cb)(const char *, const char *);
+	typedef int (*rootfs_cb)(const char *, const char *, const char *);
 
 	struct rootfs_type {
 		int type;
@@ -766,7 +791,7 @@ static int mount_rootfs(const char *rootfs, const char *target)
 		if (!__S_ISTYPE(s.st_mode, rtfs_type[i].type))
 			continue;
 
-		return rtfs_type[i].cb(absrootfs, target);
+		return rtfs_type[i].cb(absrootfs, target, options);
 	}
 
 	ERROR("unsupported rootfs type for '%s'", absrootfs);
@@ -1530,7 +1555,7 @@ static int setup_rootfs(struct lxc_conf *conf)
 	}
 
 	// First try mounting rootfs using a bdev
-	struct bdev *bdev = bdev_init(rootfs->path, rootfs->mount, NULL);
+	struct bdev *bdev = bdev_init(rootfs->path, rootfs->mount, rootfs->options);
 	if (bdev && bdev->ops->mount(bdev) == 0) {
 		bdev_put(bdev);
 		DEBUG("mounted '%s' on '%s'", rootfs->path, rootfs->mount);
@@ -1538,7 +1563,7 @@ static int setup_rootfs(struct lxc_conf *conf)
 	}
 	if (bdev)
 		bdev_put(bdev);
-	if (mount_rootfs(rootfs->path, rootfs->mount)) {
+	if (mount_rootfs(rootfs->path, rootfs->mount, rootfs->options)) {
 		ERROR("failed to mount rootfs");
 		return -1;
 	}
@@ -1791,7 +1816,7 @@ static void parse_mntopt(char *opt, unsigned long *flags, char **data)
 	strcat(*data, opt);
 }
 
-static int parse_mntopts(const char *mntopts, unsigned long *mntflags,
+int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 			 char **mntdata)
 {
 	char *s, *data;
@@ -1865,11 +1890,6 @@ static inline int mount_entry_on_systemfs(const struct mntent *mntent)
 	FILE *pathfile = NULL;
 	char* pathdirname = NULL;
 
-	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
-		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
-		return -1;
-	}
-
 	if (hasmntopt(mntent, "create=dir")) {
 		if (!mkdir_p(mntent->mnt_dir, 0755)) {
 			WARN("Failed to create mount target '%s'", mntent->mnt_dir);
@@ -1888,6 +1908,11 @@ static inline int mount_entry_on_systemfs(const struct mntent *mntent)
 		}
 		else
 			fclose(pathfile);
+	}
+
+	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
+		free(mntdata);
+		return -1;
 	}
 
 	ret = mount_entry(mntent->mnt_fsname, mntent->mnt_dir,
@@ -1914,11 +1939,6 @@ static int mount_entry_on_absolute_rootfs(const struct mntent *mntent,
 	const char *lxcpath;
 	FILE *pathfile = NULL;
 	char *pathdirname = NULL;
-
-	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
-		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
-		return -1;
-	}
 
 	lxcpath = lxc_global_config_value("lxc.lxcpath");
 	if (!lxcpath) {
@@ -1976,15 +1996,21 @@ skipabs:
 			fclose(pathfile);
 	}
 
+	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
+		free(mntdata);
+		return -1;
+	}
+
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
 			  mntflags, mntdata);
+
+	free(mntdata);
 
 	if (hasmntopt(mntent, "optional") != NULL)
 		ret = 0;
 
 out:
 	free(pathdirname);
-	free(mntdata);
 	return ret;
 }
 
@@ -1997,11 +2023,6 @@ static int mount_entry_on_relative_rootfs(const struct mntent *mntent,
 	int ret;
 	FILE *pathfile = NULL;
 	char *pathdirname = NULL;
-
-	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
-		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
-		return -1;
-	}
 
 	/* relative to root mount point */
 	ret = snprintf(path, sizeof(path), "%s/%s", rootfs, mntent->mnt_dir);
@@ -2028,6 +2049,11 @@ static int mount_entry_on_relative_rootfs(const struct mntent *mntent,
 		}
 		else
 			fclose(pathfile);
+	}
+
+	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
+		free(mntdata);
+		return -1;
 	}
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
@@ -3906,6 +3932,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 		free(conf->console.path);
 	if (conf->rootfs.mount)
 		free(conf->rootfs.mount);
+	if (conf->rootfs.options)
+		free(conf->rootfs.options);
 	if (conf->rootfs.path)
 		free(conf->rootfs.path);
 	if (conf->rootfs.pivot)

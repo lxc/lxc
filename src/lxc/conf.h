@@ -219,6 +219,7 @@ struct lxc_rootfs {
 	char *path;
 	char *mount;
 	char *pivot;
+	char *options;
 };
 
 /*
@@ -375,4 +376,6 @@ extern int mapped_hostid(int id, struct lxc_conf *conf);
 extern int chown_mapped_root(char *path, struct lxc_conf *conf);
 extern int ttys_shift_ids(struct lxc_conf *c);
 extern int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data);
+extern int parse_mntopts(const char *mntopts, unsigned long *mntflags,
+			 char **mntdata);
 #endif

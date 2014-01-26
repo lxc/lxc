@@ -121,9 +121,11 @@ static int find_fstype_cb(char* buffer, void *data)
 	struct cbarg {
 		const char *rootfs;
 		const char *target;
-		int mntopt;
+		const char *options;
 	} *cbarg = data;
 
+	unsigned long mntflags;
+	char *mntdata;
 	char *fstype;
 
 	/* we don't try 'nodev' entries */
@@ -137,10 +139,18 @@ static int find_fstype_cb(char* buffer, void *data)
 	DEBUG("trying to mount '%s'->'%s' with fstype '%s'",
 	      cbarg->rootfs, cbarg->target, fstype);
 
-	if (mount(cbarg->rootfs, cbarg->target, fstype, cbarg->mntopt, NULL)) {
-		DEBUG("mount failed with error: %s", strerror(errno));
+	if (parse_mntopts(cbarg->options, &mntflags, &mntdata) < 0) {
+		free(mntdata);
 		return 0;
 	}
+
+	if (mount(cbarg->rootfs, cbarg->target, fstype, mntflags, mntdata)) {
+		DEBUG("mount failed with error: %s", strerror(errno));
+		free(mntdata);
+		return 0;
+	}
+
+	free(mntdata);
 
 	INFO("mounted '%s' on '%s', with fstype '%s'",
 	     cbarg->rootfs, cbarg->target, fstype);
@@ -148,18 +158,19 @@ static int find_fstype_cb(char* buffer, void *data)
 	return 1;
 }
 
-static int mount_unknown_fs(const char *rootfs, const char *target, int mntopt)
+static int mount_unknown_fs(const char *rootfs, const char *target,
+			                const char *options)
 {
 	int i;
 
 	struct cbarg {
 		const char *rootfs;
 		const char *target;
-		int mntopt;
+		const char *options;
 	} cbarg = {
 		.rootfs = rootfs,
 		.target = target,
-		.mntopt = mntopt,
+		.options = options,
 	};
 
 	/*
@@ -291,7 +302,7 @@ static int detect_fs(struct bdev *bdev, char *type, int len)
 	if (unshare(CLONE_NEWNS) < 0)
 		exit(1);
 
-	ret = mount_unknown_fs(srcdev, bdev->dest, 0);
+	ret = mount_unknown_fs(srcdev, bdev->dest, bdev->mntopts);
 	if (ret < 0) {
 		ERROR("failed mounting %s onto %s to detect fstype", srcdev, bdev->dest);
 		exit(1);
@@ -355,11 +366,23 @@ static int dir_detect(const char *path)
 //
 static int dir_mount(struct bdev *bdev)
 {
+	unsigned long mntflags;
+	char *mntdata;
+	int ret;
+
 	if (strcmp(bdev->type, "dir"))
 		return -22;
 	if (!bdev->src || !bdev->dest)
 		return -22;
-	return mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC, NULL);
+
+	if (parse_mntopts(bdev->mntopts, &mntflags, &mntdata) < 0) {
+		free(mntdata);
+		return -22;
+	}
+
+	ret = mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags, mntdata);
+	free(mntdata);
+	return ret;
 }
 
 static int dir_umount(struct bdev *bdev)
@@ -532,11 +555,23 @@ static int zfs_detect(const char *path)
 
 static int zfs_mount(struct bdev *bdev)
 {
+	unsigned long mntflags;
+	char *mntdata;
+	int ret;
+
 	if (strcmp(bdev->type, "zfs"))
 		return -22;
 	if (!bdev->src || !bdev->dest)
 		return -22;
-	return mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC, NULL);
+
+	if (parse_mntopts(bdev->mntopts, &mntflags, &mntdata) < 0) {
+		free(mntdata);
+		return -22;
+	}
+
+	ret = mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags, mntdata);
+	free(mntdata);
+	return ret;
 }
 
 static int zfs_umount(struct bdev *bdev)
@@ -783,7 +818,7 @@ static int lvm_mount(struct bdev *bdev)
 		return -22;
 	/* if we might pass in data sometime, then we'll have to enrich
 	 * mount_unknown_fs */
-	return mount_unknown_fs(bdev->src, bdev->dest, 0);
+	return mount_unknown_fs(bdev->src, bdev->dest, bdev->mntopts);
 }
 
 static int lvm_umount(struct bdev *bdev)
@@ -996,9 +1031,9 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 			return -1;
 	}
 
-	if (orig->data) {
-		new->data = strdup(orig->data);
-		if (!new->data)
+	if (orig->mntopts) {
+		new->mntopts = strdup(orig->mntopts);
+		if (!new->mntopts)
 			return -1;
 	}
 
@@ -1191,11 +1226,23 @@ static int btrfs_detect(const char *path)
 
 static int btrfs_mount(struct bdev *bdev)
 {
+	unsigned long mntflags;
+	char *mntdata;
+	int ret;
+
 	if (strcmp(bdev->type, "btrfs"))
 		return -22;
 	if (!bdev->src || !bdev->dest)
 		return -22;
-	return mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC, NULL);
+
+	if (parse_mntopts(bdev->mntopts, &mntflags, &mntdata) < 0) {
+		free(mntdata);
+		return -22;
+	}
+
+	ret = mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags, mntdata);
+	free(mntdata);
+	return ret;
 }
 
 static int btrfs_umount(struct bdev *bdev)
@@ -1356,7 +1403,7 @@ static int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *old
 	if ((new->dest = strdup(new->src)) == NULL)
 		return -1;
 
-	if (orig->data && (new->data = strdup(orig->data)) == NULL)
+	if (orig->mntopts && (new->mntopts = strdup(orig->mntopts)) == NULL)
 		return -1;
 
 	if (snap)
@@ -1508,7 +1555,7 @@ static int loop_mount(struct bdev *bdev)
 		goto out;
 	}
 
-	ret = mount_unknown_fs(loname, bdev->dest, 0);
+	ret = mount_unknown_fs(loname, bdev->dest, bdev->mntopts);
 	if (ret < 0)
 		ERROR("Error mounting %s\n", bdev->src);
 	else
@@ -1717,6 +1764,8 @@ static int overlayfs_mount(struct bdev *bdev)
 {
 	char *options, *dup, *lower, *upper;
 	int len;
+	unsigned long mntflags;
+	char *mntdata;
 	int ret;
 
 	if (strcmp(bdev->type, "overlayfs"))
@@ -1735,15 +1784,30 @@ static int overlayfs_mount(struct bdev *bdev)
 	*upper = '\0';
 	upper++;
 
+	if (parse_mntopts(bdev->mntopts, &mntflags, &mntdata) < 0) {
+		free(mntdata);
+		return -22;
+	}
+
 	// TODO We should check whether bdev->src is a blockdev, and if so
 	// but for now, only support overlays of a basic directory
 
-	len = strlen(lower) + strlen(upper) + strlen("upperdir=,lowerdir=") + 1;
-	options = alloca(len);
-	ret = snprintf(options, len, "upperdir=%s,lowerdir=%s", upper, lower);
-	if (ret < 0 || ret >= len)
+	if (mntdata) {
+		len = strlen(lower) + strlen(upper) + strlen("upperdir=,lowerdir=,") + strlen(mntdata) + 1;
+		options = alloca(len);
+		ret = snprintf(options, len, "upperdir=%s,lowerdir=%s,%s", upper, lower, mntdata);
+	}
+	else {
+		len = strlen(lower) + strlen(upper) + strlen("upperdir=,lowerdir=") + 1;
+		options = alloca(len);
+		ret = snprintf(options, len, "upperdir=%s,lowerdir=%s", upper, lower);
+	}
+	if (ret < 0 || ret >= len) {
+		free(mntdata);
 		return -1;
-	ret = mount(lower, bdev->dest, "overlayfs", MS_MGC_VAL, options);
+	}
+
+	ret = mount(lower, bdev->dest, "overlayfs", MS_MGC_VAL | mntflags, options);
 	if (ret < 0)
 		SYSERROR("overlayfs: error mounting %s onto %s options %s",
 			lower, bdev->dest, options);
@@ -1946,8 +2010,8 @@ static const size_t numbdevs = sizeof(bdevs) / sizeof(struct bdev_type);
 
 void bdev_put(struct bdev *bdev)
 {
-	if (bdev->data)
-		free(bdev->data);
+	if (bdev->mntopts)
+		free(bdev->mntopts);
 	if (bdev->src)
 		free(bdev->src);
 	if (bdev->dest)
@@ -1975,7 +2039,7 @@ struct bdev *bdev_get(const char *type)
 	return bdev;
 }
 
-struct bdev *bdev_init(const char *src, const char *dst, const char *data)
+struct bdev *bdev_init(const char *src, const char *dst, const char *mntopts)
 {
 	int i;
 	struct bdev *bdev;
@@ -1995,8 +2059,8 @@ struct bdev *bdev_init(const char *src, const char *dst, const char *data)
 	memset(bdev, 0, sizeof(struct bdev));
 	bdev->ops = bdevs[i].ops;
 	bdev->type = bdevs[i].name;
-	if (data)
-		bdev->data = strdup(data);
+	if (mntopts)
+		bdev->mntopts = strdup(mntopts);
 	if (src)
 		bdev->src = strdup(src);
 	if (dst)

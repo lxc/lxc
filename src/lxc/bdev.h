@@ -78,7 +78,7 @@ struct bdev {
 	const char *type;
 	char *src;
 	char *dest;
-	char *data;
+	char *mntopts;
 	// turn the following into a union if need be
 	// lofd is the open fd for the mounted loopback file
 	int lofd;

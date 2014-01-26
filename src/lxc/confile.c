@@ -65,6 +65,7 @@ static int config_logfile(const char *, const char *, struct lxc_conf *);
 static int config_mount(const char *, const char *, struct lxc_conf *);
 static int config_rootfs(const char *, const char *, struct lxc_conf *);
 static int config_rootfs_mount(const char *, const char *, struct lxc_conf *);
+static int config_rootfs_options(const char *, const char *, struct lxc_conf *);
 static int config_pivotdir(const char *, const char *, struct lxc_conf *);
 static int config_utsname(const char *, const char *, struct lxc_conf *);
 static int config_hook(const char *, const char *, struct lxc_conf *lxc_conf);
@@ -110,6 +111,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.logfile",              config_logfile              },
 	{ "lxc.mount",                config_mount                },
 	{ "lxc.rootfs.mount",         config_rootfs_mount         },
+	{ "lxc.rootfs.options",       config_rootfs_options       },
 	{ "lxc.rootfs",               config_rootfs               },
 	{ "lxc.pivotdir",             config_pivotdir             },
 	{ "lxc.utsname",              config_utsname              },
@@ -1566,6 +1568,12 @@ static int config_rootfs_mount(const char *key, const char *value,
 	return config_path_item(&lxc_conf->rootfs.mount, value);
 }
 
+static int config_rootfs_options(const char *key, const char *value,
+			       struct lxc_conf *lxc_conf)
+{
+	return config_string_item(&lxc_conf->rootfs.options, value);
+}
+
 static int config_pivotdir(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
@@ -2096,6 +2104,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->console.path;
 	else if (strcmp(key, "lxc.rootfs.mount") == 0)
 		v = c->rootfs.mount;
+	else if (strcmp(key, "lxc.rootfs.options") == 0)
+		v = c->rootfs.options;
 	else if (strcmp(key, "lxc.rootfs") == 0)
 		v = c->rootfs.path;
 	else if (strcmp(key, "lxc.pivotdir") == 0)
@@ -2313,6 +2323,8 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		fprintf(fout, "lxc.rootfs = %s\n", c->rootfs.path);
 	if (c->rootfs.mount && strcmp(c->rootfs.mount, LXCROOTFSMOUNT) != 0)
 		fprintf(fout, "lxc.rootfs.mount = %s\n", c->rootfs.mount);
+	if (c->rootfs.options)
+		fprintf(fout, "lxc.rootfs.options = %s\n", c->rootfs.options);
 	if (c->rootfs.pivot)
 		fprintf(fout, "lxc.pivotdir = %s\n", c->rootfs.pivot);
 	if (c->start_auto)

@@ -864,6 +864,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 	<varlistentry>
 	  <term>
+	    <option>lxc.rootfs.options</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      extra mount options to use when mounting the rootfs.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
 	    <option>lxc.pivotdir</option>
 	  </term>
 	  <listitem>
