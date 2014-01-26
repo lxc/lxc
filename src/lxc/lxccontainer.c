@@ -921,7 +921,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 		 */
 		if (argv)
 			for (nargs = 0; argv[nargs]; nargs++) ;
-		nargs += 4;  // template, path, rootfs and name args
+		nargs += 4; // template, path, rootfs and name args
 
 		newargv = malloc(nargs * sizeof(*newargv));
 		if (!newargv)
@@ -1004,7 +1004,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 					exit(1);
 			}
 			int hostid_mapped = mapped_hostid(geteuid(), conf);
-			int extraargs = hostid_mapped >= 0 ?  1 : 3;
+			int extraargs = hostid_mapped >= 0 ? 1 : 3;
 			n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(char *));
 			if (!n2)
 				exit(1);
@@ -1697,7 +1697,7 @@ static char** lxcapi_get_ips(struct lxc_container *c, const char* interface, con
 		/* close the write-end of the pipe, thus sending EOF to the reader */
 		close(pipefd[1]);
 		exit(ret);
-    }
+	}
 
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
@@ -1753,7 +1753,7 @@ static int lxcapi_get_keys(struct lxc_container *c, const char *key, char *retv,
 		return -1;
 	int ret = -1;
 	if (strncmp(key, "lxc.network.", 12) == 0)
-		ret =  lxc_list_nicconfigs(c->lxc_conf, key, retv, inlen);
+		ret = lxc_list_nicconfigs(c->lxc_conf, key, retv, inlen);
 	container_mem_unlock(c);
 	return ret;
 }
@@ -1767,7 +1767,7 @@ static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	if (!alt_file)
 		alt_file = c->configfile;
 	if (!alt_file)
-		return false;  // should we write to stdout if no file is specified?
+		return false; // should we write to stdout if no file is specified?
 
 	// If we haven't yet loaded a config, load the stock config
 	if (!c->lxc_conf) {
@@ -2194,7 +2194,7 @@ static int copy_file(const char *old, const char *new)
 		if (len == 0)
 			break;
 		ret = write(out, buf, len);
-		if (ret < len) {  // should we retry?
+		if (ret < len) { // should we retry?
 			SYSERROR("Error: write to new file %s was interrupted", new);
 			goto err;
 		}
@@ -2490,7 +2490,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 		if (fprintf(fout, "%s", c->name) < 0) {
 			fclose(fout);
 			return -1;
-        }
+		}
 		if (fclose(fout) < 0)
 			return -1;
 	}
@@ -2558,7 +2558,7 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	n = newname ? newname : c->name;
 	l = lxcpath ? lxcpath : c->get_config_path(c);
 	ret = snprintf(newpath, MAXPATHLEN, "%s/%s/config", l, n);
-	if (ret < 0  || ret >= MAXPATHLEN) {
+	if (ret < 0 || ret >= MAXPATHLEN) {
 		SYSERROR("clone: failed making config pathname");
 		goto out;
 	}
@@ -3110,7 +3110,7 @@ static bool add_remove_device_node(struct lxc_container *c, const char *src_path
 		/* create the device node */
 		if (mknod(path, st.st_mode, st.st_rdev) < 0) {
 			ERROR("mknod failed");
-            goto out;
+			goto out;
 		}
 
 		/* add device node to device list */
