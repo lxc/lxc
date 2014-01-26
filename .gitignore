@@ -96,6 +96,7 @@ src/tests/lxc-test-saveconfig
 src/tests/lxc-test-shutdowntest
 src/tests/lxc-test-snapshot
 src/tests/lxc-test-startone
+src/tests/lxc-test-usernic
 src/tests/lxc-usernic-test
 
 config/compile
