@@ -29,8 +29,11 @@
 #include <unistd.h>
 
 #define TSTNAME    "lxc-attach-test"
+#define TSTOUT(fmt, ...) do { \
+	fprintf(stdout, fmt, ##__VA_ARGS__); fflush(NULL); \
+} while (0)
 #define TSTERR(fmt, ...) do { \
-	fprintf(stderr, "%s:%d " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
+	fprintf(stderr, "%s:%d " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); fflush(NULL); \
 } while (0)
 
 static const char *lsm_config_key = NULL;
@@ -64,7 +67,7 @@ static void test_attach_lsm_set_config(struct lxc_container *ct)
 
 static int test_attach_lsm_func_func(void* payload)
 {
-	printf("%s", lsm_process_label_get(getpid()));
+	TSTOUT("%s", lsm_process_label_get(getpid()));
 	return 0;
 }
 
@@ -76,7 +79,7 @@ static int test_attach_lsm_func(struct lxc_container *ct)
 	char result[1024];
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
-	printf("Testing attach lsm label with func...\n");
+	TSTOUT("Testing attach lsm label with func...\n");
 
 	ret = pipe(pipefd);
 	if (ret < 0) {
@@ -125,7 +128,7 @@ static int test_attach_lsm_cmd(struct lxc_container *ct)
 	lxc_attach_command_t command = {"cat", argv};
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
-	printf("Testing attach lsm label with cmd...\n");
+	TSTOUT("Testing attach lsm label with cmd...\n");
 
 	ret = pipe(pipefd);
 	if (ret < 0) {
@@ -175,7 +178,7 @@ static int  test_attach_lsm_cmd(struct lxc_container *ct) { return 0; }
 
 static int test_attach_func_func(void* payload)
 {
-	printf("%d", getpid());
+	TSTOUT("%d", getpid());
 	return 0;
 }
 
@@ -187,7 +190,7 @@ static int test_attach_func(struct lxc_container *ct)
 	char result[1024];
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
-	printf("Testing attach with func...\n");
+	TSTOUT("Testing attach with func...\n");
 
 	/* XXX: We can't just use &nspid and have test_attach_func_func fill
 	 * it in because the function doesn't run in our process context but
@@ -219,7 +222,7 @@ static int test_attach_func(struct lxc_container *ct)
 	 * if (pid == nspid) TSTERR(...)
 	 */
 	nspid = atoi(result);
-	printf("Pid:%d in NS:%d\n", pid, nspid);
+	TSTOUT("Pid:%d in NS:%d\n", pid, nspid);
 	ret = 0;
 
 err2:
@@ -238,7 +241,7 @@ static int test_attach_cmd(struct lxc_container *ct)
 	lxc_attach_command_t command = {"cmp", argv};
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
-	printf("Testing attach with success command...\n");
+	TSTOUT("Testing attach with success command...\n");
 	ret = ct->attach(ct, lxc_attach_run_command, &command, &attach_options, &pid);
 	if (ret < 0) {
 		TSTERR("attach failed");
@@ -251,7 +254,7 @@ static int test_attach_cmd(struct lxc_container *ct)
 		return ret;
 	}
 
-	printf("Testing attach with failure command...\n");
+	TSTOUT("Testing attach with failure command...\n");
 	argv[2] = "/etc/fstab";
 	ret = ct->attach(ct, lxc_attach_run_command, &command, &attach_options, &pid);
 	if (ret < 0) {
@@ -337,7 +340,7 @@ static int test_attach(const char *lxcpath, const char *name, const char *templa
 	int ret = -1;
 	struct lxc_container *ct;
 
-	printf("Testing attach with on lxcpath:%s\n", lxcpath ? lxcpath : "<default>");
+	TSTOUT("Testing attach with on lxcpath:%s\n", lxcpath ? lxcpath : "<default>");
 	ct = test_ct_create(lxcpath, NULL, name, template);
 	if (!ct)
 		goto err1;
@@ -384,11 +387,11 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		return EXIT_FAILURE;
 
-	printf("\n");
+	TSTOUT("\n");
 	ret = test_attach(LXCPATH "/alternate-path-test", TSTNAME, "busybox");
 	if (ret < 0)
 		return EXIT_FAILURE;
 
-	printf("All tests passed\n");
+	TSTOUT("All tests passed\n");
 	return EXIT_SUCCESS;
 }
