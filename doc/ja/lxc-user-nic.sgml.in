@@ -75,7 +75,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <para>
       <!--
       It will consult the configuration file <filename>@LXC_USERNIC_CONF@</filename>
-      to determine number of interfaces which the calling user is allowed to
+      to determine the number of interfaces which the calling user is allowed to
       create, and which bridge he may attach them to.  It tracks the
       number of interfaces each user has created using the file
       <filename>@LXC_USERNIC_DB@</filename>.  It ensures that the calling
@@ -183,7 +183,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       </citerefentry>,
 
       <citerefentry>
-	<refentrytitle><command>lxc-usernet.conf</command></refentrytitle>
+	<refentrytitle><command>lxc-usernet</command></refentrytitle>
 	<manvolnum>5</manvolnum>
       </citerefentry>
     </simpara>
