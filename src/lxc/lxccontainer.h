@@ -410,6 +410,19 @@ struct lxc_container {
 	 */
 	int (*get_config_item)(struct lxc_container *c, const char *key, char *retv, int inlen);
 
+
+	/*!
+	 * \brief Retrieve the value of a config item from running container.
+	 *
+	 * \param c Container.
+	 * \param key Name of option to get.
+	 *
+	 * \return the item or NULL on error.
+	 *
+	 * \note Returned string must be freed by the caller.
+	 */
+	char* (*get_running_config_item)(struct lxc_container *c, const char *key);
+
 	/*!
 	 * \brief Retrieve a list of config item keys given a key
 	 * prefix.

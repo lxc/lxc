@@ -1738,6 +1738,19 @@ static int lxcapi_get_config_item(struct lxc_container *c, const char *key, char
 	return ret;
 }
 
+static char* lxcapi_get_running_config_item(struct lxc_container *c, const char *key)
+{
+	char *ret;
+
+	if (!c || !c->lxc_conf)
+		return NULL;
+	if (container_mem_lock(c))
+		return NULL;
+	ret = lxc_cmd_get_config_item(c->name, key, c->get_config_path(c));
+	container_mem_unlock(c);
+	return ret;
+}
+
 static int lxcapi_get_keys(struct lxc_container *c, const char *key, char *retv, int inlen)
 {
 	if (!key)
@@ -3259,6 +3272,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->clear_config = lxcapi_clear_config;
 	c->clear_config_item = lxcapi_clear_config_item;
 	c->get_config_item = lxcapi_get_config_item;
+	c->get_running_config_item = lxcapi_get_running_config_item;
 	c->get_cgroup_item = lxcapi_get_cgroup_item;
 	c->set_cgroup_item = lxcapi_set_cgroup_item;
 	c->get_config_path = lxcapi_get_config_path;

@@ -139,7 +139,7 @@ static unsigned long long str_size_humanize(char *iobuf, size_t iobufsz)
 	return val;
 }
 
-static void print_net_stats(const char *name, const char *lxcpath)
+static void print_net_stats(struct lxc_container *c)
 {
 	int rc,netnr;
 	unsigned long long rx_bytes = 0, tx_bytes = 0;
@@ -149,7 +149,7 @@ static void print_net_stats(const char *name, const char *lxcpath)
 
 	for(netnr = 0; ;netnr++) {
 		sprintf(buf, "lxc.network.%d.type", netnr);
-		type = lxc_cmd_get_config_item(name, buf, lxcpath);
+		type = c->get_running_config_item(c, buf);
 		if (!type)
 			break;
 
@@ -159,7 +159,7 @@ static void print_net_stats(const char *name, const char *lxcpath)
 			sprintf(buf, "lxc.network.%d.link", netnr);
 		}
 		free(type);
-		ifname = lxc_cmd_get_config_item(name, buf, lxcpath);
+		ifname = c->get_running_config_item(c, buf);
 		if (!ifname)
 			return;
 		printf("%-15s %s\n", "Link:", ifname);
@@ -326,7 +326,7 @@ static int print_info(const char *name, const char *lxcpath)
 
 	if (stats) {
 		print_stats(c);
-		print_net_stats(name, lxcpath);
+		print_net_stats(c);
 	}
 
 	for(i = 0; i < keys; i++) {
