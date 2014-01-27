@@ -74,6 +74,7 @@ static int do_setup_cgroup_limits(struct lxc_handler *h, struct lxc_list *cgroup
 static int cgroup_recursive_task_count(const char *cgroup_path);
 static int count_lines(const char *fn);
 static int handle_cgroup_settings(struct cgroup_mount_point *mp, char *cgroup_path);
+static bool init_cpuset_if_needed(struct cgroup_mount_point *mp, const char *path);
 
 static struct cgroup_ops cgfs_ops;
 struct cgroup_ops *active_cg_ops = &cgfs_ops;
@@ -897,13 +898,21 @@ struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const char *pa
 				r = lxc_grow_array((void ***)&info_ptr->created_paths, &info_ptr->created_paths_capacity, info_ptr->created_paths_count + 1, 8);
 				if (r < 0)
 					goto cleanup_from_error;
+				if (!init_cpuset_if_needed(info_ptr->designated_mount_point, current_entire_path)) {
+					ERROR("Failed to initialize cpuset in new '%s'.", current_entire_path);
+					goto cleanup_from_error;
+				}
 				info_ptr->created_paths[info_ptr->created_paths_count++] = current_entire_path;
 			} else {
 				/* if we didn't create the cgroup, then we have to make sure that
 				 * further cgroups will be created properly
 				 */
-				if (handle_cgroup_settings(mp, info_ptr->cgroup_path) < 0) {
+				if (handle_cgroup_settings(info_ptr->designated_mount_point, info_ptr->cgroup_path) < 0) {
 					ERROR("Could not set clone_children to 1 for cpuset hierarchy in pre-existing cgroup.");
+					goto cleanup_from_error;
+				}
+				if (!init_cpuset_if_needed(info_ptr->designated_mount_point, info_ptr->cgroup_path)) {
+					ERROR("Failed to initialize cpuset in pre-existing '%s'.", info_ptr->cgroup_path);
 					goto cleanup_from_error;
 				}
 
@@ -2039,8 +2048,19 @@ static int handle_cgroup_settings(struct cgroup_mount_point *mp,
 	 */
 	if (lxc_string_in_array("cpuset", (const char **)mp->hierarchy->subsystems)) {
 		char *cc_path = cgroup_to_absolute_path(mp, cgroup_path, "/cgroup.clone_children");
+		struct stat sb;
+
 		if (!cc_path)
 			return -1;
+		/* cgroup.clone_children is not available when running under
+		 * older kernel versions; in this case, we'll initialize
+		 * cpuset.cpus and cpuset.mems later, after the new cgroup
+		 * was created
+		 */
+		if (stat(cc_path, &sb) != 0 && errno == ENOENT) {
+			free(cc_path);
+			return 0;
+		}
 		r = lxc_read_from_file(cc_path, buf, 1);
 		if (r == 1 && buf[0] == '1') {
 			free(cc_path);
@@ -2053,6 +2073,90 @@ static int handle_cgroup_settings(struct cgroup_mount_point *mp,
 		return r < 0 ? -1 : 0;
 	}
 	return 0;
+}
+
+static bool cgroup_read_from_file(const char *fn, char buf[], size_t bufsize)
+{
+	int ret = lxc_read_from_file(fn, buf, bufsize);
+	if (ret < 0) {
+		SYSERROR("failed to read %s", fn);
+		return false;
+	}
+	if (ret == bufsize) {
+		ERROR("too much data in %s", fn);
+		return false;
+	}
+	buf[ret] = '\0';
+	return true;
+}
+
+static bool do_init_cpuset_file(struct cgroup_mount_point *mp,
+				const char *path, const char *name)
+{
+	char value[128];
+	char *childfile, *parentfile, *tmp;
+	bool ok;
+
+	childfile = cgroup_to_absolute_path(mp, path, name);
+	if (!childfile)
+		return false;
+
+	/* don't overwrite a non-empty value in the file */
+	if (!cgroup_read_from_file(childfile, value, sizeof(value))) {
+		free(childfile);
+		return false;
+	}
+	if (value[0] != '\0' && value[0] != '\n') {
+		free(childfile);
+		return true;
+	}
+
+	/* path to the same name in the parent cgroup */
+	parentfile = strdup(path);
+	if (!parentfile)
+		return false;
+	tmp = strrchr(parentfile, '/');
+	if (!tmp) {
+		free(childfile);
+		free(parentfile);
+		return false;
+	}
+	if (tmp == parentfile)
+		tmp++; /* keep the '/' at the start */
+	*tmp = '\0';
+	tmp = parentfile;
+	parentfile = cgroup_to_absolute_path(mp, tmp, name);
+	free(tmp);
+	if (!parentfile) {
+		free(childfile);
+		return false;
+	}
+
+	/* copy from parent to child cgroup */
+	if (!cgroup_read_from_file(parentfile, value, sizeof(value))) {
+		free(parentfile);
+		free(childfile);
+		return false;
+	}
+	ok = (lxc_write_to_file(childfile, value, strlen(value), false) >= 0);
+	if (!ok)
+		SYSERROR("failed writing %s", childfile);
+	free(parentfile);
+	free(childfile);
+
+	return ok;
+}
+
+static bool init_cpuset_if_needed(struct cgroup_mount_point *mp,
+				  const char *path)
+{
+	/* the files we have to handle here are only in cpuset hierarchies */
+	if (!lxc_string_in_array("cpuset",
+				 (const char **)mp->hierarchy->subsystems))
+		return true;
+
+	return (do_init_cpuset_file(mp, path, "/cpuset.cpus") &&
+		do_init_cpuset_file(mp, path, "/cpuset.mems") );
 }
 
 extern void lxc_monitor_send_state(const char *name, lxc_state_t state,
