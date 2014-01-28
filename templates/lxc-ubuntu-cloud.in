@@ -181,6 +181,10 @@ else
         # support them yet (see check later on).  When Query2 is available,
         # we'll use that to enable arm images.
         arch="armhf"
+    elif [ "$arch" = "aarch64" ]; then
+        arch="arm64"
+    elif [ "$arch" = "ppc64le" ]; then
+        arch="ppc64el"
     fi
 fi
 
@@ -226,13 +230,19 @@ if [ "$arch" = "i686" ]; then
     arch=i386
 fi
 
-if [ $arch != "i386" -a $arch != "amd64" -a $arch != "armhf" -a $arch != "armel" ]; then
+if [ $arch != "i386" -a $arch != "amd64" -a $arch != "armhf" -a $arch != "armel" -a $arch != "arm64" -a $arch != "ppc64el" ]; then
     echo "Only i386, amd64, armel and armhf are supported by the ubuntu cloud template."
     exit 1
 fi
 
-if [ $hostarch != "i386" -a $hostarch != "amd64" -a $hostarch != "armhf" -a $hostarch != "armel" ]; then
+if [ $hostarch != "i386" -a $hostarch != "amd64" -a $hostarch != "armhf" -a $hostarch != "armel" -a $hostarch != "arm64" -a $hostarch != "ppc64el" ]; then
     echo "Only i386, amd64, armel and armhf are supported as host."
+    exit 1
+fi
+
+if [ $hostarch = "armhf" -o $hostarch = "armel" -o $hostarch = "arm64" ] && \
+   [ $arch != "armhf" -a $arch != "armel" -a $arch != "arm64" ]; then
+    echo "can't create $arch container on $hostarch"
     exit 1
 fi
 
@@ -246,8 +256,7 @@ if [ $hostarch = "i386" -a $arch != "i386" ]; then
     exit 1
 fi
 
-if [ $hostarch = "armhf" -o $hostarch = "armel" ] && \
-   [ $arch != "armhf" -a $arch != "armel" ]; then
+if [ $arch = "arm64" ] && [ $hostarch != "arm64" ]; then
     echo "can't create $arch container on $hostarch"
     exit 1
 fi
