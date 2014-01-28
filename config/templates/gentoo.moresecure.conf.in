@@ -1,5 +1,6 @@
-# Gentoo hardened default configuration
+# Gentoo security oriented default configuration
 # This is a more security oriented container configuration
+# "More" because this is far from fully secure
 # Looking for more working features and you trust your
 # Container user ? see gentoo.common.conf
 
