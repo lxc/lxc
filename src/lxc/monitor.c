@@ -325,7 +325,6 @@ int lxc_monitord_spawn(const char *lxcpath)
 		exit(EXIT_SUCCESS);
 	}
 
-	umask(0);
 	if (setsid() < 0) {
 		SYSERROR("failed to setsid");
 		exit(EXIT_FAILURE);
