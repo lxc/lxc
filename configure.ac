@@ -570,6 +570,7 @@ AC_CONFIG_FILES([
 	config/templates/fedora.userns.conf
 	config/templates/gentoo.common.conf
 	config/templates/gentoo.moresecure.conf
+	config/templates/gentoo.userns.conf
 	config/templates/oracle.common.conf
 	config/templates/oracle.userns.conf
 	config/templates/plamo.common.conf
