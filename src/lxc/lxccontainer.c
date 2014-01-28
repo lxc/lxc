@@ -3232,8 +3232,8 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 		goto err;
 	}
 
-	if (file_exists(c->configfile))
-		lxcapi_load_config(c, NULL);
+	if (file_exists(c->configfile) && !lxcapi_load_config(c, NULL))
+		goto err;
 
 	if (ongoing_create(c) == 2) {
 		ERROR("Error: %s creation was not completed", c->name);
