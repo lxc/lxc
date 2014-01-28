@@ -227,8 +227,8 @@ cache_dev()
     mkdir "${partialfs}/dev/shm"
     mkdir "${partialfs}/dev/mqueue"
 
-    mkdir -m 755 "${partialfs}/net"
-    mknod -m 666 "${partialfs}/net/tun"        c 10 200
+    mkdir -m 755 "${partialfs}/dev/net"
+    mknod -m 666 "${partialfs}/dev/net/tun"        c 10 200
 
     return 0
 }
