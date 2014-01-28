@@ -568,6 +568,8 @@ AC_CONFIG_FILES([
 	config/templates/debian.userns.conf
 	config/templates/fedora.common.conf
 	config/templates/fedora.userns.conf
+	config/templates/gentoo.common.conf
+	config/templates/gentoo.moresecure.conf
 	config/templates/oracle.common.conf
 	config/templates/oracle.userns.conf
 	config/templates/plamo.common.conf
