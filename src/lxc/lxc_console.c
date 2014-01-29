@@ -32,10 +32,10 @@
 #include <unistd.h>
 #include <signal.h>
 #include <libgen.h>
+#include <poll.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/poll.h>
 #include <sys/ioctl.h>
 
 #include <lxc/lxccontainer.h>

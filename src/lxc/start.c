@@ -33,6 +33,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <poll.h>
 #include <sys/param.h>
 #include <sys/file.h>
 #include <sys/mount.h>
@@ -43,7 +44,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/un.h>
-#include <sys/poll.h>
 #include <sys/syscall.h>
 
 #if HAVE_SYS_CAPABILITY_H
