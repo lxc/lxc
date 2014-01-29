@@ -20,14 +20,14 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+#include "config.h"
+
 #include <stddef.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#define __USE_GNU
 #include <sys/socket.h>
-#undef __USE_GNU
 #include <sys/un.h>
 
 #include "log.h"

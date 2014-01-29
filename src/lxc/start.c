@@ -24,7 +24,6 @@
 #include "config.h"
 
 #include <stdio.h>
-#undef _GNU_SOURCE
 #include <string.h>
 #include <stdlib.h>
 #include <dirent.h>
