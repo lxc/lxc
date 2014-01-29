@@ -21,6 +21,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+#include "config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,7 +40,6 @@
 #include <pwd.h>
 #include <grp.h>
 
-#include "config.h"
 #include "namespace.h"
 #include "utils.h"
 
