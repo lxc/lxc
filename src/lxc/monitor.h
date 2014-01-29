@@ -23,6 +23,7 @@
 #ifndef __monitor_h
 #define __monitor_h
 
+#include <limits.h>
 #include <sys/param.h>
 #include <sys/un.h>
 
