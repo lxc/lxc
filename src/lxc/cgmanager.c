@@ -246,7 +246,6 @@ static int chown_cgroup_wrapper(void *data)
 static bool chown_cgroup(const char *controller, const char *cgroup_path,
 			struct lxc_conf *conf)
 {
-	pid_t pid;
 	struct chown_data data;
 	data.controller = controller;
 	data.cgroup_path = cgroup_path;
@@ -257,20 +256,11 @@ static bool chown_cgroup(const char *controller, const char *cgroup_path,
 		return true;
 	}
 
-	if ((pid = fork()) < 0) {
-		SYSERROR("fork");
+	if (userns_exec_1(conf, chown_cgroup_wrapper, &data) < 0) {
+		ERROR("Error requesting cgroup chown in new namespace");
 		return false;
 	}
-	if (pid > 0) {
-		if (wait_for_pid(pid)) {
-			ERROR("Error chowning cgroup");
-			return false;
-		}
-		return true;
-	}
-	if (userns_exec_1(conf, chown_cgroup_wrapper, &data) < 0)
-		exit(1);
-	exit(0);
+	return true;
 }
 
 struct cgm_data {
