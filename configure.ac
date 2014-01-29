@@ -521,7 +521,7 @@ AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr])
 AC_CHECK_LIB(pthread, main)
 AC_CHECK_FUNCS(pthread_atfork)
 AC_CHECK_LIB(util, openpty)
-AC_CHECK_FUNCS([openpty hasmntopt setmntent endmntent])
+AC_CHECK_FUNCS([openpty hasmntopt setmntent endmntent utmpxname])
 AC_CHECK_FUNCS([getline],
 	AM_CONDITIONAL(HAVE_GETLINE, true)
 	AC_DEFINE(HAVE_GETLINE,1,[Have getline]),

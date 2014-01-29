@@ -68,24 +68,16 @@ static int timerfd_settime (int __ufd, int __flags,
 #endif
 #ifdef HAVE_UTMPX_H
 #include <utmpx.h>
+#ifndef HAVE_UTMPXNAME
+#include <utmp.h>
+#endif
+
 #else
 #include <utmp.h>
 
 #ifndef RUN_LVL
 #define RUN_LVL 1
 #endif
-
-static int utmpxname(const char *file) {
-	int result;
-	result = utmpname(file);
-
-#ifdef IS_BIONIC
-	/* Yeah bionic is that weird */
-	result = result - 1;
-#endif
-
-	return result;
-}
 
 static void setutxent(void) {
 	return setutent();
@@ -104,6 +96,21 @@ static void endutxent (void) {
 #endif
 }
 #endif
+
+#ifndef HAVE_UTMPXNAME
+static int utmpxname(const char *file) {
+	int result;
+	result = utmpname(file);
+
+#ifdef IS_BIONIC
+	/* Yeah bionic is that weird */
+	result = result - 1;
+#endif
+
+	return result;
+}
+#endif
+
 #undef __USE_GNU
 
 /* This file watches the /var/run/utmp file in the container
