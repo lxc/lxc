@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <string.h>
+#include <strings.h>
 #include <stdbool.h>
 
 #ifndef O_CLOEXEC
