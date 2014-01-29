@@ -199,7 +199,7 @@ EOF
 lxc.tty = 4
 lxc.pts = 1024
 lxc.utsname = $hostname
-lxc.cap.drop = sys_module mac_admin mac_override sys_time
+lxc.cap.drop = sys_module mac_admin mac_override sys_time sys_admin
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
