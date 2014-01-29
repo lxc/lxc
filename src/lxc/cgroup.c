@@ -2107,9 +2107,6 @@ static bool do_init_cpuset_file(struct cgroup_mount_point *mp,
 	int ret;
 	bool ok = false;
 
-	if (!mp->need_cpuset_init)
-		return true;
-
 	childfile = cgroup_to_absolute_path(mp, path, name);
 	if (!childfile)
 		return false;
@@ -2150,10 +2147,10 @@ static bool do_init_cpuset_file(struct cgroup_mount_point *mp,
 		goto out;
 	}
 	ok = (lxc_write_to_file(childfile, value, strlen(value), false) >= 0);
-
-out:
 	if (!ok)
 		SYSERROR("failed writing %s", childfile);
+
+out:
 	if (parentfile)
 		free(parentfile);
 	free(childfile);
@@ -2166,6 +2163,9 @@ static bool init_cpuset_if_needed(struct cgroup_mount_point *mp,
 	/* the files we have to handle here are only in cpuset hierarchies */
 	if (!lxc_string_in_array("cpuset",
 				 (const char **)mp->hierarchy->subsystems))
+		return true;
+
+	if (!mp->need_cpuset_init)
 		return true;
 
 	return (do_init_cpuset_file(mp, path, "/cpuset.cpus") &&
