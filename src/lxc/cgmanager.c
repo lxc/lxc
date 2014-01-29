@@ -167,7 +167,7 @@ struct chown_data {
 
 static int do_chown_cgroup(const char *controller, const char *cgroup_path)
 {
-	int sv[2] = {-1, -1}, optval = 1;
+	int sv[2] = {-1, -1}, optval = 1, ret = -1;
 	char buf[1];
 
 	if (setgid(0) < 0)
@@ -177,20 +177,20 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path)
 
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sv) < 0) {
 		SYSERROR("Error creating socketpair");
-		return -1;
+		goto out;
 	}
 	if (setsockopt(sv[1], SOL_SOCKET, SO_PASSCRED, &optval, sizeof(optval)) == -1) {
 		SYSERROR("setsockopt failed");
-		return -1;
+		goto out;
 	}
 	if (setsockopt(sv[0], SOL_SOCKET, SO_PASSCRED, &optval, sizeof(optval)) == -1) {
 		SYSERROR("setsockopt failed");
-		return -1;
+		goto out;
 	}
 	if ( cgmanager_chown_scm_sync(NULL, cgroup_manager, controller,
 				       cgroup_path, sv[1]) != 0) {
 		ERROR("call to cgmanager_chown_scm_sync failed");
-		return -1;
+		goto out;
 	}
 	/* now send credentials */
 
@@ -199,37 +199,38 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path)
 	FD_SET(sv[0], &rfds);
 	if (select(sv[0]+1, &rfds, NULL, NULL, NULL) < 0) {
 		ERROR("Error getting go-ahead from server: %s", strerror(errno));
-		return -1;
+		goto out;
 	}
 	if (read(sv[0], &buf, 1) != 1) {
 		ERROR("Error getting reply from server over socketpair");
-		return -1;
+		goto out;
 	}
 	if (send_creds(sv[0], getpid(), getuid(), getgid())) {
 		ERROR("Error sending pid over SCM_CREDENTIAL");
-		return -1;
+		goto out;
 	}
 	FD_ZERO(&rfds);
 	FD_SET(sv[0], &rfds);
 	if (select(sv[0]+1, &rfds, NULL, NULL, NULL) < 0) {
 		ERROR("Error getting go-ahead from server: %s", strerror(errno));
-		return -1;
+		goto out;
 	}
 	if (read(sv[0], &buf, 1) != 1) {
 		ERROR("Error getting reply from server over socketpair");
-		return -1;
+		goto out;
 	}
 	if (send_creds(sv[0], getpid(), 0, 0)) {
 		ERROR("Error sending pid over SCM_CREDENTIAL");
-		return -1;
+		goto out;
 	}
 	FD_ZERO(&rfds);
 	FD_SET(sv[0], &rfds);
 	if (select(sv[0]+1, &rfds, NULL, NULL, NULL) < 0) {
 		ERROR("Error getting go-ahead from server: %s", strerror(errno));
-		return -1;
+		goto out;
 	}
-	int ret = read(sv[0], buf, 1);
+	ret = read(sv[0], buf, 1);
+out:
 	close(sv[0]);
 	close(sv[1]);
 	if (ret == 1 && *buf == '1')
