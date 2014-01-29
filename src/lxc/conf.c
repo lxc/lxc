@@ -4055,7 +4055,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	ret = lxc_map_ids(idmap, pid);
 	lxc_free_idmap(idmap);
 	free(idmap);
-	if (ret < 0) {
+	if (ret) {
 		ERROR("Error setting up child mappings");
 		goto err;
 	}
