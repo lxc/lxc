@@ -2026,6 +2026,8 @@ static int handle_cgroup_settings(struct cgroup_mount_point *mp,
 	int r, saved_errno = 0;
 	char buf[2];
 
+	mp->need_cpuset_init = false;
+
 	/* If this is the memory cgroup, we want to enforce hierarchy.
 	 * But don't fail if for some reason we can't.
 	 */
@@ -2058,6 +2060,7 @@ static int handle_cgroup_settings(struct cgroup_mount_point *mp,
 		 * was created
 		 */
 		if (stat(cc_path, &sb) != 0 && errno == ENOENT) {
+			mp->need_cpuset_init = true;
 			free(cc_path);
 			return 0;
 		}
@@ -2075,75 +2078,85 @@ static int handle_cgroup_settings(struct cgroup_mount_point *mp,
 	return 0;
 }
 
-static bool cgroup_read_from_file(const char *fn, char buf[], size_t bufsize)
+static int cgroup_read_from_file(const char *fn, char buf[], size_t bufsize)
 {
 	int ret = lxc_read_from_file(fn, buf, bufsize);
 	if (ret < 0) {
 		SYSERROR("failed to read %s", fn);
-		return false;
+		return ret;
 	}
 	if (ret == bufsize) {
-		ERROR("too much data in %s", fn);
-		return false;
+		if (bufsize > 0) {
+			/* obviously this wasn't empty */
+			buf[bufsize-1] = '\0';
+			return ret;
+		}
+		/* Callers don't do this, but regression/sanity check */
+		ERROR("%s: was not expecting 0 bufsize", __func__);
+		return -1;
 	}
 	buf[ret] = '\0';
-	return true;
+	return ret;
 }
 
 static bool do_init_cpuset_file(struct cgroup_mount_point *mp,
 				const char *path, const char *name)
 {
-	char value[128];
-	char *childfile, *parentfile, *tmp;
-	bool ok;
+	char value[1024];
+	char *childfile, *parentfile = NULL, *tmp;
+	int ret;
+	bool ok = false;
+
+	if (!mp->need_cpuset_init)
+		return true;
 
 	childfile = cgroup_to_absolute_path(mp, path, name);
 	if (!childfile)
 		return false;
 
 	/* don't overwrite a non-empty value in the file */
-	if (!cgroup_read_from_file(childfile, value, sizeof(value))) {
-		free(childfile);
-		return false;
-	}
+	ret = cgroup_read_from_file(childfile, value, sizeof(value));
+	if (ret < 0)
+		goto out;
 	if (value[0] != '\0' && value[0] != '\n') {
-		free(childfile);
-		return true;
+		ok = true;
+		goto out;
 	}
 
 	/* path to the same name in the parent cgroup */
 	parentfile = strdup(path);
 	if (!parentfile)
-		return false;
+		goto out;
+
 	tmp = strrchr(parentfile, '/');
-	if (!tmp) {
-		free(childfile);
-		free(parentfile);
-		return false;
-	}
+	if (!tmp)
+		goto out;
 	if (tmp == parentfile)
 		tmp++; /* keep the '/' at the start */
 	*tmp = '\0';
 	tmp = parentfile;
 	parentfile = cgroup_to_absolute_path(mp, tmp, name);
 	free(tmp);
-	if (!parentfile) {
-		free(childfile);
-		return false;
-	}
+	if (!parentfile)
+		goto out;
 
 	/* copy from parent to child cgroup */
-	if (!cgroup_read_from_file(parentfile, value, sizeof(value))) {
-		free(parentfile);
-		free(childfile);
-		return false;
+	ret = cgroup_read_from_file(parentfile, value, sizeof(value));
+	if (ret < 0)
+		goto out;
+	if (ret == sizeof(value)) {
+		/* If anyone actually sees this error, we can address it */
+		ERROR("parent cpuset value too long");
+		goto out;
 	}
 	ok = (lxc_write_to_file(childfile, value, strlen(value), false) >= 0);
+
+out:
 	if (!ok)
 		SYSERROR("failed writing %s", childfile);
-	free(parentfile);
+	if (parentfile)
+		free(parentfile);
 	free(childfile);
-
 	return ok;
 }
 

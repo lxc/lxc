@@ -66,6 +66,7 @@ struct cgroup_mount_point {
 	char *mount_point;
 	char *mount_prefix;
 	bool read_only;
+	bool need_cpuset_init;
 };
 
 /*
