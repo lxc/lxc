@@ -44,7 +44,6 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
-#include <linux/if_bridge.h>
 
 #include "nl.h"
 #include "network.h"
