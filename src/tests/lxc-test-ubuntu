@@ -59,7 +59,7 @@ for template in ubuntu ubuntu-cloud; do
 	lxc-wait -n $name -s RUNNING || FAIL "waiting for $template container to run"
 
 	for tries in `seq 1 20`; do
-		lxcip=$(lxc-info -i -n $name -H | head -1)
+		lxcip=$(lxc-info -i -n $name -H | head -n 1)
 		[ -z "$lxcip" ] || break
 		sleep 1
 	done

@@ -189,7 +189,7 @@ EOF
     if [ "$nics" -eq 1 ] && ! grep -q "^lxc.network.hwaddr" $path/config; then
         # see http://sourceforge.net/tracker/?func=detail&aid=3411497&group_id=163076&atid=826303
         hwaddr="fe:$(dd if=/dev/urandom bs=8 count=1 2>/dev/null |od -t x8 | \
-                      head -1 |awk '{print $2}' | cut -c1-10 |\
+                      head -n 1 |awk '{print $2}' | cut -c1-10 |\
                       sed 's/\(..\)/\1:/g; s/.$//')"
         echo "lxc.network.hwaddr = $hwaddr" >> $path/config
     fi

@@ -382,7 +382,7 @@ container_config_create()
     # generate a hwaddr for the container with a high mac address
     # see http://sourceforge.net/tracker/?func=detail&aid=3411497&group_id=163076&atid=826303
     local hwaddr="fe:`dd if=/dev/urandom bs=8 count=1 2>/dev/null |od -t x8 | \
-                      head -1 |awk '{print $2}' | cut -c1-10 |\
+                      head -n 1 |awk '{print $2}' | cut -c1-10 |\
                       sed 's/\(..\)/\1:/g; s/.$//'`"
     cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
 # Container configuration for Oracle Linux $container_release_major.$container_release_minor
