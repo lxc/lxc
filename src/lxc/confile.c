@@ -1593,7 +1593,7 @@ static int config_utsname(const char *key, const char *value,
 
 	if (strlen(value) >= sizeof(utsname->nodename)) {
 		ERROR("node name '%s' is too long",
-			      utsname->nodename);
+			      value);
 		free(utsname);
 		return -1;
 	}
