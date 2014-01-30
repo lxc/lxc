@@ -451,7 +451,7 @@ static int find_fstype_cb(char* buffer, void *data)
 	return 1;
 }
 
-static int mount_unknow_fs(const char *rootfs, const char *target, int mntopt)
+static int mount_unknown_fs(const char *rootfs, const char *target, int mntopt)
 {
 	int i;
 
@@ -585,7 +585,7 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 
 		ret = setup_lodev(rootfs, fd, &loinfo);
 		if (!ret)
-			ret = mount_unknow_fs(path, target, 0);
+			ret = mount_unknown_fs(path, target, 0);
 		close(fd);
 
 		break;
@@ -599,7 +599,7 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 
 static int mount_rootfs_block(const char *rootfs, const char *target)
 {
-	return mount_unknow_fs(rootfs, target, 0);
+	return mount_unknown_fs(rootfs, target, 0);
 }
 
 /*

@@ -146,7 +146,7 @@ static int find_fstype_cb(char* buffer, void *data)
 	return 1;
 }
 
-static int mount_unknow_fs(const char *rootfs, const char *target, int mntopt)
+static int mount_unknown_fs(const char *rootfs, const char *target, int mntopt)
 {
 	int i;
 
@@ -289,7 +289,7 @@ static int detect_fs(struct bdev *bdev, char *type, int len)
 	if (unshare(CLONE_NEWNS) < 0)
 		exit(1);
 
-	ret = mount_unknow_fs(srcdev, bdev->dest, 0);
+	ret = mount_unknown_fs(srcdev, bdev->dest, 0);
 	if (ret < 0) {
 		ERROR("failed mounting %s onto %s to detect fstype", srcdev, bdev->dest);
 		exit(1);
@@ -780,8 +780,8 @@ static int lvm_mount(struct bdev *bdev)
 	if (!bdev->src || !bdev->dest)
 		return -22;
 	/* if we might pass in data sometime, then we'll have to enrich
-	 * mount_unknow_fs */
-	return mount_unknow_fs(bdev->src, bdev->dest, 0);
+	 * mount_unknown_fs */
+	return mount_unknown_fs(bdev->src, bdev->dest, 0);
 }
 
 static int lvm_umount(struct bdev *bdev)
@@ -1506,7 +1506,7 @@ static int loop_mount(struct bdev *bdev)
 		goto out;
 	}
 
-	ret = mount_unknow_fs(loname, bdev->dest, 0);
+	ret = mount_unknown_fs(loname, bdev->dest, 0);
 	if (ret < 0)
 		ERROR("Error mounting %s\n", bdev->src);
 	else
