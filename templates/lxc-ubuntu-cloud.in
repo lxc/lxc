@@ -25,6 +25,8 @@ STATE_DIR="@LOCALSTATEDIR@"
 HOOK_DIR="@LXCHOOKDIR@"
 CLONE_HOOK_FN="$HOOK_DIR/ubuntu-cloud-prep"
 LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+KNOWN_RELEASES="lucid precise quantal saucy trusty"
+skip_arch_check=${UCTEMPLATE_SKIP_ARCH_CHECK:-0}
 
 if [ -r /etc/default/lxc ]; then
     . /etc/default/lxc
@@ -136,7 +138,7 @@ Generic Options
 [ -a | --arch ]: Architecture of container, defaults to host architecture
 [ -T | --tarball ]: Location of tarball
 [ -d | --debug ]: Run with 'set -x' to debug errors
-[ -s | --stream]: Use specified stream rather than 'released'
+[ -s | --stream]: Use specified stream rather than 'tryreleased'
 
 Additionally, clone hooks can be passed through (ie, --userdata).  For those,
 see:
@@ -158,7 +160,7 @@ release=precise
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
     rels=$(ubuntu-distro-info --supported 2>/dev/null) ||
-        rels="lucid natty oneiric precise quantal raring saucy"
+        rels="$KNOWN_RELEASES"
     for r in $rels; do
         [ "$DISTRIB_CODENAME" = "$r" ] && release="$r"
     done
@@ -230,35 +232,13 @@ if [ "$arch" = "i686" ]; then
     arch=i386
 fi
 
-if [ $arch != "i386" -a $arch != "amd64" -a $arch != "armhf" -a $arch != "armel" -a $arch != "arm64" -a $arch != "ppc64el" ]; then
-    echo "Only i386, amd64, armel and armhf are supported by the ubuntu cloud template."
-    exit 1
-fi
-
-if [ $hostarch != "i386" -a $hostarch != "amd64" -a $hostarch != "armhf" -a $hostarch != "armel" -a $hostarch != "arm64" -a $hostarch != "ppc64el" ]; then
-    echo "Only i386, amd64, armel and armhf are supported as host."
-    exit 1
-fi
-
-if [ $hostarch = "armhf" -o $hostarch = "armel" -o $hostarch = "arm64" ] && \
-   [ $arch != "armhf" -a $arch != "armel" -a $arch != "arm64" ]; then
-    echo "can't create $arch container on $hostarch"
-    exit 1
-fi
-
-if [ $hostarch = "amd64" -a $arch != "amd64" -a $arch != "i386" ]; then
-    echo "can't create $arch container on $hostarch"
-    exit 1
-fi
-
-if [ $hostarch = "i386" -a $arch != "i386" ]; then
-    echo "can't create $arch container on $hostarch"
-    exit 1
-fi
-
-if [ $arch = "arm64" ] && [ $hostarch != "arm64" ]; then
-    echo "can't create $arch container on $hostarch"
-    exit 1
+if [ "$skip_arch_check" = "0" ]; then
+    case "$hostarch:$arch" in
+        $arch:$arch) : ;; # the host == container
+        amd64:i386|arm*:arm*) :;; # supported "cross"
+        *) echo "cannot create '$arch' container on hostarch '$hostarch'";
+           exit 1;;
+    esac
 fi
 
 if [ "$stream" != "daily" -a "$stream" != "released" -a "$stream" != "tryreleased" ]; then
@@ -307,7 +287,11 @@ fi
 if [ -n "$tarball" ]; then
     url2="$tarball"
 else
-    url1=`ubuntu-cloudimg-query $release $stream $arch --format "%{url}\n"`
+    if ! url1=`ubuntu-cloudimg-query $release $stream $arch --format "%{url}\n"`; then
+        echo "There is no download available for release=$release, stream=$stream, arch=$arch"
+        [ "$stream" = "daily" ] || echo "You may try with '--stream=daily'"
+        exit
+    fi
     url2=`echo $url1 | sed -e 's/.tar.gz/-root\0/'`
 fi
 
