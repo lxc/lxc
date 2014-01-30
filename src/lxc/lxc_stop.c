@@ -54,8 +54,8 @@ static const struct option my_longopts[] = {
 	{"nowait", no_argument, 0, 'W'},
 	{"timeout", required_argument, 0, 't'},
 	{"kill", no_argument, 0, 'k'},
-	{"no-kill", no_argument, 0, OPT_NO_KILL},
-	{"no-lock", no_argument, 0, OPT_NO_LOCK},
+	{"nokill", no_argument, 0, OPT_NO_KILL},
+	{"nolock", no_argument, 0, OPT_NO_LOCK},
 	LXC_COMMON_OPTIONS
 };
 
