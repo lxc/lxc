@@ -338,11 +338,17 @@ static int print_info(const char *name, const char *lxcpath)
 			if (c->get_config_item(c, key[i], val, len + 1) != len) {
 				fprintf(stderr, "unable to read %s from configuration\n", key[i]);
 			} else {
-				printf("%s = %s\n", key[i], val);
+				if (!humanize && keys == 1)
+					printf("%s\n", val);
+				else
+					printf("%s = %s\n", key[i], val);
 			}
 			free(val);
 		} else if (len == 0) {
-			printf("%s =\n", key[i]);
+			if (!humanize && keys == 1)
+				printf("\n");
+			else
+				printf("%s =\n", key[i]);
 		} else {
 			fprintf(stderr, "%s invalid\n", key[i]);
 		}
