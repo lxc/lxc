@@ -169,6 +169,19 @@ extern int do_unfreeze(int freeze, const char *name, const char *lxcpath);
 extern int freeze_unfreeze(const char *name, int freeze, const char *lxcpath);
 extern const char *lxc_state2str(lxc_state_t state);
 extern lxc_state_t freezer_state(const char *name, const char *lxcpath);
+
+/*
+ * cgroup-related data for backend use in start/stop of a
+ * container.  This is tacked to the lxc_handler.
+ */
+struct lxc_cgroup_info {
+	/* handlers to actually do the cgroup stuff */
+	struct cgroup_ops *ops;
+	/* extra data for the cgroup_ops, i.e. mountpoints for fs backend */
+	void *data;
+	const char *cgroup_pattern;
+};
+
 /* per-backend cgroup hooks */
 struct cgroup_ops {
 	void (*destroy)(struct lxc_handler *handler);
@@ -183,22 +196,10 @@ struct cgroup_ops {
 	bool (*setup_limits)(struct lxc_handler *handler, bool with_devices);
 	bool (*chown)(struct lxc_handler *handler);
 	bool (*attach)(const char *name, const char *lxcpath, pid_t pid);
+	bool (*mount_cgroup)(const char *root, struct lxc_cgroup_info *info,
+			int type);
 	const char *name;
 };
-
-/*
- * cgroup-related data for backend use in start/stop of a
- * container.  This is tacked to the lxc_handler.
- */
-struct lxc_cgroup_info {
-	/* handlers to actually do the cgroup stuff */
-	struct cgroup_ops *ops;
-	/* extra data for the cgroup_ops, i.e. mountpoints for fs backend */
-	void *data;
-	const char *cgroup_pattern;
-};
-
-extern int lxc_setup_mount_cgroup(const char *root, struct lxc_cgroup_info *base_info, int type);
 
 struct cgfs_data {
 	struct cgroup_meta_data *meta;
@@ -218,6 +219,7 @@ extern void cgroup_cleanup(struct lxc_handler *handler);
 extern bool cgroup_create_legacy(struct lxc_handler *handler);
 extern char *cgroup_get_cgroup(struct lxc_handler *handler, const char *subsystem);
 extern bool lxc_cgroup_attach(const char *name, const char *lxcpath, pid_t pid);
+extern bool lxc_setup_mount_cgroup(const char *root, struct lxc_cgroup_info *cgroup_info, int type);
 extern int lxc_cgroup_set(const char *filename, const char *value, const char *name, const char *lxcpath);
 extern int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath);
 extern int lxc_unfreeze_fromhandler(struct lxc_handler *handler);

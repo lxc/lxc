@@ -270,4 +270,6 @@ inline static bool am_unpriv(void) {
  * parse /proc/self/uid_map to find what @orig maps to
  */
 extern uid_t get_ns_uid(uid_t orig);
+
+extern bool dir_exists(const char *path);
 #endif

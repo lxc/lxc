@@ -30,6 +30,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <grp.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -56,6 +57,7 @@ lxc_log_define(lxc_cgmanager, lxc);
 #include <cgmanager-client/cgmanager-client.h>
 #include <nih/alloc.h>
 #include <nih/error.h>
+#include <nih/string.h>
 NihDBusProxy *cgroup_manager = NULL;
 
 extern struct cgroup_ops *active_cg_ops;
@@ -257,6 +259,8 @@ static int chown_cgroup_wrapper(void *data)
 		SYSERROR("Failed to setgid to 0");
 	if (setresuid(0,0,0) < 0)
 		SYSERROR("Failed to setuid to 0");
+	if (setgroups(0, NULL) < 0)
+		SYSERROR("Failed to clear groups");
 	return do_chown_cgroup(arg->controller, arg->cgroup_path, arg->origuid);
 }
 
@@ -679,6 +683,59 @@ out:
 	return pass;
 }
 
+static bool cgm_bind_dir(const char *root, const char *dirname)
+{
+	nih_local char *cgpath = NULL;
+
+	/* /sys should have been mounted by now */
+	cgpath = NIH_MUST( nih_strdup(NULL, root) );
+	NIH_MUST( nih_strcat(&cgpath, NULL, "/sys/fs/cgroup") );
+
+	if (!dir_exists(cgpath)) {
+		ERROR("%s does not exist", cgpath);
+		return false;
+	}
+
+	/* mount a tmpfs there so we can create subdirs */
+	if (mount("cgroup", cgpath, "tmpfs", 0, "size=10000")) {
+		SYSERROR("Failed to mount tmpfs at %s", cgpath);
+		return false;
+	}
+	NIH_MUST( nih_strcat(&cgpath, NULL, "/cgmanager") );
+
+	if (mkdir(cgpath, 0755) < 0) {
+		SYSERROR("Failed to create %s", cgpath);
+		return false;
+	}
+
+	if (mount(dirname, cgpath, "none", MS_BIND, 0)) {
+		SYSERROR("Failed to bind mount %s to %s", dirname, cgpath);
+		return false;
+	}
+
+	return true;
+}
+
+/*
+ * cgm_mount_cgroup:
+ * If /sys/fs/cgroup/cgmanager.lower/ exists, bind mount that to
+ * /sys/fs/cgroup/cgmanager/ in the container.
+ * Otherwise, if /sys/fs/cgroup/cgmanager exists, bind mount that.
+ * Else do nothing
+ */
+#define CGMANAGER_LOWER_SOCK "/sys/fs/cgroup/cgmanager.lower"
+#define CGMANAGER_UPPER_SOCK "/sys/fs/cgroup/cgmanager"
+static bool cgm_mount_cgroup(const char *root,
+		struct lxc_cgroup_info *cgroup_info, int type)
+{
+	if (dir_exists(CGMANAGER_LOWER_SOCK))
+		return cgm_bind_dir(root, CGMANAGER_LOWER_SOCK);
+	if (dir_exists(CGMANAGER_UPPER_SOCK))
+		return cgm_bind_dir(root, CGMANAGER_UPPER_SOCK);
+	// Host doesn't have cgmanager running?  Then how did we get here?
+	return false;
+}
+
 static struct cgroup_ops cgmanager_ops = {
 	.destroy = cgm_destroy,
 	.init = cgm_init,
@@ -693,5 +750,6 @@ static struct cgroup_ops cgmanager_ops = {
 	.name = "cgmanager",
 	.chown = cgm_chown,
 	.attach = cgm_attach,
+	.mount_cgroup = cgm_mount_cgroup,
 };
 #endif

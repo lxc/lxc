@@ -1326,7 +1326,8 @@ char *lxc_cgroup_path_get(const char *filename, const char *name,
 	return path;
 }
 
-int lxc_setup_mount_cgroup(const char *root, struct lxc_cgroup_info *cgroup_info, int type)
+static bool cgroupfs_mount_cgroup(const char *root,
+		struct lxc_cgroup_info *cgroup_info, int type)
 {
 	size_t bufsz = strlen(root) + sizeof("/sys/fs/cgroup");
 	char *path = NULL;
@@ -1340,28 +1341,23 @@ int lxc_setup_mount_cgroup(const char *root, struct lxc_cgroup_info *cgroup_info
 
 	init_cg_ops();
 
-	if (strcmp(active_cg_ops->name, "cgmanager") == 0) {
-		// todo - offer to bind-mount /sys/fs/cgroup/cgmanager/
-		return 0;
-	}
-
 	cgfs_d = cgroup_info->data;
 	base_info = cgfs_d->info;
 
 	if (type < LXC_AUTO_CGROUP_RO || type > LXC_AUTO_CGROUP_FULL_MIXED) {
 		ERROR("could not mount cgroups into container: invalid type specified internally");
 		errno = EINVAL;
-		return -1;
+		return false;
 	}
 
 	path = calloc(1, bufsz);
 	if (!path)
-		return -1;
+		return false;
 	snprintf(path, bufsz, "%s/sys/fs/cgroup", root);
 	r = mount("cgroup_root", path, "tmpfs", MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_RELATIME, "size=10240k,mode=755");
 	if (r < 0) {
 		SYSERROR("could not mount tmpfs to /sys/fs/cgroup in the container");
-		return -1;
+		return false;
 	}
 
 	/* now mount all the hierarchies we care about */
@@ -1501,7 +1497,7 @@ int lxc_setup_mount_cgroup(const char *root, struct lxc_cgroup_info *cgroup_info
 
 	free(path);
 
-	return 0;
+	return true;
 
 out_error:
 	saved_errno = errno;
@@ -1511,7 +1507,7 @@ out_error:
 	free(abs_path);
 	free(abs_path2);
 	errno = saved_errno;
-	return -1;
+	return false;
 }
 
 int lxc_cgroup_nrtasks_handler(struct lxc_handler *handler)
@@ -2345,6 +2341,7 @@ static struct cgroup_ops cgfs_ops = {
 	.name = "cgroupfs",
 	.attach = lxc_cgroupfs_attach,
 	.chown = NULL,
+	.mount_cgroup = cgroupfs_mount_cgroup,
 };
 static void init_cg_ops(void)
 {
@@ -2455,4 +2452,10 @@ bool lxc_cgroup_attach(const char *name, const char *lxcpath, pid_t pid)
 {
 	init_cg_ops();
 	return active_cg_ops->attach(name, lxcpath, pid);
+}
+
+bool lxc_setup_mount_cgroup(const char *root,
+		struct lxc_cgroup_info *cgroup_info, int type)
+{
+	return active_cg_ops->mount_cgroup(root, cgroup_info, type);
 }

@@ -34,6 +34,7 @@
 #include <arpa/inet.h>
 #include <libgen.h>
 #include <stdint.h>
+#include <grp.h>
 
 #include <lxc/lxccontainer.h>
 #include <lxc/version.h>
@@ -2447,6 +2448,8 @@ static int clone_update_rootfs(struct clone_update_data *data)
 		ERROR("Failed to setuid to 0");
 		return -1;
 	}
+	if (setgroups(0, NULL) < 0)
+		WARN("Failed to clear groups");
 
 	if (unshare(CLONE_NEWNS) < 0)
 		return -1;

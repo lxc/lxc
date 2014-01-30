@@ -31,6 +31,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <sys/types.h>
+#include <grp.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sched.h>
@@ -2031,6 +2033,8 @@ static int rsync_rootfs(struct rsync_data *data)
 		ERROR("Failed to setgid to 0");
 		return -1;
 	}
+	if (setgroups(0, NULL) < 0)
+		WARN("Failed to clear groups");
 	if (setuid(0) < 0) {
 		ERROR("Failed to setuid to 0");
 		return -1;

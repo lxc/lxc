@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
 #include <sys/mount.h>
@@ -943,10 +944,12 @@ static int attach_child_main(void* data)
 		new_gid = options->gid;
 
 	/* try to set the uid/gid combination */
-	if ((new_gid != 0 || options->namespaces & CLONE_NEWUSER) && setgid(new_gid)) {
-		SYSERROR("switching to container gid");
-		shutdown(ipc_socket, SHUT_RDWR);
-		rexit(-1);
+	if ((new_gid != 0 || options->namespaces & CLONE_NEWUSER)) {
+		if (setgid(new_gid) || setgroups(0, NULL)) {
+			SYSERROR("switching to container gid");
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
 	}
 	if ((new_uid != 0 || options->namespaces & CLONE_NEWUSER) && setuid(new_uid)) {
 		SYSERROR("switching to container uid");
