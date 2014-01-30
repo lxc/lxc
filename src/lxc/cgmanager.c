@@ -55,12 +55,15 @@ lxc_log_define(lxc_cgmanager, lxc);
 #include <nih-dbus/dbus_connection.h>
 #include <cgmanager-client/cgmanager-client.h>
 #include <nih/alloc.h>
+#include <nih/error.h>
 NihDBusProxy *cgroup_manager = NULL;
 
 extern struct cgroup_ops *active_cg_ops;
 bool cgmanager_initialized = false;
 bool use_cgmanager = true;
 static struct cgroup_ops cgmanager_ops;
+static int nr_subsystems;
+static char **subsystems;
 
 bool lxc_init_cgmanager(void);
 static void cgmanager_disconnected(DBusConnection *connection)
@@ -105,10 +108,8 @@ static int send_creds(int sock, int rpid, int ruid, int rgid)
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	if (sendmsg(sock, &msg, 0) < 0) {
-		perror("sendmsg");
+	if (sendmsg(sock, &msg, 0) < 0)
 		return -1;
-	}
 	return 0;
 }
 
@@ -121,7 +122,12 @@ bool lxc_init_cgmanager(void)
 
 	connection = nih_dbus_connect(CGMANAGER_DBUS_SOCK, cgmanager_disconnected);
 	if (!connection) {
-		ERROR("Error opening cgmanager connection at %s", CGMANAGER_DBUS_SOCK);
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("Error opening cgmanager connection at %s: %s", CGMANAGER_DBUS_SOCK,
+			nerr->message);
+		nih_free(nerr);
+		dbus_error_free(&dbus_error);
 		return false;
 	}
 	dbus_connection_set_exit_on_disconnect(connection, FALSE);
@@ -131,28 +137,31 @@ bool lxc_init_cgmanager(void)
 				"/org/linuxcontainers/cgmanager", NULL, NULL);
 	dbus_connection_unref(connection);
 	if (!cgroup_manager) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("Error opening cgmanager proxy: %s", nerr->message);
+		nih_free(nerr);
 		return false;
 	}
 	active_cg_ops = &cgmanager_ops;
+	// force fd passing negotiation
+	if (cgmanager_ping_sync(NULL, cgroup_manager, 0) != 0) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("Error pinging cgroup manager: %s", nerr->message);
+		nih_free(nerr);
+	}
 	return true;
-}
-
-/*
- * Use the cgmanager to move a task into a cgroup for a particular
- * hierarchy.
- * All the subsystems in this hierarchy are co-mounted, so we only
- * need to transition the task into one of the cgroups
- */
-static bool lxc_cgmanager_enter(pid_t pid, char *controller, char *cgroup_path)
-{
-	return cgmanager_move_pid_sync(NULL, cgroup_manager, controller,
-				       cgroup_path, pid) == 0;
 }
 
 static bool lxc_cgmanager_create(const char *controller, const char *cgroup_path, int32_t *existed)
 {
 	if ( cgmanager_create_sync(NULL, cgroup_manager, controller,
 				       cgroup_path, existed) != 0) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("call to cgmanager_create_sync failed: %s", nerr->message);
+		nih_free(nerr);
 		ERROR("Failed to create %s:%s", controller, cgroup_path);
 		return false;
 	}
@@ -163,17 +172,16 @@ static bool lxc_cgmanager_create(const char *controller, const char *cgroup_path
 struct chown_data {
 	const char *controller;
 	const char *cgroup_path;
+	uid_t origuid;
 };
 
-static int do_chown_cgroup(const char *controller, const char *cgroup_path)
+static int do_chown_cgroup(const char *controller, const char *cgroup_path,
+		uid_t origuid)
 {
 	int sv[2] = {-1, -1}, optval = 1, ret = -1;
 	char buf[1];
 
-	if (setgid(0) < 0)
-		WARN("Failed to setgid to 0");
-	if (setuid(0) < 0)
-		WARN("Failed to setuid to 0");
+	uid_t caller_nsuid = get_ns_uid(origuid);
 
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sv) < 0) {
 		SYSERROR("Error creating socketpair");
@@ -189,7 +197,10 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path)
 	}
 	if ( cgmanager_chown_scm_sync(NULL, cgroup_manager, controller,
 				       cgroup_path, sv[1]) != 0) {
-		ERROR("call to cgmanager_chown_scm_sync failed");
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("call to cgmanager_chown_scm_sync failed: %s", nerr->message);
+		nih_free(nerr);
 		goto out;
 	}
 	/* now send credentials */
@@ -206,7 +217,7 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path)
 		goto out;
 	}
 	if (send_creds(sv[0], getpid(), getuid(), getgid())) {
-		ERROR("Error sending pid over SCM_CREDENTIAL");
+		SYSERROR("%s: Error sending pid over SCM_CREDENTIAL", __func__);
 		goto out;
 	}
 	FD_ZERO(&rfds);
@@ -219,8 +230,8 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path)
 		ERROR("Error getting reply from server over socketpair");
 		goto out;
 	}
-	if (send_creds(sv[0], getpid(), 0, 0)) {
-		ERROR("Error sending pid over SCM_CREDENTIAL");
+	if (send_creds(sv[0], getpid(), caller_nsuid, 0)) {
+		SYSERROR("%s: Error sending pid over SCM_CREDENTIAL", __func__);
 		goto out;
 	}
 	FD_ZERO(&rfds);
@@ -241,21 +252,26 @@ out:
 static int chown_cgroup_wrapper(void *data)
 {
 	struct chown_data *arg = data;
-	return do_chown_cgroup(arg->controller, arg->cgroup_path);
+
+	if (setresgid(0,0,0) < 0)
+		SYSERROR("Failed to setgid to 0");
+	if (setresuid(0,0,0) < 0)
+		SYSERROR("Failed to setuid to 0");
+	return do_chown_cgroup(arg->controller, arg->cgroup_path, arg->origuid);
 }
 
 static bool chown_cgroup(const char *controller, const char *cgroup_path,
 			struct lxc_conf *conf)
 {
 	struct chown_data data;
+
+	if (lxc_list_empty(&conf->id_map))
+		/* If there's no mapping then we don't need to chown */
+		return true;
+
 	data.controller = controller;
 	data.cgroup_path = cgroup_path;
-
-	if (lxc_list_empty(&conf->id_map)) {
-		if (do_chown_cgroup(controller, cgroup_path) < 0)
-			return false;
-		return true;
-	}
+	data.origuid = geteuid();
 
 	if (userns_exec_1(conf, chown_cgroup_wrapper, &data) < 0) {
 		ERROR("Error requesting cgroup chown in new namespace");
@@ -264,50 +280,45 @@ static bool chown_cgroup(const char *controller, const char *cgroup_path,
 	return true;
 }
 
-struct cgm_data {
-	int nr_subsystems;
-	char **subsystems;
-	char *cgroup_path;
-};
-
 #define CG_REMOVE_RECURSIVE 1
-void cgmanager_remove_cgroup(const char *controller, const char *path)
+static void cgm_remove_cgroup(const char *controller, const char *path)
 {
 	int existed;
 	if ( cgmanager_remove_sync(NULL, cgroup_manager, controller,
-				   path, CG_REMOVE_RECURSIVE, &existed) != 0)
+				   path, CG_REMOVE_RECURSIVE, &existed) != 0) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("call to cgmanager_remove_sync failed: %s", nerr->message);
+		nih_free(nerr);
 		ERROR("Error removing %s:%s", controller, path);
+	}
 	if (existed == -1)
 		INFO("cgroup removal attempt: %s:%s did not exist", controller, path);
 }
 
 static void cgm_destroy(struct lxc_handler *handler)
 {
-	struct cgm_data *d = handler->cgroup_info->data;
+	char *cgroup_path = handler->cgroup_info->data;
 	int i;
 
-	if (!d)
+	if (!cgroup_path)
 		return;
-	for (i=0; i<d->nr_subsystems; i++) {
-		if (d->cgroup_path)
-			cgmanager_remove_cgroup(d->subsystems[i], d->cgroup_path);
-		free(d->subsystems[i]);
-	}
-	free(d->subsystems);
-	free(d->cgroup_path);
-	free(d);
+
+	for (i = 0; i < nr_subsystems; i++)
+		cgm_remove_cgroup(subsystems[i], cgroup_path);
+
+	free(cgroup_path);
 	handler->cgroup_info->data = NULL;
 }
 
 /*
  * remove all the cgroups created
  */
-static inline void cleanup_cgroups(struct cgm_data *d, char *path)
+static inline void cleanup_cgroups(char *path)
 {
 	int i;
-	for (i = 0; i < d->nr_subsystems; i++) {
-		cgmanager_remove_cgroup(d->subsystems[i], path);
-	}
+	for (i = 0; i < nr_subsystems; i++)
+		cgm_remove_cgroup(subsystems[i], path);
 }
 
 static inline bool cgm_create(struct lxc_handler *handler)
@@ -315,7 +326,7 @@ static inline bool cgm_create(struct lxc_handler *handler)
 	int i, index=0, baselen, ret;
 	int32_t existed;
 	char result[MAXPATHLEN], *tmp;
-	struct cgm_data *d = handler->cgroup_info->data;
+	char *cgroup_path = handler->cgroup_info->data;
 
 // XXX we should send a hint to the cgmanager that when these
 // cgroups become empty they should be deleted.  Requires a cgmanager
@@ -344,44 +355,70 @@ again:
 			return false;
 	}
 	existed = 0;
-	for (i = 0; i < d->nr_subsystems; i++) {
-		if (!lxc_cgmanager_create(d->subsystems[i], tmp, &existed)) {
-			ERROR("Error creating cgroup %s:%s", d->subsystems[i], result);
-			cleanup_cgroups(d, tmp);
+	for (i = 0; i < nr_subsystems; i++) {
+		if (!lxc_cgmanager_create(subsystems[i], tmp, &existed)) {
+			ERROR("Error creating cgroup %s:%s", subsystems[i], result);
+			cleanup_cgroups(tmp);
 			return false;
 		}
 		if (existed == 1)
 			goto next;
 	}
 	// success
-	d->cgroup_path = strdup(tmp);
-	if (!d->cgroup_path) {
-		cleanup_cgroups(d, tmp);
+	cgroup_path = strdup(tmp);
+	if (!cgroup_path) {
+		cleanup_cgroups(tmp);
 		return false;
 	}
+	handler->cgroup_info->data = cgroup_path;
 	return true;
 next:
-	cleanup_cgroups(d, tmp);
+	cleanup_cgroups(tmp);
 	index++;
 	goto again;
 }
 
-static inline bool cgm_enter(struct lxc_handler *handler)
+/*
+ * Use the cgmanager to move a task into a cgroup for a particular
+ * hierarchy.
+ * All the subsystems in this hierarchy are co-mounted, so we only
+ * need to transition the task into one of the cgroups
+ */
+static bool lxc_cgmanager_enter(pid_t pid, const char *controller,
+		const char *cgroup_path)
 {
-	struct cgm_data *d = handler->cgroup_info->data;
+	if (cgmanager_move_pid_sync(NULL, cgroup_manager, controller,
+			cgroup_path, pid) != 0) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("call to cgmanager_move_pid_sync failed: %s", nerr->message);
+		nih_free(nerr);
+		return false;
+	}
+	return true;
+}
+
+static bool do_cgm_enter(pid_t pid, const char *cgroup_path)
+{
 	int i;
 
-	for (i = 0; i < d->nr_subsystems; i++) {
-		if (!lxc_cgmanager_enter(handler->pid, d->subsystems[i], d->cgroup_path))
+	for (i = 0; i < nr_subsystems; i++) {
+		if (!lxc_cgmanager_enter(pid, subsystems[i], cgroup_path))
 			return false;
 	}
 	return true;
 }
 
+static inline bool cgm_enter(struct lxc_handler *handler)
+{
+	char *cgroup_path = handler->cgroup_info->data;
+	return do_cgm_enter(handler->pid, cgroup_path);
+}
+
 static char *cgm_get_cgroup(struct lxc_handler *handler, const char *subsystem)
 {
-	struct cgm_data *d = handler->cgroup_info->data;
-	return d->cgroup_path;
+	char *cgroup_path = handler->cgroup_info->data;
+	return cgroup_path;
 }
 
 int cgm_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
@@ -401,8 +438,14 @@ int cgm_get(const char *filename, char *value, size_t len, const char *name, con
 	if (!cgroup)
 		return -1;
 	if (cgmanager_get_value_sync(NULL, cgroup_manager, controller, cgroup, filename, &result) != 0) {
-		ERROR("Error getting value for %s from cgmanager for cgroup %s (%s:%s)",
-			filename, cgroup, lxcpath, name);
+		/*
+		 * must consume the nih error
+		 * However don't print out an error as the key may simply not exist
+		 * on the host
+		 */
+		NihError *nerr;
+		nerr = nih_error_get();
+		nih_free(nerr);
 		free(cgroup);
 		return -1;
 	}
@@ -433,8 +476,13 @@ static int cgm_do_set(const char *controller, const char *file,
 	int ret;
 	ret = cgmanager_set_value_sync(NULL, cgroup_manager, controller,
 				 cgroup, file, value);
-	if (ret != 0)
+	if (ret != 0) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("call to cgmanager_remove_sync failed: %s", nerr->message);
+		nih_free(nerr);
 		ERROR("Error setting cgroup %s limit %s", file, cgroup);
+	}
 	return ret;
 }
 
@@ -462,26 +510,18 @@ int cgm_set(const char *filename, const char *value, const char *name, const cha
 	return ret;
 }
 
-/*
- * TODO really this should be done once for global data, not once
- * per container
- */
-static inline bool cgm_init(struct lxc_handler *handler)
+static bool collect_subsytems(void)
 {
-	struct cgm_data *d = malloc(sizeof(*d));
 	char *line = NULL, *tab1;
 	size_t sz = 0, i;
 	FILE *f;
 
-	if (!d)
-		return false;
-	d->nr_subsystems = 0;
-	d->subsystems = NULL;
+	if (subsystems) // already initialized
+		return true;
+
 	f = fopen_cloexec("/proc/cgroups", "r");
-	if (!f) {
-		free(d);
+	if (!f)
 		return false;
-	}
 	while (getline(&line, &sz, f) != -1) {
 		char **tmp;
 		if (line[0] == '#')
@@ -492,37 +532,51 @@ static inline bool cgm_init(struct lxc_handler *handler)
 		if (!tab1)
 			continue;
 		*tab1 = '\0';
-		tmp = realloc(d->subsystems, (d->nr_subsystems+1)*sizeof(char *));
-		if (!tmp) {
+		tmp = realloc(subsystems, (nr_subsystems+1)*sizeof(char *));
+		if (!tmp)
 			goto out_free;
-		}
-		d->subsystems = tmp;
-		d->subsystems[d->nr_subsystems] = strdup(line);
-		if (!d->subsystems[d->nr_subsystems])
+
+		subsystems = tmp;
+		tmp[nr_subsystems] = strdup(line);
+		if (!tmp[nr_subsystems])
 			goto out_free;
-		d->nr_subsystems++;
+		nr_subsystems++;
 	}
 	fclose(f);
 
-	d->cgroup_path = NULL;
-	handler->cgroup_info->data = d;
+	if (!nr_subsystems) {
+		ERROR("No cgroup subsystems found");
+		return false;
+	}
+
 	return true;
 
 out_free:
-	for (i=0; i<d->nr_subsystems; i++)
-		free(d->subsystems[i]);
-	free(d->subsystems);
-	free(d);
+	fclose(f);
+	for (i = 0; i < nr_subsystems; i++)
+		free(subsystems[i]);
+	free(subsystems);
+	subsystems = NULL;
+	nr_subsystems = 0;
 	return false;
+}
+
+static inline bool cgm_init(struct lxc_handler *handler)
+{
+	return collect_subsytems();
 }
 
 static int cgm_unfreeze_fromhandler(struct lxc_handler *handler)
 {
-	struct cgm_data *d = handler->cgroup_info->data;
+	char *cgroup_path = handler->cgroup_info->data;
 
-	if (cgmanager_set_value_sync(NULL, cgroup_manager, "freezer", d->cgroup_path,
+	if (cgmanager_set_value_sync(NULL, cgroup_manager, "freezer", cgroup_path,
 			"freezer.state", "THAWED") != 0) {
-		ERROR("Error unfreezing %s", d->cgroup_path);
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("call to cgmanager_set_value_sync failed: %s", nerr->message);
+		nih_free(nerr);
+		ERROR("Error unfreezing %s", cgroup_path);
 		return -1;
 	}
 	return 0;
@@ -534,7 +588,7 @@ static bool setup_limits(struct lxc_handler *h, bool do_devices)
 	struct lxc_cgroup *cg;
 	bool ret = false;
 	struct lxc_list *cgroup_settings = &h->conf->cgroup;
-	struct cgm_data *d = h->cgroup_info->data;
+	char *cgroup_path = h->cgroup_info->data;
 
 	if (lxc_list_empty(cgroup_settings))
 		return true;
@@ -550,7 +604,7 @@ static bool setup_limits(struct lxc_handler *h, bool do_devices)
 		p = strchr(controller, '.');
 		if (p)
 			*p = '\0';
-		if (cgm_do_set(controller, cg->subsystem, d->cgroup_path
+		if (cgm_do_set(controller, cg->subsystem, cgroup_path
 				, cg->value) < 0) {
 			ERROR("Error setting %s to %s for %s\n",
 			      cg->subsystem, cg->value, h->name);
@@ -573,15 +627,56 @@ static bool cgm_setup_limits(struct lxc_handler *handler, bool with_devices)
 
 static bool cgm_chown(struct lxc_handler *handler)
 {
-	struct cgm_data *d = handler->cgroup_info->data;
+	char *cgroup_path = handler->cgroup_info->data;
 	int i;
 
-	for (i = 0; i < d->nr_subsystems; i++) {
-		if (!chown_cgroup(d->subsystems[i], d->cgroup_path, handler->conf))
+	for (i = 0; i < nr_subsystems; i++) {
+		if (!chown_cgroup(subsystems[i], cgroup_path, handler->conf))
 			WARN("Failed to chown %s:%s to container root",
-				d->subsystems[i], d->cgroup_path);
+				subsystems[i], cgroup_path);
 	}
 	return true;
+}
+
+/*
+ * TODO: this should be re-written to use the get_config_item("lxc.id_map")
+ * cmd api instead of getting the idmap from c->lxc_conf.  The reason is
+ * that the id_maps may be different if the container was started with a
+ * -f or -s argument.
+ * The reason I'm punting on that is because we'll need to parse the
+ * idmap results.
+ */
+static bool cgm_attach(const char *name, const char *lxcpath, pid_t pid)
+{
+	bool pass = false;
+	char *cgroup = NULL;
+	struct lxc_container *c;
+
+	c = lxc_container_new(name, lxcpath);
+	if (!c) {
+		ERROR("Could not load container %s:%s", lxcpath, name);
+		return false;
+	}
+	if (!collect_subsytems()) {
+		ERROR("Error collecting cgroup subsystems");
+		goto out;
+	}
+	// cgm_create makes sure that we have the same cgroup name for all
+	// subsystems, so since this is a slow command over the cmd socket,
+	// just get the cgroup name for the first one.
+	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, subsystems[0]);
+	if (!cgroup) {
+		ERROR("Failed to get cgroup for controller %s", subsystems[0]);
+		goto out;
+	}
+
+	if (!(pass = do_cgm_enter(pid, cgroup)))
+		ERROR("Failed to enter group %s", cgroup);
+
+out:
+	free(cgroup);
+	lxc_container_put(c);
+	return pass;
 }
 
 static struct cgroup_ops cgmanager_ops = {
@@ -597,5 +692,6 @@ static struct cgroup_ops cgmanager_ops = {
 	.setup_limits = cgm_setup_limits,
 	.name = "cgmanager",
 	.chown = cgm_chown,
+	.attach = cgm_attach,
 };
 #endif

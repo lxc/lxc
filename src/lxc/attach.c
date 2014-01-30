@@ -698,32 +698,8 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 
 		/* attach to cgroup, if requested */
 		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
-			struct cgroup_meta_data *meta_data;
-			struct cgroup_process_info *container_info;
-
-			meta_data = lxc_cgroup_load_meta();
-			if (!meta_data) {
-				ERROR("could not move attached process %ld to cgroup of container", (long)pid);
+			if (!lxc_cgroup_attach(name, lxcpath, pid))
 				goto cleanup_error;
-			}
-
-			container_info = lxc_cgroup_get_container_info(name, lxcpath, meta_data);
-			lxc_cgroup_put_meta(meta_data);
-			if (!container_info) {
-				ERROR("could not move attached process %ld to cgroup of container", (long)pid);
-				goto cleanup_error;
-			}
-
-			/*
-			 * TODO - switch over to using a cgroup_operation.  We can't use
-			 * cgroup_enter() as that takes a handler.
-			 */
-			ret = lxc_cgroupfs_enter(container_info, pid, false);
-			lxc_cgroup_process_info_free(container_info);
-			if (ret < 0) {
-				ERROR("could not move attached process %ld to cgroup of container", (long)pid);
-				goto cleanup_error;
-			}
 		}
 
 		/* Let the child process know to go ahead */

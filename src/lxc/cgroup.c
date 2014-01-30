@@ -2303,6 +2303,34 @@ bool cgroupfs_setup_limits(struct lxc_handler *h, bool with_devices)
 	return do_setup_cgroup_limits(h, &h->conf->cgroup, with_devices) == 0;
 }
 
+bool lxc_cgroupfs_attach(const char *name, const char *lxcpath, pid_t pid)
+{
+	struct cgroup_meta_data *meta_data;
+	struct cgroup_process_info *container_info;
+	int ret;
+
+	meta_data = lxc_cgroup_load_meta();
+	if (!meta_data) {
+		ERROR("could not move attached process %d to cgroup of container", pid);
+		return false;
+	}
+
+	container_info = lxc_cgroup_get_container_info(name, lxcpath, meta_data);
+	lxc_cgroup_put_meta(meta_data);
+	if (!container_info) {
+		ERROR("could not move attached process %d to cgroup of container", pid);
+		return false;
+	}
+
+	ret = lxc_cgroupfs_enter(container_info, pid, false);
+	lxc_cgroup_process_info_free(container_info);
+	if (ret < 0) {
+		ERROR("could not move attached process %d to cgroup of container", pid);
+		return false;
+	}
+	return true;
+}
+
 static struct cgroup_ops cgfs_ops = {
 	.destroy = cgfs_destroy,
 	.init = cgfs_init,
@@ -2315,6 +2343,7 @@ static struct cgroup_ops cgfs_ops = {
 	.unfreeze_fromhandler = cgfs_unfreeze_fromhandler,
 	.setup_limits = cgroupfs_setup_limits,
 	.name = "cgroupfs",
+	.attach = lxc_cgroupfs_attach,
 	.chown = NULL,
 };
 static void init_cg_ops(void)
@@ -2420,4 +2449,10 @@ bool cgroup_chown(struct lxc_handler *handler)
 	if (active_cg_ops->chown)
 		return active_cg_ops->chown(handler);
 	return true;
+}
+
+bool lxc_cgroup_attach(const char *name, const char *lxcpath, pid_t pid)
+{
+	init_cg_ops();
+	return active_cg_ops->attach(name, lxcpath, pid);
 }

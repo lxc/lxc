@@ -265,4 +265,9 @@ extern int randseed(bool);
 inline static bool am_unpriv(void) {
 	return geteuid() != 0;
 }
+
+/*
+ * parse /proc/self/uid_map to find what @orig maps to
+ */
+extern uid_t get_ns_uid(uid_t orig);
 #endif
