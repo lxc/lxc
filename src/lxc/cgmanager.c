@@ -570,7 +570,7 @@ static inline bool cgm_init(struct lxc_handler *handler)
 	return collect_subsytems();
 }
 
-static int cgm_unfreeze_fromhandler(struct lxc_handler *handler)
+static bool cgm_unfreeze_fromhandler(struct lxc_handler *handler)
 {
 	char *cgroup_path = handler->cgroup_info->data;
 
@@ -581,9 +581,9 @@ static int cgm_unfreeze_fromhandler(struct lxc_handler *handler)
 		ERROR("call to cgmanager_set_value_sync failed: %s", nerr->message);
 		nih_free(nerr);
 		ERROR("Error unfreezing %s", cgroup_path);
-		return -1;
+		return false;
 	}
-	return 0;
+	return true;
 }
 
 static bool setup_limits(struct lxc_handler *h, bool do_devices)
