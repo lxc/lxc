@@ -69,6 +69,9 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	/* Wait for init to be ready for SIGPWR */
+	sleep(10);
+
 	if (!c->shutdown(c, 60)) {
 		fprintf(stderr, "%d: failed to shut down %s\n", __LINE__, MYNAME);
 		goto out;

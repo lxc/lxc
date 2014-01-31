@@ -270,7 +270,8 @@ if not dest.start() or not dest.wait("RUNNING", timeout=5):
 # Deal with the case where we just attach to the container's console
 if not args.command and not args.daemon:
     dest.console()
-    dest.shutdown(timeout=5)
+    if not dest.shutdown(timeout=5):
+        dest.stop()
     sys.exit(0)
 
 # Try to get the IP addresses
@@ -318,6 +319,7 @@ for ip in ips:
     break
 
 # Shutdown the container
-dest.shutdown(timeout=5)
+if not dest.shutdown(timeout=5):
+    dest.stop()
 
 sys.exit(retval)

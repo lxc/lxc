@@ -144,7 +144,8 @@ if len(sys.argv) > 1 and sys.argv[1] == "--with-console":
 
 ## Shutting down the container
 print("Shutting down the container")
-container.shutdown(3)
+if not container.shutdown(3):
+    container.stop()
 
 if container.running:
     print("Stopping the container")

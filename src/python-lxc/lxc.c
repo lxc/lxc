@@ -1591,9 +1591,8 @@ static PyMethodDef Container_methods[] = {
      METH_VARARGS|METH_KEYWORDS,
      "shutdown(timeout = -1) -> boolean\n"
      "\n"
-     "Sends SIGPWR to the container and wait for it to shutdown "
-     "unless timeout is set to a positive value, in which case "
-     "the container will be killed when the timeout is reached."
+     "Sends SIGPWR to the container and wait for it to shutdown."
+     "-1 means wait forever, 0 means skip waiting."
     },
     {"snapshot", (PyCFunction)Container_snapshot,
      METH_VARARGS|METH_KEYWORDS,

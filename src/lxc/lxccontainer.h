@@ -362,12 +362,10 @@ struct lxc_container {
 	 * SIGPWR.
 	 *
 	 * \param c Container.
-	 * \param timeout Seconds to wait before forcing a hard stop
-	 *  (value must be >0).
+	 * \param timeout Seconds to wait before returning false.
+	 *  (-1 to wait forever, 0 to avoid waiting).
 	 *
-	 * \return \c true if configuration was loaded successfully, else \c false.
-	 *
-	 * \note A \p timeout of \c 0 means do not wait.
+	 * \return \c true if the container was shutdown successfully, else \c false.
 	 */
 	bool (*shutdown)(struct lxc_container *c, int timeout);
 

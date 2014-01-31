@@ -77,7 +77,7 @@ Options :\n\
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
-	.timeout = 60,
+	.timeout  = -2,
 };
 
 /* returns -1 on failure, 0 on success */
@@ -95,7 +95,7 @@ static int do_reboot_and_check(struct lxc_arguments *a, struct lxc_container *c)
 		return -1;
 	if (a->nowait)
 		return 0;
-	if (timeout <= 0)
+	if (timeout == 0)
 		goto out;
 
 	for (;;) {
@@ -118,7 +118,7 @@ static int do_reboot_and_check(struct lxc_arguments *a, struct lxc_container *c)
 		if (ret)
 			break;
 		elapsed_time = tv.tv_sec - curtime;
-		if (timeout - elapsed_time <= 0)
+		if (timeout != -1 && timeout - elapsed_time <= 0)
 			break;
 		timeout -= elapsed_time;
 	}
@@ -145,6 +145,46 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		return 1;
 
+	/* Set default timeout */
+	if (my_args.timeout == -2) {
+		if (my_args.hardstop) {
+			my_args.timeout = 0;
+		}
+		else {
+			my_args.timeout = 60;
+		}
+	}
+
+	if (my_args.nowait) {
+		my_args.timeout = 0;
+	}
+
+	/* some checks */
+	if (!my_args.hardstop && my_args.timeout < -1) {
+		fprintf(stderr, "invalid timeout\n");
+		return 1;
+	}
+
+	if (my_args.hardstop && my_args.nokill) {
+		fprintf(stderr, "-k can't be used with --nokill\n");
+		return 1;
+	}
+
+	if (my_args.hardstop && my_args.reboot) {
+		fprintf(stderr, "-k can't be used with -r\n");
+		return 1;
+	}
+
+	if (my_args.hardstop && my_args.timeout) {
+		fprintf(stderr, "-k doesn't allow timeouts\n");
+		return 1;
+	}
+
+	if (my_args.nolock && !my_args.hardstop) {
+		fprintf(stderr, "--nolock may only be used with -k\n");
+		return 1;
+	}
+
 	/* shortcut - if locking is bogus, we should be able to kill
 	 * containers at least */
 	if (my_args.nolock)
@@ -167,24 +207,27 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	/* kill */
 	if (my_args.hardstop) {
 		ret = c->stop(c) ? 0 : 1;
 		goto out;
 	}
+
+	/* reboot */
 	if (my_args.reboot) {
 		ret = do_reboot_and_check(&my_args, c);
 		goto out;
 	}
 
-	if (my_args.nokill)
-		my_args.timeout = 0;
-
+	/* shutdown */
 	s = c->shutdown(c, my_args.timeout);
 	if (!s) {
-		if (!my_args.shutdown)
-			ret = c->wait(c, "STOPPED", -1) ? 0 : 1;
+		if (my_args.timeout == 0)
+			ret = 0;
+		else if (my_args.nokill)
+			ret = 1;
 		else
-			ret = 1; // fail
+			ret = c->stop(c) ? 0 : 1;
 	} else
 		ret = 0;
 
