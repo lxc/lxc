@@ -235,7 +235,10 @@ fi
 if [ "$skip_arch_check" = "0" ]; then
     case "$hostarch:$arch" in
         $arch:$arch) : ;; # the host == container
-        amd64:i386|arm*:arm*) :;; # supported "cross"
+        amd64:i386) :;; # supported "cross"
+        arm64:arm*) :;; # supported "cross"
+        armel:armhf) :;; # supported "cross"
+        armhf:armel) :;; # supported "cross"
         *) echo "cannot create '$arch' container on hostarch '$hostarch'";
            exit 1;;
     esac
