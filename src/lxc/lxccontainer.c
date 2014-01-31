@@ -1339,8 +1339,6 @@ static bool lxcapi_shutdown(struct lxc_container *c, int timeout)
 	if (!c)
 		return false;
 
-	if (!timeout)
-		timeout = -1;
 	if (!c->is_running(c))
 		return true;
 	pid = c->init_pid(c);
