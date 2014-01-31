@@ -697,7 +697,7 @@ static bool cgm_bind_dir(const char *root, const char *dirname)
 	}
 
 	/* mount a tmpfs there so we can create subdirs */
-	if (mount("cgroup", cgpath, "tmpfs", 0, "size=10000")) {
+	if (mount("cgroup", cgpath, "tmpfs", 0, "size=10000,mode=755")) {
 		SYSERROR("Failed to mount tmpfs at %s", cgpath);
 		return false;
 	}

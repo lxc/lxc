@@ -1321,7 +1321,7 @@ static int mount_autodev(const char *name, char *root, const char *lxcpath)
 		/* Only mount a tmpfs on here if we don't already a mount */
 		if ( ! mount_check_fs( host_path, NULL ) ) {
 			DEBUG("Mounting tmpfs to %s", host_path );
-			ret = mount("none", path, "tmpfs", 0, "size=100000");
+			ret = mount("none", path, "tmpfs", 0, "size=100000,mode=755");
 		} else {
 			/* This allows someone to manually set up a mount */
 			DEBUG("Bind mounting %s to %s", host_path, path );
@@ -1471,7 +1471,7 @@ static int chroot_into_slave(struct lxc_conf *conf)
 		SYSERROR("failed to make %s slave", destpath);
 		return -1;
 	}
-	if (mount("none", destpath, "tmpfs", 0, "size=10000")) {
+	if (mount("none", destpath, "tmpfs", 0, "size=10000,mode=755")) {
 		SYSERROR("Failed to mount tmpfs / at %s", destpath);
 		return -1;
 	}
