@@ -264,6 +264,20 @@ static int chown_cgroup_wrapper(void *data)
 	return do_chown_cgroup(arg->controller, arg->cgroup_path, arg->origuid);
 }
 
+static bool lxc_cgmanager_chmod(const char *controller,
+		const char *cgroup_path, const char *file, int mode)
+{
+	if (cgmanager_chmod_sync(NULL, cgroup_manager, controller,
+			cgroup_path, file, mode) != 0) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("call to cgmanager_chmod_sync failed: %s", nerr->message);
+		nih_free(nerr);
+		return false;
+	}
+	return true;
+}
+
 static bool chown_cgroup(const char *controller, const char *cgroup_path,
 			struct lxc_conf *conf)
 {
@@ -281,6 +295,14 @@ static bool chown_cgroup(const char *controller, const char *cgroup_path,
 		ERROR("Error requesting cgroup chown in new namespace");
 		return false;
 	}
+
+	/* now chmod 775 the directory else the container cannot create cgroups */
+	if (!lxc_cgmanager_chmod(controller, cgroup_path, "", 0775))
+		return false;
+	if (!lxc_cgmanager_chmod(controller, cgroup_path, "tasks", 0775))
+		return false;
+	if (!lxc_cgmanager_chmod(controller, cgroup_path, "cgroup.procs", 0775))
+		return false;
 	return true;
 }
 
