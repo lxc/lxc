@@ -364,7 +364,14 @@ download_centos()
     # use temporary repository definition
     REPO_FILE=$INSTALL_ROOT/etc/yum.repos.d/lxc-centos-temp.repo
     mkdir -p $(dirname $REPO_FILE)
-    cat <<EOF > $REPO_FILE
+    if [ -n "$repo" ]; then
+	cat <<EOF > $REPO_FILE
+[base]
+name=local repository
+baseurl="$repo"
+EOF
+else
+	cat <<EOF > $REPO_FILE
 [base]
 name=CentOS-$release - Base
 mirrorlist=http://mirrorlist.centos.org/?release=$release&arch=$basearch&repo=os
@@ -373,6 +380,7 @@ mirrorlist=http://mirrorlist.centos.org/?release=$release&arch=$basearch&repo=os
 name=CentOS-$release - Updates
 mirrorlist=http://mirrorlist.centos.org/?release=$release&arch=$basearch&repo=updates
 EOF
+    fi
 
     # create minimal device nodes, needed for "yum install" and "yum update" process
     mkdir -p $INSTALL_ROOT/dev
@@ -615,13 +623,14 @@ Optional args:
   -c,--clean        clean the cache
   -R,--release      Centos release for the new container. if the host is Centos, then it will defaultto the host's release.
      --fqdn         fully qualified domain name (FQDN) for DNS and system naming
+     --repo         repository to use (url)
   -a,--arch         Define what arch the container will be [i686,x86_64]
   -h,--help         print this help
 EOF
     return 0
 }
 
-options=$(getopt -o a:hp:n:cR: -l help,path:,rootfs:,name:,clean,release:,arch:,fqdn: -- "$@")
+options=$(getopt -o a:hp:n:cR: -l help,path:,rootfs:,name:,clean,release:,repo:,arch:,fqdn: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -638,6 +647,7 @@ do
         -n|--name)      name=$2; shift 2;;
         -c|--clean)     clean=$2; shift 2;;
         -R|--release)   release=$2; shift 2;;
+	--repo)		repo="$2"; shift 2;;
         -a|--arch)      newarch=$2; shift 2;;
         --fqdn)         utsname=$2; shift 2;;
         --)             shift 1; break ;;
