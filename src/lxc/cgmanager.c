@@ -171,6 +171,25 @@ static bool lxc_cgmanager_create(const char *controller, const char *cgroup_path
 	return true;
 }
 
+static bool lxc_cgmanager_escape(void)
+{
+	pid_t me = getpid();
+	int i;
+	for (i = 0; i < nr_subsystems; i++) {
+		if (cgmanager_move_pid_abs_sync(NULL, cgroup_manager,
+					subsystems[i], "/", me) != 0) {
+			NihError *nerr;
+			nerr = nih_error_get();
+			ERROR("call to cgmanager_move_pid_abs_sync(%s) failed: %s",
+					subsystems[i], nerr->message);
+			nih_free(nerr);
+			return false;
+		}
+	}
+
+	return true;
+}
+
 struct chown_data {
 	const char *controller;
 	const char *cgroup_path;
@@ -589,7 +608,12 @@ out_free:
 
 static inline bool cgm_init(struct lxc_handler *handler)
 {
-	return collect_subsytems();
+	if (!collect_subsytems())
+		return false;
+	if (geteuid())
+		return true;
+	// root;  try to escape to root cgroup
+	return lxc_cgmanager_escape();
 }
 
 static bool cgm_unfreeze_fromhandler(struct lxc_handler *handler)
