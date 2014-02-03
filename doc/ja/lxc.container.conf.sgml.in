@@ -1223,6 +1223,20 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
 	<varlistentry>
 	  <term>
+	    <option>lxc.rootfs.options</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      extra mount options to use when mounting the rootfs.
+              -->
+              rootfs をマウントするときに追加したいマウントオプション．
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
 	    <option>lxc.pivotdir</option>
 	  </term>
 	  <listitem>
