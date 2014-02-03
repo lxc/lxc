@@ -85,11 +85,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         <listitem>
           <para>
             <!--
-            Print a configuration key from the running container. This option
+            Print a configuration key from the container. This option
             may be given mulitple times to print out multiple key = value pairs.
             -->
-            実行中のコンテナの設定値を表示します．
-            このオプションは複数の key = value のペアを表示したい場合には複数回指定することも可能です．
+            コンテナの設定値を表示します．このオプションは複数の key = value のペアを表示したい場合には複数回指定することも可能です．
           </para>
         </listitem>
       </varlistentry>
