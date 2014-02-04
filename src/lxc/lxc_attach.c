@@ -203,6 +203,7 @@ int main(int argc, char *argv[])
 			   my_args.progname, my_args.quiet, my_args.lxcpath[0]);
 	if (ret)
 		return ret;
+	lxc_log_options_no_override();
 
 	if (remount_sys_proc)
 		attach_options.attach_flags |= LXC_ATTACH_REMOUNT_PROC_SYS;

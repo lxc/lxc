@@ -105,6 +105,7 @@ int main(int argc, char *argv[])
 			   my_args.progname, my_args.quiet, my_args.lxcpath[0]);
 	if (ret)
 		return EXIT_FAILURE;
+	lxc_log_options_no_override();
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {

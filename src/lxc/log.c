@@ -247,6 +247,11 @@ static int __lxc_log_set_file(const char *fname, int create_dirs)
 		free(log_fname);
 	}
 
+	if (!fname || strlen(fname) == 0) {
+		log_fname = NULL;
+		return 0;
+	}
+
 #if USE_CONFIGPATH_LOGS
 	// we don't build_dir for the default if the default is
 	// i.e. /var/lib/lxc/$container/$container.log
@@ -299,7 +304,6 @@ extern int lxc_log_init(const char *name, const char *file,
 			return -1;
 		}
 
-		lxc_loglevel_specified = 1;
 		lxc_priority = lxc_log_priority_to_int(priority);
 	}
 
@@ -315,7 +319,6 @@ extern int lxc_log_init(const char *name, const char *file,
 	if (file) {
 		if (strcmp(file, "none") == 0)
 			return 0;
-		lxc_logfile_specified = 1;
 		ret = __lxc_log_set_file(file, 1);
 	} else {
 
@@ -366,15 +369,12 @@ extern int lxc_log_set_level(int level)
 		ERROR("invalid log priority %d", level);
 		return -1;
 	}
-	lxc_loglevel_specified = 1;
 	lxc_log_category_lxc.priority = level;
 	return 0;
 }
 
 extern int lxc_log_get_level(void)
 {
-	if (!lxc_loglevel_specified)
-		return LXC_LOG_PRIORITY_NOTSET;
 	return lxc_log_category_lxc.priority;
 }
 
@@ -395,7 +395,6 @@ extern int lxc_log_set_file(const char *fname)
 {
 	if (lxc_logfile_specified)
 		return 0;
-	lxc_logfile_specified = 1;
 	return __lxc_log_set_file(fname, 0);
 }
 
@@ -413,4 +412,13 @@ extern void lxc_log_set_prefix(const char *prefix)
 extern const char *lxc_log_get_prefix(void)
 {
 	return log_prefix;
+}
+
+extern void lxc_log_options_no_override()
+{
+	if (lxc_log_get_file())
+		lxc_logfile_specified = 1;
+
+	if (lxc_log_get_level() != LXC_LOG_PRIORITY_NOTSET)
+		lxc_loglevel_specified = 1;
 }

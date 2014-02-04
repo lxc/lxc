@@ -1106,10 +1106,6 @@ static int config_loglevel(const char *key, const char *value,
 	if (!value || strlen(value) == 0)
 		return 0;
 
-	if (lxc_log_get_level() != LXC_LOG_PRIORITY_NOTSET) {
-		DEBUG("Log level already set - ignoring new value");
-		return 0;
-	}
 	if (value[0] >= '0' && value[0] <= '9')
 		newlevel = atoi(value);
 	else

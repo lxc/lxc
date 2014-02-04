@@ -111,6 +111,7 @@ int main(int argc, char *argv[])
 			   basename(argv[0]), quiet, lxcpath);
 	if (err < 0)
 		exit(EXIT_FAILURE);
+	lxc_log_options_no_override();
 
 	if (!argv[optind]) {
 		ERROR("missing command to launch");
