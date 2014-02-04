@@ -25,6 +25,15 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+# Detect use under userns (unsupported)
+for arg in $*; do
+    if [ "$arg" == "--mapped-uid" ]; then
+        echo "This template can't be used for unprivileged containers." 1>&2
+        echo "You may want to try the \"download\" template instead." 1>&2
+        exit 1
+    fi
+done
+
 # defaults
 arch=$(uname -m)
 lxc_network_type="veth"

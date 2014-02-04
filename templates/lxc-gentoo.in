@@ -13,6 +13,15 @@
 # - ready to use cache
 #
 
+# Detect use under userns (unsupported)
+for arg in $*; do
+    if [ "$arg" == "--mapped-uid" ]; then
+        echo "This template can't be used for unprivileged containers." 1>&2
+        echo "You may want to try the \"download\" template instead." 1>&2
+        exit 1
+    fi
+done
+
 # Ensure strict root's umask doesen't render the VM unusable
 umask 022
 

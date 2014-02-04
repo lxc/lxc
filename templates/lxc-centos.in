@@ -72,6 +72,15 @@ lxc_network_link=lxcbr0
 # This may be in /etc/os-release or /etc/system-release-cpe.  We
 # should be able to use EITHER.  Give preference to /etc/os-release for now.
 
+# Detect use under userns (unsupported)
+for arg in $*; do
+    if [ "$arg" == "--mapped-uid" ]; then
+        echo "This template can't be used for unprivileged containers." 1>&2
+        echo "You may want to try the \"download\" template instead." 1>&2
+        exit 1
+    fi
+done
+
 if [ -e /etc/os-release ]
 then
 # This is a shell friendly configuration file.  We can just source it.
