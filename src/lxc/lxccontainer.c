@@ -977,6 +977,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 		if (geteuid() != 0 && !lxc_list_empty(&conf->id_map)) {
 			int n2args = 1;
 			char txtuid[20];
+			char txtgid[20];
 			char **n2 = malloc(n2args * sizeof(*n2));
 			struct lxc_list *it;
 			struct id_map *map;
@@ -1004,13 +1005,13 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 				if (ret < 0 || ret >= 200)
 					exit(1);
 			}
-			int hostid_mapped = mapped_hostid(geteuid(), conf);
+			int hostid_mapped = mapped_hostid(geteuid(), conf, ID_TYPE_UID);
 			int extraargs = hostid_mapped >= 0 ? 1 : 3;
 			n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(char *));
 			if (!n2)
 				exit(1);
 			if (hostid_mapped < 0) {
-				hostid_mapped = find_unmapped_nsuid(conf);
+				hostid_mapped = find_unmapped_nsuid(conf, ID_TYPE_UID);
 				n2[n2args++] = "-m";
 				if (hostid_mapped < 0) {
 					ERROR("Could not find free uid to map");
@@ -1028,22 +1029,49 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 					exit(1);
 				}
 			}
+			int hostgid_mapped = mapped_hostid(getegid(), conf, ID_TYPE_GID);
+			extraargs = hostgid_mapped >= 0 ? 1 : 3;
+			n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(char *));
+			if (!n2)
+				exit(1);
+			if (hostgid_mapped < 0) {
+				hostgid_mapped = find_unmapped_nsuid(conf, ID_TYPE_GID);
+				n2[n2args++] = "-m";
+				if (hostgid_mapped < 0) {
+					ERROR("Could not find free uid to map");
+					exit(1);
+				}
+				n2[n2args++] = malloc(200);
+				if (!n2[n2args-1]) {
+					SYSERROR("out of memory");
+					exit(1);
+				}
+				ret = snprintf(n2[n2args-1], 200, "g:%d:%d:1",
+					hostgid_mapped, getegid());
+				if (ret < 0 || ret >= 200) {
+					ERROR("string too long");
+					exit(1);
+				}
+			}
 			n2[n2args++] = "--";
 			for (i = 0; i < nargs; i++)
 				n2[i + n2args] = newargv[i];
 			n2args += nargs;
 			// Finally add "--mapped-uid $uid" to tell template what to chown
 			// cached images to
-			n2args += 2;
+			n2args += 4;
 			n2 = realloc(n2, n2args * sizeof(char *));
 			if (!n2) {
 				SYSERROR("out of memory");
 				exit(1);
 			}
 			// note n2[n2args-1] is NULL
-			n2[n2args-3] = "--mapped-uid";
+			n2[n2args-5] = "--mapped-uid";
 			snprintf(txtuid, 20, "%d", hostid_mapped);
-			n2[n2args-2] = txtuid;
+			n2[n2args-4] = txtuid;
+			n2[n2args-3] = "--mapped-gid";
+			snprintf(txtgid, 20, "%d", hostgid_mapped);
+			n2[n2args-2] = txtgid;
 			n2[n2args-1] = NULL;
 			free(newargv);
 			newargv = n2;

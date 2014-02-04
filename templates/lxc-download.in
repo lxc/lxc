@@ -51,6 +51,7 @@ LXC_NAME=
 LXC_PATH=
 LXC_ROOTFS=
 LXC_MAPPED_UID=
+LXC_MAPPED_GID=
 
 # Some useful functions
 cleanup() {
@@ -175,14 +176,15 @@ LXC internal arguments (do not pass manually!):
 [ --name <name> ]: The container name
 [ --path <path> ]: The path to the container
 [ --rootfs <rootfs> ]: The path to the container's rootfs
-[ --mapped-uid <map> ]: A uid/gid map (user namespaces)
+[ --mapped-uid <map> ]: A uid map (user namespaces)
+[ --mapped-gid <map> ]: A gid map (user namespaces)
 EOF
     return 0
 }
 
 options=$(getopt -o d:r:a:hl -l dist:,release:,arch:,help,list,variant:,\
 server:,keyid:,no-validate,flush-cache,force-cache,name:,path:,\
-rootfs:,mapped-uid: -- "$@")
+rootfs:,mapped-uid:,mapped-gid: -- "$@")
 
 if [ $? -ne 0 ]; then
     usage
@@ -207,6 +209,7 @@ while :; do
         --path)             LXC_PATH=$2; shift 2;;
         --rootfs)           LXC_ROOTFS=$2; shift 2;;
         --mapped-uid)       LXC_MAPPED_UID=$2; shift 2;;
+        --mapped-gid)       LXC_MAPPED_GID=$2; shift 2;;
         *)                  break;;
     esac
 done
@@ -434,6 +437,9 @@ if [ "$DOWNLOAD_USE_CACHE" = "false" ]; then
         if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
             chown -R $LXC_MAPPED_UID $LXC_CACHE_BASE >/dev/null 2>&1 || true
         fi
+        if [ -n "$LXC_MAPPED_GID" ] && [ "$LXC_MAPPED_GID" != "-1" ]; then
+            chgrp -R $LXC_MAPPED_GID $LXC_CACHE_BASE >/dev/null 2>&1 || true
+        fi
         echo "The image cache is now ready"
     fi
 else
@@ -526,6 +532,9 @@ done
 
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
     chown $LXC_MAPPED_UID $LXC_PATH/config $LXC_PATH/fstab >/dev/null 2>&1 || true
+fi
+if [ -n "$LXC_MAPPED_GID" ] && [ "$LXC_MAPPED_GID" != "-1" ]; then
+    chgrp $LXC_MAPPED_GID $LXC_PATH/config $LXC_PATH/fstab >/dev/null 2>&1 || true
 fi
 
 if [ -e "$(relevant_file create-message)" ]; then

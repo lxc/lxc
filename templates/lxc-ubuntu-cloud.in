@@ -147,7 +147,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds:u: -l arch:,help,rootfs:,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata:,mapped-uid: -- "$@")
+options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds:u: -l arch:,help,rootfs:,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata:,mapped-uid:,mapped-gid: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -155,6 +155,7 @@ fi
 eval set -- "$options"
 
 mapped_uid=-1
+mapped_gid=-1
 # default release is precise, or the systems release if recognized
 release=precise
 if [ -f /etc/lsb-release ]; then
@@ -216,12 +217,12 @@ do
     -C|--cloud)        cloneargs[${#cloneargs[@]}]="--cloud"; shift 1;;
     -S|--auth-key)     cloneargs[${#cloneargs[@]}]="--auth-key=$2"; shift 2;;
     --mapped-uid)      mapped_uid=$2; shift 2;;
+    --mapped-gid)      mapped_gid=$2; shift 2;;
     --)                shift 1; break ;;
         *)              break ;;
     esac
 done
 
-echo "mapped_uid is .$mapped_uid."
 cloneargs=( "--name=$name" "${cloneargs[@]}" )
 
 if [ $debug -eq 1 ]; then
@@ -389,6 +390,11 @@ if [ $mapped_uid -ne -1 ]; then
     chown $mapped_uid $path/config
     chown -R $mapped_uid $STATE_DIR
     chown -R $mapped_uid $cache
+fi
+if [ $mapped_gid -ne -1 ]; then
+    chgrp $mapped_gid $path/config
+    chgrp -R $mapped_gid $STATE_DIR
+    chgrp -R $mapped_gid $cache
 fi
 
 echo "Container $name created."

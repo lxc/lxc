@@ -3177,13 +3177,13 @@ bool get_mapped_rootid(struct lxc_conf *conf, enum idtype idtype,
 	return false;
 }
 
-int mapped_hostid(int id, struct lxc_conf *conf)
+int mapped_hostid(unsigned id, struct lxc_conf *conf, enum idtype idtype)
 {
 	struct lxc_list *it;
 	struct id_map *map;
 	lxc_list_for_each(it, &conf->id_map) {
 		map = it->elem;
-		if (map->idtype != ID_TYPE_UID)
+		if (map->idtype != idtype)
 			continue;
 		if (id >= map->hostid && id < map->hostid + map->range)
 			return (id - map->hostid) + map->nsid;
@@ -3191,15 +3191,15 @@ int mapped_hostid(int id, struct lxc_conf *conf)
 	return -1;
 }
 
-int find_unmapped_nsuid(struct lxc_conf *conf)
+int find_unmapped_nsuid(struct lxc_conf *conf, enum idtype idtype)
 {
 	struct lxc_list *it;
 	struct id_map *map;
-	uid_t freeid = 0;
+	unsigned int freeid = 0;
 again:
 	lxc_list_for_each(it, &conf->id_map) {
 		map = it->elem;
-		if (map->idtype != ID_TYPE_UID)
+		if (map->idtype != idtype)
 			continue;
 		if (freeid >= map->nsid && freeid < map->nsid + map->range) {
 			freeid = map->nsid + map->range;
@@ -3992,7 +3992,7 @@ static int run_userns_fn(void *data)
  */
 static struct lxc_list *idmap_add_id(struct lxc_conf *conf, uid_t uid)
 {
-	int hostid_mapped = mapped_hostid(uid, conf);
+	int hostid_mapped = mapped_hostid(uid, conf, ID_TYPE_UID);
 	struct lxc_list *new = NULL, *tmp, *it, *next;
 	struct id_map *entry;
 
@@ -4004,7 +4004,7 @@ static struct lxc_list *idmap_add_id(struct lxc_conf *conf, uid_t uid)
 	lxc_list_init(new);
 
 	if (hostid_mapped < 0) {
-		hostid_mapped = find_unmapped_nsuid(conf);
+		hostid_mapped = find_unmapped_nsuid(conf, ID_TYPE_UID);
 		if (hostid_mapped < 0)
 			goto err;
 		tmp = malloc(sizeof(*tmp));
