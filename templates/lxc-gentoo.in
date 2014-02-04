@@ -430,19 +430,22 @@ container_portage()
     #ensure dir exists
     chroot "${rootfs}" mkdir ${portage_container}
         portage_mount="#container set with shared portage
-    lxc.mount.entry=${portage_dir} ${portage_container/\//} none ro,bind 0 0"
+lxc.mount.entry=${portage_dir} ${portage_container/\//} none ro,bind 0 0
+lxc.mount.entry=${portage_dir}/distfiles ${portage_container/\//}/distfiles none rw,bind 0 0
+#If you use eix, you should uncomment this
+#lxc.mount.entry=/var/cache/eix var/cache/eix none ro,bind 0 0"
     store_user_message "container has a shared portage from host's ${portage_dir} to ${portage_container/\//}"
         #Let's propose binary packages
     cat <<- EOF >> "${rootfs}/etc/portage/make.conf"
-    # enable this to store built binary packages
-    #FEATURES="\$FEATURES buildpkg"
+# enable this to store built binary packages
+#FEATURES="\$FEATURES buildpkg"
 
-    # enable this to use built binary packages
-    #EMERGE_DEFAULT_OPTS="\${EMERGE_DEFAULT_OPTS} --usepkg"
+# enable this to use built binary packages
+#EMERGE_DEFAULT_OPTS="\${EMERGE_DEFAULT_OPTS} --usepkg"
 
-    # enable and *tune* this kind of entry to slot binaries, specialy if you use multiples archs and variants
-    #PKGDIR="\${PKGDIR}/amd64
-    #or PKGDIR="\${PKGDIR}/hardened"
+# enable and *tune* this kind of entry to slot binaries, specialy if you use multiples archs and variants
+#PKGDIR="\${PKGDIR}/amd64
+#or PKGDIR="\${PKGDIR}/hardened"
 EOF
     printf " => portage stuff done, see /etc/portage/make.conf for additionnal tricks\n"
 
