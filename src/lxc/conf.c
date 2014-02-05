@@ -3115,7 +3115,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		}
 		pos = buf;
 		if (!am_root)
-			pos += sprintf(buf, "new%cidmap %d ",
+			pos += sprintf(buf, "new%cidmap %d",
 				type == ID_TYPE_UID ? 'u' : 'g',
 				pid);
 
@@ -3127,24 +3127,27 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 
 			had_entry = 1;
 			left = 4096 - (pos - buf);
-			fill = snprintf(pos, left, " %lu %lu %lu", map->nsid,
-					map->hostid, map->range);
+			fill = snprintf(pos, left, "%s%lu %lu %lu%s",
+					am_root ? "" : " ",
+					map->nsid, map->hostid, map->range,
+					am_root ? "\n" : "");
 			if (fill <= 0 || fill >= left)
 				SYSERROR("snprintf failed, too many mappings");
 			pos += fill;
 		}
 		if (!had_entry)
 			continue;
-		left = 4096 - (pos - buf);
-		fill = snprintf(pos, left, "\n");
-		if (fill <= 0 || fill >= left)
-			SYSERROR("snprintf failed, too many mappings");
-		pos += fill;
 
-		if (am_root)
+		if (am_root) {
 			ret = write_id_mapping(type, pid, buf, pos-buf);
-		else
+		} else {
+			left = 4096 - (pos - buf);
+			fill = snprintf(pos, left, "\n");
+			if (fill <= 0 || fill >= left)
+				SYSERROR("snprintf failed, too many mappings");
+			pos += fill;
 			ret = system(buf);
+		}
 
 		if (ret)
 			break;
