@@ -62,7 +62,7 @@ liblxc_so_SOURCES = \
 	freezer.c \
 	error.h error.c \
 	parse.c parse.h \
-	cgroup.c cgroup.h \
+	cgfs.c cgroup.h \
 	lxc.h \
 	utils.c utils.h \
 	sync.c sync.h \
