@@ -41,7 +41,7 @@
 #include "start.h"
 #include "utils.h"
 
-lxc_log_define(lxc_execute_ui, lxc_execute);
+lxc_log_define(lxc_execute_ui, lxc);
 
 static struct lxc_list defines;
 

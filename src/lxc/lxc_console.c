@@ -47,7 +47,7 @@
 #include "arguments.h"
 #include "commands.h"
 
-lxc_log_define(lxc_console_ui, lxc_console);
+lxc_log_define(lxc_console_ui, lxc);
 
 static char etoc(const char *expr)
 {

@@ -37,6 +37,8 @@
 #include "commands.h"
 #include "arguments.h"
 
+lxc_log_define(lxc_info_ui, lxc);
+
 static bool ips;
 static bool state;
 static bool pid;

@@ -33,7 +33,7 @@
 #include "arguments.h"
 #include "utils.h"
 
-lxc_log_define(lxc_snapshot, lxc);
+lxc_log_define(lxc_snapshot_ui, lxc);
 
 static char *newname;
 static char *snapshot;

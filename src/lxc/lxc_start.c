@@ -55,7 +55,7 @@
 #define OPT_SHARE_IPC OPT_USAGE+2
 #define OPT_SHARE_UTS OPT_USAGE+3
 
-lxc_log_define(lxc_start_ui, lxc_start);
+lxc_log_define(lxc_start_ui, lxc);
 
 static struct lxc_list defines;
 

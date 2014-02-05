@@ -27,6 +27,8 @@
 #include "list.h"
 #include "log.h"
 
+lxc_log_define(lxc_autostart_ui, lxc);
+
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
@@ -220,6 +222,11 @@ int main(int argc, char *argv[])
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return 1;
+
+	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
+			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
+		return 1;
+	lxc_log_options_no_override();
 
 	count = list_defined_containers(NULL, NULL, &containers);
 

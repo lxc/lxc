@@ -33,7 +33,7 @@
 
 #include "arguments.h"
 
-lxc_log_define(lxc_freeze_ui, lxc_cgroup);
+lxc_log_define(lxc_freeze_ui, lxc);
 
 static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS

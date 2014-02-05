@@ -29,7 +29,7 @@
 #include "arguments.h"
 #include "utils.h"
 
-lxc_log_define(lxc_destroy, lxc);
+lxc_log_define(lxc_destroy_ui, lxc);
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {

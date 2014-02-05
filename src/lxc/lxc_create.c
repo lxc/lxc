@@ -33,7 +33,7 @@
 #include "arguments.h"
 #include "utils.h"
 
-lxc_log_define(lxc_create, lxc);
+lxc_log_define(lxc_create_ui, lxc);
 
 static uint64_t get_fssize(char *s)
 {
