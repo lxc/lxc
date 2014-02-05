@@ -54,7 +54,7 @@
 lxc_log_define(lxc_cgmanager, lxc);
 
 #include <nih-dbus/dbus_connection.h>
-#include <cgmanager-client/cgmanager-client.h>
+#include <cgmanager/cgmanager-client.h>
 #include <nih/alloc.h>
 #include <nih/error.h>
 #include <nih/string.h>
