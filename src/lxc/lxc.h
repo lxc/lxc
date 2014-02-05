@@ -129,17 +129,6 @@ extern int lxc_unfreeze(const char *name, const char *lxcpath);
  */
 extern lxc_state_t lxc_state(const char *name, const char *lxcpath);
 
-struct lxc_handler;
-/*
- * Set a specified value for a specified subsystem. The specified
- * subsystem must be fully specified, eg. "cpu.shares"
- * @filename  : the cgroup attribute filename
- * @value     : the value to be set
- * @handler   : the lxc_handler structure of the container
- * Returns 0 on success, < 0 otherwise
- */
-extern int lxc_cgroup_set_handler(const char *filename, const char *value, struct lxc_handler *handler);
-
 /*
  * Set a specified value for a specified subsystem. The specified
  * subsystem must be fully specified, eg. "cpu.shares"

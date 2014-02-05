@@ -50,9 +50,7 @@ static int test_running_container(const char *lxcpath,
 	int ret = -1;
 	struct lxc_container *c = NULL;
 	char *cgrelpath;
-	char *cgabspath;
 	char  relpath[PATH_MAX+1];
-	char  abspath[PATH_MAX+1];
 	char  value[NAME_MAX], value_save[NAME_MAX];
 
 	sprintf(relpath, "%s/%s", group ? group : "lxc", name);
@@ -109,32 +107,8 @@ static int test_running_container(const char *lxcpath,
 		goto err3;
 	}
 
-	cgabspath = lxc_cgroup_path_get("freezer", c->name, c->config_path);
-	if (!cgabspath) {
-		TSTERR("lxc_cgroup_path_get returned NULL");
-		goto err3;
-	}
-	sprintf(abspath, "%s/%s/%s", "freezer", group ? group : "lxc", c->name);
-	if (!strstr(cgabspath, abspath)) {
-		TSTERR("lxc_cgroup_path_get %s not in %s", abspath, cgabspath);
-		goto err4;
-	}
-
-	free(cgabspath);
-	cgabspath = lxc_cgroup_path_get("freezer.state", c->name, c->config_path);
-	if (!cgabspath) {
-		TSTERR("lxc_cgroup_path_get returned NULL");
-		goto err3;
-	}
-	sprintf(abspath, "%s/%s/%s", "freezer", group ? group : "lxc", c->name);
-	if (!strstr(cgabspath, abspath)) {
-		TSTERR("lxc_cgroup_path_get %s not in %s", abspath, cgabspath);
-		goto err4;
-	}
-
 	ret = 0;
-err4:
-	free(cgabspath);
+
 err3:
 	free(cgrelpath);
 err2:

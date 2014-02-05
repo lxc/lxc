@@ -70,7 +70,7 @@ struct lxc_handler {
 	int sv[2];
 	int pinfd;
 	const char *lxcpath;
-	struct lxc_cgroup_info *cgroup_info;
+	void *cgroup_data;
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *, const char *);

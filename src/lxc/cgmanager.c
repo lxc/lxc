@@ -58,24 +58,74 @@ lxc_log_define(lxc_cgmanager, lxc);
 #include <nih/alloc.h>
 #include <nih/error.h>
 #include <nih/string.h>
-NihDBusProxy *cgroup_manager = NULL;
 
-extern struct cgroup_ops *active_cg_ops;
-bool cgmanager_initialized = false;
-bool use_cgmanager = true;
+struct cgm_data {
+	char *name;
+	char *cgroup_path;
+	const char *cgroup_pattern;
+};
+
+static NihDBusProxy *cgroup_manager = NULL;
 static struct cgroup_ops cgmanager_ops;
 static int nr_subsystems;
 static char **subsystems;
 
-bool lxc_init_cgmanager(void);
-static void cgmanager_disconnected(DBusConnection *connection)
+#define CGMANAGER_DBUS_SOCK "unix:path=/sys/fs/cgroup/cgmanager/sock"
+static void cgm_dbus_disconnected(DBusConnection *connection);
+static bool cgm_dbus_connect(void)
+{
+	DBusError dbus_error;
+	DBusConnection *connection;
+	dbus_error_init(&dbus_error);
+
+	connection = nih_dbus_connect(CGMANAGER_DBUS_SOCK, cgm_dbus_disconnected);
+	if (!connection) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		DEBUG("Unable to open cgmanager connection at %s: %s", CGMANAGER_DBUS_SOCK,
+			nerr->message);
+		nih_free(nerr);
+		dbus_error_free(&dbus_error);
+		return false;
+	}
+	dbus_connection_set_exit_on_disconnect(connection, FALSE);
+	dbus_error_free(&dbus_error);
+	cgroup_manager = nih_dbus_proxy_new(NULL, connection,
+				NULL /* p2p */,
+				"/org/linuxcontainers/cgmanager", NULL, NULL);
+	dbus_connection_unref(connection);
+	if (!cgroup_manager) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("Error opening cgmanager proxy: %s", nerr->message);
+		nih_free(nerr);
+		return false;
+	}
+
+	// force fd passing negotiation
+	if (cgmanager_ping_sync(NULL, cgroup_manager, 0) != 0) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("Error pinging cgroup manager: %s", nerr->message);
+		nih_free(nerr);
+	}
+	return true;
+}
+
+static void cgm_dbus_disconnect(void)
+{
+	nih_free(cgroup_manager);
+	cgroup_manager = NULL;
+}
+
+static void cgm_dbus_disconnected(DBusConnection *connection)
 {
 	WARN("Cgroup manager connection was terminated");
 	cgroup_manager = NULL;
-	cgmanager_initialized = false;
-	if (lxc_init_cgmanager()) {
-		cgmanager_initialized = true;
+	if (cgm_dbus_connect()) {
 		INFO("New cgroup manager connection was opened");
+	} else {
+		WARN("Cgroup manager unable to re-open connection");
 	}
 }
 
@@ -113,47 +163,6 @@ static int send_creds(int sock, int rpid, int ruid, int rgid)
 	if (sendmsg(sock, &msg, 0) < 0)
 		return -1;
 	return 0;
-}
-
-#define CGMANAGER_DBUS_SOCK "unix:path=/sys/fs/cgroup/cgmanager/sock"
-bool lxc_init_cgmanager(void)
-{
-	DBusError dbus_error;
-	DBusConnection *connection;
-	dbus_error_init(&dbus_error);
-
-	connection = nih_dbus_connect(CGMANAGER_DBUS_SOCK, cgmanager_disconnected);
-	if (!connection) {
-		NihError *nerr;
-		nerr = nih_error_get();
-		ERROR("Error opening cgmanager connection at %s: %s", CGMANAGER_DBUS_SOCK,
-			nerr->message);
-		nih_free(nerr);
-		dbus_error_free(&dbus_error);
-		return false;
-	}
-	dbus_connection_set_exit_on_disconnect(connection, FALSE);
-	dbus_error_free(&dbus_error);
-	cgroup_manager = nih_dbus_proxy_new(NULL, connection,
-				NULL /* p2p */,
-				"/org/linuxcontainers/cgmanager", NULL, NULL);
-	dbus_connection_unref(connection);
-	if (!cgroup_manager) {
-		NihError *nerr;
-		nerr = nih_error_get();
-		ERROR("Error opening cgmanager proxy: %s", nerr->message);
-		nih_free(nerr);
-		return false;
-	}
-	active_cg_ops = &cgmanager_ops;
-	// force fd passing negotiation
-	if (cgmanager_ping_sync(NULL, cgroup_manager, 0) != 0) {
-		NihError *nerr;
-		nerr = nih_error_get();
-		ERROR("Error pinging cgroup manager: %s", nerr->message);
-		nih_free(nerr);
-	}
-	return true;
 }
 
 static bool lxc_cgmanager_create(const char *controller, const char *cgroup_path, int32_t *existed)
@@ -341,19 +350,49 @@ static void cgm_remove_cgroup(const char *controller, const char *path)
 		INFO("cgroup removal attempt: %s:%s did not exist", controller, path);
 }
 
-static void cgm_destroy(struct lxc_handler *handler)
+static void *cgm_init(const char *name)
 {
-	char *cgroup_path = handler->cgroup_info->data;
+	struct cgm_data *d;
+
+	d = malloc(sizeof(*d));
+	if (!d)
+		return NULL;
+
+	memset(d, 0, sizeof(*d));
+	d->name = strdup(name);
+	if (!d->name)
+		goto err1;
+
+	/* if we are running as root, use system cgroup pattern, otherwise
+	 * just create a cgroup under the current one. But also fall back to
+	 * that if for some reason reading the configuration fails and no
+	 * default value is available
+	 */
+	if (geteuid() == 0)
+		d->cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
+	if (!d->cgroup_pattern)
+		d->cgroup_pattern = "%n";
+	return d;
+
+err1:
+	free(d);
+	return NULL;
+}
+
+static void cgm_destroy(void *hdata)
+{
+	struct cgm_data *d = hdata;
 	int i;
 
-	if (!cgroup_path)
+	if (!d)
 		return;
-
 	for (i = 0; i < nr_subsystems; i++)
-		cgm_remove_cgroup(subsystems[i], cgroup_path);
+		cgm_remove_cgroup(subsystems[i], d->cgroup_path);
 
-	free(cgroup_path);
-	handler->cgroup_info->data = NULL;
+	free(d->name);
+	if (d->cgroup_path)
+		free(d->cgroup_path);
+	free(d);
 }
 
 /*
@@ -366,19 +405,21 @@ static inline void cleanup_cgroups(char *path)
 		cgm_remove_cgroup(subsystems[i], path);
 }
 
-static inline bool cgm_create(struct lxc_handler *handler)
+static inline bool cgm_create(void *hdata)
 {
+	struct cgm_data *d = hdata;
 	int i, index=0, baselen, ret;
 	int32_t existed;
-	char result[MAXPATHLEN], *tmp;
-	char *cgroup_path = handler->cgroup_info->data;
+	char result[MAXPATHLEN], *tmp, *cgroup_path;
 
+	if (!d)
+		return false;
 // XXX we should send a hint to the cgmanager that when these
 // cgroups become empty they should be deleted.  Requires a cgmanager
 // extension
 
 	memset(result, 0, MAXPATHLEN);
-	tmp = lxc_string_replace("%n", handler->name, handler->cgroup_info->cgroup_pattern);
+	tmp = lxc_string_replace("%n", d->name, d->cgroup_pattern);
 	if (!tmp)
 		return false;
 	if (strlen(tmp) > MAXPATHLEN)
@@ -415,7 +456,7 @@ again:
 		cleanup_cgroups(tmp);
 		return false;
 	}
-	handler->cgroup_info->data = cgroup_path;
+	d->cgroup_path = cgroup_path;
 	return true;
 next:
 	cleanup_cgroups(tmp);
@@ -454,19 +495,25 @@ static bool do_cgm_enter(pid_t pid, const char *cgroup_path)
 	return true;
 }
 
-static inline bool cgm_enter(struct lxc_handler *handler)
+static inline bool cgm_enter(void *hdata, pid_t pid)
 {
-	char *cgroup_path = handler->cgroup_info->data;
-	return do_cgm_enter(handler->pid, cgroup_path);
+	struct cgm_data *d = hdata;
+
+	if (!d || !d->cgroup_path)
+		return false;
+	return do_cgm_enter(pid, d->cgroup_path);
 }
 
-static char *cgm_get_cgroup(struct lxc_handler *handler, const char *subsystem)
+static const char *cgm_get_cgroup(void *hdata, const char *subsystem)
 {
-	char *cgroup_path = handler->cgroup_info->data;
-	return cgroup_path;
+	struct cgm_data *d = hdata;
+
+	if (!d || !d->cgroup_path)
+		return NULL;
+	return d->cgroup_path;
 }
 
-int cgm_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
+static int cgm_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
 {
 	char *result, *controller, *key, *cgroup;
 	size_t newlen;
@@ -531,7 +578,7 @@ static int cgm_do_set(const char *controller, const char *file,
 	return ret;
 }
 
-int cgm_set(const char *filename, const char *value, const char *name, const char *lxcpath)
+static int cgm_set(const char *filename, const char *value, const char *name, const char *lxcpath)
 {
 	char *controller, *key, *cgroup;
 	int ret;
@@ -555,10 +602,21 @@ int cgm_set(const char *filename, const char *value, const char *name, const cha
 	return ret;
 }
 
+static void free_subsystems(void)
+{
+	int i;
+
+	for (i = 0; i < nr_subsystems; i++)
+		free(subsystems[i]);
+	free(subsystems);
+	subsystems = NULL;
+	nr_subsystems = 0;
+}
+
 static bool collect_subsytems(void)
 {
 	char *line = NULL, *tab1;
-	size_t sz = 0, i;
+	size_t sz = 0;
 	FILE *f;
 
 	if (subsystems) // already initialized
@@ -598,50 +656,61 @@ static bool collect_subsytems(void)
 
 out_free:
 	fclose(f);
-	for (i = 0; i < nr_subsystems; i++)
-		free(subsystems[i]);
-	free(subsystems);
-	subsystems = NULL;
-	nr_subsystems = 0;
+	free_subsystems();
 	return false;
 }
 
-static inline bool cgm_init(struct lxc_handler *handler)
+struct cgroup_ops *cgm_ops_init(void)
 {
 	if (!collect_subsytems())
-		return false;
-	if (geteuid())
-		return true;
+		return NULL;
+	if (!cgm_dbus_connect())
+		goto err1;
+
 	// root;  try to escape to root cgroup
-	return lxc_cgmanager_escape();
+	if (geteuid() == 0 && !lxc_cgmanager_escape())
+		goto err2;
+
+	return &cgmanager_ops;
+
+err2:
+	cgm_dbus_disconnect();
+err1:
+	free_subsystems();
+	return NULL;
 }
 
-static bool cgm_unfreeze_fromhandler(struct lxc_handler *handler)
+static bool cgm_unfreeze(void *hdata)
 {
-	char *cgroup_path = handler->cgroup_info->data;
+	struct cgm_data *d = hdata;
 
-	if (cgmanager_set_value_sync(NULL, cgroup_manager, "freezer", cgroup_path,
+	if (!d || !d->cgroup_path)
+		return false;
+
+	if (cgmanager_set_value_sync(NULL, cgroup_manager, "freezer", d->cgroup_path,
 			"freezer.state", "THAWED") != 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
 		ERROR("call to cgmanager_set_value_sync failed: %s", nerr->message);
 		nih_free(nerr);
-		ERROR("Error unfreezing %s", cgroup_path);
+		ERROR("Error unfreezing %s", d->cgroup_path);
 		return false;
 	}
 	return true;
 }
 
-static bool setup_limits(struct lxc_handler *h, bool do_devices)
+static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool do_devices)
 {
+	struct cgm_data *d = hdata;
 	struct lxc_list *iterator;
 	struct lxc_cgroup *cg;
 	bool ret = false;
-	struct lxc_list *cgroup_settings = &h->conf->cgroup;
-	char *cgroup_path = h->cgroup_info->data;
 
 	if (lxc_list_empty(cgroup_settings))
 		return true;
+
+	if (!d || !d->cgroup_path)
+		return false;
 
 	lxc_list_for_each(iterator, cgroup_settings) {
 		char controller[100], *p;
@@ -654,10 +723,10 @@ static bool setup_limits(struct lxc_handler *h, bool do_devices)
 		p = strchr(controller, '.');
 		if (p)
 			*p = '\0';
-		if (cgm_do_set(controller, cg->subsystem, cgroup_path
+		if (cgm_do_set(controller, cg->subsystem, d->cgroup_path
 				, cg->value) < 0) {
 			ERROR("Error setting %s to %s for %s\n",
-			      cg->subsystem, cg->value, h->name);
+			      cg->subsystem, cg->value, d->name);
 			goto out;
 		}
 
@@ -670,20 +739,17 @@ out:
 	return ret;
 }
 
-static bool cgm_setup_limits(struct lxc_handler *handler, bool with_devices)
+static bool cgm_chown(void *hdata, struct lxc_conf *conf)
 {
-	return setup_limits(handler, with_devices);
-}
-
-static bool cgm_chown(struct lxc_handler *handler)
-{
-	char *cgroup_path = handler->cgroup_info->data;
+	struct cgm_data *d = hdata;
 	int i;
 
+	if (!d || !d->cgroup_path)
+		return false;
 	for (i = 0; i < nr_subsystems; i++) {
-		if (!chown_cgroup(subsystems[i], cgroup_path, handler->conf))
+		if (!chown_cgroup(subsystems[i], d->cgroup_path, conf))
 			WARN("Failed to chown %s:%s to container root",
-				subsystems[i], cgroup_path);
+				subsystems[i], d->cgroup_path);
 	}
 	return true;
 }
@@ -771,8 +837,7 @@ static bool cgm_bind_dir(const char *root, const char *dirname)
  */
 #define CGMANAGER_LOWER_SOCK "/sys/fs/cgroup/cgmanager.lower"
 #define CGMANAGER_UPPER_SOCK "/sys/fs/cgroup/cgmanager"
-static bool cgm_mount_cgroup(const char *root,
-		struct lxc_cgroup_info *cgroup_info, int type)
+static bool cgm_mount_cgroup(void *hdata, const char *root, int type)
 {
 	if (dir_exists(CGMANAGER_LOWER_SOCK))
 		return cgm_bind_dir(root, CGMANAGER_LOWER_SOCK);
@@ -783,19 +848,20 @@ static bool cgm_mount_cgroup(const char *root,
 }
 
 static struct cgroup_ops cgmanager_ops = {
-	.destroy = cgm_destroy,
 	.init = cgm_init,
+	.destroy = cgm_destroy,
 	.create = cgm_create,
 	.enter = cgm_enter,
 	.create_legacy = NULL,
 	.get_cgroup = cgm_get_cgroup,
 	.get = cgm_get,
 	.set = cgm_set,
-	.unfreeze_fromhandler = cgm_unfreeze_fromhandler,
+	.unfreeze = cgm_unfreeze,
 	.setup_limits = cgm_setup_limits,
 	.name = "cgmanager",
 	.chown = cgm_chown,
 	.attach = cgm_attach,
 	.mount_cgroup = cgm_mount_cgroup,
+	.nrtasks = NULL,
 };
 #endif

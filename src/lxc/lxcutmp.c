@@ -291,7 +291,7 @@ static int utmp_get_ntasks(struct lxc_handler *handler)
 {
 	int ntasks;
 
-	ntasks = lxc_cgroup_nrtasks_handler(handler);
+	ntasks = cgroup_nrtasks(handler);
 
 	if (ntasks < 0) {
 		ERROR("failed to get the number of tasks");

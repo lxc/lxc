@@ -63,7 +63,6 @@
 #include "utils.h"
 #include "conf.h"
 #include "log.h"
-#include "lxc.h"	/* for lxc_cgroup_set() */
 #include "caps.h"       /* for lxc_caps_last_cap() */
 #include "bdev.h"
 #include "cgroup.h"
@@ -670,7 +669,7 @@ int pin_rootfs(const char *rootfs)
 	return fd;
 }
 
-static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_cgroup_info *cgroup_info)
+static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_handler *handler)
 {
 	int r;
 	size_t i;
@@ -744,8 +743,8 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_cg
 	}
 
 	if (flags & LXC_AUTO_CGROUP_MASK) {
-		if (!lxc_setup_mount_cgroup(conf->rootfs.mount, cgroup_info,
-					flags & LXC_AUTO_CGROUP_MASK)) {
+		if (!cgroup_mount(conf->rootfs.mount, handler,
+				  flags & LXC_AUTO_CGROUP_MASK)) {
 			SYSERROR("error mounting /sys/fs/cgroup");
 			return -1;
 		}
@@ -3500,7 +3499,6 @@ int lxc_setup(struct lxc_handler *handler)
 	struct lxc_conf *lxc_conf = handler->conf;
 	const char *lxcpath = handler->lxcpath;
 	void *data = handler->data;
-	struct lxc_cgroup_info *cgroup_info = handler->cgroup_info;
 
 	if (lxc_conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
 		if (setup_utsname(lxc_conf->utsname)) {
@@ -3538,7 +3536,7 @@ int lxc_setup(struct lxc_handler *handler)
 	/* do automatic mounts (mainly /proc and /sys), but exclude
 	 * those that need to wait until other stuff has finished
 	 */
-	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & ~LXC_AUTO_CGROUP_MASK, cgroup_info) < 0) {
+	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & ~LXC_AUTO_CGROUP_MASK, handler) < 0) {
 		ERROR("failed to setup the automatic mounts for '%s'", name);
 		return -1;
 	}
@@ -3557,7 +3555,7 @@ int lxc_setup(struct lxc_handler *handler)
 	 * before, /sys could not have been mounted
 	 * (is either mounted automatically or via fstab entries)
 	 */
-	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & LXC_AUTO_CGROUP_MASK, cgroup_info) < 0) {
+	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & LXC_AUTO_CGROUP_MASK, handler) < 0) {
 		ERROR("failed to setup the automatic mounts for '%s'", name);
 		return -1;
 	}

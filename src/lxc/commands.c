@@ -430,7 +430,7 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 				       struct lxc_handler *handler)
 {
 	struct lxc_cmd_rsp rsp;
-	char *path;
+	const char *path;
 
 	if (req->datalen < 1)
 		return -1;
@@ -439,7 +439,7 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 	if (!path)
 		return -1;
 	rsp.datalen = strlen(path) + 1,
-	rsp.data = path;
+	rsp.data = (char *)path;
 	rsp.ret = 0;
 
 	return lxc_cmd_rsp_send(fd, &rsp);
@@ -590,7 +590,12 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.ret = kill(handler->pid, stopsignal);
 	if (!rsp.ret) {
-		if (lxc_unfreeze_fromhandler(handler))
+		/* we can't just use lxc_unfreeze() since we are already in the
+		 * context of handling the STOP cmd in lxc-start, and calling
+		 * lxc_unfreeze() would do another cmd (GET_CGROUP) which would
+		 * deadlock us
+		 */
+		if (cgroup_unfreeze(handler))
 			return 0;
 		ERROR("Failed to unfreeze %s:%s", handler->lxcpath, handler->name);
 		rsp.ret = -1;

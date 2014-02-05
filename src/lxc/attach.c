@@ -699,7 +699,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 
 		/* attach to cgroup, if requested */
 		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
-			if (!lxc_cgroup_attach(name, lxcpath, pid))
+			if (!cgroup_attach(name, lxcpath, pid))
 				goto cleanup_error;
 		}
 
