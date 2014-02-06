@@ -37,6 +37,9 @@ for arg in "$@"; do
     fi
 done
 
+# Make sure the usual locations are in PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+
 # use virbr0 that is setup by default by libvirtd
 lxc_network_type=veth
 lxc_network_link=virbr0

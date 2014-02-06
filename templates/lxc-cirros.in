@@ -31,6 +31,9 @@ for arg in "$@"; do
     fi
 done
 
+# Make sure the usual locations are in PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+
 VERBOSITY=0
 DOWNLOAD_URL="http://download.cirros-cloud.net/"
 CACHE_D="@LOCALSTATEDIR@/cache/lxc/cirros"

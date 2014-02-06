@@ -30,6 +30,9 @@ for arg in "$@"; do
     fi
 done
 
+# Make sure the usual locations are in PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+
 MIRROR=${MIRROR:-http://cdn.debian.net/debian}
 LOCALSTATEDIR="@LOCALSTATEDIR@"
 LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"

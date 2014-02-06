@@ -58,6 +58,9 @@ if [ -n "${http_proxy:-}" ]; then
     DOWNLOAD_KEYSERVER="${DOWNLOAD_KEYSERVER}:80"
 fi
 
+# Make sure the usual locations are in PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+
 # Some useful functions
 cleanup() {
     if [ -d "$DOWNLOAD_TEMP" ]; then

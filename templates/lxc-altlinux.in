@@ -34,6 +34,9 @@ for arg in "$@"; do
     fi
 done
 
+# Make sure the usual locations are in PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+
 #Configurations
 arch=$(uname -m)
 cache_base=@LOCALSTATEDIR@/cache/lxc/altlinux/$arch

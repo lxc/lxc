@@ -82,6 +82,9 @@ for arg in "$@"; do
     fi
 done
 
+# Make sure the usual locations are in PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+
 if [ -e /etc/os-release ]
 then
 # This is a shell friendly configuration file.  We can just source it.

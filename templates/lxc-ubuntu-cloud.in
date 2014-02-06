@@ -28,6 +28,9 @@ LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
 KNOWN_RELEASES="lucid precise quantal saucy trusty"
 skip_arch_check=${UCTEMPLATE_SKIP_ARCH_CHECK:-0}
 
+# Make sure the usual locations are in PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+
 if [ -r /etc/default/lxc ]; then
     . /etc/default/lxc
 fi
