@@ -49,7 +49,11 @@ cleanup() {
 }
 
 run_cmd() {
-	sudo -i -u $TUSER env XDG_RUNTIME_DIR=/run/user/$(id -u $TUSER) $*
+	if [ -n "${http_proxy:-}" ]; then
+		sudo -i -u $TUSER env http_proxy=$http_proxy XDG_RUNTIME_DIR=/run/user/$(id -u $TUSER) $*
+	else
+		sudo -i -u $TUSER env XDG_RUNTIME_DIR=/run/user/$(id -u $TUSER) $*
+	fi
 }
 
 # create a test user
