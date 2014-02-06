@@ -55,7 +55,7 @@ LXC_MAPPED_GID=
 
 # Deal with GPG over http proxy
 if [ -n "${http_proxy:-}" ]; then
-    DOWNLOAD_KEYSERVER="${DOWNLOAD_KEYSERVER}:80"
+    DOWNLOAD_KEYSERVER="hkp://p80.pool.sks-keyservers.net:80"
 fi
 
 # Make sure the usual locations are in PATH
