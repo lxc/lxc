@@ -173,6 +173,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
   </refsect1>
 
+  &commonoptions;
+
   <refsect1>
     <title>Diagnostic</title>
 
