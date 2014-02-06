@@ -23,6 +23,7 @@
 #ifndef __lxc_state_h
 #define __lxc_state_h
 
+#include <signal.h>
 #include <sys/param.h>
 
 #include "config.h"
