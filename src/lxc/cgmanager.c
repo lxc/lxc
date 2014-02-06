@@ -513,6 +513,27 @@ static const char *cgm_get_cgroup(void *hdata, const char *subsystem)
 	return d->cgroup_path;
 }
 
+static int cgm_get_nrtasks(void *hdata)
+{
+	struct cgm_data *d = hdata;
+	int32_t *pids;
+	size_t pids_len;
+
+	if (!d || !d->cgroup_path)
+		return false;
+
+	if (cgmanager_get_tasks_sync(NULL, cgroup_manager, subsystems[0],
+				     d->cgroup_path, &pids, &pids_len) != 0) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("call to cgmanager_get_tasks_sync failed: %s", nerr->message);
+		nih_free(nerr);
+		return -1;
+	}
+	nih_free(pids);
+	return pids_len;
+}
+
 static int cgm_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
 {
 	char *result, *controller, *key, *cgroup;
@@ -862,6 +883,6 @@ static struct cgroup_ops cgmanager_ops = {
 	.chown = cgm_chown,
 	.attach = cgm_attach,
 	.mount_cgroup = cgm_mount_cgroup,
-	.nrtasks = NULL,
+	.nrtasks = cgm_get_nrtasks,
 };
 #endif
