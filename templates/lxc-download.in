@@ -32,7 +32,7 @@ DOWNLOAD_ARCH=
 DOWNLOAD_VARIANT="default"
 DOWNLOAD_SERVER="images.linuxcontainers.org"
 DOWNLOAD_KEYID="0xBAEFF88C22F6E216"
-DOWNLOAD_KEYSERVER="hkp://pool.sks-keyservers.net:80"
+DOWNLOAD_KEYSERVER="hkp://pool.sks-keyservers.net"
 DOWNLOAD_VALIDATE="true"
 DOWNLOAD_FLUSH_CACHE="false"
 DOWNLOAD_FORCE_CACHE="false"
@@ -52,6 +52,11 @@ LXC_PATH=
 LXC_ROOTFS=
 LXC_MAPPED_UID=
 LXC_MAPPED_GID=
+
+# Deal with GPG over http proxy
+if [ -n "${http_proxy:-}" ]; then
+    DOWNLOAD_KEYSERVER="${DOWNLOAD_KEYSERVER}:80"
+fi
 
 # Some useful functions
 cleanup() {
