@@ -280,8 +280,11 @@ int main(int argc, char *argv[])
 				if (my_args.list)
 					printf("%s\n", c->name);
 				else {
-					if (!c->shutdown(c, my_args.timeout))
-						fprintf(stderr, "Error shutting down container: %s\n", c->name);
+					if (!c->shutdown(c, my_args.timeout)) {
+						if (!c->stop(c)) {
+							fprintf(stderr, "Error shutting down container: %s\n", c->name);
+						}
+					}
 				}
 			}
 		}
