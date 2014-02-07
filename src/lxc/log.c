@@ -191,6 +191,9 @@ static char *build_log_path(const char *name, const char *lxcpath)
 	char *p;
 	int len, ret, use_dir;
 
+	if (!name)
+		return NULL;
+
 #if USE_CONFIGPATH_LOGS
 	use_dir = 1;
 #else
@@ -324,6 +327,10 @@ extern int lxc_log_init(const char *name, const char *file,
 
 		/* For now, unprivileged containers have to set -l to get logging */
 		if (geteuid())
+			return 0;
+
+		/* if no name was specified, there nothing to do */
+		if (!name)
 			return 0;
 
 		ret = -1;
