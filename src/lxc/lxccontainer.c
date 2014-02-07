@@ -3084,34 +3084,80 @@ static bool lxcapi_may_control(struct lxc_container *c)
 	return lxc_try_cmd(c->name, c->config_path) == 0;
 }
 
+static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
+		struct stat *st)
+{
+	char chrootpath[MAXPATHLEN];
+	char *directory_path = NULL;
+	pid_t pid;
+	int ret;
+
+	if ((pid = fork()) < 0) {
+		SYSERROR("failed to fork a child helper");
+		return false;
+	}
+	if (pid) {
+		if (wait_for_pid(pid) != 0) {
+			ERROR("Failed to create note in guest");
+			return false;
+		}
+		return true;
+	}
+
+	/* prepare the path */
+	ret = snprintf(chrootpath, MAXPATHLEN, "/proc/%d/root", init_pid);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return false;
+
+	if (chdir(chrootpath) < 0)
+		exit(1);
+	if (chroot(".") < 0)
+		exit(1);
+	/* remove path if it exists */
+	if(faccessat(AT_FDCWD, path, F_OK, AT_SYMLINK_NOFOLLOW) == 0) {
+		if (unlink(path) < 0) {
+			ERROR("unlink failed");
+			exit(1);
+		}
+	}
+	if (!add)
+		exit(0);
+
+	/* create any missing directories */
+	directory_path = dirname(strdup(path));
+	if (mkdir_p(directory_path, 0755) < 0 && errno != EEXIST) {
+		ERROR("failed to create directory");
+		exit(1);
+	}
+
+	/* create the device node */
+	if (mknod(path, st->st_mode, st->st_rdev) < 0) {
+		ERROR("mknod failed");
+		exit(1);
+	}
+
+	exit(0);
+}
+
 static bool add_remove_device_node(struct lxc_container *c, const char *src_path, const char *dest_path, bool add)
 {
 	int ret;
 	struct stat st;
-	char path[MAXPATHLEN];
 	char value[MAX_BUFFER];
-	char *directory_path = NULL;
 	const char *p;
 
 	/* make sure container is running */
 	if (!c->is_running(c)) {
 		ERROR("container is not running");
-		goto out;
+		return false;
 	}
 
 	/* use src_path if dest_path is NULL otherwise use dest_path */
 	p = dest_path ? dest_path : src_path;
 
-	/* prepare the path */
-	ret = snprintf(path, MAXPATHLEN, "/proc/%d/root/%s", c->init_pid(c), p);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		goto out;
-	remove_trailing_slashes(path);
-
-	p = add ? src_path : path;
 	/* make sure we can access p */
 	if(access(p, F_OK) < 0 || stat(p, &st) < 0)
-		goto out;
+		return false;
 
 	/* continue if path is character device or block device */
 	if (S_ISCHR(st.st_mode))
@@ -3119,55 +3165,29 @@ static bool add_remove_device_node(struct lxc_container *c, const char *src_path
 	else if (S_ISBLK(st.st_mode))
 		ret = snprintf(value, MAX_BUFFER, "b %d:%d rwm", major(st.st_rdev), minor(st.st_rdev));
 	else
-		goto out;
+		return false;
 
 	/* check snprintf return code */
 	if (ret < 0 || ret >= MAX_BUFFER)
-		goto out;
+		return false;
 
-	directory_path = dirname(strdup(path));
-	/* remove path and directory_path (if empty) */
-	if(access(path, F_OK) == 0) {
-		if (unlink(path) < 0) {
-			ERROR("unlink failed");
-			goto out;
-		}
-		if (rmdir(directory_path) < 0 && errno != ENOTEMPTY) {
-			ERROR("rmdir failed");
-			goto out;
-		}
-	}
+	if (!do_add_remove_node(c->init_pid(c), p, add, &st))
+		return false;
 
+	/* add or remove device to/from cgroup access list */
 	if (add) {
-		/* create the missing directories */
-		if (mkdir_p(directory_path, 0755) < 0) {
-			ERROR("failed to create directory");
-			goto out;
-		}
-
-		/* create the device node */
-		if (mknod(path, st.st_mode, st.st_rdev) < 0) {
-			ERROR("mknod failed");
-			goto out;
-		}
-
-		/* add device node to device list */
 		if (!c->set_cgroup_item(c, "devices.allow", value)) {
 			ERROR("set_cgroup_item failed while adding the device node");
-			goto out;
+			return false;
 		}
 	} else {
-		/* remove device node from device list */
 		if (!c->set_cgroup_item(c, "devices.deny", value)) {
 			ERROR("set_cgroup_item failed while removing the device node");
-			goto out;
+			return false;
 		}
 	}
+
 	return true;
-out:
-	if (directory_path)
-		free(directory_path);
-	return false;
 }
 
 static bool lxcapi_add_device_node(struct lxc_container *c, const char *src_path, const char *dest_path)
