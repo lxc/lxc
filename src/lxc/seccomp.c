@@ -76,7 +76,7 @@ static int parse_config(FILE *f, struct lxc_conf *conf)
 #endif
 			SCMP_ACT_ALLOW, nr, 0);
 		if (ret < 0) {
-			ERROR("failed loading allow rule for %d\n", nr);
+			ERROR("failed loading allow rule for %d", nr);
 			return ret;
 		}
 	}
@@ -110,13 +110,13 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 			conf->seccomp_ctx,
 #endif
 			SCMP_FLTATR_CTL_NNP, 0)) {
-		ERROR("failed to turn off n-new-privs\n");
+		ERROR("failed to turn off n-new-privs");
 		return -1;
 	}
 
 	f = fopen(conf->seccomp, "r");
 	if (!f) {
-		SYSERROR("failed to open seccomp policy file %s\n", conf->seccomp);
+		SYSERROR("failed to open seccomp policy file %s", conf->seccomp);
 		return -1;
 	}
 	ret = parse_config(f, conf);

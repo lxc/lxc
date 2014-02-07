@@ -76,7 +76,7 @@ static char *apparmor_process_label_get(pid_t pid)
 again:
 	f = fopen(path, "r");
 	if (!f) {
-		SYSERROR("opening %s\n", path);
+		SYSERROR("opening %s", path);
 		if (buf)
 			free(buf);
 		return NULL;
@@ -94,7 +94,7 @@ again:
 	ret = fread(buf, 1, sz - 1, f);
 	fclose(f);
 	if (ret < 0) {
-		ERROR("reading %s\n", path);
+		ERROR("reading %s", path);
 		free(buf);
 		return NULL;
 	}

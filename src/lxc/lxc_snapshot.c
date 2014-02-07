@@ -56,7 +56,7 @@ static int do_snapshot(struct lxc_container *c)
 		return -1;
 	}
 
-	INFO("Created snapshot snap%d\n", ret);
+	INFO("Created snapshot snap%d", ret);
 	return 0;
 }
 

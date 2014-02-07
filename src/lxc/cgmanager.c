@@ -746,7 +746,7 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 			*p = '\0';
 		if (cgm_do_set(controller, cg->subsystem, d->cgroup_path
 				, cg->value) < 0) {
-			ERROR("Error setting %s to %s for %s\n",
+			ERROR("Error setting %s to %s for %s",
 			      cg->subsystem, cg->value, d->name);
 			goto out;
 		}

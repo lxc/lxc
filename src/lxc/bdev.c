@@ -485,11 +485,11 @@ static int dir_create(struct bdev *bdev, const char *dest, const char *n,
 	}
 
 	if (mkdir_p(bdev->src, 0755) < 0) {
-		ERROR("Error creating %s\n", bdev->src);
+		ERROR("Error creating %s", bdev->src);
 		return -1;
 	}
 	if (mkdir_p(bdev->dest, 0755) < 0) {
-		ERROR("Error creating %s\n", bdev->dest);
+		ERROR("Error creating %s", bdev->dest);
 		return -1;
 	}
 
@@ -1148,7 +1148,7 @@ static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 		return -1;
 
 	if (mkdir_p(bdev->dest, 0755) < 0) {
-		ERROR("Error creating %s\n", bdev->dest);
+		ERROR("Error creating %s", bdev->dest);
 		return -1;
 	}
 
@@ -1410,7 +1410,7 @@ static int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *old
 		return btrfs_snapshot(orig->dest, new->dest);
 
 	if (rmdir(new->dest) < 0 && errno != -ENOENT) {
-		SYSERROR("removing %s\n", new->dest);
+		SYSERROR("removing %s", new->dest);
 		return -1;
 	}
 
@@ -1540,7 +1540,7 @@ static int loop_mount(struct bdev *bdev)
 
 	ffd = open(bdev->src + 5, O_RDWR);
 	if (ffd < 0) {
-		SYSERROR("Error opening backing file %s\n", bdev->src);
+		SYSERROR("Error opening backing file %s", bdev->src);
 		goto out;
 	}
 
@@ -1551,13 +1551,13 @@ static int loop_mount(struct bdev *bdev)
 	memset(&lo, 0, sizeof(lo));
 	lo.lo_flags = LO_FLAGS_AUTOCLEAR;
 	if (ioctl(lfd, LOOP_SET_STATUS64, &lo) < 0) {
-		SYSERROR("Error setting autoclear on loop dev\n");
+		SYSERROR("Error setting autoclear on loop dev");
 		goto out;
 	}
 
 	ret = mount_unknown_fs(loname, bdev->dest, bdev->mntopts);
 	if (ret < 0)
-		ERROR("Error mounting %s\n", bdev->src);
+		ERROR("Error mounting %s", bdev->src);
 	else
 		bdev->lofd = lfd;
 
@@ -1724,7 +1724,7 @@ static int loop_create(struct bdev *bdev, const char *dest, const char *n,
 		return -1;
 
 	if (mkdir_p(bdev->dest, 0755) < 0) {
-		ERROR("Error creating %s\n", bdev->dest);
+		ERROR("Error creating %s", bdev->dest);
 		return -1;
 	}
 
@@ -1964,7 +1964,7 @@ static int overlayfs_create(struct bdev *bdev, const char *dest, const char *n,
 	strcpy(delta+len-6, "delta0");
 
 	if (mkdir_p(delta, 0755) < 0) {
-		ERROR("Error creating %s\n", delta);
+		ERROR("Error creating %s", delta);
 		return -1;
 	}
 
@@ -1980,7 +1980,7 @@ static int overlayfs_create(struct bdev *bdev, const char *dest, const char *n,
 		return -1;
 
 	if (mkdir_p(bdev->dest, 0755) < 0) {
-		ERROR("Error creating %s\n", bdev->dest);
+		ERROR("Error creating %s", bdev->dest);
 		return -1;
 	}
 
@@ -2086,11 +2086,11 @@ static int rsync_rootfs(struct rsync_data *data)
 
 	// If not a snapshot, copy the fs.
 	if (orig->ops->mount(orig) < 0) {
-		ERROR("failed mounting %s onto %s\n", orig->src, orig->dest);
+		ERROR("failed mounting %s onto %s", orig->src, orig->dest);
 		return -1;
 	}
 	if (new->ops->mount(new) < 0) {
-		ERROR("failed mounting %s onto %s\n", new->src, new->dest);
+		ERROR("failed mounting %s onto %s", new->src, new->dest);
 		return -1;
 	}
 	if (setgid(0) < 0) {
@@ -2104,7 +2104,7 @@ static int rsync_rootfs(struct rsync_data *data)
 		return -1;
 	}
 	if (do_rsync(orig->dest, new->dest) < 0) {
-		ERROR("rsyncing %s to %s\n", orig->src, new->src);
+		ERROR("rsyncing %s to %s", orig->src, new->src);
 		return -1;
 	}
 
@@ -2147,7 +2147,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 
 	orig = bdev_init(src, NULL, NULL);
 	if (!orig) {
-		ERROR("failed to detect blockdev type for %s\n", src);
+		ERROR("failed to detect blockdev type for %s", src);
 		return NULL;
 	}
 
@@ -2214,7 +2214,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	}
 
 	if (new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath, snap, newsize) < 0) {
-		ERROR("failed getting pathnames for cloned storage: %s\n", src);
+		ERROR("failed getting pathnames for cloned storage: %s", src);
 		bdev_put(orig);
 		bdev_put(new);
 		return NULL;

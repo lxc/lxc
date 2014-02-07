@@ -743,7 +743,7 @@ static bool create_container_dir(struct lxc_container *c)
 		if (errno == EEXIST)
 			ret = 0;
 		else
-			SYSERROR("failed to create container path for %s\n", c->name);
+			SYSERROR("failed to create container path for %s", c->name);
 	}
 	free(s);
 	return ret == 0;
@@ -781,7 +781,7 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 
 	bdev = bdev_create(dest, type, c->name, specs);
 	if (!bdev) {
-		ERROR("Failed to create backing store type %s\n", type);
+		ERROR("Failed to create backing store type %s", type);
 		return NULL;
 	}
 
@@ -792,7 +792,7 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 
 	if (geteuid() != 0) {
 		if (chown_mapped_root(bdev->dest, c->lxc_conf) < 0) {
-			ERROR("Error chowning %s to container root\n", bdev->dest);
+			ERROR("Error chowning %s to container root", bdev->dest);
 			bdev_put(bdev);
 			return NULL;
 		}
@@ -827,7 +827,7 @@ static char *get_template_path(const char *t)
 		return NULL;
 	}
 	if (access(tpath, X_OK) < 0) {
-		SYSERROR("bad template: %s\n", t);
+		SYSERROR("bad template: %s", t);
 		free(tpath);
 		return NULL;
 	}
@@ -853,7 +853,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 
 	pid = fork();
 	if (pid < 0) {
-		SYSERROR("failed to fork task for container creation template\n");
+		SYSERROR("failed to fork task for container creation template");
 		return false;
 	}
 
@@ -1083,7 +1083,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 	}
 
 	if (wait_for_pid(pid) != 0) {
-		ERROR("container creation template for %s failed\n", c->name);
+		ERROR("container creation template for %s failed", c->name);
 		return false;
 	}
 
@@ -1126,7 +1126,7 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 #if HAVE_LIBGNUTLS
 	tpath = get_template_path(t);
 	if (!tpath) {
-		ERROR("bad template: %s\n", t);
+		ERROR("bad template: %s", t);
 		goto out_free_contents;
 	}
 
@@ -1222,7 +1222,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	if (t) {
 		tpath = get_template_path(t);
 		if (!tpath) {
-			ERROR("bad template: %s\n", t);
+			ERROR("bad template: %s", t);
 			goto out;
 		}
 	}
@@ -1241,7 +1241,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 
 	if (!c->lxc_conf) {
 		if (!c->load_config(c, lxc_global_config_value("lxc.default_config"))) {
-			ERROR("Error loading default configuration file %s\n", lxc_global_config_value("lxc.default_config"));
+			ERROR("Error loading default configuration file %s", lxc_global_config_value("lxc.default_config"));
 			goto free_tpath;
 		}
 	}
@@ -1282,7 +1282,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	 */
 	pid = fork();
 	if (pid < 0) {
-		SYSERROR("failed to fork task for container creation template\n");
+		SYSERROR("failed to fork task for container creation template");
 		goto out_unlock;
 	}
 
@@ -1297,7 +1297,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 
 		/* save config file again to store the new rootfs location */
 		if (!c->save_config(c, NULL)) {
-			ERROR("failed to save starting configuration for %s\n", c->name);
+			ERROR("failed to save starting configuration for %s", c->name);
 			// parent task won't see bdev in config so we delete it
 			bdev->ops->umount(bdev);
 			bdev->ops->destroy(bdev);
@@ -1558,7 +1558,7 @@ static char** lxcapi_get_interfaces(struct lxc_container *c)
 
 	pid = fork();
 	if (pid < 0) {
-		SYSERROR("failed to fork task to get interfaces information\n");
+		SYSERROR("failed to fork task to get interfaces information");
 		close(pipefd[0]);
 		close(pipefd[1]);
 		return NULL;
@@ -1645,7 +1645,7 @@ static char** lxcapi_get_ips(struct lxc_container *c, const char* interface, con
 
 	pid = fork();
 	if (pid < 0) {
-		SYSERROR("failed to fork task to get container ips\n");
+		SYSERROR("failed to fork task to get container ips");
 		close(pipefd[0]);
 		close(pipefd[1]);
 		return NULL;
@@ -1808,7 +1808,7 @@ static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	// If we haven't yet loaded a config, load the stock config
 	if (!c->lxc_conf) {
 		if (!c->load_config(c, lxc_global_config_value("lxc.default_config"))) {
-			ERROR("Error loading default configuration file %s while saving %s\n", lxc_global_config_value("lxc.default_config"), c->name);
+			ERROR("Error loading default configuration file %s while saving %s", lxc_global_config_value("lxc.default_config"), c->name);
 			return false;
 		}
 	}
@@ -1919,7 +1919,7 @@ static void mod_all_rdeps(struct lxc_container *c, bool inc)
 		return;
 	while (getline(&lxcpath, &pathlen, f) != -1) {
 		if (getline(&lxcname, &namelen, f) == -1) {
-			ERROR("badly formatted file %s\n", path);
+			ERROR("badly formatted file %s", path);
 			goto out;
 		}
 		strip_newline(lxcpath);
@@ -2522,7 +2522,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 		if (!file_exists(path))
 			return 0;
 		if (!(fout = fopen(path, "w"))) {
-			SYSERROR("unable to open %s: ignoring\n", path);
+			SYSERROR("unable to open %s: ignoring", path);
 			return 0;
 		}
 		if (fprintf(fout, "%s", c->name) < 0) {
@@ -2563,7 +2563,7 @@ static int create_file_dirname(char *path)
 	*p = '\0';
 	ret = mkdir(path, 0755);
 	if (ret && errno != EEXIST)
-		SYSERROR("creating container path %s\n", path);
+		SYSERROR("creating container path %s", path);
 	*p = '/';
 	return ret;
 }
@@ -2628,7 +2628,7 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 
 	if (am_unpriv()) {
 		if (chown_mapped_root(newpath, c->lxc_conf) < 0) {
-			ERROR("Error chowning %s to container root\n", newpath);
+			ERROR("Error chowning %s to container root", newpath);
 			goto out;
 		}
 	}
@@ -2814,7 +2814,7 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 		LXC_CLONE_KEEPBDEVTYPE | LXC_CLONE_MAYBE_SNAPSHOT;
 	c2 = c->clone(c, newname, snappath, flags, NULL, NULL, 0, NULL);
 	if (!c2) {
-		ERROR("clone of %s:%s failed\n", c->config_path, c->name);
+		ERROR("clone of %s:%s failed", c->config_path, c->name);
 		return -1;
 	}
 
@@ -2835,7 +2835,7 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	sprintf(dfnam, "%s/%s/ts", snappath, newname);
 	f = fopen(dfnam, "w");
 	if (!f) {
-		ERROR("Failed to open %s\n", dfnam);
+		ERROR("Failed to open %s", dfnam);
 		return -1;
 	}
 	if (fprintf(f, "%s", buffer) < 0) {

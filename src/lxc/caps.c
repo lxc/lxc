@@ -117,7 +117,7 @@ int lxc_caps_up(void)
 		ret = cap_get_flag(caps, cap, CAP_PERMITTED, &flag);
 		if (ret) {
 			if (errno == EINVAL) {
-				INFO("Last supported cap was %d\n", cap-1);
+				INFO("Last supported cap was %d", cap-1);
 				break;
 			} else {
 				ERROR("failed to cap_get_flag: %m");
