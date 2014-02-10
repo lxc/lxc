@@ -753,6 +753,31 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 	return 0;
 }
 
+static void print_top_failing_dir(const char *path)
+{
+	size_t len = strlen(path);
+	char *copy = alloca(len+1), *p, *e, saved;
+	strcpy(copy, path);
+
+	p = copy;
+	e = copy + len;
+	while (p < e) {
+		while (p < e && *p == '/') p++;
+		while (p < e && *p != '/') p++;
+		if (p >= e)
+			return;
+		saved = *p;
+		*p = '\0';
+		if (access(copy, X_OK)) {
+			SYSERROR("could not access %s.  Please grant it 'x' " \
+			      "access, or add an ACL for the container root.",
+			      copy);
+			return;
+		}
+		*p = saved;
+	}
+}
+
 static int mount_rootfs(const char *rootfs, const char *target, const char *options)
 {
 	char absrootfs[MAXPATHLEN];
@@ -1543,6 +1568,11 @@ static int setup_rootfs(struct lxc_conf *conf)
 	if (access(rootfs->mount, F_OK)) {
 		SYSERROR("failed to access to '%s', check it is present",
 			 rootfs->mount);
+		return -1;
+	}
+
+	if (access(rootfs->path, R_OK)) {
+		print_top_failing_dir(rootfs->path);
 		return -1;
 	}
 
