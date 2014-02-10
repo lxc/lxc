@@ -86,6 +86,8 @@ struct bdev {
 
 char *overlayfs_getlower(char *p);
 
+bool bdev_is_dir(const char *path);
+
 /*
  * Instantiate a bdev object.  The src is used to determine which blockdev
  * type this should be.  The dst and data are optional, and will be used

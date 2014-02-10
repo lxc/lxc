@@ -2827,6 +2827,13 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	 */
 	flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_KEEPMACADDR | LXC_CLONE_KEEPNAME |
 		LXC_CLONE_KEEPBDEVTYPE | LXC_CLONE_MAYBE_SNAPSHOT;
+	if (bdev_is_dir(c->lxc_conf->rootfs.path)) {
+		ERROR("Snapshot of directory-backed container requested.");
+		ERROR("Making a copy-clone.  If you do want snapshots, then");
+		ERROR("please create an overlayfs clone first, snapshot that");
+		ERROR("and keep the original container pristine.");
+		flags &= ~LXC_CLONE_SNAPSHOT | LXC_CLONE_MAYBE_SNAPSHOT;
+	}
 	c2 = c->clone(c, newname, snappath, flags, NULL, NULL, 0, NULL);
 	if (!c2) {
 		ERROR("clone of %s:%s failed", c->config_path, c->name);

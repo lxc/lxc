@@ -2116,6 +2116,19 @@ static int rsync_rootfs_wrapper(void *data)
 	struct rsync_data *arg = data;
 	return rsync_rootfs(arg);
 }
+
+bool bdev_is_dir(const char *path)
+{
+	struct bdev *orig = bdev_init(path, NULL, NULL);
+	bool ret = false;
+	if (!orig)
+		return ret;
+	if (strcmp(orig->type, "dir") == 0)
+		ret = true;
+	bdev_put(orig);
+	return ret;
+}
+
 /*
  * If we're not snaphotting, then bdev_copy becomes a simple case of mount
  * the original, mount the new, and rsync the contents.
