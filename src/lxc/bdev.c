@@ -2130,6 +2130,31 @@ bool bdev_is_dir(const char *path)
 }
 
 /*
+ * is an unprivileged user allowed to make this kind of snapshot
+ */
+static bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
+		bool maybesnap)
+{
+	if (!t) {
+		// new type will be same as original
+		// (unless snap && b->type == dir, in which case it will be
+		// overlayfs -- which is also allowed)
+		if (strcmp(b->type, "dir") == 0 ||
+				strcmp(b->type, "overlayfs") == 0 ||
+				strcmp(b->type, "loop") == 0)
+			return true;
+		return false;
+	}
+
+	// unprivileged users can copy and snapshot dir, overlayfs,
+	// and loop.  In particular, not zfs, btrfs, or lvm.
+	if (strcmp(t, "dir") == 0 || strcmp(t, "overlayfs") == 0 ||
+			strcmp(t, "loop") == 0)
+		return true;
+	return false;
+}
+
+/*
  * If we're not snaphotting, then bdev_copy becomes a simple case of mount
  * the original, mount the new, and rsync the contents.
  */
@@ -2180,26 +2205,6 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		}
 	}
 
-	/* check for privilege */
-	if (am_unpriv()) {
-		if (snap && !maybe_snap) {
-			ERROR("Unprivileged users cannot snapshot");
-			bdev_put(orig);
-			return NULL;
-		}
-		if (bdevtype && strcmp(bdevtype, "dir") != 0) {
-			ERROR("Unprivileged users can only make dir copy-clones");
-			bdev_put(orig);
-			return NULL;
-		}
-		if (strcmp(orig->type, "dir") != 0) {
-			ERROR("Unprivileged users can only make dir copy-clones");
-			bdev_put(orig);
-			return NULL;
-		}
-	}
-
-
 	/*
 	 * special case for snapshot - if caller requested maybe_snapshot and
 	 * keepbdevtype and backing store is directory, then proceed with a copy
@@ -2213,6 +2218,12 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	 */
 	if (!bdevtype && !keepbdevtype && snap && strcmp(orig->type , "dir") == 0)
 		bdevtype = "overlayfs";
+
+	if (am_unpriv() && !unpriv_snap_allowed(orig, bdevtype, snap, maybe_snap)) {
+		ERROR("Unsupported snapshot type for unprivileged users");
+		bdev_put(orig);
+		return NULL;
+	}
 
 	*needs_rdep = 0;
 	if (bdevtype && strcmp(orig->type, "dir") == 0 &&
@@ -2232,6 +2243,10 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		bdev_put(new);
 		return NULL;
 	}
+
+	if (am_unpriv() && chown_mapped_root(new->src, c0->lxc_conf) < 0)
+		WARN("Failed to update ownership of %s", new->dest);
+
 	if (snap)
 		return new;
 
