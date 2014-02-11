@@ -382,7 +382,7 @@ const char *get_rundir()
 
 	rundir = getenv("XDG_RUNTIME_DIR");
 	if (geteuid() == 0 || rundir == NULL)
-		rundir = "/run";
+		rundir = RUNTIME_PATH;
 	return rundir;
 }
 

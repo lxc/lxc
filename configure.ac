@@ -397,6 +397,13 @@ AC_ARG_ENABLE([tests],
 	[], [enable_tests=no])
 AM_CONDITIONAL([ENABLE_TESTS], [test "x$enable_tests" = "xyes"])
 
+# Allow overriding the default runtime dir (/run)
+AC_ARG_WITH([runtime-path],
+	[AC_HELP_STRING(
+		[--with-runtime-path=dir],
+		[runtime directory (default: /run)]
+	)], [], [with_runtime_path=['/run']])
+
 # LXC container path, where the containers are actually stored
 # This is overridden by an entry in the file called LXCCONF
 # (i.e. /etc/lxc/lxc.conf)
@@ -425,7 +432,7 @@ AC_ARG_WITH([usernic-db],
 	[AC_HELP_STRING(
 		[--with-usernic-db],
 		[lxc user nic database]
-	)], [], [with_usernic_db=['/run/lxc/nics']])
+	)], [], [with_usernic_db=['$(with_runtime_path)/lxc/nics']])
 
 # Rootfs path, where the container mount structure is assembled
 AC_ARG_WITH([rootfs-path],
@@ -484,6 +491,7 @@ AS_AC_EXPAND(LXCTEMPLATECONFIG, "$datadir/lxc/config")
 AS_AC_EXPAND(LXCHOOKDIR, "$datadir/lxc/hooks")
 AS_AC_EXPAND(LXCINITDIR, "$libexecdir")
 AS_AC_EXPAND(LOGPATH, "$with_log_path")
+AS_AC_EXPAND(RUNTIME_PATH, "$with_runtime_path")
 AC_SUBST(DEFAULT_CGROUP_PATTERN, ["$with_cgroup_pattern"])
 
 # Check for some standard kernel headers

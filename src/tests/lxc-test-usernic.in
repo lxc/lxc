@@ -21,6 +21,8 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+# This test assumes an Ubuntu host
+
 DONE=0
 LXC_USER_NIC="@LIBEXECDIR@/lxc/lxc-user-nic"
 
@@ -31,7 +33,7 @@ cleanup() {
 		lxc-stop -n usernic-c1 -k
 		lxc-destroy -n usernic-c1
 
-		sed -i '/usernic-user/d' /var/run/lxc/nics /etc/lxc/lxc-usernet
+		sed -i '/usernic-user/d' /run/lxc/nics /etc/lxc/lxc-usernet
 		ifconfig usernic-br0 down
 		ifconfig usernic-br1 down
 		brctl delbr usernic-br0

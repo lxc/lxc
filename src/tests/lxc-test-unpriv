@@ -21,6 +21,8 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+# This test assumes an Ubuntu host
+
 if [ $(id -u) -ne 0 ]; then
 	echo 'run as root'
 	exit 1
@@ -34,7 +36,7 @@ cleanup() {
 	run_cmd lxc-stop -n c1 -k
 	pkill -u $(id -u $TUSER) -9
 
-	sed -i '/lxcunpriv/d' /var/run/lxc/nics /etc/lxc/lxc-usernet
+	sed -i '/lxcunpriv/d' /run/lxc/nics /etc/lxc/lxc-usernet
 	sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
 
 	rm -Rf $HDIR /run/user/$(id -u $TUSER)
