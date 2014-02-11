@@ -62,6 +62,11 @@ run_cmd() {
 TUSER=lxcunpriv
 HDIR=/home/$TUSER
 
+ARCH=i386
+if type dpkg >/dev/null 2>&1; then
+	ARCH=$(dpkg --print-architecture)
+fi
+
 trap cleanup EXIT SIGHUP SIGINT SIGTERM
 set -eu
 
@@ -94,7 +99,7 @@ for d in /sys/fs/cgroup/*; do
 	echo $$ > $d/lxctest/tasks
 done
 
-run_cmd lxc-create -t download -n c1 -- -d ubuntu -r trusty -a i386
+run_cmd lxc-create -t download -n c1 -- -d ubuntu -r trusty -a $ARCH
 run_cmd lxc-start -n c1 -d
 
 p1=$(run_cmd lxc-info -n c1 -p -H)

@@ -32,12 +32,17 @@ cleanup() {
 	echo "PASS"
 }
 
+ARCH=i386
+if type dpkg >/dev/null 2>&1; then
+	ARCH=$(dpkg --print-architecture)
+fi
+
 trap cleanup EXIT HUP INT TERM
 set -eu
 
 # Create a container
 CONTAINER_NAME=lxc-test-auto
-lxc-create -t download -n $CONTAINER_NAME -- -d ubuntu -r trusty -a i386
+lxc-create -t download -n $CONTAINER_NAME -- -d ubuntu -r trusty -a $ARCH
 CONTAINER_PATH=$(dirname $(lxc-info -n $CONTAINER_NAME -c lxc.rootfs -H))
 cp $CONTAINER_PATH/config $CONTAINER_PATH/config.bak
 

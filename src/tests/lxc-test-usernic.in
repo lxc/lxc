@@ -64,6 +64,11 @@ run_cmd() {
 	fi
 }
 
+ARCH=i386
+if type dpkg >/dev/null 2>&1; then
+	ARCH=$(dpkg --print-architecture)
+fi
+
 set -eu
 trap cleanup EXIT SIGHUP SIGINT SIGTERM
 
@@ -96,8 +101,13 @@ brctl addbr usernic-br1
 ifconfig usernic-br0 0.0.0.0 up
 ifconfig usernic-br1 0.0.0.0 up
 
+ARCH=i386
+if type dpkg >/dev/null 2>&1; then
+	ARCH=$(dpkg --print-architecture)
+fi
+
 # Create three containers
-run_cmd "lxc-create -t download -n b1 -- -d ubuntu -r trusty -a i386"
+run_cmd "lxc-create -t download -n b1 -- -d ubuntu -r trusty -a $ARCH"
 run_cmd "lxc-start -n b1 -d"
 p1=$(run_cmd "lxc-info -n b1 -p -H")
 
