@@ -2274,11 +2274,19 @@ void write_config(FILE *fout, struct lxc_conf *c)
 			struct lxc_inetdev *i = it2->elem;
 			char buf[INET_ADDRSTRLEN];
 			inet_ntop(AF_INET, &i->addr, buf, sizeof(buf));
+			fprintf(fout, "lxc.network.ipv4 = %s", buf);
+
 			if (i->prefix)
-				fprintf(fout, "lxc.network.ipv4 = %s/%d\n",
-					buf, i->prefix);
+				fprintf(fout, "/%d", i->prefix);
+
+			if (i->bcast.s_addr != (i->addr.s_addr |
+			    htonl(INADDR_BROADCAST >>  i->prefix))) {
+
+				inet_ntop(AF_INET, &i->bcast, buf, sizeof(buf));
+				fprintf(fout, " %s\n", buf);
+			}
 			else
-				fprintf(fout, "lxc.network.ipv4 = %s\n", buf);
+				fprintf(fout, "\n");
 		}
 		if (n->ipv6_gateway_auto)
 			fprintf(fout, "lxc.network.ipv6.gateway = auto\n");
