@@ -1,0 +1,78 @@
+#!/bin/sh
+
+# lxc: linux Container library
+
+# Authors:
+# Stéphane Graber <stgraber@ubuntu.com>
+#
+# This is a test script for lxc-autostart
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+DONE=0
+cleanup() {
+	lxc-destroy -n $CONTAINER_NAME >/dev/null 2>&1 || true
+
+	if [ $DONE -eq 0 ]; then
+		echo "FAIL"
+		exit 1
+	fi
+	echo "PASS"
+}
+
+trap cleanup EXIT HUP INT TERM
+set -eu
+
+# Create a container
+CONTAINER_NAME=lxc-test-auto
+lxc-create -t download -n $CONTAINER_NAME -- -d ubuntu -r trusty -a i386
+CONTAINER_PATH=$(dirname $(lxc-info -n $CONTAINER_NAME -c lxc.rootfs -H))
+cp $CONTAINER_PATH/config $CONTAINER_PATH/config.bak
+
+# Ensure it's not in lxc-autostart
+lxc-autostart -L | grep -q $CONTAINER_NAME && \
+    (echo "Container shouldn't be auto-started" && exit 1)
+
+# Mark it as auto-started and re-check
+echo "lxc.start.auto = 1" >> $CONTAINER_PATH/config
+lxc-autostart -L | grep -q $CONTAINER_NAME || \
+    (echo "Container should be auto-started" && exit 1)
+
+# Put it in a test group and set a delay
+echo "lxc.group = lxc-auto-test" >> $CONTAINER_PATH/config
+echo "lxc.start.delay = 5" >> $CONTAINER_PATH/config
+
+# Check that everything looks good
+if [ "$(lxc-autostart -L -g lxc-auto-test | grep $CONTAINER_NAME)" != "$CONTAINER_NAME 5" ]; then
+    echo "Invalid autostart setting" && exit 1
+fi
+
+# Start it
+lxc-autostart -g lxc-auto-test
+lxc-wait -n $CONTAINER_NAME -t 5 -s RUNNING || (echo "Container didn't start" && exit 1)
+
+# Restart it
+lxc-autostart -g lxc-auto-test -r
+lxc-wait -n $CONTAINER_NAME -t 5 -s RUNNING || (echo "Container didn't restart" && exit 1)
+
+# Shut it down
+lxc-autostart -g lxc-auto-test -s
+lxc-wait -n $CONTAINER_NAME -t 60 -s STOPPED || (echo "Container didn't stop" && exit 1)
+
+# Kill it
+lxc-autostart -g lxc-auto-test -k
+lxc-wait -n $CONTAINER_NAME -t 60 -s STOPPED || (echo "Container didn't die" && exit 1)
+
+DONE=1
