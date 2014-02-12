@@ -301,14 +301,8 @@ extern int lxc_log_init(const char *name, const char *file,
 		return 0;
 	}
 
-	if (priority) {
-		if (lxc_priority == LXC_LOG_PRIORITY_NOTSET) {
-			ERROR("invalid log priority %s", priority);
-			return -1;
-		}
-
+	if (priority)
 		lxc_priority = lxc_log_priority_to_int(priority);
-	}
 
 	lxc_log_category_lxc.priority = lxc_priority;
 	lxc_log_category_lxc.appender = &log_appender_logfile;
