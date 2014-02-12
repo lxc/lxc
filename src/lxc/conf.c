@@ -1051,7 +1051,7 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 
 	if (access(path, F_OK)) {
 
-		if (mkdir_p(path, 0755)) {
+		if (mkdir_p(path, 0755) < 0) {
 			SYSERROR("failed to create pivotdir '%s'", path);
 			return -1;
 		}
@@ -1890,7 +1890,7 @@ static inline int mount_entry_on_systemfs(const struct mntent *mntent)
 	char* pathdirname = NULL;
 
 	if (hasmntopt(mntent, "create=dir")) {
-		if (!mkdir_p(mntent->mnt_dir, 0755)) {
+		if (mkdir_p(mntent->mnt_dir, 0755) < 0) {
 			WARN("Failed to create mount target '%s'", mntent->mnt_dir);
 			ret = -1;
 		}
@@ -1899,7 +1899,9 @@ static inline int mount_entry_on_systemfs(const struct mntent *mntent)
 	if (hasmntopt(mntent, "create=file") && access(mntent->mnt_dir, F_OK)) {
 		pathdirname = strdup(mntent->mnt_dir);
 		pathdirname = dirname(pathdirname);
-		mkdir_p(pathdirname, 0755);
+		if (mkdir_p(pathdirname, 0755) < 0) {
+			WARN("Failed to create target directory");
+		}
 		pathfile = fopen(mntent->mnt_dir, "wb");
 		if (!pathfile) {
 			WARN("Failed to create mount target '%s'", mntent->mnt_dir);
@@ -1976,7 +1978,7 @@ skipabs:
 	}
 
 	if (hasmntopt(mntent, "create=dir")) {
-		if (!mkdir_p(path, 0755)) {
+		if (mkdir_p(path, 0755) < 0) {
 			WARN("Failed to create mount target '%s'", path);
 			ret = -1;
 		}
@@ -1985,7 +1987,9 @@ skipabs:
 	if (hasmntopt(mntent, "create=file") && access(path, F_OK)) {
 		pathdirname = strdup(path);
 		pathdirname = dirname(pathdirname);
-		mkdir_p(pathdirname, 0755);
+		if (mkdir_p(pathdirname, 0755) < 0) {
+			WARN("Failed to create target directory");
+		}
 		pathfile = fopen(path, "wb");
 		if (!pathfile) {
 			WARN("Failed to create mount target '%s'", path);
@@ -2031,7 +2035,7 @@ static int mount_entry_on_relative_rootfs(const struct mntent *mntent,
 	}
 
 	if (hasmntopt(mntent, "create=dir")) {
-		if (!mkdir_p(path, 0755)) {
+		if (mkdir_p(path, 0755) < 0) {
 			WARN("Failed to create mount target '%s'", path);
 			ret = -1;
 		}
@@ -2040,7 +2044,9 @@ static int mount_entry_on_relative_rootfs(const struct mntent *mntent,
 	if (hasmntopt(mntent, "create=file") && access(path, F_OK)) {
 		pathdirname = strdup(path);
 		pathdirname = dirname(pathdirname);
-		mkdir_p(pathdirname, 0755);
+		if (mkdir_p(pathdirname, 0755) < 0) {
+			WARN("Failed to create target directory");
+		}
 		pathfile = fopen(path, "wb");
 		if (!pathfile) {
 			WARN("Failed to create mount target '%s'", path);
