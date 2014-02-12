@@ -274,6 +274,7 @@ AM_COND_IF([ENABLE_CAP],
 OLD_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS $SECCOMP_CFLAGS"
 AC_CHECK_TYPES([scmp_filter_ctx], [], [], [[#include <seccomp.h>]])
+AC_CHECK_DECLS([seccomp_syscall_resolve_name_arch], [], [], [[#include <seccomp.h>]])
 CFLAGS="$OLD_CFLAGS"
 
 # Configuration examples

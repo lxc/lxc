@@ -57,6 +57,7 @@ static int parse_config_v1(FILE *f, struct lxc_conf *conf)
 	return 0;
 }
 
+#if HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH
 static void remove_trailing_newlines(char *l)
 {
 	char *p = l;
@@ -109,6 +110,7 @@ static uint32_t get_and_clear_v2_action(char *line, uint32_t def_action)
 	default: return ret;
 	}
 }
+#endif
 
 /*
  * v2 consists of
@@ -126,7 +128,7 @@ static uint32_t get_and_clear_v2_action(char *line, uint32_t def_action)
  */
 static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 {
-#if HAVE_SCMP_FILTER_CTX
+#if HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH
 	char *p;
 	int ret;
 	scmp_filter_ctx *ctx = NULL;
@@ -189,9 +191,11 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 			else if (strcmp(line, "[X86_64]") == 0 ||
 					strcmp(line, "[x86_64]") == 0)
 				arch = SCMP_ARCH_X86_64;
+#ifdef SCMP_ARCH_ARM
 			else if (strcmp(line, "[arm]") == 0 ||
 					strcmp(line, "[ARM]") == 0)
 				arch = SCMP_ARCH_ARM;
+#endif
 			else
 				goto bad_arch;
 			if (ctx) {
