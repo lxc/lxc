@@ -2498,10 +2498,13 @@ static int clone_update_rootfs(struct clone_update_data *data)
 	if (strcmp(bdev->type, "dir") != 0) {
 		if (unshare(CLONE_NEWNS) < 0) {
 			ERROR("error unsharing mounts");
+			bdev_put(bdev);
 			return -1;
 		}
-		if (bdev->ops->mount(bdev) < 0)
+		if (bdev->ops->mount(bdev) < 0) {
+			bdev_put(bdev);
 			return -1;
+		}
 	} else { // TODO come up with a better way
 		if (bdev->dest)
 			free(bdev->dest);
@@ -2528,12 +2531,15 @@ static int clone_update_rootfs(struct clone_update_data *data)
 
 		if (run_lxc_hooks(c->name, "clone", conf, c->get_config_path(c), hookargs)) {
 			ERROR("Error executing clone hook for %s", c->name);
+			bdev_put(bdev);
 			return -1;
 		}
 	}
 
 	if (!(flags & LXC_CLONE_KEEPNAME)) {
 		ret = snprintf(path, MAXPATHLEN, "%s/etc/hostname", bdev->dest);
+		bdev_put(bdev);
+
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 		if (!file_exists(path))
@@ -2549,6 +2555,9 @@ static int clone_update_rootfs(struct clone_update_data *data)
 		if (fclose(fout) < 0)
 			return -1;
 	}
+	else
+		bdev_put(bdev);
+
 	return 0;
 }
 
