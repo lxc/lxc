@@ -190,6 +190,11 @@ int main(int argc, char *argv[]) {
     for (iter = 1; iter <= iterations; iter++) {
         int fd;
         fd = open("/", O_RDONLY);
+        if (fd < 0) {
+            fprintf(stderr, "Failed to open /\n");
+            continue;
+        }
+
         if (!quiet)
             printf("\nIteration %d/%d maxfd:%d\n", iter, iterations, fd);
         close(fd);
