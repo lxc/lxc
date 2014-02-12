@@ -8,7 +8,10 @@ pkgexamples_DATA = \
 	lxc-empty-netns.conf \
 	lxc-phys.conf \
 	lxc-veth.conf \
-	lxc-complex.conf
+	lxc-complex.conf \
+	seccomp-v1.conf \
+	seccomp-v2-blacklist.conf \
+	seccomp-v2.conf
 endif
 
 noinst_DATA = \
@@ -18,4 +21,7 @@ noinst_DATA = \
 	lxc-no-netns.conf.in \
 	lxc-phys.conf.in \
 	lxc-veth.conf.in \
-	lxc-complex.conf.in
+	lxc-complex.conf.in \
+	seccomp-v1.conf \
+	seccomp-v2-blacklist.conf \
+	seccomp-v2.conf

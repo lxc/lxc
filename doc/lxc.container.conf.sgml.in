@@ -1015,11 +1015,33 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <para>
         A container can be started with a reduced set of available
 	system calls by loading a seccomp profile at startup.  The
-	seccomp configuration file should begin with a version number
-	(which currently must be 1) on the first line, a policy type
-	(which must be 'whitelist') on the second line, followed by a
-	list of allowed system call numbers, one per line.
+	seccomp configuration file must begin with a version number
+	on the first line, a policy type on the second line, followed
+	by the configuration.
       </para>
+      <para>
+        Versions 1 and 2 are currently supported.  In version 1, the
+	policy is a simple whitelist.  The second line therefore must
+	read "whitelist", with the rest of the file containing one (numeric)
+	sycall number per line.  Each syscall number is whitelisted,
+	while every unlisted number is blacklisted for use in teh container
+      </para>
+
+      <para>
+       In version 2, the policy may be blacklist or whitelist,
+       supports per-rule and per-policy default actions, and supports
+       per-architecture system call resolution from textual names.
+      </para>
+      <para>
+       An example blacklist policy, in which all system calls are
+       allowed except for mknod, which will simply do nothing and
+       return 0 (success), looks like:
+      </para>
+<screen>
+2
+blacklist
+mknod errno 0
+</screen>
       <variablelist>
 	<varlistentry>
 	  <term>
