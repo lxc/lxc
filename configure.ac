@@ -35,7 +35,7 @@ AC_GNU_SOURCE
 # for some distro-specific build options.
 AC_MSG_CHECKING([host distribution])
 AC_ARG_WITH(distro, AS_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, oracle, centos, fedora, suse, gentoo, debian, arch, slackware, paldo, openmandriva or pardus.]))
-if test "z$with_distro" = "z"; then
+if type lsb_release >/dev/null 2>&1 && test "z$with_distro" = "z"; then
 	with_distro=`lsb_release -is`
 fi
 if test "z$with_distro" = "z"; then
@@ -66,7 +66,6 @@ case $with_distro in
 		distroconf=default.conf.libvirt
 		;;
 	*)
-		echo -n "Linux distribution network config unknown, defaulting to lxc.network.type = empty"
 		distroconf=default.conf.unknown
 		;;
 esac
@@ -432,7 +431,7 @@ AC_ARG_WITH([usernic-db],
 	[AC_HELP_STRING(
 		[--with-usernic-db],
 		[lxc user nic database]
-	)], [], [with_usernic_db=['$(with_runtime_path)/lxc/nics']])
+	)], [], [with_usernic_db=['${with_runtime_path}/lxc/nics']])
 
 # Rootfs path, where the container mount structure is assembled
 AC_ARG_WITH([rootfs-path],
