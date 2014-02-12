@@ -69,13 +69,16 @@ static void opentty(const char * tty) {
 
 	fd = open(tty, O_RDWR | O_NONBLOCK);
 	if (fd == -1) {
-		printf("WARN: could not reopen tty: %s", strerror(errno));
+		printf("WARN: could not reopen tty: %s\n", strerror(errno));
 		return;
 	}
 
 	flags = fcntl(fd, F_GETFL);
 	flags &= ~O_NONBLOCK;
-	fcntl(fd, F_SETFL, flags);
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		printf("WARN: could not set fd flags: %s\n", strerror(errno));
+		return;
+	}
 
 	for (i = 0; i < fd; i++)
 		close(i);
