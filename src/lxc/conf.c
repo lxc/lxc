@@ -1151,7 +1151,7 @@ static int mount_check_fs( const char *dir, char *fstype )
 	f = fopen("/proc/self/mounts", "r");
 	if (!f)
 		return 0;
-	while ((p = fgets(buf, LINELEN, f))) {
+	while (fgets(buf, LINELEN, f)) {
 		p = index(buf, ' ');
 		if( !p )
 			continue;
@@ -1444,7 +1444,7 @@ int detect_shared_rootfs(void)
 	f = fopen("/proc/self/mountinfo", "r");
 	if (!f)
 		return 0;
-	while ((p = fgets(buf, LINELEN, f))) {
+	while (fgets(buf, LINELEN, f)) {
 		for (p = buf, i=0; p && i < 4; i++)
 			p = index(p+1, ' ');
 		if (!p)
