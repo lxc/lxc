@@ -642,7 +642,10 @@ extern struct lxc_popen_FILE *lxc_popen(const char *command)
 			 * But it must not be marked close-on-exec.
 			 * Undo the effects.
 			 */
-			fcntl(child_end, F_SETFD, 0);
+			if (fcntl(child_end, F_SETFD, 0) != 0) {
+				SYSERROR("Failed to remove FD_CLOEXEC from fd.");
+				exit(127);
+			}
 		}
 
 		/*
