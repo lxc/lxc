@@ -79,7 +79,7 @@ static void usage(const char *me)
 	printf("\n");
 	printf("  -s: snapshot rather than copy\n");
 	printf("  -B: use specified new backingstore.  Default is the same as\n");
-	printf("      the original.  Options include btrfs, lvm, overlayfs, \n");
+	printf("      the original.  Options include aufs, btrfs, lvm, overlayfs, \n");
 	printf("      dir and loop\n");
 	printf("  -L: for blockdev-backed backingstore, use specified size * specified\n");
 	printf("      unit. Default size is the size of the source blockdev, default\n");

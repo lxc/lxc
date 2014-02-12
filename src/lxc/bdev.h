@@ -24,7 +24,7 @@
 #ifndef __LXC_BDEV_H
 #define __LXC_BDEV_H
 /* blockdev operations for:
- * dir, raw, btrfs, overlayfs, aufs, lvm, loop, zfs
+ * aufs, dir, raw, btrfs, overlayfs, aufs, lvm, loop, zfs
  * someday: qemu-nbd, qcow2, qed
  */
 
@@ -84,7 +84,7 @@ struct bdev {
 	int lofd;
 };
 
-char *overlayfs_getlower(char *p);
+char *overlay_getlower(char *p);
 
 bool bdev_is_dir(const char *path);
 

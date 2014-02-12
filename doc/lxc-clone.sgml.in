@@ -88,15 +88,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       snapshot filesystem uses the backing store's snapshot functionality to create
       a very small copy-on-write snapshot of the original container.  Snapshot
       clones require the new container backing store to support snapshotting.  Currently
-      this includes only btrfs, lvm, overlayfs and zfs.  LVM devices do not support
+      this includes only aufs, btrfs, lvm, overlayfs and zfs.  LVM devices do not support
       snapshots of snapshots.
     </para>
 
     <para>
       The backing store of the new container will be the same type as the
       original container,
-      with one exception:  overlayfs snapshots can be created of directory backed
-      containers.  This can be requested by using the <replaceable>-B overlayfs</replaceable>
+      with one exception:  aufs and overlayfs snapshots can be created of directory backed
+      containers.  This can be requested by using (for overlayfs) the <replaceable>-B overlayfs</replaceable>
       arguments.
     </para>
 
@@ -210,8 +210,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    Select a different backing store for the new container.  By
 	    default the same as the original container's is used.  Note that
 	    currently changing the backingstore is only supported for
-	    overlayfs snapshots of directory backed containers.  Valid
-	    backing stores include dir (directory), btrfs, lvm, zfs, loop
+	    aufs and overlayfs snapshots of directory backed containers.  Valid
+	    backing stores include dir (directory), aufs, btrfs, lvm, zfs, loop
 	    and overlayfs.
 	  </para>
 	</listitem>

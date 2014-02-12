@@ -891,13 +891,15 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 
 		src = c->lxc_conf->rootfs.path;
 		/*
-		 * for an overlayfs create, what the user wants is the template to fill
+		 * for an overlay create, what the user wants is the template to fill
 		 * in what will become the readonly lower layer.  So don't mount for
 		 * the template
 		 */
-		if (strncmp(src, "overlayfs:", 10) == 0) {
-			src = overlayfs_getlower(src+10);
-		}
+		if (strncmp(src, "overlayfs:", 10) == 0)
+			src = overlay_getlower(src+10);
+		if (strncmp(src, "aufs:", 5) == 0)
+			src = overlay_getlower(src+5);
+
 		bdev = bdev_init(src, c->lxc_conf->rootfs.mount, NULL);
 		if (!bdev) {
 			ERROR("Error opening rootfs");
@@ -2830,7 +2832,7 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	if (bdev_is_dir(c->lxc_conf->rootfs.path)) {
 		ERROR("Snapshot of directory-backed container requested.");
 		ERROR("Making a copy-clone.  If you do want snapshots, then");
-		ERROR("please create an overlayfs clone first, snapshot that");
+		ERROR("please create an aufs or overlayfs clone first, snapshot that");
 		ERROR("and keep the original container pristine.");
 		flags &= ~LXC_CLONE_SNAPSHOT | LXC_CLONE_MAYBE_SNAPSHOT;
 	}

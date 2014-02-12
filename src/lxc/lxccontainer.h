@@ -688,7 +688,7 @@ struct lxc_container {
 	 * \return \c true on success, else \c false.
 	 * \warning If \p newname is the same as the current container
 	 *  name, the container will be destroyed. However, this will
-	 *  fail if the  snapshot is overlayfs-based, since the snapshots
+	 *  fail if the  snapshot is overlay-based, since the snapshots
 	 *  will pin the original container.
 	 * \note As an example, if the container exists as \c /var/lib/lxc/c1, snapname might be \c 'snap0'
 	 *  (representing \c /var/lib/lxcsnaps/c1/snap0). If \p newname is \p c2,

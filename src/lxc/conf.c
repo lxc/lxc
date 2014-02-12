@@ -3346,7 +3346,7 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 	 * In case of overlay, we want only the writeable layer
 	 * to be chowned
 	 */
-	if (strncmp(path, "overlayfs:", 10) == 0) {
+	if (strncmp(path, "overlayfs:", 10) == 0 || strncmp(path, "aufs:", 5) == 0) {
 		chownpath = strchr(path, ':');
 		if (!chownpath) {
 			ERROR("Bad overlay path: %s", path);
