@@ -105,8 +105,9 @@ args = parser.parse_args()
 
 # Basic requirements check
 ## We only support privileged containers for now
-if os.geteuid() != 0:
-    parser.error(_("Unprivileged containers aren't supported at this time."))
+if os.geteuid() != 0 and args.union_type != "overlayfs":
+    parser.error(_("Unprivileged containers may only use "
+                   "overlayfs at this time."))
 
 ## Check that -d and CMD aren't used at the same time
 if args.command and args.daemon:
