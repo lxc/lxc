@@ -65,7 +65,7 @@ EXTRA_DIST = \
 	device_add_remove.c \
 	get_item.c \
 	getkeys.c \
-	list.c
+	list.c \
 	locktests.c \
 	lxcpath.c \
 	lxc-test-autostart \
@@ -76,4 +76,4 @@ EXTRA_DIST = \
 	saveconfig.c \
 	shutdowntest.c \
 	snapshot.c \
-	startone.c \
+	startone.c
