@@ -83,6 +83,31 @@ const struct ns_info ns_info[LXC_NS_MAX] = {
 	[LXC_NS_NET] = {"net", CLONE_NEWNET}
 };
 
+static void print_top_failing_dir(const char *path)
+{
+	size_t len = strlen(path);
+	char *copy = alloca(len+1), *p, *e, saved;
+	strcpy(copy, path);
+
+	p = copy;
+	e = copy + len;
+	while (p < e) {
+		while (p < e && *p == '/') p++;
+		while (p < e && *p != '/') p++;
+		if (p >= e)
+			return;
+		saved = *p;
+		*p = '\0';
+		if (access(copy, X_OK)) {
+			SYSERROR("could not access %s.  Please grant it 'x' " \
+			      "access, or add an ACL for the container root.",
+			      copy);
+			return;
+		}
+		*p = saved;
+	}
+}
+
 static void close_ns(int ns_fd[LXC_NS_MAX]) {
 	int i;
 
@@ -590,6 +615,11 @@ static int do_start(void *data)
 			SYSERROR("setgroups");
 			goto out_warn_father;
 		}
+	}
+
+	if (access(handler->lxcpath, R_OK)) {
+		print_top_failing_dir(handler->lxcpath);
+		goto out_warn_father;
 	}
 
 	#if HAVE_SYS_CAPABILITY_H
