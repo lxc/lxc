@@ -33,6 +33,7 @@ import argparse
 import gettext
 import lxc
 import os
+import pwd
 import sys
 import subprocess
 import tempfile
@@ -77,10 +78,11 @@ parser.add_argument("--bdir", "-b", type=str,
                     help=_("directory to bind mount into container"))
 
 parser.add_argument("--user", "-u", type=str,
-                    help=_("the user to connect to the container as"))
+                    help=_("the user to run the command as"))
 
 parser.add_argument("--key", "-S", type=str,
-                    help=_("the path to the SSH key to use to connect"))
+                    help=_("the path to the key to use to connect "
+                           "(when using ssh)"))
 
 parser.add_argument("--daemon", "-d", action="store_true",
                     help=_("run in the background"))
@@ -212,15 +214,15 @@ LXC_NAME="%s"
         if args.union_type == "overlayfs":
             fd.write("mount -n -t overlayfs"
                      " -oupperdir=%s,lowerdir=%s none %s\n" % (
-                     target,
-                     entry[0],
-                     entry[1]))
+                         target,
+                         entry[0],
+                         entry[1]))
         elif args.union_type == "aufs":
             fd.write("mount -n -t aufs "
                      "-o br=%s=rw:%s=ro,noplink none %s\n" % (
-                     target,
-                     entry[0],
-                     entry[1]))
+                         target,
+                         entry[0],
+                         entry[1]))
         count += 1
 
     if args.bdir:
@@ -297,27 +299,49 @@ if not ips:
         dest.destroy()
     sys.exit(1)
 
-# NOTE: To replace by .attach() once the kernel supports it
-cmd = ["ssh",
-       "-o", "StrictHostKeyChecking=no",
-       "-o", "UserKnownHostsFile=/dev/null"]
+if os.path.exists("/proc/self/ns/pid"):
+    def attach_as_user(command):
+        try:
+            username = "root"
+            if args.user:
+                username = args.user
 
-if args.user:
-    cmd += ["-l", args.user]
+            user = pwd.getpwnam(username)
+            os.setgid(user.pw_gid)
+            os.initgroups(user.pw_name, user.pw_gid)
+            os.setuid(user.pw_uid)
+            os.chdir(user.pw_dir)
+            os.environ['HOME'] = user.pw_dir
+        except:
+            print(_("Unable to switch to user: %s" % username))
+            sys.exit(1)
 
-if args.key:
-    cmd += ["-i", args.key]
+        return lxc.attach_run_command(command)
 
-for ip in ips:
-    ssh_cmd = cmd + [ip] + args.command
-    retval = subprocess.call(ssh_cmd, universal_newlines=True)
-    if retval == 255:
-        print(_("SSH failed to connect, trying next IP address."))
-        continue
+    retval = dest.attach_wait(attach_as_user, args.command,
+                              env_policy=lxc.LXC_ATTACH_CLEAR_ENV)
 
-    if retval != 0:
-        print(_("Command returned with non-zero return code: %s") % retval)
-    break
+else:
+    cmd = ["ssh",
+           "-o", "StrictHostKeyChecking=no",
+           "-o", "UserKnownHostsFile=/dev/null"]
+
+    if args.user:
+        cmd += ["-l", args.user]
+
+    if args.key:
+        cmd += ["-i", args.key]
+
+    for ip in ips:
+        ssh_cmd = cmd + [ip] + args.command
+        retval = subprocess.call(ssh_cmd, universal_newlines=True)
+        if retval == 255:
+            print(_("SSH failed to connect, trying next IP address."))
+            continue
+
+        if retval != 0:
+            print(_("Command returned with non-zero return code: %s") % retval)
+        break
 
 # Shutdown the container
 if not dest.shutdown(timeout=5):
