@@ -3142,9 +3142,9 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	if (ret < 0 || ret >= MAXPATHLEN)
 		return false;
 
-	if (chdir(chrootpath) < 0)
+	if (chroot(chrootpath) < 0)
 		exit(1);
-	if (chroot(".") < 0)
+	if (chdir("/") < 0)
 		exit(1);
 	/* remove path if it exists */
 	if(faccessat(AT_FDCWD, path, F_OK, AT_SYMLINK_NOFOLLOW) == 0) {

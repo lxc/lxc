@@ -1516,12 +1516,12 @@ static int chroot_into_slave(struct lxc_conf *conf)
 		SYSERROR("Failed to make tmp-/ at %s rslave", path);
 		return -1;
 	}
-	if (chdir(path)) {
-		SYSERROR("Failed to chdir into tmp-/");
-		return -1;
-	}
 	if (chroot(path)) {
 		SYSERROR("Failed to chroot into tmp-/");
+		return -1;
+	}
+	if (chdir("/")) {
+		SYSERROR("Failed to chdir into tmp-/");
 		return -1;
 	}
 	INFO("Chrooted into tmp-/ at %s", path);
