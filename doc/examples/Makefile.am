@@ -25,3 +25,8 @@ noinst_DATA = \
 	seccomp-v1.conf \
 	seccomp-v2-blacklist.conf \
 	seccomp-v2.conf
+
+EXTRA_DIST = \
+	seccomp-v1.conf \
+	seccomp-v2-blacklist.conf \
+	seccomp-v2.conf
