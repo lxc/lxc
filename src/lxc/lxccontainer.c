@@ -2742,7 +2742,7 @@ static bool lxcapi_rename(struct lxc_container *c, const char *newname)
 	struct bdev *bdev;
 	struct lxc_container *newc;
 
-	if (!c || !c->name || !c->config_path)
+	if (!c || !c->name || !c->config_path || !c->lxc_conf)
 		return false;
 
 	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
