@@ -442,7 +442,7 @@ static char *dir_new_path(char *src, const char *oldname, const char *name,
  */
 static int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize)
+		uint64_t newsize, struct lxc_conf *conf)
 {
 	int len, ret;
 
@@ -667,7 +667,7 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 
 static int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize)
+		uint64_t newsize, struct lxc_conf *conf)
 {
 	int len, ret;
 
@@ -1001,7 +1001,7 @@ static int is_blktype(struct bdev *b)
 
 static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize)
+		uint64_t newsize, struct lxc_conf *conf)
 {
 	char fstype[100];
 	uint64_t size = newsize;
@@ -1374,7 +1374,7 @@ out:
 
 static int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize)
+		uint64_t newsize, struct lxc_conf *conf)
 {
 	if (!orig->dest || !orig->src)
 		return -1;
@@ -1626,7 +1626,7 @@ static int do_loop_create(const char *path, uint64_t size, const char *fstype)
  */
 static int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize)
+		uint64_t newsize, struct lxc_conf *conf)
 {
 	char fstype[100];
 	uint64_t size = newsize;
@@ -1826,9 +1826,40 @@ static int overlayfs_umount(struct bdev *bdev)
 	return umount(bdev->dest);
 }
 
+struct rsync_data_char {
+	char *src;
+	char *dest;
+};
+
+static int rsync_delta(struct rsync_data_char *data)
+{
+	if (setgid(0) < 0) {
+		ERROR("Failed to setgid to 0");
+		return -1;
+	}
+	if (setgroups(0, NULL) < 0)
+		WARN("Failed to clear groups");
+	if (setuid(0) < 0) {
+		ERROR("Failed to setuid to 0");
+		return -1;
+	}
+	if (do_rsync(data->src, data->dest) < 0) {
+		ERROR("rsyncing %s to %s", data->src, data->dest);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int rsync_delta_wrapper(void *data)
+{
+	struct rsync_data_char *arg = data;
+	return rsync_delta(arg);
+}
+
 static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize)
+		uint64_t newsize, struct lxc_conf *conf)
 {
 	if (!snap) {
 		ERROR("overlayfs is only for snapshot clones");
@@ -1843,6 +1874,9 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		return -1;
 	if (mkdir_p(new->dest, 0755) < 0)
 		return -1;
+
+	if (am_unpriv() && chown_mapped_root(new->dest, conf) < 0)
+		WARN("Failed to update ownership of %s", new->dest);
 
 	if (strcmp(orig->type, "dir") == 0) {
 		char *delta;
@@ -1864,6 +1898,8 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 			free(delta);
 			return -1;
 		}
+		if (am_unpriv() && chown_mapped_root(delta, conf) < 0)
+			WARN("Failed to update ownership of %s", delta);
 
 		// the src will be 'overlayfs:lowerdir:upperdir'
 		len = strlen(delta) + strlen(orig->src) + 12;
@@ -1897,7 +1933,22 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 			free(osrc);
 			return -ENOMEM;
 		}
-		if (do_rsync(odelta, ndelta) < 0) {
+		if ((ret = mkdir(ndelta, 0755)) < 0) {
+			SYSERROR("error: mkdir %s", ndelta);
+			free(osrc);
+			free(ndelta);
+			return -1;
+		}
+		if (am_unpriv() && chown_mapped_root(ndelta, conf) < 0)
+			WARN("Failed to update ownership of %s", ndelta);
+		struct rsync_data_char rdata;
+		rdata.src = odelta;
+		rdata.dest = ndelta;
+		if (am_unpriv())
+			ret = userns_exec_1(conf, rsync_delta_wrapper, &rdata);
+		else
+			ret = rsync_delta(&rdata);
+		if (ret) {
 			free(osrc);
 			free(ndelta);
 			ERROR("copying overlayfs delta");
@@ -2079,7 +2130,7 @@ static int aufs_umount(struct bdev *bdev)
 
 static int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize)
+		uint64_t newsize, struct lxc_conf *conf)
 {
 	if (!snap) {
 		ERROR("aufs is only for snapshot clones");
@@ -2491,7 +2542,8 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		return NULL;
 	}
 
-	if (new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath, snap, newsize) < 0) {
+	if (new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
+				snap, newsize, c0->lxc_conf) < 0) {
 		ERROR("failed getting pathnames for cloned storage: %s", src);
 		bdev_put(orig);
 		bdev_put(new);
