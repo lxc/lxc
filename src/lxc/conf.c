@@ -812,6 +812,38 @@ static int setup_utsname(struct utsname *utsname)
 	return 0;
 }
 
+struct dev_symlinks {
+	const char *oldpath;
+	const char *name;
+};
+
+static const struct dev_symlinks dev_symlinks[] = {
+	{"/proc/self/fd",	"fd"},
+	{"/proc/self/fd/0",	"stdin"},
+	{"/proc/self/fd/1",	"stdout"},
+	{"/proc/self/fd/2",	"stderr"},
+};
+
+static int setup_dev_symlinks(const struct lxc_rootfs *rootfs)
+{
+	char path[MAXPATHLEN];
+	int ret,i;
+
+
+	for (i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
+		const struct dev_symlinks *d = &dev_symlinks[i];
+		ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs->mount, d->name);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			return -1;
+		ret = symlink(d->oldpath, path);
+		if (ret && errno != EEXIST) {
+			SYSERROR("Error creating %s", path);
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static int setup_tty(const struct lxc_rootfs *rootfs,
 		     const struct lxc_tty_info *tty_info, char *ttydir)
 {
@@ -3613,6 +3645,11 @@ int lxc_setup(struct lxc_handler *handler)
 
 	if (!lxc_conf->is_execute && setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info, lxc_conf->ttydir)) {
 		ERROR("failed to setup the ttys for '%s'", name);
+		return -1;
+	}
+
+	if (!lxc_conf->is_execute && setup_dev_symlinks(&lxc_conf->rootfs)) {
+		ERROR("failed to setup /dev symlinks for '%s'", name);
 		return -1;
 	}
 
