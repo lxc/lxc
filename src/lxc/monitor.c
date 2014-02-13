@@ -123,31 +123,6 @@ int lxc_monitor_close(int fd)
 	return close(fd);
 }
 
-/* Note we don't use SHA-1 here as we don't want to depend on HAVE_GNUTLS.
- * FNV has good anti collision properties and we're not worried
- * about pre-image resistance or one-way-ness, we're just trying to make
- * the name unique in the 108 bytes of space we have.
- */
-#define FNV1A_64_INIT ((uint64_t)0xcbf29ce484222325ULL)
-static uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval)
-{
-	unsigned char *bp;
-
-	for(bp = buf; bp < (unsigned char *)buf + len; bp++)
-	{
-		/* xor the bottom with the current octet */
-		hval ^= (uint64_t)*bp;
-
-		/* gcc optimised:
-		 * multiply by the 64 bit FNV magic prime mod 2^64
-		 */
-		hval += (hval << 1) + (hval << 4) + (hval << 5) +
-			(hval << 7) + (hval << 8) + (hval << 40);
-	}
-
-	return hval;
-}
-
 int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 	size_t len;
 	int ret;
