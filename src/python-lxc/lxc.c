@@ -1007,6 +1007,30 @@ Container_get_ips(Container *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+Container_get_running_config_item(Container *self, PyObject *args,
+                                  PyObject *kwds)
+{
+    static char *kwlist[] = {"key", NULL};
+    char* key = NULL;
+    char* value = NULL;
+    PyObject *ret = NULL;
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
+                                      &key))
+        return NULL;
+
+    value = self->container->get_running_config_item(self->container, key);
+
+    if (!value)
+        Py_RETURN_NONE;
+
+    ret = PyUnicode_FromString(value);
+    free(value);
+    return ret;
+}
+
+
+static PyObject *
 Container_load_config(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"path", NULL};
@@ -1536,6 +1560,12 @@ static PyMethodDef Container_methods[] = {
      "get_ips(interface, family, scope) -> tuple\n"
      "\n"
      "Get a tuple of IPs for the container."
+    },
+    {"get_running_config_item", (PyCFunction)Container_get_running_config_item,
+     METH_VARARGS|METH_KEYWORDS,
+     "get_running_config_item(key) -> string\n"
+     "\n"
+     "Get the runtime value of a config key."
     },
     {"load_config", (PyCFunction)Container_load_config,
      METH_VARARGS|METH_KEYWORDS,
