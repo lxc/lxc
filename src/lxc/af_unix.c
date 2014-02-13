@@ -87,7 +87,7 @@ int lxc_abstract_unix_close(int fd)
 	socklen_t addrlen = sizeof(addr);
 
 	if (!getsockname(fd, (struct sockaddr *)&addr, &addrlen) &&
-	    addr.sun_path[0])
+			addr.sun_path[0])
 		unlink(addr.sun_path);
 
 	close(fd);
@@ -133,141 +133,141 @@ int lxc_abstract_unix_connect(const char *path)
 
 int lxc_abstract_unix_send_fd(int fd, int sendfd, void *data, size_t size)
 {
-        struct msghdr msg = { 0 };
-        struct iovec iov;
-        struct cmsghdr *cmsg;
-        char cmsgbuf[CMSG_SPACE(sizeof(int))];
-        char buf[1];
+	struct msghdr msg = { 0 };
+	struct iovec iov;
+	struct cmsghdr *cmsg;
+	char cmsgbuf[CMSG_SPACE(sizeof(int))];
+	char buf[1];
 	int *val;
 
-        msg.msg_control = cmsgbuf;
-        msg.msg_controllen = sizeof(cmsgbuf);
+	msg.msg_control = cmsgbuf;
+	msg.msg_controllen = sizeof(cmsgbuf);
 
-        cmsg = CMSG_FIRSTHDR(&msg);
-        cmsg->cmsg_len = CMSG_LEN(sizeof(int));
-        cmsg->cmsg_level = SOL_SOCKET;
-        cmsg->cmsg_type = SCM_RIGHTS;
+	cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_RIGHTS;
 	val = (int *)(CMSG_DATA(cmsg));
 	*val = sendfd;
 
-        msg.msg_name = NULL;
-        msg.msg_namelen = 0;
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
 
-        iov.iov_base = data ? data : buf;
-        iov.iov_len = data ? size : sizeof(buf);
-        msg.msg_iov = &iov;
-        msg.msg_iovlen = 1;
+	iov.iov_base = data ? data : buf;
+	iov.iov_len = data ? size : sizeof(buf);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
 
-        return sendmsg(fd, &msg, 0);
+	return sendmsg(fd, &msg, 0);
 }
 
 int lxc_abstract_unix_recv_fd(int fd, int *recvfd, void *data, size_t size)
 {
-        struct msghdr msg = { 0 };
-        struct iovec iov;
-        struct cmsghdr *cmsg;
-        char cmsgbuf[CMSG_SPACE(sizeof(int))];
-        char buf[1];
+	struct msghdr msg = { 0 };
+	struct iovec iov;
+	struct cmsghdr *cmsg;
+	char cmsgbuf[CMSG_SPACE(sizeof(int))];
+	char buf[1];
 	int ret, *val;
 
-        msg.msg_name = NULL;
-        msg.msg_namelen = 0;
-        msg.msg_control = cmsgbuf;
-        msg.msg_controllen = sizeof(cmsgbuf);
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+	msg.msg_control = cmsgbuf;
+	msg.msg_controllen = sizeof(cmsgbuf);
 
-        iov.iov_base = data ? data : buf;
-        iov.iov_len = data ? size : sizeof(buf);
-        msg.msg_iov = &iov;
-        msg.msg_iovlen = 1;
+	iov.iov_base = data ? data : buf;
+	iov.iov_len = data ? size : sizeof(buf);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
 
 	ret = recvmsg(fd, &msg, 0);
 	if (ret <= 0)
 		goto out;
 
-        cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg = CMSG_FIRSTHDR(&msg);
 
 	/* if the message is wrong the variable will not be
 	 * filled and the peer will notified about a problem */
 	*recvfd = -1;
 
-        if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(int)) &&
-            cmsg->cmsg_level == SOL_SOCKET &&
-            cmsg->cmsg_type == SCM_RIGHTS) {
+	if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(int)) &&
+			cmsg->cmsg_level == SOL_SOCKET &&
+			cmsg->cmsg_type == SCM_RIGHTS) {
 		val = (int *) CMSG_DATA(cmsg);
-                *recvfd = *val;
-        }
+		*recvfd = *val;
+	}
 out:
-        return ret;
+	return ret;
 }
 
 int lxc_abstract_unix_send_credential(int fd, void *data, size_t size)
 {
-        struct msghdr msg = { 0 };
-        struct iovec iov;
-        struct cmsghdr *cmsg;
+	struct msghdr msg = { 0 };
+	struct iovec iov;
+	struct cmsghdr *cmsg;
 	struct ucred cred = {
 		.pid = getpid(),
 		.uid = getuid(),
 		.gid = getgid(),
 	};
-        char cmsgbuf[CMSG_SPACE(sizeof(cred))];
-        char buf[1];
+	char cmsgbuf[CMSG_SPACE(sizeof(cred))];
+	char buf[1];
 
-        msg.msg_control = cmsgbuf;
-        msg.msg_controllen = sizeof(cmsgbuf);
+	msg.msg_control = cmsgbuf;
+	msg.msg_controllen = sizeof(cmsgbuf);
 
-        cmsg = CMSG_FIRSTHDR(&msg);
-        cmsg->cmsg_len = CMSG_LEN(sizeof(struct ucred));
-        cmsg->cmsg_level = SOL_SOCKET;
-        cmsg->cmsg_type = SCM_CREDENTIALS;
+	cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg->cmsg_len = CMSG_LEN(sizeof(struct ucred));
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_CREDENTIALS;
 	memcpy(CMSG_DATA(cmsg), &cred, sizeof(cred));
 
-        msg.msg_name = NULL;
-        msg.msg_namelen = 0;
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
 
-        iov.iov_base = data ? data : buf;
-        iov.iov_len = data ? size : sizeof(buf);
-        msg.msg_iov = &iov;
-        msg.msg_iovlen = 1;
+	iov.iov_base = data ? data : buf;
+	iov.iov_len = data ? size : sizeof(buf);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
 
-        return sendmsg(fd, &msg, 0);
+	return sendmsg(fd, &msg, 0);
 }
 
 int lxc_abstract_unix_rcv_credential(int fd, void *data, size_t size)
 {
-        struct msghdr msg = { 0 };
-        struct iovec iov;
-        struct cmsghdr *cmsg;
+	struct msghdr msg = { 0 };
+	struct iovec iov;
+	struct cmsghdr *cmsg;
 	struct ucred cred;
-        char cmsgbuf[CMSG_SPACE(sizeof(cred))];
-        char buf[1];
+	char cmsgbuf[CMSG_SPACE(sizeof(cred))];
+	char buf[1];
 	int ret;
 
-        msg.msg_name = NULL;
-        msg.msg_namelen = 0;
-        msg.msg_control = cmsgbuf;
-        msg.msg_controllen = sizeof(cmsgbuf);
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+	msg.msg_control = cmsgbuf;
+	msg.msg_controllen = sizeof(cmsgbuf);
 
-        iov.iov_base = data ? data : buf;
-        iov.iov_len = data ? size : sizeof(buf);
-        msg.msg_iov = &iov;
-        msg.msg_iovlen = 1;
+	iov.iov_base = data ? data : buf;
+	iov.iov_len = data ? size : sizeof(buf);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
 
 	ret = recvmsg(fd, &msg, 0);
 	if (ret <= 0)
 		goto out;
 
-        cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg = CMSG_FIRSTHDR(&msg);
 
-        if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(struct ucred)) &&
-            cmsg->cmsg_level == SOL_SOCKET &&
-            cmsg->cmsg_type == SCM_CREDENTIALS) {
+	if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(struct ucred)) &&
+			cmsg->cmsg_level == SOL_SOCKET &&
+			cmsg->cmsg_type == SCM_CREDENTIALS) {
 		memcpy(&cred, CMSG_DATA(cmsg), sizeof(cred));
 		if (cred.uid && (cred.uid != getuid() || cred.gid != getgid())) {
 			INFO("message denied for '%d/%d'", cred.uid, cred.gid);
 			return -EACCES;
 		}
-        }
+	}
 out:
-        return ret;
+	return ret;
 }
