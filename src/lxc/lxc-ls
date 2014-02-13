@@ -111,7 +111,8 @@ def getSubContainers(container):
     return None
 
 # Constants
-FIELDS = ("name", "state", "ipv4", "ipv6", "autostart", "pid")
+FIELDS = ("name", "state", "ipv4", "ipv6", "autostart", "pid",
+          "memory", "ram", "swap")
 
 # Begin parsing the command line
 parser = argparse.ArgumentParser(description=_("LXC: List containers"),
@@ -254,6 +255,45 @@ for container_name in lxc.list_containers(config_path=nest_lxcpath):
         except KeyError:
             pass
 
+    if 'memory' in args.fancy_format or \
+       'ram' in args.fancy_format or \
+       'swap' in args.fancy_format:
+
+        if container.running:
+            try:
+                memory_total = int(container.get_cgroup_item(
+                    "memory.usage_in_bytes"))
+            except:
+                memory_total = 0
+
+            try:
+                memory_swap = int(container.get_cgroup_item(
+                    "memory.memsw.usage_in_bytes"))
+            except:
+                memory_swap = 0
+        else:
+            memory_total = 0
+            memory_swap = 0
+
+    if 'memory' in args.fancy_format:
+        if container.running:
+            entry['memory'] = "%sMB" % round(memory_total / 1048576, 2)
+        else:
+            entry['memory'] = "-"
+
+    if 'ram' in args.fancy_format:
+        if container.running:
+            entry['ram'] = "%sMB" % round(
+                (memory_total - memory_swap) / 1048576, 2)
+        else:
+            entry['ram'] = "-"
+
+    if 'swap' in args.fancy_format:
+        if container.running:
+            entry['swap'] = "%sMB" % round(memory_swap / 1048576, 2)
+        else:
+            entry['swap'] = "-"
+
     # Get the IPs
     for family, protocol in {'inet': 'ipv4', 'inet6': 'ipv6'}.items():
         if protocol in args.fancy_format or args.nesting:
@@ -263,7 +303,6 @@ for container_name in lxc.list_containers(config_path=nest_lxcpath):
                 entry[protocol] = state
                 continue
 
-            # FIXME: We should get get_ips working as non-root
             if container.running:
                 if not SUPPORT_SETNS_NET:
                     entry[protocol] = 'UNKNOWN'
