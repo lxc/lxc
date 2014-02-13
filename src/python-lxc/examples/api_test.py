@@ -25,15 +25,15 @@
 
 import lxc
 import uuid
+import os
+import subprocess
 import sys
 import time
-
-# Some constants
-LXC_TEMPLATE = "ubuntu"
 
 # Let's pick a random name, avoiding clashes
 CONTAINER_NAME = str(uuid.uuid1())
 CLONE_NAME = str(uuid.uuid1())
+RENAME_NAME = str(uuid.uuid1())
 
 ## Instantiate the container instance
 print("Getting instance for '%s'" % CONTAINER_NAME)
@@ -48,9 +48,25 @@ assert(container.name == CONTAINER_NAME)
 assert(not container.running)
 assert(container.state == "STOPPED")
 
+# Try to get the host architecture for dpkg systems
+arch = "i386"
+try:
+    with open(os.path.devnull, "w") as devnull:
+        dpkg = subprocess.Popen(['dpkg', '--print-architecture'],
+                                stderr=devnull, stdout=subprocess.PIPE,
+                                universal_newlines=True)
+
+        if dpkg.wait() == 0:
+            arch = dpkg.stdout.read().strip()
+except:
+    pass
+
 ## Create a rootfs
-print("Creating rootfs using '%s'" % LXC_TEMPLATE)
-container.create(LXC_TEMPLATE)
+print("Creating rootfs using 'download', arch=%s" % arch)
+container.create("download", 0,
+                 {"dist": "ubuntu",
+                  "release": "trusty",
+                  "arch": arch})
 
 assert(container.defined)
 assert(container.name == CONTAINER_NAME
@@ -101,11 +117,22 @@ while not ips or count == 10:
     ips = container.get_ips()
     time.sleep(1)
     count += 1
-container.attach_wait(lxc.attach_run_command, ["ifconfig", "eth0"],
-                      namespaces=(lxc.CLONE_NEWNET + lxc.CLONE_NEWUTS))
+
+if os.geteuid():
+    container.attach_wait(lxc.attach_run_command, ["ifconfig", "eth0"],
+                          namespaces=(lxc.CLONE_NEWUSER + lxc.CLONE_NEWNET
+                                      + lxc.CLONE_NEWUTS))
+else:
+    container.attach_wait(lxc.attach_run_command, ["ifconfig", "eth0"],
+                          namespaces=(lxc.CLONE_NEWNET + lxc.CLONE_NEWUTS))
 
 # A few basic checks of the current state
 assert(len(ips) > 0)
+
+## Test running config
+assert(container.name == CONTAINER_NAME
+       == container.get_config_item("lxc.utsname")
+       == container.get_running_config_item("lxc.utsname"))
 
 ## Testing cgroups a bit
 print("Testing cgroup API")
@@ -155,12 +182,15 @@ assert(not container.running)
 assert(container.state == "STOPPED")
 
 ## Cloning the container
-print("Cloning the container")
-clone = lxc.Container(CLONE_NAME)
-clone.clone(container.name)
-clone.start()
-clone.stop()
-clone.destroy()
+print("Cloning the container as '%s'" % CLONE_NAME)
+clone = container.clone(CLONE_NAME)
+assert(clone is not False)
+
+print ("Renaming the clone to '%s'" % RENAME_NAME)
+rename = clone.rename(RENAME_NAME)
+rename.start()
+rename.stop()
+rename.destroy()
 
 ## Destroy the container
 print("Destroying the container")
