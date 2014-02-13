@@ -24,9 +24,6 @@
 # USA
 #
 
-import warnings
-warnings.filterwarnings("ignore", "The python-lxc API isn't yet stable")
-
 import lxc
 import sys
 import time
