@@ -1024,7 +1024,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	policy is a simple whitelist.  The second line therefore must
 	read "whitelist", with the rest of the file containing one (numeric)
 	sycall number per line.  Each syscall number is whitelisted,
-	while every unlisted number is blacklisted for use in teh container
+	while every unlisted number is blacklisted for use in the container
       </para>
 
       <para>

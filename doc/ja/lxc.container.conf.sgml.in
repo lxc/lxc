@@ -1427,14 +1427,46 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         <!--
         A container can be started with a reduced set of available
 	system calls by loading a seccomp profile at startup.  The
-	seccomp configuration file should begin with a version number
-	(which currently must be 1) on the first line, a policy type
-	(which must be 'whitelist') on the second line, followed by a
-	list of allowed system call numbers, one per line.
+	seccomp configuration file must begin with a version number
+	on the first line, a policy type on the second line, followed
+	by the configuration.
         -->
         コンテナは，起動時に seccomp プロファイルをロードすることで，利用可能なシステムコールを減らして起動することが可能です．
-        seccomp の設定ファイルは，最初の行がバージョン番号 (現在は 1 でなければならない) で，2 行目はポリシーのタイプ ('whitelist' でなければならない)，で始まる必要があり，その後に 1 行ごとに利用可能なシステムコールの番号が書かれたリストが続きます．
+        seccomp の設定ファイルは，1 行目がバージョン番号，2 行目がポリシーのタイプで始まる必要があり，その後に設定を書きます．
       </para>
+      <para>
+        <!--
+        Versions 1 and 2 are currently supported.  In version 1, the
+	policy is a simple whitelist.  The second line therefore must
+	read "whitelist", with the rest of the file containing one (numeric)
+	sycall number per line.  Each syscall number is whitelisted,
+	while every unlisted number is blacklisted for use in the container
+        -->
+        現時点では，バージョン番号は 1 と 2 をサポートしています．バージョン 1 では，ポリシーはシンプルなホワイトリストですので，2 行目は "whitelist" でなければなりません．
+        そして残りの行には 1 行に 1 つずつ，システムコール番号を書きます．各行のシステムコール番号がホワイトリスト化され，リストにない番号は，そのコンテナではブラックリストに入ります．
+      </para>
+
+      <para>
+        <!--
+       In version 2, the policy may be blacklist or whitelist,
+       supports per-rule and per-policy default actions, and supports
+       per-architecture system call resolution from textual names.
+          -->
+        バージョン 2 では，ポリシーはブラックリストもしくはホワイトリストで表され，ルールごとのアクションと，ポリシーごとのデフォルトのアクションを設定できます．そして，アーキテクチャごとの設定と，テキストで書かれたシステムコール名での設定が可能です．
+      </para>
+      <para>
+        <!--
+       An example blacklist policy, in which all system calls are
+       allowed except for mknod, which will simply do nothing and
+       return 0 (success), looks like:
+       -->
+        以下にブラックリストのポリシーの例を示します．これは mknod 以外の全てのシステムコールが許可され，mknod が呼ばれると，何もせずに単に 0(成功) を返します．
+      </para>
+<screen>
+2
+blacklist
+mknod errno 0
+</screen>
       <variablelist>
 	<varlistentry>
 	  <term>
