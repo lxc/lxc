@@ -95,7 +95,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       snapshot filesystem uses the backing store's snapshot functionality to create
       a very small copy-on-write snapshot of the original container.  Snapshot
       clones require the new container backing store to support snapshotting.  Currently
-      this includes only btrfs, lvm, overlayfs and zfs.  LVM devices do not support
+      this includes only aufs, btrfs, lvm, overlayfs and zfs.  LVM devices do not support
       snapshots of snapshots.
       -->
       <command>lxc-clone</command> は，新しいコンテナを既に存在するコンテナのクローンとして作製します．
@@ -103,7 +103,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       コピータイプのクローンは元のコンテナから新しいコンテナへ root ファイルシステムをコピーします．
       スナップショットファイルシステムは，バッキングストアのスナップショット機能を使い，元のコンテナの非常に小さな copy-on-write でのスナップショットを作製します．
       スナップショットでのクローンは，新しいコンテナのバッキングストアとしてスナップショット機能のサポートが必要になります．
-      現時点では，このようなバッキングストアとしては btrfs, lvm, overlayfs, zfs のみをサポートします．
+      現時点では，このようなバッキングストアとしては aufs, btrfs, lvm, overlayfs, zfs のみをサポートします．
       LVM デバイスはスナップショットのスナップショットはサポートしていません．
     </para>
 
@@ -111,12 +111,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       The backing store of the new container will be the same type as the
       original container,
-      with one exception:  overlayfs snapshots can be created of directory backed
-      containers.  This can be requested by using the <replaceable>-B overlayfs</replaceable>
+      with one exception:  aufs and overlayfs snapshots can be created of directory backed
+      containers.  This can be requested by using (for overlayfs) the <replaceable>-B overlayfs</replaceable>
       arguments.
       -->
-      新しいコンテナのバッキングストアは，一つの例外を除いては，元のコンテナのタイプと同じになります: overlayfs では，ディレクトリバックエンドのコンテナのスナップショットを作製することが可能です．
-      これは，<replaceable>-B overlayfs</replaceable> という引数を使って指定することが可能です．
+      新しいコンテナのバッキングストアは，元のコンテナのタイプと同じになります．ただし，ディレクトリバックエンドのコンテナのスナップショットを aufs もしくは overlayfs で作製することは可能です．
+      例えば，overlayfs の場合は <replaceable>-B overlayfs</replaceable> という引数を使って指定することが可能です．
     </para>
 
     <para>
@@ -259,14 +259,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Select a different backing store for the new container.  By
 	    default the same as the original container's is used.  Note that
 	    currently changing the backingstore is only supported for
-	    overlayfs snapshots of directory backed containers.  Valid
-	    backing stores include dir (directory), btrfs, lvm, zfs, loop
+	    aufs and overlayfs snapshots of directory backed containers.  Valid
+	    backing stores include dir (directory), aufs, btrfs, lvm, zfs, loop
 	    and overlayfs.
             -->
             新しいコンテナで元のコンテナと違うバッキングストアを使う場合のバッキングストアを選択します．
             デフォルトでは元のコンテナと同じものが使われます．
-            現時点では，バッキングストアの変更は，ディレクトリバックエンドのコンテナに対する overlayfs スナップショットに対してのみサポートされます．
-            有効なバッキングストアは dir(directory), btrfs, lvm, zfs, loop, overlayfs を含みます．
+            現時点では，バッキングストアの変更は，ディレクトリバックエンドのコンテナに対する aufs と overlayfs のスナップショットに対してのみサポートされます．
+            有効なバッキングストアは dir(directory), aufs, btrfs, lvm, zfs, loop, overlayfs です．
 	  </para>
 	</listitem>
       </varlistentry>
