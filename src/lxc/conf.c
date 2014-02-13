@@ -1119,6 +1119,38 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	return 0;
 }
 
+
+/*
+ * Note: This is a verbatum copy of what is in monitor.c.  We're just
+ * usint it here to generate a safe subdirectory in /dev/ for the
+ * containers /dev/
+ */
+
+/* Note we don't use SHA-1 here as we don't want to depend on HAVE_GNUTLS.
+ * FNV has good anti collision properties and we're not worried
+ * about pre-image resistance or one-way-ness, we're just trying to make
+ * the name unique in the 108 bytes of space we have.
+ */
+#define FNV1A_64_INIT ((uint64_t)0xcbf29ce484222325ULL)
+static uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval)
+{
+	unsigned char *bp;
+
+	for(bp = buf; bp < (unsigned char *)buf + len; bp++)
+	{
+		/* xor the bottom with the current octet */
+		hval ^= (uint64_t)*bp;
+
+		/* gcc optimised:
+		 * multiply by the 64 bit FNV magic prime mod 2^64
+		 */
+		hval += (hval << 1) + (hval << 4) + (hval << 5) +
+			(hval << 7) + (hval << 8) + (hval << 40);
+	}
+
+	return hval;
+}
+
 /*
  * Check to see if a directory has something mounted on it and,
  * if it does, return the fstype.
