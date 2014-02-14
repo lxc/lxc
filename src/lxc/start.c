@@ -676,6 +676,9 @@ static int do_start(void *data)
 
 	close(handler->sigfd);
 
+	if (lxc_check_inherited(handler->conf, -1))
+		return -1;
+
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
 	handler->ops->start(handler, handler->data);
@@ -1029,9 +1032,6 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
 	struct start_args start_arg = {
 		.argv = argv,
 	};
-
-	if (lxc_check_inherited(conf, -1))
-		return -1;
 
 	conf->need_utmp_watch = 1;
 	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath);
