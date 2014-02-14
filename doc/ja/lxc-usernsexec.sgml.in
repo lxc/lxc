@@ -54,7 +54,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
   <refsynopsisdiv>
     <cmdsynopsis>
-      <command>lxc-unshare</command>
+      <command>lxc-usernsexec</command>
       <arg choice="opt">-m <replaceable>uid-map</replaceable></arg>
       <arg choice="req">-- command</arg>
     </cmdsynopsis>
