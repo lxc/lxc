@@ -66,7 +66,7 @@ static void test_two_locks(void)
 		fprintf(stderr, "%d; failed to get lock\n", __LINE__);
 		exit(1);
 	}
-	if (write(p[1], &c, 1) < 0) {
+	if (write(p[1], "a", 1) < 0) {
 		perror("write");
 		exit(1);
 	}
