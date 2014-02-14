@@ -167,7 +167,7 @@ static int utmp_handler(int fd, uint32_t events, void *data,
 		return -1;
 	}
 
-	if (read(fd, buffer, size) < 0) {
+	if (read(fd, buffer, size) < size) {
 		SYSERROR("failed to read notification");
 		return -1;
 	}

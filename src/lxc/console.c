@@ -116,7 +116,7 @@ static int lxc_console_cb_sigwinch_fd(int fd, uint32_t events, void *cbdata,
 	struct signalfd_siginfo siginfo;
 	struct lxc_tty_state *ts = cbdata;
 
-	if (read(fd, &siginfo, sizeof(siginfo)) < 0) {
+	if (read(fd, &siginfo, sizeof(siginfo)) < sizeof(siginfo)) {
 		ERROR("failed to read signal info");
 		return -1;
 	}
