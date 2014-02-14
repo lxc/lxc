@@ -317,8 +317,10 @@ static int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char*
 		if (extra_keep_store) {
 			size_t i;
 			for (i = 0; extra_keep[i]; i++) {
-				if (extra_keep_store[i])
-					setenv(extra_keep[i], extra_keep_store[i], 1);
+				if (extra_keep_store[i]) {
+					if (setenv(extra_keep[i], extra_keep_store[i], 1) < 0)
+						SYSERROR("Unable to set environment variable");
+				}
 				free(extra_keep_store[i]);
 			}
 			free(extra_keep_store);
