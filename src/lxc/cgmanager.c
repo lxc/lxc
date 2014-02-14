@@ -422,8 +422,10 @@ static inline bool cgm_create(void *hdata)
 	tmp = lxc_string_replace("%n", d->name, d->cgroup_pattern);
 	if (!tmp)
 		return false;
-	if (strlen(tmp) > MAXPATHLEN)
+	if (strlen(tmp) >= MAXPATHLEN) {
+		free(tmp);
 		return false;
+	}
 	strcpy(result, tmp);
 	baselen = strlen(result);
 	free(tmp);
