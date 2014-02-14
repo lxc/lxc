@@ -1026,8 +1026,11 @@ static int attach_child_main(void* data)
 		flags = fcntl(fd, F_GETFL);
 		if (flags < 0)
 			continue;
-		if (flags & FD_CLOEXEC)
-			fcntl(fd, F_SETFL, flags & ~FD_CLOEXEC);
+		if (flags & FD_CLOEXEC) {
+			if (fcntl(fd, F_SETFL, flags & ~FD_CLOEXEC) < 0) {
+				SYSERROR("Unable to clear CLOEXEC from fd");
+			}
+		}
 	}
 
 	/* we're done, so we can now do whatever the user intended us to do */
