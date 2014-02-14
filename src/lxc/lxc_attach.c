@@ -78,7 +78,8 @@ static int add_to_simple_array(char ***array, ssize_t *capacity, char *value)
 		*capacity = new_capacity;
 	}
 
-	(*array)[count] = value;
+	if (array)
+		(*array)[count] = value;
 	return 0;
 }
 
