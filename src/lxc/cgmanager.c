@@ -114,7 +114,8 @@ static bool cgm_dbus_connect(void)
 
 static void cgm_dbus_disconnect(void)
 {
-	nih_free(cgroup_manager);
+	if (cgroup_manager)
+		nih_free(cgroup_manager);
 	cgroup_manager = NULL;
 }
 
@@ -886,5 +887,6 @@ static struct cgroup_ops cgmanager_ops = {
 	.attach = cgm_attach,
 	.mount_cgroup = cgm_mount_cgroup,
 	.nrtasks = cgm_get_nrtasks,
+	.disconnect = cgm_dbus_disconnect,
 };
 #endif

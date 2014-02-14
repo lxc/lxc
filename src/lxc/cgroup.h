@@ -49,6 +49,7 @@ struct cgroup_ops {
 	bool (*attach)(const char *name, const char *lxcpath, pid_t pid);
 	bool (*mount_cgroup)(void *hdata, const char *root, int type);
 	int (*nrtasks)(void *hdata);
+	void (*disconnect)(void);
 };
 
 extern bool cgroup_attach(const char *name, const char *lxcpath, pid_t pid);
@@ -64,5 +65,6 @@ extern bool cgroup_create_legacy(struct lxc_handler *handler);
 extern int cgroup_nrtasks(struct lxc_handler *handler);
 extern const char *cgroup_get_cgroup(struct lxc_handler *handler, const char *subsystem);
 extern bool cgroup_unfreeze(struct lxc_handler *handler);
+extern void restart_cgroups(void);
 
 #endif
