@@ -306,7 +306,10 @@ static bool cull_entries(int fd, char *me, char *t, char *br)
 
 	nic = alloca(100);
 
-	fstat(fd, &sb);
+	if (fstat(fd, &sb) < 0) {
+		fprintf(stderr, "Failed to fstat: %s", strerror(errno));
+		return false;
+	}
 	len = sb.st_size;
 	if (len == 0)
 		return true;
@@ -383,7 +386,10 @@ static bool get_nic_if_avail(int fd, char *me, int pid, char *intype, char *br, 
 	if (allowed == 0)
 		return false;
 
-	fstat(fd, &sb);
+	if (fstat(fd, &sb) < 0) {
+		fprintf(stderr, "Failed to fstat: %s", strerror(errno));
+		return false;
+	}
 	len = sb.st_size;
 	if (len != 0) {
 		buf = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
