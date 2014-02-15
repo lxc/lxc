@@ -650,6 +650,9 @@ static int do_start(void *data)
 	if (lsm_process_label_set(lsm_label, 1, 1) < 0)
 		goto out_warn_father;
 
+	if (lxc_check_inherited(handler->conf, handler->sigfd))
+		return -1;
+
 	/* If we mounted a temporary proc, then unmount it now */
 	tmp_proc_unmount(handler->conf);
 
@@ -677,9 +680,6 @@ static int do_start(void *data)
 	}
 
 	close(handler->sigfd);
-
-	if (lxc_check_inherited(handler->conf, -1))
-		return -1;
 
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
