@@ -649,7 +649,9 @@ static int do_start(void *data)
 		lsm_label = handler->conf->lsm_se_context;
 	if (lsm_process_label_set(lsm_label, 1, 1) < 0)
 		goto out_warn_father;
-	lsm_proc_unmount(handler->conf);
+
+	/* If we mounted a temporary proc, then unmount it now */
+	tmp_proc_unmount(handler->conf);
 
 	if (lxc_seccomp_load(handler->conf) != 0)
 		goto out_warn_father;

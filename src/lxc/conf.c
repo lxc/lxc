@@ -2617,7 +2617,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->groups);
 	new->lsm_aa_profile = NULL;
 	new->lsm_se_context = NULL;
-	new->lsm_umount_proc = 0;
+	new->tmp_umount_proc = 0;
 
 	for (i = 0; i < LXC_NS_MAX; i++)
 		new->inherit_ns_fd[i] = -1;
@@ -3518,6 +3518,77 @@ static int check_autodev( const char *rootfs, void *data )
 	return 0;
 }
 
+/*
+ * _do_tmp_proc_mount: Mount /proc inside container if not already
+ * mounted
+ *
+ * @rootfs : the rootfs where proc should be mounted
+ *
+ * Returns < 0 on failure, 0 if the correct proc was already mounted
+ * and 1 if a new proc was mounted.
+ */
+static int do_tmp_proc_mount(const char *rootfs)
+{
+	char path[MAXPATHLEN];
+	char link[20];
+	int linklen, ret;
+
+	ret = snprintf(path, MAXPATHLEN, "%s/proc/self", rootfs);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		SYSERROR("proc path name too long");
+		return -1;
+	}
+	memset(link, 0, 20);
+	linklen = readlink(path, link, 20);
+	INFO("I am %d, /proc/self points to '%s'", getpid(), link);
+	ret = snprintf(path, MAXPATHLEN, "%s/proc", rootfs);
+	if (linklen < 0) /* /proc not mounted */
+		goto domount;
+	/* can't be longer than rootfs/proc/1 */
+	if (strncmp(link, "1", linklen) != 0) {
+		/* wrong /procs mounted */
+		umount2(path, MNT_DETACH); /* ignore failure */
+		goto domount;
+	}
+	/* the right proc is already mounted */
+	return 0;
+
+domount:
+	if (mount("proc", path, "proc", 0, NULL))
+		return -1;
+	INFO("Mounted /proc in container for security transition");
+	return 1;
+}
+
+int tmp_proc_mount(struct lxc_conf *lxc_conf)
+{
+	int mounted;
+
+	if (lxc_conf->rootfs.path == NULL || strlen(lxc_conf->rootfs.path) == 0) {
+		if (mount("proc", "/proc", "proc", 0, NULL)) {
+			SYSERROR("Failed mounting /proc, proceeding");
+			mounted = 0;
+		} else
+			mounted = 1;
+	} else
+		mounted = do_tmp_proc_mount(lxc_conf->rootfs.mount);
+	if (mounted == -1) {
+		SYSERROR("failed to mount /proc in the container.");
+		return -1;
+	} else if (mounted == 1) {
+		lxc_conf->tmp_umount_proc = 1;
+	}
+	return 0;
+}
+
+void tmp_proc_unmount(struct lxc_conf *lxc_conf)
+{
+	if (lxc_conf->tmp_umount_proc == 1) {
+		umount("/proc");
+		lxc_conf->tmp_umount_proc = 0;
+	}
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	const char *name = handler->name;
@@ -3621,8 +3692,8 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	/* mount /proc if needed for LSM transition */
-	if (lsm_proc_mount(lxc_conf) < 0) {
+	/* mount /proc if it's not already there */
+	if (tmp_proc_mount(lxc_conf) < 0) {
 		ERROR("failed to LSM mount proc for '%s'", name);
 		return -1;
 	}

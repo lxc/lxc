@@ -301,7 +301,7 @@ struct lxc_conf {
 
 	char *lsm_aa_profile;
 	char *lsm_se_context;
-	int lsm_umount_proc;
+	int tmp_umount_proc;
 	char *seccomp;  // filename with the seccomp rules
 #if HAVE_SCMP_FILTER_CTX
 	scmp_filter_ctx *seccomp_ctx;
@@ -378,4 +378,5 @@ extern int ttys_shift_ids(struct lxc_conf *c);
 extern int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data);
 extern int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 			 char **mntdata);
+extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
 #endif
