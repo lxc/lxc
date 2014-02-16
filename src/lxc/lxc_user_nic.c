@@ -599,5 +599,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	// write the name of the interface pair to the stdout - like eth0:veth9MT2L4
+	fprintf(stdout, "%s:%s\n", vethname, nicname);
 	exit(0);
 }
