@@ -44,6 +44,7 @@
 #include "log.h"
 #include "conf.h"
 #include "network.h"
+#include "lxcseccomp.h"
 
 #if HAVE_SYS_PERSONALITY_H
 #include <sys/personality.h>
@@ -2124,6 +2125,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_conf_int(c, retv, inlen, c->start_order);
 	else if (strcmp(key, "lxc.group") == 0)
 		return lxc_get_item_groups(c, retv, inlen);
+	else if (strcmp(key, "lxc.seccomp") == 0)
+		v = c->seccomp;
 	else return -1;
 
 	if (!v)
@@ -2151,6 +2154,10 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		return lxc_clear_hooks(c, key);
 	else if (strncmp(key, "lxc.group", 9) == 0)
 		return lxc_clear_groups(c);
+	else if (strncmp(key, "lxc.seccomp", 11) == 0) {
+		lxc_seccomp_free(c);
+		return 0;
+	}
 
 	return -1;
 }
