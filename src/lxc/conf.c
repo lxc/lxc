@@ -3011,13 +3011,14 @@ void lxc_delete_network(struct lxc_handler *handler)
 
 #define LXC_USERNIC_PATH LIBEXECDIR "/lxc/lxc-user-nic"
 
+/* lxc-user-nic returns "interface_name:interface_name\n" */
+#define MAX_BUFFER_SIZE IFNAMSIZ*2 + 2
 static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 {
 	pid_t child;
 	int bytes, pipefd[2];
 	char *token, *saveptr = NULL;
-	/* lxc-user-nic returns "interface_name:interface_name" format */
-	char buffer[IFNAMSIZ*2 + 1];
+	char buffer[MAX_BUFFER_SIZE];
 
 	if (netdev->type != LXC_NET_VETH) {
 		ERROR("nic type %d not support for unprivileged use",
@@ -3043,7 +3044,7 @@ static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 		/* redirect the stdout to write-end of the pipe */
 		dup2(pipefd[1], STDOUT_FILENO);
 		/* close the write-end of the pipe */
-		close(pipefd[0]);
+		close(pipefd[1]);
 
 		// Call lxc-user-nic pid type bridge
 		char pidstr[20];
@@ -3058,7 +3059,7 @@ static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	bytes = read(pipefd[0], &buffer, IFNAMSIZ*2 + 1);
+	bytes = read(pipefd[0], &buffer, MAX_BUFFER_SIZE);
 	if (bytes < 0) {
 		SYSERROR("read failed");
 	}
