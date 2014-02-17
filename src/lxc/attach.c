@@ -613,7 +613,7 @@ static bool fetch_seccomp(const char *name, const char *lxcpath,
 	if (!c->lxc_conf)
 		return false;
 	if (lxc_read_seccomp_config(c->lxc_conf) < 0) {
-		ERROR("Error reaading seccomp policy");
+		ERROR("Error reading seccomp policy");
 		return false;
 	}
 
