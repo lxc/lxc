@@ -245,7 +245,7 @@ AC_ARG_ENABLE([cgmanager],
 	[], [enable_cgmanager=auto])
 
 if test "x$enable_cgmanager" = "xauto" ; then
-	AC_CHECK_LIB([cgmanager],[cgmanager_create],[enable_cgmanager=yes],[enable_cgmanager=no],[-lnih -lnih-dbus])
+	AC_CHECK_LIB([cgmanager],[cgmanager_create],[enable_cgmanager=yes],[enable_cgmanager=no],[-lnih -lnih-dbus -ldbus-1])
 fi
 AM_CONDITIONAL([ENABLE_CGMANAGER], [test "x$enable_cgmanager" = "xyes"])
 
