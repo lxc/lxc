@@ -51,8 +51,8 @@ int main(int argc, char *argv[])
 	}
 	c->set_config_item(c, "lxc.network.link", "lxcbr0");
 	c->set_config_item(c, "lxc.network.flags", "up");
-	if (!c->createl(c, "ubuntu", NULL, NULL, 0, "-r", "lucid", NULL)) {
-		fprintf(stderr, "%d: failed to create a lucid container\n", __LINE__);
+	if (!c->createl(c, "ubuntu", NULL, NULL, 0, "-r", "trusty", NULL)) {
+		fprintf(stderr, "%d: failed to create a trusty container\n", __LINE__);
 		goto out;
 	}
 
