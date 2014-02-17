@@ -21,37 +21,38 @@
 
 set -eu
 
-LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
-LXC_HOOK_DIR="@LXCHOOKDIR@"
 LOCALSTATEDIR="@LOCALSTATEDIR@"
+LXC_HOOK_DIR="@LXCHOOKDIR@"
+LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
 
 # Defaults
-DOWNLOAD_DIST=
-DOWNLOAD_RELEASE=
 DOWNLOAD_ARCH=
-DOWNLOAD_VARIANT="default"
-DOWNLOAD_SERVER="images.linuxcontainers.org"
-DOWNLOAD_KEYID="0xBAEFF88C22F6E216"
-DOWNLOAD_KEYSERVER="hkp://pool.sks-keyservers.net"
-DOWNLOAD_VALIDATE="true"
+DOWNLOAD_BUILD=
+DOWNLOAD_COMPAT_LEVEL=1
+DOWNLOAD_DIST=
 DOWNLOAD_FLUSH_CACHE="false"
 DOWNLOAD_FORCE_CACHE="false"
-DOWNLOAD_MODE="system"
-DOWNLOAD_USE_CACHE="false"
-DOWNLOAD_URL=
-DOWNLOAD_SHOW_HTTP_WARNING="true"
-DOWNLOAD_SHOW_GPG_WARNING="true"
-DOWNLOAD_READY_GPG="false"
-DOWNLOAD_COMPAT_LEVEL=1
-DOWNLOAD_LIST_IMAGES="false"
-DOWNLOAD_BUILD=
 DOWNLOAD_INTERACTIVE="false"
+DOWNLOAD_KEYID="0xBAEFF88C22F6E216"
+DOWNLOAD_KEYSERVER="hkp://pool.sks-keyservers.net"
+DOWNLOAD_LIST_IMAGES="false"
+DOWNLOAD_MODE="system"
+DOWNLOAD_READY_GPG="false"
+DOWNLOAD_RELEASE=
+DOWNLOAD_SERVER="images.linuxcontainers.org"
+DOWNLOAD_SHOW_GPG_WARNING="true"
+DOWNLOAD_SHOW_HTTP_WARNING="true"
+DOWNLOAD_TARGET="system"
+DOWNLOAD_URL=
+DOWNLOAD_USE_CACHE="false"
+DOWNLOAD_VALIDATE="true"
+DOWNLOAD_VARIANT="default"
 
+LXC_MAPPED_GID=
+LXC_MAPPED_UID=
 LXC_NAME=
 LXC_PATH=
 LXC_ROOTFS=
-LXC_MAPPED_UID=
-LXC_MAPPED_GID=
 
 # Deal with GPG over http proxy
 if [ -n "${http_proxy:-}" ]; then
@@ -141,10 +142,10 @@ gpg_validate() {
 
 in_userns() {
     [ -e /proc/self/uid_map ] || { echo no; return; }
-    [ "$(wc -l /proc/self/uid_map | awk '{ print $1 }')" -eq 1 ] || \
-        { echo yes; return; }
     line=$(awk '{ print $1 " " $2 " " $3 }' /proc/self/uid_map)
     [ "$line" = "0 0 4294967295" ] && { echo no; return; }
+    [ "$(cat /proc/self/uid_map)" = "$(cat /proc/1/uid_map)" ] && \
+        { echo userns-root; return; }
     echo yes
 }
 
@@ -245,12 +246,20 @@ if [ -z "$LXC_NAME" ] || [ -z "$LXC_PATH" ] || [ -z "$LXC_ROOTFS" ]; then
     exit 1
 fi
 
-if [ "$(in_userns)" = "yes" ]; then
-    if [ -z "$LXC_MAPPED_UID" ] || [ "$LXC_MAPPED_UID" = "-1" ]; then
-        echo "ERROR: In a user namespace without a map." 1>&2
-        exit 1
+USERNS=$(in_userns)
+
+if [ "$USERNS" != "no" ]; then
+    if [ "$USERNS" = "yes" ]; then
+        if [ -z "$LXC_MAPPED_UID" ] || [ "$LXC_MAPPED_UID" = "-1" ]; then
+            echo "ERROR: In a user namespace without a map." 1>&2
+            exit 1
+        fi
+        DOWNLOAD_MODE="user"
+        DOWNLOAD_TARGET="user"
+    else
+        DOWNLOAD_MODE="user"
+        DOWNLOAD_TARGET="system"
     fi
-    DOWNLOAD_MODE="user"
 fi
 
 if [ -z "$DOWNLOAD_DIST" ] || [ -z "$DOWNLOAD_RELEASE" ] || \
@@ -337,7 +346,7 @@ if [ "$DOWNLOAD_LIST_IMAGES" = "true" ] || \
 fi
 
 # Setup the cache
-if [ "$DOWNLOAD_MODE" = "system" ]; then
+if [ "$DOWNLOAD_TARGET" = "system" ]; then
     LXC_CACHE_BASE="$LOCALSTATEDIR/cache/lxc/"
 else
     LXC_CACHE_BASE="$HOME/.cache/lxc/"
