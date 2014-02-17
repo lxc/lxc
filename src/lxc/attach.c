@@ -51,6 +51,9 @@
 #include "commands.h"
 #include "cgroup.h"
 #include "lxclock.h"
+#include "conf.h"
+#include "lxcseccomp.h"
+#include <lxc/lxccontainer.h>
 #include "lsm/lsm.h"
 
 #if HAVE_SYS_PERSONALITY_H
@@ -135,6 +138,8 @@ static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
 {
 	if (ctx->lsm_label)
 		free(ctx->lsm_label);
+	if (ctx->container)
+		lxc_container_put(ctx->container);
 	free(ctx);
 }
 
@@ -593,6 +598,28 @@ static int attach_child_main(void* data);
 /* define default options if no options are supplied by the user */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
+static bool fetch_seccomp(const char *name, const char *lxcpath,
+		struct lxc_proc_context_info *i, lxc_attach_options_t *options)
+{
+	struct lxc_container *c;
+	
+	if (!(options->namespaces & CLONE_NEWNS) || !(options->attach_flags & LXC_ATTACH_LSM))
+		return true;
+
+	c = lxc_container_new(name, lxcpath);
+	if (!c)
+		return false;
+	i->container = c;
+	if (!c->lxc_conf)
+		return false;
+	if (lxc_read_seccomp_config(c->lxc_conf) < 0) {
+		ERROR("Error reaading seccomp policy");
+		return false;
+	}
+
+	return true;
+}
+
 int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_function, void* exec_payload, lxc_attach_options_t* options, pid_t* attached_process)
 {
 	int ret, status;
@@ -616,6 +643,9 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		ERROR("failed to get context of the init process, pid = %ld", (long)init_pid);
 		return -1;
 	}
+
+	if (!fetch_seccomp(name, lxcpath, init_ctx, options))
+		WARN("Failed to get seccomp policy");
 
 	cwd = getcwd(NULL, 0);
 
@@ -993,6 +1023,13 @@ static int attach_child_main(void* data)
 			rexit(-1);
 		}
 	}
+
+	if (init_ctx->container && init_ctx->container->lxc_conf &&
+			lxc_seccomp_load(init_ctx->container->lxc_conf) != 0) {
+		ERROR("Loading seccomp policy");
+		rexit(-1);
+	}
+
 	lxc_proc_put_context_info(init_ctx);
 
 	/* The following is done after the communication socket is

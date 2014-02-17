@@ -27,8 +27,11 @@
 #include <sys/types.h>
 #include <lxc/attach_options.h>
 
+struct lxc_conf;
+
 struct lxc_proc_context_info {
 	char *lsm_label;
+	struct lxc_container *container;
 	unsigned long personality;
 	unsigned long long capability_mask;
 };
