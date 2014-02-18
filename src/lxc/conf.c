@@ -2374,16 +2374,19 @@ static int setup_netdev(struct lxc_netdev *netdev)
 				return -1;
 			}
 		}
-		return 0;
+		if (netdev->type != LXC_NET_VETH)
+			return 0;
+		netdev->ifindex = if_nametoindex(netdev->name);
 	}
 
 	/* get the new ifindex in case of physical netdev */
-	if (netdev->type == LXC_NET_PHYS)
+	if (netdev->type == LXC_NET_PHYS) {
 		if (!(netdev->ifindex = if_nametoindex(netdev->link))) {
 			ERROR("failed to get ifindex for %s",
 				netdev->link);
 			return -1;
 		}
+	}
 
 	/* retrieve the name of the interface */
 	if (!if_indextoname(netdev->ifindex, current_ifname)) {
@@ -2398,11 +2401,13 @@ static int setup_netdev(struct lxc_netdev *netdev)
 			netdev->link : "eth%d";
 
 	/* rename the interface name */
-	err = lxc_netdev_rename_by_name(ifname, netdev->name);
-	if (err) {
-		ERROR("failed to rename %s->%s : %s", ifname, netdev->name,
-		      strerror(-err));
-		return -1;
+	if (strcmp(ifname, netdev->name) != 0) {
+		err = lxc_netdev_rename_by_name(ifname, netdev->name);
+		if (err) {
+			ERROR("failed to rename %s->%s : %s", ifname, netdev->name,
+			      strerror(-err));
+			return -1;
+		}
 	}
 
 	/* Re-read the name of the interface because its name has changed
