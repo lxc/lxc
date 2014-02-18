@@ -30,6 +30,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <pthread.h>
 #include <grp.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -52,6 +53,28 @@
 
 #ifdef HAVE_CGMANAGER
 lxc_log_define(lxc_cgmanager, lxc);
+
+static pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void lock_mutex(pthread_mutex_t *l)
+{
+	int ret;
+
+	if ((ret = pthread_mutex_lock(l)) != 0) {
+		fprintf(stderr, "pthread_mutex_lock returned:%d %s", ret, strerror(ret));
+		exit(1);
+	}
+}
+
+static void unlock_mutex(pthread_mutex_t *l)
+{
+	int ret;
+
+	if ((ret = pthread_mutex_unlock(l)) != 0) {
+		fprintf(stderr, "pthread_mutex_unlock returned:%d %s", ret, strerror(ret));
+		exit(1);
+	}
+}
 
 #include <nih-dbus/dbus_connection.h>
 #include <cgmanager/cgmanager-client.h>
@@ -78,6 +101,7 @@ static bool cgm_dbus_connect(void)
 	DBusConnection *connection;
 	dbus_error_init(&dbus_error);
 
+	lock_mutex(&thread_mutex);
 	connection = nih_dbus_connect(CGMANAGER_DBUS_SOCK, cgm_dbus_disconnected);
 	if (!connection) {
 		NihError *nerr;
@@ -86,6 +110,7 @@ static bool cgm_dbus_connect(void)
 			nerr->message);
 		nih_free(nerr);
 		dbus_error_free(&dbus_error);
+		unlock_mutex(&thread_mutex);
 		return false;
 	}
 	dbus_connection_set_exit_on_disconnect(connection, FALSE);
@@ -99,6 +124,7 @@ static bool cgm_dbus_connect(void)
 		nerr = nih_error_get();
 		ERROR("Error opening cgmanager proxy: %s", nerr->message);
 		nih_free(nerr);
+		unlock_mutex(&thread_mutex);
 		return false;
 	}
 
@@ -109,14 +135,17 @@ static bool cgm_dbus_connect(void)
 		ERROR("Error pinging cgroup manager: %s", nerr->message);
 		nih_free(nerr);
 	}
+	unlock_mutex(&thread_mutex);
 	return true;
 }
 
 static void cgm_dbus_disconnect(void)
 {
+	lock_mutex(&thread_mutex);
 	if (cgroup_manager)
 		nih_free(cgroup_manager);
 	cgroup_manager = NULL;
+	unlock_mutex(&thread_mutex);
 }
 
 static void cgm_dbus_disconnected(DBusConnection *connection)
@@ -168,6 +197,7 @@ static int send_creds(int sock, int rpid, int ruid, int rgid)
 
 static bool lxc_cgmanager_create(const char *controller, const char *cgroup_path, int32_t *existed)
 {
+	lock_mutex(&thread_mutex);
 	if ( cgmanager_create_sync(NULL, cgroup_manager, controller,
 				       cgroup_path, existed) != 0) {
 		NihError *nerr;
@@ -175,9 +205,11 @@ static bool lxc_cgmanager_create(const char *controller, const char *cgroup_path
 		ERROR("call to cgmanager_create_sync failed: %s", nerr->message);
 		nih_free(nerr);
 		ERROR("Failed to create %s:%s", controller, cgroup_path);
+		unlock_mutex(&thread_mutex);
 		return false;
 	}
 
+	unlock_mutex(&thread_mutex);
 	return true;
 }
 
@@ -185,6 +217,7 @@ static bool lxc_cgmanager_escape(void)
 {
 	pid_t me = getpid();
 	int i;
+	lock_mutex(&thread_mutex);
 	for (i = 0; i < nr_subsystems; i++) {
 		if (cgmanager_move_pid_abs_sync(NULL, cgroup_manager,
 					subsystems[i], "/", me) != 0) {
@@ -193,10 +226,12 @@ static bool lxc_cgmanager_escape(void)
 			ERROR("call to cgmanager_move_pid_abs_sync(%s) failed: %s",
 					subsystems[i], nerr->message);
 			nih_free(nerr);
+			unlock_mutex(&thread_mutex);
 			return false;
 		}
 	}
 
+	unlock_mutex(&thread_mutex);
 	return true;
 }
 
@@ -214,6 +249,7 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path,
 
 	uid_t caller_nsuid = get_ns_uid(origuid);
 
+	lock_mutex(&thread_mutex);
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sv) < 0) {
 		SYSERROR("Error creating socketpair");
 		goto out;
@@ -275,6 +311,7 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path,
 out:
 	close(sv[0]);
 	close(sv[1]);
+	unlock_mutex(&thread_mutex);
 	if (ret == 1 && *buf == '1')
 		return 0;
 	return -1;
@@ -296,14 +333,17 @@ static int chown_cgroup_wrapper(void *data)
 static bool lxc_cgmanager_chmod(const char *controller,
 		const char *cgroup_path, const char *file, int mode)
 {
+	lock_mutex(&thread_mutex);
 	if (cgmanager_chmod_sync(NULL, cgroup_manager, controller,
 			cgroup_path, file, mode) != 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
 		ERROR("call to cgmanager_chmod_sync failed: %s", nerr->message);
 		nih_free(nerr);
+		unlock_mutex(&thread_mutex);
 		return false;
 	}
+	unlock_mutex(&thread_mutex);
 	return true;
 }
 
@@ -339,14 +379,17 @@ static bool chown_cgroup(const char *controller, const char *cgroup_path,
 static void cgm_remove_cgroup(const char *controller, const char *path)
 {
 	int existed;
+	lock_mutex(&thread_mutex);
 	if ( cgmanager_remove_sync(NULL, cgroup_manager, controller,
 				   path, CG_REMOVE_RECURSIVE, &existed) != 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
 		ERROR("call to cgmanager_remove_sync failed: %s", nerr->message);
 		nih_free(nerr);
+		unlock_mutex(&thread_mutex);
 		ERROR("Error removing %s:%s", controller, path);
 	}
+	unlock_mutex(&thread_mutex);
 	if (existed == -1)
 		INFO("cgroup removal attempt: %s:%s did not exist", controller, path);
 }
@@ -476,14 +519,17 @@ next:
 static bool lxc_cgmanager_enter(pid_t pid, const char *controller,
 		const char *cgroup_path)
 {
+	lock_mutex(&thread_mutex);
 	if (cgmanager_move_pid_sync(NULL, cgroup_manager, controller,
 			cgroup_path, pid) != 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
 		ERROR("call to cgmanager_move_pid_sync failed: %s", nerr->message);
 		nih_free(nerr);
+		unlock_mutex(&thread_mutex);
 		return false;
 	}
+	unlock_mutex(&thread_mutex);
 	return true;
 }
 
@@ -525,14 +571,17 @@ static int cgm_get_nrtasks(void *hdata)
 	if (!d || !d->cgroup_path)
 		return false;
 
+	lock_mutex(&thread_mutex);
 	if (cgmanager_get_tasks_sync(NULL, cgroup_manager, subsystems[0],
 				     d->cgroup_path, &pids, &pids_len) != 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
 		ERROR("call to cgmanager_get_tasks_sync failed: %s", nerr->message);
 		nih_free(nerr);
+		unlock_mutex(&thread_mutex);
 		return -1;
 	}
+	unlock_mutex(&thread_mutex);
 	nih_free(pids);
 	return pids_len;
 }
@@ -553,6 +602,7 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
 	if (!cgroup)
 		return -1;
+	lock_mutex(&thread_mutex);
 	if (cgmanager_get_value_sync(NULL, cgroup_manager, controller, cgroup, filename, &result) != 0) {
 		/*
 		 * must consume the nih error
@@ -563,8 +613,10 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		nerr = nih_error_get();
 		nih_free(nerr);
 		free(cgroup);
+		unlock_mutex(&thread_mutex);
 		return -1;
 	}
+	unlock_mutex(&thread_mutex);
 	free(cgroup);
 	newlen = strlen(result);
 	if (!value) {
@@ -590,6 +642,7 @@ static int cgm_do_set(const char *controller, const char *file,
 			 const char *cgroup, const char *value)
 {
 	int ret;
+	lock_mutex(&thread_mutex);
 	ret = cgmanager_set_value_sync(NULL, cgroup_manager, controller,
 				 cgroup, file, value);
 	if (ret != 0) {
@@ -599,6 +652,7 @@ static int cgm_do_set(const char *controller, const char *file,
 		nih_free(nerr);
 		ERROR("Error setting cgroup %s limit %s", file, cgroup);
 	}
+	unlock_mutex(&thread_mutex);
 	return ret;
 }
 
@@ -630,11 +684,13 @@ static void free_subsystems(void)
 {
 	int i;
 
+	lock_mutex(&thread_mutex);
 	for (i = 0; i < nr_subsystems; i++)
 		free(subsystems[i]);
 	free(subsystems);
 	subsystems = NULL;
 	nr_subsystems = 0;
+	unlock_mutex(&thread_mutex);
 }
 
 static bool collect_subsytems(void)
@@ -646,9 +702,12 @@ static bool collect_subsytems(void)
 	if (subsystems) // already initialized
 		return true;
 
+	lock_mutex(&thread_mutex);
 	f = fopen_cloexec("/proc/cgroups", "r");
-	if (!f)
+	if (!f) {
+		unlock_mutex(&thread_mutex);
 		return false;
+	}
 	while (getline(&line, &sz, f) != -1) {
 		char **tmp;
 		if (line[0] == '#')
@@ -671,6 +730,8 @@ static bool collect_subsytems(void)
 	}
 	fclose(f);
 
+	unlock_mutex(&thread_mutex);
+
 	if (!nr_subsystems) {
 		ERROR("No cgroup subsystems found");
 		return false;
@@ -680,6 +741,7 @@ static bool collect_subsytems(void)
 
 out_free:
 	fclose(f);
+	unlock_mutex(&thread_mutex);
 	free_subsystems();
 	return false;
 }
@@ -711,6 +773,7 @@ static bool cgm_unfreeze(void *hdata)
 	if (!d || !d->cgroup_path)
 		return false;
 
+	lock_mutex(&thread_mutex);
 	if (cgmanager_set_value_sync(NULL, cgroup_manager, "freezer", d->cgroup_path,
 			"freezer.state", "THAWED") != 0) {
 		NihError *nerr;
@@ -718,8 +781,10 @@ static bool cgm_unfreeze(void *hdata)
 		ERROR("call to cgmanager_set_value_sync failed: %s", nerr->message);
 		nih_free(nerr);
 		ERROR("Error unfreezing %s", d->cgroup_path);
+		unlock_mutex(&thread_mutex);
 		return false;
 	}
+	unlock_mutex(&thread_mutex);
 	return true;
 }
 
