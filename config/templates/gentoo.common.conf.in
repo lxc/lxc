@@ -1,7 +1,7 @@
 # Gentoo common default configuration
 # This is the most feature-full container configuration
 # But security is not the goal.
-# Looking for more security, see gentoo.common.conf
+# Looking for more security, see gentoo.moresecure.conf
 
 # sysfs
 lxc.mount.entry=sys sys sysfs defaults 0 0
