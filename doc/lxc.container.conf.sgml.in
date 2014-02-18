@@ -608,8 +608,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refsect2>
       <title>/dev directory</title>
       <para>
-	By default, lxc does nothing with the container's
-	<filename>/dev</filename>.  This allows the container's
+	By default, lxc creates a few symbolic links (fd,stdin,stdout,stderr)
+	in the container's <filename>/dev</filename> directory but does not
+	automatically create device node entries. This allows the container's
 	<filename>/dev</filename> to be set up as needed in the container
 	rootfs.  If lxc.autodev is set to 1, then after mounting the container's
 	rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
