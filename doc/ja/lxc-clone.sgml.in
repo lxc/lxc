@@ -110,12 +110,13 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <para>
       <!--
       The backing store of the new container will be the same type as the
-      original container,
-      with one exception:  aufs and overlayfs snapshots can be created of directory backed
-      containers.  This can be requested by using (for overlayfs) the <replaceable>-B overlayfs</replaceable>
-      arguments.
+      original container, with one exception, overlay containers.
+      aufs and overlayfs snapshots can be created of directory backed
+      containers.  This can be requested by using (for overlayfs) the
+      <replaceable>-B overlayfs</replaceable> arguments.
       -->
-      新しいコンテナのバッキングストアは，元のコンテナのタイプと同じになります．ただし，ディレクトリバックエンドのコンテナのスナップショットを aufs もしくは overlayfs で作製することは可能です．
+      新しいコンテナのバッキングストアは，オーバーレイタイプのコンテナを除いては元のコンテナのタイプと同じになります．
+      ディレクトリバックエンドのコンテナのスナップショットを aufs もしくは overlayfs で作成することは可能です．
       例えば，overlayfs の場合は <replaceable>-B overlayfs</replaceable> という引数を使って指定することが可能です．
     </para>
 
