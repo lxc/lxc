@@ -3283,7 +3283,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 		c->config_path = strdup(lxc_global_config_value("lxc.lxcpath"));
 
 	if (!c->config_path) {
-		fprintf(stderr, "Out of memory");
+		fprintf(stderr, "Out of memory\n");
 		goto err;
 	}
 

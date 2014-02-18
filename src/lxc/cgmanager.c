@@ -61,7 +61,7 @@ static void lock_mutex(pthread_mutex_t *l)
 	int ret;
 
 	if ((ret = pthread_mutex_lock(l)) != 0) {
-		fprintf(stderr, "pthread_mutex_lock returned:%d %s", ret, strerror(ret));
+		fprintf(stderr, "pthread_mutex_lock returned:%d %s\n", ret, strerror(ret));
 		exit(1);
 	}
 }
@@ -71,7 +71,7 @@ static void unlock_mutex(pthread_mutex_t *l)
 	int ret;
 
 	if ((ret = pthread_mutex_unlock(l)) != 0) {
-		fprintf(stderr, "pthread_mutex_unlock returned:%d %s", ret, strerror(ret));
+		fprintf(stderr, "pthread_mutex_unlock returned:%d %s\n", ret, strerror(ret));
 		exit(1);
 	}
 }

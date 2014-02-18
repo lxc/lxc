@@ -281,22 +281,22 @@ int main(int argc, char *argv[])
 	printf("%d: get_config_item (cgroup.devices.devices.allow) returned %d %s\n", __LINE__, ret, v3);
 
 	if (!c->clear_config_item(c, "lxc.cgroup")) {
-		fprintf(stderr, "%d: failed clearing lxc.cgroup", __LINE__);
+		fprintf(stderr, "%d: failed clearing lxc.cgroup\n", __LINE__);
 		ret = 1;
 		goto out;
 	}
 	if (!c->clear_config_item(c, "lxc.cap.drop")) {
-		fprintf(stderr, "%d: failed clearing lxc.cap.drop", __LINE__);
+		fprintf(stderr, "%d: failed clearing lxc.cap.drop\n", __LINE__);
 		ret = 1;
 		goto out;
 	}
 	if (!c->clear_config_item(c, "lxc.mount.entries")) {
-		fprintf(stderr, "%d: failed clearing lxc.mount.entries", __LINE__);
+		fprintf(stderr, "%d: failed clearing lxc.mount.entries\n", __LINE__);
 		ret = 1;
 		goto out;
 	}
 	if (!c->clear_config_item(c, "lxc.hook")) {
-		fprintf(stderr, "%d: failed clearing lxc.hook", __LINE__);
+		fprintf(stderr, "%d: failed clearing lxc.hook\n", __LINE__);
 		ret = 1;
 		goto out;
 	}

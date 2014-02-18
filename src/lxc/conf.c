@@ -3132,7 +3132,7 @@ static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 
 	ret = snprintf(path, PATH_MAX, "/proc/%d/%cid_map", pid, idtype == ID_TYPE_UID ? 'u' : 'g');
 	if (ret < 0 || ret >= PATH_MAX) {
-		fprintf(stderr, "%s: path name too long", __func__);
+		fprintf(stderr, "%s: path name too long\n", __func__);
 		return -E2BIG;
 	}
 	f = fopen(path, "w");

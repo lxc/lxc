@@ -219,7 +219,7 @@ static int instanciate_veth(char *n1, char **n2)
 	 * of a container */
 	err = setup_private_host_hw_addr(n1);
 	if (err) {
-		fprintf(stderr, "failed to change mac address of host interface '%s' : %s",
+		fprintf(stderr, "failed to change mac address of host interface '%s' : %s\n",
 			n1, strerror(-err));
 	}
 
@@ -307,7 +307,7 @@ static bool cull_entries(int fd, char *me, char *t, char *br)
 	nic = alloca(100);
 
 	if (fstat(fd, &sb) < 0) {
-		fprintf(stderr, "Failed to fstat: %s", strerror(errno));
+		fprintf(stderr, "Failed to fstat: %s\n", strerror(errno));
 		return false;
 	}
 	len = sb.st_size;
@@ -387,7 +387,7 @@ static bool get_nic_if_avail(int fd, char *me, int pid, char *intype, char *br, 
 		return false;
 
 	if (fstat(fd, &sb) < 0) {
-		fprintf(stderr, "Failed to fstat: %s", strerror(errno));
+		fprintf(stderr, "Failed to fstat: %s\n", strerror(errno));
 		return false;
 	}
 	len = sb.st_size;

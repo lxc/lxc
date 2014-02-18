@@ -224,7 +224,7 @@ int main(int argc, char *argv[]) {
                     }
                 }
                 if (args[j].return_code) {
-                    fprintf(stderr, "thread returned error %d", args[j].return_code);
+                    fprintf(stderr, "thread returned error %d\n", args[j].return_code);
                     exit(EXIT_FAILURE);
                 }
             }

@@ -68,7 +68,7 @@ static void test_list_func(const char *lxcpath, const char *type,
 		struct lxc_container *c = clist[i];
 		printf("%-10s  Got container struct %s, name %s\n", type, c->name, names[i]);
 		if (strcmp(c->name, names[i]))
-			fprintf(stderr, "ERROR: name mismatch!");
+			fprintf(stderr, "ERROR: name mismatch!\n");
 		free(names[i]);
 		lxc_container_put(c);
 	}
