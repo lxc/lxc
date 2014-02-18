@@ -1881,7 +1881,32 @@ static int mount_entry(const char *fsname, const char *target,
 	return 0;
 }
 
-static inline int mount_entry_on_systemfs(const struct mntent *mntent)
+/*
+ * Remove 'optional', 'create=dir', and 'create=file' from mntopt
+ */
+static void cull_mntent_opt(struct mntent *mntent)
+{
+	int i;
+	char *p, *p2;
+	char *list[] = {"create=dir",
+			"create=file",
+			"optional",
+			NULL };
+
+	for (i=0; list[i]; i++) {
+		if (!(p = strstr(mntent->mnt_opts, list[i])))
+			continue;
+		p2 = strchr(p, ',');
+		if (!p2) {
+			/* no more mntopts, so just chop it here */
+			*p = '\0';
+			continue;
+		}
+		memmove(p, p2+1, strlen(p2+1)+1);
+	}
+}
+
+static inline int mount_entry_on_systemfs(struct mntent *mntent)
 {
 	unsigned long mntflags;
 	char *mntdata;
@@ -1911,6 +1936,8 @@ static inline int mount_entry_on_systemfs(const struct mntent *mntent)
 			fclose(pathfile);
 	}
 
+	cull_mntent_opt(mntent);
+
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
 		free(mntdata);
 		return -1;
@@ -1928,7 +1955,7 @@ static inline int mount_entry_on_systemfs(const struct mntent *mntent)
 	return ret;
 }
 
-static int mount_entry_on_absolute_rootfs(const struct mntent *mntent,
+static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 					  const struct lxc_rootfs *rootfs,
 					  const char *lxc_name)
 {
@@ -1998,6 +2025,7 @@ skipabs:
 		else
 			fclose(pathfile);
 	}
+	cull_mntent_opt(mntent);
 
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
 		free(mntdata);
@@ -2017,7 +2045,7 @@ out:
 	return ret;
 }
 
-static int mount_entry_on_relative_rootfs(const struct mntent *mntent,
+static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 					  const char *rootfs)
 {
 	char path[MAXPATHLEN];
@@ -2055,6 +2083,7 @@ static int mount_entry_on_relative_rootfs(const struct mntent *mntent,
 		else
 			fclose(pathfile);
 	}
+	cull_mntent_opt(mntent);
 
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
 		free(mntdata);
