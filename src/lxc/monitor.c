@@ -57,6 +57,9 @@ int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path, size_t fifo_path
 	const char *rundir;
 
 	rundir = get_rundir();
+	if (!rundir)
+		return -1;
+
 	if (do_mkdirp) {
 		ret = snprintf(fifo_path, fifo_path_sz, "%s/lxc/%s", rundir, lxcpath);
 		if (ret < 0 || ret >= fifo_path_sz) {
