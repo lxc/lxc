@@ -3114,13 +3114,23 @@ static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 	token = strtok_r(buffer, ":", &saveptr);
 	if (!token)
 		return -1;
-	netdev->name = strdup(token);
+	netdev->name = malloc(IFNAMSIZ+1);
+	if (!netdev->name) {
+		ERROR("Out of memory");
+		return -1;
+	}
+	memset(netdev->name, 0, IFNAMSIZ+1);
+	strncpy(netdev->name, token, IFNAMSIZ);
 
 	/* fill netdev->veth_attr.pair field */
 	token = strtok_r(NULL, ":", &saveptr);
 	if (!token)
 		return -1;
 	netdev->priv.veth_attr.pair = strdup(token);
+	if (!netdev->priv.veth_attr.pair) {
+		ERROR("Out of memory");
+		return -1;
+	}
 
 	return 0;
 }
@@ -3139,7 +3149,9 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 		if (netdev->type == LXC_NET_VETH && !am_root) {
 			if (unpriv_assign_nic(netdev, pid))
 				return -1;
-			// TODO fill in netdev->ifindex and name
+			// lxc-user-nic has moved the nic to the new ns.
+			// unpriv_assign_nic() fills in netdev->name.
+			// netdev->ifindex will be filed in at setup_netdev.
 			continue;
 		}
 

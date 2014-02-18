@@ -563,6 +563,52 @@ static int must_drop_cap_sys_boot(struct lxc_conf *conf)
 	return 0;
 }
 
+/*
+ * netpipe is used in the unprivileged case to transfer the ifindexes
+ * from parent to child
+ */
+static int netpipe = -1;
+
+static inline int count_veths(struct lxc_list *network)
+{
+	struct lxc_list *iterator;
+	struct lxc_netdev *netdev;
+	int count = 0;
+
+	lxc_list_for_each(iterator, network) {
+		netdev = iterator->elem;
+		if (netdev->type != LXC_NET_VETH)
+			continue;
+		count++;
+	}
+	return count;
+}
+
+static int read_unpriv_netifindex(struct lxc_list *network)
+{
+	struct lxc_list *iterator;
+	struct lxc_netdev *netdev;
+
+	if (netpipe == -1)
+		return 0;
+	lxc_list_for_each(iterator, network) {
+		netdev = iterator->elem;
+		if (netdev->type != LXC_NET_VETH)
+			continue;
+		if (!(netdev->name = malloc(IFNAMSIZ))) {
+			ERROR("Out of memory");
+			close(netpipe);
+			return -1;
+		}
+		if (read(netpipe, netdev->name, IFNAMSIZ) != IFNAMSIZ) {
+			close(netpipe);
+			return -1;
+		}
+	}
+	close(netpipe);
+	return 0;
+}
+
 static int do_start(void *data)
 {
 	struct lxc_handler *handler = data;
@@ -596,6 +642,9 @@ static int do_start(void *data)
 	 */
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
 		return -1;
+
+	if (read_unpriv_netifindex(&handler->conf->network) < 0)
+		goto out_warn_father;
 
 	/*
 	 * if we are in a new user namespace, become root there to have
@@ -728,6 +777,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	const char *name = handler->name;
 	int saved_ns_fd[LXC_NS_MAX];
 	int preserve_mask = 0, i;
+	int netpipepair[2], nveths;
 
 	for (i = 0; i < LXC_NS_MAX; i++)
 		if (handler->conf->inherit_ns_fd[i] != -1)
@@ -816,6 +866,15 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (attach_ns(handler->conf->inherit_ns_fd) < 0)
 		goto out_delete_net;
 
+	if (am_unpriv() && (nveths = count_veths(&handler->conf->network))) {
+		if (pipe(netpipepair) < 0) {
+			SYSERROR("Error creating pipe");
+			goto out_delete_net;
+		}
+		/* store netpipe in the global var for do_start's use */
+		netpipe = netpipepair[0];
+	}
+
 	/* Create a process in a new set of namespaces */
 	handler->pid = lxc_clone(do_start, handler, handler->clone_flags);
 	if (handler->pid < 0) {
@@ -855,6 +914,23 @@ static int lxc_spawn(struct lxc_handler *handler)
 			ERROR("failed to create the configured network");
 			goto out_delete_net;
 		}
+	}
+
+	if (netpipe != -1) {
+		struct lxc_list *iterator;
+		struct lxc_netdev *netdev;
+
+		close(netpipe);
+		lxc_list_for_each(iterator, &handler->conf->network) {
+			netdev = iterator->elem;
+			if (netdev->type != LXC_NET_VETH)
+				continue;
+			if (write(netpipepair[1], netdev->name, IFNAMSIZ) != IFNAMSIZ) {
+				ERROR("Error writing veth name to container");
+				goto out_delete_net;
+			}
+		}
+		close(netpipepair[1]);
 	}
 
 	/* map the container uids - the container became an invalid
