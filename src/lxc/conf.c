@@ -1913,6 +1913,7 @@ static inline int mount_entry_on_systemfs(struct mntent *mntent)
 	int ret;
 	FILE *pathfile = NULL;
 	char* pathdirname = NULL;
+	bool optional = hasmntopt(mntent, "optional") != NULL;
 
 	if (hasmntopt(mntent, "create=dir")) {
 		if (mkdir_p(mntent->mnt_dir, 0755) < 0) {
@@ -1946,7 +1947,7 @@ static inline int mount_entry_on_systemfs(struct mntent *mntent)
 	ret = mount_entry(mntent->mnt_fsname, mntent->mnt_dir,
 			  mntent->mnt_type, mntflags, mntdata);
 
-	if (hasmntopt(mntent, "optional") != NULL)
+	if (optional)
 		ret = 0;
 
 	free(pathdirname);
@@ -1967,6 +1968,7 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	const char *lxcpath;
 	FILE *pathfile = NULL;
 	char *pathdirname = NULL;
+	bool optional = hasmntopt(mntent, "optional") != NULL;
 
 	lxcpath = lxc_global_config_value("lxc.lxcpath");
 	if (!lxcpath) {
@@ -2037,7 +2039,7 @@ skipabs:
 
 	free(mntdata);
 
-	if (hasmntopt(mntent, "optional") != NULL)
+	if (optional)
 		ret = 0;
 
 out:
@@ -2054,6 +2056,7 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	int ret;
 	FILE *pathfile = NULL;
 	char *pathdirname = NULL;
+	bool optional = hasmntopt(mntent, "optional") != NULL;
 
 	/* relative to root mount point */
 	ret = snprintf(path, sizeof(path), "%s/%s", rootfs, mntent->mnt_dir);
@@ -2093,7 +2096,7 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
 			  mntflags, mntdata);
 
-	if (hasmntopt(mntent, "optional") != NULL)
+	if (optional)
 		ret = 0;
 
 	free(pathdirname);
