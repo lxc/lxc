@@ -94,10 +94,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
     <para>
       The backing store of the new container will be the same type as the
-      original container,
-      with one exception:  aufs and overlayfs snapshots can be created of directory backed
-      containers.  This can be requested by using (for overlayfs) the <replaceable>-B overlayfs</replaceable>
-      arguments.
+      original container, with one exception, overlay containers.
+      aufs and overlayfs snapshots can be created of directory backed
+      containers.  This can be requested by using (for overlayfs) the
+      <replaceable>-B overlayfs</replaceable> arguments.
     </para>
 
     <para>
