@@ -54,7 +54,7 @@ int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path, size_t fifo_path
 			  int do_mkdirp)
 {
 	int ret;
-	const char *rundir;
+	char *rundir;
 
 	rundir = get_rundir();
 	if (!rundir)
@@ -64,19 +64,23 @@ int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path, size_t fifo_path
 		ret = snprintf(fifo_path, fifo_path_sz, "%s/lxc/%s", rundir, lxcpath);
 		if (ret < 0 || ret >= fifo_path_sz) {
 			ERROR("rundir/lxcpath (%s/%s) too long for monitor fifo", rundir, lxcpath);
+			free(rundir);
 			return -1;
 		}
 		ret = mkdir_p(fifo_path, 0755);
 		if (ret < 0) {
 			ERROR("unable to create monitor fifo dir %s", fifo_path);
+			free(rundir);
 			return ret;
 		}
 	}
 	ret = snprintf(fifo_path, fifo_path_sz, "%s/lxc/%s/monitor-fifo", rundir, lxcpath);
 	if (ret < 0 || ret >= fifo_path_sz) {
 		ERROR("rundir/lxcpath (%s/%s) too long for monitor fifo", rundir, lxcpath);
+		free(rundir);
 		return -1;
 	}
+	free(rundir);
 	return 0;
 }
 
