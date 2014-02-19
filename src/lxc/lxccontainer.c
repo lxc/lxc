@@ -913,7 +913,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 				exit(1);
 			}
 			if (detect_shared_rootfs()) {
-				if (mount("", "", NULL, MS_SLAVE|MS_REC, 0)) {
+				if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
 					SYSERROR("Failed to make / rslave to run template");
 					ERROR("Continuing...");
 				}

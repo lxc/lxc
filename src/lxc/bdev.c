@@ -2387,6 +2387,12 @@ static int rsync_rootfs(struct rsync_data *data)
 		SYSERROR("unshare CLONE_NEWNS");
 		return -1;
 	}
+	if (detect_shared_rootfs()) {
+		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
+			SYSERROR("Failed to make / rslave to run rsync");
+			ERROR("Continuing...");
+		}
+	}
 
 	// If not a snapshot, copy the fs.
 	if (orig->ops->mount(orig) < 0) {
