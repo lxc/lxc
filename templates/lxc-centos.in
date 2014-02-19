@@ -19,7 +19,7 @@
 
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
 
 # You should have received a copy of the GNU Lesser General Public
@@ -74,8 +74,8 @@ lxc_network_link=lxcbr0
 
 # Detect use under userns (unsupported)
 for arg in "$@"; do
-    [ "$arg" == "--" ] && break
-    if [ "$arg" == "--mapped-uid" -o "$arg" == "--mapped-gid" ]; then
+    [ "$arg" = "--" ] && break
+    if [ "$arg" = "--mapped-uid" -o "$arg" = "--mapped-gid" ]; then
         echo "This template can't be used for unprivileged containers." 1>&2
         echo "You may want to try the \"download\" template instead." 1>&2
         exit 1

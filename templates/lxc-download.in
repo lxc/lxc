@@ -301,7 +301,7 @@ if [ "$DOWNLOAD_LIST_IMAGES" = "true" ] || \
     # Parse it
     echo ""
     echo "---"
-    echo "DIST\tRELEASE\tARCH\tVARIANT\tBUILD"
+    printf "DIST\tRELEASE\tARCH\tVARIANT\tBUILD\n"
     echo "---"
     while read line; do
         # Basic CSV parser
@@ -316,7 +316,7 @@ if [ "$DOWNLOAD_LIST_IMAGES" = "true" ] || \
         [ -n "$DOWNLOAD_VARIANT" ] && [ "$4" != "$DOWNLOAD_VARIANT" ] && continue
         [ -z "$5" ] || [ -z "$6" ] && continue
 
-        echo "$1\t$2\t$3\t$4\t$5"
+        printf "$1\t$2\t$3\t$4\t$5\n"
     done < ${DOWNLOAD_TEMP}/index
     echo "---"
 
