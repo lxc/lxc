@@ -2036,7 +2036,7 @@ static int handle_cgroup_settings(struct cgroup_mount_point *mp,
 			if (r < 1 || buf[0] != '1') {
 				r = lxc_write_to_file(cc_path, "1", 1, false);
 				if (r < 0)
-					SYSERROR("failed to set memory.use_hiararchy to 1; continuing");
+					SYSERROR("failed to set memory.use_hierarchy to 1; continuing");
 			}
 			free(cc_path);
 		}
