@@ -226,12 +226,18 @@ static int instanciate_veth(char *n1, char **n2)
 	return netdev_set_flag(n1, IFF_UP);
 }
 
+static int get_mtu(char *name)
+{
+	int idx = if_nametoindex(name);
+	return netdev_get_mtu(idx);
+}
+
 static bool create_nic(char *nic, char *br, int pid, char **cnic)
 {
 	char *veth1buf, *veth2buf;
 	veth1buf = alloca(IFNAMSIZ);
 	veth2buf = alloca(IFNAMSIZ);
-	int ret;
+	int ret, mtu;
 
 	ret = snprintf(veth1buf, IFNAMSIZ, "%s", nic);
 	if (ret < 0 || ret >= IFNAMSIZ) {
@@ -243,6 +249,16 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 	if (instanciate_veth(veth1buf, &veth2buf) < 0) {
 		fprintf(stderr, "Error creating veth tunnel\n");
 		return false;
+	}
+
+	/* copy the bridge's mtu to both ends */
+	mtu = get_mtu(br);
+	if (mtu != -1) {
+		if (lxc_netdev_set_mtu(veth1buf, mtu) < 0 ||
+				lxc_netdev_set_mtu(veth2buf, mtu) < 0) {
+			fprintf(stderr, "Failed setting mtu\n");
+			goto out_del;
+		}
 	}
 
 	/* attach veth1 to bridge */

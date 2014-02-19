@@ -138,4 +138,5 @@ extern char *lxc_mkifname(char *template);
 
 extern const char *lxc_net_type_to_str(int type);
 extern int setup_private_host_hw_addr(char *veth1);
+extern int netdev_get_mtu(int ifindex);
 #endif
