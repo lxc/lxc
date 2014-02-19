@@ -381,8 +381,10 @@ const char *get_rundir()
 	char *rundir;
 	const char *homedir;
 
-	if (geteuid() == 0)
+	if (geteuid() == 0) {
 		rundir = RUNTIME_PATH;
+		return rundir;
+	}
 
 	rundir = getenv("XDG_RUNTIME_DIR");
 	if (!rundir) {
