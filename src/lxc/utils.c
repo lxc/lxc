@@ -382,7 +382,7 @@ char *get_rundir()
 	const char *homedir;
 
 	if (geteuid() == 0) {
-		rundir = RUNTIME_PATH;
+		rundir = strdup(RUNTIME_PATH);
 		return rundir;
 	}
 
