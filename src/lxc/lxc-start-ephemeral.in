@@ -48,6 +48,20 @@ def randomMAC():
            random.randint(0x00, 0xff)]
     return ':'.join(map(lambda x: "%02x" % x, mac))
 
+
+def get_rundir():
+    if os.geteuid() == 0:
+        return "@RUNTIME_PATH@"
+
+    if "XDG_RUNTIME_DIR" in os.environ:
+        return os.environ["XDG_RUNTIME_DIR"]
+
+    if "HOME" in os.environ:
+        return "%s/.cache/lxc/run/" % os.environ["HOME"]
+
+    raise Exception("Unable to find a runtime directory")
+
+
 # Begin parsing the command line
 parser = argparse.ArgumentParser(description=_(
                                  "LXC: Start an ephemeral container"),
@@ -214,10 +228,15 @@ LXC_NAME="%s"
                          entry[0],
                          entry[1]))
         elif args.union_type == "aufs":
+            xino_path = "%s/lxc/aufs.xino" % get_rundir()
+            if not os.path.exists(os.path.basename(xino_path)):
+                os.makedirs(os.path.basename(xino_path))
+
             fd.write("mount -n -t aufs "
-                     "-o br=%s=rw:%s=ro,noplink none %s\n" % (
+                     "-o br=%s=rw:%s=ro,noplink,xino=%s none %s\n" % (
                          target,
                          entry[0],
+                         xino_path,
                          entry[1]))
         count += 1
 
