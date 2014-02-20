@@ -368,6 +368,9 @@ case "$arch" in
         ;;
     x86_64|"")
         ;;
+    arm*)
+        apk_arch=armhf
+        ;;
     *)
         die "unsupported architecture: $arch"
         ;;
