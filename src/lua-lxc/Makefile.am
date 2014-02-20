@@ -18,7 +18,7 @@ core_so_LDFLAGS = \
 	-L$(top_srcdir)/src/lxc \
 	-Wl,-soname,core.so.$(firstword $(subst ., ,$(VERSION)))
 
-core_so_LDADD = -llxc $(LUA_LIBS)
+core_so_LDADD = -llxc
 
 lxc.lua:
 
