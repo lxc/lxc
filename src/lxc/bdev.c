@@ -2068,6 +2068,7 @@ static int aufs_mount(struct bdev *bdev)
 	int len;
 	unsigned long mntflags;
 	char *mntdata;
+	char *runpath;
 	int ret;
 
 	if (strcmp(bdev->type, "aufs"))
@@ -2098,19 +2099,31 @@ static int aufs_mount(struct bdev *bdev)
 	if (!rundir)
 		return -1;
 
+	len = strlen(rundir) + strlen("/lxc") + 1;
+	runpath = alloca(len);
+	ret = snprintf(runpath, len, "%s/lxc", rundir);
+	if (ret < 0 || ret >= len) {
+		free(mntdata);
+		return -1;
+	}
+	if (mkdir_p(runpath, 0755) < 0) {
+		free(mntdata);
+		return -1;
+	}
+
 	// AUFS does not work on top of certain filesystems like (XFS or Btrfs)
 	// so add xino=RUNDIR/lxc/aufs.xino parameter to mount options
 	//
 	// see http://www.mail-archive.com/aufs-users@lists.sourceforge.net/msg02587.html
 	if (mntdata) {
-		len = strlen(lower) + strlen(upper) + strlen(rundir) + strlen("br==rw:=ro,,xino=/lxc/aufs.xino") + strlen(mntdata) + 1;
+		len = strlen(lower) + strlen(upper) + strlen(runpath) + strlen("br==rw:=ro,,xino=/aufs.xino") + strlen(mntdata) + 1;
 		options = alloca(len);
-		ret = snprintf(options, len, "br=%s=rw:%s=ro,%s,xino=%s/lxc/aufs.xino", upper, lower, mntdata, rundir);
+		ret = snprintf(options, len, "br=%s=rw:%s=ro,%s,xino=%s/aufs.xino", upper, lower, mntdata, runpath);
 	}
 	else {
-		len = strlen(lower) + strlen(upper) + strlen(rundir) + strlen("br==rw:=ro,xino=/lxc/aufs.xino") + 1;
+		len = strlen(lower) + strlen(upper) + strlen(runpath) + strlen("br==rw:=ro,xino=/aufs.xino") + 1;
 		options = alloca(len);
-		ret = snprintf(options, len, "br=%s=rw:%s=ro,xino=%s/lxc/aufs.xino", upper, lower, rundir);
+		ret = snprintf(options, len, "br=%s=rw:%s=ro,xino=%s/aufs.xino", upper, lower, runpath);
 	}
 
 	free(rundir);
