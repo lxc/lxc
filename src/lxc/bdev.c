@@ -2104,10 +2104,12 @@ static int aufs_mount(struct bdev *bdev)
 	ret = snprintf(runpath, len, "%s/lxc", rundir);
 	if (ret < 0 || ret >= len) {
 		free(mntdata);
+		free(rundir);
 		return -1;
 	}
 	if (mkdir_p(runpath, 0755) < 0) {
 		free(mntdata);
+		free(rundir);
 		return -1;
 	}
 
