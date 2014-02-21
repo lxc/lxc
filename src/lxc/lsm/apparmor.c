@@ -125,7 +125,7 @@ static int apparmor_am_unconfined(void)
  *
  * @label   : the profile to set
  * @default : use the default profile if label is NULL
- * @on_exec : the new profile will take effect on exec(2) not immediately
+ * @on_exec : this is ignored.  Apparmor profile will be changed immediately
  *
  * Returns 0 on success, < 0 on failure
  *
@@ -149,19 +149,12 @@ static int apparmor_process_label_set(const char *label, int use_default,
 		return 0;
 	}
 
-	if (on_exec) {
-		if (aa_change_onexec(label) < 0) {
-			SYSERROR("failed to change exec apparmor profile to %s", label);
-			return -1;
-		}
-	} else {
-		if (aa_change_profile(label) < 0) {
-			SYSERROR("failed to change apparmor profile to %s", label);
-			return -1;
-		}
+	if (aa_change_profile(label) < 0) {
+		SYSERROR("failed to change apparmor profile to %s", label);
+		return -1;
 	}
 
-	INFO("changed apparmor%s profile to %s", on_exec ? " exec" : "", label);
+	INFO("changed apparmor profile to %s", label);
 	return 0;
 }
 
