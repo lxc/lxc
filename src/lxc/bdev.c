@@ -477,7 +477,10 @@ static int dir_destroy(struct bdev *orig)
 static int dir_create(struct bdev *bdev, const char *dest, const char *n,
 			struct bdev_specs *specs)
 {
-	bdev->src = strdup(dest);
+	if (specs->dir)
+		bdev->src = strdup(specs->dir);
+	else
+		bdev->src = strdup(dest);
 	bdev->dest = strdup(dest);
 	if (!bdev->src || !bdev->dest) {
 		ERROR("Out of memory");

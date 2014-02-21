@@ -256,8 +256,7 @@ int main(int argc, char *argv[])
 			spec.lvm.thinpool = my_args.thinpool;
 	}
 	if (my_args.dir) {
-		ERROR("--dir is not yet supported");
-		exit(1);
+		spec.dir = my_args.dir;
 	}
 
 	if (strcmp(my_args.bdevtype, "_unset") == 0)
