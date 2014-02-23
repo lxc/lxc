@@ -219,7 +219,7 @@ LXC_NAME="%s"
         fd.write("mkdir -p %s %s\n" % (target, entry[1]))
 
         if args.storage_type == "tmpfs":
-            fd.write("mount -n -t tmpfs none %s\n" % (target))
+            fd.write("mount -n -t tmpfs -o mode=0755 none %s\n" % (target))
 
         if args.union_type == "overlayfs":
             fd.write("mount -n -t overlayfs"
