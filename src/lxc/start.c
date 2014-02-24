@@ -1050,6 +1050,9 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 			DEBUG("Container rebooting");
 			handler->conf->reboot = 1;
 			break;
+		case SIGSYS: /* seccomp */
+			DEBUG("Container violated its seccomp policy");
+			break;
 		default:
 			DEBUG("unknown exit status for init: %d", WTERMSIG(status));
 			break;
