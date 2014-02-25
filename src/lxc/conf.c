@@ -1427,46 +1427,6 @@ static int setup_autodev(const char *root)
 }
 
 /*
- * Detect whether / is mounted MS_SHARED.  The only way I know of to
- * check that is through /proc/self/mountinfo.
- * I'm only checking for /.  If the container rootfs or mount location
- * is MS_SHARED, but not '/', then you're out of luck - figuring that
- * out would be too much work to be worth it.
- */
-#define LINELEN 4096
-int detect_shared_rootfs(void)
-{
-	char buf[LINELEN], *p;
-	FILE *f;
-	int i;
-	char *p2;
-
-	f = fopen("/proc/self/mountinfo", "r");
-	if (!f)
-		return 0;
-	while (fgets(buf, LINELEN, f)) {
-		for (p = buf, i=0; p && i < 4; i++)
-			p = index(p+1, ' ');
-		if (!p)
-			continue;
-		p2 = index(p+1, ' ');
-		if (!p2)
-			continue;
-		*p2 = '\0';
-		if (strcmp(p+1, "/") == 0) {
-			// this is '/'.  is it shared?
-			p = index(p2+1, ' ');
-			if (p && strstr(p, "shared:")) {
-				fclose(f);
-				return 1;
-			}
-		}
-	}
-	fclose(f);
-	return 0;
-}
-
-/*
  * I'll forgive you for asking whether all of this is needed :)  The
  * answer is yes.
  * pivot_root will fail if the new root, the put_old dir, or the parent

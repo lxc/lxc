@@ -35,6 +35,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/mount.h>
 #include <sys/wait.h>
 #include <sched.h>
 #include <pwd.h>
@@ -110,6 +111,12 @@ static int do_child(void *vargv)
 	if (unshare(CLONE_NEWNS) < 0) {
 		perror("unshare CLONE_NEWNS");
 		return -1;
+	}
+	if (detect_shared_rootfs()) {
+		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
+			printf("Failed to make / rslave");
+			return -1;
+		}
 	}
 	execvp(argv[0], argv);
 	perror("execvpe");
