@@ -44,6 +44,14 @@
 #include "namespace.h"
 #include "utils.h"
 
+#ifndef MS_REC
+#define MS_REC 16384
+#endif
+
+#ifndef MS_SLAVE
+#define MS_SLAVE (1<<19)
+#endif
+
 int unshare(int flags);
 
 static void usage(const char *name)
