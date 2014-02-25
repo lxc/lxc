@@ -302,6 +302,13 @@ static int detect_fs(struct bdev *bdev, char *type, int len)
 	if (unshare(CLONE_NEWNS) < 0)
 		exit(1);
 
+	if (detect_shared_rootfs()) {
+		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
+			SYSERROR("Failed to make / rslave");
+			ERROR("Continuing...");
+		}
+	}
+
 	ret = mount_unknown_fs(srcdev, bdev->dest, bdev->mntopts);
 	if (ret < 0) {
 		ERROR("failed mounting %s onto %s to detect fstype", srcdev, bdev->dest);
@@ -2418,7 +2425,7 @@ static int rsync_rootfs(struct rsync_data *data)
 	}
 	if (detect_shared_rootfs()) {
 		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
-			SYSERROR("Failed to make / rslave to run rsync");
+			SYSERROR("Failed to make / rslave");
 			ERROR("Continuing...");
 		}
 	}

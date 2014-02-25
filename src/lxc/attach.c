@@ -220,6 +220,13 @@ static int lxc_attach_remount_sys_proc(void)
 		return -1;
 	}
 
+	if (detect_shared_rootfs()) {
+		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
+			SYSERROR("Failed to make / rslave");
+			ERROR("Continuing...");
+		}
+	}
+
 	/* assume /proc is always mounted, so remount it */
 	ret = umount2("/proc", MNT_DETACH);
 	if (ret < 0) {

@@ -276,3 +276,5 @@ extern bool dir_exists(const char *path);
 #define FNV1A_64_INIT ((uint64_t)0xcbf29ce484222325ULL)
 uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval);
 #endif
+
+int detect_shared_rootfs(void);

@@ -2502,6 +2502,12 @@ static int clone_update_rootfs(struct clone_update_data *data)
 			bdev_put(bdev);
 			return -1;
 		}
+		if (detect_shared_rootfs()) {
+			if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
+				SYSERROR("Failed to make / rslave");
+				ERROR("Continuing...");
+			}
+		}
 		if (bdev->ops->mount(bdev) < 0) {
 			bdev_put(bdev);
 			return -1;
