@@ -41,6 +41,7 @@
 #include <pwd.h>
 #include <grp.h>
 
+#include "conf.h"
 #include "namespace.h"
 #include "utils.h"
 
@@ -131,19 +132,7 @@ static int do_child(void *vargv)
 	return -1;
 }
 
-struct id_map {
-	char which; // b or u or g
-	long host_id, ns_id, range;
-	struct id_map *next;
-};
-
-static struct id_map default_map = {
-	.which = 'b',
-	.host_id = 100000,
-	.ns_id = 0,
-	.range = 10000,
-};
-static struct id_map *active_map = &default_map;
+static struct lxc_list active_map;
 
 /*
  * given a string like "b:0:100000:10", map both uids and gids
@@ -152,28 +141,51 @@ static struct id_map *active_map = &default_map;
 static int parse_map(char *map)
 {
 	struct id_map *newmap;
-    int ret;
+	struct lxc_list *tmp = NULL;
+	int ret;
+	int i;
+	char types[2] = {'u', 'g'};
+	char which;
+	long host_id, ns_id, range;
 
 	if (!map)
 		return -1;
-	newmap = malloc(sizeof(*newmap));
-	if (!newmap)
-		return -1;
-	ret = sscanf(map, "%c:%ld:%ld:%ld", &newmap->which, &newmap->ns_id, &newmap->host_id, &newmap->range);
-	if (ret != 4)
-		goto out_free_map;
-	if (newmap->which != 'b' && newmap->which != 'u' && newmap->which != 'g')
-		goto out_free_map;
-	if (active_map != &default_map)
-		newmap->next = active_map;
-	else
-		newmap->next = NULL;
-	active_map = newmap;
-	return 0;
 
-out_free_map:
-	free(newmap);
-	return -1;
+	ret = sscanf(map, "%c:%ld:%ld:%ld", &which, &ns_id, &host_id, &range);
+	if (ret != 4)
+		return -1;
+
+	if (which != 'b' && which != 'u' && which != 'g')
+		return -1;
+
+	for (i = 0; i < 2; i++) {
+		if (which != types[i] && which != 'b')
+			continue;
+
+		newmap = malloc(sizeof(*newmap));
+		if (!newmap)
+			return -1;
+
+		newmap->hostid = host_id;
+		newmap->nsid = ns_id;
+		newmap->range = range;
+
+		if (types[i] == 'u')
+			newmap->idtype = ID_TYPE_UID;
+		else
+			newmap->idtype = ID_TYPE_GID;
+
+		tmp = malloc(sizeof(*tmp));
+		if (!tmp) {
+			free(newmap);
+			return -1;
+		}
+
+		tmp->elem = newmap;
+		lxc_list_add_tail(&active_map, tmp);
+	}
+
+	return 0;
 }
 
 /*
@@ -185,12 +197,13 @@ out_free_map:
  * gid, because otherwise we're not sure which entries the user
  * wanted.
  */
-static int read_default_map(char *fnam, char which, char *username)
+static int read_default_map(char *fnam, int which, char *username)
 {
 	FILE *fin;
 	char *line = NULL;
 	size_t sz = 0;
 	struct id_map *newmap;
+	struct lxc_list *tmp = NULL;
 	char *p1, *p2;
 
 	fin = fopen(fnam, "r");
@@ -213,15 +226,21 @@ static int read_default_map(char *fnam, char which, char *username)
 			free(line);
 			return -1;
 		}
-		newmap->host_id = atol(p1+1);
+		newmap->hostid = atol(p1+1);
 		newmap->range = atol(p2+1);
-		newmap->ns_id = 0;
-		newmap->which = which;
-		if (active_map != &default_map)
-			newmap->next = active_map;
-		else
-			newmap->next = NULL;
-		active_map = newmap;
+		newmap->nsid = 0;
+		newmap->idtype = which;
+
+		tmp = malloc(sizeof(*tmp));
+		if (!tmp) {
+			fclose(fin);
+			free(line);
+			free(newmap);
+			return -1;
+		}
+
+		tmp->elem = newmap;
+		lxc_list_add_tail(&active_map, tmp);
 		break;
 	}
 
@@ -238,117 +257,11 @@ static int find_default_map(void)
 	struct passwd *p = getpwuid(getuid());
 	if (!p)
 		return -1;
-	if (read_default_map(subuidfile, 'u', p->pw_name) < 0)
+	if (read_default_map(subuidfile, ID_TYPE_UID, p->pw_name) < 0)
 		return -1;
-	if (read_default_map(subgidfile, 'g', p->pw_name) < 0)
+	if (read_default_map(subgidfile, ID_TYPE_GID, p->pw_name) < 0)
 		return -1;
     return 0;
-}
-
-static int run_cmd(char **argv)
-{
-    int status;
-	pid_t pid = fork();
-
-	if (pid < 0)
-		return pid;
-	if (pid == 0) {
-		execvp(argv[0], argv);
-		perror("exec failed");
-		exit(1);
-	}
-	if (waitpid(pid, &status, __WALL) < 0) {
-        perror("waitpid");
-		return -1;
-	}
-
-	return WEXITSTATUS(status);
-}
-
-static int map_child_uids(int pid, struct id_map *map)
-{
-	char **uidargs = NULL, **gidargs = NULL;
-	char **newuidargs = NULL, **newgidargs = NULL;
-	int i, nuargs = 2, ngargs = 2, ret = -1;
-	struct id_map *m;
-
-	uidargs = malloc(3 * sizeof(*uidargs));
-	if (uidargs == NULL)
-		return -1;
-	gidargs = malloc(3 * sizeof(*gidargs));
-	if (gidargs == NULL) {
-		free(uidargs);
-		return -1;
-	}
-	uidargs[0] = malloc(10);
-	gidargs[0] = malloc(10);
-	uidargs[1] = malloc(21);
-	gidargs[1] = malloc(21);
-	uidargs[2] = NULL;
-	gidargs[2] = NULL;
-	if (!uidargs[0] || !uidargs[1] || !gidargs[0] || !gidargs[1])
-		goto out;
-	sprintf(uidargs[0], "newuidmap");
-	sprintf(gidargs[0], "newgidmap");
-	sprintf(uidargs[1], "%d", pid);
-	sprintf(gidargs[1], "%d", pid);
-	for (m=map; m; m = m->next) {
-		if (m->which == 'b' || m->which == 'u') {
-			nuargs += 3;
-			newuidargs = realloc(uidargs, (nuargs+1) * sizeof(*uidargs));
-			if (!newuidargs)
-				goto out;
-			uidargs = newuidargs;
-			uidargs[nuargs - 3] = malloc(21);
-			uidargs[nuargs - 2] = malloc(21);
-			uidargs[nuargs - 1] = malloc(21);
-			if (!uidargs[nuargs-3] || !uidargs[nuargs-2] || !uidargs[nuargs-1])
-				goto out;
-			sprintf(uidargs[nuargs - 3], "%ld", m->ns_id);
-			sprintf(uidargs[nuargs - 2], "%ld", m->host_id);
-			sprintf(uidargs[nuargs - 1], "%ld", m->range);
-			uidargs[nuargs] = NULL;
-		}
-		if (m->which == 'b' || m->which == 'g') {
-			ngargs += 3;
-			newgidargs = realloc(gidargs, (ngargs+1) * sizeof(*gidargs));
-			if (!newgidargs)
-				goto out;
-			gidargs = newgidargs;
-			gidargs[ngargs - 3] = malloc(21);
-			gidargs[ngargs - 2] = malloc(21);
-			gidargs[ngargs - 1] = malloc(21);
-			if (!gidargs[ngargs-3] || !gidargs[ngargs-2] || !gidargs[ngargs-1])
-				goto out;
-			sprintf(gidargs[ngargs - 3], "%ld", m->ns_id);
-			sprintf(gidargs[ngargs - 2], "%ld", m->host_id);
-			sprintf(gidargs[ngargs - 1], "%ld", m->range);
-			gidargs[ngargs] = NULL;
-		}
-	}
-
-	ret = -2;
-	// exec newuidmap
-	if (nuargs > 2 && run_cmd(uidargs) != 0) {
-		fprintf(stderr, "Error mapping uids\n");
-		goto out;
-	}
-	// exec newgidmap
-	if (ngargs > 2 && run_cmd(gidargs) != 0) {
-		fprintf(stderr, "Error mapping gids\n");
-		goto out;
-	}
-	ret = 0;
-
-out:
-	for (i=0; i<nuargs; i++)
-		free(uidargs[i]);
-	for (i=0; i<ngargs; i++)
-		free(gidargs[i]);
-	free(uidargs);
-	free(gidargs);
-
-	return ret;
 }
 
 int main(int argc, char *argv[])
@@ -371,6 +284,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	lxc_list_init(&active_map);
+
 	while ((c = getopt(argc, argv, "m:h")) != EOF) {
 		switch (c) {
 			case 'm': if (parse_map(optarg)) usage(argv[0]); break;
@@ -380,7 +295,7 @@ int main(int argc, char *argv[])
 		}
 	};
 
-	if (active_map == &default_map) {
+	if (lxc_list_empty(&active_map)) {
 		if (find_default_map()) {
 			fprintf(stderr, "You have no allocated subuids or subgids\n");
 			exit(1);
@@ -437,7 +352,8 @@ int main(int argc, char *argv[])
 	}
 
 	buf[0] = '1';
-	if (map_child_uids(pid, active_map)) {
+
+	if (lxc_map_ids(&active_map, pid)) {
 		fprintf(stderr, "error mapping child\n");
 		ret = 0;
 	}

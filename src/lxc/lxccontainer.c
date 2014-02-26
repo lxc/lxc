@@ -806,7 +806,7 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 	/* if we are not root, chown the rootfs dir to root in the
 	 * target uidmap */
 
-	if (geteuid() != 0) {
+	if (geteuid() != 0 || (c->lxc_conf && !lxc_list_empty(&c->lxc_conf->id_map))) {
 		if (chown_mapped_root(bdev->dest, c->lxc_conf) < 0) {
 			ERROR("Error chowning %s to container root", bdev->dest);
 			bdev_put(bdev);
@@ -992,7 +992,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 		 * and we append "--mapped-uid x", where x is the mapped uid
 		 * for our geteuid()
 		 */
-		if (geteuid() != 0 && !lxc_list_empty(&conf->id_map)) {
+		if (!lxc_list_empty(&conf->id_map)) {
 			int n2args = 1;
 			char txtuid[20];
 			char txtgid[20];
@@ -1450,7 +1450,7 @@ static inline bool enter_to_ns(struct lxc_container *c) {
 	init_pid = c->init_pid(c);
 
 	/* Switch to new userns */
-	if (geteuid() && access("/proc/self/ns/user", F_OK) == 0) {
+	if ((geteuid() != 0 || (c->lxc_conf && !lxc_list_empty(&c->lxc_conf->id_map))) && access("/proc/self/ns/user", F_OK) == 0) {
 		ret = snprintf(new_userns_path, MAXPATHLEN, "/proc/%d/ns/user", init_pid);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto out;

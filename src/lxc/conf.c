@@ -3164,7 +3164,12 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	int ret = 0;
 	enum idtype type;
 	char *buf = NULL, *pos;
-	int am_root = (getuid() == 0);
+	int use_shadow = (on_path("newuidmap") && on_path("newuidmap"));
+
+	if (!use_shadow && geteuid()) {
+		ERROR("Missing newuidmap/newgidmap");
+		return -1;
+	}
 
 	for(type = ID_TYPE_UID; type <= ID_TYPE_GID; type++) {
 		int left, fill;
@@ -3175,7 +3180,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 				return -ENOMEM;
 		}
 		pos = buf;
-		if (!am_root)
+		if (use_shadow)
 			pos += sprintf(buf, "new%cidmap %d",
 				type == ID_TYPE_UID ? 'u' : 'g',
 				pid);
@@ -3189,9 +3194,9 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 			had_entry = 1;
 			left = 4096 - (pos - buf);
 			fill = snprintf(pos, left, "%s%lu %lu %lu%s",
-					am_root ? "" : " ",
+					use_shadow ? " " : "",
 					map->nsid, map->hostid, map->range,
-					am_root ? "\n" : "");
+					use_shadow ? "" : "\n");
 			if (fill <= 0 || fill >= left)
 				SYSERROR("snprintf failed, too many mappings");
 			pos += fill;
@@ -3199,7 +3204,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		if (!had_entry)
 			continue;
 
-		if (am_root) {
+		if (!use_shadow) {
 			ret = write_id_mapping(type, pid, buf, pos-buf);
 		} else {
 			left = 4096 - (pos - buf);

@@ -278,3 +278,4 @@ uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval);
 #endif
 
 int detect_shared_rootfs(void);
+bool on_path(char *cmd);
