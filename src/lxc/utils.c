@@ -1234,3 +1234,38 @@ int detect_shared_rootfs(void)
 	fclose(f);
 	return 0;
 }
+
+bool on_path(char *cmd) {
+	char *path = NULL;
+	char *entry = NULL;
+	char *saveptr = NULL;
+	char cmdpath[MAXPATHLEN];
+	int ret;
+
+	path = getenv("PATH");
+	if (!path)
+		return false;
+
+	path = strdup(path);
+	if (!path)
+		return false;
+
+	entry = strtok_r(path, ":", &saveptr);
+	while (entry) {
+		ret = snprintf(cmdpath, MAXPATHLEN, "%s/%s", entry, cmd);
+
+		if (ret < 0 || ret >= MAXPATHLEN)
+			goto next_loop;
+
+		if (access(cmdpath, X_OK) == 0) {
+			free(path);
+			return true;
+		}
+
+next_loop:
+		entry = strtok(NULL, ":");
+	}
+
+	free(path);
+	return false;
+}
