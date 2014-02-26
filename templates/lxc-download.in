@@ -142,8 +142,11 @@ gpg_validate() {
 
 in_userns() {
     [ -e /proc/self/uid_map ] || { echo no; return; }
-    line=$(awk '{ print $1 " " $2 " " $3 }' /proc/self/uid_map)
-    [ "$line" = "0 0 4294967295" ] && { echo no; return; }
+    awk '{ print $1 " " $2 " " $3 }' /proc/self/uid_map | while read line; do
+        [ "$line" = "0 0 4294967295" ] && { echo no; return; }
+        echo $line | grep -q " 0 1$" && { echo userns-root; return; }
+    done
+
     [ "$(cat /proc/self/uid_map)" = "$(cat /proc/1/uid_map)" ] && \
         { echo userns-root; return; }
     echo yes
