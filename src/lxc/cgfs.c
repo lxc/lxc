@@ -1095,8 +1095,11 @@ static struct cgroup_process_info *lxc_cgroup_get_container_info(const char *nam
 
 		/* use the command interface to look for the cgroup */
 		path = lxc_cmd_get_cgroup_path(name, lxcpath, h->subsystems[0]);
-		if (!path)
-			goto out_error;
+		if (!path) {
+			h->used = false;
+			WARN("Not attaching to cgroup %s unknown to %s %s", h->subsystems[0], lxcpath, name);
+			continue;
+		}
 
 		entry = calloc(1, sizeof(struct cgroup_process_info));
 		if (!entry)
