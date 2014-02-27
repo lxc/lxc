@@ -484,7 +484,7 @@ static int dir_destroy(struct bdev *orig)
 static int dir_create(struct bdev *bdev, const char *dest, const char *n,
 			struct bdev_specs *specs)
 {
-	if (specs->dir)
+	if (specs && specs->dir)
 		bdev->src = strdup(specs->dir);
 	else
 		bdev->src = strdup(dest);
