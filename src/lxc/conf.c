@@ -2565,7 +2565,6 @@ void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf)
 		free(s->orig_name);
 	}
 	conf->num_savednics = 0;
-	free(conf->saved_nics);
 }
 
 static char *default_rootfs_mount = LXCROOTFSMOUNT;
@@ -4075,11 +4074,10 @@ static void lxc_clear_saved_nics(struct lxc_conf *conf)
 {
 	int i;
 
-	if (!conf->num_savednics)
+	if (!conf->saved_nics)
 		return;
 	for (i=0; i < conf->num_savednics; i++)
 		free(conf->saved_nics[i].orig_name);
-	conf->saved_nics = 0;
 	free(conf->saved_nics);
 }
 
