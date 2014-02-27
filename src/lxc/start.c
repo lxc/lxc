@@ -94,8 +94,6 @@ static void print_top_failing_dir(const char *path)
 	while (p < e) {
 		while (p < e && *p == '/') p++;
 		while (p < e && *p != '/') p++;
-		if (p >= e)
-			return;
 		saved = *p;
 		*p = '\0';
 		if (access(copy, X_OK)) {
@@ -666,7 +664,7 @@ static int do_start(void *data)
 		}
 	}
 
-	if (access(handler->lxcpath, R_OK)) {
+	if (access(handler->lxcpath, X_OK)) {
 		print_top_failing_dir(handler->lxcpath);
 		goto out_warn_father;
 	}
