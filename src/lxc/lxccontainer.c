@@ -2610,6 +2610,7 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	char newpath[MAXPATHLEN];
 	int ret, storage_copied = 0;
 	const char *n, *l;
+	char *origroot = NULL;
 	struct clone_update_data data;
 	FILE *fout;
 	pid_t pid;
@@ -2645,6 +2646,10 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	}
 
 	// copy the configuration, tweak it as needed,
+	if (c->lxc_conf->rootfs.path) {
+		origroot = c->lxc_conf->rootfs.path;
+		c->lxc_conf->rootfs.path = NULL;
+	}
 	fout = fopen(newpath, "w");
 	if (!fout) {
 		SYSERROR("open %s", newpath);
@@ -2652,6 +2657,7 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	}
 	write_config(fout, c->lxc_conf);
 	fclose(fout);
+	c->lxc_conf->rootfs.path = origroot;
 
 	sprintf(newpath, "%s/%s/rootfs", l, n);
 	if (mkdir(newpath, 0755) < 0) {
@@ -2671,6 +2677,12 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 		ERROR("clone: failed to create new container (%s %s)", n, l);
 		goto out;
 	}
+	c2->lxc_conf->rootfs.path = origroot;
+
+	// copy/snapshot rootfs's
+	ret = copy_storage(c, c2, bdevtype, flags, bdevdata, newsize);
+	if (ret < 0)
+		goto out;
 
 	// update utsname
 	if (!set_config_item_locked(c2, "lxc.utsname", newname)) {
@@ -2693,11 +2705,6 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	// update macaddrs
 	if (!(flags & LXC_CLONE_KEEPMACADDR))
 		network_new_hwaddrs(c2);
-
-	// copy/snapshot rootfs's
-	ret = copy_storage(c, c2, bdevtype, flags, bdevdata, newsize);
-	if (ret < 0)
-		goto out;
 
 	// We've now successfully created c2's storage, so clear it out if we
 	// fail after this
