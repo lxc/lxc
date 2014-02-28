@@ -1336,6 +1336,57 @@ static int btrfs_subvolume_create(const char *path)
 	return ret;
 }
 
+#define BTRFS_FSID_SIZE 16
+struct btrfs_ioctl_fs_info_args {
+	unsigned long long max_id;
+	unsigned long long num_devices;
+	char fsid[BTRFS_FSID_SIZE];
+	unsigned long long reserved[124];
+};
+
+#define BTRFS_IOC_FS_INFO _IOR(BTRFS_IOCTL_MAGIC, 31, \
+		struct btrfs_ioctl_fs_info_args)
+
+static int btrfs_same_fs(const char *orig, const char *new) {
+	int fd_orig = -1, fd_new = -1, ret = -1;
+	struct btrfs_ioctl_fs_info_args orig_args, new_args;
+
+	fd_orig = open(orig, O_RDONLY);
+	if (fd_orig < 0) {
+		SYSERROR("Error opening original rootfs %s", orig);
+		goto out;
+	}
+	ret = ioctl(fd_orig, BTRFS_IOC_FS_INFO, &orig_args);
+	if (ret < 0) {
+		SYSERROR("BTRFS_IOC_FS_INFO %s", orig);
+		goto out;
+	}
+
+	fd_new = open(new, O_RDONLY);
+	if (fd_new < 0) {
+		SYSERROR("Error opening new container dir %s", new);
+		err = -1;
+		goto out;
+	}
+	ret = ioctl(fd_new, BTRFS_IOC_FS_INFO, &new_args);
+	if (ret < 0) {
+		SYSERROR("BTRFS_IOC_FS_INFO %s", new);
+		goto out;
+	}
+
+	if (strncmp(orig_args.fsid, new_args.fsid, BTRFS_FSID_SIZE) != 0) {
+		ret = -1;
+		goto out;
+	}
+	ret = 0;
+out:
+	if (fd_new != -1)
+		close(fd_new);
+	if (fd_orig != -1)
+		close(fd_orig);
+	return ret;
+}
+
 static int btrfs_snapshot(const char *orig, const char *new)
 {
 	int fd = -1, fddst = -1, ret = -1;
@@ -2587,9 +2638,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	if (new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
 				snap, newsize, c0->lxc_conf) < 0) {
 		ERROR("failed getting pathnames for cloned storage: %s", src);
-		bdev_put(orig);
-		bdev_put(new);
-		return NULL;
+		goto err;
 	}
 
 	if (am_unpriv() && chown_mapped_root(new->src, c0->lxc_conf) < 0)
@@ -2598,12 +2647,33 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	if (snap)
 		return new;
 
+	/*
+	 * https://github.com/lxc/lxc/issues/131
+	 * Use btrfs snapshot feature instead of rsync to restore if both orig and new are btrfs
+	 */
+	if (bdevtype &&
+			strcmp(orig->type, "btrfs") == 0 && strcmp(new->type, "btrfs") == 0 &&
+			btrfs_same_fs(orig->dest, new->dest) == 0) {
+		if (btrfs_destroy(new) < 0) {
+			ERROR("Error destroying %s subvolume", new->dest);
+			goto err;
+		}
+		if (mkdir_p(new->dest, 0755) < 0) {
+			ERROR("Error creating %s directory", new->dest);
+			goto err;
+		}
+		if (btrfs_snapshot(orig->dest, new->dest) < 0) {
+			ERROR("Error restoring %s to %s", orig->dest, new->dest);
+			goto err;
+		}
+		bdev_put(orig);
+		return new;
+	}
+
 	pid = fork();
 	if (pid < 0) {
 		SYSERROR("fork");
-		bdev_put(orig);
-		bdev_put(new);
-		return NULL;
+		goto err;
 	}
 
 	if (pid > 0) {
@@ -2624,6 +2694,11 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		ret = rsync_rootfs(&data);
 
 	exit(ret == 0 ? 0 : 1);
+
+err:
+	bdev_put(orig);
+	bdev_put(new);
+	return NULL;
 }
 
 static struct bdev * do_bdev_create(const char *dest, const char *type,
