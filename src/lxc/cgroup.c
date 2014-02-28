@@ -175,3 +175,9 @@ void restart_cgroups(void)
 	ops = NULL;
 	cgroup_ops_init();
 }
+
+void cgroup_disconnect(void)
+{
+	if (ops && ops->disconnect)
+		ops->disconnect();
+}
