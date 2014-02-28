@@ -1263,7 +1263,7 @@ bool on_path(char *cmd) {
 		}
 
 next_loop:
-		entry = strtok(NULL, ":");
+		entry = strtok_r(NULL, ":", &saveptr);
 	}
 
 	free(path);
