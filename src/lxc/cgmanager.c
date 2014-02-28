@@ -92,13 +92,13 @@ static NihDBusProxy *cgroup_manager = NULL;
 static struct cgroup_ops cgmanager_ops;
 static int nr_subsystems;
 static char **subsystems;
+static DBusConnection *connection;
 
 #define CGMANAGER_DBUS_SOCK "unix:path=/sys/fs/cgroup/cgmanager/sock"
 static void cgm_dbus_disconnected(DBusConnection *connection);
 static bool cgm_dbus_connect(void)
 {
 	DBusError dbus_error;
-	DBusConnection *connection;
 	dbus_error_init(&dbus_error);
 
 	lock_mutex(&thread_mutex);
@@ -118,7 +118,6 @@ static bool cgm_dbus_connect(void)
 	cgroup_manager = nih_dbus_proxy_new(NULL, connection,
 				NULL /* p2p */,
 				"/org/linuxcontainers/cgmanager", NULL, NULL);
-	dbus_connection_unref(connection);
 	if (!cgroup_manager) {
 		NihError *nerr;
 		nerr = nih_error_get();
@@ -145,13 +144,19 @@ static void cgm_dbus_disconnect(void)
 	if (cgroup_manager)
 		nih_free(cgroup_manager);
 	cgroup_manager = NULL;
+	dbus_connection_unref(connection);
+	connection = NULL;
 	unlock_mutex(&thread_mutex);
 }
 
 static void cgm_dbus_disconnected(DBusConnection *connection)
 {
+	lock_mutex(&thread_mutex);
 	WARN("Cgroup manager connection was terminated");
 	cgroup_manager = NULL;
+	dbus_connection_unref(connection);
+	connection = NULL;
+	unlock_mutex(&thread_mutex);
 	if (cgm_dbus_connect()) {
 		INFO("New cgroup manager connection was opened");
 	} else {
@@ -398,6 +403,7 @@ static void *cgm_init(const char *name)
 {
 	struct cgm_data *d;
 
+	cgm_dbus_connect();
 	d = malloc(sizeof(*d));
 	if (!d)
 		return NULL;
@@ -430,6 +436,7 @@ static void cgm_destroy(void *hdata)
 
 	if (!d)
 		return;
+	cgm_dbus_connect();
 	for (i = 0; i < nr_subsystems; i++)
 		cgm_remove_cgroup(subsystems[i], d->cgroup_path);
 
@@ -437,6 +444,7 @@ static void cgm_destroy(void *hdata)
 	if (d->cgroup_path)
 		free(d->cgroup_path);
 	free(d);
+	cgm_dbus_disconnect();
 }
 
 /*
@@ -602,6 +610,7 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
 	if (!cgroup)
 		return -1;
+	cgm_dbus_connect();
 	lock_mutex(&thread_mutex);
 	if (cgmanager_get_value_sync(NULL, cgroup_manager, controller, cgroup, filename, &result) != 0) {
 		/*
@@ -614,9 +623,11 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		nih_free(nerr);
 		free(cgroup);
 		unlock_mutex(&thread_mutex);
+		cgm_dbus_disconnect();
 		return -1;
 	}
 	unlock_mutex(&thread_mutex);
+	cgm_dbus_disconnect();
 	free(cgroup);
 	newlen = strlen(result);
 	if (!value) {
@@ -675,7 +686,9 @@ static int cgm_set(const char *filename, const char *value, const char *name, co
 			controller, lxcpath, name);
 		return -1;
 	}
+	cgm_dbus_connect();
 	ret = cgm_do_set(controller, filename, cgroup, value);
+	cgm_dbus_disconnect();
 	free(cgroup);
 	return ret;
 }
@@ -875,8 +888,10 @@ static bool cgm_attach(const char *name, const char *lxcpath, pid_t pid)
 		goto out;
 	}
 
+	cgm_dbus_connect();
 	if (!(pass = do_cgm_enter(pid, cgroup)))
 		ERROR("Failed to enter group %s", cgroup);
+	cgm_dbus_disconnect();
 
 out:
 	free(cgroup);
