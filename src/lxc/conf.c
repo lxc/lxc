@@ -1506,11 +1506,16 @@ static int setup_rootfs(struct lxc_conf *conf)
 		return -1;
 	}
 
-	if (detect_shared_rootfs()) {
+       if (detect_ramfs_rootfs()) {
 		if (chroot_into_slave(conf)) {
 			ERROR("Failed to chroot into slave /");
 			return -1;
 		}
+       } else if (detect_shared_rootfs()) {
+               if (mount("", "/", NULL, MS_SLAVE|MS_REC, 0)) {
+                       SYSERROR("Failed to make / rslave");
+                       return -1;
+               }
 	}
 
 	// First try mounting rootfs using a bdev
