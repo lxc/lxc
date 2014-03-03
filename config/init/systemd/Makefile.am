@@ -3,11 +3,7 @@ EXTRA_DIST = \
 	lxc.service
 
 if INIT_SCRIPT_SYSTEMD
-if HAVE_DEBIAN
-SYSTEMD_UNIT_DIR = /lib/systemd/system
-else
-SYSTEMD_UNIT_DIR = /usr/lib/systemd/system
-endif
+SYSTEMD_UNIT_DIR = $(prefix)/lib/systemd/system
 
 install-systemd: lxc.service lxc-devsetup
 	$(MKDIR_P) $(DESTDIR)$(SYSTEMD_UNIT_DIR)
