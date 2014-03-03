@@ -2677,7 +2677,6 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 		ERROR("clone: failed to create new container (%s %s)", n, l);
 		goto out;
 	}
-	c2->lxc_conf->rootfs.path = origroot;
 
 	// copy/snapshot rootfs's
 	ret = copy_storage(c, c2, bdevtype, flags, bdevdata, newsize);
