@@ -773,6 +773,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
 	const char *name = handler->name;
+	bool cgroups_connected = false;
 	int saved_ns_fd[LXC_NS_MAX];
 	int preserve_mask = 0, i;
 	int netpipepair[2], nveths;
@@ -841,6 +842,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 		ERROR("failed initializing cgroup support");
 		goto out_delete_net;
 	}
+
+	cgroups_connected = true;
 
 	if (!cgroup_create(handler)) {
 		ERROR("failed creating cgroups");
@@ -953,6 +956,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	cgroup_disconnect();
+	cgroups_connected = false;
 
 	/* Tell the child to complete its initialization and wait for
 	 * it to exec or return an error.  (the child will never
@@ -981,6 +985,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 	return 0;
 
 out_delete_net:
+	if (cgroups_connected)
+		cgroup_disconnect();
 	if (handler->clone_flags & CLONE_NEWNET)
 		lxc_delete_network(handler);
 out_abort:
