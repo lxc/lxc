@@ -36,16 +36,19 @@ Downloading the current source code:
 
 Troubleshooting:
 
-  If the ./autogen.sh script shows the following message: "aclocal: not found",
-  you are likely missing the "automake" package. Make sure it's installed and
-  try again.
+  If you get an error message at the autogen.sh or configure stage, make
+  sure you have, autoconf, automake, pkg-config, make and gcc installed on
+  your machine.
 
-  If the ./configure script gives you the following message:
-    "configure: error: Please install the libcap development files."
-  you are likely missing the "libcap-dev" package.
   The configure script will usually give you hints as to what you are missing,
   looking for those in your package manager will usually give you the package
   that you need to install.
+
+  Also pay a close attention to the feature summary showed at the end of
+  the configure run, features are automatically enabled/disabled based on
+  whether the needed development packages are installed on your machine.
+  If you want a feature but don't know what to install, force it with
+  --enable-<feature> and look at the error message from configure.
 
 Getting help:
 
