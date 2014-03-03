@@ -168,14 +168,6 @@ int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *na
 	return -1;
 }
 
-void restart_cgroups(void)
-{
-	if (ops && ops->disconnect)
-		ops->disconnect();
-	ops = NULL;
-	cgroup_ops_init();
-}
-
 void cgroup_disconnect(void)
 {
 	if (ops && ops->disconnect)

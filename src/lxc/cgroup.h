@@ -65,7 +65,6 @@ extern bool cgroup_create_legacy(struct lxc_handler *handler);
 extern int cgroup_nrtasks(struct lxc_handler *handler);
 extern const char *cgroup_get_cgroup(struct lxc_handler *handler, const char *subsystem);
 extern bool cgroup_unfreeze(struct lxc_handler *handler);
-extern void restart_cgroups(void);
 extern void cgroup_disconnect(void);
 
 #endif
