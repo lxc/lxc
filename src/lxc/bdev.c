@@ -1365,7 +1365,7 @@ static int btrfs_same_fs(const char *orig, const char *new) {
 	fd_new = open(new, O_RDONLY);
 	if (fd_new < 0) {
 		SYSERROR("Error opening new container dir %s", new);
-		err = -1;
+		ret = -1;
 		goto out;
 	}
 	ret = ioctl(fd_new, BTRFS_IOC_FS_INFO, &new_args);
