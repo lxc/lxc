@@ -26,6 +26,7 @@
 #include "lxc/lxc.h"
 
 #define MYNAME "snapxxx1"
+#define MYNAME2 "snapxxx3"
 #define RESTNAME "snapxxx2"
 
 static void try_to_remove(void)
@@ -45,6 +46,12 @@ static void try_to_remove(void)
 			c->destroy(c);
 		lxc_container_put(c);
 	}
+	c = lxc_container_new(MYNAME2, NULL);
+	if (c) {
+		if (c->is_defined(c))
+			c->destroy(c);
+		lxc_container_put(c);
+	}
 	c = lxc_container_new(MYNAME, NULL);
 	if (c) {
 		if (c->is_defined(c))
@@ -55,7 +62,7 @@ static void try_to_remove(void)
 
 int main(int argc, char *argv[])
 {
-	struct lxc_container *c;
+	struct lxc_container *c, *c2 = NULL;
 	char *template = "busybox";
 
 	if (argc > 1)
@@ -84,7 +91,7 @@ int main(int argc, char *argv[])
 	c->load_config(c, NULL);
 
 	if (c->snapshot(c, NULL) != 0) {
-		fprintf(stderr, "%s: %d: failed to create snapsot\n", __FILE__, __LINE__);
+		fprintf(stderr, "%s: %d: failed to create snapshot\n", __FILE__, __LINE__);
 		goto err;
 	}
 
@@ -126,6 +133,48 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
+
+	c2 = c->clone(c, MYNAME2, NULL, LXC_CLONE_SNAPSHOT, "overlayfs", NULL, 0, NULL);
+	if (!c2) {
+		fprintf(stderr, "%d: %s overlayfs clone failed\n", __LINE__, MYNAME2);
+		goto good;
+	}
+
+	if (c2->snapshot(c2, NULL) != 0) {
+		fprintf(stderr, "%s: %d: failed to create snapshot\n", __FILE__, __LINE__);
+		goto err;
+	}
+
+	n = c2->snapshot_list(c2, &s);
+	if (n < 1) {
+		fprintf(stderr, "%s: %d: failed listing containers\n", __FILE__, __LINE__);
+		goto err;
+	}
+	if (strcmp(s->name, "snap0") != 0) {
+		fprintf(stderr, "%s: %d: snapshot had bad name\n", __FILE__, __LINE__);
+		goto err;
+	}
+	for (i=0; i<n; i++) {
+		s[i].free(&s[i]);
+	}
+	free(s);
+
+	if (!c2->snapshot_restore(c2, "snap0", NULL)) {
+		fprintf(stderr, "%s: %d: failed to restore overlayfs snapshot\n", __FILE__, __LINE__);
+		goto err;
+	}
+
+	if (!c2->snapshot_destroy(c2, "snap0")) {
+		fprintf(stderr, "%s: %d: failed to destroy overlayfs snapshot\n", __FILE__, __LINE__);
+		goto err;
+	}
+
+	if (!c2->destroy(c2)) {
+		fprintf(stderr, "%s: %d: failed to destroy container\n", __FILE__, __LINE__);
+		goto err;
+	}
+
+good:
 	if (!c->destroy(c)) {
 		fprintf(stderr, "%s: %d: failed to destroy container\n", __FILE__, __LINE__);
 		goto err;

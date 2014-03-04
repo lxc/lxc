@@ -3044,7 +3044,7 @@ out_free:
 static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapname, const char *newname)
 {
 	char clonelxcpath[MAXPATHLEN];
-	int ret;
+	int flags = 0,ret;
 	struct lxc_container *snap, *rest;
 	struct bdev *bdev;
 	bool b = false;
@@ -3082,7 +3082,10 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapnam
 		return false;
 	}
 
-	rest = lxcapi_clone(snap, newname, c->config_path, 0, bdev->type, NULL, 0, NULL);
+	if (strcmp(bdev->type, "dir") != 0 && strcmp(bdev->type, "loop") != 0)
+		flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_MAYBE_SNAPSHOT;
+	rest = lxcapi_clone(snap, newname, c->config_path, flags,
+			bdev->type, NULL, 0, NULL);
 	bdev_put(bdev);
 	if (rest && lxcapi_is_defined(rest))
 		b = true;
