@@ -1,7 +1,9 @@
 if ENABLE_LUA
 
-luadir=$(LUA_INSTALL_LMOD)
-sodir=$(LUA_INSTALL_CMOD)/lxc
+luasharedir=$(LUA_SHAREDIR)
+lualibdir=$(LUA_LIBDIR)
+luadir=$(luasharedir)
+sodir=$(lualibdir)/lxc
 
 lua_DATA=lxc.lua
 
