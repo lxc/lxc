@@ -58,6 +58,7 @@ src/lxc/lxc-freeze
 src/lxc/lxc.functions
 src/lxc/lxc-info
 src/lxc/lxc-init
+src/lxc/lxc-ls
 src/lxc/lxc-monitor
 src/lxc/lxc-monitord
 src/lxc/lxc-shutdown
