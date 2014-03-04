@@ -54,28 +54,6 @@
 #ifdef HAVE_CGMANAGER
 lxc_log_define(lxc_cgmanager, lxc);
 
-static pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-static void lock_mutex(pthread_mutex_t *l)
-{
-	int ret;
-
-	if ((ret = pthread_mutex_lock(l)) != 0) {
-		fprintf(stderr, "pthread_mutex_lock returned:%d %s\n", ret, strerror(ret));
-		exit(1);
-	}
-}
-
-static void unlock_mutex(pthread_mutex_t *l)
-{
-	int ret;
-
-	if ((ret = pthread_mutex_unlock(l)) != 0) {
-		fprintf(stderr, "pthread_mutex_unlock returned:%d %s\n", ret, strerror(ret));
-		exit(1);
-	}
-}
-
 #include <nih-dbus/dbus_connection.h>
 #include <cgmanager/cgmanager-client.h>
 #include <nih/alloc.h>
@@ -88,19 +66,37 @@ struct cgm_data {
 	const char *cgroup_pattern;
 };
 
+#ifdef HAVE_TLS
+static __thread NihDBusProxy *cgroup_manager = NULL;
+static __thread DBusConnection *connection = NULL;
+static __thread bool cgm_keep_connection = false;
+#else
 static NihDBusProxy *cgroup_manager = NULL;
+static DBusConnection *connection = NULL;
+static bool cgm_keep_connection = false;
+#endif
+
 static struct cgroup_ops cgmanager_ops;
 static int nr_subsystems;
 static char **subsystems;
-static DBusConnection *connection;
+
+static void cgm_dbus_disconnect(void)
+{
+	cgm_keep_connection = false;
+	if (cgroup_manager)
+		nih_free(cgroup_manager);
+	cgroup_manager = NULL;
+	if (connection)
+		dbus_connection_unref(connection);
+	connection = NULL;
+}
 
 #define CGMANAGER_DBUS_SOCK "unix:path=/sys/fs/cgroup/cgmanager/sock"
-static bool cgm_dbus_connect(void)
+static bool do_cgm_dbus_connect(void)
 {
 	DBusError dbus_error;
 	dbus_error_init(&dbus_error);
 
-	lock_mutex(&thread_mutex);
 	connection = nih_dbus_connect(CGMANAGER_DBUS_SOCK, NULL);
 	if (!connection) {
 		NihError *nerr;
@@ -109,7 +105,6 @@ static bool cgm_dbus_connect(void)
 			nerr->message);
 		nih_free(nerr);
 		dbus_error_free(&dbus_error);
-		unlock_mutex(&thread_mutex);
 		return false;
 	}
 	dbus_connection_set_exit_on_disconnect(connection, FALSE);
@@ -122,7 +117,7 @@ static bool cgm_dbus_connect(void)
 		nerr = nih_error_get();
 		ERROR("Error opening cgmanager proxy: %s", nerr->message);
 		nih_free(nerr);
-		unlock_mutex(&thread_mutex);
+		cgm_dbus_disconnect();
 		return false;
 	}
 
@@ -132,19 +127,16 @@ static bool cgm_dbus_connect(void)
 		nerr = nih_error_get();
 		ERROR("Error pinging cgroup manager: %s", nerr->message);
 		nih_free(nerr);
+		cgm_dbus_disconnect();
 	}
 	return true;
 }
 
-static void cgm_dbus_disconnect(void)
+static bool cgm_dbus_connect(void)
 {
-	if (cgroup_manager)
-		nih_free(cgroup_manager);
-	cgroup_manager = NULL;
 	if (connection)
-		dbus_connection_unref(connection);
-	connection = NULL;
-	unlock_mutex(&thread_mutex);
+		return true;
+	return do_cgm_dbus_connect();
 }
 
 static int send_creds(int sock, int rpid, int ruid, int rgid)
@@ -183,11 +175,13 @@ static int send_creds(int sock, int rpid, int ruid, int rgid)
 	return 0;
 }
 
-/*
- * Called during container startup.  The cgmanager socket is open
- */
 static bool lxc_cgmanager_create(const char *controller, const char *cgroup_path, int32_t *existed)
 {
+	bool ret = true;
+	if (!cgm_dbus_connect()) {
+		ERROR("Error connecting to cgroup manager");
+		return false;
+	}
 	if ( cgmanager_create_sync(NULL, cgroup_manager, controller,
 				       cgroup_path, existed) != 0) {
 		NihError *nerr;
@@ -195,16 +189,24 @@ static bool lxc_cgmanager_create(const char *controller, const char *cgroup_path
 		ERROR("call to cgmanager_create_sync failed: %s", nerr->message);
 		nih_free(nerr);
 		ERROR("Failed to create %s:%s", controller, cgroup_path);
-		return false;
+		ret = false;
 	}
 
-	return true;
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
+	return ret;
 }
 
 static bool lxc_cgmanager_escape(void)
 {
+	bool ret = true;
 	pid_t me = getpid();
 	int i;
+
+	if (!cgm_dbus_connect()) {
+		ERROR("Error connecting to cgroup manager");
+		return false;
+	}
 	for (i = 0; i < nr_subsystems; i++) {
 		if (cgmanager_move_pid_abs_sync(NULL, cgroup_manager,
 					subsystems[i], "/", me) != 0) {
@@ -213,11 +215,14 @@ static bool lxc_cgmanager_escape(void)
 			ERROR("call to cgmanager_move_pid_abs_sync(%s) failed: %s",
 					subsystems[i], nerr->message);
 			nih_free(nerr);
-			return false;
+			ret = false;
+			break;
 		}
 	}
 
-	return true;
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
+	return ret;
 }
 
 struct chown_data {
@@ -313,9 +318,7 @@ static int chown_cgroup_wrapper(void *data)
 	return do_chown_cgroup(arg->controller, arg->cgroup_path, arg->origuid);
 }
 
-/*
- * Called during container startup.  The cgmanager socket is open
- */
+/* Internal helper.  Must be called with the cgmanager dbus socket open */
 static bool lxc_cgmanager_chmod(const char *controller,
 		const char *cgroup_path, const char *file, int mode)
 {
@@ -330,9 +333,7 @@ static bool lxc_cgmanager_chmod(const char *controller,
 	return true;
 }
 
-/*
- * Called during container startup.  The cgmanager socket is open
- */
+/* Internal helper.  Must be called with the cgmanager dbus socket open */
 static bool chown_cgroup(const char *controller, const char *cgroup_path,
 			struct lxc_conf *conf)
 {
@@ -358,10 +359,12 @@ static bool chown_cgroup(const char *controller, const char *cgroup_path,
 		return false;
 	if (!lxc_cgmanager_chmod(controller, cgroup_path, "cgroup.procs", 0775))
 		return false;
+
 	return true;
 }
 
 #define CG_REMOVE_RECURSIVE 1
+/* Internal helper.  Must be called with the cgmanager dbus socket open */
 static void cgm_remove_cgroup(const char *controller, const char *path)
 {
 	int existed;
@@ -378,8 +381,9 @@ static void cgm_remove_cgroup(const char *controller, const char *path)
 }
 
 /*
- * We are starting up a container.  We open the cgmanager socket, and leave it
- * open (and mutex held) for the rest of container startup.
+ * We are starting up a container.  We open the cgmanager socket, and set
+ * cgm_keep_connection to true so that helpers will keep the connection
+ * open.
  */
 static void *cgm_init(const char *name)
 {
@@ -390,13 +394,18 @@ static void *cgm_init(const char *name)
 		return NULL;
 	}
 	d = malloc(sizeof(*d));
-	if (!d)
+	if (!d) {
+		cgm_dbus_disconnect();
 		return NULL;
+	}
 
 	memset(d, 0, sizeof(*d));
 	d->name = strdup(name);
-	if (!d->name)
+	if (!d->name) {
+		cgm_dbus_disconnect();
 		goto err1;
+	}
+	cgm_keep_connection = true;
 
 	/* if we are running as root, use system cgroup pattern, otherwise
 	 * just create a cgroup under the current one. But also fall back to
@@ -414,10 +423,7 @@ err1:
 	return NULL;
 }
 
-/*
- * Called after a failed container startup.  The cgmanager socket was just
- * closed at end of lxc_spawn.  We need to re-open
- */
+/* Called after a failed container startup */
 static void cgm_destroy(void *hdata)
 {
 	struct cgm_data *d = hdata;
@@ -436,11 +442,13 @@ static void cgm_destroy(void *hdata)
 	if (d->cgroup_path)
 		free(d->cgroup_path);
 	free(d);
-	cgm_dbus_disconnect();
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
 }
 
 /*
  * remove all the cgroups created
+ * called internally with dbus connection open
  */
 static inline void cleanup_cgroups(char *path)
 {
@@ -449,9 +457,6 @@ static inline void cleanup_cgroups(char *path)
 		cgm_remove_cgroup(subsystems[i], path);
 }
 
-/*
- * Called during container startup.  The cgmanager socket is open
- */
 static inline bool cgm_create(void *hdata)
 {
 	struct cgm_data *d = hdata;
@@ -464,14 +469,18 @@ static inline bool cgm_create(void *hdata)
 // XXX we should send a hint to the cgmanager that when these
 // cgroups become empty they should be deleted.  Requires a cgmanager
 // extension
+	if (!cgm_dbus_connect()) {
+		ERROR("Error connecting to cgroup manager");
+		return false;
+	}
 
 	memset(result, 0, MAXPATHLEN);
 	tmp = lxc_string_replace("%n", d->name, d->cgroup_pattern);
 	if (!tmp)
-		return false;
+		goto bad;
 	if (strlen(tmp) >= MAXPATHLEN) {
 		free(tmp);
-		return false;
+		goto bad;
 	}
 	strcpy(result, tmp);
 	baselen = strlen(result);
@@ -482,19 +491,19 @@ static inline bool cgm_create(void *hdata)
 again:
 	if (index == 100) { // turn this into a warn later
 		ERROR("cgroup error?  100 cgroups with this name already running");
-		return false;
+		goto bad;
 	}
 	if (index) {
 		ret = snprintf(result+baselen, MAXPATHLEN-baselen, "-%d", index);
 		if (ret < 0 || ret >= MAXPATHLEN-baselen)
-			return false;
+			goto bad;
 	}
 	existed = 0;
 	for (i = 0; i < nr_subsystems; i++) {
 		if (!lxc_cgmanager_create(subsystems[i], tmp, &existed)) {
 			ERROR("Error creating cgroup %s:%s", subsystems[i], result);
 			cleanup_cgroups(tmp);
-			return false;
+			goto bad;
 		}
 		if (existed == 1)
 			goto next;
@@ -503,14 +512,20 @@ again:
 	cgroup_path = strdup(tmp);
 	if (!cgroup_path) {
 		cleanup_cgroups(tmp);
-		return false;
+		goto bad;
 	}
 	d->cgroup_path = cgroup_path;
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
 	return true;
 next:
 	cleanup_cgroups(tmp);
 	index++;
 	goto again;
+bad:
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
+	return false;
 }
 
 /*
@@ -518,6 +533,8 @@ next:
  * hierarchy.
  * All the subsystems in this hierarchy are co-mounted, so we only
  * need to transition the task into one of the cgroups
+ *
+ * Internal helper, must be called with cgmanager dbus socket open
  */
 static bool lxc_cgmanager_enter(pid_t pid, const char *controller,
 		const char *cgroup_path)
@@ -533,6 +550,7 @@ static bool lxc_cgmanager_enter(pid_t pid, const char *controller,
 	return true;
 }
 
+/* Internal helper, must be called with cgmanager dbus socket open */
 static bool do_cgm_enter(pid_t pid, const char *cgroup_path)
 {
 	int i;
@@ -544,16 +562,23 @@ static bool do_cgm_enter(pid_t pid, const char *cgroup_path)
 	return true;
 }
 
-/*
- * called during container startup.  cgmanager socket is open
- */
 static inline bool cgm_enter(void *hdata, pid_t pid)
 {
 	struct cgm_data *d = hdata;
+	bool ret = false;
 
-	if (!d || !d->cgroup_path)
+	if (!cgm_dbus_connect()) {
+		ERROR("Error connecting to cgroup manager");
 		return false;
-	return do_cgm_enter(pid, d->cgroup_path);
+	}
+	if (!d || !d->cgroup_path)
+		goto out;
+	if (do_cgm_enter(pid, d->cgroup_path))
+		ret = true;
+out:
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
+	return ret;
 }
 
 static const char *cgm_get_cgroup(void *hdata, const char *subsystem)
@@ -569,6 +594,8 @@ static const char *cgm_get_cgroup(void *hdata, const char *subsystem)
  * nrtasks is called by the utmp helper by the container monitor.
  * cgmanager socket was closed after cgroup setup was complete, so we need
  * to reopen here.
+ *
+ * Return -1 on error.
  */
 static int cgm_get_nrtasks(void *hdata)
 {
@@ -577,11 +604,11 @@ static int cgm_get_nrtasks(void *hdata)
 	size_t pids_len;
 
 	if (!d || !d->cgroup_path)
-		return false;
+		return -1;
 
 	if (!cgm_dbus_connect()) {
 		ERROR("Error connecting to cgroup manager");
-		return false;
+		return -1;
 	}
 	if (cgmanager_get_tasks_sync(NULL, cgroup_manager, subsystems[0],
 				     d->cgroup_path, &pids, &pids_len) != 0) {
@@ -589,18 +616,17 @@ static int cgm_get_nrtasks(void *hdata)
 		nerr = nih_error_get();
 		ERROR("call to cgmanager_get_tasks_sync failed: %s", nerr->message);
 		nih_free(nerr);
-		cgm_dbus_disconnect();
-		return -1;
+		pids_len = -1;
+		goto out;
 	}
 	nih_free(pids);
-	cgm_dbus_disconnect();
+out:
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
 	return pids_len;
 }
 
-/*
- * cgm_get is called to get container cgroup settings.  cgmanager is not
- * connected.
- */
+/* cgm_get is called to get container cgroup settings, not during startup */
 static int cgm_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
 {
 	char *result, *controller, *key, *cgroup;
@@ -619,7 +645,6 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		return -1;
 	if (!cgm_dbus_connect()) {
 		ERROR("Error connecting to cgroup manager");
-		free(cgroup);
 		return -1;
 	}
 	if (cgmanager_get_value_sync(NULL, cgroup_manager, controller, cgroup, filename, &result) != 0) {
@@ -632,10 +657,12 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		nerr = nih_error_get();
 		nih_free(nerr);
 		free(cgroup);
-		cgm_dbus_disconnect();
+		if (!cgm_keep_connection)
+			cgm_dbus_disconnect();
 		return -1;
 	}
-	cgm_dbus_disconnect();
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
 	free(cgroup);
 	newlen = strlen(result);
 	if (!value) {
@@ -657,6 +684,7 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 	return newlen;
 }
 
+/* internal helper - call with cgmanager dbus connection open */
 static int cgm_do_set(const char *controller, const char *file,
 			 const char *cgroup, const char *value)
 {
@@ -673,9 +701,7 @@ static int cgm_do_set(const char *controller, const char *file,
 	return ret;
 }
 
-/*
- * cgm_set is called to change cgroup settings.  cgmanager is not connected
- */
+/* cgm_set is called to change cgroup settings, not during startup */
 static int cgm_set(const char *filename, const char *value, const char *name, const char *lxcpath)
 {
 	char *controller, *key, *cgroup;
@@ -698,10 +724,11 @@ static int cgm_set(const char *filename, const char *value, const char *name, co
 	if (!cgm_dbus_connect()) {
 		ERROR("Error connecting to cgroup manager");
 		free(cgroup);
-		return -1;
+		return false;
 	}
 	ret = cgm_do_set(controller, filename, cgroup, value);
-	cgm_dbus_disconnect();
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
 	free(cgroup);
 	return ret;
 }
@@ -710,13 +737,11 @@ static void free_subsystems(void)
 {
 	int i;
 
-	lock_mutex(&thread_mutex);
 	for (i = 0; i < nr_subsystems; i++)
 		free(subsystems[i]);
 	free(subsystems);
 	subsystems = NULL;
 	nr_subsystems = 0;
-	unlock_mutex(&thread_mutex);
 }
 
 static bool collect_subsytems(void)
@@ -728,10 +753,8 @@ static bool collect_subsytems(void)
 	if (subsystems) // already initialized
 		return true;
 
-	lock_mutex(&thread_mutex);
 	f = fopen_cloexec("/proc/cgroups", "r");
 	if (!f) {
-		unlock_mutex(&thread_mutex);
 		return false;
 	}
 	while (getline(&line, &sz, f) != -1) {
@@ -756,8 +779,6 @@ static bool collect_subsytems(void)
 	}
 	fclose(f);
 
-	unlock_mutex(&thread_mutex);
-
 	if (!nr_subsystems) {
 		ERROR("No cgroup subsystems found");
 		return false;
@@ -767,7 +788,6 @@ static bool collect_subsytems(void)
 
 out_free:
 	fclose(f);
-	unlock_mutex(&thread_mutex);
 	free_subsystems();
 	return false;
 }
@@ -785,10 +805,8 @@ struct cgroup_ops *cgm_ops_init(void)
 		goto err1;
 
 	// root;  try to escape to root cgroup
-	if (geteuid() == 0 && !lxc_cgmanager_escape()) {
-		cgm_dbus_disconnect();
+	if (geteuid() == 0 && !lxc_cgmanager_escape())
 		goto err2;
-	}
 	cgm_dbus_disconnect();
 
 	return &cgmanager_ops;
@@ -800,13 +818,11 @@ err1:
 	return NULL;
 }
 
-/*
- * unfreeze is called by the command api after killing a container.
- * cgmanager is not connected.
- */
+/* unfreeze is called by the command api after killing a container.  */
 static bool cgm_unfreeze(void *hdata)
 {
 	struct cgm_data *d = hdata;
+	bool ret = true;
 
 	if (!d || !d->cgroup_path)
 		return false;
@@ -822,17 +838,13 @@ static bool cgm_unfreeze(void *hdata)
 		ERROR("call to cgmanager_set_value_sync failed: %s", nerr->message);
 		nih_free(nerr);
 		ERROR("Error unfreezing %s", d->cgroup_path);
-		cgm_dbus_disconnect();
-		return false;
+		ret = false;
 	}
-	cgm_dbus_disconnect();
-	return true;
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
+	return ret;
 }
 
-/*
- * setup_limits is called during startup.  cgmanager is connected, and mutex
- * is held
- */
 static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool do_devices)
 {
 	struct cgm_data *d = hdata;
@@ -845,6 +857,11 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 
 	if (!d || !d->cgroup_path)
 		return false;
+
+	if (!cgm_dbus_connect()) {
+		ERROR("Error connecting to cgroup manager");
+		return false;
+	}
 
 	lxc_list_for_each(iterator, cgroup_settings) {
 		char controller[100], *p;
@@ -870,6 +887,8 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 	ret = true;
 	INFO("cgroup limits have been setup");
 out:
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
 	return ret;
 }
 
@@ -880,11 +899,17 @@ static bool cgm_chown(void *hdata, struct lxc_conf *conf)
 
 	if (!d || !d->cgroup_path)
 		return false;
+	if (!cgm_dbus_connect()) {
+		ERROR("Error connecting to cgroup manager");
+		return false;
+	}
 	for (i = 0; i < nr_subsystems; i++) {
 		if (!chown_cgroup(subsystems[i], d->cgroup_path, conf))
 			WARN("Failed to chown %s:%s to container root",
 				subsystems[i], d->cgroup_path);
 	}
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
 	return true;
 }
 
@@ -907,9 +932,9 @@ static bool cgm_attach(const char *name, const char *lxcpath, pid_t pid)
 		ERROR("Could not load container %s:%s", lxcpath, name);
 		return false;
 	}
-	if (!collect_subsytems()) {
-		ERROR("Error collecting cgroup subsystems");
-		goto out;
+	if (!cgm_dbus_connect()) {
+		ERROR("Error connecting to cgroup manager");
+		return false;
 	}
 	// cgm_create makes sure that we have the same cgroup name for all
 	// subsystems, so since this is a slow command over the cmd socket,
@@ -926,11 +951,12 @@ static bool cgm_attach(const char *name, const char *lxcpath, pid_t pid)
 	}
 	if (!(pass = do_cgm_enter(pid, cgroup)))
 		ERROR("Failed to enter group %s", cgroup);
-	cgm_dbus_disconnect();
 
 out:
 	free(cgroup);
 	lxc_container_put(c);
+	if (!cgm_keep_connection)
+		cgm_dbus_disconnect();
 	return pass;
 }
 
