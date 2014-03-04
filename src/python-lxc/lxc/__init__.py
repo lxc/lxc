@@ -28,6 +28,7 @@ import subprocess
 import time
 
 default_config_path = _lxc.get_global_config_item("lxc.lxcpath")
+get_global_config_item = _lxc.get_global_config_item
 version = _lxc.get_version()
 
 
