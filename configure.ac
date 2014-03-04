@@ -696,6 +696,7 @@ AC_CONFIG_FILES([
 	src/Makefile
 	src/lxc/Makefile
 	src/lxc/lxc-checkconfig
+	src/lxc/lxc-ls
 	src/lxc/lxc-start-ephemeral
 	src/lxc/legacy/lxc-ls
 	src/lxc/lxc.functions

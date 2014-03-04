@@ -31,11 +31,16 @@ import json
 import lxc
 import os
 import re
+import shutil
 import tempfile
 import sys
 
 _ = gettext.gettext
 gettext.textdomain("lxc-ls")
+
+# Constants
+LXCPATH = "@LXCPATH@"
+RUNTIME_PATH = "@RUNTIME_PATH@"
 
 
 # Functions used later on
@@ -54,7 +59,7 @@ def batch(iterable, cols=1):
         yield fields
 
 
-def getTerminalSize():
+def get_terminal_size():
     import os
     env = os.environ
 
@@ -84,27 +89,17 @@ def getTerminalSize():
     return int(cr[1]), int(cr[0])
 
 
-def getSubContainers(container):
-    with open(os.devnull, "w") as fd:
-        fdnum, path = tempfile.mkstemp()
-        os.remove(path)
+def get_root_path(path):
+    lxc_path = LXCPATH
+    global_conf = "%s/etc/lxc/lxc.conf" % path
+    if os.path.exists(global_conf):
+        with open(global_conf, "r") as fd:
+            for line in fd:
+                if line.startswith("lxc.lxcpath"):
+                    lxc_path = line.split("=")[-1].strip()
+                    break
+    return lxc_path
 
-        fd = os.fdopen(fdnum)
-
-        container.attach_wait(
-            lxc.attach_run_command, [sys.argv[0], "--nesting"],
-            attach_flags=(lxc.LXC_ATTACH_REMOUNT_PROC_SYS),
-            namespaces=(lxc.CLONE_NEWNET + lxc.CLONE_NEWPID),
-            extra_env_vars=["NESTED=/proc/1/root/%s" %
-                            lxc.default_config_path],
-            stdout=fd)
-
-        fd.seek(0)
-        out = fd.read()
-        fd.close()
-        if out:
-            return json.loads(out)
-    return None
 
 # Constants
 FIELDS = ("name", "state", "ipv4", "ipv6", "autostart", "pid",
@@ -158,11 +153,6 @@ if args.active:
 if not sys.stdout.isatty():
     args.one = True
 
-# Set the lookup path for the containers
-# This value will contain the full path for a nested containers
-# use args.lxcpath if you need the value relative to the container
-nest_lxcpath = os.environ.get('NESTED', args.lxcpath)
-
 # Turn args.fancy_format into a list
 args.fancy_format = args.fancy_format.strip().split(",")
 
@@ -193,141 +183,202 @@ if args.nesting:
         parser.error(_("Showing nested containers requires setns to the "
                        "PID namespace which your kernel doesn't support."))
 
+# Set the actual lxcpath value
+if not args.lxcpath:
+    args.lxcpath = lxc.default_config_path
+
+
 # List of containers, stored as dictionaries
-containers = []
-for container_name in lxc.list_containers(config_path=nest_lxcpath):
-    entry = {}
-    entry['name'] = container_name
+def get_containers(fd=None, base="/", root=False):
+    containers = []
 
-    # Apply filter
-    if args.filter and not re.match(args.filter, container_name):
-        continue
+    paths = [args.lxcpath]
 
-    # Return before grabbing the object (non-root)
-    if not args.state and not args.fancy and not args.nesting:
-        containers.append(entry)
-        continue
+    if not root:
+        paths.append(get_root_path(base))
 
-    container = lxc.Container(container_name, args.lxcpath)
+    # Generate a unique list of valid paths
+    paths = set([os.path.normpath("%s/%s" % (base, path)) for path in paths])
 
-    if 'NESTED' in os.environ:
-        container.load_config(os.path.join(nest_lxcpath, container_name,
-                                           "config"))
+    for path in paths:
+        if not os.access(path, os.R_OK):
+            continue
 
-    if container.controllable:
-        state = container.state
-    else:
-        state = 'UNKNOWN'
+        for container_name in lxc.list_containers(config_path=path):
+            entry = {}
+            entry['name'] = container_name
 
-    # Filter by status
-    if args.state and state not in args.state:
-        continue
-
-    # Nothing more is needed if we're not printing some fancy output
-    if not args.fancy and not args.nesting:
-        containers.append(entry)
-        continue
-
-    # Some extra field we may want
-    if 'state' in args.fancy_format or args.nesting:
-        entry['state'] = state
-
-    if 'pid' in args.fancy_format or args.nesting:
-        entry['pid'] = "-"
-        if state == 'UNKNOWN':
-            entry['pid'] = state
-        elif container.init_pid != -1:
-            entry['pid'] = str(container.init_pid)
-
-    if 'autostart' in args.fancy_format or args.nesting:
-        entry['autostart'] = "NO"
-        try:
-            if container.get_config_item("lxc.start.auto") == "1":
-                entry['autostart'] = "YES"
-
-                groups = container.get_config_item("lxc.group")
-                if len(groups) > 0:
-                    entry['autostart'] = "YES (%s)" % ", ".join(groups)
-        except KeyError:
-            pass
-
-    if 'memory' in args.fancy_format or \
-       'ram' in args.fancy_format or \
-       'swap' in args.fancy_format:
-
-        if container.running:
-            try:
-                memory_total = int(container.get_cgroup_item(
-                    "memory.usage_in_bytes"))
-            except:
-                memory_total = 0
-
-            try:
-                memory_swap = int(container.get_cgroup_item(
-                    "memory.memsw.usage_in_bytes"))
-            except:
-                memory_swap = 0
-        else:
-            memory_total = 0
-            memory_swap = 0
-
-    if 'memory' in args.fancy_format:
-        if container.running:
-            entry['memory'] = "%sMB" % round(memory_total / 1048576, 2)
-        else:
-            entry['memory'] = "-"
-
-    if 'ram' in args.fancy_format:
-        if container.running:
-            entry['ram'] = "%sMB" % round(
-                (memory_total - memory_swap) / 1048576, 2)
-        else:
-            entry['ram'] = "-"
-
-    if 'swap' in args.fancy_format:
-        if container.running:
-            entry['swap'] = "%sMB" % round(memory_swap / 1048576, 2)
-        else:
-            entry['swap'] = "-"
-
-    # Get the IPs
-    for family, protocol in {'inet': 'ipv4', 'inet6': 'ipv6'}.items():
-        if protocol in args.fancy_format or args.nesting:
-            entry[protocol] = "-"
-
-            if state == 'UNKNOWN':
-                entry[protocol] = state
+            # Apply filter
+            if root and args.filter and \
+               not re.match(args.filter, container_name):
                 continue
 
-            if container.running:
-                if not SUPPORT_SETNS_NET:
-                    entry[protocol] = 'UNKNOWN'
-                    continue
+            # Return before grabbing the object (non-root)
+            if not args.state and not args.fancy and not args.nesting:
+                containers.append(entry)
+                continue
 
-                ips = container.get_ips(family=family)
-                if ips:
-                    entry[protocol] = ", ".join(ips)
+            try:
+                container = lxc.Container(container_name, path)
+            except:
+                continue
 
-    # Append the container
-    containers.append(entry)
+            if container.controllable:
+                state = container.state
+            else:
+                state = 'UNKNOWN'
 
-    # Nested containers
-    if args.nesting and container.state == "RUNNING":
-        sub = getSubContainers(container)
-        if sub:
-            for entry in sub:
-                if 'nesting_parent' not in entry:
-                    entry['nesting_parent'] = []
-                entry['nesting_parent'].insert(0, container_name)
-                entry['nesting_real_name'] = entry.get('nesting_real_name',
-                                                       entry['name'])
-                entry['name'] = "%s/%s" % (container_name, entry['name'])
-            containers += sub
+            # Filter by status
+            if args.state and state not in args.state:
+                continue
 
-# Deal with json output:
-if 'NESTED' in os.environ:
-    print(json.dumps(containers))
-    sys.exit(0)
+            # Nothing more is needed if we're not printing some fancy output
+            if not args.fancy and not args.nesting:
+                containers.append(entry)
+                continue
+
+            # Some extra field we may want
+            if 'state' in args.fancy_format or args.nesting:
+                entry['state'] = state
+
+            if 'pid' in args.fancy_format or args.nesting:
+                entry['pid'] = "-"
+                if state == 'UNKNOWN':
+                    entry['pid'] = state
+                elif container.init_pid != -1:
+                    entry['pid'] = str(container.init_pid)
+
+            if 'autostart' in args.fancy_format or args.nesting:
+                entry['autostart'] = "NO"
+                try:
+                    if container.get_config_item("lxc.start.auto") == "1":
+                        entry['autostart'] = "YES"
+
+                        groups = container.get_config_item("lxc.group")
+                        if len(groups) > 0:
+                            entry['autostart'] = "YES (%s)" % ", ".join(groups)
+                except KeyError:
+                    pass
+
+            if 'memory' in args.fancy_format or \
+               'ram' in args.fancy_format or \
+               'swap' in args.fancy_format:
+
+                if container.running:
+                    try:
+                        memory_total = int(container.get_cgroup_item(
+                            "memory.usage_in_bytes"))
+                    except:
+                        memory_total = 0
+
+                    try:
+                        memory_swap = int(container.get_cgroup_item(
+                            "memory.memsw.usage_in_bytes"))
+                    except:
+                        memory_swap = 0
+                else:
+                    memory_total = 0
+                    memory_swap = 0
+
+            if 'memory' in args.fancy_format:
+                if container.running:
+                    entry['memory'] = "%sMB" % round(memory_total / 1048576, 2)
+                else:
+                    entry['memory'] = "-"
+
+            if 'ram' in args.fancy_format:
+                if container.running:
+                    entry['ram'] = "%sMB" % round(
+                        (memory_total - memory_swap) / 1048576, 2)
+                else:
+                    entry['ram'] = "-"
+
+            if 'swap' in args.fancy_format:
+                if container.running:
+                    entry['swap'] = "%sMB" % round(memory_swap / 1048576, 2)
+                else:
+                    entry['swap'] = "-"
+
+            # Get the IPs
+            for family, protocol in {'inet': 'ipv4', 'inet6': 'ipv6'}.items():
+                if protocol in args.fancy_format or args.nesting:
+                    entry[protocol] = "-"
+
+                    if state == 'UNKNOWN':
+                        entry[protocol] = state
+                        continue
+
+                    if container.running:
+                        if not SUPPORT_SETNS_NET:
+                            entry[protocol] = 'UNKNOWN'
+                            continue
+
+                        ips = container.get_ips(family=family)
+                        if ips:
+                            entry[protocol] = ", ".join(ips)
+
+            # Nested containers
+            if args.nesting:
+                if container.running:
+                    # Recursive call in container namespace
+                    temp_fd, temp_file = tempfile.mkstemp()
+                    os.remove(temp_file)
+
+                    container.attach_wait(get_containers, temp_fd,
+                                          attach_flags=0)
+
+                    json_file = os.fdopen(temp_fd, "r")
+                    json_file.seek(0)
+
+                    try:
+                        sub_containers = json.loads(json_file.read())
+                    except:
+                        sub_containers = []
+
+                    json_file.close()
+                else:
+                    def clear_lock():
+                        try:
+                            lock_path = "%s/lock/lxc/%s/%s" % (RUNTIME_PATH,
+                                                               path,
+                                                               entry['name'])
+                            if os.path.exists(lock_path):
+                                if os.path.isdir(lock_path):
+                                    shutil.rmtree(lock_path)
+                                else:
+                                    os.remove(lock_path)
+                        except:
+                            pass
+
+                    clear_lock()
+
+                    # Recursive call using container rootfs
+                    sub_containers = get_containers(
+                        base="%s/%s" % (
+                            base, container.get_config_item("lxc.rootfs")))
+
+                    clear_lock()
+
+                for sub in sub_containers:
+                    if 'nesting_parent' not in sub:
+                        sub['nesting_parent'] = []
+                    sub['nesting_parent'].insert(0, entry['name'])
+                    sub['nesting_real_name'] = sub.get('nesting_real_name',
+                                                       sub['name'])
+                    sub['name'] = "%s/%s" % (entry['name'], sub['name'])
+                    containers.append(sub)
+
+            # Append the container
+            containers.append(entry)
+
+    if fd:
+        json_file = os.fdopen(fd, "w+")
+        json_file.write(json.dumps(containers))
+        return
+
+    return containers
+
+containers = get_containers(root=True)
 
 # Print the list
 ## Standard list with one entry per line
@@ -348,7 +399,7 @@ if not args.fancy and not args.one:
         container_names.append(container['name'])
 
     # Figure out how many we can put per line
-    width = getTerminalSize()[0]
+    width = get_terminal_size()[0]
 
     entries = int(width / (field_maxlength + 2))
     if entries == 0:
