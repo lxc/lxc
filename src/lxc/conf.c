@@ -3439,6 +3439,13 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 		}
 		return 0;
 	}
+
+	if (rootid == geteuid()) {
+		// nothing to do
+		INFO("%s: container root is our uid;  no need to chown" ,__func__);
+		return 0;
+	}
+
 	pid = fork();
 	if (pid < 0) {
 		SYSERROR("Failed forking");
