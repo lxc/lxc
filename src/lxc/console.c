@@ -506,7 +506,7 @@ static void lxc_console_peer_default(struct lxc_console *console)
 	DEBUG("using '%s' as console", path);
 
 	if (!isatty(console->peer))
-		return;
+		goto err1;
 
 	ts = lxc_console_sigwinch_init(console->peer, console->master);
 	if (!ts)
@@ -611,7 +611,23 @@ err:
 	return -1;
 }
 
+int lxc_console_set_stdfds(struct lxc_handler *handler)
+{
+	struct lxc_conf *conf = handler->conf;
+	struct lxc_console *console = &conf->console;
 
+	if (console->slave < 0)
+		return 0;
+
+	if (dup2(console->slave, 0) < 0 ||
+	    dup2(console->slave, 1) < 0 ||
+	    dup2(console->slave, 2) < 0)
+	{
+		SYSERROR("failed to dup console");
+		return -1;
+	}
+	return 0;
+}
 
 static int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
 				    struct lxc_epoll_descr *descr)
