@@ -31,7 +31,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <fcntl.h>
-#include <termios.h>
 #include <grp.h>
 #include <poll.h>
 #include <sys/param.h>
@@ -725,6 +724,15 @@ static int do_start(void *data)
 		SYSERROR("failed to set environment variable");
 		goto out_warn_father;
 	}
+
+	/* Some init's such as busybox will set sane tty settings on stdin,
+	 * stdout, stderr which it thinks is the console. We already set them
+	 * the way we wanted on the real terminal, and we want init to do its
+	 * setup on its console ie. the pty allocated in lxc_console_create()
+	 * so make sure that that pty is stdin,stdout,stderr.
+	 */
+	if (lxc_console_set_stdfds(handler) < 0)
+		goto out_warn_father;
 
 	close(handler->sigfd);
 
