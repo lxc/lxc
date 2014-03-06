@@ -79,6 +79,7 @@ static bool cgm_keep_connection = false;
 static struct cgroup_ops cgmanager_ops;
 static int nr_subsystems;
 static char **subsystems;
+static bool dbus_threads_initialized = false;
 
 static void cgm_dbus_disconnect(void)
 {
@@ -95,6 +96,13 @@ static void cgm_dbus_disconnect(void)
 static bool do_cgm_dbus_connect(void)
 {
 	DBusError dbus_error;
+
+	if (!dbus_threads_initialized) {
+		// tell dbus to do struct locking for thread safety
+		dbus_threads_init_default();
+		dbus_threads_initialized = true;
+	}
+
 	dbus_error_init(&dbus_error);
 
 	connection = nih_dbus_connect(CGMANAGER_DBUS_SOCK, NULL);
@@ -935,6 +943,7 @@ static bool cgm_attach(const char *name, const char *lxcpath, pid_t pid)
 	}
 	if (!cgm_dbus_connect()) {
 		ERROR("Error connecting to cgroup manager");
+		lxc_container_put(c);
 		return false;
 	}
 	// cgm_create makes sure that we have the same cgroup name for all
