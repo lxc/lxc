@@ -128,6 +128,7 @@ static bool do_cgm_dbus_connect(void)
 		ERROR("Error pinging cgroup manager: %s", nerr->message);
 		nih_free(nerr);
 		cgm_dbus_disconnect();
+		return false;
 	}
 	return true;
 }
