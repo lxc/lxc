@@ -91,11 +91,15 @@ static void do_function(void *arguments)
     } else if(strcmp(args->mode, "start") == 0) {
         if (c->is_defined(c) && !c->is_running(c)) {
             c->want_daemonize(c, true);
+            if (!quiet) {
+                c->set_config_item(c, "lxc.loglevel", "DEBUG");
+                c->set_config_item(c, "lxc.logfile", name);
+            }
             if (!c->start(c, false, NULL)) {
                 fprintf(stderr, "Starting the container (%s) failed...\n", name);
                 goto out;
             }
-            if (!c->wait(c, "RUNNING", -1)) {
+            if (!c->wait(c, "RUNNING", 15)) {
                 fprintf(stderr, "Waiting the container (%s) to start failed...\n", name);
                 goto out;
             }
@@ -107,7 +111,7 @@ static void do_function(void *arguments)
                 fprintf(stderr, "Stopping the container (%s) failed...\n", name);
                 goto out;
             }
-            if (!c->wait(c, "STOPPED", -1)) {
+            if (!c->wait(c, "STOPPED", 15)) {
                 fprintf(stderr, "Waiting the container (%s) to stop failed...\n", name);
                 goto out;
             }
