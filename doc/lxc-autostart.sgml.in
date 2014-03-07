@@ -146,6 +146,29 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                     </para>
                 </listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-g,--group <replaceable>GROUP</replaceable></option>
+                </term>
+                <listitem>
+                    <para>
+                        Comma separate list of groups to select
+                        (defaults to those without a lxc.group).
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-a,--all</option>
+                </term>
+                <listitem>
+                    <para>
+                        Ignore lxc.group and select all auto-started containers.
+                    </para>
+                </listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
