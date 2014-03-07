@@ -145,8 +145,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <listitem>
           <para>
             Comma separate list of column to show in the fancy output.
-            Valid values are: name, state, ipv4, ipv6 and pid
-            Default is: name,state,ipv4,ipv6
+            The list of accepted and default fields is listed in --help.
           </para>
         </listitem>
       </varlistentry>
