@@ -865,6 +865,11 @@ int list_active_containers(const char *lxcpath, char ***names, struct lxc_contai
  */
 int list_all_containers(const char *lxcpath, char ***names, struct lxc_container ***cret);
 
+/*!
+ * \brief Close log file.
+ */
+void lxc_log_close(void);
+
 #ifdef  __cplusplus
 }
 #endif

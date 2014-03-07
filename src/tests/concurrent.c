@@ -29,6 +29,7 @@
 
 static int nthreads = 5;
 static int iterations = 1;
+static int debug = 0;
 static int quiet = 0;
 static int delay = 0;
 static const char *template = "busybox";
@@ -40,6 +41,7 @@ static const struct option options[] = {
     { "delay",       required_argument, NULL, 'd' },
     { "modes",       required_argument, NULL, 'm' },
     { "quiet",       no_argument,       NULL, 'q' },
+    { "debug",       no_argument,       NULL, 'D' },
     { "help",        no_argument,       NULL, '?' },
     { 0, 0, 0, 0 },
 };
@@ -54,6 +56,7 @@ static void usage(void) {
         "  -d, --delay=N                Delay in seconds between start and stop\n"
         "  -m, --modes=<mode,mode,...>  Modes to run (create, start, stop, destroy)\n"
         "  -q, --quiet                  Don't produce any output\n"
+        "  -D, --debug                  Create a debug log\n"
         "  -?, --help                   Give this help list\n"
         "\n"
         "Mandatory or optional arguments to long options are also mandatory or optional\n"
@@ -81,6 +84,11 @@ static void do_function(void *arguments)
         return;
     }
 
+    if (debug) {
+	c->set_config_item(c, "lxc.loglevel", "DEBUG");
+	c->set_config_item(c, "lxc.logfile", name);
+    }
+
     if (strcmp(args->mode, "create") == 0) {
         if (!c->is_defined(c)) {
             if (!c->create(c, template, NULL, NULL, 1, NULL)) {
@@ -91,10 +99,6 @@ static void do_function(void *arguments)
     } else if(strcmp(args->mode, "start") == 0) {
         if (c->is_defined(c) && !c->is_running(c)) {
             c->want_daemonize(c, true);
-            if (!quiet) {
-                c->set_config_item(c, "lxc.loglevel", "DEBUG");
-                c->set_config_item(c, "lxc.logfile", name);
-            }
             if (!c->start(c, false, NULL)) {
                 fprintf(stderr, "Starting the container (%s) failed...\n", name);
                 goto out;
@@ -127,6 +131,8 @@ static void do_function(void *arguments)
     args->return_code = 0;
 out:
     lxc_container_put(c);
+    if (debug)
+	lxc_log_close();
 }
 
 static void *concurrent(void *arguments)
@@ -148,7 +154,7 @@ int main(int argc, char *argv[]) {
 
     pthread_attr_init(&attr);
 
-    while ((opt = getopt_long(argc, argv, "j:i:t:d:m:q", options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "j:i:t:d:m:qD", options, NULL)) != -1) {
         switch(opt) {
         case 'j':
             nthreads = atoi(optarg);
@@ -165,6 +171,9 @@ int main(int argc, char *argv[]) {
         case 'q':
             quiet = 1;
             break;
+	case 'D':
+	    debug = 1;
+	    break;
         case 'm': {
             char *mode_tok, *tok, *saveptr = NULL;
 
