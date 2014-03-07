@@ -1821,11 +1821,18 @@ int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 
 static int mount_entry(const char *fsname, const char *target,
 		       const char *fstype, unsigned long mountflags,
-		       const char *data)
+		       const char *data, int optional)
 {
 	if (mount(fsname, target, fstype, mountflags & ~MS_REMOUNT, data)) {
-		SYSERROR("failed to mount '%s' on '%s'", fsname, target);
-		return -1;
+		if (optional) {
+			INFO("failed to mount '%s' on '%s' (optional): %s", fsname,
+			     target, strerror(errno));
+			return 0;
+		}
+		else {
+			SYSERROR("failed to mount '%s' on '%s'", fsname, target);
+			return -1;
+		}
 	}
 
 	if ((mountflags & MS_REMOUNT) || (mountflags & MS_BIND)) {
@@ -1835,9 +1842,16 @@ static int mount_entry(const char *fsname, const char *target,
 
 		if (mount(fsname, target, fstype,
 			  mountflags | MS_REMOUNT, data)) {
-			SYSERROR("failed to mount '%s' on '%s'",
-				 fsname, target);
-			return -1;
+			if (optional) {
+				INFO("failed to mount '%s' on '%s' (optional): %s",
+					 fsname, target, strerror(errno));
+				return 0;
+			}
+			else {
+				SYSERROR("failed to mount '%s' on '%s'",
+					 fsname, target);
+				return -1;
+			}
 		}
 	}
 
@@ -1910,10 +1924,7 @@ static inline int mount_entry_on_systemfs(struct mntent *mntent)
 	}
 
 	ret = mount_entry(mntent->mnt_fsname, mntent->mnt_dir,
-			  mntent->mnt_type, mntflags, mntdata);
-
-	if (optional)
-		ret = 0;
+			  mntent->mnt_type, mntflags, mntdata, optional);
 
 	free(pathdirname);
 	free(mntdata);
@@ -2000,12 +2011,9 @@ skipabs:
 	}
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
-			  mntflags, mntdata);
+			  mntflags, mntdata, optional);
 
 	free(mntdata);
-
-	if (optional)
-		ret = 0;
 
 out:
 	free(pathdirname);
@@ -2059,10 +2067,7 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	}
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
-			  mntflags, mntdata);
-
-	if (optional)
-		ret = 0;
+			  mntflags, mntdata, optional);
 
 	free(pathdirname);
 	free(mntdata);
