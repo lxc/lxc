@@ -368,6 +368,16 @@ extern int lxc_log_init(const char *name, const char *file,
 	return ret;
 }
 
+extern void lxc_log_close(void)
+{
+	if (lxc_log_fd == -1)
+		return;
+	close(lxc_log_fd);
+	lxc_log_fd = -1;
+	free(log_fname);
+	log_fname = NULL;
+}
+
 /*
  * This is called when we read a lxc.loglevel entry in a lxc.conf file.  This
  * happens after processing command line arguments, which override the .conf
