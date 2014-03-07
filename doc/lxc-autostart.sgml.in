@@ -51,6 +51,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <arg choice="opt">-r</arg>
             <arg choice="opt">-s</arg>
             <arg choice="opt">-a</arg>
+            <arg choice="opt">-A</arg>
             <arg choice="opt">-g <replaceable>groups</replaceable></arg>
             <arg choice="opt">-t <replaceable>timeout</replaceable></arg>
         </cmdsynopsis>
@@ -166,6 +167,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                 <listitem>
                     <para>
                         Ignore lxc.group and select all auto-started containers.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-A,--ignore-auto</option>
+                </term>
+                <listitem>
+                    <para>
+                        Ignore the lxc.start.auto flag. Combined with
+                        -a, will select all containers on the system.
                     </para>
                 </listitem>
             </varlistentry>

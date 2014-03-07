@@ -50,7 +50,7 @@ case "$1" in
 	touch /var/lock/subsys/lxc
 	;;
   stop)
-	action $"Stopping LXC containers: " /usr/bin/lxc-autostart -s
+	action $"Stopping LXC containers: " /usr/bin/lxc-autostart -a -A -s
 	rm -f /var/lock/subsys/lxc
 	;;
   restart|reload|force-reload)
