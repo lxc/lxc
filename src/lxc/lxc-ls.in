@@ -102,7 +102,7 @@ def get_root_path(path):
 
 
 # Constants
-FIELDS = ("name", "state", "ipv4", "ipv6", "autostart", "pid",
+FIELDS = ("name", "state", "interfaces", "ipv4", "ipv6", "autostart", "pid",
           "memory", "ram", "swap")
 DEFAULT_FIELDS = ("name", "state", "ipv4", "ipv6", "autostart")
 
@@ -322,6 +322,18 @@ def get_containers(fd=None, base="/", root=False):
                         ips = container.get_ips(family=family)
                         if ips:
                             entry[protocol] = ", ".join(ips)
+
+            # Get the interfaces
+            if 'interfaces' in args.fancy_format:
+                entry['interfaces'] = "-"
+
+                if state == 'UNKNOWN' or (container.running and
+                                          not SUPPORT_SETNS_NET):
+                    entry['interfaces'] = "UNKNOWN"
+                elif container.running:
+                    interfaces = container.get_interfaces()
+                    if interfaces:
+                        entry['interfaces'] = ", ".join(interfaces)
 
             # Nested containers
             if args.nesting:
