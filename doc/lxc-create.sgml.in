@@ -115,6 +115,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    for details of the expected script structure.
 	    Alternatively, the full path to an executable template script
 	    can also be passed as a parameter.
+	    "none" can be used to force lxc-create to skip rootfs creation.
 	  </para>
 	</listitem>
       </varlistentry>
