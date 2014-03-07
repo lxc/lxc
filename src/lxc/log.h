@@ -24,6 +24,8 @@
 #ifndef _log_h
 #define _log_h
 
+#include "config.h"
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -285,7 +287,11 @@ static inline void LXC_##PRIORITY(struct lxc_log_locinfo* locinfo,	\
 	ERROR("%s - " format, strerror(errno), ##__VA_ARGS__);		\
 } while (0)
 
+#ifdef HAVE_TLS
+extern __thread int lxc_log_fd;
+#else
 extern int lxc_log_fd;
+#endif
 
 extern int lxc_log_init(const char *name, const char *file,
 			const char *priority, const char *prefix, int quiet,
