@@ -1000,12 +1000,33 @@ out_abort:
 	return -1;
 }
 
+int get_netns_fd(int pid)
+{
+	char path[MAXPATHLEN];
+	int ret, fd;
+
+	ret = snprintf(path, MAXPATHLEN, "/proc/%d/ns/net", pid);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		WARN("Failed to pin netns file for pid %d", pid);
+		return -1;
+	}
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		WARN("Failed to pin netns file %s for pid %d: %s",
+				path, pid, strerror(errno));
+		return -1;
+	}
+	return fd;
+}
+
 int __lxc_start(const char *name, struct lxc_conf *conf,
 		struct lxc_operations* ops, void *data, const char *lxcpath)
 {
 	struct lxc_handler *handler;
 	int err = -1;
 	int status;
+	int netnsfd = -1;
 
 	handler = lxc_init(name, conf, lxcpath);
 	if (!handler) {
@@ -1031,6 +1052,8 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 		ERROR("failed to spawn '%s'", name);
 		goto out_fini_nonet;
 	}
+
+	netnsfd = get_netns_fd(handler->pid);
 
 	err = lxc_poll(name, handler);
 	if (err) {
@@ -1065,7 +1088,8 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 		}
         }
 
-	lxc_rename_phys_nics_on_shutdown(handler->conf);
+	lxc_rename_phys_nics_on_shutdown(netnsfd, handler->conf);
+	close(netnsfd);
 
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);

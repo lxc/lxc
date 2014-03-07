@@ -2558,11 +2558,49 @@ static int setup_network(struct lxc_list *network)
 	return 0;
 }
 
-void lxc_rename_phys_nics_on_shutdown(struct lxc_conf *conf)
+/* try to move physical nics to the init netns */
+void restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
+{
+	int i, ret, oldfd;
+	char path[MAXPATHLEN];
+
+	if (netnsfd < 0)
+		return;
+
+	ret = snprintf(path, MAXPATHLEN, "/proc/self/ns/net");
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		WARN("Failed to open monitor netns fd");
+		return;
+	}
+	if ((oldfd = open(path, O_RDONLY)) < 0) {
+		SYSERROR("Failed to open monitor netns fd");
+		return;
+	}
+	if (setns(netnsfd, 0) != 0) {
+		SYSERROR("Failed to enter container netns to reset nics");
+		close(oldfd);
+		return;
+	}
+	for (i=0; i<conf->num_savednics; i++) {
+		struct saved_nic *s = &conf->saved_nics[i];
+		if (lxc_netdev_move_by_index(s->ifindex, 1))
+			WARN("Error moving nic index:%d back to host netns",
+					s->ifindex);
+	}
+	if (setns(oldfd, 0) != 0)
+		SYSERROR("Failed to re-enter monitor's netns");
+	close(oldfd);
+}
+
+void lxc_rename_phys_nics_on_shutdown(int netnsfd, struct lxc_conf *conf)
 {
 	int i;
 
+	if (conf->num_savednics == 0)
+		return;
+
 	INFO("running to reset %d nic names", conf->num_savednics);
+	restore_phys_nics_to_netns(netnsfd, conf);
 	for (i=0; i<conf->num_savednics; i++) {
 		struct saved_nic *s = &conf->saved_nics[i];
 		INFO("resetting nic %d to %s", s->ifindex, s->orig_name);
