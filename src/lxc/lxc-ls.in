@@ -104,10 +104,16 @@ def get_root_path(path):
 # Constants
 FIELDS = ("name", "state", "ipv4", "ipv6", "autostart", "pid",
           "memory", "ram", "swap")
+DEFAULT_FIELDS = ("name", "state", "ipv4", "ipv6", "autostart")
 
 # Begin parsing the command line
 parser = argparse.ArgumentParser(description=_("LXC: List containers"),
-                                 formatter_class=argparse.RawTextHelpFormatter)
+                                 formatter_class=argparse.RawTextHelpFormatter,
+                                 epilog=_("""Valid fancy-format fields:
+  %s
+
+Default fancy-format fields:
+  %s\n""" % (", ".join(FIELDS), ", ".join(DEFAULT_FIELDS))))
 
 parser.add_argument("-1", dest="one", action="store_true",
                     help=_("list one container per line (default when piped)"))
@@ -132,7 +138,7 @@ parser.add_argument("-f", "--fancy", action="store_true",
                     help=_("use fancy output"))
 
 parser.add_argument("-F", "--fancy-format", type=str,
-                    default="name,state,ipv4,ipv6,autostart",
+                    default=",".join(DEFAULT_FIELDS),
                     help=_("comma separated list of fields to show"))
 
 parser.add_argument("--nesting", dest="nesting", action="store_true",
