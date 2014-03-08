@@ -1058,6 +1058,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	err = lxc_poll(name, handler);
 	if (err) {
 		ERROR("mainloop exited with an error");
+		close(netnsfd);
 		goto out_abort;
 	}
 
