@@ -1058,7 +1058,8 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	err = lxc_poll(name, handler);
 	if (err) {
 		ERROR("mainloop exited with an error");
-		close(netnsfd);
+		if (netnsfd >= 0)
+			close(netnsfd);
 		goto out_abort;
 	}
 
@@ -1090,7 +1091,8 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
         }
 
 	lxc_rename_phys_nics_on_shutdown(netnsfd, handler->conf);
-	close(netnsfd);
+	if (netnsfd >= 0)
+		close(netnsfd);
 
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);
