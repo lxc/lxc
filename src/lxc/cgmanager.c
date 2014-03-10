@@ -438,7 +438,7 @@ static void cgm_destroy(void *hdata)
 	struct cgm_data *d = hdata;
 	int i;
 
-	if (!d)
+	if (!d || !d->cgroup_path)
 		return;
 	if (!cgm_dbus_connect()) {
 		ERROR("Error connecting to cgroup manager");
@@ -703,7 +703,7 @@ static int cgm_do_set(const char *controller, const char *file,
 	if (ret != 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
-		ERROR("call to cgmanager_remove_sync failed: %s", nerr->message);
+		ERROR("call to cgmanager_set_value_sync failed: %s", nerr->message);
 		nih_free(nerr);
 		ERROR("Error setting cgroup %s limit %s", file, cgroup);
 	}
