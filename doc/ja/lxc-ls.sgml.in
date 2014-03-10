@@ -172,12 +172,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <para>
             <!--
             Comma separate list of column to show in the fancy output.
-            Valid values are: name, state, ipv4, ipv6 and pid
-            Default is: name,state,ipv4,ipv6
+            The list of accepted and default fields is listed in --help.
             -->
-            装飾付き出力で表示するカラムのコンマ区切りのリスト．
-            有効な値は name,state,ipv4,ipv6,pid．
-            デフォルトは name,state,ipv4,ipv6
+            装飾付き出力で表示するカラムのコンマ区切りのリスト．デフォルトで表示される項目と指定可能な項目名は --help オプションで確認してください．
           </para>
         </listitem>
       </varlistentry>
