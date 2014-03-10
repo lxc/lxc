@@ -139,11 +139,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    for details of the expected script structure.
 	    Alternatively, the full path to an executable template script
 	    can also be passed as a parameter.
+	    "none" can be used to force lxc-create to skip rootfs creation.
             -->
             <replaceable>template</replaceable> は lxc-create コマンドが呼び出す，存在する 'lxc-template' スクリプトの短い名前です．
             例えば，busybox, debian, fedora, ubuntu, sshd があります．
             期待されるスクリプトの構造の詳細は，<filename>@LXCTEMPLATEDIR@</filename> 内の例を参照してください．
-            加えて，実行可能なテンプレートスクリプトへのフルパスも指定することが可能です．
+            加えて，実行可能なテンプレートスクリプトへのフルパスも指定することが可能です．rootfs の作成を行わないように "none" を指定することも可能です．
 	  </para>
 	</listitem>
       </varlistentry>
