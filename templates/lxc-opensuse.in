@@ -263,7 +263,7 @@ copy_configuration()
         grep -q "^lxc.network.ipv4" $path/config
         IPV4_NOT_CONFIGURED=$?
 
-        if [ ! grep -q "^lxc.network.*.gateway" $path/config ]; then
+        if ! grep -q "^lxc.network.*.gateway" $path/config; then
             [ $IPV4_NOT_CONFIGURED -eq 0 ] && IPV4=$(sed '/^#/d; /lxc.network.ipv4/!d; /gateway/d; s/.*=[ \t]*//; s/\([[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+\).*/\1/' $path/config)
             if [ "$TYPE" = "veth" -o "$TYPE" = "macvlan" ]; then
                 if [ $IPV4_NOT_CONFIGURED -eq 0 -a "$IPV4" != "0.0.0.0" ]; then
