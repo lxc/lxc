@@ -36,3 +36,4 @@ extern int  lxc_console(struct lxc_container *c, int ttynum,
 		        int escape);
 extern int  lxc_console_getfd(struct lxc_container *c, int *ttynum,
 			      int *masterfd);
+extern int  lxc_console_set_stdfds(struct lxc_handler *);

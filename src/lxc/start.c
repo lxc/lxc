@@ -31,7 +31,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <fcntl.h>
-#include <termios.h>
 #include <grp.h>
 #include <poll.h>
 #include <sys/param.h>
@@ -695,6 +694,15 @@ static int do_start(void *data)
 	else if (!strcmp(lsm_name(), "SELinux"))
 		lsm_label = handler->conf->lsm_se_context;
 	if (lsm_process_label_set(lsm_label, 1, 1) < 0)
+		goto out_warn_father;
+
+	/* Some init's such as busybox will set sane tty settings on stdin,
+	 * stdout, stderr which it thinks is the console. We already set them
+	 * the way we wanted on the real terminal, and we want init to do its
+	 * setup on its console ie. the pty allocated in lxc_console_create()
+	 * so make sure that that pty is stdin,stdout,stderr.
+	 */
+	if (lxc_console_set_stdfds(handler) < 0)
 		goto out_warn_father;
 
 	if (lxc_check_inherited(handler->conf, handler->sigfd))
