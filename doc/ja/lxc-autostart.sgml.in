@@ -21,6 +21,9 @@ You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+Translated into Japanese
+by KATOH Yasufumi <karma at jazz.email.ne.jp>
+
 -->
 
 <!DOCTYPE refentry PUBLIC @docdtd@ [
@@ -172,6 +175,35 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                         Wait TIMEOUT seconds before hard-stopping the container.
                         -->
                       コンテナの強制停止まで TIMEOUT 秒待ちます．
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-g,--group <replaceable>GROUP</replaceable></option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Comma separate list of groups to select
+                        (defaults to those without a lxc.group).
+                        -->
+                      対象にするコンテナのグループのカンマ区切りのリスト (デフォルトでは lxc.group 指定のないコンテナが対象になります)．
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-a,--all</option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Ignore lxc.group and select all auto-started containers.
+                        -->
+                      lxc.group の指定を無視して，自動起動が設定されているコンテナを全て選択します．
                     </para>
                 </listitem>
             </varlistentry>
