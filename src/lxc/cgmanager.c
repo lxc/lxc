@@ -70,10 +70,42 @@ struct cgm_data {
 static __thread NihDBusProxy *cgroup_manager = NULL;
 static __thread DBusConnection *connection = NULL;
 static __thread bool cgm_keep_connection = false;
+
+
+struct cgm_key_t {
+	DBusConnection *connection;
+	NihDBusProxy *cgmanager;
+} cgm_key;
+
+void destructor(void *arg) {
+	struct cgm_key_t *cgm_key = arg;
+	nih_free(cgm_key->cgmanager);
+	dbus_connection_flush(cgm_key->connection);
+	dbus_connection_close(cgm_key->connection);
+	dbus_connection_unref(cgm_key->connection);
+}
+static pthread_key_t key;
+static void make_key() {
+	pthread_key_create(&key, destructor);
+}
+
+static void init_cgm_destructor(DBusConnection *c, NihDBusProxy *cgm)
+{
+	static pthread_once_t key_once = PTHREAD_ONCE_INIT;
+	pthread_once(&key_once, make_key);
+	cgm_key.connection = c;
+	cgm_key.cgmanager = cgm;
+	if (!cgm)
+		pthread_setspecific(key, NULL);
+	else if (pthread_getspecific(key) == NULL)
+		pthread_setspecific(key, &cgm_key);
+}
+
 #else
 static NihDBusProxy *cgroup_manager = NULL;
 static DBusConnection *connection = NULL;
 static bool cgm_keep_connection = false;
+static inline void init_cgm_destructor(DBusConnection *c, NihDBusProxy *cgm) { }
 #endif
 
 static struct cgroup_ops cgmanager_ops;
@@ -87,9 +119,13 @@ static void cgm_dbus_disconnect(void)
 	if (cgroup_manager)
 		nih_free(cgroup_manager);
 	cgroup_manager = NULL;
-	if (connection)
+	if (connection) {
+		dbus_connection_flush(connection);
+		dbus_connection_close(connection);
 		dbus_connection_unref(connection);
+	}
 	connection = NULL;
+	init_cgm_destructor(NULL, NULL);
 }
 
 #define CGMANAGER_DBUS_SOCK "unix:path=/sys/fs/cgroup/cgmanager/sock"
@@ -105,14 +141,22 @@ static bool do_cgm_dbus_connect(void)
 
 	dbus_error_init(&dbus_error);
 
-	connection = nih_dbus_connect(CGMANAGER_DBUS_SOCK, NULL);
+	connection = dbus_connection_open_private(CGMANAGER_DBUS_SOCK, &dbus_error);
 	if (!connection) {
+		ERROR("Failed opening dbus connection: %s: %s",
+				dbus_error.name, dbus_error.message);
+		dbus_error_free(&dbus_error);
+		return false;
+	}
+	if (nih_dbus_setup(connection, NULL) < 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
 		DEBUG("Unable to open cgmanager connection at %s: %s", CGMANAGER_DBUS_SOCK,
 			nerr->message);
 		nih_free(nerr);
 		dbus_error_free(&dbus_error);
+		dbus_connection_unref(connection);
+		connection = NULL;
 		return false;
 	}
 	dbus_connection_set_exit_on_disconnect(connection, FALSE);
@@ -138,6 +182,7 @@ static bool do_cgm_dbus_connect(void)
 		cgm_dbus_disconnect();
 		return false;
 	}
+	init_cgm_destructor(connection, cgroup_manager);
 	return true;
 }
 
