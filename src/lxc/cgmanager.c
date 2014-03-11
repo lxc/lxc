@@ -143,7 +143,7 @@ static bool do_cgm_dbus_connect(void)
 
 	connection = dbus_connection_open_private(CGMANAGER_DBUS_SOCK, &dbus_error);
 	if (!connection) {
-		ERROR("Failed opening dbus connection: %s: %s",
+		DEBUG("Failed opening dbus connection: %s: %s",
 				dbus_error.name, dbus_error.message);
 		dbus_error_free(&dbus_error);
 		return false;
