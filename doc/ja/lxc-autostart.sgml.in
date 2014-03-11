@@ -57,6 +57,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <arg choice="opt">-r</arg>
             <arg choice="opt">-s</arg>
             <arg choice="opt">-a</arg>
+            <arg choice="opt">-A</arg>
             <arg choice="opt">-g <replaceable>groups</replaceable></arg>
             <arg choice="opt">-t <replaceable>timeout</replaceable></arg>
         </cmdsynopsis>
@@ -204,6 +205,21 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                         Ignore lxc.group and select all auto-started containers.
                         -->
                       lxc.group の指定を無視して，自動起動が設定されているコンテナを全て選択します．
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-A,--ignore-auto</option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Ignore the lxc.start.auto flag. Combined with
+                        -a, will select all containers on the system.
+                        -->
+                      lxc.start.auto で設定されているフラグを無視します．-a と組み合わせることにより，システム上の全てのコンテナを選択します．
                     </para>
                 </listitem>
             </varlistentry>
