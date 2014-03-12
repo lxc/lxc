@@ -28,7 +28,7 @@
 
 #define MYNAME "lxctest1"
 
-static int create_ubuntu(void)
+static int create_container(void)
 {
 	int status, ret;
 	pid_t pid = fork();
@@ -38,7 +38,7 @@ static int create_ubuntu(void)
 		return -1;
 	}
 	if (pid == 0) {
-		ret = execlp("lxc-create", "lxc-create", "-t", "ubuntu", "-n", MYNAME, NULL);
+		ret = execlp("lxc-create", "lxc-create", "-t", "busybox", "-n", MYNAME, NULL);
 		// Should not return
 		perror("execl");
 		exit(1);
@@ -76,8 +76,8 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (create_ubuntu()) {
-		fprintf(stderr, "%d: failed to create a ubuntu container\n", __LINE__);
+	if (create_container()) {
+		fprintf(stderr, "%d: failed to create a container\n", __LINE__);
 		goto out;
 	}
 

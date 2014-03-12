@@ -29,7 +29,7 @@
 
 #define MYNAME "lxctest1"
 
-static int destroy_ubuntu(void)
+static int destroy_container(void)
 {
 	int status, ret;
 	pid_t pid = fork();
@@ -61,7 +61,7 @@ again:
 	return WEXITSTATUS(status);
 }
 
-static int create_ubuntu(void)
+static int create_container(void)
 {
 	int status, ret;
 	pid_t pid = fork();
@@ -71,7 +71,7 @@ static int create_ubuntu(void)
 		return -1;
 	}
 	if (pid == 0) {
-		ret = execlp("lxc-create", "lxc-create", "-t", "ubuntu", "-n", MYNAME, NULL);
+		ret = execlp("lxc-create", "lxc-create", "-t", "busybox", "-n", MYNAME, NULL);
 		// Should not return
 		perror("execl");
 		exit(1);
@@ -116,9 +116,9 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	ret = create_ubuntu();
+	ret = create_container();
 	if (ret) {
-		fprintf(stderr, "%d: failed to create a ubuntu container\n", __LINE__);
+		fprintf(stderr, "%d: failed to create a container\n", __LINE__);
 		goto out;
 	}
 
@@ -251,7 +251,7 @@ ok:
 out:
 	if (c) {
 		c->stop(c);
-		destroy_ubuntu();
+		destroy_container();
 	}
 	lxc_container_put(c);
 	exit(ret);

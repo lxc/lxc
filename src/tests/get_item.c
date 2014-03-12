@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 		ret = 1;
 		goto out;
 	}
-	if (!c->createl(c, "ubuntu", NULL, NULL, 0, "-r", "trusty", NULL)) {
+	if (!c->createl(c, "busybox", NULL, NULL, 0, NULL)) {
 		fprintf(stderr, "%d: failed to create a trusty container\n", __LINE__);
 		ret = 1;
 		goto out;
