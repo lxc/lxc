@@ -4102,6 +4102,12 @@ int lxc_clear_mount_entries(struct lxc_conf *c)
 	return 0;
 }
 
+int lxc_clear_automounts(struct lxc_conf *c)
+{
+	c->auto_mounts = 0;
+	return 0;
+}
+
 int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 {
 	struct lxc_list *it,*next;
