@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 	c->save_config(c, NULL);
-	if (!c->createl(c, "ubuntu", NULL, NULL, 0, NULL)) {
+	if (!c->createl(c, "busybox", NULL, NULL, 0, NULL)) {
 		fprintf(stderr, "%d: failed to create a container\n", __LINE__);
 		goto out;
 	}
