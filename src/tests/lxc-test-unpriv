@@ -94,7 +94,7 @@ chown -R $TUSER /run/user/$(id -u $TUSER)
 cd $HDIR
 
 if [ -e /sys/fs/cgroup/cgmanager/sock ]; then
-	for d in hugetlb cpuset cpu cpuacct memory devices freezer blkio perf_event; do
+	for d in $(grep -v ^# /proc/cgroups | awk '{print $1}'); do
 		dbus-send --print-reply --address=unix:path=/sys/fs/cgroup/cgmanager/sock \
 			--type=method_call /org/linuxcontainers/cgmanager org.linuxcontainers.cgmanager0_0.Create \
 			string:$d string:$TUSER >/dev/null
