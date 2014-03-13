@@ -163,6 +163,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	c->want_daemonize(c, false);
+	c->want_close_all_fds(c, true);
 	pid_t pid = fork();
 	if (pid < 0) {
 		fprintf(stderr, "%d: fork failed\n", __LINE__);
