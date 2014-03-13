@@ -93,11 +93,27 @@ chown -R $TUSER /run/user/$(id -u $TUSER)
 
 cd $HDIR
 
-for d in /sys/fs/cgroup/*; do
-	[ ! -d $d/lxctest ] && mkdir $d/lxctest
-	chown -R $TUSER $d/lxctest
-	echo $$ > $d/lxctest/tasks
-done
+if [ -e /sys/fs/cgroup/cgmanager/sock ]; then
+	for d in hugetlb cpuset cpu cpuacct memory devices freezer blkio perf_event; do
+		dbus-send --print-reply --address=unix:path=/sys/fs/cgroup/cgmanager/sock \
+			--type=method_call /org/linuxcontainers/cgmanager org.linuxcontainers.cgmanager0_0.Create \
+			string:$d string:$TUSER >/dev/null
+
+		dbus-send --print-reply --address=unix:path=/sys/fs/cgroup/cgmanager/sock \
+			--type=method_call /org/linuxcontainers/cgmanager org.linuxcontainers.cgmanager0_0.Chown \
+			string:$d string:$TUSER int32:$(id -u $TUSER) int32:$(id -g $TUSER) >/dev/null
+
+		dbus-send --print-reply --address=unix:path=/sys/fs/cgroup/cgmanager/sock \
+			--type=method_call /org/linuxcontainers/cgmanager org.linuxcontainers.cgmanager0_0.MovePid \
+			string:$d string:$TUSER int32:$$ >/dev/null
+	done
+else
+	for d in /sys/fs/cgroup/*; do
+		[ ! -d $d/lxctest ] && mkdir $d/lxctest
+		chown -R $TUSER $d/lxctest
+		echo $$ > $d/lxctest/tasks
+	done
+fi
 
 run_cmd lxc-create -t download -n c1 -- -d ubuntu -r trusty -a $ARCH
 run_cmd lxc-start -n c1 -d
