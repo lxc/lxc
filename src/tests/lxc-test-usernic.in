@@ -86,11 +86,27 @@ lxc.id_map = u 0 910000 10000
 lxc.id_map = g 0 910000 10000
 EOF
 
-for d in /sys/fs/cgroup/*; do
-	[ ! -d $d/lxctest ] && mkdir $d/lxctest
-	chown -R usernic-user $d/lxctest
-	echo $$ > $d/lxctest/tasks
-done
+if [ -e /sys/fs/cgroup/cgmanager/sock ]; then
+	for d in hugetlb cpuset cpu cpuacct memory devices freezer blkio perf_event; do
+		dbus-send --print-reply --address=unix:path=/sys/fs/cgroup/cgmanager/sock \
+			--type=method_call /org/linuxcontainers/cgmanager org.linuxcontainers.cgmanager0_0.Create \
+			string:$d string:usernic-user >/dev/null
+
+		dbus-send --print-reply --address=unix:path=/sys/fs/cgroup/cgmanager/sock \
+			--type=method_call /org/linuxcontainers/cgmanager org.linuxcontainers.cgmanager0_0.Chown \
+			string:$d string:usernic-user int32:$(id -u usernic-user) int32:$(id -g usernic-user) >/dev/null
+
+		dbus-send --print-reply --address=unix:path=/sys/fs/cgroup/cgmanager/sock \
+			--type=method_call /org/linuxcontainers/cgmanager org.linuxcontainers.cgmanager0_0.MovePid \
+			string:$d string:usernic-user int32:$$ >/dev/null
+	done
+else
+	for d in /sys/fs/cgroup/*; do
+		[ ! -d $d/lxctest ] && mkdir $d/lxctest
+		chown -R usernic-user $d/lxctest
+		echo $$ > $d/lxctest/tasks
+	done
+fi
 
 mkdir -p /run/user/$(id -u usernic-user)
 chown -R usernic-user /run/user/$(id -u usernic-user) /home/usernic-user
