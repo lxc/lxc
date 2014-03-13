@@ -163,13 +163,18 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	c->want_daemonize(c, false);
-	c->want_close_all_fds(c, true);
 	pid_t pid = fork();
 	if (pid < 0) {
 		fprintf(stderr, "%d: fork failed\n", __LINE__);
 		goto out;
 	}
 	if (pid == 0) {
+		close(0);
+		close(1);
+		close(2);
+		open("/dev/zero", O_RDONLY);
+		open("/dev/null", O_RDWR);
+		open("/dev/null", O_RDWR);
 		b = c->startl(c, 0, NULL);
 		if (!b)
 			fprintf(stderr, "%d: %s failed to start\n", __LINE__, c->name);
