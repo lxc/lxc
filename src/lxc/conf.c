@@ -3212,7 +3212,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	int ret = 0;
 	enum idtype type;
 	char *buf = NULL, *pos;
-	int use_shadow = (on_path("newuidmap") && on_path("newuidmap"));
+	int use_shadow = (on_path("newuidmap") && on_path("newgidmap"));
 
 	if (!use_shadow && geteuid()) {
 		ERROR("Missing newuidmap/newgidmap");
