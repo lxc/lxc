@@ -72,6 +72,10 @@ p6::ctrlaltdel:/sbin/init 6
 p0::powerfail:/sbin/init 0
 EOF
 
+    # symlink mtab
+    [ -e "$rootfs/etc/mtab" ] && rm $rootfs/etc/mtab
+    ln -s /proc/self/mounts $rootfs/etc/mtab
+
     # disable selinux in debian
     mkdir -p $rootfs/selinux
     echo 0 > $rootfs/selinux/enforce
