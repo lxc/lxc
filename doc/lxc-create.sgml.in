@@ -125,7 +125,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</term>
 	<listitem>
 	  <para>
-	    'backingstore' is one of 'none', 'dir', 'lvm', 'loop', or 'btrfs'.  The
+	    'backingstore' is one of 'none', 'dir', 'lvm', 'loop', 'btrfs', or 'best'.  The
 	    default is 'none', meaning that the container root filesystem
 	    will be a directory under <filename>@LXCPATH@/container/rootfs</filename>.
 	    'dir' has the same meaning as 'none', but also allows the optional
@@ -151,6 +151,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    filesystem on the LV, rather than the default, which is ext4.
 	    <replaceable>--fssize SIZE</replaceable> will create a LV (and
 	    filesystem) of size SIZE rather than the default, which is 1G.
+	  </para>
+	  <para>
+	    If backingstore is 'best', then lxc will try, in order, btrfs,
+	    zfs, lvm, and finally a directory backing store.
 	  </para>
 	</listitem>
       </varlistentry>
