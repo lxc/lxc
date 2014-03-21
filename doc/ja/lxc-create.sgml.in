@@ -155,7 +155,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	<listitem>
           <para>
             <!--
-	    'backingstore' is one of 'none', 'dir', 'lvm', 'loop', or 'btrfs'.  The
+	    'backingstore' is one of 'none', 'dir', 'lvm', 'loop', 'btrfs', or 'best'.  The
 	    default is 'none', meaning that the container root filesystem
 	    will be a directory under <filename>@LXCPATH@/container/rootfs</filename>.
 	    'dir' has the same meaning as 'none', but also allows the optional
@@ -182,7 +182,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <replaceable>&#045;&#045;fssize SIZE</replaceable> will create a LV (and
 	    filesystem) of size SIZE rather than the default, which is 1G.
             -->
-            <replaceable>backingstore</replaceable> には 'none' か 'dir' か 'lvm' か 'btrfs' のいずれかを指定します．
+            'backingstore' には 'none' か 'dir' か 'lvm' か 'btrfs' か 'best' のいずれかを指定します．
             デフォルトは 'none' で，コンテナのルートファイルシステムが <filename>@LXCPATH@/container/rootfs</filename> 以下のディレクトリであることを意味します．
 'dir' は 'none' と同じ意味ですが，オプションとして <replaceable>--dir ROOTFS</replaceable> を指定することも可能です．
             このオプションは，デフォルトの代わりに特定のパス以下にコンテナの rootfs を置くということになります．
@@ -195,6 +195,13 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <replaceable>--thinpool thinpool1</replaceable> は，デフォルトである <filename>lxc</filename> のという名前のプールの代わりに <filename>thinpool1</filename> という名前のプール内にシンプロビジョニングされたボリュームとして LV を作成します．
             <replaceable>--fstype FSTYPE</replaceable> は LV 上のファイルシステムをデフォルト値である ext4 の代わりに FSTYPE で指定したもので作成します．
             <replaceable>--fssize SIZE</replaceable> はデフォルト値である 1G の代わりに SIZE で指定したサイズで LV を作成します．
+	  </para>
+	  <para>
+            <!--
+	    If backingstore is 'best', then lxc will try, in order, btrfs,
+	    zfs, lvm, and finally a directory backing store.
+            -->
+            backingstore が 'best' の時，lxc は btrfs, zfs, lvm, dir の順に試行します．
 	  </para>
 	</listitem>
       </varlistentry>
