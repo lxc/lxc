@@ -29,7 +29,7 @@
 #Configurations
 default_path=@LXCPATH@
 
-# Some combinations of the tunning knobs below do not exactly make sense.
+# Some combinations of the tuning knobs below do not exactly make sense.
 # but that's ok.
 #
 # If the "root_password" is non-blank, use it, else set a default.
@@ -45,6 +45,8 @@ default_path=@LXCPATH@
 # If root_store_password = yes, store it in the configuration directory
 # If root_prompt_password = yes, invoke "passwd" to force the user to change
 # the root password after the container is created.
+# If root_expire_password = yes, you will be prompted to change the root
+# password at the first login.
 #
 # These are conditional assignments...  The can be overridden from the
 # preexisting environment variables...
@@ -60,6 +62,10 @@ default_path=@LXCPATH@
 # Prompting for something interactive has potential for mayhem
 # with users running under the API...  Don't default to "yes"
 : ${root_prompt_password='no'}
+
+# Expire root password? Default to yes, but can be overridden from
+# the environment variable
+: ${root_expire_password='yes'}
 
 # These are only going into comments in the resulting config...
 lxc_network_type=veth
@@ -294,8 +300,12 @@ EOF
     fi
 
     echo "root:$root_password" | chroot $rootfs_path chpasswd
-    # Also set this password as expired to force the user to change it!
-    chroot $rootfs_path passwd -e root
+
+    if [ ${root_expire_password} = "yes" ]
+    then
+        # Also set this password as expired to force the user to change it!
+        chroot $rootfs_path passwd -e root
+    fi
 
     # specifying this in the initial packages doesn't always work.
     # Even though it should have...
@@ -1412,7 +1422,9 @@ then
 "
     chroot ${rootfs_path} passwd
 else
-    echo "
+    if [ ${root_expire_password} = "yes" ]
+    then
+        echo "
 The root password is set up as "expired" and will require it to be changed
 at first login, which you should do as soon as possible.  If you lose the
 root password or wish to change it without starting the container, you
@@ -1421,4 +1433,5 @@ also reset the expired flag):
 
         chroot ${rootfs_path} passwd
 "
+    fi
 fi
