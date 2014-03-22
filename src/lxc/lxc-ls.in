@@ -272,19 +272,21 @@ def get_containers(fd=None, base="/", root=False):
 
                 if container.running:
                     try:
-                        memory_total = int(container.get_cgroup_item(
+                        memory_ram = int(container.get_cgroup_item(
                             "memory.usage_in_bytes"))
                     except:
-                        memory_total = 0
+                        memory_ram = 0
 
                     try:
                         memory_swap = int(container.get_cgroup_item(
-                            "memory.memsw.usage_in_bytes"))
+                            "memory.memsw.usage_in_bytes")) - memory_ram
                     except:
                         memory_swap = 0
                 else:
-                    memory_total = 0
+                    memory_ram = 0
                     memory_swap = 0
+
+                memory_total = memory_ram + memory_swap
 
             if 'memory' in args.fancy_format:
                 if container.running:
@@ -294,8 +296,7 @@ def get_containers(fd=None, base="/", root=False):
 
             if 'ram' in args.fancy_format:
                 if container.running:
-                    entry['ram'] = "%sMB" % round(
-                        (memory_total - memory_swap) / 1048576, 2)
+                    entry['ram'] = "%sMB" % round(memory_ram / 1048576, 2)
                 else:
                     entry['ram'] = "-"
 
@@ -342,8 +343,7 @@ def get_containers(fd=None, base="/", root=False):
                     temp_fd, temp_file = tempfile.mkstemp()
                     os.remove(temp_file)
 
-                    container.attach_wait(get_containers, temp_fd,
-                                          attach_flags=0)
+                    container.attach_wait(get_containers, temp_fd)
 
                     json_file = os.fdopen(temp_fd, "r")
                     json_file.seek(0)
