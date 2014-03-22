@@ -665,7 +665,7 @@ This will take a couple of minutes.  Patience..."
     chroot . rpm --root /run/install --nodeps -ivh fedora-release-*
 
     # yum will take $basearch from host, so force the arch we want
-    sed -i "s|\$basearch|$basearch|" ./etc/yum.repos.d/*
+    sed -i "s|\$basearch|$basearch|" ./run/install/etc/yum.repos.d/*
 
     chroot . yum -y --nogpgcheck --installroot /run/install install python rpm yum
 
@@ -774,10 +774,12 @@ download_fedora()
     echo "Downloading fedora minimal ..."
 
     # These will get changed if it's decided that we need a
-    # boostrap environment (can not build natively)
+    # boostrap environment (can not build natively).  These
+    # are the defaults for the non-boostrap (native) mode.
 
     BOOTSTRAP_INSTALL_ROOT=${INSTALL_ROOT}
     BOOTSTRAP_CHROOT=
+    BOOTSTRAP_DIR=
 
     PKG_LIST="yum initscripts passwd rsyslog vim-minimal openssh-server openssh-clients dhclient chkconfig rootfiles policycoreutils fedora-release"
     MIRRORLIST_URL="http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$release&arch=$basearch"
@@ -858,7 +860,7 @@ download_fedora()
     ${BOOTSTRAP_CHROOT}rpm --root ${BOOTSTRAP_INSTALL_ROOT} --nodeps -ivh ${BOOTSTRAP_INSTALL_ROOT}/${RELEASE_RPM}
 
     # yum will take $basearch from host, so force the arch we want
-    sed -i "s|\$basearch|$basearch|" ${BOOTSTRAP_INSTALL_ROOT}/etc/yum.repos.d/*
+    sed -i "s|\$basearch|$basearch|" ${BOOTSTRAP_DIR}/${BOOTSTRAP_INSTALL_ROOT}/etc/yum.repos.d/*
 
     ${BOOTSTRAP_CHROOT}yum --installroot ${BOOTSTRAP_INSTALL_ROOT} -y --nogpgcheck install ${PKG_LIST}
 
