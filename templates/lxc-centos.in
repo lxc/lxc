@@ -363,6 +363,18 @@ configure_centos_init()
         chroot ${rootfs_path} chkconfig udev-post off
     fi
     chroot ${rootfs_path} chkconfig network on
+
+    if [ -d ${rootfs_path}/etc/init ]
+    then
+       # This is to make upstart honor SIGPWR
+        cat <<EOF >${rootfs_path}/etc/init/power-status-changed.conf
+#  power-status-changed - shutdown on SIGPWR
+#
+start on power-status-changed
+    
+exec /sbin/shutdown -h now "SIGPWR received"
+EOF
+    fi
 }
 
 download_centos()

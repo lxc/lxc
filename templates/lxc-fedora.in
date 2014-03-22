@@ -339,6 +339,19 @@ configure_fedora_init()
     sed -i 's/^.*dev.pts.*$/#\0/' ${rootfs_path}/etc/rc.d/rc.sysinit
     chroot ${rootfs_path} chkconfig udev-post off
     chroot ${rootfs_path} chkconfig network on
+
+    if [ -d ${rootfs_path}/etc/init ]
+    then
+       # This is to make upstart honor SIGPWR.  Should do no harm
+       # on systemd systems and some systems may have both.
+        cat <<EOF >${rootfs_path}/etc/init/power-status-changed.conf
+#  power-status-changed - shutdown on SIGPWR
+#
+start on power-status-changed
+    
+exec /sbin/shutdown -h now "SIGPWR received"
+EOF
+    fi
 }
 
 configure_fedora_systemd()
@@ -348,6 +361,8 @@ configure_fedora_systemd()
     chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/udev.service
     chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/systemd-journald.service
     chroot ${rootfs_path} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+    # Make systemd honor SIGPWR
+    chroot ${rootfs_path} ln -s /usr/lib/systemd/system/halt.target /etc/systemd/system/
     #dependency on a device unit fails it specially that we disabled udev
     # sed -i 's/After=dev-%i.device/After=/' ${rootfs_path}/lib/systemd/system/getty\@.service
     #
