@@ -176,6 +176,13 @@ configure_fedora()
         )
     fi
 
+    # Set default localtime to the host localtime if not set...
+    if [ -e /etc/localtime -a ! -e ${rootfs_path}/etc/localtime ]
+    then
+        # if /etc/localtime is a symlink, this should preserve it.
+        cp -a /etc/localtime ${rootfs_path}/etc/localtime
+    fi
+
     # Deal with some dain bramage in the /etc/init.d/halt script.
     # Trim it and make it our own and link it in before the default
     # halt script so we can intercept it.  This also preventions package
