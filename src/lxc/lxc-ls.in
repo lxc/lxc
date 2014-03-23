@@ -244,17 +244,17 @@ def get_containers(fd=None, base="/", root=False):
                 continue
 
             # Some extra field we may want
-            if 'state' in args.fancy_format or args.nesting:
+            if 'state' in args.fancy_format:
                 entry['state'] = state
 
-            if 'pid' in args.fancy_format or args.nesting:
+            if 'pid' in args.fancy_format:
                 entry['pid'] = "-"
                 if state == 'UNKNOWN':
                     entry['pid'] = state
                 elif container.init_pid != -1:
                     entry['pid'] = str(container.init_pid)
 
-            if 'autostart' in args.fancy_format or args.nesting:
+            if 'autostart' in args.fancy_format:
                 entry['autostart'] = "NO"
                 try:
                     if container.get_config_item("lxc.start.auto") == "1":
@@ -308,7 +308,7 @@ def get_containers(fd=None, base="/", root=False):
 
             # Get the IPs
             for family, protocol in {'inet': 'ipv4', 'inet6': 'ipv6'}.items():
-                if protocol in args.fancy_format or args.nesting:
+                if protocol in args.fancy_format:
                     entry[protocol] = "-"
 
                     if state == 'UNKNOWN':
