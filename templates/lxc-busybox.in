@@ -187,7 +187,7 @@ configure_busybox()
         return 1
     fi
 
-    file $(which busybox) | grep -q "statically linked"
+    file -L $(which busybox) | grep -q "statically linked"
     if [ $? -ne 0 ]; then
         echo "warning : busybox is not statically linked."
         echo "warning : The template script may not correctly"
