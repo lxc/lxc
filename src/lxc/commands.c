@@ -263,6 +263,8 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 
 	ret = lxc_abstract_unix_send_credential(sock, &cmd->req, sizeof(cmd->req));
 	if (ret != sizeof(cmd->req)) {
+		if (errno == EPIPE)
+			goto epipe;
 		SYSERROR("command %s failed to send req to '@%s' %d",
 			 lxc_cmd_str(cmd->req.cmd), offset, ret);
 		if (ret >=0)
@@ -271,8 +273,10 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	}
 
 	if (cmd->req.datalen > 0) {
-		ret = send(sock, cmd->req.data, cmd->req.datalen, 0);
+		ret = send(sock, cmd->req.data, cmd->req.datalen, MSG_NOSIGNAL);
 		if (ret != cmd->req.datalen) {
+			if (errno == EPIPE)
+				goto epipe;
 			SYSERROR("command %s failed to send request data to '@%s' %d",
 				 lxc_cmd_str(cmd->req.cmd), offset, ret);
 			if (ret >=0)
@@ -289,6 +293,11 @@ out:
 		cmd->rsp.ret = sock;
 
 	return ret;
+
+epipe:
+	close(sock);
+	*stopped = 1;
+	return 0;
 }
 
 int lxc_try_cmd(const char *name, const char *lxcpath)
