@@ -158,7 +158,7 @@ int lxc_abstract_unix_send_fd(int fd, int sendfd, void *data, size_t size)
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	return sendmsg(fd, &msg, 0);
+	return sendmsg(fd, &msg, MSG_NOSIGNAL);
 }
 
 int lxc_abstract_unix_recv_fd(int fd, int *recvfd, void *data, size_t size)
@@ -230,7 +230,7 @@ int lxc_abstract_unix_send_credential(int fd, void *data, size_t size)
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	return sendmsg(fd, &msg, 0);
+	return sendmsg(fd, &msg, MSG_NOSIGNAL);
 }
 
 int lxc_abstract_unix_rcv_credential(int fd, void *data, size_t size)
