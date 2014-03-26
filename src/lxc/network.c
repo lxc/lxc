@@ -1202,11 +1202,12 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 }
 
 static const char* const lxc_network_types[LXC_NET_MAXCONFTYPE + 1] = {
+	[LXC_NET_EMPTY]   = "empty",
 	[LXC_NET_VETH]    = "veth",
 	[LXC_NET_MACVLAN] = "macvlan",
-	[LXC_NET_VLAN]    = "vlan",
 	[LXC_NET_PHYS]    = "phys",
-	[LXC_NET_EMPTY]   = "empty",
+	[LXC_NET_VLAN]    = "vlan",
+	[LXC_NET_NONE]    = "none",
 };
 
 const char *lxc_net_type_to_str(int type)
