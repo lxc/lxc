@@ -470,6 +470,7 @@ AC_ARG_WITH([log-path],
 AS_AC_EXPAND(PREFIX, "$prefix")
 AS_AC_EXPAND(LIBDIR, "$libdir")
 AS_AC_EXPAND(BINDIR, "$bindir")
+AS_AC_EXPAND(SBINDIR, "$sbindir")
 AS_AC_EXPAND(LIBEXECDIR, "$libexecdir")
 AS_AC_EXPAND(INCLUDEDIR, "$includedir")
 AS_AC_EXPAND(SYSCONFDIR, "$sysconfdir")

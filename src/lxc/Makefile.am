@@ -121,7 +121,8 @@ AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXC_USERNIC_DB=\"$(LXC_USERNIC_DB)\" \
 	-DLXC_USERNIC_CONF=\"$(LXC_USERNIC_CONF)\" \
 	-DDEFAULT_CGROUP_PATTERN=\"$(DEFAULT_CGROUP_PATTERN)\" \
-	-DRUNTIME_PATH=\"$(RUNTIME_PATH)\"
+	-DRUNTIME_PATH=\"$(RUNTIME_PATH)\" \
+	-DSBINDIR=\"$(SBINDIR)\"
 
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
@@ -198,8 +199,8 @@ bin_PROGRAMS = \
 	lxc-usernsexec \
 	lxc-wait
 
+sbin_PROGRAMS = init.lxc
 pkglibexec_PROGRAMS = \
-	lxc-init \
 	lxc-monitord \
 	lxc-user-nic
 
@@ -218,7 +219,7 @@ lxc_destroy_SOURCES = lxc_destroy.c
 lxc_execute_SOURCES = lxc_execute.c
 lxc_freeze_SOURCES = lxc_freeze.c
 lxc_info_SOURCES = lxc_info.c
-lxc_init_SOURCES = lxc_init.c
+init_lxc_SOURCES = lxc_init.c
 lxc_monitor_SOURCES = lxc_monitor.c
 lxc_monitord_SOURCES = lxc_monitord.c
 lxc_clone_SOURCES = lxc_clone.c
