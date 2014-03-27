@@ -69,9 +69,44 @@ can_chcon()
 }
 
 # fix up the container_rootfs
-container_rootfs_configure()
+container_rootfs_patch()
 {
-    echo "Configuring container for Oracle Linux $container_release_major.$container_release_minor"
+    echo "Patching container rootfs $container_rootfs for Oracle Linux $container_release_major.$container_release_minor"
+
+    # copy ourself into the container to be used to --patch the rootfs when
+    # yum update on certain packages is done. we do this here instead of in
+    # container_rootfs_configure() in case the patching done in this function
+    # is updated in the future, we can inject the updated version of ourself
+    # into older containers.
+    if [ $container_rootfs != "/" ]; then
+        cp -f `readlink -f $0` $container_rootfs/usr/bin/lxc-patch
+        if [ $container_release_major -lt "6" ]; then
+            mkdir -p $container_rootfs/usr/lib/yum-plugins
+            cp @DATADIR@/lxc/lxc-patch.py $container_rootfs/usr/lib/yum-plugins
+        fi
+        if [ $container_release_major = "6" ]; then
+            mkdir -p $container_rootfs/usr/share/yum-plugins
+            cp @DATADIR@/lxc/lxc-patch.py $container_rootfs/usr/share/yum-plugins
+        fi
+        mkdir -p $container_rootfs/etc/yum/pluginconf.d
+        cat <<EOF > $container_rootfs/etc/yum/pluginconf.d/lxc-patch.conf
+[main]
+enabled=1
+packages=initscripts,iptables,selinux-policy,readahead,udev,util-linux-ng
+EOF
+    fi
+
+    if [ $container_release_major = "4" ]; then
+        # yum plugin type of TYPE_INTERFACE works in all releases but gives a
+        # deprecation warning on major > 4, so we default to TYPE_INTERACTIVE
+        # and fix it up here
+        sed -i 's|TYPE_INTERACTIVE|TYPE_INTERFACE|' $container_rootfs/usr/lib/yum-plugins/lxc-patch.py
+        if [ -f $container_rootfs/etc/yum.repos.d/ULN-Base.repo ]; then
+            mv $container_rootfs/etc/yum.repos.d/ULN-Base.repo \
+               $container_rootfs/etc/yum.repos.d/ULN-Base.repo.lxc-disabled
+        fi
+        echo "plugins = 1" >>$container_rootfs/etc/yum.conf
+    fi
 
     # "disable" selinux in the guest. The policy in the container isn't
     # likely to match the hosts (unless host == guest exactly) and the
@@ -114,47 +149,25 @@ container_rootfs_configure()
         sed -i 's|session[ \t]*required[ \t]*/lib/security/\$ISA/pam_limits.so|#session required /lib/security/$ISA/pam_limits.so|' $container_rootfs/etc/pam.d/system-auth
     fi
 
-    # configure the network to use dhcp. we set DHCP_HOSTNAME so the guest
-    # will report its name and be resolv'able by the hosts dnsmasq
-    cat <<EOF > $container_rootfs/etc/sysconfig/network-scripts/ifcfg-eth0
-DEVICE=eth0
-BOOTPROTO=dhcp
-ONBOOT=yes
-HOSTNAME=$name
-DHCP_HOSTNAME=$name
-NM_CONTROLLED=no
-TYPE=Ethernet
-EOF
-
     # avoid error in ol5 attempting to copy non-existent resolv.conf
     if [ $container_release_major = "5" ]; then
         sed -i 's|resolv.conf.predhclient|resolv.conf.predhclient 2>/dev/null|' $container_rootfs/sbin/dhclient-script
     fi
-
-    # set the hostname
-    cat <<EOF > $container_rootfs/etc/sysconfig/network
-NETWORKING=yes
-NETWORKING_IPV6=no
-HOSTNAME=$name
-EOF
 
     # disable interactive ovmd asking questions
     if [ -f $container_rootfs/etc/sysconfig/ovmd ]; then
         sed -i 's|INITIAL_CONFIG=yes|INITIAL_CONFIG=no|' $container_rootfs/etc/sysconfig/ovmd
     fi
 
-    # set minimal hosts
-    echo "127.0.0.1 localhost $name" > $container_rootfs/etc/hosts
+    # disable disabling of ipv4 forwarding and defrag on shutdown since
+    # we mount /proc/sys ro
+    if [ $container_release_major = "5" ]; then
+        sed -i 's|-f /proc/sys/net/ipv4/ip_forward|-w /proc/sys/net/ipv4/ip_forward|' $container_rootfs/etc/rc.d/init.d/network
+        sed -i 's|-f /proc/sys/net/ipv4/ip_always_defrag|-w /proc/sys/net/ipv4/ip_always_defrag|' $container_rootfs/etc/rc.d/init.d/network
+    fi
 
     # disable ipv6 on ol6
     rm -f $container_rootfs/etc/sysconfig/network-scripts/init.ipv6-global
-
-    # this file has to exist for libvirt/Virtual machine monitor to boot the container
-    touch $container_rootfs/etc/mtab
-
-    # don't put devpts,proc, nor sysfs in here, it will already be mounted for us by lxc/libvirt
-    cat <<EOF > $container_rootfs/etc/fstab
-EOF
 
     # remove module stuff for iptables it just shows errors that are not
     # relevant in a container
@@ -180,17 +193,6 @@ EOF
         sed -i 's|action $"Configuring kernel parameters|# LXC action $"Configuring kernel parameters|' $container_rootfs/etc/rc.d/rc.sysinit
         sed -i 's|action $"Setting network parameters|# LXC action $"Setting network parameters|' $container_rootfs/etc/init.d/network 2>/dev/null
         sed -i 's|action $"Setting network parameters|# LXC action $"Setting network parameters|' $container_rootfs/etc/init.d/NetworkManager 2>/dev/null
-    fi
-
-    # sem_open(3) checks that /dev/shm is SHMFS_SUPER_MAGIC, so make sure to mount /dev/shm (normally done by dracut initrd) as tmpfs
-    if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
-        echo "mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.sysinit
-        echo "mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.d/rc.sysinit
-    fi
-
-    if [ $container_release_major = "6" ]; then
-        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.sysinit
-        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.d/rc.sysinit
     fi
 
     # no need to attempt to mount /
@@ -231,8 +233,12 @@ EOF
     sed -i 's|^/sbin/hwclock|# LXC /sbin/nohwclock|' $container_rootfs/etc/rc.d/rc.sysinit
 
     # dont start lvm
-    sed -i 's|action $"Setting up Logical Volume Management:"|#action $"Setting up Logical Volume Management:"|' $container_rootfs/etc/rc.sysinit
-    sed -i 's|action $"Setting up Logical Volume Management:"|/bin/true #action $"Setting up Logical Volume Management:"|' $container_rootfs/etc/rc.d/rc.sysinit
+    if [ $container_release_major -lt "6" -a -f $container_rootfs/sbin/lvm.static ]; then
+        mv $container_rootfs/sbin/lvm.static $container_rootfs/sbin/lvm.static.lxc-disabled
+    fi
+    if [ $container_release_major = "6" ]; then
+        touch $container_rootfs/.nolvm
+    fi
 
     # fix assumptions that plymouth is available
     sed -i 's|\[ "$PROMPT" != no \] && plymouth|[ "$PROMPT" != no ] \&\& [ -n "$PLYMOUTH" ] \&\& plymouth|' $container_rootfs/etc/rc.sysinit
@@ -240,6 +246,80 @@ EOF
     rm -f $container_rootfs/etc/init/plymouth-shutdown.conf
     rm -f $container_rootfs/etc/init/quit-plymouth.conf
     rm -f $container_rootfs/etc/init/splash-manager.conf
+
+    # dont try to unmount /dev/lxc devices
+    sed -i 's|&& $1 !~ /^\\/dev\\/ram/|\&\& $2 !~ /^\\/dev\\/lxc/ \&\& $1 !~ /^\\/dev\\/ram/|' $container_rootfs/etc/init.d/halt
+
+    # don't try to unmount swap
+    sed -i 's|\[ -f /proc/swaps \]|# LXC [ -f /proc/swaps ]|' $container_rootfs/etc/init.d/halt
+
+    # there might be other services that are useless but the below set is a good start
+    # some of these might not exist in the image, so we silence chkconfig complaining
+    # about the service file not being found
+    for service in \
+        acpid apmd auditd autofs cpuspeed dund gpm haldaemon hidd	\
+        ip6tables irqbalance iscsi iscsid isdn kdump kudzu		\
+        lm_sensors lvm2-monitor mdmonitor microcode_ctl			\
+        ntpd pcmcia postfix sendmail udev-post xfs ;
+    do
+        chroot $container_rootfs chkconfig 2>/dev/null $service off
+    done
+
+    for service in rsyslog ;
+    do
+        chroot $container_rootfs chkconfig 2>/dev/null $service on
+    done
+
+    # ensure /dev/ptmx refers to the newinstance devpts of the container, or
+    # pty's will get crossed up with the hosts (https://lkml.org/lkml/2012/1/23/512)
+    rm -f $container_rootfs/dev/ptmx
+    ln -s pts/ptmx $container_rootfs/dev/ptmx
+}
+
+container_rootfs_configure()
+{
+    container_rootfs_patch
+    echo "Configuring container for Oracle Linux $container_release_major.$container_release_minor"
+
+    # configure the network to use dhcp. we set DHCP_HOSTNAME so the guest
+    # will report its name and be resolv'able by the hosts dnsmasq
+    cat <<EOF > $container_rootfs/etc/sysconfig/network-scripts/ifcfg-eth0
+DEVICE=eth0
+BOOTPROTO=dhcp
+ONBOOT=yes
+HOSTNAME=$name
+DHCP_HOSTNAME=$name
+NM_CONTROLLED=no
+TYPE=Ethernet
+EOF
+
+    # set the hostname
+    cat <<EOF > $container_rootfs/etc/sysconfig/network
+NETWORKING=yes
+NETWORKING_IPV6=no
+HOSTNAME=$name
+EOF
+
+    # set minimal hosts
+    echo "127.0.0.1 localhost $name" > $container_rootfs/etc/hosts
+
+    # this file has to exist for libvirt/Virtual machine monitor to boot the container
+    touch $container_rootfs/etc/mtab
+
+    # don't put devpts,proc, nor sysfs in here, it will already be mounted for us by lxc/libvirt
+    cat <<EOF > $container_rootfs/etc/fstab
+EOF
+
+    # sem_open(3) checks that /dev/shm is SHMFS_SUPER_MAGIC, so make sure to mount /dev/shm (normally done by dracut initrd) as tmpfs
+    if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
+        echo "mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.sysinit
+        echo "mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.d/rc.sysinit
+    fi
+
+    if [ $container_release_major = "6" ]; then
+        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.sysinit
+        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.d/rc.sysinit
+    fi
 
     # setup console and tty[1-4] for login. note that /dev/console and
     # /dev/tty[1-4] will be symlinks to the ptys /dev/lxc/console and
@@ -261,12 +341,6 @@ EOF
     if [ -f $container_rootfs/etc/init/tty.conf ]; then
         sed -i 's|mingetty|mingetty --nohangup|' $container_rootfs/etc/init/tty.conf
     fi
-
-    # dont try to unmount /dev/lxc devices
-    sed -i 's|&& $1 !~ /^\\/dev\\/ram/|\&\& $2 !~ /^\\/dev\\/lxc/ \&\& $1 !~ /^\\/dev\\/ram/|' $container_rootfs/etc/init.d/halt
-
-    # don't try to unmount swap
-    sed -i 's|\[ -f /proc/swaps \]|# LXC [ -f /proc/swaps ]|' $container_rootfs/etc/init.d/halt
 
     # start a getty on /dev/console, /dev/tty[1-4]
     if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
@@ -312,23 +386,6 @@ exec init 0
 EOF
     fi
 
-    # there might be other services that are useless but the below set is a good start
-    # some of these might not exist in the image, so we silence chkconfig complaining
-    # about the service file not being found
-    for service in \
-        acpid apmd auditd autofs cpuspeed dund gpm haldaemon hidd	\
-        ip6tables irqbalance iscsi iscsid isdn kdump kudzu		\
-        lm_sensors lvm2-monitor mdmonitor microcode_ctl			\
-        ntpd pcmcia postfix sendmail udev-post xfs ;
-    do
-        chroot $container_rootfs chkconfig 2>/dev/null $service off
-    done
-
-    for service in rsyslog ;
-    do
-        chroot $container_rootfs chkconfig 2>/dev/null $service on
-    done
-
     # create required devices. note that /dev/console will be created by lxc
     # or libvirt itself to be a symlink to the right pty.
     # take care to not nuke /dev in case $container_rootfs isn't set
@@ -364,11 +421,6 @@ EOF
             chcon --reference /dev/$node $dev_path/$node 2>/dev/null
         done
     fi
-
-    # ensure /dev/ptmx refers to the newinstance devpts of the container, or
-    # pty's will get crossed up with the hosts (https://lkml.org/lkml/2012/1/23/512)
-    rm -f $container_rootfs/dev/ptmx
-    ln -s pts/ptmx $container_rootfs/dev/ptmx
 
     # start with a clean /var/log/messages
     rm -f $container_rootfs/var/log/messages
@@ -631,6 +683,7 @@ usage()
   -r|--rpms=<rpm name>    additional rpms to install into container
   -u|--url=<url>          replace yum repo url (ie. local yum mirror)
   -t|--templatefs=<path>  copy/clone rootfs at path instead of downloading
+  -P|--patch=<path>       only patch the rootfs at path for use as a container
   -h|--help
 
 Release is of the format "major.minor", for example "5.8", "6.3", or "6.latest"
@@ -638,7 +691,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:R:r:u:t: -l help,rootfs:,path:,name:,arch:,release:,rpms:,url:,templatefs: -- "$@")
+options=$(getopt -o hp:n:a:R:r:u:t: -l help,rootfs:,path:,name:,arch:,release:,rpms:,url:,templatefs:,patch: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -658,6 +711,7 @@ do
         -r|--rpms)		user_pkgs=$2; shift 2;;
         -u|--url)		repourl=$2; shift 2;;
         -t|--templatefs)	template_rootfs=$2; shift 2;;
+        --patch)		patch_rootfs=$2; shift 2;;
         --)             	shift 1; break ;;
         *)              	break ;;
     esac
@@ -667,6 +721,13 @@ done
 if [ "$(id -u)" != "0" ]; then
     echo "This script should be run as 'root'"
     exit 1
+fi
+
+if [ -n "$patch_rootfs" ]; then
+    container_rootfs="$patch_rootfs"
+    container_release_get $container_rootfs
+    container_rootfs_patch
+    exit 0
 fi
 
 if [ -z $name ]; then
