@@ -279,4 +279,4 @@ uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval);
 
 int detect_shared_rootfs(void);
 int detect_ramfs_rootfs(void);
-bool on_path(char *cmd);
+char *on_path(char *cmd);

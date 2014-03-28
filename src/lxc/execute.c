@@ -30,6 +30,7 @@
 #include "conf.h"
 #include "log.h"
 #include "start.h"
+#include "utils.h"
 
 lxc_log_define(lxc_execute, lxc_start);
 
@@ -43,9 +44,27 @@ struct execute_args {
  */
 static char *choose_init(void)
 {
-	char *retv = malloc(PATH_MAX);
-	int ret;
+	char *retv = NULL;
+	int ret, env_set = 0;
 	struct stat mystat;
+
+	if (!getenv("PATH")) {
+		if (setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 0))
+			SYSERROR("Failed to setenv");
+		env_set = 1;
+	}
+
+	retv = on_path("init.lxc");
+
+	if (env_set) {
+		if (unsetenv("PATH"))
+			SYSERROR("Failed to unsetenv");
+	}
+
+	if (retv)
+		return retv;
+
+	retv = malloc(PATH_MAX);
 	if (!retv)
 		return NULL;
 
@@ -54,6 +73,7 @@ static char *choose_init(void)
 		ERROR("pathname too long");
 		goto out1;
 	}
+
 	ret = stat(retv, &mystat);
 	if (ret == 0)
 		return retv;
