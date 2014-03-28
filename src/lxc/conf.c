@@ -3197,10 +3197,23 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 {
 	struct lxc_list *iterator;
 	struct id_map *map;
-	int ret = 0;
+	int ret = 0, use_shadow = 0;
 	enum idtype type;
-	char *buf = NULL, *pos;
-	int use_shadow = (on_path("newuidmap") && on_path("newgidmap"));
+	char *buf = NULL, *pos, *cmdpath = NULL;
+
+	cmdpath = on_path("newuidmap");
+	if (cmdpath) {
+		use_shadow = 1;
+		free(cmdpath);
+	}
+
+	if (!use_shadow) {
+		cmdpath = on_path("newgidmap");
+		if (cmdpath) {
+			use_shadow = 1;
+			free(cmdpath);
+		}
+	}
 
 	if (!use_shadow && geteuid()) {
 		ERROR("Missing newuidmap/newgidmap");

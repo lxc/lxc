@@ -1274,7 +1274,7 @@ int detect_ramfs_rootfs(void)
 	return 0;
 }
 
-bool on_path(char *cmd) {
+char *on_path(char *cmd) {
 	char *path = NULL;
 	char *entry = NULL;
 	char *saveptr = NULL;
@@ -1283,11 +1283,11 @@ bool on_path(char *cmd) {
 
 	path = getenv("PATH");
 	if (!path)
-		return false;
+		return NULL;
 
 	path = strdup(path);
 	if (!path)
-		return false;
+		return NULL;
 
 	entry = strtok_r(path, ":", &saveptr);
 	while (entry) {
@@ -1298,7 +1298,7 @@ bool on_path(char *cmd) {
 
 		if (access(cmdpath, X_OK) == 0) {
 			free(path);
-			return true;
+			return strdup(cmdpath);
 		}
 
 next_loop:
@@ -1306,5 +1306,5 @@ next_loop:
 	}
 
 	free(path);
-	return false;
+	return NULL;
 }
