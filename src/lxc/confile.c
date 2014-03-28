@@ -303,6 +303,8 @@ out:
 	return ret;
 }
 
+static int macvlan_mode(int *valuep, const char *value);
+
 static int config_network_type(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
@@ -337,8 +339,10 @@ static int config_network_type(const char *key, const char *value,
 
 	if (!strcmp(value, "veth"))
 		netdev->type = LXC_NET_VETH;
-	else if (!strcmp(value, "macvlan"))
+	else if (!strcmp(value, "macvlan")) {
 		netdev->type = LXC_NET_MACVLAN;
+		macvlan_mode(&netdev->priv.macvlan_attr.mode, "private");
+	}
 	else if (!strcmp(value, "vlan"))
 		netdev->type = LXC_NET_VLAN;
 	else if (!strcmp(value, "phys"))
