@@ -1,11 +1,16 @@
 EXTRA_DIST = \
 	abstractions/container-base \
+	abstractions/container-base.in \
 	abstractions/start-container \
+	container-rules \
+	container-rules.base \
+	lxc-containers \
+	lxc-generate-aa-rules.py \
 	profiles/lxc-default \
 	profiles/lxc-default-with-mounting \
 	profiles/lxc-default-with-nesting \
-	lxc-containers \
 	usr.bin.lxc-start
+
 
 if ENABLE_APPARMOR
 install-apparmor:
