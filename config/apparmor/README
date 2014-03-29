@@ -1,0 +1,12 @@
+The abstractions/container-base file is partially automatically
+generated.  The two source files are container-rules.base and
+abstractions/container-base.in.  If these file are updated,
+then
+
+1. Generate a new container-rules file using
+
+./lxc-generate-aa-rules.py container-rules.base > container-rules
+
+2. Concatenate container-base.in with container-rules using
+
+cat abstractions/container-base.in container-rules > abstractions/container-base
