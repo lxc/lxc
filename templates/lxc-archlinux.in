@@ -107,6 +107,9 @@ ln -s /dev/null /etc/systemd/system/systemd-udevd-kernel.socket
 ln -s /dev/null /etc/systemd/system/proc-sys-fs-binfmt_misc.automount
 # set default systemd target
 ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+# initialize pacman keyring
+pacman-key --init
+pacman-key --populate archlinux
 EOF
     return 0
 }
@@ -172,7 +175,8 @@ install_arch() {
         pacman_config="${container_pacman_config}"
     fi
 
-    if ! pacstrap -dcC "${pacman_config}" "${rootfs_path}" ${base_packages[@]}; then
+    if ! pacstrap -dcGC "${pacman_config}" "${rootfs_path}" \
+	    ${base_packages[@]}; then
         echo "Failed to install container packages"
         return 1
     fi
