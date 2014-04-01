@@ -6,5 +6,8 @@ block /sys
 allow /sys/fs/cgroup/**
 allow /sys/devices/virtual/net/**
 allow /sys/class/net/**
-block /proc/sys/kernel
+block /proc/sys
 allow /proc/sys/kernel/shm*
+allow /proc/sys/kernel/hostname
+allow /proc/sys/kernel/domainname
+allow /proc/sys/net/**

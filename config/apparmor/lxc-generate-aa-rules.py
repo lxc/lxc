@@ -25,11 +25,14 @@ def add_block(path):
             return
     blocks.append({'path': path.strip(), 'children': []})
 
-
+# @prev is an array of dicts which containing 'path' and
+# 'children'.  @path is a string.  We are looking for an entry
+# in @prev which contains @path, and will return its
+# children array.
 def child_get(prev, path):
     for p in prev:
         if p['path'] == path:
-            return p
+            return p['children']
     return None
 
 
@@ -40,6 +43,7 @@ def add_allow(path):
         l = len(b['path'])
         if len(path) <= l:
             continue
+        # TODO - should we find the longest match?
         if path[0:l] == b['path']:
             found = b
             break
