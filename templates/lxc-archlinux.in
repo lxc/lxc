@@ -47,32 +47,12 @@ default_locale="en-US.UTF-8"
 default_timezone="UTC"
 pacman_config="/etc/pacman.conf"
 
-# sort of minimal package set
-base_packages=(
-    "systemd"
-    "systemd-sysvcompat"
-    "filesystem"
-    "coreutils"
-    "kmod"
-    "procps"
-    "psmisc"
-    "pacman"
-    "bash"
-    "cronie"
-    "iproute2"
-    "iputils"
-    "inetutils"
-    "dhcpcd"
-    "dnsutils"
-    "nano"
-    "grep"
-    "less"
-    "gawk"
-    "sed"
-    "tar"
-    "gzip"
-    "which"
-)
+# by default, install 'base' except the kernel
+pkg_blacklist="linux"
+base_packages=()
+for pkg in $(pacman -Sqg base); do
+   [ "${pkg_blacklist#*$pkg}" = "$pkg_blacklist" ] && base_packages+=($pkg)
+done
 declare -a additional_packages
 
 # split comma-separated string into an array
