@@ -70,8 +70,8 @@ cleanup() {
 }
 
 download_file() {
-    if ! wget -q https://${DOWNLOAD_SERVER}/$1 -O $2 >/dev/null 2>&1; then
-        if ! wget -q http://${DOWNLOAD_SERVER}/$1 -O $2 >/dev/null 2>&1; then
+    if ! wget -T 30 -q https://${DOWNLOAD_SERVER}/$1 -O $2 >/dev/null 2>&1; then
+        if ! wget -T 30 -q http://${DOWNLOAD_SERVER}/$1 -O $2 >/dev/null 2>&1; then
             if [ "$3" = "noexit" ]; then
                 return 1
             else
