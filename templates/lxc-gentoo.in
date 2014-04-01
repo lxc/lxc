@@ -741,7 +741,7 @@ set_default_arch
 mirror="http://distfiles.gentoo.org"
 user="root"
 password="toor"
-tty=0
+tty=1
 settings="common"
 options=$(getopt -o hp:n:a:FcPv:t:S:u:w:s:m: -l help,rootfs:,path:,name:,arch:,flush-cache,cache-only,private-portage,variant:,portage-dir:,tarball:,auth_key:,user:,autologin,password:,settings:,mirror:,tty: -- "$@")
 
