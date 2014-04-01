@@ -57,11 +57,9 @@ cleanup() {
 }
 
 run_cmd() {
-	if [ -n "${http_proxy:-}" ]; then
-		sudo -i -u usernic-user env http_proxy=$http_proxy XDG_RUNTIME_DIR=/run/user/$(id -u usernic-user) $*
-	else
-		sudo -i -u usernic-user env XDG_RUNTIME_DIR=/run/user/$(id -u usernic-user) $*
-	fi
+	sudo -i -u usernic-user \
+	    env http_proxy=${http_proxy:-} https_proxy=${https_proxy:-} \
+	        XDG_RUNTIME_DIR=/run/user/$(id -u usernic-user) $*
 }
 
 ARCH=i386
