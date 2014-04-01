@@ -129,6 +129,7 @@ cache_setup(){
     cache_net && \
     cache_dev && \
     cache_openrc && \
+    cache_locale && \
     rm -rf "${cachefs}" && \
     mv "${partialfs}" "${cachefs}" && \
     printf "###### cache_setup: Cache should be ready\n"
@@ -255,6 +256,16 @@ cache_openrc()
     chroot "${partialfs}" sed s/-lxc//g -i "/etc/init.d/devfs"
 
     return 0
+}
+
+cache_locale()
+{
+   printf "### cache_locale(): initiating minimale locale en_US.UTF-8 \n"
+
+   echo "en_US.UTF-8 UTF-8" >> "${partialfs}/etc/locale.gen"
+   chroot "${partialfs}" locale-gen
+
+   return 0
 }
 
 ################################################################################
