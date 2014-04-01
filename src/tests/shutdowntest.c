@@ -70,10 +70,13 @@ int main(int argc, char *argv[])
 	}
 
 	/* Wait for init to be ready for SIGPWR */
-	sleep(10);
+	sleep(20);
 
-	if (!c->shutdown(c, 60)) {
+	if (!c->shutdown(c, 120)) {
 		fprintf(stderr, "%d: failed to shut down %s\n", __LINE__, MYNAME);
+		if (!c->stop(c)) {
+			fprintf(stderr, "%d: failed to kill %s\n", __LINE__, MYNAME);
+		}
 		goto out;
 	}
 
@@ -90,6 +93,10 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "all lxc_container tests passed for %s\n", c->name);
 	ret = 0;
 out:
+	if (c && c->is_defined(c)) {
+		c->destroy(c);
+	}
+
 	lxc_container_put(c);
 	exit(ret);
 }
