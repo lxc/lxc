@@ -95,13 +95,19 @@ static void lxc_monitor_fifo_send(struct lxc_msg *msg, const char *lxcpath)
 	if (ret < 0)
 		return;
 
-	fd = open(fifo_path, O_WRONLY);
+	/* open the fifo nonblock in case the monitor is dead, we don't want
+	 * the open to wait for a reader since it may never come.
+	 */
+	fd = open(fifo_path, O_WRONLY|O_NONBLOCK);
 	if (fd < 0) {
-		/* it is normal for this open to fail when there is no monitor
-		 * running, so we don't log it
+		/* it is normal for this open to fail ENXIO when there is no
+		 * monitor running, so we don't log it
 		 */
 		return;
 	}
+
+	if (fcntl(fd, F_SETFL, O_WRONLY) < 0)
+		return;
 
 	ret = write(fd, msg, sizeof(*msg));
 	if (ret != sizeof(*msg)) {
