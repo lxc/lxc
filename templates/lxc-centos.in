@@ -590,6 +590,7 @@ lxc.include = @LXCTEMPLATECONFIG@/centos.common.conf
 
     # Append things which require expansion here...
     cat <<EOF >> $config_path/config
+lxc.arch = $arch
 lxc.utsname = $utsname
 
 lxc.autodev = $auto_dev
