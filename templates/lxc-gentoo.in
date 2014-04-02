@@ -299,6 +299,7 @@ container_setup() {
     container_net && \
     container_hostname && \
     container_auth && \
+    container_sshd && \
     container_conf
     if [ $? -ne 0 ]; then
         die 1 "container_setup(): one step didn't complete, sorry\n"
@@ -645,6 +646,14 @@ container_auth()
             store_user_message "${user} has the default password 'toor', please change it ASAP"
         fi
     fi
+
+    printf " => done.\n"
+}
+
+container_sshd() {
+    printf "#### container_sshd(): enabling sshd... \n"
+
+    chroot "${rootfs}" rc-update add sshd || die 1 "failed to enable sshd\n"
 
     printf " => done.\n"
 }
