@@ -313,6 +313,7 @@ static int print_info(const char *name, const char *lxcpath)
 		}
 
 		if (ips) {
+			fflush(stdout);
 			char **addresses = c->get_ips(c, NULL, NULL, 0);
 			if (addresses) {
 				char *address;
