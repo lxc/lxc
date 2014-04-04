@@ -43,7 +43,7 @@ templates/lxc-sshd
 templates/lxc-ubuntu
 templates/lxc-ubuntu-cloud
 
-
+src/lxc/init.lxc
 src/lxc/lxc-attach
 src/lxc/lxc-autostart
 src/lxc/lxc-cgroup
