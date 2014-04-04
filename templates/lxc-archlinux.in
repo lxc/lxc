@@ -71,10 +71,9 @@ split_string() {
 
 # Arch-specific preconfiguration for container
 configure_arch() {
-    # on ArchLinux, read defaults from host systemd configuration
+    # read locale and timezone defaults from system rc.conf if running on Arch
     if [ "${is_arch}" ]; then
-        cp -p /etc/vconsole.conf /etc/locale.conf /etc/locale.gen \
-		"${rootfs_path}/etc/"
+        cp -p /etc/vconsole.conf /etc/locale.conf /etc/locale.gen "${rootfs_path}/etc/"
     else
         echo "LANG=${default_lang}" > "${rootfs_path}/etc/locale.conf"
         echo "KEYMAP=us" > "${rootfs_path}/etc/vconsole.conf"
@@ -90,25 +89,22 @@ EOF
             fi
         fi
     fi
-
-    # hostname and nameservers
     echo "${name}" > "${rootfs_path}/etc/hostname"
-    while read r; do
-       [[ $r =~ ^nameserver ]] && echo "$r"
-    done < /etc/resolv.conf > "${rootfs_path}/etc/resolv.conf"
+    cat > "${rootfs_path}/etc/hosts" << EOF
+127.0.0.1   localhost.localdomain   localhost ${name}
+::1     localhost.localdomain   localhost
+EOF
+    grep nameserver /etc/resolv.conf > "${rootfs_path}/etc/resolv.conf"
 
-    # chroot and configure system
     arch-chroot "${rootfs_path}" /bin/bash -s << EOF
 mkdir /run/lock
 locale-gen
 ln -s /usr/share/zoneinfo/${default_timezone} /etc/localtime
 # disable services unavailable for container
-for i in systemd-udevd.service \
-	systemd-udevd-control.socket \
-	systemd-udevd-kernel.socket \
-	proc-sys-fs-binfmt_misc.automount; do
-   ln -s /dev/null /etc/systemd/system/\$i
-done
+ln -s /dev/null /etc/systemd/system/systemd-udevd.service
+ln -s /dev/null /etc/systemd/system/systemd-udevd-control.socket
+ln -s /dev/null /etc/systemd/system/systemd-udevd-kernel.socket
+ln -s /dev/null /etc/systemd/system/proc-sys-fs-binfmt_misc.automount
 # set default systemd target
 ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
 # initialize pacman keyring
@@ -144,6 +140,7 @@ lxc.cgroup.devices.allow = c 1:3 rwm
 lxc.cgroup.devices.allow = c 1:5 rwm
 lxc.cgroup.devices.allow = c 1:7 rwm
 lxc.cgroup.devices.allow = c 1:8 rwm
+lxc.cgroup.devices.allow = c 1:9 rwm
 lxc.cgroup.devices.allow = c 1:9 rwm
 lxc.cgroup.devices.allow = c 4:1 rwm
 lxc.cgroup.devices.allow = c 5:0 rwm
@@ -322,8 +319,4 @@ if [ -n "${root_passwd}" ]; then
     echo "root:${root_passwd}" | chroot "${rootfs_path}" chpasswd
 fi
 
-cat << EOF
-ArchLinux container ${name} is successfully created! The configuration is
-stored in ${config_path}/config. Please refer to https://wiki.archlinux.org for
-information about configuring ArchLinux.
-EOF
+echo "container config is ${config_path}/config"
