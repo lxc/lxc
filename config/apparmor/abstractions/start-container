@@ -1,7 +1,12 @@
   network,
   capability,
   file,
+
+  # The following 3 entries are only supported by recent apparmor versions.
+  # Comment them if the apparmor parser doesn't recognize them.
   dbus,
+  signal,
+  ptrace,
 
   # currently blocked by apparmor bug
   mount -> /usr/lib/*/lxc/{**,},
