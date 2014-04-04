@@ -360,7 +360,7 @@ int main(int argc, char *argv[])
 	}
 
 	ret = snprintf(logpath, sizeof(logpath), "%s/lxc-monitord.log",
-		       lxcpath);
+		       (strcmp(LXCPATH, lxcpath) ? lxcpath : LOGPATH ) );
 	if (ret < 0 || ret >= sizeof(logpath))
 		return EXIT_FAILURE;
 
