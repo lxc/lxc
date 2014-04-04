@@ -27,8 +27,10 @@ wait_for_bridge()
 {
     [ -f /etc/lxc/default.conf ] || { return 0; }
 
-    BRNAME=`grep lxc.network.link /etc/lxc/default.conf |awk '{print $3}'`
-    [ -n $BRNAME ] || { return 0; }
+    BRNAME=`grep '^[ 	]*lxc.network.link' /etc/lxc/default.conf | sed 's/^.*=[ 	]*//'`
+    if [ -z "$BRNAME" ]; then
+	return 0
+    fi
 
     for try in `seq 1 30`; do
 	ifconfig -a |grep "^$BRNAME" >/dev/null 2>&1
