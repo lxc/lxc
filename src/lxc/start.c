@@ -786,6 +786,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 	int preserve_mask = 0, i;
 	int netpipepair[2], nveths;
 
+	netpipe = -1;
+
 	for (i = 0; i < LXC_NS_MAX; i++)
 		if (handler->conf->inherit_ns_fd[i] != -1)
 			preserve_mask |= ns_info[i].clone_flag;
