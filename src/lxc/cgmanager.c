@@ -689,7 +689,7 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 	cgm_dbus_disconnect();
 	free(cgroup);
 	newlen = strlen(result);
-	if (!value) {
+	if (!len || !value) {
 		// user queries the size
 		nih_free(result);
 		return newlen+1;
