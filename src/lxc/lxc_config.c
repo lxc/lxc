@@ -70,5 +70,5 @@ int main(int argc, char *argv[])
 		}
 	}
 	printf("Unknown configuration item: %s\n", argv[1]);
-	exit(-1);
+	exit(1);
 }

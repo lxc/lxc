@@ -236,5 +236,7 @@ int main(int argc, char *argv[])
 
 out:
 	lxc_container_put(c);
+	if (ret < 0)
+		return 1;
 	return ret;
 }

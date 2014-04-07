@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 	if (!c->may_control(c)) {
 		ERROR("Insufficent privileges to control %s:%s", my_args.lxcpath[0], my_args.name);
 		lxc_container_put(c);
-		return -1;
+		exit(1);
 	}
 
 	if (!c->freeze(c)) {
@@ -88,5 +88,5 @@ int main(int argc, char *argv[])
 
 	lxc_container_put(c);
 
-	return 0;
+	exit(0);
 }

@@ -378,7 +378,7 @@ int main(int argc, char *argv[])
 	    sigdelset(&mask, SIGTERM) ||
 	    sigprocmask(SIG_BLOCK, &mask, NULL)) {
 		SYSERROR("failed to set signal mask");
-		return -1;
+		return 1;
 	}
 
 	signal(SIGILL,  lxc_monitord_sig_handler);
@@ -428,5 +428,7 @@ int main(int argc, char *argv[])
 	ret = EXIT_SUCCESS;
 	NOTICE("monitor exiting");
 out:
-	return ret;
+	if (ret == 0)
+		return 0;
+	return 1;
 }

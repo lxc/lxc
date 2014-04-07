@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 
 	if (my_args.argc > 1) {
 		ERROR("Too many arguments");
-		return -1;
+		exit(1);
 	}
 	if (my_args.argc == 1)
 		newname = my_args.argv[0];
@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
 	if (!c->may_control(c)) {
 		fprintf(stderr, "Insufficent privileges to control %s\n", my_args.name);
 		lxc_container_put(c);
-		return -1;
+		exit(1);
 	}
 
 	switch(action) {
@@ -225,5 +225,7 @@ int main(int argc, char *argv[])
 
 	lxc_container_put(c);
 
-	exit(ret);
+	if (ret == 0)
+		exit(EXIT_SUCCESS);
+	exit(EXIT_FAILURE);
 }

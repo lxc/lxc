@@ -195,11 +195,11 @@ int main(int argc, char *argv[])
 
 	ret = lxc_caps_init();
 	if (ret)
-		return ret;
+		return 1;
 
 	ret = lxc_arguments_parse(&my_args, argc, argv);
 	if (ret)
-		return ret;
+		return 1;
 
 	if (!my_args.log_file)
 		my_args.log_file = "none";
@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
 	ret = lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			   my_args.progname, my_args.quiet, my_args.lxcpath[0]);
 	if (ret)
-		return ret;
+		return 1;
 	lxc_log_options_no_override();
 
 	if (remount_sys_proc)
@@ -229,14 +229,14 @@ int main(int argc, char *argv[])
 	}
 
 	if (ret < 0)
-		return -1;
+		return 1;
 
 	ret = lxc_wait_for_pid_status(pid);
 	if (ret < 0)
-		return -1;
+		return 1;
 
 	if (WIFEXITED(ret))
 		return WEXITSTATUS(ret);
 
-	return -1;
+	return 1;
 }

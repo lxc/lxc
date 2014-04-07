@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 
 	ret = lxc_caps_init();
 	if (ret)
-		return ret;
+		return 1;
 
 	ret = lxc_fill_namespace_flags(namespaces, &flags);
 	if (ret)
@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
 	pid = lxc_clone(do_start, &start_arg, flags);
 	if (pid < 0) {
 		ERROR("failed to clone");
-		return -1;
+		return 1;
 	}
 
 	if (my_iflist) {
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
 
 	if (waitpid(pid, &status, 0) < 0) {
 		ERROR("failed to wait for '%d'", pid);
-		return -1;
+		return 1;
 	}
 
 	return  lxc_error_set_and_log(pid, status);
