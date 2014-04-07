@@ -248,7 +248,7 @@ if [ -z "${name}" ]; then
 fi
 
 if [ ! -e /sys/class/net/${lxc_network_link} ]; then
-    echo "network link interface does not exist"
+    echo "network link interface, ${lxc_network_link}, does not exist"
     exit 1
 fi
 
