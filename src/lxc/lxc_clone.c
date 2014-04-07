@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
 	if (!c1->may_control(c1)) {
 		fprintf(stderr, "Insufficent privileges to control %s\n", orig);
 		lxc_container_put(c1);
-		return -1;
+		return 1;
 	}
 
 	if (!c1->is_defined(c1)) {

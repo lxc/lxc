@@ -260,5 +260,7 @@ int main(int argc, char *argv[])
 		}
 	}
 out:
-	return err;
+	if (err < 0)
+		exit(EXIT_FAILURE);
+	exit(err);
 }

@@ -364,7 +364,7 @@ int main(int argc, char *argv[])
 
 	if ((ret = waitpid(pid, &status, __WALL)) < 0) {
 		printf("waitpid() returns %d, errno %d\n", ret, errno);
-		exit(ret);
+		exit(1);
 	}
 
 	exit(WEXITSTATUS(status));

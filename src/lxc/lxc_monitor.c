@@ -78,14 +78,14 @@ int main(int argc, char *argv[])
 	int len, rc, i, nfds = -1;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		return -1;
+		return 1;
 
 	if (!my_args.log_file)
 		my_args.log_file = "none";
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		return -1;
+		return 1;
 	lxc_log_options_no_override();
 
 	if (quit_monitord) {
@@ -114,19 +114,19 @@ int main(int argc, char *argv[])
 	regexp = malloc(len + 3);
 	if (!regexp) {
 		ERROR("failed to allocate memory");
-		return -1;
+		return 1;
 	}
 	rc = snprintf(regexp, len, "^%s$", my_args.name);
 	if (rc < 0 || rc >= len) {
 		ERROR("Name too long");
 		free(regexp);
-		return -1;
+		return 1;
 	}
 
 	if (regcomp(&preg, regexp, REG_NOSUB|REG_EXTENDED)) {
 		ERROR("failed to compile the regex '%s'", my_args.name);
 		free(regexp);
-		return -1;
+		return 1;
 	}
 	free(regexp);
 
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
 		fd = lxc_monitor_open(my_args.lxcpath[i]);
 		if (fd < 0) {
 			regfree(&preg);
-			return -1;
+			return 1;
 		}
 		FD_SET(fd, &rfds);
 		if (fd > nfds)
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
 
 		if (lxc_monitor_read_fdset(&rfds, nfds, &msg, -1) < 0) {
 			regfree(&preg);
-			return -1;
+			return 1;
 		}
 
 		msg.name[sizeof(msg.name)-1] = '\0';

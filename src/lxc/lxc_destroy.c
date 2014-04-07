@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 	if (!c->may_control(c)) {
 		fprintf(stderr, "Insufficent privileges to control %s\n", my_args.name);
 		lxc_container_put(c);
-		return -1;
+		exit(1);
 	}
 
 	if (!c->is_defined(c)) {
@@ -108,5 +108,5 @@ int main(int argc, char *argv[])
 	}
 
 	lxc_container_put(c);
-	return 0;
+	exit(0);
 }

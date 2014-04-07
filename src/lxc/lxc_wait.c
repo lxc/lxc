@@ -84,29 +84,29 @@ int main(int argc, char *argv[])
 	struct lxc_container *c;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		return -1;
+		return 1;
 
 	if (!my_args.log_file)
 		my_args.log_file = "none";
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		return -1;
+		return 1;
 	lxc_log_options_no_override();
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c)
-		return -1;
+		return 1;
 
 	if (!c->may_control(c)) {
 		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
 		lxc_container_put(c);
-		return -1;
+		return 1;
 	}
 
 	if (!c->wait(c, my_args.states, my_args.timeout)) {
 		lxc_container_put(c);
-		return -1;
+		return 1;
 	}
 	return 0;
 }

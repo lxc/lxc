@@ -91,18 +91,19 @@ int main(int argc, char *argv[])
 {
 	char *rcfile;
 	struct lxc_conf *conf;
+	int ret;
 
 	lxc_list_init(&defines);
 
 	if (lxc_caps_init())
-		return -1;
+		return 1;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		return -1;
+		return 1;
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		return -1;
+		return 1;
 	lxc_log_options_no_override();
 
 	/* rcfile is specified in the cli option */
@@ -114,7 +115,7 @@ int main(int argc, char *argv[])
 		rc = asprintf(&rcfile, "%s/%s/config", my_args.lxcpath[0], my_args.name);
 		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
-			return -1;
+			return 1;
 		}
 
 		/* container configuration does not exist */
@@ -127,16 +128,19 @@ int main(int argc, char *argv[])
 	conf = lxc_conf_init();
 	if (!conf) {
 		ERROR("failed to initialize configuration");
-		return -1;
+		return 1;
 	}
 
 	if (rcfile && lxc_config_read(rcfile, conf)) {
 		ERROR("failed to read configuration file");
-		return -1;
+		return 1;
 	}
 
 	if (lxc_config_define_load(&defines, conf))
-		return -1;
+		return 1;
 
-	return lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf, my_args.lxcpath[0]);
+	ret = lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf, my_args.lxcpath[0]);
+	if (ret < 0)
+		return 1;
+	return ret;
 }
