@@ -202,6 +202,50 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
   </refsect1>
 
   <refsect1>
+    <title><!-- Exit value -->終了ステータス</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>0</term>
+        <listitem>
+          <para>
+            <!--
+	    The container was successfully stopped.
+            -->
+            コンテナの停止が成功しました．
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>1</term>
+        <listitem>
+          <para>
+            <!--
+	    An error occurred while stopping the container.
+            -->
+            コンテナの停止中にエラーが発生しました．
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>2</term>
+        <listitem>
+          <para>
+            <!--
+	    The specified container exists but was not running.
+            -->
+            指定のコンテナは存在しますが，実行中ではありません．
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+  <refsect1>
     <title><!-- Diagnostic -->診断</title>
 
     <variablelist>
