@@ -492,6 +492,23 @@ container_rootfs_clone()
     fi
 }
 
+container_rootfs_repo_create()
+{
+    echo "# LXC generated .repo file" >$1
+    echo "[$2]" >>$1
+    echo "name=Oracle Linux $container_release_major.$container_release_minor ($basearch)" >>$1
+    echo "baseurl=$3/" >>$1
+    echo "enabled=1" >>$1
+    echo "skip_if_unavailable=1" >>$1
+
+    if [ "$4" != "" ]; then
+        echo "gpgkey=$yum_url/RPM-GPG-KEY-oracle-ol$container_release_major" >>$1
+        echo "gpgcheck=1" >>$1
+    else
+        echo "gpgcheck=0" >>$1
+    fi
+}
+
 container_rootfs_create()
 {
     cmds="rpm wget yum"
@@ -522,66 +539,81 @@ container_rootfs_create()
             die "The template is busy."
         fi
 
-        echo "Downloading release $container_release_major.$container_release_minor for $basearch"
+        echo "Yum installing release $container_release_major.$container_release_minor for $basearch"
 
-        # get yum repo file
         if [ -n "$repourl" ]; then
             yum_url=$repourl
         else
             yum_url=http://public-yum.oracle.com
         fi
-        if   [ $container_release_major = "4" ]; then
-            repofile=public-yum-el4.repo
-        elif [ $container_release_major = "5" ]; then
-            repofile=public-yum-el5.repo
-        elif [ $container_release_major = "6" ]; then
-            repofile=public-yum-ol6.repo
+        if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
+            latest_L="el"
+            latest_U="EL"
         else
-            die "Unsupported release $container_release_major"
-        fi
-        mkdir -p $container_rootfs/etc/yum.repos.d
-        wget -q $yum_url/$repofile -O $container_rootfs/etc/yum.repos.d/$repofile
-        if [ $? -ne 0 ]; then
-            die "Failed to download repo file $yum_url/$repofile"
+            latest_L="ol"
+            latest_U="OL"
         fi
 
-        # yum will take $basearch from host, so force the arch we want
-        sed -i "s|\$basearch|$basearch|" $container_rootfs/etc/yum.repos.d/$repofile
-
-        # replace url if they specified one
-        if [ -n "$repourl" ]; then
-            sed -i "s|baseurl=http://public-yum.oracle.com/repo|baseurl=$repourl/repo|" $container_rootfs/etc/yum.repos.d/$repofile
-            sed -i "s|gpgkey=http://public-yum.oracle.com|gpgkey=$repourl|" $container_rootfs/etc/yum.repos.d/$repofile
-        fi
-
-        # disable all repos, then enable the repo for the version we are installing.
-        if [ $container_release_minor = "latest" ]; then
-            if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
-                repo="el"$container_release_major"_"$container_release_minor
+        if [ -n "$baseurl" ]; then
+            # create .repo pointing at baseurl
+            repo="lxc-install"
+            mkdir -p $container_rootfs/etc/yum.repos.d
+            container_rootfs_repo_create \
+                $container_rootfs/etc/yum.repos.d/lxc-install.repo $repo $baseurl
+        else
+            # get public-yum repo file
+            if   [ $container_release_major = "4" ]; then
+                repofile=public-yum-el4.repo
+            elif [ $container_release_major = "5" ]; then
+                repofile=public-yum-el5.repo
+            elif [ $container_release_major = "6" ]; then
+                repofile=public-yum-ol6.repo
+            elif [ $container_release_major = "7" ]; then
+                repofile=public-yum-ol7.repo
             else
-                repo="ol"$container_release_major"_"$container_release_minor
+                die "Unsupported release $container_release_major"
             fi
-        elif [ $container_release_major = "6" ]; then
-            if   [ $container_release_minor = "0" ]; then
-                repo="ol"$container_release_major"_ga_base"
-            else
-                repo="ol"$container_release_major"_u"$container_release_minor"_base"
+
+            mkdir -p $container_rootfs/etc/yum.repos.d
+            wget -q $yum_url/$repofile -O $container_rootfs/etc/yum.repos.d/$repofile
+            if [ $? -ne 0 ]; then
+                die "Failed to download repo file $yum_url/$repofile"
             fi
-        elif [ $container_release_major = "5" ]; then
-            if   [ $container_release_minor = "0" ]; then
-                repo="el"$container_release_major"_ga_base"
-            elif [ $container_release_minor -lt "6" ]; then
+
+            # yum will take $basearch from host, so force the arch we want
+            sed -i "s|\$basearch|$basearch|" $container_rootfs/etc/yum.repos.d/$repofile
+
+            # replace url if they specified one
+            if [ -n "$repourl" ]; then
+                sed -i "s|baseurl=http://public-yum.oracle.com/repo|baseurl=$repourl/repo|" $container_rootfs/etc/yum.repos.d/$repofile
+                sed -i "s|gpgkey=http://public-yum.oracle.com|gpgkey=$repourl|" $container_rootfs/etc/yum.repos.d/$repofile
+            fi
+
+            # disable all repos, then enable the repo for the version we are installing.
+            if [ $container_release_minor = "latest" ]; then
+                repo=$latest_L""$container_release_major"_"$container_release_minor
+            elif [ $container_release_major = "6" -o  $container_release_major = "7" ]; then
+                if   [ $container_release_minor = "0" ]; then
+                    repo="ol"$container_release_major"_ga_base"
+                else
+                    repo="ol"$container_release_major"_u"$container_release_minor"_base"
+                fi
+            elif [ $container_release_major = "5" ]; then
+                if   [ $container_release_minor = "0" ]; then
+                    repo="el"$container_release_major"_ga_base"
+                elif [ $container_release_minor -lt "6" ]; then
+                    repo="el"$container_release_major"_u"$container_release_minor"_base"
+                else
+                    repo="ol"$container_release_major"_u"$container_release_minor"_base"
+                fi
+            elif [ $container_release_major = "4" -a $container_release_minor -gt "5" ]; then
                 repo="el"$container_release_major"_u"$container_release_minor"_base"
             else
-                repo="ol"$container_release_major"_u"$container_release_minor"_base"
+                die "Unsupported release $container_release_major.$container_release_minor"
             fi
-        elif [ $container_release_major = "4" -a $container_release_minor -gt "5" ]; then
-            repo="el"$container_release_major"_u"$container_release_minor"_base"
-        else
-            die "Unsupported release $container_release_major.$container_release_minor"
+            sed -i "s|enabled=1|enabled=0|" $container_rootfs/etc/yum.repos.d/$repofile
+            sed -i "/\[$repo\]/,/\[/ s/enabled=0/enabled=1/" $container_rootfs/etc/yum.repos.d/$repofile
         fi
-        sed -i "s|enabled=1|enabled=0|" $container_rootfs/etc/yum.repos.d/$repofile
-        sed -i "/\[$repo\]/,/\[/ s/enabled=0/enabled=1/" $container_rootfs/etc/yum.repos.d/$repofile
 
         # create rpm db, download and yum install minimal packages
         mkdir -p $container_rootfs/var/lib/rpm
@@ -620,11 +652,18 @@ container_rootfs_create()
         fi
         if [ x"$redo_pkgs" != x ]; then
             rpm --root $container_rootfs --nodeps -e $redo_pkgs
-            yum $yum_args install $redo_pkgs
+            lxc-unshare -s MOUNT yum -- $yum_args install $redo_pkgs
             if [ $? -ne 0 ]; then
                 die "Unable to reinstall packages"
             fi
         fi
+
+        # if installing from a baseurl, create a .repo that the container
+        # can use to update to _latest from http://public-yum.oracle.com
+        container_rootfs_repo_create \
+            "$container_rootfs/etc/yum.repos.d/public-yum-"$latestL""$container_release_major".repo" \
+            $latest_L""$container_release_major"_latest" \
+            $yum_url"/repo/OracleLinux/"$latest_U""$container_release_major"/latest/$basearch" gpg
 
         # these distributions put the rpm database in a place the guest is
         # not expecting it, so move it
@@ -681,7 +720,9 @@ usage()
   -R|--release=<release>  release to download for the new container
   --rootfs=<path>         rootfs path
   -r|--rpms=<rpm name>    additional rpms to install into container
-  -u|--url=<url>          replace yum repo url (ie. local yum mirror)
+  -u|--url=<url>          replace yum repo url (ie. Oracle public-yum mirror)
+     --baseurl=<url>      use package repository (ie. file:///mnt)
+                          arch and release must also be specified
   -t|--templatefs=<path>  copy/clone rootfs at path instead of downloading
   -P|--patch=<path>       only patch the rootfs at path for use as a container
   -h|--help
@@ -691,13 +732,12 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:R:r:u:t: -l help,rootfs:,path:,name:,arch:,release:,rpms:,url:,templatefs:,patch: -- "$@")
+options=$(getopt -o hp:n:a:R:r:u:t: -l help,rootfs:,path:,name:,arch:,release:,rpms:,url:,templatefs:,patch:,baseurl: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
 fi
 
-arch=$(uname -m)
 eval set -- "$options"
 while true
 do
@@ -712,6 +752,7 @@ do
         -u|--url)		repourl=$2; shift 2;;
         -t|--templatefs)	template_rootfs=$2; shift 2;;
         --patch)		patch_rootfs=$2; shift 2;;
+        --baseurl)		baseurl=$2; shift 2;;
         --)             	shift 1; break ;;
         *)              	break ;;
     esac
@@ -721,6 +762,18 @@ done
 if [ "$(id -u)" != "0" ]; then
     echo "This script should be run as 'root'"
     exit 1
+fi
+
+if [ -n "$baseurl" ]; then
+    if [ "$arch" = "" -o "$container_release_version" = "" ]; then
+        echo "The --arch and --release must be specified when using --baseurl"
+        usage
+        exit 1
+    fi
+fi
+
+if [ "$arch" = "" ]; then
+    arch=$(uname -m)
 fi
 
 if [ -n "$patch_rootfs" ]; then
