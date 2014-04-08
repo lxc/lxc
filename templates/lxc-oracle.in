@@ -9,7 +9,7 @@
 # Modified for Oracle Linux 5
 # Wim Coekaerts <wim.coekaerts@oracle.com>
 #
-# Modified for Oracle Linux 6, combined OL4,5,6 into one template script
+# Modified for Oracle Linux 6,7 combined OL4,5,6 into one template script
 # Dwight Engen <dwight.engen@oracle.com>
 #
 # This library is free software; you can redistribute it and/or
@@ -84,7 +84,7 @@ container_rootfs_patch()
             mkdir -p $container_rootfs/usr/lib/yum-plugins
             cp @DATADIR@/lxc/lxc-patch.py $container_rootfs/usr/lib/yum-plugins
         fi
-        if [ $container_release_major = "6" ]; then
+        if [ $container_release_major -ge "6" ]; then
             mkdir -p $container_rootfs/usr/share/yum-plugins
             cp @DATADIR@/lxc/lxc-patch.py $container_rootfs/usr/share/yum-plugins
         fi
@@ -92,7 +92,7 @@ container_rootfs_patch()
         cat <<EOF > $container_rootfs/etc/yum/pluginconf.d/lxc-patch.conf
 [main]
 enabled=1
-packages=initscripts,iptables,selinux-policy,readahead,udev,util-linux-ng
+packages=dbus,initscripts,iptables,openssh-server,setup,selinux-policy,readahead,udev,util-linux,util-linux-ng
 EOF
     fi
 
@@ -138,6 +138,40 @@ EOF
     if [ -f $container_rootfs/usr/sbin/selinuxenabled ]; then
         mv $container_rootfs/usr/sbin/selinuxenabled $container_rootfs/usr/sbin/selinuxenabled.lxcorig
         ln -s /bin/false $container_rootfs/usr/sbin/selinuxenabled
+    fi
+
+    # ensure /dev/ptmx refers to the newinstance devpts of the container, or
+    # pty's will get crossed up with the hosts (https://lkml.org/lkml/2012/1/23/512)
+    rm -f $container_rootfs/dev/ptmx
+    ln -s pts/ptmx $container_rootfs/dev/ptmx
+
+    # OL7 has systemd, no rc.sysinit
+    if [ $container_release_major = "7" ]; then
+        # from mhw in the fedora template: We do need to disable the
+        # "ConditionalPathExists=/dev/tty0" line or no gettys are started on
+        # the ttys in the container. Lets do it in an override copy of the
+        # service so it can still pass rpm verifies and not be automatically
+        # updated by a new systemd version.
+        sed -e 's/^ConditionPathExists=/#LXC ConditionPathExists=/' \
+            < $container_rootfs/usr/lib/systemd/system/getty\@.service \
+            > $container_rootfs/etc/systemd/system/getty\@.service
+        # Setup getty service on the 4 ttys we are going to allow in the
+        # default config.  Number should match lxc.tty
+        ( cd $container_rootfs/etc/systemd/system/getty.target.wants
+            for i in 1 2 3 4 ; do ln -sf ../getty\@.service getty@tty${i}.service; done )
+
+        # disable some systemd services, set default boot, sigpwr target
+        rm -f $container_rootfs/usr/lib/systemd/system/sysinit.target.wants/kmod-static-nodes.service
+        chroot $container_rootfs systemctl -q disable graphical.target
+        chroot $container_rootfs systemctl -q enable multi-user.target
+        if [ ! -e $container_rootfs/etc/systemd/system/sigpwr.target ]; then
+            chroot $container_rootfs ln -s /usr/lib/systemd/system/halt.target /etc/systemd/system/sigpwr.target
+        fi
+
+        # systemd in userns won't be able to set /proc/self/oom_score_adj which
+        # prevents the dbus service from starting
+        sed -i 's|^OOMScoreAdjust|#LXC OOMScoreAdjust|' $container_rootfs/usr/lib/systemd/system/dbus.service
+        return
     fi
 
     # silence error in checking for selinux
@@ -253,6 +287,20 @@ EOF
     # don't try to unmount swap
     sed -i 's|\[ -f /proc/swaps \]|# LXC [ -f /proc/swaps ]|' $container_rootfs/etc/init.d/halt
 
+    # sem_open(3) checks that /dev/shm is SHMFS_SUPER_MAGIC, so make sure to
+    # mount /dev/shm (normally done by dracut initrd) as tmpfs
+    if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
+        grep -q "mount -t tmpfs tmpfs /dev/shm" $container_rootfs/etc/rc.sysinit
+        if [ $? -eq 1 ]; then
+            echo "mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.sysinit
+            echo "mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.d/rc.sysinit
+        fi
+    fi
+    if [ $container_release_major = "6" ]; then
+        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.sysinit
+        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.d/rc.sysinit
+    fi
+
     # there might be other services that are useless but the below set is a good start
     # some of these might not exist in the image, so we silence chkconfig complaining
     # about the service file not being found
@@ -269,11 +317,6 @@ EOF
     do
         chroot $container_rootfs chkconfig 2>/dev/null $service on
     done
-
-    # ensure /dev/ptmx refers to the newinstance devpts of the container, or
-    # pty's will get crossed up with the hosts (https://lkml.org/lkml/2012/1/23/512)
-    rm -f $container_rootfs/dev/ptmx
-    ln -s pts/ptmx $container_rootfs/dev/ptmx
 }
 
 container_rootfs_configure()
@@ -307,19 +350,7 @@ EOF
     touch $container_rootfs/etc/mtab
 
     # don't put devpts,proc, nor sysfs in here, it will already be mounted for us by lxc/libvirt
-    cat <<EOF > $container_rootfs/etc/fstab
-EOF
-
-    # sem_open(3) checks that /dev/shm is SHMFS_SUPER_MAGIC, so make sure to mount /dev/shm (normally done by dracut initrd) as tmpfs
-    if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
-        echo "mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.sysinit
-        echo "mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.d/rc.sysinit
-    fi
-
-    if [ $container_release_major = "6" ]; then
-        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.sysinit
-        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.d/rc.sysinit
-    fi
+    echo "" >$container_rootfs/etc/fstab
 
     # setup console and tty[1-4] for login. note that /dev/console and
     # /dev/tty[1-4] will be symlinks to the ptys /dev/lxc/console and
@@ -373,7 +404,7 @@ EOF
     # /com/ubuntu/upstart socket.
     if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
         sed -i 's|pf::powerfail:/sbin/shutdown -f -h +2 "Power Failure; |pf::powerfail:/sbin/shutdown -f -h now "|' $container_rootfs/etc/inittab
-    else
+    elif [ $container_release_major = "6" ]; then
         cat <<EOF > $container_rootfs/etc/init/power-status-changed.conf
 # power-status-changed - used to cleanly shut down the container
 #
@@ -405,7 +436,6 @@ EOF
     mkdir -m 755  $dev_path/pts
     mkdir -m 1777 $dev_path/shm
     mknod -m 666  $dev_path/tty c 5 0
-    mknod -m 666  $dev_path/tty0 c 4 0
     mknod -m 666  $dev_path/tty1 c 4 1
     mknod -m 666  $dev_path/tty2 c 4 2
     mknod -m 666  $dev_path/tty3 c 4 3
@@ -458,6 +488,17 @@ EOF
 
     if [ $container_release_major != "4" ]; then
         echo "lxc.cap.drop = sys_resource" >>$cfg_dir/config
+    fi
+
+    # systemd services like logind and journald need these
+    if [ $container_release_major != "7" ]; then
+        echo "lxc.cap.drop = setfcap setpcap" >>$cfg_dir/config
+    fi
+
+    # don't create kmsg symlink as it causes journald to use 100% cpu
+    if [ $container_release_major = "7" ]; then
+        echo "lxc.autodev = 1" >>$cfg_dir/config
+        echo "lxc.kmsg = 0" >>$cfg_dir/config
     fi
 
     echo "# Networking" >>$cfg_dir/config
@@ -577,7 +618,7 @@ container_rootfs_create()
             mkdir -p $container_rootfs/etc/yum.repos.d
             wget -q $yum_url/$repofile -O $container_rootfs/etc/yum.repos.d/$repofile
             if [ $? -ne 0 ]; then
-                die "Failed to download repo file $yum_url/$repofile"
+                die "Unable to download repo file $yum_url/$repofile, release unavailable"
             fi
 
             # yum will take $basearch from host, so force the arch we want
@@ -691,6 +732,9 @@ container_rootfs_create()
         chroot $container_rootfs rpm --rebuilddb >/dev/null 2>&1
 
     ) 9>@LOCALSTATEDIR@/lock/subsys/lxc-oracle-$name
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
 }
 
 container_release_get()
@@ -728,6 +772,7 @@ usage()
   -h|--help
 
 Release is of the format "major.minor", for example "5.8", "6.3", or "6.latest"
+This template supports Oracle Linux releases 4.6 - 7.0
 EOF
     return 0
 }
