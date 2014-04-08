@@ -73,8 +73,8 @@ lxc-autostart -g lxc-auto-test -r
 lxc-wait -n $CONTAINER_NAME -t 5 -s RUNNING || (echo "Container didn't restart" && exit 1)
 
 # Shut it down
-lxc-autostart -g lxc-auto-test -s
-lxc-wait -n $CONTAINER_NAME -t 60 -s STOPPED || (echo "Container didn't stop" && exit 1)
+lxc-autostart -g lxc-auto-test -s -6 120
+lxc-wait -n $CONTAINER_NAME -t 120 -s STOPPED || (echo "Container didn't stop" && exit 1)
 
 # Kill it
 lxc-autostart -g lxc-auto-test -k
