@@ -701,10 +701,12 @@ container_rootfs_create()
 
         # if installing from a baseurl, create a .repo that the container
         # can use to update to _latest from http://public-yum.oracle.com
-        container_rootfs_repo_create \
-            "$container_rootfs/etc/yum.repos.d/public-yum-"$latestL""$container_release_major".repo" \
-            $latest_L""$container_release_major"_latest" \
-            $yum_url"/repo/OracleLinux/"$latest_U""$container_release_major"/latest/$basearch" gpg
+        if [ -n "$baseurl" ]; then
+            container_rootfs_repo_create \
+                "$container_rootfs/etc/yum.repos.d/public-yum-"$latestL""$container_release_major".repo" \
+                $latest_L""$container_release_major"_latest" \
+                $yum_url"/repo/OracleLinux/"$latest_U""$container_release_major"/latest/$basearch" gpg
+        fi
 
         # these distributions put the rpm database in a place the guest is
         # not expecting it, so move it
