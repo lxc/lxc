@@ -147,17 +147,6 @@ static bool cgm_dbus_connect(void)
 		cgm_unlock();
 		return false;
 	}
-	if (nih_dbus_setup(connection, NULL) < 0) {
-		NihError *nerr;
-		nerr = nih_error_get();
-		DEBUG("Unable to open cgmanager connection at %s: %s", CGMANAGER_DBUS_SOCK,
-			nerr->message);
-		nih_free(nerr);
-		dbus_error_free(&dbus_error);
-		dbus_connection_unref(connection);
-		cgm_unlock();
-		return false;
-	}
 	dbus_connection_set_exit_on_disconnect(connection, FALSE);
 	dbus_error_free(&dbus_error);
 	cgroup_manager = nih_dbus_proxy_new(NULL, connection,
