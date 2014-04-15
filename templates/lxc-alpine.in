@@ -362,6 +362,7 @@ apk_arch=$arch
 case "$arch" in
     i[3-6]86)
         apk_arch=x86
+        lxc_arch=x86
         ;;
     x86)
         lxc_arch=i686
