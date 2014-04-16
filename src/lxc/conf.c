@@ -3706,6 +3706,66 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 	}
 }
 
+static void null_endofword(char *word)
+{
+	while (*word && *word != ' ' && *word != '\t')
+		word++;
+	*word = '\0';
+}
+
+/*
+ * skip @nfields spaces in @src
+ */
+static char *get_field(char *src, int nfields)
+{
+	char *p = src;
+	int i;
+
+	for (i = 0; i < nfields; i++) {
+		while (*p && *p != ' ' && *p != '\t')
+			p++;
+		if (!p)
+			break;
+		p++;
+	}
+	return p;
+}
+
+static void remount_all_slave(void)
+{
+	/* walk /proc/mounts and change any shared entries to slave */
+	FILE *f = fopen("/proc/self/mountinfo", "r");
+	char *line = NULL;
+	size_t len = 0;
+
+	if (!f) {
+		SYSERROR("Failed to open /proc/self/mountinfo to mark all shared");
+		ERROR("Continuing container startup...");
+		return;
+	}
+
+	while (getline(&line, &len, f) != -1) {
+		char *target, *opts;
+		target = get_field(line, 4);
+		if (!target)
+			continue;
+		opts = get_field(target, 2);
+		if (!opts)
+			continue;
+		null_endofword(opts);
+		if (!strstr(opts, "shared"))
+			continue;
+		null_endofword(target);
+		if (mount(NULL, target, NULL, MS_SLAVE, NULL)) {
+			SYSERROR("Failed to make %s rslave", target);
+			ERROR("Continuing...");
+		}
+	}
+	fclose(f);
+	if (line)
+		free(line);
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	const char *name = handler->name;
@@ -3713,18 +3773,14 @@ int lxc_setup(struct lxc_handler *handler)
 	const char *lxcpath = handler->lxcpath;
 	void *data = handler->data;
 
-	if (detect_shared_rootfs()) {
-		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
-			SYSERROR("Failed to make / rslave");
-			ERROR("Continuing...");
-		}
-	}
 	if (detect_ramfs_rootfs()) {
 		if (chroot_into_slave(lxc_conf)) {
 			ERROR("Failed to chroot into slave /");
 			return -1;
 		}
 	}
+
+	remount_all_slave();
 
 	if (lxc_conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
 		if (setup_utsname(lxc_conf->utsname)) {
