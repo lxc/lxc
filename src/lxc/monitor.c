@@ -106,8 +106,10 @@ static void lxc_monitor_fifo_send(struct lxc_msg *msg, const char *lxcpath)
 		return;
 	}
 
-	if (fcntl(fd, F_SETFL, O_WRONLY) < 0)
+	if (fcntl(fd, F_SETFL, O_WRONLY) < 0) {
+		close(fd);
 		return;
+	}
 
 	ret = write(fd, msg, sizeof(*msg));
 	if (ret != sizeof(*msg)) {
