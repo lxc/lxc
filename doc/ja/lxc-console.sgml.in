@@ -70,7 +70,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       container specified as parameter, this command will launch a
       console allowing to log on the container.
       -->
-      パラメータで指定したコンテナで tty サービスが設定され，利用可能である場合，このコマンドはコンテナにログイン出来るコンソールを起動します．
+      パラメータで指定したコンテナで tty サービスが設定され、利用可能である場合、このコマンドはコンテナにログイン出来るコンソールを起動します。
     </para>
 
     <para>
@@ -80,8 +80,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       has been launched four times each taking a different tty, the
       fifth command will fail because no console will be available.
       -->
-      利用可能な tty は，このコマンドが取得した空いている tty です．
-      これは，コンテナに 4 つの利用可能な tty がある場合，コマンドは 4 個までそれぞれ異なる tty を取得して開きます．5 回目のコマンドは利用可能なコンソールがないため，失敗します．
+      利用可能な tty は、このコマンドが取得した空いている tty です。
+      これは、コンテナに 4 つの利用可能な tty がある場合、コマンドは 4 個までそれぞれ異なる tty を取得して開きます。5 回目のコマンドは利用可能なコンソールがないため、失敗します。
     </para>
 
     <para>
@@ -90,8 +90,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       broken, the command can be launched again and regain the tty at
       the state it was before the disconnection.
       -->
-      コマンドは tty に接続します．
-      もし，接続が失われたり，切断された場合，コマンドは再度起動し，切断前の状態で tty の再取得をしようとします．
+      コマンドは tty に接続します。
+      もし、接続が失われたり、切断された場合、コマンドは再度起動し、切断前の状態で tty の再取得をしようとします。
     </para>
 
     <para>
@@ -100,7 +100,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       to the container's /dev/console instead of its
       dev/tty&lt;<replaceable>ttynum</replaceable>&gt;.
       -->
-      <replaceable>ttynum</replaceable> を 0 に設定すると，dev/tty&lt;<replaceable>ttynum</replaceable>&gt;の代わりにコンテナの /dev/console に接続します．
+      <replaceable>ttynum</replaceable> を 0 に設定すると、dev/tty&lt;<replaceable>ttynum</replaceable>&gt;の代わりにコンテナの /dev/console に接続します。
     </para>
 
     <para>
@@ -108,8 +108,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       A keyboard escape sequence may be used to disconnect from the tty
       and quit lxc-console. The default escape sequence is &lt;Ctrl+a q&gt;.
       -->
-      tty からの接続を切断し，lxc-console を抜ける時に，キーボードのエスケープシーケンスを使います．
-      デフォルトのエスケープシーケンスは &lt;Ctrl+a q&gt; です．
+      tty からの接続を切断し、lxc-console を抜ける時に、キーボードのエスケープシーケンスを使います。
+      デフォルトのエスケープシーケンスは &lt;Ctrl+a q&gt; です。
     </para>
 
   </refsect1>
@@ -130,9 +130,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             This may be given as '^letter' or just 'letter'. For example
             to use &lt;Ctrl+b q&gt; as the escape sequence use -e '^b'.
             -->
-            &lt;Ctrl a&gt; の代わりに使用するエスケープシーケンスのプレフィックスを指定します．
-            これは '^文字' または単なる '文字' で指定します．
-            例えば，&lt;Ctrl+b q&gt; をエスケープシーケンスとして使うには -e '^b' とします．
+            &lt;Ctrl a&gt; の代わりに使用するエスケープシーケンスのプレフィックスを指定します。
+            これは '^文字' または単なる '文字' で指定します。
+            例えば、&lt;Ctrl+b q&gt; をエスケープシーケンスとして使うには -e '^b' とします。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -147,8 +147,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    specified the next available tty number will be automatically
 	    chosen by the container.
             -->
-            接続する tty の番号か，コンソールに接続するために 0 を指定します．
-            指定しない場合は，次に利用可能な tty 番号を自動的にコンテナが選択します．
+            接続する tty の番号か、コンソールに接続するために 0 を指定します。
+            指定しない場合は、次に利用可能な tty 番号を自動的にコンテナが選択します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -173,8 +173,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    use the console. For example, the container belongs to
 	    user "foo" and "bar" is trying to open a console to it.
             -->
-            利用可能な tty がないか，コンソールを使うのに十分な権限がありません．
-            例えば，コンテナが "foo" ユーザの所有であるのに，"bar" ユーザがコンソールを開こうとしている場合などです．
+            利用可能な tty がないか、コンソールを使うのに十分な権限がありません。
+            例えば、コンテナが "foo" ユーザの所有であるのに、"bar" ユーザがコンソールを開こうとしている場合などです。
           </para>
         </listitem>
       </varlistentry>
