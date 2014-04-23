@@ -73,7 +73,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-ls</command> list the containers existing on the
       system.
       -->
-      <command>lxc-ls</command> はシステム上に存在するコンテナをリスト表示します．
+      <command>lxc-ls</command> はシステム上に存在するコンテナをリスト表示します。
     </para>
   </refsect1>
 
@@ -89,7 +89,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Show one entry per line. (default when /dev/stdout isn't a tty)
             -->
-            1 行に 1 エントリ表示します．(/dev/stdout が tty でない場合のデフォルト)
+            1 行に 1 エントリ表示します。(/dev/stdout が tty でない場合のデフォルト)
           </para>
         </listitem>
       </varlistentry>
@@ -103,7 +103,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             List only active containers (same as &#045;&#045;frozen &#045;&#045;running).
             -->
-            アクティブなコンテナのみリスト表示します．(--frozen --running と同じです)
+            アクティブなコンテナのみリスト表示します。(--frozen --running と同じです)
 	  </para>
 	</listitem>
       </varlistentry>
@@ -117,7 +117,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             List only frozen containers.
             -->
-            凍結 (frozen) 状態のコンテナのみをリスト表示します．
+            凍結 (frozen) 状態のコンテナのみをリスト表示します。
           </para>
         </listitem>
       </varlistentry>
@@ -131,7 +131,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             List only running containers.
             -->
-            実行 (running) 状態のコンテナのみをリスト表示します．
+            実行 (running) 状態のコンテナのみをリスト表示します。
           </para>
         </listitem>
       </varlistentry>
@@ -145,7 +145,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             List only stopped containers.
             -->
-            停止状態のコンテナのみをリスト表示します．
+            停止状態のコンテナのみをリスト表示します。
           </para>
         </listitem>
       </varlistentry>
@@ -159,7 +159,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Use a fancy, column-based output.
             -->
-            装飾付きのカラムベースの出力を使用します．
+            装飾付きのカラムベースの出力を使用します。
           </para>
         </listitem>
       </varlistentry>
@@ -175,8 +175,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             Valid values are: name, state, ipv4, ipv6 and pid
             Default is: name,state,ipv4,ipv6
             -->
-            装飾付き出力で表示するカラムのコンマ区切りのリスト．
-            有効な値は name,state,ipv4,ipv6,pid．
+            装飾付き出力で表示するカラムのコンマ区切りのリスト。
+            有効な値は name,state,ipv4,ipv6,pid。
             デフォルトは name,state,ipv4,ipv6
           </para>
         </listitem>
@@ -191,7 +191,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Show nested containers.
             -->
-            ネストされたコンテナを表示します．
+            ネストされたコンテナを表示します。
           </para>
         </listitem>
       </varlistentry>
@@ -206,8 +206,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             The filter passed to <command>lxc-ls</command> will be
             applied to the container name. The format is a regular expression.
             -->
-            コンテナ名に対して適用する <command>lxc-ls</command> に与えるフィルタ．
-            フォーマットは正規表現です．
+            コンテナ名に対して適用する <command>lxc-ls</command> に与えるフィルタ。
+            フォーマットは正規表現です。
           </para>
         </listitem>
       </varlistentry>
@@ -227,8 +227,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           list all the containers, listing one per line along with its
           name, state, ipv4 and ipv6 addresses.
           -->
-          全てのコンテナをリスト表示します．
-          一行にはコンテナの名前，状態，IPv4 アドレス，IPv6 アドレスが表示されます．
+          全てのコンテナをリスト表示します。
+          一行にはコンテナの名前、状態、IPv4 アドレス、IPv6 アドレスが表示されます。
         </para>
         </listitem>
       </varlistentry>
@@ -240,7 +240,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  list active containers and display the list in one column.
           -->
-          稼働中のコンテナを一列にリスト表示します．
+          稼働中のコンテナを一列にリスト表示します。
 	</para>
 	</listitem>
       </varlistentry>

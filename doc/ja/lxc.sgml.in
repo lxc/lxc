@@ -68,8 +68,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>@BINDIR@/lxc-execute -n foo -f
       @DOCDIR@/examples/lxc-macvlan.conf /bin/bash</command>
       -->
-      急いでいて，この man ページすら読みたくないという場合は，いいでしょう，
-      保証はないですが，あらかじめ準備されている設定テンプレートを使ったコンテナ内でシェルを動かすためのコマンドを紹介しましょう．
+      急いでいて、この man ページすら読みたくないという場合は、いいでしょう、
+      保証はないですが、あらかじめ準備されている設定テンプレートを使ったコンテナ内でシェルを動かすためのコマンドを紹介しましょう。
       <command>@BINDIR@/lxc-execute -n foo -f
       @DOCDIR@/examples/lxc-macvlan.conf /bin/bash</command>
     </para>
@@ -84,8 +84,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       through the control groups aka process containers and resource
       isolation through the namespaces.
       -->
-      コンテナ技術は，メインストリームの linux kernel で活発に開発が進んでいる技術です．
-      コンテナ技術は，process container という名前でも知られる control groups の機能を使って，リソース管理を提供し，名前空間を使って，リソースの隔離を提供します．
+      コンテナ技術は、メインストリームの linux kernel で活発に開発が進んでいる技術です。
+      コンテナ技術は、process container という名前でも知られる control groups の機能を使って、リソース管理を提供し、名前空間を使って、リソースの隔離を提供します。
     </para>
 
     <para>
@@ -95,8 +95,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       which provides full resource isolation and resource control for
       an applications or a system.
       -->
-      linux コンテナ (<command>lxc</command>) は，ユーザースペースのコンテナオブジェクトを提供するための新しい機能を使う事を目指しています．
-      この新しい機能とは，アプリケーションやシステムでの利用を目的とした，完全なリソースの隔離やリソースコントロールを提供する機能です．
+      linux コンテナ (<command>lxc</command>) は、ユーザースペースのコンテナオブジェクトを提供するための新しい機能を使う事を目指しています。
+      この新しい機能とは、アプリケーションやシステムでの利用を目的とした、完全なリソースの隔離やリソースコントロールを提供する機能です。
     </para>
 
     <para>
@@ -108,8 +108,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       manage a container with simple command lines and complete enough
       to be used for other purposes.
       -->
-      このプロジェクトの第一の目的は，コンテナプロジェクトに参加するカーネル開発者の作業を快適にすることと，特に新機能である Checkpoint/Restart 機能への取り組みを続ける事です．
-      <command>lxc</command> コマンドは，シンプルなコマンドでコンテナの管理を簡単に行えるように小さく，他の目的のために使うのに充分な機能を持っています．
+      このプロジェクトの第一の目的は、コンテナプロジェクトに参加するカーネル開発者の作業を快適にすることと、特に新機能である Checkpoint/Restart 機能への取り組みを続ける事です。
+      <command>lxc</command> コマンドは、シンプルなコマンドでコンテナの管理を簡単に行えるように小さく、他の目的のために使うのに充分な機能を持っています。
     </para>
   </refsect1>
 
@@ -123,8 +123,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       work with a restricted number of functionalities or will simply
       fail.
       -->
-      <command>lxc</command> は，カーネルが提供するいくつかの機能に依存しており，その機能がアクティブになっている必要があります．
-      機能が足りない場合は，<command>lxc</command> は，いくつかの機能が制限されるか，単純に動作が失敗します．
+      <command>lxc</command> は、カーネルが提供するいくつかの機能に依存しており、その機能がアクティブになっている必要があります。
+      機能が足りない場合は、<command>lxc</command> は、いくつかの機能が制限されるか、単純に動作が失敗します。
     </para>
 
     <para>
@@ -132,7 +132,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       The following list gives the kernel features to be enabled in
       the kernel to have the full features container:
       -->
-      以下のリストは，コンテナの全機能を有効にするために，カーネルで有効にする必要のある機能の一覧です．
+      以下のリストは、コンテナの全機能を有効にするために、カーネルで有効にする必要のある機能の一覧です。
     </para>
       <programlisting>
 	    * General setup
@@ -176,10 +176,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	The helper script <command>lxc-checkconfig</command> will give
 	you information about your kernel configuration.
 	-->
-	2.6.27 以上のバージョンが採用されているディストリビューションならば，<command>lxc</command> は動作するでしょう．
-        機能的には若干少ない形ですが，充分に楽しめるはずです．
-        2.6.29 カーネルであれば，<command>lxc</command> は完全に機能します．
-        ヘルパースクリプトの <command>lxc-checkconfig</command> を使って，あなたのカーネルの設定に関する情報を取得できるでしょう．
+	2.6.27 以上のバージョンが採用されているディストリビューションならば、<command>lxc</command> は動作するでしょう。
+        機能的には若干少ない形ですが、充分に楽しめるはずです。
+        2.6.29 カーネルであれば、<command>lxc</command> は完全に機能します。
+        ヘルパースクリプトの <command>lxc-checkconfig</command> を使って、あなたのカーネルの設定に関する情報を取得できるでしょう。
       </para>
 
       <para>
@@ -188,7 +188,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	configured with the file capabilities, otherwise you will need
 	to run the <command>lxc</command> commands as root.
 	-->
-	<command>lxc</command> を使う前に，システムがファイルに対するケーパビリティーをえられるように設定するか，もしくは <command>lxc</command> コマンドを root で実行する必要があるでしょう．
+	<command>lxc</command> を使う前に、システムがファイルに対するケーパビリティーをえられるように設定するか、もしくは <command>lxc</command> コマンドを root で実行する必要があるでしょう。
       </para>
 
       <para>
@@ -205,10 +205,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  <command>mount -t cgroup -ons,cpuset,freezer,devices
 	  lxc /cgroup4lxc</command>
 	 -->
-	control group は，どこにでもマウント可能です．
-        例えば，<command>mount -t cgroup cgroup /cgroup</command> のようにです．
+	control group は、どこにでもマウント可能です。
+        例えば、<command>mount -t cgroup cgroup /cgroup</command> のようにです。
 
-	もし，異なる場所で，異なるオプションでマウントされた別々の cgroup を持ち，一つの場所の <command>lxc</command> コマンドを使うための，特定の <command>lxc</command> のための専用の cgroup のマウントポイントを提供したければ，lxc という名前でマウントポイントにバインドすることが出来ます．例えば以下のようにです．
+	もし、異なる場所で、異なるオプションでマウントされた別々の cgroup を持ち、一つの場所の <command>lxc</command> コマンドを使うための、特定の <command>lxc</command> のための専用の cgroup のマウントポイントを提供したければ、lxc という名前でマウントポイントにバインドすることが出来ます。例えば以下のようにです。
 	  <command>mount -t cgroup lxc /cgroup4lxc</command> or
 	  <command>mount -t cgroup -ons,cpuset,freezer,devices
 	  lxc /cgroup4lxc</command>
@@ -223,7 +223,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       A container is an object isolating some resources of the host,
       for the application or system running in it.
       -->
-      コンテナは，コンテナ内で実行されているシステムやアプリケーションに対するホストのリソースのいくつかが，隔離されているオブジェクトです．
+      コンテナは、コンテナ内で実行されているシステムやアプリケーションに対するホストのリソースのいくつかが、隔離されているオブジェクトです。
     </para>
     <para>
       <!--
@@ -232,7 +232,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       initially created or passed as parameter of the starting
       commands.
       -->
-      アプリケーション／システムは，あらかじめ作成された設定もしくは開始コマンドのパラメータで指定された設定で，コンテナ内で実行されます．
+      アプリケーション／システムは、あらかじめ作成された設定もしくは開始コマンドのパラメータで指定された設定で、コンテナ内で実行されます。
     </para>
 
     <para>
@@ -259,13 +259,13 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       so you can still use your distro but with your
       own <filename>/etc</filename> and <filename>/home</filename>
       -->
-      アプリケーションを実行する前に，隔離したいリソースについて知っておくべきです．
-      デフォルトの設定では，pid，sysv ipc，マウントポイントが隔離されます．
-      コンテナ内でシンプルなシェルを実行したい場合で，特に rootfs を共有したい場合，基本的な設定が必要です．
-      もし，<command>sshd</command> のようなアプリケーションを実行したい場合，新しいネットワークスタックと，新しいホスト名を準備しなくてはなりません．
-      もし，同じファイル (<filename>/var/run/httpd.pid</filename> 等) の衝突を避けたい場合，空の <filename>/var/run/</filename> を再度マウントしなければなりません．
-      どんな場合でも，衝突を避けたい場合，コンテナ専用の rootfs を指定することができます．
-      rootfs はディレクトリツリーとなる事も可能で，前もって元の rootfs を bind マウントし，しかし，自身の <filename>/etc</filename> や <filename>/home</filename>を使って．自身のディストリビューションを使うことが可能です．
+      アプリケーションを実行する前に、隔離したいリソースについて知っておくべきです。
+      デフォルトの設定では、pid、sysv ipc、マウントポイントが隔離されます。
+      コンテナ内でシンプルなシェルを実行したい場合で、特に rootfs を共有したい場合、基本的な設定が必要です。
+      もし、<command>sshd</command> のようなアプリケーションを実行したい場合、新しいネットワークスタックと、新しいホスト名を準備しなくてはなりません。
+      もし、同じファイル (<filename>/var/run/httpd.pid</filename> 等) の衝突を避けたい場合、空の <filename>/var/run/</filename> を再度マウントしなければなりません。
+      どんな場合でも、衝突を避けたい場合、コンテナ専用の rootfs を指定することができます。
+      rootfs はディレクトリツリーとなる事も可能で、前もって元の rootfs を bind マウントし、しかし、自身の <filename>/etc</filename> や <filename>/home</filename>を使って。自身のディストリビューションを使うことが可能です。
     </para>
     <para>
       <!--
@@ -308,7 +308,7 @@ rootfs
 	/sbin /home/root/sshd/rootfs/sbin none ro,bind 0 0
       </programlisting>
       -->
-	ここで，<command>sshd</command> のためのディレクトリツリーのサンプルを示しましょう．
+	ここで、<command>sshd</command> のためのディレクトリツリーのサンプルを示しましょう。
       <programlisting>	
 [root@lxc sshd]$ tree -d rootfs
 	
@@ -336,7 +336,7 @@ rootfs
         `-- sshd
       </programlisting>
 
-      そして，それに対応するマウントポイントのファイルは以下のようになります．
+      そして、それに対応するマウントポイントのファイルは以下のようになります。
       <programlisting>
 	[root@lxc sshd]$ cat fstab
 
@@ -379,11 +379,11 @@ rootfs
 	/etc/resolv.conf /home/root/debian/rootfs/etc/resolv.conf none bind 0 0
       </programlisting>
       -->
-      コンテナ内でシステムを実行するのは，逆説的ではありますが，アプリケーションを実行するよりも簡単です．
-      それは，隔離するリソースについて考える必要がないからで，全てを隔離する必要があるからです．
-      他のリソースは，コンテナが設定を行うので，設定なしで隔離されるように指定されます．
-      例えば，IPv4 アドレスはコンテナの init スクリプトでシステムによってセットアップされるでしょう．
-      以下に，(システムを実行するときの) マウントポイントファイルを示します．
+      コンテナ内でシステムを実行するのは、逆説的ではありますが、アプリケーションを実行するよりも簡単です。
+      それは、隔離するリソースについて考える必要がないからで、全てを隔離する必要があるからです。
+      他のリソースは、コンテナが設定を行うので、設定なしで隔離されるように指定されます。
+      例えば、IPv4 アドレスはコンテナの init スクリプトでシステムによってセットアップされるでしょう。
+      以下に、(システムを実行するときの) マウントポイントファイルを示します。
 
       <programlisting>
 	[root@lxc debian]$ cat fstab
@@ -392,8 +392,8 @@ rootfs
 	/dev/pts /home/root/debian/rootfs/dev/pts  none bind 0 0
       </programlisting>
 
-      設定を手助けするために，コンテナに更なる情報を追加することも可能です．
-      例えば，ホスト上に存在する resolv.conf ファイルをコンテナからアクセス可能にするには，以下のようにします．
+      設定を手助けするために、コンテナに更なる情報を追加することも可能です。
+      例えば、ホスト上に存在する resolv.conf ファイルをコンテナからアクセス可能にするには、以下のようにします。
 
       <programlisting>
 	/etc/resolv.conf /home/root/debian/rootfs/etc/resolv.conf none bind 0 0
@@ -409,16 +409,16 @@ rootfs
 	starting and running. When the last process running inside the
 	container exits, the container is stopped.
 	-->
-	コンテナが作成されるとき，コンテナは設定情報を含みます．
-        プロセスが生成されるとき，コンテナは開始し，実行されるでしょう．
-        コンテナ内で実行されている最後のプロセスが終了したとき，コンテナは停止します．
+	コンテナが作成されるとき、コンテナは設定情報を含みます。
+        プロセスが生成されるとき、コンテナは開始し、実行されるでしょう。
+        コンテナ内で実行されている最後のプロセスが終了したとき、コンテナは停止します。
       </para>
       <para>
 	<!--
 	In case of failure when the container is initialized, it will
 	pass through the aborting state.
 	-->
-	コンテナの初期化時の失敗の場合は，(以下の図の) 中断の状態を通ります．
+	コンテナの初期化時の失敗の場合は、(以下の図の) 中断の状態を通ります。
       </para>
 
       <programlisting>
@@ -463,7 +463,7 @@ rootfs
       </citerefentry>
       -->
       </para>
-	コンテナは設定ファイル経由で設定します．設定の書式は以下で説明しています．
+	コンテナは設定ファイル経由で設定します。設定の書式は以下で説明しています。
       <citerefentry>
 	<refentrytitle><filename>lxc.conf</filename></refentrytitle>
 	<manvolnum>5</manvolnum>
@@ -488,10 +488,10 @@ rootfs
 	  lxc-destroy -n foo
 	</programlisting>
 	-->
-	持続性のコンテナオブジェクトは <command>lxc-create</command> コマンドで作成することができます．
-        コマンドにはコンテナ名をパラメータとして，オプションで設定ファイルとテンプレートを指定します．
-        ここで指定する名前は，他のコマンドからこのコンテナを参照する際に使います．
-        <command>lxc-destroy</command> コマンドはコンテナオブジェクトを破壊します．
+	持続性のコンテナオブジェクトは <command>lxc-create</command> コマンドで作成することができます。
+        コマンドにはコンテナ名をパラメータとして、オプションで設定ファイルとテンプレートを指定します。
+        ここで指定する名前は、他のコマンドからこのコンテナを参照する際に使います。
+        <command>lxc-destroy</command> コマンドはコンテナオブジェクトを破壊します。
 	<programlisting>
 	  lxc-create -n foo
 	  lxc-destroy -n foo
@@ -508,8 +508,8 @@ rootfs
 	The container can be directly started with a
 	configuration file as parameter.
         -->
-          コンテナを開始する前にコンテナオブジェクトを作成する必要はありません．
-          コンテナを設定ファイルのパラメータで指定して直接開始することができます．
+          コンテナを開始する前にコンテナオブジェクトを作成する必要はありません。
+          コンテナを設定ファイルのパラメータで指定して直接開始することができます。
 	</para>
     </refsect2>
 
@@ -530,11 +530,11 @@ rootfs
       but if needed the <command>lxc-stop</command> command can
       be used to kill the still running application.
       -->
-        コンテナが作成されると，アプリケーションもしくはシステムとして実行することができます．
-        このために使用するのが <command>lxc-execute</command> と <command>lxc-start</command> コマンドです．
-        アプリケーションが開始する前にコンテナが作成されなかった場合，コンテナはコマンドへ与えるパラメータを取得するのに設定ファイルを使うでしょう．
-        もし，このようなパラメータもない場合は，デフォルトで指定されている通りに隔離されます．
-        アプリケーションが終了した場合，コンテナも停止しますが，実行中のアプリケーションを停止するには <command>lxc-stop</command> を使用する必要があります．
+        コンテナが作成されると、アプリケーションもしくはシステムとして実行することができます。
+        このために使用するのが <command>lxc-execute</command> と <command>lxc-start</command> コマンドです。
+        アプリケーションが開始する前にコンテナが作成されなかった場合、コンテナはコマンドへ与えるパラメータを取得するのに設定ファイルを使うでしょう。
+        もし、このようなパラメータもない場合は、デフォルトで指定されている通りに隔離されます。
+        アプリケーションが終了した場合、コンテナも停止しますが、実行中のアプリケーションを停止するには <command>lxc-stop</command> を使用する必要があります。
       </para>
 
       <para>
@@ -547,8 +547,8 @@ rootfs
 	  lxc-start -n foo [-f config] [/bin/bash]
 	</programlisting>
         -->
-        コンテナ内のアプリケーションの実行は，正確にはシステムとして実行するのとは異なります．
-        そのような理由で，コンテナ内でアプリケーションを実行するためのコマンドには，2 種類の違ったものがあります．
+        コンテナ内のアプリケーションの実行は、正確にはシステムとして実行するのとは異なります。
+        そのような理由で、コンテナ内でアプリケーションを実行するためのコマンドには、2 種類の違ったものがあります。
         <programlisting>
 	  lxc-execute -n foo [-f config] /bin/bash
 	  lxc-start -n foo [-f config] [/bin/bash]
@@ -567,9 +567,9 @@ rootfs
 	container, <command>lxc-init</command> has the pid 1 and the
 	first process of the application has the pid 2.
         -->
-        <command>lxc-execute</command> コマンドは，<command>lxc-init</command> プロセス経由で，コンテナ内で特定のコマンドを実行します．
-        lxc-init はコマンドを実行した後，(コンテナ内でのデーモンの実行をサポートするために) 実行したコマンドと生成された全てのプロセスが終了するのを待ちます．
-        言いかえると，コンテナ内では <command>lxc-init</command> は pid 1 を持ち，アプリケーションの最初のプロセスは pid 2 をもちます．
+        <command>lxc-execute</command> コマンドは、<command>lxc-init</command> プロセス経由で、コンテナ内で特定のコマンドを実行します。
+        lxc-init はコマンドを実行した後、(コンテナ内でのデーモンの実行をサポートするために) 実行したコマンドと生成された全てのプロセスが終了するのを待ちます。
+        言いかえると、コンテナ内では <command>lxc-init</command> は pid 1 を持ち、アプリケーションの最初のプロセスは pid 2 をもちます。
       </para>
 
       <para>
@@ -580,9 +580,9 @@ rootfs
 	specified <command>lxc-start</command> will
 	run <filename>/sbin/init</filename>.
         -->
-        <command>lxc-start</command> コマンドは，コンテナ内の特定のコマンドを直接実行します．
-        最初のプロセスの pid が 1 となります．
-        もし，実行するコマンドが指定されない場合は，<command>lxc-start</command> は <filename>/sbin/init</filename> を実行します．
+        <command>lxc-start</command> コマンドは、コンテナ内の特定のコマンドを直接実行します。
+        最初のプロセスの pid が 1 となります。
+        もし、実行するコマンドが指定されない場合は、<command>lxc-start</command> は <filename>/sbin/init</filename> を実行します。
       </para>
 
       <para>
@@ -591,7 +591,7 @@ rootfs
 	an application and <command>lxc-start</command> is better suited for
 	running a system.
         -->
-        まとめると，<command>lxc-execute</command> はアプリケーションを実行するためのコマンドであり，<command>lxc-start</command> はシステムを実行するのにより適したコマンドです．
+        まとめると、<command>lxc-execute</command> はアプリケーションを実行するためのコマンドであり、<command>lxc-start</command> はシステムを実行するのにより適したコマンドです。
       </para>
 
       <para>
@@ -604,7 +604,7 @@ rootfs
 	  lxc-stop -n foo
 	</programlisting>
         -->
-        もしアプリケーションの反応がなくなった場合や，アクセスできなくなった場合，自分で終了することができない場合は，荒っぽいですが，<command>lxc-stop</command> コマンドがコンテナ内の全てのプロセスを容赦なく停止させてくれるでしょう．
+        もしアプリケーションの反応がなくなった場合や、アクセスできなくなった場合、自分で終了することができない場合は、荒っぽいですが、<command>lxc-stop</command> コマンドがコンテナ内の全てのプロセスを容赦なく停止させてくれるでしょう。
       </para>
     </refsect2>
 
@@ -621,9 +621,9 @@ rootfs
 	  lxc-console -n foo -t 3
 	</programlisting>
         -->
-        コンテナが tty を持つように設定されているならば，tty を通してコンテナにアクセスすることができます．
-        それは以下のコマンドが使う tty がコンテナで利用可能に設定されているか次第です．
-        tty が失われたとき，再度のログインなしでその tty に再接続することが可能です．
+        コンテナが tty を持つように設定されているならば、tty を通してコンテナにアクセスすることができます。
+        それは以下のコマンドが使う tty がコンテナで利用可能に設定されているか次第です。
+        tty が失われたとき、再度のログインなしでその tty に再接続することが可能です。
 	<programlisting>
 	  lxc-console -n foo -t 3
 	</programlisting>
@@ -648,18 +648,18 @@ rootfs
 
 	will resume them.
         -->
-        ジョブスケジューリングなどで，コンテナに属する全てのプロセスを停止する事が役に立つときがあります．
+        ジョブスケジューリングなどで、コンテナに属する全てのプロセスを停止する事が役に立つときがあります。
         コマンド
 	<programlisting>
 	  lxc-freeze -n foo
 	</programlisting>
-        は，全てのプロセスを中断不可能な状態に置きます．そして，
+        は、全てのプロセスを中断不可能な状態に置きます。そして、
 
 	<programlisting>
 	  lxc-unfreeze -n foo
 	</programlisting>
 
-        その全てのプロセスを再開します．
+        その全てのプロセスを再開します。
       </para>
 
       <para>
@@ -667,7 +667,7 @@ rootfs
 	This feature is enabled if the cgroup freezer is enabled in the
 	kernel.
         -->
-        この機能は，カーネルで cgroup freezer 機能が有効になっている場合に使用可能です．
+        この機能は、カーネルで cgroup freezer 機能が有効になっている場合に使用可能です。
       </para>
     </refsect2>
 
@@ -685,8 +685,8 @@ rootfs
 	  lxc-info -n foo
 	</programlisting>
         -->
-        多数のコンテナが存在する場合，それらが実行されたり破壊されたりすること，何が実行されていて，特定のコンテナ内で実行されている pid が何であるかをフォローするのは大変です．
-        このような時には，以下のようなコマンドが役に立つかもしれません．
+        多数のコンテナが存在する場合、それらが実行されたり破壊されたりすること、何が実行されていて、特定のコンテナ内で実行されている pid が何であるかをフォローするのは大変です。
+        このような時には、以下のようなコマンドが役に立つかもしれません。
 	<programlisting>
 	  lxc-ls
 	  lxc-info -n foo
@@ -697,7 +697,7 @@ rootfs
 	<command>lxc-ls</command> lists the containers of the
 	system.
         -->
-        <command>lxc-ls</command> は，システムのコンテナを一覧します．
+        <command>lxc-ls</command> は、システムのコンテナを一覧します。
       </para>
 
       <para>
@@ -705,7 +705,7 @@ rootfs
 	<command>lxc-info</command> gives information for a specific
 	container.
         -->
-        <command>lxc-info</command> は，指定したコンテナに関する情報を取得します．
+        <command>lxc-info</command> は、指定したコンテナに関する情報を取得します。
       </para>
 
       <para>
@@ -718,7 +718,7 @@ rootfs
 	  done
 	</programlisting>
         -->
-        ここで，以上のコマンドを組み合わせて，どのようにしたら全てのコンテナのリストと，それぞれの状態が得られるかの例を示します．
+        ここで、以上のコマンドを組み合わせて、どのようにしたら全てのコンテナのリストと、それぞれの状態が得られるかの例を示します。
 	<programlisting>
 	  for i in $(lxc-ls -1); do
 	    lxc-info -n $i
@@ -736,8 +736,8 @@ rootfs
       for example to monitor it or just to wait for a specific
       state in a script.
         -->
-        時々，コンテナの状態を追跡することが出来ると便利な事があります．
-        例えば，状態をモニタリングしたり，スクリプト内で特定の状態を待ったりするような場合です．
+        時々、コンテナの状態を追跡することが出来ると便利な事があります。
+        例えば、状態をモニタリングしたり、スクリプト内で特定の状態を待ったりするような場合です。
       </para>
 
       <para>
@@ -754,16 +754,16 @@ rootfs
 	</programlisting>
 	will monitor all the containers.
         -->
-        <command>lxc-monitor</command> コマンドは，一つもしくはいくつかのコンテナをモニタリングします．
-        このコマンドのパラメータは，正規表現を受け付けます．例えば
+        <command>lxc-monitor</command> コマンドは、一つもしくはいくつかのコンテナをモニタリングします。
+        このコマンドのパラメータは、正規表現を受け付けます。例えば
 	<programlisting>
 	  lxc-monitor -n "foo|bar"
 	</programlisting>
-        は 'foo' と 'bar' という名前のコンテナの状態をモニタリングします．そして，
+        は 'foo' と 'bar' という名前のコンテナの状態をモニタリングします。そして、
 	<programlisting>
 	  lxc-monitor -n ".*"
 	</programlisting>
-        は全てのコンテナの状態をモニタリングします．
+        は全てのコンテナの状態をモニタリングします。
       </para>
       <para>
         <!--
@@ -776,7 +776,7 @@ rootfs
 	  'foo' changed state to [STOPPED]
 	</programlisting>
         -->
-        コンテナ 'foo' が開始され，いくつか処理を行い，終了した場合，出力は以下のようになります．
+        コンテナ 'foo' が開始され、いくつか処理を行い、終了した場合、出力は以下のようになります。
 	<programlisting>
 	  'foo' changed state to [STARTING]
 	  'foo' changed state to [RUNNING]
@@ -810,10 +810,10 @@ rootfs
 ]]>
 	</programlisting>
         -->
-        <command>lxc-wait</command> コマンドは指定した状態を待って，終了します．
-        これは，コンテナの開始や終了に同期したいスクリプトで役に立ちます．
-        パラメータは，異なった状態の論理和 (OR) を指定します．
-        以下の例は，バックグラウンドで実行されたコンテナをどのようにして待つかを示します．
+        <command>lxc-wait</command> コマンドは指定した状態を待って、終了します。
+        これは、コンテナの開始や終了に同期したいスクリプトで役に立ちます。
+        パラメータは、異なった状態の論理和 (OR) を指定します。
+        以下の例は、バックグラウンドで実行されたコンテナをどのようにして待つかを示します。
 
 	<programlisting>
 <![CDATA[
@@ -845,9 +845,9 @@ rootfs
 	with it. The control group properties can be read and modified
 	when the container is running by using the lxc-cgroup command.
         -->
-        コンテナは control group と結合しています．
-        コンテナが開始すると control group が生成され，それと結びつけられます．
-        control group のプロパティは，lxc-cgroup コマンドを使って，コンテナが実行中に読み取ったり，変更したりすることができます．
+        コンテナは control group と結合しています。
+        コンテナが開始すると control group が生成され、それと結びつけられます。
+        control group のプロパティは、lxc-cgroup コマンドを使って、コンテナが実行中に読み取ったり、変更したりすることができます。
       </para>
       <para>
         <!--
@@ -857,9 +857,9 @@ rootfs
 	command won't do any syntax checking on the subsystem name, if
 	the subsystem name does not exists, the command will fail.
         -->
-        <command>lxc-cgroup</command> コマンドは，コンテナと結びつけられている control group サブシステムを設定したり，取得したりするのに使います．
-        サブシステム名の指定はユーザが行ない，このコマンドはサブシステム名の文法チェックは一切行ないません．
-        もし，指定したサブシステム名が存在しない場合は，コマンドの実行は失敗します．
+        <command>lxc-cgroup</command> コマンドは、コンテナと結びつけられている control group サブシステムを設定したり、取得したりするのに使います。
+        サブシステム名の指定はユーザが行ない、このコマンドはサブシステム名の文法チェックは一切行ないません。
+        もし、指定したサブシステム名が存在しない場合は、コマンドの実行は失敗します。
       </para>
       <para>
         <!--
@@ -875,11 +875,11 @@ rootfs
 	<programlisting>
 	  lxc-cgroup -n foo cpuset.cpus
 	</programlisting>
-        は，このサブシステムの内容を表示します．
+        は、このサブシステムの内容を表示します。
 	<programlisting>
 	  lxc-cgroup -n foo cpu.shares 512
 	</programlisting>
-        は，このサブシステムに指定した値を設定します．
+        は、このサブシステムに指定した値を設定します。
       </para>
     </refsect2>
   </refsect1>
@@ -892,9 +892,9 @@ rootfs
     command syntax and the API can change. The version 1.0.0 will be
     the frozen version.
       -->
-      <command>lxc</command> はまだ開発中です．
-      従って，コマンドの文法や API は変更される可能性があります．
-      バージョン 1.0.0 がそれらを凍結するバージョンとなるでしょう．
+      <command>lxc</command> はまだ開発中です。
+      従って、コマンドの文法や API は変更される可能性があります。
+      バージョン 1.0.0 がそれらを凍結するバージョンとなるでしょう。
     </para>
   </refsect1>
 

@@ -68,7 +68,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-usernsexec</command> can be used to run a task as root
       in a new user namespace.
       -->
-      <command>lxc-usernsexec</command> は，新しいユーザ名前空間内で root としてタスクを実行するのに使います．
+      <command>lxc-usernsexec</command> は、新しいユーザ名前空間内で root としてタスクを実行するのに使います。
     </para>
 
   </refsect1>
@@ -93,9 +93,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  first userid as seen on the host;  and finally the number of
 	  ids to be mapped.
               -->
-            ユーザ名前空間内で使うための uid のマッピング．マッピングは，コロンで分けられた 4 つの値から構成されます．
-            最初の文字は 'u', 'g', 'b' のどれかで，マッピングが UID, GID, UID と GID の両方のうちのどれに関するものなのかを指定します．
-            次はユーザ名前空間内の最初の ID を指定します．その次はホスト上での最初の ID を指定します．最後はマッピングされる ID の数を指定します．
+            ユーザ名前空間内で使うための uid のマッピング。マッピングは、コロンで分けられた 4 つの値から構成されます。
+            最初の文字は 'u', 'g', 'b' のどれかで、マッピングが UID, GID, UID と GID の両方のうちのどれに関するものなのかを指定します。
+            次はユーザ名前空間内の最初の ID を指定します。その次はホスト上での最初の ID を指定します。最後はマッピングされる ID の数を指定します。
 	  </para>
 	  <para>
             <!--
@@ -104,7 +104,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  by /etc/subuid and /etc/subgid will be mapped to the
 	  uids and gids starting at 0 in the container.
               -->
-            複数回のマッピングを指定することも可能です．もしマッピングを指定しない場合，デフォルトでは /etc/subuid, /etc/subgid で許可された全ての範囲の UID, GID が，コンテナ内の 0 から始まる UID, GID にマッピングされます．
+            複数回のマッピングを指定することも可能です。もしマッピングを指定しない場合、デフォルトでは /etc/subuid, /etc/subgid で許可された全ての範囲の UID, GID が、コンテナ内の 0 から始まる UID, GID にマッピングされます。
 	  </para>
 	  <para>
             <!--
@@ -112,7 +112,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  to setuid and setgid to 0 in the namespace.  Therefore uid 0 in
 	  the namespace must be mapped.
               -->
-            <replaceable>lxc-usernsexec</replaceable> は，常に名前空間内の 0 に setuid, setgid しようとしますので，名前空間内の UID 0 は必ずマッピングしなければいけないことに注意してください．
+            <replaceable>lxc-usernsexec</replaceable> は、常に名前空間内の 0 に setuid, setgid しようとしますので、名前空間内の UID 0 は必ずマッピングしなければいけないことに注意してください。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -136,15 +136,15 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  lxc-usernsexec &#045;&#045; /bin/bash
         </programlisting>
         -->
-        割り当てられた subuid の全てをコンテナ内にマッピングしてシェルを起動するには，
+        割り当てられた subuid の全てをコンテナ内にマッピングしてシェルを起動するには、
         <programlisting>
 	  lxc-usernsexec
         </programlisting>
-        のようにしてください．<replaceable>/bin/sh</replaceable> とは違うシェルを起動する場合，
+        のようにしてください。<replaceable>/bin/sh</replaceable> とは違うシェルを起動する場合、
         <programlisting>
 	  lxc-usernsexec -- /bin/bash
         </programlisting>
-        のようにしてください．
+        のようにしてください。
       </para>
       <para>
         <!--
@@ -158,12 +158,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	into the namespace, you are allowed to change the file ownership, which
 	you could not do on the host using a simple chown.
         -->
-        あなたの UID が 1000 で，コンテナ内の root を 190000 にマッピングする場合で，あなたの所有するファイルをコンテナ内の root に chown したい場合は，以下のように実行します．
+        あなたの UID が 1000 で、コンテナ内の root を 190000 にマッピングする場合で、あなたの所有するファイルをコンテナ内の root に chown したい場合は、以下のように実行します。
         <programlisting>
 	  lxc-usernsexec -m b:0:1000:1 -m b:1:190000:1 -- /bin/chown 1:1 $file
         </programlisting>
-        これはあなたの UID をユーザ名前空間の root に，190000 を uid 1 にマッピングしています．
-        ユーザ名前空間内の root は，名前空間内の全ての ID に対して特権があるため，ホスト上で単純に chown を使えない場合でも，あなたはファイルのオーナーを変更する事が可能です．
+        これはあなたの UID をユーザ名前空間の root に、190000 を uid 1 にマッピングしています。
+        ユーザ名前空間内の root は、名前空間内の全ての ID に対して特権があるため、ホスト上で単純に chown を使えない場合でも、あなたはファイルのオーナーを変更する事が可能です。
       </para>
   </refsect1>
 

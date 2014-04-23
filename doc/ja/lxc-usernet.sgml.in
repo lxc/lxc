@@ -60,7 +60,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       program <command>lxc-user-nic</command> places on network interfaces
       which an unprivileged user may create.
       -->
-      <filename>@LXC_USERNIC_CONF@</filename> は，非特権ユーザが作成する可能性のあるネットワークインターフェースを <command>lxc-user-nic</command> プログラムが割り当てる際の制限を制御します．
+      <filename>@LXC_USERNIC_CONF@</filename> は、非特権ユーザが作成する可能性のあるネットワークインターフェースを <command>lxc-user-nic</command> プログラムが割り当てる際の制限を制御します。
     </para>
 
     <refsect2>
@@ -69,7 +69,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         <!--
       This file consists of multiple entries, one per line, of the form:
           -->
-        このファイルは，一行が以下のような形式の複数のエントリを持つ行から構成されます．
+        このファイルは、一行が以下のような形式の複数のエントリを持つ行から構成されます。
       </para>
 
       <para>
@@ -79,7 +79,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         <!--
       Where
           -->
-        ここでそれぞれのエントリは以下のような意味を持ちます．
+        ここでそれぞれのエントリは以下のような意味を持ちます。
       </para>
 
       <variablelist>
@@ -108,7 +108,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      is the type of network interface being allowed.  Only veth
 	      is currently supported.
               -->
-              許可されるネットワークインターフェースのタイプ．現時点では veth のみサポートされます．
+              許可されるネットワークインターフェースのタイプ。現時点では veth のみサポートされます。
 	     </para>
 	  </listitem>
 	</varlistentry>
@@ -123,8 +123,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      is the bridge to which the network interfaces may be attached, for
 	      instance <filename>lxcbr0</filename>.
               -->
-              ネットワークインターフェースが接続されるブリッジ．
-              例えば <filename>lxcbr0</filename> のように指定します．
+              ネットワークインターフェースが接続されるブリッジ。
+              例えば <filename>lxcbr0</filename> のように指定します。
 	     </para>
 	  </listitem>
 	</varlistentry>
@@ -139,8 +139,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      is the number of network interfaces of the given type which the
 	      given user may attach to the given bridge, for instance <filename>2</filename>.
               -->
-              指定したユーザが，指定したブリッジに接続できる，指定した形式のネットワークインターフェースの数．
-              例えば <filename>2</filename> のように指定します．
+              指定したユーザが、指定したブリッジに接続できる、指定した形式のネットワークインターフェースの数。
+              例えば <filename>2</filename> のように指定します。
 	     </para>
 	  </listitem>
 	</varlistentry>

@@ -61,8 +61,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <filename>~/.config/lxc/lxc.conf</filename> for unprivileged
       containers.
       -->
-      システム設定ファイルは <filename>@LXC_GLOBAL_CONF@</filename> を使用します．
-      非特権コンテナの場合には <filename>~/.config/lxc/lxc.conf</filename> を使用します．
+      システム設定ファイルは <filename>@LXC_GLOBAL_CONF@</filename> を使用します。
+      非特権コンテナの場合には <filename>~/.config/lxc/lxc.conf</filename> を使用します。
     </para>
 
     <para>
@@ -70,7 +70,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       This configuration file is used to set values such as default
       lookup paths and storage backend settings for LXC.
       -->
-      この設定ファイルは LXC のデフォルトパスやストレージバックエンドの設定のような値を設定する時に使用します．
+      この設定ファイルは LXC のデフォルトパスやストレージバックエンドの設定のような値を設定する時に使用します。
     </para>
 
     <refsect2>
@@ -86,7 +86,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               The location in which all containers are stored.
               -->
-              全てのコンテナが保存される場所．
+              全てのコンテナが保存される場所。
             </para>
           </listitem>
         </varlistentry>
@@ -99,7 +99,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               The path to the default container configuration.
               -->
-              コンテナのデフォルト設定ファイルのパス．
+              コンテナのデフォルト設定ファイルのパス。
             </para>
           </listitem>
         </varlistentry>
@@ -119,7 +119,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               Comma separated list of cgroup controllers to setup.
               -->
-              使用する cgroup コントローラのコンマ区切りのリスト．
+              使用する cgroup コントローラのコンマ区切りのリスト。
             </para>
           </listitem>
         </varlistentry>
@@ -132,7 +132,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               Format string used to generate the cgroup path (e.g. lxc/%n).
               -->
-              コンテナ用の cgroup を生成する際に使うフォーマット文字列 (例. lxc/%n)．
+              コンテナ用の cgroup を生成する際に使うフォーマット文字列 (例. lxc/%n)。
             </para>
           </listitem>
         </varlistentry>
@@ -152,7 +152,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               Default LVM volume group name.
               -->
-              デフォルトの LVM の volume group 名．
+              デフォルトの LVM の volume group 名。
             </para>
           </listitem>
         </varlistentry>
@@ -165,7 +165,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               Default LVM thin pool name.
               -->
-              デフォルトの LVM の thin pool 名．
+              デフォルトの LVM の thin pool 名。
             </para>
           </listitem>
         </varlistentry>
@@ -185,7 +185,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               Default ZFS root name.
               -->
-              デフォルトの ZFS root 名．
+              デフォルトの ZFS root 名。
             </para>
           </listitem>
         </varlistentry>

@@ -71,7 +71,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <replaceable>command</replaceable> inside the container
       specified by <replaceable>name</replaceable>.
       -->
-      <command>lxc-execute</command> は指定した <replaceable>command</replaceable> を，<replaceable>name</replaceable> で指定したコンテナ内で実行します．
+      <command>lxc-execute</command> は指定した <replaceable>command</replaceable> を、<replaceable>name</replaceable> で指定したコンテナ内で実行します。
     </para>
     <para>
       <!--
@@ -81,15 +81,15 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       If no configuration is
       defined, the default isolation is used.
       -->
-      このコマンドは，lxc-create コマンドであらかじめ定義した設定，もしくはパラメータとして与えた設定ファイルを元にコンテナをセットアップします．
-      もし設定が定義されていない場合，デフォルトの隔離を使用します．
+      このコマンドは、lxc-create コマンドであらかじめ定義した設定、もしくはパラメータとして与えた設定ファイルを元にコンテナをセットアップします。
+      もし設定が定義されていない場合、デフォルトの隔離を使用します。
     </para>
     <para>
       <!--
       This command is mainly used when you want to quickly launch an
       application in an isolated environment.
       -->
-      このコマンドは主に，素早く単一のアプリケーションを隔離された環境で動作させたい時に使います．
+      このコマンドは主に、素早く単一のアプリケーションを隔離された環境で動作させたい時に使います。
     </para>
     <para>
       <!--
@@ -103,16 +103,16 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       container, <command>lxc-init</command> has the pid 1 and the
       first process of the application has the pid 2.
       -->
-      <command>lxc-execute</command> は，<command>lxc-init</command> を間にはさんで，コンテナ内で特定のコマンドを実行します．
-      lxc-init は，指定されたコマンドが実行された後は，そのコマンドの終了と，そのコマンドから生成された全てのプロセスの終了を待ちます (これにより，コンテナ内でデーモンのサポートが可能になります)．
-      言いかえると，コンテナ内では <command>lxc-init</command> が pid 1 となり，アプリケーションの最初のプロセスの pid が 2 となります．
+      <command>lxc-execute</command> は、<command>lxc-init</command> を間にはさんで、コンテナ内で特定のコマンドを実行します。
+      lxc-init は、指定されたコマンドが実行された後は、そのコマンドの終了と、そのコマンドから生成された全てのプロセスの終了を待ちます (これにより、コンテナ内でデーモンのサポートが可能になります)。
+      言いかえると、コンテナ内では <command>lxc-init</command> が pid 1 となり、アプリケーションの最初のプロセスの pid が 2 となります。
      </para>
      <para>
        <!--
       The above <command>lxc-init</command> is designed to forward received
       signals to the started command.
        -->
-       前述の <command>lxc-init</command> は，受け取ったシグナルを開始したコマンドに送るように設計されています．
+       前述の <command>lxc-init</command> は、受け取ったシグナルを開始したコマンドに送るように設計されています。
      </para>
   </refsect1>
 
@@ -130,7 +130,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Specify the configuration file to configure the virtualization
 	    and isolation functionalities for the container.
             -->
-            コンテナに設定したい仮想化および隔離機能の設定を行う設定ファイルを指定します．
+            コンテナに設定したい仮想化および隔離機能の設定を行う設定ファイルを指定します。
 	  </para>
 	  <para>
             <!--
@@ -138,7 +138,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	   already a configuration file present in the previously created
 	   container (via lxc-create).
             -->
-            もしコンテナ作成前に (lxc-create によって) あらかじめ設定ファイルが指定されている場合であっても，指定した設定ファイルが使われます．
+            もしコンテナ作成前に (lxc-create によって) あらかじめ設定ファイルが指定されている場合であっても、指定した設定ファイルが使われます。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -153,7 +153,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    variable <replaceable>KEY</replaceable>. This overrides any
 	    assignment done in <replaceable>config_file</replaceable>.
             -->
-            設定変数 <replaceable>KEY</replaceable> の値を <replaceable>VAL</replaceable> に設定します．この設定は <replaceable>config_file</replaceable> で設定された値を上書きします．
+            設定変数 <replaceable>KEY</replaceable> の値を <replaceable>VAL</replaceable> に設定します。この設定は <replaceable>config_file</replaceable> で設定された値を上書きします。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -166,8 +166,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    processing. Any arguments after the &#045;&#045; are treated as
 	    arguments to <replaceable>command</replaceable>.
             -->
-            オプション指定の最後の印で，それ以上のオプションの処理を止めます．
-            -- の後の引数は実行する <replaceable>command</replaceable> の引数として扱われます．
+            オプション指定の最後の印で、それ以上のオプションの処理を止めます。
+            -- の後の引数は実行する <replaceable>command</replaceable> の引数として扱われます。
 	  </para>
 	  <para>
             <!--
@@ -175,7 +175,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    to <replaceable>command</replaceable> and don't want
 	    <command>lxc-execute</command> to interpret them.
             -->
-            このオプションは，<replaceable>command</replaceable> にオプションを指定したいときに，<command>lxc-execute</command> がそのオプションを読み取ってほしくないときに役に立ちます．
+            このオプションは、<replaceable>command</replaceable> にオプションを指定したいときに、<command>lxc-execute</command> がそのオプションを読み取ってほしくないときに役に立ちます。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -200,7 +200,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    application. You should stop it before reuse this
 	    container or create a new one.
             -->
-            指定したコンテナが既にアプリケーションを実行中の場合．コンテナを再使用したり，新しく作成する前にコンテナを止める必要があります．
+            指定したコンテナが既にアプリケーションを実行中の場合。コンテナを再使用したり、新しく作成する前にコンテナを止める必要があります。
           </para>
         </listitem>
       </varlistentry>

@@ -67,7 +67,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       <command>lxc-device</command> manages devices in running container.
       -->
-      <command>lxc-device</command> は実行中のコンテナのデバイスを管理します．
+      <command>lxc-device</command> は実行中のコンテナのデバイスを管理します。
     </para>
   </refsect1>
 
@@ -83,7 +83,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             The full command help message.
             -->
-            コマンドのヘルプを表示します．
+            コマンドのヘルプを表示します。
           </para>
         </listitem>
       </varlistentry>
@@ -111,7 +111,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             What action to perform. Only 'add' is supported at this point.
             -->
-            実行するアクション．現時点では 'add' のみ指定できます．
+            実行するアクション。現時点では 'add' のみ指定できます。
           </para>
         </listitem>
       </varlistentry>
@@ -127,8 +127,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             It can either be the path to a device under /dev or a network
             interface name.
             -->
-            コンテナに追加するデバイス．
-            /dev 以下のデバイスのパスかネットワークインターフェース名を指定できます．
+            コンテナに追加するデバイス。
+            /dev 以下のデバイスのパスかネットワークインターフェース名を指定できます。
           </para>
         </listitem>
       </varlistentry>
@@ -160,7 +160,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           Creates a /dev/video0 device in container p1 based on the matching
           device on the host.
           -->
-          コンテナ p1 内に，ホスト上でマッチするデバイスに基づいて /dev/video0 デバイスを作製します．
+          コンテナ p1 内に、ホスト上でマッチするデバイスに基づいて /dev/video0 デバイスを作製します。
         </para>
         </listitem>
       </varlistentry>
@@ -172,7 +172,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
            Moves eth0 from the host as eth1 in p1.
            -->
-          eth0 をホストから p1 内の eth1 に移動します．
+          eth0 をホストから p1 内の eth1 に移動します。
         </para>
         </listitem>
       </varlistentry>

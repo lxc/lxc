@@ -73,10 +73,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <replaceable>name</replaceable> will default to '.*' which will
       monitor all containers in <command>lxcpath</command>.
       -->
-      <command>lxc-monitor</command> はコンテナの状態を監視します．
-      <replaceable>name</replaceable> をモニタ対象のコンテナを指定するために使うことも可能です．
-      これは posix2 準拠の正規表現であり，全てのコンテナの監視を行ったり，いくつかのコンテナの監視を行ったり，1 つだけのコンテナの監視を行ったりすることが可能です．
-      <replaceable>name</replaceable> を指定しない場合，デフォルトで '.*' となり，<command>lxcpath</command> 以下の全てのコンテナの監視を行います．
+      <command>lxc-monitor</command> はコンテナの状態を監視します。
+      <replaceable>name</replaceable> をモニタ対象のコンテナを指定するために使うことも可能です。
+      これは posix2 準拠の正規表現であり、全てのコンテナの監視を行ったり、いくつかのコンテナの監視を行ったり、1 つだけのコンテナの監視を行ったりすることが可能です。
+      <replaceable>name</replaceable> を指定しない場合、デフォルトで '.*' となり、<command>lxcpath</command> 以下の全てのコンテナの監視を行います。
     </para>
 
     <para>
@@ -86,8 +86,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       containers with the same name in multiple paths will be
       indistinguishable in the output.
       -->
-      1 つ以上のコンテナパスをモニタリングするために，複数回の <option>-P, --lxcpath</option>=PATH オプションを指定することが可能です．
-      しかし，複数のパスに同じ名前のコンテナが存在する場合は，出力の見分けがつかない事に注意が必要です．
+      1 つ以上のコンテナパスをモニタリングするために、複数回の <option>-P, --lxcpath</option>=PATH オプションを指定することが可能です。
+      しかし、複数のパスに同じ名前のコンテナが存在する場合は、出力の見分けがつかない事に注意が必要です。
     </para>
 
   </refsect1>
@@ -109,9 +109,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    normal 30 seconds for new clients. This is useful if you need to
 	    unmount the filesystem <command>lxcpath</command> is on.
             -->
-            指定したそれぞれの <command>lxcpath</command> に対する lxc-monitord デーモンを終了させる要求を行います．
-            lxc-monitord は通常は新しいクライアントを 30 秒待ちますが，このコマンドを受け取ると，クライアントがいなくなるとすぐに終了します．
-            このオプションは，<command>lxcpath</command> のファイルシステムをアンマウントする必要があるときに役に立ちます．
+            指定したそれぞれの <command>lxcpath</command> に対する lxc-monitord デーモンを終了させる要求を行います。
+            lxc-monitord は通常は新しいクライアントを 30 秒待ちますが、このコマンドを受け取ると、クライアントがいなくなるとすぐに終了します。
+            このオプションは、<command>lxcpath</command> のファイルシステムをアンマウントする必要があるときに役に立ちます。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -130,7 +130,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  will monitor the different states for container foo.
           -->
-          foo という名前のコンテナの様々な状態を監視します．
+          foo という名前のコンテナの様々な状態を監視します。
 	</para>
 	</listitem>
       </varlistentry>
@@ -142,7 +142,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  will monitor the different states for container foo and bar.
           -->
-          foo と bar という名前のコンテナの様々な状態を監視します．
+          foo と bar という名前のコンテナの様々な状態を監視します。
 	</para>
 	</listitem>
       </varlistentry>
@@ -155,7 +155,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  will monitor the different states for container with the
 	  name beginning with letter 'f' or 'b'.
           -->
-          'f' もしくは 'b' という文字で始まるコンテナの様々な状態を監視します．
+          'f' もしくは 'b' という文字で始まるコンテナの様々な状態を監視します。
 	</para>
 	</listitem>
       </varlistentry>
@@ -167,7 +167,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  will monitor the different states for all containers.
           -->
-          全てのコンテナの様々な状態を監視します．
+          全てのコンテナの様々な状態を監視します。
 	</para>
 	</listitem>
       </varlistentry>
@@ -188,7 +188,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    The specified container was not created before with
 	    the <command>lxc-create</command> command.
             -->
-            指定したコンテナが <command>lxc-create</command> で作成されておらず存在しません．
+            指定したコンテナが <command>lxc-create</command> で作成されておらず存在しません。
           </para>
         </listitem>
       </varlistentry>

@@ -79,9 +79,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       60 seconds, it will be sent the <command>lxc.stopsignal</command>
       (defaults to SIGKILL) to force it to shut down.
       -->
-      <command>lxc-stop</command> は，リブート，クリーンシャットダウン，コンテナ内の全てのプロセスの kill のどれかを行います．
-      デフォルトでは，コンテナのクリーンなシャットダウンを <command>lxc.haltsignal</command> (デフォルトでは SIGPWR) をコンテナの init プロセスに送ることでリクエストし，コンテナの終了を 60 秒待ち，return します．
-      コンテナが 60 秒の間にクリーンに終了するのに失敗した場合，<command>lxc.stopsignal</command> (デフォルトでは SIGKILL) を送り，強制的にシャットダウンします．
+      <command>lxc-stop</command> は、リブート、クリーンシャットダウン、コンテナ内の全てのプロセスの kill のどれかを行います。
+      デフォルトでは、コンテナのクリーンなシャットダウンを <command>lxc.haltsignal</command> (デフォルトでは SIGPWR) をコンテナの init プロセスに送ることでリクエストし、コンテナの終了を 60 秒待ち、return します。
+      コンテナが 60 秒の間にクリーンに終了するのに失敗した場合、<command>lxc.stopsignal</command> (デフォルトでは SIGKILL) を送り、強制的にシャットダウンします。
     </para>
 
     <para>
@@ -94,9 +94,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <optional>-t TIMEOUT</optional> specifies the maximum amount of time
       to wait for the container to complete the shutdown or reboot.
       -->
-      <optional>-W</optional>, <optional>-r</optional>, <optional>-s</optional>, <optional>-k</optional>, <optional>--nokill</optional> オプションは実行する際のアクションを指定します．
-      <optional>-W</optional> は，指定したアクションの後に，<command>lxc-stop</command> は速やかに終了します．
-      一方，<optional>-t TIMEOUT</optional> はコンテナが完全にシャットダウンやリブートするのを待つ時間の最大値を設定します．
+      <optional>-W</optional>, <optional>-r</optional>, <optional>-s</optional>, <optional>-k</optional>, <optional>--nokill</optional> オプションは実行する際のアクションを指定します。
+      <optional>-W</optional> は、指定したアクションの後に、<command>lxc-stop</command> は速やかに終了します。
+      一方、<optional>-t TIMEOUT</optional> はコンテナが完全にシャットダウンやリブートするのを待つ時間の最大値を設定します。
     </para>
 
   </refsect1>
@@ -114,7 +114,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    Request a reboot of the container.
             -->
-            コンテナのリブートをリクエストします．
+            コンテナのリブートをリクエストします。
 	  </para>
 	</listitem>
 	</varlistentry>
@@ -130,8 +130,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         kill all tasks in the container.  This is the legacy
         <command>lxc-stop</command> behavior.
         -->
-           コンテナのクリーンシャットダウンをリクエストするのでなく，明確にコンテナ内の全てのタスクを kill します．
-            これは，以前の <command>lxc-stop</command> の動作です．
+           コンテナのクリーンシャットダウンをリクエストするのでなく、明確にコンテナ内の全てのタスクを kill します。
+            これは、以前の <command>lxc-stop</command> の動作です。
 	  </para>
 	</listitem>
     </varlistentry>
@@ -146,8 +146,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Only request a clean shutdown, do not kill the container tasks if the
 		clean shutdown fails.
               -->
-            クリーンなシャットダウンのみをリクエストします．
-            クリーンなシャットダウンに失敗した場合でも，コンテナのタスクを kill しません．
+            クリーンなシャットダウンのみをリクエストします。
+            クリーンなシャットダウンに失敗した場合でも、コンテナのタスクを kill しません。
 	  </para>
 	</listitem>
 	</varlistentry>
@@ -163,8 +163,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	only be used if <command>lxc-stop</command> is hanging due to a bad
 	system state.
               -->
-            このオプションはいかなる場合でも API の lxc のロックの使用を回避します．
-            システム状態が不良な場合に lxc-stop の応答がない状態の場合のみ使用すべきです．
+            このオプションはいかなる場合でも API の lxc のロックの使用を回避します。
+            システム状態が不良な場合に lxc-stop の応答がない状態の場合のみ使用すべきです。
 	  </para>
 	</listitem>
     </varlistentry>
@@ -179,7 +179,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Simply perform the requestion action (reboot, shutdown, or hard
 		kill) and exit.
               -->
-            リクエストされたアクション (reboot, shutdown, 強制的な kill) を実行するだけで (すぐに) 終了 (exit) します．
+            リクエストされたアクション (reboot, shutdown, 強制的な kill) を実行するだけで (すぐに) 終了 (exit) します。
 	  </para>
 	</listitem>
 	</varlistentry>
@@ -193,7 +193,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    Wait TIMEOUT seconds before hard-stopping the container.
               -->
-            コンテナの強制停止まで TIMEOUT 秒待ちます．
+            コンテナの強制停止まで TIMEOUT 秒待ちます。
 	  </para>
 	</listitem>
 	</varlistentry>
@@ -213,7 +213,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    The container was successfully stopped.
             -->
-            コンテナの停止が成功しました．
+            コンテナの停止が成功しました。
           </para>
         </listitem>
       </varlistentry>
@@ -225,7 +225,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    An error occurred while stopping the container.
             -->
-            コンテナの停止中にエラーが発生しました．
+            コンテナの停止中にエラーが発生しました。
           </para>
         </listitem>
       </varlistentry>
@@ -237,7 +237,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    The specified container exists but was not running.
             -->
-            指定のコンテナは存在しますが，実行中ではありません．
+            指定のコンテナは存在しますが、実行中ではありません。
           </para>
         </listitem>
       </varlistentry>
@@ -258,7 +258,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    The specified container was not created before with
 	    the <command>lxc-create</command> command.
             -->
-            指定したコンテナが <command>lxc-create</command> で作成されておらず存在しません．
+            指定したコンテナが <command>lxc-create</command> で作成されておらず存在しません。
           </para>
         </listitem>
       </varlistentry>

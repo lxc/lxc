@@ -77,7 +77,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <replaceable>command</replaceable> inside the container
       specified by <replaceable>name</replaceable>.
       -->
-      <command>lxc-start</command> は <replaceable>command</replaceable> で指定されたコマンドを，<replaceable>name</replaceable> で指定されたコンテナ内で実行します．
+      <command>lxc-start</command> は <replaceable>command</replaceable> で指定されたコマンドを、<replaceable>name</replaceable> で指定されたコンテナ内で実行します。
     </para>
     <para>
       <!--
@@ -87,8 +87,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       If no configuration is
       defined, the default isolation is used.
       -->
-      このコマンドは，lxc-create コマンドもしくは設定ファイルのパラメータであらかじめ定義された設定に従ってコンテナをセットアップします．
-      もし設定が定義されていない場合は，デフォルトの隔離状態を使用します．
+      このコマンドは、lxc-create コマンドもしくは設定ファイルのパラメータであらかじめ定義された設定に従ってコンテナをセットアップします。
+      もし設定が定義されていない場合は、デフォルトの隔離状態を使用します。
     </para>
     <para>
       <!--
@@ -97,7 +97,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>"/sbin/init"</command> command to run a system
       container.
       -->
-      もし command が指定されない場合は，<command>lxc-start</command> はシステムコンテナを実行するためのコマンドとして，デフォルトで <command>"/sbin/init"</command> を使用します．
+      もし command が指定されない場合は、<command>lxc-start</command> はシステムコンテナを実行するためのコマンドとして、デフォルトで <command>"/sbin/init"</command> を使用します。
     </para>
 
   </refsect1>
@@ -119,9 +119,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    more tty, if an error occurs nothing will be displayed,
 	    the log file can be used to check the error.
             -->
-            コンテナをデーモンとして実行します．
-            コンテナはそれ以上の tty を持ちませんので，もしエラーが起きても何も表示されません．
-            エラーのチェックにはログファイルを使用することができます．
+            コンテナをデーモンとして実行します。
+            コンテナはそれ以上の tty を持ちませんので、もしエラーが起きても何も表示されません。
+            エラーのチェックにはログファイルを使用することができます。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -135,7 +135,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    Create a file with the process id.
             -->
-            プロセス ID を含むファイルを作製します．
+            プロセス ID を含むファイルを作製します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -150,7 +150,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Specify the configuration file to configure the virtualization
 	    and isolation functionalities for the container.
             -->
-            コンテナの仮想化，隔離機能の設定のための設定ファイルを指定します．
+            コンテナの仮想化、隔離機能の設定のための設定ファイルを指定します。
 	  </para>
 	  <para>
             <!--
@@ -158,7 +158,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	   already a configuration file present in the previously created
 	   container (via lxc-create).
            -->
-            (lxc-create 経由で) 前もってコンテナが作られた際の設定ファイルが既にあった場合でも，このオプションが指定された場合は，指定した設定ファイルが使用されます．
+            (lxc-create 経由で) 前もってコンテナが作られた際の設定ファイルが既にあった場合でも、このオプションが指定された場合は、指定した設定ファイルが使用されます。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -175,8 +175,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             /dev/tty8. If this option is not specified the current terminal
             will be used unless <option>-d</option> is specified.
             -->
-            コンテナのコンソールに使用するデバイスを指定します．例えば /dev/tty8 のように指定します．
-            このオプションが指定されない時は，<option>-d</option> が指定されない限りは，現在のターミナルを使用します．
+            コンテナのコンソールに使用するデバイスを指定します。例えば /dev/tty8 のように指定します。
+            このオプションが指定されない時は、<option>-d</option> が指定されない限りは、現在のターミナルを使用します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -191,7 +191,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    Specify a file to log the container's console output to.
             -->
-            コンテナのコンソール出力のログを出力するファイルを指定します．
+            コンテナのコンソール出力のログを出力するファイルを指定します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -207,8 +207,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    variable <replaceable>KEY</replaceable>. This overrides any
 	    assignment done in <replaceable>config_file</replaceable>.
             -->
-            設定変数 <replaceable>KEY</replaceable> に対する設定値として <replaceable>VAL</replaceable> を設定します．
-            この設定は，<replaceable>config_file</replaceable> で既に設定されている値も上書きします．
+            設定変数 <replaceable>KEY</replaceable> に対する設定値として <replaceable>VAL</replaceable> を設定します。
+            この設定は、<replaceable>config_file</replaceable> で既に設定されている値も上書きします。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -226,9 +226,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  failure instead. Note: <replaceable>&#045;&#045;daemon</replaceable> implies
 	  <replaceable>&#045;&#045;close-all-fds</replaceable>.
           -->
-            継承しているファイルディスクリプタが存在する場合，それをクローズします．
-            このオプションが指定されない場合，<command>lxc-start</command> の実行は失敗して終了します．
-            注意: <replaceable>--daemon</replaceable> オプションは，<replaceable>--close-all-fds</replaceable> オプションを指定しなくても指定している場合と同様の動きをします．
+            継承しているファイルディスクリプタが存在する場合、それをクローズします。
+            このオプションが指定されない場合、<command>lxc-start</command> の実行は失敗して終了します。
+            注意: <replaceable>--daemon</replaceable> オプションは、<replaceable>--close-all-fds</replaceable> オプションを指定しなくても指定している場合と同様の動きをします。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -247,9 +247,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    network configuration of the starting container is ignored
 	    and the up/down scripts won't be executed.
             -->
-            名前が <replaceable>name</replaceable> である，もしくは PID が <replaceable>pid</replaceable> であるコンテナとネットワーク名前空間を共有します．
-            ネットワーク名前空間は引き続き元の所有者が管理します．
-            開始するコンテナのネットワーク設定は無視され，up/down のスクリプトは実行されません．
+            名前が <replaceable>name</replaceable> である、もしくは PID が <replaceable>pid</replaceable> であるコンテナとネットワーク名前空間を共有します。
+            ネットワーク名前空間は引き続き元の所有者が管理します。
+            開始するコンテナのネットワーク設定は無視され、up/down のスクリプトは実行されません。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -265,7 +265,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    a <replaceable>name</replaceable> container or
 	    a <replaceable>pid</replaceable>.
             -->
-            名前が <replaceable>name</replaceable> である，もしくは PID が <replaceable>pid</replaceable> であるコンテナと IPC 名前空間を共有します．
+            名前が <replaceable>name</replaceable> である、もしくは PID が <replaceable>pid</replaceable> であるコンテナと IPC 名前空間を共有します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -283,8 +283,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    not set the hostname, but the container OS may do it
 	    anyway.
             -->
-            名前が <replaceable>name</replaceable> である，もしくは PID が <replaceable>pid</replaceable> であるコンテナと UTS 名前空間を共有します．
-            LXC は開始するときににはホスト名を設定しませんが，コンテナ内の OS が何らかの方法でホスト名を設定するかもしれません．
+            名前が <replaceable>name</replaceable> である、もしくは PID が <replaceable>pid</replaceable> であるコンテナと UTS 名前空間を共有します。
+            LXC は開始するときににはホスト名を設定しませんが、コンテナ内の OS が何らかの方法でホスト名を設定するかもしれません。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -309,8 +309,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    application. You should stop it before reuse this
 	    container or create a new one.
             -->
-            指定したコンテナは既に実行済みです．
-            このコンテナを使用する前に既に起動しているコンテナを停止するか，新しいものを作成する必要があります．
+            指定したコンテナは既に実行済みです。
+            このコンテナを使用する前に既に起動しているコンテナを停止するか、新しいものを作成する必要があります。
           </para>
         </listitem>
       </varlistentry>
