@@ -67,7 +67,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-unfreeze</command> will thaw all the processes
       previously frozen by the <command>lxc-freeze</command> command.
       -->
-      <command>lxc-unfreeze</command> は，先に <command>lxc-freeze</command> を使って凍結した全てのプロセスを解凍します．
+      <command>lxc-unfreeze</command> は、先に <command>lxc-freeze</command> を使って凍結した全てのプロセスを解凍します。
     </para>
 
   </refsect1>
@@ -87,7 +87,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    The specified container was not created before with
 	    the <command>lxc-create</command> command.
             -->
-            指定したコンテナが <command>lxc-create</command> で作成されておらず存在しません．
+            指定したコンテナが <command>lxc-create</command> で作成されておらず存在しません。
           </para>
         </listitem>
       </varlistentry>

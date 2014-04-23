@@ -68,8 +68,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       number of containers displayed, otherwise <command>lxc-top</command>
       will display as many containers as can fit in your terminal.
       -->
-      <command>lxc-top</command> はコンテナの統計情報を表示します．出力は <replaceable>delay</replaceable> 秒ごとに更新されます．
-      そして，<replaceable>sortby</replaceable> で指定した値に従ってソートされます．<replaceable>count</replaceable> を指定すると表示するコンテナ数を制限しますが，指定しなければ使用しているターミナルに合うようなコンテナ数で表示します．
+      <command>lxc-top</command> はコンテナの統計情報を表示します。出力は <replaceable>delay</replaceable> 秒ごとに更新されます。
+      そして、<replaceable>sortby</replaceable> で指定した値に従ってソートされます。<replaceable>count</replaceable> を指定すると表示するコンテナ数を制限しますが、指定しなければ使用しているターミナルに合うようなコンテナ数で表示します。
     </para>
   </refsect1>
 
@@ -87,7 +87,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             Limit the number of containers displayed to
             <replaceable>count</replaceable>.
             -->
-            表示するコンテナ数を <replaceable>count</replaceable> に制限します．
+            表示するコンテナ数を <replaceable>count</replaceable> に制限します。
           </para>
         </listitem>
       </varlistentry>
@@ -104,8 +104,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             rational number, for example 0.5 for a half second delay. The
             default is 3 seconds.
             -->
-            表示を更新する間隔を秒で指定します．有理数を指定することにより，1 秒以下を指定することも可能です．
-            例えば，1 秒の半分で更新を行うために 0.5 を指定します．デフォルトは 3 秒です．
+            表示を更新する間隔を秒で指定します。有理数を指定することにより、1 秒以下を指定することも可能です。
+            例えば、1 秒の半分で更新を行うために 0.5 を指定します。デフォルトは 3 秒です。
           </para>
         </listitem>
       </varlistentry>
@@ -121,8 +121,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             the letters n,c,d,m,k to sort by name, cpu use, disk I/O, memory,
             or kernel memory use respectively. The default is 'n'.
             -->
-            名前，CPU 使用量，メモリ使用量でコンテナをソートします．<replaceable>sortby</replaceable> で指定する引数は n,c,d,m,k のどれかでなければなりません．
-            これはそれぞれ名前，CPU 使用量，disk I/O，メモリ使用量，カーネルメモリ使用量を表します．デフォルトは 'n' です．
+            名前、CPU 使用量、メモリ使用量でコンテナをソートします。<replaceable>sortby</replaceable> で指定する引数は n,c,d,m,k のどれかでなければなりません。
+            これはそれぞれ名前、CPU 使用量、disk I/O、メモリ使用量、カーネルメモリ使用量を表します。デフォルトは 'n' です。
           </para>
         </listitem>
       </varlistentry>
@@ -137,7 +137,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             ascending alphabetical order and values sort in descending
             amounts (ie. largest value first).
             -->
-            デフォルトのソート順を逆転させます．デフォルトでは，名前のソートはアルファベットの昇順，値のソートは量の降順 (最も大きい数が最初) です．
+            デフォルトのソート順を逆転させます。デフォルトでは、名前のソートはアルファベットの昇順、値のソートは量の降順 (最も大きい数が最初) です。
           </para>
         </listitem>
       </varlistentry>
@@ -154,7 +154,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <!--
           Display containers, updating every second, sorted by memory use.
           -->
-          コンテナを 1 秒ごとに更新し，メモリ使用量でソートして表示します．
+          コンテナを 1 秒ごとに更新し、メモリ使用量でソートして表示します。
         </para>
         </listitem>
       </varlistentry>
@@ -179,18 +179,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <manvolnum>5</manvolnum>
       </citerefentry>.
       -->
-      パフォーマンスへの影響を考慮して，カーネルメモリの使用量は，カーネルメモリの制限値が設定されない限りはカウントされません．
-      もし，制限が設定されていない場合，<command>lxc-top</command> はカーネルメモリの使用量を 0 と表示します．
-      もし，カウントされているコンテナが存在しない場合，KMem カラムは表示されません．制限は
+      パフォーマンスへの影響を考慮して、カーネルメモリの使用量は、カーネルメモリの制限値が設定されない限りはカウントされません。
+      もし、制限が設定されていない場合、<command>lxc-top</command> はカーネルメモリの使用量を 0 と表示します。
+      もし、カウントされているコンテナが存在しない場合、KMem カラムは表示されません。制限は
       <programlisting>
       lxc.cgroup.memory.kmem.limit_in_bytes = <replaceable>number</replaceable>
       </programlisting>
-      のように，コンテナの設定ファイルで指定することができます．詳しくは，
+      のように、コンテナの設定ファイルで指定することができます。詳しくは、
       <citerefentry>
         <refentrytitle>lxc.conf</refentrytitle>
         <manvolnum>5</manvolnum>
       </citerefentry>
-      を参照してください．
+      を参照してください。
     </para>
   </refsect1>
 

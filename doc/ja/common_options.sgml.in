@@ -33,7 +33,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <!--
     These options are common to most of lxc commands.
     -->
-    ここで紹介するオプションは lxc コマンドの大部分で共通のものです．
+    ここで紹介するオプションは lxc コマンドの大部分で共通のものです。
   </para>
 
   <variablelist>
@@ -44,7 +44,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  Print a longer usage message than normal.
           -->
-          通常より長い使い方のメッセージを表示します．
+          通常より長い使い方のメッセージを表示します。
 	</para>
       </listitem>
     </varlistentry>
@@ -55,7 +55,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  Give the usage message
           -->
-          使い方を表示します．
+          使い方を表示します。
 	</para>
       </listitem>
     </varlistentry>
@@ -67,7 +67,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  mute on
           -->
-          出力を抑制します．
+          出力を抑制します。
 	</para>
       </listitem>
     </varlistentry>
@@ -79,7 +79,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  Use an alternate container path.  The default is @LXCPATH@.
           -->
-          デフォルトと別のコンテナパスを使用します．デフォルトは @LXCPATH@ です．
+          デフォルトと別のコンテナパスを使用します。デフォルトは @LXCPATH@ です。
 	</para>
       </listitem>
     </varlistentry>
@@ -92,7 +92,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  Output to an alternate log
 	  <replaceable>FILE</replaceable>. The default is no log.
           -->
-          追加のログを <replaceable>FILE</replaceable> に出力します．デフォルトは出力しません．
+          追加のログを <replaceable>FILE</replaceable> に出力します。デフォルトは出力しません。
 	</para>
       </listitem>
     </varlistentry>
@@ -110,11 +110,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  <literal>NOTICE</literal>, <literal>INFO</literal>,
 	  <literal>DEBUG</literal>.
           -->
-          ログの優先度を <replaceable>LEVEL</replaceable> に設定します．デフォルトの優先度は <literal>ERROR</literal> です．以下の値を設定可能です:
+          ログの優先度を <replaceable>LEVEL</replaceable> に設定します。デフォルトの優先度は <literal>ERROR</literal> です。以下の値を設定可能です:
 	  <literal>FATAL</literal>, <literal>CRIT</literal>,
 	  <literal>WARN</literal>, <literal>ERROR</literal>,
 	  <literal>NOTICE</literal>, <literal>INFO</literal>,
-	  <literal>DEBUG</literal>．
+	  <literal>DEBUG</literal>。
 	</para>
 	<para>
           <!--
@@ -122,7 +122,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	log in the alternate log file. It do not have effect on the
 	ERROR events log on stderr.
         -->
-          このオプションは追加のログファイルへのイベントログの優先度の設定である事に注意してください．stderr への ERROR イベントのログには影響しません．
+          このオプションは追加のログファイルへのイベントログの優先度の設定である事に注意してください。stderr への ERROR イベントのログには影響しません。
 	</para>
       </listitem>
     </varlistentry>
@@ -135,7 +135,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  Use container identifier <replaceable>NAME</replaceable>.
 	  The container identifier format is an alphanumeric string.
           -->
-          <replaceable>NAME</replaceable> という名前でコンテナを識別します．コンテナ識別子のフォーマットは英数字の文字列です．
+          <replaceable>NAME</replaceable> という名前でコンテナを識別します。コンテナ識別子のフォーマットは英数字の文字列です。
 	</para>
       </listitem>
     </varlistentry>

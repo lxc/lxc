@@ -66,7 +66,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             configuration and lets you list all valid keys or query
             individual keys for their value.
             -->
-          <command>lxc-config</command> は LXC のシステム設定の有効な設定項目名を一覧表示したり，個々の設定項目に設定されている値を表示したりします．
+          <command>lxc-config</command> は LXC のシステム設定の有効な設定項目名を一覧表示したり、個々の設定項目に設定されている値を表示したりします。
         </para>
     </refsect1>
 
@@ -82,7 +82,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                       <!--
                         List all supported keys.
                         -->
-                      サポートされている全ての設定項目を表示します．
+                      サポートされている全ての設定項目を表示します。
                     </para>
                 </listitem>
             </varlistentry>
@@ -96,7 +96,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                       <!--
                         Query the value of the specified key.
                         -->
-                      指定した設定項目に設定されている値を表示します．
+                      指定した設定項目に設定されている値を表示します。
                     </para>
                 </listitem>
             </varlistentry>

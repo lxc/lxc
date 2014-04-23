@@ -77,10 +77,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             and the list of affected containers (and if relevant, delays)
             will be shown.
             -->
-          <command>lxc-autostart</command> は lxc.start.auto が設定されたコンテナの処理を行います．
-          ユーザがコンテナの開始，シャットダウン，kill，再起動を，設定した時間間隔で，設定した順番で行えるようにします．
-          lxc.group でのフィルタリングによって，もしくは定義された全てのコンテナを実行します．
-          何の動作も行わず，対象のコンテナ (とコンテナに設定された起動待機時間) のリストを表示するリストモードを外部ツールから使用することも可能です．
+          <command>lxc-autostart</command> は lxc.start.auto が設定されたコンテナの処理を行います。
+          ユーザがコンテナの開始、シャットダウン、kill、再起動を、設定した時間間隔で、設定した順番で行えるようにします。
+          lxc.group でのフィルタリングによって、もしくは定義された全てのコンテナを実行します。
+          何の動作も行わず、対象のコンテナ (とコンテナに設定された起動待機時間) のリストを表示するリストモードを外部ツールから使用することも可能です。
         </para>
 
         <para>
@@ -95,9 +95,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             of time to wait for the container to complete the shutdown
             or reboot.
             -->
-          <optional>-r</optional>, <optional>-s</optional>, <optional>-k</optional> オプションは実行する動作を指定します．何も指定しない場合は，コンテナを起動します．
-          <optional>-a</optional>, <optional>-g</optional> は，どのコンテナを対象にするかを指定するのに使います．デフォルトでは，lxc.group が指定されていないコンテナにだけが対象となります．
-          <optional>-t TIMEOUT</optional> はコンテナが完全にシャットダウンもしくはリブートを待つ最大時間を指定します．
+          <optional>-r</optional>, <optional>-s</optional>, <optional>-k</optional> オプションは実行する動作を指定します。何も指定しない場合は、コンテナを起動します。
+          <optional>-a</optional>, <optional>-g</optional> は、どのコンテナを対象にするかを指定するのに使います。デフォルトでは、lxc.group が指定されていないコンテナにだけが対象となります。
+          <optional>-t TIMEOUT</optional> はコンテナが完全にシャットダウンもしくはリブートを待つ最大時間を指定します。
         </para>
     </refsect1>
 
@@ -113,7 +113,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                       <!--
                         Request a reboot of the container.
                         -->
-                      コンテナのリブートを要求します．
+                      コンテナのリブートを要求します。
                     </para>
                 </listitem>
             </varlistentry>
@@ -131,7 +131,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                         this period, it will be killed as with the
                         <optional>-k kill</optional> option.
                         -->
-                      クリーンなシャットダウンを要求します．もし，<optional>-t timeout</optional> が 0 より大きい場合で，コンテナがこの時間内にシャットダウンしない場合は，コンテナは <optional>-k kill</optional> オプションを指定した時のように kill されます．
+                      クリーンなシャットダウンを要求します。もし、<optional>-t timeout</optional> が 0 より大きい場合で、コンテナがこの時間内にシャットダウンしない場合は、コンテナは <optional>-k kill</optional> オプションを指定した時のように kill されます。
                     </para>
                 </listitem>
             </varlistentry>
@@ -146,7 +146,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                         Rather than requesting a clean shutdown of the
                         container, explicitly kill all tasks in the container.
                         -->
-                      コンテナのクリーンなシャットダウンを要求するのではなく，明確にコンテナの全てのタスクを kill します．
+                      コンテナのクリーンなシャットダウンを要求するのではなく、明確にコンテナの全てのタスクを kill します。
                     </para>
                 </listitem>
             </varlistentry>
@@ -161,7 +161,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                         Rather than performing the action, just print
                         the container name.
                         -->
-                      実際の動作は行わず，コンテナ名の表示だけを行います．
+                      実際の動作は行わず、コンテナ名の表示だけを行います。
                     </para>
                 </listitem>
             </varlistentry>
@@ -175,7 +175,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                       <!--
                         Wait TIMEOUT seconds before hard-stopping the container.
                         -->
-                      コンテナの強制停止まで TIMEOUT 秒待ちます．
+                      コンテナの強制停止まで TIMEOUT 秒待ちます。
                     </para>
                 </listitem>
             </varlistentry>
@@ -190,7 +190,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                         Comma separate list of groups to select
                         (defaults to those without a lxc.group).
                         -->
-                      対象にするコンテナのグループのカンマ区切りのリスト (デフォルトでは lxc.group 指定のないコンテナが対象になります)．
+                      対象にするコンテナのグループのカンマ区切りのリスト (デフォルトでは lxc.group 指定のないコンテナが対象になります)。
                     </para>
                 </listitem>
             </varlistentry>
@@ -204,7 +204,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                       <!--
                         Ignore lxc.group and select all auto-started containers.
                         -->
-                      lxc.group の指定を無視して，自動起動が設定されているコンテナを全て選択します．
+                      lxc.group の指定を無視して、自動起動が設定されているコンテナを全て選択します。
                     </para>
                 </listitem>
             </varlistentry>
@@ -219,7 +219,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                         Ignore the lxc.start.auto flag. Combined with
                         -a, will select all containers on the system.
                         -->
-                      lxc.start.auto で設定されているフラグを無視します．-a と組み合わせることにより，システム上の全てのコンテナを選択します．
+                      lxc.start.auto で設定されているフラグを無視します。-a と組み合わせることにより、システム上の全てのコンテナを選択します。
                     </para>
                 </listitem>
             </varlistentry>

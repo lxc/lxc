@@ -77,10 +77,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       the new task with fresh namespaces.  Apart from testing kernel
       regressions this should make no difference.
       -->
-      <command>lxc-unshare</command> はクローンされた名前空間の組の中でタスクを実行するのに使います．
-      このコマンドは主にテスト目的で使います．
-      このような名前であるにもかかわらず，このコマンドは常に，新しい名前空間で新しいタスクを作成するために unshare ではなく clone を使います．
-      テスト中のカーネルの退行は別として，これで違いは生じないはずです．
+      <command>lxc-unshare</command> はクローンされた名前空間の組の中でタスクを実行するのに使います。
+      このコマンドは主にテスト目的で使います。
+      このような名前であるにもかかわらず、このコマンドは常に、新しい名前空間で新しいタスクを作成するために unshare ではなく clone を使います。
+      テスト中のカーネルの退行は別として、これで違いは生じないはずです。
     </para>
 
   </refsect1>
@@ -108,11 +108,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    container while retaining the other namespaces as those of the
 	    host.
             -->
-            アタッチする名前空間を，パイプでつなげたリストで指定します．
-            例えば <replaceable>NETWORK|IPC</replaceable> のようにです．
-            指定できる値は <replaceable>MOUNT</replaceable>，<replaceable>PID</replaceable>，<replaceable>UTSNAME</replaceable>，<replaceable>IPC</replaceable>，<replaceable>USER </replaceable>，<replaceable>NETWORK</replaceable> です．
-            これにより，プロセスのコンテキストを変更することができます．
-            例えば，コンテナのネットワーク名前空間だけを変更し，他の名前空間をホストのものと同じものに保ったままにするというようなことです．
+            アタッチする名前空間を、パイプでつなげたリストで指定します。
+            例えば <replaceable>NETWORK|IPC</replaceable> のようにです。
+            指定できる値は <replaceable>MOUNT</replaceable>、<replaceable>PID</replaceable>、<replaceable>UTSNAME</replaceable>、<replaceable>IPC</replaceable>、<replaceable>USER </replaceable>、<replaceable>NETWORK</replaceable> です。
+            これにより、プロセスのコンテキストを変更することができます。
+            例えば、コンテナのネットワーク名前空間だけを変更し、他の名前空間をホストのものと同じものに保ったままにするというようなことです。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -126,7 +126,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    Specify a user which the new task should become.
             -->
-            新しいタスクを実行するユーザを指定します．
+            新しいタスクを実行するユーザを指定します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -141,7 +141,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Set the hostname in the new container.  Only allowed if
 	    the UTSNAME namespace is set.
             -->
-            新しいコンテナ内でのホスト名を設定します．UTSNAME 名前空間を指定している時のみ有効です．
+            新しいコンテナ内でのホスト名を設定します。UTSNAME 名前空間を指定している時のみ有効です。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -158,7 +158,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    argument multiple times to move multiple interfaces into
 	    container.
             -->
-            指定したインターフェースをコンテナ内に移動させます．ネットワーク (NETWORK) 名前空間を指定している時のみ有効です．複数のインターフェースをコンテナに移動させるために複数回指定することも可能です．
+            指定したインターフェースをコンテナ内に移動させます。ネットワーク (NETWORK) 名前空間を指定している時のみ有効です。複数のインターフェースをコンテナに移動させるために複数回指定することも可能です。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -172,7 +172,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    Daemonize (do not wait for the container to exit before exiting)
             -->
-            デーモンにします (コマンドはコンテナの終了を待ちません)．
+            デーモンにします (コマンドはコンテナの終了を待ちません)。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -187,7 +187,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Mount default filesystems (/proc /dev/shm and /dev/mqueue)
 	    in the container.  Only allowed if MOUNT namespace is set.
             -->
-            コンテナ内でデフォルトのファイルシステム (/proc, /dev/shm, /dev/mqueue) をマウントします．マウント (MOUNT) 名前空間を指定している時のみ有効です．
+            コンテナ内でデフォルトのファイルシステム (/proc, /dev/shm, /dev/mqueue) をマウントします。マウント (MOUNT) 名前空間を指定している時のみ有効です。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -207,11 +207,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	If the hostname is changed in that shell, the change will not be
 	reflected on the host.
         -->
-        自身の UTS(hostname)名前空間でシェルを起動するには以下のように実行します．
+        自身の UTS(hostname)名前空間でシェルを起動するには以下のように実行します。
         <programlisting>
           lxc-unshare -s UTSNAME /bin/bash
         </programlisting>
-        もし，そのシェル上でホスト名を変更しても，その変更はホストには反映されません．
+        もし、そのシェル上でホスト名を変更しても、その変更はホストには反映されません。
       </para>
       <para>
         <!--
@@ -226,16 +226,16 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </programlisting>
 	ps output will show there are no other processes in the namespace.
         -->
-        新しいネットワーク，pid，マウント名前空間でシェルを起動するには以下のように実行します．
+        新しいネットワーク、pid、マウント名前空間でシェルを起動するには以下のように実行します。
         <programlisting>
           lxc-unshare -s "NETWORK|PID|MOUNT" /bin/bash
         </programlisting>
-        その結果起動するシェルは pid が 1 となり，ネットワークインターフェースがないでしょう．
+        その結果起動するシェルは pid が 1 となり、ネットワークインターフェースがないでしょう。
         そのシェル上で /proc を再マウントした後
         <programlisting>
           mount -t proc proc /proc
         </programlisting>
-        ps の出力は，その名前空間内には他のプロセスが存在しない事を表示するでしょう．
+        ps の出力は、その名前空間内には他のプロセスが存在しない事を表示するでしょう。
       </para>
       <para>
         <!--
@@ -245,7 +245,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H slave -i veth1 /bin/bash
         </programlisting>
         -->
-        新しいネットワーク，PID，マウント，ホスト名 (UTS) 名前空間でシェルを起動するには，
+        新しいネットワーク、PID、マウント、ホスト名 (UTS) 名前空間でシェルを起動するには、
         <programlisting>
           lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H slave -i veth1 /bin/bash
         </programlisting>
@@ -256,8 +256,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	/proc will have been remounted.  ps output will show there are
 	no other processes in the namespace.
         -->
-        起動したシェルは PID 1 を持ち，2 つのネットワークインターフェース (lo と veth1) を持ちます．
-        ホスト名は "slave" となり，/proc は再マウントされます．ps コマンドは，名前空間内には他のプロセスがない状態を表示するでしょう．
+        起動したシェルは PID 1 を持ち、2 つのネットワークインターフェース (lo と veth1) を持ちます。
+        ホスト名は "slave" となり、/proc は再マウントされます。ps コマンドは、名前空間内には他のプロセスがない状態を表示するでしょう。
       </para>
   </refsect1>
 
