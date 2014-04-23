@@ -98,13 +98,13 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       this includes only aufs, btrfs, lvm, overlayfs and zfs.  LVM devices do not support
       snapshots of snapshots.
       -->
-      <command>lxc-clone</command> は，新しいコンテナを既に存在するコンテナのクローンとして作製します．
-      クローンは 2 つのタイプをサポートします: コピーとスナップショットです．
-      コピータイプのクローンは元のコンテナから新しいコンテナへ root ファイルシステムをコピーします．
-      スナップショットファイルシステムは，バッキングストアのスナップショット機能を使い，元のコンテナの非常に小さな copy-on-write でのスナップショットを作製します．
-      スナップショットでのクローンは，新しいコンテナのバッキングストアとしてスナップショット機能のサポートが必要になります．
-      現時点では，このようなバッキングストアとしては aufs, btrfs, lvm, overlayfs, zfs のみをサポートします．
-      LVM デバイスはスナップショットのスナップショットはサポートしていません．
+      <command>lxc-clone</command> は、新しいコンテナを既に存在するコンテナのクローンとして作製します。
+      クローンは 2 つのタイプをサポートします: コピーとスナップショットです。
+      コピータイプのクローンは元のコンテナから新しいコンテナへ root ファイルシステムをコピーします。
+      スナップショットファイルシステムは、バッキングストアのスナップショット機能を使い、元のコンテナの非常に小さな copy-on-write でのスナップショットを作製します。
+      スナップショットでのクローンは、新しいコンテナのバッキングストアとしてスナップショット機能のサポートが必要になります。
+      現時点では、このようなバッキングストアとしては aufs, btrfs, lvm, overlayfs, zfs のみをサポートします。
+      LVM デバイスはスナップショットのスナップショットはサポートしていません。
     </para>
 
     <para>
@@ -115,9 +115,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       containers.  This can be requested by using (for overlayfs) the
       <replaceable>-B overlayfs</replaceable> arguments.
       -->
-      新しいコンテナのバッキングストアは，オーバーレイタイプのコンテナを除いては元のコンテナのタイプと同じになります．
-      ディレクトリバックエンドのコンテナのスナップショットを aufs もしくは overlayfs で作成することは可能です．
-      例えば，overlayfs の場合は <replaceable>-B overlayfs</replaceable> という引数を使って指定することが可能です．
+      新しいコンテナのバッキングストアは、オーバーレイタイプのコンテナを除いては元のコンテナのタイプと同じになります。
+      ディレクトリバックエンドのコンテナのスナップショットを aufs もしくは overlayfs で作成することは可能です。
+      例えば、overlayfs の場合は <replaceable>-B overlayfs</replaceable> という引数を使って指定することが可能です。
     </para>
 
     <para>
@@ -127,7 +127,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <replaceable>-o</replaceable> and <replaceable>-n</replaceable> options,
       respectively.
       -->
-      元のコンテナと新しいコンテナの名前は，全てのオプションの後に順番に与えることも，<replaceable>-o</replaceable> と <replaceable>-n</replaceable> オプションを使ってそれぞれ指定することも可能です．
+      元のコンテナと新しいコンテナの名前は、全てのオプションの後に順番に与えることも、<replaceable>-o</replaceable> と <replaceable>-n</replaceable> オプションを使ってそれぞれ指定することも可能です。
     </para>
 
   </refsect1>
@@ -147,7 +147,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             The new container's rootfs should be a LVM or btrfs snapshot of the original.
             -->
-            新しいコンテナの rootfs は，オリジナルの LVM か btrfs のスナップショットになります．
+            新しいコンテナの rootfs は、オリジナルの LVM か btrfs のスナップショットになります。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -162,7 +162,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Do not change the hostname of the container (in the root
 	    filesystem).
             -->
-            (root ファイルシステム内では) コンテナのホスト名を変更しません．
+            (root ファイルシステム内では) コンテナのホスト名を変更しません。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -177,7 +177,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Use the same MAC address as the original container, rather than
 	    generating a new random one.
             -->
-            新しい MAC アドレスをランダムに生成せずに，元のコンテナと同じ MAC アドレスを使用します．
+            新しい MAC アドレスをランダムに生成せずに、元のコンテナと同じ MAC アドレスを使用します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -192,8 +192,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Copy all mount hooks into the new container's directory, and
 	    update any lxcpaths and container names as needed.
             -->
-            全てのマウントフックを新しいコンテナのディレクトリにコピーします．
-            そして，lxcpath とコンテナ名を必要に応じて更新します．
+            全てのマウントフックを新しいコンテナのディレクトリにコピーします。
+            そして、lxcpath とコンテナ名を必要に応じて更新します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -209,8 +209,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    block device.  By default, the new device will be made the
 	    same size as the original.
             -->
-            ブロックデバイスのバックエンドのコンテナの場合，新しいブロックデバイスのサイズ．
-            デフォルトでは，新しいデバイスは元のデバイスと同じサイズとなります．
+            ブロックデバイスのバックエンドのコンテナの場合、新しいブロックデバイスのサイズ。
+            デフォルトでは、新しいデバイスは元のデバイスと同じサイズとなります。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -225,7 +225,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    The lxcpath of the original container.  By default, the system
 	    wide configured lxcpath will be used.
             -->
-            オリジナルのコンテナの lxcpath．デフォルトでは，システム全体で設定された lxcpath が使われます．
+            オリジナルのコンテナの lxcpath。デフォルトでは、システム全体で設定された lxcpath が使われます。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -242,10 +242,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    changing lxcpaths may not be possible, as subvolume snapshots
 	    must be in the same btrfs filesystem.
             -->
-            新しいコンテナの lxcpath．
-            デフォルトでは，オリジナルの lxcpath と同じものが使われます．
-            btrfs のスナップショットの場合は注意が必要で，lxcpath の変更はできない可能性があります．
-            これは subvolume のスナップショットが，同じ btrfs ファイルシステム上に存在しなければならないからです．
+            新しいコンテナの lxcpath。
+            デフォルトでは、オリジナルの lxcpath と同じものが使われます。
+            btrfs のスナップショットの場合は注意が必要で、lxcpath の変更はできない可能性があります。
+            これは subvolume のスナップショットが、同じ btrfs ファイルシステム上に存在しなければならないからです。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -264,10 +264,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    backing stores include dir (directory), aufs, btrfs, lvm, zfs, loop
 	    and overlayfs.
             -->
-            新しいコンテナで元のコンテナと違うバッキングストアを使う場合のバッキングストアを選択します．
-            デフォルトでは元のコンテナと同じものが使われます．
-            現時点では，バッキングストアの変更は，ディレクトリバックエンドのコンテナに対する aufs と overlayfs のスナップショットに対してのみサポートされます．
-            有効なバッキングストアは dir(directory), aufs, btrfs, lvm, zfs, loop, overlayfs です．
+            新しいコンテナで元のコンテナと違うバッキングストアを使う場合のバッキングストアを選択します。
+            デフォルトでは元のコンテナと同じものが使われます。
+            現時点では、バッキングストアの変更は、ディレクトリバックエンドのコンテナに対する aufs と overlayfs のスナップショットに対してのみサポートされます。
+            有効なバッキングストアは dir(directory), aufs, btrfs, lvm, zfs, loop, overlayfs です。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -281,7 +281,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    The name of the original container to clone.
             -->
-            クローンしたい元のコンテナの名前．
+            クローンしたい元のコンテナの名前。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -295,7 +295,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    The name of the new container to create.
             -->
-            作製する新しいコンテナの名前．
+            作製する新しいコンテナの名前。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -321,11 +321,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <filename>LXC_SRC_NAME</filename>, and the path or device on which
       the rootfs is located is in <filename>LXC_ROOTFS_PATH</filename>.
       -->
-      クローンされるコンテナに 1 つ以上の <filename>lxc.hook.clone</filename> の指定が存在する場合，指定されたフックは新しいコンテナに対して呼ばれます．
-      クローンフックに渡される最初の 3 つの引数は，コンテナ名，セクション ('lxc')，フックタイプ ('clone') となります．
-      <command>lxc-clone</command> に渡される追加の引数は，フックプログラムに渡される引数の 4 番目以降となります．
-      <filename>LXC_ROOTFS_MOUNT</filename> 環境変数には，コンテナの root ファイルシステムがマウントされるパスが与えられます．
-      設定ファイルのパス名は <filename>LXC_CONFIG_FILE</filename> に，新しいコンテナ名は <filename>LXC_NAME</filename>，古いコンテナ名は <filename>LXC_SRC_NAME</filename> に，rootfs のあるパスまたはデバイスは <filename>LXC_ROOTFS_PATH</filename> に保存されます．
+      クローンされるコンテナに 1 つ以上の <filename>lxc.hook.clone</filename> の指定が存在する場合、指定されたフックは新しいコンテナに対して呼ばれます。
+      クローンフックに渡される最初の 3 つの引数は、コンテナ名、セクション ('lxc')、フックタイプ ('clone') となります。
+      <command>lxc-clone</command> に渡される追加の引数は、フックプログラムに渡される引数の 4 番目以降となります。
+      <filename>LXC_ROOTFS_MOUNT</filename> 環境変数には、コンテナの root ファイルシステムがマウントされるパスが与えられます。
+      設定ファイルのパス名は <filename>LXC_CONFIG_FILE</filename> に、新しいコンテナ名は <filename>LXC_NAME</filename>、古いコンテナ名は <filename>LXC_SRC_NAME</filename> に、rootfs のあるパスまたはデバイスは <filename>LXC_ROOTFS_PATH</filename> に保存されます。
     </para>
   </refsect1>
 

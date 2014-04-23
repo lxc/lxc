@@ -72,7 +72,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-start-ephemeral</command> start an ephemeral copy of an
       existing container.
       -->
-      <command>lxc-start-ephemeral</command> は，存在するコンテナの一時的なコピーからコンテナを起動します．
+      <command>lxc-start-ephemeral</command> は、存在するコンテナの一時的なコピーからコンテナを起動します。
     </para>
   </refsect1>
 
@@ -117,8 +117,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             Start the container in background and print the name and IP.
             This option can't be used if a command is passed.
             -->
-            コンテナをバックグラウンドで実行し，名前と IP アドレスを表示します．
-            このオプションはコマンドを実行させたいときには使用することはできません．
+            コンテナをバックグラウンドで実行し、名前と IP アドレスを表示します。
+            このオプションはコマンドを実行させたいときには使用することはできません。
           </para>
         </listitem>
       </varlistentry>
@@ -133,8 +133,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             Directory to bind mount into container.
             Can be passed multiple times.
             -->
-            コンテナ内にバインドマウントするためのディレクトリ．
-            複数回指定できます．
+            コンテナ内にバインドマウントするためのディレクトリ。
+            複数回指定できます。
           </para>
         </listitem>
       </varlistentry>
@@ -149,8 +149,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             The user to connect to the container as.
             Used when passing a command to lxc-start-ephemeral.
             -->
-            コンテナに接続するためのユーザ．
-            lxc-start-ephemeral にコマンドを指定するときに使います．
+            コンテナに接続するためのユーザ。
+            lxc-start-ephemeral にコマンドを指定するときに使います。
           </para>
         </listitem>
       </varlistentry>
@@ -164,7 +164,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Copy the provided SSH public key into the container.
             -->
-            コンテナ内にコピーする既存の SSH 公開鍵．
+            コンテナ内にコピーする既存の SSH 公開鍵。
           </para>
         </listitem>
       </varlistentry>
@@ -179,8 +179,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             Force a specific union file system.
             Can be one of: overlayfs aufs
             -->
-            指定した union ファイルシステムを使用します．
-            overlayfs か aufs のどちらかが使用できます．
+            指定した union ファイルシステムを使用します。
+            overlayfs か aufs のどちらかが使用できます。
           </para>
         </listitem>
       </varlistentry>
@@ -196,7 +196,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             With this option, you can lxc-stop and lxc-start the no longer so
             ephemeral container (it's still an overlay, but a persistent one).
             -->
-            tmpfs の代わりに永続的なバックエンドを使用します．このオプションを使うことにより，もはや一時的なコンテナではないので，lxc-stop や lxc-start を使用することができます (オーバーレイな状態ですが，永続的です)．
+            tmpfs の代わりに永続的なバックエンドを使用します。このオプションを使うことにより、もはや一時的なコンテナではないので、lxc-stop や lxc-start を使用することができます (オーバーレイな状態ですが、永続的です)。
           </para>
         </listitem>
       </varlistentry>
@@ -212,7 +212,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             This currently uses ssh (not attach) and is incompatible
             with daemon mode.
             -->
-            即座に指定したコマンドをコンテナ内で実行します．現時点では (attach ではなく) ssh を使用します．そしてデーモンモードと両方を指定することはできません．
+            即座に指定したコマンドをコンテナ内で実行します。現時点では (attach ではなく) ssh を使用します。そしてデーモンモードと両方を指定することはできません。
           </para>
         </listitem>
       </varlistentry>
@@ -241,8 +241,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           Simply start an ephemeral container and attach to the console.
           This container will be based on existing container "p1".
           -->
-          単に一時的なコンテナを開始させ，コンソールにアタッチします．
-          このコンテナは "p1" という既存のコンテナを基にします．
+          単に一時的なコンテナを開始させ、コンソールにアタッチします。
+          このコンテナは "p1" という既存のコンテナを基にします。
         </para>
         </listitem>
       </varlistentry>
@@ -255,7 +255,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           Start an ephemeral container based on p1 called p1-ephemeral and
           print its IP and name to the console instead of attaching.
           -->
-          p1 を基にした一時的なコンテナを開始し，コンソールにアタッチする代わりに IP アドレスと名前を表示します．
+          p1 を基にした一時的なコンテナを開始し、コンソールにアタッチする代わりに IP アドレスと名前を表示します。
         </para>
         </listitem>
       </varlistentry>

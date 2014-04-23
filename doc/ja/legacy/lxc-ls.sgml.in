@@ -47,7 +47,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       list the containers existing on the system
       -->
-      システム上に存在するコンテナをリスト表示する．
+      システム上に存在するコンテナをリスト表示する。
     </refpurpose>
   </refnamediv>
 
@@ -66,7 +66,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-ls</command> list the containers existing on the
       system.
       -->
-      <command>lxc-ls</command> はシステム上に存在するコンテナをリスト表示します．
+      <command>lxc-ls</command> はシステム上に存在するコンテナをリスト表示します。
     </para>
   </refsect1>
 
@@ -83,7 +83,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    List active containers.
             -->
-            稼働中のコンテナをリスト表示します．
+            稼働中のコンテナをリスト表示します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -98,7 +98,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    The option passed to <command>lxc-ls</command> are the
 	    same as the <command>ls</command> command.
             -->
-            <command>lxc-ls</command> が受け付けるオプションは，<command>ls</command> コマンドと同じです．
+            <command>lxc-ls</command> が受け付けるオプションは、<command>ls</command> コマンドと同じです。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -117,7 +117,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  list all the container and their permissions.
           -->
-          全てのコンテナとそのパーミッションをリスト表示します．
+          全てのコンテナとそのパーミッションをリスト表示します。
 	</para>
 	</listitem>
       </varlistentry>
@@ -129,7 +129,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  list active containers and display the list in one column.
           -->
-          稼働中のコンテナを一列にリスト表示します．
+          稼働中のコンテナを一列にリスト表示します。
 	</para>
 	</listitem>
       </varlistentry>

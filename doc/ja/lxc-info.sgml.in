@@ -70,7 +70,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-info</command> queries and shows information about a
       container.
       -->
-      <command>lxc-info</command> は，コンテナに関する情報を問い合わせ，表示します．
+      <command>lxc-info</command> は、コンテナに関する情報を問い合わせ、表示します。
     </para>
   </refsect1>
 
@@ -88,7 +88,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             Print a configuration key from the container. This option
             may be given mulitple times to print out multiple key = value pairs.
             -->
-            コンテナの設定値を表示します．このオプションは複数の key = value のペアを表示したい場合には複数回指定することも可能です．
+            コンテナの設定値を表示します。このオプションは複数の key = value のペアを表示したい場合には複数回指定することも可能です。
           </para>
         </listitem>
       </varlistentry>
@@ -102,7 +102,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Just print the container's state.
             -->
-            コンテナの状態のみを表示します．
+            コンテナの状態のみを表示します。
           </para>
         </listitem>
       </varlistentry>
@@ -116,7 +116,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Just print the container's pid.
             -->
-            コンテナの pid を表示します．
+            コンテナの pid を表示します。
           </para>
         </listitem>
       </varlistentry>
@@ -130,7 +130,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Just print the container's IP addresses.
             -->
-            コンテナの IP アドレスを表示します．．
+            コンテナの IP アドレスを表示します。。
           </para>
         </listitem>
       </varlistentry>
@@ -156,18 +156,18 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <manvolnum>5</manvolnum>
             </citerefentry>.
             -->
-            コンテナの統計情報を表示します．
-            パフォーマンスへの影響を考慮して，カーネルメモリの使用量は，カーネルメモリの制限値が設定されない限りはカウントされません．
-            もし，制限が設定されていない場合，<command>lxc-info</command> はカーネルメモリの使用量を 0 と表示します．制限は
+            コンテナの統計情報を表示します。
+            パフォーマンスへの影響を考慮して、カーネルメモリの使用量は、カーネルメモリの制限値が設定されない限りはカウントされません。
+            もし、制限が設定されていない場合、<command>lxc-info</command> はカーネルメモリの使用量を 0 と表示します。制限は
             <programlisting>
             lxc.cgroup.memory.kmem.limit_in_bytes = <replaceable>number</replaceable>
             </programlisting>
-            のように，コンテナの設定ファイルで指定することができます．詳しくは，
+            のように、コンテナの設定ファイルで指定することができます。詳しくは、
             <citerefentry>
               <refentrytitle>lxc.conf</refentrytitle>
               <manvolnum>5</manvolnum>
             </citerefentry>
-            を参照してください．
+            を参照してください。
           </para>
         </listitem>
       </varlistentry>
@@ -182,8 +182,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             Print the container's statistics in raw, non-humanized form. The
             default is to print statistics in humanized form.
             -->
-            コンテナの統計情報を人間が読みやすい形に加工しないでそのまま表示します．
-            デフォルトは人間が読みやすい形の統計情報を表示します．
+            コンテナの統計情報を人間が読みやすい形に加工しないでそのまま表示します。
+            デフォルトは人間が読みやすい形の統計情報を表示します。
           </para>
         </listitem>
       </varlistentry>
@@ -202,7 +202,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Show information for foo.
             -->
-            foo という名前のコンテナの情報を表示します．
+            foo という名前のコンテナの情報を表示します。
           </para>
         </listitem>
       </varlistentry>
@@ -214,7 +214,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             Show information for all containers whose name starts with ubuntu.
             -->
-            ubuntu という文字列で始まる名前の全てのコンテナの情報を表示します．
+            ubuntu という文字列で始まる名前の全てのコンテナの情報を表示します。
           </para>
         </listitem>
       </varlistentry>
@@ -226,7 +226,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
             prints the veth pair name of foo.
             -->
-            コンテナ foo の veth pair を表示します．
+            コンテナ foo の veth pair を表示します。
           </para>
         </listitem>
       </varlistentry>

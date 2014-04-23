@@ -48,7 +48,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       Create and attach a nic to another network namespace.
       -->
-      NIC を作成し，他のネットワーク名前空間に割り当てる
+      NIC を作成し、他のネットワーク名前空間に割り当てる
     </refpurpose>
   </refnamediv>
 
@@ -70,7 +70,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-user-nic</command> is a setuid-root program with which
       unprivileged users may create network interfaces for use by a lxc container.
       -->
-      <command>lxc-user-nic</command> は root に setuid されたプログラムで，lxc コンテナが使うネットワークインターフェースを，特権を持たないユーザが作成できます．
+      <command>lxc-user-nic</command> は root に setuid されたプログラムで、lxc コンテナが使うネットワークインターフェースを、特権を持たないユーザが作成できます。
     </para>
     <para>
       <!--
@@ -82,9 +82,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       user is privileged over the network namespace to which the interface
       will be attached.
       -->
-      このプログラムは，<filename>@LXC_USERNIC_CONF@</filename> という設定ファイルを参照して，呼び出したユーザが作成することができるインターフェースの数と，どのブリッジに接続するかを決定します．
-      また，ユーザが作成したインターフェースの数を <filename>@LXC_USERNIC_DB@</filename> を使ってチェックします．
-      これにより，呼び出したユーザが，インターフェースを割り当てるネットワーク名前空間上で特権を持つことが保証されます．
+      このプログラムは、<filename>@LXC_USERNIC_CONF@</filename> という設定ファイルを参照して、呼び出したユーザが作成することができるインターフェースの数と、どのブリッジに接続するかを決定します。
+      また、ユーザが作成したインターフェースの数を <filename>@LXC_USERNIC_DB@</filename> を使ってチェックします。
+      これにより、呼び出したユーザが、インターフェースを割り当てるネットワーク名前空間上で特権を持つことが保証されます。
     </para>
 
   </refsect1>
@@ -105,7 +105,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  The process id for the task to whose network namespace the interface
 	  should be attached.
               -->
-            インターフェースを割り当てたいネットワーク名前空間を持つタスクのプロセス ID．
+            インターフェースを割り当てたいネットワーク名前空間を持つタスクのプロセス ID。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -123,9 +123,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  to the specified bridge, while the other will be passed into
 	  the container.
               -->
-            割り当てるネットワークインターフェースのタイプ．現時点では，veth のみサポートされます．
-            このタイプを指定すると，それぞれがトンネルのエンドポイントとなる 2 つのインターフェースが作成されます．
-            一方のエンドポイントは指定したブリッジに接続され，もう一方はコンテナに割り当てられます．
+            割り当てるネットワークインターフェースのタイプ。現時点では、veth のみサポートされます。
+            このタイプを指定すると、それぞれがトンネルのエンドポイントとなる 2 つのインターフェースが作成されます。
+            一方のエンドポイントは指定したブリッジに接続され、もう一方はコンテナに割り当てられます。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -140,8 +140,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  The bridge to which to attach the network interface, for
 	  instance <filename>lxcbr0</filename>.
               -->
-            ネットワークインターフェースを接続するブリッジ．
-            例えば <filename>lxcbr0</filename> のように指定します．
+            ネットワークインターフェースを接続するブリッジ。
+            例えば <filename>lxcbr0</filename> のように指定します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -156,8 +156,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  The desired interface name in the container.  This will be
 	  <filename>eth0</filename> if unspecified.
           -->
-            コンテナ内に作られるインターフェースの名前．
-            もし指定しない場合，<filename>eth0</filename> となります．
+            コンテナ内に作られるインターフェースの名前。
+            もし指定しない場合、<filename>eth0</filename> となります。
 	  </para>
 	</listitem>
       </varlistentry>

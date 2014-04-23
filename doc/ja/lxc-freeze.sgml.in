@@ -70,9 +70,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       command. This command is useful for batch managers to schedule a
       group of processes.
       -->
-      <command>lxc-freeze</command> は，コンテナ内部で実行中のプロセスを全て凍結します．
-      プロセスは <command>lxc-unfreeze</command> コマンドによって明示的に解凍されるまでブロックされます．
-      このコマンドはプロセスのグループをスケジューリングするバッチマネージャに便利なコマンドです．
+      <command>lxc-freeze</command> は、コンテナ内部で実行中のプロセスを全て凍結します。
+      プロセスは <command>lxc-unfreeze</command> コマンドによって明示的に解凍されるまでブロックされます。
+      このコマンドはプロセスのグループをスケジューリングするバッチマネージャに便利なコマンドです。
     </para>
 
   </refsect1>
@@ -92,7 +92,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    The specified container was not created before with
 	    the <command>lxc-create</command> command.
             -->
-            指定したコンテナが <command>lxc-create</command> で作成されておらず存在しません．
+            指定したコンテナが <command>lxc-create</command> で作成されておらず存在しません。
           </para>
         </listitem>
       </varlistentry>

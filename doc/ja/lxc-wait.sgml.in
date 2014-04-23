@@ -67,8 +67,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-wait</command> waits for a specific container state
       before exiting, this is useful for scripting.
       -->
-      <command>lxc-wait</command> は，コンテナが指定した状態になるのを待って終了します．
-      スクリプトで使用するときに役に立ちます．
+      <command>lxc-wait</command> は、コンテナが指定した状態になるのを待って終了します。
+      スクリプトで使用するときに役に立ちます。
     </para>
   </refsect1>
 
@@ -86,8 +86,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Specify the container state(s) to wait for. The container
 	    states can be ORed to specify several states.
             -->
-            待つ対象のコンテナの状態を指定します．
-            コンテナの状態として，いくつかの状態を OR で指定することが可能です．
+            待つ対象のコンテナの状態を指定します。
+            コンテナの状態として、いくつかの状態を OR で指定することが可能です。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -101,7 +101,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    Wait timeout seconds for desired state to be reached.
             -->
-            期待した状態になるまで timeout 秒待ちます．
+            期待した状態になるまで timeout 秒待ちます。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -122,7 +122,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  exits when 'RUNNING' is reached.
           -->
-          状態が 'RUNNING' になった時点で終了します．
+          状態が 'RUNNING' になった時点で終了します。
 	</para>
 	</listitem>
       </varlistentry>
@@ -134,7 +134,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <!--
 	  exits when 'RUNNING' or 'STOPPED' state is reached.
           -->
-          状態が 'RUNNING' もしくは 'STOPPED' になった時点で終了します．
+          状態が 'RUNNING' もしくは 'STOPPED' になった時点で終了します。
 	</para>
 	</listitem>
       </varlistentry>
@@ -155,7 +155,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    The specified container was not created before with
 	    the <command>lxc-create</command> command.
             -->
-            指定したコンテナが <command>lxc-create</command> で作成されておらず存在しません．
+            指定したコンテナが <command>lxc-create</command> で作成されておらず存在しません。
           </para>
         </listitem>
       </varlistentry>
