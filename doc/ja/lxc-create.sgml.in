@@ -74,15 +74,15 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       is used to specify the container to be used with the different
       lxc commands.
       -->
-      <command>lxc-create</command> は，設定情報とユーザ情報が保存されているシステムオブジェクトを作成します．
-      <replaceable>name</replaceable> で指定された名前が，他の lxc コマンドで，コンテナを特定する名前として使われます．
+      <command>lxc-create</command> は、設定情報とユーザ情報が保存されているシステムオブジェクトを作成します。
+      <replaceable>name</replaceable> で指定された名前が、他の lxc コマンドで、コンテナを特定する名前として使われます。
     </para>
     <para>
       <!--
       The object is a directory created in <filename>@LXCPATH@</filename>
       and identified by its name.
       -->
-      オブジェクトは <filename>@LXCPATH@</filename> 内に作られる，自身の名前がついたディレクトリです．
+      オブジェクトは <filename>@LXCPATH@</filename> 内に作られる、自身の名前がついたディレクトリです。
     </para>
 
     <para>
@@ -92,8 +92,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       contains information, the more the container is isolated and
       the more the application is jailed.
       -->
-      オブジェクトは，アプリケーションが使用したり，参照したりする様々なリソースの定義です．
-      設定ファイルがより多くの情報を持つほど，コンテナやアプリケーションはより隔離されたものになります．
+      オブジェクトは、アプリケーションが使用したり、参照したりする様々なリソースの定義です。
+      設定ファイルがより多くの情報を持つほど、コンテナやアプリケーションはより隔離されたものになります。
     </para>
 
     <para>
@@ -102,7 +102,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       is not specified, the container will be created with the default
       isolation: processes, sysv ipc and mount points.
       -->
-      設定ファイルが <replaceable>config_file</replaceable> で指定されない場合，コンテナはデフォルトの隔離状態で作られます: プロセス，sysv ipc，マウントポイントです．
+      設定ファイルが <replaceable>config_file</replaceable> で指定されない場合、コンテナはデフォルトの隔離状態で作られます: プロセス、sysv ipc、マウントポイントです。
     </para>
   </refsect1>
 
@@ -120,7 +120,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    Specify the configuration file to configure the virtualization
 	    and isolation functionalities for the container.
             -->
-            コンテナの仮想化と隔離機能を設定するための設定ファイルを指定します．
+            コンテナの仮想化と隔離機能を設定するための設定ファイルを指定します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -141,10 +141,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    can also be passed as a parameter.
 	    "none" can be used to force lxc-create to skip rootfs creation.
             -->
-            <replaceable>template</replaceable> は lxc-create コマンドが呼び出す，存在する 'lxc-template' スクリプトの短い名前です．
-            例えば，busybox, debian, fedora, ubuntu, sshd があります．
-            期待されるスクリプトの構造の詳細は，<filename>@LXCTEMPLATEDIR@</filename> 内の例を参照してください．
-            加えて，実行可能なテンプレートスクリプトへのフルパスも指定することが可能です．rootfs の作成を行わないように "none" を指定することも可能です．
+            <replaceable>template</replaceable> は lxc-create コマンドが呼び出す、存在する 'lxc-template' スクリプトの短い名前です。
+            例えば、busybox, debian, fedora, ubuntu, sshd があります。
+            期待されるスクリプトの構造の詳細は、<filename>@LXCTEMPLATEDIR@</filename> 内の例を参照してください。
+            加えて、実行可能なテンプレートスクリプトへのフルパスも指定することが可能です。rootfs の作成を行わないように "none" を指定することも可能です。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -183,26 +183,26 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <replaceable>&#045;&#045;fssize SIZE</replaceable> will create a LV (and
 	    filesystem) of size SIZE rather than the default, which is 1G.
             -->
-            'backingstore' には 'none' か 'dir' か 'lvm' か 'btrfs' か 'best' のいずれかを指定します．
-            デフォルトは 'none' で，コンテナのルートファイルシステムが <filename>@LXCPATH@/container/rootfs</filename> 以下のディレクトリであることを意味します．
-'dir' は 'none' と同じ意味ですが，オプションとして <replaceable>--dir ROOTFS</replaceable> を指定することも可能です．
-            このオプションは，デフォルトの代わりに特定のパス以下にコンテナの rootfs を置くということになります．
-            'btrfs' が指定された場合，ターゲットのファイルシステムは btrfs でなければいけません．
-            そして，コンテナの rootfs は新しい subvolume として作製されます．
-            このことにより，スナップショットによるクローンが作製可能になりますが，結果として rsync --one-filesystem が，別々のファイルシステムとして取り扱ってしまうことにもなります．
-            backingstore が 'lvm' である場合，lvm ブロックデバイスを使用します．
-            この時，以下のオプションが有効になります: <replaceable>--lvname lvname1</replaceable> はデフォルト値のコンテナ名の LV の代わりに <filename>lvname1</filename> という名前の LV を作成します．
-            <replaceable>--vgname vgname1</replaceable> は，デフォルト値である <filename>lxc</filename> という volume group の代わりに <filename>vgname1</filename> という名前の volume group 内に LV を作成します．
-            <replaceable>--thinpool thinpool1</replaceable> は，デフォルトである <filename>lxc</filename> のという名前のプールの代わりに <filename>thinpool1</filename> という名前のプール内にシンプロビジョニングされたボリュームとして LV を作成します．
-            <replaceable>--fstype FSTYPE</replaceable> は LV 上のファイルシステムをデフォルト値である ext4 の代わりに FSTYPE で指定したもので作成します．
-            <replaceable>--fssize SIZE</replaceable> はデフォルト値である 1G の代わりに SIZE で指定したサイズで LV を作成します．
+            'backingstore' には 'none' か 'dir' か 'lvm' か 'btrfs' か 'best' のいずれかを指定します。
+            デフォルトは 'none' で、コンテナのルートファイルシステムが <filename>@LXCPATH@/container/rootfs</filename> 以下のディレクトリであることを意味します。
+'dir' は 'none' と同じ意味ですが、オプションとして <replaceable>--dir ROOTFS</replaceable> を指定することも可能です。
+            このオプションは、デフォルトの代わりに特定のパス以下にコンテナの rootfs を置くということになります。
+            'btrfs' が指定された場合、ターゲットのファイルシステムは btrfs でなければいけません。
+            そして、コンテナの rootfs は新しい subvolume として作製されます。
+            このことにより、スナップショットによるクローンが作製可能になりますが、結果として rsync --one-filesystem が、別々のファイルシステムとして取り扱ってしまうことにもなります。
+            backingstore が 'lvm' である場合、lvm ブロックデバイスを使用します。
+            この時、以下のオプションが有効になります: <replaceable>--lvname lvname1</replaceable> はデフォルト値のコンテナ名の LV の代わりに <filename>lvname1</filename> という名前の LV を作成します。
+            <replaceable>--vgname vgname1</replaceable> は、デフォルト値である <filename>lxc</filename> という volume group の代わりに <filename>vgname1</filename> という名前の volume group 内に LV を作成します。
+            <replaceable>--thinpool thinpool1</replaceable> は、デフォルトである <filename>lxc</filename> のという名前のプールの代わりに <filename>thinpool1</filename> という名前のプール内にシンプロビジョニングされたボリュームとして LV を作成します。
+            <replaceable>--fstype FSTYPE</replaceable> は LV 上のファイルシステムをデフォルト値である ext4 の代わりに FSTYPE で指定したもので作成します。
+            <replaceable>--fssize SIZE</replaceable> はデフォルト値である 1G の代わりに SIZE で指定したサイズで LV を作成します。
 	  </para>
 	  <para>
             <!--
 	    If backingstore is 'best', then lxc will try, in order, btrfs,
 	    zfs, lvm, and finally a directory backing store.
             -->
-            backingstore が 'best' の時，lxc は btrfs, zfs, lvm, dir の順に試行します．
+            backingstore が 'best' の時、lxc は btrfs, zfs, lvm, dir の順に試行します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -219,8 +219,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    the template, you can run
 	    <command>lxc-create -t TEMPLATE -h</command>.
             -->
-            これは <replaceable>template-options</replaceable> で指定したものをオプションとしてテンプレートへ渡します．
-            テンプレートでサポートされているオプションを調べるには，<command>lxc-create -t TEMPLATE -h</command> というコマンドが使えます．
+            これは <replaceable>template-options</replaceable> で指定したものをオプションとしてテンプレートへ渡します。
+            テンプレートでサポートされているオプションを調べるには、<command>lxc-create -t TEMPLATE -h</command> というコマンドが使えます。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -246,8 +246,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    the <command>lxc-ls</command> command to list the
 	    available containers on the system.
             -->
-            メッセージの通り，コンテナを作成しようとしたけれども，同じ名前のコンテナが存在しています．
-            <command>lxc-ls</command> コマンドを使って，システム上に存在する利用可能なコンテナのリストが表示できます．
+            メッセージの通り、コンテナを作成しようとしたけれども、同じ名前のコンテナが存在しています。
+            <command>lxc-ls</command> コマンドを使って、システム上に存在する利用可能なコンテナのリストが表示できます。
           </para>
         </listitem>
       </varlistentry>

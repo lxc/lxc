@@ -62,7 +62,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-checkconfig</command> check the current kernel for
       lxc support
       -->
-      <command>lxc-checkconfig</command> は，現在のカーネルが lxc に必要な機能をサポートしているかをチェックします．
+      <command>lxc-checkconfig</command> は、現在のカーネルが lxc に必要な機能をサポートしているかをチェックします。
     </para>
   </refsect1>
 
@@ -77,9 +77,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           check the current kernel.
           CONFIG can be set in the environment to an alternate location.
           -->
-          現在のカーネルをチェックします．
-          CONFIG 環境変数に別の場所を設定することも可能です．
-          (訳注: カーネルビルド時の設定オプションのファイルの位置を指定します．デフォルトは /proc/config.gz です．)
+          現在のカーネルをチェックします。
+          CONFIG 環境変数に別の場所を設定することも可能です。
+          (訳注: カーネルビルド時の設定オプションのファイルの位置を指定します。デフォルトは /proc/config.gz です。)
         </para>
         </listitem>
       </varlistentry>

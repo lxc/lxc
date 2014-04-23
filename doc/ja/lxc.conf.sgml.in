@@ -59,7 +59,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       LXC configuration is split in two parts. Container configuration
       and system configuration.
       -->
-      LXC の設定は 2 つのパートに分かれます．コンテナの設定とシステムの設定です．
+      LXC の設定は 2 つのパートに分かれます。コンテナの設定とシステムの設定です。
     </para>
 
     <refsect2>
@@ -70,7 +70,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <filename>config</filename> stored in the container's
           directory.
           -->
-        コンテナの設定は，コンテナのディレクトリ内の <filename>config</filename> に設定します．
+        コンテナの設定は、コンテナのディレクトリ内の <filename>config</filename> に設定します。
       </para>
 
       <para>
@@ -80,7 +80,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           as extra default keys coming from the
           <filename>default.conf</filename> file.
           -->
-        必要最小限の設定は，コンテナの作成時に選択したテンプレートの推奨するデフォルトと，<filename>default.conf</filename> ファイルに記載されているデフォルトに追加する設定から生成されます．
+        必要最小限の設定は、コンテナの作成時に選択したテンプレートの推奨するデフォルトと、<filename>default.conf</filename> ファイルに記載されているデフォルトに追加する設定から生成されます。
       </para>
 
       <para>
@@ -90,8 +90,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           unprivileged containers at
           <filename>~/.config/lxc/default.conf</filename>.
           -->
-        <filename>default.conf</filename> ファイルは <filename>@LXC_DEFAULT_CONFIG@</filename> に置かれます．
-        非特権コンテナの場合には <filename>~/.config/lxc/default.conf</filename> を使用します．
+        <filename>default.conf</filename> ファイルは <filename>@LXC_DEFAULT_CONFIG@</filename> に置かれます。
+        非特権コンテナの場合には <filename>~/.config/lxc/default.conf</filename> を使用します。
       </para>
 
       <para>
@@ -102,7 +102,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <manvolnum>5</manvolnum>
           </citerefentry>
           -->
-        このファイルの書式は以下を参照してください．
+        このファイルの書式は以下を参照してください。
         <citerefentry>
           <refentrytitle><command>lxc.container.conf</command></refentrytitle>
           <manvolnum>5</manvolnum>
@@ -119,7 +119,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <filename>~/.config/lxc/lxc.conf</filename> for unprivileged
           containers.
           -->
-        システムの設定には <filename>@LXC_GLOBAL_CONF@</filename> を使用します．非特権コンテナの場合は <filename>~/.config/lxc/lxc.conf</filename> を使用します．
+        システムの設定には <filename>@LXC_GLOBAL_CONF@</filename> を使用します。非特権コンテナの場合は <filename>~/.config/lxc/lxc.conf</filename> を使用します。
       </para>
 
       <para>
@@ -127,7 +127,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           This configuration file is used to set values such as default
           lookup paths and storage backend settings for LXC.
           -->
-        この設定ファイルは LXC のデフォルトパスやストレージバックエンドの設定のような値を設定する時に使用します．
+        この設定ファイルは LXC のデフォルトパスやストレージバックエンドの設定のような値を設定する時に使用します。
       </para>
 
       <para>
@@ -138,7 +138,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <manvolnum>5</manvolnum>
           </citerefentry>
           -->
-        このファイルの書式は以下を参照してください．
+        このファイルの書式は以下を参照してください。
         <citerefentry>
           <refentrytitle><command>lxc.system.conf</command></refentrytitle>
           <manvolnum>5</manvolnum>

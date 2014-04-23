@@ -68,7 +68,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-destroy</command> destroys the system object
       previously created by the <command>lxc-create</command> command.
       -->
-      <command>lxc-destroy</command> は，<command>lxc-create</command> で以前に作成したシステムオブジェクトを破壊します．
+      <command>lxc-destroy</command> は、<command>lxc-create</command> で以前に作成したシステムオブジェクトを破壊します。
     </para>
 
   </refsect1>
@@ -89,8 +89,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    not specified and the container is running, then
 	    <command>lxc-destroy</command> will be aborted.
             -->
-            コンテナが実行中の場合，まずコンテナを停止させます．
-            このオプションが指定されていない場合でコンテナが実行中の場合，<command>lxc-destroy</command> コマンドは実行を中断します．
+            コンテナが実行中の場合、まずコンテナを停止させます。
+            このオプションが指定されていない場合でコンテナが実行中の場合、<command>lxc-destroy</command> コマンドは実行を中断します。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -102,7 +102,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	    Use an alternate container path.  The default is @LXCPATH@.
             -->
-            コンテナパスを指定します．デフォルトは @LXCPATH@ です．
+            コンテナパスを指定します。デフォルトは @LXCPATH@ です。
 	  </para>
         </listitem>
       </varlistentry>
@@ -126,9 +126,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    destroyed.You can use the <command>lxc-ls</command>
 	    command to list the available containers on the system.
             -->
-            破壊するために指定したコンテナが見つかりません．
-            おそらくそのコンテナが存在しないのか，既に破壊された後なのでしょう．
-            <command>lxc-ls</command> コマンドを使って，システム上に存在するコンテナのリストを得ることができます．
+            破壊するために指定したコンテナが見つかりません。
+            おそらくそのコンテナが存在しないのか、既に破壊された後なのでしょう。
+            <command>lxc-ls</command> コマンドを使って、システム上に存在するコンテナのリストを得ることができます。
           </para>
         </listitem>
       </varlistentry>

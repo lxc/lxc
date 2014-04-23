@@ -79,14 +79,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-snapshot</command> creates, lists, and restores
       container snapshots.
       -->
-      <command>lxc-snapshot</command> はコンテナのスナップショットの作製，スナップショットのリスト表示，スナップショットからのリストアを行います．
+      <command>lxc-snapshot</command> はコンテナのスナップショットの作製、スナップショットのリスト表示、スナップショットからのリストアを行います。
     </para>
     <para>
       <!--
     Snapshots are stored as snapshotted containers under a private configuration path.  For instance, if the container's configuration path is <filename>/var/lib/lxc</filename> and the container is <filename>c1</filename>, then the first snapshot will be stored as container <filename>snap0</filename> under configuration path <filename>/var/lib/lxcsnaps/c1</filename>.
     -->
-      スナップショットは，専用の設定されたパス以下にスナップショット化されたコンテナとして保存されます．
-      例えば，もしコンテナパスが <filename>/var/lib/lxc</filename> で，コンテナが <filename>c1</filename> である場合，最初に取得するスナップショットは，パス <filename>/var/lib/lxcsnaps/c1</filename> の下の <filename>snap0</filename> として保存されます．
+      スナップショットは、専用の設定されたパス以下にスナップショット化されたコンテナとして保存されます。
+      例えば、もしコンテナパスが <filename>/var/lib/lxc</filename> で、コンテナが <filename>c1</filename> である場合、最初に取得するスナップショットは、パス <filename>/var/lib/lxcsnaps/c1</filename> の下の <filename>snap0</filename> として保存されます。
     </para>
   </refsect1>
 
@@ -103,7 +103,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               Associate the comment in <replaceable>comment_file</replaceable> with the newly created snapshot.
               -->
-              新しく作製するスナップショットに <replaceable>comment_file</replaceable> ファイル内のコメントを関連付ける．
+              新しく作製するスナップショットに <replaceable>comment_file</replaceable> ファイル内のコメントを関連付ける。
             </para>
 	   </listitem>
 	  </varlistentry>
@@ -115,7 +115,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               List existing snapshots.
               -->
-              存在するスナップショットをリスト表示します．
+              存在するスナップショットをリスト表示します。
             </para>
 	   </listitem>
 	  </varlistentry>
@@ -127,7 +127,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               Show snapshot comments in the snapshots listings.
               -->
-              スナップショットのリスト表示でスナップショットに対するコメントを表示します．
+              スナップショットのリスト表示でスナップショットに対するコメントを表示します。
             </para>
 	   </listitem>
 	  </varlistentry>
@@ -139,8 +139,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               Restore the named snapshot, meaning a full new container is created which is a copy of the snapshot.
               -->
-              指定のスナップショットをリストアします．
-              これはスナップショットのコピーである完全に新しいコンテナが作製されるということです．
+              指定のスナップショットをリストアします。
+              これはスナップショットのコピーである完全に新しいコンテナが作製されるということです。
             </para>
 	   </listitem>
 	  </varlistentry>
@@ -152,9 +152,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
                   When restoring a snapshot, the last optional argument is the name to use for the restored container.  If no name is given, then the original container will be destroyed and the restored container will take its place.  Note that deleting the original snapshot is not possible in the case of aufs, overlayfs or zfs backed snapshots.
               -->
-              スナップショットをリストアする際，最後のオプション引数はリストアされたコンテナの名前として使用されます．
-              もし名前が与えられてない場合，元のコンテナが破壊され，リストアされるコンテナに置き換えられます．
-              スナップショット元を削除することは，aufs, overlayfs, zfs がバックエンドのスナップショットでは出来ないことに注意が必要です．
+              スナップショットをリストアする際、最後のオプション引数はリストアされたコンテナの名前として使用されます。
+              もし名前が与えられてない場合、元のコンテナが破壊され、リストアされるコンテナに置き換えられます。
+              スナップショット元を削除することは、aufs, overlayfs, zfs がバックエンドのスナップショットでは出来ないことに注意が必要です。
             </para>
 	   </listitem>
 	  </varlistentry>
