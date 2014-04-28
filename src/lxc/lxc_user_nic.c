@@ -286,13 +286,16 @@ out_del:
  * *dest will container the name (vethXXXXXX) which is attached
  * on the host to the lxc bridge
  */
-static void get_new_nicname(char **dest, char *br, int pid, char **cnic)
+static bool get_new_nicname(char **dest, char *br, int pid, char **cnic)
 {
 	char template[IFNAMSIZ];
 	snprintf(template, sizeof(template), "vethXXXXXX");
 	*dest = lxc_mkifname(template);
 
-	create_nic(*dest, br, pid, cnic);
+	if (!create_nic(*dest, br, pid, cnic)) {
+		return false;
+	}
+	return true;
 }
 
 static bool get_nic_from_line(char *p, char **nic)
@@ -419,7 +422,8 @@ static bool get_nic_if_avail(int fd, char *me, int pid, char *intype, char *br, 
 			return false;
 	}
 
-	get_new_nicname(nicname, br, pid, cnic);
+	if (!get_new_nicname(nicname, br, pid, cnic))
+		return false;
 	/* me  ' ' intype ' ' br ' ' *nicname + '\n' + '\0' */
 	slen = strlen(me) + strlen(intype) + strlen(br) + strlen(*nicname) + 5;
 	newline = alloca(slen);
