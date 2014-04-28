@@ -79,7 +79,7 @@ src/python-lxc/lxc/__pycache__/
 
 src/tests/lxc-test-device-add-remove
 src/tests/lxc-test-attach
-src/tests/lxc-test-aparmor
+src/tests/lxc-test-apparmor
 src/tests/lxc-test-cgpath
 src/tests/lxc-test-clonetest
 src/tests/lxc-test-concurrent
