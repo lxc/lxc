@@ -1807,7 +1807,7 @@ static int lxc_get_arch_entry(struct lxc_conf *c, char *retv, int inlen)
 	int len = 0;
 
 	switch(c->personality) {
-	case PER_LINUX32: strprint(retv, inlen, "x86"); break;
+	case PER_LINUX32: strprint(retv, inlen, "i686"); break;
 	case PER_LINUX: strprint(retv, inlen, "x86_64"); break;
 	default: break;
 	}
@@ -2259,7 +2259,7 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		fprintf(fout, "lxc.stopsignal = SIG%s\n", sig_name(c->stopsignal));
 	#if HAVE_SYS_PERSONALITY_H
 	switch(c->personality) {
-	case PER_LINUX32: fprintf(fout, "lxc.arch = x86\n"); break;
+	case PER_LINUX32: fprintf(fout, "lxc.arch = i686\n"); break;
 	case PER_LINUX: fprintf(fout, "lxc.arch = x86_64\n"); break;
 	default: break;
 	}
