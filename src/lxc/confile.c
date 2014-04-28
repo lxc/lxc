@@ -1723,9 +1723,15 @@ signed long lxc_config_parse_arch(const char *arch)
 	struct per_name {
 		char *name;
 		unsigned long per;
-	} pername[4] = {
+	} pername[] = {
 		{ "x86", PER_LINUX32 },
+		{ "linux32", PER_LINUX32 },
+		{ "i386", PER_LINUX32 },
+		{ "i486", PER_LINUX32 },
+		{ "i586", PER_LINUX32 },
 		{ "i686", PER_LINUX32 },
+		{ "athlon", PER_LINUX32 },
+		{ "linux64", PER_LINUX },
 		{ "x86_64", PER_LINUX },
 		{ "amd64", PER_LINUX },
 	};
