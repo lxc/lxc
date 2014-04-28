@@ -177,7 +177,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-p, --lxcpath <replaceable>fssize</replaceable></option>
+	  <option>-p, --lxcpath <replaceable>lxcpath</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -189,7 +189,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-P, --newpath <replaceable>fssize</replaceable></option>
+	  <option>-P, --newpath <replaceable>newlxcpath</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -203,7 +203,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-B, --backingstore <replaceable>fssize</replaceable></option>
+	  <option>-B, --backingstore <replaceable>backingstore</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
