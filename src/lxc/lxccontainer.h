@@ -649,7 +649,7 @@ struct lxc_container {
 	 * \brief Create a container snapshot.
 	 *
 	 * Assuming default paths, snapshots will be created as
-	 * \c /var/lib/lxc/lxcsnaps/\<c\>/snap\<n\>
+	 * \c /var/lib/lxcsnaps/\<c\>/snap\<n\>
 	 * where \c \<c\> represents the container name and \c \<n\>
 	 * represents the zero-based snapshot number.
 	 *
@@ -691,7 +691,7 @@ struct lxc_container {
 	 *  fail if the  snapshot is overlay-based, since the snapshots
 	 *  will pin the original container.
 	 * \note As an example, if the container exists as \c /var/lib/lxc/c1, snapname might be \c 'snap0'
-	 *  (representing \c /var/lib/lxc/lxcsnaps/c1/snap0). If \p newname is \p c2,
+	 *  (representing \c /var/lib/lxcsnaps/c1/snap0). If \p newname is \p c2,
 	 *  then \c snap0 will be copied to \c /var/lib/lxc/c2.
 	 */
 	bool (*snapshot_restore)(struct lxc_container *c, const char *snapname, const char *newname);

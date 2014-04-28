@@ -2823,42 +2823,16 @@ static int get_next_index(const char *lxcpath, char *cname)
 	}
 }
 
-static bool get_snappath_dir(struct lxc_container *c, char *snappath)
-{
-	int ret;
-	/*
-	 * If the old style snapshot path exists, use it
-	 * /var/lib/lxc -> /var/lib/lxcsnaps
-	 */
-	ret = snprintf(snappath, MAXPATHLEN, "%ssnaps", c->config_path);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return false;
-	if (dir_exists(snappath)) {
-		ret = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
-		if (ret < 0 || ret >= MAXPATHLEN)
-			return false;
-		return true;
-	}
-
-	/*
-	 * Use the new style path
-	 * /var/lib/lxc -> /var/lib/lxc + /lxcsnaps/ + c->name + \0
-	 */
-	ret = snprintf(snappath, MAXPATHLEN, "%s/lxcsnaps/%s", c->config_path, c->name);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return false;
-	return true;
-}
-
 static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 {
 	int i, flags, ret;
 	struct lxc_container *c2;
 	char snappath[MAXPATHLEN], newname[20];
 
-	if (!get_snappath_dir(c, snappath)) {
+	// /var/lib/lxc -> /var/lib/lxcsnaps \0
+	ret = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN)
 		return -1;
-	}
 	i = get_next_index(snappath, c->name);
 
 	if (mkdir_p(snappath, 0755) < 0) {
@@ -2992,7 +2966,7 @@ static char *get_timestamp(char* snappath, char *name)
 static int lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **ret_snaps)
 {
 	char snappath[MAXPATHLEN], path2[MAXPATHLEN];
-	int count = 0, ret;
+	int dirlen, count = 0, ret;
 	struct dirent dirent, *direntp;
 	struct lxc_snapshot *snaps =NULL, *nsnaps;
 	DIR *dir;
@@ -3000,7 +2974,9 @@ static int lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **r
 	if (!c || !lxcapi_is_defined(c))
 		return -1;
 
-	if (!get_snappath_dir(c, snappath)) {
+	// snappath is ${lxcpath}snaps/${lxcname}/
+	dirlen = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
+	if (dirlen < 0 || dirlen >= MAXPATHLEN) {
 		ERROR("path name too long");
 		return -1;
 	}
@@ -3068,7 +3044,7 @@ out_free:
 static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapname, const char *newname)
 {
 	char clonelxcpath[MAXPATHLEN];
-	int flags = 0;
+	int flags = 0,ret;
 	struct lxc_container *snap, *rest;
 	struct bdev *bdev;
 	bool b = false;
@@ -3091,7 +3067,8 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapnam
 			return false;
 		}
 	}
-	if (!get_snappath_dir(c, clonelxcpath)) {
+	ret = snprintf(clonelxcpath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN) {
 		bdev_put(bdev);
 		return false;
 	}
@@ -3306,12 +3283,6 @@ static int lxcapi_attach_run_waitl(struct lxc_container *c, lxc_attach_options_t
 struct lxc_container *lxc_container_new(const char *name, const char *configpath)
 {
 	struct lxc_container *c;
-
-	if (!name)
-		return NULL;
-
-	if (strcmp(name, "lxcsnaps") == 0)
-		return NULL;
 
 	c = malloc(sizeof(*c));
 	if (!c) {
