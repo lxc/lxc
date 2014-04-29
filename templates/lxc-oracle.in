@@ -349,9 +349,6 @@ EOF
     # this file has to exist for libvirt/Virtual machine monitor to boot the container
     touch $container_rootfs/etc/mtab
 
-    # don't put devpts,proc, nor sysfs in here, it will already be mounted for us by lxc/libvirt
-    echo "" >$container_rootfs/etc/fstab
-
     # setup console and tty[1-4] for login. note that /dev/console and
     # /dev/tty[1-4] will be symlinks to the ptys /dev/lxc/console and
     # /dev/lxc/tty[1-4] so that package updates can overwrite the symlinks.
@@ -415,41 +412,6 @@ start on power-status-changed
 
 exec init 0
 EOF
-    fi
-
-    # create required devices. note that /dev/console will be created by lxc
-    # or libvirt itself to be a symlink to the right pty.
-    # take care to not nuke /dev in case $container_rootfs isn't set
-    dev_path="$container_rootfs/dev"
-    if [ $container_rootfs != "/" -a -d $dev_path ]; then
-        rm -rf $dev_path
-        mkdir -p $dev_path
-        if can_chcon; then
-            # ensure symlinks created in /dev have the right context
-            chcon -t device_t $dev_path
-        fi
-    fi
-    mknod -m 666  $dev_path/null c 1 3
-    mknod -m 666  $dev_path/zero c 1 5
-    mknod -m 666  $dev_path/random c 1 8
-    mknod -m 666  $dev_path/urandom c 1 9
-    mkdir -m 755  $dev_path/pts
-    mkdir -m 1777 $dev_path/shm
-    mknod -m 666  $dev_path/tty c 5 0
-    mknod -m 666  $dev_path/tty1 c 4 1
-    mknod -m 666  $dev_path/tty2 c 4 2
-    mknod -m 666  $dev_path/tty3 c 4 3
-    mknod -m 666  $dev_path/tty4 c 4 4
-    mknod -m 666  $dev_path/full c 1 7
-    mknod -m 600  $dev_path/initctl p
-
-    # set selinux labels same as host
-    if can_chcon; then
-        for node in null zero random urandom pts shm \
-                    tty tty0 tty1 tty2 tty3 tty4 full ;
-        do
-            chcon --reference /dev/$node $dev_path/$node 2>/dev/null
-        done
     fi
 
     # start with a clean /var/log/messages
@@ -550,8 +512,50 @@ container_rootfs_repo_create()
     fi
 }
 
+container_rootfs_dev_create()
+{
+    # create required devices. note that /dev/console will be created by lxc
+    # or libvirt itself to be a symlink to the right pty.
+    # take care to not nuke /dev in case $container_rootfs isn't set
+    dev_path="$container_rootfs/dev"
+    if [ $container_rootfs != "/" -a -d $dev_path ]; then
+        rm -rf $dev_path
+    fi
+    mkdir -p $dev_path
+    if can_chcon; then
+        # ensure symlinks created in /dev have the right context
+        chcon -t device_t $dev_path
+    fi
+    mknod -m 666  $dev_path/null c 1 3
+    mknod -m 666  $dev_path/zero c 1 5
+    mknod -m 666  $dev_path/random c 1 8
+    mknod -m 666  $dev_path/urandom c 1 9
+    mkdir -m 755  $dev_path/pts
+    mkdir -m 1777 $dev_path/shm
+    mknod -m 666  $dev_path/tty c 5 0
+    mknod -m 666  $dev_path/tty1 c 4 1
+    mknod -m 666  $dev_path/tty2 c 4 2
+    mknod -m 666  $dev_path/tty3 c 4 3
+    mknod -m 666  $dev_path/tty4 c 4 4
+    mknod -m 666  $dev_path/full c 1 7
+    mknod -m 600  $dev_path/initctl p
+
+    # set selinux labels same as host
+    if can_chcon; then
+        for node in null zero random urandom pts shm \
+                    tty tty0 tty1 tty2 tty3 tty4 full ;
+        do
+            chcon --reference /dev/$node $dev_path/$node 2>/dev/null
+        done
+    fi
+}
+
 container_rootfs_create()
 {
+    if can_chcon; then
+        chcon --reference / $container_rootfs 2>/dev/null
+    fi
+
     cmds="rpm wget yum"
     if [ $container_release_major -lt "6" ]; then
         if [ $host_distribution = "Ubuntu" -o $host_distribution = "Debian" ]; then
@@ -653,6 +657,11 @@ container_rootfs_create()
             sed -i "s|enabled=1|enabled=0|" $container_rootfs/etc/yum.repos.d/$repofile
             sed -i "/\[$repo\]/,/\[/ s/enabled=0/enabled=1/" $container_rootfs/etc/yum.repos.d/$repofile
         fi
+
+        container_rootfs_dev_create
+
+        # don't put devpts,proc, nor sysfs in here, it will already be mounted for us by lxc/libvirt
+        echo "" >$container_rootfs/etc/fstab
 
         # create rpm db, download and yum install minimal packages
         mkdir -p $container_rootfs/var/lib/rpm
