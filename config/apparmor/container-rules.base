@@ -8,6 +8,8 @@ allow /sys/devices/virtual/net/**
 allow /sys/class/net/**
 block /proc/sys
 allow /proc/sys/kernel/shm*
+allow /proc/sys/kernel/sem*
+allow /proc/sys/kernel/msg*
 allow /proc/sys/kernel/hostname
 allow /proc/sys/kernel/domainname
 allow /proc/sys/net/**
