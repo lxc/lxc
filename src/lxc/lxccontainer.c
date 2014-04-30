@@ -555,7 +555,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 	FILE *pid_fp = NULL;
 	char *default_args[] = {
 		"/sbin/init",
-		'\0',
+		NULL,
 	};
 
 	/* container exists */
