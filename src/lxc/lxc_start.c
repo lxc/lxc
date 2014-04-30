@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
 	char *rcfile = NULL;
 	char *const default_args[] = {
 		"/sbin/init",
-		'\0',
+		NULL,
 	};
 	struct lxc_container *c;
 

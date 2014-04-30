@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
 	struct lxc_list *it, *next;
 	char *const default_start_args[] = {
 		"/sbin/init",
-		'\0',
+		NULL,
 	};
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
