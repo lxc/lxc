@@ -56,6 +56,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">--stopped</arg>
       <arg choice="opt">-f</arg>
       <arg choice="opt">-F <replaceable>format</replaceable></arg>
+      <arg choice="opt">-g <replaceable>groups</replaceable></arg>
       <arg choice="opt">--nesting</arg>
       <arg choice="opt">filter</arg>
     </cmdsynopsis>
@@ -146,6 +147,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <para>
             Comma separate list of column to show in the fancy output.
             The list of accepted and default fields is listed in --help.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-g, --groups <replaceable>groups</replaceable></optional></option>
+        </term>
+        <listitem>
+          <para>
+            Comma separated list of groups the container must have to be displayed.
+            The parameter may be passed multiple times.
           </para>
         </listitem>
       </varlistentry>

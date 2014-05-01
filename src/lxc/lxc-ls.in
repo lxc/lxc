@@ -103,8 +103,8 @@ def get_root_path(path):
 
 # Constants
 FIELDS = ("name", "state", "interfaces", "ipv4", "ipv6", "autostart", "pid",
-          "memory", "ram", "swap")
-DEFAULT_FIELDS = ("name", "state", "ipv4", "ipv6", "autostart")
+          "memory", "ram", "swap", "groups")
+DEFAULT_FIELDS = ("name", "state", "ipv4", "ipv6", "groups", "autostart")
 
 # Begin parsing the command line
 parser = argparse.ArgumentParser(description=_("LXC: List containers"),
@@ -140,6 +140,11 @@ parser.add_argument("-f", "--fancy", action="store_true",
 parser.add_argument("-F", "--fancy-format", type=str,
                     default=",".join(DEFAULT_FIELDS),
                     help=_("comma separated list of fields to show"))
+
+parser.add_argument("-g", "--groups", type=str, action="append",
+                    metavar="GROUPS",
+                    help=_("groups (comma separated) the container must "
+                           "be a member of"))
 
 parser.add_argument("--nesting", dest="nesting", action="store_true",
                     help=_("show nested containers"))
@@ -189,6 +194,10 @@ if args.nesting:
         parser.error(_("Showing nested containers requires setns to the "
                        "PID namespace which your kernel doesn't support."))
 
+## Check that -g is passed alongside -f
+if args.groups and not args.fancy:
+    parser.error(_("Group filtering requires fancy formatting."))
+
 # Set the actual lxcpath value
 if not args.lxcpath:
     args.lxcpath = lxc.default_config_path
@@ -229,6 +238,19 @@ def get_containers(fd=None, base="/", root=False):
             except:
                 continue
 
+            if args.groups:
+                try:
+                    set_has = set(container.get_config_item("lxc.group"))
+                except KeyError:
+                    set_has = set()
+
+                for group in args.groups:
+                    set_must = set(group.split(","))
+                    if not set_must - set_has:
+                        break
+                else:
+                    continue
+
             if container.controllable:
                 state = container.state
             else:
@@ -254,15 +276,20 @@ def get_containers(fd=None, base="/", root=False):
                 elif container.init_pid != -1:
                     entry['pid'] = str(container.init_pid)
 
+            if 'groups' in args.fancy_format:
+                entry['groups'] = "-"
+                try:
+                    groups = container.get_config_item("lxc.group")
+                    if len(groups) > 0:
+                        entry['groups'] = ", ".join(groups)
+                except KeyError:
+                    pass
+
             if 'autostart' in args.fancy_format:
                 entry['autostart'] = "NO"
                 try:
                     if container.get_config_item("lxc.start.auto") == "1":
                         entry['autostart'] = "YES"
-
-                        groups = container.get_config_item("lxc.group")
-                        if len(groups) > 0:
-                            entry['autostart'] = "YES (%s)" % ", ".join(groups)
                 except KeyError:
                     pass
 
