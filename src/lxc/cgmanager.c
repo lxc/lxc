@@ -107,6 +107,7 @@ static void process_lock_setup_atfork(void)
 #endif
 
 static NihDBusProxy *cgroup_manager = NULL;
+static int32_t api_version;
 
 static struct cgroup_ops cgmanager_ops;
 static int nr_subsystems;
@@ -162,11 +163,11 @@ static bool cgm_dbus_connect(void)
 		return false;
 	}
 
-	// force fd passing negotiation
-	if (cgmanager_ping_sync(NULL, cgroup_manager, 0) != 0) {
+	// get the api version
+	if (cgmanager_get_api_version_sync(NULL, cgroup_manager, &api_version) != 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
-		ERROR("Error pinging cgroup manager: %s", nerr->message);
+		ERROR("Error cgroup manager api version: %s", nerr->message);
 		nih_free(nerr);
 		cgm_dbus_disconnect();
 		return false;
@@ -554,13 +555,21 @@ bad:
  * Internal helper, must be called with cgmanager dbus socket open
  */
 static bool lxc_cgmanager_enter(pid_t pid, const char *controller,
-		const char *cgroup_path)
+		const char *cgroup_path, bool abs)
 {
-	if (cgmanager_move_pid_sync(NULL, cgroup_manager, controller,
-			cgroup_path, pid) != 0) {
+	int ret;
+
+	if (abs)
+		ret = cgmanager_move_pid_abs_sync(NULL, cgroup_manager,
+			controller, cgroup_path, pid);
+	else
+		ret = cgmanager_move_pid_sync(NULL, cgroup_manager,
+			controller, cgroup_path, pid);
+	if (ret != 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
-		ERROR("call to cgmanager_move_pid_sync failed: %s", nerr->message);
+		ERROR("call to cgmanager_move_pid_%ssync failed: %s",
+			abs ? "abs_" : "", nerr->message);
 		nih_free(nerr);
 		return false;
 	}
@@ -568,12 +577,12 @@ static bool lxc_cgmanager_enter(pid_t pid, const char *controller,
 }
 
 /* Internal helper, must be called with cgmanager dbus socket open */
-static bool do_cgm_enter(pid_t pid, const char *cgroup_path)
+static bool do_cgm_enter(pid_t pid, const char *cgroup_path, bool abs)
 {
 	int i;
 
 	for (i = 0; i < nr_subsystems; i++) {
-		if (!lxc_cgmanager_enter(pid, subsystems[i], cgroup_path))
+		if (!lxc_cgmanager_enter(pid, subsystems[i], cgroup_path, abs))
 			return false;
 	}
 	return true;
@@ -590,7 +599,7 @@ static inline bool cgm_enter(void *hdata, pid_t pid)
 	}
 	if (!d || !d->cgroup_path)
 		goto out;
-	if (do_cgm_enter(pid, d->cgroup_path))
+	if (do_cgm_enter(pid, d->cgroup_path, false))
 		ret = true;
 out:
 	cgm_dbus_disconnect();
@@ -604,6 +613,41 @@ static const char *cgm_get_cgroup(void *hdata, const char *subsystem)
 	if (!d || !d->cgroup_path)
 		return NULL;
 	return d->cgroup_path;
+}
+
+#if HAVE_CGMANAGER_GET_PID_CGROUP_ABS_SYNC
+static inline bool abs_cgroup_supported(void) {
+	return api_version >= 3;
+}
+#else
+static inline bool abs_cgroup_supported(void) {
+	return false;
+}
+#define cgmanager_get_pid_cgroup_abs_sync(...) -1
+#endif
+
+static char *try_get_abs_cgroup(const char *name, const char *lxcpath,
+		const char *controller)
+{
+	char *cgroup = NULL;
+
+	if (abs_cgroup_supported()) {
+		/* get the container init pid and ask for its abs cgroup */
+		pid_t pid = lxc_cmd_get_init_pid(name, lxcpath);
+		if (pid < 0)
+			return NULL;
+		if (cgmanager_get_pid_cgroup_abs_sync(NULL, cgroup_manager,
+				controller, pid, &cgroup) != 0) {
+			cgroup = NULL;
+			NihError *nerr;
+			nerr = nih_error_get();
+			nih_free(nerr);
+		}
+		return cgroup;
+	}
+
+	/* use the command interface to look for the cgroup */
+	return lxc_cmd_get_cgroup_path(name, lxcpath, controller);
 }
 
 /*
@@ -641,10 +685,20 @@ out:
 	return pids_len;
 }
 
+static inline void free_abs_cgroup(char *cgroup)
+{
+	if (!cgroup)
+		return;
+	if (abs_cgroup_supported())
+		nih_free(cgroup);
+	else
+		free(cgroup);
+}
+
 /* cgm_get is called to get container cgroup settings, not during startup */
 static int cgm_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
 {
-	char *result, *controller, *key, *cgroup;
+	char *result, *controller, *key, *cgroup = NULL;
 	size_t newlen;
 
 	controller = alloca(strlen(filename)+1);
@@ -654,14 +708,17 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		return -1;
 	*key = '\0';
 
-	/* use the command interface to look for the cgroup */
-	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
-	if (!cgroup)
-		return -1;
 	if (!cgm_dbus_connect()) {
 		ERROR("Error connecting to cgroup manager");
 		return -1;
 	}
+
+	cgroup = try_get_abs_cgroup(name, lxcpath, controller);
+	if (!cgroup) {
+		cgm_dbus_disconnect();
+		return -1;
+	}
+
 	if (cgmanager_get_value_sync(NULL, cgroup_manager, controller, cgroup, filename, &result) != 0) {
 		/*
 		 * must consume the nih error
@@ -671,12 +728,12 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		NihError *nerr;
 		nerr = nih_error_get();
 		nih_free(nerr);
-		free(cgroup);
+		free_abs_cgroup(cgroup);
 		cgm_dbus_disconnect();
 		return -1;
 	}
 	cgm_dbus_disconnect();
-	free(cgroup);
+	free_abs_cgroup(cgroup);
 	newlen = strlen(result);
 	if (!len || !value) {
 		// user queries the size
@@ -717,7 +774,7 @@ static int cgm_do_set(const char *controller, const char *file,
 /* cgm_set is called to change cgroup settings, not during startup */
 static int cgm_set(const char *filename, const char *value, const char *name, const char *lxcpath)
 {
-	char *controller, *key, *cgroup;
+	char *controller, *key, *cgroup = NULL;
 	int ret;
 
 	controller = alloca(strlen(filename)+1);
@@ -727,21 +784,21 @@ static int cgm_set(const char *filename, const char *value, const char *name, co
 		return -1;
 	*key = '\0';
 
-	/* use the command interface to look for the cgroup */
-	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
-	if (!cgroup) {
-		ERROR("Failed to get cgroup for controller %s for %s:%s",
-			controller, lxcpath, name);
-		return -1;
-	}
 	if (!cgm_dbus_connect()) {
 		ERROR("Error connecting to cgroup manager");
 		free(cgroup);
 		return false;
 	}
+	cgroup = try_get_abs_cgroup(name, lxcpath, controller);
+	if (!cgroup) {
+		ERROR("Failed to get cgroup for controller %s for %s:%s",
+			controller, lxcpath, name);
+		cgm_dbus_disconnect();
+		return -1;
+	}
 	ret = cgm_do_set(controller, filename, cgroup, value);
 	cgm_dbus_disconnect();
-	free(cgroup);
+	free_abs_cgroup(cgroup);
 	return ret;
 }
 
@@ -947,36 +1004,29 @@ static bool cgm_chown(void *hdata, struct lxc_conf *conf)
  */
 static bool cgm_attach(const char *name, const char *lxcpath, pid_t pid)
 {
-	bool pass = false;
+	bool pass;
 	char *cgroup = NULL;
-	struct lxc_container *c;
 
-	c = lxc_container_new(name, lxcpath);
-	if (!c) {
-		ERROR("Could not load container %s:%s", lxcpath, name);
+	if (!cgm_dbus_connect()) {
+		ERROR("Error connecting to cgroup manager");
 		return false;
 	}
 	// cgm_create makes sure that we have the same cgroup name for all
 	// subsystems, so since this is a slow command over the cmd socket,
 	// just get the cgroup name for the first one.
-	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, subsystems[0]);
+	cgroup = try_get_abs_cgroup(name, lxcpath, subsystems[0]);
 	if (!cgroup) {
 		ERROR("Failed to get cgroup for controller %s", subsystems[0]);
-		goto out;
+		cgm_dbus_disconnect();
+		return false;
 	}
 
-	if (!cgm_dbus_connect()) {
-		ERROR("Error connecting to cgroup manager");
-		goto out;
-	}
-	pass = do_cgm_enter(pid, cgroup);
+	pass = do_cgm_enter(pid, cgroup, abs_cgroup_supported());
 	cgm_dbus_disconnect();
 	if (!pass)
 		ERROR("Failed to enter group %s", cgroup);
 
-out:
-	free(cgroup);
-	lxc_container_put(c);
+	free_abs_cgroup(cgroup);
 	return pass;
 }
 

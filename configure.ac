@@ -256,6 +256,14 @@ AM_COND_IF([ENABLE_CGMANAGER],
 	PKG_CHECK_MODULES([DBUS], [dbus-1 >= 1.2.16])
 	])
 
+AC_MSG_CHECKING(for get_pid_cgroup_abs_sync)
+AC_SEARCH_LIBS([cgmanager_get_pid_cgroup_abs_sync], [cgmanager], [have_abs_cgroups=yes], [have_abs_cgroups=no], [-lnih -lnih-dbus -ldbus-1])
+if test "x$have_abs_cgroups" = "xyes"; then
+	AC_DEFINE([HAVE_CGMANAGER_GET_PID_CGROUP_ABS_SYNC], 1, [Have cgmanager_get_pid_cgroup_abs_sync])
+	AC_MSG_RESULT([yes])
+else
+	AC_MSG_RESULT([no])
+fi
 # Linux capabilities
 AC_ARG_ENABLE([capabilities],
 	[AC_HELP_STRING([--enable-capabilities], [enable kernel capabilities support [default=auto]])],
