@@ -218,6 +218,9 @@ int main(int argc, char *argv[])
 	if (!validate_bdev_args(&my_args))
 		exit(1);
 
+	if (strcmp(my_args.bdevtype, "none") == 0)
+		my_args.bdevtype = "dir";
+
 	if (geteuid()) {
 		if (mkdir_p(my_args.lxcpath[0], 0755)) {
 			exit(1);
