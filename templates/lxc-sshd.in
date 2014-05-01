@@ -218,7 +218,7 @@ fi
 if [ $0 = "/sbin/init" ]; then
 
     PATH="$PATH:/bin:/sbin:/usr/sbin"
-    check_for_cmd @LXCINITDIR@/lxc/lxc-init
+    check_for_cmd @SBINDIR@/init.lxc
     check_for_cmd sshd
     sshd_path=$cmd_path
 
@@ -237,7 +237,7 @@ EOF
         ifconfig eth0 |grep inet
     fi
 
-    exec @LXCINITDIR@/lxc/lxc-init -- $sshd_path
+    exec @SBINDIR@/init.lxc -- $sshd_path
     exit 1
 fi
 
