@@ -1413,6 +1413,14 @@ static bool cgroupfs_mount_cgroup(void *hdata, const char *root, int type)
 				SYSERROR("error bind-mounting %s to %s", mp->mount_point, abs_path);
 				goto out_error;
 			}
+			/* main cgroup path should be read-only */
+			if (type == LXC_AUTO_CGROUP_FULL_RO || type == LXC_AUTO_CGROUP_FULL_MIXED) {
+				r = mount(NULL, abs_path, NULL, MS_REMOUNT|MS_BIND|MS_RDONLY, NULL);
+				if (r < 0) {
+					SYSERROR("error re-mounting %s readonly", abs_path);
+					goto out_error;
+				}
+			}
 			/* own cgroup should be read-write */
 			if (type == LXC_AUTO_CGROUP_FULL_MIXED) {
 				r = mount(abs_path2, abs_path2, NULL, MS_BIND, NULL);
@@ -1478,6 +1486,14 @@ static bool cgroupfs_mount_cgroup(void *hdata, const char *root, int type)
 		dirname = NULL;
 		parts = NULL;
 	}
+
+	/* try to remount the tmpfs readonly, since the container shouldn't
+	 * change anything (this will also make sure that trying to create
+	 * new cgroups outside the allowed area fails with an error instead
+	 * of simply causing this to create directories in the tmpfs itself)
+	 */
+	if (type != LXC_AUTO_CGROUP_RW && type != LXC_AUTO_CGROUP_FULL_RW)
+		mount(NULL, path, NULL, MS_REMOUNT|MS_RDONLY, NULL);
 
 	free(path);
 
