@@ -217,7 +217,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
 	<term>
-	  <option>-p, --lxcpath <replaceable>fssize</replaceable></option>
+	  <option>-p, --lxcpath <replaceable>lxcpath</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -232,7 +232,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
 	<term>
-	  <option>-P, --newpath <replaceable>fssize</replaceable></option>
+	  <option>-P, --newpath <replaceable>newlxcpath</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -252,7 +252,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
 	<term>
-	  <option>-B, --backingstore <replaceable>fssize</replaceable></option>
+	  <option>-B, --backingstore <replaceable>backingstore</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
