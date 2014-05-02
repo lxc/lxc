@@ -235,11 +235,15 @@ def get_containers(fd=None, base="/", root=False):
             except:
                 continue
 
-            if args.groups:
+            if args.groups or "autostart" in args.fancy_format \
+                    or "groups" in args.fancy_format:
                 try:
-                    set_has = set(container.get_config_item("lxc.group"))
+                    groups = container.get_config_item("lxc.group")
                 except KeyError:
-                    set_has = set()
+                    groups = []
+
+            if args.groups:
+                set_has = set(groups)
 
                 for group in args.groups:
                     set_must = set(group.split(","))
@@ -275,18 +279,17 @@ def get_containers(fd=None, base="/", root=False):
 
             if 'groups' in args.fancy_format:
                 entry['groups'] = "-"
-                try:
-                    groups = container.get_config_item("lxc.group")
-                    if len(groups) > 0:
-                        entry['groups'] = ", ".join(groups)
-                except KeyError:
-                    pass
+                if len(groups) > 0:
+                    entry['groups'] = ", ".join(groups)
 
             if 'autostart' in args.fancy_format:
                 entry['autostart'] = "NO"
                 try:
                     if container.get_config_item("lxc.start.auto") == "1":
-                        entry['autostart'] = "YES"
+                        if len(groups) > 0:
+                            entry['autostart'] = "BY-GROUP"
+                        else:
+                            entry['autostart'] = "YES"
                 except KeyError:
                     pass
 
