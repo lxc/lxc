@@ -61,6 +61,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">--stopped</arg>
       <arg choice="opt">-f</arg>
       <arg choice="opt">-F <replaceable>format</replaceable></arg>
+      <arg choice="opt">-g <replaceable>groups</replaceable></arg>
       <arg choice="opt">--nesting</arg>
       <arg choice="opt">filter</arg>
     </cmdsynopsis>
@@ -175,6 +176,21 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             The list of accepted and default fields is listed in \-\-help.
             -->
             装飾付き出力で表示するカラムのコンマ区切りのリスト。デフォルトで表示される項目と指定可能な項目名は --help オプションで確認してください。
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-g, --groups <replaceable>groups</replaceable></optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Comma separated list of groups the container must have to be displayed.
+            The parameter may be passed multiple times.
+            -->
+            表示させるコンテナグループのコンマ区切りのリスト。このオプションは複数回指定することもできます。
           </para>
         </listitem>
       </varlistentry>
