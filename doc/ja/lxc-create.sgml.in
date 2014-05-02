@@ -156,13 +156,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	<listitem>
           <para>
             <!--
-	    'backingstore' is one of 'none', 'dir', 'lvm', 'loop', 'btrfs', or 'best'.  The
-	    default is 'none', meaning that the container root filesystem
+	    'backingstore' is one of 'dir', 'lvm', 'loop', 'btrfs', or 'best'.  The
+	    default is 'dir', meaning that the container root filesystem
 	    will be a directory under <filename>@LXCPATH@/container/rootfs</filename>.
-	    'dir' has the same meaning as 'none', but also allows the optional
+	    This backing store type allows the optional
 	    <replaceable>&#045;&#045;dir ROOTFS</replaceable> to be specified, meaning
 	    that the container rootfs should be placed under the specified path,
-	    rather than the default.  If 'btrfs' is specified, then the
+	    rather than the default.  (The 'none' backingstore type is an alias for
+	    'dir'.)  If 'btrfs' is specified, then the
 	    target filesystem must be btrfs, and the container rootfs will be
 	    created as a new subvolume.  This allows snapshotted clones to be
 	    created, but also causes rsync &#045;&#045;one-filesystem to treat it as a
@@ -183,10 +184,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <replaceable>&#045;&#045;fssize SIZE</replaceable> will create a LV (and
 	    filesystem) of size SIZE rather than the default, which is 1G.
             -->
-            'backingstore' には 'none' か 'dir' か 'lvm' か 'btrfs' か 'best' のいずれかを指定します。
-            デフォルトは 'none' で、コンテナのルートファイルシステムが <filename>@LXCPATH@/container/rootfs</filename> 以下のディレクトリであることを意味します。
-'dir' は 'none' と同じ意味ですが、オプションとして <replaceable>--dir ROOTFS</replaceable> を指定することも可能です。
+            'backingstore' には 'dir' か 'lvm' か 'loop' か 'btrfs' か 'best' のいずれかを指定します。
+            デフォルトは 'dir' で、コンテナのルートファイルシステムが <filename>@LXCPATH@/container/rootfs</filename> 以下のディレクトリであることを意味します。
+            'dir' にはオプションとして <replaceable>--dir ROOTFS</replaceable> を指定することも可能です。
             このオプションは、デフォルトの代わりに特定のパス以下にコンテナの rootfs を置くということになります。
+            ('none' は 'dir' のエイリアスです。)
             'btrfs' が指定された場合、ターゲットのファイルシステムは btrfs でなければいけません。
             そして、コンテナの rootfs は新しい subvolume として作製されます。
             このことにより、スナップショットによるクローンが作製可能になりますが、結果として rsync --one-filesystem が、別々のファイルシステムとして取り扱ってしまうことにもなります。
