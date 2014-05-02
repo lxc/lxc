@@ -194,10 +194,6 @@ if args.nesting:
         parser.error(_("Showing nested containers requires setns to the "
                        "PID namespace which your kernel doesn't support."))
 
-## Check that -g is passed alongside -f
-if args.groups and not args.fancy:
-    parser.error(_("Group filtering requires fancy formatting."))
-
 # Set the actual lxcpath value
 if not args.lxcpath:
     args.lxcpath = lxc.default_config_path
@@ -229,7 +225,8 @@ def get_containers(fd=None, base="/", root=False):
                 continue
 
             # Return before grabbing the object (non-root)
-            if not args.state and not args.fancy and not args.nesting:
+            if not args.state and not args.fancy and not args.nesting \
+                    and not args.groups:
                 containers.append(entry)
                 continue
 
