@@ -178,6 +178,9 @@ if ENABLE_LUA
 bin_SCRIPTS += lxc-top
 endif
 
+bin_SCRIPTS += legacy/lxc-guestsetup-addfile \
+               legacy/lxc-guestsetup-addpackage
+
 bin_PROGRAMS = \
 	lxc-attach \
 	lxc-autostart \
