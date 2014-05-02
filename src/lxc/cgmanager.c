@@ -758,39 +758,53 @@ static void free_subsystems(void)
 
 static bool collect_subsytems(void)
 {
-	char *line = NULL, *tab1;
+	char *line = NULL;
 	size_t sz = 0;
 	FILE *f;
 
 	if (subsystems) // already initialized
 		return true;
 
-	f = fopen_cloexec("/proc/cgroups", "r");
+	f = fopen_cloexec("/proc/self/cgroup", "r");
 	if (!f) {
-		return false;
+		f = fopen_cloexec("/proc/1/cgroup", "r");
+		if (!f)
+			return false;
 	}
 	while (getline(&line, &sz, f) != -1) {
-		char **tmp;
-		if (line[0] == '#')
-			continue;
+		/* file format: hierarchy:subsystems:group,
+		 * with multiple subsystems being ,-separated */
+		char *slist, *end, *p, *saveptr = NULL, **tmp;
+
 		if (!line[0])
 			continue;
-		tab1 = strchr(line, '\t');
-		if (!tab1)
-			continue;
-		*tab1 = '\0';
-		tmp = realloc(subsystems, (nr_subsystems+1)*sizeof(char *));
-		if (!tmp)
-			goto out_free;
 
-		subsystems = tmp;
-		tmp[nr_subsystems] = strdup(line);
-		if (!tmp[nr_subsystems])
-			goto out_free;
-		nr_subsystems++;
+		slist = strchr(line, ':');
+		if (!slist)
+			continue;
+		slist++;
+		end = strchr(slist, ':');
+		if (!end)
+			continue;
+		*end = '\0';
+
+		for (p = strtok_r(slist, ",", &saveptr);
+				p;
+				p = strtok_r(NULL, ",", &saveptr)) {
+			tmp = realloc(subsystems, (nr_subsystems+1)*sizeof(char *));
+			if (!tmp)
+				goto out_free;
+
+			subsystems = tmp;
+			tmp[nr_subsystems] = strdup(p);
+			if (!tmp[nr_subsystems])
+				goto out_free;
+			nr_subsystems++;
+		}
 	}
 	fclose(f);
 
+	free(line);
 	if (!nr_subsystems) {
 		ERROR("No cgroup subsystems found");
 		return false;
@@ -799,6 +813,7 @@ static bool collect_subsytems(void)
 	return true;
 
 out_free:
+	free(line);
 	fclose(f);
 	free_subsystems();
 	return false;
