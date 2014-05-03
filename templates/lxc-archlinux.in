@@ -111,6 +111,8 @@ for i in systemd-udevd.service \
 done
 # set default systemd target
 ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+# enable sigpwr signal handling in systemd as otherwise lxc-stop won't work
+ln -s /usr/lib/systemd/system/poweroff.target /etc/systemd/system/sigpwr.target
 # initialize pacman keyring
 pacman-key --init
 pacman-key --populate archlinux
