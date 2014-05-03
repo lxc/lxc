@@ -812,6 +812,26 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	      </listitem>
 	    </itemizedlist>
 	    <para>
+	      Note that if automatic mounting of the cgroup filesystem
+	      is enabled, the tmpfs under
+	      <filename>/sys/fs/cgroup</filename> will always be
+	      mounted read-write (but for the <option>:mixed</option>
+	      and <option>:ro</option> cases, the individual
+	      hierarchies,
+	      <filename>/sys/fs/cgroup/$hierarchy</filename>, will be
+	      read-only). This is in order to work around a quirk in
+	      Ubuntu's
+              <citerefentry>
+		<refentrytitle>mountall</refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>
+	      command that will cause containers to wait for user
+	      input at boot if
+	      <filename>/sys/fs/cgroup</filename> is mounted read-only
+	      and the container can't remount it read-write due to a
+	      lack of CAP_SYS_ADMIN.
+	    </para>
+	    <para>
 	      Examples:
 	    </para>
 	    <programlisting>
