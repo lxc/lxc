@@ -2160,42 +2160,49 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list 
 	return ret;
 }
 
+static int parse_cap(const char *cap)
+{
+	char *ptr = NULL;
+	int i, capid = -1;
+
+	for (i = 0; i < sizeof(caps_opt)/sizeof(caps_opt[0]); i++) {
+
+		if (strcmp(cap, caps_opt[i].name))
+			continue;
+
+		capid = caps_opt[i].value;
+		break;
+	}
+
+	if (capid < 0) {
+		/* try to see if it's numeric, so the user may specify
+		 * capabilities  that the running kernel knows about but
+		 * we don't */
+		errno = 0;
+		capid = strtol(cap, &ptr, 10);
+		if (!ptr || *ptr != '\0' || errno != 0)
+			/* not a valid number */
+			capid = -1;
+		else if (capid > lxc_caps_last_cap())
+			/* we have a number but it's not a valid
+			 * capability */
+			capid = -1;
+	}
+
+	return capid;
+}
+
 static int setup_caps(struct lxc_list *caps)
 {
 	struct lxc_list *iterator;
 	char *drop_entry;
-	char *ptr;
-	int i, capid;
+	int capid;
 
 	lxc_list_for_each(iterator, caps) {
 
 		drop_entry = iterator->elem;
 
-		capid = -1;
-
-		for (i = 0; i < sizeof(caps_opt)/sizeof(caps_opt[0]); i++) {
-
-			if (strcmp(drop_entry, caps_opt[i].name))
-				continue;
-
-			capid = caps_opt[i].value;
-			break;
-		}
-
-		if (capid < 0) {
-			/* try to see if it's numeric, so the user may specify
-			* capabilities  that the running kernel knows about but
-			* we don't */
-			errno = 0;
-			capid = strtol(drop_entry, &ptr, 10);
-			if (!ptr || *ptr != '\0' || errno != 0)
-				/* not a valid number */
-				capid = -1;
-			else if (capid > lxc_caps_last_cap())
-				/* we have a number but it's not a valid
-				* capability */
-				capid = -1;
-		}
+		capid = parse_cap(drop_entry);
 
 	        if (capid < 0) {
 			ERROR("unknown capability %s", drop_entry);
@@ -2220,7 +2227,6 @@ static int dropcaps_except(struct lxc_list *caps)
 {
 	struct lxc_list *iterator;
 	char *keep_entry;
-	char *ptr;
 	int i, capid;
 	int numcaps = lxc_caps_last_cap() + 1;
 	INFO("found %d capabilities", numcaps);
@@ -2236,31 +2242,7 @@ static int dropcaps_except(struct lxc_list *caps)
 
 		keep_entry = iterator->elem;
 
-		capid = -1;
-
-		for (i = 0; i < sizeof(caps_opt)/sizeof(caps_opt[0]); i++) {
-
-			if (strcmp(keep_entry, caps_opt[i].name))
-				continue;
-
-			capid = caps_opt[i].value;
-			break;
-		}
-
-		if (capid < 0) {
-			/* try to see if it's numeric, so the user may specify
-			* capabilities  that the running kernel knows about but
-			* we don't */
-			capid = strtol(keep_entry, &ptr, 10);
-			if (!ptr || *ptr != '\0' ||
-			capid == INT_MIN || capid == INT_MAX)
-				/* not a valid number */
-				capid = -1;
-			else if (capid > lxc_caps_last_cap())
-				/* we have a number but it's not a valid
-				* capability */
-				capid = -1;
-		}
+		capid = parse_cap(keep_entry);
 
 	        if (capid < 0) {
 			ERROR("unknown capability %s", keep_entry);
