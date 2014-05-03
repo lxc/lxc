@@ -1344,6 +1344,15 @@ static bool cgroupfs_mount_cgroup(void *hdata, const char *root, int type)
 		return false;
 	base_info = cgfs_d->info;
 
+	/* If we get passed the _NOSPEC types, we default to _MIXED, since we don't
+	 * have access to the lxc_conf object at this point. It really should be up
+	 * to the caller to fix this, but this doesn't really hurt.
+	 */
+	if (type == LXC_AUTO_CGROUP_FULL_NOSPEC)
+		type = LXC_AUTO_CGROUP_FULL_MIXED;
+	else if (type == LXC_AUTO_CGROUP_NOSPEC)
+		type = LXC_AUTO_CGROUP_MIXED;
+
 	if (type < LXC_AUTO_CGROUP_RO || type > LXC_AUTO_CGROUP_FULL_MIXED) {
 		ERROR("could not mount cgroups into container: invalid type specified internally");
 		errno = EINVAL;

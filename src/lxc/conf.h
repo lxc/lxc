@@ -240,9 +240,16 @@ enum {
 	LXC_AUTO_CGROUP_FULL_RO       = 0x040,   /* /sys/fs/cgroup (full mount, read-only) */
 	LXC_AUTO_CGROUP_FULL_RW       = 0x050,   /* /sys/fs/cgroup (full mount, read-write) */
 	LXC_AUTO_CGROUP_FULL_MIXED    = 0x060,   /* /sys/fs/cgroup (full mount, parent r/o, own r/w) */
-	LXC_AUTO_CGROUP_MASK          = 0x070,
+	/* These are defined in such a way as to retain
+	 * binary compatibility with earlier versions of
+	 * this code. If the previous mask is applied,
+	 * both of these will default back to the _MIXED
+	 * variants, which is safe. */
+	LXC_AUTO_CGROUP_NOSPEC        = 0x0B0,   /* /sys/fs/cgroup (partial mount, r/w or mixed, depending on caps) */
+	LXC_AUTO_CGROUP_FULL_NOSPEC   = 0x0E0,   /* /sys/fs/cgroup (full mount, r/w or mixed, depending on caps) */
+	LXC_AUTO_CGROUP_MASK          = 0x0F0,
 
-	LXC_AUTO_ALL_MASK             = 0x07F,   /* all known settings */
+	LXC_AUTO_ALL_MASK             = 0x0FF,   /* all known settings */
 };
 
 /*

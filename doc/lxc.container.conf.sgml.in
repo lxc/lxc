@@ -743,8 +743,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	      </listitem>
 	      <listitem>
 	        <para>
-	          <option>cgroup:mixed</option> (or
-	          <option>cgroup</option>):
+	          <option>cgroup:mixed</option>:
 	          mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
 	          create directories for all hierarchies to which
 	          the container is added, create subdirectories
@@ -774,8 +773,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	      </listitem>
 	      <listitem>
 	        <para>
-	          <option>cgroup-full:mixed</option> (or
-	          <option>cgroup-full</option>):
+	          <option>cgroup</option> (without specifier):
+	          defaults to <option>cgroup:rw</option> if the
+	          container retains the CAP_SYS_ADMIN capability,
+	          <option>cgroup:mixed</option> otherwise.
+	        </para>
+	      </listitem>
+	      <listitem>
+	        <para>
+	          <option>cgroup-full:mixed</option>:
 	          mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
 	          create directories for all hierarchies to which
 	          the container is added, bind-mount the hierarchies
@@ -808,6 +814,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	          that if the container has CAP_SYS_ADMIN support
 	          and can mount the cgroup filesystem itself, it may
 	          do so anyway.)
+	        </para>
+	      </listitem>
+	      <listitem>
+	        <para>
+	          <option>cgroup-full</option> (without specifier):
+	          defaults to <option>cgroup-full:rw</option> if the
+	          container retains the CAP_SYS_ADMIN capability,
+	          <option>cgroup-full:mixed</option> otherwise.
 	        </para>
 	      </listitem>
 	    </itemizedlist>

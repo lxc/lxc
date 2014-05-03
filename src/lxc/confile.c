@@ -1347,20 +1347,20 @@ static int config_mount_auto(const char *key, const char *value,
 {
 	char *autos, *autoptr, *sptr, *token;
 	static struct { const char *token; int mask; int flag; } allowed_auto_mounts[] = {
-		{ "proc",               LXC_AUTO_PROC_MASK,      LXC_AUTO_PROC_MIXED        },
-		{ "proc:mixed",         LXC_AUTO_PROC_MASK,      LXC_AUTO_PROC_MIXED        },
-		{ "proc:rw",            LXC_AUTO_PROC_MASK,      LXC_AUTO_PROC_RW           },
-		{ "sys",                LXC_AUTO_SYS_MASK,       LXC_AUTO_SYS_RO            },
-		{ "sys:ro",             LXC_AUTO_SYS_MASK,       LXC_AUTO_SYS_RO            },
-		{ "sys:rw",             LXC_AUTO_SYS_MASK,       LXC_AUTO_SYS_RW            },
-		{ "cgroup",             LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_MIXED      },
-		{ "cgroup:mixed",       LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_MIXED      },
-		{ "cgroup:ro",          LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_RO         },
-		{ "cgroup:rw",          LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_RW         },
-		{ "cgroup-full",        LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_MIXED },
-		{ "cgroup-full:mixed",  LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_MIXED },
-		{ "cgroup-full:ro",     LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_RO    },
-		{ "cgroup-full:rw",     LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_RW    },
+		{ "proc",               LXC_AUTO_PROC_MASK,      LXC_AUTO_PROC_MIXED         },
+		{ "proc:mixed",         LXC_AUTO_PROC_MASK,      LXC_AUTO_PROC_MIXED         },
+		{ "proc:rw",            LXC_AUTO_PROC_MASK,      LXC_AUTO_PROC_RW            },
+		{ "sys",                LXC_AUTO_SYS_MASK,       LXC_AUTO_SYS_RO             },
+		{ "sys:ro",             LXC_AUTO_SYS_MASK,       LXC_AUTO_SYS_RO             },
+		{ "sys:rw",             LXC_AUTO_SYS_MASK,       LXC_AUTO_SYS_RW             },
+		{ "cgroup",             LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_NOSPEC      },
+		{ "cgroup:mixed",       LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_MIXED       },
+		{ "cgroup:ro",          LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_RO          },
+		{ "cgroup:rw",          LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_RW          },
+		{ "cgroup-full",        LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_NOSPEC },
+		{ "cgroup-full:mixed",  LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_MIXED  },
+		{ "cgroup-full:ro",     LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_RO     },
+		{ "cgroup-full:rw",     LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_RW     },
 		/* NB: For adding anything that ist just a single on/off, but has
 		 *     no options: keep mask and flag identical and just define the
 		 *     enum value as an unused bit so far
@@ -1954,6 +1954,7 @@ static int lxc_get_mount_entries(struct lxc_conf *c, char *retv, int inlen)
 static int lxc_get_auto_mounts(struct lxc_conf *c, char *retv, int inlen)
 {
 	int len, fulllen = 0;
+	const char *sep = "";
 
 	if (!retv)
 		inlen = 0;
@@ -1964,24 +1965,27 @@ static int lxc_get_auto_mounts(struct lxc_conf *c, char *retv, int inlen)
 		return 0;
 
 	switch (c->auto_mounts & LXC_AUTO_PROC_MASK) {
-		case LXC_AUTO_PROC_MIXED:        strprint(retv, inlen, "proc:mixed\n"); break;
-		case LXC_AUTO_PROC_RW:           strprint(retv, inlen, "proc:rw");      break;
+		case LXC_AUTO_PROC_MIXED:         strprint(retv, inlen, "%sproc:mixed", sep);        sep = " "; break;
+		case LXC_AUTO_PROC_RW:            strprint(retv, inlen, "%sproc:rw", sep);           sep = " "; break;
 		default: break;
 	}
 	switch (c->auto_mounts & LXC_AUTO_SYS_MASK) {
-		case LXC_AUTO_SYS_RO:            strprint(retv, inlen, "sys:ro");            break;
-		case LXC_AUTO_SYS_RW:            strprint(retv, inlen, "sys:rw");            break;
+		case LXC_AUTO_SYS_RO:             strprint(retv, inlen, "%ssys:ro", sep);            sep = " "; break;
+		case LXC_AUTO_SYS_RW:             strprint(retv, inlen, "%ssys:rw", sep);            sep = " "; break;
 		default: break;
 	}
 	switch (c->auto_mounts & LXC_AUTO_CGROUP_MASK) {
-		case LXC_AUTO_CGROUP_MIXED:      strprint(retv, inlen, "cgroup:mixed");      break;
-		case LXC_AUTO_CGROUP_RO:         strprint(retv, inlen, "cgroup:ro");         break;
-		case LXC_AUTO_CGROUP_RW:         strprint(retv, inlen, "cgroup:rw");         break;
-		case LXC_AUTO_CGROUP_FULL_MIXED: strprint(retv, inlen, "cgroup-full:mixed"); break;
-		case LXC_AUTO_CGROUP_FULL_RO:    strprint(retv, inlen, "cgroup-full:ro");    break;
-		case LXC_AUTO_CGROUP_FULL_RW:    strprint(retv, inlen, "cgroup-full:rw");    break;
+		case LXC_AUTO_CGROUP_NOSPEC:      strprint(retv, inlen, "%scgroup", sep);            sep = " "; break;
+		case LXC_AUTO_CGROUP_MIXED:       strprint(retv, inlen, "%scgroup:mixed", sep);      sep = " "; break;
+		case LXC_AUTO_CGROUP_RO:          strprint(retv, inlen, "%scgroup:ro", sep);         sep = " "; break;
+		case LXC_AUTO_CGROUP_RW:          strprint(retv, inlen, "%scgroup:rw", sep);         sep = " "; break;
+		case LXC_AUTO_CGROUP_FULL_NOSPEC: strprint(retv, inlen, "%scgroup-full", sep);       sep = " "; break;
+		case LXC_AUTO_CGROUP_FULL_MIXED:  strprint(retv, inlen, "%scgroup-full:mixed", sep); sep = " "; break;
+		case LXC_AUTO_CGROUP_FULL_RO:     strprint(retv, inlen, "%scgroup-full:ro", sep);    sep = " "; break;
+		case LXC_AUTO_CGROUP_FULL_RW:     strprint(retv, inlen, "%scgroup-full:rw", sep);    sep = " "; break;
 		default: break;
 	}
+
 	return fulllen;
 }
 
@@ -2227,22 +2231,24 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	if (c->auto_mounts & LXC_AUTO_ALL_MASK) {
 		fprintf(fout, "lxc.mount.auto =");
 		switch (c->auto_mounts & LXC_AUTO_PROC_MASK) {
-			case LXC_AUTO_PROC_MIXED:        fprintf(fout, " proc:mixed");        break;
-			case LXC_AUTO_PROC_RW:           fprintf(fout, " proc:rw");           break;
+			case LXC_AUTO_PROC_MIXED:         fprintf(fout, " proc:mixed");        break;
+			case LXC_AUTO_PROC_RW:            fprintf(fout, " proc:rw");           break;
 			default: break;
 		}
 		switch (c->auto_mounts & LXC_AUTO_SYS_MASK) {
-			case LXC_AUTO_SYS_RO:            fprintf(fout, " sys:ro");            break;
-			case LXC_AUTO_SYS_RW:            fprintf(fout, " sys:rw");            break;
+			case LXC_AUTO_SYS_RO:             fprintf(fout, " sys:ro");            break;
+			case LXC_AUTO_SYS_RW:             fprintf(fout, " sys:rw");            break;
 			default: break;
 		}
 		switch (c->auto_mounts & LXC_AUTO_CGROUP_MASK) {
-			case LXC_AUTO_CGROUP_MIXED:      fprintf(fout, " cgroup:mixed");      break;
-			case LXC_AUTO_CGROUP_RO:         fprintf(fout, " cgroup:ro");         break;
-			case LXC_AUTO_CGROUP_RW:         fprintf(fout, " cgroup:rw");         break;
-			case LXC_AUTO_CGROUP_FULL_MIXED: fprintf(fout, " cgroup-full:mixed"); break;
-			case LXC_AUTO_CGROUP_FULL_RO:    fprintf(fout, " cgroup-full:ro");    break;
-			case LXC_AUTO_CGROUP_FULL_RW:    fprintf(fout, " cgroup-full:rw");    break;
+			case LXC_AUTO_CGROUP_NOSPEC:      fprintf(fout, " cgroup");            break;
+			case LXC_AUTO_CGROUP_MIXED:       fprintf(fout, " cgroup:mixed");      break;
+			case LXC_AUTO_CGROUP_RO:          fprintf(fout, " cgroup:ro");         break;
+			case LXC_AUTO_CGROUP_RW:          fprintf(fout, " cgroup:rw");         break;
+			case LXC_AUTO_CGROUP_FULL_NOSPEC: fprintf(fout, " cgroup-full");       break;
+			case LXC_AUTO_CGROUP_FULL_MIXED:  fprintf(fout, " cgroup-full:mixed"); break;
+			case LXC_AUTO_CGROUP_FULL_RO:     fprintf(fout, " cgroup-full:ro");    break;
+			case LXC_AUTO_CGROUP_FULL_RW:     fprintf(fout, " cgroup-full:rw");    break;
 			default: break;
 		}
 		fprintf(fout, "\n");
