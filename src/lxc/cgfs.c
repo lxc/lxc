@@ -1442,6 +1442,24 @@ static bool cgroupfs_mount_cgroup(void *hdata, const char *root, int type)
 				goto out_error;
 			}
 
+			/* for read-only and mixed cases, we have to bind-mount the tmpfs directory
+			 * that points to the hierarchy itself (i.e. /sys/fs/cgroup/cpu etc.) onto
+			 * itself and then bind-mount it read-only, since we keep the tmpfs itself
+			 * read-write (see comment below)
+			 */
+			if (type == LXC_AUTO_CGROUP_MIXED || type == LXC_AUTO_CGROUP_RO) {
+				r = mount(abs_path, abs_path, NULL, MS_BIND, NULL);
+				if (r < 0) {
+					SYSERROR("error bind-mounting %s onto itself", abs_path);
+					goto out_error;
+				}
+				r = mount(NULL, abs_path, NULL, MS_REMOUNT|MS_BIND|MS_RDONLY, NULL);
+				if (r < 0) {
+					SYSERROR("error re-mounting %s readonly", abs_path);
+					goto out_error;
+				}
+			}
+
 			free(abs_path);
 			abs_path = NULL;
 
@@ -1487,13 +1505,21 @@ static bool cgroupfs_mount_cgroup(void *hdata, const char *root, int type)
 		parts = NULL;
 	}
 
-	/* try to remount the tmpfs readonly, since the container shouldn't
-	 * change anything (this will also make sure that trying to create
-	 * new cgroups outside the allowed area fails with an error instead
-	 * of simply causing this to create directories in the tmpfs itself)
+	/* We used to remount the entire tmpfs readonly if any :ro or
+	 * :mixed mode was specified. However, Ubuntu's mountall has the
+	 * unfortunate behavior to block bootup if /sys/fs/cgroup is
+	 * mounted read-only and cannot be remounted read-write.
+	 * (mountall reads /lib/init/fstab and tries to (re-)mount all of
+	 * these if they are not already mounted with the right options;
+	 * it contains an entry for /sys/fs/cgroup. In case it can't do
+	 * that, it prompts for the user to either manually fix it or
+	 * boot anyway. But without user input, booting of the container
+	 * hangs.)
+	 *
+	 * Instead of remounting the entire tmpfs readonly, we only
+	 * remount the paths readonly that are part of the cgroup
+	 * hierarchy.
 	 */
-	if (type != LXC_AUTO_CGROUP_RW && type != LXC_AUTO_CGROUP_FULL_RW)
-		mount(NULL, path, NULL, MS_REMOUNT|MS_RDONLY, NULL);
 
 	free(path);
 
