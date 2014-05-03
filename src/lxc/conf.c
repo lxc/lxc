@@ -115,6 +115,12 @@ lxc_log_define(lxc_conf, lxc);
 #define LO_FLAGS_AUTOCLEAR 4
 #endif
 
+/* needed for cgroup automount checks, regardless of whether we
+ * have included linux/capability.h or not */
+#ifndef CAP_SYS_ADMIN
+#define CAP_SYS_ADMIN 21
+#endif
+
 /* Define pivot_root() if missing from the C library */
 #ifndef HAVE_PIVOT_ROOT
 static int pivot_root(const char * new_root, const char * put_old)
@@ -163,6 +169,9 @@ struct caps_opt {
 	char *name;
 	int value;
 };
+
+/* Declare this here, since we don't want to reshuffle the whole file. */
+static int in_caplist(int cap, struct lxc_list *caps);
 
 static int instanciate_veth(struct lxc_handler *, struct lxc_netdev *);
 static int instanciate_macvlan(struct lxc_handler *, struct lxc_netdev *);
@@ -743,8 +752,32 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 	}
 
 	if (flags & LXC_AUTO_CGROUP_MASK) {
-		if (!cgroup_mount(conf->rootfs.mount, handler,
-				  flags & LXC_AUTO_CGROUP_MASK)) {
+		int cg_flags;
+
+		cg_flags = flags & LXC_AUTO_CGROUP_MASK;
+		/* If the type of cgroup mount was not specified, it depends on the
+		 * container's capabilities as to what makes sense: if we have
+		 * CAP_SYS_ADMIN, the read-only part can be remounted read-write
+		 * anyway, so we may as well default to read-write; then the admin
+		 * will not be given a false sense of security. (And if they really
+		 * want mixed r/o r/w, then they can explicitly specify :mixed.)
+		 * OTOH, if the container lacks CAP_SYS_ADMIN, do only default to
+		 * :mixed, because then the container can't remount it read-write. */
+		if (cg_flags == LXC_AUTO_CGROUP_NOSPEC || cg_flags == LXC_AUTO_CGROUP_FULL_NOSPEC) {
+			int has_sys_admin = 0;
+			if (!lxc_list_empty(&conf->keepcaps)) {
+				has_sys_admin = in_caplist(CAP_SYS_ADMIN, &conf->keepcaps);
+			} else {
+				has_sys_admin = !in_caplist(CAP_SYS_ADMIN, &conf->caps);
+			}
+			if (cg_flags == LXC_AUTO_CGROUP_NOSPEC) {
+				cg_flags = has_sys_admin ? LXC_AUTO_CGROUP_RW : LXC_AUTO_CGROUP_MIXED;
+			} else {
+				cg_flags = has_sys_admin ? LXC_AUTO_CGROUP_FULL_RW : LXC_AUTO_CGROUP_FULL_MIXED;
+			}
+		}
+
+		if (!cgroup_mount(conf->rootfs.mount, handler, cg_flags)) {
 			SYSERROR("error mounting /sys/fs/cgroup");
 			return -1;
 		}
@@ -2190,6 +2223,20 @@ static int parse_cap(const char *cap)
 	}
 
 	return capid;
+}
+
+int in_caplist(int cap, struct lxc_list *caps)
+{
+	struct lxc_list *iterator;
+	int capid;
+
+	lxc_list_for_each(iterator, caps) {
+		capid = parse_cap(iterator->elem);
+		if (capid == cap)
+			return 1;
+	}
+
+	return 0;
 }
 
 static int setup_caps(struct lxc_list *caps)
