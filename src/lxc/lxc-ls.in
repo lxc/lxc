@@ -38,6 +38,10 @@ import sys
 _ = gettext.gettext
 gettext.textdomain("lxc-ls")
 
+# Required for containers without python
+import encodings.ascii
+assert encodings.ascii
+
 # Constants
 LXCPATH = "@LXCPATH@"
 RUNTIME_PATH = "@RUNTIME_PATH@"
