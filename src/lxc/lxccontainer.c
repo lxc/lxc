@@ -1987,10 +1987,41 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 	return lxc_rmdir_onedev(arg);
 }
 
+static int do_bdev_destroy(struct lxc_conf *conf)
+{
+	struct bdev *r;
+	int ret = 0;
+
+	r = bdev_init(conf->rootfs.path, conf->rootfs.mount, NULL);
+	if (!r)
+		return -1;
+
+	if (r->ops->destroy(r) < 0)
+		ret = -1;
+	bdev_put(r);
+	return ret;
+}
+
+static int bdev_destroy_wrapper(void *data)
+{
+	struct lxc_conf *conf = data;
+
+	if (setgid(0) < 0) {
+		ERROR("Failed to setgid to 0");
+		return -1;
+	}
+	if (setgroups(0, NULL) < 0)
+		WARN("Failed to clear groups");
+	if (setuid(0) < 0) {
+		ERROR("Failed to setuid to 0");
+		return -1;
+	}
+	return do_bdev_destroy(conf);
+}
+
 // do we want the api to support --force, or leave that to the caller?
 static bool lxcapi_destroy(struct lxc_container *c)
 {
-	struct bdev *r = NULL;
 	bool bret = false;
 	int ret;
 
@@ -2011,15 +2042,14 @@ static bool lxcapi_destroy(struct lxc_container *c)
 		goto out;
 	}
 
-	if (!am_unpriv() && c->lxc_conf && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount) {
-		r = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
-		if (r) {
-			if (r->ops->destroy(r) < 0) {
-				bdev_put(r);
-				ERROR("Error destroying rootfs for %s", c->name);
-				goto out;
-			}
-			bdev_put(r);
+	if (c->lxc_conf && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount) {
+		if (am_unpriv())
+			ret = userns_exec_1(c->lxc_conf, bdev_destroy_wrapper, c->lxc_conf);
+		else
+			ret = do_bdev_destroy(c->lxc_conf);
+		if (ret < 0) {
+			ERROR("Error destroying rootfs for %s", c->name);
+			goto out;
 		}
 	}
 
