@@ -66,6 +66,11 @@
 
 lxc_log_define(bdev, lxc);
 
+struct rsync_data_char {
+	char *src;
+	char *dest;
+};
+
 static int do_rsync(const char *src, const char *dest)
 {
 	// call out to rsync
@@ -1433,6 +1438,22 @@ out:
 	return ret;
 }
 
+static int btrfs_snapshot_wrapper(void *data)
+{
+	struct rsync_data_char *arg = data;
+	if (setgid(0) < 0) {
+		ERROR("Failed to setgid to 0");
+		return -1;
+	}
+	if (setgroups(0, NULL) < 0)
+		WARN("Failed to clear groups");
+	if (setuid(0) < 0) {
+		ERROR("Failed to setuid to 0");
+		return -1;
+	}
+	return btrfs_snapshot(arg->src, arg->dest);
+}
+
 static int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
 		uint64_t newsize, struct lxc_conf *conf)
@@ -1467,8 +1488,14 @@ static int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *old
 	if (orig->mntopts && (new->mntopts = strdup(orig->mntopts)) == NULL)
 		return -1;
 
-	if (snap)
-		return btrfs_snapshot(orig->dest, new->dest);
+	if (snap) {
+		struct rsync_data_char sdata;
+		if (!am_unpriv())
+			return btrfs_snapshot(orig->dest, new->dest);
+		sdata.dest = new->dest;
+		sdata.src = orig->dest;
+		return userns_exec_1(conf, btrfs_snapshot_wrapper, &sdata);
+	}
 
 	if (rmdir(new->dest) < 0 && errno != -ENOENT) {
 		SYSERROR("removing %s", new->dest);
@@ -1510,6 +1537,8 @@ static int btrfs_destroy(struct bdev *orig)
 	args.name[BTRFS_SUBVOL_NAME_MAX-1] = 0;
 	ret = ioctl(fd, BTRFS_IOC_SNAP_DESTROY, &args);
 	INFO("btrfs: snapshot create ioctl returned %d", ret);
+	if (ret < 0 && errno == EPERM)
+		INFO("Is the rootfs mounted with -o user_subvol_rm_allowed?");
 
 	free(newfull);
 	close(fd);
@@ -1886,11 +1915,6 @@ static int overlayfs_umount(struct bdev *bdev)
 		return -22;
 	return umount(bdev->dest);
 }
-
-struct rsync_data_char {
-	char *src;
-	char *dest;
-};
 
 static int rsync_delta(struct rsync_data_char *data)
 {
@@ -2538,6 +2562,7 @@ static bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
 		// overlayfs -- which is also allowed)
 		if (strcmp(b->type, "dir") == 0 ||
 				strcmp(b->type, "overlayfs") == 0 ||
+				strcmp(b->type, "btrfs") == 0 ||
 				strcmp(b->type, "loop") == 0)
 			return true;
 		return false;
@@ -2546,7 +2571,7 @@ static bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
 	// unprivileged users can copy and snapshot dir, overlayfs,
 	// and loop.  In particular, not zfs, btrfs, or lvm.
 	if (strcmp(t, "dir") == 0 || strcmp(t, "overlayfs") == 0 ||
-			strcmp(t, "loop") == 0)
+			strcmp(t, "btrfs") == 0 || strcmp(t, "loop") == 0)
 		return true;
 	return false;
 }
