@@ -229,8 +229,9 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
 			exit(1);
 		}
-		if (strcmp(my_args.bdevtype, "dir") && strcmp(my_args.bdevtype, "_unset")) {
-			fprintf(stderr, "Unprivileged users can only create directory backed containers\n");
+		if (strcmp(my_args.bdevtype, "dir") && strcmp(my_args.bdevtype, "_unset") &&
+				strcmp(my_args.bdevtype, "btrfs")) {
+			fprintf(stderr, "Unprivileged users cannot create %s containers", my_args.bdevtype);
 			exit(1);
 		}
 	}

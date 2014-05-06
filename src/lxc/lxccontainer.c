@@ -918,9 +918,9 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 				}
 			}
 		}
-		if (strcmp(bdev->type, "dir") != 0) {
+		if (strcmp(bdev->type, "dir") && strcmp(bdev->type, "btrfs")) {
 			if (geteuid() != 0) {
-				ERROR("non-root users can only create directory-backed containers");
+				ERROR("non-root users can only create btrfs and directory-backed containers");
 				exit(1);
 			}
 			if (bdev->ops->mount(bdev) < 0) {
