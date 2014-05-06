@@ -1152,6 +1152,34 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    </itemizedlist>
 	    <para>
               <!--
+	      Note that if automatic mounting of the cgroup filesystem
+	      is enabled, the tmpfs under
+	      <filename>/sys/fs/cgroup</filename> will always be
+	      mounted read-write (but for the <option>:mixed</option>
+	      and <option>:ro</option> cases, the individual
+	      hierarchies,
+	      <filename>/sys/fs/cgroup/$hierarchy</filename>, will be
+	      read-only). This is in order to work around a quirk in
+	      Ubuntu's
+              <citerefentry>
+		<refentrytitle>mountall</refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>
+	      command that will cause containers to wait for user
+	      input at boot if
+	      <filename>/sys/fs/cgroup</filename> is mounted read-only
+	      and the container can't remount it read-write due to a
+	      lack of CAP_SYS_ADMIN.
+              -->
+              cgroup ファイルシステムの自動マウントが有効の場合、<filename>/sys/fs/cgroup</filename> 以下の tmpfs は常に読み書き可能でマウントされることに注意が必要です (しかし <option>:mixed</option> と <option>:ro</option> の場合は、個々の階層の <filename>/sys/fs/cgroup/$hierarchy</filename> は読み込み専用となるでしょう)。これは Ubuntu の
+              <citerefentry>
+		<refentrytitle>mountall</refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>
+              コマンドの特異な動きに対処するためのものです。特異な動きとは、<filename>/sys/fs/cgroup</filename> が読み込み専用でマウントされた状態で、コンテナが CAP_SYS_ADMIN を持たない場合、/sys/fs/cgroup を読み書き可能で再マウントしようとしてできないため、コンテナのブート時にユーザからの入力を待ってしまうというものです。
+	    </para>
+	    <para>
+              <!--
 	      Examples:
               -->
               例:
