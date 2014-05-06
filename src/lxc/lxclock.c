@@ -37,6 +37,8 @@
 #include <execinfo.h>
 #endif
 
+#define MAX_STACKDEPTH 25
+
 #define OFLAG (O_CREAT | O_RDWR)
 #define SEMMODE 0660
 #define SEMVALUE 1

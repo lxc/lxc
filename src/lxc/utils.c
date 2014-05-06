@@ -44,8 +44,6 @@
 #include "log.h"
 #include "lxclock.h"
 
-#define MAX_STACKDEPTH 25
-
 lxc_log_define(lxc_utils, lxc);
 
 static int _recursive_rmdir_onedev(char *dirname, dev_t pdev)
