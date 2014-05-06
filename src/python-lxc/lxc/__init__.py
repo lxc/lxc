@@ -1,4 +1,5 @@
 #
+# -*- coding: utf-8 -*-
 # python-lxc: Python bindings for LXC
 #
 # (C) Copyright Canonical Ltd. 2012
@@ -32,7 +33,7 @@ get_global_config_item = _lxc.get_global_config_item
 version = _lxc.get_version()
 
 
-class ContainerNetwork():
+class ContainerNetwork(object):
     props = {}
 
     def __init__(self, container, index):
