@@ -91,7 +91,6 @@ print("Testing the networking")
 # A few basic checks of the current state
 assert("name" in container.get_keys("lxc.network.0"))
 assert(len(container.network) == 1)
-assert(container.network[0].hwaddr.startswith("00:16:3e"))
 
 ## Starting the container
 print("Starting the container")
