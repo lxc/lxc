@@ -1,6 +1,6 @@
 yumpluginsdir=$(datadir)/lxc
 
-yumplugins_SCRIPTS = \
+yumplugins_DATA = \
 	lxc-patch.py
 
-EXTRA_DIST = $(yumplugins_SCRIPTS)
+EXTRA_DIST = $(yumplugins_DATA)
