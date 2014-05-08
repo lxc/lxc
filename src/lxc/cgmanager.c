@@ -51,6 +51,9 @@
 #include "start.h"
 #include "state.h"
 
+#define CGM_SUPPORTS_GET_ABS 3
+#define CGM_SUPPORTS_NAMED 4
+
 #ifdef HAVE_CGMANAGER
 lxc_log_define(lxc_cgmanager, lxc);
 
@@ -113,6 +116,7 @@ static struct cgroup_ops cgmanager_ops;
 static int nr_subsystems;
 static char **subsystems;
 static bool dbus_threads_initialized = false;
+static void cull_user_controllers(void);
 
 static void cgm_dbus_disconnect(void)
 {
@@ -172,6 +176,8 @@ static bool cgm_dbus_connect(void)
 		cgm_dbus_disconnect();
 		return false;
 	}
+	if (api_version < CGM_SUPPORTS_NAMED)
+		cull_user_controllers();
 	return true;
 }
 
@@ -617,7 +623,7 @@ static const char *cgm_get_cgroup(void *hdata, const char *subsystem)
 
 #if HAVE_CGMANAGER_GET_PID_CGROUP_ABS_SYNC
 static inline bool abs_cgroup_supported(void) {
-	return api_version >= 3;
+	return api_version >= CGM_SUPPORTS_GET_ABS;
 }
 #else
 static inline bool abs_cgroup_supported(void) {
@@ -811,6 +817,19 @@ static void free_subsystems(void)
 	free(subsystems);
 	subsystems = NULL;
 	nr_subsystems = 0;
+}
+
+static void cull_user_controllers(void)
+{
+	int i, j;
+
+	for (i = 0;  i < nr_subsystems; i++) {
+		if (strncmp(subsystems[i], "name=", 5) != 0)
+			continue;
+		for (j = i;  j < nr_subsystems-1; j++)
+			subsystems[j] = subsystems[j+1];
+		nr_subsystems--;
+	}
 }
 
 static bool collect_subsytems(void)
