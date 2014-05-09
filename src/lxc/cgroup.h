@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __lxc_cgroup_h
-#define __lxc_cgroup_h
+#ifndef __LXC_CGROUP_H
+#define __LXC_CGROUP_H
 
 #include <stdbool.h>
 #include <stddef.h>

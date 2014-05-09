@@ -22,8 +22,8 @@
  */
 #include "config.h"
 
-#ifndef _caps_h
-#define _caps_h
+#ifndef __LXC_CAPS_H
+#define __LXC_CAPS_H
 
 #if HAVE_SYS_CAPABILITY_H
 extern int lxc_caps_reset(void);

@@ -20,8 +20,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#ifndef _state_h
-#define _state_h
+#ifndef __LXC_STATE_H
+#define __LXC_STATE_H
 
 typedef enum {
 	STOPPED, STARTING, RUNNING, STOPPING,

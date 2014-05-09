@@ -20,8 +20,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#ifndef _VERSION_H
-#define _VERSION_H
+#ifndef __LXC_VERSION_H
+#define __LXC_VERSION_H
 
 #define LXC_VERSION_MAJOR @LXC_VERSION_MAJOR@
 #define LXC_VERSION_MINOR @LXC_VERSION_MINOR@

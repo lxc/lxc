@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __commands_h
-#define __commands_h
+#ifndef __LXC_COMMANDS_H
+#define __LXC_COMMANDS_H
 
 #include "state.h"
 

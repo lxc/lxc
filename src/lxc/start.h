@@ -20,8 +20,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#ifndef __lxc_state_h
-#define __lxc_state_h
+#ifndef __LXC_START_H
+#define __LXC_START_H
 
 #include <signal.h>
 #include <sys/param.h>

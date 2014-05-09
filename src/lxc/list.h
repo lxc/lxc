@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef _list_h
-#define _list_h
+#ifndef __LXC_LIST_H
+#define __LXC_LIST_H
 
 struct lxc_list {
 	void *elem;

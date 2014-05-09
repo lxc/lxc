@@ -20,8 +20,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#ifndef _conf_h
-#define _conf_h
+#ifndef __LXC_CONF_H
+#define __LXC_CONF_H
 
 #include "config.h"
 

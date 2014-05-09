@@ -20,8 +20,8 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __LXCLOCK_H
-#define __LXCLOCK_H
+#ifndef __LXC_LXCLOCK_H
+#define __LXC_LXCLOCK_H
 
 #include <fcntl.h>           /* For O_* constants */
 #include <sys/stat.h>        /* For mode constants */

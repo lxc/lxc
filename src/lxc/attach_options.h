@@ -22,8 +22,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef _LXC_ATTACH_OPTIONS_H
-#define _LXC_ATTACH_OPTIONS_H
+#ifndef __LXC_ATTACH_OPTIONS_H
+#define __LXC_ATTACH_OPTIONS_H
 
 #include <sys/types.h>
 
