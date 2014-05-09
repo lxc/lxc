@@ -21,6 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef __LXC_LXCUTMP_H
+#define __LXC_LXCUTMP_H
+
 #include "config.h"
 
 struct lxc_handler;
@@ -28,3 +31,4 @@ struct lxc_epoll_descr;
 
 int lxc_utmp_mainloop_add(struct lxc_epoll_descr *descr,
 			  struct lxc_handler *handler);
+#endif

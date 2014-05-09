@@ -21,11 +21,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef __LXC_CONFILE_H
+#define __LXC_CONFILE_H
+
 #include <stdio.h>
 #include <lxc/attach_options.h>
-
-#ifndef _confile_h
-#define _confile_h
 
 struct lxc_conf;
 struct lxc_list;

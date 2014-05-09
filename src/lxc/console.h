@@ -21,6 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef __LXC_CONSOLE_H
+#define __LXC_CONSOLE_H
+
 struct lxc_epoll_descr;
 struct lxc_container;
 
@@ -37,3 +40,5 @@ extern int  lxc_console(struct lxc_container *c, int ttynum,
 extern int  lxc_console_getfd(struct lxc_container *c, int *ttynum,
 			      int *masterfd);
 extern int  lxc_console_set_stdfds(struct lxc_handler *);
+
+#endif

@@ -20,8 +20,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#ifndef __nl_h
-#define __nl_h
+#ifndef __LXC_NL_H
+#define __LXC_NL_H
 
 /*
  * Use this as a good size to allocate generic netlink messages

@@ -21,6 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef __LXC_AF_UNIX_H
+#define __LXC_AF_UNIX_H
+
 extern int lxc_abstract_unix_open(const char *path, int type, int flags);
 extern int lxc_abstract_unix_close(int fd);
 extern int lxc_abstract_unix_connect(const char *path);
@@ -29,3 +32,4 @@ extern int lxc_abstract_unix_recv_fd(int fd, int *recvfd, void *data, size_t siz
 extern int lxc_abstract_unix_send_credential(int fd, void *data, size_t size);
 extern int lxc_abstract_unix_rcv_credential(int fd, void *data, size_t size);
 
+#endif

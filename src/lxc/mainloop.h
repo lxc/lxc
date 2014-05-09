@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef _mainloop_h
-#define _mainloop_h
+#ifndef __LXC_MAINLOOP_H
+#define __LXC_MAINLOOP_H
 
 #include <stdint.h>
 #include "list.h"
