@@ -154,7 +154,7 @@ lxc.cgroup.devices.allow = c 5:2 rwm
 lxc.cgroup.devices.allow = c 136:* rwm
 EOF
 
-    grep -q "^lxc.rootfs" ${config_path}/config 2>/dev/null || echo "lxc.rootfs = ${rootfs_path}" >> ${config_path}/config
+    grep -q "^lxc.rootfs" ${config_path}/config 2>/dev/null || echo "lxc.rootfs = ${path}/rootfs" >> ${config_path}/config
 
     cat > "${config_path}/fstab" << EOF
 sysfs sys sysfs defaults 0 0
