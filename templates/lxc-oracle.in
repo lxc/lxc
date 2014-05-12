@@ -159,6 +159,9 @@ EOF
         # default config.  Number should match lxc.tty
         ( cd $container_rootfs/etc/systemd/system/getty.target.wants
             for i in 1 2 3 4 ; do ln -sf ../getty\@.service getty@tty${i}.service; done )
+        # We only want to spawn a getty on /dev/console in lxc, libvirt-lxc
+        # symlinks /dev/console to /dev/tty1
+        sed -i '/Before=getty.target/a ConditionVirtualization=lxc' $container_rootfs/usr/lib/systemd/system/console-getty.service
 
         # disable some systemd services, set default boot, sigpwr target
         rm -f $container_rootfs/usr/lib/systemd/system/sysinit.target.wants/kmod-static-nodes.service
@@ -358,22 +361,35 @@ EOF
     # allow root login on console, tty[1-4], and pts/0 for libvirt
     echo "# LXC (Linux Containers)" >>$container_rootfs/etc/securetty
     echo "lxc/console"	>>$container_rootfs/etc/securetty
-    echo "lxc/tty1"	>>$container_rootfs/etc/securetty
-    echo "lxc/tty2"	>>$container_rootfs/etc/securetty
-    echo "lxc/tty3"	>>$container_rootfs/etc/securetty
-    echo "lxc/tty4"	>>$container_rootfs/etc/securetty
+    for i in 1 2 3 4; do
+        echo "lxc/tty$i"	>>$container_rootfs/etc/securetty
+    done
     echo "# For libvirt/Virtual Machine Monitor" >>$container_rootfs/etc/securetty
-    echo "pts/0"        >>$container_rootfs/etc/securetty
+    for i in 0 1 2 3 4; do
+        echo "pts/$i"        >>$container_rootfs/etc/securetty
+    done
 
     # prevent mingetty from calling vhangup(2) since it fails with userns
     if [ -f $container_rootfs/etc/init/tty.conf ]; then
         sed -i 's|mingetty|mingetty --nohangup|' $container_rootfs/etc/init/tty.conf
     fi
 
+    # create maygetty which only spawns a getty on the console when running
+    # under lxc, not libvirt-lxc which symlinks /dev/console to the same pty
+    # as /dev/tty1
+    cat <<EOF >$container_rootfs/sbin/maygetty
+#!/bin/sh
+if [ "\$container" = "lxc" ]; then
+    exec /sbin/mingetty \$@
+fi
+exec sleep infinity
+EOF
+    chmod 755 $container_rootfs/sbin/maygetty
+
     # start a getty on /dev/console, /dev/tty[1-4]
     if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
         sed -i 's|mingetty|mingetty --nohangup|' $container_rootfs/etc/inittab
-        sed -i '/1:2345:respawn/i cns:2345:respawn:/sbin/mingetty --nohangup --noclear console' $container_rootfs/etc/inittab
+        sed -i '/1:2345:respawn/i cns:2345:respawn:/sbin/maygetty --nohangup --noclear console' $container_rootfs/etc/inittab
         sed -i '/5:2345:respawn/d' $container_rootfs/etc/inittab
         sed -i '/6:2345:respawn/d' $container_rootfs/etc/inittab
     fi
@@ -389,7 +405,7 @@ start on stopped rc RUNLEVEL=[2345]
 stop on runlevel [!2345]
 
 respawn
-exec /sbin/mingetty --nohangup --noclear /dev/console
+exec /sbin/maygetty --nohangup --noclear /dev/console
 EOF
     fi
 
