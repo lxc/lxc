@@ -334,6 +334,7 @@ struct lxc_conf {
 	int start_delay;
 	int start_order;
 	struct lxc_list groups;
+	int nbd_idx;
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,

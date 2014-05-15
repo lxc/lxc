@@ -1555,7 +1555,7 @@ static int setup_rootfs(struct lxc_conf *conf)
 	}
 
 	// First try mounting rootfs using a bdev
-	struct bdev *bdev = bdev_init(rootfs->path, rootfs->mount, rootfs->options);
+	struct bdev *bdev = bdev_init(conf, rootfs->path, rootfs->mount, rootfs->options);
 	if (bdev && bdev->ops->mount(bdev) == 0) {
 		bdev_put(bdev);
 		DEBUG("mounted '%s' on '%s'", rootfs->path, rootfs->mount);
@@ -2675,6 +2675,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.slave = -1;
 	new->console.name[0] = '\0';
 	new->maincmd_fd = -1;
+	new->nbd_idx = -1;
 	new->rootfs.mount = strdup(default_rootfs_mount);
 	if (!new->rootfs.mount) {
 		ERROR("lxc_conf_init : %m");

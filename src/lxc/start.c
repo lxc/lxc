@@ -69,6 +69,7 @@
 #include "namespace.h"
 #include "lxcseccomp.h"
 #include "caps.h"
+#include "bdev.h"
 #include "lsm/lsm.h"
 
 lxc_log_define(lxc_start, lxc);
@@ -1054,10 +1055,15 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 		handler->conf->need_utmp_watch = 0;
 	}
 
+	if (!attach_block_device(handler->conf)) {
+		ERROR("Failure attaching block device");
+		goto out_fini_nonet;
+	}
+
 	err = lxc_spawn(handler);
 	if (err) {
 		ERROR("failed to spawn '%s'", name);
-		goto out_fini_nonet;
+		goto out_detach_blockdev;
 	}
 
 	netnsfd = get_netns_fd(handler->pid);
@@ -1109,6 +1115,9 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
 	lxc_delete_network(handler);
+
+out_detach_blockdev:
+	detach_block_device(handler->conf);
 
 out_fini_nonet:
 	lxc_fini(name, handler);

@@ -82,13 +82,6 @@ return -1;
 
 lxc_log_define(lxc_container, lxc);
 
-static bool file_exists(const char *f)
-{
-	struct stat statbuf;
-
-	return stat(f, &statbuf) == 0;
-}
-
 static bool config_file_exists(const char *lxcpath, const char *cname)
 {
 	/* $lxcpath + '/' + $cname + '/config' + \0 */
@@ -900,7 +893,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 		if (strncmp(src, "aufs:", 5) == 0)
 			src = overlay_getlower(src+5);
 
-		bdev = bdev_init(src, c->lxc_conf->rootfs.mount, NULL);
+		bdev = bdev_init(c->lxc_conf, src, c->lxc_conf->rootfs.mount, NULL);
 		if (!bdev) {
 			ERROR("Error opening rootfs");
 			exit(1);
@@ -1992,7 +1985,7 @@ static int do_bdev_destroy(struct lxc_conf *conf)
 	struct bdev *r;
 	int ret = 0;
 
-	r = bdev_init(conf->rootfs.path, conf->rootfs.mount, NULL);
+	r = bdev_init(conf, conf->rootfs.path, conf->rootfs.mount, NULL);
 	if (!r)
 		return -1;
 
@@ -2522,7 +2515,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 
 	if (unshare(CLONE_NEWNS) < 0)
 		return -1;
-	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	bdev = bdev_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev)
 		return -1;
 	if (strcmp(bdev->type, "dir") != 0) {
@@ -2787,7 +2780,7 @@ static bool lxcapi_rename(struct lxc_container *c, const char *newname)
 	if (!c || !c->name || !c->config_path || !c->lxc_conf)
 		return false;
 
-	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	bdev = bdev_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
 		return false;
@@ -2880,7 +2873,7 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	 */
 	flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_KEEPMACADDR | LXC_CLONE_KEEPNAME |
 		LXC_CLONE_KEEPBDEVTYPE | LXC_CLONE_MAYBE_SNAPSHOT;
-	if (bdev_is_dir(c->lxc_conf->rootfs.path)) {
+	if (bdev_is_dir(c->lxc_conf, c->lxc_conf->rootfs.path)) {
 		ERROR("Snapshot of directory-backed container requested.");
 		ERROR("Making a copy-clone.  If you do want snapshots, then");
 		ERROR("please create an aufs or overlayfs clone first, snapshot that");
@@ -3082,7 +3075,7 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapnam
 	if (!c || !c->name || !c->config_path)
 		return false;
 
-	bdev = bdev_init(c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	bdev = bdev_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
 		return false;

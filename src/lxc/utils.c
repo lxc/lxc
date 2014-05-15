@@ -1306,3 +1306,10 @@ next_loop:
 	free(path);
 	return NULL;
 }
+
+bool file_exists(const char *f)
+{
+	struct stat statbuf;
+
+	return stat(f, &statbuf) == 0;
+}
