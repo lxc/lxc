@@ -2491,7 +2491,15 @@ static int do_attach_nbd(void *d)
 				exit(0);
 			} else if (fdsi.ssi_signo == SIGCHLD) {
 				int status;
-				while (waitpid(-1, &status, WNOHANG) > 0);
+				/* If qemu-nbd fails, or is killed by a signal,
+				 * then exit */
+				while (waitpid(-1, &status, WNOHANG) > 0) {
+					if ((WIFEXITED(status) && WEXITSTATUS(status) != 0) ||
+							WIFSIGNALED(status)) {
+						nbd_detach(nbd);
+						exit(1);
+					}
+				}
 			}
 		}
 	}
