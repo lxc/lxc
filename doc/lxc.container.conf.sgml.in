@@ -876,6 +876,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	      specified, the container shares its root file system
 	      with the host.
 	    </para>
+	    <para>
+          For directory or simple block-device backed containers,
+          a pathname can be used.  If the rootfs is backed by a nbd
+          device, then <filename>nbd:file:1</filename> specifies that
+          <filename>file</filename> should be attached to a nbd device,
+          and partition 1 should be mounted as the rootfs.
+          <filename>nbd:file</filename> specifies that the nbd device
+          itself should be mounted.  <filename>overlayfs:/lower:/upper</filename>
+          specifies that the rootfs should be an overlay with <filename>/upper</filename>
+          being mounted read-write over a read-only mount of <filename>/lower</filename>.
+          <filename>aufs:/lower:/upper</filename> does the same using aufs in place
+          of overlayfs. <filename>loop:/file</filename> tells lxc to attach
+          <filename>/file</filename> to a loop device and mount the loop device.
+	    </para>
 	  </listitem>
 	</varlistentry>
 
