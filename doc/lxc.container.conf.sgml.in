@@ -672,13 +672,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    <para>
 	      specify a file location in
 	      the <filename>fstab</filename> format, containing the
-	      mount information. If the rootfs is an image file or a
-	      block device and the fstab is used to mount a point
-	      somewhere in this rootfs, the path of the rootfs mount
-	      point should be prefixed with the
-	      <filename>@LXCROOTFSMOUNT@</filename> default path or
-	      the value of <option>lxc.rootfs.mount</option> if
-	      specified. Note that when mounting a filesystem from an
+	      mount information.  The mount target location can and in
+	      most cases should be a relative path, which will become
+	      relative to the mounted container root.  For instance,
+	     </para>
+<screen>
+proc proc proc nodev,noexec,nosuid 0 0
+</screen>
+	     <para>
+	      Will mount a proc filesystem under the container's /proc,
+	      regardless of where the root filesystem comes from.  This
+	      is resilient to block device backed filesystems as well as
+	      container cloning.
+	     </para>
+	     <para>
+	      Note that when mounting a filesystem from an
 	      image file or block device the third field (fs_vfstype)
 	      cannot be auto as with
               <citerefentry>
