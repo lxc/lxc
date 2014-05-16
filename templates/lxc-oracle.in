@@ -403,6 +403,7 @@ EOF
 
 start on stopped rc RUNLEVEL=[2345]
 stop on runlevel [!2345]
+env container
 
 respawn
 exec /sbin/maygetty --nohangup --noclear /dev/console
