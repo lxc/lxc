@@ -948,6 +948,7 @@ proc proc proc nodev,noexec,nosuid 0 0
                この例は、root ファイルシステムがどこにあっても、コンテナの /proc 以下に proc ファイルシステムをマウントします。
                これは、ブロックデバイスがバックエンドのファイルシステムだけでなく、コンテナのクローンにも柔軟に対応できます。
 	     </para>
+	     <para>
               <!--
 	      Note that when mounting a filesystem from an
 	      image file or block device the third field (fs_vfstype)
