@@ -28,6 +28,9 @@
 #include "log.h"
 
 lxc_log_define(lxc_autostart_ui, lxc);
+static struct lxc_list *accumulate_list(char *input, char *delimiter, struct lxc_list *str_list);
+
+struct lxc_list *cmd_groups_list = NULL;
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
@@ -38,7 +41,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 's': args->shutdown = 1; break;
 	case 'a': args->all = 1; break;
 	case 'A': args->ignore_auto = 1; break;
-	case 'g': args->groups = arg; break;
+	case 'g': cmd_groups_list = accumulate_list( arg, ",", cmd_groups_list); break;
 	case 't': args->timeout = atoi(arg); break;
 	}
 	return 0;
@@ -79,6 +82,29 @@ Options:\n\
 	.timeout = 60,
 };
 
+int list_contains_entry( char *str_ptr, struct lxc_list *p1 ) {
+	struct lxc_list *it1;
+
+	/*
+	 * If the entry is NULL or the empty string and the list
+	 * is NULL, we have a match
+	 */
+	if (! p1 && ! str_ptr)
+		return 1;
+	if (! p1 && ! *str_ptr)
+		return 1;
+
+	if (!p1)
+		return 0;
+
+	lxc_list_for_each(it1, p1) {
+		if (strcmp(it1->elem, str_ptr) == 0)
+			return 1;
+	}
+
+	return 0;
+}
+
 int lists_contain_common_entry(struct lxc_list *p1, struct lxc_list *p2) {
 	struct lxc_list *it1;
 	struct lxc_list *it2;
@@ -100,6 +126,78 @@ int lists_contain_common_entry(struct lxc_list *p1, struct lxc_list *p2) {
 	}
 
 	return 0;
+}
+
+/*
+ * This is a variation of get_list below it.
+ * This version allows two additional features.
+ * If a list is passed to it, it adds to it.
+ * It allows for empty entries (i.e. "group1,,group2") generating
+ * 	and empty list entry.
+ */
+static struct lxc_list *accumulate_list(char *input, char *delimiter, struct lxc_list *str_list) {
+	char *workstr = NULL;
+	char *workptr = NULL;
+	char *next_ptr = NULL;
+	struct lxc_list *worklist;
+	struct lxc_list *workstr_list;
+
+	workstr = strdup(input);
+	if (!workstr) {
+		return NULL;
+	}
+
+	workstr_list = str_list;
+	if ( ! workstr_list ) {
+		workstr_list = malloc(sizeof(*workstr_list));
+		lxc_list_init(workstr_list);
+	}
+
+	for (workptr = workstr; workptr; workptr = next_ptr) {
+		/*
+		 * We can't use strtok_r here because it collapses
+		 * multiple delimiters into 1 making empty fields
+		 * impossible...
+		 */
+		/* token = strtok_r(workptr, delimiter, &sptr); */
+		next_ptr = strchr( workptr, *delimiter );
+
+		if( next_ptr ) {
+			*next_ptr++ = '\0';
+		}
+
+		/*
+		 * At this point, we'd like to check to see if this
+		 * group is already contained in the list and ignore
+		 * it if it is...  This also helps us with any
+		 * corner cases where a string begins or ends with a
+		 * delimiter.
+		 */
+
+		if ( list_contains_entry( workptr, workstr_list ) ) {
+			if ( *workptr ) {
+				fprintf(stderr, "Duplicate group \"%s\" in list - ignoring\n", workptr );
+			} else {
+				fprintf(stderr, "Duilicate NULL group in list - ignoring\n" );
+			}
+		} else {
+			worklist = malloc(sizeof(*worklist));
+			if (!worklist)
+				break;
+
+			worklist->elem = strdup(workptr);
+			if (!worklist->elem) {
+				free(worklist);
+				break;
+			}
+
+			lxc_list_add_tail(workstr_list, worklist);
+		}
+	}
+
+	free(workstr);
+
+	return workstr_list;
 }
 
 static struct lxc_list *get_list(char *input, char *delimiter) {
@@ -209,15 +307,29 @@ static int cmporder(const void *p1, const void *p2) {
 		return (c1_order - c2_order) * -1;
 }
 
+static int toss_list( struct lxc_list *c_groups_list ) {
+	struct lxc_list *it, *next;
+
+	if (c_groups_list) {
+		lxc_list_for_each_safe(it, c_groups_list, next) {
+			lxc_list_del(it);
+			free(it->elem);
+			free(it);
+		}
+		free(c_groups_list);
+	}
+
+	return 1;
+}
+
 int main(int argc, char *argv[])
 {
 	int count = 0;
 	int i = 0;
 	int ret = 0;
 	struct lxc_container **containers = NULL;
-	struct lxc_list *cmd_groups_list = NULL;
-	struct lxc_list *c_groups_list = NULL;
-	struct lxc_list *it, *next;
+	struct lxc_list **c_groups_lists = NULL;
+	struct lxc_list *cmd_group;
 	char *const default_start_args[] = {
 		"/sbin/init",
 		NULL,
@@ -236,113 +348,167 @@ int main(int argc, char *argv[])
 	if (count < 0)
 		return 1;
 
+	if (!my_args.all) {
+		/* Allocate an array for our container group lists */
+		c_groups_lists = calloc( count, sizeof( struct lxc_list * ) );
+	}
+
 	qsort(&containers[0], count, sizeof(struct lxc_container *), cmporder);
 
-	if (my_args.groups && !my_args.all)
-		cmd_groups_list = get_list((char*)my_args.groups, ",");
+	if (cmd_groups_list && my_args.all) {
+		fprintf(stderr, "Specifying -a (all) with -g (groups) doesn't make sense. All option overrides.");
+	}
 
-	for (i = 0; i < count; i++) {
-		struct lxc_container *c = containers[i];
+	if (!cmd_groups_list) {
+		/*
+		 * We need a default cmd_groups_list even for the -a
+		 * case in order to force a pass through the loop for
+		 * the NULL group.  This, someday, could be taken from
+		 * a config file somewhere...
+		 */
+		cmd_groups_list = accumulate_list( "" , ",", NULL );
+	}
 
-		if (!c->may_control(c)) {
-			lxc_container_put(c);
-			continue;
-		}
+	lxc_list_for_each(cmd_group, cmd_groups_list) {
 
-		if (!my_args.ignore_auto &&
-		    get_config_integer(c, "lxc.start.auto") != 1) {
-			lxc_container_put(c);
-			continue;
-		}
+		/*
+		 * Prograpmmers Note:
+		 * Because we may take several passes through the container list
+		 * We'll switch on if the container pointer is NULL and if we process a
+		 * container (run it or decide to ignore it) and call lxc_container_put
+		 * then we'll NULL it out and not check it again.
+		 */
+		for (i = 0; i < count; i++) {
+			struct lxc_container *c = containers[i];
 
-		if (!my_args.all) {
-			/* Filter by group */
-			c_groups_list = get_config_list(c, "lxc.group");
+			if (!c)
+				/* Skip - must have been already processed */
+				continue;
 
-			ret = lists_contain_common_entry(cmd_groups_list, c_groups_list);
-
-			if (c_groups_list) {
-				lxc_list_for_each_safe(it, c_groups_list, next) {
-					lxc_list_del(it);
-					free(it->elem);
-					free(it);
-				}
-				free(c_groups_list);
-			}
-
-			if (ret == 0) {
-				lxc_container_put(c);
+			/*
+			 * We haven't loaded the container groups yet so
+			 * these next two checks don't need to free them
+			 * if they fail.  They'll fail on the first pass.
+			 */
+			if (!c->may_control(c)) {
+				/* We're done with this container */
+				if ( lxc_container_put(c) > 0 )
+					containers[i] = NULL;
 				continue;
 			}
-		}
 
-		c->want_daemonize(c, 1);
+			if (!my_args.ignore_auto &&
+			    get_config_integer(c, "lxc.start.auto") != 1) {
+				/* We're done with this container */
+				if ( lxc_container_put(c) > 0 )
+					containers[i] = NULL;
+				continue;
+			}
 
-		if (my_args.shutdown) {
-			/* Shutdown the container */
-			if (c->is_running(c)) {
-				if (my_args.list)
-					printf("%s\n", c->name);
-				else {
-					if (!c->shutdown(c, my_args.timeout)) {
-						if (!c->stop(c)) {
-							fprintf(stderr, "Error shutting down container: %s\n", c->name);
+			if (!my_args.all) {
+				/* Filter by group */
+				if( ! c_groups_lists[i] ) {
+					/* Now we're loading up a container's groups */
+					c_groups_lists[i] = get_config_list(c, "lxc.group");
+				}
+
+				ret = list_contains_entry(cmd_group->elem, c_groups_lists[i]);
+
+				if ( ret == 0 ) {
+					/* Not in the target group this pass */
+					/* Leave in the list for subsequent passes */
+					continue;
+				}
+			}
+
+			/* We have a candidate continer to process */
+			c->want_daemonize(c, 1);
+
+			if (my_args.shutdown) {
+				/* Shutdown the container */
+				if (c->is_running(c)) {
+					if (my_args.list)
+						printf("%s\n", c->name);
+					else {
+						if (!c->shutdown(c, my_args.timeout)) {
+							if (!c->stop(c)) {
+								fprintf(stderr, "Error shutting down container: %s\n", c->name);
+							}
 						}
 					}
 				}
 			}
-		}
-		else if (my_args.hardstop) {
-			/* Kill the container */
-			if (c->is_running(c)) {
-				if (my_args.list)
-					printf("%s\n", c->name);
-				else {
-					if (!c->stop(c))
-						fprintf(stderr, "Error killing container: %s\n", c->name);
+			else if (my_args.hardstop) {
+				/* Kill the container */
+				if (c->is_running(c)) {
+					if (my_args.list)
+						printf("%s\n", c->name);
+					else {
+						if (!c->stop(c))
+							fprintf(stderr, "Error killing container: %s\n", c->name);
+					}
 				}
 			}
-		}
-		else if (my_args.reboot) {
-			/* Reboot the container */
-			if (c->is_running(c)) {
-				if (my_args.list)
-					printf("%s %d\n", c->name,
-					       get_config_integer(c, "lxc.start.delay"));
-				else {
-					if (!c->reboot(c))
-						fprintf(stderr, "Error rebooting container: %s\n", c->name);
-					else
-						sleep(get_config_integer(c, "lxc.start.delay"));
+			else if (my_args.reboot) {
+				/* Reboot the container */
+				if (c->is_running(c)) {
+					if (my_args.list)
+						printf("%s %d\n", c->name,
+						       get_config_integer(c, "lxc.start.delay"));
+					else {
+						if (!c->reboot(c))
+							fprintf(stderr, "Error rebooting container: %s\n", c->name);
+						else
+							sleep(get_config_integer(c, "lxc.start.delay"));
+					}
 				}
 			}
-		}
-		else {
-			/* Start the container */
-			if (!c->is_running(c)) {
-				if (my_args.list)
-					printf("%s %d\n", c->name,
-					       get_config_integer(c, "lxc.start.delay"));
-				else {
-					if (!c->start(c, 0, default_start_args))
-						fprintf(stderr, "Error starting container: %s\n", c->name);
-					else
-						sleep(get_config_integer(c, "lxc.start.delay"));
+			else {
+				/* Start the container */
+				if (!c->is_running(c)) {
+					if (my_args.list)
+						printf("%s %d\n", c->name,
+						       get_config_integer(c, "lxc.start.delay"));
+					else {
+						if (!c->start(c, 0, default_start_args))
+							fprintf(stderr, "Error starting container: %s\n", c->name);
+						else
+							sleep(get_config_integer(c, "lxc.start.delay"));
+					}
 				}
+			}
+
+			/*
+			 * If we get this far and we haven't hit any skip "continue"
+			 * then we're done with this container...  We can dump any
+			 * c_groups_list and the container itself.
+			 */
+			if ( lxc_container_put(c) > 0 ) {
+				containers[i] = NULL;
+			}
+			if ( c_groups_lists && c_groups_lists[i] ) {
+				toss_list(c_groups_lists[i]);
+				c_groups_lists[i] = NULL;
 			}
 		}
 
-
-		lxc_container_put(c);
 	}
 
-	if (cmd_groups_list) {
-		lxc_list_for_each_safe(it, cmd_groups_list, next) {
-			lxc_list_del(it);
-			free(it->elem);
-			free(it);
+	/* clean up any lingering detritus */
+	for (i = 0; i < count; i++) {
+		if ( containers[i] ) {
+			lxc_container_put(containers[i]);
 		}
-		free(cmd_groups_list);
+		if ( c_groups_lists && c_groups_lists[i] ) {
+			toss_list(c_groups_lists[i]);
+		}
+	}
+
+	if ( c_groups_lists )
+		free(c_groups_lists);
+
+	if ( cmd_groups_list ) {
+		toss_list( cmd_groups_list );
 	}
 
 	free(containers);
