@@ -129,6 +129,8 @@ EOF
     fi
     sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/login
     sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*open|#session required pam_selinux.so open|' $container_rootfs/etc/pam.d/login
+    sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/sshd
+    sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*open|#session required pam_selinux.so open|' $container_rootfs/etc/pam.d/sshd
 
     # setting /proc/$$/loginuid doesn't work under user namespace, which
     # prevents logins from working
