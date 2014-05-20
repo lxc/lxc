@@ -2,7 +2,7 @@
 
 # lxc.devsetup - Setup host /dev for container /dev subdirectories.
 
-if [[ ! -d /dev/.lxc ]]
+if [ ! -d /dev/.lxc ]
 then
     echo "Creating /dev/.lxc"
     mkdir /dev/.lxc
@@ -17,7 +17,7 @@ else
     mount -t tmpfs tmpfs /dev/.lxc
 fi
 
-if [[ ! -d /dev/.lxc/user ]]
+if [ ! -d /dev/.lxc/user ]
 then
     echo "Creating /dev/.lxc/user"
     mkdir /dev/.lxc/user
