@@ -714,14 +714,13 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		return -1;
 	*key = '\0';
 
+	/* use the command interface to look for the cgroup */
+	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
+	if (!cgroup)
+		return -1;
+
 	if (!cgm_dbus_connect()) {
 		ERROR("Error connecting to cgroup manager");
-		return -1;
-	}
-
-	cgroup = try_get_abs_cgroup(name, lxcpath, controller);
-	if (!cgroup) {
-		cgm_dbus_disconnect();
 		return -1;
 	}
 
@@ -734,12 +733,12 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		NihError *nerr;
 		nerr = nih_error_get();
 		nih_free(nerr);
-		free_abs_cgroup(cgroup);
+		free(cgroup);
 		cgm_dbus_disconnect();
 		return -1;
 	}
 	cgm_dbus_disconnect();
-	free_abs_cgroup(cgroup);
+	free(cgroup);
 	newlen = strlen(result);
 	if (!len || !value) {
 		// user queries the size
@@ -790,21 +789,22 @@ static int cgm_set(const char *filename, const char *value, const char *name, co
 		return -1;
 	*key = '\0';
 
+	/* use the command interface to look for the cgroup */
+	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
+	if (!cgroup) {
+		ERROR("Failed to get cgroup for controller %s for %s:%s",
+			controller, lxcpath, name);
+		return -1;
+	}
+
 	if (!cgm_dbus_connect()) {
 		ERROR("Error connecting to cgroup manager");
 		free(cgroup);
 		return false;
 	}
-	cgroup = try_get_abs_cgroup(name, lxcpath, controller);
-	if (!cgroup) {
-		ERROR("Failed to get cgroup for controller %s for %s:%s",
-			controller, lxcpath, name);
-		cgm_dbus_disconnect();
-		return -1;
-	}
 	ret = cgm_do_set(controller, filename, cgroup, value);
 	cgm_dbus_disconnect();
-	free_abs_cgroup(cgroup);
+	free(cgroup);
 	return ret;
 }
 
