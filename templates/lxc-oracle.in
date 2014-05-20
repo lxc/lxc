@@ -340,6 +340,10 @@ TYPE=Ethernet
 EOF
 
     # set the hostname
+    if [ $container_release_major -ge "7" ]; then
+        # systemd honors /etc/hostname
+        echo "$name" >$container_rootfs/etc/hostname
+    fi
     cat <<EOF > $container_rootfs/etc/sysconfig/network
 NETWORKING=yes
 NETWORKING_IPV6=no
