@@ -33,23 +33,6 @@
 
 struct bdev;
 
-/*
- * specifications for how to create a new backing store
- */
-struct bdev_specs {
-	char *fstype;
-	uint64_t fssize;  // fs size in bytes
-	struct {
-		char *zfsroot;
-	} zfs;
-	struct {
-		char *vg;
-		char *lv;
-		char *thinpool; // lvm thin pool to use, if any
-	} lvm;
-	char *dir;
-};
-
 struct bdev_ops {
 	/* detect whether path is of this bdev type */
 	int (*detect)(const char *path);

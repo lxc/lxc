@@ -758,6 +758,24 @@ struct lxc_snapshot {
 	void (*free)(struct lxc_snapshot *s);
 };
 
+
+/*!
+ * \brief Specifications for how to create a new backing store
+ */
+struct bdev_specs {
+    char *fstype; /*!< Filesystem type */
+    uint64_t fssize;  /*!< Filesystem size in bytes */
+    struct {
+        char *zfsroot; /*!< ZFS root path */
+    } zfs;
+    struct {
+        char *vg; /*!< LVM Volume Group name */
+        char *lv; /*!< LVM Logical Volume name */
+        char *thinpool; /*!< LVM thin pool to use, if any */
+    } lvm;
+    char *dir; /*!< Directory path */
+};
+
 /*!
  * \brief Create a new container.
  *
