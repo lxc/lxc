@@ -85,7 +85,7 @@ lxc.id_map = g 0 910000 10000
 EOF
 
 if [ -e /sys/fs/cgroup/cgmanager/sock ]; then
-	for d in $(grep -v ^# /proc/cgroups | awk '{print $1}'); do
+	for d in $(cut -d : -f 2 /proc/self/cgroup); do
 		dbus-send --print-reply --address=unix:path=/sys/fs/cgroup/cgmanager/sock \
 			--type=method_call /org/linuxcontainers/cgmanager org.linuxcontainers.cgmanager0_0.Create \
 			string:$d string:usernic-user >/dev/null
