@@ -3769,7 +3769,7 @@ static char *get_field(char *src, int nfields)
 	for (i = 0; i < nfields; i++) {
 		while (*p && *p != ' ' && *p != '\t')
 			p++;
-		if (!p)
+		if (!*p)
 			break;
 		p++;
 	}
