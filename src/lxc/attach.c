@@ -55,6 +55,7 @@
 #include "lxcseccomp.h"
 #include <lxc/lxccontainer.h>
 #include "lsm/lsm.h"
+#include "confile.h"
 
 #if HAVE_SYS_PERSONALITY_H
 #include <sys/personality.h>
@@ -116,23 +117,6 @@ static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 		goto out_error;
 	}
 
-	/* read personality */
-	snprintf(proc_fn, MAXPATHLEN, "/proc/%d/personality", pid);
-
-	proc_file = fopen(proc_fn, "r");
-	if (!proc_file) {
-		SYSERROR("Could not open %s", proc_fn);
-		goto out_error;
-	}
-
-	ret = fscanf(proc_file, "%lx", &info->personality);
-	fclose(proc_file);
-
-	if (ret == EOF || ret == 0) {
-		SYSERROR("Could not read personality from %s", proc_fn);
-		errno = ENOENT;
-		goto out_error;
-	}
 	info->lsm_label = lsm_process_label_get(pid);
 
 	return info;
@@ -635,6 +619,18 @@ static bool fetch_seccomp(const char *name, const char *lxcpath,
 	return true;
 }
 
+static signed long get_personality(const char *name, const char *lxcpath)
+{
+	char *p = lxc_cmd_get_config_item(name, "lxc.personality", lxcpath);
+	signed long ret;
+
+	if (!p)
+		return -1;
+	ret = lxc_config_parse_arch(p);
+	free(p);
+	return ret;
+}
+
 int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_function, void* exec_payload, lxc_attach_options_t* options, pid_t* attached_process)
 {
 	int ret, status;
@@ -643,6 +639,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	char* cwd;
 	char* new_cwd;
 	int ipc_sockets[2];
+	signed long personality;
 
 	if (!options)
 		options = &attach_static_default_options;
@@ -658,6 +655,14 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		ERROR("failed to get context of the init process, pid = %ld", (long)init_pid);
 		return -1;
 	}
+
+	personality = get_personality(name, lxcpath);
+	if (init_ctx->personality < 0) {
+		ERROR("Failed to get personality of the container");
+		lxc_proc_put_context_info(init_ctx);
+		return -1;
+	}
+	init_ctx->personality = personality;
 
 	if (!fetch_seccomp(name, lxcpath, init_ctx, options))
 		WARN("Failed to get seccomp policy");
