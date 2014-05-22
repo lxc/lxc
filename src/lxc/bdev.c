@@ -2631,6 +2631,19 @@ static int nbd_get_partition(const char *src)
 	return *p - '0';
 }
 
+static bool wait_for_partition(const char *path)
+{
+	int count = 0;
+	while (count < 5) {
+		if (file_exists(path))
+			return true;
+		sleep(1);
+		count++;
+	}
+	ERROR("Device %s did not show up after 5 seconds", path);
+	return false;
+}
+
 static int nbd_mount(struct bdev *bdev)
 {
 	int ret = -1, partition;
@@ -2653,6 +2666,12 @@ static int nbd_mount(struct bdev *bdev)
 	if (ret < 0 || ret >= 50) {
 		ERROR("Error setting up nbd device path");
 		return ret;
+	}
+
+	/* It might take awhile for the partition files to show up */
+	if (partition) {
+		if (!wait_for_partition(path))
+			return -2;
 	}
 	ret = mount_unknown_fs(path, bdev->dest, bdev->mntopts);
 	if (ret < 0)
