@@ -288,7 +288,7 @@ struct lxc_conf {
 	int pts;
 	int reboot;
 	int need_utmp_watch;
-	int personality;
+	signed long personality;
 	struct utsname *utsname;
 	struct lxc_list cgroup;
 	struct lxc_list id_map;

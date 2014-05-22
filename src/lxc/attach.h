@@ -32,7 +32,7 @@ struct lxc_conf;
 struct lxc_proc_context_info {
 	char *lsm_label;
 	struct lxc_container *container;
-	unsigned long personality;
+	signed long personality;
 	unsigned long long capability_mask;
 };
 
