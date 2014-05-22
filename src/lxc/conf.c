@@ -3811,6 +3811,47 @@ static void remount_all_slave(void)
 		free(line);
 }
 
+/*
+ * This does the work of remounting / if it is shared, calling the
+ * container pre-mount hooks, and mounting the rootfs.
+ */
+int do_rootfs_setup(struct lxc_conf *conf, const char *name, const char *lxcpath)
+{
+	if (conf->rootfs_setup) {
+		/*
+		 * rootfs was set up in another namespace.  bind-mount it
+		 * to give us a mount in our own ns so we can pivot_root to it
+		 */
+		const char *path = conf->rootfs.mount;
+		if (mount(path, path, "rootfs", MS_BIND, NULL) < 0) {
+			ERROR("Failed to bind-mount container / onto itself");
+			return false;
+		}
+	}
+
+	if (detect_ramfs_rootfs()) {
+		if (chroot_into_slave(conf)) {
+			ERROR("Failed to chroot into slave /");
+			return -1;
+		}
+	}
+
+	remount_all_slave();
+
+	if (run_lxc_hooks(name, "pre-mount", conf, lxcpath, NULL)) {
+		ERROR("failed to run pre-mount hooks for container '%s'.", name);
+		return -1;
+	}
+
+	if (setup_rootfs(conf)) {
+		ERROR("failed to setup rootfs for '%s'", name);
+		return -1;
+	}
+
+	conf->rootfs_setup = true;
+	return 0;
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	const char *name = handler->name;
@@ -3818,14 +3859,10 @@ int lxc_setup(struct lxc_handler *handler)
 	const char *lxcpath = handler->lxcpath;
 	void *data = handler->data;
 
-	if (detect_ramfs_rootfs()) {
-		if (chroot_into_slave(lxc_conf)) {
-			ERROR("Failed to chroot into slave /");
-			return -1;
-		}
+	if (do_rootfs_setup(lxc_conf, name, lxcpath) < 0) {
+		ERROR("Error setting up rootfs mount after spawn");
+		return -1;
 	}
-
-	remount_all_slave();
 
 	if (lxc_conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
 		if (setup_utsname(lxc_conf->utsname)) {
@@ -3836,16 +3873,6 @@ int lxc_setup(struct lxc_handler *handler)
 
 	if (setup_network(&lxc_conf->network)) {
 		ERROR("failed to setup the network for '%s'", name);
-		return -1;
-	}
-
-	if (run_lxc_hooks(name, "pre-mount", lxc_conf, lxcpath, NULL)) {
-		ERROR("failed to run pre-mount hooks for container '%s'.", name);
-		return -1;
-	}
-
-	if (setup_rootfs(lxc_conf)) {
-		ERROR("failed to setup rootfs for '%s'", name);
 		return -1;
 	}
 

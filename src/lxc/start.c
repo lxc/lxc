@@ -1060,6 +1060,21 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 		goto out_fini_nonet;
 	}
 
+	if (geteuid() == 0 && !lxc_list_empty(&conf->id_map)) {
+		/* if the backing store is a device, mount it here and now */
+		if (rootfs_is_blockdev(conf)) {
+			if (unshare(CLONE_NEWNS) < 0) {
+				ERROR("Error unsharing mounts");
+				goto out_fini_nonet;
+			}
+			if (do_rootfs_setup(conf, name, lxcpath) < 0) {
+				ERROR("Error setting up rootfs mount as root before spawn");
+				goto out_fini_nonet;
+			}
+			INFO("Set up container rootfs as host root");
+		}
+	}
+
 	err = lxc_spawn(handler);
 	if (err) {
 		ERROR("failed to spawn '%s'", name);

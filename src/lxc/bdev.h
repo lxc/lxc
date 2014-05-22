@@ -102,6 +102,8 @@ void bdev_put(struct bdev *bdev);
 bool attach_block_device(struct lxc_conf *conf);
 void detach_block_device(struct lxc_conf *conf);
 
+bool rootfs_is_blockdev(struct lxc_conf *conf);
+
 /* define constants if the kernel/glibc headers don't define them */
 #ifndef MS_DIRSYNC
 #define MS_DIRSYNC  128

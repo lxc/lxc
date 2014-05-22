@@ -2745,11 +2745,9 @@ struct bdev *bdev_get(const char *type)
 	return bdev;
 }
 
-struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst, const char *mntopts)
+static const struct bdev_type *bdev_query(const char *src)
 {
 	int i;
-	struct bdev *bdev;
-
 	for (i=0; i<numbdevs; i++) {
 		int r;
 		r = bdevs[i].ops->detect(src);
@@ -2759,12 +2757,24 @@ struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst, 
 
 	if (i == numbdevs)
 		return NULL;
+	return &bdevs[i];
+}
+
+struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst, const char *mntopts)
+{
+	struct bdev *bdev;
+	const struct bdev_type *q;
+
+	q = bdev_query(src);
+	if (!q)
+		return NULL;
+
 	bdev = malloc(sizeof(struct bdev));
 	if (!bdev)
 		return NULL;
 	memset(bdev, 0, sizeof(struct bdev));
-	bdev->ops = bdevs[i].ops;
-	bdev->type = bdevs[i].name;
+	bdev->ops = q->ops;
+	bdev->type = q->name;
 	if (mntopts)
 		bdev->mntopts = strdup(mntopts);
 	if (src)
@@ -3086,4 +3096,23 @@ char *overlay_getlower(char *p)
 	if (p1)
 		*p1 = '\0';
 	return p;
+}
+
+bool rootfs_is_blockdev(struct lxc_conf *conf)
+{
+	const struct bdev_type *q;
+	struct stat st;
+	int ret;
+
+	ret = stat(conf->rootfs.path, &st);
+	if (ret == 0 && S_ISBLK(st.st_mode))
+		return true;
+	q = bdev_query(conf->rootfs.path);
+	if (!q)
+		return false;
+	if (strcmp(q->name, "lvm") == 0 ||
+		strcmp(q->name, "loop") == 0 ||
+		strcmp(q->name, "nbd") == 0)
+		return true;
+	return false;
 }

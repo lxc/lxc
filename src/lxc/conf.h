@@ -335,6 +335,9 @@ struct lxc_conf {
 	int start_order;
 	struct lxc_list groups;
 	int nbd_idx;
+
+	/* set to true when rootfs has been setup */
+	bool rootfs_setup;
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
@@ -370,6 +373,9 @@ extern int lxc_clear_automounts(struct lxc_conf *c);
 extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
 extern int lxc_clear_idmaps(struct lxc_conf *c);
 extern int lxc_clear_groups(struct lxc_conf *c);
+
+extern int do_rootfs_setup(struct lxc_conf *conf, const char *name,
+			   const char *lxcpath);
 
 /*
  * Configure the container from inside
