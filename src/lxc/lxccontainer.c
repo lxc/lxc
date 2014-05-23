@@ -625,6 +625,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 			SYSERROR("Error chdir()ing to /.");
 			return false;
 		}
+		lxc_check_inherited(conf, -1);
 		close(0);
 		close(1);
 		close(2);
