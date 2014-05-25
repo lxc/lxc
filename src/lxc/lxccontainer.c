@@ -3083,13 +3083,7 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapnam
 
 	if (!newname)
 		newname = c->name;
-	if (strcmp(c->name, newname) == 0) {
-		if (!lxcapi_destroy(c)) {
-			ERROR("Could not destroy existing container %s", newname);
-			bdev_put(bdev);
-			return false;
-		}
-	}
+
 	ret = snprintf(clonelxcpath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		bdev_put(bdev);
@@ -3103,6 +3097,15 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapnam
 		if (snap) lxc_container_put(snap);
 		bdev_put(bdev);
 		return false;
+	}
+
+	if (strcmp(c->name, newname) == 0) {
+		if (!lxcapi_destroy(c)) {
+			ERROR("Could not destroy existing container %s", newname);
+			lxc_container_put(snap);
+			bdev_put(bdev);
+			return false;
+		}
 	}
 
 	if (strcmp(bdev->type, "dir") != 0 && strcmp(bdev->type, "loop") != 0)
