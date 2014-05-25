@@ -329,12 +329,20 @@ LXC_get_global_config_item(PyObject *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"key", NULL};
     char* key = NULL;
+    const char* value = NULL;
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
                                       &key))
         return NULL;
 
-    return PyUnicode_FromString(lxc_get_global_config_item(key));
+    value = lxc_get_global_config_item(key);
+
+    if (!value) {
+        PyErr_SetString(PyExc_KeyError, "Invalid configuration key");
+        return NULL;
+    }
+
+    return PyUnicode_FromString(value);
 }
 
 static PyObject *
