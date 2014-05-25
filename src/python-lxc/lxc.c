@@ -733,7 +733,7 @@ Container_create(Container *self, PyObject *args, PyObject *kwds)
     int i = 0;
     static char *kwlist[] = {"template", "flags", "args", NULL};
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|iO", kwlist,
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|siO", kwlist,
                                       &template_name, &flags, &vargs))
         return NULL;
 
