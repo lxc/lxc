@@ -1170,7 +1170,7 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 		fprintf(f, "%02x", md_value[i]);
 	fprintf(f, "\n");
 #endif
-	fprintf(f, "# For additional config options, please look at lxc.conf(5)\n");
+	fprintf(f, "# For additional config options, please look at lxc.container.conf(5)\n");
 	if (fwrite(contents, 1, flen, f) != flen) {
 		SYSERROR("Writing original contents");
 		free(contents);
