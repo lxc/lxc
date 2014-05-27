@@ -1220,6 +1220,8 @@ static void lxcapi_clear_config(struct lxc_container *c)
 }
 
 static bool lxcapi_destroy(struct lxc_container *c);
+static bool container_destroy(struct lxc_container *c);
+static bool get_snappath_dir(struct lxc_container *c, char *snappath);
 /*
  * lxcapi_create:
  * create a container with the given parameters.
@@ -1362,7 +1364,7 @@ out_unlock:
 		remove_partial(c, partial_fd);
 out:
 	if (!ret && c)
-		lxcapi_destroy(c);
+		container_destroy(c);
 free_tpath:
 	if (tpath)
 		free(tpath);
@@ -1968,7 +1970,7 @@ out:
 	fclose(f);
 }
 
-static bool has_snapshots(struct lxc_container *c)
+static bool has_fs_snapshots(struct lxc_container *c)
 {
 	char path[MAXPATHLEN];
 	int ret, v;
@@ -1992,10 +1994,38 @@ out:
 	return bret;
 }
 
+static bool has_snapshots(struct lxc_container *c)
+{
+	char path[MAXPATHLEN];
+	struct dirent dirent, *direntp;
+	int count=0;
+	DIR *dir;
+
+	if (!get_snappath_dir(c, path))
+		return false;
+	dir = opendir(path);
+	if (!dir)
+		return false;
+	while (!readdir_r(dir, &dirent, &direntp)) {
+		if (!direntp)
+			break;
+
+		if (!strcmp(direntp->d_name, "."))
+			continue;
+
+		if (!strcmp(direntp->d_name, ".."))
+			continue;
+		count++;
+		break;
+	}
+	closedir(dir);
+	return count > 0;
+}
+
 static int lxc_rmdir_onedev_wrapper(void *data)
 {
 	char *arg = (char *) data;
-	return lxc_rmdir_onedev(arg);
+	return lxc_rmdir_onedev(arg, "snaps");
 }
 
 static int do_bdev_destroy(struct lxc_conf *conf)
@@ -2030,8 +2060,7 @@ static int bdev_destroy_wrapper(void *data)
 	return do_bdev_destroy(conf);
 }
 
-// do we want the api to support --force, or leave that to the caller?
-static bool lxcapi_destroy(struct lxc_container *c)
+static bool container_destroy(struct lxc_container *c)
 {
 	bool bret = false;
 	int ret;
@@ -2045,11 +2074,6 @@ static bool lxcapi_destroy(struct lxc_container *c)
 	if (!is_stopped(c)) {
 		// we should queue some sort of error - in c->error_string?
 		ERROR("container %s is not stopped", c->name);
-		goto out;
-	}
-
-	if (c->lxc_conf && has_snapshots(c)) {
-		ERROR("container %s has dependent snapshots", c->name);
 		goto out;
 	}
 
@@ -2072,7 +2096,7 @@ static bool lxcapi_destroy(struct lxc_container *c)
 	if (am_unpriv())
 		ret = userns_exec_1(c->lxc_conf, lxc_rmdir_onedev_wrapper, path);
 	else
-		ret = lxc_rmdir_onedev(path);
+		ret = lxc_rmdir_onedev(path, "snaps");
 	if (ret < 0) {
 		ERROR("Error destroying container directory for %s", c->name);
 		goto out;
@@ -2083,6 +2107,37 @@ out:
 	container_disk_unlock(c);
 	return bret;
 }
+
+static bool lxcapi_destroy(struct lxc_container *c)
+{
+	if (!c || !lxcapi_is_defined(c))
+		return false;
+	if (has_snapshots(c)) {
+		ERROR("Container %s has snapshots;  not removing", c->name);
+		return false;
+	}
+
+	if (has_fs_snapshots(c)) {
+		ERROR("container %s has snapshots on its rootfs", c->name);
+		return false;
+	}
+
+	return container_destroy(c);
+}
+
+static bool lxcapi_snapshot_destroy_all(struct lxc_container *c);
+
+static bool lxcapi_destroy_with_snapshots(struct lxc_container *c)
+{
+	if (!c || !lxcapi_is_defined(c))
+		return false;
+	if (!lxcapi_snapshot_destroy_all(c)) {
+		ERROR("Error deleting all snapshots");
+		return false;
+	}
+	return lxcapi_destroy(c);
+}
+
 
 static bool set_config_item_locked(struct lxc_container *c, const char *key, const char *v)
 {
@@ -2804,6 +2859,10 @@ static bool lxcapi_rename(struct lxc_container *c, const char *newname)
 	if (!c || !c->name || !c->config_path || !c->lxc_conf)
 		return false;
 
+	if (has_fs_snapshots(c) || has_snapshots(c)) {
+		ERROR("Renaming a container with snapshots is not supported");
+		return false;
+	}
 	bdev = bdev_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
@@ -2820,7 +2879,7 @@ static bool lxcapi_rename(struct lxc_container *c, const char *newname)
 	if (newc && lxcapi_is_defined(newc))
 		lxc_container_put(newc);
 
-	if (!lxcapi_destroy(c)) {
+	if (!container_destroy(c)) {
 		ERROR("Could not destroy existing container %s", c->name);
 		return false;
 	}
@@ -2870,6 +2929,33 @@ static int get_next_index(const char *lxcpath, char *cname)
 	}
 }
 
+static bool get_snappath_dir(struct lxc_container *c, char *snappath)
+{
+	int ret;
+	/*
+	 * If the old style snapshot path exists, use it
+	 * /var/lib/lxc -> /var/lib/lxcsnaps
+	 */
+	ret = snprintf(snappath, MAXPATHLEN, "%ssnaps", c->config_path);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return false;
+	if (dir_exists(snappath)) {
+		ret = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			return false;
+		return true;
+	}
+
+	/*
+	 * Use the new style path
+	 * /var/lib/lxc -> /var/lib/lxc + c->name + /snaps + \0
+	 */
+	ret = snprintf(snappath, MAXPATHLEN, "%s/%s/snaps", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return false;
+	return true;
+}
+
 static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 {
 	int i, flags, ret;
@@ -2879,10 +2965,9 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	if (!c || !lxcapi_is_defined(c))
 		return -1;
 
-	// /var/lib/lxc -> /var/lib/lxcsnaps \0
-	ret = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	if (!get_snappath_dir(c, snappath))
 		return -1;
+
 	i = get_next_index(snappath, c->name);
 
 	if (mkdir_p(snappath, 0755) < 0) {
@@ -3016,7 +3101,7 @@ static char *get_timestamp(char* snappath, char *name)
 static int lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **ret_snaps)
 {
 	char snappath[MAXPATHLEN], path2[MAXPATHLEN];
-	int dirlen, count = 0, ret;
+	int count = 0, ret;
 	struct dirent dirent, *direntp;
 	struct lxc_snapshot *snaps =NULL, *nsnaps;
 	DIR *dir;
@@ -3024,9 +3109,7 @@ static int lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **r
 	if (!c || !lxcapi_is_defined(c))
 		return -1;
 
-	// snappath is ${lxcpath}snaps/${lxcname}/
-	dirlen = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
-	if (dirlen < 0 || dirlen >= MAXPATHLEN) {
+	if (!get_snappath_dir(c, snappath)) {
 		ERROR("path name too long");
 		return -1;
 	}
@@ -3094,13 +3177,18 @@ out_free:
 static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapname, const char *newname)
 {
 	char clonelxcpath[MAXPATHLEN];
-	int flags = 0,ret;
+	int flags = 0;
 	struct lxc_container *snap, *rest;
 	struct bdev *bdev;
 	bool b = false;
 
 	if (!c || !c->name || !c->config_path)
 		return false;
+
+	if (has_fs_snapshots(c)) {
+		ERROR("container rootfs has dependent snapshots");
+		return false;
+	}
 
 	bdev = bdev_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev) {
@@ -3111,8 +3199,7 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapnam
 	if (!newname)
 		newname = c->name;
 
-	ret = snprintf(clonelxcpath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	if (!get_snappath_dir(c, clonelxcpath)) {
 		bdev_put(bdev);
 		return false;
 	}
@@ -3127,7 +3214,7 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapnam
 	}
 
 	if (strcmp(c->name, newname) == 0) {
-		if (!lxcapi_destroy(c)) {
+		if (!container_destroy(c)) {
 			ERROR("Could not destroy existing container %s", newname);
 			lxc_container_put(snap);
 			bdev_put(bdev);
@@ -3148,21 +3235,13 @@ static bool lxcapi_snapshot_restore(struct lxc_container *c, const char *snapnam
 	return b;
 }
 
-static bool lxcapi_snapshot_destroy(struct lxc_container *c, const char *snapname)
+static bool do_snapshot_destroy(const char *snapname, const char *clonelxcpath)
 {
-	int ret;
-	char clonelxcpath[MAXPATHLEN];
 	struct lxc_container *snap = NULL;
-
-	if (!c || !c->name || !c->config_path)
-		return false;
-
-	ret = snprintf(clonelxcpath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		goto err;
+	bool bret = false;
 
 	snap = lxc_container_new(snapname, clonelxcpath);
-	if (!snap || !lxcapi_is_defined(snap)) {
+	if (!snap) {
 		ERROR("Could not find snapshot %s", snapname);
 		goto err;
 	}
@@ -3171,13 +3250,70 @@ static bool lxcapi_snapshot_destroy(struct lxc_container *c, const char *snapnam
 		ERROR("Could not destroy snapshot %s", snapname);
 		goto err;
 	}
-	lxc_container_put(snap);
+	bret = true;
 
-	return true;
 err:
 	if (snap)
 		lxc_container_put(snap);
-	return false;
+	return bret;
+}
+
+static bool remove_all_snapshots(const char *path)
+{
+	DIR *dir;
+	struct dirent dirent, *direntp;
+	bool bret = true;
+
+	dir = opendir(path);
+	if (!dir) {
+		SYSERROR("opendir on snapshot path %s", path);
+		return false;
+	}
+	while (!readdir_r(dir, &dirent, &direntp)) {
+		if (!direntp)
+			break;
+		if (!strcmp(direntp->d_name, "."))
+			continue;
+		if (!strcmp(direntp->d_name, ".."))
+			continue;
+		if (!do_snapshot_destroy(direntp->d_name, path)) {
+			bret = false;
+			continue;
+		}
+	}
+
+	closedir(dir);
+
+	if (rmdir(path))
+		SYSERROR("Error removing directory %s", path);
+
+	return bret;
+}
+
+static bool lxcapi_snapshot_destroy(struct lxc_container *c, const char *snapname)
+{
+	char clonelxcpath[MAXPATHLEN];
+
+	if (!c || !c->name || !c->config_path || !snapname)
+		return false;
+
+	if (!get_snappath_dir(c, clonelxcpath))
+		return false;
+
+	return do_snapshot_destroy(snapname, clonelxcpath);
+}
+
+static bool lxcapi_snapshot_destroy_all(struct lxc_container *c)
+{
+	char clonelxcpath[MAXPATHLEN];
+
+	if (!c || !c->name || !c->config_path)
+		return false;
+
+	if (!get_snappath_dir(c, clonelxcpath))
+		return false;
+
+	return remove_all_snapshots(clonelxcpath);
 }
 
 static bool lxcapi_may_control(struct lxc_container *c)
@@ -3337,6 +3473,9 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 {
 	struct lxc_container *c;
 
+	if (!name)
+		return NULL;
+
 	c = malloc(sizeof(*c));
 	if (!c) {
 		fprintf(stderr, "failed to malloc lxc_container\n");
@@ -3383,7 +3522,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 
 	if (ongoing_create(c) == 2) {
 		ERROR("Error: %s creation was not completed", c->name);
-		lxcapi_destroy(c);
+		container_destroy(c);
 		lxcapi_clear_config(c);
 	}
 	c->daemonize = true;
@@ -3408,6 +3547,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->wait = lxcapi_wait;
 	c->set_config_item = lxcapi_set_config_item;
 	c->destroy = lxcapi_destroy;
+	c->destroy_with_snapshots = lxcapi_destroy_with_snapshots;
 	c->rename = lxcapi_rename;
 	c->save_config = lxcapi_save_config;
 	c->get_keys = lxcapi_get_keys;
@@ -3433,6 +3573,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->snapshot_list = lxcapi_snapshot_list;
 	c->snapshot_restore = lxcapi_snapshot_restore;
 	c->snapshot_destroy = lxcapi_snapshot_destroy;
+	c->snapshot_destroy_all = lxcapi_snapshot_destroy_all;
 	c->may_control = lxcapi_may_control;
 	c->add_device_node = lxcapi_add_device_node;
 	c->remove_device_node = lxcapi_remove_device_node;

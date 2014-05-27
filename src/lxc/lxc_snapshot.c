@@ -112,7 +112,13 @@ static int do_restore_snapshots(struct lxc_container *c)
 
 static int do_destroy_snapshots(struct lxc_container *c)
 {
-	if (c->snapshot_destroy(c, snapshot))
+	bool bret;
+	if (strcmp(snapshot, "ALL") == 0)
+		bret = c->snapshot_destroy_all(c);
+	else
+		bret = c->snapshot_destroy(c, snapshot);
+
+	if (bret)
 		return 0;
 
 	ERROR("Error destroying snapshot %s", snapshot);
@@ -154,7 +160,8 @@ Options :\n\
   -C, --showcomments  show snapshot comments in list\n\
   -c, --comment=file  add file as a comment\n\
   -r, --restore=name  restore snapshot name, i.e. 'snap0'\n\
-  -d, --destroy=name  destroy snapshot name, i.e. 'snap0'\n",
+  -d, --destroy=name  destroy snapshot name, i.e. 'snap0'\n\
+                      use ALL to destroy all snapshots\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,

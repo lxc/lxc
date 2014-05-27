@@ -32,28 +32,21 @@
 static void try_to_remove(void)
 {
 	struct lxc_container *c;
-	char snappath[1024];
 	c = lxc_container_new(RESTNAME, NULL);
 	if (c) {
-		if (c->is_defined(c))
-			c->destroy(c);
-		lxc_container_put(c);
-	}
-	snprintf(snappath, 1024, "%ssnaps/%s", lxc_get_global_config_item("lxc.lxcpath"), MYNAME);
-	c = lxc_container_new("snap0", snappath);
-	if (c) {
+		c->snapshot_destroy_all(c);
 		if (c->is_defined(c))
 			c->destroy(c);
 		lxc_container_put(c);
 	}
 	c = lxc_container_new(MYNAME2, NULL);
 	if (c) {
-		if (c->is_defined(c))
-			c->destroy(c);
+		c->destroy_with_snapshots(c);
 		lxc_container_put(c);
 	}
 	c = lxc_container_new(MYNAME, NULL);
 	if (c) {
+		c->snapshot_destroy_all(c);
 		if (c->is_defined(c))
 			c->destroy(c);
 		lxc_container_put(c);
@@ -77,7 +70,7 @@ int main(int argc, char *argv[])
 
 	if (c->is_defined(c)) {
 		fprintf(stderr, "%d: %s thought it was defined\n", __LINE__, MYNAME);
-		(void) c->destroy(c);
+		(void) c->destroy_with_snapshots(c);
 	}
 	if (!c->set_config_item(c, "lxc.network.type", "empty")) {
 		fprintf(stderr, "%s: %d: failed to set network type\n", __FILE__, __LINE__);
@@ -95,11 +88,11 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
-	// rootfs should be ${lxcpath}snaps/${lxcname}/snap0/rootfs
+	// rootfs should be ${lxcpath}${lxcname}/snaps/snap0/rootfs
 	struct stat sb;
 	int ret;
 	char path[1024];
-	snprintf(path, 1024, "%ssnaps/%s/snap0/rootfs", lxc_get_global_config_item("lxc.lxcpath"), MYNAME);
+	snprintf(path, 1024, "%s/%s/snaps/snap0/rootfs", lxc_get_global_config_item("lxc.lxcpath"), MYNAME);
 	ret = stat(path, &sb);
 	if (ret != 0) {
 		fprintf(stderr, "%s: %d: snapshot was not actually created\n", __FILE__, __LINE__);
@@ -169,17 +162,7 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
-	if (!c2->destroy(c2)) {
-		fprintf(stderr, "%s: %d: failed to destroy container\n", __FILE__, __LINE__);
-		goto err;
-	}
-
 good:
-	if (!c->destroy(c)) {
-		fprintf(stderr, "%s: %d: failed to destroy container\n", __FILE__, __LINE__);
-		goto err;
-	}
-
 	lxc_container_put(c);
 	try_to_remove();
 
