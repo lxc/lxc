@@ -9,6 +9,7 @@ EXTRA_DIST = \
 	profiles/lxc-default \
 	profiles/lxc-default-with-mounting \
 	profiles/lxc-default-with-nesting \
+	profiles/lxc-default-with-systemd \
 	usr.bin.lxc-start
 
 
@@ -22,6 +23,7 @@ install-apparmor:
 	$(INSTALL_DATA) profiles/lxc-default $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
 	$(INSTALL_DATA) profiles/lxc-default-with-mounting $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
 	$(INSTALL_DATA) profiles/lxc-default-with-nesting $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
+	$(INSTALL_DATA) profiles/lxc-default-with-systemd $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
 	$(INSTALL_DATA) lxc-containers $(DESTDIR)$(sysconfdir)/apparmor.d/
 	$(INSTALL_DATA) usr.bin.lxc-start $(DESTDIR)$(sysconfdir)/apparmor.d/
 
