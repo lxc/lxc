@@ -1165,7 +1165,7 @@ static const char *sig_name(int signum) {
 	int n;
 
 	for (n = 0; n < sizeof(signames) / sizeof((signames)[0]); n++) {
-		if (n == signames[n].num)
+		if (signum == signames[n].num)
 			return signames[n].name;
 	}
 	return "";
