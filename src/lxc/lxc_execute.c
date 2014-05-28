@@ -140,6 +140,9 @@ int main(int argc, char *argv[])
 		return 1;
 
 	ret = lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf, my_args.lxcpath[0]);
+
+	lxc_conf_free(conf);
+
 	if (ret < 0)
 		return 1;
 	return ret;
