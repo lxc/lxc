@@ -2296,7 +2296,7 @@ static int dropcaps_except(struct lxc_list *caps)
 			return -1;
 		}
 
-		DEBUG("drop capability '%s' (%d)", keep_entry, capid);
+		DEBUG("keep capability '%s' (%d)", keep_entry, capid);
 
 		caplist[capid] = 1;
 	}
