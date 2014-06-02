@@ -126,6 +126,12 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
+	c2 = lxc_container_new(RESTNAME, NULL);
+	if (!c2 || !c2->is_defined(c2)) {
+		fprintf(stderr, "%s: %d: external snapshot restore failed\n", __FILE__, __LINE__);
+		goto err;
+	}
+	lxc_container_put(c2);
 
 	c2 = c->clone(c, MYNAME2, NULL, LXC_CLONE_SNAPSHOT, "overlayfs", NULL, 0, NULL);
 	if (!c2) {
