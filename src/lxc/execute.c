@@ -104,6 +104,20 @@ static char *choose_init(void)
 	ret = stat(retv, &mystat);
 	if (ret == 0)
 		return retv;
+
+	/*
+	 * Last resort, look for the statically compiled init.lxc which we
+	 * hopefully bind-mounted in
+	 */
+	ret = snprintf(retv, PATH_MAX, "/init.lxc.static");
+	if (ret < 0 || ret >= PATH_MAX) {
+		WARN("Nonsense - name /lxc.init.static too long");
+		goto out1;
+	}
+	ret = stat(retv, &mystat);
+	if (ret == 0)
+		return retv;
+
 out1:
 	free(retv);
 	return NULL;
