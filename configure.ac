@@ -257,7 +257,9 @@ AM_COND_IF([ENABLE_CGMANAGER],
 	])
 
 AC_MSG_CHECKING(for get_pid_cgroup_abs_sync)
+save_LIBS=$LIBS
 AC_SEARCH_LIBS([cgmanager_get_pid_cgroup_abs_sync], [cgmanager], [have_abs_cgroups=yes], [have_abs_cgroups=no], [-lnih -lnih-dbus -ldbus-1])
+LIBS=$save_LIBS
 if test "x$have_abs_cgroups" = "xyes"; then
 	AC_DEFINE([HAVE_CGMANAGER_GET_PID_CGROUP_ABS_SYNC], 1, [Have cgmanager_get_pid_cgroup_abs_sync])
 	AC_MSG_RESULT([yes])
