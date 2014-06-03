@@ -359,10 +359,9 @@ configure_fedora_systemd()
     rm -f ${rootfs_path}/etc/systemd/system/default.target
     touch ${rootfs_path}/etc/fstab
     chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/udev.service
-    chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/systemd-journald.service
     chroot ${rootfs_path} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
     # Make systemd honor SIGPWR
-    chroot ${rootfs_path} ln -s /usr/lib/systemd/system/halt.target /etc/systemd/system/
+    chroot ${rootfs_path} ln -s /usr/lib/systemd/system/halt.target /etc/systemd/system/sigpwr.target
     #dependency on a device unit fails it specially that we disabled udev
     # sed -i 's/After=dev-%i.device/After=/' ${rootfs_path}/lib/systemd/system/getty\@.service
     #
