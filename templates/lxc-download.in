@@ -116,8 +116,17 @@ gpg_setup() {
     mkdir -p "$DOWNLOAD_TEMP/gpg"
     chmod 700 "$DOWNLOAD_TEMP/gpg"
     export GNUPGHOME="$DOWNLOAD_TEMP/gpg"
-    if ! gpg --keyserver $DOWNLOAD_KEYSERVER \
+
+    success=
+    for i in $(seq 3); do
+        if gpg --keyserver $DOWNLOAD_KEYSERVER \
             --recv-keys ${DOWNLOAD_KEYID} >/dev/null 2>&1; then
+            success=1
+            break
+        fi
+    done
+
+    if [ -z "$success" ]; then
         echo "ERROR: Unable to fetch GPG key from keyserver."
         exit 1
     fi
