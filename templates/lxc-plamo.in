@@ -237,6 +237,10 @@ configure_plamo() {
   rm -f $rootfs/etc/rc.d/rc.inet1.tradnet
   sh /tmp/netconfig.rconly
   rm -f /tmp/netconfig.rconly
+  ed - $rootfs/etc/rc.d/rc.inet1.tradnet <<- "EOF"
+	g/cmdline/s/if/& false \&\&/
+	w
+	EOF
   return 0
 }
 
