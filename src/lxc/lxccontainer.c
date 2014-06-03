@@ -2852,6 +2852,9 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	struct lxc_container *c2;
 	char snappath[MAXPATHLEN], newname[20];
 
+	if (!c || !lxcapi_is_defined(c))
+		return -1;
+
 	// /var/lib/lxc -> /var/lib/lxcsnaps \0
 	ret = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
 	if (ret < 0 || ret >= MAXPATHLEN)
