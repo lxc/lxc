@@ -199,7 +199,7 @@ bin_PROGRAMS = \
 	lxc-usernsexec \
 	lxc-wait
 
-sbin_PROGRAMS = init.lxc
+sbin_PROGRAMS = init.lxc init.lxc.static
 pkglibexec_PROGRAMS = \
 	lxc-monitord \
 	lxc-user-nic
@@ -232,6 +232,10 @@ lxc_create_SOURCES = lxc_create.c
 lxc_snapshot_SOURCES = lxc_snapshot.c
 lxc_usernsexec_SOURCES = lxc_usernsexec.c
 lxc_user_nic_SOURCES = lxc_user_nic.c network.c network.h
+
+init_lxc_static_SOURCES = lxc_init.c error.c log.c utils.c caps.c
+init_lxc_static_LDFLAGS = -static
+init_lxc_static_LDADD = @CAP_LIBS@
 
 install-exec-local: install-soPROGRAMS
 	mkdir -p $(DESTDIR)$(datadir)/lxc
