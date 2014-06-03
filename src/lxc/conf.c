@@ -3246,14 +3246,14 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	enum idtype type;
 	char *buf = NULL, *pos, *cmdpath = NULL;
 
-	cmdpath = on_path("newuidmap");
+	cmdpath = on_path("newuidmap", NULL);
 	if (cmdpath) {
 		use_shadow = 1;
 		free(cmdpath);
 	}
 
 	if (!use_shadow) {
-		cmdpath = on_path("newgidmap");
+		cmdpath = on_path("newgidmap", NULL);
 		if (cmdpath) {
 			use_shadow = 1;
 			free(cmdpath);
@@ -3814,7 +3814,14 @@ static void remount_all_slave(void)
 void lxc_execute_bind_init(struct lxc_conf *conf)
 {
 	int ret;
-	char path[PATH_MAX], destpath[PATH_MAX];
+	char path[PATH_MAX], destpath[PATH_MAX], *p;
+
+	/* If init exists in the container, don't bind mount a static one */
+	p = choose_init(conf->rootfs.mount);
+	if (p) {
+		free(p);
+		return;
+	}
 
 	ret = snprintf(path, PATH_MAX, SBINDIR "/init.lxc.static");
 	if (ret < 0 || ret >= PATH_MAX) {

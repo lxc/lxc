@@ -39,90 +39,6 @@ struct execute_args {
 	int quiet;
 };
 
-/* historically lxc-init has been under /usr/lib/lxc and under
- * /usr/lib/$ARCH/lxc.  It now lives as $prefix/sbin/init.lxc.
- */
-static char *choose_init(void)
-{
-	char *retv = NULL;
-	int ret, env_set = 0;
-	struct stat mystat;
-
-	if (!getenv("PATH")) {
-		if (setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 0))
-			SYSERROR("Failed to setenv");
-		env_set = 1;
-	}
-
-	retv = on_path("init.lxc");
-
-	if (env_set) {
-		if (unsetenv("PATH"))
-			SYSERROR("Failed to unsetenv");
-	}
-
-	if (retv)
-		return retv;
-
-	retv = malloc(PATH_MAX);
-	if (!retv)
-		return NULL;
-
-	ret = snprintf(retv, PATH_MAX, SBINDIR "/init.lxc");
-	if (ret < 0 || ret >= PATH_MAX) {
-		ERROR("pathname too long");
-		goto out1;
-	}
-
-	ret = stat(retv, &mystat);
-	if (ret == 0)
-		return retv;
-
-	ret = snprintf(retv, PATH_MAX, LXCINITDIR "/lxc/lxc-init");
-	if (ret < 0 || ret >= PATH_MAX) {
-		ERROR("pathname too long");
-		goto out1;
-	}
-
-	ret = stat(retv, &mystat);
-	if (ret == 0)
-		return retv;
-
-	ret = snprintf(retv, PATH_MAX, "/usr/lib/lxc/lxc-init");
-	if (ret < 0 || ret >= PATH_MAX) {
-		ERROR("pathname too long");
-		goto out1;
-	}
-	ret = stat(retv, &mystat);
-	if (ret == 0)
-		return retv;
-	ret = snprintf(retv, PATH_MAX, "/sbin/lxc-init");
-	if (ret < 0 || ret >= PATH_MAX) {
-		ERROR("pathname too long");
-		goto out1;
-	}
-	ret = stat(retv, &mystat);
-	if (ret == 0)
-		return retv;
-
-	/*
-	 * Last resort, look for the statically compiled init.lxc which we
-	 * hopefully bind-mounted in
-	 */
-	ret = snprintf(retv, PATH_MAX, "/init.lxc.static");
-	if (ret < 0 || ret >= PATH_MAX) {
-		WARN("Nonsense - name /lxc.init.static too long");
-		goto out1;
-	}
-	ret = stat(retv, &mystat);
-	if (ret == 0)
-		return retv;
-
-out1:
-	free(retv);
-	return NULL;
-}
-
 static int execute_start(struct lxc_handler *handler, void* data)
 {
 	int j, i = 0;
@@ -146,7 +62,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	if (!argv)
 		goto out1;
 
-	initpath = choose_init();
+	initpath = choose_init(NULL);
 	if (!initpath) {
 		ERROR("Failed to find an lxc-init");
 		goto out2;
