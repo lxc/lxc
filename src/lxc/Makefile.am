@@ -234,6 +234,13 @@ lxc_usernsexec_SOURCES = lxc_usernsexec.c
 lxc_user_nic_SOURCES = lxc_user_nic.c network.c network.h
 
 init_lxc_static_SOURCES = lxc_init.c error.c log.c utils.c caps.c
+
+if !HAVE_GETLINE
+if HAVE_FGETLN
+init_lxc_static_SOURCES += ../include/getline.c
+endif
+endif
+
 init_lxc_static_LDFLAGS = -static
 init_lxc_static_LDADD = @CAP_LIBS@
 
