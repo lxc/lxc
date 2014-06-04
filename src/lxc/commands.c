@@ -136,8 +136,8 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 
 	ret = lxc_abstract_unix_recv_fd(sock, &rspfd, rsp, sizeof(*rsp));
 	if (ret < 0) {
-		ERROR("command %s failed to receive response",
-		      lxc_cmd_str(cmd->req.cmd));
+		WARN("command %s failed to receive response",
+		     lxc_cmd_str(cmd->req.cmd));
 		return -1;
 	}
 
