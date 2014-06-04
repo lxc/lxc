@@ -69,6 +69,7 @@
 #include "namespace.h"
 #include "lxcseccomp.h"
 #include "caps.h"
+#include "bdev.h"
 #include "lsm/lsm.h"
 
 lxc_log_define(lxc_start, lxc);
@@ -1052,6 +1053,21 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	} else {
 		DEBUG("Not dropping cap_sys_boot or watching utmp");
 		handler->conf->need_utmp_watch = 0;
+	}
+
+	if (geteuid() == 0 && !lxc_list_empty(&conf->id_map)) {
+		/* if the backing store is a device, mount it here and now */
+		if (rootfs_is_blockdev(conf)) {
+			if (unshare(CLONE_NEWNS) < 0) {
+				ERROR("Error unsharing mounts");
+				goto out_fini_nonet;
+			}
+			if (do_rootfs_setup(conf, name, lxcpath) < 0) {
+				ERROR("Error setting up rootfs mount as root before spawn");
+				goto out_fini_nonet;
+			}
+			INFO("Set up container rootfs as host root");
+		}
 	}
 
 	err = lxc_spawn(handler);

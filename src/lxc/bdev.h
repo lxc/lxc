@@ -93,6 +93,8 @@ struct bdev *bdev_create(const char *dest, const char *type,
 			const char *cname, struct bdev_specs *specs);
 void bdev_put(struct bdev *bdev);
 
+bool rootfs_is_blockdev(struct lxc_conf *conf);
+
 /* define constants if the kernel/glibc headers don't define them */
 #ifndef MS_DIRSYNC
 #define MS_DIRSYNC  128
