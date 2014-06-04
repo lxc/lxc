@@ -329,8 +329,16 @@ int main(int argc, char *argv[])
 		c->want_close_all_fds(c, true);
 
 	err = c->start(c, 0, args) ? 0 : 1;
+
+	if (err) {
+		ERROR("The container failed to start.");
+		if (my_args.daemonize)
+			ERROR("To get more details, run the container in foreground mode.");
+		ERROR("Additional information can be obtained by setting the "
+		      "--logfile and --log-priority options.");
+	}
+
 out:
 	lxc_container_put(c);
 	return err;
 }
-
