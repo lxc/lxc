@@ -154,6 +154,7 @@ rm -rf %{buildroot}
 %attr(4111,root,root) %{_libexecdir}/%{name}/lxc-user-nic
 %if %{with_systemd}
 %attr(555,root,root) %{_libexecdir}/%{name}/lxc-devsetup
+%attr(555,root,root) %{_libexecdir}/%{name}/lxc-autostart-helper
 %endif
 
 %if %{with_python}

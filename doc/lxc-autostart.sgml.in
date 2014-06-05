@@ -153,8 +153,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                 </term>
                 <listitem>
                     <para>
-                        Comma separate list of groups to select
-                        (defaults to those without a lxc.group).
+                        Comma separated list of groups to select
+                        (defaults to those without a lxc.group - the NULL group).
+                        This option may be specified multiple times
+                        and the arguments concatenated.  The NULL or
+                        empty group may be specified as a leading comma,
+                        trailing comma, embedded double comma, or empty
+                        argument where the NULL group should be processed.
+                        Groups are processed in the order specified on the
+                        command line.  Multiple invocations of the -g option
+                        may be freely intermixed with the comma separated
+                        lists and will be combined in specified order.
                     </para>
                 </listitem>
             </varlistentry>
@@ -166,6 +175,69 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                 <listitem>
                     <para>
                         Ignore lxc.group and select all auto-started containers.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>Autostart and System Boot</title>
+
+        <para>
+            The <command>lxc-autostart</command> command is used as part of the
+            LXC system service, when enabled to run on host system at bootup and at
+            shutdown.  It's used to select which containers to start in what order
+            and how much to delay between each startup when the host system boots.
+        </para>
+
+        <para>
+            Each container can be part of any number of groups or no group at all.
+            Two groups are special. One is the NULL group, i.e. the container does
+            not belong to any group. The other group is the "onboot" group.
+        </para>
+
+        <para>
+            When the system boots with the LXC service enabled, it will first
+            attempt to boot any containers with lxc.start.auto == 1 that is a member
+            of the "onboot" group. The startup will be in order of lxc.start.order.
+            If an lxc.start.delay has been specified, that delay will be honored
+            before attempting to start the next container to give the current
+            container time to begin initialization and reduce overloading the host
+            system. After starting the members of the "onboot" group, the LXC system
+            will proceed to boot containers with lxc.start.auto == 1 which are not
+            members of any group (the NULL group) and proceed as with the onboot
+            group.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Startup Group Examples</title>
+        <variablelist>
+            <varlistentry>
+                <term>
+                    <option>-g "onboot,"</option>
+                </term>
+                <listitem>
+                    <para>
+                        Start the "onboot" group first then the NULL group.
+                    </para>
+                    <para>
+                        This is the equivalent of: <option>-g onboot -g ""</option>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-g "dns,web,,onboot"</option>
+                </term>
+                <listitem>
+                    <para>
+                        Starts the "dns" group first, the "web" group second, then
+                        the NULL group followed by the "onboot" group.
+                    </para>
+                    <para>
+                        This is the equivalent of: <option>-g dns,web -g ,onboot</option> or <option>-g dns -g web -g "" -g onboot</option>.
                     </para>
                 </listitem>
             </varlistentry>

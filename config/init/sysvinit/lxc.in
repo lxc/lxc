@@ -1,0 +1,124 @@
+#!/bin/sh
+#
+# lxc Start/Stop LXC autoboot containers
+#
+# chkconfig: 345 99 01
+# description: Starts/Stops all LXC containers configured for autostart.
+#
+### BEGIN INIT INFO
+# Provides: lxc
+# Default-Start: 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Bring up/down LXC autostart containers
+# Description: Bring up/down LXC autostart containers
+### END INIT INFO
+
+sysconfdir="@SYSCONFDIR@"
+bindir="@BINDIR@"
+localstatedir="@LOCALSTATEDIR@"
+
+# These can be overridden in @SYSCONFDIR@/sysconfig/lxc
+
+# BOOTGROUPS - What groups should start on bootup?
+#	Comma separated list of groups.
+#	Leading comma, trailing comma or embedded double
+#	comma indicates when the NULL group should be run.
+# Example (default): boot the onboot group first then the NULL group
+BOOTGROUPS="onboot,"
+
+# SHUTDOWNDELAY - Wait time for a container to shut down.
+#	ner shutdown can result in lengthy system
+#	shutdown times.  Even 5 seconds per container can be
+#	too long.
+SHUTDOWNDELAY=5
+
+# OPTIONS can be used for anything else.
+#	If you want to boot everything then
+#	options can be "-a" or "-a -A".
+OPTIONS=
+
+# STOPOPTS are stop options.  The can be used for anything else to stop.
+#	If you want to kill containers fast, use -k
+STOPOPTS="-a -s"
+
+# Source function library.
+test ! -r "$sysconfdir"/rc.d/init.d/functions ||
+        . "$sysconfdir"/rc.d/init.d/functions
+
+# Source any configurable options
+test ! -r "$sysconfdir"/sysconfig/lxc ||
+        . "$sysconfdir"/sysconfig/lxc
+
+# Check for needed utility program
+[ -x "$bindir"/lxc-autostart ] || exit 1
+
+# If libvirtd is providing the bridge, it might not be
+# immediately available, so wait a bit for it before starting
+# up the containers or else any that use the bridge will fail
+# to start
+wait_for_bridge()
+{
+    [ -f "$sysconfdir"/lxc/default.conf ] || { return 0; }
+
+    which ifconfig >/dev/null 2>&1
+    if [ $? = 0 ]; then
+        cmd="ifconfig -a"
+    else
+        which ip >/dev/null 2>&1
+        if [ $? = 0 ]; then
+            cmd="ip link list"
+        fi
+    fi
+    [ -n cmd ] || { return 0; }
+
+    BRNAME=`grep '^[ 	]*lxc.network.link' "$sysconfdir"/lxc/default.conf | sed 's/^.*=[ 	]*//'`
+    if [ -z "$BRNAME" ]; then
+	return 0
+    fi
+
+    for try in `seq 1 30`; do
+	eval $cmd |grep "^$BRNAME" >/dev/null 2>&1
+	if [ $? = 0 ]; then
+	    return
+	fi
+	sleep 1
+    done
+}
+
+# See how we were called.
+case "$1" in
+  start)
+	[ ! -f "$localstatedir"/lock/subsys/lxc ] || { exit 0; }
+
+	if [ -n "$BOOTGROUPS" ]
+	then
+		BOOTGROUPS="-g $BOOTGROUPS"
+	fi
+
+	# Start containers
+	wait_for_bridge
+	# Start autoboot containers first then the NULL group "onboot,".
+	action $"Starting LXC autoboot containers: " /usr/bin/lxc-autostart $OPTIONS $BOOTGROUPS
+	touch "$localstatedir"/lock/subsys/lxc
+	;;
+  stop)
+	if [ -n "$SHUTDOWNDELAY" ]
+	then
+		SHUTDOWNDELAY="-t $SHUTDOWNDELAY"
+	fi
+
+	# The stop is serialized and can take excessive time.  We need to avoid
+	# delaying the system shutdown / reboot as much as we can since it's not
+	# parallelized...  Even 5 second timout may be too long.
+	action $"Stopping LXC containers: " "$bindir"/lxc-autostart $STOPOPTS $SHUTDOWNDELAY
+	rm -f "$localstatedir"/lock/subsys/lxc
+	;;
+  restart|reload|force-reload)
+	$0 stop
+	$0 start
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|restart|reload|force-reload}"
+	exit 2
+esac
+exit $?

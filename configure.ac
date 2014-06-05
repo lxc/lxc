@@ -575,7 +575,9 @@ AC_CONFIG_FILES([
 	config/bash/lxc
 	config/init/Makefile
 	config/init/sysvinit/Makefile
+	config/init/sysvinit/lxc
 	config/init/systemd/Makefile
+	config/init/systemd/lxc.service
 	config/init/upstart/Makefile
 	config/etc/Makefile
 	config/templates/Makefile
