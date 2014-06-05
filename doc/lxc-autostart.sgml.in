@@ -157,7 +157,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                         Comma separated list of groups to select
                         (defaults to those without a lxc.group - the NULL group).
                         This option may be specified multiple times
-                        and the arguments concatentated.  The NULL or
+                        and the arguments concatenated.  The NULL or
                         empty group may be specified as a leading comma,
                         trailing comma, embedded double comma, or empty
                         argument where the NULL group should be processed.
