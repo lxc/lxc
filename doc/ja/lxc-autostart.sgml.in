@@ -187,10 +187,21 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                 <listitem>
                     <para>
                       <!--
-                        Comma separate list of groups to select
-                        (defaults to those without a lxc.group).
+                        Comma separated list of groups to select
+                        (defaults to those without a lxc.group - the NULL group).
+                        This option may be specified multiple times
+                        and the arguments concatenated.  The NULL or
+                        empty group may be specified as a leading comma,
+                        trailing comma, embedded double comma, or empty
+                        argument where the NULL group should be processed.
+                        Groups are processed in the order specified on the
+                        command line.  Multiple invocations of the -g option
+                        may be freely intermixed with the comma separated
+                        lists and will be combined in specified order.
                         -->
-                      対象にするコンテナのグループのカンマ区切りのリスト (デフォルトでは lxc.group 指定のないコンテナが対象になります)。
+                      対象にするコンテナのグループのカンマ区切りのリスト (デフォルトでは lxc.group 指定のないコンテナ、つまり NULL グループが対象になります)。
+                      このオプションは複数回指定することができ、オプションは連結されます。NULL もしくは空のグループは、NULL グループを処理すべき場所に指定された先頭のカンマ、末尾のカンマ、途中に現れる 2 つ続きのカンマ、空のオプション引数で指定することができます。
+                      グループはコマンドラインで指定された順番に処理されます。-g オプションの複数回の呼び出しはカンマ区切りのリストと自由に混ぜることができ、指定した順番に連結されます。
                     </para>
                 </listitem>
             </varlistentry>
@@ -220,6 +231,93 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                         -a, will select all containers on the system.
                         -->
                       lxc.start.auto で設定されているフラグを無視します。-a と組み合わせることにより、システム上の全てのコンテナを選択します。
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title><!-- Autostart and System Boot -->自動起動とシステムブート</title>
+
+        <para>
+          <!--
+            The <command>lxc-autostart</command> command is used as part of the
+            LXC system service, when enabled to run on host system at bootup and at
+            shutdown.  It's used to select which containers to start in what order
+            and how much to delay between each startup when the host system boots.
+            -->
+          <command>lxc-autostart</command> コマンドは、LXC システムサービスがホストシステムのブートおよびシャットダウン時に実行するように有効化されているとき、LXC システムサービスの一部として使用されます。
+          このコマンドはホストシステムのブート時に、どのコンテナをどういう順番で、それぞれのコンテナの起動間隔をどれくらい開けるかを選択するのに使います。
+        </para>
+
+        <para>
+          <!--
+            Each container can be part of any number of groups or no group at all.
+            Two groups are special. One is the NULL group, i.e. the container does
+            not belong to any group. The other group is the "onboot" group.
+            -->
+          コンテナはいくつでもグループに属することができ、全く属さないことも可能です。特別なグループが 2 つ存在します。1 つは NULL グループです。これはどのグループにも属さないコンテナです。もう 1 つは "onboot" グループです。
+        </para>
+
+        <para>
+          <!--
+            When the system boots with the LXC service enabled, it will first
+            attempt to boot any containers with lxc.start.auto == 1 that is a member
+            of the "onboot" group. The startup will be in order of lxc.start.order.
+            If an lxc.start.delay has been specified, that delay will be honored
+            before attempting to start the next container to give the current
+            container time to begin initialization and reduce overloading the host
+            system. After starting the members of the "onboot" group, the LXC system
+            will proceed to boot containers with lxc.start.auto == 1 which are not
+            members of any group (the NULL group) and proceed as with the onboot
+            group.
+            -->
+          LXC サービスが有効になった状態でシステムがブートすると、最初に "onboot" グループのメンバーである lxc.start.auto == 1 が設定されたコンテナを起動しようとします。起動は lxc.start.order の順に起動します。
+          lxc.start.delay が指定されている場合、現在対象となっているコンテナに初期化の時間を与え、ホストシステムの負荷を低減するために、次のコンテナを開始させるまでに遅延時間を与えます。
+          "onboot" グループのメンバーが開始した後、LXC システムは lxc.start.auto == 1 が設定された、どのグループのメンバーでもない (NULL グループの) コンテナのブートを onboot グループのコンテナと同様に開始します。
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title><!-- Startup Group Examples -->スタートアップグループの例</title>
+        <variablelist>
+            <varlistentry>
+                <term>
+                    <option>-g "onboot,"</option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Start the "onboot" group first then the NULL group.
+                        -->
+                      まず最初に "onboot" グループの処理を開始し、その後 NULL グループの処理を開始します。
+                    </para>
+                    <para>
+                      <!--
+                        This is the equivalent of: <option>-g onboot -g ""</option>.
+                        -->
+                      これは以下と等価です: <option>-g onboot -g ""</option>
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-g "dns,web,,onboot"</option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Starts the "dns" group first, the "web" group second, then
+                        the NULL group followed by the "onboot" group.
+                        -->
+                      まず最初に "dns" グループの処理を開始し、2 番目に "web" グループ、その後 NULL グループ、"onboot" グループの順に処理を開始します。
+                    </para>
+                    <para>
+                      <!--
+                        This is the equivalent of: <option>-g dns,web -g ,onboot</option> or <option>-g dns -g web -g "" -g onboot</option>.
+                        -->
+                      これは以下と等価です: <option>-g dns,web -g ,onboot</option> もしくは <option>-g dns -g web -g "" -g onboot</option>
                     </para>
                 </listitem>
             </varlistentry>

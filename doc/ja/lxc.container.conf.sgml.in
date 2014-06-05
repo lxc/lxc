@@ -2083,6 +2083,36 @@ mknod errno 0
       </variablelist>
     </refsect2>
 
+    <refsect2>
+    <title><!-- Autostart and System Boot -->自動起動とシステムブート</title>
+    <para>
+      <!--
+          Each container can be part of any number of groups or no group at all.
+          Two groups are special. One is the NULL group, i.e. the container does
+          not belong to any group. The other group is the "onboot" group.
+        -->
+          コンテナはいくつでもグループに属することができ、全く属さないことも可能です。特別なグループが 2 つ存在します。1 つは NULL グループです。これはどのグループにも属さないコンテナです。もう 1 つは "onboot" グループです。
+    </para>
+
+    <para>
+      <!--
+          When the system boots with the LXC service enabled, it will first
+          attempt to boot any containers with lxc.start.auto == 1 that is a member
+          of the "onboot" group. The startup will be in order of lxc.start.order.
+          If an lxc.start.delay has been specified, that delay will be honored
+          before attempting to start the next container to give the current
+          container time to begin initialization and reduce overloading the host
+          system. After starting the members of the "onboot" group, the LXC system
+          will proceed to boot containers with lxc.start.auto == 1 which are not
+          members of any group (the NULL group) and proceed as with the onboot
+          group.
+          -->
+          LXC サービスが有効になった状態でシステムがブートすると、最初に "onboot" グループのメンバーである lxc.start.auto == 1 が設定されたコンテナを起動しようとします。起動は lxc.start.order の順に起動します。
+          lxc.start.delay が指定されている場合、現在対象となっているコンテナに初期化の時間を与え、ホストシステムの負荷を低減するために、次のコンテナを開始させるまでに遅延時間を与えます。
+          "onboot" グループのメンバーが開始した後、LXC システムは lxc.start.auto == 1 が設定された、どのグループのメンバーでもない (NULL グループの) コンテナのブートを onboot グループのコンテナと同様に開始します。
+    </para>
+
+    </refsect2>
   </refsect1>
 
   <refsect1>
