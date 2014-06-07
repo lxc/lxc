@@ -1415,9 +1415,6 @@ static int config_mount(const char *key, const char *value,
 	char *mntelem;
 	struct lxc_list *mntlist;
 
-	if (!value || strlen(value) == 0)
-		return lxc_clear_mount_entries(lxc_conf);
-
 	subkey = strstr(key, token);
 
 	if (!subkey) {
@@ -1435,8 +1432,8 @@ static int config_mount(const char *key, const char *value,
 		return config_mount_auto(key, value, lxc_conf);
 	}
 
-	if (!strlen(subkey))
-		return -1;
+	if (!value || strlen(value) == 0)
+		return lxc_clear_mount_entries(lxc_conf);
 
 	mntlist = malloc(sizeof(*mntlist));
 	if (!mntlist)
