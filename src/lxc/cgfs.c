@@ -953,7 +953,7 @@ static struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const c
 				current_entire_path = NULL;
 				goto cleanup_name_on_this_level;
 			} else if (r < 0 && errno != EEXIST) {
-				SYSERROR("Could not create cgroup %s", current_entire_path);
+				SYSERROR("Could not create cgroup '%s' in '%s'.", current_entire_path, info_ptr->designated_mount_point->mount_point);
 				goto cleanup_from_error;
 			} else if (r == 0) {
 				/* successfully created */
@@ -961,7 +961,7 @@ static struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const c
 				if (r < 0)
 					goto cleanup_from_error;
 				if (!init_cpuset_if_needed(info_ptr->designated_mount_point, current_entire_path)) {
-					ERROR("Failed to initialize cpuset in new '%s'.", current_entire_path);
+					ERROR("Failed to initialize cpuset for '%s' in '%s'.", current_entire_path, info_ptr->designated_mount_point->mount_point);
 					goto cleanup_from_error;
 				}
 				info_ptr->created_paths[info_ptr->created_paths_count++] = current_entire_path;
