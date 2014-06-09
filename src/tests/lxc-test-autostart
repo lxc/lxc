@@ -67,10 +67,12 @@ fi
 # Start it
 lxc-autostart -g lxc-auto-test
 lxc-wait -n $CONTAINER_NAME -t 5 -s RUNNING || (echo "Container didn't start" && exit 1)
+sleep 5
 
 # Restart it
 lxc-autostart -g lxc-auto-test -r
 lxc-wait -n $CONTAINER_NAME -t 5 -s RUNNING || (echo "Container didn't restart" && exit 1)
+sleep 5
 
 # Shut it down
 lxc-autostart -g lxc-auto-test -s -t 120
