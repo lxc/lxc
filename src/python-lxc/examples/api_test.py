@@ -180,6 +180,14 @@ assert(container.init_pid == -1)
 assert(not container.running)
 assert(container.state == "STOPPED")
 
+## Snapshotting the container
+print("Snapshotting the container")
+assert(not container.snapshot_list())
+assert(container.snapshot() == "snap0")
+assert(len(container.snapshot_list()) == 1)
+assert(container.snapshot_restore("snap0") is True)
+assert(container.snapshot_destroy("snap0") is True)
+
 ## Cloning the container
 print("Cloning the container as '%s'" % CLONE_NAME)
 clone = container.clone(CLONE_NAME)
