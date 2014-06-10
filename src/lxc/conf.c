@@ -3851,6 +3851,30 @@ int do_rootfs_setup(struct lxc_conf *conf, const char *name, const char *lxcpath
 	return 0;
 }
 
+static bool verify_start_hooks(struct lxc_conf *conf)
+{
+	struct lxc_list *it;
+	char path[MAXPATHLEN];
+	lxc_list_for_each(it, &conf->hooks[LXCHOOK_START]) {
+		char *hookname = it->elem;
+		struct stat st;
+		int ret;
+
+		ret = snprintf(path, MAXPATHLEN, "%s%s",
+			conf->rootfs.mount, hookname);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			return false;
+		ret = stat(path, &st);
+		if (ret) {
+			SYSERROR("Start hook %s not found in container rootfs",
+					hookname);
+			return false;
+		}
+	}
+
+	return true;
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	const char *name = handler->name;
@@ -3903,6 +3927,10 @@ int lxc_setup(struct lxc_handler *handler)
 		ERROR("failed to setup the mount entries for '%s'", name);
 		return -1;
 	}
+
+	/* Make sure any start hooks are in the rootfs */
+	if (!verify_start_hooks(lxc_conf))
+		return -1;
 
 	/* now mount only cgroup, if wanted;
 	 * before, /sys could not have been mounted
