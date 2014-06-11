@@ -203,7 +203,7 @@ restart:
 		if (match_fd(fd))
 			continue;
 
-		if (conf->close_all_fds) {
+		if (conf == NULL || conf->close_all_fds) {
 			close(fd);
 			closedir(dir);
 			INFO("closed inherited fd %d", fd);
