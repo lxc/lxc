@@ -2690,6 +2690,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->keepcaps);
 	lxc_list_init(&new->id_map);
 	lxc_list_init(&new->includes);
+	lxc_list_init(&new->aliens);
 	for (i=0; i<NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
 	lxc_list_init(&new->groups);
@@ -4363,6 +4364,17 @@ static void lxc_clear_saved_nics(struct lxc_conf *conf)
 	for (i=0; i < conf->num_savednics; i++)
 		free(conf->saved_nics[i].orig_name);
 	free(conf->saved_nics);
+}
+
+static inline void lxc_clear_aliens(struct lxc_conf *conf)
+{
+	struct lxc_list *it,*next;
+
+	lxc_list_for_each_safe(it, &conf->aliens, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
 }
 
 static inline void lxc_clear_includes(struct lxc_conf *conf)

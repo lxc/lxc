@@ -342,6 +342,8 @@ struct lxc_conf {
 
 	/* list of included files */
 	struct lxc_list includes;
+	/* config entries which are not "lxc.*" are aliens */
+	struct lxc_list aliens;
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,

@@ -1632,6 +1632,31 @@ static int config_utsname(const char *key, const char *value,
 	return 0;
 }
 
+static int store_martian_option(char *line, void *data)
+{
+	struct lxc_conf *conf = data;
+	char *str;
+	struct lxc_list *list;
+	size_t len = strlen(line);
+
+	if (!conf->unexpanded)
+		return 0;
+	list = malloc(sizeof(*list));
+	if (!list)
+		return -1;
+	lxc_list_init(list);
+	str = malloc(len+1);
+	if (!str) {
+		free(list);
+		return -1;
+	}
+	strncpy(str, line, len);
+	len[len] = '\0';
+	list->elem = str;
+	lxc_list_add_tail(&conf->aliens, list);
+	return 0;
+}
+
 static int parse_line(char *buffer, void *data)
 {
 	struct lxc_config_t *config;
@@ -1656,11 +1681,15 @@ static int parse_line(char *buffer, void *data)
 
 	line += lxc_char_left_gc(line, strlen(line));
 
-	/* martian option - ignoring it, the commented lines beginning by '#'
-	 * fall in this case
-	 */
-	if (strncmp(line, "lxc.", 4))
+	/* ignore comments */
+	if (line[0] == '#')
 		goto out;
+
+	/* martian option - save it in the unexpanded config only */
+	if (strncmp(line, "lxc.", 4)) {
+		ret = store_martian_option(line, data);
+		goto out;
+	}
 
 	ret = -1;
 
@@ -2258,8 +2287,14 @@ void write_config(FILE *fout, struct lxc_conf *c)
 	struct lxc_list *it;
 	int i;
 
+	/* first write any includes */
 	lxc_list_for_each(it, &c->includes) {
 		fprintf(fout, "lxc.include = %s\n", (char *)it->elem);
+	}
+
+	/* now write any aliens */
+	lxc_list_for_each(it, &c->aliens) {
+		fprintf(fout, "%s\n", (char *)it->elem);
 	}
 
 	if (c->fstab)
