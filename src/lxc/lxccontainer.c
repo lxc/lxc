@@ -238,6 +238,10 @@ static void lxc_container_free(struct lxc_container *c)
 		lxc_conf_free(c->lxc_conf);
 		c->lxc_conf = NULL;
 	}
+	if (c->lxc_unexp_conf) {
+		lxc_conf_free(c->lxc_unexp_conf);
+		c->lxc_unexp_conf = NULL;
+	}
 	if (c->config_path) {
 		free(c->config_path);
 		c->config_path = NULL;
@@ -410,7 +414,14 @@ static bool load_config_locked(struct lxc_container *c, const char *fname)
 {
 	if (!c->lxc_conf)
 		c->lxc_conf = lxc_conf_init();
-	if (c->lxc_conf && !lxc_config_read(fname, c->lxc_conf))
+	if (!c->lxc_unexp_conf) {
+		c->lxc_unexp_conf = lxc_conf_init();
+		if (c->lxc_unexp_conf)
+			c->lxc_unexp_conf->unexpanded = true;
+	}
+	if (c->lxc_conf && c->lxc_unexp_conf &&
+			!lxc_config_read(fname, c->lxc_conf,
+					 c->lxc_unexp_conf))
 		return true;
 	return false;
 }
@@ -1196,9 +1207,15 @@ out_error:
 
 static void lxcapi_clear_config(struct lxc_container *c)
 {
-	if (c && c->lxc_conf) {
-		lxc_conf_free(c->lxc_conf);
-		c->lxc_conf = NULL;
+	if (c) {
+		if (c->lxc_conf) {
+			lxc_conf_free(c->lxc_conf);
+			c->lxc_conf = NULL;
+		}
+		if (c->lxc_unexp_conf) {
+			lxc_conf_free(c->lxc_unexp_conf);
+			c->lxc_unexp_conf = NULL;
+		}
 	}
 }
 
@@ -1321,6 +1338,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	/* reload config to get the rootfs */
 	lxc_conf_free(c->lxc_conf);
 	c->lxc_conf = NULL;
+	c->lxc_unexp_conf = NULL;
 	if (!load_config_locked(c, c->configfile))
 		goto out_unlock;
 
@@ -1845,7 +1863,7 @@ static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	fout = fopen(alt_file, "w");
 	if (!fout)
 		goto out;
-	write_config(fout, c->lxc_conf);
+	write_config(fout, c->lxc_unexp_conf);
 	fclose(fout);
 	ret = true;
 
@@ -2072,10 +2090,16 @@ static bool set_config_item_locked(struct lxc_container *c, const char *key, con
 
 	if (!c->lxc_conf)
 		c->lxc_conf = lxc_conf_init();
-	if (!c->lxc_conf)
+	if (!c->lxc_unexp_conf) {
+		c->lxc_unexp_conf = lxc_conf_init();
+		c->lxc_unexp_conf->unexpanded = true;
+	}
+	if (!c->lxc_conf || !c->lxc_unexp_conf)
 		return false;
 	config = lxc_getconfig(key);
 	if (!config)
+		return false;
+	if (config->cb(key, v, c->lxc_unexp_conf) != 0)
 		return false;
 	return (0 == config->cb(key, v, c->lxc_conf));
 }
@@ -2677,7 +2701,7 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 		SYSERROR("open %s", newpath);
 		goto out;
 	}
-	write_config(fout, c->lxc_conf);
+	write_config(fout, c->lxc_unexp_conf);
 	fclose(fout);
 	c->lxc_conf->rootfs.path = origroot;
 

@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (rcfile && lxc_config_read(rcfile, conf)) {
+	if (rcfile && lxc_config_read(rcfile, conf, NULL)) {
 		ERROR("failed to read configuration file");
 		return 1;
 	}

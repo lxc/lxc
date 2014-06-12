@@ -1552,10 +1552,34 @@ static int config_console(const char *key, const char *value,
 	return config_path_item(&lxc_conf->console.path, value);
 }
 
+static int add_include_file(const char *fname, struct lxc_conf *lxc_conf)
+{
+	struct lxc_list *list;
+	char *v;
+	int len = strlen(fname);
+
+	list = malloc(sizeof(*list));
+	if (!list)
+		return -1;
+	lxc_list_init(list);
+	v = malloc(len+1);
+	if (!v) {
+		free(list);
+		return -1;
+	}
+	strncpy(v, fname, len);
+	v[len] = '\0';
+	list->elem = v;
+	lxc_list_add_tail(&lxc_conf->includes, list);
+	return 0;
+}
+
 static int config_includefile(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
-	return lxc_config_read(value, lxc_conf);
+	if (lxc_conf->unexpanded)
+		return add_include_file(value, lxc_conf);
+	return lxc_config_read(value, lxc_conf, NULL);
 }
 
 static int config_rootfs(const char *key, const char *value,
@@ -1673,8 +1697,10 @@ static int lxc_config_readline(char *buffer, struct lxc_conf *conf)
 	return parse_line(buffer, conf);
 }
 
-int lxc_config_read(const char *file, struct lxc_conf *conf)
+int lxc_config_read(const char *file, struct lxc_conf *conf, struct lxc_conf *unexp_conf)
 {
+	int ret;
+
 	if( access(file, R_OK) == -1 ) {
 		return -1;
 	}
@@ -1682,7 +1708,16 @@ int lxc_config_read(const char *file, struct lxc_conf *conf)
 	if( ! conf->rcfile ) {
 		conf->rcfile = strdup( file );
 	}
-	return lxc_file_for_each_line(file, parse_line, conf);
+	ret = lxc_file_for_each_line(file, parse_line, conf);
+	if (ret)
+		return ret;
+	if (!unexp_conf)
+		return 0;
+	if (!unexp_conf->rcfile) {
+		unexp_conf->rcfile = strdup( file );
+	}
+
+	return lxc_file_for_each_line(file, parse_line, unexp_conf);
 }
 
 int lxc_config_define_add(struct lxc_list *defines, char* arg)
@@ -2222,6 +2257,10 @@ void write_config(FILE *fout, struct lxc_conf *c)
 {
 	struct lxc_list *it;
 	int i;
+
+	lxc_list_for_each(it, &c->includes) {
+		fprintf(fout, "lxc.include = %s\n", (char *)it->elem);
+	}
 
 	if (c->fstab)
 		fprintf(fout, "lxc.mount = %s\n", c->fstab);

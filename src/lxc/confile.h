@@ -39,7 +39,7 @@ struct lxc_config_t {
 extern struct lxc_config_t *lxc_getconfig(const char *key);
 extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key, char *retv, int inlen);
 extern int lxc_listconfigs(char *retv, int inlen);
-extern int lxc_config_read(const char *file, struct lxc_conf *conf);
+extern int lxc_config_read(const char *file, struct lxc_conf *conf, struct lxc_conf *unexp_conf);
 
 extern int lxc_config_define_add(struct lxc_list *defines, char* arg);
 extern int lxc_config_define_load(struct lxc_list *defines,

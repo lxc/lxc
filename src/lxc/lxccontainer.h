@@ -99,6 +99,16 @@ struct lxc_container {
 	 */
 	struct lxc_conf *lxc_conf;
 
+	/*!
+	 * \private
+	 * The non-common, unexpanded configuration.  This includes the
+	 * list of lxc.include files, and does not contain any
+	 * individual configuration items from the include files.
+	 * Anything coming from the container's own configuration file
+	 * or from lxcapi_set_config_item() does get added here.
+	 */
+	struct lxc_conf *lxc_unexp_conf;
+
 	// public fields
 	/*! Human-readable string representing last error */
 	char *error_string;
