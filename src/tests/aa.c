@@ -164,10 +164,16 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 	c->save_config(c, NULL);
-	if (!c->createl(c, "download", NULL, NULL, 0, "-d", "ubuntu", "-r", "trusty", "-a", "amd64", NULL)) {
+	if (!c->createl(c, "busybox", NULL, NULL, 0, NULL)) {
 		fprintf(stderr, "%s: %d: failed to create container\n", __FILE__, __LINE__);
 		goto err;
 	}
+
+	c->clear_config_item(c, "lxc.mount.auto");
+	c->set_config_item(c, "lxc.mount.entry", "proc proc proc");
+	c->set_config_item(c, "lxc.mount.entry", "sysfs sys sysfs");
+	c->save_config(c, NULL);
+
 	c->want_daemonize(c, true);
 	if (!c->startl(c, 0, NULL)) {
 		fprintf(stderr, "Error starting container");
