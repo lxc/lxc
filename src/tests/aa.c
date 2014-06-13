@@ -69,7 +69,7 @@ static int do_test_file_open(struct lxc_container *c, char *fnam)
 
 	ret = pipe(pipefd);
 	if (ret < 0) {
-		fprintf(stderr, "pipe failed %d", ret);
+		fprintf(stderr, "pipe failed %d\n", ret);
 		return fret;
 	}
 	attach_options.stdout_fd = pipefd[1];
@@ -77,13 +77,13 @@ static int do_test_file_open(struct lxc_container *c, char *fnam)
 	attach_options.attach_flags |= LXC_ATTACH_LSM_NOW;
 	ret = c->attach(c, test_attach_write_file, fnam, &attach_options, &pid);
 	if (ret < 0) {
-		fprintf(stderr, "attach failed");
+		fprintf(stderr, "attach failed\n");
 		goto err1;
 	}
 
 	ret = read(pipefd[0], result, sizeof(result)-1);
 	if (ret < 0) {
-		fprintf(stderr, "read failed %d", ret);
+		fprintf(stderr, "read failed %d\n", ret);
 		goto err2;
 	}
 
@@ -117,7 +117,7 @@ static bool test_aa_policy(struct lxc_container *c)
 	for (i = 0; files_to_deny[i]; i++) {
 		ret = do_test_file_open(c, files_to_deny[i]);
 		if (ret < 0) {
-			fprintf(stderr, "attach failed; skipping test");
+			fprintf(stderr, "attach failed; skipping test\n");
 			return true;
 		}
 		if (ret > 0) {
@@ -131,7 +131,7 @@ static bool test_aa_policy(struct lxc_container *c)
 	for (i = 0; files_to_allow[i]; i++) {
 		ret = do_test_file_open(c, files_to_allow[i]);
 		if (ret < 0) {
-			fprintf(stderr, "attach failed; skipping test");
+			fprintf(stderr, "attach failed; skipping test\n");
 			return true;
 		}
 		if (ret == 0) {
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
 
 	c->want_daemonize(c, true);
 	if (!c->startl(c, 0, NULL)) {
-		fprintf(stderr, "Error starting container");
+		fprintf(stderr, "Error starting container\n");
 		goto err;
 	}
 
