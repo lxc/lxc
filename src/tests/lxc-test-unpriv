@@ -31,7 +31,7 @@ which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; 
 
 DONE=0
 cleanup() {
-	cd
+	cd /
 
 	run_cmd lxc-stop -n c1 -k
 	pkill -u $(id -u $TUSER) -9
