@@ -340,7 +340,7 @@ int main(int argc, char *argv[])
 		return 1;
 	lxc_log_options_no_override();
 
-	count = list_defined_containers(NULL, NULL, &containers);
+	count = list_defined_containers(my_args.lxcpath[0], NULL, &containers);
 
 	if (count < 0)
 		return 1;
