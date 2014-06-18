@@ -1651,7 +1651,7 @@ static int store_martian_option(char *line, void *data)
 		return -1;
 	}
 	strncpy(str, line, len);
-	len[len] = '\0';
+	str[len] = '\0';
 	list->elem = str;
 	lxc_list_add_tail(&conf->aliens, list);
 	return 0;
