@@ -235,8 +235,10 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 		}
 		nr = seccomp_syscall_resolve_name_arch(arch, line);
 		if (nr < 0) {
-			ERROR("Failed to resolve syscall: %s", line);
-			goto bad_rule;
+			WARN("Seccomp: failed to resolve syscall: %s (returned %d)",
+				line, nr);
+			WARN("This syscall will NOT be blacklisted");
+			continue;
 		}
 		ret = seccomp_rule_add(ctx ? ctx : conf->seccomp_ctx,
 				action, nr, 0);
