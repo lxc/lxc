@@ -2546,6 +2546,12 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 		ERROR("Out of memory while setting storage path");
 		return -1;
 	}
+	free(c->lxc_unexp_conf->rootfs.path);
+	c->lxc_unexp_conf->rootfs.path = strdup(c->lxc_conf->rootfs.path);
+	if (!c->lxc_unexp_conf->rootfs.path) {
+		ERROR("Out of memory while setting storage path");
+		return -1;
+	}
 	if (flags & LXC_CLONE_SNAPSHOT)
 		copy_rdepends(c, c0);
 	if (need_rdep) {
