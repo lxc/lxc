@@ -2785,7 +2785,7 @@ struct bdev *bdev_create(const char *dest, const char *type,
 
 	// -B lvm,dir
 	if (index(type, ',') != NULL) {
-		char *dup = alloca(strlen(type)+1), *saveptr, *token;
+		char *dup = alloca(strlen(type)+1), *saveptr = NULL, *token;
 		strcpy(dup, type);
 		for (token = strtok_r(dup, ",", &saveptr); token;
 				token = strtok_r(NULL, ",", &saveptr)) {
