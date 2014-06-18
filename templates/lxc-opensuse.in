@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# template script for generating suse container for LXC
+# template script for generating OpenSUSE container for LXC
 #
 
 #
@@ -10,6 +10,7 @@
 # Authors:
 # Daniel Lezcano <daniel.lezcano@free.fr>
 # Frederic Crozat <fcrozat@suse.com>
+# Michael H. Warfield <mhw@WittsEnd.com>
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -45,10 +46,10 @@ configure_opensuse()
     rootfs=$1
     hostname=$2
 
-   # set network as static, but everything is done by LXC outside the container
+   # set first network adapter as dhcp.  This is the most common config.
    cat <<EOF > $rootfs/etc/sysconfig/network/ifcfg-eth0
 STARTMODE='auto'
-BOOTPROTO='none'
+BOOTPROTO='dhcp'
 EOF
 
    # create empty fstab
@@ -171,7 +172,7 @@ EOF
         mkdir -p $cache/partial-$arch-packages/var/cache/zypp/packages/update/i686
         for i in "$cache/partial-$arch-packages/var/cache/zypp/packages/update/i586/*" ; do
             ln -s $i $cache/partial-$arch-packages/var/cache/zypp/packages/update/i686/
-	done
+        done
     fi
 
     CLEAN_BUILD=1 BUILD_ARCH="$arch" BUILD_ROOT="$cache/partial-$arch" BUILD_DIST="$cache/partial-$arch-packages/opensuse.conf" PATH="$PATH:/usr/lib/build" /usr/lib/build/init_buildsystem  --clean --configdir /usr/lib/build/configs --cachedir $cache/partial-$arch-cache --repository $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/$arch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/noarch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/update/$arch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/update/noarch || return 1
@@ -228,8 +229,6 @@ install_opensuse()
             return 1
         fi
 
-        arch=$(uname -m)
-
         echo "Checking cache download in $cache/rootfs-$arch ... "
         if [ ! -e "$cache/rootfs-$arch" ]; then
             download_opensuse $cache $arch
@@ -252,66 +251,85 @@ install_opensuse()
     return $?
 }
 
+# Generate a random hardware (MAC) address composed of FE followed by
+# 5 random bytes...
+create_hwaddr()
+{
+    openssl rand -hex 5 | sed -e 's/\(..\)/:\1/g; s/^/fe/'
+}
+
 copy_configuration()
 {
     path=$1
     rootfs=$2
     name=$3
 
-    if grep -q "^lxc.network.type" $path/config; then
-        TYPE=$(sed '/^#/d; /lxc.network.type/!d; s/.*=[ \t]*//' $path/config)
-        grep -q "^lxc.network.ipv4" $path/config
-        IPV4_NOT_CONFIGURED=$?
+    grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "
+lxc.rootfs = $rootfs_path
+" >> $path/config
 
-        if ! grep -q "^lxc.network.*.gateway" $path/config; then
-            [ $IPV4_NOT_CONFIGURED -eq 0 ] && IPV4=$(sed '/^#/d; /lxc.network.ipv4/!d; /gateway/d; s/.*=[ \t]*//; s/\([[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+\).*/\1/' $path/config)
-            if [ "$TYPE" = "veth" -o "$TYPE" = "macvlan" ]; then
-                if [ $IPV4_NOT_CONFIGURED -eq 0 -a "$IPV4" != "0.0.0.0" ]; then
-                    # set default route
-                    IP=$(/sbin/ip route | awk '/default/ { print $3 }')
-                    echo "lxc.network.ipv4.gateway = $IP " >> $path/config
-                else
-                    # set network as dhcp
-                    sed -i -e 's/BOOTPROTO=.*/BOOTPROTO=dhcp/' $rootfs/etc/sysconfig/network/ifcfg-eth0
-                fi
+    # The following code is to create static MAC addresses for each
+    # interface in the container.  This code will work for multiple
+    # interfaces in the default config.  It will also strip any
+    # hwaddr stanzas out of the default config since we can not share
+    # MAC addresses between containers.
+    #
+    # This code is largely mimiced from the Fedora Template.
+    mv $path/config $path/config.def
+    while read LINE
+    do
+        # This should catch variable expansions from the default config...
+        if expr "${LINE}" : '.*\$' > /dev/null 2>&1
+        then
+                LINE=$(eval "echo \"${LINE}\"")
+        fi
+
+        # There is a tab and a space in the regex bracket below!
+        # Seems that \s doesn't work in brackets.
+        KEY=$(expr "${LINE}" : '\s*\([^	 ]*\)\s*=')
+
+        if [[ "${KEY}" != "lxc.network.hwaddr" ]]
+        then
+            echo "${LINE}" >> $path/config
+
+            if [[ "${KEY}" == "lxc.network.link" ]]
+            then
+                echo "lxc.network.hwaddr = $(create_hwaddr)" >> $path/config
             fi
         fi
-        if [ "$TYPE" != "empty" ]; then
-            echo "#remove next line if host DNS configuration should not be available to container" >> $path/config
-            echo "lxc.mount.entry = /etc/resolv.conf etc/resolv.conf none bind,ro 0 0" >> $path/config
-        fi
-    else
-        echo 'lxc.network.type = empty' >> $path/config
+    done < $path/config.def
+
+    rm -f $path/config.def
+
+    if [ -e "@LXCTEMPLATECONFIG@/opensuse.common.conf" ]; then
+        echo "
+# Include common configuration
+lxc.include = @LXCTEMPLATECONFIG@/opensuse.common.conf
+" >> $path/config
     fi
 
-    grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
+    # Append things which require expansion here...
     cat <<EOF >> $path/config
+lxc.arch = $arch
 lxc.utsname = $name
-lxc.autodev=1
-lxc.tty = 4
-lxc.pts = 1024
+
 lxc.mount = $path/fstab
-lxc.cap.drop = sys_module mac_admin mac_override mknod sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
 
-lxc.cgroup.devices.deny = a
-# /dev/null and zero
-lxc.cgroup.devices.allow = c 1:3 rwm
-lxc.cgroup.devices.allow = c 1:5 rwm
-# consoles
-lxc.cgroup.devices.allow = c 5:1 rwm
-lxc.cgroup.devices.allow = c 5:0 rwm
-lxc.cgroup.devices.allow = c 4:0 rwm
-lxc.cgroup.devices.allow = c 4:1 rwm
-# /dev/{,u}random
-lxc.cgroup.devices.allow = c 1:9 rwm
-lxc.cgroup.devices.allow = c 1:8 rwm
-lxc.cgroup.devices.allow = c 136:* rwm
-lxc.cgroup.devices.allow = c 5:2 rwm
-# rtc
-lxc.cgroup.devices.allow = c 254:0 rm
+# example simple networking setup, uncomment to enable
+#lxc.network.type = $lxc_network_type
+#lxc.network.flags = up
+#lxc.network.link = $lxc_network_link
+#lxc.network.name = eth0
+# Additional example for veth network type
+#    static MAC address,
+#lxc.network.hwaddr = 00:16:3e:77:52:20
+#    persistent veth device name on host side
+#        Note: This may potentially collide with other containers of same name!
+#lxc.network.veth.pair = v-$name-e0
+
 EOF
 
     cat <<EOF > $path/fstab
@@ -357,6 +375,9 @@ $1 -h|--help -p|--path=<path> --clean
 EOF
     return 0
 }
+
+# Make arch a global.  This may become configurable?
+arch=$(uname -m)
 
 options=$(getopt -o hp:n:c -l help,rootfs:,path:,name:,clean -- "$@")
 if [ $? -ne 0 ]; then
