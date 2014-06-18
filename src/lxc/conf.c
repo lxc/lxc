@@ -4427,6 +4427,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_idmaps(conf);
 	lxc_clear_groups(conf);
 	lxc_clear_includes(conf);
+	lxc_clear_aliens(conf);
 	free(conf);
 }
 
