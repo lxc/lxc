@@ -218,8 +218,8 @@ fi
 AM_CONDITIONAL([ENABLE_SELINUX], [test "x$enable_selinux" = "xyes"])
 AM_COND_IF([ENABLE_SELINUX],
 	[AC_CHECK_HEADER([selinux/selinux.h],[],[AC_MSG_ERROR([You must install the SELinux development package in order to compile lxc])])
-	AC_CHECK_LIB([selinux], [setexeccon_raw],[],[AC_MSG_ERROR([You must install the SELinux development package in order to compile lxc])])
-	AC_SUBST([SELINUX_LIBS])])
+	AC_CHECK_LIB([selinux], [setexeccon_raw],[true],[AC_MSG_ERROR([You must install the SELinux development package in order to compile lxc])])
+	AC_SUBST([SELINUX_LIBS], [-lselinux])])
 
 # Seccomp syscall filter
 AC_ARG_ENABLE([seccomp],
@@ -277,7 +277,7 @@ fi
 AM_CONDITIONAL([ENABLE_CAP], [test "x$enable_capabilities" = "xyes"])
 
 AM_COND_IF([ENABLE_CAP],
-	[AC_CHECK_LIB(cap,cap_set_proc,[],[AC_MSG_ERROR([You are missing libcap support.])])
+	[AC_CHECK_LIB(cap,cap_set_proc,[true],[AC_MSG_ERROR([You are missing libcap support.])])
 	AC_SUBST([CAP_LIBS], [-lcap])])
 
 # HAVE_SCMP_FILTER_CTX=1 will tell us we have libseccomp api >= 1.0.0
