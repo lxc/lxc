@@ -41,25 +41,6 @@ lxc_log_define(lxc_caps, lxc);
 #define PR_CAPBSET_READ 23
 #endif
 
-int lxc_caps_reset(void)
-{
-	cap_t cap = cap_init();
-	int ret = 0;
-
-	if (!cap) {
-		ERROR("cap_init() failed : %m");
-		return -1;
-	}
-
-	if (cap_set_proc(cap)) {
-		ERROR("cap_set_proc() failed : %m");
-		ret = -1;
-	}
-
-	cap_free(cap);
-	return ret;
-}
-
 int lxc_caps_down(void)
 {
 	cap_t caps;
