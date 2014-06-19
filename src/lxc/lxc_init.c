@@ -104,9 +104,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (lxc_caps_init())
-		exit(EXIT_FAILURE);
-
 	err = lxc_log_init(name, name ? NULL : "none", logpriority,
 			   basename(argv[0]), quiet, lxcpath);
 	if (err < 0)
@@ -167,9 +164,6 @@ int main(int argc, char *argv[])
 	}
 
 	lxc_setup_fs();
-
-	if (lxc_caps_reset())
-		exit(EXIT_FAILURE);
 
 	pid = fork();
 
