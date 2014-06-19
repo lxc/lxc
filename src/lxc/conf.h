@@ -311,7 +311,7 @@ struct lxc_conf {
 	int tmp_umount_proc;
 	char *seccomp;  // filename with the seccomp rules
 #if HAVE_SCMP_FILTER_CTX
-	scmp_filter_ctx *seccomp_ctx;
+	scmp_filter_ctx seccomp_ctx;
 #endif
 	int maincmd_fd;
 	int autodev;  // if 1, mount and fill a /dev at start
