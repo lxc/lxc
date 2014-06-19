@@ -1479,6 +1479,9 @@ static int config_cap_keep(const char *key, const char *value,
                         break;
 		}
 
+		if (!strcmp(token, "none"))
+			lxc_clear_config_keepcaps(lxc_conf);
+
 		keeplist = malloc(sizeof(*keeplist));
 		if (!keeplist) {
 			SYSERROR("failed to allocate keepcap list");

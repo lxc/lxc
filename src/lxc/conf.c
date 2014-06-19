@@ -2198,6 +2198,9 @@ static int parse_cap(const char *cap)
 	char *ptr = NULL;
 	int i, capid = -1;
 
+	if (!strcmp(cap, "none"))
+		return -2;
+
 	for (i = 0; i < sizeof(caps_opt)/sizeof(caps_opt[0]); i++) {
 
 		if (strcmp(cap, caps_opt[i].name))
@@ -2290,6 +2293,9 @@ static int dropcaps_except(struct lxc_list *caps)
 		keep_entry = iterator->elem;
 
 		capid = parse_cap(keep_entry);
+
+		if (capid == -2)
+			continue;
 
 	        if (capid < 0) {
 			ERROR("unknown capability %s", keep_entry);
