@@ -1,5 +1,7 @@
 templatesconfigdir=@LXCTEMPLATECONFIG@
 
+EXTRA_DIST = ubuntu.priv.seccomp
+
 templatesconfig_DATA = \
 	centos.common.conf \
 	centos.userns.conf \
