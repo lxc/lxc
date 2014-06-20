@@ -182,11 +182,11 @@ bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 {
 	int nr, ret;
 
-	if (arch && !seccomp_arch_exist(ctx, arch)) {
+	if (arch && seccomp_arch_exist(ctx, arch) != 0) {
 		ERROR("BUG: seccomp: rule and context arch do not match (arch %d)", arch);
 		return false;
 	}
-	nr = seccomp_syscall_resolve_name_arch(arch, line);
+	nr = seccomp_syscall_resolve_name(line);
 	if (nr == __NR_SCMP_ERROR) {
 		WARN("Seccomp: failed to resolve syscall: %s", line);
 		WARN("This syscall will NOT be blacklisted");
@@ -226,7 +226,6 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 	scmp_filter_ctx compat_ctx = NULL;
 	bool blacklist = false;
 	uint32_t default_policy_action = -1, default_rule_action = -1, action;
-	uint32_t arch = SCMP_ARCH_NATIVE;
 	enum lxc_hostarch_t native_arch = get_hostarch(),
 			    cur_rule_arch = native_arch;
 
@@ -294,7 +293,6 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 					continue;
 				}
 				cur_rule_arch = lxc_seccomp_arch_i386;
-				arch = SCMP_ARCH_X86;
 				if (native_arch == lxc_seccomp_arch_amd64) {
 					if (compat_ctx)
 						continue;
@@ -310,7 +308,6 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 					continue;
 				}
 				cur_rule_arch = lxc_seccomp_arch_amd64;
-				arch = SCMP_ARCH_X86_64;
 			} else if (strcmp(line, "[all]") == 0 ||
 					strcmp(line, "[ALL]") == 0) {
 				cur_rule_arch = lxc_seccomp_arch_all;
@@ -331,7 +328,6 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 					continue;
 				}
 				cur_rule_arch = lxc_seccomp_arch_arm;
-				arch = SCMP_ARCH_ARM;
 			}
 #endif
 			else
@@ -351,16 +347,16 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 			goto bad_rule;
 		}
 
-		if (cur_rule_arch == lxc_seccomp_arch_all)
-			arch = SCMP_ARCH_NATIVE;
-
 		/*
 		 * TODO generalize - if !is_compat_only(native_arch, cur_rule_arch)
+		 *
+		 * in other words, the rule is 32-bit only, on 64-bit host;  don't run
+		 * the rule against the native arch.
 		 */
 		if (!(cur_rule_arch == lxc_seccomp_arch_i386 &&
 			native_arch == lxc_seccomp_arch_amd64)) {
 			INFO("Adding non-compat rule for %s action %d", line, action);
-			if (!do_resolve_add_rule(arch, line, conf->seccomp_ctx, action))
+			if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line, conf->seccomp_ctx, action))
 				goto bad_rule;
 		}
 
@@ -371,17 +367,19 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 			cur_rule_arch != lxc_seccomp_arch_amd64) {
 			int nr1, nr2;
 			INFO("Adding compat rule for %s action %d", line, action);
-			nr1 = seccomp_syscall_resolve_name_arch(lxc_seccomp_arch_amd64, line);
-			nr2 = seccomp_syscall_resolve_name_arch(lxc_seccomp_arch_i386, line);
+			nr1 = seccomp_syscall_resolve_name_arch(SCMP_ARCH_X86, line);
+			nr2 = seccomp_syscall_resolve_name_arch(SCMP_ARCH_NATIVE, line);
 			if (nr1 == nr2) {
-				/* sigh - if the syscall # is the same for 32- and 64-bit, then
-				 * we get EFAULT if we try to aplly to compat_ctx.  So apply to
-				 * the noncompat ctx.  We may already have done so, but that's ok
+				/* If the syscall # is the same for 32- and 64-bit, then we cannot
+				 * apply it to the compat_ctx.  So apply it to the noncompat ctx.
+				 * We may already have done so, but that's ok
 				 */
-				if (!do_resolve_add_rule(arch, line, conf->seccomp_ctx, action))
+				INFO("Adding non-compat rule bc nr1 == nr2 (%d, %d)", nr1, nr2);
+				if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line, conf->seccomp_ctx, action))
 					goto bad_rule;
 				continue;
 			}
+			INFO("Really adding compat rule bc nr1 == nr2 (%d, %d)", nr1, nr2);
 			if (!do_resolve_add_rule(SCMP_ARCH_X86, line,
 						compat_ctx, action))
 				goto bad_rule;
@@ -449,30 +447,44 @@ static int parse_config(FILE *f, struct lxc_conf *conf)
 	return parse_config_v2(f, line, conf);
 }
 
-static bool seccomp_already_confined(void)
+/*
+ * use_seccomp: return true if we should try and apply a seccomp policy
+ * if defined for the container.
+ * This will return false if
+ *   1. seccomp is not enabled in the kernel
+ *   2. a seccomp policy is already enabled for this task
+ */
+static bool use_seccomp(void)
 {
 	FILE *f = fopen("/proc/self/status", "r");
 	char line[1024];
-	bool bret = false;
+	bool already_enabled = false;
+	bool found = false;
 	int ret, v;
 
 	if (!f)
-		return false;
+		return true;
 
 	while (fgets(line, 1024, f)) {
 		if (strncmp(line, "Seccomp:", 8) == 0) {
+			found = true;
 			ret = sscanf(line+8, "%d", &v);
-			if (ret != 1)
-				continue;
-			if (v != 0)
-				bret = true;
-			goto out;
+			if (ret == 1 && v != 0)
+				already_enabled = true;
+			break;
 		}
 	}
 
-out:
 	fclose(f);
-	return bret;
+	if (!found) {  /* no Seccomp line, no seccomp in kernel */
+		INFO("Seccomp is not enabled in the kernel");
+		return false;
+	}
+	if (already_enabled) {  /* already seccomp-confined */
+		INFO("Already seccomp-confined, not loading new policy");
+		return false;
+	}
+	return true;
 }
 
 int lxc_read_seccomp_config(struct lxc_conf *conf)
@@ -483,10 +495,8 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 	if (!conf->seccomp)
 		return 0;
 
-	if (seccomp_already_confined()) {
-		INFO("Already confined by seccomp;  not loading a new policy");
+	if (!use_seccomp())
 		return 0;
-	}
 #if HAVE_SCMP_FILTER_CTX
 	/* XXX for debug, pass in SCMP_ACT_TRAP */
 	conf->seccomp_ctx = seccomp_init(SCMP_ACT_KILL);
@@ -525,10 +535,8 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 	int ret;
 	if (!conf->seccomp)
 		return 0;
-	if (seccomp_already_confined()) {
-		INFO("Already confined by seccomp;  not loading a new policy");
+	if (!use_seccomp())
 		return 0;
-	}
 	ret = seccomp_load(
 #if HAVE_SCMP_FILTER_CTX
 			conf->seccomp_ctx
