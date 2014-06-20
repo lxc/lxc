@@ -172,7 +172,7 @@ Options :\n\
       --clear-env   Clear all environment variables before attaching.\n\
                     The attached shell/program will start with only\n\
                     container=lxc set.\n\
-      --keep-env    Keep all current enivornment variables. This\n\
+      --keep-env    Keep all current environment variables. This\n\
                     is the current default behaviour, but is likely to\n\
                     change in the future.\n\
   -v, --set-var     Set an additional variable that is seen by the\n\
