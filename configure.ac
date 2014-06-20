@@ -598,6 +598,7 @@ AC_CONFIG_FILES([
 	config/templates/archlinux.userns.conf
 	config/templates/centos.common.conf
 	config/templates/centos.userns.conf
+	config/templates/common.conf
 	config/templates/debian.common.conf
 	config/templates/debian.userns.conf
 	config/templates/fedora.common.conf
@@ -617,6 +618,7 @@ AC_CONFIG_FILES([
 	config/templates/ubuntu.common.conf
 	config/templates/ubuntu.lucid.conf
 	config/templates/ubuntu.userns.conf
+	config/templates/userns.conf
 	config/yum/Makefile
 
 	doc/Makefile

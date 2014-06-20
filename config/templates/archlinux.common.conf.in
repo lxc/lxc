@@ -1,11 +1,16 @@
-# Based on fedora.common.conf.in
-# Console settings
+# This derives from the global common config
+lxc.include = @LXCTEMPLATECONFIG@/common.conf
 
-lxc.autodev = 1
+# Allow for 6 tty devices by default
 lxc.tty = 6
-lxc.pts = 1024
+
+# Turn on autodev for systemd
+lxc.autodev = 1
+
+# Disable kmsg
 lxc.kmsg = 0
 
+# Set the halt/stop signals
 lxc.haltsignal=SIGRTMIN+4
 lxc.stopsignal=SIGRTMIN+14
 
@@ -30,21 +35,4 @@ lxc.mount.auto = proc:mixed sys:ro
 # lxc.cap.drop = audit_write
 # lxc.cap.drop = setpcap          # big big login delays in Fedora 20 systemd
 #
-lxc.cap.drop = mac_admin mac_override
-lxc.cap.drop = setfcap
-lxc.cap.drop = sys_module sys_nice sys_pacct
-lxc.cap.drop = sys_rawio sys_time
-
-# Control Group devices: all denied except those whitelisted
-lxc.cgroup.devices.deny = a
-# Allow any mknod (but not reading/writing the node)
-lxc.cgroup.devices.allow = c *:* m
-lxc.cgroup.devices.allow = b *:* m
-lxc.cgroup.devices.allow = c 1:3 rwm	# /dev/null
-lxc.cgroup.devices.allow = c 1:5 rwm	# /dev/zero
-lxc.cgroup.devices.allow = c 1:7 rwm	# /dev/full
-lxc.cgroup.devices.allow = c 5:0 rwm	# /dev/tty
-lxc.cgroup.devices.allow = c 1:8 rwm	# /dev/random
-lxc.cgroup.devices.allow = c 1:9 rwm	# /dev/urandom
-lxc.cgroup.devices.allow = c 136:* rwm	# /dev/tty[1-6] ptys and lxc console
-lxc.cgroup.devices.allow = c 5:2 rwm	# /dev/ptmx pty master
+lxc.cap.drop = setfcap sys_nice sys_pacct sys_rawio

@@ -1,3 +1,6 @@
+# This derives from the global common config
+lxc.include = @LXCTEMPLATECONFIG@/common.conf
+
 # Gentoo security oriented default configuration
 # This is a more security oriented container configuration
 # "More" because this is far from fully secure
@@ -10,9 +13,6 @@ lxc.mount.entry=proc proc proc ro,nodev,noexec,nosuid 0 0
 lxc.mount.entry=mqueue dev/mqueue mqueue rw,nodev,noexec,nosuid 0 0
 lxc.mount.entry=shm dev/shm tmpfs rw,nosuid,nodev,noexec,relatime 0 0
 lxc.mount.entry=run run tmpfs rw,nosuid,nodev,relatime,mode=755 0 0
-
-# console access
-lxc.pts = 1024
 
 # this part is based on 'linux capabilities', see: man 7 capabilities
 #  eg: you may also wish to drop 'cap_net_raw' (though it breaks ping)
@@ -31,29 +31,4 @@ lxc.pts = 1024
 # conservative: lxc.cap.drop = sys_module mknod mac_override sys_boot
 # aggressive follows. (leaves open: chown dac_override fowner ipc_lock kill lease net_admin net_bind_service net_broadcast net_raw setgid setuid sys_chroot)
 
-lxc.cap.drop = audit_control audit_write dac_read_search fsetid ipc_owner linux_immutable mac_admin mac_override mknod setfcap sys_admin sys_boot sys_module sys_pacct sys_ptrace sys_rawio sys_resource sys_time sys_tty_config syslog
-
-# deny access to all devices by default, explicitly grant some permissions
-#
-# format is [c|b] [major|*]:[minor|*] [r][w][m]
-#            ^     ^                   ^
-# char/block -'     \`- device number    \`-- read, write, mknod
-#
-# first deny all...
-lxc.cgroup.devices.deny = a
-# /dev/null and zero
-lxc.cgroup.devices.allow = c 1:3 rw
-lxc.cgroup.devices.allow = c 1:5 rw
-# /dev/{,u}random
-lxc.cgroup.devices.allow = c 1:9 rw
-lxc.cgroup.devices.allow = c 1:8 r
-# /dev/pts/*
-lxc.cgroup.devices.allow = c 136:* rw
-lxc.cgroup.devices.allow = c 5:2 rw
-# /dev/tty{0,1}
-lxc.cgroup.devices.allow = c 4:1 rwm
-lxc.cgroup.devices.allow = c 4:0 rwm
-# /dev/tty
-lxc.cgroup.devices.allow = c 5:0 rwm
-# /dev/console
-lxc.cgroup.devices.allow = c 5:1 rwm
+lxc.cap.drop = audit_control audit_write dac_read_search fsetid ipc_owner linux_immutable mknod setfcap sys_admin sys_boot sys_pacct sys_ptrace sys_rawio sys_resource sys_tty_config syslog

@@ -1,26 +1,14 @@
-# Default console settings
-lxc.tty = 4
-lxc.pts = 1024
+# This derives from the global common config
+lxc.include = @LXCTEMPLATECONFIG@/common.conf
 
 # Default mount
 lxc.mount.auto = proc sys cgroup
 
-# Default capabilities
-lxc.cap.drop = sys_module mac_admin mac_override sys_time
+# Doesn't support consoles in /dev/lxc/
+lxc.devttydir =
 
-lxc.cgroup.devices.deny = a
-# /dev/null and zero
-lxc.cgroup.devices.allow = c 1:3 rwm
-lxc.cgroup.devices.allow = c 1:5 rwm
-# consoles
-lxc.cgroup.devices.allow = c 5:0 rwm
-lxc.cgroup.devices.allow = c 5:1 rwm
-# /dev/{,u}random
-lxc.cgroup.devices.allow = c 1:8 rwm
-lxc.cgroup.devices.allow = c 1:9 rwm
-lxc.cgroup.devices.allow = c 5:2 rwm
-lxc.cgroup.devices.allow = c 136:* rwm
-# rtc
+# Extra cgroup device access
+## rtc
 lxc.cgroup.devices.allow = c 254:0 rm
-# fuse
+## fuse
 lxc.cgroup.devices.allow = c 10:229 rwm

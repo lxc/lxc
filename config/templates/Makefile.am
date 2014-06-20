@@ -7,6 +7,7 @@ templatesconfig_DATA = \
 	archlinux.userns.conf \
 	centos.common.conf \
 	centos.userns.conf \
+	common.conf \
 	debian.common.conf \
 	debian.userns.conf \
 	fedora.common.conf \
@@ -25,5 +26,6 @@ templatesconfig_DATA = \
 	ubuntu-cloud.userns.conf \
 	ubuntu.common.conf \
 	ubuntu.lucid.conf \
+	ubuntu.priv.seccomp \
 	ubuntu.userns.conf \
-	ubuntu.priv.seccomp
+	userns.conf

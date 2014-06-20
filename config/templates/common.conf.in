@@ -1,0 +1,35 @@
+# Default configuration shared by all containers
+
+# Setup the LXC devices in /dev/lxc/
+lxc.devttydir = lxc
+
+# Allow for 1024 pseudo terminals
+lxc.pts = 1024
+
+# Setup 4 tty devices
+lxc.tty = 4
+
+# Drop some harmful capabilities
+lxc.cap.drop = mac_admin mac_override sys_time sys_module
+
+# Set the pivot directory
+lxc.pivotdir = lxc_putold
+
+# Ensure hostname is changed on clone
+lxc.hook.clone = @LXCHOOKDIR@/clonehostname
+
+# CGroup whitelist
+lxc.cgroup.devices.deny = a
+## Allow any mknod (but not reading/writing the node)
+lxc.cgroup.devices.allow = c *:* m
+lxc.cgroup.devices.allow = b *:* m
+## Allow specific devices
+lxc.cgroup.devices.allow = c 1:3 rwm	# /dev/null
+lxc.cgroup.devices.allow = c 1:5 rwm	# /dev/zero
+lxc.cgroup.devices.allow = c 1:7 rwm	# /dev/full
+lxc.cgroup.devices.allow = c 5:0 rwm	# /dev/tty
+lxc.cgroup.devices.allow = c 5:1 rwm	# /dev/console
+lxc.cgroup.devices.allow = c 5:2 rwm	# /dev/ptmx
+lxc.cgroup.devices.allow = c 1:8 rwm	# /dev/random
+lxc.cgroup.devices.allow = c 1:9 rwm	# /dev/urandom
+lxc.cgroup.devices.allow = c 136:* rwm	# /dev/pts/*
