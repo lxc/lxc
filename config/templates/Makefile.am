@@ -19,4 +19,5 @@ templatesconfig_DATA = \
 	ubuntu-cloud.userns.conf \
 	ubuntu.common.conf \
 	ubuntu.lucid.conf \
-	ubuntu.userns.conf
+	ubuntu.userns.conf \
+	ubuntu.priv.seccomp
