@@ -266,6 +266,19 @@ if test "x$have_abs_cgroups" = "xyes"; then
 else
 	AC_MSG_RESULT([no])
 fi
+
+# Check for static libcap, make sure the function checked for differs from the
+# the one checked below so the cache doesn't give a wrong answer
+OLD_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -static"
+AC_CHECK_LIB([cap],[cap_init],[have_static_libcap=yes],[have_static_libcap=no])
+AM_CONDITIONAL([HAVE_STATIC_LIBCAP], [test "x$have_static_libcap" = "xyes"])
+if test "x$have_static_libcap" = "xyes"; then
+	AC_DEFINE([HAVE_STATIC_LIBCAP], 1, [Have static libcap])
+fi
+CFLAGS="$OLD_CFLAGS"
+
+
 # Linux capabilities
 AC_ARG_ENABLE([capabilities],
 	[AC_HELP_STRING([--enable-capabilities], [enable kernel capabilities support [default=auto]])],
