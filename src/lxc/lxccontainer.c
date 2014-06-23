@@ -2147,7 +2147,8 @@ static bool set_config_item_locked(struct lxc_container *c, const char *key, con
 		c->lxc_conf = lxc_conf_init();
 	if (!c->lxc_unexp_conf) {
 		c->lxc_unexp_conf = lxc_conf_init();
-		c->lxc_unexp_conf->unexpanded = true;
+		if (c->lxc_unexp_conf)
+			c->lxc_unexp_conf->unexpanded = true;
 	}
 	if (!c->lxc_conf || !c->lxc_unexp_conf)
 		return false;
