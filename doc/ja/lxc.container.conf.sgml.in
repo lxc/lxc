@@ -1433,10 +1433,13 @@ proc proc proc nodev,noexec,nosuid 0 0
 	    <para>
               <!--
 	      Specify the capability to be kept in the container. All other
-	      capabilities will be dropped.
+	      capabilities will be dropped. When a special value of "none" is
+	      encountered, lxc will clear any keep capabilities specified up
+	      to this point. A value of "none" alone can be used to drop all
+	      capabilities.
               -->
-              コンテナ内で維持するケーパビリティを指定します。
-              指定した以外の全てのケーパビリティはドロップされます。
+              コンテナ内で維持するケーパビリティを指定します。指定した以外の全てのケーパビリティはドロップされます。
+              特別な値 "none" が指定されている時点で、lxc はこの時点で保持することになっている全てのケーパビリティをクリアします。"none" を単独で使用するとすべてのケーパビリティを削除できます。
 	    </para>
 	  </listitem>
 	</varlistentry>
