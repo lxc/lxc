@@ -1168,7 +1168,7 @@ static const char *sig_name(int signum) {
 		if (signum == signames[n].num)
 			return signames[n].name;
 	}
-	return "";
+	return NULL;
 }
 
 static int sig_parse(const char *signame) {
@@ -2289,6 +2289,7 @@ void write_config(FILE *fout, struct lxc_conf *c)
 {
 	struct lxc_list *it;
 	int i;
+	const char *signame;
 
 	/* first write any includes */
 	lxc_list_for_each(it, &c->includes) {
@@ -2336,10 +2337,22 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		fprintf(fout, "lxc.pts = %d\n", c->pts);
 	if (c->ttydir)
 		fprintf(fout, "lxc.devttydir = %s\n", c->ttydir);
-	if (c->haltsignal)
-		fprintf(fout, "lxc.haltsignal = SIG%s\n", sig_name(c->haltsignal));
-	if (c->stopsignal)
-		fprintf(fout, "lxc.stopsignal = SIG%s\n", sig_name(c->stopsignal));
+	if (c->haltsignal) {
+		signame = sig_name(c->haltsignal);
+		if (signame == NULL) {
+			fprintf(fout, "lxc.haltsignal = %d\n", c->haltsignal);
+		} else {
+			fprintf(fout, "lxc.haltsignal = SIG%s\n", sig_name(c->haltsignal));
+		}
+	}
+	if (c->stopsignal) {
+		signame = sig_name(c->stopsignal);
+		if (signame == NULL) {
+			fprintf(fout, "lxc.stopsignal = %d\n", c->stopsignal);
+		} else {
+			fprintf(fout, "lxc.stopsignal = SIG%s\n", sig_name(c->stopsignal));
+		}
+	}
 	#if HAVE_SYS_PERSONALITY_H
 	switch(c->personality) {
 	case PER_LINUX32: fprintf(fout, "lxc.arch = i686\n"); break;
