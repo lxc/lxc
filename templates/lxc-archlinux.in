@@ -1,14 +1,14 @@
 #!/bin/bash
 
 #
-# template script for generating Arch linux container for LXC
+# template script for generating Arch Linux container for LXC
 #
 
 #
 # lxc: linux Container library
 
 # Authors:
-# Alexander Vladimirov <idkfa@vlan1.ru>
+# Alexander Vladimirov <alexander.idkfa.vladimirov@gmail.com>
 # John Lane <lxc@jelmail.com>
 
 # This library is free software; you can redistribute it and/or
@@ -40,12 +40,11 @@ export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
 # defaults
 arch=$(uname -m)
-lxc_network_type="veth"
-lxc_network_link="br0"
 default_path="@LXCPATH@"
 default_locale="en-US.UTF-8"
 default_timezone="UTC"
 pacman_config="/etc/pacman.conf"
+shared_config="@LXCTEMPLATECONFIG@/archlinux.common.conf"
 
 # by default, install 'base' except the kernel
 pkg_blacklist="linux"
@@ -73,20 +72,14 @@ split_string() {
 configure_arch() {
     # on ArchLinux, read defaults from host systemd configuration
     if [ "${is_arch}" ]; then
-        cp -p /etc/vconsole.conf /etc/locale.conf /etc/locale.gen \
-		"${rootfs_path}/etc/"
+        cp -p /etc/locale.conf /etc/locale.gen "${rootfs_path}/etc/"
     else
         echo "LANG=${default_lang}" > "${rootfs_path}/etc/locale.conf"
-        echo "KEYMAP=us" > "${rootfs_path}/etc/vconsole.conf"
-        cat > "${rootfs_path}/etc/adjtime" << EOF
-0.0 0.0 0.0
-0
-LOCAL
-EOF
         if [ -e "${rootfs_path}/etc/locale.gen" ]; then
             sed -i 's@^#\(en_US\.UTF-8\)@\1@' "${rootfs_path}/etc/locale.gen"
             if [ ! "${default_locale}" = "en_US.UTF-8" ]; then
-                echo "${default_locale} ${default_locale##*.}" >> "${rootfs_path}/etc/locale.gen"
+                echo "${default_locale} ${default_locale##*.}" >> \
+                "${rootfs_path}/etc/locale.gen"
             fi
         fi
     fi
@@ -102,65 +95,41 @@ EOF
 mkdir /run/lock
 locale-gen
 ln -s /usr/share/zoneinfo/${default_timezone} /etc/localtime
-# disable services unavailable for container
-for i in systemd-udevd.service \
-	systemd-udevd-control.socket \
-	systemd-udevd-kernel.socket \
-	proc-sys-fs-binfmt_misc.automount; do
-   ln -s /dev/null /etc/systemd/system/\$i
-done
-# set default systemd target
+# set default boot target
 ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
-# enable sigpwr signal handling in systemd as otherwise lxc-stop won't work
-ln -s /usr/lib/systemd/system/poweroff.target /etc/systemd/system/sigpwr.target
-# initialize pacman keyring
-pacman-key --init
-pacman-key --populate archlinux
+# override getty@.service for container ttys
+sed -e 's/^ConditionPathExists=/# ConditionPathExists=/' \
+    -e 's/After=dev-%i.device/After=/' \
+    < /lib/systemd/system/getty\@.service \
+    > /etc/systemd/system/getty\@.service
 EOF
+    # enable getty on active ttys
+    nttys=$(grep lxc.tty ${config_path}/config | cut -d= -f 2 | tr -d "[:blank:]")
+    if [ ${nttys:-0} -gt 1 ]; then
+      ( cd ${rootfs_path}/etc/systemd/system/getty.target.wants
+        for i in $(seq 1 $nttys); do ln -sf ../getty\@.service getty@tty${i}.service; done )
+    fi
+    [ ${nttys:-0} -gt 6 ] && echo \
+      "You may want to modify container's /etc/securetty \
+      file to allow root logins on tty7 and higher"
     return 0
 }
 
 # write container configuration files
 copy_configuration() {
     mkdir -p "${config_path}"
-    cat > "${config_path}/config" << EOF
-lxc.utsname=${name}
-lxc.autodev=1
-lxc.tty=1
-lxc.pts=1024
-lxc.mount=${config_path}/fstab
-lxc.cap.drop=sys_module mac_admin mac_override sys_time
-lxc.kmsg=0
-lxc.stopsignal=SIGRTMIN+4
-#networking
-lxc.network.type=${lxc_network_type}
-lxc.network.link=${lxc_network_link}
-lxc.network.flags=up
-lxc.network.name=eth0
-lxc.network.mtu=1500
-#cgroups
-lxc.cgroup.devices.deny = a
-lxc.cgroup.devices.allow = c *:* m
-lxc.cgroup.devices.allow = b *:* m
-lxc.cgroup.devices.allow = c 1:3 rwm
-lxc.cgroup.devices.allow = c 1:5 rwm
-lxc.cgroup.devices.allow = c 1:7 rwm
-lxc.cgroup.devices.allow = c 1:8 rwm
-lxc.cgroup.devices.allow = c 1:9 rwm
-lxc.cgroup.devices.allow = c 4:1 rwm
-lxc.cgroup.devices.allow = c 5:0 rwm
-lxc.cgroup.devices.allow = c 5:1 rwm
-lxc.cgroup.devices.allow = c 5:2 rwm
-lxc.cgroup.devices.allow = c 136:* rwm
-EOF
-
-    grep -q "^lxc.rootfs" ${config_path}/config 2>/dev/null || echo "lxc.rootfs = ${path}/rootfs" >> ${config_path}/config
-
-    cat > "${config_path}/fstab" << EOF
-sysfs sys sysfs defaults 0 0
-proc proc proc nodev,noexec,nosuid 0 0
-EOF
-
+    local config="${config_path}/config"
+    echo "lxc.utsname = ${name}" >> "${config}"
+    grep -q "^lxc.arch" "${config}" 2>/dev/null \
+        || echo "lxc.arch = ${arch}" >> "${config}"
+    grep -q "^lxc.rootfs" "${config}" 2>/dev/null \
+        || echo "lxc.rootfs = ${rootfs_path}" >> "${config}"
+    [ -e "${shared_config}" ] \
+        && echo "lxc.include = ${shared_config}" >> "${config}"
+    if [ $? -ne 0 ]; then
+        echo "Failed to configure container"
+        return 1
+    fi
     return 0
 }
 
@@ -181,7 +150,7 @@ install_arch() {
     fi
 
     if ! pacstrap -dcGC "${pacman_config}" "${rootfs_path}" \
-	    ${base_packages[@]}; then
+            ${base_packages[@]}; then
         echo "Failed to install container packages"
         return 1
     fi
@@ -200,25 +169,26 @@ install_arch() {
 usage() {
     cat <<EOF
 usage:
-    ${1} -n|--name=<container_name>
-        [-P|--packages=<pkg1,pkg2,...>] [-p|--path=<path>] [-t|--network_type=<type>] [-l|--network_link=<link>] [-h|--help]
+    ${1} -n|--name=<container_name> [-p|--path=<path>] [-a|--arch=<arch of the container>] [-r|--root_password=<root password>]
+        [-P|--packages=<pkg1,pkg2,...>] [-e|--enable_units=unit1,unit2...] [-c|--config=<pacman config path>] [-h|--help]
+
 Mandatory args:
-  -n,--name         container name, used to as an identifier for that container from now on
+  -n,--name           container name, used to as an identifier for that container from now on
 Optional args:
-  -p,--path         path to where the container rootfs will be created, defaults to ${default_path}/rootfs. The container config will go under ${default_path} in that case
-  -P,--packages     preinstall additional packages, comma-separated list
-  -e,--enable_units Enable additional systemd units, comma-separated list
-  -c,--config       use specified pacman config when installing container packages
-  -a,--arch         use specified architecture instead of host's architecture
-  -t,--network_type set container network interface type (${lxc_network_type})
-  -l,--network_link set network link device (${lxc_network_link})
-  -r,--root_passwd  set container root password
-  -h,--help         print this help
+  -p,--path           path to where the container rootfs will be created (${default_path})
+  --rootfs            path for actual container rootfs, (${default_path/rootfs)
+  -P,--packages       preinstall additional packages, comma-separated list
+  -e,--enable_units   enable systemd services, comma-separated list
+  -d,--disable_units  disable systemd services, comma-separated list
+  -c,--config         use specified pacman config when installing container packages
+  -a,--arch           use specified architecture instead of host's architecture
+  -r,--root_password  set container root password
+  -h,--help           print this help
 EOF
     return 0
 }
 
-options=$(getopt -o hp:P:e:n:c:a:l:t:r: -l help,rootfs:,path:,packages:,enable_units:,name:,config:,arch:,network_type:,network_link:,root_passwd: -- "${@}")
+options=$(getopt -o hp:P:e:d:n:c:a:r: -l help,rootfs:,path:,packages:,enable_units:,disable_units:,name:,config:,arch:,root_password: -- "${@}")
 if [ ${?} -ne 0 ]; then
     usage $(basename ${0})
     exit 1
@@ -234,11 +204,10 @@ do
     --rootfs)           rootfs_path=${2}; shift 2;;
     -P|--packages)      additional_packages=${2}; shift 2;;
     -e|--enable_units)  enable_units=${2}; shift 2;;
+    -d|--disable_units) disable_units=${2}; shift 2;;
     -c|--config)        pacman_config=${2}; shift 2;;
     -a|--arch)          arch=${2}; shift 2;;
-    -t|--network_type)  lxc_network_type=${2}; shift 2;;
-    -l|--network_link)  lxc_network_link=${2}; shift 2;;
-    -r|--root_passwd)   root_passwd=${2}; shift 2;;
+    -r|--root_password) root_passwd=${2}; shift 2;;
     --)             shift 1; break ;;
     *)              break ;;
     esac
@@ -246,11 +215,6 @@ done
 
 if [ -z "${name}" ]; then
     echo "missing required 'name' parameter"
-    exit 1
-fi
-
-if [ ! -e /sys/class/net/${lxc_network_link} ]; then
-    echo "network link interface, ${lxc_network_link}, does not exist"
     exit 1
 fi
 
@@ -272,7 +236,7 @@ fi
 if [ -z "$rootfs_path" ]; then
     rootfs_path="${path}/rootfs"
 fi
-config_path="${default_path}/${name}"
+config_path="${path}"
 
 revert() {
     echo "Interrupted, cleaning up"
@@ -314,9 +278,17 @@ fi
 if [ ${#enable_units[@]} -gt 0 ]; then
     split_string ${enable_units}
     for unit in ${result[@]}; do
-        [ "${unit}" = *'.'* ] || unit="${unit}.service"
-        ln -s /usr/lib/systemd/system/"${unit}" \
-            "${rootfs_path}"/etc/systemd/system/multi-user.target.wants
+        [ "${unit##*.}" = "service" ] || unit="${unit}.service"
+        ln -s "/usr/lib/systemd/system/${unit}" \
+            "${rootfs_path}/etc/systemd/system/multi-user.target.wants/"
+    done
+fi
+
+if [ ${#disable_units[@]} -gt 0 ]; then
+    split_string ${disable_units}
+    for unit in ${result[@]}; do
+        [ "${unit##*.}" = "service" ] || unit="${unit}.service"
+        ln -s /dev/null "${rootfs_path}/etc/systemd/system/${unit}"
     done
 fi
 
@@ -325,7 +297,7 @@ if [ -n "${root_passwd}" ]; then
 fi
 
 cat << EOF
-ArchLinux container ${name} is successfully created! The configuration is
+Arch Linux container ${name} is successfully created! The configuration is
 stored in ${config_path}/config. Please refer to https://wiki.archlinux.org for
-information about configuring ArchLinux.
+information about configuring Arch Linux.
 EOF

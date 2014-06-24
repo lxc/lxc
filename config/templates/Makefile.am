@@ -3,6 +3,8 @@ templatesconfigdir=@LXCTEMPLATECONFIG@
 EXTRA_DIST = ubuntu.priv.seccomp
 
 templatesconfig_DATA = \
+	archlinux.common.conf \
+	archlinux.userns.conf \
 	centos.common.conf \
 	centos.userns.conf \
 	debian.common.conf \

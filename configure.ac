@@ -594,6 +594,8 @@ AC_CONFIG_FILES([
 	config/init/upstart/Makefile
 	config/etc/Makefile
 	config/templates/Makefile
+	config/templates/archlinux.common.conf
+	config/templates/archlinux.userns.conf
 	config/templates/centos.common.conf
 	config/templates/centos.userns.conf
 	config/templates/debian.common.conf
