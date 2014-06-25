@@ -102,6 +102,9 @@ sed -e 's/^ConditionPathExists=/# ConditionPathExists=/' \
     -e 's/After=dev-%i.device/After=/' \
     < /lib/systemd/system/getty\@.service \
     > /etc/systemd/system/getty\@.service
+# initialize pacman keyring
+pacman-key --init
+pacman-key --populate archlinux
 EOF
     # enable getty on active ttys
     nttys=$(grep lxc.tty ${config_path}/config | cut -d= -f 2 | tr -d "[:blank:]")
@@ -169,8 +172,10 @@ install_arch() {
 usage() {
     cat <<EOF
 usage:
-    ${1} -n|--name=<container_name> [-p|--path=<path>] [-a|--arch=<arch of the container>] [-r|--root_password=<root password>]
-        [-P|--packages=<pkg1,pkg2,...>] [-e|--enable_units=unit1,unit2...] [-c|--config=<pacman config path>] [-h|--help]
+    ${1} -n|--name=<container_name> [-p|--path=<path>] [-a|--arch=<arch of the container>]
+        [-r|--root_password=<root password>] [-P|--packages=<pkg1,pkg2,...>]
+        [-e|--enable_units=unit1,unit2...] [-d|--disable_units=unit1,unit2...]
+        [-c|--config=<pacman config path>] [-h|--help]
 
 Mandatory args:
   -n,--name           container name, used to as an identifier for that container from now on
