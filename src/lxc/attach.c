@@ -621,7 +621,7 @@ static bool fetch_seccomp(const char *name, const char *lxcpath,
 
 static signed long get_personality(const char *name, const char *lxcpath)
 {
-	char *p = lxc_cmd_get_config_item(name, "lxc.personality", lxcpath);
+	char *p = lxc_cmd_get_config_item(name, "lxc.arch", lxcpath);
 	signed long ret;
 
 	if (!p)
