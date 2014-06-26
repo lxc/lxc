@@ -44,6 +44,7 @@ default_path="@LXCPATH@"
 default_locale="en-US.UTF-8"
 default_timezone="UTC"
 pacman_config="/etc/pacman.conf"
+common_config="@LXCTEMPLATECONFIG@/common.conf"
 shared_config="@LXCTEMPLATECONFIG@/archlinux.common.conf"
 
 # by default, install 'base' except the kernel
@@ -107,11 +108,23 @@ pacman-key --init
 pacman-key --populate archlinux
 EOF
     # enable getty on active ttys
-    nttys=$(grep lxc.tty ${config_path}/config | cut -d= -f 2 | tr -d "[:blank:]")
+    local nttys=$(cat "${config_path}/config" ${shared_config} ${common_config} | grep "^lxc.tty" | head -n1 | cut -d= -f2 | tr -d "[:blank:]")
+    local devttydir=$(cat "${config_path}/config" ${shared_config} ${common_config} | grep "^lxc.devttydir" | head -n1 | cut -d= -f2 | tr -d "[:blank:]")
+    local devtty=""
+    # bind getty instances to /dev/<devttydir>/tty* if lxc.devttydir is set
+    [ -n "${devttydir}" ] && devtty="${devttydir}-"
     if [ ${nttys:-0} -gt 1 ]; then
-      ( cd ${rootfs_path}/etc/systemd/system/getty.target.wants
-        for i in $(seq 1 $nttys); do ln -sf ../getty\@.service getty@tty${i}.service; done )
+      ( cd "${rootfs_path}/etc/systemd/system/getty.target.wants"
+        for i in $(seq 1 $nttys); do ln -sf "../getty@.service" "getty@${devtty}tty${i}.service"; done )
     fi
+    # update securetty to allow console login if devttydir is set
+    if [ -n "${devttydir}" ]; then
+        for i in $(seq 1 ${nttys:-1}); do
+            echo "${devttydir}/tty${i}" >> "${rootfs_path}/etc/securetty"
+        done
+    fi
+    [ -n "${devttydir}" ] && echo "${devttydir}/console" >> "${rootfs_path}/etc/securetty"
+    # Arch default configuration allows only tty1-6 for login
     [ ${nttys:-0} -gt 6 ] && echo \
       "You may want to modify container's /etc/securetty \
       file to allow root logins on tty7 and higher"
