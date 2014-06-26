@@ -701,52 +701,124 @@ static inline void free_abs_cgroup(char *cgroup)
 		free(cgroup);
 }
 
-/* cgm_get is called to get container cgroup settings, not during startup */
-static int cgm_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
+static void do_cgm_get(const char *name, const char *lxcpath, const char *filename, int outp, bool sendvalue)
 {
-	char *result, *controller, *key, *cgroup = NULL;
-	size_t newlen;
+	char *controller, *key, *cgroup = NULL, *cglast;
+	int len = -1;
+	int ret;
+	nih_local char *result = NULL;
 
 	controller = alloca(strlen(filename)+1);
 	strcpy(controller, filename);
 	key = strchr(controller, '.');
-	if (!key)
-		return -1;
+	if (!key) {
+		ret = write(outp, &len, sizeof(len));
+		if (ret != sizeof(len))
+			WARN("Failed to warn cgm_get of error; parent may hang");
+		exit(1);
+	}
 	*key = '\0';
-
-	/* use the command interface to look for the cgroup */
-	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
-	if (!cgroup)
-		return -1;
 
 	if (!cgm_dbus_connect()) {
 		ERROR("Error connecting to cgroup manager");
-		return -1;
+		ret = write(outp, &len, sizeof(len));
+		if (ret != sizeof(len))
+			WARN("Failed to warn cgm_get of error; parent may hang");
+		exit(1);
 	}
-
-	if (cgmanager_get_value_sync(NULL, cgroup_manager, controller, cgroup, filename, &result) != 0) {
-		/*
-		 * must consume the nih error
-		 * However don't print out an error as the key may simply not exist
-		 * on the host
-		 */
+	cgroup = try_get_abs_cgroup(name, lxcpath, subsystems[0]);
+	if (!cgroup) {
+		cgm_dbus_disconnect();
+		ret = write(outp, &len, sizeof(len));
+		if (ret != sizeof(len))
+			WARN("Failed to warn cgm_get of error; parent may hang");
+		exit(1);
+	}
+	cglast = strrchr(cgroup, '/');
+	if (!cglast) {
+		cgm_dbus_disconnect();
+		free_abs_cgroup(cgroup);
+		ret = write(outp, &len, sizeof(len));
+		if (ret != sizeof(len))
+			WARN("Failed to warn cgm_get of error; parent may hang");
+		exit(1);
+	}
+	*cglast = '\0';
+	if (!lxc_cgmanager_enter(getpid(), controller, cgroup, abs_cgroup_supported())) {
+		ERROR("Failed to enter container cgroup %s:%s", controller, cgroup);
+		ret = write(outp, &len, sizeof(len));
+		if (ret != sizeof(len))
+			WARN("Failed to warn cgm_get of error; parent may hang");
+		cgm_dbus_disconnect();
+		free_abs_cgroup(cgroup);
+		exit(1);
+	}
+	if (cgmanager_get_value_sync(NULL, cgroup_manager, controller, cglast+1, filename, &result) != 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
 		nih_free(nerr);
-		free(cgroup);
+		free_abs_cgroup(cgroup);
 		cgm_dbus_disconnect();
+		ret = write(outp, &len, sizeof(len));
+		if (ret != sizeof(len))
+			WARN("Failed to warn cgm_get of error; parent may hang");
+		exit(1);
+	}
+	free_abs_cgroup(cgroup);
+	cgm_dbus_disconnect();
+	len = strlen(result);
+	ret = write(outp, &len, sizeof(len));
+	if (ret != sizeof(len)) {
+		WARN("Failed to send length to parent");
+		exit(1);
+	}
+	if (!len || !sendvalue) {
+		exit(0);
+	}
+	ret = write(outp, result, len);
+	if (ret < 0)
+		exit(1);
+	exit(0);
+}
+
+/* cgm_get is called to get container cgroup settings, not during startup */
+static int cgm_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
+{
+	pid_t pid;
+	int p[2], ret, newlen, readlen;
+
+	if (pipe(p) < 0)
+		return -1;
+	if ((pid = fork()) < 0) {
+		close(p[0]);
+		close(p[1]);
 		return -1;
 	}
-	cgm_dbus_disconnect();
-	free(cgroup);
-	newlen = strlen(result);
-	if (!len || !value) {
-		// user queries the size
-		nih_free(result);
-		return newlen+1;
+	if (!pid)
+		do_cgm_get(name, lxcpath, filename, p[1], len && value);
+	close(p[1]);
+	ret = read(p[0], &newlen, sizeof(newlen));
+	if (ret != sizeof(newlen)) {
+		close(p[0]);
+		return -1;
 	}
-
-	strncpy(value, result, len);
+	if (!len || !value) {
+		close(p[0]);
+		return newlen;
+	}
+	if (newlen < 0) { // child is reporting an error
+		close(p[0]);
+		return -1;
+	}
+	if (newlen == 0) { // empty read
+		close(p[0]);
+		return 0;
+	}
+	readlen = newlen > len ? len : newlen;
+	ret = read(p[0], value, readlen);
+	close(p[0]);
+	if (ret != readlen)
+		return -1;
 	if (newlen >= len) {
 		value[len-1] = '\0';
 		newlen = len-1;
@@ -755,57 +827,106 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		value[newlen++] = '\n';
 		value[newlen] = '\0';
 	}
-	nih_free(result);
 	return newlen;
 }
 
-/* internal helper - call with cgmanager dbus connection open */
-static int cgm_do_set(const char *controller, const char *file,
-			 const char *cgroup, const char *value)
+static void do_cgm_set(const char *name, const char *lxcpath, const char *filename, const char *value, int outp)
 {
+	char *controller, *key, *cgroup = NULL;
+	int retval = 0;  // value we are sending to the parent over outp
 	int ret;
-	ret = cgmanager_set_value_sync(NULL, cgroup_manager, controller,
-				 cgroup, file, value);
-	if (ret != 0) {
+	char *cglast;
+
+	controller = alloca(strlen(filename)+1);
+	strcpy(controller, filename);
+	key = strchr(controller, '.');
+	if (!key) {
+		ret = write(outp, &retval, sizeof(retval));
+		if (ret != sizeof(retval))
+			WARN("Failed to warn cgm_set of error; parent may hang");
+		exit(1);
+	}
+	*key = '\0';
+
+	if (!cgm_dbus_connect()) {
+		ERROR("Error connecting to cgroup manager");
+		ret = write(outp, &retval, sizeof(retval));
+		if (ret != sizeof(retval))
+			WARN("Failed to warn cgm_set of error; parent may hang");
+		exit(1);
+	}
+	cgroup = try_get_abs_cgroup(name, lxcpath, subsystems[0]);
+	if (!cgroup) {
+		cgm_dbus_disconnect();
+		ret = write(outp, &retval, sizeof(retval));
+		if (ret != sizeof(retval))
+			WARN("Failed to warn cgm_set of error; parent may hang");
+		exit(1);
+	}
+	cglast = strrchr(cgroup, '/');
+	if (!cglast) {
+		cgm_dbus_disconnect();
+		free_abs_cgroup(cgroup);
+		ret = write(outp, &retval, sizeof(retval));
+		if (ret != sizeof(retval))
+			WARN("Failed to warn cgm_set of error; parent may hang");
+		exit(1);
+	}
+	*cglast = '\0';
+	if (!lxc_cgmanager_enter(getpid(), controller, cgroup, abs_cgroup_supported())) {
+		ERROR("Failed to enter container cgroup %s:%s", controller, cgroup);
+		ret = write(outp, &retval, sizeof(retval));
+		if (ret != sizeof(retval))
+			WARN("Failed to warn cgm_set of error; parent may hang");
+		cgm_dbus_disconnect();
+		free_abs_cgroup(cgroup);
+		exit(1);
+	}
+	if (cgmanager_set_value_sync(NULL, cgroup_manager, controller, cglast+1, filename, value) != 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
+		ERROR("Error setting cgroup value %s for %s:%s", filename, controller, cgroup);
 		ERROR("call to cgmanager_set_value_sync failed: %s", nerr->message);
 		nih_free(nerr);
-		ERROR("Error setting cgroup %s limit %s", file, cgroup);
+		free_abs_cgroup(cgroup);
+		cgm_dbus_disconnect();
+		ret = write(outp, &retval, sizeof(retval));
+		if (ret != sizeof(retval))
+			WARN("Failed to warn cgm_set of error; parent may hang");
+		exit(1);
 	}
-	return ret;
+	free_abs_cgroup(cgroup);
+	cgm_dbus_disconnect();
+	/* tell parent that we are done */
+	retval = 1;
+	ret = write(outp, &retval, sizeof(retval));
+	if (ret != sizeof(retval)) {
+		exit(1);
+	}
+	exit(0);
 }
 
 /* cgm_set is called to change cgroup settings, not during startup */
 static int cgm_set(const char *filename, const char *value, const char *name, const char *lxcpath)
 {
-	char *controller, *key, *cgroup = NULL;
-	int ret;
+	pid_t pid;
+	int p[2], ret, v;
 
-	controller = alloca(strlen(filename)+1);
-	strcpy(controller, filename);
-	key = strchr(controller, '.');
-	if (!key)
+	if (pipe(p) < 0)
 		return -1;
-	*key = '\0';
-
-	/* use the command interface to look for the cgroup */
-	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
-	if (!cgroup) {
-		ERROR("Failed to get cgroup for controller %s for %s:%s",
-			controller, lxcpath, name);
+	if ((pid = fork()) < 0) {
+		close(p[1]);
+		close(p[0]);
 		return -1;
 	}
-
-	if (!cgm_dbus_connect()) {
-		ERROR("Error connecting to cgroup manager");
-		free(cgroup);
-		return false;
-	}
-	ret = cgm_do_set(controller, filename, cgroup, value);
-	cgm_dbus_disconnect();
-	free(cgroup);
-	return ret;
+	if (!pid)
+		do_cgm_set(name, lxcpath, filename, value, p[1]);
+	close(p[1]);
+	ret = read(p[0], &v, sizeof(v));
+	close(p[0]);
+	if (ret != sizeof(v) || !v)
+		return -1;
+	return 0;
 }
 
 static void free_subsystems(void)
@@ -976,10 +1097,14 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 		p = strchr(controller, '.');
 		if (p)
 			*p = '\0';
-		if (cgm_do_set(controller, cg->subsystem, d->cgroup_path
-				, cg->value) < 0) {
-			ERROR("Error setting %s to %s for %s",
-			      cg->subsystem, cg->value, d->name);
+		if (cgmanager_set_value_sync(NULL, cgroup_manager, controller,
+					 d->cgroup_path, cg->subsystem, cg->value) != 0) {
+			NihError *nerr;
+			nerr = nih_error_get();
+			ERROR("call to cgmanager_set_value_sync failed: %s", nerr->message);
+			nih_free(nerr);
+			ERROR("Error setting cgroup %s:%s limit type %s", controller,
+				d->cgroup_path, cg->subsystem);
 			goto out;
 		}
 
