@@ -806,6 +806,7 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		close(p[0]);
 		return newlen;
 	}
+	memset(value, 0, len);
 	if (newlen < 0) { // child is reporting an error
 		close(p[0]);
 		return -1;
