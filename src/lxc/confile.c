@@ -2342,7 +2342,7 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		if (signame == NULL) {
 			fprintf(fout, "lxc.haltsignal = %d\n", c->haltsignal);
 		} else {
-			fprintf(fout, "lxc.haltsignal = SIG%s\n", sig_name(c->haltsignal));
+			fprintf(fout, "lxc.haltsignal = SIG%s\n", signame);
 		}
 	}
 	if (c->stopsignal) {
@@ -2350,7 +2350,7 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		if (signame == NULL) {
 			fprintf(fout, "lxc.stopsignal = %d\n", c->stopsignal);
 		} else {
-			fprintf(fout, "lxc.stopsignal = SIG%s\n", sig_name(c->stopsignal));
+			fprintf(fout, "lxc.stopsignal = SIG%s\n", signame);
 		}
 	}
 	#if HAVE_SYS_PERSONALITY_H
