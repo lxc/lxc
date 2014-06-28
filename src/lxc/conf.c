@@ -4508,14 +4508,14 @@ static int run_userns_fn(void *data)
 }
 
 /*
- * Add a ID_TYPE_UID entry to an existing lxc_conf, if it is not
- * alread there.
- * We may want to generalize this to do gids as well as uids, but right now
- * it's not necessary.
+ * Add ID_TYPE_UID/ID_TYPE_GID entries to an existing lxc_conf,
+ * if they are not already there.
  */
-static struct lxc_list *idmap_add_id(struct lxc_conf *conf, uid_t uid)
+static struct lxc_list *idmap_add_id(struct lxc_conf *conf,
+		uid_t uid, gid_t gid)
 {
-	int hostid_mapped = mapped_hostid(uid, conf, ID_TYPE_UID);
+	int hostuid_mapped = mapped_hostid(uid, conf, ID_TYPE_UID);
+	int hostgid_mapped = mapped_hostid(gid, conf, ID_TYPE_GID);
 	struct lxc_list *new = NULL, *tmp, *it, *next;
 	struct id_map *entry;
 
@@ -4526,9 +4526,9 @@ static struct lxc_list *idmap_add_id(struct lxc_conf *conf, uid_t uid)
 	}
 	lxc_list_init(new);
 
-	if (hostid_mapped < 0) {
-		hostid_mapped = find_unmapped_nsuid(conf, ID_TYPE_UID);
-		if (hostid_mapped < 0)
+	if (hostuid_mapped < 0) {
+		hostuid_mapped = find_unmapped_nsuid(conf, ID_TYPE_UID);
+		if (hostuid_mapped < 0)
 			goto err;
 		tmp = malloc(sizeof(*tmp));
 		if (!tmp)
@@ -4540,8 +4540,27 @@ static struct lxc_list *idmap_add_id(struct lxc_conf *conf, uid_t uid)
 		}
 		tmp->elem = entry;
 		entry->idtype = ID_TYPE_UID;
-		entry->nsid = hostid_mapped;
-		entry->hostid = (unsigned long)uid;
+		entry->nsid = hostuid_mapped;
+		entry->hostid = (unsigned long) uid;
+		entry->range = 1;
+		lxc_list_add_tail(new, tmp);
+	}
+	if (hostgid_mapped < 0) {
+		hostgid_mapped = find_unmapped_nsuid(conf, ID_TYPE_GID);
+		if (hostgid_mapped < 0)
+			goto err;
+		tmp = malloc(sizeof(*tmp));
+		if (!tmp)
+			goto err;
+		entry = malloc(sizeof(*entry));
+		if (!entry) {
+			free(tmp);
+			goto err;
+		}
+		tmp->elem = entry;
+		entry->idtype = ID_TYPE_GID;
+		entry->nsid = hostgid_mapped;
+		entry->hostid = (unsigned long) gid;
 		entry->range = 1;
 		lxc_list_add_tail(new, tmp);
 	}
@@ -4563,7 +4582,7 @@ static struct lxc_list *idmap_add_id(struct lxc_conf *conf, uid_t uid)
 	return new;
 
 err:
-	ERROR("Out of memory building a new uid map");
+	ERROR("Out of memory building a new uid/gid map");
 	if (new)
 		lxc_free_idmap(new);
 	free(new);
@@ -4572,7 +4591,7 @@ err:
 
 /*
  * Run a function in a new user namespace.
- * The caller's euid will be mapped in if it is not already.
+ * The caller's euid/egid will be mapped in if it is not already.
  */
 int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 {
@@ -4597,8 +4616,8 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	close(p[0]);
 	p[0] = -1;
 
-	if ((idmap = idmap_add_id(conf, geteuid())) == NULL) {
-		ERROR("Error adding self to container uid map");
+	if ((idmap = idmap_add_id(conf, geteuid(), getegid())) == NULL) {
+		ERROR("Error adding self to container uid/gid map");
 		goto err;
 	}
 
