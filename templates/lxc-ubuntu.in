@@ -46,6 +46,37 @@ if [ -r /etc/default/lxc ]; then
     . /etc/default/lxc
 fi
 
+# Check if given path is in a btrfs partition
+is_btrfs() {
+    [ -e $1 -a $(stat -f -c '%T' $1) = "btrfs" ]
+}
+
+# Check if given path is the root of a btrfs subvolume
+is_btrfs_subvolume() {
+    [ -d $1 -a $(stat -f -c '%T' $1) = "btrfs" -a $(stat -c '%i' $1) -eq 256 ]
+}
+
+try_mksubvolume() {
+    path=$1
+    [ -d $path ] && return 0
+    mkdir -p $(dirname $path)
+    if is_btrfs $(dirname $path); then
+        btrfs subvolume create $path
+    else
+        mkdir -p $path
+    fi
+}
+
+try_rmsubvolume() {
+    path=$1
+    [ -d $path ] || return 0
+    if is_btrfs_subvolume $path; then
+        btrfs subvolume delete $path
+    else
+        rm -rf $path
+    fi
+}
+
 configure_ubuntu()
 {
     rootfs=$1
@@ -278,8 +309,8 @@ install_packages()
 
 cleanup()
 {
-    rm -rf $cache/partial-$arch
-    rm -rf $cache/rootfs-$arch
+    try_rmsubvolume $cache/partial-$arch
+    try_rmsubvolume $cache/rootfs-$arch
 }
 
 suggest_flush()
@@ -311,7 +342,7 @@ download_ubuntu()
 
     trap cleanup EXIT SIGHUP SIGINT SIGTERM
     # check the mini ubuntu was not already downloaded
-    mkdir -p "$cache/partial-$arch"
+    try_mksubvolume "$cache/partial-$arch"
     if [ $? -ne 0 ]; then
         echo "Failed to create '$cache/partial-$arch' directory"
         return 1
@@ -370,8 +401,16 @@ copy_ubuntu()
 
     # make a local copy of the miniubuntu
     echo "Copying rootfs to $rootfs ..."
-    mkdir -p $rootfs
-    rsync -Ha $cache/rootfs-$arch/ $rootfs/ || return 1
+    try_mksubvolume $rootfs
+    if is_btrfs_subvolume $cache/rootfs-$arch && is_btrfs_subvolume $rootfs; then
+      realrootfs=$(dirname $config)/rootfs
+      umount $rootfs || return 1
+      btrfs subvolume delete $realrootfs || return 1
+      btrfs subvolume snapshot $cache/rootfs-$arch $realrootfs || return 1
+      mount --bind $realrootfs $rootfs || return 1
+    else
+      rsync -Ha $cache/rootfs-$arch/ $rootfs/ || return 1
+    fi
     return 0
 }
 
@@ -393,8 +432,8 @@ install_ubuntu()
 
         if [ $flushcache -eq 1 ]; then
             echo "Flushing cache..."
-            rm -rf "$cache/partial-$arch"
-            rm -rf "$cache/rootfs-$arch"
+            try_rmsubvolume $cache/partial-$arch
+            try_rmsubvolume $cache/rootfs-$arch
         fi
 
         echo "Checking cache download in $cache/rootfs-$arch ... "
