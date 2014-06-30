@@ -3602,8 +3602,8 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 		}
 
 		// "g:pathgid:rootgid+pathgid:1"
-		ret = snprintf(map4, 100, "g:%d:%d:1", sb.st_gid,
-				rootgid + sb.st_gid);
+		ret = snprintf(map4, 100, "g:%d:%d:1", (gid_t)sb.st_gid,
+				rootgid + (gid_t)sb.st_gid);
 		if (ret < 0 || ret >= 100) {
 			ERROR("Error gid printing map string");
 			return -1;
@@ -3617,7 +3617,7 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 		}
 
 		// "0:pathgid" (chown)
-		ret = snprintf(ugid, 100, "0:%d", sb.st_gid);
+		ret = snprintf(ugid, 100, "0:%d", (gid_t)sb.st_gid);
 		if (ret < 0 || ret >= 100) {
 			ERROR("Error owner printing format string for chown");
 			return -1;
