@@ -15,6 +15,9 @@
   # allow tmpfs mounts everywhere
   mount fstype=tmpfs,
 
+  # allow hugetlbfs mounts everywhere
+  mount fstype=hugetlbfs,
+
   # allow mqueue mounts everywhere
   mount fstype=mqueue,
 
