@@ -96,6 +96,7 @@ static int config_haltsignal(const char *, const char *, struct lxc_conf *);
 static int config_stopsignal(const char *, const char *, struct lxc_conf *);
 static int config_start(const char *, const char *, struct lxc_conf *);
 static int config_group(const char *, const char *, struct lxc_conf *);
+static int config_environment(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 
@@ -152,6 +153,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.start.delay",          config_start                },
 	{ "lxc.start.order",          config_start                },
 	{ "lxc.group",                config_group                },
+	{ "lxc.environment",          config_environment          },
 };
 
 struct signame {
@@ -1062,6 +1064,30 @@ static int config_group(const char *key, const char *value,
 	free(groups);
 
 	return ret;
+}
+
+static int config_environment(const char *key, const char *value,
+                              struct lxc_conf *lxc_conf)
+{
+	struct lxc_list *list_item = NULL;
+
+	list_item = malloc(sizeof(*list_item));
+	if (!list_item)
+		goto freak_out;
+
+	list_item->elem = strdup(value);
+
+	if (!list_item->elem)
+		goto freak_out;
+
+	lxc_list_add_tail(&lxc_conf->environment, list_item);
+
+	return 0;
+
+freak_out:
+	if (list_item) free(list_item);
+
+	return -1;
 }
 
 static int config_tty(const char *key, const char *value,

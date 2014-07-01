@@ -2701,6 +2701,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->id_map);
 	lxc_list_init(&new->includes);
 	lxc_list_init(&new->aliens);
+	lxc_list_init(&new->environment);
 	for (i=0; i<NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
 	lxc_list_init(&new->groups);
