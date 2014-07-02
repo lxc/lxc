@@ -1,6 +1,6 @@
 templatesconfigdir=@LXCTEMPLATECONFIG@
 
-EXTRA_DIST = ubuntu.priv.seccomp
+EXTRA_DIST = common.seccomp
 
 templatesconfig_DATA = \
 	archlinux.common.conf \
@@ -8,6 +8,7 @@ templatesconfig_DATA = \
 	centos.common.conf \
 	centos.userns.conf \
 	common.conf \
+	common.seccomp \
 	debian.common.conf \
 	debian.userns.conf \
 	fedora.common.conf \
@@ -26,6 +27,5 @@ templatesconfig_DATA = \
 	ubuntu-cloud.userns.conf \
 	ubuntu.common.conf \
 	ubuntu.lucid.conf \
-	ubuntu.priv.seccomp \
 	ubuntu.userns.conf \
 	userns.conf
