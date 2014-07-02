@@ -57,3 +57,7 @@ lxc.cgroup.devices.allow = c 4:0 rwm
 lxc.cgroup.devices.allow = c 5:0 rwm
 # /dev/console
 lxc.cgroup.devices.allow = c 5:1 rwm
+
+# Blacklist some syscalls which are not safe in privileged
+# containers
+lxc.seccomp = @LXCTEMPLATECONFIG@/common.seccomp

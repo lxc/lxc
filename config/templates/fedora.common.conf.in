@@ -47,3 +47,7 @@ lxc.cgroup.devices.allow = c 1:8 rwm	# /dev/random
 lxc.cgroup.devices.allow = c 1:9 rwm	# /dev/urandom
 lxc.cgroup.devices.allow = c 136:* rwm	# /dev/tty[1-4] ptys and lxc console
 lxc.cgroup.devices.allow = c 5:2 rwm	# /dev/ptmx pty master
+
+# Blacklist some syscalls which are not safe in privileged
+# containers
+lxc.seccomp = @LXCTEMPLATECONFIG@/common.seccomp

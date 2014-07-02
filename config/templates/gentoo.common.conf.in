@@ -52,3 +52,7 @@ lxc.cgroup.devices.allow = c 10:232 rwm
 ## To use loop devices, copy the following line to the container's
 ## configuration file (uncommented).
 #lxc.cgroup.devices.allow = b 7:* rwm
+
+# Blacklist some syscalls which are not safe in privileged
+# containers
+lxc.seccomp = @LXCTEMPLATECONFIG@/common.seccomp

@@ -24,3 +24,7 @@ lxc.cgroup.devices.allow = c 136:* rwm
 lxc.cgroup.devices.allow = c 254:0 rm
 # fuse
 lxc.cgroup.devices.allow = c 10:229 rwm
+
+# Blacklist some syscalls which are not safe in privileged
+# containers
+lxc.seccomp = @LXCTEMPLATECONFIG@/common.seccomp
