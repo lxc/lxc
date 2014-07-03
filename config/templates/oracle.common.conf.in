@@ -2,7 +2,7 @@
 lxc.include = @LXCTEMPLATECONFIG@/common.conf
 
 # Mount entries
-lxc.mount.auto = proc:mixed sys:ro
+lxc.mount.auto = cgroup:mixed proc:mixed sys:ro
 
 # Capabilities
 # Uncomment these if you don't run anything that needs the capability, and

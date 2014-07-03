@@ -658,7 +658,9 @@ container_rootfs_create()
             # disable all repos, then enable the repo for the version we are installing.
             if [ $container_release_minor = "latest" ]; then
                 repo=$latest_L""$container_release_major"_"$container_release_minor
-            elif [ $container_release_major = "6" -o  $container_release_major = "7" ]; then
+            elif [ $container_release_major = "7" ]; then
+                    repo="ol"$container_release_major"_u"$container_release_minor"_base"
+            elif [ $container_release_major = "6" ]; then
                 if   [ $container_release_minor = "0" ]; then
                     repo="ol"$container_release_major"_ga_base"
                 else
