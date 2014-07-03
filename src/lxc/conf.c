@@ -3574,9 +3574,14 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 			return -1;
 		}
 
-		// a trick for chgrp the file that is not owned by oneself
-		if (chown(path, -1, hostgid) < 0) {
-			ERROR("Error chgrp %s", path);
+		/*
+		 * A file has to be group-owned by a gid mapped into the
+		 * container, or the container won't be privileged over it.
+		 */
+		if (sb.st_uid == geteuid() &&
+				mapped_hostid(sb.st_gid, conf, ID_TYPE_GID) < 0 &&
+				chown(path, -1, hostgid) < 0) {
+			ERROR("Failed chgrping %s", path);
 			return -1;
 		}
 
