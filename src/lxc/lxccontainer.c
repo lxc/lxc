@@ -669,6 +669,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 reboot:
 	conf->reboot = 0;
 	ret = lxc_start(c->name, argv, conf, c->config_path);
+	c->error_num = ret;
 
 	if (conf->reboot) {
 		INFO("container requested reboot");

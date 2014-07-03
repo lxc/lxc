@@ -336,6 +336,9 @@ int main(int argc, char *argv[])
 			ERROR("To get more details, run the container in foreground mode.");
 		ERROR("Additional information can be obtained by setting the "
 		      "--logfile and --log-priority options.");
+		err = c->error_num;
+		lxc_container_put(c);
+		return err;
 	}
 
 out:
