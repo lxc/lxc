@@ -71,4 +71,4 @@ lxc.cgroup.devices.allow = c 10:232 rwm
 
 # Blacklist some syscalls which are not safe in privileged
 # containers
-lxc.seccomp = @LXCTEMPLATECONFIG@/ubuntu.priv.seccomp
+lxc.seccomp = @LXCTEMPLATECONFIG@/common.seccomp
