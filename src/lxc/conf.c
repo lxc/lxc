@@ -447,6 +447,10 @@ static int find_fstype_cb(char* buffer, void *data)
 	fstype += lxc_char_left_gc(fstype, strlen(fstype));
 	fstype[lxc_char_right_gc(fstype, strlen(fstype))] = '\0';
 
+	/* ignore blank line and comment */
+	if (fstype[0] == '\0' || fstype[0] == '#')
+		return 0;
+
 	DEBUG("trying to mount '%s'->'%s' with fstype '%s'",
 	      cbarg->rootfs, cbarg->target, fstype);
 
