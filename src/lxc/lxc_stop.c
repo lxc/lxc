@@ -110,19 +110,23 @@ static int do_reboot_and_check(struct lxc_arguments *a, struct lxc_container *c)
 		if (newpid != -1 && newpid != pid)
 			return 0;
 
-		ret = gettimeofday(&tv, NULL);
-		if (ret)
-			break;
-		curtime = tv.tv_sec;
+		if (timeout != -1) {
+			ret = gettimeofday(&tv, NULL);
+			if (ret)
+				break;
+			curtime = tv.tv_sec;
+		}
 
 		sleep(1);
-		ret = gettimeofday(&tv, NULL);
-		if (ret)
-			break;
-		elapsed_time = tv.tv_sec - curtime;
-		if (timeout != -1 && timeout - elapsed_time <= 0)
-			break;
-		timeout -= elapsed_time;
+		if (timeout != -1) {
+			ret = gettimeofday(&tv, NULL);
+			if (ret)
+				break;
+			elapsed_time = tv.tv_sec - curtime;
+			if (timeout - elapsed_time <= 0)
+				break;
+			timeout -= elapsed_time;
+		}
 	}
 
 out:
