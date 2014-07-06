@@ -47,16 +47,19 @@ if [ -r /etc/default/lxc ]; then
 fi
 
 # Check if given path is in a btrfs partition
-is_btrfs() {
+is_btrfs()
+{
     [ -e $1 -a $(stat -f -c '%T' $1) = "btrfs" ]
 }
 
 # Check if given path is the root of a btrfs subvolume
-is_btrfs_subvolume() {
+is_btrfs_subvolume()
+{
     [ -d $1 -a $(stat -f -c '%T' $1) = "btrfs" -a $(stat -c '%i' $1) -eq 256 ]
 }
 
-try_mksubvolume() {
+try_mksubvolume()
+{
     path=$1
     [ -d $path ] && return 0
     mkdir -p $(dirname $path)
@@ -67,7 +70,8 @@ try_mksubvolume() {
     fi
 }
 
-try_rmsubvolume() {
+try_rmsubvolume()
+{
     path=$1
     [ -d $path ] || return 0
     if is_btrfs_subvolume $path; then
