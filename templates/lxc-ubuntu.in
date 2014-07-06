@@ -404,10 +404,10 @@ copy_ubuntu()
     try_mksubvolume $rootfs
     if is_btrfs_subvolume $cache/rootfs-$arch && is_btrfs_subvolume $rootfs; then
       realrootfs=$(dirname $config)/rootfs
-      umount $rootfs || return 1
+      [ "$rootfs" = "$realrootfs" ] || umount $rootfs || return 1
       btrfs subvolume delete $realrootfs || return 1
       btrfs subvolume snapshot $cache/rootfs-$arch $realrootfs || return 1
-      mount --bind $realrootfs $rootfs || return 1
+      [ "$rootfs" = "$realrootfs" ] || mount --bind $realrootfs $rootfs || return 1
     else
       rsync -Ha $cache/rootfs-$arch/ $rootfs/ || return 1
     fi
