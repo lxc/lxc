@@ -581,7 +581,9 @@ Container_attach_and_possibly_wait(Container *self, PyObject *args,
         goto out;
 
     if (wait) {
+        Py_BEGIN_ALLOW_THREADS
         ret = lxc_wait_for_pid_status(pid);
+        Py_END_ALLOW_THREADS
         /* handle case where attach fails */
         if (WIFEXITED(ret) && WEXITSTATUS(ret) == 255)
             ret = -1;
