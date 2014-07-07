@@ -151,6 +151,8 @@ parser.add_argument("--nesting", dest="nesting", action="store_true",
 parser.add_argument("filter", metavar='FILTER', type=str, nargs="?",
                     help=_("regexp to be applied on the container list"))
 
+parser.add_argument("--version", action="version", version=lxc.version)
+
 args = parser.parse_args()
 
 # --active is the same as --running --frozen
