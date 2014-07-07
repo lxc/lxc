@@ -45,6 +45,8 @@ parser.add_argument("-n", dest="container", metavar="CONTAINER",
 parser.add_argument("-P", "--lxcpath", dest="lxcpath", metavar="PATH",
                     help=_("Use specified container path"), default=None)
 
+parser.add_argument("--version", action="version", version=lxc.version)
+
 # Commands
 subparsers = parser.add_subparsers()
 subparser_add = subparsers.add_parser('add', help=_('Add a device'))
