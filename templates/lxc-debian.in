@@ -176,6 +176,10 @@ openssh-server
     cache=$1
     arch=$2
     release=$3
+    additional_packages=$4
+    if [ -n "$additional_packages" ]; then
+        packages="$packages,$additional_packages"
+    fi
 
     trap cleanup EXIT SIGHUP SIGINT SIGTERM
     # check the mini debian was not already downloaded
@@ -225,6 +229,7 @@ install_debian()
     rootfs=$1
     release=$2
     arch=$3
+    additional_packages=$4
     mkdir -p $LOCALSTATEDIR/lock/subsys/
     (
         flock -x 9
@@ -235,7 +240,7 @@ install_debian()
 
         echo "Checking cache download in $cache/rootfs-$release-$arch ... "
         if [ ! -e "$cache/rootfs-$release-$arch" ]; then
-            download_debian $cache $arch $release
+            download_debian $cache $arch $release $additional_packages
             if [ $? -ne 0 ]; then
                 echo "Failed to download 'debian base'"
                 return 1
@@ -328,14 +333,15 @@ clean()
 usage()
 {
     cat <<EOF
-$1 -h|--help -p|--path=<path> [-a|--arch] [-r|--release=<release>] [-c|--clean]
+$1 -h|--help -p|--path=<path> [-a|--arch] [-r|--release=<release>] [-i|-install=<install>] [-c|--clean]
 release: the debian release (e.g. wheezy): defaults to current stable
 arch: the container architecture (e.g. amd64): defaults to host arch
+install: comma separated list of packages to install during bootstrap (e.g. bash,vim)
 EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:r:c -l help,rootfs:,path:,name:,arch:,release:,clean -- "$@")
+options=$(getopt -o hp:n:a:r:i:c -l help,rootfs:,path:,name:,arch:,release:,install:,clean -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
         exit 1
@@ -365,6 +371,7 @@ do
         -a|--arch)      arch=$2; shift 2;;
         -r|--release)   release=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
+        -i|--install)   additional_packages=$2; shift 2;;
         -c|--clean)     clean=$2; shift 1;;
         --)             shift 1; break ;;
         *)              break ;;
@@ -437,7 +444,7 @@ if [ -z "$rootfs" ]; then
 fi
 
 
-install_debian $rootfs $release $arch
+install_debian $rootfs $release $arch $additional_packages
 if [ $? -ne 0 ]; then
     echo "failed to install debian"
     exit 1
