@@ -113,6 +113,8 @@ parser.add_argument("command", metavar='CMD', type=str, nargs="*",
                     help=_("Run specific command in container "
                            "(command as argument)"))
 
+parser.add_argument("--version", action="version", version=lxc.version)
+
 args = parser.parse_args()
 
 # Basic requirements check
