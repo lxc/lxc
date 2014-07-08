@@ -34,6 +34,7 @@ done
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
 MIRROR=${MIRROR:-http://cdn.debian.net/debian}
+SECURITY_MIRROR=${SECURITY_MIRROR:-http://cdn.debian.net/debian-security}
 LOCALSTATEDIR="@LOCALSTATEDIR@"
 LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
 
@@ -152,6 +153,34 @@ EOF
     echo "Root password is 'root', please change !"
 
     return 0
+}
+
+write_sourceslist()
+{
+    local rootfs="$1";  shift
+    local release="$1"; shift
+    local arch="$1";    shift
+
+    local prefix="deb"
+    if [ -n "${arch}" ]; then
+        prefix="deb [arch=${arch}]"
+    fi
+
+    cat >> "${rootfs}/etc/apt/sources.list" << EOF
+${prefix} $MIRROR          ${release}        main contrib non-free
+${prefix} $SECURITY_MIRROR ${release}/update main contrib non-free
+EOF
+}
+
+install_packages()
+{
+    local rootfs="$1"; shift
+    local packages="$*"
+
+    chroot ${rootfs} apt-get update
+    if [ -n "${packages}" ]; then
+        chroot ${rootfs} apt-get install --force-yes -y --no-install-recommends ${packages}
+    fi
 }
 
 cleanup()
@@ -302,6 +331,46 @@ EOF
     return 0
 }
 
+post_process()
+{
+    local rootfs="$1";  shift
+    local release="$1"; shift
+    local arch="$1"; shift
+    local hostarch="$1"; shift
+    local packages="$*"
+
+    # Disable service startup
+    cat > ${rootfs}/usr/sbin/policy-rc.d << EOF
+#!/bin/sh
+exit 101
+EOF
+    chmod +x ${rootfs}/usr/sbin/policy-rc.d
+
+    # If the container isn't running a native architecture, setup multiarch
+    if [ "${arch}" != "${hostarch}" ]; then
+        mkdir -p ${rootfs}/etc/dpkg/dpkg.cfg.d
+        echo "foreign-architecture ${hostarch}" > ${rootfs}/etc/dpkg/dpkg.cfg.d/lxc-multiarch
+    fi
+
+    # Write a new sources.list containing both native and multiarch entries
+    > ${rootfs}/etc/apt/sources.list
+    if [ "${arch}" = "${hostarch}" ]; then
+        write_sourceslist ${rootfs} ${release} ${arch}
+    else
+        write_sourceslist ${rootfs} ${release}
+    fi
+
+    # Install Packages in container
+    if [ -n "${packages}" ]; then
+        local pack_list="`echo ${packages} | sed 's/,/ /g'`"
+        echo "Installing packages: ${pack_list}"
+        install_packages ${rootfs} ${pack_list}
+    fi
+
+    # Re-enable service startup
+    rm ${rootfs}/usr/sbin/policy-rc.d
+}
+
 clean()
 {
     cache="$LOCALSTATEDIR/cache/lxc/debian"
@@ -328,14 +397,17 @@ clean()
 usage()
 {
     cat <<EOF
-$1 -h|--help -p|--path=<path> [-a|--arch] [-r|--release=<release>] [-c|--clean]
-release: the debian release (e.g. wheezy): defaults to current stable
+$1 -h|--help -p|--path=<path> [-a|--arch] [-c|--clean] [--mirror=<mirror>] [-r|--release=<release>] [--security-mirror=<security mirror>]
 arch: the container architecture (e.g. amd64): defaults to host arch
+release: the debian release (e.g. wheezy): defaults to current stable
+mirror: debain mirror to use during installation
+security mirror: debain mirror to use for security updates
+packages: list of packages to add comma separated
 EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:r:c -l help,rootfs:,path:,name:,arch:,release:,clean -- "$@")
+options=$(getopt -o hp:n:a:r:c -l arch:,clean,help,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror: -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
         exit 1
@@ -359,15 +431,19 @@ hostarch=$arch
 while true
 do
     case "$1" in
-        -h|--help)      usage $0 && exit 1;;
-        -p|--path)      path=$2; shift 2;;
-        --rootfs)       rootfs=$2; shift 2;;
-        -a|--arch)      arch=$2; shift 2;;
-        -r|--release)   release=$2; shift 2;;
-        -n|--name)      name=$2; shift 2;;
-        -c|--clean)     clean=$2; shift 1;;
-        --)             shift 1; break ;;
-        *)              break ;;
+        -h|--help)            usage $0 && exit 1;;
+           --)                shift 1; break ;;
+
+        -a|--arch)            arch=$2; shift 2;;
+        -c|--clean)           clean=$2; shift 1;;
+           --mirror)          MIRROR=$2; shift 2;;
+        -n|--name)            name=$2; shift 2;;
+           --packages)        packages=$2; shift 2;;
+        -p|--path)            path=$2; shift 2;;
+        -r|--release)         release=$2; shift 2;;
+           --rootfs)          rootfs=$2; shift 2;;
+           --security-mirror) SECURITY_MIRROR=$2; shift 2;;
+        *)                    break ;;
     esac
 done
 
@@ -434,7 +510,6 @@ if [ -z "$rootfs" ]; then
     fi
 fi
 
-
 install_debian $rootfs $release $arch
 if [ $? -ne 0 ]; then
     echo "failed to install debian"
@@ -452,6 +527,8 @@ if [ $? -ne 0 ]; then
     echo "failed write configuration file"
     exit 1
 fi
+
+post_process ${rootfs} ${release} ${arch} ${hostarch} ${packages}
 
 if [ ! -z $clean ]; then
     clean || exit 1
