@@ -101,7 +101,7 @@ EOF
     else
         encoding=$(echo $LANG | cut -d. -f2)
         chroot $rootfs sed -e "s/^# \(${LANG} ${encoding}\)/\1/" \
-            -i /etc/locale.gen 2>/dev/null
+            -i /etc/locale.gen 2> /dev/null
         chroot $rootfs locale-gen $LANG $encoding
         chroot $rootfs update-locale LANG=$LANG
     fi
@@ -286,7 +286,7 @@ copy_configuration()
     ## Add the container-specific config
     echo "" >> $path/config
     echo "# Container specific configuration" >> $path/config
-    grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
+    grep -q "^lxc.rootfs" $path/config 2> /dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
 
     cat <<EOF >> $path/config
 lxc.mount = $path/fstab
@@ -342,7 +342,7 @@ if [ $? -ne 0 ]; then
 fi
 eval set -- "$options"
 
-if which dpkg >/dev/null 2>&1 ; then
+if which dpkg > /dev/null 2>&1 ; then
     arch=$(dpkg --print-architecture)
 else
     arch=$(uname -m)
@@ -416,7 +416,7 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-current_release=`wget ${MIRROR}/dists/stable/Release -O - 2>/dev/null |\
+current_release=`wget ${MIRROR}/dists/stable/Release -O - 2> /dev/null |\
 head |awk '/^Codename: (.*)$/ { print $2; }'`
 release=${release:-${current_release}}
 valid_releases=('squeeze' 'wheezy' 'jessie' 'sid')
@@ -429,7 +429,7 @@ fi
 # detect rootfs
 config="$path/config"
 if [ -z "$rootfs" ]; then
-    if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+    if grep -q '^lxc.rootfs' $config 2> /dev/null ; then
         rootfs=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $config)
     else
         rootfs=$path/rootfs
