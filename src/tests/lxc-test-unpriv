@@ -24,7 +24,7 @@
 # This test assumes an Ubuntu host
 
 if [ $(id -u) -ne 0 ]; then
-	echo 'run as root'
+	echo "ERROR: Must run as root."
 	exit 1
 fi
 which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; exit 1; }

@@ -34,15 +34,15 @@ FAIL() {
 # Only run on a normally configured ubuntu lxc system
 if [ ! -d /sys/class/net/lxcbr0 ]; then
 	echo "lxcbr0 is not configured."
-	exit 0
+	exit 1
 fi
 if [ "$(id -u)" != "0" ]; then
-	echo "Must run as root."
-	exit 0
+	echo "ERROR: Must run as root."
+	exit 1
 fi
 if ! which host 2>&1 > /dev/null; then
 	echo "'host' program not found.  Please install bind9-host"
-	exit 0
+	exit 1
 fi
 
 for template in ubuntu ubuntu-cloud; do
