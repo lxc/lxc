@@ -40,10 +40,6 @@ if [ "$(id -u)" != "0" ]; then
 	echo "ERROR: Must run as root."
 	exit 1
 fi
-if ! which host 2>&1 > /dev/null; then
-	echo "'host' program not found.  Please install bind9-host"
-	exit 1
-fi
 
 for template in ubuntu ubuntu-cloud; do
 	# need a different name for each container so dnsmasq doesn't
