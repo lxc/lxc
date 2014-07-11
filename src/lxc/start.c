@@ -548,7 +548,10 @@ static int must_drop_cap_sys_boot(struct lxc_conf *conf)
 	pid = clone(container_reboot_supported, stack, flags, &cmd);
 #endif
 	if (pid < 0) {
-		SYSERROR("failed to clone");
+		if (flags & CLONE_NEWUSER)
+			ERRROR("failed to clone (%#x): %s (includes CLONE_NEWUSER)", flags, strerror(errno));
+		else
+			ERRROR("failed to clone (%#x): %s", flags, strerror(errno));
 		return -1;
 	}
 	if (wait(&status) < 0) {

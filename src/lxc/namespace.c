@@ -64,7 +64,7 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 	ret = clone(do_clone, stack  + stack_size, flags | SIGCHLD, &clone_arg);
 #endif
 	if (ret < 0)
-		ERROR("failed to clone(0x%x): %s", flags, strerror(errno));
+		ERROR("failed to clone (%#x): %s", flags, strerror(errno));
 
 	return ret;
 }
