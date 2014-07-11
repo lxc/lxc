@@ -515,6 +515,7 @@ static int container_reboot_supported(void *arg)
 
 static int must_drop_cap_sys_boot(struct lxc_conf *conf)
 {
+	static char str_lit_unset[] = "unset";
 	FILE *f;
 	int ret, cmd, v, flags;
         long stack_size = 4096;
@@ -539,6 +540,8 @@ static int must_drop_cap_sys_boot(struct lxc_conf *conf)
 	flags = CLONE_NEWPID | SIGCHLD;
 	if (!lxc_list_empty(&conf->id_map))
 		flags |= CLONE_NEWUSER;
+	if (lxc_list_empty(&conf->id_map) && geteuid())
+		WARN("Running with euid of %u but not CLONE_NEWUSER, check your config files.", geteuid());
 
 #ifdef __ia64__
 	pid = __clone2(container_reboot_supported, stack, stack_size, flags,  &cmd);
@@ -547,6 +550,8 @@ static int must_drop_cap_sys_boot(struct lxc_conf *conf)
 	pid = clone(container_reboot_supported, stack, flags, &cmd);
 #endif
 	if (pid < 0) {
+		ERROR("failed to clone with flags %#0x : CLONE_NEWUSER %s", (int)flags,
+			flags & CLONE_NEWUSER ? &(str_lit_unset[2]) : &(str_lit_unset[0]) );
 		SYSERROR("failed to clone");
 		return -1;
 	}
