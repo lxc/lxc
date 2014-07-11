@@ -299,7 +299,10 @@ exit 0
 EOF
         chmod 755 $rootfs_path/etc/rc.d/lxc.sysinit
         sed -i 's|si::sysinit:/etc/rc.d/rc.sysinit|si::bootwait:/etc/rc.d/lxc.sysinit|'  $rootfs_path/etc/inittab
-        sed -i 's|^1:|co:2345:respawn:/sbin/mingetty console\n1:|' $rootfs_path/etc/inittab
+        # prevent mingetty from calling vhangup(2) since it fails with userns.
+        # Same issue as oracle template: prevent mingetty from calling vhangup(2)
+        # commit 2e83f7201c5d402478b9849f0a85c62d5b9f1589.
+        sed -i 's|^1:|co:2345:respawn:/sbin/mingetty --nohangup console\n1:|' $rootfs_path/etc/inittab
         sed -i 's|^\([56]:\)|#\1|' $rootfs_path/etc/inittab
     fi
 
@@ -338,6 +341,11 @@ EOF
     echo "lxc/tty4"     >>${rootfs_path}/etc/securetty
     echo "# For libvirt/Virtual Machine Monitor" >>${rootfs_path}/etc/securetty
     echo "pts/0"        >>${rootfs_path}/etc/securetty
+
+    # prevent mingetty from calling vhangup(2) since it fails with userns.
+    # Same issue as oracle template: prevent mingetty from calling vhangup(2)
+    # commit 2e83f7201c5d402478b9849f0a85c62d5b9f1589.
+    sed -i 's|mingetty|mingetty --nohangup|' $container_rootfs/etc/init/tty.conf
 
     if [ ${root_display_password} = "yes" ]
     then
