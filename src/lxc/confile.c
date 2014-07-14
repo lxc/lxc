@@ -596,7 +596,7 @@ static int config_network_veth_pair(const char *key, const char *value,
 		return -1;
 
 	if (netdev->type != LXC_NET_VETH) {
-		ERROR("Invalid veth pair for a non-veth netdev")
+		ERROR("Invalid veth pair for a non-veth netdev");
 		return -1;
 	}
 	return network_ifname(&netdev->priv.veth_attr.pair, value);
@@ -612,7 +612,7 @@ static int config_network_macvlan_mode(const char *key, const char *value,
 		return -1;
 
 	if (netdev->type != LXC_NET_MACVLAN) {
-		ERROR("Invalid macvlan.mode for a non-macvlan netdev")
+		ERROR("Invalid macvlan.mode for a non-macvlan netdev");
 		return -1;
 	}
 	return macvlan_mode(&netdev->priv.macvlan_attr.mode, value);
@@ -656,7 +656,7 @@ static int config_network_vlan_id(const char *key, const char *value,
 		return -1;
 
 	if (netdev->type != LXC_NET_VLAN) {
-		ERROR("Invalid vlan.id for a non-macvlan netdev")
+		ERROR("Invalid vlan.id for a non-macvlan netdev");
 		return -1;
 	}
 	if (get_u16(&netdev->priv.vlan_attr.vid, value, 0))
