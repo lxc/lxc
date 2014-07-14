@@ -3123,6 +3123,10 @@ bool rootfs_is_blockdev(struct lxc_conf *conf)
 	struct stat st;
 	int ret;
 
+	if (!conf->rootfs.path || strcmp(conf->rootfs.path, "/") == 0 ||
+		strlen(conf->rootfs.path) == 0)
+		return false;
+
 	ret = stat(conf->rootfs.path, &st);
 	if (ret == 0 && S_ISBLK(st.st_mode))
 		return true;
