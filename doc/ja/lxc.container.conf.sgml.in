@@ -352,14 +352,16 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      by <command>lxc</command>, but if you wish to handle
 	      this name yourself, you can tell <command>lxc</command>
 	      to set a specific name with
-	      the <option>lxc.network.veth.pair</option> option.
+	      the <option>lxc.network.veth.pair</option> option (except for
+	      unprivileged containers where this option is ignored for security
+	      reasons).
               -->
               <option>veth:</option> 一方がコンテナに、もう一方が <option>lxc.network.link</option> で指定されるブリッジにアタッチされる、ピアネットワークデバイスを作成します。
               もし、ブリッジが指定されていない場合、veth ペアデバイスは作成されますが、ブリッジにはアタッチされません。
               ブリッジはシステムで事前に設定する必要があります。
               さもなければ、<command>lxc</command> はコンテナ外のいかなる設定も扱うことはできないでしょう。
               デフォルトでは、<command>lxc</command> はコンテナの外部に属するネットワークデバイスに対する名前を決定し、<command>lxc</command> はこの名前を使います。
-              しかし、もしこの名前を自分で指定したい場合、<option>lxc.network.veth.pair</option> オプションを使って名前を設定し、lxc に対して指定をすることができます。
+              しかし、もしこの名前を自分で指定したい場合、<option>lxc.network.veth.pair</option> オプションを使って名前を設定し、lxc に対して指定をすることができます (非特権コンテナの場合をのぞきます。セキュリティ上の理由からこのオプションは無視されます)。
 	    </para>
 
 	    <para>
