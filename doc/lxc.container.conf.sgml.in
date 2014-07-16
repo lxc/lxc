@@ -259,7 +259,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	      by <command>lxc</command>, but if you wish to handle
 	      this name yourself, you can tell <command>lxc</command>
 	      to set a specific name with
-	      the <option>lxc.network.veth.pair</option> option.
+	      the <option>lxc.network.veth.pair</option> option (except for
+	      unprivileged containers where this option is ignored for security
+	      reasons).
 	    </para>
 
 	    <para>
