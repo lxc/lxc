@@ -2,7 +2,6 @@ hooksdir=@LXCHOOKDIR@
 
 hooks_SCRIPTS = \
 	clonehostname \
-	mountcgroups \
 	mountecryptfsroot \
 	ubuntu-cloud-prep \
 	squid-deb-proxy-client
