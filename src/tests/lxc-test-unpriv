@@ -84,10 +84,10 @@ lxc.network.link = lxcbr0
 lxc.id_map = u 0 910000 9999
 lxc.id_map = g 0 910000 9999
 EOF
-chown -R $TUSER $HDIR
+chown -R $TUSER: $HDIR
 
 mkdir -p /run/user/$(id -u $TUSER)
-chown -R $TUSER /run/user/$(id -u $TUSER)
+chown -R $TUSER: /run/user/$(id -u $TUSER)
 
 cd $HDIR
 
@@ -108,7 +108,7 @@ if [ -e /sys/fs/cgroup/cgmanager/sock ]; then
 else
 	for d in /sys/fs/cgroup/*; do
 		[ ! -d $d/lxctest ] && mkdir $d/lxctest
-		chown -R $TUSER $d/lxctest
+		chown -R $TUSER: $d/lxctest
 		echo $$ > $d/lxctest/tasks
 	done
 fi

@@ -74,7 +74,7 @@ trap cleanup EXIT SIGHUP SIGINT SIGTERM
 deluser usernic-user || true
 useradd usernic-user
 sudo mkdir -p /home/usernic-user
-sudo chown usernic-user /home/usernic-user
+sudo chown usernic-user: /home/usernic-user
 usermod -v 910000-919999 -w 910000-919999 usernic-user
 
 mkdir -p /home/usernic-user/.config/lxc/
@@ -101,13 +101,13 @@ if [ -e /sys/fs/cgroup/cgmanager/sock ]; then
 else
 	for d in /sys/fs/cgroup/*; do
 		[ ! -d $d/lxctest ] && mkdir $d/lxctest
-		chown -R usernic-user $d/lxctest
+		chown -R usernic-user: $d/lxctest
 		echo $$ > $d/lxctest/tasks
 	done
 fi
 
 mkdir -p /run/user/$(id -u usernic-user)
-chown -R usernic-user /run/user/$(id -u usernic-user) /home/usernic-user
+chown -R usernic-user: /run/user/$(id -u usernic-user) /home/usernic-user
 
 # Create two test bridges
 brctl addbr usernic-br0
