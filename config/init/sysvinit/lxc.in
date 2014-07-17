@@ -98,7 +98,7 @@ case "$1" in
 	# Start containers
 	wait_for_bridge
 	# Start autoboot containers first then the NULL group "onboot,".
-	action $"Starting LXC autoboot containers: " /usr/bin/lxc-autostart $OPTIONS $BOOTGROUPS
+	action $"Starting LXC autoboot containers: " "$bindir"/lxc-autostart $OPTIONS $BOOTGROUPS
 	touch "$localstatedir"/lock/subsys/lxc
 	;;
   stop)
@@ -118,7 +118,7 @@ case "$1" in
 	$0 start
 	;;
   *)
-	echo $"Usage: $0 {start|stop|restart|reload|force-reload}"
+	echo "Usage: $0 {start|stop|restart|reload|force-reload}"
 	exit 2
 esac
 exit $?
