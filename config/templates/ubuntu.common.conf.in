@@ -25,7 +25,7 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 # To support container nesting on an Ubuntu host while retaining most of
 # apparmor's added security, use the following two lines instead.
 #lxc.aa_profile = lxc-container-default-with-nesting
-#lxc.hook.mount = /usr/share/lxc/hooks/mountcgroups
+#lxc.mount.auto = cgroup:mixed
 
 # Uncomment the following line to autodetect squid-deb-proxy configuration on the
 # host and forward it to the guest at start time.
