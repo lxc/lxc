@@ -121,7 +121,7 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 #lxc.aa_profile = unconfined
 # To support container nesting on an Ubuntu host, uncomment next two lines:
 #lxc.aa_profile = lxc-container-default-with-nesting
-#lxc.hook.mount = /usr/share/lxc/hooks/mountcgroups
+#lxc.mount.auto = cgroup
 
 lxc.cgroup.devices.deny = a
 # Allow any mknod (but not using the node)
