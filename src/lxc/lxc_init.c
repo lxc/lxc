@@ -209,6 +209,7 @@ int main(int argc, char *argv[])
 		case 0:
 			break;
 
+		case SIGPWR:
 		case SIGTERM:
 			if (!shutdown) {
 				shutdown = 1;
