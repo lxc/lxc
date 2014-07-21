@@ -609,6 +609,7 @@ static int read_unpriv_netifindex(struct lxc_list *network)
 
 static int do_start(void *data)
 {
+	struct lxc_list *iterator;
 	struct lxc_handler *handler = data;
 	const char *lsm_label = NULL;
 
@@ -727,8 +728,15 @@ static int do_start(void *data)
 		/* don't error out though */
 	}
 
+	lxc_list_for_each(iterator, &handler->conf->environment) {
+		if (putenv((char *)iterator->elem)) {
+			SYSERROR("failed to set environment variable '%s'", (char *)iterator->elem);
+			goto out_warn_father;
+		}
+	}
+
 	if (putenv("container=lxc")) {
-		SYSERROR("failed to set environment variable");
+		SYSERROR("failed to set environment variable 'container=lxc'");
 		goto out_warn_father;
 	}
 

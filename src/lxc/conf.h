@@ -344,6 +344,10 @@ struct lxc_conf {
 	struct lxc_list includes;
 	/* config entries which are not "lxc.*" are aliens */
 	struct lxc_list aliens;
+
+	/* list of environment variables we'll add to the container when
+	 * started */
+	struct lxc_list environment;
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
