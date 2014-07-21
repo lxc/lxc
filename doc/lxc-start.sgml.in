@@ -54,6 +54,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-c <replaceable>console_device</replaceable></arg>
       <arg choice="opt">-L <replaceable>console_logfile</replaceable></arg>
       <arg choice="opt">-d</arg>
+      <arg choice="opt">-F</arg>
       <arg choice="opt">-p <replaceable>pid_file</replaceable></arg>
       <arg choice="opt">-s KEY=VAL</arg>
       <arg choice="opt">-C</arg>
@@ -101,6 +102,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    Run the container as a daemon. As the container has no
 	    more tty, if an error occurs nothing will be displayed,
 	    the log file can be used to check the error.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-F, --foreground</option>
+	</term>
+	<listitem>
+	  <para>
+	    Run the container in the foreground. In this mode, the container
+	    console will be attached to the current tty and signals will be routed
+	    directly to the container. (This is the default mode)
 	  </para>
 	</listitem>
       </varlistentry>
