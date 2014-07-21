@@ -79,7 +79,7 @@ die()
 set_default_arch()
 {
     printf "### set_default_arch: default arch/variant autodetect...\n"
-    arch=$(arch)
+    arch=$(uname -m)
     if [[ $arch =~ i.86 ]]; then
         arch="x86"
         variant="x86"
