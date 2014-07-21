@@ -1071,6 +1071,9 @@ static int config_environment(const char *key, const char *value,
 {
 	struct lxc_list *list_item = NULL;
 
+	if (!strlen(value))
+		return lxc_clear_environment(lxc_conf);
+
 	list_item = malloc(sizeof(*list_item));
 	if (!list_item)
 		goto freak_out;
@@ -2008,6 +2011,22 @@ static int lxc_get_item_groups(struct lxc_conf *c, char *retv, int inlen)
 	return fulllen;
 }
 
+static int lxc_get_item_environment(struct lxc_conf *c, char *retv, int inlen)
+{
+	int len, fulllen = 0;
+	struct lxc_list *it;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	lxc_list_for_each(it, &c->environment) {
+		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	}
+	return fulllen;
+}
+
 static int lxc_get_item_cap_drop(struct lxc_conf *c, char *retv, int inlen)
 {
 	int len, fulllen = 0;
@@ -2283,6 +2302,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_item_groups(c, retv, inlen);
 	else if (strcmp(key, "lxc.seccomp") == 0)
 		v = c->seccomp;
+	else if (strcmp(key, "lxc.environment") == 0)
+		return lxc_get_item_environment(c, retv, inlen);
 	else return -1;
 
 	if (!v)
@@ -2316,6 +2337,8 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		lxc_seccomp_free(c);
 		return 0;
 	}
+	else if (strncmp(key, "lxc.environment", 15) == 0)
+		return lxc_clear_environment(c);
 
 	return -1;
 }
@@ -2529,4 +2552,6 @@ void write_config(FILE *fout, struct lxc_conf *c)
 		fprintf(fout, "lxc.start.order = %d\n", c->start_order);
 	lxc_list_for_each(it, &c->groups)
 		fprintf(fout, "lxc.group = %s\n", (char *)it->elem);
+	lxc_list_for_each(it, &c->environment)
+		fprintf(fout, "lxc.environment = %s\n", (char *)it->elem);
 }

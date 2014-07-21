@@ -4376,6 +4376,19 @@ int lxc_clear_groups(struct lxc_conf *c)
 	return 0;
 }
 
+int lxc_clear_environment(struct lxc_conf *c)
+{
+	struct lxc_list *it,*next;
+
+	lxc_list_for_each_safe(it, &c->environment, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+	return 0;
+}
+
+
 int lxc_clear_mount_entries(struct lxc_conf *c)
 {
 	struct lxc_list *it,*next;
@@ -4495,6 +4508,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_groups(conf);
 	lxc_clear_includes(conf);
 	lxc_clear_aliens(conf);
+	lxc_clear_environment(conf);
 	free(conf);
 }
 
