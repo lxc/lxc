@@ -147,6 +147,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'c': args->console = arg; break;
 	case 'L': args->console_log = arg; break;
 	case 'd': args->daemonize = 1; break;
+	case 'F': args->daemonize = 0; break;
 	case 'f': args->rcfile = arg; break;
 	case 'C': args->close_all_fds = 1; break;
 	case 's': return lxc_config_define_add(&defines, arg);
@@ -160,6 +161,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 
 static const struct option my_longopts[] = {
 	{"daemon", no_argument, 0, 'd'},
+	{"foreground", no_argument, 0, 'F'},
 	{"rcfile", required_argument, 0, 'f'},
 	{"define", required_argument, 0, 's'},
 	{"console", required_argument, 0, 'c'},
@@ -181,7 +183,8 @@ lxc-start start COMMAND in specified container NAME\n\
 \n\
 Options :\n\
   -n, --name=NAME        NAME for name of the container\n\
-  -d, --daemon           daemonize the container\n\
+  -d, --daemon           Daemonize the container\n\
+  -F, --foreground       Start with the current tty attached to /dev/console (default)\n\
   -p, --pidfile=FILE     Create a file with the process id\n\
   -f, --rcfile=FILE      Load configuration file FILE\n\
   -c, --console=FILE     Use specified FILE for the container console\n\
