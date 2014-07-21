@@ -101,7 +101,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  <para>
 	    Run the container as a daemon. As the container has no
 	    more tty, if an error occurs nothing will be displayed,
-	    the log file can be used to check the error.
+	    the log file can be used to check the error. (This is the default mode)
 	  </para>
 	</listitem>
       </varlistentry>
@@ -114,7 +114,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  <para>
 	    Run the container in the foreground. In this mode, the container
 	    console will be attached to the current tty and signals will be routed
-	    directly to the container. (This is the default mode)
+	    directly to the container.
 	  </para>
 	</listitem>
       </varlistentry>

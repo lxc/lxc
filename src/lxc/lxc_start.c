@@ -183,8 +183,8 @@ lxc-start start COMMAND in specified container NAME\n\
 \n\
 Options :\n\
   -n, --name=NAME        NAME for name of the container\n\
-  -d, --daemon           Daemonize the container\n\
-  -F, --foreground       Start with the current tty attached to /dev/console (default)\n\
+  -d, --daemon           Daemonize the container (default)\n\
+  -F, --foreground       Start with the current tty attached to /dev/console\n\
   -p, --pidfile=FILE     Create a file with the process id\n\
   -f, --rcfile=FILE      Load configuration file FILE\n\
   -c, --console=FILE     Use specified FILE for the container console\n\
@@ -198,7 +198,7 @@ Options :\n\
 	.options   = my_longopts,
 	.parser    = my_parser,
 	.checker   = NULL,
-	.daemonize = 0,
+	.daemonize = 1,
 	.pidfile = NULL,
 };
 
