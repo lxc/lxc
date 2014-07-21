@@ -470,10 +470,13 @@ again:
 	goto again;
 }
 
-static int rename_in_ns(int pid, char *oldname, char *newname)
+#define VETH_DEF_NAME "eth%d"
+
+static int rename_in_ns(int pid, char *oldname, char **newnamep)
 {
 	char nspath[MAXPATHLEN];
-	int fd = -1, ofd = -1, ret;
+	int fd = -1, ofd = -1, ret, ifindex;
+	bool grab_newname = false;
 
 	ret = snprintf(nspath, MAXPATHLEN, "/proc/%d/ns/net", getpid());
 	if (ret < 0 || ret >= MAXPATHLEN)
@@ -495,9 +498,27 @@ static int rename_in_ns(int pid, char *oldname, char *newname)
 		goto out_err;
 	}
 	close(fd); fd = -1;
-	if ((ret = lxc_netdev_rename_by_name(oldname, newname)) < 0) {
-		fprintf(stderr, "Error %d renaming netdev %s to %s in container\n", ret, oldname, newname);
+	if (!*newnamep) {
+		grab_newname = true;
+		*newnamep = VETH_DEF_NAME;
+		if (!(ifindex = if_nametoindex(oldname))) {
+			fprintf(stderr, "failed to get netdev index\n");
+			goto out_err;
+		}
+	}
+	if ((ret = lxc_netdev_rename_by_name(oldname, *newnamep)) < 0) {
+		fprintf(stderr, "Error %d renaming netdev %s to %s in container\n", ret, oldname, *newnamep);
 		goto out_err;
+	}
+	if (grab_newname) {
+		char ifname[IFNAMSIZ], *namep = ifname;
+		if (!if_indextoname(ifindex, namep)) {
+			fprintf(stderr, "Failed to get new netdev name\n");
+			goto out_err;
+		}
+		*newnamep = strdup(namep);
+		if (!*newnamep)
+			goto out_err;
 	}
 	if (setns(ofd, 0) < 0) {
 		fprintf(stderr, "Error returning to original netns\n");
@@ -566,7 +587,7 @@ int main(int argc, char *argv[])
 	char *me;
 	char *nicname = alloca(40);
 	char *cnic = NULL; // created nic name in container is returned here.
-	char *vethname;
+	char *vethname = NULL;
 	int pid;
 
 	if ((me = get_username()) == NULL) {
@@ -578,8 +599,6 @@ int main(int argc, char *argv[])
 		usage(argv[0], true);
 	if (argc >= 5)
 		vethname = argv[4];
-	else
-		vethname = "eth0";
 
 	errno = 0;
 	pid = (int) strtol(argv[1], NULL, 10);
@@ -614,7 +633,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Now rename the link
-	if (rename_in_ns(pid, cnic, vethname) < 0) {
+	if (rename_in_ns(pid, cnic, &vethname) < 0) {
 		fprintf(stderr, "Failed to rename the link\n");
 		exit(1);
 	}
