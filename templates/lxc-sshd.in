@@ -229,7 +229,7 @@ if [ $0 = "/sbin/init" ]; then
         touch /etc/fstab
         rm -f /dhclient.conf
         cat > /dhclient.conf << EOF
-send host-name "<hostname>";
+send host-name = gethostname();
 EOF
         ifconfig eth0 up
         dhclient eth0 -cf /dhclient.conf
