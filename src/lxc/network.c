@@ -1206,7 +1206,7 @@ static int attach_to_ovs_bridge(const char *bridge, const char *nic)
 static inline bool is_ovs_bridge(const char *bridge) { return false; }
 static inline int attach_to_ovs_bridge(const char *bridge, const char *nic)
 {
-	retun -1;
+	return -1;
 }
 #endif
 
