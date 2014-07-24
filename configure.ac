@@ -571,6 +571,7 @@ AC_CONFIG_FILES([
 
 	config/Makefile
 	config/apparmor/Makefile
+	config/selinux/Makefile
 	config/bash/Makefile
 	config/bash/lxc
 	config/init/Makefile

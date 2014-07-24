@@ -1,1 +1,1 @@
-SUBDIRS = apparmor bash etc init templates yum
+SUBDIRS = apparmor bash etc init selinux templates yum
