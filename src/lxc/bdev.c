@@ -1537,7 +1537,7 @@ static int btrfs_destroy(struct bdev *orig)
 	strncpy(args.name, p+1, BTRFS_SUBVOL_NAME_MAX);
 	args.name[BTRFS_SUBVOL_NAME_MAX-1] = 0;
 	ret = ioctl(fd, BTRFS_IOC_SNAP_DESTROY, &args);
-	INFO("btrfs: snapshot create ioctl returned %d", ret);
+	INFO("btrfs: snapshot destroy ioctl returned %d", ret);
 	if (ret < 0 && errno == EPERM)
 		INFO("Is the rootfs mounted with -o user_subvol_rm_allowed?");
 
