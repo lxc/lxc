@@ -673,6 +673,7 @@ usage()
 $1 -h|--help [-a|--arch] [-b|--bindhome <user>] [-d|--debug]
    [-F | --flush-cache] [-r|--release <release>] [ -S | --auth-key <keyfile>]
    [--rootfs <rootfs>] [--packages <packages>] [-u|--user <user>] [--password <password>]
+   [--mirror <url>] [--security-mirror <url>]
 release: the ubuntu release (e.g. precise): defaults to host release on ubuntu, otherwise uses latest LTS
 bindhome: bind <user>'s home into the container
           The ubuntu user will not be created, and <user> will have
@@ -680,6 +681,7 @@ bindhome: bind <user>'s home into the container
 arch: the container architecture (e.g. amd64): defaults to host arch
 auth-key: SSH Public key file to inject into container
 packages: list of packages to add comma separated
+mirror,security-mirror: mirror for download and /etc/apt/sources.list
 EOF
     return 0
 }
