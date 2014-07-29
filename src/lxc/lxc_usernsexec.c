@@ -250,8 +250,6 @@ static int read_default_map(char *fnam, int which, char *username)
 	return 0;
 }
 
-#define subuidfile "/etc/subuid"
-#define subgidfile "/etc/subgid"
 static int find_default_map(void)
 {
 	struct passwd *p = getpwuid(getuid());

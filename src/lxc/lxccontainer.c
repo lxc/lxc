@@ -813,6 +813,7 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 	if (geteuid() != 0 || (c->lxc_conf && !lxc_list_empty(&c->lxc_conf->id_map))) {
 		if (chown_mapped_root(bdev->dest, c->lxc_conf) < 0) {
 			ERROR("Error chowning %s to container root", bdev->dest);
+			suggest_default_idmap();
 			bdev_put(bdev);
 			return NULL;
 		}
