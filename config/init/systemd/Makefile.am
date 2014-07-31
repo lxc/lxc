@@ -3,8 +3,6 @@ EXTRA_DIST = \
 	lxc.service
 
 if INIT_SCRIPT_SYSTEMD
-SYSTEMD_UNIT_DIR = $(prefix)/lib/systemd/system
-
 lxc-autostart-helper: ../sysvinit/lxc.in $(top_builddir)/config.status
 	$(AM_V_GEN)sed                                          \
 	    -e 's|[@]SYSCONFDIR[@]|$(sysconfdir)|g'             \

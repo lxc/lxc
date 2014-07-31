@@ -122,6 +122,18 @@ AM_CONDITIONAL([INIT_SCRIPT_SYSTEMD], [echo "$init_script" |grep -q "systemd"])
 AM_CONDITIONAL([INIT_SCRIPT_UPSTART], [echo "$init_script" |grep -q "upstart"])
 AC_MSG_RESULT($init_script)
 
+# systemd unit dir
+AC_ARG_WITH([systemdsystemunitdir],
+            AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files]),
+            [],
+            [with_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
+if test -z "$with_systemdsystemunitdir"; then
+  with_systemdsystemunitdir=/lib/systemd/system
+fi
+if test "x$with_systemdsystemunitdir" != "xno"; then
+  AC_SUBST([SYSTEMD_UNIT_DIR], [$with_systemdsystemunitdir])
+fi
+
 # Allow disabling rpath
 AC_ARG_ENABLE([rpath],
 	[AC_HELP_STRING([--enable-rpath], [set rpath in executables [default=no]])],
