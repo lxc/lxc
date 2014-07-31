@@ -255,6 +255,7 @@ endif
 install-exec-local: install-soPROGRAMS
 	mkdir -p $(DESTDIR)$(datadir)/lxc
 	install -c -m 644 lxc.functions $(DESTDIR)$(datadir)/lxc
+	install -c -m 755 lxc.net $(DESTDIR)$(datadir)/lxc
 	mv $(DESTDIR)$(libdir)/liblxc.so $(DESTDIR)$(libdir)/liblxc.so.$(VERSION)
 	cd $(DESTDIR)$(libdir); \
 	ln -sf liblxc.so.$(VERSION) liblxc.so.$(firstword $(subst ., ,$(VERSION))); \
