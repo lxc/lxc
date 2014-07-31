@@ -92,7 +92,7 @@ case "$with_init_script" in
 				init_script=upstart,systemd
 				;;
 			ubuntu)
-				init_script=upstart
+				init_script=upstart,systemd
 				;;
 			*)
 				echo -n "Linux distribution init system unknown."
