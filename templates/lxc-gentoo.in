@@ -442,12 +442,18 @@ container_portage()
         fi
     fi
 
+    printf "trying to guess portage distfiles dir from host ...\n"
+    portage_distfiles_dir="$(portageq distdir 2>/dev/null)"
+    if [ ! -d "${portage_distfiles_dir}" ]; then
+	portage_distfiles_dir="${portage_dir}/distfiles"
+    fi
+
     # if we are here, we have shared portage_dir
     #ensure dir exists
     chroot "${rootfs}" mkdir ${portage_container}
         portage_mount="#container set with shared portage
 lxc.mount.entry=${portage_dir} ${portage_container/\//} none ro,bind 0 0
-lxc.mount.entry=${portage_dir}/distfiles ${portage_container/\//}/distfiles none rw,bind 0 0
+lxc.mount.entry=${portage_distfiles_dir} ${portage_container/\//}/distfiles none rw,bind 0 0
 #If you use eix, you should uncomment this
 #lxc.mount.entry=/var/cache/eix var/cache/eix none ro,bind 0 0"
     store_user_message "container has a shared portage from host's ${portage_dir} to ${portage_container/\//}"
