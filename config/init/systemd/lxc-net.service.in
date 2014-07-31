@@ -1,0 +1,10 @@
+[Unit]
+Description=LXC network bridge setup
+After=network.target
+Before=lxc.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=@DATADIR@/lxc/lxc.net start
+ExecStop=@DATADIR@/lxc/lxc.net stop

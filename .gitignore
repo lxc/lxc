@@ -114,6 +114,7 @@ config/lt*.m4
 config/bash/lxc
 config/init/systemd/lxc-autostart-helper
 config/init/systemd/lxc.service
+config/init/systemd/lxc-net.service
 config/init/sysvinit/lxc
 
 doc/*.1
