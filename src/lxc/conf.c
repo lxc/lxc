@@ -4674,56 +4674,31 @@ err:
 	return -1;
 }
 
+/* not thread-safe, do not use from api without first forking */
 static char* getuname(void)
 {
-	struct passwd pwd, *result;
-	char *buf, *ret = NULL;
-	size_t bufsize;
-	int s;
+	struct passwd *result;
 
-	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (bufsize == -1)
-		bufsize = 16384;
-
-	buf = malloc(bufsize);
-	if (!buf)
+	result = getpwuid(geteuid());
+	if (!result)
 		return NULL;
 
-	s = getpwuid_r(geteuid(), &pwd, buf, bufsize, &result);
-	if (s || result == NULL)
-		goto out;
-
-	ret = strdup(pwd.pw_name);
-out:
-	free(buf);
-	return ret;
+	return strdup(result->pw_name);
 }
 
+/* not thread-safe, do not use from api without first forking */
 static char *getgname(void)
 {
-	struct group grp, *result;
-	char *buf, *ret = NULL;
-	size_t bufsize;
-	int s;
+	struct group *result;
 
-	bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
-	if (bufsize == -1)
-		bufsize = 16384;
-
-	buf = malloc(bufsize);
-	if (!buf)
+	result = getgrgid(getegid());
+	if (!result)
 		return NULL;
 
-	s = getgrgid_r(geteuid(), &grp, buf, bufsize, &result);
-	if (s || result == NULL)
-		goto out;
-
-	ret = strdup(grp.gr_name);
-out:
-	free(buf);
-	return ret;
+	return strdup(result->gr_name);
 }
 
+/* not thread-safe, do not use from api without first forking */
 void suggest_default_idmap(void)
 {
 	FILE *f;
