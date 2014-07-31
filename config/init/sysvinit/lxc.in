@@ -45,6 +45,13 @@ STOPOPTS="-a -A -s"
 test ! -r "$sysconfdir"/rc.d/init.d/functions ||
         . "$sysconfdir"/rc.d/init.d/functions
 
+# provide action() fallback
+if ! type action >/dev/null 2>&1; then
+    action() {
+        echo "$@"
+    }
+fi
+
 # Source any configurable options
 test ! -r "$sysconfdir"/sysconfig/lxc ||
         . "$sysconfdir"/sysconfig/lxc
