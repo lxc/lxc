@@ -2118,6 +2118,55 @@ mknod errno 0
     </para>
 
     </refsect2>
+
+    <refsect2>
+      <title><!-- Container Environment -->コンテナの環境変数</title>
+      <para>
+        <!--
+	If you want to pass environment variables into the container (that
+	is, environment variables which will be available to init and all of
+	its descendents), you can use <command>lxc.environment</command>
+	parameters to do so.  Be careful that you do not pass in anything
+	sensitive; any process in the container which doesn't have its
+	environment scrubbed will have these variables available to it, and
+	environment variables are always available via
+	<command>/proc/PID/environ</command>.
+        -->
+        コンテナに環境変数を渡したい場合 (環境変数はコンテナの init とその子孫全てで利用可能です)、<command>lxc.environment</command> パラメータがその用途に使えます。
+        機微 (センシティブ) な情報を渡さないように注意が必要です。そのような情報を持たないコンテナ内のプロセスでこれらの環境変数が利用可能になってしまいます。環境変数は常に <command>/proc/PID/environ</command> 経由で利用可能になります。
+      </para>
+
+      <para>
+        <!--
+        This configuration parameter can be specified multiple times; once
+        for each environment variable you wish to configure.
+        -->
+        この設定項目は、設定したい環境変数ごとに 1 度ずつ、何度でも指定できます。
+      </para>
+
+      <variablelist>
+	<varlistentry>
+	  <term>
+	    <option>lxc.environment</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Specify an environment variable to pass into the container.
+	      Example:
+              -->
+              コンテナに渡したい環境変数を指定します。
+              例:
+	    </para>
+	    <programlisting>
+	      lxc.environment = APP_ENV=production
+	      lxc.environment = SYSLOG_SERVER=192.0.2.42
+	    </programlisting>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
   </refsect1>
 
   <refsect1>
