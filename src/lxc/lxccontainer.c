@@ -238,10 +238,6 @@ static void lxc_container_free(struct lxc_container *c)
 		lxc_conf_free(c->lxc_conf);
 		c->lxc_conf = NULL;
 	}
-	if (c->lxc_unexp_conf) {
-		lxc_conf_free(c->lxc_unexp_conf);
-		c->lxc_unexp_conf = NULL;
-	}
 	if (c->config_path) {
 		free(c->config_path);
 		c->config_path = NULL;
@@ -414,14 +410,9 @@ static bool load_config_locked(struct lxc_container *c, const char *fname)
 {
 	if (!c->lxc_conf)
 		c->lxc_conf = lxc_conf_init();
-	if (!c->lxc_unexp_conf) {
-		c->lxc_unexp_conf = lxc_conf_init();
-		if (c->lxc_unexp_conf)
-			c->lxc_unexp_conf->unexpanded = true;
-	}
-	if (c->lxc_conf && c->lxc_unexp_conf &&
-			!lxc_config_read(fname, c->lxc_conf,
-					 c->lxc_unexp_conf))
+	if (!c->lxc_conf)
+		return false;
+	if (!lxc_config_read(fname, c->lxc_conf, false))
 		return true;
 	return false;
 }
@@ -1214,10 +1205,6 @@ static void lxcapi_clear_config(struct lxc_container *c)
 			lxc_conf_free(c->lxc_conf);
 			c->lxc_conf = NULL;
 		}
-		if (c->lxc_unexp_conf) {
-			lxc_conf_free(c->lxc_unexp_conf);
-			c->lxc_unexp_conf = NULL;
-		}
 	}
 }
 
@@ -1342,7 +1329,6 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	/* reload config to get the rootfs */
 	lxc_conf_free(c->lxc_conf);
 	c->lxc_conf = NULL;
-	c->lxc_unexp_conf = NULL;
 	if (!load_config_locked(c, c->configfile))
 		goto out_unlock;
 
@@ -1440,6 +1426,20 @@ out:
 	return bret;
 }
 
+static void do_clear_unexp_config_line(struct lxc_conf *conf, const char *key)
+{
+	if (strcmp(key, "lxc.cgroup") == 0)
+		clear_unexp_config_line(conf, key, true);
+	else if (strcmp(key, "lxc.network") == 0)
+		clear_unexp_config_line(conf, key, true);
+	else if (strcmp(key, "lxc.hook") == 0)
+		clear_unexp_config_line(conf, key, true);
+	else
+		clear_unexp_config_line(conf, key, false);
+	if (!do_append_unexp_config_line(conf, key, ""))
+		WARN("Error clearing configuration for %s", key);
+}
+
 static bool lxcapi_clear_config_item(struct lxc_container *c, const char *key)
 {
 	int ret;
@@ -1449,6 +1449,8 @@ static bool lxcapi_clear_config_item(struct lxc_container *c, const char *key)
 	if (container_mem_lock(c))
 		return false;
 	ret = lxc_clear_config_item(c->lxc_conf, key);
+	if (!ret)
+		do_clear_unexp_config_line(c->lxc_conf, key);
 	container_mem_unlock(c);
 	return ret == 0;
 }
@@ -1867,7 +1869,7 @@ static bool lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	fout = fopen(alt_file, "w");
 	if (!fout)
 		goto out;
-	write_config(fout, c->lxc_unexp_conf);
+	write_config(fout, c->lxc_conf);
 	fclose(fout);
 	ret = true;
 
@@ -2140,26 +2142,20 @@ static bool lxcapi_destroy_with_snapshots(struct lxc_container *c)
 	return lxcapi_destroy(c);
 }
 
-
 static bool set_config_item_locked(struct lxc_container *c, const char *key, const char *v)
 {
 	struct lxc_config_t *config;
 
 	if (!c->lxc_conf)
 		c->lxc_conf = lxc_conf_init();
-	if (!c->lxc_unexp_conf) {
-		c->lxc_unexp_conf = lxc_conf_init();
-		if (c->lxc_unexp_conf)
-			c->lxc_unexp_conf->unexpanded = true;
-	}
-	if (!c->lxc_conf || !c->lxc_unexp_conf)
+	if (!c->lxc_conf)
 		return false;
 	config = lxc_getconfig(key);
 	if (!config)
 		return false;
-	if (config->cb(key, v, c->lxc_unexp_conf) != 0)
+	if (config->cb(key, v, c->lxc_conf) != 0)
 		return false;
-	return (0 == config->cb(key, v, c->lxc_conf));
+	return do_append_unexp_config_line(c->lxc_conf, key, v);
 }
 
 static bool lxcapi_set_config_item(struct lxc_container *c, const char *key, const char *v)
@@ -2415,6 +2411,10 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 		}
 	}
 
+	if (!clone_update_unexp_hooks(c->lxc_conf)) {
+		ERROR("Error saving new hooks in clone");
+		return -1;
+	}
 	c->save_config(c, NULL);
 	return 0;
 }
@@ -2456,6 +2456,8 @@ static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 	if (!oldpath)
 		return 0;
 
+	clear_unexp_config_line(c->lxc_conf, "lxc.mount", false);
+
 	char *p = strrchr(oldpath, '/');
 	if (!p)
 		return -1;
@@ -2478,6 +2480,10 @@ static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 	c->lxc_conf->fstab = strdup(newpath);
 	if (!c->lxc_conf->fstab) {
 		ERROR("error: allocating pathname");
+		return -1;
+	}
+	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.mount", newpath)) {
+		ERROR("error saving new lxctab");
 		return -1;
 	}
 
@@ -2549,10 +2555,10 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 		ERROR("Out of memory while setting storage path");
 		return -1;
 	}
-	free(c->lxc_unexp_conf->rootfs.path);
-	c->lxc_unexp_conf->rootfs.path = strdup(c->lxc_conf->rootfs.path);
-	if (!c->lxc_unexp_conf->rootfs.path) {
-		ERROR("Out of memory while setting storage path");
+	// We will simply append a new lxc.rootfs entry to the unexpanded config
+	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs", false);
+	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.rootfs", c->lxc_conf->rootfs.path)) {
+		ERROR("Error saving new rootfs to cloend config");
 		return -1;
 	}
 	if (flags & LXC_CLONE_SNAPSHOT)
@@ -2765,7 +2771,7 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 		SYSERROR("open %s", newpath);
 		goto out;
 	}
-	write_config(fout, c->lxc_unexp_conf);
+	write_config(fout, c->lxc_conf);
 	fclose(fout);
 	c->lxc_conf->rootfs.path = origroot;
 
@@ -2793,6 +2799,8 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	if (ret < 0)
 		goto out;
 
+	clear_unexp_config_line(c2->lxc_conf, "lxc.utsname", false);
+
 	// update utsname
 	if (!set_config_item_locked(c2, "lxc.utsname", newname)) {
 		ERROR("Error setting new hostname");
@@ -2812,8 +2820,13 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	}
 
 	// update macaddrs
-	if (!(flags & LXC_CLONE_KEEPMACADDR))
+	if (!(flags & LXC_CLONE_KEEPMACADDR)) {
 		network_new_hwaddrs(c2);
+		if (!clone_update_unexp_network(c2->lxc_conf)) {
+			ERROR("Error updating network for clone");
+			goto out;
+		}
+	}
 
 	// We've now successfully created c2's storage, so clear it out if we
 	// fail after this

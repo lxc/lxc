@@ -287,7 +287,6 @@ struct saved_nic {
 
 struct lxc_conf {
 	int is_execute;
-	bool unexpanded;
 	char *fstab;
 	int tty;
 	int pts;
@@ -352,6 +351,10 @@ struct lxc_conf {
 	/* list of environment variables we'll add to the container when
 	 * started */
 	struct lxc_list environment;
+
+	/* text representation of the config file */
+	char *unexpanded_config;
+	size_t unexpanded_len, unexpanded_alloced;
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
