@@ -1,0 +1,14 @@
+#!/bin/sh
+# lxc-apparmor-load: Load AppArmor profiles, if supported by the system
+
+set -eu
+
+# don't load profiles if mount mediation is not supported
+SYSF=/sys/kernel/security/apparmor/features/mount/mask
+if [ -f $SYSF ]; then
+	if [ -x /lib/init/apparmor-profile-load ]; then
+		/lib/init/apparmor-profile-load usr.bin.lxc-start
+		/lib/init/apparmor-profile-load lxc-containers
+	fi
+fi
+
