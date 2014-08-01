@@ -122,7 +122,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             -->
             コンテナをデーモンとして実行します。
             コンテナはそれ以上の tty を持ちませんので、もしエラーが起きても何も表示されません。
-            エラーのチェックにはログファイルを使用することができます。
+            エラーのチェックにはログファイルを使用することができます。(これがデフォルトのモードです)
 	  </para>
 	</listitem>
       </varlistentry>
@@ -138,7 +138,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    console will be attached to the current tty and signals will be routed
 	    directly to the container.
             -->
-            コンテナをフォアグラウンドで実行します。このモードでは、コンテナコンソールは現在使用中の tty に割り当てられ、シグナルはコンテナに直接送られます。(これがデフォルトのモードです)
+            コンテナをフォアグラウンドで実行します。このモードでは、コンテナコンソールは現在使用中の tty に割り当てられ、シグナルはコンテナに直接送られます。
 	  </para>
 	</listitem>
       </varlistentry>
