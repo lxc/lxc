@@ -15,6 +15,7 @@ noinst_HEADERS = \
 	list.h \
 	log.h \
 	lxc.h \
+	lxc-btrfs.h \
 	lxclock.h \
 	monitor.h \
 	namespace.h \
@@ -53,7 +54,7 @@ endif
 
 liblxc_so_SOURCES = \
 	arguments.c arguments.h \
-	bdev.c bdev.h \
+	bdev.c bdev.h lxc-btrfs.h \
 	commands.c commands.h \
 	start.c start.h \
 	execute.c \
