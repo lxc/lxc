@@ -126,7 +126,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</term>
 	<listitem>
 	  <para>
-	    'backingstore' is one of 'dir', 'lvm', 'loop', 'btrfs', or 'best'.  The
+	    'backingstore' is one of 'dir', 'lvm', 'loop', 'btrfs', 'zfs', or 'best'.  The
 	    default is 'dir', meaning that the container root filesystem
 	    will be a directory under <filename>@LXCPATH@/container/rootfs</filename>.
 	    This backing store type allows the optional

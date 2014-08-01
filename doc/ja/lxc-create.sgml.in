@@ -156,7 +156,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	<listitem>
           <para>
             <!--
-	    'backingstore' is one of 'dir', 'lvm', 'loop', 'btrfs', or 'best'.  The
+	    'backingstore' is one of 'dir', 'lvm', 'loop', 'btrfs', 'zfs', or 'best'.  The
 	    default is 'dir', meaning that the container root filesystem
 	    will be a directory under <filename>@LXCPATH@/container/rootfs</filename>.
 	    This backing store type allows the optional
@@ -184,7 +184,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <replaceable>&#045;&#045;fssize SIZE</replaceable> will create a LV (and
 	    filesystem) of size SIZE rather than the default, which is 1G.
             -->
-            'backingstore' には 'dir' か 'lvm' か 'loop' か 'btrfs' か 'best' のいずれかを指定します。
+            'backingstore' には 'dir' か 'lvm' か 'loop' か 'btrfs' か 'zfs' か 'best' のいずれかを指定します。
             デフォルトは 'dir' で、コンテナのルートファイルシステムが <filename>@LXCPATH@/container/rootfs</filename> 以下のディレクトリであることを意味します。
             'dir' にはオプションとして <replaceable>--dir ROOTFS</replaceable> を指定することも可能です。
             このオプションは、デフォルトの代わりに特定のパス以下にコンテナの rootfs を置くということになります。
