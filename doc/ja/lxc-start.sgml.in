@@ -60,6 +60,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">-c <replaceable>console_device</replaceable></arg>
       <arg choice="opt">-L <replaceable>console_logfile</replaceable></arg>
       <arg choice="opt">-d</arg>
+      <arg choice="opt">-F</arg>
       <arg choice="opt">-p <replaceable>pid_file</replaceable></arg>
       <arg choice="opt">-s KEY=VAL</arg>
       <arg choice="opt">-C</arg>
@@ -122,6 +123,22 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             コンテナをデーモンとして実行します。
             コンテナはそれ以上の tty を持ちませんので、もしエラーが起きても何も表示されません。
             エラーのチェックにはログファイルを使用することができます。
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-F, --foreground</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Run the container in the foreground. In this mode, the container
+	    console will be attached to the current tty and signals will be routed
+	    directly to the container.
+            -->
+            コンテナをフォアグラウンドで実行します。このモードでは、コンテナコンソールは現在使用中の tty に割り当てられ、シグナルはコンテナに直接送られます。(これがデフォルトのモードです)
 	  </para>
 	</listitem>
       </varlistentry>
