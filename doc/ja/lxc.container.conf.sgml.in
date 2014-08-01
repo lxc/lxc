@@ -1490,9 +1490,12 @@ proc proc proc nodev,noexec,nosuid 0 0
 	container should be run can be specified in the container
 	configuration.  The default is <command>unconfined_t</command>,
 	which means that lxc will not attempt to change contexts.
+	See @DATADIR@/lxc/selinux/lxc.te for an example policy and more
+	information.
         -->
         lxc が SELinux サポートでコンパイルされ、インストールされている場合で、ホストで SELinux が有効な場合、コンテナが従って動くべき SELinux コンテキストは、コンテナの設定で指定することが可能です。
         デフォルトは <command>unconfined_t</command> であり、これは lxc がコンテキストを変えないという意味になります。
+        ポリシーの例と追加の情報は @DATADIR@/lxc/selinux/lxc.te ファイルを参照してください。
       </para>
       <variablelist>
 	<varlistentry>
@@ -1507,7 +1510,7 @@ proc proc proc nodev,noexec,nosuid 0 0
               -->
               コンテナが従うべき SELinux コンテキストを指定するか、<command>unconfined_t</command> を指定します。例えば以下のように設定します。
 	    </para>
-	    <programlisting>lxc.se_context = unconfined_u:unconfined_r:lxc_t:s0-s0:c0.c1023</programlisting>
+	    <programlisting>lxc.se_context = system_u:system_r:lxc_t:s0:c22</programlisting>
 	  </listitem>
 	</varlistentry>
       </variablelist>
