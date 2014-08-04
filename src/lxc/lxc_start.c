@@ -338,7 +338,7 @@ int main(int argc, char *argv[])
 		if (my_args.daemonize)
 			ERROR("To get more details, run the container in foreground mode.");
 		ERROR("Additional information can be obtained by setting the "
-		      "--logfile and --log-priority options.");
+		      "--logfile and --logpriority options.");
 		err = c->error_num;
 		lxc_container_put(c);
 		return err;
