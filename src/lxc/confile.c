@@ -89,6 +89,7 @@ static int config_network_ipv6_gateway(const char *, const char *, struct lxc_co
 static int config_cap_drop(const char *, const char *, struct lxc_conf *);
 static int config_cap_keep(const char *, const char *, struct lxc_conf *);
 static int config_console(const char *, const char *, struct lxc_conf *);
+static int config_console_logfile(const char *, const char *, struct lxc_conf *);
 static int config_seccomp(const char *, const char *, struct lxc_conf *);
 static int config_includefile(const char *, const char *, struct lxc_conf *);
 static int config_network_nic(const char *, const char *, struct lxc_conf *);
@@ -146,6 +147,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.network",              config_network              },
 	{ "lxc.cap.drop",             config_cap_drop             },
 	{ "lxc.cap.keep",             config_cap_keep             },
+	{ "lxc.console.logfile",      config_console_logfile      },
 	{ "lxc.console",              config_console              },
 	{ "lxc.seccomp",              config_seccomp              },
 	{ "lxc.include",              config_includefile          },
@@ -1604,6 +1606,12 @@ static int config_console(const char *key, const char *value,
 	return config_path_item(&lxc_conf->console.path, value);
 }
 
+static int config_console_logfile(const char *key, const char *value,
+			  struct lxc_conf *lxc_conf)
+{
+	return config_path_item(&lxc_conf->console.log_path, value);
+}
+
 int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 {
 	size_t len = conf->unexpanded_len, linelen = strlen(line);
@@ -2261,6 +2269,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_cgroup_entry(c, retv, inlen, key + 11);
 	else if (strcmp(key, "lxc.utsname") == 0)
 		v = c->utsname ? c->utsname->nodename : NULL;
+	else if (strcmp(key, "lxc.console.logfile") == 0)
+		v = c->console.log_path;
 	else if (strcmp(key, "lxc.console") == 0)
 		v = c->console.path;
 	else if (strcmp(key, "lxc.rootfs.mount") == 0)
