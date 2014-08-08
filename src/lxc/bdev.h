@@ -48,6 +48,7 @@ struct bdev_ops {
 			const char *cname, const char *oldpath, const char *lxcpath,
 			int snap, uint64_t newsize, struct lxc_conf *conf);
 	bool can_snapshot;
+	bool can_backup;
 };
 
 /*
@@ -71,6 +72,7 @@ struct bdev {
 char *overlay_getlower(char *p);
 
 bool bdev_is_dir(const char *path);
+bool bdev_can_backup(struct lxc_conf *conf);
 
 /*
  * Instantiate a bdev object.  The src is used to determine which blockdev

@@ -2865,6 +2865,12 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	if (!c || !lxcapi_is_defined(c))
 		return -1;
 
+	if (!bdev_can_backup(c->lxc_conf)) {
+		ERROR("%s's backing store cannot be backed up.", c->name);
+		ERROR("Your container must use another backing store type.");
+		return -1;
+	}
+
 	// /var/lib/lxc -> /var/lib/lxcsnaps \0
 	ret = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
 	if (ret < 0 || ret >= MAXPATHLEN)

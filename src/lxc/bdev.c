@@ -520,6 +520,7 @@ static const struct bdev_ops dir_ops = {
 	.destroy = &dir_destroy,
 	.create = &dir_create,
 	.can_snapshot = false,
+	.can_backup = true,
 };
 
 
@@ -784,6 +785,7 @@ static const struct bdev_ops zfs_ops = {
 	.destroy = &zfs_destroy,
 	.create = &zfs_create,
 	.can_snapshot = true,
+	.can_backup = true,
 };
 
 //
@@ -1179,6 +1181,7 @@ static const struct bdev_ops lvm_ops = {
 	.destroy = &lvm_destroy,
 	.create = &lvm_create,
 	.can_snapshot = true,
+	.can_backup = false,
 };
 
 /*
@@ -1858,6 +1861,7 @@ static const struct bdev_ops btrfs_ops = {
 	.destroy = &btrfs_destroy,
 	.create = &btrfs_create,
 	.can_snapshot = true,
+	.can_backup = true,
 };
 
 //
@@ -2129,6 +2133,7 @@ static const struct bdev_ops loop_ops = {
 	.destroy = &loop_destroy,
 	.create = &loop_create,
 	.can_snapshot = false,
+	.can_backup = true,
 };
 
 //
@@ -2426,6 +2431,7 @@ static const struct bdev_ops overlayfs_ops = {
 	.destroy = &overlayfs_destroy,
 	.create = &overlayfs_create,
 	.can_snapshot = true,
+	.can_backup = true,
 };
 
 //
@@ -2703,6 +2709,7 @@ static const struct bdev_ops aufs_ops = {
 	.destroy = &aufs_destroy,
 	.create = &aufs_create,
 	.can_snapshot = true,
+	.can_backup = true,
 };
 
 
@@ -2768,6 +2775,9 @@ struct bdev *bdev_init(const char *src, const char *dst, const char *mntopts)
 {
 	struct bdev *bdev;
 	const struct bdev_type *q;
+
+	if (!src)
+		return NULL;
 
 	q = bdev_query(src);
 	if (!q)
@@ -2852,6 +2862,18 @@ bool bdev_is_dir(const char *path)
 	if (strcmp(orig->type, "dir") == 0)
 		ret = true;
 	bdev_put(orig);
+	return ret;
+}
+
+bool bdev_can_backup(struct lxc_conf *conf)
+{
+	struct bdev *bdev = bdev_init(conf->rootfs.path, NULL, NULL);
+	bool ret;
+
+	if (!bdev)
+		return false;
+	ret = bdev->ops->can_backup;
+	bdev_put(bdev);
 	return ret;
 }
 
