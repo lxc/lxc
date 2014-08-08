@@ -4482,6 +4482,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 {
 	if (!conf)
 		return;
+	if (conf->console.log_path)
+		free(conf->console.log_path);
 	if (conf->console.path)
 		free(conf->console.path);
 	if (conf->rootfs.mount)
