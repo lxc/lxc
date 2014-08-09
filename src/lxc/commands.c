@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/socket.h>
+#include <inttypes.h>
 #include <sys/un.h>
 #include <sys/param.h>
 #include <malloc.h>
@@ -74,24 +75,45 @@
 lxc_log_define(lxc_commands, lxc);
 
 static int fill_sock_name(char *path, int len, const char *name,
-			  const char *inpath)
+			  const char *lxcpath)
 {
-	const char *lxcpath = NULL;
+	char *tmppath;
+	size_t tmplen;
+	uint64_t hash;
 	int ret;
 
-	if (!inpath) {
+	if (!lxcpath) {
 		lxcpath = lxc_global_config_value("lxc.lxcpath");
 		if (!lxcpath) {
 			ERROR("Out of memory getting lxcpath");
 			return -1;
 		}
 	}
-	ret = snprintf(path, len, "%s/%s/command", lxcpath ? lxcpath : inpath, name);
+		
+	ret = snprintf(path, len, "%s/%s/command", lxcpath, name);
 
-	if (ret < 0 || ret >= len) {
-		ERROR("Name too long");
+	if (ret < 0) {
+		ERROR("Error writing to command sock path");
 		return -1;
 	}
+	if (ret < len)
+		return 0;
+
+	/* ret >= len; lxcpath or name is too long.  hash both */
+	tmplen = strlen(name) + strlen(lxcpath) + 2;
+	tmppath = alloca(tmplen);
+	ret = snprintf(tmppath, tmplen, "%s/%s", lxcpath, name);
+	if (ret < 0 || ret >= tmplen) {
+		ERROR("memory error");
+		return -1;
+	}
+	hash = fnv_64a_buf(tmppath, ret, FNV1A_64_INIT);
+	ret = snprintf(path, len, "lxc/%016" PRIx64 "/cmd_sock", hash);
+	if (ret < 0 || ret >= len) {
+		ERROR("Command socket name too long");
+		return -1;
+	}
+
 	return 0;
 }
 
