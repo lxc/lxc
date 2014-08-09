@@ -142,7 +142,7 @@ int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 	size_t len;
 	int ret;
 	char *sockname = &addr->sun_path[1];
-	char path[PATH_MAX+18];
+	char *path;
 	uint64_t hash;
 
 	/* addr.sun_path is only 108 bytes, so we hash the full name and
@@ -150,18 +150,20 @@ int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 	 */
 	memset(addr, 0, sizeof(*addr));
 	addr->sun_family = AF_UNIX;
-	len = sizeof(addr->sun_path) - 1;
-	ret = snprintf(path, sizeof(path), "lxc/%s/monitor-sock", lxcpath);
-	if (ret < 0 || ret >= sizeof(path)) {
-		ERROR("lxcpath %s too long for monitor unix socket", lxcpath);
+	len = strlen(lxcpath) + 18;
+	path = alloca(len);
+	ret = snprintf(path, len, "lxc/%s/monitor-sock", lxcpath);
+	if (ret < 0 || ret >= len) {
+		ERROR("memory error creating monitor path");
 		return -1;
 	}
 
+	len = sizeof(addr->sun_path) - 1;
 	hash = fnv_64a_buf(path, ret, FNV1A_64_INIT);
 	ret = snprintf(sockname, len, "lxc/%016" PRIx64 "/%s", hash, lxcpath);
 	if (ret < 0)
 		return -1;
-	sockname[sizeof(addr->sun_path)-2] = '\0';
+	sockname[sizeof(addr->sun_path)-3] = '\0';
 	INFO("using monitor sock name %s", sockname);
 	return 0;
 }
