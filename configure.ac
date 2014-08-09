@@ -59,7 +59,7 @@ if test "z$with_distro" = "z"; then
 	with_distro="unknown"
 fi
 case $with_distro in
-	ubuntu)
+	ubuntu|raspbian)
 		distroconf=default.conf.ubuntu
 		;;
 	redhat|centos|fedora|oracle|oracleserver)
@@ -70,7 +70,7 @@ case $with_distro in
 		;;
 esac
 AC_MSG_RESULT([$with_distro])
-AM_CONDITIONAL([HAVE_DEBIAN], [test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu"])
+AM_CONDITIONAL([HAVE_DEBIAN], [test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu" -o x"$with_distro" = "xraspbian"])
 AM_CONDITIONAL([DISTRO_UBUNTU], [test "x$with_distro" = "xubuntu"])
 
 # Check for init system type
@@ -88,7 +88,7 @@ case "$with_init_script" in
 			redhat|centos|oracle|oracleserver)
 				init_script=sysvinit
 				;;
-			debian)
+			debian|raspbian)
 				init_script=upstart,systemd
 				;;
 			ubuntu)
