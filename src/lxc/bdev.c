@@ -1587,7 +1587,7 @@ static struct my_btrfs_tree *create_my_btrfs_tree(u64 id, const char *path, int 
 {
 	struct my_btrfs_tree *tree;
 
-	tree = malloc(sizeof(tree));
+	tree = malloc(sizeof(struct my_btrfs_tree));
 	if (!tree)
 		return NULL;
 	tree->nodes = malloc(sizeof(struct mytree_node));
