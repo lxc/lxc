@@ -2726,7 +2726,6 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	struct lxc_container *c2 = NULL;
 	char newpath[MAXPATHLEN];
 	int ret, storage_copied = 0;
-	const char *n, *l;
 	char *origroot = NULL;
 	struct clone_update_data data;
 	FILE *fout;
@@ -2744,9 +2743,11 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	}
 
 	// Make sure the container doesn't yet exist.
-	n = newname ? newname : c->name;
-	l = lxcpath ? lxcpath : c->get_config_path(c);
-	ret = snprintf(newpath, MAXPATHLEN, "%s/%s/config", l, n);
+	if (!newname)
+		newname = c->name;
+	if (!lxcpath)
+		lxcpath = c->get_config_path(c);
+	ret = snprintf(newpath, MAXPATHLEN, "%s/%s/config", lxcpath, newname);
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		SYSERROR("clone: failed making config pathname");
 		goto out;
@@ -2776,7 +2777,7 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	fclose(fout);
 	c->lxc_conf->rootfs.path = origroot;
 
-	sprintf(newpath, "%s/%s/rootfs", l, n);
+	sprintf(newpath, "%s/%s/rootfs", lxcpath, newname);
 	if (mkdir(newpath, 0755) < 0) {
 		SYSERROR("error creating %s", newpath);
 		goto out;
@@ -2789,9 +2790,10 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 		}
 	}
 
-	c2 = lxc_container_new(n, l);
+	c2 = lxc_container_new(newname, lxcpath);
 	if (!c2) {
-		ERROR("clone: failed to create new container (%s %s)", n, l);
+		ERROR("clone: failed to create new container (%s %s)", newname,
+				lxcpath);
 		goto out;
 	}
 
