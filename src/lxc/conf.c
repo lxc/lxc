@@ -288,6 +288,9 @@ static struct caps_opt caps_opt[] = {
 static struct caps_opt caps_opt[] = {};
 #endif
 
+const char *dev_base_path = "/dev/.lxc";
+const char *dev_user_path = "/dev/.lxc/user";
+
 static int run_buffer(char *buffer)
 {
 	struct lxc_popen_FILE *f;
@@ -1259,13 +1262,11 @@ static char *mk_devtmpfs(const char *name, char *path, const char *lxcpath)
 	struct stat s;
 	char tmp_path[MAXPATHLEN];
 	char fstype[MAX_FSTYPE_LEN];
-	char *base_path = "/dev/.lxc";
-	char *user_path = "/dev/.lxc/user";
 	uint64_t hash;
 
-	if ( 0 != access(base_path, F_OK) || 0 != stat(base_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
+	if ( 0 != access(dev_base_path, F_OK) || 0 != stat(dev_base_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
 		/* This is just making /dev/.lxc it better work or we're done */
-		ret = mkdir(base_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+		ret = mkdir(dev_base_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if ( ret ) {
 			SYSERROR( "Unable to create /dev/.lxc for autodev" );
 			return NULL;
@@ -1299,19 +1300,19 @@ static char *mk_devtmpfs(const char *name, char *path, const char *lxcpath)
 		}
 	}
 
-	if ( 0 != access(user_path, F_OK) || 0 != stat(user_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
+	if ( 0 != access(dev_user_path, F_OK) || 0 != stat(dev_user_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
 		/*
 		 * This is making /dev/.lxc/user path for non-priv users.
 		 * If this doesn't work, we'll have to fall back in the
 		 * case of non-priv users.  It's mode 1777 like /tmp.
 		 */
-		ret = mkdir(user_path, S_IRWXU | S_IRWXG | S_IRWXO | S_ISVTX);
+		ret = mkdir(dev_user_path, S_IRWXU | S_IRWXG | S_IRWXO | S_ISVTX);
 		if ( ret ) {
 			/* Issue an error but don't fail yet! */
 			ERROR("Unable to create /dev/.lxc/user");
 		}
 		/* Umask tends to screw us up here */
-		chmod(user_path, S_IRWXU | S_IRWXG | S_IRWXO | S_ISVTX);
+		chmod(dev_user_path, S_IRWXU | S_IRWXG | S_IRWXO | S_ISVTX);
 	}
 
 	/*
@@ -1326,18 +1327,18 @@ static char *mk_devtmpfs(const char *name, char *path, const char *lxcpath)
 
 	hash = fnv_64a_buf(tmp_path, ret, FNV1A_64_INIT);
 
-	ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s.%016" PRIx64, base_path, name, hash);
+	ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s.%016" PRIx64, dev_base_path, name, hash);
 	if (ret < 0 || ret >= MAXPATHLEN)
 		return NULL;
 
 	if ( 0 != access(tmp_path, F_OK) || 0 != stat(tmp_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
 		ret = mkdir(tmp_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if ( ret ) {
-			/* Something must have failed with the base_path...
-			 * Maybe unpriv user.  Try user_path now... */
+			/* Something must have failed with the dev_base_path...
+			 * Maybe unpriv user.  Try dev_user_path now... */
 			INFO("Setup in /dev/.lxc failed.  Trying /dev/.lxc/user." );
 
-			ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s.%016" PRIx64, user_path, name, hash);
+			ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s.%016" PRIx64, dev_user_path, name, hash);
 			if (ret < 0 || ret >= MAXPATHLEN)
 				return NULL;
 
@@ -1354,7 +1355,6 @@ static char *mk_devtmpfs(const char *name, char *path, const char *lxcpath)
 	strcpy( path, tmp_path );
 	return path;
 }
-
 
 /*
  * Do we want to add options for max size of /dev and a file to
@@ -1478,6 +1478,61 @@ static int setup_autodev(const char *root)
 	umask(cmask);
 
 	INFO("Populated /dev under %s", root);
+	return 0;
+}
+
+/*
+ * Locate allocated devtmpfs mount and purge it.
+ * path lookup mostly taken from mk_devtmpfs
+ */
+int lxc_delete_autodev(struct lxc_handler *handler)
+{
+	int ret;
+	struct stat s;
+	struct lxc_conf *lxc_conf = handler->conf;
+	const char *name = handler->name;
+	const char *lxcpath = handler->lxcpath;
+	char tmp_path[MAXPATHLEN];
+	uint64_t hash;
+
+	if ( lxc_conf->autodev <= 0 )
+		return 0;
+
+
+	/*
+	 * Use the same logic as mk_devtmpfs to compute candidate
+	 * path for cleanup.
+	 */
+
+	ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s", lxcpath, name);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return -1;
+
+	hash = fnv_64a_buf(tmp_path, ret, FNV1A_64_INIT);
+
+	/* Probe /dev/.lxc/<container name>.<hash> */
+	ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s.%016" PRIx64, dev_base_path, name, hash);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return -1;
+
+	if ( 0 != access(tmp_path, F_OK) || 0 != stat(tmp_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
+		/* Probe /dev/.lxc/user/<container name>.<hash> */
+		ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s.%016" PRIx64, dev_user_path, name, hash);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			return -1;
+
+		if ( 0 != access(tmp_path, F_OK) || 0 != stat(tmp_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
+			WARN("Failed to locate autodev /dev/.lxc and /dev/.lxc/user." );
+			return -1;
+		}
+	}
+
+	/* Do the cleanup */
+	INFO("Cleaning %s", tmp_path );
+	if ( 0 != lxc_rmdir_onedev(tmp_path, NULL) ) {
+		ERROR("Failed to cleanup autodev" );
+	}
+
 	return 0;
 }
 
