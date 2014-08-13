@@ -1498,6 +1498,9 @@ int lxc_delete_autodev(struct lxc_handler *handler)
 	if ( lxc_conf->autodev <= 0 )
 		return 0;
 
+	/* don't clean on reboot */
+	if ( lxc_conf->reboot == 1 )
+		return 0;
 
 	/*
 	 * Use the same logic as mk_devtmpfs to compute candidate
