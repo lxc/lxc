@@ -33,7 +33,8 @@ DONE=0
 cleanup() {
 	cd /
 
-	run_cmd lxc-stop -n c1 -k
+	run_cmd lxc-stop -n c2 -k || true
+	run_cmd lxc-stop -n c1 -k || true
 	pkill -u $(id -u $TUSER) -9
 
 	sed -i '/lxcunpriv/d' /run/lxc/nics /etc/lxc/lxc-usernet
@@ -121,5 +122,13 @@ p1=$(run_cmd lxc-info -n c1 -p -H)
 
 run_cmd lxc-info -n c1
 run_cmd lxc-attach -n c1 -- /bin/true
+
+run_cmd lxc-stop -n c1
+run_cmd lxc-clone -s -o c1 -n c2
+run_cmd lxc-start -n c2 -d
+p1=$(run_cmd lxc-info -n c2 -p -H)
+[ "$p1" != "-1" ] || { echo "Failed to start container c2"; false; }
+
+run_cmd lxc-stop -n c2
 
 DONE=1
