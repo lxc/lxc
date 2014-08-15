@@ -63,7 +63,7 @@ try_mksubvolume()
     path=$1
     [ -d $path ] && return 0
     mkdir -p $(dirname $path)
-    if is_btrfs $(dirname $path); then
+    if which btrfs >/dev/null 2>&1 && is_btrfs $(dirname $path); then
         btrfs subvolume create $path
     else
         mkdir -p $path
@@ -74,7 +74,7 @@ try_rmsubvolume()
 {
     path=$1
     [ -d $path ] || return 0
-    if is_btrfs_subvolume $path; then
+    if which btrfs >/dev/null 2>&1 && is_btrfs_subvolume $path; then
         btrfs subvolume delete $path
     else
         rm -rf $path
@@ -406,7 +406,7 @@ copy_ubuntu()
     # make a local copy of the miniubuntu
     echo "Copying rootfs to $rootfs ..."
     try_mksubvolume $rootfs
-    if is_btrfs_subvolume $cache/rootfs-$arch && is_btrfs_subvolume $rootfs; then
+    if which btrfs >/dev/null 2>&1 && is_btrfs_subvolume $cache/rootfs-$arch && is_btrfs_subvolume $rootfs; then
       realrootfs=$(dirname $config)/rootfs
       [ "$rootfs" = "$realrootfs" ] || umount $rootfs || return 1
       btrfs subvolume delete $realrootfs || return 1
