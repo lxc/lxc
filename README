@@ -8,7 +8,7 @@ What is lxc:
   process containers and resource isolation through the namespaces.
 
   The  linux  containers, lxc, aims to use these new functionalities to pro-
-  vide an userspace container object which provides full  resource  isolation
+  vide a userspace container object which provides full  resource  isolation
   and resource control for an applications or a system.
 
   The first objective of this project is to make the life easier for the ker-
