@@ -794,32 +794,38 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		close(p[1]);
 		return -1;
 	}
-	if (!pid)
+	if (!pid) // do_cgm_get exits
 		do_cgm_get(name, lxcpath, filename, p[1], len && value);
 	close(p[1]);
 	ret = read(p[0], &newlen, sizeof(newlen));
 	if (ret != sizeof(newlen)) {
 		close(p[0]);
-		return -1;
+		ret = -1;
+		goto out;
 	}
 	if (!len || !value) {
 		close(p[0]);
-		return newlen;
+		ret = newlen;
+		goto out;
 	}
 	memset(value, 0, len);
 	if (newlen < 0) { // child is reporting an error
 		close(p[0]);
-		return -1;
+		ret = -1;
+		goto out;
 	}
 	if (newlen == 0) { // empty read
 		close(p[0]);
-		return 0;
+		ret = 0;
+		goto out;
 	}
 	readlen = newlen > len ? len : newlen;
 	ret = read(p[0], value, readlen);
 	close(p[0]);
-	if (ret != readlen)
-		return -1;
+	if (ret != readlen) {
+		ret = -1;
+		goto out;
+	}
 	if (newlen >= len) {
 		value[len-1] = '\0';
 		newlen = len-1;
@@ -828,7 +834,11 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		value[newlen++] = '\n';
 		value[newlen] = '\0';
 	}
-	return newlen;
+	ret = newlen;
+out:
+	if (wait_for_pid(pid))
+		WARN("do_cgm_get exited with error");
+	return ret;
 }
 
 static void do_cgm_set(const char *name, const char *lxcpath, const char *filename, const char *value, int outp)
@@ -920,11 +930,13 @@ static int cgm_set(const char *filename, const char *value, const char *name, co
 		close(p[0]);
 		return -1;
 	}
-	if (!pid)
+	if (!pid) // do_cgm_set exits
 		do_cgm_set(name, lxcpath, filename, value, p[1]);
 	close(p[1]);
 	ret = read(p[0], &v, sizeof(v));
 	close(p[0]);
+	if (wait_for_pid(pid))
+		WARN("do_cgm_set exited with error");
 	if (ret != sizeof(v) || !v)
 		return -1;
 	return 0;
