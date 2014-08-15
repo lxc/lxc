@@ -91,7 +91,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <para>
       <!--
       The linux containers, <command>lxc</command>, aims to use these
-      new functionalities to provide an userspace container object
+      new functionalities to provide a userspace container object
       which provides full resource isolation and resource control for
       an applications or a system.
       -->
