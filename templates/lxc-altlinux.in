@@ -119,10 +119,6 @@ EOF
     echo "c1:2345:respawn:/sbin/mingetty --noclear console" >>  ${rootfs_path}/etc/inittab
     subst 's,\/dev\/tty12,/var/log/syslog/console,' ${rootfs_path}/etc/syslog.conf
 
-#   touch file for fastboot
-    touch ${rootfs_path}/fastboot
-    chattr +i ${rootfs_path}/fastboot
-
     dev_path="${rootfs_path}/dev"
     rm -rf ${dev_path}
     mkdir -p ${dev_path}
@@ -172,10 +168,19 @@ download_altlinux()
     echo "Downloading altlinux minimal ..."
     APT_GET="apt-get -o RPM::RootDir=$INSTALL_ROOT -y"
     PKG_LIST="$(grep -hs '^[^#]' "$profile_dir/$profile")"
-#    PKG_LIST="basesystem apt apt-conf-sisyphus etcnet openssh-server passwd sysklogd net-tools e2fsprogs"
+    # if no configuration file $profile -- fall back to default list of packages
+    [ -z "$PKG_LIST" ] && PKG_LIST="interactivesystem apt apt-conf-sisyphus etcnet openssh-server systemd systemd-units systemd-sysvinit"
 
     mkdir -p $INSTALL_ROOT/var/lib/rpm
     rpm --root $INSTALL_ROOT  --initdb
+
+    # some scripts want to have /dev/null at least
+    dev_path="$INSTALL_ROOT/dev"
+    if [ ! -c "${dev_path}/null" ]; then
+	mkdir -p "${dev_path}"
+	mknod -m 666 "${dev_path}/null" c 1 3
+    fi
+
     $APT_GET install $PKG_LIST
 
     if [ $? -ne 0 ]; then
@@ -372,7 +377,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:P:cR:4:6:g:d: -l help,rootfs:,path:,name:,profile:,clean,release:ipv4:ipv6:gw:dns: -- "$@")
+options=$(getopt -o hp:n:P:cR:4:6:g:d: -l help,rootfs:,path:,name:,profile:,clean,release:,ipv4:,ipv6:,gw:,dns: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -448,11 +453,6 @@ fi
 
 config_path=$default_path/$name
 cache=$cache_base/$release/$profile
-
-if [ -f $config_path/config ]; then
-    echo "A container with that name exists, chose a different name"
-    exit 1
-fi
 
 install_altlinux
 if [ $? -ne 0 ]; then
