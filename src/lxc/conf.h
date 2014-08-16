@@ -391,6 +391,7 @@ extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
 extern int lxc_clear_idmaps(struct lxc_conf *c);
 extern int lxc_clear_groups(struct lxc_conf *c);
 extern int lxc_clear_environment(struct lxc_conf *c);
+extern int lxc_delete_autodev(struct lxc_handler *handler);
 
 extern int do_rootfs_setup(struct lxc_conf *conf, const char *name,
 			   const char *lxcpath);
