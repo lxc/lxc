@@ -79,6 +79,7 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 static int log_append_logfile(const struct lxc_log_appender *appender,
 			      struct lxc_log_event *event)
 {
+	static char log_buffer_nl[] = "\n";
 	char buffer[LXC_LOG_BUFFER_SIZE];
 	int n;
 	int ms;
@@ -88,7 +89,9 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 
 	ms = event->timestamp.tv_usec / 1000;
 	n = snprintf(buffer, sizeof(buffer),
-		     "%15s %10ld.%03d %-8s %s - ",
+		     "%s%15s %10ld.%03d %-8s %s - ",
+		     event->priority >= LXC_LOG_PRIORITY_ERROR ?
+			&(log_buffer_nl[0]) : &(log_buffer_nl[1]),
 		     log_prefix,
 		     event->timestamp.tv_sec,
 		     ms,
