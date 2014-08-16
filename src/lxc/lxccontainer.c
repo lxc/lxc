@@ -733,27 +733,6 @@ static bool lxcapi_stop(struct lxc_container *c)
 	return ret == 0;
 }
 
-static int do_create_container_dir(const char *path, struct lxc_conf *conf)
-{
-	int ret = -1;
-	char *p = alloca(strlen(path)+1);
-	ret = mkdir(path, 0770);
-	if (ret) {
-		if (errno == EEXIST)
-			ret = 0;
-		else {
-			SYSERROR("failed to create container path %s", path);
-			return -1;
-		}
-	}
-	strcpy(p, path);
-	if (!lxc_list_empty(&conf->id_map) && chown_mapped_root(p, conf) != 0) {
-		ERROR("Failed to chown container dir");
-		ret = -1;
-	}
-	return ret;
-}
-
 /*
  * create the standard expected container dir
  */
@@ -771,7 +750,13 @@ static bool create_container_dir(struct lxc_container *c)
 		free(s);
 		return false;
 	}
-	ret = do_create_container_dir(s, c->lxc_conf);
+	ret = mkdir(s, 0755);
+	if (ret) {
+		if (errno == EEXIST)
+			ret = 0;
+		else
+			SYSERROR("failed to create container path for %s", c->name);
+	}
 	free(s);
 	return ret == 0;
 }
@@ -2718,15 +2703,17 @@ sudo lxc-clone -o o1 -n n1 -s -L|-fssize fssize -v|--vgname vgname \
 only rootfs gets converted (copied/snapshotted) on clone.
 */
 
-static int create_file_dirname(char *path, struct lxc_conf *conf)
+static int create_file_dirname(char *path)
 {
 	char *p = strrchr(path, '/');
-	int ret = -1;
+	int ret;
 
 	if (!p)
 		return -1;
 	*p = '\0';
-        ret = do_create_container_dir(path, conf);
+	ret = mkdir(path, 0755);
+	if (ret && errno != EEXIST)
+		SYSERROR("creating container path %s", path);
 	*p = '/';
 	return ret;
 }
@@ -2770,7 +2757,7 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 		goto out;
 	}
 
-	ret = create_file_dirname(newpath, c->lxc_conf);
+	ret = create_file_dirname(newpath);
 	if (ret < 0 && errno != EEXIST) {
 		ERROR("Error creating container dir for %s", newpath);
 		goto out;
