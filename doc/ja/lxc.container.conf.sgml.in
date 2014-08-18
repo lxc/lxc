@@ -1268,7 +1268,7 @@ proc proc proc nodev,noexec,nosuid 0 0
 	      specified, the container shares its root file system
 	      with the host.
               -->
-              コンテナのルートファイルシステムになるディレクトリを指定します。
+              コンテナのルートファイルシステムを指定します。
               この値はイメージファイル、ディレクトリ、ブロックデバイスのどれかを取ることができます。
               もし指定されない場合、コンテナはホストとルートファイルシステムを共有します。
 	    </para>
