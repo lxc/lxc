@@ -1927,10 +1927,74 @@ int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 	return 0;
 }
 
+static void null_endofword(char *word)
+{
+	while (*word && *word != ' ' && *word != '\t')
+		word++;
+	*word = '\0';
+}
+
+/*
+ * skip @nfields spaces in @src
+ */
+static char *get_field(char *src, int nfields)
+{
+	char *p = src;
+	int i;
+
+	for (i = 0; i < nfields; i++) {
+		while (*p && *p != ' ' && *p != '\t')
+			p++;
+		if (!*p)
+			break;
+		p++;
+	}
+	return p;
+}
+
+static unsigned long get_mount_flags(const char *path)
+{
+	FILE *f = fopen("/proc/self/mountinfo", "r");
+	char *line = NULL;
+	size_t len = 0;
+	unsigned long flags = 0;
+
+	if (!f) {
+		WARN("Failed to open /proc/self/mountinfo");
+		return 0;
+	}
+	while (getline(&line, &len, f) != -1) {
+		char *target, *opts, *p, *saveptr = NULL;
+		target = get_field(line, 4);
+		if (!target)
+			continue;
+		opts = get_field(target, 2);
+		if (!opts)
+			continue;
+		null_endofword(opts);
+		for (p = strtok_r(opts, ",", &saveptr); p;
+			p = strtok_r(NULL, ",", &saveptr)) {
+			if (strcmp(p, "ro") == 0)
+				flags |= MS_RDONLY;
+			else if (strcmp(p, "nodev") == 0)
+				flags |= MS_NODEV;
+			else if (strcmp(p, "nosuid") == 0)
+				flags |= MS_NOSUID;
+			else if (strcmp(p, "noexec") == 0)
+				flags |= MS_NOEXEC;
+			/* XXX todo - we'll have to deal with atime? */
+		}
+	}
+	free(line);
+	fclose(f);
+	return flags;
+}
+
 static int mount_entry(const char *fsname, const char *target,
 		       const char *fstype, unsigned long mountflags,
 		       const char *data, int optional)
 {
+	unsigned long extraflags;
 	if (mount(fsname, target, fstype, mountflags & ~MS_REMOUNT, data)) {
 		if (optional) {
 			INFO("failed to mount '%s' on '%s' (optional): %s", fsname,
@@ -1944,9 +2008,20 @@ static int mount_entry(const char *fsname, const char *target,
 	}
 
 	if ((mountflags & MS_REMOUNT) || (mountflags & MS_BIND)) {
+		extraflags = get_mount_flags(target);
+		DEBUG("flags was %lu, extraflags set to %lu", mountflags, extraflags);
+		if (!(mountflags & MS_REMOUNT) && (mountflags & MS_BIND)) {
+			if (!(extraflags & ~mountflags))
+				DEBUG("all mount flags match, skipping remount");
+				goto skipremount;
+		}
+		mountflags |= extraflags;
+	}
 
-		DEBUG("remounting %s on %s to respect bind or remount options",
-		      fsname, target);
+	if ((mountflags & MS_REMOUNT) || (mountflags & MS_BIND)) {
+		DEBUG("remounting %s on %s to respect bind or remount options %lu (extra %lu)",
+		      fsname ? fsname : "(none)",
+		      target ? target : "(none)", mountflags, extraflags);
 
 		if (mount(fsname, target, fstype,
 			  mountflags | MS_REMOUNT, data)) {
@@ -1963,6 +2038,7 @@ static int mount_entry(const char *fsname, const char *target,
 		}
 	}
 
+skipremount:
 	DEBUG("mounted '%s' on '%s', type '%s'", fsname, target, fstype);
 
 	return 0;
@@ -3886,31 +3962,6 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 		umount("/proc");
 		lxc_conf->tmp_umount_proc = 0;
 	}
-}
-
-static void null_endofword(char *word)
-{
-	while (*word && *word != ' ' && *word != '\t')
-		word++;
-	*word = '\0';
-}
-
-/*
- * skip @nfields spaces in @src
- */
-static char *get_field(char *src, int nfields)
-{
-	char *p = src;
-	int i;
-
-	for (i = 0; i < nfields; i++) {
-		while (*p && *p != ' ' && *p != '\t')
-			p++;
-		if (!*p)
-			break;
-		p++;
-	}
-	return p;
 }
 
 static void remount_all_slave(void)
