@@ -74,6 +74,13 @@ lxc-autostart -g lxc-auto-test -r
 lxc-wait -n $CONTAINER_NAME -t 5 -s RUNNING || (echo "Container didn't restart" && exit 1)
 sleep 5
 
+# When shutting down, the container calls sync. If the machine running
+# the test has a massive backlog, it can take minutes for the sync call to
+# finish, causing a test failure.
+# So try to reduce that by flushing everything to disk before we attempt
+# a container shutdown.
+sync
+
 # Shut it down
 lxc-autostart -g lxc-auto-test -s -t 120
 lxc-wait -n $CONTAINER_NAME -t 120 -s STOPPED || (echo "Container didn't stop" && exit 1)
