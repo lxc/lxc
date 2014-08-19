@@ -128,6 +128,7 @@ install_plamo() {
       echo "Installing 'installpkg' command into $dlcache/sbin..."
       ( cd $dlcache ; tar xpJf hdsetup-*.txz ; rm -rf tmp usr var )
       sed -i "/ldconfig/!s@/sbin@$dlcache&@g" $dlcache/sbin/installpkg*
+      sed -i "/^TAR=/s@tar@`which tar`@g" $dlcache/sbin/installpkg2
       PATH=$dlcache/sbin:$PATH
     fi
     echo "Installing packages to $rtcache..."
@@ -148,6 +149,7 @@ install_plamo() {
 
 configure_plamo() {
   # create /dev
+  chmod    666 $rootfs/dev/null
   mknod -m 666 $rootfs/dev/zero c 1 5
   chmod    666 $rootfs/dev/random
   mknod -m 666 $rootfs/dev/urandom c 1 9
@@ -303,7 +305,7 @@ cleanup() {
 usage() {
   cat <<- EOF
 	$prog [-h|--help] -p|--path=<path> -n|--name=<name> --rootfs=<rootfs>
-	          [--clean] [-r|--release=<release>] [-a|--arch=<arch>]
+	          [-c|--clean] [-r|--release=<release>] [-a|--arch=<arch>]
 	          [-b|--bindhome=<user>]
 	release: $release
 	arch: x86 or x86_64: defaults to host arch
