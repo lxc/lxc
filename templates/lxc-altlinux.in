@@ -108,16 +108,22 @@ EOF
     echo "pts/0" >> ${rootfs_path}/etc/securetty
     echo "console" >> ${rootfs_path}/etc/securetty
 
-    chroot ${rootfs_path} chkconfig network on
-    chroot ${rootfs_path} chkconfig syslogd on
-    chroot ${rootfs_path} chkconfig random on
-    chroot ${rootfs_path} chkconfig rawdevices off
-    chroot ${rootfs_path} chkconfig fbsetfont off
-#    chroot ${rootfs_path} chkconfig keytable off
+    # Enable services
+    for service in network syslogd random
+    do
+       chroot ${rootfs_path} chkconfig $service --list &>/dev/null && chroot ${rootfs_path} chkconfig $service on || true
+    done
+    # Disable services
+    for service in rawdevices fbsetfont
+    do
+       chroot ${rootfs_path} chkconfig $service --list &>/dev/null && chroot ${rootfs_path} chkconfig $service off || true
+    done
 
     subst 's/^\([3-9]\+:[0-9]\+:respawn:\/sbin\/mingetty.*\)/#\1/' ${rootfs_path}/etc/inittab
     echo "c1:2345:respawn:/sbin/mingetty --noclear console" >>  ${rootfs_path}/etc/inittab
-    subst 's,\/dev\/tty12,/var/log/syslog/console,' ${rootfs_path}/etc/syslog.conf
+
+    [ -f "${rootfs_path}/etc/syslog.conf" ] && \
+        subst 's,\/dev\/tty12,/var/log/syslog/console,' ${rootfs_path}/etc/syslog.conf
 
 #   touch file for fastboot
     touch ${rootfs_path}/fastboot
