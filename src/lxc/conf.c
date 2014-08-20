@@ -36,6 +36,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+#include <sys/statvfs.h>
 
 #if HAVE_PTY_H
 #include <pty.h>
@@ -1952,49 +1953,12 @@ static char *get_field(char *src, int nfields)
 	return p;
 }
 
-static unsigned long get_mount_flags(const char *path)
-{
-	FILE *f = fopen("/proc/self/mountinfo", "r");
-	char *line = NULL;
-	size_t len = 0;
-	unsigned long flags = 0;
-
-	if (!f) {
-		WARN("Failed to open /proc/self/mountinfo");
-		return 0;
-	}
-	while (getline(&line, &len, f) != -1) {
-		char *target, *opts, *p, *saveptr = NULL;
-		target = get_field(line, 4);
-		if (!target)
-			continue;
-		opts = get_field(target, 2);
-		if (!opts)
-			continue;
-		null_endofword(opts);
-		for (p = strtok_r(opts, ",", &saveptr); p;
-			p = strtok_r(NULL, ",", &saveptr)) {
-			if (strcmp(p, "ro") == 0)
-				flags |= MS_RDONLY;
-			else if (strcmp(p, "nodev") == 0)
-				flags |= MS_NODEV;
-			else if (strcmp(p, "nosuid") == 0)
-				flags |= MS_NOSUID;
-			else if (strcmp(p, "noexec") == 0)
-				flags |= MS_NOEXEC;
-			/* XXX todo - we'll have to deal with atime? */
-		}
-	}
-	free(line);
-	fclose(f);
-	return flags;
-}
-
 static int mount_entry(const char *fsname, const char *target,
 		       const char *fstype, unsigned long mountflags,
 		       const char *data, int optional)
 {
-	unsigned long extraflags;
+	struct statvfs sb;
+
 	if (mount(fsname, target, fstype, mountflags & ~MS_REMOUNT, data)) {
 		if (optional) {
 			INFO("failed to mount '%s' on '%s' (optional): %s", fsname,
@@ -2008,20 +1972,34 @@ static int mount_entry(const char *fsname, const char *target,
 	}
 
 	if ((mountflags & MS_REMOUNT) || (mountflags & MS_BIND)) {
-		extraflags = get_mount_flags(target);
-		DEBUG("flags was %lu, extraflags set to %lu", mountflags, extraflags);
-		if (!(mountflags & MS_REMOUNT) && (mountflags & MS_BIND)) {
-			if (!(extraflags & ~mountflags))
-				DEBUG("all mount flags match, skipping remount");
-				goto skipremount;
-		}
-		mountflags |= extraflags;
-	}
+		DEBUG("remounting %s on %s to respect bind or remount options",
+		      fsname ? fsname : "(none)", target ? target : "(none)");
 
-	if ((mountflags & MS_REMOUNT) || (mountflags & MS_BIND)) {
-		DEBUG("remounting %s on %s to respect bind or remount options %lu (extra %lu)",
-		      fsname ? fsname : "(none)",
-		      target ? target : "(none)", mountflags, extraflags);
+		if (statvfs(fsname, &sb) == 0) {
+			unsigned long required_flags = 0;
+			if (sb.f_flag & MS_NOSUID)
+				required_flags |= MS_NOSUID;
+			if (sb.f_flag & MS_NODEV)
+				required_flags |= MS_NODEV;
+			if (sb.f_flag & MS_RDONLY)
+				required_flags |= MS_RDONLY;
+			if (sb.f_flag & MS_NOEXEC)
+				required_flags |= MS_NOEXEC;
+			DEBUG("(at remount) flags for %s was %lu, required extra flags are %lu", fsname, sb.f_flag, required_flags);
+			/*
+			 * If this was a bind mount request, and required_flags
+			 * does not have any flags which are not already in
+			 * mountflags, then skip the remount
+			 */
+			if (!(mountflags & MS_REMOUNT)) {
+				if (!(required_flags & ~mountflags)) {
+					DEBUG("mountflags already was %lu, skipping remount",
+						mountflags);
+					goto skipremount;
+				}
+			}
+			mountflags |= required_flags;
+		}
 
 		if (mount(fsname, target, fstype,
 			  mountflags | MS_REMOUNT, data)) {
