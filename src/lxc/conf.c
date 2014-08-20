@@ -689,6 +689,39 @@ int pin_rootfs(const char *rootfs)
 	return fd;
 }
 
+/*
+ * If we are asking to remount something, make sure that any
+ * NOEXEC etc are honored.
+ */
+static unsigned long add_required_remount_flags(const char *s, const char *d,
+		unsigned long flags)
+{
+	struct statvfs sb;
+	unsigned long required_flags = 0;
+
+	if (!(flags & MS_REMOUNT))
+		return flags;
+
+	if (!s)
+		s = d;
+
+	if (!s)
+		return flags;
+	if (statvfs(s, &sb) < 0)
+		return flags;
+
+	if (sb.f_flag & MS_NOSUID)
+		required_flags |= MS_NOSUID;
+	if (sb.f_flag & MS_NODEV)
+		required_flags |= MS_NODEV;
+	if (sb.f_flag & MS_RDONLY)
+		required_flags |= MS_RDONLY;
+	if (sb.f_flag & MS_NOEXEC)
+		required_flags |= MS_NOEXEC;
+
+	return flags | required_flags;
+}
+
 static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_handler *handler)
 {
 	int r;
@@ -729,6 +762,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 			char *source = NULL;
 			char *destination = NULL;
 			int saved_errno;
+			unsigned long mflags;
 
 			if (default_mounts[i].source) {
 				/* will act like strdup if %r is not present */
@@ -749,10 +783,12 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 					return -1;
 				}
 			}
-			r = mount(source, destination, default_mounts[i].fstype, default_mounts[i].flags, default_mounts[i].options);
+			mflags = add_required_remount_flags(source, destination,
+					default_mounts[i].flags);
+			r = mount(source, destination, default_mounts[i].fstype, mflags, default_mounts[i].options);
 			saved_errno = errno;
 			if (r < 0)
-				SYSERROR("error mounting %s on %s", source, destination);
+				SYSERROR("error mounting %s on %s flags %lu", source, destination, mflags);
 			free(source);
 			free(destination);
 			if (r < 0) {
