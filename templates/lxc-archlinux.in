@@ -76,7 +76,7 @@ configure_arch() {
         cp -p /etc/vconsole.conf /etc/locale.conf /etc/locale.gen \
 		"${rootfs_path}/etc/"
     else
-        echo "LANG=${default_lang}" > "${rootfs_path}/etc/locale.conf"
+        echo "LANG=${default_locale}" > "${rootfs_path}/etc/locale.conf"
         echo "KEYMAP=us" > "${rootfs_path}/etc/vconsole.conf"
         cat > "${rootfs_path}/etc/adjtime" << EOF
 0.0 0.0 0.0
