@@ -7,7 +7,7 @@ else
 endif
 
 all:
-	CFLAGS="$(CFLAGS) -I ../../src -L../../src/lxc/" $(PYTHON) setup.py build
+	$(PYTHON) setup.py build
 
 install:
 	if [ "$(DESTDIR)" = "" ]; then \
@@ -21,7 +21,6 @@ clean-local:
 
 endif
 EXTRA_DIST = \
-	setup.py \
 	lxc.c \
 	lxc/__init__.py \
 	examples/api_test.py \
