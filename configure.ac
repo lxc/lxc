@@ -73,6 +73,8 @@ AC_MSG_RESULT([$with_distro])
 AM_CONDITIONAL([HAVE_DEBIAN], [test x"$with_distro" = "xdebian" -o x"$with_distro" = "xubuntu" -o x"$with_distro" = "xraspbian"])
 AM_CONDITIONAL([DISTRO_UBUNTU], [test "x$with_distro" = "xubuntu"])
 
+AC_CONFIG_LINKS([config/etc/default.conf:config/etc/${distroconf}])
+
 # Check for init system type
 AC_MSG_CHECKING([for init system type])
 AC_ARG_WITH([init-script],
@@ -523,7 +525,6 @@ AS_AC_EXPAND(LXC_DEFAULT_CONFIG, "$sysconfdir/lxc/default.conf")
 AS_AC_EXPAND(DATADIR, "$datadir")
 AS_AC_EXPAND(LOCALSTATEDIR, "$localstatedir")
 AS_AC_EXPAND(DOCDIR, "$docdir")
-AS_AC_EXPAND(LXC_DISTRO_CONF, "$distroconf")
 AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date)")
 AS_AC_EXPAND(LXCPATH, "$with_config_path")
 AS_AC_EXPAND(LXC_GLOBAL_CONF, "$with_global_conf")
@@ -759,6 +760,7 @@ AC_CONFIG_FILES([
 	src/lxc/lxc.functions
 	src/lxc/version.h
 	src/python-lxc/Makefile
+	src/python-lxc/setup.py
 
 	src/lua-lxc/Makefile
 

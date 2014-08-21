@@ -19,15 +19,18 @@
 #
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+# USA
 
 from distutils.core import setup, Extension
 
-module = Extension('_lxc', sources=['lxc.c'], libraries=['lxc'])
+module = Extension('_lxc', sources=['@srcdir@/lxc.c'],
+                   include_dirs=['@top_builddir@/src', '@top_srcdir@/src'],
+                   library_dirs=['@top_builddir@/src/lxc'], libraries=['lxc'])
 
 setup(name='_lxc',
       version='0.1',
       description='LXC',
       packages=['lxc'],
-      package_dir={'lxc': 'lxc'},
+      package_dir={'lxc': '@srcdir@/lxc'},
       ext_modules=[module])
