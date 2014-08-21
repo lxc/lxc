@@ -75,7 +75,7 @@ configure_arch() {
     if [ "${is_arch}" ]; then
         cp -p /etc/locale.conf /etc/locale.gen "${rootfs_path}/etc/"
     else
-        echo "LANG=${default_lang}" > "${rootfs_path}/etc/locale.conf"
+        echo "LANG=${default_locale}" > "${rootfs_path}/etc/locale.conf"
         if [ -e "${rootfs_path}/etc/locale.gen" ]; then
             sed -i 's@^#\(en_US\.UTF-8\)@\1@' "${rootfs_path}/etc/locale.gen"
             if [ ! "${default_locale}" = "en_US.UTF-8" ]; then
