@@ -1552,7 +1552,7 @@ static int btrfs_do_destroy_subvol(const char *path)
 	ret = ioctl(fd, BTRFS_IOC_SNAP_DESTROY, &args);
 	INFO("btrfs: snapshot destroy ioctl returned %d for %s", ret, path);
 	if (ret < 0 && errno == EPERM)
-		INFO("Is the rootfs mounted with -o user_subvol_rm_allowed?");
+		ERROR("Is the rootfs mounted with -o user_subvol_rm_allowed?");
 
 	free(newfull);
 	close(fd);
