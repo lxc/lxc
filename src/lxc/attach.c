@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
@@ -601,7 +602,7 @@ static bool fetch_seccomp(const char *name, const char *lxcpath,
 		struct lxc_proc_context_info *i, lxc_attach_options_t *options)
 {
 	struct lxc_container *c;
-	
+
 	if (!(options->namespaces & CLONE_NEWNS) || !(options->attach_flags & LXC_ATTACH_LSM))
 		return true;
 
@@ -770,6 +771,10 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 				ERROR("error using IPC to receive pid of attached process");
 			goto cleanup_error;
 		}
+
+		/* ignore SIGKILL (CTRL-C) and SIGQUIT (CTRL-\) - issue #313 */
+		signal(SIGINT, SIG_IGN);
+		signal(SIGQUIT, SIG_IGN);
 
 		/* reap intermediate process */
 		ret = wait_for_pid(pid);
