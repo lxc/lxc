@@ -36,7 +36,9 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+#ifdef HAVE_STATVFS
 #include <sys/statvfs.h>
+#endif
 
 #if HAVE_PTY_H
 #include <pty.h>
@@ -696,6 +698,7 @@ int pin_rootfs(const char *rootfs)
 static unsigned long add_required_remount_flags(const char *s, const char *d,
 		unsigned long flags)
 {
+#ifdef HAVE_STATVFS
 	struct statvfs sb;
 	unsigned long required_flags = 0;
 
@@ -720,6 +723,9 @@ static unsigned long add_required_remount_flags(const char *s, const char *d,
 		required_flags |= MS_NOEXEC;
 
 	return flags | required_flags;
+#else
+	return flags;
+#endif
 }
 
 static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_handler *handler)
@@ -1993,7 +1999,9 @@ static int mount_entry(const char *fsname, const char *target,
 		       const char *fstype, unsigned long mountflags,
 		       const char *data, int optional)
 {
+#ifdef HAVE_STATVFS
 	struct statvfs sb;
+#endif
 
 	if (mount(fsname, target, fstype, mountflags & ~MS_REMOUNT, data)) {
 		if (optional) {
@@ -2011,6 +2019,7 @@ static int mount_entry(const char *fsname, const char *target,
 		DEBUG("remounting %s on %s to respect bind or remount options",
 		      fsname ? fsname : "(none)", target ? target : "(none)");
 
+#ifdef HAVE_STATVFS
 		if (statvfs(fsname, &sb) == 0) {
 			unsigned long required_flags = 0;
 			if (sb.f_flag & MS_NOSUID)
@@ -2036,6 +2045,7 @@ static int mount_entry(const char *fsname, const char *target,
 			}
 			mountflags |= required_flags;
 		}
+#endif
 
 		if (mount(fsname, target, fstype,
 			  mountflags | MS_REMOUNT, data)) {
@@ -2052,7 +2062,9 @@ static int mount_entry(const char *fsname, const char *target,
 		}
 	}
 
+#ifdef HAVE_STATVFS
 skipremount:
+#endif
 	DEBUG("mounted '%s' on '%s', type '%s'", fsname, target, fstype);
 
 	return 0;
