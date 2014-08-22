@@ -412,9 +412,11 @@ static bool load_config_locked(struct lxc_container *c, const char *fname)
 		c->lxc_conf = lxc_conf_init();
 	if (!c->lxc_conf)
 		return false;
-	if (!lxc_config_read(fname, c->lxc_conf, false))
-		return true;
-	return false;
+	if (lxc_config_read(fname, c->lxc_conf, false) != 0)
+		return false;
+	if (!clone_update_unexp_network(c->lxc_conf))
+		return false;
+	return true;
 }
 
 static bool lxcapi_load_config(struct lxc_container *c, const char *alt_file)
