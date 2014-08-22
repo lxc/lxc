@@ -3409,14 +3409,6 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		free(cmdpath);
 	}
 
-	if (!use_shadow) {
-		cmdpath = on_path("newgidmap", NULL);
-		if (cmdpath) {
-			use_shadow = 1;
-			free(cmdpath);
-		}
-	}
-
 	if (!use_shadow && geteuid()) {
 		ERROR("Missing newuidmap/newgidmap");
 		return -1;
