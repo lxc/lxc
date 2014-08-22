@@ -204,16 +204,6 @@ fi
 
 AM_CONDITIONAL([ENABLE_API_DOCS], [test "x$HAVE_DOXYGEN" != "x"])
 
-# Openvswitch
-AC_PATH_PROG([OVS_CTL_PATH],[ovs-vsctl])
-if test "x$OVS_CTL_PATH" != "x"; then
-	enable_ovs="yes"
-	AS_AC_EXPAND(OVS_CTL_PATH, "$OVS_CTL_PATH")
-else
-	enable_ovs="no"
-fi
-AM_CONDITIONAL([HAVE_OVS], [test "x$enable_ovs" = "xyes"])
-
 # Apparmor
 AC_ARG_ENABLE([apparmor],
 	[AC_HELP_STRING([--enable-apparmor], [enable apparmor support [default=auto]])],
@@ -782,7 +772,6 @@ Environment:
  - rpath: $enable_rpath
  - GnuTLS: $enable_gnutls
  - Bash integration: $enable_bash
- - Openvswitch: $enable_ovs
 
 Security features:
  - Apparmor: $enable_apparmor

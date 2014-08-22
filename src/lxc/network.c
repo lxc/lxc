@@ -1171,7 +1171,6 @@ int lxc_ipv6_dest_add(int ifindex, struct in6_addr *dest)
 	return ip_route_dest_add(AF_INET6, ifindex, dest);
 }
 
-#ifdef HAVE_OVS
 static bool is_ovs_bridge(const char *bridge)
 {
 	char brdirname[22 + IFNAMSIZ + 1] = {0};
@@ -1186,7 +1185,12 @@ static bool is_ovs_bridge(const char *bridge)
 static int attach_to_ovs_bridge(const char *bridge, const char *nic)
 {
 	pid_t pid;
-	const char *progname;
+	char *cmd;
+
+	cmd = on_path("ovs-vsctl", NULL);
+	if (!cmd)
+		return -1;
+	free(cmd);
 
 	pid = fork();
 	if (pid < 0)
@@ -1194,21 +1198,11 @@ static int attach_to_ovs_bridge(const char *bridge, const char *nic)
 	if (pid > 0)
 		return wait_for_pid(pid);
 
-	progname = strrchr(OVS_CTL_PATH, '/');
-	if (!progname) // not sane, should we just fail?
-		progname = OVS_CTL_PATH;
-	if (execl(OVS_CTL_PATH, progname, "add-port", bridge, nic, NULL))
+	if (execlp("ovs-vsctl", "ovs-vsctl", "add-port", bridge, nic, NULL))
 		exit(1);
 	// not reached
 	exit(1);
 }
-#else
-static inline bool is_ovs_bridge(const char *bridge) { return false; }
-static inline int attach_to_ovs_bridge(const char *bridge, const char *nic)
-{
-	return -1;
-}
-#endif
 
 /*
  * There is a lxc_bridge_attach, but no need of a bridge detach
