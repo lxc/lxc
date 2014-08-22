@@ -329,11 +329,6 @@ extern int lxc_log_init(const char *name, const char *file,
 			return 0;
 		ret = __lxc_log_set_file(file, 1);
 	} else {
-
-		/* For now, unprivileged containers have to set -l to get logging */
-		if (geteuid())
-			return 0;
-
 		/* if no name was specified, there nothing to do */
 		if (!name)
 			return 0;
@@ -343,8 +338,8 @@ extern int lxc_log_init(const char *name, const char *file,
 		if (!lxcpath)
 			lxcpath = LOGPATH;
 
-		/* try LOGPATH if lxcpath is the default */
-		if (strcmp(lxcpath, lxc_global_config_value("lxc.lxcpath")) == 0)
+		/* try LOGPATH if lxcpath is the default for the privileged containers */
+		if (!geteuid() && strcmp(lxcpath, lxc_global_config_value("lxc.lxcpath")) == 0)
 			ret = _lxc_log_set_file(name, NULL, 0);
 
 		/* try in lxcpath */
