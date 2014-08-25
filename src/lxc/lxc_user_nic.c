@@ -475,7 +475,7 @@ again:
 static int rename_in_ns(int pid, char *oldname, char **newnamep)
 {
 	char nspath[MAXPATHLEN];
-	int fd = -1, ofd = -1, ret, ifindex;
+	int fd = -1, ofd = -1, ret, ifindex = -1;
 	bool grab_newname = false;
 
 	ret = snprintf(nspath, MAXPATHLEN, "/proc/%d/ns/net", getpid());
