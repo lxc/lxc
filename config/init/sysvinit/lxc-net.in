@@ -1,0 +1,45 @@
+#!/bin/sh -
+#
+# lxc-net Start/Stop LXC Networking
+#
+# chkconfig: 345 99 01
+# description: Starts/Stops LXC Network Bridge
+#
+### BEGIN INIT INFO
+# Provides: lxc-net
+# Default-Start: 2 3 4 5
+# Default-Stop: 1
+# Short-Description: Bring up/down LXC Network Bridge
+# Description: Bring up/down LXC Network Bridge
+### END INIT INFO
+
+start() {
+    @LIBEXECDIR@/lxc/lxc-net start
+}
+
+stop() {
+    @LIBEXECDIR@/lxc/lxc-net stop
+}
+
+# See how we were called.
+case "$1" in
+    start)
+        start
+    ;;
+
+    stop)
+        stop
+    ;;
+
+    restart|reload|force-reload)
+        $0 stop
+        $0 start
+    ;;
+
+    *)
+        echo "Usage: $0 {start|stop|restart|reload|force-reload}"
+        exit 2
+    ;;
+esac
+
+exit $?

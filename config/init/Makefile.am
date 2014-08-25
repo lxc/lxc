@@ -1,1 +1,1 @@
-SUBDIRS = systemd sysvinit upstart
+SUBDIRS = common systemd sysvinit upstart

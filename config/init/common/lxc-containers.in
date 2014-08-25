@@ -1,23 +1,14 @@
 #!/bin/sh
-#
-# lxc Start/Stop LXC autoboot containers
-#
-# chkconfig: 345 99 01
-# description: Starts/Stops all LXC containers configured for autostart.
-#
-### BEGIN INIT INFO
-# Provides: lxc
-# Default-Start: 3 4 5
-# Default-Stop: 0 1 6
-# Short-Description: Bring up/down LXC autostart containers
-# Description: Bring up/down LXC autostart containers
-### END INIT INFO
 
 sysconfdir="@SYSCONFDIR@"
+distrosysconfdir="@LXC_DISTRO_SYSCONF@"
 bindir="@BINDIR@"
 localstatedir="@LOCALSTATEDIR@"
 
-# These can be overridden in @SYSCONFDIR@/sysconfig/lxc
+# These can be overridden in @LXC_DISTRO_SYSCONF@/lxc
+
+# Autostart containers?
+LXC_AUTO="true"
 
 # BOOTGROUPS - What groups should start on bootup?
 #	Comma separated list of groups.
@@ -27,7 +18,7 @@ localstatedir="@LOCALSTATEDIR@"
 BOOTGROUPS="onboot,"
 
 # SHUTDOWNDELAY - Wait time for a container to shut down.
-#	ner shutdown can result in lengthy system
+#	Container shutdown can result in lengthy system
 #	shutdown times.  Even 5 seconds per container can be
 #	too long.
 SHUTDOWNDELAY=5
@@ -47,14 +38,22 @@ test ! -r "$sysconfdir"/rc.d/init.d/functions ||
 
 # provide action() fallback
 if ! type action >/dev/null 2>&1; then
+    # Real basic fallback for sysvinit "action" verbage.
     action() {
-        echo "$@"
+        echo -n "$1	"
+       "$@" && echo "OK" || echo "Failed"
     }
 fi
 
+if [ -d "$localstatedir"/lock/subsys ]
+then
+	lockdir="$localstatedir"/lock/subsys
+else
+	lockdir="$localstatedir"/lock
+fi
+
 # Source any configurable options
-test ! -r "$sysconfdir"/sysconfig/lxc ||
-        . "$sysconfdir"/sysconfig/lxc
+[ ! -f "$distrosysconfdir"/lxc ] || . "$distrosysconfdir"/lxc
 
 # Check for needed utility program
 [ -x "$bindir"/lxc-autostart ] || exit 1
@@ -80,52 +79,58 @@ wait_for_bridge()
 
     BRNAME=`grep '^[ 	]*lxc.network.link' "$sysconfdir"/lxc/default.conf | sed 's/^.*=[ 	]*//'`
     if [ -z "$BRNAME" ]; then
-	return 0
+        return 0
     fi
 
     for try in `seq 1 30`; do
-	eval $cmd |grep "^$BRNAME" >/dev/null 2>&1
-	if [ $? = 0 ]; then
-	    return
-	fi
-	sleep 1
+        eval $cmd |grep "^$BRNAME" >/dev/null 2>&1
+        if [ $? = 0 ]; then
+            return
+        fi
+        sleep 1
     done
 }
 
 # See how we were called.
 case "$1" in
-  start)
-	[ ! -f "$localstatedir"/lock/subsys/lxc ] || { exit 0; }
+    start)
+        [ "x$LXC_AUTO" = "xtrue" ] || { exit 0; }
 
-	if [ -n "$BOOTGROUPS" ]
-	then
-		BOOTGROUPS="-g $BOOTGROUPS"
-	fi
+        [ ! -f "$lockdir"/lxc ] || { exit 0; }
 
-	# Start containers
-	wait_for_bridge
-	# Start autoboot containers first then the NULL group "onboot,".
-	action $"Starting LXC autoboot containers: " "$bindir"/lxc-autostart $OPTIONS $BOOTGROUPS
-	touch "$localstatedir"/lock/subsys/lxc
-	;;
-  stop)
-	if [ -n "$SHUTDOWNDELAY" ]
-	then
-		SHUTDOWNDELAY="-t $SHUTDOWNDELAY"
-	fi
+        if [ -n "$BOOTGROUPS" ]; then
+            BOOTGROUPS="-g $BOOTGROUPS"
+        fi
 
-	# The stop is serialized and can take excessive time.  We need to avoid
-	# delaying the system shutdown / reboot as much as we can since it's not
-	# parallelized...  Even 5 second timout may be too long.
-	action $"Stopping LXC containers: " "$bindir"/lxc-autostart $STOPOPTS $SHUTDOWNDELAY
-	rm -f "$localstatedir"/lock/subsys/lxc
-	;;
-  restart|reload|force-reload)
-	$0 stop
-	$0 start
-	;;
-  *)
-	echo "Usage: $0 {start|stop|restart|reload|force-reload}"
-	exit 2
+        # Start containers
+        wait_for_bridge
+
+        # Start autoboot containers first then the NULL group "onboot,".
+        action $"Starting LXC autoboot containers: " "$bindir"/lxc-autostart $OPTIONS $BOOTGROUPS
+        touch "$lockdir"/lxc
+    ;;
+
+    stop)
+        if [ -n "$SHUTDOWNDELAY" ]; then
+            SHUTDOWNDELAY="-t $SHUTDOWNDELAY"
+        fi
+
+        # The stop is serialized and can take excessive time.  We need to avoid
+        # delaying the system shutdown / reboot as much as we can since it's not
+        # parallelized...  Even 5 second timout may be too long.
+        action $"Stopping LXC containers: " "$bindir"/lxc-autostart $STOPOPTS $SHUTDOWNDELAY
+        rm -f "$lockdir"/lxc
+    ;;
+
+    restart|reload|force-reload)
+        $0 stop
+        $0 start
+    ;;
+
+    *)
+        echo "Usage: $0 {start|stop|restart|reload|force-reload}"
+        exit 2
+    ;;
 esac
+
 exit $?

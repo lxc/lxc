@@ -8,8 +8,8 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStartPre=@LIBEXECDIR@/lxc/lxc-devsetup
 ExecStartPre=@LIBEXECDIR@/lxc/lxc-apparmor-load
-ExecStart=@LIBEXECDIR@/lxc/lxc-autostart-helper start
-ExecStop=@LIBEXECDIR@/lxc/lxc-autostart-helper stop
+ExecStart=@LIBEXECDIR@/lxc/lxc-containers start
+ExecStop=@LIBEXECDIR@/lxc/lxc-containers stop
 # Environment=BOOTUP=serial
 # Environment=CONSOLETYPE=serial
 StandardOutput=syslog

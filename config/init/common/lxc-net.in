@@ -1,0 +1,123 @@
+#!/bin/sh -
+
+distrosysconfdir="@LXC_DISTRO_SYSCONF@"
+localstatedir="@LOCALSTATEDIR@"
+varrun="@RUNTIME_PATH@/lxc"
+
+# These can be overridden in @LXC_DISTRO_SYSCONF@/lxc
+#   or in @LXC_DISTRO_SYSCONF@/lxc-net
+
+USE_LXC_BRIDGE="true"
+LXC_BRIDGE="lxcbr0"
+LXC_ADDR="10.0.3.1"
+LXC_NETMASK="255.255.255.0"
+LXC_NETWORK="10.0.3.0/24"
+LXC_DHCP_RANGE="10.0.3.2,10.0.3.254"
+LXC_DHCP_MAX="253"
+LXC_DHCP_CONFILE=""
+LXC_DOMAIN=""
+
+[ ! -f $distrosysconfdir/lxc ] || . $distrosysconfdir/lxc
+
+if [ -d "$localstatedir"/lock/subsys ]; then
+    lockdir="$localstatedir"/lock/subsys
+else
+    lockdir="$localstatedir"/lock
+fi
+
+start() {
+    [ ! -f "${lockdir}"/lxc-net ] || { exit 0; }
+
+    [ "x$USE_LXC_BRIDGE" = "xtrue" ] || { exit 0; }
+
+    use_iptables_lock="-w"
+    iptables -w -L -n > /dev/null 2>&1 || use_iptables_lock=""
+    cleanup() {
+        # dnsmasq failed to start, clean up the bridge
+        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
+        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
+        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
+        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
+        iptables $use_iptables_lock -D FORWARD -i ${LXC_BRIDGE} -j ACCEPT
+        iptables $use_iptables_lock -D FORWARD -o ${LXC_BRIDGE} -j ACCEPT
+        iptables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE || true
+        iptables $use_iptables_lock -t mangle -D POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+        ifconfig ${LXC_BRIDGE} down || true
+        brctl delbr ${LXC_BRIDGE} || true
+    }
+
+    if [ -d /sys/class/net/${LXC_BRIDGE} ]; then
+        exit 0;
+    fi
+
+    # set up the lxc network
+    brctl addbr ${LXC_BRIDGE} || { echo "Missing bridge support in kernel"; stop; exit 0; }
+    echo 1 > /proc/sys/net/ipv4/ip_forward
+    mkdir -p "${varrun}"
+    ifconfig ${LXC_BRIDGE} ${LXC_ADDR} netmask ${LXC_NETMASK} up
+    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
+    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
+    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
+    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
+    iptables $use_iptables_lock -I FORWARD -i ${LXC_BRIDGE} -j ACCEPT
+    iptables $use_iptables_lock -I FORWARD -o ${LXC_BRIDGE} -j ACCEPT
+    iptables $use_iptables_lock -t nat -A POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE
+    iptables $use_iptables_lock -t mangle -A POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+
+    LXC_DOMAIN_ARG=""
+    if [ -n "$LXC_DOMAIN" ]; then
+        LXC_DOMAIN_ARG="-s $LXC_DOMAIN -S /$LXC_DOMAIN/"
+    fi
+    dnsmasq $LXC_DOMAIN_ARG -u lxc-dnsmasq --strict-order --bind-interfaces --pid-file="${varrun}"/dnsmasq.pid --conf-file=${LXC_DHCP_CONFILE} --listen-address ${LXC_ADDR} --dhcp-range ${LXC_DHCP_RANGE} --dhcp-lease-max=${LXC_DHCP_MAX} --dhcp-no-override --except-interface=lo --interface=${LXC_BRIDGE} --dhcp-leasefile=/var/lib/misc/dnsmasq.${LXC_BRIDGE}.leases --dhcp-authoritative || cleanup
+    touch "${varrun}"/network_up
+    touch "${lockdir}"/lxc-net
+}
+
+stop() {
+    [ "x$USE_LXC_BRIDGE" = "xtrue" ] || { exit 0; }
+
+    [ -f "${varrun}/network_up" ] || { exit 0; }
+    # if $LXC_BRIDGE has attached interfaces, don't shut it down
+    ls /sys/class/net/${LXC_BRIDGE}/brif/* > /dev/null 2>&1 && exit 0;
+
+    if [ -d /sys/class/net/${LXC_BRIDGE} ]; then
+        use_iptables_lock="-w"
+        iptables -w -L -n > /dev/null 2>&1 || use_iptables_lock=""
+        ifconfig ${LXC_BRIDGE} down
+        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
+        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
+        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
+        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
+        iptables $use_iptables_lock -D FORWARD -i ${LXC_BRIDGE} -j ACCEPT
+        iptables $use_iptables_lock -D FORWARD -o ${LXC_BRIDGE} -j ACCEPT
+        iptables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE || true
+        iptables $use_iptables_lock -t mangle -D POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+        pid=`cat "${varrun}"/dnsmasq.pid 2>/dev/null` && kill -9 $pid || true
+        rm -f "${varrun}"/dnsmasq.pid
+        brctl delbr ${LXC_BRIDGE}
+    fi
+    rm -f "${varrun}"/network_up
+    rm -f "${lockdir}"/lxc-net
+}
+
+# See how we were called.
+case "$1" in
+    start)
+        start
+    ;;
+
+    stop)
+        stop
+    ;;
+
+    restart|reload|force-reload)
+        $0 stop
+        $0 start
+    ;;
+
+    *)
+        echo "Usage: $0 {start|stop|restart|reload|force-reload}"
+        exit 2
+esac
+
+exit $?

@@ -6,5 +6,5 @@ Before=lxc.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=@DATADIR@/lxc/lxc.net start
-ExecStop=@DATADIR@/lxc/lxc.net stop
+ExecStart=@LIBEXECDIR@/lxc/lxc-net start
+ExecStop=@LIBEXECDIR@/lxc/lxc-net stop

@@ -4,5 +4,5 @@ author "Serge Hallyn <serge.hallyn@canonical.com>"
 start on starting lxc
 stop on stopped lxc
 
-pre-start exec /usr/share/lxc/lxc.net start
-post-stop exec /usr/share/lxc/lxc.net stop
+pre-start exec @LIBEXECDIR@/lxc/lxc-net start
+post-stop exec @LIBEXECDIR@/lxc/lxc-net stop
