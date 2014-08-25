@@ -114,6 +114,12 @@ else
 	done
 fi
 
+# Copy the download template cache if available
+run_cmd mkdir -p $HDIR/.cache/lxc
+[ -d /var/cache/lxc/download ] && \
+    cp -R /var/cache/lxc/download $HDIR/.cache/lxc && \
+    chown -R $TUSER: $HDIR/.cache/lxc
+
 run_cmd lxc-create -t download -n c1 -- -d ubuntu -r trusty -a $ARCH
 run_cmd lxc-start -n c1 -d
 

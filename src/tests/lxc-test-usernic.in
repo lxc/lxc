@@ -109,6 +109,13 @@ fi
 mkdir -p /run/user/$(id -u usernic-user)
 chown -R usernic-user: /run/user/$(id -u usernic-user) /home/usernic-user
 
+# Copy the download template cache if available
+run_cmd "mkdir -p /home/usernic-user/.cache/lxc"
+[ -d /var/cache/lxc/download ] && \
+    cp -R /var/cache/lxc/download /home/usernic-user/.cache/lxc && \
+    chown -R usernic-user: /home/usernic-user/.cache/lxc
+
+
 # Create two test bridges
 brctl addbr usernic-br0
 brctl addbr usernic-br1
