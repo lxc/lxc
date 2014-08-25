@@ -4217,6 +4217,7 @@ int list_active_containers(const char *lxcpath, char ***nret,
 	char **ct_name = NULL;
 	size_t len = 0;
 	struct lxc_container *c;
+	bool is_hashed;
 
 	if (!lxcpath)
 		lxcpath = lxc_global_config_value("lxc.lxcpath");
@@ -4232,6 +4233,7 @@ int list_active_containers(const char *lxcpath, char ***nret,
 		return -1;
 
 	while (getline(&line, &len, f) != -1) {
+
 		char *p = strrchr(line, ' '), *p2;
 		if (!p)
 			continue;
@@ -4239,9 +4241,17 @@ int list_active_containers(const char *lxcpath, char ***nret,
 		if (*p != 0x40)
 			continue;
 		p++;
-		if (strncmp(p, lxcpath, lxcpath_len) != 0)
+
+		is_hashed = false;
+		if (strncmp(p, lxcpath, lxcpath_len) == 0) {
+			p += lxcpath_len;
+		} else if (strncmp(p, "lxc/", 4) == 0) {
+			p += 4;
+			is_hashed = true;
+		} else {
 			continue;
-		p += lxcpath_len;
+		}
+
 		while (*p == '/')
 			p++;
 
@@ -4250,6 +4260,12 @@ int list_active_containers(const char *lxcpath, char ***nret,
 		if (!p2 || strncmp(p2, "/command", 8) != 0)
 			continue;
 		*p2 = '\0';
+
+		if (is_hashed) {
+			if (strncmp(lxcpath, lxc_cmd_get_lxcpath(p), lxcpath_len) != 0)
+				continue;
+			p = lxc_cmd_get_name(p);
+		}
 
 		if (array_contains(&ct_name, p, ct_name_cnt))
 			continue;

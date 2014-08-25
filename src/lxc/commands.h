@@ -41,6 +41,8 @@ typedef enum {
 	LXC_CMD_GET_CLONE_FLAGS,
 	LXC_CMD_GET_CGROUP,
 	LXC_CMD_GET_CONFIG_ITEM,
+	LXC_CMD_GET_NAME,
+	LXC_CMD_GET_LXCPATH,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
 
@@ -77,6 +79,8 @@ extern char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
 			const char *subsystem);
 extern int lxc_cmd_get_clone_flags(const char *name, const char *lxcpath);
 extern char *lxc_cmd_get_config_item(const char *name, const char *item, const char *lxcpath);
+extern char *lxc_cmd_get_name(const char *hashed_sock);
+extern char *lxc_cmd_get_lxcpath(const char *hashed_sock);
 extern pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath);
 extern lxc_state_t lxc_cmd_get_state(const char *name, const char *lxcpath);
 extern int lxc_cmd_stop(const char *name, const char *lxcpath);

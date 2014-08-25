@@ -75,12 +75,21 @@
 lxc_log_define(lxc_commands, lxc);
 
 static int fill_sock_name(char *path, int len, const char *name,
-			  const char *lxcpath)
+			  const char *lxcpath, const char *hashed_sock_name)
 {
 	char *tmppath;
 	size_t tmplen;
 	uint64_t hash;
 	int ret;
+
+	if (hashed_sock_name != NULL) {
+		ret = snprintf(path, len, "lxc/%s/command", hashed_sock_name);
+		if (ret < 0 || ret >= len) {
+			ERROR("Error writing to command sock path");
+			return -1;
+		}
+		return 0;
+	}
 
 	if (!lxcpath) {
 		lxcpath = lxc_global_config_value("lxc.lxcpath");
@@ -89,9 +98,8 @@ static int fill_sock_name(char *path, int len, const char *name,
 			return -1;
 		}
 	}
-		
-	ret = snprintf(path, len, "%s/%s/command", lxcpath, name);
 
+	ret = snprintf(path, len, "%s/%s/command", lxcpath, name);
 	if (ret < 0) {
 		ERROR("Error writing to command sock path");
 		return -1;
@@ -108,7 +116,7 @@ static int fill_sock_name(char *path, int len, const char *name,
 		return -1;
 	}
 	hash = fnv_64a_buf(tmppath, ret, FNV1A_64_INIT);
-	ret = snprintf(path, len, "lxc/%016" PRIx64 "/cmd_sock", hash);
+	ret = snprintf(path, len, "lxc/%016" PRIx64 "/command", hash);
 	if (ret < 0 || ret >= len) {
 		ERROR("Command socket name too long");
 		return -1;
@@ -127,6 +135,8 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_GET_CLONE_FLAGS] = "get_clone_flags",
 		[LXC_CMD_GET_CGROUP]      = "get_cgroup",
 		[LXC_CMD_GET_CONFIG_ITEM] = "get_config_item",
+		[LXC_CMD_GET_NAME]        = "get_name",
+		[LXC_CMD_GET_LXCPATH]     = "get_lxcpath",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -259,7 +269,7 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
  * returned in the cmd response structure.
  */
 static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
-		   const char *lxcpath)
+		   const char *lxcpath, const char *hashed_sock_name)
 {
 	int sock, ret = -1;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
@@ -270,7 +280,7 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	*stopped = 0;
 
 	len = sizeof(path)-1;
-	if (fill_sock_name(offset, len, name, lxcpath))
+	if (fill_sock_name(offset, len, name, lxcpath, hashed_sock_name))
 		return -1;
 
 	sock = lxc_abstract_unix_connect(path);
@@ -329,7 +339,7 @@ int lxc_try_cmd(const char *name, const char *lxcpath)
 		.req = { .cmd = LXC_CMD_GET_INIT_PID },
 	};
 
-	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 
 	if (stopped)
 		return 0;
@@ -369,7 +379,7 @@ pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 		.req = { .cmd = LXC_CMD_GET_INIT_PID },
 	};
 
-	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
 		return ret;
 
@@ -399,7 +409,7 @@ int lxc_cmd_get_clone_flags(const char *name, const char *lxcpath)
 		.req = { .cmd = LXC_CMD_GET_CLONE_FLAGS },
 	};
 
-	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
 		return ret;
 
@@ -438,7 +448,7 @@ char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
 		},
 	};
 
-	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
 		return NULL;
 
@@ -497,7 +507,7 @@ char *lxc_cmd_get_config_item(const char *name, const char *item,
 		       },
 	};
 
-	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
 		return NULL;
 
@@ -548,7 +558,7 @@ lxc_state_t lxc_cmd_get_state(const char *name, const char *lxcpath)
 		.req = { .cmd = LXC_CMD_GET_STATE }
 	};
 
-	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0 && stopped)
 		return STOPPED;
 
@@ -589,7 +599,7 @@ int lxc_cmd_stop(const char *name, const char *lxcpath)
 		.req = { .cmd = LXC_CMD_STOP },
 	};
 
-	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0) {
 		if (stopped) {
 			INFO("'%s' is already stopped", name);
@@ -650,7 +660,7 @@ int lxc_cmd_console_winch(const char *name, const char *lxcpath)
 		.req = { .cmd = LXC_CMD_CONSOLE_WINCH },
 	};
 
-	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
 		return ret;
 
@@ -685,7 +695,7 @@ int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath)
 		.req = { .cmd = LXC_CMD_CONSOLE, .data = INT_TO_PTR(*ttynum) },
 	};
 
-	ret = lxc_cmd(name, &cmd, &stopped, lxcpath);
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
 		return ret;
 
@@ -744,7 +754,81 @@ out_close:
 	return 1;
 }
 
+/*
+ * lxc_cmd_get_name: Returns the name of the container
+ *
+ * @hashed_sock_name: hashed socket name
+ *
+ * Returns the name on success, NULL on failure.
+ */
+char *lxc_cmd_get_name(const char *hashed_sock_name)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = { .cmd = LXC_CMD_GET_NAME},
+	};
 
+	ret = lxc_cmd(NULL, &cmd, &stopped, NULL, hashed_sock_name);
+	if (ret < 0) {
+		return NULL;
+	}
+
+	if (cmd.rsp.ret == 0)
+		return cmd.rsp.data;
+	return NULL;
+}
+
+static int lxc_cmd_get_name_callback(int fd, struct lxc_cmd_req *req,
+					    struct lxc_handler *handler)
+{
+	struct lxc_cmd_rsp rsp;
+
+	memset(&rsp, 0, sizeof(rsp));
+
+	rsp.data = handler->name;
+	rsp.datalen = strlen(handler->name) + 1;
+	rsp.ret = 0;
+
+	return lxc_cmd_rsp_send(fd, &rsp);
+}
+
+/*
+ * lxc_cmd_get_lxcpath: Returns the lxcpath of the container
+ *
+ * @hashed_sock_name: hashed socket name
+ *
+ * Returns the lxcpath on success, NULL on failure.
+ */
+char *lxc_cmd_get_lxcpath(const char *hashed_sock_name)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = { .cmd = LXC_CMD_GET_LXCPATH},
+	};
+
+	ret = lxc_cmd(NULL, &cmd, &stopped, NULL, hashed_sock_name);
+	if (ret < 0) {
+		return NULL;
+	}
+
+	if (cmd.rsp.ret == 0)
+		return cmd.rsp.data;
+	return NULL;
+}
+
+static int lxc_cmd_get_lxcpath_callback(int fd, struct lxc_cmd_req *req,
+					struct lxc_handler *handler)
+{
+	struct lxc_cmd_rsp rsp;
+
+	memset(&rsp, 0, sizeof(rsp));
+
+	rsp.data = (char *)handler->lxcpath;
+	rsp.datalen = strlen(handler->lxcpath) + 1;
+	rsp.ret = 0;
+
+	return lxc_cmd_rsp_send(fd, &rsp);
+}
 
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 			   struct lxc_handler *handler)
@@ -760,6 +844,8 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_CLONE_FLAGS] = lxc_cmd_get_clone_flags_callback,
 		[LXC_CMD_GET_CGROUP]      = lxc_cmd_get_cgroup_callback,
 		[LXC_CMD_GET_CONFIG_ITEM] = lxc_cmd_get_config_item_callback,
+		[LXC_CMD_GET_NAME]        = lxc_cmd_get_name_callback,
+		[LXC_CMD_GET_LXCPATH]     = lxc_cmd_get_lxcpath_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX) {
@@ -887,7 +973,7 @@ int lxc_cmd_init(const char *name, struct lxc_handler *handler,
 	int len;
 
 	len = sizeof(path)-1;
-	if (fill_sock_name(offset, len, name, lxcpath))
+	if (fill_sock_name(offset, len, name, lxcpath, NULL))
 		return -1;
 
 	fd = lxc_abstract_unix_open(path, SOCK_STREAM, 0);
