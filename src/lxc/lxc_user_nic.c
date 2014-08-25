@@ -590,7 +590,11 @@ int main(int argc, char *argv[])
 	char *vethname = NULL;
 	int pid;
 
-	/* set a sane path, because we are setuid-root */
+	/* set a sane env, because we are setuid-root */
+	if (clearenv() < 0) {
+		fprintf(stderr, "Failed to clear environment");
+		exit(1);
+	}
 	if (setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 1) < 0) {
 		fprintf(stderr, "Failed to set PATH, exiting\n");
 		exit(1);
