@@ -184,6 +184,7 @@ bin_PROGRAMS = \
 	lxc-attach \
 	lxc-autostart \
 	lxc-cgroup \
+	lxc-checkpoint \
 	lxc-clone \
 	lxc-config \
 	lxc-console \
@@ -205,6 +206,8 @@ sbin_PROGRAMS = init.lxc
 pkglibexec_PROGRAMS = \
 	lxc-monitord \
 	lxc-user-nic
+pkglibexec_SCRIPTS = \
+	lxc-restore-net
 
 AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
@@ -234,6 +237,7 @@ lxc_create_SOURCES = lxc_create.c
 lxc_snapshot_SOURCES = lxc_snapshot.c
 lxc_usernsexec_SOURCES = lxc_usernsexec.c
 lxc_user_nic_SOURCES = lxc_user_nic.c network.c network.h
+lxc_checkpoint_SOURCES = lxc_checkpoint.c
 
 if HAVE_STATIC_LIBCAP
 sbin_PROGRAMS += init.lxc.static

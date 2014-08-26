@@ -1,0 +1,194 @@
+<!--
+
+(C) Copyright Canonical Ltd. 2014
+
+Authors:
+Tycho Andersen <tycho.andersen@canonical.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-checkpoint</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-checkpoint</refname>
+
+    <refpurpose>
+      checkpoint a container
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-checkpoint</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="req">-D <replaceable>PATH</replaceable></arg>
+      <arg choice="opt">-r</arg>
+      <arg choice="opt">-s</arg>
+      <arg choice="opt">-v</arg>
+      <arg choice="opt">-d</arg>
+      <arg choice="opt">-F</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      <command>lxc-checkpoint</command> checkpoints and restores containers.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Options</title>
+    <variablelist>
+
+      <varlistentry>
+        <term>
+          <option>-r, --restore</option>
+        </term>
+        <listitem>
+          <para>
+            Restore the checkpoint for the container, instead of dumping it.
+            This option is incompatible with <option>-s</option>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>-D <replacable>PATH</replacable>, --checkpoint-dir=<replacable>PATH</replacable></option>
+        </term>
+        <listitem>
+          <para>
+            The directory to dump the checkpoint metadata.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>-s, --stop</option>
+        </term>
+        <listitem>
+          <para>
+            Optionally stop the container after dumping. This option is
+            incompatible with <option>-r</option>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>-v, --verbose</option>
+        </term>
+        <listitem>
+          <para>
+            Enable verbose criu logging.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>-d, --daemon</option>
+        </term>
+        <listitem>
+          <para>
+            Restore the container in the background (this is the default).
+            Only available when providing <option>-r</option>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>-F, --foreground</option>
+        </term>
+        <listitem>
+          <para>
+            Restore the container in the foreground. Only available when
+            providing <option>-r</option>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title>Examples</title>
+    <variablelist>
+
+      <varlistentry>
+        <term>lxc-checkpoint -n foo -D /tmp/checkpoint</term>
+        <listitem>
+          <para>
+            Checkpoint the container foo into the directory /tmp/checkpoint.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>lxc-checkpoint -r -n foo -D /tmp/checkpoint</term>
+        <listitem>
+          <para>
+            Restore the checkpoint from the directory /tmp/checkpoint.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title>Author</title>
+    <para>Tycho Andersen <email>tycho.andersen@canonical.com</email></para>
+  </refsect1>
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

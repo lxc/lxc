@@ -1,0 +1,24 @@
+#!/bin/sh
+
+[ -z "$CRTOOLS_IMAGE_DIR" ] && exit 1
+
+set -e
+
+dir="$CRTOOLS_IMAGE_DIR"
+
+i=0
+while [ -f "$dir/eth$i" ] && [ -f "$dir/veth$i" ] && [ -f "$dir/bridge$i" ]; do
+	veth=$(cat "$dir/veth$i")
+	bridge=$(cat "$dir/bridge$i")
+
+	if [ "$CRTOOLS_SCRIPT_ACTION" = "network-lock" ]; then
+		brctl delif $bridge $veth
+	fi
+
+	if [ "$CRTOOLS_SCRIPT_ACTION" = "network-unlock" ]; then
+		brctl addif $bridge $veth
+		ifconfig $veth 0.0.0.0 up
+	fi
+
+	i=$((i+1))
+done

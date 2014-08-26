@@ -300,14 +300,14 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	return 1;
 }
 
-static int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state)
+int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state)
 {
 	handler->state = state;
 	lxc_monitor_send_state(name, state, handler->lxcpath);
 	return 0;
 }
 
-static int lxc_poll(const char *name, struct lxc_handler *handler)
+int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int sigfd = handler->sigfd;
 	int pid = handler->pid;
@@ -485,7 +485,7 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 	free(handler);
 }
 
-static void lxc_abort(const char *name, struct lxc_handler *handler)
+void lxc_abort(const char *name, struct lxc_handler *handler)
 {
 	int ret, status;
 

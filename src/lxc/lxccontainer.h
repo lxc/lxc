@@ -760,6 +760,31 @@ struct lxc_container {
 	 * \return \c true on success, else \c false.
 	 */
 	bool (*remove_device_node)(struct lxc_container *c, const char *src_path, const char *dest_path);
+
+	/*!
+	 * \brief Checkpoint a container.
+	 *
+	 * \param c Container.
+	 * \param directory The directory to dump the container to.
+	 * \param stop Whether or not to stop the container after checkpointing.
+	 * \param verbose Enable criu's verbose logs.
+	 *
+	 * \return \c true on success, else \c false.
+	 * present at compile time).
+	 */
+	bool (*checkpoint)(struct lxc_container *c, char *directory, bool stop, bool verbose);
+
+	/*!
+	 * \brief Restore a container from a checkpoint.
+	 *
+	 * \param c Container.
+	 * \param directory The directory to restore the container from.
+	 * \param verbose Enable criu's verbose logs.
+	 *
+	 * \return \c true on success, else \c false.
+	 *
+	 */
+	bool (*restore)(struct lxc_container *c, char *directory, bool verbose);
 };
 
 /*!

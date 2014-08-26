@@ -51,7 +51,7 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 bin_SCRIPTS = lxc-test-autostart
 
 if DISTRO_UBUNTU
-bin_SCRIPTS += lxc-test-usernic lxc-test-ubuntu lxc-test-unpriv
+bin_SCRIPTS += lxc-test-usernic lxc-test-ubuntu lxc-test-unpriv lxc-test-checkpoint
 endif
 
 endif

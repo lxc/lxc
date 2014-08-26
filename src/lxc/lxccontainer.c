@@ -55,6 +55,7 @@
 #include "monitor.h"
 #include "namespace.h"
 #include "lxclock.h"
+#include "sync.h"
 
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
@@ -3495,6 +3496,469 @@ static bool lxcapi_remove_device_node(struct lxc_container *c, const char *src_p
 	return add_remove_device_node(c, src_path, dest_path, false);
 }
 
+struct criu_opts {
+	/* The type of criu invocation, one of "dump" or "restore" */
+	char *action;
+
+	/* The directory to pass to criu */
+	char *directory;
+
+	/* The container to dump */
+	struct lxc_container *c;
+
+	/* Enable criu verbose mode? */
+	bool verbose;
+
+	/* dump: stop the container or not after dumping? */
+	bool stop;
+
+	/* restore: the file to write the init process' pid into */
+	char *pidfile;
+};
+
+/*
+ * @out must be 128 bytes long
+ */
+static int read_criu_file(const char *directory, const char *file, int netnr, char *out)
+{
+	char path[PATH_MAX];
+	int ret;
+	FILE *f;
+
+	ret = snprintf(path, PATH_MAX,  "%s/%s%d", directory, file, netnr);
+	if (ret < 0 || ret >= PATH_MAX) {
+		ERROR("%s: path too long", __func__);
+		return -1;
+	}
+
+	f = fopen(path, "r");
+	if (!f)
+		return -1;
+
+	ret = fscanf(f, "%127s", out);
+	fclose(f);
+	if (ret <= 0)
+		return -1;
+
+	return 0;
+}
+
+static void exec_criu(struct criu_opts *opts)
+{
+	char **argv, log[PATH_MAX];
+	int static_args = 13, argc = 0, i, ret;
+
+	/* The command line always looks like:
+	 * criu $(action) --tcp-established --file-locks --link-remap --manage-cgroups \
+	 *     --action-script foo.sh -D $(directory) -o $(directory)/$(action).log
+	 * +1 for final NULL */
+
+	if (strcmp(opts->action, "dump") == 0) {
+		/* -t pid */
+		static_args += 2;
+
+		/* --leave-running */
+		if (!opts->stop)
+			static_args++;
+	} else if (strcmp(opts->action, "restore") == 0) {
+		/* --root $(lxc_mount_point) --restore-detached --pidfile $foo */
+		static_args += 5;
+	} else {
+		return;
+	}
+
+	if (opts->verbose)
+		static_args++;
+
+	ret = snprintf(log, PATH_MAX, "%s/%s.log", opts->directory, opts->action);
+	if (ret < 0 || ret >= PATH_MAX) {
+		ERROR("logfile name too long\n");
+		return;
+	}
+
+	argv = malloc(static_args * sizeof(*argv));
+	if (!argv)
+		return;
+
+	memset(argv, 0, static_args * sizeof(*argv));
+
+#define DECLARE_ARG(arg) 			\
+	do {					\
+		argv[argc++] = strdup(arg);	\
+		if (!argv[argc-1])		\
+			goto err;		\
+	} while (0)
+
+	argv[argc++] = on_path("criu", NULL);
+	if (!argv[argc-1]) {
+		ERROR("Couldn't find criu binary\n");
+		goto err;
+	}
+
+	DECLARE_ARG(opts->action);
+	DECLARE_ARG("--tcp-established");
+	DECLARE_ARG("--file-locks");
+	DECLARE_ARG("--link-remap");
+	DECLARE_ARG("--manage-cgroups");
+	DECLARE_ARG("--action-script");
+	DECLARE_ARG(LIBEXECDIR "/lxc/lxc-restore-net");
+	DECLARE_ARG("-D");
+	DECLARE_ARG(opts->directory);
+	DECLARE_ARG("-o");
+	DECLARE_ARG(log);
+
+	if (opts->verbose)
+		DECLARE_ARG("-vvvvvv");
+
+	if (strcmp(opts->action, "dump") == 0) {
+		char pid[32];
+
+		if (sprintf(pid, "%d", lxcapi_init_pid(opts->c)) < 0)
+			goto err;
+
+		DECLARE_ARG("-t");
+		DECLARE_ARG(pid);
+		if (!opts->stop)
+			DECLARE_ARG("--leave-running");
+	} else if (strcmp(opts->action, "restore") == 0) {
+		int netnr = 0;
+		struct lxc_list *it;
+
+		DECLARE_ARG("--root");
+		DECLARE_ARG(opts->c->lxc_conf->rootfs.mount);
+		DECLARE_ARG("--restore-detached");
+		DECLARE_ARG("--pidfile");
+		DECLARE_ARG(opts->pidfile);
+
+		lxc_list_for_each(it, &opts->c->lxc_conf->network) {
+			char eth[128], veth[128], buf[257];
+			void *m;
+
+			if (read_criu_file(opts->directory, "veth", netnr, veth))
+				goto err;
+			if (read_criu_file(opts->directory, "eth", netnr, eth))
+				goto err;
+			ret = snprintf(buf, 257, "%s=%s", eth, veth);
+			if (ret < 0 || ret >= 257)
+				goto err;
+
+			/* final NULL and --veth-pair eth0:vethASDF */
+			m = realloc(argv, (argc + 1 + 2) * sizeof(*argv));
+			if (!m)
+				goto err;
+			argv = m;
+
+			DECLARE_ARG("--veth-pair");
+			DECLARE_ARG(buf);
+			argv[argc] = NULL;
+
+			netnr++;
+		}
+	}
+
+#undef DECLARE_ARG
+
+	execv(argv[0], argv);
+err:
+	for (i = 0; argv[i]; i++)
+		free(argv[i]);
+	free(argv);
+}
+
+/* Check and make sure the container has a configuration that we know CRIU can
+ * dump. */
+static bool criu_ok(struct lxc_container *c)
+{
+	struct lxc_list *it;
+	bool found_deny_rule = false;
+
+	if (geteuid()) {
+		ERROR("Must be root to checkpoint\n");
+		return false;
+	}
+
+	/* We only know how to restore containers with veth networks. */
+	lxc_list_for_each(it, &c->lxc_conf->network) {
+		struct lxc_netdev *n = it->elem;
+		if (n->type != LXC_NET_VETH && n->type != LXC_NET_NONE) {
+			ERROR("Found network that is not VETH or NONE\n");
+			return false;
+		}
+	}
+
+	// These requirements come from http://criu.org/LXC
+	if (c->lxc_conf->console.path &&
+			strcmp(c->lxc_conf->console.path, "none") != 0) {
+		ERROR("lxc.console must be none\n");
+		return false;
+	}
+
+	if (c->lxc_conf->tty != 0) {
+		ERROR("lxc.tty must be 0\n");
+		return false;
+	}
+
+	lxc_list_for_each(it, &c->lxc_conf->cgroup) {
+		struct lxc_cgroup *cg = it->elem;
+		if (strcmp(cg->subsystem, "devices.deny") == 0 &&
+				strcmp(cg->value, "c 5:1 rwm") == 0) {
+
+			found_deny_rule = true;
+			break;
+		}
+	}
+
+	if (!found_deny_rule) {
+		ERROR("couldn't find devices.deny = c 5:1 rwm");
+		return false;
+	}
+
+	return true;
+}
+
+static bool lxcapi_checkpoint(struct lxc_container *c, char *directory, bool stop, bool verbose)
+{
+	int netnr, status;
+	struct lxc_list *it;
+	bool error = false;
+	pid_t pid;
+
+	if (!criu_ok(c))
+		return false;
+
+	if (mkdir(directory, 0700) < 0 && errno != EEXIST)
+		return false;
+
+	netnr = 0;
+	lxc_list_for_each(it, &c->lxc_conf->network) {
+		char *veth = NULL, *bridge = NULL, veth_path[PATH_MAX], eth[128];
+		struct lxc_netdev *n = it->elem;
+		int pret;
+
+		pret = snprintf(veth_path, PATH_MAX, "lxc.network.%d.veth.pair", netnr);
+		if (pret < 0 || pret >= PATH_MAX) {
+			error = true;
+			goto out;
+		}
+
+		veth = lxcapi_get_running_config_item(c, veth_path);
+		if (!veth) {
+			/* criu_ok() checks that all interfaces are
+			 * LXC_NET{VETH,NONE}, and VETHs should have this
+			 * config */
+			assert(n->type == LXC_NET_NONE);
+			break;
+		}
+
+		pret = snprintf(veth_path, PATH_MAX, "lxc.network.%d.link", netnr);
+		if (pret < 0 || pret >= PATH_MAX) {
+			error = true;
+			goto out;
+		}
+
+		bridge = lxcapi_get_running_config_item(c, veth_path);
+		if (!bridge) {
+			error = true;
+			goto out;
+		}
+
+		pret = snprintf(veth_path, PATH_MAX, "%s/veth%d", directory, netnr);
+		if (pret < 0 || pret >= PATH_MAX || print_to_file(veth_path, veth) < 0) {
+			error = true;
+			goto out;
+		}
+
+		pret = snprintf(veth_path, PATH_MAX, "%s/bridge%d", directory, netnr);
+		if (pret < 0 || pret >= PATH_MAX || print_to_file(veth_path, bridge) < 0) {
+			error = true;
+			goto out;
+		}
+
+		if (n->name) {
+			if (strlen(n->name) >= 128) {
+				error = true;
+				goto out;
+			}
+			strncpy(eth, n->name, 128);
+		} else
+			sprintf(eth, "eth%d", netnr);
+
+		pret = snprintf(veth_path, PATH_MAX, "%s/eth%d", directory, netnr);
+		if (pret < 0 || pret >= PATH_MAX || print_to_file(veth_path, eth) < 0)
+			error = true;
+
+out:
+		free(veth);
+		free(bridge);
+		if (error)
+			return false;
+	}
+
+	pid = fork();
+	if (pid < 0)
+		return false;
+
+	if (pid == 0) {
+		struct criu_opts os;
+
+		os.action = "dump";
+		os.directory = directory;
+		os.c = c;
+		os.stop = stop;
+		os.verbose = verbose;
+
+		/* exec_criu() returning is an error */
+		exec_criu(&os);
+		exit(1);
+	} else {
+		pid_t w = waitpid(pid, &status, 0);
+		if (w == -1) {
+			perror("waitpid");
+			return false;
+		}
+
+		if (WIFEXITED(status)) {
+			return !WEXITSTATUS(status);
+		}
+
+		return false;
+	}
+}
+
+static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbose)
+{
+	pid_t pid;
+	struct lxc_list *it;
+	struct lxc_rootfs *rootfs;
+	char pidfile[L_tmpnam];
+
+	if (!criu_ok(c))
+		return false;
+
+	if (geteuid()) {
+		ERROR("Must be root to restore\n");
+		return false;
+	}
+
+	if (!tmpnam(pidfile))
+		return false;
+
+	struct lxc_handler *handler;
+
+	handler = lxc_init(c->name, c->lxc_conf, c->config_path);
+	if (!handler)
+		return false;
+
+	pid = fork();
+	if (pid < 0)
+		return false;
+
+	if (pid == 0) {
+		struct criu_opts os;
+
+		if (unshare(CLONE_NEWNS))
+			return false;
+
+		/* CRIU needs the lxc root bind mounted so that it is the root of some
+		 * mount. */
+		rootfs = &c->lxc_conf->rootfs;
+
+		if (rootfs_is_blockdev(c->lxc_conf)) {
+			if (do_rootfs_setup(c->lxc_conf, c->name, c->config_path) < 0)
+				return false;
+		}
+		else {
+			if (mkdir(rootfs->mount, 0755) < 0 && errno != EEXIST)
+				return false;
+
+			if (mount(rootfs->path, rootfs->mount, NULL, MS_BIND, NULL) < 0) {
+				rmdir(rootfs->mount);
+				return false;
+			}
+		}
+
+		os.action = "restore";
+		os.directory = directory;
+		os.c = c;
+		os.pidfile = pidfile;
+		os.verbose = verbose;
+
+		/* exec_criu() returning is an error */
+		exec_criu(&os);
+		umount(rootfs->mount);
+		rmdir(rootfs->mount);
+		exit(1);
+	} else {
+		int status;
+		pid_t w = waitpid(pid, &status, 0);
+
+		if (w == -1) {
+			perror("waitpid");
+			return false;
+		}
+
+		if (WIFEXITED(status)) {
+			if (WEXITSTATUS(status)) {
+				return false;
+			}
+			else {
+				int netnr = 0, ret;
+				bool error = false;
+				FILE *f = fopen(pidfile, "r");
+				if (!f) {
+					perror("reading pidfile");
+					ERROR("couldn't read restore's init pidfile %s\n", pidfile);
+					return false;
+				}
+
+				ret = fscanf(f, "%d", (int*) &handler->pid);
+				fclose(f);
+				if (ret != 1) {
+					ERROR("reading restore pid failed");
+					return false;
+				}
+
+				if (container_mem_lock(c))
+					return false;
+
+				lxc_list_for_each(it, &c->lxc_conf->network) {
+					char eth[128], veth[128];
+					struct lxc_netdev *netdev = it->elem;
+
+					if (read_criu_file(directory, "veth", netnr, veth)) {
+						error = true;
+						goto out_unlock;
+					}
+					if (read_criu_file(directory, "eth", netnr, eth)) {
+						error = true;
+						goto out_unlock;
+					}
+					netdev->priv.veth_attr.pair = strdup(veth);
+					if (!netdev->priv.veth_attr.pair) {
+						error = true;
+						goto out_unlock;
+					}
+					netnr++;
+				}
+out_unlock:
+				container_mem_unlock(c);
+				if (error)
+					return false;
+
+				if (lxc_set_state(c->name, handler, RUNNING))
+					return false;
+			}
+		}
+
+		if (lxc_poll(c->name, handler)) {
+			lxc_abort(c->name, handler);
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static int lxcapi_attach_run_waitl(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char *arg, ...)
 {
 	va_list ap;
@@ -3627,6 +4091,8 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->may_control = lxcapi_may_control;
 	c->add_device_node = lxcapi_add_device_node;
 	c->remove_device_node = lxcapi_remove_device_node;
+	c->checkpoint = lxcapi_checkpoint;
+	c->restore = lxcapi_restore;
 
 	/* we'll allow the caller to update these later */
 	if (lxc_log_init(NULL, "none", NULL, "lxc_container", 0, c->config_path)) {

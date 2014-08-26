@@ -1,0 +1,46 @@
+#!/bin/sh
+
+# Do an end to end checkpoint and restore with criu.
+
+set -e
+
+FAIL() {
+	echo -n "Failed " >&2
+	echo "$*" >&2
+	exit 1
+}
+
+if [ "$(id -u)" != "0" ]; then
+	echo "ERROR: Must run as root."
+	exit 1
+fi
+
+if [ "$(criu --version | head -n1 | cut -d' ' -f 2)" != "1.3-rc2" ]; then
+	echo "SKIP: skipping test because no (or wrong) criu installed."
+	exit 0
+fi
+
+name=lxc-test-criu
+lxc-create -t ubuntu -n $name || FAIL "creating container"
+
+cat >> "$(lxc-config lxc.lxcpath)/$name/config" <<EOF
+# hax for criu
+lxc.console = none
+lxc.tty = 0
+lxc.cgroup.devices.deny = c 5:1 rwm
+EOF
+
+lxc-start -n $name -d || FAIL "starting container"
+lxc-wait -n $name -s RUNNING || FAIL "waiting for container to run"
+
+# Let the container boot and get into a steady state.
+sleep 5s
+
+# The first time this usually fails because CRIU cannot checkpoint things with
+# data on a socket.
+lxc-checkpoint -n $name -v -s -D /tmp/checkpoint || FAIL "failed checkpointing"
+lxc-wait -n u1 -s STOPPED
+lxc-checkpoint -n $name -v -r -D /tmp/checkpoint || FAIL "failed restoring"
+
+lxc-stop -n $name -t 1
+lxc-destroy -f -n $name

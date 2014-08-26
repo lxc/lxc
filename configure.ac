@@ -644,6 +644,7 @@ AC_CONFIG_FILES([
 	doc/lxc-autostart.sgml
 	doc/lxc-cgroup.sgml
 	doc/lxc-checkconfig.sgml
+	doc/lxc-checkpoint.sgml
 	doc/lxc-clone.sgml
 	doc/lxc-config.sgml
 	doc/lxc-console.sgml
