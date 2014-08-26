@@ -51,7 +51,11 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 bin_SCRIPTS = lxc-test-autostart
 
 if DISTRO_UBUNTU
-bin_SCRIPTS += lxc-test-usernic lxc-test-ubuntu lxc-test-unpriv lxc-test-checkpoint
+bin_SCRIPTS += \
+	lxc-test-checkpoint-restore \
+	lxc-test-ubuntu \
+	lxc-test-unpriv \
+	lxc-test-usernic
 endif
 
 endif
@@ -71,6 +75,7 @@ EXTRA_DIST = \
 	locktests.c \
 	lxcpath.c \
 	lxc-test-autostart \
+	lxc-test-checkpoint-restore \
 	lxc-test-ubuntu \
 	lxc-test-unpriv \
 	lxc-test-usernic \
