@@ -166,7 +166,8 @@ EXTRA_DIST = \
 	lxc-device \
 	lxc-ls \
 	lxc-top \
-	lxc.net
+	lxc.net \
+	lxc-restore-net
 
 if ENABLE_PYTHON
 bin_SCRIPTS += lxc-device
