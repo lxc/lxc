@@ -12,6 +12,7 @@ man_MANS = \
 	lxc-autostart.1 \
 	lxc-cgroup.1 \
 	lxc-checkconfig.1 \
+	lxc-checkpoint.1 \
 	lxc-clone.1 \
 	lxc-config.1 \
 	lxc-console.1 \
