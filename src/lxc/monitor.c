@@ -131,6 +131,16 @@ void lxc_monitor_send_state(const char *name, lxc_state_t state, const char *lxc
 	lxc_monitor_fifo_send(&msg, lxcpath);
 }
 
+void lxc_monitor_send_exit_code(const char *name, int exit_code, const char *lxcpath)
+{
+	struct lxc_msg msg = { .type = lxc_msg_exit_code,
+			       .value = exit_code };
+	strncpy(msg.name, name, sizeof(msg.name));
+	msg.name[sizeof(msg.name) - 1] = 0;
+
+	lxc_monitor_fifo_send(&msg, lxcpath);
+}
+
 
 /* routines used by monitor subscribers (lxc-monitor) */
 int lxc_monitor_close(int fd)

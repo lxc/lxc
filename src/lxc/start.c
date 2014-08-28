@@ -1139,6 +1139,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 		handler->pinfd = -1;
 	}
 
+	lxc_monitor_send_exit_code(name, status, handler->lxcpath);
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
 	lxc_delete_network(handler);
