@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <regex.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <errno.h>
 
 #include "lxc.h"
@@ -171,6 +172,10 @@ int main(int argc, char *argv[])
 		case lxc_msg_state:
 			printf("'%s' changed state to [%s]\n",
 			       msg.name, lxc_state2str(msg.value));
+			break;
+		case lxc_msg_exit_code:
+			printf("'%s' exited with status [%d]\n",
+			       msg.name, WEXITSTATUS(msg.value));
 			break;
 		default:
 			/* ignore garbage */

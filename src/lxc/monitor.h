@@ -32,6 +32,7 @@
 typedef enum {
 	lxc_msg_state,
 	lxc_msg_priority,
+	lxc_msg_exit_code,
 } lxc_msg_type_t;
 
 struct lxc_msg {
@@ -45,6 +46,8 @@ extern int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr);
 extern int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path,
 				 size_t fifo_path_sz, int do_mkdirp);
 extern void lxc_monitor_send_state(const char *name, lxc_state_t state,
+			    const char *lxcpath);
+extern void lxc_monitor_send_exit_code(const char *name, int exit_code,
 			    const char *lxcpath);
 extern int lxc_monitord_spawn(const char *lxcpath);
 
