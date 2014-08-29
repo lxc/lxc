@@ -261,18 +261,15 @@ static bool lxc_cgmanager_escape(void)
 }
 
 struct chown_data {
-	const char *controller;
 	const char *cgroup_path;
 	uid_t origuid;
 };
 
 static int do_chown_cgroup(const char *controller, const char *cgroup_path,
-		uid_t origuid)
+		uid_t newuid)
 {
 	int sv[2] = {-1, -1}, optval = 1, ret = -1;
 	char buf[1];
-
-	uid_t caller_nsuid = get_ns_uid(origuid);
 
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sv) < 0) {
 		SYSERROR("Error creating socketpair");
@@ -321,7 +318,7 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path,
 		ERROR("Error getting reply from server over socketpair");
 		goto out;
 	}
-	if (send_creds(sv[0], getpid(), caller_nsuid, 0)) {
+	if (send_creds(sv[0], getpid(), newuid, 0)) {
 		SYSERROR("%s: Error sending pid over SCM_CREDENTIAL", __func__);
 		goto out;
 	}
@@ -343,6 +340,8 @@ out:
 static int chown_cgroup_wrapper(void *data)
 {
 	struct chown_data *arg = data;
+	int i;
+	uid_t destuid;
 
 	if (setresgid(0,0,0) < 0)
 		SYSERROR("Failed to setgid to 0");
@@ -350,7 +349,21 @@ static int chown_cgroup_wrapper(void *data)
 		SYSERROR("Failed to setuid to 0");
 	if (setgroups(0, NULL) < 0)
 		SYSERROR("Failed to clear groups");
-	return do_chown_cgroup(arg->controller, arg->cgroup_path, arg->origuid);
+	cgm_dbus_disconnect();
+	if (!cgm_dbus_connect()) {
+		ERROR("Error connecting to cgroup manager");
+		return -1;
+	}
+	destuid = get_ns_uid(arg->origuid);
+	for (i = 0; i < nr_subsystems; i++) {
+		if (do_chown_cgroup(subsystems[i], arg->cgroup_path, destuid) < 0) {
+			ERROR("Failed to chown %s:%s to container root",
+				subsystems[i], arg->cgroup_path);
+			return -1;
+		}
+	}
+	cgm_dbus_disconnect();
+	return 0;
 }
 
 /* Internal helper.  Must be called with the cgmanager dbus socket open */
@@ -369,31 +382,39 @@ static bool lxc_cgmanager_chmod(const char *controller,
 }
 
 /* Internal helper.  Must be called with the cgmanager dbus socket open */
-static bool chown_cgroup(const char *controller, const char *cgroup_path,
-			struct lxc_conf *conf)
+static bool chown_cgroup(const char *cgroup_path, struct lxc_conf *conf)
 {
 	struct chown_data data;
+	int i;
 
 	if (lxc_list_empty(&conf->id_map))
 		/* If there's no mapping then we don't need to chown */
 		return true;
 
-	data.controller = controller;
 	data.cgroup_path = cgroup_path;
 	data.origuid = geteuid();
 
+	/* Unpriv users can't chown it themselves, so chown from
+	 * a child namespace mapping both our own and the target uid
+	 */
 	if (userns_exec_1(conf, chown_cgroup_wrapper, &data) < 0) {
 		ERROR("Error requesting cgroup chown in new namespace");
 		return false;
 	}
 
-	/* now chmod 775 the directory else the container cannot create cgroups */
-	if (!lxc_cgmanager_chmod(controller, cgroup_path, "", 0775))
-		return false;
-	if (!lxc_cgmanager_chmod(controller, cgroup_path, "tasks", 0775))
-		return false;
-	if (!lxc_cgmanager_chmod(controller, cgroup_path, "cgroup.procs", 0775))
-		return false;
+	/*
+	 * Now chmod 775 the directory else the container cannot create cgroups.
+	 * This can't be done in the child namespace because it only group-owns
+	 * the cgroup
+	 */
+	for (i = 0; i < nr_subsystems; i++) {
+		if (!lxc_cgmanager_chmod(subsystems[i], cgroup_path, "", 0775))
+			return false;
+		if (!lxc_cgmanager_chmod(subsystems[i], cgroup_path, "tasks", 0775))
+			return false;
+		if (!lxc_cgmanager_chmod(subsystems[i], cgroup_path, "cgroup.procs", 0775))
+			return false;
+	}
 
 	return true;
 }
@@ -1134,7 +1155,6 @@ out:
 static bool cgm_chown(void *hdata, struct lxc_conf *conf)
 {
 	struct cgm_data *d = hdata;
-	int i;
 
 	if (!d || !d->cgroup_path)
 		return false;
@@ -1142,11 +1162,8 @@ static bool cgm_chown(void *hdata, struct lxc_conf *conf)
 		ERROR("Error connecting to cgroup manager");
 		return false;
 	}
-	for (i = 0; i < nr_subsystems; i++) {
-		if (!chown_cgroup(subsystems[i], d->cgroup_path, conf))
-			WARN("Failed to chown %s:%s to container root",
-				subsystems[i], d->cgroup_path);
-	}
+	if (!chown_cgroup(d->cgroup_path, conf))
+		WARN("Failed to chown %s to container root", d->cgroup_path);
 	cgm_dbus_disconnect();
 	return true;
 }
