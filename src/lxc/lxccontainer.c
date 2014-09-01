@@ -415,8 +415,6 @@ static bool load_config_locked(struct lxc_container *c, const char *fname)
 		return false;
 	if (lxc_config_read(fname, c->lxc_conf, false) != 0)
 		return false;
-	if (!clone_update_unexp_network(c->lxc_conf))
-		return false;
 	return true;
 }
 
@@ -2434,7 +2432,8 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 		}
 	}
 
-	if (!clone_update_unexp_hooks(c->lxc_conf)) {
+	if (!clone_update_unexp_hooks(c->lxc_conf, oldc->config_path,
+			c->config_path, oldc->name, c->name)) {
 		ERROR("Error saving new hooks in clone");
 		return -1;
 	}
@@ -2442,33 +2441,6 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 	return 0;
 }
 
-static void new_hwaddr(char *hwaddr)
-{
-	FILE *f;
-	f = fopen("/dev/urandom", "r");
-	if (f) {
-		unsigned int seed;
-		int ret = fread(&seed, sizeof(seed), 1, f);
-		if (ret != 1)
-			seed = time(NULL);
-		fclose(f);
-		srand(seed);
-	} else
-		srand(time(NULL));
-	snprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x",
-			rand() % 255, rand() % 255, rand() % 255);
-}
-
-static void network_new_hwaddrs(struct lxc_container *c)
-{
-	struct lxc_list *it;
-
-	lxc_list_for_each(it, &c->lxc_conf->network) {
-		struct lxc_netdev *n = it->elem;
-		if (n->hwaddr)
-			new_hwaddr(n->hwaddr);
-	}
-}
 
 static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 {
@@ -2844,9 +2816,8 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 
 	// update macaddrs
 	if (!(flags & LXC_CLONE_KEEPMACADDR)) {
-		network_new_hwaddrs(c2);
-		if (!clone_update_unexp_network(c2->lxc_conf)) {
-			ERROR("Error updating network for clone");
+		if (!network_new_hwaddrs(c2->lxc_conf)) {
+			ERROR("Error updating mac addresses");
 			goto out;
 		}
 	}

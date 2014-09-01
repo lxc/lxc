@@ -1,0 +1,139 @@
+#!/bin/bash
+
+# lxc: linux Container library
+
+# Authors:
+# Serge Hallyn <serge.hallyn@ubuntu.com>
+#
+# This is a test script for the lxc-user-nic program
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+set -e
+
+s=`mktemp -d /tmp/lxctest-XXXXXX`
+
+DONE=0
+
+verify_unchanged_number() {
+	key=$1
+	desc=$2
+	n1=`grep ^$key $CONTAINER_PATH/config | wc -l`
+	n2=`grep ^$key $CONTAINER2_PATH/config | wc -l`
+	if [ $n1 -ne $n2 ]; then
+		echo "Test $testnum failed"
+		echo "unequal number of $desc"
+		echo "Original has $n1, clone has $n2"
+		false
+	fi
+}
+
+cleanup() {
+	lxc-destroy -n lxctestb || true
+	lxc-destroy -n lxctestb2 || true
+	rm -rf $s
+	[ $DONE -eq 1 ] && echo "PASS" || echo "FAIL"
+}
+
+verify_numnics() {
+	verify_unchanged_number lxc.network.type "network defs"
+}
+
+verify_hwaddr() {
+	verify_unchanged_number lxc.network.hwaddr "hwaddr defs"
+	grep ^lxc.network.hwaddr $CONTAINER_PATH/config | while read line; do
+		addr=`echo $line | awk -F= { print $2 }`
+		echo "looking for $addr in $CONTAINER2_PATH/config"
+		if grep -q $addr $CONTAINER2_PATH/config; then
+			echo "Test $testnum failed"
+			echo "hwaddr $addr was not changed"
+			false
+		fi
+	done
+}
+
+verify_hooks() {
+	verify_unchanged_number lxc.hook "hooks"
+	grep ^lxc.hook $CONTAINER_PATH/config | while read line; do
+		nline=${line/$CONTAINER_PATH/$CONTAINER2_PATH}
+		if ! grep -q "$nline" $CONTAINER2_PATH/config; then
+			echo "Test $testnum failed"
+			echo "Failed to find $nline in:"
+			cat $CONTAINER2_PATH/config
+		fi
+	done
+}
+
+trap cleanup EXIT
+
+# Simple nic
+cat > $s/1.conf << EOF
+lxc.network.type = veth
+lxc.network.link = lxcbr0
+EOF
+
+# Simple nic with hwaddr; verify hwaddr changed
+cat > $s/2.conf << EOF
+lxc.network.type = veth
+lxc.network.link = lxcbr0
+EOF
+
+# No nics, but nic from include
+cat > $s/1.include << EOF
+lxc.network.type = veth
+lxc.network.link = lxcbr0
+lxc.hook.start = /bin/bash
+EOF
+cat > $s/3.conf << EOF
+lxc.include = $s/1.include
+EOF
+
+# No nics, one clone hook in /bin
+cat > $s/4.conf << EOF
+lxc.hook.start = /bin/bash
+EOF
+
+# Figure out container dirname
+# We need this in 5.conf
+lxc-destroy -n lxctestb || true
+lxc-create -t busybox -n lxctestb
+CONTAINER_PATH=$(dirname $(lxc-info -n lxctestb -c lxc.rootfs -H))
+lxc-destroy -n lxctestb
+
+# No nics, one clone hook in $container
+cat > $s/5.conf << EOF
+lxc.hook.start = $CONTAINER_PATH/x1
+EOF
+
+CONTAINER2_PATH="${CONTAINER_PATH}2"
+
+testnum=1
+for f in $s/*.conf; do
+	echo "Test $testnum starting ($f)"
+	lxc-create -t busybox -f $f -n lxctestb
+	touch $CONTAINER_PATH/x1
+	lxc-clone -s -o lxctestb -n lxctestb2
+	# verify that # nics did not change
+	verify_numnics
+	# verify hwaddr, if any changed
+	verify_hwaddr
+	# verify hooks are correct
+	verify_hooks
+	lxc-destroy -n lxctestb2 || true
+	lxc-destroy -n lxctestb || true
+	testnum=$((testnum+1))
+done
+
+DONE=1

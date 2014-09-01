@@ -48,7 +48,7 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove \
 	lxc-test-apparmor
 
-bin_SCRIPTS = lxc-test-autostart
+bin_SCRIPTS = lxc-test-autostart lxc-test-cloneconfig
 
 if DISTRO_UBUNTU
 bin_SCRIPTS += \
@@ -76,6 +76,7 @@ EXTRA_DIST = \
 	lxcpath.c \
 	lxc-test-autostart \
 	lxc-test-checkpoint-restore \
+	lxc-test-cloneconfig \
 	lxc-test-ubuntu \
 	lxc-test-unpriv \
 	lxc-test-usernic \
