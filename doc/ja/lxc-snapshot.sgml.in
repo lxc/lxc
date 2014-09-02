@@ -60,6 +60,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <cmdsynopsis>
       <command>lxc-snapshot</command>
       <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="req">-d, -destroy <replaceable>snapshot-name</replaceable></arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-snapshot</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
       <arg choice="req">-L, --list </arg>
       <arg choice="opt">-C, --showcomments </arg>
     </cmdsynopsis>
@@ -105,6 +110,16 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               -->
               新しく作製するスナップショットに <replaceable>comment_file</replaceable> ファイル内のコメントを関連付ける。
             </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-d,--destroy snapshot-name</option> </term>
+	   <listitem>
+             <!--
+	    <para> Destroy the named snapshot.</para>
+            -->
+             指定した名前のスナップショットを破壊します。
 	   </listitem>
 	  </varlistentry>
 

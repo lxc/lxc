@@ -55,6 +55,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <cmdsynopsis>
       <command>lxc-snapshot</command>
       <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="req">-d, -destroy <replaceable>snapshot-name</replaceable></arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-snapshot</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
       <arg choice="req">-L, --list </arg>
       <arg choice="opt">-C, --showcomments </arg>
     </cmdsynopsis>
@@ -88,6 +93,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    <term> <option>-c,--comment <replaceable>comment_file</replaceable></option> </term>
 	   <listitem>
 	    <para> Associate the comment in <replaceable>comment_file</replaceable> with the newly created snapshot.</para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-d,--destroy snapshot-name</option> </term>
+	   <listitem>
+	    <para> Destroy the named snapshot.</para>
 	   </listitem>
 	  </varlistentry>
 
