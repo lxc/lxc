@@ -3830,7 +3830,7 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 		struct criu_opts os;
 
 		if (unshare(CLONE_NEWNS))
-			return false;
+			exit(1);
 
 		/* CRIU needs the lxc root bind mounted so that it is the root of some
 		 * mount. */
@@ -3838,15 +3838,15 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 
 		if (rootfs_is_blockdev(c->lxc_conf)) {
 			if (do_rootfs_setup(c->lxc_conf, c->name, c->config_path) < 0)
-				return false;
+				exit(1);
 		}
 		else {
 			if (mkdir(rootfs->mount, 0755) < 0 && errno != EEXIST)
-				return false;
+				exit(1);
 
 			if (mount(rootfs->path, rootfs->mount, NULL, MS_BIND, NULL) < 0) {
 				rmdir(rootfs->mount);
-				return false;
+				exit(1);
 			}
 		}
 
