@@ -460,7 +460,7 @@ out_free:
 	return NULL;
 }
 
-static void lxc_fini(const char *name, struct lxc_handler *handler)
+void lxc_fini(const char *name, struct lxc_handler *handler)
 {
 	/* The STOPPING state is there for future cleanup code
 	 * which can take awhile

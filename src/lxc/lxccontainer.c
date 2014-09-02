@@ -3816,12 +3816,6 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 	if (!tmpnam(pidfile))
 		return false;
 
-	struct lxc_handler *handler;
-
-	handler = lxc_init(c->name, c->lxc_conf, c->config_path);
-	if (!handler)
-		return false;
-
 	pid = fork();
 	if (pid < 0)
 		return false;
@@ -3863,6 +3857,9 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 		exit(1);
 	} else {
 		int status;
+		struct lxc_handler *handler;
+		bool error = false;
+
 		pid_t w = waitpid(pid, &status, 0);
 
 		if (w == -1) {
@@ -3870,29 +3867,37 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 			return false;
 		}
 
+		handler = lxc_init(c->name, c->lxc_conf, c->config_path);
+		if (!handler)
+			return false;
+
 		if (WIFEXITED(status)) {
 			if (WEXITSTATUS(status)) {
-				return false;
+				error = true;
+				goto out_fini_handler;
 			}
 			else {
 				int netnr = 0, ret;
-				bool error = false;
 				FILE *f = fopen(pidfile, "r");
 				if (!f) {
+					error = true;
 					perror("reading pidfile");
 					ERROR("couldn't read restore's init pidfile %s\n", pidfile);
-					return false;
+					goto out_fini_handler;
 				}
 
 				ret = fscanf(f, "%d", (int*) &handler->pid);
 				fclose(f);
 				if (ret != 1) {
+					error = true;
 					ERROR("reading restore pid failed");
-					return false;
+					goto out_fini_handler;
 				}
 
-				if (container_mem_lock(c))
-					return false;
+				if (container_mem_lock(c)) {
+					error = true;
+					goto out_fini_handler;
+				}
 
 				lxc_list_for_each(it, &c->lxc_conf->network) {
 					char eth[128], veth[128];
@@ -3916,10 +3921,12 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 out_unlock:
 				container_mem_unlock(c);
 				if (error)
-					return false;
+					goto out_fini_handler;
 
-				if (lxc_set_state(c->name, handler, RUNNING))
-					return false;
+				if (lxc_set_state(c->name, handler, RUNNING)) {
+					error = true;
+					goto out_fini_handler;
+				}
 			}
 		}
 
@@ -3927,9 +3934,11 @@ out_unlock:
 			lxc_abort(c->name, handler);
 			return false;
 		}
-	}
 
-	return true;
+out_fini_handler:
+		lxc_fini(c->name, handler);
+		return !error;
+	}
 }
 
 static int lxcapi_attach_run_waitl(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char *arg, ...)
