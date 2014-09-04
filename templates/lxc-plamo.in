@@ -123,14 +123,13 @@ install_plamo() {
         return 1
       fi
     fi
-    if [ ! -x /sbin/installpkg  ] ; then
-      echo "'installpkg' command is missing."
-      echo "Installing 'installpkg' command into $dlcache/sbin..."
-      ( cd $dlcache ; tar xpJf hdsetup-*.txz ; rm -rf tmp usr var )
-      sed -i "/ldconfig/!s@/sbin@$dlcache&@g" $dlcache/sbin/installpkg*
-      sed -i "/^TAR=/s@tar@`which tar`@g" $dlcache/sbin/installpkg2
-      PATH=$dlcache/sbin:$PATH
-    fi
+    # install "installpkg" command temporarily with static linked tar
+    # command into the lxc cache directory to keep the original uid/
+    # gid of files/directories.
+    echo "Installing 'installpkg' command into $dlcache/sbin..."
+    ( cd $dlcache ; tar xpJf hdsetup-*.txz ; rm -rf tmp usr var )
+    sed -i "/ldconfig/!s@/sbin@$dlcache&@g" $dlcache/sbin/installpkg*
+    PATH=$dlcache/sbin:$PATH
     echo "Installing packages to $rtcache..."
     if [ ! -d $rtcache ] ; then
       mkdir -p $rtcache
@@ -239,10 +238,7 @@ configure_plamo() {
   rm -f $rootfs/etc/rc.d/rc.inet1.tradnet
   sh /tmp/netconfig.rconly
   rm -f /tmp/netconfig.rconly
-  ed - $rootfs/etc/rc.d/rc.inet1.tradnet <<- "EOF"
-	g/cmdline/s/if/& false \&\&/
-	w
-	EOF
+  sed -i '/cmdline/s/if/& false \&\&/' $rootfs/etc/rc.d/rc.inet1.tradnet
   return 0
 }
 
