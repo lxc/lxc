@@ -3517,11 +3517,12 @@ static int read_criu_file(const char *directory, const char *file, int netnr, ch
 static void exec_criu(struct criu_opts *opts)
 {
 	char **argv, log[PATH_MAX];
-	int static_args = 13, argc = 0, i, ret;
+	int static_args = 14, argc = 0, i, ret;
 
 	/* The command line always looks like:
-	 * criu $(action) --tcp-established --file-locks --link-remap --manage-cgroups \
-	 *     --action-script foo.sh -D $(directory) -o $(directory)/$(action).log
+	 * criu $(action) --tcp-established --file-locks --link-remap --force-irmap \
+	 * --manage-cgroups action-script foo.sh -D $(directory) \
+	 * -o $(directory)/$(action).log
 	 * +1 for final NULL */
 
 	if (strcmp(opts->action, "dump") == 0) {
@@ -3570,6 +3571,7 @@ static void exec_criu(struct criu_opts *opts)
 	DECLARE_ARG("--tcp-established");
 	DECLARE_ARG("--file-locks");
 	DECLARE_ARG("--link-remap");
+	DECLARE_ARG("--force-irmap");
 	DECLARE_ARG("--manage-cgroups");
 	DECLARE_ARG("--action-script");
 	DECLARE_ARG(LIBEXECDIR "/lxc/lxc-restore-net");
