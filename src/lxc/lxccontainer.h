@@ -762,6 +762,25 @@ struct lxc_container {
 	bool (*remove_device_node)(struct lxc_container *c, const char *src_path, const char *dest_path);
 
 	/*!
+	 * \brief Add specified netdev to the container.
+	 *
+	 * \param c Container.
+	 * \param dev name of net device.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
+	bool (*attach_interface)(struct lxc_container *c, const char *dev, const char *dst_dev);
+
+	/*!
+	 * \brief Remove specified netdev from the container.
+	 *
+	 * \param c Container.
+	 * \param dev name of net device.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
+	bool (*detach_interface)(struct lxc_container *c, const char *dev, const char *dst_dev);
+	/*!
 	 * \brief Checkpoint a container.
 	 *
 	 * \param c Container.
