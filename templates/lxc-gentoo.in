@@ -166,12 +166,14 @@ cache_stage3()
         printf " => Got: %s\n" "${stage3_latest_tarball}"
 
         printf "Downloading/untarring the actual stage3 tarball...\n"
-        wget -O - "${stage3_baseurl}/${stage3_latest_tarball}" | tar -xjpf - -C "${partialfs}" \
+        wget -O - "${stage3_baseurl}/${stage3_latest_tarball}" \
+            | tar -xjpf - --numeric-owner -C "${partialfs}" \
             || die 6 "Error: unable to fetch or untar\n"
         printf " => extracted to: %s\n" "${partialfs}"
     else
         printf "Extracting the stage3 tarball...\n"
-        tar -xpf "${tarball}" -C "${partialfs}" || die 6 "unable to untar ${tarball} to ${partialfs}"
+        tar -xpf "${tarball}" --numeric-owner -C "${partialfs}" \
+            || die 6 "unable to untar ${tarball} to ${partialfs}"
     fi
 
     #check if it chroots
@@ -338,7 +340,9 @@ container_precheck()
 container_rootfs()
 {
     printf "#### container_rootfs(): copying rootfs %s from cache %s ...\n" "${rootfs}" "${cachefs}"
-    tar -c -f - -C "${cachefs}" . | tar -x -p -f - -C "${rootfs}" || die 1 "Error: cache copy to rootfs failed"
+    tar -c -f - --numeric-owner -C "${cachefs}" . \
+        | tar -x -p -f - --numeric-owner -C "${rootfs}" \
+        || die 1 "Error: cache copy to rootfs failed"
 
     printf "chroot test..."
     chroot "${rootfs}" /bin/true || die 1 "Error: 'chroot %s /bin/true' failed"
@@ -478,7 +482,9 @@ container_private_portage()
     #called from container_portage() do not call directly from container_setup
     printf "# untaring private portage to %s from %s ... \n" "${rootfs}/${portage_container}" "${portage_cache}"
     mkdir -p "${rootfs}/${portage_container}"
-    execute_exclusively portage 60 tar -xp --strip-components 1 -C "${rootfs}/${portage_container}" -f "${portage_cache}" \
+    execute_exclusively portage 60 \
+        tar -xp --strip-components 1 -C "${rootfs}/${portage_container}" \
+        -f "${portage_cache}" --numeric-owner \
         || die 2 "Error: unable to extract the portage tree.\n"
     store_user_message "container has its own portage tree at ${portage_container}"
     printf "=> done\n"
