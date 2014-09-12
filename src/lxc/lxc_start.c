@@ -276,6 +276,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (c->is_running(c)) {
+		ERROR("Container is already running.");
+		goto out;
+	}
 	/*
 	 * We should use set_config_item() over &defines, which would handle
 	 * unset c->lxc_conf for us and let us not use lxc_config_define_load()
