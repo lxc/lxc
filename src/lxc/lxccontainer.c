@@ -39,6 +39,7 @@
 
 #include <lxc/lxccontainer.h>
 #include <lxc/version.h>
+#include <lxc/network.h>
 
 #include "config.h"
 #include "lxc.h"
@@ -3496,6 +3497,76 @@ static bool lxcapi_remove_device_node(struct lxc_container *c, const char *src_p
 	return add_remove_device_node(c, src_path, dest_path, false);
 }
 
+static bool lxcapi_attach_interface(struct lxc_container *c, const char *ifname,
+				const char *dst_ifname)
+{
+	int ret = 0;
+
+	ret = lxc_netdev_down(ifname);
+	if (ret)
+		goto err;
+
+	if (dst_ifname != NULL) {
+		ret = lxc_netdev_rename_by_name(ifname, dst_ifname);
+		if (ret)
+			goto err;
+	}
+
+	ret = lxc_netdev_move_by_name(dst_ifname, c->init_pid(c));
+	if (ret)
+		goto err1;
+
+	return true;
+err1:
+	lxc_netdev_rename_by_name(dst_ifname, ifname);
+err:
+	/* -EINVAL means there is no netdev named as ifanme. */
+	if (ret == -EINVAL) {
+		ERROR("No network device named as %s.", ifname);
+	}
+	return false;
+}
+
+static bool lxcapi_detach_interface(struct lxc_container *c, const char *ifname,
+				const char *dst_ifname)
+{
+	pid_t outside_pid = getpid();
+	pid_t pid;
+
+	if (dst_ifname == NULL)
+		dst_ifname = ifname;
+
+	pid = fork();
+	if (pid < 0) {
+		ERROR("failed to fork task to get interfaces information");
+		return false;
+	}
+
+	if (pid == 0) { // child
+		int ret = 0;
+		if (!enter_to_ns(c)) {
+			ERROR("failed to enter namespace");
+			exit(-1);
+		}
+		ret = lxc_netdev_move_by_name(ifname, outside_pid);
+
+		/* -EINVAL means there is no netdev named as ifanme. */
+		if (ret == -EINVAL) {
+			ERROR("No network device named as %s.", ifname);
+			exit(-1);
+		}
+		exit(0);
+	}
+
+	if (wait_for_pid(pid) != 0)
+		return false;
+
+	if (lxc_netdev_rename_by_name(ifname, dst_ifname))
+		return false;
+
+	return true;
+}
+
 struct criu_opts {
 	/* The type of criu invocation, one of "dump" or "restore" */
 	char *action;
@@ -4091,6 +4162,8 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->may_control = lxcapi_may_control;
 	c->add_device_node = lxcapi_add_device_node;
 	c->remove_device_node = lxcapi_remove_device_node;
+	c->attach_interface = lxcapi_attach_interface;
+	c->detach_interface = lxcapi_detach_interface;
 	c->checkpoint = lxcapi_checkpoint;
 	c->restore = lxcapi_restore;
 

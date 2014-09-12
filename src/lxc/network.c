@@ -136,7 +136,7 @@ out:
 	return err;
 }
 
-int lxc_netdev_move_by_name(char *ifname, pid_t pid)
+int lxc_netdev_move_by_name(const char *ifname, pid_t pid)
 {
 	int index;
 
@@ -144,6 +144,8 @@ int lxc_netdev_move_by_name(char *ifname, pid_t pid)
 		return -EINVAL;
 
 	index = if_nametoindex(ifname);
+	if (!index)
+		return -EINVAL;
 
 	return lxc_netdev_move_by_index(index, pid);
 }
