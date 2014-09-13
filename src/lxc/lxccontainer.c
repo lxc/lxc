@@ -3533,8 +3533,8 @@ static void exec_criu(struct criu_opts *opts)
 		if (!opts->stop)
 			static_args++;
 	} else if (strcmp(opts->action, "restore") == 0) {
-		/* --root $(lxc_mount_point) --restore-detached --pidfile $foo */
-		static_args += 5;
+		/* --root $(lxc_mount_point) --restore-detached --restore-sibling --pidfile $foo */
+		static_args += 6;
 	} else {
 		return;
 	}
@@ -3600,6 +3600,7 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG("--root");
 		DECLARE_ARG(opts->c->lxc_conf->rootfs.mount);
 		DECLARE_ARG("--restore-detached");
+		DECLARE_ARG("--restore-sibling");
 		DECLARE_ARG("--pidfile");
 		DECLARE_ARG(opts->pidfile);
 
