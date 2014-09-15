@@ -3429,6 +3429,12 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	enum idtype type;
 	char *buf = NULL, *pos, *cmdpath = NULL;
 
+	/*
+	 * If newuidmap exists, that is, if shadow is handing out subuid
+	 * ranges, then insist that root also reserve ranges in subuid.  This
+	 * will protected it by preventing another user from being handed the
+	 * range by shadow.
+	 */
 	cmdpath = on_path("newuidmap", NULL);
 	if (cmdpath) {
 		use_shadow = 1;
