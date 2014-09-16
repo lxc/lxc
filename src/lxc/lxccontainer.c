@@ -1476,56 +1476,15 @@ static bool lxcapi_clear_config_item(struct lxc_container *c, const char *key)
 	return ret == 0;
 }
 
-static inline bool enter_to_ns(struct lxc_container *c) {
-	int netns, userns, ret = 0, init_pid = 0;;
-	char new_netns_path[MAXPATHLEN];
-	char new_userns_path[MAXPATHLEN];
+static inline bool enter_to_ns(struct lxc_container *c)
+{
+	pid_t pid = c->init_pid(c);
 
-	if (!c->is_running(c))
-		goto out;
-
-	init_pid = c->init_pid(c);
-
-	/* Switch to new userns */
 	if ((geteuid() != 0 || (c->lxc_conf && !lxc_list_empty(&c->lxc_conf->id_map))) && access("/proc/self/ns/user", F_OK) == 0) {
-		ret = snprintf(new_userns_path, MAXPATHLEN, "/proc/%d/ns/user", init_pid);
-		if (ret < 0 || ret >= MAXPATHLEN)
-			goto out;
-
-		userns = open(new_userns_path, O_RDONLY);
-		if (userns < 0) {
-			SYSERROR("failed to open %s", new_userns_path);
-			goto out;
-		}
-
-		if (setns(userns, CLONE_NEWUSER)) {
-			SYSERROR("failed to setns for CLONE_NEWUSER");
-			close(userns);
-			goto out;
-		}
-		close(userns);
+		if (!switch_to_ns(pid, "user"))
+			return false;
 	}
-
-	/* Switch to new netns */
-	ret = snprintf(new_netns_path, MAXPATHLEN, "/proc/%d/ns/net", init_pid);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		goto out;
-
-	netns = open(new_netns_path, O_RDONLY);
-	if (netns < 0) {
-		SYSERROR("failed to open %s", new_netns_path);
-		goto out;
-	}
-
-	if (setns(netns, CLONE_NEWNET)) {
-		SYSERROR("failed to setns for CLONE_NEWNET");
-		close(netns);
-		goto out;
-	}
-	close(netns);
-	return true;
-out:
-	return false;
+	return switch_to_ns(pid, "net");
 }
 
 // used by qsort and bsearch functions for comparing names

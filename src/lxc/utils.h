@@ -283,3 +283,4 @@ char *on_path(char *cmd, const char *rootfs);
 bool file_exists(const char *f);
 char *choose_init(const char *rootfs);
 int print_to_file(const char *file, const char *content);
+bool switch_to_ns(pid_t pid, const char *ns);
