@@ -2703,7 +2703,7 @@ void restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
 	}
 	for (i=0; i<conf->num_savednics; i++) {
 		struct saved_nic *s = &conf->saved_nics[i];
-		if (lxc_netdev_move_by_index(s->ifindex, 1))
+		if (lxc_netdev_move_by_index(s->ifindex, 1, NULL))
 			WARN("Error moving nic index:%d back to host netns",
 					s->ifindex);
 	}
@@ -3285,7 +3285,7 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 		if (!netdev->ifindex)
 			continue;
 
-		err = lxc_netdev_move_by_index(netdev->ifindex, pid);
+		err = lxc_netdev_move_by_index(netdev->ifindex, pid, NULL);
 		if (err) {
 			ERROR("failed to move '%s' to the container : %s",
 			      netdev->link, strerror(-err));
