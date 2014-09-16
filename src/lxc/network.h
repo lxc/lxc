@@ -51,6 +51,8 @@ extern int netdev_set_flag(const char *name, int flag);
 /*
  * Set the device network up or down
  */
+
+extern int lxc_netdev_isup(const char *name);
 extern int lxc_netdev_up(const char *name);
 extern int lxc_netdev_down(const char *name);
 
