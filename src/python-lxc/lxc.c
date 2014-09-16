@@ -520,6 +520,67 @@ Container_state(Container *self, void *closure)
 
 /* Container Functions */
 static PyObject *
+Container_attach_interface(Container *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"src_ifname", "dst_ifname", NULL};
+    char *src_name = NULL;
+    char *dst_name = NULL;
+    PyObject *py_src_name = NULL;
+    PyObject *py_dst_name = NULL;
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "O&|O&", kwlist,
+                                      PyUnicode_FSConverter, &py_src_name,
+                                      PyUnicode_FSConverter, &py_dst_name))
+        return NULL;
+
+    if (py_src_name != NULL) {
+        src_name = PyBytes_AS_STRING(py_src_name);
+        assert(src_name != NULL);
+    }
+
+    if (py_dst_name != NULL) {
+        dst_name = PyBytes_AS_STRING(py_dst_name);
+        assert(dst_name != NULL);
+    }
+
+    if (self->container->attach_interface(self->container, src_name,
+					dst_name)) {
+        Py_XDECREF(py_src_name);
+        Py_XDECREF(py_dst_name);
+        Py_RETURN_TRUE;
+    }
+
+    Py_XDECREF(py_src_name);
+    Py_XDECREF(py_dst_name);
+    Py_RETURN_FALSE;
+}
+
+static PyObject *
+Container_detach_interface(Container *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"ifname", NULL};
+    char *ifname = NULL;
+    PyObject *py_ifname = NULL;
+
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "O&", kwlist,
+                                      PyUnicode_FSConverter, &py_ifname))
+        return NULL;
+
+    if (py_ifname != NULL) {
+        ifname = PyBytes_AS_STRING(py_ifname);
+        assert(ifname != NULL);
+    }
+
+    if (self->container->detach_interface(self->container, ifname, NULL)) {
+        Py_XDECREF(py_ifname);
+        Py_RETURN_TRUE;
+    }
+
+    Py_XDECREF(py_ifname);
+    Py_RETURN_FALSE;
+}
+
+static PyObject *
 Container_add_device_node(Container *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"src_path", "dest_path", NULL};
@@ -1470,6 +1531,18 @@ static PyGetSetDef Container_getseters[] = {
 };
 
 static PyMethodDef Container_methods[] = {
+    {"attach_interface", (PyCFunction)Container_attach_interface,
+     METH_VARARGS|METH_KEYWORDS,
+     "attach_interface(src_ifname, dest_ifname) -> boolean\n"
+     "\n"
+     "Pass a new network device to the container."
+    },
+    {"detach_interface", (PyCFunction)Container_detach_interface,
+     METH_VARARGS|METH_KEYWORDS,
+     "detach_interface(ifname) -> boolean\n"
+     "\n"
+     "detach a network device from the container."
+    },
     {"add_device_node", (PyCFunction)Container_add_device_node,
      METH_VARARGS|METH_KEYWORDS,
      "add_device_node(src_path, dest_path) -> boolean\n"
