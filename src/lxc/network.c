@@ -305,6 +305,86 @@ out:
 	return err;
 }
 
+int netdev_get_flag(const char* name, int *flag)
+{
+	struct nl_handler nlh;
+	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	struct link_req *link_req;
+	int index, len, err;
+	struct ifinfomsg *ifi;
+
+	if (!name)
+		return -EINVAL;
+
+	err = netlink_open(&nlh, NETLINK_ROUTE);
+	if (err)
+		return err;
+
+	err = -EINVAL;
+	len = strlen(name);
+	if (len == 1 || len >= IFNAMSIZ)
+		goto out;
+
+	err = -ENOMEM;
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		goto out;
+
+	answer = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!answer)
+		goto out;
+
+	err = -EINVAL;
+	index = if_nametoindex(name);
+	if (!index)
+		goto out;
+
+	link_req = (struct link_req *)nlmsg;
+	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
+	link_req->ifinfomsg.ifi_index = index;
+	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_REQUEST;
+	nlmsg->nlmsghdr.nlmsg_type = RTM_GETLINK;
+
+	err = netlink_transaction(&nlh, nlmsg, answer);
+	if (err)
+		goto out;
+
+	ifi = NLMSG_DATA(answer);
+
+	*flag = ifi->ifi_flags;
+out:
+	netlink_close(&nlh);
+	nlmsg_free(nlmsg);
+	nlmsg_free(answer);
+	return err;
+}
+
+/*
+ * \brief Check a interface is up or not.
+ *
+ * \param name: name for the interface.
+ *
+ * \return int.
+ * 0 means interface is down.
+ * 1 means interface is up.
+ * Others means error happened, and ret-value is the error number.
+ */
+int lxc_netdev_isup(const char* name)
+{
+	int flag;
+	int err;
+
+	err = netdev_get_flag(name, &flag);
+	if (err)
+		goto out;
+	if (flag & IFF_UP)
+		return 1;
+	return 0;
+out:
+	return err;
+}
+
 int netdev_get_mtu(int ifindex)
 {
 	struct nl_handler nlh;
