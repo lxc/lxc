@@ -268,7 +268,7 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 	}
 
 	/* pass veth2 to target netns */
-	ret = lxc_netdev_move_by_name(veth2buf, pid);
+	ret = lxc_netdev_move_by_name(veth2buf, pid, NULL);
 	if (ret < 0) {
 		fprintf(stderr, "Error moving %s to netns %d\n", veth2buf, pid);
 		goto out_del;

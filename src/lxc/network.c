@@ -102,7 +102,7 @@ struct rt_req {
 	struct rtmsg rt;
 };
 
-int lxc_netdev_move_by_index(int ifindex, pid_t pid)
+int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char* ifname)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL;
@@ -128,6 +128,11 @@ int lxc_netdev_move_by_index(int ifindex, pid_t pid)
 	if (nla_put_u32(nlmsg, IFLA_NET_NS_PID, pid))
 		goto out;
 
+	if (ifname != NULL) {
+		if (nla_put_string(nlmsg, IFLA_IFNAME, ifname))
+			goto out;
+	}
+
 	err = netlink_transaction(&nlh, nlmsg, nlmsg);
 out:
 	netlink_close(&nlh);
@@ -135,7 +140,7 @@ out:
 	return err;
 }
 
-int lxc_netdev_move_by_name(const char *ifname, pid_t pid)
+int lxc_netdev_move_by_name(const char *ifname, pid_t pid, const char* newname)
 {
 	int index;
 
@@ -146,7 +151,7 @@ int lxc_netdev_move_by_name(const char *ifname, pid_t pid)
 	if (!index)
 		return -EINVAL;
 
-	return lxc_netdev_move_by_index(index, pid);
+	return lxc_netdev_move_by_index(index, pid, newname);
 }
 
 int lxc_netdev_delete_by_index(int ifindex)
