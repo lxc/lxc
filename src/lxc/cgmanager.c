@@ -53,6 +53,7 @@
 
 #define CGM_SUPPORTS_GET_ABS 3
 #define CGM_SUPPORTS_NAMED 4
+#define CGM_SUPPORTS_MULT_CONTROLLERS 10
 
 #ifdef HAVE_CGMANAGER
 lxc_log_define(lxc_cgmanager, lxc);
@@ -114,7 +115,7 @@ static int32_t api_version;
 
 static struct cgroup_ops cgmanager_ops;
 static int nr_subsystems;
-static char **subsystems;
+static char **subsystems, **subsystems_inone;
 static bool dbus_threads_initialized = false;
 static void cull_user_controllers(void);
 
@@ -181,6 +182,11 @@ static bool cgm_dbus_connect(void)
 	return true;
 }
 
+static inline bool cgm_supports_multiple_controllers(void)
+{
+	return api_version >= CGM_SUPPORTS_MULT_CONTROLLERS;
+}
+
 static int send_creds(int sock, int rpid, int ruid, int rgid)
 {
 	struct msghdr msg = { 0 };
@@ -242,15 +248,19 @@ static bool lxc_cgmanager_escape(void)
 {
 	bool ret = true;
 	pid_t me = getpid();
+	char **slist = subsystems;
 	int i;
 
-	for (i = 0; i < nr_subsystems; i++) {
+	if (cgm_supports_multiple_controllers())
+		slist = subsystems_inone;
+
+	for (i = 0; slist[i]; i++) {
 		if (cgmanager_move_pid_abs_sync(NULL, cgroup_manager,
-					subsystems[i], "/", me) != 0) {
+					slist[i], "/", me) != 0) {
 			NihError *nerr;
 			nerr = nih_error_get();
 			ERROR("call to cgmanager_move_pid_abs_sync(%s) failed: %s",
-					subsystems[i], nerr->message);
+					slist[i], nerr->message);
 			nih_free(nerr);
 			ret = false;
 			break;
@@ -340,7 +350,8 @@ out:
 static int chown_cgroup_wrapper(void *data)
 {
 	struct chown_data *arg = data;
-	int i;
+	char **slist = subsystems;
+	int i, ret = -1;
 	uid_t destuid;
 
 	if (setresgid(0,0,0) < 0)
@@ -355,15 +366,21 @@ static int chown_cgroup_wrapper(void *data)
 		return -1;
 	}
 	destuid = get_ns_uid(arg->origuid);
-	for (i = 0; i < nr_subsystems; i++) {
-		if (do_chown_cgroup(subsystems[i], arg->cgroup_path, destuid) < 0) {
+
+	if (cgm_supports_multiple_controllers())
+		slist = subsystems_inone;
+
+	for (i = 0; slist[i]; i++) {
+		if (do_chown_cgroup(slist[i], arg->cgroup_path, destuid) < 0) {
 			ERROR("Failed to chown %s:%s to container root",
-				subsystems[i], arg->cgroup_path);
-			return -1;
+				slist[i], arg->cgroup_path);
+			goto fail;
 		}
 	}
+	ret = 0;
+fail:
 	cgm_dbus_disconnect();
-	return 0;
+	return ret;
 }
 
 /* Internal helper.  Must be called with the cgmanager dbus socket open */
@@ -385,6 +402,7 @@ static bool lxc_cgmanager_chmod(const char *controller,
 static bool chown_cgroup(const char *cgroup_path, struct lxc_conf *conf)
 {
 	struct chown_data data;
+	char **slist = subsystems;
 	int i;
 
 	if (lxc_list_empty(&conf->id_map))
@@ -407,12 +425,15 @@ static bool chown_cgroup(const char *cgroup_path, struct lxc_conf *conf)
 	 * This can't be done in the child namespace because it only group-owns
 	 * the cgroup
 	 */
-	for (i = 0; i < nr_subsystems; i++) {
-		if (!lxc_cgmanager_chmod(subsystems[i], cgroup_path, "", 0775))
+	if (cgm_supports_multiple_controllers())
+		slist = subsystems_inone;
+
+	for (i = 0; slist[i]; i++) {
+		if (!lxc_cgmanager_chmod(slist[i], cgroup_path, "", 0775))
 			return false;
-		if (!lxc_cgmanager_chmod(subsystems[i], cgroup_path, "tasks", 0775))
+		if (!lxc_cgmanager_chmod(slist[i], cgroup_path, "tasks", 0775))
 			return false;
-		if (!lxc_cgmanager_chmod(subsystems[i], cgroup_path, "cgroup.procs", 0775))
+		if (!lxc_cgmanager_chmod(slist[i], cgroup_path, "cgroup.procs", 0775))
 			return false;
 	}
 
@@ -478,6 +499,7 @@ err1:
 static void cgm_destroy(void *hdata)
 {
 	struct cgm_data *d = hdata;
+	char **slist = subsystems;
 	int i;
 
 	if (!d || !d->cgroup_path)
@@ -486,8 +508,11 @@ static void cgm_destroy(void *hdata)
 		ERROR("Error connecting to cgroup manager");
 		return;
 	}
-	for (i = 0; i < nr_subsystems; i++)
-		cgm_remove_cgroup(subsystems[i], d->cgroup_path);
+
+	if (cgm_supports_multiple_controllers())
+		slist = subsystems_inone;
+	for (i = 0; slist[i]; i++)
+		cgm_remove_cgroup(slist[i], d->cgroup_path);
 
 	free(d->name);
 	if (d->cgroup_path)
@@ -503,13 +528,18 @@ static void cgm_destroy(void *hdata)
 static inline void cleanup_cgroups(char *path)
 {
 	int i;
-	for (i = 0; i < nr_subsystems; i++)
-		cgm_remove_cgroup(subsystems[i], path);
+	char **slist = subsystems;
+
+	if (cgm_supports_multiple_controllers())
+		slist = subsystems_inone;
+	for (i = 0; slist[i]; i++)
+		cgm_remove_cgroup(slist[i], path);
 }
 
 static inline bool cgm_create(void *hdata)
 {
 	struct cgm_data *d = hdata;
+	char **slist = subsystems;
 	int i, index=0, baselen, ret;
 	int32_t existed;
 	char result[MAXPATHLEN], *tmp, *cgroup_path;
@@ -545,9 +575,13 @@ again:
 			goto bad;
 	}
 	existed = 0;
-	for (i = 0; i < nr_subsystems; i++) {
-		if (!lxc_cgmanager_create(subsystems[i], tmp, &existed)) {
-			ERROR("Error creating cgroup %s:%s", subsystems[i], result);
+
+	if (cgm_supports_multiple_controllers())
+		slist = subsystems_inone;
+
+	for (i = 0; slist[i]; i++) {
+		if (!lxc_cgmanager_create(slist[i], tmp, &existed)) {
+			ERROR("Error creating cgroup %s:%s", slist[i], result);
 			cleanup_cgroups(tmp);
 			goto bad;
 		}
@@ -565,7 +599,6 @@ again:
 	return true;
 
 next:
-	cleanup_cgroups(tmp);
 	index++;
 	goto again;
 bad:
@@ -606,10 +639,14 @@ static bool lxc_cgmanager_enter(pid_t pid, const char *controller,
 /* Internal helper, must be called with cgmanager dbus socket open */
 static bool do_cgm_enter(pid_t pid, const char *cgroup_path, bool abs)
 {
+	char **slist = subsystems;
 	int i;
 
-	for (i = 0; i < nr_subsystems; i++) {
-		if (!lxc_cgmanager_enter(pid, subsystems[i], cgroup_path, abs))
+	if (cgm_supports_multiple_controllers())
+		slist = subsystems_inone;
+
+	for (i = 0; slist[i]; i++) {
+		if (!lxc_cgmanager_enter(pid, slist[i], cgroup_path, abs))
 			return false;
 	}
 	return true;
@@ -996,6 +1033,12 @@ static bool collect_subsytems(void)
 	if (subsystems) // already initialized
 		return true;
 
+	subsystems_inone = malloc(2 * sizeof(char *));
+	if (!subsystems_inone)
+		return false;
+	subsystems_inone[0] = "all";
+	subsystems_inone[1] = NULL;
+
 	f = fopen_cloexec("/proc/self/cgroup", "r");
 	if (!f) {
 		f = fopen_cloexec("/proc/1/cgroup", "r");
@@ -1022,12 +1065,13 @@ static bool collect_subsytems(void)
 		for (p = strtok_r(slist, ",", &saveptr);
 				p;
 				p = strtok_r(NULL, ",", &saveptr)) {
-			tmp = realloc(subsystems, (nr_subsystems+1)*sizeof(char *));
+			tmp = realloc(subsystems, (nr_subsystems+2)*sizeof(char *));
 			if (!tmp)
 				goto out_free;
 
 			subsystems = tmp;
 			tmp[nr_subsystems] = strdup(p);
+			tmp[nr_subsystems+1] = NULL;
 			if (!tmp[nr_subsystems])
 				goto out_free;
 			nr_subsystems++;
