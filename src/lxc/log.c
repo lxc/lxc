@@ -49,10 +49,12 @@ static __thread char *log_fname = NULL;
  */
 static __thread int lxc_logfile_specified = 0;
 static __thread int lxc_loglevel_specified = 0;
+static __thread int lxc_quiet_specified = 0;
 #else
 int lxc_log_fd = -1;
 static char log_prefix[LXC_LOG_PREFIX_SIZE] = "lxc";
 static char *log_fname = NULL;
+static int lxc_quiet_specified = 0;
 /* command line values for logfile or logpriority should always override
  * values from the configuration file or defaults
  */
@@ -316,10 +318,12 @@ extern int lxc_log_init(const char *name, const char *file,
 		lxc_priority = lxc_log_priority_to_int(priority);
 
 	lxc_log_category_lxc.priority = lxc_priority;
-	lxc_log_category_lxc.appender = &log_appender_logfile;
 
-	if (!quiet)
-		lxc_log_category_lxc.appender->next = &log_appender_stderr;
+	if (!lxc_quiet_specified) {
+		lxc_log_category_lxc.appender = &log_appender_logfile;
+		if (!quiet)
+			lxc_log_category_lxc.appender->next = &log_appender_stderr;
+	}
 
 	if (prefix)
 		lxc_log_set_prefix(prefix);
@@ -443,4 +447,6 @@ extern void lxc_log_options_no_override()
 
 	if (lxc_log_get_level() != LXC_LOG_PRIORITY_NOTSET)
 		lxc_loglevel_specified = 1;
+
+	lxc_quiet_specified = 1;
 }
