@@ -35,14 +35,22 @@ lxc.cgroup.devices.deny = a
 # Allow any mknod (but not reading/writing the node)
 lxc.cgroup.devices.allow = c *:* m
 lxc.cgroup.devices.allow = b *:* m
-lxc.cgroup.devices.allow = c 1:3 rwm	# /dev/null
-lxc.cgroup.devices.allow = c 1:5 rwm	# /dev/zero
-lxc.cgroup.devices.allow = c 1:7 rwm	# /dev/full
-lxc.cgroup.devices.allow = c 5:0 rwm	# /dev/tty
-lxc.cgroup.devices.allow = c 1:8 rwm	# /dev/random
-lxc.cgroup.devices.allow = c 1:9 rwm	# /dev/urandom
-lxc.cgroup.devices.allow = c 136:* rwm	# /dev/tty[1-4] ptys and lxc console
-lxc.cgroup.devices.allow = c 5:2 rwm	# /dev/ptmx pty master
+## /dev/null
+lxc.cgroup.devices.allow = c 1:3 rwm
+## /dev/zero
+lxc.cgroup.devices.allow = c 1:5 rwm
+## /dev/full
+lxc.cgroup.devices.allow = c 1:7 rwm
+## /dev/tty
+lxc.cgroup.devices.allow = c 5:0 rwm
+## /dev/random
+lxc.cgroup.devices.allow = c 1:8 rwm
+## /dev/urandom
+lxc.cgroup.devices.allow = c 1:9 rwm
+## /dev/tty[1-4] ptys and lxc console
+lxc.cgroup.devices.allow = c 136:* rwm
+## /dev/ptmx pty master
+lxc.cgroup.devices.allow = c 5:2 rwm
 
 # Blacklist some syscalls which are not safe in privileged
 # containers
