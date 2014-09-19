@@ -24,15 +24,24 @@ lxc.cgroup.devices.deny = a
 lxc.cgroup.devices.allow = c *:* m
 lxc.cgroup.devices.allow = b *:* m
 ## Allow specific devices
-lxc.cgroup.devices.allow = c 1:3 rwm	# /dev/null
-lxc.cgroup.devices.allow = c 1:5 rwm	# /dev/zero
-lxc.cgroup.devices.allow = c 1:7 rwm	# /dev/full
-lxc.cgroup.devices.allow = c 5:0 rwm	# /dev/tty
-lxc.cgroup.devices.allow = c 5:1 rwm	# /dev/console
-lxc.cgroup.devices.allow = c 5:2 rwm	# /dev/ptmx
-lxc.cgroup.devices.allow = c 1:8 rwm	# /dev/random
-lxc.cgroup.devices.allow = c 1:9 rwm	# /dev/urandom
-lxc.cgroup.devices.allow = c 136:* rwm	# /dev/pts/*
+### /dev/null
+lxc.cgroup.devices.allow = c 1:3 rwm
+### /dev/zero
+lxc.cgroup.devices.allow = c 1:5 rwm
+### /dev/full
+lxc.cgroup.devices.allow = c 1:7 rwm
+### /dev/tty
+lxc.cgroup.devices.allow = c 5:0 rwm
+### /dev/console
+lxc.cgroup.devices.allow = c 5:1 rwm
+### /dev/ptmx
+lxc.cgroup.devices.allow = c 5:2 rwm
+### /dev/random
+lxc.cgroup.devices.allow = c 1:8 rwm
+### /dev/urandom
+lxc.cgroup.devices.allow = c 1:9 rwm
+### /dev/pts/*
+lxc.cgroup.devices.allow = c 136:* rwm
 
 # Blacklist some syscalls which are not safe in privileged
 # containers
