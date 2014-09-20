@@ -59,6 +59,7 @@ static int config_tty(const char *, const char *, struct lxc_conf *);
 static int config_ttydir(const char *, const char *, struct lxc_conf *);
 static int config_kmsg(const char *, const char *, struct lxc_conf *);
 static int config_lsm_aa_profile(const char *, const char *, struct lxc_conf *);
+static int config_lsm_aa_incomplete(const char *, const char *, struct lxc_conf *);
 static int config_lsm_se_context(const char *, const char *, struct lxc_conf *);
 static int config_cgroup(const char *, const char *, struct lxc_conf *);
 static int config_idmap(const char *, const char *, struct lxc_conf *);
@@ -109,6 +110,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.devttydir",            config_ttydir               },
 	{ "lxc.kmsg",                 config_kmsg                 },
 	{ "lxc.aa_profile",           config_lsm_aa_profile       },
+	{ "lxc.aa_allow_incomplete",  config_lsm_aa_incomplete    },
 	{ "lxc.se_context",           config_lsm_se_context       },
 	{ "lxc.cgroup",               config_cgroup               },
 	{ "lxc.id_map",               config_idmap                },
@@ -1144,6 +1146,16 @@ static int config_lsm_aa_profile(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
 	return config_string_item(&lxc_conf->lsm_aa_profile, value);
+}
+
+static int config_lsm_aa_incomplete(const char *key, const char *value,
+				 struct lxc_conf *lxc_conf)
+{
+	int v = atoi(value);
+
+	lxc_conf->lsm_aa_allow_incomplete = v == 1 ? 1 : 0;
+
+	return 0;
 }
 
 static int config_lsm_se_context(const char *key, const char *value,
@@ -2259,6 +2271,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_arch_entry(c, retv, inlen);
 	else if (strcmp(key, "lxc.aa_profile") == 0)
 		v = c->lsm_aa_profile;
+	else if (strcmp(key, "lxc.aa_allow_incomplete") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->lsm_aa_allow_incomplete);
 	else if (strcmp(key, "lxc.se_context") == 0)
 		v = c->lsm_se_context;
 	else if (strcmp(key, "lxc.logfile") == 0)

@@ -52,6 +52,7 @@ bin_SCRIPTS = lxc-test-autostart lxc-test-cloneconfig
 
 if DISTRO_UBUNTU
 bin_SCRIPTS += \
+	lxc-test-apparmor-mount \
 	lxc-test-checkpoint-restore \
 	lxc-test-ubuntu \
 	lxc-test-unpriv \
@@ -75,6 +76,7 @@ EXTRA_DIST = \
 	locktests.c \
 	lxcpath.c \
 	lxc-test-autostart \
+	lxc-test-apparmor-mount \
 	lxc-test-checkpoint-restore \
 	lxc-test-cloneconfig \
 	lxc-test-ubuntu \

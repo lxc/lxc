@@ -311,6 +311,7 @@ struct lxc_conf {
 	struct lxc_list hooks[NUM_LXC_HOOKS];
 
 	char *lsm_aa_profile;
+	int lsm_aa_allow_incomplete;
 	char *lsm_se_context;
 	int tmp_umount_proc;
 	char *seccomp;  // filename with the seccomp rules

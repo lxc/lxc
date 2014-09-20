@@ -29,6 +29,7 @@
 
 #include "log.h"
 #include "lsm/lsm.h"
+#include "conf.h"
 
 #define DEFAULT_LABEL "unconfined_t"
 
@@ -61,7 +62,8 @@ static char *selinux_process_label_get(pid_t pid)
 /*
  * selinux_process_label_set: Set SELinux context of a process
  *
- * @label   : the context to set
+ * @label   : label string
+ * @conf    : the container configuration to use @label is NULL
  * @default : use the default context if label is NULL
  * @on_exec : the new context will take effect on exec(2) not immediately
  *
@@ -69,9 +71,10 @@ static char *selinux_process_label_get(pid_t pid)
  *
  * Notes: This relies on /proc being available.
  */
-static int selinux_process_label_set(const char *label, int use_default,
-				     int on_exec)
+static int selinux_process_label_set(const char *inlabel, struct lxc_conf *conf,
+				     int use_default, int on_exec)
 {
+	const char *label = inlabel ? inlabel : conf->lsm_se_context;
 	if (!label) {
 		if (use_default)
 			label = DEFAULT_LABEL;

@@ -1,0 +1,189 @@
+#!/bin/sh
+
+# apparmor_mount: test proper handling of apparmor in kernels
+# without mount features
+
+# These require the ubuntu lxc package to be installed.
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+# This test assumes an Ubuntu host
+
+set -e
+
+FAIL() {
+	echo -n "Failed " >&2
+	echo "$*" >&2
+	exit 1
+}
+
+run_cmd() {
+	sudo -i -u $TUSER \
+	    env http_proxy=${http_proxy:-} https_proxy=${https_proxy:-} \
+	        XDG_RUNTIME_DIR=/run/user/$(id -u $TUSER) $*
+}
+
+DONE=0
+MOUNTSR=/sys/kernel/security/apparmor/features/mount
+dnam=`mktemp -d`
+cname=`basename $dnam`
+cleanup() {
+	run_cmd lxc-destroy -f -n $cname || true
+	umount -l $MOUNTSR || true
+	rmdir $dnam || true
+	pkill -u $(id -u $TUSER) -9
+	sed -i '/lxcunpriv/d' /run/lxc/nics /etc/lxc/lxc-usernet
+	sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
+	rm -Rf $HDIR /run/user/$(id -u $TUSER)
+	deluser $TUSER
+	if [ $DONE -eq 0 ]; then
+		echo "FAIL"
+		exit 1
+	fi
+	echo "PASS"
+}
+
+trap cleanup exit
+
+# Only run on a normally configured ubuntu lxc system
+if [ ! -d /sys/class/net/lxcbr0 ]; then
+	echo "lxcbr0 is not configured."
+	exit 1
+fi
+if [ "$(id -u)" != "0" ]; then
+	echo "ERROR: Must run as root."
+	exit 1
+fi
+
+# This would be much simpler if we could run it as
+# root.  However, in order to not have the bind mount
+# of an empty directory over the securitfs 'mount' directory
+# be removed, we need to do this as non-root.
+
+which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; exit 1; }
+# create a test user
+TUSER=lxcunpriv
+HDIR=/home/$TUSER
+
+ARCH=i386
+if type dpkg >/dev/null 2>&1; then
+	ARCH=$(dpkg --print-architecture)
+fi
+
+deluser $TUSER && rm -Rf $HDIR || true
+useradd $TUSER
+
+mkdir -p $HDIR
+echo "$TUSER veth lxcbr0 2" > /etc/lxc/lxc-usernet
+sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
+
+usermod -v 910000-919999 -w 910000-919999 $TUSER
+
+mkdir -p $HDIR/.config/lxc/
+cat > $HDIR/.config/lxc/default.conf << EOF
+lxc.network.type = veth
+lxc.network.link = lxcbr0
+lxc.id_map = u 0 910000 9999
+lxc.id_map = g 0 910000 9999
+EOF
+chown -R $TUSER: $HDIR
+
+mkdir -p /run/user/$(id -u $TUSER)
+chown -R $TUSER: /run/user/$(id -u $TUSER)
+
+cd $HDIR
+
+cgm create all $TUSER
+cgm chown all $TUSER $(id -u $TUSER) $(id -g $TUSER)
+cgm movepid all $TUSER $$
+
+run_cmd mkdir -p $HDIR/.cache/lxc
+[ -d /var/cache/lxc/download ] && \
+    cp -R /var/cache/lxc/download $HDIR/.cache/lxc && \
+    chown -R $TUSER: $HDIR/.cache/lxc
+
+run_cmd lxc-create -t download -n $cname -- -d ubuntu -r trusty -a $ARCH
+
+echo "test default confined container"
+run_cmd lxc-start -n $cname -d
+run_cmd lxc-wait -n $cname -s RUNNING
+pid=`run_cmd lxc-info -p -H -n $cname`
+profile=`cat /proc/$pid/attr/current`
+if [ "x$profile" != "xlxc-container-default (enforce)" ]; then
+	echo "FAIL: confined container was in profile $profile"
+	exit 1
+fi
+run_cmd lxc-stop -n $cname
+
+echo "test regular unconfined container"
+echo "lxc.aa_profile = unconfined" >> $HDIR/.local/share/lxc/$cname/config
+run_cmd lxc-start -n $cname -d
+run_cmd lxc-wait -n $cname -s RUNNING
+pid=`run_cmd lxc-info -p -H -n $cname`
+profile=`cat /proc/$pid/attr/current`
+if [ "x$profile" != "xunconfined" ]; then
+	echo "FAIL: unconfined container was in profile $profile"
+	exit 1
+fi
+run_cmd lxc-stop -n $cname
+
+echo "masking $MOUNTSR"
+mount --bind $dnam $MOUNTSR
+
+echo "test default confined container"
+sed -i '/aa_profile/d' $HDIR/.local/share/lxc/$cname/config
+run_cmd lxc-start -n $cname -d || true
+sleep 3
+pid=`run_cmd lxc-info -p -H -n $cname` || true
+if [ -n "$pid" -a "$pid" != "-1" ]; then
+	echo "FAIL: confined container started without mount restrictions"
+	echo "pid was $pid"
+	exit 1
+fi
+
+echo "test regular unconfined container"
+echo "lxc.aa_profile = unconfined" >> $HDIR/.local/share/lxc/$cname/config
+run_cmd lxc-start -n $cname -d
+run_cmd lxc-wait -n $cname -s RUNNING
+pid=`run_cmd lxc-info -p -H -n $cname`
+if [ "$pid" = "-1" ]; then
+	echo "FAIL: unconfined container failed to start without mount restrictions"
+	exit 1
+fi
+profile=`cat /proc/$pid/attr/current`
+if [ "x$profile" != "xunconfined" ]; then
+	echo "FAIL: confined container was in profile $profile"
+	exit 1
+fi
+run_cmd lxc-stop -n $cname
+
+echo "testing override"
+sed -i '/aa_profile/d' $HDIR/.local/share/lxc/$cname/config
+echo "lxc.aa_allow_incomplete = 1" >> $HDIR/.local/share/lxc/$cname/config
+run_cmd lxc-start -n $cname -d
+run_cmd lxc-wait -n $cname -s RUNNING
+pid=`run_cmd lxc-info -p -H -n $cname`
+if [ "$pid" = "-1" ]; then
+	echo "FAIL: excepted container failed to start without mount restrictions"
+	exit 1
+fi
+profile=`cat /proc/$pid/attr/current`
+if [ "x$profile" != "xlxc-container-default (enforce)" ]; then
+	echo "FAIL: confined container was in profile $profile"
+	exit 1
+fi
+run_cmd lxc-stop -n $cname
+
+DONE=1

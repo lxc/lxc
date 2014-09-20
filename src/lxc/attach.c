@@ -1043,7 +1043,8 @@ static int attach_child_main(void* data)
 		int on_exec;
 
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
-		ret = lsm_process_label_set(init_ctx->lsm_label, 0, on_exec);
+		ret = lsm_process_label_set(init_ctx->lsm_label,
+				init_ctx->container->lxc_conf, 0, on_exec);
 		if (ret < 0) {
 			rexit(-1);
 		}

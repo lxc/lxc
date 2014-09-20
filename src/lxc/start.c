@@ -615,7 +615,6 @@ static int do_start(void *data)
 {
 	struct lxc_list *iterator;
 	struct lxc_handler *handler = data;
-	const char *lsm_label = NULL;
 
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
 		SYSERROR("failed to set sigprocmask");
@@ -695,11 +694,7 @@ static int do_start(void *data)
 		return -1;
 
 	/* Set the label to change to when we exec(2) the container's init */
-	if (!strcmp(lsm_name(), "AppArmor"))
-		lsm_label = handler->conf->lsm_aa_profile;
-	else if (!strcmp(lsm_name(), "SELinux"))
-		lsm_label = handler->conf->lsm_se_context;
-	if (lsm_process_label_set(lsm_label, 1, 1) < 0)
+	if (lsm_process_label_set(NULL, handler->conf, 1, 1) < 0)
 		goto out_warn_father;
 
 	/* Some init's such as busybox will set sane tty settings on stdin,
