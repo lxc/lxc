@@ -943,20 +943,6 @@ proc proc proc nodev,noexec,nosuid 0 0
 	  </listitem>
 	</varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.pivotdir</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      where to pivot the original root file system under
-	      <option>lxc.rootfs</option>, specified relatively to
-	      that.  The default is <filename>mnt</filename>.
-	      It is created if necessary, and also removed after
-	      unmounting everything from it during container setup.
-	    </para>
-	  </listitem>
-	</varlistentry>
       </variablelist>
     </refsect2>
 

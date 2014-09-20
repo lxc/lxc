@@ -1662,6 +1662,7 @@ static int config_rootfs_options(const char *key, const char *value,
 static int config_pivotdir(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
+	WARN("lxc.pivotdir is ignored.  It will soon become an error.");
 	return config_path_item(&lxc_conf->rootfs.pivot, value);
 }
 

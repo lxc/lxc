@@ -1025,199 +1025,66 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 	return 0;
 }
 
-static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
-{
-	struct lxc_list	*mountlist, *listentry, *iterator;
-	char *pivotdir, *mountpoint, *mountentry, *saveptr = NULL;
-	int found;
-	void **cbparm;
-
-	mountentry = buffer;
-	cbparm = (void **)data;
-
-	mountlist = cbparm[0];
-	pivotdir  = cbparm[1];
-
-	/* parse entry, first field is mountname, ignore */
-	mountpoint = strtok_r(mountentry, " ", &saveptr);
-	if (!mountpoint)
-		return -1;
-
-	/* second field is mountpoint */
-	mountpoint = strtok_r(NULL, " ", &saveptr);
-	if (!mountpoint)
-		return -1;
-
-	/* only consider mountpoints below old root fs */
-	if (strncmp(mountpoint, pivotdir, strlen(pivotdir)))
-		return 0;
-
-	/* filter duplicate mountpoints */
-	found = 0;
-	lxc_list_for_each(iterator, mountlist) {
-		if (!strcmp(iterator->elem, mountpoint)) {
-			found = 1;
-			break;
-		}
-	}
-	if (found)
-		return 0;
-
-	/* add entry to list */
-	listentry = malloc(sizeof(*listentry));
-	if (!listentry) {
-		SYSERROR("malloc for mountpoint listentry failed");
-		return -1;
-	}
-
-	listentry->elem = strdup(mountpoint);
-	if (!listentry->elem) {
-		SYSERROR("strdup failed");
-		free(listentry);
-		return -1;
-	}
-	lxc_list_add_tail(mountlist, listentry);
-
-	return 0;
-}
-
-static int umount_oldrootfs(const char *oldrootfs)
-{
-	char path[MAXPATHLEN];
-	void *cbparm[2];
-	struct lxc_list mountlist, *iterator, *next;
-	int ok, still_mounted, last_still_mounted;
-	int rc;
-
-	/* read and parse /proc/mounts in old root fs */
-	lxc_list_init(&mountlist);
-
-	/* oldrootfs is on the top tree directory now */
-	rc = snprintf(path, sizeof(path), "/%s", oldrootfs);
-	if (rc >= sizeof(path)) {
-		ERROR("rootfs name too long");
-		return -1;
-	}
-	cbparm[0] = &mountlist;
-
-	cbparm[1] = strdup(path);
-	if (!cbparm[1]) {
-		SYSERROR("strdup failed");
-		return -1;
-	}
-
-	rc = snprintf(path, sizeof(path), "%s/proc/mounts", oldrootfs);
-	if (rc >= sizeof(path)) {
-		ERROR("container proc/mounts name too long");
-		return -1;
-	}
-
-	ok = lxc_file_for_each_line(path,
-				    setup_rootfs_pivot_root_cb, &cbparm);
-	if (ok < 0) {
-		SYSERROR("failed to read or parse mount list '%s'", path);
-		return -1;
-	}
-
-	/* umount filesystems until none left or list no longer shrinks */
-	still_mounted = 0;
-	do {
-		last_still_mounted = still_mounted;
-		still_mounted = 0;
-
-		lxc_list_for_each_safe(iterator, &mountlist, next) {
-
-			/* umount normally */
-			if (!umount(iterator->elem)) {
-				DEBUG("umounted '%s'", (char *)iterator->elem);
-				lxc_list_del(iterator);
-				continue;
-			}
-
-			still_mounted++;
-		}
-
-	} while (still_mounted > 0 && still_mounted != last_still_mounted);
-
-
-	lxc_list_for_each(iterator, &mountlist) {
-
-		/* let's try a lazy umount */
-		if (!umount2(iterator->elem, MNT_DETACH)) {
-			INFO("lazy unmount of '%s'", (char *)iterator->elem);
-			continue;
-		}
-
-		/* be more brutal (nfs) */
-		if (!umount2(iterator->elem, MNT_FORCE)) {
-			INFO("forced unmount of '%s'", (char *)iterator->elem);
-			continue;
-		}
-
-		WARN("failed to unmount '%s'", (char *)iterator->elem);
-	}
-
-	return 0;
-}
 
 static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 {
-	char path[MAXPATHLEN];
-	int remove_pivotdir = 0;
-	int rc;
+	int oldroot = -1, newroot = -1;
+
+	oldroot = open("/", O_DIRECTORY | O_RDONLY);
+	if (oldroot < 0) {
+		SYSERROR("Error opening old-/ for fchdir");
+		return -1;
+	}
+	newroot = open(rootfs, O_DIRECTORY | O_RDONLY);
+	if (newroot < 0) {
+		SYSERROR("Error opening new-/ for fchdir");
+		goto fail;
+	}
 
 	/* change into new root fs */
-	if (chdir(rootfs)) {
+	if (fchdir(newroot)) {
 		SYSERROR("can't chdir to new rootfs '%s'", rootfs);
-		return -1;
+		goto fail;
 	}
-
-	if (!pivotdir)
-		pivotdir = "lxc_putold";
-
-	/* compute the full path to pivotdir under rootfs */
-	rc = snprintf(path, sizeof(path), "%s/%s", rootfs, pivotdir);
-	if (rc >= sizeof(path)) {
-		ERROR("pivot dir name too long");
-		return -1;
-	}
-
-	if (access(path, F_OK)) {
-
-		if (mkdir_p(path, 0755) < 0) {
-			SYSERROR("failed to create pivotdir '%s'", path);
-			return -1;
-		}
-
-		remove_pivotdir = 1;
-		DEBUG("created '%s' directory", path);
-	}
-
-	DEBUG("mountpoint for old rootfs is '%s'", path);
 
 	/* pivot_root into our new root fs */
-	if (pivot_root(".", path)) {
+	if (pivot_root(".", ".")) {
 		SYSERROR("pivot_root syscall failed");
-		return -1;
+		goto fail;
 	}
 
-	if (chdir("/")) {
-		SYSERROR("can't chdir to / after pivot_root");
-		return -1;
+	/*
+	 * at this point the old-root is mounted on top of our new-root
+	 * To unmounted it we must not be chdir'd into it, so escape back
+	 * to old-root
+	 */
+	if (fchdir(oldroot) < 0) {
+		SYSERROR("Error entering oldroot");
+		goto fail;
 	}
+	if (umount2("/", MNT_DETACH) < 0) {
+		SYSERROR("Error detaching old root");
+		goto fail;
+	}
+
+	if (fchdir(newroot) < 0) {
+		SYSERROR("Error re-entering newroot");
+		goto fail;
+	}
+
+	close(oldroot);
+	close(newroot);
 
 	DEBUG("pivot_root syscall to '%s' successful", rootfs);
 
-	/* we switch from absolute path to relative path */
-	if (umount_oldrootfs(pivotdir))
-		return -1;
-
-	/* remove temporary mount point, we don't consider the removing
-	 * as fatal */
-	if (remove_pivotdir && rmdir(pivotdir))
-		WARN("can't remove mountpoint '%s': %m", pivotdir);
-
 	return 0;
+
+fail:
+	if (oldroot != -1)
+		close(oldroot);
+	if (newroot != -1)
+		close(newroot);
+	return -1;
 }
 
 /*
