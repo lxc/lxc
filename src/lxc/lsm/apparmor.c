@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/apparmor.h>
+#include <sys/vfs.h>
 
 #include "log.h"
 #include "lsm/lsm.h"
@@ -40,14 +41,39 @@ static int aa_enabled = 0;
 #define AA_MOUNT_RESTR "/sys/kernel/security/apparmor/features/mount/mask"
 #define AA_ENABLED_FILE "/sys/module/apparmor/parameters/enabled"
 
-static int mount_feature_enabled(void)
+static bool mount_feature_enabled(void)
 {
 	struct stat statbuf;
+	struct statfs sf;
 	int ret;
+	bool mountedsys = false, mountedk = false, bret = true;
+
+	ret = statfs("/sys", &sf);
+	if (ret < 0 || sf.f_type != 0x62656572) {
+		if (mount("sysfs", "/sys", "sysfs", 0, NULL) < 0) {
+			SYSERROR("Error mounting sysfs");
+			return false;
+		}
+		mountedsys = true;
+	}
+	if (stat("/sys/kernel/security/apparmor", &statbuf) < 0) {
+		if (mount("securityfs", "/sys/kernel/security", "securityfs", 0, NULL) < 0) {
+			SYSERROR("Error mounting securityfs");
+			if (mountedsys)
+				umount2("/sys", MNT_DETACH);
+			return false;
+		}
+		mountedk = true;
+	}
 	ret = stat(AA_MOUNT_RESTR, &statbuf);
 	if (ret != 0)
-		return 0;
-	return 1;
+		bret = false;
+
+	if (mountedk)
+		umount2("/sys/kernel/security", MNT_DETACH);
+	if (mountedsys)
+		umount2("/sys", MNT_DETACH);
+	return bret;
 }
 
 /* aa_getcon is not working right now.  Use our hand-rolled version below */
