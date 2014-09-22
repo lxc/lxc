@@ -37,6 +37,7 @@ char**
 convert_tuple_to_char_pointer_array(PyObject *argv) {
     int argc;
     int i, j;
+    char **result;
 
     /* not a list or tuple */
     if (!PyList_Check(argv) && !PyTuple_Check(argv)) {
@@ -46,7 +47,7 @@ convert_tuple_to_char_pointer_array(PyObject *argv) {
 
     argc = PySequence_Fast_GET_SIZE(argv);
 
-    char **result = (char**) calloc(argc + 1, sizeof(char*));
+    result = (char**) calloc(argc + 1, sizeof(char*));
 
     if (result == NULL) {
         PyErr_SetNone(PyExc_MemoryError);
@@ -54,11 +55,10 @@ convert_tuple_to_char_pointer_array(PyObject *argv) {
     }
 
     for (i = 0; i < argc; i++) {
-        PyObject *pyobj = PySequence_Fast_GET_ITEM(argv, i);
-        assert(pyobj != NULL);
-
         char *str = NULL;
         PyObject *pystr = NULL;
+        PyObject *pyobj = PySequence_Fast_GET_ITEM(argv, i);
+        assert(pyobj != NULL);
 
         if (!PyUnicode_Check(pyobj)) {
             PyErr_SetString(PyExc_ValueError, "Expected a string");
@@ -806,6 +806,7 @@ Container_get_cgroup_item(Container *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"key", NULL};
     char* key = NULL;
     int len = 0;
+    char* value;
     PyObject *ret = NULL;
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "s", kwlist,
@@ -819,7 +820,7 @@ Container_get_cgroup_item(Container *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    char* value = (char*) malloc(sizeof(char)*len + 1);
+    value = (char*) malloc(sizeof(char)*len + 1);
     if (value == NULL)
         return PyErr_NoMemory();
 
@@ -841,6 +842,7 @@ Container_get_config_item(Container *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"key", NULL};
     char* key = NULL;
     int len = 0;
+    char* value;
     PyObject *ret = NULL;
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|", kwlist,
@@ -858,7 +860,7 @@ Container_get_config_item(Container *self, PyObject *args, PyObject *kwds)
         return PyUnicode_FromString("");
     }
 
-    char* value = (char*) malloc(sizeof(char)*len + 1);
+    value = (char*) malloc(sizeof(char)*len + 1);
     if (value == NULL)
         return PyErr_NoMemory();
 
@@ -887,6 +889,7 @@ Container_get_keys(Container *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"key", NULL};
     char* key = NULL;
     int len = 0;
+    char* value;
     PyObject *ret = NULL;
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s", kwlist,
@@ -900,7 +903,7 @@ Container_get_keys(Container *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    char* value = (char*) malloc(sizeof(char)*len + 1);
+    value = (char*) malloc(sizeof(char)*len + 1);
     if (value == NULL)
         return PyErr_NoMemory();
 
