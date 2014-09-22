@@ -92,7 +92,11 @@ chown -R $TUSER: /run/user/$(id -u $TUSER)
 
 cd $HDIR
 
-if [ -e /sys/fs/cgroup/cgmanager/sock ]; then
+if which cgm >/dev/null 2>&1; then
+	cgm create all $TUSER
+	cgm chown all $TUSER $(id -u $TUSER) $(id -g $TUSER)
+	cgm movepid all $TUSER $$
+elif [ -e /sys/fs/cgroup/cgmanager/sock ]; then
 	for d in $(cut -d : -f 2 /proc/self/cgroup); do
 		dbus-send --print-reply --address=unix:path=/sys/fs/cgroup/cgmanager/sock \
 			--type=method_call /org/linuxcontainers/cgmanager org.linuxcontainers.cgmanager0_0.Create \
