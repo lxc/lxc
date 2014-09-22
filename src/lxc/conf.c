@@ -1575,7 +1575,7 @@ int lxc_delete_autodev(struct lxc_handler *handler)
 
 	/* Do the cleanup */
 	INFO("Cleaning %s", tmp_path );
-	if ( 0 != lxc_rmdir_onedev(tmp_path, NULL) ) {
+	if ( 0 != lxc_rmdir_onedev(tmp_path) ) {
 		ERROR("Failed to cleanup autodev" );
 	}
 
