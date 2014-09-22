@@ -1041,6 +1041,27 @@ proc proc proc nodev,noexec,nosuid 0 0
 	      <programlisting>lxc.aa_profile = unconfined</programlisting>
 	  </listitem>
 	</varlistentry>
+	<varlistentry>
+	  <term>
+	    <option>lxc.aa_allow_incomplete</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      Apparmor profiles are pathname based.  Therefore many file
+	      restrictions require mount restrictions to be effective against
+	      a determined attacker.  However, these mount restrictions are not
+	      yet implemented in the upstream kernel.  Without the mount
+	      restrictions, the apparmor profiles still protect against accidental
+	      damager.
+	    </para>
+	    <para>
+	      If this flag is 0 (default), then the container will not be
+	      started if the kernel lacks the apparmor mount features, so that a
+	      regression after a kernel upgrade will be detected.  To start the
+	      container under partial apparmor protection, set this flag to 1.
+	    </para>
+	  </listitem>
+	</varlistentry>
       </variablelist>
     </refsect2>
 
