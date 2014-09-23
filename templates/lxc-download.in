@@ -215,7 +215,7 @@ EOF
 }
 
 options=$(getopt -o d:r:a:hl -l dist:,release:,arch:,help,list,variant:,\
-server:,keyid:,no-validate,flush-cache,force-cache,name:,path:,\
+server:,keyid:,keyserver:,no-validate,flush-cache,force-cache,name:,path:,\
 rootfs:,mapped-uid:,mapped-gid: -- "$@")
 
 if [ $? -ne 0 ]; then
@@ -234,6 +234,7 @@ while :; do
         --variant)          DOWNLOAD_VARIANT=$2; shift 2;;
         --server)           DOWNLOAD_SERVER=$2; shift 2;;
         --keyid)            DOWNLOAD_KEYID=$2; shift 2;;
+        --keyserver)        DOWNLOAD_KEYSERVER=$2; shift 2;;
         --no-validate)      DOWNLOAD_VALIDATE="false"; shift 1;;
         --flush-cache)      DOWNLOAD_FLUSH_CACHE="true"; shift 1;;
         --force-cache)      DOWNLOAD_FORCE_CACHE="true"; shift 1;;
