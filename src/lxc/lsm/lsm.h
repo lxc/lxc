@@ -50,7 +50,7 @@ static inline int         lsm_enabled(void) { return 0; }
 static inline const char *lsm_name(void) { return "none"; }
 static inline char       *lsm_process_label_get(pid_t pid) { return NULL; }
 static inline int         lsm_process_label_set(const char *label,
-		struct lxc-conf *conf, int use_default, int on_exec) { return 0; }
+		struct lxc_conf *conf, int use_default, int on_exec) { return 0; }
 #endif
 
 #endif
