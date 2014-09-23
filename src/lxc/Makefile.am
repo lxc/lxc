@@ -165,7 +165,7 @@ bin_SCRIPTS = lxc-checkconfig
 EXTRA_DIST = \
 	lxc-device \
 	lxc-ls \
-	lxc-top \
+	lxc-top.lua \
 	lxc.net \
 	lxc-restore-net
 
@@ -175,10 +175,6 @@ bin_SCRIPTS += lxc-ls
 bin_SCRIPTS += lxc-start-ephemeral
 else
 bin_SCRIPTS += legacy/lxc-ls
-endif
-
-if ENABLE_LUA
-bin_SCRIPTS += lxc-top
 endif
 
 bin_PROGRAMS = \
@@ -198,6 +194,7 @@ bin_PROGRAMS = \
 	lxc-snapshot \
 	lxc-start \
 	lxc-stop \
+	lxc-top \
 	lxc-unfreeze \
 	lxc-unshare \
 	lxc-usernsexec \
@@ -231,6 +228,7 @@ lxc_monitord_SOURCES = lxc_monitord.c
 lxc_clone_SOURCES = lxc_clone.c
 lxc_start_SOURCES = lxc_start.c
 lxc_stop_SOURCES = lxc_stop.c
+lxc_top_SOURCES = lxc_top.c
 lxc_unfreeze_SOURCES = lxc_unfreeze.c
 lxc_unshare_SOURCES = lxc_unshare.c
 lxc_wait_SOURCES = lxc_wait.c
