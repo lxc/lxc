@@ -2210,7 +2210,7 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 			struct lxc_inetdev *i = it2->elem;
 			char buf[INET_ADDRSTRLEN];
 			inet_ntop(AF_INET, &i->addr, buf, sizeof(buf));
-			strprint(retv, inlen, "%s\n", buf);
+			strprint(retv, inlen, "%s/%d\n", buf, i->prefix);
 		}
 	} else if (strcmp(p1, "ipv6_gateway") == 0) {
 		if (netdev->ipv6_gateway_auto) {
@@ -2226,7 +2226,7 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 			struct lxc_inet6dev *i = it2->elem;
 			char buf[INET6_ADDRSTRLEN];
 			inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf));
-			strprint(retv, inlen, "%s\n", buf);
+			strprint(retv, inlen, "%s/%d\n", buf, i->prefix);
 		}
 	}
 	return fulllen;
