@@ -2216,15 +2216,15 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 		if (netdev->ipv6_gateway_auto) {
 			strprint(retv, inlen, "auto");
 		} else if (netdev->ipv6_gateway) {
-			char buf[INET_ADDRSTRLEN];
-			inet_ntop(AF_INET, netdev->ipv6_gateway, buf, sizeof(buf));
+			char buf[INET6_ADDRSTRLEN];
+			inet_ntop(AF_INET6, netdev->ipv6_gateway, buf, sizeof(buf));
 			strprint(retv, inlen, "%s", buf);
 		}
 	} else if (strcmp(p1, "ipv6") == 0) {
 		struct lxc_list *it2;
 		lxc_list_for_each(it2, &netdev->ipv6) {
-			struct lxc_inetdev *i = it2->elem;
-			char buf[INET_ADDRSTRLEN];
+			struct lxc_inet6dev *i = it2->elem;
+			char buf[INET6_ADDRSTRLEN];
 			inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf));
 			strprint(retv, inlen, "%s\n", buf);
 		}
