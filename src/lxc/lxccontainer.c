@@ -3929,6 +3929,10 @@ out_unlock:
 					goto out_fini_handler;
 				}
 			}
+		} else {
+			ERROR("CRIU was killed with signal %d\n", WTERMSIG(status));
+			error = true;
+			goto out_fini_handler;
 		}
 
 		if (lxc_poll(c->name, handler)) {
