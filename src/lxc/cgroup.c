@@ -128,6 +128,15 @@ bool cgroup_chown(struct lxc_handler *handler)
 	return true;
 }
 
+bool cgroup_parse_existing_cgroups(struct lxc_handler *handler)
+{
+	if (ops && ops->parse_existing_cgroups)
+		return ops->parse_existing_cgroups(handler->cgroup_data, handler->pid);
+
+	/* cgmanager does this automatically */
+	return true;
+}
+
 bool cgroup_mount(const char *root, struct lxc_handler *handler, int type)
 {
 	if (ops) {

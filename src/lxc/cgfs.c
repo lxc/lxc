@@ -2376,6 +2376,18 @@ static bool lxc_cgroupfs_attach(const char *name, const char *lxcpath, pid_t pid
 	return true;
 }
 
+static bool cgfs_parse_existing_cgroups(void *hdata, pid_t init)
+{
+	struct cgfs_data *d = hdata;
+
+	if (!d)
+		return false;
+
+	d->info = lxc_cgroup_process_info_get(init, d->meta);
+
+	return !!(d->info);
+}
+
 static struct cgroup_ops cgfs_ops = {
 	.init = cgfs_init,
 	.destroy = cgfs_destroy,
@@ -2390,6 +2402,7 @@ static struct cgroup_ops cgfs_ops = {
 	.name = "cgroupfs",
 	.attach = lxc_cgroupfs_attach,
 	.chown = NULL,
+	.parse_existing_cgroups = cgfs_parse_existing_cgroups,
 	.mount_cgroup = cgroupfs_mount_cgroup,
 	.nrtasks = cgfs_nrtasks,
 };

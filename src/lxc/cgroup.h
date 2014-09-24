@@ -46,6 +46,7 @@ struct cgroup_ops {
 	bool (*unfreeze)(void *hdata);
 	bool (*setup_limits)(void *hdata, struct lxc_list *cgroup_conf, bool with_devices);
 	bool (*chown)(void *hdata, struct lxc_conf *conf);
+	bool (*parse_existing_cgroups)(void *hdata, pid_t pid);
 	bool (*attach)(const char *name, const char *lxcpath, pid_t pid);
 	bool (*mount_cgroup)(void *hdata, const char *root, int type);
 	int (*nrtasks)(void *hdata);
@@ -59,6 +60,7 @@ extern bool cgroup_init(struct lxc_handler *handler);
 extern bool cgroup_create(struct lxc_handler *handler);
 extern bool cgroup_setup_limits(struct lxc_handler *handler, bool with_devices);
 extern bool cgroup_chown(struct lxc_handler *handler);
+extern bool cgroup_parse_existing_cgroups(struct lxc_handler *handler);
 extern bool cgroup_enter(struct lxc_handler *handler);
 extern void cgroup_cleanup(struct lxc_handler *handler);
 extern bool cgroup_create_legacy(struct lxc_handler *handler);

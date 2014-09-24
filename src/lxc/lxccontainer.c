@@ -3895,6 +3895,17 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 					goto out_fini_handler;
 				}
 
+				if (!cgroup_init(handler)) {
+					error = true;
+					ERROR("failed initing cgroups");
+					goto out_fini_handler;
+				}
+
+				if (!cgroup_parse_existing_cgroups(handler)) {
+					ERROR("failed creating cgroups");
+					goto out_fini_handler;
+				}
+
 				if (container_mem_lock(c)) {
 					error = true;
 					goto out_fini_handler;

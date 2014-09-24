@@ -1313,6 +1313,7 @@ static struct cgroup_ops cgmanager_ops = {
 	.setup_limits = cgm_setup_limits,
 	.name = "cgmanager",
 	.chown = cgm_chown,
+	.parse_existing_cgroups = NULL,
 	.attach = cgm_attach,
 	.mount_cgroup = cgm_mount_cgroup,
 	.nrtasks = cgm_get_nrtasks,
