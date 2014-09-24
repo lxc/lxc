@@ -50,7 +50,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <cmdsynopsis>
       <command>lxc-top</command>
       <arg choice="opt">--help</arg>
-      <arg choice="opt">--max <replaceable>count</replaceable></arg>
       <arg choice="opt">--delay <replaceable>delay</replaceable></arg>
       <arg choice="opt">--sort <replaceable>sortby</replaceable></arg>
       <arg choice="opt">--reverse</arg>
@@ -64,12 +63,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <command>lxc-top</command> displays container statistics. The output
       is updated every <replaceable>delay</replaceable> seconds, and is
       ordered according to the <replaceable>sortby</replaceable> value
-      given. Specifying <replaceable>count</replaceable> will limit the
-      number of containers displayed, otherwise <command>lxc-top</command>
-      will display as many containers as can fit in your terminal.
+      given. <command>lxc-top</command> will display as many containers as
+      can fit in your terminal. Press 'q' to quit. Press one of the sort
+      key letters to sort by that statistic. Pressing a sort key letter a
+      second time reverses the sort order.
       -->
       <command>lxc-top</command> はコンテナの統計情報を表示します。出力は <replaceable>delay</replaceable> 秒ごとに更新されます。
-      そして、<replaceable>sortby</replaceable> で指定した値に従ってソートされます。<replaceable>count</replaceable> を指定すると表示するコンテナ数を制限しますが、指定しなければ使用しているターミナルに合うようなコンテナ数で表示します。
+      そして、<replaceable>sortby</replaceable> の指定に従ってソートされます。<command>lxc-top</command> は使用しているターミナルに収まるようにできるだけ多くの数のコンテナを表示します。'q' を入力すると終了します。ソートのキーとなる文字を入力するとその統計値でソートします。ソートのキーとなる文字を 2 度入力するとソート順が逆になります。
     </para>
   </refsect1>
 
@@ -79,33 +79,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option><optional>-m, --max <replaceable>count</replaceable></optional></option>
-        </term>
-        <listitem>
-          <para>
-            <!--
-            Limit the number of containers displayed to
-            <replaceable>count</replaceable>.
-            -->
-            表示するコンテナ数を <replaceable>count</replaceable> に制限します。
-          </para>
-        </listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term>
           <option><optional>-d, --delay <replaceable>delay</replaceable></optional></option>
         </term>
         <listitem>
           <para>
             <!--
             Amount of time in seconds to delay between screen updates.
-            This can be specified as less than a second by giving a
-            rational number, for example 0.5 for a half second delay. The
-            default is 3 seconds.
+            The default is 3 seconds.
             -->
-            表示を更新する間隔を秒で指定します。有理数を指定することにより、1 秒以下を指定することも可能です。
-            例えば、1 秒の半分で更新を行うために 0.5 を指定します。デフォルトは 3 秒です。
+            表示を更新する間隔を秒で指定します。デフォルトは 3 秒です。
           </para>
         </listitem>
       </varlistentry>
@@ -118,11 +100,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <!--
             Sort the containers by name, cpu use, or memory use. The
             <replaceable>sortby</replaceable> argument should be one of
-            the letters n,c,d,m,k to sort by name, cpu use, disk I/O, memory,
+            the letters n,c,b,m,k to sort by name, cpu use, block I/O, memory,
             or kernel memory use respectively. The default is 'n'.
             -->
-            名前、CPU 使用量、メモリ使用量でコンテナをソートします。<replaceable>sortby</replaceable> で指定する引数は n,c,d,m,k のどれかでなければなりません。
-            これはそれぞれ名前、CPU 使用量、disk I/O、メモリ使用量、カーネルメモリ使用量を表します。デフォルトは 'n' です。
+            名前、CPU 使用量、メモリ使用量でコンテナをソートします。<replaceable>sortby</replaceable> で指定する引数は n,c,b,m,k のどれかでなければなりません。
+            これはそれぞれ名前、CPU 使用量、ブロック I/O、メモリ使用量、カーネルメモリ使用量を表します。デフォルトは 'n' です。
           </para>
         </listitem>
       </varlistentry>
