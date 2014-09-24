@@ -76,6 +76,7 @@ src/lxc/legacy/lxc-ls
 src/lxc/lxc-user-nic
 src/lxc/version.h
 
+src/python-lxc/setup.py
 src/python-lxc/build/
 src/python-lxc/lxc/__pycache__/
 
