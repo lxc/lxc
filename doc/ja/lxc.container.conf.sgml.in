@@ -1492,6 +1492,35 @@ proc proc proc nodev,noexec,nosuid 0 0
 	      <programlisting>lxc.aa_profile = unconfined</programlisting>
 	  </listitem>
 	</varlistentry>
+	<varlistentry>
+	  <term>
+	    <option>lxc.aa_allow_incomplete</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      Apparmor profiles are pathname based.  Therefore many file
+	      restrictions require mount restrictions to be effective against
+	      a determined attacker.  However, these mount restrictions are not
+	      yet implemented in the upstream kernel.  Without the mount
+	      restrictions, the apparmor profiles still protect against accidental
+	      damager.
+              -->
+              apparmor プロファイルはパス名ベースですので、多数のファイルの制限を行う際、執念深い攻撃者に対して効果的であるためにはマウントの制限が必要です。
+              しかし、これらのマウントの制限は upstream のカーネルではまだ実装されていません。マウントの制限なしでも、apparmor プロファイルによって予想外のダメージに対する保護が可能です。
+	    </para>
+	    <para>
+              <!--
+	      If this flag is 0 (default), then the container will not be
+	      started if the kernel lacks the apparmor mount features, so that a
+	      regression after a kernel upgrade will be detected.  To start the
+	      container under partial apparmor protection, set this flag to 1.
+              -->
+              このフラグが 0 の場合 (デフォルト)、カーネルが apparmor のマウント機能をサポートしていない場合にコンテナが起動しません。これはカーネルを更新した後に機能が退行したことが検出できるようにするためです。
+              不完全な apparmor の保護の下でコンテナを起動するためには、このフラグを 1 に設定してください。
+	    </para>
+	  </listitem>
+	</varlistentry>
       </variablelist>
     </refsect2>
 
