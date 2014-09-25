@@ -11,6 +11,7 @@
 
   # ignore DENIED message on / remount
   deny mount options=(ro, remount) -> /,
+  deny mount options=(ro, remount, silent) -> /,
 
   # allow tmpfs mounts everywhere
   mount fstype=tmpfs,
