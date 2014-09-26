@@ -1,0 +1,822 @@
+#!/bin/bash
+
+#
+# LXC template for Pentoo (gentoo Varrient) 
+#### To do add urls to Pentoo's Stage 4's into script.... 
+#
+# Author: Guillaume Zitta <lxc@zitta.fr>
+#
+# Widely inspired from lxc-gentoo script at https://github.com/globalcitizen/lxc-gentoo
+#
+# this version is reworked with :
+# - out of the lxc-create compat
+# - vanilla gentoo config
+# - ready to use cache
+#
+
+# Detect use under userns (unsupported)
+for arg in "$@"; do
+    [ "$arg" = "--" ] && break
+    if [ "$arg" = "--mapped-uid" -o "$arg" = "--mapped-gid" ]; then
+        echo "This template can't be used for unprivileged containers." 1>&2
+        echo "You may want to try the \"download\" template instead." 1>&2
+        exit 1
+    fi
+done
+
+# Make sure the usual locations are in PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Ensure strict root's umask doesen't render the VM unusable
+umask 022
+
+LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+
+################################################################################
+#                        Various helper functions
+################################################################################
+
+# param: $1: the name of the lock
+# param: $2: the timeout for the lock
+# The rest contain the command to execute and its parameters
+execute_exclusively()
+{
+    mkdir -p @LOCALSTATEDIR@/lock/subsys/
+
+    local lock_name="$1"
+    local timeout="$2"
+    shift 2
+
+    {
+        printf "Attempting to obtain an exclusive lock (timeout: %s sec) named \"%s\"...\n" "${timeout}" "$lock_name"
+
+        flock -x -w "${timeout}" 50
+
+        if [[ $? -ne 0 ]]; then
+            printf " => unable to obtain lock, aborting.\n"
+            return 2
+        else
+            printf " => done.\n"
+        fi
+
+        printf " => Executing \"%s\"\n" "$*"
+        "$@"
+        retval=$?
+    } 50> "@LOCALSTATEDIR@/lock/subsys/lxc-gentoo-${lock_name}"
+    return $retval
+}
+
+# a die function is always a good idea
+die()
+{
+    printf "\n[the last exit code leading to this death was: %s ]\n" "$?"
+    local retval="$1"
+    shift 1
+    printf "$@"
+    exit "$retval"
+}
+
+# gentoo arch/variant detection
+set_default_arch()
+{
+    printf "### set_default_arch: default arch/variant autodetect...\n"
+    arch=$(uname -m)
+    if [[ $arch =~ i.86 ]]; then
+        arch="x86"
+        variant="x86"
+    elif [[ $arch == "x86_64" ]]; then
+        arch="amd64"
+        variant="amd64"
+    elif [[ $arch =~ arm.* ]]; then
+        arch="arm"
+        variant="armv7a"
+    else
+        #who knows, it may work...
+        printf " => warn: unexpected arch:${arch} let me knows if it works :)\n"
+        variant="${arch}"
+    fi
+    printf " => Got: arch=%s variant=%s\n" "${arch}" "${variant}"
+}
+
+store_user_message()
+{
+    user_message="${user_message}=> $@\n"
+}
+
+################################################################################
+#                    CACHE Preparation
+################################################################################
+# during setup cachedir is $cacheroot/partial-$arch-$variant
+# at the end, it will be   $cacheroot/rootfs-$arch-$variant
+
+cache_setup(){
+    partialfs="${cacheroot}/partial-${arch}-${variant}"
+
+    #if cache exists and flush not needed, return
+    [[ -d "${cachefs}" && -z "${flush_cache}" ]] && return 0
+
+    printf "###### cache_setup(): doing cache preparation\n"
+    local retval=1
+
+    #clean from failed previous run
+    rm -rf "${partialfs}"
+    mkdir -p "${partialfs}"
+
+    #let's go
+    cache_precheck && \
+    cache_stage3 && \
+    cache_portage && \
+    cache_inittab && \
+    cache_net && \
+    cache_dev && \
+    cache_openrc && \
+    cache_locale && \
+    rm -rf "${cachefs}" && \
+    mv "${partialfs}" "${cachefs}" && \
+    printf "###### cache_setup: Cache should be ready\n"
+
+    return $?
+}
+
+cache_precheck()
+{
+    printf "### cache_precheck(): doing some pre-start checks ...\n"
+    # never hurts to have a fail-safe.
+    [[ -n "${cacheroot//\/}" ]] \
+        || die 8 "\$cacheroot (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPERATORS, THIS IS *VERY* BAD!\n" "${cacheroot}"
+}
+
+#get latest stage3 tarball
+cache_stage3()
+{
+    printf "### cache_stage3(): stage3 cache deployment...\n"
+
+    if [ -z "${tarball}" ]; then
+        #variables init
+        local stage3_baseurl="${mirror}/releases/${arch}/autobuilds"
+
+        # get latest-stage3....txt file for subpath
+        local stage3_pointer="${stage3_baseurl}/latest-stage3-${variant}.txt"
+
+        printf "Determining path to latest Gentoo %s (%s) stage3 archive...\n" "${arch}" "${variant}"
+        printf " => downloading and processing %s\n" "${stage3_pointer}"
+
+        local stage3_latest_tarball=$(wget -q -O - "${stage3_pointer}" | tail -n1 ) \
+            || die 6 "Error: unable to fetch\n"
+
+        printf " => Got: %s\n" "${stage3_latest_tarball}"
+
+        printf "Downloading/untarring the actual stage3 tarball...\n"
+        wget -O - "${stage3_baseurl}/${stage3_latest_tarball}" \
+            | tar -xjpf - --numeric-owner -C "${partialfs}" \
+            || die 6 "Error: unable to fetch or untar\n"
+        printf " => extracted to: %s\n" "${partialfs}"
+    else
+        printf "Extracting the stage3 tarball...\n"
+        tar -xpf "${tarball}" --numeric-owner -C "${partialfs}" \
+            || die 6 "unable to untar ${tarball} to ${partialfs}"
+    fi
+
+    #check if it chroots
+    printf "chroot test..."
+    chroot ${partialfs} /bin/true || die 1 "Error: chroot %s /bin/true, failed" "${partialfs}"
+    printf " OK\n"
+    printf " => stage3 cache extracted in : %s\n" "${partialfs}"
+    return 0
+}
+
+cache_portage()
+{
+    printf "### cache_portage: caching portage tree tarball...\n"
+    [[ -z "${flush_cache}" && -f "${portage_cache}" ]] && return 0
+
+    rm -f ${portage_cache}
+
+    printf "Downloading Gentoo portage (software build database) snapshot...\n"
+    execute_exclusively portage 60 wget -O "${portage_cache}" "${mirror}/snapshots/portage-latest.tar.bz2" \
+    || die 6 "Error: unable to fetch\n"
+    printf " => done.\n"
+}
+
+# custom inittab
+cache_inittab()
+{
+    printf "### cache_inittab: tuning inittab...\n"
+
+    INITTAB="${partialfs}/etc/inittab"
+
+    [[ -w "$INITTAB" ]] || die 1 "Error: $INITTAB is not writeable"
+
+    # create console
+    echo "# Lxc main console" >> "$INITTAB"
+    echo "1:12345:respawn:/sbin/agetty -a root --noclear 115200 console linux" >> "$INITTAB"
+
+    # finally we add a pf line to enable clean shutdown on SIGPWR (issue 60)
+    echo "# clean container shutdown on SIGPWR" >> "$INITTAB"
+    echo "pf:12345:powerwait:/sbin/halt" >> "$INITTAB"
+
+    # we also blank out /etc/issue here in order to prevent delays spawning login
+    # caused by attempts to determine domainname on disconnected containers
+    sed -i 's/[\][Oo]//g' "${partialfs}/etc/issue"
+}
+
+cache_net()
+{
+    printf "### cache_net: doing some useful net tuning...\n"
+    # useful for chroot
+    # /etc/resolv.conf
+    grep -i 'search ' /etc/resolv.conf > "${partialfs}/etc/resolv.conf"
+    grep -i 'nameserver ' /etc/resolv.conf >> "${partialfs}/etc/resolv.conf"
+
+    # fix boot-time interface config wipe under aggressive cap drop
+    # (openrc 0.9.8.4 ~sep 2012 - https://bugs.gentoo.org/show_bug.cgi?id=436266)
+    # initial warkaround was: sed -i -e 's/^#rc_nostop=""/rc_nostop="net.eth0 net.lo"/' "${partialfs}/etc/rc.conf"
+    # but this one does not depends on interfaces names
+    echo 'rc_keyword="-stop"' >> "${partialfs}/etc/conf.d/net"
+}
+
+cache_dev()
+{
+    printf "### cache_dev(): /dev tuning...\n"
+
+    #Wait for https://bugs.gentoo.org/show_bug.cgi?id=496054
+    mkdir "${partialfs}/dev/pts"
+    mkdir "${partialfs}/dev/shm"
+    mkdir "${partialfs}/dev/mqueue"
+
+    mkdir -m 755 "${partialfs}/dev/net"
+    mknod -m 666 "${partialfs}/dev/net/tun"        c 10 200
+
+    return 0
+}
+
+# fix openrc system
+cache_openrc()
+{
+    printf "### cache_openrc(): doing openrc tuning\n"
+
+    #Wait for https://bugs.gentoo.org/show_bug.cgi?id=496054
+    chroot "${partialfs}" sed s/-lxc//g -i "/etc/init.d/devfs"
+
+    return 0
+}
+
+cache_locale()
+{
+   printf "### cache_locale(): initiating minimale locale en_US.UTF-8 \n"
+
+   echo "en_US.UTF-8 UTF-8" >> "${partialfs}/etc/locale.gen"
+   chroot "${partialfs}" locale-gen
+
+   return 0
+}
+
+################################################################################
+#                    CONTAINER Preparation
+################################################################################
+
+container_setup() {
+    printf "##### container_setup(): starting container setup\n"
+
+    #in most cases lxc-create should have provided a copy of default lxc.conf
+    #let's tag where template starts, or just create the files
+    echo '### lxc-gentoo template stuff starts here' >> "$path/config"
+
+    #Determine rootfs
+    #If backingstore was specified, lxc.rootfs should be present or --rootfs did the rootfs var creation
+    if [ -z "${rootfs}" ]; then
+        rootfs=`awk -F= '$1 ~ /^lxc.rootfs/ { print $2 }' "$path/config" 2>/dev/null`
+        if [ -z "${rootfs}" ]; then
+            #OK it's default
+            rootfs="${path}/rootfs"
+        fi
+    fi
+    store_user_message "rootfs of container is : ${rootfs}"
+    store_user_message "config of container is : ${path}/config"
+
+    container_precheck && \
+    container_rootfs && \
+    container_consoles && \
+    container_tz && \
+    container_portage && \
+    container_net && \
+    container_hostname && \
+    container_auth && \
+    container_sshd && \
+    container_conf
+    if [ $? -ne 0 ]; then
+        die 1 "container_setup(): one step didn't complete, sorry\n"
+    fi
+
+    printf "###### container_setup(): container should be ready to start!\n"
+    printf "\n\n"
+    printf "You could now use you container with: lxc-start -n %s\n" "${name}"
+    printf "little things you should know about your container:\n"
+    printf "${user_message}"
+    return 0
+}
+
+container_precheck()
+{
+    printf "### container_precheck(): doing some pre-start checks ...\n"
+    # never hurts to have a fail-safe.
+    [[ -n "${name//\/}" ]] \
+        || die 8 "\$name (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPERATORS, THIS IS *VERY* BAD!\n" "${name}"
+
+    [[ -n "${rootfs//\/}" ]] \
+        || die 8 "\$rootfs (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPERATORS, THIS IS *VERY* BAD!\n" "${rootfs}"
+
+    [[ -n "${cachefs//\/}" ]] \
+        || die 8 "\$cachefs (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPERATORS, THIS IS *VERY* BAD!\n" "${cachefs}"
+
+    # check if the rootfs already exists
+    [[ -d "${rootfs}/etc" ]] && die 18 "Error: \$rootfs (%s) already exists!" "${rootfs}"
+
+    # check cache
+    [[ ! -d "${cachefs}/etc" ]] && die 1 "Error: \$cachefs (%s) not found!" "${cachefs}"
+
+    return 0
+}
+
+container_rootfs()
+{
+    printf "#### container_rootfs(): copying rootfs %s from cache %s ...\n" "${rootfs}" "${cachefs}"
+    tar -c -f - --numeric-owner -C "${cachefs}" . \
+        | tar -x -p -f - --numeric-owner -C "${rootfs}" \
+        || die 1 "Error: cache copy to rootfs failed"
+
+    printf "chroot test..."
+    chroot "${rootfs}" /bin/true || die 1 "Error: 'chroot %s /bin/true' failed"
+    printf " OK\n"
+
+    printf " => done\n"
+    return 0
+}
+
+container_consoles() {
+    printf "#### container_consoles(): setting container consoles ...\n"
+
+    # disable unwanted ttys
+    if [[ ${tty} < 6 ]]; then
+        local mindis=$(( ${tty} + 1 ))
+        sed -i "s/^c[${mindis}-6]/#&/" "${rootfs}/etc/inittab"
+    fi
+    printf " => main console + ${tty} ttys\n"
+
+    if [[ -z "${autologin}" ]]; then
+        sed 's/agetty -a root/agetty/' -i "${rootfs}/etc/inittab"
+    elif [[ "${user}" != "root" ]]; then
+        sed "s/agetty -a root/agetty -a ${user}/" -i "${rootfs}/etc/inittab"
+        printf " => Autologin on main console for %s enabled\n" "${user}"
+        [[ -z "${forced_password}" ]] && unset password
+        store_user_message "${user} has autologin on main console"
+    else
+        printf " => Autologin on main console for root enabled\n"
+        [[ -z "${forced_password}" ]] && unset password
+        store_user_message "${user} has autologin on main console"
+    fi
+    printf " => done\n"
+}
+
+container_tz()
+{
+    printf "#### container_tz(): setting container timezone ...\n"
+
+    #let's try to copy it from host
+    if [ -L "/etc/localtime" ]; then
+        #host has a symlink
+        #let see if we can reproduct symlink
+        target=$(readlink /etc/localtime)
+        if [[ "$target" != "" ]]; then
+            if [ -f "${rootfs}/${target}" ]; then
+                #same target exists in container
+                chroot "${rootfs}" ln -sf "${target}" "/etc/localtime"
+                printf " => host symlink reproducted in container : %s\n" "${target}"
+                store_user_message "timezone copyed from host"
+                return 0
+            fi
+        fi
+    fi
+
+    if [ -e /etc/localtime ]; then
+        # duplicate host timezone
+        cat /etc/localtime > "${rootfs}/etc/localtime"
+        printf " => host localtime copyed to container\n"
+        store_user_message "timezone was staticly copyed from host"
+    else
+        # otherwise set up UTC
+        chroot "${rootfs}" ln -sf /usr/share/zoneinfo/UTC /etc/localtime
+        printf " => fallback: fixed to UTC\n"
+        store_user_message "timezone was fixed to UTC"
+    fi
+}
+
+
+container_portage()
+{
+    printf "#### container_portage(): setting container portage... \n"
+
+    #default entry for conf
+    portage_mount="#container set with private portage tree, no mount here"
+
+    printf "Warnings are normal here, don't worry\n"
+    #container repos detection
+    if chroot ${rootfs} portageq get_repo_path / gentoo > /dev/null ; then
+        portage_container="$(chroot ${rootfs} portageq get_repo_path / gentoo)"
+    else
+        die 1 "Failed to figure out container portage tree location with portageq get_repo_path / gentoo\n"
+    fi
+
+    if [[ -n "${private_portage}" ]]; then
+        container_private_portage
+        return 0
+    fi
+
+    if [ -z "${portage_dir}" ]; then
+        #gentoo host detection
+        printf "trying to guess portage_dir from host...\n"
+        portage_dir="$(portageq get_repo_path / gentoo 2>/dev/null)"
+        if [ ! -d "${portage_dir}/profiles" ]; then
+            printf " => host portage detection failed (not gentoo host), fallback to private portage tree\n"
+            container_private_portage
+            return 0
+        fi
+    else
+        if [ ! -d "${portage_dir}/profiles" ]; then
+            die 1 "specified portage_dir (%s) does not contains profiles, is it a portage tree ?\n" "${portage_dir}"
+        fi
+    fi
+
+    printf "trying to guess portage distfiles dir from host ...\n"
+    portage_distfiles_dir="$(portageq distdir 2>/dev/null)"
+    if [ ! -d "${portage_distfiles_dir}" ]; then
+	portage_distfiles_dir="${portage_dir}/distfiles"
+    fi
+
+    # if we are here, we have shared portage_dir
+    #ensure dir exists
+    chroot "${rootfs}" mkdir ${portage_container}
+        portage_mount="#container set with shared portage
+lxc.mount.entry=${portage_dir} ${portage_container/\//} none ro,bind 0 0
+lxc.mount.entry=${portage_distfiles_dir} ${portage_container/\//}/distfiles none rw,bind 0 0
+#If you use eix, you should uncomment this
+#lxc.mount.entry=/var/cache/eix var/cache/eix none ro,bind 0 0"
+    store_user_message "container has a shared portage from host's ${portage_dir} to ${portage_container/\//}"
+        #Let's propose binary packages
+    cat <<- EOF >> "${rootfs}/etc/portage/make.conf"
+# enable this to store built binary packages
+#FEATURES="\$FEATURES buildpkg"
+
+# enable this to use built binary packages
+#EMERGE_DEFAULT_OPTS="\${EMERGE_DEFAULT_OPTS} --usepkg"
+
+# enable and *tune* this kind of entry to slot binaries, specialy if you use multiples archs and variants
+#PKGDIR="\${PKGDIR}/amd64
+#or PKGDIR="\${PKGDIR}/hardened"
+EOF
+    printf " => portage stuff done, see /etc/portage/make.conf for additionnal tricks\n"
+
+}
+
+container_private_portage()
+{
+    #called from container_portage() do not call directly from container_setup
+    printf "# untaring private portage to %s from %s ... \n" "${rootfs}/${portage_container}" "${portage_cache}"
+    mkdir -p "${rootfs}/${portage_container}"
+    execute_exclusively portage 60 \
+        tar -xp --strip-components 1 -C "${rootfs}/${portage_container}" \
+        -f "${portage_cache}" --numeric-owner \
+        || die 2 "Error: unable to extract the portage tree.\n"
+    store_user_message "container has its own portage tree at ${portage_container}"
+    printf "=> done\n"
+}
+
+#helper func for container_genconf_net()
+nic_write()
+{
+    #display with gentoo's confd.net format
+    echo "config_${nic_name}=\"${nic_conf}\""
+    #add to managed list
+    [[ "${nic_conf}" == "dhcp" ]] && nic_managed="${nic_managed} ${nic_name}"
+    [[ "${nic_conf}" == "null" ]] && nic_unmanaged="${nic_unmanaged} ${nic_name}"
+    [[ -z "${nic_hwaddr}" && ${nic_type} == "veth" ]] && nic_wo_hwaddr="${nic_wo_hwaddr} ${nic_name}"
+    nic_writed=1
+}
+
+#Analyse lxc.conf and print conf.d/net content
+container_conf_net()
+{
+    local file=${1}
+    [[ -z "${nic_last}" ]] && nic_last=-1
+    [[ -z "${nic_named}" ]] && nic_named=0
+    OLDIFS=$IFS
+    IFS="
+"
+    #let's do some drity bash things to parse lxc network conf
+    for line in $( sed -r "s/[ ]*=[ ]*/_real_ugly_sep_42_/" "${file}" ); do
+        key=$(echo "${line}" | sed 's/_real_ugly_sep_42_.*$//')
+        value=$(echo "${line}" | sed 's/^.*_real_ugly_sep_42_//')
+
+        #new nic !
+        if [[ "${key}" == "lxc.network.type" ]]; then
+            #we don't know what to do with it.
+            [[ "${value}" == "empty" ]] && continue
+
+            #write conf from previous loops
+            [[ "${nic_writed}" == "0" ]] && nic_write
+
+            #init defaults
+            let nic_last=nic_last+1
+
+            nic_writed=0
+            #if 1 named between 2 not named: last is eth1
+            #=> Number is ID munis number of named NIC before
+            nic_name="eth$(( ${nic_last} - ${nic_named} ))"
+            nic_conf="dhcp"
+            nic_type="${value}"
+        fi
+
+                if [[ "${key}" == "lxc.network.hwaddr" ]]; then
+                nic_hwaddr=1
+        fi
+
+        if [[ "${key}" =~ ^lxc.network.ipv(4|6) ]]; then
+            #tell openrc to not manage this NIC as LXC set there address
+            nic_conf="null"
+        fi
+        if [[ "${key}" =~ ^lxc.network.name ]]; then
+            nic_name="${value}"
+            let nic_named=nic_named+1
+        fi
+        if [[ "${key}" == "lxc.include" ]]; then
+            #recursive into include
+            container_conf_net "${value}"
+        fi
+    done
+    #write conf from previous loops
+    [[ "${nic_writed}" == "0" ]] && nic_write
+    IFS=$OLDIFS
+}
+
+container_net()
+{
+    printf "container_net(): setting container network conf... \n"
+
+    #Analyse network configuration in config
+    container_conf_net "$path/config" >> "${rootfs}/etc/conf.d/net"
+
+        # found how much nic finaly have
+    nic_count=$(( ${nic_last} + 1 ))
+
+        # unless openrc manage a nic, we now have to force openrc to automatic
+    # provision of the 'net' dep. If we do not, network dependent services
+    # will fail to load
+    if [[ -z "${nic_managed}" ]]; then
+        #tell openrc that lxc already did the work
+        echo 'rc_provide="net"' >> "${rootfs}/etc/rc.conf"
+    fi
+
+    #No NIC ?
+    if [[ ${nic_count} == 0 ]]; then
+        #If no Nic, no need to continue
+        bridge=$(brctl show | awk 'NR==2 {print $1}')
+        if [[ "${bridge}" != "" ]]; then
+                        store_user_message "No network interface for this container
+It's a pitty, you have bridge, ${bridge}.
+If it is for Lxc, use it next time by adding this to your default.conf :
+lxc.network.type = veth
+lxc.network.link = ${bridge}
+lxc.network.flags = up
+lxc.network.hwaddr = fe:xx:xx:xx:xx:xx"
+                        return 0
+        else
+                store_user_message "No network interface for this container"
+                        return 0
+        fi
+    fi
+
+    #For each openrc managed nic, activate
+    sys_nic_index=1
+    for nic in ${nic_managed}
+    do
+        chroot "${rootfs}" ln -s net.lo "/etc/init.d/net.${nic}"
+        chroot "${rootfs}" rc-update add net.${nic} default
+        #fake sysfs for openrc, in case settings does not provide it
+        mkdir -p "${rootfs}/sys/class/net/${nic}"
+        echo ${sys_nic_index} > "${rootfs}/sys/class/net/${nic}/ifindex"
+        echo up > "${rootfs}/sys/class/net/${nic}/operstate"
+        let sys_nic_index=sys_nic_index+1
+    done
+
+        #Warn about dynamic hwaddr
+    if [[ -n "${nic_wo_hwaddr}" ]]; then
+                store_user_message "Warning, these veth NIC don't have fixed hwaddr :
+${nic_wo_hwaddr}
+
+see http://lists.linuxcontainers.org/pipermail/lxc-devel/2013-December/006736.html
+and man lxc.conf"
+    fi
+
+    printf " => network conf done.\n"
+}
+
+# custom hostname
+container_hostname()
+{
+    printf "#### container_hostname(): setting hostname... \n"
+    printf "hostnale=%s\n" "${name}" > "${rootfs}/etc/conf.d/hostname"
+    printf " => done.\n"
+}
+
+container_auth()
+{
+    printf "#### container_auth(): setting authentification... \n"
+    if [[ "${user}" != "root" ]]; then
+        printf " non root user requested, creating... \n"
+        chroot "${rootfs}" useradd --create-home -s /bin/bash "${user}" || die 1 "failed to create user ${user}"
+        printf "  => user %s created\n" "${user}"
+    fi
+    store_user_message "Connection user is ${user}"
+    #Home of user
+    auth_home=$(chroot "${rootfs}" getent passwd "${user}" | cut -d : -f 6)
+    if [[ -r "${auth_key}" ]]; then
+        printf " deploying auth_key %s for user %s ...\n" "${auth_key}" "${user}"
+        mkdir -p "${rootfs}/${auth_home}/.ssh"
+        cat >> "${rootfs}/${auth_home}/.ssh/authorized_keys"
+        chroot "${rootfs}" chown "${user}:" "${auth_home}/.ssh/authorized_keys"
+        printf "  => inserted public key in %s/.ssh/authorized_keys\n" "${auth_home}"
+        [[ -z "${forced_password}" ]] && unset password
+        store_user_message "${user} has the ssh key you gived us"
+    fi
+
+    if [[ -n "${password}" ]]; then
+        printf " setting password for %s ...\n" "${user}"
+        echo "${user}:${password}" | chroot "${rootfs}" chpasswd || die 1 "failed to change password"
+        printf "  => done. if you didn't specify , default is 'toor'\n"
+        if [[ -n "${forced_password}" ]]; then
+            store_user_message "${user} has the password you give for him"
+        else
+            store_user_message "${user} has the default password 'toor', please change it ASAP"
+        fi
+    fi
+
+    printf " => done.\n"
+}
+
+container_sshd() {
+    printf "#### container_sshd(): enabling sshd... \n"
+
+    chroot "${rootfs}" rc-update add sshd || die 1 "failed to enable sshd\n"
+
+    printf " => done.\n"
+}
+
+################################################################################
+#                        lxc configuration files
+################################################################################
+
+container_conf()
+{
+    printf "container_configuration(): making lxc configuration file... \n"
+
+    #at this point if there
+    conf_file="${path}/config"
+
+    if grep -q "^lxc.rootfs" "${conf_file}" ; then
+        #lxc-create already provided one
+        conf_rootfs_line=""
+    else
+        conf_rootfs_line="lxc.rootfs = $(readlink -f "${rootfs}")"
+    fi
+    if [[ "${arch}" == "x86" || "${arch}" == "amd64" ]]; then
+        local conf_arch_line="lxc.arch = ${arch}"
+    else
+        local conf_arch_line="# lxc.arch = ${arch}"
+    fi
+
+    cat <<- EOF >> "${conf_file}"
+# sets container architecture
+# If desired architecture != amd64 or x86, then we leave it unset as
+# LXC does not oficially support anything other than x86 or amd64.
+${conf_arch_line}
+
+# set the hostname
+lxc.utsname = ${name}
+lxc.tty = ${tty}
+
+${conf_rootfs_line}
+${portage_mount}
+${conf_sysfs}
+${conf_mounts}
+
+lxc.include = ${LXC_TEMPLATE_CONFIG}/gentoo.${settings}.conf
+EOF
+    printf  " => done.\n"
+}
+
+usage()
+{
+    cat <<EOF
+$1 -h|--help [-a|--arch <arch>] [-v|--variant <variant>] [-P|--private-portage] [--portage-dir <protagedir>] [-t|--tarball <stage3file>]
+ [-F|--flush-cache] [-c|--cache-only] [-u|--user <username>] [-w|--password <password>] [--autologin] [-S|--auth-key <keyfile>]
+ [-s|--settings <name>] [-m|--mirror <gentoomirror>] [--tty <number>]
+
+arch: the container architecture (e.g. amd64): defaults to host arch (currently: '${arch}')
+    If you choose one that needs emulation
+    tested: amd64, x86
+    You could try any other gentoo arch, why not...
+
+variant: gentoo's Architecture variant as of dec 2013 : (currently: '${variant}')
+    for amd64 arch: amd64 (default), amd64-hardened+nomultilib, amd64-hardened, amd64-nomultilib, x32
+    for x86 arch: i686 (default), i486, i686-hardened
+    for arm arch: armv7a (default), armv7a_hardfp, armv6j, armv6j_hardfp, armv5tel, armv4tl
+
+private-portage: by default, /usr/portage is mount-binded with host one if exists (currently: '${private_portage}')
+    this force container to have his own copy
+
+portage-dir: portage dir used for shared portage
+    by default the host on if any (currently: '${portage_dir}')
+
+tarball: force usage of local stage3 archive (currently: '${arch}')
+    If empty, latest will be downloaded
+
+flush-cache: do like there is no previous cache
+
+cache-only: just ensure cache is present
+    if cache exists and "flush-cache" not specified, does nothing
+
+user: user used in auth oriented options (currently: '${user}')
+
+password: password for user (currently: '${password}')
+    if default, usage of auth-key will disable password setting
+
+autologin: enable autologin for user (currently: '${autologin}')
+    This unset default password setting
+
+auth-key: SSH Public key file to inject into container for user (currently: '${auth_key}')
+    This unset default password setting
+
+settings: choose common configuration (currently: '${settings}')
+    see ${LXC_TEMPLATE_CONFIG}/gentoo.*.conf
+    Available settings:
+    $(ls -1 ${LXC_TEMPLATE_CONFIG}/gentoo.*.conf | xargs basename -a -s .conf | sed 's/^gentoo.//')
+
+mirror: gentoo mirror for download (currently: '${mirror}')
+
+tty: number of tty (6 max) (currently: '${tty}')
+EOF
+    exit 0
+}
+
+#some overridable defaults
+set_default_arch
+
+mirror="http://distfiles.gentoo.org"
+user="root"
+password="toor"
+tty=1
+settings="common"
+options=$(getopt -o hp:n:a:FcPv:t:S:u:w:s:m: -l help,rootfs:,path:,name:,arch:,flush-cache,cache-only,private-portage,variant:,portage-dir:,tarball:,auth_key:,user:,autologin,password:,settings:,mirror:,tty: -- "$@")
+
+eval set -- "$options"
+
+while true
+do
+    case "$1" in
+    -h|--help)             usage $0 && exit 0;;
+    --rootfs)              rootfs=$2; shift 2;;
+    -p|--path)             path=$2; shift 2;;
+    -n|--name)             name=$2; shift 2;;
+    -a|--arch)             arch=$2; shift 2;;
+    -F|--flush-cache)      flush_cache=1; shift 1;;
+    -c|--cache-only)       cache_only=1; shitf 1;;
+    -P|--private-portage)  private_portage=1; shift 1;;
+    -v|--variant)          variant=$2; shift 2;;
+    --portage-dir)         portage_dir=$2; shift 2;;
+    -t|--tarball)          tarball=$2; shift 2;;
+    -S|--auth-key)         auth_key=$2; shift 2;;
+    -u|--user)             user=$2; shift 2;;
+    -w|--password)         forced_password=1; password=$2; shift 2;;
+    -s|--settings)         settings=$2; shift 2;;
+    -m|--mirror)           mirror=$2; shift 2;;
+    --tty)                 [[ $2 -lt 6 ]] && tty=$2; shift 2;;
+    --autologin)            autologin=1; shift 1;;
+    --) shift 1; break ;;
+    *)           break ;;
+    esac
+done
+
+cacheroot="@LOCALSTATEDIR@/cache/lxc/gentoo"
+portage_cache="${cacheroot}/portage.tbz"
+cachefs="${cacheroot}/rootfs-${arch}-${variant}"
+
+alias wget="wget --timeout=8 --read-timeout=15 -c -t10 -nd"
+
+do_all() {
+    cache_setup
+    if [ -z "${cache_only}" ]; then
+        container_setup
+    fi
+}
+
+execute_exclusively "cache-${arch}-${variant}" 60 do_all
