@@ -598,7 +598,7 @@ container_rootfs_create()
         fi
     done
 
-    mkdir -p @LOCALSTATEDIR@/lock/subsys/lxc
+    mkdir -p @LOCALSTATEDIR@/lock/subsys
     (
         flock -x 9
         if [ $? -ne 0 ]; then

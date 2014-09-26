@@ -43,6 +43,12 @@ BuildRequires: systemd
 %define init_script sysvinit
 %endif
 
+# Must use /var/run for runtime_path on older releases or dnsmasq in the
+# lxc-net script will not be able to write its pid in /run (selinux denial)
+%if 0%{?fedora} < 15 || 0%{?rhel} < 7
+%define _with_runtime_path --with-runtime-path=/var/run
+%endif
+
 # RPM needs alpha/beta/rc in Release: not Version: to ensure smooth
 # package upgrades from alpha->beta->rc->release. For more info see:
 # http://fedoraproject.org/wiki/Packaging%3aNamingGuidelines#NonNumericRelease
@@ -62,7 +68,12 @@ Summary: Linux Containers userspace tools
 Group: Applications/System
 License: LGPLv2+
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
-Requires: openssl rsync dnsmasq
+Requires: openssl rsync dnsmasq bridge-utils
+Requires(pre): /usr/sbin/useradd
+Requires(postun): /usr/sbin/userdel
+%if 0%{?fedora} < 15 || 0%{?rhel} < 7
+Requires: libcgroup
+%endif
 # Note for Suse.  The "docbook2X" BuildRequires does properly
 # match docbook2x on Suse in a case insensitive manner
 BuildRequires: libcap libcap-devel docbook2X graphviz libxslt pkgconfig
@@ -134,6 +145,7 @@ PATH=$PATH:/usr/sbin:/sbin %configure $args \
 %if "x%{_unitdir}" != "x"
   --with-systemdsystemunitdir=%{_unitdir} \
 %endif
+  %{?_with_runtime_path} \
   --disable-rpath \
   --with-init-script=%{init_script}
 make %{?_smp_mflags}
@@ -147,7 +159,7 @@ find %{buildroot} -type f -name '*.la' -exec rm -f {} ';'
 rm -rf %{buildroot}
 
 %pre
-# Ensure that lxcdnsmasq uid & gid gets correctly allocated
+# Ensure that lxc-dnsmasq uid & gid gets correctly allocated
 if getent passwd lxc-dnsmasq >/dev/null 2>&1 ; then : ; else \
  /usr/sbin/useradd -M -r -s /sbin/nologin \
  -c "LXC Networking Service" -d %_localstatedir/%name lxc-dnsmasq 2> /dev/null \
@@ -199,6 +211,9 @@ LXC_DHCP_MAX="253"
 #LXC_DOMAIN="lxc"
 EOF
 fi
+
+%postun
+/usr/sbin/userdel lxc-dnsmasq > /dev/null 2>&1 || :
 
 %post   libs -p /sbin/ldconfig
 %postun libs -p /sbin/ldconfig

@@ -13,12 +13,28 @@
 # Description: Bring up/down LXC autostart containers
 ### END INIT INFO
 
+sysconfdir="@SYSCONFDIR@"
+
+# Source function library.
+test ! -r "$sysconfdir"/rc.d/init.d/functions ||
+        . "$sysconfdir"/rc.d/init.d/functions
+
+# provide action() fallback
+if ! type action >/dev/null 2>&1; then
+    # Real basic fallback for sysvinit "action" verbage.
+    action() {
+        echo -n "$1	"
+        shift
+        "$@" && echo "OK" || echo "Failed"
+    }
+fi
+
 start() {
-    @LIBEXECDIR@/lxc/lxc-containers start
+    action $"Starting LXC autoboot containers: " @LIBEXECDIR@/lxc/lxc-containers start
 }
 
 stop() {
-    @LIBEXECDIR@/lxc/lxc-containers stop
+    action $"Stopping LXC containers: " @LIBEXECDIR@/lxc/lxc-containers stop
 }
 
 # See how we were called.

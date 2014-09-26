@@ -32,19 +32,6 @@ OPTIONS=
 #	If you want to kill containers fast, use -k
 STOPOPTS="-a -A -s"
 
-# Source function library.
-test ! -r "$sysconfdir"/rc.d/init.d/functions ||
-        . "$sysconfdir"/rc.d/init.d/functions
-
-# provide action() fallback
-if ! type action >/dev/null 2>&1; then
-    # Real basic fallback for sysvinit "action" verbage.
-    action() {
-        echo -n "$1	"
-       "$@" && echo "OK" || echo "Failed"
-    }
-fi
-
 if [ -d "$localstatedir"/lock/subsys ]
 then
 	lockdir="$localstatedir"/lock/subsys
@@ -106,7 +93,7 @@ case "$1" in
         wait_for_bridge
 
         # Start autoboot containers first then the NULL group "onboot,".
-        action $"Starting LXC autoboot containers: " "$bindir"/lxc-autostart $OPTIONS $BOOTGROUPS
+        "$bindir"/lxc-autostart $OPTIONS $BOOTGROUPS
         touch "$lockdir"/lxc
     ;;
 
@@ -118,7 +105,7 @@ case "$1" in
         # The stop is serialized and can take excessive time.  We need to avoid
         # delaying the system shutdown / reboot as much as we can since it's not
         # parallelized...  Even 5 second timout may be too long.
-        action $"Stopping LXC containers: " "$bindir"/lxc-autostart $STOPOPTS $SHUTDOWNDELAY
+        "$bindir"/lxc-autostart $STOPOPTS $SHUTDOWNDELAY
         rm -f "$lockdir"/lxc
     ;;
 
