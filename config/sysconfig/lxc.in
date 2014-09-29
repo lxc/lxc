@@ -25,5 +25,4 @@ STOPOPTS="-a -A -s"
 
 USE_LXC_BRIDGE="false"  # overridden in lxc-net
 
-[ -f @LXC_DISTRO_SYSCONF@/lxc-net ] && . @LXC_DISTRO_SYSCONF@/lxc-net
-
+[ ! -f @LXC_DISTRO_SYSCONF@/lxc-net ] || . @LXC_DISTRO_SYSCONF@/lxc-net
