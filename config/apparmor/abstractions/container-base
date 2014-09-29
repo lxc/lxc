@@ -3,14 +3,49 @@
   file,
   umount,
 
-  # The following 3 entries are only supported by recent apparmor versions.
-  # Comment them if the apparmor parser doesn't recognize them.
+  # dbus, signal, ptrace and unix are only supported by recent apparmor
+  # versions. Comment them if the apparmor parser doesn't recognize them.
+
+  # This also needs additional rules to reach outside of the container via
+  # DBus, so just let all of DBus within the container.
   dbus,
-  signal,
-  ptrace,
+
+  # Allow us to receive signals from anywhere. Note: if per-container profiles
+  # are supported, for container isolation this should be changed to something
+  # like:
+  #   signal (receive) peer=unconfined,
+  #   signal (receive) peer=/usr/bin/lxc-start,
+  signal (receive),
+
+  # Allow us to send signals to ourselves
+  signal peer=@{profile_name},
+
+  # Allow other processes to read our /proc entries, futexes, perf tracing and
+  # kcmp for now (they will need 'read' in the first place). Administrators can
+  # override with:
+  #   deny ptrace (readby) ...
+  ptrace (readby),
+
+  # Allow other processes to trace us by default (they will need 'trace' in
+  # the first place). Administrators can override with:
+  #   deny ptrace (tracedby) ...
+  ptrace (tracedby),
+
+  # Allow us to ptrace ourselves
+  ptrace peer=@{profile_name},
+
+  # Allow receive via unix sockets from anywhere. Note: if per-container
+  # profiles are supported, for container isolation this should be changed to
+  # something like:
+  #   unix (receive) peer=(label=unconfined),
+  unix (receive),
+
+  # Allow all unix in the container
+  unix peer=(label=@{profile_name}),
 
   # ignore DENIED message on / remount
   deny mount options=(ro, remount) -> /,
+  deny mount options=(ro, remount, silent) -> /,
 
   # allow tmpfs mounts everywhere
   mount fstype=tmpfs,
