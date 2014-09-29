@@ -1062,7 +1062,7 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 		SYSERROR("Error entering oldroot");
 		goto fail;
 	}
-	if (umount2("/", MNT_DETACH) < 0) {
+	if (umount2(".", MNT_DETACH) < 0) {
 		SYSERROR("Error detaching old root");
 		goto fail;
 	}
