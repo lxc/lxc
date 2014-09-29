@@ -72,6 +72,7 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 		return 0;
 
 	fprintf(stderr, "%s: ", log_prefix);
+	fprintf(stderr, "%s: %s: %d ", event->locinfo->file, event->locinfo->func, event->locinfo->line);
 	vfprintf(stderr, event->fmt, *event->vap);
 	fprintf(stderr, "\n");
 	return 0;
@@ -90,12 +91,14 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 
 	ms = event->timestamp.tv_usec / 1000;
 	n = snprintf(buffer, sizeof(buffer),
-		     "%15s %10ld.%03d %-8s %s - ",
+		     "%15s %10ld.%03d %-8s %s - %s:%s:%d - ",
 		     log_prefix,
 		     event->timestamp.tv_sec,
 		     ms,
 		     lxc_log_priority_to_string(event->priority),
-		     event->category);
+		     event->category,
+		     event->locinfo->file, event->locinfo->func,
+		     event->locinfo->line);
 
 	n += vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt,
 		       *event->vap);
