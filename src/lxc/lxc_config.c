@@ -36,6 +36,8 @@ static struct lxc_config_items items[] =
 	{ .name = "lxc.bdev.lvm.vg", },
 	{ .name = "lxc.bdev.lvm.thin_pool", },
 	{ .name = "lxc.bdev.zfs.root", },
+	{ .name = "lxc.cgroup.use", },
+	{ .name = "lxc.cgroup.pattern", },
 	{ .name = NULL, },
 };
 
@@ -58,6 +60,7 @@ static void list_config_items(void)
 int main(int argc, char *argv[])
 {
 	struct lxc_config_items *i;
+	const char *value;
 
 	if (argc < 2)
 		usage(argv[0]);
@@ -65,7 +68,11 @@ int main(int argc, char *argv[])
 		list_config_items();
 	for (i = &items[0]; i->name; i++) {
 		if (strcmp(argv[1], i->name) == 0) {
-			printf("%s\n", lxc_get_global_config_item(i->name));
+			value = lxc_get_global_config_item(i->name);
+			if (value)
+				printf("%s\n", value);
+			else
+				printf("%s is not set.\n", argv[1]);
 			exit(0);
 		}
 	}
