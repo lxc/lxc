@@ -73,7 +73,6 @@ EXTRA_DIST = \
 	lxc-test-autostart \
 	lxc-test-ubuntu \
 	lxc-test-unpriv \
-	lxc-test-usernic \
 	may_control.c \
 	saveconfig.c \
 	shutdowntest.c \
