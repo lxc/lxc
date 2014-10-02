@@ -532,15 +532,8 @@ static void *cgm_init(const char *name)
 		goto err1;
 	}
 
-	/* if we are running as root, use system cgroup pattern, otherwise
-	 * just create a cgroup under the current one. But also fall back to
-	 * that if for some reason reading the configuration fails and no
-	 * default value is available
-	 */
-	if (geteuid() == 0)
-		d->cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
-	if (!d->cgroup_pattern)
-		d->cgroup_pattern = "%n";
+	d->cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
+
 	// cgm_create immediately gets called so keep the connection open
 	return d;
 

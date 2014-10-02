@@ -266,7 +266,7 @@ const char *lxc_global_config_value(const char *option_name)
 		{ "lxc.bdev.zfs.root",      DEFAULT_ZFSROOT },
 		{ "lxc.lxcpath",            NULL            },
 		{ "lxc.default_config",     NULL            },
-		{ "lxc.cgroup.pattern",     DEFAULT_CGROUP_PATTERN },
+		{ "lxc.cgroup.pattern",     NULL            },
 		{ "lxc.cgroup.use",         NULL            },
 		{ NULL, NULL },
 	};
@@ -280,6 +280,7 @@ const char *lxc_global_config_value(const char *option_name)
 	char *user_config_path = NULL;
 	char *user_default_config_path = NULL;
 	char *user_lxc_path = NULL;
+	char *user_cgroup_pattern = NULL;
 
 	if (geteuid() > 0) {
 		const char *user_home = getenv("HOME");
@@ -293,11 +294,13 @@ const char *lxc_global_config_value(const char *option_name)
 		sprintf(user_config_path, "%s/.config/lxc/lxc.conf", user_home);
 		sprintf(user_default_config_path, "%s/.config/lxc/default.conf", user_home);
 		sprintf(user_lxc_path, "%s/.local/share/lxc/", user_home);
+		user_cgroup_pattern = strdup("%n");
 	}
 	else {
 		user_config_path = strdup(LXC_GLOBAL_CONF);
 		user_default_config_path = strdup(LXC_DEFAULT_CONFIG);
 		user_lxc_path = strdup(LXCPATH);
+		user_cgroup_pattern = strdup(DEFAULT_CGROUP_PATTERN);
 	}
 
 	const char * const (*ptr)[2];
@@ -313,6 +316,7 @@ const char *lxc_global_config_value(const char *option_name)
 		free(user_config_path);
 		free(user_default_config_path);
 		free(user_lxc_path);
+		free(user_cgroup_pattern);
 		errno = EINVAL;
 		return NULL;
 	}
@@ -321,6 +325,7 @@ const char *lxc_global_config_value(const char *option_name)
 		free(user_config_path);
 		free(user_default_config_path);
 		free(user_lxc_path);
+		free(user_cgroup_pattern);
 		return values[i];
 	}
 
@@ -379,14 +384,22 @@ const char *lxc_global_config_value(const char *option_name)
 		remove_trailing_slashes(user_lxc_path);
 		values[i] = user_lxc_path;
 		free(user_default_config_path);
+		free(user_cgroup_pattern);
 	}
 	else if (strcmp(option_name, "lxc.default_config") == 0) {
 		values[i] = user_default_config_path;
+		free(user_lxc_path);
+		free(user_cgroup_pattern);
+	}
+	else if (strcmp(option_name, "lxc.cgroup.pattern") == 0) {
+		values[i] = user_cgroup_pattern;
+		free(user_default_config_path);
 		free(user_lxc_path);
 	}
 	else {
 		free(user_default_config_path);
 		free(user_lxc_path);
+		free(user_cgroup_pattern);
 		values[i] = (*ptr)[1];
 	}
 	/* special case: if default value is NULL,
