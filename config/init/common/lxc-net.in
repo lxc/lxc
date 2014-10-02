@@ -25,6 +25,42 @@ else
     lockdir="$localstatedir"/lock
 fi
 
+_netmask2cidr ()
+{
+    # Assumes there's no "255." after a non-255 byte in the mask
+    local x=${1##*255.}
+    set -- 0^^^128^192^224^240^248^252^254^ $(( (${#1} - ${#x})*2 )) ${x%%.*}
+    x=${1%%$3*}
+    echo $(( $2 + (${#x}/4) ))
+}
+
+ifdown() {
+    which ifconfig >/dev/null 2>&1
+    if [ $? = 0 ]; then
+        ifconfig $1 down
+        return
+    fi
+    which ip >/dev/null 2>&1
+    if [ $? = 0 ]; then
+        ip link set dev $1 down
+    fi
+}
+
+ifup() {
+    which ifconfig >/dev/null 2>&1
+    if [ $? = 0 ]; then
+        ifconfig $1 $2 netmask $3 up
+        return
+    fi
+    which ip >/dev/null 2>&1
+    if [ $? = 0 ]; then
+        MASK=`_netmask2cidr ${LXC_NETMASK}`
+        CIDR_ADDR="${LXC_ADDR}/${MASK}"
+        ip addr add ${CIDR_ADDR} dev $1
+        ip link set dev $1 up
+    fi
+}
+
 start() {
     [ ! -f "${lockdir}"/lxc-net ] || { exit 0; }
 
@@ -42,7 +78,7 @@ start() {
         iptables $use_iptables_lock -D FORWARD -o ${LXC_BRIDGE} -j ACCEPT
         iptables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE || true
         iptables $use_iptables_lock -t mangle -D POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
-        ifconfig ${LXC_BRIDGE} down || true
+        ifdown ${LXC_BRIDGE}
         brctl delbr ${LXC_BRIDGE} || true
     }
 
@@ -53,8 +89,19 @@ start() {
     # set up the lxc network
     brctl addbr ${LXC_BRIDGE} || { echo "Missing bridge support in kernel"; stop; exit 0; }
     echo 1 > /proc/sys/net/ipv4/ip_forward
-    mkdir -p "${varrun}"
-    ifconfig ${LXC_BRIDGE} ${LXC_ADDR} netmask ${LXC_NETMASK} up
+
+    # if we are run from systemd on a system with selinux enabled,
+    # the mkdir will create /run/lxc as init_var_run_t which dnsmasq
+    # can't write its pid into, so we restorecon it (to var_run_t)
+    if [ ! -d "${varrun}" ]; then
+        mkdir -p "${varrun}"
+        which restorecon >/dev/null 2>&1
+        if [ $? = 0 ]; then
+            restorecon "${varrun}"
+        fi
+    fi
+
+    ifup ${LXC_BRIDGE} ${LXC_ADDR} ${LXC_NETMASK}
     iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
     iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
     iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
@@ -83,7 +130,7 @@ stop() {
     if [ -d /sys/class/net/${LXC_BRIDGE} ]; then
         use_iptables_lock="-w"
         iptables -w -L -n > /dev/null 2>&1 || use_iptables_lock=""
-        ifconfig ${LXC_BRIDGE} down
+        ifdown ${LXC_BRIDGE}
         iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
         iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
         iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT

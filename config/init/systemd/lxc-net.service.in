@@ -8,3 +8,6 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=@LIBEXECDIR@/lxc/lxc-net start
 ExecStop=@LIBEXECDIR@/lxc/lxc-net stop
+
+[Install]
+WantedBy=multi-user.target
