@@ -81,7 +81,6 @@ EXTRA_DIST = \
 	lxc-test-cloneconfig \
 	lxc-test-ubuntu \
 	lxc-test-unpriv \
-	lxc-test-usernic \
 	may_control.c \
 	saveconfig.c \
 	shutdowntest.c \
