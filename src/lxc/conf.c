@@ -4318,12 +4318,12 @@ int lxc_clear_nic(struct lxc_conf *c, const char *key)
 			free(netdev->mtu);
 			netdev->mtu = NULL;
 		}
-	} else if (strcmp(p1, ".ipv4_gateway") == 0) {
+	} else if (strcmp(p1, ".ipv4.gateway") == 0) {
 		if (netdev->ipv4_gateway) {
 			free(netdev->ipv4_gateway);
 			netdev->ipv4_gateway = NULL;
 		}
-	} else if (strcmp(p1, ".ipv6_gateway") == 0) {
+	} else if (strcmp(p1, ".ipv6.gateway") == 0) {
 		if (netdev->ipv6_gateway) {
 			free(netdev->ipv6_gateway);
 			netdev->ipv6_gateway = NULL;

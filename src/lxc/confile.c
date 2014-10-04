@@ -452,9 +452,9 @@ extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key,
 		strprint(retv, inlen, "hwaddr\n");
 		strprint(retv, inlen, "mtu\n");
 		strprint(retv, inlen, "ipv6\n");
-		strprint(retv, inlen, "ipv6_gateway\n");
+		strprint(retv, inlen, "ipv6.gateway\n");
 		strprint(retv, inlen, "ipv4\n");
-		strprint(retv, inlen, "ipv4_gateway\n");
+		strprint(retv, inlen, "ipv4.gateway\n");
 	}
 	switch(netdev->type) {
 	case LXC_NET_VETH:
@@ -2135,7 +2135,7 @@ static int lxc_get_auto_mounts(struct lxc_conf *c, char *retv, int inlen)
 /*
  * lxc.network.0.XXX, where XXX can be: name, type, link, flags, type,
  * macvlan.mode, veth.pair, vlan, ipv4, ipv6, script.up, hwaddr, mtu,
- * ipv4_gateway, ipv6_gateway.  ipvX_gateway can return 'auto' instead
+ * ipv4.gateway, ipv6.gateway.  ipvX.gateway can return 'auto' instead
  * of an address.  ipv4 and ipv6 return lists (newline-separated).
  * things like veth.pair return '' if invalid (i.e. if called for vlan
  * type).
@@ -2204,7 +2204,7 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 		if (netdev->type == LXC_NET_VLAN) {
 			strprint(retv, inlen, "%d", netdev->priv.vlan_attr.vid);
 		}
-	} else if (strcmp(p1, "ipv4_gateway") == 0) {
+	} else if (strcmp(p1, "ipv4.gateway") == 0) {
 		if (netdev->ipv4_gateway_auto) {
 			strprint(retv, inlen, "auto");
 		} else if (netdev->ipv4_gateway) {
@@ -2220,7 +2220,7 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 			inet_ntop(AF_INET, &i->addr, buf, sizeof(buf));
 			strprint(retv, inlen, "%s/%d\n", buf, i->prefix);
 		}
-	} else if (strcmp(p1, "ipv6_gateway") == 0) {
+	} else if (strcmp(p1, "ipv6.gateway") == 0) {
 		if (netdev->ipv6_gateway_auto) {
 			strprint(retv, inlen, "auto");
 		} else if (netdev->ipv6_gateway) {
