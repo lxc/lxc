@@ -237,6 +237,30 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	if (!c->set_config_item(c, "lxc.network.ipv4.gateway", "10.2.3.254")) {
+		fprintf(stderr, "%d: failed to set ipv4.gateway\n", __LINE__);
+		ret = 1;
+		goto out;
+	}
+
+	ret = c->get_config_item(c, "lxc.network.0.ipv4.gateway", v2, 255);
+	if (ret <= 0) {
+		fprintf(stderr, "%d: lxc.network.0.ipv4.gateway returned %d\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	if (!c->clear_config_item(c, "lxc.network.0.ipv4.gateway")) {
+		fprintf(stderr, "%d: failed clearing ipv4.gateway\n", __LINE__);
+		ret = 1;
+		goto out;
+	}
+	ret = c->get_config_item(c, "lxc.network.0.ipv4.gateway", v2, 255);
+	if (ret != 0) {
+		fprintf(stderr, "%d: after clearing ipv4.gateway get_item(lxc.network.0.ipv4.gateway returned %d\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+
 	ret = c->get_config_item(c, "lxc.network.0.link", v2, 255);
 	if (ret < 0) {
 		fprintf(stderr, "%d: get_config_item returned %d\n", __LINE__, ret);
