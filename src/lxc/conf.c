@@ -1449,68 +1449,6 @@ int lxc_delete_autodev(struct lxc_handler *handler)
 	return 0;
 }
 
-/*
- * I'll forgive you for asking whether all of this is needed :)  The
- * answer is yes.
- * pivot_root will fail if the new root, the put_old dir, or the parent
- * of current->fs->root are MS_SHARED.  (parent of current->fs_root may
- * or may not be current->fs_root - if we assumed it always was, we could
- * just mount --make-rslave /).  So,
- *    1. mount a tiny tmpfs to be parent of current->fs->root.
- *    2. make that MS_SLAVE
- *    3. make a 'root' directory under that
- *    4. mount --rbind / under the $tinyroot/root.
- *    5. make that rslave
- *    6. chdir and chroot into $tinyroot/root
- *    7. $tinyroot will be unmounted by our parent in start.c
- */
-static int chroot_into_slave(struct lxc_conf *conf)
-{
-	char path[MAXPATHLEN];
-	const char *destpath = conf->rootfs.mount;
-	int ret;
-
-	if (mount(destpath, destpath, NULL, MS_BIND, 0)) {
-		SYSERROR("failed to mount %s bind", destpath);
-		return -1;
-	}
-	if (mount("", destpath, NULL, MS_SLAVE, 0)) {
-		SYSERROR("failed to make %s slave", destpath);
-		return -1;
-	}
-	if (mount("none", destpath, "tmpfs", 0, "size=10000,mode=755")) {
-		SYSERROR("Failed to mount tmpfs / at %s", destpath);
-		return -1;
-	}
-	ret = snprintf(path, MAXPATHLEN, "%s/root", destpath);
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		ERROR("out of memory making root path");
-		return -1;
-	}
-	if (mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
-		SYSERROR("Failed to create /dev/pts in container");
-		return -1;
-	}
-	if (mount("/", path, NULL, MS_BIND|MS_REC, 0)) {
-		SYSERROR("Failed to rbind mount / to %s", path);
-		return -1;
-	}
-	if (mount("", destpath, NULL, MS_SLAVE|MS_REC, 0)) {
-		SYSERROR("Failed to make tmp-/ at %s rslave", path);
-		return -1;
-	}
-	if (chroot(path)) {
-		SYSERROR("Failed to chroot into tmp-/");
-		return -1;
-	}
-	if (chdir("/")) {
-		SYSERROR("Failed to chdir into tmp-/");
-		return -1;
-	}
-	INFO("Chrooted into tmp-/ at %s", path);
-	return 0;
-}
-
 static int setup_rootfs(struct lxc_conf *conf)
 {
 	const struct lxc_rootfs *rootfs = &conf->rootfs;
@@ -1548,12 +1486,106 @@ static int setup_rootfs(struct lxc_conf *conf)
 	return 0;
 }
 
+int prepare_ramfs_root(char *root)
+{
+	char buf[LINELEN], *p;
+	char nroot[PATH_MAX];
+	FILE *f;
+	int i;
+	char *p2;
+
+	if (realpath(root, nroot) == NULL)
+		return -1;
+
+	if (chdir("/") == -1)
+		return -1;
+
+	/*
+	 * We could use here MS_MOVE, but in userns this mount is
+	 * locked and can't be moved.
+	 */
+	if (mount(root, "/", NULL, MS_REC | MS_BIND, NULL)) {
+		SYSERROR("Failed to move %s into /", root);
+		return -1;
+	}
+
+	if (mount(".", NULL, NULL, MS_REC | MS_PRIVATE, NULL)) {
+		SYSERROR("Failed to make . rprivate");
+		return -1;
+	}
+
+	/*
+	 * The following code cleans up inhereted mounts which are not
+	 * required for CT.
+	 *
+	 * The mountinfo file shows not all mounts, if a few points have been
+	 * unmounted between read operations from the mountinfo. So we need to
+	 * read mountinfo a few times.
+	 *
+	 * This loop can be skipped if a container uses unserns, because all
+	 * inherited mounts are locked and we should live with all this trash.
+	 */
+	while (1) {
+		int progress = 0;
+
+		f = fopen("./proc/self/mountinfo", "r");
+		if (!f) {
+			SYSERROR("Unable to open /proc/self/mountinfo");
+			return -1;
+		}
+		while (fgets(buf, LINELEN, f)) {
+			for (p = buf, i=0; p && i < 4; i++)
+				p = strchr(p+1, ' ');
+			if (!p)
+				continue;
+			p2 = strchr(p+1, ' ');
+			if (!p2)
+				continue;
+
+			*p2 = '\0';
+			*p = '.';
+
+			if (strcmp(p + 1, "/") == 0)
+				continue;
+			if (strcmp(p + 1, "/proc") == 0)
+				continue;
+
+			if (umount2(p, MNT_DETACH) == 0)
+				progress++;
+		}
+		fclose(f);
+		if (!progress)
+			break;
+	}
+
+	if (umount2("./proc", MNT_DETACH)) {
+		SYSERROR("Unable to umount /proc");
+		return -1;
+	}
+
+	/* It is weird, but chdir("..") moves us in a new root */
+	if (chdir("..") == -1) {
+		SYSERROR("Unable to change working directory");
+		return -1;
+	}
+
+	if (chroot(".") == -1) {
+		SYSERROR("Unable to chroot");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int setup_pivot_root(const struct lxc_rootfs *rootfs)
 {
 	if (!rootfs->path)
 		return 0;
 
-	if (setup_rootfs_pivot_root(rootfs->mount, rootfs->pivot)) {
+	if (detect_ramfs_rootfs()) {
+		if (prepare_ramfs_root(rootfs->mount))
+			return -1;
+	} else if (setup_rootfs_pivot_root(rootfs->mount, rootfs->pivot)) {
 		ERROR("failed to setup pivot root");
 		return -1;
 	}
@@ -3949,13 +3981,6 @@ int do_rootfs_setup(struct lxc_conf *conf, const char *name, const char *lxcpath
 		if (mount(path, path, "rootfs", MS_BIND, NULL) < 0) {
 			ERROR("Failed to bind-mount container / onto itself");
 			return false;
-		}
-	}
-
-	if (detect_ramfs_rootfs()) {
-		if (chroot_into_slave(conf)) {
-			ERROR("Failed to chroot into slave /");
-			return -1;
 		}
 	}
 
