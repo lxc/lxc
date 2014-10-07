@@ -2319,6 +2319,28 @@ static const char *cgfs_get_cgroup(void *hdata, const char *subsystem)
 	return lxc_cgroup_get_hierarchy_path_data(subsystem, d);
 }
 
+static const char *cgfs_canonical_path(void *hdata)
+{
+	struct cgfs_data *d = hdata;
+	struct cgroup_process_info *info_ptr;
+	char *path = NULL;
+
+	if (!d)
+		return NULL;
+
+	for (info_ptr = d->info; info_ptr; info_ptr = info_ptr->next) {
+		if (!path)
+			path = info_ptr->cgroup_path;
+		else if (strcmp(path, info_ptr->cgroup_path) != 0) {
+			ERROR("not all paths match %s, %s has path %s", path,
+				info_ptr->hierarchy->subsystems[0], info_ptr->cgroup_path);
+			return NULL;
+		}
+	}
+
+	return path;
+}
+
 static bool cgfs_unfreeze(void *hdata)
 {
 	struct cgfs_data *d = hdata;
@@ -2376,18 +2398,6 @@ static bool lxc_cgroupfs_attach(const char *name, const char *lxcpath, pid_t pid
 	return true;
 }
 
-static bool cgfs_parse_existing_cgroups(void *hdata, pid_t init)
-{
-	struct cgfs_data *d = hdata;
-
-	if (!d)
-		return false;
-
-	d->info = lxc_cgroup_process_info_get(init, d->meta);
-
-	return !!(d->info);
-}
-
 static struct cgroup_ops cgfs_ops = {
 	.init = cgfs_init,
 	.destroy = cgfs_destroy,
@@ -2395,6 +2405,7 @@ static struct cgroup_ops cgfs_ops = {
 	.enter = cgfs_enter,
 	.create_legacy = cgfs_create_legacy,
 	.get_cgroup = cgfs_get_cgroup,
+	.canonical_path = cgfs_canonical_path,
 	.get = lxc_cgroupfs_get,
 	.set = lxc_cgroupfs_set,
 	.unfreeze = cgfs_unfreeze,
@@ -2402,7 +2413,6 @@ static struct cgroup_ops cgfs_ops = {
 	.name = "cgroupfs",
 	.attach = lxc_cgroupfs_attach,
 	.chown = NULL,
-	.parse_existing_cgroups = cgfs_parse_existing_cgroups,
 	.mount_cgroup = cgroupfs_mount_cgroup,
 	.nrtasks = cgfs_nrtasks,
 };

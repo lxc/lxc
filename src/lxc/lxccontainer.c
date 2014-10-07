@@ -3485,6 +3485,7 @@ struct criu_opts {
 
 	/* restore: the file to write the init process' pid into */
 	char *pidfile;
+	const char *cgroup_path;
 };
 
 /*
@@ -3533,8 +3534,9 @@ static void exec_criu(struct criu_opts *opts)
 		if (!opts->stop)
 			static_args++;
 	} else if (strcmp(opts->action, "restore") == 0) {
-		/* --root $(lxc_mount_point) --restore-detached --restore-sibling --pidfile $foo */
-		static_args += 6;
+		/* --root $(lxc_mount_point) --restore-detached
+		 * --restore-sibling --pidfile $foo --cgroup-root $foo */
+		static_args += 8;
 	} else {
 		return;
 	}
@@ -3607,6 +3609,8 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG("--restore-sibling");
 		DECLARE_ARG("--pidfile");
 		DECLARE_ARG(opts->pidfile);
+		DECLARE_ARG("--cgroup-root");
+		DECLARE_ARG(opts->cgroup_path);
 
 		lxc_list_for_each(it, &opts->c->lxc_conf->network) {
 			char eth[128], veth[128], buf[257];
@@ -3832,6 +3836,11 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 		goto out_fini_handler;
 	}
 
+	if (!cgroup_create(handler)) {
+		ERROR("failed creating groups");
+		goto out_fini_handler;
+	}
+
 	pid = fork();
 	if (pid < 0)
 		goto out_fini_handler;
@@ -3865,6 +3874,7 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 		os.c = c;
 		os.pidfile = pidfile;
 		os.verbose = verbose;
+		os.cgroup_path = cgroup_canonical_path(handler);
 
 		/* exec_criu() returning is an error */
 		exec_criu(&os);
@@ -3898,11 +3908,6 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 				fclose(f);
 				if (ret != 1) {
 					ERROR("reading restore pid failed");
-					goto out_fini_handler;
-				}
-
-				if (!cgroup_parse_existing_cgroups(handler)) {
-					ERROR("failed creating cgroups");
 					goto out_fini_handler;
 				}
 

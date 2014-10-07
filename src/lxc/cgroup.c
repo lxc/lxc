@@ -21,6 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <unistd.h>
+#include <sys/types.h>
+
 #include "cgroup.h"
 #include "conf.h"
 #include "log.h"
@@ -106,6 +109,19 @@ const char *cgroup_get_cgroup(struct lxc_handler *handler, const char *subsystem
 	return NULL;
 }
 
+const char *cgroup_canonical_path(struct lxc_handler *handler)
+{
+	if (geteuid()) {
+		WARN("cgroup_canonical_path only makes sense for privileged containers.\n");
+		return NULL;
+	}
+
+	if (ops)
+		return ops->canonical_path(handler->cgroup_data);
+
+	return NULL;
+}
+
 bool cgroup_unfreeze(struct lxc_handler *handler)
 {
 	if (ops)
@@ -125,15 +141,6 @@ bool cgroup_chown(struct lxc_handler *handler)
 {
 	if (ops && ops->chown)
 		return ops->chown(handler->cgroup_data, handler->conf);
-	return true;
-}
-
-bool cgroup_parse_existing_cgroups(struct lxc_handler *handler)
-{
-	if (ops && ops->parse_existing_cgroups)
-		return ops->parse_existing_cgroups(handler->cgroup_data, handler->pid);
-
-	/* cgmanager does this automatically */
 	return true;
 }
 
