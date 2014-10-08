@@ -3554,11 +3554,15 @@ static void exec_criu(struct criu_opts *opts)
 
 	memset(argv, 0, static_args * sizeof(*argv));
 
-#define DECLARE_ARG(arg) 			\
-	do {					\
-		argv[argc++] = strdup(arg);	\
-		if (!argv[argc-1])		\
-			goto err;		\
+#define DECLARE_ARG(arg) 					\
+	do {							\
+		if (arg == NULL) {				\
+			ERROR("Got NULL argument for criu");	\
+			goto err;				\
+		}						\
+		argv[argc++] = strdup(arg);			\
+		if (!argv[argc-1])				\
+			goto err;				\
 	} while (0)
 
 	argv[argc++] = on_path("criu", NULL);
