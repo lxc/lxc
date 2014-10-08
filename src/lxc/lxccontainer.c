@@ -3809,6 +3809,8 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 	struct lxc_list *it;
 	struct lxc_rootfs *rootfs;
 	char pidfile[L_tmpnam];
+	struct lxc_handler *handler;
+	bool has_error = true;
 
 	if (!criu_ok(c))
 		return false;
@@ -3821,9 +3823,18 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 	if (!tmpnam(pidfile))
 		return false;
 
+	handler = lxc_init(c->name, c->lxc_conf, c->config_path);
+	if (!handler)
+		return false;
+
+	if (!cgroup_init(handler)) {
+		ERROR("failed initing cgroups");
+		goto out_fini_handler;
+	}
+
 	pid = fork();
 	if (pid < 0)
-		return false;
+		goto out_fini_handler;
 
 	if (pid == 0) {
 		struct criu_opts os;
@@ -3862,30 +3873,22 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 		exit(1);
 	} else {
 		int status;
-		struct lxc_handler *handler;
-		bool error = false;
 
 		pid_t w = waitpid(pid, &status, 0);
 
 		if (w == -1) {
 			perror("waitpid");
-			return false;
+			goto out_fini_handler;
 		}
-
-		handler = lxc_init(c->name, c->lxc_conf, c->config_path);
-		if (!handler)
-			return false;
 
 		if (WIFEXITED(status)) {
 			if (WEXITSTATUS(status)) {
-				error = true;
 				goto out_fini_handler;
 			}
 			else {
 				int netnr = 0, ret;
 				FILE *f = fopen(pidfile, "r");
 				if (!f) {
-					error = true;
 					perror("reading pidfile");
 					ERROR("couldn't read restore's init pidfile %s\n", pidfile);
 					goto out_fini_handler;
@@ -3894,14 +3897,7 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 				ret = fscanf(f, "%d", (int*) &handler->pid);
 				fclose(f);
 				if (ret != 1) {
-					error = true;
 					ERROR("reading restore pid failed");
-					goto out_fini_handler;
-				}
-
-				if (!cgroup_init(handler)) {
-					error = true;
-					ERROR("failed initing cgroups");
 					goto out_fini_handler;
 				}
 
@@ -3910,55 +3906,53 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 					goto out_fini_handler;
 				}
 
-				if (container_mem_lock(c)) {
-					error = true;
+				if (container_mem_lock(c))
 					goto out_fini_handler;
-				}
 
 				lxc_list_for_each(it, &c->lxc_conf->network) {
 					char eth[128], veth[128];
 					struct lxc_netdev *netdev = it->elem;
 
 					if (read_criu_file(directory, "veth", netnr, veth)) {
-						error = true;
-						goto out_unlock;
+						container_mem_unlock(c);
+						goto out_fini_handler;
 					}
+
 					if (read_criu_file(directory, "eth", netnr, eth)) {
-						error = true;
-						goto out_unlock;
+						container_mem_unlock(c);
+						goto out_fini_handler;
 					}
+
 					netdev->priv.veth_attr.pair = strdup(veth);
 					if (!netdev->priv.veth_attr.pair) {
-						error = true;
-						goto out_unlock;
+						container_mem_unlock(c);
+						goto out_fini_handler;
 					}
+
 					netnr++;
 				}
-out_unlock:
-				container_mem_unlock(c);
-				if (error)
-					goto out_fini_handler;
 
-				if (lxc_set_state(c->name, handler, RUNNING)) {
-					error = true;
+				container_mem_unlock(c);
+
+				if (lxc_set_state(c->name, handler, RUNNING))
 					goto out_fini_handler;
-				}
 			}
 		} else {
 			ERROR("CRIU was killed with signal %d\n", WTERMSIG(status));
-			error = true;
 			goto out_fini_handler;
 		}
 
 		if (lxc_poll(c->name, handler)) {
 			lxc_abort(c->name, handler);
-			return false;
+			goto out_fini_handler;
 		}
+	}
+
+	has_error = false;
 
 out_fini_handler:
-		lxc_fini(c->name, handler);
-		return !error;
-	}
+	lxc_fini(c->name, handler);
+	return !has_error;
 }
 
 static int lxcapi_attach_run_waitl(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char *arg, ...)
