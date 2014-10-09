@@ -1403,6 +1403,8 @@ out:
 static int config_fstab(const char *key, const char *value,
 			struct lxc_conf *lxc_conf)
 {
+	if (!value || strlen(value) == 0)
+		return -1;
 	return config_path_item(&lxc_conf->fstab, value);
 }
 
@@ -1434,8 +1436,10 @@ static int config_mount_auto(const char *key, const char *value,
 	int i;
 	int ret = -1;
 
-	if (!strlen(value))
-		return -1;
+	if (!value || strlen(value) == 0) {
+		lxc_conf->auto_mounts = 0;
+		return 0;
+	}
 
 	autos = strdup(value);
 	if (!autos) {
@@ -1469,6 +1473,12 @@ static int config_mount_auto(const char *key, const char *value,
 	return ret;
 }
 
+/*
+ * TODO
+ * This fn is handling lxc.mount, lxc.mount.entry, and lxc.mount.auto.
+ * It should probably be split into 3 separate functions indexed by
+ * the config[] entries at top.
+ */
 static int config_mount(const char *key, const char *value,
 			struct lxc_conf *lxc_conf)
 {
@@ -1478,9 +1488,6 @@ static int config_mount(const char *key, const char *value,
 	char *subkey;
 	char *mntelem;
 	struct lxc_list *mntlist;
-
-	if (!value || strlen(value) == 0)
-		return lxc_clear_mount_entries(lxc_conf);
 
 	subkey = strstr(key, token);
 
@@ -1499,8 +1506,9 @@ static int config_mount(const char *key, const char *value,
 		return config_mount_auto(key, value, lxc_conf);
 	}
 
-	if (!strlen(subkey))
-		return -1;
+	/* At this point we definately have key = lxc.mount.entry */
+	if (!value || strlen(value) == 0)
+		return lxc_clear_mount_entries(lxc_conf);
 
 	mntlist = malloc(sizeof(*mntlist));
 	if (!mntlist)
