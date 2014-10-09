@@ -86,7 +86,7 @@ deluser $TUSER && rm -Rf $HDIR || true
 useradd $TUSER
 
 mkdir -p $HDIR
-echo "$TUSER veth lxcbr0 2" > /etc/lxc/lxc-usernet
+echo "$TUSER veth lxcbr0 2" >> /etc/lxc/lxc-usernet
 sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
 
 usermod -v 910000-919999 -w 910000-919999 $TUSER
