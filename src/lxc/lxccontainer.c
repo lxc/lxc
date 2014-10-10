@@ -3746,30 +3746,21 @@ static bool criu_ok(struct lxc_container *c)
 	return true;
 }
 
-static bool lxcapi_checkpoint(struct lxc_container *c, char *directory, bool stop, bool verbose)
+static bool dump_net_info(struct lxc_container *c, char *directory)
 {
-	int netnr, status;
+	int netnr;
 	struct lxc_list *it;
-	bool error = false;
-	pid_t pid;
-
-	if (!criu_ok(c))
-		return false;
-
-	if (mkdir(directory, 0700) < 0 && errno != EEXIST)
-		return false;
 
 	netnr = 0;
 	lxc_list_for_each(it, &c->lxc_conf->network) {
 		char *veth = NULL, *bridge = NULL, veth_path[PATH_MAX], eth[128];
 		struct lxc_netdev *n = it->elem;
+		bool has_error = true;
 		int pret;
 
 		pret = snprintf(veth_path, PATH_MAX, "lxc.network.%d.veth.pair", netnr);
-		if (pret < 0 || pret >= PATH_MAX) {
-			error = true;
+		if (pret < 0 || pret >= PATH_MAX)
 			goto out;
-		}
 
 		veth = lxcapi_get_running_config_item(c, veth_path);
 		if (!veth) {
@@ -3781,48 +3772,58 @@ static bool lxcapi_checkpoint(struct lxc_container *c, char *directory, bool sto
 		}
 
 		pret = snprintf(veth_path, PATH_MAX, "lxc.network.%d.link", netnr);
-		if (pret < 0 || pret >= PATH_MAX) {
-			error = true;
+		if (pret < 0 || pret >= PATH_MAX)
 			goto out;
-		}
 
 		bridge = lxcapi_get_running_config_item(c, veth_path);
-		if (!bridge) {
-			error = true;
+		if (!bridge)
 			goto out;
-		}
 
 		pret = snprintf(veth_path, PATH_MAX, "%s/veth%d", directory, netnr);
-		if (pret < 0 || pret >= PATH_MAX || print_to_file(veth_path, veth) < 0) {
-			error = true;
+		if (pret < 0 || pret >= PATH_MAX || print_to_file(veth_path, veth) < 0)
 			goto out;
-		}
 
 		pret = snprintf(veth_path, PATH_MAX, "%s/bridge%d", directory, netnr);
-		if (pret < 0 || pret >= PATH_MAX || print_to_file(veth_path, bridge) < 0) {
-			error = true;
+		if (pret < 0 || pret >= PATH_MAX || print_to_file(veth_path, bridge) < 0)
 			goto out;
-		}
 
 		if (n->name) {
-			if (strlen(n->name) >= 128) {
-				error = true;
+			if (strlen(n->name) >= 128)
 				goto out;
-			}
 			strncpy(eth, n->name, 128);
 		} else
 			sprintf(eth, "eth%d", netnr);
 
 		pret = snprintf(veth_path, PATH_MAX, "%s/eth%d", directory, netnr);
 		if (pret < 0 || pret >= PATH_MAX || print_to_file(veth_path, eth) < 0)
-			error = true;
+			goto out;
 
+		has_error = false;
 out:
-		free(veth);
-		free(bridge);
-		if (error)
+		if (veth)
+			free(veth);
+		if (bridge);
+			free(bridge);
+		if (has_error)
 			return false;
 	}
+
+	return true;
+}
+
+static bool lxcapi_checkpoint(struct lxc_container *c, char *directory, bool stop, bool verbose)
+{
+	pid_t pid;
+	int status;
+
+	if (!criu_ok(c))
+		return false;
+
+	if (mkdir(directory, 0700) < 0 && errno != EEXIST)
+		return false;
+
+	if (!dump_net_info(c, directory))
+		return false;
 
 	pid = fork();
 	if (pid < 0)
@@ -3855,10 +3856,42 @@ out:
 	}
 }
 
+static bool restore_net_info(struct lxc_container *c, char *directory)
+{
+	struct lxc_list *it;
+	bool has_error = true;
+	int netnr = 0;
+
+	if (container_mem_lock(c))
+		return false;
+
+	lxc_list_for_each(it, &c->lxc_conf->network) {
+		char eth[128], veth[128];
+		struct lxc_netdev *netdev = it->elem;
+
+		if (read_criu_file(directory, "veth", netnr, veth))
+			goto out_unlock;
+
+		if (read_criu_file(directory, "eth", netnr, eth))
+			goto out_unlock;
+
+		netdev->priv.veth_attr.pair = strdup(veth);
+		if (!netdev->priv.veth_attr.pair)
+			goto out_unlock;
+
+		netnr++;
+	}
+
+	has_error = false;
+
+out_unlock:
+	container_mem_unlock(c);
+	return !has_error;
+}
+
 static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbose)
 {
 	pid_t pid;
-	struct lxc_list *it;
 	struct lxc_rootfs *rootfs;
 	char pidfile[L_tmpnam];
 	struct lxc_handler *handler;
@@ -3944,7 +3977,7 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 				goto out_fini_handler;
 			}
 			else {
-				int netnr = 0, ret;
+				int ret;
 				FILE *f = fopen(pidfile, "r");
 				if (!f) {
 					perror("reading pidfile");
@@ -3959,33 +3992,10 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 					goto out_fini_handler;
 				}
 
-				if (container_mem_lock(c))
+				if (!restore_net_info(c, directory)) {
+					ERROR("failed restoring network info");
 					goto out_fini_handler;
-
-				lxc_list_for_each(it, &c->lxc_conf->network) {
-					char eth[128], veth[128];
-					struct lxc_netdev *netdev = it->elem;
-
-					if (read_criu_file(directory, "veth", netnr, veth)) {
-						container_mem_unlock(c);
-						goto out_fini_handler;
-					}
-
-					if (read_criu_file(directory, "eth", netnr, eth)) {
-						container_mem_unlock(c);
-						goto out_fini_handler;
-					}
-
-					netdev->priv.veth_attr.pair = strdup(veth);
-					if (!netdev->priv.veth_attr.pair) {
-						container_mem_unlock(c);
-						goto out_fini_handler;
-					}
-
-					netnr++;
 				}
-
-				container_mem_unlock(c);
 
 				if (lxc_set_state(c->name, handler, RUNNING))
 					goto out_fini_handler;
