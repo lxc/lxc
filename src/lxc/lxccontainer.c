@@ -39,6 +39,7 @@
 
 #include <lxc/lxccontainer.h>
 #include <lxc/version.h>
+#include <lxc/network.h>
 
 #include "config.h"
 #include "lxc.h"
@@ -3426,6 +3427,99 @@ static bool lxcapi_remove_device_node(struct lxc_container *c, const char *src_p
 	return add_remove_device_node(c, src_path, dest_path, false);
 }
 
+static bool lxcapi_attach_interface(struct lxc_container *c, const char *ifname,
+				const char *dst_ifname)
+{
+	int ret = 0;
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return false;
+	}
+
+	if (!ifname) {
+		ERROR("No source interface name given");
+		return false;
+	}
+
+	ret = lxc_netdev_isup(ifname);
+	if (ret < 0)
+		goto err;
+
+	/* netdev of ifname is up. */
+	if (ret) {
+		ret = lxc_netdev_down(ifname);
+		if (ret)
+			goto err;
+	}
+
+	ret = lxc_netdev_move_by_name(ifname, c->init_pid(c), dst_ifname);
+	if (ret)
+		goto err;
+
+	return true;
+err:
+	/* -EINVAL means there is no netdev named as ifanme. */
+	if (ret == -EINVAL) {
+		ERROR("No network device named as %s.", ifname);
+	}
+	return false;
+}
+
+static bool lxcapi_detach_interface(struct lxc_container *c, const char *ifname,
+					const char *dst_ifname)
+{
+	pid_t pid, pid_outside;
+
+	if (am_unpriv()) {
+		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		return false;
+	}
+
+	if (!ifname) {
+		ERROR("No source interface name given");
+		return false;
+	}
+
+	pid_outside = getpid();
+	pid = fork();
+	if (pid < 0) {
+		ERROR("failed to fork task to get interfaces information");
+		return false;
+	}
+
+	if (pid == 0) { // child
+		int ret = 0;
+		if (!enter_to_ns(c)) {
+			ERROR("failed to enter namespace");
+			exit(-1);
+		}
+
+		ret = lxc_netdev_isup(ifname);
+		if (ret < 0)
+			exit(ret);
+
+		/* netdev of ifname is up. */
+		if (ret) {
+			ret = lxc_netdev_down(ifname);
+			if (ret)
+				exit(ret);
+		}
+
+		ret = lxc_netdev_move_by_name(ifname, pid_outside, dst_ifname);
+
+		/* -EINVAL means there is no netdev named as ifanme. */
+		if (ret == -EINVAL) {
+			ERROR("No network device named as %s.", ifname);
+		}
+		exit(ret);
+	}
+
+	if (wait_for_pid(pid) != 0)
+		return false;
+
+	return true;
+}
+
 struct criu_opts {
 	/* The type of criu invocation, one of "dump" or "restore" */
 	char *action;
@@ -4051,6 +4145,8 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->may_control = lxcapi_may_control;
 	c->add_device_node = lxcapi_add_device_node;
 	c->remove_device_node = lxcapi_remove_device_node;
+	c->attach_interface = lxcapi_attach_interface;
+	c->detach_interface = lxcapi_detach_interface;
 	c->checkpoint = lxcapi_checkpoint;
 	c->restore = lxcapi_restore;
 
