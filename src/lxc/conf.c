@@ -160,6 +160,10 @@ return -1;
 #define        __S_ISTYPE(mode, mask)  (((mode) & S_IFMT) == (mask))
 #endif
 
+#ifndef MS_PRIVATE
+#define MS_PRIVATE (1<<18)
+#endif
+
 char *lxchook_names[NUM_LXC_HOOKS] = {
 	"pre-start", "pre-mount", "mount", "autodev", "start", "post-stop", "clone" };
 
