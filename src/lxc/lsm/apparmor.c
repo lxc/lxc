@@ -37,43 +37,25 @@ lxc_log_define(lxc_apparmor, lxc);
 /* set by lsm_apparmor_drv_init if true */
 static int aa_enabled = 0;
 
+static int mount_features_enabled = 0;
+
 #define AA_DEF_PROFILE "lxc-container-default"
 #define AA_MOUNT_RESTR "/sys/kernel/security/apparmor/features/mount/mask"
 #define AA_ENABLED_FILE "/sys/module/apparmor/parameters/enabled"
 
-static bool mount_feature_enabled(void)
+static bool check_mount_feature_enabled(void)
+{
+	return mount_features_enabled == 1;
+}
+
+static void load_mount_features_enabled(void)
 {
 	struct stat statbuf;
-	struct statfs sf;
 	int ret;
-	bool mountedsys = false, mountedk = false, bret = true;
 
-	ret = statfs("/sys", &sf);
-	if (ret < 0 || sf.f_type != 0x62656572) {
-		if (mount("sysfs", "/sys", "sysfs", 0, NULL) < 0) {
-			SYSERROR("Error mounting sysfs");
-			return false;
-		}
-		mountedsys = true;
-	}
-	if (stat("/sys/kernel/security/apparmor", &statbuf) < 0) {
-		if (mount("securityfs", "/sys/kernel/security", "securityfs", 0, NULL) < 0) {
-			SYSERROR("Error mounting securityfs");
-			if (mountedsys)
-				umount2("/sys", MNT_DETACH);
-			return false;
-		}
-		mountedk = true;
-	}
 	ret = stat(AA_MOUNT_RESTR, &statbuf);
-	if (ret != 0)
-		bret = false;
-
-	if (mountedk)
-		umount2("/sys/kernel/security", MNT_DETACH);
-	if (mountedsys)
-		umount2("/sys", MNT_DETACH);
-	return bret;
+	if (ret == 0)
+		mount_features_enabled = 1;
 }
 
 /* aa_getcon is not working right now.  Use our hand-rolled version below */
@@ -88,8 +70,11 @@ static int apparmor_enabled(void)
 		return 0;
 	ret = fscanf(fin, "%c", &e);
 	fclose(fin);
-	if (ret == 1 && e == 'Y')
+	if (ret == 1 && e == 'Y') {
+		load_mount_features_enabled();
 		return 1;
+	}
+
 	return 0;
 }
 
@@ -180,7 +165,7 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 			label = "unconfined";
 	}
 
-	if (!mount_feature_enabled() && strcmp(label, "unconfined") != 0) {
+	if (!check_mount_feature_enabled() && strcmp(label, "unconfined") != 0) {
 		WARN("Incomplete AppArmor support in your kernel");
 		if (!conf->lsm_aa_allow_incomplete) {
 			ERROR("If you really want to start this container, set");
