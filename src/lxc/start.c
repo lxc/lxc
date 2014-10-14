@@ -1074,6 +1074,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 				ERROR("Error unsharing mounts");
 				goto out_fini_nonet;
 			}
+			remount_all_slave();
 			if (do_rootfs_setup(conf, name, lxcpath) < 0) {
 				ERROR("Error setting up rootfs mount as root before spawn");
 				goto out_fini_nonet;

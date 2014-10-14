@@ -3891,7 +3891,7 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 	}
 }
 
-static void remount_all_slave(void)
+void remount_all_slave(void)
 {
 	/* walk /proc/mounts and change any shared entries to slave */
 	FILE *f = fopen("/proc/self/mountinfo", "r");
@@ -4024,6 +4024,7 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 					hookname);
 			return false;
 		}
+		return true;
 	}
 
 	return true;
