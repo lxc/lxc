@@ -1460,7 +1460,7 @@ static bool lxcapi_clear_config_item(struct lxc_container *c, const char *key)
 	return ret == 0;
 }
 
-static inline bool enter_to_ns(struct lxc_container *c) {
+static inline bool enter_net_ns(struct lxc_container *c) {
 	int netns, userns, ret = 0, init_pid = 0;;
 	char new_netns_path[MAXPATHLEN];
 	char new_userns_path[MAXPATHLEN];
@@ -1610,7 +1610,7 @@ static char** lxcapi_get_interfaces(struct lxc_container *c)
 		/* close the read-end of the pipe */
 		close(pipefd[0]);
 
-		if (!enter_to_ns(c)) {
+		if (!enter_net_ns(c)) {
 			SYSERROR("failed to enter namespace");
 			goto out;
 		}
@@ -1700,7 +1700,7 @@ static char** lxcapi_get_ips(struct lxc_container *c, const char* interface, con
 		/* close the read-end of the pipe */
 		close(pipefd[0]);
 
-		if (!enter_to_ns(c)) {
+		if (!enter_net_ns(c)) {
 			SYSERROR("failed to enter namespace");
 			goto out;
 		}
