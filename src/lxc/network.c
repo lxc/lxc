@@ -141,9 +141,116 @@ out:
 	return err;
 }
 
+/*
+ * If we are asked to move a wireless interface, then
+ * we must actually move its phyN device.  Detect
+ * that condition and return the physname here.  The
+ * physname will be passed to lxc_netdev_move_wlan()
+ * which will free it when done
+ */
+#define PHYSNAME "/sys/class/net/%s/phy80211/name"
+static char * is_wlan(const char *ifname)
+{
+	char *path, *physname = NULL;
+	size_t len = strlen(ifname) + strlen(PHYSNAME) - 1;
+	struct stat sb;
+	long physlen;
+	FILE *f;
+	int ret, i;
+
+	path = alloca(len+1);
+	ret = snprintf(path, len, PHYSNAME, ifname);
+	if (ret < 0 || ret >= len)
+		goto bad;
+	ret = stat(path, &sb);
+	if (ret)
+		goto bad;
+	if (!(f = fopen(path, "r")))
+		goto bad;
+	// feh - sb.st_size is always 4096
+	fseek(f, 0, SEEK_END);
+	physlen = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	physname = malloc(physlen+1);
+	if (!physname)
+		goto bad;
+	memset(physname, 0, physlen+1);
+	ret = fread(physname, 1, physlen, f);
+	fclose(f);
+	if (ret < 0)
+		goto bad;
+
+	for (i = 0;  i < physlen; i++) {
+		if (physname[i] == '\n')
+			physname[i] = '\0';
+		if (physname[i] == '\0')
+			break;
+	}
+
+	return physname;
+
+bad:
+	if (physname)
+		free(physname);
+	return NULL;
+}
+
+static int
+lxc_netdev_rename_by_name_in_netns(pid_t pid, const char *old, const char *new)
+{
+	pid_t fpid = fork();
+
+	if (fpid < 0)
+		return -1;
+	if (fpid != 0)
+		return wait_for_pid(fpid);
+	if (!switch_to_ns(pid, "net"))
+		return -1;
+	exit(lxc_netdev_rename_by_name(old, new));
+}
+
+static int
+lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid, const char* newname)
+{
+	int err = -1;
+	pid_t fpid;
+	char *cmd;
+
+	/* Move phyN into the container.  TODO - do this using netlink.
+	 * However, IIUC this involves a bit more complicated work to
+	 * talk to the 80211 module, so for now just call out to iw
+	 */
+	cmd = on_path("iw", NULL);
+	if (!cmd)
+		goto out1;
+	free(cmd);
+
+	fpid = fork();
+	if (fpid < 0)
+		goto out1;
+	if (fpid == 0) {
+		char pidstr[30];
+		sprintf(pidstr, "%d", pid);
+		if (execlp("iw", "iw", "phy", physname, "set", "netns", pidstr, NULL))
+			exit(1);
+		exit(0); // notreached
+	}
+	if (wait_for_pid(fpid))
+		goto out1;
+
+	err = 0;
+	if (newname)
+		err = lxc_netdev_rename_by_name_in_netns(pid, ifname, newname);
+
+out1:
+	free(physname);
+	return err;
+}
+
 int lxc_netdev_move_by_name(const char *ifname, pid_t pid, const char* newname)
 {
 	int index;
+	char *physname;
 
 	if (!ifname)
 		return -EINVAL;
@@ -151,6 +258,9 @@ int lxc_netdev_move_by_name(const char *ifname, pid_t pid, const char* newname)
 	index = if_nametoindex(ifname);
 	if (!index)
 		return -EINVAL;
+
+	if ((physname = is_wlan(ifname)))
+		return lxc_netdev_move_wlan(physname, ifname, pid, newname);
 
 	return lxc_netdev_move_by_index(index, pid, newname);
 }

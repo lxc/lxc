@@ -3442,11 +3442,9 @@ static bool lxcapi_attach_interface(struct lxc_container *c, const char *ifname,
 	}
 
 	ret = lxc_netdev_isup(ifname);
-	if (ret < 0)
-		goto err;
 
-	/* netdev of ifname is up. */
-	if (ret) {
+	if (ret > 0) {
+		/* netdev of ifname is up. */
 		ret = lxc_netdev_down(ifname);
 		if (ret)
 			goto err;
@@ -3457,11 +3455,8 @@ static bool lxcapi_attach_interface(struct lxc_container *c, const char *ifname,
 		goto err;
 
 	return true;
+
 err:
-	/* -EINVAL means there is no netdev named as ifanme. */
-	if (ret == -EINVAL) {
-		ERROR("No network device named as %s.", ifname);
-	}
 	return false;
 }
 
