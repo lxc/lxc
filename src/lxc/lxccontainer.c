@@ -3639,16 +3639,16 @@ static void exec_criu(struct criu_opts *opts)
 			struct lxc_netdev *n = it->elem;
 
 			if (n->name) {
-				if (strlen(n->name) >= 128)
+				if (strlen(n->name) >= sizeof(eth))
 					goto err;
-				strncpy(eth, n->name, 128);
+				strncpy(eth, n->name, sizeof(eth));
 			} else
 				sprintf(eth, "eth%d", netnr);
 
 			veth = n->priv.veth_attr.pair;
 
-			ret = snprintf(buf, 257, "%s=%s", eth, veth);
-			if (ret < 0 || ret >= 257)
+			ret = snprintf(buf, sizeof(buf), "%s=%s", eth, veth);
+			if (ret < 0 || ret >= sizeof(buf))
 				goto err;
 
 			/* final NULL and --veth-pair eth0=vethASDF */
