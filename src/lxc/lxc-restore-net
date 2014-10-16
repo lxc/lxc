@@ -1,15 +1,15 @@
 #!/bin/sh
 
-[ -z "$CRTOOLS_IMAGE_DIR" ] && exit 1
-
 set -e
 
-dir="$CRTOOLS_IMAGE_DIR"
-
 i=0
-while [ -f "$dir/eth$i" ] && [ -f "$dir/veth$i" ] && [ -f "$dir/bridge$i" ]; do
-	veth=$(cat "$dir/veth$i")
-	bridge=$(cat "$dir/bridge$i")
+while true; do
+	eval "bridge=\$LXC_CRIU_BRIDGE$i"
+	eval "veth=\$LXC_CRIU_VETH$i"
+
+	if [ -z "$bridge" ] || [ -z "$veth" ]; then
+		exit 0
+	fi
 
 	if [ "$CRTOOLS_SCRIPT_ACTION" = "network-lock" ]; then
 		brctl delif $bridge $veth
@@ -22,3 +22,5 @@ while [ -f "$dir/eth$i" ] && [ -f "$dir/veth$i" ] && [ -f "$dir/bridge$i" ]; do
 
 	i=$((i+1))
 done
+
+exit 1

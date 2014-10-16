@@ -55,6 +55,7 @@
 #include "attach.h"
 #include "monitor.h"
 #include "namespace.h"
+#include "network.h"
 #include "lxclock.h"
 #include "sync.h"
 
@@ -3536,37 +3537,12 @@ struct criu_opts {
 	const char *cgroup_path;
 };
 
-/*
- * @out must be 128 bytes long
- */
-static int read_criu_file(const char *directory, const char *file, int netnr, char *out)
-{
-	char path[PATH_MAX];
-	int ret;
-	FILE *f;
-
-	ret = snprintf(path, PATH_MAX,  "%s/%s%d", directory, file, netnr);
-	if (ret < 0 || ret >= PATH_MAX) {
-		ERROR("%s: path too long", __func__);
-		return -1;
-	}
-
-	f = fopen(path, "r");
-	if (!f)
-		return -1;
-
-	ret = fscanf(f, "%127s", out);
-	fclose(f);
-	if (ret <= 0)
-		return -1;
-
-	return 0;
-}
-
 static void exec_criu(struct criu_opts *opts)
 {
-	char **argv, log[PATH_MAX];
+	char **argv, log[PATH_MAX], buf[257];
 	int static_args = 14, argc = 0, i, ret;
+	int netnr = 0;
+	struct lxc_list *it;
 
 	/* The command line always looks like:
 	 * criu $(action) --tcp-established --file-locks --link-remap --force-irmap \
@@ -3648,9 +3624,6 @@ static void exec_criu(struct criu_opts *opts)
 		if (!opts->stop)
 			DECLARE_ARG("--leave-running");
 	} else if (strcmp(opts->action, "restore") == 0) {
-		int netnr = 0;
-		struct lxc_list *it;
-
 		DECLARE_ARG("--root");
 		DECLARE_ARG(opts->c->lxc_conf->rootfs.mount);
 		DECLARE_ARG("--restore-detached");
@@ -3661,18 +3634,24 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG(opts->cgroup_path);
 
 		lxc_list_for_each(it, &opts->c->lxc_conf->network) {
-			char eth[128], veth[128], buf[257];
+			char eth[128], *veth;
 			void *m;
+			struct lxc_netdev *n = it->elem;
 
-			if (read_criu_file(opts->directory, "veth", netnr, veth))
-				goto err;
-			if (read_criu_file(opts->directory, "eth", netnr, eth))
-				goto err;
+			if (n->name) {
+				if (strlen(n->name) >= 128)
+					goto err;
+				strncpy(eth, n->name, 128);
+			} else
+				sprintf(eth, "eth%d", netnr);
+
+			veth = n->priv.veth_attr.pair;
+
 			ret = snprintf(buf, 257, "%s=%s", eth, veth);
 			if (ret < 0 || ret >= 257)
 				goto err;
 
-			/* final NULL and --veth-pair eth0:vethASDF */
+			/* final NULL and --veth-pair eth0=vethASDF */
 			m = realloc(argv, (argc + 1 + 2) * sizeof(*argv));
 			if (!m)
 				goto err;
@@ -3682,12 +3661,43 @@ static void exec_criu(struct criu_opts *opts)
 			DECLARE_ARG(buf);
 			argv[argc] = NULL;
 
-			netnr++;
 		}
 	}
 
-#undef DECLARE_ARG
+	netnr = 0;
+	lxc_list_for_each(it, &opts->c->lxc_conf->network) {
+		struct lxc_netdev *n = it->elem;
+		char veth[128];
 
+		/*
+		 * Here, we set some parameters that lxc-restore-net
+		 * will examine to figure out the right network to
+		 * restore.
+		 */
+		snprintf(buf, sizeof(buf), "LXC_CRIU_BRIDGE%d", netnr);
+		if (setenv(buf, n->link, 1))
+			goto err;
+
+		if (strcmp("restore", opts->action) == 0)
+			strncpy(veth, n->priv.veth_attr.pair, sizeof(veth));
+		else {
+			char *tmp;
+			ret = snprintf(buf, sizeof(buf), "lxc.network.%d.veth.pair", netnr);
+			if (ret < 0 || ret >= sizeof(buf))
+				goto err;
+			tmp = lxcapi_get_running_config_item(opts->c, buf);
+			strncpy(veth, tmp, sizeof(veth));
+			free(tmp);
+		}
+
+		snprintf(buf, sizeof(buf), "LXC_CRIU_VETH%d", netnr);
+		if (setenv(buf, veth, 1))
+			goto err;
+
+		netnr++;
+	}
+
+#undef DECLARE_ARG
 	execv(argv[0], argv);
 err:
 	for (i = 0; argv[i]; i++)
@@ -3771,10 +3781,6 @@ static bool dump_net_info(struct lxc_container *c, char *directory)
 			break;
 		}
 
-		pret = snprintf(veth_path, PATH_MAX, "lxc.network.%d.link", netnr);
-		if (pret < 0 || pret >= PATH_MAX)
-			goto out;
-
 		bridge = lxcapi_get_running_config_item(c, veth_path);
 		if (!bridge)
 			goto out;
@@ -3783,20 +3789,12 @@ static bool dump_net_info(struct lxc_container *c, char *directory)
 		if (pret < 0 || pret >= PATH_MAX || print_to_file(veth_path, veth) < 0)
 			goto out;
 
-		pret = snprintf(veth_path, PATH_MAX, "%s/bridge%d", directory, netnr);
-		if (pret < 0 || pret >= PATH_MAX || print_to_file(veth_path, bridge) < 0)
-			goto out;
-
 		if (n->name) {
 			if (strlen(n->name) >= 128)
 				goto out;
 			strncpy(eth, n->name, 128);
 		} else
 			sprintf(eth, "eth%d", netnr);
-
-		pret = snprintf(veth_path, PATH_MAX, "%s/eth%d", directory, netnr);
-		if (pret < 0 || pret >= PATH_MAX || print_to_file(veth_path, eth) < 0)
-			goto out;
 
 		has_error = false;
 out:
@@ -3856,30 +3854,24 @@ static bool lxcapi_checkpoint(struct lxc_container *c, char *directory, bool sto
 	}
 }
 
-static bool restore_net_info(struct lxc_container *c, char *directory)
+static bool restore_net_info(struct lxc_container *c)
 {
 	struct lxc_list *it;
 	bool has_error = true;
-	int netnr = 0;
 
 	if (container_mem_lock(c))
 		return false;
 
 	lxc_list_for_each(it, &c->lxc_conf->network) {
-		char eth[128], veth[128];
 		struct lxc_netdev *netdev = it->elem;
+		char template[IFNAMSIZ];
+		snprintf(template, sizeof(template), "vethXXXXXX");
 
-		if (read_criu_file(directory, "veth", netnr, veth))
-			goto out_unlock;
+		if (!netdev->priv.veth_attr.pair)
+			netdev->priv.veth_attr.pair = lxc_mkifname(template);
 
-		if (read_criu_file(directory, "eth", netnr, eth))
-			goto out_unlock;
-
-		netdev->priv.veth_attr.pair = strdup(veth);
 		if (!netdev->priv.veth_attr.pair)
 			goto out_unlock;
-
-		netnr++;
 	}
 
 	has_error = false;
@@ -3919,6 +3911,11 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 
 	if (!cgroup_create(handler)) {
 		ERROR("failed creating groups");
+		goto out_fini_handler;
+	}
+
+	if (!restore_net_info(c)) {
+		ERROR("failed restoring network info");
 		goto out_fini_handler;
 	}
 
@@ -3989,11 +3986,6 @@ static bool lxcapi_restore(struct lxc_container *c, char *directory, bool verbos
 				fclose(f);
 				if (ret != 1) {
 					ERROR("reading restore pid failed");
-					goto out_fini_handler;
-				}
-
-				if (!restore_net_info(c, directory)) {
-					ERROR("failed restoring network info");
 					goto out_fini_handler;
 				}
 
