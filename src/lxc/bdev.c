@@ -2265,20 +2265,24 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		WARN("Failed to update ownership of %s", new->dest);
 
 	if (strcmp(orig->type, "dir") == 0) {
-		char *delta;
-		int ret, len;
+		char *delta, *lastslash;
+		int ret, len, lastslashidx;
 
 		// if we have /var/lib/lxc/c2/rootfs, then delta will be
 		//            /var/lib/lxc/c2/delta0
-		delta = strdup(new->dest);
-		if (!delta) {
-			return -1;
-		}
-		if (strlen(delta) < 6) {
-			free(delta);
+		lastslash = strrchr(new->dest, '/');
+		if (!lastslash)
 			return -22;
-		}
-		strcpy(&delta[strlen(delta)-6], "delta0");
+		if (strlen(lastslash) < 7)
+			return -22;
+		lastslash++;
+		lastslashidx = lastslash - new->dest;
+
+		delta = malloc(lastslashidx + 7);
+		if (!delta)
+			return -1;
+		strncpy(delta, new->dest, lastslashidx+1);
+		strcpy(delta+lastslashidx, "delta0");
 		if ((ret = mkdir(delta, 0755)) < 0) {
 			SYSERROR("error: mkdir %s", delta);
 			free(delta);
@@ -2319,7 +2323,7 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 			free(osrc);
 			return -ENOMEM;
 		}
-		if ((ret = mkdir(ndelta, 0755)) < 0) {
+		if ((ret = mkdir(ndelta, 0755)) < 0 && errno != EEXIST) {
 			SYSERROR("error: mkdir %s", ndelta);
 			free(osrc);
 			free(ndelta);
@@ -2560,20 +2564,24 @@ static int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldn
 		return -1;
 
 	if (strcmp(orig->type, "dir") == 0) {
-		char *delta;
-		int ret, len;
+		char *delta, *lastslash;
+		int ret, len, lastslashidx;
 
 		// if we have /var/lib/lxc/c2/rootfs, then delta will be
 		//            /var/lib/lxc/c2/delta0
-		delta = strdup(new->dest);
-		if (!delta) {
-			return -1;
-		}
-		if (strlen(delta) < 6) {
-			free(delta);
+		lastslash = strrchr(new->dest, '/');
+		if (!lastslash)
 			return -22;
-		}
-		strcpy(&delta[strlen(delta)-6], "delta0");
+		if (strlen(lastslash) < 7)
+			return -22;
+		lastslash++;
+		lastslashidx = lastslash - new->dest;
+
+		delta = malloc(lastslashidx + 7);
+		if (!delta)
+			return -1;
+		strncpy(delta, new->dest, lastslashidx+1);
+		strcpy(delta+lastslashidx, "delta0");
 		if ((ret = mkdir(delta, 0755)) < 0) {
 			SYSERROR("error: mkdir %s", delta);
 			free(delta);
@@ -3248,26 +3256,10 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		return NULL;
 	}
 
-	orig = bdev_init(c0->lxc_conf, src, NULL, NULL);
+	orig = bdev_init(c0->lxc_conf, src, src, NULL);
 	if (!orig) {
 		ERROR("failed to detect blockdev type for %s", src);
 		return NULL;
-	}
-
-	if (!orig->dest) {
-		int ret;
-		orig->dest = malloc(MAXPATHLEN);
-		if (!orig->dest) {
-			ERROR("out of memory");
-			bdev_put(orig);
-			return NULL;
-		}
-		ret = snprintf(orig->dest, MAXPATHLEN, "%s/%s/rootfs", oldpath, oldname);
-		if (ret < 0 || ret >= MAXPATHLEN) {
-			ERROR("rootfs path too long");
-			bdev_put(orig);
-			return NULL;
-		}
 	}
 
 	/*
