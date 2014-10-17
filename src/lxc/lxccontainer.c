@@ -3800,7 +3800,7 @@ static bool dump_net_info(struct lxc_container *c, char *directory)
 out:
 		if (veth)
 			free(veth);
-		if (bridge);
+		if (bridge)
 			free(bridge);
 		if (has_error)
 			return false;
