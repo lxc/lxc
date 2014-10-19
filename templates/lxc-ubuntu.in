@@ -224,13 +224,13 @@ choose_container_proxy()
 
 write_sourceslist()
 {
-    # $1 => path to the rootfs
+    # $1 => path to the partial cache or the rootfs
     # $2 => architecture we want to add
     # $3 => whether to use the multi-arch syntax or not
 
     if [ -n "$APT_PROXY" ]; then
-        mkdir -p $rootfs/etc/apt/apt.conf.d
-        cat > $rootfs/etc/apt/apt.conf.d/70proxy << EOF
+        mkdir -p $1/etc/apt/apt.conf.d
+        cat > $1/etc/apt/apt.conf.d/70proxy << EOF
 Acquire::http::Proxy "$APT_PROXY" ;
 EOF
     fi
