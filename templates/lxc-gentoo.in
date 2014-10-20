@@ -788,7 +788,7 @@ do
     -n|--name)             name=$2; shift 2;;
     -a|--arch)             arch=$2; shift 2;;
     -F|--flush-cache)      flush_cache=1; shift 1;;
-    -c|--cache-only)       cache_only=1; shitf 1;;
+    -c|--cache-only)       cache_only=1; shift 1;;
     -P|--private-portage)  private_portage=1; shift 1;;
     -v|--variant)          variant=$2; shift 2;;
     --portage-dir)         portage_dir=$2; shift 2;;
