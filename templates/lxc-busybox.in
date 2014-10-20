@@ -20,15 +20,8 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-# Detect use under userns (unsupported)
-for arg in "$@"; do
-    [ "$arg" = "--" ] && break
-    if [ "$arg" = "--mapped-uid" -o "$arg" = "--mapped-gid" ]; then
-        echo "This template can't be used for unprivileged containers." 1>&2
-        echo "You may want to try the \"download\" template instead." 1>&2
-        exit 1
-    fi
-done
+LXC_MAPPED_UID=
+LXC_MAPPED_GID=
 
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
@@ -310,6 +303,21 @@ EOF
     echo "lxc.mount.auto = proc:mixed sys" >>$path/config
 }
 
+remap_userns()
+{
+    path=$1
+
+    if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
+        chown $LXC_MAPPED_UID $path/config $path/fstab >/dev/null 2>&1
+        chown -R root $path/rootfs >/dev/null 2>&1
+    fi
+
+    if [ -n "$LXC_MAPPED_GID" ] && [ "$LXC_MAPPED_GID" != "-1" ]; then
+        chgrp $LXC_MAPPED_GID $path/config $path/fstab >/dev/null 2>&1
+        chgrp -R root $path/rootfs >/dev/null 2>&1
+    fi
+}
+
 usage()
 {
     cat <<EOF
@@ -318,7 +326,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n: -l help,rootfs:,path:,name: -- "$@")
+options=$(getopt -o hp:n: -l help,rootfs:,path:,name:,mapped-uid:,mapped-gid: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -332,6 +340,8 @@ do
         -p|--path)      path=$2; shift 2;;
         --rootfs)       rootfs=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
+        --mapped-uid)   LXC_MAPPED_UID=$2; shift 2;;
+        --mapped-gid)   LXC_MAPPED_GID=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
     esac
@@ -372,5 +382,11 @@ fi
 copy_configuration $path $rootfs $name
 if [ $? -ne 0 ]; then
     echo "failed to write configuration file"
+    exit 1
+fi
+
+remap_userns $path
+if [ $? -ne 0 ]; then
+    echo "failed to remap files to user"
     exit 1
 fi
