@@ -301,6 +301,10 @@ EOF
     done
     echo "lxc.mount.entry = /sys/kernel/security sys/kernel/security none ro,bind,optional 0 0" >>$path/config
     echo "lxc.mount.auto = proc:mixed sys" >>$path/config
+
+    if [ -f "$path/fstab" ]; then
+        echo "lxc.mount = $path/fstab" >>$path/config
+    fi
 }
 
 remap_userns()
