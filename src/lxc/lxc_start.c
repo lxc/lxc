@@ -278,6 +278,7 @@ int main(int argc, char *argv[])
 
 	if (c->is_running(c)) {
 		ERROR("Container is already running.");
+		err = 0;
 		goto out;
 	}
 	/*
