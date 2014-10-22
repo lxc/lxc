@@ -623,7 +623,7 @@ and man lxc.conf"
 container_hostname()
 {
     printf "#### container_hostname(): setting hostname... \n"
-    printf "hostnale=%s\n" "${name}" > "${rootfs}/etc/conf.d/hostname"
+    printf "hostname=\"%s\"\n" "${name}" > "${rootfs}/etc/conf.d/hostname"
     printf " => done.\n"
 }
 
