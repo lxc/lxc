@@ -3604,7 +3604,7 @@ static void exec_criu(struct criu_opts *opts)
 	DECLARE_ARG("--force-irmap");
 	DECLARE_ARG("--manage-cgroups");
 	DECLARE_ARG("--action-script");
-	DECLARE_ARG(LIBEXECDIR "/lxc/lxc-restore-net");
+	DECLARE_ARG(DATADIR "/lxc/lxc-restore-net");
 	DECLARE_ARG("-D");
 	DECLARE_ARG(opts->directory);
 	DECLARE_ARG("-o");

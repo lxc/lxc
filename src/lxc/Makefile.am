@@ -202,8 +202,6 @@ sbin_PROGRAMS = init.lxc
 pkglibexec_PROGRAMS = \
 	lxc-monitord \
 	lxc-user-nic
-pkglibexec_SCRIPTS = \
-	lxc-restore-net
 
 AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
@@ -262,6 +260,9 @@ install-exec-local: install-soPROGRAMS
 
 install-exec-hook:
 	chmod u+s $(DESTDIR)$(libexecdir)/lxc/lxc-user-nic
+
+install-data-local:
+	install -c -m 755 lxc-restore-net $(DESTDIR)$(datadir)/lxc
 
 uninstall-local:
 	$(RM) $(DESTDIR)$(libdir)/liblxc.so*
