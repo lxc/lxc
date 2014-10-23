@@ -336,23 +336,8 @@ static int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char*
 		 * number of C programs out there that just assume
 		 * that getenv("PATH") is never NULL and then die a
 		 * painful segfault death. */
-		if (!path_kept) {
-#ifdef HAVE_CONFSTR
-			size_t n;
-			char *path_env;
-
-			n = confstr(_CS_PATH, NULL, 0);
-			path_env = malloc(n);
-			if (path_env) {
-				confstr(_CS_PATH, path_env, n);
-				setenv("PATH", path_env, 1);
-				free(path_env);
-			}
-			/* don't error out, this is just an extra service */
-#else
+		if (!path_kept)
 			setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 1);
-#endif
-		}
 	}
 
 	if (putenv("container=lxc")) {
