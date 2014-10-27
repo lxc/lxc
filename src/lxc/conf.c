@@ -3984,8 +3984,9 @@ int do_rootfs_setup(struct lxc_conf *conf, const char *name, const char *lxcpath
 		const char *path = conf->rootfs.mount;
 		if (mount(path, path, "rootfs", MS_BIND, NULL) < 0) {
 			ERROR("Failed to bind-mount container / onto itself");
-			return false;
+			return -1;
 		}
+		return 0;
 	}
 
 	remount_all_slave();
