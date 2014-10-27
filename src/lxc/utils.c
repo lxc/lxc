@@ -277,7 +277,14 @@ const char *lxc_global_config_value(const char *option_name)
 #else
 	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
 #endif
+
+	/* user_config_path is freed as soon as it is used */
 	char *user_config_path = NULL;
+
+	/*
+	 * The following variables are freed at bottom unconditionally.
+	 * So NULL the value if it is to be returned to the caller
+	 */
 	char *user_default_config_path = NULL;
 	char *user_lxc_path = NULL;
 	char *user_cgroup_pattern = NULL;
@@ -364,8 +371,6 @@ const char *lxc_global_config_value(const char *option_name)
 			if (!*p)
 				continue;
 
-			free(user_default_config_path);
-
 			if (strcmp(option_name, "lxc.lxcpath") == 0) {
 				free(user_lxc_path);
 				user_lxc_path = copy_global_config_value(p);
@@ -375,7 +380,6 @@ const char *lxc_global_config_value(const char *option_name)
 			}
 
 			values[i] = copy_global_config_value(p);
-			free(user_lxc_path);
 			goto out;
 		}
 	}
@@ -383,25 +387,19 @@ const char *lxc_global_config_value(const char *option_name)
 	if (strcmp(option_name, "lxc.lxcpath") == 0) {
 		remove_trailing_slashes(user_lxc_path);
 		values[i] = user_lxc_path;
-		free(user_default_config_path);
-		free(user_cgroup_pattern);
+		user_lxc_path = NULL;
 	}
 	else if (strcmp(option_name, "lxc.default_config") == 0) {
 		values[i] = user_default_config_path;
-		free(user_lxc_path);
-		free(user_cgroup_pattern);
+		user_default_config_path = NULL;
 	}
 	else if (strcmp(option_name, "lxc.cgroup.pattern") == 0) {
 		values[i] = user_cgroup_pattern;
-		free(user_default_config_path);
-		free(user_lxc_path);
+		user_cgroup_pattern = NULL;
 	}
-	else {
-		free(user_default_config_path);
-		free(user_lxc_path);
-		free(user_cgroup_pattern);
+	else
 		values[i] = (*ptr)[1];
-	}
+
 	/* special case: if default value is NULL,
 	 * and there is no config, don't view that
 	 * as an error... */
@@ -411,6 +409,10 @@ const char *lxc_global_config_value(const char *option_name)
 out:
 	if (fin)
 		fclose(fin);
+
+	free(user_cgroup_pattern);
+	free(user_default_config_path);
+	free(user_lxc_path);
 
 	return values[i];
 }
