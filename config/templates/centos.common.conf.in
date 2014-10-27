@@ -20,4 +20,5 @@ lxc.mount.auto = proc:mixed sys:ro
 # lxc.cap.drop = setuid           # breaks sshd,nfs statd
 # lxc.cap.drop = audit_control    # breaks sshd (set_loginuid failed)
 # lxc.cap.drop = audit_write
-lxc.cap.drop = setfcap setpcap sys_nice sys_pacct sys_rawio
+# lxc.cap.drop = setpcap          # big big login delays in CentOS 7 systemd
+lxc.cap.drop = setfcap sys_nice sys_pacct sys_rawio
