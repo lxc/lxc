@@ -33,8 +33,8 @@ done
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
-MIRROR=${MIRROR:-http://cdn.debian.net/debian}
-SECURITY_MIRROR=${SECURITY_MIRROR:-http://cdn.debian.net/debian-security}
+MIRROR=${MIRROR:-http://http.debian.net/debian}
+SECURITY_MIRROR=${SECURITY_MIRROR:-http://security.debian.org/}
 LOCALSTATEDIR="@LOCALSTATEDIR@"
 LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
 
@@ -167,8 +167,8 @@ write_sourceslist()
     fi
 
     cat >> "${rootfs}/etc/apt/sources.list" << EOF
-${prefix} $MIRROR          ${release}        main contrib non-free
-${prefix} $SECURITY_MIRROR ${release}/update main contrib non-free
+${prefix} $MIRROR          ${release}         main contrib non-free
+${prefix} $SECURITY_MIRROR ${release}/updates main contrib non-free
 EOF
 }
 
