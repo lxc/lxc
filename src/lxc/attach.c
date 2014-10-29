@@ -758,8 +758,10 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		}
 
 		/* ignore SIGKILL (CTRL-C) and SIGQUIT (CTRL-\) - issue #313 */
-		signal(SIGINT, SIG_IGN);
-		signal(SIGQUIT, SIG_IGN);
+		if (options->stdin_fd == 0) {
+			signal(SIGINT, SIG_IGN);
+			signal(SIGQUIT, SIG_IGN);
+		}
 
 		/* reap intermediate process */
 		ret = wait_for_pid(pid);
