@@ -646,6 +646,7 @@ AC_CONFIG_FILES([
 	config/templates/ubuntu.common.conf
 	config/templates/ubuntu.lucid.conf
 	config/templates/ubuntu.userns.conf
+	config/templates/openwrt.common.conf
 	config/templates/userns.conf
 	config/yum/Makefile
 	config/sysconfig/Makefile

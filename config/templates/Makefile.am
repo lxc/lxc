@@ -28,4 +28,5 @@ templatesconfig_DATA = \
 	ubuntu.common.conf \
 	ubuntu.lucid.conf \
 	ubuntu.userns.conf \
+	openwrt.common.conf \
 	userns.conf
