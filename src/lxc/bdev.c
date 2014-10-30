@@ -2154,10 +2154,12 @@ static int overlayfs_detect(const char *path)
 static int overlayfs_mount(struct bdev *bdev)
 {
 	char *options, *dup, *lower, *upper;
-	int len;
+	char *options_work, *work, *lastslash;
+	int lastslashidx;
+	int len, len2;
 	unsigned long mntflags;
 	char *mntdata;
-	int ret;
+	int ret, ret2;
 
 	if (strcmp(bdev->type, "overlayfs"))
 		return -22;
@@ -2175,6 +2177,19 @@ static int overlayfs_mount(struct bdev *bdev)
 	*upper = '\0';
 	upper++;
 
+	// overlayfs.v22 or higher needs workdir option
+	// if upper is /var/lib/lxc/c2/delta0,
+	// then workdir is /var/lib/lxc/c2/olwork
+	lastslash = strrchr(upper, '/');
+	if (!lastslash)
+		return -22;
+	lastslash++;
+	lastslashidx = lastslash - upper;
+
+	work = alloca(lastslashidx + 7);
+	strncpy(work, upper, lastslashidx+7);
+	strcpy(work+lastslashidx, "olwork");
+
 	if (parse_mntopts(bdev->mntopts, &mntflags, &mntdata) < 0) {
 		free(mntdata);
 		return -22;
@@ -2187,21 +2202,44 @@ static int overlayfs_mount(struct bdev *bdev)
 		len = strlen(lower) + strlen(upper) + strlen("upperdir=,lowerdir=,") + strlen(mntdata) + 1;
 		options = alloca(len);
 		ret = snprintf(options, len, "upperdir=%s,lowerdir=%s,%s", upper, lower, mntdata);
+
+		len2 = strlen(lower) + strlen(upper) + strlen(work)
+			+ strlen("upperdir=,lowerdir=,workdir=") + strlen(mntdata) + 1;
+		options_work = alloca(len2);
+		ret2 = snprintf(options, len2, "upperdir=%s,lowerdir=%s,workdir=%s,%s",
+				upper, lower, work, mntdata);
 	}
 	else {
 		len = strlen(lower) + strlen(upper) + strlen("upperdir=,lowerdir=") + 1;
 		options = alloca(len);
 		ret = snprintf(options, len, "upperdir=%s,lowerdir=%s", upper, lower);
+
+		len2 = strlen(lower) + strlen(upper) + strlen(work)
+			+ strlen("upperdir=,lowerdir=,workdir=") + 1;
+		options_work = alloca(len2);
+		ret2 = snprintf(options_work, len2, "upperdir=%s,lowerdir=%s,workdir=%s",
+			upper, lower, work);
 	}
-	if (ret < 0 || ret >= len) {
+	if (ret < 0 || ret >= len || ret2 < 0 || ret2 >= len2) {
 		free(mntdata);
 		return -1;
 	}
 
+	// mount without workdir option for overlayfs before v21
 	ret = mount(lower, bdev->dest, "overlayfs", MS_MGC_VAL | mntflags, options);
-	if (ret < 0)
-		SYSERROR("overlayfs: error mounting %s onto %s options %s",
+	if (ret < 0) {
+		INFO("overlayfs: error mounting %s onto %s options %s. retry with workdir",
 			lower, bdev->dest, options);
+
+		// retry with workdir option for overlayfs v22 and higher
+		ret = mount(lower, bdev->dest, "overlayfs", MS_MGC_VAL | mntflags, options_work);
+		if (ret < 0)
+			SYSERROR("overlayfs: error mounting %s onto %s options %s",
+				lower, bdev->dest, options_work);
+		else
+			INFO("overlayfs: mounted %s onto %s options %s",
+				lower, bdev->dest, options_work);
+	}
 	else
 		INFO("overlayfs: mounted %s onto %s options %s",
 			lower, bdev->dest, options);
@@ -2266,6 +2304,7 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 
 	if (strcmp(orig->type, "dir") == 0) {
 		char *delta, *lastslash;
+		char *work;
 		int ret, len, lastslashidx;
 
 		// if we have /var/lib/lxc/c2/rootfs, then delta will be
@@ -2291,6 +2330,25 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		if (am_unpriv() && chown_mapped_root(delta, conf) < 0)
 			WARN("Failed to update ownership of %s", delta);
 
+		// make workdir for overlayfs.v22 or higher
+		// workdir is /var/lib/lxc/c2/olwork
+		// it is used to prepare files before atomically swithing with destination,
+		// and needs to be on the same filesystem as upperdir,
+		// so it's OK for it to be empty.
+		work = malloc(lastslashidx + 7);
+		if (!work)
+			return -1;
+		strncpy(work, new->dest, lastslashidx+1);
+		strcpy(work+lastslashidx, "olwork");
+		if (mkdir(work, 0755) < 0) {
+			SYSERROR("error: mkdir %s", work);
+			free(work);
+			return -1;
+		}
+		if (am_unpriv() && chown_mapped_root(work, conf) < 0)
+			WARN("Failed to update ownership of %s", work);
+		free(work);
+
 		// the src will be 'overlayfs:lowerdir:upperdir'
 		len = strlen(delta) + strlen(orig->src) + 12;
 		new->src = malloc(len);
@@ -2307,8 +2365,9 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		// I think we want to use the original lowerdir, with a
 		// private delta which is originally rsynced from the
 		// original delta
-		char *osrc, *odelta, *nsrc, *ndelta;
-		int len, ret;
+		char *osrc, *odelta, *nsrc, *ndelta, *work;
+		char *lastslash;
+		int len, ret, lastslashidx;
 		if (!(osrc = strdup(orig->src)))
 			return -22;
 		nsrc = index(osrc, ':') + 1;
@@ -2331,6 +2390,29 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		}
 		if (am_unpriv() && chown_mapped_root(ndelta, conf) < 0)
 			WARN("Failed to update ownership of %s", ndelta);
+
+		// make workdir for overlayfs.v22 or higher
+		// for details, see above.
+		lastslash = strrchr(ndelta, '/');
+		if (!lastslash)
+			return -1;
+		lastslash++;
+		lastslashidx = lastslash - ndelta;
+
+		work = malloc(lastslashidx + 7);
+		if (!work)
+			return -1;
+		strncpy(work, ndelta, lastslashidx+1);
+		strcpy(work+lastslashidx, "olwork");
+		if ((mkdir(work, 0755) < 0) && errno != EEXIST) {
+			SYSERROR("error: mkdir %s", work);
+			free(work);
+			return -1;
+		}
+		if (am_unpriv() && chown_mapped_root(work, conf) < 0)
+			WARN("Failed to update ownership of %s", work);
+		free(work);
+
 		struct rsync_data_char rdata;
 		rdata.src = odelta;
 		rdata.dest = ndelta;
