@@ -22,27 +22,21 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 # Detect use under userns (unsupported)
-for arg in "$@"; do
-    [ "$arg" = "--" ] && break
-    if [ "$arg" = "--mapped-uid" -o "$arg" = "--mapped-gid" ]; then
-        echo "This template can't be used for unprivileged containers." 1>&2
-        echo "You may want to try the \"download\" template instead." 1>&2
-        exit 1
-    fi
-done
-
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
 VERBOSITY=0
 DOWNLOAD_URL="http://download.cirros-cloud.net/"
-CACHE_D="@LOCALSTATEDIR@/cache/lxc/cirros"
 
 UNAME_M=$(uname -m)
 ARCHES=( i386 x86_64 amd64 arm )
 STREAMS=( released devel )
 SOURCES=( nocloud none )
 BUILD="standard"
+LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+
+LXC_MAPPED_GID=
+LXC_MAPPED_UID=
 
 DEF_VERSION="released"
 DEF_SOURCE="nocloud"
@@ -52,6 +46,23 @@ case "${UNAME_M}" in
     arm*) DEF_ARCH="arm";;
     *) DEF_ARCH="i386";;
 esac
+
+am_in_userns() {
+    [ -e /proc/self/uid_map ] || { echo no; return; }
+    [ "$(wc -l /proc/self/uid_map | awk '{ print $1 }')" -eq 1 ] || { echo yes; return; }
+    line=$(awk '{ print $1 " " $2 " " $3 }' /proc/self/uid_map)
+    [ "$line" = "0 0 4294967295" ] && { echo no; return; }
+    echo yes
+}
+
+in_userns=0
+[ $(am_in_userns) = "yes" ] && in_userns=1
+
+if [ $(id -u) -eq 0 ]; then
+    CACHE_D="@LOCALSTATEDIR@/cache/lxc/cirros"
+else
+    CACHE_D="$HOME/.cache/lxc/cirros"
+fi
 
 error() { echo "$@" 1>&2; }
 inargs() {
@@ -151,6 +162,12 @@ lxc.cgroup.devices.allow = c 10:228 rwm
 # kvm
 lxc.cgroup.devices.allow = c 10:232 rwm
 EOF
+
+    if [ $in_userns -eq 1 ] && [ -e "${LXC_TEMPLATE_CONFIG}/ubuntu-cloud.userns.conf" ]; then
+        echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/ubuntu.userns.conf" >> $path/config
+        echo "lxc.mount.auto = cgroup:mixed proc:mixed sys:ro" >> $path/config
+    fi
+
 }
 
 insert_ds_nocloud() {
@@ -187,8 +204,13 @@ extract_rootfs() {
     mkdir -p "${rootfs_d}" ||
         { error "failed to make rootfs dir ${rootfs_d}"; return 1; }
 
-    tar -C "${rootfs_d}" -Sxzf "${tarball}" ||
-        { error "failed to populate ${rootfs_d}"; return 1; }
+    if [ $in_userns -eq 1 ]; then
+        tar -C "${rootfs_d}" --anchored --exclude="dev/*" -Sxzf "${tarball}" ||
+            { error "failed to populate ${rootfs_d}"; return 1; }
+    else
+        tar -C "${rootfs_d}" -Sxzf "${tarball}" ||
+            { error "failed to populate ${rootfs_d}"; return 1; }
+    fi
     return 0
 }
 
@@ -218,7 +240,7 @@ download_tarball() {
 
 create_main() {
     local short_opts="a:hn:p:S:uvV"
-    local long_opts="arch:,auth-key:,name:,path:,tarball:,userdata:,verbose,version:,rootfs:"
+    local long_opts="arch:,auth-key:,name:,path:,tarball:,userdata:,verbose,version:,rootfs:,mapped-uid:,mapped-gid:"
     local getopt_out=""
     getopt_out=$(getopt --name "${0##*/}" \
         --options "${short_opts}" --long "${long_opts}" -- "$@") &&
@@ -244,6 +266,8 @@ create_main() {
                --tarball) tarball="$next"; shift;;
                --source) dsource="$next"; shift;;
                --rootfs) rootfs_d="$next"; shift;;
+            --mapped-uid) LXC_MAPPED_UID=$next; shift;;
+            --mapped-gid) LXC_MAPPED_GID=$next; shift;;
             --) shift; break;;
         esac
         shift;
@@ -299,18 +323,6 @@ create_main() {
     fi
 
     extract_rootfs "${tarball}" "${rootfs_d}" || return
-
-    # cirros 0.3.1 was broken for /dev/random and /dev/urandom
-    if [ -b "$rootfs_d/dev/random" ]; then
-        rm -f "$rootfs_d/dev/random" &&
-            mknod --mode=666 "$rootfs_d/dev/random" c 1 8 ||
-           { error "failed to fix /dev/random"; return 1; }
-    fi
-    if [ -b "$rootfs_d/dev/urandom" ]; then
-        rm -f "$rootfs_d/dev/urandom" &&
-        mknod --mode=666 "$rootfs_d/dev/urandom" c 1 9 ||
-           { error "failed to fix /dev/urandom"; return 1; }
-    fi
 
     if [ "$version" = "0.3.2~pre1" ]; then
         debug 1 "fixing console for lxc and '$version'"
