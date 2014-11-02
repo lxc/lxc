@@ -189,11 +189,22 @@ static bool cgm_supports_multiple_controllers;
  */
 static bool cgm_all_controllers_same;
 
-static void check_supports_multiple_controllers(void)
+/*
+ * Check whether we can use "all" when talking to cgmanager.
+ * We check two things:
+ * 1. whether cgmanager is new enough to support this.
+ * 2. whether the task we are interested in is in the same
+ *    cgroup for all controllers.
+ * In cgm_init (before an lxc-start) we care about our own
+ * cgroup.  In cgm_attach, we care about the target task's
+ * cgroup.
+ */
+static void check_supports_multiple_controllers(pid_t pid)
 {
 	FILE *f;
 	char *line = NULL, *prevpath = NULL;
 	size_t sz = 0;
+	char path[100];
 
 	cgm_supports_multiple_controllers = false;
 	cgm_all_controllers_same = false;
@@ -205,7 +216,11 @@ static void check_supports_multiple_controllers(void)
 
 	cgm_supports_multiple_controllers = true;
 
-	f = fopen("/proc/self/cgroup", "r");
+	if (pid == -1)
+		sprintf(path, "/proc/self/cgroup");
+	else
+		sprintf(path, "/proc/%d/cgroup", pid);
+	f = fopen(path, "r");
 	if (!f)
 		return;
 
@@ -517,7 +532,7 @@ static void *cgm_init(const char *name)
 		return NULL;
 	}
 
-	check_supports_multiple_controllers();
+	check_supports_multiple_controllers(-1);
 
 	d = malloc(sizeof(*d));
 	if (!d) {
@@ -1282,13 +1297,16 @@ static bool cgm_attach(const char *name, const char *lxcpath, pid_t pid)
 		return false;
 	}
 
-	check_supports_multiple_controllers();
+	check_supports_multiple_controllers(pid);
 
 	if (cgm_all_controllers_same)
 		slist = subsystems_inone;
 
 	for (i = 0; slist[i]; i++) {
-		cgroup = try_get_abs_cgroup(name, lxcpath, slist[i]);
+		if (slist == subsystems_inone)
+			cgroup = try_get_abs_cgroup(name, lxcpath, subsystems[0]);
+		else
+			cgroup = try_get_abs_cgroup(name, lxcpath, slist[i]);
 		if (!cgroup) {
 			ERROR("Failed to get cgroup for controller %s", slist[i]);
 			cgm_dbus_disconnect();
