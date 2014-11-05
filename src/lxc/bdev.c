@@ -3012,6 +3012,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	const char *oldname = c0->name;
 	const char *oldpath = c0->config_path;
 	struct rsync_data data;
+	char *rootfs;
 
 	/* if the container name doesn't show up in the rootfs path, then
 	 * we don't know how to come up with a new name
@@ -3022,10 +3023,33 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		return NULL;
 	}
 
-	orig = bdev_init(src, src, NULL);
+	orig = bdev_init(src, NULL, NULL);
 	if (!orig) {
 		ERROR("failed to detect blockdev type for %s", src);
 		return NULL;
+	}
+
+	if (!orig->dest) {
+		int ret;
+		orig->dest = malloc(MAXPATHLEN);
+		if (!orig->dest) {
+			ERROR("out of memory");
+			bdev_put(orig);
+			return NULL;
+		}
+		rootfs = strrchr(orig->src, '/');
+		if (!rootfs) {
+			ERROR("invalid rootfs path");
+			bdev_put(orig);
+			return NULL;
+		}
+		rootfs++;
+		ret = snprintf(orig->dest, MAXPATHLEN, "%s/%s/%s", oldpath, oldname, rootfs);
+		if (ret < 0 || ret >= MAXPATHLEN) {
+			ERROR("rootfs path too long");
+			bdev_put(orig);
+			return NULL;
+		}
 	}
 
 	/*
