@@ -666,7 +666,7 @@ usage()
     cat <<EOF
 usage:
     $1 -n|--name=<container_name>
-        [-p|--path=<path>] [-c|--clean] [-R|--release=<CentOS_release>] [-A|--arch=<arch of the container>]
+        [-p|--path=<path>] [-c|--clean] [-R|--release=<CentOS_release>] [-a|--arch=<arch of the container>]
         [-h|--help]
 Mandatory args:
   -n,--name         container name, used to as an identifier for that container from now on
