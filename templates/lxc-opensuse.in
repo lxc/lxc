@@ -11,6 +11,7 @@
 # Daniel Lezcano <daniel.lezcano@free.fr>
 # Frederic Crozat <fcrozat@suse.com>
 # Michael H. Warfield <mhw@WittsEnd.com>
+# Johannes Kastl <mail@ojkastl.de>
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -378,7 +379,9 @@ clean()
 usage()
 {
     cat <<EOF
-$1 -h|--help -p|--path=<path> --clean
+$1 -h|--help -p|--path=<path> -r|--release nn.n --clean
+Please give the release as 12.3, 13.1, 13.2 etc.
+If no release is given, openSUSE 12.3 is installed.
 EOF
     return 0
 }
