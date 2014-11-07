@@ -91,6 +91,10 @@ function container:new(lname, config)
 end
 
 -- methods interfacing to core functionality
+function container:attach(what, ...)
+    return self.core:attach(what, ...)
+end
+
 function container:config_file_name()
     return self.core:config_file_name()
 end

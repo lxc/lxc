@@ -376,8 +376,34 @@ not_found:
     return 1;
 }
 
+static int container_attach(lua_State *L)
+{
+    struct lxc_container *c = lua_unboxpointer(L, 1, CONTAINER_TYPENAME);
+    int argc = lua_gettop(L);
+    char **argv = NULL;
+    int i,j;
+
+    if (argc > 1) {
+	argv = alloca((argc+1) * sizeof(char *));
+	for (i = 0, j = 0; i < argc-1; i++) {
+	    const char *arg = luaL_checkstring(L, i+2);
+		argv[j++] = strdupa(arg);
+	  }
+	  argv[j] = NULL;
+    }
+	else
+	{
+	  lua_pushnil(L);
+	  return 1;
+	}
+
+    lua_pushboolean(L, !!(c->attach_run_wait(c, NULL, argv[0], (const char**)argv)));
+    return 1;
+}
+
 static luaL_Reg lxc_container_methods[] =
 {
+    {"attach",                  container_attach},
     {"create",			container_create},
     {"defined",			container_defined},
     {"destroy",			container_destroy},
