@@ -184,7 +184,7 @@ struct lxc_pty_info {
 
 /*
  * Defines the number of tty configured and contains the
- * instanciated ptys
+ * instantiated ptys
  * @nbtty = number of configured ttys
  */
 struct lxc_tty_info {
