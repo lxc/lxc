@@ -197,7 +197,7 @@ static bool nic_exists(char *nic)
 	return true;
 }
 
-static int instanciate_veth(char *n1, char **n2)
+static int instantiate_veth(char *n1, char **n2)
 {
 	int err;
 
@@ -246,7 +246,7 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 	}
 
 	/* create the nics */
-	if (instanciate_veth(veth1buf, &veth2buf) < 0) {
+	if (instantiate_veth(veth1buf, &veth2buf) < 0) {
 		fprintf(stderr, "Error creating veth tunnel\n");
 		return false;
 	}

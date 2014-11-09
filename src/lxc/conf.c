@@ -167,7 +167,7 @@ return -1;
 char *lxchook_names[NUM_LXC_HOOKS] = {
 	"pre-start", "pre-mount", "mount", "autodev", "start", "post-stop", "clone" };
 
-typedef int (*instanciate_cb)(struct lxc_handler *, struct lxc_netdev *);
+typedef int (*instantiate_cb)(struct lxc_handler *, struct lxc_netdev *);
 
 struct mount_opt {
 	char *name;
@@ -183,20 +183,20 @@ struct caps_opt {
 /* Declare this here, since we don't want to reshuffle the whole file. */
 static int in_caplist(int cap, struct lxc_list *caps);
 
-static int instanciate_veth(struct lxc_handler *, struct lxc_netdev *);
-static int instanciate_macvlan(struct lxc_handler *, struct lxc_netdev *);
-static int instanciate_vlan(struct lxc_handler *, struct lxc_netdev *);
-static int instanciate_phys(struct lxc_handler *, struct lxc_netdev *);
-static int instanciate_empty(struct lxc_handler *, struct lxc_netdev *);
-static int instanciate_none(struct lxc_handler *, struct lxc_netdev *);
+static int instantiate_veth(struct lxc_handler *, struct lxc_netdev *);
+static int instantiate_macvlan(struct lxc_handler *, struct lxc_netdev *);
+static int instantiate_vlan(struct lxc_handler *, struct lxc_netdev *);
+static int instantiate_phys(struct lxc_handler *, struct lxc_netdev *);
+static int instantiate_empty(struct lxc_handler *, struct lxc_netdev *);
+static int instantiate_none(struct lxc_handler *, struct lxc_netdev *);
 
-static  instanciate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
-	[LXC_NET_VETH]    = instanciate_veth,
-	[LXC_NET_MACVLAN] = instanciate_macvlan,
-	[LXC_NET_VLAN]    = instanciate_vlan,
-	[LXC_NET_PHYS]    = instanciate_phys,
-	[LXC_NET_EMPTY]   = instanciate_empty,
-	[LXC_NET_NONE]    = instanciate_none,
+static  instantiate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
+	[LXC_NET_VETH]    = instantiate_veth,
+	[LXC_NET_MACVLAN] = instantiate_macvlan,
+	[LXC_NET_VLAN]    = instantiate_vlan,
+	[LXC_NET_PHYS]    = instantiate_phys,
+	[LXC_NET_EMPTY]   = instantiate_empty,
+	[LXC_NET_NONE]    = instantiate_none,
 };
 
 static int shutdown_veth(struct lxc_handler *, struct lxc_netdev *);
@@ -206,7 +206,7 @@ static int shutdown_phys(struct lxc_handler *, struct lxc_netdev *);
 static int shutdown_empty(struct lxc_handler *, struct lxc_netdev *);
 static int shutdown_none(struct lxc_handler *, struct lxc_netdev *);
 
-static  instanciate_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
+static  instantiate_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_VETH]    = shutdown_veth,
 	[LXC_NET_MACVLAN] = shutdown_macvlan,
 	[LXC_NET_VLAN]    = shutdown_vlan,
@@ -2788,7 +2788,7 @@ struct lxc_conf *lxc_conf_init(void)
 	return new;
 }
 
-static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	char veth1buf[IFNAMSIZ], *veth1;
 	char veth2buf[IFNAMSIZ], *veth2;
@@ -2874,7 +2874,7 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			goto out_delete;
 	}
 
-	DEBUG("instanciated veth '%s/%s', index is '%d'",
+	DEBUG("instantiated veth '%s/%s', index is '%d'",
 	      veth1, veth2, netdev->ifindex);
 
 	return 0;
@@ -2907,7 +2907,7 @@ static int shutdown_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int instanciate_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	char peerbuf[IFNAMSIZ], *peer;
 	int err;
@@ -2948,7 +2948,7 @@ static int instanciate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 			goto out;
 	}
 
-	DEBUG("instanciated macvlan '%s', index is '%d' and mode '%d'",
+	DEBUG("instantiated macvlan '%s', index is '%d' and mode '%d'",
 	      peer, netdev->ifindex, netdev->priv.macvlan_attr.mode);
 
 	return 0;
@@ -2972,8 +2972,8 @@ static int shutdown_macvlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	return 0;
 }
 
-/* XXX: merge with instanciate_macvlan */
-static int instanciate_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+/* XXX: merge with instantiate_macvlan */
+static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	char peer[IFNAMSIZ];
 	int err;
@@ -3003,7 +3003,7 @@ static int instanciate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 		return -1;
 	}
 
-	DEBUG("instanciated vlan '%s', ifindex is '%d'", " vlan1000",
+	DEBUG("instantiated vlan '%s', ifindex is '%d'", " vlan1000",
 	      netdev->ifindex);
 
 	return 0;
@@ -3014,7 +3014,7 @@ static int shutdown_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int instanciate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	if (!netdev->link) {
 		ERROR("no link specified for the physical interface");
@@ -3051,13 +3051,13 @@ static int shutdown_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int instanciate_none(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int instantiate_none(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	netdev->ifindex = 0;
 	return 0;
 }
 
-static int instanciate_empty(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int instantiate_empty(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	netdev->ifindex = 0;
 	if (netdev->upscript) {
