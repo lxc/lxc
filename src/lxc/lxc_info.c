@@ -169,6 +169,7 @@ static void print_net_stats(struct lxc_container *c)
 		if (!ifname)
 			return;
 		printf("%-15s %s\n", "Link:", ifname);
+		fflush(stdout);
 
 		/* XXX: tx and rx are reversed from the host vs container
 		 * perspective, print them from the container perspective
@@ -179,6 +180,7 @@ static void print_net_stats(struct lxc_container *c)
 			str_chomp(buf);
 			rx_bytes = str_size_humanize(buf, sizeof(buf));
 			printf("%-15s %s\n", " TX bytes:", buf);
+			fflush(stdout);
 		}
 
 		snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/tx_bytes", ifname);
@@ -187,11 +189,13 @@ static void print_net_stats(struct lxc_container *c)
 			str_chomp(buf);
 			tx_bytes = str_size_humanize(buf, sizeof(buf));
 			printf("%-15s %s\n", " RX bytes:", buf);
+			fflush(stdout);
 		}
 
 		sprintf(buf, "%llu", rx_bytes + tx_bytes);
 		str_size_humanize(buf, sizeof(buf));
 		printf("%-15s %s\n", " Total bytes:", buf);
+		fflush(stdout);
 		free(ifname);
 	}
 }
@@ -210,6 +214,7 @@ static void print_stats(struct lxc_container *c)
 		} else {
 			printf("%-15s %s\n", "CPU use:", buf);
 		}
+		fflush(stdout);
 	}
 
 	ret = c->get_cgroup_item(c, "blkio.throttle.io_service_bytes", buf, sizeof(buf));
@@ -229,6 +234,7 @@ static void print_stats(struct lxc_container *c)
 			str_size_humanize(buf, sizeof(buf));
 			printf("%-15s %s\n", "BlkIO use:", buf);
 		}
+		fflush(stdout);
 	}
 
 	static const struct {
@@ -246,6 +252,7 @@ static void print_stats(struct lxc_container *c)
 			str_chomp(buf);
 			str_size_humanize(buf, sizeof(buf));
 			printf("%-15s %s\n", lxstat[i].name, buf);
+			fflush(stdout);
 		}
 	}
 }
@@ -260,6 +267,7 @@ static void print_info_msg_int(const char *key, int value)
 		else
 			printf("%-15s %d\n", key, value);
 	}
+	fflush(stdout);
 }
 
 static void print_info_msg_str(const char *key, const char *value)
@@ -272,6 +280,7 @@ static void print_info_msg_str(const char *key, const char *value)
 		else
 			printf("%-15s %s\n", key, value);
 	}
+	fflush(stdout);
 }
 
 static int print_info(const char *name, const char *lxcpath)
@@ -359,6 +368,7 @@ static int print_info(const char *name, const char *lxcpath)
 		} else {
 			fprintf(stderr, "%s invalid\n", key[i]);
 		}
+		fflush(stdout);
 	}
 
 	lxc_container_put(c);
