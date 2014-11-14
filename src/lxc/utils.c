@@ -376,6 +376,7 @@ const char *lxc_global_config_value(const char *option_name)
 				user_lxc_path = copy_global_config_value(p);
 				remove_trailing_slashes(user_lxc_path);
 				values[i] = user_lxc_path;
+				user_lxc_path = NULL;
 				goto out;
 			}
 
