@@ -427,8 +427,29 @@ if [ -z "$path" ]; then
 fi
 
 if [ -z "$DISTRO" ]; then
+    echo ""
     echo "No release selected, using openSUSE 12.3"
     DISTRO=12.3
+else
+    echo ""
+    case "$DISTRO" in
+	12.3)
+	    echo "Selected openSUSE 12.3"
+	    ;;
+
+	13.1)
+	    echo "Selected openSUSE 13.1"
+	    ;;
+
+	13.2)
+	    echo "Selected openSUSE 13.2"
+	    ;;
+
+	*)
+	    echo "You have chosen an invalid release, quitting..."
+	    exit 1
+	    ;;
+    esac
 fi
 
 
