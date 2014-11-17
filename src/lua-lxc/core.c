@@ -397,7 +397,7 @@ static int container_attach(lua_State *L)
     	return 1;
     }
 
-    lua_pushboolean(L, !!(c->attach_run_wait(c, NULL, argv[0], (const char**)argv)));
+    lua_pushboolean(L, !(c->attach_run_wait(c, NULL, argv[0], (const char**)argv)));
     return 1;
 }
 
