@@ -1391,6 +1391,8 @@ bool file_exists(const char *f)
 char *choose_init(const char *rootfs)
 {
 	char *retv = NULL;
+	const char *empty = "",
+		   *tmp;
 	int ret, env_set = 0;
 	struct stat mystat;
 
@@ -1415,9 +1417,11 @@ char *choose_init(const char *rootfs)
 		return NULL;
 
 	if (rootfs)
-		ret = snprintf(retv, PATH_MAX, "%s/%s/init.lxc", rootfs, SBINDIR);
+		tmp = rootfs;
 	else
-		ret = snprintf(retv, PATH_MAX, SBINDIR "/init.lxc");
+		tmp = empty;
+
+	ret = snprintf(retv, PATH_MAX, "%s/%s/%s", tmp, SBINDIR, "/init.lxc");
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
 		goto out1;
@@ -1427,10 +1431,7 @@ char *choose_init(const char *rootfs)
 	if (ret == 0)
 		return retv;
 
-	if (rootfs)
-		ret = snprintf(retv, PATH_MAX, "%s/%s/lxc/lxc-init", rootfs, LXCINITDIR);
-	else
-		ret = snprintf(retv, PATH_MAX, LXCINITDIR "/lxc/lxc-init");
+	ret = snprintf(retv, PATH_MAX, "%s/%s/%s", tmp, LXCINITDIR, "/lxc/lxc-init");
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
 		goto out1;
@@ -1440,10 +1441,7 @@ char *choose_init(const char *rootfs)
 	if (ret == 0)
 		return retv;
 
-	if (rootfs)
-		ret = snprintf(retv, PATH_MAX, "%s/usr/lib/lxc/lxc-init", rootfs);
-	else
-		ret = snprintf(retv, PATH_MAX, "/usr/lib/lxc/lxc-init");
+	ret = snprintf(retv, PATH_MAX, "%s/usr/lib/lxc/lxc-init", tmp);
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
 		goto out1;
@@ -1452,10 +1450,7 @@ char *choose_init(const char *rootfs)
 	if (ret == 0)
 		return retv;
 
-	if (rootfs)
-		ret = snprintf(retv, PATH_MAX, "%s/sbin/lxc-init", rootfs);
-	else
-		ret = snprintf(retv, PATH_MAX, "/sbin/lxc-init");
+	ret = snprintf(retv, PATH_MAX, "%s/sbin/lxc-init", tmp);
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
 		goto out1;
