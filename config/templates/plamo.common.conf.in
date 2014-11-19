@@ -3,6 +3,7 @@ lxc.include = @LXCTEMPLATECONFIG@/common.conf
 
 # Default mount
 lxc.mount.auto = proc sys cgroup
+lxc.mount.entry = none dev/shm tmpfs nosuid,nodev,noexec,mode=1777 0 0
 
 # Doesn't support consoles in /dev/lxc/
 lxc.devttydir =
