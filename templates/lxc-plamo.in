@@ -153,6 +153,7 @@ configure_plamo() {
   chmod    666 $rootfs/dev/random
   mknod -m 666 $rootfs/dev/urandom c 1 9
   mkdir -m 755 $rootfs/dev/pts
+  mkdir -m 755 $rootfs/dev/shm
   chmod    666 $rootfs/dev/tty
   chmod    600 $rootfs/dev/console
   mknod -m 666 $rootfs/dev/tty0 c 4 0
