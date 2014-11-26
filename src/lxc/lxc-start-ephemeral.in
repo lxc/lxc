@@ -84,8 +84,11 @@ parser.add_argument("--orig", "-o", type=str, required=True,
 parser.add_argument("--name", "-n", type=str,
                     help=_("name of the target container"))
 
-parser.add_argument("--bdir", "-b", type=str,
+parser.add_argument("--bdir", "-b", type=str, action="append", default=[],
                     help=_("directory to bind mount into container"))
+
+parser.add_argument("--cdir", "-c", type=str, action="append", default=[],
+                    help=_("directory to cow mount into container"))
 
 parser.add_argument("--user", "-u", type=str,
                     help=_("the user to run the command as"))
@@ -156,6 +159,7 @@ if args.name:
 else:
     dest_path = tempfile.mkdtemp(prefix="%s-" % args.orig, dir=lxc_path)
 os.mkdir(os.path.join(dest_path, "rootfs"))
+os.chmod(dest_path, 0o770)
 
 # Setup the new container's configuration
 dest = lxc.Container(os.path.basename(dest_path), args.lxcpath)
@@ -206,6 +210,15 @@ if orig.get_config_item("lxc.mount"):
                 # Setup an overlay for anything remaining
                 overlay_dirs += [(fields[0], dest_mount)]
 
+for entry in args.cdir:
+    if not os.path.exists(entry):
+        print(_("Path '%s' doesn't exist, won't be cow-mounted.") %
+              entry)
+    else:
+        src_path = os.path.abspath(entry)
+        dst_path = "%s/rootfs/%s" % (dest_path, src_path)
+        overlay_dirs += [(src_path, dst_path)]
+
 # Generate pre-mount script
 with open(os.path.join(dest_path, "pre-mount"), "w+") as fd:
     os.fchmod(fd.fileno(), 0o755)
@@ -222,6 +235,9 @@ LXC_NAME="%s"
 
         if args.storage_type == "tmpfs":
             fd.write("mount -n -t tmpfs -o mode=0755 none %s\n" % (target))
+
+        fd.write("getfacl -a %s | setfacl --set-file=- %s || true\n" % (entry[0], target))
+        fd.write("getfacl -a %s | setfacl --set-file=- %s || true\n" % (entry[0], entry[1]))
 
         if args.union_type == "overlayfs":
             fd.write("mount -n -t overlayfs"
@@ -242,13 +258,13 @@ LXC_NAME="%s"
                          entry[1]))
         count += 1
 
-    if args.bdir:
-        if not os.path.exists(args.bdir):
+    for entry in args.bdir:
+        if not os.path.exists(entry):
             print(_("Path '%s' doesn't exist, won't be bind-mounted.") %
-                  args.bdir)
+                  entry)
         else:
-            src_path = os.path.abspath(args.bdir)
-            dst_path = "%s/rootfs/%s" % (dest_path, os.path.abspath(args.bdir))
+            src_path = os.path.abspath(entry)
+            dst_path = "%s/rootfs/%s" % (dest_path, os.path.abspath(entry))
             fd.write("mkdir -p %s\nmount -n --bind %s %s\n" % (
                      dst_path, src_path, dst_path))
 
