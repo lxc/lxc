@@ -78,57 +78,57 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refsect2>
       <title>Configuration</title>
       <para>
-	In order to ease administration of multiple related containers, it
-	is possible to have a container configuration file cause another
-	file to be loaded.  For instance, network configuration
-	can be defined in one common file which is included by multiple
-	containers.  Then, if the containers are moved to another host,
-	only one file may need to be updated.
+        In order to ease administration of multiple related containers, it
+        is possible to have a container configuration file cause another
+        file to be loaded.  For instance, network configuration
+        can be defined in one common file which is included by multiple
+        containers.  Then, if the containers are moved to another host,
+        only one file may need to be updated.
       </para>
 
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.include</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Specify the file to be included.  The included file must be
-	      in the same valid lxc configuration file format.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.include</option>
+          </term>
+          <listitem>
+            <para>
+              Specify the file to be included.  The included file must be
+              in the same valid lxc configuration file format.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
     <refsect2>
       <title>Architecture</title>
       <para>
-	Allows one to set the architecture for the container. For example,
-	set a 32bits architecture for a container running 32bits
-	binaries on a 64bits host. This fixes the container scripts
-	which rely on the architecture to do some work like
-	downloading the packages.
+        Allows one to set the architecture for the container. For example,
+        set a 32bits architecture for a container running 32bits
+        binaries on a 64bits host. This fixes the container scripts
+        which rely on the architecture to do some work like
+        downloading the packages.
       </para>
 
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.arch</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Specify the architecture for the container.
-	    </para>
-	    <para>
-	      Valid options are
-	      <option>x86</option>,
-	      <option>i686</option>,
-	      <option>x86_64</option>,
-	      <option>amd64</option>
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.arch</option>
+          </term>
+          <listitem>
+            <para>
+              Specify the architecture for the container.
+            </para>
+            <para>
+              Valid options are
+              <option>x86</option>,
+              <option>i686</option>,
+              <option>x86_64</option>,
+              <option>amd64</option>
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
 
     </refsect2>
@@ -136,22 +136,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refsect2>
       <title>Hostname</title>
       <para>
-	The utsname section defines the hostname to be set for the
-	container. That means the container can set its own hostname
-	without changing the one from the system. That makes the
-	hostname private for the container.
+        The utsname section defines the hostname to be set for the
+        container. That means the container can set its own hostname
+        without changing the one from the system. That makes the
+        hostname private for the container.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.utsname</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify the hostname for the container
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.utsname</option>
+          </term>
+          <listitem>
+            <para>
+              specify the hostname for the container
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
@@ -204,388 +204,388 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refsect2>
       <title>Network</title>
       <para>
-	The network section defines how the network is virtualized in
-	the container. The network virtualization acts at layer
-	two. In order to use the network virtualization, parameters
-	must be specified to define the network interfaces of the
-	container. Several virtual interfaces can be assigned and used
-	in a container even if the system has only one physical
-	network interface.
+        The network section defines how the network is virtualized in
+        the container. The network virtualization acts at layer
+        two. In order to use the network virtualization, parameters
+        must be specified to define the network interfaces of the
+        container. Several virtual interfaces can be assigned and used
+        in a container even if the system has only one physical
+        network interface.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.network.type</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify what kind of network virtualization to be used
-	      for the container. Each time
-	      a <option>lxc.network.type</option> field is found a new
-	      round of network configuration begins. In this way,
-	      several network virtualization types can be specified
-	      for the same container, as well as assigning several
-	      network interfaces for one container. The different
-	      virtualization types can be:
-	    </para>
+        <varlistentry>
+          <term>
+            <option>lxc.network.type</option>
+          </term>
+          <listitem>
+            <para>
+              specify what kind of network virtualization to be used
+              for the container. Each time
+              a <option>lxc.network.type</option> field is found a new
+              round of network configuration begins. In this way,
+              several network virtualization types can be specified
+              for the same container, as well as assigning several
+              network interfaces for one container. The different
+              virtualization types can be:
+            </para>
 
-	    <para>
-	      <option>none:</option> will cause the container to share
-	      the host's network namespace.  This means the host
-	      network devices are usable in the container.  It also
-	      means that if both the container and host have upstart as
-	      init, 'halt' in a container (for instance) will shut down the
-	      host.
-	    </para>
+            <para>
+              <option>none:</option> will cause the container to share
+              the host's network namespace.  This means the host
+              network devices are usable in the container.  It also
+              means that if both the container and host have upstart as
+              init, 'halt' in a container (for instance) will shut down the
+              host.
+            </para>
 
-	    <para>
-	      <option>empty:</option> will create only the loopback
-	      interface.
-	    </para>
+            <para>
+              <option>empty:</option> will create only the loopback
+              interface.
+            </para>
 
-	    <para>
-	      <option>veth:</option> a peer network device is created
-	      with one side assigned to the container and the other
-	      side is attached to a bridge specified by
-	      the <option>lxc.network.link</option>. If the bridge is
-	      not specified, then the veth pair device will be created
-	      but not attached to any bridge. Otherwise, the bridge
-	      has to be setup before on the
-	      system, <command>lxc</command> won't handle any
-	      configuration outside of the container.  By
-	      default <command>lxc</command> choose a name for the
-	      network device belonging to the outside of the
-	      container, this name is handled
-	      by <command>lxc</command>, but if you wish to handle
-	      this name yourself, you can tell <command>lxc</command>
-	      to set a specific name with
-	      the <option>lxc.network.veth.pair</option> option (except for
-	      unprivileged containers where this option is ignored for security
-	      reasons).
-	    </para>
+            <para>
+              <option>veth:</option> a peer network device is created
+              with one side assigned to the container and the other
+              side is attached to a bridge specified by
+              the <option>lxc.network.link</option>. If the bridge is
+              not specified, then the veth pair device will be created
+              but not attached to any bridge. Otherwise, the bridge
+              has to be setup before on the
+              system, <command>lxc</command> won't handle any
+              configuration outside of the container.  By
+              default <command>lxc</command> choose a name for the
+              network device belonging to the outside of the
+              container, this name is handled
+              by <command>lxc</command>, but if you wish to handle
+              this name yourself, you can tell <command>lxc</command>
+              to set a specific name with
+              the <option>lxc.network.veth.pair</option> option (except for
+              unprivileged containers where this option is ignored for security
+              reasons).
+            </para>
 
-	    <para>
-	      <option>vlan:</option> a vlan interface is linked with
-	      the interface specified by
-	      the <option>lxc.network.link</option> and assigned to
-	      the container. The vlan identifier is specified with the
-	      option <option>lxc.network.vlan.id</option>.
-	    </para>
+            <para>
+              <option>vlan:</option> a vlan interface is linked with
+              the interface specified by
+              the <option>lxc.network.link</option> and assigned to
+              the container. The vlan identifier is specified with the
+              option <option>lxc.network.vlan.id</option>.
+            </para>
 
-	    <para>
-	      <option>macvlan:</option> a macvlan interface is linked
-	      with the interface specified by
-	      the <option>lxc.network.link</option> and assigned to
-	      the container.
-	      <option>lxc.network.macvlan.mode</option> specifies the
-	      mode the macvlan will use to communicate between
-	      different macvlan on the same upper device. The accepted
-	      modes are <option>private</option>, the device never
-	      communicates with any other device on the same upper_dev (default),
-	      <option>vepa</option>, the new Virtual Ethernet Port
-	      Aggregator (VEPA) mode, it assumes that the adjacent
-	      bridge returns all frames where both source and
-	      destination are local to the macvlan port, i.e. the
-	      bridge is set up as a reflective relay.  Broadcast
-	      frames coming in from the upper_dev get flooded to all
-	      macvlan interfaces in VEPA mode, local frames are not
-	      delivered locally, or <option>bridge</option>, it
-	      provides the behavior of a simple bridge between
-	      different macvlan interfaces on the same port. Frames
-	      from one interface to another one get delivered directly
-	      and are not sent out externally. Broadcast frames get
-	      flooded to all other bridge ports and to the external
-	      interface, but when they come back from a reflective
-	      relay, we don't deliver them again.  Since we know all
-	      the MAC addresses, the macvlan bridge mode does not
-	      require learning or STP like the bridge module does.
-	    </para>
+            <para>
+              <option>macvlan:</option> a macvlan interface is linked
+              with the interface specified by
+              the <option>lxc.network.link</option> and assigned to
+              the container.
+              <option>lxc.network.macvlan.mode</option> specifies the
+              mode the macvlan will use to communicate between
+              different macvlan on the same upper device. The accepted
+              modes are <option>private</option>, the device never
+              communicates with any other device on the same upper_dev (default),
+              <option>vepa</option>, the new Virtual Ethernet Port
+              Aggregator (VEPA) mode, it assumes that the adjacent
+              bridge returns all frames where both source and
+              destination are local to the macvlan port, i.e. the
+              bridge is set up as a reflective relay.  Broadcast
+              frames coming in from the upper_dev get flooded to all
+              macvlan interfaces in VEPA mode, local frames are not
+              delivered locally, or <option>bridge</option>, it
+              provides the behavior of a simple bridge between
+              different macvlan interfaces on the same port. Frames
+              from one interface to another one get delivered directly
+              and are not sent out externally. Broadcast frames get
+              flooded to all other bridge ports and to the external
+              interface, but when they come back from a reflective
+              relay, we don't deliver them again.  Since we know all
+              the MAC addresses, the macvlan bridge mode does not
+              require learning or STP like the bridge module does.
+            </para>
 
-	    <para>
-	      <option>phys:</option> an already existing interface
-	      specified by the <option>lxc.network.link</option> is
-	      assigned to the container.
-	    </para>
-	  </listitem>
-	  </varlistentry>
+            <para>
+              <option>phys:</option> an already existing interface
+              specified by the <option>lxc.network.link</option> is
+              assigned to the container.
+            </para>
+          </listitem>
+          </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.network.flags</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify an action to do for the
-	      network.
-	    </para>
+        <varlistentry>
+          <term>
+            <option>lxc.network.flags</option>
+          </term>
+          <listitem>
+            <para>
+              specify an action to do for the
+              network.
+            </para>
 
-	    <para><option>up:</option> activates the interface.
-	    </para>
-	  </listitem>
-	</varlistentry>
+            <para><option>up:</option> activates the interface.
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.network.link</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify the interface to be used for real network
-	      traffic.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.network.link</option>
+          </term>
+          <listitem>
+            <para>
+              specify the interface to be used for real network
+              traffic.
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.network.mtu</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify the maximum transfer unit for this interface.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.network.mtu</option>
+          </term>
+          <listitem>
+            <para>
+              specify the maximum transfer unit for this interface.
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.network.name</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      the interface name is dynamically allocated, but if
-	      another name is needed because the configuration files
-	      being used by the container use a generic name,
-	      eg. eth0, this option will rename the interface in the
-	      container.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.network.name</option>
+          </term>
+          <listitem>
+            <para>
+              the interface name is dynamically allocated, but if
+              another name is needed because the configuration files
+              being used by the container use a generic name,
+              eg. eth0, this option will rename the interface in the
+              container.
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.network.hwaddr</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      the interface mac address is dynamically allocated by
-	      default to the virtual interface, but in some cases,
-	      this is needed to resolve a mac address conflict or to
-	      always have the same link-local ipv6 address.
-	      Any "x" in address will be replaced by random value,
-	      this allows setting hwaddr templates.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.network.hwaddr</option>
+          </term>
+          <listitem>
+            <para>
+              the interface mac address is dynamically allocated by
+              default to the virtual interface, but in some cases,
+              this is needed to resolve a mac address conflict or to
+              always have the same link-local ipv6 address.
+              Any "x" in address will be replaced by random value,
+              this allows setting hwaddr templates.
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.network.ipv4</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify the ipv4 address to assign to the virtualized
-	      interface. Several lines specify several ipv4 addresses.
-	      The address is in format x.y.z.t/m,
-	      eg. 192.168.1.123/24. The broadcast address should be
-	      specified on the same line, right after the ipv4
-	      address.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.network.ipv4</option>
+          </term>
+          <listitem>
+            <para>
+              specify the ipv4 address to assign to the virtualized
+              interface. Several lines specify several ipv4 addresses.
+              The address is in format x.y.z.t/m,
+              eg. 192.168.1.123/24. The broadcast address should be
+              specified on the same line, right after the ipv4
+              address.
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.network.ipv4.gateway</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify the ipv4 address to use as the gateway inside the
-	      container. The address is in format x.y.z.t, eg.
-	      192.168.1.123.
+        <varlistentry>
+          <term>
+            <option>lxc.network.ipv4.gateway</option>
+          </term>
+          <listitem>
+            <para>
+              specify the ipv4 address to use as the gateway inside the
+              container. The address is in format x.y.z.t, eg.
+              192.168.1.123.
 
-	      Can also have the special value <option>auto</option>,
-	      which means to take the primary address from the bridge
-	      interface (as specified by the
-	      <option>lxc.network.link</option> option) and use that as
-	      the gateway. <option>auto</option> is only available when
-	      using the <option>veth</option> and
-	      <option>macvlan</option> network types.
-	    </para>
-	  </listitem>
-	</varlistentry>
+              Can also have the special value <option>auto</option>,
+              which means to take the primary address from the bridge
+              interface (as specified by the
+              <option>lxc.network.link</option> option) and use that as
+              the gateway. <option>auto</option> is only available when
+              using the <option>veth</option> and
+              <option>macvlan</option> network types.
+            </para>
+          </listitem>
+        </varlistentry>
 
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.network.ipv6</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify the ipv6 address to assign to the virtualized
-	      interface. Several lines specify several ipv6 addresses.
-	      The address is in format x::y/m,
-	      eg. 2003:db8:1:0:214:1234:fe0b:3596/64
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.network.ipv6</option>
+          </term>
+          <listitem>
+            <para>
+              specify the ipv6 address to assign to the virtualized
+              interface. Several lines specify several ipv6 addresses.
+              The address is in format x::y/m,
+              eg. 2003:db8:1:0:214:1234:fe0b:3596/64
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.network.ipv6.gateway</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify the ipv6 address to use as the gateway inside the
-	      container. The address is in format x::y,
-	      eg. 2003:db8:1:0::1
+        <varlistentry>
+          <term>
+            <option>lxc.network.ipv6.gateway</option>
+          </term>
+          <listitem>
+            <para>
+              specify the ipv6 address to use as the gateway inside the
+              container. The address is in format x::y,
+              eg. 2003:db8:1:0::1
 
-	      Can also have the special value <option>auto</option>,
-	      which means to take the primary address from the bridge
-	      interface (as specified by the
-	      <option>lxc.network.link</option> option) and use that as
-	      the gateway. <option>auto</option> is only available when
-	      using the <option>veth</option> and
-	      <option>macvlan</option> network types.
-	    </para>
-	  </listitem>
-	</varlistentry>
+              Can also have the special value <option>auto</option>,
+              which means to take the primary address from the bridge
+              interface (as specified by the
+              <option>lxc.network.link</option> option) and use that as
+              the gateway. <option>auto</option> is only available when
+              using the <option>veth</option> and
+              <option>macvlan</option> network types.
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.network.script.up</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      add a configuration option to specify a script to be
-	      executed after creating and configuring the network used
-	      from the host side. The following arguments are passed
-	      to the script: container name and config section name
-	      (net) Additional arguments depend on the config section
-	      employing a script hook; the following are used by the
-	      network system: execution context (up), network type
-	      (empty/veth/macvlan/phys), Depending on the network
-	      type, other arguments may be passed:
-	      veth/macvlan/phys. And finally (host-sided) device name.
-	    </para>
-	    <para>
-	      Standard output from the script is logged at debug level.
-	      Standard error is not logged, but can be captured by the
-	      hook redirecting its standard error to standard output.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.network.script.up</option>
+          </term>
+          <listitem>
+            <para>
+              add a configuration option to specify a script to be
+              executed after creating and configuring the network used
+              from the host side. The following arguments are passed
+              to the script: container name and config section name
+              (net) Additional arguments depend on the config section
+              employing a script hook; the following are used by the
+              network system: execution context (up), network type
+              (empty/veth/macvlan/phys), Depending on the network
+              type, other arguments may be passed:
+              veth/macvlan/phys. And finally (host-sided) device name.
+            </para>
+            <para>
+              Standard output from the script is logged at debug level.
+              Standard error is not logged, but can be captured by the
+              hook redirecting its standard error to standard output.
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.network.script.down</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      add a configuration option to specify a script to be
-	      executed before destroying the network used from the
-	      host side. The following arguments are passed to the
-	      script: container name and config section name (net)
-	      Additional arguments depend on the config section
-	      employing a script hook; the following are used by the
-	      network system: execution context (down), network type
-	      (empty/veth/macvlan/phys), Depending on the network
-	      type, other arguments may be passed:
-	      veth/macvlan/phys. And finally (host-sided) device name.
-	    </para>
-	    <para>
-	      Standard output from the script is logged at debug level.
-	      Standard error is not logged, but can be captured by the
-	      hook redirecting its standard error to standard output.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.network.script.down</option>
+          </term>
+          <listitem>
+            <para>
+              add a configuration option to specify a script to be
+              executed before destroying the network used from the
+              host side. The following arguments are passed to the
+              script: container name and config section name (net)
+              Additional arguments depend on the config section
+              employing a script hook; the following are used by the
+              network system: execution context (down), network type
+              (empty/veth/macvlan/phys), Depending on the network
+              type, other arguments may be passed:
+              veth/macvlan/phys. And finally (host-sided) device name.
+            </para>
+            <para>
+              Standard output from the script is logged at debug level.
+              Standard error is not logged, but can be captured by the
+              hook redirecting its standard error to standard output.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
     <refsect2>
       <title>New pseudo tty instance (devpts)</title>
       <para>
-	For stricter isolation the container can have its own private
-	instance of the pseudo tty.
+        For stricter isolation the container can have its own private
+        instance of the pseudo tty.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.pts</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      If set, the container will have a new pseudo tty
-	      instance, making this private to it. The value specifies
+        <varlistentry>
+          <term>
+            <option>lxc.pts</option>
+          </term>
+          <listitem>
+            <para>
+              If set, the container will have a new pseudo tty
+              instance, making this private to it. The value specifies
               the maximum number of pseudo ttys allowed for a pts
               instance (this limitation is not implemented yet).
-	    </para>
-	  </listitem>
-	</varlistentry>
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
     <refsect2>
       <title>Container system console</title>
       <para>
-	If the container is configured with a root filesystem and the
-	inittab file is setup to use the console, you may want to specify
-	where the output of this console goes.
+        If the container is configured with a root filesystem and the
+        inittab file is setup to use the console, you may want to specify
+        where the output of this console goes.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.console.logfile</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Specify a path to a file where the console output will
-	      be written.
-	    </para>
-	  </listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>
-	    <option>lxc.console</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Specify a path to a device to which the console will be
-	      attached.  The keyword 'none' will simply disable the
-	      console.  This is dangerous once if have a rootfs with a
-	      console device file where the application can write, the
-	      messages will fall in the host.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.console.logfile</option>
+          </term>
+          <listitem>
+            <para>
+              Specify a path to a file where the console output will
+              be written.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.console</option>
+          </term>
+          <listitem>
+            <para>
+              Specify a path to a device to which the console will be
+              attached.  The keyword 'none' will simply disable the
+              console.  This is dangerous once if have a rootfs with a
+              console device file where the application can write, the
+              messages will fall in the host.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
     <refsect2>
       <title>Console through the ttys</title>
       <para>
-	This option is useful if the container is configured with a root
-	filesystem and the inittab file is setup to launch a getty on the
-	ttys. The option specifies the number of ttys to be available for
-	the container. The number of gettys in the inittab file of the
-	container should not be greater than the number of ttys	specified
-	in this option, otherwise the excess getty sessions will die and
-	respawn indefinitely giving annoying messages on the console or in
-	<filename>/var/log/messages</filename>.
+        This option is useful if the container is configured with a root
+        filesystem and the inittab file is setup to launch a getty on the
+        ttys. The option specifies the number of ttys to be available for
+        the container. The number of gettys in the inittab file of the
+        container should not be greater than the number of ttys        specified
+        in this option, otherwise the excess getty sessions will die and
+        respawn indefinitely giving annoying messages on the console or in
+        <filename>/var/log/messages</filename>.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.tty</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Specify the number of tty to make available to the
-	      container.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.tty</option>
+          </term>
+          <listitem>
+            <para>
+              Specify the number of tty to make available to the
+              container.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
@@ -593,58 +593,58 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <title>Console devices location</title>
       <para>
         LXC consoles are provided through Unix98 PTYs created on the
-	host and bind-mounted over the expected devices in the container.
-	By default, they are bind-mounted over <filename>/dev/console</filename>
-	and <filename>/dev/ttyN</filename>.  This can prevent package upgrades
-	in the guest.  Therefore you can specify a directory location (under
-	<filename>/dev</filename> under which LXC will create the files and
-	bind-mount over them.  These will then be symbolically linked to
-	<filename>/dev/console</filename> and <filename>/dev/ttyN</filename>.
-	A package upgrade can then succeed as it is able to remove and replace
-	the symbolic links.
+        host and bind-mounted over the expected devices in the container.
+        By default, they are bind-mounted over <filename>/dev/console</filename>
+        and <filename>/dev/ttyN</filename>.  This can prevent package upgrades
+        in the guest.  Therefore you can specify a directory location (under
+        <filename>/dev</filename> under which LXC will create the files and
+        bind-mount over them.  These will then be symbolically linked to
+        <filename>/dev/console</filename> and <filename>/dev/ttyN</filename>.
+        A package upgrade can then succeed as it is able to remove and replace
+        the symbolic links.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.devttydir</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Specify a directory under <filename>/dev</filename>
-	      under which to create the container console devices.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.devttydir</option>
+          </term>
+          <listitem>
+            <para>
+              Specify a directory under <filename>/dev</filename>
+              under which to create the container console devices.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
     <refsect2>
       <title>/dev directory</title>
       <para>
-	By default, lxc creates a few symbolic links (fd,stdin,stdout,stderr)
-	in the container's <filename>/dev</filename> directory but does not
-	automatically create device node entries. This allows the container's
-	<filename>/dev</filename> to be set up as needed in the container
-	rootfs.  If lxc.autodev is set to 1, then after mounting the container's
-	rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
-	(limited to 100k) and fill in a minimal set of initial devices.
+        By default, lxc creates a few symbolic links (fd,stdin,stdout,stderr)
+        in the container's <filename>/dev</filename> directory but does not
+        automatically create device node entries. This allows the container's
+        <filename>/dev</filename> to be set up as needed in the container
+        rootfs.  If lxc.autodev is set to 1, then after mounting the container's
+        rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
+        (limited to 100k) and fill in a minimal set of initial devices.
         This is generally required when starting a container containing
         a "systemd" based "init" but may be optional at other times.  Additional
         devices in the containers /dev directory may be created through the
         use of the <option>lxc.hook.autodev</option> hook.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.autodev</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Set this to 1 to have LXC mount and populate a minimal
-	      <filename>/dev</filename> when starting the container.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.autodev</option>
+          </term>
+          <listitem>
+            <para>
+              Set this to 1 to have LXC mount and populate a minimal
+              <filename>/dev</filename> when starting the container.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
@@ -670,211 +670,211 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refsect2>
       <title>Mount points</title>
       <para>
-	The mount points section specifies the different places to be
-	mounted. These mount points will be private to the container
-	and won't be visible by the processes running outside of the
-	container. This is useful to mount /etc, /var or /home for
-	examples.
+        The mount points section specifies the different places to be
+        mounted. These mount points will be private to the container
+        and won't be visible by the processes running outside of the
+        container. This is useful to mount /etc, /var or /home for
+        examples.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.mount</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify a file location in
-	      the <filename>fstab</filename> format, containing the
-	      mount information.  The mount target location can and in
-	      most cases should be a relative path, which will become
-	      relative to the mounted container root.  For instance,
-	     </para>
+        <varlistentry>
+          <term>
+            <option>lxc.mount</option>
+          </term>
+          <listitem>
+            <para>
+              specify a file location in
+              the <filename>fstab</filename> format, containing the
+              mount information.  The mount target location can and in
+              most cases should be a relative path, which will become
+              relative to the mounted container root.  For instance,
+             </para>
 <screen>
 proc proc proc nodev,noexec,nosuid 0 0
 </screen>
-	     <para>
-	      Will mount a proc filesystem under the container's /proc,
-	      regardless of where the root filesystem comes from.  This
-	      is resilient to block device backed filesystems as well as
-	      container cloning.
-	     </para>
-	     <para>
-	      Note that when mounting a filesystem from an
-	      image file or block device the third field (fs_vfstype)
-	      cannot be auto as with
+             <para>
+              Will mount a proc filesystem under the container's /proc,
+              regardless of where the root filesystem comes from.  This
+              is resilient to block device backed filesystems as well as
+              container cloning.
+             </para>
+             <para>
+              Note that when mounting a filesystem from an
+              image file or block device the third field (fs_vfstype)
+              cannot be auto as with
               <citerefentry>
-		<refentrytitle>mount</refentrytitle>
+                <refentrytitle>mount</refentrytitle>
                 <manvolnum>8</manvolnum>
               </citerefentry>
               but must be explicitly specified.
-	    </para>
-	  </listitem>
-	</varlistentry>
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.mount.entry</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify a mount point corresponding to a line in the
-	      fstab format.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.mount.entry</option>
+          </term>
+          <listitem>
+            <para>
+              specify a mount point corresponding to a line in the
+              fstab format.
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.mount.auto</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify which standard kernel file systems should be
-	      automatically mounted. This may dramatically simplify
-	      the configuration. The file systems are:
-	    </para>
-	    <itemizedlist>
-	      <listitem>
-	        <para>
-	          <option>proc:mixed</option> (or <option>proc</option>):
-	          mount <filename>/proc</filename> as read-write, but
-	          remount <filename>/proc/sys</filename> and
-	          <filename>/proc/sysrq-trigger</filename> read-only
-	          for security / container isolation purposes.
-	        </para>
-	      </listitem>
-	      <listitem>
-	        <para>
-	          <option>proc:rw</option>: mount
-	          <filename>/proc</filename> as read-write
-	        </para>
-	      </listitem>
-	      <listitem>
-	        <para>
-	          <option>sys:ro</option> (or <option>sys</option>):
-	          mount <filename>/sys</filename> as read-only
-	          for security / container isolation purposes.
-	        </para>
-	      </listitem>
-	      <listitem>
-	        <para>
-	          <option>sys:rw</option>: mount
-	          <filename>/sys</filename> as read-write
-	        </para>
-	      </listitem>
-	      <listitem>
-	        <para>
-	          <option>cgroup:mixed</option>:
-	          mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
-	          create directories for all hierarchies to which
-	          the container is added, create subdirectories
-	          there with the name of the cgroup, and bind-mount
-	          the container's own cgroup into that directory.
-	          The container will be able to write to its own
-	          cgroup directory, but not the parents, since they
-	          will be remounted read-only
-	        </para>
-	      </listitem>
-	      <listitem>
-	        <para>
-	          <option>cgroup:ro</option>: similar to
-	          <option>cgroup:mixed</option>, but everything will
-	        be mounted read-only.
-	        </para>
-	      </listitem>
-	      <listitem>
-	        <para>
-	          <option>cgroup:rw</option>: similar to
-	          <option>cgroup:mixed</option>, but everything will
-	          be mounted read-write. Note that the paths leading
-	          up to the container's own cgroup will be writable,
-	          but will not be a cgroup filesystem but just part
-	          of the tmpfs of <filename>/sys/fs/cgroup</filename>
-	        </para>
-	      </listitem>
-	      <listitem>
-	        <para>
-	          <option>cgroup</option> (without specifier):
-	          defaults to <option>cgroup:rw</option> if the
-	          container retains the CAP_SYS_ADMIN capability,
-	          <option>cgroup:mixed</option> otherwise.
-	        </para>
-	      </listitem>
-	      <listitem>
-	        <para>
-	          <option>cgroup-full:mixed</option>:
-	          mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
-	          create directories for all hierarchies to which
-	          the container is added, bind-mount the hierarchies
-	          from the host to the container and make everything
-	          read-only except the container's own cgroup. Note
-	          that compared to <option>cgroup</option>, where
-	          all paths leading up to the container's own cgroup
-	          are just simple directories in the underlying
-	          tmpfs, here
-	          <filename>/sys/fs/cgroup/$hierarchy</filename>
-	          will contain the host's full cgroup hierarchy,
-	          albeit read-only outside the container's own cgroup.
-	          This may leak quite a bit of information into the
-	          container.
-	        </para>
-	      </listitem>
-	      <listitem>
-	        <para>
-	          <option>cgroup-full:ro</option>: similar to
-	          <option>cgroup-full:mixed</option>, but everything
-	          will be mounted read-only.
-	        </para>
-	      </listitem>
-	      <listitem>
-	        <para>
-	          <option>cgroup-full:rw</option>: similar to
-	          <option>cgroup-full:mixed</option>, but everything
-	          will be mounted read-write. Note that in this case,
-	          the container may escape its own cgroup. (Note also
-	          that if the container has CAP_SYS_ADMIN support
-	          and can mount the cgroup filesystem itself, it may
-	          do so anyway.)
-	        </para>
-	      </listitem>
-	      <listitem>
-	        <para>
-	          <option>cgroup-full</option> (without specifier):
-	          defaults to <option>cgroup-full:rw</option> if the
-	          container retains the CAP_SYS_ADMIN capability,
-	          <option>cgroup-full:mixed</option> otherwise.
-	        </para>
-	      </listitem>
-	    </itemizedlist>
-	    <para>
-	      Note that if automatic mounting of the cgroup filesystem
-	      is enabled, the tmpfs under
-	      <filename>/sys/fs/cgroup</filename> will always be
-	      mounted read-write (but for the <option>:mixed</option>
-	      and <option>:ro</option> cases, the individual
-	      hierarchies,
-	      <filename>/sys/fs/cgroup/$hierarchy</filename>, will be
-	      read-only). This is in order to work around a quirk in
-	      Ubuntu's
+        <varlistentry>
+          <term>
+            <option>lxc.mount.auto</option>
+          </term>
+          <listitem>
+            <para>
+              specify which standard kernel file systems should be
+              automatically mounted. This may dramatically simplify
+              the configuration. The file systems are:
+            </para>
+            <itemizedlist>
+              <listitem>
+                <para>
+                  <option>proc:mixed</option> (or <option>proc</option>):
+                  mount <filename>/proc</filename> as read-write, but
+                  remount <filename>/proc/sys</filename> and
+                  <filename>/proc/sysrq-trigger</filename> read-only
+                  for security / container isolation purposes.
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <option>proc:rw</option>: mount
+                  <filename>/proc</filename> as read-write
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <option>sys:ro</option> (or <option>sys</option>):
+                  mount <filename>/sys</filename> as read-only
+                  for security / container isolation purposes.
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <option>sys:rw</option>: mount
+                  <filename>/sys</filename> as read-write
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <option>cgroup:mixed</option>:
+                  mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
+                  create directories for all hierarchies to which
+                  the container is added, create subdirectories
+                  there with the name of the cgroup, and bind-mount
+                  the container's own cgroup into that directory.
+                  The container will be able to write to its own
+                  cgroup directory, but not the parents, since they
+                  will be remounted read-only
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <option>cgroup:ro</option>: similar to
+                  <option>cgroup:mixed</option>, but everything will
+                be mounted read-only.
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <option>cgroup:rw</option>: similar to
+                  <option>cgroup:mixed</option>, but everything will
+                  be mounted read-write. Note that the paths leading
+                  up to the container's own cgroup will be writable,
+                  but will not be a cgroup filesystem but just part
+                  of the tmpfs of <filename>/sys/fs/cgroup</filename>
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <option>cgroup</option> (without specifier):
+                  defaults to <option>cgroup:rw</option> if the
+                  container retains the CAP_SYS_ADMIN capability,
+                  <option>cgroup:mixed</option> otherwise.
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <option>cgroup-full:mixed</option>:
+                  mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
+                  create directories for all hierarchies to which
+                  the container is added, bind-mount the hierarchies
+                  from the host to the container and make everything
+                  read-only except the container's own cgroup. Note
+                  that compared to <option>cgroup</option>, where
+                  all paths leading up to the container's own cgroup
+                  are just simple directories in the underlying
+                  tmpfs, here
+                  <filename>/sys/fs/cgroup/$hierarchy</filename>
+                  will contain the host's full cgroup hierarchy,
+                  albeit read-only outside the container's own cgroup.
+                  This may leak quite a bit of information into the
+                  container.
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <option>cgroup-full:ro</option>: similar to
+                  <option>cgroup-full:mixed</option>, but everything
+                  will be mounted read-only.
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <option>cgroup-full:rw</option>: similar to
+                  <option>cgroup-full:mixed</option>, but everything
+                  will be mounted read-write. Note that in this case,
+                  the container may escape its own cgroup. (Note also
+                  that if the container has CAP_SYS_ADMIN support
+                  and can mount the cgroup filesystem itself, it may
+                  do so anyway.)
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <option>cgroup-full</option> (without specifier):
+                  defaults to <option>cgroup-full:rw</option> if the
+                  container retains the CAP_SYS_ADMIN capability,
+                  <option>cgroup-full:mixed</option> otherwise.
+                </para>
+              </listitem>
+            </itemizedlist>
+            <para>
+              Note that if automatic mounting of the cgroup filesystem
+              is enabled, the tmpfs under
+              <filename>/sys/fs/cgroup</filename> will always be
+              mounted read-write (but for the <option>:mixed</option>
+              and <option>:ro</option> cases, the individual
+              hierarchies,
+              <filename>/sys/fs/cgroup/$hierarchy</filename>, will be
+              read-only). This is in order to work around a quirk in
+              Ubuntu's
               <citerefentry>
-		<refentrytitle>mountall</refentrytitle>
+                <refentrytitle>mountall</refentrytitle>
                 <manvolnum>8</manvolnum>
               </citerefentry>
-	      command that will cause containers to wait for user
-	      input at boot if
-	      <filename>/sys/fs/cgroup</filename> is mounted read-only
-	      and the container can't remount it read-write due to a
-	      lack of CAP_SYS_ADMIN.
-	    </para>
-	    <para>
-	      Examples:
-	    </para>
-	    <programlisting>
-	      lxc.mount.auto = proc sys cgroup
-	      lxc.mount.auto = proc:rw sys:rw cgroup-full:rw
-	    </programlisting>
-	  </listitem>
-	</varlistentry>
+              command that will cause containers to wait for user
+              input at boot if
+              <filename>/sys/fs/cgroup</filename> is mounted read-only
+              and the container can't remount it read-write due to a
+              lack of CAP_SYS_ADMIN.
+            </para>
+            <para>
+              Examples:
+            </para>
+            <programlisting>
+              lxc.mount.auto = proc sys cgroup
+              lxc.mount.auto = proc:rw sys:rw cgroup-full:rw
+            </programlisting>
+          </listitem>
+        </varlistentry>
 
       </variablelist>
     </refsect2>
@@ -882,189 +882,189 @@ proc proc proc nodev,noexec,nosuid 0 0
     <refsect2>
       <title>Root file system</title>
       <para>
-	The root file system of the container can be different than that
-	of the host system.
+        The root file system of the container can be different than that
+        of the host system.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.rootfs</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify the root file system for the container. It can
-	      be an image file, a directory or a block device. If not
-	      specified, the container shares its root file system
-	      with the host.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.rootfs</option>
+          </term>
+          <listitem>
+            <para>
+              specify the root file system for the container. It can
+              be an image file, a directory or a block device. If not
+              specified, the container shares its root file system
+              with the host.
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.rootfs.mount</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      where to recursively bind <option>lxc.rootfs</option>
-	      before pivoting.  This is to ensure success of the
-	      <citerefentry>
-		<refentrytitle><command>pivot_root</command></refentrytitle>
-		<manvolnum>8</manvolnum>
-	      </citerefentry>
-	      syscall.  Any directory suffices, the default should
-	      generally work.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.rootfs.mount</option>
+          </term>
+          <listitem>
+            <para>
+              where to recursively bind <option>lxc.rootfs</option>
+              before pivoting.  This is to ensure success of the
+              <citerefentry>
+                <refentrytitle><command>pivot_root</command></refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>
+              syscall.  Any directory suffices, the default should
+              generally work.
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.rootfs.options</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      extra mount options to use when mounting the rootfs.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.rootfs.options</option>
+          </term>
+          <listitem>
+            <para>
+              extra mount options to use when mounting the rootfs.
+            </para>
+          </listitem>
+        </varlistentry>
 
-	<varlistentry>
-	  <term>
-	    <option>lxc.pivotdir</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      where to pivot the original root file system under
-	      <option>lxc.rootfs</option>, specified relatively to
-	      that.  The default is <filename>mnt</filename>.
-	      It is created if necessary, and also removed after
-	      unmounting everything from it during container setup.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.pivotdir</option>
+          </term>
+          <listitem>
+            <para>
+              where to pivot the original root file system under
+              <option>lxc.rootfs</option>, specified relatively to
+              that.  The default is <filename>mnt</filename>.
+              It is created if necessary, and also removed after
+              unmounting everything from it during container setup.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
     <refsect2>
       <title>Control group</title>
       <para>
-	The control group section contains the configuration for the
-	different subsystem. <command>lxc</command> does not check the
-	correctness of the subsystem name. This has the disadvantage
-	of not detecting configuration errors until the container is
-	started, but has the advantage of permitting any future
-	subsystem.
+        The control group section contains the configuration for the
+        different subsystem. <command>lxc</command> does not check the
+        correctness of the subsystem name. This has the disadvantage
+        of not detecting configuration errors until the container is
+        started, but has the advantage of permitting any future
+        subsystem.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.cgroup.[subsystem name]</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      specify the control group value to be set.  The
-	      subsystem name is the literal name of the control group
-	      subsystem.  The permitted names and the syntax of their
-	      values is not dictated by LXC, instead it depends on the
-	      features of the Linux kernel running at the time the
-	      container is started,
-	      eg. <option>lxc.cgroup.cpuset.cpus</option>
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup.[subsystem name]</option>
+          </term>
+          <listitem>
+            <para>
+              specify the control group value to be set.  The
+              subsystem name is the literal name of the control group
+              subsystem.  The permitted names and the syntax of their
+              values is not dictated by LXC, instead it depends on the
+              features of the Linux kernel running at the time the
+              container is started,
+              eg. <option>lxc.cgroup.cpuset.cpus</option>
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
     <refsect2>
       <title>Capabilities</title>
       <para>
-	The capabilities can be dropped in the container if this one
-	is run as root.
+        The capabilities can be dropped in the container if this one
+        is run as root.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.cap.drop</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Specify the capability to be dropped in the container. A
-	      single line defining several capabilities with a space
-	      separation is allowed. The format is the lower case of
-	      the capability definition without the "CAP_" prefix,
-	      eg. CAP_SYS_MODULE should be specified as
-	      sys_module. See
-	      <citerefentry>
-		<refentrytitle><command>capabilities</command></refentrytitle>
-		<manvolnum>7</manvolnum>
-	      </citerefentry>,
-	    </para>
-	  </listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>
-	    <option>lxc.cap.keep</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Specify the capability to be kept in the container. All other
-	      capabilities will be dropped.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cap.drop</option>
+          </term>
+          <listitem>
+            <para>
+              Specify the capability to be dropped in the container. A
+              single line defining several capabilities with a space
+              separation is allowed. The format is the lower case of
+              the capability definition without the "CAP_" prefix,
+              eg. CAP_SYS_MODULE should be specified as
+              sys_module. See
+              <citerefentry>
+                <refentrytitle><command>capabilities</command></refentrytitle>
+                <manvolnum>7</manvolnum>
+              </citerefentry>,
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cap.keep</option>
+          </term>
+          <listitem>
+            <para>
+              Specify the capability to be kept in the container. All other
+              capabilities will be dropped.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
     <refsect2>
       <title>Apparmor profile</title>
       <para>
-	If lxc was compiled and installed with apparmor support, and the host
-	system has apparmor enabled, then the apparmor profile under which the
-	container should be run can be specified in the container
-	configuration.  The default is <command>lxc-container-default</command>.
+        If lxc was compiled and installed with apparmor support, and the host
+        system has apparmor enabled, then the apparmor profile under which the
+        container should be run can be specified in the container
+        configuration.  The default is <command>lxc-container-default</command>.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.aa_profile</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Specify the apparmor profile under which the container should
-	      be run.  To specify that the container should be unconfined,
-	      use
-	    </para>
-	      <programlisting>lxc.aa_profile = unconfined</programlisting>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.aa_profile</option>
+          </term>
+          <listitem>
+            <para>
+              Specify the apparmor profile under which the container should
+              be run.  To specify that the container should be unconfined,
+              use
+            </para>
+              <programlisting>lxc.aa_profile = unconfined</programlisting>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
     <refsect2>
       <title>SELinux context</title>
       <para>
-	If lxc was compiled and installed with SELinux support, and the host
-	system has SELinux enabled, then the SELinux context under which the
-	container should be run can be specified in the container
-	configuration.  The default is <command>unconfined_t</command>,
-	which means that lxc will not attempt to change contexts.
-	See @DATADIR@/lxc/selinux/lxc.te for an example policy and more
-	information.
+        If lxc was compiled and installed with SELinux support, and the host
+        system has SELinux enabled, then the SELinux context under which the
+        container should be run can be specified in the container
+        configuration.  The default is <command>unconfined_t</command>,
+        which means that lxc will not attempt to change contexts.
+        See @DATADIR@/lxc/selinux/lxc.te for an example policy and more
+        information.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.se_context</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Specify the SELinux context under which the container should
-	      be run or <command>unconfined_t</command>. For example
-	    </para>
-	    <programlisting>lxc.se_context = system_u:system_r:lxc_t:s0:c22</programlisting>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.se_context</option>
+          </term>
+          <listitem>
+            <para>
+              Specify the SELinux context under which the container should
+              be run or <command>unconfined_t</command>. For example
+            </para>
+            <programlisting>lxc.se_context = system_u:system_r:lxc_t:s0:c22</programlisting>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
@@ -1072,17 +1072,17 @@ proc proc proc nodev,noexec,nosuid 0 0
       <title>Seccomp configuration</title>
       <para>
         A container can be started with a reduced set of available
-	system calls by loading a seccomp profile at startup.  The
-	seccomp configuration file must begin with a version number
-	on the first line, a policy type on the second line, followed
-	by the configuration.
+        system calls by loading a seccomp profile at startup.  The
+        seccomp configuration file must begin with a version number
+        on the first line, a policy type on the second line, followed
+        by the configuration.
       </para>
       <para>
         Versions 1 and 2 are currently supported.  In version 1, the
-	policy is a simple whitelist.  The second line therefore must
-	read "whitelist", with the rest of the file containing one (numeric)
-	sycall number per line.  Each syscall number is whitelisted,
-	while every unlisted number is blacklisted for use in the container
+        policy is a simple whitelist.  The second line therefore must
+        read "whitelist", with the rest of the file containing one (numeric)
+        sycall number per line.  Each syscall number is whitelisted,
+        while every unlisted number is blacklisted for use in the container
       </para>
 
       <para>
@@ -1101,17 +1101,17 @@ blacklist
 mknod errno 0
 </screen>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.seccomp</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Specify a file containing the seccomp configuration to
-	      load before the container starts.
-	     </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.seccomp</option>
+          </term>
+          <listitem>
+            <para>
+              Specify a file containing the seccomp configuration to
+              load before the container starts.
+             </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
@@ -1119,30 +1119,30 @@ mknod errno 0
       <title>UID mappings</title>
       <para>
         A container can be started in a private user namespace with
-	user and group id mappings.  For instance, you can map userid
-	0 in the container to userid 200000 on the host.  The root
-	user in the container will be privileged in the container,
-	but unprivileged on the host.  Normally a system container
-	will want a range of ids, so you would map, for instance,
-	user and group ids 0 through 20,000 in the container to the
-	ids 200,000 through 220,000.
+        user and group id mappings.  For instance, you can map userid
+        0 in the container to userid 200000 on the host.  The root
+        user in the container will be privileged in the container,
+        but unprivileged on the host.  Normally a system container
+        will want a range of ids, so you would map, for instance,
+        user and group ids 0 through 20,000 in the container to the
+        ids 200,000 through 220,000.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.id_map</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Four values must be provided.  First a character, either
-	      'u', or 'g', to specify whether user or group ids are
-	      being mapped.  Next is the first userid as seen in the
-	      user namespace of the container.  Next is the userid as
-	      seen on the host.  Finally, a range indicating the number
-	      of consecutive ids to map.
-	     </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.id_map</option>
+          </term>
+          <listitem>
+            <para>
+              Four values must be provided.  First a character, either
+              'u', or 'g', to specify whether user or group ids are
+              being mapped.  Next is the first userid as seen in the
+              user namespace of the container.  Next is the userid as
+              seen on the host.  Finally, a range indicating the number
+              of consecutive ids to map.
+             </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
@@ -1150,28 +1150,28 @@ mknod errno 0
       <title>Container hooks</title>
       <para>
         Container hooks are programs or scripts which can be executed
-	at various times in a container's lifetime.
+        at various times in a container's lifetime.
       </para>
       <para>
         When a container hook is executed, information is passed both
-	as command line arguments and through environment variables.
-	The arguments are:
-	<itemizedlist>
-	  <listitem><para> Container name. </para></listitem>
-	  <listitem><para> Section (always 'lxc'). </para></listitem>
-	  <listitem><para> The hook type (i.e. 'clone' or 'pre-mount'). </para></listitem>
-	  <listitem><para> Additional arguments In the
-	  case of the clone hook, any extra arguments passed to
-	  lxc-clone will appear as further arguments to the hook. </para></listitem>
-	</itemizedlist>
-	The following environment variables are set:
-	<itemizedlist>
-	  <listitem><para> LXC_NAME: is the container's name. </para></listitem>
-	  <listitem><para> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </para></listitem>
-	  <listitem><para> LXC_CONFIG_FILE: the path to the container configuration file. </para></listitem>
-	  <listitem><para> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </para></listitem>
-	  <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
-	</itemizedlist>
+        as command line arguments and through environment variables.
+        The arguments are:
+        <itemizedlist>
+          <listitem><para> Container name. </para></listitem>
+          <listitem><para> Section (always 'lxc'). </para></listitem>
+          <listitem><para> The hook type (i.e. 'clone' or 'pre-mount'). </para></listitem>
+          <listitem><para> Additional arguments In the
+          case of the clone hook, any extra arguments passed to
+          lxc-clone will appear as further arguments to the hook. </para></listitem>
+        </itemizedlist>
+        The following environment variables are set:
+        <itemizedlist>
+          <listitem><para> LXC_NAME: is the container's name. </para></listitem>
+          <listitem><para> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </para></listitem>
+          <listitem><para> LXC_CONFIG_FILE: the path to the container configuration file. </para></listitem>
+          <listitem><para> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </para></listitem>
+          <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
+        </itemizedlist>
       </para>
       <para>
         Standard output from the hooks is logged at debug level.
@@ -1179,109 +1179,109 @@ mknod errno 0
         hook redirecting its standard error to standard output.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.hook.pre-start</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      A hook to be run in the host's namespace before the
-	      container ttys, consoles, or mounts are up.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.pre-start</option>
+          </term>
+          <listitem>
+            <para>
+              A hook to be run in the host's namespace before the
+              container ttys, consoles, or mounts are up.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.hook.pre-mount</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      A hook to be run in the container's fs namespace but before
-	      the rootfs has been set up.  This allows for manipulation
-	      of the rootfs, i.e. to mount an encrypted filesystem.  Mounts
-	      done in this hook will not be reflected on the host (apart from
-	      mounts propagation), so they will be automatically cleaned up
-	      when the container shuts down.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.pre-mount</option>
+          </term>
+          <listitem>
+            <para>
+              A hook to be run in the container's fs namespace but before
+              the rootfs has been set up.  This allows for manipulation
+              of the rootfs, i.e. to mount an encrypted filesystem.  Mounts
+              done in this hook will not be reflected on the host (apart from
+              mounts propagation), so they will be automatically cleaned up
+              when the container shuts down.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.hook.mount</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      A hook to be run in the container's namespace after
-	      mounting has been done, but before the pivot_root.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.mount</option>
+          </term>
+          <listitem>
+            <para>
+              A hook to be run in the container's namespace after
+              mounting has been done, but before the pivot_root.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.hook.autodev</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      A hook to be run in the container's namespace after
-	      mounting has been done and after any mount hooks have
-	      run, but before the pivot_root, if
-	      <option>lxc.autodev</option> == 1.
-	      The purpose of this hook is to assist in populating the
-	      /dev directory of the container when using the autodev
-	      option for systemd based containers.  The container's /dev
-	      directory is relative to the
-	      ${<option>LXC_ROOTFS_MOUNT</option>} environment
-	      variable available when the hook is run.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.autodev</option>
+          </term>
+          <listitem>
+            <para>
+              A hook to be run in the container's namespace after
+              mounting has been done and after any mount hooks have
+              run, but before the pivot_root, if
+              <option>lxc.autodev</option> == 1.
+              The purpose of this hook is to assist in populating the
+              /dev directory of the container when using the autodev
+              option for systemd based containers.  The container's /dev
+              directory is relative to the
+              ${<option>LXC_ROOTFS_MOUNT</option>} environment
+              variable available when the hook is run.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.hook.start</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      A hook to be run in the container's namespace immediately
-	      before executing the container's init.  This requires the
-	      program to be available in the container.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.start</option>
+          </term>
+          <listitem>
+            <para>
+              A hook to be run in the container's namespace immediately
+              before executing the container's init.  This requires the
+              program to be available in the container.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.hook.post-stop</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      A hook to be run in the host's namespace after the
-	      container has been shut down.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.post-stop</option>
+          </term>
+          <listitem>
+            <para>
+              A hook to be run in the host's namespace after the
+              container has been shut down.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.hook.clone</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      A hook to be run when the container is cloned to a new one.
-	      See <citerefentry><refentrytitle><command>lxc-clone</command></refentrytitle>
-	      <manvolnum>1</manvolnum></citerefentry> for more information.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.clone</option>
+          </term>
+          <listitem>
+            <para>
+              A hook to be run when the container is cloned to a new one.
+              See <citerefentry><refentrytitle><command>lxc-clone</command></refentrytitle>
+              <manvolnum>1</manvolnum></citerefentry> for more information.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
@@ -1295,89 +1295,89 @@ mknod errno 0
         and, as such, not valid during the <option>lxc.hook.start</option> hook.
       </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>LXC_NAME</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      The LXC name of the container.  Useful for logging messages
-	      in common log environments.  [<option>-n</option>]
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>LXC_NAME</option>
+          </term>
+          <listitem>
+            <para>
+              The LXC name of the container.  Useful for logging messages
+              in common log environments.  [<option>-n</option>]
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>LXC_CONFIG_FILE</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      Host relative path to the container configuration file.  This
-	      gives the container to reference the original, top level,
-	      configuration file for the container in order to locate any
-	      additional configuration information not otherwise made
-	      available.  [<option>-f</option>]
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>LXC_CONFIG_FILE</option>
+          </term>
+          <listitem>
+            <para>
+              Host relative path to the container configuration file.  This
+              gives the container to reference the original, top level,
+              configuration file for the container in order to locate any
+              additional configuration information not otherwise made
+              available.  [<option>-f</option>]
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>LXC_CONSOLE</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      The path to the console output of the container if not NULL.
-	      [<option>-c</option>] [<option>lxc.console</option>]
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>LXC_CONSOLE</option>
+          </term>
+          <listitem>
+            <para>
+              The path to the console output of the container if not NULL.
+              [<option>-c</option>] [<option>lxc.console</option>]
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>LXC_CONSOLE_LOGPATH</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      The path to the console log output of the container if not NULL.
-	      [<option>-L</option>]
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>LXC_CONSOLE_LOGPATH</option>
+          </term>
+          <listitem>
+            <para>
+              The path to the console log output of the container if not NULL.
+              [<option>-L</option>]
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>LXC_ROOTFS_MOUNT</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      The mount location to which the container is initially bound.
-	      This will be the host relative path to the container rootfs
-	      for the container instance being started and is where changes
-	      should be made for that instance.
-	      [<option>lxc.rootfs.mount</option>]
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>LXC_ROOTFS_MOUNT</option>
+          </term>
+          <listitem>
+            <para>
+              The mount location to which the container is initially bound.
+              This will be the host relative path to the container rootfs
+              for the container instance being started and is where changes
+              should be made for that instance.
+              [<option>lxc.rootfs.mount</option>]
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>LXC_ROOTFS_PATH</option>
-	  </term>
-	  <listitem>
-	    <para>
-	      The host relative path to the container root which has been
-	      mounted to the rootfs.mount location.
-	      [<option>lxc.rootfs</option>]
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>LXC_ROOTFS_PATH</option>
+          </term>
+          <listitem>
+            <para>
+              The host relative path to the container root which has been
+              mounted to the rootfs.mount location.
+              [<option>lxc.rootfs</option>]
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
 
     </refsect2>
@@ -1397,36 +1397,36 @@ mknod errno 0
       command line options to <command>lxc-start</command>.
     </para>
       <variablelist>
-	<varlistentry>
-	  <term>
-	    <option>lxc.loglevel</option>
-	  </term>
-	  <listitem>
-	    <para>
-	    The level at which to log.  The log level is an integer in
-	    the range of 0..8 inclusive, where a lower number means more
-	    verbose debugging.  In particular 0 = trace, 1 = debug, 2 =
-	    info, 3 = notice, 4 = warn, 5 = error, 6 = critical, 7 =
-	    alert, and 8 = fatal.  If unspecified, the level defaults
-	    to 5 (error), so that only errors and above are logged.
-	    </para>
-	    <para>
-	    Note that when a script (such as either a hook script or a
-	    network interface up or down script) is called, the script's
-	    standard output is logged at level 1, debug.
-	    </para>
-	  </listitem>
-	</varlistentry>
-	<varlistentry>
-	  <term>
-	    <option>lxc.logfile</option>
-	  </term>
-	  <listitem>
-	    <para>
-	    The file to which logging info should be written.
-	    </para>
-	  </listitem>
-	</varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.loglevel</option>
+          </term>
+          <listitem>
+            <para>
+            The level at which to log.  The log level is an integer in
+            the range of 0..8 inclusive, where a lower number means more
+            verbose debugging.  In particular 0 = trace, 1 = debug, 2 =
+            info, 3 = notice, 4 = warn, 5 = error, 6 = critical, 7 =
+            alert, and 8 = fatal.  If unspecified, the level defaults
+            to 5 (error), so that only errors and above are logged.
+            </para>
+            <para>
+            Note that when a script (such as either a hook script or a
+            network interface up or down script) is called, the script's
+            standard output is logged at level 1, debug.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.logfile</option>
+          </term>
+          <listitem>
+            <para>
+            The file to which logging info should be written.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
@@ -1515,25 +1515,25 @@ mknod errno 0
   <refsect1>
     <title>Examples</title>
       <para>
-	In addition to the few examples given below, you will find
-	some other examples of configuration file in @DOCDIR@/examples
+        In addition to the few examples given below, you will find
+        some other examples of configuration file in @DOCDIR@/examples
       </para>
     <refsect2>
       <title>Network</title>
       <para>This configuration sets up a container to use a veth pair
-	device with one side plugged to a bridge br0 (which has been
-	configured before on the system by the administrator). The
-	virtual network device visible in the container is renamed to
-	eth0.</para>
+        device with one side plugged to a bridge br0 (which has been
+        configured before on the system by the administrator). The
+        virtual network device visible in the container is renamed to
+        eth0.</para>
       <programlisting>
-	lxc.utsname = myhostname
-	lxc.network.type = veth
-	lxc.network.flags = up
-	lxc.network.link = br0
-	lxc.network.name = eth0
-	lxc.network.hwaddr = 4a:49:43:49:79:bf
-	lxc.network.ipv4 = 10.2.3.5/24 10.2.3.255
-	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+        lxc.utsname = myhostname
+        lxc.network.type = veth
+        lxc.network.flags = up
+        lxc.network.link = br0
+        lxc.network.name = eth0
+        lxc.network.hwaddr = 4a:49:43:49:79:bf
+        lxc.network.ipv4 = 10.2.3.5/24 10.2.3.255
+        lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
       </programlisting>
     </refsect2>
 
@@ -1543,8 +1543,8 @@ mknod errno 0
         range 0-9999 in the container to the ids 100000-109999 on the host.
       </para>
       <programlisting>
-	lxc.id_map = u 0 100000 10000
-	lxc.id_map = g 0 100000 10000
+        lxc.id_map = u 0 100000 10000
+        lxc.id_map = g 0 100000 10000
       </programlisting>
     </refsect2>
 
@@ -1555,11 +1555,11 @@ mknod errno 0
       cpus.share prioritize the control group, devices.allow makes
       usable the specified devices.</para>
       <programlisting>
-	lxc.cgroup.cpuset.cpus = 0,1
-	lxc.cgroup.cpu.shares = 1234
-	lxc.cgroup.devices.deny = a
-	lxc.cgroup.devices.allow = c 1:3 rw
-	lxc.cgroup.devices.allow = b 8:0 rw
+        lxc.cgroup.cpuset.cpus = 0,1
+        lxc.cgroup.cpu.shares = 1234
+        lxc.cgroup.devices.deny = a
+        lxc.cgroup.devices.allow = c 1:3 rw
+        lxc.cgroup.devices.allow = b 8:0 rw
       </programlisting>
     </refsect2>
 
@@ -1569,37 +1569,37 @@ mknod errno 0
       network stack, using the control groups, setting a new hostname,
       mounting some locations and a changing root file system.</para>
       <programlisting>
-	lxc.utsname = complex
-	lxc.network.type = veth
-	lxc.network.flags = up
-	lxc.network.link = br0
-	lxc.network.hwaddr = 4a:49:43:49:79:bf
-	lxc.network.ipv4 = 10.2.3.5/24 10.2.3.255
-	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
-	lxc.network.ipv6 = 2003:db8:1:0:214:5432:feab:3588
-	lxc.network.type = macvlan
-	lxc.network.flags = up
-	lxc.network.link = eth0
-	lxc.network.hwaddr = 4a:49:43:49:79:bd
-	lxc.network.ipv4 = 10.2.3.4/24
-	lxc.network.ipv4 = 192.168.10.125/24
-	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
-	lxc.network.type = phys
-	lxc.network.flags = up
-	lxc.network.link = dummy0
-	lxc.network.hwaddr = 4a:49:43:49:79:ff
-	lxc.network.ipv4 = 10.2.3.6/24
-	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
-	lxc.cgroup.cpuset.cpus = 0,1
-	lxc.cgroup.cpu.shares = 1234
-	lxc.cgroup.devices.deny = a
-	lxc.cgroup.devices.allow = c 1:3 rw
-	lxc.cgroup.devices.allow = b 8:0 rw
-	lxc.mount = /etc/fstab.complex
-	lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0
-	lxc.rootfs = /mnt/rootfs.complex
-	lxc.cap.drop = sys_module mknod setuid net_raw
-	lxc.cap.drop = mac_override
+        lxc.utsname = complex
+        lxc.network.type = veth
+        lxc.network.flags = up
+        lxc.network.link = br0
+        lxc.network.hwaddr = 4a:49:43:49:79:bf
+        lxc.network.ipv4 = 10.2.3.5/24 10.2.3.255
+        lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+        lxc.network.ipv6 = 2003:db8:1:0:214:5432:feab:3588
+        lxc.network.type = macvlan
+        lxc.network.flags = up
+        lxc.network.link = eth0
+        lxc.network.hwaddr = 4a:49:43:49:79:bd
+        lxc.network.ipv4 = 10.2.3.4/24
+        lxc.network.ipv4 = 192.168.10.125/24
+        lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
+        lxc.network.type = phys
+        lxc.network.flags = up
+        lxc.network.link = dummy0
+        lxc.network.hwaddr = 4a:49:43:49:79:ff
+        lxc.network.ipv4 = 10.2.3.6/24
+        lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
+        lxc.cgroup.cpuset.cpus = 0,1
+        lxc.cgroup.cpu.shares = 1234
+        lxc.cgroup.devices.deny = a
+        lxc.cgroup.devices.allow = c 1:3 rw
+        lxc.cgroup.devices.allow = b 8:0 rw
+        lxc.mount = /etc/fstab.complex
+        lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0
+        lxc.rootfs = /mnt/rootfs.complex
+        lxc.cap.drop = sys_module mknod setuid net_raw
+        lxc.cap.drop = mac_override
       </programlisting>
     </refsect2>
 
@@ -1609,23 +1609,23 @@ mknod errno 0
     <title>See Also</title>
     <simpara>
       <citerefentry>
-	<refentrytitle><command>chroot</command></refentrytitle>
-	<manvolnum>1</manvolnum>
+        <refentrytitle><command>chroot</command></refentrytitle>
+        <manvolnum>1</manvolnum>
       </citerefentry>,
 
       <citerefentry>
-	<refentrytitle><command>pivot_root</command></refentrytitle>
-	<manvolnum>8</manvolnum>
+        <refentrytitle><command>pivot_root</command></refentrytitle>
+        <manvolnum>8</manvolnum>
       </citerefentry>,
 
       <citerefentry>
-	<refentrytitle><filename>fstab</filename></refentrytitle>
-	<manvolnum>5</manvolnum>
+        <refentrytitle><filename>fstab</filename></refentrytitle>
+        <manvolnum>5</manvolnum>
       </citerefentry>,
 
       <citerefentry>
-	<refentrytitle><filename>capabilities</filename></refentrytitle>
-	<manvolnum>7</manvolnum>
+        <refentrytitle><filename>capabilities</filename></refentrytitle>
+        <manvolnum>7</manvolnum>
       </citerefentry>
     </simpara>
   </refsect1>
