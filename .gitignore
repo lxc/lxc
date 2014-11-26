@@ -55,6 +55,7 @@ src/lxc/lxc-console
 src/lxc/lxc-config
 src/lxc/lxc-create
 src/lxc/lxc-destroy
+src/lxc/lxc-device
 src/lxc/lxc-execute
 src/lxc/lxc-freeze
 src/lxc/lxc.functions
@@ -68,6 +69,7 @@ src/lxc/lxc-snapshot
 src/lxc/lxc-start
 src/lxc/lxc-start-ephemeral
 src/lxc/lxc-stop
+src/lxc/lxc-top
 src/lxc/lxc-unfreeze
 src/lxc/lxc-unshare
 src/lxc/lxc-usernsexec
