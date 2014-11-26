@@ -57,7 +57,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-create</command>
       <arg choice="req">-n <replaceable>name</replaceable></arg>
       <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
-      <arg choice="opt">-t <replaceable>template</replaceable></arg>
+      <arg choice="req">-t <replaceable>template</replaceable></arg>
       <arg choice="opt">-B <replaceable>backingstore</replaceable></arg>
       <arg choice="opt">-- <replaceable>template-options</replaceable></arg>
     </cmdsynopsis>
