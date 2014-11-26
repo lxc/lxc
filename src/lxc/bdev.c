@@ -3018,7 +3018,7 @@ static int nbd_get_partition(const char *src)
 	if (!p)
 		return 0;
 	p++;
-	if (*p < '1' && *p > '9')
+	if (*p < '1' || *p > '9')
 		return 0;
 	return *p - '0';
 }
