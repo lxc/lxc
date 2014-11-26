@@ -336,7 +336,10 @@ int main(int argc, char *argv[])
 	if (my_args.close_all_fds)
 		c->want_close_all_fds(c, true);
 
-	err = c->start(c, 0, args) ? 0 : 1;
+	if (args == default_args)
+		err = c->start(c, 0, NULL) ? 0 : 1;
+	else
+		err = c->start(c, 0, args) ? 0 : 1;
 
 	if (err) {
 		ERROR("The container failed to start.");

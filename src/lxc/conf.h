@@ -356,6 +356,9 @@ struct lxc_conf {
 	/* text representation of the config file */
 	char *unexpanded_config;
 	size_t unexpanded_len, unexpanded_alloced;
+
+	/* init command */
+	char *init_cmd;
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,

@@ -555,6 +555,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		"/sbin/init",
 		NULL,
 	};
+	char *init_cmd[2];
 
 	/* container exists */
 	if (!c)
@@ -591,8 +592,15 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		return ret == 0 ? true : false;
 	}
 
-	if (!argv)
-		argv = default_args;
+	if (!argv) {
+		if (conf->init_cmd) {
+			init_cmd[0] = conf->init_cmd;
+			init_cmd[1] = NULL;
+			argv = init_cmd;
+		}
+		else
+			argv = default_args;
+	}
 
 	/*
 	* say, I'm not sure - what locks do we want here?  Any?

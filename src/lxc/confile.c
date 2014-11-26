@@ -101,6 +101,7 @@ static int config_stopsignal(const char *, const char *, struct lxc_conf *);
 static int config_start(const char *, const char *, struct lxc_conf *);
 static int config_group(const char *, const char *, struct lxc_conf *);
 static int config_environment(const char *, const char *, struct lxc_conf *);
+static int config_init_cmd(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 
@@ -162,6 +163,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.start.order",          config_start                },
 	{ "lxc.group",                config_group                },
 	{ "lxc.environment",          config_environment          },
+	{ "lxc.init_cmd",             config_init_cmd             },
 };
 
 struct signame {
@@ -963,6 +965,12 @@ static int config_seccomp(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
 	return config_path_item(&lxc_conf->seccomp, value);
+}
+
+static int config_init_cmd(const char *key, const char *value,
+				 struct lxc_conf *lxc_conf)
+{
+	return config_path_item(&lxc_conf->init_cmd, value);
 }
 
 static int config_hook(const char *key, const char *value,
@@ -2327,6 +2335,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->seccomp;
 	else if (strcmp(key, "lxc.environment") == 0)
 		return lxc_get_item_environment(c, retv, inlen);
+	else if (strcmp(key, "lxc.init_cmd") == 0)
+		v = c->init_cmd;
 	else return -1;
 
 	if (!v)

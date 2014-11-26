@@ -4537,6 +4537,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 		free(conf->fstab);
 	if (conf->rcfile)
 		free(conf->rcfile);
+	if (conf->init_cmd)
+		free(conf->init_cmd);
 	free(conf->unexpanded_config);
 	lxc_clear_config_network(conf);
 	if (conf->lsm_aa_profile)

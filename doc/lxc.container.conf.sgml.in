@@ -202,6 +202,29 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </refsect2>
 
     <refsect2>
+      <title>Init command</title>
+      <para>
+        Sets the command to use as the init system for the containers.
+
+        This option is ignored when using lxc-execute.
+
+        Defaults to: /sbin/init
+      </para>
+      <variablelist>
+    <varlistentry>
+      <term>
+        <option>lxc.init_cmd</option>
+      </term>
+      <listitem>
+        <para>
+          Absolute path from container rootfs to the binary to use as init.
+        </para>
+      </listitem>
+    </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Network</title>
       <para>
         The network section defines how the network is virtualized in

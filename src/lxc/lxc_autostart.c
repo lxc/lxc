@@ -330,10 +330,6 @@ int main(int argc, char *argv[])
 	struct lxc_container **containers = NULL;
 	struct lxc_list **c_groups_lists = NULL;
 	struct lxc_list *cmd_group;
-	char *const default_start_args[] = {
-		"/sbin/init",
-		NULL,
-	};
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return 1;
@@ -470,7 +466,7 @@ int main(int argc, char *argv[])
 						printf("%s %d\n", c->name,
 						       get_config_integer(c, "lxc.start.delay"));
 					else {
-						if (!c->start(c, 0, default_start_args))
+						if (!c->start(c, 0, NULL))
 							fprintf(stderr, "Error starting container: %s\n", c->name);
 						else
 							sleep(get_config_integer(c, "lxc.start.delay"));
