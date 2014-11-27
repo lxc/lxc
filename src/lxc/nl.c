@@ -107,14 +107,14 @@ void nla_end_nested(struct nlmsg *nlmsg, struct rtattr *attr)
 extern struct nlmsg *nlmsg_alloc(size_t size)
 {
 	struct nlmsg *nlmsg;
-	size_t len = NLMSG_ALIGN(size) + NLMSG_ALIGN(sizeof(struct nlmsghdr *));
+	size_t len = NLMSG_HDRLEN + NLMSG_ALIGN(size);
 
 	nlmsg = (struct nlmsg *)malloc(len);
 	if (!nlmsg)
 		return NULL;
 
 	memset(nlmsg, 0, len);
-	nlmsg->nlmsghdr.nlmsg_len = NLMSG_ALIGN(size);
+	nlmsg->nlmsghdr.nlmsg_len = NLMSG_HDRLEN;
 
 	return nlmsg;
 }
