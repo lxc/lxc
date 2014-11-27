@@ -121,6 +121,7 @@ configure_alpine() {
     cat >"$rootfs"/etc/inittab<<EOF
 ::sysinit:/sbin/rc sysinit
 ::wait:/sbin/rc default
+console:12345:respawn:/sbin/getty 38400 console
 tty1:12345:respawn:/sbin/getty 38400 tty1
 tty2:12345:respawn:/sbin/getty 38400 tty2
 tty3:12345:respawn:/sbin/getty 38400 tty3
