@@ -33,6 +33,7 @@ man_MANS = \
 	lxc-snapshot.1 \
 	lxc-start.1 \
 	lxc-stop.1 \
+	lxc-top.1 \
 	lxc-unfreeze.1 \
 	lxc-unshare.1 \
 	lxc-user-nic.1 \
@@ -52,10 +53,6 @@ if ENABLE_PYTHON
     man_MANS += lxc-start-ephemeral.1
 else
     man_MANS += legacy/lxc-ls.1
-endif
-
-if ENABLE_LUA
-    man_MANS += lxc-top.1
 endif
 
 %.1 : %.sgml
