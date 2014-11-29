@@ -426,7 +426,7 @@ if [ -z "$path" ]; then
     exit 1
 fi
 
-if [ $(grep Harlequin /etc/os-release >/dev/null; echo $?) = 0 ]; then
+if grep -q Harlequin /etc/os-release || grep -q Tumbleweed /etc/os-release ; then
     echo "Building containers on openSUSE 13.2 or Tumbleweed is broken at the moment. We are working on this problem."
     exit 1
 fi
