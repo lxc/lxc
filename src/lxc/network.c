@@ -499,7 +499,7 @@ int netdev_get_mtu(int ifindex)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
-	struct ip_req *ip_req;
+	struct link_req *link_req;
 	struct nlmsghdr *msg;
 	int err, res;
 	int recv_len = 0, answer_len;
@@ -523,12 +523,11 @@ int netdev_get_mtu(int ifindex)
 	 * once. */
 	answer_len = answer->nlmsghdr.nlmsg_len;
 
-	ip_req = (struct ip_req *)nlmsg;
-	ip_req->nlmsg.nlmsghdr.nlmsg_len =
-		NLMSG_LENGTH(sizeof(struct ifaddrmsg));
-	ip_req->nlmsg.nlmsghdr.nlmsg_flags = NLM_F_REQUEST|NLM_F_DUMP;
-	ip_req->nlmsg.nlmsghdr.nlmsg_type = RTM_GETLINK;
-	ip_req->ifa.ifa_family = AF_UNSPEC;
+	link_req = (struct link_req *)nlmsg;
+	link_req->ifinfomsg.ifi_family = AF_UNSPEC;
+	nlmsg->nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+	nlmsg->nlmsghdr.nlmsg_flags = NLM_F_REQUEST|NLM_F_DUMP;
+	nlmsg->nlmsghdr.nlmsg_type = RTM_GETLINK;
 
 	/* Send the request for addresses, which returns all addresses
 	 * on all interfaces. */
