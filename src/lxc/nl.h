@@ -53,14 +53,16 @@ struct nl_handler {
 };
 
 /*
- * struct nlmsg : the netlink message structure, it consists just
- *  on a definition for a nlmsghdr. This message is to be used to
+ * struct nlmsg : the netlink message structure. This message is to be used to
  *  be allocated with netlink_alloc.
- * @nlmsghdr : a pointer to a netlink message header, this field
- *   _must_ be always the first field of this structure
+ *
+ * @nlmsghdr: a pointer to a netlink message header
+ * @cap: capacity of the netlink message, this is the initially allocated size
+ * 		and later operations (e.g. reserve and put) can not exceed this limit.
  */
 struct nlmsg {
-	struct nlmsghdr nlmsghdr;
+	struct nlmsghdr *nlmsghdr;
+	ssize_t cap;
 };
 
 /*
@@ -210,14 +212,33 @@ void nla_end_nested(struct nlmsg *nlmsg, struct rtattr *attr);
  *  is sizeof(header) + sizeof(padding) + payloadsize + sizeof(padding),
  *  in other words, the function will allocate more than specified. When
  *  the buffer is allocated, the content is zeroed.
- *  The function will also fill the field nlmsg_len with computed size.
+ *  The function will also fill the field nlmsg_len with NLMSG_HDRLEN.
  *  If the allocation must be for the specified size, just use malloc.
  *
- * @size: the size of the payload to be allocated
+ * @size: the capacity of the payload to be allocated
  *
  * Returns a pointer to the newly allocated netlink message, NULL otherwise
  */
 struct nlmsg *nlmsg_alloc(size_t size);
+
+/*
+ * nlmsg_alloc_reserve: like nlmsg_alloc(), but reserve the whole payload
+ *  after allocated, that is, the field nlmsg_len be set to the capacity
+ *  of nlmsg. Often used to allocate a message for the reply.
+ *
+ * @size: the capacity of the payload to be allocated.
+ */
+struct nlmsg *nlmsg_alloc_reserve(size_t size);
+
+/*
+ * Reserve room for additional data at the tail of a netlink message
+ *
+ * @nlmsg: the netlink message
+ * @len: length of additional data to reserve room for
+ *
+ * Returns a pointer to newly reserved room or NULL
+ */
+void *nlmsg_reserve(struct nlmsg *nlmsg, size_t len);
 
 /*
  * nlmsg_free : free a previously allocate message
