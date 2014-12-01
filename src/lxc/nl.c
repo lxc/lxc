@@ -37,7 +37,7 @@
 
 extern size_t nlmsg_len(const struct nlmsg *nlmsg)
 {
-	return nlmsg->nlmsghdr->nlmsg_len - NLMSG_HDRLEN;
+	return nlmsg->nlmsghdr.nlmsg_len - NLMSG_HDRLEN;
 }
 
 extern void *nlmsg_data(struct nlmsg *nlmsg)
@@ -53,16 +53,13 @@ static int nla_put(struct nlmsg *nlmsg, int attr,
 {
 	struct rtattr *rta;
 	size_t rtalen = RTA_LENGTH(len);
-	size_t tlen = NLMSG_ALIGN(nlmsg->nlmsghdr->nlmsg_len) + RTA_ALIGN(rtalen);
 	
-	if (tlen > nlmsg->cap)
-		return -ENOMEM;
-
-	rta = NLMSG_TAIL(nlmsg->nlmsghdr);
-	rta->rta_type = attr;
-	rta->rta_len = rtalen;
-	memcpy(RTA_DATA(rta), data, len);
-	nlmsg->nlmsghdr->nlmsg_len = tlen;
+        rta = NLMSG_TAIL(&nlmsg->nlmsghdr);
+        rta->rta_type = attr;
+        rta->rta_len = rtalen;
+        memcpy(RTA_DATA(rta), data, len);
+        nlmsg->nlmsghdr.nlmsg_len =
+		NLMSG_ALIGN(nlmsg->nlmsghdr.nlmsg_len) + RTA_ALIGN(rtalen);
 	return 0;
 }
 
@@ -94,7 +91,7 @@ extern int nla_put_attr(struct nlmsg *nlmsg, int attr)
 
 struct rtattr *nla_begin_nested(struct nlmsg *nlmsg, int attr)
 {
-	struct rtattr *rtattr = NLMSG_TAIL(nlmsg->nlmsghdr);
+	struct rtattr *rtattr = NLMSG_TAIL(&nlmsg->nlmsghdr);
 
 	if (nla_put_attr(nlmsg, attr))
 		return NULL;
@@ -104,7 +101,7 @@ struct rtattr *nla_begin_nested(struct nlmsg *nlmsg, int attr)
 
 void nla_end_nested(struct nlmsg *nlmsg, struct rtattr *attr)
 {
-	attr->rta_len = (void *)NLMSG_TAIL(nlmsg->nlmsghdr) - (void *)attr;
+	attr->rta_len = (void *)NLMSG_TAIL(&nlmsg->nlmsghdr) - (void *)attr;
 }
 
 extern struct nlmsg *nlmsg_alloc(size_t size)
@@ -112,48 +109,18 @@ extern struct nlmsg *nlmsg_alloc(size_t size)
 	struct nlmsg *nlmsg;
 	size_t len = NLMSG_HDRLEN + NLMSG_ALIGN(size);
 
-	nlmsg = (struct nlmsg *)malloc(sizeof(struct nlmsg));
+	nlmsg = (struct nlmsg *)malloc(len);
 	if (!nlmsg)
 		return NULL;
 
-	nlmsg->nlmsghdr = (struct nlmsghdr *)malloc(len);
-	if (!nlmsg->nlmsghdr)
-		goto errout;
-
-	memset(nlmsg->nlmsghdr, 0, len);
-	nlmsg->cap = len;
-	nlmsg->nlmsghdr->nlmsg_len = NLMSG_HDRLEN;
+	memset(nlmsg, 0, len);
+	nlmsg->nlmsghdr.nlmsg_len = NLMSG_HDRLEN;
 
 	return nlmsg;
-errout:
-	free(nlmsg);
-	return NULL;
-}
-
-extern void *nlmsg_reserve(struct nlmsg *nlmsg, size_t len)
-{
-	void *buf;
-	size_t nlmsg_len = nlmsg->nlmsghdr->nlmsg_len;
-	size_t tlen = NLMSG_ALIGN(len);
-
-	if (nlmsg_len + tlen > nlmsg->cap)
-		return NULL;
-
-	buf = nlmsg->nlmsghdr + nlmsg_len;
-	nlmsg->nlmsghdr->nlmsg_len += tlen;
-
-	if (tlen > len)
-		memset(buf + len, 0, tlen - len);
-
-	return buf;
 }
 
 extern void nlmsg_free(struct nlmsg *nlmsg)
 {
-	if (!nlmsg)
-		return;
-
-	free(nlmsg->nlmsghdr);
 	free(nlmsg);
 }
 
@@ -163,7 +130,7 @@ extern int netlink_rcv(struct nl_handler *handler, struct nlmsg *answer)
         struct sockaddr_nl nladdr;
         struct iovec iov = {
                 .iov_base = answer,
-                .iov_len = answer->nlmsghdr->nlmsg_len,
+                .iov_len = answer->nlmsghdr.nlmsg_len,
         };
 	
 	struct msghdr msg = {
@@ -190,7 +157,7 @@ again:
 		return 0;
 
 	if (msg.msg_flags & MSG_TRUNC &&
-	    ret == answer->nlmsghdr->nlmsg_len)
+	    ret == answer->nlmsghdr.nlmsg_len)
 		return -EMSGSIZE;
 
 	return ret;
@@ -201,7 +168,7 @@ extern int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg)
         struct sockaddr_nl nladdr;
         struct iovec iov = {
                 .iov_base = (void*)nlmsg,
-                .iov_len = nlmsg->nlmsghdr->nlmsg_len,
+                .iov_len = nlmsg->nlmsghdr.nlmsg_len,
         };
 	struct msghdr msg = {
                 .msg_name = &nladdr,
@@ -239,7 +206,7 @@ extern int netlink_transaction(struct nl_handler *handler,
 	if (ret < 0)
 		return ret;
 
-	if (answer->nlmsghdr->nlmsg_type == NLMSG_ERROR) {
+	if (answer->nlmsghdr.nlmsg_type == NLMSG_ERROR) {
 		struct nlmsgerr *err = (struct nlmsgerr*)NLMSG_DATA(answer);
 		return err->error;
 	}
