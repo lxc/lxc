@@ -273,6 +273,37 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
+      <title><!-- Init command -->Init コマンド</title>
+      <para>
+        <!--
+        Sets the command to use as the init system for the containers.
+
+        This option is ignored when using lxc-execute.
+
+        Defaults to: /sbin/init
+          -->
+        コンテナの init として使うコマンドを設定します。
+        このオプションは lxc-execute では無視されます。
+        デフォルトは /sbin/init です。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.init_cmd</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+                  Absolute path from container rootfs to the binary to use as init.
+                -->
+              init として使うバイナリの、コンテナの rootfs からの絶対パスを指定します。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title><!-- Network -->ネットワーク</title>
       <para>
         <!--
