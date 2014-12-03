@@ -541,7 +541,7 @@ out_err:
 
 /*
  * If the caller (real uid, not effective uid) may read the
- * /proc/pid/net/ns, then it is either the caller's netns or one
+ * /proc/[pid]/ns/net, then it is either the caller's netns or one
  * which it created.
  */
 static bool may_access_netns(int pid)
