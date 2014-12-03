@@ -2822,7 +2822,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 
 	err = lxc_veth_create(veth1, veth2);
 	if (err) {
-		ERROR("failed to create %s-%s : %s", veth1, veth2,
+		ERROR("failed to create veth pair (%s and %s): %s", veth1, veth2,
 		      strerror(-err));
 		goto out_delete;
 	}
@@ -2832,7 +2832,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	 * of a container */
 	err = setup_private_host_hw_addr(veth1);
 	if (err) {
-		ERROR("failed to change mac address of host interface '%s' : %s",
+		ERROR("failed to change mac address of host interface '%s': %s",
 			veth1, strerror(-err));
 		goto out_delete;
 	}
@@ -2842,7 +2842,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		if (!err)
 			err = lxc_netdev_set_mtu(veth2, atoi(netdev->mtu));
 		if (err) {
-			ERROR("failed to set mtu '%s' for %s-%s : %s",
+			ERROR("failed to set mtu '%s' for veth pair (%s and %s): %s",
 			      netdev->mtu, veth1, veth2, strerror(-err));
 			goto out_delete;
 		}
@@ -2851,7 +2851,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	if (netdev->link) {
 		err = lxc_bridge_attach(netdev->link, veth1);
 		if (err) {
-			ERROR("failed to attach '%s' to the bridge '%s' : %s",
+			ERROR("failed to attach '%s' to the bridge '%s': %s",
 				      veth1, netdev->link, strerror(-err));
 			goto out_delete;
 		}
