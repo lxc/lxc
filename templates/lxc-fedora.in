@@ -38,7 +38,7 @@ default_path=@LXCPATH@
 #
 # If the root password contains a ding ($) then try to expand it.
 # That will pick up things like ${name} and ${RANDOM}.
-# If the root password contians more than 3 consecutive X's, pass it as
+# If the root password contains more than 3 consecutive X's, pass it as
 # a template to mktemp and take the result.
 #
 # If root_display_password = yes, display the temporary root password at exit.
@@ -425,7 +425,7 @@ configure_fedora_systemd()
 #       (mounting the iso) to the stage0 setup.
 
 # This system is designed to be as autonomous as possible so all whitelists
-# and controlls are self-contained.
+# and controls are self-contained.
 
 # Initial testing - Whitelist nobody.  Build for everybody...
 # Initial deployment - Whitelist Fedora.
@@ -495,7 +495,7 @@ an Installation Bootstrap  Please install rsync and then rerun this process.
     # We know we don't have a cache directory of this version or we
     # would have never reached this code to begin with.  But we may
     # have another Fedora cache directory from which we could run...
-    # We'll give a preference for close matches prefering higher over
+    # We'll give a preference for close matches preferring higher over
     # lower - which makes for really ugly code...
 
     # Is this a "bashism" that will need cleaning up????
@@ -1236,7 +1236,7 @@ else
         root_password=$(eval echo "${root_password}")
     fi
 
-    # If it has more than 3 consequtive X's in it, feed it
+    # If it has more than 3 consecutive X's in it, feed it
     # through mktemp as a template.
     if [ $(expr "${root_password}" : '.*XXXX') != 0 ]
     then

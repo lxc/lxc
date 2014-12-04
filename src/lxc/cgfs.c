@@ -1002,7 +1002,7 @@ static struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const c
 		continue;
 
 	cleanup_from_error:
-		/* called if an error occured in the loop, so we
+		/* called if an error occurred in the loop, so we
 		 * do some additional cleanup here
 		 */
 		saved_errno = errno;

@@ -86,7 +86,7 @@ typedef struct lxc_attach_options_t {
 	 */
 	long personality;
 
-	/*! Inital current directory, use \c NULL to use cwd.
+	/*! Initial current directory, use \c NULL to use cwd.
 	 * If the current directory does not exist in the container, the
 	 * root directory will be used instead because of kernel defaults.
 	 */

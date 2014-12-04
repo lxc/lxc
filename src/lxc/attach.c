@@ -729,7 +729,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	if (pid) {
 		pid_t to_cleanup_pid = pid;
 
-		/* inital thread, we close the socket that is for the
+		/* initial thread, we close the socket that is for the
 		 * subprocesses
 		 */
 		close(ipc_sockets[1]);

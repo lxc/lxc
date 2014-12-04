@@ -23,7 +23,7 @@
 
 /*
  * this is all just a first shot for experiment.  If we go this route, much
- * shoudl change.  bdev should be a directory with per-bdev file.  Things which
+ * should change.  bdev should be a directory with per-bdev file.  Things which
  * I'm doing by calling out to userspace should sometimes be done through
  * libraries like liblvm2
  */
@@ -3170,7 +3170,7 @@ static struct bdev * do_bdev_create(const char *dest, const char *type,
 /*
  * bdev_create:
  * Create a backing store for a container.
- * If successfull, return a struct bdev *, with the bdev mounted and ready
+ * If successful, return a struct bdev *, with the bdev mounted and ready
  * for use.  Before completing, the caller will need to call the
  * umount operation and bdev_put().
  * @dest: the mountpoint (i.e. /var/lib/lxc/$name/rootfs)

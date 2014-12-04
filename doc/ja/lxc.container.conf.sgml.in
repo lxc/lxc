@@ -723,7 +723,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               the maximum number of pseudo ttys allowed for a pts
               instance (this limitation is not implemented yet).
               -->
-              もし設定された場合、コンテナは新しい psuedo tty インスタンスを持ち、それを自身のプライベートとします。
+              もし設定された場合、コンテナは新しい pseudo tty インスタンスを持ち、それを自身のプライベートとします。
               この値は pts インスタンスに許可される pseudo tty の最大数を指定します (この制限はまだ実装されていません)。
 	    </para>
 	  </listitem>
