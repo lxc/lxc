@@ -46,7 +46,7 @@ static int create_container(void)
 again:
 	ret = waitpid(pid, &status, 0);
 	if (ret == -1) {
-		if (errno == -EINTR)
+		if (errno == EINTR)
 			goto again;
 		perror("waitpid");
 		return -1;

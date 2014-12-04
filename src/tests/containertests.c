@@ -48,7 +48,7 @@ static int destroy_busybox(void)
 again:
 	ret = waitpid(pid, &status, 0);
 	if (ret == -1) {
-		if (errno == -EINTR)
+		if (errno == EINTR)
 			goto again;
 		perror("waitpid");
 		return -1;
@@ -80,7 +80,7 @@ static int create_busybox(void)
 again:
 	ret = waitpid(pid, &status, 0);
 	if (ret == -1) {
-		if (errno == -EINTR)
+		if (errno == EINTR)
 			goto again;
 		perror("waitpid");
 		return -1;
