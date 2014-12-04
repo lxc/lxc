@@ -718,7 +718,7 @@ static int do_start(void *data)
 	}
 
 	/* The clearenv() and putenv() calls have been moved here
-	 * to allow us to use enviroment variables passed to the various
+	 * to allow us to use environment variables passed to the various
 	 * hooks, such as the start hook above.  Not all of the
 	 * variables like CONFIG_PATH or ROOTFS are valid in this
 	 * context but others are. */

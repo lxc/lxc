@@ -55,7 +55,7 @@
  * Each command is transactional, the clients send a request to
  * the server and the server answers the request with a message
  * giving the request's status (zero or a negative errno value).
- * Both the request and response may contain addtional data.
+ * Both the request and response may contain additional data.
  *
  * Each command is wrapped in a ancillary message in order to pass
  * a credential making possible to the server to check if the client

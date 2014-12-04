@@ -200,7 +200,7 @@ static int log_open(const char *name)
  * Build the path to the log file
  * @name     : the name of the container
  * @lxcpath  : the lxcpath to use as a basename or NULL to use LOGPATH
- * Returns malloced path on sucess, or NULL on failure
+ * Returns malloced path on success, or NULL on failure
  */
 static char *build_log_path(const char *name, const char *lxcpath)
 {
