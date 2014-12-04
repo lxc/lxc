@@ -42,7 +42,7 @@ if [ ! -f $CONFIG ]; then
     if [ ! -f "$CONFIG" ]; then
         MODULEFILE=$(modinfo -k $KVER -n $MODNAME 2> /dev/null)
         # don't want to modprobe, so give user a hint
-        # altho scripts/extract-ikconfig could be used to extract contents without loading kernel module
+        # although scripts/extract-ikconfig could be used to extract contents without loading kernel module
         # http://svn.pld-linux.org/trac/svn/browser/geninitrd/trunk/geninitrd?rev=12696#L327
     fi
     GREP=grep

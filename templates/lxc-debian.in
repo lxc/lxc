@@ -190,7 +190,7 @@ configure_debian_systemd()
 
     init="$(chroot ${rootfs} dpkg-query --search /sbin/init | cut -d : -f 1)"
     if [ "$init" = "systemd-sysv" ]; then
-       # only appropiate when systemd is PID 1
+       # only appropriate when systemd is PID 1
        echo 'lxc.autodev = 1' >> "$path/config"
        echo 'lxc.kmsg = 0' >> "$path/config"
     fi

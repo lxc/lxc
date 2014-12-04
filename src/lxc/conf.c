@@ -1297,7 +1297,7 @@ static int mount_autodev(const char *name, char *root, const char *lxcpath)
 		 * Get rid of old links and directoriess
 		 * This could be either a symlink and we remove it,
 		 * or an empty directory and we remove it,
-		 * or non-existant and we don't care,
+		 * or non-existent and we don't care,
 		 * or a non-empty directory, and we will then emit an error
 		 * but we will not fail out the process.
 		 */

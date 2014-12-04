@@ -1514,7 +1514,7 @@ static int config_mount(const char *key, const char *value,
 		return config_mount_auto(key, value, lxc_conf);
 	}
 
-	/* At this point we definately have key = lxc.mount.entry */
+	/* At this point we definitely have key = lxc.mount.entry */
 	if (!value || strlen(value) == 0)
 		return lxc_clear_mount_entries(lxc_conf);
 

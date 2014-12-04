@@ -343,7 +343,7 @@ void process_unlock(void)
 }
 
 /* One thread can do fork() while another one is holding a mutex.
- * There is only one thread in child just after the fork(), so noone will ever release that mutex.
+ * There is only one thread in child just after the fork(), so no one will ever release that mutex.
  * We setup a "child" fork handler to unlock the mutex just after the fork().
  * For several mutex types, unlocking an unlocked mutex can lead to undefined behavior.
  * One way to deal with it is to setup "prepare" fork handler

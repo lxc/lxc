@@ -142,7 +142,7 @@ cache_precheck()
     printf "### cache_precheck(): doing some pre-start checks ...\n"
     # never hurts to have a fail-safe.
     [[ -n "${cacheroot//\/}" ]] \
-        || die 8 "\$cacheroot (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPERATORS, THIS IS *VERY* BAD!\n" "${cacheroot}"
+        || die 8 "\$cacheroot (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPARATORS, THIS IS *VERY* BAD!\n" "${cacheroot}"
 }
 
 #get latest stage3 tarball
@@ -320,13 +320,13 @@ container_precheck()
     printf "### container_precheck(): doing some pre-start checks ...\n"
     # never hurts to have a fail-safe.
     [[ -n "${name//\/}" ]] \
-        || die 8 "\$name (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPERATORS, THIS IS *VERY* BAD!\n" "${name}"
+        || die 8 "\$name (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPARATORS, THIS IS *VERY* BAD!\n" "${name}"
 
     [[ -n "${rootfs//\/}" ]] \
-        || die 8 "\$rootfs (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPERATORS, THIS IS *VERY* BAD!\n" "${rootfs}"
+        || die 8 "\$rootfs (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPARATORS, THIS IS *VERY* BAD!\n" "${rootfs}"
 
     [[ -n "${cachefs//\/}" ]] \
-        || die 8 "\$cachefs (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPERATORS, THIS IS *VERY* BAD!\n" "${cachefs}"
+        || die 8 "\$cachefs (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPARATORS, THIS IS *VERY* BAD!\n" "${cachefs}"
 
     # check if the rootfs already exists
     [[ -d "${rootfs}/etc" ]] && die 18 "Error: \$rootfs (%s) already exists!" "${rootfs}"
@@ -473,7 +473,7 @@ lxc.mount.entry=${portage_distfiles_dir} ${portage_container/\//}/distfiles none
 #PKGDIR="\${PKGDIR}/amd64
 #or PKGDIR="\${PKGDIR}/hardened"
 EOF
-    printf " => portage stuff done, see /etc/portage/make.conf for additionnal tricks\n"
+    printf " => portage stuff done, see /etc/portage/make.conf for additional tricks\n"
 
 }
 
@@ -564,7 +564,7 @@ container_net()
     #Analyse network configuration in config
     container_conf_net "$path/config" >> "${rootfs}/etc/conf.d/net"
 
-        # found how much nic finaly have
+        # found how much nic finally have
     nic_count=$(( ${nic_last} + 1 ))
 
         # unless openrc manage a nic, we now have to force openrc to automatic

@@ -140,7 +140,7 @@ struct lxc_netdev {
 /*
  * Defines a generic struct to configure the control group.
  * It is up to the programmer to specify the right subsystem.
- * @subsystem : the targetted subsystem
+ * @subsystem : the targeted subsystem
  * @value     : the value to set
  */
 struct lxc_cgroup {
