@@ -1419,7 +1419,7 @@ static int btrfs_snapshot(const char *orig, const char *new)
 		goto out;
 	}
 	// make sure the directory doesn't already exist
-	if (rmdir(newfull) < 0 && errno != -ENOENT) {
+	if (rmdir(newfull) < 0 && errno != ENOENT) {
 		SYSERROR("Error removing empty new rootfs");
 		goto out;
 	}
@@ -1512,7 +1512,7 @@ static int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *old
 		return userns_exec_1(conf, btrfs_snapshot_wrapper, &sdata);
 	}
 
-	if (rmdir(new->dest) < 0 && errno != -ENOENT) {
+	if (rmdir(new->dest) < 0 && errno != ENOENT) {
 		SYSERROR("removing %s", new->dest);
 		return -1;
 	}

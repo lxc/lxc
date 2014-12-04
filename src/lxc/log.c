@@ -159,7 +159,7 @@ static int build_dir(const char *name)
 		*p = '\0';
 		if (access(n, F_OK)) {
 			ret = lxc_unpriv(mkdir(n, 0755));
-			if (ret && errno != -EEXIST) {
+			if (ret && errno != EEXIST) {
 				SYSERROR("failed to create directory '%s'.", n);
 				free(n);
 				return -1;
