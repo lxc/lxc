@@ -38,7 +38,7 @@ done
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
-DISTRO=12.3
+DISTRO=13.1
 
 configure_opensuse()
 {
