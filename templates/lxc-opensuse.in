@@ -380,8 +380,8 @@ usage()
 {
     cat <<EOF
 $1 -h|--help -p|--path=<path> -r|--release nn.n --clean
-Please give the release as 12.3, 13.1, 13.2 etc.
-If no release is given, openSUSE 12.3 is installed.
+Please give the release as 13.1, 13.2 etc.
+If no release is given, openSUSE 13.1 is installed.
 EOF
     return 0
 }
@@ -433,15 +433,11 @@ fi
 
 if [ -z "$DISTRO" ]; then
     echo ""
-    echo "No release selected, using openSUSE 12.3"
-    DISTRO=12.3
+    echo "No release selected, using openSUSE 13.1"
+    DISTRO=13.1
 else
     echo ""
     case "$DISTRO" in
-	12.3)
-	    echo "Selected openSUSE 12.3"
-	    ;;
-
 	13.1)
 	    echo "Selected openSUSE 13.1"
 	    ;;
