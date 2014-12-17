@@ -1280,7 +1280,7 @@ static int lxc_cgroup_set_data(const char *filename, const char *value, struct c
 
 	subsystem = alloca(strlen(filename) + 1);
 	strcpy(subsystem, filename);
-	if ((p = index(subsystem, '.')) != NULL)
+	if ((p = strchr(subsystem, '.')) != NULL)
 		*p = '\0';
 
 	path = lxc_cgroup_get_hierarchy_abs_path_data(subsystem, d);
@@ -1298,7 +1298,7 @@ static int lxc_cgroupfs_set(const char *filename, const char *value, const char 
 
 	subsystem = alloca(strlen(filename) + 1);
 	strcpy(subsystem, filename);
-	if ((p = index(subsystem, '.')) != NULL)
+	if ((p = strchr(subsystem, '.')) != NULL)
 		*p = '\0';
 
 	path = lxc_cgroup_get_hierarchy_abs_path(subsystem, name, lxcpath);
@@ -1316,7 +1316,7 @@ static int lxc_cgroupfs_get(const char *filename, char *value, size_t len, const
 
 	subsystem = alloca(strlen(filename) + 1);
 	strcpy(subsystem, filename);
-	if ((p = index(subsystem, '.')) != NULL)
+	if ((p = strchr(subsystem, '.')) != NULL)
 		*p = '\0';
 
 	path = lxc_cgroup_get_hierarchy_abs_path(subsystem, name, lxcpath);

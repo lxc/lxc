@@ -117,10 +117,10 @@ again:
 	}
 	if (ret >= sz)
 		goto again;
-	space = index(buf, '\n');
+	space = strchr(buf, '\n');
 	if (space)
 		*space = '\0';
-	space = index(buf, ' ');
+	space = strchr(buf, ' ');
 	if (space)
 		*space = '\0';
 	return buf;

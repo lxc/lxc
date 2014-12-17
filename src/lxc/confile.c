@@ -298,7 +298,7 @@ static int config_network_nic(const char *key, const char *value,
 	 */
 	if (*(key+12) < '0' || *(key+12) > '9')
 		goto out;
-	p = index(key+12, '.');
+	p = strchr(key+12, '.');
 	if (!p)
 		goto out;
 	strcpy(copy+12, p+1);
@@ -2071,8 +2071,8 @@ static int lxc_get_item_hooks(struct lxc_conf *c, char *retv, int inlen,
 	int i;
 
 	/* "lxc.hook.mount" */
-	subkey = index(key, '.');
-	if (subkey) subkey = index(subkey+1, '.');
+	subkey = strchr(key, '.');
+	if (subkey) subkey = strchr(subkey+1, '.');
 	if (!subkey)
 		return -1;
 	subkey++;
@@ -2236,7 +2236,7 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	p1 = index(key, '.');
+	p1 = strchr(key, '.');
 	if (!p1 || *(p1+1) == '\0') return -1;
 	p1++;
 

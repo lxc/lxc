@@ -3914,7 +3914,7 @@ int lxc_clear_nic(struct lxc_conf *c, const char *key)
 	struct lxc_list *it;
 	struct lxc_netdev *netdev;
 
-	p1 = index(key, '.');
+	p1 = strchr(key, '.');
 	if (!p1 || *(p1+1) == '\0')
 		p1 = NULL;
 

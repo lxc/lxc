@@ -4303,7 +4303,7 @@ int list_active_containers(const char *lxcpath, char ***nret,
 			p++;
 
 		// Now p is the start of lxc_name
-		p2 = index(p, '/');
+		p2 = strchr(p, '/');
 		if (!p2 || strncmp(p2, "/command", 8) != 0)
 			continue;
 		*p2 = '\0';

@@ -149,10 +149,10 @@ static int test_attach_lsm_cmd(struct lxc_container *ct)
 		goto err2;
 	}
 	result[ret] = '\0';
-	space = index(result, '\n');
+	space = strchr(result, '\n');
 	if (space)
 		*space = '\0';
-	space = index(result, ' ');
+	space = strchr(result, ' ');
 	if (space)
 		*space = '\0';
 
