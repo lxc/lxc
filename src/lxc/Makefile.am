@@ -209,6 +209,26 @@ AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
 endif
 LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@ @SELINUX_LIBS@ @SECCOMP_LIBS@
 
+lxc_attach_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_autostart_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_cgroup_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_clone_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_config_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_console_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_create_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_destroy_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_execute_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_freeze_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_info_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_monitor_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_snapshot_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_start_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_stop_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_unfreeze_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_unshare_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_usernsexec_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+lxc_wait_LDFLAGS = -pie -FPIE $(AM_LDFLAGS)
+
 lxc_attach_SOURCES = lxc_attach.c
 lxc_autostart_SOURCES = lxc_autostart.c
 lxc_cgroup_SOURCES = lxc_cgroup.c
