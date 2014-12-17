@@ -427,8 +427,10 @@ if [ -z "$path" ]; then
 fi
 
 if grep -q Harlequin /etc/os-release || grep -q Tumbleweed /etc/os-release ; then
-    echo "Building containers on openSUSE 13.2 or Tumbleweed is broken at the moment. We are working on this problem."
-    exit 1
+    if [[ "$(zypper info build|awk -F "[- ]" '/Version/ {print $2}')" -lt "20141120" ]] ; then
+	echo "Building openSUSE containers with your version of the build package is broken. Please install the update to version 20141120 or newer."
+	exit 1
+    fi
 fi
 
 if [ -z "$DISTRO" ]; then
