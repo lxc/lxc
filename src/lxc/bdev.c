@@ -330,17 +330,17 @@ static int detect_fs(struct bdev *bdev, char *type, int len)
 	if (!f)
 		exit(1);
 	while (getline(&line, &linelen, f) != -1) {
-		sp1 = index(line, ' ');
+		sp1 = strchr(line, ' ');
 		if (!sp1)
 			exit(1);
 		*sp1 = '\0';
 		if (strcmp(line, l))
 			continue;
-		sp2 = index(sp1+1, ' ');
+		sp2 = strchr(sp1+1, ' ');
 		if (!sp2)
 			exit(1);
 		*sp2 = '\0';
-		sp3 = index(sp2+1, ' ');
+		sp3 = strchr(sp2+1, ' ');
 		if (!sp3)
 			exit(1);
 		*sp3 = '\0';
@@ -612,7 +612,7 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 
 	if (zfs_list_entry(opath, output, MAXPATHLEN)) {
 		// zfsroot is output up to ' '
-		if ((p = index(output, ' ')) == NULL)
+		if ((p = strchr(output, ' ')) == NULL)
 			return -1;
 		*p = '\0';
 		if ((p = strrchr(output, '/')) == NULL)
@@ -732,7 +732,7 @@ static int zfs_destroy(struct bdev *orig)
 	}
 
 	// zfs mount is output up to ' '
-	if ((p = index(output, ' ')) == NULL)
+	if ((p = strchr(output, ' ')) == NULL)
 		return -1;
 	*p = '\0';
 
@@ -2170,9 +2170,9 @@ static int overlayfs_mount(struct bdev *bdev)
 	//  mount -t overlayfs -oupperdir=${upper},lowerdir=${lower} lower dest
 	dup = alloca(strlen(bdev->src)+1);
 	strcpy(dup, bdev->src);
-	if (!(lower = index(dup, ':')))
+	if (!(lower = strchr(dup, ':')))
 		return -22;
-	if (!(upper = index(++lower, ':')))
+	if (!(upper = strchr(++lower, ':')))
 		return -22;
 	*upper = '\0';
 	upper++;
@@ -2370,8 +2370,8 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		int len, ret, lastslashidx;
 		if (!(osrc = strdup(orig->src)))
 			return -22;
-		nsrc = index(osrc, ':') + 1;
-		if (nsrc != osrc + 10 || (odelta = index(nsrc, ':')) == NULL) {
+		nsrc = strchr(osrc, ':') + 1;
+		if (nsrc != osrc + 10 || (odelta = strchr(nsrc, ':')) == NULL) {
 			free(osrc);
 			return -22;
 		}
@@ -2455,7 +2455,7 @@ static int overlayfs_destroy(struct bdev *orig)
 
 	if (strncmp(orig->src, "overlayfs:", 10) != 0)
 		return -22;
-	upper = index(orig->src + 10, ':');
+	upper = strchr(orig->src + 10, ':');
 	if (!upper)
 		return -22;
 	upper++;
@@ -2553,9 +2553,9 @@ static int aufs_mount(struct bdev *bdev)
 	//  mount -t aufs -obr=${upper}=rw:${lower}=ro lower dest
 	dup = alloca(strlen(bdev->src)+1);
 	strcpy(dup, bdev->src);
-	if (!(lower = index(dup, ':')))
+	if (!(lower = strchr(dup, ':')))
 		return -22;
-	if (!(upper = index(++lower, ':')))
+	if (!(upper = strchr(++lower, ':')))
 		return -22;
 	*upper = '\0';
 	upper++;
@@ -2690,8 +2690,8 @@ static int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldn
 		int len, ret;
 		if (!(osrc = strdup(orig->src)))
 			return -22;
-		nsrc = index(osrc, ':') + 1;
-		if (nsrc != osrc + 5 || (odelta = index(nsrc, ':')) == NULL) {
+		nsrc = strchr(osrc, ':') + 1;
+		if (nsrc != osrc + 5 || (odelta = strchr(nsrc, ':')) == NULL) {
 			free(osrc);
 			return -22;
 		}
@@ -2737,7 +2737,7 @@ static int aufs_destroy(struct bdev *orig)
 
 	if (strncmp(orig->src, "aufs:", 5) != 0)
 		return -22;
-	upper = index(orig->src + 5, ':');
+	upper = strchr(orig->src + 5, ':');
 	if (!upper)
 		return -22;
 	upper++;
@@ -3515,7 +3515,7 @@ struct bdev *bdev_create(const char *dest, const char *type,
 	}
 
 	// -B lvm,dir
-	if (index(type, ',') != NULL) {
+	if (strchr(type, ',') != NULL) {
 		char *dup = alloca(strlen(type)+1), *saveptr = NULL, *token;
 		strcpy(dup, type);
 		for (token = strtok_r(dup, ",", &saveptr); token;
@@ -3530,7 +3530,7 @@ struct bdev *bdev_create(const char *dest, const char *type,
 
 char *overlay_getlower(char *p)
 {
-	char *p1 = index(p, ':');
+	char *p1 = strchr(p, ':');
 	if (p1)
 		*p1 = '\0';
 	return p;
