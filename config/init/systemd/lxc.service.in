@@ -12,6 +12,7 @@ ExecStart=@LIBEXECDIR@/lxc/lxc-containers start
 ExecStop=@LIBEXECDIR@/lxc/lxc-containers stop
 # Environment=BOOTUP=serial
 # Environment=CONSOLETYPE=serial
+Delegate=yes
 StandardOutput=syslog
 StandardError=syslog
 
