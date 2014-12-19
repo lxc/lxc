@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <seccomp.h>
 #include <sys/utsname.h>
+#include <sys/mount.h>
 
 #include "config.h"
 #include "lxcseccomp.h"
@@ -186,6 +187,18 @@ bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 		ERROR("BUG: seccomp: rule and context arch do not match (arch %d)", arch);
 		return false;
 	}
+
+	if (strncmp(line, "reject_force_umount", 19) == 0) {
+		INFO("Setting seccomp rule to reject force umounts\n");
+		ret = seccomp_rule_add_exact(ctx, SCMP_ACT_ERRNO(EACCES), SCMP_SYS(umount2),
+				1, SCMP_A1(SCMP_CMP_MASKED_EQ , MNT_FORCE , MNT_FORCE ));
+		if (ret < 0) {
+			ERROR("failed (%d) loading rule to reject force umount", ret);
+			return false;
+		}
+		return true;
+	}
+
 	nr = seccomp_syscall_resolve_name(line);
 	if (nr == __NR_SCMP_ERROR) {
 		WARN("Seccomp: failed to resolve syscall: %s", line);
@@ -393,6 +406,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 			goto bad;
 		}
 	}
+
 	return 0;
 
 bad_arch:
