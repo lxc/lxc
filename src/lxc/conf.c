@@ -4158,20 +4158,18 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (lxc_list_empty(&lxc_conf->id_map)) {
-		if (!lxc_list_empty(&lxc_conf->keepcaps)) {
-			if (!lxc_list_empty(&lxc_conf->caps)) {
-				ERROR("Simultaneously requested dropping and keeping caps");
-				return -1;
-			}
-			if (dropcaps_except(&lxc_conf->keepcaps)) {
-				ERROR("failed to keep requested caps");
-				return -1;
-			}
-		} else if (setup_caps(&lxc_conf->caps)) {
-			ERROR("failed to drop capabilities");
+	if (!lxc_list_empty(&lxc_conf->keepcaps)) {
+		if (!lxc_list_empty(&lxc_conf->caps)) {
+			ERROR("Simultaneously requested dropping and keeping caps");
 			return -1;
 		}
+		if (dropcaps_except(&lxc_conf->keepcaps)) {
+			ERROR("failed to keep requested caps");
+			return -1;
+		}
+	} else if (setup_caps(&lxc_conf->caps)) {
+		ERROR("failed to drop capabilities");
+		return -1;
 	}
 
 	NOTICE("'%s' is setup.", name);
