@@ -70,9 +70,10 @@
   mount fstype=efivarfs -> /sys/firmware/efi/efivars/,
 
   # block some other dangerous paths
-  deny @{PROC}/sysrq-trigger rwklx,
-  deny @{PROC}/mem rwklx,
+  deny @{PROC}/kcore rwklx,
   deny @{PROC}/kmem rwklx,
+  deny @{PROC}/mem rwklx,
+  deny @{PROC}/sysrq-trigger rwklx,
 
   # deny writes in /sys except for /sys/fs/cgroup, also allow
   # fusectl, securityfs and debugfs to be mounted there (read-only)
