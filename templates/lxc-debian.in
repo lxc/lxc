@@ -225,8 +225,12 @@ configure_debian_systemd()
 
 cleanup()
 {
-    rm -rf $cache/partial-$release-$arch
-    rm -rf $cache/rootfs-$release-$arch
+    if [ -z "$keep_cache" ]; then
+        rm -rf $cache/partial-$release-$arch
+        rm -rf $cache/rootfs-$release-$arch
+    else
+        echo "kept the cache"
+    fi
 }
 
 download_debian()
@@ -441,7 +445,7 @@ Template specific options can be passed to lxc-create after a '--' like this:
 
   lxc-create --name=NAME [-lxc-create-options] -- [-template-options]
 
-Usage: $1 -h|--help -p|--path=<path> [-c|--clean] [-a|--arch=<arch>] [-r|--release=<release>]
+Usage: $1 -h|--help -p|--path=<path> [-c|--clean] [-k|--keep] [-a|--arch=<arch>] [-r|--release=<release>]
                                      [--mirror=<mirror>] [--security-mirror=<security mirror>]
                                      [--package=<package_name1,package_name2,...>]
 
@@ -461,6 +465,7 @@ Options :
   --packages=PACKAGE_NAME1,PACKAGE_NAME2,...
                          List of additional packages to install. Comma separated, without space.
   -c, --clean            only clean up the cache and terminate
+  -k, --keep             don't clean up the cache on termination
 
 Environment variables:
 
@@ -473,7 +478,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:r:c -l arch:,clean,help,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror: -- "$@")
+options=$(getopt -o hp:n:a:r:ck -l arch:,clean,keep,help,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror: -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
         exit 1
@@ -494,6 +499,8 @@ else
 fi
 hostarch=$arch
 
+keep_cache=
+
 while true
 do
     case "$1" in
@@ -502,7 +509,8 @@ do
 
         -a|--arch)            arch=$2; shift 2;;
         -c|--clean)           clean=$2; shift 1;;
-           --mirror)          MIRROR=$2; shift 2;;
+        -k|--keep)            keep_cache=1; shift 1;;
+        --mirror)             MIRROR=$2; shift 2;;
         -n|--name)            name=$2; shift 2;;
            --packages)        packages=$2; shift 2;;
         -p|--path)            path=$2; shift 2;;
