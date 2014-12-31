@@ -28,10 +28,15 @@ get_static_apk () {
 
     if [ -z "$repository" ]; then
         url=http://wiki.alpinelinux.org/cgi-bin/dl.cgi
+	yaml_path="latest-stable/releases/$apk_arch/latest-releases.yaml"
         if [ -z "$release" ]; then
             echo -n "Determining the latest release... "
-            release=$($wget $url/.latest.$apk_arch.txt | \
-                cut -d " " -f 3 | cut -d / -f 1 | uniq)
+            release=$($wget $url/$yaml_path | \
+	        awk '$1 == "branch:" {print $2; exit 0}')
+            if [ -z "$release" ]; then
+                release=$($wget $url/.latest.$apk_arch.txt | \
+                    cut -d " " -f 3 | cut -d / -f 1 | uniq)
+            fi
             if [ -z "$release" ]; then
                 echo failed
                 return 1
