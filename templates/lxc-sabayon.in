@@ -1,0 +1,34 @@
+### with a few add on commands add the Sabayon Linux Overlays. 
+### goals an easy to Install Sabayon Linux Builder conainer, which is Gentoo Comapatable , 
+#### yet faster to update & administrate... and or a GP Sabayon box sutable for a server farm LXC Virtual hosting... 
+###  Requires Gentoo, lxc-gentoo.in run gentoo then these few conversions ####
+Include lxc-gentoo.in
+emerge --sync
+### wait till fin Sync portage source tree 
+sleep=n # wait x  .... ???
+emerge --buildpkg  sys-apps/entropy sys-apps/file[python] layman equo eix
+## Adds Sabayon EQUO && Entropy , layman too eix.
+## we'll do this incase entropy and EQUO Fry out one can add pkg via emerge which in some cases has bit me in the ass before..
+
+sleep=n # wait x  .... ???
+layman -L 
+sleep=45  # wait takes about 45-60 secounds to pull at worst. 
+## gent List of overlays --Sync to Db locally , 
+layman -f -a sabayon sabayon-distro 
+### Add sabayon src repos incase we need to build., also adds package masks etc to keep bad stuff from buuilding that dont agree with Sabayon. 
+ equo update && equo repo mirrorsort sabayonlinux.org
+## update binaries package lists and repos Sort repos else you'll have GARR.. 
+## (university) in IT,  sort to fastests mirrors posible so updates are fast as posible. 
+equo rescue spmsync 
+sleep=600   # wait takes about 30 mins on a rescued gentoo/sab box however new box shouldn't take long. 
+### not always nessisary but since migrating... sync world to entropy DB. ###
+equo install entropy equo
+## update entropy core  and equo entropy txt client 
+equo upgrade
+wait till exit ??? 
+equo deptest && equo libtest  ### tests dependancies and libs installs if required 
+wait till exit ??? 
+equo conf update   ### ???? some means of saying -5 to all (YES merge) 
+
+ECHO " Confgradualtions Sabayon Linux is now Installed, however only X64 is officially supported" 
+
