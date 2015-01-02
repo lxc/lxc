@@ -823,6 +823,13 @@ download_fedora()
         PKG_LIST="${PKG_LIST} db4-utils"
     fi
 
+    if [[ ${release} -ge 21 ]]
+    then
+        # Since Fedora 21, a separate fedora-repos package is needed.
+        # Before, the information was conained in fedora-release.
+        PKG_LIST="${PKG_LIST} fedora-repos"
+    fi
+
     DOWNLOAD_OK=no
 
     # We're splitting the old loop into two loops plus a directory retrival.
@@ -851,7 +858,7 @@ download_fedora()
             RELEASE_URL="$MIRROR_URL/Packages/"
         fi
 
-        echo "Fetching rpm name from $RELEASE_URL..."
+        echo "Fetching release rpm name from $RELEASE_URL..."
         # This code is mildly "brittle" in that it assumes a certain directory
         # page format and parsing HTML.  I've done worse.  :-P
         RELEASE_RPM=$(curl -L -f "$RELEASE_URL" | sed -e "/fedora-release-${release}-/!d" -e 's/.*<a href=\"//' -e 's/\">.*//' )
@@ -866,6 +873,24 @@ download_fedora()
             echo "Failed to download fedora release rpm ${RELEASE_RPM}."
             continue
         fi
+
+        # F21 and newer need fedora-repos in addition to fedora-release.
+        if [ "$release" -ge "21" ]; then
+          echo "Fetching repos rpm name from $RELEASE_URL..."
+          REPOS_RPM=$(curl -L -f "$RELEASE_URL" | sed -e "/fedora-repos-${release}-/!d" -e 's/.*<a href=\"//' -e 's/\">.*//' )
+          if [ $? -ne 0  -o "${REPOS_RPM}" = "" ]; then
+              echo "Failed to identify fedora repos rpm."
+              continue
+          fi
+
+          echo "Fetching fedora repos rpm from ${RELEASE_URL}/${REPOS_RPM}..."
+          curl -L -f "${RELEASE_URL}/${REPOS_RPM}" > ${INSTALL_ROOT}/${REPOS_RPM}
+          if [ $? -ne 0 ]; then
+              echo "Failed to download fedora repos rpm ${RELEASE_RPM}."
+              continue
+          fi
+        fi
+
 
         DOWNLOAD_OK=yes
         break
@@ -887,8 +912,17 @@ download_fedora()
     fedora_bootstrap_mounts
 
     ${BOOTSTRAP_CHROOT}rpm --root ${BOOTSTRAP_INSTALL_ROOT} --initdb
+
     # The --nodeps is STUPID but F15 had a bogus dependency on RawHide?!?!
     ${BOOTSTRAP_CHROOT}rpm --root ${BOOTSTRAP_INSTALL_ROOT} --nodeps -ivh ${BOOTSTRAP_INSTALL_ROOT}/${RELEASE_RPM}
+
+    # F21 and newer need fedora-repos in addition to fedora-release...
+    # Note that fedora-release and fedora-system have a mutual dependency.
+    # So installing the reops package after the release package we can
+    # spare one --nodeps.
+    if [ "$release" -ge "21" ]; then
+      ${BOOTSTRAP_CHROOT}rpm --root ${BOOTSTRAP_INSTALL_ROOT} -ivh ${BOOTSTRAP_INSTALL_ROOT}/${REPOS_RPM}
+    fi
 
     # yum will take $basearch from host, so force the arch we want
     sed -i "s|\$basearch|$basearch|" ${BOOTSTRAP_DIR}/${BOOTSTRAP_INSTALL_ROOT}/etc/yum.repos.d/*
