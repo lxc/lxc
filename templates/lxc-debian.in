@@ -573,7 +573,7 @@ configure_debian_systemd $path $rootfs
 
 post_process ${rootfs} ${release} ${arch} ${hostarch} ${packages}
 
-if [ ! -z $clean ]; then
+if [ ! -z "$clean" ]; then
     clean || exit 1
     exit 0
 fi
