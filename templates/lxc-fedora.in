@@ -1215,7 +1215,7 @@ do
         -p|--path)      path=$2; shift 2;;
         --rootfs)       rootfs=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
-        -c|--clean)     clean=$2; shift 2;;
+        -c|--clean)     clean=1; shift 1;;
         -R|--release)   release=$2; shift 2;;
         -a|--arch)      newarch=$2; shift 2;;
         --fqdn)         utsname=$2; shift 2;;
