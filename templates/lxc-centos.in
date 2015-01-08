@@ -887,7 +887,7 @@ fi
 
 configure_centos_init
 
-if [ ! -z $clean ]; then
+if [ ! -z "$clean" ]; then
     clean || exit 1
     exit 0
 fi
