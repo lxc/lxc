@@ -403,7 +403,7 @@ do
         -p|--path)      path=$2; shift 2;;
         --rootfs)       rootfs=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
-	-r|--release)   DISTRO=$2; shift 2;;
+        -r|--release)   DISTRO=$2; shift 2;;
         -c|--clean)     clean=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
