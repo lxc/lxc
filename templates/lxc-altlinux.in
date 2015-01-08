@@ -398,7 +398,7 @@ do
         --rootfs)       rootfs_path=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
         -P|--profile)   profile=$2; shift 2;;
-        -c|--clean)     clean=$2; shift 2;;
+        -c|--clean)     clean=1; shift 1;;
         -R|--release)   release=$2; shift 2;;
         -4|--ipv4)      ipv4=$2; shift 2;;
         -6|--ipv6)      ipv6=$2; shift 2;;
