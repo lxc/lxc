@@ -13,7 +13,7 @@
   mount -> /usr/lib/lxc/{**,},
   mount fstype=devpts -> /dev/pts/,
   mount options=bind /dev/pts/ptmx/ -> /dev/ptmx/,
-  mount options=(rw, slave) -> /,
+  mount options=(rw, make-slave) -> **,
   mount fstype=debugfs,
   # allow pre-mount hooks to stage mounts under /var/lib/lxc/<container>/
   mount -> /var/lib/lxc/{**,},
