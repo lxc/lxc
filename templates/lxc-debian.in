@@ -438,6 +438,7 @@ usage()
 {
     cat <<EOF
 $1 -h|--help -p|--path=<path> [-a|--arch] [-c|--clean] [--mirror=<mirror>] [-r|--release=<release>] [--security-mirror=<security mirror>]
+clean: purge the download cache after installation
 arch: the container architecture (e.g. amd64): defaults to host arch
 release: the debian release (e.g. wheezy): defaults to current stable
 mirror: debain mirror to use during installation
