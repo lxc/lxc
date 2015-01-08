@@ -1184,15 +1184,18 @@ usage()
     cat <<EOF
 usage:
     $1 -n|--name=<container_name>
-        [-p|--path=<path>] [-c|--clean] [-R|--release=<Fedora_release>] [--fqdn=<network name of container>] [-a|--arch=<arch of the container>]
+        [-p|--path=<path>] [-c|--clean] [-R|--release=<Fedora_release>]
+        [--fqdn=<network name of container>] [-a|--arch=<arch of the container>]
         [-h|--help]
 Mandatory args:
-  -n,--name         container name, used to as an identifier for that container from now on
+  -n,--name         container name, used to as an identifier for that container
 Optional args:
-  -p,--path         path to where the container will be created, defaults to @LXCPATH@. The container config will go under @LXCPATH@ in that case
+  -p,--path         path to where the container will be created,
+                    defaults to @LXCPATH@.
   --rootfs          path for actual rootfs.
   -c,--clean        clean the cache
-  -R,--release      Fedora release for the new container. if the host is Fedora, then it will default to the host's release.
+  -R,--release      Fedora release for the new container.
+                    Defaults to host's release if the host is Fedora.
      --fqdn         fully qualified domain name (FQDN) for DNS and system naming
   -a,--arch         Define what arch the container will be [i686,x86_64]
   -h,--help         print this help
