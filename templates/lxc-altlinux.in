@@ -478,7 +478,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-if [ ! -z $clean ]; then
+if [ ! -z "$clean" ]; then
     clean || exit 1
     exit 0
 fi
