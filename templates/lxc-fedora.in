@@ -1415,7 +1415,7 @@ then
     configure_fedora_init
 fi
 
-if [ ! -z $clean ]; then
+if [ ! -z "$clean" ]; then
     clean || exit 1
     exit 0
 fi
