@@ -1513,7 +1513,7 @@ int prepare_ramfs_root(char *root)
 		return -1;
 	}
 
-	if (mount(".", NULL, NULL, MS_REC | MS_PRIVATE, NULL)) {
+	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL)) {
 		SYSERROR("Failed to make . rprivate");
 		return -1;
 	}
