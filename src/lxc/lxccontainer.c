@@ -457,6 +457,14 @@ static bool lxcapi_load_config(struct lxc_container *c, const char *alt_file)
 	return ret;
 }
 
+static void do_set_daemonize(struct lxc_container *c, bool state)
+{
+	c->daemonize = state;
+	/* daemonize implies close_all_fds so set it */
+	if (state)
+		c->lxc_conf->close_all_fds = 1;
+}
+
 static bool lxcapi_want_daemonize(struct lxc_container *c, bool state)
 {
 	if (!c || !c->lxc_conf)
@@ -465,10 +473,7 @@ static bool lxcapi_want_daemonize(struct lxc_container *c, bool state)
 		ERROR("Error getting mem lock");
 		return false;
 	}
-	c->daemonize = state;
-	/* daemonize implies close_all_fds so set it */
-	if (state == 1)
-		c->lxc_conf->close_all_fds = 1;
+	do_set_daemonize(c, state);
 	container_mem_unlock(c);
 	return true;
 }
@@ -4098,7 +4103,9 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 		container_destroy(c);
 		lxcapi_clear_config(c);
 	}
-	c->daemonize = true;
+	if (!c->lxc_conf)
+		c->lxc_conf = lxc_conf_init();
+	do_set_daemonize(c, true);
 	c->pidfile = NULL;
 
 	// assign the member functions
