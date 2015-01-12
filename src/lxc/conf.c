@@ -94,10 +94,7 @@
 
 lxc_log_define(lxc_conf, lxc);
 
-#define MAXHWLEN    18
-#define MAXINDEXLEN 20
-#define MAXMTULEN   16
-#define MAXLINELEN  128
+#define LINELEN 4096
 
 #if HAVE_SYS_CAPABILITY_H
 #ifndef CAP_SETFCAP
@@ -294,9 +291,6 @@ static struct caps_opt caps_opt[] = {
 #else
 static struct caps_opt caps_opt[] = {};
 #endif
-
-const char *dev_base_path = "/dev/.lxc";
-const char *dev_user_path = "/dev/.lxc/user";
 
 static int run_buffer(char *buffer)
 {
@@ -1092,247 +1086,47 @@ fail:
 }
 
 /*
- * Check to see if a directory has something mounted on it and,
- * if it does, return the fstype.
- *
- * Code largely based on detect_shared_rootfs below
- *
- * Returns: # of matching entries in /proc/self/mounts
- * 	if != 0 fstype is filled with the last filesystem value.
- * 	if == 0 no matches found, fstype unchanged.
- *
- * ToDo: Maybe return the mount options in another parameter...
- */
-
-#define LINELEN 4096
-#define MAX_FSTYPE_LEN 128
-static int mount_check_fs( const char *dir, char *fstype )
-{
-	char buf[LINELEN], *p;
-	struct stat s;
-	FILE *f;
-	int found_fs = 0;
-	char *p2;
-
-	DEBUG("entering mount_check_fs for %s", dir);
-
-	if ( 0 != access(dir, F_OK) || 0 != stat(dir, &s) || 0 == S_ISDIR(s.st_mode) ) {
-		return 0;
-	}
-
-	f = fopen("/proc/self/mounts", "r");
-	if (!f)
-		return 0;
-	while (fgets(buf, LINELEN, f)) {
-		p = index(buf, ' ');
-		if( !p )
-			continue;
-		*p = '\0';
-		p2 = p + 1;
-
-		p = index(p2, ' ');
-		if( !p )
-			continue;
-		*p = '\0';
-
-		/* Compare the directory in the entry to desired */
-		if( strcmp( p2, dir ) ) {
-			continue;
-		}
-
-		p2 = p + 1;
-		p = index( p2, ' ');
-		if( !p )
-			continue;
-		*p = '\0';
-
-		++found_fs;
-
-		if( fstype ) {
-			strncpy( fstype, p2, MAX_FSTYPE_LEN - 1 );
-			fstype [ MAX_FSTYPE_LEN - 1 ] = '\0';
-		}
-	}
-
-	fclose(f);
-
-	DEBUG("mount_check_fs returning %d last %s", found_fs, fstype);
-
-	return found_fs;
-}
-
-/*
- * Locate a devtmpfs mount (should be on /dev) and create a container
- * subdirectory on it which we can then bind mount to the container
- * /dev instead of mounting a tmpfs there.
- * If we fail, return NULL.
- * Else return the pointer to the name buffer with the string to
- * the devtmpfs subdirectory.
- */
-
-static char *mk_devtmpfs(const char *name, char *path, const char *lxcpath)
-{
-	int ret;
-	struct stat s;
-	char tmp_path[MAXPATHLEN];
-	char fstype[MAX_FSTYPE_LEN];
-	uint64_t hash;
-
-	if ( 0 != access(dev_base_path, F_OK) || 0 != stat(dev_base_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
-		/* This is just making /dev/.lxc it better work or we're done */
-		ret = mkdir(dev_base_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-		if ( ret ) {
-			SYSERROR( "Unable to create /dev/.lxc for autodev" );
-			return NULL;
-		}
-	}
-
-	/*
-	 * Programmers notes:
-	 * 	We can not do mounts in this area of code that we want
-	 * 	to be visible in the host.  Consequently, /dev/.lxc must
-	 * 	be set up earlier if we need a tmpfs mounted there.
-	 * 	That only affects the rare cases where autodev is enabled
-	 * 	for a container and devtmpfs is not mounted on /dev in the
-	 * 	host.  In that case, we'll fall back to the old method
-	 * 	of mounting a tmpfs in the container and have no visibility
-	 * 	into the container /dev.
-	 */
-	if( ! mount_check_fs( "/dev", fstype )
-		|| strcmp( "devtmpfs", fstype ) ) {
-		/* Either /dev was not mounted or was not devtmpfs */
-
-		if ( ! mount_check_fs( "/dev/.lxc", NULL ) ) {
-			/*
-			 * /dev/.lxc is not already mounted
-			 * Doing a mount here does no good, since
-			 * it's not visible in the host.
-			 */
-
-			ERROR("/dev/.lxc is not setup - taking fallback" );
-			return NULL;
-		}
-	}
-
-	if ( 0 != access(dev_user_path, F_OK) || 0 != stat(dev_user_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
-		/*
-		 * This is making /dev/.lxc/user path for non-priv users.
-		 * If this doesn't work, we'll have to fall back in the
-		 * case of non-priv users.  It's mode 1777 like /tmp.
-		 */
-		ret = mkdir(dev_user_path, S_IRWXU | S_IRWXG | S_IRWXO | S_ISVTX);
-		if ( ret ) {
-			/* Issue an error but don't fail yet! */
-			ERROR("Unable to create /dev/.lxc/user");
-		}
-		/* Umask tends to screw us up here */
-		chmod(dev_user_path, S_IRWXU | S_IRWXG | S_IRWXO | S_ISVTX);
-	}
-
-	/*
-	 * Since the container name must be unique within a given
-	 * lxcpath, we're going to use a hash of the path
-	 * /lxcpath/name as our hash name in /dev/.lxc/
-	 */
-
-	ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s", lxcpath, name);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return NULL;
-
-	hash = fnv_64a_buf(tmp_path, ret, FNV1A_64_INIT);
-
-	ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s.%016" PRIx64, dev_base_path, name, hash);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return NULL;
-
-	if ( 0 != access(tmp_path, F_OK) || 0 != stat(tmp_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
-		ret = mkdir(tmp_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-		if ( ret ) {
-			/* Something must have failed with the dev_base_path...
-			 * Maybe unpriv user.  Try dev_user_path now... */
-			INFO("Setup in /dev/.lxc failed.  Trying /dev/.lxc/user." );
-
-			ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s.%016" PRIx64, dev_user_path, name, hash);
-			if (ret < 0 || ret >= MAXPATHLEN)
-				return NULL;
-
-			if ( 0 != access(tmp_path, F_OK) || 0 != stat(tmp_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
-				ret = mkdir(tmp_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-				if ( ret ) {
-					ERROR("Container /dev setup in host /dev failed - taking fallback" );
-					return NULL;
-				}
-			}
-		}
-	}
-
-	strcpy( path, tmp_path );
-	return path;
-}
-
-/*
- * Do we want to add options for max size of /dev and a file to
- * specify which devices to create?
+ * Just create a path for /dev under $lxcpath/$name and in rootfs
+ * If we hit an error, log it but don't fail yet.
  */
 static int mount_autodev(const char *name, char *root, const char *lxcpath)
 {
 	int ret;
-	struct stat s;
-	char path[MAXPATHLEN];
-	char host_path[MAXPATHLEN];
-	char devtmpfs_path[MAXPATHLEN];
+	size_t clen;
+	char *path;
 
 	INFO("Mounting /dev under %s", root);
 
-	ret = snprintf(host_path, MAXPATHLEN, "%s/%s/rootfs.dev", lxcpath, name);
-	if (ret < 0 || ret > MAXPATHLEN)
+	/* $(root) + "/dev/pts" + '\0' */
+	clen = strlen(root) + 9;
+	path = alloca(clen);
+
+	ret = snprintf(path, clen, "%s/dev", root);
+	if (ret < 0 || ret >= clen)
 		return -1;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/dev", root);
-	if (ret < 0 || ret > MAXPATHLEN)
-		return -1;
-
-	if (mk_devtmpfs( name, devtmpfs_path, lxcpath ) ) {
-		/*
-		 * Get rid of old links and directoriess
-		 * This could be either a symlink and we remove it,
-		 * or an empty directory and we remove it,
-		 * or non-existent and we don't care,
-		 * or a non-empty directory, and we will then emit an error
-		 * but we will not fail out the process.
-		 */
-		unlink( host_path );
-		rmdir( host_path );
-		ret = symlink(devtmpfs_path, host_path);
-
-		if ( ret < 0 ) {
-			SYSERROR("WARNING: Failed to create symlink '%s'->'%s'", host_path, devtmpfs_path);
-		}
-		DEBUG("Bind mounting %s to %s", devtmpfs_path , path );
-		ret = mount(devtmpfs_path, path, NULL, MS_BIND, 0 );
-	} else {
-		/* Only mount a tmpfs on here if we don't already a mount */
-		if ( ! mount_check_fs( host_path, NULL ) ) {
-			DEBUG("Mounting tmpfs to %s", host_path );
-			ret = mount("none", path, "tmpfs", 0, "size=100000,mode=755");
-		} else {
-			/* This allows someone to manually set up a mount */
-			DEBUG("Bind mounting %s to %s", host_path, path );
-			ret = mount(host_path , path, NULL, MS_BIND, 0 );
-		}
+	if (!dir_exists(path)) {
+		WARN("No /dev on container rootfs.");
+		WARN("Proceeding without autodev setup");
+		return 0;
 	}
-	if (ret) {
-		SYSERROR("Failed to mount /dev at %s", root);
-		return -1;
+
+	if (mount("none", path, "tmpfs", 0, "size=100000,mode=755")) {
+		SYSERROR("Failed mounting tmpfs onto %s\n", path);
+		return false;
 	}
-	ret = snprintf(path, MAXPATHLEN, "%s/dev/pts", root);
-	if (ret < 0 || ret >= MAXPATHLEN)
+
+	INFO("Mounted tmpfs onto %s",  path);
+
+	ret = snprintf(path, clen, "%s/dev/pts", root);
+	if (ret < 0 || ret >= clen)
 		return -1;
+
 	/*
 	 * If we are running on a devtmpfs mapping, dev/pts may already exist.
 	 * If not, then create it and exit if that fails...
 	 */
-	if ( 0 != access(path, F_OK) || 0 != stat(path, &s) || 0 == S_ISDIR(s.st_mode) ) {
+	if (!dir_exists(path)) {
 		ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret) {
 			SYSERROR("Failed to create /dev/pts in container");
@@ -1392,64 +1186,6 @@ static int setup_autodev(const char *root)
 	umask(cmask);
 
 	INFO("Populated /dev under %s", root);
-	return 0;
-}
-
-/*
- * Locate allocated devtmpfs mount and purge it.
- * path lookup mostly taken from mk_devtmpfs
- */
-int lxc_delete_autodev(struct lxc_handler *handler)
-{
-	int ret;
-	struct stat s;
-	struct lxc_conf *lxc_conf = handler->conf;
-	const char *name = handler->name;
-	const char *lxcpath = handler->lxcpath;
-	char tmp_path[MAXPATHLEN];
-	uint64_t hash;
-
-	if ( lxc_conf->autodev <= 0 )
-		return 0;
-
-	/* don't clean on reboot */
-	if ( lxc_conf->reboot == 1 )
-		return 0;
-
-	/*
-	 * Use the same logic as mk_devtmpfs to compute candidate
-	 * path for cleanup.
-	 */
-
-	ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s", lxcpath, name);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return -1;
-
-	hash = fnv_64a_buf(tmp_path, ret, FNV1A_64_INIT);
-
-	/* Probe /dev/.lxc/<container name>.<hash> */
-	ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s.%016" PRIx64, dev_base_path, name, hash);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return -1;
-
-	if ( 0 != access(tmp_path, F_OK) || 0 != stat(tmp_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
-		/* Probe /dev/.lxc/user/<container name>.<hash> */
-		ret = snprintf(tmp_path, MAXPATHLEN, "%s/%s.%016" PRIx64, dev_user_path, name, hash);
-		if (ret < 0 || ret >= MAXPATHLEN)
-			return -1;
-
-		if ( 0 != access(tmp_path, F_OK) || 0 != stat(tmp_path, &s) || 0 == S_ISDIR(s.st_mode) ) {
-			WARN("Failed to locate autodev /dev/.lxc and /dev/.lxc/user." );
-			return -1;
-		}
-	}
-
-	/* Do the cleanup */
-	INFO("Cleaning %s", tmp_path );
-	if ( 0 != lxc_rmdir_onedev(tmp_path, NULL) ) {
-		ERROR("Failed to cleanup autodev" );
-	}
-
 	return 0;
 }
 
