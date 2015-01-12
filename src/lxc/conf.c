@@ -1155,7 +1155,7 @@ static const struct lxc_devs lxc_devs[] = {
 	{ "console",	S_IFCHR | S_IRUSR | S_IWUSR,	       5, 1	},
 };
 
-static int setup_autodev(const char *root)
+static int fill_autodev(const char *root)
 {
 	int ret;
 	char path[MAXPATHLEN];
@@ -1170,6 +1170,9 @@ static int setup_autodev(const char *root)
 		return -1;
 	}
 
+	if (!dir_exists(path))  // ignore, just don't try to fill in
+		return 0;
+
 	INFO("Populating /dev under %s", root);
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
@@ -1179,8 +1182,25 @@ static int setup_autodev(const char *root)
 			return -1;
 		ret = mknod(path, d->mode, makedev(d->maj, d->min));
 		if (ret && errno != EEXIST) {
-			SYSERROR("Error creating %s", d->name);
-			return -1;
+			char hostpath[MAXPATHLEN];
+			FILE *pathfile;
+
+			// Unprivileged containers cannot create devices, so
+			// bind mount the device from the host
+			ret = snprintf(hostpath, MAXPATHLEN, "/dev/%s", d->name);
+			if (ret < 0 || ret >= MAXPATHLEN)
+				return -1;
+			pathfile = fopen(path, "wb");
+			if (!pathfile) {
+				SYSERROR("Failed to create device mount target '%s'", path);
+				return -1;
+			}
+			fclose(pathfile);
+			if (mount(hostpath, path, 0, MS_BIND, NULL) != 0) {
+				SYSERROR("Failed bind mounting device %s from host into container",
+					d->name);
+				return -1;
+			}
 		}
 	}
 	umask(cmask);
@@ -3847,7 +3867,7 @@ int lxc_setup(struct lxc_handler *handler)
 			ERROR("failed to run autodev hooks for container '%s'.", name);
 			return -1;
 		}
-		if (setup_autodev(lxc_conf->rootfs.mount)) {
+		if (fill_autodev(lxc_conf->rootfs.mount)) {
 			ERROR("failed to populate /dev in the container");
 			return -1;
 		}
