@@ -267,20 +267,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             </para>
 
             <para>
-              <option>veth:</option> a peer network device is created
-              with one side assigned to the container and the other
-              side is attached to a bridge specified by
-              the <option>lxc.network.link</option>. If the bridge is
-              not specified, then the veth pair device will be created
-              but not attached to any bridge. Otherwise, the bridge
-              has to be setup before on the
-              system, <command>lxc</command> won't handle any
-              configuration outside of the container.  By
-              default <command>lxc</command> choose a name for the
+              <option>veth:</option> a virtual ethernet pair
+              device is created with one side assigned to the container
+              and the other side attached to a bridge specified by
+              the <option>lxc.network.link</option> option.
+              If the bridge is not specified, then the veth pair device
+              will be created but not attached to any bridge.
+              Otherwise, the bridge has to be created on the system
+              before starting the container.
+              <command>lxc</command> won't handle any
+              configuration outside of the container.
+              By default, <command>lxc</command> chooses a name for the
               network device belonging to the outside of the
-              container, this name is handled
-              by <command>lxc</command>, but if you wish to handle
-              this name yourself, you can tell <command>lxc</command>
+              container, but if you wish to handle
+              this name yourselves, you can tell <command>lxc</command>
               to set a specific name with
               the <option>lxc.network.veth.pair</option> option (except for
               unprivileged containers where this option is ignored for security
