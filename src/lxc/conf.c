@@ -3102,13 +3102,14 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 {
 	char peer[IFNAMSIZ];
 	int err;
+	static uint16_t vlan_cntr = 0;
 
 	if (!netdev->link) {
 		ERROR("no link specified for vlan netdev");
 		return -1;
 	}
 
-	err = snprintf(peer, sizeof(peer), "vlan%d", netdev->priv.vlan_attr.vid);
+	err = snprintf(peer, sizeof(peer), "vlan%d-%d", netdev->priv.vlan_attr.vid, vlan_cntr++);
 	if (err >= sizeof(peer)) {
 		ERROR("peer name too long");
 		return -1;
