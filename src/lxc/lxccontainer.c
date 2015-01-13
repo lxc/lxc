@@ -466,9 +466,6 @@ static bool lxcapi_want_daemonize(struct lxc_container *c, bool state)
 		return false;
 	}
 	c->daemonize = state;
-	/* daemonize implies close_all_fds so set it */
-	if (state == 1)
-		c->lxc_conf->close_all_fds = 1;
 	container_mem_unlock(c);
 	return true;
 }
@@ -609,6 +606,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 	* while container is running...
 	*/
 	if (daemonize) {
+		conf->close_all_fds = 1;
 		lxc_monitord_spawn(c->config_path);
 
 		pid_t pid = fork();
