@@ -157,11 +157,6 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (c->lxc_conf != NULL) {
-		fprintf(stderr, "%d: lxc_conf is not NULL as it should be\n", __LINE__);
-		ret = 1;
-		goto out;
-	}
 	b = c->is_defined(c);
 	if (b) {
 		fprintf(stderr, "%d: %s thought it was defined\n", __LINE__, MYNAME);
