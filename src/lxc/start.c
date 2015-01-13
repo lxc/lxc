@@ -170,11 +170,23 @@ static int match_fd(int fd)
 	return (fd == 0 || fd == 1 || fd == 2);
 }
 
-int lxc_check_inherited(struct lxc_conf *conf, int fd_to_ignore)
+/*
+ * Check for any fds we need to close
+ * * if fd_to_ignore != -1, then if we find that fd open we will ignore it.
+ * * By default we warn about open fds we find.
+ * * If closeall is true, we will close open fds.
+ * * If lxc-start was passed "-C", then conf->close_all_fds will be true,
+ *     in which case we also close all open fds.
+ * * A daemonized container will always pass closeall=true.
+ */
+int lxc_check_inherited(struct lxc_conf *conf, bool closeall, int fd_to_ignore)
 {
 	struct dirent dirent, *direntp;
 	int fd, fddir;
 	DIR *dir;
+
+	if (conf && conf->close_all_fds)
+		closeall = true;
 
 restart:
 	dir = opendir("/proc/self/fd");
@@ -203,7 +215,7 @@ restart:
 		if (match_fd(fd))
 			continue;
 
-		if (conf == NULL || conf->close_all_fds) {
+		if (closeall) {
 			close(fd);
 			closedir(dir);
 			INFO("closed inherited fd %d", fd);
@@ -1186,9 +1198,6 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
 	struct start_args start_arg = {
 		.argv = argv,
 	};
-
-	if (lxc_check_inherited(conf, -1))
-		return -1;
 
 	conf->need_utmp_watch = 1;
 	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath);

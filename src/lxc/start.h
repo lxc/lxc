@@ -25,6 +25,7 @@
 
 #include <signal.h>
 #include <sys/param.h>
+#include <stdbool.h>
 
 #include "config.h"
 #include "state.h"
@@ -81,7 +82,7 @@ extern void lxc_abort(const char *name, struct lxc_handler *handler);
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *, const char *);
 extern void lxc_fini(const char *name, struct lxc_handler *handler);
 
-extern int lxc_check_inherited(struct lxc_conf *conf, int fd_to_ignore);
+extern int lxc_check_inherited(struct lxc_conf *conf, bool closeall, int fd_to_ignore);
 int __lxc_start(const char *, struct lxc_conf *, struct lxc_operations *,
 		void *, const char *);
 
