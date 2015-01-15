@@ -266,8 +266,10 @@ fi
 
 # Check that we have all variables we need
 if [ -z "$LXC_NAME" ] || [ -z "$LXC_PATH" ] || [ -z "$LXC_ROOTFS" ]; then
-    echo "ERROR: Not running through LXC." 1>&2
-    exit 1
+    if [ "$DOWNLOAD_LIST_IMAGES" != "true" ]; then
+        echo "ERROR: Not running through LXC." 1>&2
+        exit 1
+    fi
 fi
 
 USERNS=$(in_userns)
