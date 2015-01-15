@@ -188,14 +188,16 @@ usage() {
     cat <<EOF
 LXC container image downloader
 
+Special arguments:
+[ -h | --help ]: Print this help message and exit.
+[ -l | --list ]: List all available images and exit.
+
 Required arguments:
 [ -d | --dist <distribution> ]: The name of the distribution
 [ -r | --release <release> ]: Release name/version
 [ -a | --arch <architecture> ]: Architecture of the container
 
 Optional arguments:
-[ -h | --help ]: This help message
-[ -l | --list ]: List all available images
 [ --variant <variant> ]: Variant of the image (default: "default")
 [ --server <server> ]: Image server (default: "images.linuxcontainers.org")
 [ --keyid <keyid> ]: GPG keyid (default: 0x...)
