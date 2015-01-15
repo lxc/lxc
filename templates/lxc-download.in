@@ -202,7 +202,7 @@ Optional arguments:
 [ --keyserver <keyserver> ]: GPG keyserver to use
 [ --no-validate ]: Disable GPG validation (not recommended)
 [ --flush-cache ]: Flush the local copy (if present)
-[ --force-cache ]; Force the use of the local copy even if expired
+[ --force-cache ]: Force the use of the local copy even if expired
 
 LXC internal arguments (do not pass manually!):
 [ --name <name> ]: The container name
