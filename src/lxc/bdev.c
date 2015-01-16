@@ -357,15 +357,6 @@ struct bdev_type {
 	const struct bdev_ops *ops;
 };
 
-static int is_dir(const char *path)
-{
-	struct stat statbuf;
-	int ret = stat(path, &statbuf);
-	if (ret == 0 && S_ISDIR(statbuf.st_mode))
-		return 1;
-	return 0;
-}
-
 static int dir_detect(const char *path)
 {
 	if (strncmp(path, "dir:", 4) == 0)

@@ -37,6 +37,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 #include <time.h>
+#include <dirent.h>
 
 #include "parse.h"
 #include "config.h"
@@ -1663,9 +1664,60 @@ int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 	return 0;
 }
 
+static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
+{
+	struct dirent dirent, *direntp;
+	DIR *dir;
+	char path[MAXPATHLEN];
+	int ret = -1, len;
+
+	dir = opendir(dirp);
+	if (!dir) {
+		SYSERROR("failed to open '%s'", dirp);
+		return -1;
+	}
+
+	while (!readdir_r(dir, &dirent, &direntp)) {
+		const char *fnam;
+		if (!direntp)
+			break;
+
+		fnam = direntp->d_name;
+		if (!strcmp(fnam, "."))
+			continue;
+
+		if (!strcmp(fnam, ".."))
+			continue;
+
+		len = strlen(fnam);
+		if (len < 6 || strncmp(fnam+len-5, ".conf", 5) != 0)
+			continue;
+		len = snprintf(path, MAXPATHLEN, "%s/%s", dirp, fnam);
+		if (len < 0 || len >= MAXPATHLEN) {
+			ERROR("lxc.include filename too long under '%s'", dirp);
+			ret = -1;
+			goto out;
+		}
+
+		ret = lxc_config_read(path, lxc_conf, true);
+		if (ret < 0)
+			goto out;
+	}
+	ret = 0;
+
+out:
+	if (closedir(dir))
+		WARN("lxc.include dir: failed to close directory");
+
+	return ret;
+}
+
 static int config_includefile(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
+	if (is_dir(value))
+		return do_includedir(value, lxc_conf);
+
 	return lxc_config_read(value, lxc_conf, true);
 }
 
