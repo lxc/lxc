@@ -409,7 +409,7 @@ download_centos()
 
     # download a mini centos into a cache
     echo "Downloading centos minimal ..."
-    YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
+    YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck --releasever=$release"
     PKG_LIST="yum initscripts passwd rsyslog vim-minimal openssh-server openssh-clients dhclient chkconfig rootfiles policycoreutils"
 
     # use temporary repository definition
