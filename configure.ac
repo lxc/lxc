@@ -627,6 +627,7 @@ AC_CONFIG_FILES([
 	config/templates/centos.common.conf
 	config/templates/centos.userns.conf
 	config/templates/common.conf
+	config/templates/common.conf.d/Makefile
 	config/templates/debian.common.conf
 	config/templates/debian.userns.conf
 	config/templates/fedora.common.conf

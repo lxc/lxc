@@ -46,3 +46,6 @@ lxc.cgroup.devices.allow = c 136:* rwm
 # Blacklist some syscalls which are not safe in privileged
 # containers
 lxc.seccomp = @LXCTEMPLATECONFIG@/common.seccomp
+
+# Lastly, include all the configs from @LXCTEMPLATECONFIG@/common.conf.d/
+lxc.include = @LXCTEMPLATECONFIG@/common.conf.d/

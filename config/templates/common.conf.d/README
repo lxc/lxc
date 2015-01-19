@@ -1,0 +1,6 @@
+This directory can be used by packages and users to dump LXC
+configuration snippets which will then be used by all containers using
+the common.conf configuration file (directly or indirectly).
+
+Configuration files must end with the .conf suffix and LXC will include
+those in alphabetical order.

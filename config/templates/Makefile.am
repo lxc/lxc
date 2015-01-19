@@ -2,6 +2,8 @@ templatesconfigdir=@LXCTEMPLATECONFIG@
 
 EXTRA_DIST = common.seccomp
 
+SUBDIRS = common.conf.d
+
 templatesconfig_DATA = \
 	archlinux.common.conf \
 	archlinux.userns.conf \
