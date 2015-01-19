@@ -372,6 +372,12 @@ configure_fedora_systemd()
     chroot ${rootfs_path} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
     # Make systemd honor SIGPWR
     chroot ${rootfs_path} ln -s /usr/lib/systemd/system/halt.target /etc/systemd/system/sigpwr.target
+
+    # if desired, prevent systemd from over-mounting /tmp with tmpfs
+    if [ $masktmp -eq 1 ]; then
+        chroot ${rootfs_path} ln -s /dev/null /etc/systemd/system/tmp.mount
+    fi
+
     #dependency on a device unit fails it specially that we disabled udev
     # sed -i 's/After=dev-%i.device/After=/' ${rootfs_path}/lib/systemd/system/getty\@.service
     #
@@ -1175,6 +1181,7 @@ usage:
     $1 -n|--name=<container_name>
         [-p|--path=<path>] [-c|--clean] [-R|--release=<Fedora_release>]
         [--fqdn=<network name of container>] [-a|--arch=<arch of the container>]
+        [--mask-tmp]
         [-h|--help]
 Mandatory args:
   -n,--name         container name, used to as an identifier for that container
@@ -1187,18 +1194,21 @@ Optional args:
                     Defaults to host's release if the host is Fedora.
      --fqdn         fully qualified domain name (FQDN) for DNS and system naming
   -a,--arch         Define what arch the container will be [i686,x86_64]
+  --mask-tmp        Prevent systemd from over-mounting /tmp with tmpfs.
   -h,--help         print this help
 EOF
     return 0
 }
 
-options=$(getopt -o a:hp:n:cR: -l help,path:,rootfs:,name:,clean,release:,arch:,fqdn: -- "$@")
+options=$(getopt -o a:hp:n:cR: -l help,path:,rootfs:,name:,clean,release:,arch:,fqdn:,mask-tmp -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
 fi
 
 arch=$(uname -m)
+masktmp=0
+
 eval set -- "$options"
 while true
 do
@@ -1211,6 +1221,7 @@ do
         -R|--release)   release=$2; shift 2;;
         -a|--arch)      newarch=$2; shift 2;;
         --fqdn)         utsname=$2; shift 2;;
+        --mask-tmp)     masktmp=1; shift 1;;
         --)             shift 1; break ;;
         *)              break ;;
     esac
