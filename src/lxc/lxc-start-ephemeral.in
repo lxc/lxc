@@ -166,6 +166,7 @@ dest = lxc.Container(os.path.basename(dest_path), args.lxcpath)
 dest.load_config(orig.config_file_name)
 dest.set_config_item("lxc.utsname", dest.name)
 dest.set_config_item("lxc.rootfs", os.path.join(dest_path, "rootfs"))
+print("setting rootfs to .%s.", os.path.join(dest_path, "rootfs"))
 for nic in dest.network:
     if hasattr(nic, 'hwaddr'):
         nic.hwaddr = randomMAC()
@@ -238,34 +239,32 @@ LXC_NAME="%s"
 
     count = 0
     for entry in overlay_dirs:
-        target = "%s/delta%s" % (dest_path, count)
-        workdir = "%s/work%s" % (dest_path, count)
-        fd.write("mkdir -p %s %s\n" % (target, entry[1]))
+        deltdir = "%s/delta%s" % (tmpdir, count)
+        workdir = "%s/work%s" % (tmpdir, count)
+        fd.write("mkdir -p %s %s\n" % (deltdir, entry[1]))
         if have_new_overlay:
             fd.write("mkdir -p %s\n" % workdir)
 
         if args.storage_type == "tmpfs":
-            fd.write("mount -n -t tmpfs -o mode=0755 none %s\n" % (target))
-            if have_new_overlay:
-                fd.write("mount -n -t tmpfs -o mode=0755 none %s\n" % (workdir))
+            fd.write("mount -n -t tmpfs -o mode=0755 none %s\n" % (tmpdir))
+            fd.write("mkdir %s\n" % deltdir)
+            fd.write("mkdir %s\n" % workdir)
 
-        fd.write("getfacl -a %s | setfacl --set-file=- %s || true\n" % (entry[0], target))
+        fd.write("getfacl -a %s | setfacl --set-file=- %s || true\n" % (entry[0], deltdir))
         fd.write("getfacl -a %s | setfacl --set-file=- %s || true\n" % (entry[0], entry[1]))
-        if have_new_overlay:
-            fd.write("getfacl -a %s | setfacl --set-file=- %s || true\n" % (entry[0], workdir))
 
         if args.union_type == "overlayfs":
             if have_new_overlay:
                 fd.write("mount -n -t overlay"
                      " -oupperdir=%s,lowerdir=%s,workdir=%s none %s\n" % (
-                         target,
+                         deltdir,
                          entry[0],
                          workdir,
                          entry[1]))
             else:
                 fd.write("mount -n -t overlayfs"
                      " -oupperdir=%s,lowerdir=%s none %s\n" % (
-                         target,
+                         deltdir,
                          entry[0],
                          entry[1]))
         elif args.union_type == "aufs":
@@ -275,7 +274,7 @@ LXC_NAME="%s"
 
             fd.write("mount -n -t aufs "
                      "-o br=%s=rw:%s=ro,noplink,xino=%s none %s\n" % (
-                         target,
+                         deltdir,
                          entry[0],
                          xino_path,
                          entry[1]))
