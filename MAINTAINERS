@@ -4,8 +4,9 @@ conforming with the DCO contained in the ./CONTRIBUTING file.
 Maintainer
 ----------
 
-Person          : Daniel Lezcano, Serge Hallyn, Stéphane Graber
-Mail patches to : lxc-devel@lists.linuxcontainers.org
-Mailing lists   : lxc-devel@lists.linuxcontainers.org, lxc-users@lists.linuxcontainers.org
-Web page        : http://linuxcontainers.org
-GIT location    : git://github.com/lxc/lxc
+Committers              : Daniel Lezcano (inactive), Serge Hallyn, Stéphane Graber and Dwight Engen
+Mail patches to         : lxc-devel@lists.linuxcontainers.org
+Send pull requests at   : https://github.com/lxc/lxc
+Mailing lists           : lxc-devel@lists.linuxcontainers.org, lxc-users@lists.linuxcontainers.org
+Web page                : https://linuxcontainers.org/lxc
+GIT location            : git://github.com/lxc/lxc
