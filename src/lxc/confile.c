@@ -551,7 +551,7 @@ static int rand_complete_hwaddr(char *hwaddr)
 #else
 	unsigned int seed=randseed(false);
 #endif
-	while (*curs != '\0')
+	while (*curs != '\0' && *curs != '\n')
 	{
 		if ( *curs == 'x' || *curs == 'X' ) {
 			if (curs - hwaddr == 1) {
@@ -1642,9 +1642,40 @@ static int config_console_logfile(const char *key, const char *value,
 	return config_path_item(&lxc_conf->console.log_path, value);
 }
 
+/*
+ * If we find a lxc.network.hwaddr in the original config file,
+ * we expand it in the unexpanded_config, so that after a save_config
+ * we store the hwaddr for re-use.
+ * This is only called when reading the config file, not when executing
+ * a lxc.include.
+ * 'x' and 'X' are substituted in-place.
+ */
+static void update_hwaddr(const char *line)
+{
+	char *p;
+
+	line += lxc_char_left_gc(line, strlen(line));
+	if (line[0] == '#')
+		return;
+	if (strncmp(line, "lxc.network.hwaddr", 18) != 0)
+		return;
+	p = strchr(line, '=');
+	if (!p)
+		return;  // let config_network_hwaddr raise the error
+	p++;
+	while (isblank(*p))
+		p++;
+	if (!*p)
+		return;
+
+	rand_complete_hwaddr(p);
+}
+
 int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 {
 	size_t len = conf->unexpanded_len, linelen = strlen(line);
+
+	update_hwaddr(line);
 
 	while (conf->unexpanded_alloced <= len + linelen + 2) {
 		char *tmp = realloc(conf->unexpanded_config, conf->unexpanded_alloced + 1024);
