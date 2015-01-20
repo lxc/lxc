@@ -355,16 +355,31 @@ download_ubuntu()
     choose_container_proxy $cache/partial-$arch/ $arch
     # download a mini ubuntu into a cache
     echo "Downloading ubuntu $release minimal ..."
-    if [ -n "$(which qemu-debootstrap)" ]; then
-        qemu-debootstrap --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
-    else
-        debootstrap --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
+	DEBOOTSTRAP=debootstrap
+    if which qemu-debootstrap >/dev/null 2>&1; then
+		DEBOOTSTRAP=qemu-debootstrap
     fi
+	# debootstrap defaults to debian if this file is missing
+	if [ -r /usr/share/keyrings/ubuntu-archive-keyring.gpg ]; then
+		$DEBOOTSTRAP --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch
+		DEBOOTSTRAP_RETURN=$?
+	else
+		case $arch in
+			amd64|i386)
+				DEBOOTSTRAP_MIRROR=${MIRROR:-http://archive.ubuntu.com/ubuntu}
+				;;
+			*)
+				DEBOOTSTRAP_MIRROR=${MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
+				;;
+		esac
+		$DEBOOTSTRAP --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $DEBOOTSTRAP_MIRROR
+		DEBOOTSTRAP_RETURN=$?
+	fi
 
-    if [ $? -ne 0 ]; then
-        echo "Failed to download the rootfs, aborting."
-            return 1
-    fi
+	if [ $DEBOOTSTRAP_RETURN -ne 0 ]; then
+		echo "Failed to download the rootfs, aborting."
+		return 1
+	fi
 
     # Serge isn't sure whether we should avoid doing this when
     # $release == `distro-info -d`
