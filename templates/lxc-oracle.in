@@ -482,7 +482,6 @@ EOF
 
     # don't create kmsg symlink as it causes journald to use 100% cpu
     if [ $container_release_major = "7" ]; then
-        echo "lxc.autodev = 1" >>$cfg_dir/config
         echo "lxc.kmsg = 0" >>$cfg_dir/config
     fi
 

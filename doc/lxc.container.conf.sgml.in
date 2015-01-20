@@ -663,7 +663,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
-              Set this to 1 to have LXC mount and populate a minimal
+              Set this to 0 to stop LXC from mounting and populating a minimal
               <filename>/dev</filename> when starting the container.
             </para>
           </listitem>
@@ -674,7 +674,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refsect2>
       <title>Enable kmsg symlink</title>
       <para>
-      Enable creating /dev/kmsg as symlink to /dev/console.  This defaults to 1.
+        Enable creating /dev/kmsg as symlink to /dev/console.  This defaults to 1.
       </para>
       <variablelist>
     <varlistentry>

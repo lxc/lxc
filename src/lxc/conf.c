@@ -2504,7 +2504,7 @@ struct lxc_conf *lxc_conf_init(void)
 
 	new->loglevel = LXC_LOG_PRIORITY_NOTSET;
 	new->personality = -1;
-	new->autodev = -1;
+	new->autodev = 1;
 	new->console.log_path = NULL;
 	new->console.log_fd = -1;
 	new->console.path = NULL;
@@ -3497,88 +3497,6 @@ int ttys_shift_ids(struct lxc_conf *c)
 }
 
 /*
- * This routine is called when the configuration does not already specify a value
- * for autodev (mounting a file system on /dev and populating it in a container).
- * If a hard override value has not be specified, then we try to apply some
- * heuristics to determine if we should switch to autodev mode.
- *
- * For instance, if the container has an /etc/systemd/system directory then it
- * is probably running systemd as the init process and it needs the autodev
- * mount to prevent it from mounting devtmpfs on /dev on it's own causing conflicts
- * in the host.
- *
- * We may also want to enable autodev if the host has devtmpfs mounted on its
- * /dev as this then enable us to use subdirectories under /dev for the container
- * /dev directories and we can fake udev devices.
- */
-struct start_args {
-	char *const *argv;
-};
-
-#define MAX_SYMLINK_DEPTH 32
-
-static int check_autodev( const char *rootfs, void *data )
-{
-	struct start_args *arg = data;
-	int ret;
-	int loop_count = 0;
-	struct stat s;
-	char absrootfs[MAXPATHLEN];
-	char path[MAXPATHLEN];
-	char abs_path[MAXPATHLEN];
-	char *command = "/sbin/init";
-
-	if (rootfs == NULL || strlen(rootfs) == 0)
-		return -2;
-
-	if (!realpath(rootfs, absrootfs))
-		return -2;
-
-	if( arg && arg->argv[0] ) {
-		command = arg->argv[0];
-		DEBUG("Set exec command to %s", command );
-	}
-
-	strncpy( path, command, MAXPATHLEN-1 );
-
-	if ( 0 != access(path, F_OK) || 0 != stat(path, &s) )
-		return -2;
-
-	/* Dereference down the symlink merry path testing as we go. */
-	/* If anything references systemd in the path - set autodev! */
-	/* Renormalize to the rootfs before each dereference */
-	/* Relative symlinks should fall out in the wash even with .. */
-	while( 1 ) {
-		if ( strstr( path, "systemd" ) ) {
-			INFO("Container with systemd init detected - enabling autodev!");
-			return 1;
-		}
-
-		ret = snprintf(abs_path, MAXPATHLEN-1, "%s/%s", absrootfs, path);
-		if (ret < 0 || ret > MAXPATHLEN)
-			return -2;
-
-		ret = readlink( abs_path, path, MAXPATHLEN-1 );
-
-		if ( ( ret <= 0 ) || ( ++loop_count > MAX_SYMLINK_DEPTH ) ) {
-			break; /* Break out for other tests */
-		}
-		path[ret] = '\0';
-	}
-
-	/*
-	 * Add future checks here.
-	 *	Return positive if we should go autodev
-	 *	Return 0 if we should NOT go autodev
-	 *	Return negative if we encounter an error or can not determine...
-	 */
-
-	/* All else fails, we don't need autodev */
-	INFO("Autodev not required.");
-	return 0;
-}
-
-/*
  * _do_tmp_proc_mount: Mount /proc inside container if not already
  * mounted
  *
@@ -3793,7 +3711,6 @@ int lxc_setup(struct lxc_handler *handler)
 	const char *name = handler->name;
 	struct lxc_conf *lxc_conf = handler->conf;
 	const char *lxcpath = handler->lxcpath;
-	void *data = handler->data;
 
 	if (do_rootfs_setup(lxc_conf, name, lxcpath) < 0) {
 		ERROR("Error setting up rootfs mount after spawn");
@@ -3810,10 +3727,6 @@ int lxc_setup(struct lxc_handler *handler)
 	if (setup_network(&lxc_conf->network)) {
 		ERROR("failed to setup the network for '%s'", name);
 		return -1;
-	}
-
-	if (lxc_conf->autodev < 0) {
-		lxc_conf->autodev = check_autodev(lxc_conf->rootfs.mount, data);
 	}
 
 	if (lxc_conf->autodev > 0) {

@@ -1119,12 +1119,7 @@ lxc.include = @LXCTEMPLATECONFIG@/fedora.common.conf
 
     if [ "x$have_systemd" = "x1" ]; then
         cat <<EOF >> $config_path/config
-lxc.autodev = 1
 lxc.kmsg = 0
-EOF
-    else
-        cat <<EOF >> $config_path/config
-lxc.autodev = 0
 EOF
     fi
 

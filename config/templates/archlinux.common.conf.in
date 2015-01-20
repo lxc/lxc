@@ -4,9 +4,6 @@ lxc.include = @LXCTEMPLATECONFIG@/common.conf
 # Allow for 6 tty devices by default
 lxc.tty = 6
 
-# Turn on autodev for systemd
-lxc.autodev = 1
-
 # Disable kmsg
 lxc.kmsg = 0
 
