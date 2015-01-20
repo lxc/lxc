@@ -129,7 +129,6 @@ copy_configuration()
 cat <<EOF >> $path/config
 lxc.utsname = $name
 lxc.pts = 1024
-lxc.kmsg = 0
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:

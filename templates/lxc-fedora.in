@@ -1117,12 +1117,6 @@ lxc.include = @LXCTEMPLATECONFIG@/fedora.common.conf
 " >> $config_path/config
     fi
 
-    if [ "x$have_systemd" = "x1" ]; then
-        cat <<EOF >> $config_path/config
-lxc.kmsg = 0
-EOF
-    fi
-
     # Append things which require expansion here...
     cat <<EOF >> $config_path/config
 lxc.arch = $arch
@@ -1342,14 +1336,6 @@ if [ -z "$release" ]; then
         echo "This is not a fedora host and release missing, defaulting to 20 use -R|--release to specify release"
         release=20
     fi
-fi
-
-# Fedora 15 and above run systemd.We need autodev enabled to keep
-# systemd from causing problems.
-# Also, kmsg must not be mapped to prevent a 100% cpu loop
-# in systemd-journald.
-if [ $release -gt 14 ]; then
-    have_systemd="1"
 fi
 
 if [ "$(id -u)" != "0" ]; then

@@ -480,11 +480,6 @@ EOF
         echo "lxc.cap.drop = setfcap setpcap" >>$cfg_dir/config
     fi
 
-    # don't create kmsg symlink as it causes journald to use 100% cpu
-    if [ $container_release_major = "7" ]; then
-        echo "lxc.kmsg = 0" >>$cfg_dir/config
-    fi
-
     echo "# Networking" >>$cfg_dir/config
     # see if the network settings were already specified
     lxc_network_type=`grep '^lxc.network.type' $cfg_dir/config | awk -F'[= \t]+' '{ print $2 }'`

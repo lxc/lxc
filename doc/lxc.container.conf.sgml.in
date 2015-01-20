@@ -674,7 +674,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refsect2>
       <title>Enable kmsg symlink</title>
       <para>
-        Enable creating /dev/kmsg as symlink to /dev/console.  This defaults to 1.
+        Enable creating /dev/kmsg as symlink to /dev/console.  This defaults to 0.
       </para>
       <variablelist>
     <varlistentry>
@@ -683,7 +683,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       </term>
       <listitem>
         <para>
-          Set this to 0 to disable /dev/kmsg symlinking.
+          Set this to 1 to enable /dev/kmsg symlinking.
         </para>
       </listitem>
     </varlistentry>

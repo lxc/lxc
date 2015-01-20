@@ -4,9 +4,6 @@ lxc.include = @LXCTEMPLATECONFIG@/common.conf
 # Allow for 6 tty devices by default
 lxc.tty = 6
 
-# Disable kmsg
-lxc.kmsg = 0
-
 # Set the halt/stop signals
 lxc.haltsignal=SIGRTMIN+4
 lxc.stopsignal=SIGRTMIN+14

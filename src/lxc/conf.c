@@ -2523,7 +2523,7 @@ struct lxc_conf *lxc_conf_init(void)
 		free(new);
 		return NULL;
 	}
-	new->kmsg = 1;
+	new->kmsg = 0;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
