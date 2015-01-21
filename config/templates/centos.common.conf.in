@@ -27,8 +27,9 @@ lxc.hook.clone = @LXCHOOKDIR@/clonehostname
 # lxc.cap.drop = setuid           # breaks sshd,nfs statd
 # lxc.cap.drop = audit_control    # breaks sshd (set_loginuid failed)
 # lxc.cap.drop = audit_write
+# lxc.cap.drop = setpcap          # big big login delays in CentOS 7 systemd
 #
-lxc.cap.drop = mac_admin mac_override setfcap setpcap
+lxc.cap.drop = mac_admin mac_override setfcap
 lxc.cap.drop = sys_module sys_nice sys_pacct
 lxc.cap.drop = sys_rawio sys_time
 
