@@ -220,6 +220,7 @@ LXC_NAME="%s"
 
     count = 0
     for entry in overlay_dirs:
+        tmpdir = "%s/tmpfs" % dest_path
         deltdir = "%s/delta%s" % (tmpdir, count)
         workdir = "%s/work%s" % (tmpdir, count)
         fd.write("mkdir -p %s %s\n" % (deltdir, entry[1]))
@@ -234,17 +235,17 @@ LXC_NAME="%s"
         if args.union_type == "overlayfs":
             if have_new_overlay:
                 fd.write("mount -n -t overlay"
-                     " -oupperdir=%s,lowerdir=%s,workdir=%s none %s\n" % (
-                         deltdir,
-                         entry[0],
-                         workdir,
-                         entry[1]))
+                         " -oupperdir=%s,lowerdir=%s,workdir=%s none %s\n" % (
+                             deltdir,
+                             entry[0],
+                             workdir,
+                             entry[1]))
             else:
                 fd.write("mount -n -t overlayfs"
-                     " -oupperdir=%s,lowerdir=%s none %s\n" % (
-                         deltdir,
-                         entry[0],
-                         entry[1]))
+                         " -oupperdir=%s,lowerdir=%s none %s\n" % (
+                             deltdir,
+                             entry[0],
+                             entry[1]))
         elif args.union_type == "aufs":
             xino_path = "/dev/shm/aufs.xino"
             if not os.path.exists(os.path.basename(xino_path)):
