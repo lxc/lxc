@@ -364,15 +364,14 @@ download_ubuntu()
 		$DEBOOTSTRAP --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch
 		DEBOOTSTRAP_RETURN=$?
 	else
-		case $arch in
-			amd64|i386)
-				DEBOOTSTRAP_MIRROR=${MIRROR:-http://archive.ubuntu.com/ubuntu}
-				;;
-			*)
-				DEBOOTSTRAP_MIRROR=${MIRROR:-http://ports.ubuntu.com/ubuntu-ports}
-				;;
-		esac
-		$DEBOOTSTRAP --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $DEBOOTSTRAP_MIRROR
+		# download the ubuntu-archive-keyring.gpg file to /var/cache/lxc/keyrings
+		if [ ! -e "$LOCALSTATEDIR/cache/lxc/keyrings"/ubuntu-archive-keyring.gpg ]; then
+			mkdir -p "$LOCALSTATEDIR/cache/lxc/keyrings"
+			wget --directory-prefix="$LOCALSTATEDIR/cache/lxc/keyrings" http://archive.ubuntu.com/ubuntu/pool/main/u/ubuntu-keyring/ubuntu-keyring_2012.05.19.tar.gz
+			tar xf "$LOCALSTATEDIR/cache/lxc/keyrings"/ubuntu-keyring_2012.05.19.tar.gz -C "$LOCALSTATEDIR/cache/lxc/keyrings" --strip-components=2 ubuntu-keyring-2012.05.19/keyrings/ubuntu-archive-keyring.gpg
+		fi
+		# use downloaded keyring file with debootstrap
+		$DEBOOTSTRAP --keyring="$LOCALSTATEDIR/cache/lxc/keyrings"/ubuntu-archive-keyring.gpg --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch
 		DEBOOTSTRAP_RETURN=$?
 	fi
 
