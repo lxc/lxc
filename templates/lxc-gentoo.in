@@ -681,6 +681,13 @@ container_conf()
     #at this point if there
     conf_file="${path}/config"
 
+    # if there is exactly one veth network entry, make sure it has an
+    # associated hwaddr.
+    nics=`grep -e '^lxc\.network\.type[ \t]*=[ \t]*veth' ${conf_file} | wc -l`
+    if [ $nics -eq 1 ]; then
+        grep -q "^lxc.network.hwaddr" ${conf_file} || sed -i -e "/^lxc\.network\.type[ \t]*=[ \t]*veth/a lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')" ${conf_file}
+    fi
+
     if grep -q "^lxc.rootfs" "${conf_file}" ; then
         #lxc-create already provided one
         conf_rootfs_line=""
