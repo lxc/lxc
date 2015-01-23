@@ -38,6 +38,10 @@
 #define luaL_checkunsigned(L,n) luaL_checknumber(L,n)
 #endif
 
+#if LUA_VERSION_NUM >= 503
+#define luaL_checkunsigned(L,n) ((lua_Unsigned)luaL_checkinteger(L,n))
+#endif
+
 #ifdef NO_CHECK_UDATA
 #define checkudata(L,i,tname)	lua_touserdata(L, i)
 #else
