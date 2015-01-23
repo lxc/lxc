@@ -69,6 +69,7 @@ Group: Applications/System
 License: LGPLv2+
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 Requires: openssl rsync dnsmasq bridge-utils
+Requires: %{name}-libs = %{version}-%{release}
 Requires(pre): /usr/sbin/useradd
 Requires(postun): /usr/sbin/userdel
 %if 0%{?fedora} < 15 || 0%{?rhel} < 7
