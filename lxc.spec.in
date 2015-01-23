@@ -54,6 +54,7 @@ Group: Applications/System
 License: LGPLv2+
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 Requires: openssl rsync
+Requires: %{name}-libs = %{version}-%{release}
 BuildRequires: libcap libcap-devel docbook2X graphviz
 
 %if %{with_python}
