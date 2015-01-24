@@ -2248,10 +2248,8 @@ static void cgfs_destroy(void *hdata)
 	if (!d)
 		return;
 	free(d->name);
-	if (d->info)
-		lxc_cgroup_process_info_free_and_remove(d->info);
-	if (d->meta)
-		lxc_cgroup_put_meta(d->meta);
+	lxc_cgroup_process_info_free_and_remove(d->info);
+	lxc_cgroup_put_meta(d->meta);
 	free(d);
 }
 
