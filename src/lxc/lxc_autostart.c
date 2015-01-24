@@ -499,8 +499,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if ( c_groups_lists )
-		free(c_groups_lists);
+	free(c_groups_lists);
 
 	if ( cmd_groups_list ) {
 		toss_list( cmd_groups_list );

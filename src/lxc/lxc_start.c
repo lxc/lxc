@@ -89,8 +89,7 @@ static int ensure_path(char **confpath, const char *path)
 	err = 0;
 
 err:
-	if (fullpath)
-		free(fullpath);
+	free(fullpath);
 	return err;
 }
 

@@ -77,8 +77,7 @@ again:
 	f = fopen(path, "r");
 	if (!f) {
 		SYSERROR("opening %s", path);
-		if (buf)
-			free(buf);
+		free(buf);
 		return NULL;
 	}
 	sz += 1024;
@@ -115,8 +114,7 @@ static int apparmor_am_unconfined(void)
 	int ret = 0;
 	if (!p || strcmp(p, "unconfined") == 0)
 		ret = 1;
-	if (p)
-		free(p);
+	free(p);
 	return ret;
 }
 

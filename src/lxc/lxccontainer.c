@@ -221,14 +221,10 @@ static void lxc_container_free(struct lxc_container *c)
 	if (!c)
 		return;
 
-	if (c->configfile) {
-		free(c->configfile);
-		c->configfile = NULL;
-	}
-	if (c->error_string) {
-		free(c->error_string);
-		c->error_string = NULL;
-	}
+	free(c->configfile);
+	c->configfile = NULL;
+	free(c->error_string);
+	c->error_string = NULL;
 	if (c->slock) {
 		lxc_putlock(c->slock);
 		c->slock = NULL;
@@ -237,18 +233,14 @@ static void lxc_container_free(struct lxc_container *c)
 		lxc_putlock(c->privlock);
 		c->privlock = NULL;
 	}
-	if (c->name) {
-		free(c->name);
-		c->name = NULL;
-	}
+	free(c->name);
+	c->name = NULL;
 	if (c->lxc_conf) {
 		lxc_conf_free(c->lxc_conf);
 		c->lxc_conf = NULL;
 	}
-	if (c->config_path) {
-		free(c->config_path);
-		c->config_path = NULL;
-	}
+	free(c->config_path);
+	c->config_path = NULL;
 
 	free(c);
 }
@@ -950,8 +942,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 				exit(1);
 			}
 		} else { // TODO come up with a better way here!
-			if (bdev->dest)
-				free(bdev->dest);
+			free(bdev->dest);
 			bdev->dest = strdup(bdev->src);
 		}
 
@@ -1382,8 +1373,7 @@ out:
 	if (!ret && c)
 		lxcapi_destroy(c);
 free_tpath:
-	if (tpath)
-		free(tpath);
+	free(tpath);
 	return ret;
 }
 
@@ -1981,8 +1971,8 @@ static void mod_all_rdeps(struct lxc_container *c, bool inc)
 		lxc_container_put(p);
 	}
 out:
-	if (lxcpath) free(lxcpath);
-	if (lxcname) free(lxcname);
+	free(lxcpath);
+	free(lxcname);
 	fclose(f);
 }
 
@@ -2173,8 +2163,7 @@ static bool set_config_filename(struct lxc_container *c)
 		return false;
 	}
 
-	if (c->configfile)
-		free(c->configfile);
+	free(c->configfile);
 	c->configfile = newpath;
 
 	return true;
@@ -2213,8 +2202,7 @@ static bool lxcapi_set_config_path(struct lxc_container *c, const char *path)
 		oldpath = NULL;
 	}
 err:
-	if (oldpath)
-		free(oldpath);
+	free(oldpath);
 	container_mem_unlock(c);
 	return b;
 }
@@ -2571,8 +2559,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 			return -1;
 		}
 	} else { // TODO come up with a better way
-		if (bdev->dest)
-			free(bdev->dest);
+		free(bdev->dest);
 		bdev->dest = strdup(bdev->src);
 	}
 
@@ -2975,14 +2962,10 @@ static int lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 
 static void lxcsnap_free(struct lxc_snapshot *s)
 {
-	if (s->name)
-		free(s->name);
-	if (s->comment_pathname)
-		free(s->comment_pathname);
-	if (s->timestamp)
-		free(s->timestamp);
-	if (s->lxcpath)
-		free(s->lxcpath);
+	free(s->name);
+	free(s->comment_pathname);
+	free(s->timestamp);
+	free(s->lxcpath);
 }
 
 static char *get_snapcomment_path(char* snappath, char *name)
@@ -3683,8 +3666,7 @@ free_ct_name:
 	}
 
 out:
-	if (line)
-		free(line);
+	free(line);
 
 	fclose(f);
 	return ret;
@@ -3756,16 +3738,13 @@ free_ct_list:
 	for (i = 0; i < ct_list_cnt; i++) {
 		lxc_container_put(ct_list[i]);
 	}
-	if (ct_list)
-		free(ct_list);
+	free(ct_list);
 
 free_active_name:
 	for (i = 0; i < active_cnt; i++) {
-		if (active_name[i])
-			free(active_name[i]);
+		free(active_name[i]);
 	}
-	if (active_name)
-		free(active_name);
+	free(active_name);
 
 free_ct_name:
 	for (i = 0; i < ct_cnt; i++) {

@@ -184,8 +184,7 @@ static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 		}
 	}
 
-	if (line)
-		free(line);
+	free(line);
 	fclose(proc_file);
 
 	if (!found) {
@@ -205,8 +204,7 @@ out_error:
 
 static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
 {
-	if (ctx->lsm_label)
-		free(ctx->lsm_label);
+	free(ctx->lsm_label);
 	if (ctx->container)
 		lxc_container_put(ctx->container);
 	free(ctx);
@@ -520,8 +518,7 @@ static char *lxc_attach_getpwshell(uid_t uid)
 			}
 			if (!token)
 				continue;
-			if (result)
-				free(result);
+			free(result);
 			result = strdup(token);
 
 			/* sanity check that there are no fields after that */
