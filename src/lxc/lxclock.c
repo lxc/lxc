@@ -323,10 +323,8 @@ void lxc_putlock(struct lxc_lock *l)
 			close(l->u.f.fd);
 			l->u.f.fd = -1;
 		}
-		if (l->u.f.fname) {
-			free(l->u.f.fname);
-			l->u.f.fname = NULL;
-		}
+		free(l->u.f.fname);
+		l->u.f.fname = NULL;
 		break;
 	}
 	free(l);

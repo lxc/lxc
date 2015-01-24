@@ -72,8 +72,7 @@ static void print_file(char *path)
 	while (getline(&line, &sz, f) != -1) {
 		printf("%s", line);
 	}
-	if (line)
-		free(line);
+	free(line);
 	fclose(f);
 }
 

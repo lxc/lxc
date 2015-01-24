@@ -237,8 +237,7 @@ void lxc_attach_free_options(lxc_attach_options_t *options)
     int i;
     if (!options)
         return;
-    if (options->initial_cwd)
-        free(options->initial_cwd);
+    free(options->initial_cwd);
     if (options->extra_env_vars) {
         for (i = 0; options->extra_env_vars[i]; i++)
             free(options->extra_env_vars[i]);

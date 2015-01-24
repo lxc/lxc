@@ -1439,8 +1439,7 @@ out:
 		close(fddst);
 	if (fd != -1)
 		close(fd);
-	if (newfull)
-		free(newfull);
+	free(newfull);
 	return ret;
 }
 
@@ -3119,12 +3118,9 @@ static const size_t numbdevs = sizeof(bdevs) / sizeof(struct bdev_type);
 
 void bdev_put(struct bdev *bdev)
 {
-	if (bdev->mntopts)
-		free(bdev->mntopts);
-	if (bdev->src)
-		free(bdev->src);
-	if (bdev->dest)
-		free(bdev->dest);
+	free(bdev->mntopts);
+	free(bdev->src);
+	free(bdev->dest);
 	free(bdev);
 }
 

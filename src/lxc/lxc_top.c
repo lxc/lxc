@@ -390,10 +390,8 @@ static void ct_free(void)
 			lxc_container_put(ct[i].c);
 			ct[i].c = NULL;
 		}
-		if (ct[i].stats) {
-			free(ct[i].stats);
-			ct[i].stats = NULL;
-		}
+		free(ct[i].stats);
+		ct[i].stats = NULL;
 	}
 }
 

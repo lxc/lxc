@@ -244,8 +244,7 @@ static int read_default_map(char *fnam, int which, char *username)
 		break;
 	}
 
-	if (line)
-		free(line);
+	free(line);
 	fclose(fin);
 	return 0;
 }
