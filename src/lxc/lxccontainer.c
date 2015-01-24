@@ -1370,7 +1370,7 @@ out_unlock:
 	if (partial_fd >= 0)
 		remove_partial(c, partial_fd);
 out:
-	if (!ret && c)
+	if (!ret)
 		lxcapi_destroy(c);
 free_tpath:
 	free(tpath);
