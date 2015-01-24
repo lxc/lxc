@@ -577,8 +577,7 @@ static void cgm_destroy(void *hdata)
 		cgm_remove_cgroup(slist[i], d->cgroup_path);
 
 	free(d->name);
-	if (d->cgroup_path)
-		free(d->cgroup_path);
+	free(d->cgroup_path);
 	free(d);
 	cgm_dbus_disconnect();
 }

@@ -482,7 +482,7 @@ int main(int argc, char *argv[])
 			if ( lxc_container_put(c) > 0 ) {
 				containers[i] = NULL;
 			}
-			if ( c_groups_lists && c_groups_lists[i] ) {
+			if ( c_groups_lists ) {
 				toss_list(c_groups_lists[i]);
 				c_groups_lists[i] = NULL;
 			}
@@ -500,13 +500,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if ( c_groups_lists )
-		free(c_groups_lists);
-
-	if ( cmd_groups_list ) {
-		toss_list( cmd_groups_list );
-	}
-
+	free(c_groups_lists);
+	toss_list( cmd_groups_list );
 	free(containers);
 
 	return 0;

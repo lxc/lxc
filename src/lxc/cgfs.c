@@ -2187,8 +2187,7 @@ static bool do_init_cpuset_file(struct cgroup_mount_point *mp,
 		SYSERROR("failed writing %s", childfile);
 
 out:
-	if (parentfile)
-		free(parentfile);
+	free(parentfile);
 	free(childfile);
 	return ok;
 }
@@ -2248,12 +2247,9 @@ static void cgfs_destroy(void *hdata)
 
 	if (!d)
 		return;
-	if (d->name)
-		free(d->name);
-	if (d->info)
-		lxc_cgroup_process_info_free_and_remove(d->info);
-	if (d->meta)
-		lxc_cgroup_put_meta(d->meta);
+	free(d->name);
+	lxc_cgroup_process_info_free_and_remove(d->info);
+	lxc_cgroup_put_meta(d->meta);
 	free(d);
 }
 
