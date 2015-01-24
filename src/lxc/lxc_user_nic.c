@@ -133,8 +133,7 @@ static int get_alloted(char *me, char *intype, char *link)
 		return n;
 	}
 	fclose(fin);
-	if (line)
-		free(line);
+	free(line);
 	return -1;
 }
 

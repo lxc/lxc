@@ -564,10 +564,8 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 }
 
 void lxc_seccomp_free(struct lxc_conf *conf) {
-	if (conf->seccomp) {
-		free(conf->seccomp);
-		conf->seccomp = NULL;
-	}
+	free(conf->seccomp);
+	conf->seccomp = NULL;
 #if HAVE_SCMP_FILTER_CTX
 	if (conf->seccomp_ctx) {
 		seccomp_release(conf->seccomp_ctx);

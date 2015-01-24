@@ -176,8 +176,7 @@ static char * is_wlan(const char *ifname)
 	return physname;
 
 bad:
-	if (physname)
-		free(physname);
+	free(physname);
 	return NULL;
 }
 

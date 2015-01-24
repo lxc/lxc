@@ -2639,10 +2639,9 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 
 out_delete:
 	lxc_netdev_delete_by_name(veth1);
-	if (!netdev->priv.veth_attr.pair && veth1)
+	if (!netdev->priv.veth_attr.pair)
 		free(veth1);
-	if(veth2)
-		free(veth2);
+	free(veth2);
 	return -1;
 }
 
@@ -3156,8 +3155,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 			break;
 	}
 
-	if (buf)
-		free(buf);
+	free(buf);
 	return ret;
 }
 
@@ -3599,8 +3597,7 @@ void remount_all_slave(void)
 		}
 	}
 	fclose(f);
-	if (line)
-		free(line);
+	free(line);
 }
 
 void lxc_execute_bind_init(struct lxc_conf *conf)
@@ -3886,22 +3883,15 @@ static void lxc_remove_nic(struct lxc_list *it)
 
 	lxc_list_del(it);
 
-	if (netdev->link)
-		free(netdev->link);
-	if (netdev->name)
-		free(netdev->name);
-	if (netdev->type == LXC_NET_VETH && netdev->priv.veth_attr.pair)
+	free(netdev->link);
+	free(netdev->name);
+	if (netdev->type == LXC_NET_VETH)
 		free(netdev->priv.veth_attr.pair);
-	if (netdev->upscript)
-		free(netdev->upscript);
-	if (netdev->hwaddr)
-		free(netdev->hwaddr);
-	if (netdev->mtu)
-		free(netdev->mtu);
-	if (netdev->ipv4_gateway)
-		free(netdev->ipv4_gateway);
-	if (netdev->ipv6_gateway)
-		free(netdev->ipv6_gateway);
+	free(netdev->upscript);
+	free(netdev->hwaddr);
+	free(netdev->mtu);
+	free(netdev->ipv4_gateway);
+	free(netdev->ipv6_gateway);
 	lxc_list_for_each_safe(it2, &netdev->ipv4, next) {
 		lxc_list_del(it2);
 		free(it2->elem);
@@ -3964,40 +3954,26 @@ int lxc_clear_nic(struct lxc_conf *c, const char *key)
 			free(it2);
 		}
 	} else if (strcmp(p1, ".link") == 0) {
-		if (netdev->link) {
-			free(netdev->link);
-			netdev->link = NULL;
-		}
+		free(netdev->link);
+		netdev->link = NULL;
 	} else if (strcmp(p1, ".name") == 0) {
-		if (netdev->name) {
-			free(netdev->name);
-			netdev->name = NULL;
-		}
+		free(netdev->name);
+		netdev->name = NULL;
 	} else if (strcmp(p1, ".script.up") == 0) {
-		if (netdev->upscript) {
-			free(netdev->upscript);
-			netdev->upscript = NULL;
-		}
+		free(netdev->upscript);
+		netdev->upscript = NULL;
 	} else if (strcmp(p1, ".hwaddr") == 0) {
-		if (netdev->hwaddr) {
-			free(netdev->hwaddr);
-			netdev->hwaddr = NULL;
-		}
+		free(netdev->hwaddr);
+		netdev->hwaddr = NULL;
 	} else if (strcmp(p1, ".mtu") == 0) {
-		if (netdev->mtu) {
-			free(netdev->mtu);
-			netdev->mtu = NULL;
-		}
+		free(netdev->mtu);
+		netdev->mtu = NULL;
 	} else if (strcmp(p1, ".ipv4.gateway") == 0) {
-		if (netdev->ipv4_gateway) {
-			free(netdev->ipv4_gateway);
-			netdev->ipv4_gateway = NULL;
-		}
+		free(netdev->ipv4_gateway);
+		netdev->ipv4_gateway = NULL;
 	} else if (strcmp(p1, ".ipv6.gateway") == 0) {
-		if (netdev->ipv6_gateway) {
-			free(netdev->ipv6_gateway);
-			netdev->ipv6_gateway = NULL;
-		}
+		free(netdev->ipv6_gateway);
+		netdev->ipv6_gateway = NULL;
 	}
 		else return -1;
 
@@ -4183,36 +4159,22 @@ void lxc_conf_free(struct lxc_conf *conf)
 {
 	if (!conf)
 		return;
-	if (conf->console.log_path)
-		free(conf->console.log_path);
-	if (conf->console.path)
-		free(conf->console.path);
-	if (conf->rootfs.mount)
-		free(conf->rootfs.mount);
-	if (conf->rootfs.options)
-		free(conf->rootfs.options);
-	if (conf->rootfs.path)
-		free(conf->rootfs.path);
-	if (conf->rootfs.pivot)
-		free(conf->rootfs.pivot);
-	if (conf->logfile)
-		free(conf->logfile);
-	if (conf->utsname)
-		free(conf->utsname);
-	if (conf->ttydir)
-		free(conf->ttydir);
-	if (conf->fstab)
-		free(conf->fstab);
-	if (conf->rcfile)
-		free(conf->rcfile);
-	if (conf->init_cmd)
-		free(conf->init_cmd);
+	free(conf->console.log_path);
+	free(conf->console.path);
+	free(conf->rootfs.mount);
+	free(conf->rootfs.options);
+	free(conf->rootfs.path);
+	free(conf->rootfs.pivot);
+	free(conf->logfile);
+	free(conf->utsname);
+	free(conf->ttydir);
+	free(conf->fstab);
+	free(conf->rcfile);
+	free(conf->init_cmd);
 	free(conf->unexpanded_config);
 	lxc_clear_config_network(conf);
-	if (conf->lsm_aa_profile)
-		free(conf->lsm_aa_profile);
-	if (conf->lsm_se_context)
-		free(conf->lsm_se_context);
+	free(conf->lsm_aa_profile);
+	free(conf->lsm_se_context);
 	lxc_seccomp_free(conf);
 	lxc_clear_config_caps(conf);
 	lxc_clear_config_keepcaps(conf);
@@ -4486,8 +4448,7 @@ void suggest_default_idmap(void)
 	}
 	fclose(f);
 
-	if (line)
-		free(line);
+	free(line);
 
 	if (!urange || !grange) {
 		ERROR("You do not have subuids or subgids allocated");
