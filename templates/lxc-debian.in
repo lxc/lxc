@@ -430,13 +430,38 @@ clean()
 usage()
 {
     cat <<EOF
-$1 -h|--help -p|--path=<path> [-a|--arch] [-c|--clean] [--mirror=<mirror>] [-r|--release=<release>] [--security-mirror=<security mirror>]
-clean: purge the download cache after installation
-arch: the container architecture (e.g. amd64): defaults to host arch
-release: the debian release (e.g. wheezy): defaults to current stable
-mirror: debain mirror to use during installation
-security mirror: debain mirror to use for security updates
-packages: list of packages to add comma separated
+Template specific options can be passed to lxc-create after a '--' like this:
+
+  lxc-create --name=NAME [-lxc-create-options] -- [-template-options]
+
+Usage: $1 -h|--help -p|--path=<path> [-c|--clean] [-a|--arch=<arch>] [-r|--release=<release>]
+                                     [--mirror=<mirror>] [--security-mirror=<security mirror>]
+                                     [--package=<package_name1,package_name2,...>]
+
+Options :
+
+  -h, --help             print this help text
+  -p, --path=PATH        directory where config and rootfs of this VM will be kept
+  -a, --arch=ARCH        The container architecture. Can be one of: i686, x86_64,
+                         amd64, armhf, armel, powerpc. Defaults to host arch.
+  -r, --release=RELEASE  Debian release. Can be one of: squeeze, wheezy, jessie, sid.
+                         Defaults to current stable.
+  --mirror=MIRROR        Debian mirror to use during installation. Overrides the MIRROR
+                         environment variable (see below).
+  --security-mirror=SECURITY_MIRROR
+                         Debian mirror to use for security updates. Overrides the
+                         SECURITY_MIRROR environment variable (see below).
+  --packages=PACKAGE_NAME1,PACKAGE_NAME2,...
+                         List of additional packages to install. Comma separated, without space.
+  -c, --clean            only clean up the cache and terminate
+
+Environment variables:
+
+  MIRROR                 The Debian package mirror to use. See also the --mirror switch above.
+                         Defaults to '$MIRROR'
+  SECURITY_MIRROR        The Debian package security mirror to use. See also the --security-mirror switch above.
+                         Defaults to '$SECURITY_MIRROR'
+
 EOF
     return 0
 }
