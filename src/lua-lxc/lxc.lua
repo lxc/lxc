@@ -275,6 +275,10 @@ function container:stat_match_get_int(item, match, column)
     local val
     local lines = self:get_cgroup_item(item)
 
+    if (lines == nil) then
+       return 0
+    end
+
     for line in lines:gmatch("[^\r\n]+") do
 	if (string.find(line, match)) then
 	    local col
