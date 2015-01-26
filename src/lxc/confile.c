@@ -2442,16 +2442,10 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		return lxc_clear_hooks(c, key);
 	else if (strncmp(key, "lxc.group", 9) == 0)
 		return lxc_clear_groups(c);
-	else if (strncmp(key, "lxc.seccomp", 11) == 0) {
-		lxc_seccomp_free(c);
-		return 0;
-	}
-	else if (strncmp(key, "lxc.environment", 15) == 0) {
+	else if (strncmp(key, "lxc.environment", 15) == 0)
 		return lxc_clear_environment(c);
-	}
-	else if (strncmp(key, "lxc.id_map", 10) == 0) {
+	else if (strncmp(key, "lxc.id_map", 10) == 0)
 		return lxc_clear_idmaps(c);
-	}
 	return -1;
 }
 

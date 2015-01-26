@@ -3953,27 +3953,6 @@ int lxc_clear_nic(struct lxc_conf *c, const char *key)
 			free(it2->elem);
 			free(it2);
 		}
-	} else if (strcmp(p1, ".link") == 0) {
-		free(netdev->link);
-		netdev->link = NULL;
-	} else if (strcmp(p1, ".name") == 0) {
-		free(netdev->name);
-		netdev->name = NULL;
-	} else if (strcmp(p1, ".script.up") == 0) {
-		free(netdev->upscript);
-		netdev->upscript = NULL;
-	} else if (strcmp(p1, ".hwaddr") == 0) {
-		free(netdev->hwaddr);
-		netdev->hwaddr = NULL;
-	} else if (strcmp(p1, ".mtu") == 0) {
-		free(netdev->mtu);
-		netdev->mtu = NULL;
-	} else if (strcmp(p1, ".ipv4.gateway") == 0) {
-		free(netdev->ipv4_gateway);
-		netdev->ipv4_gateway = NULL;
-	} else if (strcmp(p1, ".ipv6.gateway") == 0) {
-		free(netdev->ipv6_gateway);
-		netdev->ipv6_gateway = NULL;
 	}
 		else return -1;
 
