@@ -2138,6 +2138,28 @@ static int overlayfs_detect(const char *path)
 	return 0;
 }
 
+static char *overlayfs_name;
+static char *detect_overlayfs_name(void)
+{
+	char *v = "overlayfs";
+	char *line = NULL;
+	size_t len = 0;
+	FILE *f = fopen("/proc/filesystems", "r");
+	if (!f)
+		return v;
+
+	while (getline(&line, &len, f) != -1) {
+		if (strcmp(line, "nodev\toverlay\n") == 0) {
+			v = "overlay";
+			break;
+		}
+	}
+
+	fclose(f);
+	free(line);
+	return v;
+}
+
 //
 // XXXXXXX plain directory bind mount ops
 //
@@ -2155,6 +2177,9 @@ static int overlayfs_mount(struct bdev *bdev)
 		return -22;
 	if (!bdev->src || !bdev->dest)
 		return -22;
+
+	if (!overlayfs_name)
+		overlayfs_name = detect_overlayfs_name();
 
 	//  separately mount it first
 	//  mount -t overlayfs -oupperdir=${upper},lowerdir=${lower} lower dest
@@ -2216,13 +2241,13 @@ static int overlayfs_mount(struct bdev *bdev)
 	}
 
 	// mount without workdir option for overlayfs before v21
-	ret = mount(lower, bdev->dest, "overlayfs", MS_MGC_VAL | mntflags, options);
+	ret = mount(lower, bdev->dest, overlayfs_name, MS_MGC_VAL | mntflags, options);
 	if (ret < 0) {
 		INFO("overlayfs: error mounting %s onto %s options %s. retry with workdir",
 			lower, bdev->dest, options);
 
 		// retry with workdir option for overlayfs v22 and higher
-		ret = mount(lower, bdev->dest, "overlayfs", MS_MGC_VAL | mntflags, options_work);
+		ret = mount(lower, bdev->dest, overlayfs_name, MS_MGC_VAL | mntflags, options_work);
 		if (ret < 0)
 			SYSERROR("overlayfs: error mounting %s onto %s options %s",
 				lower, bdev->dest, options_work);
