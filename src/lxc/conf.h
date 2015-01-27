@@ -304,6 +304,7 @@ struct lxc_conf {
 	struct lxc_list caps;
 	struct lxc_list keepcaps;
 	struct lxc_tty_info tty_info;
+	char *pty_names; // comma-separated list of lxc.tty pty names
 	struct lxc_console console;
 	struct lxc_rootfs rootfs;
 	char *ttydir;

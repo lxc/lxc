@@ -750,6 +750,13 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
+	if (handler->conf->pty_names) {
+		if (putenv(handler->conf->pty_names)) {
+			SYSERROR("failed to set environment variable for container ptys");
+			goto out_warn_father;
+		}
+	}
+
 	close(handler->sigfd);
 
 	/* after this call, we are in error because this

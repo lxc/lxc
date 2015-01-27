@@ -943,9 +943,34 @@ static int setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 	return 0;
 }
 
-static int setup_tty(const struct lxc_rootfs *rootfs,
-		     const struct lxc_tty_info *tty_info, char *ttydir)
+/*
+ * Build a space-separate list of ptys to pass to systemd.
+ */
+static bool append_ptyname(char **pp, char *name)
 {
+	char *p;
+
+	if (!*pp) {
+		*pp = malloc(strlen(name) + strlen("container_ttys=") + 1);
+		if (!*pp)
+			return false;
+		sprintf(*pp, "container_ttys=%s", name);
+		return true;
+	}
+	p = realloc(*pp, strlen(*pp) + strlen(name) + 2);
+	if (!p)
+		return false;
+	*pp = p;
+	strcat(p, " ");
+	strcat(p, name);
+	return true;
+}
+
+static int setup_tty(struct lxc_conf *conf)
+{
+	const struct lxc_rootfs *rootfs = &conf->rootfs;
+	const struct lxc_tty_info *tty_info = &conf->tty_info;
+	char *ttydir = conf->ttydir;
 	char path[MAXPATHLEN], lxcpath[MAXPATHLEN];
 	int i, ret;
 
@@ -999,6 +1024,8 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 				SYSERROR("failed to create symlink for tty %d", i+1);
 				return -1;
 			}
+			/* Now save the relative path in @path for append_ptyname */
+			sprintf(path, "%s/tty%d", ttydir, i + 1);
 		} else {
 			/* If we populated /dev, then we need to create /dev/ttyN */
 			if (access(path, F_OK)) {
@@ -1015,6 +1042,12 @@ static int setup_tty(const struct lxc_rootfs *rootfs,
 						pty_info->name, path);
 				continue;
 			}
+			/* Now save the relative path in @path for append_ptyname */
+			sprintf(path, "tty%d", i + 1);
+		}
+		if (!append_ptyname(&conf->pty_names, path)) {
+			ERROR("Error setting up container_ttys string");
+			return -1;
 		}
 	}
 
@@ -3794,10 +3827,13 @@ int lxc_setup(struct lxc_handler *handler)
 			ERROR("failed to setup kmsg for '%s'", name);
 	}
 
-	if (!lxc_conf->is_execute && setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info, lxc_conf->ttydir)) {
+	if (!lxc_conf->is_execute && setup_tty(lxc_conf)) {
 		ERROR("failed to setup the ttys for '%s'", name);
 		return -1;
 	}
+
+	if (lxc_conf->pty_names && setenv("container_ttys", lxc_conf->pty_names, 1))
+		SYSERROR("failed to set environment variable for container ptys");
 
 	if (!lxc_conf->is_execute && setup_dev_symlinks(&lxc_conf->rootfs)) {
 		ERROR("failed to setup /dev symlinks for '%s'", name);
@@ -4151,6 +4187,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rcfile);
 	free(conf->init_cmd);
 	free(conf->unexpanded_config);
+	free(conf->pty_names);
 	lxc_clear_config_network(conf);
 	free(conf->lsm_aa_profile);
 	free(conf->lsm_se_context);
