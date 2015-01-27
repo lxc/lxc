@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
 		ret = 1;
 		goto out;
 	}
-	if (!c->clear_config_item(c, "lxc.network.0.ipv4.gateway")) {
+	if (!c->set_config_item(c, "lxc.network.0.ipv4.gateway", "")) {
 		fprintf(stderr, "%d: failed clearing ipv4.gateway\n", __LINE__);
 		ret = 1;
 		goto out;

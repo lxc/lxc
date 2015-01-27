@@ -97,8 +97,12 @@ class ContainerNetwork(object):
         return self.__set_network_item(self.props[key], value)
 
     def __clear_network_item(self, key):
-        return self.container.clear_config_item("lxc.network.%s.%s" % (
-                                                self.index, key))
+        if key in ("ipv4", "ipv6"):
+            return self.container.clear_config_item("lxc.network.%s.%s" % (
+                                                    self.index, key))
+        else:
+            return self.container.set_config_item("lxc.network.%s.%s" % (
+                                                    self.index, key), "")
 
     def __get_network_item(self, key):
         return self.container.get_config_item("lxc.network.%s.%s" % (
