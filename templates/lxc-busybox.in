@@ -73,9 +73,8 @@ $rootfs/usr/lib64"
 
     # minimal devices needed for busybox
     if [ $in_userns -eq 1 ]; then
-        for dev in tty console tty0 tty1 tty5 ram0 null urandom; do
-            touch $rootfs/dev/$dev
-            echo "/dev/$dev dev/$dev    none bind 0 0" >> $path/fstab
+        for dev in tty console tty0 tty1 ram0 null urandom; do
+            echo "/dev/$dev dev/$dev    none bind,optional,create=file 0 0" >> $path/fstab
         done
     else
         mknod -m 666 tty c 5 0       || res=1
