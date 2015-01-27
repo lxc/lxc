@@ -916,10 +916,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  <listitem>
 	    <para>
               <!--
-	      Set this to 1 to have LXC mount and populate a minimal
-	      <filename>/dev</filename> when starting the container.
+              Set this to 0 to stop LXC from mounting and populating a minimal
+              <filename>/dev</filename> when starting the container.
               -->
-              コンテナの起動時に LXC が /dev をマウントして、最小限の /dev を作成しているようにするには、これを 1 に設定してください。
+              コンテナの起動時に LXC が /dev をマウントして最小限の /dev を作成するのを止めるには、この値を 0 に設定してください。
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -930,9 +930,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <title><!-- Enable kmsg symlink -->kmsg のシンボリックリンクの有効化</title>
       <para>
         <!--
-      Enable creating /dev/kmsg as symlink to /dev/console.  This defaults to 1.
-      -->
-        /dev/kmsg の /dev/console へのシンボリックリンクとしての作成を有効にします。デフォルトは 1 です。
+        Enable creating /dev/kmsg as symlink to /dev/console.  This defaults to 0.
+        -->
+        /dev/console へのシンボリックリンクとして /dev/kmsg を作成することを有効にします。デフォルトは 0 です。
       </para>
       <variablelist>
     <varlistentry>
@@ -942,9 +942,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <listitem>
         <para>
           <!--
-          Set this to 0 to disable /dev/kmsg symlinking.
+          Set this to 1 to enable /dev/kmsg symlinking.
           -->
-          /dev/kmsg のシンボリックリンクを無効にするには 0 を設定してください。
+          /dev/kmsg へのシンボリックリンクを有効にするには 1 を設定してください。
         </para>
       </listitem>
     </varlistentry>
