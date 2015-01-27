@@ -1,5 +1,2 @@
 # This derives from the global userns config
 lxc.include = @LXCTEMPLATECONFIG@/userns.conf
-
-# /dev/* is created manually by template
-lxc.autodev = 0
