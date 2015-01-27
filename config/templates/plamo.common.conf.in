@@ -8,6 +8,9 @@ lxc.mount.entry = none dev/shm tmpfs nosuid,nodev,noexec,mode=1777 0 0
 # Doesn't support consoles in /dev/lxc/
 lxc.devttydir =
 
+# /dev/* is created manually by template
+lxc.autodev = 0
+
 # Extra cgroup device access
 ## rtc
 lxc.cgroup.devices.allow = c 254:0 rm
