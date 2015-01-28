@@ -787,29 +787,27 @@ static int config_network_ipv4_gateway(const char *key, const char *value,
 			               struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
-	struct in_addr *gw;
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
-	gw = malloc(sizeof(*gw));
-	if (!gw) {
-		SYSERROR("failed to allocate ipv4 gateway address");
-		return -1;
-	}
+	free(netdev->ipv4_gateway);
 
-	if (!value) {
-		ERROR("no ipv4 gateway address specified");
-		free(gw);
-		return -1;
-	}
-
-	if (!strcmp(value, "auto")) {
-		free(gw);
+	if (!value || strlen(value) == 0) {
+		netdev->ipv4_gateway = NULL;
+	} else if (!strcmp(value, "auto")) {
 		netdev->ipv4_gateway = NULL;
 		netdev->ipv4_gateway_auto = true;
 	} else {
+		struct in_addr *gw;
+
+		gw = malloc(sizeof(*gw));
+		if (!gw) {
+			SYSERROR("failed to allocate ipv4 gateway address");
+			return -1;
+		}
+
 		if (!inet_pton(AF_INET, value, gw)) {
 			SYSERROR("invalid ipv4 gateway address: %s", value);
 			free(gw);
@@ -892,12 +890,11 @@ static int config_network_ipv6_gateway(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	if (!value) {
-		ERROR("no ipv6 gateway address specified");
-		return -1;
-	}
+	free(netdev->ipv6_gateway);
 
-	if (!strcmp(value, "auto")) {
+	if (!value || strlen(value) == 0) {
+		netdev->ipv4_gateway = NULL;
+	} else if (!strcmp(value, "auto")) {
 		netdev->ipv6_gateway = NULL;
 		netdev->ipv6_gateway_auto = true;
 	} else {
