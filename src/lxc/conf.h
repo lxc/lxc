@@ -236,6 +236,7 @@ enum {
 
 	LXC_AUTO_SYS_RW               = 0x004,   /* /sys */
 	LXC_AUTO_SYS_RO               = 0x008,   /* /sys read-only */
+	LXC_AUTO_SYS_MIXED            = 0x00C,   /* /sys read-only and /sys/class/net read-write */
 	LXC_AUTO_SYS_MASK             = 0x00C,
 
 	LXC_AUTO_CGROUP_RO            = 0x010,   /* /sys/fs/cgroup (partial mount, read-only) */

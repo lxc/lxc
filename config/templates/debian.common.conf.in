@@ -5,8 +5,6 @@ lxc.include = @LXCTEMPLATECONFIG@/common.conf
 lxc.devttydir =
 
 # Default mount entries
-lxc.mount.entry = proc proc proc nodev,noexec,nosuid 0 0
-lxc.mount.entry = sysfs sys sysfs defaults 0 0
 lxc.mount.entry = /sys/fs/fuse/connections sys/fs/fuse/connections none bind,optional 0 0
 
 # When using LXC with apparmor, the container will be confined by default.
@@ -15,9 +13,8 @@ lxc.mount.entry = /sys/fs/fuse/connections sys/fs/fuse/connections none bind,opt
 #lxc.aa_profile = unconfined
 
 # To support container nesting on an Ubuntu host while retaining most of
-# apparmor's added security, use the following two lines instead.
+# apparmor's added security, use the following line instead.
 #lxc.aa_profile = lxc-container-default-with-nesting
-#lxc.mount.auto = cgroup:mixed
 
 # If you wish to allow mounting block filesystems, then use the following
 # line instead, and make sure to grant access to the block device and/or loop

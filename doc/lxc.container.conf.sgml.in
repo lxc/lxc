@@ -774,7 +774,14 @@ proc proc proc nodev,noexec,nosuid 0 0
               </listitem>
               <listitem>
                 <para>
-                  <option>sys:ro</option> (or <option>sys</option>):
+                  <option>sys:mixed</option> (or <option>sys</option>):
+                  mount <filename>/sys</filename> as read-only but with
+                  /sys/devices/virtual/net writable.
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <option>sys:ro</option>:
                   mount <filename>/sys</filename> as read-only
                   for security / container isolation purposes.
                 </para>

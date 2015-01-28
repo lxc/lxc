@@ -118,7 +118,6 @@ cat >> "$path/config" <<EOF
 # Template used to create this container: cirros
 
 lxc.rootfs = $rootfs
-#lxc.mount = $path/fstab
 lxc.pivotdir = lxc_putold
 
 lxc.tty = 4
@@ -132,7 +131,7 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 #lxc.aa_profile = unconfined
 # To support container nesting on an Ubuntu host, uncomment next two lines:
 #lxc.aa_profile = lxc-container-default-with-nesting
-#lxc.mount.auto = cgroup
+lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 
 lxc.cgroup.devices.deny = a
 # Allow any mknod (but not using the node)
@@ -165,7 +164,6 @@ EOF
 
     if [ $in_userns -eq 1 ] && [ -e "${LXC_TEMPLATE_CONFIG}/ubuntu-cloud.userns.conf" ]; then
         echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/ubuntu.userns.conf" >> $path/config
-        echo "lxc.mount.auto = cgroup:mixed proc:mixed sys:ro" >> $path/config
     fi
 
 }

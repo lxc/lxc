@@ -2,8 +2,6 @@
 lxc.include = @LXCTEMPLATECONFIG@/common.conf
 
 # Default mount entries
-lxc.mount.entry = proc proc proc nodev,noexec,nosuid 0 0
-lxc.mount.entry = sysfs sys sysfs defaults 0 0
 lxc.mount.entry = /sys/fs/fuse/connections sys/fs/fuse/connections none bind,optional 0 0
 lxc.mount.entry = /sys/kernel/debug sys/kernel/debug none bind,optional 0 0
 lxc.mount.entry = /sys/kernel/security sys/kernel/security none bind,optional 0 0
@@ -15,9 +13,8 @@ lxc.mount.entry = /sys/fs/pstore sys/fs/pstore none bind,optional 0 0
 #lxc.aa_profile = unconfined
 
 # To support container nesting on an Ubuntu host while retaining most of
-# apparmor's added security, use the following two lines instead.
+# apparmor's added security, use the following line instead.
 #lxc.aa_profile = lxc-container-default-with-nesting
-#lxc.mount.auto = cgroup:mixed
 
 # Uncomment the following line to autodetect squid-deb-proxy configuration on the
 # host and forward it to the guest at start time.

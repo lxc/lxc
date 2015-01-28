@@ -1,7 +1,3 @@
-# Default mount entries
-lxc.mount.entry = proc proc proc nodev,noexec,nosuid 0 0
-lxc.mount.entry = sysfs sys sysfs defaults 0 0
-
 # Default console settings
 lxc.devttydir = lxc
 lxc.tty = 4

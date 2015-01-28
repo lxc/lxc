@@ -6,9 +6,6 @@ lxc.include = @LXCTEMPLATECONFIG@/common.conf
 # But security is not the goal.
 # Looking for more security, see gentoo.moresecure.conf
 
-# Default mount entries
-lxc.mount.entry=sys sys sysfs defaults 0 0
-
 # Doesn't support consoles in /dev/lxc/
 lxc.devttydir =
 

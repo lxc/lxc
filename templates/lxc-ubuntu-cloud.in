@@ -66,9 +66,6 @@ copy_configuration()
     fi
 
     # Generate the configuration file
-    ## Create the fstab (empty by default)
-    touch $path/fstab
-
     ## Relocate all the network config entries
     sed -i -e "/lxc.network/{w ${path}/config-network" -e "d}" $path/config
 
@@ -94,7 +91,6 @@ copy_configuration()
     [ -e "$path/config-auto" ] && cat $path/config-auto >> $path/config && rm $path/config-auto
     grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
     cat <<EOF >> $path/config
-lxc.mount = $path/fstab
 lxc.utsname = $name
 lxc.arch = $arch
 EOF

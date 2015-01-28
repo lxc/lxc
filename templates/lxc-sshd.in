@@ -141,9 +141,9 @@ lxc.mount.entry = /usr usr none ro,bind 0 0
 lxc.mount.entry = /sbin sbin none ro,bind 0 0
 lxc.mount.entry = tmpfs var/run/sshd tmpfs mode=0644 0 0
 lxc.mount.entry = @LXCTEMPLATEDIR@/lxc-sshd sbin/init none ro,bind 0 0
-lxc.mount.entry = proc proc proc nodev,noexec,nosuid 0 0
-lxc.mount.entry = sysfs sys sysfs ro 0 0
 lxc.mount.entry = /etc/init.d etc/init.d none ro,bind 0 0
+
+lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 EOF
 
     # Oracle Linux and Fedora need the following two bind mounted

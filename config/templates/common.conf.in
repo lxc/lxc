@@ -43,6 +43,9 @@ lxc.cgroup.devices.allow = c 1:9 rwm
 ### /dev/pts/*
 lxc.cgroup.devices.allow = c 136:* rwm
 
+# Setup the default mounts
+lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
+
 # Blacklist some syscalls which are not safe in privileged
 # containers
 lxc.seccomp = @LXCTEMPLATECONFIG@/common.seccomp

@@ -202,7 +202,6 @@ configure_debian_systemd()
 
     # This function has been copied and adapted from lxc-fedora
     rm -f ${rootfs}/etc/systemd/system/default.target
-    touch ${rootfs}/etc/fstab
     chroot ${rootfs} ln -s /dev/null /etc/systemd/system/udev.service
     chroot ${rootfs} ln -s /dev/null /etc/systemd/system/systemd-udevd.service
     chroot ${rootfs} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
@@ -325,9 +324,6 @@ copy_configuration()
     arch=$4
 
     # Generate the configuration file
-    ## Create the fstab (empty by default)
-    touch $path/fstab
-
     # if there is exactly one veth network entry, make sure it has an
     # associated hwaddr.
     nics=`grep -e '^lxc\.network\.type[ \t]*=[ \t]*veth' $path/config | wc -l`
@@ -351,7 +347,6 @@ copy_configuration()
     grep -q "^lxc.rootfs" $path/config 2> /dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
 
     cat <<EOF >> $path/config
-lxc.mount = $path/fstab
 lxc.utsname = $hostname
 lxc.arch = $arch
 EOF

@@ -321,7 +321,7 @@ lxc.include = @LXCTEMPLATECONFIG@/opensuse.common.conf
 lxc.arch = $arch
 lxc.utsname = $name
 
-lxc.mount = $path/fstab
+lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
@@ -338,12 +338,6 @@ lxc.mount = $path/fstab
 #        Note: This may potentially collide with other containers of same name!
 #lxc.network.veth.pair = v-$name-e0
 
-EOF
-
-    cat <<EOF > $path/fstab
-proc            proc         proc	nodev,noexec,nosuid 0 0
-sysfs           sys          sysfs	defaults  0 0
-tmpfs           run          tmpfs	mode=0755,nodev,nosuid 0 0
 EOF
 
     if [ $? -ne 0 ]; then

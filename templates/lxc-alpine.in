@@ -249,9 +249,8 @@ lxc.cgroup.devices.allow = c 5:2 rwm
 lxc.cgroup.devices.allow = c 254:0 rm
 
 # mounts point
-lxc.mount.entry=proc proc proc nodev,noexec,nosuid 0 0
+lxc.mount.auto=cgroup:mixed proc:mixed sys:mixed
 lxc.mount.entry=run run tmpfs nodev,noexec,nosuid,relatime,size=1m,mode=0755 0 0
-lxc.mount.entry=none dev/pts devpts gid=5,mode=620 0 0
 lxc.mount.entry=shm dev/shm tmpfs nodev,nosuid,noexec,mode=1777 0 0
 
 EOF

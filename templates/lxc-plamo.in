@@ -247,7 +247,6 @@ copy_configuration() {
   ret=0
   cat <<- EOF >> $path/config || let ret++
 	lxc.utsname = $name
-	lxc.mount = $path/fstab
 	lxc.arch = $arch
 	EOF
   if [ -f "@LXCTEMPLATECONFIG@/plamo.common.conf" ] ; then
@@ -256,8 +255,6 @@ copy_configuration() {
 	lxc.include = @LXCTEMPLATECONFIG@/plamo.common.conf
 	EOF
   fi
-  # create the fstab (empty by default)
-  touch $path/fstab || let ret++
   if [ $ret -ne 0 ] ; then
     echo "Failed to add configuration."
     return 1
@@ -274,7 +271,7 @@ do_bindhome() {
   # bind-mount the user's path into the container's /home
   h=`getent passwd $bindhome | cut -d: -f6`
   mkdir -p $rootfs/$h
-  echo "$h $rootfs/$h none bind 0 0" >> $path/fstab
+  echo "lxc.mount.entry = $h $rootfs/$h none bind 0 0" >> $path/config
   # copy /etc/passwd, /etc/shadow, and /etc/group entries into container
   if ! pwd=`getent passwd $bindhome` ; then
     echo "Warning: failed to copy password entry for $bindhome."

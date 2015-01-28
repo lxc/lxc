@@ -8,9 +8,6 @@ lxc.tty = 6
 lxc.haltsignal=SIGRTMIN+4
 lxc.stopsignal=SIGRTMIN+14
 
-# Mount entries
-lxc.mount.auto = proc:mixed sys:ro
-
 # Uncomment to disable creating tty devices subdirectory in /dev
 # lxc.devttydir =
 

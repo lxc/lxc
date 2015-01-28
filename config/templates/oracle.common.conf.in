@@ -1,9 +1,6 @@
 # This derives from the global common config
 lxc.include = @LXCTEMPLATECONFIG@/common.conf
 
-# Mount entries
-lxc.mount.auto = cgroup:mixed proc:mixed sys:ro
-
 # Capabilities
 # Uncomment these if you don't run anything that needs the capability, and
 # would like the container to run with less privilege.
