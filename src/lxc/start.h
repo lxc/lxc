@@ -73,6 +73,7 @@ struct lxc_handler {
 	int pinfd;
 	const char *lxcpath;
 	void *cgroup_data;
+	int ttysock[2]; // socketpair for child->parent tty fd passing
 };
 
 

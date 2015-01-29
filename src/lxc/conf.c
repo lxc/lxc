@@ -65,6 +65,7 @@
 
 #include "network.h"
 #include "error.h"
+#include "af_unix.h"
 #include "parse.h"
 #include "utils.h"
 #include "conf.h"
@@ -975,29 +976,26 @@ static bool append_ptyname(char **pp, char *name)
 
 static int setup_tty(struct lxc_conf *conf)
 {
-	const struct lxc_rootfs *rootfs = &conf->rootfs;
 	const struct lxc_tty_info *tty_info = &conf->tty_info;
 	char *ttydir = conf->ttydir;
 	char path[MAXPATHLEN], lxcpath[MAXPATHLEN];
 	int i, ret;
 
-	if (!rootfs->path)
+	if (!conf->rootfs.path)
 		return 0;
 
 	for (i = 0; i < tty_info->nbtty; i++) {
 
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
-		ret = snprintf(path, sizeof(path), "%s/dev/tty%d",
-			 rootfs->mount, i + 1);
+		ret = snprintf(path, sizeof(path), "/dev/tty%d", i + 1);
 		if (ret >= sizeof(path)) {
 			ERROR("pathname too long for ttys");
 			return -1;
 		}
 		if (ttydir) {
 			/* create dev/lxc/tty%d" */
-			ret = snprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/tty%d",
-				 rootfs->mount, ttydir, i + 1);
+			ret = snprintf(lxcpath, sizeof(lxcpath), "/dev/%s/tty%d", ttydir, i + 1);
 			if (ret >= sizeof(lxcpath)) {
 				ERROR("pathname too long for ttys");
 				return -1;
@@ -1031,8 +1029,6 @@ static int setup_tty(struct lxc_conf *conf)
 				SYSERROR("failed to create symlink for tty %d", i+1);
 				return -1;
 			}
-			/* Now save the relative path in @path for append_ptyname */
-			sprintf(path, "%s/tty%d", ttydir, i + 1);
 		} else {
 			/* If we populated /dev, then we need to create /dev/ttyN */
 			if (access(path, F_OK)) {
@@ -1045,14 +1041,11 @@ static int setup_tty(struct lxc_conf *conf)
 				}
 			}
 			if (mount(pty_info->name, path, "none", MS_BIND, 0)) {
-				WARN("failed to mount '%s'->'%s'",
-						pty_info->name, path);
+				SYSERROR("failed to mount '%s'->'%s'", pty_info->name, path);
 				continue;
 			}
-			/* Now save the relative path in @path for append_ptyname */
-			sprintf(path, "tty%d", i + 1);
 		}
-		if (!append_ptyname(&conf->pty_names, path)) {
+		if (!append_ptyname(&conf->pty_names, pty_info->name)) {
 			ERROR("Error setting up container_ttys string");
 			return -1;
 		}
@@ -3513,19 +3506,8 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 
 int ttys_shift_ids(struct lxc_conf *c)
 {
-	int i;
-
 	if (lxc_list_empty(&c->id_map))
 		return 0;
-
-	for (i = 0; i < c->tty_info.nbtty; i++) {
-		struct lxc_pty_info *pty_info = &c->tty_info.pty_info[i];
-
-		if (chown_mapped_root(pty_info->name, c) < 0) {
-			ERROR("Failed to chown %s", pty_info->name);
-			return -1;
-		}
-	}
 
 	if (strcmp(c->console.name, "") !=0 && chown_mapped_root(c->console.name, c) < 0) {
 		ERROR("Failed to chown %s", c->console.name);
@@ -3744,6 +3726,48 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 	return true;
 }
 
+static int send_fd(int sock, int fd)
+{
+	int ret = lxc_abstract_unix_send_fd(sock, fd, NULL, 0);
+
+
+	if (ret < 0) {
+		SYSERROR("Error sending tty fd to parent");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int send_ttys_to_parent(struct lxc_handler *handler)
+{
+	struct lxc_conf *conf = handler->conf;
+	const struct lxc_tty_info *tty_info = &conf->tty_info;
+	int i;
+	int sock = handler->ttysock[0];
+
+	for (i = 0; i < tty_info->nbtty; i++) {
+		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
+		if (send_fd(sock, pty_info->slave) < 0)
+			goto bad;
+		close(pty_info->slave);
+		pty_info->slave = -1;
+		if (send_fd(sock, pty_info->master) < 0)
+			goto bad;
+		close(pty_info->master);
+		pty_info->master = -1;
+	}
+
+	close(handler->ttysock[0]);
+	close(handler->ttysock[1]);
+
+	return 0;
+
+bad:
+	ERROR("Error writing tty fd to parent");
+	return -1;
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	const char *name = handler->name;
@@ -3834,14 +3858,6 @@ int lxc_setup(struct lxc_handler *handler)
 			ERROR("failed to setup kmsg for '%s'", name);
 	}
 
-	if (!lxc_conf->is_execute && setup_tty(lxc_conf)) {
-		ERROR("failed to setup the ttys for '%s'", name);
-		return -1;
-	}
-
-	if (lxc_conf->pty_names && setenv("container_ttys", lxc_conf->pty_names, 1))
-		SYSERROR("failed to set environment variable for container ptys");
-
 	if (!lxc_conf->is_execute && setup_dev_symlinks(&lxc_conf->rootfs)) {
 		ERROR("failed to setup /dev symlinks for '%s'", name);
 		return -1;
@@ -3862,6 +3878,26 @@ int lxc_setup(struct lxc_handler *handler)
 		ERROR("failed to setup the new pts instance");
 		return -1;
 	}
+
+	if (lxc_create_tty(name, lxc_conf)) {
+		ERROR("failed to create the ttys");
+		return -1;
+	}
+
+	if (send_ttys_to_parent(handler) < 0) {
+		ERROR("failure sending console info to parent");
+		return -1;
+	}
+
+
+	if (!lxc_conf->is_execute && setup_tty(lxc_conf)) {
+		ERROR("failed to setup the ttys for '%s'", name);
+		return -1;
+	}
+
+	if (lxc_conf->pty_names && setenv("container_ttys", lxc_conf->pty_names, 1))
+		SYSERROR("failed to set environment variable for container ptys");
+
 
 	if (setup_personality(lxc_conf->personality)) {
 		ERROR("failed to setup personality");

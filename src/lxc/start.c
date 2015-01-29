@@ -375,6 +375,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 
 	memset(handler, 0, sizeof(*handler));
 
+	handler->ttysock[0] = handler->ttysock[1] = -1;
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
@@ -424,11 +425,6 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 
 	if (run_lxc_hooks(name, "pre-start", conf, handler->lxcpath, NULL)) {
 		ERROR("failed to run pre-start hooks for container '%s'.", name);
-		goto out_aborting;
-	}
-
-	if (lxc_create_tty(name, conf)) {
-		ERROR("failed to create the ttys");
 		goto out_aborting;
 	}
 
@@ -492,6 +488,10 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	close(handler->conf->maincmd_fd);
 	handler->conf->maincmd_fd = -1;
 	free(handler->name);
+	if (handler->ttysock[0] != -1) {
+		close(handler->ttysock[0]);
+		close(handler->ttysock[1]);
+	}
 	cgroup_destroy(handler);
 	free(handler);
 }
@@ -800,6 +800,46 @@ static int save_phys_nics(struct lxc_conf *conf)
 	return 0;
 }
 
+static int recv_fd(int sock, int *fd)
+{
+	if (lxc_abstract_unix_recv_fd(sock, fd, NULL, 0) < 0) {
+		SYSERROR("Error receiving tty fd from child");
+		return -1;
+	}
+	if (*fd == -1)
+		return -1;
+	return 0;
+}
+
+static int recv_ttys_from_child(struct lxc_handler *handler)
+{
+	struct lxc_conf *conf = handler->conf;
+	int i, sock = handler->ttysock[1];
+	struct lxc_tty_info *tty_info = &conf->tty_info;
+
+	if (!conf->tty)
+		return 0;
+
+	tty_info->pty_info = malloc(sizeof(*tty_info->pty_info)*conf->tty);
+	if (!tty_info->pty_info) {
+		SYSERROR("failed to allocate pty_info");
+		return -1;
+	}
+
+	for (i = 0; i < conf->tty; i++) {
+		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
+		pty_info->busy = 0;
+		if (recv_fd(sock, &pty_info->slave) < 0 ||
+				recv_fd(sock, &pty_info->master) < 0) {
+			ERROR("Error receiving tty info from child");
+			return -1;
+		}
+	}
+	tty_info->nbtty = conf->tty;
+
+	return 0;
+}
+
 static int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
@@ -822,6 +862,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (!lxc_list_empty(&handler->conf->id_map)) {
 		INFO("Cloning a new user namespace");
 		handler->clone_flags |= CLONE_NEWUSER;
+	}
+
+	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, handler->ttysock) < 0) {
+		lxc_sync_fini(handler);
+		return -1;
 	}
 
 	if (handler->conf->inherit_ns_fd[LXC_NS_NET] == -1) {
@@ -990,6 +1035,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	cgroup_disconnect();
 	cgroups_connected = false;
+
+	/* read tty fds allocated by child */
+	if (recv_ttys_from_child(handler) < 0) {
+		ERROR("failed to receive tty info from child");
+		goto out_delete_net;
+	}
 
 	/* Tell the child to complete its initialization and wait for
 	 * it to exec or return an error.  (the child will never
