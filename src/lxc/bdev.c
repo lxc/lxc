@@ -3340,7 +3340,6 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	const char *oldname = c0->name;
 	const char *oldpath = c0->config_path;
 	struct rsync_data data;
-	char *rootfs;
 
 	/* if the container name doesn't show up in the rootfs path, then
 	 * we don't know how to come up with a new name
@@ -3359,25 +3358,26 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 
 	if (!orig->dest) {
 		int ret;
-		orig->dest = malloc(MAXPATHLEN);
+		size_t len;
+		struct stat sb;
+
+		len = strlen(oldpath) + strlen(oldname) + strlen("/rootfs") + 2;
+		orig->dest = malloc(len);
 		if (!orig->dest) {
 			ERROR("out of memory");
 			bdev_put(orig);
 			return NULL;
 		}
-		rootfs = strrchr(orig->src, '/');
-		if (!rootfs) {
-			ERROR("invalid rootfs path");
-			bdev_put(orig);
-			return NULL;
-		}
-		rootfs++;
-		ret = snprintf(orig->dest, MAXPATHLEN, "%s/%s/%s", oldpath, oldname, rootfs);
-		if (ret < 0 || ret >= MAXPATHLEN) {
+		ret = snprintf(orig->dest, len, "%s/%s/rootfs", oldpath, oldname);
+		if (ret < 0 || ret >= len) {
 			ERROR("rootfs path too long");
 			bdev_put(orig);
 			return NULL;
 		}
+		ret = stat(orig->dest, &sb);
+		if (ret < 0 && errno == ENOENT)
+			if (mkdir_p(orig->dest, 0755) < 0)
+				WARN("Error creating '%s', continuing.", orig->dest);
 	}
 
 	/*
