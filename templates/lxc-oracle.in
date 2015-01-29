@@ -297,13 +297,13 @@ EOF
     if [ $container_release_major = "4" -o $container_release_major = "5" ]; then
         grep -q "mount -t tmpfs tmpfs /dev/shm" $container_rootfs/etc/rc.sysinit
         if [ $? -eq 1 ]; then
-            echo "mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.sysinit
-            echo "mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.d/rc.sysinit
+            echo "mkdir -p /dev/shm && mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.sysinit
+            echo "mkdir -p /dev/shm && mount -t tmpfs tmpfs /dev/shm" >>$container_rootfs/etc/rc.d/rc.sysinit
         fi
     fi
     if [ $container_release_major = "6" ]; then
-        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.sysinit
-        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.d/rc.sysinit
+        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mkdir -p /dev/shm && mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.sysinit
+        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mkdir -p /dev/shm && mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.d/rc.sysinit
     fi
 
     # there might be other services that are useless but the below set is a good start
