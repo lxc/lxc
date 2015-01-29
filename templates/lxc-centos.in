@@ -270,7 +270,6 @@ EOF
     # set minimal fstab
     cat <<EOF > $rootfs_path/etc/fstab
 /dev/root               /                       rootfs   defaults        0 0
-none                    /dev/shm                tmpfs    nosuid,nodev    0 0
 EOF
 
     # create lxc compatibility init script
@@ -280,14 +279,19 @@ start on startup
 env container
 
 pre-start script
-        if [ "x$container" != "xlxc" -a "x$container" != "xlibvirt" ]; then
+        if [ "x\$container" != "xlxc" -a "x\$container" != "xlibvirt" ]; then
                 stop;
         fi
-        initctl start tty TTY=console
+
         rm -f /var/lock/subsys/*
         rm -f /var/run/*.pid
+        [ -e /etc/mtab ] || ln -s /proc/mounts /etc/mtab
+        mkdir -p /dev/shm
+        mount -t tmpfs -o nosuid,nodev tmpfs /dev/shm
+
+        initctl start tty TTY=console
         telinit 3
-        exit 0;
+        exit 0
 end script
 EOF
     elif [ "$release" = "5" ]; then
