@@ -536,28 +536,6 @@ exit 101
 EOF
     chmod +x $rootfs/usr/sbin/policy-rc.d
 
-    if [ ! -f $rootfs/etc/init/container-detect.conf ]; then
-        # Make sure we have a working resolv.conf
-        cresolvonf="${rootfs}/etc/resolv.conf"
-        mv $cresolvonf ${cresolvonf}.lxcbak
-        cat /etc/resolv.conf > ${cresolvonf}
-
-        # for lucid, if not trimming, then add the ubuntu-virt
-        # ppa and install lxcguest
-        if [ $release = "lucid" ]; then
-            chroot $rootfs apt-get update
-            install_packages $rootfs "python-software-properties"
-            chroot $rootfs add-apt-repository ppa:ubuntu-virt/ppa
-        fi
-
-        chroot $rootfs apt-get update
-        chroot $rootfs apt-get install --force-yes -y lxcguest
-
-        # Restore old resolv.conf
-        rm -f ${cresolvonf}
-        mv ${cresolvonf}.lxcbak ${cresolvonf}
-    fi
-
     # If the container isn't running a native architecture, setup multiarch
     if [ -x "$(ls -1 ${rootfs}/usr/bin/qemu-*-static 2>/dev/null)" ]; then
         dpkg_version=$(chroot $rootfs dpkg-query -W -f='${Version}' dpkg)

@@ -25,7 +25,7 @@ STATE_DIR="@LOCALSTATEDIR@"
 HOOK_DIR="@LXCHOOKDIR@"
 CLONE_HOOK_FN="$HOOK_DIR/ubuntu-cloud-prep"
 LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
-KNOWN_RELEASES="lucid precise quantal saucy trusty"
+KNOWN_RELEASES="precise trusty utopic vivid"
 skip_arch_check=${UCTEMPLATE_SKIP_ARCH_CHECK:-0}
 
 # Make sure the usual locations are in PATH
