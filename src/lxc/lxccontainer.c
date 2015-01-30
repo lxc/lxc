@@ -598,6 +598,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 	* while container is running...
 	*/
 	if (daemonize) {
+		char title[2048];
 		lxc_monitord_spawn(c->config_path);
 
 		pid_t pid = fork();
@@ -611,6 +612,14 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 			c->pidfile = NULL;
 			return wait_on_daemonized_start(c, pid);
 		}
+
+		/* We don't really care if this doesn't print all the
+		 * characters; all that it means is that the proctitle will be
+		 * ugly. Similarly, we also don't care if setproctitle()
+		 * fails. */
+		snprintf(title, sizeof(title), "[lxc monitor] %s %s", c->config_path, c->name);
+		INFO("Attempting to set proc title to %s", title);
+		setproctitle(title);
 
 		/* second fork to be reparented by init */
 		pid = fork();

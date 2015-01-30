@@ -39,6 +39,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <assert.h>
+#include <sys/prctl.h>
 
 #include "utils.h"
 #include "log.h"
@@ -1539,4 +1540,70 @@ char *get_template_path(const char *t)
 	}
 
 	return tpath;
+}
+
+/*
+ * Sets the process title to the specified title. Note:
+ *   1. this function requires root to succeed
+ *   2. it clears /proc/self/environ
+ *   3. it may not succed (e.g. if title is longer than /proc/self/environ +
+ *      the original title)
+ */
+int setproctitle(char *title)
+{
+	char buf[2048], *tmp;
+	FILE *f;
+	int i, len, ret = 0;
+	unsigned long arg_start, arg_end, env_start, env_end;
+
+	f = fopen_cloexec("/proc/self/stat", "r");
+	if (!f) {
+		return -1;
+	}
+
+	tmp = fgets(buf, sizeof(buf), f);
+	fclose(f);
+	if (!tmp) {
+		return -1;
+	}
+
+	/* Skip the first 47 fields, column 48-51 are ARG_START and
+	 * ARG_END. */
+	tmp = strchr(buf, ' ');
+	for (i = 0; i < 46; i++) {
+		if (!tmp)
+			return -1;
+		tmp = strchr(tmp+1, ' ');
+	}
+
+	i = sscanf(tmp, "%lu %lu %lu %lu", &arg_start, &arg_end, &env_start, &env_end);
+	if (i != 4) {
+		return -1;
+	}
+
+	/* We're truncating the environment, so we should use at most the
+	 * length of the argument + environment for the title. */
+	len = strlen(title);
+	if (len > env_end - arg_start) {
+		arg_end = env_end;
+		len = env_end - arg_start;
+	} else {
+		/* Only truncate the environment if we're actually going to
+		 * overwrite part of it. */
+		if (len >= arg_end - arg_start) {
+			env_start = env_end;
+		}
+		arg_end = arg_start + len;
+	}
+
+
+	/* memcpy instead of strcpy since this isn't null terminated */
+	memcpy((void*)arg_start, title, len);
+
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_START,   (long)arg_start, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_END,     (long)arg_end, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_START,   (long)env_start, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_END,     (long)env_end, 0, 0);
+
+	return ret;
 }
