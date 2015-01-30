@@ -1075,15 +1075,28 @@ proc proc proc nodev,noexec,nosuid 0 0
                 </para>
 	      </listitem>
 	      <listitem>
+		<!--
+                <para>
+                  <option>sys:mixed</option> (or <option>sys</option>):
+                  mount <filename>/sys</filename> as read-only but with
+                  /sys/devices/virtual/net writable.
+                </para>
+		-->
+		<para>
+		  <option>sys:mixed</option> (or <option>sys</option>):
+		  /sys/devices/virtual/net のみ書き込み可能で、その他の <filename>/sys</filename> はリードオンリーでマウントします。
+		</para>
+              </listitem>
+	      <listitem>
                 <!--
 	        <para>
-	          <option>sys:ro</option> (or <option>sys</option>):
+	          <option>sys:ro</option>
 	          mount <filename>/sys</filename> as read-only
 	          for security / container isolation purposes.
 	        </para>
                 -->
                 <para>
-                  <option>sys:ro</option> (or <option>sys</option>):
+                  <option>sys:ro</option>:
                   <filename>/sys</filename> を、セキュリティとコンテナの隔離の目的でリードオンリーでマウントします。
                 </para>
 	      </listitem>
