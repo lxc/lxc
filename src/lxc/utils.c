@@ -46,6 +46,10 @@
 #include "lxclock.h"
 #include "namespace.h"
 
+#ifndef PR_SET_MM
+#define PR_SET_MM 35
+#endif
+
 #ifndef PR_SET_MM_ARG_START
 #define PR_SET_MM_ARG_START 8
 #endif
