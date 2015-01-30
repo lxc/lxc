@@ -46,6 +46,22 @@
 #include "lxclock.h"
 #include "namespace.h"
 
+#ifndef PR_SET_MM_ARG_START
+#define PR_SET_MM_ARG_START 8
+#endif
+
+#ifndef PR_SET_MM_ARG_END
+#define PR_SET_MM_ARG_END 9
+#endif
+
+#ifndef PR_SET_MM_ENV_START
+#define PR_SET_MM_ENV_START 10
+#endif
+
+#ifndef PR_SET_MM_ENV_END
+#define PR_SET_MM_ENV_END 11
+#endif
+
 lxc_log_define(lxc_utils, lxc);
 
 static int _recursive_rmdir_onedev(char *dirname, dev_t pdev,
