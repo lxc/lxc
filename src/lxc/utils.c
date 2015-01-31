@@ -1596,6 +1596,9 @@ int setproctitle(char *title)
 		tmp = strchr(tmp+1, ' ');
 	}
 
+	if (!tmp)
+		return -1;
+
 	i = sscanf(tmp, "%lu %lu %lu %lu", &arg_start, &arg_end, &env_start, &env_end);
 	if (i != 4) {
 		return -1;
