@@ -800,7 +800,11 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 					default_mounts[i].flags);
 			r = mount(source, destination, default_mounts[i].fstype, mflags, default_mounts[i].options);
 			saved_errno = errno;
-			if (r < 0)
+			if (r < 0 && errno == ENOENT) {
+				INFO("Mount source or target for %s on %s doesn't exist. Skipping.", source, destination);
+				r = 0;
+			}
+			else if (r < 0)
 				SYSERROR("error mounting %s on %s flags %lu", source, destination, mflags);
 
 			free(source);
