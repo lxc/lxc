@@ -1604,9 +1604,12 @@ int setproctitle(char *title)
 		return -1;
 	}
 
+	/* Include the null byte here, because in the calculations below we
+	 * want to have room for it. */
+	len = strlen(title) + 1;
+
 	/* We're truncating the environment, so we should use at most the
 	 * length of the argument + environment for the title. */
-	len = strlen(title);
 	if (len > env_end - arg_start) {
 		arg_end = env_end;
 		len = env_end - arg_start;
@@ -1619,9 +1622,7 @@ int setproctitle(char *title)
 		arg_end = arg_start + len;
 	}
 
-
-	/* memcpy instead of strcpy since this isn't null terminated */
-	memcpy((void*)arg_start, title, len);
+	strcpy((char*)arg_start, title);
 
 	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_START,   (long)arg_start, 0, 0);
 	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_END,     (long)arg_end, 0, 0);
