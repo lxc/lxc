@@ -34,8 +34,6 @@ lxc.cgroup.devices.allow = c 5:2 rwm
 lxc.cgroup.devices.allow = c 136:* rwm
 ## rtc
 lxc.cgroup.devices.allow = c 254:0 rm
-## fuse
-lxc.cgroup.devices.allow = c 10:229 rwm
 ## tun
 lxc.cgroup.devices.allow = c 10:200 rwm
 ## dev/tty0

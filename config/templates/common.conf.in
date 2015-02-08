@@ -42,6 +42,8 @@ lxc.cgroup.devices.allow = c 1:8 rwm
 lxc.cgroup.devices.allow = c 1:9 rwm
 ### /dev/pts/*
 lxc.cgroup.devices.allow = c 136:* rwm
+### fuse
+lxc.cgroup.devices.allow = c 10:229 rwm
 
 # Setup the default mounts
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed

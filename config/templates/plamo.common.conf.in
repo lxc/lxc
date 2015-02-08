@@ -13,5 +13,3 @@ lxc.autodev = 0
 # Extra cgroup device access
 ## rtc
 lxc.cgroup.devices.allow = c 254:0 rm
-## fuse
-lxc.cgroup.devices.allow = c 10:229 rwm
