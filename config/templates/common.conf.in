@@ -45,6 +45,7 @@ lxc.cgroup.devices.allow = c 136:* rwm
 
 # Setup the default mounts
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
+lxc.mount.entry = /sys/fs/fuse/connections sys/fs/fuse/connections none bind,optional 0 0
 
 # Blacklist some syscalls which are not safe in privileged
 # containers
