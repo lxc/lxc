@@ -4,9 +4,6 @@ lxc.include = @LXCTEMPLATECONFIG@/common.conf
 # Doesn't support consoles in /dev/lxc/
 lxc.devttydir =
 
-# Default mount entries
-lxc.mount.entry = /sys/fs/fuse/connections sys/fs/fuse/connections none bind,optional 0 0
-
 # When using LXC with apparmor, the container will be confined by default.
 # If you wish for it to instead run unconfined, copy the following line
 # (uncommented) to the container's configuration file.
@@ -24,8 +21,6 @@ lxc.mount.entry = /sys/fs/fuse/connections sys/fs/fuse/connections none bind,opt
 # Extra cgroup device access
 ## rtc
 lxc.cgroup.devices.allow = c 254:0 rm
-## fuse
-lxc.cgroup.devices.allow = c 10:229 rwm
 ## tun
 lxc.cgroup.devices.allow = c 10:200 rwm
 ## hpet

@@ -42,9 +42,12 @@ lxc.cgroup.devices.allow = c 1:8 rwm
 lxc.cgroup.devices.allow = c 1:9 rwm
 ### /dev/pts/*
 lxc.cgroup.devices.allow = c 136:* rwm
+### fuse
+lxc.cgroup.devices.allow = c 10:229 rwm
 
 # Setup the default mounts
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
+lxc.mount.entry = /sys/fs/fuse/connections sys/fs/fuse/connections none bind,optional 0 0
 
 # Blacklist some syscalls which are not safe in privileged
 # containers

@@ -2,7 +2,6 @@
 lxc.include = @LXCTEMPLATECONFIG@/common.conf
 
 # Default mount entries
-lxc.mount.entry = /sys/fs/fuse/connections sys/fs/fuse/connections none bind,optional 0 0
 lxc.mount.entry = /sys/kernel/debug sys/kernel/debug none bind,optional 0 0
 lxc.mount.entry = /sys/kernel/security sys/kernel/security none bind,optional 0 0
 lxc.mount.entry = /sys/fs/pstore sys/fs/pstore none bind,optional 0 0
@@ -28,8 +27,6 @@ lxc.mount.entry = /sys/fs/pstore sys/fs/pstore none bind,optional 0 0
 # Extra cgroup device access
 ## rtc
 lxc.cgroup.devices.allow = c 254:0 rm
-## fuse
-lxc.cgroup.devices.allow = c 10:229 rwm
 ## tun
 lxc.cgroup.devices.allow = c 10:200 rwm
 ## hpet
