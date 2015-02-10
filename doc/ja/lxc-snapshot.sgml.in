@@ -88,10 +88,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </para>
     <para>
       <!--
-    Snapshots are stored as snapshotted containers under a private configuration path.  For instance, if the container's configuration path is <filename>/var/lib/lxc</filename> and the container is <filename>c1</filename>, then the first snapshot will be stored as container <filename>snap0</filename> under configuration path <filename>/var/lib/lxcsnaps/c1</filename>.
-    -->
-      スナップショットは、専用の設定されたパス以下にスナップショット化されたコンテナとして保存されます。
-      例えば、もしコンテナパスが <filename>/var/lib/lxc</filename> で、コンテナが <filename>c1</filename> である場合、最初に取得するスナップショットは、パス <filename>/var/lib/lxcsnaps/c1</filename> の下の <filename>snap0</filename> として保存されます。
+      Snapshots are stored as snapshotted containers under the container's configuration path. For instance, if the container's configuration path is <filename>/var/lib/lxc</filename> and the container is <filename>c1</filename>, then the first snapshot will be stored as container <filename>snap0</filename> under the path <filename>/var/lib/lxc/c1/snaps</filename>.
+      If <filename>/var/lib/lxcsnaps</filename>, as used by LXC 1.0, already exists, then it will continue to be used.
+        -->
+      スナップショットはコンテナパス以下にスナップショット化されたコンテナとして保存されます。
+      例えば、もしコンテナパスが <filename>/var/lib/lxc</filename> で、コンテナが <filename>c1</filename> である場合、最初に取得するスナップショットは、パス <filename>/var/lib/lxc/c1/snaps</filename> の下の <filename>snap0</filename> として保存されます。
+      LXC 1.0 で使われていた <filename>/var/lib/lxcsnaps</filename> が存在する場合には、このディレクトリが引き続き使われます。
     </para>
   </refsect1>
 
