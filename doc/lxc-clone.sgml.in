@@ -121,7 +121,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</term>
 	<listitem>
 	  <para>
-	    The new container's rootfs should be a LVM or btrfs snapshot of the original.
+	    The new container's rootfs will be a snapshot of the original. This option can be specified when the backing store is LVM, btrfs or zfs, and must be specified when you want to snapshot using aufs or overlayfs.
 	  </para>
 	</listitem>
       </varlistentry>
