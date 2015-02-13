@@ -147,23 +147,6 @@ install_plamo() {
 }
 
 configure_plamo() {
-  # create /dev
-  chmod    666 $rootfs/dev/null
-  mknod -m 666 $rootfs/dev/zero c 1 5
-  chmod    666 $rootfs/dev/random
-  mknod -m 666 $rootfs/dev/urandom c 1 9
-  mkdir -m 755 $rootfs/dev/pts
-  mkdir -m 755 $rootfs/dev/shm
-  chmod    666 $rootfs/dev/tty
-  chmod    600 $rootfs/dev/console
-  mknod -m 666 $rootfs/dev/tty0 c 4 0
-  mknod -m 666 $rootfs/dev/tty1 c 4 1
-  mknod -m 666 $rootfs/dev/tty2 c 4 2
-  mknod -m 666 $rootfs/dev/tty3 c 4 3
-  mknod -m 666 $rootfs/dev/tty4 c 4 4
-  mknod -m 666 $rootfs/dev/full c 1 7
-  mknod -m 600 $rootfs/dev/initctl p
-  mknod -m 666 $rootfs/dev/ptmx c 5 2
   # suppress log level output for udev
   sed -i 's/="err"/=0/' $rootfs/etc/udev/udev.conf
   # /etc/fstab
@@ -207,10 +190,9 @@ configure_plamo() {
   echo "Setting root password to 'root'..."
   echo "root:root" | chroot $rootfs chpasswd
   echo "Please change root password!"
-  # /etc/rc.d/rc.S
   ed - $rootfs/etc/rc.d/rc.S <<- "EOF"
-	/^mount -w -n -t proc/;/^# ln -s \/bin\/true/-1d
-	/^mknod \/dev\/unikey/;/^# Clean \/etc\/mtab/-2d
+	/^mount -w -n -t proc/;/^mkdir \/dev\/shm/-1d
+	/^mknod \/dev\/null/;/^# Clean \/etc\/mtab/-2d
 	/^# copy the rules/;/^# Set the hostname/-1d
 	/^# Check the integrity/;/^# Clean up temporary/-1d
 	w
