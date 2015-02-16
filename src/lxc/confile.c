@@ -98,6 +98,7 @@ static int config_includefile(const char *, const char *, struct lxc_conf *);
 static int config_network_nic(const char *, const char *, struct lxc_conf *);
 static int config_autodev(const char *, const char *, struct lxc_conf *);
 static int config_haltsignal(const char *, const char *, struct lxc_conf *);
+static int config_rebootsignal(const char *, const char *, struct lxc_conf *);
 static int config_stopsignal(const char *, const char *, struct lxc_conf *);
 static int config_start(const char *, const char *, struct lxc_conf *);
 static int config_group(const char *, const char *, struct lxc_conf *);
@@ -158,6 +159,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.include",              config_includefile          },
 	{ "lxc.autodev",              config_autodev              },
 	{ "lxc.haltsignal",           config_haltsignal           },
+	{ "lxc.rebootsignal",         config_rebootsignal         },
 	{ "lxc.stopsignal",           config_stopsignal           },
 	{ "lxc.start.auto",           config_start                },
 	{ "lxc.start.delay",          config_start                },
@@ -1264,6 +1266,18 @@ static int config_haltsignal(const char *key, const char *value,
 	if (sig_n < 0)
 		return -1;
 	lxc_conf->haltsignal = sig_n;
+
+	return 0;
+}
+
+static int config_rebootsignal(const char *key, const char *value,
+			     struct lxc_conf *lxc_conf)
+{
+	int sig_n = sig_parse(value);
+
+	if (sig_n < 0)
+		return -1;
+	lxc_conf->rebootsignal = sig_n;
 
 	return 0;
 }

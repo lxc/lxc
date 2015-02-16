@@ -1363,6 +1363,7 @@ free_tpath:
 static bool lxcapi_reboot(struct lxc_container *c)
 {
 	pid_t pid;
+	int rebootsignal = SIGINT;
 
 	if (!c)
 		return false;
@@ -1371,7 +1372,9 @@ static bool lxcapi_reboot(struct lxc_container *c)
 	pid = c->init_pid(c);
 	if (pid <= 0)
 		return false;
-	if (kill(pid, SIGINT) < 0)
+	if (c->lxc_conf && c->lxc_conf->rebootsignal)
+		rebootsignal = c->lxc_conf->rebootsignal;
+	if (kill(pid, rebootsignal) < 0)
 		return false;
 	return true;
 
