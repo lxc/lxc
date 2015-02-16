@@ -70,7 +70,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       the container's init process, waiting up to 60 seconds for the container
       to exit, and then returning. If the container fails to cleanly exit in
       60 seconds, it will be sent the <command>lxc.stopsignal</command>
-      (defaults to SIGKILL) to force it to shut down.
+      (defaults to SIGKILL) to force it to shut down. A request to reboot will
+      send the <command>lxc.rebootsignal</command> (defaults to SIGINT) to the
+      container's init process.
     </para>
 	<para>
 	The <optional>-W</optional>, <optional>-r</optional>,
