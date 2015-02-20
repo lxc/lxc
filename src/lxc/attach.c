@@ -575,7 +575,7 @@ struct attach_clone_payload {
 static int attach_child_main(void* data);
 
 /* help the optimizer along if it doesn't know that exit always exits */
-#define rexit(c)  do { int __c = (c); exit(__c); return __c; } while(0)
+#define rexit(c)  do { int __c = (c); _exit(__c); return __c; } while(0)
 
 /* define default options if no options are supplied by the user */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
