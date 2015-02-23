@@ -145,9 +145,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	<listitem>
 	  <para>
             <!--
-            The new container's rootfs should be a LVM or btrfs snapshot of the original.
+	    The new container's rootfs will be a snapshot of the original. This option can be specified when the backing store is LVM, btrfs or zfs, and must be specified when you want to snapshot using aufs or overlayfs.
             -->
-            新しいコンテナの rootfs は、オリジナルの LVM か btrfs のスナップショットになります。
+            新しいコンテナの rootfs はオリジナルのスナップショットとなります。
+            このオプションはバッキングストアが LVM か btrfs か zfs の時に使用できます。
+            また、スナップショットを aufs か overlayfs で取得したい場合は指定する必要があります。
 	  </para>
 	</listitem>
       </varlistentry>
