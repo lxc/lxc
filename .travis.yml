@@ -11,7 +11,4 @@ notifications:
   email:
     recipients:
       - lxc-devel@lists.linuxcontainers.org
-  irc:
-    channels:
-      - "chat.freenode.net#lxcontainers"
-    use_notice: true
+  webhooks: https://linuxcontainers.org/webhook-lxcbot/
