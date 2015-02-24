@@ -355,16 +355,30 @@ download_ubuntu()
     choose_container_proxy $cache/partial-$arch/ $arch
     # download a mini ubuntu into a cache
     echo "Downloading ubuntu $release minimal ..."
-    if [ -n "$(which qemu-debootstrap)" ]; then
-        qemu-debootstrap --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
-    else
-        debootstrap --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
+	DEBOOTSTRAP=debootstrap
+    if which qemu-debootstrap >/dev/null 2>&1; then
+		DEBOOTSTRAP=qemu-debootstrap
     fi
+	# debootstrap defaults to debian if this file is missing
+	if [ -r /usr/share/keyrings/ubuntu-archive-keyring.gpg ]; then
+		$DEBOOTSTRAP --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch
+		DEBOOTSTRAP_RETURN=$?
+	else
+		# download the ubuntu-archive-keyring.gpg file to /var/cache/lxc/keyrings
+		if [ ! -e "$LOCALSTATEDIR/cache/lxc/keyrings"/ubuntu-archive-keyring.gpg ]; then
+			mkdir -p "$LOCALSTATEDIR/cache/lxc/keyrings"
+			wget --directory-prefix="$LOCALSTATEDIR/cache/lxc/keyrings" http://archive.ubuntu.com/ubuntu/pool/main/u/ubuntu-keyring/ubuntu-keyring_2012.05.19.tar.gz
+			tar xf "$LOCALSTATEDIR/cache/lxc/keyrings"/ubuntu-keyring_2012.05.19.tar.gz -C "$LOCALSTATEDIR/cache/lxc/keyrings" --strip-components=2 ubuntu-keyring-2012.05.19/keyrings/ubuntu-archive-keyring.gpg
+		fi
+		# use downloaded keyring file with debootstrap
+		$DEBOOTSTRAP --keyring="$LOCALSTATEDIR/cache/lxc/keyrings"/ubuntu-archive-keyring.gpg --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch
+		DEBOOTSTRAP_RETURN=$?
+	fi
 
-    if [ $? -ne 0 ]; then
-        echo "Failed to download the rootfs, aborting."
-            return 1
-    fi
+	if [ $DEBOOTSTRAP_RETURN -ne 0 ]; then
+		echo "Failed to download the rootfs, aborting."
+		return 1
+	fi
 
     # Serge isn't sure whether we should avoid doing this when
     # $release == `distro-info -d`
