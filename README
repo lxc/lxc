@@ -9,7 +9,7 @@ What is lxc:
 
   The  linux  containers, lxc, aims to use these new functionalities to pro-
   vide a userspace container object which provides full  resource  isolation
-  and resource control for an applications or a system.
+  and resource control for an application or a system.
 
   The first objective of this project is to make the life easier for the ker-
   nel developers involved in the containers project and  especially  to  con-
