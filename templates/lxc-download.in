@@ -575,6 +575,11 @@ for file in $TEMPLATE_FILES; do
     sed -i "s#LXC_HOOK_DIR#$LXC_HOOK_DIR#g" $file
 done
 
+# prevent mingetty from calling vhangup(2) since it fails with userns on Centos / Oracle
+if [ -f ${LXC_ROOTFS}/etc/init/tty.conf ]; then
+    sed -i 's|mingetty|mingetty --nohangup|' ${LXC_ROOTFS}/etc/init/tty.conf
+fi
+
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
     chown $LXC_MAPPED_UID $LXC_PATH/config $LXC_PATH/fstab >/dev/null 2>&1 || true
 fi
