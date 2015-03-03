@@ -1,4 +1,5 @@
 ### with a few add on commands add the Sabayon Linux Overlays. 
+## migh needs draw my insipration from these too. https://github.com/adrienthebo/sabayon-chroot-builder
 ### goals an easy to Install Sabayon Linux Builder conainer, which is Gentoo Comapatable , 
 #### yet faster to update & administrate... and or a GP Sabayon box sutable for a server farm LXC Virtual hosting... 
 ###  Requires Gentoo, lxc-gentoo.in run gentoo then these few conversions ####
