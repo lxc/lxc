@@ -13,7 +13,7 @@
 ### (adds lxc to vagrant for use. with Witchcraft too)
 ###  to always Gently pentest the network, and send alarm/page if shits really bad. And or ADD an IDS/SIEM tools/ 
 include lxc-gentoo.in 
-# gentoo arch/variant detection trimed. 
+# gentoo arch/variant detection trimed. lxc-gentoo.in 
 set_default_arch()
 {
 printf "### set_default_arch: default arch/variant autodetect...\n"
