@@ -1,38 +1,51 @@
 #!/bin/bash
-
 #
 # LXC template for  Pentoo (Gentoo) ---Mainly as  Build container. 
+## One can run the LXC as a virtual machine much as one dose with Virtualbox
+## or if not running one can use it as a chroot 
 # Tweaked  Pentoo by Necrose99 (Michael R. Lawrence) mike@michaellawrenceit.com
-# http://madtrixz.pentoo.ch/ for nightly stage 4 's  
-# Author: Guillaume Zitta <lxc@zitta.fr>
-#
+### some functions not yet done...... novice~y/rusty as hell bash code ahead you been warned...
+## Spike Pentesting is the how bleeding edge can we push things and we bum from Pentoo.... test some of the nextgen pentest stuff 
+## but we try and give back....  however were at present still in Alpha... but we don't mind being the monkeys in Pentoo's next test rocket. har-har..
+### our CI Server code , One can use to really test your pentoo use LXC or Virtualbox etc, travis-CI etc. 
+### https://github.com/Spike-Pentesting/App-witchcraft  
+## this will build a Gentoo or Sabayon repo in a virtual machine and not risk your Main install.
+### (adds lxc to vagrant for use. with Witchcraft too)
+###  to always Gently pentest the network, and send alarm/page if shits really bad. And or ADD an IDS/SIEM tools/ 
 include lxc-gentoo.in 
-USE="bazaar cvs darcs +git gpg g-sorcery mercurial squashfs subversion sync-plugin-portage test" Emerge layman svn git
-## Lets build Layman so we can add pentoo overlay to the gentoo generic container and add "Spice"
-## as well as our build use cases 
-### get or prompt user to name container to pentoo but use Gentoo Build funtions. based on arch.
+### get or prompt user to name container to Pentoo but use Gentoo Build funtions. based on arch.
+## Prebuild a gentoo container type. & its pretty bare bones... Generic. 
 
-############# some other cool code hear for arch... 
-## % AMD64 possibles for pentoo specifics % ##
-#pentoo:pentoo/default/linux/amd64
- #pentoo:pentoo/default/linux/amd64/binary
-# pentoo:pentoo/default/linux/amd64/bleeding_edge
-#pentoo:pentoo/hardened/linux/amd64
-#pentoo:pentoo/hardened/linux/amd64/binary
-#pentoo:pentoo/hardened/linux/amd64/bleeding_edge
-
-
-## for binary type updates will be faster , and for the moment this will do user may switch latter
-### with whatever i'll have to run pentoo in vm with x86 to probe for Exact.... string.. but I assume its close.
+##############@@@@@@@@@ Gentoo to Pentoo Conversion @@@@@@@@@@@@ ###############
+USE="bazaar cvs darcs +git gpg g-sorcery mercurial -squashfs subversion sync-plugin-portage test" Emerge layman svn git
+## Lets build Layman so we can add Pentoo overlay to the Gentoo generic container and add "Spice" of Pentoo. 
+## as well as our build use cases squashfs one can add back in latter on 
+### get or prompt user to name container to Pentoo but use Gentoo Build functions. based on arch.
+## Don't know yet 
+layman -L
+#pull down list of overlays... wont see were to get Pentoo often if you don't. newer layman still might better safe than sorry. 
+layman -a pentoo
+#add pentoo's repo  :-) Whooohooo !!! 
 eselect profile set pentoo:pentoo/default/linux/amd64/binary
 
-
-# This will become the pentoo-updater script soon # it is pentoo-updater.sh 
-
+## for now lets set Bin profile for sat updates and less builds during Gentoo to Pentoo conversion... 
+## for binary type updates will be faster , and for the moment this will do user may switch latter
+### with whatever i'll have to run pentoo in vm with x86 to probe for Exact.... string.. but I assume its close.
 # This syncs the gentoo and pentoo repos like "apt-get update" in debian
 emerge --sync
+
+IUSE="+analyzer +bluetooth +cracking +database +desktop +exploit +footprint +forensics \
+	+forging +fuzzers +misc +mitm +mobile pentoo +proxies +radio +rce \
+	+scanner +voip +wireless +accessibility +atm gtk java qt4 +office X minipentoo" emerge  pentoo/pentoo pentoo/pentoo-misc
+
+	## Lets Add Pentoo Specials to the Gentoo Container... this will build or use binaries for now...
+	
+# This will become the pentoo-updater script soon # (it is pentoo-updater.sh content )
+# This syncs the Gentoo and Pentoo repos like "apt-get update" in debian
+### emerge --sync ###used prior to adding Pentoo to Gentoo-lxc container. 
 # This updates all the normal packages like "apt-get upgrade" in debian
 emerge --deep --update --newuse world -vt
+## a really Deep update if needed. will rebuild or update crufty stuff. 
 # This optionally merges in changed config files. unchanged files are merged automatically
 etc-update
 # This removes old packages which are not needed like "apt-get autoremove" in debian
