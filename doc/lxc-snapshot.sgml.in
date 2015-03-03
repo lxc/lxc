@@ -79,7 +79,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       container snapshots.
     </para>
     <para>
-    Snapshots are stored as snapshotted containers under a private configuration path.  For instance, if the container's configuration path is <filename>/var/lib/lxc</filename> and the container is <filename>c1</filename>, then the first snapshot will be stored as container <filename>snap0</filename> under configuration path <filename>/var/lib/lxcsnaps/c1</filename>.
+      Snapshots are stored as snapshotted containers under the container's configuration path. For instance, if the container's configuration path is <filename>/var/lib/lxc</filename> and the container is <filename>c1</filename>, then the first snapshot will be stored as container <filename>snap0</filename> under the path <filename>/var/lib/lxc/c1/snaps</filename>.
+      If <filename>/var/lib/lxcsnaps</filename>, as used by LXC 1.0, already exists, then it will continue to be used.
     </para>
   </refsect1>
 

@@ -73,7 +73,7 @@ deluser $TUSER && rm -Rf $HDIR || true
 useradd $TUSER
 
 mkdir -p $HDIR
-echo "$TUSER veth lxcbr0 2" > /etc/lxc/lxc-usernet
+echo "$TUSER veth lxcbr0 2" >> /etc/lxc/lxc-usernet
 sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
 
 usermod -v 910000-919999 -w 910000-919999 $TUSER
@@ -140,5 +140,23 @@ p1=$(run_cmd lxc-info -n c2 -p -H)
 [ "$p1" != "-1" ] || { echo "Failed to start container c2"; false; }
 
 run_cmd lxc-stop -n c2
+
+if which cgm >/dev/null 2>&1; then
+    echo "Testing containers under different cgroups per subsystem"
+    run_cmd cgm create freezer x1/x2
+    cgm movepid freezer x1 $$
+    run_cmd lxc-start -n c1 -d
+    p1=$(run_cmd lxc-info -n c1 -p -H)
+    [ "$p1" != "-1" ] || { echo "Failed to start container c1"; false; }
+    run_cmd lxc-info -n c1
+    run_cmd lxc-attach -n c1 -- /bin/true
+    run_cmd lxc-cgroup -n c1 freezer.state
+
+    echo "Testing lxc-attach and lxc-cgroup from different cgroup"
+    cgm movepid freezer x2 $$
+    run_cmd lxc-attach -n c1 -- /bin/true
+    run_cmd lxc-cgroup -n c1 freezer.state
+    run_cmd lxc-cgroup -n c1 memory.limit_in_bytes
+fi
 
 DONE=1

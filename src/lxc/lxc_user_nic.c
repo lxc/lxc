@@ -133,8 +133,7 @@ static int get_alloted(char *me, char *intype, char *link)
 		return n;
 	}
 	fclose(fin);
-	if (line)
-		free(line);
+	free(line);
 	return -1;
 }
 
@@ -197,7 +196,7 @@ static bool nic_exists(char *nic)
 	return true;
 }
 
-static int instanciate_veth(char *n1, char **n2)
+static int instantiate_veth(char *n1, char **n2)
 {
 	int err;
 
@@ -246,7 +245,7 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 	}
 
 	/* create the nics */
-	if (instanciate_veth(veth1buf, &veth2buf) < 0) {
+	if (instantiate_veth(veth1buf, &veth2buf) < 0) {
 		fprintf(stderr, "Error creating veth tunnel\n");
 		return false;
 	}
@@ -268,7 +267,7 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 	}
 
 	/* pass veth2 to target netns */
-	ret = lxc_netdev_move_by_name(veth2buf, pid);
+	ret = lxc_netdev_move_by_name(veth2buf, pid, NULL);
 	if (ret < 0) {
 		fprintf(stderr, "Error moving %s to netns %d\n", veth2buf, pid);
 		goto out_del;
@@ -541,7 +540,7 @@ out_err:
 
 /*
  * If the caller (real uid, not effective uid) may read the
- * /proc/pid/net/ns, then it is either the caller's netns or one
+ * /proc/[pid]/ns/net, then it is either the caller's netns or one
  * which it created.
  */
 static bool may_access_netns(int pid)

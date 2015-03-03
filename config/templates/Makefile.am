@@ -2,6 +2,8 @@ templatesconfigdir=@LXCTEMPLATECONFIG@
 
 EXTRA_DIST = common.seccomp
 
+SUBDIRS = common.conf.d
+
 templatesconfig_DATA = \
 	archlinux.common.conf \
 	archlinux.userns.conf \
@@ -28,4 +30,5 @@ templatesconfig_DATA = \
 	ubuntu.common.conf \
 	ubuntu.lucid.conf \
 	ubuntu.userns.conf \
+	openwrt.common.conf \
 	userns.conf

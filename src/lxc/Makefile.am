@@ -163,14 +163,11 @@ endif
 bin_SCRIPTS = lxc-checkconfig
 
 EXTRA_DIST = \
-	lxc-device \
 	lxc-ls \
-	lxc-top.lua \
-	lxc.net \
-	lxc-restore-net
+	lxc-restore-net \
+	lxc-top.lua
 
 if ENABLE_PYTHON
-bin_SCRIPTS += lxc-device
 bin_SCRIPTS += lxc-ls
 bin_SCRIPTS += lxc-start-ephemeral
 else
@@ -187,6 +184,7 @@ bin_PROGRAMS = \
 	lxc-console \
 	lxc-create \
 	lxc-destroy \
+	lxc-device \
 	lxc-execute \
 	lxc-freeze \
 	lxc-info \
@@ -204,8 +202,6 @@ sbin_PROGRAMS = init.lxc
 pkglibexec_PROGRAMS = \
 	lxc-monitord \
 	lxc-user-nic
-pkglibexec_SCRIPTS = \
-	lxc-restore-net
 
 AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
@@ -219,6 +215,7 @@ lxc_cgroup_SOURCES = lxc_cgroup.c
 lxc_config_SOURCES = lxc_config.c
 lxc_console_SOURCES = lxc_console.c
 lxc_destroy_SOURCES = lxc_destroy.c
+lxc_device_SOURCES = lxc_device.c
 lxc_execute_SOURCES = lxc_execute.c
 lxc_freeze_SOURCES = lxc_freeze.c
 lxc_info_SOURCES = lxc_info.c
@@ -256,7 +253,6 @@ endif
 install-exec-local: install-soPROGRAMS
 	mkdir -p $(DESTDIR)$(datadir)/lxc
 	install -c -m 644 lxc.functions $(DESTDIR)$(datadir)/lxc
-	install -c -m 755 lxc.net $(DESTDIR)$(datadir)/lxc
 	mv $(DESTDIR)$(libdir)/liblxc.so $(DESTDIR)$(libdir)/liblxc.so.$(VERSION)
 	cd $(DESTDIR)$(libdir); \
 	ln -sf liblxc.so.$(VERSION) liblxc.so.$(firstword $(subst ., ,$(VERSION))); \
@@ -264,6 +260,9 @@ install-exec-local: install-soPROGRAMS
 
 install-exec-hook:
 	chmod u+s $(DESTDIR)$(libexecdir)/lxc/lxc-user-nic
+
+install-data-local:
+	install -c -m 755 lxc-restore-net $(DESTDIR)$(datadir)/lxc
 
 uninstall-local:
 	$(RM) $(DESTDIR)$(libdir)/liblxc.so*

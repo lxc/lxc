@@ -273,6 +273,37 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
+      <title><!-- Init command -->Init コマンド</title>
+      <para>
+        <!--
+        Sets the command to use as the init system for the containers.
+
+        This option is ignored when using lxc-execute.
+
+        Defaults to: /sbin/init
+          -->
+        コンテナの init として使うコマンドを設定します。
+        このオプションは lxc-execute では無視されます。
+        デフォルトは /sbin/init です。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.init_cmd</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+                  Absolute path from container rootfs to the binary to use as init.
+                -->
+              init として使うバイナリの、コンテナの rootfs からの絶対パスを指定します。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title><!-- Network -->ネットワーク</title>
       <para>
         <!--
@@ -335,34 +366,34 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      <option>empty:</option> ループバックインターフェースだけを作成します。
 	    </para>
 
-	    <para>
+            <para>
               <!--
-	      <option>veth:</option> a peer network device is created
-	      with one side assigned to the container and the other
-	      side is attached to a bridge specified by
-	      the <option>lxc.network.link</option>. If the bridge is
-	      not specified, then the veth pair device will be created
-	      but not attached to any bridge. Otherwise, the bridge
-	      has to be setup before on the
-	      system, <command>lxc</command> won't handle any
-	      configuration outside of the container.  By
-	      default <command>lxc</command> choose a name for the
-	      network device belonging to the outside of the
-	      container, this name is handled
-	      by <command>lxc</command>, but if you wish to handle
-	      this name yourself, you can tell <command>lxc</command>
-	      to set a specific name with
-	      the <option>lxc.network.veth.pair</option> option (except for
-	      unprivileged containers where this option is ignored for security
-	      reasons).
+              <option>veth:</option> a virtual ethernet pair
+              device is created with one side assigned to the container
+              and the other side attached to a bridge specified by
+              the <option>lxc.network.link</option> option.
+              If the bridge is not specified, then the veth pair device
+              will be created but not attached to any bridge.
+              Otherwise, the bridge has to be created on the system
+              before starting the container.
+              <command>lxc</command> won't handle any
+              configuration outside of the container.
+              By default, <command>lxc</command> chooses a name for the
+              network device belonging to the outside of the
+              container, but if you wish to handle
+              this name yourselves, you can tell <command>lxc</command>
+              to set a specific name with
+              the <option>lxc.network.veth.pair</option> option (except for
+              unprivileged containers where this option is ignored for security
+              reasons).
               -->
-              <option>veth:</option> 一方がコンテナに、もう一方が <option>lxc.network.link</option> で指定されるブリッジにアタッチされる、ピアネットワークデバイスを作成します。
-              もし、ブリッジが指定されていない場合、veth ペアデバイスは作成されますが、ブリッジにはアタッチされません。
-              ブリッジはシステムで事前に設定する必要があります。
-              さもなければ、<command>lxc</command> はコンテナ外のいかなる設定も扱うことはできないでしょう。
-              デフォルトでは、<command>lxc</command> はコンテナの外部に属するネットワークデバイスに対する名前を決定し、<command>lxc</command> はこの名前を使います。
+              <option>veth:</option > 一方がコンテナに、もう一方が <option>lxc.network.link</option> オプションで指定されたブリッジに接続されるペアの仮想イーサネットデバイスを作成します。
+              もし、ブリッジが指定されていない場合、veth ペアデバイスは作成されますが、ブリッジには接続されません。
+              ブリッジはコンテナが開始する前にシステムで事前に設定しておく必要があります。
+              <command>lxc</command> はコンテナ外の設定を扱うことはありません。
+              デフォルトでは、<command>lxc</command> がコンテナの外部に属するネットワークデバイスに対する名前を決定します。
               しかし、もしこの名前を自分で指定したい場合、<option>lxc.network.veth.pair</option> オプションを使って名前を設定し、lxc に対して指定をすることができます (非特権コンテナの場合をのぞきます。セキュリティ上の理由からこのオプションは無視されます)。
-	    </para>
+            </para>
 
 	    <para>
               <!--
@@ -723,7 +754,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               the maximum number of pseudo ttys allowed for a pts
               instance (this limitation is not implemented yet).
               -->
-              もし設定された場合、コンテナは新しい psuedo tty インスタンスを持ち、それを自身のプライベートとします。
+              もし設定された場合、コンテナは新しい pseudo tty インスタンスを持ち、それを自身のプライベートとします。
               この値は pts インスタンスに許可される pseudo tty の最大数を指定します (この制限はまだ実装されていません)。
 	    </para>
 	  </listitem>
@@ -885,10 +916,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  <listitem>
 	    <para>
               <!--
-	      Set this to 1 to have LXC mount and populate a minimal
-	      <filename>/dev</filename> when starting the container.
+              Set this to 0 to stop LXC from mounting and populating a minimal
+              <filename>/dev</filename> when starting the container.
               -->
-              コンテナの起動時に LXC が /dev をマウントして、最小限の /dev を作成しているようにするには、これを 1 に設定してください。
+              コンテナの起動時に LXC が /dev をマウントして最小限の /dev を作成するのを止めるには、この値を 0 に設定してください。
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -899,9 +930,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <title><!-- Enable kmsg symlink -->kmsg のシンボリックリンクの有効化</title>
       <para>
         <!--
-      Enable creating /dev/kmsg as symlink to /dev/console.  This defaults to 1.
-      -->
-        /dev/kmsg の /dev/console へのシンボリックリンクとしての作成を有効にします。デフォルトは 1 です。
+        Enable creating /dev/kmsg as symlink to /dev/console.  This defaults to 0.
+        -->
+        /dev/console へのシンボリックリンクとして /dev/kmsg を作成することを有効にします。デフォルトは 0 です。
       </para>
       <variablelist>
     <varlistentry>
@@ -911,9 +942,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <listitem>
         <para>
           <!--
-          Set this to 0 to disable /dev/kmsg symlinking.
+          Set this to 1 to enable /dev/kmsg symlinking.
           -->
-          /dev/kmsg のシンボリックリンクを無効にするには 0 を設定してください。
+          /dev/kmsg へのシンボリックリンクを有効にするには 1 を設定してください。
         </para>
       </listitem>
     </varlistentry>
@@ -1044,15 +1075,28 @@ proc proc proc nodev,noexec,nosuid 0 0
                 </para>
 	      </listitem>
 	      <listitem>
+		<!--
+                <para>
+                  <option>sys:mixed</option> (or <option>sys</option>):
+                  mount <filename>/sys</filename> as read-only but with
+                  /sys/devices/virtual/net writable.
+                </para>
+		-->
+		<para>
+		  <option>sys:mixed</option> (or <option>sys</option>):
+		  /sys/devices/virtual/net のみ書き込み可能で、その他の <filename>/sys</filename> はリードオンリーでマウントします。
+		</para>
+              </listitem>
+	      <listitem>
                 <!--
 	        <para>
-	          <option>sys:ro</option> (or <option>sys</option>):
+	          <option>sys:ro</option>
 	          mount <filename>/sys</filename> as read-only
 	          for security / container isolation purposes.
 	        </para>
                 -->
                 <para>
-                  <option>sys:ro</option> (or <option>sys</option>):
+                  <option>sys:ro</option>:
                   <filename>/sys</filename> を、セキュリティとコンテナの隔離の目的でリードオンリーでマウントします。
                 </para>
 	      </listitem>

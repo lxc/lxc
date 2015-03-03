@@ -118,7 +118,7 @@ int lxc_execute(const char *name, char *const argv[], int quiet,
 		.quiet = quiet
 	};
 
-	if (lxc_check_inherited(conf, -1))
+	if (lxc_check_inherited(conf, false, -1))
 		return -1;
 
 	conf->is_execute = 1;

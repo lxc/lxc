@@ -1,0 +1,61 @@
+#!/bin/sh
+#
+# lxc Start/Stop LXC autoboot containers
+#
+# chkconfig: 345 99 01
+# description: Starts/Stops all LXC containers configured for autostart.
+#
+### BEGIN INIT INFO
+# Provides: lxc
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Bring up/down LXC autostart containers
+# Description: Bring up/down LXC autostart containers
+### END INIT INFO
+
+sysconfdir="@SYSCONFDIR@"
+
+# Source function library.
+test ! -r "$sysconfdir"/rc.d/init.d/functions ||
+        . "$sysconfdir"/rc.d/init.d/functions
+
+# provide action() fallback
+if ! type action >/dev/null 2>&1; then
+    # Real basic fallback for sysvinit "action" verbage.
+    action() {
+        echo -n "$1	"
+        shift
+        "$@" && echo "OK" || echo "Failed"
+    }
+fi
+
+start() {
+    action $"Starting LXC autoboot containers: " @LIBEXECDIR@/lxc/lxc-containers start
+}
+
+stop() {
+    action $"Stopping LXC containers: " @LIBEXECDIR@/lxc/lxc-containers stop
+}
+
+# See how we were called.
+case "$1" in
+    start)
+        start
+    ;;
+
+    stop)
+        stop
+    ;;
+
+    restart|reload|force-reload)
+        $0 stop
+        $0 start
+    ;;
+
+    *)
+        echo "Usage: $0 {start|stop|restart|reload|force-reload}"
+        exit 2
+    ;;
+esac
+
+exit $?

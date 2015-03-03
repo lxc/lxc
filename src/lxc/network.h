@@ -31,8 +31,8 @@ extern int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr);
 /*
  * Move a device between namespaces
  */
-extern int lxc_netdev_move_by_index(int ifindex, pid_t pid);
-extern int lxc_netdev_move_by_name(char *ifname, pid_t pid);
+extern int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char* ifname);
+extern int lxc_netdev_move_by_name(const char *ifname, pid_t pid, const char* newname);
 
 /*
  * Delete a network device
@@ -51,6 +51,8 @@ extern int netdev_set_flag(const char *name, int flag);
 /*
  * Set the device network up or down
  */
+
+extern int lxc_netdev_isup(const char *name);
 extern int lxc_netdev_up(const char *name);
 extern int lxc_netdev_down(const char *name);
 

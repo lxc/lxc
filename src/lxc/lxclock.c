@@ -128,8 +128,11 @@ static char *lxclock_name(const char *p, const char *n)
 	}
 	ret = mkdir_p(dest, 0755);
 	if (ret < 0) {
-		/* fall back to "/tmp/" $(id -u) "/lxc/" $lxcpath / $lxcname + '\0' */
-		int l2 = 34 + strlen(n) + strlen(p);
+		/* fall back to "/tmp/" + $(id -u) + "/lxc" + $lxcpath + "/" + "." + $lxcname + '\0'
+		 * * maximum length of $(id -u) is 10 calculated by (log (2 ** (sizeof(uid_t) * 8) - 1) / log 10 + 1)
+		 * * lxcpath always starts with '/'
+		 */
+		int l2 = 22 + strlen(n) + strlen(p);
 		if (l2 > len) {
 			char *d;
 			d = realloc(dest, l2);
@@ -141,13 +144,19 @@ static char *lxclock_name(const char *p, const char *n)
 			len = l2;
 			dest = d;
 		}
-		ret = snprintf(dest, len, "/tmp/%d/lxc/%s", geteuid(), p);
+		ret = snprintf(dest, len, "/tmp/%d/lxc%s", geteuid(), p);
 		if (ret < 0 || ret >= len) {
 			free(dest);
 			free(rundir);
 			return NULL;
 		}
-		ret = snprintf(dest, len, "/tmp/%d/lxc/%s/.%s", geteuid(), p, n);
+		ret = mkdir_p(dest, 0755);
+		if (ret < 0) {
+			free(dest);
+			free(rundir);
+			return NULL;
+		}
+		ret = snprintf(dest, len, "/tmp/%d/lxc%s/.%s", geteuid(), p, n);
 	} else
 		ret = snprintf(dest, len, "%s/lock/lxc/%s/.%s", rundir, p, n);
 
@@ -323,10 +332,8 @@ void lxc_putlock(struct lxc_lock *l)
 			close(l->u.f.fd);
 			l->u.f.fd = -1;
 		}
-		if (l->u.f.fname) {
-			free(l->u.f.fname);
-			l->u.f.fname = NULL;
-		}
+		free(l->u.f.fname);
+		l->u.f.fname = NULL;
 		break;
 	}
 	free(l);
@@ -343,7 +350,7 @@ void process_unlock(void)
 }
 
 /* One thread can do fork() while another one is holding a mutex.
- * There is only one thread in child just after the fork(), so noone will ever release that mutex.
+ * There is only one thread in child just after the fork(), so no one will ever release that mutex.
  * We setup a "child" fork handler to unlock the mutex just after the fork().
  * For several mutex types, unlocking an unlocked mutex can lead to undefined behavior.
  * One way to deal with it is to setup "prepare" fork handler

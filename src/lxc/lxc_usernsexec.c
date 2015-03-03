@@ -214,10 +214,10 @@ static int read_default_map(char *fnam, int which, char *username)
 		    strncmp(line, username, strlen(username)) != 0 ||
 		    line[strlen(username)] != ':')
 			continue;
-		p1 = index(line, ':');
+		p1 = strchr(line, ':');
 		if (!p1)
 			continue;
-		p2 = index(p1+1, ':');
+		p2 = strchr(p1+1, ':');
 		if (!p2)
 			continue;
 		newmap = malloc(sizeof(*newmap));
@@ -244,8 +244,7 @@ static int read_default_map(char *fnam, int which, char *username)
 		break;
 	}
 
-	if (line)
-		free(line);
+	free(line);
 	fclose(fin);
 	return 0;
 }

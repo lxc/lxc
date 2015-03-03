@@ -1002,7 +1002,7 @@ static struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const c
 		continue;
 
 	cleanup_from_error:
-		/* called if an error occured in the loop, so we
+		/* called if an error occurred in the loop, so we
 		 * do some additional cleanup here
 		 */
 		saved_errno = errno;
@@ -1280,7 +1280,7 @@ static int lxc_cgroup_set_data(const char *filename, const char *value, struct c
 
 	subsystem = alloca(strlen(filename) + 1);
 	strcpy(subsystem, filename);
-	if ((p = index(subsystem, '.')) != NULL)
+	if ((p = strchr(subsystem, '.')) != NULL)
 		*p = '\0';
 
 	path = lxc_cgroup_get_hierarchy_abs_path_data(subsystem, d);
@@ -1298,7 +1298,7 @@ static int lxc_cgroupfs_set(const char *filename, const char *value, const char 
 
 	subsystem = alloca(strlen(filename) + 1);
 	strcpy(subsystem, filename);
-	if ((p = index(subsystem, '.')) != NULL)
+	if ((p = strchr(subsystem, '.')) != NULL)
 		*p = '\0';
 
 	path = lxc_cgroup_get_hierarchy_abs_path(subsystem, name, lxcpath);
@@ -1316,7 +1316,7 @@ static int lxc_cgroupfs_get(const char *filename, char *value, size_t len, const
 
 	subsystem = alloca(strlen(filename) + 1);
 	strcpy(subsystem, filename);
-	if ((p = index(subsystem, '.')) != NULL)
+	if ((p = strchr(subsystem, '.')) != NULL)
 		*p = '\0';
 
 	path = lxc_cgroup_get_hierarchy_abs_path(subsystem, name, lxcpath);
@@ -2187,8 +2187,7 @@ static bool do_init_cpuset_file(struct cgroup_mount_point *mp,
 		SYSERROR("failed writing %s", childfile);
 
 out:
-	if (parentfile)
-		free(parentfile);
+	free(parentfile);
 	free(childfile);
 	return ok;
 }
@@ -2226,15 +2225,7 @@ static void *cgfs_init(const char *name)
 	if (!d->name)
 		goto err1;
 
-	/* if we are running as root, use system cgroup pattern, otherwise
-	 * just create a cgroup under the current one. But also fall back to
-	 * that if for some reason reading the configuration fails and no
-	 * default value is available
-	 */
-	if (geteuid() == 0)
-		d->cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
-	if (!d->cgroup_pattern)
-		d->cgroup_pattern = "%n";
+	d->cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
 
 	d->meta = lxc_cgroup_load_meta();
 	if (!d->meta) {
@@ -2256,12 +2247,9 @@ static void cgfs_destroy(void *hdata)
 
 	if (!d)
 		return;
-	if (d->name)
-		free(d->name);
-	if (d->info)
-		lxc_cgroup_process_info_free_and_remove(d->info);
-	if (d->meta)
-		lxc_cgroup_put_meta(d->meta);
+	free(d->name);
+	lxc_cgroup_process_info_free_and_remove(d->info);
+	lxc_cgroup_put_meta(d->meta);
 	free(d);
 }
 
@@ -2317,6 +2305,28 @@ static const char *cgfs_get_cgroup(void *hdata, const char *subsystem)
 	if (!d)
 		return NULL;
 	return lxc_cgroup_get_hierarchy_path_data(subsystem, d);
+}
+
+static const char *cgfs_canonical_path(void *hdata)
+{
+	struct cgfs_data *d = hdata;
+	struct cgroup_process_info *info_ptr;
+	char *path = NULL;
+
+	if (!d)
+		return NULL;
+
+	for (info_ptr = d->info; info_ptr; info_ptr = info_ptr->next) {
+		if (!path)
+			path = info_ptr->cgroup_path;
+		else if (strcmp(path, info_ptr->cgroup_path) != 0) {
+			ERROR("not all paths match %s, %s has path %s", path,
+				info_ptr->hierarchy->subsystems[0], info_ptr->cgroup_path);
+			return NULL;
+		}
+	}
+
+	return path;
 }
 
 static bool cgfs_unfreeze(void *hdata)
@@ -2376,18 +2386,6 @@ static bool lxc_cgroupfs_attach(const char *name, const char *lxcpath, pid_t pid
 	return true;
 }
 
-static bool cgfs_parse_existing_cgroups(void *hdata, pid_t init)
-{
-	struct cgfs_data *d = hdata;
-
-	if (!d)
-		return false;
-
-	d->info = lxc_cgroup_process_info_get(init, d->meta);
-
-	return !!(d->info);
-}
-
 static struct cgroup_ops cgfs_ops = {
 	.init = cgfs_init,
 	.destroy = cgfs_destroy,
@@ -2395,6 +2393,7 @@ static struct cgroup_ops cgfs_ops = {
 	.enter = cgfs_enter,
 	.create_legacy = cgfs_create_legacy,
 	.get_cgroup = cgfs_get_cgroup,
+	.canonical_path = cgfs_canonical_path,
 	.get = lxc_cgroupfs_get,
 	.set = lxc_cgroupfs_set,
 	.unfreeze = cgfs_unfreeze,
@@ -2402,7 +2401,6 @@ static struct cgroup_ops cgfs_ops = {
 	.name = "cgroupfs",
 	.attach = lxc_cgroupfs_attach,
 	.chown = NULL,
-	.parse_existing_cgroups = cgfs_parse_existing_cgroups,
 	.mount_cgroup = cgroupfs_mount_cgroup,
 	.nrtasks = cgfs_nrtasks,
 };

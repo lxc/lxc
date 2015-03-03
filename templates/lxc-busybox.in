@@ -20,15 +20,8 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-# Detect use under userns (unsupported)
-for arg in "$@"; do
-    [ "$arg" = "--" ] && break
-    if [ "$arg" = "--mapped-uid" -o "$arg" = "--mapped-gid" ]; then
-        echo "This template can't be used for unprivileged containers." 1>&2
-        echo "You may want to try the \"download\" template instead." 1>&2
-        exit 1
-    fi
-done
+LXC_MAPPED_UID=
+LXC_MAPPED_GID=
 
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
@@ -80,9 +73,8 @@ $rootfs/usr/lib64"
 
     # minimal devices needed for busybox
     if [ $in_userns -eq 1 ]; then
-        for dev in tty console tty0 tty1 tty5 ram0 null urandom; do
-            touch $rootfs/dev/$dev
-            echo "/dev/$dev dev/$dev    none bind 0 0" >> $path/fstab
+        for dev in tty console tty0 tty1 ram0 null urandom; do
+            echo "lxc.mount.entry = /dev/$dev dev/$dev    none bind,optional,create=file 0 0" >> $path/config
         done
     else
         mknod -m 666 tty c 5 0       || res=1
@@ -117,14 +109,6 @@ EOF
 
     # executable
     chmod 744 $rootfs/etc/init.d/rcS || return 1
-
-    # mount points
-    cat <<EOF >> $rootfs/etc/fstab
-shm   /dev/shm   tmpfs   defaults     0      0
-EOF
-
-    # writable and readable for other
-    chmod 644 $rootfs/etc/fstab || return 1
 
     # launch rcS first then make a console available
     # and propose a shell on the tty, the last one is
@@ -286,6 +270,7 @@ copy_configuration()
 grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
 cat <<EOF >> $path/config
 lxc.haltsignal = SIGUSR1
+lxc.rebootsignal = SIGTERM
 lxc.utsname = $name
 lxc.tty = 1
 lxc.pts = 1
@@ -293,6 +278,9 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
+
+lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
+lxc.mount.entry = shm /dev/shm tmpfs defaults 0 0
 EOF
 
     libdirs="\
@@ -307,7 +295,21 @@ EOF
         fi
     done
     echo "lxc.mount.entry = /sys/kernel/security sys/kernel/security none ro,bind,optional 0 0" >>$path/config
-    echo "lxc.mount.auto = proc:mixed sys" >>$path/config
+}
+
+remap_userns()
+{
+    path=$1
+
+    if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
+        chown $LXC_MAPPED_UID $path/config >/dev/null 2>&1
+        chown -R root $path/rootfs >/dev/null 2>&1
+    fi
+
+    if [ -n "$LXC_MAPPED_GID" ] && [ "$LXC_MAPPED_GID" != "-1" ]; then
+        chgrp $LXC_MAPPED_GID $path/config >/dev/null 2>&1
+        chgrp -R root $path/rootfs >/dev/null 2>&1
+    fi
 }
 
 usage()
@@ -318,7 +320,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n: -l help,rootfs:,path:,name: -- "$@")
+options=$(getopt -o hp:n: -l help,rootfs:,path:,name:,mapped-uid:,mapped-gid: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -332,6 +334,8 @@ do
         -p|--path)      path=$2; shift 2;;
         --rootfs)       rootfs=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
+        --mapped-uid)   LXC_MAPPED_UID=$2; shift 2;;
+        --mapped-gid)   LXC_MAPPED_GID=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
     esac
@@ -372,5 +376,11 @@ fi
 copy_configuration $path $rootfs $name
 if [ $? -ne 0 ]; then
     echo "failed to write configuration file"
+    exit 1
+fi
+
+remap_userns $path
+if [ $? -ne 0 ]; then
+    echo "failed to remap files to user"
     exit 1
 fi

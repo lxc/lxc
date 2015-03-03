@@ -147,22 +147,6 @@ install_plamo() {
 }
 
 configure_plamo() {
-  # create /dev
-  chmod    666 $rootfs/dev/null
-  mknod -m 666 $rootfs/dev/zero c 1 5
-  chmod    666 $rootfs/dev/random
-  mknod -m 666 $rootfs/dev/urandom c 1 9
-  mkdir -m 755 $rootfs/dev/pts
-  chmod    666 $rootfs/dev/tty
-  chmod    600 $rootfs/dev/console
-  mknod -m 666 $rootfs/dev/tty0 c 4 0
-  mknod -m 666 $rootfs/dev/tty1 c 4 1
-  mknod -m 666 $rootfs/dev/tty2 c 4 2
-  mknod -m 666 $rootfs/dev/tty3 c 4 3
-  mknod -m 666 $rootfs/dev/tty4 c 4 4
-  mknod -m 666 $rootfs/dev/full c 1 7
-  mknod -m 600 $rootfs/dev/initctl p
-  mknod -m 666 $rootfs/dev/ptmx c 5 2
   # suppress log level output for udev
   sed -i 's/="err"/=0/' $rootfs/etc/udev/udev.conf
   # /etc/fstab
@@ -206,10 +190,9 @@ configure_plamo() {
   echo "Setting root password to 'root'..."
   echo "root:root" | chroot $rootfs chpasswd
   echo "Please change root password!"
-  # /etc/rc.d/rc.S
   ed - $rootfs/etc/rc.d/rc.S <<- "EOF"
-	/^mount -w -n -t proc/;/^# ln -s \/bin\/true/-1d
-	/^mknod \/dev\/unikey/;/^# Clean \/etc\/mtab/-2d
+	/^mount -w -n -t proc/;/^mkdir \/dev\/shm/-1d
+	/^mknod \/dev\/null/;/^# Clean \/etc\/mtab/-2d
 	/^# copy the rules/;/^# Set the hostname/-1d
 	/^# Check the integrity/;/^# Clean up temporary/-1d
 	w
@@ -246,7 +229,6 @@ copy_configuration() {
   ret=0
   cat <<- EOF >> $path/config || let ret++
 	lxc.utsname = $name
-	lxc.mount = $path/fstab
 	lxc.arch = $arch
 	EOF
   if [ -f "@LXCTEMPLATECONFIG@/plamo.common.conf" ] ; then
@@ -255,8 +237,6 @@ copy_configuration() {
 	lxc.include = @LXCTEMPLATECONFIG@/plamo.common.conf
 	EOF
   fi
-  # create the fstab (empty by default)
-  touch $path/fstab || let ret++
   if [ $ret -ne 0 ] ; then
     echo "Failed to add configuration."
     return 1
@@ -273,7 +253,7 @@ do_bindhome() {
   # bind-mount the user's path into the container's /home
   h=`getent passwd $bindhome | cut -d: -f6`
   mkdir -p $rootfs/$h
-  echo "$h $rootfs/$h none bind 0 0" >> $path/fstab
+  echo "lxc.mount.entry = $h $rootfs/$h none bind 0 0" >> $path/config
   # copy /etc/passwd, /etc/shadow, and /etc/group entries into container
   if ! pwd=`getent passwd $bindhome` ; then
     echo "Warning: failed to copy password entry for $bindhome."

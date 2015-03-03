@@ -1,4 +1,4 @@
-EXTRA_DIST = lxc.conf lxc-instance.conf lxc-net.conf
+EXTRA_DIST = lxc.conf lxc-instance.conf lxc-net.conf.in
 
 if INIT_SCRIPT_UPSTART
 install-upstart: lxc.conf lxc-instance.conf lxc-net.conf

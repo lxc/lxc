@@ -13,7 +13,3 @@ lxc.mount.entry = /dev/random dev/random none bind,create=file 0 0
 lxc.mount.entry = /dev/tty dev/tty none bind,create=file 0 0
 lxc.mount.entry = /dev/urandom dev/urandom none bind,create=file 0 0
 lxc.mount.entry = /dev/zero dev/zero none bind,create=file 0 0
-
-# Default seccomp policy is not needed for unprivileged containers, and
-# non-root users cannot use seccmp without NNP anyway.
-lxc.seccomp =

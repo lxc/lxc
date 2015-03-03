@@ -23,7 +23,7 @@
 
 /*
  * this is all just a first shot for experiment.  If we go this route, much
- * shoudl change.  bdev should be a directory with per-bdev file.  Things which
+ * should change.  bdev should be a directory with per-bdev file.  Things which
  * I'm doing by calling out to userspace should sometimes be done through
  * libraries like liblvm2
  */
@@ -330,17 +330,17 @@ static int detect_fs(struct bdev *bdev, char *type, int len)
 	if (!f)
 		exit(1);
 	while (getline(&line, &linelen, f) != -1) {
-		sp1 = index(line, ' ');
+		sp1 = strchr(line, ' ');
 		if (!sp1)
 			exit(1);
 		*sp1 = '\0';
 		if (strcmp(line, l))
 			continue;
-		sp2 = index(sp1+1, ' ');
+		sp2 = strchr(sp1+1, ' ');
 		if (!sp2)
 			exit(1);
 		*sp2 = '\0';
-		sp3 = index(sp2+1, ' ');
+		sp3 = strchr(sp2+1, ' ');
 		if (!sp3)
 			exit(1);
 		*sp3 = '\0';
@@ -356,15 +356,6 @@ struct bdev_type {
 	const char *name;
 	const struct bdev_ops *ops;
 };
-
-static int is_dir(const char *path)
-{
-	struct stat statbuf;
-	int ret = stat(path, &statbuf);
-	if (ret == 0 && S_ISDIR(statbuf.st_mode))
-		return 1;
-	return 0;
-}
 
 static int dir_detect(const char *path)
 {
@@ -612,7 +603,7 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 
 	if (zfs_list_entry(opath, output, MAXPATHLEN)) {
 		// zfsroot is output up to ' '
-		if ((p = index(output, ' ')) == NULL)
+		if ((p = strchr(output, ' ')) == NULL)
 			return -1;
 		*p = '\0';
 		if ((p = strrchr(output, '/')) == NULL)
@@ -732,7 +723,7 @@ static int zfs_destroy(struct bdev *orig)
 	}
 
 	// zfs mount is output up to ' '
-	if ((p = index(output, ' ')) == NULL)
+	if ((p = strchr(output, ' ')) == NULL)
 		return -1;
 	*p = '\0';
 
@@ -1419,7 +1410,7 @@ static int btrfs_snapshot(const char *orig, const char *new)
 		goto out;
 	}
 	// make sure the directory doesn't already exist
-	if (rmdir(newfull) < 0 && errno != -ENOENT) {
+	if (rmdir(newfull) < 0 && errno != ENOENT) {
 		SYSERROR("Error removing empty new rootfs");
 		goto out;
 	}
@@ -1448,8 +1439,7 @@ out:
 		close(fddst);
 	if (fd != -1)
 		close(fd);
-	if (newfull)
-		free(newfull);
+	free(newfull);
 	return ret;
 }
 
@@ -1512,7 +1502,7 @@ static int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *old
 		return userns_exec_1(conf, btrfs_snapshot_wrapper, &sdata);
 	}
 
-	if (rmdir(new->dest) < 0 && errno != -ENOENT) {
+	if (rmdir(new->dest) < 0 && errno != ENOENT) {
 		SYSERROR("removing %s", new->dest);
 		return -1;
 	}
@@ -2148,32 +2138,72 @@ static int overlayfs_detect(const char *path)
 	return 0;
 }
 
+static char *overlayfs_name;
+static char *detect_overlayfs_name(void)
+{
+	char *v = "overlayfs";
+	char *line = NULL;
+	size_t len = 0;
+	FILE *f = fopen("/proc/filesystems", "r");
+	if (!f)
+		return v;
+
+	while (getline(&line, &len, f) != -1) {
+		if (strcmp(line, "nodev\toverlay\n") == 0) {
+			v = "overlay";
+			break;
+		}
+	}
+
+	fclose(f);
+	free(line);
+	return v;
+}
+
 //
 // XXXXXXX plain directory bind mount ops
 //
 static int overlayfs_mount(struct bdev *bdev)
 {
 	char *options, *dup, *lower, *upper;
-	int len;
+	char *options_work, *work, *lastslash;
+	int lastslashidx;
+	int len, len2;
 	unsigned long mntflags;
 	char *mntdata;
-	int ret;
+	int ret, ret2;
 
 	if (strcmp(bdev->type, "overlayfs"))
 		return -22;
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
+	if (!overlayfs_name)
+		overlayfs_name = detect_overlayfs_name();
+
 	//  separately mount it first
 	//  mount -t overlayfs -oupperdir=${upper},lowerdir=${lower} lower dest
 	dup = alloca(strlen(bdev->src)+1);
 	strcpy(dup, bdev->src);
-	if (!(lower = index(dup, ':')))
+	if (!(lower = strchr(dup, ':')))
 		return -22;
-	if (!(upper = index(++lower, ':')))
+	if (!(upper = strchr(++lower, ':')))
 		return -22;
 	*upper = '\0';
 	upper++;
+
+	// overlayfs.v22 or higher needs workdir option
+	// if upper is /var/lib/lxc/c2/delta0,
+	// then workdir is /var/lib/lxc/c2/olwork
+	lastslash = strrchr(upper, '/');
+	if (!lastslash)
+		return -22;
+	lastslash++;
+	lastslashidx = lastslash - upper;
+
+	work = alloca(lastslashidx + 7);
+	strncpy(work, upper, lastslashidx+7);
+	strcpy(work+lastslashidx, "olwork");
 
 	if (parse_mntopts(bdev->mntopts, &mntflags, &mntdata) < 0) {
 		free(mntdata);
@@ -2187,21 +2217,44 @@ static int overlayfs_mount(struct bdev *bdev)
 		len = strlen(lower) + strlen(upper) + strlen("upperdir=,lowerdir=,") + strlen(mntdata) + 1;
 		options = alloca(len);
 		ret = snprintf(options, len, "upperdir=%s,lowerdir=%s,%s", upper, lower, mntdata);
+
+		len2 = strlen(lower) + strlen(upper) + strlen(work)
+			+ strlen("upperdir=,lowerdir=,workdir=") + strlen(mntdata) + 1;
+		options_work = alloca(len2);
+		ret2 = snprintf(options, len2, "upperdir=%s,lowerdir=%s,workdir=%s,%s",
+				upper, lower, work, mntdata);
 	}
 	else {
 		len = strlen(lower) + strlen(upper) + strlen("upperdir=,lowerdir=") + 1;
 		options = alloca(len);
 		ret = snprintf(options, len, "upperdir=%s,lowerdir=%s", upper, lower);
+
+		len2 = strlen(lower) + strlen(upper) + strlen(work)
+			+ strlen("upperdir=,lowerdir=,workdir=") + 1;
+		options_work = alloca(len2);
+		ret2 = snprintf(options_work, len2, "upperdir=%s,lowerdir=%s,workdir=%s",
+			upper, lower, work);
 	}
-	if (ret < 0 || ret >= len) {
+	if (ret < 0 || ret >= len || ret2 < 0 || ret2 >= len2) {
 		free(mntdata);
 		return -1;
 	}
 
-	ret = mount(lower, bdev->dest, "overlayfs", MS_MGC_VAL | mntflags, options);
-	if (ret < 0)
-		SYSERROR("overlayfs: error mounting %s onto %s options %s",
+	// mount without workdir option for overlayfs before v21
+	ret = mount(lower, bdev->dest, overlayfs_name, MS_MGC_VAL | mntflags, options);
+	if (ret < 0) {
+		INFO("overlayfs: error mounting %s onto %s options %s. retry with workdir",
 			lower, bdev->dest, options);
+
+		// retry with workdir option for overlayfs v22 and higher
+		ret = mount(lower, bdev->dest, overlayfs_name, MS_MGC_VAL | mntflags, options_work);
+		if (ret < 0)
+			SYSERROR("overlayfs: error mounting %s onto %s options %s",
+				lower, bdev->dest, options_work);
+		else
+			INFO("overlayfs: mounted %s onto %s options %s",
+				lower, bdev->dest, options_work);
+	}
 	else
 		INFO("overlayfs: mounted %s onto %s options %s",
 			lower, bdev->dest, options);
@@ -2265,20 +2318,25 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		WARN("Failed to update ownership of %s", new->dest);
 
 	if (strcmp(orig->type, "dir") == 0) {
-		char *delta;
-		int ret, len;
+		char *delta, *lastslash;
+		char *work;
+		int ret, len, lastslashidx;
 
 		// if we have /var/lib/lxc/c2/rootfs, then delta will be
 		//            /var/lib/lxc/c2/delta0
-		delta = strdup(new->dest);
-		if (!delta) {
-			return -1;
-		}
-		if (strlen(delta) < 6) {
-			free(delta);
+		lastslash = strrchr(new->dest, '/');
+		if (!lastslash)
 			return -22;
-		}
-		strcpy(&delta[strlen(delta)-6], "delta0");
+		if (strlen(lastslash) < 7)
+			return -22;
+		lastslash++;
+		lastslashidx = lastslash - new->dest;
+
+		delta = malloc(lastslashidx + 7);
+		if (!delta)
+			return -1;
+		strncpy(delta, new->dest, lastslashidx+1);
+		strcpy(delta+lastslashidx, "delta0");
 		if ((ret = mkdir(delta, 0755)) < 0) {
 			SYSERROR("error: mkdir %s", delta);
 			free(delta);
@@ -2286,6 +2344,25 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		}
 		if (am_unpriv() && chown_mapped_root(delta, conf) < 0)
 			WARN("Failed to update ownership of %s", delta);
+
+		// make workdir for overlayfs.v22 or higher
+		// workdir is /var/lib/lxc/c2/olwork
+		// it is used to prepare files before atomically swithing with destination,
+		// and needs to be on the same filesystem as upperdir,
+		// so it's OK for it to be empty.
+		work = malloc(lastslashidx + 7);
+		if (!work)
+			return -1;
+		strncpy(work, new->dest, lastslashidx+1);
+		strcpy(work+lastslashidx, "olwork");
+		if (mkdir(work, 0755) < 0) {
+			SYSERROR("error: mkdir %s", work);
+			free(work);
+			return -1;
+		}
+		if (am_unpriv() && chown_mapped_root(work, conf) < 0)
+			WARN("Failed to update ownership of %s", work);
+		free(work);
 
 		// the src will be 'overlayfs:lowerdir:upperdir'
 		len = strlen(delta) + strlen(orig->src) + 12;
@@ -2303,12 +2380,13 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		// I think we want to use the original lowerdir, with a
 		// private delta which is originally rsynced from the
 		// original delta
-		char *osrc, *odelta, *nsrc, *ndelta;
-		int len, ret;
+		char *osrc, *odelta, *nsrc, *ndelta, *work;
+		char *lastslash;
+		int len, ret, lastslashidx;
 		if (!(osrc = strdup(orig->src)))
 			return -22;
-		nsrc = index(osrc, ':') + 1;
-		if (nsrc != osrc + 10 || (odelta = index(nsrc, ':')) == NULL) {
+		nsrc = strchr(osrc, ':') + 1;
+		if (nsrc != osrc + 10 || (odelta = strchr(nsrc, ':')) == NULL) {
 			free(osrc);
 			return -22;
 		}
@@ -2319,7 +2397,7 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 			free(osrc);
 			return -ENOMEM;
 		}
-		if ((ret = mkdir(ndelta, 0755)) < 0) {
+		if ((ret = mkdir(ndelta, 0755)) < 0 && errno != EEXIST) {
 			SYSERROR("error: mkdir %s", ndelta);
 			free(osrc);
 			free(ndelta);
@@ -2327,6 +2405,29 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		}
 		if (am_unpriv() && chown_mapped_root(ndelta, conf) < 0)
 			WARN("Failed to update ownership of %s", ndelta);
+
+		// make workdir for overlayfs.v22 or higher
+		// for details, see above.
+		lastslash = strrchr(ndelta, '/');
+		if (!lastslash)
+			return -1;
+		lastslash++;
+		lastslashidx = lastslash - ndelta;
+
+		work = malloc(lastslashidx + 7);
+		if (!work)
+			return -1;
+		strncpy(work, ndelta, lastslashidx+1);
+		strcpy(work+lastslashidx, "olwork");
+		if ((mkdir(work, 0755) < 0) && errno != EEXIST) {
+			SYSERROR("error: mkdir %s", work);
+			free(work);
+			return -1;
+		}
+		if (am_unpriv() && chown_mapped_root(work, conf) < 0)
+			WARN("Failed to update ownership of %s", work);
+		free(work);
+
 		struct rsync_data_char rdata;
 		rdata.src = odelta;
 		rdata.dest = ndelta;
@@ -2369,7 +2470,7 @@ static int overlayfs_destroy(struct bdev *orig)
 
 	if (strncmp(orig->src, "overlayfs:", 10) != 0)
 		return -22;
-	upper = index(orig->src + 10, ':');
+	upper = strchr(orig->src + 10, ':');
 	if (!upper)
 		return -22;
 	upper++;
@@ -2467,9 +2568,9 @@ static int aufs_mount(struct bdev *bdev)
 	//  mount -t aufs -obr=${upper}=rw:${lower}=ro lower dest
 	dup = alloca(strlen(bdev->src)+1);
 	strcpy(dup, bdev->src);
-	if (!(lower = index(dup, ':')))
+	if (!(lower = strchr(dup, ':')))
 		return -22;
-	if (!(upper = index(++lower, ':')))
+	if (!(upper = strchr(++lower, ':')))
 		return -22;
 	*upper = '\0';
 	upper++;
@@ -2560,20 +2661,24 @@ static int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldn
 		return -1;
 
 	if (strcmp(orig->type, "dir") == 0) {
-		char *delta;
-		int ret, len;
+		char *delta, *lastslash;
+		int ret, len, lastslashidx;
 
 		// if we have /var/lib/lxc/c2/rootfs, then delta will be
 		//            /var/lib/lxc/c2/delta0
-		delta = strdup(new->dest);
-		if (!delta) {
-			return -1;
-		}
-		if (strlen(delta) < 6) {
-			free(delta);
+		lastslash = strrchr(new->dest, '/');
+		if (!lastslash)
 			return -22;
-		}
-		strcpy(&delta[strlen(delta)-6], "delta0");
+		if (strlen(lastslash) < 7)
+			return -22;
+		lastslash++;
+		lastslashidx = lastslash - new->dest;
+
+		delta = malloc(lastslashidx + 7);
+		if (!delta)
+			return -1;
+		strncpy(delta, new->dest, lastslashidx+1);
+		strcpy(delta+lastslashidx, "delta0");
 		if ((ret = mkdir(delta, 0755)) < 0) {
 			SYSERROR("error: mkdir %s", delta);
 			free(delta);
@@ -2600,8 +2705,8 @@ static int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldn
 		int len, ret;
 		if (!(osrc = strdup(orig->src)))
 			return -22;
-		nsrc = index(osrc, ':') + 1;
-		if (nsrc != osrc + 5 || (odelta = index(nsrc, ':')) == NULL) {
+		nsrc = strchr(osrc, ':') + 1;
+		if (nsrc != osrc + 5 || (odelta = strchr(nsrc, ':')) == NULL) {
 			free(osrc);
 			return -22;
 		}
@@ -2647,7 +2752,7 @@ static int aufs_destroy(struct bdev *orig)
 
 	if (strncmp(orig->src, "aufs:", 5) != 0)
 		return -22;
-	upper = index(orig->src + 5, ':');
+	upper = strchr(orig->src + 5, ':');
 	if (!upper)
 		return -22;
 	upper++;
@@ -2876,7 +2981,7 @@ static bool requires_nbd(const char *path)
  * attach_block_device returns true if all went well,
  * meaning either a block device was attached or was not
  * needed.  It returns false if something went wrong and
- * container startup shoudl be stopped.
+ * container startup should be stopped.
  */
 bool attach_block_device(struct lxc_conf *conf)
 {
@@ -2928,7 +3033,7 @@ static int nbd_get_partition(const char *src)
 	if (!p)
 		return 0;
 	p++;
-	if (*p < '1' && *p > '9')
+	if (*p < '1' || *p > '9')
 		return 0;
 	return *p - '0';
 }
@@ -3038,12 +3143,9 @@ static const size_t numbdevs = sizeof(bdevs) / sizeof(struct bdev_type);
 
 void bdev_put(struct bdev *bdev)
 {
-	if (bdev->mntopts)
-		free(bdev->mntopts);
-	if (bdev->src)
-		free(bdev->src);
-	if (bdev->dest)
-		free(bdev->dest);
+	free(bdev->mntopts);
+	free(bdev->src);
+	free(bdev->dest);
 	free(bdev);
 }
 
@@ -3256,18 +3358,26 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 
 	if (!orig->dest) {
 		int ret;
-		orig->dest = malloc(MAXPATHLEN);
+		size_t len;
+		struct stat sb;
+
+		len = strlen(oldpath) + strlen(oldname) + strlen("/rootfs") + 2;
+		orig->dest = malloc(len);
 		if (!orig->dest) {
 			ERROR("out of memory");
 			bdev_put(orig);
 			return NULL;
 		}
-		ret = snprintf(orig->dest, MAXPATHLEN, "%s/%s/rootfs", oldpath, oldname);
-		if (ret < 0 || ret >= MAXPATHLEN) {
+		ret = snprintf(orig->dest, len, "%s/%s/rootfs", oldpath, oldname);
+		if (ret < 0 || ret >= len) {
 			ERROR("rootfs path too long");
 			bdev_put(orig);
 			return NULL;
 		}
+		ret = stat(orig->dest, &sb);
+		if (ret < 0 && errno == ENOENT)
+			if (mkdir_p(orig->dest, 0755) < 0)
+				WARN("Error creating '%s', continuing.", orig->dest);
 	}
 
 	/*
@@ -3388,7 +3498,7 @@ static struct bdev * do_bdev_create(const char *dest, const char *type,
 /*
  * bdev_create:
  * Create a backing store for a container.
- * If successfull, return a struct bdev *, with the bdev mounted and ready
+ * If successful, return a struct bdev *, with the bdev mounted and ready
  * for use.  Before completing, the caller will need to call the
  * umount operation and bdev_put().
  * @dest: the mountpoint (i.e. /var/lib/lxc/$name/rootfs)
@@ -3417,7 +3527,7 @@ struct bdev *bdev_create(const char *dest, const char *type,
 	}
 
 	// -B lvm,dir
-	if (index(type, ',') != NULL) {
+	if (strchr(type, ',') != NULL) {
 		char *dup = alloca(strlen(type)+1), *saveptr = NULL, *token;
 		strcpy(dup, type);
 		for (token = strtok_r(dup, ",", &saveptr); token;
@@ -3432,7 +3542,7 @@ struct bdev *bdev_create(const char *dest, const char *type,
 
 char *overlay_getlower(char *p)
 {
-	char *p1 = index(p, ':');
+	char *p1 = strchr(p, ':');
 	if (p1)
 		*p1 = '\0';
 	return p;

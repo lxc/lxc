@@ -91,6 +91,10 @@ function container:new(lname, config)
 end
 
 -- methods interfacing to core functionality
+function container:attach(what, ...)
+    return self.core:attach(what, ...)
+end
+
 function container:config_file_name()
     return self.core:config_file_name()
 end
@@ -270,6 +274,10 @@ end
 function container:stat_match_get_int(item, match, column)
     local val
     local lines = self:get_cgroup_item(item)
+
+    if (lines == nil) then
+       return 0
+    end
 
     for line in lines:gmatch("[^\r\n]+") do
 	if (string.find(line, match)) then

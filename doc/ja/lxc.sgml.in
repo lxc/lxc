@@ -166,29 +166,16 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <para>
 	<!--
-	The kernel version >= 2.6.27 shipped with the distros, will
+	The kernel version >= 2.6.32 shipped with the distros, will
 	work with <command>lxc</command>, this one will have less
 	functionalities but enough to be interesting.
-
-	With the kernel 2.6.29, <command>lxc</command> is fully
-	functional.
 
 	The helper script <command>lxc-checkconfig</command> will give
 	you information about your kernel configuration.
 	-->
-	2.6.27 以上のバージョンが採用されているディストリビューションならば、<command>lxc</command> は動作するでしょう。
+	2.6.32 以上のバージョンが採用されているディストリビューションならば、<command>lxc</command> は動作するでしょう。
         機能的には若干少ない形ですが、充分に楽しめるはずです。
-        2.6.29 カーネルであれば、<command>lxc</command> は完全に機能します。
         ヘルパースクリプトの <command>lxc-checkconfig</command> を使って、あなたのカーネルの設定に関する情報を取得できるでしょう。
-      </para>
-
-      <para>
-	<!--
-	Before using the <command>lxc</command>, your system should be
-	configured with the file capabilities, otherwise you will need
-	to run the <command>lxc</command> commands as root.
-	-->
-	<command>lxc</command> を使う前に、システムがファイルに対するケーパビリティーをえられるように設定するか、もしくは <command>lxc</command> コマンドを root で実行する必要があるでしょう。
       </para>
 
       <para>
@@ -196,22 +183,13 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  The control group can be mounted anywhere, eg:
 	  <command>mount -t cgroup cgroup /cgroup</command>.
 
-	  If you want to dedicate a specific cgroup mount point
-	  for <command>lxc</command>, that is to have different cgroups
-	  mounted at different places with different options but
-	  let <command>lxc</command> to use one location, you can bind
-	  the mount point with the <option>lxc</option> name, eg:
-	  <command>mount -t cgroup lxc /cgroup4lxc</command> or
-	  <command>mount -t cgroup -ons,cpuset,freezer,devices
-	  lxc /cgroup4lxc</command>
+	  It is however recommended to use cgmanager, cgroup-lite or systemd
+	  to mount the cgroup hierarchy under /sys/fs/cgroup.
 	 -->
 	control group は、どこにでもマウント可能です。
         例えば、<command>mount -t cgroup cgroup /cgroup</command> のようにです。
 
-	もし、異なる場所で、異なるオプションでマウントされた別々の cgroup を持ち、一つの場所の <command>lxc</command> コマンドを使うための、特定の <command>lxc</command> のための専用の cgroup のマウントポイントを提供したければ、lxc という名前でマウントポイントにバインドすることが出来ます。例えば以下のようにです。
-	  <command>mount -t cgroup lxc /cgroup4lxc</command> or
-	  <command>mount -t cgroup -ons,cpuset,freezer,devices
-	  lxc /cgroup4lxc</command>
+	しかし、cgroup の階層構造を /sys/fs/cgroup 以下にマウントするために cgmanager や cgroup-lite や systemd の使用が推奨されています。
       </para>
 
   </refsect1>
@@ -578,11 +556,12 @@ rootfs
 	command into the container.
 	The pid of the first process is 1. If no command is
 	specified <command>lxc-start</command> will
-	run <filename>/sbin/init</filename>.
+	run the command defined in lxc.init_cmd or if not set,
+	<filename>/sbin/init</filename> .
         -->
         <command>lxc-start</command> コマンドは、コンテナ内の特定のコマンドを直接実行します。
         最初のプロセスの pid が 1 となります。
-        もし、実行するコマンドが指定されない場合は、<command>lxc-start</command> は <filename>/sbin/init</filename> を実行します。
+        もし、実行するコマンドが指定されない場合は、<command>lxc-start</command> は lxc.init_cmd で設定されたコマンドを実行します。もし lxc.init_cmd が設定されていない場合は <filename>/sbin/init</filename> を実行します。
       </para>
 
       <para>

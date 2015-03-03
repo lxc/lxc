@@ -188,21 +188,23 @@ usage() {
     cat <<EOF
 LXC container image downloader
 
+Special arguments:
+[ -h | --help ]: Print this help message and exit.
+[ -l | --list ]: List all available images and exit.
+
 Required arguments:
 [ -d | --dist <distribution> ]: The name of the distribution
 [ -r | --release <release> ]: Release name/version
 [ -a | --arch <architecture> ]: Architecture of the container
 
 Optional arguments:
-[ -h | --help ]: This help message
-[ -l | --list ]: List all available images
 [ --variant <variant> ]: Variant of the image (default: "default")
 [ --server <server> ]: Image server (default: "images.linuxcontainers.org")
 [ --keyid <keyid> ]: GPG keyid (default: 0x...)
 [ --keyserver <keyserver> ]: GPG keyserver to use
 [ --no-validate ]: Disable GPG validation (not recommended)
 [ --flush-cache ]: Flush the local copy (if present)
-[ --force-cache ]; Force the use of the local copy even if expired
+[ --force-cache ]: Force the use of the local copy even if expired
 
 LXC internal arguments (do not pass manually!):
 [ --name <name> ]: The container name
@@ -266,8 +268,10 @@ fi
 
 # Check that we have all variables we need
 if [ -z "$LXC_NAME" ] || [ -z "$LXC_PATH" ] || [ -z "$LXC_ROOTFS" ]; then
-    echo "ERROR: Not running through LXC." 1>&2
-    exit 1
+    if [ "$DOWNLOAD_LIST_IMAGES" != "true" ]; then
+        echo "ERROR: Not running through LXC." 1>&2
+        exit 1
+    fi
 fi
 
 USERNS=$(in_userns)

@@ -1,14 +1,9 @@
 # This derives from the global common config
 lxc.include = @LXCTEMPLATECONFIG@/common.conf
 
-# Default mount
-lxc.mount.auto = proc sys cgroup
-
 # Doesn't support consoles in /dev/lxc/
 lxc.devttydir =
 
 # Extra cgroup device access
 ## rtc
 lxc.cgroup.devices.allow = c 254:0 rm
-## fuse
-lxc.cgroup.devices.allow = c 10:229 rwm

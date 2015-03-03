@@ -1,0 +1,50 @@
+# Default console settings
+lxc.devttydir = lxc
+lxc.tty = 4
+lxc.pts = 1024
+
+# Default capabilities
+lxc.cap.drop = mac_admin
+lxc.cap.drop = mac_override
+lxc.cap.drop = sys_admin
+lxc.cap.drop = sys_module
+lxc.cap.drop = sys_nice
+lxc.cap.drop = sys_pacct
+lxc.cap.drop = sys_ptrace
+lxc.cap.drop = sys_rawio
+lxc.cap.drop = sys_resource
+lxc.cap.drop = sys_time
+lxc.cap.drop = sys_tty_config
+lxc.cap.drop = syslog
+lxc.cap.drop = wake_alarm
+
+# Default cgroups - all denied except those whitelisted
+lxc.cgroup.devices.deny = a
+## /dev/null and zero
+lxc.cgroup.devices.allow = c 1:3 rwm
+lxc.cgroup.devices.allow = c 1:5 rwm
+## consoles
+lxc.cgroup.devices.allow = c 5:0 rwm
+lxc.cgroup.devices.allow = c 5:1 rwm
+## /dev/{,u}random
+lxc.cgroup.devices.allow = c 1:8 rwm
+lxc.cgroup.devices.allow = c 1:9 rwm
+## /dev/pts/*
+lxc.cgroup.devices.allow = c 5:2 rwm
+lxc.cgroup.devices.allow = c 136:* rwm
+## rtc
+lxc.cgroup.devices.allow = c 254:0 rm
+## tun
+lxc.cgroup.devices.allow = c 10:200 rwm
+## dev/tty0
+lxc.cgroup.devices.allow = c 4:0 rwm
+## dev/tty1
+lxc.cgroup.devices.allow = c 4:1 rwm
+
+## To use loop devices, copy the following line to the container's
+## configuration file (uncommented).
+#lxc.cgroup.devices.allow = b 7:* rwm
+
+# Blacklist some syscalls which are not safe in privileged
+# containers
+lxc.seccomp = /usr/share/lxc/config/common.seccomp

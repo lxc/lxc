@@ -38,7 +38,7 @@ default_path=@LXCPATH@
 #
 # If the root password contains a ding ($) then try to expand it.
 # That will pick up things like ${name} and ${RANDOM}.
-# If the root password contians more than 3 consecutive X's, pass it as
+# If the root password contains more than 3 consecutive X's, pass it as
 # a template to mktemp and take the result.
 #
 # If root_display_password = yes, display the temporary root password at exit.
@@ -270,7 +270,6 @@ EOF
     # set minimal fstab
     cat <<EOF > $rootfs_path/etc/fstab
 /dev/root               /                       rootfs   defaults        0 0
-none                    /dev/shm                tmpfs    nosuid,nodev    0 0
 EOF
 
     # create lxc compatibility init script
@@ -280,14 +279,19 @@ start on startup
 env container
 
 pre-start script
-        if [ "x$container" != "xlxc" -a "x$container" != "xlibvirt" ]; then
+        if [ "x\$container" != "xlxc" -a "x\$container" != "xlibvirt" ]; then
                 stop;
         fi
-        initctl start tty TTY=console
+
         rm -f /var/lock/subsys/*
         rm -f /var/run/*.pid
+        [ -e /etc/mtab ] || ln -s /proc/mounts /etc/mtab
+        mkdir -p /dev/shm
+        mount -t tmpfs -o nosuid,nodev tmpfs /dev/shm
+
+        initctl start tty TTY=console
         telinit 3
-        exit 0;
+        exit 0
 end script
 EOF
     elif [ "$release" = "5" ]; then
@@ -409,7 +413,11 @@ download_centos()
 
     # download a mini centos into a cache
     echo "Downloading centos minimal ..."
-    YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
+    if [ $release -le 5 ];then
+        YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
+    else
+        YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck --releasever=$release"
+    fi
     PKG_LIST="yum initscripts passwd rsyslog vim-minimal openssh-server openssh-clients dhclient chkconfig rootfiles policycoreutils"
 
     # use temporary repository definition
@@ -612,8 +620,6 @@ lxc.include = @LXCTEMPLATECONFIG@/centos.common.conf
 lxc.arch = $arch
 lxc.utsname = $utsname
 
-lxc.autodev = $auto_dev
-
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined
 
@@ -666,7 +672,7 @@ usage()
     cat <<EOF
 usage:
     $1 -n|--name=<container_name>
-        [-p|--path=<path>] [-c|--clean] [-R|--release=<CentOS_release>] [-A|--arch=<arch of the container>]
+        [-p|--path=<path>] [-c|--clean] [-R|--release=<CentOS_release>] [-a|--arch=<arch of the container>]
         [-h|--help]
 Mandatory args:
   -n,--name         container name, used to as an identifier for that container from now on
@@ -695,11 +701,11 @@ do
     case "$1" in
         -h|--help)      usage $0 && exit 0;;
         -p|--path)      path=$2; shift 2;;
-        --rootfs)       rootfs=$2; shift 2;;
+        --rootfs)       rootfs_path=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
-        -c|--clean)     clean=$2; shift 2;;
+        -c|--clean)     clean=1; shift 1;;
         -R|--release)   release=$2; shift 2;;
-	--repo)		repo="$2"; shift 2;;
+        --repo)         repo="$2"; shift 2;;
         -a|--arch)      newarch=$2; shift 2;;
         --fqdn)         utsname=$2; shift 2;;
         --)             shift 1; break ;;
@@ -771,7 +777,7 @@ else
         root_password=$(eval echo "${root_password}")
     fi
 
-    # If it has more than 3 consequtive X's in it, feed it
+    # If it has more than 3 consecutive X's in it, feed it
     # through mktemp as a template.
     if [ $(expr "${root_password}" : '.*XXXX') != 0 ]
     then
@@ -824,25 +830,10 @@ if [ -z "$release" ]; then
     fi
 fi
 
-# CentOS 7 and above should run systemd.  We need autodev enabled to keep
-# systemd from causing problems.
-#
-# There is some ambiguity here due to the differnce between versioning
-# of point specific releases such as 6.5 and the rolling release 6.  We
-# only want the major number here if it's a point release...
-
-mrelease=$(expr $release : '\([0-9]*\)')
-if [ $mrelease -gt 6 ]; then
-    auto_dev="1"
-else
-    auto_dev="0"
-fi
-
 if [ "$(id -u)" != "0" ]; then
     echo "This script should be run as 'root'"
     exit 1
 fi
-
 
 if [ -z "$rootfs_path" ]; then
     rootfs_path=$path/rootfs
@@ -887,7 +878,7 @@ fi
 
 configure_centos_init
 
-if [ ! -z $clean ]; then
+if [ ! -z "$clean" ]; then
     clean || exit 1
     exit 0
 fi

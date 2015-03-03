@@ -38,6 +38,10 @@
 #define luaL_checkunsigned(L,n) luaL_checknumber(L,n)
 #endif
 
+#if LUA_VERSION_NUM >= 503
+#define luaL_checkunsigned(L,n) ((lua_Unsigned)luaL_checkinteger(L,n))
+#endif
+
 #ifdef NO_CHECK_UDATA
 #define checkudata(L,i,tname)	lua_touserdata(L, i)
 #else
@@ -376,8 +380,34 @@ not_found:
     return 1;
 }
 
+static int container_attach(lua_State *L)
+{
+    struct lxc_container *c = lua_unboxpointer(L, 1, CONTAINER_TYPENAME);
+    int argc = lua_gettop(L);
+    char **argv = NULL;
+    int i;
+
+    if (argc > 1) {
+	argv = alloca((argc+1) * sizeof(char *));
+	for (i = 0; i < argc-1; i++) {
+		const char *arg = luaL_checkstring(L, i+2);
+		argv[i] = strdupa(arg);
+	}
+	argv[i] = NULL;
+    }
+    else
+    {
+    	lua_pushnil(L);
+    	return 1;
+    }
+
+    lua_pushboolean(L, !(c->attach_run_wait(c, NULL, argv[0], (const char**)argv)));
+    return 1;
+}
+
 static luaL_Reg lxc_container_methods[] =
 {
+    {"attach",                  container_attach},
     {"create",			container_create},
     {"defined",			container_defined},
     {"destroy",			container_destroy},

@@ -266,7 +266,6 @@ copy_configuration()
 lxc.utsname = $name
 lxc.tty = 4
 lxc.pts = 1024
-lxc.mount = $config_path/fstab
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
@@ -317,11 +316,8 @@ lxc.cgroup.devices.allow = c 136:* rwm
 lxc.cgroup.devices.allow = c 5:2 rwm
 # rtc
 lxc.cgroup.devices.allow = c 10:135 rwm
-EOF
 
-    cat <<EOF > $config_path/fstab
-proc            proc         proc    nodev,noexec,nosuid 0 0
-sysfs           sys          sysfs   defaults  0 0
+lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 EOF
 
     if [ $? -ne 0 ]; then
@@ -398,7 +394,7 @@ do
         --rootfs)       rootfs_path=$2; shift 2;;
         -n|--name)      name=$2; shift 2;;
         -P|--profile)   profile=$2; shift 2;;
-        -c|--clean)     clean=$2; shift 2;;
+        -c|--clean)     clean=1; shift 1;;
         -R|--release)   release=$2; shift 2;;
         -4|--ipv4)      ipv4=$2; shift 2;;
         -6|--ipv6)      ipv6=$2; shift 2;;
@@ -478,7 +474,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-if [ ! -z $clean ]; then
+if [ ! -z "$clean" ]; then
     clean || exit 1
     exit 0
 fi

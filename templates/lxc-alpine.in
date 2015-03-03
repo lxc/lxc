@@ -28,10 +28,15 @@ get_static_apk () {
 
     if [ -z "$repository" ]; then
         url=http://wiki.alpinelinux.org/cgi-bin/dl.cgi
+	yaml_path="latest-stable/releases/$apk_arch/latest-releases.yaml"
         if [ -z "$release" ]; then
             echo -n "Determining the latest release... "
-            release=$($wget $url/.latest.$apk_arch.txt | \
-                cut -d " " -f 3 | cut -d / -f 1 | uniq)
+            release=$($wget $url/$yaml_path | \
+	        awk '$1 == "branch:" {print $2; exit 0}')
+            if [ -z "$release" ]; then
+                release=$($wget $url/.latest.$apk_arch.txt | \
+                    cut -d " " -f 3 | cut -d / -f 1 | uniq)
+            fi
             if [ -z "$release" ]; then
                 echo failed
                 return 1
@@ -121,6 +126,7 @@ configure_alpine() {
     cat >"$rootfs"/etc/inittab<<EOF
 ::sysinit:/sbin/rc sysinit
 ::wait:/sbin/rc default
+console:12345:respawn:/sbin/getty 38400 console
 tty1:12345:respawn:/sbin/getty 38400 tty1
 tty2:12345:respawn:/sbin/getty 38400 tty2
 tty3:12345:respawn:/sbin/getty 38400 tty3
@@ -243,10 +249,9 @@ lxc.cgroup.devices.allow = c 5:2 rwm
 lxc.cgroup.devices.allow = c 254:0 rm
 
 # mounts point
-lxc.mount.entry=proc proc proc nodev,noexec,nosuid 0 0
+lxc.mount.auto=cgroup:mixed proc:mixed sys:mixed
 lxc.mount.entry=run run tmpfs nodev,noexec,nosuid,relatime,size=1m,mode=0755 0 0
-lxc.mount.entry=none dev/pts devpts gid=5,mode=620 0 0
-lxc.mount.entry=shm dev/shm tmpfs nodev,nosuid,noexec 0 0
+lxc.mount.entry=shm dev/shm tmpfs nodev,nosuid,noexec,mode=1777 0 0
 
 EOF
 

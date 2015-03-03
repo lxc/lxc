@@ -119,7 +119,7 @@ function test_container_create()
 	end
     end
     log(0, "%-20s %s", "Creating rootfs using:", optarg["t"])
-    container:create(optarg["t"])
+    assert(container:create(optarg["t"]) == true)
     assert(container:defined() == true)
     assert(container:name() == optarg["n"])
 end
@@ -204,6 +204,12 @@ function test_container_in_cfglist(should_find)
     else
 	assert(cfg_containers[container:name()] == nil)
     end
+end
+
+function test_container_attach()
+    log(0, "Test attach...")
+    assert(container:running() == true)
+    assert(container:attach("/bin/ps") == true)
 end
 
 function test_container_cgroup()
@@ -330,6 +336,7 @@ test_config_network(0)
 test_container_start()
 test_container_started()
 
+test_container_attach()
 test_container_cgroup()
 test_container_cmd()
 

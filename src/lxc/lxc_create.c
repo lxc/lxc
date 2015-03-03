@@ -101,8 +101,6 @@ static const struct option my_longopts[] = {
 
 static void create_helpfn(const struct lxc_arguments *args) {
 	char *argv[3], *path;
-	size_t len;
-	int ret;
 	pid_t pid;
 
 	if (!args->template)
@@ -114,11 +112,7 @@ static void create_helpfn(const struct lxc_arguments *args) {
 		return;
 	}
 
-	len = strlen(LXCTEMPLATEDIR) + strlen(args->template) + strlen("/lxc-") + 1;
-	path = alloca(len);
-	ret = snprintf(path, len,  "%s/lxc-%s", LXCTEMPLATEDIR, args->template);
-	if (ret < 0 || ret >= len)
-		return;
+	path = get_template_path(args->template);
 
 	argv[0] = path;
 	argv[1] = "-h";

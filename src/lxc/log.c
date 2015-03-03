@@ -72,6 +72,7 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 		return 0;
 
 	fprintf(stderr, "%s: ", log_prefix);
+	fprintf(stderr, "%s: %s: %d ", event->locinfo->file, event->locinfo->func, event->locinfo->line);
 	vfprintf(stderr, event->fmt, *event->vap);
 	fprintf(stderr, "\n");
 	return 0;
@@ -90,12 +91,14 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 
 	ms = event->timestamp.tv_usec / 1000;
 	n = snprintf(buffer, sizeof(buffer),
-		     "%15s %10ld.%03d %-8s %s - ",
+		     "%15s %10ld.%03d %-8s %s - %s:%s:%d - ",
 		     log_prefix,
 		     event->timestamp.tv_sec,
 		     ms,
 		     lxc_log_priority_to_string(event->priority),
-		     event->category);
+		     event->category,
+		     event->locinfo->file, event->locinfo->func,
+		     event->locinfo->line);
 
 	n += vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt,
 		       *event->vap);
@@ -156,7 +159,7 @@ static int build_dir(const char *name)
 		*p = '\0';
 		if (access(n, F_OK)) {
 			ret = lxc_unpriv(mkdir(n, 0755));
-			if (ret && errno != -EEXIST) {
+			if (ret && errno != EEXIST) {
 				SYSERROR("failed to create directory '%s'.", n);
 				free(n);
 				return -1;
@@ -197,7 +200,7 @@ static int log_open(const char *name)
  * Build the path to the log file
  * @name     : the name of the container
  * @lxcpath  : the lxcpath to use as a basename or NULL to use LOGPATH
- * Returns malloced path on sucess, or NULL on failure
+ * Returns malloced path on success, or NULL on failure
  */
 static char *build_log_path(const char *name, const char *lxcpath)
 {

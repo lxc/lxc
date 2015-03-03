@@ -48,7 +48,7 @@ static int destroy_busybox(void)
 again:
 	ret = waitpid(pid, &status, 0);
 	if (ret == -1) {
-		if (errno == -EINTR)
+		if (errno == EINTR)
 			goto again;
 		perror("waitpid");
 		return -1;
@@ -80,7 +80,7 @@ static int create_busybox(void)
 again:
 	ret = waitpid(pid, &status, 0);
 	if (ret == -1) {
-		if (errno == -EINTR)
+		if (errno == EINTR)
 			goto again;
 		perror("waitpid");
 		return -1;
@@ -157,11 +157,6 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (c->lxc_conf != NULL) {
-		fprintf(stderr, "%d: lxc_conf is not NULL as it should be\n", __LINE__);
-		ret = 1;
-		goto out;
-	}
 	b = c->is_defined(c);
 	if (b) {
 		fprintf(stderr, "%d: %s thought it was defined\n", __LINE__, MYNAME);

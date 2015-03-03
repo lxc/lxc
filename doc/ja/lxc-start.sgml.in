@@ -94,11 +94,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <para>
       <!--
       If no command is specified, <command>lxc-start</command> will
-      use the default
+      use the command defined in lxc.init_cmd or if not set, the default
       <command>"/sbin/init"</command> command to run a system
       container.
       -->
-      もし command が指定されない場合は、<command>lxc-start</command> はシステムコンテナを実行するためのコマンドとして、デフォルトで <command>"/sbin/init"</command> を使用します。
+      もし command が指定されない場合は、<command>lxc-start</command> はシステムコンテナを実行するためのコマンドとして、lxc.init_cmd で設定されたコマンドを使用します。
+      もし lxc.init_cmd が設定されていない場合は、デフォルトで <command>"/sbin/init"</command> を使用します。
     </para>
 
   </refsect1>

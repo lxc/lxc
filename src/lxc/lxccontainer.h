@@ -580,7 +580,7 @@ struct lxc_container {
 	 * \param c Container.
 	 * \param[in,out] ttynum Terminal number to attempt to allocate,
 	 *  or \c -1 to allocate the first available tty.
-	 * \param[out] masterfd File descriptor refering to the master side of the pty.
+	 * \param[out] masterfd File descriptor referring to the master side of the pty.
 	 *
 	 * \return tty file descriptor number on success, or \c -1 on
 	 *  failure.
@@ -761,6 +761,25 @@ struct lxc_container {
 	 */
 	bool (*remove_device_node)(struct lxc_container *c, const char *src_path, const char *dest_path);
 
+	/*!
+	 * \brief Add specified netdev to the container.
+	 *
+	 * \param c Container.
+	 * \param dev name of net device.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
+	bool (*attach_interface)(struct lxc_container *c, const char *dev, const char *dst_dev);
+
+	/*!
+	 * \brief Remove specified netdev from the container.
+	 *
+	 * \param c Container.
+	 * \param dev name of net device.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
+	bool (*detach_interface)(struct lxc_container *c, const char *dev, const char *dst_dev);
 	/*!
 	 * \brief Checkpoint a container.
 	 *

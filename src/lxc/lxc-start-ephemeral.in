@@ -84,8 +84,11 @@ parser.add_argument("--orig", "-o", type=str, required=True,
 parser.add_argument("--name", "-n", type=str,
                     help=_("name of the target container"))
 
-parser.add_argument("--bdir", "-b", type=str,
+parser.add_argument("--bdir", "-b", type=str, action="append", default=[],
                     help=_("directory to bind mount into container"))
+
+parser.add_argument("--cdir", "-c", type=str, action="append", default=[],
+                    help=_("directory to cow mount into container"))
 
 parser.add_argument("--user", "-u", type=str,
                     help=_("the user to run the command as"))
@@ -156,12 +159,14 @@ if args.name:
 else:
     dest_path = tempfile.mkdtemp(prefix="%s-" % args.orig, dir=lxc_path)
 os.mkdir(os.path.join(dest_path, "rootfs"))
+os.chmod(dest_path, 0o770)
 
 # Setup the new container's configuration
 dest = lxc.Container(os.path.basename(dest_path), args.lxcpath)
 dest.load_config(orig.config_file_name)
 dest.set_config_item("lxc.utsname", dest.name)
 dest.set_config_item("lxc.rootfs", os.path.join(dest_path, "rootfs"))
+print("setting rootfs to .%s.", os.path.join(dest_path, "rootfs"))
 for nic in dest.network:
     if hasattr(nic, 'hwaddr'):
         nic.hwaddr = randomMAC()
@@ -206,6 +211,23 @@ if orig.get_config_item("lxc.mount"):
                 # Setup an overlay for anything remaining
                 overlay_dirs += [(fields[0], dest_mount)]
 
+for entry in args.cdir:
+    if not os.path.exists(entry):
+        print(_("Path '%s' doesn't exist, won't be cow-mounted.") %
+              entry)
+    else:
+        src_path = os.path.abspath(entry)
+        dst_path = "%s/rootfs/%s" % (dest_path, src_path)
+        overlay_dirs += [(src_path, dst_path)]
+
+# do we have the new overlay fs which requires workdir, or the older
+# overlayfs which does not?
+have_new_overlay = False
+with open("/proc/filesystems", "r") as fd:
+    for line in fd:
+        if line == "nodev\toverlay\n":
+            have_new_overlay = True
+
 # Generate pre-mount script
 with open(os.path.join(dest_path, "pre-mount"), "w+") as fd:
     os.fchmod(fd.fileno(), 0o755)
@@ -217,18 +239,37 @@ LXC_NAME="%s"
 
     count = 0
     for entry in overlay_dirs:
-        target = "%s/delta%s" % (dest_path, count)
-        fd.write("mkdir -p %s %s\n" % (target, entry[1]))
+        tmpdir = "%s/tmpfs" % dest_path
+        deltdir = "%s/delta%s" % (tmpdir, count)
+        workdir = "%s/work%s" % (tmpdir, count)
+        fd.write("mkdir -p %s %s\n" % (deltdir, entry[1]))
+        if have_new_overlay:
+            fd.write("mkdir -p %s\n" % workdir)
 
         if args.storage_type == "tmpfs":
-            fd.write("mount -n -t tmpfs -o mode=0755 none %s\n" % (target))
+            fd.write("mount -n -t tmpfs -o mode=0755 none %s\n" % (tmpdir))
+            fd.write("mkdir %s\n" % deltdir)
+            fd.write("mkdir %s\n" % workdir)
+
+        fd.write("getfacl -a %s | setfacl --set-file=- %s || true\n" %
+                 (entry[0], deltdir))
+        fd.write("getfacl -a %s | setfacl --set-file=- %s || true\n" %
+                 (entry[0], entry[1]))
 
         if args.union_type == "overlayfs":
-            fd.write("mount -n -t overlayfs"
-                     " -oupperdir=%s,lowerdir=%s none %s\n" % (
-                         target,
-                         entry[0],
-                         entry[1]))
+            if have_new_overlay:
+                fd.write("mount -n -t overlay"
+                         " -oupperdir=%s,lowerdir=%s,workdir=%s none %s\n" % (
+                             deltdir,
+                             entry[0],
+                             workdir,
+                             entry[1]))
+            else:
+                fd.write("mount -n -t overlayfs"
+                         " -oupperdir=%s,lowerdir=%s none %s\n" % (
+                             deltdir,
+                             entry[0],
+                             entry[1]))
         elif args.union_type == "aufs":
             xino_path = "%s/lxc/aufs.xino" % get_rundir()
             if not os.path.exists(os.path.basename(xino_path)):
@@ -236,19 +277,19 @@ LXC_NAME="%s"
 
             fd.write("mount -n -t aufs "
                      "-o br=%s=rw:%s=ro,noplink,xino=%s none %s\n" % (
-                         target,
+                         deltdir,
                          entry[0],
                          xino_path,
                          entry[1]))
         count += 1
 
-    if args.bdir:
-        if not os.path.exists(args.bdir):
+    for entry in args.bdir:
+        if not os.path.exists(entry):
             print(_("Path '%s' doesn't exist, won't be bind-mounted.") %
-                  args.bdir)
+                  entry)
         else:
-            src_path = os.path.abspath(args.bdir)
-            dst_path = "%s/rootfs/%s" % (dest_path, os.path.abspath(args.bdir))
+            src_path = os.path.abspath(entry)
+            dst_path = "%s/rootfs/%s" % (dest_path, os.path.abspath(entry))
             fd.write("mkdir -p %s\nmount -n --bind %s %s\n" % (
                      dst_path, src_path, dst_path))
 

@@ -170,11 +170,23 @@ static int match_fd(int fd)
 	return (fd == 0 || fd == 1 || fd == 2);
 }
 
-int lxc_check_inherited(struct lxc_conf *conf, int fd_to_ignore)
+/*
+ * Check for any fds we need to close
+ * * if fd_to_ignore != -1, then if we find that fd open we will ignore it.
+ * * By default we warn about open fds we find.
+ * * If closeall is true, we will close open fds.
+ * * If lxc-start was passed "-C", then conf->close_all_fds will be true,
+ *     in which case we also close all open fds.
+ * * A daemonized container will always pass closeall=true.
+ */
+int lxc_check_inherited(struct lxc_conf *conf, bool closeall, int fd_to_ignore)
 {
 	struct dirent dirent, *direntp;
 	int fd, fddir;
 	DIR *dir;
+
+	if (conf && conf->close_all_fds)
+		closeall = true;
 
 restart:
 	dir = opendir("/proc/self/fd");
@@ -203,7 +215,7 @@ restart:
 		if (match_fd(fd))
 			continue;
 
-		if (conf == NULL || conf->close_all_fds) {
+		if (closeall) {
 			close(fd);
 			closedir(dir);
 			INFO("closed inherited fd %d", fd);
@@ -363,6 +375,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 
 	memset(handler, 0, sizeof(*handler));
 
+	handler->ttysock[0] = handler->ttysock[1] = -1;
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
@@ -412,11 +425,6 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 
 	if (run_lxc_hooks(name, "pre-start", conf, handler->lxcpath, NULL)) {
 		ERROR("failed to run pre-start hooks for container '%s'.", name);
-		goto out_aborting;
-	}
-
-	if (lxc_create_tty(name, conf)) {
-		ERROR("failed to create the ttys");
 		goto out_aborting;
 	}
 
@@ -477,10 +485,13 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	lxc_console_delete(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
-	lxc_delete_autodev(handler);
 	close(handler->conf->maincmd_fd);
 	handler->conf->maincmd_fd = -1;
 	free(handler->name);
+	if (handler->ttysock[0] != -1) {
+		close(handler->ttysock[0]);
+		close(handler->ttysock[1]);
+	}
 	cgroup_destroy(handler);
 	free(handler);
 }
@@ -718,7 +729,7 @@ static int do_start(void *data)
 	}
 
 	/* The clearenv() and putenv() calls have been moved here
-	 * to allow us to use enviroment variables passed to the various
+	 * to allow us to use environment variables passed to the various
 	 * hooks, such as the start hook above.  Not all of the
 	 * variables like CONFIG_PATH or ROOTFS are valid in this
 	 * context but others are. */
@@ -737,6 +748,13 @@ static int do_start(void *data)
 	if (putenv("container=lxc")) {
 		SYSERROR("failed to set environment variable 'container=lxc'");
 		goto out_warn_father;
+	}
+
+	if (handler->conf->pty_names) {
+		if (putenv(handler->conf->pty_names)) {
+			SYSERROR("failed to set environment variable for container ptys");
+			goto out_warn_father;
+		}
 	}
 
 	close(handler->sigfd);
@@ -782,6 +800,46 @@ static int save_phys_nics(struct lxc_conf *conf)
 	return 0;
 }
 
+static int recv_fd(int sock, int *fd)
+{
+	if (lxc_abstract_unix_recv_fd(sock, fd, NULL, 0) < 0) {
+		SYSERROR("Error receiving tty fd from child");
+		return -1;
+	}
+	if (*fd == -1)
+		return -1;
+	return 0;
+}
+
+static int recv_ttys_from_child(struct lxc_handler *handler)
+{
+	struct lxc_conf *conf = handler->conf;
+	int i, sock = handler->ttysock[1];
+	struct lxc_tty_info *tty_info = &conf->tty_info;
+
+	if (!conf->tty)
+		return 0;
+
+	tty_info->pty_info = malloc(sizeof(*tty_info->pty_info)*conf->tty);
+	if (!tty_info->pty_info) {
+		SYSERROR("failed to allocate pty_info");
+		return -1;
+	}
+
+	for (i = 0; i < conf->tty; i++) {
+		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
+		pty_info->busy = 0;
+		if (recv_fd(sock, &pty_info->slave) < 0 ||
+				recv_fd(sock, &pty_info->master) < 0) {
+			ERROR("Error receiving tty info from child");
+			return -1;
+		}
+	}
+	tty_info->nbtty = conf->tty;
+
+	return 0;
+}
+
 static int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
@@ -804,6 +862,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (!lxc_list_empty(&handler->conf->id_map)) {
 		INFO("Cloning a new user namespace");
 		handler->clone_flags |= CLONE_NEWUSER;
+	}
+
+	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, handler->ttysock) < 0) {
+		lxc_sync_fini(handler);
+		return -1;
 	}
 
 	if (handler->conf->inherit_ns_fd[LXC_NS_NET] == -1) {
@@ -973,6 +1036,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 	cgroup_disconnect();
 	cgroups_connected = false;
 
+	/* read tty fds allocated by child */
+	if (recv_ttys_from_child(handler) < 0) {
+		ERROR("failed to receive tty info from child");
+		goto out_delete_net;
+	}
+
 	/* Tell the child to complete its initialization and wait for
 	 * it to exec or return an error.  (the child will never
 	 * return LXC_SYNC_POST_CGROUP+1.  It will either close the
@@ -1074,6 +1143,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 				ERROR("Error unsharing mounts");
 				goto out_fini_nonet;
 			}
+			remount_all_slave();
 			if (do_rootfs_setup(conf, name, lxcpath) < 0) {
 				ERROR("Error setting up rootfs mount as root before spawn");
 				goto out_fini_nonet;
@@ -1185,9 +1255,6 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
 	struct start_args start_arg = {
 		.argv = argv,
 	};
-
-	if (lxc_check_inherited(conf, -1))
-		return -1;
 
 	conf->need_utmp_watch = 1;
 	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath);

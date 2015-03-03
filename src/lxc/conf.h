@@ -140,7 +140,7 @@ struct lxc_netdev {
 /*
  * Defines a generic struct to configure the control group.
  * It is up to the programmer to specify the right subsystem.
- * @subsystem : the targetted subsystem
+ * @subsystem : the targeted subsystem
  * @value     : the value to set
  */
 struct lxc_cgroup {
@@ -184,7 +184,7 @@ struct lxc_pty_info {
 
 /*
  * Defines the number of tty configured and contains the
- * instanciated ptys
+ * instantiated ptys
  * @nbtty = number of configured ttys
  */
 struct lxc_tty_info {
@@ -236,6 +236,7 @@ enum {
 
 	LXC_AUTO_SYS_RW               = 0x004,   /* /sys */
 	LXC_AUTO_SYS_RO               = 0x008,   /* /sys read-only */
+	LXC_AUTO_SYS_MIXED            = 0x00C,   /* /sys read-only and /sys/class/net read-write */
 	LXC_AUTO_SYS_MASK             = 0x00C,
 
 	LXC_AUTO_CGROUP_RO            = 0x010,   /* /sys/fs/cgroup (partial mount, read-only) */
@@ -304,6 +305,7 @@ struct lxc_conf {
 	struct lxc_list caps;
 	struct lxc_list keepcaps;
 	struct lxc_tty_info tty_info;
+	char *pty_names; // comma-separated list of lxc.tty pty names
 	struct lxc_console console;
 	struct lxc_rootfs rootfs;
 	char *ttydir;
@@ -321,6 +323,7 @@ struct lxc_conf {
 	int maincmd_fd;
 	int autodev;  // if 1, mount and fill a /dev at start
 	int haltsignal; // signal used to halt container
+	int rebootsignal; // signal used to reboot container
 	int stopsignal; // signal used to hard stop container
 	int kmsg;  // if 1, create /dev/kmsg symlink
 	char *rcfile;	// Copy of the top level rcfile we read
@@ -356,6 +359,9 @@ struct lxc_conf {
 	/* text representation of the config file */
 	char *unexpanded_config;
 	size_t unexpanded_len, unexpanded_alloced;
+
+	/* init command */
+	char *init_cmd;
 };
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
@@ -414,5 +420,6 @@ extern int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data);
 extern int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 			 char **mntdata);
 extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
+void remount_all_slave(void);
 extern void suggest_default_idmap(void);
 #endif

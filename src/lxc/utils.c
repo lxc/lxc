@@ -39,10 +39,32 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <assert.h>
+#include <sys/prctl.h>
 
 #include "utils.h"
 #include "log.h"
 #include "lxclock.h"
+#include "namespace.h"
+
+#ifndef PR_SET_MM
+#define PR_SET_MM 35
+#endif
+
+#ifndef PR_SET_MM_ARG_START
+#define PR_SET_MM_ARG_START 8
+#endif
+
+#ifndef PR_SET_MM_ARG_END
+#define PR_SET_MM_ARG_END 9
+#endif
+
+#ifndef PR_SET_MM_ENV_START
+#define PR_SET_MM_ENV_START 10
+#endif
+
+#ifndef PR_SET_MM_ENV_END
+#define PR_SET_MM_ENV_END 11
+#endif
 
 lxc_log_define(lxc_utils, lxc);
 
@@ -265,7 +287,7 @@ const char *lxc_global_config_value(const char *option_name)
 		{ "lxc.bdev.zfs.root",      DEFAULT_ZFSROOT },
 		{ "lxc.lxcpath",            NULL            },
 		{ "lxc.default_config",     NULL            },
-		{ "lxc.cgroup.pattern",     DEFAULT_CGROUP_PATTERN },
+		{ "lxc.cgroup.pattern",     NULL            },
 		{ "lxc.cgroup.use",         NULL            },
 		{ NULL, NULL },
 	};
@@ -276,9 +298,17 @@ const char *lxc_global_config_value(const char *option_name)
 #else
 	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
 #endif
+
+	/* user_config_path is freed as soon as it is used */
 	char *user_config_path = NULL;
+
+	/*
+	 * The following variables are freed at bottom unconditionally.
+	 * So NULL the value if it is to be returned to the caller
+	 */
 	char *user_default_config_path = NULL;
 	char *user_lxc_path = NULL;
+	char *user_cgroup_pattern = NULL;
 
 	if (geteuid() > 0) {
 		const char *user_home = getenv("HOME");
@@ -292,11 +322,13 @@ const char *lxc_global_config_value(const char *option_name)
 		sprintf(user_config_path, "%s/.config/lxc/lxc.conf", user_home);
 		sprintf(user_default_config_path, "%s/.config/lxc/default.conf", user_home);
 		sprintf(user_lxc_path, "%s/.local/share/lxc/", user_home);
+		user_cgroup_pattern = strdup("%n");
 	}
 	else {
 		user_config_path = strdup(LXC_GLOBAL_CONF);
 		user_default_config_path = strdup(LXC_DEFAULT_CONFIG);
 		user_lxc_path = strdup(LXCPATH);
+		user_cgroup_pattern = strdup(DEFAULT_CGROUP_PATTERN);
 	}
 
 	const char * const (*ptr)[2];
@@ -312,6 +344,7 @@ const char *lxc_global_config_value(const char *option_name)
 		free(user_config_path);
 		free(user_default_config_path);
 		free(user_lxc_path);
+		free(user_cgroup_pattern);
 		errno = EINVAL;
 		return NULL;
 	}
@@ -320,6 +353,7 @@ const char *lxc_global_config_value(const char *option_name)
 		free(user_config_path);
 		free(user_default_config_path);
 		free(user_lxc_path);
+		free(user_cgroup_pattern);
 		return values[i];
 	}
 
@@ -358,18 +392,16 @@ const char *lxc_global_config_value(const char *option_name)
 			if (!*p)
 				continue;
 
-			free(user_default_config_path);
-
 			if (strcmp(option_name, "lxc.lxcpath") == 0) {
 				free(user_lxc_path);
 				user_lxc_path = copy_global_config_value(p);
 				remove_trailing_slashes(user_lxc_path);
 				values[i] = user_lxc_path;
+				user_lxc_path = NULL;
 				goto out;
 			}
 
 			values[i] = copy_global_config_value(p);
-			free(user_lxc_path);
 			goto out;
 		}
 	}
@@ -377,17 +409,19 @@ const char *lxc_global_config_value(const char *option_name)
 	if (strcmp(option_name, "lxc.lxcpath") == 0) {
 		remove_trailing_slashes(user_lxc_path);
 		values[i] = user_lxc_path;
-		free(user_default_config_path);
+		user_lxc_path = NULL;
 	}
 	else if (strcmp(option_name, "lxc.default_config") == 0) {
 		values[i] = user_default_config_path;
-		free(user_lxc_path);
+		user_default_config_path = NULL;
 	}
-	else {
-		free(user_default_config_path);
-		free(user_lxc_path);
+	else if (strcmp(option_name, "lxc.cgroup.pattern") == 0) {
+		values[i] = user_cgroup_pattern;
+		user_cgroup_pattern = NULL;
+	}
+	else
 		values[i] = (*ptr)[1];
-	}
+
 	/* special case: if default value is NULL,
 	 * and there is no config, don't view that
 	 * as an error... */
@@ -397,6 +431,10 @@ const char *lxc_global_config_value(const char *option_name)
 out:
 	if (fin)
 		fclose(fin);
+
+	free(user_cgroup_pattern);
+	free(user_default_config_path);
+	free(user_lxc_path);
 
 	return values[i];
 }
@@ -1260,6 +1298,31 @@ int detect_shared_rootfs(void)
 	return 0;
 }
 
+bool switch_to_ns(pid_t pid, const char *ns) {
+	int fd, ret;
+	char nspath[MAXPATHLEN];
+
+	/* Switch to new ns */
+	ret = snprintf(nspath, MAXPATHLEN, "/proc/%d/ns/%s", pid, ns);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return false;
+
+	fd = open(nspath, O_RDONLY);
+	if (fd < 0) {
+		SYSERROR("failed to open %s", nspath);
+		return false;
+	}
+
+	ret = setns(fd, 0);
+	if (ret) {
+		SYSERROR("failed to set process %d to %s of %d.", pid, ns, fd);
+		close(fd);
+		return false;
+	}
+	close(fd);
+	return true;
+}
+
 /*
  * looking at fs/proc_namespace.c, it appears we can
  * actually expect the rootfs entry to very specifically contain
@@ -1350,6 +1413,8 @@ bool file_exists(const char *f)
 char *choose_init(const char *rootfs)
 {
 	char *retv = NULL;
+	const char *empty = "",
+		   *tmp;
 	int ret, env_set = 0;
 	struct stat mystat;
 
@@ -1374,9 +1439,11 @@ char *choose_init(const char *rootfs)
 		return NULL;
 
 	if (rootfs)
-		ret = snprintf(retv, PATH_MAX, "%s/%s/init.lxc", rootfs, SBINDIR);
+		tmp = rootfs;
 	else
-		ret = snprintf(retv, PATH_MAX, SBINDIR "/init.lxc");
+		tmp = empty;
+
+	ret = snprintf(retv, PATH_MAX, "%s/%s/%s", tmp, SBINDIR, "/init.lxc");
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
 		goto out1;
@@ -1386,10 +1453,7 @@ char *choose_init(const char *rootfs)
 	if (ret == 0)
 		return retv;
 
-	if (rootfs)
-		ret = snprintf(retv, PATH_MAX, "%s/%s/lxc/lxc-init", rootfs, LXCINITDIR);
-	else
-		ret = snprintf(retv, PATH_MAX, LXCINITDIR "/lxc/lxc-init");
+	ret = snprintf(retv, PATH_MAX, "%s/%s/%s", tmp, LXCINITDIR, "/lxc/lxc-init");
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
 		goto out1;
@@ -1399,10 +1463,7 @@ char *choose_init(const char *rootfs)
 	if (ret == 0)
 		return retv;
 
-	if (rootfs)
-		ret = snprintf(retv, PATH_MAX, "%s/usr/lib/lxc/lxc-init", rootfs);
-	else
-		ret = snprintf(retv, PATH_MAX, "/usr/lib/lxc/lxc-init");
+	ret = snprintf(retv, PATH_MAX, "%s/usr/lib/lxc/lxc-init", tmp);
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
 		goto out1;
@@ -1411,10 +1472,7 @@ char *choose_init(const char *rootfs)
 	if (ret == 0)
 		return retv;
 
-	if (rootfs)
-		ret = snprintf(retv, PATH_MAX, "%s/sbin/lxc-init", rootfs);
-	else
-		ret = snprintf(retv, PATH_MAX, "/sbin/lxc-init");
+	ret = snprintf(retv, PATH_MAX, "%s/sbin/lxc-init", tmp);
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("pathname too long");
 		goto out1;
@@ -1458,5 +1516,118 @@ int print_to_file(const char *file, const char *content)
 	if (fprintf(f, "%s", content) != strlen(content))
 		ret = -1;
 	fclose(f);
+	return ret;
+}
+
+int is_dir(const char *path)
+{
+	struct stat statbuf;
+	int ret = stat(path, &statbuf);
+	if (ret == 0 && S_ISDIR(statbuf.st_mode))
+		return 1;
+	return 0;
+}
+
+/*
+ * Given the '-t' template option to lxc-create, figure out what to
+ * do.  If the template is a full executable path, use that.  If it
+ * is something like 'sshd', then return $templatepath/lxc-sshd.
+ * On success return the template, on error return NULL.
+ */
+char *get_template_path(const char *t)
+{
+	int ret, len;
+	char *tpath;
+
+	if (t[0] == '/' && access(t, X_OK) == 0) {
+		tpath = strdup(t);
+		return tpath;
+	}
+
+	len = strlen(LXCTEMPLATEDIR) + strlen(t) + strlen("/lxc-") + 1;
+	tpath = malloc(len);
+	if (!tpath)
+		return NULL;
+	ret = snprintf(tpath, len, "%s/lxc-%s", LXCTEMPLATEDIR, t);
+	if (ret < 0 || ret >= len) {
+		free(tpath);
+		return NULL;
+	}
+	if (access(tpath, X_OK) < 0) {
+		SYSERROR("bad template: %s", t);
+		free(tpath);
+		return NULL;
+	}
+
+	return tpath;
+}
+
+/*
+ * Sets the process title to the specified title. Note:
+ *   1. this function requires root to succeed
+ *   2. it clears /proc/self/environ
+ *   3. it may not succed (e.g. if title is longer than /proc/self/environ +
+ *      the original title)
+ */
+int setproctitle(char *title)
+{
+	char buf[2048], *tmp;
+	FILE *f;
+	int i, len, ret = 0;
+	unsigned long arg_start, arg_end, env_start, env_end;
+
+	f = fopen_cloexec("/proc/self/stat", "r");
+	if (!f) {
+		return -1;
+	}
+
+	tmp = fgets(buf, sizeof(buf), f);
+	fclose(f);
+	if (!tmp) {
+		return -1;
+	}
+
+	/* Skip the first 47 fields, column 48-51 are ARG_START and
+	 * ARG_END. */
+	tmp = strchr(buf, ' ');
+	for (i = 0; i < 46; i++) {
+		if (!tmp)
+			return -1;
+		tmp = strchr(tmp+1, ' ');
+	}
+
+	if (!tmp)
+		return -1;
+
+	i = sscanf(tmp, "%lu %lu %lu %lu", &arg_start, &arg_end, &env_start, &env_end);
+	if (i != 4) {
+		return -1;
+	}
+
+	/* Include the null byte here, because in the calculations below we
+	 * want to have room for it. */
+	len = strlen(title) + 1;
+
+	/* We're truncating the environment, so we should use at most the
+	 * length of the argument + environment for the title. */
+	if (len > env_end - arg_start) {
+		arg_end = env_end;
+		len = env_end - arg_start;
+	} else {
+		/* Only truncate the environment if we're actually going to
+		 * overwrite part of it. */
+		if (len >= arg_end - arg_start) {
+			env_start = env_end;
+		}
+		arg_end = arg_start + len;
+	}
+
+	strcpy((char*)arg_start, title);
+
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_START,   (long)arg_start, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_END,     (long)arg_end, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_START,   (long)env_start, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_END,     (long)env_end, 0, 0);
+
 	return ret;
 }

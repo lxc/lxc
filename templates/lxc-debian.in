@@ -33,8 +33,8 @@ done
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
-MIRROR=${MIRROR:-http://cdn.debian.net/debian}
-SECURITY_MIRROR=${SECURITY_MIRROR:-http://cdn.debian.net/debian-security}
+MIRROR=${MIRROR:-http://http.debian.net/debian}
+SECURITY_MIRROR=${SECURITY_MIRROR:-http://security.debian.org/}
 LOCALSTATEDIR="@LOCALSTATEDIR@"
 LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
 
@@ -108,10 +108,10 @@ EOF
     fi
 
     # remove pointless services in a container
-    chroot $rootfs /usr/sbin/update-rc.d -f checkroot.sh remove
-    chroot $rootfs /usr/sbin/update-rc.d -f umountfs remove
-    chroot $rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
-    chroot $rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
+    chroot $rootfs /usr/sbin/update-rc.d -f checkroot.sh disable
+    chroot $rootfs /usr/sbin/update-rc.d -f umountfs disable
+    chroot $rootfs /usr/sbin/update-rc.d -f hwclock.sh disable
+    chroot $rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh disable
 
     # generate new SSH keys
     if [ -x $rootfs/var/lib/dpkg/info/openssh-server.postinst ]; then
@@ -167,8 +167,8 @@ write_sourceslist()
     fi
 
     cat >> "${rootfs}/etc/apt/sources.list" << EOF
-${prefix} $MIRROR          ${release}        main contrib non-free
-${prefix} $SECURITY_MIRROR ${release}/update main contrib non-free
+${prefix} $MIRROR          ${release}         main contrib non-free
+${prefix} $SECURITY_MIRROR ${release}/updates main contrib non-free
 EOF
 }
 
@@ -181,6 +181,38 @@ install_packages()
     if [ -n "${packages}" ]; then
         chroot ${rootfs} apt-get install --force-yes -y --no-install-recommends ${packages}
     fi
+}
+
+configure_debian_systemd()
+{
+    path=$1
+    rootfs=$2
+
+    # this only works if we have getty@.service to manipulate
+    if [ -f ${rootfs}/lib/systemd/system/getty\@.service ]; then
+       sed -e 's/^ConditionPathExists=/# ConditionPathExists=/' \
+           -e 's/After=dev-%i.device/After=/' \
+           < ${rootfs}/lib/systemd/system/getty\@.service \
+           > ${rootfs}/etc/systemd/system/getty\@.service
+    fi
+
+    # just in case systemd is not installed
+    mkdir -p ${rootfs}/{lib,etc}/systemd/system
+    mkdir -p ${rootfs}/etc/systemd/system/getty.target.wants
+
+    # This function has been copied and adapted from lxc-fedora
+    rm -f ${rootfs}/etc/systemd/system/default.target
+    chroot ${rootfs} ln -s /dev/null /etc/systemd/system/udev.service
+    chroot ${rootfs} ln -s /dev/null /etc/systemd/system/systemd-udevd.service
+    chroot ${rootfs} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+    # Make systemd honor SIGPWR
+    chroot ${rootfs} ln -s /lib/systemd/system/halt.target /etc/systemd/system/sigpwr.target
+    # Setup getty service on the 4 ttys we are going to allow in the
+    # default config.  Number should match lxc.tty
+    ( cd ${rootfs}/etc/systemd/system/getty.target.wants
+        for i in 1 2 3 4 ; do ln -sf ../getty\@.service getty@tty${i}.service; done )
+
+    return 0
 }
 
 cleanup()
@@ -292,9 +324,6 @@ copy_configuration()
     arch=$4
 
     # Generate the configuration file
-    ## Create the fstab (empty by default)
-    touch $path/fstab
-
     # if there is exactly one veth network entry, make sure it has an
     # associated hwaddr.
     nics=`grep -e '^lxc\.network\.type[ \t]*=[ \t]*veth' $path/config | wc -l`
@@ -318,7 +347,6 @@ copy_configuration()
     grep -q "^lxc.rootfs" $path/config 2> /dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
 
     cat <<EOF >> $path/config
-lxc.mount = $path/fstab
 lxc.utsname = $hostname
 lxc.arch = $arch
 EOF
@@ -397,12 +425,38 @@ clean()
 usage()
 {
     cat <<EOF
-$1 -h|--help -p|--path=<path> [-a|--arch] [-c|--clean] [--mirror=<mirror>] [-r|--release=<release>] [--security-mirror=<security mirror>]
-arch: the container architecture (e.g. amd64): defaults to host arch
-release: the debian release (e.g. wheezy): defaults to current stable
-mirror: debain mirror to use during installation
-security mirror: debain mirror to use for security updates
-packages: list of packages to add comma separated
+Template specific options can be passed to lxc-create after a '--' like this:
+
+  lxc-create --name=NAME [-lxc-create-options] -- [-template-options]
+
+Usage: $1 -h|--help -p|--path=<path> [-c|--clean] [-a|--arch=<arch>] [-r|--release=<release>]
+                                     [--mirror=<mirror>] [--security-mirror=<security mirror>]
+                                     [--package=<package_name1,package_name2,...>]
+
+Options :
+
+  -h, --help             print this help text
+  -p, --path=PATH        directory where config and rootfs of this VM will be kept
+  -a, --arch=ARCH        The container architecture. Can be one of: i686, x86_64,
+                         amd64, armhf, armel, powerpc. Defaults to host arch.
+  -r, --release=RELEASE  Debian release. Can be one of: squeeze, wheezy, jessie, sid.
+                         Defaults to current stable.
+  --mirror=MIRROR        Debian mirror to use during installation. Overrides the MIRROR
+                         environment variable (see below).
+  --security-mirror=SECURITY_MIRROR
+                         Debian mirror to use for security updates. Overrides the
+                         SECURITY_MIRROR environment variable (see below).
+  --packages=PACKAGE_NAME1,PACKAGE_NAME2,...
+                         List of additional packages to install. Comma separated, without space.
+  -c, --clean            only clean up the cache and terminate
+
+Environment variables:
+
+  MIRROR                 The Debian package mirror to use. See also the --mirror switch above.
+                         Defaults to '$MIRROR'
+  SECURITY_MIRROR        The Debian package security mirror to use. See also the --security-mirror switch above.
+                         Defaults to '$SECURITY_MIRROR'
+
 EOF
     return 0
 }
@@ -435,7 +489,7 @@ do
            --)                shift 1; break ;;
 
         -a|--arch)            arch=$2; shift 2;;
-        -c|--clean)           clean=$2; shift 1;;
+        -c|--clean)           clean=1; shift 1;;
            --mirror)          MIRROR=$2; shift 2;;
         -n|--name)            name=$2; shift 2;;
            --packages)        packages=$2; shift 2;;
@@ -528,9 +582,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+configure_debian_systemd $path $rootfs
+
 post_process ${rootfs} ${release} ${arch} ${hostarch} ${packages}
 
-if [ ! -z $clean ]; then
+if [ ! -z "$clean" ]; then
     clean || exit 1
     exit 0
 fi

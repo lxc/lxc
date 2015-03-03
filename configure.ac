@@ -4,7 +4,7 @@
 m4_define([lxc_version_major], 1)
 m4_define([lxc_version_minor], 1)
 m4_define([lxc_version_micro], 0)
-m4_define([lxc_version_beta], [alpha1])
+m4_define([lxc_version_beta], [])
 
 m4_define([lxc_version_base], [lxc_version_major.lxc_version_minor.lxc_version_micro])
 m4_define([lxc_version],
@@ -60,13 +60,16 @@ if test "z$with_distro" = "z"; then
 fi
 case $with_distro in
 	ubuntu|raspbian)
-		distroconf=default.conf.ubuntu
+		distroconf=default.conf.lxcbr
+		distrosysconf="$sysconfdir/default"
 		;;
-	redhat|centos|fedora|oracle|oracleserver)
-		distroconf=default.conf.libvirt
+	redhat|centos|fedora|oracle|oracleserver|suse|opensuse*)
+		distroconf=default.conf.lxcbr
+		distrosysconf="$sysconfdir/sysconfig"
 		;;
 	*)
 		distroconf=default.conf.unknown
+		distrosysconf="$sysconfdir/default"
 		;;
 esac
 AC_MSG_RESULT([$with_distro])
@@ -84,7 +87,7 @@ AC_ARG_WITH([init-script],
 case "$with_init_script" in
 	distro)
 		case $with_distro in
-			fedora)
+			fedora|opensuse*)
 				init_script=systemd
 				;;
 			redhat|centos|oracle|oracleserver)
@@ -520,6 +523,7 @@ AS_AC_EXPAND(LXCPATH, "$with_config_path")
 AS_AC_EXPAND(LXC_GLOBAL_CONF, "$with_global_conf")
 AS_AC_EXPAND(LXC_USERNIC_CONF, "$with_usernic_conf")
 AS_AC_EXPAND(LXC_USERNIC_DB, "$with_usernic_db")
+AS_AC_EXPAND(LXC_DISTRO_SYSCONF, "$distrosysconf")
 AS_AC_EXPAND(LXCROOTFSMOUNT, "$with_rootfs_path")
 AS_AC_EXPAND(LXCTEMPLATEDIR, "$datadir/lxc/templates")
 AS_AC_EXPAND(LXCTEMPLATECONFIG, "$datadir/lxc/config")
@@ -528,6 +532,9 @@ AS_AC_EXPAND(LXCINITDIR, "$libexecdir")
 AS_AC_EXPAND(LOGPATH, "$with_log_path")
 AS_AC_EXPAND(RUNTIME_PATH, "$with_runtime_path")
 AC_SUBST(DEFAULT_CGROUP_PATTERN, ["$with_cgroup_pattern"])
+
+# We need the install path so criu knows where to reference the hook scripts.
+AC_DEFINE_UNQUOTED([DATADIR], "$DATADIR", ["Prefix for shared files."])
 
 # Check for some standard kernel headers
 AC_CHECK_HEADERS([linux/unistd.h linux/netlink.h linux/genetlink.h],
@@ -602,11 +609,16 @@ AC_CONFIG_FILES([
 	config/bash/Makefile
 	config/bash/lxc
 	config/init/Makefile
-	config/init/sysvinit/Makefile
-	config/init/sysvinit/lxc
+	config/init/common/Makefile
+	config/init/common/lxc-containers
+	config/init/common/lxc-net
 	config/init/systemd/Makefile
 	config/init/systemd/lxc.service
 	config/init/systemd/lxc-net.service
+	config/init/sysvinit/Makefile
+	config/init/sysvinit/lxc-containers
+	config/init/sysvinit/lxc-net
+	config/init/upstart/lxc-net.conf
 	config/init/upstart/Makefile
 	config/etc/Makefile
 	config/templates/Makefile
@@ -615,6 +627,7 @@ AC_CONFIG_FILES([
 	config/templates/centos.common.conf
 	config/templates/centos.userns.conf
 	config/templates/common.conf
+	config/templates/common.conf.d/Makefile
 	config/templates/debian.common.conf
 	config/templates/debian.userns.conf
 	config/templates/fedora.common.conf
@@ -634,8 +647,11 @@ AC_CONFIG_FILES([
 	config/templates/ubuntu.common.conf
 	config/templates/ubuntu.lucid.conf
 	config/templates/ubuntu.userns.conf
+	config/templates/openwrt.common.conf
 	config/templates/userns.conf
 	config/yum/Makefile
+	config/sysconfig/Makefile
+	config/sysconfig/lxc
 
 	doc/Makefile
 	doc/api/Makefile

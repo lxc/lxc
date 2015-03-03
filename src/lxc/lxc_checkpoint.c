@@ -154,6 +154,11 @@ bool restore(struct lxc_container *c)
 		pid = fork();
 
 	if (pid == 0) {
+		if (my_args.daemonize) {
+			close(0);
+			close(1);
+		}
+
 		ret = c->restore(c, checkpoint_dir, verbose);
 
 		if (!ret) {

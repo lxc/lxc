@@ -1,0 +1,28 @@
+# LXC_AUTO - whether or not to start containers at boot
+LXC_AUTO="true"
+
+# BOOTGROUPS - What groups should start on bootup?
+#	Comma separated list of groups.
+#	Leading comma, trailing comma or embedded double
+#	comma indicates when the NULL group should be run.
+# Example (default): boot the onboot group first then the NULL group
+BOOTGROUPS="onboot,"
+
+# SHUTDOWNDELAY - Wait time for a container to shut down.
+#	Container shutdown can result in lengthy system
+#	shutdown times.  Even 5 seconds per container can be
+#	too long.
+SHUTDOWNDELAY=5
+
+# OPTIONS can be used for anything else.
+#	If you want to boot everything then
+#	options can be "-a" or "-a -A".
+OPTIONS=
+
+# STOPOPTS are stop options.  The can be used for anything else to stop.
+#	If you want to kill containers fast, use -k
+STOPOPTS="-a -A -s"
+
+USE_LXC_BRIDGE="false"  # overridden in lxc-net
+
+[ ! -f @LXC_DISTRO_SYSCONF@/lxc-net ] || . @LXC_DISTRO_SYSCONF@/lxc-net
