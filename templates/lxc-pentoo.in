@@ -1,9 +1,9 @@
 #!/bin/bash
 #
 # LXC template for  Pentoo (Gentoo) ---Mainly as  Build container. but one could just as well have added uses..
-## One can run the LXC as a virtual machine much as one dose with Virtualbox
-## or if not running one can use it as a chroot --***CHROOT*** :-) also easy to goin from host system and publish to HTTP
-# Tweaked  Pentoo by Necrose99 (Michael R. Lawrence) mike@michaellawrenceit.com
+## One can run the LXC as a virtual machine much as one dose with Virtualbox , yet CHROOT/BSD JAIL-ish..
+## or if not running one can use it as a ***CHROOT*** :-) also easy to goin from host system and publish to HTTP repo..
+# Tweaked  lxc-Pentoo.in  by Necrose99 (Michael R. Lawrence) mike@michaellawrenceit.com
 ### some functions not yet done...... **novice~y/rusty as hell bash code ahead you been warned...**
 ## Spike Pentesting is the how bleeding edge can we push things and we bum from Pentoo.... test some of the nextgen pentest stuff 
 ## but we try and give back....  however were at present still in Alpha... but we don't mind 
@@ -35,18 +35,19 @@ fi
 printf " => Got: arch=%s variant=%s\n" "${arch}" "${variant}"
 } 
 ### need to get Arch then call symlink to pentoo bin profile 
-## IF AMD64 then;set the amd64 else set x86, else sparc,arm etc bin-symlin when/if supported... 
-## and in somecases force CROSSDEV build... ie ARM/Sparc VM on AMD64 host  etc... but call System-CPU spesific symlinks...
-# eselect profile set pentoo:pentoo/default/linux/amd64/binary or the x86 equiv... 
-### get or prompt user to name container to Pentoo but use Gentoo Build funtions. based on arch.
-## Prebuild a gentoo container type. & its pretty bare bones... Generic. 
+## IF AMD64 then;set the amd64 else set x86, else sparc,arm etc bin-symlink when/if supported... else use non-bin. & suffer the build/s
+## and in somecases force CROSSDEV build... ie ARM/Sparc VM on AMD64 host  etc... but call System-CPU specific symlinks... 
+#may need a means of probing for host servers actual CPU if calling crossdev supports ...for Real CPU then adding fake-CPU/realcpu crossdev.
+# eselect profile set pentoo:pentoo/default/linux/amd64/binary or the x86 equiv... ETC
+### get or prompt user to name container to Pentoo but use Gentoo Build funtions. based on arch/CPU.
+## Prebuild a gentoo container type. & its pretty bare bones... Generic. stage 3..
 
 ##############@@@@@@@@@ Gentoo to Pentoo "Conversion" @@@@@@@@@@@@ ###############
 echo " Starting Gentoo to Pentoo "Conversion" "
-USE="bazaar cvs darcs +git gpg g-sorcery mercurial -squashfs subversion sync-plugin-portage test" Emerge layman svn git
+USE="bazaar cvs darcs +git gpg g-sorcery mercurial -squashfs subversion sync-plugin-portage test" Emerge layman svn git eix 
 ## Lets build Layman so we can add Pentoo overlay to the Gentoo generic container and add "Spice" of Pentoo. 
 ## as well as our build use cases squashfs one can add back in latter on 
-#just the initial Kernel depends will die (HOST LINUX NO AUFS3) or suck ass building and could be useless
+#just the initial Kernel depends will die (REAL HOST LINUX Kernel NO AUFS3) or suck ass building and could be useless
 ### get or prompt user to name container to Pentoo but use Gentoo Build functions. based on arch.
 ## Don't know yet
 echo "Starting Layman & Pentoo Repo pull"
@@ -54,7 +55,9 @@ layman -L
 #pull down list of overlays... wont see were to get Pentoo often if you don't. newer layman still might better safe than sorry. 
 layman -a pentoo
 #add pentoo's repo  :-) Whooohooo !!! 
-eselect profile set pentoo:pentoo/default/linux/amd64/binary
+eselect profile set pentoo:pentoo/default/linux/amd64/binary  
+# need ARCH/CPU detect of container array REAL HOST CPU detect (Crossdev) ie Sparc PPC BSD-Gentoo ARM on REAL-CPU...
+#eselect profile set pentoo:pentoo/default/linux/${arch}"/binary ---HMM seams too easy ? with my luck it never is...
 
 ## for now lets set Bin profile for sat updates and less builds during Gentoo to Pentoo "conversion"... 
 ## for binary type updates will be faster , and for the moment this will do user may switch latter
