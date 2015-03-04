@@ -24,3 +24,7 @@ lxc.cgroup.devices.allow = c 10:232 rwm
 
 # /dev/ is created by template
 lxc.autodev = 0
+
+# /dev/shm need to be mounted as tmpfs. It's needed by python (bug #496328)
+# and possibly other packages.
+lxc.mount.entry = none dev/shm tmpfs rw,nosuid,nodev
