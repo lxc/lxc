@@ -517,6 +517,10 @@ static int network_ifname(char **valuep, const char *value)
 #  define MACVLAN_MODE_BRIDGE 4
 #endif
 
+#ifndef MACVLAN_MODE_PASSTHRU
+#  define MACVLAN_MODE_PASSTHRU 8
+#endif
+
 static int macvlan_mode(int *valuep, const char *value)
 {
 	struct mc_mode {
@@ -526,6 +530,7 @@ static int macvlan_mode(int *valuep, const char *value)
 		{ "private", MACVLAN_MODE_PRIVATE },
 		{ "vepa", MACVLAN_MODE_VEPA },
 		{ "bridge", MACVLAN_MODE_BRIDGE },
+		{ "passthru", MACVLAN_MODE_PASSTHRU },
 	};
 
 	int i;
@@ -2286,6 +2291,7 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 			case MACVLAN_MODE_PRIVATE: mode = "private"; break;
 			case MACVLAN_MODE_VEPA: mode = "vepa"; break;
 			case MACVLAN_MODE_BRIDGE: mode = "bridge"; break;
+			case MACVLAN_MODE_PASSTHRU: mode = "passthru"; break;
 			default: mode = "(invalid)"; break;
 			}
 			strprint(retv, inlen, "%s", mode);
