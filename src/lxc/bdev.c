@@ -3403,8 +3403,12 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	*needs_rdep = 0;
 	if (bdevtype && strcmp(orig->type, "dir") == 0 &&
 			(strcmp(bdevtype, "aufs") == 0 ||
-			 strcmp(bdevtype, "overlayfs") == 0))
+			 strcmp(bdevtype, "overlayfs") == 0)) {
 		*needs_rdep = 1;
+	} else if (snap && strcmp(orig->type, "lvm") == 0 &&
+			!lvm_is_thin_volume(orig->src)) {
+		*needs_rdep = 1;
+	}
 
 	new = bdev_get(bdevtype ? bdevtype : orig->type);
 	if (!new) {
