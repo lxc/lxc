@@ -9,13 +9,49 @@ emerge --sync
 sleep=n # wait x  .... ???
 emerge --buildpkg  sys-apps/entropy sys-apps/file[python] layman equo eix
 ## Adds Sabayon EQUO && Entropy , layman too eix.
-## we'll do this incase entropy and EQUO Fry out one can add pkg via emerge which in some cases has bit me in the ass before..
 
-sleep=n # wait x  .... ???
-layman -L 
-sleep=45  # wait takes about 45-60 secounds to pull at worst. 
-## gent List of overlays --Sync to Db locally , 
-layman -f -a sabayon sabayon-distro 
+setup_lang() {
+export LANG=en_US
+export LANGUAGE=${LANG}
+export LC_ALL=${LANG}.UTF-8
+echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+locale-gen
+}
+setup_system() {
+## ln -sf ../usr/share/zoneinfo/America/Los_Angeles /etc/localtime done prior in lxc-gentoo.in by user slecteion.
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+# sets python 2.7 as default
+eselect python set 1
+env-update
+source /etc/profile
+}
+prepare_portage() {
+#emerge --sync
+echo "sys-apps/entropy ~amd64" >> /etc/portage/package.keywords/entropy
+echo "app-admin/equo ~amd64" >> /etc/portage/package.keywords/entropy
+echo "app-portage/layman git" > /etc/portage/package.use/layman
+env-update
+source /etc/profile
+}
+install_layman() {
+emerge -v --buildpkg  layman eix
+layman -a sabayon
+layman -S
+echo "source /var/lib/layman/make.conf" >> /etc/portage/make.conf
+env-update
+source /etc/profile
+}
+install_entropy() {
+emerge -vt app-admin/equo sys-apps/entropy --autounmask-write
+etc-update --automode -5
+emerge -vt app-admin/equo sys-apps/entropy
+}
+setup_lang
+setup_system
+prepare_portage
+install_layman
+install_entropy
+
 ### Add sabayon src repos incase we need to build., also adds package masks etc to keep bad stuff from buuilding that dont agree with Sabayon. 
  equo update && equo repo mirrorsort sabayonlinux.org
 ## update binaries package lists and repos Sort repos else you'll have GARR.. 
