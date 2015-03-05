@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 EXTRA_DIST = lxc.conf lxc-instance.conf lxc-net.conf.in
 
 if INIT_SCRIPT_UPSTART
@@ -16,3 +17,6 @@ uninstall-upstart:
 install-data-local: install-upstart
 uninstall-local: uninstall-upstart
 endif
+=======
+SUBDIRS = common systemd sysvinit upstart
+>>>>>>> upstream/master
