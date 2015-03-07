@@ -102,3 +102,165 @@ eselect java-vm set system icedtea-bin-7
 genmenu.py -x 
 echo "Pentoo Updates compleate Happy Pentesting or Building packages "
 # echo "Pentoo ASCII-ART LOGO hear ? might be cool" 
+#!/bin/bash
+#!/sbin/runscript
+### with a few add on commands add the Sabayon Linux Overlays. 
+## drawn my inspiration from these too. https://github.com/adrienthebo/sabayon-chroot-builder bootstrap-sabayon.sh
+### goals an easy to Install Sabayon Linux Builder container, which is Gentoo Completable , 
+#### yet faster to update & administrate...and in many cases easier and or a GP Sabayon box suitable for a server farm LXC Virtual hosting...
+#### testing packages without nuking prime Sabayon System..  ,Likewise building them & testing
+###  Requires Gentoo, lxc-gentoo.in run gentoo then these few conversions ####{rootfs}
+{rootfs}="${SAB_rootfs}"    
+##{rootfs} # never hurts to have a fail-safe. need to keep the var in this script after lxc-gentoo.in exits
+Include lxc-gentoo.in
+echo "Starting lxc-gentoo.in. to Build the Gentoo Stock Container"
+echo "Just Be sure to Name It Sabayon something.... "
+exec "lxc-gentoo.in"|| exit 1
+echo "Starting Sabayon Migration of The Generic Gentoo Container and Adding the Sugar & Spice of Sabayon Linux Overlays..."
+chroot_sabayon
+setup_lang
+setup_system
+prepare_portage
+install_layman
+install_entropy
+unchroot_sabayon
+
+
+# Chroot into LXC container after Gentoo LXC Build proses. and do a few commands to convert. 
+chroot_sabayon() {
+depend() {
+   need localmount
+   need bootmisc
+ }
+ebegin "Mounting chroot directories"
+mount -o bind   /dev "${SAB_rootfs}/dev"
+mount -t devpts none "${SAB_rootfs}/dev/pts"
+mount -t tmpfs  none "${SAB_rootfs}/dev/shm"
+mount -t proc   none "${SAB_rootfs}/proc"
+mount -t sysfs  none "${SAB_rootfs}/sys"
+eend $? "An error occurred while mounting chroot directories"
+env-update
+source /etc/profile
+export PS1="(SAB-LXC-CHROOT) $PS1"
+}
+
+setup_lang() {
+export LANG=en_US
+export LANGUAGE=${LANG}
+export LC_ALL=${LANG}.UTF-8
+echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+locale-gen
+}
+setup_system() {
+## ln -sf ../usr/share/zoneinfo/America/Los_Angeles /etc/localtime done prior in lxc-gentoo.in by user selection.
+echo "nameserver 8.8.8.8\n8.8.4.4 \n2001:4860:4860::8888\n2001:4860:4860::8844 " > /etc/resolv.conf  
+#adds google public dns
+# sets python 2.7 as default
+eselect python set 1
+env-update
+source /etc/profile
+}
+prepare_portage() {
+#emerge --sync
+echo "sys-apps/entropy ~amd64" >> /etc/portage/package.keywords/entropy
+echo "app-admin/equo ~amd64" >> /etc/portage/package.keywords/entropy
+echo "app-portage/layman git mercurial sync-plugin-portage darcs subversion  g-sorcery" > /etc/portage/package.use/layman
+env-update
+source /etc/profile
+}
+install_layman() {
+emerge -v --buildpkg  layman eix
+layman -a sabayon
+layman -S
+echo "source /var/lib/layman/make.conf" >> /etc/portage/make.conf
+env-update
+source /etc/profile
+}
+install_entropy() {
+emerge -vt app-admin/equo sys-apps/entropy --autounmask-write
+etc-update --automode -5
+emerge -vt app-admin/equo sys-apps/entropy
+}
+
+
+
+unchroot_sabayon() {
+ebegin "Unmounting chroot directories"
+umount "${SAB_rootfs}/dev/pts"
+umount "${SAB_rootfs}/dev/shm"
+umount "${SAB_rootfs}/dev"
+umount "${SAB_rootfs}/proc"
+umount "${SAB_rootfs}/sys"
+eend $? "An error occurred while unmounting chroot directories"
+}
+sabayon_entropy_update() {
+ebegin "Entropy updates and Gentoo Source package manager migration"
+equo update
+eend $? "An error occurred while unmounting chroot directories"
+}
+
+### Add Sabayon src repos incase we need to build., also adds package masks etc to keep bad stuff from building that don't agree with Sabayon. 
+ equo update && equo repo mirrorsort sabayonlinux.org
+## update binaries package lists and repos Sort repos else you'll have GARR.. 
+## (university) in IT,  sort to fastest mirrors possible so updates are fast as possible. 
+equo rescue spmsync 
+sleep=600   # wait takes about 10-30 mins on a rescued gentoo/sab box however new box shouldn't take long. 
+### not always necessary but since migrating... sync world to entropy DB. ###
+equo install entropy equo
+## update entropy core  and equo entropy txt client 
+equo upgrade
+wait till exit ??? 
+equo deptest && equo libtest  ### tests dependancies and libs installs if required 
+wait till exit ??? 
+equo conf update   ### ???? some means of saying -5 to all (YES merge) 
+
+ECHO " Congratulations Sabayon Linux is now Installed, however only X64 is officially supported" 
+export DISPLAY=":0.0"
+pentoo_logo_end() {
+echo $"
+
+8?888O888O+88888ZO$OZ8OOO888O888888$O888O8888888O8ZZOO888OZOOOOZZOOOOOOZZIZZZZZ7Z$7$$$I77I77777IIIIII?I???=:+=+=+OOOO88$O88O8ZZO8O888OO88O8O8OOZ+8888O$O8888OO$OI88OOO88888OOOO+OOO$
+87888=8888$88888?8ZO888$?888Z888888$O888ZO88ZZ8888OO8O8O8$7OOOO==OOOOOO$$7ZZZ$Z$ZZI7$$7$7777+7777IIII~?I??+=+=++++?ZOOO$=OOO8O7ZOOOOO$OOOOOOOOOO$OOOOO$OOOOOOOOO=OOOO8888O8$OOOIOOO?
+8O888O8888IO8888Z8$OO8OOO888$888888$O888OO88:=88OOOOOOOOOOOOOOOZZOOOOOOZZZOZZZ$IZZ?I$$?7II77I777IIIII?II???++=+=++==IOOOOOOOOO7ZOOOOOOOOOOOOOOOZOOOOOO$OOOOOOOOO$OOOOO88888$OOOZOOO?
+8Z888O888OZ$8888=OZOOOO88O8OZ88888=ZZO887ZOOOOOOOOOOOOOOO$7OOOO==OOOOOOZZ?OOZ$ZZZZ$$$$77$7$7777+~7III:IIII+~?+++++::++O7OOOOOOZOOOOOO$OOOOOOOOOOOOOOOO7OOOOOOOOO=OOOZZ888O8O88Z+OOO=
+88888O88887O8888OO7OO8OOO888Z8OO88Z7$O8OZOOOOOOOOOZZOOOOOOOOOOOZZOZOOOOZ$ZOOZZZ7ZZ77Z$7$I?$$I777I7III=?I?I???+?+++=+++=~OOOOOO$ZOOOOOOOOOZOOOOOZIOOOOOZOOOOOOOOOZOOOZ788888$Z8O+OOO+
+88888?8888OO8O8OIOZOO88O~888$888OOIZOOOO$OOOOZOOOOZ77OOOO77OOOO==OO+IOOZZZOOZZZ7ZZ7$ZZ$$$7$$+$77I777I=?III~~?+?=?++++++==+OOO?ZOOOOOO$OOOZOOOOOZ$OOOOO7ZOOOOZOOO=OOOO7888O8O888ZOOO7
+8888OI88887$8888OZ7Z7OOZZ8OO$OOOOOZ7$OOOZOOO=~OOOOZ$7OOOOOOOOOOZZOOZZOOZ$ZOOZZZ$ZZ$ZZZ+I$7$$7$7777777~IIII???+++?++++++====OO?7$OOOOOOOOO+OOOOOZ$OOOOOZOOOOOZOOOZOOOZ$88888$88O+8OO~
+87888$888OZZ888ZIOZOO8OOOOOOZOOOOO?ZOOOO7ZOOZZOOZOZZOOOOOO$OOOO$OOO+IOOZ$OOZZZZ7ZZ$$ZZ$$$7$$$$$7?7777?IIII~=?+?:??=:+++=+=====ZOOOOOO7OOOZOOOZOZ$OOOOO7ZOOOO+OOOZOOOZ7888O8$O8$Z8OO$
+8OOOO=8OOO7OOOOOOO$OOOOOOOOO7OOOOOZI$OOO$ZOOZOOOOOZZ7OOOOOZOOOO?=OOZZOOZZZOZZZOZZZZZZZ$Z$$$$$$$777777=?III???=?~?+=~+++=+====~=$OOOOOZOOZOOOOOOO+OOOOOZOOZOO~OOOOOZOZZO8888O88OO888$
+8+OOOIOOOO$$OOOO$OZOOO                 O7                 7O  =ZZOOOOOZZ7+OZ   7                   77                   ++==                     OOOOO7OOOOOZOOO$OOZ$ZOO8O8$Z8Z78OO7
+OIOOOZOOOOOZOOOOZOOOOO   OOOZOOOOOZ7   $$   $ZOOZOZZZOZOOZZO    +OOZZOZZ$ZOZ   7ZZ$ZZZ+7   Z7$$$I$77   77II?I+?+?????~  7+==   ~=+~OOZOOO~OOOO+  OOOOOZOOOOO=OOOZOZOZZOO888O888O8OO~
+OZOOO7OOOOOOOOOO~OOOZOOOOOOO7OOOOO?$ZZOO7$$O?+ZZZZ$77ZZZZZ7ZZZ7   O+?ZZZ$ZOZZZZ$ZZZZZZ$ZZ$ZZ7$$I~$7$   77I??I??=?????++++++==,~~=~=~~7OOO=OOOO+  7OOOO7ZOOOOZOOO=OOOZ?OOOO8$88O88OO$
+O~ZOOOOOOZ77OOOOIOZO7ZZZOOOZ7OZOOOZ7$ZZZ$Z$ZZZZZZZZZZZZZ$ZZZZZZZ=   $ZZ$$$Z$ZZ$7ZZ7ZZZ+I77ZZI$$$7$$$   777I=III????+?++=+++==~~=====~~OOO7OOOO+  7OOOOZOOOOOOZOOZOZZ$ZOZO88$88OO8OO$
+O+ZOO$OOOZ$$OOOO$OZOZO   ZZZZZZZZZ?I   I7           =ZZZZ7IO  ZZZZ    Z$$?Z$   ZZZ7ZZZ$Z   Z$Z$$+$$$   ?77I+III~?????~  =+++   ~====~:~~O~OOOZ+  7OOOO7OOOOOOOOOZOOOZZOOOZ8O88ZO8OOO
+Z$7ZOZZZZZZ$$Z$Z?ZZZ$O                 ZI           =$$$$$$O  ZZ$$Z$   :$$Z7   IZZ$Z$Z=I   77$$$$$$$   I7I+~III=?????~  =+++   ==~===~~~~$OOOZ+  OMMZOZOOOOOOOOOOOZZ$$OZOOO$Z8ZZ88OZ
+O?ZZO7ZZ$ZZ7ZZZZ$ZZ$IO   7Z$I$7$ZI+I77Z$7   ~:$$$$$77$$$$IIO  $$$$$+?$   ?ZZ   ?ZZ7ZZ$$$   $7Z$$77$$   I7I7I7II?I????~  ++++   ~=====:~~~~~ZZ8:  I~OO::NOOOZOOOOZOOZZ+OOOZOO88ZO88OO
+Z$7$Z$$Z$$Z7$ZZ$?$IZ$O   ZZ$$$7$$$$I7$$$I   77$$7$$7$$$$$77O  $$$$$$I$$~   $   $Z$7$$Z=I   $$$$$$$$$   I777?77I?I????~  ++++   ======~~~~~~MII.  7Z8MO=$ONOZOZOOZOOZZZOZOZO7O8OO88OZ
+ZZZZZ$ZZZZZZZZZZIZZZ$O   $$$I$7$$$??7I$$7   =:$$$77$$$7$$IIO  $$$$$$$$$$$      I$$7$$$$$   $+$$$7$$$   I7III7II=III??~  I+++   ======~=~~~8OOM=  7ZZZZNO$8ZZZZZZZZ7Z$7OZOZZ7Z8ZZ88OO
+Z$$$$$$$$$$$$$$7+$I$IO   $$$I$7$$$7I7I$$?                 7O  777$$77$77I$7    7$$7$$$$7   $+$$77777=                   ++++              :IM    $ZZ7$$O+.M$ZZZZ7Z$Z$7ZZZ$Z$ZZZZOOOZ
+$=$$$7$$$77I$$$$I$I77O   777I7I777I+?I77?                 ?Z  77777=+77II777=  ?777777I7   77777I77III                 =+++==            M:?$   ~I$7$$+N~+MII$$?~7?II~7$II7??7Z$Z7Z$
+7I77?7777I7I777I~7?IIII+IIII+I?IIII+IIII+?IIIIIIII??II?IIIIIIIIIIIII?II??II?I?I?IIIIII~+I?IIIIIIIIIIIIIIII~~???=?????++=++=======~=~~~~~~=O?:::,::77I7I7+OMI7777?7?III7I7I7I77?7$$$=
+I?III?III?IIIIII+I+????+????+?+???=~++??+?+???????????????+????????~=??++???????????????????+?????????+=??++???++++++++=====~,:~~~~~~:~~~OOM:::,::,+II77$8I?IIII+I?IIIIIIII?II?I$$77
+?++??????+??????,?=++++=++++++=++++~+=++===+++++++++++++++=++++++++++++++++++++=++++=+++==++++++++++++++++~,+++=+==++==~====~~~~~~~~~:+I?IMMD::,,,,,,?MO7M??????+?+????+???+?I+??7II
++~++=+++++++++++:+=++=+=====~======~=====================~~================================~:==========~=~=~=========~=~~~~~:~::~:~~:NO7IOZ,7O:Z~OMM8,ZZ8M++++++=+=+++++++++?++?++I?
+==~=~======~====~=~==~~~~~=~:~~~~~~:~:~~:~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~:~~~~:~~~~~~~:~~~~~~~~~~:~~~:~~~:~~~~~:~~~~:~:::::::::8I:+?+?:$:7+O~,O+O+OIM=======~====~===~=======+
+~,~~:~~~~~~~~~~~,~:~~:~:~~~~:~::~::,::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::~::,::::~:::::::::::,:,::,:::$IOO~+DOO7D$I+=7O:Z:7OM~~~~,~~~~~~~~~~~~~~~~~~~
+:,::,::::::,::,:,,:,,,,,,,,,,,,,:,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,:,:,::::,,::::::::::,:,:::::::::::,:,::,:,,,,,,,,=OO~+7Z      +OO7?O7+M8N:::::~:~~~::~:~::~~~:~~~
+,,,,,,,,,,,,,,,,.,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MOOO,Z   DDD   D~+OZ~DO,::::,:,::::::::,,:,:::::
+OO8888Z+??Z8888888888888OOOO8888888888888OOO88OZZ$7$ZO88888O88OO888888Z?==IZ888OOOZZOOOO8888OI$88O8888888888888888888888888OZZ$$ZO  =7::OIDD         $O78OD                         
+OO8888O$$ZO8888888888888OOOO888888888888OOOO88OOOZ$$ZO88888888OO888888OZ$ZZO888OOOOZOOOO888OZ?7O888888888888888888888888888OZ$$$ZO I+I~Z+I,D7      IDI:OMOM                         
+OO88888OOO88888888888888OOOO8888888888888OOO88OOOOZZO888888888OO888888OOOOOO88OOOZZZZOOO888O7+IZ888888888888888888888888888OZ$$$ZZ OZO:7:ZO      .D?O:I:D8D                         
+OO88888O8O88888888888888OZOO8888888888888OOO88OOOOZOO888888888OO888888OOOOOO88OOZZZZZZOOO88O777Z888888OO8888888888888888888OZ$$$$O Z:=OZI8     8D7=O:+O$OD.                         
+OO88888O8O88888888888888OOOOO888888888888OOO88OZ$$ZOO888888O88OO888888OOOOOO8OOOZ$$$$ZZOO88OOZOO8O888OOOO888888OO8888888888OZ$$$ZOD:Z:OI+DDDDDDO:O::$:$NNM                          
+OO8888888888888888888888OZOO8888888888888OO888ZI++?ZO8888888888O888888OOOOOO8OOZZ$$$$ZZOO88OOOOO8O88OOOOOOO8OO8888888888888OZZ$$ZO7+O:O??OO:O~OIOO~O7$=NN8                          
+OO888888888888888888888O$7O888888888888888888O7+7$=7O88888888888888888OOOOOO8OOZ$$7$$$ZOOO8OOOOO8888OOOOOOOOOO8888888888888OOZZZOOZMMMN,ZZ:ZOI+OIO=OO:=OMZZZZZZZZZZZZZZZZZZZZZZZZZZZ
+OO88888888888888888888OI~=O888888888888888888O??ZZ=?Z88888888888888888OZZZZO8OOZ$$77$$ZZO88OZZZO88888OOOOOO8OOO8888888888888OOOOOOZZZZZZNMMMMMNOI7$Z7ONOMZZZZZZZZZZZZZZZZZZZZZZZZZZZ
+OO88888888888888888888O$I+O888888888888888888O+?ZZ=?Z88888888888888888Z?==+$8OOZ$$$7$$ZOO8OZ???Z88888OOOOOO8OOO8888888888888OOOOO8ZZZZZZZZZZZZZZDMMMMMNO8ZZZZZZZZZZZZZZZZZZZZZZZZZZZ
+OO8888O8888888888888888O7+Z888888888888888888O??ZZ=?Z888888O888888888OI=77=IOOOZ$$7$$$ZOO8O$?$I7OO888OOOOOO8OOO8888888888888OOZOO8888888888888O888888OOOOOZZZZ$ZZOO8OOOO8OOOOOOOOOZ$
+OO88888888888888888888887+ZO8888888888888OO8OOI+$$=IZO88888O88OO88888O+?OO?+OOOZZ$$$$ZZOO8O7IZ7IO8888OOZOZOOOOO8O88888888888OZ$ZOO88888O8888888888888ZOOOZZZOZZZOOOOOOOOOOOOOOOOOOO$
+                                                                                                                                                                     GlassGiant.com
+
+"
+Echo "Welcome to your Pentoo Linux container"
+
+}
