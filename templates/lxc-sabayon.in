@@ -1,13 +1,14 @@
 #!/bin/bash
 #!/sbin/runscript
 ### with a few add on commands add the Sabayon Linux Overlays. 
-## drawn my inspiration from these too. https://github.com/adrienthebo/sabayon-chroot-builder bootstrap-sabayon.sh
-### goals an easy to Install Sabayon Linux Builder container, which is Gentoo Completable , 
+## Wildy Insipred by  https://github.com/adrienthebo/sabayon-chroot-builder bootstrap-sabayon.sh
+### goals an easy to Install Sabayon Linux LXC container, which is Gentoo Completable ,and has many uses... 
 #### yet faster to update & administrate...and in many cases easier and or a GP Sabayon box suitable for a server farm LXC Virtual hosting...
 #### testing packages without nuking prime Sabayon System..  ,Likewise building them & testing
 ###  Requires Gentoo, lxc-gentoo.in run gentoo then these few conversions ####{rootfs}
 {rootfs}="${SAB_rootfs}"    
 ##{rootfs} # never hurts to have a fail-safe. need to keep the var in this script after lxc-gentoo.in exits
+## from ${SAB_rootfs} CHROOT this scipt will *hotwire* the container to Sabayon spec. goal is once called it should be automatic.
 Include lxc-gentoo.in
 echo "Starting lxc-gentoo.in. to Build the Gentoo Stock Container"
 echo "Just Be sure to Name It Sabayon something.... "
@@ -49,7 +50,10 @@ locale-gen
 }
 setup_system() {
 ## ln -sf ../usr/share/zoneinfo/America/Los_Angeles /etc/localtime done prior in lxc-gentoo.in by user selection.
-echo "nameserver 8.8.8.8\n8.8.4.4 \n2001:4860:4860::8888\n2001:4860:4860::8844 " > /etc/resolv.conf  
+echo "nameserver 8.8.8.8
+8.8.4.4 
+2001:4860:4860::8888
+2001:4860:4860::8844 " > /etc/resolv.conf  
 #adds google public dns
 # sets python 2.7 as default
 eselect python set 1
