@@ -264,3 +264,4 @@ OO88888888888888888888887+ZO8888888888888OO8OOI+$$=IZO88888O88OO88888O+?OO?+OOOZ
 Echo "Welcome to your Pentoo Linux container"
 
 }
+#sed -i 's/ugly/beautiful/g' /home/bruno/old-friends/sue.txt  why not sed to make.conf of mine as a template. 
