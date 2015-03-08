@@ -18,9 +18,12 @@ my bash is low/rusty anyhow, but aiming at the longer term , and the ability to 
 
 
 main rub it storing values from lxc-gentoo.in  and making sure they are before the sript and failsafe copy to a new value.
-{rootfs}="${SAB_rootfs}"  keeping {rootfs}  and runing with it after LXC exits gentoo lxc build cycle is prerable however 
+{rootfs}="${SAB_rootfs}"  keeping {rootfs}  and runing with it after LXC exits gentoo lxc build cycle is prefrable however 
 better safe than sorry so #FAILSAFE it is. 
 the IDEA is to Embed lxc-gentoo.in Sabayon script then keep a few values , then chroot into the lxc container add on layman equo and repo's
 then update system etc.  Spike just tack on our repos as addon functions. and our entropy repo/s 
 
 Pentoo likewise build layman pentoo opts, and update system with eslect Cpu spec, pentoo binary profile so update cycle wont take forever.
+
+however having the container autobuild insed of me hand haking and then adding on packages, priceless. 
+https://github.com/r1k0/kicktoo one could further populate the tanks with packages, and have a much simpler script to chain many LXC contaners for test casing etc. my-custom-sabayon-boxes pullin these LXC templates and reuse some code, but however save hours. 
