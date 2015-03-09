@@ -17,7 +17,7 @@ while true; do
 
 	if [ "$CRTOOLS_SCRIPT_ACTION" = "network-unlock" ]; then
 		brctl addif $bridge $veth
-		ifconfig $veth 0.0.0.0 up
+		ip link set dev $veth up
 	fi
 
 	i=$((i+1))
