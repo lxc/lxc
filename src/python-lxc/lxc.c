@@ -801,11 +801,11 @@ Container_create(Container *self, PyObject *args, PyObject *kwds)
     char** create_args = {NULL};
     PyObject *retval = NULL;
     PyObject *vargs = NULL;
+    char *bdevtype = NULL;
     int i = 0;
-    static char *kwlist[] = {"template", "flags", "args", NULL};
-
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|siO", kwlist,
-                                      &template_name, &flags, &vargs))
+    static char *kwlist[] = {"template", "flags", "bdevtype", "args", NULL};
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|sisO", kwlist,
+                                      &template_name, &flags, &bdevtype, &vargs))
         return NULL;
 
     if (vargs) {
@@ -821,7 +821,7 @@ Container_create(Container *self, PyObject *args, PyObject *kwds)
         }
     }
 
-    if (self->container->create(self->container, template_name, NULL, NULL,
+    if (self->container->create(self->container, template_name, bdevtype, NULL,
                                 flags, create_args))
         retval = Py_True;
     else
