@@ -303,7 +303,7 @@ static void stats_print(const char *name, const struct stats *stats,
 	size_humanize(stats->blkio, blkio_str, sizeof(blkio_str));
 	size_humanize(stats->mem_used, mem_used_str, sizeof(mem_used_str));
 
-	printf("%-18s %8.2f %8.2f %8.2f %10s %10s",
+	printf("%-18.18s %8.2f %8.2f %8.2f %10s %10s",
 	       name,
 	       (float)stats->cpu_use_nanos / 1000000000,
 	       (float)stats->cpu_use_sys  / USER_HZ,

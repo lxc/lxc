@@ -77,11 +77,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       the container's init process, waiting up to 60 seconds for the container
       to exit, and then returning. If the container fails to cleanly exit in
       60 seconds, it will be sent the <command>lxc.stopsignal</command>
-      (defaults to SIGKILL) to force it to shut down.
+      (defaults to SIGKILL) to force it to shut down. A request to reboot will
+      send the <command>lxc.rebootsignal</command> (defaults to SIGINT) to the
+      container's init process.
       -->
       <command>lxc-stop</command> は、リブート、クリーンシャットダウン、コンテナ内の全てのプロセスの kill のどれかを行います。
       デフォルトでは、コンテナのクリーンなシャットダウンを <command>lxc.haltsignal</command> (デフォルトでは SIGPWR) をコンテナの init プロセスに送ることでリクエストし、コンテナの終了を 60 秒待ち、return します。
-      コンテナが 60 秒の間にクリーンに終了するのに失敗した場合、<command>lxc.stopsignal</command> (デフォルトでは SIGKILL) を送り、強制的にシャットダウンします。
+      コンテナが 60 秒の間にクリーンに終了するのに失敗した場合、<command>lxc.stopsignal</command> (デフォルトは SIGKILL です) を送り、強制的にシャットダウンします。
+      リブートのリクエストは <command>lxc.rebootsignal</command> に設定されたシグナルをコンテナの init プロセスに送ります (デフォルトは SIGINT です)。
     </para>
 
     <para>

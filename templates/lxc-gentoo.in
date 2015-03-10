@@ -160,7 +160,7 @@ cache_stage3()
         printf "Determining path to latest Gentoo %s (%s) stage3 archive...\n" "${arch}" "${variant}"
         printf " => downloading and processing %s\n" "${stage3_pointer}"
 
-        local stage3_latest_tarball=$(wget -q -O - "${stage3_pointer}" | tail -n1 ) \
+        local stage3_latest_tarball=$(wget -q -O - "${stage3_pointer}" | tail -n1 | cut -d' ' -f1) \
             || die 6 "Error: unable to fetch\n"
 
         printf " => Got: %s\n" "${stage3_latest_tarball}"
