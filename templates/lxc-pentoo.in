@@ -25,7 +25,7 @@
 ## from ${PEN_rootfs} CHROOT this script will *hotwire* the container to Pentoo spec. goal is once called it should be automatic.
 
 Include lxc-gentoo.in
-echo "Starting lxc-gentoo.in. to Build the Gentoo Stock Container"
+echo "Starting lxc-gentoo.in. to Build the Gentoo Stock/Generic  Container"
 echo "Just Be sure to Name It Pentoo something.... "
 exec "lxc-gentoo.in"|| exit 1
 echo "Starting  Migration of The Generic Gentoo Container Adding "The Hot Sauce" of Pentoo"
@@ -35,87 +35,31 @@ chroot_pentoo
 setup_lang
 setup_system
 prepare_portage
-## Lets build Layman so we can add Pentoo overlay to the Gentoo generic container and add "Spice" of Pentoo. 
+## Lets build Layman so we can add Pentoo overlay to the Gentoo generic container and add "The Hot Sauce" of Pentoo. 
 install_layman
-
+set_pentoo_binprofile  
+#eselect profile set pentoo:pentoo/$"{PEN_variant}"/linux/$"{PEN_arch}"/binary ie Hardened or reg and CPU Based on Zero Chaos's recommendation
+# I just pray it works..... 
+emerge_pentoo 
+pentoo-updater
+## Using Bin-profiles when possible, else this will take a REALLY Long time, Users can switch to or have another script set to preferred latter. for builds etc.
+x11_Pentoo
+Set a few misc things for x11 and or using x apps when @ chroot. 
 unchroot_pentoo
+pentoo_logo_end
+# Give a thanks & Fly Pentoo Logo with Pride... 
 
 
-
-
-
-
-### get or prompt user to name container to Pentoo but use Gentoo Build functions. based on arch.
-## Don't know yet
-echo "Starting Layman & Pentoo Repo pull"
-layman -L
-#pull down list of overlays... wont see were to get Pentoo often if you don't. newer layman still might better safe than sorry. 
-layman -a pentoo
-#add pentoo's repo  :-) Whooohooo !!! 
-eselect profile set pentoo:pentoo/default/linux/amd64/binary  
-# need ARCH/CPU detect of container array REAL HOST CPU detect (Crossdev) ie Sparc PPC BSD-Gentoo ARM on REAL-CPU...
-#eselect profile set pentoo:pentoo/default/linux/${arch}"/binary ---HMM seams too easy ? with my luck it never is...
-
-
-
-
-### with whatever i'll have to run pentoo in vm with x86 to probe for Exact.... string.. but I assume its close.
-# This syncs the gentoo and pentoo repos like "apt-get update" in debian
-emerge --sync
-
+emerge_pentoo() {
 IUSE="+analyzer +bluetooth +cracking +database +desktop +exploit +footprint +forensics \
 	+forging +fuzzers +misc +mitm +mobile pentoo +proxies +radio +rce \
 	+scanner +voip +wireless +accessibility +atm gtk java qt4 +office X minipentoo" emerge  pentoo/pentoo pentoo/pentoo-misc
-
-	## Lets Add Pentoo Specials to the Gentoo Container... this will build or use binaries for now...
-	
-# This will become the pentoo-updater script soon # (it is pentoo-updater.sh content )
-# This syncs the Gentoo and Pentoo repos like "apt-get update" in debian
-### emerge --sync ###used prior to adding Pentoo to Gentoo-lxc container. 
-# This updates all the normal packages like "apt-get upgrade" in debian
-emerge --deep --update --newuse world -vt
-## a really Deep update if needed. will rebuild or update crufty stuff. 
-# This optionally merges in changed config files. unchanged files are merged automatically
-etc-update
-# This removes old packages which are not needed like "apt-get autoremove" in debian
-emerge --depclean
-# This rebuilds anything which may have been broken in update
-emerge @preserved-rebuild
-# This checks all the programs installed from VCS for new revisions and updates if needed
-smart-live-rebuild
-# Verifies there is no breakage after updates
-revdep-rebuild
-#merge in any new config files
-etc-update
-#clean up the distfiles/packages dirs to remove old/un-needed files
-eclean-dist -d && eclean-pkg -d
-# Check /var/log/portage/elog/summary.log file
-# You might need to run extra commands. For example:
-emerge @x11-module-rebuild
-eselect java-vm set system icedtea-bin-7
-
-# let it run but some nice X over vnc or SSH Pipe out of LXC/CHROOT --My bash foo is too week yet... 
-# Run the following command under each regular user's account
-# Regenerate the main menu for XFCE WM (or "-e" for e17, "-k" for KDE)
-genmenu.py -x 
-echo "Pentoo Updates compleate Happy Pentesting or Building packages "
-# echo "Pentoo ASCII-ART LOGO hear ? might be cool" 
-#!/bin/bash
-#!/sbin/runscript
-### with a few add on commands add the Sabayon Linux Overlays. 
-
-###  Requires Gentoo, lxc-gentoo.in run gentoo then these few conversions ####{rootfs}
-{rootfs}="${PEN_rootfs}"    
-##{rootfs} # never hurts to have a fail-safe. need to keep the var in this script after lxc-gentoo.in exits
-Include lxc-gentoo.in
-echo "Starting lxc-gentoo.in. to Build the Gentoo Stock Container"
-echo "Just Be sure to Name It Sabayon something.... "
-exec "lxc-gentoo.in"|| exit 1
-echo "Starting Sabayon Migration of The Generic Gentoo Container and Adding the Sugar & Spice of Sabayon Linux Overlays..."
+## Lets Add Pentoo Specials to the Gentoo Container... this will build or use binaries for now...
+ }
 
 
 # Chroot into LXC container after Gentoo LXC Build proses. and do a few commands to convert. 
-chroot_sabayon() {
+chroot_pentoo() {
 depend() {
    need localmount
    need bootmisc
@@ -161,7 +105,11 @@ install_layman() {
 USE="bazaar cvs darcs +git gpg g-sorcery mercurial -squashfs subversion sync-plugin-portage test" Emerge -v layman svn git eix 
 ## Lets build Layman so we can add Pentoo overlay to the Gentoo generic container and add "Spice" of Pentoo. 
 ## as well as our build use cases squashfs one can add back in latter on 
-#just the initial Kernel depends will often die (REAL HOST LINUX Kernel NO AUFS3) or suck ass building and could be useless
+#just the initial Kernel depends will often die (REAL HOST LINUX Kernel NO AUFS3) or suck ass building and could be useless aufs3 of late is a touch temperamental
+echo "Starting Layman & Pentoo Repo pull"
+layman -L
+#pull down list of overlays... wont see were to get Pentoo often if you don't. newer layman still might better safe than sorry. 
+#add pentoo's repo  :-) Whooohooo !!!
 layman -a pentoo
 layman -S
 echo "source /var/lib/layman/make.conf" >> /etc/portage/make.conf
@@ -172,10 +120,10 @@ set_pentoo_binprofile() {
  ## for now lets set Bin profile for sat updates and less builds during Gentoo to Pentoo "conversion"... 
 ## for binary type updates will be faster , and for the moment this will do user may switch latter
 ## wildcard needed for host container type variable cloned from lxc-gentoo build. may need a filter for {PEN_variant} regular or hardened.
-## wildcard  for cpu {PEN_arch} may need filter for valid pentoo suppoted types. 
+## wildcard  for cpu {PEN_arch} may need filter for valid Pentoo supported types. 
 # special thanks to ZERO CHAOS
 eselect profile set pentoo:pentoo/$"{PEN_variant}"/linux/$"{PEN_arch}"/binary
-eend $? "Error that cant be good CPU/or Invalid profile /Not suppoted by Gentoo container type"
+eend $? "Error that cant be good CPU/or Invalid profile /Not supported by Pentoo For Gentoo container type"
 }
 
 
@@ -241,3 +189,35 @@ OO88888888888888888888887+ZO8888888888888OO8OOI+$$=IZO88888O88OO88888O+?OO?+OOOZ
 Echo "Welcome to your Pentoo Linux container"
 }
 
+pentoo-updater() {
+ebegin "Updating Pentoo"
+# This will become the pentoo-updater script soon
+
+# This syncs the gentoo and pentoo repos like "apt-get update" in debian
+#emerge --sync
+# This updates all the normal packages like "apt-get upgrade" in debian
+emerge --deep --update --newuse world -vt
+# This optionally merges in changed config files. unchanged files are merged automatically
+etc-update
+# This removes old packages which are not needed like "apt-get autoremove" in debian
+emerge --depclean
+# This rebuilds anything which may have been broken in update
+emerge @preserved-rebuild
+# This checks all the programs installed from VCS for new revisions and updates if needed
+smart-live-rebuild
+# Verifies there is no breakage after updates
+revdep-rebuild
+#merge in any new config files
+etc-update
+#clean up the distfiles/packages dirs to remove old/un-needed files
+eclean-dist -d && eclean-pkg -d
+# Check /var/log/portage/elog/summary.log file
+# You might need to run extra commands. For example:
+emerge @x11-module-rebuild
+eselect java-vm set system icedtea-bin-7
+
+# Run the following command under each regular user's account
+# Regenerate the main menu for XFCE WM (or "-e" for e17, "-k" for KDE)
+genmenu.py -x 
+eend $? "Updates Compleated"
+}
