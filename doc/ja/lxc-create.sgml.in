@@ -199,6 +199,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <replaceable>--fssize SIZE</replaceable> はデフォルト値である 1G の代わりに SIZE で指定したサイズで LV を作成します。
 	  </para>
 	  <para>
+	    <!--
+	    If backingstore is 'loop', you can use <replaceable>&#045;&#045;fstype FSTYPE</replaceable> and <replaceable>&#045;&#045;fssize SIZE</replaceable> as 'lvm'. The default values for these options are the same as 'lvm'.
+	    -->
+	    backingstore が 'loop' の場合、'lvm' と同様に <replaceable>--fstype FSTYPE</replaceable> と <replaceable>--fssize SIZE</replaceable> が使えます。これらの値のデフォルト値は 'lvm' の場合と同じです。
+	  </para>
+	  <para>
             <!--
 	    If backingstore is 'best', then lxc will try, in order, btrfs,
 	    zfs, lvm, and finally a directory backing store.
