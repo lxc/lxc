@@ -7,4 +7,4 @@ git remote add upstream https://github.com/lxc/lxc.git
 git checkout master
 git fetch upstream
 git merge upstream/master
-git push origin
+git push origin master
