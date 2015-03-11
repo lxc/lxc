@@ -6,5 +6,7 @@ git remote add origin https://github.com/necrose99/lxc.git
 git remote add upstream https://github.com/lxc/lxc.git
 git checkout master
 git fetch upstream
+git pull upstream master
 git merge upstream/master
 git push origin master
+git rebase -i master
