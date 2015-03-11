@@ -2197,6 +2197,7 @@ static int lxc_get_auto_mounts(struct lxc_conf *c, char *retv, int inlen)
 	switch (c->auto_mounts & LXC_AUTO_SYS_MASK) {
 		case LXC_AUTO_SYS_RO:             strprint(retv, inlen, "%ssys:ro", sep);            sep = " "; break;
 		case LXC_AUTO_SYS_RW:             strprint(retv, inlen, "%ssys:rw", sep);            sep = " "; break;
+		case LXC_AUTO_SYS_MIXED:          strprint(retv, inlen, "%ssys:mixed", sep);         sep = " "; break;
 		default: break;
 	}
 	switch (c->auto_mounts & LXC_AUTO_CGROUP_MASK) {
