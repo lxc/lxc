@@ -100,7 +100,7 @@ echo -n "Cgroup device: " && is_enabled CONFIG_CGROUP_DEVICE
 echo -n "Cgroup sched: " && is_enabled CONFIG_CGROUP_SCHED
 echo -n "Cgroup cpu account: " && is_enabled CONFIG_CGROUP_CPUACCT
 echo -n "Cgroup memory controller: "
-if [ $KVER_MAJOR -ge 3 -a $KVER_MINOR -ge 6 ]; then
+if [[ $KVER_MAJOR -ge 3 || $KVER_MINOR -ge 6 ]]; then
     is_enabled CONFIG_MEMCG
 else
     is_enabled CONFIG_CGROUP_MEM_RES_CTLR
@@ -115,7 +115,7 @@ echo -n "File capabilities: " && \
     ( [ "${KVER_MAJOR}" = 2 ] && [ ${KVER_MINOR} -lt 33 ] && \
        is_enabled CONFIG_SECURITY_FILE_CAPABILITIES ) || \
     ( ( [ "${KVER_MAJOR}" = "2" ] && [ ${KVER_MINOR} -gt 32 ] ) || \
-         [ ${KVER_MAJOR} -gt 2 ] && $SETCOLOR_SUCCESS && \
+         [[ ${KVER_MAJOR} -gt 2 ]] && $SETCOLOR_SUCCESS && \
          echo "enabled" && $SETCOLOR_NORMAL )
 
 echo
