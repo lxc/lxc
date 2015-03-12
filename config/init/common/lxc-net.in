@@ -35,29 +35,31 @@ _netmask2cidr ()
 }
 
 ifdown() {
+    which ip >/dev/null 2>&1
+    if [ $? = 0 ]; then
+        ip link set dev $1 down
+        return
+    fi
     which ifconfig >/dev/null 2>&1
     if [ $? = 0 ]; then
         ifconfig $1 down
         return
     fi
-    which ip >/dev/null 2>&1
-    if [ $? = 0 ]; then
-        ip link set dev $1 down
-    fi
 }
 
 ifup() {
-    which ifconfig >/dev/null 2>&1
-    if [ $? = 0 ]; then
-        ifconfig $1 $2 netmask $3 up
-        return
-    fi
     which ip >/dev/null 2>&1
     if [ $? = 0 ]; then
         MASK=`_netmask2cidr ${LXC_NETMASK}`
         CIDR_ADDR="${LXC_ADDR}/${MASK}"
         ip addr add ${CIDR_ADDR} dev $1
         ip link set dev $1 up
+        return
+    fi
+    which ifconfig >/dev/null 2>&1
+    if [ $? = 0 ]; then
+        ifconfig $1 $2 netmask $3 up
+        return
     fi
 }
 
