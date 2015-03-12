@@ -20,6 +20,8 @@ setup_system
 prepare_portage
 install_layman
 install_entropy
+update_entropy
+x11_setup
 unchroot_sabayon
 
 
@@ -70,6 +72,9 @@ source /etc/profile
 }
 install_layman() {
 emerge -v --buildpkg  layman eix
+eix-remote add "http://gpo.zugaina.org/eix_cache/eix-cache.tbz2"
+eix-remote fetch "http://gpo.zugaina.org/eix_cache/eix-cache.tbz2"
+layman -L
 layman -a sabayon
 layman -S
 echo "source /var/lib/layman/make.conf" >> /etc/portage/make.conf
@@ -82,7 +87,29 @@ etc-update --automode -5
 emerge -vt app-admin/equo sys-apps/entropy
 }
 
+update_entropy() {
+ebegin "entropy update and portage to entropy sync and system upgrades"
+## Sync portage db to entropy 
+equo rescue spmsync 
+equo repo mirrorsort sabayonlinux.org 
+# Find the fastest mirrors 
+equo update
+# update bin repo remote db to get latest packages
+equo install entropy equo
+## update entropy core  and equo entropy txt client 
+equo upgrade 
+equo deptest
+equo libtest  
+### tests dependencies and libs installs if required 
+etc-update --automode -5  
+eend $? "An error occurred while unmounting chroot directories
+}
 
+x11_setup() {
+# Add some goodies later like VNC or something ? to allow use of X11 when runing 
+#in lxc and or just apps via chroot for now K,i,s,s.  more to do latter.
+export DISPLAY=":0.0"
+}
 
 unchroot_sabayon() {
 ebegin "Unmounting chroot directories"
@@ -93,26 +120,7 @@ umount "${SAB_rootfs}/proc"
 umount "${SAB_rootfs}/sys"
 eend $? "An error occurred while unmounting chroot directories"
 }
-sabayon_entropy_update() {
-ebegin "Entropy updates and Gentoo Source package manager migration"
-equo update
-eend $? "An error occurred while unmounting chroot directories"
-}
 
-### Add Sabayon src repos incase we need to build., also adds package masks etc to keep bad stuff from building that don't agree with Sabayon. 
- equo update && equo repo mirrorsort sabayonlinux.org
-## update binaries package lists and repos Sort repos else you'll have GARR.. 
-## (university) in IT,  sort to fastest mirrors possible so updates are fast as possible. 
-equo rescue spmsync 
-sleep=600   # wait takes about 10-30 mins on a rescued gentoo/sab box however new box shouldn't take long. 
-### not always necessary but since migrating... sync world to entropy DB. ###
-equo install entropy equo
-## update entropy core  and equo entropy txt client 
-equo upgrade
-wait till exit ??? 
-equo deptest && equo libtest  ### tests dependancies and libs installs if required 
-wait till exit ??? 
-equo conf update   ### ???? some means of saying -5 to all (YES merge) 
 
 ECHO " Congratulations Sabayon Linux is now Installed, however only X64 is officially supported" 
 export DISPLAY=":0.0"
@@ -145,5 +153,14 @@ MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 "
 Echo "Welcome to your Sabayon Linux container"
-
 }
+
+#       %%% %%%%%%%            |#|
+#     %%%% %%%%%%%%%%%        |#|####
+#  %%%%% %         %%%       |#|=#####
+#  %%%%% %   @    @   %%      | | ==####
+# %%%%%% % (_  ()  )  %%     | |    ===##
+# %%  %%% %  \_    | %%      | |       =##
+# %    %%%% %  u^uuu %%     | |         ==#
+#       %%%% %%%%%%%%%      | |           V
+### Brought to you by Necrose99 , Put a Scythe to your problems shall we...
