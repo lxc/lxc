@@ -21,3 +21,10 @@ lxc.cgroup.devices.allow = c 10:232 rwm
 ## To use loop devices, copy the following line to the container's
 ## configuration file (uncommented).
 #lxc.cgroup.devices.allow = b 7:* rwm
+
+# /dev/ is created by template
+lxc.autodev = 0
+
+# /dev/shm need to be mounted as tmpfs. It's needed by python (bug #496328)
+# and possibly other packages.
+lxc.mount.entry = none dev/shm tmpfs rw,nosuid,nodev
