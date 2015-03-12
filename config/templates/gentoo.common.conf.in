@@ -56,3 +56,7 @@ lxc.cgroup.devices.allow = c 10:232 rwm
 # Blacklist some syscalls which are not safe in privileged
 # containers
 lxc.seccomp = @LXCTEMPLATECONFIG@/common.seccomp
+
+# /dev/shm needs to be mounted as tmpfs. It's needed by python (bug #496328)
+# and possibly other packages.
+lxc.mount.entry = none dev/shm tmpfs rw,nosuid,nodev,create=dir
