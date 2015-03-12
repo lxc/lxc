@@ -121,6 +121,9 @@ enum lxc_hostarch_t {
 	lxc_seccomp_arch_i386,
 	lxc_seccomp_arch_amd64,
 	lxc_seccomp_arch_arm,
+	lxc_seccomp_arch_ppc64,
+	lxc_seccomp_arch_ppc64le,
+	lxc_seccomp_arch_ppc,
 	lxc_seccomp_arch_unknown = 999,
 };
 
@@ -137,6 +140,12 @@ int get_hostarch(void)
 		return lxc_seccomp_arch_amd64;
 	else if (strncmp(uts.machine, "armv7", 5) == 0)
 		return lxc_seccomp_arch_arm;
+	else if (strncmp(uts.machine, "ppc64le", 7) == 0)
+		return lxc_seccomp_arch_ppc64le;
+	else if (strncmp(uts.machine, "ppc64", 5) == 0)
+		return lxc_seccomp_arch_ppc64;
+	else if (strncmp(uts.machine, "ppc", 3) == 0)
+		return lxc_seccomp_arch_ppc;
 	return lxc_seccomp_arch_unknown;
 }
 
@@ -150,6 +159,15 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_
 	case lxc_seccomp_arch_i386: arch = SCMP_ARCH_X86; break;
 	case lxc_seccomp_arch_amd64: arch = SCMP_ARCH_X86_64; break;
 	case lxc_seccomp_arch_arm: arch = SCMP_ARCH_ARM; break;
+#ifdef SCMP_ARCH_PPC64LE
+	case lxc_seccomp_arch_ppc64le: arch = SCMP_ARCH_PPC64LE; break;
+#endif
+#ifdef SCMP_ARCH_PPC64
+	case lxc_seccomp_arch_ppc64: arch = SCMP_ARCH_PPC64; break;
+#endif
+#ifdef SCMP_ARCH_PPC
+	case lxc_seccomp_arch_ppc: arch = SCMP_ARCH_PPC; break;
+#endif
 	default: return NULL;
 	}
 
@@ -341,6 +359,36 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 					continue;
 				}
 				cur_rule_arch = lxc_seccomp_arch_arm;
+			}
+#endif
+#ifdef SCMP_ARCH_PPC64LE
+			else if (strcmp(line, "[ppc64le]") == 0 ||
+					strcmp(line, "[PPC64LE]") == 0) {
+				if (native_arch != lxc_seccomp_arch_ppc64le) {
+					cur_rule_arch = lxc_seccomp_arch_unknown;
+					continue;
+				}
+				cur_rule_arch = lxc_seccomp_arch_ppc64le;
+			}
+#endif
+#ifdef SCMP_ARCH_PPC64
+			else if (strcmp(line, "[ppc64]") == 0 ||
+					strcmp(line, "[PPC64]") == 0) {
+				if (native_arch != lxc_seccomp_arch_ppc64) {
+					cur_rule_arch = lxc_seccomp_arch_unknown;
+					continue;
+				}
+				cur_rule_arch = lxc_seccomp_arch_ppc64;
+			}
+#endif
+#ifdef SCMP_ARCH_PPC
+			else if (strcmp(line, "[ppc]") == 0 ||
+					strcmp(line, "[PPC]") == 0) {
+				if (native_arch != lxc_seccomp_arch_ppc) {
+					cur_rule_arch = lxc_seccomp_arch_unknown;
+					continue;
+				}
+				cur_rule_arch = lxc_seccomp_arch_ppc;
 			}
 #endif
 			else
