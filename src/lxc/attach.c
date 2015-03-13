@@ -984,6 +984,21 @@ static int attach_child_main(void* data)
 	if (options->gid != (gid_t)-1)
 		new_gid = options->gid;
 
+	/* setup the control tty */
+	if (options->stdin_fd) {
+		if (setsid() < 0) {
+			SYSERROR("unable to setsid");
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+
+		if (ioctl(options->stdin_fd, TIOCSCTTY, (char *)NULL) < 0) {
+			SYSERROR("unable to TIOCSTTY");
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+	}
+
 	/* try to set the uid/gid combination */
 	if ((new_gid != 0 || options->namespaces & CLONE_NEWUSER)) {
 		if (setgid(new_gid) || setgroups(0, NULL)) {
