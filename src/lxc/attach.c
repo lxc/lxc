@@ -985,7 +985,7 @@ static int attach_child_main(void* data)
 		new_gid = options->gid;
 
 	/* setup the control tty */
-	if (options->stdin_fd) {
+	if (options->stdin_fd && isatty(options->stdin_fd)) {
 		if (setsid() < 0) {
 			SYSERROR("unable to setsid");
 			shutdown(ipc_socket, SHUT_RDWR);
