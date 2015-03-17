@@ -2979,6 +2979,7 @@ static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 	int bytes, pipefd[2];
 	char *token, *saveptr = NULL;
 	char buffer[MAX_BUFFER_SIZE];
+	char netdev_link[IFNAMSIZ+1];
 
 	if (netdev->type != LXC_NET_VETH) {
 		ERROR("nic type %d not support for unprivileged use",
@@ -3008,7 +3009,12 @@ static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 
 		// Call lxc-user-nic pid type bridge
 		char pidstr[20];
-		char *args[] = {LXC_USERNIC_PATH, pidstr, "veth", netdev->link, netdev->name, NULL };
+		if (netdev->link) {
+			strncpy(netdev_link, netdev->link, IFNAMSIZ);
+		} else {
+			strncpy(netdev_link, "none", IFNAMSIZ);
+		}
+		char *args[] = {LXC_USERNIC_PATH, pidstr, "veth", netdev_link, netdev->name, NULL };
 		snprintf(pidstr, 19, "%lu", (unsigned long) pid);
 		pidstr[19] = '\0';
 		execvp(args[0], args);
