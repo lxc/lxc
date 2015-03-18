@@ -246,11 +246,12 @@ static void check_supports_multiple_controllers(pid_t pid)
 		}
 		if (strcmp(prevpath, colon) != 0) {
 			cgm_all_controllers_same = false;
-			fclose(f);
-			return;
+			break;
 		}
 	}
+
 	fclose(f);
+	free(line);
 }
 
 static int send_creds(int sock, int rpid, int ruid, int rgid)
