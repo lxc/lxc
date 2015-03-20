@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <lxc/lxccontainer.h>
 
@@ -27,6 +29,7 @@
 #include "config.h"
 #include "lxc.h"
 #include "arguments.h"
+#include "utils.h"
 
 static char *checkpoint_dir = NULL;
 static bool stop = false;
@@ -139,36 +142,53 @@ bool checkpoint(struct lxc_container *c)
 	return true;
 }
 
+bool restore_finalize(struct lxc_container *c)
+{
+	bool ret = c->restore(c, checkpoint_dir, verbose);
+	if (!ret) {
+		fprintf(stderr, "Restoring %s failed.\n", my_args.name);
+	}
+
+	lxc_container_put(c);
+	return ret;
+}
+
 bool restore(struct lxc_container *c)
 {
-	pid_t pid = 0;
-	bool ret = true;
-
 	if (c->is_running(c)) {
 		fprintf(stderr, "%s is running, not restoring.\n", my_args.name);
 		lxc_container_put(c);
 		return false;
 	}
 
-	if (my_args.daemonize)
-		pid = fork();
+	if (my_args.daemonize) {
+		pid_t pid;
 
-	if (pid == 0) {
-		if (my_args.daemonize) {
+		pid = fork();
+		if (pid < 0) {
+			perror("fork");
+			return false;
+		}
+
+		if (pid == 0) {
 			close(0);
 			close(1);
-		}
 
-		ret = c->restore(c, checkpoint_dir, verbose);
-
-		if (!ret) {
-			fprintf(stderr, "Restoring %s failed.\n", my_args.name);
+			exit(!restore_finalize(c));
+		} else {
+			return wait_for_pid(pid) == 0;
 		}
+	} else {
+		int status;
+
+		if (!restore_finalize(c))
+			return false;
+
+		if (waitpid(-1, &status, 0) < 0)
+			return false;
+
+		return WIFEXITED(status) && WEXITSTATUS(status) == 0;
 	}
-
-	lxc_container_put(c);
-
-	return ret;
 }
 
 int main(int argc, char *argv[])

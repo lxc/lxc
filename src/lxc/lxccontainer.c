@@ -4059,28 +4059,20 @@ out_unlock:
 	return !has_error;
 }
 
-static bool do_lxcapi_restore(struct lxc_container *c, char *directory, bool verbose)
+// do_restore never returns, the calling process is used as the
+// monitor process. do_restore calls exit() if it fails.
+static void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose)
 {
 	pid_t pid;
-	struct lxc_rootfs *rootfs;
 	char pidfile[L_tmpnam];
 	struct lxc_handler *handler;
-	bool has_error = true;
-
-	if (!criu_ok(c))
-		return false;
-
-	if (geteuid()) {
-		ERROR("Must be root to restore\n");
-		return false;
-	}
 
 	if (!tmpnam(pidfile))
-		return false;
+		exit(1);
 
 	handler = lxc_init(c->name, c->lxc_conf, c->config_path);
 	if (!handler)
-		return false;
+		exit(1);
 
 	if (!cgroup_init(handler)) {
 		ERROR("failed initing cgroups");
@@ -4103,9 +4095,10 @@ static bool do_lxcapi_restore(struct lxc_container *c, char *directory, bool ver
 
 	if (pid == 0) {
 		struct criu_opts os;
+		struct lxc_rootfs *rootfs;
 
 		if (unshare(CLONE_NEWNS))
-			exit(1);
+			goto out_fini_handler;
 
 		/* CRIU needs the lxc root bind mounted so that it is the root of some
 		 * mount. */
@@ -4113,15 +4106,14 @@ static bool do_lxcapi_restore(struct lxc_container *c, char *directory, bool ver
 
 		if (rootfs_is_blockdev(c->lxc_conf)) {
 			if (do_rootfs_setup(c->lxc_conf, c->name, c->config_path) < 0)
-				exit(1);
-		}
-		else {
+				goto out_fini_handler;
+		} else {
 			if (mkdir(rootfs->mount, 0755) < 0 && errno != EEXIST)
-				exit(1);
+				goto out_fini_handler;
 
 			if (mount(rootfs->path, rootfs->mount, NULL, MS_BIND, NULL) < 0) {
 				rmdir(rootfs->mount);
-				exit(1);
+				goto out_fini_handler;
 			}
 		}
 
@@ -4136,22 +4128,30 @@ static bool do_lxcapi_restore(struct lxc_container *c, char *directory, bool ver
 		exec_criu(&os);
 		umount(rootfs->mount);
 		rmdir(rootfs->mount);
-		exit(1);
+		goto out_fini_handler;
 	} else {
-		int status;
+		int status, ret;
+		char title[2048];
 
 		pid_t w = waitpid(pid, &status, 0);
-
 		if (w == -1) {
 			perror("waitpid");
+			goto out_fini_handler;
+		}
+
+		ret = write(pipe, &status, sizeof(status));
+		close(pipe);
+
+		if (sizeof(status) != ret) {
+			perror("write");
+			ERROR("failed to write all of status");
 			goto out_fini_handler;
 		}
 
 		if (WIFEXITED(status)) {
 			if (WEXITSTATUS(status)) {
 				goto out_fini_handler;
-			}
-			else {
+			} else {
 				int ret;
 				FILE *f = fopen(pidfile, "r");
 				if (!f) {
@@ -4175,17 +4175,78 @@ static bool do_lxcapi_restore(struct lxc_container *c, char *directory, bool ver
 			goto out_fini_handler;
 		}
 
-		if (lxc_poll(c->name, handler)) {
-			lxc_abort(c->name, handler);
-			goto out_fini_handler;
-		}
-	}
+		/*
+		 * See comment in lxcapi_start; we don't care if these
+		 * fail because it's just a beauty thing. We just
+		 * assign the return here to silence potential.
+		 */
+		ret = snprintf(title, sizeof(title), "[lxc monitor] %s %s", c->config_path, c->name);
+		ret = setproctitle(title);
 
-	has_error = false;
+		ret = lxc_poll(c->name, handler);
+		if (ret)
+			lxc_abort(c->name, handler);
+		lxc_fini(c->name, handler);
+		exit(ret);
+	}
 
 out_fini_handler:
 	lxc_fini(c->name, handler);
-	return !has_error;
+	exit(1);
+}
+
+static bool do_lxcapi_restore(struct lxc_container *c, char *directory, bool verbose)
+{
+	pid_t pid;
+	int status, nread;
+	int pipefd[2];
+
+	if (!criu_ok(c))
+		return false;
+
+	if (geteuid()) {
+		ERROR("Must be root to restore\n");
+		return false;
+	}
+
+	if (pipe(pipefd)) {
+		ERROR("failed to create pipe");
+		return false;
+	}
+
+	pid = fork();
+	if (pid < 0) {
+		close(pipefd[0]);
+		close(pipefd[1]);
+		return false;
+	}
+
+	if (pid == 0) {
+		close(pipefd[0]);
+		// this never returns
+		do_restore(c, pipefd[1], directory, verbose);
+	}
+
+	close(pipefd[1]);
+
+	nread = read(pipefd[0], &status, sizeof(status));
+	close(pipefd[0]);
+	if (sizeof(status) != nread) {
+		ERROR("reading status from pipe failed");
+		goto err_wait;
+	}
+
+	// If the criu process was killed or exited nonzero, wait() for the
+	// handler, since the restore process died. Otherwise, we don't need to
+	// wait, since the child becomes the monitor process.
+	if (!WIFEXITED(status) || WEXITSTATUS(status))
+		goto err_wait;
+	return true;
+
+err_wait:
+	if (wait_for_pid(pid))
+		ERROR("restore process died");
+	return false;
 }
 
 WRAP_API_2(bool, lxcapi_restore, char *, bool)
