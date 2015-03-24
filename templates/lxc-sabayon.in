@@ -1,14 +1,14 @@
 #!/bin/bash
 #!/sbin/runscript
 ### with a few add on commands add the Sabayon Linux Overlays. 
-## Wildy Insipred by  https://github.com/adrienthebo/sabayon-chroot-builder bootstrap-sabayon.sh
+## Wildly Inspired by  https://github.com/adrienthebo/sabayon-chroot-builder bootstrap-sabayon.sh
 ### goals an easy to Install Sabayon Linux LXC container, which is Gentoo Completable ,and has many uses... 
 #### yet faster to update & administrate...and in many cases easier and or a GP Sabayon box suitable for a server farm LXC Virtual hosting...
 #### testing packages without nuking prime Sabayon System..  ,Likewise building them & testing
 ###  Requires Gentoo, lxc-gentoo.in run gentoo then these few conversions ####{rootfs}
 {rootfs}="${SAB_rootfs}"    
 ##{rootfs} # never hurts to have a fail-safe. need to keep the var in this script after lxc-gentoo.in exits
-## from ${SAB_rootfs} CHROOT this scipt will *hotwire* the container to Sabayon spec. goal is once called it should be automatic.
+## from ${SAB_rootfs} CHROOT this script will *hotwire* the container to Sabayon spec. goal is once called it should be automatic.
 Include lxc-gentoo.in
 echo "Starting lxc-gentoo.in. to Build the Gentoo Stock Container"
 echo "Just Be sure to Name It Sabayon something.... "
