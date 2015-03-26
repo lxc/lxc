@@ -3736,6 +3736,11 @@ static void exec_criu(struct criu_opts *opts)
 		return;
 	}
 
+	// We need to tell criu where cgmanager's socket is bind mounted from
+	// if it exists since it's external.
+	if (cgroup_driver() == CGMANAGER)
+		static_args+=2;
+
 	argv = malloc(static_args * sizeof(*argv));
 	if (!argv)
 		return;
@@ -3778,6 +3783,11 @@ static void exec_criu(struct criu_opts *opts)
 	if (strcmp(opts->action, "dump") == 0) {
 		char pid[32];
 
+		if (cgroup_driver() == CGMANAGER) {
+			DECLARE_ARG("--ext-mount-map");
+			DECLARE_ARG("/sys/fs/cgroup/cgmanager:cgmanager");
+		}
+
 		if (sprintf(pid, "%d", lxcapi_init_pid(opts->c)) < 0)
 			goto err;
 
@@ -3786,6 +3796,12 @@ static void exec_criu(struct criu_opts *opts)
 		if (!opts->stop)
 			DECLARE_ARG("--leave-running");
 	} else if (strcmp(opts->action, "restore") == 0) {
+
+		if (cgroup_driver() == CGMANAGER) {
+			DECLARE_ARG("--ext-mount-map");
+			DECLARE_ARG("cgmanager:/sys/fs/cgroup/cgmanager");
+		}
+
 		DECLARE_ARG("--root");
 		DECLARE_ARG(opts->c->lxc_conf->rootfs.mount);
 		DECLARE_ARG("--restore-detached");
