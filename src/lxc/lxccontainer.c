@@ -35,6 +35,8 @@
 #include <libgen.h>
 #include <stdint.h>
 #include <grp.h>
+#include <stdio.h>
+#include <mntent.h>
 #include <sys/syscall.h>
 
 #include <lxc/lxccontainer.h>
@@ -3701,10 +3703,14 @@ struct criu_opts {
 
 static void exec_criu(struct criu_opts *opts)
 {
-	char **argv, log[PATH_MAX], buf[257];
+	char **argv, log[PATH_MAX];
 	int static_args = 14, argc = 0, i, ret;
 	int netnr = 0;
 	struct lxc_list *it;
+
+	struct mntent mntent;
+	char buf[4096];
+	FILE *mnts = NULL;
 
 	/* The command line always looks like:
 	 * criu $(action) --tcp-established --file-locks --link-remap --force-irmap \
@@ -3780,6 +3786,27 @@ static void exec_criu(struct criu_opts *opts)
 	if (opts->verbose)
 		DECLARE_ARG("-vvvvvv");
 
+	/*
+	 * Note: this macro is not intended to be called unless argc is equal
+	 * to the length of the array; there is nothing that keeps track of the
+	 * length of the array besides the location in the code that this is
+	 * called. (Yes this is bad, and we should fix it.)
+	 */
+#define RESIZE_ARGS(additional) 						\
+	do {									\
+		void *m;							\
+		if (additional < 0) {						\
+			ERROR("resizing by negative amount");			\
+			goto err;						\
+		} else if (additional == 0)					\
+			continue;						\
+										\
+		m = realloc(argv, (argc + additional + 1) * sizeof(*argv));	\
+		if (!m)								\
+			goto err;						\
+		argv = m;							\
+	} while (0)
+
 	if (strcmp(opts->action, "dump") == 0) {
 		char pid[32];
 
@@ -3811,9 +3838,10 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG("--cgroup-root");
 		DECLARE_ARG(opts->cgroup_path);
 
+		RESIZE_ARGS(lxc_list_len(&opts->c->lxc_conf->network) * 2);
+
 		lxc_list_for_each(it, &opts->c->lxc_conf->network) {
 			char eth[128], *veth;
-			void *m;
 			struct lxc_netdev *n = it->elem;
 
 			if (n->name) {
@@ -3829,18 +3857,42 @@ static void exec_criu(struct criu_opts *opts)
 			if (ret < 0 || ret >= sizeof(buf))
 				goto err;
 
-			/* final NULL and --veth-pair eth0=vethASDF */
-			m = realloc(argv, (argc + 1 + 2) * sizeof(*argv));
-			if (!m)
-				goto err;
-			argv = m;
-
 			DECLARE_ARG("--veth-pair");
 			DECLARE_ARG(buf);
-			argv[argc] = NULL;
-
 		}
 	}
+
+	// CRIU wants to know about any external bind mounts the
+	// container has.
+	mnts = write_mount_file(&opts->c->lxc_conf->mount_list);
+	if (!mnts)
+		goto err;
+
+	RESIZE_ARGS(lxc_list_len(&opts->c->lxc_conf->mount_list) * 2);
+
+	while (getmntent_r(mnts, &mntent, buf, sizeof(buf))) {
+		char arg[2048], *key, *val;
+		int ret;
+
+		if (strcmp(opts->action, "dump") == 0) {
+			key = mntent.mnt_fsname;
+			val = mntent.mnt_dir;
+		} else {
+			key = mntent.mnt_dir;
+			val = mntent.mnt_fsname;
+		}
+
+		ret = snprintf(arg, sizeof(arg), "%s:%s", key, val);
+		if (ret < 0 || ret >= sizeof(arg)) {
+			goto err;
+		}
+
+		DECLARE_ARG("--ext-mount-map");
+		DECLARE_ARG(arg);
+	}
+	fclose(mnts);
+
+	argv[argc] = NULL;
 
 	netnr = 0;
 	lxc_list_for_each(it, &opts->c->lxc_conf->network) {
@@ -3876,8 +3928,11 @@ static void exec_criu(struct criu_opts *opts)
 	}
 
 #undef DECLARE_ARG
+#undef RESIZE_ARGS
 	execv(argv[0], argv);
 err:
+	if (mnts)
+		fclose(mnts);
 	for (i = 0; argv[i]; i++)
 		free(argv[i]);
 	free(argv);

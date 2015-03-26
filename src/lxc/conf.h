@@ -25,6 +25,7 @@
 
 #include "config.h"
 
+#include <stdio.h>
 #include <netinet/in.h>
 #include <net/if.h>
 #include <sys/param.h>
@@ -429,4 +430,5 @@ extern int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
 void remount_all_slave(void);
 extern void suggest_default_idmap(void);
+FILE *write_mount_file(struct lxc_list *mount);
 #endif
