@@ -59,6 +59,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">--bdir</arg>
       <arg choice="opt">--user</arg>
       <arg choice="opt">--key</arg>
+      <arg choice="opt">--storage-type</arg>
       <arg choice="opt">--union-type</arg>
       <arg choice="opt">--keep-data</arg>
       <arg choice="opt">COMMAND</arg>
@@ -165,6 +166,20 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             Copy the provided SSH public key into the container.
             -->
             コンテナ内にコピーする既存の SSH 公開鍵。
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--storage-type</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Specify the type of storage used by the container. Valid types are tmpfs or dir.
+              -->
+            コンテナが使うストレージのタイプ。tmpfs か dir を指定できます。
           </para>
         </listitem>
       </varlistentry>
