@@ -183,8 +183,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <listitem>
           <para>
             Immediately run the provided command in the container.
-            This currently uses ssh (not attach) and is incompatible
-            with daemon mode.
+            This uses attach if the kernel supports it, otherwise uses ssh.
+            This is incompatible with daemon mode.
           </para>
         </listitem>
       </varlistentry>
