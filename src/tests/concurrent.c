@@ -182,6 +182,10 @@ int main(int argc, char *argv[]) {
                  (tok = strtok_r(mode_tok, ",", &saveptr));
                 i++, mode_tok = NULL) {
                 modes = realloc(modes, sizeof(*modes) * (i+2));
+                if (!modes) {
+                    perror("realloc");
+                    exit(EXIT_FAILURE);
+                }
                 modes[i] = tok;
 	    }
             modes[i] = NULL;
