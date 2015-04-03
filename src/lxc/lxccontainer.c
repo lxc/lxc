@@ -4015,7 +4015,7 @@ static bool do_lxcapi_checkpoint(struct lxc_container *c, char *directory, bool 
 	} else {
 		pid_t w = waitpid(pid, &status, 0);
 		if (w == -1) {
-			perror("waitpid");
+			SYSERROR("waitpid");
 			return false;
 		}
 
@@ -4136,7 +4136,7 @@ static void do_restore(struct lxc_container *c, int pipe, char *directory, bool 
 
 		pid_t w = waitpid(pid, &status, 0);
 		if (w == -1) {
-			perror("waitpid");
+			SYSERROR("waitpid");
 			goto out_fini_handler;
 		}
 
@@ -4145,8 +4145,7 @@ static void do_restore(struct lxc_container *c, int pipe, char *directory, bool 
 		pipe = -1;
 
 		if (sizeof(status) != ret) {
-			perror("write");
-			ERROR("failed to write all of status");
+			SYSERROR("failed to write all of status");
 			goto out_fini_handler;
 		}
 
@@ -4157,8 +4156,7 @@ static void do_restore(struct lxc_container *c, int pipe, char *directory, bool 
 				int ret;
 				FILE *f = fopen(pidfile, "r");
 				if (!f) {
-					perror("reading pidfile");
-					ERROR("couldn't read restore's init pidfile %s\n", pidfile);
+					SYSERROR("couldn't read restore's init pidfile %s\n", pidfile);
 					goto out_fini_handler;
 				}
 
