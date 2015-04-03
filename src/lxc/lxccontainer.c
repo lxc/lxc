@@ -4063,13 +4063,14 @@ static void do_restore(struct lxc_container *c, int pipe, char *directory, bool 
 	pid_t pid;
 	char pidfile[L_tmpnam];
 	struct lxc_handler *handler;
+	int status;
 
 	if (!tmpnam(pidfile))
-		exit(1);
+		goto out;
 
 	handler = lxc_init(c->name, c->lxc_conf, c->config_path);
 	if (!handler)
-		exit(1);
+		goto out;
 
 	if (!cgroup_init(handler)) {
 		ERROR("failed initing cgroups");
@@ -4093,6 +4094,9 @@ static void do_restore(struct lxc_container *c, int pipe, char *directory, bool 
 	if (pid == 0) {
 		struct criu_opts os;
 		struct lxc_rootfs *rootfs;
+
+		close(pipe);
+		pipe = -1;
 
 		if (unshare(CLONE_NEWNS))
 			goto out_fini_handler;
@@ -4127,7 +4131,7 @@ static void do_restore(struct lxc_container *c, int pipe, char *directory, bool 
 		rmdir(rootfs->mount);
 		goto out_fini_handler;
 	} else {
-		int status, ret;
+		int ret;
 		char title[2048];
 
 		pid_t w = waitpid(pid, &status, 0);
@@ -4138,6 +4142,7 @@ static void do_restore(struct lxc_container *c, int pipe, char *directory, bool 
 
 		ret = write(pipe, &status, sizeof(status));
 		close(pipe);
+		pipe = -1;
 
 		if (sizeof(status) != ret) {
 			perror("write");
@@ -4189,6 +4194,16 @@ static void do_restore(struct lxc_container *c, int pipe, char *directory, bool 
 
 out_fini_handler:
 	lxc_fini(c->name, handler);
+
+out:
+	if (pipe >= 0) {
+		status = 1;
+		if (write(pipe, &status, sizeof(status)) != sizeof(status)) {
+			SYSERROR("writing status failed");
+		}
+		close(pipe);
+	}
+
 	exit(1);
 }
 
