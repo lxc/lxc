@@ -1888,12 +1888,15 @@ static int do_setup_cgroup_limits(struct cgfs_data *d,
 {
 	struct lxc_list *iterator;
 	struct lxc_cgroup *cg;
+	struct lxc_list *sorted_cgroup_settings;
 	int ret = -1;
 
 	if (lxc_list_empty(cgroup_settings))
 		return 0;
 
-	lxc_list_for_each(iterator, cgroup_settings) {
+	sorted_cgroup_settings = sort_cgroup_settings(cgroup_settings);
+
+	lxc_list_for_each(iterator, sorted_cgroup_settings) {
 		cg = iterator->elem;
 
 		if (do_devices == !strncmp("devices", cg->subsystem, 7)) {
@@ -1916,6 +1919,10 @@ static int do_setup_cgroup_limits(struct cgfs_data *d,
 	ret = 0;
 	INFO("cgroup has been setup");
 out:
+	lxc_list_for_each(iterator, sorted_cgroup_settings) {
+		lxc_list_del(iterator);
+		free(iterator);
+	}
 	return ret;
 }
 
