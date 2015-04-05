@@ -1221,6 +1221,7 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 	struct lxc_list *iterator;
 	struct lxc_cgroup *cg;
 	bool ret = false;
+	struct lxc_list *sorted_cgroup_settings;
 
 	if (lxc_list_empty(cgroup_settings))
 		return true;
@@ -1233,7 +1234,9 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 		return false;
 	}
 
-	lxc_list_for_each(iterator, cgroup_settings) {
+	sorted_cgroup_settings = sort_cgroup_settings(cgroup_settings);
+
+	lxc_list_for_each(iterator, sorted_cgroup_settings) {
 		char controller[100], *p;
 		cg = iterator->elem;
 		if (do_devices != !strncmp("devices", cg->subsystem, 7))
@@ -1261,6 +1264,10 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 	ret = true;
 	INFO("cgroup limits have been setup");
 out:
+	lxc_list_for_each(iterator, sorted_cgroup_settings) {
+		lxc_list_del(iterator);
+		free(iterator);
+	}
 	cgm_dbus_disconnect();
 	return ret;
 }
