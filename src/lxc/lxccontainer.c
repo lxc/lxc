@@ -67,6 +67,12 @@
 #include <../include/ifaddrs.h>
 #endif
 
+#if IS_BIONIC
+#include <../include/lxcmntent.h>
+#else
+#include <mntent.h>
+#endif
+
 #define MAX_BUFFER 4096
 
 #define NOT_SUPPORTED_ERROR "the requested function %s is not currently supported with unprivileged containers"
@@ -83,7 +89,6 @@ return -1;
 #endif
 }
 #endif
-
 
 lxc_log_define(lxc_container, lxc);
 
