@@ -64,7 +64,7 @@ static struct lxc_arguments my_args = {
 	.progname = "lxc-autostart",
 	.help     = "\
 \n\
-lxc-autostart managed auto-started containers\n\
+lxc-autostart manages auto-started containers\n\
 \n\
 Options:\n\
   -k, --kill        kill the containers instead of starting them\n\
