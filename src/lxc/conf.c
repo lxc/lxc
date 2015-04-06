@@ -4577,11 +4577,19 @@ struct lxc_list *sort_cgroup_settings(struct lxc_list* cgroup_settings)
 	struct lxc_list *item = NULL;
 
 	result = malloc(sizeof(*result));
+	if (!result) {
+		ERROR("failed to allocate memory to sort cgroup settings");
+		return NULL;
+	}
 	lxc_list_init(result);
 
 	/*Iterate over the cgroup settings and copy them to the output list*/
 	lxc_list_for_each(it, cgroup_settings) {
 		item = malloc(sizeof(*item));
+		if (!item) {
+			ERROR("failed to allocate memory to sort cgroup settings");
+			return NULL;
+		}
 		item->elem = it->elem;
 		cg = it->elem;
 		if (strcmp(cg->subsystem, "memory.memsw.limit_in_bytes") == 0) {

@@ -1235,6 +1235,9 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 	}
 
 	sorted_cgroup_settings = sort_cgroup_settings(cgroup_settings);
+	if (!sorted_cgroup_settings) {
+		return false;
+	}
 
 	lxc_list_for_each(iterator, sorted_cgroup_settings) {
 		char controller[100], *p;
