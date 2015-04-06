@@ -1218,10 +1218,9 @@ static bool cgm_unfreeze(void *hdata)
 static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool do_devices)
 {
 	struct cgm_data *d = hdata;
-	struct lxc_list *iterator;
+	struct lxc_list *iterator, *sorted_cgroup_settings, *next;
 	struct lxc_cgroup *cg;
 	bool ret = false;
-	struct lxc_list *sorted_cgroup_settings;
 
 	if (lxc_list_empty(cgroup_settings))
 		return true;
@@ -1267,10 +1266,11 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 	ret = true;
 	INFO("cgroup limits have been setup");
 out:
-	lxc_list_for_each(iterator, sorted_cgroup_settings) {
+	lxc_list_for_each_safe(iterator, sorted_cgroup_settings, next) {
 		lxc_list_del(iterator);
 		free(iterator);
 	}
+	free(sorted_cgroup_settings);
 	cgm_dbus_disconnect();
 	return ret;
 }

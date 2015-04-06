@@ -1886,9 +1886,8 @@ static int do_cgroup_set(const char *cgroup_path, const char *sub_filename,
 static int do_setup_cgroup_limits(struct cgfs_data *d,
 			   struct lxc_list *cgroup_settings, bool do_devices)
 {
-	struct lxc_list *iterator;
+	struct lxc_list *iterator, *sorted_cgroup_settings, *next;
 	struct lxc_cgroup *cg;
-	struct lxc_list *sorted_cgroup_settings;
 	int ret = -1;
 
 	if (lxc_list_empty(cgroup_settings))
@@ -1922,10 +1921,11 @@ static int do_setup_cgroup_limits(struct cgfs_data *d,
 	ret = 0;
 	INFO("cgroup has been setup");
 out:
-	lxc_list_for_each(iterator, sorted_cgroup_settings) {
+	lxc_list_for_each_safe(iterator, sorted_cgroup_settings, next) {
 		lxc_list_del(iterator);
 		free(iterator);
 	}
+	free(sorted_cgroup_settings);
 	return ret;
 }
 
