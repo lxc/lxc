@@ -240,16 +240,14 @@ LXC_NAME="%s"
     count = 0
     for entry in overlay_dirs:
         tmpdir = "%s/tmpfs" % dest_path
+        fd.write("mkdir -p %s\n" % (tmpdir))
+        if args.storage_type == "tmpfs":
+            fd.write("mount -n -t tmpfs -o mode=0755 none %s\n" % (tmpdir))
         deltdir = "%s/delta%s" % (tmpdir, count)
         workdir = "%s/work%s" % (tmpdir, count)
         fd.write("mkdir -p %s %s\n" % (deltdir, entry[1]))
         if have_new_overlay:
             fd.write("mkdir -p %s\n" % workdir)
-
-        if args.storage_type == "tmpfs":
-            fd.write("mount -n -t tmpfs -o mode=0755 none %s\n" % (tmpdir))
-            fd.write("mkdir %s\n" % deltdir)
-            fd.write("mkdir %s\n" % workdir)
 
         fd.write("getfacl -a %s | setfacl --set-file=- %s || true\n" %
                  (entry[0], deltdir))
