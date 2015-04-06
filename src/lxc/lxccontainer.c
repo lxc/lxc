@@ -36,7 +36,6 @@
 #include <stdint.h>
 #include <grp.h>
 #include <stdio.h>
-#include <mntent.h>
 #include <sys/syscall.h>
 
 #include <lxc/lxccontainer.h>
