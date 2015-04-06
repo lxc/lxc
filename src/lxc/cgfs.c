@@ -1895,6 +1895,9 @@ static int do_setup_cgroup_limits(struct cgfs_data *d,
 		return 0;
 
 	sorted_cgroup_settings = sort_cgroup_settings(cgroup_settings);
+	if (!sorted_cgroup_settings) {
+		return -1;
+	}
 
 	lxc_list_for_each(iterator, sorted_cgroup_settings) {
 		cg = iterator->elem;
