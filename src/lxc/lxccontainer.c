@@ -4149,6 +4149,8 @@ static void do_restore(struct lxc_container *c, int pipe, char *directory, bool 
 		goto out_fini_handler;
 	}
 
+	resolve_clone_flags(handler);
+
 	pid = fork();
 	if (pid < 0)
 		goto out_fini_handler;

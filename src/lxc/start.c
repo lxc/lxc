@@ -840,6 +840,35 @@ static int recv_ttys_from_child(struct lxc_handler *handler)
 	return 0;
 }
 
+void resolve_clone_flags(struct lxc_handler *handler)
+{
+	handler->clone_flags = CLONE_NEWPID | CLONE_NEWNS;
+
+	if (!lxc_list_empty(&handler->conf->id_map)) {
+		INFO("Cloning a new user namespace");
+		handler->clone_flags |= CLONE_NEWUSER;
+	}
+
+	if (handler->conf->inherit_ns_fd[LXC_NS_NET] == -1) {
+		if (!lxc_requests_empty_network(handler))
+			handler->clone_flags |= CLONE_NEWNET;
+	} else {
+		INFO("Inheriting a net namespace");
+	}
+
+	if (handler->conf->inherit_ns_fd[LXC_NS_IPC] == -1) {
+		handler->clone_flags |= CLONE_NEWIPC;
+	} else {
+		INFO("Inheriting an IPC namespace");
+	}
+
+	if (handler->conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
+		handler->clone_flags |= CLONE_NEWUTS;
+	} else {
+		INFO("Inheriting a UTS namespace");
+	}
+}
+
 static int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
@@ -858,21 +887,14 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_init(handler))
 		return -1;
 
-	handler->clone_flags = CLONE_NEWPID|CLONE_NEWNS;
-	if (!lxc_list_empty(&handler->conf->id_map)) {
-		INFO("Cloning a new user namespace");
-		handler->clone_flags |= CLONE_NEWUSER;
-	}
-
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, handler->ttysock) < 0) {
 		lxc_sync_fini(handler);
 		return -1;
 	}
 
-	if (handler->conf->inherit_ns_fd[LXC_NS_NET] == -1) {
-		if (!lxc_requests_empty_network(handler))
-			handler->clone_flags |= CLONE_NEWNET;
+	resolve_clone_flags(handler);
 
+	if (handler->clone_flags & CLONE_NEWNET) {
 		if (!lxc_list_empty(&handler->conf->network)) {
 
 			/* Find gateway addresses from the link device, which is
@@ -899,22 +921,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			ERROR("failed to save physical nic info");
 			goto out_abort;
 		}
-	} else {
-		INFO("Inheriting a net namespace");
 	}
-
-	if (handler->conf->inherit_ns_fd[LXC_NS_IPC] == -1) {
-		handler->clone_flags |= CLONE_NEWIPC;
-	} else {
-		INFO("Inheriting an IPC namespace");
-	}
-
-	if (handler->conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
-		handler->clone_flags |= CLONE_NEWUTS;
-	} else {
-		INFO("Inheriting a UTS namespace");
-	}
-
 
 	if (!cgroup_init(handler)) {
 		ERROR("failed initializing cgroup support");

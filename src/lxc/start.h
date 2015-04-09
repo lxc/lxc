@@ -87,5 +87,6 @@ extern int lxc_check_inherited(struct lxc_conf *conf, bool closeall, int fd_to_i
 int __lxc_start(const char *, struct lxc_conf *, struct lxc_operations *,
 		void *, const char *);
 
+extern void resolve_clone_flags(struct lxc_handler *handler);
 #endif
 
