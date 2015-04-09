@@ -7,6 +7,7 @@
 *.conf
 *~
 *.gz
+*.swp
 
 .deps
 .libs
