@@ -2614,13 +2614,13 @@ static bool add_rdepends(struct lxc_container *c, struct lxc_container *c0)
 }
 
 static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
-		const char *newtype, int flags, const char *bdevdata, uint64_t newsize)
+		const char *newtype, int flags, struct bdev_specs *bdevdata)
 {
 	struct bdev *bdev;
 	int need_rdep;
 
 	bdev = bdev_copy(c0, c->name, c->config_path, newtype, flags,
-			bdevdata, newsize, &need_rdep);
+			bdevdata, &need_rdep);
 	if (!bdev) {
 		ERROR("Error copying storage");
 		return -1;
@@ -2793,8 +2793,7 @@ static int create_file_dirname(char *path, struct lxc_conf *conf)
 
 static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char *newname,
 		const char *lxcpath, int flags,
-		const char *bdevtype, const char *bdevdata, uint64_t newsize,
-		char **hookargs)
+		const char *bdevtype, struct bdev_specs *bdevdata, char **hookargs)
 {
 	struct lxc_container *c2 = NULL;
 	char newpath[MAXPATHLEN];
@@ -2871,7 +2870,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	}
 
 	// copy/snapshot rootfs's
-	ret = copy_storage(c, c2, bdevtype, flags, bdevdata, newsize);
+	ret = copy_storage(c, c2, bdevtype, flags, bdevdata);
 	if (ret < 0)
 		goto out;
 
@@ -2950,13 +2949,12 @@ out:
 
 static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *newname,
 		const char *lxcpath, int flags,
-		const char *bdevtype, const char *bdevdata, uint64_t newsize,
-		char **hookargs)
+		const char *bdevtype, struct bdev_specs *bdevdata, char **hookargs)
 {
 	struct lxc_container * ret;
 	struct lxc_conf *old = current_config;
 	current_config = c ? c->lxc_conf : NULL;
-	ret = do_lxcapi_clone(c, newname, lxcpath, flags, bdevtype, bdevdata, newsize, hookargs);
+	ret = do_lxcapi_clone(c, newname, lxcpath, flags, bdevtype, bdevdata, hookargs);
 	current_config = old;
 	return ret;
 }
@@ -2979,7 +2977,7 @@ static bool do_lxcapi_rename(struct lxc_container *c, const char *newname)
 		return false;
 	}
 
-	newc = lxcapi_clone(c, newname, c->config_path, LXC_CLONE_KEEPMACADDR, NULL, bdev->type, 0, NULL);
+	newc = lxcapi_clone(c, newname, c->config_path, LXC_CLONE_KEEPMACADDR, bdev->type, NULL, NULL);
 	bdev_put(bdev);
 	if (!newc) {
 		lxc_container_put(newc);
@@ -3127,7 +3125,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 		ERROR("and keep the original container pristine.");
 		flags &= ~LXC_CLONE_SNAPSHOT | LXC_CLONE_MAYBE_SNAPSHOT;
 	}
-	c2 = do_lxcapi_clone(c, newname, snappath, flags, NULL, NULL, 0, NULL);
+	c2 = do_lxcapi_clone(c, newname, snappath, flags, NULL, NULL, NULL);
 	if (!c2) {
 		ERROR("clone of %s:%s failed", c->config_path, c->name);
 		return -1;
@@ -3360,7 +3358,7 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 	if (strcmp(bdev->type, "dir") != 0 && strcmp(bdev->type, "loop") != 0)
 		flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_MAYBE_SNAPSHOT;
 	rest = lxcapi_clone(snap, newname, c->config_path, flags,
-			bdev->type, NULL, 0, NULL);
+			bdev->type, NULL, NULL);
 	bdev_put(bdev);
 	if (rest && lxcapi_is_defined(rest))
 		b = true;

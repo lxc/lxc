@@ -447,7 +447,7 @@ static char *dir_new_path(char *src, const char *oldname, const char *name,
  */
 static int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
+		struct bdev_specs *bdevdata, struct lxc_conf *conf)
 {
 	int len, ret;
 
@@ -676,7 +676,7 @@ static int zfs_clone(const char *opath, const char *npath, const char *oname,
 
 static int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
+		struct bdev_specs *bdevdata, struct lxc_conf *conf)
 {
 	int len, ret;
 
@@ -1011,16 +1011,22 @@ static int is_blktype(struct bdev *b)
 
 static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
+		struct bdev_specs *bdevdata, struct lxc_conf *conf)
 {
 	char fstype[100];
-	uint64_t size = newsize;
+	uint64_t size = bdevdata->fssize;
 	int len, ret;
 
 	if (!orig->src || !orig->dest)
 		return -1;
 
-	if (strcmp(orig->type, "lvm")) {
+	int is_orig_lvm = strcmp(orig->type, "lvm");
+
+	if (is_orig_lvm == 0 && !bdevdata->lvm.vg) {
+		new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath);
+		if (!new->src)
+			return -1;
+	} else {
 		const char *vg;
 
 		if (snap) {
@@ -1028,16 +1034,13 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 				orig->type);
 			return -1;
 		}
-		vg = lxc_global_config_value("lxc.bdev.lvm.vg");
+		vg = bdevdata->lvm.vg ? bdevdata->lvm.vg : \
+				lxc_global_config_value("lxc.bdev.lvm.vg");
 		len = strlen("/dev/") + strlen(vg) + strlen(cname) + 2;
 		if ((new->src = malloc(len)) == NULL)
 			return -1;
 		ret = snprintf(new->src, len, "/dev/%s/%s", vg, cname);
 		if (ret < 0 || ret >= len)
-			return -1;
-	} else {
-		new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath);
-		if (!new->src)
 			return -1;
 	}
 
@@ -1058,7 +1061,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 		return -1;
 
 	if (is_blktype(orig)) {
-		if (!newsize && blk_getsize(orig, &size) < 0) {
+		if (!bdevdata->fssize && blk_getsize(orig, &size) < 0) {
 			ERROR("Error getting size of %s", orig->src);
 			return -1;
 		}
@@ -1068,7 +1071,7 @@ static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldna
 		}
 	} else {
 		sprintf(fstype, "ext3");
-		if (!newsize)
+		if (!bdevdata->fssize)
 			size = DEFAULT_FS_SIZE;
 	}
 
@@ -1461,7 +1464,7 @@ static int btrfs_snapshot_wrapper(void *data)
 
 static int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
+		struct bdev_specs *bdevdata, struct lxc_conf *conf)
 {
 	if (!orig->dest || !orig->src)
 		return -1;
@@ -2006,10 +2009,10 @@ static int do_loop_create(const char *path, uint64_t size, const char *fstype)
  */
 static int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
+		struct bdev_specs *bdevdata, struct lxc_conf *conf)
 {
 	char fstype[100];
-	uint64_t size = newsize;
+	uint64_t size = bdevdata->fssize;
 	int len, ret;
 	char *srcdev;
 
@@ -2046,7 +2049,7 @@ static int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldn
 	// correctly keep holes!  So punt for now.
 
 	if (is_blktype(orig)) {
-		if (!newsize && blk_getsize(orig, &size) < 0) {
+		if (!bdevdata->fssize && blk_getsize(orig, &size) < 0) {
 			ERROR("Error getting size of %s", orig->src);
 			return -1;
 		}
@@ -2057,7 +2060,7 @@ static int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldn
 		}
 	} else {
 		sprintf(fstype, "%s", DEFAULT_FSTYPE);
-		if (!newsize)
+		if (!bdevdata->fssize)
 			size = DEFAULT_FS_SIZE;
 	}
 	return do_loop_create(srcdev, size, fstype);
@@ -2298,7 +2301,7 @@ static int rsync_delta_wrapper(void *data)
 
 static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
+		struct bdev_specs *bdevdata, struct lxc_conf *conf)
 {
 	if (!snap) {
 		ERROR("overlayfs is only for snapshot clones");
@@ -2644,7 +2647,7 @@ static int aufs_umount(struct bdev *bdev)
 
 static int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
+		struct bdev_specs *bdevdata, struct lxc_conf *conf)
 {
 	if (!snap) {
 		ERROR("aufs is only for snapshot clones");
@@ -3095,7 +3098,7 @@ static int nbd_create(struct bdev *bdev, const char *dest, const char *n,
 
 static int nbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
+		struct bdev_specs *bdevdata, struct lxc_conf *conf)
 {
 	return -ENOSYS;
 }
@@ -3327,8 +3330,7 @@ static bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
  */
 struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 			const char *lxcpath, const char *bdevtype,
-			int flags, const char *bdevdata, uint64_t newsize,
-			int *needs_rdep)
+			int flags, struct bdev_specs *bdevdata, int *needs_rdep)
 {
 	struct bdev *orig, *new;
 	pid_t pid;
@@ -3418,7 +3420,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	}
 
 	if (new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
-				snap, newsize, c0->lxc_conf) < 0) {
+				snap, bdevdata, c0->lxc_conf) < 0) {
 		ERROR("failed getting pathnames for cloned storage: %s", src);
 		goto err;
 	}
