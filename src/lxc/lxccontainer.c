@@ -1528,7 +1528,7 @@ static bool lxcapi_createl(struct lxc_container *c, const char *t,
 		return false;
 
 	struct lxc_conf *old = current_config;
-	current_config = c ? c->lxc_conf : NULL;
+	current_config = c->lxc_conf;
 
 	/*
 	 * since we're going to wait for create to finish, I don't think we
