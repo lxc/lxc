@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 	}
 	lxc_container_put(c2);
 
-	c2 = c->clone(c, MYNAME2, NULL, LXC_CLONE_SNAPSHOT, "overlayfs", NULL, 0, NULL);
+	c2 = c->clone(c, MYNAME2, NULL, LXC_CLONE_SNAPSHOT, "overlayfs", NULL, NULL);
 	if (!c2) {
 		fprintf(stderr, "%d: %s overlayfs clone failed\n", __LINE__, MYNAME2);
 		goto good;
