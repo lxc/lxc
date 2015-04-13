@@ -3591,8 +3591,6 @@ static void exec_criu(struct criu_opts *opts)
 	DECLARE_ARG("auto");
 	DECLARE_ARG("--enable-external-sharing");
 	DECLARE_ARG("--enable-external-masters");
-	DECLARE_ARG("--action-script");
-	DECLARE_ARG(DATADIR "/lxc/lxc-restore-net");
 	DECLARE_ARG("-D");
 	DECLARE_ARG(opts->directory);
 	DECLARE_ARG("-o");
@@ -3644,7 +3642,7 @@ static void exec_criu(struct criu_opts *opts)
 
 			veth = n->priv.veth_attr.pair;
 
-			ret = snprintf(buf, sizeof(buf), "%s=%s", eth, veth);
+			ret = snprintf(buf, sizeof(buf), "%s=%s@%s", eth, veth, n->link);
 			if (ret < 0 || ret >= sizeof(buf))
 				goto err;
 
@@ -3655,39 +3653,6 @@ static void exec_criu(struct criu_opts *opts)
 	}
 
 	argv[argc] = NULL;
-
-	netnr = 0;
-	lxc_list_for_each(it, &opts->c->lxc_conf->network) {
-		struct lxc_netdev *n = it->elem;
-		char veth[128];
-
-		/*
-		 * Here, we set some parameters that lxc-restore-net
-		 * will examine to figure out the right network to
-		 * restore.
-		 */
-		snprintf(buf, sizeof(buf), "LXC_CRIU_BRIDGE%d", netnr);
-		if (setenv(buf, n->link, 1))
-			goto err;
-
-		if (strcmp("restore", opts->action) == 0)
-			strncpy(veth, n->priv.veth_attr.pair, sizeof(veth));
-		else {
-			char *tmp;
-			ret = snprintf(buf, sizeof(buf), "lxc.network.%d.veth.pair", netnr);
-			if (ret < 0 || ret >= sizeof(buf))
-				goto err;
-			tmp = lxcapi_get_running_config_item(opts->c, buf);
-			strncpy(veth, tmp, sizeof(veth));
-			free(tmp);
-		}
-
-		snprintf(buf, sizeof(buf), "LXC_CRIU_VETH%d", netnr);
-		if (setenv(buf, veth, 1))
-			goto err;
-
-		netnr++;
-	}
 
 #undef DECLARE_ARG
 	execv(argv[0], argv);
