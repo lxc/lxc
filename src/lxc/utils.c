@@ -1645,12 +1645,13 @@ int setproctitle(char *title)
 			env_start = env_end;
 		}
 
+		arg_end = arg_start + len;
+
 		/* check overflow */
-		if (arg_start + len < 0) {
+		if (arg_end < len || arg_end < arg_start) {
 			return -1;
 		}
 
-		arg_end = arg_start + len;
 	}
 
 	strcpy((char*)arg_start, title);
