@@ -164,7 +164,6 @@ bin_SCRIPTS = lxc-checkconfig
 
 EXTRA_DIST = \
 	lxc-ls \
-	lxc-restore-net \
 	lxc-top.lua
 
 if ENABLE_PYTHON
@@ -260,9 +259,6 @@ install-exec-local: install-soPROGRAMS
 
 install-exec-hook:
 	chmod u+s $(DESTDIR)$(libexecdir)/lxc/lxc-user-nic
-
-install-data-local:
-	install -c -m 755 lxc-restore-net $(DESTDIR)$(datadir)/lxc
 
 uninstall-local:
 	$(RM) $(DESTDIR)$(libdir)/liblxc.so*
