@@ -463,7 +463,11 @@ static int lxcapi_console(struct lxc_container *c, int ttynum, int stdinfd,
 {
 	int ret;
 	struct lxc_conf *old = current_config;
-	current_config = c ? c->lxc_conf : NULL;
+
+	if (!c)
+		return -1;
+
+	current_config = c->lxc_conf;
 	ret = lxc_console(c, ttynum, stdinfd, stdoutfd, stderrfd, escape);
 	current_config = old;
 	return ret;
