@@ -1644,15 +1644,21 @@ int setproctitle(char *title)
 		if (len >= arg_end - arg_start) {
 			env_start = env_end;
 		}
+
+		/* check overflow */
+		if (arg_start + len < 0) {
+			return -1;
+		}
+
 		arg_end = arg_start + len;
 	}
 
 	strcpy((char*)arg_start, title);
 
-	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_START,   (long)arg_start, 0, 0);
-	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_END,     (long)arg_end, 0, 0);
-	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_START,   (long)env_start, 0, 0);
-	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_END,     (long)env_end, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_START,   arg_start, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_END,     arg_end, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_START,   env_start, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_END,     env_end, 0, 0);
 
 	return ret;
 }
