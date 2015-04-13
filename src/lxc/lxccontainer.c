@@ -3895,6 +3895,7 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG(arg);
 	}
 	fclose(mnts);
+	mnts = NULL;
 
 	argv[argc] = NULL;
 
