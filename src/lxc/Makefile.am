@@ -248,7 +248,6 @@ endif
 
 init_lxc_static_LDFLAGS = -static
 init_lxc_static_LDADD = @CAP_LIBS@
-init_lxc_static_CFLAGS = $(AM_CFLAGS) -DNO_LXC_CONF
 endif
 
 install-exec-local: install-soPROGRAMS

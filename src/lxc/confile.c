@@ -1169,15 +1169,15 @@ static int config_lsm_se_context(const char *key, const char *value,
 }
 
 static int config_logfile(const char *key, const char *value,
-			     struct lxc_conf *c)
+			     struct lxc_conf *lxc_conf)
 {
 	int ret;
 
 	// store these values in the lxc_conf, and then try to set for
 	// actual current logging.
-	ret = config_path_item(&c->logfile, value);
+	ret = config_path_item(&lxc_conf->logfile, value);
 	if (ret == 0)
-		ret = lxc_log_set_file(&c->logfd, c->logfile);
+		ret = lxc_log_set_file(lxc_conf->logfile);
 	return ret;
 }
 
@@ -1196,7 +1196,7 @@ static int config_loglevel(const char *key, const char *value,
 	// store these values in the lxc_conf, and then try to set for
 	// actual current logging.
 	lxc_conf->loglevel = newlevel;
-	return lxc_log_set_level(&lxc_conf->loglevel, newlevel);
+	return lxc_log_set_level(newlevel);
 }
 
 static int config_autodev(const char *key, const char *value,
@@ -2367,9 +2367,9 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 	else if (strcmp(key, "lxc.se_context") == 0)
 		v = c->lsm_se_context;
 	else if (strcmp(key, "lxc.logfile") == 0)
-		v = c->logfile;
+		v = lxc_log_get_file();
 	else if (strcmp(key, "lxc.loglevel") == 0)
-		v = lxc_log_priority_to_string(c->loglevel);
+		v = lxc_log_priority_to_string(lxc_log_get_level());
 	else if (strcmp(key, "lxc.cgroup") == 0) // all cgroup info
 		return lxc_get_cgroup_entry(c, retv, inlen, "all");
 	else if (strncmp(key, "lxc.cgroup.", 11) == 0) // specific cgroup info

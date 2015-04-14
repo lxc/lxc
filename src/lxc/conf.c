@@ -178,17 +178,6 @@ struct caps_opt {
 	int value;
 };
 
-/*
- * The lxc_conf of the container currently being worked on in an
- * API call
- * This is used in the error calls
- */
-#ifdef HAVE_TLS
-__thread struct lxc_conf *current_config;
-#else
-struct lxc_conf *current_config;
-#endif
-
 /* Declare this here, since we don't want to reshuffle the whole file. */
 static int in_caplist(int cap, struct lxc_list *caps);
 
@@ -2584,7 +2573,6 @@ struct lxc_conf *lxc_conf_init(void)
 		return NULL;
 	}
 	new->kmsg = 0;
-	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
@@ -4252,8 +4240,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.path);
 	free(conf->rootfs.pivot);
 	free(conf->logfile);
-	if (conf->logfd != -1)
-		close(conf->logfd);
 	free(conf->utsname);
 	free(conf->ttydir);
 	free(conf->fstab);

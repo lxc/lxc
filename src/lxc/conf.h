@@ -335,7 +335,6 @@ struct lxc_conf {
 	// store the config file specified values here.
 	char *logfile;  // the logfile as specifed in config
 	int loglevel;   // loglevel as specifed in config (if any)
-	int logfd;
 
 	int inherit_ns_fd[LXC_NS_MAX];
 
@@ -364,12 +363,6 @@ struct lxc_conf {
 	/* init command */
 	char *init_cmd;
 };
-
-#ifdef HAVE_TLS
-extern __thread struct lxc_conf *current_config;
-#else
-extern struct lxc_conf *current_config;
-#endif
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
 		  const char *lxcpath, char *argv[]);
