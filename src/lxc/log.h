@@ -33,8 +33,6 @@
 #include <strings.h>
 #include <stdbool.h>
 
-#include "conf.h"
-
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 02000000
 #endif
@@ -106,10 +104,6 @@ struct lxc_log_category {
 	const struct lxc_log_category	*parent;
 };
 
-#ifndef NO_LXC_CONF
-extern int lxc_log_use_global_fd;
-#endif
-
 /*
  * Returns true if the chained priority is equal to or higher than
  * given priority.
@@ -122,14 +116,7 @@ lxc_log_priority_is_enabled(const struct lxc_log_category* category,
 	       category->parent)
 		category = category->parent;
 
-	int cmp_prio = category->priority;
-#ifndef NO_LXC_CONF
-	if (!lxc_log_use_global_fd && current_config &&
-			current_config->loglevel != LXC_LOG_PRIORITY_NOTSET)
-		cmp_prio = current_config->loglevel;
-#endif
-
-	return priority >= cmp_prio;
+	return priority >= category->priority;
 }
 
 /*
@@ -307,14 +294,18 @@ ATTR_UNUSED static inline void LXC_##PRIORITY(struct lxc_log_locinfo* locinfo,	\
 	ERROR("%s - " format, strerror(errno), ##__VA_ARGS__);		\
 } while (0)
 
+#ifdef HAVE_TLS
+extern __thread int lxc_log_fd;
+#else
 extern int lxc_log_fd;
+#endif
 
 extern int lxc_log_init(const char *name, const char *file,
 			const char *priority, const char *prefix, int quiet,
 			const char *lxcpath);
 
-extern int lxc_log_set_file(int *fd, const char *fname);
-extern int lxc_log_set_level(int *dest, int level);
+extern int lxc_log_set_file(const char *fname);
+extern int lxc_log_set_level(int level);
 extern void lxc_log_set_prefix(const char *prefix);
 extern const char *lxc_log_get_file(void);
 extern int lxc_log_get_level(void);
