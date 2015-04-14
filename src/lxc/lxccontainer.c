@@ -753,7 +753,10 @@ static bool lxcapi_stop(struct lxc_container *c)
 
 	ret = lxc_cmd_stop(c->name, c->config_path);
 
-	return ret == 0;
+	if (ret == 0)
+		return do_lxcapi_wait(c, "STOPPED", 10);
+
+	return false;
 }
 
 static int do_create_container_dir(const char *path, struct lxc_conf *conf)
