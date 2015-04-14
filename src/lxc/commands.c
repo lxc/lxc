@@ -608,13 +608,11 @@ int lxc_cmd_stop(const char *name, const char *lxcpath)
 		return -1;
 	}
 
-	if (!ret) {
-		WARN("'%s' has stopped before replying with success", name);
-		return -1;
-	}
-
-	if (cmd.rsp.ret != 0) {
-		ERROR("Container %s:%s had an error stopping", lxcpath, name);
+	/* we do not expect any answer, because we wait for the connection to be
+	 * closed
+	 */
+	if (ret > 0) {
+		ERROR("failed to stop '%s': %s", name, strerror(-cmd.rsp.ret));
 		return -1;
 	}
 
@@ -639,12 +637,11 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 		 * deadlock us
 		 */
 		if (cgroup_unfreeze(handler))
-			goto out;
+			return 0;
 		ERROR("Failed to unfreeze %s:%s", handler->lxcpath, handler->name);
 		rsp.ret = -1;
 	}
 
-out:
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
 
