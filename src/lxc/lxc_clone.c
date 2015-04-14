@@ -81,6 +81,7 @@ static void usage(const char *me)
 	printf("  -B: use specified new backingstore.  Default is the same as\n");
 	printf("      the original.  Options include aufs, btrfs, lvm, overlayfs, \n");
 	printf("      dir and loop\n");
+	printf("  -v: use specified volume group for the new container. \n");
 	printf("  -L: for blockdev-backed backingstore, use specified size * specified\n");
 	printf("      unit. Default size is the size of the source blockdev, default\n");
 	printf("      unit is MB\n");
