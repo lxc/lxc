@@ -3520,18 +3520,18 @@ struct criu_opts {
 static void exec_criu(struct criu_opts *opts)
 {
 	char **argv, log[PATH_MAX];
-	int static_args = 14, argc = 0, i, ret;
+	int static_args = 18, argc = 0, i, ret;
 	int netnr = 0;
 	struct lxc_list *it;
 
-	struct mntent mntent;
 	char buf[4096];
 	FILE *mnts = NULL;
 
 	/* The command line always looks like:
 	 * criu $(action) --tcp-established --file-locks --link-remap --force-irmap \
 	 * --manage-cgroups action-script foo.sh -D $(directory) \
-	 * -o $(directory)/$(action).log
+	 * -o $(directory)/$(action).log --ext-mount-map auto
+	 * --enable-external-sharing --enable-external-masters
 	 * +1 for final NULL */
 
 	if (strcmp(opts->action, "dump") == 0) {
@@ -3557,11 +3557,6 @@ static void exec_criu(struct criu_opts *opts)
 		ERROR("logfile name too long\n");
 		return;
 	}
-
-	// We need to tell criu where cgmanager's socket is bind mounted from
-	// if it exists since it's external.
-	if (cgroup_driver() == CGMANAGER)
-		static_args+=2;
 
 	argv = malloc(static_args * sizeof(*argv));
 	if (!argv)
@@ -3592,6 +3587,10 @@ static void exec_criu(struct criu_opts *opts)
 	DECLARE_ARG("--link-remap");
 	DECLARE_ARG("--force-irmap");
 	DECLARE_ARG("--manage-cgroups");
+	DECLARE_ARG("--ext-mount-map");
+	DECLARE_ARG("auto");
+	DECLARE_ARG("--enable-external-sharing");
+	DECLARE_ARG("--enable-external-masters");
 	DECLARE_ARG("--action-script");
 	DECLARE_ARG(DATADIR "/lxc/lxc-restore-net");
 	DECLARE_ARG("-D");
@@ -3602,34 +3601,8 @@ static void exec_criu(struct criu_opts *opts)
 	if (opts->verbose)
 		DECLARE_ARG("-vvvvvv");
 
-	/*
-	 * Note: this macro is not intended to be called unless argc is equal
-	 * to the length of the array; there is nothing that keeps track of the
-	 * length of the array besides the location in the code that this is
-	 * called. (Yes this is bad, and we should fix it.)
-	 */
-#define RESIZE_ARGS(additional) 						\
-	do {									\
-		void *m;							\
-		if (additional < 0) {						\
-			ERROR("resizing by negative amount");			\
-			goto err;						\
-		} else if (additional == 0)					\
-			continue;						\
-										\
-		m = realloc(argv, (argc + additional + 1) * sizeof(*argv));	\
-		if (!m)								\
-			goto err;						\
-		argv = m;							\
-	} while (0)
-
 	if (strcmp(opts->action, "dump") == 0) {
 		char pid[32];
-
-		if (cgroup_driver() == CGMANAGER) {
-			DECLARE_ARG("--ext-mount-map");
-			DECLARE_ARG("/sys/fs/cgroup/cgmanager:cgmanager");
-		}
 
 		if (sprintf(pid, "%d", lxcapi_init_pid(opts->c)) < 0)
 			goto err;
@@ -3639,11 +3612,8 @@ static void exec_criu(struct criu_opts *opts)
 		if (!opts->stop)
 			DECLARE_ARG("--leave-running");
 	} else if (strcmp(opts->action, "restore") == 0) {
-
-		if (cgroup_driver() == CGMANAGER) {
-			DECLARE_ARG("--ext-mount-map");
-			DECLARE_ARG("cgmanager:/sys/fs/cgroup/cgmanager");
-		}
+		void *m;
+		int additional;
 
 		DECLARE_ARG("--root");
 		DECLARE_ARG(opts->c->lxc_conf->rootfs.mount);
@@ -3654,7 +3624,12 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG("--cgroup-root");
 		DECLARE_ARG(opts->cgroup_path);
 
-		RESIZE_ARGS(lxc_list_len(&opts->c->lxc_conf->network) * 2);
+		additional = lxc_list_len(&opts->c->lxc_conf->network) * 2;
+
+		m = realloc(argv, (argc + additional + 1) * sizeof(*argv));	\
+		if (!m)								\
+			goto err;						\
+		argv = m;
 
 		lxc_list_for_each(it, &opts->c->lxc_conf->network) {
 			char eth[128], *veth;
@@ -3676,38 +3651,8 @@ static void exec_criu(struct criu_opts *opts)
 			DECLARE_ARG("--veth-pair");
 			DECLARE_ARG(buf);
 		}
+
 	}
-
-	// CRIU wants to know about any external bind mounts the
-	// container has.
-	mnts = write_mount_file(&opts->c->lxc_conf->mount_list);
-	if (!mnts)
-		goto err;
-
-	RESIZE_ARGS(lxc_list_len(&opts->c->lxc_conf->mount_list) * 2);
-
-	while (getmntent_r(mnts, &mntent, buf, sizeof(buf))) {
-		char arg[2048], *key, *val;
-		int ret;
-
-		if (strcmp(opts->action, "dump") == 0) {
-			key = mntent.mnt_fsname;
-			val = mntent.mnt_dir;
-		} else {
-			key = mntent.mnt_dir;
-			val = mntent.mnt_fsname;
-		}
-
-		ret = snprintf(arg, sizeof(arg), "%s:%s", key, val);
-		if (ret < 0 || ret >= sizeof(arg)) {
-			goto err;
-		}
-
-		DECLARE_ARG("--ext-mount-map");
-		DECLARE_ARG(arg);
-	}
-	fclose(mnts);
-	mnts = NULL;
 
 	argv[argc] = NULL;
 
@@ -3745,7 +3690,6 @@ static void exec_criu(struct criu_opts *opts)
 	}
 
 #undef DECLARE_ARG
-#undef RESIZE_ARGS
 	execv(argv[0], argv);
 err:
 	if (mnts)
@@ -3986,6 +3930,11 @@ static void do_restore(struct lxc_container *c, int pipe, char *directory, bool 
 		} else {
 			if (mkdir(rootfs->mount, 0755) < 0 && errno != EEXIST)
 				goto out_fini_handler;
+
+			if (mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL) < 0) {
+				SYSERROR("remount / to private failed");
+				goto out_fini_handler;
+			}
 
 			if (mount(rootfs->path, rootfs->mount, NULL, MS_BIND, NULL) < 0) {
 				rmdir(rootfs->mount);
