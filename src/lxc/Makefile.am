@@ -21,7 +21,8 @@ noinst_HEADERS = \
 	namespace.h \
 	start.h \
 	state.h \
-	utils.h
+	utils.h \
+	criu.h
 
 if IS_BIONIC
 noinst_HEADERS += \
@@ -75,6 +76,7 @@ liblxc_so_SOURCES = \
 	state.c state.h \
 	log.c log.h \
 	attach.c attach.h \
+	criu.c criu.h \
 	\
 	network.c network.h \
 	nl.c nl.h \
