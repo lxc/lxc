@@ -759,6 +759,15 @@ static int do_start(void *data)
 
 	close(handler->sigfd);
 
+	if (handler->backgrounded) {
+		close(0);
+		close(1);
+		close(2);
+		open("/dev/zero", O_RDONLY);
+		open("/dev/null", O_RDWR);
+		open("/dev/null", O_RDWR);
+	}
+
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
 	handler->ops->start(handler, handler->data);
@@ -1112,7 +1121,8 @@ int get_netns_fd(int pid)
 }
 
 int __lxc_start(const char *name, struct lxc_conf *conf,
-		struct lxc_operations* ops, void *data, const char *lxcpath)
+		struct lxc_operations* ops, void *data, const char *lxcpath,
+		bool backgrounded)
 {
 	struct lxc_handler *handler;
 	int err = -1;
@@ -1126,6 +1136,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	}
 	handler->ops = ops;
 	handler->data = data;
+	handler->backgrounded = backgrounded;
 
 	if (must_drop_cap_sys_boot(handler->conf)) {
 		#if HAVE_SYS_CAPABILITY_H
@@ -1257,12 +1268,12 @@ static struct lxc_operations start_ops = {
 };
 
 int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
-	      const char *lxcpath)
+	      const char *lxcpath, bool backgrounded)
 {
 	struct start_args start_arg = {
 		.argv = argv,
 	};
 
 	conf->need_utmp_watch = 1;
-	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath);
+	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath, backgrounded);
 }

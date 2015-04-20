@@ -584,7 +584,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 	container_mem_unlock(c);
 
 	if (useinit) {
-		ret = lxc_execute(c->name, argv, 1, conf, c->config_path);
+		ret = lxc_execute(c->name, argv, 1, conf, c->config_path, daemonize);
 		return ret == 0 ? true : false;
 	}
 
@@ -642,12 +642,6 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 			return false;
 		}
 		lxc_check_inherited(conf, true, -1);
-		close(0);
-		close(1);
-		close(2);
-		open("/dev/zero", O_RDONLY);
-		open("/dev/null", O_RDWR);
-		open("/dev/null", O_RDWR);
 		setsid();
 	} else {
 		if (!am_single_threaded()) {
@@ -687,7 +681,7 @@ reboot:
 		goto out;
 	}
 
-	ret = lxc_start(c->name, argv, conf, c->config_path);
+	ret = lxc_start(c->name, argv, conf, c->config_path, daemonize);
 	c->error_num = ret;
 
 	if (conf->reboot) {
