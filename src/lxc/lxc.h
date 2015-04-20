@@ -27,6 +27,7 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <sys/select.h>
 #include <sys/types.h>
@@ -44,24 +45,27 @@ struct lxc_arguments;
 
 /*
  * Start the specified command inside a system container
- * @name     : the name of the container
- * @argv     : an array of char * corresponding to the commande line
- * @conf     : configuration
+ * @name         : the name of the container
+ * @argv         : an array of char * corresponding to the commande line
+ * @conf         : configuration
+ * @backgrounded : whether or not the container is daemonized
  * Returns 0 on success, < 0 otherwise
  */
 extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
-		     const char *lxcpath);
+		     const char *lxcpath, bool backgrounded);
 
 /*
  * Start the specified command inside an application container
- * @name     : the name of the container
- * @argv     : an array of char * corresponding to the commande line
- * @quiet    : if != 0 then lxc-init won't produce any output
- * @conf     : configuration
+ * @name         : the name of the container
+ * @argv         : an array of char * corresponding to the commande line
+ * @quiet        : if != 0 then lxc-init won't produce any output
+ * @conf         : configuration
+ * @backgrounded : whether or not the container is daemonized
  * Returns 0 on success, < 0 otherwise
  */
 extern int lxc_execute(const char *name, char *const argv[], int quiet,
-		       struct lxc_conf *conf, const char *lxcpath);
+		       struct lxc_conf *conf, const char *lxcpath,
+		       bool backgrounded);
 
 /*
  * Open the monitoring mechanism for a specific container
