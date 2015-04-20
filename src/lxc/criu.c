@@ -193,12 +193,102 @@ err:
 	free(argv);
 }
 
+/*
+ * Check to see if the criu version is recent enough for all the features we
+ * use. This version allows either CRIU_VERSION or (CRIU_GITID_VERSION and
+ * CRIU_GITID_PATCHLEVEL) to work, enabling users building from git to c/r
+ * things potentially before a version is released with a particular feature.
+ *
+ * The intent is that when criu development slows down, we can drop this, but
+ * for now we shouldn't attempt to c/r with versions that we know won't work.
+ */
+static bool criu_version_ok()
+{
+	int pipes[2];
+	pid_t pid;
+
+	if (pipe(pipes) < 0) {
+		SYSERROR("pipe() failed");
+		return false;
+	}
+
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("fork() failed");
+		return false;
+	}
+
+	if (pid == 0) {
+		char *args[] = { "criu", "--version", NULL };
+		close(pipes[0]);
+
+		close(STDERR_FILENO);
+		if (dup2(pipes[1], STDOUT_FILENO) < 0)
+			exit(1);
+
+		execv("/usr/local/sbin/criu", args);
+		exit(1);
+	} else {
+		FILE *f;
+		char version[1024];
+		int patch;
+
+		close(pipes[1]);
+		if (wait_for_pid(pid) < 0) {
+			close(pipes[0]);
+			return false;
+		}
+
+		f = fdopen(pipes[0], "r");
+		if (!f) {
+			close(pipes[0]);
+			return false;
+		}
+
+		if (fscanf(f, "Version: %1024[^\n]s", version) != 1)
+			goto version_error;
+
+		if (fgetc(f) != '\n')
+			goto version_error;
+
+		if (strcmp(version, CRIU_VERSION) >= 0)
+			goto version_match;
+
+		if (fscanf(f, "GitID: v%1024[^-]s", version) != 1)
+			goto version_error;
+
+		if (fgetc(f) != '-')
+			goto version_error;
+
+		if (fscanf(f, "%d", &patch) != 1)
+			goto version_error;
+
+		if (strcmp(version, CRIU_GITID_VERSION) < 0)
+			goto version_error;
+
+		if (patch < CRIU_GITID_PATCHLEVEL)
+			goto version_error;
+
+version_match:
+		close(pipes[0]);
+		return true;
+
+version_error:
+		close(pipes[0]);
+		ERROR("must have criu " CRIU_VERSION " or greater to checkpoint/restore\n");
+		return false;
+	}
+}
+
 /* Check and make sure the container has a configuration that we know CRIU can
  * dump. */
 bool criu_ok(struct lxc_container *c)
 {
 	struct lxc_list *it;
 	bool found_deny_rule = false;
+
+	if (!criu_version_ok())
+		return false;
 
 	if (geteuid()) {
 		ERROR("Must be root to checkpoint\n");
