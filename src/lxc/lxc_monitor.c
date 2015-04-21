@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <poll.h>
 
 #include "lxc.h"
 #include "log.h"
@@ -75,8 +76,9 @@ int main(int argc, char *argv[])
 	char *regexp;
 	struct lxc_msg msg;
 	regex_t preg;
-	fd_set rfds, rfds_save;
-	int len, rc, i, nfds = -1;
+	struct pollfd *fds;
+	nfds_t nfds;
+	int len, rc, i;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return 1;
@@ -131,13 +133,14 @@ int main(int argc, char *argv[])
 	}
 	free(regexp);
 
-	if (my_args.lxcpath_cnt > FD_SETSIZE) {
-		ERROR("too many paths requested, only the first %d will be monitored", FD_SETSIZE);
-		my_args.lxcpath_cnt = FD_SETSIZE;
+	fds = malloc(my_args.lxcpath_cnt * sizeof(struct pollfd));
+	if (!fds) {
+		SYSERROR("out of memory");
+		return -1;
 	}
 
-	FD_ZERO(&rfds);
-	for (i = 0; i < my_args.lxcpath_cnt; i++) {
+	nfds = my_args.lxcpath_cnt;
+	for (i = 0; i < nfds; i++) {
 		int fd;
 
 		lxc_monitord_spawn(my_args.lxcpath[i]);
@@ -147,19 +150,15 @@ int main(int argc, char *argv[])
 			regfree(&preg);
 			return 1;
 		}
-		FD_SET(fd, &rfds);
-		if (fd > nfds)
-			nfds = fd;
+		fds[i].fd = fd;
+		fds[i].events = POLLIN;
+		fds[i].revents = 0;
 	}
-	memcpy(&rfds_save, &rfds, sizeof(rfds_save));
-	nfds++;
 
 	setlinebuf(stdout);
 
 	for (;;) {
-		memcpy(&rfds, &rfds_save, sizeof(rfds));
-
-		if (lxc_monitor_read_fdset(&rfds, nfds, &msg, -1) < 0) {
+		if (lxc_monitor_read_fdset(fds, nfds, &msg, -1) < 0) {
 			regfree(&preg);
 			return 1;
 		}
