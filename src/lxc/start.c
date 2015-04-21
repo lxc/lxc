@@ -212,6 +212,9 @@ restart:
 		if (fd == fddir || fd == lxc_log_fd || fd == fd_to_ignore)
 			continue;
 
+		if (current_config && fd == current_config->logfd)
+			continue;
+
 		if (match_fd(fd))
 			continue;
 
