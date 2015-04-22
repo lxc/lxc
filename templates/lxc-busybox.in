@@ -22,6 +22,7 @@
 
 LXC_MAPPED_UID=
 LXC_MAPPED_GID=
+SSH=
 
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
@@ -160,6 +161,116 @@ EOF
     return $res
 }
 
+install_dropbear()
+{
+    # copy dropbear binary
+    cp $(which dropbear) $rootfs/usr/sbin
+    if [ $? -ne 0 ]; then
+        echo "Failed to copy dropbear in the rootfs"
+        return 1
+    fi
+
+    # make symlinks to various ssh utilities
+    utils="\
+        $rootfs/usr/bin/dbclient \
+        $rootfs/usr/bin/scp \
+        $rootfs/usr/bin/ssh \
+        $rootfs/usr/sbin/dropbearkey \
+        $rootfs/usr/sbin/dropbearconvert \
+    "
+    echo $utils | xargs -n1 ln -s /usr/sbin/dropbear
+
+    # add necessary config files
+    mkdir $rootfs/etc/dropbear
+    dropbearkey -t rsa -f $rootfs/etc/dropbear/dropbear_rsa_host_key > /dev/null 2>&1
+    dropbearkey -t dss -f $rootfs/etc/dropbear/dropbear_dss_host_key > /dev/null 2>&1
+
+    echo "'dropbear' ssh utility installed"
+
+    return 0
+}
+
+install_openssh()
+{
+    # tools to be installed
+    server_utils="sshd"
+    client_utils="\
+        ssh \
+        scp \
+        sftp \
+        ssh-add \
+        ssh-agent \
+        ssh-keygen \
+        ssh-keyscan \
+        ssh-argv0 \
+        ssh-copy-id \
+        "
+
+    # new folders used by ssh
+    ssh_tree="\
+$rootfs/etc/ssh \
+$rootfs/var/empty/sshd \
+$rootfs/var/lib/empty/sshd \
+$rootfs/var/run/sshd \
+"
+
+    # create folder structure
+    mkdir -p $ssh_tree
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    # copy binaries
+    for bin in $server_utils $client_utils; do
+        tool_path=`which $bin`
+        cp $tool_path $rootfs/$tool_path
+        if [ $? -ne 0 ]; then
+            echo "Unable to copy $tool_path in the rootfs"
+            return 1
+        fi
+    done
+
+    # add user and group
+    cat <<EOF >> $rootfs/etc/passwd
+sshd:x:74:74:Privilege-separated SSH:/var/empty/sshd:/sbin/nologin
+EOF
+
+    cat <<EOF >> $rootfs/etc/group
+sshd:x:74:
+EOF
+
+    # generate container keys
+    ssh-keygen -t rsa -N "" -f $rootfs/etc/ssh/ssh_host_rsa_key >/dev/null 2>&1
+    ssh-keygen -t dsa -N "" -f $rootfs/etc/ssh/ssh_host_dsa_key >/dev/null 2>&1
+
+    # by default setup root password with no password
+    cat <<EOF > $rootfs/etc/ssh/sshd_config
+Port 22
+Protocol 2
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_dsa_key
+UsePrivilegeSeparation yes
+KeyRegenerationInterval 3600
+ServerKeyBits 768
+SyslogFacility AUTH
+LogLevel INFO
+LoginGraceTime 120
+PermitRootLogin yes
+StrictModes yes
+RSAAuthentication yes
+PubkeyAuthentication yes
+IgnoreRhosts yes
+RhostsRSAAuthentication no
+HostbasedAuthentication no
+PermitEmptyPasswords yes
+ChallengeResponseAuthentication no
+EOF
+
+    echo "'OpenSSH' utility installed"
+
+    return 0
+}
+
 configure_busybox()
 {
     rootfs=$1
@@ -230,34 +341,6 @@ EOF
     lxc-unshare -s MOUNT -- /bin/sh < $CHPASSWD_FILE
     rm $CHPASSWD_FILE
 
-    # add ssh functionality if dropbear package available on host
-    which dropbear >/dev/null 2>&1
-    if [ $? -eq 0 ]; then
-        # copy dropbear binary
-        cp $(which dropbear) $rootfs/usr/sbin
-        if [ $? -ne 0 ]; then
-            echo "Failed to copy dropbear in the rootfs"
-            return 1
-        fi
-
-        # make symlinks to various ssh utilities
-        utils="\
-            $rootfs/usr/bin/dbclient \
-            $rootfs/usr/bin/scp \
-            $rootfs/usr/bin/ssh \
-            $rootfs/usr/sbin/dropbearkey \
-            $rootfs/usr/sbin/dropbearconvert \
-        "
-        echo $utils | xargs -n1 ln -s /usr/sbin/dropbear
-
-        # add necessary config files
-        mkdir $rootfs/etc/dropbear
-        dropbearkey -t rsa -f $rootfs/etc/dropbear/dropbear_rsa_host_key > /dev/null 2>&1
-        dropbearkey -t dss -f $rootfs/etc/dropbear/dropbear_dss_host_key > /dev/null 2>&1
-
-        echo "'dropbear' ssh utility installed"
-    fi
-
     return 0
 }
 
@@ -315,12 +398,12 @@ remap_userns()
 usage()
 {
     cat <<EOF
-$1 -h|--help -p|--path=<path>
+$1 -h|--help -p|--path=<path> -s|--ssh={dropbear,openssh}
 EOF
     return 0
 }
 
-options=$(getopt -o hp:n: -l help,rootfs:,path:,name:,mapped-uid:,mapped-gid: -- "$@")
+options=$(getopt -o hp:n:s: -l help,rootfs:,path:,name:,mapped-uid:,mapped-gid:,ssh: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -336,6 +419,7 @@ do
         -n|--name)      name=$2; shift 2;;
         --mapped-uid)   LXC_MAPPED_UID=$2; shift 2;;
         --mapped-gid)   LXC_MAPPED_GID=$2; shift 2;;
+        -s|--ssh)       SSH=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
     esac
@@ -383,4 +467,29 @@ remap_userns $path
 if [ $? -ne 0 ]; then
     echo "failed to remap files to user"
     exit 1
+fi
+
+if [ -n "$SSH" ]; then
+    case "$SSH" in
+        "dropbear")
+            install_dropbear
+            if [ $? -ne 0 ]; then
+                echo "Unable to install 'dropbear' ssh utility"
+                exit 1
+            fi ;;
+        "openssh")
+            install_openssh
+            if [ $? -ne 0 ]; then
+                echo "Unable to install 'OpenSSH' utility"
+                exit 1
+            fi ;;
+        *)
+            echo "$SSH: unrecognized ssh utility"
+            exit 1
+    esac
+else
+    which dropbear >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        install_dropbear
+    fi
 fi
