@@ -17,6 +17,11 @@ LXC_DHCP_MAX="253"
 LXC_DHCP_CONFILE=""
 LXC_DOMAIN=""
 
+LXC_IPV6_ADDR=""
+LXC_IPV6_MASK=""
+LXC_IPV6_NETWORK=""
+LXC_IPV6_NAT="false"
+
 [ ! -f $distrosysconfdir/lxc ] || . $distrosysconfdir/lxc
 
 if [ -d "$localstatedir"/lock/subsys ]; then
@@ -80,6 +85,11 @@ start() {
         iptables $use_iptables_lock -D FORWARD -o ${LXC_BRIDGE} -j ACCEPT
         iptables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE || true
         iptables $use_iptables_lock -t mangle -D POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+
+        if [ "$LXC_IPV6_NAT" = "true" ]; then
+            ip6tables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE || true
+        fi
+
         ifdown ${LXC_BRIDGE}
         brctl delbr ${LXC_BRIDGE} || true
     }
@@ -104,6 +114,17 @@ start() {
     fi
 
     ifup ${LXC_BRIDGE} ${LXC_ADDR} ${LXC_NETMASK}
+
+    LXC_IPV6_ARG=""
+    if [ -n "$LXC_IPV6_ADDR" ] && [ -n "$LXC_IPV6_MASK" ] && [ -n "$LXC_IPV6_NETWORK" ]; then
+        echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
+        echo 0 > /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/autoconf
+        ip -6 addr add dev ${LXC_BRIDGE} ${LXC_IPV6_ADDR}/${LXC_IPV6_MASK}
+        if [ "$LXC_IPV6_NAT" = "true" ]; then
+            ip6tables $use_iptables_lock -t nat -A POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE
+        fi
+        LXC_IPV6_ARG="--dhcp-range=${LXC_IPV6_ADDR},ra-only --listen-address ${LXC_IPV6_ADDR}"
+    fi
     iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
     iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
     iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
@@ -125,7 +146,7 @@ start() {
             break
         fi
     done
-    dnsmasq $LXC_DOMAIN_ARG -u ${DNSMASQ_USER} --strict-order --bind-interfaces --pid-file="${varrun}"/dnsmasq.pid --conf-file=${LXC_DHCP_CONFILE} --listen-address ${LXC_ADDR} --dhcp-range ${LXC_DHCP_RANGE} --dhcp-lease-max=${LXC_DHCP_MAX} --dhcp-no-override --except-interface=lo --interface=${LXC_BRIDGE} --dhcp-leasefile=/var/lib/misc/dnsmasq.${LXC_BRIDGE}.leases --dhcp-authoritative || cleanup
+    dnsmasq $LXC_DOMAIN_ARG -u ${DNSMASQ_USER} --strict-order --bind-interfaces --pid-file="${varrun}"/dnsmasq.pid --conf-file=${LXC_DHCP_CONFILE} --listen-address ${LXC_ADDR} --dhcp-range ${LXC_DHCP_RANGE} --dhcp-lease-max=${LXC_DHCP_MAX} --dhcp-no-override --except-interface=lo --interface=${LXC_BRIDGE} --dhcp-leasefile=/var/lib/misc/dnsmasq.${LXC_BRIDGE}.leases --dhcp-authoritative $LXC_IPV6_ARG || cleanup
     touch "${varrun}"/network_up
     touch "${lockdir}"/lxc-net
 }
@@ -149,6 +170,11 @@ stop() {
         iptables $use_iptables_lock -D FORWARD -o ${LXC_BRIDGE} -j ACCEPT
         iptables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE || true
         iptables $use_iptables_lock -t mangle -D POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+
+        if [ "$LXC_IPV6_NAT" = "true" ]; then
+            ip6tables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE || true
+        fi
+
         pid=`cat "${varrun}"/dnsmasq.pid 2>/dev/null` && kill -9 $pid || true
         rm -f "${varrun}"/dnsmasq.pid
         brctl delbr ${LXC_BRIDGE}
