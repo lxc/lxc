@@ -3683,12 +3683,22 @@ static bool do_lxcapi_checkpoint(struct lxc_container *c, char *directory, bool 
 {
 	pid_t pid;
 	int status;
+	char path[PATH_MAX];
 
 	if (!criu_ok(c))
 		return false;
 
 	if (mkdir(directory, 0700) < 0 && errno != EEXIST)
 		return false;
+
+	status = snprintf(path, sizeof(path), "%s/inventory.img", directory);
+	if (status < 0 || status >= sizeof(path))
+		return false;
+
+	if (access(path, F_OK) == 0) {
+		ERROR("please use a fresh directory for the dump directory\n");
+		return false;
+	}
 
 	if (!dump_net_info(c, directory))
 		return false;
