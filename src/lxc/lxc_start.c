@@ -54,6 +54,15 @@
 #define OPT_SHARE_IPC OPT_USAGE+2
 #define OPT_SHARE_UTS OPT_USAGE+3
 
+/*
+define option names as constants in case they're reused
+*/
+// do this more elegant if http://stackoverflow.com/questions/29868286/how-to-reuse-a-literal-in-a-char-and-a-one-character-string-variable
+// is clearified
+#define FOREGROUND_OPTION_NAME 'F'
+#define FOREGROUND_OPTION_NAME_STRING "F"
+#define FOREGROUND_OPTION_NAME_LONG "foreground"
+
 lxc_log_define(lxc_start_ui, lxc);
 
 static struct lxc_list defines;
@@ -157,13 +166,6 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	}
 	return 0;
 }
-
-/*
-define option names as constants in case they're reused
-*/
-static const char FOREGROUND_OPTION_NAME = 'F';
-static const char FOREGROUND_OPTION_NAME_STRING[2] = {FOREGROUND_OPTION_NAME, '\0'};
-static const char FOREGROUND_OPTION_NAME_LONG[] = "foreground";
 
 static const struct option my_longopts[] = {
 	{"daemon", no_argument, 0, 'd'},
