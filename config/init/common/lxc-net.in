@@ -1,7 +1,6 @@
 #!/bin/sh -
 
 distrosysconfdir="@LXC_DISTRO_SYSCONF@"
-localstatedir="@LOCALSTATEDIR@"
 varrun="@RUNTIME_PATH@/lxc"
 
 # These can be overridden in @LXC_DISTRO_SYSCONF@/lxc
@@ -24,11 +23,8 @@ LXC_IPV6_NAT="false"
 
 [ ! -f $distrosysconfdir/lxc ] || . $distrosysconfdir/lxc
 
-if [ -d "$localstatedir"/lock/subsys ]; then
-    lockdir="$localstatedir"/lock/subsys
-else
-    lockdir="$localstatedir"/lock
-fi
+use_iptables_lock="-w"
+iptables -w -L -n > /dev/null 2>&1 || use_iptables_lock=""
 
 _netmask2cidr ()
 {
@@ -40,67 +36,43 @@ _netmask2cidr ()
 }
 
 ifdown() {
-    which ip >/dev/null 2>&1
-    if [ $? = 0 ]; then
-        ip link set dev $1 down
-        return
-    fi
-    which ifconfig >/dev/null 2>&1
-    if [ $? = 0 ]; then
-        ifconfig $1 down
-        return
-    fi
+    ip addr flush dev $1
+    ip link set dev $1 down
 }
 
 ifup() {
-    which ip >/dev/null 2>&1
-    if [ $? = 0 ]; then
-        MASK=`_netmask2cidr ${LXC_NETMASK}`
-        CIDR_ADDR="${LXC_ADDR}/${MASK}"
-        ip addr add ${CIDR_ADDR} dev $1
-        ip link set dev $1 up
-        return
-    fi
-    which ifconfig >/dev/null 2>&1
-    if [ $? = 0 ]; then
-        ifconfig $1 $2 netmask $3 up
-        return
-    fi
+    MASK=`_netmask2cidr ${LXC_NETMASK}`
+    CIDR_ADDR="${LXC_ADDR}/${MASK}"
+    ip addr add ${CIDR_ADDR} dev $1
+    ip link set dev $1 up
 }
 
 start() {
-    [ ! -f "${lockdir}"/lxc-net ] || { exit 0; }
-
     [ "x$USE_LXC_BRIDGE" = "xtrue" ] || { exit 0; }
 
-    use_iptables_lock="-w"
-    iptables -w -L -n > /dev/null 2>&1 || use_iptables_lock=""
-    cleanup() {
-        # dnsmasq failed to start, clean up the bridge
-        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
-        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
-        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
-        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
-        iptables $use_iptables_lock -D FORWARD -i ${LXC_BRIDGE} -j ACCEPT
-        iptables $use_iptables_lock -D FORWARD -o ${LXC_BRIDGE} -j ACCEPT
-        iptables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE || true
-        iptables $use_iptables_lock -t mangle -D POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
-
-        if [ "$LXC_IPV6_NAT" = "true" ]; then
-            ip6tables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE || true
-        fi
-
-        ifdown ${LXC_BRIDGE}
-        brctl delbr ${LXC_BRIDGE} || true
-    }
+    [ ! -f "${varrun}/network_up" ] || { echo "lxc-net is already running"; exit 1; }
 
     if [ -d /sys/class/net/${LXC_BRIDGE} ]; then
-        exit 0;
+        stop force || true
     fi
 
+    FAILED=1
+
+    cleanup() {
+        set +e
+        if [ "$FAILED" = "1" ]; then
+            echo "Failed to setup lxc-net." >&2
+            stop force
+        fi
+    }
+
+    trap cleanup EXIT HUP INT TERM
+    set -e
+
     # set up the lxc network
-    brctl addbr ${LXC_BRIDGE} || { echo "Missing bridge support in kernel"; stop; exit 0; }
+    [ ! -d /sys/class/net/${LXC_BRIDGE} ] && brctl addbr ${LXC_BRIDGE}
     echo 1 > /proc/sys/net/ipv4/ip_forward
+    echo 0 > /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/accept_dad || true
 
     # if we are run from systemd on a system with selinux enabled,
     # the mkdir will create /run/lxc as init_var_run_t which dnsmasq
@@ -146,21 +118,19 @@ start() {
             break
         fi
     done
+
     dnsmasq $LXC_DOMAIN_ARG -u ${DNSMASQ_USER} --strict-order --bind-interfaces --pid-file="${varrun}"/dnsmasq.pid --conf-file=${LXC_DHCP_CONFILE} --listen-address ${LXC_ADDR} --dhcp-range ${LXC_DHCP_RANGE} --dhcp-lease-max=${LXC_DHCP_MAX} --dhcp-no-override --except-interface=lo --interface=${LXC_BRIDGE} --dhcp-leasefile=/var/lib/misc/dnsmasq.${LXC_BRIDGE}.leases --dhcp-authoritative $LXC_IPV6_ARG || cleanup
+
     touch "${varrun}"/network_up
-    touch "${lockdir}"/lxc-net
+    FAILED=0
 }
 
 stop() {
     [ "x$USE_LXC_BRIDGE" = "xtrue" ] || { exit 0; }
 
-    [ -f "${varrun}/network_up" ] || { exit 0; }
-    # if $LXC_BRIDGE has attached interfaces, don't shut it down
-    ls /sys/class/net/${LXC_BRIDGE}/brif/* > /dev/null 2>&1 && exit 0;
+    [ -f "${varrun}/network_up" ] || [ "$1" = "force" ] || { echo "lxc-net isn't running"; exit 1; }
 
     if [ -d /sys/class/net/${LXC_BRIDGE} ]; then
-        use_iptables_lock="-w"
-        iptables -w -L -n > /dev/null 2>&1 || use_iptables_lock=""
         ifdown ${LXC_BRIDGE}
         iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
         iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
@@ -168,19 +138,20 @@ stop() {
         iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
         iptables $use_iptables_lock -D FORWARD -i ${LXC_BRIDGE} -j ACCEPT
         iptables $use_iptables_lock -D FORWARD -o ${LXC_BRIDGE} -j ACCEPT
-        iptables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE || true
+        iptables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE
         iptables $use_iptables_lock -t mangle -D POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
 
         if [ "$LXC_IPV6_NAT" = "true" ]; then
-            ip6tables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE || true
+            ip6tables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE
         fi
 
-        pid=`cat "${varrun}"/dnsmasq.pid 2>/dev/null` && kill -9 $pid || true
+        pid=`cat "${varrun}"/dnsmasq.pid 2>/dev/null` && kill -9 $pid
         rm -f "${varrun}"/dnsmasq.pid
-        brctl delbr ${LXC_BRIDGE}
+        # if $LXC_BRIDGE has attached interfaces, don't destroy the bridge
+        ls /sys/class/net/${LXC_BRIDGE}/brif/* > /dev/null 2>&1 || brctl delbr ${LXC_BRIDGE}
     fi
+
     rm -f "${varrun}"/network_up
-    rm -f "${lockdir}"/lxc-net
 }
 
 # See how we were called.
