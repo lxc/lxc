@@ -212,6 +212,9 @@ restart:
 		if (fd == fddir || fd == lxc_log_fd || fd == fd_to_ignore)
 			continue;
 
+		if (current_config && fd == current_config->logfd)
+			continue;
+
 		if (match_fd(fd))
 			continue;
 
@@ -759,6 +762,15 @@ static int do_start(void *data)
 
 	close(handler->sigfd);
 
+	if (handler->backgrounded) {
+		close(0);
+		close(1);
+		close(2);
+		open("/dev/zero", O_RDONLY);
+		open("/dev/null", O_RDWR);
+		open("/dev/null", O_RDWR);
+	}
+
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
 	handler->ops->start(handler, handler->data);
@@ -840,6 +852,35 @@ static int recv_ttys_from_child(struct lxc_handler *handler)
 	return 0;
 }
 
+void resolve_clone_flags(struct lxc_handler *handler)
+{
+	handler->clone_flags = CLONE_NEWPID | CLONE_NEWNS;
+
+	if (!lxc_list_empty(&handler->conf->id_map)) {
+		INFO("Cloning a new user namespace");
+		handler->clone_flags |= CLONE_NEWUSER;
+	}
+
+	if (handler->conf->inherit_ns_fd[LXC_NS_NET] == -1) {
+		if (!lxc_requests_empty_network(handler))
+			handler->clone_flags |= CLONE_NEWNET;
+	} else {
+		INFO("Inheriting a net namespace");
+	}
+
+	if (handler->conf->inherit_ns_fd[LXC_NS_IPC] == -1) {
+		handler->clone_flags |= CLONE_NEWIPC;
+	} else {
+		INFO("Inheriting an IPC namespace");
+	}
+
+	if (handler->conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
+		handler->clone_flags |= CLONE_NEWUTS;
+	} else {
+		INFO("Inheriting a UTS namespace");
+	}
+}
+
 static int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
@@ -858,21 +899,14 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_init(handler))
 		return -1;
 
-	handler->clone_flags = CLONE_NEWPID|CLONE_NEWNS;
-	if (!lxc_list_empty(&handler->conf->id_map)) {
-		INFO("Cloning a new user namespace");
-		handler->clone_flags |= CLONE_NEWUSER;
-	}
-
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, handler->ttysock) < 0) {
 		lxc_sync_fini(handler);
 		return -1;
 	}
 
-	if (handler->conf->inherit_ns_fd[LXC_NS_NET] == -1) {
-		if (!lxc_requests_empty_network(handler))
-			handler->clone_flags |= CLONE_NEWNET;
+	resolve_clone_flags(handler);
 
+	if (handler->clone_flags & CLONE_NEWNET) {
 		if (!lxc_list_empty(&handler->conf->network)) {
 
 			/* Find gateway addresses from the link device, which is
@@ -899,22 +933,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			ERROR("failed to save physical nic info");
 			goto out_abort;
 		}
-	} else {
-		INFO("Inheriting a net namespace");
 	}
-
-	if (handler->conf->inherit_ns_fd[LXC_NS_IPC] == -1) {
-		handler->clone_flags |= CLONE_NEWIPC;
-	} else {
-		INFO("Inheriting an IPC namespace");
-	}
-
-	if (handler->conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
-		handler->clone_flags |= CLONE_NEWUTS;
-	} else {
-		INFO("Inheriting a UTS namespace");
-	}
-
 
 	if (!cgroup_init(handler)) {
 		ERROR("failed initializing cgroup support");
@@ -1105,7 +1124,8 @@ int get_netns_fd(int pid)
 }
 
 int __lxc_start(const char *name, struct lxc_conf *conf,
-		struct lxc_operations* ops, void *data, const char *lxcpath)
+		struct lxc_operations* ops, void *data, const char *lxcpath,
+		bool backgrounded)
 {
 	struct lxc_handler *handler;
 	int err = -1;
@@ -1119,6 +1139,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	}
 	handler->ops = ops;
 	handler->data = data;
+	handler->backgrounded = backgrounded;
 
 	if (must_drop_cap_sys_boot(handler->conf)) {
 		#if HAVE_SYS_CAPABILITY_H
@@ -1250,12 +1271,12 @@ static struct lxc_operations start_ops = {
 };
 
 int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
-	      const char *lxcpath)
+	      const char *lxcpath, bool backgrounded)
 {
 	struct start_args start_arg = {
 		.argv = argv,
 	};
 
 	conf->need_utmp_watch = 1;
-	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath);
+	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath, backgrounded);
 }

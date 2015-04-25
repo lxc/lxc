@@ -59,6 +59,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">--bdir</arg>
       <arg choice="opt">--user</arg>
       <arg choice="opt">--key</arg>
+      <arg choice="opt">--storage-type</arg>
       <arg choice="opt">--union-type</arg>
       <arg choice="opt">--keep-data</arg>
       <arg choice="opt">COMMAND</arg>
@@ -171,6 +172,20 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
+          <option><optional>--storage-type</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Specify the type of storage used by the container. Valid types are tmpfs or dir.
+              -->
+            コンテナが使うストレージのタイプ。tmpfs か dir を指定できます。
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
           <option><optional>--union-type</optional></option>
         </term>
         <listitem>
@@ -209,10 +224,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <para>
             <!--
             Immediately run the provided command in the container.
-            This currently uses ssh (not attach) and is incompatible
-            with daemon mode.
+            This uses attach if the kernel supports it, otherwise uses ssh.
+            This is incompatible with daemon mode.
             -->
-            即座に指定したコマンドをコンテナ内で実行します。現時点では (attach ではなく) ssh を使用します。そしてデーモンモードと両方を指定することはできません。
+            即座に指定したコマンドをコンテナ内で実行します。
+            コマンドを実行する際、カーネルがサポートしている場合は lxc-start-ephemeral は attach を使います。
+            カーネルがサポートしていない場合は ssh を使います。
           </para>
         </listitem>
       </varlistentry>

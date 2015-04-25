@@ -160,7 +160,7 @@ cache_stage3()
         printf "Determining path to latest Gentoo %s (%s) stage3 archive...\n" "${arch}" "${variant}"
         printf " => downloading and processing %s\n" "${stage3_pointer}"
 
-        local stage3_latest_tarball=$(wget -q -O - "${stage3_pointer}" | tail -n1 ) \
+        local stage3_latest_tarball=$(wget -q -O - "${stage3_pointer}" | tail -n1 | cut -d' ' -f1) \
             || die 6 "Error: unable to fetch\n"
 
         printf " => Got: %s\n" "${stage3_latest_tarball}"
@@ -641,11 +641,11 @@ container_auth()
     if [[ -r "${auth_key}" ]]; then
         printf " deploying auth_key %s for user %s ...\n" "${auth_key}" "${user}"
         mkdir -p "${rootfs}/${auth_home}/.ssh"
-        cat >> "${rootfs}/${auth_home}/.ssh/authorized_keys"
+        cat "${auth_key}" >> "${rootfs}/${auth_home}/.ssh/authorized_keys"
         chroot "${rootfs}" chown "${user}:" "${auth_home}/.ssh/authorized_keys"
         printf "  => inserted public key in %s/.ssh/authorized_keys\n" "${auth_home}"
         [[ -z "${forced_password}" ]] && unset password
-        store_user_message "${user} has the ssh key you gived us"
+        store_user_message "${user} has the ssh key you gave us"
     fi
 
     if [[ -n "${password}" ]]; then
@@ -782,7 +782,7 @@ user="root"
 password="toor"
 tty=1
 settings="common"
-options=$(getopt -o hp:n:a:FcPv:t:S:u:w:s:m: -l help,rootfs:,path:,name:,arch:,flush-cache,cache-only,private-portage,variant:,portage-dir:,tarball:,auth_key:,user:,autologin,password:,settings:,mirror:,tty: -- "$@")
+options=$(getopt -o hp:n:a:FcPv:t:S:u:w:s:m: -l help,rootfs:,path:,name:,arch:,flush-cache,cache-only,private-portage,variant:,portage-dir:,tarball:,auth-key:,user:,autologin,password:,settings:,mirror:,tty: -- "$@")
 
 eval set -- "$options"
 

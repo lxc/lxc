@@ -575,7 +575,7 @@ struct attach_clone_payload {
 static int attach_child_main(void* data);
 
 /* help the optimizer along if it doesn't know that exit always exits */
-#define rexit(c)  do { int __c = (c); exit(__c); return __c; } while(0)
+#define rexit(c)  do { int __c = (c); _exit(__c); return __c; } while(0)
 
 /* define default options if no options are supplied by the user */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
@@ -983,6 +983,21 @@ static int attach_child_main(void* data)
 		new_uid = options->uid;
 	if (options->gid != (gid_t)-1)
 		new_gid = options->gid;
+
+	/* setup the control tty */
+	if (options->stdin_fd && isatty(options->stdin_fd)) {
+		if (setsid() < 0) {
+			SYSERROR("unable to setsid");
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+
+		if (ioctl(options->stdin_fd, TIOCSCTTY, (char *)NULL) < 0) {
+			SYSERROR("unable to TIOCSTTY");
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+	}
 
 	/* try to set the uid/gid combination */
 	if ((new_gid != 0 || options->namespaces & CLONE_NEWUSER)) {

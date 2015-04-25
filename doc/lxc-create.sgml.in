@@ -155,6 +155,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    filesystem) of size SIZE rather than the default, which is 1G.
 	  </para>
 	  <para>
+	    If backingstore is 'loop', you can use <replaceable>--fstype FSTYPE</replaceable> and <replaceable>--fssize SIZE</replaceable> as 'lvm'. The default values for these options are the same as 'lvm'.
+	  </para>
+	  <para>
 	    If backingstore is 'best', then lxc will try, in order, btrfs,
 	    zfs, lvm, and finally a directory backing store.
 	  </para>

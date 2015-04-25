@@ -25,6 +25,7 @@
 
 #include "config.h"
 
+#include <stdio.h>
 #include <netinet/in.h>
 #include <net/if.h>
 #include <sys/param.h>
@@ -323,6 +324,7 @@ struct lxc_conf {
 	int maincmd_fd;
 	int autodev;  // if 1, mount and fill a /dev at start
 	int haltsignal; // signal used to halt container
+	int rebootsignal; // signal used to reboot container
 	int stopsignal; // signal used to hard stop container
 	int kmsg;  // if 1, create /dev/kmsg symlink
 	char *rcfile;	// Copy of the top level rcfile we read
@@ -334,6 +336,7 @@ struct lxc_conf {
 	// store the config file specified values here.
 	char *logfile;  // the logfile as specifed in config
 	int loglevel;   // loglevel as specifed in config (if any)
+	int logfd;
 
 	int inherit_ns_fd[LXC_NS_MAX];
 
@@ -362,6 +365,12 @@ struct lxc_conf {
 	/* init command */
 	char *init_cmd;
 };
+
+#ifdef HAVE_TLS
+extern __thread struct lxc_conf *current_config;
+#else
+extern struct lxc_conf *current_config;
+#endif
 
 int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
 		  const char *lxcpath, char *argv[]);
@@ -421,4 +430,5 @@ extern int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
 void remount_all_slave(void);
 extern void suggest_default_idmap(void);
+FILE *write_mount_file(struct lxc_list *mount);
 #endif

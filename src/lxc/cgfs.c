@@ -2403,4 +2403,5 @@ static struct cgroup_ops cgfs_ops = {
 	.chown = NULL,
 	.mount_cgroup = cgroupfs_mount_cgroup,
 	.nrtasks = cgfs_nrtasks,
+	.driver = CGFS,
 };

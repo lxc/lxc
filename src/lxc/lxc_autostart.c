@@ -304,7 +304,7 @@ static int cmporder(const void *p1, const void *p2) {
 	if (c1_order == c2_order)
 		return strcmp(c1->name, c2->name);
 	else
-		return (c1_order - c2_order) * -1;
+		return (c1_order - c2_order);
 }
 
 static int toss_list( struct lxc_list *c_groups_list ) {

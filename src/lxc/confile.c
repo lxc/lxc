@@ -98,6 +98,7 @@ static int config_includefile(const char *, const char *, struct lxc_conf *);
 static int config_network_nic(const char *, const char *, struct lxc_conf *);
 static int config_autodev(const char *, const char *, struct lxc_conf *);
 static int config_haltsignal(const char *, const char *, struct lxc_conf *);
+static int config_rebootsignal(const char *, const char *, struct lxc_conf *);
 static int config_stopsignal(const char *, const char *, struct lxc_conf *);
 static int config_start(const char *, const char *, struct lxc_conf *);
 static int config_group(const char *, const char *, struct lxc_conf *);
@@ -158,6 +159,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.include",              config_includefile          },
 	{ "lxc.autodev",              config_autodev              },
 	{ "lxc.haltsignal",           config_haltsignal           },
+	{ "lxc.rebootsignal",         config_rebootsignal         },
 	{ "lxc.stopsignal",           config_stopsignal           },
 	{ "lxc.start.auto",           config_start                },
 	{ "lxc.start.delay",          config_start                },
@@ -1169,15 +1171,15 @@ static int config_lsm_se_context(const char *key, const char *value,
 }
 
 static int config_logfile(const char *key, const char *value,
-			     struct lxc_conf *lxc_conf)
+			     struct lxc_conf *c)
 {
 	int ret;
 
 	// store these values in the lxc_conf, and then try to set for
 	// actual current logging.
-	ret = config_path_item(&lxc_conf->logfile, value);
+	ret = config_path_item(&c->logfile, value);
 	if (ret == 0)
-		ret = lxc_log_set_file(lxc_conf->logfile);
+		ret = lxc_log_set_file(&c->logfd, c->logfile);
 	return ret;
 }
 
@@ -1196,7 +1198,7 @@ static int config_loglevel(const char *key, const char *value,
 	// store these values in the lxc_conf, and then try to set for
 	// actual current logging.
 	lxc_conf->loglevel = newlevel;
-	return lxc_log_set_level(newlevel);
+	return lxc_log_set_level(&lxc_conf->loglevel, newlevel);
 }
 
 static int config_autodev(const char *key, const char *value,
@@ -1264,6 +1266,18 @@ static int config_haltsignal(const char *key, const char *value,
 	if (sig_n < 0)
 		return -1;
 	lxc_conf->haltsignal = sig_n;
+
+	return 0;
+}
+
+static int config_rebootsignal(const char *key, const char *value,
+			     struct lxc_conf *lxc_conf)
+{
+	int sig_n = sig_parse(value);
+
+	if (sig_n < 0)
+		return -1;
+	lxc_conf->rebootsignal = sig_n;
 
 	return 0;
 }
@@ -2197,6 +2211,7 @@ static int lxc_get_auto_mounts(struct lxc_conf *c, char *retv, int inlen)
 	switch (c->auto_mounts & LXC_AUTO_SYS_MASK) {
 		case LXC_AUTO_SYS_RO:             strprint(retv, inlen, "%ssys:ro", sep);            sep = " "; break;
 		case LXC_AUTO_SYS_RW:             strprint(retv, inlen, "%ssys:rw", sep);            sep = " "; break;
+		case LXC_AUTO_SYS_MIXED:          strprint(retv, inlen, "%ssys:mixed", sep);         sep = " "; break;
 		default: break;
 	}
 	switch (c->auto_mounts & LXC_AUTO_CGROUP_MASK) {
@@ -2366,9 +2381,9 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 	else if (strcmp(key, "lxc.se_context") == 0)
 		v = c->lsm_se_context;
 	else if (strcmp(key, "lxc.logfile") == 0)
-		v = lxc_log_get_file();
+		v = c->logfile;
 	else if (strcmp(key, "lxc.loglevel") == 0)
-		v = lxc_log_priority_to_string(lxc_log_get_level());
+		v = lxc_log_priority_to_string(c->loglevel);
 	else if (strcmp(key, "lxc.cgroup") == 0) // all cgroup info
 		return lxc_get_cgroup_entry(c, retv, inlen, "all");
 	else if (strncmp(key, "lxc.cgroup.", 11) == 0) // specific cgroup info

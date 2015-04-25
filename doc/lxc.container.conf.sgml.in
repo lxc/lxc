@@ -158,46 +158,68 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refsect2>
       <title>Halt signal</title>
       <para>
-    Allows one to specify signal name or number, sent by lxc-stop to the
-    container's init process to cleanly shutdown the container. Different
-    init systems could use different signals to perform clean shutdown
-    sequence. This option allows the signal to be specified in kill(1)
-    fashion, e.g. SIGPWR, SIGRTMIN+14, SIGRTMAX-10 or plain number. The
-    default signal is SIGPWR.
+        Allows one to specify signal name or number, sent by lxc-stop to the
+        container's init process to cleanly shutdown the container. Different
+        init systems could use different signals to perform clean shutdown
+        sequence. This option allows the signal to be specified in kill(1)
+        fashion, e.g. SIGPWR, SIGRTMIN+14, SIGRTMAX-10 or plain number. The
+        default signal is SIGPWR.
       </para>
       <variablelist>
-    <varlistentry>
-      <term>
-        <option>lxc.haltsignal</option>
-      </term>
-      <listitem>
-        <para>
-          specify the signal used to halt the container
-        </para>
-      </listitem>
-    </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.haltsignal</option>
+          </term>
+          <listitem>
+            <para>
+              specify the signal used to halt the container
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>Reboot signal</title>
+      <para>
+        Allows one to specify signal name or number, sent by lxc-stop to
+        reboot the container. This option allows signal to be specified in
+        kill(1) fashion, e.g. SIGTERM, SIGRTMIN+14, SIGRTMAX-10 or plain number.
+        The default signal is SIGINT.
+          </para>
+          <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.rebootsignal</option>
+          </term>
+          <listitem>
+            <para>
+              specify the signal used to reboot the container
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
     <refsect2>
       <title>Stop signal</title>
       <para>
-    Allows one to specify signal name or number, sent by lxc-stop to forcibly
-    shutdown the container. This option allows signal to be specified in
-    kill(1) fashion, e.g. SIGKILL, SIGRTMIN+14, SIGRTMAX-10 or plain number.
-    The default signal is SIGKILL.
-      </para>
-      <variablelist>
-    <varlistentry>
-      <term>
-        <option>lxc.stopsignal</option>
-      </term>
-      <listitem>
-        <para>
-          specify the signal used to stop the container
-        </para>
-      </listitem>
-    </varlistentry>
+        Allows one to specify signal name or number, sent by lxc-stop to forcibly
+        shutdown the container. This option allows signal to be specified in
+        kill(1) fashion, e.g. SIGKILL, SIGRTMIN+14, SIGRTMAX-10 or plain number.
+        The default signal is SIGKILL.
+          </para>
+          <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.stopsignal</option>
+          </term>
+          <listitem>
+            <para>
+              specify the signal used to stop the container
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
@@ -211,16 +233,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         Defaults to: /sbin/init
       </para>
       <variablelist>
-    <varlistentry>
-      <term>
-        <option>lxc.init_cmd</option>
-      </term>
-      <listitem>
-        <para>
-          Absolute path from container rootfs to the binary to use as init.
-        </para>
-      </listitem>
-    </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.init_cmd</option>
+          </term>
+          <listitem>
+            <para>
+              Absolute path from container rootfs to the binary to use as init.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 

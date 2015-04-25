@@ -47,9 +47,11 @@ static int test_attach_write_file(void* payload)
 	if (f) {
 		printf("yes\n");
 		fclose(f);
+		fflush(NULL);
 		return 1;
 	}
 	printf("no\n");
+	fflush(NULL);
 	return 0;
 }
 
