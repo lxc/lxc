@@ -24,7 +24,7 @@ is_enabled() {
     if [ $RES -eq 0 ]; then
         $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
     else
-        if [ ! -z "$mandatory" -a "$mandatory" = yes ]; then
+        if [ ! -z "$mandatory" ] && [ "$mandatory" = yes ]; then
             $SETCOLOR_FAILURE && echo "required" && $SETCOLOR_NORMAL
         else
             $SETCOLOR_WARNING && echo "missing" && $SETCOLOR_NORMAL
@@ -100,7 +100,7 @@ echo -n "Cgroup device: " && is_enabled CONFIG_CGROUP_DEVICE
 echo -n "Cgroup sched: " && is_enabled CONFIG_CGROUP_SCHED
 echo -n "Cgroup cpu account: " && is_enabled CONFIG_CGROUP_CPUACCT
 echo -n "Cgroup memory controller: "
-if [ $KVER_MAJOR -ge 3 -a $KVER_MINOR -ge 6 ]; then
+if ([ $KVER_MAJOR -ge 3 ] && [ $KVER_MINOR -ge 6 ]) || ([ $KVER_MAJOR -gt 3 ]); then
     is_enabled CONFIG_MEMCG
 else
     is_enabled CONFIG_CGROUP_MEM_RES_CTLR
