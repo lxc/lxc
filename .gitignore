@@ -140,3 +140,7 @@ patches
 *.orig
 *.rej
 tags
+
+confDbvHhe/
+confdefs.h
+doc/api/doxygen_sqlite3.db
