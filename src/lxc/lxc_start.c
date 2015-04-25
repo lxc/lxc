@@ -343,7 +343,8 @@ int main(int argc, char *argv[])
 	if (err) {
 		ERROR("The container failed to start.");
 		if (my_args.daemonize)
-			ERROR("To get more details, run the container in foreground mode.");
+			ERROR("To get more details, run the container in foreground mode "
+			    "(using the --foreground option).");
 		ERROR("Additional information can be obtained by setting the "
 		      "--logfile and --logpriority options.");
 		err = c->error_num;
