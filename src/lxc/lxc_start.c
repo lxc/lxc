@@ -158,9 +158,16 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	return 0;
 }
 
+/*
+define option names as constants in case they're reused
+*/
+static const char FOREGROUND_OPTION_NAME = 'F';
+static const char FOREGROUND_OPTION_NAME_STRING[2] = {FOREGROUND_OPTION_NAME, '\0'};
+static const char FOREGROUND_OPTION_NAME_LONG[] = "foreground";
+
 static const struct option my_longopts[] = {
 	{"daemon", no_argument, 0, 'd'},
-	{"foreground", no_argument, 0, 'F'},
+	{FOREGROUND_OPTION_NAME_LONG, no_argument, 0, FOREGROUND_OPTION_NAME},
 	{"rcfile", required_argument, 0, 'f'},
 	{"define", required_argument, 0, 's'},
 	{"console", required_argument, 0, 'c'},
@@ -183,7 +190,9 @@ lxc-start start COMMAND in specified container NAME\n\
 Options :\n\
   -n, --name=NAME        NAME for name of the container\n\
   -d, --daemon           Daemonize the container (default)\n\
-  -F, --foreground       Start with the current tty attached to /dev/console\n\
+  -" FOREGROUND_OPTION_NAME_STRING
+        ", --" FOREGROUND_OPTION_NAME_LONG
+        "       Start with the current tty attached to /dev/console\n\
   -p, --pidfile=FILE     Create a file with the process id\n\
   -f, --rcfile=FILE      Load configuration file FILE\n\
   -c, --console=FILE     Use specified FILE for the container console\n\
@@ -344,7 +353,8 @@ int main(int argc, char *argv[])
 		ERROR("The container failed to start.");
 		if (my_args.daemonize)
 			ERROR("To get more details, run the container in foreground mode "
-			    "(using the --foreground option).");
+			    "(using the -" FOREGROUND_OPTION_NAME_STRING "/"
+                            "--" FOREGROUND_OPTION_NAME_LONG " option).");
 		ERROR("Additional information can be obtained by setting the "
 		      "--logfile and --logpriority options.");
 		err = c->error_num;
