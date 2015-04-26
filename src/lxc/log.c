@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <time.h>
 
 #define __USE_GNU /* for *_CLOEXEC */
 
@@ -39,6 +40,7 @@
 
 #define LXC_LOG_PREFIX_SIZE	32
 #define LXC_LOG_BUFFER_SIZE	512
+#define LXC_LOG_DATEFOMAT_SIZE  14
 
 #ifdef HAVE_TLS
 __thread int lxc_log_fd = -1;
@@ -82,18 +84,22 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 static int log_append_logfile(const struct lxc_log_appender *appender,
 			      struct lxc_log_event *event)
 {
+	char date[LXC_LOG_DATEFOMAT_SIZE] = "20150427012246";
 	char buffer[LXC_LOG_BUFFER_SIZE];
+	const struct tm *t;
 	int n;
 	int ms;
 
 	if (lxc_log_fd == -1)
 		return 0;
 
+	t = localtime(&event->timestamp.tv_sec);
+	strftime(date, sizeof(date), "%Y%m%d%H%M%S", t);
 	ms = event->timestamp.tv_usec / 1000;
 	n = snprintf(buffer, sizeof(buffer),
-		     "%15s %10ld.%03d %-8s %s - %s:%s:%d - ",
+		     "%15s %10s.%03d %-8s %s - %s:%s:%d - ",
 		     log_prefix,
-		     event->timestamp.tv_sec,
+		     date,
 		     ms,
 		     lxc_log_priority_to_string(event->priority),
 		     event->category,
