@@ -39,7 +39,9 @@
 #endif
 
 #if LUA_VERSION_NUM >= 503
+#ifndef luaL_checkunsigned
 #define luaL_checkunsigned(L,n) ((lua_Unsigned)luaL_checkinteger(L,n))
+#endif
 #endif
 
 #ifdef NO_CHECK_UDATA
