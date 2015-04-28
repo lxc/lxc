@@ -12,6 +12,7 @@ noinst_HEADERS = \
 	conf.h \
 	console.h \
 	error.h \
+	initutils.h \
 	list.h \
 	log.h \
 	lxc.h \
@@ -67,6 +68,7 @@ liblxc_so_SOURCES = \
 	cgfs.c \
 	cgroup.c cgroup.h \
 	lxc.h \
+	initutils.c initutils.h \
 	utils.c utils.h \
 	sync.c sync.h \
 	namespace.h namespace.c \
@@ -239,7 +241,7 @@ lxc_checkpoint_SOURCES = lxc_checkpoint.c
 if HAVE_STATIC_LIBCAP
 sbin_PROGRAMS += init.lxc.static
 
-init_lxc_static_SOURCES = lxc_init.c error.c log.c utils.c caps.c
+init_lxc_static_SOURCES = lxc_init.c error.c log.c initutils.c caps.c
 
 if !HAVE_GETLINE
 if HAVE_FGETLN

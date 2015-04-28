@@ -36,7 +36,7 @@
 #include "log.h"
 #include "caps.h"
 #include "error.h"
-#include "utils.h"
+#include "initutils.h"
 
 lxc_log_define(lxc_init, lxc);
 
