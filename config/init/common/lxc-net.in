@@ -79,8 +79,7 @@ start() {
     # can't write its pid into, so we restorecon it (to var_run_t)
     if [ ! -d "${varrun}" ]; then
         mkdir -p "${varrun}"
-        which restorecon >/dev/null 2>&1
-        if [ $? = 0 ]; then
+        if which restorecon >/dev/null 2>&1; then
             restorecon "${varrun}"
         fi
     fi
