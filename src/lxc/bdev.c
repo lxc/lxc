@@ -1253,7 +1253,7 @@ int btrfs_list_get_path_rootid(int fd, u64 *treeid)
 	return 0;
 }
 
-static bool is_btrfs_fs(const char *path)
+bool is_btrfs_fs(const char *path)
 {
 	int fd, ret;
 	struct btrfs_ioctl_space_args sargs;
@@ -1531,7 +1531,7 @@ static int btrfs_do_destroy_subvol(const char *path)
 
 	fd = open(newfull, O_RDONLY);
 	if (fd < 0) {
-		ERROR("Error opening %s", newfull);
+		SYSERROR("Error opening %s", newfull);
 		free(newfull);
 		return -1;
 	}
@@ -1827,6 +1827,13 @@ static int btrfs_recursive_destroy(const char *path)
 	/* All child subvols have been removed, now remove this one */
 ignore_search:
 	return btrfs_do_destroy_subvol(path);
+}
+
+bool btrfs_try_remove_subvol(const char *path)
+{
+	if (!btrfs_detect(path))
+		return false;
+	return btrfs_recursive_destroy(path) == 0;
 }
 
 static int btrfs_destroy(struct bdev *orig)
