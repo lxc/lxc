@@ -818,6 +818,25 @@ out:
 	return pids_len;
 }
 
+static bool lxc_list_controllers(char ***list)
+{
+	if (!cgm_dbus_connect()) {
+		ERROR("Error connecting to cgroup manager");
+		return false;
+	}
+	if (cgmanager_list_controllers_sync(NULL, cgroup_manager, list) != 0) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("call to cgmanager_list_controllers_sync failed: %s", nerr->message);
+		nih_free(nerr);
+		cgm_dbus_disconnect();
+		return false;
+	}
+
+	cgm_dbus_disconnect();
+	return true;
+}
+
 static inline void free_abs_cgroup(char *cgroup)
 {
 	if (!cgroup)
@@ -1166,8 +1185,9 @@ static bool verify_and_prune(const char *cgroup_use)
 static bool collect_subsytems(void)
 {
 	char *line = NULL;
+	nih_local char **cgm_subsys_list = NULL;
 	size_t sz = 0;
-	FILE *f;
+	FILE *f = NULL;
 
 	if (subsystems) // already initialized
 		return true;
@@ -1178,6 +1198,20 @@ static bool collect_subsytems(void)
 	subsystems_inone[0] = "all";
 	subsystems_inone[1] = NULL;
 
+	if (lxc_list_controllers(&cgm_subsys_list)) {
+		while (cgm_subsys_list[nr_subsystems]) {
+			char **tmp = NIH_MUST( realloc(subsystems,
+						(nr_subsystems+2)*sizeof(char *)) );
+			tmp[nr_subsystems] = NIH_MUST(
+					strdup(cgm_subsys_list[nr_subsystems++]) );
+			subsystems = tmp;
+		}
+		if (nr_subsystems)
+			subsystems[nr_subsystems] = NULL;
+		goto collected;
+	}
+
+	INFO("cgmanager_list_controllers failed, falling back to /proc/self/cgroups");
 	f = fopen_cloexec("/proc/self/cgroup", "r");
 	if (!f) {
 		f = fopen_cloexec("/proc/1/cgroup", "r");
@@ -1219,6 +1253,8 @@ static bool collect_subsytems(void)
 	fclose(f);
 
 	free(line);
+
+collected:
 	if (!nr_subsystems) {
 		ERROR("No cgroup subsystems found");
 		return false;
@@ -1240,7 +1276,8 @@ out_good:
 
 out_free:
 	free(line);
-	fclose(f);
+	if (f)
+		fclose(f);
 	free_subsystems();
 	return false;
 }
