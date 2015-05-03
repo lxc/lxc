@@ -53,6 +53,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">--bdir</arg>
       <arg choice="opt">--user</arg>
       <arg choice="opt">--key</arg>
+      <arg choice="opt">--storage-type</arg>
       <arg choice="opt">--union-type</arg>
       <arg choice="opt">--keep-data</arg>
       <arg choice="opt">COMMAND</arg>
@@ -141,6 +142,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
+          <option><optional>--storage-type</optional></option>
+        </term>
+        <listitem>
+          <para>
+            Specify the type of storage used by the container. Valid types are tmpfs or dir.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
           <option><optional>--union-type</optional></option>
         </term>
         <listitem>
@@ -171,8 +183,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <listitem>
           <para>
             Immediately run the provided command in the container.
-            This currently uses ssh (not attach) and is incompatible
-            with daemon mode.
+            This uses attach if the kernel supports it, otherwise uses ssh.
+            This is incompatible with daemon mode.
           </para>
         </listitem>
       </varlistentry>

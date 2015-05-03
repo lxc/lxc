@@ -29,6 +29,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/vfs.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/param.h>
@@ -68,8 +69,8 @@
 
 lxc_log_define(lxc_utils, lxc);
 
-static int _recursive_rmdir_onedev(char *dirname, dev_t pdev,
-				   const char *exclude, int level)
+static int _recursive_rmdir(char *dirname, dev_t pdev,
+			    const char *exclude, int level, bool onedev)
 {
 	struct dirent dirent, *direntp;
 	DIR *dir;
@@ -106,7 +107,7 @@ static int _recursive_rmdir_onedev(char *dirname, dev_t pdev,
 			if (ret < 0) {
 				switch(errno) {
 				case ENOTEMPTY:
-					INFO("Not deleting snapshots");
+					INFO("Not deleting snapshot %s", pathname);
 					hadexclude = true;
 					break;
 				case ENOTDIR:
@@ -129,14 +130,14 @@ static int _recursive_rmdir_onedev(char *dirname, dev_t pdev,
 			failed=1;
 			continue;
 		}
-		if (mystat.st_dev != pdev)
+		if (onedev && mystat.st_dev != pdev)
 			continue;
 		if (S_ISDIR(mystat.st_mode)) {
-			if (_recursive_rmdir_onedev(pathname, pdev, exclude, level+1) < 0)
+			if (_recursive_rmdir(pathname, pdev, exclude, level+1, onedev) < 0)
 				failed=1;
 		} else {
 			if (unlink(pathname) < 0) {
-				ERROR("%s: failed to delete %s", __func__, pathname);
+				SYSERROR("%s: failed to delete %s", __func__, pathname);
 				failed=1;
 			}
 		}
@@ -158,17 +159,41 @@ static int _recursive_rmdir_onedev(char *dirname, dev_t pdev,
 	return failed ? -1 : 0;
 }
 
+/* we have two different magic values for overlayfs, yay */
+#define OVERLAYFS_SUPER_MAGIC 0x794c764f
+#define OVERLAY_SUPER_MAGIC 0x794c7630
+/*
+ * In overlayfs, st_dev is unreliable.  so on overlayfs we don't do
+ * the lxc_rmdir_onedev()
+ */
+static bool is_native_overlayfs(const char *path)
+{
+	struct statfs sb;
+
+	if (statfs(path, &sb) < 0)
+		return false;
+	if (sb.f_type == OVERLAYFS_SUPER_MAGIC ||
+			sb.f_type == OVERLAY_SUPER_MAGIC)
+		return true;
+	return false;
+}
+
 /* returns 0 on success, -1 if there were any failures */
 extern int lxc_rmdir_onedev(char *path, const char *exclude)
 {
 	struct stat mystat;
+	bool onedev = true;
+
+	if (is_native_overlayfs(path)) {
+		onedev = false;
+	}
 
 	if (lstat(path, &mystat) < 0) {
 		ERROR("%s: failed to stat %s", __func__, path);
 		return -1;
 	}
 
-	return _recursive_rmdir_onedev(path, mystat.st_dev, exclude, 0);
+	return _recursive_rmdir(path, mystat.st_dev, exclude, 0, onedev);
 }
 
 static int mount_fs(const char *source, const char *target, const char *type)
@@ -322,7 +347,7 @@ const char *lxc_global_config_value(const char *option_name)
 		sprintf(user_config_path, "%s/.config/lxc/lxc.conf", user_home);
 		sprintf(user_default_config_path, "%s/.config/lxc/default.conf", user_home);
 		sprintf(user_lxc_path, "%s/.local/share/lxc/", user_home);
-		user_cgroup_pattern = strdup("%n");
+		user_cgroup_pattern = strdup("lxc/%n");
 	}
 	else {
 		user_config_path = strdup(LXC_GLOBAL_CONF);
@@ -1619,15 +1644,22 @@ int setproctitle(char *title)
 		if (len >= arg_end - arg_start) {
 			env_start = env_end;
 		}
+
 		arg_end = arg_start + len;
+
+		/* check overflow */
+		if (arg_end < len || arg_end < arg_start) {
+			return -1;
+		}
+
 	}
 
 	strcpy((char*)arg_start, title);
 
-	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_START,   (long)arg_start, 0, 0);
-	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_END,     (long)arg_end, 0, 0);
-	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_START,   (long)env_start, 0, 0);
-	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_END,     (long)env_end, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_START,   arg_start, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_END,     arg_end, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_START,   env_start, 0, 0);
+	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_END,     env_end, 0, 0);
 
 	return ret;
 }

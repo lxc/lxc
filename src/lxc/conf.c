@@ -178,6 +178,17 @@ struct caps_opt {
 	int value;
 };
 
+/*
+ * The lxc_conf of the container currently being worked on in an
+ * API call
+ * This is used in the error calls
+ */
+#ifdef HAVE_TLS
+__thread struct lxc_conf *current_config;
+#else
+struct lxc_conf *current_config;
+#endif
+
 /* Declare this here, since we don't want to reshuffle the whole file. */
 static int in_caplist(int cap, struct lxc_list *caps);
 
@@ -2040,18 +2051,16 @@ static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab,
 	return ret;
 }
 
-static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list *mount,
-	const char *lxc_name)
+FILE *write_mount_file(struct lxc_list *mount)
 {
 	FILE *file;
 	struct lxc_list *iterator;
 	char *mount_entry;
-	int ret;
 
 	file = tmpfile();
 	if (!file) {
 		ERROR("tmpfile error: %m");
-		return -1;
+		return NULL;
 	}
 
 	lxc_list_for_each(iterator, mount) {
@@ -2060,6 +2069,18 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list 
 	}
 
 	rewind(file);
+	return file;
+}
+
+static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list *mount,
+	const char *lxc_name)
+{
+	FILE *file;
+	int ret;
+
+	file = write_mount_file(mount);
+	if (!file)
+		return -1;
 
 	ret = mount_file_entries(rootfs, file, lxc_name);
 
@@ -2563,6 +2584,7 @@ struct lxc_conf *lxc_conf_init(void)
 		return NULL;
 	}
 	new->kmsg = 0;
+	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
@@ -2979,6 +3001,7 @@ static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 	int bytes, pipefd[2];
 	char *token, *saveptr = NULL;
 	char buffer[MAX_BUFFER_SIZE];
+	char netdev_link[IFNAMSIZ+1];
 
 	if (netdev->type != LXC_NET_VETH) {
 		ERROR("nic type %d not support for unprivileged use",
@@ -3008,7 +3031,12 @@ static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 
 		// Call lxc-user-nic pid type bridge
 		char pidstr[20];
-		char *args[] = {LXC_USERNIC_PATH, pidstr, "veth", netdev->link, netdev->name, NULL };
+		if (netdev->link) {
+			strncpy(netdev_link, netdev->link, IFNAMSIZ);
+		} else {
+			strncpy(netdev_link, "none", IFNAMSIZ);
+		}
+		char *args[] = {LXC_USERNIC_PATH, pidstr, "veth", netdev_link, netdev->name, NULL };
 		snprintf(pidstr, 19, "%lu", (unsigned long) pid);
 		pidstr[19] = '\0';
 		execvp(args[0], args);
@@ -4223,6 +4251,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 {
 	if (!conf)
 		return;
+	if (current_config == conf)
+		current_config = NULL;
 	free(conf->console.log_path);
 	free(conf->console.path);
 	free(conf->rootfs.mount);
@@ -4230,6 +4260,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.path);
 	free(conf->rootfs.pivot);
 	free(conf->logfile);
+	if (conf->logfd != -1)
+		close(conf->logfd);
 	free(conf->utsname);
 	free(conf->ttydir);
 	free(conf->fstab);

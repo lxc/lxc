@@ -187,6 +187,8 @@ static bool nic_exists(char *nic)
 	int ret;
 	struct stat sb;
 
+	if (strcmp(nic, "none") == 0)
+		return true;
 	ret = snprintf(path, MAXPATHLEN, "/sys/class/net/%s", nic);
 	if (ret < 0 || ret >= MAXPATHLEN) // should never happen!
 		return false;
@@ -250,20 +252,22 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 		return false;
 	}
 
-	/* copy the bridge's mtu to both ends */
-	mtu = get_mtu(br);
-	if (mtu != -1) {
-		if (lxc_netdev_set_mtu(veth1buf, mtu) < 0 ||
-				lxc_netdev_set_mtu(veth2buf, mtu) < 0) {
-			fprintf(stderr, "Failed setting mtu\n");
+	if (strcmp(br, "none") != 0) {
+		/* copy the bridge's mtu to both ends */
+		mtu = get_mtu(br);
+		if (mtu != -1) {
+			if (lxc_netdev_set_mtu(veth1buf, mtu) < 0 ||
+					lxc_netdev_set_mtu(veth2buf, mtu) < 0) {
+				fprintf(stderr, "Failed setting mtu\n");
+				goto out_del;
+			}
+		}
+
+		/* attach veth1 to bridge */
+		if (lxc_bridge_attach(br, veth1buf) < 0) {
+			fprintf(stderr, "Error attaching %s to %s\n", veth1buf, br);
 			goto out_del;
 		}
-	}
-
-	/* attach veth1 to bridge */
-	if (lxc_bridge_attach(br, veth1buf) < 0) {
-		fprintf(stderr, "Error attaching %s to %s\n", veth1buf, br);
-		goto out_del;
 	}
 
 	/* pass veth2 to target netns */

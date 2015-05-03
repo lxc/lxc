@@ -99,4 +99,15 @@ static inline void lxc_list_del(struct lxc_list *list)
 	prev->next = next;
 }
 
+static inline int lxc_list_len(struct lxc_list *list)
+{
+	 int i = 0;
+	 struct lxc_list *iter;
+	 lxc_list_for_each(iter, list) {
+		i++;
+	 }
+
+	 return i;
+}
+
 #endif

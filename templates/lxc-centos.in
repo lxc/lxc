@@ -350,7 +350,7 @@ EOF
     # prevent mingetty from calling vhangup(2) since it fails with userns.
     # Same issue as oracle template: prevent mingetty from calling vhangup(2)
     # commit 2e83f7201c5d402478b9849f0a85c62d5b9f1589.
-    sed -i 's|mingetty|mingetty --nohangup|' $container_rootfs/etc/init/tty.conf
+    sed -i 's|mingetty|mingetty --nohangup|' $rootfs_path/etc/init/tty.conf
 
     if [ ${root_display_password} = "yes" ]
     then
@@ -413,10 +413,10 @@ download_centos()
 
     # download a mini centos into a cache
     echo "Downloading centos minimal ..."
-    if [ $release -le 5 ];then
-        YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
-    else
+    if yum -h | grep -q 'releasever=RELEASEVER'; then
         YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck --releasever=$release"
+    else
+        YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
     fi
     PKG_LIST="yum initscripts passwd rsyslog vim-minimal openssh-server openssh-clients dhclient chkconfig rootfiles policycoreutils"
 

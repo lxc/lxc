@@ -27,6 +27,7 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <sys/select.h>
 #include <sys/types.h>
@@ -44,62 +45,27 @@ struct lxc_arguments;
 
 /*
  * Start the specified command inside a system container
- * @name     : the name of the container
- * @argv     : an array of char * corresponding to the commande line
- * @conf     : configuration
+ * @name         : the name of the container
+ * @argv         : an array of char * corresponding to the commande line
+ * @conf         : configuration
+ * @backgrounded : whether or not the container is daemonized
  * Returns 0 on success, < 0 otherwise
  */
 extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
-		     const char *lxcpath);
+		     const char *lxcpath, bool backgrounded);
 
 /*
  * Start the specified command inside an application container
- * @name     : the name of the container
- * @argv     : an array of char * corresponding to the commande line
- * @quiet    : if != 0 then lxc-init won't produce any output
- * @conf     : configuration
+ * @name         : the name of the container
+ * @argv         : an array of char * corresponding to the commande line
+ * @quiet        : if != 0 then lxc-init won't produce any output
+ * @conf         : configuration
+ * @backgrounded : whether or not the container is daemonized
  * Returns 0 on success, < 0 otherwise
  */
 extern int lxc_execute(const char *name, char *const argv[], int quiet,
-		       struct lxc_conf *conf, const char *lxcpath);
-
-/*
- * Open the monitoring mechanism for a specific container
- * The function will return an fd corresponding to the events
- * Returns a file descriptor on success, < 0 otherwise
- */
-extern int lxc_monitor_open(const char *lxcpath);
-
-/*
- * Blocking read for the next container state change
- * @fd  : the file descriptor provided by lxc_monitor_open
- * @msg : the variable which will be filled with the state
- * Returns 0 if the monitored container has exited, > 0 if
- * data was read, < 0 otherwise
- */
-extern int lxc_monitor_read(int fd, struct lxc_msg *msg);
-
-/*
- * Blocking read for the next container state change with timeout
- * @fd      : the file descriptor provided by lxc_monitor_open
- * @msg     : the variable which will be filled with the state
- * @timeout : the timeout in seconds to wait for a state change
- * Returns 0 if the monitored container has exited, > 0 if
- * data was read, < 0 otherwise
- */
-extern int lxc_monitor_read_timeout(int fd, struct lxc_msg *msg, int timeout);
-
-/*
- * Blocking read from multiple monitors for the next container state
- * change with timeout
- * @rfds    : an fd_set of file descriptors provided by lxc_monitor_open
- * @nfds    : the maximum fd number in rfds + 1
- * @msg     : the variable which will be filled with the state
- * @timeout : the timeout in seconds to wait for a state change
- * Returns 0 if the monitored container has exited, > 0 if
- * data was read, < 0 otherwise
- */
-extern int lxc_monitor_read_fdset(fd_set *rfds, int nfds, struct lxc_msg *msg, int timeout);
+		       struct lxc_conf *conf, const char *lxcpath,
+		       bool backgrounded);
 
 /*
  * Close the fd associated with the monitoring
