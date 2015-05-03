@@ -2953,6 +2953,7 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 	current_config = c ? c->lxc_conf : NULL;
 	ret = do_lxcapi_clone(c, newname, lxcpath, flags, bdevtype, bdevdata, hookargs);
 	current_config = NULL;
+
 	return ret;
 }
 
