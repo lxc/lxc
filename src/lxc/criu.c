@@ -239,6 +239,7 @@ static bool criu_version_ok()
 		close(pipes[1]);
 		if (wait_for_pid(pid) < 0) {
 			close(pipes[0]);
+			SYSERROR("execing criu failed, is it installed?");
 			return false;
 		}
 
