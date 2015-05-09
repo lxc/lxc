@@ -200,6 +200,11 @@ configure_debian_systemd()
     mkdir -p ${rootfs}/{lib,etc}/systemd/system
     mkdir -p ${rootfs}/etc/systemd/system/getty.target.wants
 
+    # Fix getty-static-service as debootstrap does not install dbus
+    if [ -e $rootfs//lib/systemd/system/getty-static.service ] ; then
+        sed 's/ getty@tty[5-9].service//g' $rootfs/lib/systemd/system/getty-static.service |  sed 's/\(tty2-tty\)[5-9]/\14/g' > $rootfs/etc/systemd/system/getty-static.service
+    fi
+
     # This function has been copied and adapted from lxc-fedora
     rm -f ${rootfs}/etc/systemd/system/default.target
     chroot ${rootfs} ln -s /dev/null /etc/systemd/system/udev.service
