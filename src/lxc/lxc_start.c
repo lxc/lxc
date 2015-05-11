@@ -54,6 +54,16 @@
 #define OPT_SHARE_IPC OPT_USAGE+2
 #define OPT_SHARE_UTS OPT_USAGE+3
 
+/*
+define option names as constants in case they're reused
+*/
+// do this more elegant if http://stackoverflow.com/questions/29868286/how-to-reuse-a-literal-in-a-char-and-a-one-character-string-variable
+// is clearified
+/* Option literals for -F, --foreground */
+#define FOREGROUND_OPTION_NAME 'F'
+#define FOREGROUND_OPTION_NAME_STRING "F"
+#define FOREGROUND_OPTION_NAME_LONG "foreground"
+
 lxc_log_define(lxc_start_ui, lxc);
 
 static struct lxc_list defines;
@@ -160,7 +170,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 
 static const struct option my_longopts[] = {
 	{"daemon", no_argument, 0, 'd'},
-	{"foreground", no_argument, 0, 'F'},
+	{FOREGROUND_OPTION_NAME_LONG, no_argument, 0, FOREGROUND_OPTION_NAME},
 	{"rcfile", required_argument, 0, 'f'},
 	{"define", required_argument, 0, 's'},
 	{"console", required_argument, 0, 'c'},
@@ -183,7 +193,9 @@ lxc-start start COMMAND in specified container NAME\n\
 Options :\n\
   -n, --name=NAME        NAME for name of the container\n\
   -d, --daemon           Daemonize the container (default)\n\
-  -F, --foreground       Start with the current tty attached to /dev/console\n\
+  -" FOREGROUND_OPTION_NAME_STRING
+        ", --" FOREGROUND_OPTION_NAME_LONG
+        "       Start with the current tty attached to /dev/console\n\
   -p, --pidfile=FILE     Create a file with the process id\n\
   -f, --rcfile=FILE      Load configuration file FILE\n\
   -c, --console=FILE     Use specified FILE for the container console\n\
@@ -343,7 +355,9 @@ int main(int argc, char *argv[])
 	if (err) {
 		ERROR("The container failed to start.");
 		if (my_args.daemonize)
-			ERROR("To get more details, run the container in foreground mode.");
+			ERROR("To get more details, run the container in foreground mode "
+			    "(using the -" FOREGROUND_OPTION_NAME_STRING "/"
+                            "--" FOREGROUND_OPTION_NAME_LONG " option).");
 		ERROR("Additional information can be obtained by setting the "
 		      "--logfile and --logpriority options.");
 		err = c->error_num;
