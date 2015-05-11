@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <grp.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/file.h>
@@ -96,6 +97,116 @@ static char *get_username(void)
 	return pwd->pw_name;
 }
 
+static char **get_groupnames(void)
+{
+	int ngroups;
+	gid_t *group_ids;
+	int ret, i, j;
+	char **group_names;
+	struct group *gr;
+
+	ngroups = getgroups(0, NULL);
+	group_ids = (gid_t *)malloc(sizeof(gid_t)*ngroups);
+	ret = getgroups(ngroups, group_ids);
+
+	if (ret < 0) {
+		free(group_ids);
+		fprintf(stderr, "Failed to get process groups\n");
+		return NULL;
+	}
+
+	group_names = (char **)malloc(sizeof(char *)*(ngroups+1));
+
+	for (i=0; i<ngroups; i++ ) {
+		gr = getgrgid(group_ids[i]);
+
+		if (gr == NULL) {
+			fprintf(stderr, "Failed to get group name\n");
+			free(group_ids);
+			for (j=0; j<i; j++) {
+				free(group_names[j]);
+			}
+			free(group_names);
+			return NULL;
+		}
+
+		group_names[i] = strdup(gr->gr_name);
+
+		if (group_names[i] == NULL) {
+			fprintf(stderr, "Failed to copy group name: %s", gr->gr_name);
+			free(group_ids);
+			for (j=0; j<i; j++) {
+				free(group_names[j]);
+			}
+			free(group_names);
+			return NULL;	
+		}
+	}
+
+	group_names[ngroups] = NULL;
+
+	free(group_ids);
+
+	return group_names;
+}
+
+ struct alloted_s {
+ 	char *name;
+ 	int allowed;
+ 	struct alloted_s *next;
+ };
+
+static struct alloted_s *append_alloted(struct alloted_s **head, char *name, int n) 
+{
+	struct alloted_s *cur, *al;
+
+	if (head == NULL || name == NULL) {
+	// sanity check. parameters should not be null
+		return NULL;
+	}
+
+	al = (struct alloted_s *)malloc(sizeof(struct alloted_s));
+
+	if (al == NULL) {
+		// unable to allocate memory to new struct
+		return NULL;
+	}
+
+	al->name = strdup(name);
+	al->allowed = n;
+	al->next = NULL;
+
+	if (*head == NULL) {
+		*head = al;
+		return al;
+	}
+
+	cur = *head;
+	while (cur->next != NULL)
+		cur = cur->next;
+
+	cur->next = al;
+	return al;
+}
+
+static void free_alloted(struct alloted_s **head)
+{
+	struct alloted_s *cur;
+
+	if (head == NULL) {
+		return;
+	}
+
+	cur = *head;
+
+	while (cur != NULL) {
+		cur = cur->next;
+		free((*head)->name);
+		free(*head);
+		*head = cur;
+	}
+}
+
 /* The configuration file consists of lines of the form:
  *
  * user type bridge count
@@ -103,13 +214,15 @@ static char *get_username(void)
  * Return the count entry for the calling user if there is one.  Else
  * return -1.
  */
-static int get_alloted(char *me, char *intype, char *link)
+static int get_alloted(char *me, char *intype, char *link, struct alloted_s **alloted)
 {
 	FILE *fin = fopen(LXC_USERNIC_CONF, "r");
 	char *line = NULL;
 	char user[100], type[100], br[100];
 	size_t len = 0;
-	int n = -1, ret;
+	int n, ret, count = 0;
+	char **groups;
+	char **g;
 
 	if (!fin) {
 		fprintf(stderr, "Failed to open %s: %s\n", LXC_USERNIC_CONF,
@@ -128,13 +241,48 @@ static int get_alloted(char *me, char *intype, char *link)
 			continue;
 		if (strcmp(link, br) != 0)
 			continue;
-		free(line);
-		fclose(fin);
-		return n;
+
+		append_alloted(alloted, me, n);
+		count += n;
+		break; // found the user with the appropriate settings, therefore finish the search.
+		// what to do if there are more than one applicable lines? not specified in the docs.
+		// since getline is implemented with realloc, we don't need to free line until exiting func.
 	}
+
+    // now parse any possible groups specified
+	groups = get_groupnames();
+	if (groups != NULL) {
+
+		fseek(fin, 0, SEEK_SET);
+		while ((getline(&line, &len, fin)) != -1) {
+			ret = sscanf(line, "%99[^ \t] %99[^ \t] %99[^ \t] %d", user, type, br, &n);
+
+			if (ret != 4)
+				continue;
+			if (user[0] != '@')
+				continue;
+			if (strcmp(type, intype) != 0)
+				continue;
+			if (strcmp(link, br) != 0)
+				continue;
+
+			for (g=groups; *g!=NULL; g++) {
+				if (strcmp(user+1, *g) == 0) {
+					append_alloted(alloted, user, n);
+					count += n;
+					break;
+				}
+			}
+		}
+
+		for (g=groups; *g!=NULL; g++)
+			free(*g);
+		free(groups);
+	}
+
 	fclose(fin);
 	free(line);
-	return -1;
+	return count;
 }
 
 static char *get_eol(char *s, char *e)
@@ -361,7 +509,7 @@ static bool cull_entries(int fd, char *me, char *t, char *br)
 		p += entry_lines[n-1].len + 1;
 		if (p >= e)
 			break;
-	}
+ 	}
 	p = buf;
 	for (i=0; i<n; i++) {
 		if (!entry_lines[i].keep)
@@ -396,17 +544,22 @@ static int count_entries(char *buf, off_t len, char *me, char *t, char *br)
  * The dbfile has lines of the format:
  * user type bridge nicname
  */
-static bool get_nic_if_avail(int fd, char *me, int pid, char *intype, char *br, int allowed, char **nicname, char **cnic)
+static bool get_nic_if_avail(int fd, struct alloted_s *names, int pid, char *intype, char *br, int allowed, char **nicname, char **cnic)
 {
 	off_t len, slen;
 	struct stat sb;
 	char *buf = NULL, *newline;
 	int ret, count = 0;
+	char *owner;
+	struct alloted_s *n;
 
-	cull_entries(fd, me, intype, br);
+	for (n=names; n!=NULL; n=n->next)
+		cull_entries(fd, n->name, intype, br);
 
 	if (allowed == 0)
 		return false;
+
+	owner = names->name;
 
 	if (fstat(fd, &sb) < 0) {
 		fprintf(stderr, "Failed to fstat: %s\n", strerror(errno));
@@ -420,17 +573,27 @@ static bool get_nic_if_avail(int fd, char *me, int pid, char *intype, char *br, 
 			return false;
 		}
 
-		count = count_entries(buf, len, me, intype, br);
-		if (count >= allowed)
-			return false;
+		owner = NULL;
+		for (n=names; n!=NULL; n=n->next) {
+			count = count_entries(buf, len, n->name, intype, br);
+ 		
+			if (count >= n->allowed)
+				continue;
+
+			owner = n->name;
+			break;
+		}
 	}
+
+	if (owner == NULL)
+		return false;
 
 	if (!get_new_nicname(nicname, br, pid, cnic))
 		return false;
-	/* me  ' ' intype ' ' br ' ' *nicname + '\n' + '\0' */
-	slen = strlen(me) + strlen(intype) + strlen(br) + strlen(*nicname) + 5;
+	/* owner  ' ' intype ' ' br ' ' *nicname + '\n' + '\0' */
+	slen = strlen(owner) + strlen(intype) + strlen(br) + strlen(*nicname) + 5;
 	newline = alloca(slen);
-	ret = snprintf(newline, slen, "%s %s %s %s\n", me, intype, br, *nicname);
+	ret = snprintf(newline, slen, "%s %s %s %s\n", owner, intype, br, *nicname);
 	if (ret < 0 || ret >= slen) {
 		if (lxc_netdev_delete_by_name(*nicname) != 0)
 			fprintf(stderr, "Error unlinking %s!\n", *nicname);
@@ -592,6 +755,7 @@ int main(int argc, char *argv[])
 	char *cnic = NULL; // created nic name in container is returned here.
 	char *vethname = NULL;
 	int pid;
+	struct alloted_s *alloted = NULL;
 
 	/* set a sane env, because we are setuid-root */
 	if (clearenv() < 0) {
@@ -631,14 +795,16 @@ int main(int argc, char *argv[])
 
 	if (!may_access_netns(pid)) {
 		fprintf(stderr, "User %s may not modify netns for pid %d\n",
-				me, pid);
+			me, pid);
 		exit(1);
 	}
 
-	n = get_alloted(me, argv[2], argv[3]);
+	n = get_alloted(me, argv[2], argv[3], &alloted);
 	if (n > 0)
-		gotone = get_nic_if_avail(fd, me, pid, argv[2], argv[3], n, &nicname, &cnic);
+		gotone = get_nic_if_avail(fd, alloted, pid, argv[2], argv[3], n, &nicname, &cnic);
+
 	close(fd);
+	free_alloted(&alloted);
 	if (!gotone) {
 		fprintf(stderr, "Quota reached\n");
 		exit(1);
