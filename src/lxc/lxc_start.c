@@ -59,6 +59,7 @@ define option names as constants in case they're reused
 */
 // do this more elegant if http://stackoverflow.com/questions/29868286/how-to-reuse-a-literal-in-a-char-and-a-one-character-string-variable
 // is clearified
+/* Option literals for -F, --foreground */
 #define FOREGROUND_OPTION_NAME 'F'
 #define FOREGROUND_OPTION_NAME_STRING "F"
 #define FOREGROUND_OPTION_NAME_LONG "foreground"
