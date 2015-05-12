@@ -2154,6 +2154,7 @@ static bool container_destroy(struct lxc_container *c)
 {
 	bool bret = false;
 	int ret;
+	struct lxc_conf *conf = c->lxc_conf;
 
 	if (!c || !do_lxcapi_is_defined(c))
 		return false;
@@ -2167,19 +2168,47 @@ static bool container_destroy(struct lxc_container *c)
 		goto out;
 	}
 
-	if (current_config && c->lxc_conf == current_config) {
-		current_config = NULL;
-		if (c->lxc_conf->logfd != -1) {
-			close(c->lxc_conf->logfd);
-			c->lxc_conf->logfd = -1;
+	if (!lxc_list_empty(&conf->hooks[LXCHOOK_DESTROY])) {
+		/* Start of environment variable setup for hooks */
+		if (setenv("LXC_NAME", c->name, 1)) {
+			SYSERROR("failed to set environment variable for container name");
+		}
+		if (setenv("LXC_CONFIG_FILE", conf->rcfile, 1)) {
+			SYSERROR("failed to set environment variable for config path");
+		}
+		if (setenv("LXC_ROOTFS_MOUNT", conf->rootfs.mount, 1)) {
+			SYSERROR("failed to set environment variable for rootfs mount");
+		}
+		if (setenv("LXC_ROOTFS_PATH", conf->rootfs.path, 1)) {
+			SYSERROR("failed to set environment variable for rootfs mount");
+		}
+		if (conf->console.path && setenv("LXC_CONSOLE", conf->console.path, 1)) {
+			SYSERROR("failed to set environment variable for console path");
+		}
+		if (conf->console.log_path && setenv("LXC_CONSOLE_LOGPATH", conf->console.log_path, 1)) {
+			SYSERROR("failed to set environment variable for console log");
+		}
+		/* End of environment variable setup for hooks */
+
+		if (run_lxc_hooks(c->name, "destroy", conf, c->get_config_path(c), NULL)) {
+			ERROR("Error executing clone hook for %s", c->name);
+			goto out;
 		}
 	}
 
-	if (c->lxc_conf && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount) {
+	if (current_config && conf == current_config) {
+		current_config = NULL;
+		if (conf->logfd != -1) {
+			close(conf->logfd);
+			conf->logfd = -1;
+		}
+	}
+
+	if (conf && conf->rootfs.path && conf->rootfs.mount) {
 		if (am_unpriv())
-			ret = userns_exec_1(c->lxc_conf, bdev_destroy_wrapper, c->lxc_conf);
+			ret = userns_exec_1(conf, bdev_destroy_wrapper, conf);
 		else
-			ret = do_bdev_destroy(c->lxc_conf);
+			ret = do_bdev_destroy(conf);
 		if (ret < 0) {
 			ERROR("Error destroying rootfs for %s", c->name);
 			goto out;
@@ -2192,7 +2221,7 @@ static bool container_destroy(struct lxc_container *c)
 	char *path = alloca(strlen(p1) + strlen(c->name) + 2);
 	sprintf(path, "%s/%s", p1, c->name);
 	if (am_unpriv())
-		ret = userns_exec_1(c->lxc_conf, lxc_rmdir_onedev_wrapper, path);
+		ret = userns_exec_1(conf, lxc_rmdir_onedev_wrapper, path);
 	else
 		ret = lxc_rmdir_onedev(path, "snaps");
 	if (ret < 0) {
