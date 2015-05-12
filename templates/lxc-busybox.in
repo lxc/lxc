@@ -38,6 +38,31 @@ am_in_userns() {
 in_userns=0
 [ $(am_in_userns) = "yes" ] && in_userns=1
 
+copy_binary()
+{
+    binary_path=`which $1`
+    if [ $? -ne 0 ]; then
+        echo "Unable to find $1 binary on the system"
+        return 1
+    fi
+
+    dir_path="${binary_path%/*}"
+    echo /{,usr/}{,s}bin | grep $dir_path >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "Binary $1 is located at $binary_path and will not be copied"
+        echo "($dir_path not supported)"
+        return 1
+    fi
+
+    cp $binary_path $rootfs/$binary_path
+    if [ $? -ne 0 ]; then
+        echo "Failed to copy $binary_path to rootfs"
+        return 1
+    fi
+
+    return 0
+}
+
 install_busybox()
 {
     rootfs=$1
@@ -164,11 +189,7 @@ EOF
 install_dropbear()
 {
     # copy dropbear binary
-    cp $(which dropbear) $rootfs/usr/sbin
-    if [ $? -ne 0 ]; then
-        echo "Failed to copy dropbear in the rootfs"
-        return 1
-    fi
+    copy_binary dropbear || return 1
 
     # make symlinks to various ssh utilities
     utils="\
@@ -224,19 +245,11 @@ $rootfs/var/run/sshd \
 
     # copy binaries
     for bin in $server_utils $client_utils; do
-        tool_path=`which $bin`
-        cp $tool_path $rootfs/$tool_path
-        if [ $? -ne 0 ]; then
-            echo "Unable to copy $tool_path in the rootfs"
-            return 1
-        fi
+        copy_binary $bin || return 1
     done
 
     for bin in $client_optional_utils; do
-        tool_path=`which $bin`
-        if [ $? -eq 0 ]; then
-            cp $tool_path $rootfs/$tool_path
-        fi
+        tool_path=`which $bin` && copy_binary $bin
     done
 
     # add user and group
