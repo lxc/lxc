@@ -197,6 +197,8 @@ install_openssh()
     client_utils="\
         ssh \
         scp \
+        "
+    client_optional_utils="\
         sftp \
         ssh-add \
         ssh-agent \
@@ -227,6 +229,13 @@ $rootfs/var/run/sshd \
         if [ $? -ne 0 ]; then
             echo "Unable to copy $tool_path in the rootfs"
             return 1
+        fi
+    done
+
+    for bin in $client_optional_utils; do
+        tool_path=`which $bin`
+        if [ $? -eq 0 ]; then
+            cp $tool_path $rootfs/$tool_path
         fi
     done
 
