@@ -159,9 +159,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                     <para>
                       <!--
                         Rather than performing the action, just print
-                        the container name.
+                        the container name and wait delays until starting the next container.
                         -->
-                      実際の動作は行わず、コンテナ名の表示だけを行います。
+                      実際の動作は行わず、コンテナ名と次のコンテナを開始するまでの間隔の表示だけを行います。
                     </para>
                 </listitem>
             </varlistentry>
