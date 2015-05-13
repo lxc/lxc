@@ -131,7 +131,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                 <listitem>
                     <para>
                         Rather than performing the action, just print
-                        the container name.
+                        the container name and wait delays until starting the next container.
                     </para>
                 </listitem>
             </varlistentry>
