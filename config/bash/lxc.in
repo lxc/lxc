@@ -11,7 +11,7 @@ have lxc-start && {
         COMPREPLY=( $( compgen -W "$(ls @LXCTEMPLATEDIR@/ | sed -e 's|^lxc-||' )" "$cur" ) )
     }
 
-    _lxc-generic-n() {
+    _lxc_generic_n() {
         local cur prev
 
         COMPREPLY=()
@@ -27,7 +27,7 @@ have lxc-start && {
         return 1
     }
 
-    _lxc-generic-ns() {
+    _lxc_generic_ns() {
         local cur prev
 
         COMPREPLY=()
@@ -48,7 +48,7 @@ have lxc-start && {
         return 1
     }
 
-    _lxc-generic-t() {
+    _lxc_generic_t() {
         local cur prev
 
         COMPREPLY=()
@@ -64,7 +64,7 @@ have lxc-start && {
         return 1
     }
 
-    _lxc-generic-o() {
+    _lxc_generic_o() {
         local cur prev
 
         COMPREPLY=()
@@ -80,24 +80,24 @@ have lxc-start && {
         return 1
     }
 
-    complete -o default -F _lxc-generic-n lxc-attach
-    complete -o default -F _lxc-generic-n lxc-cgroup
-    complete -o default -F _lxc-generic-n lxc-console
-    complete -o default -F _lxc-generic-n lxc-destroy
-    complete -o default -F _lxc-generic-n lxc-device
-    complete -o default -F _lxc-generic-n lxc-execute
-    complete -o default -F _lxc-generic-n lxc-freeze
-    complete -o default -F _lxc-generic-n lxc-info
-    complete -o default -F _lxc-generic-n lxc-monitor
-    complete -o default -F _lxc-generic-n lxc-snapshot
-    complete -o default -F _lxc-generic-n lxc-start
-    complete -o default -F _lxc-generic-n lxc-stop
-    complete -o default -F _lxc-generic-n lxc-unfreeze
+    complete -o default -F _lxc_generic_n lxc-attach
+    complete -o default -F _lxc_generic_n lxc-cgroup
+    complete -o default -F _lxc_generic_n lxc-console
+    complete -o default -F _lxc_generic_n lxc-destroy
+    complete -o default -F _lxc_generic_n lxc-device
+    complete -o default -F _lxc_generic_n lxc-execute
+    complete -o default -F _lxc_generic_n lxc-freeze
+    complete -o default -F _lxc_generic_n lxc-info
+    complete -o default -F _lxc_generic_n lxc-monitor
+    complete -o default -F _lxc_generic_n lxc-snapshot
+    complete -o default -F _lxc_generic_n lxc-start
+    complete -o default -F _lxc_generic_n lxc-stop
+    complete -o default -F _lxc_generic_n lxc-unfreeze
 
-    complete -o default -F _lxc-generic-ns lxc-wait
+    complete -o default -F _lxc_generic_ns lxc-wait
 
-    complete -o default -F _lxc-generic-t lxc-create
+    complete -o default -F _lxc_generic_t lxc-create
 
-    complete -o default -F _lxc-generic-o lxc-clone
-    complete -o default -F _lxc-generic-o lxc-start-ephemeral
+    complete -o default -F _lxc_generic_o lxc-clone
+    complete -o default -F _lxc_generic_o lxc-start-ephemeral
 }
