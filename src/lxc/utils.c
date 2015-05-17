@@ -1417,6 +1417,7 @@ int mount_proc_if_needed(const char *rootfs)
 	char path[MAXPATHLEN];
 	char link[20];
 	int linklen, ret;
+	int mypid;
 
 	ret = snprintf(path, MAXPATHLEN, "%s/proc/self", rootfs);
 	if (ret < 0 || ret >= MAXPATHLEN) {
@@ -1425,12 +1426,12 @@ int mount_proc_if_needed(const char *rootfs)
 	}
 	memset(link, 0, 20);
 	linklen = readlink(path, link, 20);
-	INFO("I am %d, /proc/self points to '%s'", getpid(), link);
+	mypid = (int)getpid();
+	INFO("I am %d, /proc/self points to '%s'", mypid, link);
 	ret = snprintf(path, MAXPATHLEN, "%s/proc", rootfs);
 	if (linklen < 0) /* /proc not mounted */
 		goto domount;
-	/* can't be longer than rootfs/proc/1 */
-	if (strncmp(link, "1", linklen) != 0) {
+	if (atoi(link) != mypid) {
 		/* wrong /procs mounted */
 		umount2(path, MNT_DETACH); /* ignore failure */
 		goto domount;
