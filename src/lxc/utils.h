@@ -280,3 +280,4 @@ bool switch_to_ns(pid_t pid, const char *ns);
 int is_dir(const char *path);
 char *get_template_path(const char *t);
 int setproctitle(char *title);
+int mount_proc_if_needed(const char *rootfs);
