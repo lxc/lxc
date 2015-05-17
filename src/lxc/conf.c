@@ -4564,6 +4564,17 @@ void suggest_default_idmap(void)
 	free(uname);
 }
 
+static void free_cgroup_settings(struct lxc_list *result)
+{
+	struct lxc_list *iterator, *next;
+
+	lxc_list_for_each_safe(iterator, result, next) {
+		lxc_list_del(iterator);
+		free(iterator);
+	}
+	free(result);
+}
+
 /*
  * Return the list of cgroup_settings sorted according to the following rules
  * 1. Put memory.limit_in_bytes before memory.memsw.limit_in_bytes
@@ -4588,6 +4599,7 @@ struct lxc_list *sort_cgroup_settings(struct lxc_list* cgroup_settings)
 		item = malloc(sizeof(*item));
 		if (!item) {
 			ERROR("failed to allocate memory to sort cgroup settings");
+			free_cgroup_settings(result);
 			return NULL;
 		}
 		item->elem = it->elem;
