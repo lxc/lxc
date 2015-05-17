@@ -1040,10 +1040,18 @@ static int attach_child_main(void* data)
 	/* set new apparmor profile/selinux context */
 	if ((options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_LSM)) {
 		int on_exec;
+		int proc_mounted;
 
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
+		proc_mounted = mount_proc_if_needed("/");
+		if (proc_mounted == -1) {
+			ERROR("Error mounting a sane /proc");
+			rexit(-1);
+		}
 		ret = lsm_process_label_set(init_ctx->lsm_label,
 				init_ctx->container->lxc_conf, 0, on_exec);
+		if (proc_mounted)
+			umount("/proc");
 		if (ret < 0) {
 			rexit(-1);
 		}

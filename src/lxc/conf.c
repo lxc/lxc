@@ -3551,48 +3551,6 @@ int ttys_shift_ids(struct lxc_conf *c)
 	return 0;
 }
 
-/*
- * _do_tmp_proc_mount: Mount /proc inside container if not already
- * mounted
- *
- * @rootfs : the rootfs where proc should be mounted
- *
- * Returns < 0 on failure, 0 if the correct proc was already mounted
- * and 1 if a new proc was mounted.
- */
-static int do_tmp_proc_mount(const char *rootfs)
-{
-	char path[MAXPATHLEN];
-	char link[20];
-	int linklen, ret;
-
-	ret = snprintf(path, MAXPATHLEN, "%s/proc/self", rootfs);
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		SYSERROR("proc path name too long");
-		return -1;
-	}
-	memset(link, 0, 20);
-	linklen = readlink(path, link, 20);
-	INFO("I am %d, /proc/self points to '%s'", getpid(), link);
-	ret = snprintf(path, MAXPATHLEN, "%s/proc", rootfs);
-	if (linklen < 0) /* /proc not mounted */
-		goto domount;
-	/* can't be longer than rootfs/proc/1 */
-	if (strncmp(link, "1", linklen) != 0) {
-		/* wrong /procs mounted */
-		umount2(path, MNT_DETACH); /* ignore failure */
-		goto domount;
-	}
-	/* the right proc is already mounted */
-	return 0;
-
-domount:
-	if (mount("proc", path, "proc", 0, NULL))
-		return -1;
-	INFO("Mounted /proc in container for security transition");
-	return 1;
-}
-
 int tmp_proc_mount(struct lxc_conf *lxc_conf)
 {
 	int mounted;
@@ -3604,7 +3562,7 @@ int tmp_proc_mount(struct lxc_conf *lxc_conf)
 		} else
 			mounted = 1;
 	} else
-		mounted = do_tmp_proc_mount(lxc_conf->rootfs.mount);
+		mounted = mount_proc_if_needed(lxc_conf->rootfs.mount);
 	if (mounted == -1) {
 		SYSERROR("failed to mount /proc in the container.");
 		return -1;
