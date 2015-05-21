@@ -2564,12 +2564,12 @@ static int aufs_detect(const char *path)
 //
 static int aufs_mount(struct bdev *bdev)
 {
-	char *options, *dup, *lower, *upper, *rundir;
+	char *options, *dup, *lower, *upper;
 	int len;
 	unsigned long mntflags;
 	char *mntdata;
-	char *runpath;
 	int ret;
+	const char *xinopath = "/dev/shm/aufs.xino";
 
 	if (strcmp(bdev->type, "aufs"))
 		return -22;
@@ -2595,40 +2595,23 @@ static int aufs_mount(struct bdev *bdev)
 	// TODO We should check whether bdev->src is a blockdev, and if so
 	// but for now, only support aufs of a basic directory
 
-	rundir = get_rundir();
-	if (!rundir)
-		return -1;
-
-	len = strlen(rundir) + strlen("/lxc") + 1;
-	runpath = alloca(len);
-	ret = snprintf(runpath, len, "%s/lxc", rundir);
-	if (ret < 0 || ret >= len) {
-		free(mntdata);
-		free(rundir);
-		return -1;
-	}
-	if (mkdir_p(runpath, 0755) < 0) {
-		free(mntdata);
-		free(rundir);
-		return -1;
-	}
-
 	// AUFS does not work on top of certain filesystems like (XFS or Btrfs)
-	// so add xino=RUNDIR/lxc/aufs.xino parameter to mount options
+	// so add xino=/dev/shm/aufs.xino parameter to mount options.
+	// The same xino option can be specified to multiple aufs mounts, and
+	// a xino file is not shared among multiple aufs mounts.
 	//
 	// see http://www.mail-archive.com/aufs-users@lists.sourceforge.net/msg02587.html
+	//     http://www.mail-archive.com/aufs-users@lists.sourceforge.net/msg05126.html
 	if (mntdata) {
-		len = strlen(lower) + strlen(upper) + strlen(runpath) + strlen("br==rw:=ro,,xino=/aufs.xino") + strlen(mntdata) + 1;
+		len = strlen(lower) + strlen(upper) + strlen(xinopath) + strlen("br==rw:=ro,,xino=") + strlen(mntdata) + 1;
 		options = alloca(len);
-		ret = snprintf(options, len, "br=%s=rw:%s=ro,%s,xino=%s/aufs.xino", upper, lower, mntdata, runpath);
+		ret = snprintf(options, len, "br=%s=rw:%s=ro,%s,xino=%s", upper, lower, mntdata, xinopath);
 	}
 	else {
-		len = strlen(lower) + strlen(upper) + strlen(runpath) + strlen("br==rw:=ro,xino=/aufs.xino") + 1;
+		len = strlen(lower) + strlen(upper) + strlen(xinopath) + strlen("br==rw:=ro,xino=") + 1;
 		options = alloca(len);
-		ret = snprintf(options, len, "br=%s=rw:%s=ro,xino=%s/aufs.xino", upper, lower, runpath);
+		ret = snprintf(options, len, "br=%s=rw:%s=ro,xino=%s", upper, lower, xinopath);
 	}
-
-	free(rundir);
 
 	if (ret < 0 || ret >= len) {
 		free(mntdata);
@@ -2672,6 +2655,9 @@ static int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldn
 	if (mkdir_p(new->dest, 0755) < 0)
 		return -1;
 
+	if (am_unpriv() && chown_mapped_root(new->dest, conf) < 0)
+		WARN("Failed to update ownership of %s", new->dest);
+
 	if (strcmp(orig->type, "dir") == 0) {
 		char *delta, *lastslash;
 		int ret, len, lastslashidx;
@@ -2696,6 +2682,8 @@ static int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldn
 			free(delta);
 			return -1;
 		}
+		if (am_unpriv() && chown_mapped_root(delta, conf) < 0)
+			WARN("Failed to update ownership of %s", delta);
 
 		// the src will be 'aufs:lowerdir:upperdir'
 		len = strlen(delta) + strlen(orig->src) + 12;
@@ -2729,7 +2717,23 @@ static int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldn
 			free(osrc);
 			return -ENOMEM;
 		}
-		if (do_rsync(odelta, ndelta) < 0) {
+		if ((ret = mkdir(ndelta, 0755)) < 0 && errno != EEXIST) {
+			SYSERROR("error: mkdir %s", ndelta);
+			free(osrc);
+			free(ndelta);
+			return -1;
+		}
+		if (am_unpriv() && chown_mapped_root(ndelta, conf) < 0)
+			WARN("Failed to update ownership of %s", ndelta);
+
+		struct rsync_data_char rdata;
+		rdata.src = odelta;
+		rdata.dest = ndelta;
+		if (am_unpriv())
+			ret = userns_exec_1(conf, rsync_delta_wrapper, &rdata);
+		else
+			ret = rsync_delta(&rdata);
+		if (ret) {
 			free(osrc);
 			free(ndelta);
 			ERROR("copying aufs delta");
@@ -3318,6 +3322,7 @@ static bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
 		// (unless snap && b->type == dir, in which case it will be
 		// overlayfs -- which is also allowed)
 		if (strcmp(b->type, "dir") == 0 ||
+				strcmp(b->type, "aufs") == 0 ||
 				strcmp(b->type, "overlayfs") == 0 ||
 				strcmp(b->type, "btrfs") == 0 ||
 				strcmp(b->type, "loop") == 0)
@@ -3327,8 +3332,11 @@ static bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
 
 	// unprivileged users can copy and snapshot dir, overlayfs,
 	// and loop.  In particular, not zfs, btrfs, or lvm.
-	if (strcmp(t, "dir") == 0 || strcmp(t, "overlayfs") == 0 ||
-			strcmp(t, "btrfs") == 0 || strcmp(t, "loop") == 0)
+	if (strcmp(t, "dir") == 0 ||
+		strcmp(t, "aufs") == 0 ||
+		strcmp(t, "overlayfs") == 0 ||
+		strcmp(t, "btrfs") == 0 ||
+		strcmp(t, "loop") == 0)
 		return true;
 	return false;
 }
