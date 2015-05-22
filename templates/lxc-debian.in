@@ -97,12 +97,18 @@ EOF
 
     # reconfigure some services
     if [ -z "$LANG" ]; then
+        cat >> $rootfs/etc/locale.gen << EOF
+en_US.UTF-8 UTF-8
+EOF
         chroot $rootfs locale-gen en_US.UTF-8 UTF-8
         chroot $rootfs update-locale LANG=en_US.UTF-8
     else
         encoding=$(echo $LANG | cut -d. -f2)
         chroot $rootfs sed -e "s/^# \(${LANG} ${encoding}\)/\1/" \
             -i /etc/locale.gen 2> /dev/null
+        cat >> $rootfs/etc/locale.gen << EOF
+$LANG $encoding
+EOF
         chroot $rootfs locale-gen $LANG $encoding
         chroot $rootfs update-locale LANG=$LANG
     fi
