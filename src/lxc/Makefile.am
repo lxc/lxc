@@ -21,7 +21,8 @@ noinst_HEADERS = \
 	namespace.h \
 	start.h \
 	state.h \
-	utils.h
+	utils.h \
+	criu.h
 
 if IS_BIONIC
 noinst_HEADERS += \
@@ -75,6 +76,7 @@ liblxc_so_SOURCES = \
 	state.c state.h \
 	log.c log.h \
 	attach.c attach.h \
+	criu.c criu.h \
 	\
 	network.c network.h \
 	nl.c nl.h \
@@ -164,7 +166,6 @@ bin_SCRIPTS = lxc-checkconfig
 
 EXTRA_DIST = \
 	lxc-ls \
-	lxc-restore-net \
 	lxc-top.lua
 
 if ENABLE_PYTHON
@@ -248,6 +249,7 @@ endif
 
 init_lxc_static_LDFLAGS = -static
 init_lxc_static_LDADD = @CAP_LIBS@
+init_lxc_static_CFLAGS = $(AM_CFLAGS) -DNO_LXC_CONF
 endif
 
 install-exec-local: install-soPROGRAMS
@@ -260,9 +262,6 @@ install-exec-local: install-soPROGRAMS
 
 install-exec-hook:
 	chmod u+s $(DESTDIR)$(libexecdir)/lxc/lxc-user-nic
-
-install-data-local:
-	install -c -m 755 lxc-restore-net $(DESTDIR)$(datadir)/lxc
 
 uninstall-local:
 	$(RM) $(DESTDIR)$(libdir)/liblxc.so*

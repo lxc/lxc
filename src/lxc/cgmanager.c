@@ -39,6 +39,7 @@
 #include <sys/mount.h>
 #include <netinet/in.h>
 #include <net/if.h>
+#include <poll.h>
 
 #include "error.h"
 #include "commands.h"
@@ -347,6 +348,7 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path,
 {
 	int sv[2] = {-1, -1}, optval = 1, ret = -1;
 	char buf[1];
+	struct pollfd fds;
 
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sv) < 0) {
 		SYSERROR("Error creating socketpair");
@@ -370,10 +372,10 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path,
 	}
 	/* now send credentials */
 
-	fd_set rfds;
-	FD_ZERO(&rfds);
-	FD_SET(sv[0], &rfds);
-	if (select(sv[0]+1, &rfds, NULL, NULL, NULL) < 0) {
+	fds.fd = sv[0];
+	fds.events = POLLIN;
+	fds.revents = 0;
+	if (poll(&fds, 1, -1) <= 0) {
 		ERROR("Error getting go-ahead from server: %s", strerror(errno));
 		goto out;
 	}
@@ -385,9 +387,10 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path,
 		SYSERROR("%s: Error sending pid over SCM_CREDENTIAL", __func__);
 		goto out;
 	}
-	FD_ZERO(&rfds);
-	FD_SET(sv[0], &rfds);
-	if (select(sv[0]+1, &rfds, NULL, NULL, NULL) < 0) {
+	fds.fd = sv[0];
+	fds.events = POLLIN;
+	fds.revents = 0;
+	if (poll(&fds, 1, -1) <= 0) {
 		ERROR("Error getting go-ahead from server: %s", strerror(errno));
 		goto out;
 	}
@@ -399,9 +402,10 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path,
 		SYSERROR("%s: Error sending pid over SCM_CREDENTIAL", __func__);
 		goto out;
 	}
-	FD_ZERO(&rfds);
-	FD_SET(sv[0], &rfds);
-	if (select(sv[0]+1, &rfds, NULL, NULL, NULL) < 0) {
+	fds.fd = sv[0];
+	fds.events = POLLIN;
+	fds.revents = 0;
+	if (poll(&fds, 1, -1) <= 0) {
 		ERROR("Error getting go-ahead from server: %s", strerror(errno));
 		goto out;
 	}
@@ -1214,7 +1218,7 @@ static bool cgm_unfreeze(void *hdata)
 static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool do_devices)
 {
 	struct cgm_data *d = hdata;
-	struct lxc_list *iterator;
+	struct lxc_list *iterator, *sorted_cgroup_settings, *next;
 	struct lxc_cgroup *cg;
 	bool ret = false;
 
@@ -1229,7 +1233,12 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 		return false;
 	}
 
-	lxc_list_for_each(iterator, cgroup_settings) {
+	sorted_cgroup_settings = sort_cgroup_settings(cgroup_settings);
+	if (!sorted_cgroup_settings) {
+		return false;
+	}
+
+	lxc_list_for_each(iterator, sorted_cgroup_settings) {
 		char controller[100], *p;
 		cg = iterator->elem;
 		if (do_devices != !strncmp("devices", cg->subsystem, 7))
@@ -1257,6 +1266,11 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 	ret = true;
 	INFO("cgroup limits have been setup");
 out:
+	lxc_list_for_each_safe(iterator, sorted_cgroup_settings, next) {
+		lxc_list_del(iterator);
+		free(iterator);
+	}
+	free(sorted_cgroup_settings);
 	cgm_dbus_disconnect();
 	return ret;
 }

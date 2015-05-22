@@ -2210,6 +2210,11 @@ static int overlayfs_mount(struct bdev *bdev)
 		return -22;
 	}
 
+	if (mkdir_p(work, 0755) < 0 && errno != EEXIST) {
+		free(mntdata);
+		return -22;
+	}
+
 	// TODO We should check whether bdev->src is a blockdev, and if so
 	// but for now, only support overlays of a basic directory
 

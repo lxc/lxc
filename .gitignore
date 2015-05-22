@@ -150,3 +150,5 @@ patches
 *.orig
 *.rej
 tags
+
+doc/api/doxygen_sqlite3.db

@@ -27,7 +27,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <time.h>
+#include <pthread.h>
 
 #define __USE_GNU /* for *_CLOEXEC */
 
@@ -42,27 +42,13 @@
 #define LXC_LOG_BUFFER_SIZE	512
 #define LXC_LOG_DATEFOMAT_SIZE  14
 
-#ifdef HAVE_TLS
-__thread int lxc_log_fd = -1;
-static __thread char log_prefix[LXC_LOG_PREFIX_SIZE] = "lxc";
-static __thread char *log_fname = NULL;
-/* command line values for logfile or logpriority should always override
- * values from the configuration file or defaults
- */
-static __thread int lxc_logfile_specified = 0;
-static __thread int lxc_loglevel_specified = 0;
-static __thread int lxc_quiet_specified = 0;
-#else
 int lxc_log_fd = -1;
+int lxc_quiet_specified;
+int lxc_log_use_global_fd;
+static int lxc_loglevel_specified;
+
 static char log_prefix[LXC_LOG_PREFIX_SIZE] = "lxc";
 static char *log_fname = NULL;
-static int lxc_quiet_specified = 0;
-/* command line values for logfile or logpriority should always override
- * values from the configuration file or defaults
- */
-static int lxc_logfile_specified = 0;
-static int lxc_loglevel_specified = 0;
-#endif
 
 lxc_log_define(lxc_log, lxc);
 
@@ -89,8 +75,17 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	const struct tm *t;
 	int n;
 	int ms;
+	int fd_to_use = -1;
 
-	if (lxc_log_fd == -1)
+#ifndef NO_LXC_CONF
+	if (!lxc_log_use_global_fd && current_config)
+		fd_to_use = current_config->logfd;
+#endif
+
+	if (fd_to_use == -1)
+		fd_to_use = lxc_log_fd;
+
+	if (fd_to_use == -1)
 		return 0;
 
 	t = localtime(&event->timestamp.tv_sec);
@@ -117,7 +112,7 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 
 	buffer[n] = '\n';
 
-	return write(lxc_log_fd, buffer, n + 1);
+	return write(fd_to_use, buffer, n + 1);
 }
 
 static struct lxc_log_appender log_appender_stderr = {
@@ -142,7 +137,7 @@ static struct lxc_log_category log_root = {
 struct lxc_log_category lxc_log_category_lxc = {
 	.name		= "lxc",
 	.priority	= LXC_LOG_PRIORITY_ERROR,
-	.appender	= &log_appender_stderr,
+	.appender	= &log_appender_logfile,
 	.parent		= &log_root
 };
 
@@ -311,6 +306,11 @@ static int _lxc_log_set_file(const char *name, const char *lxcpath, int create_d
 	return ret;
 }
 
+/*
+ * lxc_log_init:
+ * Called from lxc front-end programs (like lxc-create, lxc-start) to
+ * initalize the log defaults.
+ */
 extern int lxc_log_init(const char *name, const char *file,
 			const char *priority, const char *prefix, int quiet,
 			const char *lxcpath)
@@ -326,10 +326,12 @@ extern int lxc_log_init(const char *name, const char *file,
 	if (priority)
 		lxc_priority = lxc_log_priority_to_int(priority);
 
-	lxc_log_category_lxc.priority = lxc_priority;
+	if (!lxc_loglevel_specified) {
+		lxc_log_category_lxc.priority = lxc_priority;
+		lxc_loglevel_specified = 1;
+	}
 
 	if (!lxc_quiet_specified) {
-		lxc_log_category_lxc.appender = &log_appender_logfile;
 		if (!quiet)
 			lxc_log_category_lxc.appender->next = &log_appender_stderr;
 	}
@@ -341,6 +343,7 @@ extern int lxc_log_init(const char *name, const char *file,
 		if (strcmp(file, "none") == 0)
 			return 0;
 		ret = __lxc_log_set_file(file, 1);
+		lxc_log_use_global_fd = 1;
 	} else {
 		/* if no name was specified, there nothing to do */
 		if (!name)
@@ -391,15 +394,13 @@ extern void lxc_log_close(void)
  * happens after processing command line arguments, which override the .conf
  * settings.  So only set the level if previously unset.
  */
-extern int lxc_log_set_level(int level)
+extern int lxc_log_set_level(int *dest, int level)
 {
-	if (lxc_loglevel_specified)
-		return 0;
 	if (level < 0 || level >= LXC_LOG_PRIORITY_NOTSET) {
 		ERROR("invalid log priority %d", level);
 		return -1;
 	}
-	lxc_log_category_lxc.priority = level;
+	*dest = level;
 	return 0;
 }
 
@@ -421,11 +422,23 @@ extern bool lxc_log_has_valid_level(void)
  * happens after processing command line arguments, which override the .conf
  * settings.  So only set the file if previously unset.
  */
-extern int lxc_log_set_file(const char *fname)
+extern int lxc_log_set_file(int *fd, const char *fname)
 {
-	if (lxc_logfile_specified)
-		return 0;
-	return __lxc_log_set_file(fname, 0);
+	if (*fd != -1) {
+		close(*fd);
+		*fd = -1;
+	}
+
+	if (build_dir(fname)) {
+		ERROR("failed to create dir for log file \"%s\" : %s", fname,
+				strerror(errno));
+		return -1;
+	}
+
+	*fd = log_open(fname);
+	if (*fd == -1)
+		return -errno;
+	return 0;
 }
 
 extern const char *lxc_log_get_file(void)
@@ -446,11 +459,6 @@ extern const char *lxc_log_get_prefix(void)
 
 extern void lxc_log_options_no_override()
 {
-	if (lxc_log_get_file())
-		lxc_logfile_specified = 1;
-
-	if (lxc_log_get_level() != LXC_LOG_PRIORITY_NOTSET)
-		lxc_loglevel_specified = 1;
-
 	lxc_quiet_specified = 1;
+	lxc_loglevel_specified = 1;
 }
