@@ -74,6 +74,7 @@ struct lxc_handler {
 	const char *lxcpath;
 	void *cgroup_data;
 	int ttysock[2]; // socketpair for child->parent tty fd passing
+	bool backgrounded; // indicates whether should we close std{in,out,err} on start
 };
 
 
@@ -85,7 +86,7 @@ extern void lxc_fini(const char *name, struct lxc_handler *handler);
 
 extern int lxc_check_inherited(struct lxc_conf *conf, bool closeall, int fd_to_ignore);
 int __lxc_start(const char *, struct lxc_conf *, struct lxc_operations *,
-		void *, const char *);
+		void *, const char *, bool);
 
 extern void resolve_clone_flags(struct lxc_handler *handler);
 #endif

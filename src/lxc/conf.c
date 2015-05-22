@@ -178,6 +178,17 @@ struct caps_opt {
 	int value;
 };
 
+/*
+ * The lxc_conf of the container currently being worked on in an
+ * API call
+ * This is used in the error calls
+ */
+#ifdef HAVE_TLS
+__thread struct lxc_conf *current_config;
+#else
+struct lxc_conf *current_config;
+#endif
+
 /* Declare this here, since we don't want to reshuffle the whole file. */
 static int in_caplist(int cap, struct lxc_list *caps);
 
@@ -2573,6 +2584,7 @@ struct lxc_conf *lxc_conf_init(void)
 		return NULL;
 	}
 	new->kmsg = 0;
+	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
@@ -4239,6 +4251,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 {
 	if (!conf)
 		return;
+	if (current_config == conf)
+		current_config = NULL;
 	free(conf->console.log_path);
 	free(conf->console.path);
 	free(conf->rootfs.mount);
@@ -4246,6 +4260,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.path);
 	free(conf->rootfs.pivot);
 	free(conf->logfile);
+	if (conf->logfd != -1)
+		close(conf->logfd);
 	free(conf->utsname);
 	free(conf->ttydir);
 	free(conf->fstab);
@@ -4546,4 +4562,59 @@ void suggest_default_idmap(void)
 
 	free(gname);
 	free(uname);
+}
+
+static void free_cgroup_settings(struct lxc_list *result)
+{
+	struct lxc_list *iterator, *next;
+
+	lxc_list_for_each_safe(iterator, result, next) {
+		lxc_list_del(iterator);
+		free(iterator);
+	}
+	free(result);
+}
+
+/*
+ * Return the list of cgroup_settings sorted according to the following rules
+ * 1. Put memory.limit_in_bytes before memory.memsw.limit_in_bytes
+ */
+struct lxc_list *sort_cgroup_settings(struct lxc_list* cgroup_settings)
+{
+	struct lxc_list *result;
+	struct lxc_list *memsw_limit = NULL;
+	struct lxc_list *it = NULL;
+	struct lxc_cgroup *cg = NULL;
+	struct lxc_list *item = NULL;
+
+	result = malloc(sizeof(*result));
+	if (!result) {
+		ERROR("failed to allocate memory to sort cgroup settings");
+		return NULL;
+	}
+	lxc_list_init(result);
+
+	/*Iterate over the cgroup settings and copy them to the output list*/
+	lxc_list_for_each(it, cgroup_settings) {
+		item = malloc(sizeof(*item));
+		if (!item) {
+			ERROR("failed to allocate memory to sort cgroup settings");
+			free_cgroup_settings(result);
+			return NULL;
+		}
+		item->elem = it->elem;
+		cg = it->elem;
+		if (strcmp(cg->subsystem, "memory.memsw.limit_in_bytes") == 0) {
+			/* Store the memsw_limit location */
+			memsw_limit = item;
+		} else if (strcmp(cg->subsystem, "memory.limit_in_bytes") == 0 && memsw_limit != NULL) {
+			/* lxc.cgroup.memory.memsw.limit_in_bytes is found before 
+			 * lxc.cgroup.memory.limit_in_bytes, swap these two items */
+			item->elem = memsw_limit->elem;
+			memsw_limit->elem = it->elem;
+		}
+		lxc_list_add_tail(result, item);
+	}
+
+	return result;
 }
