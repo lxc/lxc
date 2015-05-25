@@ -325,16 +325,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               <option>lxc.network.macvlan.mode</option> specifies the
               mode the macvlan will use to communicate between
               different macvlan on the same upper device. The accepted
-              modes are <option>private</option>, the device never
-              communicates with any other device on the same upper_dev (default),
-              <option>vepa</option>, the new Virtual Ethernet Port
+              modes are <option>private</option>, <option>vepa</option>,
+              <option>bridge</option> and <option>passthru</option>.
+	      In <option>private</option> mode, the device never
+              communicates with any other device on the same upper_dev (default).
+              In <option>vepa</option> mode, the new Virtual Ethernet Port
               Aggregator (VEPA) mode, it assumes that the adjacent
               bridge returns all frames where both source and
               destination are local to the macvlan port, i.e. the
               bridge is set up as a reflective relay.  Broadcast
               frames coming in from the upper_dev get flooded to all
               macvlan interfaces in VEPA mode, local frames are not
-              delivered locally, or <option>bridge</option>, it
+              delivered locally. In <option>bridge</option> mode, it
               provides the behavior of a simple bridge between
               different macvlan interfaces on the same port. Frames
               from one interface to another one get delivered directly
@@ -343,7 +345,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               interface, but when they come back from a reflective
               relay, we don't deliver them again.  Since we know all
               the MAC addresses, the macvlan bridge mode does not
-              require learning or STP like the bridge module does.
+              require learning or STP like the bridge module does. In
+              <option>passthru</option> mode, all frames received by
+              the physical interface are forwarded to the macvlan
+              interface. Only one macvlan interface in <option>passthru</option>
+              mode is possible for one physical interface.
             </para>
 
             <para>

@@ -100,7 +100,7 @@ struct ifla_vlan {
 };
 
 struct ifla_macvlan {
-	int mode; /* private, vepa, bridge */
+	int mode; /* private, vepa, bridge, passthru */
 };
 
 union netdev_p {
