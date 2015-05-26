@@ -446,16 +446,18 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      <option>lxc.network.macvlan.mode</option> specifies the
 	      mode the macvlan will use to communicate between
 	      different macvlan on the same upper device. The accepted
-	      modes are <option>private</option>, the device never
-	      communicates with any other device on the same upper_dev (default),
-	      <option>vepa</option>, the new Virtual Ethernet Port
+              modes are <option>private</option>, <option>vepa</option>,
+              <option>bridge</option> and <option>passthru</option>.
+	      In <option>private</option> mode, the device never
+              communicates with any other device on the same upper_dev (default).
+              In <option>vepa</option> mode, the new Virtual Ethernet Port
 	      Aggregator (VEPA) mode, it assumes that the adjacent
 	      bridge returns all frames where both source and
 	      destination are local to the macvlan port, i.e. the
 	      bridge is set up as a reflective relay.  Broadcast
 	      frames coming in from the upper_dev get flooded to all
 	      macvlan interfaces in VEPA mode, local frames are not
-	      delivered locally, or <option>bridge</option>, it
+              delivered locally. In <option>bridge</option> mode, it
 	      provides the behavior of a simple bridge between
 	      different macvlan interfaces on the same port. Frames
 	      from one interface to another one get delivered directly
@@ -464,20 +466,26 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      interface, but when they come back from a reflective
 	      relay, we don't deliver them again.  Since we know all
 	      the MAC addresses, the macvlan bridge mode does not
-	      require learning or STP like the bridge module does.
+              require learning or STP like the bridge module does. In
+              <option>passthru</option> mode, all frames received by
+              the physical interface are forwarded to the macvlan
+              interface. Only one macvlan interface in <option>passthru</option>
+              mode is possible for one physical interface.
               -->
               <option>macvlan:</option> macvlan インターフェースは <option>lxc.network.link</option> により指定されるインターフェースとリンクし、コンテナに割り当てられます。
               <option>lxc.network.macvlan.mode</option> でモードを指定すると、その macvlan の指定を、同じ上位デバイスで異なる macvlan の間の通信をする時に使います。
-              受け入れられたモードが <option>private</option> であれば、デバイスは同じ上位デバイスの他のデバイスとの通信を行いません (デフォルト)。
-              新しい仮想イーサネットポート集約モード (Virtual Ethernet Port Aggregator (VEPA)) である <option>vepa</option> は、隣接したポートが、ソースとデスティネーションの両方が macvlan ポートに対してローカルであるフレームを全て返すと仮定します。
+              指定できるモードは <option>private</option>、<option>vepa</option>、<option>bridge</option>、<option>passthru</option> のいずれかです。
+              <option>private</option> モードの場合、デバイスは同じ上位デバイスの他のデバイスとの通信を行いません (デフォルト)。
+              新しい仮想イーサネットポート集約モード (Virtual Ethernet Port Aggregator (VEPA)) である <option>vepa</option> モードの場合、隣接したポートが、ソースとデスティネーションの両方が macvlan ポートに対してローカルであるフレームを全て返すと仮定します。
               すなわち、ブリッジが reflective relay として設定されているということです。
               上位デバイスから入ってくるブロードキャストフレームは、VEPA モードである全ての macvlan インターフェースに送りつけられます。
               ローカルのフレームはローカルには配送されません。
-              <option>bridge</option> の指定は、同じポートの異なる macvlan インターフェースの間のシンプルなブリッジとして動作します。
+              <option>bridge</option> モードの場合、同じポートの異なる macvlan インターフェースの間のシンプルなブリッジとして動作します。
               あるインターフェースから他のインターフェースへのフレームは、直接配送され、外部には送出されません。
               ブロードキャストフレームは、全ての他のブリッジと外部のインターフェースに対して送られます。
               しかし、reflective relay からフレームが返ってきたときは、再度それを配送することはしません。
               全ての MAC アドレスを知っているので、ブリッジモジュールのように、macvlan ブリッジモードは学習や STP の必要はありません。
+              <option>passthru</option> モードの場合、物理インターフェースで受け取った全てのフレームは macvlan インターフェースに転送されます。<option>passthru</option> モードの場合、ひとつの macvlan インターフェースだけが、ひとつの物理インターフェースに対して設定できます。
 	    </para>
 
 	    <para>
