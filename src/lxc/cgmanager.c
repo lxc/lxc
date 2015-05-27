@@ -1430,16 +1430,8 @@ static bool cgm_attach(const char *name, const char *lxcpath, pid_t pid)
 		return false;
 	}
 
-	check_supports_multiple_controllers(pid);
-
-	if (cgm_all_controllers_same)
-		slist = subsystems_inone;
-
 	for (i = 0; slist[i]; i++) {
-		if (slist == subsystems_inone)
-			cgroup = try_get_abs_cgroup(name, lxcpath, subsystems[0]);
-		else
-			cgroup = try_get_abs_cgroup(name, lxcpath, slist[i]);
+		cgroup = try_get_abs_cgroup(name, lxcpath, slist[i]);
 		if (!cgroup) {
 			ERROR("Failed to get cgroup for controller %s", slist[i]);
 			cgm_dbus_disconnect();
