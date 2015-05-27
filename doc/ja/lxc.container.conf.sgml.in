@@ -1923,6 +1923,21 @@ mknod errno 0
 	  </listitem>
 	</varlistentry>
       </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.destroy</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              A hook to be run when the container is destroyed.
+                -->
+              コンテナを破壊する際に実行されるフックです。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
     </refsect2>
 
     <refsect2>
