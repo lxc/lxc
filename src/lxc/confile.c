@@ -192,6 +192,63 @@ static const struct signame signames[] = {
 	{ SIGTSTP,   "TSTP" },
 	{ SIGTTIN,   "TTIN" },
 	{ SIGTTOU,   "TTOU" },
+#ifdef SIGTRAP
+	{ SIGTRAP,   "TRAP" },
+#endif
+#ifdef SIGIOT
+	{ SIGIOT,    "IOT" },
+#endif
+#ifdef SIGEMT
+	{ SIGEMT,    "EMT" },
+#endif
+#ifdef SIGBUS
+	{ SIGBUS,    "BUS" },
+#endif
+#ifdef SIGSTKFLT
+	{ SIGSTKFLT, "STKFLT" },
+#endif
+#ifdef SIGCLD
+	{ SIGCLD,    "CLD" },
+#endif
+#ifdef SIGURG
+	{ SIGURG,    "URG" },
+#endif
+#ifdef SIGXCPU
+	{ SIGXCPU,   "XCPU" },
+#endif
+#ifdef SIGXFSZ
+	{ SIGXFSZ,   "XFSZ" },
+#endif
+#ifdef SIGVTALRM
+	{ SIGVTALRM, "VTALRM" },
+#endif
+#ifdef SIGPROF
+	{ SIGPROF,   "PROF" },
+#endif
+#ifdef SIGWINCH
+	{ SIGWINCH,  "WINCH" },
+#endif
+#ifdef SIGIO
+	{ SIGIO,     "IO" },
+#endif
+#ifdef SIGPOLL
+	{ SIGPOLL,   "POLL" },
+#endif
+#ifdef SIGINFO
+	{ SIGINFO,   "INFO" },
+#endif
+#ifdef SIGLOST
+	{ SIGLOST,   "LOST" },
+#endif
+#ifdef SIGPWR
+	{ SIGPWR,    "PWR" },
+#endif
+#ifdef SIGUNUSED
+	{ SIGUNUSED, "UNUSED" },
+#endif
+#ifdef SIGSYS
+	{ SIGSYS,    "SYS" },
+#endif
 };
 
 static const size_t config_size = sizeof(config)/sizeof(struct lxc_config_t);
