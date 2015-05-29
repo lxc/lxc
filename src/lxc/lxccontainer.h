@@ -286,17 +286,6 @@ struct lxc_container {
 	bool (*destroy)(struct lxc_container *c);
 
 	/*!
-	 * \brief Delete the container and all its snapshots.
-	 *
-	 * \param c Container.
-	 *
-	 * \return \c true on success, else \c false.
-	 *
-	 * \note Container must be stopped.
-	 */
-	bool (*destroy_with_snapshots)(struct lxc_container *c);
-
-	/*!
 	 * \brief Save configuaration to a file.
 	 *
 	 * \param c Container.
@@ -718,15 +707,6 @@ struct lxc_container {
 	bool (*snapshot_destroy)(struct lxc_container *c, const char *snapname);
 
 	/*!
-	 * \brief Destroy all the container's snapshot.
-	 *
-	 * \param c Container.
-	 *
-	 * \return \c true on success, else \c false.
-	 */
-	bool (*snapshot_destroy_all)(struct lxc_container *c);
-
-	/*!
 	 * \brief Determine if the caller may control the container.
 	 *
 	 * \param c Container.
@@ -760,6 +740,8 @@ struct lxc_container {
 	 * \return \c true on success, else \c false.
 	 */
 	bool (*remove_device_node)(struct lxc_container *c, const char *src_path, const char *dest_path);
+
+	/* Post LXC-1.0 additions */
 
 	/*!
 	 * \brief Add specified netdev to the container.
@@ -804,6 +786,28 @@ struct lxc_container {
 	 *
 	 */
 	bool (*restore)(struct lxc_container *c, char *directory, bool verbose);
+
+	/*!
+	 * \brief Delete the container and all its snapshots.
+	 *
+	 * \param c Container.
+	 *
+	 * \return \c true on success, else \c false.
+	 *
+	 * \note Container must be stopped.
+	 */
+	bool (*destroy_with_snapshots)(struct lxc_container *c);
+
+	/*!
+	 * \brief Destroy all the container's snapshot.
+	 *
+	 * \param c Container.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
+	bool (*snapshot_destroy_all)(struct lxc_container *c);
+
+	/* Post LXC-1.1 additions */
 };
 
 /*!
