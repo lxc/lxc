@@ -2194,7 +2194,7 @@ static int overlayfs_mount(struct bdev *bdev)
 	strcpy(dup, bdev->src);
 	if (!(lower = strchr(dup, ':')))
 		return -22;
-	if (!(upper = strchr(++lower, ':')))
+	if (!(upper = strrchr(++lower, ':')))
 		return -22;
 	*upper = '\0';
 	upper++;
