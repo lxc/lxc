@@ -106,6 +106,12 @@ static char **get_groupnames(void)
 	struct group *gr;
 
 	ngroups = getgroups(0, NULL);
+
+  if (ngroups == -1) {
+    fprintf(stderr, "Failed to get number of groups user belongs to\n");
+    return NULL;
+  }
+
 	group_ids = (gid_t *)malloc(sizeof(gid_t)*ngroups);
 	ret = getgroups(ngroups, group_ids);
 
@@ -139,7 +145,7 @@ static char **get_groupnames(void)
 				free(group_names[j]);
 			}
 			free(group_names);
-			return NULL;	
+			return NULL;
 		}
 	}
 
@@ -156,12 +162,12 @@ static char **get_groupnames(void)
  	struct alloted_s *next;
  };
 
-static struct alloted_s *append_alloted(struct alloted_s **head, char *name, int n) 
+static struct alloted_s *append_alloted(struct alloted_s **head, char *name, int n)
 {
 	struct alloted_s *cur, *al;
 
 	if (head == NULL || name == NULL) {
-	// sanity check. parameters should not be null
+    // sanity check. parameters should not be null
 		return NULL;
 	}
 
@@ -242,14 +248,16 @@ static int get_alloted(char *me, char *intype, char *link, struct alloted_s **al
 		if (strcmp(link, br) != 0)
 			continue;
 
+    /* found the user with the appropriate settings, therefore finish the search.
+     * what to do if there are more than one applicable lines? not specified in the docs.
+     * since getline is implemented with realloc, we don't need to free line until exiting func.
+     */
 		append_alloted(alloted, me, n);
 		count += n;
-		break; // found the user with the appropriate settings, therefore finish the search.
-		// what to do if there are more than one applicable lines? not specified in the docs.
-		// since getline is implemented with realloc, we don't need to free line until exiting func.
+		break;
 	}
 
-    // now parse any possible groups specified
+  // now parse any possible groups specified
 	groups = get_groupnames();
 	if (groups != NULL) {
 
@@ -302,7 +310,7 @@ static char *get_eow(char *s, char *e)
 static char *find_line(char *p, char *e, char *u, char *t, char *l)
 {
 	char *p1, *p2, *ret;
-	
+
 	while (p<e  && (p1 = get_eol(p, e)) < e) {
 		ret = p;
 		if (*p == '#')
@@ -576,7 +584,7 @@ static bool get_nic_if_avail(int fd, struct alloted_s *names, int pid, char *int
 		owner = NULL;
 		for (n=names; n!=NULL; n=n->next) {
 			count = count_entries(buf, len, n->name, intype, br);
- 		
+
 			if (count >= n->allowed)
 				continue;
 
