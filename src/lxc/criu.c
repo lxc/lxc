@@ -527,6 +527,9 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 
 				ret = fscanf(f, "%d", (int*) &handler->pid);
 				fclose(f);
+				if (unlink(pidfile) < 0 && errno != ENOENT)
+					SYSERROR("unlinking pidfile failed");
+
 				if (ret != 1) {
 					ERROR("reading restore pid failed");
 					goto out_fini_handler;
@@ -557,6 +560,8 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 
 out_fini_handler:
 	lxc_fini(c->name, handler);
+	if (unlink(pidfile) < 0 && errno != ENOENT)
+		SYSERROR("unlinking pidfile failed");
 
 out:
 	if (pipe >= 0) {
