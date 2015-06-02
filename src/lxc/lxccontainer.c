@@ -722,6 +722,12 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			return false;
 		}
 		lxc_check_inherited(conf, true, -1);
+		close(0);
+		close(1);
+		close(2);
+		open("/dev/zero", O_RDONLY);
+		open("/dev/null", O_RDWR);
+		open("/dev/null", O_RDWR);
 		setsid();
 	} else {
 		if (!am_single_threaded()) {
