@@ -281,7 +281,7 @@ static int get_alloted(char *me, char *intype, char *link, struct alloted_s **al
 		 * what to do if there are more than one applicable lines? not specified in the docs.
 		 * since getline is implemented with realloc, we don't need to free line until exiting func.
 		 */
-		append_alloted(alloted, me, n);
+		append_alloted(alloted, name, n);
 		count += n;
 		break;
 	}
