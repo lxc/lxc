@@ -102,15 +102,15 @@ static char **get_groupnames(void)
 	int ngroups;
 	gid_t *group_ids;
 	int ret, i, j;
-	char **group_names;
+	char **groupnames;
 	struct group *gr;
 
 	ngroups = getgroups(0, NULL);
 
-  if (ngroups == -1) {
-    fprintf(stderr, "Failed to get number of groups user belongs to\n");
-    return NULL;
-  }
+	if (ngroups == -1) {
+		fprintf(stderr, "Failed to get number of groups user belongs to\n");
+		return NULL;
+	}
 
 	group_ids = (gid_t *)malloc(sizeof(gid_t)*ngroups);
 	ret = getgroups(ngroups, group_ids);
@@ -121,7 +121,7 @@ static char **get_groupnames(void)
 		return NULL;
 	}
 
-	group_names = (char **)malloc(sizeof(char *)*(ngroups+1));
+	groupnames = (char **)malloc(sizeof(char *)*(ngroups+1));
 
 	for (i=0; i<ngroups; i++ ) {
 		gr = getgrgid(group_ids[i]);
@@ -130,44 +130,62 @@ static char **get_groupnames(void)
 			fprintf(stderr, "Failed to get group name\n");
 			free(group_ids);
 			for (j=0; j<i; j++) {
-				free(group_names[j]);
+				free(groupnames[j]);
 			}
-			free(group_names);
+			free(groupnames);
 			return NULL;
 		}
 
-		group_names[i] = strdup(gr->gr_name);
+		groupnames[i] = strdup(gr->gr_name);
 
-		if (group_names[i] == NULL) {
+		if (groupnames[i] == NULL) {
 			fprintf(stderr, "Failed to copy group name: %s", gr->gr_name);
 			free(group_ids);
 			for (j=0; j<i; j++) {
-				free(group_names[j]);
+				free(groupnames[j]);
 			}
-			free(group_names);
+			free(groupnames);
 			return NULL;
 		}
 	}
 
-	group_names[ngroups] = NULL;
+	groupnames[ngroups] = NULL;
 
 	free(group_ids);
 
-	return group_names;
+	return groupnames;
 }
 
- struct alloted_s {
- 	char *name;
- 	int allowed;
- 	struct alloted_s *next;
- };
+static void free_groupnames(char **groupnames)
+{
+	char **group;
+	for (group=groupnames; group != NULL; group++)
+		free(*group);
+	free(groupnames);
+}
+
+static bool name_is_in_groupnames(char *name, char **groupnames)
+{
+	while (groupnames != NULL) {
+		if (strcmp(name, *groupnames) == 0)
+			return true;
+		groupnames++;
+	}
+	return false;
+}
+
+struct alloted_s {
+	char *name;
+	int allowed;
+	struct alloted_s *next;
+};
 
 static struct alloted_s *append_alloted(struct alloted_s **head, char *name, int n)
 {
 	struct alloted_s *cur, *al;
 
 	if (head == NULL || name == NULL) {
-    // sanity check. parameters should not be null
+	// sanity check. parameters should not be null
 		return NULL;
 	}
 
@@ -216,6 +234,8 @@ static void free_alloted(struct alloted_s **head)
 /* The configuration file consists of lines of the form:
  *
  * user type bridge count
+ * or
+ * @group type bridge count
  *
  * Return the count entry for the calling user if there is one.  Else
  * return -1.
@@ -224,11 +244,10 @@ static int get_alloted(char *me, char *intype, char *link, struct alloted_s **al
 {
 	FILE *fin = fopen(LXC_USERNIC_CONF, "r");
 	char *line = NULL;
-	char user[100], type[100], br[100];
+	char name[100], type[100], br[100];
 	size_t len = 0;
 	int n, ret, count = 0;
 	char **groups;
-	char **g;
 
 	if (!fin) {
 		fprintf(stderr, "Failed to open %s: %s\n", LXC_USERNIC_CONF,
@@ -236,58 +255,38 @@ static int get_alloted(char *me, char *intype, char *link, struct alloted_s **al
 		return -1;
 	}
 
+	groups = get_groupnames();
 	while ((getline(&line, &len, fin)) != -1) {
-		ret = sscanf(line, "%99[^ \t] %99[^ \t] %99[^ \t] %d", user, type, br, &n);
+		ret = sscanf(line, "%99[^ \t] %99[^ \t] %99[^ \t] %d", name, type, br, &n);
 
 		if (ret != 4)
 			continue;
-		if (strcmp(user, me) != 0)
+
+		if (strlen(name) == 0)
 			continue;
+
+		if (strcmp(name, me) != 0)
+		{
+			if (name[0] != '@')
+				continue;
+			if (!name_is_in_groupnames(name+1, groups))
+				continue;
+		}
 		if (strcmp(type, intype) != 0)
 			continue;
 		if (strcmp(link, br) != 0)
 			continue;
 
-    /* found the user with the appropriate settings, therefore finish the search.
-     * what to do if there are more than one applicable lines? not specified in the docs.
-     * since getline is implemented with realloc, we don't need to free line until exiting func.
-     */
+		/* found the user or group with the appropriate settings, therefore finish the search.
+		 * what to do if there are more than one applicable lines? not specified in the docs.
+		 * since getline is implemented with realloc, we don't need to free line until exiting func.
+		 */
 		append_alloted(alloted, me, n);
 		count += n;
 		break;
 	}
 
-  // now parse any possible groups specified
-	groups = get_groupnames();
-	if (groups != NULL) {
-
-		fseek(fin, 0, SEEK_SET);
-		while ((getline(&line, &len, fin)) != -1) {
-			ret = sscanf(line, "%99[^ \t] %99[^ \t] %99[^ \t] %d", user, type, br, &n);
-
-			if (ret != 4)
-				continue;
-			if (user[0] != '@')
-				continue;
-			if (strcmp(type, intype) != 0)
-				continue;
-			if (strcmp(link, br) != 0)
-				continue;
-
-			for (g=groups; *g!=NULL; g++) {
-				if (strcmp(user+1, *g) == 0) {
-					append_alloted(alloted, user, n);
-					count += n;
-					break;
-				}
-			}
-		}
-
-		for (g=groups; *g!=NULL; g++)
-			free(*g);
-		free(groups);
-	}
-
+	free_groupnames(groups);
 	fclose(fin);
 	free(line);
 	return count;
