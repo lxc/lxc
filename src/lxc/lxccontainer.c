@@ -2160,11 +2160,12 @@ static bool container_destroy(struct lxc_container *c)
 {
 	bool bret = false;
 	int ret;
-	struct lxc_conf *conf = c->lxc_conf;
+	struct lxc_conf *conf;
 
 	if (!c || !do_lxcapi_is_defined(c))
 		return false;
 
+	conf = c->lxc_conf;
 	if (container_disk_lock(c))
 		return false;
 
@@ -2174,7 +2175,7 @@ static bool container_destroy(struct lxc_container *c)
 		goto out;
 	}
 
-	if (!lxc_list_empty(&conf->hooks[LXCHOOK_DESTROY])) {
+	if (conf && !lxc_list_empty(&conf->hooks[LXCHOOK_DESTROY])) {
 		/* Start of environment variable setup for hooks */
 		if (setenv("LXC_NAME", c->name, 1)) {
 			SYSERROR("failed to set environment variable for container name");
