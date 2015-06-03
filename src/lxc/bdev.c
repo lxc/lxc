@@ -63,6 +63,14 @@
 #define LO_FLAGS_AUTOCLEAR 4
 #endif
 
+#ifndef MS_REC
+#define MS_REC 16384
+#endif
+
+#ifndef MS_SLAVE
+#define MS_SLAVE (1<<19)
+#endif
+
 #define DEFAULT_FS_SIZE 1073741824
 #define DEFAULT_FSTYPE "ext3"
 
