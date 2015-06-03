@@ -185,7 +185,7 @@ static struct alloted_s *append_alloted(struct alloted_s **head, char *name, int
 	struct alloted_s *cur, *al;
 
 	if (head == NULL || name == NULL) {
-	// sanity check. parameters should not be null
+		// sanity check. parameters should not be null
 		return NULL;
 	}
 
