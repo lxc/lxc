@@ -818,6 +818,7 @@ out:
 	return pids_len;
 }
 
+#if HAVE_CGMANAGER_LIST_CONTROLLERS
 static bool lxc_list_controllers(char ***list)
 {
 	if (!cgm_dbus_connect()) {
@@ -836,6 +837,12 @@ static bool lxc_list_controllers(char ***list)
 	cgm_dbus_disconnect();
 	return true;
 }
+#else
+static bool lxc_list_controllers(char ***list)
+{
+	return false;
+}
+#endif
 
 static inline void free_abs_cgroup(char *cgroup)
 {

@@ -284,6 +284,17 @@ else
 	AC_MSG_RESULT([no])
 fi
 
+AC_MSG_CHECKING(for cgmanager_list_controllers)
+save_LIBS=$LIBS
+AC_SEARCH_LIBS([cgmanager_list_controllers_sync], [cgmanager], [have_list_controllers=yes], [have_list_controllers=no], [-lnih -lnih-dbus -ldbus-1])
+LIBS=$save_LIBS
+if test "x$have_list_controllers" = "xyes"; then
+	AC_DEFINE([HAVE_CGMANAGER_LIST_CONTROLLERS], 1, [Have cgmanager_list_controllers])
+	AC_MSG_RESULT([yes])
+else
+	AC_MSG_RESULT([no])
+fi
+
 # Check for static libcap, make sure the function checked for differs from the
 # the one checked below so the cache doesn't give a wrong answer
 OLD_CFLAGS="$CFLAGS"
