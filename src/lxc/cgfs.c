@@ -55,6 +55,10 @@
 #include <mntent.h>
 #endif
 
+#ifndef MS_RELATIME
+#define MS_RELATIME (1<<21)
+#endif
+
 struct cgroup_hierarchy;
 struct cgroup_meta_data;
 struct cgroup_mount_point;
