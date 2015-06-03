@@ -223,13 +223,15 @@ static bool criu_version_ok()
 
 	if (pid == 0) {
 		char *args[] = { "criu", "--version", NULL };
+		char *path;
 		close(pipes[0]);
 
 		close(STDERR_FILENO);
 		if (dup2(pipes[1], STDOUT_FILENO) < 0)
 			exit(1);
 
-		execv("/usr/local/sbin/criu", args);
+		path = on_path("criu", NULL);
+		execv(path, args);
 		exit(1);
 	} else {
 		FILE *f;
