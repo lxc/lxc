@@ -268,6 +268,18 @@ if test "x$have_abs_cgroups" = "xyes"; then
 else
 	AC_MSG_RESULT([no])
 fi
+
+AC_MSG_CHECKING(for cgmanager_list_controllers)
+save_LIBS=$LIBS
+AC_SEARCH_LIBS([cgmanager_list_controllers_sync], [cgmanager], [have_list_controllers=yes], [have_list_controllers=no], [-lnih -lnih-dbus -ldbus-1])
+LIBS=$save_LIBS
+if test "x$have_list_controllers" = "xyes"; then
+	AC_DEFINE([HAVE_CGMANAGER_LIST_CONTROLLERS], 1, [Have cgmanager_list_controllers])
+	AC_MSG_RESULT([yes])
+else
+	AC_MSG_RESULT([no])
+fi
+
 # Linux capabilities
 AC_ARG_ENABLE([capabilities],
 	[AC_HELP_STRING([--enable-capabilities], [enable kernel capabilities support [default=auto]])],
