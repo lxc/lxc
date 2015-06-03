@@ -31,6 +31,32 @@
 #include <stdint.h>
 #include <lxc/lxccontainer.h>
 
+
+/* define constants if the kernel/glibc headers don't define them */
+#ifndef MS_DIRSYNC
+#define MS_DIRSYNC  128
+#endif
+
+#ifndef MS_REC
+#define MS_REC 16384
+#endif
+
+#ifndef MNT_DETACH
+#define MNT_DETACH 2
+#endif
+
+#ifndef MS_SLAVE
+#define MS_SLAVE (1<<19)
+#endif
+
+#ifndef MS_RELATIME
+#define MS_RELATIME (1 << 21)
+#endif
+
+#ifndef MS_STRICTATIME
+#define MS_STRICTATIME (1 << 24)
+#endif
+
 struct bdev;
 
 struct bdev_ops {
