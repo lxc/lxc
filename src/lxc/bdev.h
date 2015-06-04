@@ -30,11 +30,12 @@
 #include "config.h"
 #include <stdint.h>
 #include <lxc/lxccontainer.h>
+#include <sys/mount.h>
 
 
 /* define constants if the kernel/glibc headers don't define them */
 #ifndef MS_DIRSYNC
-#define MS_DIRSYNC  128
+#define MS_DIRSYNC 128
 #endif
 
 #ifndef MS_REC
