@@ -1243,8 +1243,10 @@ static bool collect_subsytems(void)
 		}
 	}
 	fclose(f);
+	f = NULL;
 
 	free(line);
+	line = NULL;
 
 collected:
 	if (!nr_subsystems) {
@@ -1257,8 +1259,10 @@ collected:
 	if (!cgroup_use && errno != 0)
 		goto out_good;
 	if (cgroup_use) {
-		if (!verify_and_prune(cgroup_use))
-			goto out_free;
+		if (!verify_and_prune(cgroup_use)) {
+			free_subsystems();
+			return false;
+		}
 		subsystems_inone[0] = NIH_MUST( strdup(cgroup_use) );
 		cgm_all_controllers_same = false;
 	}
