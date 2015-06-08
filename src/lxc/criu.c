@@ -231,6 +231,9 @@ static bool criu_version_ok()
 			exit(1);
 
 		path = on_path("criu", NULL);
+		if (!path)
+			exit(1);
+
 		execv(path, args);
 		exit(1);
 	} else {
