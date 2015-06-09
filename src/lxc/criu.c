@@ -54,7 +54,6 @@ void exec_criu(struct criu_opts *opts)
 	struct lxc_list *it;
 
 	char buf[4096];
-	FILE *mnts = NULL;
 
 	/* The command line always looks like:
 	 * criu $(action) --tcp-established --file-locks --link-remap --force-irmap \
@@ -189,8 +188,6 @@ void exec_criu(struct criu_opts *opts)
 #undef DECLARE_ARG
 	execv(argv[0], argv);
 err:
-	if (mnts)
-		fclose(mnts);
 	for (i = 0; argv[i]; i++)
 		free(argv[i]);
 	free(argv);
