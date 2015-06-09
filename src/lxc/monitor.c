@@ -182,7 +182,7 @@ int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 int lxc_monitor_open(const char *lxcpath)
 {
 	struct sockaddr_un addr;
-	int fd,ret;
+	int fd,ret = 0;
 	int retry,backoff_ms[] = {10, 50, 100};
 	size_t len;
 
