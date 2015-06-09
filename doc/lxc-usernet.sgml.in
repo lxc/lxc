@@ -133,12 +133,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       </variablelist>
 
       <para>
-        Since a user can be be specified both by username as well as one or 
-        more usergroups, it is possible that several configuration lines 
-        enable that user to create network interfaces. In such cases, any 
-        interfaces create are counted towards the quotas of the user or group 
-        in the order in which they appear in the file. If the quota of one 
-        line is full, the rest will be parsed until one is found or the end of 
+        Since a user can be be specified both by username as well as one or
+        more usergroups, it is possible that several configuration lines
+        enable that user to create network interfaces. In such cases, any
+        interfaces create are counted towards the quotas of the user or group
+        in the order in which they appear in the file. If the quota of one
+        line is full, the rest will be parsed until one is found or the end of
         the file.
       </para>
     </refsect2>

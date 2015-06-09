@@ -97,31 +97,55 @@ static char *get_username(void)
 	return pwd->pw_name;
 }
 
+static void free_groupnames(char **groupnames)
+{
+	char **group;
+	for (group=groupnames; group != NULL; group++)
+		free(*group);
+	free(groupnames);
+}
+
 static char **get_groupnames(void)
 {
 	int ngroups;
 	gid_t *group_ids;
-	int ret, i, j;
+	int ret, i;
 	char **groupnames;
 	struct group *gr;
 
 	ngroups = getgroups(0, NULL);
 
 	if (ngroups == -1) {
-		fprintf(stderr, "Failed to get number of groups user belongs to\n");
+		fprintf(stderr, "Failed to get number of groups user belongs to: %s\n", strerror(errno));
+		return NULL;
+	}
+	if (ngroups == 0)
+		return NULL;
+
+	group_ids = (gid_t *)malloc(sizeof(gid_t)*ngroups);
+
+	if (group_ids == NULL) {
+		fprintf(stderr, "Out of memory while getting groups the user belongs to\n");
 		return NULL;
 	}
 
-	group_ids = (gid_t *)malloc(sizeof(gid_t)*ngroups);
 	ret = getgroups(ngroups, group_ids);
 
 	if (ret < 0) {
 		free(group_ids);
-		fprintf(stderr, "Failed to get process groups\n");
+		fprintf(stderr, "Failed to get process groups: %s\n", strerror(errno));
 		return NULL;
 	}
 
 	groupnames = (char **)malloc(sizeof(char *)*(ngroups+1));
+
+	if (groupnames == NULL) {
+		free(group_ids);
+		fprintf(stderr, "Out of memory while getting group names\n");
+		return NULL;
+	}
+
+	memset(groupnames, 0, sizeof(char *)*(ngroups+1));
 
 	for (i=0; i<ngroups; i++ ) {
 		gr = getgrgid(group_ids[i]);
@@ -129,10 +153,7 @@ static char **get_groupnames(void)
 		if (gr == NULL) {
 			fprintf(stderr, "Failed to get group name\n");
 			free(group_ids);
-			for (j=0; j<i; j++) {
-				free(groupnames[j]);
-			}
-			free(groupnames);
+			free_groupnames(groupnames);
 			return NULL;
 		}
 
@@ -141,27 +162,14 @@ static char **get_groupnames(void)
 		if (groupnames[i] == NULL) {
 			fprintf(stderr, "Failed to copy group name: %s", gr->gr_name);
 			free(group_ids);
-			for (j=0; j<i; j++) {
-				free(groupnames[j]);
-			}
-			free(groupnames);
+			free_groupnames(groupnames);
 			return NULL;
 		}
 	}
 
-	groupnames[ngroups] = NULL;
-
 	free(group_ids);
 
 	return groupnames;
-}
-
-static void free_groupnames(char **groupnames)
-{
-	char **group;
-	for (group=groupnames; group != NULL; group++)
-		free(*group);
-	free(groupnames);
 }
 
 static bool name_is_in_groupnames(char *name, char **groupnames)
@@ -197,6 +205,12 @@ static struct alloted_s *append_alloted(struct alloted_s **head, char *name, int
 	}
 
 	al->name = strdup(name);
+
+	if (al->name == NULL) {
+		free(al);
+		return NULL;
+	}
+
 	al->allowed = n;
 	al->next = NULL;
 
@@ -283,12 +297,13 @@ static int get_alloted(char *me, char *intype, char *link, struct alloted_s **al
 		 */
 		append_alloted(alloted, name, n);
 		count += n;
-		break;
 	}
 
 	free_groupnames(groups);
 	fclose(fin);
 	free(line);
+
+	// now return the total number of nics that this user can create
 	return count;
 }
 
