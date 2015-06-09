@@ -268,7 +268,6 @@ extern bool dir_exists(const char *path);
 
 #define FNV1A_64_INIT ((uint64_t)0xcbf29ce484222325ULL)
 uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval);
-#endif
 
 int detect_shared_rootfs(void);
 int detect_ramfs_rootfs(void);
@@ -281,3 +280,4 @@ int is_dir(const char *path);
 char *get_template_path(const char *t);
 int setproctitle(char *title);
 int mount_proc_if_needed(const char *rootfs);
+#endif /* __LXC_UTILS_H */
