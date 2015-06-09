@@ -279,11 +279,11 @@ static bool criu_version_ok()
 			goto version_error;
 
 version_match:
-		close(pipes[0]);
+		fclose(f);
 		return true;
 
 version_error:
-		close(pipes[0]);
+		fclose(f);
 		ERROR("must have criu " CRIU_VERSION " or greater to checkpoint/restore\n");
 		return false;
 	}
