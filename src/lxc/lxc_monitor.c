@@ -71,6 +71,18 @@ Options :\n\
 	.lxcpath_additional = -1,
 };
 
+static void close_fds(struct pollfd *fds, nfds_t nfds)
+{
+	nfds_t i;
+
+	if (nfds < 1)
+		return;
+
+	for (i = 0; i < nfds; ++i) {
+		close(fds[i].fd);
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	char *regexp;
@@ -78,7 +90,9 @@ int main(int argc, char *argv[])
 	regex_t preg;
 	struct pollfd *fds;
 	nfds_t nfds;
-	int len, rc, i;
+	int len, rc_main, rc_snp, i;
+
+	rc_main = 0;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		return 1;
@@ -119,24 +133,24 @@ int main(int argc, char *argv[])
 		ERROR("failed to allocate memory");
 		return 1;
 	}
-	rc = snprintf(regexp, len, "^%s$", my_args.name);
-	if (rc < 0 || rc >= len) {
+	rc_snp = snprintf(regexp, len, "^%s$", my_args.name);
+	if (rc_snp < 0 || rc_snp >= len) {
 		ERROR("Name too long");
-		free(regexp);
-		return 1;
+		rc_main = 1;
+		goto error;
 	}
 
 	if (regcomp(&preg, regexp, REG_NOSUB|REG_EXTENDED)) {
 		ERROR("failed to compile the regex '%s'", my_args.name);
-		free(regexp);
-		return 1;
+		rc_main = 1;
+		goto error;
 	}
-	free(regexp);
 
 	fds = malloc(my_args.lxcpath_cnt * sizeof(struct pollfd));
 	if (!fds) {
 		SYSERROR("out of memory");
-		return -1;
+		rc_main = -1;
+		goto error;
 	}
 
 	nfds = my_args.lxcpath_cnt;
@@ -147,8 +161,9 @@ int main(int argc, char *argv[])
 
 		fd = lxc_monitor_open(my_args.lxcpath[i]);
 		if (fd < 0) {
-			regfree(&preg);
-			return 1;
+			close_fds(fds, i);
+			rc_main = 1;
+			goto cleanup;
 		}
 		fds[i].fd = fd;
 		fds[i].events = POLLIN;
@@ -159,8 +174,8 @@ int main(int argc, char *argv[])
 
 	for (;;) {
 		if (lxc_monitor_read_fdset(fds, nfds, &msg, -1) < 0) {
-			regfree(&preg);
-			return 1;
+			rc_main = 1;
+			goto close_and_clean;
 		}
 
 		msg.name[sizeof(msg.name)-1] = '\0';
@@ -182,7 +197,15 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	regfree(&preg);
+close_and_clean:
+	close_fds(fds, nfds);
 
-	return 0;
+cleanup:
+	regfree(&preg);
+	free(fds);
+
+error:
+	free(regexp);
+
+	return rc_main;
 }
