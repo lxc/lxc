@@ -1281,7 +1281,8 @@ then
     fi
 fi
 
-cache_base=@LOCALSTATEDIR@/cache/lxc/fedora/$basearch
+# Allow the cache base to be set by environment variable
+cache_base=${LXC_CACHE_PATH:-"@LOCALSTATEDIR@/cache/lxc"}/fedora/$basearch
 
 # Let's do something better for the initial root password.
 # It's not perfect but it will defeat common scanning brute force

@@ -42,7 +42,8 @@ export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 #Configurations
 #distro=cooker
 hostarch=$(uname -m)
-cache_base=@LOCALSTATEDIR@/cache/lxc/openmandriva/$arch
+# Allow the cache base to be set by environment variable
+cache_base="${LXC_CACHE_PATH:-@LOCALSTATEDIR@/cache/lxc/openmandriva/$arch}"
 default_path=@LXCPATH@
 default_profile=default
 root_password=root
