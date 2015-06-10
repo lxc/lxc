@@ -280,4 +280,5 @@ int is_dir(const char *path);
 char *get_template_path(const char *t);
 int setproctitle(char *title);
 int mount_proc_if_needed(const char *rootfs);
+int null_stdfds(void);
 #endif /* __LXC_UTILS_H */

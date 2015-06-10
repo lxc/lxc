@@ -224,12 +224,8 @@ static int do_mkfs(const char *path, const char *fstype)
 
 	// If the file is not a block device, we don't want mkfs to ask
 	// us about whether to proceed.
-	close(0);
-	close(1);
-	close(2);
-	open("/dev/zero", O_RDONLY);
-	open("/dev/null", O_RDWR);
-	open("/dev/null", O_RDWR);
+	if (null_stdfds() < 0)
+		exit(1);
 	execlp("mkfs", "mkfs", "-t", fstype, path, NULL);
 	exit(1);
 }

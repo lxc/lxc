@@ -329,12 +329,8 @@ int lxc_monitord_spawn(const char *lxcpath)
 		exit(EXIT_FAILURE);
 	}
 	lxc_check_inherited(NULL, true, pipefd[1]);
-	close(0);
-	close(1);
-	close(2);
-	open("/dev/null", O_RDONLY);
-	open("/dev/null", O_RDWR);
-	open("/dev/null", O_RDWR);
+	if (null_stdfds() < 0)
+		exit(EXIT_FAILURE);
 	close(pipefd[0]);
 	sprintf(pipefd_str, "%d", pipefd[1]);
 	execvp(args[0], args);

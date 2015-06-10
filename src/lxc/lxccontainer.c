@@ -722,12 +722,10 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			return false;
 		}
 		lxc_check_inherited(conf, true, -1);
-		close(0);
-		close(1);
-		close(2);
-		open("/dev/zero", O_RDONLY);
-		open("/dev/null", O_RDWR);
-		open("/dev/null", O_RDWR);
+		if (null_stdfds() < 0) {
+			ERROR("failed to close fds");
+			return false;
+		}
 		setsid();
 	} else {
 		if (!am_single_threaded()) {
@@ -956,7 +954,7 @@ static char *lxcbasename(char *path)
 	return p;
 }
 
-static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet,
+static bool create_run_template(struct lxc_container *c, char *tpath, bool need_null_stdfds,
 				char *const argv[])
 {
 	pid_t pid;
@@ -978,13 +976,8 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool quiet
 		char **newargv;
 		struct lxc_conf *conf = c->lxc_conf;
 
-		if (quiet) {
-			close(0);
-			close(1);
-			close(2);
-			open("/dev/zero", O_RDONLY);
-			open("/dev/null", O_RDWR);
-			open("/dev/null", O_RDWR);
+		if (need_null_stdfds && null_stdfds() < 0) {
+			exit(1);
 		}
 
 		src = c->lxc_conf->rootfs.path;
