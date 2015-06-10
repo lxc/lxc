@@ -273,4 +273,5 @@ int detect_shared_rootfs(void);
 int detect_ramfs_rootfs(void);
 char *on_path(char *cmd);
 char *get_template_path(const char *t);
+int null_stdfds(void);
 #endif /* __LXC_UTILS_H */
