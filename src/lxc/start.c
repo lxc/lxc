@@ -762,14 +762,8 @@ static int do_start(void *data)
 
 	close(handler->sigfd);
 
-	if (handler->backgrounded) {
-		close(0);
-		close(1);
-		close(2);
-		open("/dev/zero", O_RDONLY);
-		open("/dev/null", O_RDWR);
-		open("/dev/null", O_RDWR);
-	}
+	if (handler->backgrounded && null_stdfds() < 0)
+		goto out_warn_father;
 
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
