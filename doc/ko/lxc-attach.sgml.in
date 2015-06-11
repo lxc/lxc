@@ -1,0 +1,443 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-attach</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-attach</refname>
+
+    <refpurpose>
+      <!--
+      start a process inside a running container.
+      -->
+      실행 중인 컨테이너 내에 프로세스를 실행
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-attach</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-a <replaceable>arch</replaceable></arg>
+      <arg choice="opt">-e</arg>
+      <arg choice="opt">-s <replaceable>namespaces</replaceable></arg>
+      <arg choice="opt">-R</arg>
+      <arg choice="opt">--keep-env</arg>
+      <arg choice="opt">--clear-env</arg>
+      <arg choice="opt">-- <replaceable>command</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <command>lxc-attach</command> runs the specified
+      <replaceable>command</replaceable> inside the container
+      specified by <replaceable>name</replaceable>. The container
+      has to be running already.
+      -->
+      <command>lxc-attach</command>는  <replaceable>name</replaceable>으로 지정한 컨테이너 내에  <replaceable>command</replaceable>를 실행한다.
+      해당 컨테이너는 실행중이어야 한다.
+    </para>
+    <para>
+      <!--
+      If no <replaceable>command</replaceable> is specified, the
+      current default shell of the user running
+      <command>lxc-attach</command> will be looked up inside the
+      container and executed. This will fail if no such user exists
+      inside the container or the container does not have a working
+      nsswitch mechanism.
+      -->
+      만약 <replaceable>command</replaceable>가 지정되어 있지 않다면, <command>lxc-attach</command>가 실행되어 있는 현재 쉘이 컨테이너 안에 있는지를 검사하고 실행한다.
+      만약 컨테이너 안에 사용자가 존재하지 않거나, nsswitch가 제대로 동작하지 않는 경우에는 이 명령이 실패하게 된다.
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+
+    <title><!-- Options -->옵션</title>
+
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-a, --arch <replaceable>arch</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the architecture which the kernel should appear to be
+	    running as to the command executed. This option will accept the
+	    same settings as the <option>lxc.arch</option> option in
+	    container configuration files, see
+	    <citerefentry>
+	      <refentrytitle><filename>lxc.conf</filename></refentrytitle>
+	      <manvolnum>5</manvolnum>
+	    </citerefentry>. By default, the current archictecture of the
+	    running container will be used.
+            -->
+            명령어를 실행하는 컨테이너의 아키텍처를 지정한다.
+            이 옵션은 컨테이너의 설정파일에서 지정한 <option>lxc.arch</option> 옵션과 같은 것만 사용할 수 있다.
+            <citerefentry>
+	      <refentrytitle><filename>lxc.conf</filename></refentrytitle>
+	      <manvolnum>5</manvolnum>
+	    </citerefentry>를 참조 바란다. 기본값은 실행 중인 컨테이너의 아키텍처이다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>
+	    -e, --elevated-privileges <replaceable>privileges</replaceable>
+	  </option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Do not drop privileges when running
+	    <replaceable>command</replaceable> inside the container. If
+	    this option is specified, the new process will
+	    <emphasis>not</emphasis> be added to the container's cgroup(s)
+	    and it will not drop its capabilities before executing.
+            -->
+            컨테이너 내부에서 <replaceable>command</replaceable>를 실행할 때 privilege를 제거하지 않는다.
+            만약 이 옵션이 지정되었다면, 새로운 프로세스는 컨테이너의 cgroup에 추가되지 <emphasis>않는다</emphasis>. 그리고 실행 전 capability도 제거하지 않는다.
+	  </para>
+          <para>
+	    <!--
+	    You may specify privileges, in case you do not want to elevate all of
+	    them, as a pipe-separated list, e.g.
+	    <replaceable>CGROUP|LSM</replaceable>. Allowed values are
+	    <replaceable>CGROUP</replaceable>, <replaceable>CAP</replaceable> and
+	    <replaceable>LSM</replaceable> representing cgroup, capabilities and
+	    restriction privileges respectively.
+	    -->
+            만약 모든 privilege를 얻고 싶지 않을 경우에는 <replaceable>CGROUP|LSM</replaceable>와 같이 파이프(|)로 구분된 리스트를 사용할 수 있다. 허용되는 값은 <replaceable>CGROUP</replaceable>、<replaceable>CAP</replaceable>、<replaceable>LSM</replaceable>이다. 각각 cgroup, capability, MAC label을 나타낸다.
+          </para>
+	  <para>
+            <!--
+	    <emphasis>Warning:</emphasis> This may leak privileges into the
+	    container if the command starts subprocesses that remain active
+	    after the main process that was attached is terminated. The
+	    (re-)starting of daemons inside the container is problematic,
+	    especially if the daemon starts a lot of subprocesses such as
+	    <command>cron</command> or <command>sshd</command>.
+	    <emphasis>Use with great care.</emphasis>
+            -->
+            <emphasis>경고 :</emphasis>
+            만약 명령어가 attach된 메인프로세스가 종료된 후에, 실행 상태로 남아있는 서브프로세스를 시작하려고 한다면, 컨테이너 내부로 privilege 누수가 발생할 수 있다.
+            컨테이너 내에서 데몬을 시작(또는 재시작)하는 것은 문제가 될 수 있다.            특히 만약 데몬이 많은 서브프로세스 를 실행하는 경우라면, 예를 들어  <command>cron</command>와 <command>sshd</command>와 같은 경우는 문제가 될 수 있다.
+            <emphasis>충분한 주의를 기울여서 사용하여야 한다.</emphasis>
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-s, --namespaces <replaceable>namespaces</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the namespaces to attach to, as a pipe-separated list,
+	    e.g. <replaceable>NETWORK|IPC</replaceable>. Allowed values are
+	    <replaceable>MOUNT</replaceable>, <replaceable>PID</replaceable>,
+	    <replaceable>UTSNAME</replaceable>, <replaceable>IPC</replaceable>,
+	    <replaceable>USER </replaceable> and
+	    <replaceable>NETWORK</replaceable>. This allows one to change
+	    the context of the process to e.g. the network namespace of the
+	    container while retaining the other namespaces as those of the
+	    host.
+            -->
+            붙일 네임스페이스를 지정한다. <replaceable>NETWORK|IPC</replaceable>와 같이 파이프(|)로 구분된 리스트를 사용할 수 있다. 허용되는 값은 <replaceable>MOUNT</replaceable>, <replaceable>PID</replaceable>, <replaceable>UTSNAME</replaceable>, <replaceable>IPC</replaceable>, <replaceable>USER </replaceable>, <replaceable>NETWORK</replaceable>이다. 이를 사용하여, 컨테이너의 네트워크 네임스페이스를 사용하면서도 다른 네임스페이스는 호스트의 것을 그대로 사용하는 등의 조작이 가능하다.
+	  </para>
+	  <para>
+            <!--
+	    <emphasis>Important:</emphasis> This option implies
+	    <option>&#045;e</option>.
+            -->
+            <emphasis>중요 :</emphasis> 이 옵션은 <option>-e</option> 옵션을 포함하고 있다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-R, --remount-sys-proc</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    When using <option>&#045;s</option> and the mount namespace is not
+	    included, this flag will cause <command>lxc-attach</command>
+	    to remount <replaceable>/proc</replaceable> and
+	    <replaceable>/sys</replaceable> to reflect the current other
+	    namespace contexts.
+            -->
+            <option>-s</option>를 사용하여 마운트 네임스페이스를 포함하지 않았을 때, 이 플래그는 <command>lxc-attach</command>가 <replaceable>/proc</replaceable>와 <replaceable>/sys</replaceable>를 remount 하게 만든다.
+            이는 현재와 다른 네임스페이스 컨텍스트를 반영시키기 위함이다.
+	  </para>
+	  <para>
+            <!--
+	    Please see the <emphasis>Notes</emphasis> section for more
+	    details.
+            -->
+            좀더 자세한 설명은 <emphasis>주의</emphasis>섹션을 참고하면 된다.
+	  </para>
+	  <para>
+            <!--
+	    This option will be ignored if one tries to attach to the
+	    mount namespace anyway.
+            -->
+            만약 마운트 네임스페이스에 attach하려고 한다면, 이 옵션은 무시된다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--keep-env</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Keep the current environment for attached programs. This is
+	    the current default behaviour (as of version 0.9), but is
+	    is likely to change in the future, since this may leak
+	    undesirable information into the container. If you rely on
+	    the environment being available for the attached program,
+	    please use this option to be future-proof. In addition to
+	    current environment variables, container=lxc will be set.
+            -->
+            현재의 환경변수를 attach될 프로그램에도 그대로 적용한다. 이것은 현재 기본 동작이지만 (버전 0.9에서), 향후에 충분히 바뀔 수도 있다. 왜냐하면, 이것은 컨테이너에게 바람직하지 않은 정보를 넘겨줄 수 있는 위험성이 있기 때문이다. 따라서 이 기능에 의존하고 있다면, 향후에도 이를 보장할 수 있도록 이 옵션을 사용하는 것이 좋다. 또한 현재 환경 변수와 더불어, container=lxc도 설정된다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--clear-env</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Clear the environment before attaching, so no undesired
+	    environment variables leak into the container. The variable
+	    container=lxc will be the only environment with which the
+	    attached program starts.
+            -->
+            attach하기 전에 모든 환경변수를 지운다.
+            이를 통해 바람직하지 않은 환경변수 누출을 막을 수 있다. container=lxc 만이 attach된 프로그램이 실행되기 전에 설정되는 유일한 환경변수이다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title><!-- Examples -->예제</title>
+      <para>
+        <!--
+        To spawn a new shell running inside an existing container, use
+        <programlisting>
+          lxc-attach -n container
+        </programlisting>
+        -->
+        존재하는 컨테이너의 내부에 새로운 쉘을 실행한다.
+        <programlisting>
+          lxc-attach -n container
+        </programlisting>
+      </para>
+      <para>
+        <!--
+        To restart the cron service of a running Debian container, use
+        <programlisting>
+          lxc-attach -n container &#045;&#045; /etc/init.d/cron restart
+        </programlisting>
+        -->
+        실행중인 Debian 컨테이너의 cron 서비스를 재시작한다.
+        <programlisting>
+          lxc-attach -n container -- /etc/init.d/cron restart
+        </programlisting>
+      </para>
+      <para>
+        <!--
+        To deactivate the network link eth1 of a running container that
+        does not have the NET_ADMIN capability, use either the
+        <option>-e</option> option to use increased capabilities,
+        assuming the <command>ip</command> tool is installed:
+        <programlisting>
+          lxc-attach -n container -e &#045;&#045; /sbin/ip link delete eth1
+        </programlisting>
+        -->
+        NET_ADMIN capability없이 실행중인 컨테이너의 네트워크 링크 eth1을 비활성화하였다. <option>-e</option> 옵션을 사용하여 capability를 높였고, <command>ip</command> 툴이 설치되어있다고 가정하였다.
+        <programlisting>
+          lxc-attach -n container -e -- /sbin/ip link delete eth1
+        </programlisting>
+      </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Compatibility -->호환성</title>
+    <para>
+      <!--
+      Attaching completely (including the pid and mount namespaces) to a
+      container requires a kernel of version 3.8 or higher, or a
+      patched kernel, please see the lxc website for
+      details. <command>lxc-attach</command> will fail in that case if
+      used with an unpatched kernel of version 3.7 and prior.
+      -->
+      (pid와 마운트 네임스페이스를 포함한) attach가 동작하기 위해서는 커널의 버전이 3.8 이상이거나 패치가 적용된 커널이어야 한다. 좀더 자세히 보려면 lxc 웹사이트를 참고하면 된다. <command>lxc-attach</command>는 패치되지 않은 커널 버전 3.7 이하면 실패된다.
+    </para>
+    <para>
+      <!--
+      Nevertheless, it will succeed on an unpatched kernel of version 3.0
+      or higher if the <option>-s</option> option is used to restrict the
+      namespaces that the process is to be attached to to one or more of
+      <replaceable>NETWORK</replaceable>, <replaceable>IPC</replaceable>
+      and <replaceable>UTSNAME</replaceable>.
+      -->
+      그러나 <option>-s</option>를 사용하여 <replaceable>NETWORK</replaceable>, <replaceable>IPC</replaceable>, <replaceable>UTSNAME</replaceable> 네임스페이스 들만 지정한다면, 패치되지 않은 커널 3.0 이상에서도 성공적으로 동작한다.
+    </para>
+    <para>
+      <!--
+      Attaching to user namespaces is supported by kernel 3.8 or higher
+      with enabling user namespace.
+      -->
+      사용자 네임스페이스에 attach하기 위해서는 커널 버전이 3.8 이상이어야 하고 사용자 네임스페이스가 활성화되어야 한다.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Notes -->주의</title>
+    <para>
+      <!--
+      The Linux <replaceable>/proc</replaceable> and
+      <replaceable>/sys</replaceable> filesystems contain information
+      about some quantities that are affected by namespaces, such as
+      the directories named after process ids in
+      <replaceable>/proc</replaceable> or the network interface information
+      in <replaceable>/sys/class/net</replaceable>. The namespace of the
+      process mounting the pseudo-filesystems determines what information
+      is shown, <emphasis>not</emphasis> the namespace of the process
+      accessing <replaceable>/proc</replaceable> or
+      <replaceable>/sys</replaceable>.
+      -->
+      리눅스의 <replaceable>/proc</replaceable>와 <replaceable>/sys</replaceable> 파일시스템은 네임스페이스의해 영향받는 몇가지 정보들을 포함하고 있다. 예를 들어 <replaceable>/proc</replaceable>의 프로세스 id로 된 폴더들이나 <replaceable>/sys/class/net</replaceable>의 네트워크 인터페이스 정보 등이다.
+의사파일시스템을 마운트하는 프로세스의 네임스페이스가 여기에 어떤 정보를 표시할지 결정하는 것이지, <replaceable>/proc</replaceable> 또는 <replaceable>/sys</replaceable>에 접근하는 프로세스의 네임스페이스가 결정하는 것은 <emphasis>아니다.</emphasis>
+    </para>
+    <para>
+      <!--
+      If one uses the <option>-s</option> option to only attach to
+      the pid namespace of a container, but not its mount namespace
+      (which will contain the <replaceable>/proc</replaceable> of the
+      container and not the host), the contents of <option>/proc</option>
+      will reflect that of the host and not the container. Analogously,
+      the same issue occurs when reading the contents of
+      <replaceable>/sys/class/net</replaceable> and attaching to just
+      the network namespace.
+      -->
+      <option>-s</option> 를 사용하여 컨테이너의 pid 네임스페이스에만 attach 시키고 마운트 네임스페이스(컨테이너의 <replaceable>/proc</replaceable>는 포함하고, 호스트의 것은 포함하지 않는)는 attach 시키지 않는 경우, <option>/proc</option>의 내용은 컨테이너의 것이 아닌 호스트의 것이 됩니다.
+비슷한 사례로 네트워크 네임스페이스만을 연결 하고  <replaceable>/sys/class/net</replaceable>의 내용을 읽을 때도 같은 현상이 있습니다.
+    </para>
+    <para>
+      <!--
+      To work around this problem, the <option>-R</option> flag provides
+      the option to remount <replaceable>/proc</replaceable> and
+      <replaceable>/sys</replaceable> in order for them to reflect the
+      network/pid namespace context of the attached process. In order
+      not to interfere with the host's actual filesystem, the mount
+      namespace will be unshared (like <command>lxc-unshare</command>
+      does) before this is done, esentially giving the process a new
+      mount namespace, which is identical to the hosts's mount namespace
+      except for the <replaceable>/proc</replaceable> and
+      <replaceable>/sys</replaceable> filesystems.
+      -->
+      이러한 문제를 해결하기 위해, <option>-R</option> 옵션이 제공됩니다. 해당 옵션은 attach되는 프로세스의 네트워크/pid 네임스페이스를 반영하기 위해 <replaceable>/proc</replaceable>와 <replaceable>/sys</replaceable>를 다시 마운트 합니다.
+호스트의 실제 파일시스템에 방해가 되지 않기 위해 마운트 네임스페이스는 공유되지 않습니다(<command>lxc-unshare</command>의 동작과 비슷). <replaceable>/proc</replaceable>와 <replaceable>/sys</replaceable> 파일시스템을 제외하고 호스트 마운트 네임스페이스와 동일한 새로운 마운트 네임스페이스가 주어지게 됩니다.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Security -->보안</title>
+    <para>
+      <!--
+      The <option>-e</option> and <option>-s</option> options should
+      be used with care, as it may break the isolation of the containers
+      if used improperly.
+      -->
+      <option>-e</option>와 <option>-s</option> 옵션을 사용할때는 주의하여야 합니다. 잘못사용하게 하면 컨테이너들 간의 고립(isolation)을 깨트릴 수 있습니다.
+    </para>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

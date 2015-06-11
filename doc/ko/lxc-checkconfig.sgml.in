@@ -1,0 +1,112 @@
+<!--
+
+(C) Copyright Canonical Ltd. 2013
+
+Authors:
+Stéphane Graber <stgraber@ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-checkconfig</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-checkconfig</refname>
+
+    <refpurpose>
+      <!--
+      check the current kernel for lxc support
+      -->
+      현재 커널의 lxc 지원 여부 검사
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-checkconfig</command>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+    <para>
+      <!--
+      <command>lxc-checkconfig</command> check the current kernel for
+      lxc support
+      -->
+      <command>lxc-checkconfig</command>는 현재 커널이 lxc를 지원하는지 검사한다.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Examples -->예제</title>
+    <variablelist>
+      <varlistentry>
+        <term>lxc-checkconfig</term>
+        <listitem>
+        <para>
+          <!--
+          check the current kernel.
+          CONFIG can be set in the environment to an alternate location.
+          -->
+          현재 커널을 검사한다.
+          CONFIG 환경 변수를 이용하여 다른 위치를 설정할 수 있다.
+          (역주 : 기본값은 /proc/config.gz 이다. Kernel compile option에서 Enable access to .config through /proc/config.gz를 체크하여야 한다)
+        </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Stéphane Graber <email>stgraber@ubuntu.com</email></para>
+  </refsect1>
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

@@ -1,0 +1,205 @@
+<!--
+
+Copyright © 2012 Oracle.
+
+Authors:
+Dwight Engen <dwight.engen@oracle.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-top</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-top</refname>
+
+    <refpurpose>
+      <!--
+      monitor container statistics
+      -->
+      컨테이너의 통계정보 표시
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-top</command>
+      <arg choice="opt">--help</arg>
+      <arg choice="opt">--delay <replaceable>delay</replaceable></arg>
+      <arg choice="opt">--sort <replaceable>sortby</replaceable></arg>
+      <arg choice="opt">--reverse</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+    <para>
+      <!--
+      <command>lxc-top</command> displays container statistics. The output
+      is updated every <replaceable>delay</replaceable> seconds, and is
+      ordered according to the <replaceable>sortby</replaceable> value
+      given. <command>lxc-top</command> will display as many containers as
+      can fit in your terminal. Press 'q' to quit. Press one of the sort
+      key letters to sort by that statistic. Pressing a sort key letter a
+      second time reverses the sort order.
+      -->
+      <command>lxc-top</command>는 컨테이너의 통계정보를 표시한다. 출력은 매 <replaceable>delay</replaceable>초마다 갱신된다.
+      그리고 <replaceable>sortby</replaceable>로 지정한 항목에 대하여 정렬을 수행한다. <command>lxc-top</command>명령어는 현재 터미널의 크기에 맞게 가능한 많은 컨테이너를 표시한다. 'q'를 누르면 나갈 수 있다. 정렬 항목의 문자를 입력하면 그 항목에 대해 정렬한다. 해당 문자를 두번 입력하면 정렬 순서가 바뀐다.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options -->옵션</title>
+    <variablelist>
+
+      <varlistentry>
+        <term>
+          <option><optional>-d, --delay <replaceable>delay</replaceable></optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Amount of time in seconds to delay between screen updates.
+            The default is 3 seconds.
+            -->
+            화면을 갱신하는 시간을 초단위로 지정한다.
+            기본값은 3초이다.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option><optional>-s, --sort <replaceable>sortby</replaceable></optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Sort the containers by name, cpu use, or memory use. The
+            <replaceable>sortby</replaceable> argument should be one of
+            the letters n,c,b,m,k to sort by name, cpu use, block I/O, memory,
+            or kernel memory use respectively. The default is 'n'.
+            -->
+            이름, CPU 사용량, 메모리 사용량에 대해 정렬한다. <replaceable>sortby</replaceable> 인수에는 최소한 한개의 n, c, b, m, k 문자가 있어야 하며, 각각 CPU 사용량, 블록 I/O, 메모리 사용량, 커널 메모리 사용량을 가리킨다. 기본값은 'n'이다.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option><optional>-r, --reverse</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Reverse the default sort order. By default, names sort in
+            ascending alphabetical order and values sort in descending
+            amounts (ie. largest value first).
+            -->
+            정렬 순서를 바꾼다. 기본 동작은, 이름은 오름차순 알파벳 정렬이고 값은 내림차순 정렬(큰 값이 먼저)이다.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Example -->예제</title>
+    <variablelist>
+      <varlistentry>
+        <term>lxc-top --delay 1 --sort m</term>
+        <listitem>
+        <para>
+          <!--
+          Display containers, updating every second, sorted by memory use.
+          -->
+          컨테이너를 1초마다 갱신하면서, 메모리 사용량으로 정렬해서 표시한다.
+        </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Notes -->주의</title>
+    <para>
+      <!--
+      For performance reasons the kernel does not account kernel memory use
+      unless a kernel memory limit is set. If a limit is not set, <command>
+      lxc-top</command> will display kernel memory use as 0. If no containers
+      are being accounted, the KMem column will not be displayed. A limit can
+      be set by specifying
+      <programlisting>
+      lxc.cgroup.memory.kmem.limit_in_bytes = <replaceable>number</replaceable>
+      </programlisting>
+      in your container configuration file, see
+      <citerefentry>
+        <refentrytitle>lxc.conf</refentrytitle>
+        <manvolnum>5</manvolnum>
+      </citerefentry>.
+      -->
+      성능상의 이유로, 커널 메모리 제한이 걸려있지 않다면 커널 메모리 사용량을 집계하지 않는다.
+      메모리 제한이 걸려있지 않다면, <command>lxc-top</command>는 커널 메모리 사용량을 0으로 표시한다. 만약 집계되는 컨테이너가 하나도 없다면, KMem 열은 표시되지 않는다. 메모리 제한은
+      <programlisting>
+      lxc.cgroup.memory.kmem.limit_in_bytes = <replaceable>number</replaceable>
+      </programlisting>
+      으로 컨테이너 설정파일에서 지정할 수 있다.
+      <citerefentry>
+        <refentrytitle>lxc.conf</refentrytitle>
+        <manvolnum>5</manvolnum>
+      </citerefentry>
+      를 참고하면 된다.
+    </para>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Dwight Engen <email>dwight.engen@oracle.com</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

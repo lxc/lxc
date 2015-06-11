@@ -1,0 +1,161 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <dlezcano at fr.ibm.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<refsect1>
+  <title><!-- Common Options -->공통 옵션</title>
+
+  <para>
+    <!--
+    These options are common to most of lxc commands.
+    -->
+    이 옵션들은 대부분의 lxc 명령어들에서 공통으로 쓰인다.
+  </para>
+
+  <variablelist>
+    <varlistentry>
+      <term><option>-?, -h, --help</option></term>
+      <listitem>
+	<para>
+          <!--
+	  Print a longer usage message than normal.
+          -->
+          사용법을 기존 출력하는 것보다 길게 출력한다.
+	</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><option>--usage</option></term>
+      <listitem>
+	<para>
+          <!--
+	  Give the usage message
+          -->
+          사용법을 표시한다.
+	</para>
+      </listitem>
+    </varlistentry>
+
+    <varlistentry>
+      <term><option>-q, --quiet</option></term>
+      <listitem>
+	<para>
+          <!--
+	  mute on
+          -->
+          결과를 표시하지 않는다.
+	</para>
+      </listitem>
+    </varlistentry>
+
+    <varlistentry>
+      <term><option>-P, --lxcpath=<replaceable>PATH</replaceable></option></term>
+      <listitem>
+	<para>
+          <!--
+	  Use an alternate container path.  The default is @LXCPATH@.
+          -->
+          컨테이너 경로를 직접 지정한다. 기본값은 @LXCPATH@이다.
+	</para>
+      </listitem>
+    </varlistentry>
+
+    <varlistentry>
+      <term><option>-o, --logfile=<replaceable>FILE</replaceable></option></term>
+      <listitem>
+	<para>
+          <!--
+	  Output to an alternate log
+	  <replaceable>FILE</replaceable>. The default is no log.
+          -->
+          로그의 경로를 <replaceable>FILE</replaceable>로 지정한다. 기본값은 로그를 출력하지 않는 것이다.
+	</para>
+      </listitem>
+    </varlistentry>
+
+    <varlistentry>
+      <term><option>-l, --logpriority=<replaceable>LEVEL</replaceable></option></term>
+      <listitem>
+	<para>
+          <!--
+	  Set log priority to
+	  <replaceable>LEVEL</replaceable>. The default log
+	  priority is <literal>ERROR</literal>. Possible values are :
+	  <literal>FATAL</literal>, <literal>CRIT</literal>,
+	  <literal>WARN</literal>, <literal>ERROR</literal>,
+	  <literal>NOTICE</literal>, <literal>INFO</literal>,
+	  <literal>DEBUG</literal>.
+          -->
+          로그 수준을 <replaceable>LEVEL</replaceable>로 지정한다. 기본값은 <literal>ERROR</literal>이다. 사용 가능한 값 :
+	  <literal>FATAL</literal>, <literal>CRIT</literal>,
+	  <literal>WARN</literal>, <literal>ERROR</literal>,
+	  <literal>NOTICE</literal>, <literal>INFO</literal>,
+	  <literal>DEBUG</literal>.
+	</para>
+	<para>
+          <!--
+	Note that this option is setting the priority of the events
+	log in the alternate log file. It do not have effect on the
+	ERROR events log on stderr.
+        -->
+          이 옵션은 로그 파일에만 적용된다는 사실을 주의해야 한다. stderr로 출력되는 ERROR 로그에는 영향을 끼치지 않는다.
+	</para>
+      </listitem>
+    </varlistentry>
+
+    <varlistentry>
+      <term><option>-n, --name=<replaceable>NAME</replaceable></option></term>
+      <listitem>
+	<para>
+          <!--
+	  Use container identifier <replaceable>NAME</replaceable>.
+	  The container identifier format is an alphanumeric string.
+          -->
+          컨테이너 식별자로 <replaceable>NAME</replaceable>을 사용한다. 컨테이너 식별자의 형식은 알파벳-숫자 문자열이다.
+	</para>
+      </listitem>
+    </varlistentry>
+  </variablelist>
+
+</refsect1>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

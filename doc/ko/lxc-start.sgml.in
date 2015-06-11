@@ -1,0 +1,360 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-start</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-start</refname>
+
+    <refpurpose>
+      <!--
+      run an application inside a container.
+      -->
+      컨테이너 시작(실행)
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-start</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
+      <arg choice="opt">-c <replaceable>console_device</replaceable></arg>
+      <arg choice="opt">-L <replaceable>console_logfile</replaceable></arg>
+      <arg choice="opt">-d</arg>
+      <arg choice="opt">-F</arg>
+      <arg choice="opt">-p <replaceable>pid_file</replaceable></arg>
+      <arg choice="opt">-s KEY=VAL</arg>
+      <arg choice="opt">-C</arg>
+      <arg choice="opt">--share-[net|ipc|uts] <replaceable>name|pid</replaceable></arg>
+      <arg choice="opt">command</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <command>lxc-start</command> runs the specified
+      <replaceable>command</replaceable> inside the container
+      specified by <replaceable>name</replaceable>.
+      -->
+      <command>lxc-start</command>는 지정된 <replaceable>command</replaceable>를 <replaceable>name</replaceable>이라는 이름의 컨테이너 내에서 실행한다.
+      (역주 : 컨테이너를 시작한다)
+    </para>
+    <para>
+      <!--
+      It will setup the container
+      according to the configuration previously defined with the
+      lxc-create command or with the configuration file parameter.
+      If no configuration is
+      defined, the default isolation is used.
+      -->
+      이 명령어는 <command>lxc-create</command> 정의했던 설정을 토대로 또는 인수를 통해 넘긴 설정파일을 토대로 컨테이너를 세팅한다.
+      만약 정의된 설정이 없다면, 기본 고립 환경을 사용한다.
+    </para>
+    <para>
+      <!--
+      If no command is specified, <command>lxc-start</command> will
+      use the command defined in lxc.init_cmd or if not set, the default
+      <command>"/sbin/init"</command> command to run a system
+      container.
+      -->
+      만약 명령어가 지정되지 않았다면, <command>lxc-start</command>는 lxc.init_cmd에 정의된 명령어를 사용한다. 만약 그마저도 없다면 <command>"/sbin/init"</command>명령어를 사용한다.
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+
+    <title><!-- Options -->옵션</title>
+
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-d, --daemon</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Run the container as a daemon. As the container has no
+	    more tty, if an error occurs nothing will be displayed,
+	    the log file can be used to check the error.
+            -->
+            컨테이너를 데몬으로 실행한다.
+            에러가 발생하더라도 컨테이너가 tty를 가지지 않기 때문에 에러는 표시되지 않는다.
+            대신 로그 파일을 에러를 확인하는데 사용할 수 있다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-F, --foreground</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Run the container in the foreground. In this mode, the container
+	    console will be attached to the current tty and signals will be routed
+	    directly to the container.
+            -->
+            컨테이너를 포그라운드로 실행한다. 이 모드에서는 컨테이너의 콘솔은 현재 tty에 붙는다. 그리고 시그널들은 컨테이너로 직접 보내지게 된다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-p, --pidfile <replaceable>pid_file</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Create a file with the process id.
+            -->
+            프로세스 ID를 넣은 파일을 생성합니다.
+            (역주 : systemd의 PIDFile= 옵션 등에 유용하게 사용가능하다)
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-f, --rcfile <replaceable>config_file</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the configuration file to configure the virtualization
+	    and isolation functionalities for the container.
+            -->
+            컨테이너의 가상화나 고립 기능을 설정할 때 쓰일 설정파일을 지정한다.
+	  </para>
+	  <para>
+            <!--
+	   This configuration file if present will be used even if there is
+	   already a configuration file present in the previously created
+	   container (via lxc-create).
+           -->
+           지정한 설정파일이 존재한다면, 이전에 생성된(lxc-create를 통해) 컨테
+이너에 설정파일이 이미 존재한다고 하더라도 지정한 설정파일을 사용한다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-c,
+	  --console <replaceable>console_device</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify a device to use for the container's console, for example
+            /dev/tty8. If this option is not specified the current terminal
+            will be used unless <option>-d</option> is specified.
+            -->
+            컨테이너의 콘솔로 사용할 디바이스를 지정한다. 예를 들어 /dev/tty8과 같이 지정가능하다. 만약 이 옵션이 지정되지 않았고 <option>-d</option>가 지정되이 않았다면, 현재 터미널이 사용된다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-L,
+	  --console-log <replaceable>console_logfile</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify a file to log the container's console output to.
+            -->
+            컨테이너의 콘솔 출력을 기록할 파일을 지정한다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-s, --define <replaceable>KEY=VAL</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Assign value <replaceable>VAL</replaceable> to configuration
+	    variable <replaceable>KEY</replaceable>. This overrides any
+	    assignment done in <replaceable>config_file</replaceable>.
+            -->
+            지정한 설정 변수 <replaceable>KEY</replaceable>에 <replaceable>VAL</replaceable>값을 지정한다.
+            이 것은 이전에 <replaceable>config_file</replaceable>에서 지정했던 값들을 덮어쓴다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-C,
+	  --close-all-fds</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	  If any file descriptors are inherited, close them.  If this option
+	  is not specified, then <command>lxc-start</command> will exit with
+	  failure instead. Note: <replaceable>&#045;&#045;daemon</replaceable> implies
+	  <replaceable>&#045;&#045;close-all-fds</replaceable>.
+          -->
+            상속 받는 파일 디스크립터가 있다면, 전부 닫는다. 만약 이 옵션이 지정되지 않았을 경우 <command>lxc-start</command>는 실패와 함께 종료됩니다. 주의 : <replaceable>&#045;&#045;daemon</replaceable>는 <replaceable>&#045;&#045;close-all-fds</replaceable>를 포함하고 있다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--share-net <replaceable>name|pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+            Inherit a network namespace from
+	    a <replaceable>name</replaceable> container or
+	    a <replaceable>pid</replaceable>. The network namespace
+	    will continue to be managed by the original owner. The
+	    network configuration of the starting container is ignored
+	    and the up/down scripts won't be executed.
+            -->
+            <replaceable>name</replaceable> 컨테이너 또는 <replaceable>pid</replaceable>로부터 네트워크 네임스페이스를 상속받는다. 네트워크 네임스페이스는 원래 소유자가 계속 관리하게 된다. 시작하는 컨테이너의 네트워크 설정은 무시되고 up/down 스크립트는 실행되지 않는다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--share-ipc <replaceable>name|pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+            Inherit an IPC namespace from
+	    a <replaceable>name</replaceable> container or
+	    a <replaceable>pid</replaceable>.
+            -->
+            <replaceable>name</replaceable> 컨테이너 또는 <replaceable>pid</replaceable>로부터 IPC 네임스페이스를 상속받는다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--share-uts <replaceable>name|pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+            Inherit a UTS namespace from
+	    a <replaceable>name</replaceable> container or
+	    a <replaceable>pid</replaceable>. The starting LXC will
+	    not set the hostname, but the container OS may do it
+	    anyway.
+            -->
+            <replaceable>name</replaceable> 컨테이너 또는 <replaceable>pid</replaceable>로부터 UTS 네임스페이스를 상속받는다. LXC는 시작할 때 호스트이름을 설정하지 않는다. 다만, 컨테이너 OS가 설정할 수 있다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title><!-- Diagnostic -->진단</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>The container is busy</term>
+        <listitem>
+          <para>
+            <!--
+	    The specified container is already running an
+	    application. You should stop it before reuse this
+	    container or create a new one.
+            -->
+            지정한 컨테이너가 이미 실행중인 경우이다. 컨테이너를 사용하고 싶다면
+            컨테이너를 중지시켜야 한다. 또는 새로운 컨테이너를 만들 수도 있다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

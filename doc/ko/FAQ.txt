@@ -1,0 +1,67 @@
+
+Troubleshooting:
+===============
+
+
+Error:
+------
+
+error while loading shared libraries reported after sudo make install
+and when trying to run lxc-execute.
+
+"lxc-execute -n foo -f /usr/local/etc/lxc/lxc-macvlan.conf /bin/bash"
+
+/usr/local/bin/lxc-execute: error while loading shared libraries:
+  liblxc-0.5.0.so: cannot open shared object file: No such file or
+  directory
+
+Answer:
+-------
+update the ld cache by running ldconfig.
+
+
+
+Error:
+------
+
+error when starting a container.
+
+"lxc-start Invalid argument"
+
+"lxc-execute -n foo -f /usr/local/etc/lxc/lxc-macvlan.conf /bin/bash"
+"[syserr] lxc_start:96: Invalid argument - failed to fork into a new
+namespace"
+
+Answer:
+-------
+
+read the lxc man page about kernel version prereq :) most probably
+your kernel is not configured to support the container options you
+want to use.
+
+
+Error:
+------
+
+On Ubuntu 8.10, if using the cvs source code rather than
+the provided tarball. Then make is failing with many errors
+similar to the line below:
+==========
+../../libtool: line 810: X--tag=CC: command not found
+==========
+
+Answer:
+-------
+
+This is related to a compatibility problem between the shipped
+config/ltmain.sh and the libtool version installed on your
+Ubuntu 8.10 machine.
+You have to replace the config/ltmain.sh from cvs head by the one
+from your libtool package, make some cleaning and reissue all
+the build process:
+==========
+cd <your_lxc_working_dir>
+cp -f /usr/share/libtool/config/ltmain.sh config/
+rm -f libtool
+./bootstrap && ./configure && make && sudo make install
+==========

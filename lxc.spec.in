@@ -244,6 +244,9 @@ fi
 %{_mandir}/ja/man1/lxc*
 %{_mandir}/ja/man5/lxc*
 %{_mandir}/ja/man7/lxc*
+%{_mandir}/ko/man1/lxc*
+%{_mandir}/ko/man5/lxc*
+%{_mandir}/ko/man7/lxc*
 %endif
 %{_datadir}/doc/*
 %{_datadir}/lxc/*

@@ -1,0 +1,238 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-monitor</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-monitor</refname>
+
+    <refpurpose>
+      <!--
+      monitor the container state
+      -->
+      컨테이너의 상태 모니터링
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-monitor</command>
+      <arg choice="opt">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-Q</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <command>lxc-monitor</command> monitors the state of containers. The
+      <replaceable>name</replaceable> argument may be used to specify
+      which containers to monitor. It is a regular expression, conforming
+      with posix2, so it is possible to monitor all the containers,
+      several of them or just one. If not specified,
+      <replaceable>name</replaceable> will default to '.*' which will
+      monitor all containers in <command>lxcpath</command>.
+      -->
+      <command>lxc-monitor</command>는 컨테이너의 상태를 주시한다.
+      <replaceable>name</replaceable> 인수는 어떤 컨테이너를 모니터링할지 지정한다.
+      이 인수는 POSIX 호환 정규 표현식으로 지정할 수 있다. 따라서 모든 컨테이너를 또는 그 중 몇몇만 또는 한 개의 컨테이너만 모니터링하는 것이 가능하다.
+      만약 인수가 지정되지 않았다면 <replaceable>name</replaceable>는 기본값으로 '.*'가 사용된다. 이 값은 <command>lxcpath</command>에 있는 모든 컨테이너들을 모니터링 할 수 있다.
+    </para>
+
+    <para>
+      <!--
+      The <option>-P, &#045;&#045;lxcpath</option>=PATH option may be specified multiple
+      times to monitor more than one container path. Note however that
+      containers with the same name in multiple paths will be
+      indistinguishable in the output.
+      -->
+      <option>-P, &#045;&#045;lxcpath</option>=PATH 옵션을 사용하여 컨테이너 경로를 지정할 수 있으며, 1개 이상도 가능하다.
+      하지만 각각 다른 경로에 있는 이름이 같은 컨테이너는 출력에서 구분되지 않는다.
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options -->옵션</title>
+
+    <variablelist>
+      <varlistentry>
+	<term>
+	  <option>-Q, --quit</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Ask the lxc-monitord daemon on each given <command>lxcpath</command>
+	    to quit. After receiving this command, lxc-monitord will exit
+	    immediately as soon as it has no clients instead of waiting the
+	    normal 30 seconds for new clients. This is useful if you need to
+	    unmount the filesystem <command>lxcpath</command> is on.
+            -->
+            지정한 <command>lxcpath</command> 각각에 대한 lxc-monitord 데몬을 종료하도록 요청한다.
+            lxc-monitord는 일반적으로 클라이언트가 없으면, 새로운 클라이언트를 를 30초 동안 기다린 후 종료된다. 하지만 이 명령어를 실행한 후에는 클라이언트가 없으면 바로 종료된다.
+            이 옵션은 <command>lxcpath</command>의 파일시스템을 바로 unmount할 필요가 있을때, 유용하다.
+	  </para>
+	</listitem>
+      </varlistentry>
+     </variablelist>
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title><!-- Examples -->예제</title>
+    <variablelist>
+      <varlistentry>
+	<term>lxc-monitor -n foo</term>
+	<listitem>
+	<para>
+          <!--
+	  will monitor the different states for container foo.
+          -->
+          foo 컨테이너의 상태 변화를 모니터링한다.
+	</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>lxc-monitor -n 'foo|bar'</term>
+	<listitem>
+	<para>
+          <!--
+	  will monitor the different states for container foo and bar.
+          -->
+          컨테이너 foo와 bar의 상태 변화를 모니터링 한다.
+	</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>lxc-monitor -n '[f|b].*'</term>
+	<listitem>
+	<para>
+          <!--
+	  will monitor the different states for container with the
+	  name beginning with letter 'f' or 'b'.
+          -->
+          이름이 'f' 또는 'b'로 시작하는 컨테이너의 상태 변화를 모니터링한다.
+	</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>lxc-monitor -n '.*'</term>
+	<listitem>
+	<para>
+          <!--
+	  will monitor the different states for all containers.
+          -->
+          모든 컨테이너들의 상태 변화를 모니터링한다.
+	</para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Diagnostic -->진단</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>The container was not found</term>
+        <listitem>
+          <para>
+            <!--
+	    The specified container was not created before with
+	    the <command>lxc-create</command> command.
+            -->
+            지정한 컨테이너가  <command>lxc-create</command>로 생성된 적이 없다.
+            컨테이너가 존재하지 않는다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+    </variablelist>
+
+  </refsect1>
+
+  <refsect1>
+    <title><!-- See Also -->참조</title>
+
+    <simpara>
+      <citerefentry>
+	<refentrytitle>regex</refentrytitle>
+	<manvolnum>7</manvolnum>
+      </citerefentry>,
+    </simpara>
+
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

@@ -1,0 +1,188 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright Canonical Ltd. 2013
+
+Authors:
+Serge Hallyn <serge.hallyn@ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-usernet</refentrytitle>
+    <manvolnum>5</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-usernet</refname>
+
+    <refpurpose>
+      <!--
+      unprivileged user network administration file.
+      -->
+      비특권 사용자의 네트워크 관리용 설정파일
+    </refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <filename>@LXC_USERNIC_CONF@</filename> controls the limits which the
+      program <command>lxc-user-nic</command> places on network interfaces
+      which an unprivileged user may create.
+      -->
+     <filename>@LXC_USERNIC_CONF@</filename>로 비특권 사용자가 <command>lxc-user-nic</command> 명령어로 네트워크 인터페이스를 만들 때, 제한을 걸 수 있다.
+    </para>
+
+    <refsect2>
+      <title><!-- Configuration -->설정</title>
+      <para>
+        <!--
+      This file consists of multiple entries, one per line, of the form:
+          -->
+        이 파일은 아래와 같은 형식의 한 줄로 이루어진 여러 항목들로 구성되어 있다.
+      </para>
+
+      <para>
+      <command>user</command> <command>type</command> <command>bridge</command> <command>number</command>
+      </para>
+      <para>
+        <!--
+      Where
+          -->
+        여기서 각 항목들은 다음과 같은 의미를 가진다.
+      </para>
+
+      <variablelist>
+
+	<varlistentry>
+	  <term>
+	    <option>user</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      is the username to whom this entry applies.
+              -->
+              이 항목이 적용될 사용자 이름을 가리킨다.
+	     </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>type</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      is the type of network interface being allowed.  Only veth
+	      is currently supported.
+              -->
+              허용되는 네트워크 인터페이스 형태를 가리킨다. veth만 지원된다.
+	     </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>bridge</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      is the bridge to which the network interfaces may be attached, for
+	      instance <filename>lxcbr0</filename>.
+              -->
+              네트워크 인터페이스들을 붙일 브리지를 가리킨다.
+              예를 들어 <filename>lxcbr0</filename>로 지정 가능하다.
+	     </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>number</option>
+	  </term>
+	  <listitem>
+	    <para>
+              <!--
+	      is the number of network interfaces of the given type which the
+	      given user may attach to the given bridge, for instance <filename>2</filename>.
+              -->
+              지정된 사용자가 지정된 브리지에 붙일 지정된 형태의 네트워크 인터페이스 개수를 가리킨다.
+              예를 들어 <filename>2</filename>로 지정 가능하다.
+	     </para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </refsect2>
+
+  </refsect1>
+
+  <refsect1>
+    <title><!-- See Also -->참조</title>
+    <simpara>
+      <citerefentry>
+	<refentrytitle><command>lxc</command></refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+	<refentrytitle><command>lxc-user-nic</command></refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>
+    </simpara>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

@@ -1,0 +1,208 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-console</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-console</refname>
+
+    <refpurpose>
+      <!--
+      Launch a console for the specified container
+      -->
+      지정한 컨테이너의 콘솔 실행
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-console</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-e <replaceable>escape character</replaceable></arg>
+      <arg choice="opt">-t <replaceable>ttynum</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      If the tty service has been configured and is available for the
+      container specified as parameter, this command will launch a
+      console allowing to log on the container.
+      -->
+      만약 파라미터로 지정한 컨테이너의 tty 서비스가 제대로 설정되어 있고 사용가능한 상태라면, 이 명령어는 컨테이너에 로그인 할 수 있는 콘솔을 실행한다.
+    </para>
+
+    <para>
+      <!--
+      The available tty are free slots taken by this command. That
+      means if the container has four ttys available and the command
+      has been launched four times each taking a different tty, the
+      fifth command will fail because no console will be available.
+      -->
+      사용가능한 tty는 이 명령어로 얻어올 수 있는 빈 슬롯을 의미한다.
+      즉, 만약 컨테이너가 4개의 tty가 사용가능하고 명령어가 4번 실행하여 각각 다른 tty를 얻어왔다면, 다섯번째 명령은 실패할 것이다. 왜냐하면 가능한 콘솔이 없기 때문이다.
+    </para>
+
+    <para>
+      <!--
+      The command will connect to a tty. If the connection is lost or
+      broken, the command can be launched again and regain the tty at
+      the state it was before the disconnection.
+      -->
+      명령어는 tty에 연결한다. 연결이 끊어지면, 명령어는 다시 실행되어 연결 끊기기 이전 상태에서 tty를 얻어오려고 시도한다.
+    </para>
+
+    <para>
+      <!--
+      A <replaceable>ttynum</replaceable> of 0 may be given to attach
+      to the container's /dev/console instead of its
+      dev/tty&lt;<replaceable>ttynum</replaceable>&gt;.
+      -->
+      <replaceable>ttynum</replaceable>가 0으로 지정되어 있으면, 컨테이너의 /dev/console에 연결한다. 그렇지 않으면 dev/tty&lt;<replaceable>ttynum</replaceable>&gt;에 연결한다.
+    </para>
+
+    <para>
+      <!--
+      A keyboard escape sequence may be used to disconnect from the tty
+      and quit lxc-console. The default escape sequence is &lt;Ctrl+a q&gt;.
+      -->
+      tty 접속을 끊고 lxc-console을 나가고 싶다면 키보드 이스케이프 키를 이용하면 된다. 기본키는 &lt;Ctrl+a q&gt;이다.
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options -->옵션</title>
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-e <optional><replaceable>escape character</replaceable></optional></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the escape sequence prefix to use instead of
+            &lt;Ctrl a&gt;.
+            This may be given as '^letter' or just 'letter'. For example
+            to use &lt;Ctrl+b q&gt; as the escape sequence use -e '^b'.
+            -->
+            &lt;Ctrl a&gt; 대신에 사용할 이스케이프 키 prefix를 지정한다.
+            '^문자' 또는 '문자'로 지정 가능하다.
+            예를 들어 &lt;Ctrl+b q&gt;를 사용하고 싶다면, -e '^b'와 같이 지정하면 된다.
+	  </para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>
+	  <option>-t <optional><replaceable>ttynum</replaceable></optional></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+            Specify the tty number to connect to or 0 for the console. If not
+	    specified the next available tty number will be automatically
+	    chosen by the container.
+            -->
+            연결하고자 하는 tty의 번호 또는 콘솔 연결을 위해 0을 지정한다.
+            지정하지 않으면, 다음으로 사용가능한 tty 번호를 컨테이너가 자동으로 선택한다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title><!-- Diagnostic -->진단</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>tty service denied</term>
+        <listitem>
+          <para>
+            <!--
+	    No tty is available or there is not enough privilege to
+	    use the console. For example, the container belongs to
+	    user "foo" and "bar" is trying to open a console to it.
+            -->
+            사용가능한 tty가 없거나 콘솔을 사용하기에 충분한 privilege가 없다.
+            예를 들면, 컨테이너가 "foo" 사용자 소유인데 "bar"가 콘솔을 열려고 하는 경우이다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

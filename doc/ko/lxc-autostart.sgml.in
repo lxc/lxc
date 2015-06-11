@@ -1,0 +1,350 @@
+<!--
+
+lxc-autostart
+
+(C) Copyright 2013 Canonical Ltd.
+
+Authors:
+Stéphane Graber <stgraber@ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+    <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+    <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+    <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+    <refmeta>
+        <refentrytitle>lxc-autostart</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>lxc-autostart</refname>
+
+        <refpurpose>
+          <!--
+            start/stop/kill auto-started containers
+            -->
+          자동시작하게 설정된 컨테이너의 시작/종료/강제종료
+        </refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+        <cmdsynopsis>
+            <command>lxc-autostart</command>
+            <arg choice="opt">-k</arg>
+            <arg choice="opt">-L</arg>
+            <arg choice="opt">-r</arg>
+            <arg choice="opt">-s</arg>
+            <arg choice="opt">-a</arg>
+            <arg choice="opt">-A</arg>
+            <arg choice="opt">-g <replaceable>groups</replaceable></arg>
+            <arg choice="opt">-t <replaceable>timeout</replaceable></arg>
+        </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title><!-- Description -->설명</title>
+
+        <para>
+          <!--
+            <command>lxc-autostart</command> processes containers
+            with lxc.start.auto set. It lets the user start, shutdown,
+            kill, restart containers in the right order, waiting the
+            right time. Supports filtering by lxc.group or just run
+            against all defined containers. It can also be used by
+            external tools in list mode where no action will be performed
+            and the list of affected containers (and if relevant, delays)
+            will be shown.
+            -->
+          <command>lxc-autostart</command>는 lxc.start.auto가 설정되어 있는 컨테이너들을 다룬다.
+          사용자가 컨테이너의 시작, 종료, 강제종료, 재시작의 순서와 대기 시간을 정할 수 있게 해준다.
+          lxc.group으로 필터링하거나 모든 정의된 컨테이너를 실행하는 등의 동작을 지원한다.
+          또한 리스트 모드를 통해 외부 툴이 이를 사용할 수 있고, 대상 컨테이너의 리스트와 대기시간 등을 얻어올 수 있다.
+        </para>
+
+        <para>
+          <!--
+            The <optional>-r</optional>, <optional>-s</optional>
+            and <optional>-k</optional> options specify the action to perform.
+            If none is specified, then the containers will be started.
+            <optional>-a</optional> and <optional>-g</optional> are used to
+            specify which containers will be affected. By default only
+            containers without a lxc.group set will be affected.
+            <optional>-t TIMEOUT</optional> specifies the maximum amount
+            of time to wait for the container to complete the shutdown
+            or reboot.
+            -->
+          <optional>-r</optional>, <optional>-s</optional>, <optional>-k</optional> 옵션은 어떤 동작을 수행할지 지정해 줄 수 있다. 만약 아무것도 지정하지 않았다면, 컨테이너를 시작한다.
+          <optional>-a</optional>, <optional>-g</optional>는 어떤 컨테이너를 대상으로 할지 지정한다. 기본적으로 lxc.group가 지정되지 않은 컨테이너들이 대상이 된다.
+          <optional>-t TIMEOUT</optional>은 컨테이너가 종료나 재부팅을 마칠 때까지 기다릴 최대 시간을 지정한다.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title><!-- Options -->옵션</title>
+        <variablelist>
+            <varlistentry>
+                <term>
+                    <option>-r,--reboot </option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Request a reboot of the container.
+                        -->
+                      컨테이너가 재부팅하도록 요청한다.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-s,--shutdown </option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Request a clean shutdown. If a
+                        <optional>-t timeout</optional> greater than 0 is
+                        given and the container has not shut down within
+                        this period, it will be killed as with the
+                        <optional>-k kill</optional> option.
+                        -->
+                       깔끔한 종료를 요청한다. 만약 <optional>-t timeout</optional>가 0보다 크고 컨테이너가 그 기간안에 종료되지 않는다면 <optional>-k kill</optional> 옵션과 같은 동작을 수행하여 강제종료 한다.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-k,--kill </option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Rather than requesting a clean shutdown of the
+                        container, explicitly kill all tasks in the container.
+                        -->
+                      깔끔한 종료를 요청하는 것이 아니라 컨테이너의 모든 태스크들을 명시적으로 강제종료 시킨다.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-L,--list </option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Rather than performing the action, just print
+                        the container name and wait delays until starting the next container.
+                        -->
+                      실제 동작은 수행하지 않고, 단지 컨테이너의 이름과 다음 컨테이너를 시작할 때까지의 대기시간들을 표시한다.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-t,--timeout <replaceable>TIMEOUT</replaceable></option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Wait TIMEOUT seconds before hard-stopping the container.
+                        -->
+                      컨테이너가 강제종료되기 전까지 TIMEOUT 초만큼 기다린다.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-g,--group <replaceable>GROUP</replaceable></option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Comma separated list of groups to select
+                        (defaults to those without a lxc.group - the NULL group).
+                        This option may be specified multiple times
+                        and the arguments concatenated.  The NULL or
+                        empty group may be specified as a leading comma,
+                        trailing comma, embedded double comma, or empty
+                        argument where the NULL group should be processed.
+                        Groups are processed in the order specified on the
+                        command line.  Multiple invocations of the -g option
+                        may be freely intermixed with the comma separated
+                        lists and will be combined in specified order.
+                        -->
+                      쉼표(,)로 구분된 선택할 그룹의 리스트.
+                      (기본값은 lxc.group이 없는 것이다 - NULL 그룹)
+
+                      이 옵션은 여러번 지정될 수 있으며, 각 옵션들은 연결될 수 있다. NULL 또는 빈 그룹은 첫번째 쉼표, 맨 뒤의 쉼표, 두개의 쉼표 등으로 지정할 수 있다. 그룹들은 지정한 순서대로 처리됩니다. 여러번 호출된 -g 옵션과 콤마로 구분된 목록들은 자유롭게 혼용하여 사용 할 수 있다.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-a,--all</option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Ignore lxc.group and select all auto-started containers.
+                        -->
+                      lxc.group를 무시하고 모든 자동 시작하게 설정된 컨테이너들을 선택한다.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-A,--ignore-auto</option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Ignore the lxc.start.auto flag. Combined with
+                        -a, will select all containers on the system.
+                        -->
+                      lxc.start.auto 옵션을 무시하고 시스템의 모든 컨테이너를 선택한다.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title><!-- Autostart and System Boot -->자동시작과 시스템 부팅</title>
+
+        <para>
+          <!--
+            The <command>lxc-autostart</command> command is used as part of the
+            LXC system service, when enabled to run on host system at bootup and at
+            shutdown.  It's used to select which containers to start in what order
+            and how much to delay between each startup when the host system boots.
+            -->
+          부팅과 종료시 호스트의 시스>템에서 실행되도록 활성화 되어있을 때, <command>lxc-autostart</command> 명령어는 LXC 시스템 서비스의 일부로 사용됩니다. 어떤 컨테이너를 어떤 순서로 얼마만큼 시작간격을 두어 시작할지를 선택하는데 사용됩니다.
+        </para>
+
+        <para>
+          <!--
+            Each container can be part of any number of groups or no group at all.
+            Two groups are special. One is the NULL group, i.e. the container does
+            not belong to any group. The other group is the "onboot" group.
+            -->
+          각각의 컨테이너는 여러 그룹에 속할수도 있고 아무그룹에도 속하지 않을 수 있다. 두개의 그룹은 특수한데, 하나는 NULL 그룹이고 컨테이너가 아무그룹에도 속하지 않을때 사용된다. 그리고 나머지 하나는 "onboot" 그룹이다.
+        </para>
+
+        <para>
+          <!--
+            When the system boots with the LXC service enabled, it will first
+            attempt to boot any containers with lxc.start.auto == 1 that is a member
+            of the "onboot" group. The startup will be in order of lxc.start.order.
+            If an lxc.start.delay has been specified, that delay will be honored
+            before attempting to start the next container to give the current
+            container time to begin initialization and reduce overloading the host
+            system. After starting the members of the "onboot" group, the LXC system
+            will proceed to boot containers with lxc.start.auto == 1 which are not
+            members of any group (the NULL group) and proceed as with the onboot
+            group.
+            -->
+          LXC 서비스가 활성화된 상태로 시스템이 부팅될 때, 먼저 lxc.start.auto == 1이고 "onboot" 그룹인 컨테이너들을 시작하려고 시도한다. 시작과정은 lxc.start.order의 순서대로 이루어진다.
+          만약 lxc.start.delay가 지정 되었다면, 다음 컨테이너를 시작하려고 시도하기 전, 현재 컨테이너의 초기화 및 호스트 시스템의 부하를 줄이기 위해서 지연시간을 준다.
+          "onboot" 그룹의 멤버들을 시작시킨 후, LXC 시스템은 lxc.start.auto == 1이고 어떤 그룹에도 속하지 않은(NULL 그룹) 컨테이너들을 시작한다.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title><!-- Startup Group Examples -->시작 그룹 예제</title>
+        <variablelist>
+            <varlistentry>
+                <term>
+                    <option>-g "onboot,"</option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Start the "onboot" group first then the NULL group.
+                        -->
+                      먼저 "onboot" 그룹을 실행하고 NULL 그룹을 실행한다.
+                    </para>
+                    <para>
+                      <!--
+                        This is the equivalent of: <option>-g onboot -g ""</option>.
+                        -->
+                      이것은 다음과 같다 : <option>-g onboot -g ""</option>
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <option>-g "dns,web,,onboot"</option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Starts the "dns" group first, the "web" group second, then
+                        the NULL group followed by the "onboot" group.
+                        -->
+                      첫번째로 dns 그룹을 실행하고, web 그룹을 두번째로 실행하고, NULL그룹을 실행한 뒤, "onboot" 그룹을 실행한다.
+                    </para>
+                    <para>
+                      <!--
+                        This is the equivalent of: <option>-g dns,web -g ,onboot</option> or <option>-g dns -g web -g "" -g onboot</option>.
+                        -->
+                      이것은 다음과 같다 : <option>-g dns,web -g ,onboot</option> 또는  <option>-g dns -g web -g "" -g onboot</option>
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    &seealso;
+
+    <refsect1>
+        <title><!--Author-->저자</title>
+        <para>Stéphane Graber <email>stgraber@ubuntu.com</email></para>
+    </refsect1>
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

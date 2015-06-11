@@ -1,0 +1,210 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright Canonical Ltd. 2013
+
+Authors:
+Serge Hallyn <serge.hallyn@ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-user-nic</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-user-nic</refname>
+
+    <refpurpose>
+      <!--
+      Create and attach a nic to another network namespace.
+      -->
+      NIC 를 생성하여 다른 네임스페이스에 붙이기
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-user-nic</command>
+      <arg choice="req"><replaceable>pid</replaceable></arg>
+      <arg choice="req"><replaceable>type</replaceable></arg>
+      <arg choice="req"><replaceable>bridge</replaceable></arg>
+      <arg choice="opt"><replaceable>nicname</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <command>lxc-user-nic</command> is a setuid-root program with which
+      unprivileged users may create network interfaces for use by a lxc container.
+      -->
+      <command>lxc-user-nic</command>는 root로 setuid한 프로그램이므로, 특권이 없는 사용자들도 lxc 컨테이너가 사용할 네트워크 인터페이스를 생성할 수 있다.
+    </para>
+    <para>
+      <!--
+      It will consult the configuration file <filename>@LXC_USERNIC_CONF@</filename>
+      to determine the number of interfaces which the calling user is allowed to
+      create, and which bridge he may attach them to.  It tracks the
+      number of interfaces each user has created using the file
+      <filename>@LXC_USERNIC_DB@</filename>.  It ensures that the calling
+      user is privileged over the network namespace to which the interface
+      will be attached.
+      -->
+      이 명령어는 <filename>@LXC_USERNIC_CONF@</filename>을 읽어, 호출한 사용자가 만들수 있는 인터페이스의 수와 어느 브리지에 붙일지를 결정한다.
+      각 사용자가 생성한 인터페이스의 수를 <filename>@LXC_USERNIC_DB@</filename> 파일에 기록한다.
+      그리고 호출한 사용자가 인터페이스를 붙인 네트워크 네임스페이스에 특권을 갖게 한다.
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+
+    <title><!-- Options -->옵션</title>
+
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option><replaceable>pid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	  The process id for the task to whose network namespace the interface
+	  should be attached.
+              -->
+            인터페이스가 붙어야하는 네트워크 네임스페이스에 속해있는 프로세스 ID.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option><replaceable>type</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	  The network interface type to attach.  Currently only veth is
+	  supported.  With this type, two interfaces representing each
+	  tunnel endpoint are created.  One endpoint will be attached
+	  to the specified bridge, while the other will be passed into
+	  the container.
+              -->
+            붙일 네트워크 인터페이스의 형태. 현재는 veth만 지원가능하다. 이 형태에서는 두개의 인터페이스가 각각 터널의 끝지점으로 생성된다. 하나의 끝지점이 특정 브리지에 붙고, 다른 하나는 컨테이너 내부로 넘겨지게 된다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option><replaceable>bridge</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	  The bridge to which to attach the network interface, for
+	  instance <filename>lxcbr0</filename>.
+              -->
+            네트워크 인터페이스를 붙일 프리지. 예를 들어, <filename>lxcbr0</filename> 같이 지정 가능하다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option><replaceable>nicname</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	  The desired interface name in the container.  This will be
+	  <filename>eth0</filename> if unspecified.
+          -->
+            컨테이너내에서 사용할 인터페이스 이름. 지정하지 않는다면 <filename>eth0</filename>로 된다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title><!-- See Also -->참조</title>
+
+    <simpara>
+      <citerefentry>
+	<refentrytitle><command>lxc</command></refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+	<refentrytitle><command>lxc-start</command></refentrytitle>
+	<manvolnum>1</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+	<refentrytitle><command>lxc-usernet</command></refentrytitle>
+	<manvolnum>5</manvolnum>
+      </citerefentry>
+    </simpara>
+   </refsect1>
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

@@ -750,6 +750,43 @@ AC_CONFIG_FILES([
 	doc/ja/common_options.sgml
 	doc/ja/see_also.sgml
 
+	doc/ko/Makefile
+	doc/ko/legacy/lxc-ls.sgml
+	doc/ko/lxc-attach.sgml
+	doc/ko/lxc-autostart.sgml
+	doc/ko/lxc-cgroup.sgml
+	doc/ko/lxc-checkconfig.sgml
+	doc/ko/lxc-checkpoint.sgml
+	doc/ko/lxc-clone.sgml
+	doc/ko/lxc-config.sgml
+	doc/ko/lxc-console.sgml
+	doc/ko/lxc-create.sgml
+	doc/ko/lxc-destroy.sgml
+	doc/ko/lxc-device.sgml
+	doc/ko/lxc-execute.sgml
+	doc/ko/lxc-freeze.sgml
+	doc/ko/lxc-info.sgml
+	doc/ko/lxc-ls.sgml
+	doc/ko/lxc-monitor.sgml
+	doc/ko/lxc-snapshot.sgml
+	doc/ko/lxc-start-ephemeral.sgml
+	doc/ko/lxc-start.sgml
+	doc/ko/lxc-stop.sgml
+	doc/ko/lxc-top.sgml
+	doc/ko/lxc-unfreeze.sgml
+	doc/ko/lxc-unshare.sgml
+	doc/ko/lxc-user-nic.sgml
+	doc/ko/lxc-usernsexec.sgml
+	doc/ko/lxc-wait.sgml
+
+	doc/ko/lxc.conf.sgml
+	doc/ko/lxc.container.conf.sgml
+	doc/ko/lxc.system.conf.sgml
+	doc/ko/lxc-usernet.sgml
+	doc/ko/lxc.sgml
+	doc/ko/common_options.sgml
+	doc/ko/see_also.sgml
+
 	hooks/Makefile
 
 	templates/Makefile

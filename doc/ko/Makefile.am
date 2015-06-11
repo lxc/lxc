@@ -1,17 +1,9 @@
-SUBDIRS = examples rootfs
-DIST_SUBDIRS = examples rootfs ja ko api
+mandir = @mandir@/ko
 
-if USE_DOCBOOK2X
-SUBDIRS += ja ko
-endif
-
-if ENABLE_API_DOCS
-SUBDIRS += api
-endif
+SUBDIRS =
+DIST_SUBDIRS =
 
 EXTRA_DIST = \
-	lxc.container.conf \
-	lxc.system.conf \
 	FAQ.txt
 
 if ENABLE_DOCBOOK
@@ -56,15 +48,15 @@ else
 endif
 
 %.1 : %.sgml
-	$(db2xman) $<
+	$(db2xman) --encoding=UTF-8 $<
 	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true
 
 %.5 : %.sgml
-	$(db2xman) $<
+	$(db2xman) --encoding=UTF-8 $<
 	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true
 
 %.7 : %.sgml
-	$(db2xman) $<
+	$(db2xman) --encoding=UTF-8 $<
 	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true
 
 lxc-%.sgml : common_options.sgml see_also.sgml
