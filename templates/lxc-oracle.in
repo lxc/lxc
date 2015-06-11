@@ -302,8 +302,8 @@ EOF
         fi
     fi
     if [ $container_release_major = "6" ]; then
-        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mkdir -p /dev/shm && mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.sysinit
-        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mkdir -p /dev/shm && mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.d/rc.sysinit
+        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mkdir -p /dev/shm \&\& mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.sysinit
+        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mkdir -p /dev/shm \&\& mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.d/rc.sysinit
     fi
 
     # there might be other services that are useless but the below set is a good start
