@@ -613,19 +613,19 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		pid = fork();
 		if (pid < 0) {
 			SYSERROR("Error doing dual-fork");
-			return false;
+			exit(1);
 		}
 		if (pid != 0)
 			exit(0);
 		/* like daemon(), chdir to / and redirect 0,1,2 to /dev/null */
 		if (chdir("/")) {
 			SYSERROR("Error chdir()ing to /.");
-			return false;
+			exit(1);
 		}
 		lxc_check_inherited(conf, -1);
 		if (null_stdfds() < 0) {
 			ERROR("failed to close fds");
-			return false;
+			exit(1);
 		}
 		setsid();
 	} else {
@@ -643,6 +643,8 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		if (pid_fp == NULL) {
 			SYSERROR("Failed to create pidfile '%s' for '%s'",
 				 c->pidfile, c->name);
+			if (daemonize)
+				exit(1);
 			return false;
 		}
 
@@ -650,6 +652,8 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 			SYSERROR("Failed to write '%s'", c->pidfile);
 			fclose(pid_fp);
 			pid_fp = NULL;
+			if (daemonize)
+				exit(1);
 			return false;
 		}
 
