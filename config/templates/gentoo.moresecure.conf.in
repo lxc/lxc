@@ -8,8 +8,8 @@ lxc.include = @LXCTEMPLATECONFIG@/common.conf
 # Container user ? see gentoo.common.conf
 
 # do not mount sysfs, see http://blog.bofh.it/debian/id_413
-lxc.mount.entry=mqueue dev/mqueue mqueue rw,nodev,noexec,nosuid 0 0
-lxc.mount.entry=shm dev/shm tmpfs rw,nosuid,nodev,noexec,relatime 0 0
+lxc.mount.entry=mqueue dev/mqueue mqueue rw,nodev,noexec,nosuid,create=dir 0 0
+lxc.mount.entry=shm dev/shm tmpfs rw,nosuid,nodev,noexec,relatime,create=dir 0 0
 lxc.mount.entry=run run tmpfs rw,nosuid,nodev,relatime,mode=755 0 0
 
 # this part is based on 'linux capabilities', see: man 7 capabilities
