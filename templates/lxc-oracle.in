@@ -319,8 +319,8 @@ EOF
     fi
 
     if [ $container_release_major = "6" ]; then
-        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mkdir -p /dev/shm && mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.sysinit
-        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mkdir -p /dev/shm && mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.d/rc.sysinit
+        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mkdir -p /dev/shm \&\& mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.sysinit
+        sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mkdir -p /dev/shm \&\& mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.d/rc.sysinit
     fi
 
     # setup console and tty[1-4] for login. note that /dev/console and
