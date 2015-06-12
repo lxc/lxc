@@ -220,7 +220,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
   &seealso;
 
   <refsect1>
-    <title>Author</title>
+    <title><!-- Author -->作者</title>
     <para>Stéphane Graber <email>stgraber@ubuntu.com</email></para>
   </refsect1>
 </refentry>
