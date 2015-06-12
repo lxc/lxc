@@ -58,10 +58,11 @@ am_in_userns() {
 in_userns=0
 [ $(am_in_userns) = "yes" ] && in_userns=1
 
+# Allow the cache base to be set by environment variable
 if [ $(id -u) -eq 0 ]; then
-    CACHE_D="@LOCALSTATEDIR@/cache/lxc/cirros"
+    CACHE_D=${LXC_CACHE_PATH:-"@LOCALSTATEDIR@/cache/lxc/cirros"}
 else
-    CACHE_D="$HOME/.cache/lxc/cirros"
+    CACHE_D=${LXC_CACHE_PATH:-"$HOME/.cache/lxc/cirros"}
 fi
 
 error() { echo "$@" 1>&2; }

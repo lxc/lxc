@@ -37,6 +37,8 @@ MIRROR=${MIRROR:-http://http.debian.net/debian}
 SECURITY_MIRROR=${SECURITY_MIRROR:-http://security.debian.org/}
 LOCALSTATEDIR="@LOCALSTATEDIR@"
 LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+# Allows the lxc-cache directory to be set by environment variable
+LXC_CACHE_PATH=${LXC_CACHE_PATH:-"$LOCALSTATEDIR/cache/lxc"}
 
 configure_debian()
 {
@@ -293,10 +295,10 @@ copy_debian()
 
 install_debian()
 {
-    cache="$LOCALSTATEDIR/cache/lxc/debian"
     rootfs=$1
     release=$2
     arch=$3
+    cache="$4/debian"
     mkdir -p $LOCALSTATEDIR/lock/subsys/
     (
         flock -x 9
@@ -412,7 +414,7 @@ EOF
 
 clean()
 {
-    cache="$LOCALSTATEDIR/cache/lxc/debian"
+    cache=${LXC_CACHE_PATH:-"$LOCALSTATEDIR/cache/lxc/debian"}
 
     if [ ! -e $cache ]; then
         exit 0
@@ -575,7 +577,7 @@ if [ -z "$rootfs" ]; then
     fi
 fi
 
-install_debian $rootfs $release $arch
+install_debian $rootfs $release $arch $LXC_CACHE_PATH
 if [ $? -ne 0 ]; then
     echo "failed to install debian"
     exit 1
