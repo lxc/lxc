@@ -226,6 +226,7 @@ DEVICE=eth0
 BOOTPROTO=dhcp
 ONBOOT=yes
 HOSTNAME=${utsname}
+DHCP_HOSTNAME=\`hostname\`
 NM_CONTROLLED=no
 TYPE=Ethernet
 MTU=${MTU}
