@@ -274,10 +274,11 @@ type wget
 
 # determine the url, tarball, and directory names
 # download if needed
-cache="$STATE_DIR/cache/lxc/cloud-$release"
+# Allow the cache base to be set by environment variable
+cache=${LXC_CACHE_PATH:-"$STATE_DIR/cache/lxc"}/cloud-$release
 if [ $in_userns -eq 1 ]; then
-    STATE_DIR="$HOME/.cache/lxc/"
-    cache="$HOME/.cache/lxc/cloud-$release"
+    STATE_DIR="$HOME/.cache/lxc"
+    cache=${LXC_CACHE_PATH:-"$STATE_DIR"}/cloud-$release
 fi
 
 mkdir -p $cache

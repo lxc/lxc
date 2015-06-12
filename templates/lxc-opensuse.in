@@ -227,7 +227,8 @@ copy_opensuse()
 
 install_opensuse()
 {
-    cache="@LOCALSTATEDIR@/cache/lxc/opensuse/$DISTRO"
+    # Allow the cache base to be set by environment variable
+    cache="${LXC_CACHE_PATH:-@LOCALSTATEDIR@/cache/lxc/opensuse/$DISTRO}"
     rootfs=$1
     mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
@@ -350,7 +351,7 @@ EOF
 
 clean()
 {
-    cache="@LOCALSTATEDIR@/cache/lxc/opensuse"
+    cache="${LXC_CACHE_PATH:-@LOCALSTATEDIR@/cache/lxc/opensuse}"
 
     if [ ! -e $cache ]; then
         exit 0

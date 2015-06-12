@@ -805,6 +805,7 @@ do
     -w|--password)         forced_password=1; password=$2; shift 2;;
     -s|--settings)         settings=$2; shift 2;;
     -m|--mirror)           mirror=$2; shift 2;;
+    --container-cache)  containercache=$2; shift 2;;
     --tty)                 [[ $2 -lt 6 ]] && tty=$2; shift 2;;
     --autologin)            autologin=1; shift 1;;
     --) shift 1; break ;;
@@ -812,7 +813,8 @@ do
     esac
 done
 
-cacheroot="@LOCALSTATEDIR@/cache/lxc/gentoo"
+# Allow the cache path to be set by environment variable
+cacheroot="${LXC_CACHE_PATH:-"@LOCALSTATEDIR@/cache/lxc"}/gentoo"
 portage_cache="${cacheroot}/portage.tbz"
 cachefs="${cacheroot}/rootfs-${arch}-${variant}"
 
