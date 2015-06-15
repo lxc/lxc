@@ -12,9 +12,26 @@ lxc.mount.entry=mqueue dev/mqueue mqueue rw,nodev,noexec,nosuid,create=dir 0 0
 lxc.mount.entry=shm dev/shm tmpfs rw,nosuid,nodev,noexec,relatime,create=dir 0 0
 lxc.mount.entry=run run tmpfs rw,nosuid,nodev,relatime,mode=755 0 0
 
-# this part is based on 'linux capabilities', see: man 7 capabilities
-#  eg: you may also wish to drop 'cap_net_raw' (though it breaks ping)
+# Capabilities
+# Uncomment these if you don't run anything that needs the capability, and
+# would like the container to run with less privilege.
 #
+# Dropping sys_admin disables container root from doing a lot of things
+# that could be bad like re-mounting lxc fstab entries rw for example,
+# but also disables some useful things like being able to nfs mount, and
+# things that are already namespaced with ns_capable() kernel checks, like
+# hostname(1).
+# lxc.cap.drop = sys_admin        # breaks systemd
+# lxc.cap.drop = net_raw          # breaks dhcp/ping
+# lxc.cap.drop = setgid           # breaks login (initgroups/setgroups)
+# lxc.cap.drop = dac_read_search  # breaks login (pam unix_chkpwd)
+# lxc.cap.drop = setuid           # breaks sshd,nfs statd
+# lxc.cap.drop = audit_control    # breaks sshd (set_loginuid failed)
+# lxc.cap.drop = audit_write
+# lxc.cap.drop = setpcap          # breaks journald
+# lxc.cap.drop = sys_resources    # breaks systemd
+lxc.cap.drop = audit_control audit_write dac_read_search fsetid ipc_owner linux_immutable mknod setfcap setpcap sys_admin sys_boot sys_nice sys_pacct sys_ptrace sys_rawio sys_resources sys_tty_config syslog
+
 # WARNING: the security vulnerability reported for 'cap_net_admin' at
 # http://mainisusuallyafunction.blogspot.com/2012/11/attacking-hardened-linux-systems-with.html
 # via JIT spraying (the BPF JIT module disabled on most systems was used
@@ -25,8 +42,3 @@ lxc.mount.entry=run run tmpfs rw,nosuid,nodev,relatime,mode=755 0 0
 # including the kernel - and multiple layers of security on any system
 # where security is a priority.  note that not only LXC but PAX (and
 # others?) were vulnerable to this issue.
-#
-# conservative: lxc.cap.drop = sys_module mknod mac_override sys_boot
-# aggressive follows. (leaves open: chown dac_override fowner ipc_lock kill lease net_admin net_bind_service net_broadcast net_raw setgid setuid sys_chroot)
-
-lxc.cap.drop = audit_control audit_write dac_read_search fsetid ipc_owner linux_immutable mknod setfcap sys_admin sys_boot sys_pacct sys_ptrace sys_rawio sys_resource sys_tty_config syslog
