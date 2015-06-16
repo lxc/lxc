@@ -253,7 +253,7 @@ HOSTNAME=${UTSNAME}
 NM_CONTROLLED=no
 TYPE=Ethernet
 MTU=${MTU}
-DHCP_HOSTNAME=$name
+DHCP_HOSTNAME=\`hostname\`
 EOF
 
     # set the hostname
