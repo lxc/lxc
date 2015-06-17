@@ -17,4 +17,4 @@ lxc.include = @LXCTEMPLATECONFIG@/common.conf
 # lxc.cap.drop = setuid           # breaks sshd,nfs statd
 # lxc.cap.drop = audit_control    # breaks sshd (set_loginuid failed)
 # lxc.cap.drop = audit_write
-lxc.cap.drop = setfcap setpcap sys_nice sys_pacct sys_rawio
+lxc.cap.drop = sys_nice sys_pacct sys_rawio
