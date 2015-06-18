@@ -2,6 +2,7 @@
 
 distrosysconfdir="@LXC_DISTRO_SYSCONF@"
 varrun="@RUNTIME_PATH@/lxc"
+varlib="@LOCALSTATEDIR@/lib"
 
 # These can be overridden in @LXC_DISTRO_SYSCONF@/lxc
 #   or in @LXC_DISTRO_SYSCONF@/lxc-net
@@ -70,7 +71,7 @@ start() {
     set -e
 
     # set up the lxc network
-    [ ! -d /sys/class/net/${LXC_BRIDGE} ] && brctl addbr ${LXC_BRIDGE}
+    [ ! -d /sys/class/net/${LXC_BRIDGE} ] && ip link add dev ${LXC_BRIDGE} type bridge
     echo 1 > /proc/sys/net/ipv4/ip_forward
     echo 0 > /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/accept_dad || true
 
@@ -110,6 +111,11 @@ start() {
         LXC_DOMAIN_ARG="-s $LXC_DOMAIN -S /$LXC_DOMAIN/"
     fi
 
+    LXD_DHCP_CONFILE_ARG=""
+    if [ -n "$LXC_DHCP_CONFILE" ]; then
+        LXC_DHCP_CONFILE_ARG="--conf-file=${LXC_DHCP_CONFILE}"
+    fi
+
     # https://lists.linuxcontainers.org/pipermail/lxc-devel/2014-October/010561.html
     for DNSMASQ_USER in lxc-dnsmasq dnsmasq nobody
     do
@@ -118,7 +124,7 @@ start() {
         fi
     done
 
-    dnsmasq $LXC_DOMAIN_ARG -u ${DNSMASQ_USER} --strict-order --bind-interfaces --pid-file="${varrun}"/dnsmasq.pid --conf-file=${LXC_DHCP_CONFILE} --listen-address ${LXC_ADDR} --dhcp-range ${LXC_DHCP_RANGE} --dhcp-lease-max=${LXC_DHCP_MAX} --dhcp-no-override --except-interface=lo --interface=${LXC_BRIDGE} --dhcp-leasefile=/var/lib/misc/dnsmasq.${LXC_BRIDGE}.leases --dhcp-authoritative $LXC_IPV6_ARG || cleanup
+    dnsmasq $LXC_DHCP_CONFILE_ARG $LXC_DOMAIN_ARG -u ${DNSMASQ_USER} --strict-order --bind-interfaces --pid-file="${varrun}"/dnsmasq.pid --listen-address ${LXC_ADDR} --dhcp-range ${LXC_DHCP_RANGE} --dhcp-lease-max=${LXC_DHCP_MAX} --dhcp-no-override --except-interface=lo --interface=${LXC_BRIDGE} --dhcp-leasefile="${varlib}"/misc/dnsmasq.${LXC_BRIDGE}.leases --dhcp-authoritative $LXC_IPV6_ARG || cleanup
 
     touch "${varrun}"/network_up
     FAILED=0
@@ -147,7 +153,7 @@ stop() {
         pid=`cat "${varrun}"/dnsmasq.pid 2>/dev/null` && kill -9 $pid
         rm -f "${varrun}"/dnsmasq.pid
         # if $LXC_BRIDGE has attached interfaces, don't destroy the bridge
-        ls /sys/class/net/${LXC_BRIDGE}/brif/* > /dev/null 2>&1 || brctl delbr ${LXC_BRIDGE}
+        ls /sys/class/net/${LXC_BRIDGE}/brif/* > /dev/null 2>&1 || ip link delete ${LXC_BRIDGE}
     fi
 
     rm -f "${varrun}"/network_up
