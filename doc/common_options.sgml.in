@@ -5,7 +5,7 @@ lxc: linux Container library
 (C) Copyright IBM Corp. 2007, 2008
 
 Authors:
-Daniel Lezcano <daniel.lezcano at free.fr>
+Daniel Lezcano <dlezcano at fr.ibm.com>
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -21,13 +21,19 @@ You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+Translated into Japanese
+by KATOH Yasufumi <karma at jazz.email.ne.jp>
+
 -->
 
 <refsect1>
-  <title>Common Options</title>
+  <title><!-- Common Options -->共通オプション</title>
 
   <para>
+    <!--
     These options are common to most of lxc commands.
+    -->
+    ここで紹介するオプションは lxc コマンドの大部分で共通のものです。
   </para>
 
   <variablelist>
@@ -35,7 +41,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <term><option>-?, -h, --help</option></term>
       <listitem>
 	<para>
+          <!--
 	  Print a longer usage message than normal.
+          -->
+          通常より長い使い方のメッセージを表示します。
 	</para>
       </listitem>
     </varlistentry>
@@ -43,7 +52,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <term><option>--usage</option></term>
       <listitem>
 	<para>
+          <!--
 	  Give the usage message
+          -->
+          使い方を表示します。
 	</para>
       </listitem>
     </varlistentry>
@@ -52,7 +64,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <term><option>-q, --quiet</option></term>
       <listitem>
 	<para>
+          <!--
 	  mute on
+          -->
+          出力を抑制します。
 	</para>
       </listitem>
     </varlistentry>
@@ -61,7 +76,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <term><option>-P, --lxcpath=<replaceable>PATH</replaceable></option></term>
       <listitem>
 	<para>
+          <!--
 	  Use an alternate container path.  The default is @LXCPATH@.
+          -->
+          デフォルトと別のコンテナパスを使用します。デフォルトは @LXCPATH@ です。
 	</para>
       </listitem>
     </varlistentry>
@@ -70,8 +88,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <term><option>-o, --logfile=<replaceable>FILE</replaceable></option></term>
       <listitem>
 	<para>
+          <!--
 	  Output to an alternate log
 	  <replaceable>FILE</replaceable>. The default is no log.
+          -->
+          追加のログを <replaceable>FILE</replaceable> に出力します。デフォルトは出力しません。
 	</para>
       </listitem>
     </varlistentry>
@@ -80,6 +101,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <term><option>-l, --logpriority=<replaceable>LEVEL</replaceable></option></term>
       <listitem>
 	<para>
+          <!--
 	  Set log priority to
 	  <replaceable>LEVEL</replaceable>. The default log
 	  priority is <literal>ERROR</literal>. Possible values are :
@@ -87,11 +109,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  <literal>WARN</literal>, <literal>ERROR</literal>,
 	  <literal>NOTICE</literal>, <literal>INFO</literal>,
 	  <literal>DEBUG</literal>.
+          -->
+          ログの優先度を <replaceable>LEVEL</replaceable> に設定します。デフォルトの優先度は <literal>ERROR</literal> です。以下の値を設定可能です:
+	  <literal>FATAL</literal>, <literal>CRIT</literal>,
+	  <literal>WARN</literal>, <literal>ERROR</literal>,
+	  <literal>NOTICE</literal>, <literal>INFO</literal>,
+	  <literal>DEBUG</literal>。
 	</para>
 	<para>
+          <!--
 	Note that this option is setting the priority of the events
 	log in the alternate log file. It do not have effect on the
 	ERROR events log on stderr.
+        -->
+          このオプションは追加のログファイルへのイベントログの優先度の設定である事に注意してください。stderr への ERROR イベントのログには影響しません。
 	</para>
       </listitem>
     </varlistentry>
@@ -100,8 +131,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <term><option>-n, --name=<replaceable>NAME</replaceable></option></term>
       <listitem>
 	<para>
+          <!--
 	  Use container identifier <replaceable>NAME</replaceable>.
 	  The container identifier format is an alphanumeric string.
+          -->
+          <replaceable>NAME</replaceable> という名前でコンテナを識別します。コンテナ識別子のフォーマットは英数字の文字列です。
 	</para>
       </listitem>
     </varlistentry>

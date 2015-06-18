@@ -1,6 +1,8 @@
-SUBDIRS = examples rootfs
-DIST_SUBDIRS = examples rootfs ja api
+READMEdir=@LXCROOTFSMOUNT@
 
+<<<<<<< HEAD
+README_DATA=README
+=======
 if USE_DOCBOOK2X
 SUBDIRS += ja
 endif
@@ -72,3 +74,4 @@ lxc-%.sgml : common_options.sgml see_also.sgml
 clean-local:
 	$(RM) manpage.* *.7 *.5 *.1 $(man_MANS)
 endif
+>>>>>>> upstream/master

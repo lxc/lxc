@@ -469,7 +469,7 @@ lxc.mount.entry=${portage_distfiles_dir} ${portage_container/\//}/distfiles none
 # enable this to use built binary packages
 #EMERGE_DEFAULT_OPTS="\${EMERGE_DEFAULT_OPTS} --usepkg"
 
-# enable and *tune* this kind of entry to slot binaries, specialy if you use multiples archs and variants
+# enable and *tune* this kind of entry to slot binaries, especial if you use multiples archs and variants
 #PKGDIR="\${PKGDIR}/amd64
 #or PKGDIR="\${PKGDIR}/hardened"
 EOF

@@ -1,0 +1,166 @@
+#!/bin/bash
+#!/sbin/runscript
+### with a few add on commands add the Sabayon Linux Overlays. 
+## Wildly Inspired by  https://github.com/adrienthebo/sabayon-chroot-builder bootstrap-sabayon.sh
+### goals an easy to Install Sabayon Linux LXC container, which is Gentoo Completable ,and has many uses... 
+#### yet faster to update & administrate...and in many cases easier and or a GP Sabayon box suitable for a server farm LXC Virtual hosting...
+#### testing packages without nuking prime Sabayon System..  ,Likewise building them & testing
+###  Requires Gentoo, lxc-gentoo.in run gentoo then these few conversions ####{rootfs}
+{rootfs}="${SAB_rootfs}"    
+##{rootfs} # never hurts to have a fail-safe. need to keep the var in this script after lxc-gentoo.in exits
+## from ${SAB_rootfs} CHROOT this script will *hotwire* the container to Sabayon spec. goal is once called it should be automatic.
+Include lxc-gentoo.in
+echo "Starting lxc-gentoo.in. to Build the Gentoo Stock Container"
+echo "Just Be sure to Name It Sabayon something.... "
+exec "lxc-gentoo.in"|| exit 1
+echo "Starting Sabayon Migration of The Generic Gentoo Container and Adding the Sugar & Spice of Sabayon Linux Overlays..."
+chroot_sabayon
+setup_lang
+setup_system
+prepare_portage
+install_layman
+install_entropy
+update_entropy
+x11_setup
+unchroot_sabayon
+
+
+# Chroot into LXC container after Gentoo LXC Build proses. and do a few commands to convert. 
+chroot_sabayon() {
+depend() {
+   need localmount
+   need bootmisc
+ }
+ebegin "Mounting chroot directories"
+mount -o bind   /dev "${SAB_rootfs}/dev"
+mount -t devpts none "${SAB_rootfs}/dev/pts"
+mount -t tmpfs  none "${SAB_rootfs}/dev/shm"
+mount -t proc   none "${SAB_rootfs}/proc"
+mount -t sysfs  none "${SAB_rootfs}/sys"
+eend $? "An error occurred while mounting chroot directories"
+env-update
+source /etc/profile
+export PS1="(SAB-LXC-CHROOT) $PS1"
+}
+
+setup_lang() {
+export LANG=en_US
+export LANGUAGE=${LANG}
+export LC_ALL=${LANG}.UTF-8
+echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+locale-gen
+}
+setup_system() {
+## ln -sf ../usr/share/zoneinfo/America/Los_Angeles /etc/localtime done prior in lxc-gentoo.in by user selection.
+echo "nameserver 8.8.8.8
+8.8.4.4 
+2001:4860:4860::8888
+2001:4860:4860::8844 " > /etc/resolv.conf  
+#adds google public dns
+# sets python 2.7 as default
+eselect python set 1
+env-update
+source /etc/profile
+}
+prepare_portage() {
+#emerge --sync
+echo "sys-apps/entropy ~amd64" >> /etc/portage/package.keywords/entropy
+echo "app-admin/equo ~amd64" >> /etc/portage/package.keywords/entropy
+echo "app-portage/layman git mercurial sync-plugin-portage darcs subversion  g-sorcery" > /etc/portage/package.use/layman
+env-update
+source /etc/profile
+}
+install_layman() {
+emerge -v --buildpkg  layman eix
+eix-remote add "http://gpo.zugaina.org/eix_cache/eix-cache.tbz2"
+eix-remote fetch "http://gpo.zugaina.org/eix_cache/eix-cache.tbz2"
+layman -L
+layman -a sabayon
+layman -S
+echo "source /var/lib/layman/make.conf" >> /etc/portage/make.conf
+env-update
+source /etc/profile
+}
+install_entropy() {
+emerge -vt app-admin/equo sys-apps/entropy --autounmask-write
+etc-update --automode -5
+emerge -vt app-admin/equo sys-apps/entropy
+}
+
+update_entropy() {
+ebegin "entropy update and portage to entropy sync and system upgrades"
+## Sync portage db to entropy 
+equo rescue spmsync 
+equo repo mirrorsort sabayonlinux.org 
+# Find the fastest mirrors 
+equo update
+# update bin repo remote db to get latest packages
+equo install entropy equo
+## update entropy core  and equo entropy txt client 
+equo upgrade 
+equo deptest
+equo libtest  
+### tests dependencies and libs installs if required 
+etc-update --automode -5  
+eend $? "An error occurred while unmounting chroot directories
+}
+
+x11_setup() {
+# Add some goodies later like VNC or something ? to allow use of X11 when runing 
+#in lxc and or just apps via chroot for now K,i,s,s.  more to do latter.
+export DISPLAY=":0.0"
+}
+
+unchroot_sabayon() {
+ebegin "Unmounting chroot directories"
+umount "${SAB_rootfs}/dev/pts"
+umount "${SAB_rootfs}/dev/shm"
+umount "${SAB_rootfs}/dev"
+umount "${SAB_rootfs}/proc"
+umount "${SAB_rootfs}/sys"
+eend $? "An error occurred while unmounting chroot directories"
+}
+
+
+ECHO " Congratulations Sabayon Linux is now Installed, however only X64 is officially supported" 
+export DISPLAY=":0.0"
+sabayon_logo_end() {
+echo $"
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMI??II??III?I?MMMMMMMMMMMMMM
+MMMMMMMMMMIIII????III????III?MMMMMMMMMMM
+MMMMMMMIII??IIIINNN8NNNIIII????IMMMMMMMM
+MMMMMM?????77DOOOO8888888D77???IIMMMMMMM
+MMMMM?I?I77OOOOOO88 8888DDDD77I???MMMMMM
+MMMM???I$NOOOOOO888 888DDDDDDN7?I??MMMMM
+MMM????$NOOOOOO8888888DDDDDDDDN$????MMMM
+MM?II??$OOOOOO8888   DDDDDDDDNN$??II?MMM
+MMI?I?$NOOOOO88888   DDDDDDDNNNN$?I?IMMM
+MMI???ZNNNOO888888   DDDDDDNNNNNZ?I?IMMM
+MMI??IZNNNN888888N   NNNNNNN  NNZ?I?IMMM
+MMI??IZNNN NNNNNNN   NNNN   NNNNZ?I??MMM
+MM?II??ZNNN    NNN   NN    NNNNZI??IIMMM
+MMM????ZNNNNN            NNNNNNZIII?MMMM
+MMMM??I?ZNNNNNN       ZNNNNNNNZ????IMMMM
+MMMMM???I$NNNNNNNN  NNNNNNNNN$I???IMMMMM
+MMMMMMI????$NNNNNNNNNNNNNNN$?III?MMMMMMM
+MMMMMMMIII??IIINNNNNNNNNI7?III??MMMMMMMM
+MMMMMMMMMMIIII?II????IIII????IMMMMMMMMMM
+MMMMMMMMMMMMMI???I?III???IMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+"
+Echo "Welcome to your Sabayon Linux container"
+}
+
+#       %%% %%%%%%%            |#|
+#     %%%% %%%%%%%%%%%        |#|####
+#  %%%%% %         %%%       |#|=#####
+#  %%%%% %   @    @   %%      | | ==####
+# %%%%%% % (_  ()  )  %%     | |    ===##
+# %%  %%% %  \_    | %%      | |       =##
+# %    %%%% %  u^uuu %%     | |         ==#
+#       %%%% %%%%%%%%%      | |           V
+### Brought to you by Necrose99 , Put a Scythe to your problems shall we...

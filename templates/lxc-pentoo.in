@@ -1,0 +1,236 @@
+#!/bin/bash
+#
+# LXC template for  Pentoo (Gentoo) ---Mainly as  Build container. but one could just as well have added uses.. ie Pentoo as a Sec monitor service 
+## One can run the LXC as a virtual machine much as one dose with Virtualbox , yet CHROOT/BSD JAIL-ish..
+## or if not running one can use it as a ***CHROOT*** :-) also easy to going from host system and publish to HTTP repo..
+# Tweaked  lxc-Pentoo.in  by Necrose99 (Michael R. Lawrence) mike@michaellawrenceit.com
+## Spike Pentesting is the how bleeding edge can we push things and we bum from Pentoo.... &test some of the nextgen pen-test stuff: works ? else >>dustbin. 
+## also make many of  pentoo's packages for Sabayon Entropy, so updates are easy (for newbies/Student), and for Less experienced Gentoo users & or those with limited time. or less skills. 
+## but we try and give back to for Pentoo . http://www.pentoo.ch/  :-) https://code.google.com/p/pentoo/
+### our CI Server code , One can use to really test your Pentoo use LXC or Virtualbox etc, travis-CI etc. 
+### https://github.com/Spike-Pentesting/App-witchcraft  
+## this will build a Gentoo or Sabayon repo in a virtual machine/or LXC ()Ultra glorified **CHROOT**) and not risk your Main Pentoo install.
+### (adds lxc to vagrant for use. with Witchcraft too) github.com/fgrehm/vagrant-lxc , (Vagrant/docker/chef/forman --manyways to script other addons to a VM etc. )
+###  to always Gently pentest the network, and send alarm/page if shits really bad. And or ADD an IDS/SIEM tools/ 
+## drawn my inspiration from these too. https://github.com/adrienthebo/sabayon-chroot-builder bootstrap-sabayon.sh
+## hopefully BlSHVK can abuse this for automation of test cases :-) 
+
+#sed -i 's/ugly/beautiful/g' /home/bruno/old-friends/sue.txt  why not sed to make.conf of mine as a template. 
+
+###  Requires Gentoo, lxc-gentoo.in run gentoo then these few conversions ####{rootfs}
+{rootfs}="${PEN_rootfs} 
+{arch}={PEN_arch}
+{variant}{PEN_variant}
+##{rootfs} etc # never hurts to have a fail-safe. need to keep the var-s in this script after lxc-gentoo.in exits
+## from ${PEN_rootfs} CHROOT this script will *hotwire* the container to Pentoo spec. goal is once called it should be automatic.
+
+Include lxc-gentoo.in
+echo "Starting lxc-gentoo.in. to Build the Gentoo Stock/Generic  Container"
+echo "Just Be sure to Name It Pentoo something.... "
+exec "lxc-gentoo.in"|| exit 1
+echo "Starting  Migration of The Generic Gentoo Container Adding "The Hot Sauce" of Pentoo"
+##############@@@@@@@@@ Gentoo to Pentoo "Conversion" @@@@@@@@@@@@ ###############  
+
+chroot_pentoo
+setup_lang
+setup_system
+prepare_portage
+## Lets build Layman so we can add Pentoo overlay to the Gentoo generic container and add "The Hot Sauce" of Pentoo. 
+install_layman
+set_pentoo_binprofile  
+#eselect profile set pentoo:pentoo/$"{PEN_variant}"/linux/$"{PEN_arch}"/binary ie Hardened or reg and CPU Based on Zero Chaos's recommendation
+# I just pray it works..... need to add filters for Pentoo valid variants and arches and DIE or confirm something  weird or not supported. 
+emerge_pentoo 
+pentoo-updater
+## Using Bin-profiles when possible, else this will take a REALLY Long time, Users can switch to or have another script set to preferred latter. for builds etc.
+x11_Pentoo
+# Set a few misc things for x11 via lxc  and or using x apps when @ chroot. WIP. 
+# This is a nicety however not required to do , users can do , support of this to be added over time. 
+unchroot_pentoo
+pentoo_logo_end
+# Give a thanks & Fly Pentoo Logo with Pride... 
+
+
+emerge_pentoo() {
+IUSE="+analyzer +bluetooth +cracking +database +desktop +exploit +footprint +forensics \
+	+forging +fuzzers +misc +mitm +mobile pentoo +proxies +radio +rce \
+	+scanner +voip +wireless +accessibility +atm gtk java qt4 +office X minipentoo" emerge  pentoo/pentoo pentoo/pentoo-misc
+## Lets Add Pentoo Specials to the Gentoo Container... this will build or use binaries for now...
+ }
+
+
+# Chroot into LXC container after Gentoo LXC Build proses. and do a few commands to convert. 
+chroot_pentoo() {
+depend() {
+   need localmount
+   need bootmisc
+ }
+ebegin "Mounting chroot directories"
+mount -o bind   /dev "${PEN_rootfs}/dev"
+mount -t devpts none "${PEN_rootfs}/dev/pts"
+mount -t tmpfs  none "${PEN_rootfs}/dev/shm"
+mount -t proc   none "${PEN_rootfs}/proc"
+mount -t sysfs  none "${PEN_rootfs}/sys"
+eend $? "An error occurred while mounting chroot directories"
+env-update
+source /etc/profile
+export PS1="(SAB-LXC-CHROOT) $PS1"
+}
+
+setup_lang() {
+export LANG=en_US
+export LANGUAGE=${LANG}
+export LC_ALL=${LANG}.UTF-8
+echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+locale-gen
+}
+setup_system() {
+## ln -sf ../usr/share/zoneinfo/America/Los_Angeles /etc/localtime done prior in lxc-gentoo.in by user selection.
+echo "nameserver 8.8.8.8
+8.8.4.4 
+2001:4860:4860::8888
+2001:4860:4860::8844 " > /etc/resolv.conf  
+#adds google public dns
+# sets python 2.7 as default
+eselect python set 1
+env-update
+source /etc/profile
+}
+prepare_portage() {
+emerge --sync
+
+env-update
+source /etc/profile
+}
+install_layman() {
+USE="bazaar cvs darcs +git gpg g-sorcery mercurial -squashfs subversion sync-plugin-portage test" Emerge -v layman svn git eix 
+## Lets build Layman so we can add Pentoo overlay to the Gentoo generic container and add "Spice" of Pentoo. 
+## as well as our build use cases squashfs one can add back in latter on 
+#just the initial Kernel depends will often die (REAL HOST LINUX Kernel NO AUFS3) or suck ass building and could be useless aufs3 of late is a touch temperamental
+echo "Starting Layman & Pentoo Repo pull"
+layman -L
+#pull down list of overlays... wont see were to get Pentoo often if you don't. newer layman still might better safe than sorry. 
+#add pentoo's repo  :-) Whooohooo !!! eix remote for speedy searches... :-)
+eix-remote add "http://gpo.zugaina.org/eix_cache/eix-cache.tbz2"
+eix-remote fetch "http://gpo.zugaina.org/eix_cache/eix-cache.tbz2"
+layman -a pentoo
+layman -S
+echo "source /var/lib/layman/make.conf" >> /etc/portage/make.conf
+env-update
+source /etc/profile
+}
+set_pentoo_binprofile() {
+ ## for now lets set Bin profile for sat updates and less builds during Gentoo to Pentoo "conversion"... 
+## for binary type updates will be faster , and for the moment this will do user may switch latter
+## wildcard needed for host container type variable cloned from lxc-gentoo build. may need a filter for {PEN_variant} regular or hardened.
+## wildcard  for cpu {PEN_arch} may need filter for valid Pentoo supported types. 
+# special thanks to ZERO CHAOS for eselect by name ...ie eselect profile set pentoo:pentoo/hardened/linux/amd64 pentoo:pentoo/default/linux/amd64
+eselect profile set pentoo:pentoo/$"{PEN_variant}"/linux/$"{PEN_arch}"/binary
+eend $? "Error that cant be good CPU/or Invalid profile /Not supported by Pentoo For Gentoo container type"
+}
+
+function die
+{
+    local message=$1
+    [ -z "$message" ] && message="Died"
+    echo "${BASH_SOURCE[1]}: line ${BASH_LINENO[0]}: ${FUNCNAME[1]}: $message." >&2
+    exit 1
+}
+
+unchroot_Pentoo() {
+ebegin "Unmounting chroot directories"
+umount "${PEN_rootfs}/dev/pts"
+umount "${PEN_rootfs}/dev/shm"
+umount "${PEN_rootfs}/dev"
+umount "${PEN_rootfs}/proc"
+umount "${PEN_rootfs}/sys"
+eend $? "An error occurred while unmounting chroot directories"
+}
+
+ 
+x11_Pentoo() {
+# Add some goodies later like VNC or something ? to allow use of X11 when runing in lxc and or just apps via chroot for now K,i,s,s.
+export DISPLAY=":0.0"
+}
+
+pentoo_logo_end() {
+echo " Congratulations Sabayon Linux is now Installed,Into LXC" 
+echo $"
+88888?8888OO8O8OIOZOO88O~888$888OOIZOOOO$OOOOZOOOOZ77OOOO77OOOO==OO+IOOZZZOOZZZ7ZZ7$ZZ$$$7$$+$77I777I=?III~~?+?=?++++++==+OOO?ZOOOOOO$OOOZOOOOOZ$OOOOO7ZOOOOZOOO=OOOO7888O8O888ZOOO7
+8888OI88887$8888OZ7Z7OOZZ8OO$OOOOOZ7$OOOZOOO=~OOOOZ$7OOOOOOOOOOZZOOZZOOZ$ZOOZZZ$ZZ$ZZZ+I$7$$7$7777777~IIII???+++?++++++====OO?7$OOOOOOOOO+OOOOOZ$OOOOOZOOOOOZOOOZOOOZ$88888$88O+8OO~
+87888$888OZZ888ZIOZOO8OOOOOOZOOOOO?ZOOOO7ZOOZZOOZOZZOOOOOO$OOOO$OOO+IOOZ$OOZZZZ7ZZ$$ZZ$$$7$$$$$7?7777?IIII~=?+?:??=:+++=+=====ZOOOOOO7OOOZOOOZOZ$OOOOO7ZOOOO+OOOZOOOZ7888O8$O8$Z8OO$
+8OOOO=8OOO7OOOOOOO$OOOOOOOOO7OOOOOZI$OOO$ZOOZOOOOOZZ7OOOOOZOOOO?=OOZZOOZZZOZZZOZZZZZZZ$Z$$$$$$$777777=?III???=?~?+=~+++=+====~=$OOOOOZOOZOOOOOOO+OOOOOZOOZOO~OOOOOZOZZO8888O88OO888$
+8+OOOIOOOO$$OOOO$OZOOO                 O7                 7O  =ZZOOOOOZZ7+OZ   7                   77                   ++==                     OOOOO7OOOOOZOOO$OOZ$ZOO8O8$Z8Z78OO7
+OIOOOZOOOOOZOOOOZOOOOO   OOOZOOOOOZ7   $$   $ZOOZOZZZOZOOZZO    +OOZZOZZ$ZOZ   7ZZ$ZZZ+7   Z7$$$I$77   77II?I+?+?????~  7+==   ~=+~OOZOOO~OOOO+  OOOOOZOOOOO=OOOZOZOZZOO888O888O8OO~
+OZOOO7OOOOOOOOOO~OOOZOOOOOOO7OOOOO?$ZZOO7$$O?+ZZZZ$77ZZZZZ7ZZZ7   O+?ZZZ$ZOZZZZ$ZZZZZZ$ZZ$ZZ7$$I~$7$   77I??I??=?????++++++==,~~=~=~~7OOO=OOOO+  7OOOO7ZOOOOZOOO=OOOZ?OOOO8$88O88OO$
+O~ZOOOOOOZ77OOOOIOZO7ZZZOOOZ7OZOOOZ7$ZZZ$Z$ZZZZZZZZZZZZZ$ZZZZZZZ=   $ZZ$$$Z$ZZ$7ZZ7ZZZ+I77ZZI$$$7$$$   777I=III????+?++=+++==~~=====~~OOO7OOOO+  7OOOOZOOOOOOZOOZOZZ$ZOZO88$88OO8OO$
+O+ZOO$OOOZ$$OOOO$OZOZO   ZZZZZZZZZ?I   I7           =ZZZZ7IO  ZZZZ    Z$$?Z$   ZZZ7ZZZ$Z   Z$Z$$+$$$   ?77I+III~?????~  =+++   ~====~:~~O~OOOZ+  7OOOO7OOOOOOOOOZOOOZZOOOZ8O88ZO8OOO
+Z$7ZOZZZZZZ$$Z$Z?ZZZ$O                 ZI           =$$$$$$O  ZZ$$Z$   :$$Z7   IZZ$Z$Z=I   77$$$$$$$   I7I+~III=?????~  =+++   ==~===~~~~$OOOZ+  OMMZOZOOOOOOOOOOOZZ$$OZOOO$Z8ZZ88OZ
+O?ZZO7ZZ$ZZ7ZZZZ$ZZ$IO   7Z$I$7$ZI+I77Z$7   ~:$$$$$77$$$$IIO  $$$$$+?$   ?ZZ   ?ZZ7ZZ$$$   $7Z$$77$$   I7I7I7II?I????~  ++++   ~=====:~~~~~ZZ8:  I~OO::NOOOZOOOOZOOZZ+OOOZOO88ZO88OO
+Z$7$Z$$Z$$Z7$ZZ$?$IZ$O   ZZ$$$7$$$$I7$$$I   77$$7$$7$$$$$77O  $$$$$$I$$~   $   $Z$7$$Z=I   $$$$$$$$$   I777?77I?I????~  ++++   ======~~~~~~MII.  7Z8MO=$ONOZOZOOZOOZZZOZOZO7O8OO88OZ
+ZZZZZ$ZZZZZZZZZZIZZZ$O   $$$I$7$$$??7I$$7   =:$$$77$$$7$$IIO  $$$$$$$$$$$      I$$7$$$$$   $+$$$7$$$   I7III7II=III??~  I+++   ======~=~~~8OOM=  7ZZZZNO$8ZZZZZZZZ7Z$7OZOZZ7Z8ZZ88OO
+Z$$$$$$$$$$$$$$7+$I$IO   $$$I$7$$$7I7I$$?                 7O  777$$77$77I$7    7$$7$$$$7   $+$$77777=                   ++++              :IM    $ZZ7$$O+.M$ZZZZ7Z$Z$7ZZZ$Z$ZZZZOOOZ
+$=$$$7$$$77I$$$$I$I77O   777I7I777I+?I77?                 ?Z  77777=+77II777=  ?777777I7   77777I77III                 =+++==            M:?$   ~I$7$$+N~+MII$$?~7?II~7$II7??7Z$Z7Z$
+7I77?7777I7I777I~7?IIII+IIII+I?IIII+IIII+?IIIIIIII??II?IIIIIIIIIIIII?II??II?I?I?IIIIII~+I?IIIIIIIIIIIIIIII~~???=?????++=++=======~=~~~~~~=O?:::,::77I7I7+OMI7777?7?III7I7I7I77?7$$$=
+I?III?III?IIIIII+I+????+????+?+???=~++??+?+???????????????+????????~=??++???????????????????+?????????+=??++???++++++++=====~,:~~~~~~:~~~OOM:::,::,+II77$8I?IIII+I?IIIIIIII?II?I$$77
+?++??????+??????,?=++++=++++++=++++~+=++===+++++++++++++++=++++++++++++++++++++=++++=+++==++++++++++++++++~,+++=+==++==~====~~~~~~~~~:+I?IMMD::,,,,,,?MO7M??????+?+????+???+?I+??7II
++~++=+++++++++++:+=++=+=====~======~=====================~~================================~:==========~=~=~=========~=~~~~~:~::~:~~:NO7IOZ,7O:Z~OMM8,ZZ8M++++++=+=+++++++++?++?++I?
+==~=~======~====~=~==~~~~~=~:~~~~~~:~:~~:~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~:~~~~:~~~~~~~:~~~~~~~~~~:~~~:~~~:~~~~~:~~~~:~:::::::::8I:+?+?:$:7+O~,O+O+OIM=======~====~===~=======+
+~,~~:~~~~~~~~~~~,~:~~:~:~~~~:~::~::,::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::~::,::::~:::::::::::,:,::,:::$IOO~+DOO7D$I+=7O:Z:7OM~~~~,~~~~~~~~~~~~~~~~~~~
+:,::,::::::,::,:,,:,,,,,,,,,,,,,:,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,:,:,::::,,::::::::::,:,:::::::::::,:,::,:,,,,,,,,=OO~+7Z      +OO7?O7+M8N:::::~:~~~::~:~::~~~:~~~
+,,,,,,,,,,,,,,,,.,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MOOO,Z   DDD   D~+OZ~DO,::::,:,::::::::,,:,:::::
+OO8888Z+??Z8888888888888OOOO8888888888888OOO88OZZ$7$ZO88888O88OO888888Z?==IZ888OOOZZOOOO8888OI$88O8888888888888888888888888OZZ$$ZO  =7::OIDD         $O78OD                         
+OO8888O$$ZO8888888888888OOOO888888888888OOOO88OOOZ$$ZO88888888OO888888OZ$ZZO888OOOOZOOOO888OZ?7O888888888888888888888888888OZ$$$ZO I+I~Z+I,D7      IDI:OMOM                         
+OO88888OOO88888888888888OOOO8888888888888OOO88OOOOZZO888888888OO888888OOOOOO88OOOZZZZOOO888O7+IZ888888888888888888888888888OZ$$$ZZ OZO:7:ZO      .D?O:I:D8D                         
+OO88888O8O88888888888888OZOO8888888888888OOO88OOOOZOO888888888OO888888OOOOOO88OOZZZZZZOOO88O777Z888888OO8888888888888888888OZ$$$$O Z:=OZI8     8D7=O:+O$OD.                         
+OO88888O8O88888888888888OOOOO888888888888OOO88OZ$$ZOO888888O88OO888888OOOOOO8OOOZ$$$$ZZOO88OOZOO8O888OOOO888888OO8888888888OZ$$$ZOD:Z:OI+DDDDDDO:O::$:$NNM                          
+OO8888888888888888888888OZOO8888888888888OO888ZI++?ZO8888888888O888888OOOOOO8OOZZ$$$$ZZOO88OOOOO8O88OOOOOOO8OO8888888888888OZZ$$ZO7+O:O??OO:O~OIOO~O7$=NN8                          
+OO888888888888888888888O$7O888888888888888888O7+7$=7O88888888888888888OOOOOO8OOZ$$7$$$ZOOO8OOOOO8888OOOOOOOOOO8888888888888OOZZZOOZMMMN,ZZ:ZOI+OIO=OO:=OMZZZZZZZZZZZZZZZZZZZZZZZZZZZ
+OO88888888888888888888OI~=O888888888888888888O??ZZ=?Z88888888888888888OZZZZO8OOZ$$77$$ZZO88OZZZO88888OOOOOO8OOO8888888888888OOOOOOZZZZZZNMMMMMNOI7$Z7ONOMZZZZZZZZZZZZZZZZZZZZZZZZZZZ
+OO88888888888888888888O$I+O888888888888888888O+?ZZ=?Z88888888888888888Z?==+$8OOZ$$$7$$ZOO8OZ???Z88888OOOOOO8OOO8888888888888OOOOO8ZZZZZZZZZZZZZZDMMMMMNO8ZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+Echo "Welcome to your Pentoo Linux container"
+}
+
+pentoo-updater() {
+ebegin "Updating Pentoo"
+# This will become the Pentoo-updater script soon
+
+# This syncs the Gentoo and Pentoo repos like "apt-get update" in debian
+#emerge --sync
+# This updates all the normal packages like "apt-get upgrade" in debian
+emerge --deep --update --newuse world -vt
+# This optionally merges in changed config files. unchanged files are merged automatically
+etc-update
+# This removes old packages which are not needed like "apt-get autoremove" in debian
+emerge --depclean
+# This rebuilds anything which may have been broken in update
+emerge @preserved-rebuild
+# This checks all the programs installed from VCS for new revisions and updates if needed
+smart-live-rebuild
+# Verifies there is no breakage after updates
+revdep-rebuild
+#merge in any new config files
+etc-update
+#clean up the distfiles/packages dirs to remove old/un-needed files
+eclean-dist -d && eclean-pkg -d
+# Check /var/log/portage/elog/summary.log file
+# You might need to run extra commands. For example:
+emerge @x11-module-rebuild
+eselect java-vm set system icedtea-bin-7
+
+# Run the following command under each regular user's account
+# Regenerate the main menu for XFCE WM (or "-e" for e17, "-k" for KDE)
+genmenu.py -x 
+eend $? "Updates Completed"
+}
+
+
+#       %%% %%%%%%%            |#|
+#     %%%% %%%%%%%%%%%        |#|####
+#  %%%%% %         %%%       |#|=#####
+#  %%%%% %   @    @   %%      | | ==####
+# %%%%%% % (_  ()  )  %%     | |    ===##
+# %%  %%% %  \_    | %%      | |       =##
+# %    %%%% %  u^uuu %%     | |         ==#
+#       %%%% %%%%%%%%%      | |           V
+### Brought to you by Necrose99 , Put a Scythe to your problems shall we...
