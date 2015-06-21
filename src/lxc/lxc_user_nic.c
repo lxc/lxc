@@ -194,6 +194,7 @@ static struct alloted_s *append_alloted(struct alloted_s **head, char *name, int
 
 	if (head == NULL || name == NULL) {
 		// sanity check. parameters should not be null
+		fprintf(stderr, "NULL parameters to append_alloted not allowed\n");
 		return NULL;
 	}
 
@@ -201,6 +202,7 @@ static struct alloted_s *append_alloted(struct alloted_s **head, char *name, int
 
 	if (al == NULL) {
 		// unable to allocate memory to new struct
+		fprintf(stderr, "Out of memory in append_alloted\n");
 		return NULL;
 	}
 
@@ -294,8 +296,14 @@ static int get_alloted(char *me, char *intype, char *link, struct alloted_s **al
 		/* found the user or group with the appropriate settings, therefore finish the search.
 		 * what to do if there are more than one applicable lines? not specified in the docs.
 		 * since getline is implemented with realloc, we don't need to free line until exiting func.
+		 *
+		 * if append_alloted returns NULL, e.g. due to a malloc error, we set count to 0 and break the loop,
+		 * allowing cleanup and then exiting from main()
 		 */
-		append_alloted(alloted, name, n);
+		if (append_alloted(alloted, name, n) == NULL) {
+			count = 0;
+			break;
+		}
 		count += n;
 	}
 
