@@ -1365,13 +1365,18 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 		goto free_tpath;
 
 	/*
-	 * either template or rootfs.path should be set.
 	 * if both template and rootfs.path are set, template is setup as rootfs.path.
 	 * container is already created if we have a config and rootfs.path is accessible
 	 */
-	if (!c->lxc_conf->rootfs.path && !tpath)
-		/* no template passed in and rootfs does not exist: error */
+	if (!c->lxc_conf->rootfs.path && !tpath) {
+		/* no template passed in and rootfs does not exist */
+		if (!c->save_config(c, NULL)) {
+			ERROR("failed to save starting configuration for %s\n", c->name);
+			goto out;
+		}
+		ret = true;
 		goto out;
+	}
 	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) != 0)
 		/* rootfs passed into configuration, but does not exist: error */
 		goto out;
