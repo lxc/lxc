@@ -942,7 +942,7 @@ static int setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 
 	for (i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
 		const struct dev_symlinks *d = &dev_symlinks[i];
-		ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs->mount, d->name);
+		ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs->path ? rootfs->mount : "", d->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 
