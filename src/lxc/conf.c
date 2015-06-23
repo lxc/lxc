@@ -1139,24 +1139,24 @@ fail:
  * Just create a path for /dev under $lxcpath/$name and in rootfs
  * If we hit an error, log it but don't fail yet.
  */
-static int mount_autodev(const char *name, char *root, const char *lxcpath)
+static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs, const char *lxcpath)
 {
 	int ret;
 	size_t clen;
 	char *path;
 
-	INFO("Mounting /dev under %s", root);
+	INFO("Mounting container /dev");
 
-	/* $(root) + "/dev/pts" + '\0' */
-	clen = strlen(root) + 9;
+	/* $(rootfs->mount) + "/dev/pts" + '\0' */
+	clen = (rootfs->path ? strlen(rootfs->mount) : 0) + 9;
 	path = alloca(clen);
 
-	ret = snprintf(path, clen, "%s/dev", root);
+	ret = snprintf(path, clen, "%s/dev", rootfs->path ? rootfs->mount : "");
 	if (ret < 0 || ret >= clen)
 		return -1;
 
 	if (!dir_exists(path)) {
-		WARN("No /dev on container rootfs.");
+		WARN("No /dev in container.");
 		WARN("Proceeding without autodev setup");
 		return 0;
 	}
@@ -1168,7 +1168,7 @@ static int mount_autodev(const char *name, char *root, const char *lxcpath)
 
 	INFO("Mounted tmpfs onto %s",  path);
 
-	ret = snprintf(path, clen, "%s/dev/pts", root);
+	ret = snprintf(path, clen, "%s/dev/pts", rootfs->path ? rootfs->mount : "");
 	if (ret < 0 || ret >= clen)
 		return -1;
 
@@ -1184,7 +1184,7 @@ static int mount_autodev(const char *name, char *root, const char *lxcpath)
 		}
 	}
 
-	INFO("Mounted /dev under %s", root);
+	INFO("Mounted container /dev");
 	return 0;
 }
 
@@ -1205,16 +1205,16 @@ static const struct lxc_devs lxc_devs[] = {
 	{ "console",	S_IFCHR | S_IRUSR | S_IWUSR,	       5, 1	},
 };
 
-static int fill_autodev(const char *root)
+static int fill_autodev(const struct lxc_rootfs *rootfs)
 {
 	int ret;
 	char path[MAXPATHLEN];
 	int i;
 	mode_t cmask;
 
-	INFO("Creating initial consoles under %s/dev", root);
+	INFO("Creating initial consoles under container /dev");
 
-	ret = snprintf(path, MAXPATHLEN, "%s/dev", root);
+	ret = snprintf(path, MAXPATHLEN, "%s/dev", rootfs->path ? rootfs->mount : "");
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		ERROR("Error calculating container /dev location");
 		return -1;
@@ -1223,11 +1223,11 @@ static int fill_autodev(const char *root)
 	if (!dir_exists(path))  // ignore, just don't try to fill in
 		return 0;
 
-	INFO("Populating /dev under %s", root);
+	INFO("Populating container /dev");
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
 		const struct lxc_devs *d = &lxc_devs[i];
-		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", root, d->name);
+		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", rootfs->path ? rootfs->mount : "", d->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 		ret = mknod(path, d->mode, makedev(d->maj, d->min));
@@ -1255,7 +1255,7 @@ static int fill_autodev(const char *root)
 	}
 	umask(cmask);
 
-	INFO("Populated /dev under %s", root);
+	INFO("Populated container /dev");
 	return 0;
 }
 
@@ -3725,7 +3725,7 @@ int lxc_setup(struct lxc_handler *handler)
 	}
 
 	if (lxc_conf->autodev > 0) {
-		if (mount_autodev(name, lxc_conf->rootfs.mount, lxcpath)) {
+		if (mount_autodev(name, &lxc_conf->rootfs, lxcpath)) {
 			ERROR("failed to mount /dev in the container");
 			return -1;
 		}
@@ -3775,7 +3775,7 @@ int lxc_setup(struct lxc_handler *handler)
 			ERROR("failed to run autodev hooks for container '%s'.", name);
 			return -1;
 		}
-		if (fill_autodev(lxc_conf->rootfs.mount)) {
+		if (fill_autodev(&lxc_conf->rootfs)) {
 			ERROR("failed to populate /dev in the container");
 			return -1;
 		}
