@@ -3639,12 +3639,12 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 		int ret;
 
 		ret = snprintf(path, MAXPATHLEN, "%s%s",
-			conf->rootfs.mount, hookname);
+			conf->rootfs.path ? conf->rootfs.mount : "", hookname);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return false;
 		ret = stat(path, &st);
 		if (ret) {
-			SYSERROR("Start hook %s not found in container rootfs",
+			SYSERROR("Start hook %s not found in container",
 					hookname);
 			return false;
 		}
@@ -3744,7 +3744,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	/* Make sure any start hooks are in the rootfs */
+	/* Make sure any start hooks are in the container */
 	if (!verify_start_hooks(lxc_conf))
 		return -1;
 
