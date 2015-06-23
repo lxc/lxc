@@ -3496,17 +3496,12 @@ int tmp_proc_mount(struct lxc_conf *lxc_conf)
 {
 	int mounted;
 
-	if (lxc_conf->rootfs.path == NULL || strlen(lxc_conf->rootfs.path) == 0) {
-		if (mount("proc", "/proc", "proc", 0, NULL)) {
-			SYSERROR("Failed mounting /proc, proceeding");
-			mounted = 0;
-		} else
-			mounted = 1;
-	} else
-		mounted = mount_proc_if_needed(lxc_conf->rootfs.mount);
+	mounted = mount_proc_if_needed(lxc_conf->rootfs.path ? lxc_conf->rootfs.mount : "");
 	if (mounted == -1) {
 		SYSERROR("failed to mount /proc in the container.");
-		return -1;
+		/* continue only if there is no rootfs */
+		if (lxc_conf->rootfs.path)
+			return -1;
 	} else if (mounted == 1) {
 		lxc_conf->tmp_umount_proc = 1;
 	}
