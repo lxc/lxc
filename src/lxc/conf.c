@@ -776,7 +776,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 
 			if (default_mounts[i].source) {
 				/* will act like strdup if %r is not present */
-				source = lxc_string_replace("%r", conf->rootfs.mount, default_mounts[i].source);
+				source = lxc_string_replace("%r", conf->rootfs.path ? conf->rootfs.mount : "", default_mounts[i].source);
 				if (!source) {
 					SYSERROR("memory allocation error");
 					return -1;
@@ -784,7 +784,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 			}
 			if (default_mounts[i].destination) {
 				/* will act like strdup if %r is not present */
-				destination = lxc_string_replace("%r", conf->rootfs.mount, default_mounts[i].destination);
+				destination = lxc_string_replace("%r", conf->rootfs.path ? conf->rootfs.mount : "", default_mounts[i].destination);
 				if (!destination) {
 					saved_errno = errno;
 					SYSERROR("memory allocation error");
@@ -838,7 +838,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 			}
 		}
 
-		if (!cgroup_mount(conf->rootfs.mount, handler, cg_flags)) {
+		if (!cgroup_mount(conf->rootfs.path ? conf->rootfs.mount : "", handler, cg_flags)) {
 			SYSERROR("error mounting /sys/fs/cgroup");
 			return -1;
 		}
