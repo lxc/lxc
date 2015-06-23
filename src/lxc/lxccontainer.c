@@ -1302,6 +1302,8 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 	if (lxcapi_is_defined(c) && c->lxc_conf->rootfs.path && !tpath) {
 		/* Rootfs already existed, user just wanted to save the
 		 * loaded configuration */
+		if (!c->save_config(c, NULL))
+			ERROR("failed to save starting configuration for %s\n", c->name);
 		ret = true;
 		goto out;
 	}
