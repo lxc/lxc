@@ -99,9 +99,11 @@ static char *get_username(void)
 
 static void free_groupnames(char **groupnames)
 {
-	char **group;
-	for (group=groupnames; group != NULL; group++)
-		free(*group);
+	int i;
+	if (!groupnames)
+		return;
+	for (i = 0; groupnames[i]; i++)
+		free(groupnames[i]);
 	free(groupnames);
 }
 
