@@ -336,7 +336,7 @@ if [ `id -u` -ne 0 ] ; then
   echo "This script should be run as 'root'."
   exit 1
 fi
-cache=@LOCALSTATEDIR@/cache/lxc
+cache="${LXC_CACHE_PATH:-@LOCALSTATEDIR@/cache/lxc}"
 ptcache=$cache/partial-${prog##*-}-$release-$arch
 dlcache=$cache/cache-${prog##*-}-$release-$arch
 rtcache=$cache/rootfs-${prog##*-}-$release-$arch
