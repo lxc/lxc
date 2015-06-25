@@ -120,12 +120,6 @@ parser.add_argument("--version", action="version", version=lxc.version)
 
 args = parser.parse_args()
 
-# Basic requirements check
-## We only support privileged containers for now
-if os.geteuid() != 0 and args.union_type != "overlayfs":
-    parser.error(_("Unprivileged containers may only use "
-                   "overlayfs at this time."))
-
 ## Check that -d and CMD aren't used at the same time
 if args.command and args.daemon:
     parser.error(_("You can't use -d and a command at the same time."))
@@ -269,7 +263,7 @@ LXC_NAME="%s"
                              entry[0],
                              entry[1]))
         elif args.union_type == "aufs":
-            xino_path = "%s/lxc/aufs.xino" % get_rundir()
+            xino_path = "/dev/shm/aufs.xino"
             if not os.path.exists(os.path.basename(xino_path)):
                 os.makedirs(os.path.basename(xino_path))
 
