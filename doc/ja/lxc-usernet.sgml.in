@@ -75,6 +75,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <para>
       <command>user</command> <command>type</command> <command>bridge</command> <command>number</command>
       </para>
+      <para>もしくは</para>
+      <para>
+      <command>@group</command> <command>type</command> <command>bridge</command> <command>number</command>
+      </para>
       <para>
         <!--
       Where
@@ -95,6 +99,20 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               -->
               このエントリを適用するユーザ名
 	     </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <option>@group</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      <!--
+	      is the groupname to which this entry applies.
+		-->
+	      このエントリを適用するグループ名
+	    </para>
 	  </listitem>
 	</varlistentry>
 
@@ -136,15 +154,30 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  <listitem>
 	    <para>
               <!--
-	      is the number of network interfaces of the given type which the
-	      given user may attach to the given bridge, for instance <filename>2</filename>.
+	      is the number or quota of network interfaces of the given type which the
+	      given user or group may attach to the given bridge, for instance <filename>2</filename>.
               -->
-              指定したユーザが、指定したブリッジに接続できる、指定した形式のネットワークインターフェースの数。
+              指定したユーザもしくはグループが、指定したブリッジに接続できる、指定した形式のネットワークインターフェースの数。
               例えば <filename>2</filename> のように指定します。
 	     </para>
 	  </listitem>
 	</varlistentry>
       </variablelist>
+
+      <para>
+        <!--
+        Since a user can be specified both by username as well as one or
+        more usergroups, it is possible that several configuration lines
+        enable that user to create network interfaces. In such cases, any
+        interfaces create are counted towards the quotas of the user or group
+        in the order in which they appear in the file. If the quota of one
+        line is full, the rest will be parsed until one is found or the end of
+        the file.
+          -->
+	あるユーザに対する指定が、ユーザ名とひとつ以上のユーザグループの両方で指定される可能性があるので、そのユーザがネットワークインターフェースを作れるようにする設定が複数行にわたる可能性があります。
+        このような場合、あるインターフェースの作成は、設定ファイルに現れた順にユーザもしくはグループの割り当てをカウントします。
+        もしある行の設定に対する割り当てが一杯の場合、他の割り当て行が現れるかファイルの最後に達するまで、残りの行を読み込んでチェックします。
+      </para>
     </refsect2>
 
   </refsect1>
