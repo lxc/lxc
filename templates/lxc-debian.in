@@ -32,6 +32,7 @@ done
 
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+export GREP_OPTIONS=""
 
 MIRROR=${MIRROR:-http://http.debian.net/debian}
 SECURITY_MIRROR=${SECURITY_MIRROR:-http://security.debian.org/}
