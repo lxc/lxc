@@ -413,10 +413,12 @@ download_centos()
 
     # download a mini centos into a cache
     echo "Downloading centos minimal ..."
+    YUM0="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
+
     if yum -h | grep -q 'releasever=RELEASEVER'; then
-        YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck --releasever=$release"
+       YUM="$YUM0 --releasever=$release"
     else
-        YUM="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
+       YUM="$YUM0"
     fi
     PKG_LIST="yum initscripts passwd rsyslog vim-minimal openssh-server openssh-clients dhclient chkconfig rootfiles policycoreutils"
 
@@ -483,7 +485,7 @@ EOF
         mknod -m 666 $INSTALL_ROOT/$INSTALL_ROOT/dev/urandom c 1 9
         mkdir -p $INSTALL_ROOT/$INSTALL_ROOT/var/cache/yum
         cp -al $INSTALL_ROOT/var/cache/yum/* $INSTALL_ROOT/$INSTALL_ROOT/var/cache/yum/
-        chroot $INSTALL_ROOT $YUM install $PKG_LIST
+        chroot $INSTALL_ROOT $YUM0 install $PKG_LIST
         if [ $? -ne 0 ]; then
             echo "Failed to download the rootfs, aborting."
             return 1
