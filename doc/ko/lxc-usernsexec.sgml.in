@@ -1,0 +1,193 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+Serge Hallyn <serge.hallyn at ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-usernsexec</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-usernsexec</refname>
+
+    <refpurpose>
+      <!--
+      Run a task as root in a new user namespace.
+      -->
+      새로운 사용자 네임스페이스에서 root로 태스크를 실행
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-usernsexec</command>
+      <arg choice="opt">-m <replaceable>uid-map</replaceable></arg>
+      <arg choice="req">-- command</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <command>lxc-usernsexec</command> can be used to run a task as root
+      in a new user namespace.
+      -->
+      <command>lxc-usernsexec</command>는 새로운 사용자 네임스페이스에서 루트로 태스크를 실행한다.
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+
+    <title><!-- Options -->옵션</title>
+
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-m <replaceable>uid-map</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	  The uid map to use in the user namespace.  Each map consists of
+	  four colon-separate values.  First a character 'u', 'g' or 'b' to
+	  specify whether this map perttains to user ids, group ids, or
+	  both; next the first userid in the user namespace;  next the
+	  first userid as seen on the host;  and finally the number of
+	  ids to be mapped.
+             -->
+            사용자 네임스페이스에서 사용될 uid 맵. 각각의 맵은 4개의 콜론(:)으로 구분된 값들로 구성되어 있다. 첫 번째는 'u', 'g', 'b' 문자로 각각 UID, GID, 또는 UID 및 GID 를 가리킨다. 그 다음은 사용자 네임스페이스 내에서의 UID, 그다음은 호스트의 UID, 그리고 마지막으로 매핑할 ID의 수를 지정한다.
+	  </para>
+	  <para>
+            <!--
+	  More than one map can be specified.  If no map is
+	  specified, then by default the full uid and gid ranges granted
+	  by /etc/subuid and /etc/subgid will be mapped to the
+	  uids and gids starting at 0 in the container.
+              -->
+            맵은 1개 이상도 지정가능하다. 만약 맵이 지정되지 않았다면, 기본값은 /etc/subuid와 /etc/subgid에서 허용된 모든 범위의 uid, gid가 컨테이너 내에서 0번부터 매핑된다.
+	  </para>
+	  <para>
+            <!--
+	  Note that <replaceable>lxc-usernsexec</replaceable> always tries
+	  to setuid and setgid to 0 in the namespace.  Therefore uid 0 in
+	  the namespace must be mapped.
+              -->
+            <replaceable>lxc-usernsexec</replaceable>는 언제나 0번 setuid와 setgid를 시도한 다는 것에 주의해야 한다. 그러므로 네임스페이스 내에서 uid 0은 매핑이 되어있어야 한다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+
+    </variablelist>
+
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Examples -->예제</title>
+      <para>
+        <!--
+        To spawn a shell with the full allotted subuids mapped into
+	the container, use
+        <programlisting>
+	  lxc-usernsexec
+        </programlisting>
+	To run a different shell than <replaceable>/bin/sh</replaceable>, use
+        <programlisting>
+	  lxc-usernsexec &#045;&#045; /bin/bash
+        </programlisting>
+        -->
+        할당된 모든 subuid를 컨테이너에 매핑해서 쉘을 실행하려면,
+        <programlisting>
+	  lxc-usernsexec
+        </programlisting>
+        를 사용하면 된다.
+        <replaceable>/bin/sh</replaceable>대신 다른 쉘을 실행하려면,
+        <programlisting>
+	  lxc-usernsexec -- /bin/bash
+        </programlisting>
+        를 사용하면 된다.
+      </para>
+      <para>
+        <!--
+	If your user id is 1000, root in a container is mapped to 190000, and
+	you wish to chown a file you own to root in the container, you can use:
+        <programlisting>
+	  lxc-usernsexec -m b:0:1000:1 -m b:1:190000:1 &#045;&#045; /bin/chown 1:1 $file
+        </programlisting>
+	This maps your userid to root in the user namespace, and 190000 to uid 1.
+	Since root in the user namespace is privileged over all userids mapped
+	into the namespace, you are allowed to change the file ownership, which
+	you could not do on the host using a simple chown.
+        -->
+        만약 현재 UID가 1000이고, 컨테이너의 root가 190000으로 매핑되어 있으며, 현재 사용자가 소유하고 있는 파일을 컨테이너의 root가 소유하도록 하려면, 아래처럼 하면 된다.
+        <programlisting>
+	  lxc-usernsexec -m b:0:1000:1 -m b:1:190000:1 -- /bin/chown 1:1 $file
+        </programlisting>
+        이것은 현재 UID를 사용자 네임스페이스 내에서 root로 하고, 190000을 uid 1로 매핑한다.
+        사용자 네임스페이스의 root는 네임스페이스의 모든 UID에 권한이 있기 때문에, 호스트에서 chown을 사용할 수 없더라도 파일의 소유자를 변경할 수 있다.
+      </para>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Serge Hallyn <email>serge.hallyn@ubuntu.com</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

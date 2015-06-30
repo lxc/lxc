@@ -1,0 +1,284 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-create</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-create</refname>
+
+    <refpurpose>
+      <!--
+      creates a container
+      -->
+      컨테이너 생성
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-create</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
+      <arg choice="req">-t <replaceable>template</replaceable></arg>
+      <arg choice="opt">-B <replaceable>backingstore</replaceable></arg>
+      <arg choice="opt">-- <replaceable>template-options</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <command>lxc-create</command> creates a system object where is
+      stored the configuration information and where can be stored
+      user information. The identifier <replaceable>name</replaceable>
+      is used to specify the container to be used with the different
+      lxc commands.
+      -->
+      <command>lxc-create</command>는 설정정보와 사용자 정보가 저장되는 시스템 객체를 생성한다.
+      <replaceable>name</replaceable>은  다른 lxc 명령어들에서 특정 컨테이너를 지정하는데 사용된다.
+    </para>
+    <para>
+      <!--
+      The object is a directory created in <filename>@LXCPATH@</filename>
+      and identified by its name.
+      -->
+      객체는 <filename>@LXCPATH@</filename>에 작성되는 디렉토리이며, 자신의 <replaceable>name</replaceable>으로 구분되어 진다.
+    </para>
+
+    <para>
+      <!--
+      The object is the definition of the different resources an
+      application can use or can see. The more the configuration file
+      contains information, the more the container is isolated and
+      the more the application is jailed.
+      -->
+      객체는 응용 프로그램이 사용할 수 있고 볼 수 있는 여러 자원들의 정의이다.
+      설정파일이 많은 정보를 담고 있을수록 컨테이너는 더욱더 고립될 수 있고, 응용 프로그램은 더욱더 격리될 수 있다.
+    </para>
+
+    <para>
+      <!--
+      If the configuration file <replaceable>config_file</replaceable>
+      is not specified, the container will be created with the default
+      isolation: processes, sysv ipc and mount points.
+      -->
+      만약 설정파일 <replaceable>config_file</replaceable>가 지정되지 않았다면, 컨테이너는 프로세스, sysv ipc, 마운트 포인트에 대한 기본적인 고립 상태로 만들어진다.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options -->옵션</title>
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-f <replaceable>config_file</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the configuration file to configure the virtualization
+	    and isolation functionalities for the container.
+            -->
+            컨테이너 가상화 및 고립 기능을 설정하는 설정파일을 지정합니다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-t <replaceable>template</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    <!--
+            'template' is the short name of an existing 'lxc-template'
+	    script that is called by lxc-create,
+	    eg. busybox, debian, fedora, ubuntu or sshd.
+	    Refer to the examples in <filename>@LXCTEMPLATEDIR@</filename>
+	    for details of the expected script structure.
+	    Alternatively, the full path to an executable template script
+	    can also be passed as a parameter.
+	    "none" can be used to force lxc-create to skip rootfs creation.
+            -->
+            lxc-create 명령어는 'lxc-template' 스크립트를 호출한다. <replaceable>template</replaceable>은 'lxc-template' 스크립트의 짧은 이름으로, busybox, debian, fedora, ubuntu, sshd 등이 있다. 스크립트의 구조에 대해 궁금할 때는  <filename>@LXCTEMPLATEDIR@</filename>에 있는 예제들을 참고하면 된다.
+           <replaceable>template</replaceable> 대신 스크립트의 전체 경로를 지정할 수도 있다.
+           "none"으로 지정하면 루트파일시스템 생성을 강제로 건너뛸 수 있다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-B <replaceable>backingstore</replaceable></option>
+	</term>
+	<listitem>
+          <para>
+            <!--
+	    'backingstore' is one of 'dir', 'lvm', 'loop', 'btrfs', 'zfs', or 'best'.  The
+	    default is 'dir', meaning that the container root filesystem
+	    will be a directory under <filename>@LXCPATH@/container/rootfs</filename>.
+	    This backing store type allows the optional
+	    <replaceable>&#045;&#045;dir ROOTFS</replaceable> to be specified, meaning
+	    that the container rootfs should be placed under the specified path,
+	    rather than the default.  (The 'none' backingstore type is an alias for
+	    'dir'.)  If 'btrfs' is specified, then the
+	    target filesystem must be btrfs, and the container rootfs will be
+	    created as a new subvolume.  This allows snapshotted clones to be
+	    created, but also causes rsync &#045;&#045;one-filesystem to treat it as a
+	    separate filesystem.
+	    If backingstore is 'lvm', then an lvm block device will be
+	    used and the following further options are available:
+            <replaceable>&#045;&#045;lvname lvname1</replaceable> will create an LV
+	    named <filename>lvname1</filename> rather than the default, which
+	    is the container name.  <replaceable>&#045;&#045;vgname vgname1</replaceable>
+	    will create the LV in volume group <filename>vgname1</filename>
+	    rather than the default, <filename>lxc</filename>.
+	    <replaceable>&#045;&#045;thinpool thinpool1</replaceable> will create the
+	    LV as a thin-provisioned volume in the pool named
+	    <filename>thinpool1</filename> rather than the
+	    default, <filename>lxc</filename>.
+	    <replaceable>&#045;&#045;fstype FSTYPE</replaceable> will create an FSTYPE
+	    filesystem on the LV, rather than the default, which is ext4.
+	    <replaceable>&#045;&#045;fssize SIZE</replaceable> will create a LV (and
+	    filesystem) of size SIZE rather than the default, which is 1G.
+            -->
+            'backingstore'는 'dir', 'lvm', 'loop', 'btrfs', 'zfs', 'best'를 지정할 수 있다.
+            기본 값은 'dir'로 컨테이너 루트 파일시스템을 의미하며 <filename>@LXCPATH@/container/rootfs</filename>이하 디렉토리를 가리킨다.
+            'dir'은 옵션으로 컨테이너 루트 파일시스템이 어느 경로에 위치할지 지정할 수 있으며, <replaceable>&#045;&#045;dir ROOTFS</replaceable>로 가능하다.
+            ('none'은 'dir'과 동일하다)
+            'btrfs'가 지정되어 있다면, 타겍 파일시스템은 반드시 btrfs여야 한다. 그리고 컨테이너 루트 파일시스템은 새로운 서브볼륨으로 생성된다. 이는 스냅샷된 복제물을 만들지만, rsync &#045;&#045;one-filesystem는 분리된 파일시스템으로 취급하게 된다.
+            'lvm'으로 지정되있다면, lvm 블록 디바이스가 사용되며, 이때 사용가능한 옵션은 다음과 같다 : <replaceable>&#045;&#045;lvname lvname1</replaceable>는 이름이 <filename>lvname1</filename>인 LV를 만든다(기본값은 컨테이너 이름).
+<replaceable>&#045;&#045;vgname vgname1</replaceable>는 이름이 <filename>vgname1</filename>인 볼륨그룹 안에 LV를 만든다(기본값은 <filename>lxc</filename>).
+            <replaceable>&#045;&#045;thinpool thinpool1</replaceable>는 <filename>thinpool1</filename>라는 풀 안에 있는 thin-provisioned 볼륨으로 LV를 만든다(기본값은  <filename>lxc</filename>).
+            <replaceable>--fstype FSTYPE</replaceable>는 LV의 파일시스템을 FSTYPE으로 지정한다(기본값은 ext4).
+            <replaceable>--fssize SIZE</replaceable>는 LV의 크기를 지정한다(기본값은 1G).
+	  </para>
+	  <para>
+	    <!--
+	    If backingstore is 'loop', you can use <replaceable>&#045;&#045;fstype FSTYPE</replaceable> and <replaceable>&#045;&#045;fssize SIZE</replaceable> as 'lvm'. The default values for these options are the same as 'lvm'.
+	    -->
+            'loop'로 지정되어 있다면, 'lvm'과 비슷하게 <replaceable>--fstype FSTYPE</replaceable>과 <replaceable>--fssize SIZE</replaceable>를 사용할 수 있다(기본값은 'lvm'과 동일).
+	  </para>
+	  <para>
+            <!--
+	    If backingstore is 'best', then lxc will try, in order, btrfs,
+	    zfs, lvm, and finally a directory backing store.
+            -->
+            'best'로 지정되어 있다면, lxc는 btrfs, zfs, lvm, dir의 순서대로 시도해본다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-- <replaceable>template-options</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    This will pass <replaceable>template-options</replaceable> to the
+	    template as arguments.  To see the list of options supported by
+	    the template, you can run
+	    <command>lxc-create -t TEMPLATE -h</command>.
+            -->
+            이것은 <replaceable>template-options</replaceable>를 템플릿에게 인수로 넘긴다. 만약 어떤 인수를 템플릿에서 지원하는지 보고 싶다면, <command>lxc-create -t TEMPLATE -h</command>를 사용하면 된다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title><!-- Diagnostic -->진단</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>The container already exists</term>
+        <listitem>
+          <para>
+            <!--
+	    As the message mention it, you try to create a container
+	    but there is a container with the same name. You can use
+	    the <command>lxc-ls</command> command to list the
+	    available containers on the system.
+            -->
+            메시지에 나와있는 대로, 이미 같은 이름의 컨테이너가 존재하는 경우이다. <command>lxc-ls</command> 명령어를 사용하여 시스템에 이미 존재하는 컨테이너를 확인해볼 수 있다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

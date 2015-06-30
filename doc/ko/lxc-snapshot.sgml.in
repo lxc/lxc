@@ -1,0 +1,208 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright Canonical Inc. 2007, 2008
+
+Authors:
+Serge Hallyn <serge.hallyn at ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-snapshot</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-snapshot</refname>
+
+    <refpurpose>
+      <!--
+      Snapshot an existing container.
+      -->
+      존재하는 컨테이너의 스냅샷 생성 및 복원
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-snapshot</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-c, --comment <replaceable>file</replaceable></arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-snapshot</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="req">-d, -destroy <replaceable>snapshot-name</replaceable></arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-snapshot</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="req">-L, --list </arg>
+      <arg choice="opt">-C, --showcomments </arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-snapshot</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="req">-r, -restore <replaceable>snapshot-name</replaceable></arg>
+      <arg choice="opt"> <replaceable> newname</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <command>lxc-snapshot</command> creates, lists, and restores
+      container snapshots.
+      -->
+      <command>lxc-snapshot</command>는 컨테이너의 스냅샷을 생성, 복원 그리고 리스트를 표시한다.
+      (역주 : 컨테이너 파일시스템을 대상으로 한다는 점에서 <command>lxc-checkpoint</command>와는 다르다)
+    </para>
+    <para>
+      <!--
+      Snapshots are stored as snapshotted containers under the container's configuration path. For instance, if the container's configuration path is <filename>/var/lib/lxc</filename> and the container is <filename>c1</filename>, then the first snapshot will be stored as container <filename>snap0</filename> under the path <filename>/var/lib/lxc/c1/snaps</filename>.
+      If <filename>/var/lib/lxcsnaps</filename>, as used by LXC 1.0, already exists, then it will continue to be used.
+        -->
+      스냅샷은 컨테이너 설정 경로 밑에 스냅샷된 컨테이너처럼 저장된다.
+      예를 들어, 만약 컨테이너 설정 경로가 <filename>/var/lib/lxc</filename>이고 컨테이너 이름이 <filename>c1</filename>라면, 첫번째 스냅샷은 <filename>/var/lib/lxc/c1/snaps</filename> 밑에 <filename>snap0</filename>라는 이름의 컨테이너로 저장 된다.
+      LXC 1.0 때 사용됬던 <filename>/var/lib/lxcsnaps</filename>가 존재하는 경우라면, 해당 경로가 계속 쓰이게 된다.
+    </para>
+  </refsect1>
+
+  <refsect1>
+
+    <title><!-- Options -->옵션</title>
+
+    <variablelist>
+
+	  <varlistentry>
+	    <term> <option>-c,--comment <replaceable>comment_file</replaceable></option> </term>
+	   <listitem>
+	    <para>
+              <!--
+              Associate the comment in <replaceable>comment_file</replaceable> with the newly created snapshot.
+              -->
+              새로 생성되는 스냅샷에 <replaceable>comment_file</replaceable>에 있는 주석을 단다.
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-d,--destroy snapshot-name</option> </term>
+	   <listitem>
+             <!--
+	    <para> Destroy the named snapshot.  If the named snapshot is ALL, then all snapshots
+	    will be destroyed.</para>
+            -->
+            지정한 스냅샷을 제거합니다. 스냅샷의 이름이 ALL인 경우, 모든 스냅샷을 제거한다.
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-L,--list </option> </term>
+	   <listitem>
+	    <para>
+              <!--
+              List existing snapshots.
+              -->
+              존재하는 스냅샷의 리스트를 표시한다.
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-C,--showcomments </option> </term>
+	   <listitem>
+	    <para>
+              <!--
+              Show snapshot comments in the snapshots listings.
+              -->
+              스냅샷의 리스트를 표시할때 스냅샷의 주석도 함께 표시한다.
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-r,--restore snapshot-name</option> </term>
+	   <listitem>
+	    <para>
+              <!--
+              Restore the named snapshot, meaning a full new container is created which is a copy of the snapshot.
+              -->
+              지정한 스냅샷을 복원한다, 즉, 스냅샷을 복사하여 완전히 새로운 컨테이너가 생성된다는 것을 의미한다.
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>newname</option> </term>
+	   <listitem>
+	    <para>
+              <!--
+                  When restoring a snapshot, the last optional argument is the name to use for the restored container.  If no name is given, then the original container will be destroyed and the restored container will take its place.  Note that deleting the original snapshot is not possible in the case of aufs, overlayfs or zfs backed snapshots.
+              -->
+              스냅샷을 복원할 때, 복원된 컨테이너의 이름을 마지막 인자로 넘길 수 있다. 만약 이름을 넘기지 않았다면, 원본 컨테이너를 제거하고 복원된 컨테이너로 교체한다. 원본 스냅샷을 지우는 것은 aufs, overlayfs, zfs의 경우에는 불가능하다는 것에 주의해야 한다.
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Serge Hallyn <email>serge.hallyn@ubuntu.com </email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

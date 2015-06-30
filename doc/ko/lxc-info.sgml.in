@@ -1,0 +1,260 @@
+<!--
+
+(C) Copyright Canonical Ltd. 2013
+
+Authors:
+Stéphane Graber <stgraber@ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-info</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-info</refname>
+
+    <refpurpose>
+      <!--
+      query information about a container
+      -->
+      컨테이너의 정보 조회
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-info</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-c <replaceable>KEY</replaceable></arg>
+      <arg choice="opt">-s</arg>
+      <arg choice="opt">-p</arg>
+      <arg choice="opt">-i</arg>
+      <arg choice="opt">-S</arg>
+      <arg choice="opt">-H</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+    <para>
+      <!--
+      <command>lxc-info</command> queries and shows information about a
+      container.
+      -->
+      <command>lxc-info</command>는 컨테이너에 대한 정보를 조회하고 표시한다.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options --></title>
+    <variablelist>
+
+      <varlistentry>
+        <term>
+          <option><optional>-c <replaceable>KEY</replaceable></optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Print a configuration key from the container. This option
+            may be given mulitple times to print out multiple key = value pairs.
+            -->
+            컨테이너의 설정값을 표시한다. 이 옵션은 1개 이상의 key = value 쌍을 표시할 수 있다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-s</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Just print the container's state.
+            -->
+            컨테이너의 상태를 표시한다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-p</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Just print the container's pid.
+            -->
+            컨테이너의 pid를 표시한다.
+            (역주 : 컨테이너 내의 init 프로세스를 의미한다)
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-i</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Just print the container's IP addresses.
+            -->
+            컨테이너의 IP 주소를 표시한다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-S</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Just print the container's statistics.
+            Note that for performance reasons the kernel does not account
+            kernel memory use unless a kernel memory limit is set. If a limit
+            is not set, <command>lxc-info</command> will display kernel memory
+            use as 0. A limit can be set by specifying
+            <programlisting>
+            lxc.cgroup.memory.kmem.limit_in_bytes = <replaceable>number</replaceable>
+            </programlisting>
+            in your container configuration file, see
+            <citerefentry>
+              <refentrytitle>lxc.conf</refentrytitle>
+              <manvolnum>5</manvolnum>
+            </citerefentry>.
+            -->
+            컨테이너의 통계정보를 표시한다.
+            성능상의 이유로, 커널 메모리 제한이 걸려있지 않다면 커널의 메모리 사용량은 집계되지 않는다.
+            만약 제한되어 있지 않다면, <command>lxc-info</command>는 커널 메모리 사용량을 0으로 표시한다. 메모리 제한은
+            <programlisting>
+            lxc.cgroup.memory.kmem.limit_in_bytes = <replaceable>number</replaceable>
+            </programlisting>
+            를 컨테이너 설정파일에 넣음으로써 지정할 수 있다.
+            <citerefentry>
+              <refentrytitle>lxc.conf</refentrytitle>
+              <manvolnum>5</manvolnum>
+            </citerefentry>를 참고 바란다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-H</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Print the container's statistics in raw, non-humanized form. The
+            default is to print statistics in humanized form.
+            -->
+            컨테이너의 통계값을 사람이 읽기 쉬운 형태로 변환하지 않고 그대로 표시한다.
+            기본값은 사람이 읽기 쉬운 형태로 변환하는 것이다.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title><!-- Examples -->예제</title>
+    <variablelist>
+      <varlistentry>
+        <term>lxc-info -n foo</term>
+        <listitem>
+          <para>
+            <!--
+            Show information for foo.
+            -->
+            foo 라는 이름의 컨테이너 정보를 표시한다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>lxc-info -n 'ubuntu.*'</term>
+        <listitem>
+          <para>
+            <!--
+            Show information for all containers whose name starts with ubuntu.
+            -->
+            ubuntu 라는 문자열로 시작하는 이름의 컨테이너들의 정보를 표시한다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>lxc-info -n foo -c lxc.network.0.veth.pair</term>
+        <listitem>
+          <para>
+            <!--
+            prints the veth pair name of foo.
+            -->
+            foo 컨테이너의 veth pair 이름을 표시한다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Stéphane Graber <email>stgraber@ubuntu.com</email></para>
+  </refsect1>
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

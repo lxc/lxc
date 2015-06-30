@@ -1,0 +1,193 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright Canonical Ltd. 2014
+
+Authors:
+Stéphane Graber <stgraber@ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc.conf</refentrytitle>
+    <manvolnum>5</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc.conf</refname>
+
+    <refpurpose>
+      <!--
+      Configuration files for LXC.
+      -->
+      LXC 설정파일
+    </refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      LXC configuration is split in two parts. Container configuration
+      and system configuration.
+      -->
+      LXC 설정파일은 컨테이너 설정과 시스템 설정의 2부분으로 나뉜다.
+    </para>
+
+    <refsect2>
+      <title><!-- Container configuration -->컨테이너 설정</title>
+      <para>
+        <!--
+          The container configuration is held in the
+          <filename>config</filename> stored in the container's
+          directory.
+          -->
+        컨테이너 설정은 컨테이너 디렉토리의 <filename>config</filename>로 설정한다.
+      </para>
+
+      <para>
+        <!--
+          A basic configuration is generated at container creation time
+          with the default's recommended for the chosen template as well
+          as extra default keys coming from the
+          <filename>default.conf</filename> file.
+          -->
+        기본 설정은 컨테이너 생성 시간에 템플릿이 제공해 주는 설정과 <filename>default.conf</filename> 파일에 있는 추가 설정들로 생성된다.
+      </para>
+
+      <para>
+        <!--
+          That <filename>default.conf</filename> file is either located
+          at <filename>@LXC_DEFAULT_CONFIG@</filename> or for
+          unprivileged containers at
+          <filename>~/.config/lxc/default.conf</filename>.
+          -->
+        <filename>default.conf</filename> 파일은 <filename>@LXC_DEFAULT_CONFIG@</filename>에 위치하고 있다.
+        비특권 컨테이너의 경우에는 <filename>~/.config/lxc/default.conf</filename>에 위치하고 있다.
+      </para>
+
+      <para>
+        <!--
+          Details about the syntax of this file can be found in:
+          <citerefentry>
+            <refentrytitle><command>lxc.container.conf</command></refentrytitle>
+            <manvolnum>5</manvolnum>
+          </citerefentry>
+          -->
+        이 파일의 자세한 사용법은 아래를 참고하면 된다.
+        <citerefentry>
+          <refentrytitle><command>lxc.container.conf</command></refentrytitle>
+          <manvolnum>5</manvolnum>
+        </citerefentry>
+      </para>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- System configuration -->시스템 설정</title>
+      <para>
+        <!--
+          The system configuration is located at
+          <filename>@LXC_GLOBAL_CONF@</filename> or
+          <filename>~/.config/lxc/lxc.conf</filename> for unprivileged
+          containers.
+          -->
+        시스템 설정은 <filename>@LXC_GLOBAL_CONF@</filename>에 위치하고 있다. 비특권 컨테이너의 경우는 <filename>~/.config/lxc/lxc.conf</filename>에 위치하고 있다.
+      </para>
+
+      <para>
+        <!--
+          This configuration file is used to set values such as default
+          lookup paths and storage backend settings for LXC.
+          -->
+        이 설정파일은 LXC 기본 경로 및 저장소 백엔드 설정과 같은 값들을 설정할 때 사용한다.
+      </para>
+
+      <para>
+        <!--
+          Details about the syntax of this file can be found in:
+          <citerefentry>
+            <refentrytitle><command>lxc.system.conf</command></refentrytitle>
+            <manvolnum>5</manvolnum>
+          </citerefentry>
+          -->
+        이 파일의 자세한 사용법은 아래를 참고하면 된다.
+        <citerefentry>
+          <refentrytitle><command>lxc.system.conf</command></refentrytitle>
+          <manvolnum>5</manvolnum>
+        </citerefentry>
+      </para>
+    </refsect2>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- See Also -->참조</title>
+    <simpara>
+      <citerefentry>
+        <refentrytitle><command>lxc</command></refentrytitle>
+        <manvolnum>1</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle><command>lxc.container.conf</command></refentrytitle>
+        <manvolnum>5</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle><command>lxc.system.conf</command></refentrytitle>
+        <manvolnum>5</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle><command>lxc-usernet</command></refentrytitle>
+        <manvolnum>5</manvolnum>
+      </citerefentry>
+    </simpara>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Stéphane Graber <email>stgraber@ubuntu.com</email></para>
+  </refsect1>
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

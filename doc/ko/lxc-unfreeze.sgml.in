@@ -1,0 +1,125 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-unfreeze</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-unfreeze</refname>
+
+    <refpurpose>
+      <!--
+      thaw all the container's processes
+      -->
+      컨테이너의 모든 프로세스를 동결해제
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-unfreeze</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <command>lxc-unfreeze</command> will thaw all the processes
+      previously frozen by the <command>lxc-freeze</command> command.
+      -->
+      <command>lxc-unfreeze</command>는 이전에 <command>lxc-freeze</command>로 동결 시켰던 모든 프로세스들을 동결해제한다.
+    </para>
+
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title><!-- Diagnostic -->진단</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>The container was not found</term>
+        <listitem>
+          <para>
+            <!--
+	    The specified container was not created before with
+	    the <command>lxc-create</command> command.
+            -->
+            지정한 컨테이너가  <command>lxc-create</command>로 생성된 적이 없다.
+            컨테이너가 존재하지 않는다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+    </variablelist>
+
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

@@ -1,0 +1,285 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+Serge Hallyn <serge.hallyn at ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-unshare</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-unshare</refname>
+
+    <refpurpose>
+      <!--
+      Run a task in a new set of namespaces.
+      -->
+      새로운 네임스페이스 내에서 태스크 실행
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-unshare</command>
+      <arg choice="req">-s <replaceable>namespaces</replaceable></arg>
+      <arg choice="opt">-u <replaceable>user</replaceable></arg>
+      <arg choice="opt">-H <replaceable>hostname</replaceable></arg>
+      <arg choice="opt">-i <replaceable>ifname</replaceable></arg>
+      <arg choice="opt">-d</arg>
+      <arg choice="opt">-M</arg>
+      <arg choice="req">command</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <command>lxc-unshare</command> can be used to run a task in a cloned set
+      of namespaces.  This command is mainly provided for testing purposes.
+      Despite its name, it always uses clone rather than unshare to create
+      the new task with fresh namespaces.  Apart from testing kernel
+      regressions this should make no difference.
+      -->
+      <command>lxc-unshare</command>는 복제된 네임스페이스 내에서 태스크를 실행한다.
+      이 명령어는 주로 테스트 목적으로 사용된다.
+      이러한 이름에도 불구하고, 새 네임스페이스에 새로운 태스크를 생성하기 위해 unshare 대신 clone을 사용한다.
+      테스트 중인 커널 버전이 낮아지지 않는다면, 별 차이는 없다.
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+
+    <title><!-- Options -->옵션</title>
+
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-s <replaceable>namespaces</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the namespaces to attach to, as a pipe-separated list,
+	    e.g. <replaceable>NETWORK|IPC</replaceable>. Allowed values are
+	    <replaceable>MOUNT</replaceable>, <replaceable>PID</replaceable>,
+	    <replaceable>UTSNAME</replaceable>, <replaceable>IPC</replaceable>,
+	    <replaceable>USER </replaceable> and
+	    <replaceable>NETWORK</replaceable>. This allows one to change
+	    the context of the process to e.g. the network namespace of the
+	    container while retaining the other namespaces as those of the
+	    host.
+            -->
+            붙일 네임스페이스를 지정한다.
+            <replaceable>NETWORK|IPC</replaceable>와 같이 파이프(|)로 구분된 리스트를 사용할 수 있다. 허용되는 값은 <replaceable>MOUNT</replaceable>, <replaceable>PID</replaceable>, <replaceable>UTSNAME</replaceable>, <replaceable>IPC</replaceable>, <replaceable>USER </replaceable>, <replaceable>NETWORK</replaceable>이다. 이를 사용하여, 컨테이너의 네트워크 네임스페이스를 사용하면서도 다른 네임스페이스는 호스트의 것을 그대로 사용하는 등의 조작이 가능하다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-u <replaceable>user</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify a user which the new task should become.
+            -->
+            새로운 태스크를 실행할 사용자를 지정한다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-H <replaceable>hostname</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Set the hostname in the new container.  Only allowed if
+	    the UTSNAME namespace is set.
+            -->
+            새로운 컨테이너의 호스트이름을 지정한다. UTS 네임스페이스가 설정되었을 때만 가능하다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-i <replaceable>interfacename</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Move the named interface into the container.  Only allowed
+	    if the NETWORK namespace is set.  You may specify this
+	    argument multiple times to move multiple interfaces into
+	    container.
+            -->
+            지정한 이름의 네트워크 인터페이스를 컨테이너 내부로 옮긴다. NETWORK 네임스페이스가 설정되었을 때만 가능하다. 여러개의 인터페이스를 옮기기 위해 여러번 이 인수를 지정하는 것도 가능하다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-d</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Daemonize (do not wait for the container to exit before exiting)
+            -->
+            데몬화 한다. (컨테이너가 종료되기 전까지 기다리지 않는다)
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-M</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Mount default filesystems (/proc /dev/shm and /dev/mqueue)
+	    in the container.  Only allowed if MOUNT namespace is set.
+            -->
+            컨테이너 내부에 (/proc /dev/shm and /dev/mqueue)같은 기본 파일 시스템들을 마운트 한다. MOUNT 네임스페이스가 설정되었을 때만 가능하다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Examples -->예제</title>
+      <para>
+        <!--
+        To spawn a new shell with its own UTS (hostname) namespace,
+        <programlisting>
+          lxc-unshare -s UTSNAME /bin/bash
+        </programlisting>
+	If the hostname is changed in that shell, the change will not be
+	reflected on the host.
+        -->
+        자신만의 UTS(hostname) 네임스페이스를 갖는 새로운 쉘을 실행하려면 아래처럼 하면 된다.
+        <programlisting>
+          lxc-unshare -s UTSNAME /bin/bash
+        </programlisting>
+        만약, 그 쉘에서 호스트이름이 변경되어도 호스트에는 영향을 끼치지 않는다.
+      </para>
+      <para>
+        <!--
+        To spawn a shell in a new network, pid, and mount namespace,
+        <programlisting>
+          lxc-unshare -s "NETWORK|PID|MOUNT" /bin/bash
+        </programlisting>
+	The resulting shell will have pid 1 and will see no network interfaces.
+	After re-mounting /proc in that shell,
+        <programlisting>
+          mount -t proc proc /proc
+        </programlisting>
+	ps output will show there are no other processes in the namespace.
+        -->
+        새로운 네트워크, PID, 마운트 네임스페이스 내에 쉘을 실행하려면, 아래처럼 하면 된다.
+        <programlisting>
+          lxc-unshare -s "NETWORK|PID|MOUNT" /bin/bash
+        </programlisting>
+        그 결과 생긴 쉘은 1번 pid를 갖는다. 그리고 네트워크 인터페이스는 없다.
+        이 쉘에서 아래처럼  /proc을 다시 마운트하고
+        <programlisting>
+          mount -t proc proc /proc
+        </programlisting>
+        ps 명령어를 입력하면, 네임스페이스 내에서 다른 프로세스들은 보이지 않을 것이다.
+      </para>
+      <para>
+        <!--
+        To spawn a shell in a new network, pid, mount, and hostname
+        namespace.
+        <programlisting>
+          lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H slave -i veth1 /bin/bash
+        </programlisting>
+        -->
+        새로운 네트워크, PID, 마운트 그리고 호스트 이름(UTS) 네임스페이스 내에 쉘을 실행하려면, 아래처럼 하면 된다.
+        <programlisting>
+          lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H slave -i veth1 /bin/bash
+        </programlisting>
+
+        <!--
+	The resulting shell will have pid 1 and will see two network
+	interfaces (lo and veth1).  The hostname will be "slave" and
+	/proc will have been remounted.  ps output will show there are
+	no other processes in the namespace.
+        -->
+        그 결과 생긴 쉘은 1번 pid를 갖는다. 그리고 2개의 네트워크 인터페이스(lo와 veth1)를 갖는다. 호스트 이름은 "slave"이고, /proc은 다시 마운트 된다.
+        ps 명령어를 입력하면, 네임스페이스 내에서 다른 프로세스들은 보이지 않을 것이다.
+      </para>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

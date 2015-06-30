@@ -1,0 +1,289 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-ls</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-ls</refname>
+
+    <refpurpose>
+      <!--
+      list the containers existing on the system
+      -->
+      시스템 내에 존재하는 컨테이너들의 리스트 표시
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-ls</command>
+      <arg choice="opt">-1</arg>
+      <arg choice="opt">--active</arg>
+      <arg choice="opt">--frozen</arg>
+      <arg choice="opt">--running</arg>
+      <arg choice="opt">--stopped</arg>
+      <arg choice="opt">-f</arg>
+      <arg choice="opt">-F <replaceable>format</replaceable></arg>
+      <arg choice="opt">-g <replaceable>groups</replaceable></arg>
+      <arg choice="opt">--nesting</arg>
+      <arg choice="opt">filter</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+    <para>
+      <!--
+      <command>lxc-ls</command> list the containers existing on the
+      system.
+      -->
+      <command>lxc-ls</command>는 시스템 내에 존재하는 컨테이너들의 리스트를 표시한다.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options -->옵션</title>
+    <variablelist>
+      <varlistentry>
+        <term>
+          <option><optional>-1</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Show one entry per line. (default when /dev/stdout isn't a tty)
+            -->
+            1개의 항목를 한 줄에 표시한다. (/dev/stdout이 tty가 아닌 경우 기본)
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option><optional>--active</optional></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+            List only active containers (same as &#045;&#045;frozen &#045;&#045;running).
+            -->
+            동작 중인 컨테이너들의 리스트를 표시한다. (&#045;&#045;frozen &#045;&#045;running과 동일)
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--frozen</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            List only frozen containers.
+            -->
+            동결된 컨테이너들의 리스트를 표시한다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--running</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            List only running containers.
+            -->
+            실행 중인 컨테이너들의 리스트를 표시한다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--stopped</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            List only stopped containers.
+            -->
+            종료되어 있는 컨테이너들의 리스트를 표시한다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-f, --fancy</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Use a fancy, column-based output.
+            -->
+            예쁘게, 컬럼 기반으로 출력해준다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-F, --fancy-format <replaceable>format</replaceable></optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Comma separate list of column to show in the fancy output.
+            The list of accepted and default fields is listed in \-\-help.
+            -->
+            &#045;&#045;fancy로 출력할때 어떤 컬럼을 보여줄지 쉼표(,)로 구분된 리스트.
+            기본으로 표시되는 항목 및 선택할 수 있는 항목을 확인하려면 --help를 사용하면 된다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>-g, --groups <replaceable>groups</replaceable></optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Comma separated list of groups the container must have to be displayed.
+            The parameter may be passed multiple times.
+            -->
+            표시하고자하는 컨테이너 그룹의 쉼표로 구분된 리스트.
+            이 인수는 여러번 사용될 수 있다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--nesting</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Show nested containers.
+            -->
+            중첩된(nested) 컨테이너들의 리스트를 표시합니다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>filter</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            The filter passed to <command>lxc-ls</command> will be
+            applied to the container name. The format is a regular expression.
+            -->
+            <command>lxc-ls</command> 명령어 사용시 컨테이너 이름에 적용할 필터.
+            형식은 정규표현식이다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Examples -->예제</title>
+    <variablelist>
+      <varlistentry>
+        <term>lxc-ls --fancy</term>
+        <listitem>
+        <para>
+          <!--
+          list all the containers, listing one per line along with its
+          name, state, ipv4 and ipv6 addresses.
+          -->
+          모든 컨테이너를 표시한다. 1개의 행에 컨테이너의 이름, 상태, ipv4 및 ipv6 주소가 들어있다.
+        </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>lxc-ls --active -1</term>
+	<listitem>
+	<para>
+          <!--
+	  list active containers and display the list in one column.
+          -->
+          동작 중인 컨테이너들의 리스트를 1열로 표시한다.
+	</para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

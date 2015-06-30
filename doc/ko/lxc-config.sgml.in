@@ -1,0 +1,129 @@
+<!--
+
+lxc-config
+
+(C) Copyright 2014 Canonical Ltd.
+
+Authors:
+Stéphane Graber <stgraber@ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+    <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+    <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+    <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+    <refmeta>
+        <refentrytitle>lxc-config</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>lxc-config</refname>
+
+        <refpurpose>
+          <!--
+            query LXC system configuration
+            -->
+          LXC 시스템 설정 얻어오기
+        </refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+        <cmdsynopsis>
+            <command>lxc-config</command>
+            <arg choice="opt">-l</arg>
+            <arg choice="opt"><replaceable>item</replaceable></arg>
+        </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title><!-- Description -->설명</title>
+
+        <para>
+          <!--
+            <command>lxc-config</command> queries the lxc system
+            configuration and lets you list all valid keys or query
+            individual keys for their value.
+            -->
+          <command>lxc-config</command>는 lxc 시스템 설정을 보여준다. 가능한 모든 항목의 이름을 나열하기도 하고 각각의 항목들에 설정되어 잇는 값을 보여주기도 한다.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title><!-- Options -->옵션</title>
+        <variablelist>
+            <varlistentry>
+                <term>
+                    <option>-l</option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        List all supported keys.
+                        -->
+                      지원되는 모든 항목의 이름을 나열한다.
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>item</option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                        Query the value of the specified key.
+                        -->
+                      지정한 항목에 설정되어 있는 값을 표시한다.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    &seealso;
+
+    <refsect1>
+        <title><!--Author-->저자</title>
+        <para>Stéphane Graber <email>stgraber@ubuntu.com</email></para>
+    </refsect1>
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

@@ -1,0 +1,205 @@
+
+<!--
+
+(C) Copyright Canonical Ltd. 2013
+
+Authors:
+Stéphane Graber <stgraber@ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-device</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-device</refname>
+
+    <refpurpose>
+      <!--
+      manage devices of running containers
+      -->
+      실행 중인 컨테이너의 디바이스 관리
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-device</command>
+      <arg choice="opt">-h</arg>
+      <arg choice="opt">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">add</arg>
+      <arg choice="opt">DEVICE</arg>
+      <arg choice="opt">NAME</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+    <para>
+      <!--
+      <command>lxc-device</command> manages devices in running container.
+      -->
+      <command>lxc-device</command>는 실행중인 컨테이너의 디바이스를 관리한다.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options -->옵션</title>
+    <variablelist>
+      <varlistentry>
+        <term>
+          <option><optional>-h</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            The full command help message.
+            -->
+            명령어의 전체 도움말을 표시한다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>-n</option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+             The name of the target container.
+             -->
+            대상으로 하는 컨테이너의 이름.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>action</option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            What action to perform. Only 'add' is supported at this point.
+            -->
+            수행할 동작. 현재는 'add'만 지원된다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>DEVICE</option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            The device to add to the container.
+            It can either be the path to a device under /dev or a network
+            interface name.
+            -->
+            컨테이너에 추가할 디바이스.
+            장치의 경로를 /dev 밑으로 지정하거나 네트워크 인터페이스 이름이 지정 가능하다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>NAME</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Name for the device within the container.
+            -->
+            컨테이너 내부에서 쓰일 디바이스의 이름
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Examples -->예제</title>
+    <variablelist>
+      <varlistentry>
+        <term>lxc-device -n p1 add /dev/video0</term>
+        <listitem>
+        <para>
+          <!--
+          Creates a /dev/video0 device in container p1 based on the matching
+          device on the host.
+          -->
+          컨테이너 p1 내부에 호스트의 것과 같은 /dev/video0 장치를 생성한다.
+        </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>lxc-device -n p1 add eth0 eth1</term>
+        <listitem>
+        <para>
+          <!--
+           Moves eth0 from the host as eth1 in p1.
+           -->
+          호스트의 eth0를 컨테이너 p1에 eth1의 이름으로 옮긴다.
+        </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Stéphane Graber <email>stgraber@ubuntu.com</email></para>
+  </refsect1>
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

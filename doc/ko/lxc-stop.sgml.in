@@ -1,0 +1,292 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-stop</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-stop</refname>
+
+    <refpurpose>
+      <!--
+      stop the application running inside a container
+      -->
+      컨테이너 종료
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-stop</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-W</arg>
+      <arg choice="opt">-r</arg>
+      <arg choice="opt">-t <replaceable>timeout</replaceable></arg>
+      <arg choice="opt">-k</arg>
+      <arg choice="opt">--nokill</arg>
+      <arg choice="opt">--nolock</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <command>lxc-stop</command> reboots, cleanly shuts down, or kills
+      all the processes inside the container.  By default, it will
+      request a clean shutdown of the container by sending
+      <command>lxc.haltsignal</command> (defaults to SIGPWR) to
+      the container's init process, waiting up to 60 seconds for the container
+      to exit, and then returning. If the container fails to cleanly exit in
+      60 seconds, it will be sent the <command>lxc.stopsignal</command>
+      (defaults to SIGKILL) to force it to shut down. A request to reboot will
+      send the <command>lxc.rebootsignal</command> (defaults to SIGINT) to the
+      container's init process.
+      -->
+      <command>lxc-stop</command> 는 재뷰탕, 종료, 또는 컨테이너 내의 모든 프로세스를 강제종료 시킨다. 기본 동작은 컨테이너에게 <command>lxc.haltsignal</command> 시그널(기본값은 SIGPWR)을 컨테이너 init 프로세스에게 날려, 컨테이너가 종료되게 요청하는 것이다. 60초 동안 컨테이너가 종료되는 것을 기다리고 리턴된다.
+만약 컨테이너가 60초안에 종료되지 않는다면 <command>lxc.stopsignal</command> 시그널(기본값은 SIGKILL)을 날려 강제로 종료시킨다. 재부팅 요청시에는 <command>lxc.rebootsignal</command> 시그널(기본값은 SIGINT)를 컨테이너 init 프로세스에게 날린다.
+    </para>
+
+    <para>
+      <!--
+      The <optional>-W</optional>, <optional>-r</optional>,
+      <optional>-k</optional> and <optional>\-\-nokill</optional>
+      options specify the action to perform.
+      <optional>-W</optional> indicates that after performing the specified
+      action, <command>lxc-stop</command> should immediately exit, while
+      <optional>-t TIMEOUT</optional> specifies the maximum amount of time
+      to wait for the container to complete the shutdown or reboot.
+      -->
+      <optional>-W</optional>, <optional>-r</optional>, <optional>-s</optional>, <optional>-k</optional>, <optional>--nokill</optional> 옵션은 어떤 동작을 수행할지 지정한다.
+      <optional>-W</optional>는 <command>lxc-stop</command>가 동작 수행후 즉각적으로 종료되게 지정한다. <optional>-t TIMEOUT</optional>는 동작이 완료되기까지 기다릴 최대 시간을 지정한다.
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options -->옵션</title>
+    <variablelist>
+
+    <varlistentry>
+	<term>
+	  <option>-r,--reboot </option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Request a reboot of the container.
+            -->
+            컨테이너 재부팅을 요청한다.
+	  </para>
+	</listitem>
+	</varlistentry>
+
+    <varlistentry>
+	<term>
+	  <option>-k,--kill </option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+        Rather than requesting a clean shutdown of the container, explicitly
+        kill all tasks in the container.  This is the legacy
+        <command>lxc-stop</command> behavior.
+        -->
+           컨테이너가 깨끗이 종료되는 것 대신 명시적으로 컨테이너 내의 모든 작업들을 강제종료 시킨다. 이것은 이전 <command>lxc-stop</command>의 동작이다.
+	  </para>
+	</listitem>
+    </varlistentry>
+
+    <varlistentry>
+	<term>
+	  <option>--nokill</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Only request a clean shutdown, do not kill the container tasks if the
+		clean shutdown fails.
+              -->
+            깨끗이 종료되도록 요청한다. 만약 종료가 실패하더라도 컨테이너 작업을 강제로 종료시키지 않는다.
+	  </para>
+	</listitem>
+	</varlistentry>
+
+    <varlistentry>
+	<term>
+	  <option>--nolock </option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	This option avoids the use of any of the API lxc locking, and should
+	only be used if <command>lxc-stop</command> is hanging due to a bad
+	system state.
+              -->
+            이 옵션은 lxc API에서 락킹을 사용하지 않는다.  <command>lxc-stop</command>이 잘못된 시스템 상태로 인해, 응답이 없게 되었을 경우에만 사용된다.
+	  </para>
+	</listitem>
+    </varlistentry>
+
+    <varlistentry>
+	<term>
+	  <option>-W,--nowait </option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Simply perform the requestion action (reboot, shutdown, or hard
+		kill) and exit.
+              -->
+            동작 수행(재부팅, 종료, 강제종료)을 요청하고 바로 죵료한다.
+	  </para>
+	</listitem>
+	</varlistentry>
+
+    <varlistentry>
+	<term>
+	  <option>-t,--timeout <replaceable>TIMEOUT</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Wait TIMEOUT seconds before hard-stopping the container.
+              -->
+            컨테이너를 강제종료 하기 전에 TIMEOUT 초 만큼 기다린다.
+	  </para>
+	</listitem>
+	</varlistentry>
+
+  </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Exit value -->종료</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>0</term>
+        <listitem>
+          <para>
+            <!--
+	    The container was successfully stopped.
+            -->
+            컨테이너가 성공적으로 종료됬다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>1</term>
+        <listitem>
+          <para>
+            <!--
+	    An error occurred while stopping the container.
+            -->
+            컨테이너를 종료하던 도중 오류가 발생하였다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>2</term>
+        <listitem>
+          <para>
+            <!--
+	    The specified container exists but was not running.
+            -->
+            지정한 컨테이너가 있지만 실행되 있지는 않다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+  <refsect1>
+    <title><!-- Diagnostic -->진단</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>The container was not found</term>
+        <listitem>
+          <para>
+            <!--
+	    The specified container was not created before with
+	    the <command>lxc-create</command> command.
+            -->
+            지정한 컨테이너가  <command>lxc-create</command>로 생성된 적이 없다.
+            컨테이너가 존재하지 않는다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

@@ -1,0 +1,875 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo>
+    <date>@LXC_GENERATE_DATE@</date>
+  </docinfo>
+
+
+  <refmeta>
+    <refentrytitle>lxc</refentrytitle>
+    <manvolnum>7</manvolnum>
+    <refmiscinfo>
+      Version @PACKAGE_VERSION@
+    </refmiscinfo>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc</refname>
+
+    <refpurpose>
+      <!--
+      linux containers
+      -->
+      Linux 컨테이너
+    </refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title><!-- Quick start -->빠른 도움말</title>
+    <para>
+      <!--
+      You are in a hurry, and you don't want to read this man page. Ok,
+      without warranty, here are the commands to launch a shell inside
+      a container with a predefined configuration template, it may
+      work.
+      <command>@BINDIR@/lxc-execute -n foo -f
+      @DOCDIR@/examples/lxc-macvlan.conf /bin/bash</command>
+      -->
+      man 페이지를 읽고 싶지는 않지만 서둘러서 해보고 싶다면,
+      된다고 보장할 수는 없지만, 미리정의된 설정파일로 컨테이너 내에서 쉘을 실행하는 아래 명령어를 소개하고자 한다.
+
+      <command>@BINDIR@/lxc-execute -n foo -f
+      @DOCDIR@/examples/lxc-macvlan.conf /bin/bash</command>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Overview -->개요</title>
+    <para>
+      <!--
+      The container technology is actively being pushed into the
+      mainstream linux kernel. It provides the resource management
+      through the control groups aka process containers and resource
+      isolation through the namespaces.
+      -->
+      컨테이너 기술은 리눅스 커널의 메인스트림에서 활발하게 개발이 진행되고 있다. 컨트롤 그룹(aka. 프로세스 컨테이너)을 통한 자원 관리와 네임스페이슬 통한 자원의 고립 기능을 제공한다.
+    </para>
+
+    <para>
+      <!--
+      The linux containers, <command>lxc</command>, aims to use these
+      new functionalities to provide a userspace container object
+      which provides full resource isolation and resource control for
+      an applications or a system.
+      -->
+      linux 컨테이너 (<command>lxc</command>)는 사용자영역 컨테이너 개체를 제공하는 새로운 기능을 사용하는 것을 목표로 하고 있다. 이 새로운 기능은 응용 프로그램이나 시스템에서 모든 자원의 격리와 제어를 제공한다.
+    </para>
+
+    <para>
+      <!--
+      The first objective of this project is to make the life easier
+      for the kernel developers involved in the containers project and
+      especially to continue working on the Checkpoint/Restart new
+      features. The <command>lxc</command> is small enough to easily
+      manage a container with simple command lines and complete enough
+      to be used for other purposes.
+      -->
+      이 프로젝트의 첫번째 목적은 컨테이너 프로젝트에 속해있는 커널 개발자들의 작업을 편하게 하며, 특히 새로운 기능인 Checkpoing/Restart에 대해 계속 작업을 진행해 나가는 것이다.
+      <command>lxc</command>는 작지만, 컨테이너를 간단한 명령어를 통해 쉽게 관리할 수 있고, 다목적으로 사용되기에도 충분하다.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Requirements -->요구사항</title>
+    <para>
+      <!--
+      The <command>lxc</command> relies on a set of functionalities
+      provided by the kernel which needs to be active. Depending of
+      the missing functionalities the <command>lxc</command> will
+      work with a restricted number of functionalities or will simply
+      fail.
+      -->
+      <command>lxc</command>는 커널이 제공하는 몇가지 기능들에 의존적이며, 해당 기능이 활성화되어 있어야 한다. 부족한 기능에 따라, 제한된 기능만이 동작하거나, 아예 동작을 안 할 수 있다.
+    </para>
+
+    <para>
+      <!--
+      The following list gives the kernel features to be enabled in
+      the kernel to have the full features container:
+      -->
+      아래 리스트는 컨테이너의 모든 기능을 사용하기 위해 활성화되어야 하는 커널 기능들이다.
+    </para>
+      <programlisting>
+	    * General setup
+	      * Control Group support
+	        -> Namespace cgroup subsystem
+	        -> Freezer cgroup subsystem
+	        -> Cpuset support
+	        -> Simple CPU accounting cgroup subsystem
+	        -> Resource counters
+	          -> Memory resource controllers for Control Groups
+	      * Group CPU scheduler
+	        -> Basis for grouping tasks (Control Groups)
+	      * Namespaces support
+	        -> UTS namespace
+	        -> IPC namespace
+	        -> User namespace
+	        -> Pid namespace
+	        -> Network namespace
+	    * Device Drivers
+	      * Character devices
+	        -> Support multiple instances of devpts
+	      * Network device support
+	        -> MAC-VLAN support
+	        -> Virtual ethernet pair device
+	    * Networking
+	      * Networking options
+	        -> 802.1d Ethernet Bridging
+	    * Security options
+	      -> File POSIX Capabilities
+      </programlisting>
+
+      <para>
+	<!--
+	The kernel version >= 2.6.32 shipped with the distros, will
+	work with <command>lxc</command>, this one will have less
+	functionalities but enough to be interesting.
+
+	The helper script <command>lxc-checkconfig</command> will give
+	you information about your kernel configuration.
+	-->
+	배포판들에 포함된 2.6.32 이상의 커널에서는  <command>lxc</command>가 동작한다. 매우 작은 기능만 있지만 충분히 사용할 수 있다.
+        <command>lxc-checkconfig</command> 스크립트를 사용하면 현재 커널 설정에 대한 정보를 얻을 수 있다.
+      </para>
+
+      <para>
+	<!--
+	  The control group can be mounted anywhere, eg:
+	  <command>mount -t cgroup cgroup /cgroup</command>.
+
+	  It is however recommended to use cgmanager, cgroup-lite or systemd
+	  to mount the cgroup hierarchy under /sys/fs/cgroup.
+	 -->
+        컨트롤 그룹은 어디에든지 마운트될 수 있다. 예를 들어
+        <command>mount -t cgroup cgroup /cgroup</command>도 가능하다.
+
+        그러나 cgmanager, cgroup-lite 또는 systemd를 사용하여, /sys/fs/cgroup에 cgroup 계층구조를 마운트하는 것이 좋다.
+      </para>
+
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Functional specification -->기능 사양</title>
+    <para>
+      <!--
+      A container is an object isolating some resources of the host,
+      for the application or system running in it.
+      -->
+      컨테이너는 응용프로그램이나 시스템을 내부에서 실행시키기 위해, 호스트의 몇몇 자원들을 격리시키는 객체이다.
+    </para>
+    <para>
+      <!--
+      The application / system will be launched inside a
+      container specified by a configuration that is either
+      initially created or passed as parameter of the starting
+      commands.
+      -->
+      어플리케이션/시스템은 처음 생성될때 또는 시작 명령어의 인자로 넘겨주었던 설정을 기반으로 한 컨테이너 안에서 실행된다.
+    </para>
+
+    <para>
+      <!--
+	  How to run an application in a container ?
+	-->
+      어떻게 컨테이너 내부에서 응용 프로그램을 실행하는가?
+    </para>
+    <para>
+      <!--
+      Before running an application, you should know what are the
+      resources you want to isolate. The default configuration is to
+      isolate the pids, the sysv ipc and the mount points. If you want
+      to run a simple shell inside a container, a basic configuration
+      is needed, especially if you want to share the rootfs. If you
+      want to run an application like <command>sshd</command>, you
+      should provide a new network stack and a new hostname. If you
+      want to avoid conflicts with some files
+      eg. <filename>/var/run/httpd.pid</filename>, you should
+      remount <filename>/var/run</filename> with an empty
+      directory. If you want to avoid the conflicts in all the cases,
+      you can specify a rootfs for the container. The rootfs can be a
+      directory tree, previously bind mounted with the initial rootfs,
+      so you can still use your distro but with your
+      own <filename>/etc</filename> and <filename>/home</filename>
+      -->
+      어플리케이션을 실행하기에 앞서, 고립시키고 싶은 자원을 먼저 알아야 한다. 기본 설정은 pid와 sysv ipc 그리고 마운트 포인트들을 고립시킨다.
+      만약에 간단한 쉘을 컨테이너 내부에서 실행시키기 원한다면, 특히 rootfs를 공유하고 싶다면 매우 기초적인 설정이 요구된다.
+      <command>sshd</command> 같은 응용 프로그램을 실행시키고 싶다면, 새로운 네트워크 스택과 호스트네임을 제공해 주어야 한다.
+      만약 몇몇 파일들, 예를 들어, <filename>/var/run/httpd.pid</filename>이 충돌나는것을 막고 싶다면, <filename>/var/run</filename>를 빈 디렉토리로 다시 마운트하는 것이 필요하다.
+      모든 경우의 파일 충돌을 피하고 싶다면, 컨테이너를 위한 루트 파일시스템를 따로 지정해 줄 수도 있다. 루트 파일시스템은 미리 원래의 루트 파일시스템을 바인드 마운트한 디렉토리가 될 수도 있다. 이렇게 되면 자신만의 <filename>/etc</filename>, <filename>/home</filename>을 사용하면서도 배포판을 그대로 사용할 수 있다.
+    </para>
+    <para>
+      <!--
+      Here is an example of directory tree
+      for <command>sshd</command>:
+      <programlisting>	
+[root@lxc sshd]$ tree -d rootfs
+	
+rootfs	
+|&#045;&#045; bin	
+|&#045;&#045; dev	
+|   |&#045;&#045; pts
+|   `&#045;&#045; shm
+|       `&#045;&#045; network
+|&#045;&#045; etc	
+|   `&#045;&#045; ssh
+|&#045;&#045; lib	
+|&#045;&#045; proc
+|&#045;&#045; root
+|&#045;&#045; sbin
+|&#045;&#045; sys	
+|&#045;&#045; usr	
+`&#045;&#045; var	
+    |&#045;&#045; empty
+    |   `&#045;&#045; sshd
+    |&#045;&#045; lib
+    |   `&#045;&#045; empty
+    |       `&#045;&#045; sshd
+    `&#045;&#045; run
+        `&#045;&#045; sshd
+      </programlisting>
+
+      and the mount points file associated with it:
+      <programlisting>
+	[root@lxc sshd]$ cat fstab
+
+	/lib /home/root/sshd/rootfs/lib none ro,bind 0 0
+	/bin /home/root/sshd/rootfs/bin none ro,bind 0 0
+	/usr /home/root/sshd/rootfs/usr none ro,bind 0 0
+	/sbin /home/root/sshd/rootfs/sbin none ro,bind 0 0
+      </programlisting>
+      -->
+	아래는 <command>sshd</command>를 사용하기 위한 디렉토리 트리 예제이다.
+      <programlisting>	
+[root@lxc sshd]$ tree -d rootfs
+	
+rootfs	
+|-- bin	
+|-- dev	
+|   |-- pts
+|   `-- shm
+|       `-- network
+|-- etc	
+|   `-- ssh
+|-- lib	
+|-- proc
+|-- root
+|-- sbin
+|-- sys	
+|-- usr	
+`-- var	
+    |-- empty
+    |   `-- sshd
+    |-- lib
+    |   `-- empty
+    |       `-- sshd
+    `-- run
+        `-- sshd
+      </programlisting>
+
+      그리고, 해당 마운트 포인트 파일의 내용은 아래와 같다.
+      <programlisting>
+	[root@lxc sshd]$ cat fstab
+
+	/lib /home/root/sshd/rootfs/lib none ro,bind 0 0
+	/bin /home/root/sshd/rootfs/bin none ro,bind 0 0
+	/usr /home/root/sshd/rootfs/usr none ro,bind 0 0
+	/sbin /home/root/sshd/rootfs/sbin none ro,bind 0 0
+      </programlisting>
+    </para>
+
+    <para>
+      <!--
+      How to run a system in a container ?
+      -->
+      어떻게 컨테이너 내에서 시스템을 실행하는가?
+    </para>
+
+    <para>
+      <!--
+      Running a system inside a container is paradoxically easier
+    than running an application. Why ? Because you don't have to care
+    about the resources to be isolated, everything need to be
+    isolated, the other resources are specified as being isolated but
+    without configuration because the container will set them
+    up. eg. the ipv4 address will be setup by the system container
+    init scripts. Here is an example of the mount points file:
+
+      <programlisting>
+	[root@lxc debian]$ cat fstab
+
+	/dev	/home/root/debian/rootfs/dev none bind 0 0
+	/dev/pts /home/root/debian/rootfs/dev/pts  none bind 0 0
+      </programlisting>
+
+      More information can be added to the container to facilitate the
+      configuration. For example, make accessible from the container
+      the resolv.conf file belonging to the host.
+
+      <programlisting>
+	/etc/resolv.conf /home/root/debian/rootfs/etc/resolv.conf none bind 0 0
+      </programlisting>
+      -->
+      컨테이너 내에서 시스템을 실행하는 것은 역설적으로 어플리케이션을 실행하는 것보다 쉽다. 왜 그럴까? 왜냐하면, 어떤 자원이 고립되어야 하는지 고려할 필요가 없다. 모든 자원이 고립되면 된다. 자원들은 별다른 설정없이 고립된다고 지정만 해도 된다. 왜냐하면 컨테이너가 그 자원들을 세팅할 것이기 때문이다. 예를 들어 ipv4 주소는 시스템 컨테이너의 init 스크립트들을 통해 세팅된다. 아래는 마운트 포인트 파일의 예제이다.
+
+      <programlisting>
+	[root@lxc debian]$ cat fstab
+
+	/dev	/home/root/debian/rootfs/dev none bind 0 0
+	/dev/pts /home/root/debian/rootfs/dev/pts  none bind 0 0
+      </programlisting>
+
+      설정을 돕기 위해서 컨테이너에 부가 정보를 추가할 수 있다. 아래와 같이 호스트에 있는 resolv.conf를 컨테이너 안에서 접근할 수 있다.
+
+      <programlisting>
+	/etc/resolv.conf /home/root/debian/rootfs/etc/resolv.conf none bind 0 0
+      </programlisting>
+    </para>
+
+    <refsect2>
+      <title><!-- Container life cycle -->컨테이너의 생명주기</title>
+      <para>
+	<!--
+	When the container is created, it contains the configuration
+	information. When a process is launched, the container will be
+	starting and running. When the last process running inside the
+	container exits, the container is stopped.
+	-->
+        컨테이너가 생성될때, 컨테이너는 설정정보를 포함하게 된다.
+        프로세스가 실행될때, 컨테이너는 시작되고 실행된다.
+        컨테이너 내에서 실행되던 마지막 프로세스가 종료되면, 컨테이너는 종료된다.
+      </para>
+      <para>
+	<!--
+	In case of failure when the container is initialized, it will
+	pass through the aborting state.
+	-->
+        컨테이너의 초기화가 실패했을 경우, (아래 그림처럼)중단 상태로 바뀌게 된다.
+      </para>
+
+      <programlisting>
+<![CDATA[
+   ---------
+  | STOPPED |<---------------
+   ---------                 |
+       |                     |
+     start                   |
+       |                     |
+       V                     |
+   ----------                |
+  | STARTING |--error-       |
+   ----------         |      |
+       |              |      |
+       V              V      |
+   ---------    ----------   |
+  | RUNNING |  | ABORTING |  |
+   ---------    ----------   |
+       |              |      |
+  no process          |      |
+       |              |      |
+       V              |      |
+   ----------         |      |
+  | STOPPING |<-------       |
+   ----------                |
+       |                     |
+        ---------------------
+]]>
+      </programlisting>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Configuration -->설정</title>
+      <para>
+	<!--
+	The container is configured through a configuration
+	file, the format of the configuration file is described in
+      <citerefentry>
+	<refentrytitle><filename>lxc.conf</filename></refentrytitle>
+	<manvolnum>5</manvolnum>
+      </citerefentry>
+      -->
+      </para>
+        컨테이너는 설정파일에 의해서 설정된다. 설정파일의 형식은 다음을 참조하면 된다.
+      <citerefentry>
+	<refentrytitle><filename>lxc.conf</filename></refentrytitle>
+	<manvolnum>5</manvolnum>
+      </citerefentry>
+    </refsect2>
+
+    <refsect2>
+      <title><!--Creating / Destroying container
+	(persistent container) -->컨테이너의 생성/제거 (지속 컨테이너)</title>
+      <para>
+	<!--
+	A persistent container object can be
+	created via the <command>lxc-create</command>
+	command. It takes a container name as parameter and
+	optional configuration file and template.
+	The name is used by the different
+	commands to refer to this
+	container. The <command>lxc-destroy</command> command will
+	destroy the container object.
+	<programlisting>
+	  lxc-create -n foo
+	  lxc-destroy -n foo
+	</programlisting>
+	-->
+        지속성 컨테이너 객체는 <command>lxc-create</command> 명령어로 생성된다.         컨테이너이름을 인수로 받으며, 부가적인 설정파일과 템플릿을 지정한다.
+        여기서 지정하는 이름은 다른 명령어들을 사용할 때 해당 컨테이너를 참조하기 위해 사용된다. <command>lxc-destroy</command> 명령어는 컨테이너 객체를 제거한다.
+	<programlisting>
+	  lxc-create -n foo
+	  lxc-destroy -n foo
+	</programlisting>
+      </para>
+    </refsect2>
+
+    <refsect2>
+	<title><!-- Volatile container -->휘발성 컨테이너</title>
+	<para>
+          <!--
+          It is not mandatory to create a container object
+	before to start it.
+	The container can be directly started with a
+	configuration file as parameter.
+        -->
+          컨테이너 시작전에 컨테이너 오브젝트를 생성하는 것이 의무는 아니다.
+          컨테이너는 설정파일을 파라미터로 넣어서 바로 시작할 수도 있다.
+	</para>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Starting / Stopping container -->컨테이너의 시작과 종료</title>
+      <para>
+        <!--
+        When the container has been created, it is ready to run an
+      application / system.
+      This is the purpose of the <command>lxc-execute</command> and
+      <command>lxc-start</command> commands.
+      If the container was not created before
+      starting the application, the container will use the
+      configuration file passed as parameter to the command,
+      and if there is no such parameter either, then
+      it will use a default isolation.
+      If the application is ended, the container will be stopped also,
+      but if needed the <command>lxc-stop</command> command can
+      be used to kill the still running application.
+      -->
+        컨테이너가 생성하면 응용 프로그램/시스템이 실행될 준비를 마친 것이다.
+        실행하는 것이 바로 <command>lxc-execute</command>와 <command>lxc-start</command> 명령어의 목적이다.
+        응용프로그램 시작전에 컨테이너가 생성되어 있지 않다면, 컨테이너는 명령어의 인수로 넘겼던 설정파일을 사용한다. 그런 인수마저 없다면, 기본 고립 환경을 사용한다.
+        만약 응용프로그램이 종료되면, 컨테이너도 역시 종료된다. 실행중인 응용프로그램을 종료시키고 싶다면 <command>lxc-stop</command>를 사용하면 된다.
+      </para>
+
+      <para>
+        <!--
+	Running an application inside a container is not exactly the
+	same thing as running a system. For this reason, there are two
+	different commands to run an application into a container:
+	<programlisting>
+	  lxc-execute -n foo [-f config] /bin/bash
+	  lxc-start -n foo [-f config] [/bin/bash]
+	</programlisting>
+        -->
+        컨테이너 내부에서 응용프로그램을 실행하는 것은 시스템을 실행하는 것과는 차이가 있다. 이런 이유로 아래의 두가지 명령어가 사용된다.
+        <programlisting>
+	  lxc-execute -n foo [-f config] /bin/bash
+	  lxc-start -n foo [-f config] [/bin/bash]
+	</programlisting>
+      </para>
+
+      <para>
+        <!--
+	<command>lxc-execute</command> command will run the
+	specified command into the container via an intermediate
+	process, <command>lxc-init</command>.
+	This lxc-init after launching  the specified command,
+	will wait for its end and all other reparented processes.
+        (to support daemons in the container).
+	In other words, in the
+	container, <command>lxc-init</command> has the pid 1 and the
+	first process of the application has the pid 2.
+        -->
+        <command>lxc-execute</command> 명령어는 컨테이너 내부에서 <command>lxc-init</command> 프로세스를 통해 실행할 명령어를 지정할 수 있다.
+        lxc-init는 지정한 명령어를 실행한 후, 그 명령어로 실행된 모든 프로세스들이 종료되기를 기다린다. (컨테이너 내부에서 데몬을 지원하기 위해서이다)
+        다시 말해서, 컨테이너 내부에서 <command>lxc-init</command>는 1번 pid를 갖고, 응용프로그램의 첫번째 프로세스는 2번 pid를 가진다.
+      </para>
+
+      <para>
+        <!--
+	<command>lxc-start</command> command will run directly the specified
+	command into the container.
+	The pid of the first process is 1. If no command is
+	specified <command>lxc-start</command> will
+	run the command defined in lxc.init_cmd or if not set,
+	<filename>/sbin/init</filename> .
+        -->
+        <command>lxc-start</command> 명령어는 지정한 명령어를 컨테이너 내에서 직접 실행한다. 첫 프로세스의 pid는 1번이다. 만약 어떤 명령어도 지정되지 않으면, lxc.init_cmd에 지정된 명령어를 실행한다. 이마저도 지정되있지 않으면, <filename>/sbin/init</filename>를 실행한다.
+      </para>
+
+      <para>
+        <!--
+	To summarize, <command>lxc-execute</command> is for running
+	an application and <command>lxc-start</command> is better suited for
+	running a system.
+        -->
+        요약하자면, <command>lxc-execute</command>는 응용 프로그램 실행을 위해서, <command>lxc-start</command>는 시스템 실행을 위해 적합하다.
+      </para>
+
+      <para>
+        <!--
+	If the application is no longer responding, is inaccessible or is
+	not able to finish by itself, a
+	wild <command>lxc-stop</command> command will kill all the
+	processes in the container without pity.
+	<programlisting>
+	  lxc-stop -n foo
+	</programlisting>
+        -->
+        만약 어플리케이션이 더이상 응답하지 않거나, 접근이 불가능하거나, 스스로 종료되지 못할 경우, <command>lxc-stop</command> 명령어는 컨테이너 내의 모든 프로세스들을 가차없이 종료시킬 것이다.
+        <programlisting>
+          lxc-stop -n foo
+        </programlisting>
+      </para>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Connect to an available tty -->사용가능한 tty 접속</title>
+      <para>
+        <!--
+	If the container is configured with the ttys, it is possible
+	to access it through them. It is up to the container to
+	provide a set of available tty to be used by the following
+	command. When the tty is lost, it is possible to reconnect it
+	without login again.
+	<programlisting>
+	  lxc-console -n foo -t 3
+	</programlisting>
+        -->
+        컨테이너에 tty가 설정되어 있다면, tty를 통해 컨테이너에 접근할 수 있다.
+        아래 명령어를 통해 사용될 가능한 tty를 제공하는 것은 컨테이너에 달려있다.
+        tty가 종료되었을 때는 다시 로그인하지 않고도 재접속할 수 있다.
+	<programlisting>
+	  lxc-console -n foo -t 3
+	</programlisting>
+      </para>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Freeze / Unfreeze container -->컨테이너 동결/동결 해제</title>
+      <para>
+        <!--
+	Sometime, it is useful to stop all the processes belonging to
+	a container, eg. for job scheduling. The commands:
+	<programlisting>
+	  lxc-freeze -n foo
+	</programlisting>
+
+	will put all the processes in an uninteruptible state and
+
+	<programlisting>
+	  lxc-unfreeze -n foo
+	</programlisting>
+
+	will resume them.
+        -->
+        스케줄링 등을 위해 컨테이너에 속해있는 모든 프로세스를 정지 시키는 것은 때로 유용할 수 있다. 아래 명령어들을 사용하면 된다.
+
+	<programlisting>
+	  lxc-freeze -n foo
+	</programlisting>
+        는 모든 프로세스들을 인터럽트 불가능한 상태로 만든다.
+
+	<programlisting>
+	  lxc-unfreeze -n foo
+	</programlisting>
+        는 모든 프로세스를 정지 해제 시킨다.
+      </para>
+
+      <para>
+        <!--
+	This feature is enabled if the cgroup freezer is enabled in the
+	kernel.
+        -->
+        이 기능은 커널에서 cgroup freezer 기능이 활성화 되어 있어야 사용 가능하다.
+      </para>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Getting information about container -->
+        컨테이너 관련 정보 얻어오기</title>
+      <para>
+        <!--
+        When there are a lot of containers, it is hard to follow
+      what has been created or destroyed, what is running or what are
+      the pids running into a specific container. For this reason, the
+      following commands may be useful:
+	<programlisting>
+	  lxc-ls
+	  lxc-info -n foo
+	</programlisting>
+        -->
+        컨테이너가 많이 존재하는 경우, 어떤것이 생성되고 제거됬는지, 어떤 것이 실행됬는지 또는 어떤 프로세스들이 특정 컨테이너 내에서 실행되는지를 따라가기 힘들다. 이를 위해 다음과 같은 명령어들이 유용하게 사용될 수 있다.
+	<programlisting>
+	  lxc-ls
+	  lxc-info -n foo
+	</programlisting>
+      </para>
+      <para>
+        <!--
+	<command>lxc-ls</command> lists the containers of the
+	system.
+        -->
+        <command>lxc-ls</command>는 시스템의 컨테이너들의 리스트를 표시한다.
+      </para>
+
+      <para>
+        <!--
+	<command>lxc-info</command> gives information for a specific
+	container.
+        -->
+        <command>lxc-info</command>는 지정한 컨테이너의 정보를 얻어온다.
+      </para>
+
+      <para>
+        <!--
+	Here is an example on how the combination of these commands
+	allow to list all the containers and retrieve their state.
+	<programlisting>
+	  for i in $(lxc-ls -1); do
+	    lxc-info -n $i
+	  done
+	</programlisting>
+        -->
+        아래는 명령어들을 조합하여 컨테이너들의 리스트를 얻어오고 상태를 출력하는 예제이다.
+	<programlisting>
+	  for i in $(lxc-ls -1); do
+	    lxc-info -n $i
+	  done
+	</programlisting>
+      </para>
+
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Monitoring container -->컨테이너 모니터링</title>
+      <para>
+        <!--
+        It is sometime useful to track the states of a container,
+      for example to monitor it or just to wait for a specific
+      state in a script.
+        -->
+        컨테이너의 상태를 추적하는 것은 때때로 매우 유용하다.
+        예를 들어, 상태를 모니터링하거나, 스크립트에서 특정상태를 기다리는 경우이다.
+      </para>
+
+      <para>
+        <!--
+	<command>lxc-monitor</command> command will monitor one or
+	several containers. The parameter of this command accept a
+	regular expression for example:
+	<programlisting>
+	  lxc-monitor -n "foo|bar"
+	</programlisting>
+	will monitor the states of containers named 'foo' and 'bar', and:
+	<programlisting>
+	  lxc-monitor -n ".*"
+	</programlisting>
+	will monitor all the containers.
+        -->
+        <command>lxc-monitor</command> 명령어는 하나 또는 여러개의 컨테이너들을 모니터링한다. 이 명령어의 인수로 정규표현식을 넘길 수도 있다.
+        예를 들면,
+	<programlisting>
+	  lxc-monitor -n "foo|bar"
+	</programlisting>
+        는 'foo'와 'bar'라는 이름의 컨테이너의 상태 변화를 모니터링한다. 그리고,
+	<programlisting>
+	  lxc-monitor -n ".*"
+	</programlisting>
+        는 모든 컨테이너를 모니터링한다.
+      </para>
+      <para>
+        <!--
+	For a container 'foo' starting, doing some work and exiting,
+	the output will be in the form:
+	<programlisting>
+	  'foo' changed state to [STARTING]
+	  'foo' changed state to [RUNNING]
+	  'foo' changed state to [STOPPING]
+	  'foo' changed state to [STOPPED]
+	</programlisting>
+        -->
+        'foo' 컨테이너가 시작되고 몇 가지 작업을 수행하고 종료된 경우,
+        출력은 다음과 같다.
+	<programlisting>
+	  'foo' changed state to [STARTING]
+	  'foo' changed state to [RUNNING]
+	  'foo' changed state to [STOPPING]
+	  'foo' changed state to [STOPPED]
+	</programlisting>
+      </para>
+      <para>
+        <!--
+	<command>lxc-wait</command> command will wait for a specific
+	state change and exit. This is useful for scripting to
+	synchronize the launch of a container or the end. The
+	parameter is an ORed combination of different states. The
+	following example shows how to wait for a container if he went
+	to the background.
+
+	<programlisting>
+<![CDATA[
+	  # launch lxc-wait in background
+	  lxc-wait -n foo -s STOPPED &
+	  LXC_WAIT_PID=$!
+
+	  # this command goes in background
+	  lxc-execute -n foo mydaemon &
+
+	  # block until the lxc-wait exits
+	  # and lxc-wait exits when the container
+	  # is STOPPED
+	  wait $LXC_WAIT_PID
+	  echo "'foo' is finished"
+]]>
+	</programlisting>
+        -->
+        <command>lxc-wait</command> 명령어는 지정한 상태로 변화되는 것을 기다린다. 이 명령어는 컨테이너의 시작이나 종료와 동기화되는 스크립트를 작성할 때 유용하다.
+        인수는 다른 상태들을 OR로 묶어서 지정해 줄 수 있다. 아래 예제는 백그라운드에서 어떻게 컨테이너의 상태 변화를 기다리는지 보여준다.
+	<programlisting>
+<![CDATA[
+	  # launch lxc-wait in background
+	  lxc-wait -n foo -s STOPPED &
+	  LXC_WAIT_PID=$!
+
+	  # this command goes in background
+	  lxc-execute -n foo mydaemon &
+
+	  # block until the lxc-wait exits
+	  # and lxc-wait exits when the container
+	  # is STOPPED
+	  wait $LXC_WAIT_PID
+	  echo "'foo' is finished"
+]]>
+	</programlisting>
+      </para>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Setting the control group for container -->
+        컨테이너 컨트롤 그룹 설정
+      </title>
+      <para>
+        <!--
+        The container is tied with the control groups, when a
+	container is started a control group is created and associated
+	with it. The control group properties can be read and modified
+	when the container is running by using the lxc-cgroup command.
+        -->
+        컨테이너는 컨트롤 그룹과 결합되어 있다.
+        컨테이너가 시작되면 컨트롤그룹이 만들어지고 해당 컨트롤 그룹과 연결된다.
+        컨테이너가 실행중일 때, lxc-cgroup 명령어를 이용해 컨트롤 그룹 속성은 읽거나 수정될 수 있다.
+      </para>
+      <para>
+        <!--
+	<command>lxc-cgroup</command> command is used to set or get a
+	control group subsystem which is associated with a
+	container. The subsystem name is handled by the user, the
+	command won't do any syntax checking on the subsystem name, if
+	the subsystem name does not exists, the command will fail.
+        -->
+        <command>lxc-cgroup</command> 명령어는 컨테이너와 연결된 컨트롤 그룹 서브시스템의 값을 얻어오거나 설정한다.
+        서브시스템의 이름은 사용자가 결정하며, 이 명령어는 이름이 적합한지 여부를 검사하지 않는다.
+       만약 서브시스템의 이름이 없다면 명령어는 실패할 것이다.
+      </para>
+      <para>
+        <!--
+	<programlisting>
+	  lxc-cgroup -n foo cpuset.cpus
+	</programlisting>
+	will display the content of this subsystem.
+	<programlisting>
+	  lxc-cgroup -n foo cpu.shares 512
+	</programlisting>
+	will set the subsystem to the specified value.
+        -->
+	<programlisting>
+	  lxc-cgroup -n foo cpuset.cpus
+	</programlisting>
+        는 해당 서브시스템의 내용을 표시한다.
+	<programlisting>
+	  lxc-cgroup -n foo cpu.shares 512
+	</programlisting>
+        는 해당 서브시스템의 값을 설정한다.
+      </para>
+    </refsect2>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Bugs -->버그</title>
+    <para>
+      <!--
+      The <command>lxc</command> is still in development, so the
+    command syntax and the API can change. The version 1.0.0 will be
+    the frozen version.
+      -->
+      <command>lxc</command>는 아직 개발중이다. 그래서 명령어 사용법이나, API가 변경될 수 있다. 버전 1.0.0은 변경되지 않는 고정된 버전이다.
+    </para>
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file Local variables: mode:
+sgml sgml-omittag:t sgml-shorttag:t sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t sgml-indent-step:2 sgml-indent-data:t
+sgml-parent-document:nil sgml-default-dtd-file:nil
+sgml-exposed-tags:nil sgml-local-catalogs:nil
+sgml-local-ecat-files:nil End: -->

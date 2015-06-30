@@ -1,0 +1,238 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright IBM Corp. 2007, 2008
+
+Authors:
+Daniel Lezcano <daniel.lezcano at free.fr>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-execute</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-execute</refname>
+
+    <refpurpose>
+      <!--
+      run an application inside a container.
+      -->
+      컨테이너 내부로 응용 프로그램 실행
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-execute</command>
+      <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
+      <arg choice="opt">-s KEY=VAL</arg>
+      <arg choice="opt">-- <replaceable>command</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <command>lxc-execute</command> runs the specified
+      <replaceable>command</replaceable> inside the container
+      specified by <replaceable>name</replaceable>.
+      -->
+      <command>lxc-execute</command>는 지정한 <replaceable>command</replaceable>를 <replaceable>name</replaceable>라는 이름의 컨테이너 내부에서 실행한다.
+    </para>
+    <para>
+      <!--
+      It will setup the container
+      according to the configuration previously defined with the
+      lxc-create command or with the configuration file parameter.
+      If no configuration is
+      defined, the default isolation is used.
+      -->
+      이 명령어는 <command>lxc-create</command> 정의했던 설정을 토대로 또는 인수
+를 통해 넘긴 설정파일을 토대로 컨테이너를 세팅한다.
+      만약 정의된 설정이 없다면, 기본 고립 환경을 사용한다.
+    </para>
+    <para>
+      <!--
+      This command is mainly used when you want to quickly launch an
+      application in an isolated environment.
+      -->
+      이 명령어들은 고립된 환경에서 응용 프로그램을 빠르게 실행해보고 싶을 때, 주로 사용한다.
+    </para>
+    <para>
+      <!--
+      <command>lxc-execute</command> command will run the
+      specified command into the container via an intermediate
+      process, <command>lxc-init</command>.
+      This lxc-init after launching  the specified command,
+      will wait for its end and all other reparented processes.
+      (to support daemons in the container).
+      In other words, in the
+      container, <command>lxc-init</command> has the pid 1 and the
+      first process of the application has the pid 2.
+      -->
+      <command>lxc-execute</command>명령어는 컨테이너 내부에서 <command>lxc-init</command> 프로세스를 통해 지정한 명령어를 실행한다.
+      <command>lxc-init</command>은 지정한 명령어를 실행한 뒤에, 해당 명령어 및 그 명령어에서 실행된 모든 프로세스들을 기다린다(컨테이너 내에서 데몬을 지원하기 위한 것).
+      즉, 컨테이너내에서 <command>lxc-init</command>는 pid는 1이 되고, 그 다음으로 실행되는 응용 프로그램은 pid가 2가 된다.
+     </para>
+     <para>
+       <!--
+      The above <command>lxc-init</command> is designed to forward received
+      signals to the started command.
+       -->
+       <command>lxc-init</command>는 시그널들을 받아서 시작한 명령어에게 보내주도록 되어 있다.
+     </para>
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Options -->옵션</title>
+    <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-f, --rcfile <replaceable>config_file</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the configuration file to configure the virtualization
+	    and isolation functionalities for the container.
+            -->
+            컨테이너의 가상화나 고립 기능을 설정할 때 쓰일 설정파일을 지정한다.
+	  </para>
+	  <para>
+            <!--
+	   This configuration file if present will be used even if there is
+	   already a configuration file present in the previously created
+	   container (via lxc-create).
+            -->
+            지정한 설정파일이 존재한다면, 이전에 생성된(lxc-create를 통해) 컨테이너에 설정파일이 이미 존재한다고 하더라도 지정한 설정파일을 사용한다.
+	  </para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>
+	  <option>-s, --define <replaceable>KEY=VAL</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Assign value <replaceable>VAL</replaceable> to configuration
+	    variable <replaceable>KEY</replaceable>. This overrides any
+	    assignment done in <replaceable>config_file</replaceable>.
+            -->
+            <replaceable>VAL</replaceable> 값을 <replaceable>KEY</replaceable> 설정변수에 넣는다.
+            이는 <replaceable>config_file</replaceable>에서의 설정을 덮어쓴다.
+	  </para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term><option>--</option></term>
+	<listitem>
+	  <para>
+            <!--
+	    Signal the end of options and disables further option
+	    processing. Any arguments after the &#045;&#045; are treated as
+	    arguments to <replaceable>command</replaceable>.
+            -->
+            옵션이 끝임을 지정하고 더이상 옵션에 대한 처리를 하지 않는다.
+            &#045;&#045; 이후에 오는 모든 인수는 <replaceable>command</replaceable>의 인수로서 처리된다.
+	  </para>
+	  <para>
+            <!--
+	    This option is useful when you want specify options
+	    to <replaceable>command</replaceable> and don't want
+	    <command>lxc-execute</command> to interpret them.
+            -->
+            이것은 <replaceable>command</replaceable>에게 옵션을 지정하고, <command>lxc-execute</command>가 그 옵션을 처리하지 않게 하는데 유용하게 사용된다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  <refsect1>
+    <title><!-- Diagnostic -->진단</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>The container is busy</term>
+        <listitem>
+          <para>
+            <!--
+	    The specified container is already running an
+	    application. You should stop it before reuse this
+	    container or create a new one.
+            -->
+            지정한 컨테이너가 이미 실행중인 경우이다. 컨테이너를 사용하고 싶다면 컨테이너를 중지시켜야 한다. 또는 새로운 컨테이너를 만들 수도 있다.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->
