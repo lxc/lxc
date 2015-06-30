@@ -625,6 +625,7 @@ AC_CONFIG_FILES([
 	config/init/common/lxc-net
 	config/init/systemd/Makefile
 	config/init/systemd/lxc.service
+	config/init/systemd/lxc@.service
 	config/init/systemd/lxc-net.service
 	config/init/sysvinit/Makefile
 	config/init/sysvinit/lxc-containers
