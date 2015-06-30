@@ -45,7 +45,7 @@ sleep 5s
 # The first time this usually fails because CRIU cannot checkpoint things with
 # data on a socket.
 lxc-checkpoint -n $name -v -s -D /tmp/checkpoint || FAIL "failed checkpointing"
-lxc-wait -n u1 -s STOPPED
+lxc-wait -n $name -s STOPPED
 lxc-checkpoint -n $name -v -r -D /tmp/checkpoint || FAIL "failed restoring"
 
 lxc-stop -n $name -t 1
