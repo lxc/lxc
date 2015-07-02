@@ -75,6 +75,10 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <para>
       <command>user</command> <command>type</command> <command>bridge</command> <command>number</command>
       </para>
+      <para>또는 아래의 형식을 사용할 수 있다.</para>
+      <para>
+      <command>@group</command> <command>type</command> <command>bridge</command> <command>number</command>
+      </para>
       <para>
         <!--
       Where
@@ -100,6 +104,20 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	<varlistentry>
 	  <term>
+            <option>@group</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              is the groupname to which this entry applies.
+                -->
+              이 항목이 적용될 그룹 이름을 가리킨다.
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
 	    <option>type</option>
 	  </term>
 	  <listitem>
@@ -123,7 +141,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	      is the bridge to which the network interfaces may be attached, for
 	      instance <filename>lxcbr0</filename>.
               -->
-              네트워크 인터페이스들을 붙일 브리지를 가리킨다.
+              네트워크 인터페이스들을 붙일 수 있는 브리지를 가리킨다.
               예를 들어 <filename>lxcbr0</filename>로 지정 가능하다.
 	     </para>
 	  </listitem>
@@ -136,15 +154,30 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	  <listitem>
 	    <para>
               <!--
-	      is the number of network interfaces of the given type which the
-	      given user may attach to the given bridge, for instance <filename>2</filename>.
+	      is the number or quota of network interfaces of the given type which the
+	      given user or group may attach to the given bridge, for instance <filename>2</filename>.
               -->
-              지정된 사용자가 지정된 브리지에 붙일 지정된 형태의 네트워크 인터페이스 개수를 가리킨다.
+              지정한 사용자 또는 그룹이 지정된 브리지에 붙일 수 있는 지정된 형태의 네트워크 인터페이스 개수를 가리킨다.
               예를 들어 <filename>2</filename>로 지정 가능하다.
 	     </para>
 	  </listitem>
 	</varlistentry>
       </variablelist>
+
+      <para>
+        <!--
+        Since a user can be specified both by username as well as one or
+        more usergroups, it is possible that several configuration lines
+        enable that user to create network interfaces. In such cases, any
+        interfaces create are counted towards the quotas of the user or group
+        in the order in which they appear in the file. If the quota of one
+        line is full, the rest will be parsed until one is found or the end of
+        the file.
+          -->
+        사용자는 사용자 이름이나 하나 이상의 사용자 그룹을 통해 지정될 수 있으므로, 여러 줄의 설정을 통해 사용자가 네트워크 인터페이스들을 생성할 수 있도록 하는 것이 가능하다.
+        이러한 경우, 인터페이스 생성은 파일 상의 순서대로 사용자 또는 그룹의 사용량에 집계된다.
+        만약 해당 줄에서 할당한 개수가 가득차면, 또다른 설정이 발견되거나 파일의 끝에 도달할 때까지 행을 계속 읽어들인다.
+      </para>
     </refsect2>
 
   </refsect1>
