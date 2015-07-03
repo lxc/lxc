@@ -144,6 +144,10 @@ EOF
 
     echo "root:root" | chroot $rootfs chpasswd
     echo "Root password is 'root', please change !"
+    
+    # setting /proc/$$/loginuid doesn't work under user namespace, which prevents logins from working
+    sed -i 's|session[ \t]*required[ \t]*pam_loginuid.so|#session required pam_loginuid.so|' $rootfs/etc/pam.d/sshd
+    sed -i 's|session[ \t]*required[ \t]*pam_loginuid.so|#session required pam_loginuid.so|' $rootfs/etc/pam.d/login
 
     return 0
 }
