@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	struct stat sb;
-	char *pathname = RUNTIME_PATH "/lock/lxc/var/lib/lxc/";
+	char *pathname = RUNTIME_PATH "/lxc/lock/var/lib/lxc/";
 	ret = stat(pathname, &sb);
 	if (ret != 0) {
 		fprintf(stderr, "%d: filename %s not created\n", __LINE__,
