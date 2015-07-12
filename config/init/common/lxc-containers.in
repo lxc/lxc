@@ -78,13 +78,13 @@ case "$1" in
         if [ -n "$BOOTGROUPS" ]; then
             BOOTGROUPS="-g $BOOTGROUPS"
         fi
-
+        touch "$lockdir"/lxc
         # Start containers
         wait_for_bridge
 
         # Start autoboot containers first then the NULL group "onboot,".
         "$bindir"/lxc-autostart $OPTIONS $BOOTGROUPS
-        touch "$lockdir"/lxc
+        rm -f "$lockdir"/lxc
     ;;
 
     stop)
@@ -96,7 +96,6 @@ case "$1" in
         # delaying the system shutdown / reboot as much as we can since it's not
         # parallelized...  Even 5 second timout may be too long.
         "$bindir"/lxc-autostart $STOPOPTS $SHUTDOWNDELAY
-        rm -f "$lockdir"/lxc
     ;;
 
     restart|reload|force-reload)
