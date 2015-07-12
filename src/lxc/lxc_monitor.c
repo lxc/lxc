@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 	if (!fds) {
 		SYSERROR("out of memory");
 		rc_main = -1;
-		goto error;
+		goto cleanup;
 	}
 
 	nfds = my_args.lxcpath_cnt;
