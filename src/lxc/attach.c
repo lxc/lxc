@@ -76,6 +76,82 @@
 
 lxc_log_define(lxc_attach, lxc);
 
+int lsm_set_label_at(int procfd, int on_exec, char* lsm_label) {
+	int labelfd = -1;
+	int ret = 0;
+	const char* name;
+	char* command = NULL;
+
+	name = lsm_name();
+
+	if (strcmp(name, "nop") == 0)
+		goto out;
+
+	if (strcmp(name, "none") == 0)
+		goto out;
+
+	/* We don't support on-exec with AppArmor */
+	if (strcmp(name, "AppArmor") == 0)
+		on_exec = 0;
+
+	if (on_exec) {
+		labelfd = openat(procfd, "self/attr/exec", O_RDWR);
+	}
+	else {
+		labelfd = openat(procfd, "self/attr/current", O_RDWR);
+	}
+
+	if (labelfd < 0) {
+		SYSERROR("Unable to open LSM label");
+		ret = -1;
+		goto out;
+	}
+
+	if (strcmp(name, "AppArmor") == 0) {
+		int size;
+
+		command = malloc(strlen(lsm_label) + strlen("changeprofile ") + 1);
+		if (!command) {
+			SYSERROR("Failed to write apparmor profile");
+			ret = -1;
+			goto out;
+		}
+
+		size = sprintf(command, "changeprofile %s", lsm_label);
+		if (size < 0) {
+			SYSERROR("Failed to write apparmor profile");
+			ret = -1;
+			goto out;
+		}
+
+		if (write(labelfd, command, size + 1) < 0) {
+			SYSERROR("Unable to set LSM label");
+			ret = -1;
+			goto out;
+		}
+	}
+	else if (strcmp(name, "SELinux") == 0) {
+		if (write(labelfd, lsm_label, strlen(lsm_label) + 1) < 0) {
+			SYSERROR("Unable to set LSM label");
+			ret = -1;
+			goto out;
+		}
+	}
+	else {
+		ERROR("Unable to restore label for unknown LSM: %s", name);
+		ret = -1;
+		goto out;
+	}
+
+out:
+	free(command);
+
+	if (labelfd != -1)
+		close(labelfd);
+
+	return ret;
+}
+
 static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 {
 	struct lxc_proc_context_info *info = calloc(1, sizeof(*info));
@@ -570,6 +646,7 @@ struct attach_clone_payload {
 	struct lxc_proc_context_info* init_ctx;
 	lxc_attach_exec_t exec_function;
 	void* exec_payload;
+	int procfd;
 };
 
 static int attach_child_main(void* data);
@@ -622,6 +699,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	char* cwd;
 	char* new_cwd;
 	int ipc_sockets[2];
+	int procfd;
 	signed long personality;
 
 	if (!options)
@@ -833,6 +911,13 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		rexit(-1);
 	}
 
+	procfd = open("/proc", O_DIRECTORY | O_RDONLY);
+	if (procfd < 0) {
+		SYSERROR("Unable to open /proc");
+		shutdown(ipc_sockets[1], SHUT_RDWR);
+		rexit(-1);
+	}
+
 	/* attach now, create another subprocess later, since pid namespaces
 	 * only really affect the children of the current process
 	 */
@@ -860,7 +945,8 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 			.options = options,
 			.init_ctx = init_ctx,
 			.exec_function = exec_function,
-			.exec_payload = exec_payload
+			.exec_payload = exec_payload,
+			.procfd = procfd
 		};
 		/* We use clone_parent here to make this subprocess a direct child of
 		 * the initial process. Then this intermediate process can exit and
@@ -898,6 +984,7 @@ static int attach_child_main(void* data)
 {
 	struct attach_clone_payload* payload = (struct attach_clone_payload*)data;
 	int ipc_socket = payload->ipc_socket;
+	int procfd = payload->procfd;
 	lxc_attach_options_t* options = payload->options;
 	struct lxc_proc_context_info* init_ctx = payload->init_ctx;
 #if HAVE_SYS_PERSONALITY_H
@@ -1038,21 +1125,11 @@ static int attach_child_main(void* data)
 	close(ipc_socket);
 
 	/* set new apparmor profile/selinux context */
-	if ((options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_LSM)) {
+	if ((options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
 		int on_exec;
-		int proc_mounted;
 
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
-		proc_mounted = mount_proc_if_needed("/");
-		if (proc_mounted == -1) {
-			ERROR("Error mounting a sane /proc");
-			rexit(-1);
-		}
-		ret = lsm_process_label_set(init_ctx->lsm_label,
-				init_ctx->container->lxc_conf, 0, on_exec);
-		if (proc_mounted)
-			umount("/proc");
-		if (ret < 0) {
+		if (lsm_set_label_at(procfd, on_exec, init_ctx->lsm_label) < 0) {
 			rexit(-1);
 		}
 	}
@@ -1102,6 +1179,9 @@ static int attach_child_main(void* data)
 			}
 		}
 	}
+
+	/* we don't need proc anymore */
+	close(procfd);
 
 	/* we're done, so we can now do whatever the user intended us to do */
 	rexit(payload->exec_function(payload->exec_payload));
