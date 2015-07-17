@@ -177,8 +177,10 @@ static struct lxc_list *accumulate_list(char *input, char *delimiter, struct lxc
 		if ( list_contains_entry( workptr, workstr_list ) ) {
 			if ( *workptr ) {
 				fprintf(stderr, "Duplicate group \"%s\" in list - ignoring\n", workptr );
+				fflush(stderr);
 			} else {
-				fprintf(stderr, "Duilicate NULL group in list - ignoring\n" );
+				fprintf(stderr, "Duplicate NULL group in list - ignoring\n" );
+				fflush(stderr);
 			}
 		} else {
 			worklist = malloc(sizeof(*worklist));
@@ -352,7 +354,8 @@ int main(int argc, char *argv[])
 	qsort(&containers[0], count, sizeof(struct lxc_container *), cmporder);
 
 	if (cmd_groups_list && my_args.all) {
-		fprintf(stderr, "Specifying -a (all) with -g (groups) doesn't make sense. All option overrides.");
+		fprintf(stderr, "Specifying -a (all) with -g (groups) doesn't make sense. All option overrides.\n");
+		fflush(stderr);
 	}
 
 	if (!cmd_groups_list) {
@@ -423,12 +426,15 @@ int main(int argc, char *argv[])
 			if (my_args.shutdown) {
 				/* Shutdown the container */
 				if (c->is_running(c)) {
-					if (my_args.list)
+					if (my_args.list) {
 						printf("%s\n", c->name);
+						fflush(stdout);
+					}
 					else {
 						if (!c->shutdown(c, my_args.timeout)) {
 							if (!c->stop(c)) {
 								fprintf(stderr, "Error shutting down container: %s\n", c->name);
+								fflush(stderr);
 							}
 						}
 					}
@@ -437,23 +443,31 @@ int main(int argc, char *argv[])
 			else if (my_args.hardstop) {
 				/* Kill the container */
 				if (c->is_running(c)) {
-					if (my_args.list)
+					if (my_args.list) {
 						printf("%s\n", c->name);
+						fflush(stdout);
+					}
 					else {
-						if (!c->stop(c))
+						if (!c->stop(c)) {
 							fprintf(stderr, "Error killing container: %s\n", c->name);
+							fflush(stderr);
+						}
 					}
 				}
 			}
 			else if (my_args.reboot) {
 				/* Reboot the container */
 				if (c->is_running(c)) {
-					if (my_args.list)
+					if (my_args.list) {
 						printf("%s %d\n", c->name,
 						       get_config_integer(c, "lxc.start.delay"));
+						fflush(stdout);
+					}
 					else {
-						if (!c->reboot(c))
+						if (!c->reboot(c)) {
 							fprintf(stderr, "Error rebooting container: %s\n", c->name);
+							fflush(stderr);
+						}
 						else
 							sleep(get_config_integer(c, "lxc.start.delay"));
 					}
@@ -462,12 +476,16 @@ int main(int argc, char *argv[])
 			else {
 				/* Start the container */
 				if (!c->is_running(c)) {
-					if (my_args.list)
+					if (my_args.list) {
 						printf("%s %d\n", c->name,
 						       get_config_integer(c, "lxc.start.delay"));
+						fflush(stdout);
+					}
 					else {
-						if (!c->start(c, 0, NULL))
+						if (!c->start(c, 0, NULL)) {
 							fprintf(stderr, "Error starting container: %s\n", c->name);
+							fflush(stderr);
+						}
 						else
 							sleep(get_config_integer(c, "lxc.start.delay"));
 					}
