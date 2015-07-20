@@ -72,7 +72,7 @@ struct bdev_ops {
 	/* given original mount, rename the paths for cloned container */
 	int (*clone_paths)(struct bdev *orig, struct bdev *new, const char *oldname,
 			const char *cname, const char *oldpath, const char *lxcpath,
-			int snap, uint64_t newsize, struct lxc_conf *conf);
+			int snap, struct bdev_specs *bdevdata, struct lxc_conf *conf);
 	bool can_snapshot;
 	bool can_backup;
 };
@@ -118,8 +118,7 @@ struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst,
 
 struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 			const char *lxcpath, const char *bdevtype,
-			int flags, const char *bdevdata, uint64_t newsize,
-			int *needs_rdep);
+			int flags, struct bdev_specs *bdevdata, int *needs_rdep);
 struct bdev *bdev_create(const char *dest, const char *type,
 			const char *cname, struct bdev_specs *specs);
 void bdev_put(struct bdev *bdev);

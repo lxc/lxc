@@ -81,6 +81,7 @@ static void usage(const char *me)
 	printf("  -B: use specified new backingstore.  Default is the same as\n");
 	printf("      the original.  Options include aufs, btrfs, lvm, overlayfs, \n");
 	printf("      dir and loop\n");
+	printf("  -v: use specified volume group for the new container. \n");
 	printf("  -L: for blockdev-backed backingstore, use specified size * specified\n");
 	printf("      unit. Default size is the size of the source blockdev, default\n");
 	printf("      unit is MB\n");
@@ -112,11 +113,11 @@ int main(int argc, char *argv[])
 	struct lxc_container *c1 = NULL, *c2 = NULL;
 	int snapshot = 0, keepname = 0, keepmac = 0;
 	int flags = 0, option_index;
-	uint64_t newsize = 0;
-	char *bdevtype = NULL, *lxcpath = NULL, *newpath = NULL, *fstype = NULL;
-	char *orig = NULL, *new = NULL, *vgname = NULL;
+	char *bdevtype = NULL, *lxcpath = NULL, *newpath = NULL;
+	char *orig = NULL, *new = NULL;
 	char **args = NULL;
 	int c;
+	struct bdev_specs spec;
 
 	if (argc < 3)
 		usage(argv[0]);
@@ -128,15 +129,15 @@ int main(int argc, char *argv[])
 		switch (c) {
 		case 's': snapshot = 1; break;
 		case 'B': bdevtype = optarg; break;
-		case 'L': newsize = get_fssize(optarg); break;
+		case 'L': spec.fssize = get_fssize(optarg); break;
 		case 'o': orig = optarg; break;
 		case 'n': new = optarg; break;
-		case 'v': vgname = optarg; break;
+		case 'v': spec.lvm.vg = optarg; break;
 		case 'K': keepname = 1; break;
 		case 'M': keepmac = 1; break;
 		case 'p': lxcpath = optarg; break;
 		case 'P': newpath = optarg; break;
-		case 't': fstype = optarg; break;
+		case 't': spec.fstype = optarg; break;
 		case 'h': usage(argv[0]);
 		default: break;
 		}
@@ -157,18 +158,6 @@ int main(int argc, char *argv[])
 	if (keepname)  flags |= LXC_CLONE_KEEPNAME;
 	if (keepmac)   flags |= LXC_CLONE_KEEPMACADDR;
 
-	// vgname and fstype could be supported by sending them through the
-	// bdevdata.  However, they currently are not yet.  I'm not convinced
-	// they are worthwhile.
-	if (vgname) {
-		printf("Error: vgname not supported\n");
-		usage(argv[0]);
-	}
-	if (fstype) {
-		printf("Error: fstype not supported\n");
-		usage(argv[0]);
-	}
-
 	c1 = lxc_container_new(orig, lxcpath);
 	if (!c1)
 		exit(1);
@@ -184,7 +173,8 @@ int main(int argc, char *argv[])
 		lxc_container_put(c1);
 		exit(1);
 	}
-	c2 = c1->clone(c1, new, newpath, flags, bdevtype, NULL, newsize, args);
+
+	c2 = c1->clone(c1, new, newpath, flags, bdevtype, &spec, args);
 	if (c2 == NULL) {
 		lxc_container_put(c1);
 		fprintf(stderr, "clone failed\n");

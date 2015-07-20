@@ -545,11 +545,7 @@ struct lxc_container {
 	 * \param bdevtype Optionally force the cloned bdevtype to a specified plugin.
 	 *  By default the original is used (subject to snapshot requirements).
 	 * \param bdevdata Information about how to create the new storage
-	 *  (i.e. fstype and fsdata).
-	 * \param newsize In case of a block device backing store, an
-	 *  optional size. If \c 0, the original backing store's size will
-	 *  be used if possible. Note this only applies to the rootfs. For
-	 *  any other filesystems, the original size will be duplicated.
+	 *  (i.e. fstype and fssize).
 	 * \param hookargs Additional arguments to pass to the clone hook script.
 	 *
 	 * \return Newly-allocated copy of container \p c, or \p NULL on
@@ -561,7 +557,7 @@ struct lxc_container {
 	 */
 	struct lxc_container *(*clone)(struct lxc_container *c, const char *newname,
 			const char *lxcpath, int flags, const char *bdevtype,
-			const char *bdevdata, uint64_t newsize, char **hookargs);
+			struct bdev_specs *bdevdata, char **hookargs);
 
 	/*!
 	 * \brief Allocate a console tty for the container.

@@ -701,8 +701,9 @@ Container_clone(Container *self, PyObject *args, PyObject *kwds)
     int flags = 0;
     char *bdevtype = NULL;
     char *bdevdata = NULL;
-    unsigned long newsize = 0;
+    //unsigned long newsize = 0;
     char **hookargs = NULL;
+    struct bdev_specs specs;
 
     PyObject *py_hookargs = NULL;
     PyObject *py_config_path = NULL;
@@ -714,7 +715,7 @@ Container_clone(Container *self, PyObject *args, PyObject *kwds)
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "s|O&isskO", kwlist,
                                       &newname,
                                       PyUnicode_FSConverter, &py_config_path,
-                                      &flags, &bdevtype, &bdevdata, &newsize,
+                                      &flags, &bdevtype, &bdevdata, &specs.fssize,
                                       &py_hookargs))
         return NULL;
 
@@ -738,7 +739,7 @@ Container_clone(Container *self, PyObject *args, PyObject *kwds)
 
     new_container = self->container->clone(self->container, newname,
                                            config_path, flags, bdevtype,
-                                           bdevdata, newsize, hookargs);
+                                           &bdevdata, hookargs);
 
     Py_XDECREF(py_config_path);
 
