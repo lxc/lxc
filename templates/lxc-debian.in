@@ -400,7 +400,7 @@ EOF
 
     # Re-enable service startup
     rm ${rootfs}/usr/sbin/policy-rc.d
-    
+
     # reconfigure locales
     if [ -z "$LANG" ]; then
         cat >> $rootfs/etc/locale.gen << EOF
