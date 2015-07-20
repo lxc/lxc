@@ -2604,6 +2604,9 @@ struct lxc_conf *lxc_conf_init(void)
 	for (i = 0; i < LXC_NS_MAX; i++)
 		new->inherit_ns_fd[i] = -1;
 
+	new->parent_uid = getuid();
+	new->parent_gid = getgid();
+
 	return new;
 }
 

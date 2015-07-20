@@ -667,13 +667,15 @@ static int do_start(void *data)
 	 * privilege over our namespace. We don't become root for lxc-execute, as
 	 * the intent is to execute a command as the original user.
 	 */
-	if (!handler->conf->is_execute && !lxc_list_empty(&handler->conf->id_map)) {
-		NOTICE("switching to gid/uid 0 in new user namespace");
-		if (setgid(0)) {
+	if (!lxc_list_empty(&handler->conf->id_map)) {
+		gid_t new_gid = handler->conf->is_execute ? handler->conf->parent_gid : 0;
+		gid_t new_uid = handler->conf->is_execute ? handler->conf->parent_uid : 0;
+		NOTICE("switching to gid/uid %d/%d in new user namespace", new_gid, new_uid);
+		if (setgid(new_gid)) {
 			SYSERROR("setgid");
 			goto out_warn_father;
 		}
-		if (setuid(0)) {
+		if (setuid(new_uid)) {
 			SYSERROR("setuid");
 			goto out_warn_father;
 		}
