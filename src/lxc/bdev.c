@@ -1868,7 +1868,7 @@ static int loop_detect(const char *path)
 	return 0;
 }
 
-static int find_free_loopdev(int *retfd, char *namep)
+static int find_free_loopdev_no_control(int *retfd, char *namep)
 {
 	struct dirent dirent, *direntp;
 	struct loop_info64 lo;
@@ -1904,6 +1904,26 @@ static int find_free_loopdev(int *retfd, char *namep)
 		return -1;
 	}
 
+	*retfd = fd;
+	return 0;
+}
+
+static int find_free_loopdev(int *retfd, char *namep)
+{
+	int rc, fd = -1;
+	int ctl = open("/dev/loop-control", O_RDWR);
+	if (ctl < 0)
+		return find_free_loopdev_no_control(retfd, namep);
+	rc = ioctl(ctl, LOOP_CTL_GET_FREE);
+	if (rc >= 0) {
+		snprintf(namep, 100, "/dev/loop%d", rc);
+		fd = open(namep, O_RDWR);
+	}
+	close(ctl);
+	if (fd == -1) {
+		ERROR("No loop device found");
+		return -1;
+	}
 	*retfd = fd;
 	return 0;
 }
