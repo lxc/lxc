@@ -146,7 +146,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds:u: -l arch:,help,rootfs:,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata:,mapped-uid:,mapped-gid: -- "$@")
+options=$(getopt -o a:hp:r:n:Fi:CLS:T:ds:u: -l arch:,help,rootfs:,path:,release:,name:,flush-cache,hostid:,auth-key:,cloud,no_locales,tarball:,debug,stream:,userdata:,vendordata:,mapped-uid:,mapped-gid: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -213,6 +213,7 @@ do
     -L|--no?locales)   cloneargs[${#cloneargs[@]}]="--no-locales"; shift 1;;
     -i|--hostid)       cloneargs[${#cloneargs[@]}]="--hostid=$2"; shift 2;;
     -u|--userdata)     cloneargs[${#cloneargs[@]}]="--userdata=$2"; shift 2;;
+    -V|--vendordata)   cloneargs[${#cloneargs[@]}]="--vendordata=$2"; shift 2;;
     -C|--cloud)        cloneargs[${#cloneargs[@]}]="--cloud"; shift 1;;
     -S|--auth-key)     cloneargs[${#cloneargs[@]}]="--auth-key=$2"; shift 2;;
     --mapped-uid)      mapped_uid=$2; shift 2;;
