@@ -356,7 +356,7 @@ extern int lxc_log_init(const char *name, const char *file,
 			lxcpath = LOGPATH;
 
 		/* try LOGPATH if lxcpath is the default for the privileged containers */
-		if (!geteuid() && strcmp(lxcpath, lxc_global_config_value("lxc.lxcpath")) == 0)
+		if (!geteuid() && strcmp(LXCPATH, lxcpath) == 0)
 			ret = _lxc_log_set_file(name, NULL, 0);
 
 		/* try in lxcpath */
