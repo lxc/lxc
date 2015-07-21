@@ -31,13 +31,14 @@ Usage: ${0##*/} [options] root-dir
   [ -L | --nolocales ]:    Do not copy host's locales into container
   [ -S | --auth-key ]:     ssh public key file for datasource [ds]
   [ -u | --userdata ]:     user-data file for cloud-init [ds]
+  [ -V | --vendordata ]:   vendor-data file for cloud-init [ds]
 
 EOF
 }
 
 prep() {
     local short_opts="Chi:L:S:u:v"
-    local long_opts="auth-key:,cloud,help,hostid:,name:,nolocales:,create-etc-init,userdata:,verbose"
+    local long_opts="auth-key:,cloud,help,hostid:,name:,nolocales:,create-etc-init,userdata:,vendordata:,verbose"
     local getopt_out getopt_ret
     getopt_out=$(getopt --name "${0##*/}" \
         --options "${short_opts}" --long "${long_opts}" -- "$@" 2>/dev/null) ||
@@ -49,7 +50,7 @@ prep() {
     fi
 
     local cur="" next=""
-    local userdata="" hostid="" authkey="" locales=1 cloud=0
+    local vendordata="" userdata="" hostid="" authkey="" locales=1 cloud=0
     local create_etc_init=0 name="ubuntucloud-lxc"
 
     while [ $# -ne 0 ]; do
@@ -65,6 +66,10 @@ prep() {
                 [ -f "$next" ] ||
                     { error "--auth-key: '$next' not a file"; return 1; }
                 authkey="$next";;
+            -V|--vendordata)
+                [ -f "$next" ] ||
+                    { error "--vendordata: '$next' not a file"; return 1; }
+                vendordata="$next";;
             -u|--userdata)
                 [ -f "$next" ] ||
                     { error "--userdata: '$next' not a file"; return 1; }
@@ -156,6 +161,13 @@ prep() {
             error "failed to write user-data write to '$seed_d/user-data'";
             return 1;
         }
+
+        if [ -n "$vendordata" ]; then
+            cp "$vendordata" "$seed_d/vendor-data" || {
+                error "failed copy vendordata to $seed_d/vendor-data";
+                return 1;
+            }
+        fi
     fi
 
 }
