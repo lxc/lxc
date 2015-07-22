@@ -63,6 +63,10 @@
 #define LO_FLAGS_AUTOCLEAR 4
 #endif
 
+#ifndef LOOP_CTL_GET_FREE
+#define LOOP_CTL_GET_FREE 0x4C82
+#endif
+
 #define DEFAULT_FS_SIZE 1073741824
 #define DEFAULT_FSTYPE "ext3"
 
