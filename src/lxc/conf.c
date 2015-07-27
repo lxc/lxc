@@ -2611,9 +2611,11 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	char veth2buf[IFNAMSIZ], *veth2;
 	int err;
 
-	if (netdev->priv.veth_attr.pair)
+	if (netdev->priv.veth_attr.pair) {
 		veth1 = netdev->priv.veth_attr.pair;
-	else {
+		if (handler->conf->reboot)
+			lxc_netdev_delete_by_name(veth1);
+	} else {
 		err = snprintf(veth1buf, sizeof(veth1buf), "vethXXXXXX");
 		if (err >= sizeof(veth1buf)) { /* can't *really* happen, but... */
 			ERROR("veth1 name too long");

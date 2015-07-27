@@ -1173,6 +1173,8 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 		goto out_detach_blockdev;
 	}
 
+	handler->conf->reboot = 0;
+
 	netnsfd = get_netns_fd(handler->pid);
 
 	err = lxc_poll(name, handler);
