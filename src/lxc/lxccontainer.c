@@ -661,14 +661,15 @@ static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv
 		pid_fp = NULL;
 	}
 
-reboot:
 	conf->reboot = 0;
+
+reboot:
 	ret = lxc_start(c->name, argv, conf, c->config_path);
 	c->error_num = ret;
 
-	if (conf->reboot) {
+	if (conf->reboot == 1) {
 		INFO("container requested reboot");
-		conf->reboot = 0;
+		conf->reboot = 2;
 		goto reboot;
 	}
 
