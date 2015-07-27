@@ -760,9 +760,9 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		pid_fp = NULL;
 	}
 
-reboot:
 	conf->reboot = 0;
 
+reboot:
 	if (lxc_check_inherited(conf, daemonize, -1)) {
 		ERROR("Inherited fds found");
 		ret = 1;
@@ -772,9 +772,9 @@ reboot:
 	ret = lxc_start(c->name, argv, conf, c->config_path, daemonize);
 	c->error_num = ret;
 
-	if (conf->reboot) {
+	if (conf->reboot == 1) {
 		INFO("container requested reboot");
-		conf->reboot = 0;
+		conf->reboot = 2;
 		goto reboot;
 	}
 
