@@ -1368,10 +1368,8 @@ int prepare_ramfs_root(char *root)
 			break;
 	}
 
-	if (umount2("./proc", MNT_DETACH)) {
-		SYSERROR("Unable to umount /proc");
-		return -1;
-	}
+	/* This also can be skipped if a container uses unserns */
+	umount2("./proc", MNT_DETACH);
 
 	/* It is weird, but chdir("..") moves us in a new root */
 	if (chdir("..") == -1) {
