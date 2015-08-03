@@ -88,6 +88,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
+          <option><optional>-P</optional></option>
+        </term>
+        <listitem>
+          <para>
+            Use an alternate container path. The default is @LXCPATH@.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
           <option><optional>--active</optional></option>
         </term>
         <listitem>
@@ -184,6 +195,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <para>
             The filter passed to <command>lxc-ls</command> will be
             applied to the container name. The format is a regular expression.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option><optional>--version</optional></option>
+        </term>
+        <listitem>
+          <para>
+            Show the version number.
           </para>
         </listitem>
       </varlistentry>
