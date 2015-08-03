@@ -98,6 +98,20 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       </varlistentry>
 
       <varlistentry>
+        <term>
+          <option><optional>-P</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Use an alternate container path. The default is @LXCPATH@.
+            -->
+            デフォルトと別のコンテナパスを使用します。デフォルトは @LXCPATH@ です。
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
 	<term>
 	  <option><optional>--active</optional></option>
 	</term>
@@ -227,6 +241,19 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term>
+          <option><optional>--version</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Show the version number.
+            -->
+            バージョン番号を表示します。
+          </para>
+        </listitem>
+      </varlistentry>
     </variablelist>
 
   </refsect1>
