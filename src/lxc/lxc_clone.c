@@ -65,7 +65,7 @@ static uint64_t get_fssize(char *s)
 	else if (*end == 't' || *end == 'T')
 		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
 	else
-	{		
+	{
 		fprintf(stderr, "Invalid blockdev unit size '%c' in '%s', using default size\n", *end, s);
 		return 0;
 	}
@@ -88,6 +88,7 @@ static void usage(const char *me)
 	printf("  -M: Keep macaddr - do not choose a random new mac address\n");
 	printf("  -p: use container orig from custom lxcpath\n");
 	printf("  -P: create container new in custom lxcpath\n");
+	printf("  -R: rename existing container\n");
 	exit(1);
 }
 
@@ -98,6 +99,7 @@ static struct option options[] = {
 	{ "orig", required_argument, 0, 'o'},
 	{ "new", required_argument, 0, 'n'},
 	{ "vgname", required_argument, 0, 'v'},
+	{ "rename", no_argument, 0, 'R'},
 	{ "keepname", no_argument, 0, 'K'},
 	{ "keepmac", no_argument, 0, 'M'},
 	{ "lxcpath", required_argument, 0, 'p'},
@@ -110,19 +112,20 @@ static struct option options[] = {
 int main(int argc, char *argv[])
 {
 	struct lxc_container *c1 = NULL, *c2 = NULL;
-	int snapshot = 0, keepname = 0, keepmac = 0;
+	int snapshot = 0, keepname = 0, keepmac = 0, rename = 0;
 	int flags = 0, option_index;
 	uint64_t newsize = 0;
 	char *bdevtype = NULL, *lxcpath = NULL, *newpath = NULL, *fstype = NULL;
 	char *orig = NULL, *new = NULL, *vgname = NULL;
 	char **args = NULL;
 	int c;
+	bool ret;
 
 	if (argc < 3)
 		usage(argv[0]);
 
 	while (1) {
-		c = getopt_long(argc, argv, "sB:L:o:n:v:KMHp:P:t:h", options, &option_index);
+		c = getopt_long(argc, argv, "sB:L:o:n:v:KMHp:P:Rt:h", options, &option_index);
 		if (c == -1)
 			break;
 		switch (c) {
@@ -136,6 +139,7 @@ int main(int argc, char *argv[])
 		case 'M': keepmac = 1; break;
 		case 'p': lxcpath = optarg; break;
 		case 'P': newpath = optarg; break;
+		case 'R': rename = 1; break;
 		case 't': fstype = optarg; break;
 		case 'h': usage(argv[0]);
 		default: break;
@@ -171,28 +175,41 @@ int main(int argc, char *argv[])
 
 	c1 = lxc_container_new(orig, lxcpath);
 	if (!c1)
-		exit(1);
+		exit(EXIT_FAILURE);
 
 	if (!c1->may_control(c1)) {
 		fprintf(stderr, "Insufficent privileges to control %s\n", orig);
 		lxc_container_put(c1);
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	if (!c1->is_defined(c1)) {
 		fprintf(stderr, "Error: container %s is not defined\n", orig);
 		lxc_container_put(c1);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
-	c2 = c1->clone(c1, new, newpath, flags, bdevtype, NULL, newsize, args);
-	if (c2 == NULL) {
-		lxc_container_put(c1);
-		fprintf(stderr, "clone failed\n");
-		exit(1);
+	if (rename) {
+		ret = c1->rename(c1, new);
+		if (!ret) {
+			fprintf(stderr,
+				"Error: Renaming container %s to %s failed\n",
+				c1->name, new);
+			lxc_container_put(c1);
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		c2 = c1->clone(c1, new, newpath, flags, bdevtype, NULL, newsize,
+			       args);
+		if (c2 == NULL) {
+			lxc_container_put(c1);
+			fprintf(stderr, "clone failed\n");
+			exit(EXIT_FAILURE);
+		}
+		printf("Created container %s as %s of %s\n", new,
+		       snapshot ? "snapshot" : "copy", orig);
+		lxc_container_put(c2);
 	}
-	printf("Created container %s as %s of %s\n", new,
-		snapshot ? "snapshot" : "copy", orig);
 	lxc_container_put(c1);
-	lxc_container_put(c2);
-	return(0);
+
+	exit(EXIT_SUCCESS);
 }
