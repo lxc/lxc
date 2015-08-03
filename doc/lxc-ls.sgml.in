@@ -50,6 +50,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <cmdsynopsis>
       <command>lxc-ls</command>
       <arg choice="opt">-1</arg>
+      <arg choice="opt">-P <replaceable>lxcpath</replaceable></arg>
       <arg choice="opt">--active</arg>
       <arg choice="opt">--frozen</arg>
       <arg choice="opt">--running</arg>
@@ -59,6 +60,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-g <replaceable>groups</replaceable></arg>
       <arg choice="opt">--nesting</arg>
       <arg choice="opt">filter</arg>
+      <arg choice="opt">--version</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
