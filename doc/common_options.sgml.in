@@ -105,6 +105,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</para>
       </listitem>
     </varlistentry>
+
+    <varlistentry>
+      <term><option>--version</option></term>
+      <listitem>
+        <para>
+          Show the version number.
+        </para>
+      </listitem>
+    </varlistentry>
   </variablelist>
 
 </refsect1>
