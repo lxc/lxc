@@ -83,7 +83,7 @@ get_static_apk () {
 
     # verify the static apk binary signature
     APK=$rootfs/sbin/apk.static
-    openssl dgst -verify $rootfs/etc/apk/keys/$keyname \
+    openssl dgst -sha1 -verify $rootfs/etc/apk/keys/$keyname \
         -signature "$APK.SIGN.RSA.$keyname" "$APK" || return 1
 
     if [ "$auto_repo_dir" ]; then
