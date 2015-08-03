@@ -139,6 +139,18 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	</para>
       </listitem>
     </varlistentry>
+
+    <varlistentry>
+      <term><option>--version</option></term>
+      <listitem>
+        <para>
+          <!--
+          Show the version number.
+          -->
+          バージョン番号を表示します。
+        </para>
+      </listitem>
+    </varlistentry>
   </variablelist>
 
 </refsect1>
