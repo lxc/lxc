@@ -99,6 +99,20 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
 	<term>
+	  <option><optional>-P</optional></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+            Use an alternate container path. The default is @LXCPATH@.
+            -->
+            기본 값과 다른 컨테이너 경로를 사용한다. 기본 값은 @LXCPATH@이다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
 	  <option><optional>--active</optional></option>
 	</term>
 	<listitem>
@@ -229,6 +243,19 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
         </listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term>
+          <option><optional>--version</optional></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Show the version number.
+            -->
+            버전 정보를 표시한다.
+          </para>
+        </listitem>
+      </varlistentry>
     </variablelist>
 
   </refsect1>
