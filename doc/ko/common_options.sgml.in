@@ -139,6 +139,18 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	</para>
       </listitem>
     </varlistentry>
+
+    <varlistentry>
+      <term><option>--version</option></term>
+      <listitem>
+	<para>
+          <!--
+	  Show the version number.
+          -->
+          버전 정보를 표시한다.
+	</para>
+      </listitem>
+    </varlistentry>
   </variablelist>
 
 </refsect1>
