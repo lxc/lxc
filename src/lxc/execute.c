@@ -64,7 +64,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 
 	initpath = choose_init(NULL);
 	if (!initpath) {
-		ERROR("Failed to find an lxc-init");
+		ERROR("Failed to find an lxc-init or init.lxc");
 		goto out2;
 	}
 	argv[i++] = initpath;
