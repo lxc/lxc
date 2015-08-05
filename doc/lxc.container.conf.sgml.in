@@ -770,6 +770,11 @@ proc proc proc nodev,noexec,nosuid 0 0
             <para>
               specify a mount point corresponding to a line in the
               fstab format.
+
+              Moreover lxc add two options to mount.
+              <option>optional</option> don't fail if mount does not work.
+              <option>create=dir</option> or <option>create=file</option>
+              to create dir (or file) when the point will be mounted.
             </para>
           </listitem>
         </varlistentry>
