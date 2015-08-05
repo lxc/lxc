@@ -421,7 +421,8 @@ if [ -z "$path" ]; then
 fi
 
 if grep -q Harlequin /etc/os-release || grep -q Tumbleweed /etc/os-release ; then
-    if [[ "$(zypper info build|awk -F "[- ]" '/Version/ {print $2}')" -lt "20141120" ]] ; then
+    BVER=`rpm -q --qf '%{version}\n' build`
+    if [ $? -ne 0 -o "$BVER" -lt "20141120" ]; then
 	echo "Building openSUSE containers with your version of the build package is broken. Please install the update to version 20141120 or newer."
 	exit 1
     fi
