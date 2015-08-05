@@ -5,7 +5,8 @@ This project accepts contributions. In order to contribute, you should
 pay attention to a few things:
 
     1 - your code must follow the coding style rules
-    2 - the format of the submission must be email patches
+    2 - the format of the submission must be email patches or github
+    pull requests
     3 - your work must be signed
 
 
@@ -24,15 +25,15 @@ http://lxr.linux.no/linux+v2.6.27/Documentation/CodingStyle
 Submitting Modifications:
 -------------------------
 
-The contributions should be email patches. The guidelines are the same
-as the patch submission for the Linux kernel except for the DCO which
-is defined below. The guidelines are defined in the
+The contributions should be email patches or github pull requests.
+The guidelines are the same as the patch submission for the Linux kernel
+except for the DCO which is defined below. The guidelines are defined in the
 'SubmittingPatches' file, available in the directory 'Documentation'
 of the Linux kernel source tree.
 
 It can be accessed online too:
 
-http://lxr.linux.no/linux+v2.6.27/Documentation/SubmittingPatches
+https://www.kernel.org/doc/Documentation/SubmittingPatches
 
 You can submit your patches to the lxc-devel@lists.linuxcontainers.org mailing
 list. Use http://lists.linuxcontainers.org/listinfo/lxc-devel to subscribe
@@ -104,5 +105,9 @@ By making a contribution to this project, I certify that:
 then you just add a line saying
 
     Signed-off-by: Random J Developer <random@developer.org>
+
+You can do it by using option -s or --signoff when you commit
+
+    git commit --signoff ...
 
 using your real name (sorry, no pseudonyms or anonymous contributions.)
