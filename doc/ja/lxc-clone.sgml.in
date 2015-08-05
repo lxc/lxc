@@ -64,6 +64,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">-L <replaceable>fssize</replaceable></arg>
       <arg choice="opt">-p <replaceable>lxcpath</replaceable></arg>
       <arg choice="opt">-P <replaceable>newlxcpath</replaceable></arg>
+      <arg choice="opt">-R </arg>
       <arg choice="req">-o <replaceable>orig</replaceable></arg>
       <arg choice="req">-n <replaceable>new</replaceable></arg>
       <arg choice="opt">-- hook arguments</arg>
@@ -78,6 +79,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">-L <replaceable>fssize</replaceable></arg>
       <arg choice="opt">-p <replaceable>lxcpath</replaceable></arg>
       <arg choice="opt">-P <replaceable>newlxcpath</replaceable></arg>
+      <arg choice="opt">-R </arg>
       <arg choice="req">orig</arg>
       <arg choice="req">new</arg>
       <arg choice="opt">-- hook arguments</arg>
@@ -270,6 +272,21 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             デフォルトでは元のコンテナと同じものが使われます。
             現時点では、バッキングストアの変更は、ディレクトリバックエンドのコンテナに対する aufs と overlayfs のスナップショットに対してのみサポートされます。
             有効なバッキングストアは dir(directory), aufs, btrfs, lvm, zfs, loop, overlayfs です。
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-R, --rename</option>
+	</term>
+	<listitem>
+	  <para>
+	    <!--
+	    Rename an existing container.
+	    <replaceable>orig</replaceable> is renamed <replaceable>new</replaceable>.
+	    -->
+	    コンテナの名前を変更します。<replaceable>orig</replaceable> を <replaceable>new</replaceable> という名前に変更します。
 	  </para>
 	</listitem>
       </varlistentry>

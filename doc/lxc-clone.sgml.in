@@ -58,6 +58,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-L <replaceable>fssize</replaceable></arg>
       <arg choice="opt">-p <replaceable>lxcpath</replaceable></arg>
       <arg choice="opt">-P <replaceable>newlxcpath</replaceable></arg>
+      <arg choice="opt">-R </arg>
       <arg choice="req">-o <replaceable>orig</replaceable></arg>
       <arg choice="req">-n <replaceable>new</replaceable></arg>
       <arg choice="opt">-- hook arguments</arg>
@@ -72,6 +73,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-L <replaceable>fssize</replaceable></arg>
       <arg choice="opt">-p <replaceable>lxcpath</replaceable></arg>
       <arg choice="opt">-P <replaceable>newlxcpath</replaceable></arg>
+      <arg choice="opt">-R </arg>
       <arg choice="req">orig</arg>
       <arg choice="req">new</arg>
       <arg choice="opt">-- hook arguments</arg>
@@ -213,6 +215,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    aufs and overlayfs snapshots of directory backed containers.  Valid
 	    backing stores include dir (directory), aufs, btrfs, lvm, zfs, loop
 	    and overlayfs.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-R, --rename</option>
+	</term>
+	<listitem>
+	  <para>
+	    Rename an existing container.
+	    <replaceable>orig</replaceable> is renamed <replaceable>new</replaceable>.
 	  </para>
 	</listitem>
       </varlistentry>
