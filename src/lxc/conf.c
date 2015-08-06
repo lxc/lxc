@@ -1836,14 +1836,15 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 	return ret;
 }
 
-static inline int mount_entry_on_systemfs(struct mntent *mntent)
+static inline int mount_entry_on_generic(struct mntent *mntent,
+                 const char* path)
 {
 	unsigned long mntflags;
 	char *mntdata;
 	int ret;
 	bool optional = hasmntopt(mntent, "optional") != NULL;
 
-	ret = mount_entry_create_dir_file(mntent, mntent->mnt_dir);
+	ret = mount_entry_create_dir_file(mntent, path);
 
 	cull_mntent_opt(mntent);
 
@@ -1852,12 +1853,17 @@ static inline int mount_entry_on_systemfs(struct mntent *mntent)
 		return -1;
 	}
 
-	ret = mount_entry(mntent->mnt_fsname, mntent->mnt_dir,
-			  mntent->mnt_type, mntflags, mntdata, optional);
+	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
+			  mntflags, mntdata, optional);
 
 	free(mntdata);
 
 	return ret;
+}
+
+static inline int mount_entry_on_systemfs(struct mntent *mntent)
+{
+  return mount_entry_on_generic(mntent, mntent->mnt_dir);
 }
 
 static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
@@ -1866,11 +1872,8 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 {
 	char *aux;
 	char path[MAXPATHLEN];
-	unsigned long mntflags;
-	char *mntdata;
 	int r, ret = 0, offset;
 	const char *lxcpath;
-	bool optional = hasmntopt(mntent, "optional") != NULL;
 
 	lxcpath = lxc_global_config_value("lxc.lxcpath");
 	if (!lxcpath) {
@@ -1894,7 +1897,7 @@ skipvarlib:
 	aux = strstr(mntent->mnt_dir, rootfs->path);
 	if (!aux) {
 		WARN("ignoring mount point '%s'", mntent->mnt_dir);
-		goto out;
+		return ret;
 	}
 	offset = strlen(rootfs->path);
 
@@ -1904,36 +1907,17 @@ skipabs:
 		 aux + offset);
 	if (r < 0 || r >= MAXPATHLEN) {
 		WARN("pathnme too long for '%s'", mntent->mnt_dir);
-		ret = -1;
-		goto out;
-	}
-
-	ret = mount_entry_create_dir_file(mntent, path);
-
-	cull_mntent_opt(mntent);
-
-	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
-		free(mntdata);
 		return -1;
 	}
 
-	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
-			  mntflags, mntdata, optional);
-
-	free(mntdata);
-
-out:
-	return ret;
+	return mount_entry_on_generic(mntent, path);
 }
 
 static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 					  const char *rootfs)
 {
 	char path[MAXPATHLEN];
-	unsigned long mntflags;
-	char *mntdata;
 	int ret;
-	bool optional = hasmntopt(mntent, "optional") != NULL;
 
 	/* relative to root mount point */
 	ret = snprintf(path, sizeof(path), "%s/%s", rootfs, mntent->mnt_dir);
@@ -1942,21 +1926,7 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 		return -1;
 	}
 
-	ret = mount_entry_create_dir_file(mntent, path);
-
-	cull_mntent_opt(mntent);
-
-	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
-		free(mntdata);
-		return -1;
-	}
-
-	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
-			  mntflags, mntdata, optional);
-
-	free(mntdata);
-
-	return ret;
+	return mount_entry_on_generic(mntent, path);
 }
 
 static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
