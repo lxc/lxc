@@ -1804,36 +1804,46 @@ static void cull_mntent_opt(struct mntent *mntent)
 	}
 }
 
-static inline int mount_entry_on_systemfs(struct mntent *mntent)
+static int mount_entry_create_dir_file(const struct mntent *mntent,
+				       const char* path)
 {
-	unsigned long mntflags;
-	char *mntdata;
+	char *pathdirname = NULL;
 	int ret;
 	FILE *pathfile = NULL;
-	char* pathdirname = NULL;
-	bool optional = hasmntopt(mntent, "optional") != NULL;
 
 	if (hasmntopt(mntent, "create=dir")) {
-		if (mkdir_p(mntent->mnt_dir, 0755) < 0) {
-			WARN("Failed to create mount target '%s'", mntent->mnt_dir);
+		if (mkdir_p(path, 0755) < 0) {
+			WARN("Failed to create mount target '%s'", path);
 			ret = -1;
 		}
 	}
 
-	if (hasmntopt(mntent, "create=file") && access(mntent->mnt_dir, F_OK)) {
-		pathdirname = strdup(mntent->mnt_dir);
+	if (hasmntopt(mntent, "create=file") && access(path, F_OK)) {
+		pathdirname = strdup(path);
 		pathdirname = dirname(pathdirname);
 		if (mkdir_p(pathdirname, 0755) < 0) {
 			WARN("Failed to create target directory");
 		}
-		pathfile = fopen(mntent->mnt_dir, "wb");
+		pathfile = fopen(path, "wb");
 		if (!pathfile) {
-			WARN("Failed to create mount target '%s'", mntent->mnt_dir);
+			WARN("Failed to create mount target '%s'", path);
 			ret = -1;
 		}
 		else
 			fclose(pathfile);
 	}
+	free(pathdirname);
+	return ret;
+}
+
+static inline int mount_entry_on_systemfs(struct mntent *mntent)
+{
+	unsigned long mntflags;
+	char *mntdata;
+	int ret;
+	bool optional = hasmntopt(mntent, "optional") != NULL;
+
+	ret = mount_entry_create_dir_file(mntent, mntent->mnt_dir);
 
 	cull_mntent_opt(mntent);
 
@@ -1845,7 +1855,6 @@ static inline int mount_entry_on_systemfs(struct mntent *mntent)
 	ret = mount_entry(mntent->mnt_fsname, mntent->mnt_dir,
 			  mntent->mnt_type, mntflags, mntdata, optional);
 
-	free(pathdirname);
 	free(mntdata);
 
 	return ret;
@@ -1861,8 +1870,6 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	char *mntdata;
 	int r, ret = 0, offset;
 	const char *lxcpath;
-	FILE *pathfile = NULL;
-	char *pathdirname = NULL;
 	bool optional = hasmntopt(mntent, "optional") != NULL;
 
 	lxcpath = lxc_global_config_value("lxc.lxcpath");
@@ -1901,27 +1908,8 @@ skipabs:
 		goto out;
 	}
 
-	if (hasmntopt(mntent, "create=dir")) {
-		if (mkdir_p(path, 0755) < 0) {
-			WARN("Failed to create mount target '%s'", path);
-			ret = -1;
-		}
-	}
+	ret = mount_entry_create_dir_file(mntent, path);
 
-	if (hasmntopt(mntent, "create=file") && access(path, F_OK)) {
-		pathdirname = strdup(path);
-		pathdirname = dirname(pathdirname);
-		if (mkdir_p(pathdirname, 0755) < 0) {
-			WARN("Failed to create target directory");
-		}
-		pathfile = fopen(path, "wb");
-		if (!pathfile) {
-			WARN("Failed to create mount target '%s'", path);
-			ret = -1;
-		}
-		else
-			fclose(pathfile);
-	}
 	cull_mntent_opt(mntent);
 
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
@@ -1935,7 +1923,6 @@ skipabs:
 	free(mntdata);
 
 out:
-	free(pathdirname);
 	return ret;
 }
 
@@ -1946,8 +1933,6 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	unsigned long mntflags;
 	char *mntdata;
 	int ret;
-	FILE *pathfile = NULL;
-	char *pathdirname = NULL;
 	bool optional = hasmntopt(mntent, "optional") != NULL;
 
 	/* relative to root mount point */
@@ -1957,27 +1942,8 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 		return -1;
 	}
 
-	if (hasmntopt(mntent, "create=dir")) {
-		if (mkdir_p(path, 0755) < 0) {
-			WARN("Failed to create mount target '%s'", path);
-			ret = -1;
-		}
-	}
+	ret = mount_entry_create_dir_file(mntent, path);
 
-	if (hasmntopt(mntent, "create=file") && access(path, F_OK)) {
-		pathdirname = strdup(path);
-		pathdirname = dirname(pathdirname);
-		if (mkdir_p(pathdirname, 0755) < 0) {
-			WARN("Failed to create target directory");
-		}
-		pathfile = fopen(path, "wb");
-		if (!pathfile) {
-			WARN("Failed to create mount target '%s'", path);
-			ret = -1;
-		}
-		else
-			fclose(pathfile);
-	}
 	cull_mntent_opt(mntent);
 
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
@@ -1988,7 +1954,6 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
 			  mntflags, mntdata, optional);
 
-	free(pathdirname);
 	free(mntdata);
 
 	return ret;
@@ -4568,7 +4533,7 @@ struct lxc_list *sort_cgroup_settings(struct lxc_list* cgroup_settings)
 			/* Store the memsw_limit location */
 			memsw_limit = item;
 		} else if (strcmp(cg->subsystem, "memory.limit_in_bytes") == 0 && memsw_limit != NULL) {
-			/* lxc.cgroup.memory.memsw.limit_in_bytes is found before 
+			/* lxc.cgroup.memory.memsw.limit_in_bytes is found before
 			 * lxc.cgroup.memory.limit_in_bytes, swap these two items */
 			item->elem = memsw_limit->elem;
 			memsw_limit->elem = it->elem;
