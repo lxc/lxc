@@ -85,7 +85,8 @@ parser.add_argument("--name", "-n", type=str,
                     help=_("name of the target container"))
 
 parser.add_argument("--bdir", "-b", type=str, action="append", default=[],
-                    help=_("directory to bind mount into container"))
+                    help=_("directory to bind mount into container, "
+                           "either --bdir=/src-path or --bdir=/src-path:/dst-path"))
 
 parser.add_argument("--cdir", "-c", type=str, action="append", default=[],
                     help=_("directory to cow mount into container"))
@@ -276,12 +277,18 @@ LXC_NAME="%s"
         count += 1
 
     for entry in args.bdir:
-        if not os.path.exists(entry):
-            print(_("Path '%s' doesn't exist, won't be bind-mounted.") %
-                  entry)
+        if ':' in entry:
+            src_path, dst_path = entry.split(":")
         else:
-            src_path = os.path.abspath(entry)
-            dst_path = "%s/rootfs/%s" % (dest_path, os.path.abspath(entry))
+            src_path = entry
+            dst_path = os.path.abspath(entry)
+
+        if not os.path.exists(src_path):
+            print(_("Path '%s' doesn't exist, won't be bind-mounted.") %
+                  src_path)
+        else:
+            src_path = os.path.abspath(src_path)
+            dst_path = "%s/rootfs/%s" % (dest_path, dst_path)
             fd.write("mkdir -p %s\nmount -n --bind %s %s\n" % (
                      dst_path, src_path, dst_path))
 
