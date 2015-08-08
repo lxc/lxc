@@ -52,7 +52,7 @@ static struct lxc_arguments my_args = {
 lxc-destroy destroys a container with the identifier NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME   NAME for name of the container\n\
+  -n, --name=NAME   NAME of the container\n\
   -f, --force       wait for the container to shut down\n",
 	.options  = my_longopts,
 	.parser   = my_parser,

@@ -146,7 +146,7 @@ static struct lxc_arguments my_args = {
 Execute the specified COMMAND - enter the container NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME   NAME for name of the container\n\
+  -n, --name=NAME   NAME of the container\n\
   -e, --elevated-privileges=PRIVILEGES\n\
                     Use elevated privileges instead of those of the\n\
                     container. If you don't specify privileges to be\n\

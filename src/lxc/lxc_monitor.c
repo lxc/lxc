@@ -61,7 +61,7 @@ static struct lxc_arguments my_args = {
 lxc-monitor monitors the state of the NAME container\n\
 \n\
 Options :\n\
-  -n, --name=NAME   NAME for name of the container\n\
+  -n, --name=NAME   NAME of the container\n\
                     NAME may be a regular expression\n\
   -Q, --quit        tell lxc-monitord to quit\n",
 	.name     = ".*",
