@@ -61,8 +61,6 @@ void exec_criu(struct criu_opts *opts);
  * dump. */
 bool criu_ok(struct lxc_container *c);
 
-bool dump_net_info(struct lxc_container *c, char *directory);
-
 // do_restore never returns, the calling process is used as the
 // monitor process. do_restore calls exit() if it fails.
 void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose);
