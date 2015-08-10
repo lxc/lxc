@@ -164,6 +164,9 @@ void exec_criu(struct criu_opts *opts)
 			char eth[128], *veth;
 			struct lxc_netdev *n = it->elem;
 
+			if (n->type != LXC_NET_VETH)
+				continue;
+
 			if (n->name) {
 				if (strlen(n->name) >= sizeof(eth))
 					goto err;
@@ -304,7 +307,12 @@ bool criu_ok(struct lxc_container *c)
 	/* We only know how to restore containers with veth networks. */
 	lxc_list_for_each(it, &c->lxc_conf->network) {
 		struct lxc_netdev *n = it->elem;
-		if (n->type != LXC_NET_VETH && n->type != LXC_NET_NONE) {
+		switch(n->type) {
+		case LXC_NET_VETH:
+		case LXC_NET_NONE:
+		case LXC_NET_EMPTY:
+			break;
+		default:
 			ERROR("Found network that is not VETH or NONE\n");
 			return false;
 		}
@@ -402,6 +410,10 @@ static bool restore_net_info(struct lxc_container *c)
 	lxc_list_for_each(it, &c->lxc_conf->network) {
 		struct lxc_netdev *netdev = it->elem;
 		char template[IFNAMSIZ];
+
+		if (netdev->type != LXC_NET_VETH)
+			continue;
+
 		snprintf(template, sizeof(template), "vethXXXXXX");
 
 		if (!netdev->priv.veth_attr.pair)
