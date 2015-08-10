@@ -348,57 +348,6 @@ bool criu_ok(struct lxc_container *c)
 	return true;
 }
 
-bool dump_net_info(struct lxc_container *c, char *directory)
-{
-	int netnr;
-	struct lxc_list *it;
-
-	netnr = 0;
-	lxc_list_for_each(it, &c->lxc_conf->network) {
-		char *veth = NULL, *bridge = NULL, veth_path[PATH_MAX], eth[128];
-		struct lxc_netdev *n = it->elem;
-		bool has_error = true;
-		int pret;
-
-		pret = snprintf(veth_path, PATH_MAX, "lxc.network.%d.veth.pair", netnr);
-		if (pret < 0 || pret >= PATH_MAX)
-			goto out;
-
-		veth = c->get_running_config_item(c, veth_path);
-		if (!veth) {
-			/* criu_ok() checks that all interfaces are
-			 * LXC_NET{VETH,NONE}, and VETHs should have this
-			 * config */
-			assert(n->type == LXC_NET_NONE);
-			break;
-		}
-
-		bridge = c->get_running_config_item(c, veth_path);
-		if (!bridge)
-			goto out;
-
-		pret = snprintf(veth_path, PATH_MAX, "%s/veth%d", directory, netnr);
-		if (pret < 0 || pret >= PATH_MAX || print_to_file(veth_path, veth) < 0)
-			goto out;
-
-		if (n->name) {
-			if (strlen(n->name) >= 128)
-				goto out;
-			strncpy(eth, n->name, 128);
-		} else
-			sprintf(eth, "eth%d", netnr);
-
-		has_error = false;
-out:
-		free(veth);
-		free(bridge);
-		if (has_error)
-			return false;
-	}
-
-	return true;
-}
-
 static bool restore_net_info(struct lxc_container *c)
 {
 	struct lxc_list *it;

@@ -3733,9 +3733,6 @@ static bool do_lxcapi_checkpoint(struct lxc_container *c, char *directory, bool 
 		return false;
 	}
 
-	if (!dump_net_info(c, directory))
-		return false;
-
 	pid = fork();
 	if (pid < 0)
 		return false;
