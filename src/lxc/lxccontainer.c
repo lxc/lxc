@@ -19,6 +19,7 @@
  */
 
 #define _GNU_SOURCE
+#include <sys/mman.h>
 #include <assert.h>
 #include <stdarg.h>
 #include <pthread.h>
@@ -1970,47 +1971,130 @@ out:
 
 WRAP_API_1(bool, lxcapi_save_config, const char *)
 
-static bool mod_rdep(struct lxc_container *c, bool inc)
-{
-	char path[MAXPATHLEN];
-	int ret, v = 0;
-	FILE *f;
-	bool bret = false;
 
-	if (container_disk_lock(c))
+static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc)
+{
+	FILE *f1;
+	struct stat fbuf;
+	char *buf = NULL;
+	char *del;
+	char path[MAXPATHLEN];
+	char newpath[MAXPATHLEN];
+	int fd, ret, n = 0, v = 0;
+	bool bret = false;
+	size_t len;
+
+	if (container_disk_lock(c0))
 		return false;
-	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path,
-			c->name);
+
+	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c0->config_path, c0->name);
 	if (ret < 0 || ret > MAXPATHLEN)
 		goto out;
-	f = fopen(path, "r");
-	if (f) {
-		ret = fscanf(f, "%d", &v);
-		fclose(f);
-		if (ret != 1) {
-			ERROR("Corrupted file %s", path);
-			goto out;
+	ret = snprintf(newpath, MAXPATHLEN, "%s\n%s\n", c->config_path, c->name);
+	if (ret < 0 || ret > MAXPATHLEN)
+		goto out;
+
+	/* If we find an lxc-snapshot file using the old format only listing the
+	 * number of snapshots we will keep using it. */
+	f1 = fopen(path, "r");
+	if (f1) {
+		n = fscanf(f1, "%d", &v);
+		fclose(f1);
+		if (n == 1 && v == 0) {
+			remove(path);
+			n = 0;
 		}
 	}
-	v += inc ? 1 : -1;
-	f = fopen(path, "w");
-	if (!f)
-		goto out;
-	if (fprintf(f, "%d\n", v) < 0) {
-		ERROR("Error writing new snapshots value");
-		fclose(f);
-		goto out;
-	}
-	ret = fclose(f);
-	if (ret != 0) {
-		SYSERROR("Error writing to or closing snapshots file");
-		goto out;
+	if (n == 1) {
+		v += inc ? 1 : -1;
+		f1 = fopen(path, "w");
+		if (!f1)
+			goto out;
+		if (fprintf(f1, "%d\n", v) < 0) {
+			ERROR("Error writing new snapshots value");
+			fclose(f1);
+			goto out;
+		}
+		ret = fclose(f1);
+		if (ret != 0) {
+			SYSERROR("Error writing to or closing snapshots file");
+			goto out;
+		}
+	} else {
+		/* Here we know that we have or can use an lxc-snapshot file
+		 * using the new format. */
+		if (inc) {
+			f1 = fopen(path, "a");
+			if (!f1)
+				goto out;
+
+			if (fprintf(f1, "%s", newpath) < 0) {
+				ERROR("Error writing new snapshots entry");
+				ret = fclose(f1);
+				if (ret != 0)
+					SYSERROR("Error writing to or closing snapshots file");
+				goto out;
+			}
+
+			ret = fclose(f1);
+			if (ret != 0) {
+				SYSERROR("Error writing to or closing snapshots file");
+				goto out;
+			}
+		} else if (!inc) {
+			fd = open(path, O_RDWR | O_CLOEXEC);
+			if (fd < 0)
+				goto out;
+
+			ret = fstat(fd, &fbuf);
+			if (ret < 0) {
+				close(fd);
+				goto out;
+			}
+
+			if (fbuf.st_size != 0) {
+				buf = mmap(NULL, fbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+				if (buf == MAP_FAILED) {
+					SYSERROR("Failed to create mapping %s", path);
+					close(fd);
+					goto out;
+				}
+			}
+
+			len = strlen(newpath);
+
+			/* mmap()ed memory is only \0-terminated when it is not
+			 * a multiple of a pagesize. Hence, we'll use memmem(). */
+			if ((del = memmem(buf, fbuf.st_size, newpath, len))) {
+				/* remove container entry */
+				memmove(del, del + len, strlen(del) - len + 1);
+
+				munmap(buf, fbuf.st_size);
+
+				if (ftruncate(fd, fbuf.st_size - len) < 0) {
+					SYSERROR("Failed to truncate file %s", path);
+					close(fd);
+					goto out;
+				}
+			} else {
+				munmap(buf, fbuf.st_size);
+			}
+
+			close(fd);
+		}
+
+		/* If the lxc-snapshot file is empty, remove it. */
+		if (stat(path, &fbuf) < 0)
+			goto out;
+		if (!fbuf.st_size) {
+			remove(path);
+		}
 	}
 
 	bret = true;
 
 out:
-	container_disk_unlock(c);
+	container_disk_unlock(c0);
 	return bret;
 }
 
@@ -2052,8 +2136,8 @@ static void mod_all_rdeps(struct lxc_container *c, bool inc)
 				lxcpath, lxcname);
 			continue;
 		}
-		if (!mod_rdep(p, inc))
-			ERROR("Failed to increase numsnapshots for %s:%s",
+		if (!mod_rdep(p, c, inc))
+			ERROR("Failed to update snapshots file for %s:%s",
 				lxcpath, lxcname);
 		lxc_container_put(p);
 	}
@@ -2065,22 +2149,30 @@ out:
 
 static bool has_fs_snapshots(struct lxc_container *c)
 {
+	FILE *f;
 	char path[MAXPATHLEN];
 	int ret, v;
-	FILE *f;
+	struct stat fbuf;
 	bool bret = false;
 
 	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path,
 			c->name);
 	if (ret < 0 || ret > MAXPATHLEN)
 		goto out;
-	f = fopen(path, "r");
-	if (!f)
+	/* If the file doesn't exist there are no snapshots. */
+	if (stat(path, &fbuf) < 0)
 		goto out;
-	ret = fscanf(f, "%d", &v);
-	fclose(f);
-	if (ret != 1)
-		goto out;
+	v = fbuf.st_size;
+	if (v != 0) {
+		f = fopen(path, "r");
+		if (!f)
+			goto out;
+		ret = fscanf(f, "%d", &v);
+		fclose(f);
+		// TODO: Figure out what to do with the return value of fscanf.
+		if (ret != 1)
+			INFO("Container uses new lxc-snapshots format %s", path);
+	}
 	bret = v != 0;
 
 out:
