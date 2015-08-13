@@ -95,7 +95,7 @@ struct lxc_arguments {
 	char *groups;
 
 	/* remaining arguments */
-	char *const *argv;
+	const char *const *argv;
 	int argc;
 
 	/* private arguments */

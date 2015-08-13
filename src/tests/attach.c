@@ -124,7 +124,7 @@ static int test_attach_lsm_cmd(struct lxc_container *ct)
 	int pipefd[2];
 	char result[1024];
 	char *space;
-	char *argv[] = {"cat", "/proc/self/attr/current", NULL};
+	const char *argv[] = {"cat", "/proc/self/attr/current", NULL};
 	lxc_attach_command_t command = {"cat", argv};
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
@@ -237,7 +237,7 @@ static int test_attach_cmd(struct lxc_container *ct)
 {
 	int ret;
 	pid_t pid;
-	char *argv[] = {"cmp", "-s", "/sbin/init", "/bin/busybox", NULL};
+	const char *argv[] = {"cmp", "-s", "/sbin/init", "/bin/busybox", NULL};
 	lxc_attach_command_t command = {"cmp", argv};
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 

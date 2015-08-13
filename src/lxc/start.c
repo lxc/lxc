@@ -1237,7 +1237,7 @@ out_abort:
 }
 
 struct start_args {
-	char *const *argv;
+	const char *const *argv;
 };
 
 static int start(struct lxc_handler *handler, void* data)
@@ -1246,7 +1246,7 @@ static int start(struct lxc_handler *handler, void* data)
 
 	NOTICE("exec'ing '%s'", arg->argv[0]);
 
-	execvp(arg->argv[0], arg->argv);
+	execvp(arg->argv[0], (char**) arg->argv);
 	SYSERROR("failed to exec %s", arg->argv[0]);
 	return 0;
 }
@@ -1264,7 +1264,7 @@ static struct lxc_operations start_ops = {
 	.post_start = post_start
 };
 
-int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
+int lxc_start(const char *name, const char *const argv[], struct lxc_conf *conf,
 	      const char *lxcpath, bool backgrounded)
 {
 	struct start_args start_arg = {

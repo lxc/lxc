@@ -270,7 +270,7 @@ int main(int argc, char *argv[])
 		my_args.bdevtype = NULL;
 	if (my_args.quiet)
 		flags = LXC_CREATE_QUIET;
-	if (!c->create(c, my_args.template, my_args.bdevtype, &spec, flags, &argv[optind])) {
+	if (!c->create(c, my_args.template, my_args.bdevtype, &spec, flags, (const char **) &argv[optind])) {
 		ERROR("Error creating container %s", c->name);
 		lxc_container_put(c);
 		exit(1);

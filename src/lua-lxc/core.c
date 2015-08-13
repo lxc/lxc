@@ -120,7 +120,7 @@ static int container_create(lua_State *L)
     struct lxc_container *c = lua_unboxpointer(L, 1, CONTAINER_TYPENAME);
     char *template_name = strdupa(luaL_checkstring(L, 2));
     int argc = lua_gettop(L);
-    char **argv;
+    const char **argv;
     int i;
 
     argv = alloca((argc+1) * sizeof(char *));
@@ -145,7 +145,7 @@ static int container_start(lua_State *L)
 {
     struct lxc_container *c = lua_unboxpointer(L, 1, CONTAINER_TYPENAME);
     int argc = lua_gettop(L);
-    char **argv = NULL;
+    const char **argv = NULL;
     int i,j;
     int useinit = 0;
 

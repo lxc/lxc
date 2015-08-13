@@ -51,7 +51,7 @@ struct lxc_arguments;
  * @backgrounded : whether or not the container is daemonized
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
+extern int lxc_start(const char *name, const char *const argv[], struct lxc_conf *conf,
 		     const char *lxcpath, bool backgrounded);
 
 /*
@@ -63,7 +63,7 @@ extern int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf
  * @backgrounded : whether or not the container is daemonized
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_execute(const char *name, char *const argv[], int quiet,
+extern int lxc_execute(const char *name, const char *const argv[], int quiet,
 		       struct lxc_conf *conf, const char *lxcpath,
 		       bool backgrounded);
 

@@ -621,17 +621,17 @@ static bool am_single_threaded(void)
  * I can't decide if it'd be more convenient for callers if we accept '...',
  * or a null-terminated array (i.e. execl vs execv)
  */
-static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const argv[])
+static bool do_lxcapi_start(struct lxc_container *c, int useinit, const char * const argv[])
 {
 	int ret;
 	struct lxc_conf *conf;
 	bool daemonize = false;
 	FILE *pid_fp = NULL;
-	char *default_args[] = {
+	const char *default_args[] = {
 		"/sbin/init",
 		NULL,
 	};
-	char *init_cmd[2];
+	const char *init_cmd[2];
 
 	/* container exists */
 	if (!c)
@@ -769,7 +769,7 @@ reboot:
 		goto out;
 	}
 
-	ret = lxc_start(c->name, argv, conf, c->config_path, daemonize);
+	ret = lxc_start(c->name, (const char **) argv, conf, c->config_path, daemonize);
 	c->error_num = ret;
 
 	if (conf->reboot) {
@@ -791,7 +791,7 @@ out:
 		return (ret == 0 ? true : false);
 }
 
-static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv[])
+static bool lxcapi_start(struct lxc_container *c, int useinit, const char * const argv[])
 {
 	bool ret;
 	current_config = c ? c->lxc_conf : NULL;
@@ -825,7 +825,7 @@ static bool lxcapi_startl(struct lxc_container *c, int useinit, ...)
 	}
 
 	/* pass NULL if no arguments were supplied */
-	bret = do_lxcapi_start(c, useinit, *inargs ? inargs : NULL);
+	bret = do_lxcapi_start(c, useinit, *inargs ? (const char **) inargs : NULL);
 
 out:
 	if (inargs) {
@@ -959,7 +959,7 @@ static char *lxcbasename(char *path)
 }
 
 static bool create_run_template(struct lxc_container *c, char *tpath, bool need_null_stdfds,
-				char *const argv[])
+		const char *const argv[])
 {
 	pid_t pid;
 
@@ -977,7 +977,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 		struct bdev *bdev = NULL;
 		int i;
 		int ret, len, nargs = 0;
-		char **newargv;
+		const char **newargv;
 		struct lxc_conf *conf = c->lxc_conf;
 
 		if (need_null_stdfds && null_stdfds() < 0) {
@@ -1089,9 +1089,10 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			int n2args = 1;
 			char txtuid[20];
 			char txtgid[20];
-			char **n2 = malloc(n2args * sizeof(*n2));
+			const char **n2 = malloc(n2args * sizeof(*n2));
 			struct lxc_list *it;
 			struct id_map *map;
+			char* tmpstring;
 
 			if (!n2) {
 				SYSERROR("out of memory");
@@ -1107,12 +1108,13 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 				if (!n2)
 					exit(1);
 				n2[n2args-2] = "-m";
-				n2[n2args-1] = malloc(200);
-				if (!n2[n2args-1])
+				tmpstring = malloc(200);
+				if (!tmpstring)
 					exit(1);
-				ret = snprintf(n2[n2args-1], 200, "%c:%lu:%lu:%lu",
+				ret = snprintf(tmpstring, 200, "%c:%lu:%lu:%lu",
 					map->idtype == ID_TYPE_UID ? 'u' : 'g',
 					map->nsid, map->hostid, map->range);
+				n2[n2args-1] = tmpstring;
 				if (ret < 0 || ret >= 200)
 					exit(1);
 			}
@@ -1128,13 +1130,14 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 					ERROR("Could not find free uid to map");
 					exit(1);
 				}
-				n2[n2args++] = malloc(200);
-				if (!n2[n2args-1]) {
+				tmpstring = malloc(200);
+				if (!tmpstring) {
 					SYSERROR("out of memory");
 					exit(1);
 				}
-				ret = snprintf(n2[n2args-1], 200, "u:%d:%d:1",
+				ret = snprintf(tmpstring, 200, "u:%d:%d:1",
 					hostid_mapped, geteuid());
+				n2[n2args++] = tmpstring;
 				if (ret < 0 || ret >= 200) {
 					ERROR("string too long");
 					exit(1);
@@ -1152,13 +1155,14 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 					ERROR("Could not find free uid to map");
 					exit(1);
 				}
-				n2[n2args++] = malloc(200);
-				if (!n2[n2args-1]) {
+				tmpstring = malloc(200);
+				if (!tmpstring) {
 					SYSERROR("out of memory");
 					exit(1);
 				}
-				ret = snprintf(n2[n2args-1], 200, "g:%d:%d:1",
+				ret = snprintf(tmpstring, 200, "g:%d:%d:1",
 					hostgid_mapped, getegid());
+				n2[n2args++] = tmpstring;
 				if (ret < 0 || ret >= 200) {
 					ERROR("string too long");
 					exit(1);
@@ -1185,10 +1189,10 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			n2[n2args-2] = txtgid;
 			n2[n2args-1] = NULL;
 			free(newargv);
-			newargv = n2;
+			newargv = (const char **)n2;
 		}
 		/* execute */
-		execvp(tpath, newargv);
+		execvp(tpath, (char **) newargv);
 		SYSERROR("failed to execute template %s", tpath);
 		exit(1);
 	}
@@ -1201,7 +1205,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 	return true;
 }
 
-static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
+static bool prepend_lxc_header(char *path, const char *t, const char *const argv[])
 {
 	long flen;
 	char *contents;
@@ -1323,7 +1327,7 @@ static void lxcapi_clear_config(struct lxc_container *c)
  */
 static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 		const char *bdevtype, struct bdev_specs *specs, int flags,
-		char *const argv[])
+		const char *const argv[])
 {
 	bool ret = false;
 	pid_t pid;
@@ -1456,7 +1460,7 @@ free_tpath:
 
 static bool lxcapi_create(struct lxc_container *c, const char *t,
 		const char *bdevtype, struct bdev_specs *specs, int flags,
-		char *const argv[])
+		const char *const argv[])
 {
 	bool ret;
 	current_config = c ? c->lxc_conf : NULL;
@@ -1534,7 +1538,7 @@ static bool lxcapi_createl(struct lxc_container *c, const char *t,
 		goto out;
 	}
 
-	bret = do_lxcapi_create(c, t, bdevtype, specs, flags, args);
+	bret = do_lxcapi_create(c, t, bdevtype, specs, flags, (const char**) args);
 
 out:
 	free(args);
@@ -3051,8 +3055,8 @@ static int do_lxcapi_attach_run_wait(struct lxc_container *c, lxc_attach_options
 	if (!c)
 		return -1;
 
-	command.program = (char*)program;
-	command.argv = (char**)argv;
+	command.program = program;
+	command.argv = (const char**)argv;
 	r = lxc_attach(c->name, c->config_path, lxc_attach_run_command, &command, options, &pid);
 	if (r < 0) {
 		ERROR("ups");

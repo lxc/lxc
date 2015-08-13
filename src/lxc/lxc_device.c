@@ -100,7 +100,7 @@ static bool is_interface(const char* dev_name, pid_t pid)
 int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
-	char *cmd, *dev_name, *dst_name;
+	const char *cmd, *dev_name, *dst_name;
 	int ret = 1;
 
 	if (geteuid() != 0) {

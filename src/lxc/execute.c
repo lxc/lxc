@@ -35,7 +35,7 @@
 lxc_log_define(lxc_execute, lxc_start);
 
 struct execute_args {
-	char *const *argv;
+	const char *const *argv;
 	int quiet;
 };
 
@@ -43,7 +43,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 {
 	int j, i = 0;
 	struct execute_args *my_args = data;
-	char **argv;
+	const char **argv;
 	int argc = 0, argc_add;
 	char *initpath;
 
@@ -89,7 +89,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 
 	NOTICE("exec'ing '%s'", my_args->argv[0]);
 
-	execvp(argv[0], argv);
+	execvp(argv[0], (char **)argv); // The execvp() signature requires argv to be non-const, but the POSIX standard ensures that the function will not modify the strings, so we are safe with that cast
 	SYSERROR("failed to exec %s", argv[0]);
 	free(initpath);
 out2:
@@ -110,7 +110,7 @@ static struct lxc_operations execute_start_ops = {
 	.post_start = execute_post_start
 };
 
-int lxc_execute(const char *name, char *const argv[], int quiet,
+int lxc_execute(const char *name, const char *const argv[], int quiet,
 		struct lxc_conf *conf, const char *lxcpath, bool backgrounded)
 {
 	struct execute_args args = {

@@ -205,9 +205,9 @@ int main(int argc, char *argv[])
 {
 	int err = 1;
 	struct lxc_conf *conf;
-	char *const *args;
+	const char *const *args;
 	char *rcfile = NULL;
-	char *const default_args[] = {
+	const char *const default_args[] = {
 		"/sbin/init",
 		NULL,
 	};
