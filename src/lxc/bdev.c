@@ -98,7 +98,7 @@ static int do_rsync(const char *src, const char *dest)
 	s[l-2] = '/';
 	s[l-1] = '\0';
 
-	execlp("rsync", "rsync", "-aH", s, dest, (char *)NULL);
+	execlp("rsync", "rsync", "-aHX", s, dest, (char *)NULL);
 	exit(1);
 }
 
