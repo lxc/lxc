@@ -1,0 +1,20 @@
+[Unit]
+Description=LXC Container: %i
+# This pulls in apparmor, dev-setup, lxc-net
+After=lxc.service
+Wants=lxc.service
+
+[Service]
+Type=simple
+KillMode=mixed
+KillSignal=SIGPWR
+TimeoutStopSec=120s
+ExecStart=@BINDIR@/lxc-start -n %i
+# Environment=BOOTUP=serial
+# Environment=CONSOLETYPE=serial
+Delegate=yes
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target
