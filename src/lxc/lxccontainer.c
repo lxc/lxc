@@ -2666,7 +2666,7 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 	// We will simply append a new lxc.rootfs entry to the unexpanded config
 	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs", false);
 	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.rootfs", c->lxc_conf->rootfs.path)) {
-		ERROR("Error saving new rootfs to cloend config");
+		ERROR("Error saving new rootfs to cloned config");
 		return -1;
 	}
 	if (flags & LXC_CLONE_SNAPSHOT)
