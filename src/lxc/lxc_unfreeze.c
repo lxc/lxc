@@ -45,7 +45,7 @@ static struct lxc_arguments my_args = {
 lxc-unfreeze unfreezes a container with the identifier NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME   NAME for name of the container\n",
+  -n, --name=NAME   NAME of the container\n",
 	.options  = my_longopts,
 	.parser   = NULL,
 	.checker  = NULL,

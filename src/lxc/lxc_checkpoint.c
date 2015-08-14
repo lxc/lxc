@@ -105,7 +105,7 @@ lxc-checkpoint checkpoints and restores a container\n\
   its running state at a later time.\n\
 \n\
 Options :\n\
-  -n, --name=NAME           NAME for name of the container\n\
+  -n, --name=NAME           NAME of the container\n\
   -r, --restore             Restore container\n\
   -D, --checkpoint-dir=DIR  directory to save the checkpoint in\n\
   -v, --verbose             Enable verbose criu logs\n\
