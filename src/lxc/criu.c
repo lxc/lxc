@@ -49,7 +49,7 @@ lxc_log_define(lxc_criu, lxc);
 void exec_criu(struct criu_opts *opts)
 {
 	char **argv, log[PATH_MAX];
-	int static_args = 20, argc = 0, i, ret;
+	int static_args = 22, argc = 0, i, ret;
 	int netnr = 0;
 	struct lxc_list *it;
 
@@ -60,7 +60,7 @@ void exec_criu(struct criu_opts *opts)
 	 * --manage-cgroups action-script foo.sh -D $(directory) \
 	 * -o $(directory)/$(action).log --ext-mount-map auto
 	 * --enable-external-sharing --enable-external-masters
-	 * --enable-fs hugetlbfs
+	 * --enable-fs hugetlbfs --enable-fs tracefs
 	 * +1 for final NULL */
 
 	if (strcmp(opts->action, "dump") == 0) {
@@ -122,6 +122,8 @@ void exec_criu(struct criu_opts *opts)
 	DECLARE_ARG("--enable-external-masters");
 	DECLARE_ARG("--enable-fs");
 	DECLARE_ARG("hugetlbfs");
+	DECLARE_ARG("--enable-fs");
+	DECLARE_ARG("tracefs");
 	DECLARE_ARG("-D");
 	DECLARE_ARG(opts->directory);
 	DECLARE_ARG("-o");
