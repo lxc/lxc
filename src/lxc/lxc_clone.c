@@ -27,197 +27,16 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <ctype.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 
 #include <lxc/lxccontainer.h>
 
 #include "log.h"
-#include "confile.h"
-#include "arguments.h"
+#include "config.h"
 #include "lxc.h"
 #include "conf.h"
 #include "state.h"
 
 lxc_log_define(lxc_clone_ui, lxc);
-
-static int my_parser(struct lxc_arguments *args, int c, char *arg);
-
-static const struct option my_longopts[] = {
-	{ "newname", required_argument, 0, 'N'},
-	{ "newpath", required_argument, 0, 'p'},
-	{ "rename", no_argument, 0, 'R'},
-	{ "snapshot", no_argument, 0, 's'},
-	{ "backingstore", required_argument, 0, 'B'},
-	{ "fssize", required_argument, 0, 'L'},
-	{ "keepname", no_argument, 0, 'K'},
-	{ "keepmac", no_argument, 0, 'M'},
-	LXC_COMMON_OPTIONS
-};
-
-static struct lxc_arguments my_args = {
-	.progname = "lxc-clone",
-	.help = "\
---name=NAME [-P lxcpath] -N newname [-p newpath] [-B backingstorage] [-s] [-K] [-M] [-L size [unit]]\n\
-\n\
-lxc-lcone clone a container\n\
-\n\
-Options :\n\
-  -n, --name=NAME           NAME of the container\n\
-  -N, --newname=NEWNAME     NEWNAME for the restored container\n\
-  -p, --newpath=NEWPATH     NEWPATH for the container to be stored\n\
-  -R, --rename		    rename container\n\
-  -s, --snapshot	    create snapshot instead of clone\n\
-  -B, --backingstorage=TYPE backingstorage type for the container\n\
-  -L, --fssize		    size of the new block device for block device containers\n\
-  -K, --keepname	    keep the hostname of the original container\n\
-  -M, --keepmac		    keep the MAC address of the original container\n",
-	.options = my_longopts,
-	.parser = my_parser,
-	.checker = NULL,
-};
-
-static int do_clone(struct lxc_container *c, char *newname, char *newpath,
-		    int flags, char *bdevtype, uint64_t fssize, char **args);
-static int do_clone_rename(struct lxc_container *c, char *newname);
-static uint64_t get_fssize(char *s);
-
-int main(int argc, char *argv[])
-{
-	struct lxc_container *c;
-	int flags = 0;
-	int ret;
-
-	if (lxc_arguments_parse(&my_args, argc, argv))
-		exit(EXIT_FAILURE);
-
-	if (!my_args.log_file)
-		my_args.log_file = "none";
-
-	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
-
-	if (geteuid()) {
-		if (access(my_args.lxcpath[0], O_RDWR) < 0) {
-			fprintf(stderr, "You lack access to %s\n",
-				my_args.lxcpath[0]);
-			exit(EXIT_FAILURE);
-		}
-	}
-
-	if (!my_args.newname) {
-		printf("Error: You must provide a NEWNAME for the clone.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (my_args.task == SNAP)
-		flags |= LXC_CLONE_SNAPSHOT;
-	if (my_args.keepname)
-		flags |= LXC_CLONE_KEEPNAME;
-	if (my_args.keepmac)
-		flags |= LXC_CLONE_KEEPMACADDR;
-
-	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
-	if (!c)
-		exit(EXIT_FAILURE);
-
-	if (!c->may_control(c)) {
-		fprintf(stderr, "Insufficent privileges to control %s\n",
-			c->name);
-		lxc_container_put(c);
-		exit(EXIT_FAILURE);
-	}
-
-	if (!c->is_defined(c)) {
-		fprintf(stderr, "Error: container %s is not defined\n",
-			c->name);
-		lxc_container_put(c);
-		exit(EXIT_FAILURE);
-	}
-
-	if (my_args.task == RENAME) {
-		ret = do_clone_rename(c, my_args.newname);
-	} else {
-		ret = do_clone(c, my_args.newname, my_args.newpath, flags,
-			       my_args.bdevtype, my_args.fssize, &argv[optind]);
-	}
-
-	lxc_container_put(c);
-
-	if (ret == 0)
-		exit(EXIT_SUCCESS);
-	exit(EXIT_FAILURE);
-}
-
-static int my_parser(struct lxc_arguments *args, int c, char *arg)
-{
-	switch (c) {
-	case 'N':
-		args->newname = arg;
-		break;
-	case 'p':
-		args->newpath = arg;
-		break;
-	case 'R':
-		args->task = RENAME;
-		break;
-	case 's':
-		args->task = SNAP;
-		break;
-	case 'B':
-		args->bdevtype = arg;
-		break;
-	case 'L':
-		args->fssize = get_fssize(optarg);
-		break;
-	case 'K':
-		args->keepname = 1;
-		break;
-	case 'M':
-		args->keepmac = 1;
-		break;
-	}
-
-	return 0;
-}
-
-static int do_clone_rename(struct lxc_container *c, char *newname)
-{
-	bool ret;
-
-	ret = c->rename(c, newname);
-	if (!ret) {
-		ERROR("Error: Renaming container %s to %s failed\n", c->name,
-		      my_args.newname);
-		return -1;
-	}
-
-	INFO("Renamed container %s to %s\n", c->name, newname);
-
-	return 0;
-}
-
-static int do_clone(struct lxc_container *c, char *newname, char *newpath,
-		    int flags, char *bdevtype, uint64_t fssize, char **args)
-{
-	struct lxc_container *clone;
-
-	clone = c->clone(c, newname, newpath, flags, bdevtype, NULL, fssize,
-			 args);
-	if (clone == NULL) {
-		fprintf(stderr, "clone failed\n");
-		return -1;
-	}
-
-	INFO("Created container %s as %s of %s\n", newname,
-	     my_args.task ? "snapshot" : "copy", c->name);
-
-	lxc_container_put(clone);
-
-	return 0;
-}
 
 /* we pass fssize in bytes */
 static uint64_t get_fssize(char *s)
@@ -226,29 +45,171 @@ static uint64_t get_fssize(char *s)
 	char *end;
 
 	ret = strtoull(s, &end, 0);
-	if (end == s) {
+	if (end == s)
+	{
 		fprintf(stderr, "Invalid blockdev size '%s', using default size\n", s);
 		return 0;
 	}
 	while (isblank(*end))
 		end++;
-	if (*end == '\0') {
+	if (*end == '\0')
 		ret *= 1024ULL * 1024ULL; // MB by default
-	} else if (*end == 'b' || *end == 'B') {
+	else if (*end == 'b' || *end == 'B')
 		ret *= 1ULL;
-	} else if (*end == 'k' || *end == 'K') {
+	else if (*end == 'k' || *end == 'K')
 		ret *= 1024ULL;
-	} else if (*end == 'm' || *end == 'M') {
+	else if (*end == 'm' || *end == 'M')
 		ret *= 1024ULL * 1024ULL;
-	} else if (*end == 'g' || *end == 'G') {
+	else if (*end == 'g' || *end == 'G')
 		ret *= 1024ULL * 1024ULL * 1024ULL;
-	} else if (*end == 't' || *end == 'T') {
+	else if (*end == 't' || *end == 'T')
 		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
-	} else {
-		fprintf(stderr, "Invalid blockdev unit size '%c' in '%s', " "using default size\n", *end, s);
+	else
+	{
+		fprintf(stderr, "Invalid blockdev unit size '%c' in '%s', using default size\n", *end, s);
 		return 0;
 	}
-
 	return ret;
 }
 
+static void usage(const char *me)
+{
+	printf("Usage: %s [-s] [-B backingstore] [-L size[unit]] [-K] [-M] [-H]\n", me);
+	printf("          [-p lxcpath] [-P newlxcpath] orig new\n");
+	printf("\n");
+	printf("  -s: snapshot rather than copy\n");
+	printf("  -B: use specified new backingstore.  Default is the same as\n");
+	printf("      the original.  Options include aufs, btrfs, lvm, overlayfs, \n");
+	printf("      dir and loop\n");
+	printf("  -L: for blockdev-backed backingstore, use specified size * specified\n");
+	printf("      unit. Default size is the size of the source blockdev, default\n");
+	printf("      unit is MB\n");
+	printf("  -K: Keep name - do not change the container name\n");
+	printf("  -M: Keep macaddr - do not choose a random new mac address\n");
+	printf("  -p: use container orig from custom lxcpath\n");
+	printf("  -P: create container new in custom lxcpath\n");
+	printf("  -R: rename existing container\n");
+	exit(1);
+}
+
+static struct option options[] = {
+	{ "snapshot", no_argument, 0, 's'},
+	{ "backingstore", required_argument, 0, 'B'},
+	{ "size", required_argument, 0, 'L'},
+	{ "orig", required_argument, 0, 'o'},
+	{ "new", required_argument, 0, 'n'},
+	{ "vgname", required_argument, 0, 'v'},
+	{ "rename", no_argument, 0, 'R'},
+	{ "keepname", no_argument, 0, 'K'},
+	{ "keepmac", no_argument, 0, 'M'},
+	{ "lxcpath", required_argument, 0, 'p'},
+	{ "newpath", required_argument, 0, 'P'},
+	{ "fstype", required_argument, 0, 't'},
+	{ "help", no_argument, 0, 'h'},
+	{ 0, 0, 0, 0 },
+};
+
+int main(int argc, char *argv[])
+{
+	struct lxc_container *c1 = NULL, *c2 = NULL;
+	int snapshot = 0, keepname = 0, keepmac = 0, rename = 0;
+	int flags = 0, option_index;
+	uint64_t newsize = 0;
+	char *bdevtype = NULL, *lxcpath = NULL, *newpath = NULL, *fstype = NULL;
+	char *orig = NULL, *new = NULL, *vgname = NULL;
+	char **args = NULL;
+	int c;
+	bool ret;
+
+	if (argc < 3)
+		usage(argv[0]);
+
+	while (1) {
+		c = getopt_long(argc, argv, "sB:L:o:n:v:KMHp:P:Rt:h", options, &option_index);
+		if (c == -1)
+			break;
+		switch (c) {
+		case 's': snapshot = 1; break;
+		case 'B': bdevtype = optarg; break;
+		case 'L': newsize = get_fssize(optarg); break;
+		case 'o': orig = optarg; break;
+		case 'n': new = optarg; break;
+		case 'v': vgname = optarg; break;
+		case 'K': keepname = 1; break;
+		case 'M': keepmac = 1; break;
+		case 'p': lxcpath = optarg; break;
+		case 'P': newpath = optarg; break;
+		case 'R': rename = 1; break;
+		case 't': fstype = optarg; break;
+		case 'h': usage(argv[0]);
+		default: break;
+		}
+	}
+    if (optind < argc && !orig)
+		orig = argv[optind++];
+    if (optind < argc && !new)
+		new = argv[optind++];
+	if (optind < argc)
+		/* arguments for the clone hook */
+		args = &argv[optind];
+	if (!new || !orig) {
+		printf("Error: you must provide orig and new names\n");
+		usage(argv[0]);
+	}
+
+	if (snapshot)  flags |= LXC_CLONE_SNAPSHOT;
+	if (keepname)  flags |= LXC_CLONE_KEEPNAME;
+	if (keepmac)   flags |= LXC_CLONE_KEEPMACADDR;
+
+	// vgname and fstype could be supported by sending them through the
+	// bdevdata.  However, they currently are not yet.  I'm not convinced
+	// they are worthwhile.
+	if (vgname) {
+		printf("Error: vgname not supported\n");
+		usage(argv[0]);
+	}
+	if (fstype) {
+		printf("Error: fstype not supported\n");
+		usage(argv[0]);
+	}
+
+	c1 = lxc_container_new(orig, lxcpath);
+	if (!c1)
+		exit(EXIT_FAILURE);
+
+	if (!c1->may_control(c1)) {
+		fprintf(stderr, "Insufficent privileges to control %s\n", orig);
+		lxc_container_put(c1);
+		exit(EXIT_FAILURE);
+	}
+
+	if (!c1->is_defined(c1)) {
+		fprintf(stderr, "Error: container %s is not defined\n", orig);
+		lxc_container_put(c1);
+		exit(EXIT_FAILURE);
+	}
+	if (rename) {
+		ret = c1->rename(c1, new);
+		if (!ret) {
+			fprintf(stderr,
+				"Error: Renaming container %s to %s failed\n",
+				c1->name, new);
+			lxc_container_put(c1);
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		c2 = c1->clone(c1, new, newpath, flags, bdevtype, NULL, newsize,
+			       args);
+		if (c2 == NULL) {
+			lxc_container_put(c1);
+			fprintf(stderr, "clone failed\n");
+			exit(EXIT_FAILURE);
+		}
+		printf("Created container %s as %s of %s\n", new,
+		       snapshot ? "snapshot" : "copy", orig);
+		lxc_container_put(c2);
+	}
+	lxc_container_put(c1);
+
+	exit(EXIT_SUCCESS);
+}

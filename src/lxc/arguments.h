@@ -94,22 +94,6 @@ struct lxc_arguments {
 	int list;
 	char *groups;
 
-	/* lxc-snapshot and lxc-clone */
-	enum task {
-		DESTROY,
-		LIST,
-		RESTORE,
-		SNAP,
-		RENAME,
-	} task;
-	int print_comments;
-	char *commentfile;
-	char *newname;
-	char *newpath;
-	char *snapname;
-	int keepname;
-	int keepmac;
-
 	/* remaining arguments */
 	char *const *argv;
 	int argc;

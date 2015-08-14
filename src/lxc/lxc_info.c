@@ -87,7 +87,7 @@ static struct lxc_arguments my_args = {
 lxc-info display some information about a container with the identifier NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME       NAME of the container\n\
+  -n, --name=NAME       NAME for name of the container\n\
   -c, --config=KEY      show configuration variable KEY from running container\n\
   -i, --ips             shows the IP addresses\n\
   -p, --pid             shows the process id of the init container\n\
