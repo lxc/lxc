@@ -2693,9 +2693,11 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 		goto out;
 
 	// update utsname
-	if (!set_config_item_locked(c2, "lxc.utsname", newname)) {
-		ERROR("Error setting new hostname");
-		goto out;
+	if (!(flags & LXC_CLONE_KEEPNAME)) {
+		if (!set_config_item_locked(c2, "lxc.utsname", newname)) {
+			ERROR("Error setting new hostname");
+			goto out;
+		}
 	}
 
 	// copy hooks
