@@ -61,7 +61,7 @@ static void interrupt_handler(int sig)
 static void usage(void) {
 	fprintf(stderr, "Usage: lxc-init [OPTION]...\n\n"
 		"Common options :\n"
-		"  -n, --name=NAME          NAME of the container\n"
+		"  -n, --name=NAME          NAME for name of the container\n"
 		"  -l, --logpriority=LEVEL  Set log priority to LEVEL\n"
 		"  -q, --quiet              Don't produce any output\n"
 		"  -P, --lxcpath=PATH       Use specified container path\n"
