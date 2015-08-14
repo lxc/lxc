@@ -61,7 +61,7 @@ static uint64_t get_fssize(char *s)
 	else if (*end == 't' || *end == 'T')
 		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
 	else
-	{		
+	{
 		fprintf(stderr, "Invalid blockdev unit size '%c' in '%s', using default size\n", *end, s);
 		return 0;
 	}
@@ -131,7 +131,7 @@ static struct lxc_arguments my_args = {
 lxc-create creates a container\n\
 \n\
 Options :\n\
-  -n, --name=NAME    NAME for name of the container\n\
+  -n, --name=NAME    NAME of the container\n\
   -f, --config=file  Initial configuration file\n\
   -t, --template=t   Template to use to setup container\n\
   -B, --bdev=BDEV    Backing store type to use\n\
