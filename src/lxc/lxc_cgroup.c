@@ -56,7 +56,7 @@ Get or set the value of a state object (for example, 'cpuset.cpus')\n\
 in the container's cgroup for the corresponding subsystem.\n\
 \n\
 Options :\n\
-  -n, --name=NAME      container name",
+  -n, --name=NAME      NAME of the container",
 	.options  = my_longopts,
 	.parser   = NULL,
 	.checker  = my_checker,
