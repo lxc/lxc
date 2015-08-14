@@ -99,7 +99,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>-P</optional></option>
+          <option><optional>-P, --lxcpath</optional></option>
         </term>
         <listitem>
           <para>
