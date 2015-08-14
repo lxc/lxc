@@ -2906,12 +2906,15 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	if (ret < 0)
 		goto out;
 
-	clear_unexp_config_line(c2->lxc_conf, "lxc.utsname", false);
 
 	// update utsname
-	if (!set_config_item_locked(c2, "lxc.utsname", newname)) {
-		ERROR("Error setting new hostname");
-		goto out;
+	if (!(flags & LXC_CLONE_KEEPNAME)) {
+		clear_unexp_config_line(c2->lxc_conf, "lxc.utsname", false);
+
+		if (!set_config_item_locked(c2, "lxc.utsname", newname)) {
+			ERROR("Error setting new hostname");
+			goto out;
+		}
 	}
 
 	// copy hooks
