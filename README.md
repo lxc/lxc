@@ -1,7 +1,9 @@
 
 ===
+
 Please note: This is a working copy of LXC used for patches.
 If you need the real upstream, please see: https://linuxcontainers.org/
+
 ===
 
 Please see the COPYING file for details on copying and usage.
