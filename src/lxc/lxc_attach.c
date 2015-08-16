@@ -217,12 +217,12 @@ int main(int argc, char *argv[])
 	attach_options.namespaces = namespace_flags;
 	attach_options.personality = new_personality;
 	attach_options.env_policy = env_policy;
-	attach_options.extra_env_vars = extra_env;
-	attach_options.extra_keep_env = extra_keep;
+	attach_options.extra_env_vars = (const char **) extra_env;
+	attach_options.extra_keep_env = (const char **) extra_keep;
 
 	if (my_args.argc) {
 		command.program = my_args.argv[0];
-		command.argv = (char**)my_args.argv;
+		command.argv = (const char**) my_args.argv;
 		ret = lxc_attach(my_args.name, my_args.lxcpath[0], lxc_attach_run_command, &command, &attach_options, &pid);
 	} else {
 		ret = lxc_attach(my_args.name, my_args.lxcpath[0], lxc_attach_run_shell, NULL, &attach_options, &pid);

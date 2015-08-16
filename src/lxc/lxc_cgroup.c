@@ -64,7 +64,7 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	char *state_object = NULL, *value = NULL;
+	const char *state_object = NULL, *value = NULL;
 	struct lxc_container *c;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))

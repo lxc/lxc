@@ -35,7 +35,7 @@
 
 lxc_log_define(lxc_snapshot_ui, lxc);
 
-static char *newname;
+static const char *newname;
 static char *snapshot;
 
 #define DO_SNAP 0

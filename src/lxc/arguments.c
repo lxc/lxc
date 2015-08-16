@@ -225,7 +225,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args,
 	/*
 	 * Reclaim the remaining command arguments
 	 */
-	args->argv = &argv[optind];
+	args->argv = (const char**) &argv[optind];
 	args->argc = argc - optind;
 
 	/* If no lxcpaths were given, use default */

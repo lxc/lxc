@@ -345,7 +345,7 @@ static int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
 	return 0;
 }
 
-static int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, char** extra_env, char** extra_keep)
+static int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy, const char** extra_env, const char** extra_keep)
 {
 	if (policy == LXC_ATTACH_CLEAR_ENV) {
 		char **extra_keep_store = NULL;
@@ -697,7 +697,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	pid_t init_pid, pid, attached_pid, expected;
 	struct lxc_proc_context_info *init_ctx;
 	char* cwd;
-	char* new_cwd;
+	const char* new_cwd;
 	int ipc_sockets[2];
 	int procfd;
 	signed long personality;
@@ -1191,7 +1191,7 @@ int lxc_attach_run_command(void* payload)
 {
 	lxc_attach_command_t* cmd = (lxc_attach_command_t*)payload;
 
-	execvp(cmd->program, cmd->argv);
+	execvp(cmd->program, (char**) cmd->argv); // The execvp() signature requires argv to be non-const, but the POSIX standard ensures that the function will not modify the strings, so we are safe with that cast
 	SYSERROR("failed to exec '%s'", cmd->program);
 	return -1;
 }

@@ -189,7 +189,7 @@ struct lxc_container {
 	 *
 	 * \return \c true on success, else \c false.
 	 */
-	bool (*start)(struct lxc_container *c, int useinit, char * const argv[]);
+	bool (*start)(struct lxc_container *c, int useinit, const char * const argv[]);
 
 	/*!
 	 * \brief Start the container (list variant).
@@ -313,7 +313,7 @@ struct lxc_container {
 	 * \return \c true on success, else \c false.
 	 */
 	bool (*create)(struct lxc_container *c, const char *t, const char *bdevtype,
-			struct bdev_specs *specs, int flags, char *const argv[]);
+			struct bdev_specs *specs, int flags, const char *const argv[]);
 
 	/*!
 	 * \brief Create a container (list variant).
