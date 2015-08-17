@@ -78,7 +78,7 @@ static struct lxc_arguments my_args = {
 lxc-console logs on the container with the identifier NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME      NAME for name of the container\n\
+  -n, --name=NAME      NAME of the container\n\
   -t, --tty=NUMBER     console tty number\n\
   -e, --escape=PREFIX  prefix for escape command\n",
 	.options  = my_longopts,

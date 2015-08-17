@@ -68,7 +68,7 @@ static struct lxc_arguments my_args = {
 lxc-wait waits for NAME container state to reach STATE\n\
 \n\
 Options :\n\
-  -n, --name=NAME   NAME for name of the container\n\
+  -n, --name=NAME   NAME of the container\n\
   -s, --state=STATE ORed states to wait for\n\
                     STOPPED, STARTING, RUNNING, STOPPING,\n\
                     ABORTING, FREEZING, FROZEN, THAWED\n\
