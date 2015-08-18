@@ -88,6 +88,10 @@ struct lxc_arguments {
 	char *lvname, *vgname, *thinpool;
 	char *zfsroot, *lowerdir, *dir;
 
+	/* lxc-execute */
+	uid_t uid;
+	gid_t gid;
+
 	/* auto-start */
 	int all;
 	int ignore_auto;

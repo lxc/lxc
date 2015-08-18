@@ -668,8 +668,14 @@ static int do_start(void *data)
 	 * the intent is to execute a command as the original user.
 	 */
 	if (!lxc_list_empty(&handler->conf->id_map)) {
-		gid_t new_gid = handler->conf->is_execute ? handler->conf->parent_gid : 0;
-		gid_t new_uid = handler->conf->is_execute ? handler->conf->parent_uid : 0;
+		gid_t new_gid = 0;
+		if (handler->conf->is_execute && handler->conf->init_gid)
+			new_gid = handler->conf->init_gid;
+
+		uid_t new_uid = 0;
+		if (handler->conf->is_execute && handler->conf->init_uid)
+			new_uid = handler->conf->init_uid;
+
 		NOTICE("switching to gid/uid %d/%d in new user namespace", new_gid, new_uid);
 		if (setgid(new_gid)) {
 			SYSERROR("setgid");

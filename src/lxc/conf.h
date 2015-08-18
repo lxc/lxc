@@ -366,9 +366,9 @@ struct lxc_conf {
 	/* init command */
 	char *init_cmd;
 
-	/* The UID/GID of the process creating the container */
-	uid_t parent_uid;
-	gid_t parent_gid;
+	/* the UID/GID that COMMAND for lxc-execute should run under */
+	uid_t init_uid;
+	gid_t init_gid;
 };
 
 #ifdef HAVE_TLS
