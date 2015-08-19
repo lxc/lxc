@@ -664,8 +664,9 @@ static int do_start(void *data)
 
 	/*
 	 * if we are in a new user namespace, become root there to have
-	 * privilege over our namespace. We don't become root for lxc-execute, as
-	 * the intent is to execute a command as the original user.
+	 * privilege over our namespace. When using lxc-execute we default to root,
+	 * but this can be overriden using the lxc.init_uid and lxc.init_gid
+	 * configuration options.
 	 */
 	if (!lxc_list_empty(&handler->conf->id_map)) {
 		gid_t new_gid = 0;
