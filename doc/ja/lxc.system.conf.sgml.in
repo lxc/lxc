@@ -118,11 +118,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <para>
               <!--
               Comma separated list of cgroup controllers to setup.
-              Currently this configration will be ignored when LXC
-              uses cgmanager to manage cgroups.
+              If none is specified, all available controllers will be used.
               -->
               使用する cgroup コントローラのコンマ区切りのリスト。
-              現時点では、LXC が cgroup の管理を cgmanager 経由で行っている場合、この設定は無視されます。
+              何も指定されていない場合、全ての利用可能なコントローラが使われます。
             </para>
           </listitem>
         </varlistentry>

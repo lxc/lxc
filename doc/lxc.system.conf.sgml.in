@@ -98,8 +98,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <listitem>
             <para>
               Comma separated list of cgroup controllers to setup.
-              Currently this configration will be ignored when LXC
-              uses cgmanager to manage cgroups.
+              If none is specified, all available controllers will be used.
             </para>
           </listitem>
         </varlistentry>
