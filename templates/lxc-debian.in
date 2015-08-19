@@ -159,13 +159,19 @@ write_sourceslist()
         prefix="deb [arch=${arch}]"
     fi
 
+    if [ "$mainonly" = 1 ]; then
+      non_main=''
+    else
+      non_main=' contrib non-free'
+    fi
+
     cat >> "${rootfs}/etc/apt/sources.list" << EOF
-${prefix} $MIRROR          ${release}         main contrib non-free
+${prefix} $MIRROR          ${release}         main${non_main}
 EOF
 
     if [ "$release" != "unstable" -a "$release" != "sid" ]; then
       cat >> "${rootfs}/etc/apt/sources.list" << EOF
-${prefix} $SECURITY_MIRROR ${release}/updates main contrib non-free
+${prefix} $SECURITY_MIRROR ${release}/updates main${non_main}
 EOF
     fi
 }
@@ -471,6 +477,7 @@ Options :
   --packages=PACKAGE_NAME1,PACKAGE_NAME2,...
                          List of additional packages to install. Comma separated, without space.
   -c, --clean            only clean up the cache and terminate
+  --main-only            include only Debian's main repository (i.e. no contrib and non-free).
 
 Environment variables:
 
@@ -483,7 +490,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:r:c -l arch:,clean,help,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror: -- "$@")
+options=$(getopt -o hp:n:a:r:c -l arch:,clean,help,main-only,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror: -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
         exit 1
@@ -512,6 +519,7 @@ do
 
         -a|--arch)            arch=$2; shift 2;;
         -c|--clean)           clean=1; shift 1;;
+           --main-only)       mainonly=1; shift 1;;
            --mirror)          MIRROR=$2; shift 2;;
         -n|--name)            name=$2; shift 2;;
            --packages)        packages=$2; shift 2;;
