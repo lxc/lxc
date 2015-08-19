@@ -2604,6 +2604,11 @@ struct lxc_conf *lxc_conf_init(void)
 	for (i = 0; i < LXC_NS_MAX; i++)
 		new->inherit_ns_fd[i] = -1;
 
+	/* if running in a new user namespace, init and COMMAND
+	 * default to running as UID/GID 0 when using lxc-execute */
+	new->init_uid = 0;
+	new->init_gid = 0;
+
 	return new;
 }
 
