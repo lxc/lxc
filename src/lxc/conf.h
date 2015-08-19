@@ -366,7 +366,8 @@ struct lxc_conf {
 	/* init command */
 	char *init_cmd;
 
-	/* the UID/GID that COMMAND for lxc-execute should run under */
+	/* if running in a new user namespace, the UID/GID that COMMAND for
+	 * lxc-execute should run under */
 	uid_t init_uid;
 	gid_t init_gid;
 };
