@@ -406,16 +406,16 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 	}
 
 	/* Start of environment variable setup for hooks */
-	if (setenv("LXC_NAME", name, 1)) {
+	if (name && setenv("LXC_NAME", name, 1)) {
 		SYSERROR("failed to set environment variable for container name");
 	}
-	if (setenv("LXC_CONFIG_FILE", conf->rcfile, 1)) {
+	if (conf->rcfile && setenv("LXC_CONFIG_FILE", conf->rcfile, 1)) {
 		SYSERROR("failed to set environment variable for config path");
 	}
-	if (setenv("LXC_ROOTFS_MOUNT", conf->rootfs.mount, 1)) {
+	if (conf->rootfs.mount && setenv("LXC_ROOTFS_MOUNT", conf->rootfs.mount, 1)) {
 		SYSERROR("failed to set environment variable for rootfs mount");
 	}
-	if (setenv("LXC_ROOTFS_PATH", conf->rootfs.path, 1)) {
+	if (conf->rootfs.path && setenv("LXC_ROOTFS_PATH", conf->rootfs.path, 1)) {
 		SYSERROR("failed to set environment variable for rootfs mount");
 	}
 	if (conf->console.path && setenv("LXC_CONSOLE", conf->console.path, 1)) {
