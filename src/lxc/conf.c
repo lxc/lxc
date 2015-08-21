@@ -2609,7 +2609,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 {
 	char veth1buf[IFNAMSIZ], *veth1;
 	char veth2buf[IFNAMSIZ], *veth2;
-	int err;
+	int err, mtu = 0;
 
 	if (netdev->priv.veth_attr.pair) {
 		veth1 = netdev->priv.veth_attr.pair;
@@ -2655,12 +2655,18 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	if (netdev->mtu) {
-		err = lxc_netdev_set_mtu(veth1, atoi(netdev->mtu));
+		mtu = atoi(netdev->mtu);
+	} else if (netdev->link) {
+		mtu = netdev_get_mtu(if_nametoindex(netdev->link));
+	}
+
+	if (mtu) {
+		err = lxc_netdev_set_mtu(veth1, mtu);
 		if (!err)
-			err = lxc_netdev_set_mtu(veth2, atoi(netdev->mtu));
+			err = lxc_netdev_set_mtu(veth2, mtu);
 		if (err) {
-			ERROR("failed to set mtu '%s' for veth pair (%s and %s): %s",
-			      netdev->mtu, veth1, veth2, strerror(-err));
+			ERROR("failed to set mtu '%i' for veth pair (%s and %s): %s",
+			      mtu, veth1, veth2, strerror(-err));
 			goto out_delete;
 		}
 	}
