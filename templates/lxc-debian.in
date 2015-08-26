@@ -381,6 +381,12 @@ EOF
     if [ "${arch}" != "${hostarch}" ]; then
         mkdir -p ${rootfs}/etc/dpkg/dpkg.cfg.d
         echo "foreign-architecture ${hostarch}" > ${rootfs}/etc/dpkg/dpkg.cfg.d/lxc-multiarch
+        
+        # Test if dpkg supports multiarch
+	if chroot $rootfs dpkg -l dpkg 2>&1 | grep -q "unknown option 'foreign-architecture'"; then
+	    echo "dpkg does not support multiarch: removing multiarch configuration file"
+            rm ${rootfs}/etc/dpkg/dpkg.cfg.d/lxc-multiarch
+        fi
     fi
 
     # Write a new sources.list containing both native and multiarch entries
