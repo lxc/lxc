@@ -99,7 +99,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
 	<term>
-	  <option><optional>-P</optional></option>
+	  <option><optional>-P, --lxcpath</optional></option>
 	</term>
 	<listitem>
 	  <para>

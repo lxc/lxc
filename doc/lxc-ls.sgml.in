@@ -88,7 +88,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option><optional>-P</optional></option>
+          <option><optional>-P, --lxcpath</optional></option>
         </term>
         <listitem>
           <para>
