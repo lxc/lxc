@@ -67,6 +67,8 @@ static int config_idmap(const char *, const char *, struct lxc_conf *);
 static int config_loglevel(const char *, const char *, struct lxc_conf *);
 static int config_logfile(const char *, const char *, struct lxc_conf *);
 static int config_mount(const char *, const char *, struct lxc_conf *);
+static int config_mount_auto(const char *, const char *, struct lxc_conf *);
+static int config_fstab(const char *, const char *, struct lxc_conf *);
 static int config_rootfs(const char *, const char *, struct lxc_conf *);
 static int config_rootfs_mount(const char *, const char *, struct lxc_conf *);
 static int config_rootfs_options(const char *, const char *, struct lxc_conf *);
@@ -119,7 +121,9 @@ static struct lxc_config_t config[] = {
 	{ "lxc.id_map",               config_idmap                },
 	{ "lxc.loglevel",             config_loglevel             },
 	{ "lxc.logfile",              config_logfile              },
-	{ "lxc.mount",                config_mount                },
+	{ "lxc.mount.entry",          config_mount                },
+	{ "lxc.mount.auto",           config_mount_auto           },
+	{ "lxc.mount",                config_fstab                },
 	{ "lxc.rootfs.mount",         config_rootfs_mount         },
 	{ "lxc.rootfs.options",       config_rootfs_options       },
 	{ "lxc.rootfs",               config_rootfs               },
@@ -1507,7 +1511,7 @@ static int config_mount_auto(const char *key, const char *value,
 		{ "cgroup-full:mixed",  LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_MIXED  },
 		{ "cgroup-full:ro",     LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_RO     },
 		{ "cgroup-full:rw",     LXC_AUTO_CGROUP_MASK,    LXC_AUTO_CGROUP_FULL_RW     },
-		/* NB: For adding anything that ist just a single on/off, but has
+		/* NB: For adding anything that is just a single on/off, but has
 		 *     no options: keep mask and flag identical and just define the
 		 *     enum value as an unused bit so far
 		 */
@@ -1553,40 +1557,12 @@ static int config_mount_auto(const char *key, const char *value,
 	return ret;
 }
 
-/*
- * TODO
- * This fn is handling lxc.mount, lxc.mount.entry, and lxc.mount.auto.
- * It should probably be split into 3 separate functions indexed by
- * the config[] entries at top.
- */
 static int config_mount(const char *key, const char *value,
 			struct lxc_conf *lxc_conf)
 {
-	char *fstab_token = "lxc.mount";
-	char *token = "lxc.mount.entry";
-	char *auto_token = "lxc.mount.auto";
-	char *subkey;
 	char *mntelem;
 	struct lxc_list *mntlist;
 
-	subkey = strstr(key, token);
-
-	if (!subkey) {
-		subkey = strstr(key, auto_token);
-
-		if (!subkey) {
-			subkey = strstr(key, fstab_token);
-
-			if (!subkey)
-				return -1;
-
-			return config_fstab(key, value, lxc_conf);
-		}
-
-		return config_mount_auto(key, value, lxc_conf);
-	}
-
-	/* At this point we definitely have key = lxc.mount.entry */
 	if (!value || strlen(value) == 0)
 		return lxc_clear_mount_entries(lxc_conf);
 
