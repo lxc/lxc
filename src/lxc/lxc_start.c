@@ -181,7 +181,7 @@ static struct lxc_arguments my_args = {
 lxc-start start COMMAND in specified container NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME        NAME for name of the container\n\
+  -n, --name=NAME        NAME of the container\n\
   -d, --daemon           Daemonize the container (default)\n\
   -F, --foreground       Start with the current tty attached to /dev/console\n\
   -p, --pidfile=FILE     Create a file with the process id\n\
