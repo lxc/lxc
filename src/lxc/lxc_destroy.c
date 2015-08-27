@@ -154,7 +154,7 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
 
 	fd = open(path, O_RDONLY | O_CLOEXEC);
-	if (fd > 0) {
+	if (fd >= 0) {
 		ret = fstat(fd, &fbuf);
 		if (ret < 0) {
 			close(fd);
