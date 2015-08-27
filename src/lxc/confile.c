@@ -2510,6 +2510,10 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_item_environment(c, retv, inlen);
 	else if (strcmp(key, "lxc.init_cmd") == 0)
 		v = c->init_cmd;
+	else if (strcmp(key, "lxc.init_uid") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->init_uid);
+	else if (strcmp(key, "lxc.init_gid") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->init_gid);
 	else return -1;
 
 	if (!v)
