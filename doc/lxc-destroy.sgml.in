@@ -71,7 +71,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <variablelist>
       <varlistentry>
 	<term>
-	  <option>-f</option>
+	  <option>-f, --force</option>
 	</term>
 	<listitem>
 	  <para>
@@ -81,17 +81,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  </para>
 	</listitem>
       </varlistentry>
-      <varlistentry>
-        <term><option>-P, --lxcpath=<replaceable>PATH</replaceable></option></term>
-        <listitem>
-          <para>
-	    Use an alternate container path.  The default is @LXCPATH@.
-          </para>
-        </listitem>
-      </varlistentry>
     </variablelist>
 
   </refsect1>
+
+  &commonoptions;
 
   <refsect1>
     <title>Diagnostic</title>
