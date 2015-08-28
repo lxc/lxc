@@ -67,7 +67,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <command>lxc-snapshot</command>
       <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
       <arg choice="req">-r, -restore <replaceable>snapshot-name</replaceable></arg>
-      <arg choice="opt"> <replaceable> newname</replaceable></arg>
+      <arg choice="opt">-N, --newname <replaceable> newname</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -127,9 +127,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term> <option>newname</option> </term>
+	    <term> <option>-N, --newname</option> </term>
 	   <listitem>
-	    <para> When restoring a snapshot, the last optional argument is the name to use for the restored container.  If no name is given, then the original container will be destroyed and the restored container will take its place.  Note that deleting the original snapshot is not possible in the case of aufs, overlayfs or zfs backed snapshots.</para>
+            <para> When restoring a snapshot, the last optional argument if not given explicitly via <command>--newname</command> is the name to use for the restored container.  If the newname is identical to the original name of the container, then the original container will be destroyed and the restored container will take its place. Note that deleting the original snapshot is not possible in the case of aufs, overlayfs or zfs backed snapshots.</para>
 	   </listitem>
 	  </varlistentry>
 
