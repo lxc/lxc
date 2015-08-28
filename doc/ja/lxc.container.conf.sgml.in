@@ -1027,6 +1027,16 @@ proc proc proc nodev,noexec,nosuid 0 0
 	      fstab format.
               -->
               fstab フォーマットの一行と同じフォーマットのマウントポイントの指定をします。
+
+              <!--
+              Moreover lxc add two options to mount.
+              <option>optional</option> don't fail if mount does not work.
+              <option>create=dir</option> or <option>create=file</option>
+              to create dir (or file) when the point will be mounted.
+              -->
+              fstab フォーマットに加えて、LXC ではマウントに対して独自の 2 つのオプションが使えます。
+              <option>optional</option> は、マウントが失敗しても失敗を返さずに無視します。
+              <option>create=dir</option> と <option>create=file</option> は、マウントポイントをマウントする際にディレクトリもしくはファイルを作成します。
 	    </para>
 	  </listitem>
 	</varlistentry>
