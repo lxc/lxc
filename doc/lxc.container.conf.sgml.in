@@ -247,6 +247,39 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </refsect2>
 
     <refsect2>
+      <title>Init ID</title>
+      <para>
+        Sets the UID/GID to use for the init system, and subsequent command, executed by lxc-execute.
+
+        These options are only used when lxc-execute is started in a private user namespace.
+
+        Defaults to: UID(0), GID(0)
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.init_uid</option>
+          </term>
+          <listitem>
+            <para>
+              UID to use within a private user namesapce for init.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.init_gid</option>
+          </term>
+          <listitem>
+            <para>
+              GID to use within a private user namesapce for init.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Network</title>
       <para>
         The network section defines how the network is virtualized in

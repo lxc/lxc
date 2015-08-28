@@ -106,6 +106,8 @@ static int config_start(const char *, const char *, struct lxc_conf *);
 static int config_group(const char *, const char *, struct lxc_conf *);
 static int config_environment(const char *, const char *, struct lxc_conf *);
 static int config_init_cmd(const char *, const char *, struct lxc_conf *);
+static int config_init_uid(const char *, const char *, struct lxc_conf *);
+static int config_init_gid(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 
@@ -172,6 +174,8 @@ static struct lxc_config_t config[] = {
 	{ "lxc.group",                config_group                },
 	{ "lxc.environment",          config_environment          },
 	{ "lxc.init_cmd",             config_init_cmd             },
+	{ "lxc.init_uid",             config_init_uid             },
+	{ "lxc.init_gid",             config_init_gid             },
 };
 
 struct signame {
@@ -1038,11 +1042,25 @@ static int config_init_cmd(const char *key, const char *value,
 	return config_path_item(&lxc_conf->init_cmd, value);
 }
 
+static int config_init_uid(const char *key, const char *value,
+				 struct lxc_conf *lxc_conf)
+{
+	lxc_conf->init_uid = atoi(value);
+	return 0;
+}
+
+static int config_init_gid(const char *key, const char *value,
+				 struct lxc_conf *lxc_conf)
+{
+	lxc_conf->init_gid = atoi(value);
+	return 0;
+}
+
 static int config_hook(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
 	char *copy;
-	
+
 	if (!value || strlen(value) == 0)
 		return lxc_clear_hooks(lxc_conf, key);
 
@@ -2468,6 +2486,10 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_item_environment(c, retv, inlen);
 	else if (strcmp(key, "lxc.init_cmd") == 0)
 		v = c->init_cmd;
+	else if (strcmp(key, "lxc.init_uid") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->init_uid);
+	else if (strcmp(key, "lxc.init_gid") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->init_gid);
 	else return -1;
 
 	if (!v)

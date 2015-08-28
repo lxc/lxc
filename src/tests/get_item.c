@@ -88,6 +88,32 @@ int main(int argc, char *argv[])
 	}
 	printf("lxc.arch returned %d %s\n", ret, v2);
 
+	if (!c->set_config_item(c, "lxc.init_uid", "100")) {
+		fprintf(stderr, "%d: failed to set init_uid\n", __LINE__);
+		ret = 1;
+		goto out;
+	}
+	ret = c->get_config_item(c, "lxc.init_uid", v2, 255);
+	if (ret < 0) {
+		fprintf(stderr, "%d: get_config_item(lxc.init_uid) returned %d\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("lxc.init_uid returned %d %s\n", ret, v2);
+
+	if (!c->set_config_item(c, "lxc.init_gid", "100")) {
+		fprintf(stderr, "%d: failed to set init_gid\n", __LINE__);
+		ret = 1;
+		goto out;
+	}
+	ret = c->get_config_item(c, "lxc.init_gid", v2, 255);
+	if (ret < 0) {
+		fprintf(stderr, "%d: get_config_item(lxc.init_gid) returned %d\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("lxc.init_gid returned %d %s\n", ret, v2);
+
 #define HNAME "hostname1"
 	// demonstrate proper usage:
 	char *alloced;

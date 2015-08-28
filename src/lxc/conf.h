@@ -365,6 +365,11 @@ struct lxc_conf {
 
 	/* init command */
 	char *init_cmd;
+
+	/* if running in a new user namespace, the UID/GID that init and COMMAND
+	 * should run under when using lxc-execute */
+	uid_t init_uid;
+	gid_t init_gid;
 };
 
 #ifdef HAVE_TLS

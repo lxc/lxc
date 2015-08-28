@@ -59,7 +59,9 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
 	case 'f': args->rcfile = arg; break;
-	case 's': return lxc_config_define_add(&defines, arg);
+	case 's': return lxc_config_define_add(&defines, arg); break;
+	case 'u': args->uid = atoi(arg); break;
+	case 'g': args->gid = atoi(arg);
 	}
 	return 0;
 }
@@ -67,6 +69,8 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 static const struct option my_longopts[] = {
 	{"rcfile", required_argument, 0, 'f'},
 	{"define", required_argument, 0, 's'},
+	{"uid", required_argument, 0, 'u'},
+	{"gid", required_argument, 0, 'g'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -81,7 +85,9 @@ and execs COMMAND into this container.\n\
 Options :\n\
   -n, --name=NAME      NAME of the container\n\
   -f, --rcfile=FILE    Load configuration file FILE\n\
-  -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
+  -s, --define KEY=VAL Assign VAL to configuration variable KEY\n\
+  -u, --uid=UID Execute COMMAND with UID inside the container\n\
+  -g, --gid=GID Execute COMMAND with GID inside the container\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,
@@ -138,6 +144,12 @@ int main(int argc, char *argv[])
 
 	if (lxc_config_define_load(&defines, conf))
 		return 1;
+
+	if (my_args.uid)
+		conf->init_uid = my_args.uid;
+
+	if (my_args.gid)
+		conf->init_gid = my_args.gid;
 
 	ret = lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf, my_args.lxcpath[0], false);
 
