@@ -51,6 +51,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <command>lxc-destroy</command>
       <arg choice="req">-n <replaceable>name</replaceable></arg>
       <arg choice="opt">-f</arg>
+      <arg choice="opt">-s</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -71,7 +72,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <variablelist>
       <varlistentry>
 	<term>
-	  <option>-f</option>
+	  <option>-f, --force</option>
 	</term>
 	<listitem>
 	  <para>
@@ -82,16 +83,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</listitem>
       </varlistentry>
       <varlistentry>
-        <term><option>-P, --lxcpath=<replaceable>PATH</replaceable></option></term>
+        <term><option>-s, --snapshots</option></term>
         <listitem>
           <para>
-	    Use an alternate container path.  The default is @LXCPATH@.
+            destroy the specified container including all its snapshots.
           </para>
         </listitem>
       </varlistentry>
     </variablelist>
 
   </refsect1>
+
+  &commonoptions;
 
   <refsect1>
     <title>Diagnostic</title>
