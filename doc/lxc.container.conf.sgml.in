@@ -760,6 +760,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         container. This is useful to mount /etc, /var or /home for
         examples.
       </para>
+      <para>
+	NOTE - LXC will generally ensure that mount targets and relative
+	bind-mount sources are properly confined under the container
+	root, to avoid attacks involving over-mounting host directories
+	and files.  (Symbolic links in absolute mount sources are ignored)
+	However, if the container configuration first mounts a directory which
+	is under the control of the container user, such as /home/joe, into
+        the container at some <filename>path</filename>, and then mounts
+        under <filename>path</filename>, then a TOCTTOU attack would be
+        possible where the container user modifies a symbolic link under
+        his home directory at just the right time.
+      </para>
       <variablelist>
         <varlistentry>
           <term>

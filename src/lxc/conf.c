@@ -769,10 +769,11 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		 * 2.6.32...
 		 */
 		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, "proc",                                              "%r/proc",                      "proc",     MS_NODEV|MS_NOEXEC|MS_NOSUID,   NULL },
-		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, "%r/proc/sys/net",                                   "%r/proc/net",                  NULL,       MS_BIND,                        NULL },
+		/* proc/tty is used as a temporary placeholder for proc/sys/net which we'll move back in a few steps */
+		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, "%r/proc/sys/net",                                   "%r/proc/tty",                  NULL,       MS_BIND,                        NULL },
 		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, "%r/proc/sys",                                       "%r/proc/sys",                  NULL,       MS_BIND,                        NULL },
 		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, NULL,                                                "%r/proc/sys",                  NULL,       MS_REMOUNT|MS_BIND|MS_RDONLY,   NULL },
-		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, "%r/proc/net",                                       "%r/proc/sys/net",              NULL,       MS_MOVE,                        NULL },
+		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, "%r/proc/tty",                                       "%r/proc/sys/net",              NULL,       MS_MOVE,                        NULL },
 		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, "%r/proc/sysrq-trigger",                             "%r/proc/sysrq-trigger",        NULL,       MS_BIND,                        NULL },
 		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_MIXED, NULL,                                                "%r/proc/sysrq-trigger",        NULL,       MS_REMOUNT|MS_BIND|MS_RDONLY,   NULL },
 		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_RW,    "proc",                                              "%r/proc",                      "proc",     MS_NODEV|MS_NOEXEC|MS_NOSUID,   NULL },
@@ -815,7 +816,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 			}
 			mflags = add_required_remount_flags(source, destination,
 					default_mounts[i].flags);
-			r = mount(source, destination, default_mounts[i].fstype, mflags, default_mounts[i].options);
+			r = safe_mount(source, destination, default_mounts[i].fstype, mflags, default_mounts[i].options, conf->rootfs.path ? conf->rootfs.mount : NULL);
 			saved_errno = errno;
 			if (r < 0 && errno == ENOENT) {
 				INFO("Mount source or target for %s on %s doesn't exist. Skipping.", source, destination);
@@ -1167,7 +1168,8 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs, cons
 		return 0;
 	}
 
-	if (mount("none", path, "tmpfs", 0, "size=100000,mode=755")) {
+	if (safe_mount("none", path, "tmpfs", 0, "size=100000,mode=755",
+				rootfs->path ? rootfs->mount : NULL)) {
 		SYSERROR("Failed mounting tmpfs onto %s\n", path);
 		return false;
 	}
@@ -1252,7 +1254,8 @@ static int fill_autodev(const struct lxc_rootfs *rootfs)
 				return -1;
 			}
 			fclose(pathfile);
-			if (mount(hostpath, path, 0, MS_BIND, NULL) != 0) {
+			if (safe_mount(hostpath, path, 0, MS_BIND, NULL,
+						rootfs->path ? rootfs->mount : NULL) != 0) {
 				SYSERROR("Failed bind mounting device %s from host into container",
 					d->name);
 				return -1;
@@ -1505,7 +1508,7 @@ static int setup_dev_console(const struct lxc_rootfs *rootfs,
 		return -1;
 	}
 
-	if (mount(console->name, path, "none", MS_BIND, 0)) {
+	if (safe_mount(console->name, path, "none", MS_BIND, 0, rootfs->mount)) {
 		ERROR("failed to mount '%s' on '%s'", console->name, path);
 		return -1;
 	}
@@ -1560,7 +1563,7 @@ static int setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		return 0;
 	}
 
-	if (mount(console->name, lxcpath, "none", MS_BIND, 0)) {
+	if (safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs->mount)) {
 		ERROR("failed to mount '%s' on '%s'", console->name, lxcpath);
 		return -1;
 	}
@@ -1710,13 +1713,13 @@ static char *get_field(char *src, int nfields)
 
 static int mount_entry(const char *fsname, const char *target,
 		       const char *fstype, unsigned long mountflags,
-		       const char *data, int optional)
+		       const char *data, int optional, const char *rootfs)
 {
 #ifdef HAVE_STATVFS
 	struct statvfs sb;
 #endif
 
-	if (mount(fsname, target, fstype, mountflags & ~MS_REMOUNT, data)) {
+	if (safe_mount(fsname, target, fstype, mountflags & ~MS_REMOUNT, data, rootfs)) {
 		if (optional) {
 			INFO("failed to mount '%s' on '%s' (optional): %s", fsname,
 			     target, strerror(errno));
@@ -1763,7 +1766,7 @@ static int mount_entry(const char *fsname, const char *target,
 #endif
 
 		if (mount(fsname, target, fstype,
-			  mountflags | MS_REMOUNT, data)) {
+			  mountflags | MS_REMOUNT, data) < 0) {
 			if (optional) {
 				INFO("failed to mount '%s' on '%s' (optional): %s",
 					 fsname, target, strerror(errno));
@@ -1843,7 +1846,7 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 }
 
 static inline int mount_entry_on_generic(struct mntent *mntent,
-                 const char* path)
+                 const char* path, const char *rootfs)
 {
 	unsigned long mntflags;
 	char *mntdata;
@@ -1863,7 +1866,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	}
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
-			  mntflags, mntdata, optional);
+			  mntflags, mntdata, optional, rootfs);
 
 	free(mntdata);
 
@@ -1872,7 +1875,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 
 static inline int mount_entry_on_systemfs(struct mntent *mntent)
 {
-  return mount_entry_on_generic(mntent, mntent->mnt_dir);
+  return mount_entry_on_generic(mntent, mntent->mnt_dir, NULL);
 }
 
 static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
@@ -1919,7 +1922,7 @@ skipabs:
 		return -1;
 	}
 
-	return mount_entry_on_generic(mntent, path);
+	return mount_entry_on_generic(mntent, path, rootfs->mount);
 }
 
 static int mount_entry_on_relative_rootfs(struct mntent *mntent,
@@ -1935,7 +1938,7 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 		return -1;
 	}
 
-	return mount_entry_on_generic(mntent, path);
+	return mount_entry_on_generic(mntent, path, rootfs);
 }
 
 static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
@@ -3602,7 +3605,7 @@ void lxc_execute_bind_init(struct lxc_conf *conf)
 		fclose(pathfile);
 	}
 
-	ret = mount(path, destpath, "none", MS_BIND, NULL);
+	ret = safe_mount(path, destpath, "none", MS_BIND, NULL, conf->rootfs.mount);
 	if (ret < 0)
 		SYSERROR("Failed to bind lxc.init.static into container");
 	INFO("lxc.init.static bound into container at %s", path);
