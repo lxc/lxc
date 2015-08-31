@@ -1,0 +1,88 @@
+#!/bin/bash
+
+set -ex
+
+# lxc: linux Container library
+
+# Authors:
+# Serge Hallyn <serge.hallyn@ubuntu.com>
+#
+# This is a regression test for symbolic links
+
+dirname=`mktemp -d`
+fname=`mktemp`
+fname2=`mktemp`
+
+lxcpath=/var/lib/lxcsym1
+
+cleanup() {
+	lxc-destroy -P $lxcpath -f -n symtest1 || true
+	rm -f $lxcpath
+	rmdir $dirname || true
+	rm -f $fname || true
+	rm -f $fname2 || true
+}
+
+trap cleanup EXIT SIGHUP SIGINT SIGTERM
+
+testrun() {
+	expected=$1
+	run=$2
+	pass="pass"
+	lxc-start -P $lxcpath -n symtest1 -l trace -o $lxcpath/log || pass="fail"
+	[ $pass = "pass" ] && lxc-wait -P $lxcpath -n symtest1 -t 10 -s RUNNING || pass="fail"
+	if [ "$pass" != "$expected" ]; then
+		echo "Test $run: expected $expected but container did not.  Start log:"
+		cat $lxcpath/log
+		echo "FAIL: Test $run: expected $expected but container did not."
+		false
+	fi
+	lxc-stop -P $lxcpath -n symtest1 -k || true
+}
+
+# make lxcpath a symlink - this should NOT cause failure
+ln -s /var/lib/lxc $lxcpath
+
+lxc-destroy -P $lxcpath -f -n symtest1 || true
+lxc-create -P $lxcpath -t busybox -n symtest1
+
+cat >> /var/lib/lxc/symtest1/config << EOF
+lxc.mount.entry = $dirname opt/xxx/dir none bind,create=dir
+lxc.mount.entry = $fname opt/xxx/file none bind,create=file
+lxc.mount.entry = $fname2 opt/xxx/file2 none bind
+EOF
+
+# Regular - should succeed
+mkdir -p /var/lib/lxc/symtest1/rootfs/opt/xxx
+touch /var/lib/lxc/symtest1/rootfs/opt/xxx/file2
+testrun pass 1
+
+# symlink - should fail
+rm -rf /var/lib/lxc/symtest1/rootfs/opt/xxx
+mkdir -p /var/lib/lxc/symtest1/rootfs/opt/xxx2
+ln -s /var/lib/lxc/symtest1/rootfs/opt/xxx2 /var/lib/lxc/symtest1/rootfs/opt/xxx
+touch /var/lib/lxc/symtest1/rootfs/opt/xxx/file2
+testrun fail 2
+
+# final final symlink - should fail
+rm -rf $lxcpath/symtest1/rootfs/opt/xxx
+mkdir -p $lxcpath/symtest1/rootfs/opt/xxx
+mkdir -p $lxcpath/symtest1/rootfs/opt/xxx/dir
+touch $lxcpath/symtest1/rootfs/opt/xxx/file
+touch $lxcpath/symtest1/rootfs/opt/xxx/file2src
+ln -s $lxcpath/symtest1/rootfs/opt/xxx/file2src $lxcpath/symtest1/rootfs/opt/xxx/file2
+testrun fail 3
+
+# Ideally we'd also try a loop device, but that won't work in nested containers
+# anyway - TODO
+
+# what about /proc itself
+
+rm -rf $lxcpath/symtest1/rootfs/opt/xxx
+mkdir -p $lxcpath/symtest1/rootfs/opt/xxx
+touch $lxcpath/symtest1/rootfs/opt/xxx/file2
+mv $lxcpath/symtest1/rootfs/proc $lxcpath/symtest1/rootfs/proc1
+ln -s $lxcpath/symtest1/rootfs/proc1 $lxcpath/symtest1/rootfs/proc
+testrun fail 4
+
+echo "all tests passed"

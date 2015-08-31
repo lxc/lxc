@@ -274,4 +274,7 @@ int detect_ramfs_rootfs(void);
 char *on_path(char *cmd);
 char *get_template_path(const char *t);
 int null_stdfds(void);
+
+int safe_mount(const char *src, const char *dest, const char *fstype,
+		unsigned long flags, const void *data, const char *rootfs);
 #endif /* __LXC_UTILS_H */

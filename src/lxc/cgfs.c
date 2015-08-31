@@ -1363,7 +1363,10 @@ static bool cgroupfs_mount_cgroup(void *hdata, const char *root, int type)
 	if (!path)
 		return false;
 	snprintf(path, bufsz, "%s/sys/fs/cgroup", root);
-	r = mount("cgroup_root", path, "tmpfs", MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_RELATIME, "size=10240k,mode=755");
+	r = safe_mount("cgroup_root", path, "tmpfs",
+			MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_RELATIME,
+			"size=10240k,mode=755",
+			root);
 	if (r < 0) {
 		SYSERROR("could not mount tmpfs to /sys/fs/cgroup in the container");
 		return false;
