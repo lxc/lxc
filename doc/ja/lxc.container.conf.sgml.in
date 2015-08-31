@@ -334,6 +334,54 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
+      <title><!-- Init ID -->Init が使う ID</title>
+      <para>
+        <!--
+        Sets the UID/GID to use for the init system, and subsequent command, executed by lxc-execute.
+        -->
+        lxc-execute が実行するコンテナの init と、その後に起動するコマンドが使用する UID/GID を設定します。
+
+        <!--
+        These options are only used when lxc-execute is started in a private user namespace.
+        -->
+        このオプションは lxc-execute がユーザ名前空間内で起動するときのみ使われます。
+
+        <!--
+        Defaults to: UID(0), GID(0)
+        -->
+        デフォルト値は UID(0), GID(0) です。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.init_uid</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              UID to use within a private user namesapce for init.
+                -->
+              ユーザ名前空間内で init が使う UID です。
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.init_gid</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              GID to use within a private user namesapce for init.
+                -->
+              ユーザ名前空間内で init が使う GID です。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title><!-- Network -->ネットワーク</title>
       <para>
         <!--
