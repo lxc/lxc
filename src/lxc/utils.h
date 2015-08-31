@@ -279,6 +279,8 @@ bool switch_to_ns(pid_t pid, const char *ns);
 int is_dir(const char *path);
 char *get_template_path(const char *t);
 int setproctitle(char *title);
+int safe_mount(const char *src, const char *dest, const char *fstype,
+		unsigned long flags, const void *data, const char *rootfs);
 int mount_proc_if_needed(const char *rootfs);
 int null_stdfds(void);
 #endif /* __LXC_UTILS_H */
