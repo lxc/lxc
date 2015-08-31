@@ -72,7 +72,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <command>lxc-snapshot</command>
       <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
       <arg choice="req">-r, -restore <replaceable>snapshot-name</replaceable></arg>
-      <arg choice="opt"> <replaceable> newname</replaceable></arg>
+      <arg choice="opt">-N, --newname <replaceable> newname</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -164,16 +164,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term> <option>newname</option> </term>
+	    <term> <option>-N, --newname</option> </term>
 	   <listitem>
-	    <para>
-              <!--
-                  When restoring a snapshot, the last optional argument is the name to use for the restored container.  If no name is given, then the original container will be destroyed and the restored container will take its place.  Note that deleting the original snapshot is not possible in the case of aufs, overlayfs or zfs backed snapshots.
-              -->
-              スナップショットをリストアする際、最後のオプション引数はリストアされたコンテナの名前として使用されます。
-              もし名前が与えられてない場合、元のコンテナが破壊され、リストアされるコンテナに置き換えられます。
-              スナップショット元を削除することは、aufs, overlayfs, zfs がバックエンドのスナップショットでは出来ないことに注意が必要です。
-            </para>
+            <para>
+	      <!-- When restoring a snapshot, the last optional argument if not given explicitly Via <command>\-\-newname</command> is the name to use for the restored container.  If the newname is identical to the original name of the container, then the original container will be destroyed and the restored container will take its place. Note that deleting the original snapshot is not possible in the case of aufs, overlayfs or zfs backed snapshots. -->
+	      スナップショットをリストアする際、<command>--newname</command> の値として明示的に指定しない場合でも、最後のオプション引数はリストアするコンテナの名前として使用します。
+	      もし newname が元のコンテナの名前と同じ場合、元のコンテナが削除され、リストアされるコンテナに置き換えられます。
+	      スナップショット元を削除することは、aufs, overlayfs, zfs がバックエンドのスナップショットではできないことに注意が必要です。
+	    </para>
 	   </listitem>
 	  </varlistentry>
 
