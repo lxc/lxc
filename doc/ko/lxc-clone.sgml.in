@@ -64,6 +64,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <arg choice="opt">-L <replaceable>fssize</replaceable></arg>
       <arg choice="opt">-p <replaceable>lxcpath</replaceable></arg>
       <arg choice="opt">-P <replaceable>newlxcpath</replaceable></arg>
+      <arg choice="opt">-R </arg>
       <arg choice="req">-o <replaceable>orig</replaceable></arg>
       <arg choice="req">-n <replaceable>new</replaceable></arg>
       <arg choice="opt">-- hook arguments</arg>
@@ -78,6 +79,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <arg choice="opt">-L <replaceable>fssize</replaceable></arg>
       <arg choice="opt">-p <replaceable>lxcpath</replaceable></arg>
       <arg choice="opt">-P <replaceable>newlxcpath</replaceable></arg>
+      <arg choice="opt">-R </arg>
       <arg choice="req">orig</arg>
       <arg choice="req">new</arg>
       <arg choice="opt">-- hook arguments</arg>
@@ -267,6 +269,22 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
 	<term>
+	  <option>-R, --rename</option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Rename an existing container.
+            <replaceable>orig</replaceable> is renamed <replaceable>new</replaceable>.
+            -->
+            컨테이너의 이름을 변경한다. <replaceable>orig</replaceable>를 <replaceable>new</replaceable>로 이름을 바꾼다.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+
 	  <option>-o, --orig <replaceable>orig</replaceable></option>
 	</term>
 	<listitem>
