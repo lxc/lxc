@@ -1021,6 +1021,16 @@ proc proc proc nodev,noexec,nosuid 0 0
 	      fstab format.
               -->
               fstab의 형식으로, 한 줄당 마운트 포인트 하나를 지정한다.
+
+              <!--
+	      Moreover lxc add two options to mount.
+              <option>optional</option> don't fail if mount does not work.
+              <option>create=dir</option> or <option>create=file</option>
+              to create dir (or file) when the point will be mounted.
+              -->
+              또한 마운트 옵션에 아래 2가지 옵션을 추가적으로 사용할 수 있다. 이는 LXC 자체적으로 사용하는 옵션이다.
+              <option>optional</option>은 마운트를 못하더라도, 실패로 처리하지 않게 한다.
+              <option>create=dir</option>와 <option>create=file</option>는 마운트할 때, 디렉토리(dir) 또는 파일(file)을 생성한다.
 	    </para>
 	  </listitem>
 	</varlistentry>
