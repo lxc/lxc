@@ -72,7 +72,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <command>lxc-snapshot</command>
       <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
       <arg choice="req">-r, -restore <replaceable>snapshot-name</replaceable></arg>
-      <arg choice="opt"> <replaceable> newname</replaceable></arg>
+      <arg choice="opt">-N, --newname <replaceable>newname</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -164,14 +164,14 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term> <option>newname</option> </term>
+	    <term> <option>-N, --newname</option> </term>
 	   <listitem>
-	    <para>
-              <!--
-                  When restoring a snapshot, the last optional argument is the name to use for the restored container.  If no name is given, then the original container will be destroyed and the restored container will take its place.  Note that deleting the original snapshot is not possible in the case of aufs, overlayfs or zfs backed snapshots.
+            <para>
+	      <!--
+              When restoring a snapshot, the last optional argument if not given explicitly Via <command>\-\-newname</command> is the name to use for the restored container.  If the newname is identical to the original name of the container, then the original container will be destroyed and the restored container will take its place. Note that deleting the original snapshot is not possible in the case of aufs, overlayfs or zfs backed snapshots.
               -->
-              스냅샷을 복원할 때, 복원된 컨테이너의 이름을 마지막 인자로 넘길 수 있다. 만약 이름을 넘기지 않았다면, 원본 컨테이너를 제거하고 복원된 컨테이너로 교체한다. 원본 스냅샷을 지우는 것은 aufs, overlayfs, zfs의 경우에는 불가능하다는 것에 주의해야 한다.
-            </para>
+              스냅샷을 복원할 때, 복원된 컨테이너의 이름을 <command>--newname</command>로 명시적으로 지정하지 않았다면 마지막 인자를 이름으로 사용한다. 만약 newname이 원래 컨테이너의 이름과 같다면, 원래 컨테이너는 제거되고 복원되는 컨테이너로 교체된다. aufs, overlayfs, zfs의 경우에는 원본 스냅샷의 제거가 불가능하다는 것에 주의해야 한다.
+	    </para>
 	   </listitem>
 	  </varlistentry>
 
