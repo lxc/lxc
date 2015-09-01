@@ -119,11 +119,10 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
             <para>
               <!--
               Comma separated list of cgroup controllers to setup.
-              Currently this configration will be ignored when LXC
-              uses cgmanager to manage cgroups.
+              If none is specified, all available controllers will be used.
               -->
               사용할 cgroup 컨트롤러의 쉼표(,)로 구분된 목록.
-              현재 LXC가 cgmanager를 사용하여 cgroup을 관리하고 있을 경우, 이 설정은 무시된다.
+              아무것도 지정하지 않았다면, 사용가능한 컨트롤러 전체를 사용될 것이다.
             </para>
           </listitem>
         </varlistentry>
