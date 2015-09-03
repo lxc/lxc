@@ -1,0 +1,8 @@
+# Use a profile which allows nesting
+lxc.aa_profile = lxc-container-default-with-nesting
+
+# Add uncovered mounts of proc and sys, else unprivileged users
+# cannot remount those
+
+lxc.mount.entry = proc dev/.lxc/proc proc create=dir,optional 0 0
+lxc.mount.entry = sys dev/.lxc/sys sysfs create=dir,optional 0 0
