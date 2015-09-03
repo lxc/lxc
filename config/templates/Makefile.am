@@ -13,6 +13,7 @@ templatesconfig_DATA = \
 	gentoo.common.conf \
 	gentoo.moresecure.conf \
 	gentoo.userns.conf \
+	nesting.conf \
 	oracle.common.conf \
 	oracle.userns.conf \
 	plamo.common.conf \
