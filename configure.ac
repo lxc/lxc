@@ -647,6 +647,7 @@ AC_CONFIG_FILES([
 	config/templates/gentoo.common.conf
 	config/templates/gentoo.moresecure.conf
 	config/templates/gentoo.userns.conf
+	config/templates/nesting.conf
 	config/templates/opensuse.common.conf
 	config/templates/opensuse.userns.conf
 	config/templates/oracle.common.conf

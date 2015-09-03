@@ -8,6 +8,8 @@ profile lxc-container-default-with-nesting flags=(attach_disconnected,mediate_de
 #  Uncomment the line below if you are not using cgmanager
 #  mount fstype=cgroup -> /sys/fs/cgroup/**,
 
+  deny /dev/.lxc/proc/** rw,
+  deny /dev/.lxc/sys/** rw,
   mount fstype=proc -> /var/cache/lxc/**,
   mount fstype=sysfs -> /var/cache/lxc/**,
   mount options=(rw,bind),

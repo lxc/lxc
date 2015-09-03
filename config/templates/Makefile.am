@@ -18,6 +18,7 @@ templatesconfig_DATA = \
 	gentoo.common.conf \
 	gentoo.moresecure.conf \
 	gentoo.userns.conf \
+	nesting.conf \
 	opensuse.common.conf \
 	opensuse.userns.conf \
 	oracle.common.conf \
