@@ -1222,7 +1222,12 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 		}
         }
 
+	DEBUG("Pushing physical nics back to host namespace");
 	lxc_rename_phys_nics_on_shutdown(netnsfd, handler->conf);
+
+	DEBUG("Tearing down virtual network devices used by container");
+	lxc_delete_network(handler);
+
 	if (netnsfd >= 0)
 		close(netnsfd);
 
