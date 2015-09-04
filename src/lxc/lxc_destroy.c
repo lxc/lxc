@@ -183,6 +183,8 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 			if (!(lxcname = strtok_r(NULL, "\n", &scratch)))
 				break;
 			c1 = lxc_container_new(lxcname, lxcpath);
+			if (!c1)
+				goto next;
 			if (!c1->destroy(c1)) {
 				fprintf(stderr, "Destroying snapshot %s of %s failed\n", lxcname, my_args.name);
 				lxc_container_put(c1);
@@ -190,6 +192,7 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 				return -1;
 			}
 			lxc_container_put(c1);
+next:
 			counter++;
 		}
 		free(buf);
