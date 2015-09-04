@@ -1808,7 +1808,7 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 				       const char* path)
 {
 	char *pathdirname = NULL;
-	int ret;
+	int ret = 0;
 	FILE *pathfile = NULL;
 
 	if (hasmntopt(mntent, "create=dir")) {
@@ -1845,6 +1845,12 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	bool optional = hasmntopt(mntent, "optional") != NULL;
 
 	ret = mount_entry_create_dir_file(mntent, path);
+
+	if (ret < 0)
+		return optional ? 0 : -1;
+
+	if (ret < 0 && !optional)
+		return -1;
 
 	cull_mntent_opt(mntent);
 
