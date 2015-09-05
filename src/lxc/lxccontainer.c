@@ -1984,7 +1984,6 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 	FILE *f1;
 	struct stat fbuf;
 	char *buf = NULL;
-	char *del;
 	char path[MAXPATHLEN];
 	char newpath[MAXPATHLEN];
 	int fd, ret, n = 0, v = 0;
@@ -2069,13 +2068,7 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 			}
 
 			len = strlen(newpath);
-
-			/* mmap()ed memory is only \0-terminated when it is not
-			 * a multiple of a pagesize. Hence, we'll use memmem(). */
-			if ((del = memmem(buf, fbuf.st_size, newpath, len))) {
-				/* remove container entry */
-				memmove(del, del + len, strlen(del) - len + 1);
-
+			if (lxc_delete_string_in_array(buf, fbuf.st_size, newpath, len)) {
 				munmap(buf, fbuf.st_size);
 
 				if (ftruncate(fd, fbuf.st_size - len) < 0) {
