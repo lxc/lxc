@@ -3614,3 +3614,21 @@ bool rootfs_is_blockdev(struct lxc_conf *conf)
 		return true;
 	return false;
 }
+
+bool bdev_destroy(struct lxc_conf *conf)
+{
+	struct bdev *r;
+	bool ret = false;
+
+	r = bdev_init(conf, conf->rootfs.path, conf->rootfs.mount, NULL);
+	if (!r)
+		return ret;
+
+	if (r->ops->destroy(r) < 0)
+		return ret;
+	bdev_put(r);
+
+	ret = true;
+	return ret;
+}
+
