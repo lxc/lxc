@@ -83,6 +83,11 @@ const struct ns_info ns_info[LXC_NS_MAX] = {
 	[LXC_NS_NET] = {"net", CLONE_NEWNET}
 };
 
+static int bdev_destroy_wrapper(void *data);
+static int lxc_rmdir_onedev_wrapper(void *data);
+static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
+					    const char *name);
+
 static void print_top_failing_dir(const char *path)
 {
 	size_t len = strlen(path);
@@ -494,6 +499,13 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	if (handler->ttysock[0] != -1) {
 		close(handler->ttysock[0]);
 		close(handler->ttysock[1]);
+	}
+	if (handler->conf->ephemeral > 0) {
+		/* Only destroy when rootfs is overlayfs or aufs for now. The
+		 * function however, works for other bdev types as well. */
+		if ((strncmp(handler->conf->rootfs.path, "overlayfs:", 10) == 0) ||
+		   (strncmp(handler->conf->rootfs.path, "aufs:", 5) == 0))
+			lxc_destroy_container_on_signal(handler, name);
 	}
 	cgroup_destroy(handler);
 	free(handler);
@@ -1291,3 +1303,76 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
 	conf->need_utmp_watch = 1;
 	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath, backgrounded);
 }
+
+static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
+					    const char *name)
+{
+	char destroy[MAXPATHLEN];
+	bool bret = true;
+	int ret = 0;
+	if (handler->conf && handler->conf->rootfs.path && handler->conf->rootfs.mount) {
+		if (am_unpriv()) {
+			ret = userns_exec_1(handler->conf, bdev_destroy_wrapper, handler->conf);
+			if (ret < 0) {
+				ERROR("Error destroying rootfs for %s", name);
+				return;
+			} else {
+				INFO("Destroyed rootfs for %s", name);
+			}
+		} else {
+			bret = bdev_destroy(handler->conf);
+			if (!bret) {
+				ERROR("Error destroying rootfs for %s", name);
+				return;
+			} else {
+				INFO("Destroyed rootfs for %s", name);
+			}
+		}
+	}
+
+	ret = snprintf(destroy, MAXPATHLEN, "%s/%s", handler->lxcpath, name);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("Error printing path for %s", name);
+		ERROR("Error destroying container directory for %s", name);
+		return;
+	}
+
+	if (am_unpriv())
+		ret = userns_exec_1(handler->conf, lxc_rmdir_onedev_wrapper, destroy);
+	else
+		ret = lxc_rmdir_onedev(destroy, NULL);
+
+	if (ret < 0) {
+		ERROR("Error destroying container directory for %s", name);
+		return;
+	} else {
+		INFO("Destroyed directory for %s", name);
+	}
+}
+
+static int bdev_destroy_wrapper(void *data)
+{
+	struct lxc_conf *conf = data;
+
+	if (setgid(0) < 0) {
+		ERROR("Failed to setgid to 0");
+		return -1;
+	}
+	if (setgroups(0, NULL) < 0)
+		WARN("Failed to clear groups");
+	if (setuid(0) < 0) {
+		ERROR("Failed to setuid to 0");
+		return -1;
+	}
+	if (!bdev_destroy(conf))
+		return -1;
+	else
+		return 0;
+}
+
+static int lxc_rmdir_onedev_wrapper(void *data)
+{
+	char *arg = (char *) data;
+	return lxc_rmdir_onedev(arg, NULL);
+}
+

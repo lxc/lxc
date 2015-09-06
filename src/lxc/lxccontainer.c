@@ -1984,7 +1984,6 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 	FILE *f1;
 	struct stat fbuf;
 	char *buf = NULL;
-	char *del;
 	char path[MAXPATHLEN];
 	char newpath[MAXPATHLEN];
 	int fd, ret, n = 0, v = 0;
@@ -2069,13 +2068,7 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 			}
 
 			len = strlen(newpath);
-
-			/* mmap()ed memory is only \0-terminated when it is not
-			 * a multiple of a pagesize. Hence, we'll use memmem(). */
-			if ((del = memmem(buf, fbuf.st_size, newpath, len))) {
-				/* remove container entry */
-				memmove(del, del + len, strlen(del) - len + 1);
-
+			if (lxc_delete_string_in_array(buf, fbuf.st_size, newpath, len)) {
 				munmap(buf, fbuf.st_size);
 
 				if (ftruncate(fd, fbuf.st_size - len) < 0) {
@@ -2220,21 +2213,6 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 	return lxc_rmdir_onedev(arg, "snaps");
 }
 
-static int do_bdev_destroy(struct lxc_conf *conf)
-{
-	struct bdev *r;
-	int ret = 0;
-
-	r = bdev_init(conf, conf->rootfs.path, conf->rootfs.mount, NULL);
-	if (!r)
-		return -1;
-
-	if (r->ops->destroy(r) < 0)
-		ret = -1;
-	bdev_put(r);
-	return ret;
-}
-
 static int bdev_destroy_wrapper(void *data)
 {
 	struct lxc_conf *conf = data;
@@ -2249,13 +2227,16 @@ static int bdev_destroy_wrapper(void *data)
 		ERROR("Failed to setuid to 0");
 		return -1;
 	}
-	return do_bdev_destroy(conf);
+	if (!bdev_destroy(conf))
+		return -1;
+	else
+		return 0;
 }
 
 static bool container_destroy(struct lxc_container *c)
 {
 	bool bret = false;
-	int ret;
+	int ret = 0;
 	struct lxc_conf *conf;
 
 	if (!c || !do_lxcapi_is_defined(c))
@@ -2308,13 +2289,18 @@ static bool container_destroy(struct lxc_container *c)
 	}
 
 	if (conf && conf->rootfs.path && conf->rootfs.mount) {
-		if (am_unpriv())
+		if (am_unpriv()) {
 			ret = userns_exec_1(conf, bdev_destroy_wrapper, conf);
-		else
-			ret = do_bdev_destroy(conf);
-		if (ret < 0) {
-			ERROR("Error destroying rootfs for %s", c->name);
-			goto out;
+			if (ret < 0) {
+				ERROR("Error destroying rootfs for %s", c->name);
+				goto out;
+			}
+		} else {
+			bret = bdev_destroy(conf);
+			if (!bret) {
+				ERROR("Error destroying rootfs for %s", c->name);
+				goto out;
+			}
 		}
 	}
 

@@ -1466,3 +1466,17 @@ err:
 	close(fd);
 	return ret;
 }
+
+bool lxc_delete_string_in_array(char *haystack, size_t haystacklen,
+				const char *needle, size_t needlelen)
+{
+	char *del = NULL;
+	bool bret = false;
+
+	if ((del = memmem(haystack, haystacklen, needle, needlelen))) {
+		memmove(del, del + needlelen, strlen(del) - needlelen + 1);
+		bret = true;
+	}
+	return bret;
+}
+

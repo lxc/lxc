@@ -243,6 +243,9 @@ extern char *lxc_append_paths(const char *first, const char *second);
 extern bool lxc_string_in_list(const char *needle, const char *haystack, char sep);
 extern char **lxc_string_split(const char *string, char sep);
 extern char **lxc_string_split_and_trim(const char *string, char sep);
+/* Delete a string from a non-null terminated buffer. */
+bool lxc_delete_string_in_array(char *haystack, size_t haystacklen,
+				const char *needle, size_t needlelen);
 
 /* some simple array manipulation utilities */
 typedef void (*lxc_free_fn)(void *);
