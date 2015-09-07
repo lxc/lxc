@@ -1989,7 +1989,7 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 	char newpath[MAXPATHLEN];
 	int fd, ret, n = 0, v = 0;
 	bool bret = false;
-	size_t len;
+	size_t len, difflen;
 
 	if (container_disk_lock(c0))
 		return false;
@@ -2072,19 +2072,22 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 
 			/* mmap()ed memory is only \0-terminated when it is not
 			 * a multiple of a pagesize. Hence, we'll use memmem(). */
-			if ((del = memmem(buf, fbuf.st_size, newpath, len))) {
-				/* remove container entry */
-				memmove(del, del + len, strlen(del) - len + 1);
+                        if ((del = memmem(buf, fbuf.st_size, newpath, len))) {
+                                /* remove container entry */
+                                if (del != buf + fbuf.st_size - len) {
+                                        difflen = fbuf.st_size - (del-buf);
+                                        memmove(del, del + len, strnlen(del, difflen) - len);
+                                }
 
-				munmap(buf, fbuf.st_size);
+                                munmap(buf, fbuf.st_size);
 
-				if (ftruncate(fd, fbuf.st_size - len) < 0) {
-					SYSERROR("Failed to truncate file %s", path);
-					close(fd);
-					goto out;
-				}
-			} else {
-				munmap(buf, fbuf.st_size);
+                                if (ftruncate(fd, fbuf.st_size - len) < 0) {
+                                        SYSERROR("Failed to truncate file %s", path);
+                                        close(fd);
+                                        goto out;
+                                }
+                        } else {
+                                munmap(buf, fbuf.st_size);
 			}
 
 			close(fd);
