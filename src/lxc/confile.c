@@ -108,6 +108,7 @@ static int config_environment(const char *, const char *, struct lxc_conf *);
 static int config_init_cmd(const char *, const char *, struct lxc_conf *);
 static int config_init_uid(const char *, const char *, struct lxc_conf *);
 static int config_init_gid(const char *, const char *, struct lxc_conf *);
+static int config_ephemeral(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 
@@ -176,6 +177,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.init_cmd",             config_init_cmd             },
 	{ "lxc.init_uid",             config_init_uid             },
 	{ "lxc.init_gid",             config_init_gid             },
+	{ "lxc.ephemeral",            config_ephemeral            },
 };
 
 struct signame {
@@ -2490,6 +2492,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_conf_int(c, retv, inlen, c->init_uid);
 	else if (strcmp(key, "lxc.init_gid") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->init_gid);
+	else if (strcmp(key, "lxc.ephemeral") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->ephemeral);
 	else return -1;
 
 	if (!v)
@@ -2759,3 +2763,19 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 	}
 	return true;
 }
+
+static int config_ephemeral(const char *key, const char *value,
+			    struct lxc_conf *lxc_conf)
+{
+	int v = atoi(value);
+
+	if (v != 0 && v != 1) {
+		ERROR("Wrong value for lxc.ephemeral. Can only be set to 0 or 1");
+		return -1;
+	} else {
+		lxc_conf->ephemeral = v;
+	}
+
+	return 0;
+}
+
