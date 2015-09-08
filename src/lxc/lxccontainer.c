@@ -2217,48 +2217,25 @@ static bool has_snapshots(struct lxc_container *c)
 	return count > 0;
 }
 
+static bool do_destroy_container(struct lxc_conf *conf) {
+        if (am_unpriv()) {
+                if (userns_exec_1(conf, bdev_destroy_wrapper, conf) < 0)
+                        return false;
+                return true;
+        }
+        return bdev_destroy(conf);
+}
+
 static int lxc_rmdir_onedev_wrapper(void *data)
 {
 	char *arg = (char *) data;
 	return lxc_rmdir_onedev(arg, "snaps");
 }
 
-static int do_bdev_destroy(struct lxc_conf *conf)
-{
-	struct bdev *r;
-	int ret = 0;
-
-	r = bdev_init(conf, conf->rootfs.path, conf->rootfs.mount, NULL);
-	if (!r)
-		return -1;
-
-	if (r->ops->destroy(r) < 0)
-		ret = -1;
-	bdev_put(r);
-	return ret;
-}
-
-static int bdev_destroy_wrapper(void *data)
-{
-	struct lxc_conf *conf = data;
-
-	if (setgid(0) < 0) {
-		ERROR("Failed to setgid to 0");
-		return -1;
-	}
-	if (setgroups(0, NULL) < 0)
-		WARN("Failed to clear groups");
-	if (setuid(0) < 0) {
-		ERROR("Failed to setuid to 0");
-		return -1;
-	}
-	return do_bdev_destroy(conf);
-}
-
 static bool container_destroy(struct lxc_container *c)
 {
 	bool bret = false;
-	int ret;
+	int ret = 0;
 	struct lxc_conf *conf;
 
 	if (!c || !do_lxcapi_is_defined(c))
@@ -2310,16 +2287,13 @@ static bool container_destroy(struct lxc_container *c)
 		}
 	}
 
-	if (conf && conf->rootfs.path && conf->rootfs.mount) {
-		if (am_unpriv())
-			ret = userns_exec_1(conf, bdev_destroy_wrapper, conf);
-		else
-			ret = do_bdev_destroy(conf);
-		if (ret < 0) {
-			ERROR("Error destroying rootfs for %s", c->name);
-			goto out;
-		}
-	}
+        if (conf && conf->rootfs.path && conf->rootfs.mount) {
+                if (!do_destroy_container(conf)) {
+                        ERROR("Error destroying rootfs for %s", c->name);
+                        goto out;
+                }
+                INFO("Destroyed rootfs for %s", c->name);
+        }
 
 	mod_all_rdeps(c, false);
 
@@ -2334,6 +2308,8 @@ static bool container_destroy(struct lxc_container *c)
 		ERROR("Error destroying container directory for %s", c->name);
 		goto out;
 	}
+        INFO("Destroyed directory for %s", c->name);
+
 	bret = true;
 
 out:
