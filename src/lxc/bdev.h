@@ -123,6 +123,9 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 struct bdev *bdev_create(const char *dest, const char *type,
 			const char *cname, struct bdev_specs *specs);
 void bdev_put(struct bdev *bdev);
+bool bdev_destroy(struct lxc_conf *conf);
+/* callback function to be used with userns_exec_1() */
+int bdev_destroy_wrapper(void *data);
 
 /*
  * these are really for qemu-nbd support, as container shutdown
