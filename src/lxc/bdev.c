@@ -3670,3 +3670,40 @@ bool rootfs_is_blockdev(struct lxc_conf *conf)
 		return true;
 	return false;
 }
+
+bool bdev_destroy(struct lxc_conf *conf)
+{
+	struct bdev *r;
+	bool ret = false;
+
+	r = bdev_init(conf, conf->rootfs.path, conf->rootfs.mount, NULL);
+	if (!r)
+		return ret;
+
+	if (r->ops->destroy(r) == 0)
+		ret = true;
+	bdev_put(r);
+
+	return ret;
+}
+
+int bdev_destroy_wrapper(void *data)
+{
+	struct lxc_conf *conf = data;
+
+	if (setgid(0) < 0) {
+		ERROR("Failed to setgid to 0");
+		return -1;
+	}
+	if (setgroups(0, NULL) < 0)
+		WARN("Failed to clear groups");
+	if (setuid(0) < 0) {
+		ERROR("Failed to setuid to 0");
+		return -1;
+	}
+	if (!bdev_destroy(conf))
+		return -1;
+	else
+		return 0;
+}
+
