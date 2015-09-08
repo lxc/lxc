@@ -83,6 +83,11 @@ const struct ns_info ns_info[LXC_NS_MAX] = {
 	[LXC_NS_NET] = {"net", CLONE_NEWNET}
 };
 
+static bool do_destroy_container(struct lxc_conf *conf);
+static int lxc_rmdir_onedev_wrapper(void *data);
+static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
+					    const char *name);
+
 static void print_top_failing_dir(const char *path)
 {
 	size_t len = strlen(path);
@@ -494,6 +499,9 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	if (handler->ttysock[0] != -1) {
 		close(handler->ttysock[0]);
 		close(handler->ttysock[1]);
+	}
+	if (handler->conf->ephemeral == 1) {
+		lxc_destroy_container_on_signal(handler, name);
 	}
 	cgroup_destroy(handler);
 	free(handler);
@@ -1291,3 +1299,53 @@ int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
 	conf->need_utmp_watch = 1;
 	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath, backgrounded);
 }
+
+static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
+					    const char *name)
+{
+	char destroy[MAXPATHLEN];
+	bool bret = true;
+	int ret = 0;
+	if (handler->conf && handler->conf->rootfs.path && handler->conf->rootfs.mount) {
+		bret = do_destroy_container(handler->conf);
+		if (!bret) {
+			ERROR("Error destroying rootfs for %s", name);
+			return;
+		}
+	}
+	INFO("Destroyed rootfs for %s", name);
+
+	ret = snprintf(destroy, MAXPATHLEN, "%s/%s", handler->lxcpath, name);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("Error printing path for %s", name);
+		ERROR("Error destroying directory for %s", name);
+		return;
+	}
+
+	if (am_unpriv())
+		ret = userns_exec_1(handler->conf, lxc_rmdir_onedev_wrapper, destroy);
+	else
+		ret = lxc_rmdir_onedev(destroy, NULL);
+
+	if (ret < 0) {
+		ERROR("Error destroying directory for %s", name);
+		return;
+	}
+	INFO("Destroyed directory for %s", name);
+}
+
+static int lxc_rmdir_onedev_wrapper(void *data)
+{
+	char *arg = (char *) data;
+	return lxc_rmdir_onedev(arg, NULL);
+}
+
+static bool do_destroy_container(struct lxc_conf *conf) {
+        if (am_unpriv()) {
+                if (userns_exec_1(conf, bdev_destroy_wrapper, conf) < 0)
+                        return false;
+                return true;
+        }
+        return bdev_destroy(conf);
+}
+
