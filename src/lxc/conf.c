@@ -2600,10 +2600,16 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		goto out_delete;
 	}
 
+	netdev->ifindex = if_nametoindex(veth2);
+	if (!netdev->ifindex) {
+		ERROR("failed to retrieve the index for %s", veth2);
+		goto out_delete;
+	}
+
 	if (netdev->mtu) {
 		mtu = atoi(netdev->mtu);
 	} else if (netdev->link) {
-		mtu = netdev_get_mtu(if_nametoindex(netdev->link));
+		mtu = netdev_get_mtu(netdev->ifindex);
 	}
 
 	if (mtu) {
@@ -2624,12 +2630,6 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 				      veth1, netdev->link, strerror(-err));
 			goto out_delete;
 		}
-	}
-
-	netdev->ifindex = if_nametoindex(veth2);
-	if (!netdev->ifindex) {
-		ERROR("failed to retrieve the index for %s", veth2);
-		goto out_delete;
 	}
 
 	err = lxc_netdev_up(veth1);
