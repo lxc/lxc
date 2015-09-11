@@ -1983,13 +1983,13 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 {
 	FILE *f1;
 	struct stat fbuf;
-	char *buf = NULL;
-	char *del;
+	void *buf = NULL;
+	char *del = NULL;
 	char path[MAXPATHLEN];
 	char newpath[MAXPATHLEN];
 	int fd, ret, n = 0, v = 0;
 	bool bret = false;
-	size_t len, difflen;
+	size_t len = 0, bytes = 0;
 
 	if (container_disk_lock(c0))
 		return false;
@@ -2049,55 +2049,49 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 				goto out;
 			}
 		} else if (!inc) {
-			fd = open(path, O_RDWR | O_CLOEXEC);
-			if (fd < 0)
-				goto out;
+                        if ((fd = open(path, O_RDWR | O_CLOEXEC)) < 0)
+                                goto out;
 
-			ret = fstat(fd, &fbuf);
-			if (ret < 0) {
-				close(fd);
-				goto out;
-			}
+                        if (fstat(fd, &fbuf) < 0) {
+                                close(fd);
+                                goto out;
+                        }
 
-			if (fbuf.st_size != 0) {
-				buf = mmap(NULL, fbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-				if (buf == MAP_FAILED) {
-					SYSERROR("Failed to create mapping %s", path);
-					close(fd);
-					goto out;
-				}
-			}
-
-			len = strlen(newpath);
-
-			/* mmap()ed memory is only \0-terminated when it is not
-			 * a multiple of a pagesize. Hence, we'll use memmem(). */
-                        if ((del = memmem(buf, fbuf.st_size, newpath, len))) {
-                                /* remove container entry */
-                                if (del != buf + fbuf.st_size - len) {
-                                        difflen = fbuf.st_size - (del-buf);
-                                        memmove(del, del + len, strnlen(del, difflen) - len);
+                        if (fbuf.st_size != 0) {
+                                /* write terminating \0-byte to file */
+                                if (pwrite(fd, "", 1, fbuf.st_size) <= 0) {
+                                        close(fd);
+                                        goto out;
                                 }
 
-                                munmap(buf, fbuf.st_size);
+                                buf = mmap(NULL, fbuf.st_size + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+                                if (buf == MAP_FAILED) {
+                                        SYSERROR("Failed to create mapping %s", path);
+                                        close(fd);
+                                        goto out;
+                                }
 
-                                if (ftruncate(fd, fbuf.st_size - len) < 0) {
+                                len = strlen(newpath);
+                                while ((del = strstr((char *)buf, newpath))) {
+                                        memmove(del, del + len, strlen(del) - len + 1);
+                                        bytes += len;
+                                }
+
+                                munmap(buf, fbuf.st_size + 1);
+                                if (ftruncate(fd, fbuf.st_size - bytes) < 0) {
                                         SYSERROR("Failed to truncate file %s", path);
                                         close(fd);
                                         goto out;
                                 }
-                        } else {
-                                munmap(buf, fbuf.st_size);
-			}
-
-			close(fd);
-		}
+                        }
+                        close(fd);
+                }
 
 		/* If the lxc-snapshot file is empty, remove it. */
 		if (stat(path, &fbuf) < 0)
 			goto out;
-		if (!fbuf.st_size) {
-			remove(path);
+                if (!fbuf.st_size) {
+                        remove(path);
 		}
 	}
 
