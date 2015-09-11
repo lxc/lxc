@@ -136,6 +136,9 @@ doc/ja/*.5
 doc/ja/*.7
 doc/ja/legacy/*.1
 doc/legacy/*.1
+doc/ko/*.1
+doc/ko/*.5
+doc/ko/*.7
 doc/manpage.links
 doc/manpage.refs
 doc/api/html/*
