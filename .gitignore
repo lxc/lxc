@@ -122,6 +122,7 @@ config/init/common/lxc-net
 config/init/systemd/lxc-autostart-helper
 config/init/systemd/lxc-net.service
 config/init/systemd/lxc.service
+config/init/systemd/lxc@.service
 config/init/sysvinit/lxc
 config/init/sysvinit/lxc-containers
 config/init/sysvinit/lxc-net
