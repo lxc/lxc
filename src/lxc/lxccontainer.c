@@ -2111,7 +2111,7 @@ static void strip_newline(char *p)
 		p[len-1] = '\0';
 }
 
-static void mod_all_rdeps(struct lxc_container *c, bool inc)
+void mod_all_rdeps(struct lxc_container *c, bool inc)
 {
 	struct lxc_container *p;
 	char *lxcpath = NULL, *lxcname = NULL, path[MAXPATHLEN];
