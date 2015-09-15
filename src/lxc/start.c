@@ -71,6 +71,7 @@
 #include "caps.h"
 #include "bdev.h"
 #include "lsm/lsm.h"
+#include "lxclock.h"
 
 lxc_log_define(lxc_start, lxc);
 
@@ -83,6 +84,7 @@ const struct ns_info ns_info[LXC_NS_MAX] = {
 	[LXC_NS_NET] = {"net", CLONE_NEWNET}
 };
 
+extern void mod_all_rdeps(struct lxc_container *c, bool inc);
 static bool do_destroy_container(struct lxc_conf *conf);
 static int lxc_rmdir_onedev_wrapper(void *data);
 static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
@@ -1306,6 +1308,7 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 	char destroy[MAXPATHLEN];
 	bool bret = true;
 	int ret = 0;
+	struct lxc_container *c;
 	if (handler->conf && handler->conf->rootfs.path && handler->conf->rootfs.mount) {
 		bret = do_destroy_container(handler->conf);
 		if (!bret) {
@@ -1320,6 +1323,18 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 		ERROR("Error printing path for %s", name);
 		ERROR("Error destroying directory for %s", name);
 		return;
+	}
+
+	c = lxc_container_new(name, handler->lxcpath);
+	if (c) {
+		if (container_disk_lock(c)) {
+			INFO("Could not update lxc_snapshots file");
+			lxc_container_put(c);
+		} else {
+			mod_all_rdeps(c, false);
+			container_disk_unlock(c);
+			lxc_container_put(c);
+		}
 	}
 
 	if (am_unpriv())
