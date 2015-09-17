@@ -72,6 +72,11 @@
 
 lxc_log_define(bdev, lxc);
 
+struct ovl_rsync_data {
+	struct bdev *orig;
+	struct bdev *new;
+};
+
 struct rsync_data_char {
 	char *src;
 	char *dest;
@@ -98,7 +103,7 @@ static int do_rsync(const char *src, const char *dest)
 	s[l-2] = '/';
 	s[l-1] = '\0';
 
-	execlp("rsync", "rsync", "-aHX", s, dest, (char *)NULL);
+	execlp("rsync", "rsync", "-aHX", "--delete", s, dest, (char *)NULL);
 	exit(1);
 }
 
@@ -2328,6 +2333,68 @@ static int rsync_delta_wrapper(void *data)
 	return rsync_delta(arg);
 }
 
+static int ovl_rsync(struct ovl_rsync_data *data)
+{
+	if (setgid(0) < 0) {
+		ERROR("Failed to setgid to 0");
+		return -1;
+	}
+	if (setgroups(0, NULL) < 0)
+		WARN("Failed to clear groups");
+	if (setuid(0) < 0) {
+		ERROR("Failed to setuid to 0");
+		return -1;
+	}
+
+	if (unshare(CLONE_NEWNS) < 0) {
+		SYSERROR("Unable to unshare mounts ns");
+		return -1;
+	}
+	if (detect_shared_rootfs()) {
+		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
+			SYSERROR("Failed to make / rslave");
+			ERROR("Continuing...");
+		}
+	}
+	if (overlayfs_mount(data->orig) < 0) {
+		ERROR("Failed mounting original container fs");
+		return -1;
+	}
+	if (overlayfs_mount(data->new) < 0) {
+		ERROR("Failed mounting new container fs");
+		return -1;
+	}
+	if (do_rsync(data->orig->dest, data->new->dest) < 0) {
+		ERROR("rsyncing %s to %s", data->orig->dest, data->new->dest);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int ovl_rsync_wrapper(void *data)
+{
+	struct ovl_rsync_data *arg = data;
+	return ovl_rsync(arg);
+}
+
+static int ovl_do_rsync(struct bdev *orig, struct bdev *new, struct lxc_conf *conf)
+{
+	int ret = -1;
+	struct ovl_rsync_data rdata;
+
+	rdata.orig = orig;
+	rdata.new = new;
+	if (am_unpriv())
+		ret = userns_exec_1(conf, ovl_rsync_wrapper, &rdata);
+	else
+		ret = ovl_rsync(&rdata);
+	if (ret)
+		ERROR("copying overlayfs delta");
+
+	return ret;
+}
+
 static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
 		uint64_t newsize, struct lxc_conf *conf)
@@ -2460,19 +2527,6 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 			WARN("Failed to update ownership of %s", work);
 		free(work);
 
-		struct rsync_data_char rdata;
-		rdata.src = odelta;
-		rdata.dest = ndelta;
-		if (am_unpriv())
-			ret = userns_exec_1(conf, rsync_delta_wrapper, &rdata);
-		else
-			ret = rsync_delta(&rdata);
-		if (ret) {
-			free(osrc);
-			free(ndelta);
-			ERROR("copying overlayfs delta");
-			return -1;
-		}
 		len = strlen(nsrc) + strlen(ndelta) + 12;
 		new->src = malloc(len);
 		if (!new->src) {
@@ -2485,6 +2539,8 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		free(ndelta);
 		if (ret < 0 || ret >= len)
 			return -ENOMEM;
+
+		return ovl_do_rsync(orig, new, conf);
 	} else {
 		ERROR("overlayfs clone of %s container is not yet supported",
 			orig->type);
