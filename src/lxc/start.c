@@ -502,7 +502,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		close(handler->ttysock[0]);
 		close(handler->ttysock[1]);
 	}
-	if (handler->conf->ephemeral == 1) {
+	if (handler->conf->ephemeral == 1 && handler->conf->reboot != 1) {
 		lxc_destroy_container_on_signal(handler, name);
 	}
 	cgroup_destroy(handler);
