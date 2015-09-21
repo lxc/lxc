@@ -190,7 +190,7 @@ Options :\n\
   -L, --console-log=FILE Log container console output to FILE\n\
   -C, --close-all-fds    If any fds are inherited, close them\n\
                          If not specified, exit with failure instead\n\
-		         Note: --daemon implies --close-all-fds\n\
+                         Note: --daemon implies --close-all-fds\n\
   -s, --define KEY=VAL   Assign VAL to configuration variable KEY\n\
       --share-[net|ipc|uts]=NAME Share a namespace with another container or pid\n\
 ",

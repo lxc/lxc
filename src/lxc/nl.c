@@ -74,7 +74,7 @@ extern int nla_put_buffer(struct nlmsg *nlmsg, int attr,
 
 extern int nla_put_string(struct nlmsg *nlmsg, int attr, const char *string)
 {
-        return nla_put(nlmsg, attr, string, strlen(string) + 1);
+	return nla_put(nlmsg, attr, string, strlen(string) + 1);
 }
 
 extern int nla_put_u32(struct nlmsg *nlmsg, int attr, int value)
@@ -173,23 +173,23 @@ extern void nlmsg_free(struct nlmsg *nlmsg)
 extern int netlink_rcv(struct nl_handler *handler, struct nlmsg *answer)
 {
 	int ret;
-        struct sockaddr_nl nladdr;
-        struct iovec iov = {
-                .iov_base = answer->nlmsghdr,
-                .iov_len = answer->nlmsghdr->nlmsg_len,
-        };
+	struct sockaddr_nl nladdr;
+	struct iovec iov = {
+		.iov_base = answer->nlmsghdr,
+		.iov_len = answer->nlmsghdr->nlmsg_len,
+	};
 	
 	struct msghdr msg = {
-                .msg_name = &nladdr,
-                .msg_namelen = sizeof(nladdr),
-                .msg_iov = &iov,
-                .msg_iovlen = 1,
-        };
+		.msg_name = &nladdr,
+		.msg_namelen = sizeof(nladdr),
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+	};
 	
-        memset(&nladdr, 0, sizeof(nladdr));
-        nladdr.nl_family = AF_NETLINK;
-        nladdr.nl_pid = 0;
-        nladdr.nl_groups = 0;
+	memset(&nladdr, 0, sizeof(nladdr));
+	nladdr.nl_family = AF_NETLINK;
+	nladdr.nl_pid = 0;
+	nladdr.nl_groups = 0;
 
 again:
 	ret = recvmsg(handler->fd, &msg, 0);
@@ -211,23 +211,23 @@ again:
 
 extern int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg)
 {
-        struct sockaddr_nl nladdr;
-        struct iovec iov = {
-                .iov_base = nlmsg->nlmsghdr,
-                .iov_len = nlmsg->nlmsghdr->nlmsg_len,
-        };
+	struct sockaddr_nl nladdr;
+	struct iovec iov = {
+		.iov_base = nlmsg->nlmsghdr,
+		.iov_len = nlmsg->nlmsghdr->nlmsg_len,
+	};
 	struct msghdr msg = {
-                .msg_name = &nladdr,
-                .msg_namelen = sizeof(nladdr),
-                .msg_iov = &iov,
-                .msg_iovlen = 1,
-        };
+		.msg_name = &nladdr,
+		.msg_namelen = sizeof(nladdr),
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+	};
 	int ret;
 	
-        memset(&nladdr, 0, sizeof(nladdr));
-        nladdr.nl_family = AF_NETLINK;
-        nladdr.nl_pid = 0;
-        nladdr.nl_groups = 0;
+	memset(&nladdr, 0, sizeof(nladdr));
+	nladdr.nl_family = AF_NETLINK;
+	nladdr.nl_pid = 0;
+	nladdr.nl_groups = 0;
 
 	ret = sendmsg(handler->fd, &msg, 0);
 	if (ret < 0)
@@ -263,45 +263,45 @@ extern int netlink_transaction(struct nl_handler *handler,
 extern int netlink_open(struct nl_handler *handler, int protocol)
 {
 	socklen_t socklen;
-        int sndbuf = 32768;
-        int rcvbuf = 32768;
+	int sndbuf = 32768;
+	int rcvbuf = 32768;
 
-        memset(handler, 0, sizeof(*handler));
+	memset(handler, 0, sizeof(*handler));
 
-        handler->fd = socket(AF_NETLINK, SOCK_RAW, protocol);
-        if (handler->fd < 0)
-                return -errno;
+	handler->fd = socket(AF_NETLINK, SOCK_RAW, protocol);
+	if (handler->fd < 0)
+		return -errno;
 
-        if (setsockopt(handler->fd, SOL_SOCKET, SO_SNDBUF,
+	if (setsockopt(handler->fd, SOL_SOCKET, SO_SNDBUF,
 		       &sndbuf, sizeof(sndbuf)) < 0)
-                return -errno;
+		return -errno;
 
-        if (setsockopt(handler->fd, SOL_SOCKET, SO_RCVBUF,
+	if (setsockopt(handler->fd, SOL_SOCKET, SO_RCVBUF,
 		       &rcvbuf,sizeof(rcvbuf)) < 0)
-                return -errno;
+		return -errno;
 
-        memset(&handler->local, 0, sizeof(handler->local));
-        handler->local.nl_family = AF_NETLINK;
-        handler->local.nl_groups = 0;
+	memset(&handler->local, 0, sizeof(handler->local));
+	handler->local.nl_family = AF_NETLINK;
+	handler->local.nl_groups = 0;
 
-        if (bind(handler->fd, (struct sockaddr*)&handler->local,
+	if (bind(handler->fd, (struct sockaddr*)&handler->local,
 		 sizeof(handler->local)) < 0)
-                return -errno;
+		return -errno;
 
-        socklen = sizeof(handler->local);
-        if (getsockname(handler->fd, (struct sockaddr*)&handler->local,
+	socklen = sizeof(handler->local);
+	if (getsockname(handler->fd, (struct sockaddr*)&handler->local,
 			&socklen) < 0)
-                return -errno;
+		return -errno;
 
-        if (socklen != sizeof(handler->local))
-                return -EINVAL;
+	if (socklen != sizeof(handler->local))
+		return -EINVAL;
 
-        if (handler->local.nl_family != AF_NETLINK)
-                return -EINVAL;
+	if (handler->local.nl_family != AF_NETLINK)
+		return -EINVAL;
 
 	handler->seq = time(NULL);
 
-        return 0;
+	return 0;
 }
 
 extern int netlink_close(struct nl_handler *handler)

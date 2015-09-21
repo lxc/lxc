@@ -122,13 +122,13 @@ static void cull_user_controllers(void);
 
 static void cgm_dbus_disconnect(void)
 {
-       if (cgroup_manager) {
-	       dbus_connection_flush(cgroup_manager->connection);
-	       dbus_connection_close(cgroup_manager->connection);
-               nih_free(cgroup_manager);
-       }
-       cgroup_manager = NULL;
-       cgm_unlock();
+	if (cgroup_manager) {
+		dbus_connection_flush(cgroup_manager->connection);
+		dbus_connection_close(cgroup_manager->connection);
+		nih_free(cgroup_manager);
+	}
+	cgroup_manager = NULL;
+	cgm_unlock();
 }
 
 #define CGMANAGER_DBUS_SOCK "unix:path=/sys/fs/cgroup/cgmanager/sock"

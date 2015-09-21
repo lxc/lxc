@@ -2603,7 +2603,7 @@ static int create_file_dirname(char *path, struct lxc_conf *conf)
 	if (!p)
 		return -1;
 	*p = '\0';
-        ret = do_create_container_dir(path, conf);
+	ret = do_create_container_dir(path, conf);
 	*p = '/';
 	return ret;
 }

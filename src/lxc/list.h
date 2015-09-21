@@ -72,10 +72,10 @@ static inline void __lxc_list_add(struct lxc_list *new,
 				  struct lxc_list *prev,
 				  struct lxc_list *next)
 {
-        next->prev = new;
-        new->next = next;
-        new->prev = prev;
-        prev->next = new;
+	next->prev = new;
+	new->next = next;
+	new->prev = prev;
+	prev->next = new;
 }
 
 static inline void lxc_list_add(struct lxc_list *head, struct lxc_list *list)

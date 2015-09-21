@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 
 	aargv = &argv[optind];
 
-        /*
+	/*
 	 * mask all the signals so we are safe to install a
 	 * signal handler and to fork
 	 */
