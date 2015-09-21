@@ -2339,6 +2339,8 @@ static int rsync_delta_wrapper(void *data)
 
 static int ovl_rsync(struct ovl_rsync_data *data)
 {
+	int ret;
+
 	if (setgid(0) < 0) {
 		ERROR("Failed to setgid to 0");
 		return -1;
@@ -2368,7 +2370,12 @@ static int ovl_rsync(struct ovl_rsync_data *data)
 		ERROR("Failed mounting new container fs");
 		return -1;
 	}
-	if (do_rsync(data->orig->dest, data->new->dest) < 0) {
+	ret = do_rsync(data->orig->dest, data->new->dest);
+
+	overlayfs_umount(data->new);
+	overlayfs_umount(data->orig);
+
+	if (ret < 0) {
 		ERROR("rsyncing %s to %s", data->orig->dest, data->new->dest);
 		return -1;
 	}
