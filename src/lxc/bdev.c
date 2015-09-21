@@ -2224,6 +2224,10 @@ static int overlayfs_mount(struct bdev *bdev)
 	*upper = '\0';
 	upper++;
 
+	// if delta doesn't yet exist, create it
+	if (mkdir_p(upper, 0755) < 0 && errno != EEXIST)
+		return -22;
+
 	// overlayfs.v22 or higher needs workdir option
 	// if upper is /var/lib/lxc/c2/delta0,
 	// then workdir is /var/lib/lxc/c2/olwork
