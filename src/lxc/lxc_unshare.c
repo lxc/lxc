@@ -115,8 +115,8 @@ struct start_arg {
 	int *flags;
 	uid_t *uid;
 	bool setuid;
-        int want_default_mounts;
-        const char *want_hostname;
+	int want_default_mounts;
+	const char *want_hostname;
 };
 
 static int do_start(void *arg)

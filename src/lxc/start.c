@@ -529,10 +529,10 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
  */
 static int container_reboot_supported(void *arg)
 {
-        int *cmd = arg;
+	int *cmd = arg;
 	int ret;
 
-        ret = reboot(*cmd);
+	ret = reboot(*cmd);
 	if (ret == -1 && errno == EINVAL)
 		return 1;
 	return 0;
@@ -542,10 +542,10 @@ static int must_drop_cap_sys_boot(struct lxc_conf *conf)
 {
 	FILE *f;
 	int ret, cmd, v, flags;
-        long stack_size = 4096;
-        void *stack = alloca(stack_size);
-        int status;
-        pid_t pid;
+	long stack_size = 4096;
+	void *stack = alloca(stack_size);
+	int status;
+	pid_t pid;
 
 	f = fopen("/proc/sys/kernel/ctrl-alt-del", "r");
 	if (!f) {
@@ -645,7 +645,7 @@ static int do_start(void *data)
 		return -1;
 	}
 
-        /* This prctl must be before the synchro, so if the parent
+	/* This prctl must be before the synchro, so if the parent
 	 * dies before we set the parent death signal, we will detect
 	 * its death with the synchro right after, otherwise we have
 	 * a window where the parent can exit before we set the pdeath
@@ -1214,7 +1214,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	 * lxc-execute which simply exited.  In any case, treat
 	 * it as a 'halt'
 	 */
-        if (WIFSIGNALED(status)) {
+	if (WIFSIGNALED(status)) {
 		switch(WTERMSIG(status)) {
 		case SIGINT: /* halt */
 			DEBUG("Container halting");
@@ -1230,7 +1230,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 			DEBUG("unknown exit status for init: %d", WTERMSIG(status));
 			break;
 		}
-        }
+	}
 
 	DEBUG("Pushing physical nics back to host namespace");
 	lxc_rename_phys_nics_on_shutdown(netnsfd, handler->conf);
@@ -1356,11 +1356,11 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 }
 
 static bool do_destroy_container(struct lxc_conf *conf) {
-        if (am_unpriv()) {
-                if (userns_exec_1(conf, bdev_destroy_wrapper, conf) < 0)
-                        return false;
-                return true;
-        }
-        return bdev_destroy(conf);
+	if (am_unpriv()) {
+		if (userns_exec_1(conf, bdev_destroy_wrapper, conf) < 0)
+			return false;
+		return true;
+	}
+	return bdev_destroy(conf);
 }
 

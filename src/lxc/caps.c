@@ -71,7 +71,7 @@ int lxc_caps_down(void)
 
 out:
 	cap_free(caps);
-        return 0;
+	return 0;
 }
 
 int lxc_caps_up(void)
@@ -121,7 +121,7 @@ int lxc_caps_up(void)
 
 out:
 	cap_free(caps);
-        return 0;
+	return 0;
 }
 
 int lxc_caps_init(void)

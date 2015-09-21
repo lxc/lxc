@@ -46,10 +46,10 @@
  * @peer: the peer address
  */
 struct nl_handler {
-        int fd;
+	int fd;
 	int seq;
-        struct sockaddr_nl local;
-        struct sockaddr_nl peer;
+	struct sockaddr_nl local;
+	struct sockaddr_nl peer;
 };
 
 /*

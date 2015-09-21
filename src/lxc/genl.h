@@ -59,7 +59,7 @@ struct genlmsg {
 
 static inline int genetlink_len(const struct genlmsg *genlmsg)
 {
-        return ((genlmsg->nlmsghdr.nlmsg_len) - GENL_HDRLEN - NLMSG_HDRLEN);
+	return ((genlmsg->nlmsghdr.nlmsg_len) - GENL_HDRLEN - NLMSG_HDRLEN);
 }
 
 /*

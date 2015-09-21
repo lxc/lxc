@@ -33,17 +33,17 @@ extern int lxc_caps_init(void);
 extern int lxc_caps_last_cap(void);
 #else
 static inline int lxc_caps_down(void) {
-        return 0;
+	return 0;
 }
 static inline int lxc_caps_up(void) {
-        return 0;
+	return 0;
 }
 static inline int lxc_caps_init(void) {
-        return 0;
+	return 0;
 }
 
 static inline int lxc_caps_last_cap(void) {
-        return 0;
+	return 0;
 }
 #endif
 

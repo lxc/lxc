@@ -2049,49 +2049,49 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 				goto out;
 			}
 		} else if (!inc) {
-                        if ((fd = open(path, O_RDWR | O_CLOEXEC)) < 0)
-                                goto out;
+			if ((fd = open(path, O_RDWR | O_CLOEXEC)) < 0)
+				goto out;
 
-                        if (fstat(fd, &fbuf) < 0) {
-                                close(fd);
-                                goto out;
-                        }
+			if (fstat(fd, &fbuf) < 0) {
+				close(fd);
+				goto out;
+			}
 
-                        if (fbuf.st_size != 0) {
-                                /* write terminating \0-byte to file */
-                                if (pwrite(fd, "", 1, fbuf.st_size) <= 0) {
-                                        close(fd);
-                                        goto out;
-                                }
+			if (fbuf.st_size != 0) {
+				/* write terminating \0-byte to file */
+				if (pwrite(fd, "", 1, fbuf.st_size) <= 0) {
+					close(fd);
+					goto out;
+				}
 
-                                buf = mmap(NULL, fbuf.st_size + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-                                if (buf == MAP_FAILED) {
-                                        SYSERROR("Failed to create mapping %s", path);
-                                        close(fd);
-                                        goto out;
-                                }
+				buf = mmap(NULL, fbuf.st_size + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+				if (buf == MAP_FAILED) {
+					SYSERROR("Failed to create mapping %s", path);
+					close(fd);
+					goto out;
+				}
 
-                                len = strlen(newpath);
-                                while ((del = strstr((char *)buf, newpath))) {
-                                        memmove(del, del + len, strlen(del) - len + 1);
-                                        bytes += len;
-                                }
+				len = strlen(newpath);
+				while ((del = strstr((char *)buf, newpath))) {
+					memmove(del, del + len, strlen(del) - len + 1);
+					bytes += len;
+				}
 
-                                munmap(buf, fbuf.st_size + 1);
-                                if (ftruncate(fd, fbuf.st_size - bytes) < 0) {
-                                        SYSERROR("Failed to truncate file %s", path);
-                                        close(fd);
-                                        goto out;
-                                }
-                        }
-                        close(fd);
-                }
+				munmap(buf, fbuf.st_size + 1);
+				if (ftruncate(fd, fbuf.st_size - bytes) < 0) {
+					SYSERROR("Failed to truncate file %s", path);
+					close(fd);
+					goto out;
+				}
+			}
+			close(fd);
+		}
 
 		/* If the lxc-snapshot file is empty, remove it. */
 		if (stat(path, &fbuf) < 0)
 			goto out;
-                if (!fbuf.st_size) {
-                        remove(path);
+		if (!fbuf.st_size) {
+			remove(path);
 		}
 	}
 
@@ -2212,12 +2212,12 @@ static bool has_snapshots(struct lxc_container *c)
 }
 
 static bool do_destroy_container(struct lxc_conf *conf) {
-        if (am_unpriv()) {
-                if (userns_exec_1(conf, bdev_destroy_wrapper, conf) < 0)
-                        return false;
-                return true;
-        }
-        return bdev_destroy(conf);
+	if (am_unpriv()) {
+		if (userns_exec_1(conf, bdev_destroy_wrapper, conf) < 0)
+			return false;
+		return true;
+	}
+	return bdev_destroy(conf);
 }
 
 static int lxc_rmdir_onedev_wrapper(void *data)
@@ -2281,13 +2281,13 @@ static bool container_destroy(struct lxc_container *c)
 		}
 	}
 
-        if (conf && conf->rootfs.path && conf->rootfs.mount) {
-                if (!do_destroy_container(conf)) {
-                        ERROR("Error destroying rootfs for %s", c->name);
-                        goto out;
-                }
-                INFO("Destroyed rootfs for %s", c->name);
-        }
+	if (conf && conf->rootfs.path && conf->rootfs.mount) {
+		if (!do_destroy_container(conf)) {
+			ERROR("Error destroying rootfs for %s", c->name);
+			goto out;
+		}
+		INFO("Destroyed rootfs for %s", c->name);
+	}
 
 	mod_all_rdeps(c, false);
 
@@ -2302,7 +2302,7 @@ static bool container_destroy(struct lxc_container *c)
 		ERROR("Error destroying container directory for %s", c->name);
 		goto out;
 	}
-        INFO("Destroyed directory for %s", c->name);
+	INFO("Destroyed directory for %s", c->name);
 
 	bret = true;
 
@@ -2889,7 +2889,7 @@ static int create_file_dirname(char *path, struct lxc_conf *conf)
 	if (!p)
 		return -1;
 	*p = '\0';
-        ret = do_create_container_dir(path, conf);
+	ret = do_create_container_dir(path, conf);
 	*p = '/';
 	return ret;
 }
