@@ -2120,12 +2120,12 @@ static bool has_snapshots(struct lxc_container *c)
 }
 
 static bool do_destroy_container(struct lxc_conf *conf) {
-        if (am_unpriv()) {
-                if (userns_exec_1(conf, bdev_destroy_wrapper, conf) < 0)
-                        return false;
-                return true;
-        }
-        return bdev_destroy(conf);
+	if (am_unpriv()) {
+		if (userns_exec_1(conf, bdev_destroy_wrapper, conf) < 0)
+			return false;
+		return true;
+	}
+	return bdev_destroy(conf);
 }
 
 static int lxc_rmdir_onedev_wrapper(void *data)
@@ -2159,13 +2159,13 @@ static bool container_destroy(struct lxc_container *c)
 		}
 	}
 
-        if (c->lxc_conf && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount) {
-                if (!do_destroy_container(c->lxc_conf)) {
-                        ERROR("Error destroying rootfs for %s", c->name);
-                        goto out;
-                }
-                INFO("Destroyed rootfs for %s", c->name);
-        }
+	if (c->lxc_conf && c->lxc_conf->rootfs.path && c->lxc_conf->rootfs.mount) {
+		if (!do_destroy_container(c->lxc_conf)) {
+			ERROR("Error destroying rootfs for %s", c->name);
+			goto out;
+		}
+		INFO("Destroyed rootfs for %s", c->name);
+	}
 
 	mod_all_rdeps(c, false);
 
@@ -2180,7 +2180,7 @@ static bool container_destroy(struct lxc_container *c)
 		ERROR("Error destroying container directory for %s", c->name);
 		goto out;
 	}
-        INFO("Destroyed directory for %s", c->name);
+	INFO("Destroyed directory for %s", c->name);
 
 	bret = true;
 
@@ -2767,7 +2767,7 @@ static int create_file_dirname(char *path, struct lxc_conf *conf)
 	if (!p)
 		return -1;
 	*p = '\0';
-        ret = do_create_container_dir(path, conf);
+	ret = do_create_container_dir(path, conf);
 	*p = '/';
 	return ret;
 }

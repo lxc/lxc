@@ -542,8 +542,7 @@ Container_attach_interface(Container *self, PyObject *args, PyObject *kwds)
         assert(dst_name != NULL);
     }
 
-    if (self->container->attach_interface(self->container, src_name,
-					dst_name)) {
+    if (self->container->attach_interface(self->container, src_name, dst_name)) {
         Py_XDECREF(py_src_name);
         Py_XDECREF(py_dst_name);
         Py_RETURN_TRUE;

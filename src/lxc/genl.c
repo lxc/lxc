@@ -53,10 +53,10 @@ static int genetlink_resolve_family(const char *family)
 
 	request->nlmsghdr.nlmsg_len = NLMSG_LENGTH(GENL_HDRLEN);
 	request->nlmsghdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
-        request->nlmsghdr.nlmsg_type = GENL_ID_CTRL;
+	request->nlmsghdr.nlmsg_type = GENL_ID_CTRL;
 
 	genlmsghdr = NLMSG_DATA(&request->nlmsghdr);
-        genlmsghdr->cmd = CTRL_CMD_GETFAMILY;
+	genlmsghdr->cmd = CTRL_CMD_GETFAMILY;
 
 	ret = netlink_open(&handler, NETLINK_GENERIC);
 	if (ret)

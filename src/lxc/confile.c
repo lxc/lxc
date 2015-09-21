@@ -1127,10 +1127,10 @@ static int config_group(const char *key, const char *value,
 	/* in case several groups are specified in a single line
 	 * split these groups in a single element for the list */
 	for (groupptr = groups;;groupptr = NULL) {
-                token = strtok_r(groupptr, " \t", &sptr);
-                if (!token) {
+		token = strtok_r(groupptr, " \t", &sptr);
+		if (!token) {
 			ret = 0;
-                        break;
+			break;
 		}
 
 		grouplist = malloc(sizeof(*grouplist));
@@ -1147,7 +1147,7 @@ static int config_group(const char *key, const char *value,
 		}
 
 		lxc_list_add_tail(&lxc_conf->groups, grouplist);
-        }
+	}
 
 	free(groups);
 
@@ -1510,10 +1510,10 @@ static int config_mount_auto(const char *key, const char *value,
 	}
 
 	for (autoptr = autos; ; autoptr = NULL) {
-                token = strtok_r(autoptr, " \t", &sptr);
-                if (!token) {
+		token = strtok_r(autoptr, " \t", &sptr);
+		if (!token) {
 			ret = 0;
-                        break;
+			break;
 		}
 
 		for (i = 0; allowed_auto_mounts[i].token; i++) {
@@ -1528,7 +1528,7 @@ static int config_mount_auto(const char *key, const char *value,
 
 		lxc_conf->auto_mounts &= ~allowed_auto_mounts[i].mask;
 		lxc_conf->auto_mounts |= allowed_auto_mounts[i].flag;
-        }
+	}
 
 	free(autos);
 
@@ -1579,10 +1579,10 @@ static int config_cap_keep(const char *key, const char *value,
 	/* in case several capability keep is specified in a single line
 	 * split these caps in a single element for the list */
 	for (keepptr = keepcaps;;keepptr = NULL) {
-                token = strtok_r(keepptr, " \t", &sptr);
-                if (!token) {
+		token = strtok_r(keepptr, " \t", &sptr);
+		if (!token) {
 			ret = 0;
-                        break;
+			break;
 		}
 
 		if (!strcmp(token, "none"))
@@ -1602,7 +1602,7 @@ static int config_cap_keep(const char *key, const char *value,
 		}
 
 		lxc_list_add_tail(&lxc_conf->keepcaps, keeplist);
-        }
+	}
 
 	free(keepcaps);
 
@@ -1628,10 +1628,10 @@ static int config_cap_drop(const char *key, const char *value,
 	/* in case several capability drop is specified in a single line
 	 * split these caps in a single element for the list */
 	for (dropptr = dropcaps;;dropptr = NULL) {
-                token = strtok_r(dropptr, " \t", &sptr);
-                if (!token) {
+		token = strtok_r(dropptr, " \t", &sptr);
+		if (!token) {
 			ret = 0;
-                        break;
+			break;
 		}
 
 		droplist = malloc(sizeof(*droplist));
@@ -1648,7 +1648,7 @@ static int config_cap_drop(const char *key, const char *value,
 		}
 
 		lxc_list_add_tail(&lxc_conf->caps, droplist);
-        }
+	}
 
 	free(dropcaps);
 
@@ -2005,7 +2005,7 @@ int lxc_fill_elevated_privileges(char *flaglist, int *flags)
 		/* for the sake of backward compatibility, drop all privileges
 		   if none is specified */
 		for (i = 0; all_privs[i].token; i++) {
-	                *flags |= all_privs[i].flag;
+			*flags |= all_privs[i].flag;
 		}
 		return 0;
 	}
