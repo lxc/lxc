@@ -151,6 +151,8 @@ extern int lxc_rmdir_onedev(char *path)
 	}
 
 	if (lstat(path, &mystat) < 0) {
+		if (errno == ENOENT)
+			return 0;
 		ERROR("%s: failed to stat %s", __func__, path);
 		return -1;
 	}
