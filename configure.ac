@@ -806,6 +806,7 @@ AC_CONFIG_FILES([
 	templates/lxc-opensuse
 	templates/lxc-oracle
 	templates/lxc-plamo
+	templates/lxc-slackware
 	templates/lxc-sshd
 	templates/lxc-ubuntu
 	templates/lxc-ubuntu-cloud
