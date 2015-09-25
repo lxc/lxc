@@ -279,7 +279,12 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 
 	*stopped = 0;
 
-	len = sizeof(path)-1;
+	/* -2 here because this is an abstract unix socket so it needs a
+	 * leading \0, and we null terminate, so it needs a trailing \0.
+	 * Although null termination isn't required by the API, we do it anyway
+	 * because we print the sockname out sometimes.
+	 */
+	len = sizeof(path)-2;
 	if (fill_sock_name(offset, len, name, lxcpath, hashed_sock_name))
 		return -1;
 
@@ -972,7 +977,12 @@ int lxc_cmd_init(const char *name, struct lxc_handler *handler,
 	char *offset = &path[1];
 	int len;
 
-	len = sizeof(path)-1;
+	/* -2 here because this is an abstract unix socket so it needs a
+	 * leading \0, and we null terminate, so it needs a trailing \0.
+	 * Although null termination isn't required by the API, we do it anyway
+	 * because we print the sockname out sometimes.
+	 */
+	len = sizeof(path)-2;
 	if (fill_sock_name(offset, len, name, lxcpath, NULL))
 		return -1;
 
