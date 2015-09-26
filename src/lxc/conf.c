@@ -1849,9 +1849,6 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	if (ret < 0)
 		return optional ? 0 : -1;
 
-	if (ret < 0 && !optional)
-		return -1;
-
 	cull_mntent_opt(mntent);
 
 	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
