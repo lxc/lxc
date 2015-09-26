@@ -1309,7 +1309,7 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 	bool bret = true;
 	int ret = 0;
 	struct lxc_container *c;
-	if (handler->conf && handler->conf->rootfs.path && handler->conf->rootfs.mount) {
+	if (handler->conf->rootfs.path && handler->conf->rootfs.mount) {
 		bret = do_destroy_container(handler->conf);
 		if (!bret) {
 			ERROR("Error destroying rootfs for %s", name);
