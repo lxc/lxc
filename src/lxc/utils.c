@@ -1431,6 +1431,10 @@ int mount_proc_if_needed(const char *rootfs)
 	mypid = (int)getpid();
 	INFO("I am %d, /proc/self points to '%s'", mypid, link);
 	ret = snprintf(path, MAXPATHLEN, "%s/proc", rootfs);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		SYSERROR("proc path name too long");
+		return -1;
+	}
 	if (linklen < 0) /* /proc not mounted */
 		goto domount;
 	if (atoi(link) != mypid) {
