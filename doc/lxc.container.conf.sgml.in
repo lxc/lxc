@@ -1316,6 +1316,23 @@ mknod errno 0
       <variablelist>
         <varlistentry>
           <term>
+            <option>lxc.hook.cgroups</option>
+          </term>
+          <listitem>
+            <para>
+              A hook to be run in the host's namespace after all
+              host side initialization has been done (and in particular
+              after the cgroups have been configured) and shortly before
+              the <option>lxc.hook.start</option> hook is run. This
+              allows for any final fixups to be performed on the host
+              side, such as adjusting the cgroups.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
             <option>lxc.hook.start</option>
           </term>
           <listitem>

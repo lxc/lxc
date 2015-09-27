@@ -132,6 +132,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.hook.pre-mount",       config_hook                 },
 	{ "lxc.hook.mount",           config_hook                 },
 	{ "lxc.hook.autodev",         config_hook                 },
+	{ "lxc.hook.cgroups",         config_hook                 },
 	{ "lxc.hook.start",           config_hook                 },
 	{ "lxc.hook.post-stop",       config_hook                 },
 	{ "lxc.hook.clone",           config_hook                 },
@@ -1055,6 +1056,8 @@ static int config_hook(const char *key, const char *value,
 		return add_hook(lxc_conf, LXCHOOK_AUTODEV, copy);
 	else if (strcmp(key, "lxc.hook.mount") == 0)
 		return add_hook(lxc_conf, LXCHOOK_MOUNT, copy);
+	else if (strcmp(key, "lxc.hook.cgroups") == 0)
+		return add_hook(lxc_conf, LXCHOOK_CGROUPS, copy);
 	else if (strcmp(key, "lxc.hook.start") == 0)
 		return add_hook(lxc_conf, LXCHOOK_START, copy);
 	else if (strcmp(key, "lxc.hook.post-stop") == 0)

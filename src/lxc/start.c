@@ -1055,6 +1055,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
+	if (run_lxc_hooks(name, "cgroups", handler->conf, handler->lxcpath, NULL)) {
+		ERROR("failed to run cgroup hooks for container '%s'.", name);
+		goto out_delete_net;
+	}
+
 	/* Tell the child to complete its initialization and wait for
 	 * it to exec or return an error.  (the child will never
 	 * return LXC_SYNC_POST_CGROUP+1.  It will either close the
