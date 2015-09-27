@@ -152,6 +152,8 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 
 	/* Destroy snapshots created with lxc-clone listed in lxc-snapshots. */
 	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return -1;
 
 	fd = open(path, O_RDONLY | O_CLOEXEC);
 	if (fd >= 0) {
