@@ -284,6 +284,9 @@ static struct caps_opt caps_opt[] = {
 	{ "sys_tty_config",    CAP_SYS_TTY_CONFIG    },
 	{ "mknod",             CAP_MKNOD             },
 	{ "lease",             CAP_LEASE             },
+#ifdef CAP_AUDIT_READ
+	{ "audit_read",        CAP_AUDIT_READ        },
+#endif
 #ifdef CAP_AUDIT_WRITE
 	{ "audit_write",       CAP_AUDIT_WRITE       },
 #endif
