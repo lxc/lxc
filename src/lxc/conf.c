@@ -302,6 +302,9 @@ static struct caps_opt caps_opt[] = {
 #ifdef CAP_WAKE_ALARM
 	{ "wake_alarm",        CAP_WAKE_ALARM        },
 #endif
+#ifdef CAP_BLOCK_SUSPEND
+	{ "block_suspend",     CAP_BLOCK_SUSPEND     },
+#endif
 };
 #else
 static struct caps_opt caps_opt[] = {};
