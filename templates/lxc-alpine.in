@@ -277,12 +277,6 @@ usage_err() {
     exit 1
 }
 
-optarg_check() {
-    if [ -z "$2" ]; then
-        usage_err "option '$1' requires an argument"
-    fi
-}
-
 default_path=@LXCPATH@
 release=
 arch=$(uname -m)
@@ -293,58 +287,39 @@ if [ $(id -u) -ne 0 ]; then
    exit 1
 fi
 
+options=$(getopt -o hn:p:r:R:a: -l help,name:,rootfs:,path:,repository:,release:,arch: -- "$@")
+[ $? -eq 0 ] || usage_err
+eval set -- "$options"
+
 while [ $# -gt 0 ]; do
-    opt="$1"
-    shift
-    case "$opt" in
+    case "$1" in
     -h|--help)
         usage
         exit 0
         ;;
     -n|--name)
-        optarg_check $opt "$1"
-        name=$1
-        shift
+        name=$2
         ;;
     --rootfs)
-        optarg_check $opt "$1"
-        rootfs=$1
-        shift
+        rootfs=$2
         ;;
     -p|--path)
-        optarg_check $opt "$1"
-        path=$1
-        shift
+        path=$2
         ;;
     -r|--repository)
-        optarg_check $opt "$1"
-        repository=$1
-        shift
+        repository=$2
 	;;
     -R|--release)
-        optarg_check $opt "$1"
-        release=$1
-        shift
+        release=$2
         ;;
     -a|--arch)
-        optarg_check $opt "$1"
-        arch=$1
-        shift
+        arch=$2
         ;;
     --)
+	shift
         break;;
-    --*=*)
-        # split --myopt=foo=bar into --myopt foo=bar
-        set -- ${opt%=*} ${opt#*=} "$@"
-        ;;
-    -?)
-        usage_err "unknown option '$opt'"
-        ;;
-    -*)
-        # split opts -abc into -a -b -c
-        set -- $(echo "${opt#-}" | sed 's/\(.\)/ -\1/g') "$@"
-        ;;
     esac
+    shift 2
 done
 
 
