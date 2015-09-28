@@ -469,7 +469,6 @@ Options :
   -p, --path=PATH        directory where config and rootfs of this VM will be kept
   -a, --arch=ARCH        The container architecture. Can be one of: i686, x86_64,
                          amd64, armhf, armel, powerpc. Defaults to host arch.
-  --force-arch           Ignore architecture specific errors.
   -r, --release=RELEASE  Debian release. Can be one of: squeeze, wheezy, jessie, sid.
                          Defaults to current stable.
   --mirror=MIRROR        Debian mirror to use during installation. Overrides the MIRROR
@@ -493,24 +492,20 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:r:c -l arch:,force-arch,clean,help,main-only,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror: -- "$@")
+options=$(getopt -o hp:n:a:r:c -l arch:,clean,help,main-only,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror: -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
         exit 1
 fi
 eval set -- "$options"
 
-if which dpkg > /dev/null 2>&1 ; then
-    arch=$(dpkg --print-architecture)
-else
-    arch=$(uname -m)
-    if [ "$arch" = "i686" ]; then
-        arch="i386"
-    elif [ "$arch" = "x86_64" ]; then
-        arch="amd64"
-    elif [ "$arch" = "armv7l" ]; then
-        arch="armhf"
-    fi
+arch=$(uname -m)
+if [ "$arch" = "i686" ]; then
+    arch="i386"
+elif [ "$arch" = "x86_64" ]; then
+    arch="amd64"
+elif [ "$arch" = "armv7l" ]; then
+    arch="armhf"
 fi
 hostarch=$arch
 
@@ -521,7 +516,6 @@ do
            --)                shift 1; break ;;
 
         -a|--arch)            arch=$2; shift 2;;
-        --force-arch)         forcearch=yes; shift 1;;
         -c|--clean)           clean=1; shift 1;;
            --main-only)       mainonly=1; shift 1;;
            --mirror)          MIRROR=$2; shift 2;;
@@ -548,22 +542,20 @@ if [ "$arch" = "x86_64" ]; then
     arch=amd64
 fi
 
-if [ -z "$forcearch" ]; then
-    if [ $hostarch = "i386" -a $arch = "amd64" ]; then
-        echo "can't create $arch container on $hostarch"
-        exit 1
-    fi
+if [ $hostarch = "i386" -a $arch = "amd64" ]; then
+    echo "can't create $arch container on $hostarch"
+    exit 1
+fi
 
-    if [ $hostarch = "armhf" -o $hostarch = "armel" ] && \
-       [ $arch != "armhf" -a $arch != "armel" ]; then
-        echo "can't create $arch container on $hostarch"
-        exit 1
-    fi
+if [ $hostarch = "armhf" -o $hostarch = "armel" ] && \
+   [ $arch != "armhf" -a $arch != "armel" ]; then
+    echo "can't create $arch container on $hostarch"
+    exit 1
+fi
 
-    if [ $hostarch = "powerpc" -a $arch != "powerpc" ]; then
-        echo "can't create $arch container on $hostarch"
-        exit 1
-    fi
+if [ $hostarch = "powerpc" -a $arch != "powerpc" ]; then
+    echo "can't create $arch container on $hostarch"
+    exit 1
 fi
 
 type debootstrap
