@@ -168,7 +168,6 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 		if (!buf) {
 			SYSERROR("failed to allocate memory");
 			close(fd);
-			free(buf);
 			return -1;
 		}
 
