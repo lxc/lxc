@@ -2461,12 +2461,15 @@ static int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char 
 		// and needs to be on the same filesystem as upperdir,
 		// so it's OK for it to be empty.
 		work = malloc(lastslashidx + 7);
-		if (!work)
+		if (!work) {
+			free(delta);
 			return -1;
+		}
 		strncpy(work, new->dest, lastslashidx+1);
 		strcpy(work+lastslashidx, "olwork");
 		if (mkdir(work, 0755) < 0) {
 			SYSERROR("error: mkdir %s", work);
+			free(delta);
 			free(work);
 			return -1;
 		}
