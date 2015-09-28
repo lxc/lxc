@@ -109,7 +109,7 @@ install_alpine() {
     else
         cp /etc/apk/repositories "$rootfs"/etc/apk/repositories || return 1
         if [ -n "$release" ]; then
-            sed -i -e "s:/[^/]\+/\([^/]\+\)$:/$release/\1:" \
+            sed -E -i "s:/[^/]+/([^/]+)$:/$release/\\1:" \
                 "$rootfs"/etc/apk/repositories
         fi
     fi
