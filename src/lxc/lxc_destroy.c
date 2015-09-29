@@ -141,6 +141,7 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 {
 	struct lxc_container *c1;
 	struct stat fbuf;
+	bool bret = false;
 	char path[MAXPATHLEN];
 	char *buf = NULL;
 	char *lxcpath = NULL;
@@ -184,8 +185,10 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 			if (!(lxcname = strtok_r(NULL, "\n", &scratch)))
 				break;
 			c1 = lxc_container_new(lxcname, lxcpath);
-			if (!c1)
-				goto next;
+			if (!c1) {
+				counter++;
+				continue;
+			}
 			if (!c1->destroy(c1)) {
 				fprintf(stderr, "Destroying snapshot %s of %s failed\n", lxcname, my_args.name);
 				lxc_container_put(c1);
@@ -193,7 +196,6 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 				return -1;
 			}
 			lxc_container_put(c1);
-next:
 			counter++;
 		}
 		free(buf);
@@ -203,16 +205,15 @@ next:
 	ret = snprintf(path, MAXPATHLEN, "%s/%s/snaps", c->config_path, c->name);
 	if (ret < 0 || ret >= MAXPATHLEN)
 		return -1;
-	if (dir_exists(path)) {
-		if (!c->destroy_with_snapshots(c)) {
-			fprintf(stderr, "Destroying %s failed\n", my_args.name);
-			return -1;
-		}
-	} else {
-		if (!c->destroy(c)) {
-			fprintf(stderr, "Destroying %s failed\n", my_args.name);
-			return -1;
-		}
+
+	if (dir_exists(path))
+		bret = c->destroy_with_snapshots(c);
+	else
+		bret = c->destroy(c);
+
+	if (!bret) {
+		fprintf(stderr, "Destroying %s failed\n", my_args.name);
+		return -1;
 	}
 
 	printf("Destroyed container %s including snapshots \n", my_args.name);
