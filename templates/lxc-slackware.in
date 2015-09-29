@@ -1,0 +1,795 @@
+#!/bin/bash
+
+#
+# lxc: linux Container library
+
+# Authors:
+# Daniel Lezcano <daniel.lezcano@free.fr>
+
+# Template for slackware by Matteo Bernardini <ponce@slackbuilds.org>
+# some parts are taken from the debian one (used as model)
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+# Detect use under userns (unsupported)
+for arg in "$@"; do
+    [ "$arg" = "--" ] && break
+    if [ "$arg" = "--mapped-uid" -o "$arg" = "--mapped-gid" ]; then
+        echo "This template can't be used for unprivileged containers." 1>&2
+        echo "You may want to try the \"download\" template instead." 1>&2
+        exit 1
+    fi
+done 
+
+# Add some directories to PATH in case we create containers with sudo
+export PATH=/sbin:/usr/sbin:$PATH
+
+cache=${cache:-/var/cache/lxc/slackware}
+
+# Use the primary Slackware site by default, but please consider changing
+# this to a closer mirror site.
+MIRROR=${MIRROR:-http://ftp.slackware.com/pub/slackware}
+
+if [ -z "$arch" ]; then
+case "$( uname -m )" in
+    i?86) arch=i486 ;;
+    arm*) arch=arm ;;
+       *) arch=$( uname -m ) ;;
+esac
+fi
+
+LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+
+configure_slackware()
+{
+rootfs=$1
+hostname=$2
+
+echo "Configuring..." ; echo
+
+# The next part contains excerpts taken from SeTconfig (written by
+# Patrick Volkerding) from the slackware setup disk.
+# But before pasting them just set a variable to use them as they are 
+T_PX=$rootfs
+
+( cd $T_PX ; chmod 755 ./ )
+( cd $T_PX ; chmod 755 ./var )
+if [ -d $T_PX/usr/src/linux ]; then
+  chmod 755 $T_PX/usr/src/linux
+fi
+if [ ! -d $T_PX/proc ]; then
+  mkdir $T_PX/proc
+  chown root.root $T_PX/proc
+fi
+if [ ! -d $T_PX/sys ]; then
+  mkdir $T_PX/sys
+  chown root.root $T_PX/sys
+fi
+chmod 1777 $T_PX/tmp
+if [ ! -d $T_PX/var/spool/mail ]; then
+  mkdir -p $T_PX/var/spool/mail
+  chmod 755 $T_PX/var/spool
+  chown root.mail $T_PX/var/spool/mail
+  chmod 1777 $T_PX/var/spool/mail
+fi
+
+echo "#!/bin/sh" > $T_PX/etc/rc.d/rc.keymap
+echo "# Load the keyboard map.  More maps are in /usr/share/kbd/keymaps." \
+  >> $T_PX/etc/rc.d/rc.keymap
+echo "if [ -x /usr/bin/loadkeys ]; then" >> $T_PX/etc/rc.d/rc.keymap
+echo " /usr/bin/loadkeys us" >> $T_PX/etc/rc.d/rc.keymap
+echo "fi" >> $T_PX/etc/rc.d/rc.keymap
+chmod 755 $T_PX/etc/rc.d/rc.keymap
+
+# Network configuration is left to the user, that have to edit
+# /etc/rc.d/rc.inet1.conf and /etc/resolv.conf of the container
+# just set the hostname
+cat <<EOF > $rootfs/etc/HOSTNAME
+$hostname.example.net
+EOF
+cp $rootfs/etc/HOSTNAME $rootfs/etc/hostname
+
+# make needed devices, from Chris Willing's MAKEDEV.sh
+# http://www.vislab.uq.edu.au/howto/lxc/MAKEDEV.sh
+DEV=$rootfs/dev
+mkdir -p ${DEV}
+mknod -m 666 ${DEV}/null c 1 3
+mknod -m 666 ${DEV}/zero c 1 5
+mknod -m 666 ${DEV}/random c 1 8
+mknod -m 666 ${DEV}/urandom c 1 9
+mkdir -m 755 ${DEV}/pts
+mkdir -m 1777 ${DEV}/shm
+mknod -m 666 ${DEV}/tty c 5 0
+mknod -m 600 ${DEV}/console c 5 1
+mknod -m 666 ${DEV}/tty0 c 4 0
+mknod -m 666 ${DEV}/tty1 c 4 1
+mknod -m 666 ${DEV}/tty2 c 4 2
+mknod -m 666 ${DEV}/tty3 c 4 3
+mknod -m 666 ${DEV}/tty4 c 4 4
+mknod -m 666 ${DEV}/tty5 c 4 5
+mknod -m 666 ${DEV}/full c 1 7
+mknod -m 600 ${DEV}/initctl p
+mknod -m 660 ${DEV}/loop0 b 7 0
+mknod -m 660 ${DEV}/loop1 b 7 1
+ln -s pts/ptmx ${DEV}/ptmx
+ln -s /proc/self/fd ${DEV}/fd
+
+echo "Adding an etc/fstab"
+cat >$rootfs/etc/fstab <<EOF
+none /run tmpfs defaults,mode=0755 0 0
+EOF
+
+# simplify rc.6 and rc.S, http://www.vislab.uq.edu.au/howto/lxc/create_container.html
+# and some other small fixes for a clean boot
+cat >$rootfs/tmp/rcs.patch <<'EOF'
+--- ./etc/rc.orig/rc.6	2012-08-15 01:03:12.000000000 +0200
++++ ./etc/rc.d/rc.6	2013-02-17 10:26:30.888839354 +0100
+@@ -9,6 +9,12 @@
+ # Author:	Miquel van Smoorenburg <miquels@drinkel.nl.mugnet.org>
+ # Modified by:  Patrick J. Volkerding, <volkerdi@slackware.com>
+ #
++# minor tweaks for an lxc container
++# by Matteo Bernardini <ponce@slackbuilds.org>,
++# based also on Chris Willing's modifications
++# http://www.vislab.uq.edu.au/howto/lxc/rc.6
++# a check for a container variable is made to jump sections
++container="lxc"
+ 
+ # Set the path.
+ PATH=/sbin:/etc:/bin:/usr/bin
+@@ -37,6 +43,9 @@
+ 		;;
+ esac
+ 
++# lxc container check
++if [ ! $container = "lxc" ]; then
++
+ # Save the system time to the hardware clock using hwclock --systohc.
+ if [ -x /sbin/hwclock ]; then
+   # Check for a broken motherboard RTC clock (where ioports for rtc are
+@@ -53,6 +62,8 @@
+   fi
+ fi
+ 
++fi # end container check
++
+ # Run any local shutdown scripts:
+ if [ -x /etc/rc.d/rc.local_shutdown ]; then
+   /etc/rc.d/rc.local_shutdown stop
+@@ -148,6 +159,9 @@
+   sleep 2
+ fi
+ 
++# lxc container check
++if [ ! $container = "lxc" ]; then
++
+ # Shut down PCMCIA devices:
+ if [ -x /etc/rc.d/rc.pcmcia ]; then
+   . /etc/rc.d/rc.pcmcia stop
+@@ -155,11 +169,16 @@
+   /bin/sleep 5
+ fi
+ 
++fi # end container check
++
+ # Turn off process accounting:
+ if [ -x /sbin/accton -a -r /var/log/pacct ]; then
+   /sbin/accton off
+ fi
+ 
++# lxc container check
++if [ ! $container = "lxc" ]; then
++
+ # Terminate acpid before syslog:
+ if [ -x /etc/rc.d/rc.acpid -a -r /var/run/acpid.pid ]; then # quit
+   . /etc/rc.d/rc.acpid stop
+@@ -170,6 +189,8 @@
+   sh /etc/rc.d/rc.udev force-stop
+ fi
+ 
++fi # end container check
++
+ # Kill all remaining processes.
+ if [ ! "$1" = "fast" ]; then
+   echo "Sending all processes the SIGTERM signal."
+@@ -179,6 +200,9 @@
+   /sbin/killall5 -9
+ fi
+ 
++# lxc container check
++if [ ! $container = "lxc" ]; then
++
+ # Try to turn off quota.
+ if /bin/grep -q quota /etc/fstab ; then
+   if [ -x /sbin/quotaoff ]; then
+@@ -187,6 +211,8 @@
+   fi
+ fi
+ 
++fi # end container check
++
+ # Carry a random seed between reboots.
+ echo "Saving random seed from /dev/urandom in /etc/random-seed."
+ # Use the pool size from /proc, or 512 bytes:
+@@ -205,6 +231,9 @@
+   rm -f /var/lock/subsys/*
+ fi
+ 
++# lxc container check
++if [ ! $container = "lxc" ]; then
++
+ # Turn off swap:
+ echo "Turning off swap."
+ /sbin/swapoff -a
+@@ -216,6 +245,8 @@
+ echo "Remounting root filesystem read-only."
+ /bin/mount -v -n -o remount,ro /
+ 
++fi # end container check
++
+ # This never hurts:
+ /bin/sync
+ 
+@@ -240,12 +271,17 @@
+   done
+ fi
+ 
++# lxc container check
++if [ ! $container = "lxc" ]; then
++
+ # Deactivate LVM volume groups:
+ if [ -r /etc/lvmtab -o -d /etc/lvm/backup ]; then
+   echo "Deactivating LVM volume groups:"
+   /sbin/vgchange -an --ignorelockingfailure
+ fi
+ 
++fi # end container check
++
+ # This never hurts again (especially since root-on-LVM always fails
+ # to deactivate the / logical volume...  but at least it was
+ # remounted as read-only first)
+@@ -258,6 +294,9 @@
+ # This is to ensure all processes have completed on SMP machines:
+ wait
+ 
++# lxc container check
++if [ ! $container = "lxc" ]; then
++
+ if [ -x /sbin/genpowerd ]; then
+   # See if this is a powerfail situation:
+   if /bin/egrep -q "FAIL|SCRAM" /etc/upsstatus 2> /dev/null ; then
+@@ -274,6 +313,13 @@
+   fi
+ fi
+ 
++else
++
++# confirm successful shutdown of the container
++echo ; echo "* container stopped. *" ; echo
++
++fi # end container check
++
+ # Now halt (poweroff with APM or ACPI enabled kernels) or reboot.
+ if [ "$command" = "reboot" ]; then
+   echo "Rebooting."
+--- ./etc/rc.orig/rc.S	2012-09-13 21:38:34.000000000 +0200
++++ ./etc/rc.d/rc.S	2013-02-17 09:39:41.579799641 +0100
+@@ -4,9 +4,18 @@
+ #
+ # Mostly written by:  Patrick J. Volkerding, <volkerdi@slackware.com>
+ #
++# minor tweaks for an lxc container
++# by Matteo Bernardini <ponce@slackbuilds.org>,
++# based also on Chris Willing's modifications
++# http://www.vislab.uq.edu.au/howto/lxc/rc.S
++# a check for a container variable is made to jump sections
++container="lxc"
+ 
+ PATH=/sbin:/usr/sbin:/bin:/usr/bin
+ 
++# lxc container check
++if [ ! $container = "lxc" ]; then
++
+ # Try to mount /proc:
+ /sbin/mount -v proc /proc -n -t proc 2> /dev/null
+ 
+@@ -254,10 +263,27 @@
+   read junk;
+ fi # Done checking root filesystem
+ 
++else
++  # We really don't want to start udev in the container
++  if [ -f /etc/rc.d/rc.udev ]; then
++    chmod -x /etc/rc.d/rc.udev
++  fi
++  # Alsa won't work
++  if [ -f /etc/rc.d/rc.alsa ]; then
++    chmod -x /etc/rc.d/rc.alsa
++  fi
++  # This too
++  if [ -f /etc/rc.d/rc.loop ]; then
++    chmod -x /etc/rc.d/rc.loop
++  fi
++fi # end container check
+ 
+ # Any /etc/mtab that exists here is old, so we start with a new one:
+ /bin/rm -f /etc/mtab{,~,.tmp} && /bin/touch /etc/mtab
+ 
++# lxc container check
++if [ ! $container = "lxc" ]; then
++
+ # Add entry for / to /etc/mtab:
+ /sbin/mount -f -w /
+ 
+@@ -337,6 +363,8 @@
+ # mounted read-write.
+ /sbin/swapon -a 2> /dev/null
+ 
++fi # end container check
++
+ # Clean up some temporary files:
+ rm -f /var/run/* /var/run/*/* /var/run/*/*/* /etc/nologin \
+   /etc/dhcpc/*.pid /etc/forcefsck /etc/fastboot \
+@@ -364,7 +392,7 @@
+ # if the first line of that file begins with the word 'Linux'.
+ # You are free to modify the rest of the file as you see fit.
+ if [ -x /bin/sed ]; then
+-  /bin/sed -i "{1s/^Linux.*/$(/bin/uname -sr)\./}" /etc/motd
++  /bin/sed -i "{1s/^Linux.*/$(/bin/uname -sr) lxc container\./}" /etc/motd
+ fi
+ 
+ # If there are SystemV init scripts for this runlevel, run them.
+@@ -372,6 +400,9 @@
+   . /etc/rc.d/rc.sysvinit
+ fi
+ 
++# lxc container check
++if [ ! $container = "lxc" ]; then
++
+ # Run serial port setup script:
+ # CAREFUL!  This can make some systems hang if the rc.serial script isn't
+ # set up correctly.  If this happens, you may have to edit the file from a
+@@ -380,6 +411,8 @@
+   sh /etc/rc.d/rc.serial start
+ fi
+ 
++fi # end container check
++
+ # Carry an entropy pool between reboots to improve randomness.
+ if [ -f /etc/random-seed ]; then
+   echo "Using /etc/random-seed to initialize /dev/urandom."
+--- ./etc/rc.orig/rc.M	2012-09-25 19:47:07.000000000 +0200
++++ ./etc/rc.d/rc.M	2013-02-17 09:39:41.579799641 +0100
+@@ -10,6 +10,10 @@
+ # Author:	Fred N. van Kempen, <waltje@uwalt.nl.mugnet.org>
+ #		Heavily modified by Patrick Volkerding <volkerdi@slackware.com>
+ #
++# minor tweaks for an lxc container
++# by Matteo Bernardini <ponce@slackbuilds.org>:
++# a check for a container variable is made to jump sections
++container="lxc"
+ 
+ # Tell the viewers what's going to happen.
+ echo "Going multiuser..."
+@@ -20,6 +24,9 @@
+   /sbin/ldconfig &
+ fi
+ 
++# lxc container check
++if [ ! $container = "lxc" ]; then
++
+ # Screen blanks after 15 minutes idle time, and powers down in one hour
+ # if the kernel supports APM or ACPI power management:
+ /bin/setterm -blank 15 -powersave powerdown -powerdown 60
+@@ -33,6 +40,8 @@
+   /bin/hostname darkstar
+ fi
+ 
++fi # end container check
++
+ # Set the permissions on /var/log/dmesg according to whether the kernel
+ # permits non-root users to access kernel dmesg information:
+ if [ -r /proc/sys/kernel/dmesg_restrict ]; then
+@@ -135,6 +144,9 @@
+ chmod 755 / 2> /dev/null
+ chmod 1777 /tmp /var/tmp
+ 
++# lxc container check
++if [ ! $container = "lxc" ]; then
++
+ # Start APM or ACPI daemon.
+ # If APM is enabled in the kernel, start apmd:
+ if [ -e /proc/apm ]; then
+@@ -146,6 +158,8 @@
+   . /etc/rc.d/rc.acpid start
+ fi
+ 
++fi # end container check
++
+ # Update any existing icon cache files:
+ if find /usr/share/icons 2> /dev/null | grep -q icon-theme.cache ; then
+   for theme_dir in /usr/share/icons/* ; do
+--- ./etc/rc.orig/rc.inet1	2012-08-05 19:13:27.000000000 +0200
++++ ./etc/rc.d/rc.inet1	2013-02-17 09:39:41.579799641 +0100
+@@ -3,6 +3,11 @@
+ # This script is used to bring up the various network interfaces.
+ #
+ # @(#)/etc/rc.d/rc.inet1 10.2  Sun Jul 24 12:45:56 PDT 2005  (pjv)
++#
++# minor tweaks for an lxc container
++# by Matteo Bernardini <ponce@slackbuilds.org>:
++# a check for a container variable is made to jump sections
++container="lxc"
+ 
+ ############################
+ # READ NETWORK CONFIG FILE #
+@@ -105,6 +110,10 @@
+     [ "${IFNAME[$i]}" = "${1}" ] && break
+     i=$(($i+1))
+   done
++
++  # lxc container check
++  if [ ! $container = "lxc" ]; then
++
+   # If the interface is a bridge, then create it first:
+   [ -n "${BRNICS[$i]}" ] && br_open $i
+   # If the interface isn't in the kernel yet (but there's an alias for it in
+@@ -115,6 +124,9 @@
+       /sbin/modprobe ${1}
+     fi
+   fi
++
++  fi # end container check
++
+   if grep `echo ${1}: | cut -f 1 -d :`: /proc/net/dev 1> /dev/null ; then # interface exists
+     if ! /sbin/ifconfig | grep -w "${1}" 1>/dev/null || \
+       ! /sbin/ifconfig ${1} | grep -w inet 1> /dev/null ; then # interface not up or not configured
+EOF
+( cd $rootfs ; patch -p1 < tmp/rcs.patch ; rm tmp/rcs.patch )
+
+# restart rc.inet1 to have routing for the loop device
+echo "/etc/rc.d/rc.inet1 restart" >> $rootfs/etc/rc.d/rc.local
+
+# reduce the number of local consoles: two should be enough
+sed -i '/^c3\|^c4\|^c5\|^c6/s/^/# /' $rootfs/etc/inittab
+
+# better not use this in a container
+sed -i 's/.*genpowerfail.*//' $rootfs/etc/inittab
+
+# add a message to rc.local that confirms successful container startup
+echo "echo ; echo \"* container $name started. *\" ; echo" >> $rootfs/etc/rc.d/rc.local
+
+# set a default combination for the luggage
+echo "root:root" | chroot $rootfs chpasswd
+echo "Root default password is 'root', please change it!"
+
+# borrow the time configuration from the local machine
+cp -a /etc/localtime $rootfs/etc/localtime
+
+return 0
+}
+
+copy_slackware()
+{
+rootfs=$1
+
+# make a local copy of the installed filesystem
+echo -n "Copying rootfs to $rootfs..."
+mkdir -p $rootfs
+cp -a $cache/rootfs-$release-$arch/* $rootfs/ || exit 1
+
+# fix fstab with the actual path
+sed -i "s|$cache/rootfs-$release-$arch|$rootfs|" $rootfs/etc/fstab
+
+return 0
+}
+
+install_slackware()
+{
+rootfs=$1
+mkdir -p /var/lock/subsys/
+(
+flock -n -x 200
+if [ $? -ne 0 ]; then
+	echo "Cache repository is busy."
+	return 1
+fi
+
+if [ "$arch" == "x86_64" ]; then
+        PKGMAIN=slackware64
+elif [ "$arch" == "arm" ]; then
+        PKGMAIN=slackwarearm
+else
+	PKGMAIN=slackware
+fi
+
+export CONF=$cache/slackpkg-conf
+export ROOT=$cache/rootfs-$release-$arch
+
+mkdir -p $cache/cache-$release-$arch $cache/rootfs-$release-$arch \
+  $cache/slackpkg-$release-$arch $CONF/templates
+
+echo "$MIRROR/$PKGMAIN-$release/" > $CONF/mirrors
+touch $CONF/blacklist
+
+cat <<EOF > $CONF/slackpkg.conf
+# v2.8
+ARCH=$arch
+TEMP=$cache/cache-$release-$arch
+WORKDIR=$cache/slackpkg-$release-$arch
+DELALL=off
+CHECKMD5=on
+CHECKGPG=on
+CHECKSIZE=off
+PRIORITY=( patches %PKGMAIN extra pasture testing )
+POSTINST=on
+ONLY_NEW_DOTNEW=off
+ONOFF=on
+DOWNLOAD_ALL=on
+DIALOG=off
+BATCH=on
+DEFAULT_ANSWER=y
+USE_INCLUDES=on
+SPINNING=off
+EOF
+
+# thanks to Vincent Batts for this list of packages
+# (that I modified a little :P)
+# http://connie.slackware.com/~vbatts/minimal/
+cat <<EOF > $CONF/templates/minimal-lxc.template
+aaa_base
+aaa_elflibs
+aaa_terminfo
+bash
+bin
+bzip2
+coreutils
+dhcpcd
+dialog
+diffutils
+e2fsprogs
+elvis
+etc
+findutils
+gawk
+glibc-solibs
+gnupg
+grep
+gzip
+iputils
+logrotate
+mpfr
+net-tools
+network-scripts
+ncurses
+openssh
+openssl-solibs
+pkgtools
+procps-ng
+sed
+shadow
+sharutils
+slackpkg
+sysklogd
+sysvinit
+sysvinit-functions
+sysvinit-scripts
+tar
+udev
+util-linux
+wget
+which
+xz
+EOF
+
+TEMPLATE=${TEMPLATE:-minimal-lxc}
+if [ ! "$TEMPLATE" = "minimal-lxc" ]; then
+  if [ -f /etc/slackpkg/templates/$TEMPLATE.template ]; then
+    cat /etc/slackpkg/templates/$TEMPLATE.template \
+      > $CONF/templates/$TEMPLATE.template
+  else
+    TEMPLATE="minimal-lxc"
+  fi
+fi
+
+# clean previous installs
+rm -fR $ROOT/*
+
+slackpkg -default_answer=n update 
+slackpkg install-template $TEMPLATE
+
+# add a slackpkg default mirror
+echo "$MIRROR/$PKGMAIN-$release/" >> $ROOT/etc/slackpkg/mirrors
+
+# blacklist the devs package (we have to use our premade devices).
+# do the same with the kernel packages (we use the host's one),
+# but leave available headers and sources
+echo "devs" >> $ROOT/etc/slackpkg/blacklist
+sed -i \
+  -e "s|^#kernel-|kernel-|" \
+  -e "s|^kernel-headers|#kernel-headers|" \
+  -e "s|^kernel-source|#kernel-source|" \
+  $ROOT/etc/slackpkg/blacklist
+
+# force klog to use the system call interface to the kernel message
+# buffers - needed for unprivileged containers
+sed -i 's|3\ \-x|3 -x -s|' $ROOT/etc/rc.d/rc.syslog || true
+
+return 0
+
+) 200>/var/lock/subsys/lxc
+
+return $?
+}
+
+copy_configuration()
+{
+path=$1
+rootfs=$2
+name=$3
+
+cat <<EOF >> $path/config
+
+lxc.utsname = $name
+lxc.arch = $arch
+
+lxc.mount = $rootfs/etc/fstab
+
+lxc.include = ${LXC_TEMPLATE_CONFIG}/slackware.common.conf
+EOF
+
+if [ $? -ne 0 ]; then
+	echo "Failed to add configuration."
+	return 1
+fi
+
+return 0
+}
+
+clean()
+{
+if [ ! -e $cache ]; then
+	exit 0
+fi
+
+# lock, so we won't purge while someone is creating a repository
+(
+flock -n -x 200
+if [ $? != 0 ]; then
+	echo "Cache repository is busy."
+	exit 1
+fi
+
+echo -n "Purging the download cache..."
+rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
+exit 0
+
+) 200>/var/lock/subsys/lxc
+}
+
+usage()
+{
+cat <<EOF
+$1 -h|--help -p|--path=<path> --clean
+EOF
+return 0
+}
+
+options=$(getopt -o hp:n:a:r:c -l help,rootfs:,path:,name:,arch:,release:,clean --  "$@")
+if [ $? -ne 0 ]; then
+	usage $(basename $0)
+	exit 1
+fi
+eval set -- "$options"
+
+while true
+do
+case "$1" in
+        -h|--help)      usage $0 && exit 0;;
+        -p|--path)      path=$2; shift 2;;
+	--rootfs)       rootfs=$2; shift 2;;
+	-a|--arch)      arch=$2; shift 2;; 
+	-r|--release)   release=$2; shift 2;;
+	-n|--name)      name=$2; shift 2;;
+	-c|--clean)     clean=$2; shift 2;;
+        --)             shift 1; break ;;
+        *)              break ;;
+esac
+done
+
+if [ ! -z "$clean" -a -z "$path" ]; then
+	clean || exit 1
+	exit 0
+fi
+
+type installpkg
+if [ $? -ne 0 ]; then
+	echo "'installpkg' command is missing."
+	exit 1
+fi
+
+type slackpkg
+if [ $? -ne 0 ]; then
+	echo "'slackpkg' command is missing."
+	exit 1
+fi
+
+if [ -z "$path" ]; then
+	echo "'path' parameter is required."
+	exit 1
+fi
+
+if [ "$(id -u)" != "0" ]; then
+	echo "This script should be run as 'root'."
+	exit 1
+fi
+
+# If no release version was specified, use current
+release=${release:-current}
+
+if [ -z "$name" ]; then
+	# no name given? set a default one
+	name=slackwarecontainer
+fi
+
+# detect rootfs
+config="$path/config"
+if [ -z "$rootfs" ]; then
+	if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
+		rootfs=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $config)
+	else
+		rootfs=$path/rootfs
+	fi
+fi
+
+echo
+
+set -e
+
+install_slackware $rootfs
+if [ $? -ne 0 ]; then
+	echo "Failed to install slackware."
+	exit 1
+fi
+
+echo
+
+configure_slackware $cache/rootfs-$release-$arch $name
+if [ $? -ne 0 ]; then
+	echo "Failed to configure slackware for a container."
+	exit 1
+fi
+
+echo
+
+rootfs=$path/rootfs
+copy_slackware $rootfs
+if [ $? -ne 0 ]; then
+	echo "Failed to copy rootfs."
+	exit 1
+fi
+
+echo
+
+copy_configuration $path $rootfs $name
+if [ $? -ne 0 ]; then
+	echo "Failed to write configuration file."
+	exit 1
+fi
+
+if [ ! -z $clean ]; then
+	clean || exit 1
+	exit 0
+fi

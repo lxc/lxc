@@ -654,6 +654,8 @@ AC_CONFIG_FILES([
 	config/templates/oracle.userns.conf
 	config/templates/plamo.common.conf
 	config/templates/plamo.userns.conf
+	config/templates/slackware.common.conf
+	config/templates/slackware.userns.conf
 	config/templates/ubuntu-cloud.common.conf
 	config/templates/ubuntu-cloud.lucid.conf
 	config/templates/ubuntu-cloud.userns.conf
@@ -806,6 +808,7 @@ AC_CONFIG_FILES([
 	templates/lxc-opensuse
 	templates/lxc-oracle
 	templates/lxc-plamo
+	templates/lxc-slackware
 	templates/lxc-sshd
 	templates/lxc-ubuntu
 	templates/lxc-ubuntu-cloud
