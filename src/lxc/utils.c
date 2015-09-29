@@ -45,6 +45,14 @@
 #include "log.h"
 #include "lxclock.h"
 
+#ifndef O_PATH
+#define O_PATH      010000000
+#endif
+
+#ifndef O_NOFOLLOW
+#define O_NOFOLLOW  00400000
+#endif
+
 lxc_log_define(lxc_utils, lxc);
 
 /*
