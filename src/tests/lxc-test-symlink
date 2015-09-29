@@ -29,7 +29,7 @@ testrun() {
 	expected=$1
 	run=$2
 	pass="pass"
-	lxc-start -P $lxcpath -n symtest1 -l trace -o $lxcpath/log || pass="fail"
+	lxc-start -d -P $lxcpath -n symtest1 -l trace -o $lxcpath/log || pass="fail"
 	[ $pass = "pass" ] && lxc-wait -P $lxcpath -n symtest1 -t 10 -s RUNNING || pass="fail"
 	if [ "$pass" != "$expected" ]; then
 		echo "Test $run: expected $expected but container did not.  Start log:"
