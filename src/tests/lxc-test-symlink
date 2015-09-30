@@ -50,6 +50,7 @@ cat >> /var/lib/lxc/symtest1/config << EOF
 lxc.mount.entry = $dirname opt/xxx/dir none bind,create=dir
 lxc.mount.entry = $fname opt/xxx/file none bind,create=file
 lxc.mount.entry = $fname2 opt/xxx/file2 none bind
+lxc.mount.entry = $dirname /var/lib/lxc/symtest1/rootfs/opt/xxx/dir2 none bind,create=dir
 EOF
 
 # Regular - should succeed
