@@ -1051,6 +1051,23 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         これらのマウントポイントは、コンテナだけに見え、コンテナ外で実行されるプロセスから見えることはありません。
         例えば、/etc や /var や /home をマウントするときに役に立つでしょう。
       </para>
+      <para>
+	<!--
+	NOTE - LXC will generally ensure that mount targets and relative
+	bind-mount sources are properly confined under the container
+	root, to avoid attacks involving over-mounting host directories
+	and files.  (Symbolic links in absolute mount sources are ignored)
+	However, if the container configuration first mounts a directory which
+	is under the control of the container user, such as /home/joe, into
+        the container at some <filename>path</filename>, and then mounts
+        under <filename>path</filename>, then a TOCTTOU attack would be
+        possible where the container user modifies a symbolic link under
+        his home directory at just the right time.
+	  -->
+	注意: 通常 LXC は、マウント対象と相対パス指定のバインドマウントを、適切にコンテナルート以下に閉じ込めます。
+	これは、ホストのディレクトリやファイルに対して重ね合わせを行うようなマウントによる攻撃を防ぎます。(絶対パス指定のマウントソース中の各パスがシンボリックリンクである場合は無視されます。)
+	しかし、もしコンテナの設定が最初に、/home/joe のようなコンテナユーザのコントロール配下にあるディレクトリを、コンテナ中のある <filename>path</filename> にマウントし、その後 <filename>path</filename> 以下でマウントが行われるような場合、コンテナユーザがタイミングを見計らって自身のホームディレクトリ以下でシンボリックリンクを操作するような TOCTTOU 攻撃が成立する可能性があります。
+      </para>
       <variablelist>
 	<varlistentry>
 	  <term>
