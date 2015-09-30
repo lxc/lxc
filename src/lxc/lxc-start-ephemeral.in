@@ -305,16 +305,8 @@ touch $LXC_DIR/configured
 dest.set_config_item("lxc.hook.pre-mount",
                      os.path.join(dest_path, "pre-mount"))
 
-# Generate post-stop script
 if not args.keep_data:
-    with open(os.path.join(dest_path, "post-stop"), "w+") as fd:
-        os.fchmod(fd.fileno(), 0o755)
-        fd.write("""#!/bin/sh
-[ -d "%s" ] && rm -Rf "%s"
-""" % (dest_path, dest_path))
-
-    dest.set_config_item("lxc.hook.post-stop",
-                         os.path.join(dest_path, "post-stop"))
+    dest.set_config_item("lxc.ephemeral", "1")
 
 dest.save_config()
 
