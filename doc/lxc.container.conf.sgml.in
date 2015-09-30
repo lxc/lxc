@@ -280,6 +280,26 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </refsect2>
 
     <refsect2>
+      <title>Ephemeral</title>
+      <para>
+        Allows one to specify whether a container will be destroyed on shutdown.
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.ephemeral</option>
+          </term>
+          <listitem>
+            <para>
+              The only allowed values are 0 and 1. Set this to 1 to destroy a
+              container on shutdown. 
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Network</title>
       <para>
         The network section defines how the network is virtualized in
