@@ -29,7 +29,6 @@ import argparse
 import gettext
 import lxc
 import os
-import pwd
 import sys
 import subprocess
 import tempfile
@@ -356,12 +355,17 @@ if os.path.exists("/proc/self/ns/pid"):
             if args.user:
                 username = args.user
 
-            user = pwd.getpwnam(username)
-            os.setgid(user.pw_gid)
-            os.initgroups(user.pw_name, user.pw_gid)
-            os.setuid(user.pw_uid)
-            os.chdir(user.pw_dir)
-            os.environ['HOME'] = user.pw_dir
+            line = subprocess.check_output(
+                ["getent", "passwd", username],
+                universal_newlines=True).rstrip("\n")
+            _, _, pw_uid, pw_gid, _, pw_dir, _ = line.split(":", 6)
+            pw_uid = int(pw_uid)
+            pw_gid = int(pw_gid)
+            os.setgid(pw_gid)
+            os.initgroups(username, pw_gid)
+            os.setuid(pw_uid)
+            os.chdir(pw_dir)
+            os.environ['HOME'] = pw_dir
         except:
             print(_("Unable to switch to user: %s" % username))
             sys.exit(1)
