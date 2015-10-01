@@ -121,6 +121,7 @@ enum lxc_hostarch_t {
 	lxc_seccomp_arch_i386,
 	lxc_seccomp_arch_amd64,
 	lxc_seccomp_arch_arm,
+	lxc_seccomp_arch_arm64,
 	lxc_seccomp_arch_ppc64,
 	lxc_seccomp_arch_ppc64le,
 	lxc_seccomp_arch_ppc,
@@ -140,6 +141,8 @@ int get_hostarch(void)
 		return lxc_seccomp_arch_amd64;
 	else if (strncmp(uts.machine, "armv7", 5) == 0)
 		return lxc_seccomp_arch_arm;
+	else if (strncmp(uts.machine, "aarch64", 7) == 0)
+		return lxc_seccomp_arch_arm64;
 	else if (strncmp(uts.machine, "ppc64le", 7) == 0)
 		return lxc_seccomp_arch_ppc64le;
 	else if (strncmp(uts.machine, "ppc64", 5) == 0)
@@ -159,6 +162,9 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_
 	case lxc_seccomp_arch_i386: arch = SCMP_ARCH_X86; break;
 	case lxc_seccomp_arch_amd64: arch = SCMP_ARCH_X86_64; break;
 	case lxc_seccomp_arch_arm: arch = SCMP_ARCH_ARM; break;
+#ifdef SCMP_ARCH_AARCH64
+	case lxc_seccomp_arch_arm64: arch = SCMP_ARCH_AARCH64; break;
+#endif
 #ifdef SCMP_ARCH_PPC64LE
 	case lxc_seccomp_arch_ppc64le: arch = SCMP_ARCH_PPC64LE; break;
 #endif
@@ -345,6 +351,16 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 					continue;
 				}
 				cur_rule_arch = lxc_seccomp_arch_arm;
+			}
+#endif
+#ifdef SCMP_ARCH_AARCH64
+			else if (strcmp(line, "[arm64]") == 0 ||
+					strcmp(line, "[ARM64]") == 0) {
+				if (native_arch != lxc_seccomp_arch_arm64) {
+					cur_rule_arch = lxc_seccomp_arch_unknown;
+					continue;
+				}
+				cur_rule_arch = lxc_seccomp_arch_arm64;
 			}
 #endif
 #ifdef SCMP_ARCH_PPC64LE
