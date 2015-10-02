@@ -86,6 +86,7 @@ struct lxc_arguments {
 	char *fstype;
 	uint64_t fssize;
 	char *lvname, *vgname, *thinpool;
+	char *rbdname, *rbdpool;
 	char *zfsroot, *lowerdir, *dir;
 
 	/* lxc-execute */
