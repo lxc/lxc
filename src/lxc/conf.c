@@ -803,16 +803,18 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 					return -1;
 				}
 			}
-			if (default_mounts[i].destination) {
-				/* will act like strdup if %r is not present */
-				destination = lxc_string_replace("%r", conf->rootfs.path ? conf->rootfs.mount : "", default_mounts[i].destination);
-				if (!destination) {
-					saved_errno = errno;
-					SYSERROR("memory allocation error");
-					free(source);
-					errno = saved_errno;
-					return -1;
-				}
+			if (!default_mounts[i].destination) {
+				ERROR("BUG: auto mounts destination %d was NULL", i);
+				return -1;
+			}
+			/* will act like strdup if %r is not present */
+			destination = lxc_string_replace("%r", conf->rootfs.path ? conf->rootfs.mount : "", default_mounts[i].destination);
+			if (!destination) {
+				saved_errno = errno;
+				SYSERROR("memory allocation error");
+				free(source);
+				errno = saved_errno;
+				return -1;
 			}
 			mflags = add_required_remount_flags(source, destination,
 					default_mounts[i].flags);
