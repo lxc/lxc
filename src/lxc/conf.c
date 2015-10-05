@@ -747,7 +747,7 @@ static unsigned long add_required_remount_flags(const char *s, const char *d,
 static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_handler *handler)
 {
 	int r;
-	size_t i;
+	int i;
 	static struct {
 		int match_mask;
 		int match_flag;
