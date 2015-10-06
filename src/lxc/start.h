@@ -72,6 +72,7 @@ struct lxc_handler {
 	int pinfd;
 	const char *lxcpath;
 	void *cgroup_data;
+	int nsfd[LXC_NS_MAX];
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *, const char *);
