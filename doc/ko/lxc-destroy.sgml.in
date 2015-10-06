@@ -57,6 +57,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <command>lxc-destroy</command>
       <arg choice="req">-n <replaceable>name</replaceable></arg>
       <arg choice="opt">-f</arg>
+      <arg choice="opt">-s</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -80,7 +81,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
     <variablelist>
       <varlistentry>
 	<term>
-	  <option>-f</option>
+	  <option>-f, --force</option>
 	</term>
 	<listitem>
 	  <para>
@@ -96,13 +97,13 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       </varlistentry>
 
       <varlistentry>
-        <term><option>-P, --lxcpath=<replaceable>PATH</replaceable></option></term>
+        <term><option>-s, --snapshots</option></term>
         <listitem>
 	  <para>
             <!--
-	    Use an alternate container path.  The default is @LXCPATH@.
+	    destroy the specified container including all its snapshots.
             -->
-            컨테이너 경로를 지정한다. 기본값은 @LXCPATH@이다.
+            해당 컨테이너의 모든 스냅샷까지 제거한다.
 	  </para>
         </listitem>
       </varlistentry>
@@ -110,6 +111,8 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
     </variablelist>
 
   </refsect1>
+
+  &commonoptions;
 
   <refsect1>
     <title><!-- Diagnostic -->진단</title>
