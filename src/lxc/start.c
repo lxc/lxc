@@ -493,6 +493,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	 */
 	lxc_set_state(name, handler, STOPPING);
 
+	if (run_lxc_hooks(name, "stop", handler->conf, handler->lxcpath, NULL))
+		ERROR("failed to run stop hooks for container '%s'.", name);
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (handler->nsfd[i] != -1) {
 			close(handler->nsfd[i]);
