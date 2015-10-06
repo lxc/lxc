@@ -124,14 +124,15 @@ static void close_ns(int ns_fd[LXC_NS_MAX]) {
 	}
 }
 
-static int preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags) {
+static int preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags, pid_t pid) {
 	int i, saved_errno;
 	char path[MAXPATHLEN];
 
 	for (i = 0; i < LXC_NS_MAX; i++)
 		ns_fd[i] = -1;
 
-	if (access("/proc/self/ns", X_OK)) {
+	snprintf(path, MAXPATHLEN, "/proc/%d/ns", pid);
+	if (access(path, X_OK)) {
 		WARN("Kernel does not support attach; preserve_ns ignored");
 		return 0;
 	}
@@ -139,7 +140,8 @@ static int preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags) {
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if ((clone_flags & ns_info[i].clone_flag) == 0)
 			continue;
-		snprintf(path, MAXPATHLEN, "/proc/self/ns/%s", ns_info[i].proc_name);
+		snprintf(path, MAXPATHLEN, "/proc/%d/ns/%s", pid,
+		         ns_info[i].proc_name);
 		ns_fd[i] = open(path, O_RDONLY | O_CLOEXEC);
 		if (ns_fd[i] < 0)
 			goto error;
@@ -973,7 +975,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			INFO("failed to pin the container's rootfs");
 	}
 
-	if (preserve_ns(saved_ns_fd, preserve_mask) < 0)
+	if (preserve_ns(saved_ns_fd, preserve_mask, getpid()) < 0)
 		goto out_delete_net;
 	if (attach_ns(handler->conf->inherit_ns_fd) < 0)
 		goto out_delete_net;
