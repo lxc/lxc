@@ -1815,12 +1815,150 @@ static void cull_mntent_opt(struct mntent *mntent)
 	}
 }
 
+static int mount_entry_create_overlay_dirs(const struct mntent *mntent,
+					   const struct lxc_rootfs *rootfs)
+{
+	char *del = NULL;
+	char *lxcpath = NULL;
+	char *upperdir = NULL;
+	char *workdir = NULL;
+	char **opts = NULL;
+	size_t arrlen = 0;
+	size_t dirlen = 0;
+	size_t i;
+	size_t len = 0;
+	size_t rootfslen = 0;
+
+	if (!rootfs->path)
+		return -1;
+
+	opts = lxc_string_split(mntent->mnt_opts, ',');
+	if (opts)
+		arrlen = lxc_array_len((void **)opts);
+	else
+		return -1;
+
+	for (i = 0; i < arrlen; i++) {
+		if (strstr(opts[i], "upperdir=") && (strlen(opts[i]) > (len = strlen("upperdir="))))
+			upperdir = opts[i] + len;
+		else if (strstr(opts[i], "workdir=") && (strlen(opts[i]) > (len = strlen("workdir="))))
+			workdir = opts[i] + len;
+	}
+
+	lxcpath = strdup(rootfs->path);
+	if (!lxcpath) {
+		lxc_free_array((void **)opts, free);
+		return -1;
+	}
+
+	del = strstr(lxcpath, "/rootfs");
+	if (!del) {
+		free(lxcpath);
+		lxc_free_array((void **)opts, free);
+		return -1;
+	}
+	*del = '\0';
+
+	dirlen = strlen(lxcpath);
+	rootfslen = strlen(rootfs->path);
+
+	/* We neither allow users to create upperdirs and workdirs outside the
+	 * containerdir nor inside the rootfs. The latter might be debatable. */
+	if (upperdir)
+		if ((strncmp(upperdir, lxcpath, dirlen) == 0) && (strncmp(upperdir, rootfs->path, rootfslen) != 0))
+			if (mkdir_p(upperdir, 0755) < 0) {
+				WARN("Failed to create upperdir");
+			}
+
+
+	if (workdir)
+		if ((strncmp(workdir, lxcpath, dirlen) == 0) && (strncmp(workdir, rootfs->path, rootfslen) != 0))
+			if (mkdir_p(workdir, 0755) < 0) {
+				WARN("Failed to create workdir");
+			}
+
+	free(lxcpath);
+	lxc_free_array((void **)opts, free);
+	return 0;
+}
+
+static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
+					const struct lxc_rootfs *rootfs)
+{
+	char *del = NULL;
+	char *lxcpath = NULL;
+	char *scratch = NULL;
+	char *tmp = NULL;
+	char *upperdir = NULL;
+	char **opts = NULL;
+	size_t arrlen = 0;
+	size_t i;
+	size_t len = 0;
+
+	if (!rootfs->path)
+		return -1;
+
+	opts = lxc_string_split(mntent->mnt_opts, ',');
+	if (opts)
+		arrlen = lxc_array_len((void **)opts);
+	else
+		return -1;
+
+	for (i = 0; i < arrlen; i++) {
+		if (strstr(opts[i], "br=") && (strlen(opts[i]) > (len = strlen("br="))))
+			tmp = opts[i] + len;
+	}
+	if (!tmp) {
+		lxc_free_array((void **)opts, free);
+		return -1;
+	}
+
+	upperdir = strtok_r(tmp, ":=", &scratch);
+	if (!upperdir) {
+		lxc_free_array((void **)opts, free);
+		return -1;
+	}
+
+	lxcpath = strdup(rootfs->path);
+	if (!lxcpath) {
+		lxc_free_array((void **)opts, free);
+		return -1;
+	}
+
+	del = strstr(lxcpath, "/rootfs");
+	if (!del) {
+		free(lxcpath);
+		lxc_free_array((void **)opts, free);
+		return -1;
+	}
+	*del = '\0';
+
+	/* We neither allow users to create upperdirs outside the containerdir
+	 * nor inside the rootfs. The latter might be debatable. */
+	if ((strncmp(upperdir, lxcpath, strlen(lxcpath)) == 0) && (strncmp(upperdir, rootfs->path, strlen(rootfs->path)) != 0))
+		if (mkdir_p(upperdir, 0755) < 0) {
+			WARN("Failed to create upperdir");
+		}
+
+	free(lxcpath);
+	lxc_free_array((void **)opts, free);
+	return 0;
+}
+
 static int mount_entry_create_dir_file(const struct mntent *mntent,
-				       const char* path)
+				       const char* path, const struct lxc_rootfs *rootfs)
 {
 	char *pathdirname = NULL;
 	int ret = 0;
 	FILE *pathfile = NULL;
+
+	if (strncmp(mntent->mnt_type, "overlay", 7) == 0) {
+		if (mount_entry_create_overlay_dirs(mntent, rootfs) < 0)
+			return -1;
+	} else if (strncmp(mntent->mnt_type, "aufs", 4) == 0) {
+		if (mount_entry_create_aufs_dirs(mntent, rootfs) < 0)
+			return -1;
+	}
 
 	if (hasmntopt(mntent, "create=dir")) {
 		if (mkdir_p(path, 0755) < 0) {
@@ -1839,23 +1977,23 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 		if (!pathfile) {
 			WARN("Failed to create mount target '%s'", path);
 			ret = -1;
-		}
-		else
+		} else {
 			fclose(pathfile);
+		}
 	}
 	free(pathdirname);
 	return ret;
 }
 
 static inline int mount_entry_on_generic(struct mntent *mntent,
-                 const char* path, const char *rootfs)
+                 const char* path, const struct lxc_rootfs *rootfs)
 {
 	unsigned long mntflags;
 	char *mntdata;
 	int ret;
 	bool optional = hasmntopt(mntent, "optional") != NULL;
 
-	ret = mount_entry_create_dir_file(mntent, path);
+	ret = mount_entry_create_dir_file(mntent, path, rootfs);
 
 	if (ret < 0)
 		return optional ? 0 : -1;
@@ -1867,11 +2005,11 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 		return -1;
 	}
 
-	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
-			  mntflags, mntdata, optional, rootfs);
+	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
+			  mntdata, optional,
+			  rootfs->path ? rootfs->mount : NULL);
 
 	free(mntdata);
-
 	return ret;
 }
 
@@ -1924,17 +2062,17 @@ skipabs:
 		return -1;
 	}
 
-	return mount_entry_on_generic(mntent, path, rootfs->mount);
+	return mount_entry_on_generic(mntent, path, rootfs);
 }
 
 static int mount_entry_on_relative_rootfs(struct mntent *mntent,
-					  const char *rootfs)
+					  const struct lxc_rootfs *rootfs)
 {
 	char path[MAXPATHLEN];
 	int ret;
 
 	/* relative to root mount point */
-	ret = snprintf(path, sizeof(path), "%s/%s", rootfs, mntent->mnt_dir);
+	ret = snprintf(path, sizeof(path), "%s/%s", rootfs->mount, mntent->mnt_dir);
 	if (ret >= sizeof(path)) {
 		ERROR("path name too long");
 		return -1;
@@ -1961,7 +2099,7 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
 		/* We have a separate root, mounts are relative to it */
 		if (mntent.mnt_dir[0] != '/') {
 			if (mount_entry_on_relative_rootfs(&mntent,
-							   rootfs->mount))
+							   rootfs))
 				goto out;
 			continue;
 		}
