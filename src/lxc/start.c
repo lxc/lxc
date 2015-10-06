@@ -486,15 +486,32 @@ out_free:
 
 void lxc_fini(const char *name, struct lxc_handler *handler)
 {
-	int i;
+	int i, rc;
+	pid_t self = getpid();
+	char *namespaces[LXC_NS_MAX+1];
+	size_t namespace_count = 0;
 
 	/* The STOPPING state is there for future cleanup code
 	 * which can take awhile
 	 */
 	lxc_set_state(name, handler, STOPPING);
 
-	if (run_lxc_hooks(name, "stop", handler->conf, handler->lxcpath, NULL))
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		if (handler->nsfd[i] != -1) {
+			rc = asprintf(&namespaces[namespace_count], "%s:/proc/%d/fd/%d",
+			              ns_info[i].proc_name, self, handler->nsfd[i]);
+			if (rc == -1) {
+				SYSERROR("failed to allocate memory");
+				break;
+			}
+			++namespace_count;
+		}
+	}
+	namespaces[namespace_count] = NULL;
+	if (run_lxc_hooks(name, "stop", handler->conf, handler->lxcpath, namespaces))
 		ERROR("failed to run stop hooks for container '%s'.", name);
+	while (namespace_count--)
+		free(namespaces[namespace_count]);
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (handler->nsfd[i] != -1) {
 			close(handler->nsfd[i]);
