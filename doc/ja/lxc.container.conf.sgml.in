@@ -382,6 +382,32 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
+      <title><!-- Ephemeral -->一時的なコンテナ</title>
+      <para>
+        <!--
+        Allows one to specify whether a container will be destroyed on shutdown.
+          -->
+        シャットダウン後にコンテナを削除するかどうかを指定できます。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.ephemeral</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              The only allowed values are 0 and 1. Set this to 1 to destroy a
+              container on shutdown. 
+                -->
+              指定できる値は 0 または 1 のみです。この値を 1 に設定すると、シャットダウン後にコンテナを削除します。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title><!-- Network -->ネットワーク</title>
       <para>
         <!--
