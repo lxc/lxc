@@ -1008,6 +1008,23 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
         이 마운트 포인트들은 컨테이너에서만 보이고 외부에서 실행하는 프로세스들에겐 보이지 않는다.
         이는 예를 들어  /etc, /var, /home을 마운트할 때 유용하다.
       </para>
+      <para>
+        <!--
+        NOTE - LXC will generally ensure that mount targets and relative
+        bind-mount sources are properly confined under the container
+        root, to avoid attacks involving over-mounting host directories
+        and files.  (Symbolic links in absolute mount sources are ignored)
+        However, if the container configuration first mounts a directory which
+        is under the control of the container user, such as /home/joe, into
+        the container at some <filename>path</filename>, and then mounts
+        under <filename>path</filename>, then a TOCTTOU attack would be
+        possible where the container user modifies a symbolic link under
+        his home directory at just the right time.
+        -->
+        주의 - 보통 LXC는 마운트 대상과 상대 경로로 된 바인드 마운트 소스들이 컨테이너의 루트 아래에 있도록 보장할 것이다. 이는 호스트 디렉토리와 파일들을 겹쳐서 마운트하는 유형의 공격을 피하기 위한 것이다. (절대 경로로 된 마운트 소스 내에 존재하는 심볼릭 링크들은 무시될 것이다.)
+        하지만, 만약 컨테이너 설정에서 컨테이너 사용자가 제어할 수 있는, 예를 들어 /home/joe와 같은 디렉토리를 컨테이너 내의 <filename>path</filename>에 먼저 마운트 하고 나서,  <filename>path</filename> 내에 또 마운트를 하는 경우가 있다면,
+        컨테이너 사용자가 자신의 home 디렉토리에 있는 심볼릭링크를 정확한 시간에 조작하여, TOCTTOU (역주 : Time of check to time of use) 공격이 가능할 것이다.
+      </para>
       <variablelist>
 	<varlistentry>
 	  <term>
