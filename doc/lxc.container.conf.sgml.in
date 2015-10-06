@@ -1312,9 +1312,12 @@ mknod errno 0
           <listitem><para> Container name. </para></listitem>
           <listitem><para> Section (always 'lxc'). </para></listitem>
           <listitem><para> The hook type (i.e. 'clone' or 'pre-mount'). </para></listitem>
-          <listitem><para> Additional arguments In the
+          <listitem><para> Additional arguments. In the
           case of the clone hook, any extra arguments passed to
-          lxc-clone will appear as further arguments to the hook. </para></listitem>
+          lxc-clone will appear as further arguments to the hook.
+          In the case of the stop hook, paths to filedescriptors
+          for each of the container's namespaces along with their types
+          are passed. </para></listitem>
         </itemizedlist>
         The following environment variables are set:
         <itemizedlist>
@@ -1404,6 +1407,26 @@ mknod errno 0
               A hook to be run in the container's namespace immediately
               before executing the container's init.  This requires the
               program to be available in the container.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.stop</option>
+          </term>
+          <listitem>
+            <para>
+              A hook to be run in the host's namespace with references
+              to the container's namespaces after the container has been shut
+              down. For each namespace an extra argument is passed to the hook
+              containing the namespace's type and a filename that can be used to
+              obtain a file descriptor to the corresponding namespace, separated
+              by a colon. The type is the name as it would appear in the
+              <filename>/proc/PID/ns</filename> directory.
+              For instance for the mount namespace the argument usually looks
+              like <filename>mnt:/proc/PID/fd/12</filename>.
             </para>
           </listitem>
         </varlistentry>
