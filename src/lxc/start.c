@@ -379,6 +379,7 @@ out_sigfd:
 
 struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char *lxcpath)
 {
+	int i;
 	struct lxc_handler *handler;
 
 	handler = malloc(sizeof(*handler));
@@ -391,6 +392,9 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
+
+	for (i = 0; i < LXC_NS_MAX; i++)
+		handler->nsfd[i] = -1;
 
 	lsm_init();
 
@@ -482,10 +486,19 @@ out_free:
 
 void lxc_fini(const char *name, struct lxc_handler *handler)
 {
+	int i;
+
 	/* The STOPPING state is there for future cleanup code
 	 * which can take awhile
 	 */
 	lxc_set_state(name, handler, STOPPING);
+
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		if (handler->nsfd[i] != -1) {
+			close(handler->nsfd[i]);
+			handler->nsfd[i] = -1;
+		}
+	}
 	lxc_set_state(name, handler, STOPPED);
 
 	if (run_lxc_hooks(name, "post-stop", handler->conf, handler->lxcpath, NULL))
@@ -994,6 +1007,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (handler->pid < 0) {
 		SYSERROR("failed to fork into a new namespace");
 		goto out_delete_net;
+	}
+
+	if (preserve_ns(handler->nsfd, handler->clone_flags, handler->pid) < 0) {
+	    ERROR("failed to store namespace references");
+	    goto out_delete_net;
 	}
 
 	if (attach_ns(saved_ns_fd))
