@@ -1816,20 +1816,22 @@ static void cull_mntent_opt(struct mntent *mntent)
 }
 
 static int mount_entry_create_overlay_dirs(const struct mntent *mntent,
-					   const struct lxc_rootfs *rootfs)
+					   const struct lxc_rootfs *rootfs,
+					   const char *lxc_name,
+					   const char *lxc_path)
 {
-	char *del = NULL;
-	char *lxcpath = NULL;
+	char lxcpath[MAXPATHLEN];
 	char *upperdir = NULL;
 	char *workdir = NULL;
 	char **opts = NULL;
+	int ret = 0;
 	size_t arrlen = 0;
 	size_t dirlen = 0;
 	size_t i;
 	size_t len = 0;
 	size_t rootfslen = 0;
 
-	if (!rootfs->path)
+	if (!rootfs->path || !lxc_name || !lxc_path)
 		return -1;
 
 	opts = lxc_string_split(mntent->mnt_opts, ',');
@@ -1845,19 +1847,11 @@ static int mount_entry_create_overlay_dirs(const struct mntent *mntent,
 			workdir = opts[i] + len;
 	}
 
-	lxcpath = strdup(rootfs->path);
-	if (!lxcpath) {
+	ret = snprintf(lxcpath, MAXPATHLEN, "%s/%s", lxc_path, lxc_name);
+	if (ret < 0 || ret >= MAXPATHLEN) {
 		lxc_free_array((void **)opts, free);
 		return -1;
 	}
-
-	del = strstr(lxcpath, "/rootfs");
-	if (!del) {
-		free(lxcpath);
-		lxc_free_array((void **)opts, free);
-		return -1;
-	}
-	*del = '\0';
 
 	dirlen = strlen(lxcpath);
 	rootfslen = strlen(rootfs->path);
@@ -1877,25 +1871,26 @@ static int mount_entry_create_overlay_dirs(const struct mntent *mntent,
 				WARN("Failed to create workdir");
 			}
 
-	free(lxcpath);
 	lxc_free_array((void **)opts, free);
 	return 0;
 }
 
 static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
-					const struct lxc_rootfs *rootfs)
+					const struct lxc_rootfs *rootfs,
+					const char *lxc_name,
+					const char *lxc_path)
 {
-	char *del = NULL;
-	char *lxcpath = NULL;
+	char lxcpath[MAXPATHLEN];
 	char *scratch = NULL;
 	char *tmp = NULL;
 	char *upperdir = NULL;
 	char **opts = NULL;
+	int ret = 0;
 	size_t arrlen = 0;
 	size_t i;
 	size_t len = 0;
 
-	if (!rootfs->path)
+	if (!rootfs->path || !lxc_name || !lxc_path)
 		return -1;
 
 	opts = lxc_string_split(mntent->mnt_opts, ',');
@@ -1919,19 +1914,11 @@ static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
 		return -1;
 	}
 
-	lxcpath = strdup(rootfs->path);
-	if (!lxcpath) {
+	ret = snprintf(lxcpath, MAXPATHLEN, "%s/%s", lxc_path, lxc_name);
+	if (ret < 0 || ret >= MAXPATHLEN) {
 		lxc_free_array((void **)opts, free);
 		return -1;
 	}
-
-	del = strstr(lxcpath, "/rootfs");
-	if (!del) {
-		free(lxcpath);
-		lxc_free_array((void **)opts, free);
-		return -1;
-	}
-	*del = '\0';
 
 	/* We neither allow users to create upperdirs outside the containerdir
 	 * nor inside the rootfs. The latter might be debatable. */
@@ -1940,23 +1927,24 @@ static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
 			WARN("Failed to create upperdir");
 		}
 
-	free(lxcpath);
 	lxc_free_array((void **)opts, free);
 	return 0;
 }
 
+
 static int mount_entry_create_dir_file(const struct mntent *mntent,
-				       const char* path, const struct lxc_rootfs *rootfs)
+				       const char* path, const struct lxc_rootfs *rootfs,
+				       const char *lxc_name, const char *lxc_path)
 {
 	char *pathdirname = NULL;
 	int ret = 0;
 	FILE *pathfile = NULL;
 
 	if (strncmp(mntent->mnt_type, "overlay", 7) == 0) {
-		if (mount_entry_create_overlay_dirs(mntent, rootfs) < 0)
+		if (mount_entry_create_overlay_dirs(mntent, rootfs, lxc_name, lxc_path) < 0)
 			return -1;
 	} else if (strncmp(mntent->mnt_type, "aufs", 4) == 0) {
-		if (mount_entry_create_aufs_dirs(mntent, rootfs) < 0)
+		if (mount_entry_create_aufs_dirs(mntent, rootfs, lxc_name, lxc_path) < 0)
 			return -1;
 	}
 
@@ -1986,14 +1974,15 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 }
 
 static inline int mount_entry_on_generic(struct mntent *mntent,
-                 const char* path, const struct lxc_rootfs *rootfs)
+                 const char* path, const struct lxc_rootfs *rootfs,
+		 const char *lxc_name, const char *lxc_path)
 {
 	unsigned long mntflags;
 	char *mntdata;
 	int ret;
 	bool optional = hasmntopt(mntent, "optional") != NULL;
 
-	ret = mount_entry_create_dir_file(mntent, path, rootfs);
+	ret = mount_entry_create_dir_file(mntent, path, rootfs, lxc_name, lxc_path);
 
 	if (ret < 0)
 		return optional ? 0 : -1;
@@ -2015,12 +2004,13 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 
 static inline int mount_entry_on_systemfs(struct mntent *mntent)
 {
-  return mount_entry_on_generic(mntent, mntent->mnt_dir, NULL);
+  return mount_entry_on_generic(mntent, mntent->mnt_dir, NULL, NULL, NULL);
 }
 
 static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 					  const struct lxc_rootfs *rootfs,
-					  const char *lxc_name)
+					  const char *lxc_name,
+					  const char *lxc_path)
 {
 	char *aux;
 	char path[MAXPATHLEN];
@@ -2062,11 +2052,13 @@ skipabs:
 		return -1;
 	}
 
-	return mount_entry_on_generic(mntent, path, rootfs);
+	return mount_entry_on_generic(mntent, path, rootfs, lxc_name, lxc_path);
 }
 
 static int mount_entry_on_relative_rootfs(struct mntent *mntent,
-					  const struct lxc_rootfs *rootfs)
+					  const struct lxc_rootfs *rootfs,
+					  const char *lxc_name,
+					  const char *lxc_path)
 {
 	char path[MAXPATHLEN];
 	int ret;
@@ -2078,11 +2070,11 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 		return -1;
 	}
 
-	return mount_entry_on_generic(mntent, path, rootfs);
+	return mount_entry_on_generic(mntent, path, rootfs, lxc_name, lxc_path);
 }
 
 static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
-	const char *lxc_name)
+	const char *lxc_name, const char *lxc_path)
 {
 	struct mntent mntent;
 	char buf[4096];
@@ -2098,13 +2090,12 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
 
 		/* We have a separate root, mounts are relative to it */
 		if (mntent.mnt_dir[0] != '/') {
-			if (mount_entry_on_relative_rootfs(&mntent,
-							   rootfs))
+			if (mount_entry_on_relative_rootfs(&mntent, rootfs, lxc_name, lxc_path))
 				goto out;
 			continue;
 		}
 
-		if (mount_entry_on_absolute_rootfs(&mntent, rootfs, lxc_name))
+		if (mount_entry_on_absolute_rootfs(&mntent, rootfs, lxc_name, lxc_path))
 			goto out;
 	}
 
@@ -2116,7 +2107,7 @@ out:
 }
 
 static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab,
-	const char *lxc_name)
+	const char *lxc_name, const char *lxc_path)
 {
 	FILE *file;
 	int ret;
@@ -2130,7 +2121,7 @@ static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab,
 		return -1;
 	}
 
-	ret = mount_file_entries(rootfs, file, lxc_name);
+	ret = mount_file_entries(rootfs, file, lxc_name, lxc_path);
 
 	endmntent(file);
 	return ret;
@@ -2158,7 +2149,7 @@ FILE *write_mount_file(struct lxc_list *mount)
 }
 
 static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list *mount,
-	const char *lxc_name)
+	const char *lxc_name, const char *lxc_path)
 {
 	FILE *file;
 	int ret;
@@ -2167,7 +2158,7 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list 
 	if (!file)
 		return -1;
 
-	ret = mount_file_entries(rootfs, file, lxc_name);
+	ret = mount_file_entries(rootfs, file, lxc_name, lxc_path);
 
 	fclose(file);
 	return ret;
@@ -3891,12 +3882,12 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (setup_mount(&lxc_conf->rootfs, lxc_conf->fstab, name)) {
+	if (setup_mount(&lxc_conf->rootfs, lxc_conf->fstab, name, lxcpath)) {
 		ERROR("failed to setup the mounts for '%s'", name);
 		return -1;
 	}
 
-	if (!lxc_list_empty(&lxc_conf->mount_list) && setup_mount_entries(&lxc_conf->rootfs, &lxc_conf->mount_list, name)) {
+	if (!lxc_list_empty(&lxc_conf->mount_list) && setup_mount_entries(&lxc_conf->rootfs, &lxc_conf->mount_list, name, lxcpath)) {
 		ERROR("failed to setup the mount entries for '%s'", name);
 		return -1;
 	}
