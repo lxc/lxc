@@ -369,6 +369,32 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
     </refsect2>
 
     <refsect2>
+      <title><!-- Ephemeral -->임시 컨테이너</title>
+      <para>
+        <!--
+        Allows one to specify whether a container will be destroyed on shutdown.
+          -->
+        컨테이너가 종료될 때, 해당 컨테이너를 제거할지 여부를 지정할 수 있다.
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.ephemeral</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              The only allowed values are 0 and 1. Set this to 1 to destroy a
+              container on shutdown.
+                -->
+              지정 가능한 값은 0 또는 1이다. 1로 설정하면, 컨테이너를 종료할 때 해당 컨테이너를 제거한다.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title><!-- Network -->네트워크</title>
       <para>
         <!--
