@@ -1850,9 +1850,12 @@ mknod errno 0
 	  <listitem><para> Container name. </para></listitem>
 	  <listitem><para> Section (always 'lxc'). </para></listitem>
 	  <listitem><para> The hook type (i.e. 'clone' or 'pre-mount'). </para></listitem>
-	  <listitem><para> Additional arguments In the
+	  <listitem><para> Additional arguments. In the
 	  case of the clone hook, any extra arguments passed to
-	  lxc-clone will appear as further arguments to the hook. </para></listitem>
+          lxc-clone will appear as further arguments to the hook.
+          In the case of the stop hook, paths to filedescriptors
+          for each of the container's namespaces along with their types
+          are passed. </para></listitem>
 	</itemizedlist>
 	The following environment variables are set:
 	<itemizedlist>
@@ -1868,7 +1871,7 @@ mknod errno 0
 	  <listitem><para>コンテナ名</para></listitem>
 	  <listitem><para>セクション (常に 'lxc')</para></listitem>
 	  <listitem><para>フックのタイプ ('clone' や 'pre-mount' など)</para></listitem>
-	  <listitem><para>追加の引数。clone フックの場合、lxc-clone に渡される追加の引数は、フックへの引数として追加されます。</para></listitem>
+	  <listitem><para>追加の引数。clone フックの場合、lxc-clone に渡される追加の引数は、フックへの引数として追加されます。stop フックの場合は、コンテナの名前空間のそれぞれに対するファイルディスクリプタへのパスが、名前空間名とともに渡されます。</para></listitem>
 	</itemizedlist>
         以下の環境変数がセットされます。
 	<itemizedlist>
@@ -1987,6 +1990,32 @@ mknod errno 0
 	    </para>
 	  </listitem>
 	</varlistentry>
+      </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.stop</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              A hook to be run in the host's namespace with references
+              to the container's namespaces after the container has been shut
+              down. For each namespace an extra argument is passed to the hook
+              containing the namespace's type and a filename that can be used to
+              obtain a file descriptor to the corresponding namespace, separated
+              by a colon. The type is the name as it would appear in the
+              <filename>/proc/PID/ns</filename> directory.
+              For instance for the mount namespace the argument usually looks
+              like <filename>mnt:/proc/PID/fd/12</filename>.
+	      -->
+	      コンテナのシャットダウン後、コンテナの名前空間への参照とともに、ホストの名前空間で実行されるフックです。
+	      それぞれの名前空間に対応する追加の引数がフックに渡されます。その引数にはコロンで区切られた名前空間のタイプ名とファイル名が含まれており、ファイル名は名前空間に対するファイルディスクリプタを取得するのに使えます。
+	      タイプ名は <filename>/proc/PID/ns</filename> ディレクトリ内のファイル名です。
+	      例えば、マウント名前空間に対応する引数は通常は <filename>mnt:/proc/PID/fd/12</filename> のようになります。
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
       <variablelist>
 	<varlistentry>
