@@ -35,7 +35,6 @@
 #include <sys/types.h> /* openat, open */
 #include <sys/stat.h>  /* openat, open */
 #include <fcntl.h>     /* openat, open */
-#include <mntent.h>    /* getmntent, endmntent */
 #include <errno.h>     /* errno */
 
 #include <../src/config.h>
