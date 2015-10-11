@@ -38,6 +38,33 @@
 #include <mntent.h>    /* getmntent, endmntent */
 #include <errno.h>     /* errno */
 
+#include <../src/config.h>
+
+#if IS_BIONIC
+#include <../src/include/lxcmntent.h>
+#else
+#include <mntent.h>
+#endif
+
+#ifndef O_PATH
+#define O_PATH      010000000
+#endif
+
+/* Define setns() if missing from the C library */
+#ifndef HAVE_SETNS
+static inline int setns(int fd, int nstype)
+{
+#ifdef __NR_setns
+	return syscall(__NR_setns, fd, nstype);
+#elif defined(__NR_set_ns)
+	return syscall(__NR_set_ns, fd, nstype);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+#endif
+
 struct mount {
 	char *src; /* currently not used */
 	char *dst;
