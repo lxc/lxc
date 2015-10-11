@@ -40,6 +40,7 @@ templates/lxc-openmandriva
 templates/lxc-opensuse
 templates/lxc-oracle
 templates/lxc-plamo
+templates/lxc-slackware
 templates/lxc-sshd
 templates/lxc-ubuntu
 templates/lxc-ubuntu-cloud
@@ -142,6 +143,8 @@ doc/ko/*.7
 doc/manpage.links
 doc/manpage.refs
 doc/api/html/*
+
+hooks/unmount-namespace
 
 m4/
 
