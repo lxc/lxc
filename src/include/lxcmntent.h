@@ -21,8 +21,6 @@
 #ifndef _lxcmntent_h
 #define _lxcmntent_h
 
-#include <../config.h>
-
 #if IS_BIONIC
 struct mntent
 {
