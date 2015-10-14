@@ -297,7 +297,7 @@ else
         [ "$stream" = "daily" ] || echo "You may try with '--stream=daily'"
         exit
     fi
-    url2=`echo $url1 | sed -e 's/.tar.gz/-root\0/'`
+    url2=`echo $url1 | sed -e 's/.tar.gz/-root\0/' -e 's/.tar.gz/.tar.xz/'`
 fi
 
 filename=`basename $url2`
@@ -305,44 +305,6 @@ filename=`basename $url2`
 wgetcleanup()
 {
     rm -f $filename
-}
-
-buildcleanup()
-{
-    cd $rootfs
-    umount -l $cache/$xdir || true
-    rm -rf $cache
-}
-
-# if the release doesn't have a *-rootfs.tar.gz, then create one from the
-# cloudimg.tar.gz by extracting the .img, mounting it loopback, and creating
-# a tarball from the mounted image.
-build_root_tgz()
-{
-    url=$1
-    filename=$2
-
-    xdir=`mktemp -d -p .`
-    tarname=`basename $url`
-    imgname="$release-*-cloudimg-$arch.img"
-    trap buildcleanup EXIT SIGHUP SIGINT SIGTERM
-    if [ $flushcache -eq 1 -o ! -f $cache/$tarname ]; then
-        rm -f $tarname
-        echo "Downloading cloud image from $url"
-        wget $url || { echo "Couldn't find cloud image $url."; exit 1; }
-    fi
-    echo "Creating new cached cloud image rootfs"
-    tar --wildcards -zxf "$tarname" "$imgname"
-    mount -o loop $imgname $xdir
-    (cd $xdir; tar --numeric-owner -cpzf "../$filename" .)
-    umount $xdir
-    rm -f $tarname $imgname
-    rmdir $xdir
-    echo "New cloud image cache created"
-    trap EXIT
-    trap SIGHUP
-    trap SIGINT
-    trap SIGTERM
 }
 
 do_extract_rootfs() {
@@ -355,7 +317,7 @@ do_extract_rootfs() {
 
     trap wgetcleanup EXIT SIGHUP SIGINT SIGTERM
     if [ ! -f $filename ]; then
-        wget $url2 || build_root_tgz $url1 $filename
+        wget $url2
     fi
     trap EXIT
     trap SIGHUP
@@ -366,10 +328,10 @@ do_extract_rootfs() {
     mkdir -p $rootfs
     cd $rootfs
     if [ $in_userns -eq 1 ]; then
-        tar --anchored --exclude="dev/*" --numeric-owner -xpzf "$cache/$filename"
+        tar --anchored --exclude="dev/*" --numeric-owner -xpJf "$cache/$filename"
         mkdir -p $rootfs/dev/pts/
     else
-        tar --numeric-owner -xpzf "$cache/$filename"
+        tar --numeric-owner -xpJf "$cache/$filename"
     fi
 }
 
