@@ -1245,7 +1245,7 @@ static int rbd_destroy(struct bdev *orig)
 	if ((pid = fork()) < 0)
 		return -1;
 	if (!pid) {
-		rbdfullname = alloca(strlen(orig->src) - 9);
+		rbdfullname = alloca(strlen(orig->src) - 8);
 		strcpy( rbdfullname, &orig->src[9] );
 		execlp("rbd", "rbd", "rm" , rbdfullname, NULL);
 		exit(1);
