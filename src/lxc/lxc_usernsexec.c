@@ -74,12 +74,16 @@ static void usage(const char *name)
 	exit(1);
 }
 
-static void opentty(const char * tty) {
-	int i, fd, flags;
+static void opentty(const char * tty, int which) {
+	int fd, flags;
+
+	if (tty[0] == '\0')
+		return;
 
 	fd = open(tty, O_RDWR | O_NONBLOCK);
 	if (fd == -1) {
 		printf("WARN: could not reopen tty: %s\n", strerror(errno));
+		close(which);
 		return;
 	}
 
@@ -87,16 +91,15 @@ static void opentty(const char * tty) {
 	flags &= ~O_NONBLOCK;
 	if (fcntl(fd, F_SETFL, flags) < 0) {
 		printf("WARN: could not set fd flags: %s\n", strerror(errno));
+		close(which);
 		return;
 	}
 
-	for (i = 0; i < fd; i++)
-		close(i);
-	for (i = 0; i < 3; i++)
-		if (fd != i)
-			dup2(fd, i);
-	if (fd >= 3)
+	close(which);
+	if (fd != which) {
+		dup2(fd, which);
 		close(fd);
+	}
 }
 // Code copy end
 
@@ -265,7 +268,7 @@ int main(int argc, char *argv[])
 {
 	int c;
 	unsigned long flags = CLONE_NEWUSER | CLONE_NEWNS;
-	char ttyname[256];
+	char ttyname0[256], ttyname1[256], ttyname2[256];
 	int status;
 	int ret;
 	int pid;
@@ -274,11 +277,23 @@ int main(int argc, char *argv[])
 	int pipe1[2],  // child tells parent it has unshared
 	    pipe2[2];  // parent tells child it is mapped and may proceed
 
-	memset(ttyname, '\0', sizeof(ttyname));
-	ret = readlink("/proc/self/fd/0", ttyname, sizeof(ttyname));
+	memset(ttyname0, '\0', sizeof(ttyname0));
+	memset(ttyname1, '\0', sizeof(ttyname1));
+	memset(ttyname2, '\0', sizeof(ttyname2));
+	ret = readlink("/proc/self/fd/0", ttyname0, sizeof(ttyname0));
 	if (ret < 0) {
-		perror("readlink on fd 0");
+		perror("unable to open stdin.");
 		exit(1);
+	}
+	ret = readlink("/proc/self/fd/1", ttyname1, sizeof(ttyname1));
+	if (ret < 0) {
+		printf("Warning: unable to open stdout, continuing.");
+		memset(ttyname1, '\0', sizeof(ttyname1));
+	}
+	ret = readlink("/proc/self/fd/2", ttyname2, sizeof(ttyname2));
+	if (ret < 0) {
+		printf("Warning: unable to open stderr, continueing.");
+		memset(ttyname2, '\0', sizeof(ttyname2));
 	}
 
 	lxc_list_init(&active_map);
@@ -315,7 +330,9 @@ int main(int argc, char *argv[])
 
 		close(pipe1[0]);
 		close(pipe2[1]);
-		opentty(ttyname);
+		opentty(ttyname0, 0);
+		opentty(ttyname1, 1);
+		opentty(ttyname2, 2);
 
 		ret = unshare(flags);
 		if (ret < 0) {
