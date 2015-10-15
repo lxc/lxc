@@ -80,4 +80,6 @@ extern bool cgroup_unfreeze(struct lxc_handler *handler);
 extern void cgroup_disconnect(void);
 extern cgroup_driver_t cgroup_driver(void);
 
+extern void prune_init_scope(char *cg);
+
 #endif

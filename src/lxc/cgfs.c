@@ -1220,6 +1220,7 @@ static char *lxc_cgroup_get_hierarchy_path_data(const char *subsystem, struct cg
 	info = find_info_for_subsystem(info, subsystem);
 	if (!info)
 		return NULL;
+	prune_init_scope(info->cgroup_path);
 	return info->cgroup_path;
 }
 

@@ -776,6 +776,7 @@ static char *try_get_abs_cgroup(const char *name, const char *lxcpath,
 			nerr = nih_error_get();
 			nih_free(nerr);
 		}
+		prune_init_scope(cgroup);
 		return cgroup;
 	}
 
