@@ -67,4 +67,6 @@ extern const char *cgroup_get_cgroup(struct lxc_handler *handler, const char *su
 extern bool cgroup_unfreeze(struct lxc_handler *handler);
 extern void cgroup_disconnect(void);
 
+extern void prune_init_scope(char *cg);
+
 #endif
