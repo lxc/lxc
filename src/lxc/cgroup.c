@@ -194,3 +194,17 @@ cgroup_driver_t cgroup_driver(void)
 {
 	return ops->driver;
 }
+
+#define INIT_SCOPE "/init.scope"
+void prune_init_scope(char *cg)
+{
+	char *point = cg + strlen(cg) - strlen(INIT_SCOPE);
+	if (point < cg)
+		return;
+	if (strcmp(point, INIT_SCOPE) == 0) {
+		if (point == cg)
+			*(point+1) = '\0';
+		else
+			*point = '\0';
+	}
+}
