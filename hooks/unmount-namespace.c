@@ -112,14 +112,17 @@ static int read_mounts(int procfd, struct mount **mp, size_t *countp) {
 	*countp = 0;
 
 	fd = openat(procfd, "self/mounts", O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
+		free(mounts);
 		return 0;
+	}
 
 	mf = fdopen(fd, "r");
 	if (!mf) {
 		int error = errno;
 		close(fd);
 		errno = error;
+		free(mounts);
 		return 0;
 	}
 	while ((ent = getmntent(mf))) {
