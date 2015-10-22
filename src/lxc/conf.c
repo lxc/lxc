@@ -1815,12 +1815,48 @@ static void cull_mntent_opt(struct mntent *mntent)
 	}
 }
 
+static char *ovl_get_rootfs_dir(const char *rootfs_path, size_t *rootfslen)
+{
+	char *rootfsdir = NULL;
+	char *s1 = NULL;
+	char *s2 = NULL;
+	char *s3 = NULL;
+
+	if (!rootfs_path || !rootfslen)
+		return NULL;
+
+	s1 = strdup(rootfs_path);
+	if (!s1)
+		return NULL;
+
+	if ((s2 = strstr(s1, ":/"))) {
+		s2 = s2 + 1;
+		if ((s3 = strstr(s2, ":/")))
+			*s3 = '\0';
+		rootfsdir = strdup(s2);
+		if (!rootfsdir) {
+			free(s1);
+			return NULL;
+		}
+	}
+
+	if (!rootfsdir)
+		rootfsdir = s1;
+	else
+		free(s1);
+
+	*rootfslen = strlen(rootfsdir);
+
+	return rootfsdir;
+}
+
 static int mount_entry_create_overlay_dirs(const struct mntent *mntent,
 					   const struct lxc_rootfs *rootfs,
 					   const char *lxc_name,
 					   const char *lxc_path)
 {
 	char lxcpath[MAXPATHLEN];
+	char *rootfsdir = NULL;
 	char *upperdir = NULL;
 	char *workdir = NULL;
 	char **opts = NULL;
@@ -1832,13 +1868,13 @@ static int mount_entry_create_overlay_dirs(const struct mntent *mntent,
 	size_t rootfslen = 0;
 
 	if (!rootfs->path || !lxc_name || !lxc_path)
-		return -1;
+		goto err;
 
 	opts = lxc_string_split(mntent->mnt_opts, ',');
 	if (opts)
 		arrlen = lxc_array_len((void **)opts);
 	else
-		return -1;
+		goto err;
 
 	for (i = 0; i < arrlen; i++) {
 		if (strstr(opts[i], "upperdir=") && (strlen(opts[i]) > (len = strlen("upperdir="))))
@@ -1848,31 +1884,37 @@ static int mount_entry_create_overlay_dirs(const struct mntent *mntent,
 	}
 
 	ret = snprintf(lxcpath, MAXPATHLEN, "%s/%s", lxc_path, lxc_name);
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		lxc_free_array((void **)opts, free);
-		return -1;
-	}
+	if (ret < 0 || ret >= MAXPATHLEN)
+		goto err;
+
+	rootfsdir = ovl_get_rootfs_dir(rootfs->path, &rootfslen);
+	if (!rootfsdir)
+		goto err;
 
 	dirlen = strlen(lxcpath);
-	rootfslen = strlen(rootfs->path);
 
 	/* We neither allow users to create upperdirs and workdirs outside the
 	 * containerdir nor inside the rootfs. The latter might be debatable. */
 	if (upperdir)
-		if ((strncmp(upperdir, lxcpath, dirlen) == 0) && (strncmp(upperdir, rootfs->path, rootfslen) != 0))
+		if ((strncmp(upperdir, lxcpath, dirlen) == 0) && (strncmp(upperdir, rootfsdir, rootfslen) != 0))
 			if (mkdir_p(upperdir, 0755) < 0) {
 				WARN("Failed to create upperdir");
 			}
 
-
 	if (workdir)
-		if ((strncmp(workdir, lxcpath, dirlen) == 0) && (strncmp(workdir, rootfs->path, rootfslen) != 0))
+		if ((strncmp(workdir, lxcpath, dirlen) == 0) && (strncmp(workdir, rootfsdir, rootfslen) != 0))
 			if (mkdir_p(workdir, 0755) < 0) {
 				WARN("Failed to create workdir");
 			}
 
+	free(rootfsdir);
 	lxc_free_array((void **)opts, free);
 	return 0;
+
+err:
+	free(rootfsdir);
+	lxc_free_array((void **)opts, free);
+	return -1;
 }
 
 static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
@@ -1881,6 +1923,7 @@ static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
 					const char *lxc_path)
 {
 	char lxcpath[MAXPATHLEN];
+	char *rootfsdir = NULL;
 	char *scratch = NULL;
 	char *tmp = NULL;
 	char *upperdir = NULL;
@@ -1889,46 +1932,51 @@ static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
 	size_t arrlen = 0;
 	size_t i;
 	size_t len = 0;
+	size_t rootfslen = 0;
 
 	if (!rootfs->path || !lxc_name || !lxc_path)
-		return -1;
+		goto err;
 
 	opts = lxc_string_split(mntent->mnt_opts, ',');
 	if (opts)
 		arrlen = lxc_array_len((void **)opts);
 	else
-		return -1;
+		goto err;
 
 	for (i = 0; i < arrlen; i++) {
 		if (strstr(opts[i], "br=") && (strlen(opts[i]) > (len = strlen("br="))))
 			tmp = opts[i] + len;
 	}
-	if (!tmp) {
-		lxc_free_array((void **)opts, free);
-		return -1;
-	}
+	if (!tmp)
+		goto err;
 
 	upperdir = strtok_r(tmp, ":=", &scratch);
-	if (!upperdir) {
-		lxc_free_array((void **)opts, free);
-		return -1;
-	}
+	if (!upperdir)
+		goto err;
 
 	ret = snprintf(lxcpath, MAXPATHLEN, "%s/%s", lxc_path, lxc_name);
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		lxc_free_array((void **)opts, free);
-		return -1;
-	}
+	if (ret < 0 || ret >= MAXPATHLEN)
+		goto err;
+
+	rootfsdir = ovl_get_rootfs_dir(rootfs->path, &rootfslen);
+	if (!rootfsdir)
+		goto err;
 
 	/* We neither allow users to create upperdirs outside the containerdir
 	 * nor inside the rootfs. The latter might be debatable. */
-	if ((strncmp(upperdir, lxcpath, strlen(lxcpath)) == 0) && (strncmp(upperdir, rootfs->path, strlen(rootfs->path)) != 0))
+	if ((strncmp(upperdir, lxcpath, strlen(lxcpath)) == 0) && (strncmp(upperdir, rootfsdir, rootfslen) != 0))
 		if (mkdir_p(upperdir, 0755) < 0) {
 			WARN("Failed to create upperdir");
 		}
 
+	free(rootfsdir);
 	lxc_free_array((void **)opts, free);
 	return 0;
+
+err:
+	free(rootfsdir);
+	lxc_free_array((void **)opts, free);
+	return -1;
 }
 
 
