@@ -1860,6 +1860,7 @@ static int mount_entry_create_overlay_dirs(const struct mntent *mntent,
 	char *upperdir = NULL;
 	char *workdir = NULL;
 	char **opts = NULL;
+	int fret = -1;
 	int ret = 0;
 	size_t arrlen = 0;
 	size_t dirlen = 0;
@@ -1907,14 +1908,12 @@ static int mount_entry_create_overlay_dirs(const struct mntent *mntent,
 				WARN("Failed to create workdir");
 			}
 
-	free(rootfsdir);
-	lxc_free_array((void **)opts, free);
-	return 0;
+	fret = 0;
 
 err:
 	free(rootfsdir);
 	lxc_free_array((void **)opts, free);
-	return -1;
+	return fret;
 }
 
 static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
@@ -1928,6 +1927,7 @@ static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
 	char *tmp = NULL;
 	char *upperdir = NULL;
 	char **opts = NULL;
+	int fret = -1;
 	int ret = 0;
 	size_t arrlen = 0;
 	size_t i;
@@ -1969,14 +1969,12 @@ static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
 			WARN("Failed to create upperdir");
 		}
 
-	free(rootfsdir);
-	lxc_free_array((void **)opts, free);
-	return 0;
+	fret = 0;
 
 err:
 	free(rootfsdir);
 	lxc_free_array((void **)opts, free);
-	return -1;
+	return fret;
 }
 
 
