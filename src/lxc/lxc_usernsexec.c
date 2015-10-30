@@ -83,7 +83,6 @@ static void opentty(const char * tty, int which) {
 	fd = open(tty, O_RDWR | O_NONBLOCK);
 	if (fd == -1) {
 		printf("WARN: could not reopen tty: %s\n", strerror(errno));
-		close(which);
 		return;
 	}
 
@@ -91,7 +90,6 @@ static void opentty(const char * tty, int which) {
 	flags &= ~O_NONBLOCK;
 	if (fcntl(fd, F_SETFL, flags) < 0) {
 		printf("WARN: could not set fd flags: %s\n", strerror(errno));
-		close(which);
 		return;
 	}
 
