@@ -103,6 +103,10 @@ sed -e 's/^ConditionPathExists=/# ConditionPathExists=/' \
     -e 's/After=dev-%i.device/After=/' \
     < /lib/systemd/system/getty\@.service \
     > /etc/systemd/system/getty\@.service
+# fix systemd-sysctl service
+sed -e 's/^ConditionPathIsReadWrite=\/proc\/sys\/$/ConditionPathIsReadWrite=\/proc\/sys\/net\//' \
+    -e 's/^ExecStart=\/usr\/lib\/systemd\/systemd-sysctl$/ExecStart=\/usr\/lib\/systemd\/systemd-sysctl --prefix net/' \
+    -i /usr/lib/systemd/system/systemd-sysctl.service
 # initialize pacman keyring
 pacman-key --init
 pacman-key --populate archlinux
