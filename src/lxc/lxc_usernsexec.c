@@ -278,20 +278,22 @@ int main(int argc, char *argv[])
 	memset(ttyname0, '\0', sizeof(ttyname0));
 	memset(ttyname1, '\0', sizeof(ttyname1));
 	memset(ttyname2, '\0', sizeof(ttyname2));
-	ret = readlink("/proc/self/fd/0", ttyname0, sizeof(ttyname0));
-	if (ret < 0) {
-		perror("unable to open stdin.");
-		exit(1);
-	}
-	ret = readlink("/proc/self/fd/1", ttyname1, sizeof(ttyname1));
-	if (ret < 0) {
-		printf("Warning: unable to open stdout, continuing.");
-		memset(ttyname1, '\0', sizeof(ttyname1));
-	}
-	ret = readlink("/proc/self/fd/2", ttyname2, sizeof(ttyname2));
-	if (ret < 0) {
-		printf("Warning: unable to open stderr, continueing.");
-		memset(ttyname2, '\0', sizeof(ttyname2));
+	if (isatty(0)) {
+		ret = readlink("/proc/self/fd/0", ttyname0, sizeof(ttyname0));
+		if (ret < 0) {
+			perror("unable to open stdin.");
+			exit(1);
+		}
+		ret = readlink("/proc/self/fd/1", ttyname1, sizeof(ttyname1));
+		if (ret < 0) {
+			printf("Warning: unable to open stdout, continuing.");
+			memset(ttyname1, '\0', sizeof(ttyname1));
+		}
+		ret = readlink("/proc/self/fd/2", ttyname2, sizeof(ttyname2));
+		if (ret < 0) {
+			printf("Warning: unable to open stderr, continueing.");
+			memset(ttyname2, '\0', sizeof(ttyname2));
+		}
 	}
 
 	lxc_list_init(&active_map);
