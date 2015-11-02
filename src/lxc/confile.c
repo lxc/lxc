@@ -2598,6 +2598,102 @@ void clear_unexp_config_line(struct lxc_conf *conf, const char *key, bool rm_sub
 	}
 }
 
+bool clone_update_unexp_ovl_paths(struct lxc_conf *conf, const char *oldpath,
+				  const char *newpath, const char *oldname,
+				  const char *newname, const char *ovldir)
+{
+	const char *key = "lxc.mount.entry";
+	int ret;
+	char *lstart = conf->unexpanded_config;
+	char *lend;
+	char *p;
+	char *q;
+	size_t newdirlen = strlen(ovldir) + strlen(newpath) + strlen(newname) + 2;
+	size_t olddirlen = strlen(ovldir) + strlen(oldpath) + strlen(oldname) + 2;
+	char *olddir = alloca(olddirlen + 1);
+	char *newdir = alloca(newdirlen + 1);
+
+	ret = snprintf(olddir, olddirlen + 1, "%s=%s/%s", ovldir, oldpath, oldname);
+	if (ret < 0 || ret >= olddirlen + 1) {
+		ERROR("Bug in %s", __func__);
+		return false;
+	}
+	ret = snprintf(newdir, newdirlen + 1, "%s=%s/%s", ovldir, newpath, newname);
+	if (ret < 0 || ret >= newdirlen + 1) {
+		ERROR("Bug in %s", __func__);
+		return false;
+	}
+	if (!conf->unexpanded_config)
+		return true;
+	while (*lstart) {
+		lend = strchr(lstart, '\n');
+		if (!lend)
+			lend = lstart + strlen(lstart);
+		else
+			lend++;
+		if (strncmp(lstart, key, strlen(key)) != 0)
+                        goto next;
+		p = strchr(lstart + strlen(key), '=');
+		if (!p)
+                        goto next;
+		p++;
+		while (isblank(*p))
+			p++;
+		if (p >= lend)
+                        goto next;
+                /* Whenever an lxc.mount.entry entry is found in a line we check
+                *  if the substring " overlay" or the substring " aufs" is
+                *  present before doing any further work. We check for "
+                *  overlay" and " aufs" since both substrings need to have at
+                *  least one space before them in a valid overlay
+                *  lxc.mount.entry (/A B overlay).  When the space before is
+                *  missing it is very likely that these substrings are part of a
+                *  path or something else. (Checking q >= lend ensures that we
+                *  only count matches in the current line.) */
+		if ((!(q = strstr(p, " overlay")) || q >= lend) && (!(q = strstr(p, " aufs")) || q >= lend))
+                        goto next;
+		if (!(q = strstr(p, olddir)) || (q >= lend))
+                        goto next;
+
+		/* replace the olddir with newdir */
+		if (olddirlen >= newdirlen) {
+			size_t diff = olddirlen - newdirlen;
+			memcpy(q, newdir, newdirlen);
+			if (olddirlen != newdirlen) {
+				memmove(q + newdirlen, q + newdirlen + diff,
+					strlen(q) - newdirlen - diff + 1);
+				lend -= diff;
+				conf->unexpanded_len -= diff;
+			}
+		} else {
+			char *new;
+			size_t diff = newdirlen - olddirlen;
+			size_t oldlen = conf->unexpanded_len;
+			size_t newlen = oldlen + diff;
+			size_t poffset = q - conf->unexpanded_config;
+			new = realloc(conf->unexpanded_config, newlen + 1);
+			if (!new) {
+				ERROR("Out of memory");
+				return false;
+			}
+			conf->unexpanded_len = newlen;
+			conf->unexpanded_alloced = newlen + 1;
+			new[newlen - 1] = '\0';
+			lend = new + (lend - conf->unexpanded_config);
+			/* move over the remainder to make room for the newdir */
+			memmove(new + poffset + newdirlen,
+				new + poffset + olddirlen,
+				oldlen - poffset - olddirlen + 1);
+			conf->unexpanded_config = new;
+			memcpy(new + poffset, newdir, newdirlen);
+			lend += diff;
+		}
+next:
+			lstart = lend;
+	}
+	return true;
+}
+
 bool clone_update_unexp_hooks(struct lxc_conf *conf, const char *oldpath,
 	const char *newpath, const char *oldname, const char *newname)
 {
