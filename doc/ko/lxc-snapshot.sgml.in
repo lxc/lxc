@@ -123,7 +123,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	    <para> Destroy the named snapshot.  If the named snapshot is ALL, then all snapshots
 	    will be destroyed.</para>
             -->
-            지정한 스냅샷을 제거합니다. 스냅샷의 이름이 ALL인 경우, 모든 스냅샷을 제거한다.
+            지정한 스냅샷을 제거한다. 스냅샷의 이름이 ALL인 경우, 모든 스냅샷을 제거한다.
 	   </listitem>
 	  </varlistentry>
 

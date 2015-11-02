@@ -202,7 +202,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
                       쉼표(,)로 구분된 선택할 그룹의 리스트.
                       (기본값은 lxc.group이 없는 것이다 - NULL 그룹)
 
-                      이 옵션은 여러번 지정될 수 있으며, 각 옵션들은 연결될 수 있다. NULL 또는 빈 그룹은 첫번째 쉼표, 맨 뒤의 쉼표, 두개의 쉼표 등으로 지정할 수 있다. 그룹들은 지정한 순서대로 처리됩니다. 여러번 호출된 -g 옵션과 콤마로 구분된 목록들은 자유롭게 혼용하여 사용 할 수 있다.
+                      이 옵션은 여러번 지정될 수 있으며, 각 옵션들은 연결될 수 있다. NULL 또는 빈 그룹은 첫번째 쉼표, 맨 뒤의 쉼표, 두개의 쉼표 등으로 지정할 수 있다. 그룹들은 지정한 순서대로 처리된다. 여러번 호출된 -g 옵션과 콤마로 구분된 목록들은 자유롭게 혼용하여 사용 할 수 있다.
                     </para>
                 </listitem>
             </varlistentry>
@@ -248,7 +248,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
             shutdown.  It's used to select which containers to start in what order
             and how much to delay between each startup when the host system boots.
             -->
-          부팅과 종료시 호스트의 시스>템에서 실행되도록 활성화 되어있을 때, <command>lxc-autostart</command> 명령어는 LXC 시스템 서비스의 일부로 사용됩니다. 어떤 컨테이너를 어떤 순서로 얼마만큼 시작간격을 두어 시작할지를 선택하는데 사용됩니다.
+          부팅과 종료시 호스트의 시스>템에서 실행되도록 활성화 되어있을 때, <command>lxc-autostart</command> 명령어는 LXC 시스템 서비스의 일부로 사용된다. 어떤 컨테이너를 어떤 순서로 얼마만큼 간격을 두어 시작할지 선택하는데 사용된다.
         </para>
 
         <para>

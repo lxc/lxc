@@ -82,7 +82,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       user is privileged over the network namespace to which the interface
       will be attached.
       -->
-      이 명령어는 <filename>@LXC_USERNIC_CONF@</filename>을 읽어, 호출한 사용자가 만들수 있는 인터페이스의 수와 어느 브리지에 붙일지를 결정한다.
+      이 명령어는 <filename>@LXC_USERNIC_CONF@</filename>을 읽어, 호출한 사용자가 만들수 있는 인터페이스의 수와 어느 브리지에 붙일지 결정한다.
       각 사용자가 생성한 인터페이스의 수를 <filename>@LXC_USERNIC_DB@</filename> 파일에 기록한다.
       그리고 호출한 사용자가 인터페이스를 붙인 네트워크 네임스페이스에 특권을 갖게 한다.
     </para>

@@ -222,7 +222,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
             <!--
             Show nested containers.
             -->
-            중첩된(nested) 컨테이너들의 리스트를 표시합니다.
+            중첩된(nested) 컨테이너들의 리스트를 표시한다.
           </para>
         </listitem>
       </varlistentry>

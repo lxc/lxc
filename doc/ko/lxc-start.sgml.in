@@ -153,7 +153,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
             <!--
 	    Create a file with the process id.
             -->
-            프로세스 ID를 넣은 파일을 생성합니다.
+            프로세스 ID를 넣은 파일을 생성한다.
             (역주 : systemd의 PIDFile= 옵션 등에 유용하게 사용가능하다)
 	  </para>
 	</listitem>
@@ -245,7 +245,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	  failure instead. Note: <replaceable>&#045;&#045;daemon</replaceable> implies
 	  <replaceable>&#045;&#045;close-all-fds</replaceable>.
           -->
-            상속 받는 파일 디스크립터가 있다면, 전부 닫는다. 만약 이 옵션이 지정되지 않았을 경우 <command>lxc-start</command>는 실패와 함께 종료됩니다. 주의 : <replaceable>&#045;&#045;daemon</replaceable>는 <replaceable>&#045;&#045;close-all-fds</replaceable>를 포함하고 있다.
+            상속 받는 파일 디스크립터가 있다면, 전부 닫는다. 만약 이 옵션이 지정되지 않았을 경우 <command>lxc-start</command>는 실패와 함께 종료된다. 주의 : <replaceable>&#045;&#045;daemon</replaceable>는 <replaceable>&#045;&#045;close-all-fds</replaceable>를 포함하고 있다.
 	  </para>
 	</listitem>
       </varlistentry>

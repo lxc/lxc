@@ -88,7 +88,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       inside the container or the container does not have a working
       nsswitch mechanism.
       -->
-      만약 <replaceable>command</replaceable>가 지정되어 있지 않다면, <command>lxc-attach</command>가 실행되어 있는 현재 쉘이 컨테이너 안에 있는지를 검사하고 실행한다.
+      만약 <replaceable>command</replaceable>가 지정되지 않았다면, <command>lxc-attach</command>가 현재 실행 중인 쉘이 컨테이너 안에도 있는지 검사하고 이를 실행한다.
       만약 컨테이너 안에 사용자가 존재하지 않거나, nsswitch가 제대로 동작하지 않는 경우에는 이 명령이 실패하게 된다.
     </para>
 
@@ -383,8 +383,8 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <replaceable>/sys/class/net</replaceable> and attaching to just
       the network namespace.
       -->
-      <option>-s</option> 를 사용하여 컨테이너의 pid 네임스페이스에만 attach 시키고 마운트 네임스페이스(컨테이너의 <replaceable>/proc</replaceable>는 포함하고, 호스트의 것은 포함하지 않는)는 attach 시키지 않는 경우, <option>/proc</option>의 내용은 컨테이너의 것이 아닌 호스트의 것이 됩니다.
-비슷한 사례로 네트워크 네임스페이스만을 연결 하고  <replaceable>/sys/class/net</replaceable>의 내용을 읽을 때도 같은 현상이 있습니다.
+      <option>-s</option> 를 사용하여 컨테이너의 pid 네임스페이스에만 attach 시키고 마운트 네임스페이스(컨테이너의 <replaceable>/proc</replaceable>는 포함하고, 호스트의 것은 포함하지 않는)는 attach 시키지 않는 경우, <option>/proc</option>의 내용은 컨테이너의 것이 아닌 호스트의 것이 된다.
+네트워크 네임스페이스만을 연결하고  <replaceable>/sys/class/net</replaceable>의 내용을 읽을 때도 같은 현상이 있다.
     </para>
     <para>
       <!--
@@ -399,8 +399,8 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       except for the <replaceable>/proc</replaceable> and
       <replaceable>/sys</replaceable> filesystems.
       -->
-      이러한 문제를 해결하기 위해, <option>-R</option> 옵션이 제공됩니다. 해당 옵션은 attach되는 프로세스의 네트워크/pid 네임스페이스를 반영하기 위해 <replaceable>/proc</replaceable>와 <replaceable>/sys</replaceable>를 다시 마운트 합니다.
-호스트의 실제 파일시스템에 방해가 되지 않기 위해 마운트 네임스페이스는 공유되지 않습니다(<command>lxc-unshare</command>의 동작과 비슷). <replaceable>/proc</replaceable>와 <replaceable>/sys</replaceable> 파일시스템을 제외하고 호스트 마운트 네임스페이스와 동일한 새로운 마운트 네임스페이스가 주어지게 됩니다.
+      이러한 문제를 해결하기 위해, <option>-R</option> 옵션이 제공된다. 해당 옵션은 attach되는 프로세스의 네트워크/pid 네임스페이스를 반영하기 위해 <replaceable>/proc</replaceable>와 <replaceable>/sys</replaceable>를 다시 마운트한다.
+호스트의 실제 파일시스템에 방해가 되지 않기 위해 마운트 네임스페이스는 공유되지 않는다(<command>lxc-unshare</command>의 동작과 비슷). <replaceable>/proc</replaceable>와 <replaceable>/sys</replaceable> 파일시스템을 제외하고 호스트 마운트 네임스페이스와 동일한 새로운 마운트 네임스페이스가 주어지게 된다.
     </para>
   </refsect1>
 
@@ -412,7 +412,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       be used with care, as it may break the isolation of the containers
       if used improperly.
       -->
-      <option>-e</option>와 <option>-s</option> 옵션을 사용할때는 주의하여야 합니다. 잘못사용하게 하면 컨테이너들 간의 고립(isolation)을 깨트릴 수 있습니다.
+      <option>-e</option>와 <option>-s</option> 옵션을 사용할때는 주의해야 한다. 잘못 사용하게 하면 컨테이너들 간의 고립(isolation)을 깨트릴 수 있다.
     </para>
   </refsect1>
 

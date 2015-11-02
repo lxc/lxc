@@ -120,7 +120,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	    Specify the configuration file to configure the virtualization
 	    and isolation functionalities for the container.
             -->
-            컨테이너 가상화 및 고립 기능을 설정하는 설정파일을 지정합니다.
+            컨테이너 가상화 및 고립 기능을 설정하는 설정파일을 지정한다.
 	  </para>
 	</listitem>
       </varlistentry>
