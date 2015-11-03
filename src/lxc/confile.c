@@ -2695,7 +2695,8 @@ next:
 }
 
 bool clone_update_unexp_hooks(struct lxc_conf *conf, const char *oldpath,
-	const char *newpath, const char *oldname, const char *newname)
+			      const char *newpath, const char *oldname,
+			      const char *newname)
 {
 	const char *key = "lxc.hook";
 	int ret;
@@ -2705,13 +2706,13 @@ bool clone_update_unexp_hooks(struct lxc_conf *conf, const char *oldpath,
 	char *olddir = alloca(olddirlen + 1);
 	char *newdir = alloca(newdirlen + 1);
 
-	ret = snprintf(olddir, olddirlen+1, "%s/%s", oldpath, oldname);
-	if (ret < 0 || ret >= olddirlen+1) {
+	ret = snprintf(olddir, olddirlen + 1, "%s/%s", oldpath, oldname);
+	if (ret < 0 || ret >= olddirlen + 1) {
 		ERROR("Bug in %s", __func__);
 		return false;
 	}
-	ret = snprintf(newdir, newdirlen+1, "%s/%s", newpath, newname);
-	if (ret < 0 || ret >= newdirlen+1) {
+	ret = snprintf(newdir, newdirlen + 1, "%s/%s", newpath, newname);
+	if (ret < 0 || ret >= newdirlen + 1) {
 		ERROR("Bug in %s", __func__);
 		return false;
 	}
@@ -2723,56 +2724,53 @@ bool clone_update_unexp_hooks(struct lxc_conf *conf, const char *oldpath,
 			lend = lstart + strlen(lstart);
 		else
 			lend++;
-		if (strncmp(lstart, key, strlen(key)) != 0) {
-			lstart = lend;
-			continue;
-		}
-		p = strchr(lstart+strlen(key), '=');
-		if (!p) {
-			lstart = lend;
-			continue;
-		}
+		if (strncmp(lstart, key, strlen(key)) != 0)
+                        goto next;
+		p = strchr(lstart + strlen(key), '=');
+		if (!p)
+                        goto next;
 		p++;
 		while (isblank(*p))
 			p++;
-		if (!*p)
-			return true;
-		if (strncmp(p, olddir, strlen(olddir)) != 0) {
-			lstart = lend;
-			continue;
-		}
+                if (p >= lend)
+                        goto next;
+		if (strncmp(p, olddir, strlen(olddir)) != 0)
+                        goto next;
 		/* replace the olddir with newdir */
 		if (olddirlen >= newdirlen) {
 			size_t diff = olddirlen - newdirlen;
 			memcpy(p, newdir, newdirlen);
 			if (olddirlen != newdirlen) {
-				memmove(lend-diff, lend, strlen(lend)+1);
+				memmove(p + newdirlen, p + newdirlen + diff,
+					strlen(p) - newdirlen - diff + 1);
 				lend -= diff;
 				conf->unexpanded_len -= diff;
 			}
-			lstart = lend;
 		} else {
 			char *new;
 			size_t diff = newdirlen - olddirlen;
 			size_t oldlen = conf->unexpanded_len;
 			size_t newlen = oldlen + diff;
 			size_t poffset = p - conf->unexpanded_config;
-			new = realloc(conf->unexpanded_config, newlen);
+			new = realloc(conf->unexpanded_config, newlen + 1);
 			if (!new) {
 				ERROR("Out of memory");
 				return false;
 			}
 			conf->unexpanded_len = newlen;
-			new[newlen-1] = '\0';
+			conf->unexpanded_alloced = newlen + 1;
+			new[newlen - 1] = '\0';
 			lend = new + (lend - conf->unexpanded_config);
-			/* move over the remainder, /$hookname\n$rest */
-			memmove(new+poffset+newdirlen,
-					new+poffset+olddirlen,
-					oldlen-poffset-olddirlen);
+			/* move over the remainder to make room for the newdir */
+			memmove(new + poffset + newdirlen,
+				new + poffset + olddirlen,
+				oldlen - poffset - olddirlen + 1);
 			conf->unexpanded_config = new;
-			memcpy(new+poffset, newdir, newdirlen);
-			lstart = lend + diff;
+			memcpy(new + poffset, newdir, newdirlen);
+			lend += diff;
 		}
+next:
+			lstart = lend;
 	}
 	return true;
 }
