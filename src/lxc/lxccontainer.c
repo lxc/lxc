@@ -618,10 +618,64 @@ static bool am_single_threaded(void)
 	return count == 1;
 }
 
-/*
- * I can't decide if it'd be more convenient for callers if we accept '...',
- * or a null-terminated array (i.e. execl vs execv)
- */
+static void push_arg(char ***argp, char *arg, int *nargs)
+{
+	char **argv;
+	char *copy;
+
+	do {
+		copy = strdup(arg);
+	} while (!copy);
+	do {
+		argv = realloc(*argp, (*nargs + 2) * sizeof(char *));
+	} while (!argv);
+	*argp = argv;
+	argv[*nargs] = copy;
+	(*nargs)++;
+	argv[*nargs] = NULL;
+}
+
+static char **split_init_cmd(const char *incmd)
+{
+	size_t len;
+	int nargs = 0;
+	char *copy, *p, *saveptr;
+	char **argv;
+
+	if (!incmd)
+		return NULL;
+
+	len = strlen(incmd) + 1;
+	copy = alloca(len);
+	strncpy(copy, incmd, len);
+	copy[len-1] = '\0';
+
+	do {
+		argv = malloc(sizeof(char *));
+	} while (!argv);
+	argv[0] = NULL;
+	for (p = strtok_r(copy, " ", &saveptr); p != NULL;
+			p = strtok_r(NULL, " ", &saveptr))
+		push_arg(&argv, p, &nargs);
+
+	if (nargs == 0) {
+		free(argv);
+		return NULL;
+	}
+	return argv;
+}
+
+static void free_init_cmd(char **argv)
+{
+	int i = 0;
+
+	if (!argv)
+		return;
+	while (argv[i])
+		free(argv[i++]);
+	free(argv);
+}
+
 static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const argv[])
 {
 	int ret;
@@ -632,7 +686,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		"/sbin/init",
 		NULL,
 	};
-	char *init_cmd[2];
+	char **init_cmd = NULL;
 
 	/* container exists */
 	if (!c)
@@ -673,15 +727,14 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		return ret == 0 ? true : false;
 	}
 
-	if (!argv) {
-		if (conf->init_cmd) {
-			init_cmd[0] = conf->init_cmd;
-			init_cmd[1] = NULL;
-			argv = init_cmd;
-		}
-		else
-			argv = default_args;
-	}
+	/* if no argv was passed in, use lxc.init_cmd if provided in
+	 * configuration */
+	if (!argv)
+		argv = init_cmd = split_init_cmd(conf->init_cmd);
+
+	/* ... and otherwise use default_args */
+	if (!argv)
+		argv = default_args;
 
 	/*
 	* say, I'm not sure - what locks do we want here?  Any?
@@ -789,6 +842,8 @@ out:
 		free(c->pidfile);
 		c->pidfile = NULL;
 	}
+
+	free_init_cmd(init_cmd);
 
 	if (daemonize)
 		exit (ret == 0 ? true : false);
