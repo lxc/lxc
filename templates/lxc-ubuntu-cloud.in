@@ -200,7 +200,7 @@ cloneargs=()
 while true
 do
     case "$1" in
-    -h|--help)         usage $0 && exit 0;;
+    -h|--help)         usage $0 && exit 1;;
     -p|--path)         path=$2; shift 2;;
     -n|--name)         name=$2; shift 2;;
     -F|--flush-cache)  flushcache=1; shift 1;;
@@ -295,7 +295,7 @@ else
     if ! url1=`ubuntu-cloudimg-query $release $stream $arch --format "%{url}\n"`; then
         echo "There is no download available for release=$release, stream=$stream, arch=$arch"
         [ "$stream" = "daily" ] || echo "You may try with '--stream=daily'"
-        exit
+        exit 1
     fi
     url2=`echo $url1 | sed -e 's/.tar.gz/-root\0/' -e 's/.tar.gz/.tar.xz/'`
 fi
