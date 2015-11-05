@@ -1,4 +1,5 @@
 hooksdir=@LXCHOOKDIR@
+binhooksdir=@LXCBINHOOKDIR@
 
 hooks_SCRIPTS = \
 	clonehostname \
@@ -6,7 +7,7 @@ hooks_SCRIPTS = \
 	ubuntu-cloud-prep \
 	squid-deb-proxy-client
 
-hooks_PROGRAMS = \
+binhooks_PROGRAMS = \
 	unmount-namespace
 
 unmount_namespace_SOURCES = \
