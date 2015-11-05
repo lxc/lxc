@@ -637,6 +637,10 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	/* container exists */
 	if (!c)
 		return false;
+
+	/* If anything fails before we set error_num, we want an error in there */
+	c->error_num = 1;
+
 	/* container has been setup */
 	if (!c->lxc_conf)
 		return false;
