@@ -51,20 +51,25 @@
 #define PR_SET_MM 35
 #endif
 
-#ifndef PR_SET_MM_ARG_START
-#define PR_SET_MM_ARG_START 8
-#endif
+#ifndef PR_SET_MM_MAP
+#define PR_SET_MM_MAP 14
 
-#ifndef PR_SET_MM_ARG_END
-#define PR_SET_MM_ARG_END 9
-#endif
-
-#ifndef PR_SET_MM_ENV_START
-#define PR_SET_MM_ENV_START 10
-#endif
-
-#ifndef PR_SET_MM_ENV_END
-#define PR_SET_MM_ENV_END 11
+struct prctl_mm_map {
+        uint64_t   start_code;
+        uint64_t   end_code;
+        uint64_t   start_data;
+        uint64_t   end_data;
+        uint64_t   start_brk;
+        uint64_t   brk;
+        uint64_t   start_stack;
+        uint64_t   arg_start;
+        uint64_t   arg_end;
+        uint64_t   env_start;
+        uint64_t   env_end;
+        uint64_t   *auxv;
+        uint32_t   auxv_size;
+        uint32_t   exe_fd;
+};              
 #endif
 
 #ifndef O_PATH
