@@ -183,6 +183,7 @@ bin_PROGRAMS = \
 	lxc-cgroup \
 	lxc-checkpoint \
 	lxc-clone \
+	lxc-copy \
 	lxc-config \
 	lxc-console \
 	lxc-create \
@@ -226,6 +227,7 @@ init_lxc_SOURCES = lxc_init.c
 lxc_monitor_SOURCES = lxc_monitor.c
 lxc_monitord_SOURCES = lxc_monitord.c
 lxc_clone_SOURCES = lxc_clone.c
+lxc_copy_SOURCES = lxc_copy.c
 lxc_start_SOURCES = lxc_start.c
 lxc_stop_SOURCES = lxc_stop.c
 lxc_top_SOURCES = lxc_top.c
