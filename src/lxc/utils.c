@@ -1347,7 +1347,15 @@ int setproctitle(char *title)
 	char buf[2048], *tmp;
 	FILE *f;
 	int i, len, ret = 0;
-	unsigned long arg_start, arg_end, env_start, env_end;
+
+	/* We don't really need to know all of this stuff, but unfortunately
+	 * PR_SET_MM_MAP requires us to set it all at once, so we have to
+	 * figure it out anyway.
+	 */
+	unsigned long start_data, end_data, start_brk, start_code, end_code,
+			start_stack, arg_start, arg_end, env_start, env_end,
+			brk_val;
+	struct prctl_mm_map prctl_map;
 
 	f = fopen_cloexec("/proc/self/stat", "r");
 	if (!f) {
@@ -1360,10 +1368,23 @@ int setproctitle(char *title)
 		return -1;
 	}
 
-	/* Skip the first 47 fields, column 48-51 are ARG_START and
-	 * ARG_END. */
+	/* Skip the first 25 fields, column 26-28 are start_code, end_code,
+	 * and start_stack */
 	tmp = strchr(buf, ' ');
-	for (i = 0; i < 46; i++) {
+	for (i = 0; i < 24; i++) {
+		if (!tmp)
+			return -1;
+		tmp = strchr(tmp+1, ' ');
+	}
+	if (!tmp)
+		return -1;
+
+	i = sscanf(tmp, "%lu %lu %lu", &start_code, &end_code, &start_stack);
+	if (i != 3)
+		return -1;
+
+	/* Skip the next 19 fields, column 45-51 are start_data to arg_end */
+	for (i = 0; i < 19; i++) {
 		if (!tmp)
 			return -1;
 		tmp = strchr(tmp+1, ' ');
@@ -1372,10 +1393,16 @@ int setproctitle(char *title)
 	if (!tmp)
 		return -1;
 
-	i = sscanf(tmp, "%lu %lu %lu %lu", &arg_start, &arg_end, &env_start, &env_end);
-	if (i != 4) {
+	i = sscanf(tmp, "%lu %lu %lu %lu %lu %lu %lu",
+		&start_data,
+		&end_data,
+		&start_brk,
+		&arg_start,
+		&arg_end,
+		&env_start,
+		&env_end);
+	if (i != 7)
 		return -1;
-	}
 
 	/* Include the null byte here, because in the calculations below we
 	 * want to have room for it. */
@@ -1386,6 +1413,7 @@ int setproctitle(char *title)
 	if (len > env_end - arg_start) {
 		arg_end = env_end;
 		len = env_end - arg_start;
+		title[len-1] = '\0';
 	} else {
 		/* Only truncate the environment if we're actually going to
 		 * overwrite part of it. */
@@ -1402,12 +1430,30 @@ int setproctitle(char *title)
 
 	}
 
-	strcpy((char*)arg_start, title);
+	brk_val = syscall(__NR_brk, 0);
 
-	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_START,   arg_start, 0, 0);
-	ret |= prctl(PR_SET_MM, PR_SET_MM_ARG_END,     arg_end, 0, 0);
-	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_START,   env_start, 0, 0);
-	ret |= prctl(PR_SET_MM, PR_SET_MM_ENV_END,     env_end, 0, 0);
+	prctl_map = (struct prctl_mm_map) {
+		.start_code = start_code,
+		.end_code = end_code,
+		.start_stack = start_stack,
+		.start_data = start_data,
+		.end_data = end_data,
+		.start_brk = start_brk,
+		.brk = brk_val,
+		.arg_start = arg_start,
+		.arg_end = arg_end,
+		.env_start = env_start,
+		.env_end = env_end,
+		.auxv = NULL,
+		.auxv_size = 0,
+		.exe_fd = -1,
+	};
+
+	ret = prctl(PR_SET_MM, PR_SET_MM_MAP, (long) &prctl_map, sizeof(prctl_map), 0);
+	if (ret == 0)
+		strcpy((char*)arg_start, title);
+	else
+		SYSERROR("setting cmdline failed");
 
 	return ret;
 }
