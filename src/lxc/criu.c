@@ -37,6 +37,7 @@
 #include "bdev.h"
 #include "cgroup.h"
 #include "conf.h"
+#include "commands.h"
 #include "criu.h"
 #include "log.h"
 #include "lxc.h"
@@ -64,8 +65,8 @@ void exec_criu(struct criu_opts *opts)
 	 * +1 for final NULL */
 
 	if (strcmp(opts->action, "dump") == 0) {
-		/* -t pid */
-		static_args += 2;
+		/* -t pid --freeze-cgroup /lxc/ct */
+		static_args += 4;
 
 		/* --leave-running */
 		if (!opts->stop)
@@ -133,13 +134,30 @@ void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG("-vvvvvv");
 
 	if (strcmp(opts->action, "dump") == 0) {
-		char pid[32];
+		char pid[32], *freezer_relative;
 
 		if (sprintf(pid, "%d", opts->c->init_pid(opts->c)) < 0)
 			goto err;
 
+
 		DECLARE_ARG("-t");
 		DECLARE_ARG(pid);
+
+		freezer_relative = lxc_cmd_get_cgroup_path(opts->c->name,
+							   opts->c->config_path,
+							   "freezer");
+		if (!freezer_relative) {
+			ERROR("failed getting freezer path");
+			goto err;
+		}
+
+		ret = snprintf(log, sizeof(log), "/sys/fs/cgroup/freezer/%s", freezer_relative);
+		if (ret < 0 || ret >= sizeof(log))
+			goto err;
+
+		DECLARE_ARG("--freeze-cgroup");
+		DECLARE_ARG(log);
+
 		if (!opts->stop)
 			DECLARE_ARG("--leave-running");
 	} else if (strcmp(opts->action, "restore") == 0) {
