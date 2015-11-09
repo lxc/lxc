@@ -388,7 +388,7 @@ static int do_clone_ephemeral(struct lxc_container *c,
 	clone = c->clone(c, my_args->newname, my_args->newpath, flags,
 			 my_args->bdevtype, NULL, my_args->fssize, args);
 	if (!clone)
-		goto err;
+		return -1;
 
 	if (!my_args->keepdata)
 		if (!clone->set_config_item(clone, "lxc.ephemeral", "1"))
@@ -439,9 +439,9 @@ static int do_clone_ephemeral(struct lxc_container *c,
 	return 0;
 
 err:
-	free_mnts(mnts, num);
 	clone->destroy(clone);
 put:
+	free_mnts(mnts, num);
 	lxc_container_put(clone);
 	return -1;
 }
