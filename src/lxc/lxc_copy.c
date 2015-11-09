@@ -382,6 +382,8 @@ static int do_clone_ephemeral(struct lxc_container *c,
 			return -1;
 		if (!mkdtemp(randname))
 			return -1;
+		if (chmod(randname, 0770) < 0)
+			return -1;
 		my_args->newname = randname + strlen(my_args->newpath) + 1;
 	}
 
