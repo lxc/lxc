@@ -842,6 +842,11 @@ static int do_start(void *data)
 	if (handler->backgrounded && null_stdfds() < 0)
 		goto out_warn_father;
 
+	if (cgns_supported() && unshare(CLONE_NEWCGROUP) != 0) {
+		SYSERROR("Failed to unshare cgroup namespace");
+		goto out_warn_father;
+	}
+
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
 	handler->ops->start(handler, handler->data);
