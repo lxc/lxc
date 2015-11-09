@@ -34,6 +34,9 @@
 #ifndef CLONE_NEWNS
 #  define CLONE_NEWNS             0x00020000
 #endif
+#ifndef CLONE_NEWCGROUP
+#  define CLONE_NEWCGROUP         0x02000000
+#endif
 #ifndef CLONE_NEWUTS
 #  define CLONE_NEWUTS            0x04000000
 #endif
