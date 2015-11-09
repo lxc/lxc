@@ -1458,7 +1458,7 @@ int setproctitle(char *title)
 	if (ret == 0)
 		strcpy((char*)arg_start, title);
 	else
-		SYSERROR("setting cmdline failed");
+		INFO("setting cmdline failed - %s", strerror(errno));
 
 	return ret;
 }
