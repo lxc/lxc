@@ -248,6 +248,24 @@ openssh-server
     release=$3
 
     trap cleanup EXIT SIGHUP SIGINT SIGTERM
+    # If debian-archive-keyring isn't installed, fetch GPG keys directly
+    releasekeyring=/usr/share/keyrings/debian-archive-keyring.gpg
+    if [ ! -f $releasekeyring ]; then
+        releasekeyring="$cache/archive-key.gpg"
+        case $release in
+            "squeeze")
+                gpgkeyname="archive-key-6.0"
+                ;;
+            "wheezy")
+                gpgkeyname="archive-key-7.0"
+                ;;
+            *)
+                gpgkeyname="archive-key-8"
+                ;;
+        esac
+        wget https://ftp-master.debian.org/keys/${gpgkeyname}.asc -O - --quiet \
+            | gpg --import --no-default-keyring --keyring=${releasekeyring}
+    fi
     # check the mini debian was not already downloaded
     mkdir -p "$cache/partial-$release-$arch"
     if [ $? -ne 0 ]; then
@@ -258,7 +276,7 @@ openssh-server
     # download a mini debian into a cache
     echo "Downloading debian minimal ..."
     debootstrap --verbose --variant=minbase --arch=$arch \
-        --include=$packages \
+        --include=$packages --keyring=${releasekeyring} \
         "$release" "$cache/partial-$release-$arch" $MIRROR
     if [ $? -ne 0 ]; then
         echo "Failed to download the rootfs, aborting."
