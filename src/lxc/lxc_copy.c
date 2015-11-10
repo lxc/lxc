@@ -1,6 +1,6 @@
 /*
  *
- * Copyright © 2015 Christian Brauner <christianvanbrauner@gmail.com>.
+ * Copyright © 2015 Christian Brauner <christian.brauner@mailbox.org>.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2, as
@@ -53,7 +53,7 @@ enum mnttype {
 };
 
 struct mnts {
-	enum mnttype type;
+	enum mnttype mnt_type;
 	char *src;
 	char *dest;
 	char *options;
@@ -62,8 +62,8 @@ struct mnts {
 	char *lower;
 };
 
-static unsigned int num = 0;
-static struct mnts *mnts = NULL;
+static unsigned int mnt_table_size = 0;
+static struct mnts *mnt_table = NULL;
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
 
@@ -125,14 +125,15 @@ Options :\n\
 
 static struct mnts *add_mnt(struct mnts **mnts, unsigned int *num,
 			    enum mnttype type);
-static int mk_rand_ovl_dirs(struct mnts *mnts, struct lxc_arguments *my_args);
+static int mk_rand_ovl_dirs(struct mnts *mnts, unsigned int num,
+			    struct lxc_arguments *arg);
 static char *construct_path(char *path, bool as_prefix);
 static char *set_mnt_entry(struct mnts *m);
 static int do_clone(struct lxc_container *c, char *newname, char *newpath,
 		    int flags, char *bdevtype, uint64_t fssize, enum task task,
 		    char **args);
 static int do_clone_ephemeral(struct lxc_container *c,
-			      struct lxc_arguments *my_args, char **args,
+			      struct lxc_arguments *arg, char **args,
 			      int flags);
 static int do_clone_rename(struct lxc_container *c, char *newname);
 static int do_clone_task(struct lxc_container *c, enum task task, int flags,
@@ -223,12 +224,12 @@ static struct mnts *add_mnt(struct mnts **mnts, unsigned int *num, enum mnttype 
 	m = *mnts + *num;
 	(*num)++;
 
-	*m = (struct mnts) {.type = type};
+	*m = (struct mnts) {.mnt_type = type};
 
 	return m;
 }
 
-static int mk_rand_ovl_dirs(struct mnts *mnts, struct lxc_arguments *my_args)
+static int mk_rand_ovl_dirs(struct mnts *mnts, unsigned int num, struct lxc_arguments *arg)
 {
 	char upperdir[MAXPATHLEN];
 	char workdir[MAXPATHLEN];
@@ -238,9 +239,9 @@ static int mk_rand_ovl_dirs(struct mnts *mnts, struct lxc_arguments *my_args)
 
 	for (i = 0; i < num; i++) {
 		m = mnts + i;
-		if ((m->type == LXC_MNT_OVL) || (m->type == LXC_MNT_AUFS)) {
+		if ((m->mnt_type == LXC_MNT_OVL) || (m->mnt_type == LXC_MNT_AUFS)) {
 			ret = snprintf(upperdir, MAXPATHLEN, "%s/%s/delta#XXXXXX",
-					my_args->newpath, my_args->newname);
+					arg->newpath, arg->newname);
 			if (ret < 0 || ret >= MAXPATHLEN)
 				goto err;
 			if (!mkdtemp(upperdir))
@@ -250,9 +251,9 @@ static int mk_rand_ovl_dirs(struct mnts *mnts, struct lxc_arguments *my_args)
 				goto err;
 		}
 
-		if (m->type == LXC_MNT_OVL) {
+		if (m->mnt_type == LXC_MNT_OVL) {
 			ret = snprintf(workdir, MAXPATHLEN, "%s/%s/work#XXXXXX",
-					my_args->newpath, my_args->newname);
+					arg->newpath, arg->newname);
 			if (ret < 0 || ret >= MAXPATHLEN)
 				goto err;
 			if (!mkdtemp(workdir))
@@ -266,7 +267,7 @@ static int mk_rand_ovl_dirs(struct mnts *mnts, struct lxc_arguments *my_args)
 	return 0;
 
 err:
-	free_mnts(mnts, num);
+	free_mnts(mnt_table, mnt_table_size);
 	return -1;
 }
 
@@ -291,7 +292,7 @@ static char *set_mnt_entry(struct mnts *m)
 	int ret = 0;
 	size_t len = 0;
 
-	if (m->type == LXC_MNT_AUFS) {
+	if (m->mnt_type == LXC_MNT_AUFS) {
 		len = strlen("  aufs br==rw:=ro,xino=,create=dir") +
 		      2 * strlen(m->src) + strlen(m->dest) + strlen(m->upper) +
 		      strlen(m->workdir) + 1;
@@ -304,7 +305,7 @@ static char *set_mnt_entry(struct mnts *m)
 			       m->src, m->dest, m->upper, m->src, m->workdir);
 		if (ret < 0 || (size_t)ret >= len)
 			goto err;
-	} else if (m->type == LXC_MNT_OVL) {
+	} else if (m->mnt_type == LXC_MNT_OVL) {
 		len = strlen("  overlay lowerdir=,upperdir=,workdir=,create=dir") +
 		      2 * strlen(m->src) + strlen(m->dest) + strlen(m->upper) +
 		      strlen(m->workdir) + 1;
@@ -317,7 +318,7 @@ static char *set_mnt_entry(struct mnts *m)
 				m->src, m->dest, m->src, m->upper, m->workdir);
 		if (ret < 0 || (size_t)ret >= len)
 			goto err;
-	} else if (m->type == LXC_MNT_BIND) {
+	} else if (m->mnt_type == LXC_MNT_BIND) {
 		len = strlen("  none bind,optional,, 0 0") +
 		      strlen(is_dir(m->src) ? "create=dir" : "create=file") +
 		      strlen(m->src) + strlen(m->dest) + strlen(m->options) + 1;
@@ -336,7 +337,7 @@ static char *set_mnt_entry(struct mnts *m)
 	return mntentry;
 
 err:
-	free_mnts(mnts, num);
+	free_mnts(mnt_table, mnt_table_size);
 	free(mntentry);
 	return NULL;
 }
@@ -363,7 +364,7 @@ static int do_clone(struct lxc_container *c, char *newname, char *newpath,
 }
 
 static int do_clone_ephemeral(struct lxc_container *c,
-			      struct lxc_arguments *my_args, char **args,
+			      struct lxc_arguments *arg, char **args,
 			      int flags)
 {
 	char randname[MAXPATHLEN];
@@ -376,34 +377,34 @@ static int do_clone_ephemeral(struct lxc_container *c,
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 	attach_options.env_policy = LXC_ATTACH_CLEAR_ENV;
 
-	if (!my_args->newname) {
-		ret = snprintf(randname, MAXPATHLEN, "%s/%s_XXXXXX", my_args->newpath, my_args->name);
+	if (!arg->newname) {
+		ret = snprintf(randname, MAXPATHLEN, "%s/%s_XXXXXX", arg->newpath, arg->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 		if (!mkdtemp(randname))
 			return -1;
 		if (chmod(randname, 0770) < 0)
 			return -1;
-		my_args->newname = randname + strlen(my_args->newpath) + 1;
+		arg->newname = randname + strlen(arg->newpath) + 1;
 	}
 
-	clone = c->clone(c, my_args->newname, my_args->newpath, flags,
-			 my_args->bdevtype, NULL, my_args->fssize, args);
+	clone = c->clone(c, arg->newname, arg->newpath, flags,
+			 arg->bdevtype, NULL, arg->fssize, args);
 	if (!clone)
 		return -1;
 
-	if (!my_args->keepdata)
+	if (!arg->keepdata)
 		if (!clone->set_config_item(clone, "lxc.ephemeral", "1"))
 			goto err;
 
 	/* allocate and create random upper- and workdirs for overlay mounts */
-	if (mk_rand_ovl_dirs(mnts, my_args) < 0)
+	if (mk_rand_ovl_dirs(mnt_table, mnt_table_size, arg) < 0)
 		goto err;
 
 	/* allocate and set mount entries */
-	for (i = 0; i < num; i++) {
+	for (i = 0; i < mnt_table_size; i++) {
 		char *mntentry = NULL;
-		n = mnts + i;
+		n = mnt_table + i;
 		if ((mntentry = set_mnt_entry(n))) {
 			bret = clone->set_config_item(clone, "lxc.mount.entry", mntentry);
 			free(mntentry);
@@ -415,12 +416,12 @@ static int do_clone_ephemeral(struct lxc_container *c,
 	if (!clone->save_config(clone, NULL))
 		goto err;
 
-	printf("Created %s as %s of %s\n", my_args->name, "clone", my_args->newname);
+	printf("Created %s as %s of %s\n", arg->name, "clone", arg->newname);
 
-	if (!my_args->daemonize && my_args->argc) {
+	if (!arg->daemonize && arg->argc) {
 		clone->want_daemonize(clone, true);
-		my_args->daemonize = 1;
-	} else if (!my_args->daemonize) {
+		arg->daemonize = 1;
+	} else if (!arg->daemonize) {
 		clone->want_daemonize(clone, false);
 	}
 
@@ -430,8 +431,8 @@ static int do_clone_ephemeral(struct lxc_container *c,
 		goto put;
 	}
 
-	if (my_args->daemonize && my_args->argc) {
-		ret = clone->attach_run_wait(clone, &attach_options, my_args->argv[0], (const char *const *)my_args->argv);
+	if (arg->daemonize && arg->argc) {
+		ret = clone->attach_run_wait(clone, &attach_options, arg->argv[0], (const char *const *)arg->argv);
 		if (ret < 0)
 			goto put;
 		clone->shutdown(clone, true);
@@ -443,7 +444,7 @@ static int do_clone_ephemeral(struct lxc_container *c,
 err:
 	clone->destroy(clone);
 put:
-	free_mnts(mnts, num);
+	free_mnts(mnt_table, mnt_table_size);
 	lxc_container_put(clone);
 	return -1;
 }
@@ -589,7 +590,7 @@ static int parse_aufs_mnt(char *mntstring, enum mnttype type)
 	char **mntarray = NULL;
 	struct mnts *m = NULL;
 
-	m = add_mnt(&mnts, &num, type);
+	m = add_mnt(&mnt_table, &mnt_table_size, type);
 	if (!m)
 		goto err;
 
@@ -620,7 +621,7 @@ static int parse_aufs_mnt(char *mntstring, enum mnttype type)
 	return 0;
 
 err:
-	free_mnts(m, num);
+	free_mnts(mnt_table, mnt_table_size);
 	lxc_free_array((void **)mntarray, free);
 	return -1;
 }
@@ -631,7 +632,7 @@ static int parse_bind_mnt(char *mntstring, enum mnttype type)
 	char **mntarray = NULL;
 	struct mnts *m = NULL;
 
-	m = add_mnt(&mnts, &num, type);
+	m = add_mnt(&mnt_table, &mnt_table_size, type);
 	if (!m)
 		goto err;
 
@@ -678,7 +679,7 @@ static int parse_bind_mnt(char *mntstring, enum mnttype type)
 	return 0;
 
 err:
-	free_mnts(m, num);
+	free_mnts(mnt_table, mnt_table_size);
 	lxc_free_array((void **)mntarray, free);
 	return -1;
 }
@@ -712,7 +713,7 @@ static int parse_ovl_mnt(char *mntstring, enum mnttype type)
 	char **mntarray = NULL;
 	struct mnts *m;
 
-	m = add_mnt(&mnts, &num, type);
+	m = add_mnt(&mnt_table, &mnt_table_size, type);
 	if (!m)
 		goto err;
 
@@ -739,7 +740,7 @@ static int parse_ovl_mnt(char *mntstring, enum mnttype type)
 	return 0;
 
 err:
-	free_mnts(m, num);
+	free_mnts(mnt_table, mnt_table_size);
 	lxc_free_array((void **)mntarray, free);
 	return -1;
 }
