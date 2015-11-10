@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 #
 # lxc-start-ephemeral: Start a copy of a container using an overlay
 #

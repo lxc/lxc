@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 #
 # pyconsole: Example program showing use of console functions
 #            in the lxc python binding
