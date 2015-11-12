@@ -25,7 +25,7 @@ STATE_DIR="@LOCALSTATEDIR@"
 HOOK_DIR="@LXCHOOKDIR@"
 CLONE_HOOK_FN="$HOOK_DIR/ubuntu-cloud-prep"
 LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
-KNOWN_RELEASES="precise trusty utopic vivid"
+KNOWN_RELEASES="precise trusty vivid wily xenial"
 skip_arch_check=${UCTEMPLATE_SKIP_ARCH_CHECK:-0}
 
 # Make sure the usual locations are in PATH
@@ -159,8 +159,8 @@ eval set -- "$options"
 
 mapped_uid=-1
 mapped_gid=-1
-# default release is precise, or the systems release if recognized
-release=precise
+# default release is trusty, or the systems release if recognized
+release=trusty
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
     rels=$(ubuntu-distro-info --supported 2>/dev/null) ||
@@ -183,7 +183,7 @@ else
         arch="amd64"
     elif [ "$arch" = "armv7l" ]; then
         # note: arm images don't exist before oneiric;  are called armhf in
-        # precise and later;  and are not supported by the query, so we don't actually
+        # trusty and later;  and are not supported by the query, so we don't actually
         # support them yet (see check later on).  When Query2 is available,
         # we'll use that to enable arm images.
         arch="armhf"
@@ -330,10 +330,10 @@ do_extract_rootfs() {
     mkdir -p $rootfs
     cd $rootfs
     if [ $in_userns -eq 1 ]; then
-        tar --anchored --exclude="dev/*" --numeric-owner -xpJf "$cache/$filename"
+        tar --anchored --exclude="dev/*" --numeric-owner -xpf "$cache/$filename"
         mkdir -p $rootfs/dev/pts/
     else
-        tar --numeric-owner -xpJf "$cache/$filename"
+        tar --numeric-owner -xpf "$cache/$filename"
     fi
 }
 
