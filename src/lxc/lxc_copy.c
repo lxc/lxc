@@ -94,7 +94,7 @@ static char *const keys[] = {
 
 static struct lxc_arguments my_args = {
 	.progname = "lxc-copy",
-	.help = "\
+	.help = "\n\
 --name=NAME [-P lxcpath] -N newname [-p newpath] [-B backingstorage] [-s] [-K] [-M] [-L size [unit]]\n\
 --name=NAME [-P lxcpath] [-N newname] [-p newpath] [-B backingstorage] -e [-d] [-D] [-K] [-M] [-m {bind,aufs,overlay}=/src:/dest]\n\
 --name=NAME [-P lxcpath] -N newname -R\n\

@@ -680,6 +680,7 @@ AC_CONFIG_FILES([
 	doc/lxc-clone.sgml
 	doc/lxc-config.sgml
 	doc/lxc-console.sgml
+	doc/lxc-copy.sgml
 	doc/lxc-create.sgml
 	doc/lxc-destroy.sgml
 	doc/lxc-device.sgml

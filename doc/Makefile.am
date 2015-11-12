@@ -24,6 +24,7 @@ man_MANS = \
 	lxc-clone.1 \
 	lxc-config.1 \
 	lxc-console.1 \
+	lxc-copy.1 \
 	lxc-create.1 \
 	lxc-destroy.1 \
 	lxc-execute.1 \
