@@ -1349,6 +1349,7 @@ char *get_template_path(const char *t)
  */
 int setproctitle(char *title)
 {
+	static char *proctitle = NULL;
 	char buf[2048], *tmp;
 	FILE *f;
 	int i, len, ret = 0;
@@ -1413,27 +1414,20 @@ int setproctitle(char *title)
 	 * want to have room for it. */
 	len = strlen(title) + 1;
 
-	/* We're truncating the environment, so we should use at most the
-	 * length of the argument + environment for the title. */
-	if (len > env_end - arg_start) {
-		arg_end = env_end;
-		len = env_end - arg_start;
-		title[len-1] = '\0';
-	} else {
-		/* Only truncate the environment if we're actually going to
-		 * overwrite part of it. */
-		if (len >= arg_end - arg_start) {
-			env_start = env_end;
-		}
-
-		arg_end = arg_start + len;
-
-		/* check overflow */
-		if (arg_end < len || arg_end < arg_start) {
+	/* If we don't have enough room by just overwriting the old proctitle,
+	 * let's allocate a new one.
+	 */
+	if (len > arg_end - arg_start) {
+		void *m;
+		m = realloc(proctitle, len);
+		if (!m)
 			return -1;
-		}
+		proctitle = m;
 
+		arg_start = (unsigned long) proctitle;
 	}
+
+	arg_end = arg_start + len;
 
 	brk_val = syscall(__NR_brk, 0);
 
