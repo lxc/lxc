@@ -3059,6 +3059,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	int ret, storage_copied = 0;
 	char *origroot = NULL, *saved_unexp_conf = NULL;
 	struct clone_update_data data;
+	size_t saved_unexp_len;
 	FILE *fout;
 	pid_t pid;
 
@@ -3106,6 +3107,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	}
 
 	saved_unexp_conf = c->lxc_conf->unexpanded_config;
+	saved_unexp_len = c->lxc_conf->unexpanded_len;
 	c->lxc_conf->unexpanded_config = strdup(saved_unexp_conf);
 	if (!c->lxc_conf->unexpanded_config) {
 		ERROR("Out of memory");
@@ -3118,6 +3120,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	free(c->lxc_conf->unexpanded_config);
 	c->lxc_conf->unexpanded_config = saved_unexp_conf;
 	saved_unexp_conf = NULL;
+	c->lxc_conf->unexpanded_len = saved_unexp_len;
 
 	sprintf(newpath, "%s/%s/rootfs", lxcpath, newname);
 	if (mkdir(newpath, 0755) < 0) {
