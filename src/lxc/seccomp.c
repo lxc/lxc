@@ -296,10 +296,19 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 	if (native_arch == lxc_seccomp_arch_amd64) {
 		cur_rule_arch = lxc_seccomp_arch_all;
 		compat_arch = SCMP_ARCH_X86;
-		compat_ctx = get_new_ctx(lxc_seccomp_arch_i386,
-				default_policy_action);
-		if (!compat_ctx)
-			goto bad;
+		// Detect if we are on x86_64 kernel with 32-bit userspace
+		if (seccomp_arch_exist(conf->seccomp_ctx, SCMP_ARCH_X86)) {
+			compat_ctx = conf->seccomp_ctx;
+			conf->seccomp_ctx = get_new_ctx(lxc_seccomp_arch_amd64,
+					default_policy_action);
+			if (!conf->seccomp_ctx)
+				goto bad;
+		} else {
+			compat_ctx = get_new_ctx(lxc_seccomp_arch_i386,
+					default_policy_action);
+			if (!compat_ctx)
+				goto bad;
+		}
 	}
 
 	if (default_policy_action != SCMP_ACT_KILL) {
