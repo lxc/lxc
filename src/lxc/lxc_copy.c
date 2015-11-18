@@ -17,6 +17,8 @@
  */
 
 #define _GNU_SOURCE
+#include "config.h"
+
 #include <unistd.h>
 #include <getopt.h>
 #include <signal.h>
@@ -43,6 +45,10 @@
 #include "state.h"
 #include "utils.h"
 #include "bdev.h"
+
+#ifndef HAVE_GETSUBOPT
+#include <../include/getsubopt.h>
+#endif
 
 lxc_log_define(lxc_copy_ui, lxc);
 

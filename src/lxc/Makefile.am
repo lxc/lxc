@@ -38,6 +38,10 @@ noinst_HEADERS += ../include/getline.h
 endif
 endif
 
+if !HAVE_GETSUBOPT
+noinst_HEADERS += ../include/getsubopt.h
+endif
+
 sodir=$(libdir)
 # use PROGRAMS to avoid complains from automake
 so_PROGRAMS = liblxc.so
@@ -239,6 +243,10 @@ lxc_snapshot_SOURCES = lxc_snapshot.c
 lxc_usernsexec_SOURCES = lxc_usernsexec.c
 lxc_user_nic_SOURCES = lxc_user_nic.c network.c network.h
 lxc_checkpoint_SOURCES = lxc_checkpoint.c
+
+if !HAVE_GETSUBOPT
+lxc_copy_SOURCES += ../include/getsubopt.c ../include/getsubopt.h
+endif
 
 if HAVE_STATIC_LIBCAP
 sbin_PROGRAMS += init.lxc.static
