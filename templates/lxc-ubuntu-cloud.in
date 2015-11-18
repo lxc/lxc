@@ -25,7 +25,7 @@ STATE_DIR="@LOCALSTATEDIR@"
 HOOK_DIR="@LXCHOOKDIR@"
 CLONE_HOOK_FN="$HOOK_DIR/ubuntu-cloud-prep"
 LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
-KNOWN_RELEASES="precise trusty utopic vivid"
+KNOWN_RELEASES="precise trusty vivid wily xenial"
 skip_arch_check=${UCTEMPLATE_SKIP_ARCH_CHECK:-0}
 
 # Make sure the usual locations are in PATH
@@ -155,8 +155,8 @@ eval set -- "$options"
 
 mapped_uid=-1
 mapped_gid=-1
-# default release is precise, or the systems release if recognized
-release=precise
+# default release is trusty, or the systems release if recognized
+release=trusty
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
     rels=$(ubuntu-distro-info --supported 2>/dev/null) ||
@@ -179,7 +179,7 @@ else
         arch="amd64"
     elif [ "$arch" = "armv7l" ]; then
         # note: arm images don't exist before oneiric;  are called armhf in
-        # precise and later;  and are not supported by the query, so we don't actually
+        # trusty and later;  and are not supported by the query, so we don't actually
         # support them yet (see check later on).  When Query2 is available,
         # we'll use that to enable arm images.
         arch="armhf"
@@ -200,7 +200,7 @@ cloneargs=()
 while true
 do
     case "$1" in
-    -h|--help)         usage $0 && exit 0;;
+    -h|--help)         usage $0 && exit 1;;
     -p|--path)         path=$2; shift 2;;
     -n|--name)         name=$2; shift 2;;
     -F|--flush-cache)  flushcache=1; shift 1;;
@@ -293,9 +293,9 @@ else
     if ! url1=`ubuntu-cloudimg-query $release $stream $arch --format "%{url}\n"`; then
         echo "There is no download available for release=$release, stream=$stream, arch=$arch"
         [ "$stream" = "daily" ] || echo "You may try with '--stream=daily'"
-        exit
+        exit 1
     fi
-    url2=`echo $url1 | sed -e 's/.tar.gz/-root\0/'`
+    url2=`echo $url1 | sed -e 's/.tar.gz/-root\0/' -e 's/.tar.gz/.tar.xz/'`
 fi
 
 filename=`basename $url2`
@@ -303,44 +303,6 @@ filename=`basename $url2`
 wgetcleanup()
 {
     rm -f $filename
-}
-
-buildcleanup()
-{
-    cd $rootfs
-    umount -l $cache/$xdir || true
-    rm -rf $cache
-}
-
-# if the release doesn't have a *-rootfs.tar.gz, then create one from the
-# cloudimg.tar.gz by extracting the .img, mounting it loopback, and creating
-# a tarball from the mounted image.
-build_root_tgz()
-{
-    url=$1
-    filename=$2
-
-    xdir=`mktemp -d -p .`
-    tarname=`basename $url`
-    imgname="$release-*-cloudimg-$arch.img"
-    trap buildcleanup EXIT SIGHUP SIGINT SIGTERM
-    if [ $flushcache -eq 1 -o ! -f $cache/$tarname ]; then
-        rm -f $tarname
-        echo "Downloading cloud image from $url"
-        wget $url || { echo "Couldn't find cloud image $url."; exit 1; }
-    fi
-    echo "Creating new cached cloud image rootfs"
-    tar --wildcards -zxf "$tarname" "$imgname"
-    mount -o loop $imgname $xdir
-    (cd $xdir; tar --numeric-owner -cpzf "../$filename" .)
-    umount $xdir
-    rm -f $tarname $imgname
-    rmdir $xdir
-    echo "New cloud image cache created"
-    trap EXIT
-    trap SIGHUP
-    trap SIGINT
-    trap SIGTERM
 }
 
 do_extract_rootfs() {
@@ -353,7 +315,7 @@ do_extract_rootfs() {
 
     trap wgetcleanup EXIT SIGHUP SIGINT SIGTERM
     if [ ! -f $filename ]; then
-        wget $url2 || build_root_tgz $url1 $filename
+        wget $url2
     fi
     trap EXIT
     trap SIGHUP
@@ -364,10 +326,10 @@ do_extract_rootfs() {
     mkdir -p $rootfs
     cd $rootfs
     if [ $in_userns -eq 1 ]; then
-        tar --anchored --exclude="dev/*" --numeric-owner -xpzf "$cache/$filename"
+        tar --anchored --exclude="dev/*" --numeric-owner -xpf "$cache/$filename"
         mkdir -p $rootfs/dev/pts/
     else
-        tar --numeric-owner -xpzf "$cache/$filename"
+        tar --numeric-owner -xpf "$cache/$filename"
     fi
 }
 
