@@ -51,6 +51,10 @@ struct lxc_lock;
 
 /*!
  * An LXC container.
+ *
+ * Note that changing the order of struct members is an API change, as callers
+ * will end up having the wrong offset when calling a function.  So when making
+ * changes, whenever possible stick to simply appending new members.
  */
 struct lxc_container {
 	// private fields
