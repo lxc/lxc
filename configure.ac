@@ -770,6 +770,7 @@ AC_CONFIG_FILES([
 	doc/ko/lxc-clone.sgml
 	doc/ko/lxc-config.sgml
 	doc/ko/lxc-console.sgml
+	doc/ko/lxc-copy.sgml
 	doc/ko/lxc-create.sgml
 	doc/ko/lxc-destroy.sgml
 	doc/ko/lxc-device.sgml
