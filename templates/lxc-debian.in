@@ -248,6 +248,10 @@ openssh-server
     release=$3
 
     trap cleanup EXIT SIGHUP SIGINT SIGTERM
+
+    # Create the cache
+    mkdir -p "$cache"
+
     # If debian-archive-keyring isn't installed, fetch GPG keys directly
     releasekeyring=/usr/share/keyrings/debian-archive-keyring.gpg
     if [ ! -f $releasekeyring ]; then
