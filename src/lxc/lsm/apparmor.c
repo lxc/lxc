@@ -42,6 +42,7 @@ static int mount_features_enabled = 0;
 #define AA_DEF_PROFILE "lxc-container-default"
 #define AA_MOUNT_RESTR "/sys/kernel/security/apparmor/features/mount/mask"
 #define AA_ENABLED_FILE "/sys/module/apparmor/parameters/enabled"
+#define AA_UNCHANGED "unchanged"
 
 static bool check_mount_feature_enabled(void)
 {
@@ -155,6 +156,12 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 
 	if (!aa_enabled)
 		return 0;
+
+	/* user may request that we just ignore apparmor */
+	if (label && strcmp(label, AA_UNCHANGED) == 0) {
+		INFO("apparmor profile unchanged per user request");
+		return 0;
+	}
 
 	if (!label) {
 		if (use_default)
