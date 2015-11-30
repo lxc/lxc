@@ -4004,112 +4004,69 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c, const char *ifna
 
 WRAP_API_2(bool, lxcapi_detach_interface, const char *, const char *)
 
+static int do_lxcapi_migrate(struct lxc_container *c, unsigned int cmd,
+			     struct migrate_opts *opts, unsigned int size)
+{
+	int ret;
+
+	/* If the caller has a bigger (newer) struct migrate_opts, let's make
+	 * sure that the stuff on the end is zero, i.e. that they didn't ask us
+	 * to do anything special.
+	 */
+	if (size > sizeof(*opts)) {
+		unsigned char *addr;
+		unsigned char *end;
+
+		addr = (void *)opts + sizeof(*opts);
+		end  = (void *)opts + size;
+		for (; addr < end; addr++) {
+			if (*addr) {
+				return -E2BIG;
+			}
+		}
+	}
+
+	switch (cmd) {
+	case MIGRATE_PRE_DUMP:
+		ret = !pre_dump(c, opts->directory, opts->verbose, opts->predump_dir);
+		break;
+	case MIGRATE_DUMP:
+		ret = !dump(c, opts->directory, opts->stop, opts->verbose, opts->predump_dir);
+		break;
+	case MIGRATE_RESTORE:
+		ret = !restore(c, opts->directory, opts->verbose);
+		break;
+	default:
+		ERROR("invalid migrate command %u", cmd);
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
+WRAP_API_3(int, lxcapi_migrate, unsigned int, struct migrate_opts *, unsigned int)
+
 static bool do_lxcapi_checkpoint(struct lxc_container *c, char *directory, bool stop, bool verbose)
 {
-	pid_t pid;
-	int status;
-	char path[PATH_MAX];
+	struct migrate_opts opts = {
+		.directory = directory,
+		.stop = stop,
+		.verbose = verbose,
+	};
 
-	if (!criu_ok(c))
-		return false;
-
-	if (mkdir(directory, 0700) < 0 && errno != EEXIST)
-		return false;
-
-	status = snprintf(path, sizeof(path), "%s/inventory.img", directory);
-	if (status < 0 || status >= sizeof(path))
-		return false;
-
-	if (access(path, F_OK) == 0) {
-		ERROR("please use a fresh directory for the dump directory\n");
-		return false;
-	}
-
-	pid = fork();
-	if (pid < 0)
-		return false;
-
-	if (pid == 0) {
-		struct criu_opts os;
-
-		os.action = "dump";
-		os.directory = directory;
-		os.c = c;
-		os.stop = stop;
-		os.verbose = verbose;
-
-		/* exec_criu() returning is an error */
-		exec_criu(&os);
-		exit(1);
-	} else {
-		pid_t w = waitpid(pid, &status, 0);
-		if (w == -1) {
-			SYSERROR("waitpid");
-			return false;
-		}
-
-		if (WIFEXITED(status)) {
-			return !WEXITSTATUS(status);
-		}
-
-		return false;
-	}
+	return !do_lxcapi_migrate(c, MIGRATE_DUMP, &opts, sizeof(opts));
 }
 
 WRAP_API_3(bool, lxcapi_checkpoint, char *, bool, bool)
 
 static bool do_lxcapi_restore(struct lxc_container *c, char *directory, bool verbose)
 {
-	pid_t pid;
-	int status, nread;
-	int pipefd[2];
+	struct migrate_opts opts = {
+		.directory = directory,
+		.verbose = verbose,
+	};
 
-	if (!criu_ok(c))
-		return false;
-
-	if (geteuid()) {
-		ERROR("Must be root to restore\n");
-		return false;
-	}
-
-	if (pipe(pipefd)) {
-		ERROR("failed to create pipe");
-		return false;
-	}
-
-	pid = fork();
-	if (pid < 0) {
-		close(pipefd[0]);
-		close(pipefd[1]);
-		return false;
-	}
-
-	if (pid == 0) {
-		close(pipefd[0]);
-		// this never returns
-		do_restore(c, pipefd[1], directory, verbose);
-	}
-
-	close(pipefd[1]);
-
-	nread = read(pipefd[0], &status, sizeof(status));
-	close(pipefd[0]);
-	if (sizeof(status) != nread) {
-		ERROR("reading status from pipe failed");
-		goto err_wait;
-	}
-
-	// If the criu process was killed or exited nonzero, wait() for the
-	// handler, since the restore process died. Otherwise, we don't need to
-	// wait, since the child becomes the monitor process.
-	if (!WIFEXITED(status) || WEXITSTATUS(status))
-		goto err_wait;
-	return true;
-
-err_wait:
-	if (wait_for_pid(pid))
-		ERROR("restore process died");
-	return false;
+	return !do_lxcapi_migrate(c, MIGRATE_RESTORE, &opts, sizeof(opts));
 }
 
 WRAP_API_2(bool, lxcapi_restore, char *, bool)
@@ -4255,6 +4212,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->detach_interface = lxcapi_detach_interface;
 	c->checkpoint = lxcapi_checkpoint;
 	c->restore = lxcapi_restore;
+	c->migrate = lxcapi_migrate;
 
 	return c;
 
