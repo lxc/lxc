@@ -1673,6 +1673,18 @@ mknod errno 0
         </varlistentry>
         <varlistentry>
           <term>
+            <option>lxc.monitor.unshare</option>
+          </term>
+          <listitem>
+            <para>
+              If not zero the mount namespace will be unshared from the host
+              before initializing the container (before running any pre-start
+              hooks). Default is 0.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
             <option>lxc.group</option>
           </term>
           <listitem>

@@ -820,6 +820,18 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 
 	conf->reboot = 0;
 
+	/* Unshare the mount namespace if requested */
+	if (conf->monitor_unshare) {
+		if (unshare(CLONE_NEWNS)) {
+			SYSERROR("failed to unshare mount namespace");
+			return false;
+		}
+		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
+			SYSERROR("Failed to make / rslave at startup");
+			return false;
+		}
+	}
+
 reboot:
 	if (lxc_check_inherited(conf, daemonize, -1)) {
 		ERROR("Inherited fds found");
