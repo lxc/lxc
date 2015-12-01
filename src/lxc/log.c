@@ -90,7 +90,7 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 		return 0;
 
 	t = localtime(&event->timestamp.tv_sec);
-	strftime(date, sizeof(LXC_LOG_DATEFOMAT_SIZE), "%Y%m%d%H%M%S", t);
+	strftime(date, sizeof(date), "%Y%m%d%H%M%S", t);
 	ms = event->timestamp.tv_usec / 1000;
 	n = snprintf(buffer, sizeof(buffer),
 		     "%15s %10s.%03d %-8s %s - %s:%s:%d - ",
