@@ -151,6 +151,11 @@ function container:destroy()
     return self.core:destroy()
 end
 
+-- return nil if name missing
+function container:rename(name)
+    return self.core:rename(name)
+end
+
 function container:get_config_path()
     return self.core:get_config_path()
 end
@@ -219,6 +224,16 @@ function container:get_keys(base)
 	ktab[v] = self.core:get_config_item(config_item)
     end
     return ktab
+end
+
+-- return nil or more args
+function container:get_interfaces()
+    return self.core:get_interfaces()
+end
+
+-- return nil or more args
+function container:get_ips(...)
+    return self.core:get_ips(...)
 end
 
 function container:load_config(alt_path)
