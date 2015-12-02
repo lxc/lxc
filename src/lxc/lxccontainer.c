@@ -345,9 +345,17 @@ out:
 static rettype fnname(struct lxc_container *c)				\
 {									\
 	rettype ret;							\
-	current_config = c ? c->lxc_conf : NULL;			\
+	bool reset_config = false;					\
+									\
+	if (!current_config && c && c->lxc_conf) {			\
+		current_config = c->lxc_conf;				\
+		reset_config = true;					\
+	}								\
+									\
 	ret = do_##fnname(c);						\
-	current_config = NULL;						\
+	if (reset_config)						\
+		current_config = NULL;					\
+									\
 	return ret;							\
 }
 
@@ -355,9 +363,17 @@ static rettype fnname(struct lxc_container *c)				\
 static rettype fnname(struct lxc_container *c, t1 a1)			\
 {									\
 	rettype ret;							\
-	current_config = c ? c->lxc_conf : NULL;			\
+	bool reset_config = false;					\
+									\
+	if (!current_config && c && c->lxc_conf) {			\
+		current_config = c->lxc_conf;				\
+		reset_config = true;					\
+	}								\
+									\
 	ret = do_##fnname(c, a1);					\
-	current_config = NULL;						\
+	if (reset_config)						\
+		current_config = NULL;					\
+									\
 	return ret;							\
 }
 
@@ -365,9 +381,17 @@ static rettype fnname(struct lxc_container *c, t1 a1)			\
 static rettype fnname(struct lxc_container *c, t1 a1, t2 a2)		\
 {									\
 	rettype ret;							\
-	current_config = c ? c->lxc_conf : NULL;			\
+	bool reset_config = false;					\
+									\
+	if (!current_config && c && c->lxc_conf) {			\
+		current_config = c->lxc_conf;				\
+		reset_config = true;					\
+	}								\
+									\
 	ret = do_##fnname(c, a1, a2);					\
-	current_config = NULL;						\
+	if (reset_config)						\
+		current_config = NULL;					\
+									\
 	return ret;							\
 }
 
@@ -375,9 +399,17 @@ static rettype fnname(struct lxc_container *c, t1 a1, t2 a2)		\
 static rettype fnname(struct lxc_container *c, t1 a1, t2 a2, t3 a3)	\
 {									\
 	rettype ret;							\
-	current_config = c ? c->lxc_conf : NULL;			\
+	bool reset_config = false;					\
+									\
+	if (!current_config && c && c->lxc_conf) {			\
+		current_config = c->lxc_conf;				\
+		reset_config = true;					\
+	}								\
+									\
 	ret = do_##fnname(c, a1, a2, a3);				\
-	current_config = NULL;						\
+	if (reset_config)						\
+		current_config = NULL;					\
+									\
 	return ret;							\
 }
 
