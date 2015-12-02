@@ -1679,7 +1679,8 @@ mknod errno 0
             <para>
               If not zero the mount namespace will be unshared from the host
               before initializing the container (before running any pre-start
-              hooks). Default is 0.
+              hooks). This requires the CAP_SYS_ADMIN capability at startup.
+              Default is 0.
             </para>
           </listitem>
         </varlistentry>
