@@ -1566,7 +1566,19 @@ mknod errno 0
           </listitem>
         </varlistentry>
       </variablelist>
-
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>LXC_TARGET</option>
+          </term>
+          <listitem>
+            <para>
+              Only for the stop hook. Is set to "stop" for a container
+              shutdown or "reboot" for a container reboot.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
     </refsect2>
     <refsect2>
     <title>Logging</title>
