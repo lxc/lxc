@@ -300,6 +300,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 				default_policy_action);
 		if (!compat_ctx)
 			goto bad;
+#ifdef SCMP_ARCH_PPC
 	} else if (native_arch == lxc_seccomp_arch_ppc64) {
 		cur_rule_arch = lxc_seccomp_arch_all;
 		compat_arch = SCMP_ARCH_PPC;
@@ -307,6 +308,8 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 				default_policy_action);
 		if (!compat_ctx)
 			goto bad;
+#endif
+#ifdef SCMP_ARCH_ARM
 	} else if (native_arch == lxc_seccomp_arch_arm64) {
 		cur_rule_arch = lxc_seccomp_arch_all;
 		compat_arch = SCMP_ARCH_ARM;
@@ -314,6 +317,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 				default_policy_action);
 		if (!compat_ctx)
 			goto bad;
+#endif
 	}
 
 	if (default_policy_action != SCMP_ACT_KILL) {
