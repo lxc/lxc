@@ -2188,11 +2188,27 @@ mknod errno 0
 	      [<option>lxc.rootfs</option>]
               -->
               rootfs.mount へマウントされるコンテナのルートへのホスト上のパスです。
+	      [<option>lxc.rootfs</option>]
 	    </para>
 	  </listitem>
 	</varlistentry>
       </variablelist>
-
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>LXC_TARGET</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              Only for the stop hook. Is set to "stop" for a container
+              shutdown or "reboot" for a container reboot.
+	      -->
+	      stop フックの場合のみ使われます。コンテナのシャットダウンの場合は "stop"、リブートの場合は "reboot" が設定されます。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
     </refsect2>
 
     <refsect2>
