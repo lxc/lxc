@@ -733,6 +733,7 @@ AC_CONFIG_FILES([
 	doc/ja/lxc-clone.sgml
 	doc/ja/lxc-config.sgml
 	doc/ja/lxc-console.sgml
+	doc/ja/lxc-copy.sgml
 	doc/ja/lxc-create.sgml
 	doc/ja/lxc-destroy.sgml
 	doc/ja/lxc-device.sgml
