@@ -184,9 +184,9 @@ void exec_criu(struct criu_opts *opts)
 
 		additional = lxc_list_len(&opts->c->lxc_conf->network) * 2;
 
-		m = realloc(argv, (argc + additional + 1) * sizeof(*argv));	\
-		if (!m)								\
-			goto err;						\
+		m = realloc(argv, (argc + additional + 1) * sizeof(*argv));
+		if (!m)
+			goto err;
 		argv = m;
 
 		lxc_list_for_each(it, &opts->c->lxc_conf->network) {
