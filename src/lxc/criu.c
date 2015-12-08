@@ -525,6 +525,7 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 
 		if (WIFEXITED(status)) {
 			if (WEXITSTATUS(status)) {
+				ERROR("criu process exited %d\n", WEXITSTATUS(status));
 				goto out_fini_handler;
 			} else {
 				int ret;
@@ -544,8 +545,10 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 					goto out_fini_handler;
 				}
 
-				if (lxc_set_state(c->name, handler, RUNNING))
+				if (lxc_set_state(c->name, handler, RUNNING)) {
+					ERROR("error setting running state after restore");
 					goto out_fini_handler;
+				}
 			}
 		} else {
 			ERROR("CRIU was killed with signal %d\n", WTERMSIG(status));
