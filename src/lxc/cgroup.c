@@ -109,6 +109,13 @@ const char *cgroup_get_cgroup(struct lxc_handler *handler, const char *subsystem
 	return NULL;
 }
 
+bool cgroup_escape(void)
+{
+	if (ops)
+		return ops->escape();
+	return false;
+}
+
 const char *cgroup_canonical_path(struct lxc_handler *handler)
 {
 	if (geteuid()) {
