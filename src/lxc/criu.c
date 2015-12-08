@@ -56,6 +56,18 @@ void exec_criu(struct criu_opts *opts)
 
 	char buf[4096];
 
+	/* If we are currently in a cgroup /foo/bar, and the container is in a
+	 * cgroup /lxc/foo, lxcfs will give us an ENOENT if some task in the
+	 * container has an open fd that points to one of the cgroup files
+	 * (systemd always opens its "root" cgroup). So, let's escape to the
+	 * /actual/ root cgroup so that lxcfs thinks criu has enough rights to
+	 * see all cgroups.
+	 */
+	if (!cgroup_escape()) {
+		ERROR("failed to escape cgroups");
+		return;
+	}
+
 	/* The command line always looks like:
 	 * criu $(action) --tcp-established --file-locks --link-remap --force-irmap \
 	 * --manage-cgroups action-script foo.sh -D $(directory) \
