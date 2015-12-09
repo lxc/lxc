@@ -34,7 +34,7 @@ AC_GNU_SOURCE
 # Detect the distribution. This is used for the default configuration and
 # for some distro-specific build options.
 AC_MSG_CHECKING([host distribution])
-AC_ARG_WITH(distro, AS_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, oracle, centos, fedora, suse, gentoo, debian, arch, slackware, paldo, openmandriva or pardus.]))
+AC_ARG_WITH(distro, AS_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, oracle, centos, fedora, suse, gentoo, debian, arch, slackware, plamo, paldo, openmandriva or pardus.]))
 if type lsb_release >/dev/null 2>&1 && test "z$with_distro" = "z"; then
 	with_distro=`lsb_release -is`
 fi
@@ -48,6 +48,7 @@ if test "z$with_distro" = "z"; then
 	AC_CHECK_FILE(/etc/debian_version,with_distro="debian")
 	AC_CHECK_FILE(/etc/arch-release,with_distro="arch")
 	AC_CHECK_FILE(/etc/slackware-version,with_distro="slackware")
+	AC_CHECK_FILE(/etc/plamo-version,with_distro="plamo")
 	AC_CHECK_FILE(/etc/frugalware-release,with_distro="frugalware")
 	AC_CHECK_FILE(/etc/mandrakelinux-release, with_distro="openmandriva")
 	AC_CHECK_FILE(/etc/mandriva-release,with_distro="openmandriva")
@@ -63,7 +64,7 @@ case $with_distro in
 		distroconf=default.conf.lxcbr
 		distrosysconf="$sysconfdir/default"
 		;;
-	redhat|centos|fedora|oracle|oracleserver|suse|opensuse*)
+	redhat|centos|fedora|oracle|oracleserver|suse|opensuse*|plamo)
 		distroconf=default.conf.lxcbr
 		distrosysconf="$sysconfdir/sysconfig"
 		;;
@@ -90,7 +91,7 @@ case "$with_init_script" in
 			fedora|opensuse*)
 				init_script=systemd
 				;;
-			redhat|centos|oracle|oracleserver)
+			redhat|centos|oracle|oracleserver|plamo)
 				init_script=sysvinit
 				;;
 			debian|raspbian)
