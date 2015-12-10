@@ -2533,7 +2533,7 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		return lxc_clear_config_keepcaps(c);
 	else if (strncmp(key, "lxc.cgroup", 10) == 0)
 		return lxc_clear_cgroups(c, key);
-	else if (strcmp(key, "lxc.mount.entries") == 0)
+	else if (strcmp(key, "lxc.mount.entry") == 0)
 		return lxc_clear_mount_entries(c);
 	else if (strcmp(key, "lxc.mount.auto") == 0)
 		return lxc_clear_automounts(c);
