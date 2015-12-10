@@ -300,6 +300,24 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 				default_policy_action);
 		if (!compat_ctx)
 			goto bad;
+#ifdef SCMP_ARCH_PPC
+	} else if (native_arch == lxc_seccomp_arch_ppc64) {
+		cur_rule_arch = lxc_seccomp_arch_all;
+		compat_arch = SCMP_ARCH_PPC;
+		compat_ctx = get_new_ctx(lxc_seccomp_arch_ppc,
+				default_policy_action);
+		if (!compat_ctx)
+			goto bad;
+#endif
+#ifdef SCMP_ARCH_ARM
+	} else if (native_arch == lxc_seccomp_arch_arm64) {
+		cur_rule_arch = lxc_seccomp_arch_all;
+		compat_arch = SCMP_ARCH_ARM;
+		compat_ctx = get_new_ctx(lxc_seccomp_arch_arm,
+				default_policy_action);
+		if (!compat_ctx)
+			goto bad;
+#endif
 	}
 
 	if (default_policy_action != SCMP_ACT_KILL) {
@@ -327,7 +345,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 			if (strcmp(line, "[x86]") == 0 ||
 					strcmp(line, "[X86]") == 0) {
 				if (native_arch != lxc_seccomp_arch_i386 &&
-					native_arch != lxc_seccomp_arch_amd64) {
+						native_arch != lxc_seccomp_arch_amd64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
@@ -346,7 +364,8 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 #ifdef SCMP_ARCH_ARM
 			else if (strcmp(line, "[arm]") == 0 ||
 					strcmp(line, "[ARM]") == 0) {
-				if (native_arch != lxc_seccomp_arch_arm) {
+				if (native_arch != lxc_seccomp_arch_arm &&
+						native_arch != lxc_seccomp_arch_arm64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
@@ -386,7 +405,8 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 #ifdef SCMP_ARCH_PPC
 			else if (strcmp(line, "[ppc]") == 0 ||
 					strcmp(line, "[PPC]") == 0) {
-				if (native_arch != lxc_seccomp_arch_ppc) {
+				if (native_arch != lxc_seccomp_arch_ppc &&
+						native_arch != lxc_seccomp_arch_ppc64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
@@ -435,7 +455,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 	if (compat_ctx) {
 		INFO("Merging in the compat seccomp ctx into the main one");
 		if (seccomp_merge(conf->seccomp_ctx, compat_ctx) != 0) {
-			ERROR("Error merging i386 seccomp contexts");
+			ERROR("Error merging compat seccomp contexts");
 			goto bad;
 		}
 	}

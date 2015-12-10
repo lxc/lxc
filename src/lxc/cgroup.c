@@ -109,6 +109,13 @@ const char *cgroup_get_cgroup(struct lxc_handler *handler, const char *subsystem
 	return NULL;
 }
 
+bool cgroup_escape(void)
+{
+	if (ops)
+		return ops->escape();
+	return false;
+}
+
 const char *cgroup_canonical_path(struct lxc_handler *handler)
 {
 	if (geteuid()) {
@@ -198,7 +205,12 @@ cgroup_driver_t cgroup_driver(void)
 #define INIT_SCOPE "/init.scope"
 void prune_init_scope(char *cg)
 {
-	char *point = cg + strlen(cg) - strlen(INIT_SCOPE);
+	char *point;
+
+	if (!cg)
+		return;
+
+	point = cg + strlen(cg) - strlen(INIT_SCOPE);
 	if (point < cg)
 		return;
 	if (strcmp(point, INIT_SCOPE) == 0) {

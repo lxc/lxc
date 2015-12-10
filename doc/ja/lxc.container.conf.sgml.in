@@ -2188,11 +2188,27 @@ mknod errno 0
 	      [<option>lxc.rootfs</option>]
               -->
               rootfs.mount へマウントされるコンテナのルートへのホスト上のパスです。
+	      [<option>lxc.rootfs</option>]
 	    </para>
 	  </listitem>
 	</varlistentry>
       </variablelist>
-
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>LXC_TARGET</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              Only for the stop hook. Is set to "stop" for a container
+              shutdown or "reboot" for a container reboot.
+	      -->
+	      stop フックの場合のみ使われます。コンテナのシャットダウンの場合は "stop"、リブートの場合は "reboot" が設定されます。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
     </refsect2>
 
     <refsect2>
@@ -2318,6 +2334,22 @@ mknod errno 0
               a series of containers at once.
               -->
               多数の自動起動させるコンテナがある場合のコンテナの起動順を決めるのに使う整数を指定します。
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.monitor.unshare</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              If not zero the mount namespace will be unshared from the host
+              before initializing the container (before running any pre-start
+              hooks). This requires the CAP_SYS_ADMIN capability at startup.
+              Default is 0.
+                -->
+              この値が 0 でない場合、コンテナが初期化される前 (pre-start フックが実行される前) にマウント名前空間がホストから unshare されます。この機能を使う場合、スタート時に CAP_SYS_ADMIN ケーパビリティが必要です。デフォルト値は 0 です。
             </para>
           </listitem>
         </varlistentry>
