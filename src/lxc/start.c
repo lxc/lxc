@@ -522,8 +522,17 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		}
 	}
 	namespaces[namespace_count] = NULL;
+
+	if (handler->conf->reboot && setenv("LXC_TARGET", "reboot", 1)) {
+		SYSERROR("failed to set environment variable for stop target");
+	}
+	if (!handler->conf->reboot && setenv("LXC_TARGET", "stop", 1)) {
+		SYSERROR("failed to set environment variable for stop target");
+	}
+
 	if (run_lxc_hooks(name, "stop", handler->conf, handler->lxcpath, namespaces))
 		ERROR("failed to run stop hooks for container '%s'.", name);
+
 	while (namespace_count--)
 		free(namespaces[namespace_count]);
 	for (i = 0; i < LXC_NS_MAX; i++) {

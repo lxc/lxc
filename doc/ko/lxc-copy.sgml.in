@@ -1,0 +1,364 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright Canonical Inc. 2007, 2008
+
+Authors:
+Christian Brauner <christian.brauner at mailbox.org>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Korean
+by Sungbae Yoo <sungbae.yoo at samsung.com>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-copy</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-copy</refname>
+
+    <refpurpose>
+      <!--
+      copy an existing container.
+      -->
+      존재하는 컨테이너 복사
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-copy</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-P, --lxcpath <replaceable>path</replaceable></arg>
+      <arg choice="req">-N, --newname <replaceable>newname</replaceable></arg>
+      <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
+      <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
+      <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-K, --keepdata</arg>
+      <arg choice="opt">-M, --keepmac</arg>
+      <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-copy</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-P, --lxcpath <replaceable>path</replaceable></arg>
+      <arg choice="opt">-N, --newname <replaceable>newname</replaceable></arg>
+      <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
+      <arg choice="req">-e, --ephemeral</arg>
+      <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
+      <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-K, --keepdata</arg>
+      <arg choice="opt">-M, --keepmac</arg>
+      <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-copy</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-P, --lxcpath <replaceable>path</replaceable></arg>
+      <arg choice="req">-N, --newname <replaceable>newname</replaceable></arg>
+      <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
+      <arg choice="req">-R, --rename</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->설명</title>
+
+    <para>
+      <!--
+      <command>lxc-copy</command> creates and optionally starts (ephemeral or
+      non-ephemeral) copies of existing containers. It replaces
+      <command>lxc-clone</command> and <command>lxc-start-ephemeral</command>.
+      -->
+      <command>lxc-copy</command>는 존재하는 컨테이너의 (임시적 또는 영구적) 복사본을 생성하고, 옵션에 따라 시작하기도 한다. <command>lxc-clone</command>와 <command>lxc-start-ephemeral</command>를 대체한다.
+    </para>
+    <para>
+      <!--
+      <command>lxc-copy</command> creates copies of existing containers. Copies
+      can be complete clones of the original container. In this case the whole
+      root filesystem of the container is simply copied to the new container. Or
+      they can be snapshots, i.e. small copy-on-write copies of the original
+      container. In this case the specified backing storage for the copy must
+      support snapshots. This currently includes aufs, btrfs, lvm (lvm devices
+      do not support snapshots of snapshots.), overlay, and zfs.
+      -->
+      <command>lxc-copy</command>는 존재하는 컨테이너의 복사본을 생성한다. 복사본은 원본 컨테이너를 말그대로 복사한 것일 수 있다. 이 경우 컨테이너의 전체 루트 파일시스템은 단순히 새로운 컨테이너로 복사된다.
+      또는, 원본 컨테이너를 copy-on-write한 것과 같이 스냅샷이 될 수 있다. 이 경우 복사본을 위해 지정한 저장소는 스냅샷을 지원하여야 한다. 이러한 저장소에는 현재 aufs, btrfs, lvm (lvm 장치는 스냅샷의 스냅샷은 지원하지 않음), overlay, zfs가 있다.
+    </para>
+      
+    <para>
+    <!--
+    The copy's backing storage will be of the same type as the original
+    container. aufs or overlayfs snapshots of directory backed containers are
+    exempted from this rule.
+    -->
+    복사본의 저장소는 원본 컨테이너와 같은 종류가 된다. 단, aufs나 디렉토리로 구성된 컨테이너의 overayfs 스냅샷은 예외이다.
+    </para>
+
+    <para>
+    <!--
+    When the <replaceable>-e</replaceable> flag is specified an ephemeral
+    snapshot of the original container is created and started. Ephemeral
+    containers will have <command>lxc.ephemeral = 1</command> set in their
+    config file and will be destroyed on shutdown. When
+    <replaceable>-e</replaceable> is used in combination with
+    <replaceable>-D</replaceable> a non-ephemeral snapshot of the original
+    container is created and started.
+    -->
+    <replaceable>-e</replaceable>가 지정되면, 원본 컨테이너의 임시 스냅샷이 생성되고 시작된다. 임시 컨테이너는 자신의 설정파일 안에 <command>lxc.ephemeral = 1</command>를 가지게 되며, 종료시에 제거된다. <replaceable>-e</replaceable>와 함께 <replaceable>-D</replaceable>를 같이 지정하면 원본 컨테이너의 영구적인 스냅샷이 생성되고 실행된다.
+    </para>
+
+    <para>
+    <!--
+    When <replaceable>-e</replaceable> is specified and no newname is given via
+    <replaceable>-N</replaceable> a random name for the snapshot will be chosen.
+    -->
+    <replaceable>-e</replaceable>는 지정하고 <replaceable>-N</replaceable>으로 새이름을 지정하지 않으면, 무작위로 이름을 정한다.
+    </para>
+
+    <para>
+    <!--
+    Containers created and started with <replaceable>-e</replaceable> can have
+    custom mounts. These are specified with the <replaceable>-m</replaceable>
+    flag. Currently three types of mounts are supported:
+    <replaceable>aufs</replaceable>, <replaceable>bind</replaceable>, and
+    <replaceable>overlay</replaceable>. Mount types are specified as suboptions
+    to the <replaceable>-m</replaceable> flag and can be specified multiple
+    times separated by commas. <replaceable>aufs</replaceable> and
+    <replaceable>overlay</replaceable> mounts are currently specified in the
+    format <replaceable>-m overlay=/src:/dest</replaceable>.  When no
+    destination <replaceable>dest</replaceable> is specified
+    <replaceable>dest</replaceable> will be identical to
+    <replaceable>src</replaceable>. Read-only <replaceable>bind</replaceable>
+    mounts are specified <replaceable>-m bind=/src:/dest:ro</replaceable> and
+    read-write <replaceable>bind</replaceable> mounts <replaceable>-m
+    bind=/src:/dest:rw</replaceable>. Read-write <replaceable>bind</replaceable>
+    mounts are the default and <replaceable>rw</replaceable> can be missing when
+    a read-write mount is wanted. When <replaceable>dest</replaceable> is
+    missing <replaceable>dest</replaceable> will be identical to
+    <replaceable>src</replaceable>. An example for multiple mounts would be
+    <replaceable>-m
+    bind=/src1:/dest1:ro,bind=/src2:ro,overlay=/src3:/dest3</replaceable>.
+    -->
+    <replaceable>-e</replaceable>로 생성되고 실행되는 컨테이너들은 자신만의 마운트를 가질 수 있다. 이는 <replaceable>-m</replaceable>으로 지정된다. 현재 지원하는 마운트의 형식은 <replaceable>aufs</replaceable>, <replaceable>bind</replaceable>, <replaceable>overlay</replaceable>의 세 종류이다. 마운트 형식은 <replaceable>-m</replaceable>의 추가 인수로 지정된다. 그리고 쉼표(,)로 구분하여 여러번 지정할 수 있다. <replaceable>aufs</replaceable>와 <replaceable>overlay</replaceable> 마운트는 현재 <replaceable>-m overlay=/src:/dest</replaceable>와 같이 지정한다. <replaceable>dest</replaceable>의 대상이 지정되지 않았다면 <replaceable>dest</replaceable>는 <replaceable>src</replaceable>와 동일한 값을 가진다.
+    읽기 전용 <replaceable>bind</replaceable> 마운트는 <replaceable>-m bind=/src:/dest:ro</replaceable>로 읽기쓰기 가능 <replaceable>bind</replaceable>마운트는 <replaceable>-m bind=/src:/dest:rw</replaceable>로 지정한다. 읽기쓰기 가능 <replaceable>bind</replaceable> 마운트가 기본값이므로, 읽기쓰기 가능을 원한다면 <replaceable>rw</replaceable>은 빼도 무관하다. <replaceable>dest</replaceable>를 생략했다면 마찬가지로 <replaceable>dest</replaceable>는 <replaceable>src</replaceable>와 같다. 여러번 마운트는 <replaceable>-m bind=/src1:/dest1:ro,bind=/src2:ro,overlay=/src3:/dest3</replaceable>와 같이 가능하다.
+    </para>
+
+    <para>
+    <!--
+    The mounts, their options, and formats supported via the
+    <replaceable>-m</replaceable> flag are subject to change.
+    -->
+    <replaceable>-m</replaceable>를 통해 지원되는 마운트, 옵션, 형식은 변경될 수 있다.
+    </para>
+  </refsect1>
+
+  <refsect1>
+
+    <title><!-- Options -->옵션</title>
+
+    <variablelist>
+
+	  <varlistentry>
+	    <term> <option>-N,--newname <replaceable>newname</replaceable></option> </term>
+	   <listitem>
+	    <para><!-- The name for the copy. -->복사본의 이름</para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-p,--newpath <replaceable>newpath</replaceable></option> </term>
+	   <listitem>
+	    <para><!-- The path for the copy. -->복사본의 경로</para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-R,--rename </option> </term>
+	   <listitem>
+	    <para><!-- Rename the original container. -->원본 컨테이너의 이름 변경</para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-s,--snapshot </option> </term>
+	   <listitem>
+            <para>
+            <!--
+            Create a snapshot of the orginal container. The backing
+            storage for the copy must support snapshots. This currently includes
+            aufs, btrfs, lvm, overlay, and zfs.
+            -->
+            원본 컨테이너의 스냅샷을 생성한다. 복사본의 저장소는 반드시 스냅샷을 지원해야 한다. 현재 aufs, btrfs, lvm, overlay, zfs가 가능하다.
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-F,--foreground</option> </term>
+	   <listitem>
+            <para>
+            <!--
+            Run the snapshot in the foreground. The snapshots console will
+            be attached to the current tty. (This option can only be specified
+            in conjunction with <replaceable>-e</replaceable>.)
+            -->
+            스냅샷을 포그라운드로 실행한다. 스냅샷 콘솔은 현재 tty에 붙게 된다. (이 옵션은 <replaceable>-e</replaceable> 옵션이랑만 사용 가능하다.)
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-d, --daemon</option> </term>
+	   <listitem>
+            <para>
+            <!--
+            Run the snapshot as a daemon (This is the default mode for
+            ephemeral containers.). As the container has no more tty, if an
+            error occurs nothing will be displayed, the log file can
+            be used to check the error. (This option can only be specified in
+            conjunction with <replaceable>-e</replaceable>.)
+            -->
+            데몬으로 스냅샷을 실행한다. (이는 임시 컨테이너의 기본 모드이다.) 오류가 발생하더라도 컨테이너가 tty를 가지지 않기 때문에 오류는 표시되지 않는다.
+            대신 로그 파일을 사용해 로그를 확인할 수 있다. 이 옵션은 <replaceable>-e</replaceable> 옵션이랑만 사용 가능하다.)
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-m, --mount <replaceable>mounttype</replaceable></option> </term>
+	   <listitem>
+            <para>
+            <!--
+            Specify a mount for a snapshot  The
+            <replaceable>opts</replaceable> argument for the mount type can by
+            of type {aufs, bind, overlay}. For example <option>-m
+            bind=/src:/dest:ro,overlay=/src:/dest</option> (This option can
+            currently only be specified in conjunction with
+            <replaceable>-e</replaceable>.).
+            -->
+            스냅샷의 마운트를 지정한다. 마운트 형식을 위한 <replaceable>opts</replaceable> 인자는 aufs, bind, overlay를 사용 가능하다. 예를 들면 <option>-m bind=/src:/dest:ro,overlay=/src:/dest</option>이다. 이 옵션은 <replaceable>-e</replaceable> 옵션이랑만 사용 가능하다.)
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-B, --backingstorage <replaceable>backingstorage</replaceable></option></term>
+	   <listitem>
+            <para>
+            <!--
+            Specify the backing storage type to be used for the copy
+            where 'backingstorage' is of type 'aufs', 'btrfs', 'dir', 'lvm', 'loop',
+            'overlay', or 'zfs'.
+            -->
+            복사본이 사용할 저장소의 형식을 지정한다. 'backingstorage'에는 'aufs', 'btrfs', 'dir', 'lvm', 'loop', 'overlay','zfs'이 사용 가능하다.
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-L, --fssize <replaceable>size [unit]</replaceable></option></term>
+	   <listitem>
+            <para><!-- Specify the size for an 'lvm' filesystem. -->
+            'lvm' 파일시스템의 크기를 지정한다.
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-D, --keepdata </option></term>
+	   <listitem>
+            <para>
+            <!--
+            When this option is specified with
+            <replaceable>-e</replaceable> a non-ephemeral container is created
+            and started.-->
+            이 옵션을 <replaceable>-e</replaceable>와 지정하면 영구적인 컨테이너가 생성되고 시작된다.
+            </para>
+           </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-K, --keepname </option></term>
+	   <listitem>
+            <para>
+            <!--
+            When this option is specified the hostname of the original
+            container will be kept for the copy.
+            -->
+            이 옵션이 지정되면 원본 컨테이너의 호스트이름이 복사본에서도 그대로 유지된다.
+            </para>
+           </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-M, --keepmac </option></term>
+	   <listitem>
+            <para>
+            <!--
+            When this option is specified the MAC address of the original
+            container will be kept for the copy.
+            -->
+            이 옵션이 지정되면 원본 컨테이너의 MAC 주소가 복사본에서도 그대로 유지된다.
+            </para>
+           </listitem>
+	  </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  &seealso;
+
+  <refsect1>
+    <title><!-- Author -->저자</title>
+    <para>Christian Brauner <email>christian.brauner@mailbox.org</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

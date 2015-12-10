@@ -49,6 +49,8 @@ struct lxc_snapshot;
 
 struct lxc_lock;
 
+struct migrate_opts;
+
 /*!
  * An LXC container.
  *
@@ -812,6 +814,16 @@ struct lxc_container {
 	bool (*snapshot_destroy_all)(struct lxc_container *c);
 
 	/* Post LXC-1.1 additions */
+	/*!
+	 * \brief An API call to perform various migration operations
+	 *
+	 * \param cmd One of the MIGRATE_ contstants.
+	 * \param opts A migrate_opts struct filled with relevant options.
+	 * \param size The size of the migrate_opts struct, i.e. sizeof(struct migrate_opts).
+	 *
+	 * \return \c 0 on success, nonzero on failure.
+	 */
+	int (*migrate)(struct lxc_container *c, unsigned int cmd, struct migrate_opts *opts, unsigned int size);
 };
 
 /*!
@@ -846,6 +858,27 @@ struct bdev_specs {
 		char *thinpool; /*!< LVM thin pool to use, if any */
 	} lvm;
 	char *dir; /*!< Directory path */
+};
+
+/*!
+ * \brief Commands for the migrate API call.
+ */
+enum {
+	MIGRATE_PRE_DUMP,
+	MIGRATE_DUMP,
+	MIGRATE_RESTORE,
+};
+
+/*!
+ * \brief Options for the migrate API call.
+ */
+struct migrate_opts {
+	/* new members should be added at the end */
+	char *directory;
+	bool verbose;
+
+	bool stop; /* stop the container after dump? */
+	char *predump_dir; /* relative to directory above */
 };
 
 /*!

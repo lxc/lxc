@@ -1,0 +1,345 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright Canonical Inc. 2007, 2008
+
+Authors:
+Christian Brauner <christian.brauner at mailbox.org>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Japanese
+by KATOH Yasufumi <karma at jazz.email.ne.jp>
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>lxc-copy</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>lxc-copy</refname>
+
+    <refpurpose>
+      <!--
+      copy an existing container.
+      -->
+      既存のコンテナのコピー
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>lxc-copy</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-P, --lxcpath <replaceable>path</replaceable></arg>
+      <arg choice="req">-N, --newname <replaceable>newname</replaceable></arg>
+      <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
+      <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
+      <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-K, --keepdata</arg>
+      <arg choice="opt">-M, --keepmac</arg>
+      <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-copy</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-P, --lxcpath <replaceable>path</replaceable></arg>
+      <arg choice="opt">-N, --newname <replaceable>newname</replaceable></arg>
+      <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
+      <arg choice="req">-e, --ephemeral</arg>
+      <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
+      <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-K, --keepdata</arg>
+      <arg choice="opt">-M, --keepmac</arg>
+      <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-copy</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-P, --lxcpath <replaceable>path</replaceable></arg>
+      <arg choice="req">-N, --newname <replaceable>newname</replaceable></arg>
+      <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
+      <arg choice="req">-R, --rename</arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title><!-- Description -->説明</title>
+
+    <para>
+      <!--
+      <command>lxc-copy</command> creates and optionally starts (ephemeral or
+      non-ephemeral) copies of existing containers. It replaces
+      <command>lxc-clone</command> and <command>lxc-start-ephemeral</command>.
+      -->
+      <command>lxc-copy</command> は、すでに存在するコンテナのコピーを作成します。オプションを指定することで、作成後にそのコピーを起動できます (コピーは一時的なコピーまたは永続的なコピーのどちらも可能です)。
+      このコマンドは <command>lxc-clone</command> と <command>lxc-start-ephemeral</command> の置き換えのコマンドです。
+    </para>
+    <para>
+      <!--
+      <command>lxc-copy</command> creates copies of existing containers. Copies
+      can be complete clones of the original container. In this case the whole
+      root filesystem of the container is simply copied to the new container. Or
+      they can be snapshots, i.e. small copy-on-write copies of the original
+      container. In this case the specified backing storage for the copy must
+      support snapshots. This currently includes aufs, btrfs, lvm (lvm devices
+      do not support snapshots of snapshots.), overlay, and zfs.
+      -->
+      <command>lxc-copy</command> は、既存のコンテナのコピーを作成します。
+      コピーは元のコンテナの完全なクローンにできます。この場合、単にコンテナのルートファイルシステムのすべてが、新しいコンテナにコピーされます。
+      また、スナップショットを取得することも可能です。すなわち、元のコンテナの小さなコピーオンライトのコピーにするということです。この場合、コピーで指定するバッキングストレージがスナップショットをサポートしている必要があります。
+      スナップショットをサポートしているバッキングストレージは、現時点では aufs、btrfs、lvm (lvm デバイスはスナップショットのスナップショットはサポートしていません)、overlay、zfs です。
+    </para>
+      
+    <para>
+      <!--
+    The copy's backing storage will be of the same type as the original
+    container. aufs or overlayfs snapshots of directory backed containers are
+    exempted from this rule.
+    -->
+      コピー先のバッキングストレージは、元のコンテナと同じタイプになるでしょう。ただし、ディレクトリバックエンドのコンテナのスナップショットは aufs と overlayfs で取得できますので例外です。
+    </para>
+
+    <para>
+      <!--
+    When the <replaceable>-e</replaceable> flag is specified an ephemeral
+    snapshot of the original container is created and started. Ephemeral
+    containers will have <command>lxc.ephemeral = 1</command> set in their
+    config file and will be destroyed on shutdown. When
+    <replaceable>-e</replaceable> is used in combination with
+    <replaceable>-D</replaceable> a non-ephemeral snapshot of the original
+    container is created and started.
+    -->
+      <replaceable>-e</replaceable> オプションを指定した場合は、元のコンテナの一時的なスナップショットを作成し、起動します。一時的なコンテナの場合、設定ファイルに <command>lxc.ephemeral = 1</command> がセットされ、シャットダウン後に削除されます。
+      <replaceable>-e</replaceable> と <replaceable>-D</replaceable> を同時に指定すると、元のコンテナの一時的ではないスナップショットを作成し、起動します。
+    </para>
+
+    <para>
+      <!--
+    When <replaceable>-e</replaceable> is specified and no newname is given via
+    <replaceable>-N</replaceable> a random name for the snapshot will be chosen.
+    -->
+      <replaceable>-e</replaceable> を指定した場合で、<replaceable>-N</replaceable> でコンテナの名前を指定しない場合は、スナップショットの名前はランダムで命名されます。
+    </para>
+
+    <para>
+      <!--
+    Containers created and started with <replaceable>-e</replaceable> can have
+    custom mounts. These are specified with the <replaceable>-m</replaceable>
+    flag. Currently three types of mounts are supported:
+    <replaceable>aufs</replaceable>, <replaceable>bind</replaceable>, and
+    <replaceable>overlay</replaceable>. Mount types are specified as suboptions
+    to the <replaceable>-m</replaceable> flag and can be specified multiple
+    times separated by commas. <replaceable>aufs</replaceable> and
+    <replaceable>overlay</replaceable> mounts are currently specified in the
+    format <replaceable>-m overlay=/src:/dest</replaceable>.  When no
+    destination <replaceable>dest</replaceable> is specified
+    <replaceable>dest</replaceable> will be identical to
+    <replaceable>src</replaceable>. Read-only <replaceable>bind</replaceable>
+    mounts are specified <replaceable>-m bind=/src:/dest:ro</replaceable> and
+    read-write <replaceable>bind</replaceable> mounts <replaceable>-m
+    bind=/src:/dest:rw</replaceable>. Read-write <replaceable>bind</replaceable>
+    mounts are the default and <replaceable>rw</replaceable> can be missing when
+    a read-write mount is wanted. When <replaceable>dest</replaceable> is
+    missing <replaceable>dest</replaceable> will be identical to
+    <replaceable>src</replaceable>. An example for multiple mounts would be
+    <replaceable>-m
+    bind=/src1:/dest1:ro,bind=/src2:ro,overlay=/src3:/dest3</replaceable>.
+    -->
+      <replaceable>-e</replaceable> で作成し、起動したコンテナは、コンテナ独自のマウントを行えます。現時点では <replaceable>aufs</replaceable>、<replaceable>bind</replaceable>、<replaceable>overlay</replaceable> という 3 つのタイプのマウントがサポートされています。
+      マウントタイプは <replaceable>-m</replaceable> オプションのサブオプションとして指定します。この指定はカンマ区切りで複数回指定できます。
+      <replaceable>aufs</replaceable> と <replaceable>overlay</replaceable> マウントの場合は、現時点では <replaceable>-m overlay=/src:/dest</replaceable> のように指定します。マウント先の <replaceable>dest</replaceable> を指定しない場合は、<replaceable>dest</replaceable> は <replaceable>src</replaceable> と同じになります。
+      読み込み専用の <replaceable>bind</replaceable> マウントは <replaceable>-m bind=/src:/dest:ro</replaceable> のように指定します。読み書き可能な <replaceable>bind</replaceable> マウントは <replaceable>-m bind=/src:/dest:rw</replaceable> のように指定します。<replaceable>bind</replaceable> マウントのデフォルトは読み書き可能ですので、読み書き可能なマウントを行う場合は省略できます。マウント先の <replaceable>dest</replaceable> を指定しない場合は、<replaceable>dest</replaceable> は <replaceable>src</replaceable> と同じになります。
+      複数のマウントを行う場合の例を示すと、<replaceable>-m bind=/src1:/dest1:ro,bind=/src2:ro,overlay=/src3:/dest3</replaceable> のようになります。
+    </para>
+
+    <para>
+      <!--
+    The mounts, their options, and formats supported via the
+    <replaceable>-m</replaceable> flag are subject to change.
+    -->
+      <replaceable>-m</replaceable> オプションで指定するマウント、オプション、指定フォーマットは変更される可能性があります。
+    </para>
+  </refsect1>
+
+  <refsect1>
+
+    <title><!-- Options -->オプション</title>
+
+    <variablelist>
+
+	  <varlistentry>
+	    <term> <option>-N,--newname <replaceable>newname</replaceable></option> </term>
+	   <listitem>
+	    <para><!-- The name for the copy. -->コピー先のコンテナの名前。</para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-p,--newpath <replaceable>newpath</replaceable></option> </term>
+	   <listitem>
+	    <para><!-- The path for the copy. -->コピー先のパス。</para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-R,--rename </option> </term>
+	   <listitem>
+	    <para><!-- Rename the original container. -->元のコンテナをリネームします。</para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-s,--snapshot </option> </term>
+	   <listitem>
+            <para><!-- Create a snapshot of the orginal container. The backing
+            storage for the copy must support snapshots. This currently includes
+            aufs, btrfs, lvm, overlay, and zfs. -->
+	      元のコンテナのスナップショットを作成します。コピー先のバッキングストレージがスナップショットをサポートしている必要があります。現時点では aufs、btrfs、lvm、overlay、zfs が対象となります。
+	    </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-F,--foreground</option> </term>
+	   <listitem>
+            <para><!-- Run the snapshot in the foreground. The snapshots console will
+            be attached to the current tty. (This option can only be specified
+            in conjunction with <replaceable>-e</replaceable>.) -->
+	      スナップショットしたコンテナをフォアグラウンドで起動します。スナップショットしたコンテナのコンソールは現在の tty にアタッチされます。(このオプションは <replaceable>-e</replaceable> と同時の場合のみ指定できます。)
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-d, --daemon</option> </term>
+	   <listitem>
+            <para><!-- Run the snapshot as a daemon (This is the default mode for
+            ephemeral containers.). As the container has no more tty, if an
+            error occurs nothing will be displayed, the log file can
+            be used to check the error. (This option can only be specified in
+            conjunction with <replaceable>-e</replaceable>.) -->
+	      スナップショットしたコンテナをデーモンで起動します (一時的なコンテナではこのモードがデフォルトです)。
+	      コンテナは tty を持ちませんので、エラーが発生しても何も表示されません。エラーをチェックするにはログファイルを使います。(このオプションは <replaceable>-e</replaceable> と同時の場合のみ指定できます。)
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-m, --mount <replaceable>mounttype</replaceable></option> </term>
+	   <listitem>
+            <para><!--  Specify a mount for a snapshot  The
+            <replaceable>opts</replaceable> argument for the mount type can by
+            of type {aufs, bind, overlay}. For example <option>-m
+            bind=/src:/dest:ro,overlay=/src:/dest</option> (This option can
+            currently only be specified in conjunction with
+            <replaceable>-e</replaceable>.). --></para>
+	      スナップショットするコンテナで行うマウントを指定します。マウントタイプは {aufs, bind, overlay} のどれかで指定します。例えば <option>-m bind=/src:/dest:ro,overlay=/src:/dest</option> のようになります。(このオプションは <replaceable>-e</replaceable> と同時の場合のみ指定できます。)
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-B, --backingstorage <replaceable>backingstorage</replaceable></option></term>
+	   <listitem>
+            <para><!-- Specify the backing storage type to be used for the copy
+            where 'backingstorage' is of type 'aufs', 'btrfs', 'dir', 'lvm', 'loop',
+            'overlay', or 'zfs'. -->
+	      コピー先コンテナのバッキングストレージのタイプを指定します。ここで 'backingsotrage' は 'aufs'、'btrfs'、'dir'、'lvm'、'loop'、'overlay'、'zfs' のどれかです。
+	    </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-L, --fssize <replaceable>size [unit]</replaceable></option></term>
+	   <listitem>
+            <para><!-- Specify the size for an 'lvm' filesystem. -->'lvm' ファイルシステムのサイズを指定します。</para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-D, --keepdata </option></term>
+	   <listitem>
+            <para><!-- When this option is specified with
+            <replaceable>-e</replaceable> a non-ephemeral container is created
+            and started. -->
+	      <replaceable>-e</replaceable> オプションと同時にこのオプションを使うと、一時的でないコンテナを作成し、起動します。
+	    </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-K, --keepname </option></term>
+	   <listitem>
+            <para><!-- When this option is specified the hostname of the original
+              container will be kept for the copy. -->
+	      このオプションを指定すると、元のコンテナのホスト名をコピー先でもそのまま使います。
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-M, --keepmac </option></term>
+	   <listitem>
+            <para><!-- When this option is specified the MAC address of the original
+              container will be kept for the copy. -->
+	      このオプションを指定すると、元のコンテナの MAC アドレスをコピー先でもそのまま使います。
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  &commonoptions;
+
+  &seealso;
+
+  <refsect1>
+    <title>Author</title>
+    <para>Christian Brauner <email>christian.brauner@mailbox.org</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

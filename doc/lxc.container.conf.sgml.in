@@ -1566,7 +1566,19 @@ mknod errno 0
           </listitem>
         </varlistentry>
       </variablelist>
-
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>LXC_TARGET</option>
+          </term>
+          <listitem>
+            <para>
+              Only for the stop hook. Is set to "stop" for a container
+              shutdown or "reboot" for a container reboot.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
     </refsect2>
     <refsect2>
     <title>Logging</title>
@@ -1656,6 +1668,19 @@ mknod errno 0
             <para>
               An integer used to sort the containers when auto-starting
               a series of containers at once.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.monitor.unshare</option>
+          </term>
+          <listitem>
+            <para>
+              If not zero the mount namespace will be unshared from the host
+              before initializing the container (before running any pre-start
+              hooks). This requires the CAP_SYS_ADMIN capability at startup.
+              Default is 0.
             </para>
           </listitem>
         </varlistentry>

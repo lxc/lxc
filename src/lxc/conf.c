@@ -2623,6 +2623,7 @@ void restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
 {
 	int i, ret, oldfd;
 	char path[MAXPATHLEN];
+	char ifname[IFNAMSIZ]; 
 
 	if (netnsfd < 0)
 		return;
@@ -2643,9 +2644,13 @@ void restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
 	}
 	for (i=0; i<conf->num_savednics; i++) {
 		struct saved_nic *s = &conf->saved_nics[i];
-		if (lxc_netdev_move_by_index(s->ifindex, 1, NULL))
-			WARN("Error moving nic index:%d back to host netns",
-					s->ifindex);
+		/* retrieve the name of the interface */
+		if (!if_indextoname(s->ifindex, ifname)) {
+			WARN("no interface corresponding to index '%d'", s->ifindex);
+			continue;
+		}
+		if (lxc_netdev_move_by_name(ifname, 1, NULL))
+			WARN("Error moving nic name:%s back to host netns", ifname);
 	}
 	if (setns(oldfd, 0) != 0)
 		SYSERROR("Failed to re-enter monitor's netns");
@@ -3225,6 +3230,7 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 {
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
+	char ifname[IFNAMSIZ];
 	int am_root = (getuid() == 0);
 	int err;
 
@@ -3245,7 +3251,13 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 		if (!netdev->ifindex)
 			continue;
 
-		err = lxc_netdev_move_by_index(netdev->ifindex, pid, NULL);
+		/* retrieve the name of the interface */
+		if (!if_indextoname(netdev->ifindex, ifname)) {
+			ERROR("no interface corresponding to index '%d'", netdev->ifindex);
+			return -1;
+		}
+
+		err = lxc_netdev_move_by_name(ifname, pid, NULL);
 		if (err) {
 			ERROR("failed to move '%s' to the container : %s",
 			      netdev->link, strerror(-err));
