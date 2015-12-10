@@ -144,7 +144,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     When <replaceable>-e</replaceable> is specified and no newname is given via
     <replaceable>-N</replaceable> a random name for the snapshot will be chosen.
     -->
-      <replaceable>-e</replaceable> を指定した場合で、<replaceable>-N</replaceable> で newname としてコンテナの名前を指定しない場合は、スナップショットの名前はランダムで命名されます。
+      <replaceable>-e</replaceable> を指定した場合で、<replaceable>-N</replaceable> でコンテナの名前を指定しない場合は、スナップショットの名前はランダムで命名されます。
     </para>
 
     <para>
