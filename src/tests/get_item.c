@@ -314,8 +314,8 @@ int main(int argc, char *argv[])
 		ret = 1;
 		goto out;
 	}
-	if (!c->clear_config_item(c, "lxc.mount.entries")) {
-		fprintf(stderr, "%d: failed clearing lxc.mount.entries\n", __LINE__);
+	if (!c->clear_config_item(c, "lxc.mount.entry")) {
+		fprintf(stderr, "%d: failed clearing lxc.mount.entry\n", __LINE__);
 		ret = 1;
 		goto out;
 	}
