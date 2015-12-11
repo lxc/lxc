@@ -29,10 +29,10 @@
 
 // We require either the criu major/minor version, or the criu GITID if criu
 // was built from git.
-#define CRIU_VERSION 		"1.8"
+#define CRIU_VERSION 		"1.9"
 
-#define CRIU_GITID_VERSION	"1.7"
-#define CRIU_GITID_PATCHLEVEL	371
+#define CRIU_GITID_VERSION	"1.8"
+#define CRIU_GITID_PATCHLEVEL	21
 
 struct criu_opts {
 	/* The type of criu invocation, one of "dump" or "restore" */
