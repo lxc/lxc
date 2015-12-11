@@ -281,12 +281,12 @@ static void stats_get(struct lxc_container *c, struct ct *ct, struct stats *tota
 static void stats_print_header(struct stats *stats)
 {
 	printf(TERMRVRS TERMBOLD);
-	printf("%-18s %8s %8s %8s %10s %10s", "Container", "CPU",  "CPU",  "CPU",  "BlkIO", "Mem");
+	printf("%-18s %12s %12s %12s %10s %10s", "Container", "CPU",  "CPU",  "CPU",  "BlkIO", "Mem");
 	if (stats->kmem_used > 0)
 		printf(" %10s", "KMem");
 	printf("\n");
 
-	printf("%-18s %8s %8s %8s %10s %10s", "Name",      "Used", "Sys",  "User", "Total", "Used");
+	printf("%-18s %12s %12s %12s %10s %10s", "Name",      "Used", "Sys",  "User", "Total", "Used");
 	if (stats->kmem_used > 0)
 		printf(" %10s", "Used");
 	printf("\n");
@@ -303,7 +303,7 @@ static void stats_print(const char *name, const struct stats *stats,
 	size_humanize(stats->blkio, blkio_str, sizeof(blkio_str));
 	size_humanize(stats->mem_used, mem_used_str, sizeof(mem_used_str));
 
-	printf("%-18.18s %8.2f %8.2f %8.2f %10s %10s",
+	printf("%-18.18s %12.2f %12.2f %12.2f %10s %10s",
 	       name,
 	       (float)stats->cpu_use_nanos / 1000000000,
 	       (float)stats->cpu_use_sys  / USER_HZ,
