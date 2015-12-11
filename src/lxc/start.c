@@ -856,7 +856,11 @@ out_warn_father:
 static int save_phys_nics(struct lxc_conf *conf)
 {
 	struct lxc_list *iterator;
+	int am_root = (getuid() == 0);
 
+	if (!am_root)
+		return 0;
+		
 	lxc_list_for_each(iterator, &conf->network) {
 		struct lxc_netdev *netdev = iterator->elem;
 
