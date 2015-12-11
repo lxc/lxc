@@ -114,7 +114,7 @@ Options :\n\
 static void stdin_tios_restore(void)
 {
 	tcsetattr(0, TCSAFLUSH, &oldtios);
-        fprinf(stderr, "\n");
+        fprintf(stderr, "\n");
 }
 
 static int stdin_tios_setup(void)
