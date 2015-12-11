@@ -89,8 +89,10 @@ void exec_criu(struct criu_opts *opts)
 			static_args++;
 	} else if (strcmp(opts->action, "restore") == 0) {
 		/* --root $(lxc_mount_point) --restore-detached
-		 * --restore-sibling --pidfile $foo --cgroup-root $foo */
-		static_args += 8;
+		 * --restore-sibling --pidfile $foo --cgroup-root $foo
+		 * --lsm-profile apparmor:whatever
+		 */
+		static_args += 10;
 	} else {
 		return;
 	}
@@ -184,6 +186,7 @@ void exec_criu(struct criu_opts *opts)
 	} else if (strcmp(opts->action, "restore") == 0) {
 		void *m;
 		int additional;
+		struct lxc_conf *lxc_conf = opts->c->lxc_conf;
 
 		DECLARE_ARG("--root");
 		DECLARE_ARG(opts->c->lxc_conf->rootfs.mount);
@@ -193,6 +196,20 @@ void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG(opts->pidfile);
 		DECLARE_ARG("--cgroup-root");
 		DECLARE_ARG(opts->cgroup_path);
+
+		if (lxc_conf->lsm_aa_profile || lxc_conf->lsm_se_context) {
+
+			if (lxc_conf->lsm_aa_profile)
+				ret = snprintf(buf, sizeof(buf), "apparmor:%s", lxc_conf->lsm_aa_profile);
+			else
+				ret = snprintf(buf, sizeof(buf), "selinux:%s", lxc_conf->lsm_se_context);
+
+			if (ret < 0 || ret >= sizeof(buf))
+				goto err;
+
+			DECLARE_ARG("--lsm-profile");
+			DECLARE_ARG(buf);
+		}
 
 		additional = lxc_list_len(&opts->c->lxc_conf->network) * 2;
 
