@@ -34,7 +34,7 @@
 
 #include "config.h"
 
-#include "bdev.h"
+#include "bdev/bdev.h"
 #include "cgroup.h"
 #include "conf.h"
 #include "commands.h"

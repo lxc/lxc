@@ -71,7 +71,7 @@
 #include "conf.h"
 #include "log.h"
 #include "caps.h"       /* for lxc_caps_last_cap() */
-#include "bdev.h"
+#include "bdev/bdev.h"
 #include "cgroup.h"
 #include "lxclock.h"
 #include "namespace.h"
@@ -2623,7 +2623,7 @@ void restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
 {
 	int i, ret, oldfd;
 	char path[MAXPATHLEN];
-	char ifname[IFNAMSIZ]; 
+	char ifname[IFNAMSIZ];
 
 	if (netnsfd < 0)
 		return;
