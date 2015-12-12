@@ -27,11 +27,11 @@
  * aufs, dir, raw, btrfs, overlayfs, aufs, lvm, loop, zfs, nbd (qcow2, raw, vdi, qed)
  */
 
-#include "config.h"
 #include <stdint.h>
 #include <lxc/lxccontainer.h>
 #include <sys/mount.h>
 
+#include "config.h"
 
 /* define constants if the kernel/glibc headers don't define them */
 #ifndef MS_DIRSYNC
@@ -96,8 +96,6 @@ struct bdev {
 	// index for the connected nbd device
 	int nbd_idx;
 };
-
-char *overlay_getlower(char *p);
 
 bool bdev_is_dir(struct lxc_conf *conf, const char *path);
 bool bdev_can_backup(struct lxc_conf *conf);

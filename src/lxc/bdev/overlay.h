@@ -1,0 +1,70 @@
+/*
+ * lxc: linux Container library
+ *
+ * (C) Copyright IBM Corp. 2007, 2008
+ *
+ * Authors:
+ * Daniel Lezcano <daniel.lezcano at free.fr>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
+
+#ifndef __LXC_OVERLAY_H
+#define __LXC_OVERLAY_H
+
+#include <grp.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+/* defined in bdev.h */
+struct bdev;
+
+/* defined in lxccontainer.h */
+struct bdev_specs;
+
+/* defined conf.h */
+struct lxc_conf;
+
+int overlayfs_detect(const char *path);
+int overlayfs_mount(struct bdev *bdev);
+int overlayfs_umount(struct bdev *bdev);
+int overlayfs_clonepaths(struct bdev *orig, struct bdev *new,
+			 const char *oldname, const char *cname,
+			 const char *oldpath, const char *lxcpath, int snap,
+			 uint64_t newsize, struct lxc_conf *conf);
+int overlayfs_destroy(struct bdev *orig);
+int overlayfs_create(struct bdev *bdev, const char *dest, const char *n,
+		     struct bdev_specs *specs);
+
+/*
+ * To be called from lxcapi_clone() in lxccontainer.c: When we clone a container
+ * with overlay lxc.mount.entry entries we need to update absolute paths for
+ * upper- and workdir. This update is done in two locations:
+ * lxc_conf->unexpanded_config and lxc_conf->mount_list. Both updates are done
+ * independent of each other since lxc_conf->mountlist may container more mount
+ * entries (e.g. from other included files) than lxc_conf->unexpanded_config .
+ */
+int update_ovl_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
+		     const char *lxc_name, const char *newpath,
+		     const char *newname);
+
+/*
+ * To be called from functions in lxccontainer.c: Get lower directory for
+ * overlay rootfs.
+ */
+char *overlay_getlower(char *p);
+
+#endif /* __LXC_OVERLAY_H */
