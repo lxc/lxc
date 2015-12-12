@@ -2343,6 +2343,55 @@ static const char *cgfs_canonical_path(void *hdata)
 	return path;
 }
 
+static bool cgfs_escape(void)
+{
+	struct cgroup_meta_data *md;
+	int i;
+	bool ret = false;
+
+	md = lxc_cgroup_load_meta();
+	if (!md)
+		return false;
+
+	for (i = 1; i <= md->maximum_hierarchy; i++) {
+		struct cgroup_hierarchy *h = md->hierarchies[i];
+		struct cgroup_mount_point *mp;
+		char *tasks;
+		FILE *f;
+		int written;
+
+		if (!h) {
+			WARN("not escaping hierarchy %d", i);
+			continue;
+		}
+
+		mp = lxc_cgroup_find_mount_point(h, "/", true);
+		if (!mp)
+			goto out;
+
+		tasks = cgroup_to_absolute_path(mp, "/", "tasks");
+		if (!tasks)
+			goto out;
+
+		f = fopen(tasks, "a");
+		free(tasks);
+		if (!f)
+			goto out;
+
+		written = fprintf(f, "%d\n", getpid());
+		fclose(f);
+		if (written < 0) {
+			SYSERROR("writing tasks failed\n");
+			goto out;
+		}
+	}
+
+	ret = true;
+out:
+	lxc_cgroup_put_meta(md);
+	return ret;
+}
+
 static bool cgfs_unfreeze(void *hdata)
 {
 	struct cgfs_data *d = hdata;
@@ -2408,6 +2457,7 @@ static struct cgroup_ops cgfs_ops = {
 	.create_legacy = cgfs_create_legacy,
 	.get_cgroup = cgfs_get_cgroup,
 	.canonical_path = cgfs_canonical_path,
+	.escape = cgfs_escape,
 	.get = lxc_cgroupfs_get,
 	.set = lxc_cgroupfs_set,
 	.unfreeze = cgfs_unfreeze,

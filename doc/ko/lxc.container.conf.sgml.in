@@ -2138,7 +2138,22 @@ mknod errno 0
 	  </listitem>
 	</varlistentry>
       </variablelist>
-
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>LXC_TARGET</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Only for the stop hook. Is set to "stop" for a container
+              shutdown or "reboot" for a container reboot.
+              -->
+              stop 훅에서만 사용된다. 값이 "stop"이면 컨테이너가 종료되는 것을, "reboot"이면 컨테이너가 재부팅되는 것을 의미한다.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
     </refsect2>
 
     <refsect2>

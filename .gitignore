@@ -55,6 +55,7 @@ src/lxc/lxc-checkpoint
 src/lxc/lxc-clone
 src/lxc/lxc-console
 src/lxc/lxc-config
+src/lxc/lxc-copy
 src/lxc/lxc-create
 src/lxc/lxc-destroy
 src/lxc/lxc-device

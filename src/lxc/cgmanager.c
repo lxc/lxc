@@ -312,12 +312,21 @@ static bool lxc_cgmanager_create(const char *controller, const char *cgroup_path
  * be in "/lxc/c1" rather than "/user/..../c1"
  * called internally with connection already open
  */
-static bool lxc_cgmanager_escape(void)
+static bool cgm_escape(void)
 {
-	bool ret = true;
+	bool ret = true, cgm_needs_disconnect = false;
 	pid_t me = getpid();
 	char **slist = subsystems;
 	int i;
+
+	if (!cgroup_manager) {
+		if (!cgm_dbus_connect()) {
+			ERROR("Error connecting to cgroup manager");
+			return false;
+		}
+		cgm_needs_disconnect = true;
+	}
+
 
 	if (cgm_all_controllers_same)
 		slist = subsystems_inone;
@@ -334,6 +343,9 @@ static bool lxc_cgmanager_escape(void)
 			break;
 		}
 	}
+
+	if (cgm_needs_disconnect)
+		cgm_dbus_disconnect();
 
 	return ret;
 }
@@ -1307,7 +1319,7 @@ struct cgroup_ops *cgm_ops_init(void)
 		goto err1;
 
 	// root;  try to escape to root cgroup
-	if (geteuid() == 0 && !lxc_cgmanager_escape())
+	if (geteuid() == 0 && !cgm_escape())
 		goto err2;
 	cgm_dbus_disconnect();
 
@@ -1524,6 +1536,7 @@ static struct cgroup_ops cgmanager_ops = {
 	.create_legacy = NULL,
 	.get_cgroup = cgm_get_cgroup,
 	.canonical_path = cgm_canonical_path,
+	.escape = cgm_escape,
 	.get = cgm_get,
 	.set = cgm_set,
 	.unfreeze = cgm_unfreeze,
