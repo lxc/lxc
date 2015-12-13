@@ -1323,7 +1323,7 @@ static int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 	if (!(bdev->dest = strdup(dest)))
 		return -1;
 
-	if (mkdir_p(bdev->dest, 0755) < 0) {
+	if (mkdir_p(bdev->dest, 0755) < 0 && errno != EEXIST) {
 		ERROR("Error creating %s", bdev->dest);
 		return -1;
 	}
