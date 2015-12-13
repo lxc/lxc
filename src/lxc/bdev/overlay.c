@@ -49,7 +49,7 @@ extern int do_rsync(const char *src, const char *dest);
 extern char *dir_new_path(char *src, const char *oldname, const char *name,
 			  const char *oldpath, const char *lxcpath);
 
-char *overlay_getlower(char *p)
+char *ovl_getlower(char *p)
 {
 	char *p1 = strchr(p, ':');
 	if (p1)
@@ -57,15 +57,15 @@ char *overlay_getlower(char *p)
 	return p;
 }
 
-int overlayfs_detect(const char *path)
+int ovl_detect(const char *path)
 {
 	if (strncmp(path, "overlayfs:", 10) == 0)
 		return 1; // take their word for it
 	return 0;
 }
 
-static char *overlayfs_name;
-static char *detect_overlayfs_name(void)
+static char *ovl_name;
+static char *ovl_detect_name(void)
 {
 	char *v = "overlayfs";
 	char *line = NULL;
@@ -87,7 +87,7 @@ static char *detect_overlayfs_name(void)
 }
 
 /* XXXXXXX plain directory bind mount ops */
-int overlayfs_mount(struct bdev *bdev)
+int ovl_mount(struct bdev *bdev)
 {
 	char *options, *dup, *lower, *upper;
 	char *options_work, *work, *lastslash;
@@ -102,9 +102,8 @@ int overlayfs_mount(struct bdev *bdev)
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
-	// defined in bdev.c
-	if (!overlayfs_name)
-		overlayfs_name = detect_overlayfs_name();
+	if (!ovl_name)
+		ovl_name = ovl_detect_name();
 
 	//  separately mount it first
 	//  mount -t overlayfs -oupperdir=${upper},lowerdir=${lower} lower dest
@@ -175,13 +174,13 @@ int overlayfs_mount(struct bdev *bdev)
 	}
 
 	// mount without workdir option for overlayfs before v21
-	ret = mount(lower, bdev->dest, overlayfs_name, MS_MGC_VAL | mntflags, options);
+	ret = mount(lower, bdev->dest, ovl_name, MS_MGC_VAL | mntflags, options);
 	if (ret < 0) {
 		INFO("overlayfs: error mounting %s onto %s options %s. retry with workdir",
 			lower, bdev->dest, options);
 
 		// retry with workdir option for overlayfs v22 and higher
-		ret = mount(lower, bdev->dest, overlayfs_name, MS_MGC_VAL | mntflags, options_work);
+		ret = mount(lower, bdev->dest, ovl_name, MS_MGC_VAL | mntflags, options_work);
 		if (ret < 0)
 			SYSERROR("overlayfs: error mounting %s onto %s options %s",
 				lower, bdev->dest, options_work);
@@ -195,7 +194,7 @@ int overlayfs_mount(struct bdev *bdev)
 	return ret;
 }
 
-int overlayfs_umount(struct bdev *bdev)
+int ovl_umount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "overlayfs"))
 		return -22;
@@ -229,18 +228,18 @@ static int ovl_rsync(struct ovl_rsync_data *data)
 			ERROR("Continuing...");
 		}
 	}
-	if (overlayfs_mount(data->orig) < 0) {
+	if (ovl_mount(data->orig) < 0) {
 		ERROR("Failed mounting original container fs");
 		return -1;
 	}
-	if (overlayfs_mount(data->new) < 0) {
+	if (ovl_mount(data->new) < 0) {
 		ERROR("Failed mounting new container fs");
 		return -1;
 	}
 	ret = do_rsync(data->orig->dest, data->new->dest);
 
-	overlayfs_umount(data->new);
-	overlayfs_umount(data->orig);
+	ovl_umount(data->new);
+	ovl_umount(data->orig);
 
 	if (ret < 0) {
 		ERROR("rsyncing %s to %s", data->orig->dest, data->new->dest);
@@ -273,9 +272,9 @@ static int ovl_do_rsync(struct bdev *orig, struct bdev *new, struct lxc_conf *co
 	return ret;
 }
 
-int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
+int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
+		   const char *cname, const char *oldpath, const char *lxcpath,
+		   int snap, uint64_t newsize, struct lxc_conf *conf)
 {
 	if (!snap) {
 		ERROR("overlayfs is only for snapshot clones");
@@ -425,7 +424,7 @@ int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldnam
 	} else {
 		ERROR("overlayfs clone of %s container is not yet supported",
 			orig->type);
-		// Note, supporting this will require overlayfs_mount supporting
+		// Note, supporting this will require ovl_mount supporting
 		// mounting of the underlay.  No big deal, just needs to be done.
 		return -1;
 	}
@@ -433,7 +432,7 @@ int overlayfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldnam
 	return 0;
 }
 
-int overlayfs_destroy(struct bdev *orig)
+int ovl_destroy(struct bdev *orig)
 {
 	char *upper;
 
@@ -452,7 +451,7 @@ int overlayfs_destroy(struct bdev *orig)
  * changes after starting the container are written to
  * $lxcpath/$lxcname/delta0
  */
-int overlayfs_create(struct bdev *bdev, const char *dest, const char *n,
+int ovl_create(struct bdev *bdev, const char *dest, const char *n,
 			struct bdev_specs *specs)
 {
 	char *delta;
@@ -502,9 +501,9 @@ int overlayfs_create(struct bdev *bdev, const char *dest, const char *n,
  * independent of each other since lxc_conf->mountlist may container more mount
  * entries (e.g. from other included files) than lxc_conf->unexpanded_config .
  */
-int update_ovl_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
-		     const char *lxc_name, const char *newpath,
-		     const char *newname)
+int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
+			 const char *lxc_name, const char *newpath,
+			 const char *newname)
 {
 	char new_upper[MAXPATHLEN];
 	char new_work[MAXPATHLEN];

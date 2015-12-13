@@ -38,16 +38,15 @@ struct bdev_specs;
 /* defined conf.h */
 struct lxc_conf;
 
-int overlayfs_detect(const char *path);
-int overlayfs_mount(struct bdev *bdev);
-int overlayfs_umount(struct bdev *bdev);
-int overlayfs_clonepaths(struct bdev *orig, struct bdev *new,
-			 const char *oldname, const char *cname,
-			 const char *oldpath, const char *lxcpath, int snap,
-			 uint64_t newsize, struct lxc_conf *conf);
-int overlayfs_destroy(struct bdev *orig);
-int overlayfs_create(struct bdev *bdev, const char *dest, const char *n,
-		     struct bdev_specs *specs);
+int ovl_detect(const char *path);
+int ovl_mount(struct bdev *bdev);
+int ovl_umount(struct bdev *bdev);
+int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
+		   const char *cname, const char *oldpath, const char *lxcpath,
+		   int snap, uint64_t newsize, struct lxc_conf *conf);
+int ovl_destroy(struct bdev *orig);
+int ovl_create(struct bdev *bdev, const char *dest, const char *n,
+	       struct bdev_specs *specs);
 
 /*
  * To be called from lxcapi_clone() in lxccontainer.c: When we clone a container
@@ -57,14 +56,14 @@ int overlayfs_create(struct bdev *bdev, const char *dest, const char *n,
  * independent of each other since lxc_conf->mountlist may container more mount
  * entries (e.g. from other included files) than lxc_conf->unexpanded_config .
  */
-int update_ovl_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
-		     const char *lxc_name, const char *newpath,
-		     const char *newname);
+int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
+			 const char *lxc_name, const char *newpath,
+			 const char *newname);
 
 /*
  * To be called from functions in lxccontainer.c: Get lower directory for
  * overlay rootfs.
  */
-char *overlay_getlower(char *p);
+char *ovl_getlower(char *p);
 
 #endif /* __LXC_OVERLAY_H */

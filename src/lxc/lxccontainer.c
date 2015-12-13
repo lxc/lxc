@@ -1093,9 +1093,9 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 		 * the template
 		 */
 		if (strncmp(src, "overlayfs:", 10) == 0)
-			src = overlay_getlower(src+10);
+			src = ovl_getlower(src+10);
 		if (strncmp(src, "aufs:", 5) == 0)
-			src = overlay_getlower(src+5);
+			src = ovl_getlower(src+5);
 
 		bdev = bdev_init(c->lxc_conf, src, c->lxc_conf->rootfs.mount, NULL);
 		if (!bdev) {
@@ -3125,7 +3125,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	}
 
 	// update absolute paths for overlay mount directories
-	if (update_ovl_paths(c2->lxc_conf, c->config_path, c->name, lxcpath, newname) < 0)
+	if (ovl_update_abs_paths(c2->lxc_conf, c->config_path, c->name, lxcpath, newname) < 0)
 		goto out;
 
 	// We've now successfully created c2's storage, so clear it out if we

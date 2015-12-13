@@ -2349,13 +2349,13 @@ static int rsync_delta_wrapper(void *data)
 }
 
 /* overlay */
-static const struct bdev_ops overlayfs_ops = {
-	.detect = &overlayfs_detect,
-	.mount = &overlayfs_mount,
-	.umount = &overlayfs_umount,
-	.clone_paths = &overlayfs_clonepaths,
-	.destroy = &overlayfs_destroy,
-	.create = &overlayfs_create,
+static const struct bdev_ops ovl_ops = {
+	.detect = &ovl_detect,
+	.mount = &ovl_mount,
+	.umount = &ovl_umount,
+	.clone_paths = &ovl_clonepaths,
+	.destroy = &ovl_destroy,
+	.create = &ovl_create,
 	.can_snapshot = true,
 	.can_backup = true,
 };
@@ -2963,7 +2963,7 @@ static const struct bdev_type bdevs[] = {
 	{.name = "btrfs", .ops = &btrfs_ops,},
 	{.name = "dir", .ops = &dir_ops,},
 	{.name = "aufs", .ops = &aufs_ops,},
-	{.name = "overlayfs", .ops = &overlayfs_ops,},
+	{.name = "overlayfs", .ops = &ovl_ops,},
 	{.name = "loop", .ops = &loop_ops,},
 	{.name = "nbd", .ops = &nbd_ops,},
 };
