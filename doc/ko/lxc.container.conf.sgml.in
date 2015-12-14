@@ -2283,6 +2283,22 @@ mknod errno 0
         </varlistentry>
         <varlistentry>
           <term>
+            <option>lxc.monitor.unshare</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              If not zero the mount namespace will be unshared from the host
+              before initializing the container (before running any pre-start
+              hooks). This requires the CAP_SYS_ADMIN capability at startup.
+              Default is 0.
+              -->
+              값이 0이 아니라면, 컨테이너가 초기화되기 전 (pre-start 훅이 실행 되기 전) 호스트로부터 마운트 네임스페이스를 unshare 한다. 시작시에 CAP_SYS_ADMIN 캐퍼빌리티가 요구된다. 기본값은 0이다.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
             <option>lxc.group</option>
           </term>
           <listitem>
