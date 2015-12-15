@@ -858,6 +858,10 @@ struct bdev_specs {
 		char *thinpool; /*!< LVM thin pool to use, if any */
 	} lvm;
 	char *dir; /*!< Directory path */
+	struct {
+		char *rbdname; /*!< RBD image name */
+		char *rbdpool; /*!< Ceph pool name */
+	} rbd;
 };
 
 /*!
