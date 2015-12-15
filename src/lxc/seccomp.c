@@ -558,6 +558,7 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 {
 	FILE *f;
 	int ret;
+	int check_seccomp_attr_set;
 
 	if (!conf->seccomp)
 		return 0;
@@ -578,11 +579,12 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 
 	/* turn of no-new-privs.  We don't want it in lxc, and it breaks
 	 * with apparmor */
-	if (seccomp_attr_set(
 #if HAVE_SCMP_FILTER_CTX
-			conf->seccomp_ctx,
+  check_seccomp_attr_set = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
+#else
+  check_seccomp_attr_set = seccomp_attr_set(SCMP_FLTATR_CTL_NNP, 0);
 #endif
-			SCMP_FLTATR_CTL_NNP, 0)) {
+	if (check_seccomp_attr_set) {
 		ERROR("failed to turn off n-new-privs");
 		return -1;
 	}
