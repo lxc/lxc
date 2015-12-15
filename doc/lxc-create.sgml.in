@@ -126,7 +126,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</term>
 	<listitem>
 	  <para>
-	    'backingstore' is one of 'dir', 'lvm', 'loop', 'btrfs', 'zfs', or 'best'.  The
+	    'backingstore' is one of 'dir', 'lvm', 'loop', 'btrfs', 'zfs', 'rbd', or 'best'.  The
 	    default is 'dir', meaning that the container root filesystem
 	    will be a directory under <filename>@LXCPATH@/container/rootfs</filename>.
 	    This backing store type allows the optional
@@ -156,6 +156,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  </para>
 	  <para>
 	    If backingstore is 'loop', you can use <replaceable>--fstype FSTYPE</replaceable> and <replaceable>--fssize SIZE</replaceable> as 'lvm'. The default values for these options are the same as 'lvm'.
+	  </para>
+	  <para>
+	    If backingstore is 'rbd', then you will need to have a valid configuration in <filename>ceph.conf</filename> and a <filename>ceph.client.admin.keyring</filename> defined.
+	    You can specify the following options :
+	    <replaceable>--rbdname RBDNAME</replaceable> will create a blockdevice named RBDNAME rather than the default, which is the container name.
+	    <replaceable>--rbdpool POOL</replaceable> will create the blockdevice in the pool named POOL, rather than the default, which is 'lxc'.
 	  </para>
 	  <para>
 	    If backingstore is 'best', then lxc will try, in order, btrfs,
