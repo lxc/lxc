@@ -29,6 +29,12 @@
 #include <unistd.h>
 #include <sys/types.h>
 
+#if IS_BIONIC
+#include <../include/lxcmntent.h>
+#else
+#include <mntent.h>
+#endif
+
 /* defined in bdev.h */
 struct bdev;
 
@@ -38,15 +44,21 @@ struct bdev_specs;
 /* defined conf.h */
 struct lxc_conf;
 
-int ovl_detect(const char *path);
-int ovl_mount(struct bdev *bdev);
-int ovl_umount(struct bdev *bdev);
+/* defined in conf.h */
+struct lxc_rootfs;
+
+/*
+ * Functions associated with an overlay bdev struct.
+ */
 int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		   const char *cname, const char *oldpath, const char *lxcpath,
 		   int snap, uint64_t newsize, struct lxc_conf *conf);
-int ovl_destroy(struct bdev *orig);
 int ovl_create(struct bdev *bdev, const char *dest, const char *n,
 	       struct bdev_specs *specs);
+int ovl_destroy(struct bdev *orig);
+int ovl_detect(const char *path);
+int ovl_mount(struct bdev *bdev);
+int ovl_umount(struct bdev *bdev);
 
 /*
  * To be called from lxcapi_clone() in lxccontainer.c: When we clone a container
@@ -65,5 +77,17 @@ int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
  * overlay rootfs.
  */
 char *ovl_getlower(char *p);
+
+/*
+ * Get rootfs path for overlay backed containers. Allocated memory must be freed
+ * by caller.
+ */
+char *ovl_get_rootfs(const char *rootfs_path, size_t *rootfslen);
+
+/*
+ * Create upper- and workdirs for overlay mounts.
+ */
+int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
+	      const char *lxc_name, const char *lxc_path);
 
 #endif /* __LXC_OVERLAY_H */

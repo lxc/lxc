@@ -72,6 +72,7 @@
 #include "log.h"
 #include "caps.h"       /* for lxc_caps_last_cap() */
 #include "bdev/bdev.h"
+#include "bdev/overlay.h"
 #include "cgroup.h"
 #include "lxclock.h"
 #include "namespace.h"
@@ -1815,107 +1816,6 @@ static void cull_mntent_opt(struct mntent *mntent)
 	}
 }
 
-static char *ovl_get_rootfs_dir(const char *rootfs_path, size_t *rootfslen)
-{
-	char *rootfsdir = NULL;
-	char *s1 = NULL;
-	char *s2 = NULL;
-	char *s3 = NULL;
-
-	if (!rootfs_path || !rootfslen)
-		return NULL;
-
-	s1 = strdup(rootfs_path);
-	if (!s1)
-		return NULL;
-
-	if ((s2 = strstr(s1, ":/"))) {
-		s2 = s2 + 1;
-		if ((s3 = strstr(s2, ":/")))
-			*s3 = '\0';
-		rootfsdir = strdup(s2);
-		if (!rootfsdir) {
-			free(s1);
-			return NULL;
-		}
-	}
-
-	if (!rootfsdir)
-		rootfsdir = s1;
-	else
-		free(s1);
-
-	*rootfslen = strlen(rootfsdir);
-
-	return rootfsdir;
-}
-
-static int mount_entry_create_overlay_dirs(const struct mntent *mntent,
-					   const struct lxc_rootfs *rootfs,
-					   const char *lxc_name,
-					   const char *lxc_path)
-{
-	char lxcpath[MAXPATHLEN];
-	char *rootfsdir = NULL;
-	char *upperdir = NULL;
-	char *workdir = NULL;
-	char **opts = NULL;
-	int fret = -1;
-	int ret = 0;
-	size_t arrlen = 0;
-	size_t dirlen = 0;
-	size_t i;
-	size_t len = 0;
-	size_t rootfslen = 0;
-
-	if (!rootfs->path || !lxc_name || !lxc_path)
-		goto err;
-
-	opts = lxc_string_split(mntent->mnt_opts, ',');
-	if (opts)
-		arrlen = lxc_array_len((void **)opts);
-	else
-		goto err;
-
-	for (i = 0; i < arrlen; i++) {
-		if (strstr(opts[i], "upperdir=") && (strlen(opts[i]) > (len = strlen("upperdir="))))
-			upperdir = opts[i] + len;
-		else if (strstr(opts[i], "workdir=") && (strlen(opts[i]) > (len = strlen("workdir="))))
-			workdir = opts[i] + len;
-	}
-
-	ret = snprintf(lxcpath, MAXPATHLEN, "%s/%s", lxc_path, lxc_name);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		goto err;
-
-	rootfsdir = ovl_get_rootfs_dir(rootfs->path, &rootfslen);
-	if (!rootfsdir)
-		goto err;
-
-	dirlen = strlen(lxcpath);
-
-	/* We neither allow users to create upperdirs and workdirs outside the
-	 * containerdir nor inside the rootfs. The latter might be debatable. */
-	if (upperdir)
-		if ((strncmp(upperdir, lxcpath, dirlen) == 0) && (strncmp(upperdir, rootfsdir, rootfslen) != 0))
-			if (mkdir_p(upperdir, 0755) < 0) {
-				WARN("Failed to create upperdir");
-			}
-
-	if (workdir)
-		if ((strncmp(workdir, lxcpath, dirlen) == 0) && (strncmp(workdir, rootfsdir, rootfslen) != 0))
-			if (mkdir_p(workdir, 0755) < 0) {
-				WARN("Failed to create workdir");
-			}
-
-	fret = 0;
-
-err:
-	free(rootfsdir);
-	lxc_free_array((void **)opts, free);
-	return fret;
-}
-
 static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
 					const struct lxc_rootfs *rootfs,
 					const char *lxc_name,
@@ -1958,7 +1858,7 @@ static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
 	if (ret < 0 || ret >= MAXPATHLEN)
 		goto err;
 
-	rootfsdir = ovl_get_rootfs_dir(rootfs->path, &rootfslen);
+	rootfsdir = ovl_get_rootfs(rootfs->path, &rootfslen);
 	if (!rootfsdir)
 		goto err;
 
@@ -1987,7 +1887,7 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 	FILE *pathfile = NULL;
 
 	if (strncmp(mntent->mnt_type, "overlay", 7) == 0) {
-		if (mount_entry_create_overlay_dirs(mntent, rootfs, lxc_name, lxc_path) < 0)
+		if (ovl_mkdir(mntent, rootfs, lxc_name, lxc_path) < 0)
 			return -1;
 	} else if (strncmp(mntent->mnt_type, "aufs", 4) == 0) {
 		if (mount_entry_create_aufs_dirs(mntent, rootfs, lxc_name, lxc_path) < 0)
