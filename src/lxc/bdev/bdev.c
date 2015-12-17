@@ -48,8 +48,8 @@
 #include <sys/wait.h>
 
 #include "bdev.h"
-#include "config.h"
 #include "conf.h"
+#include "config.h"
 #include "error.h"
 #include "log.h"
 #include "lxc.h"

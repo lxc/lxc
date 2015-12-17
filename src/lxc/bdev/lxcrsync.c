@@ -34,7 +34,6 @@
 
 #include "bdev.h"
 #include "log.h"
-#include "lxcbtrfs.h"
 #include "lxcrsync.h"
 #include "utils.h"
 
