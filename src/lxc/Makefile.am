@@ -9,6 +9,7 @@ noinst_HEADERS = \
 	bdev/bdev.h \
 	bdev/lxcbtrfs.h \
 	bdev/lxcoverlay.h \
+	bdev/lxcrsync.h \
 	caps.h \
 	cgroup.h \
 	conf.h \
