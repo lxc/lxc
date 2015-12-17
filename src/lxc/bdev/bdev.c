@@ -77,11 +77,6 @@
 
 lxc_log_define(bdev, lxc);
 
-struct rsync_data_char {
-	char *src;
-	char *dest;
-};
-
 /* the bulk of this needs to become a common helper */
 int do_rsync(const char *src, const char *dest)
 {
@@ -110,7 +105,7 @@ int do_rsync(const char *src, const char *dest)
 
 /* the bulk of this needs to become a common helper */
 char *dir_new_path(char *src, const char *oldname, const char *name,
-			const char *oldpath, const char *lxcpath)
+		   const char *oldpath, const char *lxcpath)
 {
 	char *ret, *p, *p2;
 	int l1, l2, nlen;

@@ -22,14 +22,28 @@
  */
 
 #define _GNU_SOURCE
+#include <errno.h>
+#include <fcntl.h>
+#include <grp.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
+#include "bdev.h"
 #include "log.h"
 #include "lxcbtrfs.h"
+#include "utils.h"
 
 lxc_log_define(btrfs, lxc);
+
+/* defined in lxccontainer.c: needs to become common helper */
+extern char *dir_new_path(char *src, const char *oldname, const char *name,
+			  const char *oldpath, const char *lxcpath);
 
 /*
  * Return the full path of objid under dirid.  Let's say dirid is
@@ -213,7 +227,7 @@ static int btrfs_subvolume_create(const char *path)
 	return ret;
 }
 
-static int btrfs_same_fs(const char *orig, const char *new)
+int btrfs_same_fs(const char *orig, const char *new)
 {
 	int fd_orig = -1, fd_new = -1, ret = -1;
 	struct btrfs_ioctl_fs_info_args orig_args, new_args;
@@ -254,7 +268,7 @@ out:
 	return ret;
 }
 
-static int btrfs_snapshot(const char *orig, const char *new)
+int btrfs_snapshot(const char *orig, const char *new)
 {
 	int fd = -1, fddst = -1, ret = -1;
 	struct btrfs_ioctl_vol_args_v2  args;
