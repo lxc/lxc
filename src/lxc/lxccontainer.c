@@ -40,7 +40,7 @@
 
 #include "attach.h"
 #include "bdev/bdev.h"
-#include "bdev/overlay.h"
+#include "bdev/lxcoverlay.h"
 #include "cgroup.h"
 #include "conf.h"
 #include "config.h"

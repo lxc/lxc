@@ -1,3 +1,32 @@
+/*
+ * lxc: linux Container library
+ *
+ * (C) Copyright IBM Corp. 2007, 2008
+ *
+ * Authors:
+ * Daniel Lezcano <daniel.lezcano at free.fr>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
+
+#ifndef __LXC_BTRFS_H
+#define __LXC_BTRFS_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -12,7 +41,7 @@ struct btrfs_ioctl_space_info {
 struct btrfs_ioctl_space_args {
 	unsigned long long space_slots;
 	unsigned long long total_spaces;
-	struct btrfs_ioctl_space_info spaces[0];
+	struct btrfs_ioctl_space_info spaces[];
 };
 
 #define BTRFS_IOCTL_MAGIC 0x94
@@ -285,3 +314,40 @@ struct btrfs_ioctl_ino_lookup_args {
 #define BTRFS_FIRST_FREE_OBJECTID 256ULL
 #define BTRFS_LAST_FREE_OBJECTID -256ULL
 #define BTRFS_FIRST_CHUNK_TREE_OBJECTID 256ULL
+
+struct mytree_node {
+	u64 objid;
+	u64 parentid;
+	char *name;
+	char *dirname;
+};
+
+struct my_btrfs_tree {
+	struct mytree_node *nodes;
+	int num;
+};
+
+/*
+ * Functions associated with a btrfs bdev struct.
+ */
+int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
+		     const char *cname, const char *oldpath,
+		     const char *lxcpath, int snap, uint64_t newsize,
+		     struct lxc_conf *conf);
+int btrfs_create(struct bdev *bdev, const char *dest, const char *n,
+		 struct bdev_specs *specs);
+int btrfs_destroy(struct bdev *orig);
+int btrfs_detect(const char *path);
+int btrfs_mount(struct bdev *bdev);
+int btrfs_umount(struct bdev *bdev);
+
+/*
+ * Helper functions
+ */
+char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
+			    int name_len);
+int btrfs_list_get_path_rootid(int fd, u64 *treeid);
+bool is_btrfs_fs(const char *path);
+bool btrfs_try_remove_subvol(const char *path);
+
+#endif // __LXC_BTRFS_H

@@ -32,7 +32,7 @@
 #include "confile.h"
 #include "log.h"
 #include "lxccontainer.h"
-#include "overlay.h"
+#include "lxcoverlay.h"
 #include "utils.h"
 
 lxc_log_define(overlay, lxc);
