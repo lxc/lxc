@@ -24,8 +24,10 @@
 #ifndef __LXC_BTRFS_H
 #define __LXC_BTRFS_H
 
+#define _GNU_SOURCE
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/prctl.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -315,6 +317,15 @@ struct btrfs_ioctl_ino_lookup_args {
 #define BTRFS_LAST_FREE_OBJECTID -256ULL
 #define BTRFS_FIRST_CHUNK_TREE_OBJECTID 256ULL
 
+/* defined in bdev.h */
+struct bdev;
+
+/* defined in lxccontainer.h */
+struct bdev_specs;
+
+/* defined conf.h */
+struct lxc_conf;
+
 struct mytree_node {
 	u64 objid;
 	u64 parentid;
@@ -349,5 +360,7 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 int btrfs_list_get_path_rootid(int fd, u64 *treeid);
 bool is_btrfs_fs(const char *path);
 bool btrfs_try_remove_subvol(const char *path);
+int btrfs_same_fs(const char *orig, const char *new);
+int btrfs_snapshot(const char *orig, const char *new);
 
 #endif // __LXC_BTRFS_H
