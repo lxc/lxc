@@ -72,7 +72,7 @@
 #include "log.h"
 #include "caps.h"       /* for lxc_caps_last_cap() */
 #include "bdev/bdev.h"
-#include "bdev/overlay.h"
+#include "bdev/lxcoverlay.h"
 #include "cgroup.h"
 #include "lxclock.h"
 #include "namespace.h"

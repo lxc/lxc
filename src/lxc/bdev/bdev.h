@@ -27,8 +27,8 @@
  * aufs, dir, raw, btrfs, overlayfs, aufs, lvm, loop, zfs, nbd (qcow2, raw, vdi, qed)
  */
 
-#include <stdint.h>
 #include <lxc/lxccontainer.h>
+#include <stdint.h>
 #include <sys/mount.h>
 
 #include "config.h"
@@ -133,4 +133,5 @@ bool attach_block_device(struct lxc_conf *conf);
 void detach_block_device(struct lxc_conf *conf);
 
 bool rootfs_is_blockdev(struct lxc_conf *conf);
-#endif
+
+#endif // __LXC_BDEV_H
