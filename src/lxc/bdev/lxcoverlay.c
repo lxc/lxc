@@ -33,27 +33,21 @@
 #include "log.h"
 #include "lxccontainer.h"
 #include "lxcoverlay.h"
+#include "lxcrsync.h"
 #include "utils.h"
 
 lxc_log_define(overlay, lxc);
 
 static char *ovl_name;
 
-struct ovl_rsync_data {
-	struct bdev *orig;
-	struct bdev *new;
-};
-
-/* defined in lxccontainer.c: needs to become common helper */
-extern int do_rsync(const char *src, const char *dest);
-
 /* defined in lxccontainer.c: needs to become common helper */
 extern char *dir_new_path(char *src, const char *oldname, const char *name,
 			  const char *oldpath, const char *lxcpath);
 
 static char *ovl_detect_name(void);
-static int ovl_do_rsync(struct bdev *orig, struct bdev *new, struct lxc_conf *conf);
-static int ovl_rsync(struct ovl_rsync_data *data);
+static int ovl_do_rsync(struct bdev *orig, struct bdev *new,
+			struct lxc_conf *conf);
+static int ovl_rsync(struct rsync_data *data);
 static int ovl_rsync_wrapper(void *data);
 
 int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
@@ -631,7 +625,7 @@ err:
 	return fret;
 }
 
-static int ovl_rsync(struct ovl_rsync_data *data)
+static int ovl_rsync(struct rsync_data *data)
 {
 	int ret;
 
@@ -701,7 +695,7 @@ static char *ovl_detect_name(void)
 static int ovl_do_rsync(struct bdev *orig, struct bdev *new, struct lxc_conf *conf)
 {
 	int ret = -1;
-	struct ovl_rsync_data rdata;
+	struct rsync_data rdata;
 
 	rdata.orig = orig;
 	rdata.new = new;
@@ -717,7 +711,7 @@ static int ovl_do_rsync(struct bdev *orig, struct bdev *new, struct lxc_conf *co
 
 static int ovl_rsync_wrapper(void *data)
 {
-	struct ovl_rsync_data *arg = data;
+	struct rsync_data *arg = data;
 	return ovl_rsync(arg);
 }
 
