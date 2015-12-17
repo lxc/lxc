@@ -134,9 +134,4 @@ void detach_block_device(struct lxc_conf *conf);
 
 bool rootfs_is_blockdev(struct lxc_conf *conf);
 
-struct rsync_data_char {
-	char *src;
-	char *dest;
-};
-
 #endif // __LXC_BDEV_H

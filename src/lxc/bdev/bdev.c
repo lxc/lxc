@@ -53,9 +53,10 @@
 #include "error.h"
 #include "log.h"
 #include "lxc.h"
-#include "lxclock.h"
 #include "lxcbtrfs.h"
+#include "lxclock.h"
 #include "lxcoverlay.h"
+#include "lxcrsync.h"
 #include "namespace.h"
 #include "parse.h"
 #include "utils.h"
@@ -76,32 +77,6 @@
 #define DEFAULT_FSTYPE "ext3"
 
 lxc_log_define(bdev, lxc);
-
-/* the bulk of this needs to become a common helper */
-int do_rsync(const char *src, const char *dest)
-{
-	// call out to rsync
-	pid_t pid;
-	char *s;
-	size_t l;
-
-	pid = fork();
-	if (pid < 0)
-		return -1;
-	if (pid > 0)
-		return wait_for_pid(pid);
-
-	l = strlen(src) + 2;
-	s = malloc(l);
-	if (!s)
-		exit(1);
-	strcpy(s, src);
-	s[l-2] = '/';
-	s[l-1] = '\0';
-
-	execlp("rsync", "rsync", "-aHX", "--delete", s, dest, (char *)NULL);
-	exit(1);
-}
 
 /* the bulk of this needs to become a common helper */
 char *dir_new_path(char *src, const char *oldname, const char *name,
@@ -1641,32 +1616,6 @@ static const struct bdev_ops loop_ops = {
 	.can_backup = true,
 };
 
-static int rsync_delta(struct rsync_data_char *data)
-{
-	if (setgid(0) < 0) {
-		ERROR("Failed to setgid to 0");
-		return -1;
-	}
-	if (setgroups(0, NULL) < 0)
-		WARN("Failed to clear groups");
-	if (setuid(0) < 0) {
-		ERROR("Failed to setuid to 0");
-		return -1;
-	}
-	if (do_rsync(data->src, data->dest) < 0) {
-		ERROR("rsyncing %s to %s", data->src, data->dest);
-		return -1;
-	}
-
-	return 0;
-}
-
-static int rsync_delta_wrapper(void *data)
-{
-	struct rsync_data_char *arg = data;
-	return rsync_delta(arg);
-}
-
 /* overlay */
 static const struct bdev_ops ovl_ops = {
 	.detect = &ovl_detect,
@@ -2363,60 +2312,6 @@ struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst, 
 		bdev->nbd_idx = conf->nbd_idx;
 
 	return bdev;
-}
-
-struct rsync_data {
-	struct bdev *orig;
-	struct bdev *new;
-};
-
-static int rsync_rootfs(struct rsync_data *data)
-{
-	struct bdev *orig = data->orig,
-		    *new = data->new;
-
-	if (unshare(CLONE_NEWNS) < 0) {
-		SYSERROR("unshare CLONE_NEWNS");
-		return -1;
-	}
-	if (detect_shared_rootfs()) {
-		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
-			SYSERROR("Failed to make / rslave");
-			ERROR("Continuing...");
-		}
-	}
-
-	// If not a snapshot, copy the fs.
-	if (orig->ops->mount(orig) < 0) {
-		ERROR("failed mounting %s onto %s", orig->src, orig->dest);
-		return -1;
-	}
-	if (new->ops->mount(new) < 0) {
-		ERROR("failed mounting %s onto %s", new->src, new->dest);
-		return -1;
-	}
-	if (setgid(0) < 0) {
-		ERROR("Failed to setgid to 0");
-		return -1;
-	}
-	if (setgroups(0, NULL) < 0)
-		WARN("Failed to clear groups");
-	if (setuid(0) < 0) {
-		ERROR("Failed to setuid to 0");
-		return -1;
-	}
-	if (do_rsync(orig->dest, new->dest) < 0) {
-		ERROR("rsyncing %s to %s", orig->src, new->src);
-		return -1;
-	}
-
-	return 0;
-}
-
-static int rsync_rootfs_wrapper(void *data)
-{
-	struct rsync_data *arg = data;
-	return rsync_rootfs(arg);
 }
 
 bool bdev_is_dir(struct lxc_conf *conf, const char *path)
