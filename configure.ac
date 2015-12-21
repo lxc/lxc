@@ -1,10 +1,11 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-m4_define([lxc_version_major], 1)
-m4_define([lxc_version_minor], 1)
+m4_define([lxc_version_major], 2)
+m4_define([lxc_version_minor], 0)
 m4_define([lxc_version_micro], 0)
-m4_define([lxc_version_beta], [])
+m4_define([lxc_version_beta], beta1)
+m4_define([lxc_version_abi], 1.2.0)
 
 m4_define([lxc_version_base], [lxc_version_major.lxc_version_minor.lxc_version_micro])
 m4_define([lxc_version],
@@ -21,6 +22,7 @@ AC_SUBST(LXC_VERSION_BETA, lxc_version_beta)
 AC_SUBST([LXC_VERSION_MAJOR], [lxc_version_major])
 AC_SUBST([LXC_VERSION_MINOR], [lxc_version_minor])
 AC_SUBST([LXC_VERSION_MICRO], [lxc_version_micro])
+AC_SUBST([LXC_VERSION_ABI], [lxc_version_abi])
 AC_SUBST([LXC_VERSION], [lxc_version])
 
 AC_CONFIG_SRCDIR([configure.ac])

@@ -160,7 +160,7 @@ liblxc_so_CFLAGS = -fPIC -DPIC $(AM_CFLAGS) -pthread
 liblxc_so_LDFLAGS = \
 	-pthread \
 	-shared \
-	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,$(VERSION)))
+	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,@LXC_VERSION_ABI@))
 
 liblxc_so_LDADD = $(CAP_LIBS) $(APPARMOR_LIBS) $(SELINUX_LIBS) $(SECCOMP_LIBS)
 
@@ -268,10 +268,10 @@ endif
 install-exec-local: install-soPROGRAMS
 	mkdir -p $(DESTDIR)$(datadir)/lxc
 	install -c -m 644 lxc.functions $(DESTDIR)$(datadir)/lxc
-	mv $(DESTDIR)$(libdir)/liblxc.so $(DESTDIR)$(libdir)/liblxc.so.$(VERSION)
+	mv $(DESTDIR)$(libdir)/liblxc.so $(DESTDIR)$(libdir)/liblxc.so.@LXC_VERSION_ABI@
 	cd $(DESTDIR)$(libdir); \
-	ln -sf liblxc.so.$(VERSION) liblxc.so.$(firstword $(subst ., ,$(VERSION))); \
-	ln -sf liblxc.so.$(firstword $(subst ., ,$(VERSION))) liblxc.so
+	ln -sf liblxc.so.@LXC_VERSION_ABI@ liblxc.so.$(firstword $(subst ., ,@LXC_VERSION_ABI@)); \
+	ln -sf liblxc.so.$(firstword $(subst ., ,@LXC_VERSION_ABI@)) liblxc.so
 
 install-exec-hook:
 	chmod u+s $(DESTDIR)$(libexecdir)/lxc/lxc-user-nic
