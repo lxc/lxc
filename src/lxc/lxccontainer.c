@@ -19,48 +19,46 @@
  */
 
 #define _GNU_SOURCE
-#include <sys/mman.h>
 #include <assert.h>
-#include <stdarg.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/mount.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sched.h>
-#include <dirent.h>
-#include <sched.h>
-#include <arpa/inet.h>
-#include <libgen.h>
-#include <stdint.h>
 #include <grp.h>
+#include <libgen.h>
+#include <pthread.h>
+#include <sched.h>
+#include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/mman.h>
+#include <sys/mount.h>
 #include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
-#include <lxc/lxccontainer.h>
-#include <lxc/version.h>
-#include <lxc/network.h>
-
-#include "config.h"
-#include "lxc.h"
-#include "state.h"
+#include "attach.h"
+#include "bdev/bdev.h"
+#include "bdev/overlay.h"
+#include "cgroup.h"
 #include "conf.h"
+#include "config.h"
+#include "commands.h"
 #include "confile.h"
 #include "console.h"
-#include "cgroup.h"
-#include "commands.h"
 #include "criu.h"
 #include "log.h"
-#include "bdev.h"
-#include "utils.h"
-#include "attach.h"
+#include "lxc.h"
+#include "lxccontainer.h"
+#include "lxclock.h"
 #include "monitor.h"
 #include "namespace.h"
 #include "network.h"
-#include "lxclock.h"
 #include "sync.h"
+#include "state.h"
+#include "utils.h"
+#include "version.h"
 
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
@@ -1095,9 +1093,9 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 		 * the template
 		 */
 		if (strncmp(src, "overlayfs:", 10) == 0)
-			src = overlay_getlower(src+10);
+			src = ovl_getlower(src+10);
 		if (strncmp(src, "aufs:", 5) == 0)
-			src = overlay_getlower(src+5);
+			src = ovl_getlower(src+5);
 
 		bdev = bdev_init(c->lxc_conf, src, c->lxc_conf->rootfs.mount, NULL);
 		if (!bdev) {
@@ -2997,102 +2995,6 @@ static int create_file_dirname(char *path, struct lxc_conf *conf)
 	return ret;
 }
 
-/* When we clone a container with overlay lxc.mount.entry entries we need to
-*  update absolute paths for upper- and workdir. This update is done in two
-*  locations: lxc_conf->unexpanded_config and lxc_conf->mount_list. Both updates
-*  are done independent of each other since lxc_conf->mountlist may container
-*  more mount entries (e.g. from other included files) than
-*  lxc_conf->unexpanded_config . */
-static int update_ovl_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
-			    const char *lxc_name, const char *newpath,
-			    const char *newname)
-{
-	char new_upper[MAXPATHLEN];
-	char new_work[MAXPATHLEN];
-	char old_upper[MAXPATHLEN];
-	char old_work[MAXPATHLEN];
-	char *cleanpath = NULL;
-	int i;
-	int fret = -1;
-	int ret = 0;
-	struct lxc_list *iterator;
-	const char *ovl_dirs[] = {"br", "upperdir", "workdir"};
-
-	cleanpath = strdup(newpath);
-	if (!cleanpath)
-		goto err;
-
-	remove_trailing_slashes(cleanpath);
-
-	/* We have to update lxc_conf->unexpanded_config separately from
-	*  lxc_conf->mount_list. */
-	for (i = 0; i < sizeof(ovl_dirs) / sizeof(ovl_dirs[0]); i++) {
-		if (!clone_update_unexp_ovl_paths(lxc_conf, lxc_path, newpath,
-						  lxc_name, newname,
-						  ovl_dirs[i]))
-			goto err;
-	}
-
-	ret = snprintf(old_work, MAXPATHLEN, "workdir=%s/%s", lxc_path, lxc_name);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		goto err;
-
-	ret = snprintf(new_work, MAXPATHLEN, "workdir=%s/%s", cleanpath, newname);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		goto err;
-
-	lxc_list_for_each(iterator, &lxc_conf->mount_list) {
-		char *mnt_entry = NULL;
-		char *new_mnt_entry = NULL;
-		char *tmp = NULL;
-		char *tmp_mnt_entry = NULL;
-		mnt_entry = iterator->elem;
-
-		if (strstr(mnt_entry, "overlay"))
-			tmp = "upperdir";
-		else if (strstr(mnt_entry, "aufs"))
-			tmp = "br";
-
-		if (!tmp)
-			continue;
-
-		ret = snprintf(old_upper, MAXPATHLEN, "%s=%s/%s", tmp, lxc_path, lxc_name);
-		if (ret < 0 || ret >= MAXPATHLEN)
-			goto err;
-
-		ret = snprintf(new_upper, MAXPATHLEN, "%s=%s/%s", tmp, cleanpath, newname);
-		if (ret < 0 || ret >= MAXPATHLEN)
-			goto err;
-
-		if (strstr(mnt_entry, old_upper)) {
-			tmp_mnt_entry = lxc_string_replace(old_upper, new_upper, mnt_entry);
-		}
-
-		if (strstr(mnt_entry, old_work)) {
-			if (tmp_mnt_entry)
-				new_mnt_entry = lxc_string_replace(old_work, new_work, tmp_mnt_entry);
-			else
-				new_mnt_entry = lxc_string_replace(old_work, new_work, mnt_entry);
-		}
-
-		if (new_mnt_entry) {
-			free(iterator->elem);
-			iterator->elem = strdup(new_mnt_entry);
-		} else if (tmp_mnt_entry) {
-			free(iterator->elem);
-			iterator->elem = strdup(tmp_mnt_entry);
-		}
-
-		free(new_mnt_entry);
-		free(tmp_mnt_entry);
-	}
-
-	fret = 0;
-err:
-	free(cleanpath);
-	return fret;
-}
-
 static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char *newname,
 		const char *lxcpath, int flags,
 		const char *bdevtype, const char *bdevdata, uint64_t newsize,
@@ -3223,7 +3125,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	}
 
 	// update absolute paths for overlay mount directories
-	if (update_ovl_paths(c2->lxc_conf, c->config_path, c->name, lxcpath, newname) < 0)
+	if (ovl_update_abs_paths(c2->lxc_conf, c->config_path, c->name, lxcpath, newname) < 0)
 		goto out;
 
 	// We've now successfully created c2's storage, so clear it out if we

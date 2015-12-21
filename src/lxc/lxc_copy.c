@@ -44,7 +44,7 @@
 #include "conf.h"
 #include "state.h"
 #include "utils.h"
-#include "bdev.h"
+#include "bdev/bdev.h"
 
 #ifndef HAVE_GETSUBOPT
 #include <../include/getsubopt.h>

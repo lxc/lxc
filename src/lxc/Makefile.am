@@ -6,7 +6,9 @@ pkginclude_HEADERS = \
 noinst_HEADERS = \
 	arguments.h \
 	attach.h \
-	bdev.h \
+	bdev/bdev.h \
+	bdev/lxc-btrfs.h \
+	bdev/overlay.h \
 	caps.h \
 	cgroup.h \
 	conf.h \
@@ -16,7 +18,6 @@ noinst_HEADERS = \
 	list.h \
 	log.h \
 	lxc.h \
-	lxc-btrfs.h \
 	lxclock.h \
 	monitor.h \
 	namespace.h \
@@ -60,7 +61,7 @@ endif
 
 liblxc_so_SOURCES = \
 	arguments.c arguments.h \
-	bdev.c bdev.h lxc-btrfs.h \
+	bdev/bdev.c bdev/bdev.h bdev/overlay.c bdev/overlay.h bdev/lxc-btrfs.h \
 	commands.c commands.h \
 	start.c start.h \
 	execute.c \

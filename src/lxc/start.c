@@ -69,7 +69,7 @@
 #include "namespace.h"
 #include "lxcseccomp.h"
 #include "caps.h"
-#include "bdev.h"
+#include "bdev/bdev.h"
 #include "lsm/lsm.h"
 #include "lxclock.h"
 
