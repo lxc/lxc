@@ -25,9 +25,9 @@
 #define __LXC_BTRFS_H
 
 #define _GNU_SOURCE
+#include <linux/types.h> /* __le64, __l32 ... */
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/prctl.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
