@@ -36,13 +36,14 @@ AC_GNU_SOURCE
 # Detect the distribution. This is used for the default configuration and
 # for some distro-specific build options.
 AC_MSG_CHECKING([host distribution])
-AC_ARG_WITH(distro, AS_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, oracle, centos, fedora, suse, gentoo, debian, arch, slackware, plamo, paldo, openmandriva or pardus.]))
+AC_ARG_WITH(distro, AS_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, oracle, centos, fedora, suse, gentoo, debian, arch, slackware, plamo, paldo, openmandriva, pardus, sparclinux.]))
 if type lsb_release >/dev/null 2>&1 && test "z$with_distro" = "z"; then
 	with_distro=`lsb_release -is`
 fi
 if test "z$with_distro" = "z"; then
 	AC_CHECK_FILE(/etc/redhat-release,with_distro="redhat")
 	AC_CHECK_FILE(/etc/oracle-release,with_distro="oracle")
+	AC_CHECK_FILE(/etc/sparclinux-release,with_distro="sparclinux")
 	AC_CHECK_FILE(/etc/centos-release,with_distro="centos")
 	AC_CHECK_FILE(/etc/fedora-release,with_distro="fedora")
 	AC_CHECK_FILE(/etc/SuSE-release,with_distro="suse")
@@ -58,6 +59,10 @@ if test "z$with_distro" = "z"; then
 fi
 with_distro=`echo ${with_distro} | tr '[[:upper:]]' '[[:lower:]]'`
 
+if test "z$with_distro" = "zforsparc"; then
+	with_distro="sparclinux"
+fi
+
 if test "z$with_distro" = "z"; then
 	with_distro="unknown"
 fi
@@ -66,7 +71,7 @@ case $with_distro in
 		distroconf=default.conf.lxcbr
 		distrosysconf="$sysconfdir/default"
 		;;
-	redhat|centos|fedora|oracle|oracleserver|suse|opensuse*|plamo)
+	redhat|centos|fedora|oracle|oracleserver|sparclinux|suse|opensuse*|plamo)
 		distroconf=default.conf.lxcbr
 		distrosysconf="$sysconfdir/sysconfig"
 		;;
@@ -93,7 +98,7 @@ case "$with_init_script" in
 			fedora|opensuse*)
 				init_script=systemd
 				;;
-			redhat|centos|oracle|oracleserver|plamo)
+			redhat|centos|oracle|oracleserver|sparclinux|plamo)
 				init_script=sysvinit
 				;;
 			debian|raspbian)
@@ -671,6 +676,8 @@ AC_CONFIG_FILES([
 	config/templates/ubuntu.lucid.conf
 	config/templates/ubuntu.userns.conf
 	config/templates/openwrt.common.conf
+	config/templates/sparclinux.common.conf
+	config/templates/sparclinux.userns.conf
 	config/templates/userns.conf
 	config/yum/Makefile
 	config/sysconfig/Makefile
@@ -823,6 +830,7 @@ AC_CONFIG_FILES([
 	templates/lxc-sshd
 	templates/lxc-ubuntu
 	templates/lxc-ubuntu-cloud
+	templates/lxc-sparclinux
 
 	src/Makefile
 	src/lxc/Makefile

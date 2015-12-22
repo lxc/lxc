@@ -1,0 +1,687 @@
+#!/bin/sh
+#
+# Template script for generating Linux for SPARC for LXC
+# based on lxc-fedora, lxc-ubuntu
+#
+# Copyright © 2011 Wim Coekaerts <wim.coekaerts@oracle.com>
+# Copyright © 2012 Dwight Engen <dwight.engen@oracle.com>
+# Copyright � 2015 Wim Coekaerts <wim.coekaerts@oracle.com>
+#
+# Modified for Oracle Linux 5
+# Wim Coekaerts <wim.coekaerts@oracle.com>
+#
+# Modified for Oracle Linux 6,7 combined OL4,5,6 into one template script
+# Dwight Engen <dwight.engen@oracle.com>
+#
+# Modified for Linux for SPARC 1.0
+# Wim Coekaerts <wim.coekaerts@oracle.com>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+#
+
+# Detect use under userns (unsupported)
+for arg in "$@"; do
+    [ "$arg" = "--" ] && break
+    if [ "$arg" = "--mapped-uid" -o "$arg" = "--mapped-gid" ]; then
+        echo "This template can't be used for unprivileged containers." 1>&2
+        echo "You may want to try the \"download\" template instead." 1>&2
+        exit 1
+    fi
+done
+
+# Make sure the usual locations are in PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+
+# use virbr0 that is setup by default by libvirtd
+lxc_network_type=veth
+lxc_network_link=virbr0
+
+die()
+{
+    echo "failed: $1"
+    exit 1
+}
+
+is_btrfs_subvolume()
+{
+    if which btrfs >/dev/null 2>&1 && \
+       btrfs subvolume list "$1" >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
+can_chcon()
+{
+    if which chcon >/dev/null 2>&1; then
+        selinuxenabled >/dev/null 2>&1
+        return $?
+    fi
+    return 1
+}
+
+# fix up the container_rootfs
+container_rootfs_patch()
+{
+    echo "Patching container rootfs $container_rootfs for Linux for SPARC $container_release_major.$container_release_minor"
+
+    # copy ourself into the container to be used to --patch the rootfs when
+    # yum update on certain packages is done. we do this here instead of in
+    # container_rootfs_configure() in case the patching done in this function
+    # is updated in the future, we can inject the updated version of ourself
+    # into older containers.
+    if [ $container_rootfs != "/" ]; then
+        cp -f `readlink -f $0` $container_rootfs/usr/bin/lxc-patch
+        mkdir -p $container_rootfs/usr/share/yum-plugins
+        cp @DATADIR@/lxc/lxc-patch.py $container_rootfs/usr/share/yum-plugins
+        mkdir -p $container_rootfs/etc/yum/pluginconf.d
+        cat <<EOF > $container_rootfs/etc/yum/pluginconf.d/lxc-patch.conf
+[main]
+enabled=1
+packages=dbus,initscripts,iptables,openssh-server,setup,selinux-policy,readahead,udev,util-linux,util-linux-ng
+EOF
+    fi
+
+    # "disable" selinux in the guest. The policy in the container isn't
+    # likely to match the hosts (unless host == guest exactly) and the
+    # kernel can only be enforcing one policy.
+    #
+    mkdir -p $container_rootfs/selinux
+    echo 0 > $container_rootfs/selinux/enforce
+    if [ -e $container_rootfs/etc/selinux/config ]; then
+        sed -i 's|SELINUX=enforcing|SELINUX=disabled|' $container_rootfs/etc/selinux/config
+    else
+        mkdir -p $container_rootfs/etc/selinux
+        echo "SELINUX=disabled" >$container_rootfs/etc/selinux/config
+    fi
+    sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/login
+    sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*open|#session required pam_selinux.so open|' $container_rootfs/etc/pam.d/login
+    sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*close|#session required pam_selinux.so close|' $container_rootfs/etc/pam.d/sshd
+    sed -i 's|session[ \t]*required[ \t]*pam_selinux.so[ \t]*open|#session required pam_selinux.so open|' $container_rootfs/etc/pam.d/sshd
+
+    # setting /proc/$$/loginuid doesn't work under user namespace, which
+    # prevents logins from working
+    sed -i 's|session[ \t]*required[ \t]*pam_loginuid.so|#session required pam_loginuid.so|' $container_rootfs/etc/pam.d/sshd
+    sed -i 's|session[ \t]*required[ \t]*pam_loginuid.so|#session required pam_loginuid.so|' $container_rootfs/etc/pam.d/login
+
+    if [ -f $container_rootfs/usr/sbin/selinuxenabled ]; then
+        mv $container_rootfs/usr/sbin/selinuxenabled $container_rootfs/usr/sbin/selinuxenabled.lxcorig
+        ln -s /bin/false $container_rootfs/usr/sbin/selinuxenabled
+    fi
+
+    # ensure /dev/ptmx refers to the newinstance devpts of the container, or
+    # pty's will get crossed up with the hosts (https://lkml.org/lkml/2012/1/23/512)
+    rm -f $container_rootfs/dev/ptmx
+    ln -s pts/ptmx $container_rootfs/dev/ptmx
+
+    # silence error in checking for selinux
+    sed -i 's|cat /proc/self/attr/current|cat /proc/self/attr/current 2>/dev/null|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|cat /proc/self/attr/current|cat /proc/self/attr/current 2>/dev/null|' $container_rootfs/etc/rc.d/rc.sysinit
+
+    # disable ipv6
+    rm -f $container_rootfs/etc/sysconfig/network-scripts/init.ipv6-global
+
+    # remove module stuff for iptables it just shows errors that are not
+    # relevant in a container
+    if [ -f "$container_rootfs/etc/sysconfig/iptables-config" ]; then
+        sed -i 's|IPTABLES_MODULES=".*|IPTABLES_MODULES=""|' $container_rootfs/etc/sysconfig/iptables-config
+        sed -i 's|IPTABLES_MODULES_UNLOAD=".*|IPTABLES_MODULES_UNLOAD="no"|' $container_rootfs/etc/sysconfig/iptables-config
+    fi
+
+    # disable readahead in the container
+    if [ $container_release_major = "1" -a -e $container_rootfs/etc/sysconfig/readahead ]; then
+        rm -f $container_rootfs/etc/init/readahead-collector.conf
+        rm -f $container_rootfs/etc/init/readahead-disable-services.conf
+        sed -i 's|READAHEAD="yes"|READAHEAD="no"|' $container_rootfs/etc/sysconfig/readahead
+    fi
+
+
+    # no need to attempt to mount /
+    sed -i 's|mount -f /$|# LXC mount -f /|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|mount -f /$|# LXC mount -f /|' $container_rootfs/etc/rc.d/rc.sysinit
+    sed -i 's|action \$"Remounting root filesystem|/bin/true # LXC action $"Remounting root filesystem|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|action \$"Remounting root filesystem|/bin/true # LXC action $"Remounting root filesystem|' $container_rootfs/etc/rc.d/rc.sysinit
+
+    # disable udev in the container
+    sed -i 's|.sbin.start_udev||' $container_rootfs/etc/rc.sysinit
+    sed -i 's|.sbin.start_udev||' $container_rootfs/etc/rc.d/rc.sysinit
+
+    sed -i 's|\[ -x /sbin/hwclock|\[ 0 -eq 1|' $container_rootfs/etc/rc.d/init.d/halt
+    sed -i 's|^\[ -x /sbin/hwclock|\[ 0 -eq 1|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|^\[ -x /sbin/hwclock|\[ 0 -eq 1|' $container_rootfs/etc/rc.d/rc.sysinit
+    sed -i 's|^/sbin/hwclock|# LXC /sbin/nohwclock|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|^/sbin/hwclock|# LXC /sbin/nohwclock|' $container_rootfs/etc/rc.d/rc.sysinit
+
+    touch $container_rootfs/.nolvm
+
+    # fix assumptions that plymouth is available
+    sed -i 's|\[ "$PROMPT" != no \] && plymouth|[ "$PROMPT" != no ] \&\& [ -n "$PLYMOUTH" ] \&\& plymouth|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|\[ "$PROMPT" != no \] && plymouth|[ "$PROMPT" != no ] \&\& [ -n "$PLYMOUTH" ] \&\& plymouth|' $container_rootfs/etc/rc.d/rc.sysinit
+    rm -f $container_rootfs/etc/init/plymouth-shutdown.conf
+    rm -f $container_rootfs/etc/init/quit-plymouth.conf
+    rm -f $container_rootfs/etc/init/splash-manager.conf
+
+    # dont try to unmount /dev/lxc devices
+    sed -i 's|&& $1 !~ /^\\/dev\\/ram/|\&\& $2 !~ /^\\/dev\\/lxc/ \&\& $1 !~ /^\\/dev\\/ram/|' $container_rootfs/etc/init.d/halt
+
+    # don't try to unmount swap
+    sed -i 's|\[ -f /proc/swaps \]|# LXC [ -f /proc/swaps ]|' $container_rootfs/etc/init.d/halt
+
+    sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mkdir -p /dev/shm \&\& mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.sysinit
+    sed -i 's|mount -n -o remount /dev/shm >/dev/null 2>&1$|mkdir -p /dev/shm \&\& mount -t tmpfs tmpfs /dev/shm # LXC|' $container_rootfs/etc/rc.d/rc.sysinit
+
+    # there might be other services that are useless but the below set is a good start
+    # some of these might not exist in the image, so we silence chkconfig complaining
+    # about the service file not being found
+    for service in \
+        acpid apmd auditd autofs cpuspeed dund gpm haldaemon hidd	\
+        ip6tables irqbalance iscsi iscsid isdn kdump kudzu		\
+        lm_sensors lvm2-monitor mdmonitor microcode_ctl			\
+        ntpd pcmcia postfix sendmail udev-post xfs ;
+    do
+        chroot $container_rootfs chkconfig 2>/dev/null $service off
+    done
+
+    for service in rsyslog ;
+    do
+        chroot $container_rootfs chkconfig 2>/dev/null $service on
+    done
+}
+
+container_rootfs_configure()
+{
+    container_rootfs_patch
+    echo "Configuring container for Linux for SPARC $container_release_major.$container_release_minor"
+
+    # configure the network to use dhcp. we set DHCP_HOSTNAME so the guest
+    # will report its name and be resolv'able by the hosts dnsmasq
+    cat <<EOF > $container_rootfs/etc/sysconfig/network-scripts/ifcfg-eth0
+DEVICE=eth0
+BOOTPROTO=dhcp
+ONBOOT=yes
+HOSTNAME=$name
+DHCP_HOSTNAME=\`hostname\`
+NM_CONTROLLED=no
+TYPE=Ethernet
+EOF
+
+    cat <<EOF > $container_rootfs/etc/sysconfig/network
+NETWORKING=yes
+NETWORKING_IPV6=no
+HOSTNAME=$name
+EOF
+
+    # set minimal hosts
+    echo "127.0.0.1 localhost $name" > $container_rootfs/etc/hosts
+
+    # this file has to exist for libvirt/Virtual machine monitor to boot the container
+    touch $container_rootfs/etc/mtab
+
+    # setup console and tty[1-4] for login. note that /dev/console and
+    # /dev/tty[1-4] will be symlinks to the ptys /dev/lxc/console and
+    # /dev/lxc/tty[1-4] so that package updates can overwrite the symlinks.
+    # lxc will maintain these links and bind mount ptys over /dev/lxc/*
+    # since lxc.devttydir is specified in the config.
+
+    # allow root login on console, tty[1-4], and pts/0 for libvirt
+    echo "# LXC (Linux Containers)" >>$container_rootfs/etc/securetty
+    echo "lxc/console"	>>$container_rootfs/etc/securetty
+    for i in 1 2 3 4; do
+        echo "lxc/tty$i"	>>$container_rootfs/etc/securetty
+    done
+    echo "# For libvirt/Virtual Machine Monitor" >>$container_rootfs/etc/securetty
+    for i in 0 1 2 3 4; do
+        echo "pts/$i"        >>$container_rootfs/etc/securetty
+    done
+
+    # prevent mingetty from calling vhangup(2) since it fails with userns
+    if [ -f $container_rootfs/etc/init/tty.conf ]; then
+        sed -i 's|mingetty|mingetty --nohangup|' $container_rootfs/etc/init/tty.conf
+    fi
+
+    # create maygetty which only spawns a getty on the console when running
+    # under lxc, not libvirt-lxc which symlinks /dev/console to the same pty
+    # as /dev/tty1
+    cat <<EOF >$container_rootfs/sbin/maygetty
+#!/bin/sh
+if [ "\$container" = "lxc" ]; then
+    exec /sbin/mingetty \$@
+fi
+exec sleep infinity
+EOF
+    chmod 755 $container_rootfs/sbin/maygetty
+
+    cat <<EOF > $container_rootfs/etc/init/console.conf
+# console - getty
+#
+# This service maintains a getty on the console from the point the system is
+# started until it is shut down again.
+
+start on stopped rc RUNLEVEL=[2345]
+stop on runlevel [!2345]
+env container
+
+respawn
+exec /sbin/maygetty --nohangup --noclear /dev/console
+EOF
+
+    cat <<EOF > $container_rootfs/etc/init/power-status-changed.conf
+# power-status-changed - used to cleanly shut down the container
+#
+# This task is run whenever init receives SIGPWR
+# Used to shut down the machine.
+
+start on power-status-changed
+
+exec init 0
+EOF
+
+    # start with a clean /var/log/messages
+    rm -f $container_rootfs/var/log/messages
+
+    # add oracle user, set root password
+    chroot $container_rootfs useradd -m -s /bin/bash oracle
+    echo "oracle:oracle" | chroot $container_rootfs chpasswd
+    echo "root:root" | chroot $container_rootfs chpasswd
+    printf "Added container user:\033[1moracle\033[0m password:\033[1moracle\033[0m\n"
+    printf "Added container user:\033[1mroot\033[0m password:\033[1mroot\033[0m\n"
+}
+
+# create the container's lxc config file
+container_config_create()
+{
+    echo "Create configuration file $cfg_dir/config"
+    mkdir -p $cfg_dir || die "unable to create config dir $cfg_dir"
+
+    echo "# Common configuration" >> $cfg_dir/config
+    if [ -e "@LXCTEMPLATECONFIG@/sparclinux.common.conf" ]; then
+        echo "lxc.include = @LXCTEMPLATECONFIG@/sparclinux.common.conf" >> $cfg_dir/config
+    fi
+
+    # generate a hwaddr for the container with a high mac address
+    # see http://sourceforge.net/tracker/?func=detail&aid=3411497&group_id=163076&atid=826303
+    local hwaddr="fe:`dd if=/dev/urandom bs=8 count=1 2>/dev/null |od -t x8 | \
+                      head -n 1 |awk '{print $2}' | cut -c1-10 |\
+                      sed 's/\(..\)/\1:/g; s/.$//'`"
+    cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
+# Container configuration for Linux for SPARC $container_release_major.$container_release_minor
+lxc.arch = $arch
+lxc.utsname = $name
+EOF
+    grep -q "^lxc.rootfs" $cfg_dir/config 2>/dev/null || echo "lxc.rootfs = $container_rootfs" >> $cfg_dir/config
+
+    echo "lxc.cap.drop = sys_resource" >>$cfg_dir/config
+
+    echo "lxc.cap.drop = setfcap setpcap" >>$cfg_dir/config
+
+    echo "# Networking" >>$cfg_dir/config
+    # see if the network settings were already specified
+    lxc_network_type=`grep '^lxc.network.type' $cfg_dir/config | awk -F'[= \t]+' '{ print $2 }'`
+    if [ -z "$lxc_network_type" -a			\
+        \( $host_distribution = "SPARCLinux" -o	\
+           $host_distribution = "Fedora" \) ]; then
+            echo "lxc.network.type = veth" >>$cfg_dir/config
+            echo "lxc.network.flags = up" >>$cfg_dir/config
+            echo "lxc.network.link = virbr0" >>$cfg_dir/config
+    fi
+
+    cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
+lxc.network.name = eth0
+lxc.network.mtu = 1500
+lxc.network.hwaddr = $hwaddr
+EOF
+}
+
+container_rootfs_clone()
+{
+    if is_btrfs_subvolume $template_rootfs; then
+        # lxc-create already made $container_rootfs a btrfs subvolume, but
+        # in this case we want to snapshot the original subvolume so we we
+        # have to delete the one that lxc-create made
+        btrfs subvolume delete $container_rootfs
+        btrfs subvolume snapshot $template_rootfs $container_rootfs || die "btrfs clone template"
+    else
+        echo "Copying rootfs ..."
+        cp -axT $template_rootfs $container_rootfs || die "copy template"
+    fi
+}
+
+container_rootfs_repo_create()
+{
+    echo "# LXC generated .repo file" >$1
+    echo "[$2]" >>$1
+    echo "name=Linux for SPARC $container_release_major.$container_release_minor ($basearch)" >>$1
+    echo "baseurl=$3/" >>$1
+    echo "enabled=1" >>$1
+    echo "skip_if_unavailable=1" >>$1
+
+    if [ "$4" != "" ]; then
+        echo "gpgkey=$yum_url/RPM-GPG-KEY-oracle-ol$container_release_major" >>$1
+        echo "gpgcheck=1" >>$1
+    else
+        echo "gpgcheck=0" >>$1
+    fi
+}
+
+container_rootfs_dev_create()
+{
+    # create required devices. note that /dev/console will be created by lxc
+    # or libvirt itself to be a symlink to the right pty.
+    # take care to not nuke /dev in case $container_rootfs isn't set
+    dev_path="$container_rootfs/dev"
+    if [ $container_rootfs != "/" -a -d $dev_path ]; then
+        rm -rf $dev_path
+    fi
+    mkdir -p $dev_path
+    if can_chcon; then
+        # ensure symlinks created in /dev have the right context
+        chcon -t device_t $dev_path
+    fi
+    mknod -m 666  $dev_path/null c 1 3
+    mknod -m 666  $dev_path/zero c 1 5
+    mknod -m 666  $dev_path/random c 1 8
+    mknod -m 666  $dev_path/urandom c 1 9
+    mkdir -m 755  $dev_path/pts
+    mkdir -m 1777 $dev_path/shm
+    mknod -m 666  $dev_path/tty c 5 0
+    mknod -m 666  $dev_path/tty1 c 4 1
+    mknod -m 666  $dev_path/tty2 c 4 2
+    mknod -m 666  $dev_path/tty3 c 4 3
+    mknod -m 666  $dev_path/tty4 c 4 4
+    mknod -m 666  $dev_path/full c 1 7
+    mknod -m 600  $dev_path/initctl p
+
+    # set selinux labels same as host
+    if can_chcon; then
+        for node in null zero random urandom pts shm \
+                    tty tty0 tty1 tty2 tty3 tty4 full ;
+        do
+            chcon --reference /dev/$node $dev_path/$node 2>/dev/null
+        done
+    fi
+}
+
+container_rootfs_create()
+{
+    if can_chcon; then
+        chcon --reference / $container_rootfs 2>/dev/null
+    fi
+
+    cmds="rpm wget yum"
+    for cmd in $cmds; do
+        which $cmd >/dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            die "The $cmd command is required, please install it"
+        fi
+    done
+
+    mkdir -p @LOCALSTATEDIR@/lock/subsys
+    (
+        flock -x 9
+        if [ $? -ne 0 ]; then
+            die "The template is busy."
+        fi
+
+        echo "Yum installing release $container_release_major.$container_release_minor for $basearch"
+
+        if [ -n "$repourl" ]; then
+            yum_url=$repourl
+        else
+            yum_url=http://yum.oracle.com
+        fi
+
+        if [ -n "$baseurl" ]; then
+            # create .repo pointing at baseurl
+            repo="lxc-install"
+            mkdir -p $container_rootfs/etc/yum.repos.d
+            container_rootfs_repo_create \
+                $container_rootfs/etc/yum.repos.d/lxc-install.repo $repo $baseurl
+        else
+            # get public-yum repo file
+            if [ $container_release_major = "1" ]; then
+                repofile=yum-linux-sparc64.repo
+            else
+                die "Unsupported release $container_release_major"
+            fi
+
+            mkdir -p $container_rootfs/etc/yum.repos.d
+            wget -q $yum_url/$repofile -O $container_rootfs/etc/yum.repos.d/$repofile
+            if [ $? -ne 0 ]; then
+                die "Unable to download repo file $yum_url/$repofile, release unavailable"
+            fi
+
+            # yum will take $basearch from host, so force the arch we want
+            sed -i "s|\$basearch|$basearch|" $container_rootfs/etc/yum.repos.d/$repofile
+
+            # replace url if they specified one
+            if [ -n "$repourl" ]; then
+                sed -i "s|baseurl=http://yum.oracle.com/|baseurl=$repourl/repo|" $container_rootfs/etc/yum.repos.d/$repofile
+                sed -i "s|gpgkey=http://yum.oracle.com|gpgkey=$repourl|" $container_rootfs/etc/yum.repos.d/$repofile
+
+            fi
+
+            # disable all repos, then enable the repo for the version we are installing.
+            if [ $container_release_minor = "latest" ]; then
+                repo="lfs"_$container_release_minor
+            else
+                die "Unsupported release $container_release_major.$container_release_minor"
+            fi
+            sed -i "s|enabled=1|enabled=0|" $container_rootfs/etc/yum.repos.d/$repofile
+            sed -i "/\[$repo\]/,/\[/ s/enabled=0/enabled=1/" $container_rootfs/etc/yum.repos.d/$repofile
+        fi
+
+        container_rootfs_dev_create
+
+        # don't put devpts,proc, nor sysfs in here, it will already be mounted for us by lxc/libvirt
+        echo "" >$container_rootfs/etc/fstab
+
+        # create rpm db, download and yum install minimal packages
+        mkdir -p $container_rootfs/var/lib/rpm
+        rpm --root $container_rootfs --initdb
+        yum_args="--installroot $container_rootfs --disablerepo=* --enablerepo=$repo -y --nogpgcheck"
+        min_pkgs="yum initscripts passwd rsyslog vim-minimal openssh-server openssh-clients dhclient chkconfig rootfiles policycoreutils sparclinux-release"
+
+        # we unshare the mount namespace because yum installing the ol4
+        # packages causes $rootfs/proc to be mounted on
+        lxc-unshare -s MOUNT yum -- $yum_args install $min_pkgs $user_pkgs
+        if [ $? -ne 0 ]; then
+            die "Failed to download and install the rootfs, aborting."
+        fi
+
+        # rsyslog and pam depend on coreutils for some common commands in
+        # their POSTIN scriptlets, but coreutils wasn't installed yet. now
+        # that coreutils is installed, reinstall the packages so their POSTIN
+        # runs right. similarly, libutempter depends on libselinux.so.1 when
+        # it runs /usr/sbin/groupadd, so reinstall it too
+        redo_pkgs=""
+        if [ x"$redo_pkgs" != x ]; then
+            rpm --root $container_rootfs --nodeps -e $redo_pkgs
+            lxc-unshare -s MOUNT yum -- $yum_args install $redo_pkgs
+            if [ $? -ne 0 ]; then
+                die "Unable to reinstall packages"
+            fi
+        fi
+
+        # these distributions put the rpm database in a place the guest is
+        # not expecting it, so move it
+        if [ $host_distribution = "Ubuntu" -o $host_distribution = "Debian" ]; then
+            mv $container_rootfs/$HOME/.rpmdb/* $container_rootfs/var/lib/rpm
+        fi
+
+        # if the native rpm created the db with Hash version 9, we need to
+        # downgrade it to Hash version 8 for use with OL5.x
+        db_version=`file $container_rootfs/var/lib/rpm/Packages | \
+                    grep -o 'version [0-9]*' |awk '{print $2}'`
+
+        # the host rpm may not be the same as the guest, rebuild the db with
+        # the guest rpm version
+        echo "Rebuilding rpm database"
+        rm -f $container_rootfs/var/lib/rpm/__db*
+        chroot $container_rootfs rpm --rebuilddb >/dev/null 2>&1
+
+    ) 9>@LOCALSTATEDIR@/lock/subsys/lxc-sparclinux-$name
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+}
+
+container_release_get()
+{
+    if [ -f $1/etc/sparclinux-release ]; then
+        container_release_version=`cat $1/etc/sparclinux-release |awk '/^Linux/ {print $5}'`
+        container_release_major=`echo $container_release_version |awk -F '.' '{print $1}'`
+        container_release_minor=`echo $container_release_version |awk -F '.' '{print $2}'`
+    else
+        echo "Unable to determine container release version"
+        exit 1
+    fi
+}
+
+usage()
+{
+    cat <<EOF
+  -a|--arch=<arch>        architecture (sparc64)
+  -R|--release=<release>  release to download for the new container
+  --rootfs=<path>         rootfs path
+  -r|--rpms=<rpm name>    additional rpms to install into container
+  -u|--url=<url>          replace yum repo url (ie. Oracle public-yum mirror)
+     --baseurl=<url>      use package repository (ie. file:///mnt)
+                          arch and release must also be specified
+  -t|--templatefs=<path>  copy/clone rootfs at path instead of downloading
+  -P|--patch=<path>       only patch the rootfs at path for use as a container
+  -h|--help
+
+Release is of the format "major.minor", for example "1.0" or "1.latest"
+This template supports Linux for SPARC release 1.0 
+EOF
+    return 0
+}
+
+options=$(getopt -o hp:n:a:R:r:u:t: -l help,rootfs:,path:,name:,arch:,release:,rpms:,url:,templatefs:,patch:,baseurl: -- "$@")
+if [ $? -ne 0 ]; then
+    usage $(basename $0)
+    exit 1
+fi
+
+eval set -- "$options"
+while true
+do
+    case "$1" in
+        -h|--help)		usage $0 && exit 0;;
+        -p|--path)		cfg_dir=$2; shift 2;;
+        --rootfs)		container_rootfs=$2; shift 2;;
+        -n|--name)		name=$2; shift 2;;
+        -a|--arch)		arch=$2; shift 2;;
+        -R|--release)		container_release_version=$2; shift 2;;
+        -r|--rpms)		user_pkgs=$2; shift 2;;
+        -u|--url)		repourl=$2; shift 2;;
+        -t|--templatefs)	template_rootfs=$2; shift 2;;
+        --patch)		patch_rootfs=$2; shift 2;;
+        --baseurl)		baseurl=$2; shift 2;;
+        --)             	shift 1; break ;;
+        *)              	break ;;
+    esac
+done
+
+# make sure mandatory args are given and valid
+if [ "$(id -u)" != "0" ]; then
+    echo "This script should be run as 'root'"
+    exit 1
+fi
+
+if [ -n "$baseurl" ]; then
+    if [ "$arch" = "" -o "$container_release_version" = "" ]; then
+        echo "The --arch and --release must be specified when using --baseurl"
+        usage
+        exit 1
+    fi
+fi
+
+if [ "$arch" = "" ]; then
+    arch=$(uname -m)
+fi
+
+if [ -n "$patch_rootfs" ]; then
+    container_rootfs="$patch_rootfs"
+    container_release_get $container_rootfs
+    container_rootfs_patch
+    exit 0
+fi
+
+if [ -z $name ]; then
+    echo "Container name must be given"
+    usage
+    exit 1
+fi
+
+if [ -z $cfg_dir ]; then
+    echo "Configuration directory must be given, check lxc-create"
+    usage
+    exit 1
+fi
+
+basearch=$arch
+
+if [ "$arch" != "sparc64" ]; then
+    echo "Bad architecture given, check lxc-create"
+    usage
+    exit 1
+fi
+
+if [ -f /etc/sparclinux-release ]; then
+   host_distribution="SPARCLinux"
+   host_release_version=`cat /etc/sparclinux-release |awk '{print $5}'`
+   host_release_major=`echo $host_release_version |awk -F '.' '{print $1}'`
+   host_release_minor=`echo $host_release_version |awk -F '.' '{print $2}'`
+else
+   echo "Unable to determine host distribution"
+   exit 1
+fi
+
+echo "Host is $host_distribution $host_release_version"
+
+if [ -z "$container_rootfs" ]; then
+    container_rootfs="$cfg_dir/rootfs"
+fi
+
+if [ -n "$template_rootfs" ]; then
+    container_release_get $template_rootfs
+else
+    if [ -z "$container_release_version" ]; then
+        if [ $host_distribution = "SPARCLinux" ]; then
+            container_release_version=$host_release_version
+        else
+            echo "No release specified with -R, defaulting to 1.latest"
+            container_release_version="1.latest"
+        fi
+    fi
+    container_release_major=`echo $container_release_version |awk -F '.' '{print $1}'`
+    container_release_minor=`echo $container_release_version |awk -F '.' '{print $2}'`
+fi
+
+container_config_create
+if [ -n "$template_rootfs" ]; then
+    container_rootfs_clone
+else
+    container_rootfs_create
+fi
+
+container_release_get $container_rootfs
+
+container_rootfs_configure
+
+echo "Container : $container_rootfs"
+echo "Config    : $cfg_dir/config"
+echo "Network   : eth0 ($lxc_network_type) on $lxc_network_link"

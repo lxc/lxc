@@ -1,0 +1,2 @@
+# This derives from the global userns config
+lxc.include = @LXCTEMPLATECONFIG@/userns.conf

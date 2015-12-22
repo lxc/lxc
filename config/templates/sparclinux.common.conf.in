@@ -1,0 +1,20 @@
+# This derives from the global common config
+lxc.include = @LXCTEMPLATECONFIG@/common.conf
+
+# Capabilities
+# Uncomment these if you don't run anything that needs the capability, and
+# would like the container to run with less privilege.
+#
+# Dropping sys_admin disables container root from doing a lot of things
+# that could be bad like re-mounting lxc fstab entries rw for example,
+# but also disables some useful things like being able to nfs mount, and
+# things that are already namespaced with ns_capable() kernel checks, like
+# hostname(1).
+# lxc.cap.drop = sys_admin
+# lxc.cap.drop = net_raw          # breaks dhcp/ping
+# lxc.cap.drop = setgid           # breaks login (initgroups/setgroups)
+# lxc.cap.drop = dac_read_search  # breaks login (pam unix_chkpwd)
+# lxc.cap.drop = setuid           # breaks sshd,nfs statd
+# lxc.cap.drop = audit_control    # breaks sshd (set_loginuid failed)
+# lxc.cap.drop = audit_write
+lxc.cap.drop = sys_nice sys_pacct sys_rawio

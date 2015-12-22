@@ -18,4 +18,5 @@ templates_SCRIPTS = \
 	lxc-slackware \
 	lxc-sshd \
 	lxc-ubuntu \
-	lxc-ubuntu-cloud
+	lxc-ubuntu-cloud \
+	lxc-sparclinux

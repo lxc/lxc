@@ -34,4 +34,6 @@ templatesconfig_DATA = \
 	ubuntu.lucid.conf \
 	ubuntu.userns.conf \
 	openwrt.common.conf \
+	sparclinux.common.conf \
+	sparclinux.userns.conf \
 	userns.conf
