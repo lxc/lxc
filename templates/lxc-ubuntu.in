@@ -343,6 +343,9 @@ download_ubuntu()
     fi
     packages_template="${packages_template},$(echo $langpacks | sed 's/ /,/g')"
 
+    if [ $variant == 'minbase' ]; then
+        packages_template="${packages_template},sudo,ifupdown,isc-dhcp-client"
+    fi
 
     echo "Installing packages in template: ${packages_template}"
 
@@ -358,9 +361,9 @@ download_ubuntu()
     # download a mini ubuntu into a cache
     echo "Downloading ubuntu $release minimal ..."
     if [ -n "$(which qemu-debootstrap)" ]; then
-        qemu-debootstrap --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
+        qemu-debootstrap --verbose $(if [ -n "$variant" ]; then echo --variant="$variant"; fi) --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
     else
-        debootstrap --verbose --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
+        debootstrap --verbose $(if [ -n "$variant" ]; then echo --variant="$variant"; fi) --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
     fi
 
     if [ $? -ne 0 ]; then
@@ -647,10 +650,11 @@ usage()
 {
     cat <<EOF
 $1 -h|--help [-a|--arch] [-b|--bindhome <user>] [-d|--debug]
-   [-F | --flush-cache] [-r|--release <release>] [ -S | --auth-key <keyfile>]
+   [-F | --flush-cache] [-r|--release <release>] [-v|--variant] [ -S | --auth-key <keyfile>]
    [--rootfs <rootfs>] [--packages <packages>] [-u|--user <user>] [--password <password>]
    [--mirror <url>] [--security-mirror <url>]
 release: the ubuntu release (e.g. precise): defaults to host release on ubuntu, otherwise uses latest LTS
+variant: debootstrap variant to use (see debootstrap(8))
 bindhome: bind <user>'s home into the container
           The ubuntu user will not be created, and <user> will have
           sudo access.
@@ -662,7 +666,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:b:hp:r:n:FS:du: -l arch:,bindhome:,help,path:,release:,name:,flush-cache,auth-key:,debug,rootfs:,packages:,user:,password:,mirror:,security-mirror: -- "$@")
+options=$(getopt -o a:b:hp:r:v:n:FS:du: -l arch:,bindhome:,help,path:,release:,variant:,name:,flush-cache,auth-key:,debug,rootfs:,packages:,user:,password:,mirror:,security-mirror: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -717,6 +721,7 @@ do
     --password)     password=$2; shift 2;;
     -F|--flush-cache) flushcache=1; shift 1;;
     -r|--release)   release=$2; shift 2;;
+    -v|--variant)   variant=$2; shift 2;;
     --packages)     packages=$2; shift 2;;
     -b|--bindhome)  bindhome=$2; shift 2;;
     -a|--arch)      arch=$2; shift 2;;
