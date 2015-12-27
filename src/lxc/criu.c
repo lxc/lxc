@@ -315,7 +315,7 @@ static bool criu_version_ok()
 			return false;
 		}
 
-		if (fscanf(f, "Version: %1024[^\n]s", version) != 1)
+		if (fscanf(f, "Version: %1023[^\n]s", version) != 1)
 			goto version_error;
 
 		if (fgetc(f) != '\n')
@@ -324,7 +324,7 @@ static bool criu_version_ok()
 		if (strcmp(version, CRIU_VERSION) >= 0)
 			goto version_match;
 
-		if (fscanf(f, "GitID: v%1024[^-]s", version) != 1)
+		if (fscanf(f, "GitID: v%1023[^-]s", version) != 1)
 			goto version_error;
 
 		if (fgetc(f) != '-')
