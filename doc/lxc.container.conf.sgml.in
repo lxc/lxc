@@ -1571,6 +1571,18 @@ mknod errno 0
       <variablelist>
         <varlistentry>
           <term>
+            <option>LXC_SRC_NAME</option>
+          </term>
+          <listitem>
+            <para>
+              Only for the clone hook. Is set to the original container name.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
             <option>LXC_TARGET</option>
           </term>
           <listitem>
