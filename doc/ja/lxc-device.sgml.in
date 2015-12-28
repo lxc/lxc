@@ -76,7 +76,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <variablelist>
       <varlistentry>
         <term>
-          <option><optional>-h</optional></option>
+          <option>-h</option>
         </term>
         <listitem>
           <para>
@@ -89,9 +89,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       </varlistentry>
 
       <varlistentry>
-        <term>
-          <option>-n</option>
-        </term>
+        <term><option>-n, --name=<replaceable>NAME</replaceable></option></term>
         <listitem>
           <para>
             <!--

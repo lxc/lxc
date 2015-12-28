@@ -85,7 +85,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
     <variablelist>
       <varlistentry>
         <term>
-          <option><optional>-1</optional></option>
+          <option>-1</option>
         </term>
         <listitem>
           <para>
@@ -99,7 +99,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
 	<term>
-	  <option><optional>-P, --lxcpath</optional></option>
+	  <option>-P, --lxcpath</option>
 	</term>
 	<listitem>
 	  <para>
@@ -113,7 +113,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
 	<term>
-	  <option><optional>--active</optional></option>
+	  <option>--active</option>
 	</term>
 	<listitem>
 	  <para>
@@ -127,7 +127,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>--frozen</optional></option>
+          <option>--frozen</option>
         </term>
         <listitem>
           <para>
@@ -141,7 +141,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>--running</optional></option>
+          <option>--running</option>
         </term>
         <listitem>
           <para>
@@ -155,7 +155,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>--stopped</optional></option>
+          <option>--stopped</option>
         </term>
         <listitem>
           <para>
@@ -169,7 +169,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>-f, --fancy</optional></option>
+          <option>-f, --fancy</option>
         </term>
         <listitem>
           <para>
@@ -183,7 +183,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>-F, --fancy-format <replaceable>format</replaceable></optional></option>
+          <option>-F, --fancy-format <replaceable>format</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -199,7 +199,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>-g, --groups <replaceable>groups</replaceable></optional></option>
+          <option>-g, --groups <replaceable>groups</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -215,7 +215,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>--nesting</optional></option>
+          <option>--nesting</option>
         </term>
         <listitem>
           <para>
@@ -229,7 +229,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>filter</optional></option>
+          <option>filter</option>
         </term>
         <listitem>
           <para>
@@ -245,7 +245,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>--version</optional></option>
+          <option>--version</option>
         </term>
         <listitem>
           <para>

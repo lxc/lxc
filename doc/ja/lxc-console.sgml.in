@@ -120,7 +120,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
 	<term>
-	  <option>-e <optional><replaceable>escape character</replaceable></optional></option>
+	  <option>-e, --escape <replaceable>escape character</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -138,7 +138,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       </varlistentry>
       <varlistentry>
 	<term>
-	  <option>-t <optional><replaceable>ttynum</replaceable></optional></option>
+	  <option>-t, --tty <replaceable>ttynum</replaceable></option>
 	</term>
 	<listitem>
 	  <para>

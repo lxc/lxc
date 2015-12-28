@@ -67,7 +67,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <variablelist>
       <varlistentry>
         <term>
-          <option><optional>-h</optional></option>
+          <option>-h</option>
         </term>
         <listitem>
           <para>
@@ -77,9 +77,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       </varlistentry>
 
       <varlistentry>
-        <term>
-          <option>-n</option>
-        </term>
+        <term><option>-n, --name=<replaceable>NAME</replaceable></option></term>
         <listitem>
           <para>
              The name of the target container.

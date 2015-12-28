@@ -71,7 +71,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option><optional>-c <replaceable>KEY</replaceable></optional></option>
+          <option>-c, --config <replaceable>KEY</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -83,7 +83,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option><optional>-s</optional></option>
+          <option>-s, --state</option>
         </term>
         <listitem>
           <para>
@@ -94,7 +94,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option><optional>-p</optional></option>
+          <option>-p, --pid</option>
         </term>
         <listitem>
           <para>
@@ -105,7 +105,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option><optional>-i</optional></option>
+          <option>-i, --ips</option>
         </term>
         <listitem>
           <para>
@@ -116,7 +116,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option><optional>-S</optional></option>
+          <option>-S, --stats</option>
         </term>
         <listitem>
           <para>
@@ -139,7 +139,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option><optional>-H</optional></option>
+          <option>-H, --no-humanize</option>
         </term>
         <listitem>
           <para>

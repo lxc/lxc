@@ -79,7 +79,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option><optional>-d, --delay <replaceable>delay</replaceable></optional></option>
+          <option>-d, --delay <replaceable>delay</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -93,7 +93,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       </varlistentry>
       <varlistentry>
         <term>
-          <option><optional>-s, --sort <replaceable>sortby</replaceable></optional></option>
+          <option>-s, --sort <replaceable>sortby</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -110,7 +110,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       </varlistentry>
       <varlistentry>
         <term>
-          <option><optional>-r, --reverse</optional></option>
+          <option>-r, --reverse</option>
         </term>
         <listitem>
           <para>

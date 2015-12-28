@@ -112,7 +112,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
 	<term>
-	  <option>-f <replaceable>config_file</replaceable></option>
+	  <option>-f, --config <replaceable>config_file</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -127,7 +127,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
 	<term>
-	  <option>-t <replaceable>template</replaceable></option>
+	  <option>-t, --template <replaceable>template</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -151,7 +151,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
 	<term>
-	  <option>-B <replaceable>backingstore</replaceable></option>
+	  <option>-B, --bdev <replaceable>backingstore</replaceable></option>
 	</term>
 	<listitem>
           <para>

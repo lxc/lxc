@@ -78,7 +78,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
 	<term>
-	  <option>-s <replaceable>states</replaceable></option>
+	  <option>-s, --state <replaceable>states</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -94,7 +94,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
 	<term>
-	  <option>-t <replaceable>timeout</replaceable></option>
+	  <option>-t, --timeout <replaceable>timeout</replaceable></option>
 	</term>
 	<listitem>
 	  <para>

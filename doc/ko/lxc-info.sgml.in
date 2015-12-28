@@ -80,7 +80,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>-c <replaceable>KEY</replaceable></optional></option>
+          <option>-c, --config <replaceable>KEY</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -95,7 +95,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>-s</optional></option>
+          <option>-s, --state</option>
         </term>
         <listitem>
           <para>
@@ -109,7 +109,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>-p</optional></option>
+          <option>-p, --pid</option>
         </term>
         <listitem>
           <para>
@@ -124,7 +124,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>-i</optional></option>
+          <option>-i, --ips</option>
         </term>
         <listitem>
           <para>
@@ -138,7 +138,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>-S</optional></option>
+          <option>-S, --stats</option>
         </term>
         <listitem>
           <para>
@@ -174,7 +174,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option><optional>-H</optional></option>
+          <option>-H, --no-humanize</option>
         </term>
         <listitem>
           <para>

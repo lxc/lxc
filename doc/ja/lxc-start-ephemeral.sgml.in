@@ -82,7 +82,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <variablelist>
       <varlistentry>
         <term>
-          <option>-o</option>
+          <option>-o, --orig <replaceable>orig</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -96,7 +96,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>-n</optional></option>
+          <option>-n, --name <replaceable>name</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -110,7 +110,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>-d</optional></option>
+          <option>-d, --daemon</option>
         </term>
         <listitem>
           <para>
@@ -126,7 +126,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>--bdir</optional></option>
+          <option>-b, --bdir <replaceable>bdir</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -142,7 +142,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>--user</optional></option>
+          <option>-u, --user <replaceable>user</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -158,7 +158,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>--key</optional></option>
+          <option>-S, --key <replaceable>key</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -172,7 +172,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>--storage-type</optional></option>
+          <option>-s, --storage-type <replaceable>storage type</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -186,7 +186,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>--union-type</optional></option>
+          <option>-U, --union-type <replaceable>union type</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -202,7 +202,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>--keep-data</optional></option>
+          <option>-k, --keep-data</option>
         </term>
         <listitem>
           <para>
@@ -218,7 +218,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>COMMAND</optional></option>
+          <option>COMMAND</option>
         </term>
         <listitem>
           <para>

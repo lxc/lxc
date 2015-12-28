@@ -96,7 +96,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-e <optional><replaceable>escape character</replaceable></optional></option>
+	  <option>-e, --escape <replaceable>escape character</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -109,7 +109,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       </varlistentry>
       <varlistentry>
 	<term>
-	  <option>-t <optional><replaceable>ttynum</replaceable></optional></option>
+	  <option>-t, --tty <replaceable>ttynum</replaceable></option>
 	</term>
 	<listitem>
 	  <para>

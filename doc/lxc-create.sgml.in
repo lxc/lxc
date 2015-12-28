@@ -92,7 +92,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-f <replaceable>config_file</replaceable></option>
+	  <option>-f, --config <replaceable>config_file</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -104,7 +104,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-t <replaceable>template</replaceable></option>
+	  <option>-t, --template <replaceable>template</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -122,7 +122,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-B <replaceable>backingstore</replaceable></option>
+	  <option>-B, --bdev <replaceable>backingstore</replaceable></option>
 	</term>
 	<listitem>
 	  <para>

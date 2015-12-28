@@ -80,7 +80,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>-c <replaceable>KEY</replaceable></optional></option>
+          <option>-c, --config <replaceable>KEY</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -95,7 +95,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>-s</optional></option>
+          <option>-s, --state</option>
         </term>
         <listitem>
           <para>
@@ -109,7 +109,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>-p</optional></option>
+          <option>-p, --pid</option>
         </term>
         <listitem>
           <para>
@@ -123,21 +123,21 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>-i</optional></option>
+          <option>-i, --ips</option>
         </term>
         <listitem>
           <para>
             <!--
             Just print the container's IP addresses.
             -->
-            コンテナの IP アドレスを表示します。。
+            コンテナの IP アドレスを表示します。
           </para>
         </listitem>
       </varlistentry>
 
       <varlistentry>
         <term>
-          <option><optional>-S</optional></option>
+          <option>-S, --stats</option>
         </term>
         <listitem>
           <para>
@@ -174,7 +174,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option><optional>-H</optional></option>
+          <option>-H, --no-humanize</option>
         </term>
         <listitem>
           <para>
