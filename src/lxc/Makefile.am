@@ -8,6 +8,7 @@ noinst_HEADERS = \
 	attach.h \
 	bdev/bdev.h \
 	bdev/lxcbtrfs.h \
+	bdev/lxclvm.h \
 	bdev/lxcoverlay.h \
 	bdev/lxcrsync.h \
 	bdev/lxczfs.h \
@@ -65,6 +66,7 @@ liblxc_so_SOURCES = \
 	arguments.c arguments.h \
 	bdev/bdev.c bdev/bdev.h \
 	bdev/lxcbtrfs.c bdev/lxcbtrfs.h \
+	bdev/lxclvm.c bdev/lxclvm.h \
 	bdev/lxcoverlay.c bdev/lxcoverlay.h \
 	bdev/lxcrsync.c bdev/lxcrsync.h \
 	bdev/lxczfs.c bdev/lxczfs.h \

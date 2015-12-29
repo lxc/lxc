@@ -55,6 +55,7 @@
 #include "lxc.h"
 #include "lxcbtrfs.h"
 #include "lxclock.h"
+#include "lxclvm.h"
 #include "lxcoverlay.h"
 #include "lxcrsync.h"
 #include "lxczfs.h"
@@ -74,10 +75,137 @@
 #define LOOP_CTL_GET_FREE 0x4C82
 #endif
 
-#define DEFAULT_FS_SIZE 1073741824
-#define DEFAULT_FSTYPE "ext3"
-
 lxc_log_define(bdev, lxc);
+
+/* btrfs */
+static const struct bdev_ops btrfs_ops = {
+	.detect = &btrfs_detect,
+	.mount = &btrfs_mount,
+	.umount = &btrfs_umount,
+	.clone_paths = &btrfs_clonepaths,
+	.destroy = &btrfs_destroy,
+	.create = &btrfs_create,
+	.can_snapshot = true,
+	.can_backup = true,
+};
+
+/* lvm */
+static const struct bdev_ops lvm_ops = {
+	.detect = &lvm_detect,
+	.mount = &lvm_mount,
+	.umount = &lvm_umount,
+	.clone_paths = &lvm_clonepaths,
+	.destroy = &lvm_destroy,
+	.create = &lvm_create,
+	.can_snapshot = true,
+	.can_backup = false,
+};
+
+/* overlay */
+static const struct bdev_ops ovl_ops = {
+	.detect = &ovl_detect,
+	.mount = &ovl_mount,
+	.umount = &ovl_umount,
+	.clone_paths = &ovl_clonepaths,
+	.destroy = &ovl_destroy,
+	.create = &ovl_create,
+	.can_snapshot = true,
+	.can_backup = true,
+};
+
+/* zfs */
+static const struct bdev_ops zfs_ops = {
+	.detect = &zfs_detect,
+	.mount = &zfs_mount,
+	.umount = &zfs_umount,
+	.clone_paths = &zfs_clonepaths,
+	.destroy = &zfs_destroy,
+	.create = &zfs_create,
+	.can_snapshot = true,
+	.can_backup = true,
+};
+
+/* functions associated with an aufs bdev struct */
+static int aufs_clonepaths(struct bdev *orig, struct bdev *new,
+		const char *oldname, const char *cname,
+		const char *oldpath, const char *lxcpath, int snap,
+		uint64_t newsize, struct lxc_conf *conf);
+static int aufs_create(struct bdev *bdev, const char *dest, const char *n,
+		struct bdev_specs *specs);
+static int aufs_destroy(struct bdev *orig);
+static int aufs_detect(const char *path);
+static int aufs_mount(struct bdev *bdev);
+static int aufs_umount(struct bdev *bdev);
+
+/* functions associated with a dir bdev struct */
+static int dir_clonepaths(struct bdev *orig, struct bdev *new,
+		const char *oldname, const char *cname,
+		const char *oldpath, const char *lxcpath, int snap,
+		uint64_t newsize, struct lxc_conf *conf);
+static int dir_create(struct bdev *bdev, const char *dest, const char *n,
+		struct bdev_specs *specs);
+static int dir_destroy(struct bdev *orig);
+static int dir_detect(const char *path);
+static int dir_mount(struct bdev *bdev);
+static int dir_umount(struct bdev *bdev);
+
+/* functions associated with a loop bdev struct */
+static int do_loop_create(const char *path, uint64_t size, const char *fstype);
+static int loop_create(struct bdev *bdev, const char *dest, const char *n,
+		struct bdev_specs *specs);
+static int loop_destroy(struct bdev *orig);
+static int loop_detect(const char *path);
+static int loop_clonepaths(struct bdev *orig, struct bdev *new,
+		const char *oldname, const char *cname,
+		const char *oldpath, const char *lxcpath, int snap,
+		uint64_t newsize, struct lxc_conf *conf);
+static int loop_mount(struct bdev *bdev);
+static int loop_umount(struct bdev *bdev);
+static int find_free_loopdev_no_control(int *retfd, char *namep);
+static int find_free_loopdev(int *retfd, char *namep);
+
+/* functions associated with an nbd bdev struct */
+static bool attach_nbd(char *src, struct lxc_conf *conf);
+static bool clone_attach_nbd(const char *nbd, const char *path);
+static int do_attach_nbd(void *d);
+static int nbd_get_partition(const char *src);
+static bool nbd_busy(int idx);
+static int nbd_clonepaths(struct bdev *orig, struct bdev *new,
+		const char *oldname, const char *cname,
+		const char *oldpath, const char *lxcpath, int snap,
+		uint64_t newsize, struct lxc_conf *conf);
+static int nbd_create(struct bdev *bdev, const char *dest, const char *n,
+		struct bdev_specs *specs);
+static void nbd_detach(const char *path);
+static int nbd_destroy(struct bdev *orig);
+static int nbd_detect(const char *path);
+static int nbd_mount(struct bdev *bdev);
+static int nbd_umount(struct bdev *bdev);
+static bool requires_nbd(const char *path);
+static bool wait_for_partition(const char *path);
+
+/* functions associated with a rdb bdev struct */
+static int rbd_clonepaths(struct bdev *orig, struct bdev *new,
+		const char *oldname, const char *cname,
+		const char *oldpath, const char *lxcpath, int snap,
+		uint64_t newsize, struct lxc_conf *conf);
+static int rbd_create(struct bdev *bdev, const char *dest, const char *n,
+		struct bdev_specs *specs);
+static int rbd_destroy(struct bdev *orig);
+static int rbd_detect(const char *path);
+static int rbd_mount(struct bdev *bdev);
+static int rbd_umount(struct bdev *bdev);
+
+/* helpers */
+/*
+ * These are copied from conf.c.  However as conf.c will be moved to using
+ * the callback system, they can be pulled from there eventually, so we
+ * don't need to pollute utils.c with these low level functions
+ */
+static int find_fstype_cb(char* buffer, void *data);
+static char *linkderef(char *path, char *dest);
+static bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
+		bool maybesnap);
 
 /* the bulk of this needs to become a common helper */
 char *dir_new_path(char *src, const char *oldname, const char *name,
@@ -124,7 +252,7 @@ char *dir_new_path(char *src, const char *oldname, const char *name,
 /*
  * return block size of dev->src in units of bytes
  */
-static int blk_getsize(struct bdev *bdev, uint64_t *size)
+int blk_getsize(struct bdev *bdev, uint64_t *size)
 {
 	int fd, ret;
 	char *path = bdev->src;
@@ -188,11 +316,9 @@ static int find_fstype_cb(char* buffer, void *data)
 	return 1;
 }
 
-static int mount_unknown_fs(const char *rootfs, const char *target,
-			                const char *options)
+int mount_unknown_fs(const char *rootfs, const char *target,
+		const char *options)
 {
-	int i;
-
 	struct cbarg {
 		const char *rootfs;
 		const char *target;
@@ -213,6 +339,7 @@ static int mount_unknown_fs(const char *rootfs, const char *target,
 		"/proc/filesystems",
 	};
 
+	size_t i;
 	for (i = 0; i < sizeof(fsfile)/sizeof(fsfile[0]); i++) {
 
 		int ret;
@@ -234,7 +361,7 @@ static int mount_unknown_fs(const char *rootfs, const char *target,
 	return -1;
 }
 
-static int do_mkfs(const char *path, const char *fstype)
+int do_mkfs(const char *path, const char *fstype)
 {
 	pid_t pid;
 
@@ -283,7 +410,7 @@ static char *linkderef(char *path, char *dest)
  * @len: length of passed in char*
  * Returns length of fstype, of -1 on error
  */
-static int detect_fs(struct bdev *bdev, char *type, int len)
+int detect_fs(struct bdev *bdev, char *type, int len)
 {
 	int  p[2], ret;
 	size_t linelen;
@@ -422,8 +549,9 @@ static int dir_umount(struct bdev *bdev)
  * for a simple directory bind mount, we substitute the old container
  * name and paths for the new
  */
-static int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath, int snap,
+static int dir_clonepaths(struct bdev *orig, struct bdev *new,
+		const char *oldname, const char *cname,
+		const char *oldpath, const char *lxcpath, int snap,
 		uint64_t newsize, struct lxc_conf *conf)
 {
 	int len, ret;
@@ -457,7 +585,7 @@ static int dir_destroy(struct bdev *orig)
 }
 
 static int dir_create(struct bdev *bdev, const char *dest, const char *n,
-			struct bdev_specs *specs)
+		struct bdev_specs *specs)
 {
 	if (specs && specs->dir)
 		bdev->src = strdup(specs->dir);
@@ -492,402 +620,14 @@ static const struct bdev_ops dir_ops = {
 	.can_backup = true,
 };
 
-//
-// LVM ops
-//
-
-/*
- * Look at /sys/dev/block/maj:min/dm/uuid.  If it contains the hardcoded LVM
- * prefix "LVM-", then this is an lvm2 LV
- */
-static int lvm_detect(const char *path)
-{
-	char devp[MAXPATHLEN], buf[4];
-	FILE *fout;
-	int ret;
-	struct stat statbuf;
-
-	if (strncmp(path, "lvm:", 4) == 0)
-		return 1; // take their word for it
-
-	ret = stat(path, &statbuf);
-	if (ret != 0)
-		return 0;
-	if (!S_ISBLK(statbuf.st_mode))
-		return 0;
-
-	ret = snprintf(devp, MAXPATHLEN, "/sys/dev/block/%d:%d/dm/uuid",
-			major(statbuf.st_rdev), minor(statbuf.st_rdev));
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		ERROR("lvm uuid pathname too long");
-		return 0;
-	}
-	fout = fopen(devp, "r");
-	if (!fout)
-		return 0;
-	ret = fread(buf, 1, 4, fout);
-	fclose(fout);
-	if (ret != 4 || strncmp(buf, "LVM-", 4) != 0)
-		return 0;
-	return 1;
-}
-
-static int lvm_mount(struct bdev *bdev)
-{
-	if (strcmp(bdev->type, "lvm"))
-		return -22;
-	if (!bdev->src || !bdev->dest)
-		return -22;
-	/* if we might pass in data sometime, then we'll have to enrich
-	 * mount_unknown_fs */
-	return mount_unknown_fs(bdev->src, bdev->dest, bdev->mntopts);
-}
-
-static int lvm_umount(struct bdev *bdev)
-{
-	if (strcmp(bdev->type, "lvm"))
-		return -22;
-	if (!bdev->src || !bdev->dest)
-		return -22;
-	return umount(bdev->dest);
-}
-
-static int lvm_compare_lv_attr(const char *path, int pos, const char expected) {
-	struct lxc_popen_FILE *f;
-	int ret, len, status, start=0;
-	char *cmd, output[12];
-	const char *lvscmd = "lvs --unbuffered --noheadings -o lv_attr %s 2>/dev/null";
-
-	len = strlen(lvscmd) + strlen(path) - 1;
-	cmd = alloca(len);
-
-	ret = snprintf(cmd, len, lvscmd, path);
-	if (ret < 0 || ret >= len)
-		return -1;
-
-	f = lxc_popen(cmd);
-
-	if (f == NULL) {
-		SYSERROR("popen failed");
-		return -1;
-	}
-
-	ret = fgets(output, 12, f->f) == NULL;
-
-	status = lxc_pclose(f);
-
-	if (ret || WEXITSTATUS(status))
-		// Assume either vg or lvs do not exist, default
-		// comparison to false.
-		return 0;
-
-	len = strlen(output);
-	while(start < len && output[start] == ' ') start++;
-
-	if (start + pos < len && output[start + pos] == expected)
-		return 1;
-
-	return 0;
-}
-
-static int lvm_is_thin_volume(const char *path)
-{
-	return lvm_compare_lv_attr(path, 6, 't');
-}
-
-static int lvm_is_thin_pool(const char *path)
-{
-	return lvm_compare_lv_attr(path, 0, 't');
-}
-
-/*
- * path must be '/dev/$vg/$lv', $vg must be an existing VG, and $lv must not
- * yet exist.  This function will attempt to create /dev/$vg/$lv of size
- * $size. If thinpool is specified, we'll check for it's existence and if it's
- * a valid thin pool, and if so, we'll create the requested lv from that thin
- * pool.
- */
-static int do_lvm_create(const char *path, uint64_t size, const char *thinpool)
-{
-	int ret, pid, len;
-	char sz[24], *pathdup, *vg, *lv, *tp = NULL;
-
-	if ((pid = fork()) < 0) {
-		SYSERROR("failed fork");
-		return -1;
-	}
-	if (pid > 0)
-		return wait_for_pid(pid);
-
-	// specify bytes to lvcreate
-	ret = snprintf(sz, 24, "%"PRIu64"b", size);
-	if (ret < 0 || ret >= 24)
-		exit(1);
-
-	pathdup = strdup(path);
-	if (!pathdup)
-		exit(1);
-
-	lv = strrchr(pathdup, '/');
-	if (!lv)
-		exit(1);
-
-	*lv = '\0';
-	lv++;
-
-	vg = strrchr(pathdup, '/');
-	if (!vg)
-		exit(1);
-	vg++;
-
-	if (thinpool) {
-		len = strlen(pathdup) + strlen(thinpool) + 2;
-		tp = alloca(len);
-
-		ret = snprintf(tp, len, "%s/%s", pathdup, thinpool);
-		if (ret < 0 || ret >= len)
-			exit(1);
-
-		ret = lvm_is_thin_pool(tp);
-		INFO("got %d for thin pool at path: %s", ret, tp);
-		if (ret < 0)
-			exit(1);
-
-		if (!ret)
-			tp = NULL;
-	}
-
-	if (!tp)
-	    execlp("lvcreate", "lvcreate", "-L", sz, vg, "-n", lv, (char *)NULL);
-	else
-	    execlp("lvcreate", "lvcreate", "--thinpool", tp, "-V", sz, vg, "-n", lv, (char *)NULL);
-
-	SYSERROR("execlp");
-	exit(1);
-}
-
-static int lvm_snapshot(const char *orig, const char *path, uint64_t size)
-{
-	int ret, pid;
-	char sz[24], *pathdup, *lv;
-
-	if ((pid = fork()) < 0) {
-		SYSERROR("failed fork");
-		return -1;
-	}
-	if (pid > 0)
-		return wait_for_pid(pid);
-
-	// specify bytes to lvcreate
-	ret = snprintf(sz, 24, "%"PRIu64"b", size);
-	if (ret < 0 || ret >= 24)
-		exit(1);
-
-	pathdup = strdup(path);
-	if (!pathdup)
-		exit(1);
-	lv = strrchr(pathdup, '/');
-	if (!lv) {
-		free(pathdup);
-		exit(1);
-	}
-	*lv = '\0';
-	lv++;
-
-	// check if the original lv is backed by a thin pool, in which case we
-	// cannot specify a size that's different from the original size.
-	ret = lvm_is_thin_volume(orig);
-	if (ret == -1) {
-		free(pathdup);
-		return -1;
-	}
-
-	if (!ret) {
-		ret = execlp("lvcreate", "lvcreate", "-s", "-L", sz, "-n", lv, orig, (char *)NULL);
-	} else {
-		ret = execlp("lvcreate", "lvcreate", "-s", "-n", lv, orig, (char *)NULL);
-	}
-
-	free(pathdup);
-	exit(1);
-}
-
 // this will return 1 for physical disks, qemu-nbd, loop, etc
 // right now only lvm is a block device
-static int is_blktype(struct bdev *b)
+int is_blktype(struct bdev *b)
 {
 	if (strcmp(b->type, "lvm") == 0)
 		return 1;
 	return 0;
 }
-
-static int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
-{
-	char fstype[100];
-	uint64_t size = newsize;
-	int len, ret;
-
-	if (!orig->src || !orig->dest)
-		return -1;
-
-	if (strcmp(orig->type, "lvm")) {
-		const char *vg;
-
-		if (snap) {
-			ERROR("LVM snapshot from %s backing store is not supported",
-				orig->type);
-			return -1;
-		}
-		vg = lxc_global_config_value("lxc.bdev.lvm.vg");
-		len = strlen("/dev/") + strlen(vg) + strlen(cname) + 2;
-		if ((new->src = malloc(len)) == NULL)
-			return -1;
-		ret = snprintf(new->src, len, "/dev/%s/%s", vg, cname);
-		if (ret < 0 || ret >= len)
-			return -1;
-	} else {
-		new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath);
-		if (!new->src)
-			return -1;
-	}
-
-	if (orig->mntopts) {
-		new->mntopts = strdup(orig->mntopts);
-		if (!new->mntopts)
-			return -1;
-	}
-
-	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 3;
-	new->dest = malloc(len);
-	if (!new->dest)
-		return -1;
-	ret = snprintf(new->dest, len, "%s/%s/rootfs", lxcpath, cname);
-	if (ret < 0 || ret >= len)
-		return -1;
-	if (mkdir_p(new->dest, 0755) < 0)
-		return -1;
-
-	if (is_blktype(orig)) {
-		if (!newsize && blk_getsize(orig, &size) < 0) {
-			ERROR("Error getting size of %s", orig->src);
-			return -1;
-		}
-		if (detect_fs(orig, fstype, 100) < 0) {
-			INFO("could not find fstype for %s, using ext3", orig->src);
-			return -1;
-		}
-	} else {
-		sprintf(fstype, "ext3");
-		if (!newsize)
-			size = DEFAULT_FS_SIZE;
-	}
-
-	if (snap) {
-		if (lvm_snapshot(orig->src, new->src, size) < 0) {
-			ERROR("could not create %s snapshot of %s", new->src, orig->src);
-			return -1;
-		}
-	} else {
-		if (do_lvm_create(new->src, size, lxc_global_config_value("lxc.bdev.lvm.thin_pool")) < 0) {
-			ERROR("Error creating new lvm blockdev");
-			return -1;
-		}
-		if (do_mkfs(new->src, fstype) < 0) {
-			ERROR("Error creating filesystem type %s on %s", fstype,
-				new->src);
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-static int lvm_destroy(struct bdev *orig)
-{
-	pid_t pid;
-
-	if ((pid = fork()) < 0)
-		return -1;
-	if (!pid) {
-		execlp("lvremove", "lvremove", "-f", orig->src, NULL);
-		exit(1);
-	}
-	return wait_for_pid(pid);
-}
-
-static int lvm_create(struct bdev *bdev, const char *dest, const char *n,
-			struct bdev_specs *specs)
-{
-	const char *vg, *thinpool, *fstype, *lv = n;
-	uint64_t sz;
-	int ret, len;
-
-	if (!specs)
-		return -1;
-
-	vg = specs->lvm.vg;
-	if (!vg)
-		vg = lxc_global_config_value("lxc.bdev.lvm.vg");
-
-	thinpool = specs->lvm.thinpool;
-	if (!thinpool)
-		thinpool = lxc_global_config_value("lxc.bdev.lvm.thin_pool");
-
-	/* /dev/$vg/$lv */
-	if (specs->lvm.lv)
-		lv = specs->lvm.lv;
-
-	len = strlen(vg) + strlen(lv) + 7;
-	bdev->src = malloc(len);
-	if (!bdev->src)
-		return -1;
-
-	ret = snprintf(bdev->src, len, "/dev/%s/%s", vg, lv);
-	if (ret < 0 || ret >= len)
-		return -1;
-
-	// fssize is in bytes.
-	sz = specs->fssize;
-	if (!sz)
-		sz = DEFAULT_FS_SIZE;
-
-	if (do_lvm_create(bdev->src, sz, thinpool) < 0) {
-		ERROR("Error creating new lvm blockdev %s size %"PRIu64" bytes", bdev->src, sz);
-		return -1;
-	}
-
-	fstype = specs->fstype;
-	if (!fstype)
-		fstype = DEFAULT_FSTYPE;
-	if (do_mkfs(bdev->src, fstype) < 0) {
-		ERROR("Error creating filesystem type %s on %s", fstype,
-			bdev->src);
-		return -1;
-	}
-	if (!(bdev->dest = strdup(dest)))
-		return -1;
-
-	if (mkdir_p(bdev->dest, 0755) < 0) {
-		ERROR("Error creating %s", bdev->dest);
-		return -1;
-	}
-
-	return 0;
-}
-
-static const struct bdev_ops lvm_ops = {
-	.detect = &lvm_detect,
-	.mount = &lvm_mount,
-	.umount = &lvm_umount,
-	.clone_paths = &lvm_clonepaths,
-	.destroy = &lvm_destroy,
-	.create = &lvm_create,
-	.can_snapshot = true,
-	.can_backup = false,
-};
-
 
 /*
  *   CEPH RBD ops
@@ -925,8 +665,9 @@ static int rbd_umount(struct bdev *bdev)
 	return umount(bdev->dest);
 }
 
-static int rbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath, int snap,
+static int rbd_clonepaths(struct bdev *orig, struct bdev *new,
+		const char *oldname, const char *cname,
+		const char *oldpath, const char *lxcpath, int snap,
 		uint64_t newsize, struct lxc_conf *conf)
 {
 	ERROR("rbd clonepaths not implemented");
@@ -962,7 +703,7 @@ static int rbd_destroy(struct bdev *orig)
 }
 
 static int rbd_create(struct bdev *bdev, const char *dest, const char *n,
-			struct bdev_specs *specs)
+		struct bdev_specs *specs)
 {
 	const char *rbdpool, *rbdname = n, *fstype;
 	uint64_t size;
@@ -1047,17 +788,6 @@ static const struct bdev_ops rbd_ops = {
 	.create = &rbd_create,
 	.can_snapshot = false,
 	.can_backup = false,
-};
-
-static const struct bdev_ops btrfs_ops = {
-	.detect = &btrfs_detect,
-	.mount = &btrfs_mount,
-	.umount = &btrfs_umount,
-	.clone_paths = &btrfs_clonepaths,
-	.destroy = &btrfs_destroy,
-	.create = &btrfs_create,
-	.can_snapshot = true,
-	.can_backup = true,
 };
 
 //
@@ -1229,8 +959,9 @@ static int do_loop_create(const char *path, uint64_t size, const char *fstype)
  * No idea what the original blockdev will be called, but the copy will be
  * called $lxcpath/$lxcname/rootdev
  */
-static int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath, int snap,
+static int loop_clonepaths(struct bdev *orig, struct bdev *new,
+		const char *oldname, const char *cname,
+		const char *oldpath, const char *lxcpath, int snap,
 		uint64_t newsize, struct lxc_conf *conf)
 {
 	char fstype[100];
@@ -1289,7 +1020,7 @@ static int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldn
 }
 
 static int loop_create(struct bdev *bdev, const char *dest, const char *n,
-			struct bdev_specs *specs)
+		struct bdev_specs *specs)
 {
 	const char *fstype;
 	uint64_t sz;
@@ -1349,30 +1080,6 @@ static const struct bdev_ops loop_ops = {
 	.destroy = &loop_destroy,
 	.create = &loop_create,
 	.can_snapshot = false,
-	.can_backup = true,
-};
-
-/* overlay */
-static const struct bdev_ops ovl_ops = {
-	.detect = &ovl_detect,
-	.mount = &ovl_mount,
-	.umount = &ovl_umount,
-	.clone_paths = &ovl_clonepaths,
-	.destroy = &ovl_destroy,
-	.create = &ovl_create,
-	.can_snapshot = true,
-	.can_backup = true,
-};
-
-/* zfs */
-static const struct bdev_ops zfs_ops = {
-	.detect = &zfs_detect,
-	.mount = &zfs_mount,
-	.umount = &zfs_umount,
-	.clone_paths = &zfs_clonepaths,
-	.destroy = &zfs_destroy,
-	.create = &zfs_create,
-	.can_snapshot = true,
 	.can_backup = true,
 };
 
@@ -1465,8 +1172,9 @@ static int aufs_umount(struct bdev *bdev)
 	return umount(bdev->dest);
 }
 
-static int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath, int snap,
+static int aufs_clonepaths(struct bdev *orig, struct bdev *new,
+		const char *oldname, const char *cname,
+		const char *oldpath, const char *lxcpath, int snap,
 		uint64_t newsize, struct lxc_conf *conf)
 {
 	if (!snap) {
@@ -1610,7 +1318,7 @@ static int aufs_destroy(struct bdev *orig)
  * $lxcpath/$lxcname/delta0
  */
 static int aufs_create(struct bdev *bdev, const char *dest, const char *n,
-			struct bdev_specs *specs)
+		struct bdev_specs *specs)
 {
 	char *delta;
 	int ret, len = strlen(dest), newlen;
@@ -1932,13 +1640,14 @@ static int nbd_mount(struct bdev *bdev)
 }
 
 static int nbd_create(struct bdev *bdev, const char *dest, const char *n,
-			struct bdev_specs *specs)
+		struct bdev_specs *specs)
 {
 	return -ENOSYS;
 }
 
-static int nbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath, int snap,
+static int nbd_clonepaths(struct bdev *orig, struct bdev *new,
+		const char *oldname, const char *cname,
+		const char *oldpath, const char *lxcpath, int snap,
 		uint64_t newsize, struct lxc_conf *conf)
 {
 	return -ENOSYS;
@@ -2029,7 +1738,8 @@ static const struct bdev_type *bdev_query(const char *src)
 	return &bdevs[i];
 }
 
-struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst, const char *mntopts)
+struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst,
+		const char *mntopts)
 {
 	struct bdev *bdev;
 	const struct bdev_type *q;
@@ -2121,9 +1831,8 @@ static bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
  * the original, mount the new, and rsync the contents.
  */
 struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
-			const char *lxcpath, const char *bdevtype,
-			int flags, const char *bdevdata, uint64_t newsize,
-			int *needs_rdep)
+		const char *lxcpath, const char *bdevtype, int flags,
+		const char *bdevdata, uint64_t newsize, int *needs_rdep)
 {
 	struct bdev *orig, *new;
 	pid_t pid;
@@ -2278,8 +1987,8 @@ err:
 	return NULL;
 }
 
-static struct bdev * do_bdev_create(const char *dest, const char *type,
-			const char *cname, struct bdev_specs *specs)
+static struct bdev *do_bdev_create(const char *dest, const char *type,
+		const char *cname, struct bdev_specs *specs)
 {
 
 	struct bdev *bdev = bdev_get(type);
@@ -2306,8 +2015,8 @@ static struct bdev * do_bdev_create(const char *dest, const char *type,
  * @cname: the container name
  * @specs: details about the backing store to create, like fstype
  */
-struct bdev *bdev_create(const char *dest, const char *type,
-			const char *cname, struct bdev_specs *specs)
+struct bdev *bdev_create(const char *dest, const char *type, const char *cname,
+		struct bdev_specs *specs)
 {
 	struct bdev *bdev;
 	char *best_options[] = {"btrfs", "zfs", "lvm", "dir", "rbd", NULL};
@@ -2398,4 +2107,3 @@ int bdev_destroy_wrapper(void *data)
 	else
 		return 0;
 }
-
