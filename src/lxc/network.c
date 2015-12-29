@@ -158,8 +158,10 @@ static char * is_wlan(const char *ifname)
 	physlen = ftell(f);
 	fseek(f, 0, SEEK_SET);
 	physname = malloc(physlen+1);
-	if (!physname)
+	if (!physname) {
+		fclose(f);	
 		goto bad;
+	}
 	memset(physname, 0, physlen+1);
 	ret = fread(physname, 1, physlen, f);
 	fclose(f);
