@@ -109,6 +109,8 @@ int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char* ifname)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi)
+		goto out;
 	ifi->ifi_family = AF_UNSPEC;
 	ifi->ifi_index = ifindex;
 
@@ -276,6 +278,8 @@ int lxc_netdev_delete_by_index(int ifindex)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_DELLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi)
+		goto out;
 	ifi->ifi_family = AF_UNSPEC;
 	ifi->ifi_index = ifindex;
 
@@ -326,6 +330,8 @@ int lxc_netdev_rename_by_index(int ifindex, const char *newname)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi)
+		goto out;
 	ifi->ifi_family = AF_UNSPEC;
 	ifi->ifi_index = ifindex;
 
@@ -389,6 +395,10 @@ int netdev_set_flag(const char *name, int flag)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi) {
+		err = -ENOMEM;
+		goto out;
+	}
 	ifi->ifi_family = AF_UNSPEC;
 	ifi->ifi_index = index;
 	ifi->ifi_change |= IFF_UP;
@@ -439,6 +449,10 @@ int netdev_get_flag(const char* name, int *flag)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_GETLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi) {
+		err = -ENOMEM;
+		goto out;
+	}
 	ifi->ifi_family = AF_UNSPEC;
 	ifi->ifi_index = index;
 
@@ -513,6 +527,8 @@ int netdev_get_mtu(int ifindex)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_GETLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi)
+		goto out;
 	ifi->ifi_family = AF_UNSPEC;
 
 	/* Send the request for addresses, which returns all addresses
@@ -624,6 +640,10 @@ int lxc_netdev_set_mtu(const char *name, int mtu)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi) {
+		err = -ENOMEM;
+		goto out;
+	}
 	ifi->ifi_family = AF_UNSPEC;
 	ifi->ifi_index = index;
 
@@ -683,6 +703,8 @@ int lxc_veth_create(const char *name1, const char *name2)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi)
+		goto out;
 	ifi->ifi_family = AF_UNSPEC;
 
 	err = -EINVAL;
@@ -702,8 +724,10 @@ int lxc_veth_create(const char *name1, const char *name2)
 		goto out;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
-	if (!ifi)
+	if (!ifi) {
+		err = -ENOMEM;
 		goto out;
+	}
 
 	if (nla_put_string(nlmsg, IFLA_IFNAME, name2))
 		goto out;
@@ -766,6 +790,10 @@ int lxc_vlan_create(const char *master, const char *name, unsigned short vlanid)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi) {
+		err = -ENOMEM;
+		goto err1;
+	}
 	ifi->ifi_family = AF_UNSPEC;
 
 	nest = nla_begin_nested(nlmsg, IFLA_LINKINFO);
@@ -842,6 +870,10 @@ int lxc_macvlan_create(const char *master, const char *name, int mode)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi) {
+		err = -ENOMEM;
+		goto out;
+	}
 	ifi->ifi_family = AF_UNSPEC;
 
 	nest = nla_begin_nested(nlmsg, IFLA_LINKINFO);
@@ -1023,6 +1055,8 @@ static int ip_addr_add(int family, int ifindex,
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWADDR;
 
 	ifa = nlmsg_reserve(nlmsg, sizeof(struct ifaddrmsg));
+	if (!ifa) 
+		goto out;
 	ifa->ifa_prefixlen = prefix;
 	ifa->ifa_index = ifindex;
 	ifa->ifa_family = family;
@@ -1144,6 +1178,8 @@ static int ip_addr_get(int family, int ifindex, void **res)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_GETADDR;
 
 	ifa = nlmsg_reserve(nlmsg, sizeof(struct ifaddrmsg));
+	if (!ifa)
+		goto out;
 	ifa->ifa_family = family;
 
 	/* Send the request for addresses, which returns all addresses
@@ -1258,6 +1294,8 @@ static int ip_gateway_add(int family, int ifindex, void *gw)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWROUTE;
 
 	rt = nlmsg_reserve(nlmsg, sizeof(struct rtmsg));
+	if (!rt)
+		goto out;
 	rt->rtm_family = family;
 	rt->rtm_table = RT_TABLE_MAIN;
 	rt->rtm_scope = RT_SCOPE_UNIVERSE;
@@ -1322,6 +1360,8 @@ static int ip_route_dest_add(int family, int ifindex, void *dest)
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWROUTE;
 
 	rt = nlmsg_reserve(nlmsg, sizeof(struct rtmsg));
+	if (!rt)
+		goto out;
 	rt->rtm_family = family;
 	rt->rtm_table = RT_TABLE_MAIN;
 	rt->rtm_scope = RT_SCOPE_LINK;
