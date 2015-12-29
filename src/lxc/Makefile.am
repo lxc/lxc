@@ -10,6 +10,7 @@ noinst_HEADERS = \
 	bdev/lxcbtrfs.h \
 	bdev/lxcoverlay.h \
 	bdev/lxcrsync.h \
+	bdev/lxczfs.h \
 	caps.h \
 	cgroup.h \
 	conf.h \
@@ -66,6 +67,7 @@ liblxc_so_SOURCES = \
 	bdev/lxcbtrfs.c bdev/lxcbtrfs.h \
 	bdev/lxcoverlay.c bdev/lxcoverlay.h \
 	bdev/lxcrsync.c bdev/lxcrsync.h \
+	bdev/lxczfs.c bdev/lxczfs.h \
 	commands.c commands.h \
 	start.c start.h \
 	execute.c \
