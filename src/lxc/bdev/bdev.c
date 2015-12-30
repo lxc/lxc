@@ -53,6 +53,7 @@
 #include "error.h"
 #include "log.h"
 #include "lxc.h"
+#include "lxcaufs.h"
 #include "lxcbtrfs.h"
 #include "lxclock.h"
 #include "lxclvm.h"
@@ -76,6 +77,18 @@
 #endif
 
 lxc_log_define(bdev, lxc);
+
+/* aufs */
+static const struct bdev_ops aufs_ops = {
+	.detect = &aufs_detect,
+	.mount = &aufs_mount,
+	.umount = &aufs_umount,
+	.clone_paths = &aufs_clonepaths,
+	.destroy = &aufs_destroy,
+	.create = &aufs_create,
+	.can_snapshot = true,
+	.can_backup = true,
+};
 
 /* btrfs */
 static const struct bdev_ops btrfs_ops = {
@@ -124,18 +137,6 @@ static const struct bdev_ops zfs_ops = {
 	.can_snapshot = true,
 	.can_backup = true,
 };
-
-/* functions associated with an aufs bdev struct */
-static int aufs_clonepaths(struct bdev *orig, struct bdev *new,
-		const char *oldname, const char *cname,
-		const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf);
-static int aufs_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs);
-static int aufs_destroy(struct bdev *orig);
-static int aufs_detect(const char *path);
-static int aufs_mount(struct bdev *bdev);
-static int aufs_umount(struct bdev *bdev);
 
 /* functions associated with a dir bdev struct */
 static int dir_clonepaths(struct bdev *orig, struct bdev *new,
@@ -209,7 +210,7 @@ static bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
 
 /* the bulk of this needs to become a common helper */
 char *dir_new_path(char *src, const char *oldname, const char *name,
-		   const char *oldpath, const char *lxcpath)
+		const char *oldpath, const char *lxcpath)
 {
 	char *ret, *p, *p2;
 	int l1, l2, nlen;
@@ -1080,293 +1081,6 @@ static const struct bdev_ops loop_ops = {
 	.destroy = &loop_destroy,
 	.create = &loop_create,
 	.can_snapshot = false,
-	.can_backup = true,
-};
-
-//
-// aufs ops
-//
-
-static int aufs_detect(const char *path)
-{
-	if (strncmp(path, "aufs:", 5) == 0)
-		return 1; // take their word for it
-	return 0;
-}
-
-//
-// XXXXXXX plain directory bind mount ops
-//
-static int aufs_mount(struct bdev *bdev)
-{
-	char *options, *dup, *lower, *upper;
-	int len;
-	unsigned long mntflags;
-	char *mntdata;
-	int ret;
-	const char *xinopath = "/dev/shm/aufs.xino";
-
-	if (strcmp(bdev->type, "aufs"))
-		return -22;
-	if (!bdev->src || !bdev->dest)
-		return -22;
-
-	//  separately mount it first
-	//  mount -t aufs -obr=${upper}=rw:${lower}=ro lower dest
-	dup = alloca(strlen(bdev->src)+1);
-	strcpy(dup, bdev->src);
-	if (!(lower = strchr(dup, ':')))
-		return -22;
-	if (!(upper = strchr(++lower, ':')))
-		return -22;
-	*upper = '\0';
-	upper++;
-
-	if (parse_mntopts(bdev->mntopts, &mntflags, &mntdata) < 0) {
-		free(mntdata);
-		return -22;
-	}
-
-	// TODO We should check whether bdev->src is a blockdev, and if so
-	// but for now, only support aufs of a basic directory
-
-	// AUFS does not work on top of certain filesystems like (XFS or Btrfs)
-	// so add xino=/dev/shm/aufs.xino parameter to mount options.
-	// The same xino option can be specified to multiple aufs mounts, and
-	// a xino file is not shared among multiple aufs mounts.
-	//
-	// see http://www.mail-archive.com/aufs-users@lists.sourceforge.net/msg02587.html
-	//     http://www.mail-archive.com/aufs-users@lists.sourceforge.net/msg05126.html
-	if (mntdata) {
-		len = strlen(lower) + strlen(upper) + strlen(xinopath) + strlen("br==rw:=ro,,xino=") + strlen(mntdata) + 1;
-		options = alloca(len);
-		ret = snprintf(options, len, "br=%s=rw:%s=ro,%s,xino=%s", upper, lower, mntdata, xinopath);
-	}
-	else {
-		len = strlen(lower) + strlen(upper) + strlen(xinopath) + strlen("br==rw:=ro,xino=") + 1;
-		options = alloca(len);
-		ret = snprintf(options, len, "br=%s=rw:%s=ro,xino=%s", upper, lower, xinopath);
-	}
-
-	if (ret < 0 || ret >= len) {
-		free(mntdata);
-		return -1;
-	}
-
-	ret = mount(lower, bdev->dest, "aufs", MS_MGC_VAL | mntflags, options);
-	if (ret < 0)
-		SYSERROR("aufs: error mounting %s onto %s options %s",
-			lower, bdev->dest, options);
-	else
-		INFO("aufs: mounted %s onto %s options %s",
-			lower, bdev->dest, options);
-	return ret;
-}
-
-static int aufs_umount(struct bdev *bdev)
-{
-	if (strcmp(bdev->type, "aufs"))
-		return -22;
-	if (!bdev->src || !bdev->dest)
-		return -22;
-	return umount(bdev->dest);
-}
-
-static int aufs_clonepaths(struct bdev *orig, struct bdev *new,
-		const char *oldname, const char *cname,
-		const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
-{
-	if (!snap) {
-		ERROR("aufs is only for snapshot clones");
-		return -22;
-	}
-
-	if (!orig->src || !orig->dest)
-		return -1;
-
-	new->dest = dir_new_path(orig->dest, oldname, cname, oldpath, lxcpath);
-	if (!new->dest)
-		return -1;
-	if (mkdir_p(new->dest, 0755) < 0)
-		return -1;
-
-	if (am_unpriv() && chown_mapped_root(new->dest, conf) < 0)
-		WARN("Failed to update ownership of %s", new->dest);
-
-	if (strcmp(orig->type, "dir") == 0) {
-		char *delta, *lastslash;
-		int ret, len, lastslashidx;
-
-		// if we have /var/lib/lxc/c2/rootfs, then delta will be
-		//            /var/lib/lxc/c2/delta0
-		lastslash = strrchr(new->dest, '/');
-		if (!lastslash)
-			return -22;
-		if (strlen(lastslash) < 7)
-			return -22;
-		lastslash++;
-		lastslashidx = lastslash - new->dest;
-
-		delta = malloc(lastslashidx + 7);
-		if (!delta)
-			return -1;
-		strncpy(delta, new->dest, lastslashidx+1);
-		strcpy(delta+lastslashidx, "delta0");
-		if ((ret = mkdir(delta, 0755)) < 0) {
-			SYSERROR("error: mkdir %s", delta);
-			free(delta);
-			return -1;
-		}
-		if (am_unpriv() && chown_mapped_root(delta, conf) < 0)
-			WARN("Failed to update ownership of %s", delta);
-
-		// the src will be 'aufs:lowerdir:upperdir'
-		len = strlen(delta) + strlen(orig->src) + 12;
-		new->src = malloc(len);
-		if (!new->src) {
-			free(delta);
-			return -ENOMEM;
-		}
-		ret = snprintf(new->src, len, "aufs:%s:%s", orig->src, delta);
-		free(delta);
-		if (ret < 0 || ret >= len)
-			return -ENOMEM;
-	} else if (strcmp(orig->type, "aufs") == 0) {
-		// What exactly do we want to do here?
-		// I think we want to use the original lowerdir, with a
-		// private delta which is originally rsynced from the
-		// original delta
-		char *osrc, *odelta, *nsrc, *ndelta;
-		int len, ret;
-		if (!(osrc = strdup(orig->src)))
-			return -22;
-		nsrc = strchr(osrc, ':') + 1;
-		if (nsrc != osrc + 5 || (odelta = strchr(nsrc, ':')) == NULL) {
-			free(osrc);
-			return -22;
-		}
-		*odelta = '\0';
-		odelta++;
-		ndelta = dir_new_path(odelta, oldname, cname, oldpath, lxcpath);
-		if (!ndelta) {
-			free(osrc);
-			return -ENOMEM;
-		}
-		if ((ret = mkdir(ndelta, 0755)) < 0 && errno != EEXIST) {
-			SYSERROR("error: mkdir %s", ndelta);
-			free(osrc);
-			free(ndelta);
-			return -1;
-		}
-		if (am_unpriv() && chown_mapped_root(ndelta, conf) < 0)
-			WARN("Failed to update ownership of %s", ndelta);
-
-		struct rsync_data_char rdata;
-		rdata.src = odelta;
-		rdata.dest = ndelta;
-		if (am_unpriv())
-			ret = userns_exec_1(conf, rsync_delta_wrapper, &rdata);
-		else
-			ret = rsync_delta(&rdata);
-		if (ret) {
-			free(osrc);
-			free(ndelta);
-			ERROR("copying aufs delta");
-			return -1;
-		}
-		len = strlen(nsrc) + strlen(ndelta) + 12;
-		new->src = malloc(len);
-		if (!new->src) {
-			free(osrc);
-			free(ndelta);
-			return -ENOMEM;
-		}
-		ret = snprintf(new->src, len, "aufs:%s:%s", nsrc, ndelta);
-		free(osrc);
-		free(ndelta);
-		if (ret < 0 || ret >= len)
-			return -ENOMEM;
-	} else {
-		ERROR("aufs clone of %s container is not yet supported",
-			orig->type);
-		// Note, supporting this will require aufs_mount supporting
-		// mounting of the underlay.  No big deal, just needs to be done.
-		return -1;
-	}
-
-	return 0;
-}
-
-static int aufs_destroy(struct bdev *orig)
-{
-	char *upper;
-
-	if (strncmp(orig->src, "aufs:", 5) != 0)
-		return -22;
-	upper = strchr(orig->src + 5, ':');
-	if (!upper)
-		return -22;
-	upper++;
-	return lxc_rmdir_onedev(upper, NULL);
-}
-
-/*
- * to say 'lxc-create -t ubuntu -n o1 -B aufs' means you want
- * $lxcpath/$lxcname/rootfs to have the created container, while all
- * changes after starting the container are written to
- * $lxcpath/$lxcname/delta0
- */
-static int aufs_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs)
-{
-	char *delta;
-	int ret, len = strlen(dest), newlen;
-
-	if (len < 8 || strcmp(dest+len-7, "/rootfs") != 0)
-		return -1;
-
-	if (!(bdev->dest = strdup(dest))) {
-		ERROR("Out of memory");
-		return -1;
-	}
-
-	delta = alloca(strlen(dest)+1);
-	strcpy(delta, dest);
-	strcpy(delta+len-6, "delta0");
-
-	if (mkdir_p(delta, 0755) < 0) {
-		ERROR("Error creating %s", delta);
-		return -1;
-	}
-
-	/* aufs:lower:upper */
-	newlen = (2 * len) + strlen("aufs:") + 2;
-	bdev->src = malloc(newlen);
-	if (!bdev->src) {
-		ERROR("Out of memory");
-		return -1;
-	}
-	ret = snprintf(bdev->src, newlen, "aufs:%s:%s", dest, delta);
-	if (ret < 0 || ret >= newlen)
-		return -1;
-
-	if (mkdir_p(bdev->dest, 0755) < 0) {
-		ERROR("Error creating %s", bdev->dest);
-		return -1;
-	}
-
-	return 0;
-}
-
-static const struct bdev_ops aufs_ops = {
-	.detect = &aufs_detect,
-	.mount = &aufs_mount,
-	.umount = &aufs_umount,
-	.clone_paths = &aufs_clonepaths,
-	.destroy = &aufs_destroy,
-	.create = &aufs_create,
-	.can_snapshot = true,
 	.can_backup = true,
 };
 
