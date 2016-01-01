@@ -451,6 +451,9 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 	if (conf->console.log_path && setenv("LXC_CONSOLE_LOGPATH", conf->console.log_path, 1)) {
 		SYSERROR("failed to set environment variable for console log");
 	}
+	if (setenv("LXC_CGNS_AWARE", "1", 1)) {
+		SYSERROR("failed to set LXC_CGNS_AWARE environment variable");
+	}
 	/* End of environment variable setup for hooks */
 
 	if (run_lxc_hooks(name, "pre-start", conf, handler->lxcpath, NULL)) {
