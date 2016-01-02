@@ -1,4 +1,4 @@
-have lxc-start && {
+_have lxc-start && {
     _lxc_names() {
         COMPREPLY=( $( compgen -W "$( lxc-ls )" "$cur" ) )
     }
