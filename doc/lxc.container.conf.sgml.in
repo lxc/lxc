@@ -1126,7 +1126,9 @@ proc proc proc nodev,noexec,nosuid 0 0
               <citerefentry>
                 <refentrytitle><command>capabilities</command></refentrytitle>
                 <manvolnum>7</manvolnum>
-              </citerefentry>,
+              </citerefentry>.
+              If used with no value, lxc will clear any drop capabilities
+              specified up to this point.
             </para>
           </listitem>
         </varlistentry>
