@@ -647,6 +647,8 @@ AC_CONFIG_FILES([
 	config/init/upstart/Makefile
 	config/etc/Makefile
 	config/templates/Makefile
+	config/templates/alpine.common.conf
+	config/templates/alpine.userns.conf
 	config/templates/archlinux.common.conf
 	config/templates/archlinux.userns.conf
 	config/templates/centos.common.conf

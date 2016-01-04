@@ -5,6 +5,8 @@ EXTRA_DIST = common.seccomp
 SUBDIRS = common.conf.d
 
 templatesconfig_DATA = \
+	alpine.common.conf \
+	alpine.userns.conf \
 	archlinux.common.conf \
 	archlinux.userns.conf \
 	centos.common.conf \
