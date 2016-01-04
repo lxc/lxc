@@ -3057,6 +3057,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	c->lxc_conf->unexpanded_config = strdup(saved_unexp_conf);
 	if (!c->lxc_conf->unexpanded_config) {
 		ERROR("Out of memory");
+		fclose(fout);
 		goto out;
 	}
 	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs", false);
