@@ -72,7 +72,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <para>
       Each option in the configuration file has the form <command>key
       = value</command> fitting in one line. The '#' character means
-      the line is a comment.
+      the line is a comment. List options, like capabilities and cgroups
+      options, can be used with no value to clear any previously
+      defined values of that option.
     </para>
 
     <refsect2>
