@@ -177,18 +177,26 @@ int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		 * up)
 		 */
 		lastslash = strrchr(ndelta, '/');
-		if (!lastslash)
+		if (!lastslash) {
+			free(osrc);
+			free(ndelta);
 			return -1;
+		}
 		lastslash++;
 		lastslashidx = lastslash - ndelta;
 
 		work = malloc(lastslashidx + 7);
-		if (!work)
+		if (!work) {
+			free(osrc);
+			free(ndelta);
 			return -1;
+		}
 		strncpy(work, ndelta, lastslashidx + 1);
 		strcpy(work + lastslashidx, "olwork");
 		if ((mkdir(work, 0755) < 0) && errno != EEXIST) {
 			SYSERROR("error: mkdir %s", work);
+			free(osrc);
+			free(ndelta);
 			free(work);
 			return -1;
 		}
