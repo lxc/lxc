@@ -315,6 +315,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
+            <option>lxc.network</option>
+          </term>
+          <listitem>
+            <para>
+              may be used without a value to clear all previous network options.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
             <option>lxc.network.type</option>
           </term>
           <listitem>
