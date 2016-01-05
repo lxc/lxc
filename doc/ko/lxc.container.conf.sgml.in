@@ -2141,6 +2141,21 @@ mknod errno 0
       <variablelist>
         <varlistentry>
           <term>
+            <option>LXC_SRC_NAME</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Only for the clone hook. Is set to the original container name.
+              -->
+              clone 훅에서만 사용된다. 원본 컨테이너의 이름을 지정한다.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
             <option>LXC_TARGET</option>
           </term>
           <listitem>
