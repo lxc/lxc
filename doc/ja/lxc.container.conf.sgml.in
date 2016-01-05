@@ -1592,6 +1592,8 @@ proc proc proc nodev,noexec,nosuid 0 0
 		<refentrytitle><command>capabilities</command></refentrytitle>
 		<manvolnum>7</manvolnum>
 	      </citerefentry>,
+              If used with no value, lxc will clear any drop capabilities
+              specified up to this point.
               -->
               コンテナ内で削除するケーパビリティ (capability) を指定します。
               一行でスペース区切りで複数のケーパビリティを指定することも可能です。
@@ -1602,6 +1604,7 @@ proc proc proc nodev,noexec,nosuid 0 0
 		<refentrytitle><command>capabilities</command></refentrytitle>
 		<manvolnum>7</manvolnum>
 	      </citerefentry>
+	      この設定を、値を指定しない状態で使った場合、それ以前に指定された削除対象のケーパビリティの指定をすべてクリアします (lxc.cap.drop に何も指定しない状態になります)。
 	    </para>
 	  </listitem>
 	</varlistentry>
