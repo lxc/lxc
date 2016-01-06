@@ -132,8 +132,10 @@ static bool aa_stacking_supported(void) {
 static bool in_aa_confined_container(void) {
 	char *p = apparmor_process_label_get(getpid());
 	bool ret = false;
-	if (p && strcmp(p, "/usr/bin/lxc-start") != 0)
+	if (p && strcmp(p, "/usr/bin/lxc-start") != 0 && strcmp(p, "unconfined") != 0) {
+		INFO("Already apparmor-confined under %s", p);
 		ret = true;
+	}
 	free(p);
 	return ret;
 }
@@ -170,7 +172,6 @@ static int apparmor_process_label_set(const char *label, int use_default,
 			ERROR("already apparmor confined, but new label requested.");
 			return -1;
 		}
-		INFO("Already apparmor-confined");
 		return 0;
 	}
 
