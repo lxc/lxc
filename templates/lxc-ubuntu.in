@@ -332,6 +332,7 @@ download_ubuntu()
     release=$3
 
     packages_template=${packages_template:-"ssh,vim"}
+    debootstrap_parameters=
 
     # Try to guess a list of langpacks to install
     langpacks="language-pack-en"
@@ -343,7 +344,10 @@ download_ubuntu()
     fi
     packages_template="${packages_template},$(echo $langpacks | sed 's/ /,/g')"
 
-    if [ $variant == 'minbase' ]; then
+    if [ -n "$variant" ]; then
+        debootstrap_parameters="$debootstrap_parameters --variant=$variant"
+    fi
+    if [ $variant = 'minbase' ]; then
         packages_template="${packages_template},sudo,ifupdown,isc-dhcp-client"
     fi
 
@@ -361,9 +365,9 @@ download_ubuntu()
     # download a mini ubuntu into a cache
     echo "Downloading ubuntu $release minimal ..."
     if [ -n "$(which qemu-debootstrap)" ]; then
-        qemu-debootstrap --verbose $(if [ -n "$variant" ]; then echo --variant="$variant"; fi) --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
+        qemu-debootstrap --verbose $debootstrap_parameters --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
     else
-        debootstrap --verbose $(if [ -n "$variant" ]; then echo --variant="$variant"; fi) --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
+        debootstrap --verbose $debootstrap_parameters --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
     fi
 
     if [ $? -ne 0 ]; then
