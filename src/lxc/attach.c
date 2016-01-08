@@ -957,6 +957,13 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		WARN("could not change directory to '%s'", new_cwd);
 	free(cwd);
 
+	if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP && cgns_supported()) {
+		if (unshare(CLONE_NEWCGROUP) != 0) {
+			SYSERROR("cgroupns unshare: permission denied");
+			rexit(-1);
+		}
+	}
+
 	/* now create the real child process */
 	{
 		struct attach_clone_payload payload = {

@@ -1185,6 +1185,11 @@ bool file_exists(const char *f)
 	return stat(f, &statbuf) == 0;
 }
 
+bool cgns_supported(void)
+{
+	return file_exists("/proc/self/ns/cgroup");
+}
+
 /* historically lxc-init has been under /usr/lib/lxc and under
  * /usr/lib/$ARCH/lxc.  It now lives as $prefix/sbin/init.lxc.
  */

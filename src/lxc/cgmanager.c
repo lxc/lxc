@@ -210,11 +210,6 @@ static void check_supports_multiple_controllers(pid_t pid)
 	cgm_supports_multiple_controllers = false;
 	cgm_all_controllers_same = false;
 
-	if (api_version < CGM_SUPPORTS_MULT_CONTROLLERS) {
-		cgm_supports_multiple_controllers = false;
-		return;
-	}
-
 	cgm_supports_multiple_controllers = true;
 
 	if (pid == -1)
@@ -544,17 +539,13 @@ static void *cgm_init(const char *name)
 {
 	struct cgm_data *d;
 
+	d = malloc(sizeof(*d));
+	if (!d)
+		return NULL;
+
 	if (!cgm_dbus_connect()) {
 		ERROR("Error connecting to cgroup manager");
-		return NULL;
-	}
-
-	check_supports_multiple_controllers(-1);
-
-	d = malloc(sizeof(*d));
-	if (!d) {
-		cgm_dbus_disconnect();
-		return NULL;
+		goto err1;
 	}
 
 	memset(d, 0, sizeof(*d));
@@ -1132,6 +1123,9 @@ static void cull_user_controllers(void)
 	}
 }
 
+/*
+ * return true if inword is in the comma-delimited list cgroup_use
+ */
 static bool in_comma_list(const char *inword, const char *cgroup_use)
 {
 	char *e;
@@ -1144,6 +1138,23 @@ static bool in_comma_list(const char *inword, const char *cgroup_use)
 			return true;
 		cgroup_use = e + 1;
 	} while (e);
+
+	return false;
+}
+
+/*
+ * inlist is a comma-delimited list of cgroups;  so is checklist.  Return
+ * true if any member of inlist is in checklist.
+ */
+static bool any_in_comma_list(const char *inlist, const char *checklist)
+{
+	char *tmp = alloca(strlen(inlist) + 1), *tok, *saveptr = NULL;
+
+	strcpy(tmp, inlist);
+	for (tok = strtok_r(tmp, ",", &saveptr); tok; tok = strtok_r(NULL, ",", &saveptr)) {
+		if (in_comma_list(tok, checklist))
+			return true;
+	}
 
 	return false;
 }
@@ -1200,6 +1211,132 @@ static bool verify_and_prune(const char *cgroup_use)
 	}
 
 	return true;
+}
+
+static void drop_subsystem(int which)
+{
+	int i;
+
+	if (which < 0 || which >= nr_subsystems) {
+		ERROR("code error: dropping invalid subsystem index\n");
+		exit(1);
+	}
+
+	free(subsystems[which]);
+	/* note - we have nr_subsystems+1 entries, last one a NULL */
+	for (i = which; i < nr_subsystems; i++)
+		subsystems[i] = subsystems[i+1];
+	nr_subsystems -= 1;
+}
+
+/*
+ * Check whether we can create the cgroups we would want
+ */
+static bool subsys_is_writeable(const char *controller, const char *probe)
+{
+	int32_t existed;
+	bool ret = true;
+
+	if ( cgmanager_create_sync(NULL, cgroup_manager, controller,
+				       probe, &existed) != 0) {
+		NihError *nerr;
+		nerr = nih_error_get();
+		ERROR("call to cgmanager_create_sync failed: %s", nerr->message);
+		nih_free(nerr);
+		ERROR("Failed to create %s:%s", controller, probe);
+		ret = false;
+	}
+
+	return ret;
+}
+
+/*
+ * Return true if this is a subsystem which we cannot do
+ * without
+ */
+static bool is_crucial_subsys(const char *s)
+{
+	if (strcmp(s, "systemd") == 0)
+		return true;
+	if (strcmp(s, "name=systemd") == 0)
+		return true;
+	if (strcmp(s, "freezer") == 0)
+		return true;
+	return false;
+}
+
+static char *get_last_controller_in_list(char *list)
+{
+	char *p;
+
+	while ((p = strchr(list, ',')) != NULL)
+		list = p + 1;
+
+	return list;
+}
+
+/*
+ * Make sure that all the controllers are writeable.
+ * If any are not, then
+ *   - if they are listed in lxc.cgroup.use, refuse to start
+ *   - else if they are crucial subsystems, refuse to start
+ *   - else warn and do not use them
+ */
+static bool verify_final_subsystems(const char *cgroup_use)
+{
+	int i = 0;
+	bool dropped_any = false;
+	bool ret = false;
+	const char *cgroup_pattern;
+	char tmpnam[50], *probe;
+
+	if (!cgm_dbus_connect()) {
+		ERROR("Error connecting to cgroup manager");
+		return false;
+	}
+
+	cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
+	i = snprintf(tmpnam, 50, "lxcprobe-%d", getpid());
+	if (i < 0 || i >= 50) {
+		ERROR("Attack - format string modified?");
+		return false;
+	}
+	probe = lxc_string_replace("%n", tmpnam, cgroup_pattern);
+	if (!probe)
+		goto out;
+
+	while (i < nr_subsystems) {
+		char *p = get_last_controller_in_list(subsystems[i]);
+
+		if (!subsys_is_writeable(p, probe)) {
+			if (is_crucial_subsys(p)) {
+				ERROR("Cannot write to crucial subsystem %s\n",
+					subsystems[i]);
+				goto out;
+			}
+			if (cgroup_use && any_in_comma_list(subsystems[i], cgroup_use)) {
+				ERROR("Cannot write to subsystem %s which is requested in lxc.cgroup.use\n",
+					subsystems[i]);
+				goto out;
+			}
+			WARN("Cannot write to subsystem %s, continuing with out it\n",
+				subsystems[i]);
+			dropped_any = true;
+			drop_subsystem(i);
+		} else {
+			cgm_remove_cgroup(subsystems[i], probe);
+			i++;
+		}
+	}
+
+	if (dropped_any)
+		cgm_all_controllers_same = false;
+	ret = true;
+
+out:
+	free(probe);
+	cgm_dbus_disconnect();
+	return ret;
 }
 
 static bool collect_subsytems(void)
@@ -1285,7 +1422,7 @@ collected:
 	/* make sure that cgroup.use can be and is honored */
 	const char *cgroup_use = lxc_global_config_value("lxc.cgroup.use");
 	if (!cgroup_use && errno != 0)
-		goto out_good;
+		goto final_verify;
 	if (cgroup_use) {
 		if (!verify_and_prune(cgroup_use)) {
 			free_subsystems();
@@ -1295,8 +1432,8 @@ collected:
 		cgm_all_controllers_same = false;
 	}
 
-out_good:
-	return true;
+final_verify:
+	return verify_final_subsystems(cgroup_use);
 
 out_free:
 	free(line);
@@ -1313,23 +1450,20 @@ out_free:
  */
 struct cgroup_ops *cgm_ops_init(void)
 {
+	check_supports_multiple_controllers(-1);
 	if (!collect_subsytems())
 		return NULL;
-	if (!cgm_dbus_connect())
-		goto err1;
 
-	// root;  try to escape to root cgroup
-	if (geteuid() == 0 && !cgm_escape())
-		goto err2;
-	cgm_dbus_disconnect();
+	if (api_version < CGM_SUPPORTS_MULT_CONTROLLERS)
+		cgm_supports_multiple_controllers = false;
+
+	// if root, try to escape to root cgroup
+	if (geteuid() == 0 && !cgm_escape()) {
+		free_subsystems();
+		return NULL;
+	}
 
 	return &cgmanager_ops;
-
-err2:
-	cgm_dbus_disconnect();
-err1:
-	free_subsystems();
-	return NULL;
 }
 
 /* unfreeze is called by the command api after killing a container.  */

@@ -451,6 +451,9 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 	if (conf->console.log_path && setenv("LXC_CONSOLE_LOGPATH", conf->console.log_path, 1)) {
 		SYSERROR("failed to set environment variable for console log");
 	}
+	if (setenv("LXC_CGNS_AWARE", "1", 1)) {
+		SYSERROR("failed to set LXC_CGNS_AWARE environment variable");
+	}
 	/* End of environment variable setup for hooks */
 
 	if (run_lxc_hooks(name, "pre-start", conf, handler->lxcpath, NULL)) {
@@ -841,6 +844,11 @@ static int do_start(void *data)
 
 	if (handler->backgrounded && null_stdfds() < 0)
 		goto out_warn_father;
+
+	if (cgns_supported() && unshare(CLONE_NEWCGROUP) != 0) {
+		SYSERROR("Failed to unshare cgroup namespace");
+		goto out_warn_father;
+	}
 
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
