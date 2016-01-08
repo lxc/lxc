@@ -1575,7 +1575,7 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 	fulllen = strlen(target);
 
 	/* make sure prefix-skip makes sense */
-	if (prefix_skip) {
+	if (prefix_skip && strlen(prefix_skip) > 0) {
 		curlen = strlen(prefix_skip);
 		if (!is_subdir(target, prefix_skip, curlen)) {
 			ERROR("WHOA there - target '%s' didn't start with prefix '%s'",
