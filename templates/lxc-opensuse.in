@@ -175,7 +175,7 @@ EOF
     fi
 
     # dhcpcd is not in the default repos with Leap 42.1
-    if [ $DISTRO != "leap/42.1"]
+    if [ $DISTRO != "leap/42.1" ]
     then
     echo "Support: dhcpcd" >> $cache/partial-$arch-packages/opensuse.conf
     fi
