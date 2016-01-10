@@ -136,8 +136,13 @@ download_opensuse()
     echo "Downloading opensuse minimal ..."
     mkdir -p "$cache/partial-$arch-packages"
     zypper --quiet --root $cache/partial-$arch-packages --non-interactive ar http://download.opensuse.org/distribution/$DISTRO/repo/oss/ repo-oss || return 1
-    zypper --quiet --root $cache/partial-$arch-packages --non-interactive ar http://download.opensuse.org/update/$DISTRO/ update || return 1
-    zypper --quiet --root $cache/partial-$arch-packages --non-interactive --gpg-auto-import-keys update || return 1
+    # Leap update repos were rearranged
+    if [ $DISTRO == "leap/42.1" ]; then
+        zypper --quiet --root $cache/partial-$arch-packages --non-interactive ar http://download.opensuse.org/update/$DISTRO/oss/ update || return 1
+    else
+        zypper --quiet --root $cache/partial-$arch-packages --non-interactive ar http://download.opensuse.org/update/$DISTRO/ update || return 1
+    fi
+	zypper --quiet --root $cache/partial-$arch-packages --non-interactive --gpg-auto-import-keys update || return 1
     zypper --root $cache/partial-$arch-packages --non-interactive in --auto-agree-with-licenses --download-only zypper lxc patterns-openSUSE-base bash iputils sed tar rsyslog || return 1
     cat > $cache/partial-$arch-packages/opensuse.conf << EOF
 Preinstall: aaa_base bash coreutils diffutils
@@ -157,7 +162,7 @@ Support: ncurses-utils
 Support: iputils
 Support: udev
 Support: netcfg
-Support: dhcpcd hwinfo insserv-compat module-init-tools openSUSE-release openssh
+Support: hwinfo insserv-compat module-init-tools openSUSE-release openssh
 Support: pwdutils rpcbind sysconfig
 
 Ignore: rpm:suse-build-key,build-key
@@ -167,6 +172,12 @@ EOF
     if [ $DISTRO = "13.2" ]
     then
 	echo "Support: python3-base" >> $cache/partial-$arch-packages/opensuse.conf
+    fi
+
+    # dhcpcd is not in the default repos with Leap 42.1
+    if [ $DISTRO != "leap/42.1"]
+    then
+    echo "Support: dhcpcd" >> $cache/partial-$arch-packages/opensuse.conf
     fi
 
     if [ "$arch" = "i686" ]; then
@@ -442,6 +453,11 @@ else
 
 	13.2)
 	    echo "Selected openSUSE 13.2"
+	    ;;
+
+	42.1|leap/42.1|leap)
+	    echo "Selected openSUSE Leap 42.1"
+	    DISTRO="leap/42.1"
 	    ;;
 
 	*)
