@@ -180,6 +180,12 @@ EOF
     echo "Support: dhcpcd" >> $cache/partial-$arch-packages/opensuse.conf
     fi
 
+    # Leap doesn't seem to have iproute2 utils installed
+    if [ $DISTRO == "leap/42.1" ]
+    then
+    echo "Support: net-tools iproute2" >> $cache/partial-$arch-packages/opensuse.conf
+    fi
+
     if [ "$arch" = "i686" ]; then
         mkdir -p $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/i686/
         for i in "$cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/i586/*" ; do
