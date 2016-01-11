@@ -335,6 +335,9 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		     const char *lxcpath, int snap, uint64_t newsize,
 		     struct lxc_conf *conf)
 {
+	struct rsync_data_char sdata;
+	int ret;
+
 	if (!orig->dest || !orig->src)
 		return -1;
 
@@ -365,15 +368,24 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	if (orig->mntopts && (new->mntopts = strdup(orig->mntopts)) == NULL)
 		return -1;
 
-	if (snap) {
-		struct rsync_data_char sdata;
-		if (!am_unpriv())
-			return btrfs_snapshot(orig->dest, new->dest);
+	if (!am_unpriv()) {
+		ret = btrfs_snapshot(orig->dest, new->dest);
+	} else {
 		sdata.dest = new->dest;
 		sdata.src = orig->dest;
-		return userns_exec_1(conf, btrfs_snapshot_wrapper, &sdata);
+		ret = userns_exec_1(conf, btrfs_snapshot_wrapper, &sdata);
 	}
 
+	if (ret == 0)
+		return ret;
+
+	if (snap) {
+		ERROR("failed creating btrfs snapshot of %s in %s",
+			 orig->dest, new->dest);
+		return ret;
+	}
+
+	/* It's possible new is on different fs, so try copy-clone */
 	if (rmdir(new->dest) < 0 && errno != ENOENT) {
 		SYSERROR("removing %s", new->dest);
 		return -1;
