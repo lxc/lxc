@@ -202,7 +202,11 @@ EOF
 
     CLEAN_BUILD=1 BUILD_ARCH="$arch" BUILD_ROOT="$cache/partial-$arch" BUILD_DIST="$cache/partial-$arch-packages/opensuse.conf" PATH="$PATH:/usr/lib/build" /usr/lib/build/init_buildsystem  --clean --configdir /usr/lib/build/configs --cachedir $cache/partial-$arch-cache --repository $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/$arch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/noarch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/update/$arch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/update/noarch || return 1
     chroot $cache/partial-$arch /usr/bin/zypper --quiet --non-interactive ar http://download.opensuse.org/distribution/$DISTRO/repo/oss repo-oss || return 1
-    chroot $cache/partial-$arch /usr/bin/zypper --quiet --non-interactive ar http://download.opensuse.org/update/$DISTRO/ update || return 1
+    if [ $DISTRO == "leap/42.1" ]; then
+        chroot $cache/partial-$arch /usr/bin/zypper --quiet --non-interactive ar http://download.opensuse.org/update/$DISTRO/oss update || return 1
+    else
+        chroot $cache/partial-$arch /usr/bin/zypper --quiet --non-interactive ar http://download.opensuse.org/update/$DISTRO/ update || return 1
+    fi
 #   really clean the image
     rm -fr $cache/partial-$arch/{.build,.guessed_dist,.srcfiles*,installed-pkg}
     rm -fr $cache/partial-$arch/dev
