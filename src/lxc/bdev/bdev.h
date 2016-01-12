@@ -58,6 +58,9 @@
 #define MS_STRICTATIME (1 << 24)
 #endif
 
+#define DEFAULT_FS_SIZE 1073741824
+#define DEFAULT_FSTYPE "ext3"
+
 struct bdev;
 
 struct bdev_ops {
@@ -125,13 +128,22 @@ bool bdev_destroy(struct lxc_conf *conf);
 /* callback function to be used with userns_exec_1() */
 int bdev_destroy_wrapper(void *data);
 
+/* Some helpers for lvm, rdb, and/or loop:
+ * Maybe they should move to a separate implementation and header-file
+ * (bdev_utils.{c,h}) which can be included in bdev.c?
+ */
+int blk_getsize(struct bdev *bdev, uint64_t *size);
+int detect_fs(struct bdev *bdev, char *type, int len);
+int do_mkfs(const char *path, const char *fstype);
+int is_blktype(struct bdev *b);
+int mount_unknown_fs(const char *rootfs, const char *target,
+		const char *options);
+bool rootfs_is_blockdev(struct lxc_conf *conf);
 /*
  * these are really for qemu-nbd support, as container shutdown
  * must explicitly request device detach.
  */
 bool attach_block_device(struct lxc_conf *conf);
 void detach_block_device(struct lxc_conf *conf);
-
-bool rootfs_is_blockdev(struct lxc_conf *conf);
 
 #endif // __LXC_BDEV_H
