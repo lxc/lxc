@@ -41,6 +41,7 @@
 #include "attach.h"
 #include "bdev/bdev.h"
 #include "bdev/lxcoverlay.h"
+#include "bdev/lxcbtrfs.h"
 #include "cgroup.h"
 #include "conf.h"
 #include "config.h"
@@ -2817,11 +2818,32 @@ static bool add_rdepends(struct lxc_container *c, struct lxc_container *c0)
 	return bret;
 }
 
+/*
+ * If the fs natively supports snapshot clones with no penalty,
+ * then default to those even if not requested.
+ * Currently we only do this for btrfs.
+ */
+bool should_default_to_snapshot(struct lxc_container *c0,
+				struct lxc_container *c1)
+{
+	size_t l0 = strlen(c0->config_path) + strlen(c0->name) + 2;
+	size_t l1 = strlen(c1->config_path) + strlen(c1->name) + 2;
+	char *p0 = alloca(l0 + 1);
+	char *p1 = alloca(l1 + 1);
+
+	snprintf(p0, l0, "%s/%s", c0->config_path, c0->name);
+	snprintf(p1, l1, "%s/%s", c1->config_path, c1->name);
+	return btrfs_same_fs(p0, p1) == 0;
+}
+
 static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 		const char *newtype, int flags, const char *bdevdata, uint64_t newsize)
 {
 	struct bdev *bdev;
 	int need_rdep;
+
+	if (should_default_to_snapshot(c0, c))
+		flags |= LXC_CLONE_SNAPSHOT;
 
 	bdev = bdev_copy(c0, c->name, c->config_path, newtype, flags,
 			bdevdata, newsize, &need_rdep);
