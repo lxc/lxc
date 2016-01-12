@@ -1068,7 +1068,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	if (!preserve_ns(handler->nsfd, handler->clone_flags, handler->pid, &errmsg)) {
+	if (!preserve_ns(handler->nsfd, handler->clone_flags | preserve_mask, handler->pid, &errmsg)) {
 		INFO("Failed to store namespace references for stop hook: %s",
 			errmsg ? errmsg : "(Out of memory)");
 		free(errmsg);
