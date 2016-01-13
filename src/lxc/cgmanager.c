@@ -1286,7 +1286,7 @@ static bool verify_final_subsystems(const char *cgroup_use)
 {
 	int i = 0;
 	bool dropped_any = false;
-	bool ret = false;
+	bool bret = false;
 	const char *cgroup_pattern;
 	char tmpnam[50], *probe;
 
@@ -1305,7 +1305,7 @@ static bool verify_final_subsystems(const char *cgroup_use)
 	if (!probe)
 		goto out;
 
-	while (i < nr_subsystems) {
+	for (i = 0; i < nr_subsystems; i++) {
 		char *p = get_last_controller_in_list(subsystems[i]);
 
 		if (!subsys_is_writeable(p, probe)) {
@@ -1331,12 +1331,12 @@ static bool verify_final_subsystems(const char *cgroup_use)
 
 	if (dropped_any)
 		cgm_all_controllers_same = false;
-	ret = true;
+	bret = true;
 
 out:
 	free(probe);
 	cgm_dbus_disconnect();
-	return ret;
+	return bret;
 }
 
 static bool collect_subsytems(void)
