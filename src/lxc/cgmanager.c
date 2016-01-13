@@ -1284,7 +1284,7 @@ static char *get_last_controller_in_list(char *list)
  */
 static bool verify_final_subsystems(const char *cgroup_use)
 {
-	int i = 0;
+	int i;
 	bool dropped_any = false;
 	bool bret = false;
 	const char *cgroup_pattern;
@@ -1305,7 +1305,8 @@ static bool verify_final_subsystems(const char *cgroup_use)
 	if (!probe)
 		goto out;
 
-	for (i = 0; i < nr_subsystems; i++) {
+	i = 0;
+	while (i < nr_subsystems) {
 		char *p = get_last_controller_in_list(subsystems[i]);
 
 		if (!subsys_is_writeable(p, probe)) {
