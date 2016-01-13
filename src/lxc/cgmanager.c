@@ -183,11 +183,6 @@ static bool cgm_dbus_connect(void)
 	return true;
 }
 
-static bool cgm_supports_multiple_controllers;
-/*
- * if cgm_all_controllers_same is true, then cgm_supports_multiple_controllers
- * is true
- */
 static bool cgm_all_controllers_same;
 
 /*
@@ -207,10 +202,7 @@ static void check_supports_multiple_controllers(pid_t pid)
 	size_t sz = 0;
 	char path[100];
 
-	cgm_supports_multiple_controllers = false;
 	cgm_all_controllers_same = false;
-
-	cgm_supports_multiple_controllers = true;
 
 	if (pid == -1)
 		sprintf(path, "/proc/self/cgroup");
@@ -445,7 +437,7 @@ static int chown_cgroup_wrapper(void *data)
 	}
 	destuid = get_ns_uid(arg->origuid);
 
-	if (cgm_supports_multiple_controllers)
+	if (cgm_all_controllers_same)
 		slist = subsystems_inone;
 
 	for (i = 0; slist[i]; i++) {
@@ -503,7 +495,7 @@ static bool chown_cgroup(const char *cgroup_path, struct lxc_conf *conf)
 	 * This can't be done in the child namespace because it only group-owns
 	 * the cgroup
 	 */
-	if (cgm_supports_multiple_controllers)
+	if (cgm_all_controllers_same)
 		slist = subsystems_inone;
 
 	for (i = 0; slist[i]; i++) {
@@ -579,7 +571,7 @@ static void cgm_destroy(void *hdata)
 		return;
 	}
 
-	if (cgm_supports_multiple_controllers)
+	if (cgm_all_controllers_same)
 		slist = subsystems_inone;
 	for (i = 0; slist[i]; i++)
 		cgm_remove_cgroup(slist[i], d->cgroup_path);
@@ -599,7 +591,7 @@ static inline void cleanup_cgroups(char *path)
 	int i;
 	char **slist = subsystems;
 
-	if (cgm_supports_multiple_controllers)
+	if (cgm_all_controllers_same)
 		slist = subsystems_inone;
 	for (i = 0; slist[i]; i++)
 		cgm_remove_cgroup(slist[i], path);
@@ -645,7 +637,7 @@ again:
 	}
 	existed = 0;
 
-	if (cgm_supports_multiple_controllers)
+	if (cgm_all_controllers_same)
 		slist = subsystems_inone;
 
 	for (i = 0; slist[i]; i++) {
@@ -1456,7 +1448,7 @@ struct cgroup_ops *cgm_ops_init(void)
 		return NULL;
 
 	if (api_version < CGM_SUPPORTS_MULT_CONTROLLERS)
-		cgm_supports_multiple_controllers = false;
+		cgm_all_controllers_same = false;
 
 	// if root, try to escape to root cgroup
 	if (geteuid() == 0 && !cgm_escape()) {
