@@ -689,7 +689,7 @@ static bool lxc_cgmanager_enter(pid_t pid, const char *controller,
 	if (ret != 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
-		ERROR("call to cgmanager_move_pid_%ssync failed: %s",
+		WARN("call to cgmanager_move_pid_%ssync failed: %s",
 			abs ? "abs_" : "", nerr->message);
 		nih_free(nerr);
 		return false;
@@ -894,7 +894,7 @@ static void do_cgm_get(const char *name, const char *lxcpath, const char *filena
 	}
 	*cglast = '\0';
 	if (!lxc_cgmanager_enter(getpid(), controller, cgroup, abs_cgroup_supported())) {
-		ERROR("Failed to enter container cgroup %s:%s", controller, cgroup);
+		WARN("Failed to enter container cgroup %s:%s", controller, cgroup);
 		ret = write(outp, &len, sizeof(len));
 		if (ret != sizeof(len))
 			WARN("Failed to warn cgm_get of error; parent may hang");
