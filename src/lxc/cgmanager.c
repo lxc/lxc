@@ -501,9 +501,9 @@ static bool chown_cgroup(const char *cgroup_path, struct lxc_conf *conf)
 	for (i = 0; slist[i]; i++) {
 		if (!lxc_cgmanager_chmod(slist[i], cgroup_path, "", 0775))
 			return false;
-		if (!lxc_cgmanager_chmod(slist[i], cgroup_path, "tasks", 0775))
+		if (!lxc_cgmanager_chmod(slist[i], cgroup_path, "tasks", 0664))
 			return false;
-		if (!lxc_cgmanager_chmod(slist[i], cgroup_path, "cgroup.procs", 0775))
+		if (!lxc_cgmanager_chmod(slist[i], cgroup_path, "cgroup.procs", 0664))
 			return false;
 	}
 
