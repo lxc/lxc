@@ -40,6 +40,10 @@
 lxc_log_define(lxc_ls, lxc);
 
 #define LINELEN 1024
+/* Per default we only allow five levels of recursion to protect the stack at
+ * least a little bit. */
+#define MAX_NESTLVL 5
+
 #define LS_FROZEN 1
 #define LS_STOPPED 2
 #define LS_ACTIVE 3
@@ -154,7 +158,7 @@ static const struct option my_longopts[] = {
 	{"running", no_argument, 0, LS_RUNNING},
 	{"frozen", no_argument, 0, LS_FROZEN},
 	{"stopped", no_argument, 0, LS_STOPPED},
-	{"nesting", no_argument, 0, LS_NESTING},
+	{"nesting", optional_argument, 0, LS_NESTING},
 	{"groups", required_argument, 0, 'g'},
 	{"regex", required_argument, 0, 'r'},
 	LXC_COMMON_OPTIONS
@@ -177,11 +181,12 @@ Options :\n\
   --running          list only running containers\n\
   --frozen           list only frozen containers\n\
   --stopped          list only stopped containers\n\
-  --nesting          list nested containers\n\
+  --nesting=NUM      list nested containers up to NUM (default is 5) levels of nesting\n\
   -r --regex         filter container names by regular expression\n\
   -g --groups        comma separated list of groups a container must have to be displayed\n",
 	.options = my_longopts,
 	.parser = my_parser,
+	.ls_nesting = MAX_NESTLVL,
 };
 
 int main(int argc, char *argv[])
@@ -300,6 +305,16 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		struct lengths *lht, const char *basepath, const char *parent,
 		unsigned int lvl)
 {
+	/* As ls_get() is non-tail recursive we face the inherent danger of
+	 * blowing up the stack at some level of nesting. To have at least some
+	 * security we define MAX_NESTLVL to be 5. That should be sufficient for
+	 * most users. The argument lvl can be used to keep track of the level
+	 * of nesting we are at. If lvl is greater than the allowed default
+	 * level or the level the user specified on the command line we return
+	 * and unwind the stack. */
+	if (lvl > args->ls_nesting)
+		return 0;
+
 	int num = 0, ret = -1;
 	char **containers = NULL;
 	/* If we, at some level of nesting, encounter a stopped container but
@@ -855,6 +870,8 @@ static void ls_print_table(struct ls *l, struct lengths *lht,
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
+	char *invalid;
+	unsigned long int m, n = MAX_NESTLVL;
 	switch (c) {
 	case '1':
 		args->ls_line = true;
@@ -875,7 +892,21 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		args->ls_stopped = true;
 		break;
 	case LS_NESTING:
-		args->ls_nesting = true;
+		/* In case strtoul() receives a string that represents a
+		 * negative number it will return ULONG_MAX - the number that
+		 * string represents if the number the string represents is <
+		 * ULONG_MAX and ULONG_MAX otherwise. But it will consider this
+		 * valid input and not set errno. So we check manually if the
+		 * first character of num_string == '-'. Otherwise the default
+		 * level remains set. */
+		if (arg && !(*arg == '-')) {
+			errno = 0;
+			m = strtoul(arg, &invalid, 0);
+			/* ls_nesting has type unsigned int. */
+			if (!errno && (*invalid == '\0') && (m <= UINT_MAX))
+				n = m;
+		}
+		args->ls_nesting = n;
 		break;
 	case 'g':
 		args->groups = arg;

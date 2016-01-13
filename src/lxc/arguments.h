@@ -124,11 +124,11 @@ struct lxc_arguments {
 	char *ls_fancy_format;
 	char *ls_groups;
 	char *ls_regex;
+	unsigned int ls_nesting; /* maximum allowed nesting level */
 	bool ls_active;
 	bool ls_fancy;
 	bool ls_frozen;
 	bool ls_line;
-	bool ls_nesting;
 	bool ls_running;
 	bool ls_stopped;
 
