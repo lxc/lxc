@@ -21,11 +21,14 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
 #ifndef __LXC_ARGUMENTS_H
 #define __LXC_ARGUMENTS_H
 
 #include <getopt.h>
+#include <stdbool.h>
 #include <stdint.h>
+#include <sys/types.h>
 
 struct lxc_arguments;
 
@@ -116,6 +119,18 @@ struct lxc_arguments {
 	int keepdata;
 	int keepname;
 	int keepmac;
+
+	/* lxc-ls */
+	char *ls_fancy_format;
+	char *ls_groups;
+	char *ls_regex;
+	bool ls_active;
+	bool ls_fancy;
+	bool ls_frozen;
+	bool ls_line;
+	bool ls_nesting;
+	bool ls_running;
+	bool ls_stopped;
 
 	/* remaining arguments */
 	char *const *argv;

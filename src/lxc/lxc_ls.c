@@ -1,0 +1,1159 @@
+/*
+ *
+ * Copyright © 2016 Christian Brauner <christian.brauner@mailbox.org>.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2, as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
+#define _GNU_SOURCE
+#include <getopt.h>
+#include <regex.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+
+#include "arguments.h"
+#include "conf.h"
+#include "config.h"
+#include "confile.h"
+#include "log.h"
+#include "lxc.h"
+#include "lxccontainer.h"
+#include "utils.h"
+
+lxc_log_define(lxc_ls, lxc);
+
+#define LINELEN 1024
+#define LS_FROZEN 1
+#define LS_STOPPED 2
+#define LS_ACTIVE 3
+#define LS_RUNNING 4
+#define LS_NESTING 5
+
+/* Store container info. */
+struct ls {
+	char *name;
+	char *state;
+	char *groups;
+	char *interface;
+	char *ipv4;
+	char *ipv6;
+	unsigned int nestlvl;
+	pid_t init;
+	double ram;
+	double swap;
+	bool autostart;
+	bool running;
+};
+
+/* Keep track of field widths for printing. */
+struct lengths {
+	unsigned int name_length;
+	unsigned int state_length;
+	unsigned int groups_length;
+	unsigned int interface_length;
+	unsigned int ipv4_length;
+	unsigned int ipv6_length;
+	unsigned int init_length;
+	unsigned int ram_length;
+	unsigned int swap_length;
+	unsigned int autostart_length;
+};
+
+static int ls_deserialize(int rpipefd, struct ls **m, size_t *len);
+static void ls_field_width(const struct ls *l, const size_t size,
+		struct lengths *lht);
+static void ls_free(struct ls *l, size_t size);
+static void ls_free_arr(char **arr, size_t size);
+/*
+ * This is a very lenient function. It tries to gather as much information about
+ * a container as it can thereby skipping over possible failures (e.g. failed
+ * non-fatal strdup() or malloc() failures in functions it calls etc.). It will
+ * only bail if the minimum amount of information (name and state of the
+ * container) cannot be retrieved.
+ */
+static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
+		struct lengths *lht, const char *basepath, const char *parent,
+		unsigned int lvl);
+static char *ls_get_cgroup_item(struct lxc_container *c, const char *item);
+static char *ls_get_config_item(struct lxc_container *c, const char *item,
+		bool running);
+static char *ls_get_groups(struct lxc_container *c, bool running);
+static char *ls_get_ips(struct lxc_container *c, const char *inet);
+struct wrapargs {
+	const struct lxc_arguments *args;
+	struct lengths *lht;
+	int pipefd[2];
+	size_t *size;
+	const char *parent;
+	unsigned int nestlvl;
+};
+/*
+ * Takes struct wrapargs as argument.
+ */
+static int ls_get_wrapper(void *wrap);
+/*
+ * To calculate swap usage we should not simply check memory.usage_in_bytes and
+ * memory.memsw.usage_in_bytes and then do:
+ *	swap = memory.memsw.usage_in_bytes - memory.usage_in_bytes;
+ * because we might receive an incorrect/negative value.
+ * Instead we check memory.stat and check the "swap" value.
+ */
+static double ls_get_swap(struct lxc_container *c);
+static unsigned int ls_get_term_width(void);
+static char *ls_get_interface(struct lxc_container *c);
+static bool ls_has_all_grps(const char *has, const char *must);
+static struct ls *ls_new(struct ls **ls, size_t *size);
+/*
+ * Print user-specified fancy format.
+ */
+static void ls_print_fancy_format(struct ls *l, struct lengths *lht,
+		size_t size, const char *fancy_fmt);
+/*
+ * Only print names of containers.
+ */
+static void ls_print_names(struct ls *l, struct lengths *lht,
+		size_t ls_arr, size_t termwidth);
+/*
+ * Print default fancy format.
+ */
+static void ls_print_table(struct ls *l, struct lengths *lht,
+		size_t size);
+/*
+ * id can only be 79 + \0 chars long.
+ */
+static int ls_read_and_grow_buf(const int rpipefd, char **save_buf,
+		const char *id, ssize_t nbytes_id,
+		char **read_buf, ssize_t *read_buf_len);
+static int ls_serialize(int wpipefd, struct ls *n);
+static int ls_write(const int wpipefd, const char *id, ssize_t nbytes_id,
+		const char *s);
+static int my_parser(struct lxc_arguments *args, int c, char *arg);
+
+static const struct option my_longopts[] = {
+	{"line", no_argument, 0, '1'},
+	{"fancy", no_argument, 0, 'f'},
+	{"fancy-format", required_argument, 0, 'F'},
+	{"active", no_argument, 0, LS_ACTIVE},
+	{"running", no_argument, 0, LS_RUNNING},
+	{"frozen", no_argument, 0, LS_FROZEN},
+	{"stopped", no_argument, 0, LS_STOPPED},
+	{"nesting", no_argument, 0, LS_NESTING},
+	{"groups", required_argument, 0, 'g'},
+	{"regex", required_argument, 0, 'r'},
+	LXC_COMMON_OPTIONS
+};
+
+static struct lxc_arguments my_args = {
+	.progname = "lxc-ls",
+	.help = "\n\
+[-P lxcpath] [--active] [--running] [--frozen] [--stopped] [--nesting] [-g groups] [-r regex]\n\
+[-1] [-P lxcpath] [--active] [--running] [--frozen] [--stopped] [--nesting] [-g groups] [-r regex]\n\
+[-f] [-P lxcpath] [--active] [--running] [--frozen] [--stopped] [--nesting] [-g groups] [-r regex]\n\
+\n\
+lxc-ls list containers\n\
+\n\
+Options :\n\
+  -1, --line	     show one entry per line\n\
+  -f, --fancy	     column-based output\n\
+  -F, --fancy-format column-based output\n\
+  --active           list only active containers\n\
+  --running          list only running containers\n\
+  --frozen           list only frozen containers\n\
+  --stopped          list only stopped containers\n\
+  --nesting          list nested containers\n\
+  -r --regex         filter container names by regular expression\n\
+  -g --groups        comma separated list of groups a container must have to be displayed\n",
+	.options = my_longopts,
+	.parser = my_parser,
+};
+
+int main(int argc, char *argv[])
+{
+	struct ls *ls_arr = NULL;
+	size_t ls_size = 0;
+	int ret = EXIT_FAILURE;
+	/*
+	 * The lxc parser requires that my_args.name is set. So let's satisfy
+	 * that condition by setting a dummy name which is never used.
+	 */
+	my_args.name  = "";
+	if (lxc_arguments_parse(&my_args, argc, argv))
+		exit(EXIT_FAILURE);
+
+	if (!my_args.log_file)
+		my_args.log_file = "none";
+
+	/*
+	 * We set the first argument that usually takes my_args.name to NULL so
+	 * that the log is only used when the user specifies a file.
+	 */
+	if (lxc_log_init(NULL, my_args.log_file, my_args.log_priority,
+			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
+		exit(EXIT_FAILURE);
+	lxc_log_options_no_override();
+
+	struct lengths max_len = {
+		/* default header length */
+		.name_length = 4,      /* NAME */
+		.state_length = 5,     /* STATE */
+		.groups_length = 6,    /* GROUPS */
+		.interface_length = 9, /* INTERFACE */
+		.ipv4_length = 4,      /* IPV4 */
+		.ipv6_length = 4,      /* IPV6 */
+		.init_length = 3,      /* PID */
+		.ram_length = 3,       /* RAM */
+		.swap_length = 4,      /* SWAP */
+		.autostart_length = 9, /* AUTOSTART */
+	};
+
+	int status = ls_get(&ls_arr, &ls_size, &my_args, &max_len, "", NULL, 0);
+	if (!ls_arr && status == 0)
+		/* We did not fail. There was just nothing to do. */
+		exit(EXIT_SUCCESS);
+	else if (!ls_arr || status == -1)
+		goto out;
+
+	ls_field_width(ls_arr, ls_size, &max_len);
+	if (my_args.ls_fancy && !my_args.ls_fancy_format) {
+		ls_print_table(ls_arr, &max_len, ls_size);
+	} else if (my_args.ls_fancy && my_args.ls_fancy_format) {
+		ls_print_fancy_format(ls_arr, &max_len, ls_size, my_args.ls_fancy_format);
+	} else {
+		unsigned int cols = 0;
+		if (!my_args.ls_line)
+			cols = ls_get_term_width();
+		ls_print_names(ls_arr, &max_len, ls_size, cols);
+	}
+
+	ret = EXIT_SUCCESS;
+
+out:
+	ls_free(ls_arr, ls_size);
+
+	exit(ret);
+}
+
+static void ls_free(struct ls *l, size_t size)
+{
+	size_t i;
+	struct ls *m = NULL;
+	for (i = 0, m = l; i < size; i++, m++) {
+		free(m->groups);
+		free(m->interface);
+		free(m->ipv4);
+		free(m->ipv6);
+		free(m->name);
+		free(m->state);
+	}
+	free(l);
+}
+
+static char *ls_get_config_item(struct lxc_container *c, const char *item,
+		bool running)
+{
+	if (running)
+		return c->get_running_config_item(c, item);
+
+	size_t len = c->get_config_item(c, item, NULL, 0);
+	if (len <= 0)
+		return NULL;
+
+	char *val = malloc((len + 1) * sizeof(*val));
+	if (!val)
+		return NULL;
+
+	if ((size_t)c->get_config_item(c, item, val, len + 1) != len) {
+		free(val);
+		val = NULL;
+	}
+
+	return val;
+}
+
+static void ls_free_arr(char **arr, size_t size)
+{
+	size_t i;
+	for (i = 0; i < size; i++) {
+		free(arr[i]);
+	}
+	free(arr);
+}
+
+static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
+		struct lengths *lht, const char *basepath, const char *parent,
+		unsigned int lvl)
+{
+	int num = 0, ret = -1;
+	char **containers = NULL;
+	/* If we, at some level of nesting, encounter a stopped container but
+	 * want to retrieve nested containers we need to build an absolute path
+	 * beginning from it. Initially, at nesting level 0, basepath will
+	 * simply be the empty string and path will simply be whatever the
+	 * default lxcpath or the path the user gave us is.  Basepath will also
+	 * be the empty string in case we encounter a running container since we
+	 * can simply attach to its namespace to retrieve nested containers. */
+	char *path = lxc_append_paths(basepath, args->lxcpath[0]);
+	if (!path)
+		goto out;
+
+	if (!dir_exists(path))
+		goto out;
+
+	/* Do not do more work than is necessary right from the start. */
+	if (args->ls_active || (args->ls_active && args->ls_frozen))
+		num = list_active_containers(path, &containers, NULL);
+	else
+		num = list_all_containers(path, &containers, NULL);
+	if (num == -1) {
+		num = 0;
+		goto out;
+	}
+
+	struct ls *l = NULL;
+	struct lxc_container *c = NULL;
+	size_t i;
+	for (i = 0; i < (size_t)num; i++) {
+		char *name = containers[i];
+
+		/* Filter container names by regex the user gave us. */
+		if (args->ls_regex) {
+			regex_t preg;
+			if (regcomp(&preg, args->ls_regex, REG_NOSUB | REG_EXTENDED) != 0)
+				continue;
+			int rc = regexec(&preg, name, 0, NULL, 0);
+			regfree(&preg);
+			if (rc != 0)
+				continue;
+		}
+
+		c = lxc_container_new(name, path);
+		if (!c)
+			continue;
+
+		if (!c->is_defined(c))
+			goto put_and_next;
+
+		/* This does not allocate memory so no worries about freeing it
+		 * when we goto next or out. */
+		const char *state_tmp = c->state(c);
+		if (!state_tmp)
+			state_tmp = "UNKNOWN";
+
+		if (args->ls_running && !c->is_running(c))
+			goto put_and_next;
+
+		if (args->ls_frozen && !args->ls_active && strcmp(state_tmp, "FROZEN"))
+			goto put_and_next;
+
+		if (args->ls_stopped && strcmp(state_tmp, "STOPPED"))
+			goto put_and_next;
+
+		bool running = c->is_running(c);
+
+		char *grp_tmp = ls_get_groups(c, running);
+		if (!ls_has_all_grps(grp_tmp, args->groups)) {
+			free(grp_tmp);
+			goto put_and_next;
+		}
+
+		/* Now it makes sense to allocate memory. */
+		l = ls_new(m, size);
+		if (!l)
+			goto put_and_next;
+
+		/* How deeply nested are we? */
+		l->nestlvl = lvl;
+
+		l->groups = grp_tmp;
+
+		l->running = running;
+
+		if (parent && args->ls_nesting && (args->ls_line || !args->ls_fancy))
+			/* Prepend the name of the container with all its parents when
+			 * the user requests it. */
+			l->name = lxc_append_paths(parent, name);
+		else
+			/* Otherwise simply record the name. */
+			l->name = strdup(name);
+		if (!l->name)
+			goto put_and_next;
+
+		/* Do not record stuff the user did not explictly request. */
+		if (args->ls_fancy) {
+			/* Maybe we should even consider the name sensitive and
+			 * hide it when you're not allowed to control the
+			 * container. */
+			if (!c->may_control(c))
+				goto put_and_next;
+
+			l->state = strdup(state_tmp);
+			if (!l->state)
+				goto put_and_next;
+
+			char *tmp = ls_get_config_item(c, "lxc.start.auto", running);
+			if (tmp)
+				l->autostart = atoi(tmp);
+			free(tmp);
+
+			if (running) {
+				l->init = c->init_pid(c);
+
+				l->interface = ls_get_interface(c);
+
+				l->ipv4 = ls_get_ips(c, "inet");
+
+				l->ipv6 = ls_get_ips(c, "inet6");
+
+				tmp = ls_get_cgroup_item(c, "memory.usage_in_bytes");
+				if (tmp) {
+					l->ram = strtoull(tmp, NULL, 0);
+					l->ram = l->ram / 1024 /1024;
+					free(tmp);
+				}
+
+				l->swap = ls_get_swap(c);
+			}
+		}
+
+		/* Get nested containers: Only do this after we have gathered
+		 * all other information we need. */
+		if (args->ls_nesting && running) {
+			struct wrapargs wargs = (struct wrapargs){.args = NULL};
+
+			/* Open a socket so that the child can communicate with
+			 * us. */
+			int ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, wargs.pipefd);
+			if (ret == -1)
+				goto put_and_next;
+
+			/* Set the next nesting level. */
+			wargs.nestlvl = lvl + 1;
+			/* Send in the parent for the next nesting level. */
+			wargs.parent = l->name;
+			wargs.args = args;
+			wargs.lht = lht;
+
+			pid_t out;
+
+			lxc_attach_options_t aopt = LXC_ATTACH_OPTIONS_DEFAULT;
+			aopt.env_policy = LXC_ATTACH_CLEAR_ENV;
+
+			/* fork(): Attach to the namespace of the child and run
+			 * ls_get() in it which is called in ls_get_wrapper(). */
+			int status = c->attach(c, ls_get_wrapper, &wargs, &aopt, &out);
+			/* close the socket */
+			close(wargs.pipefd[1]);
+
+			/* Retrieve all information we want from the child. */
+			if (status == 0)
+				if (ls_deserialize(wargs.pipefd[0], m, size) == -1)
+					goto put_and_next;
+
+			/* Wait for the child to finish. */
+			wait_for_pid(out);
+
+			/* We've done all the communication we need so shutdown
+			 * the socket and close it. */
+			shutdown(wargs.pipefd[0], SHUT_RDWR);
+			close(wargs.pipefd[0]);
+		} else if (args->ls_nesting && !running) {
+			/* This way of extracting the rootfs is not safe since
+			 * it will return very different things depending on the
+			 * storage backend that is used for the container. We
+			 * need a path-extractor function. We face the same
+			 * problem with the ovl_mkdir() function in
+			 * lxcoverlay.{c,h}. */
+			char *curr_path = ls_get_config_item(c, "lxc.rootfs", running);
+			if (!curr_path)
+				goto put_and_next;
+
+			/* Since the container is not running and we cannot
+			 * attach to it we need another strategy to retrieve
+			 * nested containers. What we do is simply create a
+			 * growing path which will lead us into the rootfs of
+			 * the next container where it stores its containers. */
+			char *newpath = lxc_append_paths(basepath, curr_path);
+			free(curr_path);
+			if (!newpath)
+				goto put_and_next;
+
+			/* We want to remove all locks we created under
+			 * /run/lxc/lock so we create a string pointing us to
+			 * the lock path for the current container. */
+			char lock_path[MAXPATHLEN];
+			int ret = snprintf(lock_path, MAXPATHLEN, "%s/lxc/lock/%s/%s", RUNTIME_PATH, path, name);
+			if (ret < 0 || ret >= MAXPATHLEN)
+				goto put_and_next;
+
+			/* Remove the lock. */
+			lxc_rmdir_onedev(lock_path, NULL);
+
+			ls_get(m, size, args, lht, newpath, l->name, lvl + 1);
+
+			/* Remove the lock. */
+			lxc_rmdir_onedev(lock_path, NULL);
+
+			free(newpath);
+		}
+
+put_and_next:
+		lxc_container_put(c);
+	}
+	ret = 0;
+
+out:
+	ls_free_arr(containers, num);
+	free(path);
+
+	return ret;
+}
+
+static char *ls_get_cgroup_item(struct lxc_container *c, const char *item)
+{
+	size_t len = c->get_cgroup_item(c, item, NULL, 0);
+	if (len <= 0)
+		return NULL;
+
+	char *val = malloc((len + 1) * sizeof(*val));
+	if (!val)
+		return NULL;
+
+	if ((size_t)c->get_cgroup_item(c, item, val, len + 1) != len) {
+		free(val);
+		val = NULL;
+	}
+
+	return val;
+}
+
+static char *ls_get_groups(struct lxc_container *c, bool running)
+{
+	size_t len = 0;
+	char *val = NULL;
+
+	if (running)
+		val = c->get_running_config_item(c, "lxc.group");
+	else
+		len = c->get_config_item(c, "lxc.group", NULL, 0);
+
+	if (!val && (len > 0)) {
+		val = malloc((len + 1) * sizeof(*val));
+		if ((size_t)c->get_config_item(c, "lxc.group", val, len + 1) != len) {
+			free(val);
+			return NULL;
+		}
+	}
+
+	if (val) {
+		char *tmp;
+		if ((tmp = strrchr(val, '\n')))
+			*tmp = '\0';
+
+		tmp = lxc_string_replace("\n", ", ", val);
+		free(val);
+		val = tmp;
+	}
+
+	return val;
+}
+
+static char *ls_get_ips(struct lxc_container *c, const char *inet)
+{
+	char *ips = NULL;
+	char **iptmp = c->get_ips(c, NULL, inet, 0);
+	if (iptmp)
+		ips = lxc_string_join(", ", (const char **)iptmp, false);
+
+	lxc_free_array((void **)iptmp, free);
+
+	return ips;
+}
+
+static char *ls_get_interface(struct lxc_container *c)
+{
+	char **interfaces = c->get_interfaces(c);
+	if (!interfaces)
+		return NULL;
+
+	char *interface = lxc_string_join(", ", (const char **)interfaces, false);
+
+	lxc_free_array((void **)interfaces, free);
+
+	return interface;
+}
+
+/*
+ * To calculate swap usage we should not simply check memory.usage_in_bytes and
+ * memory.memsw.usage_in_bytes and then do:
+ *	swap = memory.memsw.usage_in_bytes - memory.usage_in_bytes;
+ * because we might receive an incorrect/negative value.
+ * Instead we check memory.stat and check the "swap" value.
+ */
+static double ls_get_swap(struct lxc_container *c)
+{
+	unsigned long long int num = 0;
+	char *stat = ls_get_cgroup_item(c, "memory.stat");
+	if (!stat)
+		goto out;
+
+	char *swap = strstr(stat, "\nswap");
+	if (!swap)
+		goto out;
+
+	swap = 1 + swap + 4 + 1; // '\n' + tmp + swap + ' '
+
+	char *tmp = strchr(swap, '\n');
+	if (!tmp)
+		goto out;
+
+	*tmp = '\0';
+
+	num = strtoull(swap, NULL, 0);
+	num = num / 1024 / 1024;
+
+out:
+	free(stat);
+
+	return num;
+}
+
+static unsigned int ls_get_term_width(void)
+{
+	struct winsize ws;
+	if (((ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1) &&
+	     (ioctl(STDERR_FILENO, TIOCGWINSZ, &ws) == -1) &&
+	     (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)) ||
+	    (ws.ws_col == 0))
+		return 0;
+
+	return ws.ws_col;
+}
+
+static bool ls_has_all_grps(const char *has, const char *must)
+{
+	if (!has && must)
+		return false;
+	else if (!must)
+		return true;
+
+	char **tmp_has = lxc_string_split_and_trim(has, ',');
+	size_t tmp_has_len = lxc_array_len((void **)tmp_has);
+
+	char **tmp_must = lxc_string_split_and_trim(must, ',');
+	size_t tmp_must_len = lxc_array_len((void **)tmp_must);
+
+	if (tmp_must_len > tmp_has_len)
+		tmp_must_len = tmp_has_len = 0;
+
+	bool broke_out = false;
+	char **s, **t;
+	/* Check if container has all relevant groups. */
+	for (s = tmp_must; (tmp_must_len > 0) && (tmp_has_len > 0) && s && *s; s++) {
+		if (broke_out)
+			broke_out = false;
+		for (t = tmp_has; t && *t; t++) {
+			if (strcmp(*s, *t) == 0) {
+				broke_out = true;
+				break;
+			}
+		}
+	}
+
+	lxc_free_array((void **)tmp_has, free);
+	lxc_free_array((void **)tmp_must, free);
+
+	if (!broke_out)
+		return false;
+
+	return true;
+}
+
+static struct ls *ls_new(struct ls **ls, size_t *size)
+{
+	struct ls *m, *n;
+
+	n = realloc(*ls, (*size + 1) * sizeof(struct ls));
+	if (!n)
+		return NULL;
+
+	*ls = n;
+	m = *ls + *size;
+	(*size)++;
+
+	*m = (struct ls){.name = NULL, .init = -1};
+
+	return m;
+}
+
+static void ls_print_names(struct ls *l, struct lengths *lht,
+		size_t size, size_t termwidth)
+{
+	/* If list is empty do nothing. */
+	if (size == 0)
+		return;
+
+	size_t i, len = 0;
+	struct ls *m = NULL;
+	for (i = 0, m = l; i < size; i++, m++) {
+		printf("%-*s", lht->name_length, m->name ? m->name : "-");
+		len += lht->name_length;
+		if ((len + lht->name_length) >= termwidth) {
+			printf("\n");
+			len = 0;
+		} else {
+			printf(" ");
+		}
+	}
+	if (len > 0)
+		printf("\n");
+}
+
+static void ls_print_fancy_format(struct ls *l, struct lengths *lht,
+		size_t size, const char *fancy_fmt)
+{
+	/* If list is empty do nothing. */
+	if (size == 0)
+		return;
+
+	char **tmp = lxc_string_split_and_trim(fancy_fmt, ',');
+	if (!tmp)
+		return;
+
+	char **s;
+	/* Check for invalid keys. */
+	for (s = tmp; s && *s; s++) {
+		if (strcasecmp(*s, "NAME") && strcasecmp(*s, "STATE") &&
+				strcasecmp(*s, "PID") && strcasecmp(*s, "RAM") &&
+				strcasecmp(*s, "SWAP") && strcasecmp(*s, "AUTOSTART") &&
+				strcasecmp(*s, "GROUPS") && strcasecmp(*s, "INTERFACE") &&
+				strcasecmp(*s, "IPV4") && strcasecmp(*s, "IPV6")) {
+			fprintf(stderr, "Invalid key: %s\n", *s);
+			return;
+		}
+	}
+
+	/* print header */
+	for (s = tmp; s && *s; s++) {
+		if (strcasecmp(*s, "NAME") == 0)
+			printf("%-*s ", lht->name_length, "NAME");
+		else if (strcasecmp(*s, "STATE") == 0)
+			printf("%-*s ", lht->state_length, "STATE");
+		else if (strcasecmp(*s, "PID") == 0)
+			printf("%-*s ", lht->init_length, "PID");
+		else if (strcasecmp(*s, "RAM") == 0)
+			printf("%-*s ", lht->ram_length + 2, "RAM");
+		else if (strcasecmp(*s, "SWAP") == 0)
+			printf("%-*s ", lht->swap_length + 2, "SWAP");
+		else if (strcasecmp(*s, "AUTOSTART") == 0)
+			printf("%-*s ", lht->autostart_length, "AUTOSTART");
+		else if (strcasecmp(*s, "GROUPS") == 0)
+			printf("%-*s ", lht->groups_length, "GROUPS");
+		else if (strcasecmp(*s, "INTERFACE") == 0)
+			printf("%-*s ", lht->interface_length, "INTERFACE");
+		else if (strcasecmp(*s, "IPV4") == 0)
+			printf("%-*s ", lht->ipv4_length, "IPV4");
+		else if (strcasecmp(*s, "IPV6") == 0)
+			printf("%-*s ", lht->ipv6_length, "IPV6");
+	}
+	printf("\n");
+
+	struct ls *m = NULL;
+	size_t i;
+	for (i = 0, m = l; i < size; i++, m++) {
+		for (s = tmp; s && *s; s++) {
+			if (strcasecmp(*s, "NAME") == 0) {
+				if (m->nestlvl > 0) {
+					printf("%*s", m->nestlvl, "\\");
+					printf("%-*s ", lht->name_length - m->nestlvl, m->name ? m->name : "-");
+				} else {
+					printf("%-*s ", lht->name_length, m->name ? m->name : "-");
+				}
+			} else if (strcasecmp(*s, "STATE") == 0) {
+				printf("%-*s ", lht->state_length, m->state ? m->state : "-");
+			} else if (strcasecmp(*s, "PID") == 0) {
+				if (m->init > 0)
+					printf("%-*d ", lht->init_length, m->init);
+				else
+					printf("%-*s ", lht->init_length, "-");
+			} else if (strcasecmp(*s, "RAM") == 0) {
+				if ((m->ram >= 0) && m->running)
+					printf("%*.2fMB ", lht->ram_length, m->ram);
+				else
+					printf("%-*s   ", lht->ram_length, "-");
+			} else if (strcasecmp(*s, "SWAP") == 0) {
+				if ((m->swap >= 0) && m->running)
+					printf("%*.2fMB ", lht->swap_length, m->swap);
+				else
+					printf("%-*s   ", lht->swap_length, "-");
+			} else if (strcasecmp(*s, "AUTOSTART") == 0) {
+				printf("%-*d ", lht->autostart_length, m->autostart);
+			} else if (strcasecmp(*s, "GROUPS") == 0) {
+				printf("%-*s ", lht->groups_length, m->groups ? m->groups : "-");
+			} else if (strcasecmp(*s, "INTERFACE") == 0) {
+				printf("%-*s ", lht->interface_length, m->interface ? m->interface : "-");
+			} else if (strcasecmp(*s, "IPV4") == 0) {
+				printf("%-*s ", lht->ipv4_length, m->ipv4 ? m->ipv4 : "-");
+			} else if (strcasecmp(*s, "IPV6") == 0) {
+				printf("%-*s ", lht->ipv6_length, m->ipv6 ? m->ipv6 : "-");
+			}
+		}
+		printf("\n");
+	}
+}
+
+static void ls_print_table(struct ls *l, struct lengths *lht,
+		size_t size)
+{
+	/* If list is empty do nothing. */
+	if (size == 0)
+		return;
+
+	struct ls *m = NULL;
+
+	/* print header */
+	printf("%-*s ", lht->name_length, "NAME");
+	printf("%-*s ", lht->state_length, "STATE");
+	printf("%-*s ", lht->autostart_length, "AUTOSTART");
+	printf("%-*s ", lht->groups_length, "GROUPS");
+	printf("%-*s ", lht->ipv4_length, "IPV4");
+	printf("%-*s ", lht->ipv6_length, "IPV6");
+	printf("\n");
+
+	size_t i;
+	for (i = 0, m = l; i < size; i++, m++) {
+		if (m->nestlvl > 0) {
+			printf("%*s", m->nestlvl, "\\");
+			printf("%-*s ", lht->name_length - m->nestlvl, m->name ? m->name : "-");
+		} else {
+		     printf("%-*s ", lht->name_length, m->name ? m->name : "-");
+		}
+		printf("%-*s ", lht->state_length, m->state ? m->state : "-");
+		printf("%-*d ", lht->autostart_length, m->autostart);
+		printf("%-*s ", lht->groups_length, m->groups ? m->groups : "-");
+		printf("%-*s ", lht->ipv4_length, m->ipv4 ? m->ipv4 : "-");
+		printf("%-*s ", lht->ipv6_length, m->ipv6 ? m->ipv6 : "-");
+		printf("\n");
+	}
+}
+
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
+{
+	switch (c) {
+	case '1':
+		args->ls_line = true;
+		break;
+	case 'f':
+		args->ls_fancy = true;
+		break;
+	case LS_ACTIVE:
+		args->ls_active = true;
+		break;
+	case LS_FROZEN:
+		args->ls_frozen = true;
+		break;
+	case LS_RUNNING:
+		args->ls_running = true;
+		break;
+	case LS_STOPPED:
+		args->ls_stopped = true;
+		break;
+	case LS_NESTING:
+		args->ls_nesting = true;
+		break;
+	case 'g':
+		args->groups = arg;
+		break;
+	case 'r':
+		args->ls_regex = arg;
+		break;
+	case 'F':
+		args->ls_fancy_format = arg;
+		break;
+	}
+
+	return 0;
+}
+
+static int ls_get_wrapper(void *wrap)
+{
+	int ret = -1;
+	size_t len = 0;
+	struct wrapargs *wargs = (struct wrapargs *)wrap;
+	struct ls *m = NULL, *n = NULL;
+
+	/* close pipe */
+	close(wargs->pipefd[0]);
+
+	ls_get(&m, &len, wargs->args, wargs->lht, "", wargs->parent, wargs->nestlvl);
+	if (!m)
+		goto out;
+
+	/* send length */
+	if (lxc_write_nointr(wargs->pipefd[1], &len, sizeof(len)) <= 0)
+		goto out;
+
+	size_t i;
+	for (i = 0, n = m; i < len; i++, n++) {
+		if (ls_serialize(wargs->pipefd[1], n) == -1)
+			goto out;
+	}
+	ret = 0;
+
+out:
+	shutdown(wargs->pipefd[1], SHUT_RDWR);
+	close(wargs->pipefd[1]);
+	ls_free(m, len);
+
+	return ret;
+}
+
+static int ls_serialize(int wpipefd, struct ls *n)
+{
+	ssize_t nbytes = sizeof(n->ram);
+	if (lxc_write_nointr(wpipefd, &n->ram, nbytes) != nbytes)
+		return -1;
+
+	nbytes = sizeof(n->swap);
+	if (lxc_write_nointr(wpipefd, &n->swap, nbytes) != nbytes)
+		return -1;
+
+	nbytes = sizeof(n->init);
+	if (lxc_write_nointr(wpipefd, &n->init, nbytes) != nbytes)
+		return -1;
+
+	nbytes = sizeof(n->autostart);
+	if (lxc_write_nointr(wpipefd, &n->autostart, nbytes) != nbytes)
+		return -1;
+
+	nbytes = sizeof(n->running);
+	if (lxc_write_nointr(wpipefd, &n->running, nbytes) != nbytes)
+		return -1;
+
+	nbytes = sizeof(n->nestlvl);
+	if (lxc_write_nointr(wpipefd, &n->nestlvl, nbytes) != nbytes)
+		return -1;
+
+	if (ls_write(wpipefd, "NAME:", 5 + 1, n->name) == -1)
+		return -1;
+
+	if (ls_write(wpipefd, "STATE:", 6 + 1, n->state) == -1)
+		return -1;
+
+	if (ls_write(wpipefd, "GROUPS:", 7 + 1, n->groups) == -1)
+		return -1;
+
+	if (ls_write(wpipefd, "INTERFACE:", 10 + 1, n->interface) == -1)
+		return -1;
+
+	if (ls_write(wpipefd, "IPV4:", 5 + 1, n->ipv4) == -1)
+		return -1;
+
+	if (ls_write(wpipefd, "IPV6:", 5 + 1, n->ipv6) == -1)
+		return -1;
+
+	return 0;
+}
+
+static int ls_write(const int wpipefd, const char *id, ssize_t nbytes_id,
+		const char *s)
+{
+	if (lxc_write_nointr(wpipefd, id, nbytes_id) != nbytes_id)
+		return -1;
+	if (s) {
+		nbytes_id = strlen(s) + 1;
+		if (lxc_write_nointr(wpipefd, s, nbytes_id) != nbytes_id)
+			return -1;
+	} else {
+		if (lxc_write_nointr(wpipefd, "\0", 1) != 1)
+			return -1;
+	}
+
+	return 0;
+}
+
+static int ls_deserialize(int rpipefd, struct ls **m, size_t *len)
+{
+	struct ls *n;
+	size_t sublen = 0;
+	ssize_t nbytes = 0;
+	int ret = -1;
+
+	/* get length */
+	nbytes = sizeof(sublen);
+	if (lxc_read_nointr(rpipefd, &sublen, nbytes) != nbytes)
+		return -1;
+
+	char *serialized = NULL;
+	serialized = malloc(LINELEN * sizeof(char));
+	if (!serialized)
+		return -1;
+
+	while (sublen-- > 0) {
+		n = ls_new(m, len);
+		if (!n)
+			goto out;
+
+		nbytes = sizeof(n->ram);
+		if (lxc_read_nointr(rpipefd, &n->ram, nbytes) != nbytes)
+			goto out;
+
+		nbytes = sizeof(n->swap);
+		if (lxc_read_nointr(rpipefd, &n->swap, nbytes) != nbytes)
+			goto out;
+
+		nbytes = sizeof(n->init);
+		if (lxc_read_nointr(rpipefd, &n->init, nbytes) != nbytes)
+			goto out;
+
+		nbytes = sizeof(n->autostart);
+		if (lxc_read_nointr(rpipefd, &n->autostart, nbytes) != nbytes)
+			goto out;
+
+		nbytes = sizeof(n->running);
+		if (lxc_read_nointr(rpipefd, &n->running, nbytes) != nbytes)
+			goto out;
+
+		nbytes = sizeof(n->nestlvl);
+		if (lxc_read_nointr(rpipefd, &n->nestlvl, nbytes) != nbytes)
+			goto out;
+
+		ssize_t buf_size = LINELEN;
+		if (ls_read_and_grow_buf(rpipefd, &n->name, "NAME:", 5 + 1, &serialized, &buf_size) == -1)
+			goto out;
+
+		if (ls_read_and_grow_buf(rpipefd, &n->state, "STATE:", 6 + 1, &serialized, &buf_size) == -1)
+			goto out;
+
+		if (ls_read_and_grow_buf(rpipefd, &n->groups, "GROUPS:", 7 + 1, &serialized, &buf_size) == -1)
+			goto out;
+
+		if (ls_read_and_grow_buf(rpipefd, &n->interface, "INTERFACE:", 10 + 1, &serialized, &buf_size) == -1)
+			goto out;
+
+		if (ls_read_and_grow_buf(rpipefd, &n->ipv4, "IPV4:", 5 + 1, &serialized, &buf_size) == -1)
+			goto out;
+
+		if (ls_read_and_grow_buf(rpipefd, &n->ipv6, "IPV6:", 5 + 1, &serialized, &buf_size) == -1)
+			goto out;
+	}
+	ret = 0;
+
+out:
+	free(serialized);
+
+	return ret;
+}
+
+static int ls_read_and_grow_buf(const int rpipefd, char **save_buf,
+		const char *id, ssize_t nbytes_id,
+		char **read_buf, ssize_t *read_buf_len)
+{
+	char *inc, *tmp;
+	char buf[80]; /* id can only be 79 + \0 long */
+
+	if (lxc_read_nointr(rpipefd, buf, nbytes_id) != nbytes_id)
+		return -1;
+
+	if (strcmp(id, buf) != 0)
+		return -1;
+
+	inc = *read_buf;
+	nbytes_id = 0;
+	do {
+		/* if the next read would overflow our buffer realloc */
+		if (nbytes_id + 1 >= *read_buf_len) {
+			*read_buf_len += LINELEN;
+			tmp = realloc(*read_buf, *read_buf_len);
+			if (!tmp)
+				return -1;
+			*read_buf = tmp;
+			/* Put inc back to where it was before the realloc so we
+			 * can keep on reading in the string. */
+			inc = *read_buf + nbytes_id;
+		}
+		/* only read one byte at a time */
+		if (lxc_read_nointr(rpipefd, inc, 1) != 1)
+			return -1;
+		nbytes_id++;
+	} while (*inc++ != '\0');
+
+	if (nbytes_id > 1) {
+		/* save it where the caller wants it */
+		*save_buf = strdup(*read_buf);
+		if (!*save_buf)
+			return -1;
+	}
+
+	return 0;
+}
+
+static void ls_field_width(const struct ls *l, const size_t size,
+		struct lengths *lht)
+{
+	const struct ls *m;
+	size_t i, len = 0;
+	for (i = 0, m = l; i < size; i++, m++) {
+		if (m->name) {
+			len = strlen(m->name) + m->nestlvl;
+			if (len > lht->name_length)
+				lht->name_length = len;
+		}
+
+		if (m->state) {
+			len = strlen(m->state);
+			if (len > lht->state_length)
+				lht->state_length = len;
+		}
+
+		if (m->interface) {
+			len = strlen(m->interface);
+			if (len > lht->interface_length)
+				lht->interface_length = len;
+		}
+
+		if (m->groups) {
+			len = strlen(m->groups);
+			if (len > lht->groups_length)
+				lht->groups_length = len;
+		}
+		if (m->ipv4) {
+			len = strlen(m->ipv4);
+			if (len > lht->ipv4_length)
+				lht->ipv4_length = len;
+		}
+
+		if (m->ipv6) {
+			len = strlen(m->ipv6);
+			if (len > lht->ipv6_length)
+				lht->ipv6_length = len;
+		}
+
+		if ((len = snprintf(NULL, 0, "%.2f", m->ram)) > lht->ram_length)
+			lht->ram_length = len;
+
+		if ((len = snprintf(NULL, 0, "%.2f", m->swap)) > lht->swap_length)
+			lht->swap_length = len;
+
+		if (m->init != -1) {
+			if ((len = snprintf(NULL, 0, "%d", m->init)) > lht->init_length)
+				lht->init_length = len;
+		}
+	}
+}
