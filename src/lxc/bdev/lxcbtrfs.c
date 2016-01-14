@@ -40,7 +40,7 @@
 #include "lxcrsync.h"
 #include "utils.h"
 
-lxc_log_define(btrfs, lxc);
+lxc_log_define(lxcbtrfs, lxc);
 
 /* defined in lxccontainer.c: needs to become common helper */
 extern char *dir_new_path(char *src, const char *oldname, const char *name,

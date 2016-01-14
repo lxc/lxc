@@ -2833,6 +2833,10 @@ bool should_default_to_snapshot(struct lxc_container *c0,
 
 	snprintf(p0, l0, "%s/%s", c0->config_path, c0->name);
 	snprintf(p1, l1, "%s/%s", c1->config_path, c1->name);
+
+	if (!is_btrfs_fs(p0) || !is_btrfs_fs(p1))
+		return false;
+
 	return btrfs_same_fs(p0, p1) == 0;
 }
 

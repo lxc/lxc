@@ -36,7 +36,7 @@
 #include "lxcrsync.h"
 #include "utils.h"
 
-lxc_log_define(overlay, lxc);
+lxc_log_define(lxcoverlay, lxc);
 
 static char *ovl_name;
 
