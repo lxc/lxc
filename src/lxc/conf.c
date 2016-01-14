@@ -2936,7 +2936,9 @@ void lxc_delete_network(struct lxc_handler *handler)
 		 */
 		if (netdev->ifindex != 0 &&
 		    lxc_netdev_delete_by_index(netdev->ifindex))
-			WARN("failed to remove interface '%s'", netdev->name);
+			WARN("failed to remove interface %d '%s'",
+				netdev->ifindex,
+				netdev->name ? netdev->name : "(null)");
 	}
 }
 
