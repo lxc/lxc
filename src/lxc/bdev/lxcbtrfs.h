@@ -28,6 +28,7 @@
 #include <linux/types.h> /* __le64, __l32 ... */
 #include <stdbool.h>
 #include <stdint.h>
+#include <byteswap.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -316,6 +317,50 @@ struct btrfs_ioctl_ino_lookup_args {
 #define BTRFS_FIRST_FREE_OBJECTID 256ULL
 #define BTRFS_LAST_FREE_OBJECTID -256ULL
 #define BTRFS_FIRST_CHUNK_TREE_OBJECTID 256ULL
+
+/*
+ * The followings are macro for correctly getting member of
+ * structures in both low and big endian platforms as per
+ * btrfs-progs
+ */
+#ifdef __CHECKER__
+#define __force    __attribute__((force))
+#else
+#define __force
+#endif
+
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define cpu_to_le64(x) ((__force __le64)(u64)(bswap_64(x)))
+#define le64_to_cpu(x) ((__force u64)(__le64)(bswap_64(x)))
+#define cpu_to_le32(x) ((__force __le32)(u32)(bswap_32(x)))
+#define le32_to_cpu(x) ((__force u32)(__le32)(bswap_32(x)))
+#define cpu_to_le16(x) ((__force __le16)(u16)(bswap_16(x)))
+#define le16_to_cpu(x) ((__force u16)(__le16)(bswap_16(x)))
+#else
+#define cpu_to_le64(x) ((__force __le64)(u64)(x))
+#define le64_to_cpu(x) ((__force u64)(__le64)(x))
+#define cpu_to_le32(x) ((__force __le32)(u32)(x))
+#define le32_to_cpu(x) ((__force u32)(__le32)(x))
+#define cpu_to_le16(x) ((__force __le16)(u16)(x))
+#define le16_to_cpu(x) ((__force u16)(__le16)(x))
+#endif
+
+#define BTRFS_SETGET_STACK_FUNCS(name, type, member, bits)              \
+static inline u##bits btrfs_##name(type *s)                             \
+{                                                                       \
+        return le##bits##_to_cpu(s->member);                            \
+}                                                                       \
+static inline void btrfs_set_##name(type *s, u##bits val)               \
+{                                                                       \
+        s->member = cpu_to_le##bits(val);                               \
+}
+
+/* defined as btrfs_stack_root_ref_dirid */
+BTRFS_SETGET_STACK_FUNCS(stack_root_ref_dirid, struct btrfs_root_ref, dirid, 64);
+/* defined as btrfs_stack_root_ref_sequence */
+BTRFS_SETGET_STACK_FUNCS(stack_root_ref_sequence, struct btrfs_root_ref, sequence, 64);
+/* defined as btrfs_stack_root_ref_name_len */
+BTRFS_SETGET_STACK_FUNCS(stack_root_ref_name_len, struct btrfs_root_ref, name_len, 16);
 
 /* defined in bdev.h */
 struct bdev;

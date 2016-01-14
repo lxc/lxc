@@ -565,7 +565,7 @@ static int btrfs_recursive_destroy(const char *path)
 	int fd;
 	struct btrfs_ioctl_search_args args;
 	struct btrfs_ioctl_search_key *sk = &args.key;
-	struct btrfs_ioctl_search_header *sh;
+	struct btrfs_ioctl_search_header sh;
 	struct btrfs_root_ref *ref;
 	struct my_btrfs_tree *tree;
 	int ret, i;
@@ -573,6 +573,7 @@ static int btrfs_recursive_destroy(const char *path)
 	int name_len;
 	char *name;
 	char *tmppath;
+	u64 dir_id;
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
@@ -624,21 +625,22 @@ static int btrfs_recursive_destroy(const char *path)
 
 		off = 0;
 		for (i = 0; i < sk->nr_items; i++) {
-			sh = (struct btrfs_ioctl_search_header *)(args.buf + off);
-			off += sizeof(*sh);
+			memcpy(&sh, args.buf + off, sizeof(sh));
+			off += sizeof(sh);
 			/*
 			 * A backref key with the name and dirid of the parent
 			 * comes followed by the reoot ref key which has the
 			 * name of the child subvol in question.
 			 */
-			if (sh->objectid != root_id && sh->type == BTRFS_ROOT_BACKREF_KEY) {
+			if (sh.objectid != root_id && sh.type == BTRFS_ROOT_BACKREF_KEY) {
 				ref = (struct btrfs_root_ref *)(args.buf + off);
-				name_len = ref->name_len;
+				name_len = btrfs_stack_root_ref_name_len(ref);
 				name = (char *)(ref + 1);
-				tmppath = get_btrfs_subvol_path(fd, sh->offset,
-						ref->dirid, name, name_len);
-				if (!add_btrfs_tree_node(tree, sh->objectid,
-							sh->offset, name,
+				dir_id = btrfs_stack_root_ref_dirid(ref);
+				tmppath = get_btrfs_subvol_path(fd, sh.offset,
+						dir_id, name, name_len);
+				if (!add_btrfs_tree_node(tree, sh.objectid,
+							sh.offset, name,
 							name_len, tmppath)) {
 					ERROR("Out of memory");
 					free_btrfs_tree(tree);
@@ -648,15 +650,15 @@ static int btrfs_recursive_destroy(const char *path)
 				}
 				free(tmppath);
 			}
-			off += sh->len;
+			off += sh.len;
 
 			/*
 			 * record the mins in sk so we can make sure the
 			 * next search doesn't repeat this root
 			 */
-			sk->min_objectid = sh->objectid;
-			sk->min_type = sh->type;
-			sk->min_offset = sh->offset;
+			sk->min_objectid = sh.objectid;
+			sk->min_type = sh.type;
+			sk->min_offset = sh.offset;
 		}
 		sk->nr_items = 4096;
 		sk->min_offset++;
