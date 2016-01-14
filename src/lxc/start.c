@@ -1102,7 +1102,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	/* Create the network configuration */
 	if (handler->clone_flags & CLONE_NEWNET) {
-		if (lxc_assign_network(&handler->conf->network, handler->pid)) {
+		if (lxc_assign_network(handler->lxcpath, handler->name,
+					&handler->conf->network, handler->pid)) {
 			ERROR("failed to create the configured network");
 			goto out_delete_net;
 		}

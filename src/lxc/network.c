@@ -36,6 +36,7 @@
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <sys/ioctl.h>
+#include <sys/inotify.h>
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -1403,10 +1404,25 @@ static bool is_ovs_bridge(const char *bridge)
 	return false;
 }
 
-static int attach_to_ovs_bridge(const char *bridge, const char *nic)
+/*
+ * Called from a background thread - when nic goes away, remove
+ * it from the bridge
+ */
+static void ovs_cleanup_nic(const char *lxcpath, const char *name, const char *bridge, const char *nic)
+{
+	if (lxc_check_inherited(NULL, true, -1) < 0)
+		return;
+	if (lxc_wait(name, "STOPPED", -1, lxcpath) < 0)
+		return;
+	execlp("ovs-vsctl", "ovs-vsctl", "del-port", bridge, nic, NULL);
+	exit(1); /* not reached */
+}
+
+static int attach_to_ovs_bridge(const char *lxcpath, const char *name, const char *bridge, const char *nic)
 {
 	pid_t pid;
 	char *cmd;
+	int ret;
 
 	cmd = on_path("ovs-vsctl", NULL);
 	if (!cmd)
@@ -1416,8 +1432,18 @@ static int attach_to_ovs_bridge(const char *bridge, const char *nic)
 	pid = fork();
 	if (pid < 0)
 		return -1;
-	if (pid > 0)
-		return wait_for_pid(pid);
+	if (pid > 0) {
+		ret = wait_for_pid(pid);
+		if (ret < 0)
+			return ret;
+		pid = fork();
+		if (pid < 0)
+			return -1;  // how to properly recover?
+		if (pid > 0)
+			return 0;
+		ovs_cleanup_nic(lxcpath, name, bridge, nic);
+		exit(0);
+	}
 
 	if (execlp("ovs-vsctl", "ovs-vsctl", "add-port", bridge, nic, NULL))
 		exit(1);
@@ -1429,7 +1455,7 @@ static int attach_to_ovs_bridge(const char *bridge, const char *nic)
  * There is a lxc_bridge_attach, but no need of a bridge detach
  * as automatically done by kernel when a netdev is deleted.
  */
-int lxc_bridge_attach(const char *bridge, const char *ifname)
+int lxc_bridge_attach(const char *lxcpath, const char *name, const char *bridge, const char *ifname)
 {
 	int fd, index, err;
 	struct ifreq ifr;
@@ -1442,7 +1468,7 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 		return -EINVAL;
 
 	if (is_ovs_bridge(bridge))
-		return attach_to_ovs_bridge(bridge, ifname);
+		return attach_to_ovs_bridge(lxcpath, name, bridge, ifname);
 
 	fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (fd < 0)

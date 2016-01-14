@@ -2621,7 +2621,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	if (netdev->link) {
-		err = lxc_bridge_attach(netdev->link, veth1);
+		err = lxc_bridge_attach(handler->lxcpath, handler->name, netdev->link, veth1);
 		if (err) {
 			ERROR("failed to attach '%s' to the bridge '%s': %s",
 				      veth1, netdev->link, strerror(-err));
@@ -2946,7 +2946,8 @@ void lxc_delete_network(struct lxc_handler *handler)
 
 /* lxc-user-nic returns "interface_name:interface_name\n" */
 #define MAX_BUFFER_SIZE IFNAMSIZ*2 + 2
-static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
+static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
+			     struct lxc_netdev *netdev, pid_t pid)
 {
 	pid_t child;
 	int bytes, pipefd[2];
@@ -2987,10 +2988,10 @@ static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 		} else {
 			strncpy(netdev_link, "none", IFNAMSIZ);
 		}
-		char *args[] = {LXC_USERNIC_PATH, pidstr, "veth", netdev_link, netdev->name, NULL };
 		snprintf(pidstr, 19, "%lu", (unsigned long) pid);
 		pidstr[19] = '\0';
-		execvp(args[0], args);
+		execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, lxcpath, lxcname,
+				pidstr, "veth", netdev_link, netdev->name, NULL);
 		SYSERROR("execvp lxc-user-nic");
 		exit(1);
 	}
@@ -3037,7 +3038,8 @@ static int unpriv_assign_nic(struct lxc_netdev *netdev, pid_t pid)
 	return 0;
 }
 
-int lxc_assign_network(struct lxc_list *network, pid_t pid)
+int lxc_assign_network(const char *lxcpath, char *lxcname,
+		       struct lxc_list *network, pid_t pid)
 {
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
@@ -3050,7 +3052,7 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 		netdev = iterator->elem;
 
 		if (netdev->type == LXC_NET_VETH && !am_root) {
-			if (unpriv_assign_nic(netdev, pid))
+			if (unpriv_assign_nic(lxcpath, lxcname, netdev, pid))
 				return -1;
 			// lxc-user-nic has moved the nic to the new ns.
 			// unpriv_assign_nic() fills in netdev->name.

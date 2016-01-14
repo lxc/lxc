@@ -53,10 +53,12 @@
 
 static void usage(char *me, bool fail)
 {
-	fprintf(stderr, "Usage: %s pid type bridge nicname\n", me);
+	fprintf(stderr, "Usage: %s lxcpath name pid type bridge nicname\n", me);
 	fprintf(stderr, " nicname is the name to use inside the container\n");
 	exit(fail ? 1 : 0);
 }
+
+static char *lxcpath, *lxcname;
 
 static int open_and_lock(char *path)
 {
@@ -444,7 +446,7 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 		}
 
 		/* attach veth1 to bridge */
-		if (lxc_bridge_attach(br, veth1buf) < 0) {
+		if (lxc_bridge_attach(lxcpath, lxcname, br, veth1buf) < 0) {
 			fprintf(stderr, "Error attaching %s to %s\n", veth1buf, br);
 			goto out_del;
 		}
@@ -803,13 +805,16 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (argc < 4)
+	if (argc < 6)
 		usage(argv[0], true);
-	if (argc >= 5)
-		vethname = argv[4];
+	if (argc >= 7)
+		vethname = argv[6];
+
+	lxcpath = argv[1];
+	lxcname = argv[2];
 
 	errno = 0;
-	pid = (int) strtol(argv[1], NULL, 10);
+	pid = (int) strtol(argv[3], NULL, 10);
 	if (errno) {
 		fprintf(stderr, "Could not read pid: %s\n", argv[1]);
 		exit(1);
@@ -831,9 +836,9 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	n = get_alloted(me, argv[2], argv[3], &alloted);
+	n = get_alloted(me, argv[4], argv[5], &alloted);
 	if (n > 0)
-		gotone = get_nic_if_avail(fd, alloted, pid, argv[2], argv[3], n, &nicname, &cnic);
+		gotone = get_nic_if_avail(fd, alloted, pid, argv[4], argv[5], n, &nicname, &cnic);
 
 	close(fd);
 	free_alloted(&alloted);

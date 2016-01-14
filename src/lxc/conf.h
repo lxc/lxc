@@ -400,7 +400,8 @@ extern int pin_rootfs(const char *rootfs);
 extern int lxc_requests_empty_network(struct lxc_handler *handler);
 extern int lxc_create_network(struct lxc_handler *handler);
 extern void lxc_delete_network(struct lxc_handler *handler);
-extern int lxc_assign_network(struct lxc_list *networks, pid_t pid);
+extern int lxc_assign_network(const char *lxcpath, char *lxcname,
+			      struct lxc_list *networks, pid_t pid);
 extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
 extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
 

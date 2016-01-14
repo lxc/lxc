@@ -109,7 +109,7 @@ extern int lxc_ipv6_gateway_add(int ifindex, struct in6_addr *gw);
 /*
  * Attach an interface to the bridge
  */
-extern int lxc_bridge_attach(const char *bridge, const char *ifname);
+extern int lxc_bridge_attach(const char *lxcpath, const char *name, const char *bridge, const char *ifname);
 
 /*
  * Create default gateway
