@@ -222,25 +222,24 @@ struct lxc_container {
 	bool (*stop)(struct lxc_container *c);
 
 	/*!
-	 * \brief Determine if the container wants to run disconnected
+	 * \brief Change whether the container wants to run disconnected
 	 * from the terminal.
 	 *
 	 * \param c Container.
 	 * \param state Value for the daemonize bit (0 or 1).
 	 *
-	 * \return \c true if container wants to be daemonised, else \c false.
+	 * \return \c true on success, else \c false.
 	 */
 	bool (*want_daemonize)(struct lxc_container *c, bool state);
 
 	/*!
-	 * \brief Determine whether container wishes all file descriptors
+	 * \brief Change whether the container wishes all file descriptors
 	 *  to be closed on startup.
 	 *
 	 * \param c Container.
 	 * \param state Value for the close_all_fds bit (0 or 1).
 	 *
-	 * \return \c true if container wants all file descriptors closed,
-	 *  else \c false.
+	 * \return \c true on success, else \c false.
 	 */
 	bool (*want_close_all_fds)(struct lxc_container *c, bool state);
 
