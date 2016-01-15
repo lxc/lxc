@@ -186,7 +186,7 @@ Options :\n\
   -g --groups        comma separated list of groups a container must have to be displayed\n",
 	.options = my_longopts,
 	.parser = my_parser,
-	.ls_nesting = MAX_NESTLVL,
+	.ls_nesting = 0,
 };
 
 int main(int argc, char *argv[])
