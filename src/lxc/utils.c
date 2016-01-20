@@ -1704,6 +1704,8 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
  *
  * Returns < 0 on failure, 0 if the correct proc was already mounted
  * and 1 if a new proc was mounted.
+ *
+ * NOTE: not to be called from inside the container namespace!
  */
 int mount_proc_if_needed(const char *rootfs)
 {
@@ -1737,8 +1739,14 @@ int mount_proc_if_needed(const char *rootfs)
 	return 0;
 
 domount:
-	if (safe_mount("proc", path, "proc", 0, NULL, rootfs) < 0)
+	if (!strcmp(rootfs,"")) /* rootfs is NULL */
+		ret = mount("proc", path, "proc", 0, NULL);
+	else
+		ret = safe_mount("proc", path, "proc", 0, NULL, rootfs);
+
+	if (ret < 0)
 		return -1;
+
 	INFO("Mounted /proc in container for security transition");
 	return 1;
 }

@@ -3509,6 +3509,7 @@ int ttys_shift_ids(struct lxc_conf *c)
 	return 0;
 }
 
+/* NOTE: not to be called from inside the container namespace! */
 int tmp_proc_mount(struct lxc_conf *lxc_conf)
 {
 	int mounted;
