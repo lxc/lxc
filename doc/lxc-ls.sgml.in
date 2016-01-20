@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 <!DOCTYPE refentry PUBLIC @docdtd@ [
 
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
 ]>
 
@@ -50,7 +51,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <cmdsynopsis>
       <command>lxc-ls</command>
       <arg choice="opt">-1</arg>
-      <arg choice="opt">-P <replaceable>lxcpath</replaceable></arg>
       <arg choice="opt">--active</arg>
       <arg choice="opt">--frozen</arg>
       <arg choice="opt">--running</arg>
@@ -58,9 +58,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-f</arg>
       <arg choice="opt">-F <replaceable>format</replaceable></arg>
       <arg choice="opt">-g <replaceable>groups</replaceable></arg>
-      <arg choice="opt">--nesting</arg>
-      <arg choice="opt">filter</arg>
-      <arg choice="opt">--version</arg>
+      <arg choice="opt">--nesting=<replaceable>NUM</replaceable></arg>
+      <arg choice="opt">--filter=<replaceable>regex</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -82,17 +81,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <listitem>
           <para>
             Show one entry per line. (default when /dev/stdout isn't a tty)
-          </para>
-        </listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term>
-          <option>-P, --lxcpath</option>
-        </term>
-        <listitem>
-          <para>
-            Use an alternate container path. The default is @LXCPATH@.
           </para>
         </listitem>
       </varlistentry>
@@ -143,7 +131,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option>-f, --fancy</option>
+          <option>-f,--fancy</option>
         </term>
         <listitem>
           <para>
@@ -154,7 +142,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option>-F, --fancy-format <replaceable>format</replaceable></option>
+          <option>-F,--fancy-format <replaceable>format</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -166,7 +154,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option>-g, --groups <replaceable>groups</replaceable></option>
+          <option>-g,--groups <replaceable>groups</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -178,34 +166,26 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option>--nesting</option>
+          <option>--nesting=<replaceable>NUM</replaceable></option>
         </term>
         <listitem>
           <para>
-            Show nested containers.
+            Show nested containers. The number of nesting levels to be shown can
+            be specified by passing a number as argument.
           </para>
         </listitem>
       </varlistentry>
 
       <varlistentry>
         <term>
-          <option>filter</option>
+          <option>--filter=<replaceable>regex</replaceable></option>
         </term>
         <listitem>
           <para>
-            The filter passed to <command>lxc-ls</command> will be
-            applied to the container name. The format is a regular expression.
-          </para>
-        </listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term>
-          <option>--version</option>
-        </term>
-        <listitem>
-          <para>
-            Show the version number.
+            The regular expression passed to <command>lxc-ls</command> will be
+            applied to the container name. The format is a POSIX extended
+            regular expression. It can also be given as additional argument
+            without explicitly using <option>--filter</option>.
           </para>
         </listitem>
       </varlistentry>
@@ -236,12 +216,23 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </variablelist>
   </refsect1>
 
+  &commonoptions;
+
   &seealso;
 
   <refsect1>
-    <title>Author</title>
-    <para>Stéphane Graber <email>stgraber@ubuntu.com</email></para>
+    <title>History</title>
+    Written originally as a shell script by Daniel Lezcano and Serge Hallyn.
+    Later reimplemented and extended in Python by Stéphane Graber and then
+    reimplemented and extended in C by Christian Brauner.
   </refsect1>
+
+  <refsect1>
+    <title>Author</title>
+    <para>Christian Brauner <email>christian.brauner@mailbox.org</email>,
+    Stéphane Graber <email>stgraber@ubuntu.com</email></para>
+  </refsect1>
+
 </refentry>
 
 <!-- Keep this comment at the end of the file
