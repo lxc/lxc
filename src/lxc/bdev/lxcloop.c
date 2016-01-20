@@ -35,6 +35,14 @@
 #include "lxcloop.h"
 #include "utils.h"
 
+#ifndef LO_FLAGS_AUTOCLEAR
+#define LO_FLAGS_AUTOCLEAR 4
+#endif
+
+#ifndef LOOP_CTL_GET_FREE
+#define LOOP_CTL_GET_FREE 0x4C82
+#endif
+
 lxc_log_define(lxcloop, lxc);
 
 static int do_loop_create(const char *path, uint64_t size, const char *fstype);

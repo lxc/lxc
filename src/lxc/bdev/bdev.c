@@ -71,14 +71,6 @@
 #define BLKGETSIZE64 _IOR(0x12,114,size_t)
 #endif
 
-#ifndef LO_FLAGS_AUTOCLEAR
-#define LO_FLAGS_AUTOCLEAR 4
-#endif
-
-#ifndef LOOP_CTL_GET_FREE
-#define LOOP_CTL_GET_FREE 0x4C82
-#endif
-
 lxc_log_define(bdev, lxc);
 
 /* aufs */
