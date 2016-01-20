@@ -347,7 +347,7 @@ download_ubuntu()
     if [ -n "$variant" ]; then
         debootstrap_parameters="$debootstrap_parameters --variant=$variant"
     fi
-    if [ $variant = 'minbase' ]; then
+    if [ "$variant" = 'minbase' ]; then
         packages_template="${packages_template},sudo,ifupdown,isc-dhcp-client"
     fi
 
