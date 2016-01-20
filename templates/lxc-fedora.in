@@ -570,8 +570,8 @@ but appears to be non-functional.  Skipping...  It should be removed.
 #       mount image to "squashfs"
 #       mount contained LiveOS to stage0
 
-# We're going to use the kernel.org mirror for the initial stages...
-#       1 - It's generally up to date and comnplete
+# We're going to use the archives.fedoraproject.org mirror for the initial stages...
+#       1 - It's generally up to date and complete
 #       2 - It's has high bandwidth access
 #       3 - It supports rsync and wildcarding (and we need both)
 #       4 - Not all the mirrors carry the LiveOS images
