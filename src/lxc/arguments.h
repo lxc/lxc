@@ -123,7 +123,7 @@ struct lxc_arguments {
 	/* lxc-ls */
 	char *ls_fancy_format;
 	char *ls_groups;
-	char *ls_regex;
+	char *ls_filter;
 	unsigned int ls_nesting; /* maximum allowed nesting level */
 	bool ls_active;
 	bool ls_fancy;
