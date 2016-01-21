@@ -916,7 +916,16 @@ then
 else
     if [ ${root_expire_password} = "yes" ]
     then
-        echo "
+        if ( mountpoint -q -- "${rootfs_path}" )
+        then
+            echo "To reset the root password, you can do:
+
+        lxc-start -n ${name}
+        lxc-attach -n ${name} -- passwd
+        lxc-stop -n ${name}
+"
+        else
+           echo "
 The root password is set up as "expired" and will require it to be changed
 at first login, which you should do as soon as possible.  If you lose the
 root password or wish to change it without starting the container, you
@@ -925,5 +934,6 @@ also reset the expired flag):
 
         chroot ${rootfs_path} passwd
 "
+        fi
     fi
 fi
