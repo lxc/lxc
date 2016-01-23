@@ -234,7 +234,7 @@ int aufs_detect(const char *path)
 
 int aufs_mount(struct bdev *bdev)
 {
-	char *options, *dup, *lower, *upper;
+	char *tmp, *options, *dup, *lower, *upper;
 	int len;
 	unsigned long mntflags;
 	char *mntdata;
@@ -250,9 +250,15 @@ int aufs_mount(struct bdev *bdev)
 	//  mount -t aufs -obr=${upper}=rw:${lower}=ro lower dest
 	dup = alloca(strlen(bdev->src)+1);
 	strcpy(dup, bdev->src);
-	if (!(lower = strchr(dup, ':')))
-		return -22;
-	if (!(upper = strchr(++lower, ':')))
+	/* support multiple lower layers */
+	if (!(lower = strstr(dup, ":/")))
+			return -22;
+	lower++;
+	upper = lower;
+	while ((tmp = strstr(++upper, ":/"))) {
+		upper = tmp;
+	}
+	if (--upper == lower)
 		return -22;
 	*upper = '\0';
 	upper++;
