@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # vim: set ts=4:
 set -o errexit -o pipefail -o nounset
 
@@ -43,8 +43,8 @@ ebf31683b56410ecc4c00acd9f6e2839e237a3b62b5ae7ef686705c7ba0396a9  alpine-devel@l
 1bb2a846c0ea4ca9d0e7862f970863857fc33c32f5506098c636a62a726a847b  alpine-devel@lists.alpinelinux.org-524d27bb.rsa.pub
 12f899e55a7691225603d6fb3324940fc51cd7f133e7ead788663c2b7eecb00c  alpine-devel@lists.alpinelinux.org-5261cecb.rsa.pub"
 
-readonly APK_KEYS_URI='https://alpinelinux.org/keys'
-readonly MIRROR_CHOOSER_URL='http://wiki.alpinelinux.org/cgi-bin/dl.cgi'
+readonly APK_KEYS_URI='http://alpinelinux.org/keys'
+readonly MIRRORS_LIST_URL='http://rsync.alpinelinux.org/alpine/MIRRORS.txt'
 
 : ${APK_KEYS_DIR:=/etc/apk/keys}
 if ! ls "$APK_KEYS_DIR"/alpine* &>/dev/null; then
@@ -70,7 +70,7 @@ usage() {
 		Template options:
 		   -a ARCH, --arch=ARCH   The container architecture (e.g. x86, x86_64); defaults
 		                          to the host arch.
-		   -d, --debug            Run this script in a debug mode (set -x and curl -v).
+		   -d, --debug            Run this script in a debug mode (set -x and wget w/o -q).
 		   -F, --flush-cache      Remove cached files before build.
 		   -m URL --mirror=URL    The Alpine mirror to use; defaults to random mirror.
 		   -r VER, --release=VER  The Alpine release branch to install; default is the
@@ -100,15 +100,15 @@ einfo() {
 
 fetch() {
 	if [ "$DEBUG" = 'yes' ]; then
-		curl -q --verbose $@
+		wget -T 10 -O - $@
 	else
-		curl -q --silent --show-error $@
+		wget -T 10 -O - -q $@
 	fi
 }
 
 latest_release_branch() {
 	local arch="$1"
-	local branch=$(fetch -L "$MIRROR_URL/latest-stable/releases/$arch/latest-releases.yaml" \
+	local branch=$(fetch "$MIRROR_URL/latest-stable/releases/$arch/latest-releases.yaml" \
 		| sed -En 's/^[ \t]*branch: (.*)$/\1/p' \
 		| head -n 1)
 	[ -n "$branch" ] && echo "$branch"
@@ -124,8 +124,7 @@ parse_arch() {
 }
 
 random_mirror_url() {
-	local url="$(fetch --head "$MIRROR_CHOOSER_URL" | tr -d '\r' \
-		| sed -En 's/^Location: (.*)$/\1/p')"
+	local url=$(fetch "$MIRRORS_LIST_URL" | shuf -n 1)
 	[ -n "$url" ] && echo "$url"
 }
 
@@ -138,8 +137,8 @@ run_exclusively() {
 
 	local retval
 	{
-		echo -n "Obtaining an exclusive lock (timeout: $timeout sec)..."
-		if ! flock --exclusive --wait=$timeout 9; then
+		echo -n "Obtaining an exclusive lock..."
+		if ! flock -x 9; then
 			echo ' failed.'
 			return 1
 		fi
@@ -176,17 +175,17 @@ fetch_apk_keys() {
 	local line keyname
 
 	mkdir -p "$dest"
-	pushd "$dest" 1>/dev/null
+	cd "$dest"
 
 	echo "$APK_KEYS_SHA256" | while read -r line; do
 		keyname="${line##* }"
 		if [ ! -f "$keyname" ]; then
-			fetch --ssl-reqd "$APK_KEYS_URI/$keyname" > "$keyname"
+			fetch "$APK_KEYS_URI/$keyname" > "$keyname"
 		fi
-		echo "$line" | sha256sum --check -
+		echo "$line" | sha256sum -c -
 	done || exit 2
 
-	popd 1>/dev/null
+	cd - 1>/dev/null
 }
 
 fetch_apk_static() {
@@ -196,14 +195,14 @@ fetch_apk_static() {
 
 	mkdir -p "$dest"
 
-	local pkg_ver=$(fetch -L "$MIRROR_URL/latest-stable/main/$arch/APKINDEX.tar.gz" \
-		| tar x --gzip --to-stdout APKINDEX \
+	local pkg_ver=$(fetch "$MIRROR_URL/latest-stable/main/$arch/APKINDEX.tar.gz" \
+		| tar -xzO APKINDEX \
 		| sed -n "/P:${pkg_name}/,/^$/ s/V:\(.*\)$/\1/p")
 
 	[ -n "$pkg_ver" ] || die 2 "Cannot find a version of $pkg_name in APKINDEX"
 
-	fetch -L "$MIRROR_URL/latest-stable/main/$arch/${pkg_name}-${pkg_ver}.apk" \
-		| tar x --gzip --warning=no-unknown-keyword --directory="$dest" sbin/
+	fetch "$MIRROR_URL/latest-stable/main/$arch/${pkg_name}-${pkg_ver}.apk" \
+		| tar -xz -C "$dest" sbin/  # --extract --gzip --directory
 
 	[ -f "$dest/sbin/apk.static" ] || die 2 'apk.static not found'
 
@@ -218,7 +217,7 @@ fetch_apk_static() {
 	local out="$("$dest"/sbin/apk.static --version)"
 	echo "$out"
 
-	[[ "$out" == apk-tools* ]] || die 3 'apk.static --version failed'
+	[ "${out%% *}" = 'apk-tools' ] || die 3 'apk.static --version failed'
 }
 
 
@@ -241,7 +240,8 @@ install() {
 	fi
 
 	einfo "Copying cached rootfs to $rootfs"
-	rsync --archive --hard-links --xattrs "$cache_dir"/rootfs/ "$rootfs"/
+	mkdir -p "$rootfs"
+	cp -a "$cache_dir"/rootfs/* "$rootfs"/
 }
 
 build_alpine() {
@@ -253,7 +253,7 @@ build_alpine() {
 	rm -Rf "$dest.part" 2>/dev/null
 	mkdir -p "$dest.part"
 
-	pushd "$dest.part" 1>/dev/null
+	cd "$dest.part"
 
 	$APK --update-cache --initdb --arch="$arch" \
 		--root=. --keys-dir="$APK_KEYS_DIR" --repository="$repo_url" \
@@ -270,7 +270,7 @@ build_alpine() {
 	chroot . /bin/true \
 		|| die 3 'Failed to execute /bin/true in chroot, the builded rootfs is broken!'
 
-	popd 1>/dev/null
+	cd - 1>&/dev/null
 
 	rm -Rf "$dest"
 	mv "$dest.part" "$dest"
@@ -403,23 +403,13 @@ configure_container() {
 
 #=============================  Main  ==============================#
 
-# Detect use under userns (unsupported)
-for arg in "$@"; do
-	[ "$arg" = '--' ] && break
-	if [[ "$arg" = --mapped-[ug]id ]]; then
-		echo "This template can't be used for unprivileged containers." >&2
-		echo 'You may want to try the "download" template instead.' >&2
-		exit 1
-	fi
-done
-
 if [ "$(id -u)" != "0" ]; then
 	die 1 "This script must be run as 'root'"
 fi
 
 # Parse command options.
 options=$(getopt -o a:dFm:n:p:r:h -l arch:,debug,flush-cache,mirror:,name:,\
-path:,release:,rootfs:,help -- "$@")
+path:,release:,rootfs:,help,mapped-uid:,mapped-gid: -- "$@")
 eval set -- "$options"
 
 # Clean variables and set defaults.
@@ -464,6 +454,11 @@ while [ $# -gt 0 ]; do
 		;;
 		--)
 			shift; break
+		;;
+		--mapped-[ug]id)
+			echo "ERROR: This template can't be used for unprivileged containers." >&2
+			echo 'You may want to try the "download" template instead.' >&2
+			exit 1
 		;;
 		*)
 			echo "Unknown option: $1" >&2
