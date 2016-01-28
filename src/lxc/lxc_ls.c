@@ -49,7 +49,6 @@ lxc_log_define(lxc_ls, lxc);
 #define LS_ACTIVE 3
 #define LS_RUNNING 4
 #define LS_NESTING 5
-#define LS_FILTER 6
 
 /* Store container info. */
 struct ls {
@@ -163,7 +162,7 @@ static const struct option my_longopts[] = {
 	{"stopped", no_argument, 0, LS_STOPPED},
 	{"nesting", optional_argument, 0, LS_NESTING},
 	{"groups", required_argument, 0, 'g'},
-	{"filter", required_argument, 0, LS_FILTER},
+	{"regex", required_argument, 0, 'r'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -356,10 +355,9 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		char *name = containers[i];
 
 		/* Filter container names by regex the user gave us. */
-		if (args->ls_filter || args->argc == 1) {
+		if (args->ls_regex) {
 			regex_t preg;
-			tmp = args->ls_filter ? args->ls_filter : args->argv[0];
-			check = regcomp(&preg, tmp, REG_NOSUB | REG_EXTENDED);
+			check = regcomp(&preg, args->ls_regex, REG_NOSUB | REG_EXTENDED);
 			if (check == REG_ESPACE) /* we're out of memory */
 				goto out;
 			else if (check != 0)
@@ -924,8 +922,8 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	case 'g':
 		args->groups = arg;
 		break;
-	case LS_FILTER:
-		args->ls_filter = arg;
+	case 'r':
+		args->ls_regex = arg;
 		break;
 	case 'F':
 		args->ls_fancy_format = arg;
@@ -987,7 +985,7 @@ static int ls_remove_lock(const char *path, const char *name,
 	}
 
 	int check = snprintf(*lockpath, *len_lockpath, "%s/lxc/lock/%s/%s", RUNTIME_PATH, path, name);
-	if (check < 0 || (size_t)check >= *len_lockpath)
+	if (check < 0 || check >= *len_lockpath)
 		return -1;
 
 	lxc_rmdir_onedev(*lockpath, NULL);
