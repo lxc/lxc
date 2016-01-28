@@ -31,13 +31,14 @@
 #include <sys/types.h>
 #include <termios.h>
 
+#include <lxc/lxccontainer.h>
+
 #include "arguments.h"
 #include "conf.h"
 #include "config.h"
 #include "confile.h"
 #include "log.h"
 #include "lxc.h"
-#include "lxccontainer.h"
 #include "utils.h"
 
 lxc_log_define(lxc_ls, lxc);
@@ -179,9 +180,9 @@ static const struct option my_longopts[] = {
 static struct lxc_arguments my_args = {
 	.progname = "lxc-ls",
 	.help = "\n\
-[-P lxcpath] [--active] [--running] [--frozen] [--stopped] [--nesting] [-g groups] [-r regex]\n\
-[-1] [-P lxcpath] [--active] [--running] [--frozen] [--stopped] [--nesting] [-g groups] [-r regex]\n\
-[-f] [-P lxcpath] [--active] [--running] [--frozen] [--stopped] [--nesting] [-g groups] [-r regex]\n\
+[-P lxcpath] [--active] [--running] [--frozen] [--stopped] [--nesting] [-g groups] [--filter regex]\n\
+[-1] [-P lxcpath] [--active] [--running] [--frozen] [--stopped] [--nesting] [-g groups] [--filter regex]\n\
+[-f] [-P lxcpath] [--active] [--running] [--frozen] [--stopped] [--nesting] [-g groups] [--filter regex]\n\
 \n\
 lxc-ls list containers\n\
 \n\
@@ -194,7 +195,7 @@ Options :\n\
   --frozen           list only frozen containers\n\
   --stopped          list only stopped containers\n\
   --nesting=NUM      list nested containers up to NUM (default is 5) levels of nesting\n\
-  -r --regex         filter container names by regular expression\n\
+  --filter=REGEX     filter container names by regular expression\n\
   -g --groups        comma separated list of groups a container must have to be displayed\n",
 	.options = my_longopts,
 	.parser = my_parser,
