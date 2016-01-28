@@ -720,6 +720,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	int ipc_sockets[2];
 	int procfd;
 	signed long personality;
+	bool unshare_cgns = false;
 
 	if (!options)
 		options = &attach_static_default_options;
@@ -930,6 +931,9 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		rexit(-1);
 	}
 
+	if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP && cgns_supported())
+		unshare_cgns = true;
+
 	procfd = open("/proc", O_DIRECTORY | O_RDONLY);
 	if (procfd < 0) {
 		SYSERROR("Unable to open /proc");
@@ -957,11 +961,12 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		WARN("could not change directory to '%s'", new_cwd);
 	free(cwd);
 
-	if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP && cgns_supported()) {
+	if (unshare_cgns) {
 		if (unshare(CLONE_NEWCGROUP) != 0) {
 			SYSERROR("cgroupns unshare: permission denied");
 			rexit(-1);
 		}
+		INFO("Unshared cgroup namespace");
 	}
 
 	/* now create the real child process */
