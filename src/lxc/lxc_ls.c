@@ -49,6 +49,7 @@ lxc_log_define(lxc_ls, lxc);
 #define LS_ACTIVE 3
 #define LS_RUNNING 4
 #define LS_NESTING 5
+#define LS_FILTER 6
 
 /* Store container info. */
 struct ls {
@@ -93,8 +94,8 @@ static void ls_free_arr(char **arr, size_t size);
  * container) cannot be retrieved.
  */
 static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
-		struct lengths *lht, const char *basepath, const char *parent,
-		unsigned int lvl, char **lockpath, size_t len_lockpath);
+		const char *basepath, const char *parent, unsigned int lvl,
+		char **lockpath, size_t len_lockpath);
 static char *ls_get_cgroup_item(struct lxc_container *c, const char *item);
 static char *ls_get_config_item(struct lxc_container *c, const char *item,
 		bool running);
@@ -102,7 +103,6 @@ static char *ls_get_groups(struct lxc_container *c, bool running);
 static char *ls_get_ips(struct lxc_container *c, const char *inet);
 struct wrapargs {
 	const struct lxc_arguments *args;
-	struct lengths *lht;
 	int pipefd[2];
 	size_t *size;
 	const char *parent;
@@ -162,7 +162,7 @@ static const struct option my_longopts[] = {
 	{"stopped", no_argument, 0, LS_STOPPED},
 	{"nesting", optional_argument, 0, LS_NESTING},
 	{"groups", required_argument, 0, 'g'},
-	{"regex", required_argument, 0, 'r'},
+	{"filter", required_argument, 0, LS_FILTER},
 	LXC_COMMON_OPTIONS
 };
 
@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
 	/* &(char *){NULL} is no magic. It's just a compound literal which
 	 * avoids having a pointless variable in main() that serves no purpose
 	 * here. */
-	int status = ls_get(&ls_arr, &ls_size, &my_args, &max_len, "", NULL, 0, &(char *){NULL}, 0);
+	int status = ls_get(&ls_arr, &ls_size, &my_args, "", NULL, 0, &(char *){NULL}, 0);
 	if (!ls_arr && status == 0)
 		/* We did not fail. There was just nothing to do. */
 		exit(EXIT_SUCCESS);
@@ -307,8 +307,8 @@ static void ls_free_arr(char **arr, size_t size)
 }
 
 static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
-		struct lengths *lht, const char *basepath, const char *parent,
-		unsigned int lvl, char **lockpath, size_t len_lockpath)
+		const char *basepath, const char *parent, unsigned int lvl,
+		char **lockpath, size_t len_lockpath)
 {
 	/* As ls_get() is non-tail recursive we face the inherent danger of
 	 * blowing up the stack at some level of nesting. To have at least some
@@ -355,9 +355,10 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		char *name = containers[i];
 
 		/* Filter container names by regex the user gave us. */
-		if (args->ls_regex) {
+		if (args->ls_filter || args->argc == 1) {
 			regex_t preg;
-			check = regcomp(&preg, args->ls_regex, REG_NOSUB | REG_EXTENDED);
+			tmp = args->ls_filter ? args->ls_filter : args->argv[0];
+			check = regcomp(&preg, tmp, REG_NOSUB | REG_EXTENDED);
 			if (check == REG_ESPACE) /* we're out of memory */
 				goto out;
 			else if (check != 0)
@@ -476,7 +477,6 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 			/* Send in the parent for the next nesting level. */
 			wargs.parent = l->name;
 			wargs.args = args;
-			wargs.lht = lht;
 
 			pid_t out;
 
@@ -528,11 +528,11 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 			if (ls_remove_lock(path, name, lockpath, &len_lockpath, true) == -1)
 				goto put_and_next;
 
-			ls_get(m, size, args, lht, newpath, l->name, lvl + 1, lockpath, len_lockpath);
+			ls_get(m, size, args, newpath, l->name, lvl + 1, lockpath, len_lockpath);
 			free(newpath);
 
 			/* Remove the lock. No need to check for failure here. */
-			ls_remove_lock(path, name, lockpath, &len_lockpath, false)
+			ls_remove_lock(path, name, lockpath, &len_lockpath, false);
 		}
 
 put_and_next:
@@ -688,13 +688,16 @@ static bool ls_has_all_grps(const char *has, const char *must)
 	if (tmp_must_len > tmp_has_len)
 		tmp_must_len = tmp_has_len = 0;
 
-	bool broke_out = false;
+	bool broke_out = false, ran_once = false;
 	char **s, **t;
 	/* Check if container has all relevant groups. */
 	for (s = tmp_must; (tmp_must_len > 0) && (tmp_has_len > 0) && s && *s; s++) {
 		if (broke_out)
 			broke_out = false;
+		else if (!broke_out && ran_once)
+			break;
 		for (t = tmp_has; t && *t; t++) {
+			ran_once = true;
 			if (strcmp(*s, *t) == 0) {
 				broke_out = true;
 				break;
@@ -922,8 +925,8 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	case 'g':
 		args->groups = arg;
 		break;
-	case 'r':
-		args->ls_regex = arg;
+	case LS_FILTER:
+		args->ls_filter = arg;
 		break;
 	case 'F':
 		args->ls_fancy_format = arg;
@@ -946,7 +949,7 @@ static int ls_get_wrapper(void *wrap)
 	/* &(char *){NULL} is no magic. It's just a compound literal which
 	 * avoids having a pointless variable in main() that serves no purpose
 	 * here. */
-	ls_get(&m, &len, wargs->args, wargs->lht, "", wargs->parent, wargs->nestlvl, &(char *){NULL}, 0);
+	ls_get(&m, &len, wargs->args, "", wargs->parent, wargs->nestlvl, &(char *){NULL}, 0);
 	if (!m)
 		goto out;
 
@@ -985,7 +988,7 @@ static int ls_remove_lock(const char *path, const char *name,
 	}
 
 	int check = snprintf(*lockpath, *len_lockpath, "%s/lxc/lock/%s/%s", RUNTIME_PATH, path, name);
-	if (check < 0 || check >= *len_lockpath)
+	if (check < 0 || (size_t)check >= *len_lockpath)
 		return -1;
 
 	lxc_rmdir_onedev(*lockpath, NULL);
