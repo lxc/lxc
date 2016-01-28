@@ -26,7 +26,10 @@
 #include <strings.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <termios.h>
 
 #include "arguments.h"
 #include "conf.h"
