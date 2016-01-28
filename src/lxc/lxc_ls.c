@@ -94,7 +94,7 @@ static void ls_free_arr(char **arr, size_t size);
  */
 static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		struct lengths *lht, const char *basepath, const char *parent,
-		unsigned int lvl, char **lockpath, size_t len_lockpath);
+		unsigned int lvl);
 static char *ls_get_cgroup_item(struct lxc_container *c, const char *item);
 static char *ls_get_config_item(struct lxc_container *c, const char *item,
 		bool running);
@@ -145,8 +145,6 @@ static void ls_print_table(struct ls *l, struct lengths *lht,
 static int ls_read_and_grow_buf(const int rpipefd, char **save_buf,
 		const char *id, ssize_t nbytes_id,
 		char **read_buf, ssize_t *read_buf_len);
-static int ls_remove_lock(const char *path, const char *name,
-		char **lockpath, size_t *len_lockpath, bool recalc);
 static int ls_serialize(int wpipefd, struct ls *n);
 static int ls_write(const int wpipefd, const char *id, ssize_t nbytes_id,
 		const char *s);
@@ -193,6 +191,8 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
+	struct ls *ls_arr = NULL;
+	size_t ls_size = 0;
 	int ret = EXIT_FAILURE;
 	/*
 	 * The lxc parser requires that my_args.name is set. So let's satisfy
@@ -228,12 +228,7 @@ int main(int argc, char *argv[])
 		.autostart_length = 9, /* AUTOSTART */
 	};
 
-	struct ls *ls_arr = NULL;
-	size_t ls_size = 0;
-	/* &(char *){NULL} is no magic. It's just a compound literal which
-	 * avoids having a pointless variable in main() that serves no purpose
-	 * here. */
-	int status = ls_get(&ls_arr, &ls_size, &my_args, &max_len, "", NULL, 0, &(char *){NULL}, 0);
+	int status = ls_get(&ls_arr, &ls_size, &my_args, &max_len, "", NULL, 0);
 	if (!ls_arr && status == 0)
 		/* We did not fail. There was just nothing to do. */
 		exit(EXIT_SUCCESS);
@@ -308,7 +303,7 @@ static void ls_free_arr(char **arr, size_t size)
 
 static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		struct lengths *lht, const char *basepath, const char *parent,
-		unsigned int lvl, char **lockpath, size_t len_lockpath)
+		unsigned int lvl)
 {
 	/* As ls_get() is non-tail recursive we face the inherent danger of
 	 * blowing up the stack at some level of nesting. To have at least some
@@ -346,8 +341,6 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		goto out;
 	}
 
-	char *tmp = NULL;
-	int check;
 	struct ls *l = NULL;
 	struct lxc_container *c = NULL;
 	size_t i;
@@ -357,23 +350,17 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		/* Filter container names by regex the user gave us. */
 		if (args->ls_regex) {
 			regex_t preg;
-			check = regcomp(&preg, args->ls_regex, REG_NOSUB | REG_EXTENDED);
-			if (check == REG_ESPACE) /* we're out of memory */
-				goto out;
-			else if (check != 0)
+			if (regcomp(&preg, args->ls_regex, REG_NOSUB | REG_EXTENDED) != 0)
 				continue;
-			check = regexec(&preg, name, 0, NULL, 0);
+			int rc = regexec(&preg, name, 0, NULL, 0);
 			regfree(&preg);
-			if (check != 0)
+			if (rc != 0)
 				continue;
 		}
 
- 		errno = 0;
 		c = lxc_container_new(name, path);
- 		if ((errno == ENOMEM) && !c)
- 			goto out;
- 		else if (!c)
- 			continue;
+		if (!c)
+			continue;
 
 		if (!c->is_defined(c))
 			goto put_and_next;
@@ -403,10 +390,8 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 
 		/* Now it makes sense to allocate memory. */
 		l = ls_new(m, size);
-		if (!l) {
-			free(grp_tmp);
+		if (!l)
 			goto put_and_next;
-		}
 
 		/* How deeply nested are we? */
 		l->nestlvl = lvl;
@@ -437,7 +422,7 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 			if (!l->state)
 				goto put_and_next;
 
-			tmp = ls_get_config_item(c, "lxc.start.auto", running);
+			char *tmp = ls_get_config_item(c, "lxc.start.auto", running);
 			if (tmp)
 				l->autostart = atoi(tmp);
 			free(tmp);
@@ -466,9 +451,11 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		 * all other information we need. */
 		if (args->ls_nesting && running) {
 			struct wrapargs wargs = (struct wrapargs){.args = NULL};
-			/* Open a socket so that the child can communicate with us. */
-			check = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, wargs.pipefd);
-			if (check == -1)
+
+			/* Open a socket so that the child can communicate with
+			 * us. */
+			int ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, wargs.pipefd);
+			if (ret == -1)
 				goto put_and_next;
 
 			/* Set the next nesting level. */
@@ -483,14 +470,14 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 			lxc_attach_options_t aopt = LXC_ATTACH_OPTIONS_DEFAULT;
 			aopt.env_policy = LXC_ATTACH_CLEAR_ENV;
 
-			/* fork(): Attach to the namespace of the container and
-			 * run ls_get() in it which is called in * ls_get_wrapper(). */
-			check = c->attach(c, ls_get_wrapper, &wargs, &aopt, &out);
+			/* fork(): Attach to the namespace of the child and run
+			 * ls_get() in it which is called in ls_get_wrapper(). */
+			int status = c->attach(c, ls_get_wrapper, &wargs, &aopt, &out);
 			/* close the socket */
 			close(wargs.pipefd[1]);
 
 			/* Retrieve all information we want from the child. */
-			if (check == 0)
+			if (status == 0)
 				if (ls_deserialize(wargs.pipefd[0], m, size) == -1)
 					goto put_and_next;
 
@@ -522,17 +509,23 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 			if (!newpath)
 				goto put_and_next;
 
-			/* We want to remove all locks we create under
+			/* We want to remove all locks we created under
 			 * /run/lxc/lock so we create a string pointing us to
 			 * the lock path for the current container. */
-			if (ls_remove_lock(path, name, lockpath, &len_lockpath, true) == -1)
+			char lock_path[MAXPATHLEN];
+			int ret = snprintf(lock_path, MAXPATHLEN, "%s/lxc/lock/%s/%s", RUNTIME_PATH, path, name);
+			if (ret < 0 || ret >= MAXPATHLEN)
 				goto put_and_next;
 
-			ls_get(m, size, args, lht, newpath, l->name, lvl + 1, lockpath, len_lockpath);
-			free(newpath);
+			/* Remove the lock. */
+			lxc_rmdir_onedev(lock_path, NULL);
 
-			/* Remove the lock. No need to check for failure here. */
-			ls_remove_lock(path, name, lockpath, &len_lockpath, false)
+			ls_get(m, size, args, lht, newpath, l->name, lvl + 1);
+
+			/* Remove the lock. */
+			lxc_rmdir_onedev(lock_path, NULL);
+
+			free(newpath);
 		}
 
 put_and_next:
@@ -543,10 +536,6 @@ put_and_next:
 out:
 	ls_free_arr(containers, num);
 	free(path);
-	/* lockpath is shared amongst all non-fork()ing recursive calls to
-	 * ls_get() so only free it on the uppermost level. */
-	if (lvl == 0)
-		free(*lockpath);
 
 	return ret;
 }
@@ -943,10 +932,7 @@ static int ls_get_wrapper(void *wrap)
 	/* close pipe */
 	close(wargs->pipefd[0]);
 
-	/* &(char *){NULL} is no magic. It's just a compound literal which
-	 * avoids having a pointless variable in main() that serves no purpose
-	 * here. */
-	ls_get(&m, &len, wargs->args, wargs->lht, "", wargs->parent, wargs->nestlvl, &(char *){NULL}, 0);
+	ls_get(&m, &len, wargs->args, wargs->lht, "", wargs->parent, wargs->nestlvl);
 	if (!m)
 		goto out;
 
@@ -967,30 +953,6 @@ out:
 	ls_free(m, len);
 
 	return ret;
-}
-
-static int ls_remove_lock(const char *path, const char *name,
-		char **lockpath, size_t *len_lockpath, bool recalc)
-{
-	/* Avoid doing unnecessary work if we can. */
-	if (recalc) {
-		size_t newlen = strlen(path) + strlen(name) + strlen(RUNTIME_PATH) + /* /+lxc+/+lock+/+/= */ 11 + 1;
-		if (newlen > *len_lockpath) {
-			char *tmp = realloc(*lockpath, newlen * 2);
-			if (!tmp)
-				return -1;
-			*lockpath = tmp;
-			*len_lockpath = newlen * 2;
-		}
-	}
-
-	int check = snprintf(*lockpath, *len_lockpath, "%s/lxc/lock/%s/%s", RUNTIME_PATH, path, name);
-	if (check < 0 || check >= *len_lockpath)
-		return -1;
-
-	lxc_rmdir_onedev(*lockpath, NULL);
-
-	return 0;
 }
 
 static int ls_serialize(int wpipefd, struct ls *n)
