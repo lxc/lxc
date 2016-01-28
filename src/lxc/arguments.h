@@ -100,7 +100,7 @@ struct lxc_arguments {
 	int all;
 	int ignore_auto;
 	int list;
-	char *groups;
+	char *groups; /* also used by lxc-ls */
 
 	/* lxc-snapshot and lxc-clone */
 	enum task {
@@ -122,7 +122,6 @@ struct lxc_arguments {
 
 	/* lxc-ls */
 	char *ls_fancy_format;
-	char *ls_groups;
 	char *ls_filter;
 	unsigned int ls_nesting; /* maximum allowed nesting level */
 	bool ls_active;

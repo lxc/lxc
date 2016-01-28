@@ -95,7 +95,8 @@ static void ls_free_arr(char **arr, size_t size);
  */
 static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		const char *basepath, const char *parent, unsigned int lvl,
-		char **lockpath, size_t len_lockpath);
+		char **lockpath, size_t len_lockpath, char **grps_must,
+		size_t grps_must_len);
 static char *ls_get_cgroup_item(struct lxc_container *c, const char *item);
 static char *ls_get_config_item(struct lxc_container *c, const char *item,
 		bool running);
@@ -103,6 +104,8 @@ static char *ls_get_groups(struct lxc_container *c, bool running);
 static char *ls_get_ips(struct lxc_container *c, const char *inet);
 struct wrapargs {
 	const struct lxc_arguments *args;
+	char **grps_must;
+	size_t grps_must_len;
 	int pipefd[2];
 	size_t *size;
 	const char *parent;
@@ -122,7 +125,7 @@ static int ls_get_wrapper(void *wrap);
 static double ls_get_swap(struct lxc_container *c);
 static unsigned int ls_get_term_width(void);
 static char *ls_get_interface(struct lxc_container *c);
-static bool ls_has_all_grps(const char *has, const char *must);
+static bool ls_has_all_grps(const char *has, char **must, size_t must_len);
 static struct ls *ls_new(struct ls **ls, size_t *size);
 /*
  * Print user-specified fancy format.
@@ -228,12 +231,19 @@ int main(int argc, char *argv[])
 		.autostart_length = 9, /* AUTOSTART */
 	};
 
+	char **grps = NULL;
+	size_t ngrps = 0;
+	if (my_args.groups) {
+		grps = lxc_string_split_and_trim(my_args.groups, ',');
+		ngrps = lxc_array_len((void **)grps);
+	}
+
 	struct ls *ls_arr = NULL;
 	size_t ls_size = 0;
 	/* &(char *){NULL} is no magic. It's just a compound literal which
 	 * avoids having a pointless variable in main() that serves no purpose
 	 * here. */
-	int status = ls_get(&ls_arr, &ls_size, &my_args, "", NULL, 0, &(char *){NULL}, 0);
+	int status = ls_get(&ls_arr, &ls_size, &my_args, "", NULL, 0, &(char *){NULL}, 0, grps, ngrps);
 	if (!ls_arr && status == 0)
 		/* We did not fail. There was just nothing to do. */
 		exit(EXIT_SUCCESS);
@@ -256,6 +266,7 @@ int main(int argc, char *argv[])
 
 out:
 	ls_free(ls_arr, ls_size);
+	lxc_free_array((void **)grps, free);
 
 	exit(ret);
 }
@@ -308,7 +319,8 @@ static void ls_free_arr(char **arr, size_t size)
 
 static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		const char *basepath, const char *parent, unsigned int lvl,
-		char **lockpath, size_t len_lockpath)
+		char **lockpath, size_t len_lockpath, char **grps_must,
+		size_t grps_must_len)
 {
 	/* As ls_get() is non-tail recursive we face the inherent danger of
 	 * blowing up the stack at some level of nesting. To have at least some
@@ -397,7 +409,7 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		bool running = c->is_running(c);
 
 		char *grp_tmp = ls_get_groups(c, running);
-		if (!ls_has_all_grps(grp_tmp, args->groups)) {
+		if (!ls_has_all_grps(grp_tmp, grps_must, grps_must_len)) {
 			free(grp_tmp);
 			goto put_and_next;
 		}
@@ -477,6 +489,8 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 			/* Send in the parent for the next nesting level. */
 			wargs.parent = l->name;
 			wargs.args = args;
+			wargs.grps_must = grps_must;
+			wargs.grps_must_len = grps_must_len;
 
 			pid_t out;
 
@@ -528,7 +542,7 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 			if (ls_remove_lock(path, name, lockpath, &len_lockpath, true) == -1)
 				goto put_and_next;
 
-			ls_get(m, size, args, newpath, l->name, lvl + 1, lockpath, len_lockpath);
+			ls_get(m, size, args, newpath, l->name, lvl + 1, lockpath, len_lockpath, grps_must, grps_must_len);
 			free(newpath);
 
 			/* Remove the lock. No need to check for failure here. */
@@ -672,8 +686,10 @@ static unsigned int ls_get_term_width(void)
 	return ws.ws_col;
 }
 
-static bool ls_has_all_grps(const char *has, const char *must)
+static bool ls_has_all_grps(const char *has, char **must, size_t must_len)
 {
+	bool bret = false;
+
 	if (!has && must)
 		return false;
 	else if (!must)
@@ -682,36 +698,25 @@ static bool ls_has_all_grps(const char *has, const char *must)
 	char **tmp_has = lxc_string_split_and_trim(has, ',');
 	size_t tmp_has_len = lxc_array_len((void **)tmp_has);
 
-	char **tmp_must = lxc_string_split_and_trim(must, ',');
-	size_t tmp_must_len = lxc_array_len((void **)tmp_must);
+	/* Don't do any unnecessary work. */
+	if (must_len > tmp_has_len)
+		goto out;
 
-	if (tmp_must_len > tmp_has_len)
-		tmp_must_len = tmp_has_len = 0;
-
-	bool broke_out = false, ran_once = false;
-	char **s, **t;
-	/* Check if container has all relevant groups. */
-	for (s = tmp_must; (tmp_must_len > 0) && (tmp_has_len > 0) && s && *s; s++) {
-		if (broke_out)
-			broke_out = false;
-		else if (!broke_out && ran_once)
-			break;
-		for (t = tmp_has; t && *t; t++) {
-			ran_once = true;
-			if (strcmp(*s, *t) == 0) {
-				broke_out = true;
+	size_t i, j;
+	for (i = 0; i < must_len; i++) {
+		for (j = 0; j < tmp_has_len; j++)
+			if (strcmp(must[i], tmp_has[j]) == 0)
 				break;
-			}
-		}
+		if (j == tmp_has_len)
+			break;
 	}
+	if (i == must_len)
+		bret = true;
 
+out:
 	lxc_free_array((void **)tmp_has, free);
-	lxc_free_array((void **)tmp_must, free);
 
-	if (!broke_out)
-		return false;
-
-	return true;
+	return bret;
 }
 
 static struct ls *ls_new(struct ls **ls, size_t *size)
@@ -949,7 +954,7 @@ static int ls_get_wrapper(void *wrap)
 	/* &(char *){NULL} is no magic. It's just a compound literal which
 	 * avoids having a pointless variable in main() that serves no purpose
 	 * here. */
-	ls_get(&m, &len, wargs->args, "", wargs->parent, wargs->nestlvl, &(char *){NULL}, 0);
+	ls_get(&m, &len, wargs->args, "", wargs->parent, wargs->nestlvl, &(char *){NULL}, 0, wargs->grps_must, wargs->grps_must_len);
 	if (!m)
 		goto out;
 
