@@ -136,8 +136,11 @@ run_cmd "lxc-create -t download -n b1 -- -d ubuntu -r trusty -a $ARCH"
 run_cmd "lxc-start -n b1 -d"
 p1=$(run_cmd "lxc-info -n b1 -p -H")
 
+lxcpath=/home/usernic-user/.local/share/lxc
+lxcname=b1
+
 # Assign one veth, should fail as no allowed entries yet
-if run_cmd "$LXC_USER_NIC $p1 veth usernic-br0 xx1"; then
+if run_cmd "$LXC_USER_NIC $lxcpath $lxcname $p1 veth usernic-br0 xx1"; then
 	echo "FAIL: able to create nic with no entries"
 	exit 1
 fi
@@ -148,24 +151,24 @@ sed -i '/^usernic-user/d' /etc/lxc/lxc-usernet
 echo "usernic-user veth usernic-br0 2" >> /etc/lxc/lxc-usernet
 
 # Assign one veth to second bridge, should fail
-if run_cmd "$LXC_USER_NIC $p1 veth usernic-br1 xx1"; then
+if run_cmd "$LXC_USER_NIC $lxcpath $lxcname $p1 veth usernic-br1 xx1"; then
 	echo "FAIL: able to create nic with no entries"
 	exit 1
 fi
 
 # Assign two veths, should succeed
-if ! run_cmd "$LXC_USER_NIC $p1 veth usernic-br0 xx2"; then
+if ! run_cmd "$LXC_USER_NIC $lxcpath $lxcname $p1 veth usernic-br0 xx2"; then
 	echo "FAIL: unable to create first nic"
 	exit 1
 fi
 
-if ! run_cmd "$LXC_USER_NIC $p1 veth usernic-br0 xx3"; then
+if ! run_cmd "$LXC_USER_NIC $lxcpath $lxcname $p1 veth usernic-br0 xx3"; then
 	echo "FAIL: unable to create second nic"
 	exit 1
 fi
 
 # Assign one more veth, should fail.
-if run_cmd "$LXC_USER_NIC $p1 veth usernic-br0 xx4"; then
+if run_cmd "$LXC_USER_NIC $lxcpath $lxcname $p1 veth usernic-br0 xx4"; then
 	echo "FAIL: able to create third nic"
 	exit 1
 fi
@@ -175,7 +178,7 @@ run_cmd "lxc-stop -n b1 -k"
 run_cmd "lxc-start -n b1 -d"
 p1=$(run_cmd "lxc-info -n b1 -p -H")
 
-if ! run_cmd "$LXC_USER_NIC $p1 veth usernic-br0 xx5"; then
+if ! run_cmd "$LXC_USER_NIC $lxcpath $lxcname $p1 veth usernic-br0 xx5"; then
 	echo "FAIL: unable to create nic after destroying the old"
 	cleanup 1
 fi
@@ -188,7 +191,7 @@ lxc-start -n usernic-c1 -d
 p2=$(lxc-info -n usernic-c1 -p -H)
 
 # assign veth to it - should fail
-if run_cmd "$LXC_USER_NIC $p2 veth usernic-br0 xx6"; then
+if run_cmd "$LXC_USER_NIC $lxcpath $lxcname $p2 veth usernic-br0 xx6"; then
 	echo "FAIL: able to attach nic to root-owned container"
 	cleanup 1
 fi
