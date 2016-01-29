@@ -249,7 +249,7 @@ configure_centos()
 DEVICE=eth0
 BOOTPROTO=dhcp
 ONBOOT=yes
-HOSTNAME=${UTSNAME}
+HOSTNAME=${utsname}
 NM_CONTROLLED=no
 TYPE=Ethernet
 MTU=${MTU}
@@ -259,7 +259,7 @@ EOF
     # set the hostname
     cat <<EOF > ${rootfs_path}/etc/sysconfig/network
 NETWORKING=yes
-HOSTNAME=${UTSNAME}
+HOSTNAME=${utsname}
 EOF
 
     # set minimal hosts
