@@ -743,7 +743,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <filename>/dev</filename> to be set up as needed in the container
         rootfs.  If lxc.autodev is set to 1, then after mounting the container's
         rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
-        (limited to 100k) and fill in a minimal set of initial devices.
+        (limited to 500k) and fill in a minimal set of initial devices.
         This is generally required when starting a container containing
         a "systemd" based "init" but may be optional at other times.  Additional
         devices in the containers /dev directory may be created through the
