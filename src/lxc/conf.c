@@ -1461,7 +1461,7 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs, cons
 		/* Only mount a tmpfs on here if we don't already a mount */
 		if ( ! mount_check_fs( host_path, NULL ) ) {
 			DEBUG("Mounting tmpfs to %s", host_path );
-			ret = safe_mount("none", path, "tmpfs", 0, "size=100000,mode=755", rootfs->path ? rootfs->mount : NULL);
+			ret = safe_mount("none", path, "tmpfs", 0, "size=500000,mode=755", rootfs->path ? rootfs->mount : NULL);
 		} else {
 			/* This allows someone to manually set up a mount */
 			DEBUG("Bind mounting %s to %s", host_path, path );
