@@ -28,6 +28,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 <!DOCTYPE refentry PUBLIC @docdtd@ [
 
+<!ENTITY seealso SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
 ]>
 
@@ -55,7 +56,6 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
     <cmdsynopsis>
       <command>lxc-ls</command>
       <arg choice="opt">-1</arg>
-      <arg choice="opt">-P <replaceable>lxcpath</replaceable></arg>
       <arg choice="opt">--active</arg>
       <arg choice="opt">--frozen</arg>
       <arg choice="opt">--running</arg>
@@ -63,9 +63,8 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <arg choice="opt">-f</arg>
       <arg choice="opt">-F <replaceable>format</replaceable></arg>
       <arg choice="opt">-g <replaceable>groups</replaceable></arg>
-      <arg choice="opt">--nesting</arg>
-      <arg choice="opt">filter</arg>
-      <arg choice="opt">--version</arg>
+      <arg choice="opt">--nesting=<replaceable>NUM</replaceable></arg>
+      <arg choice="opt">--filter=<replaceable>regex</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -95,20 +94,6 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
             1개의 항목를 한 줄에 표시한다. (/dev/stdout이 tty가 아닌 경우 기본)
           </para>
         </listitem>
-      </varlistentry>
-
-      <varlistentry>
-	<term>
-	  <option>-P, --lxcpath</option>
-	</term>
-	<listitem>
-	  <para>
-            <!--
-            Use an alternate container path. The default is @LXCPATH@.
-            -->
-            기본 값과 다른 컨테이너 경로를 사용한다. 기본 값은 @LXCPATH@이다.
-	  </para>
-	</listitem>
       </varlistentry>
 
       <varlistentry>
@@ -215,44 +200,32 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option>--nesting</option>
+          <option>--nesting=<replaceable>NUM</replaceable></option>
         </term>
         <listitem>
           <para>
             <!--
-            Show nested containers.
+            Show nested containers. The number of nesting levels to be shown can
+            be specified by passing a number as argument.
             -->
-            중첩된(nested) 컨테이너들의 리스트를 표시한다.
+            중첩된(nested) 컨테이너들의 리스트를 표시한다. 몇번 중첩된(nested) 컨테이너를 보여줄지 숫자로 지정할 수 있다.
           </para>
         </listitem>
       </varlistentry>
 
       <varlistentry>
         <term>
-          <option>filter</option>
+          <option>--filter=<replaceable>regex</replaceable></option>
         </term>
         <listitem>
           <para>
             <!--
-            The filter passed to <command>lxc-ls</command> will be
-            applied to the container name. The format is a regular expression.
+            The regular expression passed to <command>lxc-ls</command> will be
+            applied to the container name. The format is a POSIX extended
+            regular expression. It can also be given as additional argument
+            without explicitly using <option>--filter</option>.
             -->
-            <command>lxc-ls</command> 명령어 사용시 컨테이너 이름에 적용할 필터.
-            형식은 정규표현식이다.
-          </para>
-        </listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term>
-          <option>--version</option>
-        </term>
-        <listitem>
-          <para>
-            <!--
-            Show the version number.
-            -->
-            버전 정보를 표시한다.
+            <command>lxc-ls</command> 명령어 사용시 컨테이너 이름에 적용할 정규표현식이다. 형식은 POSIX 확장 정규표현식이다. 명시적으로 <option>--filter</option>을 사용하지 않고도 사용할 수 있다.
           </para>
         </listitem>
       </varlistentry>
@@ -290,6 +263,8 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
     </variablelist>
   </refsect1>
+
+  &commonoptions;
 
   &seealso;
 
