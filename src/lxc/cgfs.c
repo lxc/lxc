@@ -29,6 +29,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -2449,6 +2450,130 @@ static bool lxc_cgroupfs_attach(const char *name, const char *lxcpath, pid_t pid
 	return true;
 }
 
+struct chown_data {
+	const char *cgroup_path;
+	uid_t origuid;
+};
+
+/*
+ * TODO - someone should refactor this to unshare once passing all the paths
+ * to be chowned in one go
+ */
+static int chown_cgroup_wrapper(void *data)
+{
+	struct chown_data *arg = data;
+	uid_t destuid;
+	char *fpath;
+
+
+	if (setresgid(0,0,0) < 0)
+		SYSERROR("Failed to setgid to 0");
+	if (setresuid(0,0,0) < 0)
+		SYSERROR("Failed to setuid to 0");
+	if (setgroups(0, NULL) < 0)
+		SYSERROR("Failed to clear groups");
+	destuid = get_ns_uid(arg->origuid);
+
+	if (chown(arg->cgroup_path, destuid, 0) < 0)
+		SYSERROR("Failed chowning %s to %d", arg->cgroup_path, (int)destuid);
+
+	fpath = lxc_append_paths(arg->cgroup_path, "tasks");
+	if (!fpath)
+		return -1;
+	if (chown(fpath, destuid, 0) < 0)
+		SYSERROR("Error chowning %s\n", fpath);
+	free(fpath);
+	fpath = lxc_append_paths(arg->cgroup_path, "cgroup.procs");
+	if (!fpath)
+		return -1;
+	if (chown(fpath, destuid, 0) < 0)
+		SYSERROR("Error chowning %s", fpath);
+	free(fpath);
+
+	return 0;
+}
+
+static bool do_cgfs_chown(char *cgroup_path, struct lxc_conf *conf)
+{
+	struct chown_data data;
+	char *fpath;
+
+	if (lxc_list_empty(&conf->id_map))
+		/* If there's no mapping then we don't need to chown */
+		return true;
+
+	data.cgroup_path = cgroup_path;
+	data.origuid = geteuid();
+
+	/* Unpriv users can't chown it themselves, so chown from
+	 * a child namespace mapping both our own and the target uid
+	 */
+	if (userns_exec_1(conf, chown_cgroup_wrapper, &data) < 0) {
+		ERROR("Error requesting cgroup chown in new namespace");
+		return false;
+	}
+
+	/*
+	 * Now chmod 775 the directory else the container cannot create cgroups.
+	 * This can't be done in the child namespace because it only group-owns
+	 * the cgroup
+	 */
+	if (chmod(cgroup_path, 0775) < 0) {
+		SYSERROR("Error chmoding %s\n", cgroup_path);
+		return false;
+	}
+	fpath = lxc_append_paths(cgroup_path, "tasks");
+	if (!fpath)
+		return false;
+	if (chmod(fpath, 0664) < 0)
+		SYSERROR("Error chmoding %s\n", fpath);
+	free(fpath);
+	fpath = lxc_append_paths(cgroup_path, "cgroup.procs");
+	if (!fpath)
+		return false;
+	if (chmod(fpath, 0664) < 0)
+		SYSERROR("Error chmoding %s\n", fpath);
+	free(fpath);
+
+	return true;
+}
+
+static bool cgfs_chown(void *hdata, struct lxc_conf *conf)
+{
+	struct cgfs_data *d = hdata;
+	struct cgroup_process_info *info_ptr;
+	char *cgpath;
+	bool r = true;
+
+	if (!d)
+		return false;
+
+	for (info_ptr = d->info; info_ptr; info_ptr = info_ptr->next) {
+		if (!info_ptr->designated_mount_point) {
+			info_ptr->designated_mount_point = lxc_cgroup_find_mount_point(info_ptr->hierarchy, info_ptr->cgroup_path, true);
+			if (!info_ptr->designated_mount_point) {
+				SYSERROR("Could not chown cgroup %s: internal error (couldn't find any writable mountpoint to cgroup filesystem)", info_ptr->cgroup_path);
+				return false;
+			}
+		}
+
+		cgpath = cgroup_to_absolute_path(info_ptr->designated_mount_point, info_ptr->cgroup_path, NULL);
+		if (!cgpath) {
+			SYSERROR("Could not chown cgroup %s: internal error", info_ptr->cgroup_path);
+			continue;
+		}
+		r = do_cgfs_chown(cgpath, conf);
+		if (!r) {
+			ERROR("Failed chowning %s\n", cgpath);
+			free(cgpath);
+			return false;
+		}
+		free(cgpath);
+	}
+
+	return true;
+}
+
 static struct cgroup_ops cgfs_ops = {
 	.init = cgfs_init,
 	.destroy = cgfs_destroy,
@@ -2464,7 +2589,7 @@ static struct cgroup_ops cgfs_ops = {
 	.setup_limits = cgroupfs_setup_limits,
 	.name = "cgroupfs",
 	.attach = lxc_cgroupfs_attach,
-	.chown = NULL,
+	.chown = cgfs_chown,
 	.mount_cgroup = cgroupfs_mount_cgroup,
 	.nrtasks = cgfs_nrtasks,
 	.driver = CGFS,
