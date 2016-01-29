@@ -41,6 +41,11 @@ by Sungbae yoo <sungbae.yoo at samsung.com>
       </citerefentry>,
 
       <citerefentry>
+       <refentrytitle><command>lxc-copy</command></refentrytitle>
+       <manvolnum>1</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
 	<refentrytitle><command>lxc-destroy</command></refentrytitle>
 	<manvolnum>1</manvolnum>
       </citerefentry>,

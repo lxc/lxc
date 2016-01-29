@@ -41,6 +41,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       </citerefentry>,
 
       <citerefentry>
+       <refentrytitle><command>lxc-copy</command></refentrytitle>
+       <manvolnum>1</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
 	<refentrytitle><command>lxc-destroy</command></refentrytitle>
 	<manvolnum>1</manvolnum>
       </citerefentry>,
