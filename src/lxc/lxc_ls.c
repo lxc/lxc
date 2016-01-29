@@ -54,6 +54,10 @@ lxc_log_define(lxc_ls, lxc);
 #define LS_NESTING 5
 #define LS_FILTER 6
 
+#ifndef SOCK_CLOEXEC
+#  define SOCK_CLOEXEC                02000000
+#endif
+
 /* Store container info. */
 struct ls {
 	char *name;
