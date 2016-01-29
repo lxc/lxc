@@ -4188,9 +4188,9 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 	while (!readdir_r(dir, &dirent, &direntp)) {
 		if (!direntp)
 			break;
-		if (!strcmp(direntp->d_name, "."))
-			continue;
-		if (!strcmp(direntp->d_name, ".."))
+
+		// Ignore '.', '..' and any hidden directory
+		if (!strncmp(direntp->d_name, ".", 1))
 			continue;
 
 		if (!config_file_exists(lxcpath, direntp->d_name))
