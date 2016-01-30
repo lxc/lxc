@@ -1007,7 +1007,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	<filename>/dev</filename> to be set up as needed in the container
 	rootfs.  If lxc.autodev is set to 1, then after mounting the container's
 	rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
-	(limited to 100k) and fill in a minimal set of initial devices.
+	(limited to 500k) and fill in a minimal set of initial devices.
         This is generally required when starting a container containing
         a "systemd" based "init" but may be optional at other times.  Additional
         devices in the containers /dev directory may be created through the
@@ -1015,7 +1015,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         -->
         デフォルトでは、lxc はコンテナの <filename>/dev</filename> 以下に fd, stdin, stdout, stderr のシンボリックリンクを作成しますが、自動的にはデバイスノードのエントリは作成しません。
         これは、コンテナの rootfs で必要な設定を行えるようにするものです。
-        lxc.autodev が 1 に設定されている場合、コンテナの rootfs をマウントした後、LXC は新しい tmpfs を <filename>/dev</filename> 以下にマウントします (100k 制限の)。
+        lxc.autodev が 1 に設定されている場合、コンテナの rootfs をマウントした後、LXC は新しい tmpfs を <filename>/dev</filename> 以下にマウントします (500k 制限の)。
         そして初期デバイスの最小限のセットを作成します。
         これは、"systemd" ベースの "init" 環境のコンテナを起動する時に通常必要ですが、他の環境の場合はオプショナルなものです。
         コンテナの /dev ディレクトリ内の追加デバイスは <option>lxc.hook.autodev</option> フックを使用して作成されます。

@@ -967,13 +967,13 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	<filename>/dev</filename> to be set up as needed in the container
 	rootfs.  If lxc.autodev is set to 1, then after mounting the container's
 	rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
-	(limited to 100k) and fill in a minimal set of initial devices.
+	(limited to 500k) and fill in a minimal set of initial devices.
         This is generally required when starting a container containing
         a "systemd" based "init" but may be optional at other times.  Additional
         devices in the containers /dev directory may be created through the
         use of the <option>lxc.hook.autodev</option> hook.
         -->
-        기본적으로 lxc는 약간의 심볼릭 링크(fd, stdin, stdout, stderr)를 컨테이너의 <filename>/dev</filename> 디렉토리에 생성한다. 그러나 자동으로 장치 노드 항목들을 생성해주지 않는다. 컨테이너의 루트 파일시스템에서 필요로하는 <filename>/dev</filename>를 생성할 수 있게 하는 것이다. lxc.autodev가 1로 지정되었다면, 컨테이너 루트 파일시스템을 마운트 한 후, LXC가 <filename>/dev</filename> 밑에 새로운 tmpfs(최대 100k)를 마운트 해준다. 그리고 최소한의 장치만을 채워준다.
+        기본적으로 lxc는 약간의 심볼릭 링크(fd, stdin, stdout, stderr)를 컨테이너의 <filename>/dev</filename> 디렉토리에 생성한다. 그러나 자동으로 장치 노드 항목들을 생성해주지 않는다. 컨테이너의 루트 파일시스템에서 필요로하는 <filename>/dev</filename>를 생성할 수 있게 하는 것이다. lxc.autodev가 1로 지정되었다면, 컨테이너 루트 파일시스템을 마운트 한 후, LXC가 <filename>/dev</filename> 밑에 새로운 tmpfs(최대 500k)를 마운트 해준다. 그리고 최소한의 장치만을 채워준다.
         이것은 "systemd" 기반의 "init" 환경의 컨테이너를 시작할 때 일반적으로 필요하지만, 다른 환경의 경우는 선택적인 요소이다.
          컨테이너의 부가적인 장치들은 <option>lxc.hook.autodev</option> 훅 스크립트를 사용하여 /dev 디렉토리에 생성할 수 있다.
       </para>

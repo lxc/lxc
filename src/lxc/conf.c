@@ -1080,7 +1080,7 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs, cons
 		return 0;
 	}
 
-	if (safe_mount("none", path, "tmpfs", 0, "size=100000,mode=755",
+	if (safe_mount("none", path, "tmpfs", 0, "size=500000,mode=755",
 				rootfs->path ? rootfs->mount : NULL)) {
 		SYSERROR("Failed mounting tmpfs onto %s\n", path);
 		return false;
