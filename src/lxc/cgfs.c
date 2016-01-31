@@ -1661,6 +1661,7 @@ lxc_cgroup_process_info_getx(const char *proc_pid_cgroup_str,
 		entry->cgroup_path = strdup(colon2);
 		if (!entry->cgroup_path)
 			goto out_error;
+		prune_init_scope(entry->cgroup_path);
 
 		*cptr = entry;
 		cptr = &entry->next;
