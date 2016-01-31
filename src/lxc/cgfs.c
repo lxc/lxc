@@ -556,7 +556,7 @@ static struct cgroup_meta_data *lxc_cgroup_load_meta2(const char **subsystem_whi
 		true;
 	all_named_subsystems = subsystem_whitelist ?
 		(lxc_string_in_array("@named", subsystem_whitelist) || lxc_string_in_array("@all", subsystem_whitelist)) :
-		false;
+		true;
 
 	meta_data = calloc(1, sizeof(struct cgroup_meta_data));
 	if (!meta_data)
@@ -1662,6 +1662,7 @@ lxc_cgroup_process_info_getx(const char *proc_pid_cgroup_str,
 		entry->cgroup_path = strdup(colon2);
 		if (!entry->cgroup_path)
 			goto out_error;
+		prune_init_scope(entry->cgroup_path);
 
 		*cptr = entry;
 		cptr = &entry->next;
