@@ -223,7 +223,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
             The regular expression passed to <command>lxc-ls</command> will be
             applied to the container name. The format is a POSIX extended
             regular expression. It can also be given as additional argument
-            without explicitly using <option>--filter</option>.
+            without explicitly using <option>\-\-filter</option>.
             -->
             <command>lxc-ls</command> 명령어 사용시 컨테이너 이름에 적용할 정규표현식이다. 형식은 POSIX 확장 정규표현식이다. 명시적으로 <option>--filter</option>을 사용하지 않고도 사용할 수 있다.
           </para>
