@@ -87,10 +87,12 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <!--
       Each option in the configuration file has the form <command>key
       = value</command> fitting in one line. The '#' character means
-      the line is a comment.
+      the line is a comment. List options, like capabilities and cgroups
+      options, can be used with no value to clear any previously
+      defined values of that option.
       -->
       설정파일의 옵션은 <command>key = value</command>의 한 줄로 이루어져 있다.
-      '#' 문자를 앞에 붙여 주석임을 나타낼 수 있다.
+      '#' 문자를 앞에 붙여 주석임을 나타낼 수 있다. capability와 cgroup 옵션과 같은 리스트 옵션들은, 값을 지정하지 않고 사용할 수 있다. 값이 지정되지 않은 경우 이전에 설정했던 모든 값들을 지운다.
     </para>
 
     <refsect2>
@@ -411,6 +413,19 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
         네트워크 가상화를 위해서, 컨테이너의 네트워크 인터페이스가 인수로 지정되어야 한다. 시스템이 하나의 물리적인 네트워크 인터페이스를 갖고 있어도, 컨테이너 내에서 여러개의 가상화 인터페이스들을 사용할 수 있다.
       </para>
       <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.network</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              may be used without a value to clear all previous network options.
+              -->
+              값을 지정하지 않고 사용하여 이전에 설정했던 모든 네트워크 옵션들을 초기화할 수 있다.
+            </para>
+          </listitem>
+        </varlistentry>
 	<varlistentry>
 	  <term>
 	    <option>lxc.network.type</option>
@@ -1426,13 +1441,15 @@ proc proc proc nodev,noexec,nosuid 0 0
           specifies that the rootfs should be an overlay with <filename>/upper</filename>
           being mounted read-write over a read-only mount of <filename>/lower</filename>.
           <filename>aufs:/lower:/upper</filename> does the same using aufs in place
-          of overlayfs. <filename>loop:/file</filename> tells lxc to attach
+          of overlayfs. For both <filename>overlayfs</filename> and
+          <filename>aufs</filename> multiple <filename>/lower</filename>
+          directories can be specified. <filename>loop:/file</filename> tells lxc to attach
           <filename>/file</filename> to a loop device and mount the loop device.
           -->
               디렉토리 또는 간단한 블록 장치로 구성된 컨테이너를 위해서 경로이름이 사용될 수 있다. 만약 루트 파일시스템이 nbd 장치의 경우, <filename>nbd:file:1</filename>는 <filename>file</filename>을 nbd 장치로 사용하고 1번 파티션이 루트 파일시스템으로 마운트되도록 지정한다.
               <filename>nbd:file</filename>는 nbd 장치 자체가 마운트되어야 한다고 지정한다.
               <filename>overlayfs:/lower:/upper</filename>는 루트 파일시스템이 읽기전용으로 마운트된 <filename>/lower</filename>를 <filename>/upper</filename>가 읽기/쓰기 가능으로 오버레이 마운트되도록 지정한다.
-              <filename>aufs:/lower:/upper</filename>는 aufs에서 위와같이 지정한다.
+              <filename>aufs:/lower:/upper</filename>는 aufs에서 위와같이 지정한다. <filename>overlayfs</filename>와 <filename>aufs</filename>는 여러개의 <filename>/lower</filename> 디렉토리를 지정할 수 있다.
               <filename>loop:/file</filename>는 lxc가 <filename>/file</filename>을 loop 장치로 사용하고 loop 장치를 마운트하도록 지정한다.
 	    </para>
 	  </listitem>
