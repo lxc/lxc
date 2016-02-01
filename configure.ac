@@ -4,7 +4,7 @@
 m4_define([lxc_version_major], 2)
 m4_define([lxc_version_minor], 0)
 m4_define([lxc_version_micro], 0)
-m4_define([lxc_version_beta], beta1)
+m4_define([lxc_version_beta], beta2)
 m4_define([lxc_version_abi], 1.2.0)
 
 m4_define([lxc_version_base], [lxc_version_major.lxc_version_minor.lxc_version_micro])
