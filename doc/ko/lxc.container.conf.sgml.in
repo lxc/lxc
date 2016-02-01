@@ -87,10 +87,12 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <!--
       Each option in the configuration file has the form <command>key
       = value</command> fitting in one line. The '#' character means
-      the line is a comment.
+      the line is a comment. List options, like capabilities and cgroups
+      options, can be used with no value to clear any previously
+      defined values of that option.
       -->
       설정파일의 옵션은 <command>key = value</command>의 한 줄로 이루어져 있다.
-      '#' 문자를 앞에 붙여 주석임을 나타낼 수 있다.
+      '#' 문자를 앞에 붙여 주석임을 나타낼 수 있다. capability와 cgroup 옵션과 같은 리스트 옵션들은, 값을 지정하지 않고 사용할 수 있다. 값이 지정되지 않은 경우 이전에 설정했던 모든 값들을 지운다.
     </para>
 
     <refsect2>
