@@ -126,6 +126,7 @@ doc/legacy/*.1
 doc/ko/*.1
 doc/ko/*.5
 doc/ko/*.7
+doc/ko/legacy/*.1
 doc/manpage.links
 doc/manpage.refs
 doc/api/html/*
