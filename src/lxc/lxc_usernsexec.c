@@ -291,7 +291,7 @@ int main(int argc, char *argv[])
 		}
 		ret = readlink("/proc/self/fd/2", ttyname2, sizeof(ttyname2));
 		if (ret < 0) {
-			printf("Warning: unable to open stderr, continueing.");
+			printf("Warning: unable to open stderr, continuing.");
 			memset(ttyname2, '\0', sizeof(ttyname2));
 		}
 	}
