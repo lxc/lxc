@@ -413,6 +413,19 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
         네트워크 가상화를 위해서, 컨테이너의 네트워크 인터페이스가 인수로 지정되어야 한다. 시스템이 하나의 물리적인 네트워크 인터페이스를 갖고 있어도, 컨테이너 내에서 여러개의 가상화 인터페이스들을 사용할 수 있다.
       </para>
       <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.network</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              may be used without a value to clear all previous network options.
+              -->
+              값을 지정하지 않고 사용하여 이전에 설정했던 모든 네트워크 옵션들을 초기화할 수 있다.
+            </para>
+          </listitem>
+        </varlistentry>
 	<varlistentry>
 	  <term>
 	    <option>lxc.network.type</option>
