@@ -31,6 +31,7 @@ man_MANS = \
 	lxc-execute.1 \
 	lxc-freeze.1 \
 	lxc-info.1 \
+	lxc-ls.1 \
 	lxc-monitor.1 \
 	lxc-snapshot.1 \
 	lxc-start.1 \
@@ -50,10 +51,7 @@ man_MANS = \
 	lxc.7
 
 if ENABLE_PYTHON
-    man_MANS += lxc-ls.1
     man_MANS += lxc-start-ephemeral.1
-else
-    man_MANS += legacy/lxc-ls.1
 endif
 
 %.1 : %.sgml

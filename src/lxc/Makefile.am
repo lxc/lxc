@@ -190,14 +190,10 @@ endif
 bin_SCRIPTS = lxc-checkconfig
 
 EXTRA_DIST = \
-	lxc-ls \
 	lxc-top.lua
 
 if ENABLE_PYTHON
-bin_SCRIPTS += lxc-ls
 bin_SCRIPTS += lxc-start-ephemeral
-else
-bin_SCRIPTS += legacy/lxc-ls
 endif
 
 bin_PROGRAMS = \

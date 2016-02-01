@@ -62,7 +62,6 @@ src/lxc/lxc-unfreeze
 src/lxc/lxc-unshare
 src/lxc/lxc-usernsexec
 src/lxc/lxc-wait
-src/lxc/legacy/lxc-ls
 src/lxc/lxc-user-nic
 src/lxc/version.h
 
@@ -121,12 +120,9 @@ doc/*.7
 doc/ja/*.1
 doc/ja/*.5
 doc/ja/*.7
-doc/ja/legacy/*.1
-doc/legacy/*.1
 doc/ko/*.1
 doc/ko/*.5
 doc/ko/*.7
-doc/ko/legacy/*.1
 doc/manpage.links
 doc/manpage.refs
 doc/api/html/*
