@@ -91,10 +91,13 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <!--
       Each option in the configuration file has the form <command>key
       = value</command> fitting in one line. The '#' character means
-      the line is a comment.
+      the line is a comment. List options, like capabilities and cgroups
+      options, can be used with no value to clear any previously
+      defined values of that option.
       -->
       設定ファイルのオプション一つを、<command>key = value</command> の形で一行で表します。
       '#' は、その行はコメントであることを示します。
+      ケーパビリティや cgroup のオプションのような、リスト形式で指定するオプションでは、value がない形式で指定できます。このように使うと、それ以前に定義した値をすべてクリアします。
     </para>
 
     <refsect2>
