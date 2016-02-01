@@ -429,6 +429,19 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         そして、仮に物理ネットワークインターフェースが一つしかなくても、コンテナ内でいくつもの仮想インターフェースを使うことができます。
       </para>
       <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.network</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              may be used without a value to clear all previous network options.
+              -->
+              値を指定せずに使い、それ以前に定義されたすべてのネットワークオプションをクリアできます。
+            </para>
+          </listitem>
+        </varlistentry>
 	<varlistentry>
 	  <term>
 	    <option>lxc.network.type</option>
