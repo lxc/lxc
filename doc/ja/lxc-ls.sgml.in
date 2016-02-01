@@ -28,6 +28,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
 <!DOCTYPE refentry PUBLIC @docdtd@ [
 
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
 ]>
 
@@ -55,7 +56,6 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <cmdsynopsis>
       <command>lxc-ls</command>
       <arg choice="opt">-1</arg>
-      <arg choice="opt">-P <replaceable>lxcpath</replaceable></arg>
       <arg choice="opt">--active</arg>
       <arg choice="opt">--frozen</arg>
       <arg choice="opt">--running</arg>
@@ -63,9 +63,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">-f</arg>
       <arg choice="opt">-F <replaceable>format</replaceable></arg>
       <arg choice="opt">-g <replaceable>groups</replaceable></arg>
-      <arg choice="opt">--nesting</arg>
-      <arg choice="opt">filter</arg>
-      <arg choice="opt">--version</arg>
+      <arg choice="opt">--nesting=<replaceable>NUM</replaceable></arg>
+      <arg choice="opt">--filter=<replaceable>regex</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -93,20 +92,6 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             Show one entry per line. (default when /dev/stdout isn't a tty)
             -->
             1 行に 1 エントリ表示します。(/dev/stdout が tty でない場合のデフォルト)
-          </para>
-        </listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term>
-          <option>-P, --lxcpath</option>
-        </term>
-        <listitem>
-          <para>
-            <!--
-            Use an alternate container path. The default is @LXCPATH@.
-            -->
-            デフォルトと別のコンテナパスを使用します。デフォルトは @LXCPATH@ です。
           </para>
         </listitem>
       </varlistentry>
@@ -169,7 +154,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option>-f, --fancy</option>
+          <option>-f,--fancy</option>
         </term>
         <listitem>
           <para>
@@ -183,7 +168,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option>-F, --fancy-format <replaceable>format</replaceable></option>
+          <option>-F,--fancy-format <replaceable>format</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -198,7 +183,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option>-g, --groups <replaceable>groups</replaceable></option>
+          <option>-g,--groups <replaceable>groups</replaceable></option>
         </term>
         <listitem>
           <para>
@@ -213,44 +198,32 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option>--nesting</option>
+          <option>--nesting=<replaceable>NUM</replaceable></option>
         </term>
         <listitem>
           <para>
             <!--
-            Show nested containers.
+            Show nested containers. The number of nesting levels to be shown can
+            be specified by passing a number as argument.
             -->
-            ネストされたコンテナを表示します。
+            ネストしたコンテナを表示します。引数として数字を指定することで、表示するネストのレベルを指定できます。
           </para>
         </listitem>
       </varlistentry>
 
       <varlistentry>
         <term>
-          <option>filter</option>
+          <option>--filter=<replaceable>regex</replaceable></option>
         </term>
         <listitem>
           <para>
-            <!--
-            The filter passed to <command>lxc-ls</command> will be
-            applied to the container name. The format is a regular expression.
-            -->
-            コンテナ名に対して適用する <command>lxc-ls</command> に与えるフィルタ。
-            フォーマットは正規表現です。
-          </para>
-        </listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term>
-          <option>--version</option>
-        </term>
-        <listitem>
-          <para>
-            <!--
-            Show the version number.
-            -->
-            バージョン番号を表示します。
+	    <!--
+            The regular expression passed to <command>lxc-ls</command> will be
+            applied to the container name. The format is a POSIX extended
+            regular expression. It can also be given as additional argument
+            without explicitly using <option>&#045;&#045;filter</option>.
+	    -->
+	    <command>lxc-ls</command> に与える、コンテナ名に対して適用する正規表現です。フォーマットは POSIX 拡張正規表現です。<option>--filter</option> を明示的に使わずに、追加の引数として与えることもできます。
           </para>
         </listitem>
       </varlistentry>
@@ -290,11 +263,24 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </variablelist>
   </refsect1>
 
+  &commonoptions;
+
   &seealso;
 
   <refsect1>
+    <title><!-- History -->履歴</title>
+    <!--
+    Written originally as a shell script by Daniel Lezcano and Serge Hallyn.
+    Later reimplemented and extended in Python by Stéphane Graber and then
+    reimplemented and extended in C by Christian Brauner.
+      -->
+    元は Daniel Lezcano と Serge Hallyn によりシェルスクリプトとして書かれていました。のちに、Stéphane Graber が Python で再実装し、拡張しました。その後、Christian Brauner が C で再実装し、拡張しました。
+  </refsect1>
+
+  <refsect1>
     <title><!-- Author -->作者</title>
-    <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+    <para>Christian Brauner <email>christian.brauner@mailbox.org</email>,
+    Stéphane Graber <email>stgraber@ubuntu.com</email></para>
   </refsect1>
 
 </refentry>
