@@ -489,6 +489,9 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 	size_t len = 0;
 	size_t rootfslen = 0;
 
+	/* Since we use all of these to check whether the user has given us a
+	 * sane absolute path to create the directories needed for overlay
+	 * lxc.mount.entry entries we consider any of these missing fatal. */
 	if (!rootfs || !rootfs->path || !lxc_name || !lxc_path)
 		goto err;
 
