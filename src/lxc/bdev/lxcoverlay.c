@@ -489,7 +489,7 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 	size_t len = 0;
 	size_t rootfslen = 0;
 
-	if (!rootfs->path || !lxc_name || !lxc_path)
+	if (!rootfs || !rootfs->path || !lxc_name || !lxc_path)
 		goto err;
 
 	opts = lxc_string_split(mntent->mnt_opts, ',');
