@@ -685,7 +685,6 @@ AC_CONFIG_FILES([
 
 	doc/Makefile
 	doc/api/Makefile
-	doc/legacy/lxc-ls.sgml
 	doc/lxc-attach.sgml
 	doc/lxc-autostart.sgml
 	doc/lxc-cgroup.sgml
@@ -734,7 +733,6 @@ AC_CONFIG_FILES([
 	doc/examples/lxc-complex.conf
 
 	doc/ja/Makefile
-	doc/ja/legacy/lxc-ls.sgml
 	doc/ja/lxc-attach.sgml
 	doc/ja/lxc-autostart.sgml
 	doc/ja/lxc-cgroup.sgml
@@ -772,7 +770,6 @@ AC_CONFIG_FILES([
 	doc/ja/see_also.sgml
 
 	doc/ko/Makefile
-	doc/ko/legacy/lxc-ls.sgml
 	doc/ko/lxc-attach.sgml
 	doc/ko/lxc-autostart.sgml
 	doc/ko/lxc-cgroup.sgml
@@ -835,9 +832,7 @@ AC_CONFIG_FILES([
 	src/Makefile
 	src/lxc/Makefile
 	src/lxc/lxc-checkconfig
-	src/lxc/lxc-ls
 	src/lxc/lxc-start-ephemeral
-	src/lxc/legacy/lxc-ls
 	src/lxc/lxc.functions
 	src/lxc/version.h
 	src/python-lxc/Makefile
