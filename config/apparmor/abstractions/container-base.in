@@ -62,6 +62,10 @@
   # allow bind mount of /lib/init/fstab for lxcguest
   mount options=(rw, bind) /lib/init/fstab.lxc/ -> /lib/init/fstab/,
 
+  # allow bind mounts of /run/{,lock} to /var/run/{,lock}
+  mount options=(rw, bind) /run/ -> /var/run/,
+  mount options=(rw, bind) /run/lock/ -> /var/lock/,
+
   # deny writes in /proc/sys/fs but allow binfmt_misc to be mounted
   mount fstype=binfmt_misc -> /proc/sys/fs/binfmt_misc/,
   deny @{PROC}/sys/fs/** wklx,
