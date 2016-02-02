@@ -948,15 +948,10 @@ static int setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 	int ret,i;
 	struct stat s;
 
-	/* rootfs struct will be empty when container is created without rootfs. */
-	char *rootfs_path = NULL;
-	if (rootfs && rootfs->path)
-		rootfs_path = rootfs->mount;
-
 
 	for (i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
 		const struct dev_symlinks *d = &dev_symlinks[i];
-		ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs_path ? rootfs_path : "", d->name);
+		ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs->path ? rootfs->mount : "", d->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 
@@ -1159,18 +1154,13 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs, cons
 	size_t clen;
 	char *path;
 
-	/* rootfs struct will be empty when container is created without rootfs. */
-	char *rootfs_path = NULL;
-	if (rootfs && rootfs->path)
-		rootfs_path = rootfs->mount;
-
 	INFO("Mounting container /dev");
 
 	/* $(rootfs->mount) + "/dev/pts" + '\0' */
-	clen = (rootfs_path ? strlen(rootfs_path) : 0) + 9;
+	clen = (rootfs->path ? strlen(rootfs->mount) : 0) + 9;
 	path = alloca(clen);
 
-	ret = snprintf(path, clen, "%s/dev", rootfs_path ? rootfs_path : "");
+	ret = snprintf(path, clen, "%s/dev", rootfs->path ? rootfs->mount : "");
 	if (ret < 0 || ret >= clen)
 		return -1;
 
@@ -1181,7 +1171,7 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs, cons
 	}
 
 	ret = safe_mount("none", path, "tmpfs", 0, "size=100000,mode=755",
-			rootfs_path);
+			rootfs->path ? rootfs->mount : NULL);
 	if (ret != 0) {
 		SYSERROR("Failed mounting tmpfs onto %s\n", path);
 		return -1;
@@ -1189,7 +1179,7 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs, cons
 
 	INFO("Mounted tmpfs onto %s",  path);
 
-	ret = snprintf(path, clen, "%s/dev/pts", rootfs_path ? rootfs_path : "");
+	ret = snprintf(path, clen, "%s/dev/pts", rootfs->path ? rootfs->mount : "");
 	if (ret < 0 || ret >= clen)
 		return -1;
 
@@ -1233,14 +1223,9 @@ static int fill_autodev(const struct lxc_rootfs *rootfs)
 	int i;
 	mode_t cmask;
 
-	/* rootfs struct will be empty when container is created without rootfs. */
-	char *rootfs_path = NULL;
-	if (rootfs && rootfs->path)
-		rootfs_path = rootfs->mount;
-
 	INFO("Creating initial consoles under container /dev");
 
-	ret = snprintf(path, MAXPATHLEN, "%s/dev", rootfs_path ? rootfs_path : "");
+	ret = snprintf(path, MAXPATHLEN, "%s/dev", rootfs->path ? rootfs->mount : "");
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		ERROR("Error calculating container /dev location");
 		return -1;
@@ -1253,7 +1238,7 @@ static int fill_autodev(const struct lxc_rootfs *rootfs)
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
 		const struct lxc_devs *d = &lxc_devs[i];
-		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", rootfs_path ? rootfs_path : "", d->name);
+		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", rootfs->path ? rootfs->mount : "", d->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 		ret = mknod(path, d->mode, makedev(d->maj, d->min));
@@ -1273,7 +1258,7 @@ static int fill_autodev(const struct lxc_rootfs *rootfs)
 			}
 			fclose(pathfile);
 			if (safe_mount(hostpath, path, 0, MS_BIND, NULL,
-						rootfs_path ? rootfs_path : NULL) != 0) {
+						rootfs->path ? rootfs->mount : NULL) != 0) {
 				SYSERROR("Failed bind mounting device %s from host into container",
 					d->name);
 				return -1;
@@ -1884,6 +1869,9 @@ static int mount_entry_create_overlay_dirs(const struct mntent *mntent,
 	size_t len = 0;
 	size_t rootfslen = 0;
 
+	/* Since we use all of these to check whether the user has given us a
+	 * sane absolute path to create the directories needed for overlay
+	 * lxc.mount.entry entries we consider any of these missing fatal. */
 	if (!rootfs || !rootfs->path || !lxc_name || !lxc_path)
 		goto err;
 
@@ -1950,6 +1938,9 @@ static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
 	size_t len = 0;
 	size_t rootfslen = 0;
 
+	/* Since we use all of these to check whether the user has given us a
+	 * sane absolute path to create the directories needed for overlay
+	 * lxc.mount.entry entries we consider any of these missing fatal. */
 	if (!rootfs || !rootfs->path || !lxc_name || !lxc_path)
 		goto err;
 
@@ -1993,7 +1984,6 @@ err:
 	return fret;
 }
 
-
 static int mount_entry_create_dir_file(const struct mntent *mntent,
 				       const char* path, const struct lxc_rootfs *rootfs,
 				       const char *lxc_name, const char *lxc_path)
@@ -2035,6 +2025,8 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 	return ret;
 }
 
+/* rootfs, lxc_name, and lxc_path can be NULL when the container is created
+ * without a rootfs. */
 static inline int mount_entry_on_generic(struct mntent *mntent,
                  const char* path, const struct lxc_rootfs *rootfs,
 		 const char *lxc_name, const char *lxc_path)
@@ -2043,6 +2035,10 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	char *mntdata;
 	int ret;
 	bool optional = hasmntopt(mntent, "optional") != NULL;
+
+	char *rootfs_path = NULL;
+	if (rootfs && rootfs->path)
+		rootfs_path = rootfs->mount;
 
 	ret = mount_entry_create_dir_file(mntent, path, rootfs, lxc_name, lxc_path);
 
@@ -2056,13 +2052,8 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 		return -1;
 	}
 
-	/* rootfs struct will be empty when container is created without rootfs. */
-	char *rootfs_path = NULL;
-	if (rootfs && rootfs->path)
-		rootfs_path = rootfs->mount;
-
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
-			mntdata, optional, rootfs_path);
+			  mntdata, optional, rootfs_path);
 
 	free(mntdata);
 	return ret;
@@ -2070,7 +2061,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 
 static inline int mount_entry_on_systemfs(struct mntent *mntent)
 {
-  return mount_entry_on_generic(mntent, mntent->mnt_dir, NULL, NULL, NULL);
+	return mount_entry_on_generic(mntent, mntent->mnt_dir, NULL, NULL, NULL);
 }
 
 static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
