@@ -27,6 +27,12 @@
 #define _GNU_SOURCE
 #include <stdint.h>
 
+#if IS_BIONIC
+#include <../include/lxcmntent.h>
+#else
+#include <mntent.h>
+#endif
+
 /* defined in bdev.h */
 struct bdev;
 
@@ -48,5 +54,17 @@ int aufs_destroy(struct bdev *orig);
 int aufs_detect(const char *path);
 int aufs_mount(struct bdev *bdev);
 int aufs_umount(struct bdev *bdev);
+
+/*
+ * Get rootfs path for aufs backed containers. Allocated memory must be freed
+ * by caller.
+ */
+char *aufs_get_rootfs(const char *rootfs_path, size_t *rootfslen);
+
+/*
+ * Create directories for aufs mounts.
+ */
+int aufs_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
+		const char *lxc_name, const char *lxc_path);
 
 #endif /* __LXC_AUFS_H */

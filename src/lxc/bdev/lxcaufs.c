@@ -30,6 +30,7 @@
 
 #include "bdev.h"
 #include "log.h"
+#include "lxcaufs.h"
 #include "lxcrsync.h"
 #include "utils.h"
 
@@ -312,3 +313,101 @@ int aufs_umount(struct bdev *bdev)
 		return -22;
 	return umount(bdev->dest);
 }
+
+char *aufs_get_rootfs(const char *rootfs_path, size_t *rootfslen)
+{
+	char *rootfsdir = NULL;
+	char *s1 = NULL;
+	char *s2 = NULL;
+	char *s3 = NULL;
+
+	if (!rootfs_path || !rootfslen)
+		return NULL;
+
+	s1 = strdup(rootfs_path);
+	if (!s1)
+		return NULL;
+
+	if ((s2 = strstr(s1, ":/"))) {
+		s2 = s2 + 1;
+		if ((s3 = strstr(s2, ":/")))
+			*s3 = '\0';
+		rootfsdir = strdup(s2);
+		if (!rootfsdir) {
+			free(s1);
+			return NULL;
+		}
+	}
+
+	if (!rootfsdir)
+		rootfsdir = s1;
+	else
+		free(s1);
+
+	*rootfslen = strlen(rootfsdir);
+
+	return rootfsdir;
+}
+
+int aufs_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
+		const char *lxc_name, const char *lxc_path)
+{
+	char lxcpath[MAXPATHLEN];
+	char *rootfsdir = NULL;
+	char *scratch = NULL;
+	char *tmp = NULL;
+	char *upperdir = NULL;
+	char **opts = NULL;
+	int fret = -1;
+	int ret = 0;
+	size_t arrlen = 0;
+	size_t i;
+	size_t len = 0;
+	size_t rootfslen = 0;
+
+	/* Since we use all of these to check whether the user has given us a
+	 * sane absolute path to create the directories needed for overlay
+	 * lxc.mount.entry entries we consider any of these missing fatal. */
+	if (!rootfs || !rootfs->path || !lxc_name || !lxc_path)
+		goto err;
+
+	opts = lxc_string_split(mntent->mnt_opts, ',');
+	if (opts)
+		arrlen = lxc_array_len((void **)opts);
+	else
+		goto err;
+
+	for (i = 0; i < arrlen; i++) {
+		if (strstr(opts[i], "br=") && (strlen(opts[i]) > (len = strlen("br="))))
+			tmp = opts[i] + len;
+	}
+	if (!tmp)
+		goto err;
+
+	upperdir = strtok_r(tmp, ":=", &scratch);
+	if (!upperdir)
+		goto err;
+
+	ret = snprintf(lxcpath, MAXPATHLEN, "%s/%s", lxc_path, lxc_name);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		goto err;
+
+	rootfsdir = aufs_get_rootfs(rootfs->path, &rootfslen);
+	if (!rootfsdir)
+		goto err;
+
+	/* We neither allow users to create upperdirs outside the containerdir
+	 * nor inside the rootfs. The latter might be debatable. */
+	if ((strncmp(upperdir, lxcpath, strlen(lxcpath)) == 0) && (strncmp(upperdir, rootfsdir, rootfslen) != 0))
+		if (mkdir_p(upperdir, 0755) < 0) {
+			WARN("Failed to create upperdir");
+		}
+
+	fret = 0;
+
+err:
+	free(rootfsdir);
+	lxc_free_array((void **)opts, free);
+	return fret;
+}
+
