@@ -353,8 +353,10 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 	if (!path)
 		goto out;
 
-	if (!dir_exists(path))
+	if (!dir_exists(path)) {
+		ret = 0;
 		goto out;
+	}
 
 	/* Do not do more work than is necessary right from the start. */
 	if (args->ls_active || (args->ls_active && args->ls_frozen))
