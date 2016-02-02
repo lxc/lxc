@@ -858,10 +858,15 @@ static int setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 	int ret,i;
 	struct stat s;
 
+	/* rootfs struct will be empty when container is created without rootfs. */
+	char *rootfs_path = NULL;
+	if (rootfs && rootfs->path)
+		rootfs_path = rootfs->mount;
+
 
 	for (i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
 		const struct dev_symlinks *d = &dev_symlinks[i];
-		ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs->path ? rootfs->mount : "", d->name);
+		ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs_path ? rootfs_path : "", d->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 
@@ -1064,13 +1069,18 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs, cons
 	size_t clen;
 	char *path;
 
+	/* rootfs struct will be empty when container is created without rootfs. */
+	char *rootfs_path = NULL;
+	if (rootfs && rootfs->path)
+		rootfs_path = rootfs->mount;
+
 	INFO("Mounting container /dev");
 
 	/* $(rootfs->mount) + "/dev/pts" + '\0' */
-	clen = (rootfs->path ? strlen(rootfs->mount) : 0) + 9;
+	clen = (rootfs_path ? strlen(rootfs_path) : 0) + 9;
 	path = alloca(clen);
 
-	ret = snprintf(path, clen, "%s/dev", rootfs->path ? rootfs->mount : "");
+	ret = snprintf(path, clen, "%s/dev", rootfs_path ? rootfs_path : "");
 	if (ret < 0 || ret >= clen)
 		return -1;
 
@@ -1080,15 +1090,16 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs, cons
 		return 0;
 	}
 
-	if (safe_mount("none", path, "tmpfs", 0, "size=500000,mode=755",
-				rootfs->path ? rootfs->mount : NULL)) {
+	ret = safe_mount("none", path, "tmpfs", 0, "size=500000,mode=755",
+			rootfs_path);
+	if (ret != 0) {
 		SYSERROR("Failed mounting tmpfs onto %s\n", path);
-		return false;
+		return -1;
 	}
 
 	INFO("Mounted tmpfs onto %s",  path);
 
-	ret = snprintf(path, clen, "%s/dev/pts", rootfs->path ? rootfs->mount : "");
+	ret = snprintf(path, clen, "%s/dev/pts", rootfs_path ? rootfs_path : "");
 	if (ret < 0 || ret >= clen)
 		return -1;
 
@@ -1132,9 +1143,14 @@ static int fill_autodev(const struct lxc_rootfs *rootfs)
 	int i;
 	mode_t cmask;
 
+	/* rootfs struct will be empty when container is created without rootfs. */
+	char *rootfs_path = NULL;
+	if (rootfs && rootfs->path)
+		rootfs_path = rootfs->mount;
+
 	INFO("Creating initial consoles under container /dev");
 
-	ret = snprintf(path, MAXPATHLEN, "%s/dev", rootfs->path ? rootfs->mount : "");
+	ret = snprintf(path, MAXPATHLEN, "%s/dev", rootfs_path ? rootfs_path : "");
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		ERROR("Error calculating container /dev location");
 		return -1;
@@ -1147,7 +1163,7 @@ static int fill_autodev(const struct lxc_rootfs *rootfs)
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
 		const struct lxc_devs *d = &lxc_devs[i];
-		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", rootfs->path ? rootfs->mount : "", d->name);
+		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", rootfs_path ? rootfs_path : "", d->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 		ret = mknod(path, d->mode, makedev(d->maj, d->min));
@@ -1167,7 +1183,7 @@ static int fill_autodev(const struct lxc_rootfs *rootfs)
 			}
 			fclose(pathfile);
 			if (safe_mount(hostpath, path, 0, MS_BIND, NULL,
-						rootfs->path ? rootfs->mount : NULL) != 0) {
+						rootfs_path ? rootfs_path : NULL) != 0) {
 				SYSERROR("Failed bind mounting device %s from host into container",
 					d->name);
 				return -1;
@@ -1743,7 +1759,7 @@ static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
 	size_t len = 0;
 	size_t rootfslen = 0;
 
-	if (!rootfs->path || !lxc_name || !lxc_path)
+	if (!rootfs || !rootfs->path || !lxc_name || !lxc_path)
 		goto err;
 
 	opts = lxc_string_split(mntent->mnt_opts, ',');
@@ -1849,9 +1865,13 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 		return -1;
 	}
 
+	/* rootfs struct will be empty when container is created without rootfs. */
+	char *rootfs_path = NULL;
+	if (rootfs && rootfs->path)
+		rootfs_path = rootfs->mount;
+
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
-			  mntdata, optional,
-			  rootfs->path ? rootfs->mount : NULL);
+			mntdata, optional, rootfs_path);
 
 	free(mntdata);
 	return ret;
