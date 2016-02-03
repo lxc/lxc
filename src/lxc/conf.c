@@ -997,7 +997,7 @@ static int setup_tty(struct lxc_conf *conf)
 }
 
 
-static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
+static int setup_rootfs_pivot_root(const char *rootfs)
 {
 	int oldroot = -1, newroot = -1;
 
@@ -1319,7 +1319,7 @@ static int setup_pivot_root(const struct lxc_rootfs *rootfs)
 	if (detect_ramfs_rootfs()) {
 		if (prepare_ramfs_root(rootfs->mount))
 			return -1;
-	} else if (setup_rootfs_pivot_root(rootfs->mount, rootfs->pivot)) {
+	} else if (setup_rootfs_pivot_root(rootfs->mount)) {
 		ERROR("failed to setup pivot root");
 		return -1;
 	}
@@ -4139,7 +4139,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.mount);
 	free(conf->rootfs.options);
 	free(conf->rootfs.path);
-	free(conf->rootfs.pivot);
 	free(conf->logfile);
 	if (conf->logfd != -1)
 		close(conf->logfd);
