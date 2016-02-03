@@ -477,6 +477,7 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 	      const char *lxc_name, const char *lxc_path)
 {
 	char lxcpath[MAXPATHLEN];
+	char *rootfs_path = NULL;
 	char *rootfsdir = NULL;
 	char *upperdir = NULL;
 	char *workdir = NULL;
@@ -489,11 +490,9 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 	size_t len = 0;
 	size_t rootfslen = 0;
 
-	/* Since we use all of these to check whether the user has given us a
-	 * sane absolute path to create the directories needed for overlay
-	 * lxc.mount.entry entries we consider any of these missing fatal. */
-	if (!rootfs || !rootfs->path || !lxc_name || !lxc_path)
-		goto err;
+	/* When rootfs == NULL we have a container without a rootfs. */
+	if (rootfs && rootfs->path)
+		rootfs_path = rootfs->path;
 
 	opts = lxc_string_split(mntent->mnt_opts, ',');
 	if (opts)
@@ -508,31 +507,42 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 			workdir = opts[i] + len;
 	}
 
-	ret = snprintf(lxcpath, MAXPATHLEN, "%s/%s", lxc_path, lxc_name);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		goto err;
+	if (rootfs_path) {
+		ret = snprintf(lxcpath, MAXPATHLEN, "%s/%s", lxc_path, lxc_name);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			goto err;
 
-	rootfsdir = ovl_get_rootfs(rootfs->path, &rootfslen);
-	if (!rootfsdir)
-		goto err;
+		rootfsdir = ovl_get_rootfs(rootfs_path, &rootfslen);
+		if (!rootfsdir)
+			goto err;
 
-	dirlen = strlen(lxcpath);
+		dirlen = strlen(lxcpath);
+	}
 
 	/*
 	 * We neither allow users to create upperdirs and workdirs outside the
 	 * containerdir nor inside the rootfs. The latter might be debatable.
+	 * When we have a container without a rootfs we skip the checks.
 	 */
-	if (upperdir)
-		if ((strncmp(upperdir, lxcpath, dirlen) == 0) && (strncmp(upperdir, rootfsdir, rootfslen) != 0))
-			if (mkdir_p(upperdir, 0755) < 0) {
-				WARN("Failed to create upperdir");
-			}
+	ret = 0;
+	if (upperdir) {
+		if (!rootfs_path)
+			ret = mkdir_p(upperdir, 0755);
+		else if ((strncmp(upperdir, lxcpath, dirlen) == 0) && (strncmp(upperdir, rootfsdir, rootfslen) != 0))
+			ret = mkdir_p(upperdir, 0755);
+		if (ret < 0)
+			WARN("Failed to create upperdir");
+	}
 
-	if (workdir)
-		if ((strncmp(workdir, lxcpath, dirlen) == 0) && (strncmp(workdir, rootfsdir, rootfslen) != 0))
-			if (mkdir_p(workdir, 0755) < 0) {
-				WARN("Failed to create workdir");
-			}
+	ret = 0;
+	if (workdir) {
+		if (!rootfs_path)
+			ret = mkdir_p(workdir, 0755);
+		else if ((strncmp(workdir, lxcpath, dirlen) == 0) && (strncmp(workdir, rootfsdir, rootfslen) != 0))
+			ret = mkdir_p(workdir, 0755);
+		if (ret < 0)
+			WARN("Failed to create workdir");
+	}
 
 	fret = 0;
 

@@ -1145,7 +1145,7 @@ static int fill_autodev(const struct lxc_rootfs *rootfs)
 		return -1;
 	}
 
-	if (!dir_exists(path))  // ignore, just don't try to fill in
+	if (!dir_exists(path)) // ignore, just don't try to fill in
 		return 0;
 
 	INFO("Populating container /dev");
