@@ -20,6 +20,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+#define _GNU_SOURCE
 #include "config.h"
 
 #include <stdio.h>
@@ -36,6 +38,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+
 #ifdef HAVE_STATVFS
 #include <sys/statvfs.h>
 #endif
@@ -72,6 +75,7 @@
 #include "log.h"
 #include "caps.h"       /* for lxc_caps_last_cap() */
 #include "bdev/bdev.h"
+#include "bdev/lxcaufs.h"
 #include "bdev/lxcoverlay.h"
 #include "cgroup.h"
 #include "lxclock.h"
@@ -1726,70 +1730,6 @@ static void cull_mntent_opt(struct mntent *mntent)
 	}
 }
 
-static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
-					const struct lxc_rootfs *rootfs,
-					const char *lxc_name,
-					const char *lxc_path)
-{
-	char lxcpath[MAXPATHLEN];
-	char *rootfsdir = NULL;
-	char *scratch = NULL;
-	char *tmp = NULL;
-	char *upperdir = NULL;
-	char **opts = NULL;
-	int fret = -1;
-	int ret = 0;
-	size_t arrlen = 0;
-	size_t i;
-	size_t len = 0;
-	size_t rootfslen = 0;
-
-	/* Since we use all of these to check whether the user has given us a
-	 * sane absolute path to create the directories needed for overlay
-	 * lxc.mount.entry entries we consider any of these missing fatal. */
-	if (!rootfs || !rootfs->path || !lxc_name || !lxc_path)
-		goto err;
-
-	opts = lxc_string_split(mntent->mnt_opts, ',');
-	if (opts)
-		arrlen = lxc_array_len((void **)opts);
-	else
-		goto err;
-
-	for (i = 0; i < arrlen; i++) {
-		if (strstr(opts[i], "br=") && (strlen(opts[i]) > (len = strlen("br="))))
-			tmp = opts[i] + len;
-	}
-	if (!tmp)
-		goto err;
-
-	upperdir = strtok_r(tmp, ":=", &scratch);
-	if (!upperdir)
-		goto err;
-
-	ret = snprintf(lxcpath, MAXPATHLEN, "%s/%s", lxc_path, lxc_name);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		goto err;
-
-	rootfsdir = ovl_get_rootfs(rootfs->path, &rootfslen);
-	if (!rootfsdir)
-		goto err;
-
-	/* We neither allow users to create upperdirs outside the containerdir
-	 * nor inside the rootfs. The latter might be debatable. */
-	if ((strncmp(upperdir, lxcpath, strlen(lxcpath)) == 0) && (strncmp(upperdir, rootfsdir, rootfslen) != 0))
-		if (mkdir_p(upperdir, 0755) < 0) {
-			WARN("Failed to create upperdir");
-		}
-
-	fret = 0;
-
-err:
-	free(rootfsdir);
-	lxc_free_array((void **)opts, free);
-	return fret;
-}
-
 static int mount_entry_create_dir_file(const struct mntent *mntent,
 				       const char* path, const struct lxc_rootfs *rootfs,
 				       const char *lxc_name, const char *lxc_path)
@@ -1802,7 +1742,7 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 		if (ovl_mkdir(mntent, rootfs, lxc_name, lxc_path) < 0)
 			return -1;
 	} else if (strncmp(mntent->mnt_type, "aufs", 4) == 0) {
-		if (mount_entry_create_aufs_dirs(mntent, rootfs, lxc_name, lxc_path) < 0)
+		if (aufs_mkdir(mntent, rootfs, lxc_name, lxc_path) < 0)
 			return -1;
 	}
 
