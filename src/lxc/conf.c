@@ -1807,7 +1807,22 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 
 static inline int mount_entry_on_systemfs(struct mntent *mntent)
 {
-	return mount_entry_on_generic(mntent, mntent->mnt_dir, NULL, NULL, NULL);
+	char path[MAXPATHLEN];
+	int ret;
+
+	/* For containers created without a rootfs all mounts are treated as
+	 * absolute paths starting at / on the host. */
+	if (mntent->mnt_dir[0] != '/')
+		ret = snprintf(path, sizeof(path), "/%s", mntent->mnt_dir);
+	else
+		ret = snprintf(path, sizeof(path), "%s", mntent->mnt_dir);
+
+	if (ret < 0 || ret >= sizeof(path)) {
+		ERROR("path name too long");
+		return -1;
+	}
+
+	return mount_entry_on_generic(mntent, path, NULL, NULL, NULL);
 }
 
 static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
@@ -1868,7 +1883,7 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 
 	/* relative to root mount point */
 	ret = snprintf(path, sizeof(path), "%s/%s", rootfs->mount, mntent->mnt_dir);
-	if (ret >= sizeof(path)) {
+	if (ret < 0 || ret >= sizeof(path)) {
 		ERROR("path name too long");
 		return -1;
 	}
