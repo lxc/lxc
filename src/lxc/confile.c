@@ -1857,7 +1857,7 @@ static int config_pivotdir(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
 	WARN("lxc.pivotdir is ignored.  It will soon become an error.");
-	return config_path_item(&lxc_conf->rootfs.pivot, value);
+	return 0;
 }
 
 static int config_utsname(const char *key, const char *value,
@@ -2478,8 +2478,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->rootfs.options;
 	else if (strcmp(key, "lxc.rootfs") == 0)
 		v = c->rootfs.path;
-	else if (strcmp(key, "lxc.pivotdir") == 0)
-		v = c->rootfs.pivot;
 	else if (strcmp(key, "lxc.cap.drop") == 0)
 		return lxc_get_item_cap_drop(c, retv, inlen);
 	else if (strcmp(key, "lxc.cap.keep") == 0)

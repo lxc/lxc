@@ -217,13 +217,13 @@ struct lxc_console {
 /*
  * Defines a structure to store the rootfs location, the
  * optionals pivot_root, rootfs mount paths
- * @rootfs     : a path to the rootfs
- * @pivot_root : a path to a pivot_root location to be used
+ * @path       : the rootfs source (directory or device)
+ * @mount      : where it is mounted
+ * @options    : mount options
  */
 struct lxc_rootfs {
 	char *path;
 	char *mount;
-	char *pivot;
 	char *options;
 };
 
