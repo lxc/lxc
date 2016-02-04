@@ -42,6 +42,9 @@ struct bdev_specs;
 /* defined conf.h */
 struct lxc_conf;
 
+/* defined in conf.h */
+struct lxc_rootfs;
+
 /*
  * Functions associated with an aufs bdev struct.
  */
