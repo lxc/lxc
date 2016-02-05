@@ -173,7 +173,7 @@ static int create_partial(struct lxc_container *c)
 		return -1;
 	}
 	if ((fd=open(path, O_RDWR | O_CREAT | O_EXCL, 0755)) < 0) {
-		SYSERROR("Erorr creating partial file");
+		SYSERROR("Error creating partial file");
 		return -1;
 	}
 	lk.l_type = F_WRLCK;
