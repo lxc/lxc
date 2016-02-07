@@ -1,6 +1,8 @@
 #!/bin/sh
 # vim: set ts=4:
-set -o errexit -o pipefail -o nounset
+
+# Exit on error and treat unset variables as an error.
+set -eu
 
 #
 # LXC template for Alpine Linux 3+
@@ -47,7 +49,7 @@ readonly APK_KEYS_URI='http://alpinelinux.org/keys'
 readonly MIRRORS_LIST_URL='http://rsync.alpinelinux.org/alpine/MIRRORS.txt'
 
 : ${APK_KEYS_DIR:=/etc/apk/keys}
-if ! ls "$APK_KEYS_DIR"/alpine* &>/dev/null; then
+if ! ls "$APK_KEYS_DIR"/alpine* >/dev/null 2>&1; then
 	APK_KEYS_DIR="$LXC_CACHE_DIR/bootstrap/keys"
 fi
 readonly APK_KEYS_DIR
@@ -90,12 +92,12 @@ usage() {
 die() {
 	local retval=$1; shift
 
-	echo -e "ERROR: $@" >&2
+	printf 'ERROR: %s\n' "$@" 1>&2
 	exit $retval
 }
 
 einfo() {
-	echo -e "\n==> $@"
+	printf "\n==> $1\n"
 }
 
 fetch() {
@@ -154,7 +156,7 @@ run_exclusively() {
 #============================  Bootstrap  ===========================#
 
 bootstrap() {
-	if [[ "$FLUSH_CACHE" = 'yes' && -d "$LXC_CACHE_DIR/bootstrap" ]]; then
+	if [ "$FLUSH_CACHE" = 'yes' ] && [ -d "$LXC_CACHE_DIR/bootstrap" ]; then
 		einfo 'Cleaning cached bootstrap files'
 		rm -Rf "$LXC_CACHE_DIR/bootstrap"
 	fi
@@ -185,7 +187,7 @@ fetch_apk_keys() {
 		echo "$line" | sha256sum -c -
 	done || exit 2
 
-	cd - 1>/dev/null
+	cd - >/dev/null
 }
 
 fetch_apk_static() {
@@ -229,7 +231,7 @@ install() {
 	local branch="$3"
 	local cache_dir="$LXC_CACHE_DIR/rootfs-$branch-$arch"
 
-	if [[ "$FLUSH_CACHE" == 'yes' && -d "$cache_dir" ]]; then
+	if [ "$FLUSH_CACHE" = 'yes' ] && [ -d "$cache_dir" ]; then
 		einfo "Cleaning cached rootfs of Alpine $branch $arch"
 		rm -Rf "$cache_dir"
 	fi
@@ -270,7 +272,7 @@ build_alpine() {
 	chroot . /bin/true \
 		|| die 3 'Failed to execute /bin/true in chroot, the builded rootfs is broken!'
 
-	cd - 1>&/dev/null
+	cd - >/dev/null
 
 	rm -Rf "$dest"
 	mv "$dest.part" "$dest"
@@ -336,7 +338,7 @@ start() {
 				:a; n; /^${end_tag}/!ba; n
 			}; p" /etc/hosts
 	else
-		echo -e "$content" >> /etc/hosts
+		printf "$content" >> /etc/hosts
 	fi
 }
 EOF
@@ -456,12 +458,11 @@ while [ $# -gt 0 ]; do
 			shift; break
 		;;
 		--mapped-[ug]id)
-			echo "ERROR: This template can't be used for unprivileged containers." >&2
-			echo 'You may want to try the "download" template instead.' >&2
-			exit 1
+			die 1 "This template can't be used for unprivileged containers." \
+				'You may want to try the "download" template instead.'
 		;;
 		*)
-			echo "Unknown option: $1" >&2
+			echo "Unknown option: $1" 1>&2
 			usage; exit 1
 		;;
 	esac
@@ -478,7 +479,7 @@ readonly MIRROR_URL="${mirror_url:-$(random_mirror_url)}"
 [ -n "$name" ] || die 1 'Missing required option --name'
 [ -n "$path" ] || die 1 'Missing required option --path'
 
-if [[ -z "$rootfs" && -f "$path/config" ]]; then
+if [ -z "$rootfs" ] && [ -f "$path/config" ]; then
 	rootfs="$(sed -nE 's/^lxc.rootfs\s*=\s*(.*)$/\1/p' "$path/config")"
 fi
 if [ -z "$rootfs" ]; then
