@@ -146,16 +146,15 @@ static bool aa_stacking_supported(void) {
 	return false;
 }
 
-/* are we in a confined container? */
-static bool in_aa_confined_container(void) {
-	char *p = apparmor_process_label_get(getpid());
-	bool ret = false;
-	if (p && strcmp(p, "/usr/bin/lxc-start") != 0 && strcmp(p, "unconfined") != 0) {
-		INFO("Already apparmor-confined under %s", p);
-		ret = true;
-	}
-	free(p);
-	return ret;
+static bool aa_needs_transition(char *curlabel)
+{
+	if (!curlabel)
+		return false;
+	if (strcmp(curlabel, "unconfined") == 0)
+		return false;
+	if (strcmp(curlabel, "/usr/bin/lxc-start") == 0)
+		return false;
+	return true;
 }
 
 /*
@@ -174,6 +173,7 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 				      int use_default, int on_exec)
 {
 	const char *label = inlabel ? inlabel : conf->lsm_aa_profile;
+	char *curlabel;
 
 	if (!aa_enabled)
 		return 0;
@@ -184,17 +184,22 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 		return 0;
 	}
 
-	/*
-	 * If we are already confined and no profile was requested,
-	 * then default to unchanged
-	 */
-	if (in_aa_confined_container() && !aa_stacking_supported()) {
-		if (label) {
-			ERROR("already apparmor confined, but new label requested.");
-			return -1;
+	curlabel = apparmor_process_label_get(getpid());
+
+	if (!aa_stacking_supported() && aa_needs_transition(curlabel)) {
+		// we're already confined, and stacking isn't supported
+
+		if (!label || strcmp(curlabel, label) == 0) {
+			// no change requested
+			free(curlabel);
+			return 0;
 		}
-		return 0;
+
+		ERROR("already apparmor confined, but new label requested.");
+		free(curlabel);
+		return -1;
 	}
+	free(curlabel);
 
 	if (!label) {
 		if (use_default)
