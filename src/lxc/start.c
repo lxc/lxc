@@ -562,9 +562,10 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		close(handler->ttysock[0]);
 		close(handler->ttysock[1]);
 	}
-	if (handler->conf->ephemeral == 1 && handler->conf->reboot != 1) {
+
+	if (handler->conf->ephemeral == 1 && handler->conf->reboot != 1)
 		lxc_destroy_container_on_signal(handler, name);
-	}
+
 	cgroup_destroy(handler);
 	free(handler);
 }
@@ -868,7 +869,7 @@ static int save_phys_nics(struct lxc_conf *conf)
 
 	if (!am_root)
 		return 0;
-		
+
 	lxc_list_for_each(iterator, &conf->network) {
 		struct lxc_netdev *netdev = iterator->elem;
 

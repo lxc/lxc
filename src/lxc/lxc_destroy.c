@@ -58,13 +58,13 @@ Options :\n\
 	.task     = DESTROY,
 };
 
-static int do_destroy(struct lxc_container *c);
-static int do_destroy_with_snapshots(struct lxc_container *c);
+static bool do_destroy(struct lxc_container *c);
+static bool do_destroy_with_snapshots(struct lxc_container *c);
 
 int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
-	int ret;
+	bool bret;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(EXIT_FAILURE);
@@ -100,25 +100,19 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (c->is_running(c)) {
-		if (!my_args.force) {
-			if (!quiet)
-				fprintf(stderr, "%s is running\n", my_args.name);
-			lxc_container_put(c);
-			exit(EXIT_FAILURE);
-		}
-		c->stop(c);
-	}
-
 	if (my_args.task == SNAP) {
-		ret = do_destroy_with_snapshots(c);
+		bret = do_destroy_with_snapshots(c);
+		if (bret && !quiet)
+			printf("Destroyed container %s including snapshots \n", my_args.name);
 	} else {
-		ret = do_destroy(c);
+		bret = do_destroy(c);
+		if (bret && !quiet)
+			printf("Destroyed container %s\n", my_args.name);
 	}
 
 	lxc_container_put(c);
 
-	if (ret == 0)
+	if (bret)
 		exit(EXIT_SUCCESS);
 	exit(EXIT_FAILURE);
 }
@@ -132,21 +126,56 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	return 0;
 }
 
-static int do_destroy(struct lxc_container *c)
+static bool do_destroy(struct lxc_container *c)
 {
-	if (!c->destroy(c)) {
+	bool bret = true;
+	char path[MAXPATHLEN];
+
+	/* First check whether the container has dependent clones or snapshots. */
+	int ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return false;
+
+	if (file_exists(path)) {
 		if (!quiet)
-			fprintf(stderr, "Destroying %s failed\n", my_args.name);
-		return -1;
+			fprintf(stdout, "Destroying %s failed: %s has clones.\n", c->name, c->name);
+		return false;
 	}
 
-	if (!quiet)
-		printf("Destroyed container %s\n", my_args.name);
+	ret = snprintf(path, MAXPATHLEN, "%s/%s/snaps", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN)
+		return false;
 
-	return 0;
+	if (dir_exists(path)) {
+		if (!quiet)
+			fprintf(stdout, "Destroying %s failed: %s has snapshots.\n", c->name, c->name);
+		return false;
+	}
+
+	if (c->is_running(c)) {
+		if (!my_args.force && !quiet) {
+			fprintf(stderr, "%s is running\n", my_args.name);
+			return false;
+		}
+		/* If the container was ephemeral it will be removed on shutdown. */
+		c->stop(c);
+	}
+
+	/* If the container was ephemeral we have already removed it when we
+	 * stopped it. */
+	if (c->is_defined(c) && !c->lxc_conf->ephemeral)
+		bret = c->destroy(c);
+
+	if (!bret) {
+		if (!quiet)
+			fprintf(stderr, "Destroying %s failed\n", my_args.name);
+		return false;
+	}
+
+	return true;
 }
 
-static int do_destroy_with_snapshots(struct lxc_container *c)
+static bool do_destroy_with_snapshots(struct lxc_container *c)
 {
 	struct lxc_container *c1;
 	struct stat fbuf;
@@ -160,17 +189,17 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 	int ret;
 	int counter = 0;
 
-	/* Destroy snapshots created with lxc-clone listed in lxc-snapshots. */
+	/* Destroy clones. */
 	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
 	if (ret < 0 || ret >= MAXPATHLEN)
-		return -1;
+		return false;
 
 	fd = open(path, O_RDONLY | O_CLOEXEC);
 	if (fd >= 0) {
 		ret = fstat(fd, &fbuf);
 		if (ret < 0) {
 			close(fd);
-			return -1;
+			return false;
 		}
 
 		/* Make sure that the string is \0 terminated. */
@@ -178,7 +207,7 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 		if (!buf) {
 			SYSERROR("failed to allocate memory");
 			close(fd);
-			return -1;
+			return false;
 		}
 
 		ret = read(fd, buf, fbuf.st_size);
@@ -186,7 +215,7 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 			ERROR("could not read %s", path);
 			close(fd);
 			free(buf);
-			return -1;
+			return false;
 		}
 		close(fd);
 
@@ -198,12 +227,13 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 				counter++;
 				continue;
 			}
-			if (!c1->destroy(c1)) {
-				if (!quiet)
-					fprintf(stderr, "Destroying snapshot %s of %s failed\n", lxcname, my_args.name);
+			/* We do not destroy recursively. If a clone of a clone
+			 * has clones or snapshots the user should remove it
+			 * explicitly. */
+			if (!do_destroy(c1)) {
 				lxc_container_put(c1);
 				free(buf);
-				return -1;
+				return false;
 			}
 			lxc_container_put(c1);
 			counter++;
@@ -214,22 +244,16 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 	/* Destroy snapshots located in the containers snap/ folder. */
 	ret = snprintf(path, MAXPATHLEN, "%s/%s/snaps", c->config_path, c->name);
 	if (ret < 0 || ret >= MAXPATHLEN)
-		return -1;
+		return false;
 
 	if (dir_exists(path))
 		bret = c->destroy_with_snapshots(c);
 	else
-		bret = c->destroy(c);
+		bret = do_destroy(c);
 
-	if (!bret) {
-		if (!quiet)
-			fprintf(stderr, "Destroying %s failed\n", my_args.name);
-		return -1;
-	}
-
-	if (!quiet)
+	if (bret && !quiet)
 		printf("Destroyed container %s including snapshots \n", my_args.name);
 
-	return 0;
+	return bret;
 }
 
