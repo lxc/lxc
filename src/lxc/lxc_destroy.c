@@ -33,6 +33,7 @@
 lxc_log_define(lxc_destroy_ui, lxc);
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg);
+static bool quiet;
 
 static const struct option my_longopts[] = {
 	{"force", no_argument, 0, 'f'},
@@ -75,28 +76,34 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
 		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();
+	if (my_args.quiet)
+		quiet = true;
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
-		fprintf(stderr, "System error loading container\n");
+		if (!quiet)
+			fprintf(stderr, "System error loading container\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (!c->may_control(c)) {
-		fprintf(stderr, "Insufficent privileges to control %s\n", my_args.name);
+		if (!quiet)
+			fprintf(stderr, "Insufficent privileges to control %s\n", my_args.name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
 
 	if (!c->is_defined(c)) {
-		fprintf(stderr, "Container is not defined\n");
+		if (!quiet)
+			fprintf(stderr, "Container is not defined\n");
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
 
 	if (c->is_running(c)) {
 		if (!my_args.force) {
-			fprintf(stderr, "%s is running\n", my_args.name);
+			if (!quiet)
+				fprintf(stderr, "%s is running\n", my_args.name);
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
@@ -128,11 +135,13 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 static int do_destroy(struct lxc_container *c)
 {
 	if (!c->destroy(c)) {
-		fprintf(stderr, "Destroying %s failed\n", my_args.name);
+		if (!quiet)
+			fprintf(stderr, "Destroying %s failed\n", my_args.name);
 		return -1;
 	}
 
-	printf("Destroyed container %s\n", my_args.name);
+	if (!quiet)
+		printf("Destroyed container %s\n", my_args.name);
 
 	return 0;
 }
@@ -190,7 +199,8 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 				continue;
 			}
 			if (!c1->destroy(c1)) {
-				fprintf(stderr, "Destroying snapshot %s of %s failed\n", lxcname, my_args.name);
+				if (!quiet)
+					fprintf(stderr, "Destroying snapshot %s of %s failed\n", lxcname, my_args.name);
 				lxc_container_put(c1);
 				free(buf);
 				return -1;
@@ -212,11 +222,13 @@ static int do_destroy_with_snapshots(struct lxc_container *c)
 		bret = c->destroy(c);
 
 	if (!bret) {
-		fprintf(stderr, "Destroying %s failed\n", my_args.name);
+		if (!quiet)
+			fprintf(stderr, "Destroying %s failed\n", my_args.name);
 		return -1;
 	}
 
-	printf("Destroyed container %s including snapshots \n", my_args.name);
+	if (!quiet)
+		printf("Destroyed container %s including snapshots \n", my_args.name);
 
 	return 0;
 }
