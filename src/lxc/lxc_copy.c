@@ -127,6 +127,7 @@ Options :\n\
 	.parser = my_parser,
 	.task = CLONE,
 	.daemonize = 1,
+	.quiet = false,
 };
 
 static struct mnts *add_mnt(struct mnts **mnts, unsigned int *num,
@@ -171,13 +172,15 @@ int main(int argc, char *argv[])
 
 	if (geteuid()) {
 		if (access(my_args.lxcpath[0], O_RDWR) < 0) {
-			fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
+			if (!my_args.quiet)
+				fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
 			exit(ret);
 		}
 	}
 
 	if (!my_args.newname && !(my_args.task == DESTROY)) {
-		printf("Error: You must provide a NEWNAME for the clone.\n");
+		if (!my_args.quiet)
+			printf("Error: You must provide a NEWNAME for the clone.\n");
 		exit(ret);
 	}
 
@@ -196,12 +199,14 @@ int main(int argc, char *argv[])
 		exit(ret);
 
 	if (!c->may_control(c)) {
-		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
+		if (!my_args.quiet)
+			fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
 		goto out;
 	}
 
 	if (!c->is_defined(c)) {
-		fprintf(stderr, "Error: container %s is not defined\n", c->name);
+		if (!my_args.quiet)
+			fprintf(stderr, "Error: container %s is not defined\n", c->name);
 		goto out;
 	}
 
@@ -348,7 +353,8 @@ static int do_clone(struct lxc_container *c, char *newname, char *newpath,
 	clone = c->clone(c, newname, newpath, flags, bdevtype, NULL, fssize,
 			 args);
 	if (!clone) {
-		fprintf(stderr, "clone failed\n");
+		if (!my_args.quiet)
+			fprintf(stderr, "clone failed\n");
 		return -1;
 	}
 
@@ -414,7 +420,8 @@ static int do_clone_ephemeral(struct lxc_container *c,
 	if (!clone->save_config(clone, NULL))
 		goto destroy_and_put;
 
-	printf("Created %s as %s of %s\n", arg->name, "clone", arg->newname);
+	if (!my_args.quiet)
+		printf("Created %s as %s of %s\n", arg->name, "clone", arg->newname);
 
 	if (!arg->daemonize && arg->argc) {
 		clone->want_daemonize(clone, true);
@@ -507,7 +514,8 @@ static uint64_t get_fssize(char *s)
 
 	ret = strtoull(s, &end, 0);
 	if (end == s) {
-		fprintf(stderr, "Invalid blockdev size '%s', using default size\n", s);
+		if (!my_args.quiet)
+			fprintf(stderr, "Invalid blockdev size '%s', using default size\n", s);
 		return 0;
 	}
 	while (isblank(*end))
@@ -525,7 +533,8 @@ static uint64_t get_fssize(char *s)
 	} else if (*end == 't' || *end == 'T') {
 		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
 	} else {
-		fprintf(stderr, "Invalid blockdev unit size '%c' in '%s', " "using default size\n", *end, s);
+		if (!my_args.quiet)
+			fprintf(stderr, "Invalid blockdev unit size '%c' in '%s', " "using default size\n", *end, s);
 		return 0;
 	}
 
