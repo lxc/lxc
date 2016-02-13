@@ -99,7 +99,7 @@ struct lxc_arguments {
 	/* auto-start */
 	int all;
 	int ignore_auto;
-	int list;
+	int list; /* also used by lxc-config */
 	char *groups; /* also used by lxc-ls */
 
 	/* lxc-snapshot and lxc-clone */
