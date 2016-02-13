@@ -23,7 +23,32 @@
 
 #include <lxc/lxccontainer.h>
 
+#include "arguments.h"
 #include "config.h"
+#include "log.h"
+
+lxc_log_define(lxc_config_ui, lxc);
+
+static int my_parser(struct lxc_arguments* args, int c, char* arg);
+
+static const struct option my_longopts[] = {
+	{"list", no_argument, 0, 'L'},
+	LXC_COMMON_OPTIONS
+};
+
+static struct lxc_arguments my_args = {
+	.progname = "lxc-config",
+	.help     = "\
+--list\n\
+ITEM\n\
+\n\
+lxc-config queries the lxc system configuration\n\
+\n\
+Options :\n\
+  -L, --list	list all supported keys\n",
+	.options  = my_longopts,
+	.parser   = my_parser,
+};
 
 struct lxc_config_items {
 	char *name;
@@ -41,20 +66,12 @@ static struct lxc_config_items items[] =
 	{ .name = NULL, },
 };
 
-static void usage(char *me)
-{
-	printf("Usage: %s -l: list all available configuration items\n", me);
-	printf("       %s item: print configuration item\n", me);
-	exit(1);
-}
-
 static void list_config_items(void)
 {
 	struct lxc_config_items *i;
 
 	for (i = &items[0]; i->name; i++)
 		printf("%s\n", i->name);
-	exit(0);
 }
 
 int main(int argc, char *argv[])
@@ -62,20 +79,56 @@ int main(int argc, char *argv[])
 	struct lxc_config_items *i;
 	const char *value;
 
-	if (argc < 2)
-		usage(argv[0]);
-	if (strcmp(argv[1], "-l") == 0)
+	/*
+	 * The lxc parser requires that my_args.name is set. So let's satisfy
+	 * that condition by setting a dummy name which is never used.
+	 */
+	my_args.name  = "";
+	if (lxc_arguments_parse(&my_args, argc, argv))
+		exit(EXIT_FAILURE);
+
+	if (!my_args.log_file)
+		my_args.log_file = "none";
+
+	/*
+	 * We set the first argument that usually takes my_args.name to NULL so
+	 * that the log is only used when the user specifies a file.
+	 */
+	if (lxc_log_init(NULL, my_args.log_file, my_args.log_priority,
+			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
+		exit(EXIT_FAILURE);
+	lxc_log_options_no_override();
+
+	if (my_args.list) {
 		list_config_items();
-	for (i = &items[0]; i->name; i++) {
-		if (strcmp(argv[1], i->name) == 0) {
-			value = lxc_get_global_config_item(i->name);
-			if (value)
-				printf("%s\n", value);
-			else
-				printf("%s is not set.\n", argv[1]);
-			exit(0);
+	} else if (my_args.argc == 1) {
+		for (i = &items[0]; i->name; i++) {
+			if (strcmp(my_args.argv[0], i->name) == 0) {
+				value = lxc_get_global_config_item(i->name);
+				if (value)
+					printf("%s\n", value);
+				else if (!my_args.quiet)
+					printf("%s is not set.\n", my_args.argv[0]);
+				break; /* avoid pointless work */
+			}
 		}
+		if (!i->name && !my_args.quiet)
+			printf("Unknown configuration item: %s\n", my_args.argv[0]);
 	}
-	printf("Unknown configuration item: %s\n", argv[1]);
-	exit(1);
+
+	exit(EXIT_SUCCESS);
 }
+
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
+{
+	switch (c) {
+	case 'L':
+		args->list = 1;
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
