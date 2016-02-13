@@ -69,15 +69,15 @@ struct my_iflist
 static void usage(char *cmd)
 {
 	fprintf(stderr, "%s <options> command [command_arguments]\n", basename(cmd));
-	fprintf(stderr, "Options are:\n");
-	fprintf(stderr, "\t -s flags   : ORed list of flags to unshare:\n" \
-			"\t           MOUNT, PID, UTSNAME, IPC, USER, NETWORK\n");
-	fprintf(stderr, "\t -u <id>      : new id to be set if -s USER is specified\n");
-	fprintf(stderr, "\t -i <iface>   : Interface name to be moved into container (presumably with NETWORK unsharing set)\n");
-	fprintf(stderr, "\t -H <hostname>: Set the hostname in the container\n");
-	fprintf(stderr, "\t -d           : Daemonize (do not wait for container to exit)\n");
-	fprintf(stderr, "\t -M           : reMount default fs inside container (/proc /dev/shm /dev/mqueue)\n");
-	_exit(1);
+	fprintf(stderr, "Options are\n");
+	fprintf(stderr, "\t -s flags      : ORed list of flags to unshare:\n" \
+			"\t                 MOUNT, PID, UTSNAME, IPC, USER, NETWORK\n");
+	fprintf(stderr, "\t -u <id>       : new id to be set if -s USER is specified\n");
+	fprintf(stderr, "\t -i <iface>    : Interface name to be moved into container (presumably with NETWORK unsharing set)\n");
+	fprintf(stderr, "\t -H <hostname> : Set the hostname in the container\n");
+	fprintf(stderr, "\t -d            : Daemonize (do not wait for container to exit)\n");
+	fprintf(stderr, "\t -M            : remount default fs inside container (/proc /dev/shm /dev/mqueue)\n");
+	_exit(EXIT_FAILURE);
 }
 
 static bool lookup_user(const char *optarg, uid_t *uid)
@@ -109,7 +109,6 @@ static bool lookup_user(const char *optarg, uid_t *uid)
 	return true;
 }
 
-
 struct start_arg {
 	char ***args;
 	int *flags;
@@ -134,19 +133,19 @@ static int do_start(void *arg)
 	if ((flags & CLONE_NEWUTS) && want_hostname)
 		if (sethostname(want_hostname, strlen(want_hostname)) < 0) {
 			ERROR("failed to set hostname %s: %s", want_hostname, strerror(errno));
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 	// Setuid is useful even without a new user id space
 	if (start_arg->setuid && setuid(uid)) {
 		ERROR("failed to set uid %d: %s", uid, strerror(errno));
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	execvp(args[0], args);
 
 	ERROR("failed to exec: '%s': %s", args[0], strerror(errno));
-	return 1;
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])
@@ -177,7 +176,7 @@ int main(int argc, char *argv[])
 		case 'i':
 			if (!(tmpif = malloc(sizeof(*tmpif)))) {
 				perror("malloc");
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 			tmpif->mi_ifname = optarg;
 			tmpif->mi_next = my_iflist;
@@ -246,7 +245,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (daemonize)
-		exit(0);
+		exit(EXIT_SUCCESS);
 
 	if (waitpid(pid, &status, 0) < 0) {
 		ERROR("failed to wait for '%d'", pid);
