@@ -253,6 +253,16 @@ static char *build_log_path(const char *name, const char *lxcpath)
 	return p;
 }
 
+extern void lxc_log_close(void)
+{
+	if (lxc_log_fd == -1)
+		return;
+	close(lxc_log_fd);
+	lxc_log_fd = -1;
+	free(log_fname);
+	log_fname = NULL;
+}
+
 /*
  * This can be called:
  *   1. when a program calls lxc_log_init with no logfile parameter (in which
@@ -265,8 +275,7 @@ static int __lxc_log_set_file(const char *fname, int create_dirs)
 {
 	if (lxc_log_fd != -1) {
 		// we are overriding the default.
-		close(lxc_log_fd);
-		free(log_fname);
+		lxc_log_close();
 	}
 
 	assert(fname != NULL);
@@ -381,16 +390,6 @@ extern int lxc_log_init(const char *name, const char *file,
 	}
 
 	return ret;
-}
-
-extern void lxc_log_close(void)
-{
-	if (lxc_log_fd == -1)
-		return;
-	close(lxc_log_fd);
-	lxc_log_fd = -1;
-	free(log_fname);
-	log_fname = NULL;
 }
 
 /*
