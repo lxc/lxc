@@ -87,6 +87,7 @@
   deny mount fstype=debugfs -> /var/lib/ureadahead/debugfs/,
   mount fstype=proc -> /proc/,
   mount fstype=sysfs -> /sys/,
+  mount options=(rw, nosuid, nodev, noexec, remount) -> /sys/,
   deny /sys/firmware/efi/efivars/** rwklx,
   deny /sys/kernel/security/** rwklx,
   mount options=(move) /sys/fs/cgroup/cgmanager/ -> /sys/fs/cgroup/cgmanager.lower/,
