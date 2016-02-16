@@ -28,7 +28,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 <!DOCTYPE refentry PUBLIC @docdtd@ [
 
-<!ENTITY seealso SYSTEM "@builddir@/common_options.sgml">
+<!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
 <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
 ]>
 

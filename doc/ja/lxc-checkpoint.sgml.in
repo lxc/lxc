@@ -94,7 +94,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
         <term>
-          <option>-D <replacable>PATH</replacable>, --checkpoint-dir=<replacable>PATH</replacable></option>
+          <option>-D <replaceable>PATH</replaceable>, --checkpoint-dir=<replaceable>PATH</replaceable></option>
         </term>
         <listitem>
           <para>

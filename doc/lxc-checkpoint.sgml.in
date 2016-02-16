@@ -82,7 +82,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
         <term>
-          <option>-D <replacable>PATH</replacable>, --checkpoint-dir=<replacable>PATH</replacable></option>
+          <option>-D <replaceable>PATH</replaceable>, --checkpoint-dir=<replaceable>PATH</replaceable></option>
         </term>
         <listitem>
           <para>

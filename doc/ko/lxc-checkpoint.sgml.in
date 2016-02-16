@@ -96,7 +96,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
         <term>
-          <option>-D <replacable>PATH</replacable>, --checkpoint-dir=<replacable>PATH</replacable></option>
+          <option>-D <replaceable>PATH</replaceable>, --checkpoint-dir=<replaceable>PATH</replaceable></option>
         </term>
         <listitem>
           <para>
