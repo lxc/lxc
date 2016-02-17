@@ -55,7 +55,7 @@ extern int  lxc_console(struct lxc_container *c, int ttynum,
 		        int escape);
 extern int  lxc_console_getfd(struct lxc_container *c, int *ttynum,
 			      int *masterfd);
-extern int  lxc_console_set_stdfds(struct lxc_handler *);
+extern int lxc_console_set_stdfds(int fd);
 extern int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
 		struct lxc_epoll_descr *descr);
 extern int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,

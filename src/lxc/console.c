@@ -598,21 +598,29 @@ err:
 	return -1;
 }
 
-int lxc_console_set_stdfds(struct lxc_handler *handler)
+int lxc_console_set_stdfds(int fd)
 {
-	struct lxc_conf *conf = handler->conf;
-	struct lxc_console *console = &conf->console;
-
-	if (console->slave < 0)
+	if (fd < 0)
 		return 0;
 
-	if (dup2(console->slave, 0) < 0 ||
-	    dup2(console->slave, 1) < 0 ||
-	    dup2(console->slave, 2) < 0)
-	{
-		SYSERROR("failed to dup console");
-		return -1;
-	}
+	if (isatty(STDIN_FILENO))
+		if (dup2(fd, STDIN_FILENO) < 0) {
+			SYSERROR("failed to duplicate stdin.");
+			return -1;
+		}
+
+	if (isatty(STDOUT_FILENO))
+		if (dup2(fd, STDOUT_FILENO) < 0) {
+			SYSERROR("failed to duplicate stdout.");
+			return -1;
+		}
+
+	if (isatty(STDERR_FILENO))
+		if (dup2(fd, STDERR_FILENO) < 0) {
+			SYSERROR("failed to duplicate stderr.");
+			return -1;
+		}
+
 	return 0;
 }
 
