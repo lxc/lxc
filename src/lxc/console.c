@@ -22,27 +22,28 @@
  */
 
 #include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
+#include <sys/epoll.h>
 #include <sys/types.h>
 #include <termios.h>
+#include <unistd.h>
 
 #include <lxc/lxccontainer.h>
 
-#include "log.h"
+#include "af_unix.h"
+#include "caps.h"
+#include "commands.h"
 #include "conf.h"
 #include "config.h"
 #include "console.h"
-#include "start.h" 	/* for struct lxc_handler */
-#include "caps.h"
-#include "commands.h"
-#include "mainloop.h"
-#include "af_unix.h"
+#include "log.h"
 #include "lxclock.h"
+#include "mainloop.h"
+#include "start.h" 	/* for struct lxc_handler */
 #include "utils.h"
 
 #if HAVE_PTY_H
@@ -630,6 +631,9 @@ int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
 	struct lxc_tty_state *ts = cbdata;
 	char c;
 
+	if (events & EPOLLHUP)
+		return 1;
+
 	assert(fd == ts->stdinfd);
 	if (read(ts->stdinfd, &c, 1) < 0) {
 		SYSERROR("failed to read");
@@ -663,6 +667,9 @@ int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
 	struct lxc_tty_state *ts = cbdata;
 	char buf[1024];
 	int r, w;
+
+	if (events & EPOLLHUP)
+		return 1;
 
 	assert(fd == ts->masterfd);
 	r = read(fd, buf, sizeof(buf));
