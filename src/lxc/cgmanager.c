@@ -1523,6 +1523,14 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 					 d->cgroup_path, cg->subsystem, cg->value) != 0) {
 			NihError *nerr;
 			nerr = nih_error_get();
+			if (do_devices) {
+				WARN("call to cgmanager_set_value_sync failed: %s", nerr->message);
+				nih_free(nerr);
+				WARN("Error setting cgroup %s:%s limit type %s", controller,
+					d->cgroup_path, cg->subsystem);
+				continue;
+			}
+
 			ERROR("call to cgmanager_set_value_sync failed: %s", nerr->message);
 			nih_free(nerr);
 			ERROR("Error setting cgroup %s:%s limit type %s", controller,
