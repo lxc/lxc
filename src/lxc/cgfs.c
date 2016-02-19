@@ -1285,10 +1285,13 @@ static int lxc_cgroup_set_data(const char *filename, const char *value, struct c
 	if ((p = strchr(subsystem, '.')) != NULL)
 		*p = '\0';
 
+	errno = ENOENT;
 	path = lxc_cgroup_get_hierarchy_abs_path_data(subsystem, d);
 	if (path) {
 		ret = do_cgroup_set(path, filename, value);
+		int saved_errno = errno;
 		free(path);
+		errno = saved_errno;
 	}
 	return ret;
 }
@@ -1915,6 +1918,11 @@ static int do_setup_cgroup_limits(struct cgfs_data *d,
 					cgroup_devices_has_allow_or_deny(d, cg->value, true))
 				continue;
 			if (lxc_cgroup_set_data(cg->subsystem, cg->value, d)) {
+				if (do_devices && errno == EPERM) {
+					WARN("Error setting %s to %s for %s",
+					      cg->subsystem, cg->value, d->name);
+					continue;
+				}
 				ERROR("Error setting %s to %s for %s",
 				      cg->subsystem, cg->value, d->name);
 				goto out;
