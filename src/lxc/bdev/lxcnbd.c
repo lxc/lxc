@@ -228,7 +228,7 @@ static int do_attach_nbd(void *d)
 	if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1)
 		WARN("Warning: unblocking signals for nbd watcher");
 
-	execlp("qemu-nbd", "qemu-nbd", "-c", nbd, path, NULL);
+	execlp("qemu-nbd", "qemu-nbd", "-c", nbd, path, (char *)NULL);
 	SYSERROR("Error executing qemu-nbd");
 	exit(1);
 }
@@ -273,7 +273,7 @@ static void nbd_detach(const char *path)
 			ERROR("nbd disconnect returned an error");
 		return;
 	}
-	execlp("qemu-nbd", "qemu-nbd", "-d", path, NULL);
+	execlp("qemu-nbd", "qemu-nbd", "-d", path, (char *)NULL);
 	SYSERROR("Error executing qemu-nbd");
 	exit(1);
 }

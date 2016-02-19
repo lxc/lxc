@@ -721,7 +721,7 @@ int do_mkfs(const char *path, const char *fstype)
 	// us about whether to proceed.
 	if (null_stdfds() < 0)
 		exit(1);
-	execlp("mkfs", "mkfs", "-t", fstype, path, NULL);
+	execlp("mkfs", "mkfs", "-t", fstype, path, (char *)NULL);
 	exit(1);
 }
 
