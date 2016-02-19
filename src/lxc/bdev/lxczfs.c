@@ -150,7 +150,7 @@ int zfs_clone(const char *opath, const char *npath, const char *oname,
 			ret = snprintf(dev, MAXPATHLEN, "%s/%s", zfsroot, nname);
 			if (ret < 0  || ret >= MAXPATHLEN)
 				exit(EXIT_FAILURE);
-			execlp("zfs", "zfs", "create", option, dev, NULL);
+			execlp("zfs", "zfs", "create", option, dev, (char *)NULL);
 			exit(EXIT_FAILURE);
 		}
 		return wait_for_pid(pid);
@@ -170,7 +170,7 @@ int zfs_clone(const char *opath, const char *npath, const char *oname,
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
-			execlp("zfs", "zfs", "destroy", path1, NULL);
+			execlp("zfs", "zfs", "destroy", path1, (char *)NULL);
 			exit(EXIT_FAILURE);
 		}
 		// it probably doesn't exist so destroy probably will fail.
@@ -180,7 +180,7 @@ int zfs_clone(const char *opath, const char *npath, const char *oname,
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
-			execlp("zfs", "zfs", "snapshot", path1, NULL);
+			execlp("zfs", "zfs", "snapshot", path1, (char *)NULL);
 			exit(EXIT_FAILURE);
 		}
 		if (wait_for_pid(pid) < 0)
@@ -190,7 +190,7 @@ int zfs_clone(const char *opath, const char *npath, const char *oname,
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
-			execlp("zfs", "zfs", "clone", option, path1, path2, NULL);
+			execlp("zfs", "zfs", "clone", option, path1, path2, (char *)NULL);
 			exit(EXIT_FAILURE);
 		}
 		return wait_for_pid(pid);
@@ -252,7 +252,7 @@ int zfs_destroy(struct bdev *orig)
 		return -1;
 	*p = '\0';
 
-	execlp("zfs", "zfs", "destroy", output, NULL);
+	execlp("zfs", "zfs", "destroy", output, (char *)NULL);
 	exit(EXIT_FAILURE);
 }
 
@@ -291,6 +291,6 @@ int zfs_create(struct bdev *bdev, const char *dest, const char *n,
 	if (ret < 0  || ret >= MAXPATHLEN)
 		exit(EXIT_FAILURE);
 
-	execlp("zfs", "zfs", "create", option, dev, NULL);
+	execlp("zfs", "zfs", "create", option, dev, (char *)NULL);
 	exit(EXIT_FAILURE);
 }

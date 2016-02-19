@@ -85,7 +85,7 @@ int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 	if ((pid = fork()) < 0)
 		return -1;
 	if (!pid) {
-		execlp("rbd", "rbd", "create" , "--pool", rbdpool, rbdname, "--size", sz, NULL);
+		execlp("rbd", "rbd", "create" , "--pool", rbdpool, rbdname, "--size", sz, (char *)NULL);
 		exit(1);
 	}
 	if (wait_for_pid(pid) < 0)
@@ -94,7 +94,7 @@ int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 	if ((pid = fork()) < 0)
 		return -1;
 	if (!pid) {
-		execlp("rbd", "rbd", "map", "--pool", rbdpool, rbdname, NULL);
+		execlp("rbd", "rbd", "map", "--pool", rbdpool, rbdname, (char *)NULL);
 		exit(1);
 	}
 	if (wait_for_pid(pid) < 0)
@@ -129,7 +129,7 @@ int rbd_destroy(struct bdev *orig)
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
-			execlp("rbd", "rbd", "unmap" , orig->src, NULL);
+			execlp("rbd", "rbd", "unmap" , orig->src, (char *)NULL);
 			exit(1);
 		}
 		if (wait_for_pid(pid) < 0)
@@ -141,7 +141,7 @@ int rbd_destroy(struct bdev *orig)
 	if (!pid) {
 		rbdfullname = alloca(strlen(orig->src) - 8);
 		strcpy( rbdfullname, &orig->src[9] );
-		execlp("rbd", "rbd", "rm" , rbdfullname, NULL);
+		execlp("rbd", "rbd", "rm" , rbdfullname, (char *)NULL);
 		exit(1);
 	}
 	return wait_for_pid(pid);

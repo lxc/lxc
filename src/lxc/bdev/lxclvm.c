@@ -356,7 +356,7 @@ int lvm_destroy(struct bdev *orig)
 	if ((pid = fork()) < 0)
 		return -1;
 	if (!pid) {
-		execlp("lvremove", "lvremove", "-f", orig->src, NULL);
+		execlp("lvremove", "lvremove", "-f", orig->src, (char *)NULL);
 		exit(EXIT_FAILURE);
 	}
 	return wait_for_pid(pid);

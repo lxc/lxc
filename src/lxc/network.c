@@ -162,7 +162,7 @@ static char * is_wlan(const char *ifname)
 	fseek(f, 0, SEEK_SET);
 	physname = malloc(physlen+1);
 	if (!physname) {
-		fclose(f);	
+		fclose(f);
 		goto bad;
 	}
 	memset(physname, 0, physlen+1);
@@ -221,7 +221,7 @@ lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid, const char* 
 	if (fpid == 0) {
 		char pidstr[30];
 		sprintf(pidstr, "%d", pid);
-		if (execlp("iw", "iw", "phy", physname, "set", "netns", pidstr, NULL))
+		if (execlp("iw", "iw", "phy", physname, "set", "netns", pidstr, (char *)NULL))
 			exit(1);
 		exit(0); // notreached
 	}
@@ -1056,13 +1056,13 @@ static int ip_addr_add(int family, int ifindex,
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWADDR;
 
 	ifa = nlmsg_reserve(nlmsg, sizeof(struct ifaddrmsg));
-	if (!ifa) 
+	if (!ifa)
 		goto out;
 	ifa->ifa_prefixlen = prefix;
 	ifa->ifa_index = ifindex;
 	ifa->ifa_family = family;
 	ifa->ifa_scope = 0;
-	
+
 	err = -EINVAL;
 	if (nla_put_buffer(nlmsg, IFA_LOCAL, addr, addrlen))
 		goto out;
@@ -1339,23 +1339,23 @@ static int ip_route_dest_add(int family, int ifindex, void *dest)
 	struct rtmsg *rt;
 	int addrlen;
 	int err;
-	
+
 	addrlen = family == AF_INET ? sizeof(struct in_addr) :
 		sizeof(struct in6_addr);
-	
+
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
 		return err;
-	
+
 	err = -ENOMEM;
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
 		goto out;
-	
+
 	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
 	if (!answer)
 		goto out;
-	
+
 	nlmsg->nlmsghdr->nlmsg_flags =
 		NLM_F_ACK|NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWROUTE;
@@ -1369,7 +1369,7 @@ static int ip_route_dest_add(int family, int ifindex, void *dest)
 	rt->rtm_protocol = RTPROT_BOOT;
 	rt->rtm_type = RTN_UNICAST;
 	rt->rtm_dst_len = addrlen*8;
-	
+
 	err = -EINVAL;
 	if (nla_put_buffer(nlmsg, RTA_DST, dest, addrlen))
 		goto out;
@@ -1414,7 +1414,7 @@ static void ovs_cleanup_nic(const char *lxcpath, const char *name, const char *b
 		return;
 	if (lxc_wait(name, "STOPPED", -1, lxcpath) < 0)
 		return;
-	execlp("ovs-vsctl", "ovs-vsctl", "del-port", bridge, nic, NULL);
+	execlp("ovs-vsctl", "ovs-vsctl", "del-port", bridge, nic, (char *)NULL);
 	exit(1); /* not reached */
 }
 
@@ -1445,7 +1445,7 @@ static int attach_to_ovs_bridge(const char *lxcpath, const char *name, const cha
 		exit(0);
 	}
 
-	if (execlp("ovs-vsctl", "ovs-vsctl", "add-port", bridge, nic, NULL))
+	if (execlp("ovs-vsctl", "ovs-vsctl", "add-port", bridge, nic, (char *)NULL))
 		exit(1);
 	// not reached
 	exit(1);

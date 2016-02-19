@@ -1252,12 +1252,12 @@ int lxc_attach_run_shell(void* payload)
 		user_shell = passwd->pw_shell;
 
 	if (user_shell)
-		execlp(user_shell, user_shell, NULL);
+		execlp(user_shell, user_shell, (char *)NULL);
 
 	/* executed if either no passwd entry or execvp fails,
 	 * we will fall back on /bin/sh as a default shell
 	 */
-	execlp("/bin/sh", "/bin/sh", NULL);
+	execlp("/bin/sh", "/bin/sh", (char *)NULL);
 	SYSERROR("failed to exec shell");
 	return -1;
 }
