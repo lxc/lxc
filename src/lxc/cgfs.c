@@ -433,6 +433,7 @@ static bool find_hierarchy_mountpts( struct cgroup_meta_data *meta_data, char **
 		struct cgroup_mount_point *mount_point;
 		struct cgroup_hierarchy *h;
 		char **subsystems;
+		bool is_lxcfs = false;
 
 		if (line[0] && line[strlen(line) - 1] == '\n')
 			line[strlen(line) - 1] = '\0';
@@ -471,10 +472,18 @@ static bool find_hierarchy_mountpts( struct cgroup_meta_data *meta_data, char **
 			continue;
 
 		/* not a cgroup filesystem */
-		if (strcmp(tokens[j + 1], "cgroup") != 0)
-			continue;
-
-		subsystems = subsystems_from_mount_options(tokens[j + 3], kernel_subsystems);
+		if (strcmp(tokens[j + 1], "cgroup") != 0) {
+			if (strcmp(tokens[j + 1], "fuse.lxcfs") != 0)
+				continue;
+			if (strncmp(tokens[4], "/sys/fs/cgroup/", 15) != 0)
+				continue;
+			is_lxcfs = true;
+			char *curtok = tokens[4] + 15;
+			subsystems = subsystems_from_mount_options(curtok,
+							 kernel_subsystems);
+		} else
+			subsystems = subsystems_from_mount_options(tokens[j + 3],
+							 kernel_subsystems);
 		if (!subsystems)
 			goto out;
 
@@ -503,8 +512,11 @@ static bool find_hierarchy_mountpts( struct cgroup_meta_data *meta_data, char **
 		meta_data->mount_points[mount_point_count++] = mount_point;
 
 		mount_point->hierarchy = h;
+		if (is_lxcfs)
+			mount_point->mount_prefix = strdup("/");
+		else
+			mount_point->mount_prefix = strdup(tokens[3]);
 		mount_point->mount_point = strdup(tokens[4]);
-		mount_point->mount_prefix = strdup(tokens[3]);
 		if (!mount_point->mount_point || !mount_point->mount_prefix)
 			goto out;
 		mount_point->read_only = !lxc_string_in_list("rw", tokens[5], ',');
@@ -1704,16 +1716,20 @@ static char **subsystems_from_mount_options(const char *mount_options,
 		 * subsystems provided by the kernel OR if it starts
 		 * with name= for named hierarchies
 		 */
-		if (!strncmp(token, "name=", 5) || lxc_string_in_array(token, (const char **)kernel_list)) {
-			r = lxc_grow_array((void ***)&result, &result_capacity, result_count + 1, 12);
-			if (r < 0)
-				goto out_free;
-			result[result_count + 1] = NULL;
+		r = lxc_grow_array((void ***)&result, &result_capacity, result_count + 1, 12);
+		if (r < 0)
+			goto out_free;
+		result[result_count + 1] = NULL;
+		if (strncmp(token, "name=", 5) && !lxc_string_in_array(token, (const char **)kernel_list)) {
+			// this is eg 'systemd' but the mount will be 'name=systemd'
+			result[result_count] = malloc(strlen(token) + 6);
+			if (result[result_count])
+				sprintf(result[result_count], "name=%s", token);
+		} else
 			result[result_count] = strdup(token);
-			if (!result[result_count])
-				goto out_free;
-			result_count++;
-		}
+		if (!result[result_count])
+			goto out_free;
+		result_count++;
 	}
 
 	return result;
@@ -1918,12 +1934,12 @@ static int do_setup_cgroup_limits(struct cgfs_data *d,
 					cgroup_devices_has_allow_or_deny(d, cg->value, true))
 				continue;
 			if (lxc_cgroup_set_data(cg->subsystem, cg->value, d)) {
-				if (do_devices && errno == EPERM) {
+				if (do_devices && (errno == EACCES || errno == EPERM)) {
 					WARN("Error setting %s to %s for %s",
 					      cg->subsystem, cg->value, d->name);
 					continue;
 				}
-				ERROR("Error setting %s to %s for %s",
+				SYSERROR("Error setting %s to %s for %s",
 				      cg->subsystem, cg->value, d->name);
 				goto out;
 			}
