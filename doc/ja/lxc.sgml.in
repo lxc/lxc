@@ -690,7 +690,7 @@ rootfs
       <para>
         <!--
 	Here is an example on how the combination of these commands
-	allow to list all the containers and retrieve their state.
+	allows one to list all the containers and retrieve their state.
 	<programlisting>
 	  for i in $(lxc-ls -1); do
 	    lxc-info -n $i
