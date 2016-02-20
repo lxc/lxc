@@ -1918,12 +1918,12 @@ static int do_setup_cgroup_limits(struct cgfs_data *d,
 					cgroup_devices_has_allow_or_deny(d, cg->value, true))
 				continue;
 			if (lxc_cgroup_set_data(cg->subsystem, cg->value, d)) {
-				if (do_devices && errno == EPERM) {
+				if (do_devices && (errno == EACCES || errno == EPERM)) {
 					WARN("Error setting %s to %s for %s",
 					      cg->subsystem, cg->value, d->name);
 					continue;
 				}
-				ERROR("Error setting %s to %s for %s",
+				SYSERROR("Error setting %s to %s for %s",
 				      cg->subsystem, cg->value, d->name);
 				goto out;
 			}
