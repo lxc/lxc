@@ -1332,7 +1332,7 @@ out:
 	return bret;
 }
 
-static bool collect_subsytems(void)
+static bool collect_subsystems(void)
 {
 	char *line = NULL;
 	nih_local char **cgm_subsys_list = NULL;
@@ -1444,7 +1444,7 @@ out_free:
 struct cgroup_ops *cgm_ops_init(void)
 {
 	check_supports_multiple_controllers(-1);
-	if (!collect_subsytems())
+	if (!collect_subsystems())
 		return NULL;
 
 	if (api_version < CGM_SUPPORTS_MULT_CONTROLLERS)

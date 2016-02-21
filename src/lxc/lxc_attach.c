@@ -23,18 +23,34 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
-#include <sys/wait.h>
-#include <sys/types.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <termios.h>
+#include <unistd.h>
+
+#include <lxc/lxccontainer.h>
 
 #include "attach.h"
 #include "arguments.h"
+#include "caps.h"
 #include "config.h"
 #include "confile.h"
-#include "namespace.h"
-#include "caps.h"
+#include "console.h"
 #include "log.h"
+#include "list.h"
+#include "mainloop.h"
 #include "utils.h"
+
+#if HAVE_PTY_H
+#include <pty.h>
+#else
+#include <../include/openpty.h>
+#endif
 
 lxc_log_define(lxc_attach_ui, lxc);
 
@@ -186,20 +202,255 @@ Options :\n\
 	.checker  = NULL,
 };
 
-int main(int argc, char *argv[])
+struct wrapargs {
+	lxc_attach_options_t *options;
+	lxc_attach_command_t *command;
+	struct lxc_tty_state *ts;
+	struct lxc_console *console;
+	int ptyfd;
+};
+
+/* Minimalistic forkpty() implementation. */
+static pid_t fork_pty(int *masterfd)
+{
+	int master, slave;
+	int ret = openpty(&master, &slave, NULL, NULL, NULL);
+	if (ret < 0)
+		return -1;
+
+	pid_t pid = fork();
+
+	if (pid < 0) {
+		close(master);
+		close(slave);
+		return -1;
+	} else if (pid == 0) {
+		close(master);
+		setsid();
+		if (ioctl(slave, TIOCSCTTY, NULL) < 0)
+			_Exit(-1); /* automatically closes fds */
+		if (lxc_console_set_stdfds(slave) < 0)
+			_Exit(-1); /* automatically closes fds */
+		return 0;
+	} else {
+		*masterfd = master;
+		close(slave);
+		return pid;
+	}
+}
+
+static int pty_in_container(void *p)
 {
 	int ret;
+	int pid = -1;
+	int master = -1;
+	struct wrapargs *args = p;
+
+	INFO("Trying to allocate a pty in the container.");
+
+	if (!isatty(args->ptyfd)) {
+		ERROR("stdin is not a tty");
+		return -1;
+	}
+
+	/* Get termios from one of the stdfds. */
+	struct termios oldtios;
+	ret = lxc_setup_tios(args->ptyfd, &oldtios);
+	if (ret < 0)
+		return -1;
+
+	/* Create master/slave fd pair for pty. */
+	pid = fork_pty(&master);
+	if (pid < 0)
+		goto err1;
+
+	/* Pass windowsize from one of the stdfds to the current masterfd. */
+	lxc_console_winsz(args->ptyfd, master);
+
+	/* Run shell/command on slave side of pty. */
+	if (pid == 0) {
+		if (args->command->program)
+			lxc_attach_run_command(args->command);
+		else
+			lxc_attach_run_shell(NULL);
+
+		return -1;
+	}
+
+	/*
+	 * For future reference: Must use process_lock() when called from a
+	 * threaded context.
+	 */
+	args->ts = lxc_console_sigwinch_init(args->ptyfd, master);
+	if (!args->ts) {
+		ret = -1;
+		goto err2;
+	}
+	args->ts->escape = -1;
+	args->ts->stdoutfd = STDOUT_FILENO;
+	args->ts->winch_proxy = NULL;
+
+	struct lxc_epoll_descr descr;
+	ret = lxc_mainloop_open(&descr);
+	if (ret) {
+		ERROR("failed to create mainloop");
+		goto err3;
+	}
+
+	/* Register sigwinch handler in mainloop. */
+	ret = lxc_mainloop_add_handler(&descr, args->ts->sigfd,
+			lxc_console_cb_sigwinch_fd, args->ts);
+	if (ret) {
+		ERROR("failed to add handler for SIGWINCH fd");
+		goto err4;
+	}
+
+	/* Register i/o callbacks in mainloop. */
+	ret = lxc_mainloop_add_handler(&descr, args->ts->stdinfd,
+			lxc_console_cb_tty_stdin, args->ts);
+	if (ret) {
+		ERROR("failed to add handler for stdinfd");
+		goto err4;
+	}
+
+	ret = lxc_mainloop_add_handler(&descr, args->ts->masterfd,
+			lxc_console_cb_tty_master, args->ts);
+	if (ret) {
+		ERROR("failed to add handler for masterfd");
+		goto err4;
+	}
+
+	ret = lxc_mainloop(&descr, -1);
+	if (ret) {
+		ERROR("mainloop returned an error");
+		goto err4;
+	}
+
+err4:
+	lxc_mainloop_close(&descr);
+err3:
+	lxc_console_sigwinch_fini(args->ts);
+err2:
+	close(args->ts->masterfd);
+err1:
+	tcsetattr(args->ptyfd, TCSAFLUSH, &oldtios);
+
+	if (pid > 0)
+		ret = lxc_wait_for_pid_status(pid);
+	return ret;
+}
+
+static int pty_on_host_callback(void *p)
+{
+	struct wrapargs *wrap = p;
+
+	close(wrap->console->master);
+	setsid();
+	ioctl(wrap->console->slave, TIOCSCTTY, NULL);
+	if (lxc_console_set_stdfds(wrap->console->slave) < 0)
+		return -1;
+
+	if (wrap->command->program)
+		lxc_attach_run_command(wrap->command);
+	else
+		lxc_attach_run_shell(NULL);
+
+	return -1;
+}
+
+static int pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *pid)
+{
+	int ret = -1;
+	struct wrapargs *args = wrap;
+	struct lxc_epoll_descr descr;
+	struct lxc_conf *conf;
+	struct lxc_tty_state *ts;
+
+	INFO("Trying to allocate a pty on the host");
+
+	if (!isatty(args->ptyfd)) {
+		ERROR("stdin is not a tty");
+		return -1;
+	}
+
+	conf = c->lxc_conf;
+	/* Create pty on the host. */
+	if (lxc_console_create(conf) < 0)
+		return -1;
+	ts = conf->console.tty_state;
+
+	/* Shift ttys to container. */
+	if (ttys_shift_ids(conf) < 0) {
+		ERROR("Failed to shift tty into container");
+		goto err1;
+	}
+
+	/* Send wrapper function on its way. */
+	wrap->console = &conf->console;
+	if (c->attach(c, pty_on_host_callback, wrap, wrap->options, pid) < 0)
+		goto err1;
+	close(conf->console.slave); /* Close slave side. */
+
+	ret = lxc_mainloop_open(&descr);
+	if (ret) {
+		ERROR("failed to create mainloop");
+		goto err2;
+	}
+
+	/* Register sigwinch handler in mainloop. */
+	ret = lxc_mainloop_add_handler(&descr, ts->sigfd,
+			lxc_console_cb_sigwinch_fd, ts);
+	if (ret) {
+		ERROR("failed to add handler for SIGWINCH fd");
+		goto err3;
+	}
+
+	/* Register i/o callbacks in mainloop. */
+	ret = lxc_mainloop_add_handler(&descr, ts->stdinfd,
+			lxc_console_cb_tty_stdin, ts);
+	if (ret) {
+		ERROR("failed to add handler for stdinfd");
+		goto err3;
+	}
+
+	ret = lxc_mainloop_add_handler(&descr, ts->masterfd,
+			lxc_console_cb_tty_master, ts);
+	if (ret) {
+		ERROR("failed to add handler for masterfd");
+		goto err3;
+	}
+
+	ret = lxc_mainloop(&descr, -1);
+	if (ret) {
+		ERROR("mainloop returned an error");
+		goto err3;
+	}
+	ret = 0;
+
+err3:
+	lxc_mainloop_close(&descr);
+err2:
+	lxc_console_sigwinch_fini(ts);
+err1:
+	lxc_console_delete(&conf->console);
+
+	return ret;
+}
+
+int main(int argc, char *argv[])
+{
+	int ret = -1;
 	pid_t pid;
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
-	lxc_attach_command_t command;
+	lxc_attach_command_t command = (lxc_attach_command_t){.program = NULL};
 
 	ret = lxc_caps_init();
 	if (ret)
-		return 1;
+		exit(EXIT_FAILURE);
 
 	ret = lxc_arguments_parse(&my_args, argc, argv);
 	if (ret)
-		return 1;
+		exit(EXIT_FAILURE);
 
 	if (!my_args.log_file)
 		my_args.log_file = "none";
@@ -207,8 +458,32 @@ int main(int argc, char *argv[])
 	ret = lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			   my_args.progname, my_args.quiet, my_args.lxcpath[0]);
 	if (ret)
-		return 1;
+		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();
+
+	if (geteuid()) {
+		if (access(my_args.lxcpath[0], O_RDWR) < 0) {
+			if (!my_args.quiet)
+				fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
+			exit(ret);
+		}
+	}
+
+	struct lxc_container *c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
+	if (!c)
+		exit(EXIT_FAILURE);
+
+	if (!c->may_control(c)) {
+		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
+		lxc_container_put(c);
+		exit(EXIT_FAILURE);
+	}
+
+	if (!c->is_defined(c)) {
+		fprintf(stderr, "Error: container %s is not defined\n", c->name);
+		lxc_container_put(c);
+		exit(EXIT_FAILURE);
+	}
 
 	if (remount_sys_proc)
 		attach_options.attach_flags |= LXC_ATTACH_REMOUNT_PROC_SYS;
@@ -220,23 +495,41 @@ int main(int argc, char *argv[])
 	attach_options.extra_env_vars = extra_env;
 	attach_options.extra_keep_env = extra_keep;
 
-	if (my_args.argc) {
-		command.program = my_args.argv[0];
-		command.argv = (char**)my_args.argv;
-		ret = lxc_attach(my_args.name, my_args.lxcpath[0], lxc_attach_run_command, &command, &attach_options, &pid);
-	} else {
-		ret = lxc_attach(my_args.name, my_args.lxcpath[0], lxc_attach_run_shell, NULL, &attach_options, &pid);
+	struct wrapargs wrap = (struct wrapargs){.command = &command,
+		.options = &attach_options};
+	if (my_args.argc > 0) {
+		wrap.command->program = my_args.argv[0];
+		wrap.command->argv = (char**)my_args.argv;
 	}
 
+	if (isatty(STDIN_FILENO) || isatty(STDOUT_FILENO) || isatty(STDERR_FILENO)) {
+		if (isatty(STDIN_FILENO))
+			wrap.ptyfd = STDIN_FILENO;
+		else if (isatty(STDOUT_FILENO))
+			wrap.ptyfd = STDOUT_FILENO;
+		else if (isatty(STDERR_FILENO))
+			wrap.ptyfd = STDERR_FILENO;
+		ret = c->attach(c, pty_in_container, &wrap, &attach_options, &pid);
+		if (ret < 0)
+			ret = pty_on_host(c, &wrap, &pid);
+	} else {
+		if (my_args.argc > 1)
+			ret = c->attach(c, lxc_attach_run_command, &command, &attach_options, &pid);
+		else
+			ret = c->attach(c, lxc_attach_run_shell, NULL, &attach_options, &pid);
+	}
+
+	lxc_container_put(c);
+
 	if (ret < 0)
-		return 1;
+		exit(EXIT_FAILURE);
 
 	ret = lxc_wait_for_pid_status(pid);
 	if (ret < 0)
-		return 1;
+		exit(EXIT_FAILURE);
 
 	if (WIFEXITED(ret))
 		return WEXITSTATUS(ret);
 
-	return 1;
+	exit(EXIT_FAILURE);
 }

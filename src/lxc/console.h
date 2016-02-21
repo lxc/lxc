@@ -24,8 +24,24 @@
 #ifndef __LXC_CONSOLE_H
 #define __LXC_CONSOLE_H
 
+#include "conf.h"
+#include "list.h"
+
 struct lxc_epoll_descr;
 struct lxc_container;
+struct lxc_tty_state
+{
+	struct lxc_list node;
+	int stdinfd;
+	int stdoutfd;
+	int masterfd;
+	int escape;
+	int saw_escape;
+	const char *winch_proxy;
+	const char *winch_proxy_lxcpath;
+	int sigfd;
+	sigset_t oldmask;
+};
 
 extern int  lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttynum);
 extern int  lxc_console_create(struct lxc_conf *);
@@ -39,6 +55,16 @@ extern int  lxc_console(struct lxc_container *c, int ttynum,
 		        int escape);
 extern int  lxc_console_getfd(struct lxc_container *c, int *ttynum,
 			      int *masterfd);
-extern int  lxc_console_set_stdfds(struct lxc_handler *);
+extern int lxc_console_set_stdfds(int fd);
+extern int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
+		struct lxc_epoll_descr *descr);
+extern int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
+		struct lxc_epoll_descr *descr);
+extern int lxc_setup_tios(int fd, struct termios *oldtios);
+extern void lxc_console_winsz(int srcfd, int dstfd);
+extern int lxc_console_cb_sigwinch_fd(int fd, uint32_t events, void *cbdata,
+		struct lxc_epoll_descr *descr);
+extern struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd);
+extern void lxc_console_sigwinch_fini(struct lxc_tty_state *ts);
 
 #endif
