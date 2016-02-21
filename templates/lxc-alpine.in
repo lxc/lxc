@@ -85,7 +85,8 @@ usage() {
 		   APK_KEYS_DIR    Path to directory with GPG keys for APK. If not set and
 		                   /etc/apk/keys does not contain alpine keys, then the script
 		                   will download the keys from ${APK_KEYS_URI}.
-		   LXC_CACHE_PATH  Path to the cache directory where to store cached rootfs.
+		   LXC_CACHE_PATH  Path to the cache directory where to store bootstrap files
+		                   and APK packages.
 	EOF
 }
 
@@ -226,36 +227,23 @@ fetch_apk_static() {
 #============================  Install  ============================#
 
 install() {
-	local rootfs="$1"
-	local arch="$2"
-	local branch="$3"
-	local cache_dir="$LXC_CACHE_DIR/rootfs-$branch-$arch"
-
-	if [ "$FLUSH_CACHE" = 'yes' ] && [ -d "$cache_dir" ]; then
-		einfo "Cleaning cached rootfs of Alpine $branch $arch"
-		rm -Rf "$cache_dir"
-	fi
-
-	if [ ! -d "$cache_dir/rootfs" ]; then
-		einfo "Building Alpine rootfs in $cache_dir/rootfs"
-		build_alpine "$cache_dir/rootfs" "$arch" "$branch"
-	fi
-
-	einfo "Copying cached rootfs to $rootfs"
-	mkdir -p "$rootfs"
-	cp -a "$cache_dir"/rootfs/* "$rootfs"/
-}
-
-build_alpine() {
 	local dest="$1"
 	local arch="$2"
 	local branch="$3"
+	local apk_cache="$LXC_CACHE_DIR/apk/$arch"
 	local repo_url="$MIRROR_URL/$branch/main"
 
-	rm -Rf "$dest.part" 2>/dev/null
-	mkdir -p "$dest.part"
+	if [ "$FLUSH_CACHE" = 'yes' ] && [ -d "$apk_cache" ]; then
+		einfo "Cleaning cached APK packages for $arch"
+		rm -Rf "$apk_cache"
+	fi
+	mkdir -p "$apk_cache"
 
-	cd "$dest.part"
+	einfo "Installing Alpine Linux in $dest"
+	cd "$dest"
+
+	mkdir -p etc/apk
+	ln -s "$apk_cache" etc/apk/cache
 
 	$APK --update-cache --initdb --arch="$arch" \
 		--root=. --keys-dir="$APK_KEYS_DIR" --repository="$repo_url" \
@@ -272,10 +260,8 @@ build_alpine() {
 	chroot . /bin/true \
 		|| die 3 'Failed to execute /bin/true in chroot, the builded rootfs is broken!'
 
+	rm etc/apk/cache
 	cd - >/dev/null
-
-	rm -Rf "$dest"
-	mv "$dest.part" "$dest"
 }
 
 make_dev_nodes() {
@@ -496,7 +482,7 @@ fi
 
 # Here we go!
 run_exclusively 'bootstrap' 10 bootstrap
-run_exclusively "$release-$arch" 30 install "$rootfs" "$arch" "$release"
+run_exclusively "$arch" 30 install "$rootfs" "$arch" "$release"
 configure_container "$path/config" "$name" "$arch"
 
 einfo "Container's rootfs and config have been created"
