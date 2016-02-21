@@ -125,6 +125,8 @@ copy_configuration()
     rootfs=$2
     name=$3
 
+    init_path=$(realpath --relative-to=/ $(readlink -f /sbin/init))
+
     grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
 cat <<EOF >> $path/config
 lxc.utsname = $name
@@ -140,7 +142,7 @@ lxc.mount.entry = /bin bin none ro,bind 0 0
 lxc.mount.entry = /usr usr none ro,bind 0 0
 lxc.mount.entry = /sbin sbin none ro,bind 0 0
 lxc.mount.entry = tmpfs var/run/sshd tmpfs mode=0644 0 0
-lxc.mount.entry = @LXCTEMPLATEDIR@/lxc-sshd sbin/init none ro,bind 0 0
+lxc.mount.entry = @LXCTEMPLATEDIR@/lxc-sshd $init_path none ro,bind 0 0
 lxc.mount.entry = /etc/init.d etc/init.d none ro,bind 0 0
 
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
