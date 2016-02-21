@@ -228,9 +228,9 @@ static pid_t fork_pty(int *masterfd)
 		close(master);
 		setsid();
 		if (ioctl(slave, TIOCSCTTY, NULL) < 0)
-			_Exit(-1); /* automatically closes fds */
+			_exit(-1); /* automatically closes fds */
 		if (lxc_console_set_stdfds(slave) < 0)
-			_Exit(-1); /* automatically closes fds */
+			_exit(-1); /* automatically closes fds */
 		return 0;
 	} else {
 		*masterfd = master;
