@@ -67,7 +67,9 @@ usage() {
 	cat <<-EOF
 		Template specific options can be passed to lxc-create after a '--' like this:
 
-		   lxc-create --name=NAME [lxc-create-options] -- [template-options]
+		   lxc-create --name=NAME [lxc-create-options] -- [template-options] [PKG...]
+
+		PKG  Additional APK package(s) to install into the container.
 
 		Template options:
 		   -a ARCH, --arch=ARCH   The container architecture (e.g. x86, x86_64); defaults
@@ -230,6 +232,7 @@ install() {
 	local dest="$1"
 	local arch="$2"
 	local branch="$3"
+	local extra_packages="$4"
 	local apk_cache="$LXC_CACHE_DIR/apk/$arch"
 	local repo_url="$MIRROR_URL/$branch/main"
 
@@ -244,13 +247,9 @@ install() {
 
 	mkdir -p etc/apk
 	ln -s "$apk_cache" etc/apk/cache
-
-	$APK --update-cache --initdb --arch="$arch" \
-		--root=. --keys-dir="$APK_KEYS_DIR" --repository="$repo_url" \
-		add alpine-base
-
 	echo "$repo_url" > etc/apk/repositories
 
+	install_packages "$arch" alpine-base $extra_packages
 	make_dev_nodes
 	setup_inittab
 	setup_hosts
@@ -262,6 +261,14 @@ install() {
 
 	rm etc/apk/cache
 	cd - >/dev/null
+}
+
+install_packages() {
+	local arch="$1"; shift
+	local packages="$@"
+
+	$APK --arch="$arch" --root=. --keys-dir="$APK_KEYS_DIR" \
+		--update-cache --initdb add $packages
 }
 
 make_dev_nodes() {
@@ -454,6 +461,8 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
+extra_packages="$@"
+
 [ "$debug" = 'yes' ] && set -x
 
 # Set global variables.
@@ -482,7 +491,7 @@ fi
 
 # Here we go!
 run_exclusively 'bootstrap' 10 bootstrap
-run_exclusively "$arch" 30 install "$rootfs" "$arch" "$release"
+run_exclusively "$arch" 30 install "$rootfs" "$arch" "$release" "$extra_packages"
 configure_container "$path/config" "$name" "$arch"
 
 einfo "Container's rootfs and config have been created"
