@@ -2245,6 +2245,26 @@ mknod errno 0
           </listitem>
         </varlistentry>
       </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>LXC_CGNS_AWARE</option>
+          </term>
+          <listitem>
+            <para>
+         <!--
+         If unset, then this version of lxc is not aware of cgroup
+         namespaces.  If set, it will be set to 1, and lxc is aware
+         of cgroup namespaces.  Note this does not guarantee that
+         cgroup namespaces are enabled in the kernel.  This is used
+         by the lxcfs mount hook.
+         -->
+              この変数が設定されていない場合、お使いのバージョンの LXC は cgroup namespace を扱えません。設定されている場合、この値は 1 に設定されています。そして、cgroup namespace を扱えます。
+              この変数はカーネルで cgroup namespace が有効であることは保証しません。この変数は lxcfs のマウントフックが使います。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
     </refsect2>
 
     <refsect2>
