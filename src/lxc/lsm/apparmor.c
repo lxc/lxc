@@ -31,6 +31,7 @@
 #include "log.h"
 #include "lsm/lsm.h"
 #include "conf.h"
+#include "utils.h"
 
 lxc_log_define(lxc_apparmor, lxc);
 
@@ -40,6 +41,7 @@ static int aa_enabled = 0;
 static int mount_features_enabled = 0;
 
 #define AA_DEF_PROFILE "lxc-container-default"
+#define AA_DEF_PROFILE_CGNS "lxc-container-default-cgns"
 #define AA_MOUNT_RESTR "/sys/kernel/security/apparmor/features/mount/mask"
 #define AA_ENABLED_FILE "/sys/module/apparmor/parameters/enabled"
 #define AA_UNCHANGED "unchanged"
@@ -202,8 +204,12 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 	free(curlabel);
 
 	if (!label) {
-		if (use_default)
-			label = AA_DEF_PROFILE;
+		if (use_default) {
+			if (cgns_supported())
+				label = AA_DEF_PROFILE_CGNS;
+			else
+				label = AA_DEF_PROFILE;
+		}
 		else
 			label = "unconfined";
 	}

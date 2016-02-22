@@ -1169,7 +1169,9 @@ proc proc proc nodev,noexec,nosuid 0 0
         If lxc was compiled and installed with apparmor support, and the host
         system has apparmor enabled, then the apparmor profile under which the
         container should be run can be specified in the container
-        configuration.  The default is <command>lxc-container-default</command>.
+        configuration.  The default is <command>lxc-container-default-cgns</command>
+	if the host kernel is cgroup namespace aware, or
+	<command>lxc-container-default</command> othewise.
       </para>
       <variablelist>
         <varlistentry>
@@ -1183,6 +1185,11 @@ proc proc proc nodev,noexec,nosuid 0 0
               use
             </para>
               <programlisting>lxc.aa_profile = unconfined</programlisting>
+            <para>
+              If the apparmor profile should remain unchanged (i.e. if you
+	      are nesting containers and are already confined), then use
+            </para>
+              <programlisting>lxc.aa_profile = unchanged</programlisting>
           </listitem>
         </varlistentry>
         <varlistentry>

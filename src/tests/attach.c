@@ -23,6 +23,7 @@
 #include "lxc/utils.h"
 #include "lxc/lsm/lsm.h"
 
+#include <sys/types.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -39,6 +40,13 @@
 static const char *lsm_config_key = NULL;
 static const char *lsm_label = NULL;
 
+bool file_exists(const char *f)
+{
+	struct stat statbuf;
+
+	return stat(f, &statbuf) == 0;
+}
+
 static void test_lsm_detect(void)
 {
 	if (lsm_enabled()) {
@@ -48,7 +56,10 @@ static void test_lsm_detect(void)
 		}
 		else if (!strcmp(lsm_name(), "AppArmor")) {
 			lsm_config_key = "lxc.aa_profile";
-			lsm_label      = "lxc-container-default";
+			if (file_exists("/proc/self/ns/cgroup"))
+				lsm_label      = "lxc-container-default-cgns";
+			else
+				lsm_label      = "lxc-container-default";
 		}
 		else {
 			TSTERR("unknown lsm %s enabled, add test code here", lsm_name());

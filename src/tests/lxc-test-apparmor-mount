@@ -23,6 +23,12 @@
 
 set -e
 
+if [ -f /proc/self/ns/cgroup ]; then
+	default_profile="lxc-container-default-cgns (enforce)"
+else
+	default_profile="lxc-container-default (enforce)"
+fi
+
 FAIL() {
 	echo -n "Failed " >&2
 	echo "$*" >&2
@@ -144,7 +150,7 @@ run_cmd lxc-start -n $cname -d
 run_cmd lxc-wait -n $cname -s RUNNING
 pid=`run_cmd lxc-info -p -H -n $cname`
 profile=`cat /proc/$pid/attr/current`
-if [ "x$profile" != "xlxc-container-default (enforce)" ]; then
+if [ "x$profile" != "x${default_profile}" ]; then
 	echo "FAIL: confined container was in profile $profile"
 	exit 1
 fi
@@ -203,7 +209,7 @@ if [ "$pid" = "-1" ]; then
 	exit 1
 fi
 profile=`cat /proc/$pid/attr/current`
-if [ "x$profile" != "xlxc-container-default (enforce)" ]; then
+if [ "x$profile" != "x${default_profile}" ]; then
 	echo "FAIL: confined container was in profile $profile"
 	exit 1
 fi

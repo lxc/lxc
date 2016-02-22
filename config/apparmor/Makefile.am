@@ -7,6 +7,7 @@ EXTRA_DIST = \
 	lxc-containers \
 	lxc-generate-aa-rules.py \
 	profiles/lxc-default \
+	profiles/lxc-default-cgns \
 	profiles/lxc-default-with-mounting \
 	profiles/lxc-default-with-nesting \
 	usr.bin.lxc-start
@@ -20,6 +21,7 @@ install-apparmor:
 	$(INSTALL_DATA) abstractions/container-base $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/
 	$(INSTALL_DATA) abstractions/start-container $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/
 	$(INSTALL_DATA) profiles/lxc-default $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
+	$(INSTALL_DATA) profiles/lxc-default-cgns $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
 	$(INSTALL_DATA) profiles/lxc-default-with-mounting $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
 	$(INSTALL_DATA) profiles/lxc-default-with-nesting $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
 	$(INSTALL_DATA) lxc-containers $(DESTDIR)$(sysconfdir)/apparmor.d/
@@ -30,6 +32,7 @@ uninstall-apparmor:
 	rm -f $(DESTDIR)$(sysconfdir)/apparmor.d/lxc-containers
 	rm -f $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/lxc-default-with-nesting
 	rm -f $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/lxc-default-with-mounting
+	rm -f $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/lxc-default-cgns
 	rm -f $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/lxc-default
 	rm -f $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/start-container
 	rm -f $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/container-base
