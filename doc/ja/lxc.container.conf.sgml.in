@@ -1654,10 +1654,12 @@ proc proc proc nodev,noexec,nosuid 0 0
 	If lxc was compiled and installed with apparmor support, and the host
 	system has apparmor enabled, then the apparmor profile under which the
 	container should be run can be specified in the container
-	configuration.  The default is <command>lxc-container-default</command>.
+        configuration.  The default is <command>lxc-container-default-cgns</command>
+	if the host kernel is cgroup namespace aware, or
+	<command>lxc-container-default</command> othewise.
         -->
         lxc が apparmor サポートでコンパイルされ、インストールされている場合で、ホストで apparmor が有効な場合、コンテナが従って動くべき apparmor プロファイルは、コンテナの設定で指定することが可能です。
-        デフォルトは <command>lxc-container-default</command> です。
+        デフォルトは、ホストのカーネルで cgroup namespace が使える場合は <command>lxc-container-default-cgns</command>です。使えない場合は <command>lxc-container-default</command> です。
       </para>
       <variablelist>
 	<varlistentry>
@@ -1675,6 +1677,14 @@ proc proc proc nodev,noexec,nosuid 0 0
               コンテナが apparmor による制限を受けないように設定するには、以下のように設定します。
 	    </para>
 	      <programlisting>lxc.aa_profile = unconfined</programlisting>
+            <para>
+	      <!--
+              If the apparmor profile should remain unchanged (i.e. if you
+	      are nesting containers and are already confined), then use
+	      -->
+	      もし apparmor プロファイルが変更されないままでなくてはならない場合 (ネストしたコンテナである場合や、すでに confined されている場合) は以下のように設定します。
+            </para>
+              <programlisting>lxc.aa_profile = unchanged</programlisting>
 	  </listitem>
 	</varlistentry>
 	<varlistentry>
