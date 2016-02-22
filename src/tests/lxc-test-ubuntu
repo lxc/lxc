@@ -65,7 +65,9 @@ for template in ubuntu ubuntu-cloud; do
 	# Check apparmor
 	lxcpid=`lxc-info -n $name -p -H`
 	aa=`cat /proc/$lxcpid/attr/current`
-	if [ "$aa" != "lxc-container-default-with-nesting (enforce)" -a "$aa" != "lxc-container-default (enforce)" ]; then
+	if [ "$aa" != "lxc-container-default-with-nesting (enforce)" -a \
+			"$aa" != "lxc-container-default-cgns (enforce)" -a \
+			"$aa" != "lxc-container-default (enforce)" ]; then
 		FAIL " to correctly set apparmor profile (profile is \"$aa\")"
 	fi
 	lxc-stop -n $name -k
