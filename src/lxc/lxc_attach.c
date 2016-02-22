@@ -210,6 +210,19 @@ struct wrapargs {
 	int ptyfd;
 };
 
+/* Minimalistic login_tty() implementation. */
+static int login_pty(int fd)
+{
+	setsid();
+	if (ioctl(fd, TIOCSCTTY, NULL) < 0)
+		return -1;
+	if (lxc_console_set_stdfds(fd) < 0)
+		return -1;
+	if (fd > STDERR_FILENO)
+		close(fd);
+	return 0;
+}
+
 /* Minimalistic forkpty() implementation. */
 static pid_t fork_pty(int *masterfd)
 {
@@ -226,11 +239,8 @@ static pid_t fork_pty(int *masterfd)
 		return -1;
 	} else if (pid == 0) {
 		close(master);
-		setsid();
-		if (ioctl(slave, TIOCSCTTY, NULL) < 0)
-			_exit(-1); /* automatically closes fds */
-		if (lxc_console_set_stdfds(slave) < 0)
-			_exit(-1); /* automatically closes fds */
+		if (login_pty(slave) < 0)
+			_exit(-1); /* closes fds */
 		return 0;
 	} else {
 		*masterfd = master;
@@ -239,6 +249,29 @@ static pid_t fork_pty(int *masterfd)
 	}
 }
 
+/*
+ * This is probably redundant but just so that intentions can be checked against
+ * code for future modifications. Here is what this is supposed to achieve:
+ * Since we fork() in pty_in_container() the shell that is run on the slave side
+ * of the pty is the grandchild of c->attach() in main(). But what we probably
+ * are interested in is the exit code of the grandchild. So we wait for the
+ * grandchild to change status and return its exit code from this function. We
+ * thereby make the exit code of the grandchild the exit code of the child and
+ * allow the grandparent to see the exit code of the grandchild by waiting on
+ * the pid of the child to change status:
+ *
+ * grandchild: lxc_attach_run_command()/lxc_attach_run_shell()
+ *
+ * child: pty_in_container()
+ * - perform waitpid() on pid returned by lxc_attach_run_command() or
+ *   lxc_attach_run_shell()
+ *
+ * grandparent: c->attach()
+ * - return pid of pty_in_container() in pid argument.
+ *
+ * main()
+ * - perform waitpid() on pid returned in pid argument of c->attach()
+ */
 static int pty_in_container(void *p)
 {
 	int ret;
@@ -335,9 +368,14 @@ err2:
 err1:
 	tcsetattr(args->ptyfd, TCSAFLUSH, &oldtios);
 
-	if (pid > 0)
-		ret = lxc_wait_for_pid_status(pid);
-	return ret;
+	ret = lxc_wait_for_pid_status(pid);
+	if (ret < 0)
+		return ret;
+
+	if (WIFEXITED(ret))
+		return WEXITSTATUS(ret);
+
+	return -1;
 }
 
 static int pty_on_host_callback(void *p)
@@ -345,16 +383,13 @@ static int pty_on_host_callback(void *p)
 	struct wrapargs *wrap = p;
 
 	close(wrap->console->master);
-	setsid();
-	ioctl(wrap->console->slave, TIOCSCTTY, NULL);
-	if (lxc_console_set_stdfds(wrap->console->slave) < 0)
+	if (login_pty(wrap->console->slave) < 0)
 		return -1;
 
 	if (wrap->command->program)
 		lxc_attach_run_command(wrap->command);
 	else
 		lxc_attach_run_shell(NULL);
-
 	return -1;
 }
 
@@ -465,7 +500,7 @@ int main(int argc, char *argv[])
 		if (access(my_args.lxcpath[0], O_RDWR) < 0) {
 			if (!my_args.quiet)
 				fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
-			exit(ret);
+			exit(EXIT_FAILURE);
 		}
 	}
 
