@@ -36,8 +36,14 @@ import tempfile
 _ = gettext.gettext
 gettext.textdomain("lxc-start-ephemeral")
 
-
 # Other functions
+
+
+def printstderr(*args):
+    print("lxc-start-ephemeral is deprecated in favor of lxc-copy\n",
+          *args, file=sys.stderr)
+
+
 def randomMAC():
     import random
 
@@ -60,6 +66,9 @@ def get_rundir():
 
     raise Exception("Unable to find a runtime directory")
 
+
+# Inform that lxc-start-ephemeral is deprecated
+printstderr()
 
 # Begin parsing the command line
 parser = argparse.ArgumentParser(description=_(
@@ -120,11 +129,11 @@ parser.add_argument("--version", action="version", version=lxc.version)
 
 args = parser.parse_args()
 
-## Check that -d and CMD aren't used at the same time
+# Check that -d and CMD aren't used at the same time
 if args.command and args.daemon:
     parser.error(_("You can't use -d and a command at the same time."))
 
-## Check that -k isn't used with -s tmpfs
+# Check that -k isn't used with -s tmpfs
 if not args.storage_type:
     if args.keep_data:
         args.storage_type = "dir"
