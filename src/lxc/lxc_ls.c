@@ -94,13 +94,6 @@ static void ls_field_width(const struct ls *l, const size_t size,
 		struct lengths *lht);
 static void ls_free(struct ls *l, size_t size);
 static void ls_free_arr(char **arr, size_t size);
-/*
- * This is a very lenient function. It tries to gather as much information about
- * a container as it can thereby skipping over possible failures (e.g. failed
- * non-fatal strdup() or malloc() failures in functions it calls etc.). It will
- * only bail if the minimum amount of information (name and state of the
- * container) cannot be retrieved.
- */
 static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		const char *basepath, const char *parent, unsigned int lvl,
 		char **lockpath, size_t len_lockpath, char **grps_must,
@@ -490,7 +483,7 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		if (args->ls_nesting && running) {
 			struct wrapargs wargs = (struct wrapargs){.args = NULL};
 			/* Open a socket so that the child can communicate with us. */
-			check = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, wargs.pipefd);
+			check = socketpair(AF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, wargs.pipefd);
 			if (check == -1)
 				goto put_and_next;
 
@@ -508,7 +501,7 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 			aopt.env_policy = LXC_ATTACH_CLEAR_ENV;
 
 			/* fork(): Attach to the namespace of the container and
-			 * run ls_get() in it which is called in * ls_get_wrapper(). */
+			 * run ls_get() in it which is called in ls_get_wrapper(). */
 			check = c->attach(c, ls_get_wrapper, &wargs, &aopt, &out);
 			/* close the socket */
 			close(wargs.pipefd[1]);
@@ -667,9 +660,9 @@ static double ls_get_swap(struct lxc_container *c)
 	if (!swap)
 		goto out;
 
-	swap = 1 + swap + 4 + 1; // '\n' + tmp + swap + ' '
+	swap = 1 + swap + 4 + 1; // start_of_swap_value = '\n' + strlen(swap) + ' '
 
-	char *tmp = strchr(swap, '\n');
+	char *tmp = strchr(swap, '\n'); // find end of swap value
 	if (!tmp)
 		goto out;
 
@@ -923,11 +916,11 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	case LS_NESTING:
 		/* In case strtoul() receives a string that represents a
 		 * negative number it will return ULONG_MAX - the number that
-		 * string represents if the number the string represents is <
-		 * ULONG_MAX and ULONG_MAX otherwise. But it will consider this
-		 * valid input and not set errno. So we check manually if the
-		 * first character of num_string == '-'. Otherwise the default
-		 * level remains set. */
+		 * the string represents if the number the string represents is
+		 * < ULONG_MAX and ULONG_MAX otherwise. But it will consider
+		 * this valid input and not set errno. So we check manually if
+		 * the first character of num_string == '-'. Otherwise the
+		 * default level remains set. */
 		if (arg && !(*arg == '-')) {
 			errno = 0;
 			m = strtoul(arg, &invalid, 0);
@@ -962,8 +955,7 @@ static int ls_get_wrapper(void *wrap)
 	close(wargs->pipefd[0]);
 
 	/* &(char *){NULL} is no magic. It's just a compound literal which
-	 * avoids having a pointless variable in main() that serves no purpose
-	 * here. */
+	 * allows us to avoid keeping a pointless variable around. */
 	ls_get(&m, &len, wargs->args, "", wargs->parent, wargs->nestlvl, &(char *){NULL}, 0, wargs->grps_must, wargs->grps_must_len);
 	if (!m)
 		goto out;
@@ -992,7 +984,7 @@ static int ls_remove_lock(const char *path, const char *name,
 {
 	/* Avoid doing unnecessary work if we can. */
 	if (recalc) {
-		size_t newlen = strlen(path) + strlen(name) + strlen(RUNTIME_PATH) + /* /+lxc+/+lock+/+/= */ 11 + 1;
+		size_t newlen = strlen(path) + strlen(name) + strlen(RUNTIME_PATH) + /* / + lxc + / + lock + / + / = */ 11 + 1;
 		if (newlen > *len_lockpath) {
 			char *tmp = realloc(*lockpath, newlen * 2);
 			if (!tmp)
