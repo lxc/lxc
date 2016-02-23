@@ -83,7 +83,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     specified namespaces of a container and ran a shell or the specified
     command without allocating a pseudo terminal. This made them vulnerable to
     input faking via a TIOCSTI <command>ioctl</command> call after switching
-    between userspace execution contexts with different privilegel levels. Newer
+    between userspace execution contexts with different privilege levels. Newer
     versions of <command>lxc-attach</command> will try to allocate a pseudo
     terminal master/slave pair and attach any standard file descriptors which
     refer to a terminal to the slave side of the pseudo terminal before
