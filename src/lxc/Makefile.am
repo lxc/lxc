@@ -192,8 +192,10 @@ bin_SCRIPTS = lxc-checkconfig
 EXTRA_DIST = \
 	lxc-top.lua
 
+if ENABLE_DEPRECATED
 if ENABLE_PYTHON
 bin_SCRIPTS += lxc-start-ephemeral
+endif
 endif
 
 bin_PROGRAMS = \
@@ -201,7 +203,6 @@ bin_PROGRAMS = \
 	lxc-autostart \
 	lxc-cgroup \
 	lxc-checkpoint \
-	lxc-clone \
 	lxc-copy \
 	lxc-config \
 	lxc-console \
@@ -221,6 +222,10 @@ bin_PROGRAMS = \
 	lxc-unshare \
 	lxc-usernsexec \
 	lxc-wait
+
+if ENABLE_DEPRECATED
+bin_PROGRAMS += lxc-clone
+endif
 
 sbin_PROGRAMS = init.lxc
 pkglibexec_PROGRAMS = \
@@ -246,7 +251,6 @@ lxc_info_SOURCES = lxc_info.c
 init_lxc_SOURCES = lxc_init.c
 lxc_monitor_SOURCES = lxc_monitor.c
 lxc_monitord_SOURCES = lxc_monitord.c
-lxc_clone_SOURCES = lxc_clone.c
 lxc_ls_SOURCES = lxc_ls.c
 lxc_copy_SOURCES = lxc_copy.c
 lxc_start_SOURCES = lxc_start.c
@@ -260,6 +264,10 @@ lxc_snapshot_SOURCES = lxc_snapshot.c
 lxc_usernsexec_SOURCES = lxc_usernsexec.c
 lxc_user_nic_SOURCES = lxc_user_nic.c network.c network.h
 lxc_checkpoint_SOURCES = lxc_checkpoint.c
+
+if ENABLE_DEPRECATED
+lxc_clone_SOURCES = lxc_clone.c
+endif
 
 if !HAVE_GETSUBOPT
 lxc_copy_SOURCES += ../include/getsubopt.c ../include/getsubopt.h

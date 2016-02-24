@@ -124,7 +124,7 @@ for f in $s/*.conf; do
 	echo "Test $testnum starting ($f)"
 	lxc-create -t busybox -f $f -n lxctestb
 	touch $CONTAINER_PATH/x1
-	lxc-clone -s -o lxctestb -n lxctestb2
+	lxc-copy -s -n lxctestb -N lxctestb2
 	# verify that # nics did not change
 	verify_numnics
 	# verify hwaddr, if any changed

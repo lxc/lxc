@@ -102,7 +102,7 @@ struct lxc_arguments {
 	int list;
 	char *groups; /* also used by lxc-ls */
 
-	/* lxc-snapshot and lxc-clone */
+	/* lxc-snapshot and lxc-copy */
 	enum task {
 		CLONE,
 		DESTROY,

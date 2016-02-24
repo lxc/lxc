@@ -52,7 +52,7 @@ cleanup
 trap cleanup EXIT SIGHUP SIGINT SIGTERM
 
 lxc-create -t busybox -n snapdeptest
-lxc-clone -s -o snapdeptest -n snapdeptest1
+lxc-copy -s -n snapdeptest -N snapdeptest1
 fail=0
 lxc-destroy -n snapdeptest || fail=1
 if [ $fail -eq 0 ]; then
@@ -61,7 +61,7 @@ if [ $fail -eq 0 ]; then
 fi
 
 for i in `seq 2 20`; do
-	lxc-clone -s -o snapdeptest -n snapdeptest$i
+	lxc-copy -s -n snapdeptest -N snapdeptest$i
 done
 
 verify_deps 20
