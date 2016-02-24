@@ -348,6 +348,16 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </para>
   </refsect1>
 
+  <refsect1>
+    <title><!-- Notes -->注意</title>
+    <para>
+      <!--
+    <command>lxc-clone</command> is superseded by <command>lxc-copy</command>.
+    -->
+      <command>lxc-copy</command> が <command>lxc-clone</command> の後継コマンドとなります。
+    </para>
+  </refsect1>
+
   &seealso;
 
   <refsect1>
