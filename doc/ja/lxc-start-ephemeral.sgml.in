@@ -279,6 +279,17 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </variablelist>
   </refsect1>
 
+  <refsect1>
+    <title><!-- Notes -->注意</title>
+    <para>
+      <!--
+    <command>lxc-start-ephemeral</command> is superseded by
+    <command>lxc-copy</command>.
+    -->
+      <command>lxc-copy</command> が <command>lxc-start-ephemeral</command> コマンドの後継コマンドとなります。
+    </para>
+  </refsect1>
+
   &seealso;
 
   <refsect1>
