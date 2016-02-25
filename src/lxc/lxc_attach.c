@@ -205,7 +205,6 @@ Options :\n\
 struct wrapargs {
 	lxc_attach_options_t *options;
 	lxc_attach_command_t *command;
-	struct lxc_tty_state *ts;
 	struct lxc_console *console;
 	int ptyfd;
 };
@@ -223,162 +222,7 @@ static int login_pty(int fd)
 	return 0;
 }
 
-/* Minimalistic forkpty() implementation. */
-static pid_t fork_pty(int *masterfd)
-{
-	int master, slave;
-	int ret = openpty(&master, &slave, NULL, NULL, NULL);
-	if (ret < 0)
-		return -1;
-
-	pid_t pid = fork();
-
-	if (pid < 0) {
-		close(master);
-		close(slave);
-		return -1;
-	} else if (pid == 0) {
-		close(master);
-		if (login_pty(slave) < 0)
-			_exit(-1); /* closes fds */
-		return 0;
-	} else {
-		*masterfd = master;
-		close(slave);
-		return pid;
-	}
-}
-
-/*
- * This is probably redundant but just so that intentions can be checked against
- * code for future modifications. Here is what this is supposed to achieve:
- * Since we fork() in pty_in_container() the shell that is run on the slave side
- * of the pty is the grandchild of c->attach() in main(). But what we probably
- * are interested in is the exit code of the grandchild. So we wait for the
- * grandchild to change status and return its exit code from this function. We
- * thereby make the exit code of the grandchild the exit code of the child and
- * allow the grandparent to see the exit code of the grandchild by waiting on
- * the pid of the child to change status:
- *
- * grandchild: lxc_attach_run_command()/lxc_attach_run_shell()
- *
- * child: pty_in_container()
- * - perform waitpid() on pid returned by lxc_attach_run_command() or
- *   lxc_attach_run_shell()
- *
- * grandparent: c->attach()
- * - return pid of pty_in_container() in pid argument.
- *
- * main()
- * - perform waitpid() on pid returned in pid argument of c->attach()
- */
-static int pty_in_container(void *p)
-{
-	int ret;
-	int pid = -1;
-	int master = -1;
-	struct wrapargs *args = p;
-
-	INFO("Trying to allocate a pty in the container.");
-
-	if (!isatty(args->ptyfd)) {
-		ERROR("stdin is not a tty");
-		return -1;
-	}
-
-	/* Get termios from one of the stdfds. */
-	struct termios oldtios;
-	ret = lxc_setup_tios(args->ptyfd, &oldtios);
-	if (ret < 0)
-		return -1;
-
-	/* Create master/slave fd pair for pty. */
-	pid = fork_pty(&master);
-	if (pid < 0)
-		goto err1;
-
-	/* Pass windowsize from one of the stdfds to the current masterfd. */
-	lxc_console_winsz(args->ptyfd, master);
-
-	/* Run shell/command on slave side of pty. */
-	if (pid == 0) {
-		if (args->command->program)
-			lxc_attach_run_command(args->command);
-		else
-			lxc_attach_run_shell(NULL);
-
-		return -1;
-	}
-
-	/*
-	 * For future reference: Must use process_lock() when called from a
-	 * threaded context.
-	 */
-	args->ts = lxc_console_sigwinch_init(args->ptyfd, master);
-	if (!args->ts) {
-		ret = -1;
-		goto err2;
-	}
-	args->ts->escape = -1;
-	args->ts->stdoutfd = STDOUT_FILENO;
-	args->ts->winch_proxy = NULL;
-
-	struct lxc_epoll_descr descr;
-	ret = lxc_mainloop_open(&descr);
-	if (ret) {
-		ERROR("failed to create mainloop");
-		goto err3;
-	}
-
-	/* Register sigwinch handler in mainloop. */
-	ret = lxc_mainloop_add_handler(&descr, args->ts->sigfd,
-			lxc_console_cb_sigwinch_fd, args->ts);
-	if (ret) {
-		ERROR("failed to add handler for SIGWINCH fd");
-		goto err4;
-	}
-
-	/* Register i/o callbacks in mainloop. */
-	ret = lxc_mainloop_add_handler(&descr, args->ts->stdinfd,
-			lxc_console_cb_tty_stdin, args->ts);
-	if (ret) {
-		ERROR("failed to add handler for stdinfd");
-		goto err4;
-	}
-
-	ret = lxc_mainloop_add_handler(&descr, args->ts->masterfd,
-			lxc_console_cb_tty_master, args->ts);
-	if (ret) {
-		ERROR("failed to add handler for masterfd");
-		goto err4;
-	}
-
-	ret = lxc_mainloop(&descr, -1);
-	if (ret) {
-		ERROR("mainloop returned an error");
-		goto err4;
-	}
-
-err4:
-	lxc_mainloop_close(&descr);
-err3:
-	lxc_console_sigwinch_fini(args->ts);
-err2:
-	close(args->ts->masterfd);
-err1:
-	tcsetattr(args->ptyfd, TCSAFLUSH, &oldtios);
-
-	ret = lxc_wait_for_pid_status(pid);
-	if (ret < 0)
-		return ret;
-
-	if (WIFEXITED(ret))
-		return WEXITSTATUS(ret);
-
-	return -1;
-}
-
-static int pty_on_host_callback(void *p)
+static int get_pty_on_host_callback(void *p)
 {
 	struct wrapargs *wrap = p;
 
@@ -393,7 +237,7 @@ static int pty_on_host_callback(void *p)
 	return -1;
 }
 
-static int pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *pid)
+static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *pid)
 {
 	int ret = -1;
 	struct wrapargs *args = wrap;
@@ -422,7 +266,7 @@ static int pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *pid)
 
 	/* Send wrapper function on its way. */
 	wrap->console = &conf->console;
-	if (c->attach(c, pty_on_host_callback, wrap, wrap->options, pid) < 0)
+	if (c->attach(c, get_pty_on_host_callback, wrap, wrap->options, pid) < 0)
 		goto err1;
 	close(conf->console.slave); /* Close slave side. */
 
@@ -475,6 +319,7 @@ err1:
 int main(int argc, char *argv[])
 {
 	int ret = -1;
+	int wexit = 0;
 	pid_t pid;
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 	lxc_attach_command_t command = (lxc_attach_command_t){.program = NULL};
@@ -544,9 +389,7 @@ int main(int argc, char *argv[])
 			wrap.ptyfd = STDOUT_FILENO;
 		else if (isatty(STDERR_FILENO))
 			wrap.ptyfd = STDERR_FILENO;
-		ret = c->attach(c, pty_in_container, &wrap, &attach_options, &pid);
-		if (ret < 0)
-			ret = pty_on_host(c, &wrap, &pid);
+		ret = get_pty_on_host(c, &wrap, &pid);
 	} else {
 		if (my_args.argc > 1)
 			ret = c->attach(c, lxc_attach_run_command, &command, &attach_options, &pid);
@@ -554,17 +397,18 @@ int main(int argc, char *argv[])
 			ret = c->attach(c, lxc_attach_run_shell, NULL, &attach_options, &pid);
 	}
 
-	lxc_container_put(c);
-
 	if (ret < 0)
-		exit(EXIT_FAILURE);
+		goto out;
 
 	ret = lxc_wait_for_pid_status(pid);
 	if (ret < 0)
-		exit(EXIT_FAILURE);
+		goto out;
 
 	if (WIFEXITED(ret))
-		return WEXITSTATUS(ret);
-
+		wexit = WEXITSTATUS(ret);
+out:
+	lxc_container_put(c);
+	if (ret >= 0)
+		exit(wexit);
 	exit(EXIT_FAILURE);
 }

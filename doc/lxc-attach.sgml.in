@@ -80,20 +80,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </para>
     <para>
     Previous versions of <command>lxc-attach</command> simply attached to the
-    specified namespaces of a container and ran a shell or the specified
-    command without allocating a pseudo terminal. This made them vulnerable to
+    specified namespaces of a container and ran a shell or the specified command
+    without first allocating a pseudo terminal. This made them vulnerable to
     input faking via a TIOCSTI <command>ioctl</command> call after switching
     between userspace execution contexts with different privilege levels. Newer
     versions of <command>lxc-attach</command> will try to allocate a pseudo
-    terminal master/slave pair and attach any standard file descriptors which
-    refer to a terminal to the slave side of the pseudo terminal before
-    executing a shell or command. <command>lxc-attach</command> will first try
-    to allocate a pseudo terminal in the container. Should this fail it will try
-    to allocate a pseudo terminal on the host before finally giving up. Note,
-    that if none of the standard file descriptors refer to a terminal
-    <command>lxc-attach</command> will not try to allocate a pseudo terminal.
-    Instead it will simply attach to the containers namespaces and run a shell
-    or the specified command.
+    terminal master/slave pair on the host and attach any standard file
+    descriptors which refer to a terminal to the slave side of the pseudo
+    terminal before executing a shell or command. Note, that if none of the
+    standard file descriptors refer to a terminal <command>lxc-attach</command>
+    will not try to allocate a pseudo terminal. Instead it will simply attach
+    to the containers namespaces and run a shell or the specified command.
     </para>
 
   </refsect1>
