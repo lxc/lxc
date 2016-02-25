@@ -230,7 +230,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
   <refsect1>
     <title>Notes</title>
     <para>
-    <command>lxc-start-ephemeral</command> is superseded by
+    <command>lxc-start-ephemeral</command> is deprecated in favor of
     <command>lxc-copy</command>.
     </para>
   </refsect1>

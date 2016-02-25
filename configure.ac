@@ -147,6 +147,13 @@ if test "x$with_systemdsystemunitdir" != "xno"; then
   AC_SUBST([SYSTEMD_UNIT_DIR], [$with_systemdsystemunitdir])
 fi
 
+# Allow enabling deprecated executables
+AC_ARG_ENABLE([deprecated],
+	[AC_HELP_STRING([--enable-deprecated],
+	[enable deprecated executables [default=no]])],
+	[], [enable_deprecated=false])
+AM_CONDITIONAL([ENABLE_DEPRECATED], [test "x$enable_deprecated" = "xyes"])
+
 # Allow disabling rpath
 AC_ARG_ENABLE([rpath],
 	[AC_HELP_STRING([--enable-rpath], [set rpath in executables [default=no]])],

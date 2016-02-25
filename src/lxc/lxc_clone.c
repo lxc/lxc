@@ -121,6 +121,8 @@ int main(int argc, char *argv[])
 	int c;
 	bool ret;
 
+	fprintf(stderr, "lxc-clone is deprecated in favor of lxc-copy.\n\n");
+
 	if (argc < 3)
 		usage(argv[0]);
 

@@ -13,7 +13,6 @@ man_MANS = \
 	lxc-cgroup.1 \
 	lxc-checkconfig.1 \
 	lxc-checkpoint.1 \
-	lxc-clone.1 \
 	lxc-config.1 \
 	lxc-console.1 \
 	lxc-copy.1 \
@@ -42,8 +41,11 @@ man_MANS = \
 	\
 	lxc.7
 
+if ENABLE_DEPRECATED
+    man_MANS += lxc-clone.1
 if ENABLE_PYTHON
     man_MANS += lxc-start-ephemeral.1
+endif
 endif
 
 %.1 : %.sgml
