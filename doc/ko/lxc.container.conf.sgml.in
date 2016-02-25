@@ -2189,6 +2189,25 @@ mknod errno 0
           </listitem>
         </varlistentry>
       </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>LXC_CGNS_AWARE</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+             If unset, then this version of lxc is not aware of cgroup
+             namespaces.  If set, it will be set to 1, and lxc is aware
+             of cgroup namespaces.  Note this does not guarantee that
+             cgroup namespaces are enabled in the kernel.  This is used
+             by the lxcfs mount hook.
+             -->
+             이 변수가 지정되지 않았다면, 현재 버전의 lxc는 cgroup 네임스페이스를 지원하지 않는다. 만약 지정되었고 값이 1이라면, lxc는 cgroup 네임스페이스를 지원하는 것이다. 단, kernel에서의 cgroup 네임스페이스 지원을 보장하는 것이 아님에 주의해야 한다. lxcfs 마운트 훅에서 사용된다.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
     </refsect2>
 
     <refsect2>
