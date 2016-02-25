@@ -207,6 +207,7 @@ struct wrapargs {
 	lxc_attach_command_t *command;
 	struct lxc_tty_state *ts;
 	struct lxc_console *console;
+	struct termios *oldtios;
 	int ptyfd;
 };
 
@@ -286,16 +287,22 @@ static int pty_in_container(void *p)
 		return -1;
 	}
 
-	/* Get termios from one of the stdfds. */
-	struct termios oldtios;
-	ret = lxc_setup_tios(args->ptyfd, &oldtios);
-	if (ret < 0)
+	args->oldtios->c_iflag &= ~IGNBRK;
+	args->oldtios->c_iflag &= BRKINT;
+	args->oldtios->c_lflag &= ~(ECHO | ICANON | ISIG);
+	args->oldtios->c_cc[VMIN] = 1;
+	args->oldtios->c_cc[VTIME] = 0;
+
+	/* Set new termios. */
+	if (tcsetattr(args->ptyfd, TCSAFLUSH, args->oldtios)) {
+		ERROR("failed to set new terminal settings");
 		return -1;
+	}
 
 	/* Create master/slave fd pair for pty. */
 	pid = fork_pty(&master);
 	if (pid < 0)
-		goto err1;
+		return -1;
 
 	/* Pass windowsize from one of the stdfds to the current masterfd. */
 	lxc_console_winsz(args->ptyfd, master);
@@ -317,7 +324,7 @@ static int pty_in_container(void *p)
 	args->ts = lxc_console_sigwinch_init(args->ptyfd, master);
 	if (!args->ts) {
 		ret = -1;
-		goto err2;
+		goto err1;
 	}
 	args->ts->escape = -1;
 	args->ts->stdoutfd = STDOUT_FILENO;
@@ -327,7 +334,7 @@ static int pty_in_container(void *p)
 	ret = lxc_mainloop_open(&descr);
 	if (ret) {
 		ERROR("failed to create mainloop");
-		goto err3;
+		goto err2;
 	}
 
 	/* Register sigwinch handler in mainloop. */
@@ -335,7 +342,7 @@ static int pty_in_container(void *p)
 			lxc_console_cb_sigwinch_fd, args->ts);
 	if (ret) {
 		ERROR("failed to add handler for SIGWINCH fd");
-		goto err4;
+		goto err3;
 	}
 
 	/* Register i/o callbacks in mainloop. */
@@ -343,30 +350,28 @@ static int pty_in_container(void *p)
 			lxc_console_cb_tty_stdin, args->ts);
 	if (ret) {
 		ERROR("failed to add handler for stdinfd");
-		goto err4;
+		goto err3;
 	}
 
 	ret = lxc_mainloop_add_handler(&descr, args->ts->masterfd,
 			lxc_console_cb_tty_master, args->ts);
 	if (ret) {
 		ERROR("failed to add handler for masterfd");
-		goto err4;
+		goto err3;
 	}
 
 	ret = lxc_mainloop(&descr, -1);
 	if (ret) {
 		ERROR("mainloop returned an error");
-		goto err4;
+		goto err3;
 	}
 
-err4:
-	lxc_mainloop_close(&descr);
 err3:
-	lxc_console_sigwinch_fini(args->ts);
+	lxc_mainloop_close(&descr);
 err2:
-	close(args->ts->masterfd);
+	lxc_console_sigwinch_fini(args->ts);
 err1:
-	tcsetattr(args->ptyfd, TCSAFLUSH, &oldtios);
+	close(args->ts->masterfd);
 
 	ret = lxc_wait_for_pid_status(pid);
 	if (ret < 0)
@@ -537,6 +542,7 @@ int main(int argc, char *argv[])
 		wrap.command->argv = (char**)my_args.argv;
 	}
 
+	struct termios oldtios;
 	if (isatty(STDIN_FILENO) || isatty(STDOUT_FILENO) || isatty(STDERR_FILENO)) {
 		if (isatty(STDIN_FILENO))
 			wrap.ptyfd = STDIN_FILENO;
@@ -544,9 +550,19 @@ int main(int argc, char *argv[])
 			wrap.ptyfd = STDOUT_FILENO;
 		else if (isatty(STDERR_FILENO))
 			wrap.ptyfd = STDERR_FILENO;
+
+		/* Get current termios */
+		if (tcgetattr(wrap.ptyfd, &oldtios))
+			SYSERROR("failed to get current terminal settings");
+		wrap.oldtios = &oldtios;
+
+		/* Try to allocate pty in the container. */
 		ret = c->attach(c, pty_in_container, &wrap, &attach_options, &pid);
-		if (ret < 0)
+		if (ret < 0) {
+			wrap.oldtios = NULL;
+			/* Try to allocate pty on the host. */
 			ret = pty_on_host(c, &wrap, &pid);
+		}
 	} else {
 		if (my_args.argc > 1)
 			ret = c->attach(c, lxc_attach_run_command, &command, &attach_options, &pid);
@@ -554,17 +570,22 @@ int main(int argc, char *argv[])
 			ret = c->attach(c, lxc_attach_run_shell, NULL, &attach_options, &pid);
 	}
 
-	lxc_container_put(c);
-
 	if (ret < 0)
-		exit(EXIT_FAILURE);
+		goto out;
 
 	ret = lxc_wait_for_pid_status(pid);
 	if (ret < 0)
-		exit(EXIT_FAILURE);
+		goto out;
 
 	if (WIFEXITED(ret))
-		return WEXITSTATUS(ret);
+		ret = WEXITSTATUS(ret);
 
+out:
+	if (wrap.oldtios)
+		tcsetattr(wrap.ptyfd, TCSAFLUSH, &oldtios);
+	lxc_container_put(c);
+
+	if (ret >= 0)
+		exit(ret);
 	exit(EXIT_FAILURE);
 }
