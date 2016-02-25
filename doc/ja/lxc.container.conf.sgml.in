@@ -1401,6 +1401,15 @@ proc proc proc nodev,noexec,nosuid 0 0
 	        </para>
 	      </listitem>
 	    </itemizedlist>
+            <para>
+	      <!--
+	      If cgroup namespaces are enabled, then any <option>cgroup</option>
+	      auto-mounting request will be ignored, since the container can
+	      mount the filesystems itself, and automounting can confuse the
+	      container init.
+		-->
+	      cgroup 名前空間が有効の場合、<option>cgroup</option> の自動マウントの指定はどれも無視されます。これは、コンテナが自身でファイルシステムをマウントするため、自動マウントがコンテナの init を混乱させる可能性があるためです。
+            </para>
 	    <para>
               <!--
 	      Note that if automatic mounting of the cgroup filesystem
@@ -1659,7 +1668,7 @@ proc proc proc nodev,noexec,nosuid 0 0
 	<command>lxc-container-default</command> othewise.
         -->
         lxc が apparmor サポートでコンパイルされ、インストールされている場合で、ホストで apparmor が有効な場合、コンテナが従って動くべき apparmor プロファイルは、コンテナの設定で指定することが可能です。
-        デフォルトは、ホストのカーネルで cgroup namespace が使える場合は <command>lxc-container-default-cgns</command>です。使えない場合は <command>lxc-container-default</command> です。
+        デフォルトは、ホストのカーネルで cgroup 名前空間が使える場合は <command>lxc-container-default-cgns</command>です。使えない場合は <command>lxc-container-default</command> です。
       </para>
       <variablelist>
 	<varlistentry>
@@ -2269,8 +2278,8 @@ mknod errno 0
          cgroup namespaces are enabled in the kernel.  This is used
          by the lxcfs mount hook.
          -->
-              この変数が設定されていない場合、お使いのバージョンの LXC は cgroup namespace を扱えません。設定されている場合、この値は 1 に設定されています。そして、cgroup namespace を扱えます。
-              この変数はカーネルで cgroup namespace が有効であることは保証しません。この変数は lxcfs のマウントフックが使います。
+              この変数が設定されていない場合、お使いのバージョンの LXC は cgroup 名前空間を扱えません。設定されている場合、この値は 1 に設定されています。そして、cgroup 名前空間を扱えます。
+              この変数はカーネルで cgroup 名前空間が有効であることは保証しません。この変数は lxcfs のマウントフックが使います。
             </para>
           </listitem>
         </varlistentry>
