@@ -1356,6 +1356,9 @@ static bool cgroupfs_mount_cgroup(void *hdata, const char *root, int type)
 	struct cgroup_process_info *info, *base_info;
 	int r, saved_errno = 0;
 
+	if (cgns_supported())
+		return true;
+
 	cgfs_d = hdata;
 	if (!cgfs_d)
 		return false;

@@ -912,7 +912,7 @@ proc proc proc nodev,noexec,nosuid 0 0
                   the container's own cgroup into that directory.
                   The container will be able to write to its own
                   cgroup directory, but not the parents, since they
-                  will be remounted read-only
+                  will be remounted read-only.
                 </para>
               </listitem>
               <listitem>
@@ -986,6 +986,12 @@ proc proc proc nodev,noexec,nosuid 0 0
                 </para>
               </listitem>
             </itemizedlist>
+            <para>
+	      If cgroup namespaces are enabled, then any <option>cgroup</option>
+	      auto-mounting request will be ignored, since the container can
+	      mount the filesystems itself, and automounting can confuse the
+	      container init.
+            </para>
             <para>
               Note that if automatic mounting of the cgroup filesystem
               is enabled, the tmpfs under
