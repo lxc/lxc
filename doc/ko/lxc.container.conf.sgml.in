@@ -1611,9 +1611,11 @@ proc proc proc nodev,noexec,nosuid 0 0
 	If lxc was compiled and installed with apparmor support, and the host
 	system has apparmor enabled, then the apparmor profile under which the
 	container should be run can be specified in the container
-	configuration.  The default is <command>lxc-container-default</command>.
+        configuration.  The default is <command>lxc-container-default-cgns</command>
+	if the host kernel is cgroup namespace aware, or
+	<command>lxc-container-default</command> othewise.
         -->
-        lxc가 apparmor를 지원하도록 컴파일된 후 설치되었고, 호스트 시스템에서 apparmor가 활성화되었다면, 컨테이너에서 따라야할 apparmor 프로파일을 컨테이너 설정에서 지정할 수 있다. 기본값은 <command>lxc-container-default</command>이다.
+        lxc가 apparmor를 지원하도록 컴파일된 후 설치되었고, 호스트 시스템에서 apparmor가 활성화되었다면, 컨테이너에서 따라야할 apparmor 프로파일을 컨테이너 설정에서 지정할 수 있다. 기본값은 호스트 커널이 cgroup 네임스페이스를 지원하면 <command>lxc-container-default-cgns</command>이고, 그렇지 않다면 <command>lxc-container-default</command>이다.
       </para>
       <variablelist>
 	<varlistentry>
@@ -1631,6 +1633,14 @@ proc proc proc nodev,noexec,nosuid 0 0
               컨테이너가 apparmor로 인한 제한을 받지 않도록 하려면, 아래와 같이 지정하면 된다.
 	    </para>
 	      <programlisting>lxc.aa_profile = unconfined</programlisting>
+            <para>
+	      <!--
+              If the apparmor profile should remain unchanged (i.e. if you
+	      are nesting containers and are already confined), then use
+	      -->
+              apparmor 프로파일이 변경되지 않아야 한다면(중첩 컨테이너 안에 있고, 이미 confined된 경우), 아래와 같이 지정하면 된다.
+            </para>
+              <programlisting>lxc.aa_profile = unchanged</programlisting>
 	  </listitem>
 	</varlistentry>
 	<varlistentry>
