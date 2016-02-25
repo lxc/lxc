@@ -352,9 +352,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <title><!-- Notes -->注意</title>
     <para>
       <!--
-    <command>lxc-clone</command> is superseded by <command>lxc-copy</command>.
+    <command>lxc-clone</command> is deprecated in favor of
+    <command>lxc-copy</command>.
     -->
-      <command>lxc-copy</command> が <command>lxc-clone</command> の後継コマンドとなります。
+      <command>lxc-clone</command> は <command>lxc-copy</command> に置き換えられ、廃止される予定です。
     </para>
   </refsect1>
 
