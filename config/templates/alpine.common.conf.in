@@ -1,0 +1,20 @@
+# This derives from the global common config.
+lxc.include = @LXCTEMPLATECONFIG@/common.conf
+
+# Doesn't support consoles in /dev/lxc/.
+lxc.devttydir =
+
+# Drop another (potentially) harmful capabilities.
+lxc.cap.drop = audit_write
+lxc.cap.drop = ipc_owner
+lxc.cap.drop = mknod
+lxc.cap.drop = setfcap
+lxc.cap.drop = setpcap
+lxc.cap.drop = sys_nice
+lxc.cap.drop = sys_pacct
+lxc.cap.drop = sys_ptrace
+lxc.cap.drop = sys_rawio
+lxc.cap.drop = sys_resource
+lxc.cap.drop = sys_tty_config
+lxc.cap.drop = syslog
+lxc.cap.drop = wake_alarm

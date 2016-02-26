@@ -1,367 +1,505 @@
 #!/bin/sh
+# vim: set ts=4:
 
-# Detect use under userns (unsupported)
-for arg in "$@"; do
-    [ "$arg" = "--" ] && break
-    if [ "$arg" = "--mapped-uid" -o "$arg" = "--mapped-gid" ]; then
-        echo "This template can't be used for unprivileged containers." 1>&2
-        echo "You may want to try the \"download\" template instead." 1>&2
-        exit 1
-    fi
-done
+# Exit on error and treat unset variables as an error.
+set -eu
+
+#
+# LXC template for Alpine Linux 3+
+#
+
+# Note: Do not replace tabs with spaces, it would break heredocs!
+
+# Authors:
+# Jakub Jirutka <jakub@jirutka.cz>
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+
+#===========================  Constants  ============================#
 
 # Make sure the usual locations are in PATH
-PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
-export PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
-key_sha256sums="9c102bcc376af1498d549b77bdbfa815ae86faa1d2d82f040e616b18ef2df2d4  alpine-devel@lists.alpinelinux.org-4a6a0840.rsa.pub
+readonly LOCAL_STATE_DIR='@LOCALSTATEDIR@'
+readonly LXC_TEMPLATE_CONFIG='@LXCTEMPLATECONFIG@'
+readonly LXC_CACHE_DIR="${LXC_CACHE_PATH:-"$LOCAL_STATE_DIR/cache/lxc"}/alpine"
+
+# SHA256 checksums of GPG keys for APK.
+readonly APK_KEYS_SHA256="\
+9c102bcc376af1498d549b77bdbfa815ae86faa1d2d82f040e616b18ef2df2d4  alpine-devel@lists.alpinelinux.org-4a6a0840.rsa.pub
 2adcf7ce224f476330b5360ca5edb92fd0bf91c92d83292ed028d7c4e26333ab  alpine-devel@lists.alpinelinux.org-4d07755e.rsa.pub
 ebf31683b56410ecc4c00acd9f6e2839e237a3b62b5ae7ef686705c7ba0396a9  alpine-devel@lists.alpinelinux.org-5243ef4b.rsa.pub
 1bb2a846c0ea4ca9d0e7862f970863857fc33c32f5506098c636a62a726a847b  alpine-devel@lists.alpinelinux.org-524d27bb.rsa.pub
 12f899e55a7691225603d6fb3324940fc51cd7f133e7ead788663c2b7eecb00c  alpine-devel@lists.alpinelinux.org-5261cecb.rsa.pub"
 
+readonly APK_KEYS_URI='http://alpinelinux.org/keys'
+readonly MIRRORS_LIST_URL='http://rsync.alpinelinux.org/alpine/MIRRORS.txt'
 
-get_static_apk () {
-    wget="wget -q -O -"
-    pkglist=alpine-keys:apk-tools-static
-    auto_repo_dir=
+: ${APK_KEYS_DIR:=/etc/apk/keys}
+if ! ls "$APK_KEYS_DIR"/alpine* >/dev/null 2>&1; then
+	APK_KEYS_DIR="$LXC_CACHE_DIR/bootstrap/keys"
+fi
+readonly APK_KEYS_DIR
 
-    if [ -z "$repository" ]; then
-        url=http://wiki.alpinelinux.org/cgi-bin/dl.cgi
-	yaml_path="latest-stable/releases/$apk_arch/latest-releases.yaml"
-        if [ -z "$release" ]; then
-            echo -n "Determining the latest release... "
-            release=$($wget $url/$yaml_path | \
-	        awk '$1 == "branch:" {print $2; exit 0}')
-            if [ -z "$release" ]; then
-                release=$($wget $url/.latest.$apk_arch.txt | \
-                    cut -d " " -f 3 | cut -d / -f 1 | uniq)
-            fi
-            if [ -z "$release" ]; then
-                echo failed
-                return 1
-            fi
-            echo $release
-        fi
-        auto_repo_dir=$release/main
-        repository=$url/$auto_repo_dir
-        pkglist=$pkglist:alpine-mirrors
-    fi
+: ${APK:=$(command -v apk || true)}
+if [ ! -x "$APK" ]; then
+	APK="$LXC_CACHE_DIR/bootstrap/sbin/apk.static"
+fi
+readonly APK
 
-    rootfs="$1"
-    echo "Using static apk from $repository/$apk_arch"
-    wget="$wget $repository/$apk_arch"
 
-    # parse APKINDEX to find the current versions
-    static_pkgs=$($wget/APKINDEX.tar.gz | \
-        tar -Oxz APKINDEX | \
-        awk -F: -v pkglist=$pkglist '
-            BEGIN { split(pkglist,pkg) }
-            $0 != "" { f[$1] = $2 }
-            $0 == "" { for (i in pkg)
-                           if (pkg[i] == f["P"])
-                               print(f["P"] "-" f["V"] ".apk") }')
-    [ "$static_pkgs" ] || return 1
+#========================  Helper Functions  ========================#
 
-    mkdir -p "$rootfs" || return 1
-    for pkg in $static_pkgs; do
-        echo "Downloading $pkg"
-        $wget/$pkg | tar -xz -C "$rootfs"
-    done
+usage() {
+	cat <<-EOF
+		Template specific options can be passed to lxc-create after a '--' like this:
 
-    # clean up .apk meta files
-    rm -f "$rootfs"/.[A-Z]*
+		   lxc-create --name=NAME [lxc-create-options] -- [template-options] [PKG...]
 
-    # verify checksum of the key
-    keyname=$(echo $rootfs/sbin/apk.static.*.pub | sed 's/.*\.SIGN\.RSA\.//')
-    checksum=$(echo "$key_sha256sums" |  grep -w "$keyname")
-    if [ -z "$checksum" ]; then
-        echo "ERROR: checksum is missing for $keyname"
-        return 1
-    fi
-    (cd $rootfs/etc/apk/keys && echo "$checksum" | sha256sum -c -) || return 1
+		PKG  Additional APK package(s) to install into the container.
 
-    # verify the static apk binary signature
-    APK=$rootfs/sbin/apk.static
-    openssl dgst -sha1 -verify $rootfs/etc/apk/keys/$keyname \
-        -signature "$APK.SIGN.RSA.$keyname" "$APK" || return 1
+		Template options:
+		   -a ARCH, --arch=ARCH   The container architecture (e.g. x86, x86_64); defaults
+		                          to the host arch.
+		   -d, --debug            Run this script in a debug mode (set -x and wget w/o -q).
+		   -F, --flush-cache      Remove cached files before build.
+		   -m URL --mirror=URL    The Alpine mirror to use; defaults to random mirror.
+		   -r VER, --release=VER  The Alpine release branch to install; default is the
+		                          latest stable.
 
-    if [ "$auto_repo_dir" ]; then
-        mirror_list=$rootfs/usr/share/alpine-mirrors/MIRRORS.txt
-        mirror_count=$(wc -l $mirror_list | cut -d " " -f 1)
-        random=$(hexdump -n 2 -e '/2 "%u"' /dev/urandom)
-        repository=$(sed $(expr $random % $mirror_count + 1)\!d \
-            $mirror_list)$auto_repo_dir
-        echo "Selecting mirror $repository"
-    fi
-}
-
-install_alpine() {
-    rootfs="$1"
-    shift
-    mkdir -p "$rootfs"/etc/apk || return 1
-    : ${keys_dir:=/etc/apk/keys}
-    if ! [ -d "$rootfs"/etc/apk/keys ] && [ -d "$keys_dir" ]; then
-        cp -r "$keys_dir" "$rootfs"/etc/apk/keys
-    fi
-    if [ -n "$repository" ]; then
-        echo "$repository" > "$rootfs"/etc/apk/repositories
-    else
-        cp /etc/apk/repositories "$rootfs"/etc/apk/repositories || return 1
-        if [ -n "$release" ]; then
-            sed -E -i "s:/[^/]+/([^/]+)$:/$release/\\1:" \
-                "$rootfs"/etc/apk/repositories
-        fi
-    fi
-    opt_arch=
-    if [ -n "$apk_arch" ]; then
-        opt_arch="--arch $apk_arch"
-    fi
-    $APK add -U --initdb --root $rootfs $opt_arch "$@" alpine-base
-}
-
-configure_alpine() {
-    rootfs="$1"
-    echo "Setting up /etc/inittab"
-    cat >"$rootfs"/etc/inittab<<EOF
-::sysinit:/sbin/rc sysinit
-::wait:/sbin/rc default
-console:12345:respawn:/sbin/getty 38400 console
-tty1:12345:respawn:/sbin/getty 38400 tty1
-tty2:12345:respawn:/sbin/getty 38400 tty2
-tty3:12345:respawn:/sbin/getty 38400 tty3
-tty4:12345:respawn:/sbin/getty 38400 tty4
-::ctrlaltdel:/sbin/reboot
-::shutdown:/sbin/rc shutdown
-EOF
-    # set up timezone
-    if [ -f /etc/TZ ]; then
-        cp /etc/TZ "$rootfs/etc/TZ"
-    fi
-
-    # set up nameserver
-    grep nameserver /etc/resolv.conf > "$rootfs/etc/resolv.conf"
-
-    # configure the network using the dhcp
-    cat <<EOF > $rootfs/etc/network/interfaces
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet dhcp
-EOF
-
-    # set the hostname
-    echo $hostname > $rootfs/etc/hostname
-
-    # missing device nodes
-    echo "Setting up device nodes"
-    mkdir -p -m 755 "$rootfs/dev/pts"
-    mkdir -p -m 1777 "$rootfs/dev/shm"
-    mknod -m 666 "$rootfs/dev/zero" c 1 5
-    mknod -m 666 "$rootfs/dev/full" c 1 7
-    mknod -m 666 "$rootfs/dev/random" c 1 8
-    mknod -m 666 "$rootfs/dev/urandom" c 1 9
-    mknod -m 666 "$rootfs/dev/tty0" c 4 0
-    mknod -m 666 "$rootfs/dev/tty1" c 4 1
-    mknod -m 666 "$rootfs/dev/tty2" c 4 2
-    mknod -m 666 "$rootfs/dev/tty3" c 4 3
-    mknod -m 666 "$rootfs/dev/tty4" c 4 4
-#    mknod -m 600 "$rootfs/dev/initctl" p
-    mknod -m 666 "$rootfs/dev/tty" c 5 0
-    mknod -m 666 "$rootfs/dev/console" c 5 1
-    mknod -m 666 "$rootfs/dev/ptmx" c 5 2
-
-    # start services
-    ln -s /etc/init.d/bootmisc "$rootfs"/etc/runlevels/boot/bootmisc
-    ln -s /etc/init.d/syslog "$rootfs"/etc/runlevels/boot/syslog
-
-    return 0
-}
-
-copy_configuration() {
-    path=$1
-    rootfs=$2
-    hostname=$3
-
-    grep -q "^lxc.rootfs" $path/config 2>/dev/null \
-        || echo "lxc.rootfs = $rootfs" >> $path/config
-    if [ -n "$lxc_arch" ]; then
-        echo "lxc.arch = $lxc_arch" >> $path/config
-    fi
-
-    lxc_network_link_line="# lxc.network.link = br0"
-    for br in lxcbr0 virbr0 br0; do
-        if [ -d /sys/class/net/$br/bridge ]; then
-            lxc_network_link_line="lxc.network.link = $br"
-            break
-        fi
-    done
-
-    if ! grep -q "^lxc.network.type" $path/config 2>/dev/null; then
-        cat <<EOF >> $path/config
-lxc.network.type = veth
-$lxc_network_link_line
-lxc.network.flags = up
-EOF
-    fi
-
-    # if there is exactly one veth or macvlan network entry, make sure
-    # it has an associated mac address.
-    nics=$(awk -F '[ \t]*=[ \t]*' \
-        '$1=="lxc.network.type" && ($2=="veth" || $2=="macvlan") {print $2}' \
-        $path/config | wc -l)
-    if [ "$nics" -eq 1 ] && ! grep -q "^lxc.network.hwaddr" $path/config; then
-        # see http://sourceforge.net/tracker/?func=detail&aid=3411497&group_id=163076&atid=826303
-        hwaddr="fe:$(dd if=/dev/urandom bs=8 count=1 2>/dev/null |od -t x8 | \
-                      head -n 1 |awk '{print $2}' | cut -c1-10 |\
-                      sed 's/\(..\)/\1:/g; s/.$//')"
-        echo "lxc.network.hwaddr = $hwaddr" >> $path/config
-    fi
-
-    cat <<EOF >> $path/config
-
-lxc.tty = 4
-lxc.pts = 1024
-lxc.utsname = $hostname
-lxc.cap.drop = sys_module mac_admin mac_override sys_time sys_admin
-
-# When using LXC with apparmor, uncomment the next line to run unconfined:
-#lxc.aa_profile = unconfined
-
-# devices
-lxc.cgroup.devices.deny = a
-# /dev/null, zero and full
-lxc.cgroup.devices.allow = c 1:3 rwm
-lxc.cgroup.devices.allow = c 1:5 rwm
-lxc.cgroup.devices.allow = c 1:7 rwm
-# consoles
-lxc.cgroup.devices.allow = c 5:1 rwm
-lxc.cgroup.devices.allow = c 5:0 rwm
-lxc.cgroup.devices.allow = c 4:0 rwm
-lxc.cgroup.devices.allow = c 4:1 rwm
-# /dev/{,u}random
-lxc.cgroup.devices.allow = c 1:9 rwm
-lxc.cgroup.devices.allow = c 1:8 rwm
-lxc.cgroup.devices.allow = c 136:* rwm
-lxc.cgroup.devices.allow = c 5:2 rwm
-# rtc
-lxc.cgroup.devices.allow = c 254:0 rm
-
-# mounts point
-lxc.mount.auto=cgroup:mixed proc:mixed sys:mixed
-lxc.mount.entry=run run tmpfs nodev,noexec,nosuid,relatime,size=1m,mode=0755 0 0
-lxc.mount.entry=shm dev/shm tmpfs nodev,nosuid,noexec,mode=1777,create=dir 0 0
-
-EOF
-
-    return 0
+		Environment variables:
+		   APK             The apk-tools binary to use when building rootfs. If not set
+		                   or not executable and apk is not on PATH, then the script
+		                   will download the latest apk-tools-static.
+		   APK_KEYS_DIR    Path to directory with GPG keys for APK. If not set and
+		                   /etc/apk/keys does not contain alpine keys, then the script
+		                   will download the keys from ${APK_KEYS_URI}.
+		   LXC_CACHE_PATH  Path to the cache directory where to store bootstrap files
+		                   and APK packages.
+	EOF
 }
 
 die() {
-    echo "$@" >&2
-    exit 1
+	local retval=$1; shift
+
+	printf 'ERROR: %s\n' "$@" 1>&2
+	exit $retval
 }
 
-usage() {
-    cat >&2 <<EOF
-Usage: $(basename $0) [-h|--help] [-r|--repository <url>]
-                   [-R|--release <release>] [-a|--arch <arch>]
-                   [--rootfs <rootfs>] -p|--path <path> -n|--name <name>
-                   [PKG...]
+einfo() {
+	printf "\n==> $1\n"
+}
+
+fetch() {
+	if [ "$DEBUG" = 'yes' ]; then
+		wget -T 10 -O - $@
+	else
+		wget -T 10 -O - -q $@
+	fi
+}
+
+latest_release_branch() {
+	local arch="$1"
+	local branch=$(fetch "$MIRROR_URL/latest-stable/releases/$arch/latest-releases.yaml" \
+		| sed -En 's/^[ \t]*branch: (.*)$/\1/p' \
+		| head -n 1)
+	[ -n "$branch" ] && echo "$branch"
+}
+
+parse_arch() {
+	case "$1" in
+		x86 | i[3-6]86) echo 'x86';;
+		x86_64 | amd64) echo 'x86_64';;
+		arm*) echo 'armhf';;
+		*) return 1;;
+	esac
+}
+
+random_mirror_url() {
+	local url=$(fetch "$MIRRORS_LIST_URL" | shuf -n 1)
+	[ -n "$url" ] && echo "$url"
+}
+
+run_exclusively() {
+	local lock_name="$1"
+	local timeout=$2
+	shift 2
+
+	mkdir -p "$LOCAL_STATE_DIR/lock/subsys"
+
+	local retval
+	{
+		echo -n "Obtaining an exclusive lock..."
+		if ! flock -x 9; then
+			echo ' failed.'
+			return 1
+		fi
+		echo ' done'
+
+		"$@"; retval=$?
+	} 9> "$LOCAL_STATE_DIR/lock/subsys/lxc-alpine-$lock_name"
+
+	return $retval
+}
+
+
+#============================  Bootstrap  ===========================#
+
+bootstrap() {
+	if [ "$FLUSH_CACHE" = 'yes' ] && [ -d "$LXC_CACHE_DIR/bootstrap" ]; then
+		einfo 'Cleaning cached bootstrap files'
+		rm -Rf "$LXC_CACHE_DIR/bootstrap"
+	fi
+
+	einfo 'Fetching and/or verifying APK keys'
+	fetch_apk_keys "$APK_KEYS_DIR"
+
+	if [ ! -x "$APK" ]; then
+		einfo 'Fetching apk-tools static binary'
+
+		local host_arch=$(parse_arch $(uname -m))
+		fetch_apk_static "$LXC_CACHE_DIR/bootstrap" "$host_arch"
+	fi
+}
+
+fetch_apk_keys() {
+	local dest="$1"
+	local line keyname
+
+	mkdir -p "$dest"
+	cd "$dest"
+
+	echo "$APK_KEYS_SHA256" | while read -r line; do
+		keyname="${line##* }"
+		if [ ! -f "$keyname" ]; then
+			fetch "$APK_KEYS_URI/$keyname" > "$keyname"
+		fi
+		echo "$line" | sha256sum -c -
+	done || exit 2
+
+	cd - >/dev/null
+}
+
+fetch_apk_static() {
+	local dest="$1"
+	local arch="$2"
+	local pkg_name='apk-tools-static'
+
+	mkdir -p "$dest"
+
+	local pkg_ver=$(fetch "$MIRROR_URL/latest-stable/main/$arch/APKINDEX.tar.gz" \
+		| tar -xzO APKINDEX \
+		| sed -n "/P:${pkg_name}/,/^$/ s/V:\(.*\)$/\1/p")
+
+	[ -n "$pkg_ver" ] || die 2 "Cannot find a version of $pkg_name in APKINDEX"
+
+	fetch "$MIRROR_URL/latest-stable/main/$arch/${pkg_name}-${pkg_ver}.apk" \
+		| tar -xz -C "$dest" sbin/  # --extract --gzip --directory
+
+	[ -f "$dest/sbin/apk.static" ] || die 2 'apk.static not found'
+
+	local keyname=$(echo "$dest"/sbin/apk.static.*.pub | sed 's/.*\.SIGN\.RSA\.//')
+	openssl dgst -sha1 \
+		-verify "$APK_KEYS_DIR/$keyname" \
+		-signature "$dest/sbin/apk.static.SIGN.RSA.$keyname" \
+		"$dest/sbin/apk.static" \
+		|| die 2 'Signature verification for apk.static failed'
+
+	# Note: apk doesn't return 0 for --version
+	local out="$("$dest"/sbin/apk.static --version)"
+	echo "$out"
+
+	[ "${out%% *}" = 'apk-tools' ] || die 3 'apk.static --version failed'
+}
+
+
+#============================  Install  ============================#
+
+install() {
+	local dest="$1"
+	local arch="$2"
+	local branch="$3"
+	local extra_packages="$4"
+	local apk_cache="$LXC_CACHE_DIR/apk/$arch"
+	local repo_url="$MIRROR_URL/$branch/main"
+
+	if [ "$FLUSH_CACHE" = 'yes' ] && [ -d "$apk_cache" ]; then
+		einfo "Cleaning cached APK packages for $arch"
+		rm -Rf "$apk_cache"
+	fi
+	mkdir -p "$apk_cache"
+
+	einfo "Installing Alpine Linux in $dest"
+	cd "$dest"
+
+	mkdir -p etc/apk
+	ln -s "$apk_cache" etc/apk/cache
+	echo "$repo_url" > etc/apk/repositories
+
+	install_packages "$arch" alpine-base $extra_packages
+	make_dev_nodes
+	setup_inittab
+	setup_hosts
+	setup_network
+	setup_services
+
+	chroot . /bin/true \
+		|| die 3 'Failed to execute /bin/true in chroot, the builded rootfs is broken!'
+
+	rm etc/apk/cache
+	cd - >/dev/null
+}
+
+install_packages() {
+	local arch="$1"; shift
+	local packages="$@"
+
+	$APK --arch="$arch" --root=. --keys-dir="$APK_KEYS_DIR" \
+		--update-cache --initdb add $packages
+}
+
+make_dev_nodes() {
+	mkdir -p -m 755 dev/pts
+	mkdir -p -m 1777 dev/shm
+
+	mknod -m 666 dev/zero c 1 5
+	mknod -m 666 dev/full c 1 7
+	mknod -m 666 dev/random c 1 8
+	mknod -m 666 dev/urandom c 1 9
+
+	local i; for i in $(seq 0 4); do
+		mknod -m 620 dev/tty$i c 4 $i
+		chown 0:5 dev/tty$i  # root:tty
+	done
+
+	mknod -m 666 dev/tty c 5 0
+	chown 0:5 dev/tty  # root:tty
+	mknod -m 620 dev/console c 5 1
+	mknod -m 666 dev/ptmx c 5 2
+	chown 0:5 dev/ptmx  # root:tty
+}
+
+setup_inittab() {
+	# Remove unwanted ttys.
+	sed -i '/^tty[5-9]\:\:.*$/d' etc/inittab
+
+	cat <<-EOF >> etc/inittab
+		# Main LXC console console
+		::respawn:/sbin/getty 38400 console
+	EOF
+}
+
+setup_hosts() {
+	# This runscript injects localhost entries with the current hostname
+	# into /etc/hosts.
+	cat <<'EOF' > etc/init.d/hosts
+#!/sbin/openrc-run
+
+start() {
+	local start_tag='# begin generated'
+	local end_tag='# end generated'
+
+	local content=$(
+		cat <<-EOF
+			$start_tag by /etc/init.d/hosts
+			127.0.0.1  $(hostname).local $(hostname) localhost
+			::1        $(hostname).local $(hostname) localhost
+			$end_tag
+		EOF
+	)
+
+	if grep -q "^${start_tag}" /etc/hosts; then
+		# escape \n, busybox sed doesn't like them
+		content=${content//$'\n'/\\$'\n'}
+
+		sed -ni "/^${start_tag}/ {
+				a\\${content}
+				# read and discard next line and repeat until $end_tag or EOF
+				:a; n; /^${end_tag}/!ba; n
+			}; p" /etc/hosts
+	else
+		printf "$content" >> /etc/hosts
+	fi
+}
 EOF
+	chmod +x etc/init.d/hosts
+
+	# Wipe it, will be generated by the above runscript.
+	echo -n > etc/hosts
 }
 
-usage_err() {
-    usage
-    exit 1
+setup_network() {
+	# Note: loopback is automatically started by LXC.
+	cat <<-EOF > etc/network/interfaces
+		auto eth0
+		iface eth0 inet dhcp
+	EOF
 }
 
-default_path=@LXCPATH@
-release=
-arch=$(uname -m)
+setup_services() {
+	local svc_name
 
-# template mknods, requires root
-if [ $(id -u) -ne 0 ]; then
-   echo "$(basename $0): must be run as root" >&2
-   exit 1
+	# Specify the LXC subsystem.
+	sed -i 's/^#*rc_sys=.*/rc_sys="lxc"/' etc/rc.conf
+
+	# boot runlevel
+	for svc_name in bootmisc hosts syslog; do
+		ln -s /etc/init.d/$svc_name etc/runlevels/boot/$svc_name
+	done
+
+	# default runlevel
+	for svc_name in networking cron; do
+		ln -s /etc/init.d/$svc_name etc/runlevels/default/$svc_name
+	done
+}
+
+
+#===========================  Configure  ===========================#
+
+configure_container() {
+	local config="$1"
+	local hostname="$2"
+	local arch="$3"
+
+	cat <<-EOF >> "$config"
+
+		# Specify container architecture.
+		lxc.arch = $arch
+
+		# Set hostname.
+		lxc.utsname = $hostname
+
+		# If something doesn't work, try to comment this out.
+		# Dropping sys_admin disables container root from doing a lot of things
+		# that could be bad like re-mounting lxc fstab entries rw for example,
+		# but also disables some useful things like being able to nfs mount, and
+		# things that are already namespaced with ns_capable() kernel checks, like
+		# hostname(1).
+		lxc.cap.drop = sys_admin
+
+		# Include common configuration.
+		lxc.include = $LXC_TEMPLATE_CONFIG/alpine.common.conf
+	EOF
+}
+
+
+#=============================  Main  ==============================#
+
+if [ "$(id -u)" != "0" ]; then
+	die 1 "This script must be run as 'root'"
 fi
 
-options=$(getopt -o hn:p:r:R:a: -l help,name:,rootfs:,path:,repository:,release:,arch: -- "$@")
-[ $? -eq 0 ] || usage_err
+# Parse command options.
+options=$(getopt -o a:dFm:n:p:r:h -l arch:,debug,flush-cache,mirror:,name:,\
+path:,release:,rootfs:,help,mapped-uid:,mapped-gid: -- "$@")
 eval set -- "$options"
 
+# Clean variables and set defaults.
+arch="$(uname -m)"
+debug='no'
+flush_cache='no'
+mirror_url=
+name=
+path=
+release=
+rootfs=
+
+# Process command options.
 while [ $# -gt 0 ]; do
-    case "$1" in
-    -h|--help)
-        usage
-        exit 0
-        ;;
-    -n|--name)
-        name=$2
-        ;;
-    --rootfs)
-        rootfs=$2
-        ;;
-    -p|--path)
-        path=$2
-        ;;
-    -r|--repository)
-        repository=$2
-	;;
-    -R|--release)
-        release=$2
-        ;;
-    -a|--arch)
-        arch=$2
-        ;;
-    --)
-	shift
-        break;;
-    esac
-    shift 2
+	case $1 in
+		-a | --arch)
+			arch=$2; shift 2
+		;;
+		-d | --debug)
+			debug='yes'; shift 1
+		;;
+		-F | --flush-cache)
+			flush_cache='yes'; shift 1
+		;;
+		-m | --mirror)
+			mirror_url=$2; shift 2
+		;;
+		-n | --name)
+			name=$2; shift 2
+		;;
+		-p | --path)
+			path=$2; shift 2
+		;;
+		-r | --release)
+			release=$2; shift 2
+		;;
+		--rootfs)
+			rootfs=$2; shift 2
+		;;
+		-h | --help)
+			usage; exit 0
+		;;
+		--)
+			shift; break
+		;;
+		--mapped-[ug]id)
+			die 1 "This template can't be used for unprivileged containers." \
+				'You may want to try the "download" template instead.'
+		;;
+		*)
+			echo "Unknown option: $1" 1>&2
+			usage; exit 1
+		;;
+	esac
 done
 
+extra_packages="$@"
 
-[ -z "$name" ] && usage_err
+[ "$debug" = 'yes' ] && set -x
 
-if [ -z "${path}" ]; then
-    path="${default_path}/${name}"
+# Set global variables.
+readonly DEBUG="$debug"
+readonly FLUSH_CACHE="$flush_cache"
+readonly MIRROR_URL="${mirror_url:-$(random_mirror_url)}"
+
+# Validate options.
+[ -n "$name" ] || die 1 'Missing required option --name'
+[ -n "$path" ] || die 1 'Missing required option --path'
+
+if [ -z "$rootfs" ] && [ -f "$path/config" ]; then
+	rootfs="$(sed -nE 's/^lxc.rootfs\s*=\s*(.*)$/\1/p' "$path/config")"
 fi
-
 if [ -z "$rootfs" ]; then
-    rootfs=`awk -F= '$1 ~ /^lxc.rootfs/ { print $2 }' "$path/config" 2>/dev/null`
-    if [ -z "$rootfs" ]; then
-        rootfs="${path}/rootfs"
-    fi
+	rootfs="$path/rootfs"
 fi
 
-lxc_arch=$arch
-apk_arch=$arch
+arch=$(parse_arch "$arch") \
+	|| die 1 "Unsupported architecture: $arch"
 
-case "$arch" in
-    i[3-6]86)
-        apk_arch=x86
-        lxc_arch=x86
-        ;;
-    x86)
-        lxc_arch=i686
-        ;;
-    x86_64|"")
-        ;;
-    arm*)
-        apk_arch=armhf
-        ;;
-    *)
-        die "unsupported architecture: $arch"
-        ;;
-esac
-
-: ${APK:=apk}
-if ! which $APK >/dev/null; then
-    get_static_apk "$rootfs" || die "Failed to download a valid static apk"
+if [ -z "$release" ]; then
+	release=$(latest_release_branch "$arch") \
+		|| die 2 'Failed to resolve Alpine last release branch'
 fi
 
-install_alpine "$rootfs" "$@" || die "Failed to install rootfs for $name"
-configure_alpine "$rootfs" "$name" || die "Failed to configure $name"
-copy_configuration "$path" "$rootfs" "$name"
+# Here we go!
+run_exclusively 'bootstrap' 10 bootstrap
+run_exclusively "$arch" 30 install "$rootfs" "$arch" "$release" "$extra_packages"
+configure_container "$path/config" "$name" "$arch"
+
+einfo "Container's rootfs and config have been created"
+cat <<-EOF
+	Edit the config file $path/config to check/enable networking setup.
+	The installed system is preconfigured for a loopback and single network
+	interface configured via DHCP.
+
+	To start the container, run "lxc-start -n $name".
+	The root password is not set; to enter the container run "lxc-attach -n $name".
+EOF
