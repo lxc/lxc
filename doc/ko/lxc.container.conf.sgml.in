@@ -1233,7 +1233,7 @@ proc proc proc nodev,noexec,nosuid 0 0
 	          the container's own cgroup into that directory.
 	          The container will be able to write to its own
 	          cgroup directory, but not the parents, since they
-	          will be remounted read-only
+	          will be remounted read-only.
 	        </para>
                 -->
                 <para>
@@ -1360,6 +1360,15 @@ proc proc proc nodev,noexec,nosuid 0 0
 	        </para>
 	      </listitem>
 	    </itemizedlist>
+            <para>
+              <!--
+              If cgroup namespaces are enabled, then any <option>cgroup</option>
+              auto-mounting request will be ignored, since the container can
+              mount the filesystems itself, and automounting can confuse the
+              container init.
+              -->
+              cgroup 네임스페이스가 사용 가능한 경우, <option>cgroup</option> 마운트 옵션들은 전부 무시될 것이다. 컨테이너가 직접 파일시스템을 마운트하기 때문이며, 컨테이너 초기화시 해당 옵션이 혼란을 줄 수 있기 때문이다.
+            </para>
 	    <para>
               <!--
 	      Note that if automatic mounting of the cgroup filesystem
