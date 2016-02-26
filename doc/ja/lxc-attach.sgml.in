@@ -94,25 +94,21 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <para>
       <!--
     Previous versions of <command>lxc-attach</command> simply attached to the
-    specified namespaces of a container and ran a shell or the specified
-    command without allocating a pseudo terminal. This made them vulnerable to
+    specified namespaces of a container and ran a shell or the specified command
+    without first allocating a pseudo terminal. This made them vulnerable to
     input faking via a TIOCSTI <command>ioctl</command> call after switching
     between userspace execution contexts with different privilege levels. Newer
     versions of <command>lxc-attach</command> will try to allocate a pseudo
-    terminal master/slave pair and attach any standard file descriptors which
-    refer to a terminal to the slave side of the pseudo terminal before
-    executing a shell or command. <command>lxc-attach</command> will first try
-    to allocate a pseudo terminal in the container. Should this fail it will try
-    to allocate a pseudo terminal on the host before finally giving up. Note,
-    that if none of the standard file descriptors refer to a terminal
-    <command>lxc-attach</command> will not try to allocate a pseudo terminal.
-    Instead it will simply attach to the containers namespaces and run a shell
-    or the specified command.
+    terminal master/slave pair on the host and attach any standard file
+    descriptors which refer to a terminal to the slave side of the pseudo
+    terminal before executing a shell or command. Note, that if none of the
+    standard file descriptors refer to a terminal <command>lxc-attach</command>
+    will not try to allocate a pseudo terminal. Instead it will simply attach
+    to the containers namespaces and run a shell or the specified command.
     -->
-      前のバージョンの <command>lxc-attach</command> は、単に指定したコンテナの名前空間にアタッチし、擬似端末 (pseudo terminal) なしで、シェルもしくは指定したコマンドを実行しました。
+      前のバージョンの <command>lxc-attach</command> は、単に指定したコンテナの名前空間にアタッチし、最初に擬似端末 (pseudo terminal) を割り当てないで、シェルもしくは指定したコマンドを実行しました。
       これは、異なる特権レベルを持つユーザ空間の実行コンテキストを切り替えた後に、TIOCSTI <command>ioctl</command> の呼び出し経由で擬似入力を行うことに対して脆弱となります。
-      新しいバージョンの <command>lxc-attach</command> は、擬似端末のマスター/スレーブのペアを割り当てようとします。そしてシェルやコマンドを実行する前に、擬似端末のスレーブ側に対して、ターミナルを参照する標準ファイルディスクリプタをアタッチします。
-      <command>lxc-attach</command> は、最初にコンテナ内の擬似端末を割り当てようとします。これが失敗した場合、最終的に処理を諦める前に、ホスト上の擬似端末を割り当てようとします。
+      新しいバージョンの <command>lxc-attach</command> は、ホスト上の擬似端末のマスター/スレーブのペアを割り当てようとします。そしてシェルやコマンドを実行する前に、擬似端末のスレーブ側に対して、ターミナルを参照する標準ファイルディスクリプタをアタッチします。
       ターミナルを参照する標準ファイルディスクリプタがない場合は、<command>lxc-attach</command> は擬似端末の割り当てを行わないことに注意してください。代わりに、単にコンテナの名前空間にアタッチし、シェルや指定したコマンドを実行します。
     </para>
 
