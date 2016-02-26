@@ -418,6 +418,7 @@ static bool find_hierarchy_mountpts( struct cgroup_meta_data *meta_data, char **
 	size_t mount_point_capacity = 0;
 	size_t token_capacity = 0;
 	int r;
+	bool is_cgns = cgns_supported();
 
 	proc_self_mountinfo = fopen_cloexec("/proc/self/mountinfo", "r");
 	/* if for some reason (because of setns() and pid namespace for example),
@@ -512,7 +513,7 @@ static bool find_hierarchy_mountpts( struct cgroup_meta_data *meta_data, char **
 		meta_data->mount_points[mount_point_count++] = mount_point;
 
 		mount_point->hierarchy = h;
-		if (is_lxcfs)
+		if (is_lxcfs || is_cgns)
 			mount_point->mount_prefix = strdup("/");
 		else
 			mount_point->mount_prefix = strdup(tokens[3]);
