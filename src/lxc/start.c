@@ -851,6 +851,8 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
+	setsid();
+
 	/* after this call, we are in error because this
 	 * ops should not return as it execs */
 	handler->ops->start(handler, handler->data);
