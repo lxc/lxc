@@ -83,5 +83,6 @@ extern void cgroup_disconnect(void);
 extern cgroup_driver_t cgroup_driver(void);
 
 extern void prune_init_scope(char *cg);
+extern bool is_crucial_cgroup_subsystem(const char *s);
 
 #endif

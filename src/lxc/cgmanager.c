@@ -1242,21 +1242,6 @@ static bool subsys_is_writeable(const char *controller, const char *probe)
 	return ret;
 }
 
-/*
- * Return true if this is a subsystem which we cannot do
- * without
- */
-static bool is_crucial_subsys(const char *s)
-{
-	if (strcmp(s, "systemd") == 0)
-		return true;
-	if (strcmp(s, "name=systemd") == 0)
-		return true;
-	if (strcmp(s, "freezer") == 0)
-		return true;
-	return false;
-}
-
 static char *get_last_controller_in_list(char *list)
 {
 	char *p;
@@ -1302,7 +1287,7 @@ static bool verify_final_subsystems(const char *cgroup_use)
 		char *p = get_last_controller_in_list(subsystems[i]);
 
 		if (!subsys_is_writeable(p, probe)) {
-			if (is_crucial_subsys(p)) {
+			if (is_crucial_cgroup_subsystem(p)) {
 				ERROR("Cannot write to crucial subsystem %s\n",
 					subsystems[i]);
 				goto out;

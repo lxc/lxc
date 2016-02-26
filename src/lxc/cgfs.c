@@ -807,6 +807,17 @@ static char *cgroup_rename_nsgroup(const char *mountpath, const char *oldname, p
 	return newname;
 }
 
+static bool is_crucial_hierarchy(struct cgroup_hierarchy *h)
+{
+	char **p;
+
+	for (p = h->subsystems; *p; p++) {
+		if (is_crucial_cgroup_subsystem(*p))
+			return true;
+	}
+	return false;
+}
+
 /* create a new cgroup */
 static struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const char *path_pattern, struct cgroup_meta_data *meta_data, const char *sub_pattern)
 {
@@ -974,8 +985,11 @@ static struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const c
 				current_entire_path = NULL;
 				goto cleanup_name_on_this_level;
 			} else if (r < 0 && errno != EEXIST) {
-				SYSERROR("Could not create cgroup '%s' in '%s'.", current_entire_path, info_ptr->designated_mount_point->mount_point);
-				goto cleanup_from_error;
+				if (is_crucial_hierarchy(info_ptr->hierarchy)) {
+					SYSERROR("Could not create cgroup '%s' in '%s'.", current_entire_path, info_ptr->designated_mount_point->mount_point);
+					goto cleanup_from_error;
+				}
+				goto skip;
 			} else if (r == 0) {
 				/* successfully created */
 				r = lxc_grow_array((void ***)&info_ptr->created_paths, &info_ptr->created_paths_capacity, info_ptr->created_paths_count + 1, 8);
@@ -999,6 +1013,7 @@ static struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const c
 					goto cleanup_from_error;
 				}
 
+skip:
 				/* already existed but path component of pattern didn't contain '%n',
 				 * so this is not an error; but then we don't need current_entire_path
 				 * anymore...
@@ -1180,7 +1195,7 @@ static int lxc_cgroupfs_enter(struct cgroup_process_info *info, pid_t pid, bool 
 
 		r = lxc_write_to_file(cgroup_tasks_fn, pid_buf, strlen(pid_buf), false);
 		free(cgroup_tasks_fn);
-		if (r < 0) {
+		if (r < 0 && is_crucial_hierarchy(info_ptr->hierarchy)) {
 			SYSERROR("Could not add pid %lu to cgroup %s: internal error", (unsigned long)pid, cgroup_path);
 			return -1;
 		}
@@ -1509,7 +1524,7 @@ static bool cgroupfs_mount_cgroup(void *hdata, const char *root, int type)
 			if (!abs_path)
 				goto out_error;
 			r = mount(abs_path, abs_path2, "none", MS_BIND, 0);
-			if (r < 0) {
+			if (r < 0 && is_crucial_hierarchy(info->hierarchy)) {
 				SYSERROR("error bind-mounting %s to %s", abs_path, abs_path2);
 				goto out_error;
 			}
@@ -2600,7 +2615,7 @@ static bool cgfs_chown(void *hdata, struct lxc_conf *conf)
 			continue;
 		}
 		r = do_cgfs_chown(cgpath, conf);
-		if (!r) {
+		if (!r && is_crucial_hierarchy(info_ptr->hierarchy)) {
 			ERROR("Failed chowning %s\n", cgpath);
 			free(cgpath);
 			return false;
