@@ -339,6 +339,17 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
     </para>
   </refsect1>
 
+  <refsect1>
+    <title><!-- Notes -->주의</title>
+    <para>
+      <!--
+      <command>lxc-clone</command> is deprecated in favor of
+      <command>lxc-copy</command>.
+      -->
+      <command>lxc-clone</command>는 <command>lxc-copy</command>로 대체되었으며, 제거될 예정이다.
+    </para>
+  </refsect1>
+
   &seealso;
 
   <refsect1>
