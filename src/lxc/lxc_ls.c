@@ -756,6 +756,7 @@ static void ls_print_names(struct ls *l, struct lengths *lht,
 			len = 0;
 		} else {
 			printf(" ");
+			len++;
 		}
 	}
 	if (len > 0)
