@@ -1233,7 +1233,7 @@ proc proc proc nodev,noexec,nosuid 0 0
 	          the container's own cgroup into that directory.
 	          The container will be able to write to its own
 	          cgroup directory, but not the parents, since they
-	          will be remounted read-only
+	          will be remounted read-only.
 	        </para>
                 -->
                 <para>
@@ -1360,6 +1360,15 @@ proc proc proc nodev,noexec,nosuid 0 0
 	        </para>
 	      </listitem>
 	    </itemizedlist>
+            <para>
+              <!--
+              If cgroup namespaces are enabled, then any <option>cgroup</option>
+              auto-mounting request will be ignored, since the container can
+              mount the filesystems itself, and automounting can confuse the
+              container init.
+              -->
+              cgroup 네임스페이스가 사용 가능한 경우, <option>cgroup</option> 마운트 옵션들은 전부 무시될 것이다. 컨테이너가 직접 파일시스템을 마운트하기 때문이며, 컨테이너 초기화시 해당 옵션이 혼란을 줄 수 있기 때문이다.
+            </para>
 	    <para>
               <!--
 	      Note that if automatic mounting of the cgroup filesystem
@@ -1611,9 +1620,11 @@ proc proc proc nodev,noexec,nosuid 0 0
 	If lxc was compiled and installed with apparmor support, and the host
 	system has apparmor enabled, then the apparmor profile under which the
 	container should be run can be specified in the container
-	configuration.  The default is <command>lxc-container-default</command>.
+        configuration.  The default is <command>lxc-container-default-cgns</command>
+	if the host kernel is cgroup namespace aware, or
+	<command>lxc-container-default</command> othewise.
         -->
-        lxc가 apparmor를 지원하도록 컴파일된 후 설치되었고, 호스트 시스템에서 apparmor가 활성화되었다면, 컨테이너에서 따라야할 apparmor 프로파일을 컨테이너 설정에서 지정할 수 있다. 기본값은 <command>lxc-container-default</command>이다.
+        lxc가 apparmor를 지원하도록 컴파일된 후 설치되었고, 호스트 시스템에서 apparmor가 활성화되었다면, 컨테이너에서 따라야할 apparmor 프로파일을 컨테이너 설정에서 지정할 수 있다. 기본값은 호스트 커널이 cgroup 네임스페이스를 지원하면 <command>lxc-container-default-cgns</command>이고, 그렇지 않다면 <command>lxc-container-default</command>이다.
       </para>
       <variablelist>
 	<varlistentry>
@@ -1631,6 +1642,14 @@ proc proc proc nodev,noexec,nosuid 0 0
               컨테이너가 apparmor로 인한 제한을 받지 않도록 하려면, 아래와 같이 지정하면 된다.
 	    </para>
 	      <programlisting>lxc.aa_profile = unconfined</programlisting>
+            <para>
+	      <!--
+              If the apparmor profile should remain unchanged (i.e. if you
+	      are nesting containers and are already confined), then use
+	      -->
+              apparmor 프로파일이 변경되지 않아야 한다면(중첩 컨테이너 안에 있고, 이미 confined된 경우), 아래와 같이 지정하면 된다.
+            </para>
+              <programlisting>lxc.aa_profile = unchanged</programlisting>
 	  </listitem>
 	</varlistentry>
 	<varlistentry>
@@ -2185,6 +2204,25 @@ mknod errno 0
               shutdown or "reboot" for a container reboot.
               -->
               stop 훅에서만 사용된다. 값이 "stop"이면 컨테이너가 종료되는 것을, "reboot"이면 컨테이너가 재부팅되는 것을 의미한다.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>LXC_CGNS_AWARE</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+             If unset, then this version of lxc is not aware of cgroup
+             namespaces.  If set, it will be set to 1, and lxc is aware
+             of cgroup namespaces.  Note this does not guarantee that
+             cgroup namespaces are enabled in the kernel.  This is used
+             by the lxcfs mount hook.
+             -->
+             이 변수가 지정되지 않았다면, 현재 버전의 lxc는 cgroup 네임스페이스를 지원하지 않는다. 만약 지정되었고 값이 1이라면, lxc는 cgroup 네임스페이스를 지원하는 것이다. 단, kernel에서의 cgroup 네임스페이스 지원을 보장하는 것이 아님에 주의해야 한다. lxcfs 마운트 훅에서 사용된다.
             </para>
           </listitem>
         </varlistentry>

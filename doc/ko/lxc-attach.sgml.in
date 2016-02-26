@@ -91,6 +91,26 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       만약 <replaceable>command</replaceable>가 지정되지 않았다면, <command>lxc-attach</command>가 현재 실행 중인 쉘이 컨테이너 안에도 있는지 검사하고 이를 실행한다.
       만약 컨테이너 안에 사용자가 존재하지 않거나, nsswitch가 제대로 동작하지 않는 경우에는 이 명령이 실패하게 된다.
     </para>
+    <para>
+      <!--
+      Previous versions of <command>lxc-attach</command> simply attached to the
+      specified namespaces of a container and ran a shell or the specified command
+      without first allocating a pseudo terminal. This made them vulnerable to
+      input faking via a TIOCSTI <command>ioctl</command> call after switching
+      between userspace execution contexts with different privilege levels. Newer
+      versions of <command>lxc-attach</command> will try to allocate a pseudo
+      terminal master/slave pair on the host and attach any standard file
+      descriptors which refer to a terminal to the slave side of the pseudo
+      terminal before executing a shell or command. Note, that if none of the
+      standard file descriptors refer to a terminal <command>lxc-attach</command>
+      will not try to allocate a pseudo terminal. Instead it will simply attach
+      to the containers namespaces and run a shell or the specified command.
+      -->
+      이전 버전의 <command>lxc-attach</command>는 단순히 컨테이너의 특정 네임스페이스에 붙어, 쉘을 실행하거나 첫 번째 pseudo 터미널 할당 없이 특정 명령어를 실행하였다.
+      이는 다른 특권 수준을 갖는 사용자 영역 컨텍스트 간의 전환후 TIOCSTI <command>ioctl</command>를 호출하여 입력을 가로챌 수 있는 취약점이 있다.
+      새로운 버전의 <command>lxc-attach</command>는 쉘이나 명령어를 실행하기 전에, pseudo 터미널 마스터/슬레이브 쌍을 호스트에 할당하고 터미널을 가리키고 있던 표준 입출력 파일 디스크립터들은 슬레이브 pseudo 터미널로 붙인다.
+      터미널을 가리키고 있던 표준 입출력 파일 디스크립터가 아예 없었다면, <command>lxc-attach</command>는 pseudo 터미널 할당을 시도하지 않음에 주의해야 한다. 단순히 컨테이너 네임스페이스에 붙어 쉘이나 지정한 명령어만 실행할 뿐이다.
+    </para>
 
   </refsect1>
 
@@ -401,6 +421,21 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       -->
       이러한 문제를 해결하기 위해, <option>-R</option> 옵션이 제공된다. 해당 옵션은 attach되는 프로세스의 네트워크/pid 네임스페이스를 반영하기 위해 <replaceable>/proc</replaceable>와 <replaceable>/sys</replaceable>를 다시 마운트한다.
 호스트의 실제 파일시스템에 방해가 되지 않기 위해 마운트 네임스페이스는 공유되지 않는다(<command>lxc-unshare</command>의 동작과 비슷). <replaceable>/proc</replaceable>와 <replaceable>/sys</replaceable> 파일시스템을 제외하고 호스트 마운트 네임스페이스와 동일한 새로운 마운트 네임스페이스가 주어지게 된다.
+    </para>
+
+    <para>
+      <!--
+      Previous versions of <command>lxc-attach</command> suffered a bug whereby
+      a user could attach to a containers namespace without being placed in a
+      writeable cgroup for some critical subsystems. Newer versions of
+      <command>lxc-attach</command> will check whether a user is in a writeable
+      cgroup for those critical subsystems. <command>lxc-attach</command> might
+      thus fail unexpectedly for some users (E.g. on systems where an
+      unprivileged user is not placed in a writeable cgroup in critical
+      subsystems on login.). However, this behavior is correct and more secure.
+      -->
+      이전 버전의 <command>lxc-attach</command>는 몇몇 중요한 서브시스템에 쓰기가 가능한 cgroup 내에 없더라도, 사용자가 컨테이너의 네임스페이스에 연결할 수 있는 버그가 있었다.
+      새로운 버전의 <command>lxc-attach</command>는 현재 사용자가 몇몇 중요한 서브시스템에 쓰기 권한이 있는 cgroup에 속하는지 여부를 검사한다. 그러므로 <command>lxc-attach</command>는 사용자에 따라 실패하는 경우도 있다. (예를 들어, 로그인 시 비특권 사용자가 중요 서브시스템에 쓰기가 가능한 cgroup에 위치하지 않은 경우) 하지만 이러한 동작은 정확한 것이고 더 안전한 것이다.
     </para>
   </refsect1>
 
