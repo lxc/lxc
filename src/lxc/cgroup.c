@@ -220,3 +220,18 @@ void prune_init_scope(char *cg)
 			*point = '\0';
 	}
 }
+
+/*
+ * Return true if this is a subsystem which we cannot do
+ * without
+ */
+bool is_crucial_cgroup_subsystem(const char *s)
+{
+	if (strcmp(s, "systemd") == 0)
+		return true;
+	if (strcmp(s, "name=systemd") == 0)
+		return true;
+	if (strcmp(s, "freezer") == 0)
+		return true;
+	return false;
+}
