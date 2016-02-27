@@ -1811,6 +1811,8 @@ static int create_or_remove_cgroup(bool do_remove,
 
 	/* create or remove directory */
 	if (do_remove) {
+		if (!dir_exists(buf))
+			return 0;
 		if (recurse)
 			r = cgroup_rmdir(buf);
 		else
@@ -2518,7 +2520,6 @@ static int chown_cgroup_wrapper(void *data)
 	uid_t destuid;
 	char *fpath;
 
-
 	if (setresgid(0,0,0) < 0)
 		SYSERROR("Failed to setgid to 0");
 	if (setresuid(0,0,0) < 0)
@@ -2536,6 +2537,7 @@ static int chown_cgroup_wrapper(void *data)
 	if (chown(fpath, destuid, 0) < 0)
 		SYSERROR("Error chowning %s\n", fpath);
 	free(fpath);
+
 	fpath = lxc_append_paths(arg->cgroup_path, "cgroup.procs");
 	if (!fpath)
 		return -1;
@@ -2550,6 +2552,9 @@ static bool do_cgfs_chown(char *cgroup_path, struct lxc_conf *conf)
 {
 	struct chown_data data;
 	char *fpath;
+
+	if (!dir_exists(cgroup_path))
+		return true;
 
 	if (lxc_list_empty(&conf->id_map))
 		/* If there's no mapping then we don't need to chown */
