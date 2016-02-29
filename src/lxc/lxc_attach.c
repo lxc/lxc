@@ -253,10 +253,27 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 	}
 
 	conf = c->lxc_conf;
+	free(conf->console.log_path);
+	conf->console.log_path = NULL;
+
+	/* In the case of lxc-attach our peer pty will always be the current
+	 * controlling terminal. We clear whatever was set by the user for
+	 * lxc.console.path here and set it to "/dev/tty". Doing this will (a)
+	 * prevent segfaults when the container has been setup with
+	 * lxc.console = none and (b) provide an easy way to ensure that we
+	 * always do the correct thing. strdup() must be used since console.path
+	 * is free()ed when we call lxc_container_put(). */
+	free(conf->console.path);
+	conf->console.path = NULL;
+	conf->console.path = strdup("/dev/tty");
+	if (!conf->console.path)
+		return -1;
+
 	/* Create pty on the host. */
 	if (lxc_console_create(conf) < 0)
 		return -1;
 	ts = conf->console.tty_state;
+	conf->console.descr = &descr;
 
 	/* Shift ttys to container. */
 	if (ttys_shift_ids(conf) < 0) {
@@ -375,14 +392,16 @@ int main(int argc, char *argv[])
 	attach_options.extra_env_vars = extra_env;
 	attach_options.extra_keep_env = extra_keep;
 
-	struct wrapargs wrap = (struct wrapargs){.command = &command,
-		.options = &attach_options};
 	if (my_args.argc > 0) {
-		wrap.command->program = my_args.argv[0];
-		wrap.command->argv = (char**)my_args.argv;
+		command.program = my_args.argv[0];
+		command.argv = (char**)my_args.argv;
 	}
 
 	if (isatty(STDIN_FILENO) || isatty(STDOUT_FILENO) || isatty(STDERR_FILENO)) {
+		struct wrapargs wrap = (struct wrapargs){
+			.command = &command,
+			.options = &attach_options
+		};
 		if (isatty(STDIN_FILENO))
 			wrap.ptyfd = STDIN_FILENO;
 		else if (isatty(STDOUT_FILENO))
@@ -391,7 +410,7 @@ int main(int argc, char *argv[])
 			wrap.ptyfd = STDERR_FILENO;
 		ret = get_pty_on_host(c, &wrap, &pid);
 	} else {
-		if (my_args.argc > 1)
+		if (command.program)
 			ret = c->attach(c, lxc_attach_run_command, &command, &attach_options, &pid);
 		else
 			ret = c->attach(c, lxc_attach_run_shell, NULL, &attach_options, &pid);
