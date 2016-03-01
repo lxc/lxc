@@ -21,29 +21,30 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#define _GNU_SOURCE
 #include "config.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include <alloca.h>
 #include <dirent.h>
 #include <errno.h>
-#include <unistd.h>
-#include <signal.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <poll.h>
-#include <sys/param.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <sys/file.h>
 #include <sys/mount.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/socket.h>
+#include <sys/param.h>
 #include <sys/prctl.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/un.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <sys/wait.h>
 
 #if HAVE_SYS_CAPABILITY_H
 #include <sys/capability.h>
@@ -53,25 +54,25 @@
 #define PR_CAPBSET_DROP 24
 #endif
 
-#include "start.h"
-#include "conf.h"
-#include "log.h"
-#include "cgroup.h"
-#include "error.h"
 #include "af_unix.h"
-#include "mainloop.h"
-#include "utils.h"
-#include "lxcutmp.h"
-#include "monitor.h"
-#include "commands.h"
-#include "console.h"
-#include "sync.h"
-#include "namespace.h"
-#include "lxcseccomp.h"
 #include "caps.h"
+#include "cgroup.h"
+#include "commands.h"
+#include "conf.h"
+#include "console.h"
+#include "error.h"
+#include "log.h"
+#include "lxclock.h"
+#include "lxcseccomp.h"
+#include "lxcutmp.h"
+#include "mainloop.h"
+#include "monitor.h"
+#include "namespace.h"
+#include "start.h"
+#include "sync.h"
+#include "utils.h"
 #include "bdev/bdev.h"
 #include "lsm/lsm.h"
-#include "lxclock.h"
 
 lxc_log_define(lxc_start, lxc);
 
@@ -93,14 +94,16 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 static void print_top_failing_dir(const char *path)
 {
 	size_t len = strlen(path);
-	char *copy = alloca(len+1), *p, *e, saved;
+	char *copy = alloca(len + 1), *p, *e, saved;
 	strcpy(copy, path);
 
 	p = copy;
 	e = copy + len;
 	while (p < e) {
-		while (p < e && *p == '/') p++;
-		while (p < e && *p != '/') p++;
+		while (p < e && *p == '/')
+			p++;
+		while (p < e && *p != '/')
+			p++;
 		saved = *p;
 		*p = '\0';
 		if (access(copy, X_OK)) {
@@ -130,8 +133,9 @@ static void close_ns(int ns_fd[LXC_NS_MAX]) {
  * Return true on success, false on failure.  On failure, leave an error
  * message in *errmsg, which caller must free.
  */
-static
-bool preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags, pid_t pid, char **errmsg) {
+static bool preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags, pid_t pid,
+			char **errmsg)
+{
 	int i, ret;
 	char path[MAXPATHLEN];
 
@@ -288,7 +292,7 @@ static int setup_signal_fd(sigset_t *oldmask)
 }
 
 static int signal_handler(int fd, uint32_t events, void *data,
-			   struct lxc_epoll_descr *descr)
+			  struct lxc_epoll_descr *descr)
 {
 	struct signalfd_siginfo siginfo;
 	siginfo_t info;
@@ -546,8 +550,14 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	}
 	lxc_set_state(name, handler, STOPPED);
 
-	if (run_lxc_hooks(name, "post-stop", handler->conf, handler->lxcpath, NULL))
+	if (run_lxc_hooks(name, "post-stop", handler->conf, handler->lxcpath, NULL)) {
 		ERROR("failed to run post-stop hooks for container '%s'.", name);
+		if (handler->conf->reboot) {
+			WARN("Container will be stopped instead of rebooted.");
+			handler->conf->reboot = 0;
+			setenv("LXC_TARGET", "stop", 1);
+		}
+	}
 
 	/* reset mask set by setup_signal_fd */
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL))
@@ -1447,4 +1457,3 @@ static bool do_destroy_container(struct lxc_conf *conf) {
 	}
 	return bdev_destroy(conf);
 }
-
