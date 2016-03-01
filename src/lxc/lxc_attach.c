@@ -273,6 +273,7 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 	if (lxc_console_create(conf) < 0)
 		return -1;
 	ts = conf->console.tty_state;
+	ts->stdoutfd = STDOUT_FILENO;
 	conf->console.descr = &descr;
 
 	/* Shift ttys to container. */
