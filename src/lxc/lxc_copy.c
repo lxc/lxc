@@ -358,8 +358,7 @@ static int do_clone(struct lxc_container *c, char *newname, char *newpath,
 		return -1;
 	}
 
-	INFO("Created container %s as %s of %s\n", newname,
-	     task ? "snapshot" : "copy", c->name);
+	INFO("Created %s as %s of %s\n", newname, task ? "snapshot" : "copy", c->name);
 
 	lxc_container_put(clone);
 
@@ -421,7 +420,7 @@ static int do_clone_ephemeral(struct lxc_container *c,
 		goto destroy_and_put;
 
 	if (!my_args.quiet)
-		printf("Created %s as %s of %s\n", arg->name, "clone", arg->newname);
+		printf("Created %s as clone of %s\n", arg->newname, arg->name);
 
 	if (!arg->daemonize && arg->argc) {
 		clone->want_daemonize(clone, true);
