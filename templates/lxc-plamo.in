@@ -44,7 +44,7 @@ export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 [ -r /etc/default/lxc ] && . /etc/default/lxc
 
 DLSCHEME=${DLSCHEME:-"http"}
-MIRRORSRV=${MIRRORSRV:-"www.ring.gr.jp"}
+MIRRORSRV=${MIRRORSRV:-"repository.plamolinux.org"}
 MIRRORPATH=${MIRRORPATH:-"/pub/linux/Plamo"}
 CATEGORIES=${CATEGORIES-"00_base 01_minimum"}
 EXTRACTGRS=${EXTRACTGRS-""}
@@ -292,7 +292,7 @@ usage() {
 prog=`basename $0`
 path="" ; name="" ; rootfs=""
 clean=0
-release=${release:-5.x}
+release=${release:-6.x}
 arch=`uname -m | sed 's/i.86/x86/'` ; hostarch=$arch
 bindhome=""
 sopts=hp:n:cr:a:b:
