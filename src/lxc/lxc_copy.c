@@ -101,8 +101,8 @@ static char *const keys[] = {
 static struct lxc_arguments my_args = {
 	.progname = "lxc-copy",
 	.help = "\n\
---name=NAME [-P lxcpath] -N newname [-p newpath] [-B backingstorage] [-s] [-K] [-M] [-L size [unit]]\n\
---name=NAME [-P lxcpath] [-N newname] [-p newpath] [-B backingstorage] -e [-d] [-D] [-K] [-M] [-m {bind,aufs,overlay}=/src:/dest]\n\
+--name=NAME [-P lxcpath] -N newname [-p newpath] [-B backingstorage] [-s] [-K] [-M] [-L size [unit]] -- hook options\n\
+--name=NAME [-P lxcpath] [-N newname] [-p newpath] [-B backingstorage] -e [-d] [-D] [-K] [-M] [-m {bind,aufs,overlay}=/src:/dest] -- hook options\n\
 --name=NAME [-P lxcpath] -N newname -R\n\
 \n\
 lxc-copy clone a container\n\
@@ -122,6 +122,7 @@ Options :\n\
   -L, --fssize		    size of the new block device for block device containers\n\
   -D, --keedata	            pass together with -e start a persistent snapshot \n\
   -K, --keepname	    keep the hostname of the original container\n\
+  --  hook options	    arguments passed to the hook program\n\
   -M, --keepmac		    keep the MAC address of the original container\n",
 	.options = my_longopts,
 	.parser = my_parser,

@@ -58,6 +58,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-K, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
+      <arg choice="opt">-- hook arguments</arg>
     </cmdsynopsis>
     <cmdsynopsis>
       <command>lxc-copy</command>
@@ -71,6 +72,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-K, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
+      <arg choice="opt">-- hook arguments</arg>
     </cmdsynopsis>
     <cmdsynopsis>
       <command>lxc-copy</command>
@@ -260,6 +262,25 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
     </variablelist>
 
+  </refsect1>
+
+  <refsect1>
+    <title>Copy hook</title>
+    <para>
+      If the container being copied has one or more
+      <filename>lxc.hook.clone</filename> specified, then the specified hooks
+      will be called for the new container. The first 3 arguments passed to the
+      clone hook will be the container name, a section ('lxc'), and the hook
+      type ('clone'). Extra arguments passed to <command>lxc-copy</command> will
+      be passed to the hook program starting at argument 4. The
+      <filename>LXC_ROOTFS_MOUNT</filename> environment variable gives
+      the path under which the container's root filesystem is mounted. The
+      configuration file pathname is stored in
+      <filename>LXC_CONFIG_FILE</filename>, the new container name in
+      <filename>LXC_NAME</filename>, the old container name in
+      <filename>LXC_SRC_NAME</filename>, and the path or device on which the
+      rootfs is located is in <filename>LXC_ROOTFS_PATH</filename>.
+    </para>
   </refsect1>
 
   &commonoptions;

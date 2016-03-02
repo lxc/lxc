@@ -140,7 +140,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <replaceable>CGROUP|LSM</replaceable>. Allowed values are
       <replaceable>CGROUP</replaceable>, <replaceable>CAP</replaceable> and
       <replaceable>LSM</replaceable> representing cgroup, capabilities and
-      restriction privileges respectively.
+      restriction privileges respectively. (The pipe symbol needs to be escaped,
+      e.g. <replaceable>CGROUP\|LSM</replaceable> or quoted, e.g.
+      <replaceable>"CGROUP|LSM"</replaceable>.)
     </para>
 	  <para>
 	    <emphasis>Warning:</emphasis> This may leak privileges into the
@@ -168,7 +170,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    <replaceable>NETWORK</replaceable>. This allows one to change
 	    the context of the process to e.g. the network namespace of the
 	    container while retaining the other namespaces as those of the
-	    host.
+            host. (The pipe symbol needs to be escaped, e.g.
+            <replaceable>MOUNT\|PID</replaceable> or quoted, e.g.
+            <replaceable>"MOUNT|PID"</replaceable>.)
 	  </para>
 	  <para>
 	    <emphasis>Important:</emphasis> This option implies
