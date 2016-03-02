@@ -1150,7 +1150,6 @@ static struct cgroup_process_info *lxc_cgroup_get_container_info(const char *nam
 		path = lxc_cmd_get_cgroup_path(name, lxcpath, h->subsystems[0]);
 		if (!path) {
 			h->used = false;
-			WARN("Not attaching to cgroup %s unknown to %s %s", h->subsystems[0], lxcpath, name);
 			continue;
 		}
 
