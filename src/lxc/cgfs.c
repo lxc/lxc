@@ -132,7 +132,8 @@ static void lxc_cgroup_mount_point_free(struct cgroup_mount_point *mp);
 static void lxc_cgroup_hierarchy_free(struct cgroup_hierarchy *h);
 static bool is_valid_cgroup(const char *name);
 static int create_cgroup(struct cgroup_mount_point *mp, const char *path);
-static int remove_cgroup(struct cgroup_mount_point *mp, const char *path, bool recurse);
+static int remove_cgroup(struct cgroup_mount_point *mp, const char *path, bool recurse,
+				struct lxc_conf *conf);
 static char *cgroup_to_absolute_path(struct cgroup_mount_point *mp, const char *path, const char *suffix);
 static struct cgroup_process_info *find_info_for_subsystem(struct cgroup_process_info *info, const char *subsystem);
 static int do_cgroup_get(const char *cgroup_path, const char *sub_filename, char *value, size_t len);
@@ -150,7 +151,8 @@ static struct cgroup_meta_data *lxc_cgroup_put_meta(struct cgroup_meta_data *met
 
 /* free process membership information */
 static void lxc_cgroup_process_info_free(struct cgroup_process_info *info);
-static void lxc_cgroup_process_info_free_and_remove(struct cgroup_process_info *info);
+static void lxc_cgroup_process_info_free_and_remove(struct cgroup_process_info *info,
+				struct lxc_conf *conf);
 
 static struct cgroup_ops cgfs_ops;
 
@@ -221,6 +223,20 @@ static int cgroup_rmdir(char *dirname)
 
 	errno = saved_errno;
 	return failed ? -1 : 0;
+}
+
+static int rmdir_wrapper(void *data)
+{
+	char *path = data;
+
+	if (setresgid(0,0,0) < 0)
+		SYSERROR("Failed to setgid to 0");
+	if (setresuid(0,0,0) < 0)
+		SYSERROR("Failed to setuid to 0");
+	if (setgroups(0, NULL) < 0)
+		SYSERROR("Failed to clear groups");
+
+	return cgroup_rmdir(path);
 }
 
 static struct cgroup_meta_data *lxc_cgroup_load_meta()
@@ -919,7 +935,7 @@ static struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const c
 		 * In that case, remove the cgroup from all previous hierarchies
 		 */
 		for (j = 0, info_ptr = base_info; j < i && info_ptr; info_ptr = info_ptr->next, j++) {
-			r = remove_cgroup(info_ptr->designated_mount_point, info_ptr->created_paths[info_ptr->created_paths_count - 1], false);
+			r = remove_cgroup(info_ptr->designated_mount_point, info_ptr->created_paths[info_ptr->created_paths_count - 1], false, NULL);
 			if (r < 0)
 				WARN("could not clean up cgroup we created when trying to create container");
 			free(info_ptr->created_paths[info_ptr->created_paths_count - 1]);
@@ -1077,7 +1093,7 @@ skip:
 out_initial_error:
 	saved_errno = errno;
 	free(path_so_far);
-	lxc_cgroup_process_info_free_and_remove(base_info);
+	lxc_cgroup_process_info_free_and_remove(base_info, NULL);
 	lxc_free_array((void **)new_cgroup_paths, free);
 	lxc_free_array((void **)new_cgroup_paths_sub, free);
 	lxc_free_array((void **)cgroup_path_components, free);
@@ -1221,7 +1237,7 @@ void lxc_cgroup_process_info_free(struct cgroup_process_info *info)
 }
 
 /* free process membership information and remove cgroups that were created */
-void lxc_cgroup_process_info_free_and_remove(struct cgroup_process_info *info)
+void lxc_cgroup_process_info_free_and_remove(struct cgroup_process_info *info, struct lxc_conf *conf)
 {
 	struct cgroup_process_info *next;
 	char **pp;
@@ -1237,7 +1253,7 @@ void lxc_cgroup_process_info_free_and_remove(struct cgroup_process_info *info)
 			 * '/lxc' cgroup in this container but another container
 			 * is still running (for example)
 			 */
-			(void)remove_cgroup(mp, info->cgroup_path, true);
+			(void)remove_cgroup(mp, info->cgroup_path, true, conf);
 	}
 	for (pp = info->created_paths; pp && *pp; pp++);
 	for ((void)(pp && --pp); info->created_paths && pp >= info->created_paths; --pp) {
@@ -1248,7 +1264,7 @@ void lxc_cgroup_process_info_free_and_remove(struct cgroup_process_info *info)
 	free(info->cgroup_path);
 	free(info->cgroup_path_sub);
 	free(info);
-	lxc_cgroup_process_info_free_and_remove(next);
+	lxc_cgroup_process_info_free_and_remove(next, conf);
 }
 
 static char *lxc_cgroup_get_hierarchy_path_data(const char *subsystem, struct cgfs_data *d)
@@ -1802,7 +1818,8 @@ static bool is_valid_cgroup(const char *name)
 }
 
 static int create_or_remove_cgroup(bool do_remove,
-		struct cgroup_mount_point *mp, const char *path, int recurse)
+		struct cgroup_mount_point *mp, const char *path, int recurse,
+		struct lxc_conf *conf)
 {
 	int r, saved_errno = 0;
 	char *buf = cgroup_to_absolute_path(mp, path, NULL);
@@ -1813,9 +1830,12 @@ static int create_or_remove_cgroup(bool do_remove,
 	if (do_remove) {
 		if (!dir_exists(buf))
 			return 0;
-		if (recurse)
-			r = cgroup_rmdir(buf);
-		else
+		if (recurse) {
+			if (conf && !lxc_list_empty(&conf->id_map))
+				r = userns_exec_1(conf, rmdir_wrapper, buf);
+			else
+				r = cgroup_rmdir(buf);
+		} else
 			r = rmdir(buf);
 	} else
 		r = mkdir(buf, 0777);
@@ -1827,13 +1847,13 @@ static int create_or_remove_cgroup(bool do_remove,
 
 static int create_cgroup(struct cgroup_mount_point *mp, const char *path)
 {
-	return create_or_remove_cgroup(false, mp, path, false);
+	return create_or_remove_cgroup(false, mp, path, false, NULL);
 }
 
 static int remove_cgroup(struct cgroup_mount_point *mp,
-			 const char *path, bool recurse)
+			 const char *path, bool recurse, struct lxc_conf *conf)
 {
-	return create_or_remove_cgroup(true, mp, path, recurse);
+	return create_or_remove_cgroup(true, mp, path, recurse, conf);
 }
 
 static char *cgroup_to_absolute_path(struct cgroup_mount_point *mp,
@@ -2311,14 +2331,14 @@ err1:
 	return NULL;
 }
 
-static void cgfs_destroy(void *hdata)
+static void cgfs_destroy(void *hdata, struct lxc_conf *conf)
 {
 	struct cgfs_data *d = hdata;
 
 	if (!d)
 		return;
 	free(d->name);
-	lxc_cgroup_process_info_free_and_remove(d->info);
+	lxc_cgroup_process_info_free_and_remove(d->info, conf);
 	lxc_cgroup_put_meta(d->meta);
 	free(d);
 }

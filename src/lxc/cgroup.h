@@ -41,7 +41,7 @@ struct cgroup_ops {
 	const char *name;
 
 	void *(*init)(const char *name);
-	void (*destroy)(void *hdata);
+	void (*destroy)(void *hdata, struct lxc_conf *conf);
 	bool (*create)(void *hdata);
 	bool (*enter)(void *hdata, pid_t pid);
 	bool (*create_legacy)(void *hdata, pid_t pid);
