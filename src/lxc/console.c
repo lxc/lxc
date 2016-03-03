@@ -64,11 +64,6 @@ void lxc_console_init(void)
 	lxc_list_init(&lxc_ttys);
 }
 
-/* lxc_console_winsz: propagte winsz from one terminal to another
- *
- * @srcfd : terminal to get size from (typically a slave pty)
- * @dstfd : terminal to set size on (typically a master pty)
- */
 void lxc_console_winsz(int srcfd, int dstfd)
 {
 	struct winsize wsz;
@@ -113,26 +108,6 @@ int lxc_console_cb_sigwinch_fd(int fd, uint32_t events, void *cbdata,
 	return 0;
 }
 
-/*
- * lxc_console_sigwinch_init: install SIGWINCH handler
- *
- * @srcfd  : src for winsz in SIGWINCH handler
- * @dstfd  : dst for winsz in SIGWINCH handler
- *
- * Returns lxc_tty_state structure on success or NULL on failure. The sigfd
- * member of the returned lxc_tty_state can be select()/poll()ed/epoll()ed
- * on (ie added to a mainloop) for SIGWINCH.
- *
- * Must be called with process_lock held to protect the lxc_ttys list, or
- * from a non-threaded context.
- *
- * Note that SIGWINCH isn't installed as a classic asychronous handler,
- * rather signalfd(2) is used so that we can handle the signal when we're
- * ready for it. This avoids deadlocks since a signal handler
- * (ie lxc_console_sigwinch()) would need to take the thread mutex to
- * prevent lxc_ttys list corruption, but using the fd we can provide the
- * tty_state needed to the callback (lxc_console_cb_sigwinch_fd()).
- */
 struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
 {
 	sigset_t mask;
@@ -177,17 +152,6 @@ out:
 	return ts;
 }
 
-/*
- * lxc_console_sigwinch_fini: uninstall SIGWINCH handler
- *
- * @ts  : the lxc_tty_state returned by lxc_console_sigwinch_init
- *
- * Restore the saved signal handler that was in effect at the time
- * lxc_console_sigwinch_init() was called.
- *
- * Must be called with process_lock held to protect the lxc_ttys list, or
- * from a non-threaded context.
- */
 void lxc_console_sigwinch_fini(struct lxc_tty_state *ts)
 {
 	if (ts->sigfd >= 0)
@@ -391,13 +355,6 @@ err1:
 	return -1;
 }
 
-/* lxc_console_allocate: allocate the console or a tty
- *
- * @conf    : the configuration of the container to allocate from
- * @sockfd  : the socket fd whose remote side when closed, will be an
- *            indication that the console or tty is no longer in use
- * @ttyreq  : the tty requested to be opened, -1 for any, 0 for the console
- */
 int lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 {
 	int masterfd = -1, ttynum;
@@ -440,14 +397,6 @@ out:
 	return masterfd;
 }
 
-/* lxc_console_free: mark the console or a tty as unallocated, free any
- * resources allocated by lxc_console_allocate().
- *
- * @conf : the configuration of the container whose tty was closed
- * @fd   : the socket fd whose remote side was closed, which indicated
- *         the console or tty is no longer in use. this is used to match
- *         which console/tty is being freed.
- */
 void lxc_console_free(struct lxc_conf *conf, int fd)
 {
 	int i;
