@@ -935,6 +935,8 @@ static struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const c
 		 * In that case, remove the cgroup from all previous hierarchies
 		 */
 		for (j = 0, info_ptr = base_info; j < i && info_ptr; info_ptr = info_ptr->next, j++) {
+			if (info_ptr->created_paths_count < 1)
+				continue;
 			r = remove_cgroup(info_ptr->designated_mount_point, info_ptr->created_paths[info_ptr->created_paths_count - 1], false, NULL);
 			if (r < 0)
 				WARN("could not clean up cgroup we created when trying to create container");
