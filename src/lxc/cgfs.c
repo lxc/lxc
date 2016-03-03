@@ -1245,7 +1245,7 @@ void lxc_cgroup_process_info_free_and_remove(struct cgroup_process_info *info, s
 	if (!info)
 		return;
 	next = info->next;
-	{
+	if (info->cgroup_path && strcmp(info->cgroup_path, "/") != 0) {
 		struct cgroup_mount_point *mp = info->designated_mount_point;
 		if (!mp)
 			mp = lxc_cgroup_find_mount_point(info->hierarchy, info->cgroup_path, true);
