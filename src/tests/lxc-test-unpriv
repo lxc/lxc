@@ -125,15 +125,21 @@ run_cmd mkdir -p $HDIR/.cache/lxc
     chown -R $TUSER: $HDIR/.cache/lxc
 
 run_cmd lxc-create -t download -n c1 -- -d ubuntu -r trusty -a $ARCH
-run_cmd lxc-start -n c1 -d
 
-p1=$(run_cmd lxc-info -n c1 -p -H)
-[ "$p1" != "-1" ] || { echo "Failed to start container c1"; false; }
+# Make sure we can start it - twice
 
-run_cmd lxc-info -n c1
-run_cmd lxc-attach -n c1 -- /bin/true
+for count in `seq 1 2`; do
+    run_cmd lxc-start -n c1 -d
 
-run_cmd lxc-stop -n c1
+    p1=$(run_cmd lxc-info -n c1 -p -H)
+    [ "$p1" != "-1" ] || { echo "Failed to start container c1 (run $count)"; false; }
+
+    run_cmd lxc-info -n c1
+    run_cmd lxc-attach -n c1 -- /bin/true
+
+    run_cmd lxc-stop -n c1
+done
+
 run_cmd lxc-copy -s -n c1 -N c2
 run_cmd lxc-start -n c2 -d
 p1=$(run_cmd lxc-info -n c2 -p -H)

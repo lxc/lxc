@@ -71,7 +71,7 @@ bool cgroup_init(struct lxc_handler *handler)
 void cgroup_destroy(struct lxc_handler *handler)
 {
 	if (ops) {
-		ops->destroy(handler->cgroup_data);
+		ops->destroy(handler->cgroup_data, handler->conf);
 		handler->cgroup_data = NULL;
 	}
 }

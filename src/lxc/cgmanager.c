@@ -558,7 +558,7 @@ err1:
 }
 
 /* Called after a failed container startup */
-static void cgm_destroy(void *hdata)
+static void cgm_destroy(void *hdata, struct lxc_conf *conf)
 {
 	struct cgm_data *d = hdata;
 	char **slist = subsystems;
