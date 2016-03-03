@@ -172,10 +172,13 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <replaceable>CGROUP|LSM</replaceable>. Allowed values are
 	    <replaceable>CGROUP</replaceable>, <replaceable>CAP</replaceable> and
 	    <replaceable>LSM</replaceable> representing cgroup, capabilities and
-	    restriction privileges respectively.
+	    restriction privileges respectively. (The pipe symbol needs to be escaped,
+	    e.g. <replaceable>CGROUP\|LSM</replaceable> or quoted, e.g.
+	    <replaceable>"CGROUP|LSM"</replaceable>.)
 	    -->
             全ての特権の取得したくない場合は、パイプで連結したリストとして、例えば <replaceable>CGROUP|LSM</replaceable> のように、特権を指定することが可能です。
             指定できる値は、それぞれ cgroup、ケーパビリティ、特権の制限を表す <replaceable>CGROUP</replaceable>、<replaceable>CAP</replaceable>、<replaceable>LSM</replaceable> です。
+	    (パイプ記号を <replaceable>CGROUP\|LSM</replaceable> のようにエスケープするか、<replaceable>"CGROUP|LSM"</replaceable> のように引用符号を付ける必要があります。)
           </para>
 	  <para>
             <!--
@@ -211,13 +214,16 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <replaceable>NETWORK</replaceable>. This allows one to change
 	    the context of the process to e.g. the network namespace of the
 	    container while retaining the other namespaces as those of the
-	    host.
+            host. (The pipe symbol needs to be escaped, e.g.
+            <replaceable>MOUNT\|PID</replaceable> or quoted, e.g.
+            <replaceable>"MOUNT|PID"</replaceable>.)
             -->
             アタッチする名前空間をパイプで連結したリストで指定します。
             例えば <replaceable>NETWORK|IPC</replaceable> のようにです。
             ここで使用可能な値は <replaceable>MOUNT</replaceable>, <replaceable>PID</replaceable>, <replaceable>UTSNAME</replaceable>, <replaceable>IPC</replaceable>, <replaceable>USER </replaceable>, <replaceable>NETWORK</replaceable> です。
             これにより指定した名前空間にプロセスのコンテキストを変更できます。
             例えばコンテナのネットワーク名前空間に変更する一方で、他の名前空間はホストの名前空間のままにするというような事が可能です。
+	    (パイプ記号を <replaceable>MOUNT\|PID</replaceable> のようにエスケープするか、<replaceable>"MOUNT|PID"</replaceable> のように引用符号を付ける必要があります。)
 	  </para>
 	  <para>
             <!--
