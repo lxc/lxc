@@ -106,13 +106,17 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <replaceable>NETWORK</replaceable>. This allows one to change
 	    the context of the process to e.g. the network namespace of the
 	    container while retaining the other namespaces as those of the
-	    host.
+            host. (The pipe symbol needs to be escaped, e.g.
+            <replaceable>MOUNT\|PID</replaceable> or quoted, e.g.
+            <replaceable>"MOUNT|PID"</replaceable>.)
             -->
             アタッチする名前空間を、パイプでつなげたリストで指定します。
             例えば <replaceable>NETWORK|IPC</replaceable> のようにです。
             指定できる値は <replaceable>MOUNT</replaceable>、<replaceable>PID</replaceable>、<replaceable>UTSNAME</replaceable>、<replaceable>IPC</replaceable>、<replaceable>USER </replaceable>、<replaceable>NETWORK</replaceable> です。
             これにより、プロセスのコンテキストを変更することができます。
             例えば、コンテナのネットワーク名前空間だけを変更し、他の名前空間をホストのものと同じものに保ったままにするというようなことです。
+            (パイプ記号を <replaceable>MOUNT\|PID</replaceable> のようにエスケー
+プするか、<replaceable>"MOUNT|PID"</replaceable> のように引用符号を付ける必要が>あります。)
 	  </para>
 	</listitem>
       </varlistentry>
