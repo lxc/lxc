@@ -93,7 +93,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    <replaceable>NETWORK</replaceable>. This allows one to change
 	    the context of the process to e.g. the network namespace of the
 	    container while retaining the other namespaces as those of the
-	    host.
+	    host. (The pipe symbol needs to be escaped, e.g.
+            <replaceable>MOUNT\|PID</replaceable> or quoted, e.g.
+            <replaceable>"MOUNT|PID"</replaceable>.)
 	  </para>
 	</listitem>
       </varlistentry>

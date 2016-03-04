@@ -64,6 +64,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <arg choice="opt">-K, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
+      <arg choice="opt">-- hook arguments</arg>
     </cmdsynopsis>
     <cmdsynopsis>
       <command>lxc-copy</command>
@@ -77,6 +78,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <arg choice="opt">-K, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
+      <arg choice="opt">-- hook arguments</arg>
     </cmdsynopsis>
     <cmdsynopsis>
       <command>lxc-copy</command>
@@ -333,6 +335,32 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
     </variablelist>
 
+  </refsect1>
+
+  <refsect1>
+    <title><!-- Copy hook -->복사 훅</title>
+    <para>
+      <!--
+      If the container being copied has one or more
+      <filename>lxc.hook.clone</filename> specified, then the specified hooks
+      will be called for the new container. The first 3 arguments passed to the
+      clone hook will be the container name, a section ('lxc'), and the hook
+      type ('clone'). Extra arguments passed to <command>lxc-copy</command> will
+      be passed to the hook program starting at argument 4. The
+      <filename>LXC_ROOTFS_MOUNT</filename> environment variable gives
+      the path under which the container's root filesystem is mounted. The
+      configuration file pathname is stored in
+      <filename>LXC_CONFIG_FILE</filename>, the new container name in
+      <filename>LXC_NAME</filename>, the old container name in
+      <filename>LXC_SRC_NAME</filename>, and the path or device on which the
+      rootfs is located is in <filename>LXC_ROOTFS_PATH</filename>.
+      -->
+      복사되는 컨테이너에 <filename>lxc.hook.clone</filename>가 하나 이상 지정되어 있다면, 지정한 훅들은 새로운 컨테이너를 위해 실핼될 것이다.
+      clone 훅에게 넘겨지는 처음 3개 인자들은 컨테이너 이름, 섹션 ('lxc'), 훅의 종류 ('clone')이 될 것이다.
+      <command>lxc-copy</command>에 넘겨지는 추가 인자들은 훅 프로그램에 4번째 인자부터 넘겨지기 시작한다.
+      <filename>LXC_ROOTFS_MOUNT</filename> 환경 변수는 컨테이너의 루트 파일시스템이 마운트되어 있는 경로를 담고 있다.
+      설정 파일의 경로 이름은 <filename>LXC_CONFIG_FILE</filename>에, 새 컨테이너의 이름은 <filename>LXC_NAME</filename>에, 원본 컨테이너의 이름은 <filename>LXC_SRC_NAME</filename>에, 그리고 루트 파일시스템이 위치하고 있는 경로나 디바이스는 <filename>LXC_ROOTFS_PATH</filename>에 각각 담겨 있다.
+    </para>
   </refsect1>
 
   &commonoptions;

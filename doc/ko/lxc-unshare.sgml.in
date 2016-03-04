@@ -106,10 +106,13 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	    <replaceable>NETWORK</replaceable>. This allows one to change
 	    the context of the process to e.g. the network namespace of the
 	    container while retaining the other namespaces as those of the
-	    host.
+            host. (The pipe symbol needs to be escaped, e.g.
+            <replaceable>MOUNT\|PID</replaceable> or quoted, e.g.
+            <replaceable>"MOUNT|PID"</replaceable>.)
             -->
             붙일 네임스페이스를 지정한다.
             <replaceable>NETWORK|IPC</replaceable>와 같이 파이프(|)로 구분된 리스트를 사용할 수 있다. 허용되는 값은 <replaceable>MOUNT</replaceable>, <replaceable>PID</replaceable>, <replaceable>UTSNAME</replaceable>, <replaceable>IPC</replaceable>, <replaceable>USER </replaceable>, <replaceable>NETWORK</replaceable>이다. 이를 사용하여, 컨테이너의 네트워크 네임스페이스를 사용하면서도 다른 네임스페이스는 호스트의 것을 그대로 사용하는 등의 조작이 가능하다.
+            (파이프 기호는 <replaceable>MOUNT\|PID</replaceable>처럼 \로 처리를 해주거나, <replaceable>"MOUNT|PID"</replaceable>처럼 따옴표를 붙여야 한다.)
 	  </para>
 	</listitem>
       </varlistentry>
