@@ -650,6 +650,7 @@ AC_CONFIG_FILES([
 	config/init/sysvinit/Makefile
 	config/init/sysvinit/lxc-containers
 	config/init/sysvinit/lxc-net
+	config/init/upstart/lxc.conf
 	config/init/upstart/lxc-net.conf
 	config/init/upstart/Makefile
 	config/etc/Makefile
