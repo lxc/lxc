@@ -1480,11 +1480,12 @@ proc proc proc nodev,noexec,nosuid 0 0
 	      syscall.  Any directory suffices, the default should
 	      generally work.
               -->
-              루트파일시스템을 변경하기 전에, <option>lxc.rootfs</option>을 어디에 재귀적으로 바인드할지 정한다. 이는 다음 시스템콜의 성공을 보장한다.
+              루트 파일시스템을 변경하기 전에, <option>lxc.rootfs</option>을 어디에 재귀적으로 바인드할지 정한다. 이는 
 	      <citerefentry>
 		<refentrytitle><command>pivot_root</command></refentrytitle>
 		<manvolnum>8</manvolnum>
-	      </citerefentry>
+	      </citerefentry> 
+              시스템 콜의 성공을 보장한다.
               어떤 디렉토리도 좋으며, 기본값으로도 보통 동작할 것이다.
 	    </para>
 	  </listitem>
@@ -1869,7 +1870,7 @@ mknod errno 0
 	  <listitem><para> LXC_ROOTFS_MOUNT: 마운트될 루트 파일시스템의 경로</para></listitem>
 	  <listitem><para> LXC_CONFIG_FILE: 컨테이너 설정파일의 경로</para></listitem>
 	  <listitem><para> LXC_SRC_NAME: clone 훅의 경우, 원본 컨테이너의 이름</para></listitem>
-	  <listitem><para> LXC_ROOTFS_PATH: 컨테이너의 lxc.rootfs 항목. 이 것은 마운트된 루트 파일시스템을 나타내지 않음에 주의해야한다. 그 목적을 위해서는  LXC_ROOTFS_MOUNT를 사용해야 한다.</para></listitem>
+	  <listitem><para> LXC_ROOTFS_PATH: 컨테이너의 lxc.rootfs 항목. 이 것은 마운트된 루트 파일시스템을 가리키는 것이 아님에 주의해야한다. 그 목적을 위해서는  LXC_ROOTFS_MOUNT를 사용해야 한다.</para></listitem>
         </itemizedlist>
       </para>
       <para>
