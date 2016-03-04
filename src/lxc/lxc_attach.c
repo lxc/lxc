@@ -273,7 +273,39 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 	if (lxc_console_create(conf) < 0)
 		return -1;
 	ts = conf->console.tty_state;
-	ts->stdoutfd = STDOUT_FILENO;
+	/*
+	 * We need to make sure that the ouput that is produced inside the
+	 * container is received on the host. Suppose we want to run
+	 *
+	 *	lxc-attach -n a -- /bin/sh -c 'hostname >&2' > /dev/null
+	 *
+	 * This command produces output on stderr inside the container. On the
+	 * host we close stdout by redirecting it to /dev/null. But stderr is,
+	 * as expected, still connected to a tty. We receive the output produced
+	 * on stderr in the container on stderr on the host.
+	 *
+	 * For the command
+	 *
+	 *	lxc-attach -n a -- /bin/sh -c 'hostname >&2' 2> /dev/null
+	 *
+	 * the logic is analogous but because we now have closed stderr on the
+	 * host no output will be received.
+	 *
+	 * Finally, imagine a more complicated case
+	 *
+	 *	lxc-attach -n a -- /bin/sh -c 'echo OUT; echo ERR >&2' > /tmp/out 2> /tmp/err
+	 *
+	 * Here, we produce output in the container on stdout and stderr. On the
+	 * host we redirect stdout and stderr to files. Because of that stdout
+	 * and stderr are not dup2()ed. Thus, they are not connected to a pty
+	 * and output on stdout and stderr is redirected to the corresponding
+	 * files as expected.
+	 */
+	if (!isatty(STDOUT_FILENO) && isatty(STDERR_FILENO))
+		ts->stdoutfd = STDERR_FILENO;
+	else
+		ts->stdoutfd = STDOUT_FILENO;
+
 	conf->console.descr = &descr;
 
 	/* Shift ttys to container. */
