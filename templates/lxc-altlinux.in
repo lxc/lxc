@@ -57,33 +57,33 @@ configure_altlinux()
     mkdir -p $rootfs_path/selinux
     echo 0 > $rootfs_path/selinux/enforce
 
-    mkdir -p ${rootfs_path}/etc/net/ifaces/veth0
-    cat <<EOF > ${rootfs_path}/etc/net/ifaces/veth0/options
+    mkdir -p ${rootfs_path}/etc/net/ifaces/eth0
+    cat <<EOF > ${rootfs_path}/etc/net/ifaces/eth0/options
 BOOTPROTO=${BOOTPROTO}
 ONBOOT=yes
-NM_CONTROLLED=no
+NM_CONTROLLED=yes
 TYPE=eth
 EOF
 
 if [ ${BOOTPROTO} != "dhcp" ]; then
     # ip address
-    cat <<EOF > ${rootfs_path}/etc/net/ifaces/veth0/ipv4address
+    cat <<EOF > ${rootfs_path}/etc/net/ifaces/eth0/ipv4address
 ${ipv4}
 EOF
 
-    cat <<EOF > ${rootfs_path}/etc/net/ifaces/veth0/ipv4route
+    cat <<EOF > ${rootfs_path}/etc/net/ifaces/eth0/ipv4route
 ${gw}
 EOF
 
-    cat <<EOF > ${rootfs_path}/etc/net/ifaces/veth0/resolv.conf
+    cat <<EOF > ${rootfs_path}/etc/net/ifaces/eth0/resolv.conf
 nameserver ${dns}
 EOF
 
-    cat <<EOF > ${rootfs_path}/etc/net/ifaces/veth0/ipv6address
+    cat <<EOF > ${rootfs_path}/etc/net/ifaces/eth0/ipv6address
 ${ipv6}
 EOF
 
-    cat <<EOF > ${rootfs_path}/etc/net/ifaces/veth0/ipv6route
+    cat <<EOF > ${rootfs_path}/etc/net/ifaces/eth0/ipv6route
 ${gw6}
 EOF
 
@@ -109,14 +109,17 @@ EOF
     echo "console" >> ${rootfs_path}/etc/securetty
 
     # Enable services
-    for service in network syslogd random
+    for service in network syslogd random NetworkManager
     do
        chroot ${rootfs_path} chkconfig $service --list &>/dev/null && chroot ${rootfs_path} chkconfig $service on || true
+       # For systemd
+       chroot ${rootfs_path} systemctl -q enable $service &>/dev/null|| true
     done
     # Disable services
     for service in rawdevices fbsetfont
     do
        chroot ${rootfs_path} chkconfig $service --list &>/dev/null && chroot ${rootfs_path} chkconfig $service off || true
+       chroot ${rootfs_path} systemctl -q disable $service &>/dev/null || true
     done
 
     subst 's/^\([3-9]\+:[0-9]\+:respawn:\/sbin\/mingetty.*\)/#\1/' ${rootfs_path}/etc/inittab
@@ -175,7 +178,7 @@ download_altlinux()
     APT_GET="apt-get -o RPM::RootDir=$INSTALL_ROOT -y"
     PKG_LIST="$(grep -hs '^[^#]' "$profile_dir/$profile")"
     # if no configuration file $profile -- fall back to default list of packages
-    [ -z "$PKG_LIST" ] && PKG_LIST="interactivesystem apt apt-conf-sisyphus etcnet openssh-server systemd systemd-units systemd-sysvinit"
+    [ -z "$PKG_LIST" ] && PKG_LIST="interactivesystem apt apt-conf-sisyphus etcnet-full openssh-server systemd-sysvinit systemd-units systemd NetworkManager-daemon"
 
     mkdir -p $INSTALL_ROOT/var/lib/rpm
     rpm --root $INSTALL_ROOT  --initdb
@@ -272,11 +275,11 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 #lxc.aa_profile = unconfined
 
 #networking
-lxc.network.type = $lxc_network_type
-lxc.network.flags = up
-lxc.network.link = $lxc_network_link
-lxc.network.name = veth0
-lxc.network.mtu = 1500
+#lxc.network.type = $lxc_network_type
+#lxc.network.flags = up
+#lxc.network.link = $lxc_network_link
+#lxc.network.name = veth0
+#lxc.network.mtu = 1500
 EOF
 if [ ! -z ${ipv4} ]; then
     cat <<EOF >> $config_path/config
