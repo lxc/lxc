@@ -1,0 +1,135 @@
+#!/bin/sh
+
+# lxc: linux Container library
+
+# Authors:
+# Christian Brauner <christian.brauner@mailbox.org>
+#
+# This is a test script for the lxc-attach program. It tests whether I/O
+# redirection works correctly.
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+set -e
+
+FAIL() {
+	echo -n "Failed " >&2
+	echo "$*" >&2
+        lxc-destroy -n busy -f
+	exit 1
+}
+
+# Create a container, start it and wait for it to be in running state
+lxc-create -t busybox -n busy || FAIL "creating busybox container"
+lxc-start -n busy -d || FAIL "starting busybox container"
+lxc-wait -n busy -s RUNNING || FAIL "waiting for busybox container to run"
+
+# Test if simple attach is working
+# - stdin  --> attached to pty
+# - stdout --> attached to pty
+# - stderr --> attached to pty
+attach=$(lxc-attach -n busy -- hostname) # expect output
+if [ "$attach" != "busy" ]; then
+        FAIL " simple attach"
+fi
+
+# Test if we still receive output when stdin does not refer to a tty
+# - stdin  --> /dev/null
+# - stdout --> attached to pty
+# - stderr --> attached to pty
+attach=$(lxc-attach -n busy -- hostname < /dev/null) # expect output
+if [ "$attach" != "busy" ]; then
+        FAIL " with stdin redirection < /dev/null"
+fi
+
+# Test if we are silent when stdout does not refer to a tty
+# - stdin  --> attached to pty
+# - stdout --> /dev/null
+# - stderr --> attached to pty
+attach=$(lxc-attach -n busy -- hostname > /dev/null) # expect no output
+if [ -n "$attach" ]; then
+        FAIL " with stdout redirection > /dev/null"
+fi
+
+# Test if we are silent when stdout and stdin do not refer to a tty
+# - stdin  --> /dev/null
+# - stdout --> /dev/null
+# - stderr --> attached to pty
+attach=$(lxc-attach -n busy -- hostname > /dev/null < /dev/null) # expect no output
+if [ -n "$attach" ]; then
+        FAIL " with stdin and stdout redirection > /dev/null < /dev/null"
+fi
+
+# Test if we still receive output when stdin and stderr do not refer to a tty
+# - stdin  --> /dev/null
+# - stdout --> attached to pty
+# - stderr --> /dev/null
+attach=$(lxc-attach -n busy -- hostname 2> /dev/null < /dev/null) # expect output
+if [ "$attach" != "busy" ]; then
+        FAIL " with stdin and stderr redirection 2> /dev/null < /dev/null"
+fi
+
+# - produce output on stderr in container
+# - redirect stdout on host to /dev/null
+# - output on host should be received on stderr
+# - to capture the ouput on stderr on the host we redirect stderr on the host to
+#   stdout
+# - stdin  --> attached to pty
+# - stdout --> /dev/null
+# - stderr --> attached to pty
+attach=$( ( lxc-attach -n busy -- sh -c 'hostname >&2' > /dev/null ) 2>&1 )
+if [ "$attach" != "busy" ]; then
+        FAIL " bla sh -c 'hostname >&2' >/dev/null"
+fi
+
+# - produce output on stderr in container
+# - redirect stderr on host to /dev/null
+# - no output from container should be received on stderr on host
+# - stdin  --> attached to pty
+# - stdout --> attached to pty
+# - stderr --> /dev/null
+attach=$( ( lxc-attach -n busy -- sh -c 'hostname >&2' 2> /dev/null ) 2>&1 )
+if [ -n "$attach" ]; then
+        FAIL " bla sh -c 'hostname >&2' 2> /dev/null"
+fi
+
+# Test file redirection
+# - stdin  --> attached to pty
+# - stdout --> /dev/null
+# - stderr --> /dev/null
+out=$(mktemp /tmp/out_XXXX)
+err=$(mktemp /tmp/err_XXXX)
+lxc-attach -n busy -- sh -c 'echo OUT; echo ERR >&2' > $out 2> $err
+outcontent=$(cat $out)
+errcontent=$(cat $err)
+if [ "$outcontent" != "OUT" ] || [ "$errcontent" != "ERR" ]; then
+        FAIL " bla sh -c 'echo OUT; echo ERR >&2' > $out 2> $err"
+fi
+
+# Test stdin input
+# - stdin  --> $in
+# - stdout --> attached to pty
+# - stderr --> attached to pty
+in=$(mktemp /tmp/in_XXXX)
+echo '#!/bin/sh' > $in
+echo hostname >> $in
+attach=$(lxc-attach -n busy -- < $in)
+if [ "$attach" != "busy" ]; then
+        FAIL " < $in"
+fi
+
+lxc-destroy -n busy -f
+
+exit 0
