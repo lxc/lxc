@@ -368,7 +368,7 @@ static char **get_controllers(char **klist, char **nlist, char *line)
 	char **aret = NULL;
 
 	for (i = 0; i < 4; i++) {
-		p = index(p, ' ');
+		p = strchr(p, ' ');
 		if (!p)
 			return NULL;
 		p++;
@@ -380,7 +380,7 @@ static char **get_controllers(char **klist, char **nlist, char *line)
 	if (strncmp(p, "/sys/fs/cgroup/", 15) != 0)
 		return NULL;
 	p += 15;
-	p2 = index(p, ' ');
+	p2 = strchr(p, ' ');
 	if (!p2) {
 		ERROR("corrupt mountinfo");
 		return NULL;
@@ -431,7 +431,7 @@ static char *get_mountpoint(char *line)
 	size_t len;
 
 	for (i = 0; i < 4; i++) {
-		p = index(p, ' ');
+		p = strchr(p, ' ');
 		if (!p)
 			return NULL;
 		p++;
@@ -450,7 +450,7 @@ static char *get_mountpoint(char *line)
  */
 static char *copy_to_eol(char *p)
 {
-	char *p2 = index(p, '\n'), *sret;
+	char *p2 = strchr(p, '\n'), *sret;
 	size_t len;
 
 	if (!p2)
@@ -473,7 +473,7 @@ static bool controller_in_clist(char *cgline, char *c)
 	char *tok, *saveptr = NULL, *eol, *tmp;
 	size_t len;
 
-	eol = index(cgline, ':');
+	eol = strchr(cgline, ':');
 	if (!eol)
 		return false;
 
@@ -499,19 +499,19 @@ static char *get_current_cgroup(char *basecginfo, char *controller)
 	char *p = basecginfo;
 
 	while (1) {
-		p = index(p, ':');
+		p = strchr(p, ':');
 		if (!p)
 			return NULL;
 		p++;
 		if (controller_in_clist(p, controller)) {
-			p = index(p, ':');
+			p = strchr(p, ':');
 			if (!p)
 				return NULL;
 			p++;
 			return copy_to_eol(p);
 		}
 
-		p = index(p, '\n');
+		p = strchr(p, '\n');
 		if (!p)
 			return NULL;
 		p++;
@@ -581,11 +581,11 @@ static void get_existing_subsystems(char ***klist, char ***nlist)
 		return;
 	while (getline(&line, &len, f) != -1) {
 		char *p, *p2, *tok, *saveptr = NULL;
-		p = index(line, ':');
+		p = strchr(line, ':');
 		if (!p)
 			continue;
 		p++;
-		p2 = index(p, ':');
+		p2 = strchr(p, ':');
 		if (!p2)
 			continue;
 		*p2 = '\0';
