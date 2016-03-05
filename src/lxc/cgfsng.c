@@ -951,8 +951,10 @@ static inline bool cgfsng_create(void *hdata)
 	offset = cgname + len - 5;
 
 again:
-	if (idx == 1000)
+	if (idx == 1000) {
+		ERROR("Too many conflicting cgroup names");
 		goto out_free;
+	}
 	if (idx)
 		snprintf(offset, 5, "-%d", idx);
 	for (i = 0; d->hierarchies[i]; i++) {
