@@ -1014,6 +1014,11 @@ struct chown_data {
 	uid_t origuid; // target uid in parent namespace
 };
 
+/*
+ * chgrp the container cgroups to container group.  We leave
+ * the container owner as cgroup owner.  So we must make the
+ * directories 775 so that the container can create sub-cgroups.
+ */
 static int chown_cgroup_wrapper(void *data)
 {
 	struct chown_data *arg = data;
@@ -1037,7 +1042,12 @@ static int chown_cgroup_wrapper(void *data)
 			free(fullpath);
 			return -1;
 		}
-		// TODO - do we need to chown tasks and cgroup.procs too?
+
+		if (chmod(fullpath, 0775) < 0) {
+			SYSERROR("Error chmoding %s\n", fullpath);
+			free(fullpath);
+			return -1;
+		}
 
 		free(fullpath);
 	}
