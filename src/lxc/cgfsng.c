@@ -52,8 +52,6 @@ lxc_log_define(lxc_cgfsng, lxc);
 
 static struct cgroup_ops cgfsng_ops;
 
-//#define EXTRADEBUG 1
-
 /*
  * A descriptor for a mounted hierarchy
  * @controllers: either NULL, or a null-terminated list of all
@@ -609,10 +607,13 @@ static void trim(char *s)
 		s[--len] = '\0';
 }
 
-#if EXTRADEBUG
 static void print_init_debuginfo(struct cgfsng_handler_data *d)
 {
 	int i;
+
+	if (!getenv("LXC_DEBUG_CGFSNG"))
+		return;
+
 	printf("Cgroup information:\n");
 	printf("  container name: %s\n", d->name);
 	printf("  lxc.cgroup.use: %s\n", d->cgroup_use ? d->cgroup_use : "(none)");
@@ -633,9 +634,20 @@ static void print_init_debuginfo(struct cgfsng_handler_data *d)
 			printf("     %d: %s\n", j, h->controllers[j]);
 	}
 }
-#else
-#define print_init_debuginfo(d) 
-#endif
+
+static void print_basecg_debuginfo(char *basecginfo, char **klist, char **nlist)
+{
+	int k;
+	if (!getenv("LXC_DEBUG_CGFSNG"))
+		return;
+
+	printf("basecginfo is %s\n", basecginfo);
+
+	for (k = 0; klist[k]; k++)
+		printf("kernel subsystem %d: %s\n", k, klist[k]);
+	for (k = 0; nlist[k]; k++)
+		printf("named subsystem %d: %s\n", k, nlist[k]);
+}
 
 /*
  * At startup, parse_hierarchies finds all the info we need about
@@ -665,14 +677,8 @@ static bool parse_hierarchies(struct cgfsng_handler_data *d)
 	}
 
 	get_existing_subsystems(&klist, &nlist);
-#if EXTRADEBUG
-	printf("basecginfo is %s\n", basecginfo);
-	int k;
-	for (k = 0; klist[k]; k++)
-		printf("kernel subsystem %d: %s\n", k, klist[k]);
-	for (k = 0; nlist[k]; k++)
-		printf("named subsystem %d: %s\n", k, nlist[k]);
-#endif
+
+	print_basecg_debuginfo(basecginfo, klist, nlist);
 
 	/* we support simple cgroup mounts and lxcfs mounts */
 	while (getline(&line, &len, f) != -1) {
