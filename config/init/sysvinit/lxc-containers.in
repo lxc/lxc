@@ -30,6 +30,8 @@ if ! type action >/dev/null 2>&1; then
 fi
 
 start() {
+    # Setup host /dev for autodev containers.
+    @LIBEXECDIR@/lxc/lxc-devsetup
     action $"Starting LXC autoboot containers: " @LIBEXECDIR@/lxc/lxc-containers start
 }
 
