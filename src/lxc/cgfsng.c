@@ -648,6 +648,10 @@ static bool parse_hierarchies(struct cgfsng_handler_data *d)
 	char **klist = NULL, **nlist = NULL;
 	size_t len = 0;
 
+	/*
+	 * Root spawned containers escape the current cgroup, so use init's
+	 * cgroups as our base in that case.
+	 */
 	if (geteuid())
 		basecginfo = read_file("/proc/self/cgroup");
 	else
@@ -922,7 +926,7 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname)
 }
 
 /*
- * Try to create the same cgrou pin all hierarchies.
+ * Try to create the same cgroup in all hierarchies.
  * Start with cgroup_pattern; next cgroup_pattern-1, -2, ..., -999
  */
 static inline bool cgfsng_create(void *hdata)
