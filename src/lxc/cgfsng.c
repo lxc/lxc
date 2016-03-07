@@ -1324,53 +1324,6 @@ static int cgfsng_set(const char *filename, const char *value, const char *name,
 }
 
 /*
- * Check whether a container already has a particular rule, as otherwise
- * may end up with spurious permission errors.
- */
-static bool cgroup_devices_has_allow_or_deny(struct cgfsng_handler_data *d,
-					     char *v, bool for_allow, char *path)
-{
-	FILE *devices_list;
-	char *line = NULL;
-	size_t sz = 0;
-	bool ret = !for_allow;
-
-	/* if it's a deny rule and container has all devices, then it doesn't
-	 * yet have the deny rule */
-	if (!for_allow && strcmp(v, "a") != 0 && strcmp(v, "a *:* rwm") != 0)
-		return false;
-
-	devices_list = fopen_cloexec(path, "r");
-	if (!devices_list) {
-		free(path);
-		return false;
-	}
-
-	while (getline(&line, &sz, devices_list) != -1) {
-		size_t len = strlen(line);
-		if (len > 0 && line[len-1] == '\n')
-			line[len-1] = '\0';
-		if (strcmp(line, "a *:* rwm") == 0) {
-			/* if container has all access and we're adding allow rule,
-			 * then already has it; if it has all access and we're
-			 * adding a deny rule, then it does not. */
-			ret = for_allow;
-			goto out;
-		} else if (for_allow && strcmp(line, v) == 0) {
-			/* if the line is there verbatim and it is an
-			 * allow rule, then it already has it */
-			ret = true;
-			goto out;
-		}
-	}
-
-out:
-	fclose(devices_list);
-	free(line);
-	return ret;
-}
-
-/*
  * Called from setup_limits - here we have the container's cgroup_data because
  * we created the cgroups
  */
@@ -1425,12 +1378,6 @@ static bool cgfsng_setup_limits(void *hdata, struct lxc_list *cgroup_settings,
 		cg = iterator->elem;
 
 		if (do_devices == !strncmp("devices", cg->subsystem, 7)) {
-			if (strcmp(cg->subsystem, "devices.deny") == 0 &&
-					cgroup_devices_has_allow_or_deny(d, cg->value, false, listpath))
-				continue;
-			if (strcmp(cg->subsystem, "devices.allow") == 0 &&
-					cgroup_devices_has_allow_or_deny(d, cg->value, true, listpath))
-				continue;
 			if (lxc_cgroup_set_data(cg->subsystem, cg->value, d)) {
 				if (do_devices && (errno == EACCES || errno == EPERM)) {
 					WARN("Error setting %s to %s for %s",
