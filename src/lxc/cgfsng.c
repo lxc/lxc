@@ -1028,6 +1028,9 @@ struct chown_data {
  * chgrp the container cgroups to container group.  We leave
  * the container owner as cgroup owner.  So we must make the
  * directories 775 so that the container can create sub-cgroups.
+ *
+ * Also chown the tasks and cgroup.procs files.  Those may not
+ * exist depending on kernel version.
  */
 static int chown_cgroup_wrapper(void *data)
 {
@@ -1046,19 +1049,27 @@ static int chown_cgroup_wrapper(void *data)
 	destuid = get_ns_uid(arg->origuid);
 
 	for (i = 0; d->hierarchies[i]; i++) {
-		char *fullpath = must_make_path(d->hierarchies[i]->fullcgpath, NULL);
-		if (chown(fullpath, destuid, 0) < 0) {
-			SYSERROR("Error chowning %s", fullpath);
-			free(fullpath);
+		char *fullpath, *path = d->hierarchies[i]->fullcgpath;
+
+		if (chown(path, destuid, 0) < 0) {
+			SYSERROR("Error chowning %s to %d: %m", path, (int) destuid);
 			return -1;
 		}
 
-		if (chmod(fullpath, 0775) < 0) {
-			SYSERROR("Error chmoding %s\n", fullpath);
-			free(fullpath);
+		if (chmod(path, 0775) < 0) {
+			SYSERROR("Error chmoding %s: %m", path);
 			return -1;
 		}
 
+		/* Failures to chown these are inconvenient but not detrimental */
+		fullpath = must_make_path(path, "tasks", NULL);
+		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
+			WARN("Failed chowning %s to %d: %m", fullpath, (int) destuid);
+		free(fullpath);
+
+		fullpath = must_make_path(path, "cgroup.procs", NULL);
+		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
+			WARN("Failed chowning %s to %d: %m", fullpath, (int) destuid);
 		free(fullpath);
 	}
 
