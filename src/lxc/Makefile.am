@@ -89,6 +89,7 @@ liblxc_so_SOURCES = \
 	error.h error.c \
 	parse.c parse.h \
 	cgfs.c \
+	cgfsng.c \
 	cgroup.c cgroup.h \
 	lxc.h \
 	initutils.c initutils.h \

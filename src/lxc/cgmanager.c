@@ -299,7 +299,7 @@ static bool lxc_cgmanager_create(const char *controller, const char *cgroup_path
  * be in "/lxc/c1" rather than "/user/..../c1"
  * called internally with connection already open
  */
-static bool cgm_escape(void)
+static bool cgm_escape(void *hdata)
 {
 	bool ret = true, cgm_needs_disconnect = false;
 	pid_t me = getpid();
@@ -1436,7 +1436,7 @@ struct cgroup_ops *cgm_ops_init(void)
 		cgm_all_controllers_same = false;
 
 	// if root, try to escape to root cgroup
-	if (geteuid() == 0 && !cgm_escape()) {
+	if (geteuid() == 0 && !cgm_escape(NULL)) {
 		free_subsystems();
 		return NULL;
 	}

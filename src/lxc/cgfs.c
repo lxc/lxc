@@ -141,7 +141,6 @@ static int do_cgroup_set(const char *cgroup_path, const char *sub_filename, cons
 static bool cgroup_devices_has_allow_or_deny(struct cgfs_data *d, char *v, bool for_allow);
 static int do_setup_cgroup_limits(struct cgfs_data *d, struct lxc_list *cgroup_settings, bool do_devices);
 static int cgroup_recursive_task_count(const char *cgroup_path);
-static int count_lines(const char *fn);
 static int handle_cgroup_settings(struct cgroup_mount_point *mp, char *cgroup_path);
 static bool init_cpuset_if_needed(struct cgroup_mount_point *mp, const char *path);
 
@@ -2116,7 +2115,7 @@ static int cgroup_recursive_task_count(const char *cgroup_path)
 			if (r >= 0)
 				n += r;
 		} else if (!strcmp(dent->d_name, "tasks")) {
-			r = count_lines(sub_path);
+			r = lxc_count_file_lines(sub_path);
 			if (r >= 0)
 				n += r;
 		}
@@ -2125,25 +2124,6 @@ static int cgroup_recursive_task_count(const char *cgroup_path)
 	closedir(d);
 	free(dent_buf);
 
-	return n;
-}
-
-static int count_lines(const char *fn)
-{
-	FILE *f;
-	char *line = NULL;
-	size_t sz = 0;
-	int n = 0;
-
-	f = fopen_cloexec(fn, "r");
-	if (!f)
-		return -1;
-
-	while (getline(&line, &sz, f) != -1) {
-		n++;
-	}
-	free(line);
-	fclose(f);
 	return n;
 }
 
@@ -2420,7 +2400,7 @@ static const char *cgfs_canonical_path(void *hdata)
 	return path;
 }
 
-static bool cgfs_escape(void)
+static bool cgfs_escape(void *hdata)
 {
 	struct cgroup_meta_data *md;
 	int i;
