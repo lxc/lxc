@@ -830,7 +830,7 @@ static int cgroup_rmdir(char *dirname)
 
 		if (lstat(pathname, &mystat)) {
 			if (!r)
-				WARN("failed to stat %s\n", pathname);
+				WARN("failed to stat %s", pathname);
 			r = -1;
 			goto next;
 		}
@@ -880,7 +880,7 @@ void recursive_destroy(char *path, struct lxc_conf *conf)
 		r = cgroup_rmdir(path);
 
 	if (r < 0)
-		ERROR("Error destroying %s\n", path);
+		ERROR("Error destroying %s", path);
 }
 
 static void cgfsng_destroy(void *hdata, struct lxc_conf *conf)
@@ -1009,7 +1009,7 @@ static bool cgfsng_enter(void *hdata, pid_t pid)
 		char *fullpath = must_make_path(d->hierarchies[i]->fullcgpath,
 						"cgroup.procs", NULL);
 		if (lxc_write_to_file(fullpath, pidstr, len, false) != 0) {
-			ERROR("Failed to enter %s\n", fullpath);
+			ERROR("Failed to enter %s", fullpath);
 			free(fullpath);
 			return false;
 		}
@@ -1178,7 +1178,7 @@ static bool cgfsng_escape(void *hdata)
 						d->hierarchies[i]->base_cgroup,
 						"cgroup.procs", NULL);
 		if (lxc_write_to_file(fullpath, "0", 2, false) != 0) {
-			ERROR("Failed to enter %s\n", fullpath);
+			ERROR("Failed to enter %s", fullpath);
 			free(fullpath);
 			return false;
 		}
@@ -1385,7 +1385,7 @@ static bool cgfsng_setup_limits(void *hdata, struct lxc_list *cgroup_settings,
 	if (do_devices) {
 		h = get_hierarchy(d, "devices");
 		if (!h) {
-			ERROR("No devices cgroup setup for %s\n", d->name);
+			ERROR("No devices cgroup setup for %s", d->name);
 			return false;
 		}
 		listpath = must_make_path(h->fullcgpath, "devices.list", NULL);
