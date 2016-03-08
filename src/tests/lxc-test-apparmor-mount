@@ -131,6 +131,7 @@ elif [ -e /sys/fs/cgroup/cgmanager/sock ]; then
 	done
 else
 	for d in /sys/fs/cgroup/*; do
+		[ -f $d/cgroup.clone_children ] && echo 1 > $d/cgroup.clone_children
 		[ ! -d $d/lxctest ] && mkdir $d/lxctest
 		chown -R $TUSER: $d/lxctest
 		echo $$ > $d/lxctest/tasks
