@@ -672,7 +672,7 @@ static bool parse_hierarchies(struct cgfsng_handler_data *d)
 		return false;
 
 	if ((f = fopen("/proc/self/mountinfo", "r")) == NULL) {
-		ERROR("Failed opening /proc/self/mountinfo");
+		SYSERROR("Failed opening /proc/self/mountinfo");
 		return false;
 	}
 
@@ -1009,7 +1009,7 @@ static bool cgfsng_enter(void *hdata, pid_t pid)
 		char *fullpath = must_make_path(d->hierarchies[i]->fullcgpath,
 						"cgroup.procs", NULL);
 		if (lxc_write_to_file(fullpath, pidstr, len, false) != 0) {
-			ERROR("Failed to enter %s", fullpath);
+			SYSERROR("Failed to enter %s", fullpath);
 			free(fullpath);
 			return false;
 		}
@@ -1178,7 +1178,7 @@ static bool cgfsng_escape(void *hdata)
 						d->hierarchies[i]->base_cgroup,
 						"cgroup.procs", NULL);
 		if (lxc_write_to_file(fullpath, "0", 2, false) != 0) {
-			ERROR("Failed to enter %s", fullpath);
+			SYSERROR("Failed to escape to %s", fullpath);
 			free(fullpath);
 			return false;
 		}
