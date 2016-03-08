@@ -93,3 +93,6 @@
   mount options=(move) /sys/fs/cgroup/cgmanager/ -> /sys/fs/cgroup/cgmanager.lower/,
   mount options=(ro, nosuid, nodev, noexec, remount, strictatime) -> /sys/fs/cgroup/,
 
+  # deny reads from debugfs
+  deny /sys/kernel/debug/{,**} rwklx,
+
