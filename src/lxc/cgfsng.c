@@ -1031,6 +1031,8 @@ struct cgroup_ops *cgfsng_ops_init(void)
 static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
 	h->fullcgpath = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
+	if (dir_exists(h->fullcgpath)) // it must not already exist
+		return false;
 	if (!handle_cpuset_hierarchy(h, cgname))
 		return false;
 	return mkdir_p(h->fullcgpath, 0755) == 0;
