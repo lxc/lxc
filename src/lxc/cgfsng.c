@@ -621,13 +621,24 @@ static char *get_current_cgroup(char *basecginfo, char *controller)
 	}
 }
 
+#define BATCH_SIZE 50
+static void batch_realloc(char **mem, size_t oldlen, size_t newlen)
+{
+	int newbatches = (newlen / BATCH_SIZE) + 1;
+	int oldbatches = (oldlen / BATCH_SIZE) + 1;
+
+	if (!*mem || newbatches > oldbatches) {
+		*mem = must_realloc(*mem, newbatches * BATCH_SIZE);
+	}
+}
+
 static void append_line(char **dest, size_t oldlen, char *new, size_t newlen)
 {
 	size_t full = oldlen + newlen;
 
-	*dest = must_realloc(*dest, full + 1);
+	batch_realloc(dest, oldlen, full + 1);
 
-	strcat(*dest, new);
+	memcpy(*dest + oldlen, new, newlen + 1);
 }
 
 /* Slurp in a whole file */
@@ -636,13 +647,14 @@ static char *read_file(char *fnam)
 	FILE *f;
 	char *line = NULL, *buf = NULL;
 	size_t len = 0, fulllen = 0;
+	int linelen;
 
 	f = fopen(fnam, "r");
 	if (!f)
 		return NULL;
-	while (getline(&line, &len, f) != -1) {
-		append_line(&buf, fulllen, line, len);
-		fulllen += len;
+	while ((linelen = getline(&line, &len, f)) != -1) {
+		append_line(&buf, fulllen, line, linelen);
+		fulllen += linelen;
 	}
 	fclose(f);
 	free(line);
@@ -1019,6 +1031,8 @@ struct cgroup_ops *cgfsng_ops_init(void)
 static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
 	h->fullcgpath = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
+	if (dir_exists(h->fullcgpath)) // it must not already exist
+		return false;
 	if (!handle_cpuset_hierarchy(h, cgname))
 		return false;
 	return mkdir_p(h->fullcgpath, 0755) == 0;
