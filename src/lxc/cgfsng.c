@@ -1280,13 +1280,20 @@ static int cgfsng_nrtasks(void *hdata) {
 }
 
 /* Only root needs to escape to the cgroup of its init */
-static bool cgfsng_escape(void *hdata)
+static bool cgfsng_escape()
 {
-	struct cgfsng_handler_data *d = hdata;
+	struct cgfsng_handler_data *d;
 	int i;
+	bool ret = false;
 
 	if (geteuid())
 		return true;
+
+	d = cgfsng_init("criu-temp-cgfsng");
+	if (!d) {
+		ERROR("cgfsng_init failed");
+		return false;
+	}
 
 	for (i = 0; d->hierarchies[i]; i++) {
 		char *fullpath = must_make_path(d->hierarchies[i]->mountpoint,
@@ -1295,12 +1302,15 @@ static bool cgfsng_escape(void *hdata)
 		if (lxc_write_to_file(fullpath, "0", 2, false) != 0) {
 			SYSERROR("Failed to escape to %s", fullpath);
 			free(fullpath);
-			return false;
+			goto out;
 		}
 		free(fullpath);
 	}
 
-	return true;
+	ret = true;
+out:
+	free_handler_data(d);
+	return ret;
 }
 
 #define THAWED "THAWED"
