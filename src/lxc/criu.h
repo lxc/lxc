@@ -58,8 +58,6 @@ struct criu_opts {
 	const char *cgroup_path;
 };
 
-void exec_criu(struct lxc_handler *handler, struct criu_opts *opts);
-
 /* Check and make sure the container has a configuration that we know CRIU can
  * dump. */
 bool criu_ok(struct lxc_container *c);

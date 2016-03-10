@@ -47,7 +47,7 @@
 
 lxc_log_define(lxc_criu, lxc);
 
-void exec_criu(struct lxc_handler *handler, struct criu_opts *opts)
+static void exec_criu(struct criu_opts *opts)
 {
 	char **argv, log[PATH_MAX];
 	int static_args = 22, argc = 0, i, ret;
