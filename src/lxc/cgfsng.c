@@ -1344,7 +1344,25 @@ static const char *cgfsng_get_cgroup(void *hdata, const char *subsystem)
 	if (!h)
 		return NULL;
 
-	return h->fullcgpath;
+	return h->fullcgpath ? h->fullcgpath + strlen(h->mountpoint) : NULL;
+}
+
+/*
+ * Given a cgroup path returned from lxc_cmd_get_cgroup_path, build a
+ * full path, which must be freed by the caller.
+ */
+static char *build_full_cgpath_from_monitorpath(struct hierarchy *h,
+						const char *inpath,
+						const char *filename)
+{
+	/*
+	 * XXX Remove this case after 2.0 release.  It's for dealing with
+	 * containers spawned under the old buggy cgfsng which wasn't around
+	 * for long.
+	 */
+	if (strncmp(inpath, "/sys/fs/cgroup/", 15) == 0)
+		return must_make_path(inpath, filename, NULL);
+	return must_make_path(h->mountpoint, inpath, filename, NULL);
 }
 
 static bool cgfsng_attach(const char *name, const char *lxcpath, pid_t pid)
@@ -1369,15 +1387,14 @@ static bool cgfsng_attach(const char *name, const char *lxcpath, pid_t pid)
 		if (!path) // not running
 			continue;
 
-		fullpath = must_make_path(path, "cgroup.procs", NULL);
+		fullpath = build_full_cgpath_from_monitorpath(h, path, "cgroup.procs");
+		free(path);
 		if (lxc_write_to_file(fullpath, pidstr, len, false) != 0) {
 			SYSERROR("Failed to attach %d to %s", (int)pid, fullpath);
 			free(fullpath);
-			free(path);
 			free_handler_data(d);
 			return false;
 		}
-		free(path);
 		free(fullpath);
 	}
 
@@ -1414,7 +1431,7 @@ static int cgfsng_get(const char *filename, char *value, size_t len, const char 
 
 	h = get_hierarchy(d, subsystem);
 	if (h) {
-		char *fullpath = must_make_path(path, filename, NULL);
+		char *fullpath = build_full_cgpath_from_monitorpath(h, path, filename);
 		ret = lxc_read_from_file(fullpath, value, len);
 		free(fullpath);
 	}
@@ -1454,7 +1471,7 @@ static int cgfsng_set(const char *filename, const char *value, const char *name,
 
 	h = get_hierarchy(d, subsystem);
 	if (h) {
-		char *fullpath = must_make_path(path, filename, NULL);
+		char *fullpath = build_full_cgpath_from_monitorpath(h, path, filename);
 		ret = lxc_write_to_file(fullpath, value, strlen(value), false);
 		free(fullpath);
 	}
