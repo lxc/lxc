@@ -47,7 +47,7 @@
 
 lxc_log_define(lxc_criu, lxc);
 
-void exec_criu(struct lxc_handler *handler, struct criu_opts *opts)
+static void exec_criu(struct criu_opts *opts)
 {
 	char **argv, log[PATH_MAX];
 	int static_args = 22, argc = 0, i, ret;
@@ -63,7 +63,7 @@ void exec_criu(struct lxc_handler *handler, struct criu_opts *opts)
 	 * /actual/ root cgroup so that lxcfs thinks criu has enough rights to
 	 * see all cgroups.
 	 */
-	if (!cgroup_escape(handler)) {
+	if (!cgroup_escape()) {
 		ERROR("failed to escape cgroups");
 		return;
 	}
@@ -517,7 +517,7 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 		os.cgroup_path = cgroup_canonical_path(handler);
 
 		/* exec_criu() returning is an error */
-		exec_criu(handler, &os);
+		exec_criu(&os);
 		umount(rootfs->mount);
 		rmdir(rootfs->mount);
 		goto out_fini_handler;
@@ -624,16 +624,6 @@ static bool do_dump(struct lxc_container *c, char *mode, char *directory,
 
 	if (pid == 0) {
 		struct criu_opts os;
-		struct lxc_handler *handler;
-
-		handler = lxc_init(c->name, c->lxc_conf, c->config_path);
-		if (!handler)
-			exit(1);
-
-		if (!cgroup_init(handler)) {
-			ERROR("failed initing cgroups");
-			exit(1);
-		}
 
 		os.action = mode;
 		os.directory = directory;
@@ -643,7 +633,7 @@ static bool do_dump(struct lxc_container *c, char *mode, char *directory,
 		os.predump_dir = predump_dir;
 
 		/* exec_criu() returning is an error */
-		exec_criu(handler, &os);
+		exec_criu(&os);
 		exit(1);
 	} else {
 		int status;
