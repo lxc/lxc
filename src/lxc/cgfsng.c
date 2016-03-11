@@ -1178,12 +1178,12 @@ static int chown_cgroup_wrapper(void *data)
 
 		/* Failures to chown these are inconvenient but not detrimental */
 		fullpath = must_make_path(path, "tasks", NULL);
-		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
+		if (chown(fullpath, 0, 0) < 0 && errno != ENOENT)
 			WARN("Failed chowning %s to %d: %m", fullpath, (int) destuid);
 		free(fullpath);
 
 		fullpath = must_make_path(path, "cgroup.procs", NULL);
-		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
+		if (chown(fullpath, 0, 0) < 0 && errno != ENOENT)
 			WARN("Failed chowning %s to %d: %m", fullpath, (int) destuid);
 		free(fullpath);
 	}
