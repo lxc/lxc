@@ -1009,7 +1009,7 @@ static void cgfsng_destroy(void *hdata, struct lxc_conf *conf)
 		int i;
 		for (i = 0; d->hierarchies[i]; i++) {
 			struct hierarchy *h = d->hierarchies[i];
-			if (!h->fullcgpath) {
+			if (h->fullcgpath) {
 				recursive_destroy(h->fullcgpath, conf);
 				free(h->fullcgpath);
 				h->fullcgpath = NULL;
@@ -1167,24 +1167,34 @@ static int chown_cgroup_wrapper(void *data)
 		char *fullpath, *path = d->hierarchies[i]->fullcgpath;
 
 		if (chown(path, destuid, 0) < 0) {
-			SYSERROR("Error chowning %s to %d: %m", path, (int) destuid);
+			SYSERROR("Error chowning %s to %d", path, (int) destuid);
 			return -1;
 		}
 
 		if (chmod(path, 0775) < 0) {
-			SYSERROR("Error chmoding %s: %m", path);
+			SYSERROR("Error chmoding %s", path);
 			return -1;
 		}
 
-		/* Failures to chown these are inconvenient but not detrimental */
+		/*
+		 * Failures to chown these are inconvenient but not detrimental
+		 * We leave these owned by the container launcher, so that container
+		 * root can write to the files to attach.  We chmod them 664 so that
+		 * container systemd can write to the files (which systemd in wily
+		 * insists on doing)
+		 */
 		fullpath = must_make_path(path, "tasks", NULL);
 		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
 			WARN("Failed chowning %s to %d: %m", fullpath, (int) destuid);
+		if (chmod(fullpath, 0664) < 0)
+			WARN("Error chmoding %s: %m", path);
 		free(fullpath);
 
 		fullpath = must_make_path(path, "cgroup.procs", NULL);
 		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
 			WARN("Failed chowning %s to %d: %m", fullpath, (int) destuid);
+		if (chmod(fullpath, 0664) < 0)
+			WARN("Error chmoding %s: %m", path);
 		free(fullpath);
 	}
 
