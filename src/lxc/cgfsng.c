@@ -1009,7 +1009,7 @@ static void cgfsng_destroy(void *hdata, struct lxc_conf *conf)
 		int i;
 		for (i = 0; d->hierarchies[i]; i++) {
 			struct hierarchy *h = d->hierarchies[i];
-			if (!h->fullcgpath) {
+			if (h->fullcgpath) {
 				recursive_destroy(h->fullcgpath, conf);
 				free(h->fullcgpath);
 				h->fullcgpath = NULL;
