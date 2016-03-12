@@ -27,41 +27,6 @@
 
 #include <lxc/lxccontainer.h>
 
-// We require either the criu major/minor version, or the criu GITID if criu
-// was built from git.
-#define CRIU_VERSION 		"1.9"
-
-#define CRIU_GITID_VERSION	"1.8"
-#define CRIU_GITID_PATCHLEVEL	21
-
-struct criu_opts {
-	/* The type of criu invocation, one of "dump" or "restore" */
-	char *action;
-
-	/* The directory to pass to criu */
-	char *directory;
-
-	/* The container to dump */
-	struct lxc_container *c;
-
-	/* Enable criu verbose mode? */
-	bool verbose;
-
-	/* (pre-)dump: a directory for the previous dump's images */
-	char *predump_dir;
-
-	/* dump: stop the container or not after dumping? */
-	bool stop;
-
-	/* restore: the file to write the init process' pid into */
-	char *pidfile;
-	const char *cgroup_path;
-};
-
-/* Check and make sure the container has a configuration that we know CRIU can
- * dump. */
-bool criu_ok(struct lxc_container *c);
-
 bool pre_dump(struct lxc_container *c, char *directory, bool verbose, char *predump_dir);
 bool dump(struct lxc_container *c, char *directory, bool stop, bool verbose, char *predump_dir);
 bool restore(struct lxc_container *c, char *directory, bool verbose);

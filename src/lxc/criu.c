@@ -45,7 +45,36 @@
 #include "network.h"
 #include "utils.h"
 
+#define CRIU_VERSION 		"2.0"
+
+#define CRIU_GITID_VERSION	"2.0"
+#define CRIU_GITID_PATCHLEVEL	0
+
 lxc_log_define(lxc_criu, lxc);
+
+struct criu_opts {
+	/* The type of criu invocation, one of "dump" or "restore" */
+	char *action;
+
+	/* The directory to pass to criu */
+	char *directory;
+
+	/* The container to dump */
+	struct lxc_container *c;
+
+	/* Enable criu verbose mode? */
+	bool verbose;
+
+	/* (pre-)dump: a directory for the previous dump's images */
+	char *predump_dir;
+
+	/* dump: stop the container or not after dumping? */
+	bool stop;
+
+	/* restore: the file to write the init process' pid into */
+	char *pidfile;
+	const char *cgroup_path;
+};
 
 static void exec_criu(struct criu_opts *opts)
 {
@@ -352,7 +381,7 @@ version_error:
 
 /* Check and make sure the container has a configuration that we know CRIU can
  * dump. */
-bool criu_ok(struct lxc_container *c)
+static bool criu_ok(struct lxc_container *c)
 {
 	struct lxc_list *it;
 	bool found_deny_rule = false;
