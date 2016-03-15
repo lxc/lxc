@@ -12,10 +12,6 @@ lxc.mount.entry = mqueue dev/mqueue mqueue rw,relatime,create=dir,optional 0 0
 # (uncommented) to the container's configuration file.
 #lxc.aa_profile = unconfined
 
-# To support container nesting on an Ubuntu host while retaining most of
-# apparmor's added security, use the following line instead.
-#lxc.aa_profile = lxc-container-default-with-nesting
-
 # Uncomment the following line to autodetect squid-deb-proxy configuration on the
 # host and forward it to the guest at start time.
 #lxc.hook.pre-start = /usr/share/lxc/hooks/squid-deb-proxy-client

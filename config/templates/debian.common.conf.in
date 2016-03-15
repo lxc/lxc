@@ -9,10 +9,6 @@ lxc.devttydir =
 # (uncommented) to the container's configuration file.
 #lxc.aa_profile = unconfined
 
-# To support container nesting on an Ubuntu host while retaining most of
-# apparmor's added security, use the following line instead.
-#lxc.aa_profile = lxc-container-default-with-nesting
-
 # If you wish to allow mounting block filesystems, then use the following
 # line instead, and make sure to grant access to the block device and/or loop
 # devices below in lxc.cgroup.devices.allow.
