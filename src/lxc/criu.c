@@ -732,7 +732,9 @@ static int save_tty_major_minor(char *directory, struct lxc_container *c, char *
 		return -1;
 	}
 
-	ret = snprintf(tty_id, len, "tty[%lx:%lx]", sb.st_rdev, sb.st_dev);
+	ret = snprintf(tty_id, len, "tty[%llx:%llx]",
+					(long long unsigned) sb.st_rdev,
+					(long long unsigned) sb.st_dev);
 	if (ret < 0 || ret >= sizeof(path)) {
 		ERROR("snprintf'd too many characters: %d", ret);
 		return -1;
