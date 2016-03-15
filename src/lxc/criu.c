@@ -45,16 +45,88 @@
 #include "network.h"
 #include "utils.h"
 
+#define CRIU_VERSION 		"2.0"
+
+#define CRIU_GITID_VERSION	"2.0"
+#define CRIU_GITID_PATCHLEVEL	0
+
 lxc_log_define(lxc_criu, lxc);
+
+struct criu_opts {
+	/* The type of criu invocation, one of "dump" or "restore" */
+	char *action;
+
+	/* The directory to pass to criu */
+	char *directory;
+
+	/* The container to dump */
+	struct lxc_container *c;
+
+	/* Enable criu verbose mode? */
+	bool verbose;
+
+	/* (pre-)dump: a directory for the previous dump's images */
+	char *predump_dir;
+
+	/* dump: stop the container or not after dumping? */
+	bool stop;
+	char tty_id[32]; /* the criu tty id for /dev/console, i.e. "tty[${rdev}:${dev}]" */
+
+	/* restore: the file to write the init process' pid into */
+	char *pidfile;
+	const char *cgroup_path;
+	int console_fd;
+	/* The path that is bind mounted from /dev/console, if any. We don't
+	 * want to use `--ext-mount-map auto`'s result here because the pts
+	 * device may have a different path (e.g. if the pty number is
+	 * different) on the target host. NULL if lxc.console = "none".
+	 */
+	char *console_name;
+};
+
+static int load_tty_major_minor(char *directory, char *output, int len)
+{
+	FILE *f;
+	char path[PATH_MAX];
+	int ret;
+
+	ret = snprintf(path, sizeof(path), "%s/tty.info", directory);
+	if (ret < 0 || ret >= sizeof(path)) {
+		ERROR("snprintf'd too many chacters: %d", ret);
+		return -1;
+	}
+
+	f = fopen(path, "r");
+	if (!f) {
+		/* This means we're coming from a liblxc which didn't export
+		 * the tty info. In this case they had to have lxc.console =
+		 * none, so there's no problem restoring.
+		 */
+		if (errno == ENOENT)
+			return 0;
+
+		SYSERROR("couldn't open %s", path);
+		return -1;
+	}
+
+	if (!fgets(output, len, f)) {
+		fclose(f);
+		SYSERROR("couldn't read %s", path);
+		return -1;
+	}
+
+	fclose(f);
+	return 0;
+}
 
 static void exec_criu(struct criu_opts *opts)
 {
 	char **argv, log[PATH_MAX];
-	int static_args = 22, argc = 0, i, ret;
+	int static_args = 24, argc = 0, i, ret;
 	int netnr = 0;
 	struct lxc_list *it;
 
-	char buf[4096];
+	char buf[4096], tty_info[32];
 
 	/* If we are currently in a cgroup /foo/bar, and the container is in a
 	 * cgroup /lxc/foo, lxcfs will give us an ENOENT if some task in the
@@ -73,7 +145,7 @@ static void exec_criu(struct criu_opts *opts)
 	 * --manage-cgroups action-script foo.sh -D $(directory) \
 	 * -o $(directory)/$(action).log --ext-mount-map auto
 	 * --enable-external-sharing --enable-external-masters
-	 * --enable-fs hugetlbfs --enable-fs tracefs
+	 * --enable-fs hugetlbfs --enable-fs tracefs --ext-mount-map console:/dev/pts/n
 	 * +1 for final NULL */
 
 	if (strcmp(opts->action, "dump") == 0 || strcmp(opts->action, "pre-dump") == 0) {
@@ -87,12 +159,24 @@ static void exec_criu(struct criu_opts *opts)
 		/* --leave-running (only for final dump) */
 		if (strcmp(opts->action, "dump") == 0 && !opts->stop)
 			static_args++;
+
+		/* --external tty[88,4] */
+		if (opts->tty_id[0])
+			static_args += 2;
 	} else if (strcmp(opts->action, "restore") == 0) {
 		/* --root $(lxc_mount_point) --restore-detached
 		 * --restore-sibling --pidfile $foo --cgroup-root $foo
 		 * --lsm-profile apparmor:whatever
 		 */
 		static_args += 10;
+
+		tty_info[0] = 0;
+		if (load_tty_major_minor(opts->directory, tty_info, sizeof(tty_info)))
+			return;
+
+		/* --inherit-fd fd[%d]:tty[%s] */
+		if (tty_info[0])
+			static_args += 2;
 	} else {
 		return;
 	}
@@ -175,6 +259,13 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG("--freeze-cgroup");
 		DECLARE_ARG(log);
 
+		DECLARE_ARG("--ext-mount-map");
+		DECLARE_ARG("/dev/console:console");
+		if (opts->tty_id[0]) {
+			DECLARE_ARG("--external");
+			DECLARE_ARG(opts->tty_id);
+		}
+
 		if (opts->predump_dir) {
 			DECLARE_ARG("--prev-images-dir");
 			DECLARE_ARG(opts->predump_dir);
@@ -196,6 +287,22 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG(opts->pidfile);
 		DECLARE_ARG("--cgroup-root");
 		DECLARE_ARG(opts->cgroup_path);
+
+		if (tty_info[0]) {
+			ret = snprintf(buf, sizeof(buf), "fd[%d]:%s", opts->console_fd, tty_info);
+			if (ret < 0 || ret >= sizeof(buf))
+				goto err;
+
+			DECLARE_ARG("--inherit-fd");
+			DECLARE_ARG(buf);
+		}
+		if (opts->console_name) {
+			if (snprintf(buf, sizeof(buf), "console:%s", opts->console_name) < 0) {
+				SYSERROR("sprintf'd too many bytes");
+			}
+			DECLARE_ARG("--ext-mount-map");
+			DECLARE_ARG(buf);
+		}
 
 		if (lxc_conf->lsm_aa_profile || lxc_conf->lsm_se_context) {
 
@@ -352,10 +459,9 @@ version_error:
 
 /* Check and make sure the container has a configuration that we know CRIU can
  * dump. */
-bool criu_ok(struct lxc_container *c)
+static bool criu_ok(struct lxc_container *c)
 {
 	struct lxc_list *it;
-	bool found_deny_rule = false;
 
 	if (!criu_version_ok())
 		return false;
@@ -377,33 +483,6 @@ bool criu_ok(struct lxc_container *c)
 			ERROR("Found network that is not VETH or NONE\n");
 			return false;
 		}
-	}
-
-	// These requirements come from http://criu.org/LXC
-	if (c->lxc_conf->console.path &&
-			strcmp(c->lxc_conf->console.path, "none") != 0) {
-		ERROR("lxc.console must be none\n");
-		return false;
-	}
-
-	if (c->lxc_conf->tty != 0) {
-		ERROR("lxc.tty must be 0\n");
-		return false;
-	}
-
-	lxc_list_for_each(it, &c->lxc_conf->cgroup) {
-		struct lxc_cgroup *cg = it->elem;
-		if (strcmp(cg->subsystem, "devices.deny") == 0 &&
-				strcmp(cg->value, "c 5:1 rwm") == 0) {
-
-			found_deny_rule = true;
-			break;
-		}
-	}
-
-	if (!found_deny_rule) {
-		ERROR("couldn't find devices.deny = c 5:1 rwm");
-		return false;
 	}
 
 	return true;
@@ -480,6 +559,7 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 	if (pid == 0) {
 		struct criu_opts os;
 		struct lxc_rootfs *rootfs;
+		int flags;
 
 		close(pipe);
 		pipe = -1;
@@ -515,6 +595,24 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 		os.pidfile = pidfile;
 		os.verbose = verbose;
 		os.cgroup_path = cgroup_canonical_path(handler);
+		os.console_fd = c->lxc_conf->console.slave;
+
+		/* Twiddle the FD_CLOEXEC bit. We want to pass this FD to criu
+		 * via --inherit-fd, so we don't want it to close.
+		 */
+		flags = fcntl(os.console_fd, F_GETFD);
+		if (flags < 0) {
+			SYSERROR("F_GETFD failed");
+			goto out_fini_handler;
+		}
+
+		flags &= ~FD_CLOEXEC;
+
+		if (fcntl(os.console_fd, F_SETFD, flags) < 0) {
+			SYSERROR("F_SETFD failed");
+			goto out_fini_handler;
+		}
+		os.console_name = c->lxc_conf->console.name;
 
 		/* exec_criu() returning is an error */
 		exec_criu(&os);
@@ -604,6 +702,55 @@ out:
 	exit(1);
 }
 
+static int save_tty_major_minor(char *directory, struct lxc_container *c, char *tty_id, int len)
+{
+	FILE *f;
+	char path[PATH_MAX];
+	int ret;
+	struct stat sb;
+
+	if (c->lxc_conf->console.path && !strcmp(c->lxc_conf->console.path, "none")) {
+		tty_id[0] = 0;
+		return 0;
+	}
+
+	ret = snprintf(path, sizeof(path), "/proc/%d/root/dev/console", c->init_pid(c));
+	if (ret < 0 || ret >= sizeof(path)) {
+		ERROR("snprintf'd too many chacters: %d", ret);
+		return -1;
+	}
+
+	ret = stat(path, &sb);
+	if (ret < 0) {
+		SYSERROR("stat of %s failed", path);
+		return -1;
+	}
+
+	ret = snprintf(path, sizeof(path), "%s/tty.info", directory);
+	if (ret < 0 || ret >= sizeof(path)) {
+		ERROR("snprintf'd too many characters: %d", ret);
+		return -1;
+	}
+
+	ret = snprintf(tty_id, len, "tty[%lx:%lx]", sb.st_rdev, sb.st_dev);
+	if (ret < 0 || ret >= sizeof(path)) {
+		ERROR("snprintf'd too many characters: %d", ret);
+		return -1;
+	}
+
+	f = fopen(path, "w");
+	if (!f) {
+		SYSERROR("failed to open %s", path);
+		return -1;
+	}
+
+	ret = fprintf(f, "%s", tty_id);
+	fclose(f);
+	if (ret < 0)
+		SYSERROR("failed to write to %s", path);
+	return ret;
+}
+
 /* do one of either predump or a regular dump */
 static bool do_dump(struct lxc_container *c, char *mode, char *directory,
 		    bool stop, bool verbose, char *predump_dir)
@@ -631,6 +778,10 @@ static bool do_dump(struct lxc_container *c, char *mode, char *directory,
 		os.stop = stop;
 		os.verbose = verbose;
 		os.predump_dir = predump_dir;
+		os.console_name = c->lxc_conf->console.path;
+
+		if (save_tty_major_minor(directory, c, os.tty_id, sizeof(os.tty_id)) < 0)
+			exit(1);
 
 		/* exec_criu() returning is an error */
 		exec_criu(&os);
