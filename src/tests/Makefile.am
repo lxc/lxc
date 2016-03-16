@@ -48,7 +48,8 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove \
 	lxc-test-apparmor
 
-bin_SCRIPTS = lxc-test-autostart lxc-test-cloneconfig lxc-test-createconfig
+bin_SCRIPTS = lxc-test-automount lxc-test-autostart lxc-test-cloneconfig \
+	lxc-test-createconfig
 
 if DISTRO_UBUNTU
 bin_SCRIPTS += \
@@ -79,6 +80,7 @@ EXTRA_DIST = \
 	locktests.c \
 	lxcpath.c \
 	lxc-test-lxc-attach \
+	lxc-test-automount \
 	lxc-test-autostart \
 	lxc-test-apparmor-mount \
 	lxc-test-checkpoint-restore \
