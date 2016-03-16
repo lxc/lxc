@@ -24,6 +24,9 @@
 
 [ -f /proc/self/ns/cgroup ] && exit 0
 
+# cgmanager doesn't do the same cgroup filesystem mounting
+cgm ping && exit 0
+
 set -ex
 
 cleanup() {
