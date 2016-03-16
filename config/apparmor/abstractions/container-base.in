@@ -66,6 +66,9 @@
   mount options=(rw, bind) /run/ -> /var/run/,
   mount options=(rw, bind) /run/lock/ -> /var/lock/,
 
+  # deny access under /proc/bus to avoid e.g. messing with pci devices directly
+  deny @{PROC}/bus/** wklx,
+
   # deny writes in /proc/sys/fs but allow binfmt_misc to be mounted
   mount fstype=binfmt_misc -> /proc/sys/fs/binfmt_misc/,
   deny @{PROC}/sys/fs/** wklx,
