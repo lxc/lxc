@@ -1130,7 +1130,7 @@ static const struct lxc_devs lxc_devs[] = {
 	{ "console",	S_IFCHR | S_IRUSR | S_IWUSR,	       5, 1	},
 };
 
-static int fill_autodev(const struct lxc_rootfs *rootfs)
+static int fill_autodev(const struct lxc_rootfs *rootfs, bool mount_console)
 {
 	int ret;
 	char path[MAXPATHLEN];
@@ -1152,6 +1152,10 @@ static int fill_autodev(const struct lxc_rootfs *rootfs)
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
 		const struct lxc_devs *d = &lxc_devs[i];
+
+		if (!strcmp(d->name, "console") && !mount_console)
+			continue;
+
 		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", rootfs->path ? rootfs->mount : "", d->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
@@ -1395,8 +1399,7 @@ static int setup_dev_console(const struct lxc_rootfs *rootfs,
 			 const struct lxc_console *console)
 {
 	char path[MAXPATHLEN];
-	struct stat s;
-	int ret;
+	int ret, fd;
 
 	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs->mount);
 	if (ret >= sizeof(path)) {
@@ -1404,9 +1407,14 @@ static int setup_dev_console(const struct lxc_rootfs *rootfs,
 		return -1;
 	}
 
-	if (access(path, F_OK)) {
-		WARN("rootfs specified but no console found at '%s'", path);
-		return 0;
+	fd = open(path, O_CREAT | O_EXCL, S_IXUSR | S_IXGRP | S_IXOTH);
+	if (fd < 0) {
+		if (errno != EEXIST) {
+			SYSERROR("failed to create console");
+			return -1;
+		}
+	} else {
+		close(fd);
 	}
 
 	if (console->master < 0) {
@@ -1414,14 +1422,9 @@ static int setup_dev_console(const struct lxc_rootfs *rootfs,
 		return 0;
 	}
 
-	if (stat(path, &s)) {
-		SYSERROR("failed to stat '%s'", path);
-		return -1;
-	}
-
-	if (chmod(console->name, s.st_mode)) {
+	if (chmod(console->name, S_IXUSR | S_IXGRP | S_IXOTH)) {
 		SYSERROR("failed to set mode '0%o' to '%s'",
-			 s.st_mode, console->name);
+			 S_IXUSR | S_IXGRP | S_IXOTH, console->name);
 		return -1;
 	}
 
@@ -3749,11 +3752,13 @@ int lxc_setup(struct lxc_handler *handler)
 	}
 
 	if (lxc_conf->autodev > 0) {
+		bool mount_console = lxc_conf->console.path && !strcmp(lxc_conf->console.path, "none");
+
 		if (run_lxc_hooks(name, "autodev", lxc_conf, lxcpath, NULL)) {
 			ERROR("failed to run autodev hooks for container '%s'.", name);
 			return -1;
 		}
-		if (fill_autodev(&lxc_conf->rootfs)) {
+		if (fill_autodev(&lxc_conf->rootfs, mount_console)) {
 			ERROR("failed to populate /dev in the container");
 			return -1;
 		}
