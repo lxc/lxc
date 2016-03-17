@@ -42,6 +42,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <grp.h>
+#include <sys/mount.h>
 
 #include "log.h"
 #include "cgroup.h"
