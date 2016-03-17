@@ -47,6 +47,7 @@
 #include "cgroup.h"
 #include "utils.h"
 #include "commands.h"
+#include "bdev/bdev.h"
 
 lxc_log_define(lxc_cgfsng, lxc);
 
@@ -1237,7 +1238,9 @@ static int mount_cgroup_full(int type, struct hierarchy *h, char *dest,
 		return -1;
 	}
 	if (type != LXC_AUTO_CGROUP_FULL_RW) {
-		if (mount(NULL, dest, "cgroup", MS_BIND | MS_REMOUNT | MS_RDONLY, NULL) < 0) {
+		unsigned long flags = MS_BIND | MS_NOSUID | MS_NOEXEC | MS_NODEV |
+				      MS_REMOUNT | MS_RDONLY;
+		if (mount(NULL, dest, "cgroup", flags, NULL) < 0) {
 			SYSERROR("Error remounting %s readonly", dest);
 			return -1;
 		}
@@ -1249,7 +1252,7 @@ static int mount_cgroup_full(int type, struct hierarchy *h, char *dest,
 
 	/* mount just the container path rw */
 	char *source = must_make_path(h->mountpoint, h->base_cgroup, container_cgroup, NULL);
-	char *rwpath = must_make_path(dest, container_cgroup, NULL);
+	char *rwpath = must_make_path(dest, h->base_cgroup, container_cgroup, NULL);
 	if (mount(source, rwpath, "cgroup", MS_BIND, NULL) < 0)
 		WARN("Failed to mount %s read-write: %m", rwpath);
 	INFO("Made %s read-write", rwpath);
@@ -1358,7 +1361,7 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			free(controllerpath);
 			continue;
 		}
-		path2 = must_make_path(controllerpath, d->container_cgroup, NULL);
+		path2 = must_make_path(controllerpath, h->base_cgroup, d->container_cgroup, NULL);
 		if (mkdir_p(path2, 0755) < 0) {
 			free(controllerpath);
 			goto bad;
