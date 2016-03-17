@@ -1309,6 +1309,7 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 	struct cgfsng_handler_data *d = hdata;
 	char *tmpfspath = NULL;
 	bool retval = false;
+	int i;
 
 	if ((type & LXC_AUTO_CGROUP_MASK) == 0)
 		return true;
@@ -1330,7 +1331,7 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			root) < 0)
 		goto  bad;
 
-	for (int i = 0; d->hierarchies[i]; i++) {
+	for (i = 0; d->hierarchies[i]; i++) {
 		char *controllerpath, *path2;
 		struct hierarchy *h = d->hierarchies[i];
 		char *controller = strrchr(h->mountpoint, '/');
