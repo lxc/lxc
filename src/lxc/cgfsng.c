@@ -1022,9 +1022,6 @@ static void cgfsng_destroy(void *hdata, struct lxc_conf *conf)
 
 struct cgroup_ops *cgfsng_ops_init(void)
 {
-	/* TODO - when cgroup_mount is implemented, drop this check */
-	if (!file_exists("/proc/self/ns/cgroup"))
-		return NULL;
 	return &cgfsng_ops;
 }
 
@@ -1223,12 +1220,162 @@ static bool cgfsns_chown(void *hdata, struct lxc_conf *conf)
 	return true;
 }
 
+/*
+ * We've safe-mounted a tmpfs as parent, so we don't need to protect against
+ * symlinks any more - just use mount
+ */
+
+/* mount cgroup-full if requested */
+static int mount_cgroup_full(int type, struct hierarchy *h, char *dest,
+				   char *container_cgroup)
+{
+	if (type < LXC_AUTO_CGROUP_FULL_RO || type > LXC_AUTO_CGROUP_FULL_MIXED)
+		return 0;
+	if (mount(h->mountpoint, dest, "cgroup", MS_BIND, NULL) < 0) {
+		SYSERROR("Error bind-mounting %s cgroup onto %s", h->mountpoint,
+			 dest);
+		return -1;
+	}
+	if (type != LXC_AUTO_CGROUP_FULL_RW) {
+		if (mount(NULL, dest, "cgroup", MS_BIND | MS_REMOUNT | MS_RDONLY, NULL) < 0) {
+			SYSERROR("Error remounting %s readonly", dest);
+			return -1;
+		}
+	}
+
+	INFO("Bind mounted %s onto %s", h->mountpoint, dest);
+	if (type != LXC_AUTO_CGROUP_FULL_MIXED)
+		return 0;
+
+	/* mount just the container path rw */
+	char *source = must_make_path(h->mountpoint, h->base_cgroup, container_cgroup, NULL);
+	char *rwpath = must_make_path(dest, container_cgroup, NULL);
+	if (mount(source, rwpath, "cgroup", MS_BIND, NULL) < 0)
+		WARN("Failed to mount %s read-write: %m", rwpath);
+	INFO("Made %s read-write", rwpath);
+	free(rwpath);
+	free(source);
+	return 0;
+}
+
+/* cgroup-full:* is done, no need to create subdirs */
+static bool cg_mount_needs_subdirs(int type)
+{
+	if (type >= LXC_AUTO_CGROUP_FULL_RO)
+		return false;
+	return true;
+}
+
+/*
+ * After $rootfs/sys/fs/container/controller/the/cg/path has been
+ * created, remount controller ro if needed and bindmount the
+ * cgroupfs onto controll/the/cg/path
+ */
+static int
+do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
+				char *controllerpath, char *cgpath,
+				const char *container_cgroup)
+{
+	if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_MIXED) {
+		if (mount(controllerpath, controllerpath, "cgroup", MS_BIND, NULL) < 0) {
+			SYSERROR("Error bind-mounting %s", controllerpath);
+			return -1;
+		}
+		if (mount(controllerpath, controllerpath, "cgroup",
+			   MS_REMOUNT | MS_BIND | MS_RDONLY, NULL) < 0) {
+			SYSERROR("Error remounting %s read-only", controllerpath);
+			return -1;
+		}
+		INFO("Remounted %s read-only", controllerpath);
+	}
+	char *sourcepath = must_make_path(h->mountpoint, h->base_cgroup, container_cgroup, NULL);
+	int flags = MS_BIND;
+	if (type == LXC_AUTO_CGROUP_RO)
+		flags |= MS_RDONLY;
+	INFO("Mounting %s onto %s", sourcepath, cgpath);
+	if (mount(sourcepath, cgpath, "cgroup", flags, NULL) < 0) {
+		free(sourcepath);
+		SYSERROR("Error mounting cgroup %s onto %s", h->controllers[0],
+				cgpath);
+		return -1;
+	}
+	free(sourcepath);
+	INFO("Completed second stage cgroup automounts for %s", cgpath);
+	return 0;
+}
+
 static bool cgfsng_mount(void *hdata, const char *root, int type)
 {
+	struct cgfsng_handler_data *d = hdata;
+	char *tmpfspath = NULL;
+	bool retval = false;
+	int i;
+
+	if ((type & LXC_AUTO_CGROUP_MASK) == 0)
+		return true;
+
 	if (cgns_supported())
 		return true;
-	// TODO - implement this.  Not needed for cgroup namespaces
-	return false;
+
+	tmpfspath = must_make_path(root, "/sys/fs/cgroup", NULL);
+
+	if (type == LXC_AUTO_CGROUP_NOSPEC)
+		type = LXC_AUTO_CGROUP_MIXED;
+	else if (type == LXC_AUTO_CGROUP_FULL_NOSPEC)
+		type = LXC_AUTO_CGROUP_FULL_MIXED;
+
+	/* Mount tmpfs */
+	if (safe_mount("cgroup_root", tmpfspath, "tmpfs",
+			MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_RELATIME,
+			"size=10240k,mode=755",
+			root) < 0)
+		goto  bad;
+
+	for (i = 0; d->hierarchies[i]; i++) {
+		char *controllerpath, *path2;
+		struct hierarchy *h = d->hierarchies[i];
+		char *controller = strrchr(h->mountpoint, '/');
+		int r;
+
+		if (!controller)
+			continue;
+		controller++;
+		controllerpath = must_make_path(tmpfspath, controller, NULL);
+		if (dir_exists(controllerpath)) {
+			free(controllerpath);
+			continue;
+		}
+		if (mkdir(controllerpath, 0755) < 0) {
+			SYSERROR("Error creating cgroup path: %s", controllerpath);
+			free(controllerpath);
+			goto bad;
+		}
+		if (mount_cgroup_full(type, h, controllerpath, d->container_cgroup) < 0) {
+			free(controllerpath);
+			goto bad;
+		}
+		if (!cg_mount_needs_subdirs(type)) {
+			free(controllerpath);
+			continue;
+		}
+		path2 = must_make_path(controllerpath, d->container_cgroup, NULL);
+		if (mkdir_p(path2, 0755) < 0) {
+			free(controllerpath);
+			goto bad;
+		}
+		
+		r = do_secondstage_mounts_if_needed(type, h, controllerpath, path2,
+						    d->container_cgroup);
+		free(controllerpath);
+		free(path2);
+		if (r < 0)
+			goto bad;
+	}
+	retval = true;
+
+bad:
+	free(tmpfspath);
+	return retval;
 }
 
 static int recursive_count_nrtasks(char *dirname)

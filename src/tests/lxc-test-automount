@@ -1,0 +1,220 @@
+#!/bin/bash
+
+# lxc: linux Container library
+
+# Authors:
+# Serge Hallyn <serge.hallyn@ubuntu.com>
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+# At the moment this only tests cgroup automount.  Testing proc and
+# sys automounts would be worthwhile.
+
+[ -f /proc/self/ns/cgroup ] && exit 0
+
+# cgmanager doesn't do the same cgroup filesystem mounting
+cgm ping && exit 0
+
+set -ex
+
+cleanup() {
+	set +e
+	rmdir /sys/fs/cgroup/freezer/xx
+	lxc-destroy -n lxc-test-automount -f
+	if [ $PHASE != "done" ]; then
+		echo "automount test failed at $PHASE"
+		exit 1
+	fi
+	echo "automount test passed"
+	exit 0
+}
+
+PHASE=setup
+trap cleanup EXIT
+
+rmdir /sys/fs/cgroup/freezer/xx || true
+lxc-destroy -n lxc-test-automount -f || true
+lxc-create -t busybox -n lxc-test-automount
+
+PHASE=no-cgroup
+echo "Starting phase $PHASE"
+config=/var/lib/lxc/lxc-test-automount/config
+sed -i '/lxc.mount.auto/d' $config
+echo "lxc.mount.auto = proc:mixed sys:mixed" >> $config
+
+lxc-start -n lxc-test-automount
+pid=`lxc-info -n lxc-test-automount -p -H`
+cg=`awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup`
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
+[ $notfound -ne 0 ]
+
+# Tests are as follows:
+# 1. check that freezer controller is mounted
+# 2. check that it is cgroupfs for cgroup-full (/cgroup.procs exists) or
+#    tmpfs for cgroup
+# 3. check that root cgroup dir is readonly or not (try mkdir)
+# 4. check that the container's cgroup dir is readonly or not
+# 5. check that the container's cgroup dir is cgroupfs (/cgroup.procs exists)
+
+lxc-stop -n lxc-test-automount -k
+PHASE=cgroup:mixed
+echo "Starting phase $PHASE"
+sed -i '/lxc.mount.auto/d' $config
+echo "lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed" >> $config
+lxc-start -n lxc-test-automount
+pid=`lxc-info -n lxc-test-automount -p -H`
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
+[ $notfound -ne 1 ]
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer/cgroup.procs || notfound=1
+[ $notfound -ne 0 ]
+ro=0
+mkdir /proc/$pid/root/sys/fs/cgroup/freezer/xx || ro=1
+[ $ro -ne 0 ]
+ro=0
+mkdir /proc/$pid/root/sys/fs/cgroup/freezer/$cg/xx || ro=1
+[ $ro -ne 1 ]
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer/$cg/cgroup.procs || notfound=1
+[ $notfound -ne 1 ]
+
+lxc-stop -n lxc-test-automount -k
+PHASE=cgroup:ro
+echo "Starting phase $PHASE"
+sed -i '/lxc.mount.auto/d' $config
+echo "lxc.mount.auto = cgroup:ro proc:mixed sys:mixed" >> $config
+lxc-start -n lxc-test-automount
+pid=`lxc-info -n lxc-test-automount -p -H`
+cg=`awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup`
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
+[ $notfound -ne 1 ]
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer/cgroup.procs || notfound=1
+[ $notfound -ne 0 ]
+ro=0
+mkdir /proc/$pid/root/sys/fs/cgroup/freezer/xx || ro=1
+[ $ro -ne 0 ]
+ro=0
+mkdir /proc/$pid/root/sys/fs/cgroup/freezer/$cg/xx || ro=1
+[ $ro -ne 1 ]
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer/$cg/cgroup.procs || notfound=1
+[ $notfound -ne 1 ]
+
+lxc-stop -n lxc-test-automount -k
+PHASE=cgroup:rw
+echo "Starting phase $PHASE"
+sed -i '/lxc.mount.auto/d' $config
+echo "lxc.mount.auto = cgroup:rw proc:mixed sys:mixed" >> $config
+lxc-start -n lxc-test-automount
+pid=`lxc-info -n lxc-test-automount -p -H`
+cg=`awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup`
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
+[ $notfound -ne 1 ]
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer/cgroup.procs || notfound=1
+[ $notfound -ne 0 ]
+ro=0
+mkdir /proc/$pid/root/sys/fs/cgroup/freezer/xx || ro=1
+[ $ro -ne 1 ]
+rmdir /proc/$pid/root/sys/fs/cgroup/freezer/xx
+ro=0
+mkdir /proc/$pid/root/sys/fs/cgroup/freezer/$cg/xx || ro=1
+[ $ro -ne 1 ]
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer/$cg/cgroup.procs || notfound=1
+[ $notfound -ne 1 ]
+
+# cgroup-full
+
+lxc-stop -n lxc-test-automount -k
+PHASE=cgroup-full:mixed
+echo "Starting phase $PHASE"
+sed -i '/lxc.mount.auto/d' $config
+echo "lxc.mount.auto = cgroup-full:mixed  proc:mixed sys:mixed" >> $config
+lxc-start -n lxc-test-automount
+pid=`lxc-info -n lxc-test-automount -p -H`
+cg=`awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup`
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
+[ $notfound -ne 1 ]
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer/cgroup.procs || notfound=1
+[ $notfound -ne 1 ]
+ro=0
+mkdir /proc/$pid/root/sys/fs/cgroup/freezer/xx || ro=1
+[ $ro -ne 0 ]
+ro=0
+mkdir /proc/$pid/root/sys/fs/cgroup/freezer/$cg/xx || ro=1
+[ $ro -ne 1 ]
+rmdir /proc/$pid/root/sys/fs/cgroup/freezer/$cg/xx
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer/$cg/cgroup.procs || notfound=1
+[ $notfound -ne 1 ]
+
+lxc-stop -n lxc-test-automount -k
+PHASE=cgroup-full:ro
+echo "Starting phase $PHASE"
+sed -i '/lxc.mount.auto/d' $config
+echo "lxc.mount.auto = cgroup-full:ro proc:mixed sys:mixed" >> $config
+lxc-start -n lxc-test-automount
+pid=`lxc-info -n lxc-test-automount -p -H`
+cg=`awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup`
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
+[ $notfound -ne 1 ]
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer/cgroup.procs || notfound=1
+[ $notfound -ne 1 ]
+ro=0
+mkdir /proc/$pid/root/sys/fs/cgroup/freezer/xx || ro=1
+[ $ro -ne 0 ]
+ro=0
+mkdir /proc/$pid/root/sys/fs/cgroup/freezer/$cg/xy || ro=1
+[ $ro -ne 0 ]
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer/$cg/cgroup.procs || notfound=1
+[ $notfound -ne 1 ]
+
+lxc-stop -n lxc-test-automount -k
+PHASE=cgroup-full:rw
+echo "Starting phase $PHASE"
+sed -i '/lxc.mount.auto/d' $config
+echo "lxc.mount.auto = cgroup-full:rw proc:mixed sys:mixed" >> $config
+lxc-start -n lxc-test-automount
+pid=`lxc-info -n lxc-test-automount -p -H`
+cg=`awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup`
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
+[ $notfound -ne 1 ]
+notfound=0
+stat /proc/$pid/root/sys/fs/cgroup/freezer/cgroup.procs || notfound=1
+[ $notfound -ne 1 ]
+ro=0
+mkdir /proc/$pid/root/sys/fs/cgroup/freezer/xx || ro=1
+[ $ro -ne 1 ]
+rmdir /proc/$pid/root/sys/fs/cgroup/freezer/xx
+ro=0
+mkdir /proc/$pid/root/sys/fs/cgroup/freezer/$cg/xx || ro=1
+[ $ro -ne 1 ]
+notfound=0
+/proc/$pid/root/sys/fs/cgroup/freezer/$cg/cgroup.procs || notfound=1
+[ $notfound -eq 1 ]
+
+PHASE=done
