@@ -1359,7 +1359,7 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			free(controllerpath);
 			continue;
 		}
-		path2 = must_make_path(controllerpath, d->container_cgroup, NULL);
+		path2 = must_make_path(controllerpath, h->base_cgroup, d->container_cgroup, NULL);
 		if (mkdir_p(path2, 0755) < 0) {
 			free(controllerpath);
 			goto bad;
