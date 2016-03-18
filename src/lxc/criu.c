@@ -530,12 +530,12 @@ out_unlock:
 
 // do_restore never returns, the calling process is used as the
 // monitor process. do_restore calls exit() if it fails.
-void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose)
+void do_restore(struct lxc_container *c, int status_pipe, char *directory, bool verbose)
 {
 	pid_t pid;
 	char pidfile[L_tmpnam];
 	struct lxc_handler *handler;
-	int status;
+	int status, pipes[2] = {-1, -1};
 
 	if (!tmpnam(pidfile))
 		goto out;
@@ -561,6 +561,11 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 
 	resolve_clone_flags(handler);
 
+	if (pipe(pipes) < 0) {
+		SYSERROR("pipe() failed");
+		goto out_fini_handler;
+	}
+
 	pid = fork();
 	if (pid < 0)
 		goto out_fini_handler;
@@ -570,8 +575,20 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 		struct lxc_rootfs *rootfs;
 		int flags;
 
-		close(pipe);
-		pipe = -1;
+		close(status_pipe);
+		status_pipe = -1;
+
+		close(pipes[0]);
+		pipes[0] = -1;
+		if (dup2(pipes[1], STDERR_FILENO) < 0) {
+			SYSERROR("dup2 failed");
+			goto out_fini_handler;
+		}
+
+		if (dup2(pipes[1], STDOUT_FILENO) < 0) {
+			SYSERROR("dup2 failed");
+			goto out_fini_handler;
+		}
 
 		if (unshare(CLONE_NEWNS))
 			goto out_fini_handler;
@@ -632,15 +649,18 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 		int ret;
 		char title[2048];
 
+		close(pipes[1]);
+		pipes[1] = -1;
+
 		pid_t w = waitpid(pid, &status, 0);
 		if (w == -1) {
 			SYSERROR("waitpid");
 			goto out_fini_handler;
 		}
 
-		ret = write(pipe, &status, sizeof(status));
-		close(pipe);
-		pipe = -1;
+		ret = write(status_pipe, &status, sizeof(status));
+		close(status_pipe);
+		status_pipe = -1;
 
 		if (sizeof(status) != ret) {
 			SYSERROR("failed to write all of status");
@@ -649,7 +669,18 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 
 		if (WIFEXITED(status)) {
 			if (WEXITSTATUS(status)) {
-				ERROR("criu process exited %d\n", WEXITSTATUS(status));
+				char buf[4096];
+				int n;
+
+				n = read(pipes[0], buf, sizeof(buf));
+				if (n < 0) {
+					SYSERROR("failed reading from criu stderr");
+					goto out_fini_handler;
+				}
+
+				buf[n] = 0;
+
+				ERROR("criu process exited %d, output:\n%s\n", WEXITSTATUS(status), buf);
 				goto out_fini_handler;
 			} else {
 				int ret;
@@ -679,6 +710,8 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 			goto out_fini_handler;
 		}
 
+		close(pipes[0]);
+
 		/*
 		 * See comment in lxcapi_start; we don't care if these
 		 * fail because it's just a beauty thing. We just
@@ -695,17 +728,22 @@ void do_restore(struct lxc_container *c, int pipe, char *directory, bool verbose
 	}
 
 out_fini_handler:
+	if (pipes[0] >= 0)
+		close(pipes[0]);
+	if (pipes[1] >= 0)
+		close(pipes[1]);
+
 	lxc_fini(c->name, handler);
 	if (unlink(pidfile) < 0 && errno != ENOENT)
 		SYSERROR("unlinking pidfile failed");
 
 out:
-	if (pipe >= 0) {
+	if (status_pipe >= 0) {
 		status = 1;
-		if (write(pipe, &status, sizeof(status)) != sizeof(status)) {
+		if (write(status_pipe, &status, sizeof(status)) != sizeof(status)) {
 			SYSERROR("writing status failed");
 		}
-		close(pipe);
+		close(status_pipe);
 	}
 
 	exit(1);
