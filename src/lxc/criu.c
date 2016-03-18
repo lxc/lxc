@@ -126,7 +126,7 @@ static void exec_criu(struct criu_opts *opts)
 	int netnr = 0;
 	struct lxc_list *it;
 
-	char buf[4096], tty_info[32];
+	char buf[4096], *pos, tty_info[32];
 
 	/* If we are currently in a cgroup /foo/bar, and the container is in a
 	 * cgroup /lxc/foo, lxcfs will give us an ENOENT if some task in the
@@ -355,6 +355,15 @@ static void exec_criu(struct criu_opts *opts)
 	}
 
 	argv[argc] = NULL;
+
+	buf[0] = 0;
+	pos = buf;
+	for (i = 0; argv[i]; i++) {
+		pos = strncat(buf, argv[i], buf + sizeof(buf) - pos);
+		pos = strncat(buf, " ", buf + sizeof(buf) - pos);
+	}
+
+	INFO("execing: %s", buf);
 
 #undef DECLARE_ARG
 	execv(argv[0], argv);
