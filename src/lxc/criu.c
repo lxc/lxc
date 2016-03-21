@@ -259,9 +259,10 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG("--freeze-cgroup");
 		DECLARE_ARG(log);
 
-		DECLARE_ARG("--ext-mount-map");
-		DECLARE_ARG("/dev/console:console");
 		if (opts->tty_id[0]) {
+			DECLARE_ARG("--ext-mount-map");
+			DECLARE_ARG("/dev/console:console");
+
 			DECLARE_ARG("--external");
 			DECLARE_ARG(opts->tty_id);
 		}
