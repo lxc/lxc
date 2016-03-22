@@ -868,12 +868,12 @@ static bool do_dump(struct lxc_container *c, char *mode, char *directory,
 	}
 }
 
-bool pre_dump(struct lxc_container *c, char *directory, bool verbose, char *predump_dir)
+bool __criu_pre_dump(struct lxc_container *c, char *directory, bool verbose, char *predump_dir)
 {
 	return do_dump(c, "pre-dump", directory, false, verbose, predump_dir);
 }
 
-bool dump(struct lxc_container *c, char *directory, bool stop, bool verbose, char *predump_dir)
+bool __criu_dump(struct lxc_container *c, char *directory, bool stop, bool verbose, char *predump_dir)
 {
 	char path[PATH_MAX];
 	int ret;
@@ -890,7 +890,7 @@ bool dump(struct lxc_container *c, char *directory, bool stop, bool verbose, cha
 	return do_dump(c, "dump", directory, stop, verbose, predump_dir);
 }
 
-bool restore(struct lxc_container *c, char *directory, bool verbose)
+bool __criu_restore(struct lxc_container *c, char *directory, bool verbose)
 {
 	pid_t pid;
 	int status, nread;
