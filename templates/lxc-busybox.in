@@ -330,6 +330,9 @@ configure_busybox()
     # relink /sbin/init
     ln $rootfs/bin/busybox $rootfs/sbin/init
 
+    # /etc/fstab must exist for "mount -a"
+    touch $rootfs/etc/fstab
+
     # passwd exec must be setuid
     chmod +s $rootfs/bin/passwd
     touch $rootfs/etc/shadow
