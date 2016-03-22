@@ -121,7 +121,7 @@ Options :\n\
 	.checker   = my_checker,
 };
 
-bool checkpoint(struct lxc_container *c)
+static bool checkpoint(struct lxc_container *c)
 {
 	bool ret;
 
@@ -142,7 +142,7 @@ bool checkpoint(struct lxc_container *c)
 	return true;
 }
 
-bool restore_finalize(struct lxc_container *c)
+static bool restore_finalize(struct lxc_container *c)
 {
 	bool ret = c->restore(c, checkpoint_dir, verbose);
 	if (!ret) {
@@ -153,7 +153,7 @@ bool restore_finalize(struct lxc_container *c)
 	return ret;
 }
 
-bool restore(struct lxc_container *c)
+static bool restore(struct lxc_container *c)
 {
 	if (c->is_running(c)) {
 		fprintf(stderr, "%s is running, not restoring.\n", my_args.name);
