@@ -1621,8 +1621,6 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 			errno = saved_errno;
 			if (errno == ELOOP)
 				SYSERROR("%s in %s was a symbolic link!", nextpath, target);
-			else
-				SYSERROR("Error examining %s in %s", nextpath, target);
 			goto out;
 		}
 	}
@@ -1667,8 +1665,11 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 
 	destfd = open_without_symlink(dest, rootfs);
 	if (destfd < 0) {
-		if (srcfd != -1)
+		if (srcfd != -1) {
+			saved_errno = errno;
 			close(srcfd);
+			errno = saved_errno;
+		}
 		return destfd;
 	}
 
