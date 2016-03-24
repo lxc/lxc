@@ -304,13 +304,6 @@ configure_busybox()
         return 1
     fi
 
-    file -L $(which busybox) | grep -q "statically linked"
-    if [ $? -ne 0 ]; then
-        echo "warning : busybox is not statically linked."
-        echo "warning : The template script may not correctly"
-        echo "warning : setup the container environment."
-    fi
-
     # copy busybox in the rootfs
     cp $(which busybox) $rootfs/bin
     if [ $? -ne 0 ]; then
