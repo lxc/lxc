@@ -868,9 +868,9 @@ static int do_start(void *data)
 	handler->ops->start(handler, handler->data);
 
 out_warn_father:
-	/* we want the parent to know something went wrong, so any
-	 * value other than what it expects is ok. */
-	lxc_sync_wake_parent(handler, LXC_SYNC_POST_CONFIGURE);
+	/* we want the parent to know something went wrong, so we return a special
+	 * error code. */
+	lxc_sync_wake_parent(handler, LXC_SYNC_ERROR);
 	return -1;
 }
 
