@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#include "sync.h"
 #include "log.h"
 #include "start.h"
 
@@ -45,6 +46,12 @@ static int __sync_wait(int fd, int sequence)
 
 	if (!ret)
 		return 0;
+
+	if (sync == LXC_SYNC_ERROR) {
+		ERROR("An error occurred in another process "
+		      "(expected sequence number %d)", sequence);
+		return -1;
+	}
 
 	if (sync != sequence) {
 		ERROR("invalid sequence number %d. expected %d",
