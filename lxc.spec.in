@@ -169,7 +169,7 @@ fi
 
 %post
 # This test should trigger a network configure on a new install.
-if [ ! -f %{_sysconfdir}/sysconfig/lxc-net ] || ! grep -q 'USE_LXC_BRIDGE=' %{_sysconfdir}/sysconfig/lxc-net
+if [ ! -f @LXC_DISTRO_SYSCONF@/lxc-net ] || ! grep -q 'USE_LXC_BRIDGE=' @LXC_DISTRO_SYSCONF@/lxc-net
 then
 	# Grab a random 10net subnet.  Need to add test logic...
 	while [ true ]
@@ -181,7 +181,7 @@ then
 		fi
 	done
 
-	cat >  %{_sysconfdir}/sysconfig/lxc-net <<EOF
+	cat >  @LXC_DISTRO_SYSCONF@/lxc-net <<EOF
 # Leave USE_LXC_BRIDGE as "true" if you want to use lxcbr0 for your
 # containers.  Set to "false" if you'll use virbr0 or another existing
 # bridge, or mavlan to your host's NIC.
