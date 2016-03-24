@@ -1752,24 +1752,41 @@ domount:
 	return 1;
 }
 
-int null_stdfds(void)
+int open_devnull(void)
 {
-	int fd, ret = -1;
+	int fd = open("/dev/null", O_RDWR);
 
-	fd = open("/dev/null", O_RDWR);
+	if (fd < 0)
+		SYSERROR("Can't open /dev/null");
+
+	return fd;
+}
+
+int set_stdfds(int fd)
+{
 	if (fd < 0)
 		return -1;
 
 	if (dup2(fd, 0) < 0)
-		goto err;
+		return -1;
 	if (dup2(fd, 1) < 0)
-		goto err;
+		return -1;
 	if (dup2(fd, 2) < 0)
-		goto err;
+		return -1;
 
-	ret = 0;
-err:
-	close(fd);
+	return 0;
+}
+
+int null_stdfds(void)
+{
+	int ret = -1;
+	int fd = open_devnull();
+
+	if (fd >= 0) {
+		ret = set_stdfds(fd);
+		close(fd);
+	}
+
 	return ret;
 }
 

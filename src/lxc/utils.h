@@ -283,6 +283,8 @@ int setproctitle(char *title);
 int safe_mount(const char *src, const char *dest, const char *fstype,
 		unsigned long flags, const void *data, const char *rootfs);
 int mount_proc_if_needed(const char *rootfs);
+int open_devnull(void);
+int set_stdfds(int fd);
 int null_stdfds(void);
 int lxc_count_file_lines(const char *fn);
 #endif /* __LXC_UTILS_H */
