@@ -4,7 +4,7 @@ if INIT_SCRIPT_UPSTART
 install-upstart: lxc.conf lxc-instance.conf lxc-net.conf
 	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/init/
 	$(INSTALL_DATA) lxc.conf $(DESTDIR)$(sysconfdir)/init/
-	$(INSTALL_DATA) lxc-instance.conf $(DESTDIR)$(sysconfdir)/init/
+	$(INSTALL_DATA) $(srcdir)/lxc-instance.conf $(DESTDIR)$(sysconfdir)/init/
 	$(INSTALL_DATA) lxc-net.conf $(DESTDIR)$(sysconfdir)/init/
 
 uninstall-upstart:

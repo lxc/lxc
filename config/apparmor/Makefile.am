@@ -17,13 +17,13 @@ install-apparmor:
 	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/apparmor.d/
 	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/
 	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
-	$(INSTALL_DATA) abstractions/container-base $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/
-	$(INSTALL_DATA) abstractions/start-container $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/
-	$(INSTALL_DATA) profiles/lxc-default $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
-	$(INSTALL_DATA) profiles/lxc-default-with-mounting $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
-	$(INSTALL_DATA) profiles/lxc-default-with-nesting $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
-	$(INSTALL_DATA) lxc-containers $(DESTDIR)$(sysconfdir)/apparmor.d/
-	$(INSTALL_DATA) usr.bin.lxc-start $(DESTDIR)$(sysconfdir)/apparmor.d/
+	$(INSTALL_DATA) $(srcdir)/abstractions/container-base $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/
+	$(INSTALL_DATA) $(srcdir)/abstractions/start-container $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/
+	$(INSTALL_DATA) $(srcdir)/profiles/lxc-default $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
+	$(INSTALL_DATA) $(srcdir)/profiles/lxc-default-with-mounting $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
+	$(INSTALL_DATA) $(srcdir)/profiles/lxc-default-with-nesting $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
+	$(INSTALL_DATA) $(srcdir)/lxc-containers $(DESTDIR)$(sysconfdir)/apparmor.d/
+	$(INSTALL_DATA) $(srcdir)/usr.bin.lxc-start $(DESTDIR)$(sysconfdir)/apparmor.d/
 
 uninstall-apparmor:
 	rm -f $(DESTDIR)$(sysconfdir)/apparmor.d/usr.bin.lxc-start
