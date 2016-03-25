@@ -440,6 +440,31 @@ EOF
     # start with a clean /var/log/messages
     rm -f $container_rootfs/var/log/messages
 
+    # set initial timezone as on host
+    if [ -f /etc/sysconfig/clock ]; then
+        . /etc/sysconfig/clock
+        if [ $container_release_major = "5" -o $container_release_major = "6" ]; then
+                echo ZONE=$ZONE > $container_rootfs/etc/sysconfig/clock
+                chroot $container_rootfs tzdata-update
+        else
+                ZONE="${ZONE// /_}"
+                chroot $container_rootfs ln -sf ../usr/share/zoneinfo/$ZONE /etc/localtime
+        fi
+    else
+        ZONE=`readlink /etc/localtime | sed -s "s/\.\.\/usr\/share\/zoneinfo\///g"`
+        if [ "$ZONE" ]; then
+                if [ $container_release_major = "5" -o $container_release_major = "6" ]; then
+                        echo ZONE=$ZONE > $container_rootfs/etc/sysconfig/clock
+                        chroot $container_rootfs tzdata-update
+                else
+                        # if /etc/localtime is a symlink, this should preserve it.
+                        cp -a /etc/localtime $container_rootfs/etc/localtime
+                fi
+        else
+                echo "Timezone in container is not configured. Adjust it manually."
+        fi
+    fi
+
     # add oracle user, set root password
     chroot $container_rootfs useradd -m -s /bin/bash oracle
     echo "oracle:oracle" | chroot $container_rootfs chpasswd
