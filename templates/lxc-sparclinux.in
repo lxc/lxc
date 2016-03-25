@@ -291,6 +291,15 @@ EOF
     # start with a clean /var/log/messages
     rm -f $container_rootfs/var/log/messages
 
+    # set initial timezone as on host
+    if [ -f /etc/sysconfig/clock ]; then
+        . /etc/sysconfig/clock
+        echo ZONE=$ZONE > $container_rootfs/etc/sysconfig/clock
+        chroot $container_rootfs tzdata-update
+    else
+        echo "Timezone in container is not configured. Adjust it manually."
+    fi
+
     # add oracle user, set root password
     chroot $container_rootfs useradd -m -s /bin/bash oracle
     echo "oracle:oracle" | chroot $container_rootfs chpasswd
