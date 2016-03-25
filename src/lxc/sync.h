@@ -32,6 +32,7 @@ enum {
 	LXC_SYNC_POST_CGROUP,
 	LXC_SYNC_RESTART,
 	LXC_SYNC_POST_RESTART,
+	LXC_SYNC_ERROR = -1 /* Used to report errors from another process */
 };
 
 int lxc_sync_init(struct lxc_handler *handler);
