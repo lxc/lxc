@@ -216,6 +216,40 @@ extern int sha1sum_file(char *fnam, unsigned char *md_value);
 extern int lxc_write_to_file(const char *filename, const void* buf, size_t count, bool add_newline);
 extern int lxc_read_from_file(const char *filename, void* buf, size_t count);
 
+/*
+ * mmap() a file to a \0-terminated string.
+ * The function will write a terminating \0-byte to the underlying file. Hence,
+ * @fildes must refer to a writeable file. lxc_munmap_str() must be used to
+ * unmap the file.
+ *
+ * \param addr             : see mmap()
+ * \param len              : see mmap()
+ * \param flags            : see mmap()
+ * \param fildes           : see mmap()
+ * \param off              : see mmap()
+ * \param[out] wrote_zero  : Whether a terminating \0-byte was written to the
+ *			     underlying file. Must be passed to
+ *			     lxc_munmap_str().
+ */
+extern void *lxc_mmap_str(void *addr, size_t len, int flags, int fildes,
+			  off_t off, bool *wrote_zero);
+
+/*
+ * munmap() a file that has been mmap()ed with lxc_mmap_str().
+ * If a terminating \0-byte has been written to the file underlying the mapping
+ * it will be truncated back to its original size.
+ *
+ * \param addr        : see munmap()
+ * \param len         : see munmap()
+ * \param newlen      : size the underlying file will be resized to via
+ *			ftruncate()
+ * \param fildes      : file descriptor of the file underlying the mapping
+ * \param wrote_zero  : Whether a terminating \0-byte has been written to the
+ *		        underlying file
+ */
+extern int lxc_munmap_str(void *addr, size_t len, size_t newlen, int fildes,
+			  bool wrote_zero);
+
 /* convert variadic argument lists to arrays (for execl type argument lists) */
 extern char** lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup);
 extern const char** lxc_va_arg_list_to_argv_const(va_list ap, size_t skip);
