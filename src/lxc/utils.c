@@ -69,7 +69,7 @@ struct prctl_mm_map {
         uint64_t   *auxv;
         uint32_t   auxv_size;
         uint32_t   exe_fd;
-};              
+};
 #endif
 
 #ifndef O_PATH
@@ -1810,4 +1810,56 @@ int lxc_count_file_lines(const char *fn)
 	free(line);
 	fclose(f);
 	return n;
+}
+
+extern void *lxc_mmap_str(void *addr, size_t len, int flags, int fildes,
+			  off_t off, bool *wrote_zero)
+{
+	long pagesize = sysconf(_SC_PAGESIZE);
+	/* An error should not occur. The page size is not allowed to be less
+	 * than 1. Still, let's be paranoid. */
+	if (pagesize <= 0) {
+		SYSERROR("Pagesize for the system cannot be retrieved.");
+		return NULL;
+	}
+
+	/* mmap()ed memory is only \0-terminated when len is a multiple of
+	 * pagesize. If it is not we write a terminating \0-byte to the
+	 * mapping. */
+	if ((len > 0) && ((len % pagesize) == 0)) {
+		if (pwrite(fildes, "", 1, len) <= 0) {
+			SYSERROR("Failed to write terminating \\0-byte to file.");
+			return NULL;
+		}
+		len++;
+		*wrote_zero = true;
+	} else {
+		*wrote_zero = false;
+	}
+
+	return mmap(addr, len, PROT_READ | PROT_WRITE, flags, fildes, off);
+}
+
+extern int lxc_munmap_str(void *addr, size_t len, size_t newlen, int fildes,
+			  bool wrote_zero)
+{
+	int ret, saved_errno;
+
+	if (wrote_zero)
+		ret = munmap(addr, len + 1);
+	else
+		ret = munmap(addr, len);
+
+	if (ret < 0)
+		SYSERROR("Could not remove mapping established via mmap().");
+
+	saved_errno = errno;
+again:
+	if (ftruncate(fildes, newlen) < 0) {
+		if (errno == EINTR)
+			goto again;
+		SYSERROR("Failed to truncate file.");
+	}
+	errno = saved_errno;
+	return ret;
 }

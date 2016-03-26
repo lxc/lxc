@@ -23,6 +23,7 @@ lxc_test_list_SOURCES = list.c
 lxc_test_attach_SOURCES = attach.c
 lxc_test_device_add_remove_SOURCES = device_add_remove.c
 lxc_test_apparmor_SOURCES = aa.c
+lxc_test_utils_lxc_mmap_str_SOURCES = lxc-test-utils-lxc_mmap_str.c
 
 AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
@@ -46,7 +47,7 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-cgpath lxc-test-clonetest lxc-test-console \
 	lxc-test-snapshot lxc-test-concurrent lxc-test-may-control \
 	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove \
-	lxc-test-apparmor
+	lxc-test-apparmor lxc-test-utils_lxc_mmap_str
 
 bin_SCRIPTS = lxc-test-automount lxc-test-autostart lxc-test-cloneconfig \
 	lxc-test-createconfig
@@ -90,6 +91,7 @@ EXTRA_DIST = \
 	lxc-test-symlink \
 	lxc-test-ubuntu \
 	lxc-test-unpriv \
+	lxc-test-utils-lxc_mmap_str.c \
 	may_control.c \
 	saveconfig.c \
 	shutdowntest.c \
