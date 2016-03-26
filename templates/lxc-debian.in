@@ -512,7 +512,7 @@ Options :
   --packages=PACKAGE_NAME1,PACKAGE_NAME2,...
                          List of additional packages to install. Comma separated, without space.
   -c, --clean            only clean up the cache and terminate
-  --main-only            include only Debian's main repository (i.e. no contrib and non-free).
+  --enable-non-free      include also Debian's contrib and non-free repositories.
 
 Environment variables:
 
@@ -525,7 +525,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:r:c -l arch:,clean,help,main-only,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror: -- "$@")
+options=$(getopt -o hp:n:a:r:c -l arch:,clean,help,enable-non-free,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror: -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
         exit 1
@@ -541,6 +541,7 @@ elif [ "$arch" = "armv7l" ]; then
     arch="armhf"
 fi
 hostarch=$arch
+mainonly=1
 
 while true
 do
@@ -550,7 +551,7 @@ do
 
         -a|--arch)            arch=$2; shift 2;;
         -c|--clean)           clean=1; shift 1;;
-           --main-only)       mainonly=1; shift 1;;
+           --enable-non-free) mainonly=0; shift 1;;
            --mirror)          MIRROR=$2; shift 2;;
         -n|--name)            name=$2; shift 2;;
            --packages)        packages=$2; shift 2;;
