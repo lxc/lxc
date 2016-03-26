@@ -39,6 +39,8 @@ export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
 set -e
 
+MIRROR=${MIRROR:-http://archive.ubuntu.com/ubuntu}
+SECURITY_MIRROR=${SECURITY_MIRROR:-http://security.ubuntu.com/ubuntu}
 LOCALSTATEDIR="@LOCALSTATEDIR@"
 LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
 # Allows the lxc-cache directory to be set by environment variable
