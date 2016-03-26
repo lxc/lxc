@@ -2163,27 +2163,22 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 			}
 
 			if (fbuf.st_size != 0) {
-				/* write terminating \0-byte to file */
-				if (pwrite(fd, "", 1, fbuf.st_size) <= 0) {
-					close(fd);
-					goto out;
-				}
-
-				buf = mmap(NULL, fbuf.st_size + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-				if (buf == MAP_FAILED) {
+				bool wrote_zero;
+				buf = lxc_mmap_str(NULL, fbuf.st_size, MAP_SHARED, fd, 0, &wrote_zero);
+				if (!buf || (buf == MAP_FAILED)) {
 					SYSERROR("Failed to create mapping %s", path);
 					close(fd);
 					goto out;
 				}
 
+				// Delete container from lxc_snapshot file.
 				len = strlen(newpath);
 				while ((del = strstr((char *)buf, newpath))) {
 					memmove(del, del + len, strlen(del) - len + 1);
 					bytes += len;
 				}
 
-				munmap(buf, fbuf.st_size + 1);
-				if (ftruncate(fd, fbuf.st_size - bytes) < 0) {
+				if (lxc_munmap_str(buf, fbuf.st_size, fbuf.st_size - bytes, fd, wrote_zero) < 0) {
 					SYSERROR("Failed to truncate file %s", path);
 					close(fd);
 					goto out;
