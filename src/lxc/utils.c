@@ -69,7 +69,7 @@ struct prctl_mm_map {
         uint64_t   *auxv;
         uint32_t   auxv_size;
         uint32_t   exe_fd;
-};              
+};
 #endif
 
 #ifndef O_PATH
@@ -1810,4 +1810,32 @@ int lxc_count_file_lines(const char *fn)
 	free(line);
 	fclose(f);
 	return n;
+}
+
+void *lxc_strmmap(void *addr, size_t length, int prot, int flags, int fd,
+		  off_t offset)
+{
+	void *tmp = NULL, *overlap = NULL;
+
+	/* We establish an anonymous mapping that is one byte larger than the
+	 * underlying file. The pages handed to us are zero filled. */
+	tmp = mmap(addr, length + 1, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (tmp == MAP_FAILED)
+		goto out;
+
+	/* Now we establish a fixed-address mapping starting at the address we
+	 * received from our anonymous mapping and replace all bytes excluding
+	 * the additional \0-byte with the file. This allows us to use normal
+	 * string-handling function. */
+	overlap = mmap(tmp, length, prot, MAP_FIXED | flags, fd, offset);
+	if (overlap == MAP_FAILED)
+		goto out;
+
+out:
+	return overlap;
+}
+
+int lxc_strmunmap(void *addr, size_t length)
+{
+	return munmap(addr, length + 1);
 }
