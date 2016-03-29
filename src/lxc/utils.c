@@ -1812,8 +1812,8 @@ int lxc_count_file_lines(const char *fn)
 	return n;
 }
 
-void *lxc_mmap(void *addr, size_t length, int prot, int flags, int fd,
-	       off_t offset)
+void *lxc_strmmap(void *addr, size_t length, int prot, int flags, int fd,
+		  off_t offset)
 {
 	void *tmp = NULL, *overlap = NULL;
 
@@ -1835,7 +1835,7 @@ out:
 	return overlap;
 }
 
-int lxc_munmap(void *addr, size_t length)
+int lxc_strmunmap(void *addr, size_t length)
 {
 	return munmap(addr, length + 1);
 }

@@ -2164,7 +2164,7 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 
 			if (fbuf.st_size != 0) {
 
-				buf = lxc_mmap(NULL, fbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+				buf = lxc_strmmap(NULL, fbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 				if (buf == MAP_FAILED) {
 					SYSERROR("Failed to create mapping %s", path);
 					close(fd);
@@ -2177,7 +2177,7 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 					bytes += len;
 				}
 
-				lxc_munmap(buf, fbuf.st_size);
+				lxc_strmunmap(buf, fbuf.st_size);
 				if (ftruncate(fd, fbuf.st_size - bytes) < 0) {
 					SYSERROR("Failed to truncate file %s", path);
 					close(fd);
