@@ -23,29 +23,29 @@
 
 #include "config.h"
 
-#include <errno.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/vfs.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <sys/param.h>
-#include <sys/mount.h>
+#include <assert.h>
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <assert.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <sys/mount.h>
+#include <sys/param.h>
 #include <sys/prctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/vfs.h>
+#include <sys/wait.h>
 
-#include "utils.h"
 #include "log.h"
 #include "lxclock.h"
 #include "namespace.h"
+#include "utils.h"
 
 #ifndef PR_SET_MM
 #define PR_SET_MM 35
@@ -1821,17 +1821,16 @@ void *lxc_strmmap(void *addr, size_t length, int prot, int flags, int fd,
 	 * underlying file. The pages handed to us are zero filled. */
 	tmp = mmap(addr, length + 1, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (tmp == MAP_FAILED)
-		goto out;
+		return tmp;
 
 	/* Now we establish a fixed-address mapping starting at the address we
 	 * received from our anonymous mapping and replace all bytes excluding
 	 * the additional \0-byte with the file. This allows us to use normal
-	 * string-handling function. */
+	 * string-handling functions. */
 	overlap = mmap(tmp, length, prot, MAP_FIXED | flags, fd, offset);
 	if (overlap == MAP_FAILED)
-		goto out;
+		munmap(tmp, length + 1);
 
-out:
 	return overlap;
 }
 
