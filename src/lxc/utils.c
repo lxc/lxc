@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/param.h>
@@ -40,12 +41,11 @@
 #include <sys/types.h>
 #include <sys/vfs.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
-#include "utils.h"
 #include "log.h"
 #include "lxclock.h"
 #include "namespace.h"
+#include "utils.h"
 
 #ifndef PR_SET_MM
 #define PR_SET_MM 35
