@@ -82,6 +82,10 @@ struct criu_opts {
 	 * different) on the target host. NULL if lxc.console = "none".
 	 */
 	char *console_name;
+
+    /* Address and port where a criu pageserver ist listening */
+    char *pageserver_address;
+    char *pageserver_port;
 };
 
 static int load_tty_major_minor(char *directory, char *output, int len)
@@ -270,7 +274,15 @@ static void exec_criu(struct criu_opts *opts)
 		if (opts->predump_dir) {
 			DECLARE_ARG("--prev-images-dir");
 			DECLARE_ARG(opts->predump_dir);
-		}
+        }
+
+        if (opts->pageserver_address && opts->pageserver_port) {
+            DECLARE_ARG("--page-server");
+            DECLARE_ARG("--address");
+            DECLARE_ARG(opts->pageserver_address);
+            DECLARE_ARG("--port");
+            DECLARE_ARG(opts->pageserver_port);
+        }
 
 		/* only for final dump */
 		if (strcmp(opts->action, "dump") == 0 && !opts->stop)
@@ -814,7 +826,8 @@ static int save_tty_major_minor(char *directory, struct lxc_container *c, char *
 
 /* do one of either predump or a regular dump */
 static bool do_dump(struct lxc_container *c, char *mode, char *directory,
-		    bool stop, bool verbose, char *predump_dir)
+		    bool stop, bool verbose, char *predump_dir, char *pageserver_address,
+            char *pageserver_port)
 {
 	pid_t pid;
 
@@ -840,7 +853,8 @@ static bool do_dump(struct lxc_container *c, char *mode, char *directory,
 		os.verbose = verbose;
 		os.predump_dir = predump_dir;
 		os.console_name = c->lxc_conf->console.path;
-
+        os.pageserver_address = pageserver_address;
+        os.pageserver_port = pageserver_port;
 		if (save_tty_major_minor(directory, c, os.tty_id, sizeof(os.tty_id)) < 0)
 			exit(1);
 
@@ -872,12 +886,14 @@ static bool do_dump(struct lxc_container *c, char *mode, char *directory,
 	}
 }
 
-bool __criu_pre_dump(struct lxc_container *c, char *directory, bool verbose, char *predump_dir)
+bool __criu_pre_dump(struct lxc_container *c, char *directory, bool verbose, char *predump_dir,
+                     char *pageserver_address, char *pageserver_port)
 {
-	return do_dump(c, "pre-dump", directory, false, verbose, predump_dir);
+	return do_dump(c, "pre-dump", directory, false, verbose, predump_dir, pageserver_address, pageserver_port);
 }
 
-bool __criu_dump(struct lxc_container *c, char *directory, bool stop, bool verbose, char *predump_dir)
+bool __criu_dump(struct lxc_container *c, char *directory, bool stop, bool verbose, char *predump_dir,
+                 char *pageserver_address, char *pageserver_port)
 {
 	char path[PATH_MAX];
 	int ret;
@@ -891,7 +907,7 @@ bool __criu_dump(struct lxc_container *c, char *directory, bool stop, bool verbo
 		return false;
 	}
 
-	return do_dump(c, "dump", directory, stop, verbose, predump_dir);
+	return do_dump(c, "dump", directory, stop, verbose, predump_dir, pageserver_address, pageserver_port);
 }
 
 bool __criu_restore(struct lxc_container *c, char *directory, bool verbose)
