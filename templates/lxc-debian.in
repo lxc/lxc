@@ -502,7 +502,7 @@ Options :
   -p, --path=PATH        directory where config and rootfs of this VM will be kept
   -a, --arch=ARCH        The container architecture. Can be one of: i686, x86_64,
                          amd64, armhf, armel, powerpc. Defaults to host arch.
-  -r, --release=RELEASE  Debian release. Can be one of: squeeze, wheezy, jessie, sid.
+  -r, --release=RELEASE  Debian release. Can be one of: wheezy, jessie, stretch, sid.
                          Defaults to current stable.
   --mirror=MIRROR        Debian mirror to use during installation. Overrides the MIRROR
                          environment variable (see below).
@@ -610,7 +610,7 @@ fi
 
 current_release=`wget ${MIRROR}/dists/stable/Release -O - 2> /dev/null | head |awk '/^Codename: (.*)$/ { print $2; }'`
 release=${release:-${current_release}}
-valid_releases=('squeeze' 'wheezy' 'jessie' 'stretch' 'sid')
+valid_releases=('wheezy' 'jessie' 'stretch' 'sid')
 if [[ ! "${valid_releases[*]}" =~ (^|[^[:alpha:]])$release([^[:alpha:]]|$) ]]; then
     echo "Invalid release ${release}, valid ones are: ${valid_releases[*]}"
     exit 1
