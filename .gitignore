@@ -3,6 +3,7 @@
 *.lo
 *.la
 *.so
+*.so.*
 *.sgml
 *.conf
 *~
