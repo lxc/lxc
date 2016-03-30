@@ -364,10 +364,13 @@ static void exec_criu(struct criu_opts *opts)
 
 	buf[0] = 0;
 	pos = 0;
+
 	for (i = 0; argv[i]; i++) {
-		strncat(buf, argv[i], sizeof(buf) - pos - 1);
-		strncat(buf, " ", sizeof(buf) - pos - 1);
-		pos += strlen(argv[i]);
+		ret = snprintf(buf + pos, sizeof(buf) - pos, "%s ", argv[i]);
+		if (ret < 0 || ret >= sizeof(buf) - pos)
+			goto err;
+		else
+			pos += ret;
 	}
 
 	INFO("execing: %s", buf);
