@@ -882,6 +882,8 @@ struct migrate_opts {
 
 	bool stop; /* stop the container after dump? */
 	char *predump_dir; /* relative to directory above */
+	char *pageserver_address; /* where should memory pages be send? */
+	char *pageserver_port;
 };
 
 /*!

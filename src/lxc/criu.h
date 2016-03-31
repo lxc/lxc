@@ -27,8 +27,8 @@
 
 #include <lxc/lxccontainer.h>
 
-bool __criu_pre_dump(struct lxc_container *c, char *directory, bool verbose, char *predump_dir);
-bool __criu_dump(struct lxc_container *c, char *directory, bool stop, bool verbose, char *predump_dir);
+bool __criu_pre_dump(struct lxc_container *c, char *directory, bool verbose, char *predump_dir, char *pageserver_address, char *pageserver_port);
+bool __criu_dump(struct lxc_container *c, char *directory, bool stop, bool verbose, char *predump_dir, char *pageserver_address, char *pageserver_port);
 bool __criu_restore(struct lxc_container *c, char *directory, bool verbose);
 
 #endif
