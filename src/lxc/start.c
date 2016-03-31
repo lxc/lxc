@@ -790,7 +790,7 @@ static int do_start(void *data)
 	}
 	#endif
 
-	ret = sprintf(path, "%s/dev/null", handler->conf->rootfs.mount);
+	ret = snprintf(path, sizeof(path), "%s/dev/null", handler->conf->rootfs.mount);
 	if (ret < 0 || ret >= sizeof(path)) {
 		SYSERROR("sprintf'd too many chars");
 		goto out_warn_father;
