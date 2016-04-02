@@ -616,8 +616,13 @@ static int btrfs_recursive_destroy(const char *path)
 		ret = ioctl(fd, BTRFS_IOC_TREE_SEARCH, &args);
 		if (ret < 0) {
 			close(fd);
-			ERROR("Error: can't perform the search under %s\n", path);
 			free_btrfs_tree(tree);
+			if (errno == EPERM || errno == EACCES) {
+				WARN("Warn: can't perform the search under %s. Will simply try removing", path);
+				goto ignore_search;
+			}
+
+			ERROR("Error: can't perform the search under %s\n", path);
 			return -1;
 		}
 		if (sk->nr_items == 0)
