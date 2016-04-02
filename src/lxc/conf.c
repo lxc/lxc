@@ -4142,6 +4142,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->console.log_path);
 	free(conf->console.path);
 	free(conf->rootfs.mount);
+	free(conf->rootfs.bdev);
 	free(conf->rootfs.options);
 	free(conf->rootfs.path);
 	free(conf->logfile);

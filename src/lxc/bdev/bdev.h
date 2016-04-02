@@ -146,4 +146,6 @@ bool rootfs_is_blockdev(struct lxc_conf *conf);
 bool attach_block_device(struct lxc_conf *conf);
 void detach_block_device(struct lxc_conf *conf);
 
+bool is_valid_bdev_type(const char *type);
+
 #endif // __LXC_BDEV_H
