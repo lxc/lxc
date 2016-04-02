@@ -201,7 +201,7 @@ static const struct bdev_type bdevs[] = {
 static const size_t numbdevs = sizeof(bdevs) / sizeof(struct bdev_type);
 
 /* helpers */
-static const struct bdev_type *bdev_query(const char *src);
+static const struct bdev_type *bdev_query(struct lxc_conf *conf, const char *src);
 static struct bdev *bdev_get(const char *type);
 static struct bdev *do_bdev_create(const char *dest, const char *type,
 		const char *cname, struct bdev_specs *specs);
@@ -542,7 +542,7 @@ struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst,
 	if (!src)
 		return NULL;
 
-	q = bdev_query(src);
+	q = bdev_query(conf, src);
 	if (!q)
 		return NULL;
 
@@ -794,7 +794,7 @@ bool rootfs_is_blockdev(struct lxc_conf *conf)
 	ret = stat(conf->rootfs.path, &st);
 	if (ret == 0 && S_ISBLK(st.st_mode))
 		return true;
-	q = bdev_query(conf->rootfs.path);
+	q = bdev_query(conf, conf->rootfs.path);
 	if (!q)
 		return false;
 	if (strcmp(q->name, "lvm") == 0 ||
@@ -841,9 +841,26 @@ static struct bdev *bdev_get(const char *type)
 	return bdev;
 }
 
-static const struct bdev_type *bdev_query(const char *src)
+static const struct bdev_type *get_bdev_by_name(const char *name)
 {
 	int i;
+
+	for (i = 0; i < numbdevs; i++) {
+		if (strcmp(bdevs[i].name, name) == 0)
+			return &bdevs[i];
+	}
+
+	ERROR("Backing store %s unknown but not caught earlier\n", name);
+	return NULL;
+}
+
+static const struct bdev_type *bdev_query(struct lxc_conf *conf, const char *src)
+{
+	int i;
+
+	if (conf->rootfs.bdev)
+		return get_bdev_by_name(conf->rootfs.bdev);
+
 	for (i = 0; i < numbdevs; i++) {
 		int r;
 		r = bdevs[i].ops->detect(src);
