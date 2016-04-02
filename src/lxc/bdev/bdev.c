@@ -858,8 +858,8 @@ static const struct bdev_type *bdev_query(struct lxc_conf *conf, const char *src
 {
 	int i;
 
-	if (conf->rootfs.bdev)
-		return get_bdev_by_name(conf->rootfs.bdev);
+	if (conf->rootfs.bdev_type)
+		return get_bdev_by_name(conf->rootfs.bdev_type);
 
 	for (i = 0; i < numbdevs; i++) {
 		int r;
