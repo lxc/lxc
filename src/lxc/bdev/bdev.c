@@ -954,3 +954,18 @@ static bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
 		return true;
 	return false;
 }
+
+bool is_valid_bdev_type(const char *type)
+{
+	if (strcmp(type, "dir") == 0 ||
+			strcmp(type, "btrfs") == 0 ||
+			strcmp(type, "aufs") == 0 ||
+			strcmp(type, "loop") == 0 ||
+			strcmp(type, "lvm") == 0 ||
+			strcmp(type, "nbd") == 0 ||
+			strcmp(type, "ovl") == 0 ||
+			strcmp(type, "rbd") == 0 ||
+			strcmp(type, "zfs") == 0)
+		return true;
+	return false;
+}

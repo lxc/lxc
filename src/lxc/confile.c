@@ -42,6 +42,7 @@
 #include "parse.h"
 #include "config.h"
 #include "confile.h"
+#include "bdev/bdev.h"
 #include "utils.h"
 #include "log.h"
 #include "conf.h"
@@ -72,6 +73,7 @@ static int config_fstab(const char *, const char *, struct lxc_conf *);
 static int config_rootfs(const char *, const char *, struct lxc_conf *);
 static int config_rootfs_mount(const char *, const char *, struct lxc_conf *);
 static int config_rootfs_options(const char *, const char *, struct lxc_conf *);
+static int config_rootfs_bdev(const char *, const char *, struct lxc_conf *);
 static int config_pivotdir(const char *, const char *, struct lxc_conf *);
 static int config_utsname(const char *, const char *, struct lxc_conf *);
 static int config_hook(const char *, const char *, struct lxc_conf *lxc_conf);
@@ -130,6 +132,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.mount",                config_fstab                },
 	{ "lxc.rootfs.mount",         config_rootfs_mount         },
 	{ "lxc.rootfs.options",       config_rootfs_options       },
+	{ "lxc.rootfs.bdev",          config_rootfs_bdev          },
 	{ "lxc.rootfs",               config_rootfs               },
 	{ "lxc.pivotdir",             config_pivotdir             },
 	{ "lxc.utsname",              config_utsname              },
@@ -1851,6 +1854,17 @@ static int config_rootfs_options(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	return config_string_item(&lxc_conf->rootfs.options, value);
+}
+
+static int config_rootfs_bdev(const char *key, const char *value,
+			       struct lxc_conf *lxc_conf)
+{
+	if (!is_valid_bdev_type(value)) {
+		ERROR("Bad bdev type for %s: %s", key, value);
+		return -1;
+	}
+
+	return config_string_item(&lxc_conf->rootfs.bdev, value);
 }
 
 static int config_pivotdir(const char *key, const char *value,
