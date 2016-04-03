@@ -73,7 +73,7 @@ static int config_fstab(const char *, const char *, struct lxc_conf *);
 static int config_rootfs(const char *, const char *, struct lxc_conf *);
 static int config_rootfs_mount(const char *, const char *, struct lxc_conf *);
 static int config_rootfs_options(const char *, const char *, struct lxc_conf *);
-static int config_rootfs_bdev_type(const char *, const char *, struct lxc_conf *);
+static int config_rootfs_backend(const char *, const char *, struct lxc_conf *);
 static int config_pivotdir(const char *, const char *, struct lxc_conf *);
 static int config_utsname(const char *, const char *, struct lxc_conf *);
 static int config_hook(const char *, const char *, struct lxc_conf *lxc_conf);
@@ -132,7 +132,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.mount",                config_fstab                },
 	{ "lxc.rootfs.mount",         config_rootfs_mount         },
 	{ "lxc.rootfs.options",       config_rootfs_options       },
-	{ "lxc.rootfs.bdev",          config_rootfs_bdev_type     },
+	{ "lxc.rootfs.backend",       config_rootfs_backend       },
 	{ "lxc.rootfs",               config_rootfs               },
 	{ "lxc.pivotdir",             config_pivotdir             },
 	{ "lxc.utsname",              config_utsname              },
@@ -1856,7 +1856,7 @@ static int config_rootfs_options(const char *key, const char *value,
 	return config_string_item(&lxc_conf->rootfs.options, value);
 }
 
-static int config_rootfs_bdev_type(const char *key, const char *value,
+static int config_rootfs_backend(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	if (strlen(value) == 0) {
@@ -1864,7 +1864,7 @@ static int config_rootfs_bdev_type(const char *key, const char *value,
 		lxc_conf->rootfs.bdev_type = NULL;
 	}
 	if (!is_valid_bdev_type(value)) {
-		ERROR("Bad bdev type for %s: %s", key, value);
+		ERROR("Bad rootfs.backend: '%s'", value);
 		return -1;
 	}
 
@@ -2492,7 +2492,7 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->console.path;
 	else if (strcmp(key, "lxc.rootfs.mount") == 0)
 		v = c->rootfs.mount;
-	else if (strcmp(key, "lxc.rootfs.bdev") == 0)
+	else if (strcmp(key, "lxc.rootfs.backend") == 0)
 		v = c->rootfs.bdev_type;
 	else if (strcmp(key, "lxc.rootfs.options") == 0)
 		v = c->rootfs.options;
