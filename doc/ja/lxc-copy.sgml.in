@@ -219,7 +219,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  <varlistentry>
 	    <term> <option>-s,--snapshot </option> </term>
 	   <listitem>
-            <para><!-- Create a snapshot of the orginal container. The backing
+            <para><!-- Create a snapshot of the original container. The backing
             storage for the copy must support snapshots. This currently includes
             aufs, btrfs, lvm, overlay, and zfs. -->
 	      元のコンテナのスナップショットを作成します。コピー先のバッキングストレージがスナップショットをサポートしている必要があります。現時点では aufs、btrfs、lvm、overlay、zfs が対象となります。

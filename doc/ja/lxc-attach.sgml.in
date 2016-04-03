@@ -435,7 +435,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       network/pid namespace context of the attached process. In order
       not to interfere with the host's actual filesystem, the mount
       namespace will be unshared (like <command>lxc-unshare</command>
-      does) before this is done, esentially giving the process a new
+      does) before this is done, essentially giving the process a new
       mount namespace, which is identical to the hosts's mount namespace
       except for the <replaceable>/proc</replaceable> and
       <replaceable>/sys</replaceable> filesystems.

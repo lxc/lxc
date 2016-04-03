@@ -76,7 +76,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <listitem>
           <para>
             Print a configuration key from the container. This option
-            may be given mulitple times to print out multiple key = value pairs.
+            may be given multiple times to print out multiple key = value pairs.
           </para>
         </listitem>
       </varlistentry>

@@ -86,7 +86,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
           <para>
             <!--
             Print a configuration key from the container. This option
-            may be given mulitple times to print out multiple key = value pairs.
+            may be given multiple times to print out multiple key = value pairs.
             -->
             컨테이너의 설정값을 표시한다. 이 옵션은 1개 이상의 key = value 쌍을 표시할 수 있다.
           </para>
