@@ -1859,6 +1859,10 @@ static int config_rootfs_options(const char *key, const char *value,
 static int config_rootfs_bdev_type(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
+	if (strlen(value) == 0) {
+		free(lxc_conf->rootfs.bdev_type);
+		lxc_conf->rootfs.bdev_type = NULL;
+	}
 	if (!is_valid_bdev_type(value)) {
 		ERROR("Bad bdev type for %s: %s", key, value);
 		return -1;
@@ -2488,6 +2492,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->console.path;
 	else if (strcmp(key, "lxc.rootfs.mount") == 0)
 		v = c->rootfs.mount;
+	else if (strcmp(key, "lxc.rootfs.bdev") == 0)
+		v = c->rootfs.bdev_type;
 	else if (strcmp(key, "lxc.rootfs.options") == 0)
 		v = c->rootfs.options;
 	else if (strcmp(key, "lxc.rootfs") == 0)
