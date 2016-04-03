@@ -1720,7 +1720,7 @@ static int btrfs_recursive_destroy(const char *path)
 	struct btrfs_ioctl_search_header *sh;
 	struct btrfs_root_ref *ref;
 	struct my_btrfs_tree *tree;
-	int ret, i;
+	int ret, e, i;
 	unsigned long off = 0;
 	int name_len;
 	char *name;
@@ -1733,8 +1733,9 @@ static int btrfs_recursive_destroy(const char *path)
 	}
 
 	if (btrfs_list_get_path_rootid(fd, &root_id)) {
+		e = errno;
 		close(fd);
-		if (errno == EPERM || errno == EACCES) {
+		if (e == EPERM || e == EACCES) {
 			WARN("Will simply try removing");
 			goto ignore_search;
 		}
@@ -1765,10 +1766,11 @@ static int btrfs_recursive_destroy(const char *path)
 
 	while(1) {
 		ret = ioctl(fd, BTRFS_IOC_TREE_SEARCH, &args);
+		e = errno;
 		if (ret < 0) {
 			close(fd);
 			free_btrfs_tree(tree);
-			if (errno == EPERM || errno == EACCES) {
+			if (e == EPERM || e == EACCES) {
 				WARN("Warn: can't perform the search under %s. Will simply try removing", path);
 				goto ignore_search;
 			}
