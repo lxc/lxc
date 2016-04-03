@@ -1091,6 +1091,20 @@ proc proc proc nodev,noexec,nosuid 0 0
           </listitem>
         </varlistentry>
 
+        <varlistentry>
+          <term>
+            <option>lxc.rootfs.backend</option>
+          </term>
+          <listitem>
+            <para>
+              specify the rootfs backend type to use, for instance 'dir' or
+	      'zfs'.  While this can be guessed by lxc at container startup,
+	      doing so takes time.  Specifying it here avoids extra
+	      processing.
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 
