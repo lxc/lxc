@@ -214,7 +214,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	   <listitem>
             <para>
             <!--
-            Create a snapshot of the orginal container. The backing
+            Create a snapshot of the original container. The backing
             storage for the copy must support snapshots. This currently includes
             aufs, btrfs, lvm, overlay, and zfs.
             -->
