@@ -1505,6 +1505,23 @@ proc proc proc nodev,noexec,nosuid 0 0
 	  </listitem>
 	</varlistentry>
 
+        <varlistentry>
+          <term>
+            <option>lxc.rootfs.backend</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              specify the rootfs backend type to use, for instance 'dir' or
+              'zfs'.  While this can be guessed by lxc at container startup,
+              doing so takes time.  Specifying it here avoids extra
+              processing.
+              -->
+              사용하고자 하는 백엔드 루트파일 시스템의 종류를 지정한다. 'dir' 또는 'zfs'로 지정할 수 있다. 컨테이너 시작시 어떤 종류인지 추정하는 동안, 시간이 소요될 수 있다. 이 값을 지정함으로써 추가적인 처리를 피할 수 있다.
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 
