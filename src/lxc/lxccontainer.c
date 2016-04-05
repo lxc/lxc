@@ -1037,6 +1037,7 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 	}
 
 	do_lxcapi_set_config_item(c, "lxc.rootfs", bdev->src);
+	do_lxcapi_set_config_item(c, "lxc.rootfs.backend", bdev->type);
 
 	/* if we are not root, chown the rootfs dir to root in the
 	 * target uidmap */
@@ -1076,7 +1077,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 	}
 
 	if (pid == 0) { // child
-		char *patharg, *namearg, *rootfsarg, *src;
+		char *patharg, *namearg, *rootfsarg;
 		struct bdev *bdev = NULL;
 		int i;
 		int ret, len, nargs = 0;
@@ -1087,18 +1088,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			exit(1);
 		}
 
-		src = c->lxc_conf->rootfs.path;
-		/*
-		 * for an overlay create, what the user wants is the template to fill
-		 * in what will become the readonly lower layer.  So don't mount for
-		 * the template
-		 */
-		if (strncmp(src, "overlayfs:", 10) == 0)
-			src = ovl_getlower(src+10);
-		if (strncmp(src, "aufs:", 5) == 0)
-			src = ovl_getlower(src+5);
-
-		bdev = bdev_init(c->lxc_conf, src, c->lxc_conf->rootfs.mount, NULL);
+		bdev = bdev_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 		if (!bdev) {
 			ERROR("Error opening rootfs");
 			exit(1);
