@@ -2845,6 +2845,8 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 	}
 	free(c->lxc_conf->rootfs.path);
 	c->lxc_conf->rootfs.path = strdup(bdev->src);
+	free(c->lxc_conf->rootfs.bdev_type);
+	c->lxc_conf->rootfs.bdev_type = strdup(bdev->type);
 	bdev_put(bdev);
 	if (!c->lxc_conf->rootfs.path) {
 		ERROR("Out of memory while setting storage path");
@@ -2853,6 +2855,11 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 	// We will simply append a new lxc.rootfs entry to the unexpanded config
 	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs", false);
 	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.rootfs", c->lxc_conf->rootfs.path)) {
+		ERROR("Error saving new rootfs to cloned config");
+		return -1;
+	}
+	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs.backend", false);
+	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.rootfs.backend", c->lxc_conf->rootfs.bdev_type)) {
 		ERROR("Error saving new rootfs to cloned config");
 		return -1;
 	}
