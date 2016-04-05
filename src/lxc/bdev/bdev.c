@@ -980,7 +980,7 @@ bool is_valid_bdev_type(const char *type)
 			strcmp(type, "loop") == 0 ||
 			strcmp(type, "lvm") == 0 ||
 			strcmp(type, "nbd") == 0 ||
-			strcmp(type, "ovl") == 0 ||
+			strcmp(type, "overlayfs") == 0 ||
 			strcmp(type, "rbd") == 0 ||
 			strcmp(type, "zfs") == 0)
 		return true;
