@@ -2829,7 +2829,8 @@ bool should_default_to_snapshot(struct lxc_container *c0,
 }
 
 static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
-		const char *newtype, int flags, const char *bdevdata, uint64_t newsize)
+			const char *newtype, int flags, const char *bdevdata,
+			uint64_t newsize)
 {
 	struct bdev *bdev;
 	int need_rdep;
@@ -2837,38 +2838,53 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 	if (should_default_to_snapshot(c0, c))
 		flags |= LXC_CLONE_SNAPSHOT;
 
-	bdev = bdev_copy(c0, c->name, c->config_path, newtype, flags,
-			bdevdata, newsize, &need_rdep);
+	bdev = bdev_copy(c0, c->name, c->config_path, newtype, flags, bdevdata,
+			 newsize, &need_rdep);
 	if (!bdev) {
-		ERROR("Error copying storage");
+		ERROR("Error copying storage.");
 		return -1;
 	}
+
+	/* Set new rootfs. */
 	free(c->lxc_conf->rootfs.path);
 	c->lxc_conf->rootfs.path = strdup(bdev->src);
+
+	/* Set new bdev type. */
 	free(c->lxc_conf->rootfs.bdev_type);
 	c->lxc_conf->rootfs.bdev_type = strdup(bdev->type);
 	bdev_put(bdev);
+
 	if (!c->lxc_conf->rootfs.path) {
-		ERROR("Out of memory while setting storage path");
+		ERROR("Out of memory while setting storage path.");
 		return -1;
 	}
-	// We will simply append a new lxc.rootfs entry to the unexpanded config
+	if (!c->lxc_conf->rootfs.bdev_type) {
+		ERROR("Out of memory while setting rootfs backend.");
+		return -1;
+	}
+
+	/* Append a new lxc.rootfs entry to the unexpanded config. */
 	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs", false);
-	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.rootfs", c->lxc_conf->rootfs.path)) {
-		ERROR("Error saving new rootfs to cloned config");
+	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.rootfs",
+					 c->lxc_conf->rootfs.path)) {
+		ERROR("Error saving new rootfs to cloned config.");
 		return -1;
 	}
+
+	/* Append a new lxc.rootfs.backend entry to the unexpanded config. */
 	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs.backend", false);
-	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.rootfs.backend", c->lxc_conf->rootfs.bdev_type)) {
-		ERROR("Error saving new rootfs to cloned config");
+	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.rootfs.backend",
+					 c->lxc_conf->rootfs.bdev_type)) {
+		ERROR("Error saving new rootfs backend to cloned config.");
 		return -1;
 	}
+
 	if (flags & LXC_CLONE_SNAPSHOT)
 		copy_rdepends(c, c0);
 	if (need_rdep) {
 		if (!add_rdepends(c, c0))
 			WARN("Error adding reverse dependency from %s to %s",
-				c->name, c0->name);
+			     c->name, c0->name);
 	}
 
 	mod_all_rdeps(c, true);
