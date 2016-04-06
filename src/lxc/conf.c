@@ -719,6 +719,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 			}
 			if (!default_mounts[i].destination) {
 				ERROR("BUG: auto mounts destination %d was NULL", i);
+				free(source);
 				return -1;
 			}
 			/* will act like strdup if %r is not present */
