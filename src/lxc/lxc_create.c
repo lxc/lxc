@@ -17,21 +17,20 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <lxc/lxccontainer.h>
-
-#include <stdio.h>
-#include <libgen.h>
-#include <unistd.h>
 #include <ctype.h>
 #include <fcntl.h>
-#include <sys/types.h>
+#include <libgen.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <lxc/lxccontainer.h>
+#include <sys/types.h>
 
-#include "lxc.h"
-#include "log.h"
-#include "bdev/bdev.h"
 #include "arguments.h"
+#include "log.h"
+#include "lxc.h"
 #include "utils.h"
+#include "bdev/bdev.h"
 
 lxc_log_define(lxc_create_ui, lxc);
 
@@ -103,7 +102,8 @@ static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
 };
 
-static void create_helpfn(const struct lxc_arguments *args) {
+static void create_helpfn(const struct lxc_arguments *args)
+{
 	char *argv[3], *path;
 	pid_t pid;
 
@@ -121,9 +121,10 @@ static void create_helpfn(const struct lxc_arguments *args) {
 	argv[0] = path;
 	argv[1] = "-h";
 	argv[2] = NULL;
+
 	execv(path, argv);
 	ERROR("Error executing %s -h", path);
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 static struct lxc_arguments my_args = {
@@ -210,20 +211,20 @@ int main(int argc, char *argv[])
 	int flags = 0;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		exit(1);
+		exit(EXIT_FAILURE);
 
 	if (!my_args.log_file)
 		my_args.log_file = "none";
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		exit(1);
+		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();
 
 	if (!my_args.template) {
 		fprintf(stderr, "A template must be specified.\n");
 		fprintf(stderr, "Use \"none\" if you really want a container without a rootfs.\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (strcmp(my_args.template, "none") == 0)
@@ -232,36 +233,44 @@ int main(int argc, char *argv[])
 	memset(&spec, 0, sizeof(spec));
 	if (!my_args.bdevtype)
 		my_args.bdevtype = "_unset";
+
 	if (!validate_bdev_args(&my_args))
-		exit(1);
+		exit(EXIT_FAILURE);
 
 	if (strcmp(my_args.bdevtype, "none") == 0)
 		my_args.bdevtype = "dir";
 
+	// Final check whether the user gave use a valid bdev type.
+	if (!is_valid_bdev_type(my_args.bdevtype) && strcmp(my_args.bdevtype, "_unset")) {
+		fprintf(stderr, "%s is not a valid backing storage type.\n", my_args.bdevtype);
+		exit(EXIT_FAILURE);
+	}
+
 	if (geteuid()) {
 		if (mkdir_p(my_args.lxcpath[0], 0755)) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		if (access(my_args.lxcpath[0], O_RDWR) < 0) {
 			fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		if (strcmp(my_args.bdevtype, "dir") && strcmp(my_args.bdevtype, "_unset") &&
 				strcmp(my_args.bdevtype, "btrfs")) {
 			fprintf(stderr, "Unprivileged users cannot create %s containers", my_args.bdevtype);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
-		fprintf(stderr, "System error loading container\n");
-		exit(1);
+		fprintf(stderr, "Failed to create lxc container.\n");
+		exit(EXIT_FAILURE);
 	}
 	if (c->is_defined(c)) {
+		lxc_container_put(c);
 		fprintf(stderr, "Container already exists\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	if (my_args.configfile)
 		c->load_config(c, my_args.configfile);
@@ -273,11 +282,12 @@ int main(int argc, char *argv[])
 	if (my_args.fssize)
 		spec.fssize = my_args.fssize;
 
-	if (strcmp(my_args.bdevtype, "zfs") == 0 || strcmp(my_args.bdevtype, "best") == 0) {
+	if ((strcmp(my_args.bdevtype, "zfs") == 0) || (strcmp(my_args.bdevtype, "best") == 0)) {
 		if (my_args.zfsroot)
 			spec.zfs.zfsroot = my_args.zfsroot;
 	}
-	if (strcmp(my_args.bdevtype, "lvm") == 0 || strcmp(my_args.bdevtype, "best") == 0) {
+
+	if ((strcmp(my_args.bdevtype, "lvm") == 0) || (strcmp(my_args.bdevtype, "best") == 0)) {
 		if (my_args.lvname)
 			spec.lvm.lv = my_args.lvname;
 		if (my_args.vgname)
@@ -285,25 +295,30 @@ int main(int argc, char *argv[])
 		if (my_args.thinpool)
 			spec.lvm.thinpool = my_args.thinpool;
 	}
-	if (strcmp(my_args.bdevtype, "rbd") == 0 || strcmp(my_args.bdevtype, "best") == 0) {
+
+	if ((strcmp(my_args.bdevtype, "rbd") == 0) || (strcmp(my_args.bdevtype, "best") == 0)) {
 		if (my_args.rbdname)
 			spec.rbd.rbdname = my_args.rbdname;
 		if (my_args.rbdpool)
 			spec.rbd.rbdpool = my_args.rbdpool;
 	}
-	if (my_args.dir) {
+
+	if (my_args.dir)
 		spec.dir = my_args.dir;
-	}
 
 	if (strcmp(my_args.bdevtype, "_unset") == 0)
 		my_args.bdevtype = NULL;
+
 	if (my_args.quiet)
 		flags = LXC_CREATE_QUIET;
+
 	if (!c->create(c, my_args.template, my_args.bdevtype, &spec, flags, &argv[optind])) {
 		ERROR("Error creating container %s", c->name);
 		lxc_container_put(c);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
+
+	lxc_container_put(c);
 	INFO("container %s created", c->name);
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
