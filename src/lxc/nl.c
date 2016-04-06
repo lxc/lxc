@@ -265,6 +265,7 @@ extern int netlink_open(struct nl_handler *handler, int protocol)
 	socklen_t socklen;
 	int sndbuf = 32768;
 	int rcvbuf = 32768;
+	int err;
 
 	memset(handler, 0, sizeof(*handler));
 
@@ -274,11 +275,11 @@ extern int netlink_open(struct nl_handler *handler, int protocol)
 
 	if (setsockopt(handler->fd, SOL_SOCKET, SO_SNDBUF,
 		       &sndbuf, sizeof(sndbuf)) < 0)
-		return -errno;
+		goto err_with_errno;
 
 	if (setsockopt(handler->fd, SOL_SOCKET, SO_RCVBUF,
 		       &rcvbuf,sizeof(rcvbuf)) < 0)
-		return -errno;
+		goto err_with_errno;
 
 	memset(&handler->local, 0, sizeof(handler->local));
 	handler->local.nl_family = AF_NETLINK;
@@ -286,22 +287,31 @@ extern int netlink_open(struct nl_handler *handler, int protocol)
 
 	if (bind(handler->fd, (struct sockaddr*)&handler->local,
 		 sizeof(handler->local)) < 0)
-		return -errno;
+		goto err_with_errno;
 
 	socklen = sizeof(handler->local);
 	if (getsockname(handler->fd, (struct sockaddr*)&handler->local,
 			&socklen) < 0)
-		return -errno;
+		goto err_with_errno;
 
-	if (socklen != sizeof(handler->local))
-		return -EINVAL;
+	if (socklen != sizeof(handler->local)) {
+		err = -EINVAL;
+		goto errclose;
+	}
 
-	if (handler->local.nl_family != AF_NETLINK)
-		return -EINVAL;
+	if (handler->local.nl_family != AF_NETLINK) {
+		err = -EINVAL;
+		goto errclose;
+	}
 
 	handler->seq = time(NULL);
 
 	return 0;
+err_with_errno:
+	err = -errno;
+errclose:
+	close(handler->fd);
+	return err;
 }
 
 extern int netlink_close(struct nl_handler *handler)
