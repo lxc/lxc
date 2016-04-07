@@ -118,9 +118,9 @@ struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
 		return NULL;
 
 	memset(ts, 0, sizeof(*ts));
-	ts->stdinfd  = srcfd;
+	ts->stdinfd = srcfd;
 	ts->masterfd = dstfd;
-	ts->sigfd    = -1;
+	ts->sigfd = -1;
 
 	/* add tty to list to be scanned at SIGWINCH time */
 	lxc_list_add_elem(&ts->node, ts);
@@ -129,26 +129,20 @@ struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGWINCH);
 	if (sigprocmask(SIG_BLOCK, &mask, &ts->oldmask)) {
-		SYSERROR("failed to block SIGWINCH");
-		goto err1;
+		SYSERROR("failed to block SIGWINCH.");
+		ts->sigfd = -1;
+		return ts;
 	}
 
 	ts->sigfd = signalfd(-1, &mask, 0);
 	if (ts->sigfd < 0) {
-		SYSERROR("failed to get signalfd");
-		goto err2;
+		SYSERROR("failed to get signalfd.");
+		sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
+		ts->sigfd = -1;
+		return ts;
 	}
 
 	DEBUG("%d got SIGWINCH fd %d", getpid(), ts->sigfd);
-	goto out;
-
-err2:
-	sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
-err1:
-	lxc_list_del(&ts->node);
-	free(ts);
-	ts = NULL;
-out:
 	return ts;
 }
 
@@ -207,7 +201,7 @@ static void lxc_console_mainloop_add_peer(struct lxc_console *console)
 			WARN("console peer not added to mainloop");
 	}
 
-	if (console->tty_state) {
+	if (console->tty_state && console->tty_state->sigfd != -1) {
 		if (lxc_mainloop_add_handler(console->descr,
 					     console->tty_state->sigfd,
 					     lxc_console_cb_sigwinch_fd,
@@ -291,7 +285,7 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 
 static void lxc_console_peer_proxy_free(struct lxc_console *console)
 {
-	if (console->tty_state) {
+	if (console->tty_state && console->tty_state->sigfd != -1) {
 		lxc_console_sigwinch_fini(console->tty_state);
 		console->tty_state = NULL;
 	}
@@ -446,9 +440,11 @@ static void lxc_console_peer_default(struct lxc_console *console)
 		goto err1;
 
 	ts = lxc_console_sigwinch_init(console->peer, console->master);
-	if (!ts)
-		WARN("Unable to install SIGWINCH");
 	console->tty_state = ts;
+	if (!ts) {
+		WARN("Unable to install SIGWINCH");
+		goto err1;
+	}
 
 	lxc_console_winsz(console->peer, console->master);
 
@@ -471,6 +467,7 @@ err1:
 	console->peer = -1;
 out:
 	DEBUG("no console peer");
+	return;
 }
 
 void lxc_console_delete(struct lxc_console *console)
@@ -695,11 +692,13 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		goto err3;
 	}
 
-	ret = lxc_mainloop_add_handler(&descr, ts->sigfd,
-				       lxc_console_cb_sigwinch_fd, ts);
-	if (ret) {
-		ERROR("failed to add handler for SIGWINCH fd");
-		goto err4;
+	if (ts->sigfd != -1) {
+		ret = lxc_mainloop_add_handler(&descr, ts->sigfd,
+				lxc_console_cb_sigwinch_fd, ts);
+		if (ret) {
+			ERROR("failed to add handler for SIGWINCH fd");
+			goto err4;
+		}
 	}
 
 	ret = lxc_mainloop_add_handler(&descr, ts->stdinfd,
@@ -727,7 +726,8 @@ int lxc_console(struct lxc_container *c, int ttynum,
 err4:
 	lxc_mainloop_close(&descr);
 err3:
-	lxc_console_sigwinch_fini(ts);
+	if (ts->sigfd != -1)
+		lxc_console_sigwinch_fini(ts);
 err2:
 	close(masterfd);
 	close(ttyfd);

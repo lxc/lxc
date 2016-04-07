@@ -264,7 +264,6 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 	 * always do the correct thing. strdup() must be used since console.path
 	 * is free()ed when we call lxc_container_put(). */
 	free(conf->console.path);
-	conf->console.path = NULL;
 	conf->console.path = strdup("/dev/tty");
 	if (!conf->console.path)
 		return -1;
@@ -326,12 +325,17 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 		goto err2;
 	}
 
-	/* Register sigwinch handler in mainloop. */
-	ret = lxc_mainloop_add_handler(&descr, ts->sigfd,
-			lxc_console_cb_sigwinch_fd, ts);
-	if (ret) {
-		ERROR("failed to add handler for SIGWINCH fd");
-		goto err3;
+	/* Register sigwinch handler in mainloop. When ts->sigfd == -1 it means
+	 * we weren't able to install a sigwinch handler in
+	 * lxc_console_create(). We don't consider this fatal and just move on.
+	 */
+	if (ts->sigfd != -1) {
+		ret = lxc_mainloop_add_handler(&descr, ts->sigfd,
+				lxc_console_cb_sigwinch_fd, ts);
+		if (ret) {
+			ERROR("failed to add handler for SIGWINCH fd");
+			goto err3;
+		}
 	}
 
 	/* Register i/o callbacks in mainloop. */
@@ -359,7 +363,8 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 err3:
 	lxc_mainloop_close(&descr);
 err2:
-	lxc_console_sigwinch_fini(ts);
+	if (ts->sigfd != -1)
+		lxc_console_sigwinch_fini(ts);
 err1:
 	lxc_console_delete(&conf->console);
 
