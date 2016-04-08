@@ -64,6 +64,7 @@ static const struct option my_longopts[] = {
 	{"keep-env", no_argument, 0, 501},
 	{"keep-var", required_argument, 0, 502},
 	{"set-var", required_argument, 0, 'v'},
+	{"pty-log", required_argument, 0, 'L'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -149,6 +150,9 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 			return -1;
 		}
 		break;
+	case 'L':
+		args->console_log = arg;
+		break;
 	}
 
 	return 0;
@@ -191,6 +195,8 @@ Options :\n\
       --keep-env    Keep all current environment variables. This\n\
                     is the current default behaviour, but is likely to\n\
                     change in the future.\n\
+  -L, --pty-log=FILE\n\
+		    Log pty output to FILE\n\
   -v, --set-var     Set an additional variable that is seen by the\n\
                     attached program in the container. May be specified\n\
                     multiple times.\n\
@@ -254,7 +260,10 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 
 	conf = c->lxc_conf;
 	free(conf->console.log_path);
-	conf->console.log_path = NULL;
+	if (my_args.console_log)
+		conf->console.log_path = strdup(my_args.console_log);
+	else
+		conf->console.log_path = NULL;
 
 	/* In the case of lxc-attach our peer pty will always be the current
 	 * controlling terminal. We clear whatever was set by the user for
@@ -272,39 +281,6 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 	if (lxc_console_create(conf) < 0)
 		return -1;
 	ts = conf->console.tty_state;
-	/*
-	 * We need to make sure that the ouput that is produced inside the
-	 * container is received on the host. Suppose we want to run
-	 *
-	 *	lxc-attach -n a -- /bin/sh -c 'hostname >&2' > /dev/null
-	 *
-	 * This command produces output on stderr inside the container. On the
-	 * host we close stdout by redirecting it to /dev/null. But stderr is,
-	 * as expected, still connected to a tty. We receive the output produced
-	 * on stderr in the container on stderr on the host.
-	 *
-	 * For the command
-	 *
-	 *	lxc-attach -n a -- /bin/sh -c 'hostname >&2' 2> /dev/null
-	 *
-	 * the logic is analogous but because we now have closed stderr on the
-	 * host no output will be received.
-	 *
-	 * Finally, imagine a more complicated case
-	 *
-	 *	lxc-attach -n a -- /bin/sh -c 'echo OUT; echo ERR >&2' > /tmp/out 2> /tmp/err
-	 *
-	 * Here, we produce output in the container on stdout and stderr. On the
-	 * host we redirect stdout and stderr to files. Because of that stdout
-	 * and stderr are not dup2()ed. Thus, they are not connected to a pty
-	 * and output on stdout and stderr is redirected to the corresponding
-	 * files as expected.
-	 */
-	if (!isatty(STDOUT_FILENO) && isatty(STDERR_FILENO))
-		ts->stdoutfd = STDERR_FILENO;
-	else
-		ts->stdoutfd = STDOUT_FILENO;
-
 	conf->console.descr = &descr;
 
 	/* Shift ttys to container. */
@@ -325,33 +301,8 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 		goto err2;
 	}
 
-	/* Register sigwinch handler in mainloop. When ts->sigfd == -1 it means
-	 * we weren't able to install a sigwinch handler in
-	 * lxc_console_create(). We don't consider this fatal and just move on.
-	 */
-	if (ts->sigfd != -1) {
-		ret = lxc_mainloop_add_handler(&descr, ts->sigfd,
-				lxc_console_cb_sigwinch_fd, ts);
-		if (ret) {
-			ERROR("failed to add handler for SIGWINCH fd");
-			goto err3;
-		}
-	}
-
-	/* Register i/o callbacks in mainloop. */
-	ret = lxc_mainloop_add_handler(&descr, ts->stdinfd,
-			lxc_console_cb_tty_stdin, ts);
-	if (ret) {
-		ERROR("failed to add handler for stdinfd");
+	if (lxc_console_mainloop_add(&descr, conf) < 0)
 		goto err3;
-	}
-
-	ret = lxc_mainloop_add_handler(&descr, ts->masterfd,
-			lxc_console_cb_tty_master, ts);
-	if (ret) {
-		ERROR("failed to add handler for masterfd");
-		goto err3;
-	}
 
 	ret = lxc_mainloop(&descr, -1);
 	if (ret) {

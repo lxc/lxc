@@ -27,10 +27,10 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/epoll.h>
-#include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
+#include <sys/epoll.h>
+#include <sys/types.h>
 
 #include <lxc/lxccontainer.h>
 
@@ -163,6 +163,9 @@ static int lxc_console_cb_con(int fd, uint32_t events, void *data,
 	char buf[1024];
 	int r,w;
 
+	if (events & EPOLLHUP)
+		return 1;
+
 	w = r = read(fd, buf, sizeof(buf));
 	if (r < 0) {
 		SYSERROR("failed to read");
@@ -212,10 +215,9 @@ static void lxc_console_mainloop_add_peer(struct lxc_console *console)
 	}
 }
 
-int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
-			     struct lxc_handler *handler)
+extern int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
+				    struct lxc_conf *conf)
 {
-	struct lxc_conf *conf = handler->conf;
 	struct lxc_console *console = &conf->console;
 
 	if (conf->is_execute) {

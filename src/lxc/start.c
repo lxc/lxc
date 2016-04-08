@@ -365,7 +365,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_open;
 	}
 
-	if (lxc_console_mainloop_add(&descr, handler)) {
+	if (lxc_console_mainloop_add(&descr, handler->conf)) {
 		ERROR("failed to add console handler to mainloop");
 		goto out_mainloop_open;
 	}

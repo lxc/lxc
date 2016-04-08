@@ -102,7 +102,7 @@ extern void lxc_console_free(struct lxc_conf *conf, int fd);
 /*
  * Register pty event handlers in an open mainloop
  */
-extern int  lxc_console_mainloop_add(struct lxc_epoll_descr *, struct lxc_handler *);
+extern int  lxc_console_mainloop_add(struct lxc_epoll_descr *, struct lxc_conf *);
 
 /*
  * Handle SIGWINCH events on the allocated ptys.
