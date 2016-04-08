@@ -43,6 +43,8 @@ set -e
 #       stdout --> attached to pty
 #       stderr --> attached to pty
 
+allocate_pty="nopty"
+
 FAIL() {
 	echo -n "Failed " >&2
 	echo "$*" >&2
@@ -55,44 +57,53 @@ lxc-create -t busybox -n busy || FAIL "creating busybox container"
 lxc-start -n busy -d || FAIL "starting busybox container"
 lxc-wait -n busy -s RUNNING || FAIL "waiting for busybox container to run"
 
+if [ -t 0 ] && [ -t 1 ] && [ -t 2 ]; then
+	allocate_pty="pty"
+	echo "All standard file descriptors refer to a pty."
+	echo "Tests for lxc-attach pty allocation and I/O redirection"
+	echo "will be performed correctly."
+fi
+
 # stdin  --> attached to pty
 # stdout --> attached to pty
 # stderr --> attached to pty
-attach=$(lxc-attach -n busy -- hostname || FAIL " to allocate or setup pty")
-if [ "$attach" != "busy" ]; then
-        FAIL " simple attach"
-fi
+for i in `seq 1 100`; do
+	attach=$(lxc-attach -n busy -- hostname || FAIL "to allocate or setup pty")
+	if [ "$attach" != "busy" ]; then
+		FAIL "lxc-attach -n busy -- hostname"
+	fi
+done
 
 # stdin  --> /dev/null
 # stdout --> attached to pty
 # stderr --> attached to pty
-attach=$(lxc-attach -n busy -- hostname < /dev/null || FAIL " to allocate or setup pty")
+attach=$(lxc-attach -n busy -- hostname < /dev/null || FAIL "to allocate or setup pty")
 if [ "$attach" != "busy" ]; then
-        FAIL " lxc-attach -n busy -- hostname < /dev/null"
+        FAIL "lxc-attach -n busy -- hostname < /dev/null"
 fi
 
 # stdin  --> attached to pty
 # stdout --> /dev/null
 # stderr --> attached to pty
-attach=$(lxc-attach -n busy -- hostname > /dev/null || FAIL " to allocate or setup pty")
+attach=$(lxc-attach -n busy -- hostname > /dev/null || FAIL "to allocate or setup pty")
 if [ -n "$attach" ]; then
-        FAIL " lxc-attach -n busy -- hostname > /dev/null"
+        FAIL "lxc-attach -n busy -- hostname > /dev/null"
 fi
 
 # stdin  --> attached to pty
 # stdout --> attached to pty
 # stderr --> /dev/null
-attach=$(lxc-attach -n busy -- hostname 2> /dev/null || FAIL " to allocate or setup pty")
+attach=$(lxc-attach -n busy -- hostname 2> /dev/null || FAIL "to allocate or setup pty")
 if [ "$attach" != "busy" ]; then
-        FAIL " lxc-attach -n busy -- hostname 2> /dev/null < /dev/null"
+        FAIL "lxc-attach -n busy -- hostname 2> /dev/null < /dev/null"
 fi
 
 # stdin  --> /dev/null
 # stdout --> attached to pty
 # stderr --> /dev/null
-attach=$(lxc-attach -n busy -- hostname 2> /dev/null < /dev/null || FAIL " to allocate or setup pty")
+attach=$(lxc-attach -n busy -- hostname 2> /dev/null < /dev/null || FAIL "to allocate or setup pty")
 if [ "$attach" != "busy" ]; then
-        FAIL " lxc-attach -n busy -- hostname 2> /dev/null < /dev/null"
+        FAIL "lxc-attach -n busy -- hostname 2> /dev/null < /dev/null"
 fi
 
 # Use a synthetic reproducer in container to produce output on stderr. stdout on
@@ -103,9 +114,9 @@ fi
 # stdin  --> attached to pty
 # stdout --> /dev/null
 # stderr --> attached to pty
-attach=$( ( lxc-attach -n busy -- sh -c 'hostname >&2' > /dev/null ) 2>&1 || FAIL " to allocate or setup pty")
+attach=$( ( lxc-attach -n busy -- sh -c 'hostname >&2' > /dev/null ) 2>&1 || FAIL "to allocate or setup pty")
 if [ "$attach" != "busy" ]; then
-        FAIL " lxc-attach -n busy -- sh -c 'hostname >&2' > /dev/null"
+        FAIL "lxc-attach -n busy -- sh -c 'hostname >&2' > /dev/null"
 fi
 
 # Use a synthetic reproducer in container to produce output on stderr. stderr on
@@ -115,9 +126,9 @@ fi
 # stdin  --> attached to pty
 # stdout --> attach to pty
 # stderr --> /dev/null
-attach=$( ( lxc-attach -n busy -- sh -c 'hostname >&2' 2> /dev/null ) 2>&1 || FAIL " to allocate or setup pty")
+attach=$( ( lxc-attach -n busy -- sh -c 'hostname >&2' 2> /dev/null ) 2>&1 || FAIL "to allocate or setup pty")
 if [ -n "$attach" ]; then
-        FAIL " lxc-attach -n busy -- sh -c 'hostname >&2' 2> /dev/null"
+        FAIL "lxc-attach -n busy -- sh -c 'hostname >&2' 2> /dev/null"
 fi
 
 
@@ -127,7 +138,7 @@ fi
 # (As we expect the exit code of the command to be 1 we ignore it.)
 attach=$(lxc-attach -n busy -- sh -c 'rm 2>&1' > /dev/null || true)
 if [ -n "$attach" ]; then
-        FAIL " lxc-attach -n busy -- sh -c 'rm 2>&1' > /dev/null"
+        FAIL "lxc-attach -n busy -- sh -c 'rm 2>&1' > /dev/null"
 fi
 
 
@@ -137,15 +148,15 @@ fi
 # (As we expect the exit code of the command to be 1 we ignore it.)
 attach=$(lxc-attach -n busy -- sh -c 'rm 2>&1' 2> /dev/null || true)
 if [ -z "$attach" ]; then
-        FAIL " lxc-attach -n busy -- sh -c 'rm 2>&1' 2> /dev/null"
+        FAIL "lxc-attach -n busy -- sh -c 'rm 2>&1' 2> /dev/null"
 fi
 
 # stdin  --> $in
 # stdout --> attached to pty
 # stderr --> attached to pty
-attach=$(echo hostname | lxc-attach -n busy -- || FAIL " to allocate or setup pty")
+attach=$(echo hostname | lxc-attach -n busy -- || FAIL "to allocate or setup pty")
 if [ "$attach" != "busy" ]; then
-        FAIL " echo hostname | lxc-attach -n busy --"
+        FAIL "echo hostname | lxc-attach -n busy --"
 fi
 
 # stdin  --> attached to pty
@@ -154,12 +165,14 @@ fi
 out=$(mktemp /tmp/out_XXXX)
 err=$(mktemp /tmp/err_XXXX)
 trap "rm -f $out $err" EXIT INT QUIT PIPE
-lxc-attach -n busy -- sh -c 'echo OUT; echo ERR >&2' > $out 2> $err || FAIL " to allocate or setup pty"
+lxc-attach -n busy -- sh -c 'echo OUT; echo ERR >&2' > $out 2> $err || FAIL "to allocate or setup pty"
 outcontent=$(cat $out)
 errcontent=$(cat $err)
 if [ "$outcontent" != "OUT" ] || [ "$errcontent" != "ERR" ]; then
-        FAIL " lxc-attach -n busy -- sh -c 'echo OUT; echo ERR >&2' > $out 2> $err"
+        FAIL "lxc-attach -n busy -- sh -c 'echo OUT; echo ERR >&2' > $out 2> $err"
 fi
+
+rm -f $out $err
 
 # stdin  --> $in
 # stdout --> $out
@@ -172,8 +185,19 @@ echo "hostname; rm" | lxc-attach -n busy > $out 2> $err || true
 outcontent=$(cat $out)
 errcontent=$(cat $err)
 if [ "$outcontent" != "busy" ] || [ -z "$errcontent" ]; then
-        FAIL " echo 'hostname; rm' | lxc-attach -n busy > $out 2> $err"
+        FAIL "echo 'hostname; rm' | lxc-attach -n busy > $out 2> $err"
 fi
+
+rm -f $out $err
+
+# Test whether logging pty output to a file works.
+trap "rm -f /tmp/ptylog" EXIT INT QUIT PIPE
+lxc-attach -n busy -L /tmp/ptylog -- hostname || FAIL "to allocate or setup pty"
+if [ $allocate_pty == "pty" ] && [ ! -s /tmp/ptylog ]; then
+        FAIL "lxc-attach -n busy -L /tmp/ptylog -- hostname"
+fi
+
+rm -f /tmp/ptylog
 
 lxc-destroy -n busy -f
 
