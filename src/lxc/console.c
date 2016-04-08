@@ -571,14 +571,9 @@ int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
 	struct lxc_tty_state *ts = cbdata;
 	char c;
 
-	if (events & EPOLLHUP)
-		return 1;
-
 	assert(fd == ts->stdinfd);
-	if (read(ts->stdinfd, &c, 1) < 0) {
-		SYSERROR("failed to read");
+	if (lxc_read_nointr(ts->stdinfd, &c, 1) <= 0)
 		return 1;
-	}
 
 	if (ts->escape != -1) {
 		/* we want to exit the console with Ctrl+a q */
@@ -593,10 +588,8 @@ int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
 		ts->saw_escape = 0;
 	}
 
-	if (write(ts->masterfd, &c, 1) < 0) {
-		SYSERROR("failed to write");
+	if (lxc_write_nointr(ts->masterfd, &c, 1) <= 0)
 		return 1;
-	}
 
 	return 0;
 }
@@ -608,18 +601,15 @@ int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
 	char buf[1024];
 	int r, w;
 
-	if (events & EPOLLHUP)
-		return 1;
-
 	assert(fd == ts->masterfd);
-	r = read(fd, buf, sizeof(buf));
-	if (r < 0) {
-		SYSERROR("failed to read");
+	r = lxc_read_nointr(fd, buf, sizeof(buf));
+	if (r <= 0)
 		return 1;
-	}
 
-	w = write(ts->stdoutfd, buf, r);
-	if (w < 0 || w != r) {
+	w = lxc_write_nointr(ts->stdoutfd, buf, r);
+	if (w <= 0) {
+		return 1;
+	} else if (w != r) {
 		SYSERROR("failed to write");
 		return 1;
 	}
