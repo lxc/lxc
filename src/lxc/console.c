@@ -161,33 +161,25 @@ static int lxc_console_cb_con(int fd, uint32_t events, void *data,
 {
 	struct lxc_console *console = (struct lxc_console *)data;
 	char buf[1024];
-	int r,w;
+	int r, w;
 
-	if (events & EPOLLHUP)
-		return 1;
-
-	w = r = read(fd, buf, sizeof(buf));
-	if (r < 0) {
-		SYSERROR("failed to read");
-		return 1;
-	}
-
-	if (!r) {
+	w = r = lxc_read_nointr(fd, buf, sizeof(buf));
+	if (r <= 0) {
 		INFO("console client on fd %d has exited", fd);
 		lxc_mainloop_del_handler(descr, fd);
 		close(fd);
-		return 0;
+		return 1;
 	}
 
 	if (fd == console->peer)
-		w = write(console->master, buf, r);
+		w = lxc_write_nointr(console->master, buf, r);
 
 	if (fd == console->master) {
 		if (console->log_fd >= 0)
-			w = write(console->log_fd, buf, r);
+			w = lxc_write_nointr(console->log_fd, buf, r);
 
 		if (console->peer >= 0)
-			w = write(console->peer, buf, r);
+			w = lxc_write_nointr(console->peer, buf, r);
 	}
 
 	if (w != r)

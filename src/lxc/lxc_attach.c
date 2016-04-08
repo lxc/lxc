@@ -301,8 +301,10 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 		goto err2;
 	}
 
-	if (lxc_console_mainloop_add(&descr, conf) < 0)
+	if (lxc_console_mainloop_add(&descr, conf) < 0) {
+		ERROR("Failed to add handlers to lxc mainloop.");
 		goto err3;
+	}
 
 	ret = lxc_mainloop(&descr, -1);
 	if (ret) {
