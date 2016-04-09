@@ -60,7 +60,7 @@ lxc-wait -n busy -s RUNNING || FAIL "waiting for busybox container to run"
 # stderr --> attached to pty
 attach=$(lxc-attach -n busy -- hostname || FAIL " to allocate or setup pty")
 if [ "$attach" != "busy" ]; then
-        FAIL " simple attach"
+        FAIL " lxc-attach -n busy -- hostname"
 fi
 
 # stdin  --> /dev/null
@@ -161,6 +161,8 @@ if [ "$outcontent" != "OUT" ] || [ "$errcontent" != "ERR" ]; then
         FAIL " lxc-attach -n busy -- sh -c 'echo OUT; echo ERR >&2' > $out 2> $err"
 fi
 
+rm -f $out $err
+
 # stdin  --> $in
 # stdout --> $out
 # stderr --> $err
@@ -174,6 +176,17 @@ errcontent=$(cat $err)
 if [ "$outcontent" != "busy" ] || [ -z "$errcontent" ]; then
         FAIL " echo 'hostname; rm' | lxc-attach -n busy > $out 2> $err"
 fi
+
+rm -f $out $err
+
+# Test whether logging pty output to a file works.
+trap "rm -f /tmp/ptylog" EXIT INT QUIT PIPE
+lxc-attach -n busy -L /tmp/ptylog -- hostname
+if [ ! -s /tmp/ptylog ]; then
+        FAIL " lxc-attach -n busy -L /tmp/ptylog -- hostname"
+fi
+
+rm -f /tmp/ptylog
 
 lxc-destroy -n busy -f
 
