@@ -22,7 +22,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-set -ex
+set -e
 
 # NOTE:
 # lxc-attach allocates a pty on the host and attaches any standard file
@@ -58,11 +58,13 @@ lxc-wait -n busy -s RUNNING || FAIL "waiting for busybox container to run"
 # stdin  --> attached to pty
 # stdout --> attached to pty
 # stderr --> attached to pty
+echo "1"
 attach=$(lxc-attach -n busy -- hostname || FAIL " to allocate or setup pty")
 if [ "$attach" != "busy" ]; then
         FAIL " lxc-attach -n busy -- hostname"
 fi
 
+echo "2"
 # stdin  --> /dev/null
 # stdout --> attached to pty
 # stderr --> attached to pty
@@ -71,6 +73,7 @@ if [ "$attach" != "busy" ]; then
         FAIL " lxc-attach -n busy -- hostname < /dev/null"
 fi
 
+echo "3"
 # stdin  --> attached to pty
 # stdout --> /dev/null
 # stderr --> attached to pty
@@ -79,6 +82,7 @@ if [ -n "$attach" ]; then
         FAIL " lxc-attach -n busy -- hostname > /dev/null"
 fi
 
+echo "4"
 # stdin  --> attached to pty
 # stdout --> attached to pty
 # stderr --> /dev/null
@@ -87,6 +91,7 @@ if [ "$attach" != "busy" ]; then
         FAIL " lxc-attach -n busy -- hostname 2> /dev/null < /dev/null"
 fi
 
+echo "5"
 # stdin  --> /dev/null
 # stdout --> attached to pty
 # stderr --> /dev/null
@@ -95,6 +100,7 @@ if [ "$attach" != "busy" ]; then
         FAIL " lxc-attach -n busy -- hostname 2> /dev/null < /dev/null"
 fi
 
+echo "6"
 # Use a synthetic reproducer in container to produce output on stderr. stdout on
 # the host gets redirect to /dev/null. We should still be able to receive
 # containers output on stderr on the host. (The command is run in a subshell.
@@ -108,6 +114,7 @@ if [ "$attach" != "busy" ]; then
         FAIL " lxc-attach -n busy -- sh -c 'hostname >&2' > /dev/null"
 fi
 
+echo "7"
 # Use a synthetic reproducer in container to produce output on stderr. stderr on
 # the host gets redirect to /dev/null. We should not receive output on stderr on
 # the host. (The command is run in a subshell. This allows us to redirect stderr
@@ -120,6 +127,7 @@ if [ -n "$attach" ]; then
         FAIL " lxc-attach -n busy -- sh -c 'hostname >&2' 2> /dev/null"
 fi
 
+echo "8"
 
 # stdin  --> attached to pty
 # stdout --> /dev/null
@@ -130,6 +138,7 @@ if [ -n "$attach" ]; then
         FAIL " lxc-attach -n busy -- sh -c 'rm 2>&1' > /dev/null"
 fi
 
+echo "9"
 
 # - stdin  --> attached to pty
 # - stdout --> attached to pty
@@ -140,6 +149,7 @@ if [ -z "$attach" ]; then
         FAIL " lxc-attach -n busy -- sh -c 'rm 2>&1' 2> /dev/null"
 fi
 
+echo "10"
 # stdin  --> $in
 # stdout --> attached to pty
 # stderr --> attached to pty
@@ -148,6 +158,7 @@ if [ "$attach" != "busy" ]; then
         FAIL " echo hostname | lxc-attach -n busy --"
 fi
 
+echo "11"
 # stdin  --> attached to pty
 # stdout --> $out
 # stderr --> $err
@@ -161,6 +172,7 @@ if [ "$outcontent" != "OUT" ] || [ "$errcontent" != "ERR" ]; then
         FAIL " lxc-attach -n busy -- sh -c 'echo OUT; echo ERR >&2' > $out 2> $err"
 fi
 
+echo "12"
 rm -f $out $err
 
 # stdin  --> $in
@@ -177,6 +189,7 @@ if [ "$outcontent" != "busy" ] || [ -z "$errcontent" ]; then
         FAIL " echo 'hostname; rm' | lxc-attach -n busy > $out 2> $err"
 fi
 
+echo "13"
 rm -f $out $err
 
 # Test whether logging pty output to a file works.
@@ -189,6 +202,7 @@ if [ ! -s /tmp/ptylog ]; then
         FAIL " lxc-attach -n busy -L /tmp/ptylog -- hostname"
 fi
 
+echo "14"
 rm -f /tmp/ptylog
 
 lxc-destroy -n busy -f
