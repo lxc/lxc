@@ -1507,7 +1507,7 @@ static const char padchar[] =
 char *lxc_mkifname(char *template)
 {
 	char *name = NULL;
-	int i = 0;
+	size_t i = 0;
 	FILE *urandom;
 	unsigned int seed;
 	struct ifaddrs *ifaddr, *ifa;

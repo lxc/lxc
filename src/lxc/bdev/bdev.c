@@ -823,7 +823,7 @@ static struct bdev *do_bdev_create(const char *dest, const char *type,
 
 static struct bdev *bdev_get(const char *type)
 {
-	int i;
+	size_t i;
 	struct bdev *bdev;
 
 	for (i = 0; i < numbdevs; i++) {
@@ -843,7 +843,7 @@ static struct bdev *bdev_get(const char *type)
 
 static const struct bdev_type *get_bdev_by_name(const char *name)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < numbdevs; i++) {
 		if (strcmp(bdevs[i].name, name) == 0)
@@ -856,7 +856,7 @@ static const struct bdev_type *get_bdev_by_name(const char *name)
 
 static const struct bdev_type *bdev_query(struct lxc_conf *conf, const char *src)
 {
-	int i;
+	size_t i;
 
 	if (conf->rootfs.bdev_type)
 		return get_bdev_by_name(conf->rootfs.bdev_type);

@@ -54,7 +54,7 @@ static int nla_put(struct nlmsg *nlmsg, int attr,
 	struct rtattr *rta;
 	size_t rtalen = RTA_LENGTH(len);
 	size_t tlen = NLMSG_ALIGN(nlmsg->nlmsghdr->nlmsg_len) + RTA_ALIGN(rtalen);
-	
+
 	if (tlen > nlmsg->cap)
 		return -ENOMEM;
 

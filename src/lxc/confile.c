@@ -274,7 +274,7 @@ static const size_t config_size = sizeof(config)/sizeof(struct lxc_config_t);
 
 extern struct lxc_config_t *lxc_getconfig(const char *key)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < config_size; i++)
 		if (!strncmp(config[i].name, key,
@@ -297,7 +297,8 @@ extern struct lxc_config_t *lxc_getconfig(const char *key)
 
 int lxc_listconfigs(char *retv, int inlen)
 {
-	int i, fulllen = 0, len;
+	size_t i;
+	int fulllen = 0, len;
 
 	if (!retv)
 		inlen = 0;
@@ -607,7 +608,7 @@ static int macvlan_mode(int *valuep, const char *value)
 		{ "passthru", MACVLAN_MODE_PASSTHRU },
 	};
 
-	int i;
+	size_t i;
 
 	for (i = 0; i < sizeof(m)/sizeof(m[0]); i++) {
 		if (strcmp(m[i].name, value))
@@ -1350,7 +1351,7 @@ static int rt_sig_num(const char *signame)
 }
 
 static int sig_parse(const char *signame) {
-	int n;
+	size_t n;
 
 	if (isdigit(*signame)) {
 		return sig_num(signame);
@@ -2055,7 +2056,7 @@ signed long lxc_config_parse_arch(const char *arch)
 	};
 	size_t len = sizeof(pername) / sizeof(pername[0]);
 
-	int i;
+	size_t i;
 
 	for (i = 0; i < len; i++) {
 		if (!strcmp(pername[i].name, arch))

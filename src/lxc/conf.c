@@ -1989,7 +1989,8 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list 
 static int parse_cap(const char *cap)
 {
 	char *ptr = NULL;
-	int i, capid = -1;
+	size_t i;
+	int capid = -1;
 
 	if (!strcmp(cap, "none"))
 		return -2;
