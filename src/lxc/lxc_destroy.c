@@ -18,16 +18,18 @@
  */
 
 #define _GNU_SOURCE
-#include <lxc/lxccontainer.h>
+#include "config.h"
 
-#include <stdio.h>
 #include <libgen.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
 
-#include "lxc.h"
-#include "log.h"
+#include <lxc/lxccontainer.h>
+
 #include "arguments.h"
+#include "log.h"
+#include "lxc.h"
 #include "utils.h"
 
 lxc_log_define(lxc_destroy_ui, lxc);
@@ -250,9 +252,6 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 		bret = c->destroy_with_snapshots(c);
 	else
 		bret = do_destroy(c);
-
-	if (bret && !quiet)
-		printf("Destroyed container %s including snapshots \n", my_args.name);
 
 	return bret;
 }
