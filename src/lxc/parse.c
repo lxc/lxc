@@ -66,7 +66,7 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 
 int lxc_char_left_gc(const char *buffer, size_t len)
 {
-	int i;
+	size_t i;
 	for (i = 0; i < len; i++) {
 		if (buffer[i] == ' ' ||
 		    buffer[i] == '\t')

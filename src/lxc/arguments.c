@@ -40,7 +40,7 @@ static int build_shortopts(const struct option *a_options,
 			   char *a_shortopts, size_t a_size)
 {
 	const struct option *opt;
-	int i = 0;
+	size_t i = 0;
 
 	if (!a_options || !a_shortopts || !a_size)
 		return -1;
