@@ -569,7 +569,7 @@ int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
 	char old_upper[MAXPATHLEN];
 	char old_work[MAXPATHLEN];
 	char *cleanpath = NULL;
-	int i;
+	size_t i;
 	int fret = -1;
 	int ret = 0;
 	struct lxc_list *iterator;
