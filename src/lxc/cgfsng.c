@@ -407,19 +407,14 @@ static bool controller_found(struct hierarchy **hlist, char *entry)
 }
 
 /*
- * Return true if all of the controllers which we require have been
- * found.  The required list is systemd, freezer, and anything in
- * lxc.cgroup.use.
+ * Return true if all of the controllers which we require have been found.
+ * The required list is  freezer and anything in * lxc.cgroup.use.
  */
 static bool all_controllers_found(void)
 {
 	char *p, *saveptr = NULL;
 	struct hierarchy ** hlist = hierarchies;
 
-	if (!controller_found(hlist, "name=systemd")) {
-		ERROR("no systemd controller mountpoint found");
-		return false;
-	}
 	if (!controller_found(hlist, "freezer")) {
 		ERROR("no freezer controller mountpoint found");
 		return false;
