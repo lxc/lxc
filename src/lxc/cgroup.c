@@ -226,7 +226,12 @@ void prune_init_scope(char *cg)
 
 /*
  * Return true if this is a subsystem which we cannot do
- * without
+ * without.
+ *
+ * systemd is questionable here.  The way callers currently
+ * use this, if systemd is not mounted then it will be ignored.
+ * But if systemd is mounted, then it must be setup so that lxc
+ * can create cgroups in it, else containers will fail.
  */
 bool is_crucial_cgroup_subsystem(const char *s)
 {
