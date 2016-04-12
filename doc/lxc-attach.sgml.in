@@ -58,6 +58,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">--keep-env</arg>
       <arg choice="opt">--clear-env</arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
+      <arg choice="opt">-L <replaceable>file</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -231,6 +232,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    environment variables leak into the container. The variable
 	    container=lxc will be the only environment with which the
 	    attached program starts.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-L, --pty-log <replaceable>file</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	Specify a file where the output of <command>lxc-attach</command> will be
+	logged.
+	  </para>
+	  <para>
+	    <emphasis>Important:</emphasis>  When a standard file descriptor
+	    does not refer to a pty ouput produced on it will not be logged.
 	  </para>
 	</listitem>
       </varlistentry>
