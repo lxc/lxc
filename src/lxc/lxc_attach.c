@@ -21,7 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
+#include "config.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -38,7 +39,6 @@
 #include "attach.h"
 #include "arguments.h"
 #include "caps.h"
-#include "config.h"
 #include "confile.h"
 #include "console.h"
 #include "log.h"
@@ -254,7 +254,7 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 	INFO("Trying to allocate a pty on the host");
 
 	if (!isatty(args->ptyfd)) {
-		ERROR("stdin is not a tty");
+		ERROR("Standard file descriptor does not refer to a pty\n.");
 		return -1;
 	}
 
@@ -324,28 +324,40 @@ err1:
 	return ret;
 }
 
+static int stdfd_is_pty(void)
+{
+	if (isatty(STDIN_FILENO))
+		return STDIN_FILENO;
+	if (isatty(STDOUT_FILENO))
+		return STDOUT_FILENO;
+	if (isatty(STDERR_FILENO))
+		return STDERR_FILENO;
+
+	return -1;
+}
+
 int main(int argc, char *argv[])
 {
-	int ret = -1;
+	int ret = -1, r;
 	int wexit = 0;
 	pid_t pid;
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 	lxc_attach_command_t command = (lxc_attach_command_t){.program = NULL};
 
-	ret = lxc_caps_init();
-	if (ret)
+	r = lxc_caps_init();
+	if (r)
 		exit(EXIT_FAILURE);
 
-	ret = lxc_arguments_parse(&my_args, argc, argv);
-	if (ret)
+	r = lxc_arguments_parse(&my_args, argc, argv);
+	if (r)
 		exit(EXIT_FAILURE);
 
 	if (!my_args.log_file)
 		my_args.log_file = "none";
 
-	ret = lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
+	r = lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			   my_args.progname, my_args.quiet, my_args.lxcpath[0]);
-	if (ret)
+	if (r)
 		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();
 
@@ -388,19 +400,23 @@ int main(int argc, char *argv[])
 		command.argv = (char**)my_args.argv;
 	}
 
-	if (isatty(STDIN_FILENO) || isatty(STDOUT_FILENO) || isatty(STDERR_FILENO)) {
-		struct wrapargs wrap = (struct wrapargs){
-			.command = &command,
+	struct wrapargs wrap = (struct wrapargs){
+		.command = &command,
 			.options = &attach_options
-		};
-		if (isatty(STDIN_FILENO))
-			wrap.ptyfd = STDIN_FILENO;
-		else if (isatty(STDOUT_FILENO))
-			wrap.ptyfd = STDOUT_FILENO;
-		else if (isatty(STDERR_FILENO))
-			wrap.ptyfd = STDERR_FILENO;
+	};
+
+	wrap.ptyfd = stdfd_is_pty();
+	if (wrap.ptyfd >= 0) {
+		if ((!isatty(STDOUT_FILENO) || !isatty(STDERR_FILENO)) && my_args.console_log) {
+			fprintf(stderr, "-L/--pty-log can only be used when stdout and stderr refer to a pty.\n");
+			goto out;
+		}
 		ret = get_pty_on_host(c, &wrap, &pid);
 	} else {
+		if (my_args.console_log) {
+			fprintf(stderr, "-L/--pty-log can only be used when stdout and stderr refer to a pty.\n");
+			goto out;
+		}
 		if (command.program)
 			ret = c->attach(c, lxc_attach_run_command, &command, &attach_options, &pid);
 		else
