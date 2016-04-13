@@ -140,9 +140,6 @@ EOF
         echo "Timezone in container is not configured. Adjust it manually."
     fi
 
-    echo "root:root" | chroot $rootfs chpasswd
-    echo "Root password is 'root', please change !"
-
     return 0
 }
 
