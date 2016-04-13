@@ -7,6 +7,10 @@
 #
 ### BEGIN INIT INFO
 # Provides: lxc-net
+# Required-Start: $syslog $remote_fs
+# Required-Stop: $syslog $remote_fs
+# Should-Start:
+# Should-Stop:
 # Default-Start: 2 3 4 5
 # Default-Stop: 1
 # Short-Description: Bring up/down LXC Network Bridge
