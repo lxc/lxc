@@ -222,11 +222,12 @@ class Container(_lxc.Container):
             for item in args.items():
                 tmp_args.append("--%s" % item[0])
                 tmp_args.append("%s" % item[1])
+            args = tmp_args
         template_args = {}
         if template:
     	    template_args['template'] = template
         template_args['flags'] = flags
-        template_args['args'] = tuple(tmp_args)
+        template_args['args'] = tuple(args)
         if bdevtype:
             template_args['bdevtype'] = bdevtype
         return _lxc.Container.create(self, **template_args)
