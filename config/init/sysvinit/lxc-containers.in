@@ -17,30 +17,26 @@
 # Description: Bring up/down LXC autostart containers
 ### END INIT INFO
 
-sysconfdir="@SYSCONFDIR@"
+# To be replaced by LSB functions, if they can be found
+# Defined here for distributions that don't have log_daemon_msg
+log_daemon_msg () {
+    echo $@
+}
 
-# Source function library.
-test ! -r "$sysconfdir"/rc.d/init.d/functions ||
-        . "$sysconfdir"/rc.d/init.d/functions
-
-# provide action() fallback
-if ! type action >/dev/null 2>&1; then
-    # Real basic fallback for sysvinit "action" verbage.
-    action() {
-        echo -n "$1	"
-        shift
-        "$@" && echo "OK" || echo "Failed"
-    }
-fi
+# Try to source LSB init functions to define LSB log_* functions.
+test ! -r /lib/lsb/init-functions ||
+        . /lib/lsb/init-functions
 
 start() {
     # Setup host /dev for autodev containers.
     @LIBEXECDIR@/lxc/lxc-devsetup
-    action $"Starting LXC autoboot containers: " @LIBEXECDIR@/lxc/lxc-containers start
+    log_daemon_msg "Starting LXC autoboot containers: "
+    @LIBEXECDIR@/lxc/lxc-containers start
 }
 
 stop() {
-    action $"Stopping LXC containers: " @LIBEXECDIR@/lxc/lxc-containers stop
+    log_daemon_msg "Stopping LXC containers: "
+    @LIBEXECDIR@/lxc/lxc-containers stop
 }
 
 # See how we were called.
