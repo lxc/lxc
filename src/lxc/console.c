@@ -262,9 +262,10 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 
 	/* Remove the echo characters and signal reception, the echo
 	 * will be done with master proxying */
-	newtios.c_iflag &= ~IGNBRK;
+	newtios.c_iflag &= ~(IGNBRK|ISTRIP|INLCR|IGNCR|ICRNL|IXON|IXANY|IXOFF);
 	newtios.c_iflag &= BRKINT;
-	newtios.c_lflag &= ~(ECHO|ICANON|ISIG);
+	newtios.c_lflag &= ~(ECHO|ICANON|ISIG|IEXTEN|ECHOE|ECHOK|ECHONL);
+	newtios.c_oflag &= ~OPOST;
 	newtios.c_cc[VMIN] = 1;
 	newtios.c_cc[VTIME] = 0;
 
