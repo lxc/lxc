@@ -260,16 +260,21 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 
 	newtios = *oldtios;
 
-	/* Remove the echo characters and signal reception, the echo
-	 * will be done with master proxying */
-	newtios.c_iflag &= ~(IGNBRK|ISTRIP|INLCR|IGNCR|ICRNL|IXON|IXANY|IXOFF);
-	newtios.c_iflag &= BRKINT;
-	newtios.c_lflag &= ~(ECHO|ICANON|ISIG|IEXTEN|ECHOE|ECHOK|ECHONL);
+	/* We use the same settings that ssh does. */
+	newtios.c_iflag |= IGNPAR;
+	newtios.c_iflag &= ~(ISTRIP | INLCR | IGNCR | ICRNL | IXON | IXANY | IXOFF);
+#ifdef IUCLC
+	newtios.c_iflag &= ~IUCLC;
+#endif
+	newtios.c_lflag &= ~(ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHONL);
+#ifdef IEXTEN
+	newtios.c_lflag &= ~IEXTEN;
+#endif
 	newtios.c_oflag &= ~OPOST;
 	newtios.c_cc[VMIN] = 1;
 	newtios.c_cc[VTIME] = 0;
 
-	/* Set new attributes */
+	/* Set new attributes. */
 	if (tcsetattr(fd, TCSAFLUSH, &newtios)) {
 		ERROR("failed to set new terminal settings");
 		return -1;
