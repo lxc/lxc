@@ -670,7 +670,7 @@ static char **split_init_cmd(const char *incmd)
 {
 	size_t len;
 	int nargs = 0;
-	char *copy, *p, *saveptr;
+	char *copy, *p, *saveptr = NULL;
 	char **argv;
 
 	if (!incmd)
