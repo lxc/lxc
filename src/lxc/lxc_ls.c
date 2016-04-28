@@ -16,7 +16,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
+#include "config.h"
+
 #include <getopt.h>
 #include <regex.h>
 #include <stdbool.h>
@@ -24,18 +25,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <termios.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <termios.h>
 
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
 #include "conf.h"
-#include "config.h"
 #include "confile.h"
 #include "log.h"
 #include "lxc.h"
@@ -105,6 +105,7 @@ static char *ls_get_groups(struct lxc_container *c, bool running);
 static char *ls_get_ips(struct lxc_container *c, const char *inet);
 static int ls_recv_str(int fd, char **buf);
 static int ls_send_str(int fd, const char *buf);
+
 struct wrapargs {
 	const struct lxc_arguments *args;
 	char **grps_must;
@@ -114,10 +115,12 @@ struct wrapargs {
 	const char *parent;
 	unsigned int nestlvl;
 };
+
 /*
  * Takes struct wrapargs as argument.
  */
 static int ls_get_wrapper(void *wrap);
+
 /*
  * To calculate swap usage we should not simply check memory.usage_in_bytes and
  * memory.memsw.usage_in_bytes and then do:
@@ -130,21 +133,25 @@ static unsigned int ls_get_term_width(void);
 static char *ls_get_interface(struct lxc_container *c);
 static bool ls_has_all_grps(const char *has, char **must, size_t must_len);
 static struct ls *ls_new(struct ls **ls, size_t *size);
+
 /*
  * Print user-specified fancy format.
  */
 static void ls_print_fancy_format(struct ls *l, struct lengths *lht,
 		size_t size, const char *fancy_fmt);
+
 /*
  * Only print names of containers.
  */
 static void ls_print_names(struct ls *l, struct lengths *lht,
 		size_t ls_arr, size_t termwidth);
+
 /*
  * Print default fancy format.
  */
 static void ls_print_table(struct ls *l, struct lengths *lht,
 		size_t size);
+
 /*
  * id can only be 79 + \0 chars long.
  */
@@ -309,9 +316,8 @@ static char *ls_get_config_item(struct lxc_container *c, const char *item,
 static void ls_free_arr(char **arr, size_t size)
 {
 	size_t i;
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < size; i++)
 		free(arr[i]);
-	}
 	free(arr);
 }
 
