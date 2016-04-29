@@ -16,7 +16,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
+#include "config.h"
+
 #include <getopt.h>
 #include <regex.h>
 #include <stdbool.h>
@@ -24,18 +25,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <termios.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <termios.h>
 
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
 #include "conf.h"
-#include "config.h"
 #include "confile.h"
 #include "log.h"
 #include "lxc.h"
@@ -103,6 +103,9 @@ static char *ls_get_config_item(struct lxc_container *c, const char *item,
 		bool running);
 static char *ls_get_groups(struct lxc_container *c, bool running);
 static char *ls_get_ips(struct lxc_container *c, const char *inet);
+static int ls_recv_str(int fd, char **buf);
+static int ls_send_str(int fd, const char *buf);
+
 struct wrapargs {
 	const struct lxc_arguments *args;
 	char **grps_must;
@@ -112,10 +115,12 @@ struct wrapargs {
 	const char *parent;
 	unsigned int nestlvl;
 };
+
 /*
  * Takes struct wrapargs as argument.
  */
 static int ls_get_wrapper(void *wrap);
+
 /*
  * To calculate swap usage we should not simply check memory.usage_in_bytes and
  * memory.memsw.usage_in_bytes and then do:
@@ -128,32 +133,31 @@ static unsigned int ls_get_term_width(void);
 static char *ls_get_interface(struct lxc_container *c);
 static bool ls_has_all_grps(const char *has, char **must, size_t must_len);
 static struct ls *ls_new(struct ls **ls, size_t *size);
+
 /*
  * Print user-specified fancy format.
  */
 static void ls_print_fancy_format(struct ls *l, struct lengths *lht,
 		size_t size, const char *fancy_fmt);
+
 /*
  * Only print names of containers.
  */
 static void ls_print_names(struct ls *l, struct lengths *lht,
 		size_t ls_arr, size_t termwidth);
+
 /*
  * Print default fancy format.
  */
 static void ls_print_table(struct ls *l, struct lengths *lht,
 		size_t size);
+
 /*
  * id can only be 79 + \0 chars long.
  */
-static int ls_read_and_grow_buf(const int rpipefd, char **save_buf,
-		const char *id, ssize_t nbytes_id,
-		char **read_buf, ssize_t *read_buf_len);
 static int ls_remove_lock(const char *path, const char *name,
 		char **lockpath, size_t *len_lockpath, bool recalc);
 static int ls_serialize(int wpipefd, struct ls *n);
-static int ls_write(const int wpipefd, const char *id, ssize_t nbytes_id,
-		const char *s);
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
 
 static const struct option my_longopts[] = {
@@ -312,9 +316,8 @@ static char *ls_get_config_item(struct lxc_container *c, const char *item,
 static void ls_free_arr(char **arr, size_t size)
 {
 	size_t i;
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < size; i++)
 		free(arr[i]);
-	}
 	free(arr);
 }
 
@@ -483,7 +486,7 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		if (args->ls_nesting && running) {
 			struct wrapargs wargs = (struct wrapargs){.args = NULL};
 			/* Open a socket so that the child can communicate with us. */
-			check = socketpair(AF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, wargs.pipefd);
+			check = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, wargs.pipefd);
 			if (check == -1)
 				goto put_and_next;
 
@@ -1004,67 +1007,86 @@ static int ls_remove_lock(const char *path, const char *name,
 	return 0;
 }
 
+static int ls_send_str(int fd, const char *buf)
+{
+	size_t slen = 0;
+	if (buf)
+		slen = strlen(buf);
+	if (lxc_write_nointr(fd, &slen, sizeof(slen)) != sizeof(slen))
+		return -1;
+	if (slen > 0) {
+		if (lxc_write_nointr(fd, buf, slen) != (ssize_t)slen)
+			return -1;
+	}
+	return 0;
+}
+
 static int ls_serialize(int wpipefd, struct ls *n)
 {
 	ssize_t nbytes = sizeof(n->ram);
-	if (lxc_write_nointr(wpipefd, &n->ram, nbytes) != nbytes)
+	if (lxc_write_nointr(wpipefd, &n->ram, (size_t)nbytes) != nbytes)
 		return -1;
 
 	nbytes = sizeof(n->swap);
-	if (lxc_write_nointr(wpipefd, &n->swap, nbytes) != nbytes)
+	if (lxc_write_nointr(wpipefd, &n->swap, (size_t)nbytes) != nbytes)
 		return -1;
 
 	nbytes = sizeof(n->init);
-	if (lxc_write_nointr(wpipefd, &n->init, nbytes) != nbytes)
+	if (lxc_write_nointr(wpipefd, &n->init, (size_t)nbytes) != nbytes)
 		return -1;
 
 	nbytes = sizeof(n->autostart);
-	if (lxc_write_nointr(wpipefd, &n->autostart, nbytes) != nbytes)
+	if (lxc_write_nointr(wpipefd, &n->autostart, (size_t)nbytes) != nbytes)
 		return -1;
 
 	nbytes = sizeof(n->running);
-	if (lxc_write_nointr(wpipefd, &n->running, nbytes) != nbytes)
+	if (lxc_write_nointr(wpipefd, &n->running, (size_t)nbytes) != nbytes)
 		return -1;
 
 	nbytes = sizeof(n->nestlvl);
-	if (lxc_write_nointr(wpipefd, &n->nestlvl, nbytes) != nbytes)
+	if (lxc_write_nointr(wpipefd, &n->nestlvl, (size_t)nbytes) != nbytes)
 		return -1;
 
-	if (ls_write(wpipefd, "NAME:", 5 + 1, n->name) == -1)
+	/* NAME */
+	if (ls_send_str(wpipefd, n->name) < 0)
 		return -1;
 
-	if (ls_write(wpipefd, "STATE:", 6 + 1, n->state) == -1)
+	/* STATE */
+	if (ls_send_str(wpipefd, n->state) < 0)
 		return -1;
 
-	if (ls_write(wpipefd, "GROUPS:", 7 + 1, n->groups) == -1)
+	/* GROUPS */
+	if (ls_send_str(wpipefd, n->groups) < 0)
 		return -1;
 
-	if (ls_write(wpipefd, "INTERFACE:", 10 + 1, n->interface) == -1)
+	/* INTERFACE */
+	if (ls_send_str(wpipefd, n->interface) < 0)
 		return -1;
 
-	if (ls_write(wpipefd, "IPV4:", 5 + 1, n->ipv4) == -1)
+	/* IPV4 */
+	if (ls_send_str(wpipefd, n->ipv4) < 0)
 		return -1;
 
-	if (ls_write(wpipefd, "IPV6:", 5 + 1, n->ipv6) == -1)
+	/* IPV6 */
+	if (ls_send_str(wpipefd, n->ipv6) < 0)
 		return -1;
 
 	return 0;
 }
 
-static int ls_write(const int wpipefd, const char *id, ssize_t nbytes_id,
-		const char *s)
+static int ls_recv_str(int fd, char **buf)
 {
-	if (lxc_write_nointr(wpipefd, id, nbytes_id) != nbytes_id)
+	size_t slen = 0;
+	if (lxc_read_nointr(fd, &slen, sizeof(slen)) != sizeof(slen))
 		return -1;
-	if (s) {
-		nbytes_id = strlen(s) + 1;
-		if (lxc_write_nointr(wpipefd, s, nbytes_id) != nbytes_id)
+	if (slen > 0) {
+		*buf = malloc(sizeof(char) * (slen + 1));
+		if (!*buf)
 			return -1;
-	} else {
-		if (lxc_write_nointr(wpipefd, "\0", 1) != 1)
+		if (lxc_read_nointr(fd, *buf, slen) != (ssize_t)slen)
 			return -1;
+		(*buf)[slen] = '\0';
 	}
-
 	return 0;
 }
 
@@ -1073,111 +1095,63 @@ static int ls_deserialize(int rpipefd, struct ls **m, size_t *len)
 	struct ls *n;
 	size_t sublen = 0;
 	ssize_t nbytes = 0;
-	int ret = -1;
 
 	/* get length */
 	nbytes = sizeof(sublen);
-	if (lxc_read_nointr(rpipefd, &sublen, nbytes) != nbytes)
-		return -1;
-
-	char *serialized = NULL;
-	serialized = malloc(LINELEN * sizeof(char));
-	if (!serialized)
+	if (lxc_read_nointr(rpipefd, &sublen, (size_t)nbytes) != nbytes)
 		return -1;
 
 	while (sublen-- > 0) {
 		n = ls_new(m, len);
 		if (!n)
-			goto out;
+			return -1;
 
 		nbytes = sizeof(n->ram);
-		if (lxc_read_nointr(rpipefd, &n->ram, nbytes) != nbytes)
-			goto out;
+		if (lxc_read_nointr(rpipefd, &n->ram, (size_t)nbytes) != nbytes)
+			return -1;
 
 		nbytes = sizeof(n->swap);
-		if (lxc_read_nointr(rpipefd, &n->swap, nbytes) != nbytes)
-			goto out;
+		if (lxc_read_nointr(rpipefd, &n->swap, (size_t)nbytes) != nbytes)
+			return -1;
 
 		nbytes = sizeof(n->init);
-		if (lxc_read_nointr(rpipefd, &n->init, nbytes) != nbytes)
-			goto out;
+		if (lxc_read_nointr(rpipefd, &n->init, (size_t)nbytes) != nbytes)
+			return -1;
 
 		nbytes = sizeof(n->autostart);
-		if (lxc_read_nointr(rpipefd, &n->autostart, nbytes) != nbytes)
-			goto out;
+		if (lxc_read_nointr(rpipefd, &n->autostart, (size_t)nbytes) != nbytes)
+			return -1;
 
 		nbytes = sizeof(n->running);
-		if (lxc_read_nointr(rpipefd, &n->running, nbytes) != nbytes)
-			goto out;
+		if (lxc_read_nointr(rpipefd, &n->running, (size_t)nbytes) != nbytes)
+			return -1;
 
 		nbytes = sizeof(n->nestlvl);
-		if (lxc_read_nointr(rpipefd, &n->nestlvl, nbytes) != nbytes)
-			goto out;
-
-		ssize_t buf_size = LINELEN;
-		if (ls_read_and_grow_buf(rpipefd, &n->name, "NAME:", 5 + 1, &serialized, &buf_size) == -1)
-			goto out;
-
-		if (ls_read_and_grow_buf(rpipefd, &n->state, "STATE:", 6 + 1, &serialized, &buf_size) == -1)
-			goto out;
-
-		if (ls_read_and_grow_buf(rpipefd, &n->groups, "GROUPS:", 7 + 1, &serialized, &buf_size) == -1)
-			goto out;
-
-		if (ls_read_and_grow_buf(rpipefd, &n->interface, "INTERFACE:", 10 + 1, &serialized, &buf_size) == -1)
-			goto out;
-
-		if (ls_read_and_grow_buf(rpipefd, &n->ipv4, "IPV4:", 5 + 1, &serialized, &buf_size) == -1)
-			goto out;
-
-		if (ls_read_and_grow_buf(rpipefd, &n->ipv6, "IPV6:", 5 + 1, &serialized, &buf_size) == -1)
-			goto out;
-	}
-	ret = 0;
-
-out:
-	free(serialized);
-
-	return ret;
-}
-
-static int ls_read_and_grow_buf(const int rpipefd, char **save_buf,
-		const char *id, ssize_t nbytes_id,
-		char **read_buf, ssize_t *read_buf_len)
-{
-	char *inc, *tmp;
-	char buf[80]; /* id can only be 79 + \0 long */
-
-	if (lxc_read_nointr(rpipefd, buf, nbytes_id) != nbytes_id)
-		return -1;
-
-	if (strcmp(id, buf) != 0)
-		return -1;
-
-	inc = *read_buf;
-	nbytes_id = 0;
-	do {
-		/* if the next read would overflow our buffer realloc */
-		if (nbytes_id + 1 >= *read_buf_len) {
-			*read_buf_len += LINELEN;
-			tmp = realloc(*read_buf, *read_buf_len);
-			if (!tmp)
-				return -1;
-			*read_buf = tmp;
-			/* Put inc back to where it was before the realloc so we
-			 * can keep on reading in the string. */
-			inc = *read_buf + nbytes_id;
-		}
-		/* only read one byte at a time */
-		if (lxc_read_nointr(rpipefd, inc, 1) != 1)
+		if (lxc_read_nointr(rpipefd, &n->nestlvl, (size_t)nbytes) != nbytes)
 			return -1;
-		nbytes_id++;
-	} while (*inc++ != '\0');
 
-	if (nbytes_id > 1) {
-		/* save it where the caller wants it */
-		*save_buf = strdup(*read_buf);
-		if (!*save_buf)
+		/* NAME */
+		if (ls_recv_str(rpipefd, &n->name) < 0)
+			return -1;
+
+		/* STATE */
+		if (ls_recv_str(rpipefd, &n->state) < 0)
+			return -1;
+
+		/* GROUPS */
+		if (ls_recv_str(rpipefd, &n->groups) < 0)
+			return -1;
+
+		/* INTERFACE */
+		if (ls_recv_str(rpipefd, &n->interface) < 0)
+			return -1;
+
+		/* IPV4 */
+		if (ls_recv_str(rpipefd, &n->ipv4) < 0)
+			return -1;
+
+		/* IPV6 */
+		if (ls_recv_str(rpipefd, &n->ipv6) < 0)
 			return -1;
 	}
 
