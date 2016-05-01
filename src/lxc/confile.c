@@ -521,6 +521,7 @@ extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key,
 	else
 		memset(retv, 0, inlen);
 
+	strprint(retv, inlen, "type\n");
 	strprint(retv, inlen, "script.up\n");
 	strprint(retv, inlen, "script.down\n");
 	if (netdev->type != LXC_NET_EMPTY) {
