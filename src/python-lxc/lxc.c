@@ -449,7 +449,9 @@ Container_init(Container *self, PyObject *args, PyObject *kwds)
     self->container = lxc_container_new(name, config_path);
     if (!self->container) {
         Py_XDECREF(fs_config_path);
-        fprintf(stderr, "%d: error creating container %s\n", __LINE__, name);
+
+        PyErr_Format(PyExc_RuntimeError, "%s:%s:%d: error during init for container '%s'.",
+			__FUNCTION__, __FILE__, __LINE__, name);
         return -1;
     }
 
