@@ -44,10 +44,6 @@ done
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
-# use virbr0 that is setup by default by libvirtd
-lxc_network_type=veth
-lxc_network_link=virbr0
-
 die()
 {
     echo "failed: $1"
@@ -319,11 +315,6 @@ container_config_create()
         echo "lxc.include = @LXCTEMPLATECONFIG@/sparclinux.common.conf" >> $cfg_dir/config
     fi
 
-    # generate a hwaddr for the container with a high mac address
-    # see http://sourceforge.net/tracker/?func=detail&aid=3411497&group_id=163076&atid=826303
-    local hwaddr="fe:`dd if=/dev/urandom bs=8 count=1 2>/dev/null |od -t x8 | \
-                      head -n 1 |awk '{print $2}' | cut -c1-10 |\
-                      sed 's/\(..\)/\1:/g; s/.$//'`"
     cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
 # Container configuration for Linux for SPARC $container_release_major.$container_release_minor
 lxc.arch = $arch
@@ -336,20 +327,37 @@ EOF
     echo "lxc.cap.drop = setfcap setpcap" >>$cfg_dir/config
 
     echo "# Networking" >>$cfg_dir/config
-    # see if the network settings were already specified
+    # see if the default network settings were already specified
     lxc_network_type=`grep '^lxc.network.type' $cfg_dir/config | awk -F'[= \t]+' '{ print $2 }'`
-    if [ -z "$lxc_network_type" -a			\
-        \( $host_distribution = "SPARCLinux" -o	\
-           $host_distribution = "Fedora" \) ]; then
-            echo "lxc.network.type = veth" >>$cfg_dir/config
-            echo "lxc.network.flags = up" >>$cfg_dir/config
-            echo "lxc.network.link = virbr0" >>$cfg_dir/config
+    if [ -z "$lxc_network_type" ]; then
+        echo "lxc.network.type = veth" >>$cfg_dir/config
+        lxc_network_type=veth
+    fi
+
+    lxc_network_link=`grep '^lxc.network.link' $cfg_dir/config | awk -F'[= \t]+' '{ print $2 }'`
+    if [ -z "$lxc_network_link" ]; then
+        echo "lxc.network.link = lxcbr0" >>$cfg_dir/config
+        lxc_network_link=lxcbr0
+    fi
+
+    lxc_network_hwaddr=`grep '^lxc.network.hwaddr' $cfg_dir/config | awk -F'[= \t]+' '{ print $2 }'`
+    if [ -z "$lxc_network_hwaddr" ]; then
+        # generate a hwaddr for the container
+        # see http://sourceforge.net/tracker/?func=detail&aid=3411497&group_id=163076&atid=826303
+        local hwaddr="00:16:3e:`dd if=/dev/urandom bs=8 count=1 2>/dev/null |od -t x8 | \
+                        head -n1 | awk '{print $2}' | cut -c1-6 | \
+                        sed 's/\(..\)/\1:/g; s/.$//'`"
+        echo "lxc.network.hwaddr = $hwaddr" >>$cfg_dir/config
+    fi
+
+    lxc_network_flags=`grep '^lxc.network.flags' $cfg_dir/config | awk -F'[= \t]+' '{ print $2 }'`
+    if [ -z "$lxc_network_flags" ]; then
+        echo "lxc.network.flags = up" >>$cfg_dir/config
     fi
 
     cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
 lxc.network.name = eth0
 lxc.network.mtu = 1500
-lxc.network.hwaddr = $hwaddr
 EOF
 }
 
