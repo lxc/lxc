@@ -63,6 +63,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <arg choice="opt">--keep-env</arg>
       <arg choice="opt">--clear-env</arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
+      <arg choice="opt">-L <replaceable>file</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -298,6 +299,28 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
             이를 통해 바람직하지 않은 환경변수 누출을 막을 수 있다. container=lxc 만이 attach된 프로그램이 실행되기 전에 설정되는 유일한 환경변수이다.
 	  </para>
 	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>-L, --pty-log <replaceable>file</replaceable></option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            Specify a file where the output of <command>lxc-attach</command> will be
+            logged.
+              -->
+            <command>lxc-attach</command>의 출력을 기록할 파일을 지정한다.
+          </para>
+          <para>
+            <!--
+            <emphasis>Important:</emphasis>  When a standard file descriptor
+            does not refer to a pty ouput produced on it will not be logged.
+            -->
+            <emphasis>중요:</emphasis> 표준 입출력 파일 디스크립터가 pty를 참조하지 않으면, 기록되지 않는다.
+          </para>
+        </listitem>
       </varlistentry>
 
     </variablelist>
