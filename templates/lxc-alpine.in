@@ -346,6 +346,7 @@ setup_network() {
 	cat <<-EOF > etc/network/interfaces
 		auto eth0
 		iface eth0 inet dhcp
+		hostname $(hostname)
 	EOF
 }
 
