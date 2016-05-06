@@ -3968,13 +3968,13 @@ static int do_lxcapi_migrate(struct lxc_container *c, unsigned int cmd,
 
 	switch (cmd) {
 	case MIGRATE_PRE_DUMP:
-		ret = !__criu_pre_dump(c, opts->directory, opts->verbose, opts->predump_dir, opts->pageserver_address, opts->pageserver_port);
+		ret = !__criu_pre_dump(c, opts);
 		break;
 	case MIGRATE_DUMP:
-		ret = !__criu_dump(c, opts->directory, opts->stop, opts->verbose, opts->predump_dir, opts->pageserver_address, opts->pageserver_port);
+		ret = !__criu_dump(c, opts);
 		break;
 	case MIGRATE_RESTORE:
-		ret = !__criu_restore(c, opts->directory, opts->verbose);
+		ret = !__criu_restore(c, opts);
 		break;
 	default:
 		ERROR("invalid migrate command %u", cmd);
