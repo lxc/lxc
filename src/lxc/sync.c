@@ -47,6 +47,11 @@ static int __sync_wait(int fd, int sequence)
 	if (!ret)
 		return 0;
 
+	if (ret != sizeof(sync)) {
+		ERROR("unexpected sync size: %d expected %lu", ret, sizeof(sync));
+		return -1;
+	}
+
 	if (sync == LXC_SYNC_ERROR) {
 		ERROR("An error occurred in another process "
 		      "(expected sequence number %d)", sequence);
