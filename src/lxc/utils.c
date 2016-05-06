@@ -69,7 +69,7 @@ struct prctl_mm_map {
         uint64_t   *auxv;
         uint32_t   auxv_size;
         uint32_t   exe_fd;
-};              
+};
 #endif
 
 #ifndef O_PATH
@@ -1576,7 +1576,7 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 	fulllen = strlen(target);
 
 	/* make sure prefix-skip makes sense */
-	if (prefix_skip && strlen(prefix_skip) > 0) {
+	if (prefix_skip) {
 		curlen = strlen(prefix_skip);
 		if (!is_subdir(target, prefix_skip, curlen)) {
 			ERROR("WHOA there - target '%s' didn't start with prefix '%s'",
