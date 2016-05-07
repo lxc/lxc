@@ -36,7 +36,7 @@ lxc_log_define(lxc_sync, lxc);
 static int __sync_wait(int fd, int sequence)
 {
 	int sync = -1;
-	int ret;
+	ssize_t ret;
 
 	ret = read(fd, &sync, sizeof(sync));
 	if (ret < 0) {
@@ -47,8 +47,8 @@ static int __sync_wait(int fd, int sequence)
 	if (!ret)
 		return 0;
 
-	if (ret != sizeof(sync)) {
-		ERROR("unexpected sync size: %d expected %lu", ret, sizeof(sync));
+	if ((size_t)ret != sizeof(sync)) {
+		ERROR("unexpected sync size: %zu expected %zu", (size_t)ret, sizeof(sync));
 		return -1;
 	}
 
