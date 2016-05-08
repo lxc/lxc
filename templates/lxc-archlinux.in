@@ -10,6 +10,7 @@
 # Authors:
 # Alexander Vladimirov <alexander.idkfa.vladimirov@gmail.com>
 # John Lane <lxc@jelmail.com>
+# Aaron Marcher (drkhsh) <info [at] nulltime [dot] net>
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -107,6 +108,11 @@ sed -e 's/^ConditionPathExists=/# ConditionPathExists=/' \
 sed -e 's/^ConditionPathIsReadWrite=\/proc\/sys\/$/ConditionPathIsReadWrite=\/proc\/sys\/net\//' \
     -e 's/^ExecStart=\/usr\/lib\/systemd\/systemd-sysctl$/ExecStart=\/usr\/lib\/systemd\/systemd-sysctl --prefix net/' \
     -i /usr/lib/systemd/system/systemd-sysctl.service
+# fixes for systemd in lxc container
+ln -s /dev/null /etc/systemd/system/systemd-udevd.service
+ln -s /dev/null /etc/systemd/system/systemd-udevd-control.socket
+ln -s /dev/null /etc/systemd/system/systemd-udevd-kernel.socket
+ln -s /dev/null /etc/systemd/system/proc-sys-fs-binfmt_misc.automount
 # initialize pacman keyring
 pacman-key --init
 pacman-key --populate archlinux
@@ -132,6 +138,15 @@ EOF
     [ ${nttys:-0} -gt 6 ] && echo \
       "You may want to modify container's /etc/securetty \
       file to allow root logins on tty7 and higher"
+    # fixes for systemd in lxc container
+    cat << EOF > ${path}/autodev
+#!/bin/bash
+cd ${LXC_ROOTFS_MOUNT}/dev
+mkdir net
+mknod net/tun c 10 200
+chmod 0666 net/tun
+EOF
+    chmod +x ${path}/autodev
     return 0
 }
 
@@ -139,6 +154,7 @@ EOF
 copy_configuration() {
     mkdir -p "${config_path}"
     local config="${config_path}/config"
+    echo "lxc.hook.autodev = ${path}/autodev" >> "${config}"
     echo "lxc.utsname = ${name}" >> "${config}"
     grep -q "^lxc.arch" "${config}" 2>/dev/null \
         || echo "lxc.arch = ${arch}" >> "${config}"
