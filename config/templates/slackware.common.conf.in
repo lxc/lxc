@@ -41,6 +41,6 @@ lxc.mount.entry = none dev/shm tmpfs rw,nosuid,nodev,create=dir
 # lxc.cap.drop = audit_control    # breaks sshd (set_loginuid failed)
 # lxc.cap.drop = audit_write
 # lxc.cap.drop = setpcap          # breaks journald
-# lxc.cap.drop = sys_resources    # breaks systemd
+# lxc.cap.drop = sys_resource     # breaks systemd
 #
 lxc.cap.drop = mknod setfcap setpcap
