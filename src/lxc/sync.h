@@ -26,6 +26,7 @@
 struct lxc_handler;
 
 enum {
+	LXC_SYNC_STARTUP,
 	LXC_SYNC_CONFIGURE,
 	LXC_SYNC_POST_CONFIGURE,
 	LXC_SYNC_CGROUP,
@@ -42,6 +43,7 @@ void lxc_sync_fini_child(struct lxc_handler *);
 int lxc_sync_wake_child(struct lxc_handler *, int);
 int lxc_sync_wait_child(struct lxc_handler *, int);
 int lxc_sync_wake_parent(struct lxc_handler *, int);
+int lxc_sync_wait_parent(struct lxc_handler *, int);
 int lxc_sync_barrier_parent(struct lxc_handler *, int);
 int lxc_sync_barrier_child(struct lxc_handler *, int);
 

@@ -644,6 +644,7 @@ static int do_start(void *data)
 {
 	struct lxc_handler *handler = data;
 	const char *lsm_label = NULL;
+	int ret = 0;
 
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
 		SYSERROR("failed to set sigprocmask");
@@ -666,6 +667,20 @@ static int do_start(void *data)
 	/* don't leak the pinfd to the container */
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);
+	}
+
+	if (lxc_sync_wait_parent(handler, LXC_SYNC_STARTUP))
+		return -1;
+
+	/* Unshare CLONE_NEWNET after CLONE_NEWUSER  - see
+	  https://github.com/lxc/lxd/issues/1978 */
+	if ((handler->clone_flags & (CLONE_NEWNET | CLONE_NEWUSER)) ==
+			(CLONE_NEWNET | CLONE_NEWUSER)) {
+		ret = unshare(CLONE_NEWNET);
+		if (ret < 0) {
+			SYSERROR("Error unsharing network namespace");
+			goto out_warn_father;
+		}
 	}
 
 	/* Tell the parent task it can begin to configure the
@@ -819,7 +834,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	char *errmsg = NULL;
 	bool cgroups_connected = false;
 	int saved_ns_fd[LXC_NS_MAX];
-	int preserve_mask = 0, i;
+	int preserve_mask = 0, i, flags;
 	int netpipepair[2], nveths;
 
 	netpipe = -1;
@@ -927,6 +942,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	/* Create a process in a new set of namespaces */
+	flags = handler->clone_flags;
+	if (handler->clone_flags & CLONE_NEWUSER)
+		flags &= ~CLONE_NEWNET;
 	handler->pid = lxc_clone(do_start, handler, handler->clone_flags);
 	if (handler->pid < 0) {
 		SYSERROR("failed to fork into a new namespace");
@@ -944,8 +962,25 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	lxc_sync_fini_child(handler);
 
-	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
+	/* map the container uids - the container became an invalid
+	 * userid the moment it was cloned with CLONE_NEWUSER - this
+	 * call doesn't change anything immediately, but allows the
+	 * container to setuid(0) (0 being mapped to something else on
+	 * the host) later to become a valid uid again */
+	if (lxc_map_ids(&handler->conf->id_map, handler->pid)) {
+		ERROR("failed to set up id mapping");
+		goto out_delete_net;
+	}
+
+	if (lxc_sync_wake_child(handler, LXC_SYNC_STARTUP)) {
 		failed_before_rename = 1;
+		goto out_delete_net;
+	}
+
+	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE)) {
+		failed_before_rename = 1;
+		goto out_delete_net;
+	}
 
 	if (!cgroup_create_legacy(handler)) {
 		ERROR("failed to setup the legacy cgroups for %s", name);
@@ -988,16 +1023,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 			}
 		}
 		close(netpipepair[1]);
-	}
-
-	/* map the container uids - the container became an invalid
-	 * userid the moment it was cloned with CLONE_NEWUSER - this
-	 * call doesn't change anything immediately, but allows the
-	 * container to setuid(0) (0 being mapped to something else on
-	 * the host) later to become a valid uid again */
-	if (lxc_map_ids(&handler->conf->id_map, handler->pid)) {
-		ERROR("failed to set up id mapping");
-		goto out_delete_net;
 	}
 
 	/* Tell the child to continue its initialization.  we'll get
