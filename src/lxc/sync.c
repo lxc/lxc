@@ -99,6 +99,11 @@ int lxc_sync_wake_parent(struct lxc_handler *handler, int sequence)
 	return __sync_wake(handler->sv[0], sequence);
 }
 
+int lxc_sync_wait_parent(struct lxc_handler *handler, int sequence)
+{
+	return __sync_wait(handler->sv[0], sequence);
+}
+
 int lxc_sync_wait_child(struct lxc_handler *handler, int sequence)
 {
 	return __sync_wait(handler->sv[1], sequence);
