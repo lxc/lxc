@@ -137,8 +137,9 @@ if [ "${CPE_NAME}" != "" -a "${ID}" = "centos" -a "${VERSION_ID}" != "" ]
 then
     centos_host_ver=${VERSION_ID}
     is_centos=true
-elif [ "${CPE_NAME}" != "" -a "${ID}" = "redhat" -a "${VERSION_ID}" != "" ]
+elif [ "${CPE_NAME}" != "" -a "${ID}" = "redhat" -o "${ID}" = "rhel" -a "${VERSION_ID}" != "" ]
 then
+    # RHEL 7+ /etc/os-release ID = 'rhel', which doesn't enter this elif without the added OR statement
     redhat_host_ver=${VERSION_ID}
     is_redhat=true
 elif [ -e /etc/centos-release ]
@@ -394,7 +395,7 @@ configure_centos_init()
 #  power-status-changed - shutdown on SIGPWR
 #
 start on power-status-changed
-    
+
 exec /sbin/shutdown -h now "SIGPWR received"
 EOF
     fi
