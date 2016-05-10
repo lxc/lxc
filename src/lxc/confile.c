@@ -1964,6 +1964,14 @@ static int parse_line(char *buffer, void *data)
 	value += lxc_char_left_gc(value, strlen(value));
 	value[lxc_char_right_gc(value, strlen(value))] = '\0';
 
+	if (*value == '\'' || *value == '\"') {
+		size_t len = strlen(value);
+		if (len > 1 && value[len-1] == *value) {
+			value[len-1] = '\0';
+			value++;
+		}
+	}
+
 	config = lxc_getconfig(key);
 	if (!config) {
 		ERROR("unknown key %s", key);
