@@ -40,8 +40,6 @@
 #include "caps.h"
 #include "utils.h"
 
-#define LXC_LOG_PREFIX_SIZE	32
-#define LXC_LOG_BUFFER_SIZE	512
 #define LXC_LOG_DATEFOMAT_SIZE  15
 
 int lxc_log_fd = -1;
