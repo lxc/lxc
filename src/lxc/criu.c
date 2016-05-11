@@ -56,20 +56,13 @@ struct criu_opts {
 	/* The type of criu invocation, one of "dump" or "restore" */
 	char *action;
 
-	/* The directory to pass to criu */
-	char *directory;
+	/* the user-provided migrate options relevant to this action */
+	struct migrate_opts *user;
 
 	/* The container to dump */
 	struct lxc_container *c;
 
-	/* Enable criu verbose mode? */
-	bool verbose;
-
-	/* (pre-)dump: a directory for the previous dump's images */
-	char *predump_dir;
-
 	/* dump: stop the container or not after dumping? */
-	bool stop;
 	char tty_id[32]; /* the criu tty id for /dev/console, i.e. "tty[${rdev}:${dev}]" */
 
 	/* restore: the file to write the init process' pid into */
@@ -82,10 +75,6 @@ struct criu_opts {
 	 * different) on the target host. NULL if lxc.console = "none".
 	 */
 	char *console_name;
-
-	/* Address and port where a criu pageserver is listening */
-	char *pageserver_address;
-	char *pageserver_port;
 };
 
 static int load_tty_major_minor(char *directory, char *output, int len)
@@ -126,7 +115,7 @@ static int load_tty_major_minor(char *directory, char *output, int len)
 static void exec_criu(struct criu_opts *opts)
 {
 	char **argv, log[PATH_MAX];
-	int static_args = 24, argc = 0, i, ret;
+	int static_args = 23, argc = 0, i, ret;
 	int netnr = 0;
 	struct lxc_list *it;
 
@@ -145,7 +134,7 @@ static void exec_criu(struct criu_opts *opts)
 	}
 
 	/* The command line always looks like:
-	 * criu $(action) --tcp-established --file-locks --link-remap --force-irmap \
+	 * criu $(action) --tcp-established --file-locks --link-remap \
 	 * --manage-cgroups action-script foo.sh -D $(directory) \
 	 * -o $(directory)/$(action).log --ext-mount-map auto
 	 * --enable-external-sharing --enable-external-masters
@@ -157,20 +146,24 @@ static void exec_criu(struct criu_opts *opts)
 		static_args += 4;
 
 		/* --prev-images-dir <path-to-directory-A-relative-to-B> */
-		if (opts->predump_dir)
+		if (opts->user->predump_dir)
 			static_args += 2;
 
 		/* --page-server --address <address> --port <port> */
-		if (opts->pageserver_address && opts->pageserver_port)
+		if (opts->user->pageserver_address && opts->user->pageserver_port)
 			static_args += 5;
 
 		/* --leave-running (only for final dump) */
-		if (strcmp(opts->action, "dump") == 0 && !opts->stop)
+		if (strcmp(opts->action, "dump") == 0 && !opts->user->stop)
 			static_args++;
 
 		/* --external tty[88,4] */
 		if (opts->tty_id[0])
 			static_args += 2;
+
+		/* --force-irmap */
+		if (!opts->user->preserves_inodes)
+			static_args++;
 	} else if (strcmp(opts->action, "restore") == 0) {
 		/* --root $(lxc_mount_point) --restore-detached
 		 * --restore-sibling --pidfile $foo --cgroup-root $foo
@@ -179,7 +172,7 @@ static void exec_criu(struct criu_opts *opts)
 		static_args += 10;
 
 		tty_info[0] = 0;
-		if (load_tty_major_minor(opts->directory, tty_info, sizeof(tty_info)))
+		if (load_tty_major_minor(opts->user->directory, tty_info, sizeof(tty_info)))
 			return;
 
 		/* --inherit-fd fd[%d]:tty[%s] */
@@ -189,10 +182,10 @@ static void exec_criu(struct criu_opts *opts)
 		return;
 	}
 
-	if (opts->verbose)
+	if (opts->user->verbose)
 		static_args++;
 
-	ret = snprintf(log, PATH_MAX, "%s/%s.log", opts->directory, opts->action);
+	ret = snprintf(log, PATH_MAX, "%s/%s.log", opts->user->directory, opts->action);
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("logfile name too long\n");
 		return;
@@ -225,7 +218,6 @@ static void exec_criu(struct criu_opts *opts)
 	DECLARE_ARG("--tcp-established");
 	DECLARE_ARG("--file-locks");
 	DECLARE_ARG("--link-remap");
-	DECLARE_ARG("--force-irmap");
 	DECLARE_ARG("--manage-cgroups");
 	DECLARE_ARG("--ext-mount-map");
 	DECLARE_ARG("auto");
@@ -236,11 +228,11 @@ static void exec_criu(struct criu_opts *opts)
 	DECLARE_ARG("--enable-fs");
 	DECLARE_ARG("tracefs");
 	DECLARE_ARG("-D");
-	DECLARE_ARG(opts->directory);
+	DECLARE_ARG(opts->user->directory);
 	DECLARE_ARG("-o");
 	DECLARE_ARG(log);
 
-	if (opts->verbose)
+	if (opts->user->verbose)
 		DECLARE_ARG("-vvvvvv");
 
 	if (strcmp(opts->action, "dump") == 0 || strcmp(opts->action, "pre-dump") == 0) {
@@ -275,21 +267,24 @@ static void exec_criu(struct criu_opts *opts)
 			DECLARE_ARG(opts->tty_id);
 		}
 
-		if (opts->predump_dir) {
+		if (opts->user->predump_dir) {
 			DECLARE_ARG("--prev-images-dir");
-			DECLARE_ARG(opts->predump_dir);
+			DECLARE_ARG(opts->user->predump_dir);
 		}
 
-		if (opts->pageserver_address && opts->pageserver_port) {
+		if (opts->user->pageserver_address && opts->user->pageserver_port) {
 			DECLARE_ARG("--page-server");
 			DECLARE_ARG("--address");
-			DECLARE_ARG(opts->pageserver_address);
+			DECLARE_ARG(opts->user->pageserver_address);
 			DECLARE_ARG("--port");
-			DECLARE_ARG(opts->pageserver_port);
+			DECLARE_ARG(opts->user->pageserver_port);
 		}
 
+		if (!opts->user->preserves_inodes)
+			DECLARE_ARG("--force-irmap");
+
 		/* only for final dump */
-		if (strcmp(opts->action, "dump") == 0 && !opts->stop)
+		if (strcmp(opts->action, "dump") == 0 && !opts->user->stop)
 			DECLARE_ARG("--leave-running");
 	} else if (strcmp(opts->action, "restore") == 0) {
 		void *m;
@@ -556,7 +551,7 @@ out_unlock:
 
 // do_restore never returns, the calling process is used as the
 // monitor process. do_restore calls exit() if it fails.
-void do_restore(struct lxc_container *c, int status_pipe, char *directory, bool verbose)
+void do_restore(struct lxc_container *c, int status_pipe, struct migrate_opts *opts)
 {
 	pid_t pid;
 	char pidfile[L_tmpnam];
@@ -642,10 +637,9 @@ void do_restore(struct lxc_container *c, int status_pipe, char *directory, bool 
 		}
 
 		os.action = "restore";
-		os.directory = directory;
+		os.user = opts;
 		os.c = c;
 		os.pidfile = pidfile;
-		os.verbose = verbose;
 		os.cgroup_path = cgroup_canonical_path(handler);
 		os.console_fd = c->lxc_conf->console.slave;
 
@@ -829,16 +823,14 @@ static int save_tty_major_minor(char *directory, struct lxc_container *c, char *
 }
 
 /* do one of either predump or a regular dump */
-static bool do_dump(struct lxc_container *c, char *mode, char *directory,
-		    bool stop, bool verbose, char *predump_dir,
-		    char *pageserver_address, char *pageserver_port)
+static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *opts)
 {
 	pid_t pid;
 
 	if (!criu_ok(c))
 		return false;
 
-	if (mkdir_p(directory, 0700) < 0)
+	if (mkdir_p(opts->directory, 0700) < 0)
 		return false;
 
 	pid = fork();
@@ -851,16 +843,11 @@ static bool do_dump(struct lxc_container *c, char *mode, char *directory,
 		struct criu_opts os;
 
 		os.action = mode;
-		os.directory = directory;
+		os.user = opts;
 		os.c = c;
-		os.stop = stop;
-		os.verbose = verbose;
-		os.predump_dir = predump_dir;
 		os.console_name = c->lxc_conf->console.path;
-		os.pageserver_address = pageserver_address;
-		os.pageserver_port = pageserver_port;
 
-		if (save_tty_major_minor(directory, c, os.tty_id, sizeof(os.tty_id)) < 0)
+		if (save_tty_major_minor(opts->directory, c, os.tty_id, sizeof(os.tty_id)) < 0)
 			exit(1);
 
 		/* exec_criu() returning is an error */
@@ -891,17 +878,17 @@ static bool do_dump(struct lxc_container *c, char *mode, char *directory,
 	}
 }
 
-bool __criu_pre_dump(struct lxc_container *c, char *directory, bool verbose, char *predump_dir, char *pageserver_address, char *pageserver_port)
+bool __criu_pre_dump(struct lxc_container *c, struct migrate_opts *opts)
 {
-	return do_dump(c, "pre-dump", directory, false, verbose, predump_dir, pageserver_address, pageserver_port);
+	return do_dump(c, "pre-dump", opts);
 }
 
-bool __criu_dump(struct lxc_container *c, char *directory, bool stop, bool verbose, char *predump_dir, char *pageserver_address, char *pageserver_port)
+bool __criu_dump(struct lxc_container *c, struct migrate_opts *opts)
 {
 	char path[PATH_MAX];
 	int ret;
 
-	ret = snprintf(path, sizeof(path), "%s/inventory.img", directory);
+	ret = snprintf(path, sizeof(path), "%s/inventory.img", opts->directory);
 	if (ret < 0 || ret >= sizeof(path))
 		return false;
 
@@ -910,10 +897,10 @@ bool __criu_dump(struct lxc_container *c, char *directory, bool stop, bool verbo
 		return false;
 	}
 
-	return do_dump(c, "dump", directory, stop, verbose, predump_dir, pageserver_address, pageserver_port);
+	return do_dump(c, "dump", opts);
 }
 
-bool __criu_restore(struct lxc_container *c, char *directory, bool verbose)
+bool __criu_restore(struct lxc_container *c, struct migrate_opts *opts)
 {
 	pid_t pid;
 	int status, nread;
@@ -942,7 +929,7 @@ bool __criu_restore(struct lxc_container *c, char *directory, bool verbose)
 	if (pid == 0) {
 		close(pipefd[0]);
 		// this never returns
-		do_restore(c, pipefd[1], directory, verbose);
+		do_restore(c, pipefd[1], opts);
 	}
 
 	close(pipefd[1]);
