@@ -359,7 +359,7 @@ download_ubuntu()
         debootstrap_parameters="$debootstrap_parameters --variant=$variant"
     fi
     if [ "$variant" = 'minbase' ]; then
-        packages_template="${packages_template},sudo,ifupdown,isc-dhcp-client"
+        packages_template="${packages_template},sudo,ifupdown,isc-dhcp-client,apt-transport-https"
     fi
 
     echo "Installing packages in template: ${packages_template}"
