@@ -884,6 +884,13 @@ struct migrate_opts {
 	char *predump_dir; /* relative to directory above */
 	char *pageserver_address; /* where should memory pages be send? */
 	char *pageserver_port;
+
+	/* This flag indicates whether or not the container's rootfs will have
+	 * the same inodes on checkpoint and restore. In the case of e.g. zfs
+	 * send or btrfs send, or an LVM snapshot, this will be true, but it
+	 * won't if e.g. you rsync the filesystems between two machines.
+	 */
+	bool preserves_inodes;
 };
 
 /*!
