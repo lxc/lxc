@@ -57,6 +57,7 @@
   mount fstype=mqueue,
 
   # allow fuse mounts everywhere
+  mount fstype=fuse,
   mount fstype=fuse.*,
 
   # allow bind mount of /lib/init/fstab for lxcguest
