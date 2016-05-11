@@ -115,7 +115,7 @@ static int load_tty_major_minor(char *directory, char *output, int len)
 static void exec_criu(struct criu_opts *opts)
 {
 	char **argv, log[PATH_MAX];
-	int static_args = 24, argc = 0, i, ret;
+	int static_args = 23, argc = 0, i, ret;
 	int netnr = 0;
 	struct lxc_list *it;
 
@@ -134,7 +134,7 @@ static void exec_criu(struct criu_opts *opts)
 	}
 
 	/* The command line always looks like:
-	 * criu $(action) --tcp-established --file-locks --link-remap --force-irmap \
+	 * criu $(action) --tcp-established --file-locks --link-remap \
 	 * --manage-cgroups action-script foo.sh -D $(directory) \
 	 * -o $(directory)/$(action).log --ext-mount-map auto
 	 * --enable-external-sharing --enable-external-masters
@@ -160,6 +160,10 @@ static void exec_criu(struct criu_opts *opts)
 		/* --external tty[88,4] */
 		if (opts->tty_id[0])
 			static_args += 2;
+
+		/* --force-irmap */
+		if (!opts->user->preserves_inodes)
+			static_args++;
 	} else if (strcmp(opts->action, "restore") == 0) {
 		/* --root $(lxc_mount_point) --restore-detached
 		 * --restore-sibling --pidfile $foo --cgroup-root $foo
@@ -214,7 +218,6 @@ static void exec_criu(struct criu_opts *opts)
 	DECLARE_ARG("--tcp-established");
 	DECLARE_ARG("--file-locks");
 	DECLARE_ARG("--link-remap");
-	DECLARE_ARG("--force-irmap");
 	DECLARE_ARG("--manage-cgroups");
 	DECLARE_ARG("--ext-mount-map");
 	DECLARE_ARG("auto");
@@ -276,6 +279,9 @@ static void exec_criu(struct criu_opts *opts)
 			DECLARE_ARG("--port");
 			DECLARE_ARG(opts->user->pageserver_port);
 		}
+
+		if (!opts->user->preserves_inodes)
+			DECLARE_ARG("--force-irmap");
 
 		/* only for final dump */
 		if (strcmp(opts->action, "dump") == 0 && !opts->user->stop)
