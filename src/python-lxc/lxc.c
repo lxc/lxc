@@ -25,7 +25,6 @@
 #include <Python.h>
 #include "structmember.h"
 #include <lxc/lxccontainer.h>
-#include "lxc/utils.h"
 #include "lxc/confile.h"
 #include <stdio.h>
 #include <sys/wait.h>
@@ -60,6 +59,23 @@
 #endif
 
 /* Helper functions */
+
+/* Copied from lxc/utils.c */
+static int lxc_wait_for_pid_status(pid_t pid)
+{
+    int status, ret;
+
+again:
+    ret = waitpid(pid, &status, 0);
+    if (ret == -1) {
+        if (errno == EINTR)
+            goto again;
+        return -1;
+    }
+    if (ret != pid)
+        goto again;
+    return status;
+}
 
 char**
 convert_tuple_to_char_pointer_array(PyObject *argv) {
