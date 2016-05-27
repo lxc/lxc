@@ -22,7 +22,45 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
 # USA
 
+import os
+import subprocess
+
 from distutils.core import setup, Extension
+from distutils.command.build_ext import build_ext as BuildExtCommand
+
+
+class LxcBuildExtCommand(BuildExtCommand):
+    user_options = BuildExtCommand.user_options + [
+        ('no-pkg-config', None,
+         "don't use pkg-config to detect include/library paths")
+    ]
+
+    def initialize_options(self):
+        super(LxcBuildExtCommand, self).initialize_options()
+        self.no_pkg_config = False
+
+    def build_extensions(self):
+        if not self.no_pkg_config:
+            pkg_config_executable = os.environ.get('PKG_CONFIG_EXECUTABLE',
+                                                   'pkg-config')
+
+            def get_pkg_config_var(name):
+                args = [pkg_config_executable, '--variable', name, 'lxc']
+                output = subprocess.check_output(args,
+                                                 universal_newlines=True)
+                return output.rstrip('\n')
+
+            try:
+                includedir = get_pkg_config_var('includedir')
+                libdir = get_pkg_config_var('libdir')
+
+                self.compiler.add_include_dir(includedir)
+                self.compiler.add_library_dir(libdir)
+
+            except subprocess.CalledProcessError:
+                pass
+
+        super(LxcBuildExtCommand, self).build_extensions()
 
 
 setup(name='_lxc',
@@ -31,4 +69,5 @@ setup(name='_lxc',
       packages=['lxc'],
       package_dir={'lxc': 'lxc'},
       ext_modules=[Extension('_lxc', sources=['lxc.c'], libraries=['lxc'])],
+      cmdclass={'build_ext': LxcBuildExtCommand},
       )
