@@ -6,7 +6,12 @@ before_install:
  - sudo add-apt-repository ppa:ubuntu-lxc/daily -y
  - sudo apt-get update -qq
  - sudo apt-get install -qq libapparmor-dev libcap-dev libseccomp-dev python3-dev docbook2x libgnutls-dev liblua5.2-dev libselinux1-dev libcgmanager-dev
-script: ./autogen.sh && ./configure --enable-tests && make -j4
+script:
+ - ./autogen.sh
+ - mkdir build
+ - cd build
+ - ../configure --enable-tests
+ - make -j4
 notifications:
   email:
     recipients:
