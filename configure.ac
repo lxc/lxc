@@ -847,7 +847,6 @@ AC_CONFIG_FILES([
 	src/lxc/lxc.functions
 	src/lxc/version.h
 	src/python-lxc/Makefile
-	src/python-lxc/setup.py
 
 	src/lua-lxc/Makefile
 
