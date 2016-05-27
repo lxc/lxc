@@ -12,6 +12,7 @@ script:
  - cd build
  - ../configure --enable-tests
  - make -j4
+ - make DESTDIR=$TRAVIS_BUILD_DIR/install install
 notifications:
   email:
     recipients:
