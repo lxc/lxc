@@ -25,7 +25,6 @@
 #include <Python.h>
 #include "structmember.h"
 #include <lxc/lxccontainer.h>
-#include "lxc/confile.h"
 #include <stdio.h>
 #include <sys/wait.h>
 #include <sched.h>
@@ -58,6 +57,10 @@
 #  define CLONE_NEWNET            0x40000000
 #endif
 
+/* From sys/personality.h */
+#define PER_LINUX 0x0000
+#define PER_LINUX32 0x0008
+
 /* Helper functions */
 
 /* Copied from lxc/utils.c */
@@ -75,6 +78,36 @@ again:
     if (ret != pid)
         goto again;
     return status;
+}
+
+/* Copied from lxc/confile.c, with HAVE_SYS_PERSONALITY_H check removed */
+signed long lxc_config_parse_arch(const char *arch)
+{
+    struct per_name {
+        char *name;
+        unsigned long per;
+    } pername[] = {
+        { "x86", PER_LINUX32 },
+        { "linux32", PER_LINUX32 },
+        { "i386", PER_LINUX32 },
+        { "i486", PER_LINUX32 },
+        { "i586", PER_LINUX32 },
+        { "i686", PER_LINUX32 },
+        { "athlon", PER_LINUX32 },
+        { "linux64", PER_LINUX },
+        { "x86_64", PER_LINUX },
+        { "amd64", PER_LINUX },
+    };
+    size_t len = sizeof(pername) / sizeof(pername[0]);
+
+    size_t i;
+
+    for (i = 0; i < len; i++) {
+        if (!strcmp(pername[i].name, arch))
+            return pername[i].per;
+    }
+
+    return -1;
 }
 
 char**
