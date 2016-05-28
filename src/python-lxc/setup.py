@@ -63,7 +63,7 @@ class LxcBuildExtCommand(BuildExtCommand):
         super(LxcBuildExtCommand, self).build_extensions()
 
 
-setup(name='_lxc',
+setup(name='lxc',
       version='0.1',
       description='LXC',
       packages=['lxc'],
