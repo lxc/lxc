@@ -6,18 +6,15 @@ else
     DISTSETUPOPTS=
 endif
 
-INSTALL_OPTS := install --prefix=$(prefix) --no-compile $(DISTSETUPOPTS)
 CALL_SETUP_PY := cd @srcdir@ && $(PYTHON) setup.py build -b @abs_builddir@/build
 
 all:
 	$(CALL_SETUP_PY) build_ext -I @abs_top_srcdir@/src -L @abs_top_builddir@/src/lxc --no-pkg-config
 
+DESTDIR = / # default
+
 install:
-	if [ -z "$(DESTDIR)" ]; then \
-		$(CALL_SETUP_PY) $(INSTALL_OPTS); \
-	else \
-		$(CALL_SETUP_PY) $(INSTALL_OPTS) --root=$(DESTDIR); \
-	fi
+	$(CALL_SETUP_PY) install --prefix=$(prefix) --no-compile $(DISTSETUPOPTS) --root=$(DESTDIR)
 
 clean-local:
 	rm -rf @builddir@/build
