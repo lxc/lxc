@@ -9,7 +9,7 @@ Type=simple
 KillMode=mixed
 KillSignal=SIGPWR
 TimeoutStopSec=120s
-ExecStart=@BINDIR@/lxc-start -n %i
+ExecStart=@BINDIR@/lxc-start -F -n %i
 # Environment=BOOTUP=serial
 # Environment=CONSOLETYPE=serial
 Delegate=yes
