@@ -342,7 +342,7 @@ download_ubuntu()
             ;;
     esac
 
-    packages_template=${packages_template:-"ssh,vim"}
+    packages_template=${packages_template:-"apt-transport-https,ssh,vim"}
     debootstrap_parameters=
 
     # Try to guess a list of langpacks to install
@@ -359,7 +359,7 @@ download_ubuntu()
         debootstrap_parameters="$debootstrap_parameters --variant=$variant"
     fi
     if [ "$variant" = 'minbase' ]; then
-        packages_template="${packages_template},sudo,ifupdown,isc-dhcp-client,apt-transport-https"
+        packages_template="${packages_template},sudo,ifupdown,isc-dhcp-client"
     fi
 
     echo "Installing packages in template: ${packages_template}"
