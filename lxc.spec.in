@@ -275,7 +275,6 @@ fi
 %{_libexecdir}/%{name}
 %attr(4111,root,root) %{_libexecdir}/%{name}/lxc-user-nic
 %if %{with_systemd}
-%attr(555,root,root) %{_libexecdir}/%{name}/lxc-devsetup
 %attr(555,root,root) %{_libexecdir}/%{name}/lxc-net
 %attr(555,root,root) %{_libexecdir}/%{name}/lxc-containers
 %endif

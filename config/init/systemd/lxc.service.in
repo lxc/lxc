@@ -6,7 +6,6 @@ Wants=lxc-net.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStartPre=@LIBEXECDIR@/lxc/lxc-devsetup
 ExecStartPre=@LIBEXECDIR@/lxc/lxc-apparmor-load
 ExecStart=@LIBEXECDIR@/lxc/lxc-containers start
 ExecStop=@LIBEXECDIR@/lxc/lxc-containers stop
