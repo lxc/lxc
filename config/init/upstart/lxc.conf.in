@@ -45,9 +45,6 @@ pre-start script
 		fi
 	fi
 
-	# Setup host /dev for autodev containers.
-	@LIBEXECDIR@/lxc/lxc-devsetup
-
 	[ "x$LXC_AUTO" = "xtrue" ] || exit 0
 
 	if [ -n "$BOOTGROUPS" ]
