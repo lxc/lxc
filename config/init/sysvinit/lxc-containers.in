@@ -29,7 +29,6 @@ test ! -r /lib/lsb/init-functions ||
 
 start() {
     # Setup host /dev for autodev containers.
-    @LIBEXECDIR@/lxc/lxc-devsetup
     log_daemon_msg "Starting LXC autoboot containers: "
     @LIBEXECDIR@/lxc/lxc-containers start
 }
