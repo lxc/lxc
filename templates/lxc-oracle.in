@@ -145,21 +145,25 @@ EOF
 
     # OL7 has systemd, no rc.sysinit
     if [ $container_release_major = "7" ]; then
-        # from mhw in the fedora template: We do need to disable the
-        # "ConditionalPathExists=/dev/tty0" line or no gettys are started on
-        # the ttys in the container. Lets do it in an override copy of the
-        # service so it can still pass rpm verifies and not be automatically
-        # updated by a new systemd version.
-        sed -e 's/^ConditionPathExists=/#LXC ConditionPathExists=/' \
-            < $container_rootfs/usr/lib/systemd/system/getty\@.service \
-            > $container_rootfs/etc/systemd/system/getty\@.service
-        # Setup getty service on the 4 ttys we are going to allow in the
-        # default config.  Number should match lxc.tty
-        ( cd $container_rootfs/etc/systemd/system/getty.target.wants
-            for i in 1 2 3 4 ; do ln -sf ../getty\@.service getty@tty${i}.service; done )
-        # We only want to spawn a getty on /dev/console in lxc, libvirt-lxc
-        # symlinks /dev/console to /dev/tty1
-        sed -i '/Before=getty.target/a ConditionVirtualization=lxc' $container_rootfs/usr/lib/systemd/system/console-getty.service
+        # with newer systemd (OL7.2), getty service include container-getty.service
+        # let that be the one who manage the getty service instead
+        if [ ! -f $container_rootfs/usr/lib/systemd/system/container-getty@.service ]; then
+        	# from mhw in the fedora template: We do need to disable the
+        	# "ConditionalPathExists=/dev/tty0" line or no gettys are started on
+        	# the ttys in the container. Lets do it in an override copy of the
+        	# service so it can still pass rpm verifies and not be automatically
+        	# updated by a new systemd version.
+        	sed -e 's/^ConditionPathExists=/#LXC ConditionPathExists=/' \
+            		< $container_rootfs/usr/lib/systemd/system/getty\@.service \
+            		> $container_rootfs/etc/systemd/system/getty\@.service
+        	# Setup getty service on the 4 ttys we are going to allow in the
+        	# default config.  Number should match lxc.tty
+        	( cd $container_rootfs/etc/systemd/system/getty.target.wants
+            		for i in 1 2 3 4 ; do ln -sf ../getty\@.service getty@tty${i}.service; done )
+        	# We only want to spawn a getty on /dev/console in lxc, libvirt-lxc
+        	# symlinks /dev/console to /dev/tty1
+        	sed -i '/Before=getty.target/a ConditionVirtualization=lxc' $container_rootfs/usr/lib/systemd/system/console-getty.service
+        fi
 
         # disable some systemd services, set default boot, sigpwr target
         rm -f $container_rootfs/usr/lib/systemd/system/sysinit.target.wants/kmod-static-nodes.service
