@@ -41,6 +41,29 @@ LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
 # Allows the lxc-cache directory to be set by environment variable
 LXC_CACHE_PATH=${LXC_CACHE_PATH:-"$LOCALSTATEDIR/cache/lxc"}
 
+find_interpreter()
+{
+    given_interpreter=$(basename "$1")
+
+    if [ ! -d /proc/sys/fs/binfmt_misc/ ] ; then
+        return 1
+    fi
+    for file in /proc/sys/fs/binfmt_misc/* ; do
+        if [ "$file" = "/proc/sys/fs/binfmt_misc/register" -o \
+             "$file" = "/proc/sys/fs/binfmt_misc/status" ] ; then
+            continue
+        fi
+        interpreter_path=$(sed -n "/^interpreter/s/interpreter \([^[:space:]]*\)/\1/p" "$file")
+        interpreter=$(basename $interpreter_path)
+
+        if [ "$given_interpreter" = "$interpreter" ] ; then
+            echo "$interpreter_path"
+            return 0
+        fi
+    done
+    return 1
+}
+
 configure_debian()
 {
     rootfs=$1
@@ -252,6 +275,8 @@ openssh-server
     cache=$1
     arch=$2
     release=$3
+    interpreter="$4"
+    interpreter_path="$5"
 
     trap cleanup EXIT SIGHUP SIGINT SIGTERM
 
@@ -285,12 +310,33 @@ openssh-server
 
     # download a mini debian into a cache
     echo "Downloading debian minimal ..."
-    debootstrap --verbose --variant=minbase --arch=$arch \
-        --include=$packages --keyring=${releasekeyring} \
-        "$release" "$cache/partial-$release-$arch" $MIRROR
-    if [ $? -ne 0 ]; then
-        echo "Failed to download the rootfs, aborting."
-        return 1
+    if [ "$interpreter" = "" ] ; then
+        debootstrap --verbose --variant=minbase --arch=$arch \
+            --include=$packages --keyring=${releasekeyring} \
+            "$release" "$cache/partial-$release-$arch" $MIRROR
+        if [ $? -ne 0 ]; then
+            echo "Failed to download the rootfs, aborting."
+            return 1
+        fi
+    else
+        debootstrap --foreign --verbose --variant=minbase --arch=$arch \
+            --include=$packages --keyring=${releasekeyring} \
+            "$release" "$cache/partial-$release-$arch" $MIRROR
+        if [ $? -ne 0 ]; then
+            echo "Failed to download the rootfs, aborting."
+            return 1
+        fi
+        mkdir -p $(basename "$cache/partial-$release-$arch/$interpreter_path")
+        cp "$interpreter" "$cache/partial-$release-$arch/$interpreter_path"
+        if [ $? -ne 0 ]; then
+            echo "failed to copy $interpreter to $cache/partial-$release-$arch/$interpreter_path"
+            return 1
+        fi
+        chroot "$cache/partial-$release-$arch" debootstrap/debootstrap --second-stage
+        if [ $? -ne 0 ]; then
+            echo "failed to update the rootfs, aborting"
+            return 1
+        fi
     fi
 
     mv "$1/partial-$release-$arch" "$1/rootfs-$release-$arch"
@@ -323,6 +369,8 @@ install_debian()
     release=$2
     arch=$3
     cache="$4/debian"
+    interpreter="$5"
+    interpreter_path="$6"
     mkdir -p $LOCALSTATEDIR/lock/subsys/
     (
         flock -x 9
@@ -333,7 +381,7 @@ install_debian()
 
         echo "Checking cache download in $cache/rootfs-$release-$arch ... "
         if [ ! -e "$cache/rootfs-$release-$arch" ]; then
-            download_debian $cache $arch $release
+            download_debian $cache $arch $release "$interpreter" "$interpreter_path"
             if [ $? -ne 0 ]; then
                 echo "Failed to download 'debian base'"
                 return 1
@@ -388,6 +436,7 @@ copy_configuration()
 lxc.tty = $num_tty
 lxc.utsname = $hostname
 lxc.arch = $arch
+lxc.pts=1023
 EOF
 
     if [ $? -ne 0 ]; then
@@ -404,6 +453,7 @@ post_process()
     local release="$1"; shift
     local arch="$1"; shift
     local hostarch="$1"; shift
+    local interpreter="$1"; shift
     local packages="$*"
 
     # Disable service startup
@@ -414,7 +464,7 @@ EOF
     chmod +x ${rootfs}/usr/sbin/policy-rc.d
 
     # If the container isn't running a native architecture, setup multiarch
-    if [ "${arch}" != "${hostarch}" ]; then
+    if [ "$interpreter" = "" -a "${arch}" != "${hostarch}" ]; then
         # Test if dpkg supports multiarch
         if ! chroot $rootfs dpkg --print-foreign-architecture 2>&1; then
             chroot $rootfs dpkg --add-architecture ${hostarch}
@@ -423,7 +473,7 @@ EOF
 
     # Write a new sources.list containing both native and multiarch entries
     > ${rootfs}/etc/apt/sources.list
-    if [ "${arch}" = "${hostarch}" ]; then
+    if [ "$interpreter" != "" -a "${arch}" = "${hostarch}" ]; then
         write_sourceslist ${rootfs} ${release} ${arch}
     else
         write_sourceslist ${rootfs} ${release}
@@ -492,6 +542,7 @@ Template specific options can be passed to lxc-create after a '--' like this:
 Usage: $1 -h|--help -p|--path=<path> [-c|--clean] [-a|--arch=<arch>] [-r|--release=<release>]
                                      [--mirror=<mirror>] [--security-mirror=<security mirror>]
                                      [--package=<package_name1,package_name2,...>]
+                                     [-I|--interpreter-path=<interpreter path>]
 
 Options :
 
@@ -510,6 +561,8 @@ Options :
                          List of additional packages to install. Comma separated, without space.
   -c, --clean            only clean up the cache and terminate
   --enable-non-free      include also Debian's contrib and non-free repositories.
+  -I|--interpreter-path=INTERPRETER-PATH
+                         Path of the binfmt interpreter to copy to the rootfs
 
 Environment variables:
 
@@ -522,7 +575,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:r:c -l arch:,clean,help,enable-non-free,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror: -- "$@")
+options=$(getopt -o hp:n:a:r:cI: -l arch:,clean,help,enable-non-free,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror:,interpreter-path: -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
         exit 1
@@ -547,6 +600,8 @@ do
            --)                shift 1; break ;;
 
         -a|--arch)            arch=$2; shift 2;;
+        -I|--interpreter-path)
+                              interpreter="$2"; shift 2;;
         -c|--clean)           clean=1; shift 1;;
            --enable-non-free) mainonly=0; shift 1;;
            --mirror)          MIRROR=$2; shift 2;;
@@ -573,20 +628,32 @@ if [ "$arch" = "x86_64" ]; then
     arch=amd64
 fi
 
-if [ $hostarch = "i386" -a $arch = "amd64" ]; then
-    echo "can't create $arch container on $hostarch"
-    exit 1
-fi
+if [ "$interpreter" = "" ] ; then
+    if [ $hostarch = "i386" -a $arch = "amd64" ]; then
+        echo "can't create $arch container on $hostarch"
+        exit 1
+    fi
 
-if [ $hostarch = "armhf" -o $hostarch = "armel" ] && \
-   [ $arch != "armhf" -a $arch != "armel" ]; then
-    echo "can't create $arch container on $hostarch"
-    exit 1
-fi
+    if [ $hostarch = "armhf" -o $hostarch = "armel" ] && \
+       [ $arch != "armhf" -a $arch != "armel" ]; then
+        echo "can't create $arch container on $hostarch"
+        exit 1
+    fi
 
-if [ $hostarch = "powerpc" -a $arch != "powerpc" ]; then
-    echo "can't create $arch container on $hostarch"
-    exit 1
+    if [ $hostarch = "powerpc" -a $arch != "powerpc" ]; then
+        echo "can't create $arch container on $hostarch"
+        exit 1
+    fi
+else
+    if ! file -b "${interpreter}" |grep -q "statically linked" ; then
+        echo "'${interpreter}' must be statically linked" 1>&2
+        exit 1
+    fi
+    interpreter_path=$(find_interpreter "$interpreter")
+    if [ $? -ne 0 ] ; then
+        echo "no binfmt interpreter using $(basename $interpreter)" 1>&2
+        exit 1
+    fi
 fi
 
 type debootstrap
@@ -630,7 +697,7 @@ else
     num_tty=4
 fi
 
-install_debian $rootfs $release $arch $LXC_CACHE_PATH
+install_debian $rootfs $release $arch $LXC_CACHE_PATH "$interpreter" "$interpreter_path"
 if [ $? -ne 0 ]; then
     echo "failed to install debian"
     exit 1
@@ -650,7 +717,7 @@ fi
 
 configure_debian_systemd $path $rootfs $config $num_tty
 
-post_process ${rootfs} ${release} ${arch} ${hostarch} ${packages}
+post_process ${rootfs} ${release} ${arch} ${hostarch} "${interpreter}" ${packages}
 
 if [ ! -z "$clean" ]; then
     clean || exit 1
