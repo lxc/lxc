@@ -372,12 +372,18 @@ install_debian()
     cache="$4/debian"
     interpreter="$5"
     interpreter_path="$6"
+    flushcache=$7
     mkdir -p $LOCALSTATEDIR/lock/subsys/
     (
         flock -x 9
         if [ $? -ne 0 ]; then
             echo "Cache repository is busy."
             return 1
+        fi
+
+        if [ $flushcache -eq 1 ]; then
+            echo "Flushing cache..."
+            cleanup
         fi
 
         echo "Checking cache download in $cache/rootfs-$release-$arch ... "
@@ -544,6 +550,7 @@ Usage: $1 -h|--help -p|--path=<path> [-c|--clean] [-a|--arch=<arch>] [-r|--relea
                                      [--mirror=<mirror>] [--security-mirror=<security mirror>]
                                      [--package=<package_name1,package_name2,...>]
                                      [-I|--interpreter-path=<interpreter path>]
+                                     [-F | --flush-cache]
 
 Options :
 
@@ -564,6 +571,7 @@ Options :
   --enable-non-free      include also Debian's contrib and non-free repositories.
   -I|--interpreter-path=INTERPRETER-PATH
                          Path of the binfmt interpreter to copy to the rootfs
+  -F | --flush-cache     Flush the debian release cache
 
 Environment variables:
 
@@ -576,7 +584,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:r:cI: -l arch:,clean,help,enable-non-free,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror:,interpreter-path: -- "$@")
+options=$(getopt -o hp:n:a:r:cI:F -l arch:,clean,help,enable-non-free,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror:,interpreter-path:,flush-cache -- "$@")
 if [ $? -ne 0 ]; then
         usage $(basename $0)
         exit 1
@@ -593,6 +601,7 @@ elif [ "$arch" = "armv7l" ]; then
 fi
 hostarch=$arch
 mainonly=1
+flushcache=0
 
 while true
 do
@@ -612,6 +621,7 @@ do
         -r|--release)         release=$2; shift 2;;
            --rootfs)          rootfs=$2; shift 2;;
            --security-mirror) SECURITY_MIRROR=$2; shift 2;;
+        -F|--flush-cache)     flushcache=1; shift 1;;
         *)                    break ;;
     esac
 done
@@ -698,7 +708,7 @@ else
     num_tty=4
 fi
 
-install_debian $rootfs $release $arch $LXC_CACHE_PATH "$interpreter" "$interpreter_path"
+install_debian $rootfs $release $arch $LXC_CACHE_PATH "$interpreter" "$interpreter_path" $flushcache
 if [ $? -ne 0 ]; then
     echo "failed to install debian"
     exit 1
