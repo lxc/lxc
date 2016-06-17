@@ -253,10 +253,45 @@ configure_debian_systemd()
     return 0
 }
 
+# Check if given path is in a btrfs partition
+is_btrfs()
+{
+    [ -e $1 -a $(stat -f -c '%T' $1) = "btrfs" ]
+}
+
+# Check if given path is the root of a btrfs subvolume
+is_btrfs_subvolume()
+{
+    [ -d $1 -a $(stat -f -c '%T' $1) = "btrfs" -a $(stat -c '%i' $1) -eq 256 ]
+}
+
+try_mksubvolume()
+{
+    path=$1
+    [ -d $path ] && return 0
+    mkdir -p $(dirname $path)
+    if which btrfs >/dev/null 2>&1 && is_btrfs $(dirname $path); then
+        btrfs subvolume create $path
+    else
+        mkdir -p $path
+    fi
+}
+
+try_rmsubvolume()
+{
+    path=$1
+    [ -d $path ] || return 0
+    if which btrfs >/dev/null 2>&1 && is_btrfs_subvolume $path; then
+        btrfs subvolume delete $path
+    else
+        rm -rf $path
+    fi
+}
+
 cleanup()
 {
-    rm -rf $cache/partial-$release-$arch
-    rm -rf $cache/rootfs-$release-$arch
+    try_rmsubvolume $cache/partial-$release-$arch
+    try_rmsubvolume $cache/rootfs-$release-$arch
 }
 
 download_debian()
@@ -303,7 +338,7 @@ openssh-server
             | gpg --import --no-default-keyring --keyring=${releasekeyring}
     fi
     # check the mini debian was not already downloaded
-    mkdir -p "$cache/partial-$release-$arch"
+    try_mksubvolume "$cache/partial-$release-$arch"
     if [ $? -ne 0 ]; then
         echo "Failed to create '$cache/partial-$release-$arch' directory"
         return 1
@@ -359,8 +394,18 @@ copy_debian()
 
     # make a local copy of the minidebian
     echo -n "Copying rootfs to $rootfs..."
-    mkdir -p $rootfs
-    rsync -Ha "$cache/rootfs-$release-$arch"/ $rootfs/ || return 1
+    try_mksubvolume $rootfs
+    if which btrfs >/dev/null 2>&1 && \
+       is_btrfs_subvolume "$cache/rootfs-$release-$arch" && \
+       is_btrfs_subvolume $rootfs; then
+      realrootfs=$(dirname $config)/rootfs
+      [ "$rootfs" = "$realrootfs" ] || umount $rootfs || return 1
+      btrfs subvolume delete $realrootfs || return 1
+      btrfs subvolume snapshot "$cache/rootfs-$release-$arch" $realrootfs || return 1
+      [ "$rootfs" = "$realrootfs" ] || mount --bind $realrootfs $rootfs || return 1
+    else
+        rsync -Ha "$cache/rootfs-$release-$arch"/ $rootfs/ || return 1
+    fi
     return 0
 }
 
