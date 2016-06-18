@@ -262,6 +262,7 @@ cleanup()
 download_debian()
 {
     packages=\
+init,\
 ifupdown,\
 locales,\
 libui-dialog-perl,\
