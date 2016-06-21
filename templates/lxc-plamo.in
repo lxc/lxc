@@ -49,7 +49,7 @@ MIRRORPATH=${MIRRORPATH:-"/pub/linux/Plamo"}
 CATEGORIES=${CATEGORIES-"00_base 01_minimum"}
 EXTRACTGRS=${EXTRACTGRS-""}
 IGNOREPKGS=${IGNOREPKGS-"grub kernel lilo linux_firmware microcode_ctl
-    cpufreqd cpufrequtils gpm"}
+    cpufreqd cpufrequtils gpm ntp kmod"}
 ADDONPKGS=${ADDONPKGS-"`echo contrib/Hamradio/{morse,qrq}`"}
 
 download_plamo() {
@@ -222,6 +222,14 @@ configure_plamo() {
   sh /tmp/netconfig.rconly
   rm -f /tmp/netconfig.rconly
   sed -i '/cmdline/s/if/& false \&\&/' $rootfs/etc/rc.d/rc.inet1.tradnet
+  # /etc/rc.d/rc.inet2
+  sed -i '/rpc.mountd/s/^/#/' $rootfs/etc/rc.d/rc.inet2
+  sed -i '/modprobe/s/^/#/' $rootfs/etc/rc.d/rc.inet2
+  # configure to start only the minimum of service
+  chmod 644 $rootfs/etc/rc.d/init.d/saslauthd
+  chmod 644 $rootfs/etc/rc.d/init.d/open-iscsi
+  rm -f $rootfs/etc/rc.d/init.d/postfix
+  rm -f $rootfs/var/log/initpkg/shadow
   return 0
 }
 
