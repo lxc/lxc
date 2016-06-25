@@ -908,11 +908,6 @@ static int do_start(void *data)
 		devnull_fd = -1;
 	}
 
-	if (cgns_supported() && unshare(CLONE_NEWCGROUP) != 0) {
-		SYSERROR("Failed to unshare cgroup namespace");
-		goto out_warn_father;
-	}
-
 	setsid();
 
 	/* after this call, we are in error because this
@@ -1135,7 +1130,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 	flags = handler->clone_flags;
 	if (handler->clone_flags & CLONE_NEWUSER)
 		flags &= ~CLONE_NEWNET;
-	handler->pid = lxc_clone(do_start, handler, handler->clone_flags);
+	if (cgns_supported()) {
+		handler->clone_flags |= CLONE_NEWCGROUP;
+		flags |= CLONE_NEWCGROUP;
+	}
+	handler->pid = lxc_clone(do_start, handler, flags);
 	if (handler->pid < 0) {
 		SYSERROR("failed to fork into a new namespace");
 		goto out_delete_net;
