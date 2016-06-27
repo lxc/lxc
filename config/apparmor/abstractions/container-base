@@ -93,18 +93,15 @@
   # deny reads from debugfs
   deny /sys/kernel/debug/{,**} rwklx,
 
-  # allow paths to be made shared, rshared, private or rprivate
-  mount options=(rw,shared) -> /,
-  mount options=(rw,shared) -> /**,
-
-  mount options=(rw,rshared) -> /,
-  mount options=(rw,rshared) -> /**,
-
-  mount options=(rw,private) -> /,
-  mount options=(rw,private) -> /**,
-
-  mount options=(rw,rprivate) -> /,
-  mount options=(rw,rprivate) -> /**,
+  # allow paths to be made slave, shared, private or unbindable
+  mount options=(rw,make-slave) -> **,
+  mount options=(rw,make-rslave) -> **,
+  mount options=(rw,make-shared) -> **,
+  mount options=(rw,make-rshared) -> **,
+  mount options=(rw,make-private) -> **,
+  mount options=(rw,make-rprivate) -> **,
+  mount options=(rw,make-unbindable) -> **,
+  mount options=(rw,make-runbindable) -> **,
 
   # allow bind-mounts of anything except /proc, /sys and /dev
   mount options=(rw,bind) /[^spd]*{,/**},
