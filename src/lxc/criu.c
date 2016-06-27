@@ -135,7 +135,7 @@ static void exec_criu(struct criu_opts *opts)
 
 	/* The command line always looks like:
 	 * criu $(action) --tcp-established --file-locks --link-remap \
-	 * --manage-cgroups action-script foo.sh -D $(directory) \
+	 * --manage-cgroups=full action-script foo.sh -D $(directory) \
 	 * -o $(directory)/$(action).log --ext-mount-map auto
 	 * --enable-external-sharing --enable-external-masters
 	 * --enable-fs hugetlbfs --enable-fs tracefs --ext-mount-map console:/dev/pts/n
@@ -218,7 +218,7 @@ static void exec_criu(struct criu_opts *opts)
 	DECLARE_ARG("--tcp-established");
 	DECLARE_ARG("--file-locks");
 	DECLARE_ARG("--link-remap");
-	DECLARE_ARG("--manage-cgroups");
+	DECLARE_ARG("--manage-cgroups=full");
 	DECLARE_ARG("--ext-mount-map");
 	DECLARE_ARG("auto");
 	DECLARE_ARG("--enable-external-sharing");
