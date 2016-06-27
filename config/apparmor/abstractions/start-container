@@ -15,6 +15,7 @@
   mount options=bind /dev/pts/ptmx/ -> /dev/ptmx/,
   mount options=bind /dev/pts/** -> /dev/**,
   mount options=(rw, make-slave) -> **,
+  mount options=(rw, make-rslave) -> **,
   mount fstype=debugfs,
   # allow pre-mount hooks to stage mounts under /var/lib/lxc/<container>/
   mount -> /var/lib/lxc/{**,},
