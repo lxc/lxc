@@ -94,14 +94,15 @@
   deny /sys/kernel/debug/{,**} rwklx,
 
   # allow paths to be made slave, shared, private or unbindable
-  mount options=(rw,make-slave) -> **,
-  mount options=(rw,make-rslave) -> **,
-  mount options=(rw,make-shared) -> **,
-  mount options=(rw,make-rshared) -> **,
-  mount options=(rw,make-private) -> **,
-  mount options=(rw,make-rprivate) -> **,
-  mount options=(rw,make-unbindable) -> **,
-  mount options=(rw,make-runbindable) -> **,
+  # FIXME: This currently doesn't work due to the apparmor parser treating those as allowing all mounts.
+#  mount options=(rw,make-slave) -> **,
+#  mount options=(rw,make-rslave) -> **,
+#  mount options=(rw,make-shared) -> **,
+#  mount options=(rw,make-rshared) -> **,
+#  mount options=(rw,make-private) -> **,
+#  mount options=(rw,make-rprivate) -> **,
+#  mount options=(rw,make-unbindable) -> **,
+#  mount options=(rw,make-runbindable) -> **,
 
   # allow bind-mounts of anything except /proc, /sys and /dev
   mount options=(rw,bind) /[^spd]*{,/**},
