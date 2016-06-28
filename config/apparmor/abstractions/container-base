@@ -63,6 +63,10 @@
   # allow bind mount of /lib/init/fstab for lxcguest
   mount options=(rw, bind) /lib/init/fstab.lxc/ -> /lib/init/fstab/,
 
+  # allow bind mounts of /run/{,lock} to /var/run/{,lock}
+  mount options=(rw, bind) /run/ -> /var/run/,
+  mount options=(rw, bind) /run/lock/ -> /var/lock/,
+
   # deny writes in /proc/sys/fs but allow binfmt_misc to be mounted
   mount fstype=binfmt_misc -> /proc/sys/fs/binfmt_misc/,
   deny @{PROC}/sys/fs/** wklx,
@@ -84,6 +88,7 @@
   deny mount fstype=debugfs -> /var/lib/ureadahead/debugfs/,
   mount fstype=proc -> /proc/,
   mount fstype=sysfs -> /sys/,
+  mount options=(rw, nosuid, nodev, noexec, remount) -> /sys/,
   deny /sys/firmware/efi/efivars/** rwklx,
   deny /sys/kernel/security/** rwklx,
   mount options=(move) /sys/fs/cgroup/cgmanager/ -> /sys/fs/cgroup/cgmanager.lower/,
