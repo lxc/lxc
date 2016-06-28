@@ -36,15 +36,15 @@ extern struct mntent *getmntent (FILE *stream);
 extern struct mntent *getmntent_r (FILE *stream, struct mntent *mp, char *buffer, int bufsiz);
 #endif
 
-#ifndef HAVE_SETMNTENT
+#if !defined(HAVE_SETMNTENT) || IS_BIONIC
 FILE *setmntent (const char *file, const char *mode);
 #endif
 
-#ifndef HAVE_ENDMNTENT
+#if !defined(HAVE_ENDMNTENT) || IS_BIONIC
 int endmntent (FILE *stream);
 #endif
 
-#ifndef HAVE_HASMNTOPT
+#if !defined(HAVE_HASMNTOPT) || IS_BIONIC
 extern char *hasmntopt (const struct mntent *mnt, const char *opt);
 #endif
 
