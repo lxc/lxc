@@ -316,7 +316,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
           <para>
             <!--
             <emphasis>Important:</emphasis>  When a standard file descriptor
-            does not refer to a pty ouput produced on it will not be logged.
+            does not refer to a pty output produced on it will not be logged.
             -->
             <emphasis>중요:</emphasis> 표준 입출력 파일 디스크립터가 pty를 참조하지 않으면, 기록되지 않는다.
           </para>
