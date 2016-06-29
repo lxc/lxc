@@ -327,7 +327,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <para>
             <!--
             <emphasis>Important:</emphasis>  When a standard file descriptor
-            does not refer to a pty ouput produced on it will not be logged.
+            does not refer to a pty output produced on it will not be logged.
             -->
             <emphasis>重要:</emphasis> 標準ファイルディスクリプタが pty を参照していない場合、それらに対する出力は記録されないでしょう。
           </para>
