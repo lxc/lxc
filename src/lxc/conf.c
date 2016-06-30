@@ -2742,6 +2742,15 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 
 	DEBUG("instantiated vlan '%s', ifindex is '%d'", " vlan1000",
 	      netdev->ifindex);
+	if (netdev->mtu) {
+		err = lxc_netdev_set_mtu(peer, atoi(netdev->mtu));
+		if (err) {
+			ERROR("failed to set mtu '%s' for %s : %s",
+			      netdev->mtu, peer, strerror(-err));
+			lxc_netdev_delete_by_name(peer);
+			return -1;
+		}
+	}
 
 	return 0;
 }
