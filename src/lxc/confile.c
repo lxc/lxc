@@ -89,6 +89,7 @@ static int config_network_vlan_id(const char *, const char *, struct lxc_conf *)
 static int config_network_mtu(const char *, const char *, struct lxc_conf *);
 static int config_network_ipv4(const char *, const char *, struct lxc_conf *);
 static int config_network_ipv4_gateway(const char *, const char *, struct lxc_conf *);
+static int config_network_script_args(const char *, const char *, struct lxc_conf *);
 static int config_network_script_up(const char *, const char *, struct lxc_conf *);
 static int config_network_script_down(const char *, const char *, struct lxc_conf *);
 static int config_network_ipv6(const char *, const char *, struct lxc_conf *);
@@ -152,6 +153,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.network.name",         config_network_name         },
 	{ "lxc.network.macvlan.mode", config_network_macvlan_mode },
 	{ "lxc.network.veth.pair",    config_network_veth_pair    },
+	{ "lxc.network.script.args",  config_network_script_args  },
 	{ "lxc.network.script.up",    config_network_script_up    },
 	{ "lxc.network.script.down",  config_network_script_down  },
 	{ "lxc.network.hwaddr",       config_network_hwaddr       },
@@ -1001,6 +1003,19 @@ static int config_network_ipv6_gateway(const char *key, const char *value,
 
 	return 0;
 }
+
+static int config_network_script_args(const char *key, const char *value,
+				    struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+
+	netdev = network_netdev(key, value, &lxc_conf->network);
+	if (!netdev)
+ 		return -1;
+
+	return config_string_item(&netdev->upscript_args, value);
+}
+
 
 static int config_network_script_up(const char *key, const char *value,
 				    struct lxc_conf *lxc_conf)
@@ -2372,6 +2387,9 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 	} else if (strcmp(p1, "flags") == 0) {
 		if (netdev->flags & IFF_UP)
 			strprint(retv, inlen, "up");
+	} else if (strcmp(p1, "script.args") == 0) {
+		if(netdev->upscript_args)
+			strprint(retv, inlen, "%s", netdev->upscript_args);
 	} else if (strcmp(p1, "script.up") == 0) {
 		if (netdev->upscript)
 			strprint(retv, inlen, "%s", netdev->upscript);
