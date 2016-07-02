@@ -1634,7 +1634,7 @@ static char *get_field(char *src, int nfields)
 
 static int mount_entry(const char *fsname, const char *target,
 		       const char *fstype, unsigned long mountflags,
-		       const char *data, int optional, const char *rootfs)
+		       const char *data, int optional, int dev, const char *rootfs)
 {
 #ifdef HAVE_STATVFS
 	struct statvfs sb;
@@ -1663,7 +1663,7 @@ static int mount_entry(const char *fsname, const char *target,
 			unsigned long required_flags = rqd_flags;
 			if (sb.f_flag & MS_NOSUID)
 				required_flags |= MS_NOSUID;
-			if (sb.f_flag & MS_NODEV)
+			if (sb.f_flag & MS_NODEV && !dev)
 				required_flags |= MS_NODEV;
 			if (sb.f_flag & MS_RDONLY)
 				required_flags |= MS_RDONLY;
@@ -1785,6 +1785,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	char *mntdata;
 	int ret;
 	bool optional = hasmntopt(mntent, "optional") != NULL;
+	bool dev = hasmntopt(mntent, "dev") != NULL;
 
 	char *rootfs_path = NULL;
 	if (rootfs && rootfs->path)
@@ -1803,7 +1804,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	}
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
-			  mntdata, optional, rootfs_path);
+			  mntdata, optional, dev, rootfs_path);
 
 	free(mntdata);
 	return ret;
