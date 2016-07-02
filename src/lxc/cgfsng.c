@@ -1627,8 +1627,6 @@ static bool cgfsng_setup_limits(void *hdata, struct lxc_list *cgroup_settings,
 	struct cgfsng_handler_data *d = hdata;
 	struct lxc_list *iterator, *sorted_cgroup_settings, *next;
 	struct lxc_cgroup *cg;
-	struct hierarchy *h;
-	char *listpath = NULL;
 	bool ret = false;
 
 	if (lxc_list_empty(cgroup_settings))
@@ -1637,15 +1635,6 @@ static bool cgfsng_setup_limits(void *hdata, struct lxc_list *cgroup_settings,
 	sorted_cgroup_settings = sort_cgroup_settings(cgroup_settings);
 	if (!sorted_cgroup_settings) {
 		return false;
-	}
-
-	if (do_devices) {
-		h = get_hierarchy("devices");
-		if (!h) {
-			ERROR("No devices cgroup setup for %s", d->name);
-			return false;
-		}
-		listpath = must_make_path(h->fullcgpath, "devices.list", NULL);
 	}
 
 	lxc_list_for_each(iterator, sorted_cgroup_settings) {
@@ -1670,7 +1659,6 @@ static bool cgfsng_setup_limits(void *hdata, struct lxc_list *cgroup_settings,
 	ret = true;
 	INFO("cgroup has been setup");
 out:
-	free(listpath);
 	lxc_list_for_each_safe(iterator, sorted_cgroup_settings, next) {
 		lxc_list_del(iterator);
 		free(iterator);
