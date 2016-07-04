@@ -50,6 +50,8 @@
 #define CRIU_GITID_VERSION	"2.0"
 #define CRIU_GITID_PATCHLEVEL	0
 
+#define CRIU_IN_FLIGHT_SUPPORT	"2.4"
+
 lxc_log_define(lxc_criu, lxc);
 
 struct criu_opts {
@@ -75,6 +77,9 @@ struct criu_opts {
 	 * different) on the target host. NULL if lxc.console = "none".
 	 */
 	char *console_name;
+
+	/* The detected version of criu */
+	char *criu_version;
 };
 
 static int load_tty_major_minor(char *directory, char *output, int len)
@@ -263,6 +268,10 @@ static void exec_criu(struct criu_opts *opts)
 		ret = snprintf(log, sizeof(log), "/sys/fs/cgroup/freezer/%s", freezer_relative);
 		if (ret < 0 || ret >= sizeof(log))
 			goto err;
+
+		if (!opts->user->disable_skip_in_flight &&
+				strcmp(opts->criu_version, CRIU_IN_FLIGHT_SUPPORT) >= 0)
+			DECLARE_ARG("--skip-in-flight");
 
 		DECLARE_ARG("--freeze-cgroup");
 		DECLARE_ARG(log);
@@ -511,11 +520,11 @@ version_error:
 
 /* Check and make sure the container has a configuration that we know CRIU can
  * dump. */
-static bool criu_ok(struct lxc_container *c)
+static bool criu_ok(struct lxc_container *c, char **criu_version)
 {
 	struct lxc_list *it;
 
-	if (!criu_version_ok(NULL))
+	if (!criu_version_ok(criu_version))
 		return false;
 
 	if (geteuid()) {
@@ -573,7 +582,7 @@ out_unlock:
 
 // do_restore never returns, the calling process is used as the
 // monitor process. do_restore calls exit() if it fails.
-void do_restore(struct lxc_container *c, int status_pipe, struct migrate_opts *opts)
+void do_restore(struct lxc_container *c, int status_pipe, struct migrate_opts *opts, char *criu_version)
 {
 	pid_t pid;
 	char pidfile[L_tmpnam];
@@ -664,6 +673,7 @@ void do_restore(struct lxc_container *c, int status_pipe, struct migrate_opts *o
 		os.pidfile = pidfile;
 		os.cgroup_path = cgroup_canonical_path(handler);
 		os.console_fd = c->lxc_conf->console.slave;
+		os.criu_version = criu_version;
 
 		if (os.console_fd >= 0) {
 			/* Twiddle the FD_CLOEXEC bit. We want to pass this FD to criu
@@ -848,8 +858,9 @@ static int save_tty_major_minor(char *directory, struct lxc_container *c, char *
 static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *opts)
 {
 	pid_t pid;
+	char *criu_version = NULL;
 
-	if (!criu_ok(c))
+	if (!criu_ok(c, &criu_version))
 		return false;
 
 	if (mkdir_p(opts->directory, 0700) < 0)
@@ -868,6 +879,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		os.user = opts;
 		os.c = c;
 		os.console_name = c->lxc_conf->console.path;
+		os.criu_version = criu_version;
 
 		if (save_tty_major_minor(opts->directory, c, os.tty_id, sizeof(os.tty_id)) < 0)
 			exit(1);
@@ -927,8 +939,9 @@ bool __criu_restore(struct lxc_container *c, struct migrate_opts *opts)
 	pid_t pid;
 	int status, nread;
 	int pipefd[2];
+	char *criu_version = NULL;
 
-	if (!criu_ok(c))
+	if (!criu_ok(c, &criu_version))
 		return false;
 
 	if (geteuid()) {
@@ -951,7 +964,7 @@ bool __criu_restore(struct lxc_container *c, struct migrate_opts *opts)
 	if (pid == 0) {
 		close(pipefd[0]);
 		// this never returns
-		do_restore(c, pipefd[1], opts);
+		do_restore(c, pipefd[1], opts, criu_version);
 	}
 
 	close(pipefd[1]);
