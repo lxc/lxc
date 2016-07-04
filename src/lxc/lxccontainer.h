@@ -896,6 +896,12 @@ struct migrate_opts {
 	 * "action script"
 	 */
 	char *action_script;
+
+	/* If CRIU >= 2.4 is detected the option to skip in-flight connections
+	 * will be enabled by default. The flag 'disable_skip_in_flight' will
+	 * unconditionally disable this feature. In-flight connections are
+	 * not fully established TCP connections: SYN, SYN-ACK */
+	bool disable_skip_in_flight;
 };
 
 /*!
