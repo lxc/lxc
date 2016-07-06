@@ -185,6 +185,9 @@ static void exec_criu(struct criu_opts *opts)
 	if (opts->user->verbose)
 		static_args++;
 
+	if (opts->user->action_script)
+		static_args += 2;
+
 	ret = snprintf(log, PATH_MAX, "%s/%s.log", opts->user->directory, opts->action);
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("logfile name too long\n");
@@ -234,6 +237,11 @@ static void exec_criu(struct criu_opts *opts)
 
 	if (opts->user->verbose)
 		DECLARE_ARG("-vvvvvv");
+
+	if (opts->user->action_script) {
+		DECLARE_ARG("--action-script");
+		DECLARE_ARG(opts->user->action_script);
+	}
 
 	if (strcmp(opts->action, "dump") == 0 || strcmp(opts->action, "pre-dump") == 0) {
 		char pid[32], *freezer_relative;
