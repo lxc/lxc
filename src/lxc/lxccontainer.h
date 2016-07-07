@@ -891,6 +891,11 @@ struct migrate_opts {
 	 * won't if e.g. you rsync the filesystems between two machines.
 	 */
 	bool preserves_inodes;
+
+	/* Path to an executable script that will be registered as a criu
+	 * "action script"
+	 */
+	char *action_script;
 };
 
 /*!
