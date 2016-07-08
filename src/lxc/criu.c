@@ -410,8 +410,11 @@ err:
  *
  * The intent is that when criu development slows down, we can drop this, but
  * for now we shouldn't attempt to c/r with versions that we know won't work.
+ *
+ * Note: If version != NULL criu_version() stores the detected criu version in
+ * version. Allocates memory for version which must be freed by caller.
  */
-static bool criu_version_ok()
+static bool criu_version_ok(char **version)
 {
 	int pipes[2];
 	pid_t pid;
@@ -444,7 +447,7 @@ static bool criu_version_ok()
 		exit(1);
 	} else {
 		FILE *f;
-		char version[1024];
+		char *tmp;
 		int patch;
 
 		close(pipes[1]);
@@ -460,16 +463,22 @@ static bool criu_version_ok()
 			return false;
 		}
 
-		if (fscanf(f, "Version: %1023[^\n]s", version) != 1)
+		tmp = malloc(1024);
+		if (!tmp) {
+			fclose(f);
+			return false;
+		}
+
+		if (fscanf(f, "Version: %1023[^\n]s", tmp) != 1)
 			goto version_error;
 
 		if (fgetc(f) != '\n')
 			goto version_error;
 
-		if (strcmp(version, CRIU_VERSION) >= 0)
+		if (strcmp(tmp, CRIU_VERSION) >= 0)
 			goto version_match;
 
-		if (fscanf(f, "GitID: v%1023[^-]s", version) != 1)
+		if (fscanf(f, "GitID: v%1023[^-]s", tmp) != 1)
 			goto version_error;
 
 		if (fgetc(f) != '-')
@@ -478,7 +487,7 @@ static bool criu_version_ok()
 		if (fscanf(f, "%d", &patch) != 1)
 			goto version_error;
 
-		if (strcmp(version, CRIU_GITID_VERSION) < 0)
+		if (strcmp(tmp, CRIU_GITID_VERSION) < 0)
 			goto version_error;
 
 		if (patch < CRIU_GITID_PATCHLEVEL)
@@ -486,10 +495,15 @@ static bool criu_version_ok()
 
 version_match:
 		fclose(f);
+		if (!version)
+			free(tmp);
+		else
+			*version = tmp;
 		return true;
 
 version_error:
 		fclose(f);
+		free(tmp);
 		ERROR("must have criu " CRIU_VERSION " or greater to checkpoint/restore\n");
 		return false;
 	}
@@ -501,7 +515,7 @@ static bool criu_ok(struct lxc_container *c)
 {
 	struct lxc_list *it;
 
-	if (!criu_version_ok())
+	if (!criu_version_ok(NULL))
 		return false;
 
 	if (geteuid()) {
