@@ -255,6 +255,13 @@ restart:
 		WARN("inherited fd %d", fd);
 	}
 
+	/*
+	 * only enable syslog at this point to avoid the above logging function
+	 * to open a new fd and make the check_inherited function enter an
+	 * infinite loop.
+	 */
+	lxc_log_enable_syslog();
+
 	closedir(dir); /* cannot fail */
 	return 0;
 }

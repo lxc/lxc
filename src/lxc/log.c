@@ -33,6 +33,9 @@
 
 #define __USE_GNU /* for *_CLOEXEC */
 
+#include <syslog.h>
+#include <stdio.h>
+
 #include <fcntl.h>
 #include <stdlib.h>
 
@@ -43,14 +46,77 @@
 #define LXC_LOG_DATEFOMAT_SIZE  15
 
 int lxc_log_fd = -1;
+static int syslog_enable = 0;
 int lxc_quiet_specified;
 int lxc_log_use_global_fd;
 static int lxc_loglevel_specified;
 
 static char log_prefix[LXC_LOG_PREFIX_SIZE] = "lxc";
 static char *log_fname = NULL;
+static char *log_vmname = NULL;
 
 lxc_log_define(lxc_log, lxc);
+
+static int lxc_log_priority_to_syslog(int priority)
+{
+	switch (priority) {
+	case LXC_LOG_PRIORITY_FATAL:
+		return LOG_EMERG;
+	case LXC_LOG_PRIORITY_ALERT:
+		return LOG_ALERT;
+	case LXC_LOG_PRIORITY_CRIT:
+		return LOG_CRIT;
+	case LXC_LOG_PRIORITY_ERROR:
+		return LOG_ERR;
+	case LXC_LOG_PRIORITY_WARN:
+		return LOG_WARNING;
+	case LXC_LOG_PRIORITY_NOTICE:
+	case LXC_LOG_PRIORITY_NOTSET:
+		return LOG_NOTICE;
+	case LXC_LOG_PRIORITY_INFO:
+		return LOG_INFO;
+	case LXC_LOG_PRIORITY_TRACE:
+	case LXC_LOG_PRIORITY_DEBUG:
+		return LOG_DEBUG;
+	}
+
+	/* Not reached */
+	return LOG_NOTICE;
+}
+
+/*---------------------------------------------------------------------------*/
+static int log_append_syslog(const struct lxc_log_appender *appender,
+			     struct lxc_log_event *event)
+{
+	char *msg;
+	int rc, len;
+	va_list args;
+
+	if (!syslog_enable)
+		return 0;
+
+	va_copy(args, *event->vap);
+	len = vsnprintf(NULL, 0, event->fmt, args) + 1;
+	va_end(args);
+	msg = malloc(len * sizeof(char));
+	if (msg == NULL)
+		return 0;
+	rc = vsnprintf(msg, len, event->fmt, *event->vap);
+	if (rc == -1 || rc >= len) {
+		free(msg);
+		return 0;
+	}
+
+	syslog(lxc_log_priority_to_syslog(event->priority),
+		"%s %s - %s:%s:%d - %s" ,
+		log_vmname ? log_vmname : "",
+		event->category,
+		event->locinfo->file, event->locinfo->func,
+		event->locinfo->line,
+		msg);
+	free(msg);
+	return 0;
+}
 
 /*---------------------------------------------------------------------------*/
 static int log_append_stderr(const struct lxc_log_appender *appender,
@@ -59,7 +125,7 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 	if (event->priority < LXC_LOG_PRIORITY_ERROR)
 		return 0;
 
-	fprintf(stderr, "%s: ", log_prefix);
+	fprintf(stderr, "%s: %s", log_prefix, log_vmname ? log_vmname : "");
 	fprintf(stderr, "%s: %s: %d ", event->locinfo->file, event->locinfo->func, event->locinfo->line);
 	vfprintf(stderr, event->fmt, *event->vap);
 	fprintf(stderr, "\n");
@@ -92,8 +158,10 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	strftime(date, sizeof(date), "%Y%m%d%H%M%S", t);
 	ms = event->timestamp.tv_usec / 1000;
 	n = snprintf(buffer, sizeof(buffer),
-		     "%15s %10s.%03d %-8s %s - %s:%s:%d - ",
+		     "%15s%s%s %10s.%03d %-8s %s - %s:%s:%d - ",
 		     log_prefix,
+		     log_vmname ? " " : "",
+		     log_vmname ? log_vmname : "",
 		     date,
 		     ms,
 		     lxc_log_priority_to_string(event->priority),
@@ -114,6 +182,12 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 
 	return write(fd_to_use, buffer, n + 1);
 }
+
+static struct lxc_log_appender log_appender_syslog = {
+	.name		= "syslog",
+	.append		= log_append_syslog,
+	.next		= NULL,
+};
 
 static struct lxc_log_appender log_appender_stderr = {
 	.name		= "stderr",
@@ -253,6 +327,9 @@ static char *build_log_path(const char *name, const char *lxcpath)
 
 extern void lxc_log_close(void)
 {
+	closelog();
+	free(log_vmname);
+	log_vmname = NULL;
 	if (lxc_log_fd == -1)
 		return;
 	close(lxc_log_fd);
@@ -317,6 +394,28 @@ static int _lxc_log_set_file(const char *name, const char *lxcpath, int create_d
 	return ret;
 }
 
+extern int lxc_log_syslog(int facility)
+{
+	struct lxc_log_appender *appender;
+
+	openlog(log_prefix, LOG_PID, facility);
+	if (!lxc_log_category_lxc.appender) {
+		lxc_log_category_lxc.appender = &log_appender_syslog;
+		return 0;
+	}
+	appender = lxc_log_category_lxc.appender;
+	while (appender->next != NULL)
+		appender = appender->next;
+	appender->next = &log_appender_syslog;
+
+	return 0;
+}
+
+extern void lxc_log_enable_syslog(void)
+{
+	syslog_enable = 1;
+}
+
 /*
  * lxc_log_init:
  * Called from lxc front-end programs (like lxc-create, lxc-start) to
@@ -349,6 +448,9 @@ extern int lxc_log_init(const char *name, const char *file,
 
 	if (prefix)
 		lxc_log_set_prefix(prefix);
+
+	if (name)
+		log_vmname = strdup(name);
 
 	if (file) {
 		if (strcmp(file, "none") == 0)
