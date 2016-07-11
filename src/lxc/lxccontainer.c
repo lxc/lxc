@@ -3988,11 +3988,13 @@ WRAP_API_3(int, lxcapi_migrate, unsigned int, struct migrate_opts *, unsigned in
 
 static bool do_lxcapi_checkpoint(struct lxc_container *c, char *directory, bool stop, bool verbose)
 {
-	struct migrate_opts opts = {
-		.directory = directory,
-		.stop = stop,
-		.verbose = verbose,
-	};
+	struct migrate_opts opts;
+
+	memset(&opts, 0, sizeof(opts));
+
+	opts.directory = directory;
+	opts.stop = stop;
+	opts.verbose = verbose;
 
 	return !do_lxcapi_migrate(c, MIGRATE_DUMP, &opts, sizeof(opts));
 }
@@ -4001,10 +4003,12 @@ WRAP_API_3(bool, lxcapi_checkpoint, char *, bool, bool)
 
 static bool do_lxcapi_restore(struct lxc_container *c, char *directory, bool verbose)
 {
-	struct migrate_opts opts = {
-		.directory = directory,
-		.verbose = verbose,
-	};
+	struct migrate_opts opts;
+
+	memset(&opts, 0, sizeof(opts));
+
+	opts.directory = directory;
+	opts.verbose = verbose;
 
 	return !do_lxcapi_migrate(c, MIGRATE_RESTORE, &opts, sizeof(opts));
 }
