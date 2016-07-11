@@ -82,7 +82,8 @@ const struct ns_info ns_info[LXC_NS_MAX] = {
 	[LXC_NS_UTS] = {"uts", CLONE_NEWUTS},
 	[LXC_NS_IPC] = {"ipc", CLONE_NEWIPC},
 	[LXC_NS_USER] = {"user", CLONE_NEWUSER},
-	[LXC_NS_NET] = {"net", CLONE_NEWNET}
+	[LXC_NS_NET] = {"net", CLONE_NEWNET},
+	[LXC_NS_CGROUP] = {"cgroup", CLONE_NEWCGROUP}
 };
 
 extern void mod_all_rdeps(struct lxc_container *c, bool inc);
