@@ -244,7 +244,8 @@ configure_debian_systemd()
 
     # Fix getty-static-service as debootstrap does not install dbus
     if [ -e "$rootfs//lib/systemd/system/getty-static.service" ] ; then
-        local tty_services=$(for i in $(seq 2 "$num_tty"); do echo -n "getty@tty${i}.service "; done; )
+        local tty_services
+        tty_services=$(for i in $(seq 2 "$num_tty"); do echo -n "getty@tty${i}.service "; done; )
         sed 's/ getty@tty.*/'" $tty_services "'/g' \
                 "$rootfs/lib/systemd/system/getty-static.service" |  \
                 sed 's/\(tty2-tty\)[5-9]/\1'"${num_tty}"'/g' > "$rootfs/etc/systemd/system/getty-static.service"
@@ -490,7 +491,7 @@ copy_configuration()
     # Generate the configuration file
     # if there is exactly one veth network entry, make sure it has an
     # associated hwaddr.
-    nics=$(grep -e '^lxc\.network\.type[ \t]*=[ \t]*veth' "$path/config" | wc -l)
+    nics=$(grep -ce '^lxc\.network\.type[ \t]*=[ \t]*veth' "$path/config")
     if [ "$nics" -eq 1 ]; then
         grep -q "^lxc.network.hwaddr" "$path/config" || sed -i -e "/^lxc\.network\.type[ \t]*=[ \t]*veth/a lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')" "$path/config"
     fi
@@ -559,7 +560,8 @@ EOF
 
     # Install Packages in container
     if [ -n "${packages}" ]; then
-        local pack_list="$(echo "${packages}" | sed 's/,/ /g')"
+        local pack_list
+        pack_list="${packages//,/ }"
         echo "Installing packages: ${pack_list}"
         install_packages "${rootfs}" "${pack_list}"
     fi
