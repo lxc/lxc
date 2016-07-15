@@ -45,7 +45,7 @@
 #include "network.h"
 #include "utils.h"
 
-#define CRIU_VERSION 		"2.0"
+#define CRIU_VERSION		"2.0"
 
 #define CRIU_GITID_VERSION	"2.0"
 #define CRIU_GITID_PATCHLEVEL	0
@@ -582,7 +582,7 @@ out_unlock:
 
 // do_restore never returns, the calling process is used as the
 // monitor process. do_restore calls exit() if it fails.
-void do_restore(struct lxc_container *c, int status_pipe, struct migrate_opts *opts, char *criu_version)
+static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_opts *opts, char *criu_version)
 {
 	pid_t pid;
 	char pidfile[L_tmpnam];
