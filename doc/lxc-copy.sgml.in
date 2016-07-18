@@ -55,7 +55,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
       <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
       <arg choice="opt">-s, --snapshot</arg>
-      <arg choice="opt">-K, --keepdata</arg>
+      <arg choice="opt">-K, --keepname</arg>
+      <arg choice="opt">-D, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
       <arg choice="opt">-- hook arguments</arg>
@@ -69,9 +70,24 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="req">-e, --ephemeral</arg>
       <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
       <arg choice="opt">-s, --snapshot</arg>
-      <arg choice="opt">-K, --keepdata</arg>
+      <arg choice="opt">-K, --keepname</arg>
+      <arg choice="opt">-D, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
+      <arg choice="opt">-- hook arguments</arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-copy</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-P, --lxcpath <replaceable>path</replaceable></arg>
+      <arg choice="opt">-N, --newname <replaceable>newname</replaceable></arg>
+      <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
+      <arg choice="req">-e, --ephemeral</arg>
+      <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
+      <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-t, --tmpfs</arg>
+      <arg choice="opt">-K, --keepname</arg>
+      <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-- hook arguments</arg>
     </cmdsynopsis>
     <cmdsynopsis>
@@ -115,7 +131,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     config file and will be destroyed on shutdown. When
     <replaceable>-e</replaceable> is used in combination with
     <replaceable>-D</replaceable> a non-ephemeral snapshot of the original
-    container is created and started.</para>
+    container is created and started.
+    Ephemeral containers can also be placed on a tmpfs with <replaceable>-t</replaceable>
+    flag. NOTE: If an ephemeral container that is placed on a tmpfs is rebooted
+    all changes made to it will currently be lost!
+    </para>
 
     <para>
     When <replaceable>-e</replaceable> is specified and no newname is given via
@@ -223,6 +243,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term> <option>-t, --tmpfs </option></term>
+	   <listitem>
+            <para> When this option is specified the ephemeral container will be
+            placed on a tmpfs. NOTE: Rebooting an ephemeral container that is
+            located on a tmpfs will currently cause all changes made to it to be
+            lost. This flag will only work for ephemeral containers created with
+            the <replaceable>-e</replaceable> flag. The original container, from
+            which the ephemeral snapshot is created, must be stored as a simple
+            directory.
+            </para> </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term> <option>-B, --backingstorage <replaceable>backingstorage</replaceable></option></term>
 	   <listitem>
             <para>Specify the backing storage type to be used for the copy
@@ -239,18 +272,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term> <option>-K, --keepname </option></term>
+	   <listitem>
+            <para> When this option is specified the hostname of the original
+            container will be kept for the copy.</para> </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term> <option>-D, --keepdata </option></term>
 	   <listitem>
             <para>When this option is specified with
             <replaceable>-e</replaceable> a non-ephemeral container is created
             and started. </para> </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
-	    <term> <option>-K, --keepname </option></term>
-	   <listitem>
-            <para> When this option is specified the hostname of the original
-            container will be kept for the copy.</para> </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
