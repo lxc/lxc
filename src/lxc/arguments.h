@@ -131,6 +131,9 @@ struct lxc_arguments {
 	bool ls_running;
 	bool ls_stopped;
 
+	/* lxc-copy */
+	bool tmpfs;
+
 	/* remaining arguments */
 	char *const *argv;
 	int argc;

@@ -87,6 +87,7 @@ static const struct option my_longopts[] = {
 	{ "keepdata", no_argument, 0, 'D'},
 	{ "keepname", no_argument, 0, 'K'},
 	{ "keepmac", no_argument, 0, 'M'},
+	{ "tmpfs", no_argument, 0, 't'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -119,6 +120,8 @@ Options :\n\
   -m, --mount	            directory to mount into container, either \n\
 			    {bind,aufs,overlay}=/src-path or {bind,aufs,overlay}=/src-path:/dst-path\n\
   -B, --backingstorage=TYPE backingstorage type for the container\n\
+  -t, --tmpfs		    place ephemeral container on a tmpfs\n\
+			    (WARNING: On reboot all changes made to the container will be lost.)\n\
   -L, --fssize		    size of the new block device for block device containers\n\
   -D, --keedata	            pass together with -e start a persistent snapshot \n\
   -K, --keepname	    keep the hostname of the original container\n\
@@ -129,6 +132,7 @@ Options :\n\
 	.task = CLONE,
 	.daemonize = 1,
 	.quiet = false,
+	.tmpfs = false,
 };
 
 static struct mnts *add_mnt(struct mnts **mnts, unsigned int *num,
@@ -148,6 +152,13 @@ static int do_clone_task(struct lxc_container *c, enum task task, int flags,
 			 char **args);
 static void free_mnts(void);
 static uint64_t get_fssize(char *s);
+
+/* Place an ephemeral container started with -e flag on a tmpfs. Restrictions
+ * are that you cannot request the data to be kept while placing the container
+ * on a tmpfs and that either overlay or aufs backing storage must be used.
+ */
+static char *mount_tmpfs(const char *oldname, const char *newname,
+			 const char *path, struct lxc_arguments *arg);
 static int parse_mntsubopts(char *subopts, char *const *keys,
 			    char *mntparameters);
 static int parse_aufs_mnt(char *mntstring, enum mnttype type);
@@ -369,12 +380,13 @@ static int do_clone(struct lxc_container *c, char *newname, char *newpath,
 static int do_clone_ephemeral(struct lxc_container *c,
 		struct lxc_arguments *arg, char **args, int flags)
 {
+	char *bdev;
+	char *premount;
 	char randname[MAXPATHLEN];
 	unsigned int i;
 	int ret = 0;
 	bool bret = true, started = false;
 	struct lxc_container *clone;
-
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 	attach_options.env_policy = LXC_ATTACH_CLEAR_ENV;
 
@@ -395,6 +407,23 @@ static int do_clone_ephemeral(struct lxc_container *c,
 			 arg->bdevtype, NULL, arg->fssize, args);
 	if (!clone)
 		return -1;
+
+	if (arg->tmpfs) {
+		bdev = c->lxc_conf->rootfs.bdev_type;
+		if (bdev && strcmp(bdev, "dir")) {
+			fprintf(stderr, "Cannot currently use tmpfs with %s storage backend.\n", bdev);
+			goto destroy_and_put;
+		}
+
+		premount = mount_tmpfs(arg->name, arg->newname, arg->newpath, arg);
+		if (!premount)
+			goto destroy_and_put;
+
+		bret = clone->set_config_item(clone, "lxc.hook.pre-mount", premount);
+		free(premount);
+		if (!bret)
+			goto destroy_and_put;
+	}
 
 	if (!arg->keepdata)
 		if (!clone->set_config_item(clone, "lxc.ephemeral", "1"))
@@ -422,6 +451,10 @@ static int do_clone_ephemeral(struct lxc_container *c,
 
 	if (!my_args.quiet)
 		printf("Created %s as clone of %s\n", arg->newname, arg->name);
+
+	if (arg->tmpfs && !my_args.quiet)
+		printf("Container is placed on tmpfs.\nRebooting will cause "
+		       "all changes made to it to be lost!");
 
 	if (!arg->daemonize && arg->argc) {
 		clone->want_daemonize(clone, true);
@@ -574,6 +607,9 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		break;
 	case 'B':
 		args->bdevtype = arg;
+		break;
+	case 't':
+		args->tmpfs = true;
 		break;
 	case 'L':
 		args->fssize = get_fssize(optarg);
@@ -752,4 +788,76 @@ err:
 	free_mnts();
 	lxc_free_array((void **)mntarray, free);
 	return -1;
+}
+
+/* For ephemeral snapshots backed by overlay or aufs filesystems, this function
+ * mounts a fresh tmpfs over the containers directory if the user requests it.
+ * Because we mount a fresh tmpfs over the directory of the container the
+ * updated /etc/hostname file created during the clone residing in the upperdir
+ * (currently named "delta0" by default) will be hidden. Hence, if the user
+ * requests that the old name is not to be kept for the clone, we recreate this
+ * file on the tmpfs. This should be all that is required to restore the exact
+ * behaviour we would get with a normal clone.
+ */
+static char *mount_tmpfs(const char *oldname, const char *newname,
+			 const char *path, struct lxc_arguments *arg)
+{
+	int ret, fd;
+	size_t len;
+	char *premount = NULL;
+
+	if (arg->tmpfs && arg->keepdata) {
+		fprintf(stderr, "%s\n", "A container can only be placed on a "
+					"tmpfs when storage backend is overlay "
+					"or aufs.");
+		goto err_free;
+	}
+
+	if (arg->tmpfs && !arg->bdevtype) {
+		arg->bdevtype = "overlayfs";
+	} else if (arg->tmpfs && arg->bdevtype && strcmp(arg->bdevtype, "overlayfs") && strcmp(arg->bdevtype, "aufs")) {
+		fprintf(stderr, "%s\n", "A container can only be placed on a "
+					"tmpfs when storage backend is overlay "
+					"or aufs.");
+		goto err_free;
+	}
+
+	len = strlen(path) + strlen(newname) + strlen("pre-start-XXXXXX") + /* //\0 */ 3;
+	premount = malloc(len);
+	if (!premount)
+		goto err_free;
+
+	ret = snprintf(premount, len, "%s/%s/pre-start-XXXXXX", path, newname);
+	if (ret < 0 || (size_t)ret >= len)
+		goto err_free;
+
+	fd = mkostemp(premount, O_CLOEXEC);
+	if (fd < 0)
+		goto err_free;
+
+	if (chmod(premount, 0755) < 0)
+		goto err_close;
+
+	ret = dprintf(fd, "#! /bin/sh\n"
+			  "mount -n -t tmpfs -o mode=0755 none %s/%s\n",
+		      path, newname);
+	if (ret < 0)
+		goto err_close;
+
+	if (!arg->keepname) {
+		ret = dprintf(fd, "mkdir -p %s/%s/delta0/etc\n"
+				  "echo %s > %s/%s/delta0/etc/hostname\n",
+			      path, newname, newname, path, newname);
+		if (ret < 0)
+			goto err_close;
+	}
+
+	close(fd);
+	return premount;
+
+err_close:
+	close(fd);
+err_free:
+	free(premount);
+	return NULL;
 }
