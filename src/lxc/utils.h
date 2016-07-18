@@ -296,4 +296,7 @@ int open_devnull(void);
 int set_stdfds(int fd);
 int null_stdfds(void);
 int lxc_count_file_lines(const char *fn);
+
+/* Check whether a signal is blocked by a process. */
+bool task_blocking_signal(pid_t pid, int signal);
 #endif /* __LXC_UTILS_H */
