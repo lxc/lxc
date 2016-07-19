@@ -1604,8 +1604,16 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 	pid = do_lxcapi_init_pid(c);
 	if (pid <= 0)
 		return true;
+
+	/* Detect whether we should send SIGRTMIN + 3 (e.g. systemd). */
+	if (task_blocking_signal(pid, (SIGRTMIN + 3)))
+		haltsignal = (SIGRTMIN + 3);
+
 	if (c->lxc_conf && c->lxc_conf->haltsignal)
 		haltsignal = c->lxc_conf->haltsignal;
+
+	INFO("Using signal number '%d' as halt signal.", haltsignal);
+
 	kill(pid, haltsignal);
 	retv = do_lxcapi_wait(c, "STOPPED", timeout);
 	return retv;
