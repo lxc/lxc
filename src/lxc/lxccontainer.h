@@ -902,6 +902,12 @@ struct migrate_opts {
 	 * unconditionally disable this feature. In-flight connections are
 	 * not fully established TCP connections: SYN, SYN-ACK */
 	bool disable_skip_in_flight;
+
+	/* This is the maximum file size for deleted files (which CRIU calls
+	 * "ghost" files) that will be handled. 0 indicates the CRIU default,
+	 * which at this time is 1MB.
+	 */
+	uint64_t ghost_limit;
 };
 
 /*!
