@@ -169,6 +169,10 @@ static void exec_criu(struct criu_opts *opts)
 		/* --force-irmap */
 		if (!opts->user->preserves_inodes)
 			static_args++;
+
+		/* --ghost-limit 1024 */
+		if (opts->user->ghost_limit)
+			static_args += 2;
 	} else if (strcmp(opts->action, "restore") == 0) {
 		/* --root $(lxc_mount_point) --restore-detached
 		 * --restore-sibling --pidfile $foo --cgroup-root $foo
@@ -299,6 +303,19 @@ static void exec_criu(struct criu_opts *opts)
 
 		if (!opts->user->preserves_inodes)
 			DECLARE_ARG("--force-irmap");
+
+		if (opts->user->ghost_limit) {
+			char ghost_limit[32];
+
+			ret = sprintf(ghost_limit, "%lu", opts->user->ghost_limit);
+			if (ret < 0 || ret >= sizeof(ghost_limit)) {
+				ERROR("failed to print ghost limit %lu", opts->user->ghost_limit);
+				goto err;
+			}
+
+			DECLARE_ARG("--ghost-limit");
+			DECLARE_ARG(ghost_limit);
+		}
 
 		/* only for final dump */
 		if (strcmp(opts->action, "dump") == 0 && !opts->user->stop)
