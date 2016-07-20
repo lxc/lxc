@@ -61,7 +61,8 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
       <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
       <arg choice="opt">-s, --snapshot</arg>
-      <arg choice="opt">-K, --keepdata</arg>
+      <arg choice="opt">-K, --keepname</arg>
+      <arg choice="opt">-D, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
       <arg choice="opt">-- hook arguments</arg>
@@ -75,9 +76,24 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <arg choice="req">-e, --ephemeral</arg>
       <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
       <arg choice="opt">-s, --snapshot</arg>
-      <arg choice="opt">-K, --keepdata</arg>
+      <arg choice="opt">-K, --keepname</arg>
+      <arg choice="opt">-D, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
+      <arg choice="opt">-- hook arguments</arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-copy</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-P, --lxcpath <replaceable>path</replaceable></arg>
+      <arg choice="opt">-N, --newname <replaceable>newname</replaceable></arg>
+      <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
+      <arg choice="req">-e, --ephemeral</arg>
+      <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
+      <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-t, --tmpfs</arg>
+      <arg choice="opt">-K, --keepname</arg>
+      <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-- hook arguments</arg>
     </cmdsynopsis>
     <cmdsynopsis>
@@ -133,8 +149,13 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
     <replaceable>-e</replaceable> is used in combination with
     <replaceable>-D</replaceable> a non-ephemeral snapshot of the original
     container is created and started.
+    Ephemeral containers can also be placed on a tmpfs with <replaceable>-t</replaceable>
+    flag. NOTE: If an ephemeral container that is placed on a tmpfs is rebooted
+    all changes made to it will currently be lost!
     -->
     <replaceable>-e</replaceable>가 지정되면, 원본 컨테이너의 임시 스냅샷이 생성되고 시작된다. 임시 컨테이너는 자신의 설정파일 안에 <command>lxc.ephemeral = 1</command>를 가지게 되며, 종료시에 제거된다. <replaceable>-e</replaceable>와 함께 <replaceable>-D</replaceable>를 같이 지정하면 원본 컨테이너의 영구적인 스냅샷이 생성되고 실행된다.
+    <replaceable>-t</replaceable>를 지정하면, 임시 컨테이너는 tmpfs 상에 놓이게 된다.
+    주의: tmpfs 상에 놓인 임시 컨테이너는 재부팅시 모든 변경 사항이 사라진다.
     </para>
 
     <para>
@@ -272,6 +293,22 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term> <option>-t, --tmpfs </option></term>
+	   <listitem>
+            <para><!-- When this option is specified the ephemeral container will be
++            placed on a tmpfs. NOTE: Rebooting an ephemeral container that is
+            located on a tmpfs will currently cause all changes made to it to be
+            lost. This flag will only work for ephemeral containers created with
+            the <replaceable>-e</replaceable> flag. The original container, from
+            which the ephemeral snapshot is created, must be stored as a simple
+            directory. -->
+              이 옵션이 지정되면 임시 컨테이너는 tmpfs 상에 놓이게 된다.
+              주의: tmpfs 상에 놓인 임시 컨테이너는 재부팅시 모든 변경 사항이 사라진다.
+              이 옵션은 <replaceable>-e</replaceable>를 지정하여 임시 컨테이너를 생성할 때만 사용이 가능하다. 임시 스냅샷을 생성한 원본 컨테이너는 반드시 일반적인 디렉토리에 위치하고 있어야 한다.
+            </para> </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term> <option>-B, --backingstorage <replaceable>backingstorage</replaceable></option></term>
 	   <listitem>
             <para>
@@ -295,19 +332,6 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term> <option>-D, --keepdata </option></term>
-	   <listitem>
-            <para>
-            <!--
-            When this option is specified with
-            <replaceable>-e</replaceable> a non-ephemeral container is created
-            and started.-->
-            이 옵션을 <replaceable>-e</replaceable>와 지정하면 영구적인 컨테이너가 생성되고 시작된다.
-            </para>
-           </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
 	    <term> <option>-K, --keepname </option></term>
 	   <listitem>
             <para>
@@ -316,6 +340,19 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
             container will be kept for the copy.
             -->
             이 옵션이 지정되면 원본 컨테이너의 호스트이름이 복사본에서도 그대로 유지된다.
+            </para>
+           </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-D, --keepdata </option></term>
+	   <listitem>
+            <para>
+            <!--
+            When this option is specified with
+            <replaceable>-e</replaceable> a non-ephemeral container is created
+            and started.-->
+            이 옵션을 <replaceable>-e</replaceable>와 지정하면 영구적인 컨테이너가 생성되고 시작된다.
             </para>
            </listitem>
 	  </varlistentry>
