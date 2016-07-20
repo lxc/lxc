@@ -61,7 +61,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
       <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
       <arg choice="opt">-s, --snapshot</arg>
-      <arg choice="opt">-K, --keepdata</arg>
+      <arg choice="opt">-K, --keepname</arg>
+      <arg choice="opt">-D, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
       <arg choice="opt">-- hook arguments</arg>
@@ -75,9 +76,24 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="req">-e, --ephemeral</arg>
       <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
       <arg choice="opt">-s, --snapshot</arg>
-      <arg choice="opt">-K, --keepdata</arg>
+      <arg choice="opt">-K, --keepname</arg>
+      <arg choice="opt">-D, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
+      <arg choice="opt">-- hook arguments</arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>lxc-copy</command>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-P, --lxcpath <replaceable>path</replaceable></arg>
+      <arg choice="opt">-N, --newname <replaceable>newname</replaceable></arg>
+      <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
+      <arg choice="req">-e, --ephemeral</arg>
+      <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
+      <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-t, --tmpfs</arg>
+      <arg choice="opt">-K, --keepname</arg>
+      <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-- hook arguments</arg>
     </cmdsynopsis>
     <cmdsynopsis>
@@ -136,9 +152,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <replaceable>-e</replaceable> is used in combination with
     <replaceable>-D</replaceable> a non-ephemeral snapshot of the original
     container is created and started.
+    Ephemeral containers can also be placed on a tmpfs with <replaceable>-t</replaceable>
+    flag. NOTE: If an ephemeral container that is placed on a tmpfs is rebooted
+    all changes made to it will currently be lost!
     -->
       <replaceable>-e</replaceable> オプションを指定した場合は、元のコンテナの一時的なスナップショットを作成し、起動します。一時的なコンテナの場合、設定ファイルに <command>lxc.ephemeral = 1</command> がセットされ、シャットダウン後に削除されます。
       <replaceable>-e</replaceable> と <replaceable>-D</replaceable> を同時に指定すると、元のコンテナの一時的ではないスナップショットを作成し、起動します。
+      <replaceable>-t</replaceable> オプションを指定して、一時的なコンテナを tmpfs 上に置くことができます。
+      注意: tmpfs 上に置いた一時的なコンテナをリブートすると、コンテナに対して行ったすべての変更は失われます!
     </para>
 
     <para>
@@ -266,6 +287,22 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term> <option>-t, --tmpfs </option></term>
+	   <listitem>
+            <para><!-- When this option is specified the ephemeral container will be
+            placed on a tmpfs. NOTE: Rebooting an ephemeral container that is
+            located on a tmpfs will currently cause all changes made to it to be
+            lost. This flag will only work for ephemeral containers created with
+            the <replaceable>-e</replaceable> flag. The original container, from
+            which the ephemeral snapshot is created, must be stored as a simple
+            directory. -->
+              このオプションを指定すると、一時的なコンテナを tmpfs 上に置きます。
+              注意: tmpfs 上に置かれた一時的なコンテナをリブートすると、コンテナに対して行ったすべての変更が失われます。
+              このフラグは <replaceable>-e</replaceable> オプションを指定して作成した一時的なコンテナに対してのみ有効です。一時的なスナップショットを作成する元のコンテナは、ディレクトリバックエンド上に存在しなければなりません。
+            </para> </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term> <option>-B, --backingstorage <replaceable>backingstorage</replaceable></option></term>
 	   <listitem>
             <para><!-- Specify the backing storage type to be used for the copy
@@ -284,6 +321,16 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term> <option>-K, --keepname </option></term>
+	   <listitem>
+            <para><!-- When this option is specified the hostname of the original
+              container will be kept for the copy. -->
+	      このオプションを指定すると、元のコンテナのホスト名をコピー先でもそのまま使います。
+            </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term> <option>-D, --keepdata </option></term>
 	   <listitem>
             <para><!-- When this option is specified with
@@ -291,16 +338,6 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             and started. -->
 	      <replaceable>-e</replaceable> オプションと同時にこのオプションを使うと、一時的でないコンテナを作成し、起動します。
 	    </para>
-	   </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
-	    <term> <option>-K, --keepname </option></term>
-	   <listitem>
-            <para><!-- When this option is specified the hostname of the original
-              container will be kept for the copy. -->
-	      このオプションを指定すると、元のコンテナのホスト名をコピー先でもそのまま使います。
-            </para>
 	   </listitem>
 	  </varlistentry>
 
