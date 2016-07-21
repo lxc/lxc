@@ -54,7 +54,7 @@ find_interpreter()
             continue
         fi
         interpreter_path=$(sed -n "/^interpreter/s/interpreter \([^[:space:]]*\)/\1/p" "$file")
-        interpreter=$(basename $interpreter_path)
+        interpreter=$(basename "$interpreter_path")
 
         if [ "$given_interpreter" = "$interpreter" ] ; then
             echo "$interpreter_path"
@@ -72,9 +72,9 @@ configure_debian()
 
     # squeeze only has /dev/tty and /dev/tty0 by default,
     # therefore creating missing device nodes for tty1-4.
-    for tty in $(seq 1 $num_tty); do
-        if [ ! -e $rootfs/dev/tty$tty ]; then
-            mknod $rootfs/dev/tty$tty c 4 $tty
+    for tty in $(seq 1 "$num_tty"); do
+        if [ ! -e "$rootfs/dev/tty$tty" ]; then
+            mknod "$rootfs/dev/tty$tty" c 4 "$tty"
         fi
     done
 
@@ -92,18 +92,18 @@ l6:6:wait:/etc/init.d/rc 6
 # Normally not reached, but fallthrough in case of emergency.
 z6:6:respawn:/sbin/sulogin
 1:2345:respawn:/sbin/getty 38400 console
-$(for tty in $(seq 1 $num_tty); do echo "c${tty}:12345:respawn:/sbin/getty 38400 tty${tty} linux" ; done;)
+$(for tty in $(seq 1 "$num_tty"); do echo "c${tty}:12345:respawn:/sbin/getty 38400 tty${tty} linux" ; done;)
 p6::ctrlaltdel:/sbin/init 6
 p0::powerfail:/sbin/init 0
 EOF
 
     # symlink mtab
-    [ -e "$rootfs/etc/mtab" ] && rm $rootfs/etc/mtab
-    ln -s /proc/self/mounts $rootfs/etc/mtab
+    [ -e "$rootfs/etc/mtab" ] && rm "$rootfs/etc/mtab"
+    ln -s /proc/self/mounts "$rootfs/etc/mtab"
 
     # disable selinux in debian
-    mkdir -p $rootfs/selinux
-    echo 0 > $rootfs/selinux/enforce
+    mkdir -p "$rootfs/selinux"
+    echo 0 > "$rootfs/selinux/enforce"
 
     # configure the network using the dhcp
     cat <<EOF > $rootfs/etc/network/interfaces
@@ -121,44 +121,62 @@ EOF
 
     # reconfigure some services
 
+    # but first reconfigure locales - so we get no noisy perl-warnings
+    if [ -z "$LANG" ]; then
+        cat >> "$rootfs/etc/locale.gen" << EOF
+en_US.UTF-8 UTF-8
+EOF
+        chroot "$rootfs" locale-gen en_US.UTF-8 UTF-8
+        chroot "$rootfs" update-locale LANG=en_US.UTF-8
+    else
+        encoding=$(echo "$LANG" | cut -d. -f2)
+        chroot "$rootfs" sed -e "s/^# \(${LANG} ${encoding}\)/\1/" \
+            -i /etc/locale.gen 2> /dev/null
+        cat >> "$rootfs/etc/locale.gen" << EOF
+$LANG $encoding
+EOF
+        chroot "$rootfs" locale-gen "$LANG" "$encoding"
+        chroot "$rootfs" update-locale LANG="$LANG"
+    fi
+
     # remove pointless services in a container
-    chroot $rootfs /usr/sbin/update-rc.d -f checkroot.sh disable
-    chroot $rootfs /usr/sbin/update-rc.d -f umountfs disable
-    chroot $rootfs /usr/sbin/update-rc.d -f hwclock.sh disable
-    chroot $rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh disable
+    chroot "$rootfs" /usr/sbin/update-rc.d -f checkroot.sh disable
+    chroot "$rootfs" /usr/sbin/update-rc.d -f umountfs disable
+    chroot "$rootfs" /usr/sbin/update-rc.d -f hwclock.sh disable
+    chroot "$rootfs" /usr/sbin/update-rc.d -f hwclockfirst.sh disable
 
     # generate new SSH keys
-    if [ -x $rootfs/var/lib/dpkg/info/openssh-server.postinst ]; then
-        cat > $rootfs/usr/sbin/policy-rc.d << EOF
+    if [ -x "$rootfs/var/lib/dpkg/info/openssh-server.postinst" ]; then
+        cat > "$rootfs/usr/sbin/policy-rc.d" << EOF
 #!/bin/sh
 exit 101
 EOF
-        chmod +x $rootfs/usr/sbin/policy-rc.d
+        chmod +x "$rootfs/usr/sbin/policy-rc.d"
 
-        if [ -f $rootfs/etc/init/ssh.conf ]; then
-            mv $rootfs/etc/init/ssh.conf $rootfs/etc/init/ssh.conf.disabled
+        if [ -f "$rootfs/etc/init/ssh.conf" ]; then
+            mv "$rootfs/etc/init/ssh.conf" "$rootfs/etc/init/ssh.conf.disabled"
         fi
 
-        rm -f $rootfs/etc/ssh/ssh_host_*key*
+        rm -f "$rootfs/etc/ssh/"ssh_host_*key*
 
-        DPKG_MAINTSCRIPT_PACKAGE=openssh DPKG_MAINTSCRIPT_NAME=postinst chroot $rootfs /var/lib/dpkg/info/openssh-server.postinst configure
-        sed -i "s/root@$(hostname)/root@$hostname/g" $rootfs/etc/ssh/ssh_host_*.pub
+        DPKG_MAINTSCRIPT_PACKAGE=openssh DPKG_MAINTSCRIPT_NAME=postinst chroot "$rootfs" /var/lib/dpkg/info/openssh-server.postinst configure
+        sed -i "s/root@$(hostname)/root@$hostname/g" "$rootfs/etc/ssh/"ssh_host_*.pub
 
         if [ -f "$rootfs/etc/init/ssh.conf.disabled" ]; then
-            mv $rootfs/etc/init/ssh.conf.disabled $rootfs/etc/init/ssh.conf
+            mv "$rootfs/etc/init/ssh.conf.disabled" "$rootfs/etc/init/ssh.conf"
         fi
 
-        rm -f $rootfs/usr/sbin/policy-rc.d
+        rm -f "$rootfs/usr/sbin/policy-rc.d"
     fi
 
     # set initial timezone as on host
     if [ -f /etc/timezone ]; then
-        cat /etc/timezone > $rootfs/etc/timezone
-        chroot $rootfs dpkg-reconfigure -f noninteractive tzdata
+        cat /etc/timezone > "$rootfs/etc/timezone"
+        chroot "$rootfs" dpkg-reconfigure -f noninteractive tzdata
     elif [ -f /etc/sysconfig/clock ]; then
         . /etc/sysconfig/clock
-        echo $ZONE > $rootfs/etc/timezone
-        chroot $rootfs dpkg-reconfigure -f noninteractive tzdata
+        echo "$ZONE" > "$rootfs/etc/timezone"
+        chroot "$rootfs" dpkg-reconfigure -f noninteractive tzdata
     else
         echo "Timezone in container is not configured. Adjust it manually."
     fi
@@ -199,9 +217,9 @@ install_packages()
     local rootfs="$1"; shift
     local packages="$*"
 
-    chroot ${rootfs} apt-get update
+    chroot "${rootfs}" apt-get update
     if [ -n "${packages}" ]; then
-        chroot ${rootfs} apt-get install --force-yes -y --no-install-recommends ${packages}
+        chroot "${rootfs}" apt-get install --force-yes -y --no-install-recommends ${packages}
     fi
 }
 
@@ -213,42 +231,43 @@ configure_debian_systemd()
     num_tty=$4
 
     # this only works if we have getty@.service to manipulate
-    if [ -f ${rootfs}/lib/systemd/system/getty\@.service ]; then
+    if [ -f "${rootfs}/lib/systemd/system/getty\@.service" ]; then
        sed -e 's/^ConditionPathExists=/# ConditionPathExists=/' \
            -e 's/After=dev-%i.device/After=/' \
-           < ${rootfs}/lib/systemd/system/getty\@.service \
-           > ${rootfs}/etc/systemd/system/getty\@.service
+           < "${rootfs}/lib/systemd/system/getty\@.service" \
+           > "${rootfs}/etc/systemd/system/getty\@.service"
     fi
 
     # just in case systemd is not installed
-    mkdir -p ${rootfs}/{lib,etc}/systemd/system
-    mkdir -p ${rootfs}/etc/systemd/system/getty.target.wants
+    mkdir -p "${rootfs}/{lib,etc}/systemd/system"
+    mkdir -p "${rootfs}/etc/systemd/system/getty.target.wants"
 
     # Fix getty-static-service as debootstrap does not install dbus
-    if [ -e $rootfs//lib/systemd/system/getty-static.service ] ; then
-        local tty_services=$(for i in $(seq 2 $num_tty); do echo -n "getty@tty${i}.service "; done; )
+    if [ -e "$rootfs//lib/systemd/system/getty-static.service" ] ; then
+        local tty_services
+        tty_services=$(for i in $(seq 2 "$num_tty"); do echo -n "getty@tty${i}.service "; done; )
         sed 's/ getty@tty.*/'" $tty_services "'/g' \
-                $rootfs/lib/systemd/system/getty-static.service |  \
-                sed 's/\(tty2-tty\)[5-9]/\1'"${num_tty}"'/g' > $rootfs/etc/systemd/system/getty-static.service
+                "$rootfs/lib/systemd/system/getty-static.service" |  \
+                sed 's/\(tty2-tty\)[5-9]/\1'"${num_tty}"'/g' > "$rootfs/etc/systemd/system/getty-static.service"
     fi
 
     # This function has been copied and adapted from lxc-fedora
-    rm -f ${rootfs}/etc/systemd/system/default.target
-    chroot ${rootfs} ln -s /dev/null /etc/systemd/system/udev.service
-    chroot ${rootfs} ln -s /dev/null /etc/systemd/system/systemd-udevd.service
-    chroot ${rootfs} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+    rm -f "${rootfs}/etc/systemd/system/default.target"
+    chroot "${rootfs}" ln -s /dev/null /etc/systemd/system/udev.service
+    chroot "${rootfs}" ln -s /dev/null /etc/systemd/system/systemd-udevd.service
+    chroot "${rootfs}" ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
     # Make systemd honor SIGPWR
-    chroot ${rootfs} ln -s /lib/systemd/system/halt.target /etc/systemd/system/sigpwr.target
+    chroot "${rootfs}" ln -s /lib/systemd/system/halt.target /etc/systemd/system/sigpwr.target
     # Setup getty service on the ttys we are going to allow in the
     # default config.  Number should match lxc.tty
-    ( cd ${rootfs}/etc/systemd/system/getty.target.wants
-        for i in $(seq 1 $num_tty) ; do ln -sf ../getty\@.service getty@tty${i}.service; done )
+    ( cd "${rootfs}/etc/systemd/system/getty.target.wants"
+        for i in $(seq 1 "$num_tty") ; do ln -sf ../getty\@.service getty@tty"${i}".service; done )
 
     # Since we use static-getty.target; we need to mask container-getty@.service generated by
     # container-getty-generator, so we don't get multiple instances of agetty running.
     # See https://github.com/lxc/lxc/issues/520 and https://github.com/lxc/lxc/issues/484
-    ( cd ${rootfs}/etc/systemd/system/getty.target.wants
-        for i in $(seq 0 $num_tty); do ln -sf /dev/null container-getty\@${i}.service; done )
+    ( cd "${rootfs}/etc/systemd/system/getty.target.wants"
+        for i in $(seq 0 "$num_tty"); do ln -sf /dev/null container-getty\@"${i}".service; done )
 
     return 0
 }
@@ -256,42 +275,42 @@ configure_debian_systemd()
 # Check if given path is in a btrfs partition
 is_btrfs()
 {
-    [ -e $1 -a $(stat -f -c '%T' $1) = "btrfs" ]
+    [ -e "$1" -a "$(stat -f -c '%T' "$1")" = "btrfs" ]
 }
 
 # Check if given path is the root of a btrfs subvolume
 is_btrfs_subvolume()
 {
-    [ -d $1 -a $(stat -f -c '%T' $1) = "btrfs" -a $(stat -c '%i' $1) -eq 256 ]
+    [ -d "$1" -a "$(stat -f -c '%T' "$1")" = "btrfs" -a "$(stat -c '%i' "$1")" -eq 256 ]
 }
 
 try_mksubvolume()
 {
     path=$1
-    [ -d $path ] && return 0
-    mkdir -p $(dirname $path)
-    if which btrfs >/dev/null 2>&1 && is_btrfs $(dirname $path); then
-        btrfs subvolume create $path
+    [ -d "$path" ] && return 0
+    mkdir -p "$(dirname "$path")"
+    if which btrfs >/dev/null 2>&1 && is_btrfs "$(dirname "$path")"; then
+        btrfs subvolume create "$path"
     else
-        mkdir -p $path
+        mkdir -p "$path"
     fi
 }
 
 try_rmsubvolume()
 {
     path=$1
-    [ -d $path ] || return 0
-    if which btrfs >/dev/null 2>&1 && is_btrfs_subvolume $path; then
-        btrfs subvolume delete $path
+    [ -d "$path" ] || return 0
+    if which btrfs >/dev/null 2>&1 && is_btrfs_subvolume "$path"; then
+        btrfs subvolume delete "$path"
     else
-        rm -rf $path
+        rm -rf "$path"
     fi
 }
 
 cleanup()
 {
-    try_rmsubvolume $cache/partial-$release-$arch
-    try_rmsubvolume $cache/rootfs-$release-$arch
+    try_rmsubvolume "$cache/partial-$release-$arch"
+    try_rmsubvolume "$cache/rootfs-$release-$arch"
 }
 
 download_debian()
@@ -343,7 +362,7 @@ openssh-server
                 ;;
         esac
         wget https://ftp-master.debian.org/keys/${gpgkeyname}.asc -O - --quiet \
-            | gpg --import --no-default-keyring --keyring=${releasekeyring}
+            | gpg --import --no-default-keyring --keyring="${releasekeyring}"
     fi
     # check the mini debian was not already downloaded
     try_mksubvolume "$cache/partial-$release-$arch"
@@ -355,22 +374,22 @@ openssh-server
     # download a mini debian into a cache
     echo "Downloading debian minimal ..."
     if [ "$interpreter" = "" ] ; then
-        debootstrap --verbose --variant=minbase --arch=$arch \
-            --include=$packages --keyring=${releasekeyring} \
-            "$release" "$cache/partial-$release-$arch" $MIRROR
+        debootstrap --verbose --variant=minbase --arch="$arch" \
+            --include=$packages --keyring="${releasekeyring}" \
+            "$release" "$cache/partial-$release-$arch" "$MIRROR"
         if [ $? -ne 0 ]; then
             echo "Failed to download the rootfs, aborting."
             return 1
         fi
     else
-        debootstrap --foreign --verbose --variant=minbase --arch=$arch \
-            --include=$packages --keyring=${releasekeyring} \
-            "$release" "$cache/partial-$release-$arch" $MIRROR
+        debootstrap --foreign --verbose --variant=minbase --arch="$arch" \
+            --include=$packages --keyring="${releasekeyring}" \
+            "$release" "$cache/partial-$release-$arch" "$MIRROR"
         if [ $? -ne 0 ]; then
             echo "Failed to download the rootfs, aborting."
             return 1
         fi
-        mkdir -p $(basename "$cache/partial-$release-$arch/$interpreter_path")
+        mkdir -p "$(basename "$cache/partial-$release-$arch/$interpreter_path")"
         cp "$interpreter" "$cache/partial-$release-$arch/$interpreter_path"
         if [ $? -ne 0 ]; then
             echo "failed to copy $interpreter to $cache/partial-$release-$arch/$interpreter_path"
@@ -402,17 +421,17 @@ copy_debian()
 
     # make a local copy of the minidebian
     echo -n "Copying rootfs to $rootfs..."
-    try_mksubvolume $rootfs
+    try_mksubvolume "$rootfs"
     if which btrfs >/dev/null 2>&1 && \
        is_btrfs_subvolume "$cache/rootfs-$release-$arch" && \
-       is_btrfs_subvolume $rootfs; then
-      realrootfs=$(dirname $config)/rootfs
-      [ "$rootfs" = "$realrootfs" ] || umount $rootfs || return 1
-      btrfs subvolume delete $realrootfs || return 1
-      btrfs subvolume snapshot "$cache/rootfs-$release-$arch" $realrootfs || return 1
-      [ "$rootfs" = "$realrootfs" ] || mount --bind $realrootfs $rootfs || return 1
+       is_btrfs_subvolume "$rootfs"; then
+      realrootfs="$(dirname "$config")"/rootfs
+      [ "$rootfs" = "$realrootfs" ] || umount "$rootfs" || return 1
+      btrfs subvolume delete "$realrootfs" || return 1
+      btrfs subvolume snapshot "$cache/rootfs-$release-$arch" "$realrootfs" || return 1
+      [ "$rootfs" = "$realrootfs" ] || mount --bind "$realrootfs" "$rootfs" || return 1
     else
-        rsync -Ha "$cache/rootfs-$release-$arch"/ $rootfs/ || return 1
+        rsync -Ha "$cache/rootfs-$release-$arch"/ "$rootfs"/ || return 1
     fi
     return 0
 }
@@ -434,21 +453,21 @@ install_debian()
             return 1
         fi
 
-        if [ $flushcache -eq 1 ]; then
+        if [ "$flushcache" -eq 1 ]; then
             echo "Flushing cache..."
             cleanup
         fi
 
         echo "Checking cache download in $cache/rootfs-$release-$arch ... "
         if [ ! -e "$cache/rootfs-$release-$arch" ]; then
-            download_debian $cache $arch $release "$interpreter" "$interpreter_path"
+            download_debian "$cache" "$arch" "$release" "$interpreter" "$interpreter_path"
             if [ $? -ne 0 ]; then
                 echo "Failed to download 'debian base'"
                 return 1
             fi
         fi
 
-        copy_debian $cache $arch $rootfs $release
+        copy_debian "$cache" "$arch" "$rootfs" "$release"
         if [ $? -ne 0 ]; then
             echo "Failed to copy rootfs"
             return 1
@@ -472,25 +491,25 @@ copy_configuration()
     # Generate the configuration file
     # if there is exactly one veth network entry, make sure it has an
     # associated hwaddr.
-    nics=`grep -e '^lxc\.network\.type[ \t]*=[ \t]*veth' $path/config | wc -l`
-    if [ $nics -eq 1 ]; then
-        grep -q "^lxc.network.hwaddr" $path/config || sed -i -e "/^lxc\.network\.type[ \t]*=[ \t]*veth/a lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')" $path/config
+    nics=$(grep -ce '^lxc\.network\.type[ \t]*=[ \t]*veth' "$path/config")
+    if [ "$nics" -eq 1 ]; then
+        grep -q "^lxc.network.hwaddr" "$path/config" || sed -i -e "/^lxc\.network\.type[ \t]*=[ \t]*veth/a lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')" "$path/config"
     fi
 
     ## Add all the includes
-    echo "" >> $path/config
-    echo "# Common configuration" >> $path/config
+    echo "" >> "$path/config"
+    echo "# Common configuration" >> "$path/config"
     if [ -e "${LXC_TEMPLATE_CONFIG}/debian.common.conf" ]; then
-        echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/debian.common.conf" >> $path/config
+        echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/debian.common.conf" >> "$path/config"
     fi
     if [ -e "${LXC_TEMPLATE_CONFIG}/debian.${release}.conf" ]; then
-        echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/debian.${release}.conf" >> $path/config
+        echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/debian.${release}.conf" >> "$path/config"
     fi
 
     ## Add the container-specific config
-    echo "" >> $path/config
-    echo "# Container specific configuration" >> $path/config
-    grep -q "^lxc.rootfs" $path/config 2> /dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
+    echo "" >> "$path/config"
+    echo "# Container specific configuration" >> "$path/config"
+    grep -q "^lxc.rootfs" "$path/config" 2> /dev/null || echo "lxc.rootfs = $rootfs" >> "$path/config"
 
     cat <<EOF >> $path/config
 lxc.tty = $num_tty
@@ -517,55 +536,39 @@ post_process()
     local packages="$*"
 
     # Disable service startup
-    cat > ${rootfs}/usr/sbin/policy-rc.d << EOF
+    cat > "${rootfs}/usr/sbin/policy-rc.d" << EOF
 #!/bin/sh
 exit 101
 EOF
-    chmod +x ${rootfs}/usr/sbin/policy-rc.d
+    chmod +x "${rootfs}/usr/sbin/policy-rc.d"
 
     # If the container isn't running a native architecture, setup multiarch
     if [ "$interpreter" = "" -a "${arch}" != "${hostarch}" ]; then
         # Test if dpkg supports multiarch
-        if ! chroot $rootfs dpkg --print-foreign-architecture 2>&1; then
-            chroot $rootfs dpkg --add-architecture ${hostarch}
+        if ! chroot "$rootfs" dpkg --print-foreign-architecture 2>&1; then
+            chroot "$rootfs" dpkg --add-architecture "${hostarch}"
         fi
     fi
 
     # Write a new sources.list containing both native and multiarch entries
-    > ${rootfs}/etc/apt/sources.list
+    > "${rootfs}/etc/apt/sources.list"
     if [ "$interpreter" != "" -a "${arch}" = "${hostarch}" ]; then
-        write_sourceslist ${rootfs} ${release} ${arch}
+        write_sourceslist "${rootfs}" "${release}" "${arch}"
     else
-        write_sourceslist ${rootfs} ${release}
+        write_sourceslist "${rootfs}" "${release}"
     fi
 
     # Install Packages in container
     if [ -n "${packages}" ]; then
-        local pack_list="`echo ${packages} | sed 's/,/ /g'`"
+        local pack_list
+        pack_list="${packages//,/ }"
         echo "Installing packages: ${pack_list}"
-        install_packages ${rootfs} ${pack_list}
+        install_packages "${rootfs}" "${pack_list}"
     fi
 
     # Re-enable service startup
-    rm ${rootfs}/usr/sbin/policy-rc.d
+    rm "${rootfs}/usr/sbin/policy-rc.d"
     
-    # reconfigure locales
-    if [ -z "$LANG" ]; then
-        cat >> $rootfs/etc/locale.gen << EOF
-en_US.UTF-8 UTF-8
-EOF
-        chroot $rootfs locale-gen en_US.UTF-8 UTF-8
-        chroot $rootfs update-locale LANG=en_US.UTF-8
-    else
-        encoding=$(echo $LANG | cut -d. -f2)
-        chroot $rootfs sed -e "s/^# \(${LANG} ${encoding}\)/\1/" \
-            -i /etc/locale.gen 2> /dev/null
-        cat >> $rootfs/etc/locale.gen << EOF
-$LANG $encoding
-EOF
-        chroot $rootfs locale-gen $LANG $encoding
-        chroot $rootfs update-locale LANG=$LANG
-    fi
     # end
 }
 
@@ -573,7 +576,7 @@ clean()
 {
     cache=${LXC_CACHE_PATH:-"$LOCALSTATEDIR/cache/lxc/debian"}
 
-    if [ ! -e $cache ]; then
+    if [ ! -e "$cache" ]; then
         exit 0
     fi
 
@@ -586,7 +589,7 @@ clean()
         fi
 
         echo -n "Purging the download cache..."
-        rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
+        rm --preserve-root --one-file-system -rf "$cache" && echo "Done." || exit 1
         exit 0
 
     ) 9>$LOCALSTATEDIR/lock/subsys/lxc-debian
@@ -639,7 +642,7 @@ EOF
 
 options=$(getopt -o hp:n:a:r:cI:F -l arch:,clean,help,enable-non-free,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror:,interpreter-path:,flush-cache -- "$@")
 if [ $? -ne 0 ]; then
-        usage $(basename $0)
+        usage "$(basename "$0")"
         exit 1
 fi
 eval set -- "$options"
@@ -659,7 +662,7 @@ flushcache=0
 while true
 do
     case "$1" in
-        -h|--help)            usage $0 && exit 1;;
+        -h|--help)            usage "$0" && exit 1;;
            --)                shift 1; break ;;
 
         -a|--arch)            arch=$2; shift 2;;
@@ -715,7 +718,7 @@ else
     fi
     interpreter_path=$(find_interpreter "$interpreter")
     if [ $? -ne 0 ] ; then
-        echo "no binfmt interpreter using $(basename $interpreter)" 1>&2
+        echo "no binfmt interpreter using $(basename "$interpreter")" 1>&2
         exit 1
     fi
 fi
@@ -736,7 +739,7 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-current_release=`wget ${MIRROR}/dists/stable/Release -O - 2> /dev/null | head |awk '/^Codename: (.*)$/ { print $2; }'`
+current_release=$(wget "${MIRROR}/dists/stable/Release" -O - 2> /dev/null | head |awk '/^Codename: (.*)$/ { print $2; }')
 release=${release:-${current_release}}
 valid_releases=('wheezy' 'jessie' 'stretch' 'sid')
 if [[ ! "${valid_releases[*]}" =~ (^|[^[:alpha:]])$release([^[:alpha:]]|$) ]]; then
@@ -747,41 +750,41 @@ fi
 # detect rootfs
 config="$path/config"
 if [ -z "$rootfs" ]; then
-    if grep -q '^lxc.rootfs' $config 2> /dev/null ; then
-        rootfs=$(awk -F= '/^lxc.rootfs[ \t]+=/{ print $2 }' $config)
+    if grep -q '^lxc.rootfs' "$config" 2> /dev/null ; then
+        rootfs=$(awk -F= '/^lxc.rootfs[ \t]+=/{ print $2 }' "$config")
     else
         rootfs=$path/rootfs
     fi
 fi
 
 # determine the number of ttys - default is 4
-if grep -q '^lxc.tty' $config 2> /dev/null ; then
-    num_tty=$(awk -F= '/^lxc.tty[ \t]+=/{ print $2 }' $config)
+if grep -q '^lxc.tty' "$config" 2> /dev/null ; then
+    num_tty=$(awk -F= '/^lxc.tty[ \t]+=/{ print $2 }' "$config")
 else
     num_tty=4
 fi
 
-install_debian $rootfs $release $arch $LXC_CACHE_PATH "$interpreter" "$interpreter_path" $flushcache
+install_debian "$rootfs" "$release" "$arch" "$LXC_CACHE_PATH" "$interpreter" "$interpreter_path" "$flushcache"
 if [ $? -ne 0 ]; then
     echo "failed to install debian"
     exit 1
 fi
 
-configure_debian $rootfs $name $num_tty
+configure_debian "$rootfs" "$name" $num_tty
 if [ $? -ne 0 ]; then
     echo "failed to configure debian for a container"
     exit 1
 fi
 
-copy_configuration $path $rootfs $name $arch $num_tty
+copy_configuration "$path" "$rootfs" "$name" $arch $num_tty
 if [ $? -ne 0 ]; then
     echo "failed write configuration file"
     exit 1
 fi
 
-configure_debian_systemd $path $rootfs $config $num_tty
+configure_debian_systemd "$path" "$rootfs" "$config" $num_tty
 
-post_process ${rootfs} ${release} ${arch} ${hostarch} "${interpreter}" ${packages}
+post_process "${rootfs}" "${release}" ${arch} ${hostarch} "${interpreter}" "${packages}"
 
 if [ ! -z "$clean" ]; then
     clean || exit 1
