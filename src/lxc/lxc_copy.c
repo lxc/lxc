@@ -805,6 +805,7 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 	int ret, fd;
 	size_t len;
 	char *premount = NULL;
+	FILE *fp;
 
 	if (arg->tmpfs && arg->keepdata) {
 		fprintf(stderr, "%s\n", "A container can only be placed on a "
@@ -831,21 +832,31 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 	if (ret < 0 || (size_t)ret >= len)
 		goto err_free;
 
-	fd = mkostemp(premount, O_CLOEXEC);
+	fd = mkstemp(premount);
 	if (fd < 0)
 		goto err_free;
+
+	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
+		SYSERROR("Failed to set close-on-exec on file descriptor.");
+		goto err_close;
+	}
 
 	if (chmod(premount, 0755) < 0)
 		goto err_close;
 
-	ret = dprintf(fd, "#! /bin/sh\n"
+	fp = fdopen(fd, "r+");
+	if (!fp)
+		goto err_close;
+	fd = -1;
+
+	ret = fprintf(fp, "#! /bin/sh\n"
 			  "mount -n -t tmpfs -o mode=0755 none %s/%s\n",
 		      path, newname);
 	if (ret < 0)
 		goto err_close;
 
 	if (!arg->keepname) {
-		ret = dprintf(fd, "mkdir -p %s/%s/delta0/etc\n"
+		ret = fprintf(fp, "mkdir -p %s/%s/delta0/etc\n"
 				  "echo %s > %s/%s/delta0/etc/hostname\n",
 			      path, newname, newname, path, newname);
 		if (ret < 0)
@@ -856,7 +867,10 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 	return premount;
 
 err_close:
-	close(fd);
+	if (fd > 0)
+		close(fd);
+	else
+		fclose(fp);
 err_free:
 	free(premount);
 	return NULL;
