@@ -22,6 +22,7 @@
  */
 #define _GNU_SOURCE
 #include <assert.h>
+#include <inttypes.h>
 #include <linux/limits.h>
 #include <sched.h>
 #include <stdio.h>
@@ -307,9 +308,9 @@ static void exec_criu(struct criu_opts *opts)
 		if (opts->user->ghost_limit) {
 			char ghost_limit[32];
 
-			ret = sprintf(ghost_limit, "%lu", opts->user->ghost_limit);
+			ret = sprintf(ghost_limit, "%"PRIu64, opts->user->ghost_limit);
 			if (ret < 0 || ret >= sizeof(ghost_limit)) {
-				ERROR("failed to print ghost limit %lu", opts->user->ghost_limit);
+				ERROR("failed to print ghost limit %"PRIu64, opts->user->ghost_limit);
 				goto err;
 			}
 
