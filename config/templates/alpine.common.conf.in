@@ -18,3 +18,6 @@ lxc.cap.drop = sys_resource
 lxc.cap.drop = sys_tty_config
 lxc.cap.drop = syslog
 lxc.cap.drop = wake_alarm
+
+# Mount tmpfs under /run.
+lxc.mount.entry=run run tmpfs rw,nodev,relatime,mode=755 0 0
