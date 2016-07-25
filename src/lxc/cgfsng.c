@@ -438,7 +438,7 @@ static bool is_lxcfs(const char *line)
 	char *p = strstr(line, " - ");
 	if (!p)
 		return false;
-	return strncmp(p, " - fuse.lxcfs ", 14);
+	return strncmp(p, " - fuse.lxcfs ", 14) == 0;
 }
 
 /*
@@ -488,7 +488,7 @@ static bool is_cgroupfs(char *line)
 	char *p = strstr(line, " - ");
 	if (!p)
 		return false;
-	return strncmp(p, " - cgroup ", 10);
+	return strncmp(p, " - cgroup ", 10) == 0;
 }
 
 /* Add a controller to our list of hierarchies */
@@ -1350,7 +1350,7 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			free(controllerpath);
 			goto bad;
 		}
-		
+
 		r = do_secondstage_mounts_if_needed(type, h, controllerpath, path2,
 						    d->container_cgroup);
 		free(controllerpath);
