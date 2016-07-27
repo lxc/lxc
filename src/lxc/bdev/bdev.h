@@ -33,6 +33,13 @@
 
 #include "config.h"
 
+/* Define getline() if missing from the C library */
+#ifndef HAVE_GETLINE
+#ifdef HAVE_FGETLN
+#include <../../include/getline.h>
+#endif
+#endif
+
 /* define constants if the kernel/glibc headers don't define them */
 #ifndef MS_DIRSYNC
 #define MS_DIRSYNC 128
