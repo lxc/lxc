@@ -603,11 +603,13 @@ out_unlock:
 static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_opts *opts, char *criu_version)
 {
 	pid_t pid;
-	char pidfile[L_tmpnam];
 	struct lxc_handler *handler;
-	int status, pipes[2] = {-1, -1};
+	int fd, status;
+	int pipes[2] = {-1, -1};
+	char pidfile[] = "criu_restore_XXXXXX";
 
-	if (!tmpnam(pidfile))
+	fd = mkstemp(pidfile);
+	if (fd < 0)
 		goto out;
 
 	handler = lxc_init(c->name, c->lxc_conf, c->config_path);
@@ -756,11 +758,12 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 				goto out_fini_handler;
 			} else {
 				int ret;
-				FILE *f = fopen(pidfile, "r");
+				FILE *f = fdopen(fd, "r");
 				if (!f) {
 					SYSERROR("couldn't read restore's init pidfile %s\n", pidfile);
 					goto out_fini_handler;
 				}
+				fd = -1;
 
 				ret = fscanf(f, "%d", (int*) &handler->pid);
 				fclose(f);
@@ -817,6 +820,9 @@ out:
 		}
 		close(status_pipe);
 	}
+
+	if (fd > 0)
+		close(fd);
 
 	exit(1);
 }
