@@ -3327,6 +3327,7 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 	}
 
 	free(tty_info->pty_info);
+	tty_info->pty_info = NULL;
 	tty_info->nbtty = 0;
 }
 
