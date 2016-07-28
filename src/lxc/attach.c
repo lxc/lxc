@@ -217,10 +217,10 @@ static int lxc_attach_to_ns(pid_t pid, int which)
 	 * the file for user namepsaces in /proc/$pid/ns will be called
 	 * 'user' once the kernel supports it
 	 */
-	static char *ns[] = { "user", "mnt", "pid", "uts", "ipc", "net" };
+	static char *ns[] = { "user", "mnt", "pid", "uts", "ipc", "net", "cgroup" };
 	static int flags[] = {
 		CLONE_NEWUSER, CLONE_NEWNS, CLONE_NEWPID, CLONE_NEWUTS, CLONE_NEWIPC,
-		CLONE_NEWNET
+		CLONE_NEWNET, CLONE_NEWCGROUP
 	};
 	static const int size = sizeof(ns) / sizeof(char *);
 	int fd[size];
@@ -720,7 +720,6 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	int ipc_sockets[2];
 	int procfd;
 	signed long personality;
-	bool unshare_cgns = false;
 
 	if (!options)
 		options = &attach_static_default_options;
@@ -931,8 +930,8 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		rexit(-1);
 	}
 
-	if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP && cgns_supported())
-		unshare_cgns = true;
+	if ((options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) && cgns_supported())
+		options->namespaces |= CLONE_NEWCGROUP;
 
 	procfd = open("/proc", O_DIRECTORY | O_RDONLY);
 	if (procfd < 0) {
@@ -960,14 +959,6 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	if (ret < 0)
 		WARN("could not change directory to '%s'", new_cwd);
 	free(cwd);
-
-	if (unshare_cgns) {
-		if (unshare(CLONE_NEWCGROUP) != 0) {
-			SYSERROR("cgroupns unshare: permission denied");
-			rexit(-1);
-		}
-		INFO("Unshared cgroup namespace");
-	}
 
 	/* now create the real child process */
 	{
