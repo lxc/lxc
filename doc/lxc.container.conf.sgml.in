@@ -1697,6 +1697,19 @@ mknod errno 0
             </para>
           </listitem>
         </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.syslog</option>
+          </term>
+          <listitem>
+            <para>
+            Send logging info to syslog. It respects the log level defined in
+            <command>lxc.loglevel</command>. The argument should be the syslog
+            facility to use, valid ones are: daemon, local0, local1, local2,
+            local3, local4, local5, local5, local7.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
