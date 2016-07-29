@@ -38,6 +38,7 @@
 #include <net/if.h>
 #include <time.h>
 #include <dirent.h>
+#include <syslog.h>
 
 #include "parse.h"
 #include "config.h"
@@ -105,6 +106,7 @@ static int config_haltsignal(const char *, const char *, struct lxc_conf *);
 static int config_rebootsignal(const char *, const char *, struct lxc_conf *);
 static int config_stopsignal(const char *, const char *, struct lxc_conf *);
 static int config_start(const char *, const char *, struct lxc_conf *);
+static int config_syslog(const char *, const char *, struct lxc_conf *);
 static int config_monitor(const char *, const char *, struct lxc_conf *);
 static int config_group(const char *, const char *, struct lxc_conf *);
 static int config_environment(const char *, const char *, struct lxc_conf *);
@@ -184,6 +186,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.init_uid",             config_init_uid             },
 	{ "lxc.init_gid",             config_init_gid             },
 	{ "lxc.ephemeral",            config_ephemeral            },
+	{ "lxc.syslog",               config_syslog               },
 };
 
 struct signame {
@@ -268,6 +271,23 @@ static const struct signame signames[] = {
 #ifdef SIGSYS
 	{ SIGSYS,    "SYS" },
 #endif
+};
+
+struct syslog_facility {
+	const char *name;
+	int facility;
+};
+
+static const struct syslog_facility syslog_facilities[] = {
+	{ "daemon",	LOG_DAEMON },
+	{ "local0",	LOG_LOCAL0 },
+	{ "local1",	LOG_LOCAL1 },
+	{ "local2",	LOG_LOCAL2 },
+	{ "local3",	LOG_LOCAL3 },
+	{ "local4",	LOG_LOCAL4 },
+	{ "local5",	LOG_LOCAL5 },
+	{ "local6",	LOG_LOCAL6 },
+	{ "local7",	LOG_LOCAL7 },
 };
 
 static const size_t config_size = sizeof(config)/sizeof(struct lxc_config_t);
@@ -2919,3 +2939,20 @@ static int config_ephemeral(const char *key, const char *value,
 	return 0;
 }
 
+static int config_syslog(const char *key, const char *value,
+			    struct lxc_conf *lxc_conf)
+{
+	int n;
+	int facility = -1;
+
+	for (n = 0; n < sizeof(syslog_facilities) / sizeof((syslog_facilities)[0]); n++) {
+		if (strcasecmp(syslog_facilities[n].name, value) == 0) {
+			facility = syslog_facilities[n].facility;
+			lxc_log_syslog(facility);
+			return 0;
+		}
+	}
+
+	ERROR("Wrong value for lxc.syslog");
+	return -1;
+}
