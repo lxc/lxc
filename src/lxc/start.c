@@ -55,6 +55,7 @@
 #endif
 
 #include "af_unix.h"
+#include "bdev.h"
 #include "caps.h"
 #include "cgroup.h"
 #include "commands.h"
@@ -71,7 +72,6 @@
 #include "start.h"
 #include "sync.h"
 #include "utils.h"
-#include "bdev/bdev.h"
 #include "lsm/lsm.h"
 
 lxc_log_define(lxc_start, lxc);

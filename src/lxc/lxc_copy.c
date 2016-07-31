@@ -37,6 +37,7 @@
 #include <lxc/lxccontainer.h>
 
 #include "attach.h"
+#include "bdev.h"
 #include "log.h"
 #include "confile.h"
 #include "arguments.h"
@@ -44,7 +45,6 @@
 #include "conf.h"
 #include "state.h"
 #include "utils.h"
-#include "bdev/bdev.h"
 
 #ifndef HAVE_GETSUBOPT
 #include <../include/getsubopt.h>

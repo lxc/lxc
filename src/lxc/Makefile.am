@@ -138,8 +138,7 @@ liblxc_so_SOURCES += ../include/getline.c ../include/getline.h
 endif
 endif
 
-AM_CFLAGS=-I$(top_srcdir)/src \
-	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
+AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
 	-DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
 	-DLXCINITDIR=\"$(LXCINITDIR)\" \
@@ -152,7 +151,10 @@ AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXC_USERNIC_CONF=\"$(LXC_USERNIC_CONF)\" \
 	-DDEFAULT_CGROUP_PATTERN=\"$(DEFAULT_CGROUP_PATTERN)\" \
 	-DRUNTIME_PATH=\"$(RUNTIME_PATH)\" \
-	-DSBINDIR=\"$(SBINDIR)\"
+	-DSBINDIR=\"$(SBINDIR)\" \
+	-I $(top_srcdir)/src \
+	-I $(top_srcdir)/src/lxc \
+	-I $(top_srcdir)/src/lxc/bdev
 
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR

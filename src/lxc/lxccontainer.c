@@ -39,9 +39,9 @@
 #include <sys/wait.h>
 
 #include "attach.h"
-#include "bdev/bdev.h"
-#include "bdev/lxcoverlay.h"
-#include "bdev/lxcbtrfs.h"
+#include "bdev.h"
+#include "lxcoverlay.h"
+#include "lxcbtrfs.h"
 #include "cgroup.h"
 #include "conf.h"
 #include "config.h"

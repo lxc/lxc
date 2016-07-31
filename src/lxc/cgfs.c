@@ -39,12 +39,12 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
+#include "bdev.h"
 #include "error.h"
 #include "commands.h"
 #include "list.h"
 #include "conf.h"
 #include "utils.h"
-#include "bdev/bdev.h"
 #include "log.h"
 #include "cgroup.h"
 #include "start.h"

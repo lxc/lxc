@@ -40,10 +40,10 @@
 #include <dirent.h>
 #include <syslog.h>
 
+#include "bdev.h"
 #include "parse.h"
 #include "config.h"
 #include "confile.h"
-#include "bdev/bdev.h"
 #include "utils.h"
 #include "log.h"
 #include "conf.h"
