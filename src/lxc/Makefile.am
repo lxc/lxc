@@ -17,8 +17,8 @@ noinst_HEADERS = \
 	bdev/lxcrbd.h \
 	bdev/lxcrsync.h \
 	bdev/lxczfs.h \
+	cgroups/cgroup.h \
 	caps.h \
-	cgroup.h \
 	conf.h \
 	console.h \
 	error.h \
@@ -80,6 +80,9 @@ liblxc_so_SOURCES = \
 	bdev/lxcrbd.c bdev/lxcrbd.h \
 	bdev/lxcrsync.c bdev/lxcrsync.h \
 	bdev/lxczfs.c bdev/lxczfs.h \
+	cgroups/cgfs.c \
+	cgroups/cgfsng.c \
+	cgroups/cgroup.c cgroups/cgroup.h \
 	commands.c commands.h \
 	start.c start.h \
 	execute.c \
@@ -88,9 +91,6 @@ liblxc_so_SOURCES = \
 	freezer.c \
 	error.h error.c \
 	parse.c parse.h \
-	cgfs.c \
-	cgfsng.c \
-	cgroup.c cgroup.h \
 	lxc.h \
 	initutils.c initutils.h \
 	utils.c utils.h \
@@ -122,7 +122,7 @@ liblxc_so_SOURCES = \
 	$(LSM_SOURCES)
 
 if ENABLE_CGMANAGER
-liblxc_so_SOURCES += cgmanager.c
+liblxc_so_SOURCES += cgroups/cgmanager.c
 endif
 
 if IS_BIONIC
@@ -154,7 +154,8 @@ AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DSBINDIR=\"$(SBINDIR)\" \
 	-I $(top_srcdir)/src \
 	-I $(top_srcdir)/src/lxc \
-	-I $(top_srcdir)/src/lxc/bdev
+	-I $(top_srcdir)/src/lxc/bdev \
+	-I $(top_srcdir)/src/lxc/cgroups
 
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
