@@ -24,13 +24,17 @@ lxc_test_attach_SOURCES = attach.c
 lxc_test_device_add_remove_SOURCES = device_add_remove.c
 lxc_test_apparmor_SOURCES = aa.c
 
-AM_CFLAGS=-I$(top_srcdir)/src \
-	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
+AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
 	-DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
 	-DLXCINITDIR=\"$(LXCINITDIR)\" \
 	-DLXC_DEFAULT_CONFIG=\"$(LXC_DEFAULT_CONFIG)\" \
-	-DRUNTIME_PATH=\"$(RUNTIME_PATH)\"
+	-DRUNTIME_PATH=\"$(RUNTIME_PATH)\" \
+	-I $(top_srcdir)/src \
+	-I $(top_srcdir)/src/lxc \
+	-I $(top_srcdir)/src/lxc/bdev \
+	-I $(top_srcdir)/src/lxc/cgroups \
+	-I $(top_srcdir)/src/lxc/tools
 
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
