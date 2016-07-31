@@ -66,6 +66,7 @@
 #include <net/if.h>
 #include <libgen.h>
 
+#include "bdev.h"
 #include "network.h"
 #include "error.h"
 #include "af_unix.h"
@@ -74,9 +75,8 @@
 #include "conf.h"
 #include "log.h"
 #include "caps.h"       /* for lxc_caps_last_cap() */
-#include "bdev/bdev.h"
-#include "bdev/lxcaufs.h"
-#include "bdev/lxcoverlay.h"
+#include "lxcaufs.h"
+#include "lxcoverlay.h"
 #include "cgroup.h"
 #include "lxclock.h"
 #include "namespace.h"

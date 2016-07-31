@@ -27,9 +27,9 @@
 
 #include <lxc/lxccontainer.h>
 
+#include "bdev.h"
 #include "lxc.h"
 #include "log.h"
-#include "bdev/bdev.h"
 #include "arguments.h"
 #include "utils.h"
 
