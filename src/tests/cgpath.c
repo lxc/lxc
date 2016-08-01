@@ -28,9 +28,10 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
-#include "lxc/cgroup.h"
-#include "lxc/lxc.h"
-#include "lxc/commands.h"
+
+#include "cgroup.h"
+#include "lxc.h"
+#include "commands.h"
 
 #define MYNAME "lxctest1"
 

@@ -43,11 +43,11 @@
 #include <dirent.h>
 #include <grp.h>
 
+#include "bdev.h"
 #include "log.h"
 #include "cgroup.h"
 #include "utils.h"
 #include "commands.h"
-#include "bdev/bdev.h"
 
 lxc_log_define(lxc_cgfsng, lxc);
 

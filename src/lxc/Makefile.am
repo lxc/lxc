@@ -17,8 +17,8 @@ noinst_HEADERS = \
 	bdev/lxcrbd.h \
 	bdev/lxcrsync.h \
 	bdev/lxczfs.h \
+	cgroups/cgroup.h \
 	caps.h \
-	cgroup.h \
 	conf.h \
 	console.h \
 	error.h \
@@ -80,6 +80,9 @@ liblxc_so_SOURCES = \
 	bdev/lxcrbd.c bdev/lxcrbd.h \
 	bdev/lxcrsync.c bdev/lxcrsync.h \
 	bdev/lxczfs.c bdev/lxczfs.h \
+	cgroups/cgfs.c \
+	cgroups/cgfsng.c \
+	cgroups/cgroup.c cgroups/cgroup.h \
 	commands.c commands.h \
 	start.c start.h \
 	execute.c \
@@ -88,9 +91,6 @@ liblxc_so_SOURCES = \
 	freezer.c \
 	error.h error.c \
 	parse.c parse.h \
-	cgfs.c \
-	cgfsng.c \
-	cgroup.c cgroup.h \
 	lxc.h \
 	initutils.c initutils.h \
 	utils.c utils.h \
@@ -122,7 +122,7 @@ liblxc_so_SOURCES = \
 	$(LSM_SOURCES)
 
 if ENABLE_CGMANAGER
-liblxc_so_SOURCES += cgmanager.c
+liblxc_so_SOURCES += cgroups/cgmanager.c
 endif
 
 if IS_BIONIC
@@ -138,8 +138,7 @@ liblxc_so_SOURCES += ../include/getline.c ../include/getline.h
 endif
 endif
 
-AM_CFLAGS=-I$(top_srcdir)/src \
-	-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
+AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
 	-DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
 	-DLXCINITDIR=\"$(LXCINITDIR)\" \
@@ -152,7 +151,11 @@ AM_CFLAGS=-I$(top_srcdir)/src \
 	-DLXC_USERNIC_CONF=\"$(LXC_USERNIC_CONF)\" \
 	-DDEFAULT_CGROUP_PATTERN=\"$(DEFAULT_CGROUP_PATTERN)\" \
 	-DRUNTIME_PATH=\"$(RUNTIME_PATH)\" \
-	-DSBINDIR=\"$(SBINDIR)\"
+	-DSBINDIR=\"$(SBINDIR)\" \
+	-I $(top_srcdir)/src \
+	-I $(top_srcdir)/src/lxc \
+	-I $(top_srcdir)/src/lxc/bdev \
+	-I $(top_srcdir)/src/lxc/cgroups
 
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
@@ -189,14 +192,14 @@ liblxc_so_LDADD += $(CGMANAGER_LIBS) $(DBUS_LIBS) $(NIH_LIBS) $(NIH_DBUS_LIBS)
 liblxc_so_CFLAGS += $(CGMANAGER_CFLAGS) $(DBUS_CFLAGS) $(NIH_CFLAGS) $(NIH_DBUS_CFLAGS)
 endif
 
-bin_SCRIPTS = lxc-checkconfig
+bin_SCRIPTS = tools/lxc-checkconfig
 
 EXTRA_DIST = \
-	lxc-top.lua
+	tools/lxc-top.lua
 
 if ENABLE_DEPRECATED
 if ENABLE_PYTHON
-bin_SCRIPTS += lxc-start-ephemeral
+bin_SCRIPTS += tools/lxc-start-ephemeral
 endif
 endif
 
@@ -240,35 +243,35 @@ AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
 endif
 LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@ @SELINUX_LIBS@ @SECCOMP_LIBS@
 
-lxc_attach_SOURCES = lxc_attach.c
-lxc_autostart_SOURCES = lxc_autostart.c
-lxc_cgroup_SOURCES = lxc_cgroup.c
-lxc_config_SOURCES = lxc_config.c
-lxc_console_SOURCES = lxc_console.c
-lxc_destroy_SOURCES = lxc_destroy.c
-lxc_device_SOURCES = lxc_device.c
-lxc_execute_SOURCES = lxc_execute.c
-lxc_freeze_SOURCES = lxc_freeze.c
-lxc_info_SOURCES = lxc_info.c
-init_lxc_SOURCES = lxc_init.c
-lxc_monitor_SOURCES = lxc_monitor.c
-lxc_monitord_SOURCES = lxc_monitord.c
-lxc_ls_SOURCES = lxc_ls.c
-lxc_copy_SOURCES = lxc_copy.c
-lxc_start_SOURCES = lxc_start.c
-lxc_stop_SOURCES = lxc_stop.c
-lxc_top_SOURCES = lxc_top.c
-lxc_unfreeze_SOURCES = lxc_unfreeze.c
-lxc_unshare_SOURCES = lxc_unshare.c
-lxc_wait_SOURCES = lxc_wait.c
-lxc_create_SOURCES = lxc_create.c
-lxc_snapshot_SOURCES = lxc_snapshot.c
-lxc_usernsexec_SOURCES = lxc_usernsexec.c
+lxc_attach_SOURCES = tools/lxc_attach.c
+lxc_autostart_SOURCES = tools/lxc_autostart.c
+lxc_cgroup_SOURCES = tools/lxc_cgroup.c
+lxc_config_SOURCES = tools/lxc_config.c
+lxc_console_SOURCES = tools/lxc_console.c
+lxc_destroy_SOURCES = tools/lxc_destroy.c
+lxc_device_SOURCES = tools/lxc_device.c
+lxc_execute_SOURCES = tools/lxc_execute.c
+lxc_freeze_SOURCES = tools/lxc_freeze.c
+lxc_info_SOURCES = tools/lxc_info.c
+init_lxc_SOURCES = tools/lxc_init.c
+lxc_monitor_SOURCES = tools/lxc_monitor.c
+lxc_ls_SOURCES = tools/lxc_ls.c
+lxc_copy_SOURCES = tools/lxc_copy.c
+lxc_start_SOURCES = tools/lxc_start.c
+lxc_stop_SOURCES = tools/lxc_stop.c
+lxc_top_SOURCES = tools/lxc_top.c
+lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c
+lxc_unshare_SOURCES = tools/lxc_unshare.c
+lxc_wait_SOURCES = tools/lxc_wait.c
+lxc_create_SOURCES = tools/lxc_create.c
+lxc_snapshot_SOURCES = tools/lxc_snapshot.c
+lxc_usernsexec_SOURCES = tools/lxc_usernsexec.c
+lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c
 lxc_user_nic_SOURCES = lxc_user_nic.c network.c network.h
-lxc_checkpoint_SOURCES = lxc_checkpoint.c
+lxc_monitord_SOURCES = lxc_monitord.c
 
 if ENABLE_DEPRECATED
-lxc_clone_SOURCES = lxc_clone.c
+lxc_clone_SOURCES = tools/lxc_clone.c
 endif
 
 if !HAVE_GETSUBOPT
@@ -278,7 +281,7 @@ endif
 if HAVE_STATIC_LIBCAP
 sbin_PROGRAMS += init.lxc.static
 
-init_lxc_static_SOURCES = lxc_init.c error.c log.c initutils.c caps.c
+init_lxc_static_SOURCES = tools/lxc_init.c error.c log.c initutils.c caps.c
 
 if !HAVE_GETLINE
 if HAVE_FGETLN
