@@ -2313,6 +2313,22 @@ mknod errno 0
 	    </para>
 	  </listitem>
 	</varlistentry>
+	<varlistentry>
+	  <term>
+	    <option>lxc.syslog</option>
+	  </term>
+	  <listitem>
+	    <para>
+	      <!--
+		  Send logging info to syslog. It respects the log level defined in
+		  <command>lxc.loglevel</command>. The argument should be the syslog
+		  facility to use, valid ones are: daemon, local0, local1, local2,
+		  local3, local4, local5, local5, local7.
+	      -->
+	      로그정보를 syslog에 보낸다. 로그 수준은 <command>lxc.loglevel</command>로 지정할 수 있다. 인자는 syslog에 정의된 값으로만 지정할 수 있다. 사용 가능한 값은 다음과 같다 : daemon, local0, local1, local2, local3, local4, local5, local5, local7 
+	    </para>
+	  </listitem>
+	</varlistentry>
       </variablelist>
     </refsect2>
 
