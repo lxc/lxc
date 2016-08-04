@@ -198,7 +198,7 @@ Options :\n\
                     is the current default behaviour, but is likely to\n\
                     change in the future.\n\
   -L, --pty-log=FILE\n\
-		    Log pty output to FILE\n\
+                    Log pty output to FILE\n\
   -v, --set-var     Set an additional variable that is seen by the\n\
                     attached program in the container. May be specified\n\
                     multiple times.\n\
