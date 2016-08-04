@@ -65,6 +65,7 @@ static const struct option my_longopts[] = {
 	{"keep-var", required_argument, 0, 502},
 	{"set-var", required_argument, 0, 'v'},
 	{"pty-log", required_argument, 0, 'L'},
+	{"rcfile", required_argument, 0, 'f'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -153,6 +154,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'L':
 		args->console_log = arg;
 		break;
+	case 'f': args->rcfile = arg; break;
 	}
 
 	return 0;
@@ -196,13 +198,16 @@ Options :\n\
                     is the current default behaviour, but is likely to\n\
                     change in the future.\n\
   -L, --pty-log=FILE\n\
-		    Log pty output to FILE\n\
+                    Log pty output to FILE\n\
   -v, --set-var     Set an additional variable that is seen by the\n\
                     attached program in the container. May be specified\n\
                     multiple times.\n\
       --keep-var    Keep an additional environment variable. Only\n\
                     applicable if --clear-env is specified. May be used\n\
-                    multiple times.\n",
+                    multiple times.\n\
+  -f, --rcfile=FILE\n\
+                    Load configuration file FILE\n\
+",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
@@ -372,6 +377,15 @@ int main(int argc, char *argv[])
 	struct lxc_container *c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c)
 		exit(EXIT_FAILURE);
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			ERROR("Failed to load rcfile");
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
+		}
+	}
 
 	if (!c->may_control(c)) {
 		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
