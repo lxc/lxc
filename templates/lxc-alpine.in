@@ -123,6 +123,8 @@ parse_arch() {
 	case "$1" in
 		x86 | i[3-6]86) echo 'x86';;
 		x86_64 | amd64) echo 'x86_64';;
+		aarch64 | arm64) echo 'aarch64';;
+		armv7) echo 'armv7';;
 		arm*) echo 'armhf';;
 		*) return 1;;
 	esac
