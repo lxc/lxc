@@ -590,7 +590,7 @@ out:
 static int mount_rootfs_file(const char *rootfs, const char *target,
 				             const char *options)
 {
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	struct loop_info64 loinfo;
 	int ret = -1, fd = -1, rc;
 	DIR *dir;
@@ -602,8 +602,7 @@ static int mount_rootfs_file(const char *rootfs, const char *target,
 		return -1;
 	}
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
-
+	while ((direntp = readdir(dir))) {
 		if (!direntp)
 			break;
 
@@ -2938,7 +2937,7 @@ void lxc_restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
 {
 	int i, ret, oldfd;
 	char path[MAXPATHLEN];
-	char ifname[IFNAMSIZ]; 
+	char ifname[IFNAMSIZ];
 
 	if (netnsfd < 0 || conf->num_savednics == 0)
 		return;
