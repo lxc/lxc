@@ -157,7 +157,7 @@ static struct cgroup_ops cgfs_ops;
 
 static int cgroup_rmdir(char *dirname)
 {
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	int saved_errno = 0;
 	DIR *dir;
 	int ret, failed=0;
@@ -169,7 +169,7 @@ static int cgroup_rmdir(char *dirname)
 		return -1;
 	}
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		struct stat mystat;
 		int rc;
 
@@ -2067,26 +2067,14 @@ out:
 static int cgroup_recursive_task_count(const char *cgroup_path)
 {
 	DIR *d;
-	struct dirent *dent_buf;
 	struct dirent *dent;
-	ssize_t name_max;
 	int n = 0, r;
 
-	/* see man readdir_r(3) */
-	name_max = pathconf(cgroup_path, _PC_NAME_MAX);
-	if (name_max <= 0)
-		name_max = 255;
-	dent_buf = malloc(offsetof(struct dirent, d_name) + name_max + 1);
-	if (!dent_buf)
-		return -1;
-
 	d = opendir(cgroup_path);
-	if (!d) {
-		free(dent_buf);
+	if (!d)
 		return 0;
-	}
 
-	while (readdir_r(d, dent_buf, &dent) == 0 && dent) {
+	while ((dent = readdir(d))) {
 		const char *parts[3] = {
 			cgroup_path,
 			dent->d_name,
@@ -2100,13 +2088,11 @@ static int cgroup_recursive_task_count(const char *cgroup_path)
 		sub_path = lxc_string_join("/", parts, false);
 		if (!sub_path) {
 			closedir(d);
-			free(dent_buf);
 			return -1;
 		}
 		r = stat(sub_path, &st);
 		if (r < 0) {
 			closedir(d);
-			free(dent_buf);
 			free(sub_path);
 			return -1;
 		}
@@ -2122,7 +2108,6 @@ static int cgroup_recursive_task_count(const char *cgroup_path)
 		free(sub_path);
 	}
 	closedir(d);
-	free(dent_buf);
 
 	return n;
 }
