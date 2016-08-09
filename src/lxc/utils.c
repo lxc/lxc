@@ -90,7 +90,7 @@ extern bool btrfs_try_remove_subvol(const char *path);
 static int _recursive_rmdir(char *dirname, dev_t pdev,
 			    const char *exclude, int level, bool onedev)
 {
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	DIR *dir;
 	int ret, failed=0;
 	char pathname[MAXPATHLEN];
@@ -102,7 +102,7 @@ static int _recursive_rmdir(char *dirname, dev_t pdev,
 		return -1;
 	}
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		struct stat mystat;
 		int rc;
 

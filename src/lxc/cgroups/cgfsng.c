@@ -907,7 +907,7 @@ static char *must_make_path(const char *first, ...)
 
 static int cgroup_rmdir(char *dirname)
 {
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	DIR *dir;
 	int r = 0;
 
@@ -915,7 +915,7 @@ static int cgroup_rmdir(char *dirname)
 	if (!dir)
 		return -1;
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		struct stat mystat;
 		char *pathname;
 
@@ -1367,7 +1367,7 @@ bad:
 
 static int recursive_count_nrtasks(char *dirname)
 {
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	DIR *dir;
 	int count = 0, ret;
 	char *path;
@@ -1376,7 +1376,7 @@ static int recursive_count_nrtasks(char *dirname)
 	if (!dir)
 		return 0;
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		struct stat mystat;
 
 		if (!direntp)

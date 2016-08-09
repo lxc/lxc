@@ -1785,7 +1785,7 @@ int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 
 static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
 {
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	DIR *dir;
 	char path[MAXPATHLEN];
 	int ret = -1, len;
@@ -1796,7 +1796,7 @@ static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		const char *fnam;
 		if (!direntp)
 			break;

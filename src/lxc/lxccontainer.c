@@ -623,7 +623,7 @@ WRAP_API_1(bool, wait_on_daemonized_start, int)
 
 static bool am_single_threaded(void)
 {
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	DIR *dir;
 	int count=0;
 
@@ -633,7 +633,7 @@ static bool am_single_threaded(void)
 		return false;
 	}
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		if (!direntp)
 			break;
 
@@ -2284,7 +2284,7 @@ out:
 static bool has_snapshots(struct lxc_container *c)
 {
 	char path[MAXPATHLEN];
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	int count=0;
 	DIR *dir;
 
@@ -2293,7 +2293,7 @@ static bool has_snapshots(struct lxc_container *c)
 	dir = opendir(path);
 	if (!dir)
 		return false;
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		if (!direntp)
 			break;
 
@@ -3503,7 +3503,7 @@ static int do_lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot 
 {
 	char snappath[MAXPATHLEN], path2[MAXPATHLEN];
 	int count = 0, ret;
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	struct lxc_snapshot *snaps =NULL, *nsnaps;
 	DIR *dir;
 
@@ -3520,7 +3520,7 @@ static int do_lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot 
 		return 0;
 	}
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		if (!direntp)
 			break;
 
@@ -3666,7 +3666,7 @@ err:
 static bool remove_all_snapshots(const char *path)
 {
 	DIR *dir;
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	bool bret = true;
 
 	dir = opendir(path);
@@ -3674,7 +3674,7 @@ static bool remove_all_snapshots(const char *path)
 		SYSERROR("opendir on snapshot path %s", path);
 		return false;
 	}
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		if (!direntp)
 			break;
 		if (!strcmp(direntp->d_name, "."))
@@ -4191,7 +4191,7 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 {
 	DIR *dir;
 	int i, cfound = 0, nfound = 0;
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	struct lxc_container *c;
 
 	if (!lxcpath)
@@ -4208,7 +4208,7 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 	if (names)
 		*names = NULL;
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		if (!direntp)
 			break;
 
