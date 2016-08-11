@@ -269,7 +269,7 @@ static int do_loop_create(const char *path, uint64_t size, const char *fstype)
 
 static int find_free_loopdev_no_control(int *retfd, char *namep)
 {
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	struct loop_info64 lo;
 	DIR *dir;
 	int fd = -1;
@@ -279,7 +279,7 @@ static int find_free_loopdev_no_control(int *retfd, char *namep)
 		SYSERROR("Error opening /dev");
 		return -1;
 	}
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 
 		if (!direntp)
 			break;
