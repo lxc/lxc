@@ -47,7 +47,8 @@ static struct lxc_arguments my_args = {
 lxc-freeze freezes a container with the identifier NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME      NAME of the container",
+  -n, --name=NAME      NAME of the container\n\
+  --rcfile=FILE        Load configuration file FILE\n",
 	.options  = my_longopts,
 	.parser   = NULL,
 	.checker  = NULL,
@@ -72,6 +73,15 @@ int main(int argc, char *argv[])
 	if (!c) {
 		ERROR("No such container: %s:%s", my_args.lxcpath[0], my_args.name);
 		exit(1);
+	}
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			ERROR("Failed to load rcfile");
+			lxc_container_put(c);
+			exit(1);
+		}
 	}
 
 	if (!c->may_control(c)) {

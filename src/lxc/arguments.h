@@ -148,11 +148,13 @@ struct lxc_arguments {
 	{"logfile", required_argument, 0, 'o'}, \
 	{"logpriority", required_argument, 0, 'l'}, \
 	{"lxcpath", required_argument, 0, 'P'}, \
+	{"rcfile", required_argument, 0, OPT_RCFILE}, \
 	{0, 0, 0, 0}
 
 /* option keys for long only options */
 #define	OPT_USAGE 0x1000
 #define	OPT_VERSION OPT_USAGE-1
+#define	OPT_RCFILE OPT_USAGE-2
 
 extern int lxc_arguments_parse(struct lxc_arguments *args,
 			       int argc, char *const argv[]);
