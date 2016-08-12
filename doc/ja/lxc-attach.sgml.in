@@ -55,15 +55,18 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-attach</command>
-      <arg choice="req">-n <replaceable>name</replaceable></arg>
-      <arg choice="opt">-a <replaceable>arch</replaceable></arg>
-      <arg choice="opt">-e</arg>
-      <arg choice="opt">-s <replaceable>namespaces</replaceable></arg>
-      <arg choice="opt">-R</arg>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-f, --rcfile <replaceable>config_file</replaceable></arg>
+      <arg choice="opt">-a, --arch <replaceable>arch</replaceable></arg>
+      <arg choice="opt">-e, --elevated-privileges <replaceable>privileges</replaceable></arg>
+      <arg choice="opt">-s, --namespaces <replaceable>namespaces</replaceable></arg>
+      <arg choice="opt">-R, --remount-sys-proc</arg>
       <arg choice="opt">--keep-env</arg>
       <arg choice="opt">--clear-env</arg>
+      <arg choice="opt">-L, --pty-log <replaceable>file</replaceable></arg>
+      <arg choice="opt">-v, --set-var <replaceable>variable</replaceable></arg>
+      <arg choice="opt">--keep-var <replaceable>variable</replaceable></arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
-      <arg choice="opt">-L <replaceable>file</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -120,6 +123,29 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <title><!-- Options -->オプション</title>
 
     <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-f, --rcfile <replaceable>config_file</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+            <!--
+	    Specify the configuration file to configure the virtualization
+	    and isolation functionalities for the container.
+            -->
+            コンテナの仮想化、隔離機能の設定のための設定ファイルを指定します。
+	  </para>
+	  <para>
+            <!--
+	   This configuration file if present will be used even if there is
+	   already a configuration file present in the previously created
+	   container (via lxc-create).
+           -->
+            (lxc-create 経由で) 前もってコンテナが作られた際の設定ファイルが既にあった場合でも、このオプションが指定された場合は、指定した設定ファイルが使用されます。
+	  </para>
+	</listitem>
+      </varlistentry>
 
       <varlistentry>
 	<term>
@@ -332,6 +358,39 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <emphasis>重要:</emphasis> 標準ファイルディスクリプタが pty を参照していない場合、それらに対する出力は記録されないでしょう。
           </para>
         </listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-v, --set-var <replaceable>variable</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    <!--
+	    Set an additional environment variable that is seen by the
+	    attached program in the container. It is specified in the
+	    form of "VAR=VALUE", and can be specified multiple times.
+	    -->
+	    コンテナにアタッチしたプログラムから見える環境変数を追加します。このオプションは "VAR=VALUE" の形式で指定し、複数回指定できます。
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--keep-var <replaceable>variable</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    <!--
+	    Keep a specified environment variable. It can only be
+	    specified in conjunction
+	    with <replaceable>\-\-clear-env</replaceable>, and can be
+	    specified multiple times.
+	    -->
+	    <replaceable>--clear-env</replaceable> を指定した際に、クリアせずに保持したままにしたい環境変数を指定します。<replaceable>--clear-env</replaceable> と同時にしか使えません。複数回指定できます。
+	  </para>
+	</listitem>
       </varlistentry>
 
     </variablelist>
