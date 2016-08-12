@@ -986,25 +986,40 @@ out:
 static int ls_remove_lock(const char *path, const char *name,
 		char **lockpath, size_t *len_lockpath, bool recalc)
 {
+	int ret = -1;
+	char *rundir;
+
+	/* lockfile will be:
+	 * "/run" + "/lxc/lock/$lxcpath/$lxcname + '\0' if root
+	 * or
+	 * $XDG_RUNTIME_DIR + "/lxc/lock/$lxcpath/$lxcname + '\0' if non-root
+	 */
+	rundir = get_rundir();
+	if (!rundir)
+		goto out;
+
 	/* Avoid doing unnecessary work if we can. */
 	if (recalc) {
-		size_t newlen = strlen(path) + strlen(name) + strlen(RUNTIME_PATH) + /* / + lxc + / + lock + / + / = */ 11 + 1;
+		size_t newlen = strlen(path) + strlen(name) + strlen(rundir) + /* / + lxc + / + lock + / + / = */ 11 + 1;
 		if (newlen > *len_lockpath) {
 			char *tmp = realloc(*lockpath, newlen * 2);
 			if (!tmp)
-				return -1;
+				goto out;
 			*lockpath = tmp;
 			*len_lockpath = newlen * 2;
 		}
 	}
 
-	int check = snprintf(*lockpath, *len_lockpath, "%s/lxc/lock/%s/%s", RUNTIME_PATH, path, name);
+	int check = snprintf(*lockpath, *len_lockpath, "%s/lxc/lock/%s/%s", rundir, path, name);
 	if (check < 0 || (size_t)check >= *len_lockpath)
-		return -1;
+		goto out;
 
 	lxc_rmdir_onedev(*lockpath, NULL);
+	ret = 0;
 
-	return 0;
+out:
+	free(rundir);
+	return ret;
 }
 
 static int ls_send_str(int fd, const char *buf)
