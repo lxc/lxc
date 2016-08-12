@@ -111,20 +111,20 @@ Options :\n\
   -n, --name=NAME           NAME of the container\n\
   -N, --newname=NEWNAME     NEWNAME for the restored container\n\
   -p, --newpath=NEWPATH     NEWPATH for the container to be stored\n\
-  -R, --rename		    rename container\n\
-  -s, --snapshot	    create snapshot instead of clone\n\
-  -F, --foreground	    start with current tty attached to /dev/console\n\
-  -d, --daemon		    daemonize the container (default)\n\
-  -e, --ephemeral	    start ephemeral container\n\
-  -m, --mount	            directory to mount into container, either \n\
-			    {bind,aufs,overlay}=/src-path or {bind,aufs,overlay}=/src-path:/dst-path\n\
+  -R, --rename              rename container\n\
+  -s, --snapshot            create snapshot instead of clone\n\
+  -F, --foreground          start with current tty attached to /dev/console\n\
+  -d, --daemon              daemonize the container (default)\n\
+  -e, --ephemeral           start ephemeral container\n\
+  -m, --mount               directory to mount into container, either \n\
+                            {bind,aufs,overlay}=/src-path or {bind,aufs,overlay}=/src-path:/dst-path\n\
   -B, --backingstorage=TYPE backingstorage type for the container\n\
-  -L, --fssize		    size of the new block device for block device containers\n\
-  -D, --keedata	            pass together with -e start a persistent snapshot \n\
-  -K, --keepname	    keep the hostname of the original container\n\
-  --  hook options	    arguments passed to the hook program\n\
-  -M, --keepmac		    keep the MAC address of the original container\n\
-  --rcfile=FILE		    Load configuration file FILE\n",
+  -L, --fssize              size of the new block device for block device containers\n\
+  -D, --keedata             pass together with -e start a persistent snapshot \n\
+  -K, --keepname            keep the hostname of the original container\n\
+  --  hook options          arguments passed to the hook program\n\
+  -M, --keepmac             keep the MAC address of the original container\n\
+  --rcfile=FILE             Load configuration file FILE\n",
 	.options = my_longopts,
 	.parser = my_parser,
 	.task = CLONE,

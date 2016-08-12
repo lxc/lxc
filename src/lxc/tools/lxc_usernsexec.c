@@ -59,7 +59,7 @@ static void usage(const char *name)
 {
 	printf("usage: %s [-h] [-m <uid-maps>] -- [command [arg ..]]\n", name);
 	printf("\n");
-	printf("  -h		this message\n");
+	printf("  -h            this message\n");
 	printf("\n");
 	printf("  -m <uid-maps> uid maps to use\n");
 	printf("\n");

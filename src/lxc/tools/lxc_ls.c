@@ -184,8 +184,8 @@ static struct lxc_arguments my_args = {
 lxc-ls list containers\n\
 \n\
 Options :\n\
-  -1, --line	     show one entry per line\n\
-  -f, --fancy	     column-based output\n\
+  -1, --line         show one entry per line\n\
+  -f, --fancy        column-based output\n\
   -F, --fancy-format column-based output\n\
   --active           list only active containers\n\
   --running          list only running containers\n\
