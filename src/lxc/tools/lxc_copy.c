@@ -126,7 +126,8 @@ Options :\n\
   -D, --keedata	            pass together with -e start a persistent snapshot \n\
   -K, --keepname	    keep the hostname of the original container\n\
   --  hook options	    arguments passed to the hook program\n\
-  -M, --keepmac		    keep the MAC address of the original container\n",
+  -M, --keepmac		    keep the MAC address of the original container\n\
+  --rcfile=FILE		    Load configuration file FILE\n",
 	.options = my_longopts,
 	.parser = my_parser,
 	.task = CLONE,
@@ -209,6 +210,14 @@ int main(int argc, char *argv[])
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c)
 		exit(ret);
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			fprintf(stderr, "Failed to load rcfile\n");
+			goto out;
+		}
+	}
 
 	if (!c->may_control(c)) {
 		if (!my_args.quiet)

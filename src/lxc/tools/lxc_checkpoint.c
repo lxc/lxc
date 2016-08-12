@@ -114,6 +114,7 @@ Options :\n\
   Restore options:\n\
   -d, --daemon              Daemonize the container (default)\n\
   -F, --foreground          Start with the current tty attached to /dev/console\n\
+  --rcfile=FILE             Load configuration file FILE\n\
 ",
 	.options   = my_longopts,
 	.parser    = my_parser,
@@ -212,6 +213,15 @@ int main(int argc, char *argv[])
 	if (!c) {
 		fprintf(stderr, "System error loading %s\n", my_args.name);
 		exit(1);
+	}
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			fprintf(stderr, "Failed to load rcfile\n");
+			lxc_container_put(c);
+			exit(1);
+		}
 	}
 
 	if (!c->may_control(c)) {

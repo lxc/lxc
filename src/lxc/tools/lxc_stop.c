@@ -75,7 +75,8 @@ Options :\n\
   -t, --timeout=T   wait T seconds before hard-stopping\n\
   -k, --kill        kill container rather than request clean shutdown\n\
       --nolock      Avoid using API locks\n\
-      --nokill      Only request clean shutdown, don't force kill after timeout\n",
+      --nokill      Only request clean shutdown, don't force kill after timeout\n\
+  --rcfile=FILE     Load configuration file FILE\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
@@ -201,6 +202,14 @@ int main(int argc, char *argv[])
 	if (!c) {
 		fprintf(stderr, "Error opening container\n");
 		goto out;
+	}
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			fprintf(stderr, "Failed to load rcfile\n");
+			goto out;
+		}
 	}
 
 	if (!c->may_control(c)) {

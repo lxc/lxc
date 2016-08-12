@@ -72,7 +72,8 @@ Options :\n\
   -s, --state=STATE ORed states to wait for\n\
                     STOPPED, STARTING, RUNNING, STOPPING,\n\
                     ABORTING, FREEZING, FROZEN, THAWED\n\
-  -t, --timeout=TMO Seconds to wait for state changes\n",
+  -t, --timeout=TMO Seconds to wait for state changes\n\
+  --rcfile=FILE     Load configuration file FILE\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,
@@ -102,6 +103,15 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
 		lxc_container_put(c);
 		return 1;
+	}
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			fprintf(stderr, "Failed to load rcfile\n");
+			lxc_container_put(c);
+			return 1;
+		}
 	}
 
 	if (!c->wait(c, my_args.states, my_args.timeout)) {
