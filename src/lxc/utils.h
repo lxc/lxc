@@ -116,6 +116,12 @@ struct signalfd_siginfo
 #      define __NR_signalfd4 322
 #    elif __arm__
 #      define __NR_signalfd4 355
+#    elif __mips__ && _MIPS_SIM == _ABIO32
+#      define __NR_signalfd4 4324
+#    elif __mips__ && _MIPS_SIM == _ABI64
+#      define __NR_signalfd4 5283
+#    elif __mips__ && _MIPS_SIM == _ABIN32
+#      define __NR_signalfd4 6287
 #    endif
 #endif
 
@@ -131,6 +137,12 @@ struct signalfd_siginfo
 #      define __NR_signalfd 316
 #    elif __arm__
 #      define __NR_signalfd 349
+#    elif __mips__ && _MIPS_SIM == _ABIO32
+#      define __NR_signalfd 4317
+#    elif __mips__ && _MIPS_SIM == _ABI64
+#      define __NR_signalfd 5276
+#    elif __mips__ && _MIPS_SIM == _ABIN32
+#      define __NR_signalfd 6280
 #    endif
 #endif
 
