@@ -86,8 +86,8 @@ Options :\n\
   -n, --name=NAME      NAME of the container\n\
   -f, --rcfile=FILE    Load configuration file FILE\n\
   -s, --define KEY=VAL Assign VAL to configuration variable KEY\n\
-  -u, --uid=UID Execute COMMAND with UID inside the container\n\
-  -g, --gid=GID Execute COMMAND with GID inside the container\n",
+  -u, --uid=UID        Execute COMMAND with UID inside the container\n\
+  -g, --gid=GID        Execute COMMAND with GID inside the container\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,
