@@ -107,6 +107,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </varlistentry>
 
     <varlistentry>
+      <term><option>--rcfile=<replaceable>FILE</replaceable></option></term>
+      <listitem>
+	<para>
+	  Specify the configuration file to configure the virtualization
+	  and isolation functionalities for the container.
+	</para>
+	<para>
+	 This configuration file if present will be used even if there is
+	 already a configuration file present in the previously created
+	 container (via lxc-create).
+	</para>
+      </listitem>
+    </varlistentry>
+
+    <varlistentry>
       <term><option>--version</option></term>
       <listitem>
         <para>
