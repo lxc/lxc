@@ -55,7 +55,7 @@ static struct lxc_arguments my_args = {
 lxc-snapshot snapshots a container\n\
 \n\
 Options :\n\
-  -n, --name=NAME	 NAME of the container\n\
+  -n, --name=NAME        NAME of the container\n\
   -L, --list             list all snapshots\n\
   -r, --restore=NAME     restore snapshot NAME, e.g. 'snap0'\n\
   -N, --newname=NEWNAME  NEWNAME for the restored container\n\
