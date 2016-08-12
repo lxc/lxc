@@ -112,6 +112,12 @@ int main(int argc, char *argv[])
 			lxc_container_put(c);
 			return 1;
 		}
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			fprintf(stderr, "Out of memory setting new config filename\n");
+			lxc_container_put(c);
+			return 1;
+		}
 	}
 
 	if (!c->wait(c, my_args.states, my_args.timeout)) {

@@ -86,6 +86,12 @@ int main(int argc, char *argv[])
 			lxc_container_put(c);
 			exit(1);
 		}
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			ERROR("Out of memory setting new config filename");
+			lxc_container_put(c);
+			exit(1);
+		}
 	}
 
 	if (!c->unfreeze(c)) {

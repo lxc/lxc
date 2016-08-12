@@ -210,6 +210,11 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Failed to load rcfile\n");
 			goto out;
 		}
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			fprintf(stderr, "Out of memory setting new config filename\n");
+			goto out;
+		}
 	}
 
 	if (!c->may_control(c)) {
