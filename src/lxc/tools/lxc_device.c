@@ -132,6 +132,11 @@ int main(int argc, char *argv[])
 			ERROR("Failed to load rcfile");
 			goto err1;
 		}
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			ERROR("Out of memory setting new config filename");
+			goto err1;
+		}
 	}
 
 	if (!c->is_running(c)) {
