@@ -50,15 +50,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-attach</command>
-      <arg choice="req">-n <replaceable>name</replaceable></arg>
-      <arg choice="opt">-a <replaceable>arch</replaceable></arg>
-      <arg choice="opt">-e</arg>
-      <arg choice="opt">-s <replaceable>namespaces</replaceable></arg>
-      <arg choice="opt">-R</arg>
+      <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
+      <arg choice="opt">-f, --rcfile <replaceable>config_file</replaceable></arg>
+      <arg choice="opt">-a, --arch <replaceable>arch</replaceable></arg>
+      <arg choice="opt">-e, --elevated-privileges <replaceable>privileges</replaceable></arg>
+      <arg choice="opt">-s, --namespaces <replaceable>namespaces</replaceable></arg>
+      <arg choice="opt">-R, --remount-sys-proc</arg>
       <arg choice="opt">--keep-env</arg>
       <arg choice="opt">--clear-env</arg>
+      <arg choice="opt">-L, --pty-log <replaceable>file</replaceable></arg>
+      <arg choice="opt">-v, --set-var <replaceable>variable</replaceable></arg>
+      <arg choice="opt">--keep-var <replaceable>variable</replaceable></arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
-      <arg choice="opt">-L <replaceable>file</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -101,6 +104,23 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <title>Options</title>
 
     <variablelist>
+
+      <varlistentry>
+	<term>
+	  <option>-f, --rcfile <replaceable>config_file</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Specify the configuration file to configure the virtualization
+	    and isolation functionalities for the container.
+	  </para>
+	  <para>
+	   This configuration file if present will be used even if there is
+	   already a configuration file present in the previously created
+	   container (via lxc-create).
+	  </para>
+	</listitem>
+      </varlistentry>
 
       <varlistentry>
 	<term>
@@ -248,6 +268,33 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  <para>
 	    <emphasis>Important:</emphasis>  When a standard file descriptor
 	    does not refer to a pty output produced on it will not be logged.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-v, --set-var <replaceable>variable</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Set an additional environment variable that is seen by the
+	    attached program in the container. It is specified in the
+	    form of "VAR=VALUE", and can be specified multiple times.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--keep-var <replaceable>variable</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Keep a specified environment variable. It can only be
+	    specified in conjunction
+	    with <replaceable>--clear-env</replaceable>, and can be
+	    specified multiple times.
 	  </para>
 	</listitem>
       </varlistentry>
