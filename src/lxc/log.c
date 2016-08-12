@@ -125,7 +125,7 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 	if (event->priority < LXC_LOG_PRIORITY_ERROR)
 		return 0;
 
-	fprintf(stderr, "%s: %s", log_prefix, log_vmname ? log_vmname : "");
+	fprintf(stderr, "%s: %s%s", log_prefix, log_vmname ? log_vmname : "", log_vmname ? ": " : "");
 	fprintf(stderr, "%s: %s: %d ", event->locinfo->file, event->locinfo->func, event->locinfo->line);
 	vfprintf(stderr, event->fmt, *event->vap);
 	fprintf(stderr, "\n");
