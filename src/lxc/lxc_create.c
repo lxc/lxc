@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
 		}
 		if (strcmp(my_args.bdevtype, "dir") && strcmp(my_args.bdevtype, "_unset") &&
 				strcmp(my_args.bdevtype, "btrfs")) {
-			fprintf(stderr, "Unprivileged users cannot create %s containers", my_args.bdevtype);
+			fprintf(stderr, "Unprivileged users cannot create %s containers\n", my_args.bdevtype);
 			exit(1);
 		}
 	}
