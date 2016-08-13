@@ -33,6 +33,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/vfs.h>
 
 #include "bdev.h"
 #include "log.h"
@@ -140,6 +141,32 @@ bool is_btrfs_fs(const char *path)
 		return false;
 
 	return true;
+}
+
+/*
+ * Taken from btrfs toolsuite. Test if path is a subvolume.
+ *	return 0;   path exists but it is not a subvolume
+ *	return 1;   path exists and it is  a subvolume
+ *	return < 0; error
+ */
+int is_btrfs_subvol(const char *path)
+{
+	struct stat st;
+	struct statfs stfs;
+	int ret;
+
+	ret = stat(path, &st);
+	if (ret < 0)
+		return -errno;
+
+	if (st.st_ino != BTRFS_FIRST_FREE_OBJECTID || !S_ISDIR(st.st_mode))
+		return 0;
+
+	ret = statfs(path, &stfs);
+	if (ret < 0)
+		return -errno;
+
+	return stfs.f_type == BTRFS_SUPER_MAGIC;
 }
 
 int btrfs_detect(const char *path)

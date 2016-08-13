@@ -30,6 +30,10 @@
 #include <stdint.h>
 #include <byteswap.h>
 
+#ifndef BTRFS_SUPER_MAGIC
+#  define BTRFS_SUPER_MAGIC       0x9123683E
+#endif
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -404,6 +408,7 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 			    int name_len);
 int btrfs_list_get_path_rootid(int fd, u64 *treeid);
 bool is_btrfs_fs(const char *path);
+int is_btrfs_subvol(const char *path);
 bool btrfs_try_remove_subvol(const char *path);
 int btrfs_same_fs(const char *orig, const char *new);
 int btrfs_snapshot(const char *orig, const char *new);
