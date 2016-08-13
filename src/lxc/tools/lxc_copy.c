@@ -454,7 +454,7 @@ static int do_clone_ephemeral(struct lxc_container *c,
 
 	if (arg->tmpfs && !my_args.quiet)
 		printf("Container is placed on tmpfs.\nRebooting will cause "
-		       "all changes made to it to be lost!");
+		       "all changes made to it to be lost!\n");
 
 	if (!arg->daemonize && arg->argc) {
 		clone->want_daemonize(clone, true);
@@ -863,7 +863,7 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 			goto err_close;
 	}
 
-	close(fd);
+	fclose(fp);
 	return premount;
 
 err_close:
