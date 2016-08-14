@@ -28,7 +28,7 @@
 #include "lxctest.h"
 #include "utils.h"
 
-void test_string_replace(void)
+void test_lxc_string_replace(void)
 {
 	char *s;
 
@@ -65,9 +65,25 @@ void test_string_replace(void)
 	free(s);
 }
 
+void test_lxc_string_in_array(void)
+{
+	lxc_test_assert_abort(lxc_string_in_array("", (const char *[]){"", NULL}));
+	lxc_test_assert_abort(!lxc_string_in_array("A", (const char *[]){"", NULL}));
+	lxc_test_assert_abort(!lxc_string_in_array("AAA", (const char *[]){"", "3472", "jshH", NULL}));
+
+	lxc_test_assert_abort(lxc_string_in_array("A", (const char *[]){"A", NULL}));
+	lxc_test_assert_abort(lxc_string_in_array("A", (const char *[]){"A", "B", "C", NULL}));
+	lxc_test_assert_abort(lxc_string_in_array("A", (const char *[]){"B", "A", "C", NULL}));
+
+	lxc_test_assert_abort(lxc_string_in_array("ABC", (const char *[]){"ASD", "ATR", "ABC", NULL}));
+	lxc_test_assert_abort(lxc_string_in_array("GHJ", (const char *[]){"AZIU", "WRT567B", "879C", "GHJ", "IUZ89", NULL}));
+	lxc_test_assert_abort(lxc_string_in_array("XYZ", (const char *[]){"BERTA", "ARQWE(9", "C8Zhkd", "7U", "XYZ", "UOIZ9", "=)()", NULL}));
+}
+
 int main(int argc, char *argv[])
 {
-	test_string_replace();
+	test_lxc_string_replace();
+	test_lxc_string_in_array();
 
 	exit(EXIT_SUCCESS);
 }

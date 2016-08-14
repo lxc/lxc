@@ -2,8 +2,6 @@ if ENABLE_TESTS
 
 LDADD = ../lxc/liblxc.so
 
-noinst_HEADERS += lxctest.h
-
 lxc_test_containertests_SOURCES = containertests.c
 lxc_test_locktests_SOURCES = locktests.c
 lxc_test_startone_SOURCES = startone.c
