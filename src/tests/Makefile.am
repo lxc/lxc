@@ -95,7 +95,7 @@ EXTRA_DIST = \
 	lxc-test-symlink \
 	lxc-test-ubuntu \
 	lxc-test-unpriv \
-	lxc-test-utils \
+	lxc-test-utils.c \
 	may_control.c \
 	saveconfig.c \
 	shutdowntest.c \
