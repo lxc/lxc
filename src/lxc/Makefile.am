@@ -32,7 +32,8 @@ noinst_HEADERS = \
 	start.h \
 	state.h \
 	utils.h \
-	criu.h
+	criu.h \
+	../tests/lxctest.h
 
 if IS_BIONIC
 noinst_HEADERS += \
