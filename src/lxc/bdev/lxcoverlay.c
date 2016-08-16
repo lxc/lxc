@@ -39,6 +39,7 @@
 lxc_log_define(lxcoverlay, lxc);
 
 static char *ovl_name;
+static char *ovl_version[] = {"overlay", "overlayfs"};
 
 /* defined in lxccontainer.c: needs to become common helper */
 extern char *dir_new_path(char *src, const char *oldname, const char *name,
@@ -49,6 +50,9 @@ static int ovl_do_rsync(struct bdev *orig, struct bdev *new,
 			struct lxc_conf *conf);
 static int ovl_rsync(struct rsync_data *data);
 static int ovl_rsync_wrapper(void *data);
+static int ovl_remount_on_enodev(const char *lower, const char *target,
+				 const char *name, unsigned long mountflags,
+				 const void *options);
 
 int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		   const char *cname, const char *oldpath, const char *lxcpath,
@@ -408,23 +412,28 @@ int ovl_mount(struct bdev *bdev)
 		return -1;
 	}
 
-	// mount without workdir option for overlayfs before v21
-	ret = mount(lower, bdev->dest, ovl_name, MS_MGC_VAL | mntflags, options);
+        /* Assume we need a workdir as we are on a overlay version >= v22. */
+	ret = ovl_remount_on_enodev(lower, bdev->dest, ovl_name,
+				    MS_MGC_VAL | mntflags, options_work);
 	if (ret < 0) {
-		INFO("overlayfs: error mounting %s onto %s options %s. retry with workdir",
-			lower, bdev->dest, options);
+		INFO("Overlayfs: Error mounting %s onto %s with options %s. "
+		     "Retrying without workdir: %s.",
+		     lower, bdev->dest, options_work, strerror(errno));
 
-		// retry with workdir option for overlayfs v22 and higher
-		ret = mount(lower, bdev->dest, ovl_name, MS_MGC_VAL | mntflags, options_work);
+                /* Assume we cannot use a workdir as we are on a version <= v21. */
+		ret = ovl_remount_on_enodev(lower, bdev->dest, ovl_name,
+					  MS_MGC_VAL | mntflags, options);
 		if (ret < 0)
-			SYSERROR("overlayfs: error mounting %s onto %s options %s",
-				lower, bdev->dest, options_work);
+			SYSERROR("Overlayfs: Error mounting %s onto %s with "
+				 "options %s: %s.",
+				 lower, bdev->dest, options,
+				 strerror(errno));
 		else
-			INFO("overlayfs: mounted %s onto %s options %s",
-				lower, bdev->dest, options_work);
+			INFO("Overlayfs: Mounted %s onto %s with options %s.",
+			     lower, bdev->dest, options);
 	} else {
-		INFO("overlayfs: mounted %s onto %s options %s",
-			lower, bdev->dest, options);
+		INFO("Overlayfs: Mounted %s onto %s with options %s.", lower,
+		     bdev->dest, options_work);
 	}
 	return ret;
 }
@@ -652,6 +661,20 @@ err:
 	return fret;
 }
 
+static int ovl_remount_on_enodev(const char *lower, const char *target,
+				 const char *name, unsigned long mountflags,
+				 const void *options)
+{
+        int ret;
+        ret = mount(lower, target, ovl_name, MS_MGC_VAL | mountflags, options);
+        if (ret < 0 && errno == ENODEV) /* Try other module name. */
+		ret = mount(lower, target,
+			    ovl_name == ovl_version[0] ? ovl_version[1]
+						       : ovl_version[0],
+			    MS_MGC_VAL | mountflags, options);
+        return ret;
+}
+
 static int ovl_rsync(struct rsync_data *data)
 {
 	int ret;
@@ -700,7 +723,7 @@ static int ovl_rsync(struct rsync_data *data)
 
 static char *ovl_detect_name(void)
 {
-	char *v = "overlayfs";
+	char *v = ovl_version[0];
 	char *line = NULL;
 	size_t len = 0;
 	FILE *f = fopen("/proc/filesystems", "r");
@@ -708,8 +731,8 @@ static char *ovl_detect_name(void)
 		return v;
 
 	while (getline(&line, &len, f) != -1) {
-		if (strcmp(line, "nodev\toverlay\n") == 0) {
-			v = "overlay";
+		if (strcmp(line, "nodev\toverlayfs\n") == 0) {
+			v = ovl_version[1];
 			break;
 		}
 	}
