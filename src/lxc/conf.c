@@ -2934,14 +2934,16 @@ static int setup_network(struct lxc_list *network)
 }
 
 /* try to move physical nics to the init netns */
-void restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
+void lxc_restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
 {
 	int i, ret, oldfd;
 	char path[MAXPATHLEN];
 	char ifname[IFNAMSIZ]; 
 
-	if (netnsfd < 0)
+	if (netnsfd < 0 || conf->num_savednics == 0)
 		return;
+
+	INFO("running to reset %d nic names", conf->num_savednics);
 
 	ret = snprintf(path, MAXPATHLEN, "/proc/self/ns/net");
 	if (ret < 0 || ret >= MAXPATHLEN) {
@@ -2964,30 +2966,15 @@ void restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
 			WARN("no interface corresponding to index '%d'", s->ifindex);
 			continue;
 		}
-		if (lxc_netdev_move_by_name(ifname, 1, NULL))
+		if (lxc_netdev_move_by_name(ifname, 1, s->orig_name))
 			WARN("Error moving nic name:%s back to host netns", ifname);
-	}
-	if (setns(oldfd, 0) != 0)
-		SYSERROR("Failed to re-enter monitor's netns");
-	close(oldfd);
-}
-
-void lxc_rename_phys_nics_on_shutdown(int netnsfd, struct lxc_conf *conf)
-{
-	int i;
-
-	if (conf->num_savednics == 0)
-		return;
-
-	INFO("running to reset %d nic names", conf->num_savednics);
-	restore_phys_nics_to_netns(netnsfd, conf);
-	for (i=0; i<conf->num_savednics; i++) {
-		struct saved_nic *s = &conf->saved_nics[i];
-		INFO("resetting nic %d to %s", s->ifindex, s->orig_name);
-		lxc_netdev_rename_by_index(s->ifindex, s->orig_name);
 		free(s->orig_name);
 	}
 	conf->num_savednics = 0;
+
+	if (setns(oldfd, 0) != 0)
+		SYSERROR("Failed to re-enter monitor's netns");
+	close(oldfd);
 }
 
 static char *default_rootfs_mount = LXCROOTFSMOUNT;
