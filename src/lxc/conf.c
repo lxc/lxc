@@ -2885,9 +2885,6 @@ void lxc_delete_network(struct lxc_handler *handler)
 		netdev = iterator->elem;
 
 		if (netdev->ifindex != 0 && netdev->type == LXC_NET_PHYS) {
-			if (lxc_netdev_rename_by_index(netdev->ifindex, netdev->link))
-				WARN("failed to rename to the initial name the " \
-				     "netdev '%s'", netdev->link);
 			continue;
 		}
 
