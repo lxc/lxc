@@ -56,7 +56,8 @@ Get or set the value of a state object (for example, 'cpuset.cpus')\n\
 in the container's cgroup for the corresponding subsystem.\n\
 \n\
 Options :\n\
-  -n, --name=NAME      NAME of the container",
+  -n, --name=NAME      NAME of the container\n\
+  --rcfile=FILE        Load configuration file FILE\n",
 	.options  = my_longopts,
 	.parser   = NULL,
 	.checker  = my_checker,
@@ -83,6 +84,21 @@ int main(int argc, char *argv[])
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c)
 		return 1;
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			ERROR("Failed to load rcfile");
+			lxc_container_put(c);
+			return 1;
+		}
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			ERROR("Out of memory setting new config filename");
+			lxc_container_put(c);
+			return 1;
+		}
+	}
 
 	if (!c->may_control(c)) {
 		ERROR("Insufficent privileges to control %s:%s", my_args.lxcpath[0], my_args.name);

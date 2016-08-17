@@ -93,7 +93,8 @@ Options :\n\
   -p, --pid             shows the process id of the init container\n\
   -S, --stats           shows usage stats\n\
   -H, --no-humanize     shows stats as raw numbers, not humanized\n\
-  -s, --state           shows the state of the container\n",
+  -s, --state           shows the state of the container\n\
+  --rcfile=FILE         Load configuration file FILE\n",
 	.name     = NULL,
 	.options  = my_longopts,
 	.parser   = my_parser,
@@ -293,6 +294,21 @@ static int print_info(const char *name, const char *lxcpath)
 		fprintf(stderr, "Failure to retrieve information on %s:%s\n", lxcpath ? lxcpath : "null",
 				name ? name : "null");
 		return -1;
+	}
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			fprintf(stderr, "Failed to load rcfile\n");
+			lxc_container_put(c);
+			return -1;
+		}
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			fprintf(stderr, "Out of memory setting new config filename\n");
+			lxc_container_put(c);
+			return -1;
+		}
 	}
 
 	if (!c->may_control(c)) {

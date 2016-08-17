@@ -112,21 +112,22 @@ Options :\n\
   -n, --name=NAME           NAME of the container\n\
   -N, --newname=NEWNAME     NEWNAME for the restored container\n\
   -p, --newpath=NEWPATH     NEWPATH for the container to be stored\n\
-  -R, --rename		    rename container\n\
-  -s, --snapshot	    create snapshot instead of clone\n\
-  -F, --foreground	    start with current tty attached to /dev/console\n\
-  -d, --daemon		    daemonize the container (default)\n\
-  -e, --ephemeral	    start ephemeral container\n\
-  -m, --mount	            directory to mount into container, either \n\
-			    {bind,aufs,overlay}=/src-path or {bind,aufs,overlay}=/src-path:/dst-path\n\
+  -R, --rename              rename container\n\
+  -s, --snapshot            create snapshot instead of clone\n\
+  -F, --foreground          start with current tty attached to /dev/console\n\
+  -d, --daemon              daemonize the container (default)\n\
+  -e, --ephemeral           start ephemeral container\n\
+  -m, --mount               directory to mount into container, either \n\
+                            {bind,aufs,overlay}=/src-path or {bind,aufs,overlay}=/src-path:/dst-path\n\
   -B, --backingstorage=TYPE backingstorage type for the container\n\
-  -t, --tmpfs		    place ephemeral container on a tmpfs\n\
-			    (WARNING: On reboot all changes made to the container will be lost.)\n\
-  -L, --fssize		    size of the new block device for block device containers\n\
-  -D, --keedata	            pass together with -e start a persistent snapshot \n\
-  -K, --keepname	    keep the hostname of the original container\n\
-  --  hook options	    arguments passed to the hook program\n\
-  -M, --keepmac		    keep the MAC address of the original container\n",
+  -t, --tmpfs               place ephemeral container on a tmpfs\n\
+                            (WARNING: On reboot all changes made to the container will be lost.)\n\
+  -L, --fssize              size of the new block device for block device containers\n\
+  -D, --keedata             pass together with -e start a persistent snapshot \n\
+  -K, --keepname            keep the hostname of the original container\n\
+  --  hook options          arguments passed to the hook program\n\
+  -M, --keepmac             keep the MAC address of the original container\n\
+  --rcfile=FILE             Load configuration file FILE\n",
 	.options = my_longopts,
 	.parser = my_parser,
 	.task = CLONE,
@@ -209,6 +210,19 @@ int main(int argc, char *argv[])
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c)
 		exit(ret);
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			fprintf(stderr, "Failed to load rcfile\n");
+			goto out;
+		}
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			fprintf(stderr, "Out of memory setting new config filename\n");
+			goto out;
+		}
+	}
 
 	if (!c->may_control(c)) {
 		if (!my_args.quiet)

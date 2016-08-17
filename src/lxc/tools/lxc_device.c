@@ -53,7 +53,8 @@ static struct lxc_arguments my_args = {
 lxc-device attach or detach DEV to or from container.\n\
 \n\
 Options :\n\
-  -n, --name=NAME      NAME of the container",
+  -n, --name=NAME      NAME of the container\n\
+  --rcfile=FILE        Load configuration file FILE\n",
 	.options  = my_longopts,
 	.parser   = NULL,
 	.checker  = NULL,
@@ -123,6 +124,19 @@ int main(int argc, char *argv[])
 	if (!c) {
 		ERROR("%s doesn't exist", my_args.name);
 		goto err;
+	}
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			ERROR("Failed to load rcfile");
+			goto err1;
+		}
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			ERROR("Out of memory setting new config filename");
+			goto err1;
+		}
 	}
 
 	if (!c->is_running(c)) {

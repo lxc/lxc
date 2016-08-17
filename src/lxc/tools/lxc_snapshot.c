@@ -55,14 +55,15 @@ static struct lxc_arguments my_args = {
 lxc-snapshot snapshots a container\n\
 \n\
 Options :\n\
-  -n, --name=NAME	 NAME of the container\n\
+  -n, --name=NAME        NAME of the container\n\
   -L, --list             list all snapshots\n\
   -r, --restore=NAME     restore snapshot NAME, e.g. 'snap0'\n\
   -N, --newname=NEWNAME  NEWNAME for the restored container\n\
   -d, --destroy=NAME     destroy snapshot NAME, e.g. 'snap0'\n\
                          use ALL to destroy all snapshots\n\
   -c, --comment=FILE     add FILE as a comment\n\
-  -C, --showcomments     show snapshot comments\n",
+  -C, --showcomments     show snapshot comments\n\
+  --rcfile=FILE          Load configuration file FILE\n",
 	.options = my_longopts,
 	.parser = my_parser,
 	.checker = NULL,
@@ -105,6 +106,21 @@ int main(int argc, char *argv[])
 	if (!c) {
 		fprintf(stderr, "System error loading container\n");
 		exit(EXIT_FAILURE);
+	}
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			fprintf(stderr, "Failed to load rcfile\n");
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
+		}
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			fprintf(stderr, "Out of memory setting new config filename\n");
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	if (!c->may_control(c)) {

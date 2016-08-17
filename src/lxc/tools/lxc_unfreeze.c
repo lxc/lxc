@@ -45,7 +45,8 @@ static struct lxc_arguments my_args = {
 lxc-unfreeze unfreezes a container with the identifier NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME   NAME of the container\n",
+  -n, --name=NAME   NAME of the container\n\
+  --rcfile=FILE     Load configuration file FILE\n",
 	.options  = my_longopts,
 	.parser   = NULL,
 	.checker  = NULL,
@@ -76,6 +77,21 @@ int main(int argc, char *argv[])
 		ERROR("Insufficent privileges to control %s:%s", my_args.lxcpath[0], my_args.name);
 		lxc_container_put(c);
 		exit(1);
+	}
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			ERROR("Failed to load rcfile");
+			lxc_container_put(c);
+			exit(1);
+		}
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			ERROR("Out of memory setting new config filename");
+			lxc_container_put(c);
+			exit(1);
+		}
 	}
 
 	if (!c->unfreeze(c)) {

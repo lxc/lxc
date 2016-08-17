@@ -53,7 +53,8 @@ lxc-destroy destroys a container with the identifier NAME\n\
 Options :\n\
   -n, --name=NAME   NAME of the container\n\
   -s, --snapshots   destroy including all snapshots\n\
-  -f, --force       wait for the container to shut down\n",
+  -f, --force       wait for the container to shut down\n\
+  --rcfile=FILE     Load configuration file FILE\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
@@ -86,6 +87,21 @@ int main(int argc, char *argv[])
 		if (!quiet)
 			fprintf(stderr, "System error loading container\n");
 		exit(EXIT_FAILURE);
+	}
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			fprintf(stderr, "Failed to load rcfile\n");
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
+		}
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			fprintf(stderr, "Out of memory setting new config filename\n");
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	if (!c->may_control(c)) {
