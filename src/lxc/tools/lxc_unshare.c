@@ -197,21 +197,21 @@ int main(int argc, char *argv[])
 			break;
 		case 'u':
 			if (!lookup_user(optarg, &uid))
-				return 1;
+				exit(EXIT_FAILURE);
 			start_arg.setuid = true;
 		}
 	}
 
 	if (argv[optind] == NULL) {
 		ERROR("a command to execute in the new namespace is required");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	args = &argv[optind];
 
 	ret = lxc_caps_init();
 	if (ret)
-		return 1;
+		exit(EXIT_FAILURE);
 
 	ret = lxc_fill_namespace_flags(namespaces, &flags);
 	if (ret)
@@ -219,23 +219,23 @@ int main(int argc, char *argv[])
 
 	if (!(flags & CLONE_NEWNET) && my_iflist) {
 		ERROR("-i <interfacename> needs -s NETWORK option");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	if (!(flags & CLONE_NEWUTS) && start_arg.want_hostname) {
 		ERROR("-H <hostname> needs -s UTSNAME option");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	if (!(flags & CLONE_NEWNS) && start_arg.want_default_mounts) {
 		ERROR("-M needs -s MOUNT option");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	pid = lxc_clone(do_start, &start_arg, flags);
 	if (pid < 0) {
 		ERROR("failed to clone");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	if (my_iflist) {
@@ -250,8 +250,9 @@ int main(int argc, char *argv[])
 
 	if (waitpid(pid, &status, 0) < 0) {
 		ERROR("failed to wait for '%d'", pid);
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
-	return  lxc_error_set_and_log(pid, status);
+	/* Call exit() directly on this function because it retuns an exit code. */
+	exit(lxc_error_set_and_log(pid, status));
 }

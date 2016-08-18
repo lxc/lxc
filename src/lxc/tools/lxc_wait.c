@@ -85,24 +85,24 @@ int main(int argc, char *argv[])
 	struct lxc_container *c;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		return 1;
+		exit(EXIT_FAILURE);
 
 	if (!my_args.log_file)
 		my_args.log_file = "none";
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		return 1;
+		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c)
-		return 1;
+		exit(EXIT_FAILURE);
 
 	if (!c->may_control(c)) {
 		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
 		lxc_container_put(c);
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	if (my_args.rcfile) {
@@ -110,19 +110,19 @@ int main(int argc, char *argv[])
 		if (!c->load_config(c, my_args.rcfile)) {
 			fprintf(stderr, "Failed to load rcfile\n");
 			lxc_container_put(c);
-			return 1;
+			exit(EXIT_FAILURE);
 		}
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
 			fprintf(stderr, "Out of memory setting new config filename\n");
 			lxc_container_put(c);
-			return 1;
+			exit(EXIT_FAILURE);
 		}
 	}
 
 	if (!c->wait(c, my_args.states, my_args.timeout)) {
 		lxc_container_put(c);
-		return 1;
+		exit(EXIT_FAILURE);
 	}
-	return 0;
+	exit(EXIT_SUCCESS);
 }
