@@ -141,6 +141,27 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
     </varlistentry>
 
     <varlistentry>
+      <term><option>--rcfile=<replaceable>FILE</replaceable></option></term>
+      <listitem>
+	<para>
+	  <!--
+	  Specify the configuration file to configure the virtualization
+	  and isolation functionalities for the container.
+	  -->
+	  컨테이너의 가상화 및 고립 기능들을 설정할 파일을 지정한다.
+	</para>
+	<para>
+	  <!--
+	  This configuration file if present will be used even if there is
+	  already a configuration file present in the previously created
+	  container (via lxc-create).
+	  -->
+	  이전에 만들어졌던 컨테이너에 설정 파일이 이미 있더라도, 이 옵션이 지정되어 있다면 해당 파일을 사용한다.
+	</para>
+      </listitem>
+    </varlistentry>
+
+    <varlistentry>
       <term><option>--version</option></term>
       <listitem>
 	<para>
