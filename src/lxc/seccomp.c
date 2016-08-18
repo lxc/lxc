@@ -215,7 +215,7 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_
 	ret = seccomp_arch_add(ctx, arch);
 	if (ret != 0) {
 		ERROR("Seccomp error %d (%s) adding arch: %d", ret,
-				strerror(ret), (int)n_arch);
+				strerror(-ret), (int)n_arch);
 		seccomp_release(ctx);
 		return NULL;
 	}
