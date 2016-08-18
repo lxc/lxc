@@ -146,5 +146,5 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	lxc_container_put(c);
-	return EXIT_SUCCESS;
+	exit(EXIT_SUCCESS);
 }

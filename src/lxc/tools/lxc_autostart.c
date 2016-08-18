@@ -334,17 +334,17 @@ int main(int argc, char *argv[])
 	struct lxc_list *cmd_group;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		return 1;
+		exit(EXIT_FAILURE);
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		return 1;
+		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();
 
 	count = list_defined_containers(my_args.lxcpath[0], NULL, &containers);
 
 	if (count < 0)
-		return 1;
+		exit(EXIT_FAILURE);
 
 	if (!my_args.all) {
 		/* Allocate an array for our container group lists */
@@ -522,5 +522,5 @@ int main(int argc, char *argv[])
 	toss_list( cmd_groups_list );
 	free(containers);
 
-	return 0;
+	exit(EXIT_SUCCESS);
 }

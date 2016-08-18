@@ -143,14 +143,14 @@ int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	bool s;
-	int ret = 1;
+	int ret = EXIT_FAILURE;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		return 1;
+		exit(ret);
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		return 1;
+		exit(ret);
 	lxc_log_options_no_override();
 
 	/* Set default timeout */
@@ -170,33 +170,35 @@ int main(int argc, char *argv[])
 	/* some checks */
 	if (!my_args.hardstop && my_args.timeout < -1) {
 		fprintf(stderr, "invalid timeout\n");
-		return 1;
+		exit(ret);
 	}
 
 	if (my_args.hardstop && my_args.nokill) {
 		fprintf(stderr, "-k can't be used with --nokill\n");
-		return 1;
+		exit(ret);
 	}
 
 	if (my_args.hardstop && my_args.reboot) {
 		fprintf(stderr, "-k can't be used with -r\n");
-		return 1;
+		exit(ret);
 	}
 
 	if (my_args.hardstop && my_args.timeout) {
 		fprintf(stderr, "-k doesn't allow timeouts\n");
-		return 1;
+		exit(ret);
 	}
 
 	if (my_args.nolock && !my_args.hardstop) {
 		fprintf(stderr, "--nolock may only be used with -k\n");
-		return 1;
+		exit(ret);
 	}
 
 	/* shortcut - if locking is bogus, we should be able to kill
 	 * containers at least */
-	if (my_args.nolock)
-		return lxc_cmd_stop(my_args.name, my_args.lxcpath[0]);
+	if (my_args.nolock) {
+		ret = lxc_cmd_stop(my_args.name, my_args.lxcpath[0]);
+		exit(ret);
+	}
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
@@ -224,19 +226,19 @@ int main(int argc, char *argv[])
 
 	if (!c->is_running(c)) {
 		fprintf(stderr, "%s is not running\n", c->name);
-		ret = 2;
+		ret = EXIT_FAILURE;
 		goto out;
 	}
 
 	/* kill */
 	if (my_args.hardstop) {
-		ret = c->stop(c) ? 0 : 1;
+		ret = c->stop(c) ? EXIT_SUCCESS : EXIT_FAILURE;
 		goto out;
 	}
 
 	/* reboot */
 	if (my_args.reboot) {
-		ret = do_reboot_and_check(&my_args, c);
+		ret = do_reboot_and_check(&my_args, c) < 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 		goto out;
 	}
 
@@ -244,17 +246,16 @@ int main(int argc, char *argv[])
 	s = c->shutdown(c, my_args.timeout);
 	if (!s) {
 		if (my_args.timeout == 0)
-			ret = 0;
+			ret = EXIT_SUCCESS;
 		else if (my_args.nokill)
-			ret = 1;
+			ret = EXIT_FAILURE;
 		else
-			ret = c->stop(c) ? 0 : 1;
-	} else
-		ret = 0;
+			ret = c->stop(c) ? EXIT_SUCCESS : EXIT_FAILURE;
+	} else {
+		ret = EXIT_SUCCESS;
+	}
 
 out:
 	lxc_container_put(c);
-	if (ret < 0)
-		return 1;
-	return ret;
+	exit(ret);
 }

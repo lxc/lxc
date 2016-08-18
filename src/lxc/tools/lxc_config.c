@@ -73,9 +73,9 @@ int main(int argc, char *argv[])
 				printf("%s\n", value);
 			else
 				printf("%s is not set.\n", argv[1]);
-			exit(0);
+			exit(EXIT_SUCCESS);
 		}
 	}
 	printf("Unknown configuration item: %s\n", argv[1]);
-	exit(1);
+	exit(EXIT_FAILURE);
 }

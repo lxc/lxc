@@ -69,47 +69,47 @@ int main(int argc, char *argv[])
 	struct lxc_container *c;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		return 1;
+		exit(EXIT_FAILURE);
 
 	if (!my_args.log_file)
 		my_args.log_file = "none";
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		return 1;
+		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();
 
 	state_object = my_args.argv[0];
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c)
-		return 1;
+		exit(EXIT_FAILURE);
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
 		if (!c->load_config(c, my_args.rcfile)) {
 			ERROR("Failed to load rcfile");
 			lxc_container_put(c);
-			return 1;
+			exit(EXIT_FAILURE);
 		}
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
 			ERROR("Out of memory setting new config filename");
 			lxc_container_put(c);
-			return 1;
+			exit(EXIT_FAILURE);
 		}
 	}
 
 	if (!c->may_control(c)) {
 		ERROR("Insufficent privileges to control %s:%s", my_args.lxcpath[0], my_args.name);
 		lxc_container_put(c);
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	if (!c->is_running(c)) {
 		ERROR("'%s:%s' is not running", my_args.lxcpath[0], my_args.name);
 		lxc_container_put(c);
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	if ((my_args.argc) > 1) {
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 			ERROR("failed to assign '%s' value to '%s' for '%s'",
 				value, state_object, my_args.name);
 			lxc_container_put(c);
-			return 1;
+			exit(EXIT_FAILURE);
 		}
 	} else {
 		int len = 4096;
@@ -128,11 +128,11 @@ int main(int argc, char *argv[])
 			ERROR("failed to retrieve value of '%s' for '%s:%s'",
 			      state_object, my_args.lxcpath[0], my_args.name);
 			lxc_container_put(c);
-			return 1;
+			exit(EXIT_FAILURE);
 		}
 		printf("%*s", ret, buffer);
 	}
 
 	lxc_container_put(c);
-	return 0;
+	exit(EXIT_SUCCESS);
 }

@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 
 	if (geteuid() != 0) {
 		ERROR("%s must be run as root", argv[0]);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
@@ -184,9 +184,9 @@ int main(int argc, char *argv[])
 		ERROR("Error: Please use add or del (Please see --help output)");
 		goto err1;
 	}
-	exit(0);
+	exit(EXIT_SUCCESS);
 err1:
 	lxc_container_put(c);
 err:
-	exit(ret);
+	exit(EXIT_FAILURE);
 }
