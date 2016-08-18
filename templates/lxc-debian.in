@@ -647,6 +647,8 @@ if [ $? -ne 0 ]; then
 fi
 eval set -- "$options"
 
+littleendian=$(lscpu | grep '^Byte Order' | grep -q Little && echo yes)
+
 arch=$(uname -m)
 if [ "$arch" = "i686" ]; then
     arch="i386"
@@ -654,6 +656,10 @@ elif [ "$arch" = "x86_64" ]; then
     arch="amd64"
 elif [ "$arch" = "armv7l" ]; then
     arch="armhf"
+elif [ "$arch" = "mips" -a "$littleendian" = "yes" ]; then
+    arch="mipsel"
+elif [ "$arch" = "mips64" -a "$littleendian" = "yes" ]; then
+    arch="mips64el"
 fi
 hostarch=$arch
 mainonly=1
@@ -708,6 +714,14 @@ if [ "$interpreter" = "" ] ; then
     fi
 
     if [ $hostarch = "powerpc" -a $arch != "powerpc" ]; then
+        echo "can't create $arch container on $hostarch"
+        exit 1
+    fi
+
+    if [ $hostarch = "mips" -a $arch != "mips" ] || \
+       [ $hostarch = "mipsel" -a $arch != "mipsel" ] || \
+       [ $hostarch = "mips64" -a $arch != "mips" -a $arch != "mips64" ] || \
+       [ $hostarch = "mips64el" -a $arch != "mipsel" -a $arch != "mips64el" ]; then
         echo "can't create $arch container on $hostarch"
         exit 1
     fi

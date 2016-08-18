@@ -125,8 +125,22 @@ enum lxc_hostarch_t {
 	lxc_seccomp_arch_ppc64,
 	lxc_seccomp_arch_ppc64le,
 	lxc_seccomp_arch_ppc,
+	lxc_seccomp_arch_mips,
+	lxc_seccomp_arch_mips64,
+	lxc_seccomp_arch_mips64n32,
+	lxc_seccomp_arch_mipsel,
+	lxc_seccomp_arch_mipsel64,
+	lxc_seccomp_arch_mipsel64n32,
 	lxc_seccomp_arch_unknown = 999,
 };
+
+#ifdef __MIPSEL__
+# define MIPS_ARCH_O32 lxc_seccomp_arch_mipsel
+# define MIPS_ARCH_N64 lxc_seccomp_arch_mipsel64
+#else
+# define MIPS_ARCH_O32 lxc_seccomp_arch_mips
+# define MIPS_ARCH_N64 lxc_seccomp_arch_mips64
+#endif
 
 int get_hostarch(void)
 {
@@ -149,6 +163,10 @@ int get_hostarch(void)
 		return lxc_seccomp_arch_ppc64;
 	else if (strncmp(uts.machine, "ppc", 3) == 0)
 		return lxc_seccomp_arch_ppc;
+	else if (strncmp(uts.machine, "mips64", 6) == 0)
+		return MIPS_ARCH_N64;
+	else if (strncmp(uts.machine, "mips", 4) == 0)
+		return MIPS_ARCH_O32;
 	return lxc_seccomp_arch_unknown;
 }
 
@@ -174,6 +192,14 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_
 #ifdef SCMP_ARCH_PPC
 	case lxc_seccomp_arch_ppc: arch = SCMP_ARCH_PPC; break;
 #endif
+#ifdef SCMP_ARCH_MIPS
+	case lxc_seccomp_arch_mips: arch = SCMP_ARCH_MIPS; break;
+	case lxc_seccomp_arch_mips64: arch = SCMP_ARCH_MIPS64; break;
+	case lxc_seccomp_arch_mips64n32: arch = SCMP_ARCH_MIPS64N32; break;
+	case lxc_seccomp_arch_mipsel: arch = SCMP_ARCH_MIPSEL; break;
+	case lxc_seccomp_arch_mipsel64: arch = SCMP_ARCH_MIPSEL64; break;
+	case lxc_seccomp_arch_mipsel64n32: arch = SCMP_ARCH_MIPSEL64N32; break;
+#endif
 	default: return NULL;
 	}
 
@@ -189,7 +215,7 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_
 	ret = seccomp_arch_add(ctx, arch);
 	if (ret != 0) {
 		ERROR("Seccomp error %d (%s) adding arch: %d", ret,
-				strerror(ret), (int)n_arch);
+				strerror(-ret), (int)n_arch);
 		seccomp_release(ctx);
 		return NULL;
 	}
@@ -260,12 +286,12 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 {
 	char *p;
 	int ret;
-	scmp_filter_ctx compat_ctx = NULL;
+	scmp_filter_ctx compat_ctx[2] = { NULL, NULL };
 	bool blacklist = false;
 	uint32_t default_policy_action = -1, default_rule_action = -1, action;
 	enum lxc_hostarch_t native_arch = get_hostarch(),
 			    cur_rule_arch = native_arch;
-	uint32_t compat_arch = SCMP_ARCH_NATIVE;
+	uint32_t compat_arch[2] = { SCMP_ARCH_NATIVE, SCMP_ARCH_NATIVE };
 
 	if (strncmp(line, "blacklist", 9) == 0)
 		blacklist = true;
@@ -295,27 +321,49 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 
 	if (native_arch == lxc_seccomp_arch_amd64) {
 		cur_rule_arch = lxc_seccomp_arch_all;
-		compat_arch = SCMP_ARCH_X86;
-		compat_ctx = get_new_ctx(lxc_seccomp_arch_i386,
+		compat_arch[0] = SCMP_ARCH_X86;
+		compat_ctx[0] = get_new_ctx(lxc_seccomp_arch_i386,
 				default_policy_action);
-		if (!compat_ctx)
+		if (!compat_ctx[0])
 			goto bad;
 #ifdef SCMP_ARCH_PPC
 	} else if (native_arch == lxc_seccomp_arch_ppc64) {
 		cur_rule_arch = lxc_seccomp_arch_all;
-		compat_arch = SCMP_ARCH_PPC;
-		compat_ctx = get_new_ctx(lxc_seccomp_arch_ppc,
+		compat_arch[0] = SCMP_ARCH_PPC;
+		compat_ctx[0] = get_new_ctx(lxc_seccomp_arch_ppc,
 				default_policy_action);
-		if (!compat_ctx)
+		if (!compat_ctx[0])
 			goto bad;
 #endif
 #ifdef SCMP_ARCH_ARM
 	} else if (native_arch == lxc_seccomp_arch_arm64) {
 		cur_rule_arch = lxc_seccomp_arch_all;
-		compat_arch = SCMP_ARCH_ARM;
-		compat_ctx = get_new_ctx(lxc_seccomp_arch_arm,
+		compat_arch[0] = SCMP_ARCH_ARM;
+		compat_ctx[0] = get_new_ctx(lxc_seccomp_arch_arm,
 				default_policy_action);
-		if (!compat_ctx)
+		if (!compat_ctx[0])
+			goto bad;
+#endif
+#ifdef SCMP_ARCH_MIPS
+	} else if (native_arch == lxc_seccomp_arch_mips64) {
+		cur_rule_arch = lxc_seccomp_arch_all;
+		compat_arch[0] = SCMP_ARCH_MIPS;
+		compat_arch[1] = SCMP_ARCH_MIPS64N32;
+		compat_ctx[0] = get_new_ctx(lxc_seccomp_arch_mips,
+				default_policy_action);
+		compat_ctx[1] = get_new_ctx(lxc_seccomp_arch_mips64n32,
+				default_policy_action);
+		if (!compat_ctx[0] || !compat_ctx[1])
+			goto bad;
+	} else if (native_arch == lxc_seccomp_arch_mipsel64) {
+		cur_rule_arch = lxc_seccomp_arch_all;
+		compat_arch[0] = SCMP_ARCH_MIPSEL;
+		compat_arch[1] = SCMP_ARCH_MIPSEL64N32;
+		compat_ctx[0] = get_new_ctx(lxc_seccomp_arch_mipsel,
+				default_policy_action);
+		compat_ctx[1] = get_new_ctx(lxc_seccomp_arch_mipsel64n32,
+				default_policy_action);
+		if (!compat_ctx[0] || !compat_ctx[1])
 			goto bad;
 #endif
 	}
@@ -413,6 +461,53 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 				cur_rule_arch = lxc_seccomp_arch_ppc;
 			}
 #endif
+#ifdef SCMP_ARCH_MIPS
+			else if (strcmp(line, "[mips64]") == 0 ||
+					strcmp(line, "[MIPS64]") == 0) {
+				if (native_arch != lxc_seccomp_arch_mips64) {
+					cur_rule_arch = lxc_seccomp_arch_unknown;
+					continue;
+				}
+				cur_rule_arch = lxc_seccomp_arch_mips64;
+			} else if (strcmp(line, "[mips64n32]") == 0 ||
+					strcmp(line, "[MIPS64N32]") == 0) {
+				if (native_arch != lxc_seccomp_arch_mips64) {
+					cur_rule_arch = lxc_seccomp_arch_unknown;
+					continue;
+				}
+				cur_rule_arch = lxc_seccomp_arch_mips64n32;
+			} else if (strcmp(line, "[mips]") == 0 ||
+					strcmp(line, "[MIPS]") == 0) {
+				if (native_arch != lxc_seccomp_arch_mips &&
+						native_arch != lxc_seccomp_arch_mips64) {
+					cur_rule_arch = lxc_seccomp_arch_unknown;
+					continue;
+				}
+				cur_rule_arch = lxc_seccomp_arch_mips;
+			} else if (strcmp(line, "[mipsel64]") == 0 ||
+					strcmp(line, "[MIPSEL64]") == 0) {
+				if (native_arch != lxc_seccomp_arch_mipsel64) {
+					cur_rule_arch = lxc_seccomp_arch_unknown;
+					continue;
+				}
+				cur_rule_arch = lxc_seccomp_arch_mipsel64;
+			} else if (strcmp(line, "[mipsel64n32]") == 0 ||
+					strcmp(line, "[MIPSEL64N32]") == 0) {
+				if (native_arch != lxc_seccomp_arch_mipsel64) {
+					cur_rule_arch = lxc_seccomp_arch_unknown;
+					continue;
+				}
+				cur_rule_arch = lxc_seccomp_arch_mipsel64n32;
+			} else if (strcmp(line, "[mipsel]") == 0 ||
+					strcmp(line, "[MIPSEL]") == 0) {
+				if (native_arch != lxc_seccomp_arch_mipsel &&
+						native_arch != lxc_seccomp_arch_mipsel64) {
+					cur_rule_arch = lxc_seccomp_arch_unknown;
+					continue;
+				}
+				cur_rule_arch = lxc_seccomp_arch_mipsel;
+			}
+#endif
 			else
 				goto bad_arch;
 
@@ -432,14 +527,18 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 
 		if (cur_rule_arch == native_arch ||
 		    cur_rule_arch == lxc_seccomp_arch_native ||
-		    compat_arch == SCMP_ARCH_NATIVE) {
+		    compat_arch[0] == SCMP_ARCH_NATIVE) {
 			INFO("Adding native rule for %s action %d", line, action);
 			if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line, conf->seccomp_ctx, action))
 				goto bad_rule;
 		}
 		else if (cur_rule_arch != lxc_seccomp_arch_all) {
+			int arch_index =
+				cur_rule_arch == lxc_seccomp_arch_mips64n32 ||
+				cur_rule_arch == lxc_seccomp_arch_mipsel64n32 ? 1 : 0;
+
 			INFO("Adding compat-only rule for %s action %d", line, action);
-			if (!do_resolve_add_rule(compat_arch, line, compat_ctx, action))
+			if (!do_resolve_add_rule(compat_arch[arch_index], line, compat_ctx[arch_index], action))
 				goto bad_rule;
 		}
 		else {
@@ -447,14 +546,18 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 			if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line, conf->seccomp_ctx, action))
 				goto bad_rule;
 			INFO("Adding compat rule for %s action %d", line, action);
-			if (!do_resolve_add_rule(compat_arch, line, compat_ctx, action))
+			if (!do_resolve_add_rule(compat_arch[0], line, compat_ctx[0], action))
+				goto bad_rule;
+			if (compat_arch[1] != SCMP_ARCH_NATIVE &&
+				!do_resolve_add_rule(compat_arch[1], line, compat_ctx[1], action))
 				goto bad_rule;
 		}
 	}
 
-	if (compat_ctx) {
+	if (compat_ctx[0]) {
 		INFO("Merging in the compat seccomp ctx into the main one");
-		if (seccomp_merge(conf->seccomp_ctx, compat_ctx) != 0) {
+		if (seccomp_merge(conf->seccomp_ctx, compat_ctx[0]) != 0 ||
+			(compat_ctx[1] != NULL && seccomp_merge(conf->seccomp_ctx, compat_ctx[1]) != 0)) {
 			ERROR("Error merging compat seccomp contexts");
 			goto bad;
 		}
@@ -466,8 +569,10 @@ bad_arch:
 	ERROR("Unsupported arch: %s", line);
 bad_rule:
 bad:
-	if (compat_ctx)
-		seccomp_release(compat_ctx);
+	if (compat_ctx[0])
+		seccomp_release(compat_ctx[0]);
+	if (compat_ctx[1])
+		seccomp_release(compat_ctx[1]);
 	return -1;
 }
 #else /* HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH */
