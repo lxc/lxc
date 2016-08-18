@@ -71,7 +71,7 @@ static void usage(const char *name)
 	printf("  Note: This program uses newuidmap(2) and newgidmap(2).\n");
 	printf("        As such, /etc/subuid and /etc/subgid must grant the\n");
 	printf("        calling user permission to use the mapped ranges\n");
-	exit(1);
+	exit(EXIT_SUCCESS);
 }
 
 static void opentty(const char * tty, int which) {
