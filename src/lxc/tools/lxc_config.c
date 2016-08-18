@@ -45,7 +45,7 @@ static void usage(char *me)
 {
 	printf("Usage: %s -l: list all available configuration items\n", me);
 	printf("       %s item: print configuration item\n", me);
-	exit(1);
+	exit(EXIT_SUCCESS);
 }
 
 static void list_config_items(void)
@@ -54,7 +54,7 @@ static void list_config_items(void)
 
 	for (i = &items[0]; i->name; i++)
 		printf("%s\n", i->name);
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])

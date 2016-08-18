@@ -89,7 +89,7 @@ static void usage(const char *me)
 	printf("  -p: use container orig from custom lxcpath\n");
 	printf("  -P: create container new in custom lxcpath\n");
 	printf("  -R: rename existing container\n");
-	exit(1);
+	exit(EXIT_SUCCESS);
 }
 
 static struct option options[] = {
