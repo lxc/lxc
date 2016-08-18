@@ -141,6 +141,27 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </varlistentry>
 
     <varlistentry>
+     <term><option>--rcfile=<replaceable>FILE</replaceable></option></term>
+      <listitem>
+	<para>
+	  <!--
+	  Specify the configuration file to configure the virtualization
+	  and isolation functionalities for the container.
+	  -->
+	  コンテナの仮想化、隔離機能の設定のための設定ファイルを指定します。
+	</para>
+	<para>
+	  <!--
+	  This configuration file if present will be used even if there is
+	  already a configuration file present in the previously created
+	  container (via lxc-create).
+	  -->
+	  (lxc-create 経由で) 前もってコンテナが作られた際の設定ファイルが既にあった場合でも、このオプションが指定された場合は、指定した設定ファイルが使用されます。
+	</para>
+      </listitem>
+    </varlistentry>
+
+    <varlistentry>
       <term><option>--version</option></term>
       <listitem>
         <para>
