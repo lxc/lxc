@@ -2079,9 +2079,13 @@ signed long lxc_config_parse_arch(const char *arch)
 		{ "i586", PER_LINUX32 },
 		{ "i686", PER_LINUX32 },
 		{ "athlon", PER_LINUX32 },
+		{ "mips", PER_LINUX32 },
+		{ "mipsel", PER_LINUX32 },
 		{ "linux64", PER_LINUX },
 		{ "x86_64", PER_LINUX },
 		{ "amd64", PER_LINUX },
+		{ "mips64", PER_LINUX },
+		{ "mips64el", PER_LINUX },
 	};
 	size_t len = sizeof(pername) / sizeof(pername[0]);
 
