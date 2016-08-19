@@ -22,17 +22,16 @@
  */
 
 #define _GNU_SOURCE
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <seccomp.h>
-#include <errno.h>
-#include <seccomp.h>
-#include <sys/utsname.h>
 #include <sys/mount.h>
+#include <sys/utsname.h>
 
 #include "config.h"
-#include "lxcseccomp.h"
 #include "log.h"
+#include "lxcseccomp.h"
 
 lxc_log_define(lxc_seccomp, lxc);
 
