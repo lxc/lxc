@@ -47,11 +47,11 @@ static int parse_config_v1(FILE *f, struct lxc_conf *conf)
 			return -1;
 		ret = seccomp_rule_add(
 #if HAVE_SCMP_FILTER_CTX
-			conf->seccomp_ctx,
+		    conf->seccomp_ctx,
 #endif
-			SCMP_ACT_ALLOW, nr, 0);
+		    SCMP_ACT_ALLOW, nr, 0);
 		if (ret < 0) {
-			ERROR("failed loading allow rule for %d", nr);
+			ERROR("Failed loading allow rule for %d.", nr);
 			return ret;
 		}
 	}
@@ -73,14 +73,15 @@ static uint32_t get_v2_default_action(char *line)
 {
 	uint32_t ret_action = -1;
 
-	while (*line == ' ') line++;
+	while (*line == ' ')
+		line++;
 	// after 'whitelist' or 'blacklist' comes default behavior
 	if (strncmp(line, "kill", 4) == 0)
 		ret_action = SCMP_ACT_KILL;
 	else if (strncmp(line, "errno", 5) == 0) {
 		int e;
-		if (sscanf(line+5, "%d", &e) != 1) {
-			ERROR("Bad errno value in %s", line);
+		if (sscanf(line + 5, "%d", &e) != 1) {
+			ERROR("Bad errno value in %s.", line);
 			return -2;
 		}
 		ret_action = SCMP_ACT_ERRNO(e);
@@ -146,7 +147,7 @@ int get_hostarch(void)
 {
 	struct utsname uts;
 	if (uname(&uts) < 0) {
-		SYSERROR("Failed to read host arch");
+		SYSERROR("Failed to read host arch.");
 		return -1;
 	}
 	if (strcmp(uts.machine, "i686") == 0)
@@ -209,18 +210,18 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_
 	}
 
 	if ((ctx = seccomp_init(default_policy_action)) == NULL) {
-		ERROR("Error initializing seccomp context");
+		ERROR("Error initializing seccomp context.");
 		return NULL;
 	}
 	if (seccomp_attr_set(ctx, SCMP_FLTATR_CTL_NNP, 0)) {
-		ERROR("failed to turn off n-new-privs");
+		ERROR("Failed to turn off n-new-privs.");
 		seccomp_release(ctx);
 		return NULL;
 	}
 	ret = seccomp_arch_add(ctx, arch);
 	if (ret != 0) {
 		ERROR("Seccomp error %d (%s) adding arch: %d", ret,
-				strerror(-ret), (int)n_arch);
+		      strerror(-ret), (int)n_arch);
 		seccomp_release(ctx);
 		return NULL;
 	}
@@ -238,17 +239,22 @@ bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 {
 	int nr, ret;
 
-	if (arch && seccomp_arch_exist(ctx, arch) != 0) {
-		ERROR("BUG: seccomp: rule and context arch do not match (arch %d)", arch);
+	ret = seccomp_arch_exist(ctx, arch);
+	if (arch && ret != 0) {
+		ERROR("BUG: Seccomp: rule and context arch do not match (arch "
+		      "%d): %s.",
+		      arch, strerror(-ret));
 		return false;
 	}
 
 	if (strncmp(line, "reject_force_umount", 19) == 0) {
-		INFO("Setting seccomp rule to reject force umounts\n");
+		INFO("Setting Seccomp rule to reject force umounts.");
 		ret = seccomp_rule_add_exact(ctx, SCMP_ACT_ERRNO(EACCES), SCMP_SYS(umount2),
 				1, SCMP_A1(SCMP_CMP_MASKED_EQ , MNT_FORCE , MNT_FORCE ));
 		if (ret < 0) {
-			ERROR("failed (%d) loading rule to reject force umount", ret);
+			ERROR("Failed (%d) loading rule to reject force "
+			      "umount: %s.",
+			      ret, strerror(-ret));
 			return false;
 		}
 		return true;
@@ -256,18 +262,19 @@ bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 
 	nr = seccomp_syscall_resolve_name(line);
 	if (nr == __NR_SCMP_ERROR) {
-		WARN("Seccomp: failed to resolve syscall: %s", line);
-		WARN("This syscall will NOT be blacklisted");
+		WARN("Seccomp: failed to resolve syscall: %s.", line);
+		WARN("This syscall will NOT be blacklisted.");
 		return true;
 	}
 	if (nr < 0) {
-		WARN("Seccomp: got negative # for syscall: %s", line);
-		WARN("This syscall will NOT be blacklisted");
+		WARN("Seccomp: got negative for syscall: %d: %s.", nr, line);
+		WARN("This syscall will NOT be blacklisted.");
 		return true;
 	}
 	ret = seccomp_rule_add_exact(ctx, action, nr, 0);
 	if (ret < 0) {
-		ERROR("failed (%d) loading rule for %s (nr %d action %d)", ret, line, nr, action);
+		ERROR("Failed (%d) loading rule for %s (nr %d action %d): %s.",
+		      ret, line, nr, action, strerror(-ret));
 		return false;
 	}
 	return true;
@@ -291,22 +298,22 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 {
 	char *p;
 	int ret;
-	scmp_filter_ctx compat_ctx[2] = { NULL, NULL };
+	scmp_filter_ctx compat_ctx[2] = {NULL, NULL};
 	bool blacklist = false;
 	uint32_t default_policy_action = -1, default_rule_action = -1, action;
 	enum lxc_hostarch_t native_arch = get_hostarch(),
 			    cur_rule_arch = native_arch;
-	uint32_t compat_arch[2] = { SCMP_ARCH_NATIVE, SCMP_ARCH_NATIVE };
+	uint32_t compat_arch[2] = {SCMP_ARCH_NATIVE, SCMP_ARCH_NATIVE};
 
 	if (strncmp(line, "blacklist", 9) == 0)
 		blacklist = true;
 	else if (strncmp(line, "whitelist", 9) != 0) {
-		ERROR("Bad seccomp policy style: %s", line);
+		ERROR("Bad seccomp policy style: %s.", line);
 		return -1;
 	}
 
 	if ((p = strchr(line, ' '))) {
-		default_policy_action = get_v2_default_action(p+1);
+		default_policy_action = get_v2_default_action(p + 1);
 		if (default_policy_action == -2)
 			return -1;
 	}
@@ -385,11 +392,11 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 	if (default_policy_action != SCMP_ACT_KILL) {
 		ret = seccomp_reset(conf->seccomp_ctx, default_policy_action);
 		if (ret != 0) {
-			ERROR("Error re-initializing seccomp");
+			ERROR("Error re-initializing Seccomp.");
 			return -1;
 		}
 		if (seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0)) {
-			ERROR("failed to turn off n-new-privs");
+			ERROR("Failed to turn off n-new-privs.");
 			return -1;
 		}
 	}
@@ -405,7 +412,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 		if (line[0] == '[') {
 			// read the architecture for next set of rules
 			if (strcmp(line, "[x86]") == 0 ||
-					strcmp(line, "[X86]") == 0) {
+			    strcmp(line, "[X86]") == 0) {
 				if (native_arch != lxc_seccomp_arch_i386 &&
 						native_arch != lxc_seccomp_arch_amd64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
@@ -413,19 +420,19 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 				}
 				cur_rule_arch = lxc_seccomp_arch_i386;
 			} else if (strcmp(line, "[X86_64]") == 0 ||
-					strcmp(line, "[x86_64]") == 0) {
+				   strcmp(line, "[x86_64]") == 0) {
 				if (native_arch != lxc_seccomp_arch_amd64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
 				cur_rule_arch = lxc_seccomp_arch_amd64;
 			} else if (strcmp(line, "[all]") == 0 ||
-					strcmp(line, "[ALL]") == 0) {
+				   strcmp(line, "[ALL]") == 0) {
 				cur_rule_arch = lxc_seccomp_arch_all;
 			}
 #ifdef SCMP_ARCH_ARM
 			else if (strcmp(line, "[arm]") == 0 ||
-					strcmp(line, "[ARM]") == 0) {
+				 strcmp(line, "[ARM]") == 0) {
 				if (native_arch != lxc_seccomp_arch_arm &&
 						native_arch != lxc_seccomp_arch_arm64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
@@ -436,7 +443,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 #endif
 #ifdef SCMP_ARCH_AARCH64
 			else if (strcmp(line, "[arm64]") == 0 ||
-					strcmp(line, "[ARM64]") == 0) {
+				 strcmp(line, "[ARM64]") == 0) {
 				if (native_arch != lxc_seccomp_arch_arm64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
@@ -446,7 +453,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 #endif
 #ifdef SCMP_ARCH_PPC64LE
 			else if (strcmp(line, "[ppc64le]") == 0 ||
-					strcmp(line, "[PPC64LE]") == 0) {
+				 strcmp(line, "[PPC64LE]") == 0) {
 				if (native_arch != lxc_seccomp_arch_ppc64le) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
@@ -456,7 +463,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 #endif
 #ifdef SCMP_ARCH_PPC64
 			else if (strcmp(line, "[ppc64]") == 0 ||
-					strcmp(line, "[PPC64]") == 0) {
+				 strcmp(line, "[PPC64]") == 0) {
 				if (native_arch != lxc_seccomp_arch_ppc64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
@@ -466,7 +473,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 #endif
 #ifdef SCMP_ARCH_PPC
 			else if (strcmp(line, "[ppc]") == 0 ||
-					strcmp(line, "[PPC]") == 0) {
+				 strcmp(line, "[PPC]") == 0) {
 				if (native_arch != lxc_seccomp_arch_ppc &&
 						native_arch != lxc_seccomp_arch_ppc64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
@@ -477,21 +484,21 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 #endif
 #ifdef SCMP_ARCH_MIPS
 			else if (strcmp(line, "[mips64]") == 0 ||
-					strcmp(line, "[MIPS64]") == 0) {
+				 strcmp(line, "[MIPS64]") == 0) {
 				if (native_arch != lxc_seccomp_arch_mips64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
 				cur_rule_arch = lxc_seccomp_arch_mips64;
 			} else if (strcmp(line, "[mips64n32]") == 0 ||
-					strcmp(line, "[MIPS64N32]") == 0) {
+				   strcmp(line, "[MIPS64N32]") == 0) {
 				if (native_arch != lxc_seccomp_arch_mips64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
 				cur_rule_arch = lxc_seccomp_arch_mips64n32;
 			} else if (strcmp(line, "[mips]") == 0 ||
-					strcmp(line, "[MIPS]") == 0) {
+				   strcmp(line, "[MIPS]") == 0) {
 				if (native_arch != lxc_seccomp_arch_mips &&
 						native_arch != lxc_seccomp_arch_mips64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
@@ -499,21 +506,21 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 				}
 				cur_rule_arch = lxc_seccomp_arch_mips;
 			} else if (strcmp(line, "[mipsel64]") == 0 ||
-					strcmp(line, "[MIPSEL64]") == 0) {
+				   strcmp(line, "[MIPSEL64]") == 0) {
 				if (native_arch != lxc_seccomp_arch_mipsel64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
 				cur_rule_arch = lxc_seccomp_arch_mipsel64;
 			} else if (strcmp(line, "[mipsel64n32]") == 0 ||
-					strcmp(line, "[MIPSEL64N32]") == 0) {
+				   strcmp(line, "[MIPSEL64N32]") == 0) {
 				if (native_arch != lxc_seccomp_arch_mipsel64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
 				cur_rule_arch = lxc_seccomp_arch_mipsel64n32;
 			} else if (strcmp(line, "[mipsel]") == 0 ||
-					strcmp(line, "[MIPSEL]") == 0) {
+				   strcmp(line, "[MIPSEL]") == 0) {
 				if (native_arch != lxc_seccomp_arch_mipsel &&
 						native_arch != lxc_seccomp_arch_mipsel64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
@@ -524,7 +531,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 #endif
 #ifdef SCMP_ARCH_S390X
 			else if (strcmp(line, "[s390x]") == 0 ||
-					strcmp(line, "[S390X]") == 0) {
+				 strcmp(line, "[S390X]") == 0) {
 				if (native_arch != lxc_seccomp_arch_s390x) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
@@ -545,14 +552,14 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 		/* read optional action which follows the syscall */
 		action = get_and_clear_v2_action(line, default_rule_action);
 		if (action == -1) {
-			ERROR("Failed to interpret action");
+			ERROR("Failed to interpret action.");
 			goto bad_rule;
 		}
 
 		if (cur_rule_arch == native_arch ||
 		    cur_rule_arch == lxc_seccomp_arch_native ||
 		    compat_arch[0] == SCMP_ARCH_NATIVE) {
-			INFO("Adding native rule for %s action %d", line, action);
+			INFO("Adding native rule for %s action %d.", line, action);
 			if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line, conf->seccomp_ctx, action))
 				goto bad_rule;
 		}
@@ -561,15 +568,15 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 				cur_rule_arch == lxc_seccomp_arch_mips64n32 ||
 				cur_rule_arch == lxc_seccomp_arch_mipsel64n32 ? 1 : 0;
 
-			INFO("Adding compat-only rule for %s action %d", line, action);
+			INFO("Adding compat-only rule for %s action %d.", line, action);
 			if (!do_resolve_add_rule(compat_arch[arch_index], line, compat_ctx[arch_index], action))
 				goto bad_rule;
 		}
 		else {
-			INFO("Adding native rule for %s action %d", line, action);
+			INFO("Adding native rule for %s action %d.", line, action);
 			if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line, conf->seccomp_ctx, action))
 				goto bad_rule;
-			INFO("Adding compat rule for %s action %d", line, action);
+			INFO("Adding compat rule for %s action %d.", line, action);
 			if (!do_resolve_add_rule(compat_arch[0], line, compat_ctx[0], action))
 				goto bad_rule;
 			if (compat_arch[1] != SCMP_ARCH_NATIVE &&
@@ -579,10 +586,10 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 	}
 
 	if (compat_ctx[0]) {
-		INFO("Merging in the compat seccomp ctx into the main one");
+		INFO("Merging in the compat Seccomp ctx into the main one.");
 		if (seccomp_merge(conf->seccomp_ctx, compat_ctx[0]) != 0 ||
 			(compat_ctx[1] != NULL && seccomp_merge(conf->seccomp_ctx, compat_ctx[1]) != 0)) {
-			ERROR("Error merging compat seccomp contexts");
+			ERROR("Error merging compat Seccomp contexts.");
 			goto bad;
 		}
 	}
@@ -590,7 +597,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 	return 0;
 
 bad_arch:
-	ERROR("Unsupported arch: %s", line);
+	ERROR("Unsupported arch: %s.", line);
 bad_rule:
 bad:
 	if (compat_ctx[0])
@@ -621,20 +628,20 @@ static int parse_config(FILE *f, struct lxc_conf *conf)
 
 	ret = fscanf(f, "%d\n", &version);
 	if (ret != 1 || (version != 1 && version != 2)) {
-		ERROR("invalid version");
+		ERROR("Invalid version.");
 		return -1;
 	}
 	if (!fgets(line, 1024, f)) {
-		ERROR("invalid config file");
+		ERROR("Invalid config file.");
 		return -1;
 	}
 	if (version == 1 && !strstr(line, "whitelist")) {
-		ERROR("only whitelist policy is supported");
+		ERROR("Only whitelist policy is supported.");
 		return -1;
 	}
 
 	if (strstr(line, "debug")) {
-		ERROR("debug not yet implemented");
+		ERROR("Debug not yet implemented.");
 		return -1;
 	}
 
@@ -664,7 +671,7 @@ static bool use_seccomp(void)
 	while (fgets(line, 1024, f)) {
 		if (strncmp(line, "Seccomp:", 8) == 0) {
 			found = true;
-			ret = sscanf(line+8, "%d", &v);
+			ret = sscanf(line + 8, "%d", &v);
 			if (ret == 1 && v != 0)
 				already_enabled = true;
 			break;
@@ -672,12 +679,12 @@ static bool use_seccomp(void)
 	}
 
 	fclose(f);
-	if (!found) {  /* no Seccomp line, no seccomp in kernel */
-		INFO("Seccomp is not enabled in the kernel");
+	if (!found) { /* no Seccomp line, no seccomp in kernel */
+		INFO("Seccomp is not enabled in the kernel.");
 		return false;
 	}
-	if (already_enabled) {  /* already seccomp-confined */
-		INFO("Already seccomp-confined, not loading new policy");
+	if (already_enabled) { /* already seccomp-confined */
+		INFO("Already seccomp-confined, not loading new policy.");
 		return false;
 	}
 	return true;
@@ -702,25 +709,25 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 	ret = seccomp_init(SCMP_ACT_KILL) < 0;
 #endif
 	if (ret) {
-		ERROR("failed initializing seccomp");
+		ERROR("Failed initializing seccomp.");
 		return -1;
 	}
 
-	/* turn of no-new-privs.  We don't want it in lxc, and it breaks
-	 * with apparmor */
+/* turn of no-new-privs.  We don't want it in lxc, and it breaks
+ * with apparmor */
 #if HAVE_SCMP_FILTER_CTX
-  check_seccomp_attr_set = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
+	check_seccomp_attr_set = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
 #else
-  check_seccomp_attr_set = seccomp_attr_set(SCMP_FLTATR_CTL_NNP, 0);
+	check_seccomp_attr_set = seccomp_attr_set(SCMP_FLTATR_CTL_NNP, 0);
 #endif
 	if (check_seccomp_attr_set) {
-		ERROR("failed to turn off n-new-privs");
+		ERROR("Failed to turn off n-new-privs.");
 		return -1;
 	}
 
 	f = fopen(conf->seccomp, "r");
 	if (!f) {
-		SYSERROR("failed to open seccomp policy file %s", conf->seccomp);
+		SYSERROR("Failed to open seccomp policy file %s.", conf->seccomp);
 		return -1;
 	}
 	ret = parse_config(f, conf);
@@ -737,17 +744,18 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 		return 0;
 	ret = seccomp_load(
 #if HAVE_SCMP_FILTER_CTX
-			conf->seccomp_ctx
+	    conf->seccomp_ctx
 #endif
-	);
+	    );
 	if (ret < 0) {
-		ERROR("Error loading the seccomp policy");
+		ERROR("Error loading the seccomp policy.");
 		return -1;
 	}
 	return 0;
 }
 
-void lxc_seccomp_free(struct lxc_conf *conf) {
+void lxc_seccomp_free(struct lxc_conf *conf)
+{
 	free(conf->seccomp);
 	conf->seccomp = NULL;
 #if HAVE_SCMP_FILTER_CTX
