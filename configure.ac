@@ -57,6 +57,7 @@ if test "z$with_distro" = "z"; then
 	AC_CHECK_FILE(/etc/mandriva-release,with_distro="openmandriva")
 	AC_CHECK_FILE(/etc/pardus-release,with_distro="pardus")
 	AC_CHECK_FILE(/etc/altlinux-release,with_distro="altlinux")
+	AC_CHECK_FILE(/etc/pld-release,with_distro="pld")
 fi
 with_distro=`echo ${with_distro} | tr '[[:upper:]]' '[[:lower:]]'`
 
@@ -72,7 +73,7 @@ case $with_distro in
 		distroconf=default.conf.lxcbr
 		distrosysconf="$sysconfdir/default"
 		;;
-	redhat|centos|fedora|oracle|oracleserver|sparclinux|altlinux|suse|opensuse*|plamo)
+	redhat|centos|fedora|oracle|oracleserver|sparclinux|altlinux|suse|opensuse*|plamo|pld)
 		distroconf=default.conf.lxcbr
 		distrosysconf="$sysconfdir/sysconfig"
 		;;
@@ -107,6 +108,9 @@ case "$with_init_script" in
 				;;
 			ubuntu)
 				init_script=upstart,systemd
+				;;
+			pld)
+				init_script=sysvinit,upstart,systemd
 				;;
 			*)
 				echo -n "Linux distribution init system unknown."
@@ -168,7 +172,7 @@ AC_ARG_ENABLE([doc],
 
 if test "x$enable_doc" = "xyes" -o "x$enable_doc" = "xauto"; then
 	db2xman=""
-	dbparsers="docbook2x-man db2x_docbook2man docbook2man docbook-to-man"
+	dbparsers="docbook2X2man docbook2x-man db2x_docbook2man docbook2man docbook-to-man"
 
 	AC_MSG_CHECKING(for docbook2x-man)
 	for name in ${dbparsers}; do
@@ -834,6 +838,7 @@ AC_CONFIG_FILES([
 	templates/lxc-opensuse
 	templates/lxc-oracle
 	templates/lxc-plamo
+	templates/lxc-pld
 	templates/lxc-slackware
 	templates/lxc-sshd
 	templates/lxc-ubuntu
