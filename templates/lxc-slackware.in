@@ -501,7 +501,7 @@ install_slackware()
 rootfs=$1
 mkdir -p /var/lock/subsys/
 (
-flock -n -x 200
+flock -n -x 9
 if [ $? -ne 0 ]; then
 	echo "Cache repository is busy."
 	return 1
@@ -629,7 +629,7 @@ sed -i 's|3\ \-x|3 -x -s|' $ROOT/etc/rc.d/rc.syslog || true
 
 return 0
 
-) 200>/var/lock/subsys/lxc
+) 9>/var/lock/subsys/lxc
 
 return $?
 }
@@ -666,7 +666,7 @@ fi
 
 # lock, so we won't purge while someone is creating a repository
 (
-flock -n -x 200
+flock -n -x 9
 if [ $? != 0 ]; then
 	echo "Cache repository is busy."
 	exit 1
@@ -676,7 +676,7 @@ echo -n "Purging the download cache..."
 rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
 exit 0
 
-) 200>/var/lock/subsys/lxc
+) 9>/var/lock/subsys/lxc
 }
 
 usage()
