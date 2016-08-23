@@ -1336,6 +1336,10 @@ type curl >/dev/null 2>&1
 if [ $? -ne 0 ]; then
     needed_pkgs="curl $needed_pkgs"
 fi
+type openssl >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    needed_pkgs="openssl $needed_pkgs"
+fi
 
 if [ -n "$needed_pkgs" ]; then
     echo "Missing commands: $needed_pkgs"
