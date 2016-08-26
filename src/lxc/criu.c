@@ -749,8 +749,6 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 				ERROR("criu process exited %d, output:\n%s\n", WEXITSTATUS(status), buf);
 				goto out_fini_handler;
 			} else {
-				int ret;
-
 				ret = snprintf(buf, sizeof(buf), "/proc/self/task/%lu/children", (unsigned long)syscall(__NR_gettid));
 				if (ret < 0 || ret >= sizeof(buf)) {
 					ERROR("snprintf'd too many characters: %d", ret);
