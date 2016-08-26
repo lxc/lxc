@@ -71,7 +71,7 @@ static void usage(const char *name)
 	printf("  Note: This program uses newuidmap(2) and newgidmap(2).\n");
 	printf("        As such, /etc/subuid and /etc/subgid must grant the\n");
 	printf("        calling user permission to use the mapped ranges\n");
-	exit(1);
+	exit(EXIT_SUCCESS);
 }
 
 static void opentty(const char * tty, int which) {
@@ -282,7 +282,7 @@ int main(int argc, char *argv[])
 		ret = readlink("/proc/self/fd/0", ttyname0, sizeof(ttyname0));
 		if (ret < 0) {
 			perror("unable to open stdin.");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		ret = readlink("/proc/self/fd/1", ttyname1, sizeof(ttyname1));
 		if (ret < 0) {
@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 	if (lxc_list_empty(&active_map)) {
 		if (find_default_map()) {
 			fprintf(stderr, "You have no allocated subuids or subgids\n");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -323,7 +323,7 @@ int main(int argc, char *argv[])
 
 	if (pipe(pipe1) < 0 || pipe(pipe2) < 0) {
 		perror("pipe");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	if ((pid = fork()) == 0) {
 		// Child.
@@ -342,15 +342,15 @@ int main(int argc, char *argv[])
 		buf[0] = '1';
 		if (write(pipe1[1], buf, 1) < 1) {
 			perror("write pipe");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		if (read(pipe2[0], buf, 1) < 1) {
 			perror("read pipe");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		if (buf[0] != '1') {
 			fprintf(stderr, "parent had an error, child exiting\n");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		close(pipe1[1]);
@@ -362,7 +362,7 @@ int main(int argc, char *argv[])
 	close(pipe2[0]);
 	if (read(pipe1[0], buf, 1) < 1) {
 		perror("read pipe");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	buf[0] = '1';
@@ -373,12 +373,12 @@ int main(int argc, char *argv[])
 	}
 	if (write(pipe2[1], buf, 1) < 0) {
 		perror("write to pipe");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if ((ret = waitpid(pid, &status, __WALL)) < 0) {
 		printf("waitpid() returns %d, errno %d\n", ret, errno);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	exit(WEXITSTATUS(status));

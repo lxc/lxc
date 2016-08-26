@@ -203,7 +203,7 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	int err = 1;
+	int err = EXIT_FAILURE;
 	struct lxc_conf *conf;
 	char *const *args;
 	char *rcfile = NULL;
@@ -216,10 +216,10 @@ int main(int argc, char *argv[])
 	lxc_list_init(&defines);
 
 	if (lxc_caps_init())
-		return err;
+		exit(err);
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		return err;
+		exit(err);
 
 	if (!my_args.argc)
 		args = default_args;
@@ -228,7 +228,7 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
 			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
-		return err;
+		exit(err);
 	lxc_log_options_no_override();
 
 	const char *lxcpath = my_args.lxcpath[0];
@@ -245,13 +245,13 @@ int main(int argc, char *argv[])
 		c = lxc_container_new(my_args.name, lxcpath);
 		if (!c) {
 			ERROR("Failed to create lxc_container");
-			return err;
+			exit(err);
 		}
 		c->clear_config(c);
 		if (!c->load_config(c, rcfile)) {
 			ERROR("Failed to load rcfile");
 			lxc_container_put(c);
-			return err;
+			exit(err);
 		}
 	} else {
 		int rc;
@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
 		rc = asprintf(&rcfile, "%s/%s/config", lxcpath, my_args.name);
 		if (rc == -1) {
 			SYSERROR("failed to allocate memory");
-			return err;
+			exit(err);
 		}
 		INFO("using rcfile %s", rcfile);
 
@@ -271,7 +271,7 @@ int main(int argc, char *argv[])
 		c = lxc_container_new(my_args.name, lxcpath);
 		if (!c) {
 			ERROR("Failed to create lxc_container");
-			return err;
+			exit(err);
 		}
 	}
 
@@ -336,9 +336,9 @@ int main(int argc, char *argv[])
 		c->want_close_all_fds(c, true);
 
 	if (args == default_args)
-		err = c->start(c, 0, NULL) ? 0 : 1;
+		err = c->start(c, 0, NULL) ? EXIT_SUCCESS : EXIT_FAILURE;
 	else
-		err = c->start(c, 0, args) ? 0 : 1;
+		err = c->start(c, 0, args) ? EXIT_SUCCESS : EXIT_FAILURE;
 
 	if (err) {
 		ERROR("The container failed to start.");
@@ -348,10 +348,10 @@ int main(int argc, char *argv[])
 		      "--logfile and --logpriority options.");
 		err = c->error_num;
 		lxc_container_put(c);
-		return err;
+		exit(err);
 	}
 
 out:
 	lxc_container_put(c);
-	return err;
+	exit(err);
 }

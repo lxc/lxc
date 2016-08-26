@@ -66,7 +66,7 @@ static bool is_interface(const char* dev_name, pid_t pid)
 
 	if (p < 0) {
 		SYSERROR("failed to fork task.");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (p == 0) {
@@ -86,10 +86,10 @@ static bool is_interface(const char* dev_name, pid_t pid)
 		/* Iterate through the interfaces */
 		for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
 			if (strcmp(tempIfAddr->ifa_name, dev_name) == 0) {
-				exit(0);
+				exit(EXIT_SUCCESS);
 			}
 		}
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (wait_for_pid(p) == 0) {
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 
 	if (geteuid() != 0) {
 		ERROR("%s must be run as root", argv[0]);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
@@ -184,9 +184,9 @@ int main(int argc, char *argv[])
 		ERROR("Error: Please use add or del (Please see --help output)");
 		goto err1;
 	}
-	exit(0);
+	exit(EXIT_SUCCESS);
 err1:
 	lxc_container_put(c);
 err:
-	exit(ret);
+	exit(EXIT_FAILURE);
 }
