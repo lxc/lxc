@@ -751,7 +751,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 			} else {
 				int ret;
 
-				ret = snprintf(buf, sizeof(buf), "/proc/self/task/%" PRId64 "/children", syscall(__NR_gettid));
+				ret = snprintf(buf, sizeof(buf), "/proc/self/task/%lu/children", (unsigned long)syscall(__NR_gettid));
 				if (ret < 0 || ret >= sizeof(buf)) {
 					ERROR("snprintf'd too many characters: %d", ret);
 					goto out_fini_handler;
