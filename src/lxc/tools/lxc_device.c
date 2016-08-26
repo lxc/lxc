@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	char *cmd, *dev_name, *dst_name;
-	int ret = 1;
+	bool ret = false;
 
 	if (geteuid() != 0) {
 		ERROR("%s must be run as root", argv[0]);
@@ -164,7 +164,6 @@ int main(int argc, char *argv[])
 		}
 		if (ret != true) {
 			ERROR("Failed to add %s to %s.", dev_name, c->name);
-			ret = 1;
 			goto err1;
 		}
 		INFO("Add %s to %s.", dev_name, c->name);
@@ -176,7 +175,6 @@ int main(int argc, char *argv[])
 		}
 		if (ret != true) {
 			ERROR("Failed to del %s from %s.", dev_name, c->name);
-			ret = 1;
 			goto err1;
 		}
 		INFO("Delete %s from %s.", dev_name, c->name);
