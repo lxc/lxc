@@ -114,6 +114,11 @@ auto eth0
 iface eth0 inet dhcp
 EOF
 
+    # set the color of bash prompt
+    cat <<EOF > $rootfs/root/.bashrc
+export PS1='\e[1;36m\u@\h \W \$ \e[0;37m'
+EOF
+
     # set the hostname
     cat <<EOF > $rootfs/etc/hostname
 $hostname
