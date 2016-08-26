@@ -69,7 +69,6 @@ struct criu_opts {
 	char tty_id[32]; /* the criu tty id for /dev/console, i.e. "tty[${rdev}:${dev}]" */
 
 	/* restore: the file to write the init process' pid into */
-	char *pidfile;
 	const char *cgroup_path;
 	int console_fd;
 	/* The path that is bind mounted from /dev/console, if any. We don't
@@ -176,10 +175,10 @@ static void exec_criu(struct criu_opts *opts)
 			static_args += 2;
 	} else if (strcmp(opts->action, "restore") == 0) {
 		/* --root $(lxc_mount_point) --restore-detached
-		 * --restore-sibling --pidfile $foo --cgroup-root $foo
+		 * --restore-sibling --cgroup-root $foo
 		 * --lsm-profile apparmor:whatever
 		 */
-		static_args += 10;
+		static_args += 8;
 
 		tty_info[0] = 0;
 		if (load_tty_major_minor(opts->user->directory, tty_info, sizeof(tty_info)))
@@ -330,8 +329,6 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG(opts->c->lxc_conf->rootfs.mount);
 		DECLARE_ARG("--restore-detached");
 		DECLARE_ARG("--restore-sibling");
-		DECLARE_ARG("--pidfile");
-		DECLARE_ARG(opts->pidfile);
 		DECLARE_ARG("--cgroup-root");
 		DECLARE_ARG(opts->cgroup_path);
 
@@ -604,13 +601,8 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 {
 	pid_t pid;
 	struct lxc_handler *handler;
-	int fd, status;
+	int status;
 	int pipes[2] = {-1, -1};
-	char pidfile[] = "criu_restore_XXXXXX";
-
-	fd = mkstemp(pidfile);
-	if (fd < 0)
-		goto out;
 
 	handler = lxc_init(c->name, c->lxc_conf, c->config_path);
 	if (!handler)
@@ -690,7 +682,6 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		os.action = "restore";
 		os.user = opts;
 		os.c = c;
-		os.pidfile = pidfile;
 		os.cgroup_path = cgroup_canonical_path(handler);
 		os.console_fd = c->lxc_conf->console.slave;
 		os.criu_version = criu_version;
@@ -742,8 +733,9 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		}
 
 		if (WIFEXITED(status)) {
+			char buf[4096];
+
 			if (WEXITSTATUS(status)) {
-				char buf[4096];
 				int n;
 
 				n = read(pipes[0], buf, sizeof(buf));
@@ -758,18 +750,21 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 				goto out_fini_handler;
 			} else {
 				int ret;
-				FILE *f = fdopen(fd, "r");
-				if (!f) {
-					SYSERROR("couldn't read restore's init pidfile %s\n", pidfile);
+
+				ret = snprintf(buf, sizeof(buf), "/proc/self/task/%" PRId64 "/children", syscall(__NR_gettid));
+				if (ret < 0 || ret >= sizeof(buf)) {
+					ERROR("snprintf'd too many characters: %d", ret);
 					goto out_fini_handler;
 				}
-				fd = -1;
+
+				FILE *f = fopen(buf, "r");
+				if (!f) {
+					SYSERROR("couldn't read restore's children file %s\n", buf);
+					goto out_fini_handler;
+				}
 
 				ret = fscanf(f, "%d", (int*) &handler->pid);
 				fclose(f);
-				if (unlink(pidfile) < 0 && errno != ENOENT)
-					SYSERROR("unlinking pidfile failed");
-
 				if (ret != 1) {
 					ERROR("reading restore pid failed");
 					goto out_fini_handler;
@@ -809,8 +804,6 @@ out_fini_handler:
 		close(pipes[1]);
 
 	lxc_fini(c->name, handler);
-	if (unlink(pidfile) < 0 && errno != ENOENT)
-		SYSERROR("unlinking pidfile failed");
 
 out:
 	if (status_pipe >= 0) {
@@ -820,9 +813,6 @@ out:
 		}
 		close(status_pipe);
 	}
-
-	if (fd > 0)
-		close(fd);
 
 	exit(1);
 }
