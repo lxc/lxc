@@ -723,15 +723,6 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 			goto out_fini_handler;
 		}
 
-		ret = write(status_pipe, &status, sizeof(status));
-		close(status_pipe);
-		status_pipe = -1;
-
-		if (sizeof(status) != ret) {
-			SYSERROR("failed to write all of status");
-			goto out_fini_handler;
-		}
-
 		if (WIFEXITED(status)) {
 			char buf[4096];
 
@@ -749,8 +740,6 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 				ERROR("criu process exited %d, output:\n%s\n", WEXITSTATUS(status), buf);
 				goto out_fini_handler;
 			} else {
-				int ret;
-
 				ret = snprintf(buf, sizeof(buf), "/proc/self/task/%lu/children", (unsigned long)syscall(__NR_gettid));
 				if (ret < 0 || ret >= sizeof(buf)) {
 					ERROR("snprintf'd too many characters: %d", ret);
@@ -782,6 +771,15 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 
 		close(pipes[0]);
 
+		ret = write(status_pipe, &status, sizeof(status));
+		close(status_pipe);
+		status_pipe = -1;
+
+		if (sizeof(status) != ret) {
+			SYSERROR("failed to write all of status");
+			goto out_fini_handler;
+		}
+
 		/*
 		 * See comment in lxcapi_start; we don't care if these
 		 * fail because it's just a beauty thing. We just
@@ -807,7 +805,12 @@ out_fini_handler:
 
 out:
 	if (status_pipe >= 0) {
-		status = 1;
+		/* ensure getting here was a failure, e.g. if we failed to
+		 * parse the child pid or something, even after a successful
+		 * restore
+		 */
+		if (!status)
+			status = 1;
 		if (write(status_pipe, &status, sizeof(status)) != sizeof(status)) {
 			SYSERROR("writing status failed");
 		}
