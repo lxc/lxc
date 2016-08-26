@@ -256,6 +256,10 @@ TYPE=Ethernet
 MTU=${MTU}
 DHCP_HOSTNAME=\`hostname\`
 EOF
+    # set the bash color prompt for this container
+    cat <<EOF > ${rootfs_path}/root/.bashrc
+export PS1='\e[1;36m\u@\h \W \$ \e[0;37m'
+EOF
 
     # set the hostname
     cat <<EOF > ${rootfs_path}/etc/sysconfig/network
