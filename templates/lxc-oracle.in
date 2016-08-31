@@ -169,9 +169,6 @@ EOF
         rm -f $container_rootfs/usr/lib/systemd/system/sysinit.target.wants/kmod-static-nodes.service
         chroot $container_rootfs systemctl -q disable graphical.target
         chroot $container_rootfs systemctl -q enable multi-user.target
-        if [ ! -e $container_rootfs/etc/systemd/system/sigpwr.target ]; then
-            chroot $container_rootfs ln -s /usr/lib/systemd/system/halt.target /etc/systemd/system/sigpwr.target
-        fi
 
         # systemd in userns won't be able to set /proc/self/oom_score_adj which
         # prevents the dbus service from starting
