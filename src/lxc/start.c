@@ -850,6 +850,16 @@ static int do_start(void *data)
 	if (lsm_process_label_set(NULL, handler->conf, 1, 1) < 0)
 		goto out_warn_father;
 
+	/* Set PR_SET_NO_NEW_PRIVS after we changed the lsm label. If we do it
+	 * before we aren't allowed anymore. */
+	if (handler->conf->no_new_privs) {
+		if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) < 0) {
+			SYSERROR("Could not set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges.");
+			goto out_warn_father;
+		}
+		DEBUG("Set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges.");
+	}
+
 	/* Some init's such as busybox will set sane tty settings on stdin,
 	 * stdout, stderr which it thinks is the console. We already set them
 	 * the way we wanted on the real terminal, and we want init to do its
