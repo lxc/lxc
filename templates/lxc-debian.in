@@ -239,7 +239,7 @@ configure_debian_systemd()
     fi
 
     # just in case systemd is not installed
-    mkdir -p "${rootfs}/{lib,etc}/systemd/system"
+    mkdir -p "${rootfs}/lib/systemd/system"
     mkdir -p "${rootfs}/etc/systemd/system/getty.target.wants"
 
     # Fix getty-static-service as debootstrap does not install dbus
