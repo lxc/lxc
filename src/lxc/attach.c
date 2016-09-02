@@ -657,8 +657,8 @@ static int attach_child_main(void* data);
 /* define default options if no options are supplied by the user */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
-static bool fetch_seccomp(const char *name, const char *lxcpath,
-		struct lxc_proc_context_info *i, lxc_attach_options_t *options)
+static bool fetch_seccomp(struct lxc_proc_context_info *i,
+			  lxc_attach_options_t *options)
 {
 	struct lxc_container *c;
 	char *path;
@@ -666,10 +666,7 @@ static bool fetch_seccomp(const char *name, const char *lxcpath,
 	if (!(options->namespaces & CLONE_NEWNS) || !(options->attach_flags & LXC_ATTACH_LSM))
 		return true;
 
-	c = lxc_container_new(name, lxcpath);
-	if (!c)
-		return false;
-	i->container = c;
+	c = i->container;
 
 	/* Initialize an empty lxc_conf */
 	if (!c->set_config_item(c, "lxc.seccomp", "")) {
@@ -744,7 +741,11 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	}
 	init_ctx->personality = personality;
 
-	if (!fetch_seccomp(name, lxcpath, init_ctx, options))
+	init_ctx->container = lxc_container_new(name, lxcpath);
+	if (!init_ctx->container)
+		return -1;
+
+	if (!fetch_seccomp(init_ctx, options))
 		WARN("Failed to get seccomp policy");
 
 	cwd = getcwd(NULL, 0);
