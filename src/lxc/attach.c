@@ -668,7 +668,7 @@ static bool fetch_seccomp(struct lxc_proc_context_info *i,
 
 	c = i->container;
 
-	/* Initialize an empty lxc_conf */
+	/* Remove current setting. */
 	if (!c->set_config_item(c, "lxc.seccomp", "")) {
 		return false;
 	}
@@ -691,6 +691,37 @@ static bool fetch_seccomp(struct lxc_proc_context_info *i,
 		ERROR("Error reading seccomp policy");
 		return false;
 	}
+
+	INFO("Retrieved seccomp policy.");
+	return true;
+}
+
+static bool no_new_privs(struct lxc_proc_context_info *ctx,
+			 lxc_attach_options_t *options)
+{
+	struct lxc_container *c;
+	char *val;
+
+	c = ctx->container;
+
+	/* Remove current setting. */
+	if (!c->set_config_item(c, "lxc.no_new_privs", "")) {
+		return false;
+	}
+
+	/* Retrieve currently active setting. */
+	val = c->get_running_config_item(c, "lxc.no_new_privs");
+	if (!val) {
+		INFO("Failed to get running config item for lxc.no_new_privs.");
+		return false;
+	}
+
+	/* Set currently active setting. */
+	if (!c->set_config_item(c, "lxc.no_new_privs", val)) {
+		free(val);
+		return false;
+	}
+	free(val);
 
 	return true;
 }
@@ -747,6 +778,9 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 
 	if (!fetch_seccomp(init_ctx, options))
 		WARN("Failed to get seccomp policy");
+
+	if (!no_new_privs(init_ctx, options))
+		WARN("Could not determine whether PR_SET_NO_NEW_PRIVS is set.");
 
 	cwd = getcwd(NULL, 0);
 
@@ -1147,6 +1181,19 @@ static int attach_child_main(void* data)
 	shutdown(ipc_socket, SHUT_RDWR);
 	close(ipc_socket);
 
+	if ((init_ctx->container && init_ctx->container->lxc_conf &&
+	     init_ctx->container->lxc_conf->no_new_privs) ||
+	    (options->attach_flags & LXC_ATTACH_NO_NEW_PRIVS)) {
+		if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) < 0) {
+			SYSERROR("PR_SET_NO_NEW_PRIVS could not be set. "
+				 "Process can use execve() gainable "
+				 "privileges.");
+			rexit(-1);
+		}
+		INFO("PR_SET_NO_NEW_PRIVS is set. Process cannot use execve() "
+		     "gainable privileges.");
+	}
+
 	/* set new apparmor profile/selinux context */
 	if ((options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
 		int on_exec;
@@ -1162,7 +1209,6 @@ static int attach_child_main(void* data)
 		ERROR("Loading seccomp policy");
 		rexit(-1);
 	}
-
 	lxc_proc_put_context_info(init_ctx);
 
 	/* The following is done after the communication socket is
