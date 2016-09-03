@@ -50,8 +50,16 @@
 #include <sys/capability.h>
 #endif
 
-#if !HAVE_DECL_PR_CAPBSET_DROP
+#ifndef HAVE_DECL_PR_CAPBSET_DROP
 #define PR_CAPBSET_DROP 24
+#endif
+
+#ifndef HAVE_DECL_PR_SET_NO_NEW_PRIVS
+#define PR_SET_NO_NEW_PRIVS 38
+#endif
+
+#ifndef HAVE_DECL_PR_GET_NO_NEW_PRIVS
+#define PR_GET_NO_NEW_PRIVS 39
 #endif
 
 #include "af_unix.h"
