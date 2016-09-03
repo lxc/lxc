@@ -52,7 +52,7 @@
 #include <../include/openpty.h>
 #endif
 
-lxc_log_define(lxc_console, lxc);
+lxc_log_define(console, lxc);
 
 static struct lxc_list lxc_ttys;
 
