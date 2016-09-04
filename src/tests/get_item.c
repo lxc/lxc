@@ -26,7 +26,9 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+
 #include "lxc/state.h"
+#include "lxctest.h"
 
 #define MYNAME "lxctest1"
 
@@ -40,6 +42,29 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%d: error opening lxc_container %s\n", __LINE__, MYNAME);
 		exit(EXIT_FAILURE);
 	}
+
+	/* EXPECT SUCCESS: lxc.syslog with valid value. */
+	if (!c->set_config_item(c, "lxc.syslog", "local0")) {
+		lxc_error("%s\n", "Failed to set lxc.syslog.\n");
+		goto out;
+	}
+	ret = c->get_config_item(c, "lxc.syslog", v2, 255);
+	if (ret < 0) {
+		lxc_error("Failed to retrieve lxc.syslog: %d.\n", ret);
+		goto out;
+	}
+	if (strcmp(v2, "local0") != 0) {
+		lxc_error("Expected: local0 == %s.\n", v2);
+		goto out;
+	}
+	lxc_debug("Retrieving value for lxc.syslog correctly returned: %s.\n", v2);
+
+	/* EXPECT FAILURE: lxc.syslog with invalid value. */
+	if (c->set_config_item(c, "lxc.syslog", "NONSENSE")) {
+		lxc_error("%s\n", "Succeeded int setting lxc.syslog to invalid value \"NONSENSE\".\n");
+		goto out;
+	}
+	lxc_debug("%s\n", "Successfully failed to set lxc.syslog to invalid value.\n");
 
 	if (!c->set_config_item(c, "lxc.hook.pre-start", "hi there")) {
 		fprintf(stderr, "%d: failed to set hook.pre-start\n", __LINE__);
