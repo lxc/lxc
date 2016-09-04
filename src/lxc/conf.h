@@ -378,6 +378,10 @@ struct lxc_conf {
 
 	/* indicator if the container will be destroyed on shutdown */
 	int ephemeral;
+
+	/* The facility to pass to syslog. Let's users establish as what type of
+	 * program liblxc is supposed to write to the syslog. */
+	char *syslog;
 };
 
 #ifdef HAVE_TLS

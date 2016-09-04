@@ -108,8 +108,9 @@ static int log_append_syslog(const struct lxc_log_appender *appender,
 	}
 
 	syslog(lxc_log_priority_to_syslog(event->priority),
-		"%s %s - %s:%s:%d - %s" ,
+		"%s%s %s - %s:%s:%d - %s" ,
 		log_vmname ? log_vmname : "",
+		log_vmname ? ":" : "",
 		event->category,
 		event->locinfo->file, event->locinfo->func,
 		event->locinfo->line,

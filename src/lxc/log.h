@@ -26,12 +26,14 @@
 
 #include "config.h"
 
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <sys/time.h>
 #include <string.h>
 #include <strings.h>
 #include <stdbool.h>
+#include <syslog.h>
 
 #include "conf.h"
 
@@ -53,7 +55,7 @@
 #define ATTR_UNUSED
 #endif
 
-/* predefined priorities. */
+/* predefined lxc log priorities. */
 enum lxc_loglevel {
 	LXC_LOG_PRIORITY_TRACE,
 	LXC_LOG_PRIORITY_DEBUG,
@@ -151,6 +153,24 @@ static inline const char* lxc_log_priority_to_string(int priority)
 		return "NOTSET";
 	}
 }
+
+static inline const char* lxc_syslog_priority_to_string(int priority)
+{
+	switch (priority) {
+	case LOG_DAEMON: return "daemon";
+	case LOG_LOCAL0: return "local0";
+	case LOG_LOCAL1: return "local1";
+	case LOG_LOCAL2: return "local2";
+	case LOG_LOCAL3: return "local3";
+	case LOG_LOCAL4: return "local4";
+	case LOG_LOCAL5: return "local5";
+	case LOG_LOCAL6: return "local6";
+	case LOG_LOCAL7: return "local7";
+	default:
+		return "NOTSET";
+	}
+}
+
 /*
  * converts a literal priority to an int
  */
@@ -167,6 +187,21 @@ static inline int lxc_log_priority_to_int(const char* name)
 	if (!strcasecmp("FATAL",  name)) return LXC_LOG_PRIORITY_FATAL;
 
 	return LXC_LOG_PRIORITY_NOTSET;
+}
+
+static inline int lxc_syslog_priority_to_int(const char* name)
+{
+	if (!strcasecmp("daemon", name)) return LOG_DAEMON;
+	if (!strcasecmp("local0", name)) return LOG_LOCAL0;
+	if (!strcasecmp("local1", name)) return LOG_LOCAL1;
+	if (!strcasecmp("local2", name)) return LOG_LOCAL2;
+	if (!strcasecmp("local3", name)) return LOG_LOCAL3;
+	if (!strcasecmp("local4", name)) return LOG_LOCAL4;
+	if (!strcasecmp("local5", name)) return LOG_LOCAL5;
+	if (!strcasecmp("local6", name)) return LOG_LOCAL6;
+	if (!strcasecmp("local7", name)) return LOG_LOCAL7;
+
+	return -EINVAL;
 }
 
 static inline void

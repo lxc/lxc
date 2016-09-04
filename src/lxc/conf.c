@@ -4168,6 +4168,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->init_cmd);
 	free(conf->unexpanded_config);
 	free(conf->pty_names);
+	free(conf->syslog);
 	lxc_clear_config_network(conf);
 	free(conf->lsm_aa_profile);
 	free(conf->lsm_se_context);

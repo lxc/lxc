@@ -273,23 +273,6 @@ static const struct signame signames[] = {
 #endif
 };
 
-struct syslog_facility {
-	const char *name;
-	int facility;
-};
-
-static const struct syslog_facility syslog_facilities[] = {
-	{ "daemon",	LOG_DAEMON },
-	{ "local0",	LOG_LOCAL0 },
-	{ "local1",	LOG_LOCAL1 },
-	{ "local2",	LOG_LOCAL2 },
-	{ "local3",	LOG_LOCAL3 },
-	{ "local4",	LOG_LOCAL4 },
-	{ "local5",	LOG_LOCAL5 },
-	{ "local6",	LOG_LOCAL6 },
-	{ "local7",	LOG_LOCAL7 },
-};
-
 static const size_t config_size = sizeof(config)/sizeof(struct lxc_config_t);
 
 extern struct lxc_config_t *lxc_getconfig(const char *key)
@@ -2027,8 +2010,8 @@ int lxc_config_read(const char *file, struct lxc_conf *conf, bool from_include)
 	}
 
 	/* Catch only the top level config file name in the structure */
-	if( ! conf->rcfile )
-		conf->rcfile = strdup( file );
+	if(!conf->rcfile)
+		conf->rcfile = strdup(file);
 
 	return lxc_file_for_each_line(file, parse_line, &c);
 }
@@ -2577,6 +2560,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_conf_int(c, retv, inlen, c->init_gid);
 	else if (strcmp(key, "lxc.ephemeral") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->ephemeral);
+	else if (strcmp(key, "lxc.syslog") == 0)
+		v = c->syslog;
 	else return -1;
 
 	if (!v)
@@ -2957,19 +2942,15 @@ static int config_ephemeral(const char *key, const char *value,
 }
 
 static int config_syslog(const char *key, const char *value,
-			    struct lxc_conf *lxc_conf)
+			 struct lxc_conf *lxc_conf)
 {
-	int n;
-	int facility = -1;
-
-	for (n = 0; n < sizeof(syslog_facilities) / sizeof((syslog_facilities)[0]); n++) {
-		if (strcasecmp(syslog_facilities[n].name, value) == 0) {
-			facility = syslog_facilities[n].facility;
-			lxc_log_syslog(facility);
-			return 0;
-		}
+	int facility;
+	facility = lxc_syslog_priority_to_int(value);
+	if (facility == -EINVAL) {
+		ERROR("Wrong value for lxc.syslog");
+		return -1;
 	}
 
-	ERROR("Wrong value for lxc.syslog");
-	return -1;
+	lxc_log_syslog(facility);
+	return config_string_item(&lxc_conf->syslog, value);
 }
