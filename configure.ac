@@ -152,6 +152,11 @@ if test "x$with_systemdsystemunitdir" != "xno"; then
   AC_SUBST([SYSTEMD_UNIT_DIR], [$with_systemdsystemunitdir])
 fi
 
+AC_ARG_ENABLE([werror],
+	[AC_HELP_STRING([--disable-werror],
+	[do not treat warnings as errors])],
+	[], [enable_werror=yes])
+
 # Allow enabling deprecated executables
 AC_ARG_ENABLE([deprecated],
 	[AC_HELP_STRING([--enable-deprecated],
@@ -630,7 +635,10 @@ AC_PROG_SED
 LXC_CHECK_TLS
 
 if test "x$GCC" = "xyes"; then
-	CFLAGS="$CFLAGS -Wall -Werror"
+	CFLAGS="$CFLAGS -Wall"
+	if test "x$enable_werror" = "xyes"; then
+		CFLAGS="$CFLAGS -Werror"
+	fi
 fi
 
 # Files requiring some variable expansion
