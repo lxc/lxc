@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sched.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -220,6 +221,34 @@ non_test_error:
 	if (fret == EXIT_SUCCESS)
 		return;
 	exit(fret);
+
+void test_lxc_safe_uint(void)
+{
+	int ret;
+	unsigned int n;
+	size_t len = /* 2^64 = 21 - 1 */ 21;
+	char uint_max[len];
+
+	ret = snprintf(uint_max, len, "%lu", (unsigned long)UINT_MAX + 1);
+	if (ret < 0 || (size_t)ret >= len) {
+		lxc_error("%s\n", "Failed to create string via snprintf().");
+		exit(EXIT_FAILURE);
+	}
+
+	lxc_test_assert_abort((0 == lxc_safe_uint("1234345", &n)) && n == 1234345);
+	lxc_test_assert_abort((0 == lxc_safe_uint("   345", &n)) && n == 345);
+	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("   g345", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("   3g45", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("   345g", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("g345", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("3g45", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("345g", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("g345   ", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("3g45   ", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("345g   ", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("g", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("   g345", &n)));
+	lxc_test_assert_abort((-ERANGE == lxc_safe_uint(uint_max, &n)));
 }
 
 void test_lxc_string_replace(void)
@@ -280,6 +309,7 @@ int main(int argc, char *argv[])
 	test_lxc_string_in_array();
 	test_lxc_deslashify();
 	test_detect_ramfs_rootfs();
+	test_lxc_safe_uint();
 
 	exit(EXIT_SUCCESS);
 }
