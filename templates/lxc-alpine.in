@@ -364,8 +364,12 @@ setup_services() {
 	done
 
 	# default runlevel
-	for svc_name in networking cron; do
-		ln -s /etc/init.d/$svc_name etc/runlevels/default/$svc_name
+	for svc_name in networking cron crond; do
+		# issue 1164: alpine renamed cron to crond
+		# Use the one that exists.
+		if [ -e etc/init.d/$svc_name ]; then
+			ln -s /etc/init.d/$svc_name etc/runlevels/default/$svc_name
+		fi
 	done
 }
 
