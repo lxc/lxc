@@ -1988,3 +1988,23 @@ int lxc_preserve_ns(const int pid, const char *ns)
 
 	return open(path, O_RDONLY | O_CLOEXEC);
 }
+
+int lxc_safe_uint(const char *numstr, unsigned int *converted)
+{
+	char *err = NULL;
+	unsigned long int uli;
+
+	errno = 0;
+	uli = strtoul(numstr, &err, 0);
+	if (errno > 0)
+		return -errno;
+
+	if (!err || err == numstr || *err != '\0')
+		return -EINVAL;
+
+	if (uli > UINT_MAX)
+		return -ERANGE;
+
+	*converted = (unsigned)uli;
+	return 0;
+}

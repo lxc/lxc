@@ -316,4 +316,8 @@ int lxc_preserve_ns(const int pid, const char *ns);
 
 /* Check whether a signal is blocked by a process. */
 bool task_blocking_signal(pid_t pid, int signal);
+
+/* Helper functions to parse numbers. */
+int lxc_safe_uint(const char *numstr, unsigned int *converted);
+
 #endif /* __LXC_UTILS_H */
