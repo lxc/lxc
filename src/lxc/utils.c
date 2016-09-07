@@ -2008,3 +2008,23 @@ int lxc_safe_uint(const char *numstr, unsigned int *converted)
 	*converted = (unsigned)uli;
 	return 0;
 }
+
+int lxc_safe_int(const char *numstr, int *converted)
+{
+	char *err = NULL;
+	signed long int sli;
+
+	errno = 0;
+	sli = strtol(numstr, &err, 0);
+	if (errno > 0)
+		return -errno;
+
+	if (!err || err == numstr || *err != '\0')
+		return -EINVAL;
+
+	if (sli > INT_MAX)
+		return -ERANGE;
+
+	*converted = (int)sli;
+	return 0;
+}
