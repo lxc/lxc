@@ -319,5 +319,6 @@ bool task_blocking_signal(pid_t pid, int signal);
 
 /* Helper functions to parse numbers. */
 int lxc_safe_uint(const char *numstr, unsigned int *converted);
+int lxc_safe_int(const char *numstr, int *converted);
 
 #endif /* __LXC_UTILS_H */
