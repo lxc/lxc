@@ -20,6 +20,8 @@ templatesconfig_DATA = \
 	gentoo.common.conf \
 	gentoo.moresecure.conf \
 	gentoo.userns.conf \
+	kali.common.conf \
+	kali.userns.conf \
 	nesting.conf \
 	opensuse.common.conf \
 	opensuse.userns.conf \
