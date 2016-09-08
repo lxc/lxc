@@ -3960,6 +3960,7 @@ static int do_lxcapi_migrate(struct lxc_container *c, unsigned int cmd,
 			     struct migrate_opts *opts, unsigned int size)
 {
 	int ret;
+	struct migrate_opts *valid_opts = opts;
 
 	/* If the caller has a bigger (newer) struct migrate_opts, let's make
 	 * sure that the stuff on the end is zero, i.e. that they didn't ask us
@@ -3978,15 +3979,28 @@ static int do_lxcapi_migrate(struct lxc_container *c, unsigned int cmd,
 		}
 	}
 
+	/* If the caller has a smaller struct, let's zero out the end for them
+	 * so we don't accidentally use bits of it that they didn't know about
+	 * to initialize.
+	 */
+	if (size < sizeof(*opts)) {
+		valid_opts = malloc(sizeof(*opts));
+		if (!valid_opts)
+			return -ENOMEM;
+
+		memset(valid_opts, 0, sizeof(*opts));
+		memcpy(valid_opts, opts, size);
+	}
+
 	switch (cmd) {
 	case MIGRATE_PRE_DUMP:
-		ret = !__criu_pre_dump(c, opts);
+		ret = !__criu_pre_dump(c, valid_opts);
 		break;
 	case MIGRATE_DUMP:
-		ret = !__criu_dump(c, opts);
+		ret = !__criu_dump(c, valid_opts);
 		break;
 	case MIGRATE_RESTORE:
-		ret = !__criu_restore(c, opts);
+		ret = !__criu_restore(c, valid_opts);
 		break;
 	default:
 		ERROR("invalid migrate command %u", cmd);
