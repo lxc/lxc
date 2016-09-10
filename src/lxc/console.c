@@ -527,6 +527,11 @@ int lxc_console_create(struct lxc_conf *conf)
 
 	lxc_console_peer_default(console);
 
+	if (console->peer < 0) {
+		SYSERROR("failed to open console peer - no controlling tty?");
+		goto err;
+	}
+
 	if (console->log_path) {
 		console->log_fd = lxc_unpriv(open(console->log_path,
 						  O_CLOEXEC | O_RDWR |
