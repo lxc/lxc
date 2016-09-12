@@ -140,7 +140,7 @@ static void exec_criu(struct criu_opts *opts)
 
 	/* The command line always looks like:
 	 * criu $(action) --tcp-established --file-locks --link-remap \
-	 * --manage-cgroups=full action-script foo.sh -D $(directory) \
+	 * --manage-cgroups=full --action-script foo.sh -D $(directory) \
 	 * -o $(directory)/$(action).log --ext-mount-map auto
 	 * --enable-external-sharing --enable-external-masters
 	 * --enable-fs hugetlbfs --enable-fs tracefs --ext-mount-map console:/dev/pts/n
