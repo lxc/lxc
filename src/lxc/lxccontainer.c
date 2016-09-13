@@ -4007,6 +4007,9 @@ static int do_lxcapi_migrate(struct lxc_container *c, unsigned int cmd,
 		ret = -EINVAL;
 	}
 
+	if (size < sizeof(*opts))
+		free(valid_opts);
+
 	return ret;
 }
 
