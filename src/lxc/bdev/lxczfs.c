@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/mount.h>
 
 #include "bdev.h"
@@ -170,6 +171,9 @@ int zfs_clone(const char *opath, const char *npath, const char *oname,
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
+			int dev0 = open("/dev/null", O_WRONLY);
+			if (dev0 >= 0)
+				dup2(dev0, STDERR_FILENO);
 			execlp("zfs", "zfs", "destroy", path1, (char *)NULL);
 			exit(EXIT_FAILURE);
 		}
@@ -252,7 +256,7 @@ int zfs_destroy(struct bdev *orig)
 		return -1;
 	*p = '\0';
 
-	execlp("zfs", "zfs", "destroy", output, (char *)NULL);
+	execlp("zfs", "zfs", "destroy", "-r", output, (char *)NULL);
 	exit(EXIT_FAILURE);
 }
 
