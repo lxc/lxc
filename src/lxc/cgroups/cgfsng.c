@@ -1457,6 +1457,31 @@ out:
 	return ret;
 }
 
+static int cgfsng_num_hierarchies(void)
+{
+	int i;
+
+	for (i = 0; hierarchies[i]; i++)
+		;
+
+	return i;
+}
+
+static bool cgfsng_get_hierarchies(int n, char ***out)
+{
+	int i;
+
+	/* sanity check n */
+	for (i = 0; i < n; i++) {
+		if (!hierarchies[i])
+			return false;
+	}
+
+	*out = hierarchies[i]->controllers;
+
+	return true;
+}
+
 #define THAWED "THAWED"
 #define THAWED_LEN (strlen(THAWED))
 
@@ -1674,6 +1699,8 @@ static struct cgroup_ops cgfsng_ops = {
 	.enter = cgfsng_enter,
 	.canonical_path = cgfsng_canonical_path,
 	.escape = cgfsng_escape,
+	.num_hierarchies = cgfsng_num_hierarchies,
+	.get_hierarchies = cgfsng_get_hierarchies,
 	.get_cgroup = cgfsng_get_cgroup,
 	.get = cgfsng_get,
 	.set = cgfsng_set,
