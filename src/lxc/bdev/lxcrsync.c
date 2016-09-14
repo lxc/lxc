@@ -61,7 +61,7 @@ int do_rsync(const char *src, const char *dest)
 	s[l-2] = '/';
 	s[l-1] = '\0';
 
-	execlp("rsync", "rsync", "-aHX", "--delete", s, dest, (char *)NULL);
+	execlp("rsync", "rsync", "-aHXS", "--delete", s, dest, (char *)NULL);
 	exit(1);
 }
 
