@@ -716,6 +716,24 @@ char **lxc_normalize_path(const char *path)
 	return components;
 }
 
+bool lxc_deslashify(char *path)
+{
+	char **parts = NULL, *path2;
+
+	parts = lxc_normalize_path(path);
+	if (!parts)
+		return false;
+
+	path2 = lxc_string_join("/", (const char **) parts, *path == '/');
+	lxc_free_array((void **) parts, free);
+	if (!path2)
+		return false;
+
+	strncpy(path, path2, strlen(path));
+	free(path2);
+	return true;
+}
+
 char *lxc_append_paths(const char *first, const char *second)
 {
 	size_t len = strlen(first) + strlen(second) + 1;
