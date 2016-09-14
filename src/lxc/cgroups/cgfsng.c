@@ -1426,18 +1426,10 @@ static int cgfsng_nrtasks(void *hdata) {
 /* Only root needs to escape to the cgroup of its init */
 static bool cgfsng_escape()
 {
-	struct cgfsng_handler_data *d;
 	int i;
-	bool ret = false;
 
 	if (geteuid())
 		return true;
-
-	d = cgfsng_init("criu-temp-cgfsng");
-	if (!d) {
-		ERROR("cgfsng_init failed");
-		return false;
-	}
 
 	for (i = 0; hierarchies[i]; i++) {
 		char *fullpath = must_make_path(hierarchies[i]->mountpoint,
@@ -1446,15 +1438,12 @@ static bool cgfsng_escape()
 		if (lxc_write_to_file(fullpath, "0", 2, false) != 0) {
 			SYSERROR("Failed to escape to %s", fullpath);
 			free(fullpath);
-			goto out;
+			return false;
 		}
 		free(fullpath);
 	}
 
-	ret = true;
-out:
-	free_handler_data(d);
-	return ret;
+	return true;
 }
 
 static int cgfsng_num_hierarchies(void)
