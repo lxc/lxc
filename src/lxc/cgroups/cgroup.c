@@ -132,6 +132,22 @@ const char *cgroup_canonical_path(struct lxc_handler *handler)
 	return NULL;
 }
 
+int cgroup_num_hierarchies(void)
+{
+	if (!ops)
+		return -1;
+
+	return ops->num_hierarchies();
+}
+
+bool cgroup_get_hierarchies(int n, char ***out)
+{
+	if (!ops)
+		return false;
+
+	return ops->get_hierarchies(n, out);
+}
+
 bool cgroup_unfreeze(struct lxc_handler *handler)
 {
 	if (ops)

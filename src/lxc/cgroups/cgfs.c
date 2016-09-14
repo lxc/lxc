@@ -2434,6 +2434,18 @@ out:
 	return ret;
 }
 
+static int cgfs_num_hierarchies(void)
+{
+	/* not implemented */
+	return -1;
+}
+
+static bool cgfs_get_hierarchies(int i, char ***out)
+{
+	/* not implemented */
+	return false;
+}
+
 static bool cgfs_unfreeze(void *hdata)
 {
 	struct cgfs_data *d = hdata;
@@ -2627,6 +2639,8 @@ static struct cgroup_ops cgfs_ops = {
 	.get_cgroup = cgfs_get_cgroup,
 	.canonical_path = cgfs_canonical_path,
 	.escape = cgfs_escape,
+	.num_hierarchies = cgfs_num_hierarchies,
+	.get_hierarchies = cgfs_get_hierarchies,
 	.get = lxc_cgroupfs_get,
 	.set = lxc_cgroupfs_set,
 	.unfreeze = cgfs_unfreeze,
