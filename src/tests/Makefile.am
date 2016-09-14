@@ -2,6 +2,7 @@ if ENABLE_TESTS
 
 LDADD = ../lxc/liblxc.so
 
+lxc_test_load_config_SOURCES = load_config_test.c
 lxc_test_containertests_SOURCES = containertests.c
 lxc_test_locktests_SOURCES = locktests.c
 lxc_test_startone_SOURCES = startone.c
@@ -48,7 +49,7 @@ endif
 bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-destroytest lxc-test-saveconfig lxc-test-createtest \
 	lxc-test-shutdowntest lxc-test-get_item lxc-test-getkeys lxc-test-lxcpath \
-	lxc-test-cgpath lxc-test-clonetest lxc-test-console \
+	lxc-test-cgpath lxc-test-clonetest lxc-test-console lxc-test-load-config \
 	lxc-test-snapshot lxc-test-concurrent lxc-test-may-control \
 	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove \
 	lxc-test-apparmor lxc-test-utils
@@ -81,6 +82,7 @@ EXTRA_DIST = \
 	device_add_remove.c \
 	get_item.c \
 	getkeys.c \
+	load_config_test.c \
 	list.c \
 	locktests.c \
 	lxcpath.c \
@@ -91,6 +93,7 @@ EXTRA_DIST = \
 	lxc-test-checkpoint-restore \
 	lxc-test-cloneconfig \
 	lxc-test-createconfig \
+	lxc-test-loadconfig \
 	lxc-test-snapdeps \
 	lxc-test-symlink \
 	lxc-test-ubuntu \

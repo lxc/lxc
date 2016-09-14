@@ -383,7 +383,9 @@ static int config_network_nic(const char *key, const char *value,
 		goto out;
 	strcpy(copy+12, p+1);
 	config = lxc_getconfig(copy);
-	if (!config) {
+
+	/* if we only find ourself for network config, it's an unknown value */
+	if (!config || config->cb == config_network_nic) {
 		ERROR("unknown key %s", key);
 		goto out;
 	}
