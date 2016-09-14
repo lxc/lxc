@@ -47,7 +47,6 @@ struct cgroup_ops {
 	bool (*enter)(void *hdata, pid_t pid);
 	bool (*create_legacy)(void *hdata, pid_t pid);
 	const char *(*get_cgroup)(void *hdata, const char *subsystem);
-	const char *(*canonical_path)(void *hdata);
 	bool (*escape)();
 	int (*num_hierarchies)();
 	bool (*get_hierarchies)(int n, char ***out);
@@ -78,11 +77,6 @@ extern const char *cgroup_get_cgroup(struct lxc_handler *handler, const char *su
 extern bool cgroup_escape();
 extern int cgroup_num_hierarchies();
 extern bool cgroup_get_hierarchies(int i, char ***out);
-
-/*
- * Currently, this call  only makes sense for privileged containers.
- */
-extern const char *cgroup_canonical_path(struct lxc_handler *handler);
 extern bool cgroup_unfreeze(struct lxc_handler *handler);
 extern void cgroup_disconnect(void);
 extern cgroup_driver_t cgroup_driver(void);

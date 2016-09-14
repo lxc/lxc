@@ -1087,13 +1087,6 @@ out_free:
 	return false;
 }
 
-static const char *cgfsng_canonical_path(void *hdata)
-{
-	struct cgfsng_handler_data *d = hdata;
-
-	return d->container_cgroup;
-}
-
 static bool cgfsng_enter(void *hdata, pid_t pid)
 {
 	char pidstr[25];
@@ -1686,7 +1679,6 @@ static struct cgroup_ops cgfsng_ops = {
 	.destroy = cgfsng_destroy,
 	.create = cgfsng_create,
 	.enter = cgfsng_enter,
-	.canonical_path = cgfsng_canonical_path,
 	.escape = cgfsng_escape,
 	.num_hierarchies = cgfsng_num_hierarchies,
 	.get_hierarchies = cgfsng_get_hierarchies,
