@@ -746,15 +746,6 @@ static const char *cgm_get_cgroup(void *hdata, const char *subsystem)
 	return d->cgroup_path;
 }
 
-static const char *cgm_canonical_path(void *hdata)
-{
-	struct cgm_data *d = hdata;
-
-	if (!d || !d->cgroup_path)
-		return NULL;
-	return d->cgroup_path;
-}
-
 #if HAVE_CGMANAGER_GET_PID_CGROUP_ABS_SYNC
 static inline bool abs_cgroup_supported(void) {
 	return api_version >= CGM_SUPPORTS_GET_ABS;
@@ -1667,7 +1658,6 @@ static struct cgroup_ops cgmanager_ops = {
 	.enter = cgm_enter,
 	.create_legacy = NULL,
 	.get_cgroup = cgm_get_cgroup,
-	.canonical_path = cgm_canonical_path,
 	.escape = cgm_escape,
 	.num_hierarchies = cgm_num_hierarchies,
 	.get_hierarchies = cgm_get_hierarchies,
