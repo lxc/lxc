@@ -519,6 +519,8 @@ elif [ "$arch" = "x86_64" ]; then
     arch="amd64"
 elif [ "$arch" = "armv7l" ]; then
     arch="armhf"
+elif [ "$arch" = "ppc64le" ]; then
+    arch="ppc64el"
 fi
 hostarch=$arch
 
