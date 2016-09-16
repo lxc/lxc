@@ -1,0 +1,104 @@
+#!/bin/bash
+
+# lxc: linux Container library
+
+# Authors:
+# Christian Brauner <christian.brauner@mailbox.org>
+#
+# This is a test script for PR_SET_NO_NEW_PRIVS
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+set -eux
+
+DONE=0
+cleanup() {
+	cd /
+	lxc-destroy -n c1 -f || true
+	if [ $DONE -eq 0 ]; then
+		echo "FAIL"
+		exit 1
+	fi
+	echo "PASS"
+}
+
+trap cleanup EXIT SIGHUP SIGINT SIGTERM
+
+mkdir -p /etc/lxc/
+cat > /etc/lxc/default.conf << EOF
+lxc.network.type = veth
+lxc.network.link = lxcbr0
+EOF
+
+ARCH=i386
+if type dpkg >/dev/null 2>&1; then
+	ARCH=$(dpkg --print-architecture)
+fi
+
+lxc-create -t download -n c1 -- -d ubuntu -r xenial -a $ARCH
+echo "lxc.no_new_privs = 1" >> /var/lib/lxc/c1/config
+
+lxc-start -n c1
+p1=$(lxc-info -n c1 -p -H)
+[ "$p1" != "-1" ] || { echo "Failed to start container c1 (run $count)"; false; }
+sleep 5s
+lxc-attach -n c1 --clear-env -- apt update -y
+lxc-attach -n c1 --clear-env -- apt install -y gcc make
+
+# Here documents don't seem to like sudo -i.
+lxc-attach -n c1 --clear-env -- /bin/bash -c "cat <<EOF > /nnptest.c
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+int main(int argc, char *argv[])
+{
+      printf(\"%d\n\", geteuid());
+}
+EOF"
+lxc-attach -n c1 --clear-env -- cat /nnptest.c
+lxc-attach -n c1 --clear-env -- make -C / nnptest
+lxc-attach -n c1 --clear-env -- chmod u+s /nnptest
+
+# Check that lxc-attach obeys PR_SET_NO_NEW_PRIVS when it is set.
+NNP_EUID=$(lxc-attach -n c1 --clear-env -- sudo -u ubuntu /nnptest)
+if [ "$NNP_EUID" -ne 1000 ]; then
+	exit 1
+fi
+lxc-stop -n c1 -k
+
+# Check that lxc-attach obeys PR_SET_NO_NEW_PRIVS when it is not set.
+sed -i 's/lxc.no_new_privs = 1/lxc.no_new_privs = 0/' /var/lib/lxc/c1/config
+lxc-start -n c1
+NNP_EUID=$(lxc-attach -n c1 --clear-env -- sudo -u ubuntu /nnptest)
+if [ "$NNP_EUID" -ne 0 ]; then
+	exit 1
+fi
+lxc-stop -n c1 -k
+
+# Check that lxc-execute and lxc-start obey PR_SET_NO_NEW_PRIVS when it is set.
+NNP_EUID=$(lxc-execute -n c1 -- sudo -u ubuntu /nnptest)
+if [ "$NNP_EUID" -ne 0 ]; then
+	exit 1
+fi
+
+# Check that lxc-execute and lxc-start obey PR_SET_NO_NEW_PRIVS when it is not set.
+sed -i 's/lxc.no_new_privs = 0/lxc.no_new_privs = 1/' /var/lib/lxc/c1/config
+NNP_EUID=$(lxc-execute -n c1 -- sudo -u ubuntu /nnptest)
+if [ "$NNP_EUID" -ne 1000 ]; then
+	exit 1
+fi
+
+DONE=1

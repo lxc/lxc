@@ -50,8 +50,16 @@
 #include <sys/capability.h>
 #endif
 
-#if !HAVE_DECL_PR_CAPBSET_DROP
+#ifndef HAVE_DECL_PR_CAPBSET_DROP
 #define PR_CAPBSET_DROP 24
+#endif
+
+#ifndef HAVE_DECL_PR_SET_NO_NEW_PRIVS
+#define PR_SET_NO_NEW_PRIVS 38
+#endif
+
+#ifndef HAVE_DECL_PR_GET_NO_NEW_PRIVS
+#define PR_GET_NO_NEW_PRIVS 39
 #endif
 
 #include "af_unix.h"
@@ -849,6 +857,16 @@ static int do_start(void *data)
 	/* Set the label to change to when we exec(2) the container's init */
 	if (lsm_process_label_set(NULL, handler->conf, 1, 1) < 0)
 		goto out_warn_father;
+
+	/* Set PR_SET_NO_NEW_PRIVS after we changed the lsm label. If we do it
+	 * before we aren't allowed anymore. */
+	if (handler->conf->no_new_privs) {
+		if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) < 0) {
+			SYSERROR("Could not set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges.");
+			goto out_warn_father;
+		}
+		DEBUG("Set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges.");
+	}
 
 	/* Some init's such as busybox will set sane tty settings on stdin,
 	 * stdout, stderr which it thinks is the console. We already set them

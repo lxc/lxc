@@ -1311,6 +1311,34 @@ mknod errno 0
     </refsect2>
 
     <refsect2>
+      <title>PR_SET_NO_NEW_PRIVS</title>
+      <para>
+              With PR_SET_NO_NEW_PRIVS active execve() promises not to grant
+              privileges to do anything that could not have been done without
+              the execve() call (for example, rendering the set-user-ID and
+              set-group-ID mode bits, and file capabilities non-functional).
+              Once set, this bit cannot be unset. The setting of this bit is
+              inherited by children created by fork() and clone(), and preserved
+              across execve().
+              Note that PR_SET_NO_NEW_PRIVS is applied after the container has
+              changed into its intended AppArmor profile or SElinux context.
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.no_new_privs</option>
+          </term>
+          <listitem>
+            <para>
+              Specify whether the PR_SET_NO_NEW_PRIVS flag should be set for the
+              container. Set to 1 to activate.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>UID mappings</title>
       <para>
         A container can be started in a private user namespace with

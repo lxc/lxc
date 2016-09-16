@@ -382,6 +382,9 @@ struct lxc_conf {
 	/* The facility to pass to syslog. Let's users establish as what type of
 	 * program liblxc is supposed to write to the syslog. */
 	char *syslog;
+
+	/* Whether PR_SET_NO_NEW_PRIVS will be set for the container. */
+	bool no_new_privs;
 };
 
 #ifdef HAVE_TLS

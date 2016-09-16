@@ -114,6 +114,7 @@ static int config_init_cmd(const char *, const char *, struct lxc_conf *);
 static int config_init_uid(const char *, const char *, struct lxc_conf *);
 static int config_init_gid(const char *, const char *, struct lxc_conf *);
 static int config_ephemeral(const char *, const char *, struct lxc_conf *);
+static int config_no_new_privs(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 
@@ -187,6 +188,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.init_gid",             config_init_gid             },
 	{ "lxc.ephemeral",            config_ephemeral            },
 	{ "lxc.syslog",               config_syslog               },
+	{ "lxc.no_new_privs",	      config_no_new_privs	  },
 };
 
 struct signame {
@@ -2562,6 +2564,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_conf_int(c, retv, inlen, c->ephemeral);
 	else if (strcmp(key, "lxc.syslog") == 0)
 		v = c->syslog;
+	else if (strcmp(key, "lxc.no_new_privs") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->no_new_privs);
 	else return -1;
 
 	if (!v)
@@ -2953,4 +2957,18 @@ static int config_syslog(const char *key, const char *value,
 
 	lxc_log_syslog(facility);
 	return config_string_item(&lxc_conf->syslog, value);
+}
+
+static int config_no_new_privs(const char *key, const char *value,
+				    struct lxc_conf *lxc_conf)
+{
+	int v = atoi(value);
+
+	if (v != 0 && v != 1) {
+		ERROR("Wrong value for lxc.no_new_privs. Can only be set to 0 or 1");
+		return -1;
+	}
+	lxc_conf->no_new_privs = v ? true : false;
+
+	return 0;
 }
