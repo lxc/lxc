@@ -654,6 +654,8 @@ elif [ "$arch" = "x86_64" ]; then
     arch="amd64"
 elif [ "$arch" = "armv7l" ]; then
     arch="armhf"
+elif [ "$arch" = "ppc64le" ]; then
+    arch="ppc64el"
 elif [ "$arch" = "mips" -a "$littleendian" = "yes" ]; then
     arch="mipsel"
 elif [ "$arch" = "mips64" -a "$littleendian" = "yes" ]; then
