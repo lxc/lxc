@@ -191,7 +191,8 @@ static void exec_criu(struct criu_opts *opts)
 		return;
 	}
 
-	static_args += 2 * cgroup_num_hierarchies();
+	if (cgroup_num_hierarchies() > 0)
+		static_args += 2 * cgroup_num_hierarchies();
 
 	if (opts->user->verbose)
 		static_args++;
