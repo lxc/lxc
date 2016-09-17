@@ -337,6 +337,18 @@ static bool cgm_escape(void *hdata)
 	return ret;
 }
 
+static int cgm_num_hierarchies(void)
+{
+	/* not implemented */
+	return -1;
+}
+
+static bool cgm_get_hierarchies(int i, char ***out)
+{
+	/* not implemented */
+	return false;
+}
+
 struct chown_data {
 	const char *cgroup_path;
 	uid_t origuid;
@@ -726,15 +738,6 @@ out:
 }
 
 static const char *cgm_get_cgroup(void *hdata, const char *subsystem)
-{
-	struct cgm_data *d = hdata;
-
-	if (!d || !d->cgroup_path)
-		return NULL;
-	return d->cgroup_path;
-}
-
-static const char *cgm_canonical_path(void *hdata)
 {
 	struct cgm_data *d = hdata;
 
@@ -1655,8 +1658,9 @@ static struct cgroup_ops cgmanager_ops = {
 	.enter = cgm_enter,
 	.create_legacy = NULL,
 	.get_cgroup = cgm_get_cgroup,
-	.canonical_path = cgm_canonical_path,
 	.escape = cgm_escape,
+	.num_hierarchies = cgm_num_hierarchies,
+	.get_hierarchies = cgm_get_hierarchies,
 	.get = cgm_get,
 	.set = cgm_set,
 	.unfreeze = cgm_unfreeze,

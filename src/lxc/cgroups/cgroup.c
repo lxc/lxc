@@ -119,17 +119,20 @@ bool cgroup_escape(struct lxc_handler *handler)
 	return false;
 }
 
-const char *cgroup_canonical_path(struct lxc_handler *handler)
+int cgroup_num_hierarchies(void)
 {
-	if (geteuid()) {
-		WARN("cgroup_canonical_path only makes sense for privileged containers.\n");
-		return NULL;
-	}
+	if (!ops)
+		return -1;
 
-	if (ops)
-		return ops->canonical_path(handler->cgroup_data);
+	return ops->num_hierarchies();
+}
 
-	return NULL;
+bool cgroup_get_hierarchies(int n, char ***out)
+{
+	if (!ops)
+		return false;
+
+	return ops->get_hierarchies(n, out);
 }
 
 bool cgroup_unfreeze(struct lxc_handler *handler)

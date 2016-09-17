@@ -2363,28 +2363,6 @@ static const char *cgfs_get_cgroup(void *hdata, const char *subsystem)
 	return lxc_cgroup_get_hierarchy_path_data(subsystem, d);
 }
 
-static const char *cgfs_canonical_path(void *hdata)
-{
-	struct cgfs_data *d = hdata;
-	struct cgroup_process_info *info_ptr;
-	char *path = NULL;
-
-	if (!d)
-		return NULL;
-
-	for (info_ptr = d->info; info_ptr; info_ptr = info_ptr->next) {
-		if (!path)
-			path = info_ptr->cgroup_path;
-		else if (strcmp(path, info_ptr->cgroup_path) != 0) {
-			ERROR("not all paths match %s, %s has path %s", path,
-				info_ptr->hierarchy->subsystems[0], info_ptr->cgroup_path);
-			return NULL;
-		}
-	}
-
-	return path;
-}
-
 static bool cgfs_escape(void *hdata)
 {
 	struct cgroup_meta_data *md;
@@ -2432,6 +2410,18 @@ static bool cgfs_escape(void *hdata)
 out:
 	lxc_cgroup_put_meta(md);
 	return ret;
+}
+
+static int cgfs_num_hierarchies(void)
+{
+	/* not implemented */
+	return -1;
+}
+
+static bool cgfs_get_hierarchies(int i, char ***out)
+{
+	/* not implemented */
+	return false;
 }
 
 static bool cgfs_unfreeze(void *hdata)
@@ -2625,8 +2615,9 @@ static struct cgroup_ops cgfs_ops = {
 	.enter = cgfs_enter,
 	.create_legacy = cgfs_create_legacy,
 	.get_cgroup = cgfs_get_cgroup,
-	.canonical_path = cgfs_canonical_path,
 	.escape = cgfs_escape,
+	.num_hierarchies = cgfs_num_hierarchies,
+	.get_hierarchies = cgfs_get_hierarchies,
 	.get = lxc_cgroupfs_get,
 	.set = lxc_cgroupfs_set,
 	.unfreeze = cgfs_unfreeze,

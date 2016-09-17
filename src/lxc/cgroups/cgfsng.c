@@ -1087,13 +1087,6 @@ out_free:
 	return false;
 }
 
-static const char *cgfsng_canonical_path(void *hdata)
-{
-	struct cgfsng_handler_data *d = hdata;
-
-	return d->container_cgroup;
-}
-
 static bool cgfsng_enter(void *hdata, pid_t pid)
 {
 	char pidstr[25];
@@ -1426,18 +1419,10 @@ static int cgfsng_nrtasks(void *hdata) {
 /* Only root needs to escape to the cgroup of its init */
 static bool cgfsng_escape()
 {
-	struct cgfsng_handler_data *d;
 	int i;
-	bool ret = false;
 
 	if (geteuid())
 		return true;
-
-	d = cgfsng_init("criu-temp-cgfsng");
-	if (!d) {
-		ERROR("cgfsng_init failed");
-		return false;
-	}
 
 	for (i = 0; hierarchies[i]; i++) {
 		char *fullpath = must_make_path(hierarchies[i]->mountpoint,
@@ -1446,15 +1431,37 @@ static bool cgfsng_escape()
 		if (lxc_write_to_file(fullpath, "0", 2, false) != 0) {
 			SYSERROR("Failed to escape to %s", fullpath);
 			free(fullpath);
-			goto out;
+			return false;
 		}
 		free(fullpath);
 	}
 
-	ret = true;
-out:
-	free_handler_data(d);
-	return ret;
+	return true;
+}
+
+static int cgfsng_num_hierarchies(void)
+{
+	int i;
+
+	for (i = 0; hierarchies[i]; i++)
+		;
+
+	return i;
+}
+
+static bool cgfsng_get_hierarchies(int n, char ***out)
+{
+	int i;
+
+	/* sanity check n */
+	for (i = 0; i < n; i++) {
+		if (!hierarchies[i])
+			return false;
+	}
+
+	*out = hierarchies[i]->controllers;
+
+	return true;
 }
 
 #define THAWED "THAWED"
@@ -1672,8 +1679,9 @@ static struct cgroup_ops cgfsng_ops = {
 	.destroy = cgfsng_destroy,
 	.create = cgfsng_create,
 	.enter = cgfsng_enter,
-	.canonical_path = cgfsng_canonical_path,
 	.escape = cgfsng_escape,
+	.num_hierarchies = cgfsng_num_hierarchies,
+	.get_hierarchies = cgfsng_get_hierarchies,
 	.get_cgroup = cgfsng_get_cgroup,
 	.get = cgfsng_get,
 	.set = cgfsng_set,
