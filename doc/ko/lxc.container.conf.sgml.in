@@ -1801,6 +1801,42 @@ mknod errno 0
     </refsect2>
 
     <refsect2>
+      <title>PR_SET_NO_NEW_PRIVS</title>
+      <para>
+        <!--
+              With PR_SET_NO_NEW_PRIVS active execve() promises not to grant
+              privileges to do anything that could not have been done without
+              the execve() call (for example, rendering the set-user-ID and
+              set-group-ID mode bits, and file capabilities non-functional).
+              Once set, this bit cannot be unset. The setting of this bit is
+              inherited by children created by fork() and clone(), and preserved
+              across execve().
+              Note that PR_SET_NO_NEW_PRIVS is applied after the container has
+              changed into its intended AppArmor profile or SElinux context.
+          -->
+        PR_SET_NO_NEW_PRIVS가 적용되면, execve()는, execve()를 호출되기 전에는 실행하지 못했던 것을 수행하기 위해 권한을 부여하는 류의 동작을 하지 않게 된다. (예를 들어, set-user-ID와 set-group-ID 모드, 파일 캐퍼빌리티가 동작하지 않는 것이다.)
+        일단 적용되면 이 비트는 해제할 수 없다. 이 비트는 fork()와 clone()으로 생성된 자식에게도 상속되며, execve() 이후에도 그대로 적용된다.
+        PR_SET_NO_NEW_PRIVS는 컨테이너의 AppArmor 프로필 또는 SELinux 문맥이 변경된 이후에 적용된다.
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.no_new_privs</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              Specify whether the PR_SET_NO_NEW_PRIVS flag should be set for the
+              container. Set to 1 to activate.
+		  -->
+	      PR_SET_NO_NEW_PRIVS가 컨테이너에 적용되어야 하는지 여부를 지정한다. 1을 지정하면 적용된다.
+           </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title><!-- UID mappings -->UID 매핑</title>
       <para>
         <!--
