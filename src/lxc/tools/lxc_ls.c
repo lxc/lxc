@@ -144,7 +144,7 @@ static void ls_print_fancy_format(struct ls *l, struct lengths *lht,
  * Only print names of containers.
  */
 static void ls_print_names(struct ls *l, struct lengths *lht,
-		size_t ls_arr, size_t termwidth);
+		size_t ls_arr, size_t termwidth, bool list);
 
 /*
  * Print default fancy format.
@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
 		unsigned int cols = 0;
 		if (!my_args.ls_line)
 			cols = ls_get_term_width();
-		ls_print_names(ls_arr, &max_len, ls_size, cols);
+		ls_print_names(ls_arr, &max_len, ls_size, cols, my_args.ls_line);
 	}
 
 	ret = EXIT_SUCCESS;
@@ -743,7 +743,7 @@ static struct ls *ls_new(struct ls **ls, size_t *size)
 }
 
 static void ls_print_names(struct ls *l, struct lengths *lht,
-		size_t size, size_t termwidth)
+		size_t size, size_t termwidth, bool list)
 {
 	/* If list is empty do nothing. */
 	if (size == 0)
@@ -752,14 +752,18 @@ static void ls_print_names(struct ls *l, struct lengths *lht,
 	size_t i, len = 0;
 	struct ls *m = NULL;
 	for (i = 0, m = l; i < size; i++, m++) {
-		printf("%-*s", lht->name_length, m->name ? m->name : "-");
-		len += lht->name_length;
-		if ((len + lht->name_length) >= termwidth) {
-			printf("\n");
-			len = 0;
+		if (list) {
+			printf("%s\n", m->name ? m->name : "-");
 		} else {
-			printf(" ");
-			len++;
+			printf("%-*s", lht->name_length, m->name ? m->name : "-");
+			len += lht->name_length;
+			if ((len + lht->name_length) >= termwidth) {
+				printf("\n");
+				len = 0;
+			} else {
+				printf(" ");
+				len++;
+			}
 		}
 	}
 	if (len > 0)
