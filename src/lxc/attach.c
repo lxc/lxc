@@ -665,16 +665,16 @@ static int attach_child_main(void* data);
 /* define default options if no options are supplied by the user */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
-static bool fetch_seccomp(struct lxc_proc_context_info *i,
+static bool fetch_seccomp(struct lxc_container *c,
 			  lxc_attach_options_t *options)
 {
-	struct lxc_container *c;
 	char *path;
 
-	if (!(options->namespaces & CLONE_NEWNS) || !(options->attach_flags & LXC_ATTACH_LSM))
+	if (!(options->namespaces & CLONE_NEWNS) || !(options->attach_flags & LXC_ATTACH_LSM)) {
+		free(c->lxc_conf->seccomp);
+		c->lxc_conf->seccomp = NULL;
 		return true;
-
-	c = i->container;
+	}
 
 	/* Remove current setting. */
 	if (!c->set_config_item(c, "lxc.seccomp", "")) {
@@ -684,6 +684,7 @@ static bool fetch_seccomp(struct lxc_proc_context_info *i,
 	/* Fetch the current profile path over the cmd interface */
 	path = c->get_running_config_item(c, "lxc.seccomp");
 	if (!path) {
+		INFO("Failed to get running config item for lxc.seccomp.");
 		return true;
 	}
 
@@ -704,13 +705,10 @@ static bool fetch_seccomp(struct lxc_proc_context_info *i,
 	return true;
 }
 
-static bool no_new_privs(struct lxc_proc_context_info *ctx,
+static bool no_new_privs(struct lxc_container *c,
 			 lxc_attach_options_t *options)
 {
-	struct lxc_container *c;
 	char *val;
-
-	c = ctx->container;
 
 	/* Remove current setting. */
 	if (!c->set_config_item(c, "lxc.no_new_privs", "")) {
@@ -784,10 +782,10 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	if (!init_ctx->container)
 		return -1;
 
-	if (!fetch_seccomp(init_ctx, options))
+	if (!fetch_seccomp(init_ctx->container, options))
 		WARN("Failed to get seccomp policy");
 
-	if (!no_new_privs(init_ctx, options))
+	if (!no_new_privs(init_ctx->container, options))
 		WARN("Could not determine whether PR_SET_NO_NEW_PRIVS is set.");
 
 	cwd = getcwd(NULL, 0);
@@ -1211,9 +1209,9 @@ static int attach_child_main(void* data)
 			rexit(-1);
 		}
 	}
-
 	if (init_ctx->container && init_ctx->container->lxc_conf &&
-			lxc_seccomp_load(init_ctx->container->lxc_conf) != 0) {
+	    init_ctx->container->lxc_conf->seccomp &&
+	    (lxc_seccomp_load(init_ctx->container->lxc_conf) != 0)) {
 		ERROR("Loading seccomp policy");
 		rexit(-1);
 	}
