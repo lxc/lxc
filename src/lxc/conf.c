@@ -2577,10 +2577,13 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		INFO("Retrieved mtu %d", mtu);
 	} else if (netdev->link) {
 		bridge_index = if_nametoindex(netdev->link);
-		if (!bridge_index)
-			INFO("Could not retrieve mtu from %s", netdev->link);
-		mtu = netdev_get_mtu(bridge_index);
-		INFO("Retrieved mtu %d from %s", mtu, netdev->link);
+		if (bridge_index) {
+			mtu = netdev_get_mtu(bridge_index);
+			INFO("Retrieved mtu %d from %s", mtu, netdev->link);
+		} else {
+			mtu = netdev_get_mtu(netdev->ifindex);
+			INFO("Retrieved mtu %d from %s", mtu, veth2);
+		}
 	}
 
 	if (mtu) {
