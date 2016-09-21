@@ -2521,7 +2521,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 {
 	char veth1buf[IFNAMSIZ], *veth1;
 	char veth2buf[IFNAMSIZ], *veth2;
-	int err, mtu = 0;
+	int bridge_index, err, mtu = 0;
 
 	if (netdev->priv.veth_attr.pair) {
 		veth1 = netdev->priv.veth_attr.pair;
@@ -2574,8 +2574,16 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 
 	if (netdev->mtu) {
 		mtu = atoi(netdev->mtu);
+		INFO("Retrieved mtu %d", mtu);
 	} else if (netdev->link) {
-		mtu = netdev_get_mtu(netdev->ifindex);
+		bridge_index = if_nametoindex(netdev->link);
+		if (bridge_index) {
+			mtu = netdev_get_mtu(bridge_index);
+			INFO("Retrieved mtu %d from %s", mtu, netdev->link);
+		} else {
+			mtu = netdev_get_mtu(netdev->ifindex);
+			INFO("Retrieved mtu %d from %s", mtu, veth2);
+		}
 	}
 
 	if (mtu) {
