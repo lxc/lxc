@@ -662,8 +662,21 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 {
 	pid_t pid;
 	struct lxc_handler *handler;
-	int status;
+	int status, fd;
 	int pipes[2] = {-1, -1};
+
+	/* Try to detach from the current controlling tty if it exists.
+	 * Othwerise, lxc_init (via lxc_console) will attach the container's
+	 * console output to the current tty, which is probably not what any
+	 * library user wants, and if they do, they can just manually configure
+	 * it :)
+	 */
+	fd = open("/dev/tty", O_RDWR);
+	if (fd >= 0) {
+		if (ioctl(fd, TIOCNOTTY, NULL) < 0)
+			SYSERROR("couldn't detach from tty");
+		close(fd);
+	}
 
 	handler = lxc_init(c->name, c->lxc_conf, c->config_path);
 	if (!handler)
