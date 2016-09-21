@@ -748,7 +748,7 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 #endif
 	    );
 	if (ret < 0) {
-		ERROR("Error loading the seccomp policy.");
+		ERROR("Error loading the seccomp policy: %s.", strerror(-ret));
 		return -1;
 	}
 	return 0;
