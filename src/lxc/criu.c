@@ -282,7 +282,7 @@ static void exec_criu(struct criu_opts *opts)
 			}
 		}
 
-		if (!lxc_deslashify(path)) {
+		if (!lxc_deslashify(&path)) {
 			ERROR("failed to deslashify %s", path);
 			free(path);
 			goto err;
