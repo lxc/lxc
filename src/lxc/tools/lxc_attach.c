@@ -321,7 +321,7 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 err3:
 	lxc_mainloop_close(&descr);
 err2:
-	if (ts->sigfd != -1)
+	if (ts && ts->sigfd != -1)
 		lxc_console_sigwinch_fini(ts);
 err1:
 	lxc_console_delete(&conf->console);
