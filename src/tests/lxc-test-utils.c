@@ -21,12 +21,44 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "lxctest.h"
 #include "utils.h"
+
+void test_lxc_deslashify(void)
+{
+	char *s = strdup("/A///B//C/D/E/");
+	if (!s)
+		exit(EXIT_FAILURE);
+	lxc_test_assert_abort(lxc_deslashify(&s));
+	lxc_test_assert_abort(strcmp(s, "/A/B/C/D/E") == 0);
+	free(s);
+
+	s = strdup("/A");
+	if (!s)
+		exit(EXIT_FAILURE);
+	lxc_test_assert_abort(lxc_deslashify(&s));
+	lxc_test_assert_abort(strcmp(s, "/A") == 0);
+	free(s);
+
+	s = strdup("");
+	if (!s)
+		exit(EXIT_FAILURE);
+	lxc_test_assert_abort(lxc_deslashify(&s));
+	lxc_test_assert_abort(strcmp(s, "") == 0);
+	free(s);
+
+	s = strdup("//");
+	if (!s)
+		exit(EXIT_FAILURE);
+	lxc_test_assert_abort(lxc_deslashify(&s));
+	lxc_test_assert_abort(strcmp(s, "/") == 0);
+	free(s);
+}
 
 void test_lxc_string_replace(void)
 {
@@ -84,6 +116,7 @@ int main(int argc, char *argv[])
 {
 	test_lxc_string_replace();
 	test_lxc_string_in_array();
+	test_lxc_deslashify();
 
 	exit(EXIT_SUCCESS);
 }
