@@ -178,7 +178,7 @@ download_altlinux()
     APT_GET="apt-get -o RPM::RootDir=$INSTALL_ROOT -y"
     PKG_LIST="$(grep -hs '^[^#]' "$profile_dir/$profile")"
     # if no configuration file $profile -- fall back to default list of packages
-    [ -z "$PKG_LIST" ] && PKG_LIST="interactivesystem apt apt-conf-sisyphus etcnet-full openssh-server systemd-sysvinit systemd-units systemd NetworkManager-daemon"
+    [ -z "$PKG_LIST" ] && PKG_LIST="interactivesystem apt apt-conf etcnet-full openssh-server systemd-sysvinit systemd-units systemd NetworkManager-daemon"
 
     mkdir -p $INSTALL_ROOT/var/lib/rpm
     rpm --root $INSTALL_ROOT  --initdb
