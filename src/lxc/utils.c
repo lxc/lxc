@@ -738,8 +738,9 @@ bool lxc_deslashify(char **path)
 				return false;
 			free(*path);
 			*path = p;
-			return true;
 		}
+		/* Assume that the path we were passed was already clean. */
+		return true;
 	}
 
 	p = lxc_string_join("/", (const char **)parts, **path == '/');
