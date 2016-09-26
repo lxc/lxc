@@ -716,21 +716,40 @@ char **lxc_normalize_path(const char *path)
 	return components;
 }
 
-bool lxc_deslashify(char *path)
+bool lxc_deslashify(char **path)
 {
-	char **parts = NULL, *path2;
+	char *p;
+	char **parts = NULL;
+	size_t n, len;
 
-	parts = lxc_normalize_path(path);
+	parts = lxc_normalize_path(*path);
 	if (!parts)
 		return false;
 
-	path2 = lxc_string_join("/", (const char **) parts, *path == '/');
-	lxc_free_array((void **) parts, free);
-	if (!path2)
+	/* We'll end up here if path == "///" or path == "". */
+	if (!*parts) {
+		len = strlen(*path);
+		if (!len)
+			return true;
+		n = strcspn(*path, "/");
+		if (n == len) {
+			p = strdup("/");
+			if (!p)
+				return false;
+			free(*path);
+			*path = p;
+			return true;
+		}
+	}
+
+	p = lxc_string_join("/", (const char **)parts, **path == '/');
+	lxc_free_array((void **)parts, free);
+	if (!p)
 		return false;
 
-	strncpy(path, path2, strlen(path));
-	free(path2);
+	free(*path);
+	*path = p;
+
 	return true;
 }
 
