@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# template script for generating centos container for LXC
+# template script for generating CentOS container for LXC
 
 #
 # lxc: linux Container library
@@ -71,7 +71,7 @@ default_path=@LXCPATH@
 lxc_network_type=veth
 lxc_network_link=lxcbr0
 
-# is this centos?
+# is this CentOS?
 # Alow for weird remixes like the Raspberry Pi
 #
 # Use the Mitre standard CPE identifier for the release ID if possible...
@@ -161,7 +161,7 @@ force_mknod()
 configure_centos()
 {
 
-    # disable selinux in centos
+    # disable selinux in CentOS
     mkdir -p $rootfs_path/selinux
     echo 0 > $rootfs_path/selinux/enforce
 
@@ -404,7 +404,7 @@ EOF
 download_centos()
 {
 
-    # check the mini centos was not already downloaded
+    # check the mini CentOS was not already downloaded
     INSTALL_ROOT=$cache/partial
     mkdir -p $INSTALL_ROOT
     if [ $? -ne 0 ]; then
@@ -412,8 +412,8 @@ download_centos()
     return 1
     fi
 
-    # download a mini centos into a cache
-    echo "Downloading centos minimal ..."
+    # download a mini CentOS into a cache
+    echo "Downloading CentOS minimal ..."
     YUM0="yum --installroot $INSTALL_ROOT -y --nogpgcheck"
 
     if yum -h | grep -q 'releasever=RELEASEVER'; then
@@ -508,7 +508,7 @@ EOF
 copy_centos()
 {
 
-    # make a local copy of the mini centos
+    # make a local copy of the mini CentOS
     echo -n "Copying rootfs to $rootfs_path ..."
     #cp -a $cache/rootfs-$arch $rootfs_path || return 1
     # i prefer rsync (no reason really)
@@ -542,14 +542,14 @@ install_centos()
     if [ ! -e "$cache/rootfs" ]; then
         download_centos
         if [ $? -ne 0 ]; then
-            echo "Failed to download 'centos base'"
+            echo "Failed to download 'CentOS base'"
             return 1
         fi
     else
         echo "Cache found. Updating..."
         update_centos
         if [ $? -ne 0 ]; then
-            echo "Failed to update 'centos base', continuing with last known good cache"
+            echo "Failed to update 'CentOS base', continuing with last known good cache"
         else
             echo "Update finished"
         fi
@@ -663,7 +663,7 @@ clean()
             exit 1
         fi
 
-        echo -n "Purging the download cache for centos-$release..."
+        echo -n "Purging the download cache for CentOS-$release..."
         rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
         exit 0
 
@@ -682,7 +682,7 @@ Mandatory args:
 Optional args:
   -p,--path         path to where the container rootfs will be created, defaults to /var/lib/lxc/name.
   -c,--clean        clean the cache
-  -R,--release      Centos release for the new container. if the host is Centos, then it will defaultto the host's release.
+  -R,--release      CentOS release for the new container. If the host is CentOS, then it will default to the host's release.
      --fqdn         fully qualified domain name (FQDN) for DNS and system naming
      --repo         repository to use (url)
   -a,--arch         Define what arch the container will be [i686,x86_64]
@@ -870,13 +870,13 @@ fi
 
 install_centos
 if [ $? -ne 0 ]; then
-    echo "failed to install centos"
+    echo "failed to install CentOS"
     exit 1
 fi
 
 configure_centos
 if [ $? -ne 0 ]; then
-    echo "failed to configure centos for a container"
+    echo "failed to configure CentOS for a container"
     exit 1
 fi
 
