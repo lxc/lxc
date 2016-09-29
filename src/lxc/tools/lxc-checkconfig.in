@@ -72,23 +72,6 @@ if gunzip -tq < $CONFIG 2>/dev/null; then
     CAT="zcat"
 fi
 
-echo "--- Namespaces ---"
-echo -n "Namespaces: " && is_enabled CONFIG_NAMESPACES yes
-echo -n "Utsname namespace: " && is_enabled CONFIG_UTS_NS
-echo -n "Ipc namespace: " && is_enabled CONFIG_IPC_NS yes
-echo -n "Pid namespace: " && is_enabled CONFIG_PID_NS yes
-echo -n "User namespace: " && is_enabled CONFIG_USER_NS
-echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
-echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
-echo
-echo "--- Control groups ---"
-
-print_cgroups() {
-  # print all mountpoints for cgroup filesystems
-  awk '$1 !~ /#/ && $3 == mp { print $2; } ; END { exit(0); } '  "mp=$1" "$2" ;
-}
-
-CGROUP_MNT_PATH=`print_cgroups cgroup /proc/self/mounts | head -n 1`
 KVER_MAJOR=$($CAT $CONFIG | grep '^# Linux.*Kernel Configuration' | \
     sed -r 's/.* ([0-9])\.[0-9]{1,2}\.[0-9]{1,3}.*/\1/')
 if [ "$KVER_MAJOR" = "2" ]; then
@@ -98,6 +81,26 @@ else
 KVER_MINOR=$($CAT $CONFIG | grep '^# Linux.*Kernel Configuration' | \
     sed -r 's/.* [0-9]\.([0-9]{1,3})\.[0-9]{1,3}.*/\1/')
 fi
+
+echo "--- Namespaces ---"
+echo -n "Namespaces: " && is_enabled CONFIG_NAMESPACES yes
+echo -n "Utsname namespace: " && is_enabled CONFIG_UTS_NS
+echo -n "Ipc namespace: " && is_enabled CONFIG_IPC_NS yes
+echo -n "Pid namespace: " && is_enabled CONFIG_PID_NS yes
+echo -n "User namespace: " && is_enabled CONFIG_USER_NS
+echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
+if ([ $KVER_MAJOR -lt 4 ]) || ([ $KVER_MAJOR -eq 4 ] && [ $KVER_MINOR -lt 7 ]); then
+	echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
+fi
+echo
+echo "--- Control groups ---"
+
+print_cgroups() {
+  # print all mountpoints for cgroup filesystems
+  awk '$1 !~ /#/ && $3 == mp { print $2; } ; END { exit(0); } '  "mp=$1" "$2" ;
+}
+
+CGROUP_MNT_PATH=`print_cgroups cgroup /proc/self/mounts | head -n 1`
 
 echo -n "Cgroup: " && is_enabled CONFIG_CGROUPS yes
 
