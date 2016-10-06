@@ -105,3 +105,6 @@ EXTRA_DIST = \
 	shutdowntest.c \
 	snapshot.c \
 	startone.c
+
+clean-local:
+	rm -f lxc-test-utils-*
