@@ -2,6 +2,7 @@
 Description=LXC Container Initialization and Autoboot Code
 After=network.target lxc-net.service
 Wants=lxc-net.service
+Documentation=man:lxc-autostart man:lxc
 
 [Service]
 Type=oneshot

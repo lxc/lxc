@@ -3,6 +3,7 @@ Description=LXC Container: %i
 # This pulls in apparmor, dev-setup, lxc-net
 After=lxc.service
 Wants=lxc.service
+Documentation=man:lxc-start man:lxc
 
 [Service]
 Type=simple
