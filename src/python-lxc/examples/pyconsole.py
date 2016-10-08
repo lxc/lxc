@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 #
 # pyconsole: Example program showing use of console functions
 #            in the lxc python binding
