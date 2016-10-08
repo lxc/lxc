@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 #
 # api_test.py: Test/demo of the python3-lxc API
 #
