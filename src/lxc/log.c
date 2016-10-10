@@ -101,10 +101,13 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 		     event->locinfo->file, event->locinfo->func,
 		     event->locinfo->line);
 
-	n += vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt,
-		       *event->vap);
+	if (n < 0)
+		return n;
 
-	if (n >= sizeof(buffer) - 1) {
+	if (n < sizeof(buffer) - 1)
+		n += vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt,
+			       *event->vap);
+	else {
 		WARN("truncated next event from %d to %zd bytes", n,
 		     sizeof(buffer));
 		n = sizeof(buffer) - 1;
