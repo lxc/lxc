@@ -460,6 +460,7 @@ static void exec_criu(struct criu_opts *opts)
 
 			DECLARE_ARG("--external");
 			DECLARE_ARG(buf);
+			netnr++;
 		}
 
 	}
