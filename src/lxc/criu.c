@@ -452,13 +452,13 @@ static void exec_criu(struct criu_opts *opts)
 			veth = n->priv.veth_attr.pair;
 
 			if (n->link)
-				ret = snprintf(buf, sizeof(buf), "%s=%s@%s", eth, veth, n->link);
+				ret = snprintf(buf, sizeof(buf), "veth[%s]:%s@%s", eth, veth, n->link);
 			else
-				ret = snprintf(buf, sizeof(buf), "%s=%s", eth, veth);
+				ret = snprintf(buf, sizeof(buf), "veth[%s]:%s", eth, veth);
 			if (ret < 0 || ret >= sizeof(buf))
 				goto err;
 
-			DECLARE_ARG("--veth-pair");
+			DECLARE_ARG("--external");
 			DECLARE_ARG(buf);
 		}
 
