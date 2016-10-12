@@ -19,5 +19,8 @@ lxc.cap.drop = sys_tty_config
 lxc.cap.drop = syslog
 lxc.cap.drop = wake_alarm
 
-# Mount tmpfs under /run.
+# Mount /run as tmpfs.
 lxc.mount.entry=run run tmpfs rw,nodev,relatime,mode=755 0 0
+
+# Mount /dev/shm as tmpfs; needed for building python and possibly other packages.
+lxc.mount.entry=shm dev/shm tmpfs rw,nodev,noexec,nosuid,relatime,mode=1777,create=dir 0 0
