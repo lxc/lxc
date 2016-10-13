@@ -91,6 +91,15 @@ configure_arch() {
        [ "${r#nameserver}" = "$r" ] || echo "$r"
     done < /etc/resolv.conf > "${rootfs_path}/etc/resolv.conf"
 
+    # network configuration
+    cat > "${rootfs_path}/etc/systemd/network/eth0.network" << EOF
+[Match]
+Name=eth0
+
+[Network]
+DHCP=ipv4
+EOF
+
     # chroot and configure system
     arch-chroot "${rootfs_path}" /bin/bash -s << EOF
 mkdir /run/lock
@@ -110,6 +119,9 @@ sed -e 's/^ConditionPathIsReadWrite=\/proc\/sys\/$/ConditionPathIsReadWrite=\/pr
 # initialize pacman keyring
 pacman-key --init
 pacman-key --populate archlinux
+
+# enable networkd
+systemctl enable systemd-networkd
 EOF
     # enable getty on active ttys
     local nttys=$(cat "${config_path}/config" ${shared_config} ${common_config} | grep "^lxc.tty" | head -n1 | cut -d= -f2 | tr -d "[:blank:]")
