@@ -121,8 +121,6 @@ extern int lxc_arguments_parse(struct lxc_arguments *args,
 
 extern int lxc_arguments_str_to_int(struct lxc_arguments *args, const char *str);
 
-extern const char *lxc_strerror(int errnum);
-
 #define lxc_error(arg, fmt, args...) if (!(arg)->quiet)			\
 	fprintf(stderr, "%s: " fmt "\n", (arg)->progname,  ## args)
 

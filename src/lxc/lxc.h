@@ -115,14 +115,6 @@ extern int lxc_cgroup_set(const char *filename, const char *value, const char *n
 extern int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath);
 
 /*
- * Retrieve the error string associated with the error returned by
- * the function.
- * @error : the value of the error
- * Returns a string on success or NULL otherwise.
- */
-extern const char *lxc_strerror(int error);
-
-/*
  * Create and return a new lxccontainer struct.
  */
 extern struct lxc_container *lxc_container_new(const char *name, const char *configpath);
