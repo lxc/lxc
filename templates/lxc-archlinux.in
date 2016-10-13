@@ -122,6 +122,8 @@ pacman-key --populate archlinux
 
 # enable networkd
 systemctl enable systemd-networkd
+systemctl enable systemd-resolved
+ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
 EOF
     # enable getty on active ttys
     local nttys=$(cat "${config_path}/config" ${shared_config} ${common_config} | grep "^lxc.tty" | head -n1 | cut -d= -f2 | tr -d "[:blank:]")
