@@ -132,6 +132,8 @@ pacman-key --populate archlinux
 
 # enable networkd
 systemctl enable systemd-networkd
+systemctl enable systemd-resolved
+ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
 EOF
     return 0
 }
