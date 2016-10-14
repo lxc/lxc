@@ -154,7 +154,9 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'L':
 		args->console_log = arg;
 		break;
-	case 'f': args->rcfile = arg; break;
+	case 'f':
+		args->rcfile = arg;
+		break;
 	}
 
 	return 0;
