@@ -620,6 +620,8 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 			return -1;
 		break;
 	case 'B':
+		if (strcmp(arg, "overlay") == 0)
+			arg = "overlayfs";
 		args->bdevtype = arg;
 		break;
 	case 't':
