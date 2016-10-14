@@ -30,6 +30,7 @@ fi
 which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; exit 1; }
 
 DONE=0
+KNOWN_RELEASES="precise trusty wily xenial yakkety"
 cleanup() {
 	cd /
 
@@ -119,13 +120,24 @@ else
 	done
 fi
 
+# default release is trusty, or the systems release if recognized
+release=trusty
+if [ -f /etc/lsb-release ]; then
+    . /etc/lsb-release
+    rels=$(ubuntu-distro-info --supported 2>/dev/null) ||
+        rels="$KNOWN_RELEASES"
+    for r in $rels; do
+        [ "$DISTRIB_CODENAME" = "$r" ] && release="$r"
+    done
+fi
+
 # Copy the download template cache if available
 run_cmd mkdir -p $HDIR/.cache/lxc
 [ -d /var/cache/lxc/download ] && \
     cp -R /var/cache/lxc/download $HDIR/.cache/lxc && \
     chown -R $TUSER: $HDIR/.cache/lxc
 
-run_cmd lxc-create -t download -n c1 -- -d ubuntu -r trusty -a $ARCH
+run_cmd lxc-create -t download -n c1 -- -d ubuntu -r $release -a $ARCH
 
 # Make sure we can start it - twice
 

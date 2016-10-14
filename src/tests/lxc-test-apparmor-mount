@@ -42,6 +42,7 @@ run_cmd() {
 }
 
 DONE=0
+KNOWN_RELEASES="precise trusty wily xenial yakkety"
 MOUNTSR=/sys/kernel/security/apparmor/features/mount
 dnam=`mktemp -d`
 cname=`basename $dnam`
@@ -144,7 +145,18 @@ run_cmd mkdir -p $HDIR/.cache/lxc
     cp -R /var/cache/lxc/download $HDIR/.cache/lxc && \
     chown -R $TUSER: $HDIR/.cache/lxc
 
-run_cmd lxc-create -t download -n $cname -- -d ubuntu -r trusty -a $ARCH
+# default release is trusty, or the systems release if recognized
+release=trusty
+if [ -f /etc/lsb-release ]; then
+    . /etc/lsb-release
+    rels=$(ubuntu-distro-info --supported 2>/dev/null) ||
+        rels="$KNOWN_RELEASES"
+    for r in $rels; do
+        [ "$DISTRIB_CODENAME" = "$r" ] && release="$r"
+    done
+fi
+
+run_cmd lxc-create -t download -n $cname -- -d ubuntu -r $release -a $ARCH
 
 echo "test default confined container"
 run_cmd lxc-start -n $cname -d
