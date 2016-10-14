@@ -22,6 +22,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 DONE=0
+KNOWN_RELEASES="precise trusty wily xenial yakkety"
 cleanup() {
 	lxc-destroy -n $CONTAINER_NAME >/dev/null 2>&1 || true
 
@@ -42,7 +43,19 @@ set -eu
 
 # Create a container
 CONTAINER_NAME=lxc-test-auto
-lxc-create -t download -n $CONTAINER_NAME -- -d ubuntu -r trusty -a $ARCH
+
+# default release is trusty, or the systems release if recognized
+release=trusty
+if [ -f /etc/lsb-release ]; then
+    . /etc/lsb-release
+    rels=$(ubuntu-distro-info --supported 2>/dev/null) ||
+        rels="$KNOWN_RELEASES"
+    for r in $rels; do
+        [ "$DISTRIB_CODENAME" = "$r" ] && release="$r"
+    done
+fi
+
+lxc-create -t download -n $CONTAINER_NAME -- -d ubuntu -r $release -a $ARCH
 CONTAINER_PATH=$(dirname $(lxc-info -n $CONTAINER_NAME -c lxc.rootfs -H))
 cp $CONTAINER_PATH/config $CONTAINER_PATH/config.bak
 
