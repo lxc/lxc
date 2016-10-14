@@ -38,4 +38,6 @@ templatesconfig_DATA = \
 	openwrt.common.conf \
 	sparclinux.common.conf \
 	sparclinux.userns.conf \
+	voidlinux.common.conf \
+	voidlinux.userns.conf \
 	userns.conf
