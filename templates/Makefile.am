@@ -20,4 +20,5 @@ templates_SCRIPTS = \
 	lxc-sshd \
 	lxc-ubuntu \
 	lxc-ubuntu-cloud \
-	lxc-sparclinux
+	lxc-sparclinux \
+	lxc-voidlinux
