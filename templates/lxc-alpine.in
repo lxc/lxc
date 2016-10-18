@@ -251,7 +251,7 @@ install() {
 	ln -s "$apk_cache" etc/apk/cache
 	echo "$repo_url" > etc/apk/repositories
 
-	install_packages "$arch" alpine-base $extra_packages
+	install_packages "$arch" "alpine-base $extra_packages"
 	make_dev_nodes
 	setup_inittab
 	setup_hosts
