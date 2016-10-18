@@ -86,7 +86,7 @@ static int ensure_path(char **confpath, const char *path)
 			goto err;
 		}
 	}
-	err = 0;
+	err = EXIT_SUCCESS;
 
 err:
 	free(fullpath);
@@ -231,6 +231,12 @@ int main(int argc, char *argv[])
 		exit(err);
 	lxc_log_options_no_override();
 
+	if (access(my_args.lxcpath[0], O_RDWR) < 0) {
+		if (!my_args.quiet)
+			fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
+		exit(err);
+	}
+
 	const char *lxcpath = my_args.lxcpath[0];
 
 	/*
@@ -275,9 +281,19 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (!c->is_defined(c)) {
+		fprintf(stderr, "Error: container %s is not defined\n", c->name);
+		goto out;
+	}
+
+	if (!c->may_control(c)) {
+		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
+		goto out;
+	}
+
 	if (c->is_running(c)) {
 		ERROR("Container is already running.");
-		err = 0;
+		err = EXIT_SUCCESS;
 		goto out;
 	}
 	/*
