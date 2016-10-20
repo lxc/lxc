@@ -33,6 +33,12 @@
 #include "log.h"
 #include "lxcseccomp.h"
 
+#if SCMP_VER_MAJOR < 2 || (SCMP_VER_MAJOR == 2 && SCMP_VER_MINOR < 3)
+#ifdef SCMP_ARCH_S390X
+#undef SCMP_ARCH_S390X
+#endif
+#endif
+
 lxc_log_define(lxc_seccomp, lxc);
 
 static int parse_config_v1(FILE *f, struct lxc_conf *conf)
