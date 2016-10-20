@@ -378,15 +378,6 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 		if (!compat_ctx[0] || !compat_ctx[1])
 			goto bad;
 #endif
-#ifdef SCMP_ARCH_S390X
-	} else if (native_arch == lxc_seccomp_arch_s390x) {
-		cur_rule_arch = lxc_seccomp_arch_all;
-		compat_arch[0] = SCMP_ARCH_S390X;
-		compat_ctx[0] = get_new_ctx(lxc_seccomp_arch_s390x,
-				default_policy_action);
-		if (!compat_ctx[0])
-			goto bad;
-#endif
 	}
 
 	if (default_policy_action != SCMP_ACT_KILL) {
