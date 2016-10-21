@@ -28,6 +28,22 @@ import subprocess
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext as BuildExtCommand
 
+# Fix build when PIE is enabled
+for var in ("LDFLAGS", "CFLAGS"):
+    current = os.environ.get(var, None)
+    if not current:
+        continue
+
+    new = []
+    for flag in current.split(" "):
+        if flag.lower() in ("-pie", "-fpie"):
+            if "-fPIC" not in new:
+                new.append("-fPIC")
+            continue
+        new.append(flag)
+
+    os.environ[var] = " ".join(new)
+
 
 class LxcBuildExtCommand(BuildExtCommand):
     user_options = BuildExtCommand.user_options + [

@@ -15,7 +15,7 @@ endif
 CALL_SETUP_PY := cd @srcdir@ && $(PYTHON) setup.py build -b @abs_builddir@/build egg_info -e @abs_builddir@
 
 all:
-	$(CALL_SETUP_PY) build_ext -I @abs_top_srcdir@/src -L @abs_top_builddir@/src/lxc $(RPATHOPTS) --no-pkg-config
+	$(CALL_SETUP_PY) build_ext -I @abs_top_srcdir@/src -L @abs_top_builddir@/src/lxc/.libs/ $(RPATHOPTS) --no-pkg-config
 
 DESTDIR = / # default
 
