@@ -53,8 +53,6 @@ noinst_HEADERS += ../include/getsubopt.h
 endif
 
 sodir=$(libdir)
-# use PROGRAMS to avoid complains from automake
-so_PROGRAMS = liblxc.so
 
 LSM_SOURCES = \
 	lsm/nop.c \
@@ -68,7 +66,8 @@ if ENABLE_SELINUX
 LSM_SOURCES += lsm/selinux.c
 endif
 
-liblxc_so_SOURCES = \
+lib_LTLIBRARIES = liblxc.la
+liblxc_la_SOURCES = \
 	arguments.c arguments.h \
 	bdev/bdev.c bdev/bdev.h \
 	bdev/lxcaufs.c bdev/lxcaufs.h \
@@ -123,11 +122,11 @@ liblxc_so_SOURCES = \
 	$(LSM_SOURCES)
 
 if ENABLE_CGMANAGER
-liblxc_so_SOURCES += cgroups/cgmanager.c
+liblxc_la_SOURCES += cgroups/cgmanager.c
 endif
 
 if IS_BIONIC
-liblxc_so_SOURCES += \
+liblxc_la_SOURCES += \
 	../include/ifaddrs.c ../include/ifaddrs.h \
 	../include/openpty.c ../include/openpty.h \
 	../include/lxcmntent.c ../include/lxcmntent.h
@@ -135,7 +134,7 @@ endif
 
 if !HAVE_GETLINE
 if HAVE_FGETLN
-liblxc_so_SOURCES += ../include/getline.c ../include/getline.h
+liblxc_la_SOURCES += ../include/getline.c ../include/getline.h
 endif
 endif
 
@@ -176,21 +175,22 @@ endif
 
 if ENABLE_SECCOMP
 AM_CFLAGS += -DHAVE_SECCOMP $(SECCOMP_CFLAGS)
-liblxc_so_SOURCES += seccomp.c
+liblxc_la_SOURCES += seccomp.c
 endif
 
-liblxc_so_CFLAGS = -fPIC -DPIC $(AM_CFLAGS) -pthread
+liblxc_la_CFLAGS = -fPIC -DPIC $(AM_CFLAGS) -pthread
 
-liblxc_so_LDFLAGS = \
+liblxc_la_LDFLAGS = \
 	-pthread \
 	-shared \
-	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,@LXC_VERSION_ABI@))
+	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)) \
+	-version-info @LXC_ABI_MAJOR@
 
-liblxc_so_LDADD = $(CAP_LIBS) $(APPARMOR_LIBS) $(SELINUX_LIBS) $(SECCOMP_LIBS)
+liblxc_la_LIBADD = $(CAP_LIBS) $(APPARMOR_LIBS) $(SELINUX_LIBS) $(SECCOMP_LIBS)
 
 if ENABLE_CGMANAGER
-liblxc_so_LDADD += $(CGMANAGER_LIBS) $(DBUS_LIBS) $(NIH_LIBS) $(NIH_DBUS_LIBS)
-liblxc_so_CFLAGS += $(CGMANAGER_CFLAGS) $(DBUS_CFLAGS) $(NIH_CFLAGS) $(NIH_DBUS_CFLAGS)
+liblxc_la_LIBADD += $(CGMANAGER_LIBS) $(DBUS_LIBS) $(NIH_LIBS) $(NIH_DBUS_LIBS)
+liblxc_la_CFLAGS += $(CGMANAGER_CFLAGS) $(DBUS_CFLAGS) $(NIH_CFLAGS) $(NIH_DBUS_CFLAGS)
 endif
 
 bin_SCRIPTS = tools/lxc-checkconfig
@@ -242,7 +242,7 @@ AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
 AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
 endif
-LDADD=liblxc.so @CAP_LIBS@ @APPARMOR_LIBS@ @SELINUX_LIBS@ @SECCOMP_LIBS@
+LDADD=liblxc.la @CAP_LIBS@ @APPARMOR_LIBS@ @SELINUX_LIBS@ @SECCOMP_LIBS@
 
 lxc_attach_SOURCES = tools/lxc_attach.c
 lxc_autostart_SOURCES = tools/lxc_autostart.c
@@ -295,13 +295,14 @@ init_lxc_static_LDADD = @CAP_LIBS@
 init_lxc_static_CFLAGS = $(AM_CFLAGS) -DNO_LXC_CONF
 endif
 
-install-exec-local: install-soPROGRAMS
+install-exec-local: install-libLTLIBRARIES
 	mkdir -p $(DESTDIR)$(datadir)/lxc
 	install -c -m 644 lxc.functions $(DESTDIR)$(datadir)/lxc
-	mv $(DESTDIR)$(libdir)/liblxc.so $(DESTDIR)$(libdir)/liblxc.so.@LXC_VERSION_ABI@
+	rm $(DESTDIR)$(libdir)/liblxc.so $(DESTDIR)$(libdir)/liblxc.so.1
+	mv $(DESTDIR)$(libdir)/liblxc.so.1.0.0 $(DESTDIR)$(libdir)/liblxc.so.@LXC_ABI@
 	cd $(DESTDIR)$(libdir); \
-	ln -sf liblxc.so.@LXC_VERSION_ABI@ liblxc.so.$(firstword $(subst ., ,@LXC_VERSION_ABI@)); \
-	ln -sf liblxc.so.$(firstword $(subst ., ,@LXC_VERSION_ABI@)) liblxc.so
+	ln -sf liblxc.so.@LXC_ABI@ liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)); \
+	ln -sf liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)) liblxc.so
 
 install-exec-hook:
 	chmod u+s $(DESTDIR)$(libexecdir)/lxc/lxc-user-nic

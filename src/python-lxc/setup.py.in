@@ -23,6 +23,23 @@
 # USA
 
 import os, os.path
+
+# Fix build when PIE is enabled
+for var in ("LDFLAGS", "CFLAGS"):
+    current = os.environ.get(var, None)
+    if not current:
+        continue
+
+    new = []
+    for flag in current.split(" "):
+        if flag.lower() in ("-pie", "-fpie"):
+            if "-fPIC" not in new:
+                new.append("-fPIC")
+            continue
+        new.append(flag)
+
+    os.environ[var] = " ".join(new)
+
 from distutils.core import setup, Extension
 
 # Distutils doesn't cope well with source files that have relative paths going
@@ -44,7 +61,7 @@ os.chdir(srcdir)
 module = Extension('_lxc', sources=['lxc.c'],
                    include_dirs=[os.path.join(top_srcdir, 'src'),
                                  os.path.join(top_builddir, 'src')],
-                   library_dirs=[os.path.join(top_builddir, 'src/lxc')],
+                   library_dirs=[os.path.join(top_builddir, 'src/lxc/.libs/')],
                    libraries=['lxc'])
 
 

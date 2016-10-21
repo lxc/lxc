@@ -6,7 +6,11 @@ m4_define([lxc_version_major], 2)
 m4_define([lxc_version_minor], 0)
 m4_define([lxc_version_micro], 5)
 m4_define([lxc_version_beta], [])
-m4_define([lxc_version_abi], 1.2.0)
+
+m4_define([lxc_abi_major], 1)
+m4_define([lxc_abi_minor], 2)
+m4_define([lxc_abi_micro], 0)
+m4_define([lxc_abi], [lxc_abi_major.lxc_abi_minor.lxc_abi_micro])
 
 m4_define([lxc_version_base], [lxc_version_major.lxc_version_minor.lxc_version_micro])
 m4_define([lxc_version],
@@ -23,9 +27,13 @@ AC_SUBST(LXC_VERSION_BETA, lxc_version_beta)
 AC_SUBST([LXC_VERSION_MAJOR], [lxc_version_major])
 AC_SUBST([LXC_VERSION_MINOR], [lxc_version_minor])
 AC_SUBST([LXC_VERSION_MICRO], [lxc_version_micro])
-AC_SUBST([LXC_VERSION_ABI], [lxc_version_abi])
 AC_SUBST([LXC_VERSION], [lxc_version])
 AC_SUBST([LXC_DEVEL], [lxc_devel])
+
+AC_SUBST([LXC_ABI_MAJOR], [lxc_abi_major])
+AC_SUBST([LXC_ABI_MINOR], [lxc_abi_minor])
+AC_SUBST([LXC_ABI_MICRO], [lxc_abi_micro])
+AC_SUBST([LXC_ABI], [lxc_abi])
 
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_AUX_DIR([config])
@@ -34,6 +42,10 @@ AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability subdir-objects])
 AC_CANONICAL_HOST
 AM_PROG_CC_C_O
 AC_GNU_SOURCE
+
+# libtool
+LT_INIT
+AC_SUBST([LIBTOOL_DEPS])
 
 # Detect the distribution. This is used for the default configuration and
 # for some distro-specific build options.
