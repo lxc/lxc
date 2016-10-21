@@ -7,20 +7,27 @@ sodir=$(lualibdir)/lxc
 
 lua_DATA=lxc.lua
 
-so_PROGRAMS = core.so
-
-core_so_SOURCES = core.c
+lib_LTLIBRARIES = libcore.la
+libcore_la_SOURCES = core.c
 
 AM_CFLAGS=-I$(top_builddir)/src -I$(top_srcdir)/src $(LUA_CFLAGS) -DVERSION=\"$(VERSION)\" -DLXCPATH=\"$(LXCPATH)\"
 
-core_so_CFLAGS = -fPIC -DPIC $(AM_CFLAGS)
+libcore_la_CFLAGS = -fPIC -DPIC $(AM_CFLAGS)
 
-core_so_LDFLAGS = \
+libcore_la_LDFLAGS = \
 	-shared \
 	-L$(top_builddir)/src/lxc \
 	-Wl,-soname,core.so.$(firstword $(subst ., ,$(VERSION)))
 
-core_so_LDADD = -llxc
+libcore_la_LIBADD = -llxc
+
+install-exec-local: install-libLTLIBRARIES
+	mkdir -p $(DESTDIR)$(lualibdir)/lxc/
+	mv $(DESTDIR)$(libdir)/libcore.so.0.0.0 $(DESTDIR)$(lualibdir)/lxc/core.so
+	rm $(DESTDIR)$(libdir)/libcore.*
+
+uninstall-local:
+	$(RM) $(DESTDIR)$(lualibdir)/lxc/core.so*
 
 lxc.lua:
 
