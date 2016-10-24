@@ -443,8 +443,11 @@ static void exec_criu(struct criu_opts *opts)
 				if (strlen(n->name) >= sizeof(eth))
 					goto err;
 				strncpy(eth, n->name, sizeof(eth));
-			} else
-				sprintf(eth, "eth%d", netnr);
+			} else {
+				ret = snprintf(eth, sizeof(eth), "eth%d", netnr);
+				if (ret < 0 || ret >= sizeof(eth))
+					goto err;
+			}
 
 			switch (n->type) {
 			case LXC_NET_VETH:
