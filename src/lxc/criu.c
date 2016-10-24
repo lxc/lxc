@@ -458,13 +458,6 @@ static void exec_criu(struct criu_opts *opts)
 					goto err;
 				break;
 			case LXC_NET_MACVLAN:
-				if (n->name) {
-					if (strlen(n->name) >= sizeof(eth))
-						goto err;
-					strncpy(eth, n->name, sizeof(eth));
-				} else
-					sprintf(eth, "eth%d", netnr);
-
 				if (!n->link) {
 					ERROR("no host interface for macvlan %s\n", n->name);
 					goto err;
