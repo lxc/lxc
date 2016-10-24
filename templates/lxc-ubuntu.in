@@ -403,7 +403,13 @@ exit 101
 EOF
     chmod +x "$1/partial-${arch}"/usr/sbin/policy-rc.d
 
-    lxc-unshare -s MOUNT -- chroot "$1/partial-${arch}" apt-get dist-upgrade -y || { suggest_flush; false; }
+    (
+        cat << EOF
+        mount -t proc proc "${1}/partial-${arch}/proc"
+        chroot "${1}/partial-${arch}" apt-get dist-upgrade -y
+EOF
+    ) | lxc-unshare -s MOUNT -- sh -eu || (suggest_flush; false)
+
     rm -f "$1/partial-${arch}"/usr/sbin/policy-rc.d
 
     chroot "$1/partial-${arch}" apt-get clean
