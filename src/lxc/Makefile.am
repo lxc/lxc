@@ -298,8 +298,8 @@ endif
 install-exec-local: install-libLTLIBRARIES
 	mkdir -p $(DESTDIR)$(datadir)/lxc
 	install -c -m 644 lxc.functions $(DESTDIR)$(datadir)/lxc
-	rm $(DESTDIR)$(libdir)/liblxc.so $(DESTDIR)$(libdir)/liblxc.so.1
-	mv $(DESTDIR)$(libdir)/liblxc.so.1.0.0 $(DESTDIR)$(libdir)/liblxc.so.@LXC_ABI@
+	mv $(shell readlink -f $(DESTDIR)$(libdir)/liblxc.so) $(DESTDIR)$(libdir)/liblxc.so.@LXC_ABI@
+	rm -f $(DESTDIR)$(libdir)/liblxc.so $(DESTDIR)$(libdir)/liblxc.so.1
 	cd $(DESTDIR)$(libdir); \
 	ln -sf liblxc.so.@LXC_ABI@ liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)); \
 	ln -sf liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)) liblxc.so
