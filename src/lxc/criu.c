@@ -439,27 +439,49 @@ static void exec_criu(struct criu_opts *opts)
 			char eth[128], *veth;
 			struct lxc_netdev *n = it->elem;
 
-			if (n->type != LXC_NET_VETH)
-				continue;
-
 			if (n->name) {
 				if (strlen(n->name) >= sizeof(eth))
 					goto err;
 				strncpy(eth, n->name, sizeof(eth));
-			} else
-				sprintf(eth, "eth%d", netnr);
+			} else {
+				ret = snprintf(eth, sizeof(eth), "eth%d", netnr);
+				if (ret < 0 || ret >= sizeof(eth))
+					goto err;
+			}
 
-			veth = n->priv.veth_attr.pair;
+			switch (n->type) {
+			case LXC_NET_VETH:
+				veth = n->priv.veth_attr.pair;
 
-			if (n->link)
-				ret = snprintf(buf, sizeof(buf), "%s=%s@%s", eth, veth, n->link);
-			else
-				ret = snprintf(buf, sizeof(buf), "%s=%s", eth, veth);
-			if (ret < 0 || ret >= sizeof(buf))
+				if (n->link)
+					ret = snprintf(buf, sizeof(buf), "veth[%s]:%s@%s", eth, veth, n->link);
+				else
+					ret = snprintf(buf, sizeof(buf), "veth[%s]:%s", eth, veth);
+				if (ret < 0 || ret >= sizeof(buf))
+					goto err;
+				break;
+			case LXC_NET_MACVLAN:
+				if (!n->link) {
+					ERROR("no host interface for macvlan %s\n", n->name);
+					goto err;
+				}
+
+				ret = snprintf(buf, sizeof(buf), "macvlan[%s]:%s", eth, n->link);
+				if (ret < 0 || ret >= sizeof(buf))
+					goto err;
+				break;
+			case LXC_NET_NONE:
+			case LXC_NET_EMPTY:
+				break;
+			default:
+				/* we have screened for this earlier... */
+				ERROR("unexpected network type %d\n", n->type);
 				goto err;
+			}
 
-			DECLARE_ARG("--veth-pair");
+			DECLARE_ARG("--external");
 			DECLARE_ARG(buf);
+			netnr++;
 		}
 
 	}
@@ -615,9 +637,10 @@ static bool criu_ok(struct lxc_container *c, char **criu_version)
 		case LXC_NET_VETH:
 		case LXC_NET_NONE:
 		case LXC_NET_EMPTY:
+		case LXC_NET_MACVLAN:
 			break;
 		default:
-			ERROR("Found network that is not VETH or NONE\n");
+			ERROR("Found un-dumpable network: %s (%s)\n", lxc_net_type_to_str(n->type), n->name);
 			return false;
 		}
 	}
