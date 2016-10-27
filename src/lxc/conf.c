@@ -2399,24 +2399,20 @@ static int setup_network(struct lxc_list *network)
 /* try to move physical nics to the init netns */
 void lxc_restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
 {
-	int i, ret, oldfd;
-	char path[MAXPATHLEN];
+	int i, oldfd;
 	char ifname[IFNAMSIZ];
 
 	if (netnsfd < 0 || conf->num_savednics == 0)
 		return;
 
-	INFO("running to reset %d nic names", conf->num_savednics);
+	INFO("Running to reset %d nic names.", conf->num_savednics);
 
-	ret = snprintf(path, MAXPATHLEN, "/proc/self/ns/net");
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		WARN("Failed to open monitor netns fd");
+	oldfd = lxc_preserve_ns(getpid(), "net");
+	if (oldfd < 0) {
+		SYSERROR("Failed to open monitor netns fd.");
 		return;
 	}
-	if ((oldfd = open(path, O_RDONLY)) < 0) {
-		SYSERROR("Failed to open monitor netns fd");
-		return;
-	}
+
 	if (setns(netnsfd, 0) != 0) {
 		SYSERROR("Failed to enter container netns to reset nics");
 		close(oldfd);
