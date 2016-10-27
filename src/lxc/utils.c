@@ -1968,3 +1968,16 @@ int lxc_append_string(char ***list, char *entry)
 
 	return 0;
 }
+
+int lxc_preserve_ns(const int pid, const char *ns)
+{
+	int ret;
+	size_t len = 5 /* /proc */ + 21 /* /int_as_str */ + 3 /* /ns */ + 20 /* /NS_NAME */ + 1 /* \0 */;
+	char path[len];
+
+	ret = snprintf(path, len, "/proc/%d/ns/%s", pid, ns);
+	if (ret < 0 || (size_t)ret >= len)
+		return -1;
+
+	return open(path, O_RDONLY | O_CLOEXEC);
+}
