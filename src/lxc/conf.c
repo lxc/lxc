@@ -2882,6 +2882,7 @@ int lxc_create_network(struct lxc_handler *handler)
 
 void lxc_delete_network(struct lxc_handler *handler)
 {
+	int ret;
 	struct lxc_list *network = &handler->conf->network;
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
@@ -2891,24 +2892,49 @@ void lxc_delete_network(struct lxc_handler *handler)
 
 		if (netdev->ifindex != 0 && netdev->type == LXC_NET_PHYS) {
 			if (lxc_netdev_rename_by_index(netdev->ifindex, netdev->link))
-				WARN("failed to rename to the initial name the " \
-				     "netdev '%s'", netdev->link);
+				WARN("Failed to rename to the initial name the " \
+						"netdev '%s'", netdev->link);
 			continue;
 		}
 
 		if (netdev_deconf[netdev->type](handler, netdev)) {
-			WARN("failed to destroy netdev");
+			WARN("Failed to destroy netdev");
 		}
 
 		/* Recent kernel remove the virtual interfaces when the network
 		 * namespace is destroyed but in case we did not moved the
 		 * interface to the network namespace, we have to destroy it
 		 */
-		if (netdev->ifindex != 0 &&
-		    lxc_netdev_delete_by_index(netdev->ifindex))
-			WARN("failed to remove interface %d '%s'",
-				netdev->ifindex,
-				netdev->name ? netdev->name : "(null)");
+		if (netdev->ifindex != 0) {
+			ret = lxc_netdev_delete_by_index(netdev->ifindex);
+			if (ret < 0)
+				WARN("Failed to remove interface %d '%s': %s.",
+						netdev->ifindex,
+						netdev->name ? netdev->name : "(null)", strerror(-ret));
+			else
+				INFO("Removed interface %d '%s'.",
+						netdev->ifindex,
+						netdev->name ? netdev->name : "(null)");
+		}
+
+		/* Explicitly delete host veth device to prevent lingering
+		 * devices. We had issues in LXD around this.
+		 */
+		if (netdev->type == LXC_NET_VETH) {
+			char *hostveth = NULL;
+			if (netdev->priv.veth_attr.pair)
+				hostveth = netdev->priv.veth_attr.pair;
+			else if (strlen(netdev->priv.veth_attr.veth1) > 0)
+				hostveth = netdev->priv.veth_attr.veth1;
+
+			if (hostveth) {
+				ret = lxc_netdev_delete_by_name(hostveth);
+				if (ret < 0)
+					WARN("Failed to remove '%s' from host.", hostveth);
+				else
+					INFO("Deleted '%s' from host.", hostveth);
+			}
+		}
 	}
 }
 
