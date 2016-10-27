@@ -2591,6 +2591,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 				      veth1, netdev->link, strerror(-err));
 			goto out_delete;
 		}
+		INFO("Attached '%s': to the bridge '%s': ", veth1, netdev->link);
 	}
 
 	err = lxc_netdev_up(veth1);

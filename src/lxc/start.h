@@ -77,6 +77,7 @@ struct lxc_handler {
 	int ttysock[2]; // socketpair for child->parent tty fd passing
 	bool backgrounded; // indicates whether should we close std{in,out,err} on start
 	int nsfd[LXC_NS_MAX];
+	int netnsfd;
 };
 
 

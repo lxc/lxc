@@ -549,6 +549,12 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 			handler->nsfd[i] = -1;
 		}
 	}
+
+	if (handler->netnsfd >= 0) {
+		close(handler->netnsfd);
+		handler->netnsfd = -1;
+	}
+
 	lxc_set_state(name, handler, STOPPED);
 
 	if (run_lxc_hooks(name, "post-stop", handler->conf, handler->lxcpath, NULL)) {
@@ -1026,24 +1032,28 @@ void resolve_clone_flags(struct lxc_handler *handler)
 	handler->clone_flags = CLONE_NEWPID | CLONE_NEWNS;
 
 	if (!lxc_list_empty(&handler->conf->id_map)) {
-		INFO("Cloning a new user namespace");
+		INFO("Cloning a new USER namespace");
 		handler->clone_flags |= CLONE_NEWUSER;
 	}
 
 	if (handler->conf->inherit_ns_fd[LXC_NS_NET] == -1) {
-		if (!lxc_requests_empty_network(handler))
+		if (!lxc_requests_empty_network(handler)) {
+			INFO("Cloning a new NET namespace");
 			handler->clone_flags |= CLONE_NEWNET;
+		}
 	} else {
-		INFO("Inheriting a net namespace");
+		INFO("Inheriting a NET namespace");
 	}
 
 	if (handler->conf->inherit_ns_fd[LXC_NS_IPC] == -1) {
+		INFO("Cloning a new IPC namespace");
 		handler->clone_flags |= CLONE_NEWIPC;
 	} else {
 		INFO("Inheriting an IPC namespace");
 	}
 
 	if (handler->conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
+		INFO("Cloning a new UTS namespace");
 		handler->clone_flags |= CLONE_NEWUTS;
 	} else {
 		INFO("Inheriting a UTS namespace");
@@ -1275,6 +1285,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	lxc_sync_fini(handler);
+	handler->netnsfd = lxc_preserve_ns(handler->pid, "net");
 
 	return 0;
 
@@ -1294,26 +1305,6 @@ out_abort:
 	return -1;
 }
 
-int get_netns_fd(int pid)
-{
-	char path[MAXPATHLEN];
-	int ret, fd;
-
-	ret = snprintf(path, MAXPATHLEN, "/proc/%d/ns/net", pid);
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		WARN("Failed to pin netns file for pid %d", pid);
-		return -1;
-	}
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		WARN("Failed to pin netns file %s for pid %d: %s",
-				path, pid, strerror(errno));
-		return -1;
-	}
-	return fd;
-}
-
 int __lxc_start(const char *name, struct lxc_conf *conf,
 		struct lxc_operations* ops, void *data, const char *lxcpath,
 		bool backgrounded)
@@ -1321,7 +1312,6 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	struct lxc_handler *handler;
 	int err = -1;
 	int status;
-	int netnsfd = -1;
 
 	handler = lxc_init(name, conf, lxcpath);
 	if (!handler) {
@@ -1331,6 +1321,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	handler->ops = ops;
 	handler->data = data;
 	handler->backgrounded = backgrounded;
+	handler->netnsfd = -1;
 
 	if (must_drop_cap_sys_boot(handler->conf)) {
 		#if HAVE_SYS_CAPABILITY_H
@@ -1372,13 +1363,13 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 
 	handler->conf->reboot = 0;
 
-	netnsfd = get_netns_fd(handler->pid);
-
 	err = lxc_poll(name, handler);
 	if (err) {
 		ERROR("mainloop exited with an error");
-		if (netnsfd >= 0)
-			close(netnsfd);
+		if (handler->netnsfd >= 0) {
+			close(handler->netnsfd);
+			handler->netnsfd = -1;
+		}
 		goto out_abort;
 	}
 
@@ -1410,13 +1401,10 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	}
 
 	DEBUG("Pushing physical nics back to host namespace");
-	lxc_restore_phys_nics_to_netns(netnsfd, handler->conf);
+	lxc_restore_phys_nics_to_netns(handler->netnsfd, handler->conf);
 
 	DEBUG("Tearing down virtual network devices used by container");
 	lxc_delete_network(handler);
-
-	if (netnsfd >= 0)
-		close(netnsfd);
 
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);
