@@ -3047,7 +3047,7 @@ int lxc_assign_network(const char *lxcpath, char *lxcname,
 			return -1;
 		}
 
-		DEBUG("move '%s' to '%d'", netdev->name, pid);
+		DEBUG("move '%s'/'%s' to '%d': .", ifname, netdev->name, pid);
 	}
 
 	return 0;

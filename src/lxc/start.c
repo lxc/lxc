@@ -769,6 +769,8 @@ static int do_start(void *data)
 		if (ret < 0) {
 			SYSERROR("Error unsharing network namespace");
 			goto out_warn_father;
+		} else {
+			INFO("Unshared NET namespace.");
 		}
 	}
 
@@ -1055,33 +1057,35 @@ static int recv_ttys_from_child(struct lxc_handler *handler)
 void resolve_clone_flags(struct lxc_handler *handler)
 {
 	handler->clone_flags = CLONE_NEWPID | CLONE_NEWNS;
+	INFO("Adding CLONE_NEWPID to clone flags.");
+	INFO("Adding CLONE_NEWNS to clone flags.");
 
 	if (!lxc_list_empty(&handler->conf->id_map)) {
-		INFO("Cloning a new USER namespace");
+		INFO("Adding CLONE_NEWUSER to clone flags.");
 		handler->clone_flags |= CLONE_NEWUSER;
 	}
 
 	if (handler->conf->inherit_ns_fd[LXC_NS_NET] == -1) {
 		if (!lxc_requests_empty_network(handler)) {
-			INFO("Cloning a new NET namespace");
+			INFO("Adding CLONE_NEWNET to clone flags.");
 			handler->clone_flags |= CLONE_NEWNET;
 		}
 	} else {
-		INFO("Inheriting a NET namespace");
+		INFO("Inheriting a NET namespace.");
 	}
 
 	if (handler->conf->inherit_ns_fd[LXC_NS_IPC] == -1) {
-		INFO("Cloning a new IPC namespace");
+		INFO("Adding CLONE_NEWIPC to clone flags.");
 		handler->clone_flags |= CLONE_NEWIPC;
 	} else {
-		INFO("Inheriting an IPC namespace");
+		INFO("Inheriting an IPC namespace.");
 	}
 
 	if (handler->conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
-		INFO("Cloning a new UTS namespace");
+		INFO("Adding CLONE_NEWUTS to clone flags.");
 		handler->clone_flags |= CLONE_NEWUTS;
 	} else {
-		INFO("Inheriting a UTS namespace");
+		INFO("Inheriting a UTS namespace.");
 	}
 }
 
@@ -1188,8 +1192,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 		flags &= ~CLONE_NEWNET;
 	handler->pid = lxc_clone(do_start, handler, flags);
 	if (handler->pid < 0) {
-		SYSERROR("failed to fork into a new namespace");
+		SYSERROR("Failed to fork into a set of new namespaces.");
 		goto out_delete_net;
+	} else {
+		INFO("Cloned a set of new namespaces.");
 	}
 
 	if (!preserve_ns(handler->nsfd, handler->clone_flags | preserve_mask, handler->pid, &errmsg)) {
@@ -1368,8 +1374,10 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 		/* if the backing store is a device, mount it here and now */
 		if (rootfs_is_blockdev(conf)) {
 			if (unshare(CLONE_NEWNS) < 0) {
-				ERROR("Error unsharing mounts");
+				ERROR("Error unsharing MOUNT namespace.");
 				goto out_fini_nonet;
+			} else {
+				INFO("Unshared MOUNT namespace.");
 			}
 			remount_all_slave();
 			if (do_rootfs_setup(conf, name, lxcpath) < 0) {
