@@ -377,7 +377,7 @@ struct lxc_conf {
 	gid_t init_gid;
 
 	/* indicator if the container will be destroyed on shutdown */
-	int ephemeral;
+	unsigned int ephemeral;
 };
 
 #ifdef HAVE_TLS

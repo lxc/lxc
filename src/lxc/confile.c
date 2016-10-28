@@ -2955,13 +2955,12 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 static int config_ephemeral(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf)
 {
-	int v = atoi(value);
+	if (lxc_safe_uint(value, &lxc_conf->ephemeral) < 0)
+		return -1;
 
-	if (v != 0 && v != 1) {
+	if (lxc_conf->ephemeral > 1) {
 		ERROR("Wrong value for lxc.ephemeral. Can only be set to 0 or 1");
 		return -1;
-	} else {
-		lxc_conf->ephemeral = v;
 	}
 
 	return 0;
