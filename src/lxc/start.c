@@ -1343,6 +1343,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	struct lxc_handler *handler;
 	int err = -1;
 	int status;
+	bool removed_all_netdevs = true;
 
 	handler = lxc_init(name, conf, lxcpath);
 	if (!handler) {
@@ -1437,7 +1438,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	lxc_restore_phys_nics_to_netns(handler->netnsfd, handler->conf);
 
 	DEBUG("Tearing down virtual network devices used by container");
-	lxc_delete_network(handler);
+	removed_all_netdevs = lxc_delete_network(handler);
 
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);
@@ -1447,7 +1448,12 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	lxc_monitor_send_exit_code(name, status, handler->lxcpath);
 	err =  lxc_error_set_and_log(handler->pid, status);
 out_fini:
-	lxc_delete_network(handler);
+	if (!removed_all_netdevs) {
+		DEBUG("Failed tearing down all network devices used by container. Trying again!");
+		removed_all_netdevs = lxc_delete_network(handler);
+		if (!removed_all_netdevs)
+			DEBUG("Failed tearing down network devices used by container. Not trying again!");
+	}
 
 out_detach_blockdev:
 	detach_block_device(handler->conf);
