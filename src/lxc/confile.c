@@ -1255,9 +1255,8 @@ freak_out:
 static int config_tty(const char *key, const char *value,
 		      struct lxc_conf *lxc_conf)
 {
-	int nbtty = atoi(value);
-
-	lxc_conf->tty = nbtty;
+	if (lxc_safe_uint(value, &lxc_conf->tty) < 0)
+		return -1;
 
 	return 0;
 }

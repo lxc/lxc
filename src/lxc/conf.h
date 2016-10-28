@@ -293,7 +293,7 @@ struct saved_nic {
 struct lxc_conf {
 	int is_execute;
 	char *fstab;
-	int tty;
+	unsigned int tty;
 	unsigned int pts;
 	int reboot;
 	int need_utmp_watch;
