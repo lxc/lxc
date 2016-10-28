@@ -2880,20 +2880,22 @@ int lxc_create_network(struct lxc_handler *handler)
 	return 0;
 }
 
-void lxc_delete_network(struct lxc_handler *handler)
+bool lxc_delete_network(struct lxc_handler *handler)
 {
 	int ret;
 	struct lxc_list *network = &handler->conf->network;
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
+	bool deleted_all = true;
 
 	lxc_list_for_each(iterator, network) {
 		netdev = iterator->elem;
 
 		if (netdev->ifindex != 0 && netdev->type == LXC_NET_PHYS) {
 			if (lxc_netdev_rename_by_index(netdev->ifindex, netdev->link))
-				WARN("Failed to rename to the initial name the " \
-						"netdev '%s'", netdev->link);
+				WARN("Failed to rename interface with index %d "
+				     "to its initial name \"%s\".",
+				     netdev->ifindex, netdev->link);
 			continue;
 		}
 
@@ -2907,35 +2909,54 @@ void lxc_delete_network(struct lxc_handler *handler)
 		 */
 		if (netdev->ifindex != 0) {
 			ret = lxc_netdev_delete_by_index(netdev->ifindex);
-			if (ret < 0)
-				WARN("Failed to remove interface %d '%s': %s.",
-						netdev->ifindex,
-						netdev->name ? netdev->name : "(null)", strerror(-ret));
-			else
-				INFO("Removed interface %d '%s'.",
-						netdev->ifindex,
-						netdev->name ? netdev->name : "(null)");
+			if (-ret == ENODEV) {
+				INFO("Interface \"%s\" with index %d already "
+				     "deleted or existing in different network "
+				     "namespace.",
+				     netdev->name ? netdev->name : "(null)",
+				     netdev->ifindex);
+			} else if (ret < 0) {
+				deleted_all = false;
+				WARN("Failed to remove interface \"%s\" with "
+				     "index %d: %s.",
+				     netdev->name ? netdev->name : "(null)",
+				     netdev->ifindex, strerror(-ret));
+			} else {
+				INFO("Removed interface \"%s\" with index %d.",
+				     netdev->name ? netdev->name : "(null)",
+				     netdev->ifindex);
+			}
 		}
 
 		/* Explicitly delete host veth device to prevent lingering
 		 * devices. We had issues in LXD around this.
 		 */
 		if (netdev->type == LXC_NET_VETH) {
-			char *hostveth = NULL;
-			if (netdev->priv.veth_attr.pair)
+			char *hostveth;
+			if (netdev->priv.veth_attr.pair) {
 				hostveth = netdev->priv.veth_attr.pair;
-			else if (strlen(netdev->priv.veth_attr.veth1) > 0)
-				hostveth = netdev->priv.veth_attr.veth1;
-
-			if (hostveth) {
 				ret = lxc_netdev_delete_by_name(hostveth);
-				if (ret < 0)
-					WARN("Failed to remove '%s' from host.", hostveth);
-				else
-					INFO("Deleted '%s' from host.", hostveth);
+				if (ret < 0) {
+					WARN("Failed to remove interface \"%s\" from host: %s.", hostveth, strerror(-ret));
+				} else {
+					INFO("Removed interface \"%s\" from host.", hostveth);
+					free(netdev->priv.veth_attr.pair);
+					netdev->priv.veth_attr.pair = NULL;
+				}
+			} else if (strlen(netdev->priv.veth_attr.veth1) > 0) {
+				hostveth = netdev->priv.veth_attr.veth1;
+				ret = lxc_netdev_delete_by_name(hostveth);
+				if (ret < 0) {
+					WARN("Failed to remove \"%s\" from host: %s.", hostveth, strerror(-ret));
+				} else {
+					INFO("Removed interface \"%s\" from host.", hostveth);
+					memset((void *)&netdev->priv.veth_attr.veth1, 0, sizeof(netdev->priv.veth_attr.veth1));
+				}
 			}
 		}
 	}
+
+	return deleted_all;
 }
 
 #define LXC_USERNIC_PATH LIBEXECDIR "/lxc/lxc-user-nic"
