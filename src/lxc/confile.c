@@ -1065,14 +1065,24 @@ static int config_init_cmd(const char *key, const char *value,
 static int config_init_uid(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	lxc_conf->init_uid = atoi(value);
+	unsigned int init_uid;
+
+	if (lxc_safe_uint(value, &init_uid) < 0)
+		return -1;
+	lxc_conf->init_uid = init_uid;
+
 	return 0;
 }
 
 static int config_init_gid(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	lxc_conf->init_gid = atoi(value);
+	unsigned int init_gid;
+
+	if (lxc_safe_uint(value, &init_gid) < 0)
+		return -1;
+	lxc_conf->init_gid = init_gid;
+
 	return 0;
 }
 
