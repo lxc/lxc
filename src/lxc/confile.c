@@ -1137,9 +1137,8 @@ static int config_personality(const char *key, const char *value,
 static int config_pts(const char *key, const char *value,
 		      struct lxc_conf *lxc_conf)
 {
-	int maxpts = atoi(value);
-
-	lxc_conf->pts = maxpts;
+	if (lxc_safe_uint(value, &lxc_conf->pts) < 0)
+		return -1;
 
 	return 0;
 }

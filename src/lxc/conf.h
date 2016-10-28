@@ -294,7 +294,7 @@ struct lxc_conf {
 	int is_execute;
 	char *fstab;
 	int tty;
-	int pts;
+	unsigned int pts;
 	int reboot;
 	int need_utmp_watch;
 	signed long personality;
