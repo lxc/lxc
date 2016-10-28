@@ -325,7 +325,7 @@ struct lxc_conf {
 	scmp_filter_ctx seccomp_ctx;
 #endif
 	int maincmd_fd;
-	int autodev;  // if 1, mount and fill a /dev at start
+	unsigned int autodev;  // if 1, mount and fill a /dev at start
 	int haltsignal; // signal used to halt container
 	int rebootsignal; // signal used to reboot container
 	int stopsignal; // signal used to hard stop container

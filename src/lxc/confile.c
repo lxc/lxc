@@ -1346,9 +1346,13 @@ static int config_loglevel(const char *key, const char *value,
 static int config_autodev(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
-	int v = atoi(value);
+	if (lxc_safe_uint(value, &lxc_conf->autodev) < 0)
+		return -1;
 
-	lxc_conf->autodev = v;
+	if (lxc_conf->autodev > 1) {
+		ERROR("Wrong value for lxc.autodev. Can only be set to 0 or 1");
+		return -1;
+	}
 
 	return 0;
 }
