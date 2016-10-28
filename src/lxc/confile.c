@@ -2992,12 +2992,16 @@ static int config_syslog(const char *key, const char *value,
 static int config_no_new_privs(const char *key, const char *value,
 				    struct lxc_conf *lxc_conf)
 {
-	int v = atoi(value);
+	unsigned int v;
 
-	if (v != 0 && v != 1) {
+	if (lxc_safe_uint(value, &v) < 0)
+		return -1;
+
+	if (v > 1) {
 		ERROR("Wrong value for lxc.no_new_privs. Can only be set to 0 or 1");
 		return -1;
 	}
+
 	lxc_conf->no_new_privs = v ? true : false;
 
 	return 0;
