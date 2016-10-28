@@ -350,7 +350,7 @@ struct lxc_conf {
 	int nbd_idx;
 
 	/* unshare the mount namespace in the monitor */
-	int monitor_unshare;
+	unsigned int monitor_unshare;
 
 	/* set to true when rootfs has been setup */
 	bool rootfs_setup;

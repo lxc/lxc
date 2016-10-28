@@ -1176,7 +1176,8 @@ static int config_monitor(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
 	if(strcmp(key, "lxc.monitor.unshare") == 0) {
-		lxc_conf->monitor_unshare = atoi(value);
+		if (lxc_safe_uint(value, &lxc_conf->monitor_unshare) < 0)
+			return -1;
 		return 0;
 	}
 	SYSERROR("Unknown key: %s", key);
