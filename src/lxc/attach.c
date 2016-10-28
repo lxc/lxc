@@ -214,7 +214,7 @@ static int lxc_attach_to_ns(pid_t pid, int which)
 {
 	char path[MAXPATHLEN];
 	/* according to <http://article.gmane.org/gmane.linux.kernel.containers.lxc.devel/1429>,
-	 * the file for user namepsaces in /proc/$pid/ns will be called
+	 * the file for user namespaces in /proc/$pid/ns will be called
 	 * 'user' once the kernel supports it
 	 */
 	static char *ns[] = { "user", "mnt", "pid", "uts", "ipc", "net", "cgroup" };
@@ -242,8 +242,7 @@ static int lxc_attach_to_ns(pid_t pid, int which)
 			continue;
 		}
 
-		snprintf(path, MAXPATHLEN, "/proc/%d/ns/%s", pid, ns[i]);
-		fd[i] = open(path, O_RDONLY | O_CLOEXEC);
+		fd[i] = lxc_preserve_ns(pid, ns[i]);
 		if (fd[i] < 0) {
 			saved_errno = errno;
 
