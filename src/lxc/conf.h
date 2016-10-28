@@ -343,8 +343,8 @@ struct lxc_conf {
 
 	int inherit_ns_fd[LXC_NS_MAX];
 
-	int start_auto;
-	int start_delay;
+	unsigned int start_auto;
+	unsigned int start_delay;
 	int start_order;
 	struct lxc_list groups;
 	int nbd_idx;

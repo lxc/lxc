@@ -1147,15 +1147,20 @@ static int config_start(const char *key, const char *value,
 		      struct lxc_conf *lxc_conf)
 {
 	if(strcmp(key, "lxc.start.auto") == 0) {
-		lxc_conf->start_auto = atoi(value);
+		if (lxc_safe_uint(value, &lxc_conf->start_auto) < 0)
+			return -1;
+		if (lxc_conf->start_auto > 1)
+			return -1;
 		return 0;
 	}
 	else if (strcmp(key, "lxc.start.delay") == 0) {
-		lxc_conf->start_delay = atoi(value);
+		if (lxc_safe_uint(value, &lxc_conf->start_delay) < 0)
+			return -1;
 		return 0;
 	}
 	else if (strcmp(key, "lxc.start.order") == 0) {
-		lxc_conf->start_order = atoi(value);
+		if (lxc_safe_int(value, &lxc_conf->start_order) < 0)
+			return -1;
 		return 0;
 	}
 	SYSERROR("Unknown key: %s", key);
