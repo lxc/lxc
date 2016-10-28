@@ -1288,9 +1288,13 @@ static int config_lsm_aa_profile(const char *key, const char *value,
 static int config_lsm_aa_incomplete(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	int v = atoi(value);
+	if (lxc_safe_uint(value, &lxc_conf->lsm_aa_allow_incomplete) < 0)
+		return -1;
 
-	lxc_conf->lsm_aa_allow_incomplete = v == 1 ? 1 : 0;
+	if (lxc_conf->lsm_aa_allow_incomplete > 1) {
+		ERROR("Wrong value for lxc.lsm_aa_allow_incomplete. Can only be set to 0 or 1");
+		return -1;
+	}
 
 	return 0;
 }
@@ -1322,10 +1326,12 @@ static int config_loglevel(const char *key, const char *value,
 	if (!value || strlen(value) == 0)
 		return 0;
 
-	if (value[0] >= '0' && value[0] <= '9')
-		newlevel = atoi(value);
-	else
+	if (value[0] >= '0' && value[0] <= '9') {
+		if (lxc_safe_int(value, &newlevel) < 0)
+			return -1;
+	} else {
 		newlevel = lxc_log_priority_to_int(value);
+	}
 	// store these values in the lxc_conf, and then try to set for
 	// actual current logging.
 	lxc_conf->loglevel = newlevel;
