@@ -853,8 +853,12 @@ static int config_network_ipv4(const char *key, const char *value,
 	}
 
 	/* no prefix specified, determine it from the network class */
-	inetdev->prefix = prefix ? atoi(prefix) :
-		config_ip_prefix(&inetdev->addr);
+	if (prefix) {
+		if (lxc_safe_uint(prefix, &inetdev->prefix) < 0)
+			return -1;
+	} else {
+		inetdev->prefix = config_ip_prefix(&inetdev->addr);
+	}
 
 	/* if no broadcast address, let compute one from the
 	 * prefix and address
@@ -952,7 +956,8 @@ static int config_network_ipv6(const char *key, const char *value,
 	if (slash) {
 		*slash = '\0';
 		netmask = slash + 1;
-		inet6dev->prefix = atoi(netmask);
+		if (lxc_safe_uint(netmask, &inet6dev->prefix) < 0)
+			return -1;
 	}
 
 	if (!inet_pton(AF_INET6, valdup, &inet6dev->addr)) {

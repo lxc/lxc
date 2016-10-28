@@ -62,7 +62,7 @@ enum {
 struct lxc_inetdev {
 	struct in_addr addr;
 	struct in_addr bcast;
-	int prefix;
+	unsigned int prefix;
 };
 
 struct lxc_route {
@@ -80,7 +80,7 @@ struct lxc_inet6dev {
 	struct in6_addr addr;
 	struct in6_addr mcast;
 	struct in6_addr acast;
-	int prefix;
+	unsigned int prefix;
 };
 
 struct lxc_route6 {
