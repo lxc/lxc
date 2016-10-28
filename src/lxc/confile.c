@@ -1275,9 +1275,11 @@ static int config_ttydir(const char *key, const char *value,
 static int config_kmsg(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
-	int v = atoi(value);
+	if (lxc_safe_uint(value, &lxc_conf->kmsg) < 0)
+		return -1;
 
-	lxc_conf->kmsg = v;
+	if (lxc_conf->kmsg > 1)
+		return -1;
 
 	return 0;
 }
