@@ -223,7 +223,10 @@ restart:
 		if (!strcmp(direntp->d_name, ".."))
 			continue;
 
-		fd = atoi(direntp->d_name);
+		if (lxc_safe_int(direntp->d_name, &fd) < 0) {
+			INFO("Could not parse file descriptor for: %s", direntp->d_name);
+			continue;
+		}
 
 		if (fd == fddir || fd == lxc_log_fd || fd == fd_to_ignore)
 			continue;
