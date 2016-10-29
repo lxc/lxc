@@ -61,7 +61,7 @@ struct lxc_arguments {
 	const char *share_ns[32]; // size must be greater than LXC_NS_MAX
 
 	/* for lxc-console */
-	int ttynum;
+	unsigned int ttynum;
 	char escape;
 
 	/* for lxc-wait */
