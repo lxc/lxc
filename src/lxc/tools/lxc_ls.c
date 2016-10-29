@@ -459,8 +459,14 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 				goto put_and_next;
 
 			tmp = ls_get_config_item(c, "lxc.start.auto", running);
-			if (tmp)
-				l->autostart = atoi(tmp);
+			if (tmp) {
+				unsigned int astart = 0;
+				if (lxc_safe_uint(tmp, &astart) < 0)
+					WARN("Could not parse value for 'lxc.start.auto'.");
+				if (astart > 1)
+					DEBUG("Wrong value for 'lxc.start.auto = %d'.", astart);
+				l->autostart = astart == 1 ? true : false;
+			}
 			free(tmp);
 
 			if (running) {
