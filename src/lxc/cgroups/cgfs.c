@@ -632,10 +632,10 @@ static struct cgroup_meta_data *lxc_cgroup_put_meta(struct cgroup_meta_data *met
 	if (--meta_data->ref > 0)
 		return meta_data;
 	lxc_free_array((void **)meta_data->mount_points, (lxc_free_fn)lxc_cgroup_mount_point_free);
-	if (meta_data->hierarchies) {
+	if (meta_data->hierarchies)
 		for (i = 0; i <= meta_data->maximum_hierarchy; i++)
-			lxc_cgroup_hierarchy_free(meta_data->hierarchies[i]);
-	}
+			if (meta_data->hierarchies[i])
+				lxc_cgroup_hierarchy_free(meta_data->hierarchies[i]);
 	free(meta_data->hierarchies);
 	free(meta_data);
 	return NULL;
@@ -1798,9 +1798,16 @@ static void lxc_cgroup_hierarchy_free(struct cgroup_hierarchy *h)
 {
 	if (!h)
 		return;
-	lxc_free_array((void **)h->subsystems, free);
-	free(h->all_mount_points);
+	if (h->subsystems) {
+		lxc_free_array((void **)h->subsystems, free);
+		h->subsystems = NULL;
+	}
+	if (h->all_mount_points) {
+		free(h->all_mount_points);
+		h->all_mount_points = NULL;
+	}
 	free(h);
+	h = NULL;
 }
 
 static bool is_valid_cgroup(const char *name)
