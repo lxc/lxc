@@ -38,15 +38,28 @@
 
 lxc_log_define(lxc_stop_ui, lxc);
 
-static int my_parser(struct lxc_arguments* args, int c, char* arg)
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	switch (c) {
-	case 'r': args->reboot = 1; break;
-	case 'W': args->nowait = 1; break;
-	case 't': args->timeout = atoi(arg); break;
-	case 'k': args->hardstop = 1; break;
-	case OPT_NO_LOCK: args->nolock = 1; break;
-	case OPT_NO_KILL: args->nokill = 1; break;
+	case 'r':
+		args->reboot = 1;
+		break;
+	case 'W':
+		args->nowait = 1;
+		break;
+	case 't':
+		if (lxc_safe_int(arg, &args->timeout) < 0)
+			return -1;
+		break;
+	case 'k':
+		args->hardstop = 1;
+		break;
+	case OPT_NO_LOCK:
+		args->nolock = 1;
+		break;
+	case OPT_NO_KILL:
+		args->nokill = 1;
+		break;
 	}
 	return 0;
 }
