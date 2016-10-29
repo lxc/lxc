@@ -74,9 +74,16 @@ static int ct_alloc_cnt = 0;
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
-	case 'd': delay = atoi(arg); break;
-	case 's': sort_by = arg[0]; break;
-	case 'r': sort_reverse = 1; break;
+	case 'd':
+		if (lxc_safe_int(arg, &delay) < 0)
+			return -1;
+		break;
+	case 's':
+		sort_by = arg[0];
+		break;
+	case 'r':
+		sort_reverse = 1;
+		break;
 	}
 	return 0;
 }
