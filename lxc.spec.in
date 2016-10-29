@@ -252,13 +252,13 @@ fi
 %{_datadir}/doc/*
 %{_datadir}/lxc/*
 %{_sysconfdir}/bash_completion.d
-%{_sysconfdir}/sysconfig/*
 %config(noreplace) %{_sysconfdir}/lxc/*
 %config(noreplace) %{_sysconfdir}/sysconfig/*
 
 %if %{with_systemd}
 %{_unitdir}/lxc-net.service
 %{_unitdir}/lxc.service
+%{_unitdir}/lxc@.service
 %else
 %{_sysconfdir}/rc.d/init.d/lxc
 %{_sysconfdir}/rc.d/init.d/lxc-net
@@ -269,11 +269,10 @@ fi
 %{_sbindir}/*
 %{_libdir}/*.so.*
 %{_libdir}/%{name}
-%if %{with_python}
-%{_libdir}/python*
-%endif
 %{_localstatedir}/*
-%{_libexecdir}/%{name}
+%{_libexecdir}/%{name}/hooks/unmount-namespace
+%{_libexecdir}/%{name}/lxc-apparmor-load
+%{_libexecdir}/%{name}/lxc-monitord
 %attr(4111,root,root) %{_libexecdir}/%{name}/lxc-user-nic
 %if %{with_systemd}
 %attr(555,root,root) %{_libexecdir}/%{name}/lxc-net
@@ -281,8 +280,7 @@ fi
 %endif
 
 %if %{with_python}
-%{_libdir}/python3.3/site-packages/_lxc*
-%{_libdir}/python3.3/site-packages/lxc/*
+%{python3_sitearch}/*
 %endif
 
 %if %{with_lua}
