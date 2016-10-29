@@ -1766,7 +1766,7 @@ int mount_proc_if_needed(const char *rootfs)
 {
 	char path[MAXPATHLEN];
 	char link[20];
-	int linklen, ret;
+	int link_to_pid, linklen, ret;
 	int mypid;
 
 	ret = snprintf(path, MAXPATHLEN, "%s/proc/self", rootfs);
@@ -1785,7 +1785,9 @@ int mount_proc_if_needed(const char *rootfs)
 	}
 	if (linklen < 0) /* /proc not mounted */
 		goto domount;
-	if (atoi(link) != mypid) {
+	if (lxc_safe_int(link, &link_to_pid) < 0)
+		return -1;
+	if (link_to_pid != mypid) {
 		/* wrong /procs mounted */
 		umount2(path, MNT_DETACH); /* ignore failure */
 		goto domount;
