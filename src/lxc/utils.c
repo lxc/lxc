@@ -2007,7 +2007,7 @@ int lxc_safe_uint(const char *numstr, unsigned int *converted)
 	if (uli > UINT_MAX)
 		return -ERANGE;
 
-	*converted = (unsigned)uli;
+	*converted = (unsigned int)uli;
 	return 0;
 }
 
@@ -2028,5 +2028,25 @@ int lxc_safe_int(const char *numstr, int *converted)
 		return -ERANGE;
 
 	*converted = (int)sli;
+	return 0;
+}
+
+int lxc_safe_long(const char *numstr, long int *converted)
+{
+	char *err = NULL;
+	signed long int sli;
+
+	errno = 0;
+	sli = strtol(numstr, &err, 0);
+	if (errno > 0)
+		return -errno;
+
+	if (!err || err == numstr || *err != '\0')
+		return -EINVAL;
+
+	if (sli > LONG_MAX)
+		return -ERANGE;
+
+	*converted = sli;
 	return 0;
 }
