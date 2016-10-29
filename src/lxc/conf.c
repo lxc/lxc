@@ -2504,7 +2504,8 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 {
 	char veth1buf[IFNAMSIZ], *veth1;
 	char veth2buf[IFNAMSIZ], *veth2;
-	int bridge_index, err, mtu = 0;
+	int bridge_index, err;
+	unsigned int mtu = 0;
 
 	if (netdev->priv.veth_attr.pair) {
 		veth1 = netdev->priv.veth_attr.pair;
@@ -2556,8 +2557,10 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	if (netdev->mtu) {
-		mtu = atoi(netdev->mtu);
-		INFO("Retrieved mtu %d", mtu);
+		if (lxc_safe_uint(netdev->mtu, &mtu) < 0)
+			WARN("Failed to parse mtu from.");
+		else
+			INFO("Retrieved mtu %d", mtu);
 	} else if (netdev->link) {
 		bridge_index = if_nametoindex(netdev->link);
 		if (bridge_index) {
@@ -2706,6 +2709,7 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	char peer[IFNAMSIZ];
 	int err;
 	static uint16_t vlan_cntr = 0;
+	unsigned int mtu = 0;
 
 	if (!netdev->link) {
 		ERROR("no link specified for vlan netdev");
@@ -2735,7 +2739,12 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	DEBUG("instantiated vlan '%s', ifindex is '%d'", " vlan1000",
 	      netdev->ifindex);
 	if (netdev->mtu) {
-		err = lxc_netdev_set_mtu(peer, atoi(netdev->mtu));
+		if (lxc_safe_uint(netdev->mtu, &mtu) < 0) {
+			ERROR("Failed to retrieve mtu from: '%d'/'%s'.",
+			      netdev->ifindex, netdev->name);
+			return -1;
+		}
+		err = lxc_netdev_set_mtu(peer, mtu);
 		if (err) {
 			ERROR("failed to set mtu '%s' for %s : %s",
 			      netdev->mtu, peer, strerror(-err));
@@ -4449,8 +4458,10 @@ void suggest_default_idmap(void)
 		p2++;
 		if (!*p2)
 			continue;
-		uid = atoi(p);
-		urange = atoi(p2);
+		if (lxc_safe_uint(p, &uid) < 0)
+			WARN("Could not parse UID.");
+		if (lxc_safe_uint(p2, &urange) < 0)
+			WARN("Could not parse UID range.");
 	}
 	fclose(f);
 
@@ -4478,8 +4489,10 @@ void suggest_default_idmap(void)
 		p2++;
 		if (!*p2)
 			continue;
-		gid = atoi(p);
-		grange = atoi(p2);
+		if (lxc_safe_uint(p, &gid) < 0)
+			WARN("Could not parse GID.");
+		if (lxc_safe_uint(p2, &grange) < 0)
+			WARN("Could not parse GID range.");
 	}
 	fclose(f);
 
