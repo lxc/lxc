@@ -128,34 +128,29 @@ static void close_ns(int ns_fd[LXC_NS_MAX]) {
 	}
 }
 
-/*
- * preserve_ns: open /proc/@pid/ns/@ns for each namespace specified
+/* preserve_ns: open /proc/@pid/ns/@ns for each namespace specified
  * in clone_flags.
- * Return true on success, false on failure.  On failure, leave an error
- * message in *errmsg, which caller must free.
+ * Return true on success, false on failure.
  */
-static bool preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags, pid_t pid,
-			char **errmsg)
+static bool preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags, pid_t pid)
 {
 	int i, ret;
-	char path[MAXPATHLEN];
 
 	for (i = 0; i < LXC_NS_MAX; i++)
 		ns_fd[i] = -1;
 
-	snprintf(path, MAXPATHLEN, "/proc/%d/ns", pid);
-	if (access(path, X_OK)) {
-		if (asprintf(errmsg, "Kernel does not support setns.") == -1)
-			*errmsg = NULL;
+	ret = lxc_preserve_ns(pid, "");
+	if (ret < 0) {
+		SYSERROR("Kernel does not support attaching to namespaces.");
 		return false;
+	} else {
+		close(ret);
 	}
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if ((clone_flags & ns_info[i].clone_flag) == 0)
 			continue;
-		snprintf(path, MAXPATHLEN, "/proc/%d/ns/%s", pid,
-		         ns_info[i].proc_name);
-		ns_fd[i] = open(path, O_RDONLY | O_CLOEXEC);
+		ns_fd[i] = lxc_preserve_ns(pid, ns_info[i].proc_name);
 		if (ns_fd[i] < 0)
 			goto error;
 	}
@@ -163,15 +158,10 @@ static bool preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags, pid_t pid,
 	return true;
 
 error:
-	if (errno == ENOENT) {
-		ret = asprintf(errmsg, "Kernel does not support setns for %s",
-			ns_info[i].proc_name);
-	} else {
-		ret = asprintf(errmsg, "Failed to open %s: %s",
-			path, strerror(errno));
-	}
-	if (ret == -1)
-		*errmsg = NULL;
+	if (errno == ENOENT)
+		SYSERROR("Kernel does not support attaching to %s namespaces.", ns_info[i].proc_name);
+	else
+		SYSERROR("Failed to open file descriptor for %s namespace: %s.", ns_info[i].proc_name, strerror(errno));
 	close_ns(ns_fd);
 	return false;
 }
@@ -1068,7 +1058,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
 	const char *name = handler->name;
-	char *errmsg = NULL;
 	bool cgroups_connected = false;
 	int saved_ns_fd[LXC_NS_MAX];
 	int preserve_mask = 0, i, flags;
@@ -1143,12 +1132,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 			INFO("failed to pin the container's rootfs");
 	}
 
-	if (!preserve_ns(saved_ns_fd, preserve_mask, getpid(), &errmsg)) {
-		SYSERROR("Failed to preserve requested namespaces: %s",
-			errmsg ? errmsg : "(Out of memory)");
-		free(errmsg);
+	if (!preserve_ns(saved_ns_fd, preserve_mask, getpid()))
 		goto out_delete_net;
-	}
+
 	if (attach_ns(handler->conf->inherit_ns_fd) < 0)
 		goto out_delete_net;
 
@@ -1173,11 +1159,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 		INFO("Cloned a set of new namespaces.");
 	}
 
-	if (!preserve_ns(handler->nsfd, handler->clone_flags | preserve_mask, handler->pid, &errmsg)) {
-		INFO("Failed to store namespace references for stop hook: %s",
-			errmsg ? errmsg : "(Out of memory)");
-		free(errmsg);
-	}
+	if (!preserve_ns(handler->nsfd, handler->clone_flags | preserve_mask, handler->pid))
+		INFO("Failed to preserve namespace for lxc.hook.stop.");
 
 	if (attach_ns(saved_ns_fd))
 		WARN("failed to restore saved namespaces");
