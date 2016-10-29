@@ -22,10 +22,12 @@
  */
 
 #define _GNU_SOURCE
+#define __STDC_FORMAT_MACROS
 #include <errno.h>
 #include <fcntl.h>
-#include <sched.h>
+#include <inttypes.h>
 #include <limits.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -283,6 +285,40 @@ void test_lxc_safe_int(void)
 	lxc_test_assert_abort((-ERANGE == lxc_safe_int(int_max, &n)));
 }
 
+void test_lxc_safe_long(void)
+{
+	int ret;
+	signed long int n;
+	size_t len = /* 2^64 = 21 - 1 */ 21;
+	char long_max[len];
+
+	ret = snprintf(long_max, len, "%lld", LLONG_MAX);
+	if (ret < 0 || (size_t)ret >= len) {
+		lxc_error("%s\n", "Failed to create string via snprintf().");
+		exit(EXIT_FAILURE);
+	}
+
+	lxc_test_assert_abort((0 == lxc_safe_long("1234345", &n)) && n == 1234345);
+	lxc_test_assert_abort((0 == lxc_safe_long("   345", &n)) && n == 345);
+	lxc_test_assert_abort((0 == lxc_safe_long("-1234345", &n)) && n == -1234345);
+	lxc_test_assert_abort((0 == lxc_safe_long("   -345", &n)) && n == -345);
+	lxc_test_assert_abort((-EINVAL == lxc_safe_long("   g345", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_long("   3g45", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_long("   345g", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_long("g345", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_long("3g45", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_long("345g", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_long("g345   ", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_long("3g45   ", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_long("345g   ", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_long("g", &n)));
+	lxc_test_assert_abort((-EINVAL == lxc_safe_long("   g345", &n)));
+	if (LONG_MAX != LLONG_MAX)
+		lxc_test_assert_abort((-ERANGE == lxc_safe_long(long_max, &n)));
+	else
+		lxc_test_assert_abort((0 == lxc_safe_long(long_max, &n)) && n == LONG_MAX);
+}
+
 void test_lxc_string_replace(void)
 {
 	char *s;
@@ -343,6 +379,7 @@ int main(int argc, char *argv[])
 	test_detect_ramfs_rootfs();
 	test_lxc_safe_uint();
 	test_lxc_safe_int();
+	test_lxc_safe_long();
 
 	exit(EXIT_SUCCESS);
 }
