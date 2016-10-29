@@ -1975,7 +1975,13 @@ int lxc_preserve_ns(const int pid, const char *ns)
 	size_t len = 5 /* /proc */ + 21 /* /int_as_str */ + 3 /* /ns */ + 20 /* /NS_NAME */ + 1 /* \0 */;
 	char path[len];
 
-	ret = snprintf(path, len, "/proc/%d/ns/%s", pid, ns);
+	/* This way we can use this function to also check whether namespaces
+	 * are supported by the kernel by passing in the NULL or the empty
+	 * string.
+	 */
+	ret = snprintf(path, len, "/proc/%d/ns%s%s", pid,
+		       !ns || strcmp(ns, "") == 0 ? "" : "/",
+		       !ns || strcmp(ns, "") == 0 ? "" : ns);
 	if (ret < 0 || (size_t)ret >= len)
 		return -1;
 
