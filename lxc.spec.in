@@ -147,9 +147,6 @@ rm -rf %{buildroot}
 %{_sbindir}/*
 %{_libdir}/*.so.*
 %{_libdir}/%{name}
-%if %{with_python}
-%{_libdir}/python*
-%endif
 %{_localstatedir}/*
 %{_libexecdir}/%{name}
 %attr(4111,root,root) %{_libexecdir}/%{name}/lxc-user-nic
@@ -159,8 +156,7 @@ rm -rf %{buildroot}
 %endif
 
 %if %{with_python}
-%{_libdir}/python3.3/site-packages/_lxc*
-%{_libdir}/python3.3/site-packages/lxc/*
+%{python3_sitearch}/*
 %endif
 
 %if %{with_lua}
