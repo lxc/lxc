@@ -2261,6 +2261,33 @@ static bool init_cpuset_if_needed(struct cgroup_mount_point *mp,
 		do_init_cpuset_file(mp, path, "/cpuset.mems") );
 }
 
+static void print_cgfs_init_debuginfo(struct cgfs_data *d)
+{
+	int i;
+
+	if (!getenv("LXC_DEBUG_CGFS"))
+		return;
+
+	DEBUG("Cgroup information:");
+	DEBUG("  container name: %s", d->name);
+	if (!d->meta || !d->meta->hierarchies) {
+		DEBUG("  No hierarchies found.");
+		return;
+	}
+	DEBUG("  Controllers:");
+	for (i = 0; i <= d->meta->maximum_hierarchy; i++) {
+		char **p;
+		struct cgroup_hierarchy *h = d->meta->hierarchies[i];
+		if (!h) {
+			DEBUG("     Empty hierarchy number %d.", i);
+			continue;
+		}
+		for (p = h->subsystems; p && *p; p++) {
+			DEBUG("     %2d: %s", i, *p);
+		}
+	}
+}
+
 struct cgroup_ops *cgfs_ops_init(void)
 {
 	return &cgfs_ops;
@@ -2286,6 +2313,9 @@ static void *cgfs_init(const char *name)
 		ERROR("cgroupfs failed to detect cgroup metadata");
 		goto err2;
 	}
+
+	print_cgfs_init_debuginfo(d);
+
 	return d;
 
 err2:
