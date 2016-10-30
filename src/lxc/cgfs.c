@@ -495,7 +495,7 @@ static bool find_hierarchy_mountpts( struct cgroup_meta_data *meta_data, char **
 			goto out;
 
 		h = NULL;
-		for (k = 1; k <= meta_data->maximum_hierarchy; k++) {
+		for (k = 0; k <= meta_data->maximum_hierarchy; k++) {
 			if (meta_data->hierarchies[k] &&
 			    meta_data->hierarchies[k]->subsystems[0] &&
 			    lxc_string_in_array(meta_data->hierarchies[k]->subsystems[0], (const char **)subsystems)) {
@@ -637,6 +637,8 @@ static struct cgroup_hierarchy *lxc_cgroup_find_hierarchy(struct cgroup_meta_dat
 	size_t i;
 	for (i = 0; i <= meta_data->maximum_hierarchy; i++) {
 		struct cgroup_hierarchy *h = meta_data->hierarchies[i];
+		if (!h)
+			continue;
 		if (h && lxc_string_in_array(subsystem, (const char **)h->subsystems))
 			return h;
 	}
@@ -864,6 +866,8 @@ static struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const c
 	/* find mount points we can use */
 	for (info_ptr = base_info; info_ptr; info_ptr = info_ptr->next) {
 		h = info_ptr->hierarchy;
+		if (!h)
+			continue;
 		mp = lxc_cgroup_find_mount_point(h, info_ptr->cgroup_path, true);
 		if (!mp) {
 			ERROR("Could not find writable mount point for cgroup hierarchy %d while trying to create cgroup.", h->index);
@@ -950,6 +954,9 @@ static struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const c
 		 */
 		for (i = 0, info_ptr = base_info; info_ptr; info_ptr = info_ptr->next, i++) {
 			char *parts2[3];
+
+			if (!info_ptr->hierarchy)
+				continue;
 
 			if (lxc_string_in_array("ns", (const char **)info_ptr->hierarchy->subsystems))
 				continue;
@@ -1045,6 +1052,8 @@ static struct cgroup_process_info *lxc_cgroupfs_create(const char *name, const c
 
 	/* we're done, now update the paths */
 	for (i = 0, info_ptr = base_info; info_ptr; info_ptr = info_ptr->next, i++) {
+		if (!info_ptr->hierarchy)
+			continue;
 		/* ignore legacy 'ns' subsystem here, lxc_cgroup_create_legacy
 		 * will take care of it
 		 * Since we do a continue in above loop, new_cgroup_paths[i] is
@@ -1082,6 +1091,9 @@ static int lxc_cgroup_create_legacy(struct cgroup_process_info *base_info, const
 	int r;
 
 	for (info_ptr = base_info; info_ptr; info_ptr = info_ptr->next) {
+		if (!info_ptr->hierarchy)
+			continue;
+
 		if (!lxc_string_in_array("ns", (const char **)info_ptr->hierarchy->subsystems))
 			continue;
 		/*
@@ -1166,6 +1178,9 @@ static int lxc_cgroupfs_enter(struct cgroup_process_info *info, pid_t pid, bool 
 
 	snprintf(pid_buf, 32, "%lu", (unsigned long)pid);
 	for (info_ptr = info; info_ptr; info_ptr = info_ptr->next) {
+		if (!info_ptr->hierarchy)
+			continue;
+
 		char *cgroup_path = (enter_sub && info_ptr->cgroup_path_sub) ?
 			info_ptr->cgroup_path_sub :
 			info_ptr->cgroup_path;
@@ -1407,6 +1422,10 @@ static bool cgroupfs_mount_cgroup(void *hdata, const char *root, int type)
 	for (info = base_info; info; info = info->next) {
 		size_t subsystem_count, i;
 		struct cgroup_mount_point *mp = info->designated_mount_point;
+
+		if (!info->hierarchy)
+			continue;
+
 		if (!mountpoint_is_accessible(mp))
 			mp = lxc_cgroup_find_mount_point(info->hierarchy, info->cgroup_path, true);
 
@@ -1887,6 +1906,8 @@ find_info_for_subsystem(struct cgroup_process_info *info, const char *subsystem)
 	struct cgroup_process_info *info_ptr;
 	for (info_ptr = info; info_ptr; info_ptr = info_ptr->next) {
 		struct cgroup_hierarchy *h = info_ptr->hierarchy;
+		if (!h)
+			continue;
 		if (lxc_string_in_array(subsystem, (const char **)h->subsystems))
 			return info_ptr;
 	}
