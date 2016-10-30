@@ -40,6 +40,14 @@ done
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
+if [ -x /usr/bin/obs-build ]; then
+    BUILD=/usr/bin/obs-build
+    export BUILD_DIR=/usr/lib/obs-build
+else
+    BUILD=/usr/bin/build
+    export BUILD_DIR=/usr/lib/build
+fi
+
 configure_opensuse()
 {
     rootfs=$1
@@ -118,7 +126,7 @@ download_opensuse()
     cache=$1
     arch=$2
 
-    if [ ! -x /usr/bin/build ]; then
+    if [ ! -x ${BUILD} ]; then
        echo "Could not create openSUSE template :"
        echo "you need to install \"build\" package"
        return 1
@@ -200,7 +208,7 @@ EOF
     # openSUSE 13.2 has no noarch directory in update
     [ -d $cache/partial-$arch-packages/var/cache/zypp/packages/update/noarch ] || mkdir -p $cache/partial-$arch-packages/var/cache/zypp/packages/update/noarch
 
-    CLEAN_BUILD=1 BUILD_ARCH="$arch" BUILD_ROOT="$cache/partial-$arch" BUILD_DIST="$cache/partial-$arch-packages/opensuse.conf" PATH="$PATH:/usr/lib/build" /usr/lib/build/init_buildsystem  --clean --configdir /usr/lib/build/configs --cachedir $cache/partial-$arch-cache --repository $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/$arch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/noarch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/update/$arch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/update/noarch || return 1
+    CLEAN_BUILD=1 BUILD_ARCH="$arch" BUILD_ROOT="$cache/partial-$arch" BUILD_DIST="$cache/partial-$arch-packages/opensuse.conf" PATH="$PATH:$BUILD_DIR" $BUILD_DIR/init_buildsystem  --clean --configdir $BUILD_DIR/configs --cachedir $cache/partial-$arch-cache --repository $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/$arch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/repo-oss/suse/noarch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/update/$arch --repository $cache/partial-$arch-packages/var/cache/zypp/packages/update/noarch || return 1
     chroot $cache/partial-$arch /usr/bin/zypper --quiet --non-interactive ar http://download.opensuse.org/distribution/$DISTRO/repo/oss repo-oss || return 1
     if [ $DISTRO == "leap/42.1" ]; then
         chroot $cache/partial-$arch /usr/bin/zypper --quiet --non-interactive ar http://download.opensuse.org/update/$DISTRO/oss update || return 1
