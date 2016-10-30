@@ -173,7 +173,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
         <listitem>
           <para>
             <!--
-            Comma separate list of column to show in the fancy output.
+            Comma separated list of columns to show in the fancy output.
             The list of accepted and default fields is listed in \-\-help.
             -->
             &#045;&#045;fancy로 출력할때 어떤 컬럼을 보여줄지 쉼표(,)로 구분된 리스트.
