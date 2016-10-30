@@ -146,7 +146,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </term>
         <listitem>
           <para>
-            Comma separated list of column to show in the fancy output.
+            Comma separated list of columns to show in the fancy output.
             The list of accepted and default fields is listed in --help.
           </para>
         </listitem>

@@ -173,7 +173,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         <listitem>
           <para>
             <!--
-            Comma separate list of column to show in the fancy output.
+            Comma separated list of columns to show in the fancy output.
             The list of accepted and default fields is listed in \-\-help.
             -->
             装飾付き出力で表示するカラムのコンマ区切りのリスト。デフォルトで表示される項目と指定可能な項目名は --help オプションで確認してください。
