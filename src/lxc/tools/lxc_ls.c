@@ -185,8 +185,10 @@ lxc-ls list containers\n\
 \n\
 Options :\n\
   -1, --line         show one entry per line\n\
-  -f, --fancy        column-based output\n\
-  -F, --fancy-format column-based output\n\
+  -f, --fancy        use a fancy, column-based output\n\
+  -F, --fancy-format comma separated list of columns to show in the fancy output\n\
+                     valid columns are: NAME, STATE, PID, RAM, SWAP, AUTOSTART,\n\
+                     GROUPS, INTERFACE, IPV4 and IPV6\n\
   --active           list only active containers\n\
   --running          list only running containers\n\
   --frozen           list only frozen containers\n\
