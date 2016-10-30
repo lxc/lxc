@@ -210,6 +210,9 @@ int main(int argc, char *argv[])
 
 	if (!c->is_running(c)) {
 		fprintf(stderr, "%s is not running\n", c->name);
+		/* Per our manpage we need to exit with exit code:
+		 * 2: The specified container exists but was not running.
+		 */
 		ret = 2;
 		goto out;
 	}
