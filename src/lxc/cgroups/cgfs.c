@@ -364,6 +364,14 @@ static bool find_cgroup_hierarchies(struct cgroup_meta_data *meta_data,
 		*colon2 = '\0';
 
 		colon2 = NULL;
+
+		/* With cgroupv2 /proc/self/cgroup can contain entries of the
+		 * form: 0::/
+		 * These entries need to be skipped.
+		 */
+		if (!strcmp(colon1, ""))
+			continue;
+
 		hierarchy_number = strtoul(line, &colon2, 10);
 		if (!colon2 || *colon2)
 			continue;
@@ -1685,6 +1693,14 @@ lxc_cgroup_process_info_getx(const char *proc_pid_cgroup_str,
 		*colon2++ = '\0';
 
 		endptr = NULL;
+
+		/* With cgroupv2 /proc/self/cgroup can contain entries of the
+		 * form: 0::/
+		 * These entries need to be skipped.
+		 */
+		if (!strcmp(colon1, ""))
+			continue;
+
 		hierarchy_number = strtoul(line, &endptr, 10);
 		if (!endptr || *endptr)
 			continue;
