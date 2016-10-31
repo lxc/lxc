@@ -76,16 +76,6 @@
 
 lxc_log_define(lxc_start, lxc);
 
-const struct ns_info ns_info[LXC_NS_MAX] = {
-	[LXC_NS_MNT] = {"mnt", CLONE_NEWNS},
-	[LXC_NS_PID] = {"pid", CLONE_NEWPID},
-	[LXC_NS_UTS] = {"uts", CLONE_NEWUTS},
-	[LXC_NS_IPC] = {"ipc", CLONE_NEWIPC},
-	[LXC_NS_USER] = {"user", CLONE_NEWUSER},
-	[LXC_NS_NET] = {"net", CLONE_NEWNET},
-	[LXC_NS_CGROUP] = {"cgroup", CLONE_NEWCGROUP}
-};
-
 extern void mod_all_rdeps(struct lxc_container *c, bool inc);
 static bool do_destroy_container(struct lxc_conf *conf);
 static int lxc_rmdir_onedev_wrapper(void *data);
@@ -1148,7 +1138,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 		SYSERROR("Failed to clone a new set of namespaces.");
 		goto out_delete_net;
 	}
-	INFO("Cloned a set of new namespaces.");
+	for (i = 0; i < LXC_NS_MAX; i++)
+		if (flags & ns_info[i].clone_flag)
+			INFO("Cloned %s.", ns_info[i].flag_name);
 
 	if (!preserve_ns(handler->nsfd, handler->clone_flags | preserve_mask, handler->pid))
 		INFO("Failed to preserve namespace for lxc.hook.stop.");
