@@ -46,6 +46,12 @@
 #include "network.h"
 #include "utils.h"
 
+#if IS_BIONIC
+#include <../include/lxcmntent.h>
+#else
+#include <mntent.h>
+#endif
+
 #define CRIU_VERSION		"2.0"
 
 #define CRIU_GITID_VERSION	"2.0"
@@ -123,6 +129,8 @@ static void exec_criu(struct criu_opts *opts)
 	int static_args = 23, argc = 0, i, ret;
 	int netnr = 0;
 	struct lxc_list *it;
+	FILE *mnts;
+	struct mntent mntent;
 
 	char buf[4096], tty_info[32];
 	size_t pos;
@@ -199,6 +207,8 @@ static void exec_criu(struct criu_opts *opts)
 
 	if (opts->user->action_script)
 		static_args += 2;
+
+	static_args += 2 * lxc_list_len(&opts->c->lxc_conf->mount_list);
 
 	ret = snprintf(log, PATH_MAX, "%s/%s.log", opts->user->directory, opts->action);
 	if (ret < 0 || ret >= PATH_MAX) {
@@ -314,6 +324,36 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG("--action-script");
 		DECLARE_ARG(opts->user->action_script);
 	}
+
+	mnts = write_mount_file(&opts->c->lxc_conf->mount_list);
+	if (!mnts)
+		goto err;
+
+	while (getmntent_r(mnts, &mntent, buf, sizeof(buf))) {
+		char *fmt, *key, *val;
+		char arg[2 * PATH_MAX + 2];
+
+		if (strcmp(opts->action, "dump") == 0) {
+			fmt = "/%s:%s";
+			key = mntent.mnt_dir;
+			val = mntent.mnt_dir;
+		} else {
+			fmt = "%s:%s";
+			key = mntent.mnt_dir;
+			val = mntent.mnt_fsname;
+		}
+
+		ret = snprintf(arg, sizeof(arg), fmt, key, val);
+		if (ret < 0 || ret >= sizeof(arg)) {
+			fclose(mnts);
+			ERROR("snprintf failed");
+			goto err;
+		}
+
+		DECLARE_ARG("--ext-mount-map");
+		DECLARE_ARG(arg);
+	}
+	fclose(mnts);
 
 	if (strcmp(opts->action, "dump") == 0 || strcmp(opts->action, "pre-dump") == 0) {
 		char pid[32], *freezer_relative;
