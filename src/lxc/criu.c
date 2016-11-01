@@ -62,6 +62,9 @@
 lxc_log_define(lxc_criu, lxc);
 
 struct criu_opts {
+	/* the thing to hook to stdout and stderr for logging */
+	int pipefd;
+
 	/* The type of criu invocation, one of "dump" or "restore" */
 	char *action;
 
@@ -134,6 +137,7 @@ static void exec_criu(struct criu_opts *opts)
 
 	char buf[4096], tty_info[32];
 	size_t pos;
+
 	/* If we are currently in a cgroup /foo/bar, and the container is in a
 	 * cgroup /lxc/foo, lxcfs will give us an ENOENT if some task in the
 	 * container has an open fd that points to one of the cgroup files
@@ -541,6 +545,21 @@ static void exec_criu(struct criu_opts *opts)
 
 	INFO("execing: %s", buf);
 
+	/* before criu inits its log, it sometimes prints things to stdout/err;
+	 * let's be sure we capture that.
+	 */
+	if (dup2(opts->pipefd, STDOUT_FILENO) < 0) {
+		SYSERROR("dup2 stdout failed");
+		goto err;
+	}
+
+	if (dup2(opts->pipefd, STDERR_FILENO) < 0) {
+		SYSERROR("dup2 stderr failed");
+		goto err;
+	}
+
+	close(opts->pipefd);
+
 #undef DECLARE_ARG
 	execv(argv[0], argv);
 err:
@@ -781,15 +800,6 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 
 		close(pipes[0]);
 		pipes[0] = -1;
-		if (dup2(pipes[1], STDERR_FILENO) < 0) {
-			SYSERROR("dup2 failed");
-			goto out_fini_handler;
-		}
-
-		if (dup2(pipes[1], STDOUT_FILENO) < 0) {
-			SYSERROR("dup2 failed");
-			goto out_fini_handler;
-		}
 
 		if (unshare(CLONE_NEWNS))
 			goto out_fini_handler;
@@ -816,6 +826,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 			}
 		}
 
+		os.pipefd = pipes[1];
 		os.action = "restore";
 		os.user = opts;
 		os.c = c;
@@ -1013,22 +1024,30 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 {
 	pid_t pid;
 	char *criu_version = NULL;
+	int criuout[2];
 
 	if (!criu_ok(c, &criu_version))
 		return false;
 
-	if (mkdir_p(opts->directory, 0700) < 0)
+	if (pipe(criuout) < 0) {
+		SYSERROR("pipe() failed");
 		return false;
+	}
+
+	if (mkdir_p(opts->directory, 0700) < 0)
+		goto fail;
 
 	pid = fork();
 	if (pid < 0) {
 		SYSERROR("fork failed");
-		return false;
+		goto fail;
 	}
 
 	if (pid == 0) {
 		struct criu_opts os;
 		struct lxc_handler h;
+
+		close(criuout[0]);
 
 		h.name = c->name;
 		if (!cgroup_init(&h)) {
@@ -1036,6 +1055,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 			exit(1);
 		}
 
+		os.pipefd = criuout[1];
 		os.action = mode;
 		os.user = opts;
 		os.c = c;
@@ -1050,27 +1070,51 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		exit(1);
 	} else {
 		int status;
+		ssize_t n;
+		char buf[4096];
+		bool ret;
+
+		close(criuout[1]);
+
 		pid_t w = waitpid(pid, &status, 0);
 		if (w == -1) {
 			SYSERROR("waitpid");
+			close(criuout[0]);
 			return false;
 		}
+
+		n = read(criuout[0], buf, sizeof(buf));
+		close(criuout[0]);
+		if (n < 0) {
+			SYSERROR("read");
+			n = 0;
+		}
+		buf[n] = 0;
 
 		if (WIFEXITED(status)) {
 			if (WEXITSTATUS(status)) {
 				ERROR("dump failed with %d\n", WEXITSTATUS(status));
-				return false;
+				ret = false;
+			} else {
+				ret = true;
 			}
-
-			return true;
 		} else if (WIFSIGNALED(status)) {
 			ERROR("dump signaled with %d\n", WTERMSIG(status));
-			return false;
+			ret = false;
 		} else {
 			ERROR("unknown dump exit %d\n", status);
-			return false;
+			ret = false;
 		}
+
+		if (!ret)
+			ERROR("criu output: %s", buf);
+		return ret;
 	}
+fail:
+	close(criuout[0]);
+	close(criuout[1]);
+	rmdir(opts->directory);
+	return false;
 }
 
 bool __criu_pre_dump(struct lxc_container *c, struct migrate_opts *opts)
