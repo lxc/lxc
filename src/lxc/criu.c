@@ -883,6 +883,8 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 					goto out_fini_handler;
 				}
 
+				if (n == sizeof(buf))
+					n--;
 				buf[n] = 0;
 
 				ERROR("criu process exited %d, output:\n%s", WEXITSTATUS(status), buf);
