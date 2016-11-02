@@ -216,7 +216,7 @@ static void exec_criu(struct criu_opts *opts)
 
 	ret = snprintf(log, PATH_MAX, "%s/%s.log", opts->user->directory, opts->action);
 	if (ret < 0 || ret >= PATH_MAX) {
-		ERROR("logfile name too long\n");
+		ERROR("logfile name too long");
 		return;
 	}
 
@@ -239,7 +239,7 @@ static void exec_criu(struct criu_opts *opts)
 
 	argv[argc++] = on_path("criu", NULL);
 	if (!argv[argc-1]) {
-		ERROR("Couldn't find criu binary\n");
+		ERROR("Couldn't find criu binary");
 		goto err;
 	}
 
@@ -506,7 +506,7 @@ static void exec_criu(struct criu_opts *opts)
 				break;
 			case LXC_NET_MACVLAN:
 				if (!n->link) {
-					ERROR("no host interface for macvlan %s\n", n->name);
+					ERROR("no host interface for macvlan %s", n->name);
 					goto err;
 				}
 
@@ -519,7 +519,7 @@ static void exec_criu(struct criu_opts *opts)
 				break;
 			default:
 				/* we have screened for this earlier... */
-				ERROR("unexpected network type %d\n", n->type);
+				ERROR("unexpected network type %d", n->type);
 				goto err;
 			}
 
@@ -670,7 +670,7 @@ version_match:
 version_error:
 		fclose(f);
 		free(tmp);
-		ERROR("must have criu " CRIU_VERSION " or greater to checkpoint/restore\n");
+		ERROR("must have criu " CRIU_VERSION " or greater to checkpoint/restore");
 		return false;
 	}
 }
@@ -685,7 +685,7 @@ static bool criu_ok(struct lxc_container *c, char **criu_version)
 		return false;
 
 	if (geteuid()) {
-		ERROR("Must be root to checkpoint\n");
+		ERROR("Must be root to checkpoint");
 		return false;
 	}
 
@@ -699,7 +699,7 @@ static bool criu_ok(struct lxc_container *c, char **criu_version)
 		case LXC_NET_MACVLAN:
 			break;
 		default:
-			ERROR("Found un-dumpable network: %s (%s)\n", lxc_net_type_to_str(n->type), n->name);
+			ERROR("Found un-dumpable network: %s (%s)", lxc_net_type_to_str(n->type), n->name);
 			return false;
 		}
 	}
@@ -885,7 +885,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 
 				buf[n] = 0;
 
-				ERROR("criu process exited %d, output:\n%s\n", WEXITSTATUS(status), buf);
+				ERROR("criu process exited %d, output:\n%s", WEXITSTATUS(status), buf);
 				goto out_fini_handler;
 			} else {
 				ret = snprintf(buf, sizeof(buf), "/proc/self/task/%lu/children", (unsigned long)syscall(__NR_gettid));
@@ -896,7 +896,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 
 				FILE *f = fopen(buf, "r");
 				if (!f) {
-					SYSERROR("couldn't read restore's children file %s\n", buf);
+					SYSERROR("couldn't read restore's children file %s", buf);
 					goto out_fini_handler;
 				}
 
@@ -913,7 +913,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 				}
 			}
 		} else {
-			ERROR("CRIU was killed with signal %d\n", WTERMSIG(status));
+			ERROR("CRIU was killed with signal %d", WTERMSIG(status));
 			goto out_fini_handler;
 		}
 
@@ -1093,16 +1093,16 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 
 		if (WIFEXITED(status)) {
 			if (WEXITSTATUS(status)) {
-				ERROR("dump failed with %d\n", WEXITSTATUS(status));
+				ERROR("dump failed with %d", WEXITSTATUS(status));
 				ret = false;
 			} else {
 				ret = true;
 			}
 		} else if (WIFSIGNALED(status)) {
-			ERROR("dump signaled with %d\n", WTERMSIG(status));
+			ERROR("dump signaled with %d", WTERMSIG(status));
 			ret = false;
 		} else {
-			ERROR("unknown dump exit %d\n", status);
+			ERROR("unknown dump exit %d", status);
 			ret = false;
 		}
 
@@ -1132,7 +1132,7 @@ bool __criu_dump(struct lxc_container *c, struct migrate_opts *opts)
 		return false;
 
 	if (access(path, F_OK) == 0) {
-		ERROR("please use a fresh directory for the dump directory\n");
+		ERROR("please use a fresh directory for the dump directory");
 		return false;
 	}
 
@@ -1150,7 +1150,7 @@ bool __criu_restore(struct lxc_container *c, struct migrate_opts *opts)
 		return false;
 
 	if (geteuid()) {
-		ERROR("Must be root to restore\n");
+		ERROR("Must be root to restore");
 		return false;
 	}
 
