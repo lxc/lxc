@@ -854,6 +854,26 @@ static int do_start(void *data)
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP))
 		goto out_error;
 
+	/* Unshare cgroup namespace after we have setup our cgroups. If we do it
+	 * earlier we end up with a wrong view of /proc/self/cgroup. For
+	 * example, assume we unshare(CLONE_NEWCGROUP) first, and then create
+	 * the cgroup for the container, say /sys/fs/cgroup/cpuset/lxc/c, then
+	 * /proc/self/cgroup would show us:
+	 *
+	 *	8:cpuset:/lxc/c
+	 *
+	 * whereas it should actually show
+	 *
+	 *	8:cpuset:/
+	 */
+	if (cgns_supported()) {
+		if (unshare(CLONE_NEWCGROUP) < 0) {
+			INFO("Failed to unshare CLONE_NEWCGROUP.");
+			goto out_warn_father;
+		}
+		INFO("Unshared CLONE_NEWCGROUP.");
+	}
+
 	/* Set the label to change to when we exec(2) the container's init */
 	if (lsm_process_label_set(NULL, handler->conf, 1, 1) < 0)
 		goto out_warn_father;
@@ -1156,10 +1176,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 	flags = handler->clone_flags;
 	if (handler->clone_flags & CLONE_NEWUSER)
 		flags &= ~CLONE_NEWNET;
-	if (cgns_supported()) {
-		handler->clone_flags |= CLONE_NEWCGROUP;
-		flags |= CLONE_NEWCGROUP;
-	}
 	handler->pid = lxc_clone(do_start, handler, flags);
 	if (handler->pid < 0) {
 		SYSERROR("failed to fork into a new namespace");
