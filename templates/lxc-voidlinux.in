@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 #
 # template script for generating Void Linux container for LXC
