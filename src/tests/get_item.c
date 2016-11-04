@@ -174,6 +174,70 @@ int main(int argc, char *argv[])
 	}
 	printf("lxc.mount.entry returned %d %s\n", ret, v2);
 
+	ret = c->get_config_item(c, "lxc.limit", v3, 2047);
+	if (ret != 0) {
+		fprintf(stderr, "%d: get_config_item(limit) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+
+	if (!c->set_config_item(c, "lxc.limit.nofile", "1234:unlimited")) {
+		fprintf(stderr, "%d: failed to set limit.nofile\n", __LINE__);
+		goto out;
+	}
+	ret = c->get_config_item(c, "lxc.limit.nofile", v2, 255);
+	if (ret < 0) {
+		fprintf(stderr, "%d: get_config_item(lxc.limit.nofile) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v2, "1234:unlimited")) {
+		fprintf(stderr, "%d: lxc.limit.nofile returned wrong value: %d %s not 14 1234:unlimited\n", __LINE__, ret, v2);
+		goto out;
+	}
+	printf("lxc.limit.nofile returned %d %s\n", ret, v2);
+
+	if (!c->set_config_item(c, "lxc.limit.stack", "unlimited")) {
+		fprintf(stderr, "%d: failed to set limit.stack\n", __LINE__);
+		goto out;
+	}
+	ret = c->get_config_item(c, "lxc.limit.stack", v2, 255);
+	if (ret < 0) {
+		fprintf(stderr, "%d: get_config_item(lxc.limit.stack) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v2, "unlimited")) {
+		fprintf(stderr, "%d: lxc.limit.stack returned wrong value: %d %s not 9 unlimited\n", __LINE__, ret, v2);
+		goto out;
+	}
+	printf("lxc.limit.stack returned %d %s\n", ret, v2);
+
+#define LIMIT_STACK "lxc.limit.stack = unlimited\n"
+#define ALL_LIMITS "lxc.limit.nofile = 1234:unlimited\n" LIMIT_STACK
+	ret = c->get_config_item(c, "lxc.limit", v3, 2047);
+	if (ret != sizeof(ALL_LIMITS)-1) {
+		fprintf(stderr, "%d: get_config_item(limit) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v3, ALL_LIMITS)) {
+		fprintf(stderr, "%d: lxc.limit returned wrong value: %d %s not %d %s\n", __LINE__, ret, v3, (int)sizeof(ALL_LIMITS)-1, ALL_LIMITS);
+		goto out;
+	}
+	printf("lxc.limit returned %d %s\n", ret, v3);
+
+	if (!c->clear_config_item(c, "lxc.limit.nofile")) {
+		fprintf(stderr, "%d: failed clearing limit.nofile\n", __LINE__);
+		goto out;
+	}
+	ret = c->get_config_item(c, "lxc.limit", v3, 2047);
+	if (ret != sizeof(LIMIT_STACK)-1) {
+		fprintf(stderr, "%d: get_config_item(limit) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v3, LIMIT_STACK)) {
+		fprintf(stderr, "%d: lxc.limit returned wrong value: %d %s not %d %s\n", __LINE__, ret, v3, (int)sizeof(LIMIT_STACK)-1, LIMIT_STACK);
+		goto out;
+	}
+	printf("lxc.limit returned %d %s\n", ret, v3);
+
 	if (!c->set_config_item(c, "lxc.aa_profile", "unconfined")) {
 		fprintf(stderr, "%d: failed to set aa_profile\n", __LINE__);
 		goto out;
