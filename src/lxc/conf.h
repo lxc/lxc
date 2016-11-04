@@ -30,6 +30,9 @@
 #include <net/if.h>
 #include <sys/param.h>
 #include <sys/types.h>
+#if HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif
 #include <stdbool.h>
 
 #include "list.h"
@@ -147,6 +150,23 @@ struct lxc_netdev {
 struct lxc_cgroup {
 	char *subsystem;
 	char *value;
+};
+
+#if !HAVE_SYS_RESOURCE_H
+# define RLIM_INFINITY ((unsigned long)-1)
+struct rlimit {
+	unsigned long rlim_cur;
+	unsigned long rlim_max;
+};
+#endif
+/*
+ * Defines a structure to configure resource limits to set via setrlimit().
+ * @resource : the resource name in lowercase without the RLIMIT_ prefix
+ * @limit    : the limit to set
+ */
+struct lxc_limit {
+	char *resource;
+	struct rlimit limit;
 };
 
 enum idtype {
@@ -385,6 +405,9 @@ struct lxc_conf {
 
 	/* Whether PR_SET_NO_NEW_PRIVS will be set for the container. */
 	bool no_new_privs;
+
+	/* RLIMIT_* limits */
+	struct lxc_list limits;
 };
 
 #ifdef HAVE_TLS
@@ -428,6 +451,7 @@ extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
 extern int lxc_clear_idmaps(struct lxc_conf *c);
 extern int lxc_clear_groups(struct lxc_conf *c);
 extern int lxc_clear_environment(struct lxc_conf *c);
+extern int lxc_clear_limits(struct lxc_conf *c, const char *key);
 extern int lxc_delete_autodev(struct lxc_handler *handler);
 
 extern int do_rootfs_setup(struct lxc_conf *conf, const char *name,
@@ -439,6 +463,8 @@ extern int do_rootfs_setup(struct lxc_conf *conf, const char *name,
 
 struct cgroup_process_info;
 extern int lxc_setup(struct lxc_handler *handler);
+
+extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
 
 extern void lxc_restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf);
 

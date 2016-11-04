@@ -639,7 +639,7 @@ AC_CHECK_DECLS([PR_SET_NO_NEW_PRIVS], [], [], [#include <sys/prctl.h>])
 AC_CHECK_DECLS([PR_GET_NO_NEW_PRIVS], [], [], [#include <sys/prctl.h>])
 
 # Check for some headers
-AC_CHECK_HEADERS([sys/signalfd.h pty.h ifaddrs.h sys/memfd.h sys/personality.h utmpx.h sys/timerfd.h])
+AC_CHECK_HEADERS([sys/signalfd.h pty.h ifaddrs.h sys/memfd.h sys/personality.h utmpx.h sys/timerfd.h sys/resource.h])
 
 # lookup major()/minor()/makedev()
 AC_HEADER_MAJOR

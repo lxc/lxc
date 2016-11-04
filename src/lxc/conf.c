@@ -239,6 +239,11 @@ struct caps_opt {
 	int value;
 };
 
+struct limit_opt {
+	char *name;
+	int value;
+};
+
 /*
  * The lxc_conf of the container currently being worked on in an
  * API call
@@ -370,6 +375,57 @@ static struct caps_opt caps_opt[] = {
 #else
 static struct caps_opt caps_opt[] = {};
 #endif
+
+static struct limit_opt limit_opt[] = {
+#ifdef RLIMIT_AS
+	{ "as",          RLIMIT_AS          },
+#endif
+#ifdef RLIMIT_CORE
+	{ "core",        RLIMIT_CORE        },
+#endif
+#ifdef RLIMIT_CPU
+	{ "cpu",         RLIMIT_CPU         },
+#endif
+#ifdef RLIMIT_DATA
+	{ "data",        RLIMIT_DATA        },
+#endif
+#ifdef RLIMIT_FSIZE
+	{ "fsize",       RLIMIT_FSIZE       },
+#endif
+#ifdef RLIMIT_LOCKS
+	{ "locks",       RLIMIT_LOCKS       },
+#endif
+#ifdef RLIMIT_MEMLOCK
+	{ "memlock",     RLIMIT_MEMLOCK     },
+#endif
+#ifdef RLIMIT_MSGQUEUE
+	{ "msgqueue",    RLIMIT_MSGQUEUE    },
+#endif
+#ifdef RLIMIT_NICE
+	{ "nice",        RLIMIT_NICE        },
+#endif
+#ifdef RLIMIT_NOFILE
+	{ "nofile",      RLIMIT_NOFILE      },
+#endif
+#ifdef RLIMIT_NPROC
+	{ "nproc",       RLIMIT_NPROC       },
+#endif
+#ifdef RLIMIT_RSS
+	{ "rss",         RLIMIT_RSS         },
+#endif
+#ifdef RLIMIT_RTPRIO
+	{ "rtprio",      RLIMIT_RTPRIO      },
+#endif
+#ifdef RLIMIT_RTTIME
+	{ "rttime",      RLIMIT_RTTIME      },
+#endif
+#ifdef RLIMIT_SIGPENDING
+	{ "sigpending",  RLIMIT_SIGPENDING  },
+#endif
+#ifdef RLIMIT_STACK
+	{ "stack",       RLIMIT_STACK       },
+#endif
+};
 
 static int run_buffer(char *buffer)
 {
@@ -2473,6 +2529,45 @@ static int setup_network(struct lxc_list *network)
 	return 0;
 }
 
+static int parse_resource(const char *res) {
+	size_t i;
+	int resid = -1;
+
+	for (i = 0; i < sizeof(limit_opt)/sizeof(limit_opt[0]); ++i) {
+		if (strcmp(res, limit_opt[i].name) == 0)
+			return limit_opt[i].value;
+	}
+
+	/* try to see if it's numeric, so the user may specify
+	 * resources that the running kernel knows about but
+	 * we don't */
+	if (lxc_safe_int(res, &resid) == 0)
+		return resid;
+	return -1;
+}
+
+int setup_resource_limits(struct lxc_list *limits, pid_t pid) {
+	struct lxc_list *it;
+	struct lxc_limit *lim;
+	int resid;
+
+	lxc_list_for_each(it, limits) {
+		lim = it->elem;
+
+		resid = parse_resource(lim->resource);
+		if (resid < 0) {
+			ERROR("unknown resource %s", lim->resource);
+			return -1;
+		}
+
+		if (prlimit(pid, resid, &lim->limit, NULL) != 0) {
+			ERROR("failed to set limit %s: %s", lim->resource, strerror(errno));
+			return -1;
+		}
+	}
+	return 0;
+}
+
 /* try to move physical nics to the init netns */
 void lxc_restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
 {
@@ -2559,6 +2654,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->includes);
 	lxc_list_init(&new->aliens);
 	lxc_list_init(&new->environment);
+	lxc_list_init(&new->limits);
 	for (i=0; i<NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
 	lxc_list_init(&new->groups);
@@ -4178,6 +4274,31 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key)
 	return 0;
 }
 
+int lxc_clear_limits(struct lxc_conf *c, const char *key)
+{
+	struct lxc_list *it, *next;
+	bool all = false;
+	const char *k = NULL;
+
+	if (strcmp(key, "lxc.limit") == 0)
+		all = true;
+	else if (strncmp(key, "lxc.limit.", sizeof("lxc.limit.")-1) == 0)
+		k = key + sizeof("lxc.limit.")-1;
+	else
+		return -1;
+
+	lxc_list_for_each_safe(it, &c->limits, next) {
+		struct lxc_limit *lim = it->elem;
+		if (!all && strcmp(lim->resource, k) != 0)
+			continue;
+		lxc_list_del(it);
+		free(lim->resource);
+		free(lim);
+		free(it);
+	}
+	return 0;
+}
+
 int lxc_clear_groups(struct lxc_conf *c)
 {
 	struct lxc_list *it,*next;
@@ -4320,6 +4441,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_includes(conf);
 	lxc_clear_aliens(conf);
 	lxc_clear_environment(conf);
+	lxc_clear_limits(conf, "lxc.limit");
 	free(conf);
 }
 

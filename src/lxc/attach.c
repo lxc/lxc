@@ -894,6 +894,11 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 				goto on_error;
 		}
 
+		/* Setup resource limits */
+		if (!lxc_list_empty(&init_ctx->container->lxc_conf->limits) && setup_resource_limits(&init_ctx->container->lxc_conf->limits, pid)) {
+			goto on_error;
+		}
+
 		/* Open /proc before setns() to the containers namespace so we
 		 * don't rely on any information from inside the container.
 		 */
