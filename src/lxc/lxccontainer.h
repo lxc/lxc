@@ -39,7 +39,8 @@ extern "C" {
 #define LXC_CLONE_SNAPSHOT        (1 << 2) /*!< Snapshot the original filesystem(s) */
 #define LXC_CLONE_KEEPBDEVTYPE    (1 << 3) /*!< Use the same bdev type */
 #define LXC_CLONE_MAYBE_SNAPSHOT  (1 << 4) /*!< Snapshot only if bdev supports it, else copy */
-#define LXC_CLONE_MAXFLAGS        (1 << 5) /*!< Number of \c LXC_CLONE_* flags */
+#define LXC_CLONE_FORCE           (1 << 5) /*!< Ignore warning if the target domain is running, and force clone */
+#define LXC_CLONE_MAXFLAGS        (1 << 6) /*!< Number of \c LXC_CLONE_* flags */
 #define LXC_CREATE_QUIET          (1 << 0) /*!< Redirect \c stdin to \c /dev/zero and \c stdout and \c stderr to \c /dev/null */
 #define LXC_CREATE_MAXFLAGS       (1 << 1) /*!< Number of \c LXC_CREATE* flags */
 
@@ -547,6 +548,7 @@ struct lxc_container {
 	 *  - \ref LXC_CLONE_KEEPNAME
 	 *  - \ref LXC_CLONE_KEEPMACADDR
 	 *  - \ref LXC_CLONE_SNAPSHOT
+	 *  - \ref LXC_CLONE_FORCE
 	 * \param bdevtype Optionally force the cloned bdevtype to a specified plugin.
 	 *  By default the original is used (subject to snapshot requirements).
 	 * \param bdevdata Information about how to create the new storage

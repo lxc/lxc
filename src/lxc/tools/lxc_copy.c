@@ -88,6 +88,7 @@ static const struct option my_longopts[] = {
 	{ "keepname", no_argument, 0, 'K'},
 	{ "keepmac", no_argument, 0, 'M'},
 	{ "tmpfs", no_argument, 0, 't'},
+	{ "force", no_argument, 0, 'f'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -102,8 +103,8 @@ static char *const keys[] = {
 static struct lxc_arguments my_args = {
 	.progname = "lxc-copy",
 	.help = "\n\
---name=NAME [-P lxcpath] -N newname [-p newpath] [-B backingstorage] [-s] [-K] [-M] [-L size [unit]] -- hook options\n\
---name=NAME [-P lxcpath] [-N newname] [-p newpath] [-B backingstorage] -e [-d] [-D] [-K] [-M] [-m {bind,aufs,overlay}=/src:/dest] -- hook options\n\
+--name=NAME [-P lxcpath] -N newname [-p newpath] [-B backingstorage] [-f] [-s] [-K] [-M] [-L size [unit]] -- hook options\n\
+--name=NAME [-P lxcpath] [-N newname] [-p newpath] [-B backingstorage] -e [-f] [-d] [-D] [-K] [-M] [-m {bind,aufs,overlay}=/src:/dest] -- hook options\n\
 --name=NAME [-P lxcpath] -N newname -R\n\
 \n\
 lxc-copy clone a container\n\
@@ -114,6 +115,7 @@ Options :\n\
   -p, --newpath=NEWPATH     NEWPATH for the container to be stored\n\
   -R, --rename              rename container\n\
   -s, --snapshot            create snapshot instead of clone\n\
+  -f, --force               force the copy even if the container is running\n\
   -F, --foreground          start with current tty attached to /dev/console\n\
   -d, --daemon              daemonize the container (default)\n\
   -e, --ephemeral           start ephemeral container\n\
@@ -203,6 +205,8 @@ int main(int argc, char *argv[])
 		flags |= LXC_CLONE_KEEPNAME;
 	if (my_args.keepmac)
 		flags |= LXC_CLONE_KEEPMACADDR;
+	if (my_args.force)
+		flags |= LXC_CLONE_FORCE;
 
 	if (!my_args.newpath)
 		my_args.newpath = (char *)my_args.lxcpath[0];
@@ -604,6 +608,9 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		break;
 	case 's':
 		args->task = SNAP;
+		break;
+	case 'f':
+		args->force = 1;
 		break;
 	case 'F':
 		args->daemonize = 0;

@@ -57,6 +57,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-s, --snapshot</arg>
       <arg choice="opt">-K, --keepname</arg>
       <arg choice="opt">-D, --keepdata</arg>
+      <arg choice="opt">-f, --force</arg>
       <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
       <arg choice="opt">-- hook arguments</arg>
@@ -72,6 +73,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-s, --snapshot</arg>
       <arg choice="opt">-K, --keepname</arg>
       <arg choice="opt">-D, --keepdata</arg>
+      <arg choice="opt">-f, --force</arg>
       <arg choice="opt">-M, --keepmac</arg>
       <arg choice="opt">-L, --fssize <replaceable>size [unit]</replaceable></arg>
       <arg choice="opt">-- hook arguments</arg>
@@ -117,7 +119,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       support snapshots. This currently includes aufs, btrfs, lvm (lvm devices
       do not support snapshots of snapshots.), overlay, and zfs.
     </para>
-      
+
     <para>
     The copy's backing storage will be of the same type as the original
     container. aufs or overlayfs snapshots of directory backed containers are
@@ -205,6 +207,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <para> Create a snapshot of the original container. The backing
             storage for the copy must support snapshots. This currently includes
             aufs, btrfs, lvm, overlay, and zfs. </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-f,--force </option> </term>
+	   <listitem>
+            <para> Force the copy even if the container is running. Please be
+            careful with this mode, as it can produce non-persistent data
+            (typically with non-locked running databases, etc…). Has no effect
+            during a rename, as it would totally break a running
+            container.</para>
 	   </listitem>
 	  </varlistentry>
 

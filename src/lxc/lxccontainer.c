@@ -3064,7 +3064,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	if (container_mem_lock(c))
 		return NULL;
 
-	if (!is_stopped(c)) {
+	if (!(flags & LXC_CLONE_FORCE) && !is_stopped(c)) {
 		ERROR("error: Original container (%s) is running", c->name);
 		goto out;
 	}
