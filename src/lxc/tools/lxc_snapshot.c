@@ -44,13 +44,14 @@ static const struct option my_longopts[] = {
 	{"destroy", required_argument, 0, 'd'},
 	{"comment", required_argument, 0, 'c'},
 	{"showcomments", no_argument, 0, 'C'},
+	{ "force", no_argument, 0, 'f'},
 	LXC_COMMON_OPTIONS
 };
 
 static struct lxc_arguments my_args = {
 	.progname = "lxc-snapshot",
 	.help = "\
---name=NAME [-P lxcpath] [-L [-C]] [-c commentfile] [-r snapname [-N newname]]\n\
+--name=NAME [-P lxcpath] [-L [-C]] [-c commentfile] [-f] [-r snapname [-N newname]]\n\
 \n\
 lxc-snapshot snapshots a container\n\
 \n\
@@ -61,6 +62,7 @@ Options :\n\
   -N, --newname=NEWNAME  NEWNAME for the restored container\n\
   -d, --destroy=NAME     destroy snapshot NAME, e.g. 'snap0'\n\
                          use ALL to destroy all snapshots\n\
+  -f, --force            force the snapshot even if the container is running\n\
   -c, --comment=FILE     add FILE as a comment\n\
   -C, --showcomments     show snapshot comments\n\
   --rcfile=FILE          Load configuration file FILE\n",
@@ -70,17 +72,19 @@ Options :\n\
 	.task = SNAP,
 };
 
-static int do_snapshot(struct lxc_container *c, char *commentfile);
+static int do_snapshot(struct lxc_container *c, char *commentfile, int flags);
 static int do_snapshot_destroy(struct lxc_container *c, char *snapname);
 static int do_snapshot_list(struct lxc_container *c, int print_comments);
 static int do_snapshot_restore(struct lxc_container *c,
 			       struct lxc_arguments *args);
-static int do_snapshot_task(struct lxc_container *c, enum task task);
+static int do_snapshot_task(struct lxc_container *c, enum task task,
+                   int flags);
 static void print_file(char *path);
 
 int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
+	int flags = 0;
 	int ret;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
@@ -101,6 +105,9 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	if (my_args.force)
+		flags |= LXC_CLONE_FORCE;
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
@@ -130,7 +137,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	ret = do_snapshot_task(c, my_args.task);
+	ret = do_snapshot_task(c, my_args.task, flags);
 
 	lxc_container_put(c);
 
@@ -139,7 +146,7 @@ int main(int argc, char *argv[])
 	exit(EXIT_FAILURE);
 }
 
-static int do_snapshot_task(struct lxc_container *c, enum task task)
+static int do_snapshot_task(struct lxc_container *c, enum task task, int flags)
 {
 	int ret = 0;
 
@@ -154,7 +161,7 @@ static int do_snapshot_task(struct lxc_container *c, enum task task)
 		ret = do_snapshot_restore(c, &my_args);
 		break;
 	case SNAP:
-		ret = do_snapshot(c, my_args.commentfile);
+		ret = do_snapshot(c, my_args.commentfile, flags);
 		break;
 	default:
 		ret = 0;
@@ -181,6 +188,9 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		args->task = DESTROY;
 		args->snapname = arg;
 		break;
+	case 'f':
+		args->force = 1;
+		break;
 	case 'c':
 		args->commentfile = arg;
 		break;
@@ -192,11 +202,11 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	return 0;
 }
 
-static int do_snapshot(struct lxc_container *c, char *commentfile)
+static int do_snapshot(struct lxc_container *c, char *commentfile, int flags)
 {
 	int ret;
 
-	ret = c->snapshot(c, commentfile);
+	ret = c->snapshot(c, commentfile, flags);
 	if (ret < 0) {
 		ERROR("Error creating a snapshot");
 		return -1;

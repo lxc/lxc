@@ -51,6 +51,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <command>lxc-snapshot</command>
       <arg choice="req">-n, --name <replaceable>name</replaceable></arg>
       <arg choice="opt">-c, --comment <replaceable>file</replaceable></arg>
+      <arg choice="opt">-f, --force</arg>
     </cmdsynopsis>
     <cmdsynopsis>
       <command>lxc-snapshot</command>
@@ -123,6 +124,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    <term> <option>-r,--restore snapshot-name</option> </term>
 	   <listitem>
 	    <para> Restore the named snapshot, meaning a full new container is created which is a copy of the snapshot.</para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-f,--force </option> </term>
+	   <listitem>
+            <para> Force the snapshot even if the container is running. Please
+            be careful with this mode, as it can produce non-persistent data
+            (typically with non-locked running databases, etc…). Has no effect
+            for a restoration, as it would totally break a running
+            container.</para>
 	   </listitem>
 	  </varlistentry>
 

@@ -1376,6 +1376,7 @@ Container_snapshot(Container *self, PyObject *args, PyObject *kwds)
 {
     char *comment_path = NULL;
     static char *kwlist[] = {"comment_path", NULL};
+    int flags = 0;
     int retval = 0;
     int ret = 0;
     char newname[20];
@@ -1390,7 +1391,7 @@ Container_snapshot(Container *self, PyObject *args, PyObject *kwds)
         assert(comment_path != NULL);
     }
 
-    retval = self->container->snapshot(self->container, comment_path);
+    retval = self->container->snapshot(self->container, comment_path, flags);
 
     Py_XDECREF(py_comment_path);
 

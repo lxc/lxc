@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 	}
 	c->load_config(c, NULL);
 
-	if (c->snapshot(c, NULL) != 0) {
+	if (c->snapshot(c, NULL, 0) != 0) {
 		fprintf(stderr, "%s: %d: failed to create snapshot\n", __FILE__, __LINE__);
 		goto err;
 	}
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 		goto good;
 	}
 
-	if (c2->snapshot(c2, NULL) != 0) {
+	if (c2->snapshot(c2, NULL, 0) != 0) {
 		fprintf(stderr, "%s: %d: failed to create snapshot\n", __FILE__, __LINE__);
 		goto err;
 	}

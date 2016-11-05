@@ -663,12 +663,14 @@ struct lxc_container {
 	 * \param c Container.
 	 * \param commentfile Full path to file containing a description
 	 *  of the snapshot.
+	 * \param flags Additional \c LXC_CLONE* flags to change the cloning behaviour:
+	 *  - \ref LXC_CLONE_FORCE
 	 *
 	 * \return -1 on error, or zero-based snapshot number.
 	 *
 	 * \note \p commentfile may be \c NULL but this is discouraged.
 	 */
-	int (*snapshot)(struct lxc_container *c, const char *commentfile);
+	int (*snapshot)(struct lxc_container *c, const char *commentfile, int flags);
 
 	/*!
 	 * \brief Obtain a list of container snapshots.
