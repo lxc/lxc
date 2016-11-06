@@ -33,21 +33,25 @@
  * under /sys/fs/cgroup/clist where clist is either the controller, or
  * a comman-separated list of controllers.
  */
+
 #include "config.h"
-#include <stdio.h>
+
+#include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
+#include <grp.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <sys/types.h>
+#include <string.h>
 #include <unistd.h>
-#include <dirent.h>
-#include <grp.h>
+#include <sys/types.h>
 
 #include "bdev.h"
-#include "log.h"
 #include "cgroup.h"
-#include "utils.h"
 #include "commands.h"
+#include "log.h"
+#include "utils.h"
 
 lxc_log_define(lxc_cgfsng, lxc);
 
@@ -251,6 +255,264 @@ struct hierarchy *get_hierarchy(const char *c)
 
 static char *must_make_path(const char *first, ...) __attribute__((sentinel));
 
+#define BATCH_SIZE 50
+static void batch_realloc(char **mem, size_t oldlen, size_t newlen)
+{
+	int newbatches = (newlen / BATCH_SIZE) + 1;
+	int oldbatches = (oldlen / BATCH_SIZE) + 1;
+
+	if (!*mem || newbatches > oldbatches) {
+		*mem = must_realloc(*mem, newbatches * BATCH_SIZE);
+	}
+}
+
+static void append_line(char **dest, size_t oldlen, char *new, size_t newlen)
+{
+	size_t full = oldlen + newlen;
+
+	batch_realloc(dest, oldlen, full + 1);
+
+	memcpy(*dest + oldlen, new, newlen + 1);
+}
+
+/* Slurp in a whole file */
+static char *read_file(char *fnam)
+{
+	FILE *f;
+	char *line = NULL, *buf = NULL;
+	size_t len = 0, fulllen = 0;
+	int linelen;
+
+	f = fopen(fnam, "r");
+	if (!f)
+		return NULL;
+	while ((linelen = getline(&line, &len, f)) != -1) {
+		append_line(&buf, fulllen, line, linelen);
+		fulllen += linelen;
+	}
+	fclose(f);
+	free(line);
+	return buf;
+}
+
+/* Taken over modified from the kernel sources. */
+#define NBITS 32 /* bits in uint32_t */
+#define DIV_ROUND_UP(n, d) (((n) + (d)-1) / (d))
+#define BITS_TO_LONGS(nr) DIV_ROUND_UP(nr, NBITS)
+
+static void set_bit(unsigned bit, uint32_t *bitarr)
+{
+	bitarr[bit / NBITS] |= (1 << (bit % NBITS));
+}
+
+static void clear_bit(unsigned bit, uint32_t *bitarr)
+{
+	bitarr[bit / NBITS] &= ~(1 << (bit % NBITS));
+}
+
+static bool is_set(unsigned bit, uint32_t *bitarr)
+{
+	return (bitarr[bit / NBITS] & (1 << (bit % NBITS))) != 0;
+}
+
+/* Create cpumask from cpulist aka turn:
+ *
+ *	0,2-3
+ *
+ *  into bit array
+ *
+ *	1 0 1 1
+ */
+static uint32_t *lxc_cpumask(char *buf, size_t nbits)
+{
+	char *token;
+	char *saveptr = NULL;
+	size_t arrlen = BITS_TO_LONGS(nbits);
+	uint32_t *bitarr = calloc(arrlen, sizeof(uint32_t));
+	if (!bitarr)
+		return NULL;
+
+	for (; (token = strtok_r(buf, ",", &saveptr)); buf = NULL) {
+		errno = 0;
+		unsigned start = strtoul(token, NULL, 0);
+		unsigned end = start;
+
+		char *range = strchr(token, '-');
+		if (range)
+			end = strtoul(range + 1, NULL, 0);
+		if (!(start <= end)) {
+			free(bitarr);
+			return NULL;
+		}
+
+		if (end >= nbits) {
+			free(bitarr);
+			return NULL;
+		}
+
+		while (start <= end)
+			set_bit(start++, bitarr);
+	}
+
+	return bitarr;
+}
+
+/* The largest integer that can fit into long int is 2^64. This is a
+ * 20-digit number. */
+#define LEN 21
+/* Turn cpumask into simple, comma-separated cpulist. */
+static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
+{
+	size_t i;
+	int ret;
+	char numstr[LEN] = {0};
+	char **cpulist = NULL;
+
+	for (i = 0; i <= nbits; i++) {
+		if (is_set(i, bitarr)) {
+			ret = snprintf(numstr, LEN, "%lu", i);
+			if (ret < 0 || (size_t)ret >= LEN) {
+				lxc_free_array((void **)cpulist, free);
+				return NULL;
+			}
+			if (lxc_append_string(&cpulist, numstr) < 0) {
+				lxc_free_array((void **)cpulist, free);
+				return NULL;
+			}
+		}
+	}
+	return lxc_string_join(",", (const char **)cpulist, false);
+}
+
+static ssize_t get_max_cpus(char *cpulist)
+{
+	char *c1, *c2;
+	char *maxcpus = cpulist;
+	size_t cpus = 0;
+
+	c1 = strrchr(maxcpus, ',');
+	if (c1)
+		c1++;
+
+	c2 = strrchr(maxcpus, '-');
+	if (c2)
+		c2++;
+
+	if (!c1 && !c2)
+		c1 = maxcpus;
+	else if (c1 > c2)
+		c2 = c1;
+	else if (c1 < c2)
+		c1 = c2;
+	else if (!c1 && c2) // The reverse case is obvs. not needed.
+		c1 = c2;
+
+	/* If the above logic is correct, c1 should always hold a valid string
+	 * here.
+	 */
+
+	errno = 0;
+	cpus = strtoul(c1, NULL, 0);
+	if (errno != 0)
+		return -1;
+
+	return cpus;
+}
+
+static bool filter_and_set_cpus(char *path, bool am_initialized)
+{
+	char *lastslash, *fpath, oldv;
+	int ret;
+	ssize_t i;
+
+	ssize_t maxposs = 0, maxisol = 0;
+	char *cpulist = NULL, *posscpus = NULL, *isolcpus = NULL;
+	uint32_t *possmask = NULL, *isolmask = NULL;
+	bool bret = false;
+
+	lastslash = strrchr(path, '/');
+	if (!lastslash) { // bug...  this shouldn't be possible
+		ERROR("cgfsng:copy_parent_file: bad path %s", path);
+		return bret;
+	}
+	oldv = *lastslash;
+	*lastslash = '\0';
+	fpath = must_make_path(path, "cpuset.cpus", NULL);
+	posscpus = read_file(fpath);
+	if (!posscpus)
+		goto cleanup;
+
+	/* Get maximum number of cpus found in possible cpuset. */
+	maxposs = get_max_cpus(posscpus);
+	if (maxposs < 0)
+		goto cleanup;
+
+	isolcpus = read_file("/sys/devices/system/cpu/isolated");
+	if (!isolcpus)
+		goto cleanup;
+	if (!isdigit(isolcpus[0])) {
+		cpulist = posscpus;
+		/* No isolated cpus but we weren't already initialized by
+		 * someone. We should simply copy the parents cpuset.cpus
+		 * values.
+		 */
+		if (!am_initialized)
+			goto copy_parent;
+		/* No isolated cpus but we were already initialized by someone.
+		 * Nothing more to do for us.
+		 */
+		bret = true;
+		goto cleanup;
+	}
+
+	/* Get maximum number of cpus found in isolated cpuset. */
+	maxisol = get_max_cpus(isolcpus);
+	if (maxisol < 0)
+		goto cleanup;
+
+	if (maxposs < maxisol)
+		maxposs = maxisol;
+	maxposs++;
+
+	possmask = lxc_cpumask(posscpus, maxposs);
+	if (!possmask)
+		goto cleanup;
+
+	isolmask = lxc_cpumask(isolcpus, maxposs);
+	if (!isolmask)
+		goto cleanup;
+
+	for (i = 0; i <= maxposs; i++) {
+		if (is_set(i, isolmask) && is_set(i, possmask)) {
+			clear_bit(i, possmask);
+		}
+	}
+
+	cpulist = lxc_cpumask_to_cpulist(possmask, maxposs);
+	if (!cpulist) /* Bug */
+		goto cleanup;
+
+copy_parent:
+	*lastslash = oldv;
+	fpath = must_make_path(path, "cpuset.cpus", NULL);
+	ret = lxc_write_to_file(fpath, cpulist, strlen(cpulist), false);
+	if (!ret)
+		bret = true;
+
+cleanup:
+	free(fpath);
+
+	free(isolcpus);
+	free(isolmask);
+
+	if (posscpus != cpulist)
+		free(posscpus);
+	free(possmask);
+
+	free(cpulist);
+	return bret;
+}
+
 /* Copy contents of parent(@path)/@file to @path/@file */
 static bool copy_parent_file(char *path, char *file)
 {
@@ -295,7 +557,7 @@ bad:
  * Since the h->base_path is populated by init or ourselves, we know
  * it is already initialized.
  */
-bool handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
+static bool handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 {
 	char *cgpath, *clonechildrenpath, v, *slash;
 
@@ -329,6 +591,10 @@ bool handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 		return false;
 	}
 
+	/* Make sure any isolated cpus are removed from cpuset.cpus. */
+	if (!filter_and_set_cpus(cgpath, v == '1'))
+		return false;
+
 	if (v == '1') {  /* already set for us by someone else */
 		free(clonechildrenpath);
 		free(cgpath);
@@ -336,8 +602,7 @@ bool handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	}
 
 	/* copy parent's settings */
-	if (!copy_parent_file(cgpath, "cpuset.cpus") ||
-			!copy_parent_file(cgpath, "cpuset.mems")) {
+	if (!copy_parent_file(cgpath, "cpuset.mems")) {
 		free(cgpath);
 		free(clonechildrenpath);
 		return false;
@@ -603,46 +868,6 @@ static char *get_current_cgroup(char *basecginfo, char *controller)
 			return NULL;
 		p++;
 	}
-}
-
-#define BATCH_SIZE 50
-static void batch_realloc(char **mem, size_t oldlen, size_t newlen)
-{
-	int newbatches = (newlen / BATCH_SIZE) + 1;
-	int oldbatches = (oldlen / BATCH_SIZE) + 1;
-
-	if (!*mem || newbatches > oldbatches) {
-		*mem = must_realloc(*mem, newbatches * BATCH_SIZE);
-	}
-}
-
-static void append_line(char **dest, size_t oldlen, char *new, size_t newlen)
-{
-	size_t full = oldlen + newlen;
-
-	batch_realloc(dest, oldlen, full + 1);
-
-	memcpy(*dest + oldlen, new, newlen + 1);
-}
-
-/* Slurp in a whole file */
-static char *read_file(char *fnam)
-{
-	FILE *f;
-	char *line = NULL, *buf = NULL;
-	size_t len = 0, fulllen = 0;
-	int linelen;
-
-	f = fopen(fnam, "r");
-	if (!f)
-		return NULL;
-	while ((linelen = getline(&line, &len, f)) != -1) {
-		append_line(&buf, fulllen, line, linelen);
-		fulllen += linelen;
-	}
-	fclose(f);
-	free(line);
-	return buf;
 }
 
 /*

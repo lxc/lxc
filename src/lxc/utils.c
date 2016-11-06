@@ -1953,8 +1953,12 @@ static int lxc_append_null_to_list(void ***list)
 
 int lxc_append_string(char ***list, char *entry)
 {
-	int newentry = lxc_append_null_to_list((void ***)list);
 	char *copy;
+	int newentry;
+
+	newentry = lxc_append_null_to_list((void ***)list);
+	if (newentry < 0)
+		return -1;
 
 	copy = strdup(entry);
 	if (!copy)
