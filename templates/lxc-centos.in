@@ -451,6 +451,13 @@ EOF
 
     $YUM install $PKG_LIST
 
+    # create symlink for /var/run -> ../run 
+    if [ "$release" = "7" ]; then
+        mv $INSTALL_ROOT/var/run/* $INSTALL_ROOT/run/
+        rmdir $INSTALL_ROOT/var/run
+        ln -sf ../run $INSTALL_ROOT/var/run
+    fi
+
     if [ $? -ne 0 ]; then
         echo "Failed to download the rootfs, aborting."
         return 1
