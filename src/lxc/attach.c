@@ -53,6 +53,7 @@
 
 #include "namespace.h"
 #include "log.h"
+#include "af_unix.h"
 #include "attach.h"
 #include "caps.h"
 #include "config.h"
@@ -84,36 +85,63 @@
 
 lxc_log_define(lxc_attach, lxc);
 
-int lsm_set_label_at(int procfd, int on_exec, char* lsm_label) {
+static int lsm_openat(int procfd, pid_t pid, int on_exec)
+{
+	int ret = -1;
 	int labelfd = -1;
-	int ret = 0;
 	const char* name;
-	char* command = NULL;
+#define __LSMATTRLEN /* /proc */ (5 + /* /pid-to-str */ 21 + /* /current */ 7 + /* \0 */ 1)
+	char path[__LSMATTRLEN];
 
 	name = lsm_name();
 
 	if (strcmp(name, "nop") == 0)
-		goto out;
+		return 0;
 
 	if (strcmp(name, "none") == 0)
-		goto out;
+		return 0;
 
 	/* We don't support on-exec with AppArmor */
 	if (strcmp(name, "AppArmor") == 0)
 		on_exec = 0;
 
 	if (on_exec) {
-		labelfd = openat(procfd, "self/attr/exec", O_RDWR);
-	}
-	else {
-		labelfd = openat(procfd, "self/attr/current", O_RDWR);
+		ret = snprintf(path, __LSMATTRLEN, "%d/attr/exec", pid);
+		if (ret < 0 || ret >= __LSMATTRLEN)
+			return -1;
+		labelfd = openat(procfd, path, O_RDWR);
+	} else {
+		ret = snprintf(path, __LSMATTRLEN, "%d/attr/current", pid);
+		if (ret < 0 || ret >= __LSMATTRLEN)
+			return -1;
+		labelfd = openat(procfd, path, O_RDWR);
 	}
 
 	if (labelfd < 0) {
 		SYSERROR("Unable to open LSM label");
-		ret = -1;
-		goto out;
+		return -1;
 	}
+
+	return labelfd;
+}
+
+static int lsm_set_label_at(int lsm_labelfd, int on_exec, char *lsm_label)
+{
+	int fret = -1;
+	const char* name;
+	char *command = NULL;
+
+	name = lsm_name();
+
+	if (strcmp(name, "nop") == 0)
+		return 0;
+
+	if (strcmp(name, "none") == 0)
+		return 0;
+
+	/* We don't support on-exec with AppArmor */
+	if (strcmp(name, "AppArmor") == 0)
+		on_exec = 0;
 
 	if (strcmp(name, "AppArmor") == 0) {
 		int size;
@@ -121,43 +149,39 @@ int lsm_set_label_at(int procfd, int on_exec, char* lsm_label) {
 		command = malloc(strlen(lsm_label) + strlen("changeprofile ") + 1);
 		if (!command) {
 			SYSERROR("Failed to write apparmor profile");
-			ret = -1;
 			goto out;
 		}
 
 		size = sprintf(command, "changeprofile %s", lsm_label);
 		if (size < 0) {
 			SYSERROR("Failed to write apparmor profile");
-			ret = -1;
 			goto out;
 		}
 
-		if (write(labelfd, command, size + 1) < 0) {
-			SYSERROR("Unable to set LSM label");
-			ret = -1;
+		if (write(lsm_labelfd, command, size + 1) < 0) {
+			SYSERROR("Unable to set LSM label: %s.", command);
 			goto out;
 		}
-	}
-	else if (strcmp(name, "SELinux") == 0) {
-		if (write(labelfd, lsm_label, strlen(lsm_label) + 1) < 0) {
+		INFO("Set LSM label to: %s.", command);
+	} else if (strcmp(name, "SELinux") == 0) {
+		if (write(lsm_labelfd, lsm_label, strlen(lsm_label) + 1) < 0) {
 			SYSERROR("Unable to set LSM label");
-			ret = -1;
 			goto out;
 		}
-	}
-	else {
+		INFO("Set LSM label to: %s.", lsm_label);
+	} else {
 		ERROR("Unable to restore label for unknown LSM: %s", name);
-		ret = -1;
 		goto out;
 	}
+	fret = 0;
 
 out:
 	free(command);
 
-	if (labelfd != -1)
-		close(labelfd);
+	if (lsm_labelfd != -1)
+		close(lsm_labelfd);
 
-	return ret;
+	return fret;
 }
 
 static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
@@ -646,7 +670,6 @@ struct attach_clone_payload {
 	struct lxc_proc_context_info* init_ctx;
 	lxc_attach_exec_t exec_function;
 	void* exec_payload;
-	int procfd;
 };
 
 static int attach_child_main(void* data);
@@ -744,7 +767,6 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	char* cwd;
 	char* new_cwd;
 	int ipc_sockets[2];
-	int procfd;
 	signed long personality;
 
 	if (!options)
@@ -821,6 +843,11 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	 *        X  <------------------------------------  send 1
 	 *   [add to cgroup, ...]
 	 *    send 2 ------------------------------------>    X
+	 *						[set LXC_ATTACH_NO_NEW_PRIVS]
+	 *        X  <------------------------------------  send 3
+	 *   [open LSM label fd]
+	 *    send 4 ------------------------------------>    X
+	 *   						[set LSM label]
 	 *   close socket                                 close socket
 	 *                                                run program
 	 */
@@ -854,6 +881,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 	}
 
 	if (pid) {
+		int procfd = -1;
 		pid_t to_cleanup_pid = pid;
 
 		/* initial thread, we close the socket that is for the
@@ -866,6 +894,15 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
 			if (!cgroup_attach(name, lxcpath, pid))
 				goto cleanup_error;
+		}
+
+		/* Open /proc before setns() to the containers namespace so we
+		 * don't rely on any information from inside the container.
+		 */
+		procfd = open("/proc", O_DIRECTORY | O_RDONLY | O_CLOEXEC);
+		if (procfd < 0) {
+			SYSERROR("Unable to open /proc.");
+			goto cleanup_error;
 		}
 
 		/* Let the child process know to go ahead */
@@ -911,7 +948,8 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		ret = lxc_read_nointr_expect(ipc_sockets[0], &status, sizeof(status), &expected);
 		if (ret <= 0) {
 			if (ret != 0)
-				ERROR("error using IPC to receive notification from attached process (1)");
+				ERROR("error using IPC to receive notification "
+				      "from attached process (1)");
 			goto cleanup_error;
 		}
 
@@ -919,8 +957,38 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		status = 2;
 		ret = lxc_write_nointr(ipc_sockets[0], &status, sizeof(status));
 		if (ret <= 0) {
-			ERROR("error using IPC to notify attached process for initialization (2)");
+			ERROR("Error using IPC to notify attached process for "
+			      "initialization (2): %s.", strerror(errno));
 			goto cleanup_error;
+		}
+
+		/* Wait for the (grand)child to tell us that it's ready to set
+		 * up its LSM labels.
+		 */
+		expected = 3;
+		ret = lxc_read_nointr_expect(ipc_sockets[0], &status, sizeof(status), &expected);
+		if (ret <= 0) {
+			ERROR("Error using IPC for the child to tell us to open LSM fd (3): %s.",
+			      strerror(errno));
+			goto cleanup_error;
+		}
+
+		/* Open LSM fd and send it to child. */
+		if ((options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
+			int on_exec, labelfd;
+			on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
+			/* Open fd for the LSM security module. */
+			labelfd = lsm_openat(procfd, attached_pid, on_exec);
+			if (labelfd < 0)
+				goto cleanup_error;
+
+			/* Send child fd of the LSM security module to write to. */
+			ret = lxc_abstract_unix_send_fd(ipc_sockets[0], labelfd, NULL, 0);
+			if (ret <= 0) {
+				ERROR("Error using IPC to send child LSM fd (4): %s.",
+						strerror(errno));
+				goto cleanup_error;
+			}
 		}
 
 		/* now shut down communication with child, we're done */
@@ -940,6 +1008,8 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 		/* first shut down the socket, then wait for the pid,
 		 * otherwise the pid we're waiting for may never exit
 		 */
+		if (procfd >= 0)
+			close(procfd);
 		shutdown(ipc_sockets[0], SHUT_RDWR);
 		close(ipc_sockets[0]);
 		if (to_cleanup_pid)
@@ -965,13 +1035,6 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 
 	if ((options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) && cgns_supported())
 		options->namespaces |= CLONE_NEWCGROUP;
-
-	procfd = open("/proc", O_DIRECTORY | O_RDONLY);
-	if (procfd < 0) {
-		SYSERROR("Unable to open /proc");
-		shutdown(ipc_sockets[1], SHUT_RDWR);
-		rexit(-1);
-	}
 
 	/* attach now, create another subprocess later, since pid namespaces
 	 * only really affect the children of the current process
@@ -1001,7 +1064,6 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 			.init_ctx = init_ctx,
 			.exec_function = exec_function,
 			.exec_payload = exec_payload,
-			.procfd = procfd
 		};
 		/* We use clone_parent here to make this subprocess a direct child of
 		 * the initial process. Then this intermediate process can exit and
@@ -1039,7 +1101,6 @@ static int attach_child_main(void* data)
 {
 	struct attach_clone_payload* payload = (struct attach_clone_payload*)data;
 	int ipc_socket = payload->ipc_socket;
-	int procfd = payload->procfd;
 	lxc_attach_options_t* options = payload->options;
 	struct lxc_proc_context_info* init_ctx = payload->init_ctx;
 #if HAVE_SYS_PERSONALITY_H
@@ -1050,6 +1111,7 @@ static int attach_child_main(void* data)
 	int expected;
 	long flags;
 	int fd;
+	int lsm_labelfd;
 	uid_t new_uid;
 	gid_t new_gid;
 
@@ -1060,7 +1122,7 @@ static int attach_child_main(void* data)
 	status = -1;
 	ret = lxc_read_nointr_expect(ipc_socket, &status, sizeof(status), &expected);
 	if (ret <= 0) {
-		ERROR("error using IPC to receive notification from initial process (0)");
+		ERROR("Error using IPC to receive notification from initial process (0): %s.", strerror(errno));
 		shutdown(ipc_socket, SHUT_RDWR);
 		rexit(-1);
 	}
@@ -1159,7 +1221,7 @@ static int attach_child_main(void* data)
 	status = 1;
 	ret = lxc_write_nointr(ipc_socket, &status, sizeof(status));
 	if (ret != sizeof(status)) {
-		ERROR("error using IPC to notify initial process for initialization (1)");
+		ERROR("Error using IPC to notify initial process for initialization (1): %s.", strerror(errno));
 		shutdown(ipc_socket, SHUT_RDWR);
 		rexit(-1);
 	}
@@ -1171,13 +1233,12 @@ static int attach_child_main(void* data)
 	status = -1;
 	ret = lxc_read_nointr_expect(ipc_socket, &status, sizeof(status), &expected);
 	if (ret <= 0) {
-		ERROR("error using IPC to receive final notification from initial process (2)");
+		ERROR("Error using IPC to receive message from initial process "
+		      "that it is done pre-initializing (2): %s",
+		      strerror(errno));
 		shutdown(ipc_socket, SHUT_RDWR);
 		rexit(-1);
 	}
-
-	shutdown(ipc_socket, SHUT_RDWR);
-	close(ipc_socket);
 
 	if ((init_ctx->container && init_ctx->container->lxc_conf &&
 	     init_ctx->container->lxc_conf->no_new_privs) ||
@@ -1186,27 +1247,53 @@ static int attach_child_main(void* data)
 			SYSERROR("PR_SET_NO_NEW_PRIVS could not be set. "
 				 "Process can use execve() gainable "
 				 "privileges.");
+			shutdown(ipc_socket, SHUT_RDWR);
 			rexit(-1);
 		}
 		INFO("PR_SET_NO_NEW_PRIVS is set. Process cannot use execve() "
 		     "gainable privileges.");
 	}
 
-	/* set new apparmor profile/selinux context */
+	/* Tell the (grand)parent to send us LSM label fd. */
+	status = 3;
+	ret = lxc_write_nointr(ipc_socket, &status, sizeof(status));
+	if (ret <= 0) {
+		ERROR("Error using IPC to tell parent to set up LSM labels (3): %s.", strerror(errno));
+		shutdown(ipc_socket, SHUT_RDWR);
+		rexit(-1);
+	}
+
 	if ((options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
 		int on_exec;
-
-		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
-		if (lsm_set_label_at(procfd, on_exec, init_ctx->lsm_label) < 0) {
+		/* Receive fd for LSM security module. */
+		ret = lxc_abstract_unix_recv_fd(ipc_socket, &lsm_labelfd, NULL, 0);
+		if (ret <= 0) {
+			ERROR("Error using IPC for parent to tell us LSM label fd (4): %s.", strerror(errno));
+			shutdown(ipc_socket, SHUT_RDWR);
 			rexit(-1);
 		}
+
+		/* Change into our new LSM profile. */
+		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
+		if (lsm_set_label_at(lsm_labelfd, on_exec, init_ctx->lsm_label) < 0) {
+			SYSERROR("Failed to set LSM label.");
+			shutdown(ipc_socket, SHUT_RDWR);
+			close(lsm_labelfd);
+			rexit(-1);
+		}
+		close(lsm_labelfd);
 	}
+
 	if (init_ctx->container && init_ctx->container->lxc_conf &&
 	    init_ctx->container->lxc_conf->seccomp &&
 	    (lxc_seccomp_load(init_ctx->container->lxc_conf) != 0)) {
 		ERROR("Loading seccomp policy");
+		shutdown(ipc_socket, SHUT_RDWR);
 		rexit(-1);
 	}
+
+	shutdown(ipc_socket, SHUT_RDWR);
+	close(ipc_socket);
 	lxc_proc_put_context_info(init_ctx);
 
 	/* The following is done after the communication socket is
@@ -1244,9 +1331,6 @@ static int attach_child_main(void* data)
 			if (fcntl(fd, F_SETFL, flags & ~FD_CLOEXEC) < 0)
 				SYSERROR("Unable to clear CLOEXEC from fd");
 	}
-
-	/* we don't need proc anymore */
-	close(procfd);
 
 	/* we're done, so we can now do whatever the user intended us to do */
 	rexit(payload->exec_function(payload->exec_payload));
