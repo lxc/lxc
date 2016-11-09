@@ -42,7 +42,7 @@ run_cmd() {
 }
 
 DONE=0
-KNOWN_RELEASES="precise trusty wily xenial yakkety"
+KNOWN_RELEASES="precise trusty xenial yakkety zesty"
 MOUNTSR=/sys/kernel/security/apparmor/features/mount
 dnam=`mktemp -d`
 cname=`basename $dnam`
