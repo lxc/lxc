@@ -911,6 +911,18 @@ static void get_existing_subsystems(char ***klist, char ***nlist)
 		if (!p2)
 			continue;
 		*p2 = '\0';
+
+		/* If we have a mixture between cgroup v1 and cgroup v2
+		 * hierarchies, then /proc/self/cgroup contains entries of the
+		 * form:
+		 *
+		 *	0::/some/path
+		 *
+		 * We need to skip those.
+		 */
+		if ((p2 - p) == 0)
+			continue;
+
 		for (tok = strtok_r(p, ",", &saveptr); tok;
 				tok = strtok_r(NULL, ",", &saveptr)) {
 			if (strncmp(tok, "name=", 5) == 0)
