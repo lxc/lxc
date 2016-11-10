@@ -299,7 +299,11 @@ else
         [ "$stream" = "daily" ] || echo "You may try with '--stream=daily'"
         exit 1
     fi
-    url2=`echo $url1 | sed -e 's/.tar.gz/-root\0/' -e 's/.tar.gz/.tar.xz/'`
+    if [ "$release" = "precise" ] || [ "$release" = "trusty" ]; then
+        url2=`echo $url1 | sed -e 's/.tar.gz/-root\0/' -e 's/.tar.gz/.tar.xz/'`
+    else
+        url2=`echo $url1 | sed -e 's/.tar.gz/.squashfs/'`
+    fi
 fi
 
 filename=`basename $url2`
@@ -329,11 +333,15 @@ do_extract_rootfs() {
     echo "Extracting container rootfs"
     mkdir -p $rootfs
     cd $rootfs
-    if [ $in_userns -eq 1 ]; then
-        tar --anchored --exclude="dev/*" --numeric-owner -xpf "$cache/$filename"
-        mkdir -p $rootfs/dev/pts/
+    if [ "${filename##*.}" = "squashfs" ]; then
+        unsquashfs -n -f -d "$rootfs" "$cache/$filename"
     else
-        tar --numeric-owner -xpf "$cache/$filename"
+        if [ $in_userns -eq 1 ]; then
+            tar --anchored --exclude="dev/*" --numeric-owner -xpf "$cache/$filename"
+            mkdir -p $rootfs/dev/pts/
+        else
+            tar --numeric-owner -xpf "$cache/$filename"
+        fi
     fi
 }
 
