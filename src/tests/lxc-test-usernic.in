@@ -24,7 +24,7 @@
 # This test assumes an Ubuntu host
 
 DONE=0
-KNOWN_RELEASES="precise trusty wily xenial yakkety"
+KNOWN_RELEASES="precise trusty xenial yakkety zesty"
 LXC_USER_NIC="@LIBEXECDIR@/lxc/lxc-user-nic"
 
 cleanup() {

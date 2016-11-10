@@ -30,7 +30,7 @@ fi
 which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; exit 1; }
 
 DONE=0
-KNOWN_RELEASES="precise trusty wily xenial yakkety"
+KNOWN_RELEASES="precise trusty xenial yakkety zesty"
 cleanup() {
 	cd /
 
