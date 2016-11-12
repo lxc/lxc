@@ -69,6 +69,7 @@ src/lxc/version.h
 src/python-lxc/setup.py
 src/python-lxc/build/
 src/python-lxc/lxc/__pycache__/
+src/python-lxc/lxc.egg-info/
 
 src/tests/lxc-test-device-add-remove
 src/tests/lxc-test-attach
