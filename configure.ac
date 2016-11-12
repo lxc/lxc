@@ -475,6 +475,14 @@ AC_ARG_ENABLE([bash],
 	[], [enable_bash=yes])
 AM_CONDITIONAL([ENABLE_BASH], [test "x$enable_bash" = "xyes"])
 
+AM_COND_IF([ENABLE_BASH],
+	[AC_MSG_CHECKING([bash completion directory])
+	PKG_CHECK_VAR(bashcompdir, [bash-completion], [completionsdir], ,
+		bashcompdir="${sysconfdir}/bash_completion.d")
+	AC_MSG_RESULT([$bashcompdir])
+	AC_SUBST(bashcompdir)
+	])
+
 # Optional test binaries
 AC_ARG_ENABLE([tests],
 	[AC_HELP_STRING([--enable-tests], [build test/example binaries [default=no]])],
