@@ -1958,7 +1958,7 @@ FILE *write_mount_file(struct lxc_list *mount)
 
 	file = tmpfile();
 	if (!file) {
-		ERROR("tmpfile error: %m");
+		ERROR("Could not create temporary file: %s.", strerror(errno));
 		return NULL;
 	}
 
