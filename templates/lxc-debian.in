@@ -325,7 +325,6 @@ download_debian()
 $init,\
 ifupdown,\
 locales,\
-libui-dialog-perl,\
 dialog,\
 isc-dhcp-client,\
 netbase,\
