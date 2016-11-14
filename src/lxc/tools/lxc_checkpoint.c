@@ -36,6 +36,10 @@ static bool stop = false;
 static bool verbose = false;
 static bool do_restore = false;
 static bool daemonize_set = false;
+static bool pre_dump = false;
+static char *predump_dir = NULL;
+
+#define OPT_PREDUMP_DIR OPT_USAGE+1
 
 static const struct option my_longopts[] = {
 	{"checkpoint-dir", required_argument, 0, 'D'},
@@ -44,6 +48,8 @@ static const struct option my_longopts[] = {
 	{"restore", no_argument, 0, 'r'},
 	{"daemon", no_argument, 0, 'd'},
 	{"foreground", no_argument, 0, 'F'},
+	{"pre-dump", no_argument, 0, 'p'},
+	{"predump-dir", required_argument, 0, OPT_PREDUMP_DIR},
 	LXC_COMMON_OPTIONS
 };
 
@@ -60,6 +66,11 @@ static int my_checker(const struct lxc_arguments *args)
 
 	if (checkpoint_dir == NULL) {
 		lxc_error(args, "-D is required.");
+		return -1;
+	}
+
+	if (pre_dump && do_restore) {
+		lxc_error(args, "-p not compatible with -r.");
 		return -1;
 	}
 
@@ -91,6 +102,14 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		args->daemonize = 0;
 		daemonize_set = true;
 		break;
+	case 'p':
+		pre_dump = true;
+		break;
+	case OPT_PREDUMP_DIR:
+		predump_dir = strdup(arg);
+		if (!predump_dir)
+			return -1;
+		break;
 	}
 	return 0;
 }
@@ -111,6 +130,10 @@ Options :\n\
   -v, --verbose             Enable verbose criu logs\n\
   Checkpoint options:\n\
   -s, --stop                Stop the container after checkpointing.\n\
+  -p, --pre-dump            Only pre-dump the memory of the container.\n\
+                            Container keeps on running and following\n\
+                            checkpoints will only dump the changes.\n\
+  --predump-dir=DIR         path to images from previous dump (relative to -D)\n\
   Restore options:\n\
   -d, --daemon              Daemonize the container (default)\n\
   -F, --foreground          Start with the current tty attached to /dev/console\n\
@@ -124,7 +147,9 @@ Options :\n\
 
 static bool checkpoint(struct lxc_container *c)
 {
+	struct migrate_opts opts;
 	bool ret;
+	int mode;
 
 	if (!c->is_running(c)) {
 		fprintf(stderr, "%s not running, not checkpointing.\n", my_args.name);
@@ -132,10 +157,24 @@ static bool checkpoint(struct lxc_container *c)
 		return false;
 	}
 
-	ret = c->checkpoint(c, checkpoint_dir, stop, verbose);
+	memset(&opts, 0, sizeof(opts));
+
+	opts.directory = checkpoint_dir;
+	opts.stop = stop;
+	opts.verbose = verbose;
+	opts.predump_dir = predump_dir;
+
+	if (pre_dump)
+		mode = MIGRATE_PRE_DUMP;
+	else
+		mode = MIGRATE_DUMP;
+
+	ret = c->migrate(c, mode, &opts, sizeof(opts));
 	lxc_container_put(c);
 
-	if (!ret) {
+	/* the migrate() API does not negate the return code like
+	 * checkpoint() and restore() does. */
+	if (ret) {
 		fprintf(stderr, "Checkpointing %s failed.\n", my_args.name);
 		return false;
 	}

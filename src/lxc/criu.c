@@ -398,6 +398,7 @@ static void exec_criu(struct criu_opts *opts)
 		if (opts->user->predump_dir) {
 			DECLARE_ARG("--prev-images-dir");
 			DECLARE_ARG(opts->user->predump_dir);
+			DECLARE_ARG("--track-mem");
 		}
 
 		if (opts->user->pageserver_address && opts->user->pageserver_port) {
