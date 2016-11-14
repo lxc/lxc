@@ -258,6 +258,8 @@ extern char *lxc_append_paths(const char *first, const char *second);
 extern bool lxc_string_in_list(const char *needle, const char *haystack, char sep);
 extern char **lxc_string_split(const char *string, char sep);
 extern char **lxc_string_split_and_trim(const char *string, char sep);
+/* Append string to NULL-terminated string array. */
+extern int lxc_append_string(char ***list, char *entry);
 
 /* some simple array manipulation utilities */
 typedef void (*lxc_free_fn)(void *);
