@@ -58,6 +58,7 @@
 #define CRIU_GITID_PATCHLEVEL	0
 
 #define CRIU_IN_FLIGHT_SUPPORT	"2.4"
+#define CRIU_EXTERNAL_NOT_VETH	"2.8"
 
 lxc_log_define(lxc_criu, lxc);
 
@@ -481,7 +482,19 @@ static void exec_criu(struct criu_opts *opts)
 
 		lxc_list_for_each(it, &opts->c->lxc_conf->network) {
 			char eth[128], *veth;
+			char *fmt;
 			struct lxc_netdev *n = it->elem;
+			bool external_not_veth;
+
+			if (strcmp(opts->criu_version, CRIU_EXTERNAL_NOT_VETH) >= 0) {
+				/* Since criu version 2.8 the usage of --veth-pair
+				 * has been deprecated:
+				 * git tag --contains f2037e6d3445fc400
+				 * v2.8 */
+				external_not_veth = true;
+			} else {
+				external_not_veth = false;
+			}
 
 			if (n->name) {
 				if (strlen(n->name) >= sizeof(eth))
@@ -497,10 +510,21 @@ static void exec_criu(struct criu_opts *opts)
 			case LXC_NET_VETH:
 				veth = n->priv.veth_attr.pair;
 
-				if (n->link)
-					ret = snprintf(buf, sizeof(buf), "veth[%s]:%s@%s", eth, veth, n->link);
-				else
-					ret = snprintf(buf, sizeof(buf), "veth[%s]:%s", eth, veth);
+				if (n->link) {
+					if (external_not_veth)
+						fmt = "veth[%s]:%s@%s";
+					else
+						fmt = "%s=%s@%s";
+
+					ret = snprintf(buf, sizeof(buf), fmt, eth, veth, n->link);
+				} else {
+					if (external_not_veth)
+						fmt = "veth[%s]:%s";
+					else
+						fmt = "%s=%s";
+
+					ret = snprintf(buf, sizeof(buf), fmt, eth, veth);
+				}
 				if (ret < 0 || ret >= sizeof(buf))
 					goto err;
 				break;
@@ -523,7 +547,10 @@ static void exec_criu(struct criu_opts *opts)
 				goto err;
 			}
 
-			DECLARE_ARG("--external");
+			if (external_not_veth)
+				DECLARE_ARG("--external");
+			else
+				DECLARE_ARG("--veth-pair");
 			DECLARE_ARG(buf);
 			netnr++;
 		}
