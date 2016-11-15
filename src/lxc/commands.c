@@ -128,15 +128,15 @@ static int fill_sock_name(char *path, int len, const char *name,
 static const char *lxc_cmd_str(lxc_cmd_t cmd)
 {
 	static const char * const cmdname[LXC_CMD_MAX] = {
-		[LXC_CMD_CONSOLE]         = "console",
-		[LXC_CMD_STOP]            = "stop",
-		[LXC_CMD_GET_STATE]       = "get_state",
-		[LXC_CMD_GET_INIT_PID]    = "get_init_pid",
-		[LXC_CMD_GET_CLONE_FLAGS] = "get_clone_flags",
-		[LXC_CMD_GET_CGROUP]      = "get_cgroup",
-		[LXC_CMD_GET_CONFIG_ITEM] = "get_config_item",
-		[LXC_CMD_GET_NAME]        = "get_name",
-		[LXC_CMD_GET_LXCPATH]     = "get_lxcpath",
+		[LXC_CMD_CONSOLE]           = "console",
+		[LXC_CMD_STOP]              = "stop",
+		[LXC_CMD_GET_STATE]         = "get_state",
+		[LXC_CMD_GET_INIT_PID]      = "get_init_pid",
+		[LXC_CMD_GET_CLONE_FLAGS]   = "get_clone_flags",
+		[LXC_CMD_GET_CGROUP]        = "get_cgroup",
+		[LXC_CMD_GET_CONFIG_ITEM]   = "get_config_item",
+		[LXC_CMD_GET_NAME]          = "get_name",
+		[LXC_CMD_GET_LXCPATH]       = "get_lxcpath",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -429,29 +429,27 @@ static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
 
-/*
- * lxc_cmd_get_cgroup_path: Calculate a container's cgroup path for a
- * particular subsystem. This is the cgroup path relative to the root
- * of the cgroup filesystem.
- *
- * @name      : name of container to connect to
- * @lxcpath   : the lxcpath in which the container is running
- * @subsystem : the subsystem being asked about
- *
- * Returns the path on success, NULL on failure. The caller must free() the
- * returned path.
- */
-char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
-	const char *subsystem)
+static char *do_lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
+	const char *subsystem, bool inner)
 {
 	int ret, stopped;
+	size_t subsyslen = strlen(subsystem);
+
 	struct lxc_cmd_rr cmd = {
 		.req = {
 			.cmd = LXC_CMD_GET_CGROUP,
-			.datalen = strlen(subsystem)+1,
+			.datalen = subsyslen+1,
 			.data = subsystem,
 		},
 	};
+
+	if (inner) {
+		char *data = alloca(subsyslen+2);
+		memcpy(data, subsystem, subsyslen+1);
+		data[subsyslen+1] = 1;
+		cmd.req.datalen = subsyslen+2,
+		cmd.req.data = data;
+	}
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
@@ -471,16 +469,42 @@ char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
 	return cmd.rsp.data;
 }
 
+/*
+ * lxc_cmd_get_cgroup_path: Calculate a container's cgroup path for a
+ * particular subsystem. This is the cgroup path relative to the root
+ * of the cgroup filesystem.
+ *
+ * @name      : name of container to connect to
+ * @lxcpath   : the lxcpath in which the container is running
+ * @subsystem : the subsystem being asked about
+ *
+ * Returns the path on success, NULL on failure. The caller must free() the
+ * returned path.
+ */
+char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
+	const char *subsystem)
+{
+	return do_lxc_cmd_get_cgroup_path(name, lxcpath, subsystem, false);
+}
+
 static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 				       struct lxc_handler *handler)
 {
 	struct lxc_cmd_rsp rsp;
 	const char *path;
+	const char *subsystem;
+	size_t subsyslen;
+	bool inner = false;
 
 	if (req->datalen < 1)
 		return -1;
 
-	path = cgroup_get_cgroup(handler, req->data);
+	subsystem = req->data;
+	subsyslen = strlen(subsystem);
+	if (req->datalen == subsyslen+2)
+		inner = (subsystem[subsyslen+1] == 1);
+
+	path = cgroup_get_cgroup(handler, req->data, inner);
 	if (!path)
 		return -1;
 	rsp.datalen = strlen(path) + 1,
@@ -488,6 +512,24 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 	rsp.ret = 0;
 
 	return lxc_cmd_rsp_send(fd, &rsp);
+}
+
+/*
+ * lxc_cmd_get_attach_cgroup_path: Calculate a container's inner cgroup path
+ * for a particular subsystem. This is the cgroup path relative to the root
+ * of the cgroup filesystem.
+ *
+ * @name      : name of container to connect to
+ * @lxcpath   : the lxcpath in which the container is running
+ * @subsystem : the subsystem being asked about
+ *
+ * Returns the path on success, NULL on failure. The caller must free() the
+ * returned path.
+ */
+char *lxc_cmd_get_attach_cgroup_path(const char *name, const char *lxcpath,
+	const char *subsystem)
+{
+	return do_lxc_cmd_get_cgroup_path(name, lxcpath, subsystem, true);
 }
 
 /*
@@ -841,16 +883,16 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 	typedef int (*callback)(int, struct lxc_cmd_req *, struct lxc_handler *);
 
 	callback cb[LXC_CMD_MAX] = {
-		[LXC_CMD_CONSOLE]         = lxc_cmd_console_callback,
-		[LXC_CMD_CONSOLE_WINCH]   = lxc_cmd_console_winch_callback,
-		[LXC_CMD_STOP]            = lxc_cmd_stop_callback,
-		[LXC_CMD_GET_STATE]       = lxc_cmd_get_state_callback,
-		[LXC_CMD_GET_INIT_PID]    = lxc_cmd_get_init_pid_callback,
-		[LXC_CMD_GET_CLONE_FLAGS] = lxc_cmd_get_clone_flags_callback,
-		[LXC_CMD_GET_CGROUP]      = lxc_cmd_get_cgroup_callback,
-		[LXC_CMD_GET_CONFIG_ITEM] = lxc_cmd_get_config_item_callback,
-		[LXC_CMD_GET_NAME]        = lxc_cmd_get_name_callback,
-		[LXC_CMD_GET_LXCPATH]     = lxc_cmd_get_lxcpath_callback,
+		[LXC_CMD_CONSOLE]           = lxc_cmd_console_callback,
+		[LXC_CMD_CONSOLE_WINCH]     = lxc_cmd_console_winch_callback,
+		[LXC_CMD_STOP]              = lxc_cmd_stop_callback,
+		[LXC_CMD_GET_STATE]         = lxc_cmd_get_state_callback,
+		[LXC_CMD_GET_INIT_PID]      = lxc_cmd_get_init_pid_callback,
+		[LXC_CMD_GET_CLONE_FLAGS]   = lxc_cmd_get_clone_flags_callback,
+		[LXC_CMD_GET_CGROUP]        = lxc_cmd_get_cgroup_callback,
+		[LXC_CMD_GET_CONFIG_ITEM]   = lxc_cmd_get_config_item_callback,
+		[LXC_CMD_GET_NAME]          = lxc_cmd_get_name_callback,
+		[LXC_CMD_GET_LXCPATH]       = lxc_cmd_get_lxcpath_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX) {

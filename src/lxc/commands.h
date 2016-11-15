@@ -77,6 +77,8 @@ extern int lxc_cmd_console(const char *name, int *ttynum, int *fd,
  */
 extern char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
 			const char *subsystem);
+extern char *lxc_cmd_get_attach_cgroup_path(const char *name,
+			const char *lxcpath, const char *subsystem);
 extern int lxc_cmd_get_clone_flags(const char *name, const char *lxcpath);
 extern char *lxc_cmd_get_config_item(const char *name, const char *item, const char *lxcpath);
 extern char *lxc_cmd_get_name(const char *hashed_sock);
