@@ -88,14 +88,15 @@ static char *copy_global_config_value(char *p)
 const char *lxc_global_config_value(const char *option_name)
 {
 	static const char * const options[][2] = {
-		{ "lxc.bdev.lvm.vg",        DEFAULT_VG      },
-		{ "lxc.bdev.lvm.thin_pool", DEFAULT_THIN_POOL },
-		{ "lxc.bdev.zfs.root",      DEFAULT_ZFSROOT },
-		{ "lxc.bdev.rbd.rbdpool",   DEFAULT_RBDPOOL },
-		{ "lxc.lxcpath",            NULL            },
-		{ "lxc.default_config",     NULL            },
-		{ "lxc.cgroup.pattern",     NULL            },
-		{ "lxc.cgroup.use",         NULL            },
+		{ "lxc.bdev.lvm.vg",           DEFAULT_VG      },
+		{ "lxc.bdev.lvm.thin_pool",    DEFAULT_THIN_POOL },
+		{ "lxc.bdev.zfs.root",         DEFAULT_ZFSROOT },
+		{ "lxc.bdev.rbd.rbdpool",      DEFAULT_RBDPOOL },
+		{ "lxc.lxcpath",               NULL            },
+		{ "lxc.default_config",        NULL            },
+		{ "lxc.cgroup.pattern",        NULL            },
+		{ "lxc.cgroup.use",            NULL            },
+		{ "lxc.cgroup.protect_limits", DEFAULT_CGPROTECT },
 		{ NULL, NULL },
 	};
 

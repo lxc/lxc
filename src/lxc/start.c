@@ -1067,6 +1067,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	int saved_ns_fd[LXC_NS_MAX];
 	int preserve_mask = 0, i, flags;
 	int netpipepair[2], nveths;
+	bool privileged = lxc_list_empty(&handler->conf->id_map);
 
 	netpipe = -1;
 
@@ -1130,7 +1131,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * it readonly.
 	 * If the container is unprivileged then skip rootfs pinning.
 	 */
-	if (lxc_list_empty(&handler->conf->id_map)) {
+	if (privileged) {
 		handler->pinfd = pin_rootfs(handler->conf->rootfs.path);
 		if (handler->pinfd == -1)
 			INFO("Failed to pin the rootfs for container \"%s\".", handler->name);
@@ -1255,17 +1256,20 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	if (cgns_supported()) {
-		if (!cgroup_create(handler, true)) {
-			ERROR("failed to create inner cgroup separation layer");
-			goto out_delete_net;
-		}
-		if (!cgroup_enter(handler, true)) {
-			ERROR("failed to enter inner cgroup separation layer");
-			goto out_delete_net;
-		}
-		if (!cgroup_chown(handler, true)) {
-			ERROR("failed chown inner cgroup separation layer");
-			goto out_delete_net;
+		const char *tmp = lxc_global_config_value("lxc.cgroup.protect_limits");
+		if (!strcmp(tmp, "both") || !strcmp(tmp, privileged ? "privileged" : "unprivileged")) {
+			if (!cgroup_create(handler, true)) {
+				ERROR("failed to create inner cgroup separation layer");
+				goto out_delete_net;
+			}
+			if (!cgroup_enter(handler, true)) {
+				ERROR("failed to enter inner cgroup separation layer");
+				goto out_delete_net;
+			}
+			if (!cgroup_chown(handler, true)) {
+				ERROR("failed chown inner cgroup separation layer");
+				goto out_delete_net;
+			}
 		}
 	}
 
