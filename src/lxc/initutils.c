@@ -106,6 +106,23 @@ const char *lxc_global_config_value(const char *option_name)
 	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
 #endif
 
+	const char * const (*ptr)[2];
+	size_t opt;
+	char buf[1024], *p, *p2;
+	FILE *fin = NULL;
+
+	for (opt = 0, ptr = options; (*ptr)[0]; ptr++, opt++) {
+		if (!strcmp(option_name, (*ptr)[0]))
+			break;
+	}
+	if (!(*ptr)[0]) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	if (values[opt])
+		return values[opt];
+
 	/* user_config_path is freed as soon as it is used */
 	char *user_config_path = NULL;
 
@@ -136,32 +153,6 @@ const char *lxc_global_config_value(const char *option_name)
 		user_default_config_path = strdup(LXC_DEFAULT_CONFIG);
 		user_lxc_path = strdup(LXCPATH);
 		user_cgroup_pattern = strdup(DEFAULT_CGROUP_PATTERN);
-	}
-
-	const char * const (*ptr)[2];
-	size_t opt;
-	char buf[1024], *p, *p2;
-	FILE *fin = NULL;
-
-	for (opt = 0, ptr = options; (*ptr)[0]; ptr++, opt++) {
-		if (!strcmp(option_name, (*ptr)[0]))
-			break;
-	}
-	if (!(*ptr)[0]) {
-		free(user_config_path);
-		free(user_default_config_path);
-		free(user_lxc_path);
-		free(user_cgroup_pattern);
-		errno = EINVAL;
-		return NULL;
-	}
-
-	if (values[opt]) {
-		free(user_config_path);
-		free(user_default_config_path);
-		free(user_lxc_path);
-		free(user_cgroup_pattern);
-		return values[opt];
 	}
 
 	fin = fopen_cloexec(user_config_path, "r");
