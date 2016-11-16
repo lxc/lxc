@@ -946,44 +946,47 @@ static void trim(char *s)
 
 static void print_init_debuginfo(struct cgfsng_handler_data *d)
 {
+	struct hierarchy **it;
 	int i;
 
 	if (!getenv("LXC_DEBUG_CGFSNG"))
 		return;
 
-	printf("Cgroup information:\n");
-	printf("  container name: %s\n", d->name);
-	printf("  lxc.cgroup.use: %s\n", cgroup_use ? cgroup_use : "(none)");
-	printf("  lxc.cgroup.pattern: %s\n", d->cgroup_pattern);
-	printf("  cgroup: %s\n", d->container_cgroup ? d->container_cgroup : "(none)");
+	DEBUG("Cgroup information:");
+	DEBUG("  container name: %s", d->name ? d->name : "(null)");
+	DEBUG("  lxc.cgroup.use: %s", cgroup_use ? cgroup_use : "(null)");
+	DEBUG("  lxc.cgroup.pattern: %s", d->cgroup_pattern ? d->cgroup_pattern : "(null)");
+	DEBUG("  cgroup: %s", d->container_cgroup ? d->container_cgroup : "(null)");
 	if (!hierarchies) {
-		printf("  No hierarchies found.\n");
+		DEBUG("  No hierarchies found.");
 		return;
 	}
-	printf("  Hierarchies:\n");
-	for (i = 0; hierarchies[i]; i++) {
-		struct hierarchy *h = hierarchies[i];
+	DEBUG("  Hierarchies:");
+	for (i = 0, it = hierarchies; it && *it; it++, i++) {
+		char **cit;
 		int j;
-		printf("  %d: base_cgroup %s\n", i, h->base_cgroup);
-		printf("      mountpoint %s\n", h->mountpoint);
-		printf("      controllers:\n");
-		for (j = 0; h->controllers[j]; j++)
-			printf("     %d: %s\n", j, h->controllers[j]);
+		DEBUG("  %d: base_cgroup %s", i, (*it)->base_cgroup ? (*it)->base_cgroup : "(null)");
+		DEBUG("      mountpoint %s", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
+		DEBUG("      controllers:");
+		for (j = 0, cit = (*it)->controllers; cit && *cit; cit++, j++)
+			DEBUG("      %d: %s", j, *cit);
 	}
 }
 
 static void print_basecg_debuginfo(char *basecginfo, char **klist, char **nlist)
 {
 	int k;
+	char **it;
 	if (!getenv("LXC_DEBUG_CGFSNG"))
 		return;
 
-	printf("basecginfo is %s\n", basecginfo);
+	printf("basecginfo is:\n");
+	printf("%s\n", basecginfo);
 
-	for (k = 0; klist[k]; k++)
-		printf("kernel subsystem %d: %s\n", k, klist[k]);
-	for (k = 0; nlist[k]; k++)
-		printf("named subsystem %d: %s\n", k, nlist[k]);
+	for (k = 0, it = klist; it && *it; it++, k++)
+		printf("kernel subsystem %d: %s\n", k, *it);
+	for (k = 0, it = nlist; it && *it; it++, k++)
+		printf("named subsystem %d: %s\n", k, *it);
 }
 
 /*
