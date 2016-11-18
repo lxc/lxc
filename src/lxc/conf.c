@@ -1272,13 +1272,13 @@ static int mount_check_fs( const char *dir, char *fstype )
 	if (!f)
 		return 0;
 	while (fgets(buf, LINELEN, f)) {
-		p = index(buf, ' ');
+		p = strchr(buf, ' ');
 		if( !p )
 			continue;
 		*p = '\0';
 		p2 = p + 1;
 
-		p = index(p2, ' ');
+		p = strchr(p2, ' ');
 		if( !p )
 			continue;
 		*p = '\0';
@@ -1289,7 +1289,7 @@ static int mount_check_fs( const char *dir, char *fstype )
 		}
 
 		p2 = p + 1;
-		p = index( p2, ' ');
+		p = strchr( p2, ' ');
 		if( !p )
 			continue;
 		*p = '\0';
