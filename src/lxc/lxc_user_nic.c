@@ -673,25 +673,21 @@ again:
 
 static int rename_in_ns(int pid, char *oldname, char **newnamep)
 {
-	char nspath[MAXPATHLEN];
 	int fd = -1, ofd = -1, ret, ifindex = -1;
 	bool grab_newname = false;
 
-	ret = snprintf(nspath, MAXPATHLEN, "/proc/%d/ns/net", getpid());
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return -1;
-	if ((ofd = open(nspath, O_RDONLY)) < 0) {
-		fprintf(stderr, "Opening %s\n", nspath);
+	ofd = lxc_preserve_ns(getpid(), "net");
+	if (ofd < 0) {
+		fprintf(stderr, "Failed opening network namespace path for '%d'.", getpid());
 		return -1;
 	}
-	ret = snprintf(nspath, MAXPATHLEN, "/proc/%d/ns/net", pid);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		goto out_err;
 
-	if ((fd = open(nspath, O_RDONLY)) < 0) {
-		fprintf(stderr, "Opening %s\n", nspath);
-		goto out_err;
+	fd = lxc_preserve_ns(pid, "net");
+	if (fd < 0) {
+		fprintf(stderr, "Failed opening network namespace path for '%d'.", pid);
+		return -1;
 	}
+
 	if (setns(fd, 0) < 0) {
 		fprintf(stderr, "setns to container network namespace\n");
 		goto out_err;

@@ -2399,24 +2399,20 @@ static int setup_network(struct lxc_list *network)
 /* try to move physical nics to the init netns */
 void lxc_restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
 {
-	int i, ret, oldfd;
-	char path[MAXPATHLEN];
+	int i, oldfd;
 	char ifname[IFNAMSIZ];
 
 	if (netnsfd < 0 || conf->num_savednics == 0)
 		return;
 
-	INFO("running to reset %d nic names", conf->num_savednics);
+	INFO("Running to reset %d nic names.", conf->num_savednics);
 
-	ret = snprintf(path, MAXPATHLEN, "/proc/self/ns/net");
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		WARN("Failed to open monitor netns fd");
+	oldfd = lxc_preserve_ns(getpid(), "net");
+	if (oldfd < 0) {
+		SYSERROR("Failed to open monitor netns fd.");
 		return;
 	}
-	if ((oldfd = open(path, O_RDONLY)) < 0) {
-		SYSERROR("Failed to open monitor netns fd");
-		return;
-	}
+
 	if (setns(netnsfd, 0) != 0) {
 		SYSERROR("Failed to enter container netns to reset nics");
 		close(oldfd);
@@ -2591,6 +2587,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 				      veth1, netdev->link, strerror(-err));
 			goto out_delete;
 		}
+		INFO("Attached '%s': to the bridge '%s': ", veth1, netdev->link);
 	}
 
 	err = lxc_netdev_up(veth1);
@@ -2883,36 +2880,83 @@ int lxc_create_network(struct lxc_handler *handler)
 	return 0;
 }
 
-void lxc_delete_network(struct lxc_handler *handler)
+bool lxc_delete_network(struct lxc_handler *handler)
 {
+	int ret;
 	struct lxc_list *network = &handler->conf->network;
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
+	bool deleted_all = true;
 
 	lxc_list_for_each(iterator, network) {
 		netdev = iterator->elem;
 
 		if (netdev->ifindex != 0 && netdev->type == LXC_NET_PHYS) {
 			if (lxc_netdev_rename_by_index(netdev->ifindex, netdev->link))
-				WARN("failed to rename to the initial name the " \
-				     "netdev '%s'", netdev->link);
+				WARN("Failed to rename interface with index %d "
+				     "to its initial name \"%s\".",
+				     netdev->ifindex, netdev->link);
 			continue;
 		}
 
 		if (netdev_deconf[netdev->type](handler, netdev)) {
-			WARN("failed to destroy netdev");
+			WARN("Failed to destroy netdev");
 		}
 
 		/* Recent kernel remove the virtual interfaces when the network
 		 * namespace is destroyed but in case we did not moved the
 		 * interface to the network namespace, we have to destroy it
 		 */
-		if (netdev->ifindex != 0 &&
-		    lxc_netdev_delete_by_index(netdev->ifindex))
-			WARN("failed to remove interface %d '%s'",
-				netdev->ifindex,
-				netdev->name ? netdev->name : "(null)");
+		if (netdev->ifindex != 0) {
+			ret = lxc_netdev_delete_by_index(netdev->ifindex);
+			if (-ret == ENODEV) {
+				INFO("Interface \"%s\" with index %d already "
+				     "deleted or existing in different network "
+				     "namespace.",
+				     netdev->name ? netdev->name : "(null)",
+				     netdev->ifindex);
+			} else if (ret < 0) {
+				deleted_all = false;
+				WARN("Failed to remove interface \"%s\" with "
+				     "index %d: %s.",
+				     netdev->name ? netdev->name : "(null)",
+				     netdev->ifindex, strerror(-ret));
+			} else {
+				INFO("Removed interface \"%s\" with index %d.",
+				     netdev->name ? netdev->name : "(null)",
+				     netdev->ifindex);
+			}
+		}
+
+		/* Explicitly delete host veth device to prevent lingering
+		 * devices. We had issues in LXD around this.
+		 */
+		if (netdev->type == LXC_NET_VETH) {
+			char *hostveth;
+			if (netdev->priv.veth_attr.pair) {
+				hostveth = netdev->priv.veth_attr.pair;
+				ret = lxc_netdev_delete_by_name(hostveth);
+				if (ret < 0) {
+					WARN("Failed to remove interface \"%s\" from host: %s.", hostveth, strerror(-ret));
+				} else {
+					INFO("Removed interface \"%s\" from host.", hostveth);
+					free(netdev->priv.veth_attr.pair);
+					netdev->priv.veth_attr.pair = NULL;
+				}
+			} else if (strlen(netdev->priv.veth_attr.veth1) > 0) {
+				hostveth = netdev->priv.veth_attr.veth1;
+				ret = lxc_netdev_delete_by_name(hostveth);
+				if (ret < 0) {
+					WARN("Failed to remove \"%s\" from host: %s.", hostveth, strerror(-ret));
+				} else {
+					INFO("Removed interface \"%s\" from host.", hostveth);
+					memset((void *)&netdev->priv.veth_attr.veth1, 0, sizeof(netdev->priv.veth_attr.veth1));
+				}
+			}
+		}
 	}
+
+	return deleted_all;
 }
 
 #define LXC_USERNIC_PATH LIBEXECDIR "/lxc/lxc-user-nic"
@@ -3050,7 +3094,7 @@ int lxc_assign_network(const char *lxcpath, char *lxcname,
 			return -1;
 		}
 
-		DEBUG("move '%s' to '%d'", netdev->name, pid);
+		DEBUG("move '%s'/'%s' to '%d': .", ifname, netdev->name, pid);
 	}
 
 	return 0;

@@ -53,6 +53,23 @@
 #  define CLONE_NEWNET            0x40000000
 #endif
 
+enum {
+	LXC_NS_MNT,
+	LXC_NS_PID,
+	LXC_NS_UTS,
+	LXC_NS_IPC,
+	LXC_NS_USER,
+	LXC_NS_NET,
+	LXC_NS_CGROUP,
+	LXC_NS_MAX
+};
+
+extern const struct ns_info {
+	const char *proc_name;
+	int clone_flag;
+	const char *flag_name;
+} ns_info[LXC_NS_MAX];
+
 #if defined(__ia64__)
 int __clone2(int (*__fn) (void *__arg), void *__child_stack_base,
              size_t __child_stack_size, int __flags, void *__arg, ...);
@@ -61,7 +78,6 @@ int clone(int (*fn)(void *), void *child_stack,
 	int flags, void *arg, ...
 	/* pid_t *ptid, struct user_desc *tls, pid_t *ctid */ );
 #endif
-
 
 extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags);
 
