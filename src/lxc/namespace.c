@@ -69,12 +69,28 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 	return ret;
 }
 
+/* Leave the user namespace at the first position in the array of structs so
+ * that we always attach to it first when iterating over the struct and using
+ * setns() to switch namespaces. This especially affects lxc_attach(): Suppose
+ * you cloned a new user namespace and mount namespace as an unprivileged user
+ * on the host and want to setns() to the mount namespace. This requires you to
+ * attach to the user namespace first otherwise the kernel will fail this check:
+ *
+ *        if (!ns_capable(mnt_ns->user_ns, CAP_SYS_ADMIN) ||
+ *            !ns_capable(current_user_ns(), CAP_SYS_CHROOT) ||
+ *            !ns_capable(current_user_ns(), CAP_SYS_ADMIN))
+ *            return -EPERM;
+ *
+ *    in
+ *
+ *        linux/fs/namespace.c:mntns_install().
+ */
 const struct ns_info ns_info[LXC_NS_MAX] = {
+	[LXC_NS_USER] = {"user", CLONE_NEWUSER, "CLONE_NEWUSER"},
 	[LXC_NS_MNT] = {"mnt", CLONE_NEWNS, "CLONE_NEWNS"},
 	[LXC_NS_PID] = {"pid", CLONE_NEWPID, "CLONE_NEWPID"},
 	[LXC_NS_UTS] = {"uts", CLONE_NEWUTS, "CLONE_NEWUTS"},
 	[LXC_NS_IPC] = {"ipc", CLONE_NEWIPC, "CLONE_NEWIPC"},
-	[LXC_NS_USER] = {"user", CLONE_NEWUSER, "CLONE_NEWUSER"},
 	[LXC_NS_NET] = {"net", CLONE_NEWNET, "CLONE_NEWNET"},
 	[LXC_NS_CGROUP] = {"cgroup", CLONE_NEWCGROUP, "CLONE_NEWCGROUP"}
 };
