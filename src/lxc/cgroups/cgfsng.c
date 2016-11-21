@@ -420,6 +420,7 @@ static ssize_t get_max_cpus(char *cpulist)
 	return cpus;
 }
 
+#define __ISOL_CPUS "/sys/devices/system/cpu/isolated"
 static bool filter_and_set_cpus(char *path, bool am_initialized)
 {
 	char *lastslash, *fpath, oldv;
@@ -429,78 +430,108 @@ static bool filter_and_set_cpus(char *path, bool am_initialized)
 	ssize_t maxposs = 0, maxisol = 0;
 	char *cpulist = NULL, *posscpus = NULL, *isolcpus = NULL;
 	uint32_t *possmask = NULL, *isolmask = NULL;
-	bool bret = false;
+	bool bret = false, flipped_bit = false;
 
 	lastslash = strrchr(path, '/');
 	if (!lastslash) { // bug...  this shouldn't be possible
-		ERROR("cgfsng:copy_parent_file: bad path %s", path);
+		ERROR("Invalid path: %s.", path);
 		return bret;
 	}
 	oldv = *lastslash;
 	*lastslash = '\0';
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
 	posscpus = read_file(fpath);
-	if (!posscpus)
-		goto cleanup;
+	if (!posscpus) {
+		SYSERROR("Could not read file: %s.\n", fpath);
+		goto on_error;
+	}
 
 	/* Get maximum number of cpus found in possible cpuset. */
 	maxposs = get_max_cpus(posscpus);
 	if (maxposs < 0)
-		goto cleanup;
+		goto on_error;
 
-	isolcpus = read_file("/sys/devices/system/cpu/isolated");
-	if (!isolcpus)
-		goto cleanup;
+	if (!file_exists(__ISOL_CPUS)) {
+		/* This system doesn't expose isolated cpus. */
+		DEBUG("Path: "__ISOL_CPUS" to read isolated cpus from does not exist.\n");
+		goto on_success;
+	}
+
+	isolcpus = read_file(__ISOL_CPUS);
+	if (!isolcpus) {
+		SYSERROR("Could not read file "__ISOL_CPUS);
+		goto on_error;
+	}
 	if (!isdigit(isolcpus[0])) {
+		DEBUG("No isolated cpus detected.");
 		cpulist = posscpus;
 		/* No isolated cpus but we weren't already initialized by
 		 * someone. We should simply copy the parents cpuset.cpus
 		 * values.
 		 */
-		if (!am_initialized)
+		if (!am_initialized) {
+			DEBUG("Copying cpuset of parent cgroup.");
 			goto copy_parent;
+		}
 		/* No isolated cpus but we were already initialized by someone.
 		 * Nothing more to do for us.
 		 */
-		bret = true;
-		goto cleanup;
+		goto on_success;
 	}
 
 	/* Get maximum number of cpus found in isolated cpuset. */
 	maxisol = get_max_cpus(isolcpus);
 	if (maxisol < 0)
-		goto cleanup;
+		goto on_error;
 
 	if (maxposs < maxisol)
 		maxposs = maxisol;
 	maxposs++;
 
 	possmask = lxc_cpumask(posscpus, maxposs);
-	if (!possmask)
-		goto cleanup;
+	if (!possmask) {
+		ERROR("Could not create cpumask for all possible cpus.\n");
+		goto on_error;
+	}
 
 	isolmask = lxc_cpumask(isolcpus, maxposs);
-	if (!isolmask)
-		goto cleanup;
+	if (!isolmask) {
+		ERROR("Could not create cpumask for all isolated cpus.\n");
+		goto on_error;
+	}
 
 	for (i = 0; i <= maxposs; i++) {
 		if (is_set(i, isolmask) && is_set(i, possmask)) {
+			flipped_bit = true;
 			clear_bit(i, possmask);
 		}
 	}
 
+	if (!flipped_bit) {
+		DEBUG("No isolated cpus present in cpuset.");
+		goto on_success;
+	}
+	DEBUG("Removed isolated cpus from cpuset.");
+
 	cpulist = lxc_cpumask_to_cpulist(possmask, maxposs);
-	if (!cpulist) /* Bug */
-		goto cleanup;
+	if (!cpulist) {
+		ERROR("Could not create cpu list.\n");
+		goto on_error;
+	}
 
 copy_parent:
 	*lastslash = oldv;
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
 	ret = lxc_write_to_file(fpath, cpulist, strlen(cpulist), false);
-	if (!ret)
-		bret = true;
+	if (ret < 0) {
+		SYSERROR("Could not write cpu list to: %s.\n", fpath);
+		goto on_error;
+	}
 
-cleanup:
+on_success:
+	bret = true;
+
+on_error:
 	free(fpath);
 
 	free(isolcpus);
@@ -579,6 +610,7 @@ static bool handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 		free(cgpath);
 		return false;
 	}
+
 	clonechildrenpath = must_make_path(cgpath, "cgroup.clone_children", NULL);
 	if (!file_exists(clonechildrenpath)) { /* unified hierarchy doesn't have clone_children */
 		free(clonechildrenpath);
@@ -593,10 +625,15 @@ static bool handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	}
 
 	/* Make sure any isolated cpus are removed from cpuset.cpus. */
-	if (!filter_and_set_cpus(cgpath, v == '1'))
+	if (!filter_and_set_cpus(cgpath, v == '1')) {
+		SYSERROR("Failed to remove isolated cpus.");
+		free(clonechildrenpath);
+		free(cgpath);
 		return false;
+	}
 
 	if (v == '1') {  /* already set for us by someone else */
+		DEBUG("\"cgroup.clone_children\" was already set to \"1\".");
 		free(clonechildrenpath);
 		free(cgpath);
 		return true;
@@ -604,6 +641,7 @@ static bool handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 
 	/* copy parent's settings */
 	if (!copy_parent_file(cgpath, "cpuset.mems")) {
+		SYSERROR("Failed to copy \"cpuset.mems\" settings.");
 		free(cgpath);
 		free(clonechildrenpath);
 		return false;
@@ -1256,10 +1294,14 @@ struct cgroup_ops *cgfsng_ops_init(void)
 static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
 	h->fullcgpath = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
-	if (dir_exists(h->fullcgpath)) // it must not already exist
+	if (dir_exists(h->fullcgpath)) { // it must not already exist
+		ERROR("Path \"%s\" already existed.", h->fullcgpath);
 		return false;
-	if (!handle_cpuset_hierarchy(h, cgname))
+	}
+	if (!handle_cpuset_hierarchy(h, cgname)) {
+		ERROR("Failed to handle cgroupfs v1 cpuset controller.");
 		return false;
+	}
 	return mkdir_p(h->fullcgpath, 0755) == 0;
 }
 
