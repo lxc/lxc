@@ -454,6 +454,18 @@ static bool filter_and_set_cpus(char *path, bool am_initialized)
 	if (!file_exists(__ISOL_CPUS)) {
 		/* This system doesn't expose isolated cpus. */
 		DEBUG("Path: "__ISOL_CPUS" to read isolated cpus from does not exist.\n");
+		cpulist = posscpus;
+		/* No isolated cpus but we weren't already initialized by
+		 * someone. We should simply copy the parents cpuset.cpus
+		 * values.
+		 */
+		if (!am_initialized) {
+			DEBUG("Copying cpuset of parent cgroup.");
+			goto copy_parent;
+		}
+		/* No isolated cpus but we were already initialized by someone.
+		 * Nothing more to do for us.
+		 */
 		goto on_success;
 	}
 
