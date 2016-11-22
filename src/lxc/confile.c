@@ -2981,7 +2981,7 @@ static int config_syslog(const char *key, const char *value,
 	int facility;
 	facility = lxc_syslog_priority_to_int(value);
 	if (facility == -EINVAL) {
-		ERROR("Wrong value for lxc.syslog");
+		ERROR("Wrong value for lxc.syslog.");
 		return -1;
 	}
 
