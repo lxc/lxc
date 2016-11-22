@@ -1766,7 +1766,7 @@ int mount_proc_if_needed(const char *rootfs)
 {
 	char path[MAXPATHLEN];
 	char link[20];
-	int linklen, ret;
+	int link_to_pid, linklen, ret;
 	int mypid;
 
 	ret = snprintf(path, MAXPATHLEN, "%s/proc/self", rootfs);
@@ -1785,7 +1785,9 @@ int mount_proc_if_needed(const char *rootfs)
 	}
 	if (linklen < 0) /* /proc not mounted */
 		goto domount;
-	if (atoi(link) != mypid) {
+	if (lxc_safe_int(link, &link_to_pid) < 0)
+		return -1;
+	if (link_to_pid != mypid) {
 		/* wrong /procs mounted */
 		umount2(path, MNT_DETACH); /* ignore failure */
 		goto domount;
@@ -1987,4 +1989,64 @@ int lxc_preserve_ns(const int pid, const char *ns)
 		return -1;
 
 	return open(path, O_RDONLY | O_CLOEXEC);
+}
+
+int lxc_safe_uint(const char *numstr, unsigned int *converted)
+{
+	char *err = NULL;
+	unsigned long int uli;
+
+	errno = 0;
+	uli = strtoul(numstr, &err, 0);
+	if (errno > 0)
+		return -errno;
+
+	if (!err || err == numstr || *err != '\0')
+		return -EINVAL;
+
+	if (uli > UINT_MAX)
+		return -ERANGE;
+
+	*converted = (unsigned int)uli;
+	return 0;
+}
+
+int lxc_safe_int(const char *numstr, int *converted)
+{
+	char *err = NULL;
+	signed long int sli;
+
+	errno = 0;
+	sli = strtol(numstr, &err, 0);
+	if (errno > 0)
+		return -errno;
+
+	if (!err || err == numstr || *err != '\0')
+		return -EINVAL;
+
+	if (sli > INT_MAX)
+		return -ERANGE;
+
+	*converted = (int)sli;
+	return 0;
+}
+
+int lxc_safe_long(const char *numstr, long int *converted)
+{
+	char *err = NULL;
+	signed long int sli;
+
+	errno = 0;
+	sli = strtol(numstr, &err, 0);
+	if (errno > 0)
+		return -errno;
+
+	if (!err || err == numstr || *err != '\0')
+		return -EINVAL;
+
+	if (sli > LONG_MAX)
+		return -ERANGE;
+
+	*converted = sli;
+	return 0;
 }

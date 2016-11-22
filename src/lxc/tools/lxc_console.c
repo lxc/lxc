@@ -22,29 +22,29 @@
  */
 
 #define _GNU_SOURCE
-#include <stdio.h>
-#undef _GNU_SOURCE
-#include <stdlib.h>
 #include <errno.h>
-#include <string.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <signal.h>
 #include <libgen.h>
 #include <poll.h>
-#include <sys/param.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <string.h>
+#include <unistd.h>
 #include <sys/ioctl.h>
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <lxc/lxccontainer.h>
 
-#include "error.h"
-#include "lxc.h"
-#include "log.h"
-#include "mainloop.h"
 #include "arguments.h"
 #include "commands.h"
+#include "error.h"
+#include "log.h"
+#include "lxc.h"
+#include "mainloop.h"
+#include "utils.h"
 
 lxc_log_define(lxc_console_ui, lxc);
 
@@ -58,8 +58,13 @@ static char etoc(const char *expr)
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
-	case 't': args->ttynum = atoi(arg); break;
-	case 'e': args->escape = etoc(arg); break;
+	case 't':
+		if (lxc_safe_uint(arg, &args->ttynum) < 0)
+			return -1;
+		break;
+	case 'e':
+		args->escape = etoc(arg);
+		break;
 	}
 	return 0;
 }

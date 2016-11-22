@@ -853,8 +853,12 @@ static int config_network_ipv4(const char *key, const char *value,
 	}
 
 	/* no prefix specified, determine it from the network class */
-	inetdev->prefix = prefix ? atoi(prefix) :
-		config_ip_prefix(&inetdev->addr);
+	if (prefix) {
+		if (lxc_safe_uint(prefix, &inetdev->prefix) < 0)
+			return -1;
+	} else {
+		inetdev->prefix = config_ip_prefix(&inetdev->addr);
+	}
 
 	/* if no broadcast address, let compute one from the
 	 * prefix and address
@@ -952,7 +956,8 @@ static int config_network_ipv6(const char *key, const char *value,
 	if (slash) {
 		*slash = '\0';
 		netmask = slash + 1;
-		inet6dev->prefix = atoi(netmask);
+		if (lxc_safe_uint(netmask, &inet6dev->prefix) < 0)
+			return -1;
 	}
 
 	if (!inet_pton(AF_INET6, valdup, &inet6dev->addr)) {
@@ -1060,14 +1065,24 @@ static int config_init_cmd(const char *key, const char *value,
 static int config_init_uid(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	lxc_conf->init_uid = atoi(value);
+	unsigned int init_uid;
+
+	if (lxc_safe_uint(value, &init_uid) < 0)
+		return -1;
+	lxc_conf->init_uid = init_uid;
+
 	return 0;
 }
 
 static int config_init_gid(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	lxc_conf->init_gid = atoi(value);
+	unsigned int init_gid;
+
+	if (lxc_safe_uint(value, &init_gid) < 0)
+		return -1;
+	lxc_conf->init_gid = init_gid;
+
 	return 0;
 }
 
@@ -1127,9 +1142,8 @@ static int config_personality(const char *key, const char *value,
 static int config_pts(const char *key, const char *value,
 		      struct lxc_conf *lxc_conf)
 {
-	int maxpts = atoi(value);
-
-	lxc_conf->pts = maxpts;
+	if (lxc_safe_uint(value, &lxc_conf->pts) < 0)
+		return -1;
 
 	return 0;
 }
@@ -1138,15 +1152,20 @@ static int config_start(const char *key, const char *value,
 		      struct lxc_conf *lxc_conf)
 {
 	if(strcmp(key, "lxc.start.auto") == 0) {
-		lxc_conf->start_auto = atoi(value);
+		if (lxc_safe_uint(value, &lxc_conf->start_auto) < 0)
+			return -1;
+		if (lxc_conf->start_auto > 1)
+			return -1;
 		return 0;
 	}
 	else if (strcmp(key, "lxc.start.delay") == 0) {
-		lxc_conf->start_delay = atoi(value);
+		if (lxc_safe_uint(value, &lxc_conf->start_delay) < 0)
+			return -1;
 		return 0;
 	}
 	else if (strcmp(key, "lxc.start.order") == 0) {
-		lxc_conf->start_order = atoi(value);
+		if (lxc_safe_int(value, &lxc_conf->start_order) < 0)
+			return -1;
 		return 0;
 	}
 	SYSERROR("Unknown key: %s", key);
@@ -1157,7 +1176,8 @@ static int config_monitor(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
 	if(strcmp(key, "lxc.monitor.unshare") == 0) {
-		lxc_conf->monitor_unshare = atoi(value);
+		if (lxc_safe_uint(value, &lxc_conf->monitor_unshare) < 0)
+			return -1;
 		return 0;
 	}
 	SYSERROR("Unknown key: %s", key);
@@ -1240,9 +1260,8 @@ freak_out:
 static int config_tty(const char *key, const char *value,
 		      struct lxc_conf *lxc_conf)
 {
-	int nbtty = atoi(value);
-
-	lxc_conf->tty = nbtty;
+	if (lxc_safe_uint(value, &lxc_conf->tty) < 0)
+		return -1;
 
 	return 0;
 }
@@ -1256,9 +1275,11 @@ static int config_ttydir(const char *key, const char *value,
 static int config_kmsg(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
-	int v = atoi(value);
+	if (lxc_safe_uint(value, &lxc_conf->kmsg) < 0)
+		return -1;
 
-	lxc_conf->kmsg = v;
+	if (lxc_conf->kmsg > 1)
+		return -1;
 
 	return 0;
 }
@@ -1272,9 +1293,13 @@ static int config_lsm_aa_profile(const char *key, const char *value,
 static int config_lsm_aa_incomplete(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	int v = atoi(value);
+	if (lxc_safe_uint(value, &lxc_conf->lsm_aa_allow_incomplete) < 0)
+		return -1;
 
-	lxc_conf->lsm_aa_allow_incomplete = v == 1 ? 1 : 0;
+	if (lxc_conf->lsm_aa_allow_incomplete > 1) {
+		ERROR("Wrong value for lxc.lsm_aa_allow_incomplete. Can only be set to 0 or 1");
+		return -1;
+	}
 
 	return 0;
 }
@@ -1306,10 +1331,12 @@ static int config_loglevel(const char *key, const char *value,
 	if (!value || strlen(value) == 0)
 		return 0;
 
-	if (value[0] >= '0' && value[0] <= '9')
-		newlevel = atoi(value);
-	else
+	if (value[0] >= '0' && value[0] <= '9') {
+		if (lxc_safe_int(value, &newlevel) < 0)
+			return -1;
+	} else {
 		newlevel = lxc_log_priority_to_int(value);
+	}
 	// store these values in the lxc_conf, and then try to set for
 	// actual current logging.
 	lxc_conf->loglevel = newlevel;
@@ -1319,9 +1346,13 @@ static int config_loglevel(const char *key, const char *value,
 static int config_autodev(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
-	int v = atoi(value);
+	if (lxc_safe_uint(value, &lxc_conf->autodev) < 0)
+		return -1;
 
-	lxc_conf->autodev = v;
+	if (lxc_conf->autodev > 1) {
+		ERROR("Wrong value for lxc.autodev. Can only be set to 0 or 1");
+		return -1;
+	}
 
 	return 0;
 }
@@ -2933,13 +2964,12 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 static int config_ephemeral(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf)
 {
-	int v = atoi(value);
+	if (lxc_safe_uint(value, &lxc_conf->ephemeral) < 0)
+		return -1;
 
-	if (v != 0 && v != 1) {
+	if (lxc_conf->ephemeral > 1) {
 		ERROR("Wrong value for lxc.ephemeral. Can only be set to 0 or 1");
 		return -1;
-	} else {
-		lxc_conf->ephemeral = v;
 	}
 
 	return 0;
@@ -2951,7 +2981,7 @@ static int config_syslog(const char *key, const char *value,
 	int facility;
 	facility = lxc_syslog_priority_to_int(value);
 	if (facility == -EINVAL) {
-		ERROR("Wrong value for lxc.syslog");
+		ERROR("Wrong value for lxc.syslog.");
 		return -1;
 	}
 
@@ -2962,12 +2992,16 @@ static int config_syslog(const char *key, const char *value,
 static int config_no_new_privs(const char *key, const char *value,
 				    struct lxc_conf *lxc_conf)
 {
-	int v = atoi(value);
+	unsigned int v;
 
-	if (v != 0 && v != 1) {
+	if (lxc_safe_uint(value, &v) < 0)
+		return -1;
+
+	if (v > 1) {
 		ERROR("Wrong value for lxc.no_new_privs. Can only be set to 0 or 1");
 		return -1;
 	}
+
 	lxc_conf->no_new_privs = v ? true : false;
 
 	return 0;

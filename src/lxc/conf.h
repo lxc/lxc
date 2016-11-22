@@ -62,7 +62,7 @@ enum {
 struct lxc_inetdev {
 	struct in_addr addr;
 	struct in_addr bcast;
-	int prefix;
+	unsigned int prefix;
 };
 
 struct lxc_route {
@@ -80,7 +80,7 @@ struct lxc_inet6dev {
 	struct in6_addr addr;
 	struct in6_addr mcast;
 	struct in6_addr acast;
-	int prefix;
+	unsigned int prefix;
 };
 
 struct lxc_route6 {
@@ -293,8 +293,8 @@ struct saved_nic {
 struct lxc_conf {
 	int is_execute;
 	char *fstab;
-	int tty;
-	int pts;
+	unsigned int tty;
+	unsigned int pts;
 	int reboot;
 	int need_utmp_watch;
 	signed long personality;
@@ -317,7 +317,7 @@ struct lxc_conf {
 	struct lxc_list hooks[NUM_LXC_HOOKS];
 
 	char *lsm_aa_profile;
-	int lsm_aa_allow_incomplete;
+	unsigned int lsm_aa_allow_incomplete;
 	char *lsm_se_context;
 	int tmp_umount_proc;
 	char *seccomp;  // filename with the seccomp rules
@@ -325,11 +325,11 @@ struct lxc_conf {
 	scmp_filter_ctx seccomp_ctx;
 #endif
 	int maincmd_fd;
-	int autodev;  // if 1, mount and fill a /dev at start
+	unsigned int autodev;  // if 1, mount and fill a /dev at start
 	int haltsignal; // signal used to halt container
 	int rebootsignal; // signal used to reboot container
 	int stopsignal; // signal used to hard stop container
-	int kmsg;  // if 1, create /dev/kmsg symlink
+	unsigned int kmsg;  // if 1, create /dev/kmsg symlink
 	char *rcfile;	// Copy of the top level rcfile we read
 
 	// Logfile and logleve can be set in a container config file.
@@ -343,14 +343,14 @@ struct lxc_conf {
 
 	int inherit_ns_fd[LXC_NS_MAX];
 
-	int start_auto;
-	int start_delay;
+	unsigned int start_auto;
+	unsigned int start_delay;
 	int start_order;
 	struct lxc_list groups;
 	int nbd_idx;
 
 	/* unshare the mount namespace in the monitor */
-	int monitor_unshare;
+	unsigned int monitor_unshare;
 
 	/* set to true when rootfs has been setup */
 	bool rootfs_setup;
@@ -377,7 +377,7 @@ struct lxc_conf {
 	gid_t init_gid;
 
 	/* indicator if the container will be destroyed on shutdown */
-	int ephemeral;
+	unsigned int ephemeral;
 
 	/* The facility to pass to syslog. Let's users establish as what type of
 	 * program liblxc is supposed to write to the syslog. */

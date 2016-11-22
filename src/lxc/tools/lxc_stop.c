@@ -38,15 +38,28 @@
 
 lxc_log_define(lxc_stop_ui, lxc);
 
-static int my_parser(struct lxc_arguments* args, int c, char* arg)
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	switch (c) {
-	case 'r': args->reboot = 1; break;
-	case 'W': args->nowait = 1; break;
-	case 't': args->timeout = atoi(arg); break;
-	case 'k': args->hardstop = 1; break;
-	case OPT_NO_LOCK: args->nolock = 1; break;
-	case OPT_NO_KILL: args->nokill = 1; break;
+	case 'r':
+		args->reboot = 1;
+		break;
+	case 'W':
+		args->nowait = 1;
+		break;
+	case 't':
+		if (lxc_safe_long(arg, &args->timeout) < 0)
+			return -1;
+		break;
+	case 'k':
+		args->hardstop = 1;
+		break;
+	case OPT_NO_LOCK:
+		args->nolock = 1;
+		break;
+	case OPT_NO_KILL:
+		args->nokill = 1;
+		break;
 	}
 	return 0;
 }
@@ -155,17 +168,14 @@ int main(int argc, char *argv[])
 
 	/* Set default timeout */
 	if (my_args.timeout == -2) {
-		if (my_args.hardstop) {
+		if (my_args.hardstop)
 			my_args.timeout = 0;
-		}
-		else {
+		else
 			my_args.timeout = 60;
-		}
 	}
 
-	if (my_args.nowait) {
+	if (my_args.nowait)
 		my_args.timeout = 0;
-	}
 
 	/* some checks */
 	if (!my_args.hardstop && my_args.timeout < -1) {

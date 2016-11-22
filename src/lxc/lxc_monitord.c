@@ -362,14 +362,15 @@ int main(int argc, char *argv[])
 	ret = snprintf(logpath, sizeof(logpath), "%s/lxc-monitord.log",
 		       (strcmp(LXCPATH, lxcpath) ? lxcpath : LOGPATH ) );
 	if (ret < 0 || ret >= sizeof(logpath))
-		return EXIT_FAILURE;
+		exit(EXIT_FAILURE);
 
 	ret = lxc_log_init(NULL, logpath, "NOTICE", "lxc-monitord", 0, lxcpath);
 	if (ret)
 		INFO("Failed to open log file %s, log will be lost", lxcpath);
 	lxc_log_options_no_override();
 
-	pipefd = atoi(argv[2]);
+	if (lxc_safe_int(argv[2], &pipefd) < 0)
+		exit(EXIT_FAILURE);
 
 	if (sigfillset(&mask) ||
 	    sigdelset(&mask, SIGILL)  ||
@@ -378,7 +379,7 @@ int main(int argc, char *argv[])
 	    sigdelset(&mask, SIGTERM) ||
 	    sigprocmask(SIG_BLOCK, &mask, NULL)) {
 		SYSERROR("failed to set signal mask");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	signal(SIGILL,  lxc_monitord_sig_handler);
@@ -428,7 +429,5 @@ int main(int argc, char *argv[])
 	ret = EXIT_SUCCESS;
 	NOTICE("monitor exiting");
 out:
-	if (ret == 0)
-		return 0;
-	return 1;
+	exit(ret);
 }

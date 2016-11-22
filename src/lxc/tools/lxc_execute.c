@@ -58,10 +58,19 @@ static int my_checker(const struct lxc_arguments* args)
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
-	case 'f': args->rcfile = arg; break;
-	case 's': return lxc_config_define_add(&defines, arg); break;
-	case 'u': args->uid = atoi(arg); break;
-	case 'g': args->gid = atoi(arg);
+	case 'f':
+		args->rcfile = arg;
+		break;
+	case 's':
+		return lxc_config_define_add(&defines, arg);
+		break;
+	case 'u':
+		if (lxc_safe_uint(arg, &args->uid) < 0)
+			return -1;
+		break;
+	case 'g':
+		if (lxc_safe_uint(arg, &args->gid) < 0)
+			return -1;
 	}
 	return 0;
 }

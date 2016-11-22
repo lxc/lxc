@@ -26,6 +26,7 @@
 #include "arguments.h"
 #include "list.h"
 #include "log.h"
+#include "utils.h"
 
 lxc_log_define(lxc_autostart_ui, lxc);
 static struct lxc_list *accumulate_list(char *input, char *delimiter, struct lxc_list *str_list);
@@ -35,14 +36,31 @@ struct lxc_list *cmd_groups_list = NULL;
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
-	case 'k': args->hardstop = 1; break;
-	case 'L': args->list = 1; break;
-	case 'r': args->reboot = 1; break;
-	case 's': args->shutdown = 1; break;
-	case 'a': args->all = 1; break;
-	case 'A': args->ignore_auto = 1; break;
-	case 'g': cmd_groups_list = accumulate_list( arg, ",", cmd_groups_list); break;
-	case 't': args->timeout = atoi(arg); break;
+	case 'k':
+		args->hardstop = 1;
+		break;
+	case 'L':
+		args->list = 1;
+		break;
+	case 'r':
+		args->reboot = 1;
+		break;
+	case 's':
+		args->shutdown = 1;
+		break;
+	case 'a':
+		args->all = 1;
+		break;
+	case 'A':
+		args->ignore_auto = 1;
+		break;
+	case 'g':
+		cmd_groups_list = accumulate_list(arg, ",", cmd_groups_list);
+		break;
+	case 't':
+		if (lxc_safe_long(arg, &args->timeout) < 0)
+			return -1;
+		break;
 	}
 	return 0;
 }
@@ -290,7 +308,9 @@ static int get_config_integer(struct lxc_container *c, char *key) {
 		return 0;
 	}
 
-	ret = atoi(value);
+	if (lxc_safe_int(value, &ret) < 0)
+		DEBUG("Could not parse config item.");
+
 	free(value);
 
 	return ret;
