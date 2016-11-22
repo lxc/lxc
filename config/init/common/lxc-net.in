@@ -9,6 +9,7 @@ varlib="@LOCALSTATEDIR@/lib"
 
 USE_LXC_BRIDGE="true"
 LXC_BRIDGE="lxcbr0"
+LXC_BRIDGE_MAC="00:16:3e:00:00:00"
 LXC_ADDR="10.0.3.1"
 LXC_NETMASK="255.255.255.0"
 LXC_NETWORK="10.0.3.0/24"
@@ -45,6 +46,7 @@ ifup() {
     MASK=`_netmask2cidr ${LXC_NETMASK}`
     CIDR_ADDR="${LXC_ADDR}/${MASK}"
     ip addr add ${CIDR_ADDR} dev $1
+    ip link set dev $1 address $LXC_BRIDGE_MAC
     ip link set dev $1 up
 }
 
