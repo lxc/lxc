@@ -76,7 +76,7 @@ static void usage(char *cmd)
 	fprintf(stderr, "\t -i <iface>   : Interface name to be moved into container (presumably with NETWORK unsharing set)\n");
 	fprintf(stderr, "\t -H <hostname>: Set the hostname in the container\n");
 	fprintf(stderr, "\t -d           : Daemonize (do not wait for container to exit)\n");
-	fprintf(stderr, "\t -M           : reMount default fs inside container (/proc /dev/shm /dev/mqueue)\n");
+	fprintf(stderr, "\t -M           : Remount default fs inside container (/proc /dev/shm /dev/mqueue)\n");
 	_exit(EXIT_SUCCESS);
 }
 
@@ -151,12 +151,12 @@ static int do_start(void *arg)
 
 int main(int argc, char *argv[])
 {
+	char *del;
+	char **it, **args;
 	int opt, status;
 	int ret;
 	char *namespaces = NULL;
-	char **args;
-	int flags = 0;
-	int daemonize = 0;
+	int flags = 0, daemonize = 0;
 	uid_t uid = 0; /* valid only if (flags & CLONE_NEWUSER) */
 	pid_t pid;
 	struct my_iflist *tmpif, *my_iflist = NULL;
@@ -212,6 +212,28 @@ int main(int argc, char *argv[])
 	ret = lxc_caps_init();
 	if (ret)
 		exit(EXIT_FAILURE);
+
+	/* The identifiers for namespaces used with lxc-unshare as given on the
+	 * manpage do not align with the standard identifiers. This affects
+	 * network, mount, and uts namespaces. The standard identifiers are:
+	 * "mnt", "uts", and "net" whereas lxc-unshare uses "MOUNT", "UTSNAME",
+	 * and "NETWORK". So let's use some cheap memmove()s to replace them by
+	 * their standard identifiers. Let's illustrate this with an example:
+	 * Assume the string:
+	 *
+	 *	"IPC|MOUNT|PID"
+	 *
+	 * then we memmove()
+	 *
+	 *	dest: del + 1 == ONT|PID
+	 *	src:  del + 3 == NT|PID
+	 */
+	while ((del = strstr(namespaces, "MOUNT")))
+		memmove(del + 1, del + 3, strlen(del) - 2);
+
+	for (it = (char *[]){"NETWORK", "UTSNAME", NULL}; it && *it; it++)
+		while ((del = strstr(namespaces, *it)))
+			memmove(del + 3, del + 7, strlen(del) - 6);
 
 	ret = lxc_fill_namespace_flags(namespaces, &flags);
 	if (ret)
