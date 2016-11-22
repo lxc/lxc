@@ -107,6 +107,8 @@ static int add_to_simple_array(char ***array, ssize_t *capacity, char *value)
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
+	char **it;
+	char *del;
 	int ret;
 
 	switch (c) {
@@ -125,6 +127,30 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 		break;
 	case 's':
 		namespace_flags = 0;
+
+		/* The identifiers for namespaces used with lxc-attach as given
+		 * on the manpage do not align with the standard identifiers.
+		 * This affects network, mount, and uts namespaces. The standard
+		 * identifiers are: "mnt", "uts", and "net" whereas lxc-attach
+		 * uses "MOUNT", "UTSNAME", and "NETWORK". So let's use some
+		 * cheap memmove()s to replace them by their standard
+		 * identifiers. Let's illustrate this with an example:
+		 * Assume the string:
+		 *
+		 *	"IPC|MOUNT|PID"
+		 *
+		 * then we memmove()
+		 *
+		 *	dest: del + 1 == ONT|PID
+		 *	src:  del + 3 == NT|PID
+		 */
+		while ((del = strstr(arg, "MOUNT")))
+			memmove(del + 1, del + 3, strlen(del) - 2);
+
+		for (it = (char *[]){"NETWORK", "UTSNAME", NULL}; it && *it; it++)
+			while ((del = strstr(arg, *it)))
+				memmove(del + 3, del + 7, strlen(del) - 6);
+
 		ret = lxc_fill_namespace_flags(arg, &namespace_flags);
 		if (ret)
 			return -1;
