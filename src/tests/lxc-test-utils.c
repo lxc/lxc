@@ -227,16 +227,7 @@ non_test_error:
 
 void test_lxc_safe_uint(void)
 {
-	int ret;
 	unsigned int n;
-	size_t len = /* 2^64 = 21 - 1 */ 21;
-	char uint_max[len];
-
-	ret = snprintf(uint_max, len, "%lu", (unsigned long)UINT_MAX + 1);
-	if (ret < 0 || (size_t)ret >= len) {
-		lxc_error("%s\n", "Failed to create string via snprintf().");
-		exit(EXIT_FAILURE);
-	}
 
 	lxc_test_assert_abort((0 == lxc_safe_uint("1234345", &n)) && n == 1234345);
 	lxc_test_assert_abort((0 == lxc_safe_uint("   345", &n)) && n == 345);
@@ -251,21 +242,11 @@ void test_lxc_safe_uint(void)
 	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("345g   ", &n)));
 	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("g", &n)));
 	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("   g345", &n)));
-	lxc_test_assert_abort((-ERANGE == lxc_safe_uint(uint_max, &n)));
 }
 
 void test_lxc_safe_int(void)
 {
-	int ret;
 	signed int n;
-	size_t len = /* 2^64 = 21 - 1 */ 21;
-	char int_max[len];
-
-	ret = snprintf(int_max, len, "%ld", (signed long)INT_MAX + 1);
-	if (ret < 0 || (size_t)ret >= len) {
-		lxc_error("%s\n", "Failed to create string via snprintf().");
-		exit(EXIT_FAILURE);
-	}
 
 	lxc_test_assert_abort((0 == lxc_safe_int("1234345", &n)) && n == 1234345);
 	lxc_test_assert_abort((0 == lxc_safe_int("   345", &n)) && n == 345);
@@ -282,21 +263,11 @@ void test_lxc_safe_int(void)
 	lxc_test_assert_abort((-EINVAL == lxc_safe_int("345g   ", &n)));
 	lxc_test_assert_abort((-EINVAL == lxc_safe_int("g", &n)));
 	lxc_test_assert_abort((-EINVAL == lxc_safe_int("   g345", &n)));
-	lxc_test_assert_abort((-ERANGE == lxc_safe_int(int_max, &n)));
 }
 
 void test_lxc_safe_long(void)
 {
-	int ret;
 	signed long int n;
-	size_t len = /* 2^64 = 21 - 1 */ 21;
-	char long_max[len];
-
-	ret = snprintf(long_max, len, "%lld", LLONG_MAX);
-	if (ret < 0 || (size_t)ret >= len) {
-		lxc_error("%s\n", "Failed to create string via snprintf().");
-		exit(EXIT_FAILURE);
-	}
 
 	lxc_test_assert_abort((0 == lxc_safe_long("1234345", &n)) && n == 1234345);
 	lxc_test_assert_abort((0 == lxc_safe_long("   345", &n)) && n == 345);
@@ -313,10 +284,6 @@ void test_lxc_safe_long(void)
 	lxc_test_assert_abort((-EINVAL == lxc_safe_long("345g   ", &n)));
 	lxc_test_assert_abort((-EINVAL == lxc_safe_long("g", &n)));
 	lxc_test_assert_abort((-EINVAL == lxc_safe_long("   g345", &n)));
-	if (LONG_MAX != LLONG_MAX)
-		lxc_test_assert_abort((-ERANGE == lxc_safe_long(long_max, &n)));
-	else
-		lxc_test_assert_abort((0 == lxc_safe_long(long_max, &n)) && n == LONG_MAX);
 }
 
 void test_lxc_string_replace(void)
