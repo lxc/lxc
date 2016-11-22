@@ -1897,7 +1897,7 @@ static int loop_detect(const char *path)
 
 static int find_free_loopdev_no_control(int *retfd, char *namep)
 {
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	struct loop_info64 lo;
 	DIR *dir;
 	int fd = -1;
@@ -1907,8 +1907,8 @@ static int find_free_loopdev_no_control(int *retfd, char *namep)
 		SYSERROR("Error opening /dev");
 		return -1;
 	}
-	while (!readdir_r(dir, &dirent, &direntp)) {
 
+	while ((direntp = readdir(dir))) {
 		if (!direntp)
 			break;
 		if (strncmp(direntp->d_name, "loop", 4) != 0)

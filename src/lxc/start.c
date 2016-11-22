@@ -188,7 +188,7 @@ static int match_fd(int fd)
 
 int lxc_check_inherited(struct lxc_conf *conf, int fd_to_ignore)
 {
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	int fd, fddir;
 	DIR *dir;
 
@@ -201,7 +201,7 @@ restart:
 
 	fddir = dirfd(dir);
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		if (!direntp)
 			break;
 

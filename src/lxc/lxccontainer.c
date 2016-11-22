@@ -509,7 +509,7 @@ static bool wait_on_daemonized_start(struct lxc_container *c, int pid)
 
 static bool am_single_threaded(void)
 {
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	DIR *dir;
 	int count=0;
 
@@ -519,7 +519,7 @@ static bool am_single_threaded(void)
 		return false;
 	}
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		if (!direntp)
 			break;
 
@@ -2988,7 +2988,7 @@ static int lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **r
 {
 	char snappath[MAXPATHLEN], path2[MAXPATHLEN];
 	int dirlen, count = 0, ret;
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	struct lxc_snapshot *snaps =NULL, *nsnaps;
 	DIR *dir;
 
@@ -3007,7 +3007,7 @@ static int lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **r
 		return 0;
 	}
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		if (!direntp)
 			break;
 
@@ -3439,7 +3439,7 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 {
 	DIR *dir;
 	int i, cfound = 0, nfound = 0;
-	struct dirent dirent, *direntp;
+	struct dirent *direntp;
 	struct lxc_container *c;
 
 	if (!lxcpath)
@@ -3456,7 +3456,7 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 	if (names)
 		*names = NULL;
 
-	while (!readdir_r(dir, &dirent, &direntp)) {
+	while ((direntp = readdir(dir))) {
 		if (!direntp)
 			break;
 
