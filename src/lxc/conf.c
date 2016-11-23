@@ -24,20 +24,34 @@
 #define _GNU_SOURCE
 #include "config.h"
 
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <grp.h>
+#include <inttypes.h>
+#include <libgen.h>
+#include <pwd.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
-#include <errno.h>
 #include <string.h>
-#include <dirent.h>
+#include <time.h>
 #include <unistd.h>
-#include <inttypes.h>
-#include <sys/wait.h>
+#include <arpa/inet.h>
+#include <linux/loop.h>
+#include <linux/memfd.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <sys/mman.h>
+#include <sys/mount.h>
+#include <sys/param.h>
+#include <sys/prctl.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <pwd.h>
-#include <grp.h>
-#include <time.h>
+#include <sys/utsname.h>
+#include <sys/wait.h>
 
 #ifdef HAVE_STATVFS
 #include <sys/statvfs.h>
@@ -49,37 +63,21 @@
 #include <../include/openpty.h>
 #endif
 
-#include <linux/loop.h>
-
-#include <sys/types.h>
-#include <sys/utsname.h>
-#include <sys/param.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <sys/mount.h>
-#include <sys/mman.h>
-#include <sys/prctl.h>
-
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <netinet/in.h>
-#include <net/if.h>
-#include <libgen.h>
-
-#include "bdev.h"
-#include "network.h"
-#include "error.h"
 #include "af_unix.h"
+#include "bdev.h"
+#include "caps.h"       /* for lxc_caps_last_cap() */
+#include "cgroup.h"
+#include "conf.h"
+#include "error.h"
+#include "log.h"
+#include "lxcaufs.h"
+#include "lxclock.h"
+#include "lxcoverlay.h"
+#include "lxcseccomp.h"
+#include "namespace.h"
+#include "network.h"
 #include "parse.h"
 #include "utils.h"
-#include "conf.h"
-#include "log.h"
-#include "caps.h"       /* for lxc_caps_last_cap() */
-#include "lxcaufs.h"
-#include "lxcoverlay.h"
-#include "cgroup.h"
-#include "lxclock.h"
-#include "namespace.h"
 #include "lsm/lsm.h"
 
 #if HAVE_SYS_CAPABILITY_H
@@ -95,8 +93,6 @@
 #else
 #include <mntent.h>
 #endif
-
-#include "lxcseccomp.h"
 
 lxc_log_define(lxc_conf, lxc);
 
@@ -135,10 +131,10 @@ lxc_log_define(lxc_conf, lxc);
 static int pivot_root(const char * new_root, const char * put_old)
 {
 #ifdef __NR_pivot_root
-return syscall(__NR_pivot_root, new_root, put_old);
+	return syscall(__NR_pivot_root, new_root, put_old);
 #else
-errno = ENOSYS;
-return -1;
+	errno = ENOSYS;
+	return -1;
 #endif
 }
 #else
@@ -150,10 +146,10 @@ extern int pivot_root(const char * new_root, const char * put_old);
 static int sethostname(const char * name, size_t len)
 {
 #ifdef __NR_sethostname
-return syscall(__NR_sethostname, name, len);
+	return syscall(__NR_sethostname, name, len);
 #else
-errno = ENOSYS;
-return -1;
+	errno = ENOSYS;
+	return -1;
 #endif
 }
 #endif
