@@ -39,7 +39,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <linux/loop.h>
-#include <linux/memfd.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <sys/mman.h>
@@ -61,6 +60,10 @@
 #include <pty.h>
 #else
 #include <../include/openpty.h>
+#endif
+
+#ifdef HAVE_LINUX_MEMFD_H
+#include <linux/memfd.h>
 #endif
 
 #include "af_unix.h"
@@ -161,6 +164,59 @@ static int sethostname(const char * name, size_t len)
 
 #ifndef MS_PRIVATE
 #define MS_PRIVATE (1<<18)
+#endif
+
+/* memfd_create() */
+#ifndef MFD_CLOEXEC
+#define MFD_CLOEXEC 0x0001U
+#endif
+
+#ifndef MFD_ALLOW_SEALING
+#define MFD_ALLOW_SEALING 0x0002U
+#endif
+
+#ifndef HAVE_MEMFD_CREATE
+static int memfd_create(const char *name, unsigned int flags) {
+	#ifndef __NR_memfd_create
+		#if defined __i386__
+			#define __NR_memfd_create 356
+		#elif defined __x86_64__
+			#define __NR_memfd_create 319
+		#elif defined __arm__
+			#define __NR_memfd_create 385
+		#elif defined __aarch64__
+			#define __NR_memfd_create 279
+		#elif defined __s390__
+			#define __NR_memfd_create 350
+		#elif defined __powerpc__
+			#define __NR_memfd_create 360
+		#elif defined __sparc__
+			#define __NR_memfd_create 348
+		#elif defined __blackfin__
+			#define __NR_memfd_create 390
+		#elif defined __ia64__
+			#define __NR_memfd_create 1340
+		#elif defined _MIPS_SIM
+			#if _MIPS_SIM == _MIPS_SIM_ABI32
+				#define __NR_memfd_create 4354
+			#endif
+			#if _MIPS_SIM == _MIPS_SIM_NABI32
+				#define __NR_memfd_create 6318
+			#endif
+			#if _MIPS_SIM == _MIPS_SIM_ABI64
+				#define __NR_memfd_create 5314
+			#endif
+		#endif
+	#endif
+	#ifdef __NR_memfd_create
+	return syscall(__NR_memfd_create, name, flags);
+	#else
+	errno = ENOSYS;
+	return -1;
+	#endif
+}
+#else
+extern int memfd_create(const char *name, unsigned int flags);
 #endif
 
 char *lxchook_names[NUM_LXC_HOOKS] = {
@@ -1946,34 +2002,53 @@ static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab,
 	return ret;
 }
 
-FILE *write_mount_file(struct lxc_list *mount)
+FILE *make_anonymous_mount_file(struct lxc_list *mount)
 {
-	FILE *file;
-	struct lxc_list *iterator;
+	int ret;
 	char *mount_entry;
+	struct lxc_list *iterator;
+	FILE *file;
+	int fd = -1;
 
-	file = tmpfile();
+	fd = memfd_create("lxc_mount_file", MFD_CLOEXEC);
+	if (fd < 0) {
+		if (errno != ENOSYS)
+			return NULL;
+		file = tmpfile();
+	} else {
+		file = fdopen(fd, "r+");
+	}
+
 	if (!file) {
-		ERROR("Could not create temporary file: %s.", strerror(errno));
+		if (fd != -1)
+			close(fd);
+		ERROR("Could not create mount entry file: %s.", strerror(errno));
 		return NULL;
 	}
 
 	lxc_list_for_each(iterator, mount) {
 		mount_entry = iterator->elem;
-		fprintf(file, "%s\n", mount_entry);
+		ret = fprintf(file, "%s\n", mount_entry);
+		if (ret < strlen(mount_entry))
+			WARN("Could not write mount entry to anonymous mount file.");
 	}
 
-	rewind(file);
+	if (fseek(file, 0, SEEK_SET) < 0) {
+		fclose(file);
+		return NULL;
+	}
+
 	return file;
 }
 
-static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list *mount,
-	const char *lxc_name, const char *lxc_path)
+static int setup_mount_entries(const struct lxc_rootfs *rootfs,
+			       struct lxc_list *mount, const char *lxc_name,
+			       const char *lxc_path)
 {
 	FILE *file;
 	int ret;
 
-	file = write_mount_file(mount);
+	file = make_anonymous_mount_file(mount);
 	if (!file)
 		return -1;
 
