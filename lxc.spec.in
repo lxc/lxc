@@ -196,6 +196,7 @@ USE_LXC_BRIDGE="true"
 # If you have the dnsmasq daemon installed, you'll also have to update
 # /etc/dnsmasq.d/lxc and restart the system wide dnsmasq daemon.
 LXC_BRIDGE="lxcbr0"
+LXC_BRIDGE_MAC="00:16:3e:00:00:00"
 LXC_ADDR="$SUBNET.1"
 LXC_NETMASK="255.255.255.0"
 LXC_NETWORK="$SUBNET.0/24"
