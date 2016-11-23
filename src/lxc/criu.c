@@ -330,7 +330,7 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG(opts->user->action_script);
 	}
 
-	mnts = write_mount_file(&opts->c->lxc_conf->mount_list);
+	mnts = make_anonymous_mount_file(&opts->c->lxc_conf->mount_list);
 	if (!mnts)
 		goto err;
 
