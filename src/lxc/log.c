@@ -20,6 +20,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+#define _GNU_SOURCE
 #include <assert.h>
 #include <stdio.h>
 #include <errno.h>
@@ -30,8 +32,6 @@
 #include <string.h>
 #include <pthread.h>
 #include <time.h>
-
-#define __USE_GNU /* for *_CLOEXEC */
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -72,7 +72,7 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 {
 	char date[LXC_LOG_DATEFOMAT_SIZE] = "20150427012246";
 	char buffer[LXC_LOG_BUFFER_SIZE];
-	const struct tm *t;
+	struct tm newtime;
 	int n;
 	int ms;
 	int fd_to_use = -1;
@@ -88,8 +88,10 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	if (fd_to_use == -1)
 		return 0;
 
-	t = localtime(&event->timestamp.tv_sec);
-	strftime(date, sizeof(date), "%Y%m%d%H%M%S", t);
+	if (!localtime_r(&event->timestamp.tv_sec, &newtime))
+		return 0;
+
+	strftime(date, sizeof(date), "%Y%m%d%H%M%S", &newtime);
 	ms = event->timestamp.tv_usec / 1000;
 	n = snprintf(buffer, sizeof(buffer),
 		     "%15s %10s.%03d %-8s %s - %s:%s:%d - ",
