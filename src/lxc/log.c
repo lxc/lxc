@@ -42,6 +42,20 @@
 
 #define LXC_LOG_DATEFOMAT_SIZE  15
 
+#ifndef HAVE_GETTID
+static inline pid_t gettid(void)
+{
+#ifdef __NR_gettid
+	return (pid_t)syscall(SYS_gettid);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+#else
+extern pid_t gettid(void);
+#endif
+
 int lxc_log_fd = -1;
 int lxc_quiet_specified;
 int lxc_log_use_global_fd;
