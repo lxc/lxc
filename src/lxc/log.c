@@ -155,7 +155,7 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	char buffer[LXC_LOG_BUFFER_SIZE];
 	struct tm newtime;
 	int n;
-	int ms;
+	int ms = 0;
 	int fd_to_use = -1;
 
 #ifndef NO_LXC_CONF
@@ -169,11 +169,25 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	if (fd_to_use == -1)
 		return 0;
 
-	if (!localtime_r(&event->timestamp.tv_sec, &newtime))
-		return 0;
-
-	strftime(date, sizeof(date), "%Y%m%d%H%M%S", &newtime);
-	ms = event->timestamp.tv_usec / 1000;
+	/* localtime_r() can lead to deadlocks because it calls __tzset() and
+	 * __tzconvert() internally. The deadlock stems from an interaction
+	 * between these functions and the functions in monitor.c and
+	 * commands.{c,h}. The latter functions will write to the log
+	 * independent of the container thread that is currently running. Since
+	 * the monitor fork()ed it seems to duplicate the mutex states of the
+	 * time functions mentioned above.
+	 * As a short termm fix, I suggest to simply disable receiving the time
+	 * when monitor.c or command.{c,h} functions are called. This should be
+	 * ok, since the [lxc monitor] will only emit a few messages and
+	 * thread-safety is currently more important than beautiful logs. The
+	 * rest of the log stays the same as it was before.
+	 */
+	if (getpid() == gettid()) {
+		if (!localtime_r(&event->timestamp.tv_sec, &newtime))
+			return 0;
+		strftime(date, sizeof(date), "%Y%m%d%H%M%S", &newtime);
+		ms = event->timestamp.tv_usec / 1000;
+	}
 	n = snprintf(buffer, sizeof(buffer),
 		     "%15s%s%s %10s.%03d %-8s %s - %s:%s:%d - ",
 		     log_prefix,
@@ -190,13 +204,9 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 		return n;
 
 	if (n < sizeof(buffer) - 1)
-		n += vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt,
-			       *event->vap);
-	else {
-		WARN("truncated next event from %d to %zd bytes", n,
-		     sizeof(buffer));
+		n += vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt, *event->vap);
+	else
 		n = sizeof(buffer) - 1;
-	}
 
 	buffer[n] = '\n';
 
