@@ -617,10 +617,10 @@ AM_CONDITIONAL([IS_BIONIC], [test "x$is_bionic" = "xyes"])
 AC_CHECK_DECLS([PR_CAPBSET_DROP], [], [], [#include <sys/prctl.h>])
 
 # Check for some headers
-AC_CHECK_HEADERS([sys/signalfd.h pty.h ifaddrs.h sys/capability.h sys/personality.h utmpx.h sys/timerfd.h])
+AC_CHECK_HEADERS([sys/signalfd.h pty.h ifaddrs.h sys/capability.h sys/memfd.h sys/personality.h utmpx.h sys/timerfd.h])
 
 # Check for some syscalls functions
-AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid])
+AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create])
 
 # Check for some functions
 AC_CHECK_LIB(pthread, main)
