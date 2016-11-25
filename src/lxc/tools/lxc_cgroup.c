@@ -121,9 +121,8 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	} else {
-		int len = 4096;
-		char buffer[len];
-		int ret = c->get_cgroup_item(c, state_object, buffer, len);
+		char buffer[MAXPATHLEN];
+		int ret = c->get_cgroup_item(c, state_object, buffer, MAXPATHLEN);
 		if (ret < 0) {
 			ERROR("failed to retrieve value of '%s' for '%s:%s'",
 			      state_object, my_args.lxcpath[0], my_args.name);
