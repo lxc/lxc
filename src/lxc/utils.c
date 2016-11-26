@@ -1896,6 +1896,8 @@ int lxc_strmunmap(void *addr, size_t length)
 }
 
 /* Check whether a signal is blocked by a process. */
+/* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
+#define __PROC_STATUS_LEN (5 + 21 + 7 + 1)
 bool task_blocking_signal(pid_t pid, int signal)
 {
 	bool bret = false;
@@ -1905,13 +1907,10 @@ bool task_blocking_signal(pid_t pid, int signal)
 	int ret;
 	FILE *f;
 
-	/* The largest integer that can fit into long int is 2^64. This is a
-	 * 20-digit number. */
-	size_t len = /* /proc */ 5 + /* /pid-to-str */ 21 + /* /status */ 7 + /* \0 */ 1;
-	char status[len];
+	char status[__PROC_STATUS_LEN];
 
-	ret = snprintf(status, len, "/proc/%d/status", pid);
-	if (ret < 0 || ret >= len)
+	ret = snprintf(status, __PROC_STATUS_LEN, "/proc/%d/status", pid);
+	if (ret < 0 || ret >= __PROC_STATUS_LEN)
 		return bret;
 
 	f = fopen(status, "r");

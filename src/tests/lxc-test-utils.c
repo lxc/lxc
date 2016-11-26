@@ -70,13 +70,14 @@ void test_lxc_deslashify(void)
 	free(s);
 }
 
+/* /proc/int_as_str/ns/mnt\0 = (5 + 21 + 7 + 1) */
+#define __MNTNS_LEN (5 + 21 + 7 + 1)
 void test_detect_ramfs_rootfs(void)
 {
 	size_t i;
 	int ret;
 	int fret = EXIT_FAILURE;
-	size_t len = 5 /* /proc */ + 21 /* /int_as_str */ + 7 /* /ns/mnt */ + 1 /* \0 */;
-	char path[len];
+	char path[__MNTNS_LEN];
 	int init_ns = -1;
 	char tmpf1[] = "lxc-test-utils-XXXXXX";
 	char tmpf2[] = "lxc-test-utils-XXXXXX";
@@ -118,8 +119,8 @@ void test_detect_ramfs_rootfs(void)
 		"78 24 8:1 / /boot/efi rw,relatime shared:30 - vfat /dev/sda1 rw,fmask=0077,dmask=0077,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro",
 	};
 
-	ret = snprintf(path, len, "/proc/self/ns/mnt");
-	if (ret < 0 || (size_t)ret >= len) {
+	ret = snprintf(path, __MNTNS_LEN, "/proc/self/ns/mnt");
+	if (ret < 0 || (size_t)ret >= __MNTNS_LEN) {
 		lxc_error("%s\n", "Failed to create path with snprintf().");
 		goto non_test_error;
 	}

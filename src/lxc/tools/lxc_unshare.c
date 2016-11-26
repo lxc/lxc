@@ -82,7 +82,7 @@ static void usage(char *cmd)
 
 static bool lookup_user(const char *optarg, uid_t *uid)
 {
-	char name[sysconf(_SC_LOGIN_NAME_MAX)];
+	char name[MAXPATHLEN];
 	struct passwd *pwent = NULL;
 
 	if (!optarg || (optarg[0] == '\0'))
