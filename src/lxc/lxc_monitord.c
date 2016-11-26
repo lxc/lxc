@@ -22,21 +22,21 @@
  */
 
 #define _GNU_SOURCE
-#include <stdio.h>
-#include <signal.h>
 #include <errno.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <net/if.h>
+#include <netinet/in.h>
 #include <sys/epoll.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/param.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/un.h>
-#include <netinet/in.h>
-#include <net/if.h>
 
 #include "af_unix.h"
 #include "log.h"
@@ -85,14 +85,14 @@ static int lxc_monitord_fifo_create(struct lxc_monitor *mon)
 
 	ret = mknod(fifo_path, S_IFIFO|S_IRUSR|S_IWUSR, 0);
 	if (ret < 0 && errno != EEXIST) {
-		INFO("failed to mknod monitor fifo %s %s", fifo_path, strerror(errno));
+		INFO("Failed to mknod monitor fifo %s: %s.", fifo_path, strerror(errno));
 		return -1;
 	}
 
 	mon->fifofd = open(fifo_path, O_RDWR);
 	if (mon->fifofd < 0) {
 		unlink(fifo_path);
-		ERROR("failed to open monitor fifo");
+		ERROR("Failed to open monitor fifo.");
 		return -1;
 	}
 
@@ -102,7 +102,7 @@ static int lxc_monitord_fifo_create(struct lxc_monitor *mon)
 	lk.l_len = 0;
 	if (fcntl(mon->fifofd, F_SETLK, &lk) != 0) {
 		/* another lxc-monitord is already running, don't start up */
-		DEBUG("lxc-monitord already running on lxcpath %s", mon->lxcpath);
+		DEBUG("lxc-monitord already running on lxcpath %s.", mon->lxcpath);
 		close(mon->fifofd);
 		return -1;
 	}
@@ -126,7 +126,7 @@ static void lxc_monitord_sockfd_remove(struct lxc_monitor *mon, int fd) {
 	int i;
 
 	if (lxc_mainloop_del_handler(&mon->descr, fd))
-		CRIT("fd:%d not found in mainloop", fd);
+		CRIT("File descriptor %d not found in mainloop.", fd);
 	close(fd);
 
 	for (i = 0; i < mon->clientfds_cnt; i++) {
@@ -134,7 +134,7 @@ static void lxc_monitord_sockfd_remove(struct lxc_monitor *mon, int fd) {
 			break;
 	}
 	if (i >= mon->clientfds_cnt) {
-		CRIT("fd:%d not found in clients array", fd);
+		CRIT("File descriptor %d not found in clients array.", fd);
 		lxc_monitord_cleanup();
 		exit(EXIT_FAILURE);
 	}
@@ -174,35 +174,34 @@ static int lxc_monitord_sock_accept(int fd, uint32_t events, void *data,
 	ret = -1;
 	clientfd = accept(fd, NULL, 0);
 	if (clientfd < 0) {
-		SYSERROR("failed to accept connection");
+		SYSERROR("Failed to accept connection for client file descriptor %d.", fd);
 		goto out;
 	}
 
 	if (fcntl(clientfd, F_SETFD, FD_CLOEXEC)) {
-		SYSERROR("failed to set close-on-exec on incoming connection");
+		SYSERROR("Failed to set FD_CLOEXEC on client socket connection %d.", clientfd);
 		goto err1;
 	}
 
 	if (getsockopt(clientfd, SOL_SOCKET, SO_PEERCRED, &cred, &credsz))
 	{
-		ERROR("failed to get credentials on socket");
+		ERROR("Failed to get credentials on client socket connection %d.", clientfd);
 		goto err1;
 	}
 	if (cred.uid && cred.uid != geteuid()) {
-		WARN("monitor denied for uid:%d", cred.uid);
+		WARN("Monitor denied for uid %d on client socket connection %d.", cred.uid, clientfd);
 		ret = -EACCES;
 		goto err1;
 	}
 
 	if (mon->clientfds_cnt + 1 > mon->clientfds_size) {
 		int *clientfds;
-		DEBUG("realloc space for %d clientfds",
-		      mon->clientfds_size + CLIENTFDS_CHUNK);
 		clientfds = realloc(mon->clientfds,
-				    (mon->clientfds_size + CLIENTFDS_CHUNK) *
-				     sizeof(mon->clientfds[0]));
+				    (mon->clientfds_size + CLIENTFDS_CHUNK) * sizeof(mon->clientfds[0]));
 		if (clientfds == NULL) {
-			ERROR("failed to realloc memory for clientfds");
+			ERROR("Failed to realloc memory for %d client file "
+			      "descriptors.",
+			      mon->clientfds_size + CLIENTFDS_CHUNK);
 			goto err1;
 		}
 		mon->clientfds = clientfds;
@@ -212,12 +211,12 @@ static int lxc_monitord_sock_accept(int fd, uint32_t events, void *data,
 	ret = lxc_mainloop_add_handler(&mon->descr, clientfd,
 				       lxc_monitord_sock_handler, mon);
 	if (ret) {
-		ERROR("failed to add socket handler");
+		ERROR("Failed to add socket handler.");
 		goto err1;
 	}
 
 	mon->clientfds[mon->clientfds_cnt++] = clientfd;
-	INFO("accepted client fd:%d clients:%d", clientfd, mon->clientfds_cnt);
+	INFO("Accepted client file descriptor %d. Number of accepted file descriptors is now %d.", clientfd, mon->clientfds_cnt);
 	goto out;
 
 err1:
@@ -236,7 +235,7 @@ static int lxc_monitord_sock_create(struct lxc_monitor *mon)
 
 	fd = lxc_abstract_unix_open(addr.sun_path, SOCK_STREAM, O_TRUNC);
 	if (fd < 0) {
-		ERROR("failed to open unix socket : %s", strerror(errno));
+		ERROR("Failed to open unix socket: %s.", strerror(errno));
 		return -1;
 	}
 
@@ -295,17 +294,15 @@ static int lxc_monitord_fifo_handler(int fd, uint32_t events, void *data,
 
 	ret = read(fd, &msglxc, sizeof(msglxc));
 	if (ret != sizeof(msglxc)) {
-		SYSERROR("read fifo failed : %s", strerror(errno));
+		SYSERROR("Reading from fifo failed: %s.", strerror(errno));
 		return 1;
 	}
 
 	for (i = 0; i < mon->clientfds_cnt; i++) {
-		DEBUG("writing client fd:%d", mon->clientfds[i]);
 		ret = write(mon->clientfds[i], &msglxc, sizeof(msglxc));
-		if (ret < 0) {
-			ERROR("write failed to client sock:%d %d %s",
-			      mon->clientfds[i], errno, strerror(errno));
-		}
+		if (ret < 0)
+			ERROR("Failed to send message to client file descriptor %d: %s.",
+			      mon->clientfds[i], strerror(errno));
 	}
 
 	return 0;
@@ -318,14 +315,14 @@ static int lxc_monitord_mainloop_add(struct lxc_monitor *mon)
 	ret = lxc_mainloop_add_handler(&mon->descr, mon->fifofd,
 				       lxc_monitord_fifo_handler, mon);
 	if (ret < 0) {
-		ERROR("failed to add to mainloop monitor handler for fifo");
+		ERROR("Failed to add to mainloop monitor handler for fifo.");
 		return -1;
 	}
 
 	ret = lxc_mainloop_add_handler(&mon->descr, mon->listenfd,
 				       lxc_monitord_sock_accept, mon);
 	if (ret < 0) {
-		ERROR("failed to add to mainloop monitor handler for listen socket");
+		ERROR("Failed to add to mainloop monitor handler for listen socket.");
 		return -1;
 	}
 
@@ -339,17 +336,17 @@ static void lxc_monitord_cleanup(void)
 
 static void lxc_monitord_sig_handler(int sig)
 {
-	INFO("caught signal %d", sig);
+	INFO("Caught signal %d.", sig);
 	lxc_monitord_cleanup();
 	exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])
 {
-	int ret,pipefd;
-	char *lxcpath = argv[1];
+	int ret, pipefd;
 	char logpath[PATH_MAX];
 	sigset_t mask;
+	char *lxcpath = argv[1];
 
 	if (argc != 3) {
 		fprintf(stderr,
@@ -360,13 +357,13 @@ int main(int argc, char *argv[])
 	}
 
 	ret = snprintf(logpath, sizeof(logpath), "%s/lxc-monitord.log",
-		       (strcmp(LXCPATH, lxcpath) ? lxcpath : LOGPATH ) );
+		       (strcmp(LXCPATH, lxcpath) ? lxcpath : LOGPATH ));
 	if (ret < 0 || ret >= sizeof(logpath))
 		exit(EXIT_FAILURE);
 
-	ret = lxc_log_init(NULL, logpath, "NOTICE", "lxc-monitord", 0, lxcpath);
+	ret = lxc_log_init(NULL, logpath, "DEBUG", "lxc-monitord", 0, lxcpath);
 	if (ret)
-		INFO("Failed to open log file %s, log will be lost", lxcpath);
+		INFO("Failed to open log file %s, log will be lost.", lxcpath);
 	lxc_log_options_no_override();
 
 	if (lxc_safe_int(argv[2], &pipefd) < 0)
@@ -378,7 +375,7 @@ int main(int argc, char *argv[])
 	    sigdelset(&mask, SIGBUS)  ||
 	    sigdelset(&mask, SIGTERM) ||
 	    sigprocmask(SIG_BLOCK, &mask, NULL)) {
-		SYSERROR("failed to set signal mask");
+		SYSERROR("Failed to set signal mask.");
 		exit(EXIT_FAILURE);
 	}
 
@@ -391,12 +388,12 @@ int main(int argc, char *argv[])
 	memset(&mon, 0, sizeof(mon));
 	mon.lxcpath = lxcpath;
 	if (lxc_mainloop_open(&mon.descr)) {
-		ERROR("failed to create mainloop");
-		goto out;
+		ERROR("Failed to create mainloop.");
+		goto on_error;
 	}
 
 	if (lxc_monitord_create(&mon)) {
-		goto out;
+		goto on_error;
 	}
 
 	/* sync with parent, we're ignoring the return from write
@@ -410,16 +407,16 @@ int main(int argc, char *argv[])
 	close(pipefd);
 
 	if (lxc_monitord_mainloop_add(&mon)) {
-		ERROR("failed to add mainloop handlers");
-		goto out;
+		ERROR("Failed to add mainloop handlers.");
+		goto on_error;
 	}
 
-	NOTICE("pid:%d monitoring lxcpath %s", getpid(), mon.lxcpath);
-	for(;;) {
+	NOTICE("lxc-monitord with pid %d is now monitoring lxcpath %s.",
+	       getpid(), mon.lxcpath);
+	for (;;) {
 		ret = lxc_mainloop(&mon.descr, 1000 * 30);
-		if (mon.clientfds_cnt <= 0)
-		{
-			NOTICE("no remaining clients, exiting");
+		if (mon.clientfds_cnt <= 0) {
+			NOTICE("No remaining clients. lxc-monitord is exiting.");
 			break;
 		}
 	}
@@ -427,7 +424,7 @@ int main(int argc, char *argv[])
 	lxc_mainloop_close(&mon.descr);
 	lxc_monitord_cleanup();
 	ret = EXIT_SUCCESS;
-	NOTICE("monitor exiting");
-out:
+
+on_error:
 	exit(ret);
 }
