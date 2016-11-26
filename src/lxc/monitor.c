@@ -284,11 +284,13 @@ int lxc_monitor_read(int fd, struct lxc_msg *msg)
 /* Used to spawn a monitord either on startup of a daemon container, or when
  * lxc-monitor starts.
  */
+#define __INT_LEN 21
 int lxc_monitord_spawn(const char *lxcpath)
 {
-	pid_t pid1, pid2;
+	int ret;
 	int pipefd[2];
-	char pipefd_str[11];
+	char pipefd_str[__INT_LEN];
+	pid_t pid1, pid2;
 
 	char *const args[] = {
 	    LXC_MONITORD_PATH,
@@ -308,6 +310,7 @@ int lxc_monitord_spawn(const char *lxcpath)
 		DEBUG("Going to wait for pid %d.", pid1);
 		if (waitpid(pid1, NULL, 0) != pid1)
 			return -1;
+		DEBUG("Finished waiting on pid %d.", pid1);
 		return 0;
 	}
 
@@ -351,7 +354,11 @@ int lxc_monitord_spawn(const char *lxcpath)
 
 	close(pipefd[0]);
 
-	sprintf(pipefd_str, "%d", pipefd[1]);
+	ret = snprintf(pipefd_str, __INT_LEN, "%d", pipefd[1]);
+	if (ret < 0 || ret >= __INT_LEN)
+		exit(EXIT_FAILURE);
+
+	DEBUG("Using pipe file descriptor %d for monitord.", pipefd[1]);
 
 	execvp(args[0], args);
 
