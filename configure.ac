@@ -663,7 +663,7 @@ LXC_CHECK_TLS
 if test "x$GCC" = "xyes"; then
 	CFLAGS="$CFLAGS -Wall"
 	if test "x$enable_werror" = "xyes"; then
-		CFLAGS="$CFLAGS -Werror -Werror=vla"
+		CFLAGS="$CFLAGS -Werror"
 	fi
 fi
 
