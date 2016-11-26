@@ -349,18 +349,23 @@ int lxc_monitord_spawn(const char *lxcpath)
 	}
 
 	lxc_check_inherited(NULL, true, pipefd[1]);
-	if (null_stdfds() < 0)
+	if (null_stdfds() < 0) {
+		SYSERROR("Failed to dup2() standard file descriptors to /dev/null.");
 		exit(EXIT_FAILURE);
+	}
 
 	close(pipefd[0]);
 
 	ret = snprintf(pipefd_str, __INT_LEN, "%d", pipefd[1]);
-	if (ret < 0 || ret >= __INT_LEN)
+	if (ret < 0 || ret >= __INT_LEN) {
+		ERROR("Failed to create pid argument to pass to monitord.");
 		exit(EXIT_FAILURE);
+	}
 
 	DEBUG("Using pipe file descriptor %d for monitord.", pipefd[1]);
 
 	execvp(args[0], args);
+	ERROR("Failed to exec lxc-monitord.");
 
 	exit(EXIT_FAILURE);
 }
