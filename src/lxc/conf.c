@@ -375,32 +375,31 @@ static int run_buffer(char *buffer)
 
 	f = lxc_popen(buffer);
 	if (!f) {
-		SYSERROR("popen failed");
+		SYSERROR("Failed to popen() %s.", buffer);
 		return -1;
 	}
 
 	output = malloc(LXC_LOG_BUFFER_SIZE);
 	if (!output) {
-		ERROR("failed to allocate memory for script output");
+		ERROR("Failed to allocate memory for %s.", buffer);
 		lxc_pclose(f);
 		return -1;
 	}
 
-	while(fgets(output, LXC_LOG_BUFFER_SIZE, f->f))
-		DEBUG("script output: %s", output);
+	while (fgets(output, LXC_LOG_BUFFER_SIZE, f->f))
+		DEBUG("Script %s with output: %s.", buffer, output);
 
 	free(output);
 
 	ret = lxc_pclose(f);
 	if (ret == -1) {
-		SYSERROR("Script exited on error");
+		SYSERROR("Script exited with error.");
 		return -1;
 	} else if (WIFEXITED(ret) && WEXITSTATUS(ret) != 0) {
-		ERROR("Script exited with status %d", WEXITSTATUS(ret));
+		ERROR("Script exited with status %d.", WEXITSTATUS(ret));
 		return -1;
 	} else if (WIFSIGNALED(ret)) {
-		ERROR("Script terminated by signal %d (%s)", WTERMSIG(ret),
-		      strsignal(WTERMSIG(ret)));
+		ERROR("Script terminated by signal %d.", WTERMSIG(ret));
 		return -1;
 	}
 
@@ -408,17 +407,17 @@ static int run_buffer(char *buffer)
 }
 
 static int run_script_argv(const char *name, const char *section,
-		      const char *script, const char *hook, const char *lxcpath,
-		      char **argsin)
+			   const char *script, const char *hook,
+			   const char *lxcpath, char **argsin)
 {
 	int ret, i;
 	char *buffer;
 	size_t size = 0;
 
-	INFO("Executing script '%s' for container '%s', config section '%s'",
+	INFO("Executing script \"%s\" for container \"%s\", config section \"%s\".",
 	     script, name, section);
 
-	for (i=0; argsin && argsin[i]; i++)
+	for (i = 0; argsin && argsin[i]; i++)
 		size += strlen(argsin[i]) + 1;
 
 	size += strlen(hook) + 1;
@@ -433,22 +432,23 @@ static int run_script_argv(const char *name, const char *section,
 
 	buffer = alloca(size);
 	if (!buffer) {
-		ERROR("failed to allocate memory");
+		ERROR("Failed to allocate memory.");
 		return -1;
 	}
 
-	ret = snprintf(buffer, size, "%s %s %s %s", script, name, section, hook);
-	if (ret < 0 || ret >= size) {
-		ERROR("Script name too long");
+	ret =
+	    snprintf(buffer, size, "%s %s %s %s", script, name, section, hook);
+	if (ret < 0 || (size_t)ret >= size) {
+		ERROR("Script name too long.");
 		return -1;
 	}
 
-	for (i=0; argsin && argsin[i]; i++) {
-		int len = size-ret;
+	for (i = 0; argsin && argsin[i]; i++) {
+		int len = size - ret;
 		int rc;
 		rc = snprintf(buffer + ret, len, " %s", argsin[i]);
 		if (rc < 0 || rc >= len) {
-			ERROR("Script args too long");
+			ERROR("Script args too long.");
 			return -1;
 		}
 		ret += rc;
@@ -457,15 +457,15 @@ static int run_script_argv(const char *name, const char *section,
 	return run_buffer(buffer);
 }
 
-static int run_script(const char *name, const char *section,
-		      const char *script, ...)
+static int run_script(const char *name, const char *section, const char *script,
+		      ...)
 {
 	int ret;
 	char *buffer, *p;
 	size_t size = 0;
 	va_list ap;
 
-	INFO("Executing script '%s' for container '%s', config section '%s'",
+	INFO("Executing script \"%s\" for container \"%s\", config section \"%s\".",
 	     script, name, section);
 
 	va_start(ap, script);
@@ -483,23 +483,23 @@ static int run_script(const char *name, const char *section,
 
 	buffer = alloca(size);
 	if (!buffer) {
-		ERROR("failed to allocate memory");
+		ERROR("Failed to allocate memory.");
 		return -1;
 	}
 
 	ret = snprintf(buffer, size, "%s %s %s", script, name, section);
 	if (ret < 0 || ret >= size) {
-		ERROR("Script name too long");
+		ERROR("Script name too long.");
 		return -1;
 	}
 
 	va_start(ap, script);
 	while ((p = va_arg(ap, char *))) {
-		int len = size-ret;
+		int len = size - ret;
 		int rc;
 		rc = snprintf(buffer + ret, len, " %s", p);
 		if (rc < 0 || rc >= len) {
-			ERROR("Script args too long");
+			ERROR("Script args too long.");
 			return -1;
 		}
 		ret += rc;
