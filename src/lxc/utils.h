@@ -34,6 +34,10 @@
 #include "config.h"
 #include "initutils.h"
 
+/* Useful macros */
+/* Maximum number for 64 bit integer is a string with 21 digits: 2^64 - 1 = 21 */
+#define __LXC_NUMSTRLEN 21
+
 /* returns 1 on success, 0 if there were any failures */
 extern int lxc_rmdir_onedev(char *path);
 extern int get_u16(unsigned short *val, const char *arg, int base);
