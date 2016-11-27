@@ -1582,8 +1582,10 @@ static bool do_lxcapi_reboot(struct lxc_container *c)
 		return false;
 	if (c->lxc_conf && c->lxc_conf->rebootsignal)
 		rebootsignal = c->lxc_conf->rebootsignal;
-	if (kill(pid, rebootsignal) < 0)
+	if (kill(pid, rebootsignal) < 0) {
+		WARN("Could not send signal %d to pid %d.", rebootsignal, pid);
 		return false;
+	}
 	return true;
 
 }
@@ -1614,7 +1616,9 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 
 	INFO("Using signal number '%d' as halt signal.", haltsignal);
 
-	kill(pid, haltsignal);
+	if (kill(pid, haltsignal) < 0)
+		WARN("Could not send signal %d to pid %d.", haltsignal, pid);
+
 	retv = do_lxcapi_wait(c, "STOPPED", timeout);
 	return retv;
 }
