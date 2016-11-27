@@ -43,21 +43,11 @@
 #include "caps.h"
 #include "utils.h"
 
-#define LXC_LOG_DATEFOMAT_SIZE  15
-
-#ifndef HAVE_GETTID
-static inline pid_t gettid(void)
-{
-#ifdef __NR_gettid
-	return (pid_t)syscall(SYS_gettid);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
-}
-#else
-extern pid_t gettid(void);
-#endif
+/* We're logging in seconds and nanoseconds. Assuming that the underlying
+ * datatype is currently at maximum a 64bit integer, we have a date string that
+ * is of maximum length (2^64 - 1) * 2 = (21 + 21) = 42.
+ */
+#define LXC_LOG_TIME_SIZE  ((__LXC_NUMSTRLEN) * 2)
 
 int lxc_log_fd = -1;
 static int syslog_enable = 0;
@@ -148,15 +138,34 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 }
 
 /*---------------------------------------------------------------------------*/
+/* This function needs to make extra sure that it is thread-safe. We had some
+ * problems with that before. This especially involves time-conversion
+ * functions. I don't want to find any localtime() or gmtime() functions or
+ * relatives in here. Not even localtime_r() or gmtime_r() or relatives. They
+ * all fiddle with global variables and locking in various libcs. They cause
+ * deadlocks when liblxc is used multi-threaded and no matter how smart you
+ * think you are, you __will__ cause trouble using them.
+ * (As a short example how this can cause trouble: LXD uses forkstart to fork
+ * off a new process that runs the container. At the same time the go runtime
+ * LXD relies on does its own multi-threading thing which we can't controll. The
+ * fork()ing + threading then seems to mess with the locking states in these
+ * time functions causing deadlocks.)
+ * The current solution is to be good old unix people and use the Epoch as our
+ * reference point and simply use the seconds and nanoseconds that have past
+ * since then. This relies on clock_gettime() which is explicitly marked MT-Safe
+ * with no restrictions! This way, anyone who is really strongly invested in
+ * getting the actual time the log entry was created, can just convert it for
+ * themselves. Our logging is mostly done for debugging purposes so don't try
+ * to make it pretty. Pretty might cost you thread-safety.
+ */
 static int log_append_logfile(const struct lxc_log_appender *appender,
 			      struct lxc_log_event *event)
 {
-	char date[LXC_LOG_DATEFOMAT_SIZE] = "N/A";
 	char buffer[LXC_LOG_BUFFER_SIZE];
-	struct tm newtime;
-	int n;
-	int ms = 0;
+	struct timespec zero_timespec = {0};
+	int ret, n;
 	int fd_to_use = -1;
+	char nanosec[__LXC_NUMSTRLEN];
 
 #ifndef NO_LXC_CONF
 	if (!lxc_log_use_global_fd && current_config)
@@ -169,48 +178,23 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	if (fd_to_use == -1)
 		return 0;
 
-	/* localtime_r() can lead to deadlocks when LXC is used multithreaded
-	 * because it calls __tzset() and __tzconvert() internally. The deadlock
-	 * stems from an interaction between these functions and the functions
-	 * in monitor.c and commands.{c,h}. Some of the latter functions will
-	 * write to the log independent of the container thread that is
-	 * currently running. Since the monitor fork()ed it seems to duplicate
-	 * the mutex states of the time functions mentioned above.
-	 * As a short term fix, I suggest to simply disable receiving the time
-	 * when these monitor.c or command.{c,h} functions are called. This
-	 * should be ok, since the [lxc monitor] will only emit a few messages
-	 * and thread-safety is currently more important than beautiful logs.
-	 * The rest of the log stays the same as it was before.
-	 */
-	if (getpid() == gettid()) {
-		if (!localtime_r(&event->timestamp.tv_sec, &newtime))
-			return 0;
-		strftime(date, sizeof(date), "%Y%m%d%H%M%S", &newtime);
-		ms = event->timestamp.tv_usec / 1000;
-		n = snprintf(buffer, sizeof(buffer),
-				"%15s%s%s %14s.%03d %-8s %s - %s:%s:%d - ",
-				log_prefix,
-				log_vmname ? " " : "",
-				log_vmname ? log_vmname : "",
-				date,
-				ms,
-				lxc_log_priority_to_string(event->priority),
-				event->category,
-				event->locinfo->file, event->locinfo->func,
-				event->locinfo->line);
-	} else {
-		n = snprintf(buffer, sizeof(buffer),
-				"%15s%s%s %-14s %3s %-8s %s - %s:%s:%d - ",
-				log_prefix,
-				log_vmname ? " " : "",
-				log_vmname ? log_vmname : "",
-				date,
-				"",
-				lxc_log_priority_to_string(event->priority),
-				event->category,
-				event->locinfo->file, event->locinfo->func,
-				event->locinfo->line);
-	}
+	ret = snprintf(nanosec, __LXC_NUMSTRLEN, "%ld", event->timestamp.tv_nsec);
+	if (ret < 0 || ret >= LXC_LOG_TIME_SIZE)
+		return 0;
+
+	n = snprintf(buffer, sizeof(buffer),
+			"%15s%s%s [ %.0f.%.6s ] %-8s %s - %s:%s:%d - ",
+			log_prefix,
+			log_vmname ? " " : "",
+			log_vmname ? log_vmname : "",
+			/* sec_since_epoch: Safely convert time_t type to
+			 * double. */
+			difftime(event->timestamp.tv_sec, zero_timespec.tv_sec),
+			nanosec,
+			lxc_log_priority_to_string(event->priority),
+			event->category,
+			event->locinfo->file, event->locinfo->func,
+			event->locinfo->line);
 
 	if (n < 0)
 		return n;
