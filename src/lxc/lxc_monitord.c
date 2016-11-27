@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <setjmp.h>
 #include <sys/epoll.h>
 #include <sys/param.h>
 #include <sys/socket.h>
@@ -47,6 +48,8 @@
 #define CLIENTFDS_CHUNK 64
 
 lxc_log_define(lxc_monitord, lxc);
+
+sigjmp_buf mark;
 
 static void lxc_monitord_cleanup(void);
 
@@ -336,9 +339,7 @@ static void lxc_monitord_cleanup(void)
 
 static void lxc_monitord_sig_handler(int sig)
 {
-	INFO("Caught signal %d.", sig);
-	lxc_monitord_cleanup();
-	exit(EXIT_SUCCESS);
+	siglongjmp(mark, 1);
 }
 
 int main(int argc, char *argv[])
@@ -384,6 +385,9 @@ int main(int argc, char *argv[])
 	signal(SIGBUS,  lxc_monitord_sig_handler);
 	signal(SIGTERM, lxc_monitord_sig_handler);
 
+	if (sigsetjmp(mark, 1) != 0)
+		goto on_signal;
+
 	ret = EXIT_FAILURE;
 	memset(&mon, 0, sizeof(mon));
 	mon.lxcpath = lxcpath;
@@ -427,4 +431,8 @@ int main(int argc, char *argv[])
 
 on_error:
 	exit(ret);
+
+on_signal:
+	lxc_monitord_cleanup();
+	exit(EXIT_SUCCESS);
 }
