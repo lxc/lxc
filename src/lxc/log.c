@@ -203,10 +203,9 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 			      struct lxc_log_event *event)
 {
 	char buffer[LXC_LOG_BUFFER_SIZE];
-	struct timespec zero_timespec = {0};
-	int ret, n;
+	char date_time[LXC_LOG_TIME_SIZE];
+	int n;
 	int fd_to_use = -1;
-	char nanosec[__LXC_NUMSTRLEN];
 
 #ifndef NO_LXC_CONF
 	if (!lxc_log_use_global_fd && current_config)
@@ -219,19 +218,15 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	if (fd_to_use == -1)
 		return 0;
 
-	ret = snprintf(nanosec, __LXC_NUMSTRLEN, "%ld", event->timestamp.tv_nsec);
-	if (ret < 0 || ret >= LXC_LOG_TIME_SIZE)
+	if (lxc_unix_epoch_to_utc(date_time, LXC_LOG_TIME_SIZE, &event->timestamp) < 0)
 		return 0;
 
 	n = snprintf(buffer, sizeof(buffer),
-			"%15s%s%s [ %.0f.%.6s ] %-8s %s - %s:%s:%d - ",
+			"%15s%s%s %s %-8s %s - %s:%s:%d - ",
 			log_prefix,
 			log_vmname ? " " : "",
 			log_vmname ? log_vmname : "",
-			/* sec_since_epoch: Safely convert time_t type to
-			 * double. */
-			difftime(event->timestamp.tv_sec, zero_timespec.tv_sec),
-			nanosec,
+			date_time,
 			lxc_log_priority_to_string(event->priority),
 			event->category,
 			event->locinfo->file, event->locinfo->func,
