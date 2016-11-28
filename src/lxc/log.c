@@ -22,9 +22,12 @@
  */
 
 #define _GNU_SOURCE
+#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -138,6 +141,44 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 }
 
 /*---------------------------------------------------------------------------*/
+int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespec *time)
+{
+	int64_t days, z, era, doe, yoe, year, doy, mp, day, month, d_in_s,
+	    hours, h_in_s, minutes, seconds;
+	char nanosec[__LXC_NUMSTRLEN];
+	int ret;
+
+	/* See https://howardhinnant.github.io/date_algorithms.html for an
+	 * explanation of the algorithm used here.
+	 */
+	days = time->tv_sec / 86400;
+	z = days + 719468;
+	era = (z >= 0 ? z : z - 146096) / 146097;
+	doe = (z - era * 146097);
+	yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+	year = (yoe) + era * 400;
+	doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+	mp = (5 * doy + 2) / 153;
+	day = doy - (153 * mp + 2) / 5 + 1;
+	month = mp + (mp < 10 ? 3 : -9);
+	d_in_s = days * 86400;
+	hours = (time->tv_sec - d_in_s) / 3600;
+	h_in_s = hours * 3600;
+	minutes = (time->tv_sec - d_in_s - h_in_s) / 60;
+	seconds = (time->tv_sec - d_in_s - h_in_s - (minutes * 60));
+
+	ret = snprintf(nanosec, __LXC_NUMSTRLEN, "%ld", time->tv_nsec);
+	if (ret < 0 || ret >= __LXC_NUMSTRLEN)
+		return -1;
+	ret = snprintf(buf, bufsize, "%" PRId64 "%" PRId64 "%" PRId64 "%" PRId64
+				     "%" PRId64 "%" PRId64 ".%.3s",
+		       year, month, day, hours, minutes, seconds, nanosec);
+	if (ret < 0 || (size_t)ret >= bufsize)
+		return -1;
+
+	return 0;
+}
+
 /* This function needs to make extra sure that it is thread-safe. We had some
  * problems with that before. This especially involves time-conversion
  * functions. I don't want to find any localtime() or gmtime() functions or
