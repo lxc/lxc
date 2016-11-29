@@ -348,6 +348,8 @@ int main(int argc, char *argv[])
 	char logpath[PATH_MAX];
 	sigset_t mask;
 	char *lxcpath = argv[1];
+	bool mainloop_opened = false;
+	bool monitord_created = false;
 
 	if (argc != 3) {
 		fprintf(stderr,
@@ -395,10 +397,11 @@ int main(int argc, char *argv[])
 		ERROR("Failed to create mainloop.");
 		goto on_error;
 	}
+	mainloop_opened = true;
 
-	if (lxc_monitord_create(&mon)) {
+	if (lxc_monitord_create(&mon))
 		goto on_error;
-	}
+	monitord_created = true;
 
 	/* sync with parent, we're ignoring the return from write
 	 * because regardless if it works or not, the following
@@ -425,14 +428,13 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	lxc_mainloop_close(&mon.descr);
-	lxc_monitord_cleanup();
-	ret = EXIT_SUCCESS;
-
-on_error:
-	exit(ret);
-
 on_signal:
-	lxc_monitord_cleanup();
-	exit(EXIT_SUCCESS);
+	ret = EXIT_SUCCESS;
+on_error:
+	if (monitord_created)
+		lxc_monitord_cleanup();
+	if (mainloop_opened)
+		lxc_mainloop_close(&mon.descr);
+
+	exit(ret);
 }
