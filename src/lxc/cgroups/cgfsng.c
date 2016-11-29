@@ -357,22 +357,18 @@ static uint32_t *lxc_cpumask(char *buf, size_t nbits)
 	return bitarr;
 }
 
-/* The largest integer that can fit into long int is 2^64. This is a
- * 20-digit number.
- */
-#define __IN_TO_STR_LEN 21
 /* Turn cpumask into simple, comma-separated cpulist. */
 static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 {
 	size_t i;
 	int ret;
-	char numstr[__IN_TO_STR_LEN] = {0};
+	char numstr[LXC_NUMSTRLEN64] = {0};
 	char **cpulist = NULL;
 
 	for (i = 0; i <= nbits; i++) {
 		if (is_set(i, bitarr)) {
-			ret = snprintf(numstr, __IN_TO_STR_LEN, "%zu", i);
-			if (ret < 0 || (size_t)ret >= __IN_TO_STR_LEN) {
+			ret = snprintf(numstr, LXC_NUMSTRLEN64, "%zu", i);
+			if (ret < 0 || (size_t)ret >= LXC_NUMSTRLEN64) {
 				lxc_free_array((void **)cpulist, free);
 				return NULL;
 			}

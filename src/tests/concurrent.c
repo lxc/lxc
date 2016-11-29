@@ -16,13 +16,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define _GNU_SOURCE
 #include <limits.h>
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
-#define _GNU_SOURCE
 #include <getopt.h>
 
 #include <lxc/lxccontainer.h>

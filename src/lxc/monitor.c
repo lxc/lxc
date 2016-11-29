@@ -284,12 +284,11 @@ int lxc_monitor_read(int fd, struct lxc_msg *msg)
 /* Used to spawn a monitord either on startup of a daemon container, or when
  * lxc-monitor starts.
  */
-#define __INT_LEN 21
 int lxc_monitord_spawn(const char *lxcpath)
 {
 	int ret;
 	int pipefd[2];
-	char pipefd_str[__INT_LEN];
+	char pipefd_str[LXC_NUMSTRLEN64];
 	pid_t pid1, pid2;
 
 	char *const args[] = {
@@ -356,8 +355,8 @@ int lxc_monitord_spawn(const char *lxcpath)
 
 	close(pipefd[0]);
 
-	ret = snprintf(pipefd_str, __INT_LEN, "%d", pipefd[1]);
-	if (ret < 0 || ret >= __INT_LEN) {
+	ret = snprintf(pipefd_str, LXC_NUMSTRLEN64, "%d", pipefd[1]);
+	if (ret < 0 || ret >= LXC_NUMSTRLEN64) {
 		ERROR("Failed to create pid argument to pass to monitord.");
 		exit(EXIT_FAILURE);
 	}

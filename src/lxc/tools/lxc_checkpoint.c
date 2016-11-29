@@ -39,7 +39,7 @@ static bool daemonize_set = false;
 static bool pre_dump = false;
 static char *predump_dir = NULL;
 
-#define OPT_PREDUMP_DIR OPT_USAGE+1
+#define OPT_PREDUMP_DIR OPT_USAGE + 1
 
 static const struct option my_longopts[] = {
 	{"checkpoint-dir", required_argument, 0, 'D'},
