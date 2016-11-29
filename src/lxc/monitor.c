@@ -326,6 +326,7 @@ int lxc_monitord_spawn(const char *lxcpath)
 	}
 
 	if (pid2) {
+		DEBUG("Trying to sync with child process.");
 		char c;
 		/* Wait for daemon to create socket. */
 		close(pipefd[1]);
@@ -340,6 +341,7 @@ int lxc_monitord_spawn(const char *lxcpath)
 
 		close(pipefd[0]);
 
+		DEBUG("Sucessfully synced with child process.");
 		exit(EXIT_SUCCESS);
 	}
 
