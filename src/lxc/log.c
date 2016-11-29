@@ -157,8 +157,9 @@ int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespec *time
 	/* Create final timestamp for the log and shorten nanoseconds to 3
 	 * digit precision.
 	 */
-	ret = snprintf(buf, bufsize, "%" PRId64 "%" PRId64 "%" PRId64 "%" PRId64
-				     "%" PRId64 "%" PRId64 ".%.3s",
+	ret = snprintf(buf, bufsize,
+		       "%" PRId64 "%02" PRId64 "%02" PRId64 "%02" PRId64
+		       "%02" PRId64 "%02" PRId64 ".%.3s",
 		       year, month, day, hours, minutes, seconds, nanosec);
 	if (ret < 0 || (size_t)ret >= bufsize)
 		return -1;
