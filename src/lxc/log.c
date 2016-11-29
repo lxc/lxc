@@ -143,33 +143,87 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 /*---------------------------------------------------------------------------*/
 int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespec *time)
 {
-	int64_t days, z, era, doe, yoe, year, doy, mp, day, month, d_in_s,
-	    hours, h_in_s, minutes, seconds;
+	int64_t epoch_to_days, z, era, doe, yoe, year, doy, mp, day, month,
+	    d_in_s, hours, h_in_s, minutes, seconds;
 	char nanosec[__LXC_NUMSTRLEN];
 	int ret;
 
 	/* See https://howardhinnant.github.io/date_algorithms.html for an
 	 * explanation of the algorithm used here.
 	 */
-	days = time->tv_sec / 86400;
-	z = days + 719468;
+
+	/* Convert Epoch in seconds to number of days. */
+	epoch_to_days = time->tv_sec / 86400;
+
+	/* Shift the Epoch from 1970-01-01 to 0000-03-01. */
+	z = epoch_to_days + 719468;
+
+	/* compute the era from the serial date by simply dividing by the number
+	 * of days in an era (146097).
+	 */
 	era = (z >= 0 ? z : z - 146096) / 146097;
+
+	/* The day-of-era (doe) can then be found by subtracting the era number
+	 * times the number of days per era, from the serial date.
+	 */
 	doe = (z - era * 146097);
+
+	/* From the day-of-era (doe), the year-of-era (yoe, range [0, 399]) can
+	 * be computed.
+	 */
 	yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+
+	/* Given year-of-era, and era, one can now compute the year. */
 	year = (yoe) + era * 400;
+
+	/* Also the day-of-year, again with the year beginning on Mar. 1, can be
+	 * computed from the day-of-era and year-of-era.
+	 */
 	doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+
+	/* Given day-of-year, find the month number. */
 	mp = (5 * doy + 2) / 153;
+
+	/* From day-of-year and month-of-year we can now easily compute
+	 * day-of-month.
+	 */
 	day = doy - (153 * mp + 2) / 5 + 1;
+
+	/* Transform the month number from the [0, 11] / [Mar, Feb] system to
+	 * the civil system: [1, 12] to find the correct month.
+	 */
 	month = mp + (mp < 10 ? 3 : -9);
-	d_in_s = days * 86400;
+
+	/* Transform days in the epoch to seconds. */
+	d_in_s = epoch_to_days * 86400;
+
+	/* To find the current hour simply substract the Epoch_to_days from the
+	 * total Epoch and divide by the number of seconds in an hour.
+	 */
 	hours = (time->tv_sec - d_in_s) / 3600;
+
+	/* Transform hours to seconds. */
 	h_in_s = hours * 3600;
+
+	/* Calculate minutes by substracting the seconds for all days in the
+	 * epoch and for all hours in the epoch and divide by the number of
+	 * minutes in an hour.
+	 */
 	minutes = (time->tv_sec - d_in_s - h_in_s) / 60;
+
+	/* Calculate the seconds by substracting the seconds for all days in the
+	 * epoch, hours in the epoch and minutes in the epoch.
+	 */
 	seconds = (time->tv_sec - d_in_s - h_in_s - (minutes * 60));
 
+	/* Make string from nanoseconds. */
 	ret = snprintf(nanosec, __LXC_NUMSTRLEN, "%ld", time->tv_nsec);
 	if (ret < 0 || ret >= __LXC_NUMSTRLEN)
 		return -1;
+
+	/* Create final timestamp for the log and shorten nanoseconds to 3
+	 * digit precision.
+	 */
 	ret = snprintf(buf, bufsize, "%" PRId64 "%" PRId64 "%" PRId64 "%" PRId64
 				     "%" PRId64 "%" PRId64 ".%.3s",
 		       year, month, day, hours, minutes, seconds, nanosec);
