@@ -20,25 +20,27 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <errno.h>
+#include <time.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/param.h>
-#include <sys/stat.h>
 #include <sys/file.h>
+#include <sys/param.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
-#include "lxc.h"
-#include "log.h"
-#include "start.h"
 #include "cgroup.h"
-#include "monitor.h"
 #include "commands.h"
 #include "config.h"
+#include "log.h"
+#include "lxc.h"
+#include "monitor.h"
+#include "start.h"
 
 lxc_log_define(lxc_state, lxc);
 
@@ -103,11 +105,12 @@ static int fillwaitedstates(const char *strstates, int *states)
 	return 0;
 }
 
-extern int lxc_wait(const char *lxcname, const char *states, int timeout, const char *lxcpath)
+extern int lxc_wait(const char *lxcname, const char *states, int timeout,
+		    const char *lxcpath)
 {
 	struct lxc_msg msg;
 	int state, ret;
-	int s[MAX_STATE] = { }, fd;
+	int s[MAX_STATE] = {0}, fd;
 
 	if (fillwaitedstates(states, s))
 		return -1;
@@ -133,16 +136,16 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout, const 
 	}
 
 	for (;;) {
-		int elapsed_time, curtime = 0;
-		struct timeval tv;
+		int64_t elapsed_time, curtime = 0;
+		struct timespec tspec;
 		int stop = 0;
 		int retval;
 
 		if (timeout != -1) {
-			retval = gettimeofday(&tv, NULL);
+			retval = clock_gettime(CLOCK_REALTIME, &tspec);
 			if (retval)
 				goto out_close;
-			curtime = tv.tv_sec;
+			curtime = tspec.tv_sec;
 		}
 		if (lxc_monitor_read_timeout(fd, &msg, timeout) < 0) {
 			/* try again if select interrupted by signal */
@@ -151,10 +154,10 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout, const 
 		}
 
 		if (timeout != -1) {
-			retval = gettimeofday(&tv, NULL);
+			retval = clock_gettime(CLOCK_REALTIME, &tspec);
 			if (retval)
 				goto out_close;
-			elapsed_time = tv.tv_sec - curtime;
+			elapsed_time = tspec.tv_sec - curtime;
 			if (timeout - elapsed_time <= 0)
 				stop = 1;
 			timeout -= elapsed_time;
@@ -170,11 +173,8 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout, const 
 
 		switch (msg.type) {
 		case lxc_msg_state:
-			if (msg.value < 0 || msg.value >= MAX_STATE) {
-				ERROR("Receive an invalid state number '%d'",
-					msg.value);
+			if (msg.value < 0 || msg.value >= MAX_STATE)
 				goto out_close;
-			}
 
 			if (s[msg.value]) {
 				ret = 0;
