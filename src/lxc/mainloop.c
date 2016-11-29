@@ -161,4 +161,3 @@ int lxc_mainloop_close(struct lxc_epoll_descr *descr)
 
 	return close(descr->epfd);
 }
-
