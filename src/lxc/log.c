@@ -22,9 +22,12 @@
  */
 
 #define _GNU_SOURCE
+#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -43,21 +46,11 @@
 #include "caps.h"
 #include "utils.h"
 
-#define LXC_LOG_DATEFOMAT_SIZE  15
-
-#ifndef HAVE_GETTID
-static inline pid_t gettid(void)
-{
-#ifdef __NR_gettid
-	return (pid_t)syscall(SYS_gettid);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
-}
-#else
-extern pid_t gettid(void);
-#endif
+/* We're logging in seconds and nanoseconds. Assuming that the underlying
+ * datatype is currently at maximum a 64bit integer, we have a date string that
+ * is of maximum length (2^64 - 1) * 2 = (21 + 21) = 42.
+ */
+#define LXC_LOG_TIME_SIZE  ((__LXC_NUMSTRLEN) * 2)
 
 int lxc_log_fd = -1;
 static int syslog_enable = 0;
@@ -148,14 +141,124 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 }
 
 /*---------------------------------------------------------------------------*/
+int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespec *time)
+{
+	int64_t epoch_to_days, z, era, doe, yoe, year, doy, mp, day, month,
+	    d_in_s, hours, h_in_s, minutes, seconds;
+	char nanosec[__LXC_NUMSTRLEN];
+	int ret;
+
+	/* See https://howardhinnant.github.io/date_algorithms.html for an
+	 * explanation of the algorithm used here.
+	 */
+
+	/* Convert Epoch in seconds to number of days. */
+	epoch_to_days = time->tv_sec / 86400;
+
+	/* Shift the Epoch from 1970-01-01 to 0000-03-01. */
+	z = epoch_to_days + 719468;
+
+	/* compute the era from the serial date by simply dividing by the number
+	 * of days in an era (146097).
+	 */
+	era = (z >= 0 ? z : z - 146096) / 146097;
+
+	/* The day-of-era (doe) can then be found by subtracting the era number
+	 * times the number of days per era, from the serial date.
+	 */
+	doe = (z - era * 146097);
+
+	/* From the day-of-era (doe), the year-of-era (yoe, range [0, 399]) can
+	 * be computed.
+	 */
+	yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+
+	/* Given year-of-era, and era, one can now compute the year. */
+	year = (yoe) + era * 400;
+
+	/* Also the day-of-year, again with the year beginning on Mar. 1, can be
+	 * computed from the day-of-era and year-of-era.
+	 */
+	doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+
+	/* Given day-of-year, find the month number. */
+	mp = (5 * doy + 2) / 153;
+
+	/* From day-of-year and month-of-year we can now easily compute
+	 * day-of-month.
+	 */
+	day = doy - (153 * mp + 2) / 5 + 1;
+
+	/* Transform the month number from the [0, 11] / [Mar, Feb] system to
+	 * the civil system: [1, 12] to find the correct month.
+	 */
+	month = mp + (mp < 10 ? 3 : -9);
+
+	/* Transform days in the epoch to seconds. */
+	d_in_s = epoch_to_days * 86400;
+
+	/* To find the current hour simply substract the Epoch_to_days from the
+	 * total Epoch and divide by the number of seconds in an hour.
+	 */
+	hours = (time->tv_sec - d_in_s) / 3600;
+
+	/* Transform hours to seconds. */
+	h_in_s = hours * 3600;
+
+	/* Calculate minutes by substracting the seconds for all days in the
+	 * epoch and for all hours in the epoch and divide by the number of
+	 * minutes in an hour.
+	 */
+	minutes = (time->tv_sec - d_in_s - h_in_s) / 60;
+
+	/* Calculate the seconds by substracting the seconds for all days in the
+	 * epoch, hours in the epoch and minutes in the epoch.
+	 */
+	seconds = (time->tv_sec - d_in_s - h_in_s - (minutes * 60));
+
+	/* Make string from nanoseconds. */
+	ret = snprintf(nanosec, __LXC_NUMSTRLEN, "%ld", time->tv_nsec);
+	if (ret < 0 || ret >= __LXC_NUMSTRLEN)
+		return -1;
+
+	/* Create final timestamp for the log and shorten nanoseconds to 3
+	 * digit precision.
+	 */
+	ret = snprintf(buf, bufsize, "%" PRId64 "%" PRId64 "%" PRId64 "%" PRId64
+				     "%" PRId64 "%" PRId64 ".%.3s",
+		       year, month, day, hours, minutes, seconds, nanosec);
+	if (ret < 0 || (size_t)ret >= bufsize)
+		return -1;
+
+	return 0;
+}
+
+/* This function needs to make extra sure that it is thread-safe. We had some
+ * problems with that before. This especially involves time-conversion
+ * functions. I don't want to find any localtime() or gmtime() functions or
+ * relatives in here. Not even localtime_r() or gmtime_r() or relatives. They
+ * all fiddle with global variables and locking in various libcs. They cause
+ * deadlocks when liblxc is used multi-threaded and no matter how smart you
+ * think you are, you __will__ cause trouble using them.
+ * (As a short example how this can cause trouble: LXD uses forkstart to fork
+ * off a new process that runs the container. At the same time the go runtime
+ * LXD relies on does its own multi-threading thing which we can't controll. The
+ * fork()ing + threading then seems to mess with the locking states in these
+ * time functions causing deadlocks.)
+ * The current solution is to be good old unix people and use the Epoch as our
+ * reference point and simply use the seconds and nanoseconds that have past
+ * since then. This relies on clock_gettime() which is explicitly marked MT-Safe
+ * with no restrictions! This way, anyone who is really strongly invested in
+ * getting the actual time the log entry was created, can just convert it for
+ * themselves. Our logging is mostly done for debugging purposes so don't try
+ * to make it pretty. Pretty might cost you thread-safety.
+ */
 static int log_append_logfile(const struct lxc_log_appender *appender,
 			      struct lxc_log_event *event)
 {
-	char date[LXC_LOG_DATEFOMAT_SIZE] = "N/A";
 	char buffer[LXC_LOG_BUFFER_SIZE];
-	struct tm newtime;
+	char date_time[LXC_LOG_TIME_SIZE];
 	int n;
-	int ms = 0;
 	int fd_to_use = -1;
 
 #ifndef NO_LXC_CONF
@@ -169,48 +272,19 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	if (fd_to_use == -1)
 		return 0;
 
-	/* localtime_r() can lead to deadlocks when LXC is used multithreaded
-	 * because it calls __tzset() and __tzconvert() internally. The deadlock
-	 * stems from an interaction between these functions and the functions
-	 * in monitor.c and commands.{c,h}. Some of the latter functions will
-	 * write to the log independent of the container thread that is
-	 * currently running. Since the monitor fork()ed it seems to duplicate
-	 * the mutex states of the time functions mentioned above.
-	 * As a short term fix, I suggest to simply disable receiving the time
-	 * when these monitor.c or command.{c,h} functions are called. This
-	 * should be ok, since the [lxc monitor] will only emit a few messages
-	 * and thread-safety is currently more important than beautiful logs.
-	 * The rest of the log stays the same as it was before.
-	 */
-	if (getpid() == gettid()) {
-		if (!localtime_r(&event->timestamp.tv_sec, &newtime))
-			return 0;
-		strftime(date, sizeof(date), "%Y%m%d%H%M%S", &newtime);
-		ms = event->timestamp.tv_usec / 1000;
-		n = snprintf(buffer, sizeof(buffer),
-				"%15s%s%s %14s.%03d %-8s %s - %s:%s:%d - ",
-				log_prefix,
-				log_vmname ? " " : "",
-				log_vmname ? log_vmname : "",
-				date,
-				ms,
-				lxc_log_priority_to_string(event->priority),
-				event->category,
-				event->locinfo->file, event->locinfo->func,
-				event->locinfo->line);
-	} else {
-		n = snprintf(buffer, sizeof(buffer),
-				"%15s%s%s %-14s %3s %-8s %s - %s:%s:%d - ",
-				log_prefix,
-				log_vmname ? " " : "",
-				log_vmname ? log_vmname : "",
-				date,
-				"",
-				lxc_log_priority_to_string(event->priority),
-				event->category,
-				event->locinfo->file, event->locinfo->func,
-				event->locinfo->line);
-	}
+	if (lxc_unix_epoch_to_utc(date_time, LXC_LOG_TIME_SIZE, &event->timestamp) < 0)
+		return 0;
+
+	n = snprintf(buffer, sizeof(buffer),
+			"%15s%s%s %s %-8s %s - %s:%s:%d - ",
+			log_prefix,
+			log_vmname ? " " : "",
+			log_vmname ? log_vmname : "",
+			date_time,
+			lxc_log_priority_to_string(event->priority),
+			event->category,
+			event->locinfo->file, event->locinfo->func,
+			event->locinfo->line);
 
 	if (n < 0)
 		return n;
