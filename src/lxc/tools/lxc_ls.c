@@ -43,7 +43,6 @@
 
 lxc_log_define(lxc_ls, lxc);
 
-#define LINELEN 1024
 /* Per default we only allow five levels of recursion to protect the stack at
  * least a little bit. */
 #define MAX_NESTLVL 5

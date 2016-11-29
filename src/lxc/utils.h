@@ -37,7 +37,8 @@
 
 /* Useful macros */
 /* Maximum number for 64 bit integer is a string with 21 digits: 2^64 - 1 = 21 */
-#define __LXC_NUMSTRLEN 21
+#define LXC_NUMSTRLEN64 21
+#define LXC_LINELEN 4096
 
 /* returns 1 on success, 0 if there were any failures */
 extern int lxc_rmdir_onedev(char *path, const char *exclude);

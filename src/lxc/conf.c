@@ -99,8 +99,6 @@
 
 lxc_log_define(lxc_conf, lxc);
 
-#define LINELEN 4096
-
 #if HAVE_SYS_CAPABILITY_H
 #ifndef CAP_SETFCAP
 #define CAP_SETFCAP 31
@@ -1281,7 +1279,7 @@ static int setup_rootfs(struct lxc_conf *conf)
 
 int prepare_ramfs_root(char *root)
 {
-	char buf[LINELEN], *p;
+	char buf[LXC_LINELEN], *p;
 	char nroot[PATH_MAX];
 	FILE *f;
 	int i;
@@ -1326,7 +1324,7 @@ int prepare_ramfs_root(char *root)
 			SYSERROR("Unable to open /proc/self/mountinfo");
 			return -1;
 		}
-		while (fgets(buf, LINELEN, f)) {
+		while (fgets(buf, LXC_LINELEN, f)) {
 			for (p = buf, i=0; p && i < 4; i++)
 				p = strchr(p+1, ' ');
 			if (!p)
@@ -3042,7 +3040,7 @@ bool lxc_delete_network(struct lxc_handler *handler)
 #define LXC_USERNIC_PATH LIBEXECDIR "/lxc/lxc-user-nic"
 
 /* lxc-user-nic returns "interface_name:interface_name\n" */
-#define MAX_BUFFER_SIZE IFNAMSIZ*2 + 2
+#define MAX_BUFFER_SIZE IFNAMSIZ * 2 + 2
 static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 			     struct lxc_netdev *netdev, pid_t pid)
 {

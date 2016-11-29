@@ -86,7 +86,7 @@
 lxc_log_define(lxc_attach, lxc);
 
 /* /proc/pid-to-str/current\0 = (5 + 21 + 7 + 1) */
-#define __LSMATTRLEN (5 + 21 + 7 + 1)
+#define __LSMATTRLEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
 static int lsm_openat(int procfd, pid_t pid, int on_exec)
 {
 	int ret = -1;
@@ -182,7 +182,7 @@ out:
 }
 
 /* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
-#define __PROC_STATUS_LEN (5 + 21 + 7 + 1)
+#define __PROC_STATUS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
 static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 {
 	FILE *proc_file;

@@ -71,7 +71,7 @@ void test_lxc_deslashify(void)
 }
 
 /* /proc/int_as_str/ns/mnt\0 = (5 + 21 + 7 + 1) */
-#define __MNTNS_LEN (5 + 21 + 7 + 1)
+#define __MNTNS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
 void test_detect_ramfs_rootfs(void)
 {
 	size_t i;

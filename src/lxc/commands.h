@@ -26,11 +26,11 @@
 
 #include "state.h"
 
-#define LXC_CMD_DATA_MAX (MAXPATHLEN*2)
+#define LXC_CMD_DATA_MAX (MAXPATHLEN * 2)
 
 /* https://developer.gnome.org/glib/2.28/glib-Type-Conversion-Macros.html */
-#define INT_TO_PTR(n) ((void *) (long) (n))
-#define PTR_TO_INT(p) ((int) (long) (p))
+#define INT_TO_PTR(n) ((void *)(long)(n))
+#define PTR_TO_INT(p) ((int)(long)(p))
 
 typedef enum {
 	LXC_CMD_CONSOLE,

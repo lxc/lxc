@@ -30,8 +30,7 @@
 #define PAGE_SIZE 4096
 #endif
 #define NLMSG_GOOD_SIZE (2*PAGE_SIZE)
-#define NLMSG_TAIL(nmsg) \
-        ((struct rtattr *) (((void *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
+#define NLMSG_TAIL(nmsg) ((struct rtattr *) (((void *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
 #define NLA_DATA(na) ((void *)((char*)(na) + NLA_HDRLEN))
 #define NLA_NEXT_ATTR(attr) ((void *)((char *)attr) + NLA_ALIGN(attr->nla_len))
 
