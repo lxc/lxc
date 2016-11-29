@@ -44,7 +44,7 @@ static int genetlink_resolve_family(const char *family)
 	request = genlmsg_alloc(GENLMSG_GOOD_SIZE);
 	if (!request)
 		return -ENOMEM;
-		
+
 	reply = genlmsg_alloc(GENLMSG_GOOD_SIZE);
 	if (!reply) {
 		genlmsg_free(request);
@@ -86,10 +86,10 @@ static int genetlink_resolve_family(const char *family)
 	len -= NLMSG_LENGTH(GENL_HDRLEN);
 	if (len < 0)
 		goto out_close;
-	
+
 	attr = (struct nlattr *)GENLMSG_DATA(reply);
 	attr = (struct nlattr *)((char *)attr + NLA_ALIGN(attr->nla_len));
-	
+
 	ret = -ENOMSG;
 	if (attr->nla_type != CTRL_ATTR_FAMILY_ID)
 		goto out_close;

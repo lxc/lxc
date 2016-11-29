@@ -68,7 +68,7 @@
 #include "utils.h"
 
 #ifndef BLKGETSIZE64
-#define BLKGETSIZE64 _IOR(0x12,114,size_t)
+#define BLKGETSIZE64 _IOR(0x12, 114, size_t)
 #endif
 
 lxc_log_define(bdev, lxc);

@@ -47,7 +47,7 @@
 #endif
 
 #ifndef MS_SLAVE
-#define MS_SLAVE (1<<19)
+#define MS_SLAVE (1 << 19)
 #endif
 
 #ifndef MS_RELATIME

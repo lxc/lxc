@@ -79,7 +79,7 @@
 lxc_log_define(lxc_attach, lxc);
 
 /* /proc/pid-to-str/current\0 = (5 + 21 + 7 + 1) */
-#define __LSMATTRLEN (5 + 21 + 7 + 1)
+#define __LSMATTRLEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
 static int lsm_openat(int procfd, pid_t pid, int on_exec)
 {
 	int ret = -1;

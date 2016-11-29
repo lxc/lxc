@@ -33,8 +33,8 @@
 #include "commands.h"
 #include "utils.h"
 
-#define OPT_NO_LOCK OPT_USAGE+1
-#define OPT_NO_KILL OPT_USAGE+2
+#define OPT_NO_LOCK OPT_USAGE + 1
+#define OPT_NO_KILL OPT_USAGE + 2
 
 lxc_log_define(lxc_stop_ui, lxc);
 
