@@ -210,10 +210,8 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 		return 0;
 
 	n = snprintf(buffer, sizeof(buffer),
-			"%15s%s%s %s %-8s %s - %s:%s:%d - ",
+			"%15s %s %-8s %s - %s:%s:%d - ",
 			log_prefix,
-			log_vmname ? " " : "",
-			log_vmname ? log_vmname : "",
 			date_time,
 			lxc_log_priority_to_string(event->priority),
 			event->category,
