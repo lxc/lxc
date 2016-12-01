@@ -28,9 +28,9 @@ KNOWN_RELEASES="precise trusty xenial yakkety zesty"
 LXC_USER_NIC="@LIBEXECDIR@/lxc/lxc-user-nic"
 
 cleanup() {
-	(
-		set +e
+	set +e
 
+	(
 		lxc-stop -n usernic-c1 -k
 		lxc-destroy -n usernic-c1
 
