@@ -4366,7 +4366,7 @@ int lxc_setup(struct lxc_handler *handler)
 
 	if (!lxc_list_empty(&lxc_conf->keepcaps)) {
 		if (!lxc_list_empty(&lxc_conf->caps)) {
-			ERROR("Simultaneously requested dropping and keeping caps");
+			ERROR("Container requests lxc.cap.drop and lxc.cap.keep: either use lxc.cap.drop or lxc.cap.keep, not both.");
 			return -1;
 		}
 		if (dropcaps_except(&lxc_conf->keepcaps)) {
