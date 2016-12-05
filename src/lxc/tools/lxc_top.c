@@ -56,6 +56,7 @@ struct stats {
 	uint64_t cpu_use_user;
 	uint64_t cpu_use_sys;
 	uint64_t blkio;
+	uint64_t blkio_iops;
 };
 
 struct ct {
@@ -63,10 +64,11 @@ struct ct {
 	struct stats *stats;
 };
 
+static int batch = 0;
+static int delay_set = 0;
 static int delay = 3;
 static char sort_by = 'n';
 static int sort_reverse = 0;
-
 static struct termios oldtios;
 static struct ct *ct = NULL;
 static int ct_alloc_cnt = 0;
@@ -75,8 +77,12 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
 	case 'd':
+		delay_set = 1;
 		if (lxc_safe_int(arg, &delay) < 0)
 			return -1;
+		break;
+	case 'b':
+		batch=1;
 		break;
 	case 's':
 		sort_by = arg[0];
@@ -90,6 +96,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 
 static const struct option my_longopts[] = {
 	{"delay",   required_argument, 0, 'd'},
+	{"batch",   no_argument,       0, 'b'},
 	{"sort",    required_argument, 0, 's'},
 	{"reverse", no_argument,       0, 'r'},
 	LXC_COMMON_OPTIONS
@@ -104,6 +111,7 @@ lxc-top monitors the state of the active containers\n\
 \n\
 Options :\n\
   -d, --delay     delay in seconds between refreshes (default: 3.0)\n\
+  -b, --batch     output designed to capture to a file\n\
   -s, --sort      sort by [n,c,b,m] (default: n) where\n\
                   n = Name\n\
                   c = CPU use\n\
@@ -273,6 +281,7 @@ static void stats_get(struct lxc_container *c, struct ct *ct, struct stats *tota
 	ct->stats->cpu_use_user  = stat_match_get_int(c, "cpuacct.stat", "user", 1);
 	ct->stats->cpu_use_sys   = stat_match_get_int(c, "cpuacct.stat", "system", 1);
 	ct->stats->blkio         = stat_match_get_int(c, "blkio.throttle.io_service_bytes", "Total", 1);
+	ct->stats->blkio_iops    = stat_match_get_int(c, "blkio.throttle.io_serviced", "Total", 1);
 
 	if (total) {
 		total->mem_used      = total->mem_used      + ct->stats->mem_used;
@@ -307,21 +316,39 @@ static void stats_print(const char *name, const struct stats *stats,
 	char blkio_str[20];
 	char mem_used_str[20];
 	char kmem_used_str[20];
-
-	size_humanize(stats->blkio, blkio_str, sizeof(blkio_str));
-	size_humanize(stats->mem_used, mem_used_str, sizeof(mem_used_str));
-
-	printf("%-18.18s %12.2f %12.2f %12.2f %14s %10s",
-	       name,
-	       (float)stats->cpu_use_nanos / 1000000000,
-	       (float)stats->cpu_use_sys  / USER_HZ,
-	       (float)stats->cpu_use_user / USER_HZ,
-	       blkio_str,
-	       mem_used_str);
-	if (total->kmem_used > 0) {
-		size_humanize(stats->kmem_used, kmem_used_str, sizeof(kmem_used_str));
-		printf(" %10s", kmem_used_str);
+	struct timeval time_val;
+	unsigned long long time_ms;
+	
+	if (!batch) {
+		size_humanize(stats->blkio, blkio_str, sizeof(blkio_str));
+		size_humanize(stats->mem_used, mem_used_str, sizeof(mem_used_str));
+		
+		printf("%-18.18s %12.2f %12.2f %12.2f %14s %10s",
+		       name,
+		       (float)stats->cpu_use_nanos / 1000000000,
+		       (float)stats->cpu_use_sys  / USER_HZ,
+		       (float)stats->cpu_use_user / USER_HZ,
+		       blkio_str,
+		       mem_used_str);
+		if (total->kmem_used > 0) {
+			size_humanize(stats->kmem_used, kmem_used_str, sizeof(kmem_used_str));
+			printf(" %10s", kmem_used_str);
+		}
+	} else {
+		gettimeofday(&time_val, NULL);  
+		time_ms = (unsigned long long) (time_val.tv_sec) * 1000 + (unsigned long long) (time_val.tv_usec) / 1000;
+		printf("%llu,%s,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
+		       time_ms,
+		       name,
+		       stats->cpu_use_nanos,
+		       stats->cpu_use_sys,
+		       stats->cpu_use_user,
+		       stats->blkio,
+		       stats->blkio_iops,
+		       stats->mem_used,
+		       stats->kmem_used);
 	}
+  
 }
 
 static int cmp_name(const void *sct1, const void *sct2)
@@ -430,7 +457,7 @@ int main(int argc, char *argv[])
 	struct lxc_epoll_descr descr;
 	int ret, ct_print_cnt;
 	char in_char;
-
+	
 	ret = EXIT_FAILURE;
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		goto out;
@@ -458,6 +485,13 @@ int main(int argc, char *argv[])
 		goto err1;
 	}
 
+	if (batch && !delay_set) {
+		delay = 300;
+	}
+        if (batch) {
+		printf("time_ms,container,cpu_nanos,cpu_sys_userhz,cpu_user_userhz,blkio_bytes,blkio_iops,mem_used_bytes,kernel_mem_used_bytes\n");
+	}
+	
 	for(;;) {
 		struct lxc_container **active;
 		int i, active_cnt;
@@ -473,43 +507,51 @@ int main(int argc, char *argv[])
 
 		ct_sort(active_cnt);
 
-		printf(TERMCLEAR);
-		stats_print_header(&total);
+		if (!batch) {
+		  printf(TERMCLEAR);
+		  stats_print_header(&total);
+		}
 		for (i = 0; i < active_cnt && i < ct_print_cnt; i++) {
 			stats_print(ct[i].c->name, ct[i].stats, &total);
 			printf("\n");
 		}
-		sprintf(total_name, "TOTAL %d of %d", i, active_cnt);
-		stats_print(total_name, &total, &total);
+		if (!batch) {
+			sprintf(total_name, "TOTAL %d of %d", i, active_cnt);
+			stats_print(total_name, &total, &total);
+		}
 		fflush(stdout);
-
+		
 		for (i = 0; i < active_cnt; i++) {
 			lxc_container_put(ct[i].c);
 			ct[i].c = NULL;
 		}
-
+		
 		in_char = '\0';
-		ret = lxc_mainloop(&descr, 1000 * delay);
-		if (ret != 0 || in_char == 'q')
-			break;
-		switch(in_char) {
-		case 'r':
-			sort_reverse ^= 1;
-			break;
-		case 'n':
-		case 'c':
-		case 'b':
-		case 'm':
-		case 'k':
-			if (sort_by == in_char)
+		if (!batch) {
+			ret = lxc_mainloop(&descr, 1000 * delay);
+			if (ret != 0 || in_char == 'q')
+				break;
+			switch(in_char) {
+			case 'r':
 				sort_reverse ^= 1;
-			else
-				sort_reverse = 0;
-			sort_by = in_char;
+				break;
+			case 'n':
+			case 'c':
+			case 'b':
+			case 'm':
+			case 'k':
+				if (sort_by == in_char)
+					sort_reverse ^= 1;
+				else
+					sort_reverse = 0;
+				sort_by = in_char;
+			}
+		} else {
+			sleep(delay);
 		}
 	}
 	ret = EXIT_SUCCESS;
-
+	
 err1:
 	lxc_mainloop_close(&descr);
 out:
