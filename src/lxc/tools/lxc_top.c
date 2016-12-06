@@ -21,11 +21,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
 #include <errno.h>
+#include <inttypes.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <termios.h>
 #include <unistd.h>
 #include <sys/epoll.h>
@@ -318,11 +321,11 @@ static void stats_print(const char *name, const struct stats *stats,
 	char kmem_used_str[20];
 	struct timeval time_val;
 	unsigned long long time_ms;
-	
+
 	if (!batch) {
 		size_humanize(stats->blkio, blkio_str, sizeof(blkio_str));
 		size_humanize(stats->mem_used, mem_used_str, sizeof(mem_used_str));
-		
+
 		printf("%-18.18s %12.2f %12.2f %12.2f %14s %10s",
 		       name,
 		       (float)stats->cpu_use_nanos / 1000000000,
@@ -335,20 +338,17 @@ static void stats_print(const char *name, const struct stats *stats,
 			printf(" %10s", kmem_used_str);
 		}
 	} else {
-		gettimeofday(&time_val, NULL);  
+		gettimeofday(&time_val, NULL);
 		time_ms = (unsigned long long) (time_val.tv_sec) * 1000 + (unsigned long long) (time_val.tv_usec) / 1000;
-		printf("%llu,%s,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
-		       time_ms,
-		       name,
-		       stats->cpu_use_nanos,
-		       stats->cpu_use_sys,
-		       stats->cpu_use_user,
-		       stats->blkio,
-		       stats->blkio_iops,
-		       stats->mem_used,
-		       stats->kmem_used);
+		printf("%" PRIu64 ",%s,%" PRIu64 ",%" PRIu64 ",%" PRIu64
+		       ",%" PRIu64 ",%" PRIu64 ",%" PRIu64 ",%" PRIu64,
+		       (uint64_t)time_ms, name, (uint64_t)stats->cpu_use_nanos,
+		       (uint64_t)stats->cpu_use_sys,
+		       (uint64_t)stats->cpu_use_user, (uint64_t)stats->blkio,
+		       (uint64_t)stats->blkio_iops, (uint64_t)stats->mem_used,
+		       (uint64_t)stats->kmem_used);
 	}
-  
+
 }
 
 static int cmp_name(const void *sct1, const void *sct2)
@@ -457,7 +457,7 @@ int main(int argc, char *argv[])
 	struct lxc_epoll_descr descr;
 	int ret, ct_print_cnt;
 	char in_char;
-	
+
 	ret = EXIT_FAILURE;
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		goto out;
@@ -491,7 +491,7 @@ int main(int argc, char *argv[])
         if (batch) {
 		printf("time_ms,container,cpu_nanos,cpu_sys_userhz,cpu_user_userhz,blkio_bytes,blkio_iops,mem_used_bytes,kernel_mem_used_bytes\n");
 	}
-	
+
 	for(;;) {
 		struct lxc_container **active;
 		int i, active_cnt;
@@ -520,12 +520,12 @@ int main(int argc, char *argv[])
 			stats_print(total_name, &total, &total);
 		}
 		fflush(stdout);
-		
+
 		for (i = 0; i < active_cnt; i++) {
 			lxc_container_put(ct[i].c);
 			ct[i].c = NULL;
 		}
-		
+
 		in_char = '\0';
 		if (!batch) {
 			ret = lxc_mainloop(&descr, 1000 * delay);
@@ -551,7 +551,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	ret = EXIT_SUCCESS;
-	
+
 err1:
 	lxc_mainloop_close(&descr);
 out:
