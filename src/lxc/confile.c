@@ -50,6 +50,12 @@
 #include "network.h"
 #include "lxcseccomp.h"
 
+#if HAVE_IFADDRS_H
+#include <ifaddrs.h>
+#else
+#include <../include/ifaddrs.h>
+#endif
+
 #if HAVE_SYS_PERSONALITY_H
 #include <sys/personality.h>
 #endif
@@ -672,16 +678,85 @@ static int config_network_flags(const char *key, const char *value,
 	return 0;
 }
 
+static int set_network_link(const char *key, const char *value, struct lxc_conf *lxc_conf)
+{
+        struct lxc_netdev *netdev;
+
+        netdev = network_netdev(key, value, &lxc_conf->network);
+        if (!netdev)
+                return -1;
+
+        return network_ifname(&netdev->link, value);
+}
+
+static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf)
+{
+	struct ifaddrs *ifaddr, *ifa;
+	const char *type_key = "lxc.network.type";
+	const char *link_key = "lxc.network.link";
+	const char *tmpvalue = "phys";
+	int n, ret = 0;
+
+	if (getifaddrs(&ifaddr) == -1) {
+		SYSERROR("Get network interfaces failed");
+		return -1;
+	}
+
+	for (ifa = ifaddr, n = 0; ifa != NULL; ifa = ifa->ifa_next, n++) {
+		if (!ifa->ifa_addr)
+			continue;
+		if (ifa->ifa_addr->sa_family != AF_PACKET)
+			continue;
+
+		if (!strncmp(value, ifa->ifa_name, strlen(value)-1)) {
+			ret = config_network_type(type_key, tmpvalue, lxc_conf);
+			if (!ret) {
+				ret = set_network_link(link_key, ifa->ifa_name, lxc_conf);
+				if (ret) {
+					ERROR("failed to create matched ifnames");
+					break;
+				}
+			} else {
+				ERROR("failed to create matched ifnames");
+				break;
+			}
+		}
+	}
+
+	freeifaddrs(ifaddr); /* free the dynamic memory */
+	ifaddr = NULL;	    /* prevent use after free */
+	
+	return ret;
+}
+
 static int config_network_link(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
+	struct lxc_list * it;
+	int ret = 0;
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
 
-	return network_ifname(&netdev->link, value);
+	if (value[strlen(value) - 1] == '+' && netdev->type == LXC_NET_PHYS) {
+		//get the last network list and remove it.
+		it = lxc_conf->network.prev;
+		if (((struct lxc_netdev *)(it->elem))->type != LXC_NET_PHYS) {
+			ERROR("lxc config cannot support string pattern matching for this link type");
+			return -1;
+		}
+
+		lxc_list_del(it);
+		free(it);
+		ret = create_matched_ifnames(value, lxc_conf);
+
+	} else {
+		ret = network_ifname(&netdev->link, value);
+	}
+
+	return ret;
 }
 
 static int config_network_name(const char *key, const char *value,
