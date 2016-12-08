@@ -972,7 +972,8 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 
 		/* Open LSM fd and send it to child. */
 		if ((options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
-			int on_exec, labelfd;
+			int on_exec;
+			int labelfd = -1;
 			on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
 			/* Open fd for the LSM security module. */
 			labelfd = lsm_openat(procfd, attached_pid, on_exec);
@@ -981,12 +982,15 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 
 			/* Send child fd of the LSM security module to write to. */
 			ret = lxc_abstract_unix_send_fd(ipc_sockets[0], labelfd, NULL, 0);
+			close(labelfd);
 			if (ret <= 0) {
 				ERROR("Intended to send file descriptor %d: %s.", labelfd, strerror(errno));
 				goto on_error;
 			}
 		}
 
+		if (procfd >= 0)
+			close(procfd);
 		/* Now shut down communication with child, we're done. */
 		shutdown(ipc_sockets[0], SHUT_RDWR);
 		close(ipc_sockets[0]);
