@@ -2018,9 +2018,10 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount)
 	}
 
 	if (!file) {
+		int saved_errno = errno;
 		if (fd != -1)
 			close(fd);
-		ERROR("Could not create mount entry file: %s.", strerror(errno));
+		ERROR("Could not create mount entry file: %s.", strerror(saved_errno));
 		return NULL;
 	}
 
@@ -2188,7 +2189,7 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 {
 	struct sockaddr sockaddr;
 	struct ifreq ifr;
-	int ret, fd;
+	int ret, fd, saved_errno;
 
 	ret = lxc_convert_mac(hwaddr, &sockaddr);
 	if (ret) {
@@ -2208,9 +2209,10 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	}
 
 	ret = ioctl(fd, SIOCSIFHWADDR, &ifr);
+	saved_errno = errno;
 	close(fd);
 	if (ret)
-		ERROR("ioctl failure : %s", strerror(errno));
+		ERROR("ioctl failure : %s", strerror(saved_errno));
 
 	DEBUG("mac address '%s' on '%s' has been setup", hwaddr, ifr.ifr_name);
 
