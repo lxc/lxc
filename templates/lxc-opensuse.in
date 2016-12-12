@@ -407,7 +407,7 @@ usage()
     cat <<EOF
 $1 -h|--help -p|--path=<path> -r|--release nn.n --clean
 Please give the release as 13.1, 13.2 etc.
-If no release is given, openSUSE 13.1 is installed.
+If no release is given, openSUSE Leap 42.2 is installed.
 EOF
     return 0
 }
@@ -462,8 +462,8 @@ fi
 
 if [ -z "$DISTRO" ]; then
     echo ""
-    echo "No release selected, using openSUSE 13.1"
-    DISTRO=13.1
+    echo "No release selected, using openSUSE Leap 42.2"
+    DISTRO=42.2
 else
     echo ""
     case "$DISTRO" in
