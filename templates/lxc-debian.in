@@ -444,7 +444,7 @@ EOF
     # If the container isn't running a native architecture, setup multiarch
     if [ "${arch}" != "${hostarch}" ]; then
         # Test if dpkg supports multiarch
-        if ! chroot "$rootfs" dpkg --print-foreign-architecture 2>&1; then
+        if ! chroot "$rootfs" dpkg --print-foreign-architectures 2>&1; then
             chroot "$rootfs" dpkg --add-architecture "${hostarch}"
         fi
     fi
