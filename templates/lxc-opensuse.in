@@ -155,7 +155,7 @@ download_opensuse()
     cat > $cache/partial-$arch-packages/opensuse.conf << EOF
 Preinstall: aaa_base bash coreutils diffutils
 Preinstall: filesystem fillup glibc grep insserv-compat perl-base
-Preinstall: libbz2-1 libgcc_s1 libncurses5 pam
+Preinstall: libbz2-1 libncurses5 pam
 Preinstall: permissions libreadline6 rpm sed tar libz1 libselinux1
 Preinstall: liblzma5 libcap2 libacl1 libattr1
 Preinstall: libpopt0 libelf1 liblua5_1
