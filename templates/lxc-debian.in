@@ -542,7 +542,7 @@ EOF
     # If the container isn't running a native architecture, setup multiarch
     if [ "$interpreter" = "" -a "${arch}" != "${hostarch}" ]; then
         # Test if dpkg supports multiarch
-        if ! chroot "$rootfs" dpkg --print-foreign-architecture 2>&1; then
+        if ! chroot "$rootfs" dpkg --print-foreign-architectures 2>&1; then
             chroot "$rootfs" dpkg --add-architecture "${hostarch}"
         fi
     fi
@@ -653,6 +653,8 @@ elif [ "$arch" = "x86_64" ]; then
     arch="amd64"
 elif [ "$arch" = "armv7l" ]; then
     arch="armhf"
+elif [ "$arch" = "ppc" ]; then
+    arch="powerpc"
 elif [ "$arch" = "ppc64le" ]; then
     arch="ppc64el"
 elif [ "$arch" = "mips" -a "$littleendian" = "yes" ]; then
