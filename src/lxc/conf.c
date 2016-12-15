@@ -2513,10 +2513,7 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list 
 
 	file = tmpfile();
 	if (!file) {
-		int saved_errno = errno;
-		if (fd != -1)
-			close(fd);
-		ERROR("Could not create mount entry file: %s.", strerror(saved_errno));
+		ERROR("Could not create temporary file: %s.", strerror(errno));
 		return -1;
 	}
 
