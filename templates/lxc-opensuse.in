@@ -93,7 +93,7 @@ EOF
     ln -s /dev/null $rootfs/etc/systemd/system/proc-sys-fs-binfmt_misc.automount
     ln -s /dev/null $rootfs/etc/systemd/system/console-shell.service
     ln -s /dev/null $rootfs/etc/systemd/system/systemd-vconsole-setup.service
-    sed -e 's/ConditionPathExists=.*//' /usr/lib/systemd/system/getty@.service > $rootfs/etc/systemd/system/getty@.service
+    sed -e 's/ConditionPathExists=.*//' $rootfs/usr/lib/systemd/system/getty@.service > $rootfs/etc/systemd/system/getty@.service
     ln -s getty@.service $rootfs/etc/systemd/system/getty@tty1.service
     ln -s ../getty@.service $rootfs/etc/systemd/system/getty.target.wants/getty@console.service
     ln -s -f ../getty@.service $rootfs/etc/systemd/system/getty.target.wants/getty@tty1.service
@@ -103,7 +103,7 @@ EOF
 
     # copy host poweroff target as sigpwr target to make shutdown work
     # see https://wiki.archlinux.org/index.php/Linux_Containers#Container_cannot_be_shutdown_if_using_systemd
-    cp /usr/lib/systemd/system/poweroff.target $rootfs/usr/lib/systemd/system/sigpwr.target
+    cp $rootfs/usr/lib/systemd/system/poweroff.target $rootfs/usr/lib/systemd/system/sigpwr.target
 
     touch $rootfs/etc/sysconfig/kernel
 
