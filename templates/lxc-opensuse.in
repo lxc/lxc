@@ -109,10 +109,6 @@ EOF
     ln -s ../getty@.service $rootfs/etc/systemd/system/getty.target.wants/getty@tty3.service
     ln -s ../getty@.service $rootfs/etc/systemd/system/getty.target.wants/getty@tty4.service
 
-    # copy host poweroff target as sigpwr target to make shutdown work
-    # see https://wiki.archlinux.org/index.php/Linux_Containers#Container_cannot_be_shutdown_if_using_systemd
-    cp $rootfs/usr/lib/systemd/system/poweroff.target $rootfs/usr/lib/systemd/system/sigpwr.target
-
     touch $rootfs/etc/sysconfig/kernel
 
     echo "Please change root-password !"
