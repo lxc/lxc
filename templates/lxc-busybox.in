@@ -330,35 +330,6 @@ configure_busybox()
     chmod +s $rootfs/bin/passwd
     touch $rootfs/etc/shadow
 
-    # setting passwd for root
-    CHPASSWD_FILE=$rootfs/root/chpasswd.sh
-
-    cat <<EOF >$CHPASSWD_FILE
-echo "setting root password to \"root\""
-
-mount -n --bind /lib $rootfs/lib
-if [ \$? -ne 0 ]; then
-    echo "Failed bind-mounting /lib at $rootfs/lib"
-    exit 1
-fi
-
-chroot $rootfs chpasswd <<EOFF 2>/dev/null
-root:root
-EOFF
-
-
-if [ \$? -ne 0 ]; then
-    echo "Failed to change root password"
-    exit 1
-fi
-
-umount $rootfs/lib
-
-EOF
-
-    lxc-unshare -s MOUNT -- /bin/sh < $CHPASSWD_FILE
-    rm $CHPASSWD_FILE
-
     return 0
 }
 

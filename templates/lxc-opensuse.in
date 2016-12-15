@@ -112,7 +112,6 @@ EOF
     touch $rootfs/etc/sysconfig/kernel
 
     echo "Please change root-password !"
-    echo "root:root" | chpasswd -R $rootfs
 
     return 0
 }

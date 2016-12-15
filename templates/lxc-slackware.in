@@ -471,10 +471,6 @@ sed -i 's/.*genpowerfail.*//' $rootfs/etc/inittab
 # add a message to rc.local that confirms successful container startup
 echo "echo ; echo \"* container $name started. *\" ; echo" >> $rootfs/etc/rc.d/rc.local
 
-# set a default combination for the luggage
-echo "root:root" | chroot $rootfs chpasswd
-echo "Root default password is 'root', please change it!"
-
 # borrow the time configuration from the local machine
 cp -a /etc/localtime $rootfs/etc/localtime
 
