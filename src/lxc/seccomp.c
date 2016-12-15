@@ -218,17 +218,20 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_
 		seccomp_release(ctx);
 		return NULL;
 	}
-	ret = seccomp_arch_add(ctx, arch);
-	if (ret != 0) {
-		ERROR("Seccomp error %d (%s) adding arch: %d", ret,
-		      strerror(-ret), (int)n_arch);
-		seccomp_release(ctx);
-		return NULL;
-	}
-	if (seccomp_arch_remove(ctx, SCMP_ARCH_NATIVE) != 0) {
-		ERROR("Seccomp error removing native arch");
-		seccomp_release(ctx);
-		return NULL;
+
+	if (seccomp_arch_exist(ctx, arch) == -EEXIST) {
+		ret = seccomp_arch_add(ctx, arch);
+		if (ret != 0) {
+			ERROR("Seccomp error %d (%s) adding arch: %d", ret,
+					strerror(-ret), (int)n_arch);
+			seccomp_release(ctx);
+			return NULL;
+		}
+		if (seccomp_arch_remove(ctx, SCMP_ARCH_NATIVE) != 0) {
+			ERROR("Seccomp error removing native arch");
+			seccomp_release(ctx);
+			return NULL;
+		}
 	}
 
 	return ctx;
@@ -376,6 +379,15 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 		compat_ctx[1] = get_new_ctx(lxc_seccomp_arch_mipsel64n32,
 				default_policy_action);
 		if (!compat_ctx[0] || !compat_ctx[1])
+			goto bad;
+#endif
+#ifdef SCMP_ARCH_S390X
+	} else if (native_arch == lxc_seccomp_arch_s390x) {
+		cur_rule_arch = lxc_seccomp_arch_all;
+		compat_arch[0] = SCMP_ARCH_S390X;
+		compat_ctx[0] = get_new_ctx(lxc_seccomp_arch_s390x,
+				default_policy_action);
+		if (!compat_ctx[0])
 			goto bad;
 #endif
 	}
