@@ -462,12 +462,10 @@ EOF
         fi
     fi
 
-    # add oracle user, set root password
+    # add oracle user
     chroot $container_rootfs useradd -m -s /bin/bash oracle
-    echo "oracle:oracle" | chroot $container_rootfs chpasswd
-    echo "root:root" | chroot $container_rootfs chpasswd
-    printf "Added container user:\033[1moracle\033[0m password:\033[1moracle\033[0m\n"
-    printf "Added container user:\033[1mroot\033[0m password:\033[1mroot\033[0m\n"
+    printf "Added container user:\033[1moracle\033[0m\n"
+    printf "Added container user:\033[1mroot\033[0m\n"
 }
 
 # create the container's lxc config file

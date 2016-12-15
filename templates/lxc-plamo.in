@@ -186,9 +186,6 @@ configure_plamo() {
   # glibc configure
   mv $rootfs/etc/ld.so.conf{.new,}
   chroot $rootfs ldconfig
-  # root password
-  echo "Setting root password to 'root'..."
-  echo "root:root" | chroot $rootfs chpasswd
   echo "Please change root password!"
   ed - $rootfs/etc/rc.d/rc.S <<- "EOF"
 	/^mount -w -n -t proc/;/^mkdir \/dev\/shm/-1d
