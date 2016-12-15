@@ -130,6 +130,7 @@ struct lxc_arguments {
 	bool ls_line;
 	bool ls_running;
 	bool ls_stopped;
+	bool ls_defined;
 
 	/* remaining arguments */
 	char *const *argv;
