@@ -4256,10 +4256,14 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key)
 {
 	struct lxc_list *it,*next;
 	bool all = false;
-	const char *k = key + 11;
+	const char *k = NULL;
 
 	if (strcmp(key, "lxc.cgroup") == 0)
 		all = true;
+	else if (strncmp(key, "lxc.cgroup.", sizeof("lxc.cgroup.")-1) == 0)
+		k = key + sizeof("lxc.cgroup.")-1;
+	else
+		return -1;
 
 	lxc_list_for_each_safe(it, &c->cgroup, next) {
 		struct lxc_cgroup *cg = it->elem;
@@ -4346,11 +4350,15 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 {
 	struct lxc_list *it,*next;
 	bool all = false, done = false;
-	const char *k = key + 9;
+	const char *k = NULL;
 	int i;
 
 	if (strcmp(key, "lxc.hook") == 0)
 		all = true;
+	else if (strncmp(key, "lxc.hook.", sizeof("lxc.hook.")-1) == 0)
+		k = key + sizeof("lxc.hook.")-1;
+	else
+		return -1;
 
 	for (i=0; i<NUM_LXC_HOOKS; i++) {
 		if (all || strcmp(k, lxchook_names[i]) == 0) {
