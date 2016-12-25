@@ -9,7 +9,7 @@ templates_SCRIPTS = \
 	lxc-cirros \
 	lxc-debian \
 	lxc-download \
-	lxc-fedora \
+	lxc-fedora-legacy \
 	lxc-gentoo \
 	lxc-openmandriva \
 	lxc-opensuse \
