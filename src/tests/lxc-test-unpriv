@@ -27,6 +27,41 @@ if [ $(id -u) -ne 0 ]; then
 	echo "ERROR: Must run as root."
 	exit 1
 fi
+
+# Test if we're using an overlayfs module that handles symlinks correctly. If
+# not, we skip these tests since overlay clones will not work correctly.
+if modprobe -q overlayfs; then
+        TMPDIR=$(mktemp -d)
+
+        MOUNTDIR="${TMPDIR}/ovl_symlink_test"
+
+        mkdir ${MOUNTDIR}
+
+        mount -t tmpfs none ${MOUNTDIR}
+
+        mkdir "${MOUNTDIR}/lowerdir" "${MOUNTDIR}/upperdir" "${MOUNTDIR}/overlayfs"
+        mount -t overlayfs -o lowerdir="${MOUNTDIR}/lowerdir",upperdir="${MOUNTDIR}/upperdir" none "${MOUNTDIR}/overlayfs"
+
+        CORRECT_LINK_TARGET="${MOUNTDIR}/overlayfs/dummy_file"
+        exec 9> "${CORRECT_LINK_TARGET}"
+
+        DETECTED_LINK_TARGET=$(readlink -q /proc/$$/fd/9)
+
+        # cleanup
+        exec 9>&-
+
+        umount "${MOUNTDIR}/overlayfs"
+        umount ${MOUNTDIR}
+
+        rmdir ${MOUNTDIR}
+
+        # This overlay module does not correctly handle symlinks, so skip the
+        # tests.
+        if [ "${DETECTED_LINK_TARGET}" != "${CORRECT_LINK_TARGET}" ]; then
+                exit 0
+        fi
+fi
+
 which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; exit 1; }
 
 DONE=0
