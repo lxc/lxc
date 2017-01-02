@@ -163,7 +163,7 @@ bootstrap_fedora()
     fi
 
     echo "Mounting LiveOS squashfs file system."
-    if ! mount -o loop "${cache}/install.img" squashfs/
+    if ! mount -o loop -t squashfs "${cache}/install.img" squashfs/
     then
         echo "
 Error: Mount of LiveOS squashfs image failed
