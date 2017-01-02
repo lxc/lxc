@@ -327,4 +327,8 @@ int lxc_safe_uint(const char *numstr, unsigned int *converted);
 int lxc_safe_int(const char *numstr, int *converted);
 int lxc_safe_long(const char *numstr, long int *converted);
 
+/* Switch to a new uid and gid. */
+int lxc_switch_uid_gid(uid_t uid, gid_t gid);
+int lxc_setgroups(int size, gid_t list[]);
+
 #endif /* __LXC_UTILS_H */
