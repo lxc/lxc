@@ -4514,6 +4514,7 @@ void suggest_default_idmap(void)
 		return;
 	}
 	while (getline(&line, &len, f) != -1) {
+		size_t no_newline = 0;
 		char *p = strchr(line, ':'), *p2;
 		if (*line == '#')
 			continue;
@@ -4530,6 +4531,9 @@ void suggest_default_idmap(void)
 		p2++;
 		if (!*p2)
 			continue;
+		no_newline = strcspn(p2, "\n");
+		p2[no_newline] = '\0';
+
 		if (lxc_safe_uint(p, &uid) < 0)
 			WARN("Could not parse UID.");
 		if (lxc_safe_uint(p2, &urange) < 0)
@@ -4545,6 +4549,7 @@ void suggest_default_idmap(void)
 		return;
 	}
 	while (getline(&line, &len, f) != -1) {
+		size_t no_newline = 0;
 		char *p = strchr(line, ':'), *p2;
 		if (*line == '#')
 			continue;
@@ -4561,6 +4566,9 @@ void suggest_default_idmap(void)
 		p2++;
 		if (!*p2)
 			continue;
+		no_newline = strcspn(p2, "\n");
+		p2[no_newline] = '\0';
+
 		if (lxc_safe_uint(p, &gid) < 0)
 			WARN("Could not parse GID.");
 		if (lxc_safe_uint(p2, &grange) < 0)
