@@ -66,7 +66,7 @@ except:
 print("Creating rootfs using 'download', arch=%s" % arch)
 container.create("download", 0,
                  {"dist": "ubuntu",
-                  "release": "trusty",
+                  "release": "xenial",
                   "arch": arch})
 
 assert(container.defined)
