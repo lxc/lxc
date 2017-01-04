@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
 	lxc_log_options_no_override();
 
 	if (geteuid()) {
-		if (access(my_args.lxcpath[0], O_RDWR) < 0) {
+		if (access(my_args.lxcpath[0], O_RDONLY) < 0) {
 			fprintf(stderr, "You lack access to %s\n",
 				my_args.lxcpath[0]);
 			exit(EXIT_FAILURE);
