@@ -23,7 +23,6 @@
 
 #define _GNU_SOURCE
 #define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <errno.h>
@@ -392,7 +391,8 @@ static int __lxc_log_set_file(const char *fname, int create_dirs)
 		lxc_log_close();
 	}
 
-	assert(fname != NULL);
+	if (!fname)
+		return -1;
 
 	if (strlen(fname) == 0) {
 		log_fname = NULL;
