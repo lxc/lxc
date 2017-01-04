@@ -23,7 +23,6 @@
 
 #include "config.h"
 
-#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -639,10 +638,16 @@ char *lxc_string_replace(const char *needle, const char *replacement, const char
 	/* make sure we did the same thing twice,
 	 * once for calculating length, the other
 	 * time for copying data */
-	assert(saved_len == len);
+	if (saved_len != len) {
+		free(result);
+		return NULL;
+	}
 	/* make sure we didn't overwrite any buffer,
 	 * due to calloc the string should be 0-terminated */
-	assert(result[len] == '\0');
+	if (result[len] != '\0') {
+		free(result);
+		return NULL;
+	}
 
 	return result;
 }

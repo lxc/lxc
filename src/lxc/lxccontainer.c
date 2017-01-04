@@ -19,7 +19,6 @@
  */
 
 #define _GNU_SOURCE
-#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -4319,7 +4318,7 @@ int list_active_containers(const char *lxcpath, char ***nret,
 	char *line = NULL;
 	char **ct_name = NULL;
 	size_t len = 0;
-	struct lxc_container *c;
+	struct lxc_container *c = NULL;
 	bool is_hashed;
 
 	if (!lxcpath)
@@ -4402,7 +4401,12 @@ int list_active_containers(const char *lxcpath, char ***nret,
 		cret_cnt++;
 	}
 
-	assert(!nret || !cret || cret_cnt == ct_name_cnt);
+	if (nret && cret && cret_cnt != ct_name_cnt) {
+		if (c)
+			lxc_container_put(c);
+		goto free_cret_list;
+	}
+
 	ret = ct_name_cnt;
 	if (nret)
 		*nret = ct_name;
