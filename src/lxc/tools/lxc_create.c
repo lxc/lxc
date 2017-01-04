@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
 		if (mkdir_p(my_args.lxcpath[0], 0755)) {
 			exit(EXIT_FAILURE);
 		}
-		if (access(my_args.lxcpath[0], O_RDWR) < 0) {
+		if (access(my_args.lxcpath[0], O_RDONLY) < 0) {
 			fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
 			exit(EXIT_FAILURE);
 		}
