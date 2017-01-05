@@ -530,6 +530,7 @@ download_fedora()
 
     # suppress errors due to unknown locales
     LC_ALL=C
+    LANG=en_US
 
     echo "Downloading ${basearch} rootfs for Fedora ${release} ..."
 
@@ -613,6 +614,21 @@ download_fedora()
     echo "Fixing up RPM databases"
     rm -f "${setup_rootfs}"/var/lib/rpm/__db*
     chroot "${setup_rootfs}" rpm --rebuilddb
+
+    # Restrict locale for installed packages to en_US to shrink image size
+    # following: https://pagure.io/fedora-kickstarts/blob/master/f/fedora-cloud-base.ks
+    echo "Cleanup locales and language files ..."
+    find "${setup_rootfs}/usr/share/locale" -mindepth  1 -maxdepth 1 -type d \
+        -not -name "${LANG}" -exec rm -rf {} +
+
+    chroot "${setup_rootfs}" localedef --list-archive | grep -v ^"${LANG}" | xargs \
+        chroot "${setup_rootfs}" localedef --delete-from-archive
+
+    mv -f "${setup_rootfs}/usr/lib/locale/locale-archive" \
+        "${setup_rootfs}/usr/lib/locale/locale-archive.tmpl"
+    chroot "${setup_rootfs}" build-locale-archive
+
+    echo "%_install_langs C:en:${LANG}:${LANG}.UTF-8" > "${setup_rootfs}/etc/rpm/macros.image-language-conf"
 
     chroot_umounts "${setup_rootfs}"
 
