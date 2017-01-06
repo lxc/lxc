@@ -540,7 +540,7 @@ download_fedora()
     CHROOT_CMD=
     INSTALL_ROOT=${setup_rootfs}
 
-    if [ ! "${is_fedora}" ] || [ "${fedora_host_ver}" <= "${FEDORA_VERSION_MINIMAL}" ]
+    if [ ! "${is_fedora}" ] || [ "${fedora_host_ver}" -lt "${FEDORA_VERSION_MINIMAL}" ]
     then
         # if this is not a supported Fedora host, use minimal bootstrap chroot
         echo "Non-Fedora host detected. Checking for bootstrap environment ... "
