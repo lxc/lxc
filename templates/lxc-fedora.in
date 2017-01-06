@@ -679,7 +679,7 @@ install_fedora()
             cp /etc/resolv.conf "${rootfs}/etc/"
 
             echo "Installing user requested RPMs: ${packages}"
-            if ! chroot "${rootfs}" dnf install ${dnf_args[@]} ${packages}
+            if ! chroot "${rootfs}" dnf install ${dnf_args[@]} $(tr ',' ' ' <<< "${packages}")
             then
                 echo "Error: Installation of user provided packages failed."
                 echo "Cleaning up ... "
