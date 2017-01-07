@@ -769,32 +769,17 @@ static int do_start(void *data)
 		goto out_warn_father;
 
 	/* If we are in a new user namespace, become root there to have
-	 * privilege over our namespace. When using lxc-execute we default to
-	 * root, but this can be overriden using the lxc.init_uid and
-	 * lxc.init_gid configuration options.
+	 * privilege over our namespace.
 	 */
 	if (!lxc_list_empty(&handler->conf->id_map)) {
-		gid_t new_gid = 0;
-		if (handler->conf->is_execute && handler->conf->init_gid)
-			new_gid = handler->conf->init_gid;
+		if (lxc_switch_uid_gid(0, 0) < 0)
+			goto out_warn_father;
 
-		uid_t new_uid = 0;
-		if (handler->conf->is_execute && handler->conf->init_uid)
-			new_uid = handler->conf->init_uid;
-
-		NOTICE("Switching to uid=%d and gid=%d in new user namespace.", new_uid, new_gid);
-		if (setgid(new_gid)) {
-			SYSERROR("Failed to setgid().");
+		/* Drop groups only after we switched to a valid gid in the new
+		 * user namespace.
+		 */
+		if (lxc_setgroups(0, NULL) < 0)
 			goto out_warn_father;
-		}
-		if (setuid(new_uid)) {
-			SYSERROR("Failed to setuid().");
-			goto out_warn_father;
-		}
-		if (setgroups(0, NULL)) {
-			SYSERROR("Failed to setgroups().");
-			goto out_warn_father;
-		}
 	}
 
 	if (access(handler->lxcpath, X_OK)) {
@@ -898,6 +883,29 @@ static int do_start(void *data)
 	if (run_lxc_hooks(handler->name, "start", handler->conf, handler->lxcpath, NULL)) {
 		ERROR("Failed to run lxc.hook.start for container \"%s\".", handler->name);
 		goto out_warn_father;
+	}
+
+	/* The container has been setup. We can now switch to an unprivileged
+	 * uid/gid.
+	 */
+	if (handler->conf->is_execute) {
+		bool have_cap_setgid;
+		uid_t new_uid = handler->conf->init_uid;
+		gid_t new_gid = handler->conf->init_gid;
+
+		/* If we are in a new user namespace we already dropped all
+		 * groups when we switched to root in the new user namespace
+		 * further above. Only drop groups if we can, so ensure that we
+		 * have necessary privilege.
+		 */
+		have_cap_setgid = lxc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
+		if (lxc_list_empty(&handler->conf->id_map) && have_cap_setgid) {
+			if (lxc_setgroups(0, NULL) < 0)
+				goto out_warn_father;
+		}
+
+		if (lxc_switch_uid_gid(new_uid, new_gid) < 0)
+			goto out_warn_father;
 	}
 
 	/* The clearenv() and putenv() calls have been moved here to allow us to

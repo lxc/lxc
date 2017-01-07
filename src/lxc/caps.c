@@ -22,20 +22,21 @@
  */
 
 #define _GNU_SOURCE
-#include <unistd.h>
+#include "config.h"
+
+#include <errno.h>
+#include <limits.h>
 #include <fcntl.h>
 #include <stdlib.h>
-#include <limits.h>
+#include <unistd.h>
 #include <sys/prctl.h>
-#include <errno.h>
 
-#include "config.h"
+#include "caps.h"
 #include "log.h"
 
 lxc_log_define(lxc_caps, lxc);
 
 #if HAVE_SYS_CAPABILITY_H
-#include <sys/capability.h>
 
 #ifndef PR_CAPBSET_READ
 #define PR_CAPBSET_READ 23
@@ -206,6 +207,29 @@ int lxc_caps_last_cap(void)
 	if (last_cap < 0) last_cap = _real_caps_last_cap();
 
 	return last_cap;
+}
+
+bool lxc_cap_is_set(cap_value_t cap, cap_flag_t flag)
+{
+	int ret;
+	cap_t caps;
+	cap_flag_value_t flagval;
+
+	caps = cap_get_proc();
+	if (!caps) {
+		ERROR("Failed to perform cap_get_proc(): %s.", strerror(errno));
+		return false;
+	}
+
+	ret = cap_get_flag(caps, cap, flag, &flagval);
+	if (ret < 0) {
+		ERROR("Failed to perform cap_get_flag(): %s.", strerror(errno));
+		cap_free(caps);
+		return false;
+	}
+
+	cap_free(caps);
+	return flagval == CAP_SET;
 }
 
 #endif

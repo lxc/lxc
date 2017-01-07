@@ -26,6 +26,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <libgen.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -2051,5 +2052,34 @@ int lxc_safe_long(const char *numstr, long int *converted)
 		return -ERANGE;
 
 	*converted = sli;
+	return 0;
+}
+
+int lxc_switch_uid_gid(uid_t uid, gid_t gid)
+{
+	if (setgid(gid) < 0) {
+		SYSERROR("Failed to switch to gid %d.", gid);
+		return -errno;
+	}
+	NOTICE("Switched to gid %d.", gid);
+
+	if (setuid(uid) < 0) {
+		SYSERROR("Failed to switch to uid %d.", uid);
+		return -errno;
+	}
+	NOTICE("Switched to uid %d.", uid);
+
+	return 0;
+}
+
+/* Simple covenience function which enables uniform logging. */
+int lxc_setgroups(int size, gid_t list[])
+{
+	if (setgroups(size, list) < 0) {
+		SYSERROR("Failed to setgroups().");
+		return -errno;
+	}
+	NOTICE("Dropped additional groups.");
+
 	return 0;
 }
