@@ -864,22 +864,17 @@ static int do_start(void *data)
 	 * uid/gid.
 	 */
 	if (handler->conf->is_execute) {
-		uid_t new_uid = 0;
-		gid_t new_gid = 0;
-
-		if (handler->conf->init_uid > 0)
-			new_uid = handler->conf->init_uid;
-
-		if (handler->conf->init_gid > 0)
-			new_gid = handler->conf->init_gid;
+		bool have_cap_setgid;
+		uid_t new_uid = handler->conf->init_uid;
+		gid_t new_gid = handler->conf->init_gid;
 
 		/* If we are in a new user namespace we already dropped all
 		 * groups when we switched to root in the new user namespace
 		 * further above. Only drop groups if we can, so ensure that we
 		 * have necessary privilege.
 		 */
-		bool can_setgroups = ((getuid() == 0) && (getgid() == 0));
-		if (lxc_list_empty(&handler->conf->id_map) && can_setgroups) {
+		have_cap_setgid = lxc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
+		if (lxc_list_empty(&handler->conf->id_map) && have_cap_setgid) {
 			if (lxc_setgroups(0, NULL) < 0)
 				goto out_warn_father;
 		}
