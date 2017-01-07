@@ -611,7 +611,7 @@ download_fedora()
     # It might happen, that the dnf used above will write an incompatible
     # RPM database for the version running in the rootfs. Rebuild it.
     echo "Fixing up RPM databases"
-    rm -f "${CHROOT_DIR}${INSTALL_ROOT}"/var/lib/rpm/__db*
+    rm -f "${setup_rootfs}"/var/lib/rpm/__db*
     chroot "${setup_rootfs}" rpm --rebuilddb
 
     chroot_umounts "${setup_rootfs}"
