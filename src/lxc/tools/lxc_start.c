@@ -286,10 +286,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (!c->is_defined(c)) {
-		fprintf(stderr, "Error: container %s is not defined\n", c->name);
-		goto out;
-	}
+	/* We do not check here whether the container is defined, because we
+	 * support volatile containers. Which means the container does not need
+	 * to be created for it to be started. You can just pass a configuration
+	 * file as argument and start the container right away.
+	 */
 
 	if (!c->may_control(c)) {
 		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
