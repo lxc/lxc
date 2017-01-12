@@ -9,8 +9,8 @@
 # Provides: lxc
 # Required-Start: $syslog $remote_fs
 # Required-Stop: $syslog $remote_fs
-# Should-Start:
-# Should-Stop:
+# Should-Start: cgroupfs-mount
+# Should-Stop: cgroupfs-mount
 # Default-Start: 2 3 4 5
 # Default-Stop: 0 1 6
 # Short-Description: Bring up/down LXC autostart containers
