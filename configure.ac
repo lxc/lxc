@@ -640,6 +640,9 @@ AC_CHECK_DECLS([PR_GET_NO_NEW_PRIVS], [], [], [#include <sys/prctl.h>])
 # Check for some headers
 AC_CHECK_HEADERS([sys/signalfd.h pty.h ifaddrs.h sys/capability.h sys/memfd.h sys/personality.h utmpx.h sys/timerfd.h])
 
+# lookup major()/minor()/makedev()
+AC_HEADER_MAJOR
+
 # Check for some syscalls functions
 AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create])
 
