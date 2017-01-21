@@ -54,6 +54,14 @@
 #include "lxclock.h"
 #include "lxc-btrfs.h"
 
+/* makedev() */
+#ifdef MAJOR_IN_MKDEV
+#    include <sys/mkdev.h>
+#endif
+#ifdef MAJOR_IN_SYSMACROS
+#    include <sys/sysmacros.h>
+#endif
+
 #ifndef BLKGETSIZE64
 #define BLKGETSIZE64 _IOR(0x12,114,size_t)
 #endif
