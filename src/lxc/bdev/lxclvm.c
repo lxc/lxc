@@ -32,9 +32,18 @@
 #include <sys/wait.h>
 
 #include "bdev.h"
+#include "config.h"
 #include "log.h"
 #include "lxclvm.h"
 #include "utils.h"
+
+/* major()/minor() */
+#ifdef MAJOR_IN_MKDEV
+#    include <sys/mkdev.h>
+#endif
+#ifdef MAJOR_IN_SYSMACROS
+#    include <sys/sysmacros.h>
+#endif
 
 lxc_log_define(lxclvm, lxc);
 
