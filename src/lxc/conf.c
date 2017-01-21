@@ -52,6 +52,14 @@
 #include <sys/utsname.h>
 #include <sys/wait.h>
 
+/* makedev() */
+#ifdef MAJOR_IN_MKDEV
+#    include <sys/mkdev.h>
+#endif
+#ifdef MAJOR_IN_SYSMACROS
+#    include <sys/sysmacros.h>
+#endif
+
 #ifdef HAVE_STATVFS
 #include <sys/statvfs.h>
 #endif

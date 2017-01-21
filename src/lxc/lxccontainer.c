@@ -60,6 +60,14 @@
 #include "utils.h"
 #include "version.h"
 
+/* major()/minor() */
+#ifdef MAJOR_IN_MKDEV
+#    include <sys/mkdev.h>
+#endif
+#ifdef MAJOR_IN_SYSMACROS
+#    include <sys/sysmacros.h>
+#endif
+
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
 #else
