@@ -28,6 +28,7 @@
 import argparse
 import gettext
 import lxc
+import locale
 import os
 import sys
 import subprocess
@@ -363,9 +364,14 @@ if os.path.exists("/proc/self/ns/pid"):
             if args.user:
                 username = args.user
 
-            line = subprocess.check_output(
-                ["getent", "passwd", username],
-                universal_newlines=True).rstrip("\n")
+            # This should really just use universal_newlines=True, but we do
+            # the decoding by hand instead for compatibility with Python
+            # 3.2; that used locale.getpreferredencoding() internally rather
+            # than locale.getpreferredencoding(False), and the former breaks
+            # here because we can't reload codecs at this point unless the
+            # container has the same version of Python installed.
+            line = subprocess.check_output(["getent", "passwd", username])
+            line = line.decode(locale.getpreferredencoding(False)).rstrip("\n")
             _, _, pw_uid, pw_gid, _, pw_dir, _ = line.split(":", 6)
             pw_uid = int(pw_uid)
             pw_gid = int(pw_gid)
