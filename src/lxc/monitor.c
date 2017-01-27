@@ -340,7 +340,7 @@ int lxc_monitord_spawn(const char *lxcpath)
 
 		close(pipefd[0]);
 
-		DEBUG("Sucessfully synced with child process.");
+		DEBUG("Successfully synced with child process.");
 		exit(EXIT_SUCCESS);
 	}
 
