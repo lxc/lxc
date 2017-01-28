@@ -21,4 +21,5 @@ templates_SCRIPTS = \
 	lxc-ubuntu \
 	lxc-ubuntu-cloud \
 	lxc-sparclinux \
-	lxc-voidlinux
+	lxc-voidlinux \
+	lxc-sabayon

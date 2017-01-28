@@ -897,6 +897,7 @@ AC_CONFIG_FILES([
 	templates/lxc-ubuntu-cloud
 	templates/lxc-sparclinux
 	templates/lxc-voidlinux
+	templates/lxc-sabayon
 
 	src/Makefile
 	src/lxc/Makefile
