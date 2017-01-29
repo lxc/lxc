@@ -18,37 +18,36 @@
  */
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
+#include <alloca.h>
+#include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <grp.h>
+#include <pwd.h>
+#include <sched.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <sys/types.h>
-#include <pwd.h>
-#include <grp.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/file.h>
-#include <alloca.h>
 #include <string.h>
-#include <sched.h>
-#include <sys/mman.h>
-#include <sys/socket.h>
-#include <errno.h>
-#include <ctype.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <linux/netlink.h>
+#include <unistd.h>
 #include <arpa/inet.h>
-#include <net/if.h>
-#include <net/if_arp.h>
-#include <netinet/in.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
+#include <net/if.h>
+#include <net/if_arp.h>
+#include <netinet/in.h>
+#include <sys/file.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/param.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "config.h"
-#include "utils.h"
 #include "network.h"
+#include "utils.h"
 
 #define usernic_debug_stream(stream, format, ...)                              \
 	do {                                                                   \
