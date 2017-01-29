@@ -898,7 +898,11 @@ static int do_start(void *data)
 		 * further above. Only drop groups if we can, so ensure that we
 		 * have necessary privilege.
 		 */
+		#if HAVE_SYS_CAPABILITY_H
 		have_cap_setgid = lxc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
+		#else
+		have_cap_setgid = false;
+		#endif
 		if (lxc_list_empty(&handler->conf->id_map) && have_cap_setgid) {
 			if (lxc_setgroups(0, NULL) < 0)
 				goto out_warn_father;
