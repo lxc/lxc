@@ -49,7 +49,6 @@ http://ftp.surfnet.nl/pub/os/Linux/distr/sabayonlinux/
 http://mirror.internode.on.net/pub/sabayon/
 http://mirror.yandex.ru/sabayon/
 http://sabayon.c3sl.ufpr.br/
-http://mirror.umd.edu/sabayonlinux/
 http://mirror.clarkson.edu/sabayon/
 http://na.mirror.garr.it/mirrors/sabayonlinux/"
 
@@ -217,15 +216,6 @@ EOF
    # Disable mount of hugepages
    ln -s /dev/null dev-hugepages.mount
 
-   # Fix TERM variable for container console
-   mkdir container-getty\@0.service.d
-   cat <<EOF > container-getty\@0.service.d/00gentoo.conf
-[Service]
-Environment=TERM=
-Environment=TERM=linux
-EOF
-
-
    popd
 
    pushd ${rootfs}
@@ -265,6 +255,21 @@ systemd_container_tuning () {
     # Remove LVM service. Normally not needed on container system.
     rm -rf ${rootfs}/etc/systemd/system/sysinit.target.wants/lvm2-lvmetad.service
 
+    # Comment unneeded entry on /etc/fstab
+    sed -e 's/\/dev/#\/dev/g' -i ${rootfs}/etc/fstab
+
+    # Fix this stupid error until fix is available on sabayon image
+    # /usr/lib/systemd/system-generators/gentoo-local-generator: line 4: cd: /etc/local.d: No such file or directory
+    mkdir ${rootfs}/etc/local.d/
+
+   # Fix TERM variable for container console
+   mkdir container-getty\@0.service.d
+   cat <<EOF > container-getty\@0.service.d/00gentoo.conf
+[Service]
+Environment=TERM=
+Environment=TERM=linux
+EOF
+
     return 0
 }
 
@@ -277,31 +282,31 @@ configure_container() {
 
     if [[ $unprivileged && $unprivileged == true ]] ; then
         unprivileged_options="
-lxc.mount.auto = proc:mixed sys:mixed cgroup:mixed
-
-# Enable tty console for lxc-console command
-lxc.tty = 1
-
 lxc.id_map = u 0 ${mapped_uid} 65536
 lxc.id_map = g 0 ${mapped_gid} 65536
+
+# Include common configuration.
+lxc.include = $LXC_TEMPLATE_CONFIG/sabayon.userns.conf
+
 "
 
     else
         privileged_options="
-lxc.mount.auto = proc:mixed sys:mixed cgroup:mixed
-lxc.cgroup.devices.deny = a
+## Allow any mknod (but not reading/writing the node)
 lxc.cgroup.devices.allow = b *:* m
 lxc.cgroup.devices.allow = c *:* m
+
+### /dev/pts/*
 lxc.cgroup.devices.allow = c 136:* rwm
-lxc.cgroup.devices.allow = c 1:3 rwm
-lxc.cgroup.devices.allow = c 1:5 rwm
-lxc.cgroup.devices.allow = c 1:7 rwm
-lxc.cgroup.devices.allow = c 1:8 rwm
-lxc.cgroup.devices.allow = c 1:9 rwm
+### /dev/tty
 lxc.cgroup.devices.allow = c 5:0 rwm
+### /dev/console
 lxc.cgroup.devices.allow = c 5:1 rwm
+### /dev/ptmx
 lxc.cgroup.devices.allow = c 5:2 rwm
+### fuse
 lxc.cgroup.devices.allow = c 10:229 rwm
+
 "
     fi
 
@@ -312,24 +317,11 @@ lxc.arch = $arch
 # Set hostname.
 lxc.utsname = $hostname
 
-# If something doesn't work, try to comment this out.
-# Dropping sys_admin disables container root from doing a lot of things
-# that could be bad like re-mounting lxc fstab entries rw for example,
-# but also disables some useful things like being able to nfs mount, and
-# things that are already namespaced with ns_capable() kernel checks, like
-# hostname(1).
-lxc.cap.drop = sys_time sys_module sys_rawio mac_admin mac_override
-#lxc.cap.drop = sys_admin
-
-lxc.autodev = 1
-lxc.pts = 1024
+# Include common configuration.
+lxc.include = $LXC_TEMPLATE_CONFIG/sabayon.common.conf
 
 $unprivileged_options
 $privileged_options
-
-# Customize lxc options through common directory
-lxc.include = /usr/share/lxc/config/common.conf.d/
-
 EOF
 }
 

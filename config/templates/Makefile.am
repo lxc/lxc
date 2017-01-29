@@ -40,4 +40,6 @@ templatesconfig_DATA = \
 	sparclinux.userns.conf \
 	voidlinux.common.conf \
 	voidlinux.userns.conf \
+	sabayon.common.conf \
+	sabayon.userns.conf \
 	userns.conf

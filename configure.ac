@@ -745,6 +745,8 @@ AC_CONFIG_FILES([
 	config/templates/sparclinux.userns.conf
 	config/templates/voidlinux.common.conf
 	config/templates/voidlinux.userns.conf
+	config/templates/sabayon.common.conf
+	config/templates/sabayon.userns.conf
 	config/templates/userns.conf
 	config/yum/Makefile
 	config/sysconfig/Makefile
