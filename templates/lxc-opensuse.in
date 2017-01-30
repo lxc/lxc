@@ -459,7 +459,7 @@ fi
 if [ -z "$DISTRO" ]; then
     echo ""
     echo "No release selected, using openSUSE Leap 42.2"
-    DISTRO=42.2
+    DISTRO="leap/42.2"
 else
     echo ""
     case "$DISTRO" in
