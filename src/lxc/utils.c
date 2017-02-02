@@ -1405,11 +1405,8 @@ char *get_template_path(const char *t)
 }
 
 /*
- * Sets the process title to the specified title. Note:
- *   1. this function requires root to succeed
- *   2. it clears /proc/self/environ
- *   3. it may not succed (e.g. if title is longer than /proc/self/environ +
- *      the original title)
+ * Sets the process title to the specified title. Note that this may fail if
+ * the kernel doesn't support PR_SET_MM_MAP (kernels <3.18).
  */
 int setproctitle(char *title)
 {
