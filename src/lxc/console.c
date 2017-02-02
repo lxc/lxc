@@ -257,6 +257,14 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 		return -1;
 	}
 
+	/* ensure we don't end up in an endless loop:
+	 * The kernel might fire SIGTTOU while an
+	 * ioctl() in tcsetattr() is executed. When the ioctl()
+	 * is resumed and retries, the signal handler interrupts it again.
+	 */
+	signal (SIGTTIN, SIG_IGN);
+	signal (SIGTTOU, SIG_IGN);
+
 	newtios = *oldtios;
 
 	/* We use the same settings that ssh does. */
@@ -265,7 +273,7 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 #ifdef IUCLC
 	newtios.c_iflag &= ~IUCLC;
 #endif
-	newtios.c_lflag &= ~(ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHONL);
+	newtios.c_lflag &= ~(TOSTOP | ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHONL);
 #ifdef IEXTEN
 	newtios.c_lflag &= ~IEXTEN;
 #endif
