@@ -1463,34 +1463,24 @@ int setproctitle(char *title)
 	if (!tmp)
 		return -1;
 
-	i = sscanf(tmp, "%lu %lu %lu %lu %lu %lu %lu",
+	i = sscanf(tmp, "%lu %lu %lu %*u %*u %lu %lu",
 		&start_data,
 		&end_data,
 		&start_brk,
-		&arg_start,
-		&arg_end,
 		&env_start,
 		&env_end);
-	if (i != 7)
+	if (i != 5)
 		return -1;
 
 	/* Include the null byte here, because in the calculations below we
 	 * want to have room for it. */
 	len = strlen(title) + 1;
 
-	/* If we don't have enough room by just overwriting the old proctitle,
-	 * let's allocate a new one.
-	 */
-	if (len > arg_end - arg_start) {
-		void *m;
-		m = realloc(proctitle, len);
-		if (!m)
-			return -1;
-		proctitle = m;
+	proctitle = realloc(proctitle, len);
+	if (!proctitle)
+		return -1;
 
-		arg_start = (unsigned long) proctitle;
-	}
-
+	arg_start = (unsigned long) proctitle;
 	arg_end = arg_start + len;
 
 	brk_val = syscall(__NR_brk, 0);
