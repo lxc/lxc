@@ -3058,20 +3058,21 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 	int bytes, pipefd[2];
 	char *token, *saveptr = NULL;
 	char buffer[MAX_BUFFER_SIZE];
-	char netdev_link[IFNAMSIZ+1];
+	char netdev_link[IFNAMSIZ + 1];
 
 	if (netdev->type != LXC_NET_VETH) {
 		ERROR("nic type %d not support for unprivileged use",
-			netdev->type);
+		      netdev->type);
 		return -1;
 	}
 
-	if(pipe(pipefd) < 0) {
+	if (pipe(pipefd) < 0) {
 		SYSERROR("pipe failed");
 		return -1;
 	}
 
-	if ((child = fork()) < 0) {
+	child = fork();
+	if (child < 0) {
 		SYSERROR("fork");
 		close(pipefd[0]);
 		close(pipefd[1]);
@@ -3079,35 +3080,45 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 	}
 
 	if (child == 0) { // child
-		/* close the read-end of the pipe */
-		close(pipefd[0]);
-		/* redirect the stdout to write-end of the pipe */
-		dup2(pipefd[1], STDOUT_FILENO);
-		/* close the write-end of the pipe */
-		close(pipefd[1]);
+		/* Call lxc-user-nic pid type bridge. */
+		int ret;
+		char pidstr[LXC_NUMSTRLEN64];
 
-		// Call lxc-user-nic pid type bridge
-		char pidstr[20];
-		if (netdev->link) {
-			strncpy(netdev_link, netdev->link, IFNAMSIZ);
-		} else {
-			strncpy(netdev_link, "none", IFNAMSIZ);
+		close(pipefd[0]); /* Close the read-end of the pipe. */
+
+		/* Redirect stdout to write-end of the pipe. */
+		ret = dup2(pipefd[1], STDOUT_FILENO);
+		close(pipefd[1]); /* Close the write-end of the pipe. */
+		if (ret < 0) {
+			SYSERROR("Failed to dup2() to redirect stdout to pipe file descriptor.");
+			exit(EXIT_FAILURE);
 		}
-		snprintf(pidstr, 19, "%lu", (unsigned long) pid);
-		pidstr[19] = '\0';
+
+		if (netdev->link)
+			strncpy(netdev_link, netdev->link, IFNAMSIZ);
+		else
+			strncpy(netdev_link, "none", IFNAMSIZ);
+
+		ret = snprintf(pidstr, LXC_NUMSTRLEN64, "%d", pid);
+		if (ret < 0 || ret >= LXC_NUMSTRLEN64)
+			exit(EXIT_FAILURE);
+		pidstr[LXC_NUMSTRLEN64 - 1] = '\0';
+
+		INFO("Execing lxc-user-nic %s %s %s veth %s %s", lxcpath,
+		     lxcname, pidstr, netdev_link, netdev->name);
 		execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, lxcpath, lxcname,
-				pidstr, "veth", netdev_link, netdev->name, NULL);
-		SYSERROR("execvp lxc-user-nic");
-		exit(1);
+		       pidstr, "veth", netdev_link, netdev->name, NULL);
+
+		SYSERROR("Failed to exec lxc-user-nic.");
+		exit(EXIT_FAILURE);
 	}
 
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
 	bytes = read(pipefd[0], &buffer, MAX_BUFFER_SIZE);
-	if (bytes < 0) {
-		SYSERROR("read failed");
-	}
+	if (bytes < 0)
+		SYSERROR("Failed to read from pipe file descriptor.");
 	buffer[bytes - 1] = '\0';
 
 	if (wait_for_pid(child) != 0) {
@@ -3122,21 +3133,23 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 	token = strtok_r(buffer, ":", &saveptr);
 	if (!token)
 		return -1;
-	netdev->name = malloc(IFNAMSIZ+1);
+
+	netdev->name = malloc(IFNAMSIZ + 1);
 	if (!netdev->name) {
-		ERROR("Out of memory");
+		SYSERROR("Failed to allocate memory.");
 		return -1;
 	}
-	memset(netdev->name, 0, IFNAMSIZ+1);
+	memset(netdev->name, 0, IFNAMSIZ + 1);
 	strncpy(netdev->name, token, IFNAMSIZ);
 
 	/* fill netdev->veth_attr.pair field */
 	token = strtok_r(NULL, ":", &saveptr);
 	if (!token)
 		return -1;
+
 	netdev->priv.veth_attr.pair = strdup(token);
 	if (!netdev->priv.veth_attr.pair) {
-		ERROR("Out of memory");
+		ERROR("Failed to allocate memory.");
 		return -1;
 	}
 
