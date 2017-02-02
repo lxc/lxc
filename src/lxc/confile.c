@@ -2879,21 +2879,21 @@ next:
 	} \
 }
 
-static void new_hwaddr(char *hwaddr)
+static bool new_hwaddr(char *hwaddr)
 {
-	FILE *f;
-	f = fopen("/dev/urandom", "r");
-	if (f) {
-		unsigned int seed;
-		int ret = fread(&seed, sizeof(seed), 1, f);
-		if (ret != 1)
-			seed = time(NULL);
-		fclose(f);
-		srand(seed);
-	} else
-		srand(time(NULL));
-	snprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x",
-			rand() % 255, rand() % 255, rand() % 255);
+	int ret;
+
+	/* COMMENT(brauner): Initialize random number generator. */
+	(void)randseed(true);
+
+	ret = snprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x", rand() % 255,
+		       rand() % 255, rand() % 255);
+	if (ret < 0 || ret >= 18) {
+		SYSERROR("Failed to call snprintf().");
+		return false;
+	}
+
+	return true;
 }
 
 /*
@@ -2915,27 +2915,33 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 
 	if (!conf->unexpanded_config)
 		return true;
+
 	while (*lstart) {
 		char newhwaddr[18], oldhwaddr[17];
+
 		lend = strchr(lstart, '\n');
 		if (!lend)
 			lend = lstart + strlen(lstart);
 		else
 			lend++;
+
 		if (strncmp(lstart, key, strlen(key)) != 0) {
 			lstart = lend;
 			continue;
 		}
+
 		p = strchr(lstart+strlen(key), '=');
 		if (!p) {
 			lstart = lend;
 			continue;
 		}
+
 		p++;
 		while (isblank(*p))
 			p++;
 		if (!*p)
 			return true;
+
 		p2 = p;
 		while (*p2 && !isblank(*p2) && *p2 != '\n')
 			p2++;
@@ -2944,8 +2950,12 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 			lstart = lend;
 			continue;
 		}
+
 		memcpy(oldhwaddr, p, 17);
-		new_hwaddr(newhwaddr);
+
+		if (!new_hwaddr(newhwaddr))
+			return false;
+
 		memcpy(p, newhwaddr, 17);
 		lxc_list_for_each(it, &conf->network) {
 			struct lxc_netdev *n = it->elem;
@@ -2955,6 +2965,7 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 
 		lstart = lend;
 	}
+
 	return true;
 }
 

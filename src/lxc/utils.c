@@ -1014,7 +1014,7 @@ int randseed(bool srand_it)
 	/*
 	   srand pre-seed function based on /dev/urandom
 	   */
-	unsigned int seed=time(NULL)+getpid();
+	unsigned int seed = time(NULL) + getpid();
 
 	FILE *f;
 	f = fopen("/dev/urandom", "r");
