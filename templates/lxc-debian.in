@@ -181,6 +181,14 @@ EOF
         echo "Timezone in container is not configured. Adjust it manually."
     fi
 
+    if [ -n "$authkey" ]; then
+        local ssh_dir_path="${rootfs}/root/.ssh"
+        mkdir -p "$ssh_dir_path"
+        cp "$authkey" "${ssh_dir_path}/authorized_keys"
+        chmod 700 "$ssh_dir_path"
+        echo "Inserted SSH public key from '$authkey' into /root/.ssh/authorized_keys"
+    fi
+
     return 0
 }
 
@@ -603,12 +611,13 @@ Usage: $1 -h|--help -p|--path=<path> [-c|--clean] [-a|--arch=<arch>] [-r|--relea
                                      [--mirror=<mirror>] [--security-mirror=<security mirror>]
                                      [--package=<package_name1,package_name2,...>]
                                      [-I|--interpreter-path=<interpreter path>]
-                                     [-F | --flush-cache]
+                                     [-F | --flush-cache] [-S|--auth-key=<keyfile>]
 
 Options :
 
   -h, --help             print this help text
   -p, --path=PATH        directory where config and rootfs of this VM will be kept
+  -S, --auth-key=KEYFILE SSH public key to inject into the container as the root user.
   -a, --arch=ARCH        The container architecture. Can be one of: i686, x86_64,
                          amd64, armhf, armel, powerpc. Defaults to host arch.
   -r, --release=RELEASE  Debian release. Can be one of: wheezy, jessie, stretch, sid.
@@ -637,7 +646,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:a:r:cI:F -l arch:,clean,help,enable-non-free,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror:,interpreter-path:,flush-cache -- "$@")
+options=$(getopt -o hp:n:a:r:cI:FS: -l arch:,auth-key:,clean,help,enable-non-free,mirror:,name:,packages:,path:,release:,rootfs:,security-mirror:,interpreter-path:,flush-cache -- "$@")
 if [ $? -ne 0 ]; then
         usage "$(basename "$0")"
         exit 1
@@ -673,6 +682,7 @@ do
            --)                shift 1; break ;;
 
         -a|--arch)            arch=$2; shift 2;;
+        -S|--auth-key)        authkey=$2; shift 2;;
         -I|--interpreter-path)
                               interpreter="$2"; shift 2;;
         -c|--clean)           clean=1; shift 1;;
@@ -752,6 +762,19 @@ fi
 if [ "$(id -u)" != "0" ]; then
     echo "This script should be run as 'root'"
     exit 1
+fi
+
+if [ -n "$authkey" ]; then
+    if [ ! -f "$authkey" ]; then
+	echo "SSH keyfile '$authkey' not found"
+	exit 1
+    fi
+    # This is mostly to prevent accidental uage of the private key instead
+    # of the public key.
+    if [ "${authkey: -4}" != ".pub" ]; then
+	echo "SSH keyfile '$authkey' does not end with '.pub'"
+	exit 1
+    fi
 fi
 
 current_release=$(wget "${MIRROR}/dists/stable/Release" -O - 2> /dev/null | head |awk '/^Codename: (.*)$/ { print $2; }')
