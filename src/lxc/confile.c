@@ -747,6 +747,9 @@ static int config_network_ipv4(const char *key, const char *value,
 	struct lxc_list *list;
 	char *cursor, *slash, *addr = NULL, *bcast = NULL, *prefix = NULL;
 
+	if (!value || !strlen(value))
+		return lxc_clear_config_item(lxc_conf, key);
+
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
 		return -1;
@@ -869,6 +872,9 @@ static int config_network_ipv6(const char *key, const char *value,
 	struct lxc_list *list;
 	char *slash,*valdup;
 	char *netmask;
+
+	if (!value || !strlen(value))
+		return lxc_clear_config_item(lxc_conf, key);
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
