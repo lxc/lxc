@@ -31,7 +31,7 @@
 FEDORA_RELEASE_MIN=24
 FEDORA_RELEASE_DEFAULT=${FEDORA_RELEASE_DEFAULT:-25}
 FEDORA_RSYNC_URL="${FEDORA_RSYNC_URL:-archives.fedoraproject.org::fedora-enchilada}"
-MIRRORLIST_URL=${MIRRORLIST_URL:-http://mirrors.fedoraproject.org/mirrorlist}
+MIRRORLIST_URL=${MIRRORLIST_URL:-https://mirrors.fedoraproject.org/mirrorlist}
 
 local_state_dir="@LOCALSTATEDIR@"
 lxc_path="@LXCPATH@"
