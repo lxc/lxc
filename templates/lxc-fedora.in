@@ -141,17 +141,28 @@ bootstrap_fedora()
         local image_path="/linux/releases/${FEDORA_RELEASE_DEFAULT}/Everything/${arch}/os/images/install.img"
         local ret=1
 
-        if [ -n "${mirror}" ]
+        if [ -n "${rsync}" ]
         then
-            echo -n "Downloading LiveOS squashfs image from ${mirror} ... "
-            curl --silent --show-error --fail --remote-name "${mirror}${image_path}"
-            ret=$?
-            echo
-        else
             echo "Syncing LiveOS squashfs image from ${FEDORA_RSYNC_URL} ... "
             rsync --archive --info=progress "${FEDORA_RSYNC_URL}${image_path}" .
             ret=$?
+        else
+            if [ -z "${mirror}" ]
+            then
+                get_mirrors || return $?
+            fi
+            for url in ${mirror:${mirror_urls}}
+            do
+                echo "Downloading LiveOS squashfs image from ${url} ... "
+                if ! curl --silent --show-error --fail --remote-name "${mirror}${image_path}"
+                then
+                    echo "Error: Image download failed."
+                    continue
+                fi
+                ret=$?
+            done
         fi
+
         if [ "${ret}" != 0 ] || [ ! -s install.img ]
         then
             echo "Error: Download of squashfs image failed."
@@ -644,6 +655,36 @@ download_fedora()
     return 0
 }
 
+# Query the Fedora mirrorlist for several HTTPS mirrors
+#
+get_mirrors()
+{
+    for trynumber in 1 2 3 4
+    do
+        [ "${trynumber}" != 1 ] && echo -n "Trying again ... "
+
+        # choose some mirrors by parsing directory index
+        mirror_urls=$(curl --silent --show-error --fail "${MIRRORLIST_URL}?repo=fedora-${release}&arch=${target_arch}" | sed '/^https:/!d' | sed '2,6!d')
+
+        # shellcheck disable=SC2181
+        if [ $? -eq 0 ] && [ -n "${mirror_urls}" ]
+        then
+            break
+        fi
+
+        echo "Warning: Failed to get a mirror on try ${trynumber}."
+        sleep 3
+    done
+
+    if [ -z "${mirror_urls}" ]
+    then
+        echo "Error: Failed to retrieve Fedora mirror URL. Please use '-m MIRROR' option."
+        return 1
+    fi
+
+    return 0
+}
+
 # Install a functional Fedora rootfs into the container root
 #
 install_fedora()
@@ -772,28 +813,12 @@ setup_repositories()
         # if no mirror given, get an appropriate mirror from the mirror list
         if [ -z "${mirror}" ]
         then
-            for trynumber in 1 2 3 4
-            do
-                [ "${trynumber}" != 1 ] && echo -n "Trying again ... "
-
-                # choose some mirrors by parsing directory index
-                mirror_urls=$(curl --silent --show-error --fail "${MIRRORLIST_URL}?repo=fedora-${release}&arch=${target_arch}" | sed -e '/^http:/!d' -e '2,6!d')
-
-                # shellcheck disable=SC2181
-                if [ $? -eq 0 ] && [ -n "${mirror_urls}" ]
-                then
-                    break
-                fi
-
-                echo "Warning: Failed to get a mirror on try ${trynumber}."
-                sleep 3
-             done
+             get_mirrors || return $?
          else
              # construct release-specific mirror url
              mirror="${mirror}/linux/releases/${release}/Everything/${target_arch}/os"
          fi
 
-         # this will fall through if we didn't get any mirrors
          for mirror_url in ${mirror:-${mirror_urls}}
          do
             local release_url="${mirror_url}/Packages/f"
@@ -912,8 +937,7 @@ Template options:
       --fqdn             Fully qualified domain name (FQDN)
   -h, --help             Print this help text
       --mask-tmp         Prevent systemd from over-mounting /tmp with tmpfs.
-      --mirror=MIRROR    Fedora mirror to use during installation. Overrides the
-                         FEDORA_RSYNC_URL environment variable (see below).
+      --mirror=MIRROR    Fedora mirror to use during installation.
   -p, --path=PATH        Path to where the container will be created,
                          defaults to ${lxc_path}.
   -P, --packages=PKGS    Comma-separated list of additional RPM packages to
@@ -921,6 +945,8 @@ Template options:
   -R, --release=RELEASE  Fedora release number of the container, defaults
                          to host's release if the host is Fedora.
       --rootfs=ROOTFS    Path for the actual container root file system
+      --rsync            Use rsync instead of HTTPS to download bootstrap
+                         image (insecure).
 
 Environment variables:
 
@@ -930,7 +956,7 @@ Environment variables:
   MIRRORLIST_URL         List of Fedora mirrors queried if no custom mirror is
                          given. Defaults to '${MIRRORLIST_URL}'
 
-  FEDORA_RSYNC_URL       Fedora rsync mirror to use for bootstrap setup.
+  FEDORA_RSYNC_URL       Fedora rsync URL to use for bootstrap with '--rsync'.
                          Defaults to '${FEDORA_RSYNC_URL}'
 
   FEDORA_RELEASE_DEFAULT Set default Fedora release if not detected from the
@@ -967,6 +993,7 @@ do
         --mirror)       mirror="${2}";   shift 2 ;;
         -P|--packages)  packages="${2}"; shift 2 ;;
         -R|--release)   release="${2}";  shift 2 ;;
+        --rsync)        rsync=1;         shift 1 ;;
         --)             shift 1;         break   ;;
         *)                               break   ;;
     esac
