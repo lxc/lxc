@@ -49,6 +49,14 @@
 #include "utils.h"
 #include "network.h"
 
+#define usernic_debug_stream(stream, format, ...)                              \
+	do {                                                                   \
+		fprintf(stream, "%s: %d: %s: " format, __FILE__, __LINE__,     \
+			__func__, __VA_ARGS__);                                \
+	} while (false)
+
+#define usernic_error(format, ...) usernic_debug_stream(stderr, format, __VA_ARGS__)
+
 static void usage(char *me, bool fail)
 {
 	fprintf(stderr, "Usage: %s pid type bridge nicname\n", me);
@@ -153,7 +161,7 @@ static char *get_eow(char *s, char *e)
 static char *find_line(char *p, char *e, char *u, char *t, char *l)
 {
 	char *p1, *p2, *ret;
-	
+
 	while (p<e  && (p1 = get_eol(p, e)) < e) {
 		ret = p;
 		if (*p == '#')
@@ -473,68 +481,122 @@ again:
 static int rename_in_ns(int pid, char *oldname, char **newnamep)
 {
 	char nspath[MAXPATHLEN];
+	uid_t ruid, suid, euid;
+	int fret = -1;
 	int fd = -1, ofd = -1, ret, ifindex = -1;
 	bool grab_newname = false;
 
 	ret = snprintf(nspath, MAXPATHLEN, "/proc/%d/ns/net", getpid());
 	if (ret < 0 || ret >= MAXPATHLEN)
-		return -1;
+		goto do_partial_cleanup;
+
 	if ((ofd = open(nspath, O_RDONLY)) < 0) {
-		fprintf(stderr, "Opening %s\n", nspath);
-		return -1;
+		usernic_error("Failed opening network namespace path for '%d'.", getpid());
+		goto do_partial_cleanup;
 	}
+
 	ret = snprintf(nspath, MAXPATHLEN, "/proc/%d/ns/net", pid);
 	if (ret < 0 || ret >= MAXPATHLEN)
-		goto out_err;
+		goto do_partial_cleanup;
 
 	if ((fd = open(nspath, O_RDONLY)) < 0) {
-		fprintf(stderr, "Opening %s\n", nspath);
-		goto out_err;
+		usernic_error("Failed opening network namespace path for '%d'.", pid);
+		goto do_partial_cleanup;
 	}
-	if (setns(fd, 0) < 0) {
-		fprintf(stderr, "setns to container network namespace\n");
-		goto out_err;
+
+	ret = getresuid(&ruid, &euid, &suid);
+	if (ret < 0) {
+		usernic_error("Failed to retrieve real, effective, and saved "
+			      "user IDs: %s\n",
+			      strerror(errno));
+		goto do_partial_cleanup;
 	}
-	close(fd); fd = -1;
+
+	ret = setns(fd, CLONE_NEWNET);
+	close(fd);
+	fd = -1;
+	if (ret < 0) {
+		usernic_error("Failed to setns() to the network namespace of "
+			      "the container with PID %d: %s.\n",
+			      pid, strerror(errno));
+		goto do_partial_cleanup;
+	}
+
+	ret = setresuid(ruid, ruid, 0);
+	if (ret < 0) {
+		usernic_error("Failed to drop privilege by setting effective "
+			      "user id and real user id to %d, and saved user "
+			      "ID to 0: %s.\n",
+			      ruid, strerror(errno));
+		// COMMENT(brauner): It's ok to jump to do_full_cleanup here
+		// since setresuid() will succeed when trying to set real,
+		// effective, and saved to values they currently have.
+		goto do_full_cleanup;
+	}
+
 	if (!*newnamep) {
 		grab_newname = true;
 		*newnamep = VETH_DEF_NAME;
-		if (!(ifindex = if_nametoindex(oldname))) {
-			fprintf(stderr, "failed to get netdev index\n");
-			goto out_err;
+
+		ifindex = if_nametoindex(oldname);
+		if (!ifindex) {
+			usernic_error("Failed to get netdev index: %s.\n",
+				      strerror(errno));
+			goto do_full_cleanup;
 		}
 	}
-	if ((ret = lxc_netdev_rename_by_name(oldname, *newnamep)) < 0) {
-		fprintf(stderr, "Error %d renaming netdev %s to %s in container\n", ret, oldname, *newnamep);
-		goto out_err;
+
+	ret = lxc_netdev_rename_by_name(oldname, *newnamep);
+	if (ret < 0) {
+		usernic_error(
+		    "Error %d renaming netdev %s to %s in container.\n", ret,
+		    oldname, *newnamep);
+		goto do_full_cleanup;
 	}
+
 	if (grab_newname) {
-		char ifname[IFNAMSIZ], *namep = ifname;
+		char ifname[IFNAMSIZ];
+		char *namep = ifname;
 		if (!if_indextoname(ifindex, namep)) {
-			fprintf(stderr, "Failed to get new netdev name\n");
-			goto out_err;
+			usernic_error("Failed to get new netdev name: %s.\n",
+				      strerror(errno));
+			goto do_full_cleanup;
 		}
 		*newnamep = strdup(namep);
 		if (!*newnamep)
-			goto out_err;
+			goto do_full_cleanup;
 	}
-	if (setns(ofd, 0) < 0) {
-		fprintf(stderr, "Error returning to original netns\n");
-		close(ofd);
-		return -1;
+
+	fret = 0;
+
+do_full_cleanup:
+	ret = setresuid(ruid, euid, suid);
+	if (ret < 0) {
+		usernic_error(
+		    "Failed to restore privilege by setting effective "
+		    "user id to %d, real user id to %d, and saved user "
+		    "ID to %d: %s.\n",
+		    ruid, euid, suid, strerror(errno));
+		fret = -1;
+		// COMMENT(brauner): setns() should fail if setresuid() doesn't
+		// succeed but there's no harm in falling through; keeps the
+		// code cleaner.
 	}
-	close(ofd);
 
-	return 0;
+	ret = setns(ofd, CLONE_NEWNET);
+	if (ret < 0) {
+		usernic_error("Failed to setns() to original network namespace "
+			      "of PID %d: %s.\n",
+			      ofd, strerror(errno));
+		fret = -1;
+	}
 
-out_err:
-	if (ofd >= 0)
-		close(ofd);
-	if (setns(ofd, 0) < 0)
-		fprintf(stderr, "Error returning to original network namespace\n");
+do_partial_cleanup:
 	if (fd >= 0)
 		close(fd);
-	return -1;
+	close(ofd);
+
+	return fret;
 }
 
 /*
