@@ -36,7 +36,7 @@
 
 lxc_log_define(lxc_caps, lxc);
 
-#if HAVE_SYS_CAPABILITY_H
+#if HAVE_LIBCAP
 
 #ifndef PR_CAPBSET_READ
 #define PR_CAPBSET_READ 23

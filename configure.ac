@@ -370,7 +370,8 @@ fi
 AM_CONDITIONAL([ENABLE_CAP], [test "x$enable_capabilities" = "xyes"])
 
 AM_COND_IF([ENABLE_CAP],
-	[AC_CHECK_LIB(cap,cap_set_proc,[true],[AC_MSG_ERROR([You are missing libcap support.])])
+	[AC_CHECK_HEADER([sys/capability.h],[],[AC_MSG_ERROR([You must install the libcap development package in order to compile lxc])])
+	AC_CHECK_LIB(cap,cap_set_proc,[],[AC_MSG_ERROR([You must install the libcap development package in order to compile lxc])])
 	AC_SUBST([CAP_LIBS], [-lcap])])
 
 # HAVE_SCMP_FILTER_CTX=1 will tell us we have libseccomp api >= 1.0.0
@@ -638,7 +639,7 @@ AC_CHECK_DECLS([PR_SET_NO_NEW_PRIVS], [], [], [#include <sys/prctl.h>])
 AC_CHECK_DECLS([PR_GET_NO_NEW_PRIVS], [], [], [#include <sys/prctl.h>])
 
 # Check for some headers
-AC_CHECK_HEADERS([sys/signalfd.h pty.h ifaddrs.h sys/capability.h sys/memfd.h sys/personality.h utmpx.h sys/timerfd.h])
+AC_CHECK_HEADERS([sys/signalfd.h pty.h ifaddrs.h sys/memfd.h sys/personality.h utmpx.h sys/timerfd.h])
 
 # lookup major()/minor()/makedev()
 AC_HEADER_MAJOR

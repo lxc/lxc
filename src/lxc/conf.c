@@ -91,7 +91,7 @@
 #include "utils.h"
 #include "lsm/lsm.h"
 
-#if HAVE_SYS_CAPABILITY_H
+#if HAVE_LIBCAP
 #include <sys/capability.h>
 #endif
 
@@ -107,7 +107,7 @@
 
 lxc_log_define(lxc_conf, lxc);
 
-#if HAVE_SYS_CAPABILITY_H
+#if HAVE_LIBCAP
 #ifndef CAP_SETFCAP
 #define CAP_SETFCAP 31
 #endif
@@ -316,7 +316,7 @@ static struct mount_opt mount_opt[] = {
 	{ NULL,            0, 0              },
 };
 
-#if HAVE_SYS_CAPABILITY_H
+#if HAVE_LIBCAP
 static struct caps_opt caps_opt[] = {
 	{ "chown",             CAP_CHOWN             },
 	{ "dac_override",      CAP_DAC_OVERRIDE      },
