@@ -27,7 +27,7 @@
 #ifndef __LXC_CAPS_H
 #define __LXC_CAPS_H
 
-#if HAVE_SYS_CAPABILITY_H
+#if HAVE_LIBCAP
 #include <sys/capability.h>
 
 extern int lxc_caps_down(void);

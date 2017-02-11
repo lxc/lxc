@@ -46,7 +46,7 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 
-#if HAVE_SYS_CAPABILITY_H
+#if HAVE_LIBCAP
 #include <sys/capability.h>
 #endif
 
@@ -361,7 +361,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	}
 
 	if (handler->conf->need_utmp_watch) {
-		#if HAVE_SYS_CAPABILITY_H
+		#if HAVE_LIBCAP
 		if (lxc_utmp_mainloop_add(&descr, handler)) {
 			ERROR("Failed to add utmp handler to LXC mainloop.");
 			goto out_mainloop_open;
@@ -773,7 +773,7 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
-	#if HAVE_SYS_CAPABILITY_H
+	#if HAVE_LIBCAP
 	if (handler->conf->need_utmp_watch) {
 		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
 			SYSERROR("Failed to remove the CAP_SYS_BOOT capability.");
@@ -873,7 +873,7 @@ static int do_start(void *data)
 		 * further above. Only drop groups if we can, so ensure that we
 		 * have necessary privilege.
 		 */
-		#if HAVE_SYS_CAPABILITY_H
+		#if HAVE_LIBCAP
 		have_cap_setgid = lxc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
 		#else
 		have_cap_setgid = false;
@@ -1312,7 +1312,7 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 	handler->netnsfd = -1;
 
 	if (must_drop_cap_sys_boot(handler->conf)) {
-		#if HAVE_SYS_CAPABILITY_H
+		#if HAVE_LIBCAP
 		DEBUG("Dropping CAP_SYS_BOOT capability.");
 		#else
 		DEBUG("Not dropping CAP_SYS_BOOT capability as capabilities aren't supported.");
