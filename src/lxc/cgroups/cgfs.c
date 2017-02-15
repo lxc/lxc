@@ -1880,7 +1880,7 @@ static int create_or_remove_cgroup(bool do_remove,
 		} else
 			r = rmdir(buf);
 	} else
-		r = mkdir(buf, 0777);
+		r = mkdir_p(buf, 0777);
 	saved_errno = errno;
 	free(buf);
 	errno = saved_errno;
