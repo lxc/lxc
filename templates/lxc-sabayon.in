@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # vim: set ts=4 sw=4 expandtab
 
 # Exit on error and treat unset variables as an error.
