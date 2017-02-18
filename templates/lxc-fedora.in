@@ -100,8 +100,8 @@ export PATH=${PATH}:/usr/sbin:/usr/bin:/sbin:/bin
 # dnf package manager arguments
 dnf_args=( --assumeyes --best --allowerasing --disablerepo=* --enablerepo=fedora --enablerepo=updates )
 
-# This function is going to setup a minimal Fedora bootstrap environment
-# which will be used to create new containers on non-Fedora hosts.
+# This function is going to setup a minimal host-arch native Fedora bootstrap
+# environment which will be used to create new containers on non-Fedora hosts.
 #
 bootstrap_fedora()
 {
@@ -125,7 +125,7 @@ bootstrap_fedora()
         fi
     fi
 
-    echo "Setting up new Fedora ${FEDORA_RELEASE_DEFAULT} (${arch}) bootstrap environment."
+    echo "Setting up new Fedora ${FEDORA_RELEASE_DEFAULT} (${basearch}) bootstrap environment."
 
     [[ -d "${cache}" ]] || mkdir -p "${cache}"
 
@@ -137,29 +137,33 @@ bootstrap_fedora()
     # download the LiveOS squashfs image
     if [ ! -f "${cache}/install.img" ]
     then
-
-        local image_path="/linux/releases/${FEDORA_RELEASE_DEFAULT}/Everything/${arch}/os/images/install.img"
+        local os_path="linux/releases/${FEDORA_RELEASE_DEFAULT}/Everything/${basearch}/os"
+        local image_path="images/install.img"
         local ret=1
 
         if [ -n "${rsync}" ]
         then
             echo "Syncing LiveOS squashfs image from ${FEDORA_RSYNC_URL} ... "
-            rsync --archive --info=progress "${FEDORA_RSYNC_URL}${image_path}" .
+            rsync --archive --info=progress "${FEDORA_RSYNC_URL}/${os_path}/${image_path}" .
             ret=$?
         else
             if [ -z "${mirror}" ]
             then
-                get_mirrors || return $?
+                get_mirrors "${FEDORA_RELEASE_DEFAULT}" "${basearch}" || return $?
+            else
+                local mirror_url="${mirror}/${os_path}"
             fi
-            for url in ${mirror:${mirror_urls}}
+            for url in ${mirror:-${mirror_urls}}
             do
                 echo "Downloading LiveOS squashfs image from ${url} ... "
-                if ! curl --silent --show-error --fail --remote-name "${mirror}${image_path}"
-                then
-                    echo "Error: Image download failed."
-                    continue
-                fi
+                curl --silent --show-error --fail --remote-name "${url}/${image_path}"
                 ret=$?
+                if [ ${ret} -ne 0 ]
+                then
+                    continue
+                else
+                    break
+                fi
             done
         fi
 
@@ -659,12 +663,15 @@ download_fedora()
 #
 get_mirrors()
 {
+    local release="${1}"
+    local mirror_arch="${2}"
+
     for trynumber in 1 2 3 4
     do
         [ "${trynumber}" != 1 ] && echo -n "Trying again ... "
 
         # choose some mirrors by parsing directory index
-        mirror_urls=$(curl --silent --show-error --fail "${MIRRORLIST_URL}?repo=fedora-${release}&arch=${target_arch}" | sed '/^https:/!d' | sed '2,6!d')
+        mirror_urls=$(curl --silent --show-error --fail "${MIRRORLIST_URL}?repo=fedora-${release}&arch=${mirror_arch}" | sed '/^https:/!d' | sed '2,6!d')
 
         # shellcheck disable=SC2181
         if [ $? -eq 0 ] && [ -n "${mirror_urls}" ]
@@ -813,14 +820,14 @@ setup_repositories()
         # if no mirror given, get an appropriate mirror from the mirror list
         if [ -z "${mirror}" ]
         then
-             get_mirrors || return $?
-         else
-             # construct release-specific mirror url
-             mirror="${mirror}/linux/releases/${release}/Everything/${target_arch}/os"
-         fi
+            get_mirrors "${release}" "${target_arch}" || return $?
+        else
+            # construct release-specific mirror url
+            mirror="${mirror}/linux/releases/${release}/Everything/${target_arch}/os"
+        fi
 
-         for mirror_url in ${mirror:-${mirror_urls}}
-         do
+        for mirror_url in ${mirror:-${mirror_urls}}
+        do
             local release_url="${mirror_url}/Packages/f"
 
             for pkg in fedora-release-${release} fedora-repos-${release}
@@ -937,7 +944,7 @@ Template options:
       --fqdn             Fully qualified domain name (FQDN)
   -h, --help             Print this help text
       --mask-tmp         Prevent systemd from over-mounting /tmp with tmpfs.
-      --mirror=MIRROR    Fedora mirror to use during installation.
+  -M, --mirror=MIRROR    Fedora mirror to use during installation.
   -p, --path=PATH        Path to where the container will be created,
                          defaults to ${lxc_path}.
   -P, --packages=PKGS    Comma-separated list of additional RPM packages to
@@ -966,7 +973,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:hp:n:cR:dP: -l help,path:,rootfs:,name:,clean,release:,arch:,debug,fqdn:,mask-tmp,mirror:,packages: -- "$@")
+options=$(getopt -o a:hp:n:cR:dP:M: -l help,path:,rootfs:,name:,clean,release:,arch:,debug,fqdn:,mask-tmp,mirror:,packages:,rsync -- "$@")
 # shellcheck disable=SC2181
 if [ $? -ne 0 ]; then
     usage
@@ -990,7 +997,7 @@ do
         -d|--debug)     debug=1;         shift 1 ;;
         --fqdn)         utsname="${2}";  shift 2 ;;
         --mask-tmp)     masktmp=1;       shift 1 ;;
-        --mirror)       mirror="${2}";   shift 2 ;;
+        -M|--mirror)    mirror="${2}";   shift 2 ;;
         -P|--packages)  packages="${2}"; shift 2 ;;
         -R|--release)   release="${2}";  shift 2 ;;
         --rsync)        rsync=1;         shift 1 ;;
@@ -1044,18 +1051,18 @@ then
     is_fedora=true
 fi
 
-basearch=${arch}
 # Map a few architectures to their generic Fedora repository archs.
 # The two ARM archs are a bit of a guesstimate for the v5 and v6
 # archs.  V6 should have hardware floating point (Rasberry Pi).
 # The "arm" arch is safer (no hardware floating point).  So
 # there may be cases where we "get it wrong" for some v6 other
 # than RPi.
-case "$arch" in
-i686) basearch=i386 ;;
-armv3l|armv4l|armv5l) basearch=arm ;;
-armv6l|armv7l|armv8l) basearch=armhfp ;;
-*) ;;
+basearch=${arch}
+case "${arch}" in
+    i686)                 basearch=i386   ;;
+    armv3l|armv4l|armv5l) basearch=arm    ;;
+    armv6l|armv7l|armv8l) basearch=armhfp ;;
+    *) ;;
 esac
 
 case "${basearch}" in
