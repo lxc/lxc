@@ -125,7 +125,7 @@ bootstrap_fedora()
         fi
     fi
 
-    echo "Setting up new Fedora ${FEDORA_RELEASE_DEFAULT} (${arch}) bootstrap environment."
+    echo "Setting up new Fedora ${FEDORA_RELEASE_DEFAULT} (${basearch}) bootstrap environment."
 
     [[ -d "${cache}" ]] || mkdir -p "${cache}"
 
@@ -137,29 +137,33 @@ bootstrap_fedora()
     # download the LiveOS squashfs image
     if [ ! -f "${cache}/install.img" ]
     then
-
-        local image_path="/linux/releases/${FEDORA_RELEASE_DEFAULT}/Everything/${arch}/os/images/install.img"
+        local os_path="linux/releases/${FEDORA_RELEASE_DEFAULT}/Everything/${basearch}/os"
+        local image_path="images/install.img"
         local ret=1
 
         if [ -n "${rsync}" ]
         then
             echo "Syncing LiveOS squashfs image from ${FEDORA_RSYNC_URL} ... "
-            rsync --archive --info=progress "${FEDORA_RSYNC_URL}${image_path}" .
+            rsync --archive --info=progress "${FEDORA_RSYNC_URL}/${os_path}/${image_path}" .
             ret=$?
         else
             if [ -z "${mirror}" ]
             then
-                get_mirrors "${basearch}" || return $?
+                get_mirrors "${FEDORA_RELEASE_DEFAULT}" "${basearch}" || return $?
+            else
+                local mirror_url="${mirror}/${os_path}"
             fi
-            for url in ${mirror:${mirror_urls}}
+            for url in ${mirror:-${mirror_urls}}
             do
                 echo "Downloading LiveOS squashfs image from ${url} ... "
-                if ! curl --silent --show-error --fail --remote-name "${mirror}${image_path}"
-                then
-                    echo "Error: Image download failed."
-                    continue
-                fi
+                curl --silent --show-error --fail --remote-name "${url}/${image_path}"
                 ret=$?
+                if [ ${ret} -ne 0 ]
+                then
+                    continue
+                else
+                    break
+                fi
             done
         fi
 
@@ -659,7 +663,8 @@ download_fedora()
 #
 get_mirrors()
 {
-    local mirror_arch="${1}"
+    local release="${1}"
+    local mirror_arch="${2}"
 
     for trynumber in 1 2 3 4
     do
@@ -815,7 +820,7 @@ setup_repositories()
         # if no mirror given, get an appropriate mirror from the mirror list
         if [ -z "${mirror}" ]
         then
-             get_mirrors "${target_arch}" || return $?
+             get_mirrors "${release}" "${target_arch}" || return $?
          else
              # construct release-specific mirror url
              mirror="${mirror}/linux/releases/${release}/Everything/${target_arch}/os"
