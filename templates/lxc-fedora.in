@@ -820,14 +820,14 @@ setup_repositories()
         # if no mirror given, get an appropriate mirror from the mirror list
         if [ -z "${mirror}" ]
         then
-             get_mirrors "${release}" "${target_arch}" || return $?
-         else
-             # construct release-specific mirror url
-             mirror="${mirror}/linux/releases/${release}/Everything/${target_arch}/os"
-         fi
+            get_mirrors "${release}" "${target_arch}" || return $?
+        else
+            # construct release-specific mirror url
+            mirror="${mirror}/linux/releases/${release}/Everything/${target_arch}/os"
+        fi
 
-         for mirror_url in ${mirror:-${mirror_urls}}
-         do
+        for mirror_url in ${mirror:-${mirror_urls}}
+        do
             local release_url="${mirror_url}/Packages/f"
 
             for pkg in fedora-release-${release} fedora-repos-${release}
