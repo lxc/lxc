@@ -944,7 +944,7 @@ Template options:
       --fqdn             Fully qualified domain name (FQDN)
   -h, --help             Print this help text
       --mask-tmp         Prevent systemd from over-mounting /tmp with tmpfs.
-      --mirror=MIRROR    Fedora mirror to use during installation.
+  -M, --mirror=MIRROR    Fedora mirror to use during installation.
   -p, --path=PATH        Path to where the container will be created,
                          defaults to ${lxc_path}.
   -P, --packages=PKGS    Comma-separated list of additional RPM packages to
@@ -973,7 +973,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o a:hp:n:cR:dP: -l help,path:,rootfs:,name:,clean,release:,arch:,debug,fqdn:,mask-tmp,mirror:,packages: -- "$@")
+options=$(getopt -o a:hp:n:cR:dP:M: -l help,path:,rootfs:,name:,clean,release:,arch:,debug,fqdn:,mask-tmp,mirror:,packages:,rsync -- "$@")
 # shellcheck disable=SC2181
 if [ $? -ne 0 ]; then
     usage
@@ -997,7 +997,7 @@ do
         -d|--debug)     debug=1;         shift 1 ;;
         --fqdn)         utsname="${2}";  shift 2 ;;
         --mask-tmp)     masktmp=1;       shift 1 ;;
-        --mirror)       mirror="${2}";   shift 2 ;;
+        -M|--mirror)    mirror="${2}";   shift 2 ;;
         -P|--packages)  packages="${2}"; shift 2 ;;
         -R|--release)   release="${2}";  shift 2 ;;
         --rsync)        rsync=1;         shift 1 ;;
