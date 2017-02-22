@@ -334,8 +334,18 @@ static void exec_criu(struct criu_opts *opts)
 		goto err;
 
 	while (getmntent_r(mnts, &mntent, buf, sizeof(buf))) {
-		char *fmt, *key, *val;
+		char *fmt, *key, *val, *mntdata;
 		char arg[2 * PATH_MAX + 2];
+		unsigned long flags;
+
+		if (parse_mntopts(mntent.mnt_opts, &flags, &mntdata) < 0)
+			goto err;
+
+		free(mntdata);
+
+		/* only add --ext-mount-map for actual bind mounts */
+		if (!(flags & MS_BIND))
+			continue;
 
 		if (strcmp(opts->action, "dump") == 0) {
 			fmt = "/%s:%s";
