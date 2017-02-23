@@ -348,9 +348,6 @@ openssh-server
     if [ ! -f $releasekeyring ]; then
         releasekeyring="$cache/archive-key.gpg"
         case $release in
-            "squeeze")
-                gpgkeyname="archive-key-6.0"
-                ;;
             "wheezy")
                 gpgkeyname="archive-key-7.0"
                 ;;
