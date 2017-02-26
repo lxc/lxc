@@ -319,7 +319,7 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	 * by a process different from the container init.
 	 */
 	if (siginfo.ssi_pid != *pid) {
-		WARN("Invalid pid for SIGCHLD. Received pid %d, expected pid %d.", siginfo.ssi_pid, *pid);
+		NOTICE("Received SIGCHLD from pid %d instead of container init %d.", siginfo.ssi_pid, *pid);
 		return init_died ? 1 : 0;
 	}
 
