@@ -106,7 +106,7 @@ int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespec *time
 	yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
 
 	/* Given year-of-era, and era, one can now compute the year. */
-	year = (yoe) + era * 400;
+	year = yoe + era * 400;
 
 	/* Also the day-of-year, again with the year beginning on Mar. 1, can be
 	 * computed from the day-of-era and year-of-era.
@@ -125,6 +125,11 @@ int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespec *time
 	 * the civil system: [1, 12] to find the correct month.
 	 */
 	month = mp + (mp < 10 ? 3 : -9);
+
+	/* The algorithm assumes that a year begins on 1 March, so add 1 before
+	 * that. */
+	if (month < 3)
+		year++;
 
 	/* Transform days in the epoch to seconds. */
 	d_in_s = epoch_to_days * 86400;
