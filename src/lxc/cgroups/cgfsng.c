@@ -986,7 +986,7 @@ static void get_existing_subsystems(char ***klist, char ***nlist)
 static void trim(char *s)
 {
 	size_t len = strlen(s);
-	while (s[len-1] == '\n')
+	while ((len > 1) && (s[len - 1] == '\n'))
 		s[--len] = '\0';
 }
 
