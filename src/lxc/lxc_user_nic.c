@@ -992,6 +992,8 @@ int main(int argc, char *argv[])
 	/* Now rename the link. */
 	if (rename_in_ns(pid, cnic, &vethname) < 0) {
 		usernic_error("%s", "Failed to rename the link.\n");
+		if (lxc_netdev_delete_by_name(cnic) < 0)
+			usernic_error("Failed to delete link \"%s\" the link. Manual cleanup needed.\n", cnic);
 		exit(EXIT_FAILURE);
 	}
 
