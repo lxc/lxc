@@ -3019,7 +3019,7 @@ bool lxc_delete_network(struct lxc_handler *handler)
 		/* Explicitly delete host veth device to prevent lingering
 		 * devices. We had issues in LXD around this.
 		 */
-		if (netdev->type == LXC_NET_VETH) {
+		if (netdev->type == LXC_NET_VETH && !am_unpriv()) {
 			char *hostveth;
 			if (netdev->priv.veth_attr.pair) {
 				hostveth = netdev->priv.veth_attr.pair;
