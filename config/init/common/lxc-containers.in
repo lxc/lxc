@@ -60,12 +60,12 @@ wait_for_bridge()
     fi
 
     for try in `seq 1 30`; do
-	for br in ${BRNAME}; do
-	     [ -r /sys/class/net/${br}/flags ] || { sleep 1; continue 2; }
-	     read flags < /sys/class/net/${br}/flags
-	     [ $((flags & 0x1)) -eq 1 ] || { sleep 1; continue 2; }
-	 done
-	return 0
+        for br in ${BRNAME}; do
+             [ -r /sys/class/net/${br}/flags ] || { sleep 1; continue 2; }
+             read flags < /sys/class/net/${br}/flags
+             [ $((flags & 0x1)) -eq 1 ] || { sleep 1; continue 2; }
+        done
+        return 0
     done
 }
 
