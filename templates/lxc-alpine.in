@@ -236,7 +236,6 @@ install() {
 	local branch="$3"
 	local extra_packages="$4"
 	local apk_cache="$LXC_CACHE_DIR/apk/$arch"
-	local repo_url="$MIRROR_URL/$branch/main"
 
 	if [ "$FLUSH_CACHE" = 'yes' ] && [ -d "$apk_cache" ]; then
 		einfo "Cleaning cached APK packages for $arch"
@@ -249,7 +248,10 @@ install() {
 
 	mkdir -p etc/apk
 	ln -s "$apk_cache" etc/apk/cache
-	echo "$repo_url" > etc/apk/repositories
+
+	local repo; for repo in main community; do
+		echo "$MIRROR_URL/$branch/$repo" >> etc/apk/repositories
+	done
 
 	install_packages "$arch" "alpine-base $extra_packages"
 	make_dev_nodes
