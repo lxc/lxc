@@ -66,6 +66,7 @@ rootfs=
 unprivileged=false
 mapped_uid=
 mapped_gid=
+flush_owner=false
 
 #========================  Helper Functions  ========================#
 
@@ -81,12 +82,15 @@ Template options:
     -d, --debug            Run this script in a debug mode (set -x and wget w/o -q).
     -m URL --mirror=URL    The Sabayon mirror to use; defaults to random mirror.
     -u, --unprivileged     Tuning of rootfs for unprivileged containers.
-                           Are needed --mapped-gid and --mapped-uid options.
     -r, --release          Identify release to use. Default is DAILY.
     --mapped-gid           Group Id to use on unprivileged container
                            (based of value present on file /etc/subgid).
     --mapped-uid           User Id to use on unprivileged container
                            (based of value present on file /etc/subuid)
+    --flush-owner          Only for directly creation of unprivileged containers
+                           through lxc-create command. Execute fuidshift command.
+                           Require --mapped-gid,--mapped-uid and --unprivileged
+                           options.
 
 Environment variables:
     RELEASE                Release version of Sabayon. Default is ${RELEASE}.
@@ -281,13 +285,18 @@ configure_container() {
     local unprivileged_options=""
 
     if [[ $unprivileged && $unprivileged == true ]] ; then
-        unprivileged_options="
+        if [[ $flush_owner == true ]] ; then
+            unprivileged_options="
 lxc.id_map = u 0 ${mapped_uid} 65536
 lxc.id_map = g 0 ${mapped_gid} 65536
+"
+        fi
+
+        unprivileged_options="
+$unprivileged_options
 
 # Include common configuration.
 lxc.include = $LXC_TEMPLATE_CONFIG/sabayon.userns.conf
-
 "
 
     else
@@ -332,7 +341,7 @@ parse_cmdline() {
 
     # Parse command options.
     local short_options="a:dm:n:p:r:hu"
-    local long_options="arch:,debug,mirror:,name:,path:,release:,rootfs:,mapped-uid:,mapped-gid:,help"
+    local long_options="arch:,debug,mirror:,name:,path:,release:,rootfs:,mapped-uid:,mapped-gid:,flush-owner,help"
 
     options=$(getopt -u -q -a -o "$short_options" -l "$long_options" -- "$@")
 
@@ -383,6 +392,9 @@ parse_cmdline() {
                 mapped_gid=$2
                 shift
                 ;;
+            --flush-owner)
+                flush_owner=true
+                ;;
             --)
                 break
                 ;;
@@ -415,11 +427,14 @@ parse_cmdline() {
     arch=$(parse_arch "$arch") \
         || die 1 "Unsupported architecture: $arch"
 
-    [[ $unprivileged && $unprivileged == true && -z "$mapped_uid" ]] && \
+    [[ $unprivileged == true && $flush_owner == true &&-z "$mapped_uid" ]] && \
         die 1 'Missing required option --mapped-uid with --unprivileged option'
 
-    [[ $unprivileged && $unprivileged == true && -z "$mapped_gid" ]] && \
+    [[ $unprivileged == true && $flush_owner == true && -z "$mapped_gid" ]] && \
         die 1 'Missing required option --mapped-gid with --unprivileged option'
+
+    [[ $flush_owner == true && $unprivileged == false ]] && \
+        die 1 'flush-owner require --unprivileged option'
 
     return 0
 }
@@ -441,7 +456,7 @@ main () {
     DEBUG="$debug"
     MIRROR_URL="${mirror_url:-$(random_mirror_url)}"
 
-    einfo "Use arch = $arch, mirror_url = $MIRROR_URL, path = $path, name = $name, release = $release, unprivileged = $unprivileged, rootfs = $rootfs, mapped_uid = $mapped_uid, mapped_gid = $mapped_gid"
+    einfo "Use arch = $arch, mirror_url = $MIRROR_URL, path = $path, name = $name, release = $release, unprivileged = $unprivileged, rootfs = $rootfs, mapped_uid = $mapped_uid, mapped_gid = $mapped_gid, flush_owner = $flush_owner"
 
     [ "$debug" = 'yes' ] && set -x
 
@@ -463,9 +478,11 @@ main () {
     systemd_container_tuning
 
     # Fix container for unprivileged mode.
-    if [[ $unprivileged && $unprivileged == true ]] ; then
+    if [[ $unprivileged == true ]] ; then
         unprivileged_rootfs
-        unprivileged_shift_owner
+        if [[ $flush_owner == true ]] ; then
+            unprivileged_shift_owner
+        fi
     fi
 
     return 0
