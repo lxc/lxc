@@ -78,6 +78,24 @@ echo -n "Utsname namespace: " && is_enabled CONFIG_UTS_NS
 echo -n "Ipc namespace: " && is_enabled CONFIG_IPC_NS yes
 echo -n "Pid namespace: " && is_enabled CONFIG_PID_NS yes
 echo -n "User namespace: " && is_enabled CONFIG_USER_NS
+if is_set CONFIG_USER_NS; then
+	if type newuidmap > /dev/null 2>&1; then
+		f=`type -P newuidmap`
+		if [ ! -u "${f}" ]; then
+			echo "Warning: newuidmap is not setuid-root"
+		fi
+	else
+		echo "newuidmap is not installed"
+	fi
+	if type newgidmap > /dev/null 2>&1; then
+		f=`type -P newgidmap`
+		if [ ! -u "${f}" ]; then
+			echo "Warning: newgidmap is not setuid-root"
+		fi
+	else
+		echo "newgidmap is not installed"
+	fi
+fi
 echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
 echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
 echo
