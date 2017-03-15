@@ -42,7 +42,6 @@ export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 arch=$(uname -m)
 default_path="@LXCPATH@"
 default_locale="en-US.UTF-8"
-default_timezone="UTC"
 pacman_config="/etc/pacman.conf"
 common_config="@LXCTEMPLATECONFIG@/common.conf"
 shared_config="@LXCTEMPLATECONFIG@/archlinux.common.conf"
@@ -87,9 +86,6 @@ configure_arch() {
 
     # hostname and nameservers
     echo "${name}" > "${rootfs_path}/etc/hostname"
-    while read r; do
-       [ "${r#nameserver}" = "$r" ] || echo "$r"
-    done < /etc/resolv.conf > "${rootfs_path}/etc/resolv.conf"
 
     # network configuration
     cat > "${rootfs_path}/etc/systemd/network/eth0.network" << EOF
@@ -104,7 +100,6 @@ EOF
     arch-chroot "${rootfs_path}" /bin/bash -s << EOF
 mkdir /run/lock
 locale-gen
-ln -s /usr/share/zoneinfo/${default_timezone} /etc/localtime
 # set default boot target
 ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
 # override getty@.service for container ttys
