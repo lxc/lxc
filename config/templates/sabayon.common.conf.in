@@ -54,6 +54,8 @@ lxc.cgroup.devices.allow = c 1:9 rwm
 #lxc.cgroup.devices.allow = c 10:228 rwm
 ## kvm
 #lxc.cgroup.devices.allow = c 10:232 rwm
+## /dev/mem
+#lxc.cgroup.devices.allow = c 1:1 rwm
 
 # If something doesn't work, try to comment this out.
 # Dropping sys_admin disables container root from doing a lot of things
