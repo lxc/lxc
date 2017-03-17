@@ -430,7 +430,14 @@ LXC_get_global_config_item(PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject *
 LXC_get_version(PyObject *self, PyObject *args)
 {
-    return PyUnicode_FromString(lxc_get_version());
+    const char *rv = NULL;
+
+    rv = lxc_get_version();
+    if (!rv) {
+        return PyUnicode_FromString("");
+    }
+
+    return PyUnicode_FromString(rv);
 }
 
 static PyObject *
@@ -484,6 +491,10 @@ LXC_list_containers(PyObject *self, PyObject *args, PyObject *kwds)
     /* Generate the tuple */
     list = PyTuple_New(list_count);
     for (i = 0; i < list_count; i++) {
+        if (!names[i]) {
+            continue;
+        }
+
         PyTuple_SET_ITEM(list, i, PyUnicode_FromString(names[i]));
         free(names[i]);
     }
@@ -528,7 +539,7 @@ Container_init(Container *self, PyObject *args, PyObject *kwds)
         Py_XDECREF(fs_config_path);
 
         PyErr_Format(PyExc_RuntimeError, "%s:%s:%d: error during init for container '%s'.",
-			__FUNCTION__, __FILE__, __LINE__, name);
+            __FUNCTION__, __FILE__, __LINE__, name);
         return -1;
     }
 
@@ -550,8 +561,14 @@ Container_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static PyObject *
 Container_config_file_name(Container *self, void *closure)
 {
-    return PyUnicode_FromString(
-                self->container->config_file_name(self->container));
+    char *rv = NULL;
+
+    rv = self->container->config_file_name(self->container);
+    if (!rv) {
+        return PyUnicode_FromString("");
+    }
+
+    return PyUnicode_FromString(rv);
 }
 
 static PyObject *
@@ -583,6 +600,10 @@ Container_init_pid(Container *self, void *closure)
 static PyObject *
 Container_name(Container *self, void *closure)
 {
+    if (!self->container->name) {
+        return PyUnicode_FromString("");
+    }
+
     return PyUnicode_FromString(self->container->name);
 }
 
@@ -599,7 +620,15 @@ Container_running(Container *self, void *closure)
 static PyObject *
 Container_state(Container *self, void *closure)
 {
-    return PyUnicode_FromString(self->container->state(self->container));
+    const char *rv = NULL;
+
+    rv = self->container->state(self->container);
+
+    if (!rv) {
+        return PyUnicode_FromString("");
+    }
+
+    return PyUnicode_FromString(rv);
 }
 
 /* Container Functions */
@@ -1023,8 +1052,15 @@ Container_get_config_item(Container *self, PyObject *args, PyObject *kwds)
 static PyObject *
 Container_get_config_path(Container *self, PyObject *args, PyObject *kwds)
 {
-    return PyUnicode_FromString(
-                self->container->get_config_path(self->container));
+    const char *rv = NULL;
+
+    rv = self->container->get_config_path(self->container);
+
+    if (!rv) {
+        return PyUnicode_FromString("");
+    }
+
+    return PyUnicode_FromString(rv);
 }
 
 static PyObject *
@@ -1088,6 +1124,11 @@ Container_get_interfaces(Container *self)
     /* Add the entries to the tuple and free the memory */
     i = 0;
     while (interfaces[i]) {
+        if (!interfaces[i]) {
+            i++;
+            continue;
+        }
+
         PyObject *unicode = PyUnicode_FromString(interfaces[i]);
         if (!unicode) {
             Py_DECREF(ret);
@@ -1143,6 +1184,11 @@ Container_get_ips(Container *self, PyObject *args, PyObject *kwds)
     /* Add the entries to the tuple and free the memory */
     i = 0;
     while (ips[i]) {
+        if (!ips[i]) {
+            i++;
+            continue;
+        }
+
         PyObject *unicode = PyUnicode_FromString(ips[i]);
         if (!unicode) {
             Py_DECREF(ret);
