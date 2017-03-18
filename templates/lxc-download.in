@@ -48,7 +48,7 @@ DOWNLOAD_VARIANT="default"
 
 DOWNLOAD_KEYID="0xE7FB0CAEC8173D669066514CBAEFF88C22F6E216"
 if [ -z "${DOWNLOAD_KEYSERVER+x}" ]; then
-    DOWNLOAD_KEYSERVER="hkp://pool.sks-keyservers.net:80"
+    DOWNLOAD_KEYSERVER="hkp://p80.sks-keyservers.net:80"
 fi
 
 LXC_MAPPED_GID=
