@@ -53,7 +53,7 @@ LXC_NAME=
 LXC_PATH=
 LXC_ROOTFS=
 
-if [ -z "${DOWNLOAD_KEYSERVER+x}" ]; then
+if [ -z "${DOWNLOAD_KEYSERVER:-}" ]; then
 	DOWNLOAD_KEYSERVER="hkp://pool.sks-keyservers.net"
 
 	# Deal with GPG over http proxy
