@@ -34,7 +34,6 @@ DOWNLOAD_FLUSH_CACHE="false"
 DOWNLOAD_FORCE_CACHE="false"
 DOWNLOAD_INTERACTIVE="false"
 DOWNLOAD_KEYID="0xE7FB0CAEC8173D669066514CBAEFF88C22F6E216"
-DOWNLOAD_KEYSERVER="hkp://pool.sks-keyservers.net"
 DOWNLOAD_LIST_IMAGES="false"
 DOWNLOAD_MODE="system"
 DOWNLOAD_READY_GPG="false"
@@ -54,9 +53,13 @@ LXC_NAME=
 LXC_PATH=
 LXC_ROOTFS=
 
-# Deal with GPG over http proxy
-if [ -n "${http_proxy:-}" ]; then
-    DOWNLOAD_KEYSERVER="hkp://p80.pool.sks-keyservers.net:80"
+if [ -z "${DOWNLOAD_KEYSERVER:-}" ]; then
+	DOWNLOAD_KEYSERVER="hkp://pool.sks-keyservers.net"
+
+	# Deal with GPG over http proxy
+	if [ -n "${http_proxy:-}" ]; then
+	    DOWNLOAD_KEYSERVER="hkp://p80.pool.sks-keyservers.net:80"
+	fi
 fi
 
 # Make sure the usual locations are in PATH
@@ -201,7 +204,7 @@ Optional arguments:
 [ --variant <variant> ]: Variant of the image (default: "default")
 [ --server <server> ]: Image server (default: "images.linuxcontainers.org")
 [ --keyid <keyid> ]: GPG keyid (default: 0x...)
-[ --keyserver <keyserver> ]: GPG keyserver to use
+[ --keyserver <keyserver> ]: GPG keyserver to use. Environment variable: DOWNLOAD_KEYSERVER
 [ --no-validate ]: Disable GPG validation (not recommended)
 [ --flush-cache ]: Flush the local copy (if present)
 [ --force-cache ]: Force the use of the local copy even if expired
@@ -212,6 +215,11 @@ LXC internal arguments (do not pass manually!):
 [ --rootfs <rootfs> ]: The path to the container's rootfs
 [ --mapped-uid <map> ]: A uid map (user namespaces)
 [ --mapped-gid <map> ]: A gid map (user namespaces)
+
+Environment Variables:
+DOWNLOAD_KEYSERVER : The URL of the key server to use, instead of the default.
+                     Can be further overridden by using optional argument --keyserver
+
 EOF
     return 0
 }
