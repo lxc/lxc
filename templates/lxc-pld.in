@@ -38,7 +38,6 @@ done
 arch=$(uname -m)
 cache_base=@LOCALSTATEDIR@/cache/lxc/pld/$arch
 default_path=@LXCPATH@
-root_password=root
 
 if [ -e /etc/os-release ]; then
 	# This is a shell friendly configuration file.  We can just source it.
@@ -105,8 +104,10 @@ EOF
 	mknod -m 600 ${dev_path}/initctl p
 	mknod -m 666 ${dev_path}/ptmx c 5 2
 
-	echo "setting root passwd to $root_password"
-	echo "root:$root_password" | chroot $rootfs_path chpasswd
+	if [ -n "${root_password}" ]; then
+		echo "setting root passwd to $root_password"
+		echo "root:$root_password" | chroot $rootfs_path chpasswd
+	fi
 
 	return 0
 }

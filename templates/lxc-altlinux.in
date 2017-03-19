@@ -43,7 +43,6 @@ cache_base=@LOCALSTATEDIR@/cache/lxc/altlinux/$arch
 default_path=@LXCPATH@
 default_profile=default
 profile_dir=/etc/lxc/profiles
-root_password=rooter
 lxc_network_type=veth
 lxc_network_link=virbr0
 
@@ -156,8 +155,10 @@ EOF
     mkdir -m 755 ${dev_path}/net
     mknod -m 666 ${dev_path}/net/tun c 10 200
 
-    echo "setting root passwd to $root_password"
-    echo "root:$root_password" | chroot $rootfs_path chpasswd
+    if [ -n "${root_password}" ]; then
+        echo "setting root passwd to $root_password"
+        echo "root:$root_password" | chroot $rootfs_path chpasswd
+    fi
 
     return 0
 }
