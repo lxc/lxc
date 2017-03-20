@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/sysmacros.h>
 #include <sys/wait.h>
 
 #include "bdev.h"
@@ -40,9 +41,6 @@
 /* major()/minor() */
 #ifdef MAJOR_IN_MKDEV
 #    include <sys/mkdev.h>
-#endif
-#ifdef MAJOR_IN_SYSMACROS
-#    include <sys/sysmacros.h>
 #endif
 
 lxc_log_define(lxclvm, lxc);
