@@ -47,6 +47,7 @@
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <sys/sysmacros.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/utsname.h>
@@ -55,9 +56,6 @@
 /* makedev() */
 #ifdef MAJOR_IN_MKDEV
 #    include <sys/mkdev.h>
-#endif
-#ifdef MAJOR_IN_SYSMACROS
-#    include <sys/sysmacros.h>
 #endif
 
 #ifdef HAVE_STATVFS
