@@ -167,7 +167,7 @@ if [ "x$profile" != "x${default_profile}" ]; then
 	echo "FAIL: confined container was in profile $profile"
 	exit 1
 fi
-run_cmd lxc-stop -n $cname
+run_cmd lxc-stop -n $cname -k
 
 echo "test regular unconfined container"
 echo "lxc.aa_profile = unconfined" >> $HDIR/.local/share/lxc/$cname/config
@@ -179,7 +179,7 @@ if [ "x$profile" != "xunconfined" ]; then
 	echo "FAIL: unconfined container was in profile $profile"
 	exit 1
 fi
-run_cmd lxc-stop -n $cname
+run_cmd lxc-stop -n $cname -k
 
 echo "masking $MOUNTSR"
 mount --bind $dnam $MOUNTSR
@@ -209,7 +209,7 @@ if [ "x$profile" != "xunconfined" ]; then
 	echo "FAIL: confined container was in profile $profile"
 	exit 1
 fi
-run_cmd lxc-stop -n $cname
+run_cmd lxc-stop -n $cname -k
 
 echo "testing override"
 sed -i '/aa_profile/d' $HDIR/.local/share/lxc/$cname/config
@@ -226,6 +226,6 @@ if [ "x$profile" != "x${default_profile}" ]; then
 	echo "FAIL: confined container was in profile $profile"
 	exit 1
 fi
-run_cmd lxc-stop -n $cname
+run_cmd lxc-stop -n $cname -k
 
 DONE=1
