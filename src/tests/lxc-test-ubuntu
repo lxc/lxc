@@ -61,7 +61,12 @@ for template in ubuntu ubuntu-cloud; do
 	done
 	[ -n "$lxcip" ] || FAIL "to start networking in $template container"
 
-	ping -c 1 $lxcip || FAIL "to ping $template container"
+	if echo "${lxcip}" | grep -q ":"; then
+		ping6 -c 1 $lxcip || FAIL "to ping $template container"
+	else
+		ping -c 1 $lxcip || FAIL "to ping $template container"
+	fi
+
 	# Check apparmor
 	lxcpid=`lxc-info -n $name -p -H`
 	aa=`cat /proc/$lxcpid/attr/current`
