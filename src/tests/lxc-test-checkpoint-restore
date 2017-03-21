@@ -48,5 +48,5 @@ lxc-checkpoint -n $name -v -s -D /tmp/checkpoint || FAIL "failed checkpointing"
 lxc-wait -n $name -s STOPPED
 lxc-checkpoint -n $name -v -r -D /tmp/checkpoint || FAIL "failed restoring"
 
-lxc-stop -n $name -t 1
+lxc-stop -n $name -k
 lxc-destroy -f -n $name

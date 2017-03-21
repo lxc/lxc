@@ -185,7 +185,7 @@ for count in `seq 1 2`; do
     run_cmd lxc-info -n c1
     run_cmd lxc-attach -n c1 -- /bin/true
 
-    run_cmd lxc-stop -n c1
+    run_cmd lxc-stop -n c1 -k
 done
 
 run_cmd lxc-copy -s -n c1 -N c2
@@ -193,7 +193,7 @@ run_cmd lxc-start -n c2 -d
 p1=$(run_cmd lxc-info -n c2 -p -H)
 [ "$p1" != "-1" ] || { echo "Failed to start container c2"; false; }
 
-run_cmd lxc-stop -n c2
+run_cmd lxc-stop -n c2 -k
 
 if which cgm >/dev/null 2>&1; then
     echo "Testing containers under different cgroups per subsystem"
