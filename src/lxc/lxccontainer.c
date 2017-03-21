@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/sysmacros.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/syscall.h>
@@ -63,9 +64,6 @@
 /* major()/minor() */
 #ifdef MAJOR_IN_MKDEV
 #    include <sys/mkdev.h>
-#endif
-#ifdef MAJOR_IN_SYSMACROS
-#    include <sys/sysmacros.h>
 #endif
 
 #if HAVE_IFADDRS_H
