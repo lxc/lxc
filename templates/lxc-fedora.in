@@ -221,7 +221,7 @@ to force a new download.
     CHROOT_DIR="$(pwd)"
     CHROOT_CMD="chroot ${CHROOT_DIR} "
     INSTALL_ROOT="/"
-    if ! setup_repositories "${cache}" "${arch}" "${FEDORA_RELEASE_DEFAULT}" "${mirror}"
+    if ! setup_repositories "${cache}" "${basearch}" "${FEDORA_RELEASE_DEFAULT}" "${mirror}"
     then
         echo "Error: Failed to configure repositories in ${CHROOT_DIR}${INSTALL_ROOT}"
         exit 1
@@ -938,7 +938,7 @@ Template specific options can be passed to lxc-create after a '--' like this:
 
 Template options:
 
-  -a, --arch             Define what arch the container will be [i686,x86_64]
+  -a, --arch             Define what arch the container will be [i386,x86_64]
   -c, --clean            Clean bootstrap and download cache
   -d, --debug            Run with 'set -x' to debug errors
       --fqdn             Fully qualified domain name (FQDN)
