@@ -4928,7 +4928,7 @@ void suggest_default_idmap(void)
 	}
 	fclose(f);
 
-	f = fopen(subuidfile, "r");
+	f = fopen(subgidfile, "r");
 	if (!f) {
 		ERROR("Your system is not configured with subgids");
 		free(gname);
