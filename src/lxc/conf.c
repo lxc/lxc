@@ -3026,8 +3026,6 @@ bool lxc_delete_network(struct lxc_handler *handler)
 					WARN("Failed to remove interface \"%s\" from host: %s.", hostveth, strerror(-ret));
 				} else {
 					INFO("Removed interface \"%s\" from host.", hostveth);
-					free(netdev->priv.veth_attr.pair);
-					netdev->priv.veth_attr.pair = NULL;
 				}
 			} else if (strlen(netdev->priv.veth_attr.veth1) > 0) {
 				hostveth = netdev->priv.veth_attr.veth1;
