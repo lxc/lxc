@@ -290,7 +290,7 @@ init_lxc_static_SOURCES += ../include/getline.c
 endif
 endif
 
-init_lxc_static_LDFLAGS = -static
+init_lxc_static_LDFLAGS = -all-static
 init_lxc_static_LDADD = @CAP_LIBS@
 init_lxc_static_CFLAGS = $(AM_CFLAGS) -DNO_LXC_CONF
 endif
