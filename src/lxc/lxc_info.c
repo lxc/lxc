@@ -203,7 +203,7 @@ static void print_net_stats(struct lxc_container *c)
 static void print_stats(struct lxc_container *c)
 {
 	int i, ret;
-	char buf[256];
+	char buf[4096];
 
 	ret = c->get_cgroup_item(c, "cpuacct.usage", buf, sizeof(buf));
 	if (ret > 0 && ret < sizeof(buf)) {
