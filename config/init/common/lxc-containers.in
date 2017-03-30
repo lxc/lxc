@@ -51,6 +51,8 @@ fi
 # to start
 wait_for_bridge()
 {
+    [ "x$USE_LXC_BRIDGE" = "xtrue" ] || { return 0; }
+
     local BRNAME try flags br
     [ -f "$sysconfdir"/lxc/default.conf ] || { return 0; }
 
