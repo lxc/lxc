@@ -654,8 +654,6 @@ container_auth()
         printf "  => done. if you didn't specify , default is 'toor'\n"
         if [[ -n "${forced_password}" ]]; then
             store_user_message "${user} has the password you give for him"
-        else
-            store_user_message "${user} has the default password 'toor', please change it ASAP"
         fi
     fi
 
@@ -779,7 +777,6 @@ set_default_arch
 
 mirror="http://distfiles.gentoo.org"
 user="root"
-password="toor"
 tty=1
 settings="common"
 options=$(getopt -o hp:n:a:FcPv:t:S:u:w:s:m: -l help,rootfs:,path:,name:,arch:,flush-cache,cache-only,private-portage,variant:,portage-dir:,tarball:,auth-key:,user:,autologin,password:,settings:,mirror:,tty: -- "$@")
