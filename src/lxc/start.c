@@ -339,7 +339,7 @@ static int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_open;
 	}
 
-	if (lxc_console_mainloop_add(&descr, handler)) {
+	if (lxc_console_mainloop_add(&descr, handler->conf)) {
 		ERROR("failed to add console handler to mainloop");
 		goto out_mainloop_open;
 	}
@@ -751,7 +751,7 @@ static int do_start(void *data)
 	 * setup on its console ie. the pty allocated in lxc_console_create()
 	 * so make sure that that pty is stdin,stdout,stderr.
 	 */
-	if (lxc_console_set_stdfds(handler) < 0)
+	if (lxc_console_set_stdfds(handler->conf->console.slave) < 0)
 		goto out_warn_father;
 
 	/* If we mounted a temporary proc, then unmount it now */
@@ -800,7 +800,7 @@ static int save_phys_nics(struct lxc_conf *conf)
 
 	if (!am_root)
 		return 0;
-		
+
 	lxc_list_for_each(iterator, &conf->network) {
 		struct lxc_netdev *netdev = iterator->elem;
 
