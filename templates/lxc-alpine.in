@@ -261,8 +261,8 @@ install() {
 }
 
 install_packages() {
-	local arch="$1"; shift
-	local packages="$@"
+	local arch="$1"
+	local packages="$2"
 
 	$APK --arch="$arch" --root=. --keys-dir="$APK_KEYS_DIR" \
 		--update-cache --initdb add $packages
