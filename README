@@ -59,9 +59,6 @@ Getting help:
 
 Portability:
 
-  lxc  is  still  in  development, so the command syntax and the API can
-  change. The version 1.0.0 will be the frozen version.
-
   lxc is developed and tested on Linux since kernel mainline version 2.6.27
   (without network) and 2.6.29 with network isolation.
   It's compiled with gcc, and should work on most architectures as long as the
