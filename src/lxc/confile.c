@@ -121,6 +121,7 @@ static int config_init_uid(const char *, const char *, struct lxc_conf *);
 static int config_init_gid(const char *, const char *, struct lxc_conf *);
 static int config_ephemeral(const char *, const char *, struct lxc_conf *);
 static int config_no_new_privs(const char *, const char *, struct lxc_conf *);
+static int config_limit(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 
@@ -195,6 +196,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.ephemeral",            config_ephemeral            },
 	{ "lxc.syslog",               config_syslog               },
 	{ "lxc.no_new_privs",	      config_no_new_privs	  },
+	{ "lxc.limit",                config_limit                },
 };
 
 struct signame {
@@ -1580,6 +1582,110 @@ out:
 	return -1;
 }
 
+static bool parse_limit_value(const char **value, unsigned long *res) {
+	char *endptr = NULL;
+
+	if (strncmp(*value, "unlimited", sizeof("unlimited")-1) == 0) {
+		*res = RLIM_INFINITY;
+		*value += sizeof("unlimited")-1;
+		return true;
+	}
+
+	errno = 0;
+	*res = strtoul(*value, &endptr, 10);
+	if (errno || !endptr)
+		return false;
+	*value = endptr;
+
+	return true;
+}
+
+static int config_limit(const char *key, const char *value,
+			 struct lxc_conf *lxc_conf)
+{
+	struct lxc_list *limlist = NULL;
+	struct lxc_limit *limelem = NULL;
+	struct lxc_list *iter;
+	struct rlimit limit;
+	unsigned long limit_value;
+
+	if (!value || strlen(value) == 0)
+		return lxc_clear_limits(lxc_conf, key);
+
+	if (strncmp(key, "lxc.limit.", sizeof("lxc.limit.")-1) != 0)
+		return -1;
+
+	key += sizeof("lxc.limit.")-1;
+
+	/* soft limit comes first in the value */
+	if (!parse_limit_value(&value, &limit_value))
+		return -1;
+	limit.rlim_cur = limit_value;
+
+	/* skip spaces and a colon */
+	while (isspace(*value))
+		++value;
+	if (*value == ':')
+		++value;
+	else if (*value) /* any other character is an error here */
+		return -1;
+	while (isspace(*value))
+		++value;
+
+	/* optional hard limit */
+	if (*value) {
+		if (!parse_limit_value(&value, &limit_value))
+			return -1;
+		limit.rlim_max = limit_value;
+		/* check for trailing garbage */
+		while (isspace(*value))
+			++value;
+		if (*value)
+			return -1;
+	} else {
+		/* a single value sets both hard and soft limit */
+		limit.rlim_max = limit.rlim_cur;
+	}
+
+	/* find existing list element */
+	lxc_list_for_each(iter, &lxc_conf->limits) {
+		limelem = iter->elem;
+		if (!strcmp(key, limelem->resource)) {
+			limelem->limit = limit;
+			return 0;
+		}
+	}
+
+	/* allocate list element */
+	limlist = malloc(sizeof(*limlist));
+	if (!limlist)
+		goto out;
+	
+	limelem = malloc(sizeof(*limelem));
+	if (!limelem)
+		goto out;
+	memset(limelem, 0, sizeof(*limelem));
+
+	limelem->resource = strdup(key);
+	if (!limelem->resource)
+		goto out;
+	limelem->limit = limit;
+
+	limlist->elem = limelem;
+
+	lxc_list_add_tail(&lxc_conf->limits, limlist);
+
+	return 0;
+
+out:
+	free(limlist);
+	if (limelem) {
+		free(limelem->resource);
+		free(limelem);
+	}
+	return -1;
+}
+
 static int config_idmap(const char *key, const char *value, struct lxc_conf *lxc_conf)
 {
 	char *token = "lxc.id_map";
@@ -2313,6 +2419,55 @@ static int lxc_get_cgroup_entry(struct lxc_conf *c, char *retv, int inlen,
 	return fulllen;
 }
 
+/*
+ * If you ask for a specific value, i.e. lxc.limit.nofile, then just the value
+ * will be printed. If you ask for 'lxc.limit', then all limit entries will be
+ * printed, in 'lxc.limit.resource = value' format.
+ */
+static int lxc_get_limit_entry(struct lxc_conf *c, char *retv, int inlen,
+				const char *key)
+{
+	int fulllen = 0, len;
+	int all = 0;
+	struct lxc_list *it;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (strcmp(key, "all") == 0)
+		all = 1;
+
+	lxc_list_for_each(it, &c->limits) {
+		char buf[LXC_NUMSTRLEN64*2+2]; /* 2 colon separated 64 bit integers or the word 'unlimited' */
+		int partlen;
+		struct lxc_limit *lim = it->elem;
+
+		if (lim->limit.rlim_cur == RLIM_INFINITY) {
+			memcpy(buf, "unlimited", sizeof("unlimited"));
+			partlen = sizeof("unlimited")-1;
+		} else {
+			partlen = sprintf(buf, "%lu", lim->limit.rlim_cur);
+		}
+		if (lim->limit.rlim_cur != lim->limit.rlim_max) {
+			if (lim->limit.rlim_max == RLIM_INFINITY) {
+				memcpy(buf+partlen, ":unlimited", sizeof(":unlimited"));
+			} else {
+				sprintf(buf+partlen, ":%lu", lim->limit.rlim_max);
+			}
+		}
+
+		if (all) {
+			strprint(retv, inlen, "lxc.limit.%s = %s\n", lim->resource, buf);
+		} else if (strcmp(lim->resource, key) == 0) {
+			strprint(retv, inlen, "%s", buf);
+		}
+	}
+
+	return fulllen;
+}
+
 static int lxc_get_item_hooks(struct lxc_conf *c, char *retv, int inlen,
 			      const char *key)
 {
@@ -2678,6 +2833,10 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->syslog;
 	else if (strcmp(key, "lxc.no_new_privs") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->no_new_privs);
+	else if (strcmp(key, "lxc.limit") == 0) // all limits
+		return lxc_get_limit_entry(c, retv, inlen, "all");
+	else if (strncmp(key, "lxc.limit.", 10) == 0) // specific limit
+		return lxc_get_limit_entry(c, retv, inlen, key + 10);
 	else return -1;
 
 	if (!v)
@@ -2711,6 +2870,8 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		return lxc_clear_environment(c);
 	else if (strncmp(key, "lxc.id_map", 10) == 0)
 		return lxc_clear_idmaps(c);
+	else if (strncmp(key, "lxc.limit", 9) == 0)
+		return lxc_clear_limits(c, key);
 	return -1;
 }
 
