@@ -1576,7 +1576,7 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 	fulllen = strlen(target);
 
 	/* make sure prefix-skip makes sense */
-	if (prefix_skip) {
+	if (prefix_skip && strlen(prefix_skip) > 0) {
 		curlen = strlen(prefix_skip);
 		if (!is_subdir(target, prefix_skip, curlen)) {
 			ERROR("WHOA there - target '%s' didn't start with prefix '%s'",
@@ -1622,8 +1622,6 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 			errno = saved_errno;
 			if (errno == ELOOP)
 				SYSERROR("%s in %s was a symbolic link!", nextpath, target);
-			else
-				SYSERROR("Error examining %s in %s", nextpath, target);
 			goto out;
 		}
 	}
@@ -1668,8 +1666,11 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 
 	destfd = open_without_symlink(dest, rootfs);
 	if (destfd < 0) {
-		if (srcfd != -1)
+		if (srcfd != -1) {
+			saved_errno = errno;
 			close(srcfd);
+			errno = saved_errno;
+		}
 		return destfd;
 	}
 
@@ -1705,6 +1706,8 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
  *
  * Returns < 0 on failure, 0 if the correct proc was already mounted
  * and 1 if a new proc was mounted.
+ *
+ * NOTE: not to be called from inside the container namespace!
  */
 int mount_proc_if_needed(const char *rootfs)
 {
@@ -1738,8 +1741,14 @@ int mount_proc_if_needed(const char *rootfs)
 	return 0;
 
 domount:
-	if (safe_mount("proc", path, "proc", 0, NULL, rootfs) < 0)
+	if (!strcmp(rootfs,"")) /* rootfs is NULL */
+		ret = mount("proc", path, "proc", 0, NULL);
+	else
+		ret = safe_mount("proc", path, "proc", 0, NULL, rootfs);
+
+	if (ret < 0)
 		return -1;
+
 	INFO("Mounted /proc in container for security transition");
 	return 1;
 }

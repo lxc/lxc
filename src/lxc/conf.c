@@ -1170,10 +1170,11 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs, cons
 		return 0;
 	}
 
-	if (safe_mount("none", path, "tmpfs", 0, "size=100000,mode=755",
-				rootfs->path ? rootfs->mount : NULL)) {
+	ret = safe_mount("none", path, "tmpfs", 0, "size=100000,mode=755",
+			rootfs->path ? rootfs->mount : NULL);
+	if (ret != 0) {
 		SYSERROR("Failed mounting tmpfs onto %s\n", path);
-		return false;
+		return -1;
 	}
 
 	INFO("Mounted tmpfs onto %s",  path);
@@ -1868,7 +1869,10 @@ static int mount_entry_create_overlay_dirs(const struct mntent *mntent,
 	size_t len = 0;
 	size_t rootfslen = 0;
 
-	if (!rootfs->path || !lxc_name || !lxc_path)
+	/* Since we use all of these to check whether the user has given us a
+	 * sane absolute path to create the directories needed for overlay
+	 * lxc.mount.entry entries we consider any of these missing fatal. */
+	if (!rootfs || !rootfs->path || !lxc_name || !lxc_path)
 		goto err;
 
 	opts = lxc_string_split(mntent->mnt_opts, ',');
@@ -1934,7 +1938,10 @@ static int mount_entry_create_aufs_dirs(const struct mntent *mntent,
 	size_t len = 0;
 	size_t rootfslen = 0;
 
-	if (!rootfs->path || !lxc_name || !lxc_path)
+	/* Since we use all of these to check whether the user has given us a
+	 * sane absolute path to create the directories needed for overlay
+	 * lxc.mount.entry entries we consider any of these missing fatal. */
+	if (!rootfs || !rootfs->path || !lxc_name || !lxc_path)
 		goto err;
 
 	opts = lxc_string_split(mntent->mnt_opts, ',');
@@ -1977,7 +1984,6 @@ err:
 	return fret;
 }
 
-
 static int mount_entry_create_dir_file(const struct mntent *mntent,
 				       const char* path, const struct lxc_rootfs *rootfs,
 				       const char *lxc_name, const char *lxc_path)
@@ -2019,6 +2025,8 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 	return ret;
 }
 
+/* rootfs, lxc_name, and lxc_path can be NULL when the container is created
+ * without a rootfs. */
 static inline int mount_entry_on_generic(struct mntent *mntent,
                  const char* path, const struct lxc_rootfs *rootfs,
 		 const char *lxc_name, const char *lxc_path)
@@ -2027,6 +2035,10 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	char *mntdata;
 	int ret;
 	bool optional = hasmntopt(mntent, "optional") != NULL;
+
+	char *rootfs_path = NULL;
+	if (rootfs && rootfs->path)
+		rootfs_path = rootfs->mount;
 
 	ret = mount_entry_create_dir_file(mntent, path, rootfs, lxc_name, lxc_path);
 
@@ -2041,8 +2053,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	}
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
-			  mntdata, optional,
-			  rootfs->path ? rootfs->mount : NULL);
+			  mntdata, optional, rootfs_path);
 
 	free(mntdata);
 	return ret;
@@ -2050,7 +2061,22 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 
 static inline int mount_entry_on_systemfs(struct mntent *mntent)
 {
-  return mount_entry_on_generic(mntent, mntent->mnt_dir, NULL, NULL, NULL);
+	char path[MAXPATHLEN];
+	int ret;
+
+	/* For containers created without a rootfs all mounts are treated as
+	 * absolute paths starting at / on the host. */
+	if (mntent->mnt_dir[0] != '/')
+		ret = snprintf(path, sizeof(path), "/%s", mntent->mnt_dir);
+	else
+		ret = snprintf(path, sizeof(path), "%s", mntent->mnt_dir);
+
+	if (ret < 0 || ret >= sizeof(path)) {
+		ERROR("path name too long");
+		return -1;
+	}
+
+	return mount_entry_on_generic(mntent, path, NULL, NULL, NULL);
 }
 
 static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
@@ -2111,7 +2137,7 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 
 	/* relative to root mount point */
 	ret = snprintf(path, sizeof(path), "%s/%s", rootfs->mount, mntent->mnt_dir);
-	if (ret >= sizeof(path)) {
+	if (ret < 0 || ret >= sizeof(path)) {
 		ERROR("path name too long");
 		return -1;
 	}
@@ -3669,6 +3695,7 @@ int ttys_shift_ids(struct lxc_conf *c)
 	return 0;
 }
 
+/* NOTE: not to be called from inside the container namespace! */
 int tmp_proc_mount(struct lxc_conf *lxc_conf)
 {
 	int mounted;
