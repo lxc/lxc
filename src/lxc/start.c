@@ -1263,7 +1263,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	if (!lxc_list_empty(&handler->conf->limits) && setup_resource_limits(&handler->conf->limits, handler->pid)) {
 		ERROR("failed to setup resource limits for '%s'", name);
-		return -1;
+		goto out_delete_net;
 	}
 
 	if (!cgroup_setup_limits(handler, true)) {
