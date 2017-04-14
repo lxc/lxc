@@ -665,6 +665,10 @@ AC_CHECK_FUNCS([fgetln],
 	AM_CONDITIONAL(HAVE_FGETLN, true)
 	AC_DEFINE(HAVE_FGETLN,1,[Have fgetln]),
 	AM_CONDITIONAL(HAVE_FGETLN, false))
+AC_CHECK_FUNCS([prlimit],
+	AM_CONDITIONAL(HAVE_PRLIMIT, true)
+	AC_DEFINE(HAVE_PRLIMIT,1,[Have prlimit]),
+	AM_CONDITIONAL(HAVE_PRLIMIT, false))
 
 # Check for some libraries
 AC_SEARCH_LIBS(sem_open, [rt pthread])
