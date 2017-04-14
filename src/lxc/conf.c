@@ -99,6 +99,9 @@
 
 #if IS_BIONIC
 #include <../include/lxcmntent.h>
+#ifndef HAVE_PRLIMIT
+#include <../include/prlimit.h>
+#endif
 #else
 #include <mntent.h>
 #endif
