@@ -3223,30 +3223,89 @@ static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 	return ret < 0 ? ret : closeret;
 }
 
+/* Check whether a binary exist and has either CAP_SETUID, CAP_SETGID or both. */
+static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
+{
+	char *path;
+	int ret;
+	struct stat st;
+	int fret = 0;
+
+	path = on_path(binary, NULL);
+	if (!path)
+		return -ENOENT;
+
+	ret = stat(path, &st);
+	if (ret < 0) {
+		fret = -errno;
+		goto cleanup;
+	}
+
+	/* Check if the binary is setuid. */
+	if (st.st_mode & S_ISUID) {
+		DEBUG("The binary \"%s\" does have the setuid bit set.", path);
+		fret = 1;
+		goto cleanup;
+	}
+
+	#if HAVE_LIBCAP
+	/* Check if it has the CAP_SETUID capability. */
+	if ((cap & CAP_SETUID) &&
+	    lxc_file_cap_is_set(path, CAP_SETUID, CAP_EFFECTIVE) &&
+	    lxc_file_cap_is_set(path, CAP_SETUID, CAP_PERMITTED)) {
+		DEBUG("The binary \"%s\" has CAP_SETUID in its CAP_EFFECTIVE "
+		      "and CAP_PERMITTED sets.", path);
+		fret = 1;
+		goto cleanup;
+	}
+
+	/* Check if it has the CAP_SETGID capability. */
+	if ((cap & CAP_SETGID) &&
+	    lxc_file_cap_is_set(path, CAP_SETGID, CAP_EFFECTIVE) &&
+	    lxc_file_cap_is_set(path, CAP_SETGID, CAP_PERMITTED)) {
+		DEBUG("The binary \"%s\" has CAP_SETGID in its CAP_EFFECTIVE "
+		      "and CAP_PERMITTED sets.", path);
+		fret = 1;
+		goto cleanup;
+	}
+	#endif
+
+cleanup:
+	free(path);
+	return fret;
+}
+
 int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 {
 	struct id_map *map;
 	struct lxc_list *iterator;
 	enum idtype type;
 	char *pos;
-	char *buf = NULL, *cmdpath = NULL;
-	bool use_shadow = false;
-	int ret = 0;
+	int euid;
+	int ret = 0, use_shadow = 0;
+	int uidmap = 0, gidmap = 0;
+	char *buf = NULL;
 
-	/*
-	 * If newuidmap exists, that is, if shadow is handing out subuid
-	 * ranges, then insist that root also reserve ranges in subuid.  This
+	euid = geteuid();
+
+	/* If new{g,u}idmap exists, that is, if shadow is handing out subuid
+	 * ranges, then insist that root also reserve ranges in subuid. This
 	 * will protected it by preventing another user from being handed the
 	 * range by shadow.
 	 */
-	cmdpath = on_path("newuidmap", NULL);
-	if (cmdpath) {
+	uidmap = idmaptool_on_path_and_privileged("newuidmap", CAP_SETUID);
+	gidmap = idmaptool_on_path_and_privileged("newgidmap", CAP_SETGID);
+	if (uidmap > 0 && gidmap > 0) {
+		DEBUG("Functional newuidmap and newgidmap binary found.");
 		use_shadow = true;
-		free(cmdpath);
-	}
-
-	if (!use_shadow && geteuid()) {
-		ERROR("Missing newuidmap/newgidmap");
+	} else if (uidmap == -ENOENT && gidmap == -ENOENT && !euid) {
+		DEBUG("No newuidmap and newgidmap binary found. Trying to "
+		      "write directly with euid 0.");
+		use_shadow = false;
+	} else {
+		DEBUG("Either one or both of the newuidmap and newgidmap "
+		      "binaries do not exist or are missing necessary "
+		      "privilege.");
 		return -1;
 	}
 

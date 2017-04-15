@@ -1199,7 +1199,7 @@ bool detect_ramfs_rootfs(void)
 	return false;
 }
 
-char *on_path(char *cmd, const char *rootfs) {
+char *on_path(const char *cmd, const char *rootfs) {
 	char *path = NULL;
 	char *entry = NULL;
 	char *saveptr = NULL;
