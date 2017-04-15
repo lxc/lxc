@@ -209,27 +209,56 @@ int lxc_caps_last_cap(void)
 	return last_cap;
 }
 
-bool lxc_cap_is_set(cap_value_t cap, cap_flag_t flag)
+static bool lxc_cap_is_set(cap_t caps, cap_value_t cap, cap_flag_t flag)
 {
 	int ret;
-	cap_t caps;
 	cap_flag_value_t flagval;
-
-	caps = cap_get_proc();
-	if (!caps) {
-		ERROR("Failed to perform cap_get_proc(): %s.", strerror(errno));
-		return false;
-	}
 
 	ret = cap_get_flag(caps, cap, flag, &flagval);
 	if (ret < 0) {
 		ERROR("Failed to perform cap_get_flag(): %s.", strerror(errno));
-		cap_free(caps);
 		return false;
 	}
 
-	cap_free(caps);
 	return flagval == CAP_SET;
+}
+
+bool lxc_file_cap_is_set(const char *path, cap_value_t cap, cap_flag_t flag)
+{
+	bool cap_is_set;
+	cap_t caps;
+
+	caps = cap_get_file(path);
+	if (!caps) {
+		/* This is undocumented in the manpage but the source code show
+		 * that cap_get_file() may return NULL when successful for the
+		 * case where it didn't detect any file capabilities. In this
+		 * case errno will be set to ENODATA.
+		 */
+		if (errno != ENODATA)
+			ERROR("Failed to perform cap_get_file(): %s.\n", strerror(errno));
+		return false;
+	}
+
+	cap_is_set = lxc_cap_is_set(caps, cap, flag);
+	cap_free(caps);
+	return cap_is_set;
+}
+
+bool lxc_proc_cap_is_set(cap_value_t cap, cap_flag_t flag)
+{
+	bool cap_is_set;
+	cap_t caps;
+
+	caps = cap_get_proc();
+	if (!caps) {
+		ERROR("Failed to perform cap_get_proc(): %s.\n", strerror(errno));
+		return false;
+	}
+
+	cap_is_set = lxc_cap_is_set(caps, cap, flag);
+	cap_free(caps);
+	return cap_is_set;
 }
 
 #endif
