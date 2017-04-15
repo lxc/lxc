@@ -860,29 +860,28 @@ static int mount_rootfs(const char *rootfs, const char *target, const char *opti
 	};
 
 	if (!realpath(rootfs, absrootfs)) {
-		SYSERROR("failed to get real path for '%s'", rootfs);
+		SYSERROR("Failed to get real path for \"%s\".", rootfs);
 		return -1;
 	}
 
 	if (access(absrootfs, F_OK)) {
-		SYSERROR("'%s' is not accessible", absrootfs);
+		SYSERROR("Th rootfs \"%s\" is not accessible.", absrootfs);
 		return -1;
 	}
 
 	if (stat(absrootfs, &s)) {
-		SYSERROR("failed to stat '%s'", absrootfs);
+		SYSERROR("Failed to stat the rootfs \"%s\".", absrootfs);
 		return -1;
 	}
 
 	for (i = 0; i < sizeof(rtfs_type)/sizeof(rtfs_type[0]); i++) {
-
 		if (!__S_ISTYPE(s.st_mode, rtfs_type[i].type))
 			continue;
 
 		return rtfs_type[i].cb(absrootfs, target, options);
 	}
 
-	ERROR("unsupported rootfs type for '%s'", absrootfs);
+	ERROR("Unsupported rootfs type for rootfs \"%s\".", absrootfs);
 	return -1;
 }
 
@@ -1248,38 +1247,45 @@ static int fill_autodev(const struct lxc_rootfs *rootfs, bool mount_console)
 
 static int setup_rootfs(struct lxc_conf *conf)
 {
-	const struct lxc_rootfs *rootfs = &conf->rootfs;
+	struct bdev *bdev;
+	const struct lxc_rootfs *rootfs;
 
+	rootfs = &conf->rootfs;
 	if (!rootfs->path) {
-		if (mount("", "/", NULL, MS_SLAVE|MS_REC, 0)) {
-			SYSERROR("Failed to make / rslave");
+		if (mount("", "/", NULL, MS_SLAVE | MS_REC, 0)) {
+			SYSERROR("Failed to make / rslave.");
 			return -1;
 		}
 		return 0;
 	}
 
 	if (access(rootfs->mount, F_OK)) {
-		SYSERROR("failed to access to '%s', check it is present",
+		SYSERROR("Failed to access to \"%s\". Check it is present.",
 			 rootfs->mount);
 		return -1;
 	}
 
-	// First try mounting rootfs using a bdev
-	struct bdev *bdev = bdev_init(conf, rootfs->path, rootfs->mount, rootfs->options);
-	if (bdev && bdev->ops->mount(bdev) == 0) {
+	/* First try mounting rootfs using a bdev. */
+	bdev = bdev_init(conf, rootfs->path, rootfs->mount, rootfs->options);
+	if (bdev && !bdev->ops->mount(bdev)) {
 		bdev_put(bdev);
-		DEBUG("mounted '%s' on '%s'", rootfs->path, rootfs->mount);
+		DEBUG("Mounted rootfs \"%s\" onto \"%s\" with options \"%s\".",
+		      rootfs->path, rootfs->mount,
+		      rootfs->options ? rootfs->options : "(null)");
 		return 0;
 	}
 	if (bdev)
 		bdev_put(bdev);
 	if (mount_rootfs(rootfs->path, rootfs->mount, rootfs->options)) {
-		ERROR("failed to mount rootfs");
+		ERROR("Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\".",
+		      rootfs->path, rootfs->mount,
+		      rootfs->options ? rootfs->options : "(null)");
 		return -1;
 	}
 
-	DEBUG("mounted '%s' on '%s'", rootfs->path, rootfs->mount);
-
+	DEBUG("Mounted rootfs \"%s\" onto \"%s\" with options \"%s\".",
+	      rootfs->path, rootfs->mount,
+	      rootfs->options ? rootfs->options : "(null)");
 	return 0;
 }
 
