@@ -26,19 +26,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-# Detect use under userns (unsupported)
-for arg in "$@"; do
-    [ "$arg" = "--" ] && break
-    if [ "$arg" = "--mapped-uid" -o "$arg" = "--mapped-gid" ]; then
-        echo "This template can't be used for unprivileged containers." 1>&2
-        echo "You may want to try the \"download\" template instead." 1>&2
-        exit 1
-    fi
-done
-
-# Make sure the usual locations are in PATH
-export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
-
 #Configurations
 #distro=cooker
 hostarch=$(uname -m)
@@ -47,7 +34,7 @@ cache_base="${LXC_CACHE_PATH:-@LOCALSTATEDIR@/cache/lxc/openmandriva/$arch}"
 default_path=@LXCPATH@
 default_profile=default
 lxc_network_type=veth
-lxc_network_link=br0
+lxc_network_link=lxcbr0
 
 # is this openmandriva?
 [ -f /etc/mandriva-release ] && is_openmandriva=true
@@ -98,6 +85,8 @@ populate_dev()
     mknod -m 666 ${dev_path}/tty2 c 4 2
     mknod -m 666 ${dev_path}/tty3 c 4 3
     mknod -m 666 ${dev_path}/tty4 c 4 4
+    mknod -m 666 ${dev_path}/tty5 c 4 5
+    mknod -m 666 ${dev_path}/tty6 c 4 6
     mknod -m 600 ${dev_path}/console c 5 1
     mknod -m 666 ${dev_path}/full c 1 7
     mknod -m 600 ${dev_path}/initctl p
@@ -109,10 +98,10 @@ populate_dev()
 
 set_guest_root_password()
 {
-    [ -z "$root_password" ] && return # pass is empty, abort
+    [[ -z "$root_password" ]] && return # pass is empty, abort
 
-    echo " - setting guest root password.."
-    echo "root passwd is: $root_password"
+    echo -n " - setting guest root password.."
+    echo -n "root passwd is: $root_password"
     echo "root:$root_password" | chroot "$rootfs_path" chpasswd
     echo "done."
 }
@@ -182,11 +171,18 @@ configure_openmandriva_systemd()
 }
 
 
+# enable networking for old init system
+configure_openmandriva_network_service()
+{
+chroot ${rootfs_path} chkconfig network --level 01234567 on
+}
+
+
 install_openmandriva()
 {
     mkdir -p @LOCALSTATEDIR@/lock/subsys/
     (
-        flock -x 9
+        flock -x 200
         if [ $? -ne 0 ]; then
             echo "Cache repository is busy."
             return 1
@@ -217,7 +213,7 @@ install_openmandriva()
             return 1
         fi
         return 0
-    ) 9>@LOCALSTATEDIR@/lock/subsys/lxc-openmandriva
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-openmandriva
 
     return $?
 }
@@ -301,7 +297,7 @@ clean()
 
     # lock, so we won't purge while someone is creating a repository
     (
-        flock -x 9
+        flock -x 200
         if [ $? != 0 ]; then
             echo "Cache repository is busy."
             exit 1
@@ -310,7 +306,7 @@ clean()
         echo -n "Purging the download cache for OpenMandriva-$release..."
         rm --preserve-root --one-file-system -rf $cache && echo "Done." || exit 1
         exit 0
-    ) 9>@LOCALSTATEDIR@/lock/subsys/lxc-openmandriva
+    ) 200>@LOCALSTATEDIR@/lock/subsys/lxc-openmandriva
 }
 
 usage()
@@ -427,7 +423,7 @@ fi
 # check for 'lxc.rootfs' passed in through default config by lxc-create
 if [ -z "$rootfs_path" ]; then
     if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
-        rootfs_path=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $path/config)
+	rootfs_path=`grep 'lxc.rootfs =' $path/config | awk -F= '{ print $2 }'`
     else
         rootfs_path=$path/$name/rootfs
     fi
@@ -457,6 +453,12 @@ fi
 if [ -d ${rootfs_path}/etc/systemd/system ]
 then
     configure_openmandriva_systemd
+fi
+
+#compat level of networking
+if [ "$release" = "rosa2012.1" ]
+then
+    configure_openmandriva_network_service
 fi
 
 populate_dev
