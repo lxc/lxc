@@ -874,7 +874,7 @@ static int do_start(void *data)
 		 * have necessary privilege.
 		 */
 		#if HAVE_LIBCAP
-		have_cap_setgid = lxc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
+		have_cap_setgid = lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
 		#else
 		have_cap_setgid = false;
 		#endif
