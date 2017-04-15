@@ -16,6 +16,10 @@ lxc.mount.entry = mqueue dev/mqueue mqueue rw,relatime,create=dir,optional 0 0
 # host and forward it to the guest at start time.
 #lxc.hook.pre-start = /usr/share/lxc/hooks/squid-deb-proxy-client
 
+# Uncomment the following line to autodetect squid-deb-proxy configuration on the
+# host and forward it to the guest at start time.
+#lxc.hook.pre-start = /usr/share/lxc/hooks/squid-deb-proxy-client
+
 # If you wish to allow mounting block filesystems, then use the following
 # line instead, and make sure to grant access to the block device and/or loop
 # devices below in lxc.cgroup.devices.allow.
