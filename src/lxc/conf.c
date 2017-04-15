@@ -3321,11 +3321,13 @@ static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 
 int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 {
-	struct lxc_list *iterator;
 	struct id_map *map;
-	int ret = 0, use_shadow = 0;
+	struct lxc_list *iterator;
 	enum idtype type;
-	char *buf = NULL, *pos, *cmdpath = NULL;
+	char *pos;
+	char *buf = NULL, *cmdpath = NULL;
+	bool use_shadow = false;
+	int ret = 0;
 
 	/*
 	 * If newuidmap exists, that is, if shadow is handing out subuid
@@ -3335,7 +3337,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	 */
 	cmdpath = on_path("newuidmap", NULL);
 	if (cmdpath) {
-		use_shadow = 1;
+		use_shadow = true;
 		free(cmdpath);
 	}
 
@@ -3344,50 +3346,51 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		return -1;
 	}
 
-	for(type = ID_TYPE_UID; type <= ID_TYPE_GID; type++) {
+	for (type = ID_TYPE_UID; type <= ID_TYPE_GID; type++) {
 		int left, fill;
-		int had_entry = 0;
+		bool had_entry = false;
 		if (!buf) {
-			buf = pos = malloc(4096);
+			buf = pos = malloc(LXC_IDMAPLEN);
 			if (!buf)
 				return -ENOMEM;
 		}
 		pos = buf;
 		if (use_shadow)
-			pos += sprintf(buf, "new%cidmap %d",
-				type == ID_TYPE_UID ? 'u' : 'g',
-				pid);
+			pos += sprintf(buf, "new%cidmap %d", type == ID_TYPE_UID ? 'u' : 'g', pid);
 
 		lxc_list_for_each(iterator, idmap) {
-			/* The kernel only takes <= 4k for writes to /proc/<nr>/[ug]id_map */
+			/* The kernel only takes <= 4k for writes to
+			 * /proc/<nr>/[ug]id_map
+			 */
 			map = iterator->elem;
 			if (map->idtype != type)
 				continue;
 
-			had_entry = 1;
-			left = 4096 - (pos - buf);
+			had_entry = true;
+
+			left = LXC_IDMAPLEN - (pos - buf);
 			fill = snprintf(pos, left, "%s%lu %lu %lu%s",
-					use_shadow ? " " : "",
-					map->nsid, map->hostid, map->range,
+					use_shadow ? " " : "", map->nsid,
+					map->hostid, map->range,
 					use_shadow ? "" : "\n");
 			if (fill <= 0 || fill >= left)
-				SYSERROR("snprintf failed, too many mappings");
+				SYSERROR("Too many {g,u}id mappings defined.");
+
 			pos += fill;
 		}
 		if (!had_entry)
 			continue;
 
 		if (!use_shadow) {
-			ret = write_id_mapping(type, pid, buf, pos-buf);
+			ret = write_id_mapping(type, pid, buf, pos - buf);
 		} else {
-			left = 4096 - (pos - buf);
+			left = LXC_IDMAPLEN - (pos - buf);
 			fill = snprintf(pos, left, "\n");
 			if (fill <= 0 || fill >= left)
-				SYSERROR("snprintf failed, too many mappings");
+				SYSERROR("Too many {g,u}id mappings defined.");
 			pos += fill;
 			ret = system(buf);
 		}
-
 		if (ret)
 			break;
 	}
