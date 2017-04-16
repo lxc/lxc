@@ -47,7 +47,7 @@ cache_base="${LXC_CACHE_PATH:-@LOCALSTATEDIR@/cache/lxc/openmandriva/$arch}"
 default_path=@LXCPATH@
 default_profile=default
 lxc_network_type=veth
-lxc_network_link=br0
+lxc_network_link=lxcbr0
 
 # is this openmandriva?
 [ -f /etc/mandriva-release ] && is_openmandriva=true
@@ -98,6 +98,8 @@ populate_dev()
     mknod -m 666 ${dev_path}/tty2 c 4 2
     mknod -m 666 ${dev_path}/tty3 c 4 3
     mknod -m 666 ${dev_path}/tty4 c 4 4
+    mknod -m 666 ${dev_path}/tty5 c 4 5
+    mknod -m 666 ${dev_path}/tty6 c 4 6
     mknod -m 600 ${dev_path}/console c 5 1
     mknod -m 666 ${dev_path}/full c 1 7
     mknod -m 600 ${dev_path}/initctl p
