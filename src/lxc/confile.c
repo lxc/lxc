@@ -491,7 +491,8 @@ static int get_network_netdev_idx(const char *key)
 	int ret, idx;
 
 	if (*key < '0' || *key > '9')
-		return -1;
+		return 0; //it is of the form lxc.network.link
+
 	ret = sscanf(key, "%d", &idx);
 	if (ret != 1)
 		return -1;
@@ -2638,14 +2639,21 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 	int len, fulllen = 0;
 	struct lxc_netdev *netdev;
 
+
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
 	p1 = strchr(key, '.');
-	if (!p1 || *(p1+1) == '\0') return -1;
-	p1++;
+
+	if (p1){
+		p1++;
+		if (*p1 == '\0')
+			return -1;
+	} else {
+		p1 = (char *)key; //lxc.network.XXX
+	}
 
 	netdev = get_netdev_from_key(key, &c->network);
 	if (!netdev)
@@ -2754,6 +2762,7 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 			int inlen)
 {
 	const char *v = NULL;
+
 
 	if (strcmp(key, "lxc.mount.entry") == 0)
 		return lxc_get_mount_entries(c, retv, inlen);
