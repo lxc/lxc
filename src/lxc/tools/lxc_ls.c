@@ -356,7 +356,7 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 	}
 
 	/* Do not do more work than is necessary right from the start. */
-	if (args->ls_active || (args->ls_active && args->ls_frozen))
+	if (args->ls_active || args->ls_frozen)
 		num = list_active_containers(path, &containers, NULL);
 	else
 		num = list_all_containers(path, &containers, NULL);
