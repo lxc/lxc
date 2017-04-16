@@ -581,7 +581,7 @@ container_net()
         bridge=$(brctl show | awk 'NR==2 {print $1}')
         if [[ "${bridge}" != "" ]]; then
                         store_user_message "No network interface for this container
-It's a pitty, you have bridge, ${bridge}.
+It's a pity, you have bridge, ${bridge}.
 If it is for Lxc, use it next time by adding this to your default.conf :
 lxc.network.type = veth
 lxc.network.link = ${bridge}
