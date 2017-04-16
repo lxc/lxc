@@ -919,29 +919,28 @@ static int mount_rootfs(const char *rootfs, const char *target, const char *opti
 	};
 
 	if (!realpath(rootfs, absrootfs)) {
-		SYSERROR("failed to get real path for '%s'", rootfs);
+		SYSERROR("Failed to get real path for \"%s\".", rootfs);
 		return -1;
 	}
 
 	if (access(absrootfs, F_OK)) {
-		SYSERROR("'%s' is not accessible", absrootfs);
+		SYSERROR("Th rootfs \"%s\" is not accessible.", absrootfs);
 		return -1;
 	}
 
 	if (stat(absrootfs, &s)) {
-		SYSERROR("failed to stat '%s'", absrootfs);
+		SYSERROR("Failed to stat the rootfs \"%s\".", absrootfs);
 		return -1;
 	}
 
 	for (i = 0; i < sizeof(rtfs_type)/sizeof(rtfs_type[0]); i++) {
-
 		if (!__S_ISTYPE(s.st_mode, rtfs_type[i].type))
 			continue;
 
 		return rtfs_type[i].cb(absrootfs, target, options);
 	}
 
-	ERROR("unsupported rootfs type for '%s'", absrootfs);
+	ERROR("Unsupported rootfs type for rootfs \"%s\".", absrootfs);
 	return -1;
 }
 
@@ -1307,38 +1306,45 @@ static int fill_autodev(const struct lxc_rootfs *rootfs, bool mount_console)
 
 static int setup_rootfs(struct lxc_conf *conf)
 {
-	const struct lxc_rootfs *rootfs = &conf->rootfs;
+	struct bdev *bdev;
+	const struct lxc_rootfs *rootfs;
 
+	rootfs = &conf->rootfs;
 	if (!rootfs->path) {
-		if (mount("", "/", NULL, MS_SLAVE|MS_REC, 0)) {
-			SYSERROR("Failed to make / rslave");
+		if (mount("", "/", NULL, MS_SLAVE | MS_REC, 0)) {
+			SYSERROR("Failed to make / rslave.");
 			return -1;
 		}
 		return 0;
 	}
 
 	if (access(rootfs->mount, F_OK)) {
-		SYSERROR("failed to access to '%s', check it is present",
+		SYSERROR("Failed to access to \"%s\". Check it is present.",
 			 rootfs->mount);
 		return -1;
 	}
 
-	// First try mounting rootfs using a bdev
-	struct bdev *bdev = bdev_init(conf, rootfs->path, rootfs->mount, rootfs->options);
-	if (bdev && bdev->ops->mount(bdev) == 0) {
+	/* First try mounting rootfs using a bdev. */
+	bdev = bdev_init(conf, rootfs->path, rootfs->mount, rootfs->options);
+	if (bdev && !bdev->ops->mount(bdev)) {
 		bdev_put(bdev);
-		DEBUG("mounted '%s' on '%s'", rootfs->path, rootfs->mount);
+		DEBUG("Mounted rootfs \"%s\" onto \"%s\" with options \"%s\".",
+		      rootfs->path, rootfs->mount,
+		      rootfs->options ? rootfs->options : "(null)");
 		return 0;
 	}
 	if (bdev)
 		bdev_put(bdev);
 	if (mount_rootfs(rootfs->path, rootfs->mount, rootfs->options)) {
-		ERROR("failed to mount rootfs");
+		ERROR("Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\".",
+		      rootfs->path, rootfs->mount,
+		      rootfs->options ? rootfs->options : "(null)");
 		return -1;
 	}
 
-	DEBUG("mounted '%s' on '%s'", rootfs->path, rootfs->mount);
-
+	DEBUG("Mounted rootfs \"%s\" onto \"%s\" with options \"%s\".",
+	      rootfs->path, rootfs->mount,
+	      rootfs->options ? rootfs->options : "(null)");
 	return 0;
 }
 
@@ -3322,75 +3328,137 @@ static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 	return ret < 0 ? ret : closeret;
 }
 
+/* Check whether a binary exist and has either CAP_SETUID, CAP_SETGID or both. */
+static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
+{
+	char *path;
+	int ret;
+	struct stat st;
+	int fret = 0;
+
+	path = on_path(binary, NULL);
+	if (!path)
+		return -ENOENT;
+
+	ret = stat(path, &st);
+	if (ret < 0) {
+		fret = -errno;
+		goto cleanup;
+	}
+
+	/* Check if the binary is setuid. */
+	if (st.st_mode & S_ISUID) {
+		DEBUG("The binary \"%s\" does have the setuid bit set.", path);
+		fret = 1;
+		goto cleanup;
+	}
+
+	#if HAVE_LIBCAP
+	/* Check if it has the CAP_SETUID capability. */
+	if ((cap & CAP_SETUID) &&
+	    lxc_file_cap_is_set(path, CAP_SETUID, CAP_EFFECTIVE) &&
+	    lxc_file_cap_is_set(path, CAP_SETUID, CAP_PERMITTED)) {
+		DEBUG("The binary \"%s\" has CAP_SETUID in its CAP_EFFECTIVE "
+		      "and CAP_PERMITTED sets.", path);
+		fret = 1;
+		goto cleanup;
+	}
+
+	/* Check if it has the CAP_SETGID capability. */
+	if ((cap & CAP_SETGID) &&
+	    lxc_file_cap_is_set(path, CAP_SETGID, CAP_EFFECTIVE) &&
+	    lxc_file_cap_is_set(path, CAP_SETGID, CAP_PERMITTED)) {
+		DEBUG("The binary \"%s\" has CAP_SETGID in its CAP_EFFECTIVE "
+		      "and CAP_PERMITTED sets.", path);
+		fret = 1;
+		goto cleanup;
+	}
+	#endif
+
+cleanup:
+	free(path);
+	return fret;
+}
+
 int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 {
-	struct lxc_list *iterator;
 	struct id_map *map;
-	int ret = 0, use_shadow = 0;
+	struct lxc_list *iterator;
 	enum idtype type;
-	char *buf = NULL, *pos, *cmdpath = NULL;
+	char *pos;
+	int euid;
+	int ret = 0, use_shadow = 0;
+	int uidmap = 0, gidmap = 0;
+	char *buf = NULL;
 
-	/*
-	 * If newuidmap exists, that is, if shadow is handing out subuid
-	 * ranges, then insist that root also reserve ranges in subuid.  This
+	euid = geteuid();
+
+	/* If new{g,u}idmap exists, that is, if shadow is handing out subuid
+	 * ranges, then insist that root also reserve ranges in subuid. This
 	 * will protected it by preventing another user from being handed the
 	 * range by shadow.
 	 */
-	cmdpath = on_path("newuidmap", NULL);
-	if (cmdpath) {
-		use_shadow = 1;
-		free(cmdpath);
-	}
-
-	if (!use_shadow && geteuid()) {
-		ERROR("Missing newuidmap/newgidmap");
+	uidmap = idmaptool_on_path_and_privileged("newuidmap", CAP_SETUID);
+	gidmap = idmaptool_on_path_and_privileged("newgidmap", CAP_SETGID);
+	if (uidmap > 0 && gidmap > 0) {
+		DEBUG("Functional newuidmap and newgidmap binary found.");
+		use_shadow = true;
+	} else if (uidmap == -ENOENT && gidmap == -ENOENT && !euid) {
+		DEBUG("No newuidmap and newgidmap binary found. Trying to "
+		      "write directly with euid 0.");
+		use_shadow = false;
+	} else {
+		DEBUG("Either one or both of the newuidmap and newgidmap "
+		      "binaries do not exist or are missing necessary "
+		      "privilege.");
 		return -1;
 	}
 
-	for(type = ID_TYPE_UID; type <= ID_TYPE_GID; type++) {
+	for (type = ID_TYPE_UID; type <= ID_TYPE_GID; type++) {
 		int left, fill;
-		int had_entry = 0;
+		bool had_entry = false;
 		if (!buf) {
-			buf = pos = malloc(4096);
+			buf = pos = malloc(LXC_IDMAPLEN);
 			if (!buf)
 				return -ENOMEM;
 		}
 		pos = buf;
 		if (use_shadow)
-			pos += sprintf(buf, "new%cidmap %d",
-				type == ID_TYPE_UID ? 'u' : 'g',
-				pid);
+			pos += sprintf(buf, "new%cidmap %d", type == ID_TYPE_UID ? 'u' : 'g', pid);
 
 		lxc_list_for_each(iterator, idmap) {
-			/* The kernel only takes <= 4k for writes to /proc/<nr>/[ug]id_map */
+			/* The kernel only takes <= 4k for writes to
+			 * /proc/<nr>/[ug]id_map
+			 */
 			map = iterator->elem;
 			if (map->idtype != type)
 				continue;
 
-			had_entry = 1;
-			left = 4096 - (pos - buf);
+			had_entry = true;
+
+			left = LXC_IDMAPLEN - (pos - buf);
 			fill = snprintf(pos, left, "%s%lu %lu %lu%s",
-					use_shadow ? " " : "",
-					map->nsid, map->hostid, map->range,
+					use_shadow ? " " : "", map->nsid,
+					map->hostid, map->range,
 					use_shadow ? "" : "\n");
 			if (fill <= 0 || fill >= left)
-				SYSERROR("snprintf failed, too many mappings");
+				SYSERROR("Too many {g,u}id mappings defined.");
+
 			pos += fill;
 		}
 		if (!had_entry)
 			continue;
 
 		if (!use_shadow) {
-			ret = write_id_mapping(type, pid, buf, pos-buf);
+			ret = write_id_mapping(type, pid, buf, pos - buf);
 		} else {
-			left = 4096 - (pos - buf);
+			left = LXC_IDMAPLEN - (pos - buf);
 			fill = snprintf(pos, left, "\n");
 			if (fill <= 0 || fill >= left)
-				SYSERROR("snprintf failed, too many mappings");
+				SYSERROR("Too many {g,u}id mappings defined.");
 			pos += fill;
 			ret = system(buf);
 		}
-
 		if (ret)
 			break;
 	}

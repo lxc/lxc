@@ -39,6 +39,7 @@
 /* Maximum number for 64 bit integer is a string with 21 digits: 2^64 - 1 = 21 */
 #define LXC_NUMSTRLEN64 21
 #define LXC_LINELEN 4096
+#define LXC_IDMAPLEN 4096
 
 /* returns 1 on success, 0 if there were any failures */
 extern int lxc_rmdir_onedev(char *path, const char *exclude);
@@ -301,7 +302,7 @@ uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval);
 
 int detect_shared_rootfs(void);
 bool detect_ramfs_rootfs(void);
-char *on_path(char *cmd, const char *rootfs);
+char *on_path(const char *cmd, const char *rootfs);
 bool file_exists(const char *f);
 bool cgns_supported(void);
 char *choose_init(const char *rootfs);
