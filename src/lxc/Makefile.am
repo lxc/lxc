@@ -210,6 +210,9 @@ bin_SCRIPTS += tools/lxc-start-ephemeral
 endif
 endif
 
+bin_SCRIPTS += legacy/lxc-guestsetup-addfile \
+               legacy/lxc-guestsetup-addpackage
+
 bin_PROGRAMS = \
 	lxc-attach \
 	lxc-autostart \

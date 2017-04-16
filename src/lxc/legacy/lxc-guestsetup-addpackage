@@ -1,0 +1,231 @@
+#!/bin/sh
+
+#
+# lxc: linux Container library
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+
+##
+## A helper script to add specific packages to an existing LXC guest
+## Copyright (C) 2014 Assaf Gordon
+##
+
+die()
+{
+BASE=$(basename "$0")
+echo "$BASE error: $@" >&2
+exit 1
+}
+
+log()
+{
+[ -n "$VERBOSE" ] && echo "$@"
+}
+
+usage()
+{
+BASE=$(basename "$0")
+echo "\
+Add specific packages from the host to the LXC guest
+
+Usage:
+  $BASE [OPTIONS] --name NAME PACKAGE [...]
+
+Will add files and directories required to use PACKAGE to the LXC guest.
+
+Available PACKAGES:
+  perl
+  python
+  ruby
+
+NOTE:
+1. Multiple PACKAGES can be specified.
+2. PACKAGE must exist on the host.
+3. Adds required directories based on the configured PACKAGE in the host.
+   (e.g. all directories in Perl's @INC or Python's sys.path).
+
+Options:
+  -v, --verbose            Print status of each added FILE/DIR to STDOUT.
+  -n NAME, --name NAME     Add FILE/DIR to container NAME.
+  --help                   This help screen.
+  --dry-run                Print to STDOUT (but do not execute) commands.
+
+Example - Create a minimal 'busybox' LXC Guest, and add python support:
+
+  \$ sudo lxc-create --template busybox --name pytest
+  \$ sudo $BASE --name pytest --verbose python
+  Adding Python package:
+  /etc/alternatives : created directory and added entry to LXC guest config file
+  /usr/bin/python2.7 : copied file to LXC guest
+  /usr/bin/python : created symlink in LXC guest
+  /usr/bin/python : Adding dependency directory '/lib/x86_64-linux-gnu' for shared-objects
+  /usr/lib/pymodules/python2.7 : already accessible from within LXC guest
+  /usr/lib/python2.7 : already accessible from within LXC guest
+  /usr/lib/python2.7/dist-packages : already accessible from within LXC guest
+  /usr/lib/python2.7/dist-packages/gtk-2.0 : already accessible from within LXC guest
+  /usr/lib/python2.7/dist-packages/PIL : already accessible from within LXC guest
+  /usr/lib/python2.7/lib-dynload : already accessible from within LXC guest
+  /usr/lib/python2.7/lib-tk : already accessible from within LXC guest
+  /usr/lib/python2.7/plat-linux2 : already accessible from within LXC guest
+  /usr/local/lib/python2.7/dist-packages : created directory and added entry to LXC guest config file
+  /lib/x86_64-linux-gnu : already accessible from within LXC guest
+
+"
+	exit 0
+}
+
+clear_items()
+{
+	ITEMS=""
+}
+
+add_item_if_exists()
+{
+	ITEM="$1"
+	[ -d "$ITEM" -o -f "$ITEM" ] || return 1
+
+	if [ -z "$ITEMS" ] ; then
+		ITEMS="$ITEM"
+	else
+		ITEMS="$ITEMS
+$ITEM"
+	fi
+}
+
+##
+## Call 'lxc-guestsetup-addfile' to add the files.
+##
+## Note implicit short-cut assumptions:
+##  Perl/Python/Ruby might return nested directories, such as:
+##        /usr/local/lib/site_ruby/1.9.1
+##        /usr/local/lib/site_ruby/1.9.1/x86_64-linux
+##        /usr/local/lib/site_ruby
+##  After 'sort', the shortest one will be first (i.e. "/usr/local/lib/site_ruby").
+##  Once 'lxc-guestsetup-addfile' adds this directory,
+##  the others nested directories will be detected as 'already accessible'.
+##  This is why there's no extra code to detect redundant directories here.
+##
+add_items_to_guest()
+{
+	ITEMS=$(echo "$ITEMS" | LC_ALL=C sort | uniq) ||
+		die "failed to sort item list"
+
+	lxc-guestsetup-addfile --name $NAME $VERBOSE $DRYRUN $ITEMS ||
+		die "failed to add files to LXC guest"
+}
+
+add_perl_package()
+{
+	clear_items
+
+	which perl >/dev/null 2>/dev/null || die "perl not found on this system"
+	perl -e '' || die 'failed to run perl on this system'
+
+	add_item_if_exists "/etc/alternatives"
+	add_item_if_exists $(which perl)
+
+	# The include path for this system's perl
+	for D in $(perl -Tle 'print for map {s|/\d[\d\.]+$||;$_} @INC') ;
+	do
+		add_item_if_exists "$D"
+	done
+
+	log "Adding Perl package:"
+	add_items_to_guest
+}
+
+add_python_package()
+{
+	clear_items
+
+	which python >/dev/null 2>/dev/null || die "python not found on this system"
+	python -c '' || die 'failed to run python on this system'
+
+	add_item_if_exists "/etc/alternatives"
+	add_item_if_exists $(which python)
+
+	# The include path for this system's python
+	for D in $(python -c 'import sys; print "\n".join(sys.path)')
+	do
+		add_item_if_exists "$D"
+	done
+
+	log "Adding Python package:"
+	add_items_to_guest
+}
+
+add_ruby_package()
+{
+	clear_items
+
+	which ruby >/dev/null 2>/dev/null || die "ruby not found on this system"
+	ruby -e '' || die 'failed to run ruby on this system'
+
+	add_item_if_exists "/etc/alternatives"
+	add_item_if_exists $(which ruby)
+
+	# The include path for this system's ruby
+	for D in $(ruby -e 'puts $:')
+	do
+		add_item_if_exists "$D"
+	done
+
+	log "Adding ruby package:"
+	add_items_to_guest
+}
+
+##
+##  Start Here
+##
+
+DRYRUN=
+VERBOSE=
+NAME=
+
+## Process command-line parameters
+while [ "$#" -gt "0" ] ;
+do
+	case "$1" in
+	-h|--help) usage ;;
+	-n|--name) NAME="$2"
+		   shift 2
+		   ;;
+	-v|--verbose) VERBOSE="--verbose" ; shift ;;
+        --dry-run) DRYRUN=--dry-run ; shift ;;
+	--?*) die "unknown option '$1'. See --help for more information." ;;
+	--) shift ; break ;;
+	*) break ;;
+	esac
+done
+[ -z "$NAME" ] && die "missing container name, use --name option. See --help for more information."
+[ "$#" -eq 0 ] && die "missing packages to add. See --help for more information."
+
+
+
+##
+## Add each package
+##
+
+for P in $@ ; do
+
+  case "$P" in
+    perl)   add_perl_package ;;
+    python) add_python_package ;;
+    ruby)   add_ruby_package ;;
+    *) die "unknown package '$P'" ;;
+  esac
+
+done

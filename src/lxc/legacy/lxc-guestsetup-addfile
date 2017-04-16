@@ -1,0 +1,365 @@
+#!/bin/sh
+
+#
+# lxc: linux Container library
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+
+##
+## A helper script to add a file/directory to an existing LXC Containers
+## Copyright (C) 2014 Assaf Gordon
+##
+
+die()
+{
+BASE=$(basename "$0")
+echo "$BASE error: $@" >&2
+exit 1
+}
+
+log()
+{
+[ -n "$VERBOSE" ] && echo "$@"
+}
+
+usage()
+{
+BASE=$(basename "$0")
+echo "\
+Add files/Directories to existing Linux Container
+
+Usage:
+  $BASE [OPTIONS] --name NAME [FILE|DIR] [FILE|DIR] ...
+
+Will add FILE (or DIR) to Linux Container NAME .
+
+1. Multiple file/directories can be specified.
+1. FILE or DIR must exist on the host.
+3. The container must already exist (use lxc-create).
+4. If FILE is a regular file, it will be copied to the guest,
+   and its full path will be created, if needed.
+5. If FILE is a symlink, a symlink will be created inside the guest,
+   AND the real file will be copied to the guest.
+6. If FILE already exists inside the guest, no additional operations will be perfomed.
+7. If FILE is a dynamically-linked binary, directories containing the shared-objects
+   will be added as well.
+8. If DIR is a directory, an empty directory will be created inside the guest,
+   AND a read-only mount point will be added to the container's config file.
+9. If DIR is a symlink to a directory, a symlink will be created inside the guest,
+   AND the real directory will also be created inside the guest, and mounted.
+10. If DIR or FILE are accessible inside the guest from a parent mounted directory,
+   no additional operations will be performed.
+
+Options:
+  -v, --verbose            Print status of each added FILE/DIR to STDOUT.
+  -n NAME, --name NAME     Add FILE/DIR to container NAME.
+  --help                   This help screen.
+  --dry-run                Print to STDOUT (but do not execute) commands.
+
+Example - Adding files:
+
+  # On the host - 'convert' is a symlink, which resolves to 'convert.im6' :
+  \$ ls -log /usr/bin/convert
+  lrwxrwxrwx 1 25 Jan 17 20:03 /usr/bin/convert -> /etc/alternatives/convert
+  \$ readlink -f /usr/bin/convert
+  /usr/bin/convert.im6
+
+  # Adding it to LXC guest named 'test1' :
+  \$ lxc-guestsetup-addfile --name test1 --verbose /usr/bin/convert
+  /usr/bin/convert.im6 : copied file to LXC guest
+  /usr/bin/convert : created symlink in LXC guest
+  /usr/bin/convert : Adding dependency directory '/lib/x86_64-linux-gnu' for shared-objects
+  /usr/bin/convert : Adding dependency directory '/usr/lib/x86_64-linux-gnu' for shared-objects
+  /lib/x86_64-linux-gnu : already accessible from within LXC guest
+  /usr/lib/x86_64-linux-gnu : already accessible from within LXC guest
+
+  # files inside the guest's root filesystem
+  \$ cd [LXC]/test1
+  \$ ls -log ./rootfs/usr/bin/
+  lrwxrwxrwx 1    20 May  1 23:35 convert -> /usr/bin/convert.im6
+  -rwxr-xr-x 1 10448 May  1 23:35 convert.im6
+
+Example - Adding files and directories:
+
+  # Add VIM from the host, with VIM's shared directory (for 'vim-scripts')
+  \$ $BASE --name test1 --verbose /usr/bin/vim /usr/share/vim/
+  /usr/bin/vim.basic : copied file to LXC guest
+  /usr/bin/vim : created symlink in LXC guest
+  /usr/bin/vim : Adding dependency directory '/lib/x86_64-linux-gnu' for shared-objects
+  /usr/bin/vim : Adding dependency directory '/usr/lib/x86_64-linux-gnu' for shared-objects
+  /usr/share/vim : created directory and added entry to LXC guest config file
+  /lib/x86_64-linux-gnu : already accessible from within LXC guest
+  /usr/lib/x86_64-linux-gnu : already accessible from within LXC guest
+
+  # on the guest - files added, directory created, mount point added.
+  \$ cd [LXC]/test1/
+
+  \$ ls -log ./rootfs/usr/bin
+  lrwxrwxrwx 1      18 May  1 23:44 vim -> /usr/bin/vim.basic
+  -rwxr-xr-x 1 1876072 May  1 23:44 vim.basic
+
+  \$ ls -log ./rootfs/usr/share/
+  drwxr-sr-x 2 4096 May  1 20:33 vim
+
+  \$ grep 'usr/share' config
+  lxc.mount.entry = /usr/share/vim ./usr/share/vim none ro,bind 0 0
+"
+	exit 0
+}
+
+## Adds a file from the host to the LXC guest.
+## FILE must be a real file (not symlink).
+## FILE must be an absolute path.
+lxc_add_real_file()
+{
+	a_HOST_FILE="$1"
+
+	[ -h "$a_HOST_FILE" ] &&
+		die "internal error: lxc_add_real_file called with symlink '$a_HOST_FILE'"
+	[ -f "$a_HOST_FILE" ] ||
+		die "internal error: lxc_add_real_file called with non-regular file '$a_HOST_FILE'"
+
+	# Create directories inside the guest, if needed
+	a_HOST_DIR=$(dirname "$a_HOST_FILE") ||
+		die "failed to extract directories of '$a_HOST_FILE'"
+	$NOOP mkdir -p "$LXC_GUEST_ROOTFS/$a_HOST_DIR" ||
+		die "failed to create directory '$LXC_GUEST_ROOTFS/$a_HOST_DIR'"
+
+	if [ \! -e "$LXC_GUEST_ROOTFS/$a_HOST_FILE" ] ; then
+		$NOOP cp "$a_HOST_FILE" "$LXC_GUEST_ROOTFS/$a_HOST_DIR" ||
+			die "failed to copy '$a_HOST_FILE' to guest container"
+		log "$a_HOST_FILE : copied file to LXC guest"
+	else
+		log "$a_HOST_FILE : file already exists in LXC guest"
+	fi
+}
+
+##
+## Creates a symlink inside the LXC guest.
+##
+lxc_add_symlink()
+{
+	c_TARGET="$1"
+	c_LINKNAME="$2"
+
+	c_HOST_DIR=$(dirname "$c_LINKNAME") ||
+		die "failed to extract directories of '$c_LINKNAME'"
+
+	$NOOP mkdir -p "$LXC_GUEST_ROOTFS/$c_HOST_DIR" ||
+		die "failed to create directory '$LXC_GUEST_ROOTFS/$c_HOST_DIR'"
+
+	if [ \! -e "$LXC_GUEST_ROOTFS/$c_LINKNAME" ] ; then
+		$NOOP ln -s "$c_TARGET" "$LXC_GUEST_ROOTFS/$c_LINKNAME" ||
+			die "failed to create symlink inside guest '$LXC_GUEST_ROOTFS/$c_LINKNAME'"
+		log "$c_LINKNAME : created symlink in LXC guest"
+	else
+		log "$c_LINKNAME : symlink already exists in LXC guest"
+	fi
+
+}
+
+## Adds a file from the host to the LXC guest.
+## If FILE is a symlink on the host,
+## both the real file and the symlink are created inside the guest.
+## FILE must be an absolute path.
+lxc_add_file()
+{
+	b_HOST_FILE="$1"
+
+	[ -f "$b_HOST_FILE" ] ||
+		die "internal error: lxc_add_file called with non-regular file '$b_HOST_FILE'"
+
+	if [ -h "$b_HOST_FILE" ] ; then
+		b_REAL_HOST_FILE=$(readlink -f "$b_HOST_FILE") ||
+			die "failed to dereference symlink '$b_HOST_FILE'"
+		[ -f "$b_REAL_HOST_FILE" -a \! -h "$b_REAL_HOST_FILE" ] ||
+			die "internal error: symlink '$b_HOST_FILE' does not resolve to a regular file"
+		lxc_add_real_file "$b_REAL_HOST_FILE"
+		lxc_add_symlink "$b_REAL_HOST_FILE" "$b_HOST_FILE"
+	else
+		lxc_add_real_file "$b_HOST_FILE"
+	fi
+}
+
+## Setups a host directory to be accessible from inside the LXC Guest.
+## DIR must be a real directory on the host (not a symlink).
+## DIR must be an absolute path.
+## An empty directory will be created inside the LXC guest's rootfs,
+## and an appropriate entry will be added to the guest's config.
+lxc_add_real_directory()
+{
+	e_HOST_DIR="$1"
+
+	# Create the real directory inside the container
+        $NOOP mkdir -p "$LXC_GUEST_ROOTFS/$e_HOST_DIR" ||
+		die "failed to create directory inside LXC guest '$LXC_GUEST_ROOTFS/$e_HOST_DIR'"
+
+	# Add a mount point in the configuration file
+	if awk -v MOUNTDIR="$e_HOST_DIR" \
+		'$1 == "lxc.mount.entry" && $3 == MOUNTDIR { exit 1 }' \
+		"$LXC_GUEST_CONFIG" ; then
+
+		## Add entry to config file
+		CONFIG_LINE1="# Mount directory '$e_HOST_DIR' - added with $0"
+		CONFIG_LINE2="lxc.mount.entry = $e_HOST_DIR .$e_HOST_DIR none ro,bind 0 0"
+
+		if [ -z "$NOOP" ] ; then
+			( echo "$CONFIG_LINE1" ; echo "$CONFIG_LINE2" ) >> "$LXC_GUEST_CONFIG" ||
+				die "failed to add mount entry for '$e_HOST_DIR' to '$LXC_GUEST_CONFIG'"
+		else
+			# Dry-run mode, print what would've been added
+			echo "echo \"$CONFIG_LINE2\" > $LXC_GUEST_CONFIG"
+		fi
+
+		log "$e_HOST_DIR : created directory and added entry to LXC guest config file"
+	else
+		log "$e_HOST_DIR : directory already listed in LXC guest config file"
+	fi
+}
+
+## Setups a host directory to be accessible from inside the LXC Guest.
+## If DIR is a symlink to a directory, both the real directory and the symlink are created.
+## DIR must be an absolute path.
+lxc_add_directory()
+{
+	d_HOST_DIR="$1"
+
+	[ -d "$d_HOST_DIR" ] ||
+		die "internal error: lxc_add_directory called with non-directory file '$d_HOST_DIR'"
+
+	if [ -h "$d_HOST_DIR" ] ; then
+		d_REAL_HOST_DIR=$(readlink -f "$d_HOST_DIR") ||
+			die "failed to dereference symlink '$d_HOST_DIR'"
+		[ -d "$d_REAL_HOST_DIR" -a \! -h "$c_REAL_HOST_DIR" ] ||
+			die "internal error: symlink '$d_HOST_DIR' does not resolve to a regular directory"
+		lxc_add_real_directory "$d_REAL_HOST_DIR"
+		lxc_add_symlink "$d_REAL_HOST_DIR" "$d_HOST_FILE"
+	else
+		lxc_add_real_directory "$d_HOST_DIR"
+	fi
+}
+
+## Returns TRUE (zero exit code) if FILE is accessible from inside the LXC guest,
+## based on the mounted directories in the config file.
+## Example:
+##    if '/usr/lib' is mounted,
+##    the file '/usr/lib/perl/5.14/Cwd.pm' is assumed to be accessible.
+##
+## Implementation note:
+##   It is implicitly assumed that directories are mounted with the same
+##   path on the host and guest (i.e. "/usr/local/lib/" on the host
+##   is mounted as "/usr/local/lib" in the guest). For 'lib' directories,
+##   this assumption usually holds.
+lxc_file_accessible_in_guest()
+{
+	f_FILE="$1"
+
+	## Available inside the guest through a mounted directory
+	FOUND=$(awk -v TARGETFILE="$f_FILE" \
+		'$1 == "lxc.mount.entry" && \
+                   $3 == substr(TARGETFILE,1,length($3)) {
+                      print "found: " $3
+                      exit
+                    }' "$LXC_GUEST_CONFIG") ||
+		die "failed to scan config file '$LXC_GUEST_CONFIG' for mount points"
+
+	[ -n "$FOUND" ] && return 0
+
+	return 1
+}
+
+
+##
+##  Start Here
+##
+
+NOOP=
+VERBOSE=
+NAME=
+
+## Process command-line parameters
+while [ "$#" -gt "0" ] ;
+do
+	case "$1" in
+	-h|--help) usage ;;
+	-n|--name) NAME="$2"
+		   shift 2
+		   ;;
+        --dry-run) NOOP=echo ; shift ;;
+	-v|--verbose) VERBOSE=yes ; shift ;;
+	--?*) die "unknown option '$1'. See --help for more information" ;;
+	--) shift ; break ;;
+	*) break ;;
+	esac
+done
+[ -z "$NAME" ] && die "missing container name, use --name option. See --help for more information."
+[ "$#" -eq 0 ] && die "missing file names to add. See --help for more information."
+
+
+# Find LXC root directory
+LXC_ROOT_PATH=$(lxc-config lxc.lxcpath) || die "Failed to get lxc-path with 'lxc-config'"
+[ -d "$LXC_ROOT_PATH" ] || die "lxcpath ($LXC_ROOT_PATH) is not a valid directory. Please verify lxc installation and lxc-config values."
+
+# Find Container's root directory
+LXC_GUEST_PATH="$LXC_ROOT_PATH/$NAME"
+[ -d "$LXC_GUEST_PATH" ] || die "Container's directory ($LXC_GUEST_PATH) is not a valid directory. Please verify container's name."
+
+LXC_GUEST_CONFIG="$LXC_GUEST_PATH/config"
+[ -e "$LXC_GUEST_CONFIG" ] || die "invalid container directory ('$LXC_GUEST_CONFIG' not found)"
+LXC_GUEST_ROOTFS="$LXC_GUEST_PATH/rootfs"
+[ -d "$LXC_GUEST_ROOTFS" ] || die "invalid container directory ('$LXC_GUEST_ROOTFS' not found)"
+
+
+# Add each file on the command line
+while [ "$#" -gt "0" ] ;
+do
+	[ -e "$1" ] || die "file/directory '$1' not found"
+
+	# Expand to absolute path, without resolving any symlinks
+	ARG=$(cd $(dirname -- "$1") && echo $PWD/$(basename -- "$1")) ||
+		die "failed to expand absolute path of '$1'"
+
+	if lxc_file_accessible_in_guest "$ARG" ; then
+		log "$ARG : already accessible from within LXC guest"
+		shift
+		continue
+	fi
+
+	if [ -d "$ARG" ] ; then
+		lxc_add_directory "$ARG"
+	elif [ -f "$ARG" ] ; then
+		lxc_add_file "$ARG"
+
+		## If the file is a binary executable,
+		## add the directories of its shared-objects
+		if ldd "$ARG" 2>/dev/null >/dev/null ; then
+			# For each shared-object used by this binary,
+			# extract the directory, and add it to the list of
+			# files to process.
+			# These will likely be directories such as "/usr/lib",
+			# which are already accessible from inside the guest.
+			for SODIR in $(ldd "$ARG" | perl -MFile::Basename -lane '/=> (\S+) \(0x/&& print dirname($1);' | sort | uniq) ; do
+				log "$ARG : Adding dependency directory '$SODIR' for shared-objects"
+				set -- $@ "$SODIR"
+			done
+		fi
+	else
+		die "cannot add '$ARG': only regular files/directories are supported"
+	fi
+
+	shift
+done
+
