@@ -306,11 +306,15 @@ fi
 # Trap all exit signals
 trap cleanup EXIT HUP INT TERM
 
-if ! type mktemp >/dev/null 2>&1; then
-    DOWNLOAD_TEMP=/tmp/lxc-download.$$
-    mkdir -p $DOWNLOAD_TEMP
-else
-    DOWNLOAD_TEMP=$(mktemp -d)
+if ! mount |awk '{print $3}' |grep ^/tmp &>/dev/null; then
+    if ! type mktemp >/dev/null 2>&1; then
+        DOWNLOAD_TEMP=/tmp/lxc-download.$$
+        mkdir -p $DOWNLOAD_TEMP
+    else
+         DOWNLOAD_TEMP=$(mktemp -d)
+    fi
+else # /tmp may be mounted in tmpfs or noexec
+    DOWNLOAD_TEMP=$(mktemp -d -p $LXC_PATH)
 fi
 
 # Simply list images
