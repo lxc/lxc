@@ -3353,7 +3353,7 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 		goto cleanup;
 	}
 
-	#if HAVE_LIBCAP
+	#if HAVE_LIBCAP && !IS_BIONIC
 	/* Check if it has the CAP_SETUID capability. */
 	if ((cap & CAP_SETUID) &&
 	    lxc_file_cap_is_set(path, CAP_SETUID, CAP_EFFECTIVE) &&
@@ -3373,6 +3373,10 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 		fret = 1;
 		goto cleanup;
 	}
+	#else
+	DEBUG("Cannot check for file capabilites as full capability support is "
+	      "missing. Manual intervention needed.");
+	fret = 1;
 	#endif
 
 cleanup:
