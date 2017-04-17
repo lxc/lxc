@@ -724,12 +724,16 @@ else
     fi
 fi
 
+# Set defaults
 debug=0
 hostarch=$arch
 flushcache=0
 packages=""
 user="ubuntu"
-password="ubuntu"
+
+# The default password for the ubuntu user should be randomized if the user
+# building the LXC instance doesn't specify a password.
+password=$(mktemp -u ubuntu-XXXXXX)
 
 while true
 do
