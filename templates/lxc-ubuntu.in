@@ -154,7 +154,15 @@ EOF
 
         rm -f $rootfs/etc/ssh/ssh_host_*key*
         mv $rootfs/etc/init/ssh.conf $rootfs/etc/init/ssh.conf.disabled
+        
+        cp -f $rootfs/var/lib/dpkg/info/openssh-server.postinst $rootfs/var/lib/dpkg/info/openssh-server.postinst.bak
+        sed -i 's/invoke-rc.d ssh.*$/true/g' $rootfs/var/lib/dpkg/info/openssh-server.postinst
+
         DPKG_MAINTSCRIPT_PACKAGE=openssh DPKG_MAINTSCRIPT_NAME=postinst chroot $rootfs /var/lib/dpkg/info/openssh-server.postinst configure
+        
+        rm -f $rootfs/var/lib/dpkg/info/openssh-server.postinst
+        mv -f $rootfs/var/lib/dpkg/info/openssh-server.postinst.bak $rootfs/var/lib/dpkg/info/openssh-server.postinst
+        
         mv $rootfs/etc/init/ssh.conf.disabled $rootfs/etc/init/ssh.conf
 
         sed -i "s/root@$(hostname)/root@$hostname/g" $rootfs/etc/ssh/ssh_host_*.pub
