@@ -142,7 +142,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 		 *
 		 * then we memmove()
 		 *
-		 *	dest: del + 1 == ONT|PID
+		 *	dest: del + 1 == OUNT|PID
 		 *	src:  del + 3 == NT|PID
 		 */
 		while ((del = strstr(arg, "MOUNT")))

@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
 	 *
 	 * then we memmove()
 	 *
-	 *	dest: del + 1 == ONT|PID
+	 *	dest: del + 1 == OUNT|PID
 	 *	src:  del + 3 == NT|PID
 	 */
 	while ((del = strstr(namespaces, "MOUNT")))
