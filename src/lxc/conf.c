@@ -865,7 +865,7 @@ static int mount_rootfs(const char *rootfs, const char *target, const char *opti
 	}
 
 	if (access(absrootfs, F_OK)) {
-		SYSERROR("Th rootfs \"%s\" is not accessible.", absrootfs);
+		SYSERROR("The rootfs \"%s\" is not accessible.", absrootfs);
 		return -1;
 	}
 
