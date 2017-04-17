@@ -593,7 +593,7 @@ static char *lxc_attach_getpwshell(uid_t uid)
 	}
 }
 
-static void lxc_attach_get_init_uidgid(uid_t* init_uid, gid_t* init_gid)
+static void lxc_attach_get_init_uidgid(uid_t* init_uid, gid_t* init_gid, gid_t* init_groups, int* num_init_groups)
 {
 	FILE *proc_file;
 	char proc_fn[MAXPATHLEN];
@@ -603,6 +603,8 @@ static void lxc_attach_get_init_uidgid(uid_t* init_uid, gid_t* init_gid)
 	long value = -1;
 	uid_t uid = (uid_t)-1;
 	gid_t gid = (gid_t)-1;
+	int num_groups = 0;
+	int max_groups = *num_init_groups;
 
 	/* read capabilities */
 	snprintf(proc_fn, MAXPATHLEN, "/proc/%d/status", 1);
@@ -620,10 +622,29 @@ static void lxc_attach_get_init_uidgid(uid_t* init_uid, gid_t* init_gid)
 			uid = (uid_t) value;
 		} else {
 			ret = sscanf(line, "Gid: %ld", &value);
-			if (ret != EOF && ret > 0)
+			if (ret != EOF && ret > 0) {
 				gid = (gid_t) value;
+			} else if (max_groups > 0) {
+				int read;
+				ret = sscanf(line, "Groups: %ld%n", &value, &read);
+				if (ret != EOF && ret > 0) {
+					const char *ptr = line + read;
+
+					num_groups = 0;
+					init_groups[num_groups++] = (gid_t) value;
+
+					while (num_groups < max_groups) {
+						ret = sscanf(ptr, "%ld%n", &value, &read);
+						if (ret == EOF || ret <= 0)
+							break;
+
+						init_groups[num_groups++] = (gid_t) value;
+						ptr += read;
+					}
+				}
+			}
 		}
-		if (uid != (uid_t)-1 && gid != (gid_t)-1)
+		if (uid != (uid_t)-1 && gid != (gid_t)-1 && (max_groups == 0 || num_groups > 0))
 			break;
 	}
 
@@ -635,9 +656,7 @@ static void lxc_attach_get_init_uidgid(uid_t* init_uid, gid_t* init_gid)
 		*init_uid = uid;
 	if (gid != (gid_t)-1)
 		*init_gid = gid;
-
-	/* TODO: we should also parse supplementary groups and use
-	 * setgroups() to set them */
+	*num_init_groups = num_groups;
 }
 
 struct attach_clone_payload {
@@ -997,6 +1016,8 @@ static int attach_child_main(void* data)
 	int fd;
 	uid_t new_uid;
 	gid_t new_gid;
+	gid_t new_groups[50];
+	int num_new_groups;
 
 	/* wait for the initial thread to signal us that it's ready
 	 * for us to start initializing
@@ -1060,11 +1081,14 @@ static int attach_child_main(void* data)
 	/* set user / group id */
 	new_uid = 0;
 	new_gid = 0;
+	num_new_groups = 0;
 	/* ignore errors, we will fall back to root in that case
 	 * (/proc was not mounted etc.)
 	 */
-	if (options->namespaces & CLONE_NEWUSER)
-		lxc_attach_get_init_uidgid(&new_uid, &new_gid);
+	if (options->namespaces & CLONE_NEWUSER) {
+		num_new_groups = sizeof(new_groups) / sizeof(new_groups[0]);
+		lxc_attach_get_init_uidgid(&new_uid, &new_gid, new_groups, &num_new_groups);
+	}
 
 	if (options->uid != (uid_t)-1)
 		new_uid = options->uid;
@@ -1088,7 +1112,7 @@ static int attach_child_main(void* data)
 
 	/* try to set the uid/gid combination */
 	if ((new_gid != 0 || options->namespaces & CLONE_NEWUSER)) {
-		if (setgid(new_gid) || setgroups(0, NULL)) {
+		if (setgid(new_gid) || setgroups(num_new_groups, new_groups)) {
 			SYSERROR("switching to container gid");
 			shutdown(ipc_socket, SHUT_RDWR);
 			rexit(-1);
