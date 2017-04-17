@@ -285,14 +285,20 @@ EOF
     if [ -n "$3" ]; then
         cat >> "$1/etc/apt/sources.list" << EOF
 deb [arch=$2] $MIRROR ${release} main restricted universe multiverse
+deb-src [arch=$2] $MIRROR ${release} main restricted universe multiverse
 deb [arch=$2] $MIRROR ${release}-updates main restricted universe multiverse
+deb-src [arch=$2] $MIRROR ${release}-updates main restricted universe multiverse
 deb [arch=$2] $SECURITY_MIRROR ${release}-security main restricted universe multiverse
+deb-src [arch=$2] $SECURITY_MIRROR ${release}-security main restricted universe multiverse
 EOF
     else
         cat >> "$1/etc/apt/sources.list" << EOF
 deb $MIRROR ${release} main restricted universe multiverse
+deb-src $MIRROR ${release} main restricted universe multiverse
 deb $MIRROR ${release}-updates main restricted universe multiverse
+deb-src $MIRROR ${release}-updates main restricted universe multiverse
 deb $SECURITY_MIRROR ${release}-security main restricted universe multiverse
+deb-src $SECURITY_MIRROR ${release}-security main restricted universe multiverse
 EOF
     fi
 }
