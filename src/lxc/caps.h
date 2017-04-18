@@ -56,11 +56,11 @@ static inline int lxc_caps_last_cap(void) {
 typedef int cap_value_t;
 typedef int cap_flag_t;
 static inline bool lxc_proc_cap_is_set(cap_value_t cap, cap_flag_t flag) {
-	return true;
+	return false;
 }
 
 static inline bool lxc_file_cap_is_set(const char *path, cap_value_t cap, cap_flag_t flag) {
-	return true;
+	return false;
 }
 #endif
 
