@@ -225,10 +225,7 @@ static bool lxc_cap_is_set(cap_t caps, cap_value_t cap, cap_flag_t flag)
 
 bool lxc_file_cap_is_set(const char *path, cap_value_t cap, cap_flag_t flag)
 {
-	/* Android's bionic currently seems to lack support for cap_get_file(). */
-	#if IS_BIONIC
-	return true;
-	#else
+	#if LIBCAP_SUPPORTS_FILE_CAPABILITIES
 	bool cap_is_set;
 	cap_t caps;
 
@@ -247,6 +244,9 @@ bool lxc_file_cap_is_set(const char *path, cap_value_t cap, cap_flag_t flag)
 	cap_is_set = lxc_cap_is_set(caps, cap, flag);
 	cap_free(caps);
 	return cap_is_set;
+	#else
+	errno = ENODATA;
+	return false;
 	#endif
 }
 
