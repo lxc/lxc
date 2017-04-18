@@ -69,7 +69,7 @@ struct prctl_mm_map {
         uint64_t   *auxv;
         uint32_t   auxv_size;
         uint32_t   exe_fd;
-};              
+};
 #endif
 
 #ifndef O_PATH
