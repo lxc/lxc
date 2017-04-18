@@ -372,7 +372,9 @@ AM_CONDITIONAL([ENABLE_CAP], [test "x$enable_capabilities" = "xyes"])
 AM_COND_IF([ENABLE_CAP],
 	[AC_CHECK_HEADER([sys/capability.h],[],[AC_MSG_ERROR([You must install the libcap development package in order to compile lxc])])
 	AC_CHECK_LIB(cap,cap_set_proc,[],[AC_MSG_ERROR([You must install the libcap development package in order to compile lxc])])
-	AC_SUBST([CAP_LIBS], [-lcap])])
+        # Test whether we support getting file capabilities via cap_get_file().
+        AC_CHECK_LIB(cap,cap_get_file, AC_DEFINE(LIBCAP_SUPPORTS_FILE_CAPABILITIES,1,[Have cap_get_file]),[],[])
+        AC_SUBST([CAP_LIBS], [-lcap])])
 
 # HAVE_SCMP_FILTER_CTX=1 will tell us we have libseccomp api >= 1.0.0
 OLD_CFLAGS="$CFLAGS"
