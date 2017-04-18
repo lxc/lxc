@@ -248,7 +248,7 @@ int aufs_mount(struct bdev *bdev)
 		return -22;
 
 	//  separately mount it first
-	//  mount -t aufs -obr=${upper}=rw:${lower}=ro lower dest
+	//  mount -t aufs -o br:${upper}=rw:${lower}=ro lower dest
 	dup = alloca(strlen(bdev->src)+1);
 	strcpy(dup, bdev->src);
 	/* support multiple lower layers */
@@ -280,14 +280,14 @@ int aufs_mount(struct bdev *bdev)
 	// see http://www.mail-archive.com/aufs-users@lists.sourceforge.net/msg02587.html
 	//     http://www.mail-archive.com/aufs-users@lists.sourceforge.net/msg05126.html
 	if (mntdata) {
-		len = strlen(lower) + strlen(upper) + strlen(xinopath) + strlen("br==rw:=ro,,xino=") + strlen(mntdata) + 1;
+		len = strlen(lower) + strlen(upper) + strlen(xinopath) + strlen("br:=rw:=ro,,xino=") + strlen(mntdata) + 1;
 		options = alloca(len);
-		ret = snprintf(options, len, "br=%s=rw:%s=ro,%s,xino=%s", upper, lower, mntdata, xinopath);
+		ret = snprintf(options, len, "br:%s=rw:%s=ro,%s,xino=%s", upper, lower, mntdata, xinopath);
 	}
 	else {
-		len = strlen(lower) + strlen(upper) + strlen(xinopath) + strlen("br==rw:=ro,xino=") + 1;
+		len = strlen(lower) + strlen(upper) + strlen(xinopath) + strlen("br:=rw:=ro,xino=") + 1;
 		options = alloca(len);
-		ret = snprintf(options, len, "br=%s=rw:%s=ro,xino=%s", upper, lower, xinopath);
+		ret = snprintf(options, len, "br:%s=rw:%s=ro,xino=%s", upper, lower, xinopath);
 	}
 
 	if (ret < 0 || ret >= len) {
@@ -377,7 +377,7 @@ int aufs_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 		goto err;
 
 	for (i = 0; i < arrlen; i++) {
-		if (strstr(opts[i], "br=") && (strlen(opts[i]) > (len = strlen("br="))))
+		if (strstr(opts[i], "br:") && (strlen(opts[i]) > (len = strlen("br:"))))
 			tmp = opts[i] + len;
 	}
 	if (!tmp)
