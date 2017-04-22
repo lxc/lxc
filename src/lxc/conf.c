@@ -1453,50 +1453,86 @@ static int setup_pivot_root(const struct lxc_rootfs *rootfs)
 	return 0;
 }
 
-static int setup_pts(int pts)
+static int lxc_setup_devpts(int num_pts)
 {
-	char target[PATH_MAX];
+	int ret;
+	const char *devpts_mntopts = "newinstance,ptmxmode=0666,mode=0620,gid=5";
 
-	if (!pts)
+	if (!num_pts) {
+		DEBUG("no new devpts instance will be mounted since no pts "
+		      "devices are requested");
 		return 0;
-
-	if (!access("/dev/pts/ptmx", F_OK) && umount("/dev/pts")) {
-		SYSERROR("failed to umount 'dev/pts'");
-		return -1;
 	}
 
-	if (mkdir("/dev/pts", 0755)) {
-		if ( errno != EEXIST ) {
-		    SYSERROR("failed to create '/dev/pts'");
-		    return -1;
+	/* Unmount old devpts instance. */
+	ret = access("/dev/pts/ptmx", F_OK);
+	if (!ret) {
+		ret = umount("/dev/pts");
+		if (ret < 0) {
+			SYSERROR("failed to unmount old devpts instance");
+			return -1;
 		}
+		DEBUG("unmounted old /dev/pts instance");
 	}
 
-	if (mount("devpts", "/dev/pts", "devpts", MS_MGC_VAL,
-		  "newinstance,ptmxmode=0666,mode=0620,gid=5")) {
-		SYSERROR("failed to mount a new instance of '/dev/pts'");
+	/* Create mountpoint for devpts instance. */
+	ret = mkdir("/dev/pts", 0755);
+	if (ret < 0 && errno != EEXIST) {
+		SYSERROR("failed to create the \"/dev/pts\" directory");
 		return -1;
 	}
 
-	if (access("/dev/ptmx", F_OK)) {
-		if (!symlink("/dev/pts/ptmx", "/dev/ptmx"))
-			goto out;
-		SYSERROR("failed to symlink '/dev/pts/ptmx'->'/dev/ptmx'");
+	/* Mount new devpts instance. */
+	ret = mount("devpts", "/dev/pts", "devpts", MS_MGC_VAL, devpts_mntopts);
+	if (ret < 0) {
+		SYSERROR("failed to mount new devpts instance");
 		return -1;
 	}
 
-	if (realpath("/dev/ptmx", target) && !strcmp(target, "/dev/pts/ptmx"))
-		goto out;
+	/* Remove any pre-existing /dev/ptmx file. */
+	ret = access("/dev/ptmx", F_OK);
+	if (!ret) {
+		ret = remove("/dev/ptmx");
+		if (ret < 0) {
+			SYSERROR("failed to remove existing \"/dev/ptmx\"");
+			return -1;
+		}
+		DEBUG("removed existing \"/dev/ptmx\"");
+	}
 
-	/* fallback here, /dev/pts/ptmx exists just mount bind */
-	if (mount("/dev/pts/ptmx", "/dev/ptmx", "none", MS_BIND, 0)) {
-		SYSERROR("mount failed '/dev/pts/ptmx'->'/dev/ptmx'");
+	/* Create dummy /dev/ptmx file as bind mountpoint for /dev/pts/ptmx. */
+	ret = open("/dev/ptmx", O_CREAT, 0666);
+	if (ret < 0) {
+		SYSERROR("failed to create dummy \"/dev/ptmx\" file as bind mount target");
+		return -1;
+	}
+	DEBUG("created dummy \"/dev/ptmx\" file as bind mount target");
+
+	/* Fallback option: create symlink /dev/ptmx -> /dev/pts/ptmx  */
+	ret = mount("/dev/pts/ptmx", "/dev/ptmx", "none", MS_BIND, 0);
+	if (!ret) {
+		DEBUG("bind mounted \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
+		return 0;
+	} else {
+		/* Fallthrough and try to create a symlink. */
+		ERROR("failed to bind mount \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
+	}
+
+	/* Remove the dummy /dev/ptmx file we created above. */
+	ret = remove("/dev/ptmx");
+	if (ret < 0) {
+		SYSERROR("failed to remove existing \"/dev/ptmx\"");
 		return -1;
 	}
 
-	INFO("created new pts instance");
+	/* Fallback option: Create symlink /dev/ptmx -> /dev/pts/ptmx. */
+	ret = symlink("/dev/pts/ptmx", "/dev/ptmx");
+	if (ret < 0) {
+		SYSERROR("failed to create symlink \"/dev/ptmx\" -> \"/dev/pts/ptmx\"");
+		return -1;
+	}
+	DEBUG("created symlink \"/dev/ptmx\" -> \"/dev/pts/ptmx\"");
 
-out:
 	return 0;
 }
 
@@ -4114,7 +4150,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (setup_pts(lxc_conf->pts)) {
+	if (lxc_setup_devpts(lxc_conf->pts)) {
 		ERROR("failed to setup the new pts instance");
 		return -1;
 	}
