@@ -573,7 +573,7 @@ static int run_script(const char *name, const char *section, const char *script,
 }
 
 static int mount_rootfs_dir(const char *rootfs, const char *target,
-			                const char *options)
+			    const char *options)
 {
 	unsigned long mntflags;
 	char *mntdata;
@@ -590,10 +590,9 @@ static int mount_rootfs_dir(const char *rootfs, const char *target,
 	return ret;
 }
 
-static int setup_lodev(const char *rootfs, int fd, struct loop_info64 *loinfo)
+static int lxc_setup_lodev(const char *rootfs, int fd, struct loop_info64 *loinfo)
 {
 	int rfd;
-	int ret = -1;
 
 	rfd = open(rootfs, O_RDWR);
 	if (rfd < 0) {
@@ -603,33 +602,30 @@ static int setup_lodev(const char *rootfs, int fd, struct loop_info64 *loinfo)
 
 	memset(loinfo, 0, sizeof(*loinfo));
 
-	loinfo->lo_flags = LO_FLAGS_AUTOCLEAR;
-
 	if (ioctl(fd, LOOP_SET_FD, rfd)) {
 		SYSERROR("failed to LOOP_SET_FD");
-		goto out;
+		close(rfd);
+		return -1;
 	}
 
+	loinfo->lo_flags = LO_FLAGS_AUTOCLEAR;
 	if (ioctl(fd, LOOP_SET_STATUS64, loinfo)) {
 		SYSERROR("failed to LOOP_SET_STATUS64");
-		goto out;
+		close(rfd);
+		return -1;
 	}
 
-	ret = 0;
-out:
-	close(rfd);
-
-	return ret;
+	return 0;
 }
 
 static int mount_rootfs_file(const char *rootfs, const char *target,
-				             const char *options)
+			     const char *options)
 {
 	struct dirent *direntp;
 	struct loop_info64 loinfo;
-	int ret = -1, fd = -1, rc;
 	DIR *dir;
 	char path[MAXPATHLEN];
+	int ret = -1, fd = -1, rc;
 
 	dir = opendir("/dev");
 	if (!dir) {
@@ -673,7 +669,7 @@ static int mount_rootfs_file(const char *rootfs, const char *target,
 
 		DEBUG("found '%s' free lodev", path);
 
-		ret = setup_lodev(rootfs, fd, &loinfo);
+		ret = lxc_setup_lodev(rootfs, fd, &loinfo);
 		if (!ret)
 			ret = mount_unknown_fs(path, target, options);
 		close(fd);
