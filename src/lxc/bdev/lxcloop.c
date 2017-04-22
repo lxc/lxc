@@ -35,19 +35,9 @@
 #include "lxcloop.h"
 #include "utils.h"
 
-#ifndef LO_FLAGS_AUTOCLEAR
-#define LO_FLAGS_AUTOCLEAR 4
-#endif
-
-#ifndef LOOP_CTL_GET_FREE
-#define LOOP_CTL_GET_FREE 0x4C82
-#endif
-
 lxc_log_define(lxcloop, lxc);
 
 static int do_loop_create(const char *path, uint64_t size, const char *fstype);
-static int find_free_loopdev_no_control(int *retfd, char *namep);
-static int find_free_loopdev(int *retfd, char *namep);
 
 /*
  * No idea what the original blockdev will be called, but the copy will be
@@ -174,47 +164,26 @@ int loop_detect(const char *path)
 
 int loop_mount(struct bdev *bdev)
 {
-	int lfd, ffd = -1, ret = -1;
-	struct loop_info64 lo;
-	char loname[100];
+	int ret, loopfd;
+	char loname[MAXPATHLEN];
 
 	if (strcmp(bdev->type, "loop"))
 		return -22;
 	if (!bdev->src || !bdev->dest)
 		return -22;
-	if (find_free_loopdev(&lfd, loname) < 0)
-		return -22;
 
-	ffd = open(bdev->src + 5, O_RDWR);
-	if (ffd < 0) {
-		SYSERROR("Error opening backing file %s", bdev->src);
-		goto out;
-	}
-
-	if (ioctl(lfd, LOOP_SET_FD, ffd) < 0) {
-		SYSERROR("Error attaching backing file to loop dev");
-		goto out;
-	}
-	memset(&lo, 0, sizeof(lo));
-	lo.lo_flags = LO_FLAGS_AUTOCLEAR;
-	if (ioctl(lfd, LOOP_SET_STATUS64, &lo) < 0) {
-		SYSERROR("Error setting autoclear on loop dev");
-		goto out;
-	}
+	loopfd = lxc_prepare_loop_dev(bdev->src + 5, loname, LO_FLAGS_AUTOCLEAR);
+	if (loopfd < 0)
+		return -1;
+	DEBUG("prepared loop device \"%s\"", loname);
 
 	ret = mount_unknown_fs(loname, bdev->dest, bdev->mntopts);
 	if (ret < 0)
-		ERROR("Error mounting %s", bdev->src);
+		ERROR("failed to mount rootfs \"%s\" onto \"%s\" via loop device \"%s\"", bdev->src, bdev->dest, loname);
 	else
-		bdev->lofd = lfd;
+		bdev->lofd = loopfd;
+	DEBUG("mounted rootfs \"%s\" onto \"%s\" via loop device \"%s\"", bdev->src, bdev->dest, loname);
 
-out:
-	if (ffd > -1)
-		close(ffd);
-	if (ret < 0) {
-		close(lfd);
-		bdev->lofd = -1;
-	}
 	return ret;
 }
 
@@ -264,65 +233,5 @@ static int do_loop_create(const char *path, uint64_t size, const char *fstype)
 		return -1;
 	}
 
-	return 0;
-}
-
-static int find_free_loopdev_no_control(int *retfd, char *namep)
-{
-	struct dirent *direntp;
-	struct loop_info64 lo;
-	DIR *dir;
-	int fd = -1;
-
-	dir = opendir("/dev");
-	if (!dir) {
-		SYSERROR("Error opening /dev");
-		return -1;
-	}
-	while ((direntp = readdir(dir))) {
-
-		if (!direntp)
-			break;
-		if (strncmp(direntp->d_name, "loop", 4) != 0)
-			continue;
-		fd = openat(dirfd(dir), direntp->d_name, O_RDWR);
-		if (fd < 0)
-			continue;
-		if (ioctl(fd, LOOP_GET_STATUS64, &lo) == 0 || errno != ENXIO) {
-			close(fd);
-			fd = -1;
-			continue;
-		}
-		// We can use this fd
-		snprintf(namep, 100, "/dev/%s", direntp->d_name);
-		break;
-	}
-	closedir(dir);
-	if (fd == -1) {
-		ERROR("No loop device found");
-		return -1;
-	}
-
-	*retfd = fd;
-	return 0;
-}
-
-static int find_free_loopdev(int *retfd, char *namep)
-{
-	int rc, fd = -1;
-	int ctl = open("/dev/loop-control", O_RDWR);
-	if (ctl < 0)
-		return find_free_loopdev_no_control(retfd, namep);
-	rc = ioctl(ctl, LOOP_CTL_GET_FREE);
-	if (rc >= 0) {
-		snprintf(namep, 100, "/dev/loop%d", rc);
-		fd = open(namep, O_RDWR);
-	}
-	close(ctl);
-	if (fd == -1) {
-		ERROR("No loop device found");
-		return -1;
-	}
-	*retfd = fd;
 	return 0;
 }

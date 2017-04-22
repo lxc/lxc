@@ -590,95 +590,21 @@ static int mount_rootfs_dir(const char *rootfs, const char *target,
 	return ret;
 }
 
-static int lxc_setup_lodev(const char *rootfs, int fd, struct loop_info64 *loinfo)
-{
-	int rfd;
-
-	rfd = open(rootfs, O_RDWR);
-	if (rfd < 0) {
-		SYSERROR("failed to open '%s'", rootfs);
-		return -1;
-	}
-
-	memset(loinfo, 0, sizeof(*loinfo));
-
-	if (ioctl(fd, LOOP_SET_FD, rfd)) {
-		SYSERROR("failed to LOOP_SET_FD");
-		close(rfd);
-		return -1;
-	}
-
-	loinfo->lo_flags = LO_FLAGS_AUTOCLEAR;
-	if (ioctl(fd, LOOP_SET_STATUS64, loinfo)) {
-		SYSERROR("failed to LOOP_SET_STATUS64");
-		close(rfd);
-		return -1;
-	}
-
-	return 0;
-}
-
-static int mount_rootfs_file(const char *rootfs, const char *target,
+static int lxc_mount_rootfs_file(const char *rootfs, const char *target,
 			     const char *options)
 {
-	struct dirent *direntp;
-	struct loop_info64 loinfo;
-	DIR *dir;
+	int ret, loopfd;
 	char path[MAXPATHLEN];
-	int ret = -1, fd = -1, rc;
 
-	dir = opendir("/dev");
-	if (!dir) {
-		SYSERROR("failed to open '/dev'");
+	loopfd = lxc_prepare_loop_dev(rootfs, path, LO_FLAGS_AUTOCLEAR);
+	if (loopfd < 0)
 		return -1;
-	}
+	DEBUG("prepared loop device \"%s\"", path);
 
-	while ((direntp = readdir(dir))) {
+	ret = mount_unknown_fs(path, target, options);
+	close(loopfd);
 
-		if (!direntp)
-			break;
-
-		if (!strcmp(direntp->d_name, "."))
-			continue;
-
-		if (!strcmp(direntp->d_name, ".."))
-			continue;
-
-		if (strncmp(direntp->d_name, "loop", 4))
-			continue;
-
-		rc = snprintf(path, MAXPATHLEN, "/dev/%s", direntp->d_name);
-		if (rc < 0 || rc >= MAXPATHLEN)
-			continue;
-
-		fd = open(path, O_RDWR);
-		if (fd < 0)
-			continue;
-
-		if (ioctl(fd, LOOP_GET_STATUS64, &loinfo) == 0) {
-			close(fd);
-			continue;
-		}
-
-		if (errno != ENXIO) {
-			WARN("unexpected error for ioctl on '%s': %m",
-			     direntp->d_name);
-			close(fd);
-			continue;
-		}
-
-		DEBUG("found '%s' free lodev", path);
-
-		ret = lxc_setup_lodev(rootfs, fd, &loinfo);
-		if (!ret)
-			ret = mount_unknown_fs(path, target, options);
-		close(fd);
-
-		break;
-	}
-
-	if (closedir(dir))
-		WARN("failed to close directory");
+	DEBUG("mounted rootfs \"%s\" on loop device \"%s\" via loop device \"%s\"", rootfs, target, path);
 
 	return ret;
 }
@@ -911,7 +837,7 @@ static int mount_rootfs(const char *rootfs, const char *target, const char *opti
 	} rtfs_type[] = {
 		{ S_IFDIR, mount_rootfs_dir },
 		{ S_IFBLK, mount_rootfs_block },
-		{ S_IFREG, mount_rootfs_file },
+		{ S_IFREG, lxc_mount_rootfs_file },
 	};
 
 	if (!realpath(rootfs, absrootfs)) {
