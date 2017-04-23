@@ -23,15 +23,19 @@
 #ifndef __LXC_UTILS_H
 #define __LXC_UTILS_H
 
+/* Properly support loop devices on 32bit systems. */
+#define _FILE_OFFSET_BITS 64
+
 #include "config.h"
 
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <unistd.h>
+#include <linux/loop.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include "initutils.h"
 
@@ -162,6 +166,15 @@ static inline int signalfd(int fd, const sigset_t *mask, int flags)
 		retval = syscall (__NR_signalfd, fd, mask, _NSIG / 8);
 	return retval;
 }
+#endif
+
+/* loop devices */
+#ifndef LO_FLAGS_AUTOCLEAR
+#define LO_FLAGS_AUTOCLEAR 4
+#endif
+
+#ifndef LOOP_CTL_GET_FREE
+#define LOOP_CTL_GET_FREE 0x4C82
 #endif
 
 /* Struct to carry child pid from lxc_popen() to lxc_pclose().
@@ -331,5 +344,8 @@ int lxc_safe_long(const char *numstr, long int *converted);
 /* Switch to a new uid and gid. */
 int lxc_switch_uid_gid(uid_t uid, gid_t gid);
 int lxc_setgroups(int size, gid_t list[]);
+
+/* Find an unused loop device and associate it with source. */
+int lxc_prepare_loop_dev(const char *source, char *loop_dev, int flags);
 
 #endif /* __LXC_UTILS_H */
