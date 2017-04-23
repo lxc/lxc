@@ -9,7 +9,7 @@ Feel free to remove anything which doesn't apply to you and add more information
    * `lxc-start --version`
    * `lxc-checkconfig`
    * `uname -a`
-   * `cat /proc/self/cgroups`
+   * `cat /proc/self/cgroup`
    * `cat /proc/1/mounts`
 
 # Issue description
