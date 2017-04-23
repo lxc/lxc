@@ -101,6 +101,12 @@ struct hierarchy **hierarchies;
  */
 char *cgroup_use;
 
+/*
+ * @lxc_cgfsng_debug - whether to print debug info to stdout for the cgfsng
+ * driver
+ */
+static bool lxc_cgfsng_debug;
+
 static void free_string_list(char **clist)
 {
 	if (clist) {
@@ -990,41 +996,40 @@ static void trim(char *s)
 		s[--len] = '\0';
 }
 
-static void print_init_debuginfo(struct cgfsng_handler_data *d)
+static void lxc_cgfsng_print_handler_data(const struct cgfsng_handler_data *d)
+{
+	printf("Cgroup information:\n");
+	printf("  container name: %s\n", d->name ? d->name : "(null)");
+	printf("  lxc.cgroup.use: %s\n", cgroup_use ? cgroup_use : "(null)");
+	printf("  lxc.cgroup.pattern: %s\n", d->cgroup_pattern ? d->cgroup_pattern : "(null)");
+	printf("  cgroup: %s\n", d->container_cgroup ? d->container_cgroup : "(null)");
+}
+
+static void lxc_cgfsng_print_hierarchies()
 {
 	struct hierarchy **it;
 	int i;
 
-	if (!getenv("LXC_DEBUG_CGFSNG"))
-		return;
-
-	DEBUG("Cgroup information:");
-	DEBUG("  container name: %s", d->name ? d->name : "(null)");
-	DEBUG("  lxc.cgroup.use: %s", cgroup_use ? cgroup_use : "(null)");
-	DEBUG("  lxc.cgroup.pattern: %s", d->cgroup_pattern ? d->cgroup_pattern : "(null)");
-	DEBUG("  cgroup: %s", d->container_cgroup ? d->container_cgroup : "(null)");
 	if (!hierarchies) {
-		DEBUG("  No hierarchies found.");
+		printf("  No hierarchies found.");
 		return;
 	}
-	DEBUG("  Hierarchies:");
+	printf("  Hierarchies:\n");
 	for (i = 0, it = hierarchies; it && *it; it++, i++) {
 		char **cit;
 		int j;
-		DEBUG("  %d: base_cgroup %s", i, (*it)->base_cgroup ? (*it)->base_cgroup : "(null)");
-		DEBUG("      mountpoint %s", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
-		DEBUG("      controllers:");
+		printf("  %d: base_cgroup %s\n", i, (*it)->base_cgroup ? (*it)->base_cgroup : "(null)");
+		printf("      mountpoint %s\n", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
+		printf("      controllers:\n");
 		for (j = 0, cit = (*it)->controllers; cit && *cit; cit++, j++)
-			DEBUG("      %d: %s", j, *cit);
+			printf("      %d: %s\n", j, *cit);
 	}
 }
 
-static void print_basecg_debuginfo(char *basecginfo, char **klist, char **nlist)
+static void lxc_cgfsng_print_basecg_debuginfo(char *basecginfo, char **klist, char **nlist)
 {
 	int k;
 	char **it;
-	if (!getenv("LXC_DEBUG_CGFSNG"))
-		return;
 
 	printf("basecginfo is:\n");
 	printf("%s\n", basecginfo);
@@ -1033,6 +1038,12 @@ static void print_basecg_debuginfo(char *basecginfo, char **klist, char **nlist)
 		printf("kernel subsystem %d: %s\n", k, *it);
 	for (k = 0, it = nlist; it && *it; it++, k++)
 		printf("named subsystem %d: %s\n", k, *it);
+}
+
+static void lxc_cgfsng_print_debuginfo(const struct cgfsng_handler_data *d)
+{
+	lxc_cgfsng_print_handler_data(d);
+	lxc_cgfsng_print_hierarchies();
 }
 
 /*
@@ -1064,7 +1075,8 @@ static bool parse_hierarchies(void)
 
 	get_existing_subsystems(&klist, &nlist);
 
-	print_basecg_debuginfo(basecginfo, klist, nlist);
+	if (lxc_cgfsng_debug)
+		lxc_cgfsng_print_basecg_debuginfo(basecginfo, klist, nlist);
 
 	/* we support simple cgroup mounts and lxcfs mounts */
 	while (getline(&line, &len, f) != -1) {
@@ -1116,6 +1128,11 @@ static bool parse_hierarchies(void)
 	fclose(f);
 	free(line);
 
+	if (lxc_cgfsng_debug) {
+		printf("writeable subsystems:\n");
+		lxc_cgfsng_print_hierarchies();
+	}
+
 	/* verify that all controllers in cgroup.use and all crucial
 	 * controllers are accounted for
 	 */
@@ -1156,7 +1173,8 @@ static void *cgfsng_init(const char *name)
 	}
 	d->cgroup_pattern = must_copy_string(cgroup_pattern);
 
-	print_init_debuginfo(d);
+	if (lxc_cgfsng_debug)
+		lxc_cgfsng_print_debuginfo(d);
 
 	return d;
 
@@ -1294,8 +1312,12 @@ static void cgfsng_destroy(void *hdata, struct lxc_conf *conf)
 
 struct cgroup_ops *cgfsng_ops_init(void)
 {
+	if (getenv("LXC_DEBUG_CGFSNG"))
+		lxc_cgfsng_debug = true;
+
 	if (!collect_hierarchy_info())
 		return NULL;
+
 	return &cgfsng_ops;
 }
 
