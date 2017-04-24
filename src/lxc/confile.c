@@ -21,6 +21,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #define _GNU_SOURCE
+#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +29,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <inttypes.h> /* Required for PRIu64 to work. */
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -1660,7 +1662,7 @@ static int config_limit(const char *key, const char *value,
 	limlist = malloc(sizeof(*limlist));
 	if (!limlist)
 		goto out;
-	
+
 	limelem = malloc(sizeof(*limelem));
 	if (!limelem)
 		goto out;
@@ -2448,13 +2450,13 @@ static int lxc_get_limit_entry(struct lxc_conf *c, char *retv, int inlen,
 			memcpy(buf, "unlimited", sizeof("unlimited"));
 			partlen = sizeof("unlimited")-1;
 		} else {
-			partlen = sprintf(buf, "%lu", lim->limit.rlim_cur);
+			partlen = sprintf(buf, "%"PRIu64, (uint64_t)lim->limit.rlim_cur);
 		}
 		if (lim->limit.rlim_cur != lim->limit.rlim_max) {
 			if (lim->limit.rlim_max == RLIM_INFINITY) {
 				memcpy(buf+partlen, ":unlimited", sizeof(":unlimited"));
 			} else {
-				sprintf(buf+partlen, ":%lu", lim->limit.rlim_max);
+				sprintf(buf+partlen, ":%"PRIu64, (uint64_t)lim->limit.rlim_max);
 			}
 		}
 
