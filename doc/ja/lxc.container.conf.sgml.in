@@ -1675,6 +1675,51 @@ proc proc proc nodev,noexec,nosuid 0 0
     </refsect2>
 
     <refsect2>
+      <title>リソース制限 <!-- Resource limits --></title>
+      <para>
+	<!--
+        The soft and hard resource limits for the container can be changed.
+        Unprivileged containers can only lower them. Resources which are not
+        explicitly specified will be inherited.
+	  -->
+	コンテナに対するソフトもしくはハードリミットを変更できます。非特権コンテナでは、制限を下げることしかできません。明示的に指定されていないリソースは継承されます。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.limit.[limit name]</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Specify the resource limit to be set. A limit is specified as two
+              colon separated values which are either numeric or the word
+              'unlimited'. A single value can be used as a shortcut to set both
+              soft and hard limit to the same value. The permitted names the
+              "RLIMIT_" resource names in lowercase without the "RLIMIT_"
+              prefix, eg. RLIMIT_NOFILE should be specified as "nofile". See
+              <citerefentry>
+                <refentrytitle><command>setrlimit</command></refentrytitle>
+                <manvolnum>2</manvolnum>
+              </citerefentry>.
+              If used with no value, lxc will clear the resource limit
+              specified up to this point. A resource with no explicitly
+              configured limitation will be inherited from the process starting
+              up the container.
+              -->
+              設定したいリソースと制限値を指定します。制限値はコロンで区切られた 2 つの値で指定します。値は数値もしくは 'unlimited' で指定します。ソフトもハードも同じ値を指定する場合は単一の値を指定できます。指定できる名前は、"RLIMIT_" 接頭辞がなく小文字で書かれた、"RLIMIT_" リソース名です。例えば、RLIMIT_NOFILE は "nofile" と指定します。詳しくは
+              <citerefentry>
+                <refentrytitle><command>setrlimit</command></refentrytitle>
+                <manvolnum>2</manvolnum>
+              </citerefentry> を参照してください。
+              値を指定せずに使用した場合、lxc はこの指定以前に設定されたリソース制限をクリアします。明示的に制限が設定されていないリソースについては、コンテナを起動したプロセスから継承します。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title><!-- Apparmor profile -->Apparmor プロファイル</title>
       <para>
         <!--
