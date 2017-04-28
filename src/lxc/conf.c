@@ -1428,10 +1428,11 @@ static int lxc_setup_devpts(int num_pts)
 		SYSERROR("failed to create dummy \"/dev/ptmx\" file as bind mount target");
 		return -1;
 	}
+	close(ret);
 	DEBUG("created dummy \"/dev/ptmx\" file as bind mount target");
 
 	/* Fallback option: create symlink /dev/ptmx -> /dev/pts/ptmx  */
-	ret = mount("/dev/pts/ptmx", "/dev/ptmx", "none", MS_BIND, 0);
+	ret = mount("/dev/pts/ptmx", "/dev/ptmx", NULL, MS_BIND, NULL);
 	if (!ret) {
 		DEBUG("bind mounted \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
 		return 0;
