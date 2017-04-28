@@ -1754,7 +1754,7 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
  *
  * NOTE: not to be called from inside the container namespace!
  */
-int mount_proc_if_needed(const char *rootfs)
+int lxc_mount_proc_if_needed(const char *rootfs)
 {
 	char path[MAXPATHLEN];
 	char link[20];
