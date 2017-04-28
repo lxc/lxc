@@ -1766,37 +1766,48 @@ int lxc_mount_proc_if_needed(const char *rootfs)
 		SYSERROR("proc path name too long");
 		return -1;
 	}
+
 	memset(link, 0, 20);
 	linklen = readlink(path, link, 20);
 	mypid = (int)getpid();
-	INFO("I am %d, /proc/self points to '%s'", mypid, link);
+	INFO("I am %d, /proc/self points to \"%s\"", mypid, link);
+
 	ret = snprintf(path, MAXPATHLEN, "%s/proc", rootfs);
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		SYSERROR("proc path name too long");
 		return -1;
 	}
-	if (linklen < 0) /* /proc not mounted */
-		goto domount;
-	if (lxc_safe_int(link, &link_to_pid) < 0)
-		return -1;
-	if (link_to_pid != mypid) {
-		/* wrong /procs mounted */
-		umount2(path, MNT_DETACH); /* ignore failure */
+
+	/* /proc not mounted */
+	if (linklen < 0) {
+		if (mkdir(path, 0755) && errno != EEXIST)
+			return -1;
 		goto domount;
 	}
+
+	if (lxc_safe_int(link, &link_to_pid) < 0)
+		return -1;
+
+	/* wrong /procs mounted */
+	if (link_to_pid != mypid) {
+		/* ignore failure */
+		umount2(path, MNT_DETACH);
+		goto domount;
+	}
+
 	/* the right proc is already mounted */
 	return 0;
 
 domount:
-	if (!strcmp(rootfs,"")) /* rootfs is NULL */
+	/* rootfs is NULL */
+	if (!strcmp(rootfs,""))
 		ret = mount("proc", path, "proc", 0, NULL);
 	else
 		ret = safe_mount("proc", path, "proc", 0, NULL, rootfs);
-
 	if (ret < 0)
 		return -1;
 
-	INFO("Mounted /proc in container for security transition");
+	INFO("mounted /proc in container for security transition");
 	return 1;
 }
 
