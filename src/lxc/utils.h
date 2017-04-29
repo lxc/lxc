@@ -326,7 +326,7 @@ char *get_template_path(const char *t);
 int setproctitle(char *title);
 int safe_mount(const char *src, const char *dest, const char *fstype,
 		unsigned long flags, const void *data, const char *rootfs);
-int mount_proc_if_needed(const char *rootfs);
+int lxc_mount_proc_if_needed(const char *rootfs);
 int open_devnull(void);
 int set_stdfds(int fd);
 int null_stdfds(void);
