@@ -170,6 +170,10 @@ static int sethostname(const char * name, size_t len)
 #define MS_PRIVATE (1<<18)
 #endif
 
+#ifndef MS_LAZYTIME
+#define MS_LAZYTIME (1<<25)
+#endif
+
 /* memfd_create() */
 #ifndef MFD_CLOEXEC
 #define MFD_CLOEXEC 0x0001U
@@ -294,6 +298,7 @@ static struct mount_opt mount_opt[] = {
 	{ "diratime",      1, MS_NODIRATIME  },
 	{ "dirsync",       0, MS_DIRSYNC     },
 	{ "exec",          1, MS_NOEXEC      },
+	{ "lazytime",	   0, MS_LAZYTIME    },
 	{ "mand",          0, MS_MANDLOCK    },
 	{ "noatime",       0, MS_NOATIME     },
 	{ "nodev",         0, MS_NODEV       },
