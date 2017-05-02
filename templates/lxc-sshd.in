@@ -38,7 +38,6 @@ install_sshd()
     rootfs=$1
 
     tree="\
-$rootfs/var/run/sshd \
 $rootfs/var/empty/sshd \
 $rootfs/var/lib/empty/sshd \
 $rootfs/etc/init.d \
@@ -46,7 +45,7 @@ $rootfs/etc/rc.d \
 $rootfs/etc/ssh \
 $rootfs/etc/sysconfig/network-scripts \
 $rootfs/dev/shm \
-$rootfs/run/shm \
+$rootfs/run/sshd \
 $rootfs/proc \
 $rootfs/sys \
 $rootfs/bin \
@@ -59,6 +58,11 @@ $rootfs/lib \
 $rootfs/lib64"
 
     mkdir -p $tree
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    ln -s /run $rootfs/var/run
     if [ $? -ne 0 ]; then
         return 1
     fi
@@ -90,17 +94,13 @@ Protocol 2
 HostKey /etc/ssh/ssh_host_rsa_key
 HostKey /etc/ssh/ssh_host_dsa_key
 UsePrivilegeSeparation yes
-KeyRegenerationInterval 3600
-ServerKeyBits 768
 SyslogFacility AUTH
 LogLevel INFO
 LoginGraceTime 120
 PermitRootLogin yes
 StrictModes yes
-RSAAuthentication yes
 PubkeyAuthentication yes
 IgnoreRhosts yes
-RhostsRSAAuthentication no
 HostbasedAuthentication no
 PermitEmptyPasswords yes
 ChallengeResponseAuthentication no
@@ -141,7 +141,7 @@ lxc.mount.entry = /lib lib none ro,bind 0 0
 lxc.mount.entry = /bin bin none ro,bind 0 0
 lxc.mount.entry = /usr usr none ro,bind 0 0
 lxc.mount.entry = /sbin sbin none ro,bind 0 0
-lxc.mount.entry = tmpfs var/run/sshd tmpfs mode=0644 0 0
+lxc.mount.entry = tmpfs run/sshd tmpfs mode=0644 0 0
 lxc.mount.entry = @LXCTEMPLATEDIR@/lxc-sshd $init_path none ro,bind 0 0
 lxc.mount.entry = /etc/init.d etc/init.d none ro,bind 0 0
 
