@@ -173,6 +173,10 @@ static int sethostname(const char * name, size_t len)
 #define MS_PRIVATE (1<<18)
 #endif
 
+#ifndef MS_LAZYTIME
+#define MS_LAZYTIME (1<<25)
+#endif
+
 /* memfd_create() */
 #ifndef MFD_CLOEXEC
 #define MFD_CLOEXEC 0x0001U
@@ -294,31 +298,32 @@ static  instantiate_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
 };
 
 static struct mount_opt mount_opt[] = {
-	{ "defaults",      0, 0              },
-	{ "ro",            0, MS_RDONLY      },
-	{ "rw",            1, MS_RDONLY      },
-	{ "suid",          1, MS_NOSUID      },
-	{ "nosuid",        0, MS_NOSUID      },
-	{ "dev",           1, MS_NODEV       },
-	{ "nodev",         0, MS_NODEV       },
-	{ "exec",          1, MS_NOEXEC      },
-	{ "noexec",        0, MS_NOEXEC      },
-	{ "sync",          0, MS_SYNCHRONOUS },
 	{ "async",         1, MS_SYNCHRONOUS },
-	{ "dirsync",       0, MS_DIRSYNC     },
-	{ "remount",       0, MS_REMOUNT     },
-	{ "mand",          0, MS_MANDLOCK    },
-	{ "nomand",        1, MS_MANDLOCK    },
 	{ "atime",         1, MS_NOATIME     },
-	{ "noatime",       0, MS_NOATIME     },
-	{ "diratime",      1, MS_NODIRATIME  },
-	{ "nodiratime",    0, MS_NODIRATIME  },
 	{ "bind",          0, MS_BIND        },
+	{ "defaults",      0, 0              },
+	{ "dev",           1, MS_NODEV       },
+	{ "diratime",      1, MS_NODIRATIME  },
+	{ "dirsync",       0, MS_DIRSYNC     },
+	{ "exec",          1, MS_NOEXEC      },
+	{ "lazytime",	   0, MS_LAZYTIME    },
+	{ "mand",          0, MS_MANDLOCK    },
+	{ "noatime",       0, MS_NOATIME     },
+	{ "nodev",         0, MS_NODEV       },
+	{ "nodiratime",    0, MS_NODIRATIME  },
+	{ "noexec",        0, MS_NOEXEC      },
+	{ "nomand",        1, MS_MANDLOCK    },
+	{ "norelatime",    1, MS_RELATIME    },
+	{ "nostrictatime", 1, MS_STRICTATIME },
+	{ "nosuid",        0, MS_NOSUID      },
 	{ "rbind",         0, MS_BIND|MS_REC },
 	{ "relatime",      0, MS_RELATIME    },
-	{ "norelatime",    1, MS_RELATIME    },
+	{ "remount",       0, MS_REMOUNT     },
+	{ "ro",            0, MS_RDONLY      },
+	{ "rw",            1, MS_RDONLY      },
 	{ "strictatime",   0, MS_STRICTATIME },
-	{ "nostrictatime", 1, MS_STRICTATIME },
+	{ "suid",          1, MS_NOSUID      },
+	{ "sync",          0, MS_SYNCHRONOUS },
 	{ NULL,            0, 0              },
 };
 
