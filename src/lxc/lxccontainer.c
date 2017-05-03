@@ -4522,3 +4522,8 @@ free_ct_name:
 	free(ct_name);
 	return ret;
 }
+
+bool lxc_config_item_is_supported(const char *key)
+{
+	return !!lxc_getconfig(key);
+}

@@ -1022,6 +1022,13 @@ int list_all_containers(const char *lxcpath, char ***names, struct lxc_container
  */
 void lxc_log_close(void);
 
+/*!
+ * \brief Check if the configuration item is supported by this LXC instance.
+ *
+ * \param key Configuration item to check for.
+ */
+bool lxc_config_item_is_supported(const char *key);
+
 #ifdef  __cplusplus
 }
 #endif
