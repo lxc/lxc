@@ -391,6 +391,17 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%d: failed clearing lxc.hook\n", __LINE__);
 		goto out;
 	}
+
+	if (!lxc_config_item_is_supported("lxc.arch")) {
+		fprintf(stderr, "%d: failed to report \"lxc.arch\" as supported configuration item\n", __LINE__);
+		goto out;
+	}
+
+	if (lxc_config_item_is_supported("lxc.nonsense")) {
+		fprintf(stderr, "%d: failed to detect \"lxc.nonsense\" as unsupported configuration item\n", __LINE__);
+		goto out;
+	}
+
 	printf("All get_item tests passed\n");
 	ret = EXIT_SUCCESS;
 out:
