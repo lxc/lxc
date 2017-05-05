@@ -366,7 +366,7 @@ int lxc_monitord_spawn(const char *lxcpath)
 	DEBUG("Using pipe file descriptor %d for monitord.", pipefd[1]);
 
 	execvp(args[0], args);
-	ERROR("Failed to exec lxc-monitord.");
+	SYSERROR("failed to exec lxc-monitord");
 
 	exit(EXIT_FAILURE);
 }
