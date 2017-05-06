@@ -74,13 +74,18 @@
 
 lxc_log_define(lxc_commands, lxc);
 
-static int fill_sock_name(char *path, int len, const char *name,
+static int fill_sock_name(char *path, int len, const char *lxcname,
 			  const char *lxcpath, const char *hashed_sock_name)
 {
+	const char *name;
 	char *tmppath;
 	size_t tmplen;
 	uint64_t hash;
 	int ret;
+
+	name = lxcname;
+	if (!name)
+		name = "";
 
 	if (hashed_sock_name != NULL) {
 		ret = snprintf(path, len, "lxc/%s/command", hashed_sock_name);
