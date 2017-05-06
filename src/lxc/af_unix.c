@@ -56,7 +56,7 @@ int lxc_abstract_unix_open(const char *path, int type, int flags)
 	addr.sun_family = AF_UNIX;
 
 	len = strlen(&path[1]) + 1;
-	if (len >= sizeof(addr.sun_path) - 1) {
+	if (len >= sizeof(addr.sun_path)) {
 		close(fd);
 		errno = ENAMETOOLONG;
 		return -1;
@@ -110,7 +110,7 @@ int lxc_abstract_unix_connect(const char *path)
 	addr.sun_family = AF_UNIX;
 
 	len = strlen(&path[1]) + 1;
-	if (len >= sizeof(addr.sun_path) - 1) {
+	if (len >= sizeof(addr.sun_path)) {
 		close(fd);
 		errno = ENAMETOOLONG;
 		return -1;

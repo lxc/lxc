@@ -181,7 +181,7 @@ int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 	if (ret < 0)
 		return -1;
 
-	sockname[sizeof(addr->sun_path)-3] = '\0';
+	addr->sun_path[sizeof(addr->sun_path)-1] = '\0';
 	INFO("Using monitor socket name \"%s\".", sockname);
 
 	return 0;
@@ -205,7 +205,7 @@ int lxc_monitor_open(const char *lxcpath)
 	}
 
 	len = strlen(&addr.sun_path[1]) + 1;
-	if (len >= sizeof(addr.sun_path) - 1) {
+	if (len >= sizeof(addr.sun_path)) {
 		ret = -1;
 		errno = ENAMETOOLONG;
 		goto on_error;
