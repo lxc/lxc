@@ -1110,7 +1110,6 @@ static const struct lxc_devs lxc_devs[] = {
 	{ "urandom",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 9	},
 	{ "random",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 8	},
 	{ "tty",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 5, 0	},
-	{ "console",	S_IFCHR | S_IRUSR | S_IWUSR,	       5, 1	},
 };
 
 static int lxc_fill_autodev(const struct lxc_rootfs *rootfs, bool mount_console)
@@ -1134,9 +1133,6 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs, bool mount_console)
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
 		const struct lxc_devs *d = &lxc_devs[i];
-
-		if (!strcmp(d->name, "console") && !mount_console)
-			continue;
 
 		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", rootfs->path ? rootfs->mount : "", d->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
