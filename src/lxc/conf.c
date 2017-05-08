@@ -1171,7 +1171,7 @@ static const struct lxc_devs lxc_devs[] = {
 	{ "tty",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 5, 0	},
 };
 
-static int lxc_fill_autodev(const struct lxc_rootfs *rootfs, bool mount_console)
+static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 {
 	int ret;
 	char path[MAXPATHLEN];
@@ -4044,13 +4044,11 @@ int lxc_setup(struct lxc_handler *handler)
 	}
 
 	if (lxc_conf->autodev > 0) {
-		bool mount_console = lxc_conf->console.path && !strcmp(lxc_conf->console.path, "none");
-
 		if (run_lxc_hooks(name, "autodev", lxc_conf, lxcpath, NULL)) {
 			ERROR("failed to run autodev hooks for container '%s'.", name);
 			return -1;
 		}
-		if (lxc_fill_autodev(&lxc_conf->rootfs, mount_console)) {
+		if (lxc_fill_autodev(&lxc_conf->rootfs)) {
 			ERROR("failed to populate /dev in the container");
 			return -1;
 		}
