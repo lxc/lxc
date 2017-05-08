@@ -513,5 +513,5 @@ int main(int argc, char *argv[])
 err1:
 	lxc_mainloop_close(&descr);
 out:
-	exit(EXIT_FAILURE);
+	exit(ret);
 }
