@@ -674,7 +674,7 @@ $1 -h|--help [-a|--arch] [-b|--bindhome <user>] [-d|--debug]
    [-F | --flush-cache] [-r|--release <release>] [-v|--variant] [ -S | --auth-key <keyfile>]
    [--rootfs <rootfs>] [--packages <packages>] [-u|--user <user>] [--password <password>]
    [--mirror <url>] [--security-mirror <url>]
-release: the ubuntu release (e.g. precise): defaults to host release on ubuntu, otherwise uses latest LTS
+release: the ubuntu release (e.g. xenial): defaults to host release on ubuntu, otherwise uses latest LTS
 variant: debootstrap variant to use (see debootstrap(8))
 bindhome: bind <user>'s home into the container
           The ubuntu user will not be created, and <user> will have
@@ -694,7 +694,7 @@ if [ $? -ne 0 ]; then
 fi
 eval set -- "$options"
 
-release=precise # Default to the last Ubuntu LTS release for non-Ubuntu systems
+release=xenial # Default to the last Ubuntu LTS release for non-Ubuntu systems
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
     if [ "$DISTRIB_ID" = "Ubuntu" ]; then
