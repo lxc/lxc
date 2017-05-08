@@ -153,36 +153,52 @@ int lxc_monitor_close(int fd)
 	return close(fd);
 }
 
+/* Enforces \0-termination for the abstract unix socket. This is not required
+ * but allows us to print it out.
+ *
+ * Older version of liblxc only allowed for 105 bytes to be used for the
+ * abstract unix domain socket name because the code for our abstract unix
+ * socket handling performed invalid checks. Since we \0-terminate we could now
+ * have a maximum of 106 chars. But to not break backwards compatibility we keep
+ * the limit at 105.
+ */
 int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 	size_t len;
 	int ret;
-	char *sockname;
 	char *path;
 	uint64_t hash;
 
 	/* addr.sun_path is only 108 bytes, so we hash the full name and
 	 * then append as much of the name as we can fit.
 	 */
-	sockname = &addr->sun_path[1];
 	memset(addr, 0, sizeof(*addr));
 	addr->sun_family = AF_UNIX;
 
+	/* strlen("lxc/") + strlen("/monitor-sock") + 1 = 18 */
 	len = strlen(lxcpath) + 18;
 	path = alloca(len);
 	ret = snprintf(path, len, "lxc/%s/monitor-sock", lxcpath);
 	if (ret < 0 || (size_t)ret >= len) {
-		ERROR("Failed to create path for monitor.");
+		ERROR("failed to create name for monitor socket");
 		return -1;
 	}
 
+	/* Note: snprintf() will \0-terminate addr->sun_path on the 106th byte
+	 * and so the abstract socket name has 105 "meaningful" characters. This
+	 * is absolutely intentional. For further info read the comment for this
+	 * function above!
+	 */
 	len = sizeof(addr->sun_path) - 1;
 	hash = fnv_64a_buf(path, ret, FNV1A_64_INIT);
-	ret = snprintf(sockname, len, "lxc/%016" PRIx64 "/%s", hash, lxcpath);
-	if (ret < 0)
+	ret = snprintf(addr->sun_path, len, "@lxc/%016" PRIx64 "/%s", hash, lxcpath);
+	if (ret < 0) {
+		ERROR("failed to create hashed name for monitor socket");
 		return -1;
+	}
 
-	sockname[sizeof(addr->sun_path)-3] = '\0';
-	INFO("Using monitor socket name \"%s\".", sockname);
+	/* replace @ with \0 */
+	addr->sun_path[0] = '\0';
+	INFO("using monitor socket name \"%s\" (length of socket name %zu must be <= %zu)", &addr->sun_path[1], strlen(&addr->sun_path[1]), sizeof(addr->sun_path) - 3);
 
 	return 0;
 }
@@ -193,7 +209,8 @@ int lxc_monitor_open(const char *lxcpath)
 	int fd;
 	size_t retry;
 	size_t len;
-	int ret = 0, backoff_ms[] = {10, 50, 100};
+	int ret = -1;
+	int backoff_ms[] = {10, 50, 100};
 
 	if (lxc_monitor_sock_name(lxcpath, &addr) < 0)
 		return -1;
@@ -201,28 +218,32 @@ int lxc_monitor_open(const char *lxcpath)
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0) {
 		ERROR("Failed to create socket: %s.", strerror(errno));
-		return -1;
+		return -errno;
 	}
 
-	len = strlen(&addr.sun_path[1]) + 1;
+	len = strlen(&addr.sun_path[1]);
+	DEBUG("opening monitor socket %s with len %zu", &addr.sun_path[1], len);
 	if (len >= sizeof(addr.sun_path) - 1) {
-		ret = -1;
 		errno = ENAMETOOLONG;
+		ret = -errno;
+		ERROR("name of monitor socket too long (%zu bytes): %s", len, strerror(errno));
 		goto on_error;
 	}
 
 	for (retry = 0; retry < sizeof(backoff_ms) / sizeof(backoff_ms[0]); retry++) {
-		ret = connect(fd, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + len);
-		if (ret == 0 || errno != ECONNREFUSED)
+		fd = lxc_abstract_unix_connect(addr.sun_path);
+		if (fd < 0 || errno != ECONNREFUSED)
 			break;
-		ERROR("Failed to connect to monitor socket. Retrying in %d ms.", backoff_ms[retry]);
+		ERROR("Failed to connect to monitor socket. Retrying in %d ms: %s", backoff_ms[retry], strerror(errno));
 		usleep(backoff_ms[retry] * 1000);
 	}
 
-	if (ret < 0) {
+	if (fd < 0) {
+		ret = -errno;
 		ERROR("Failed to connect to monitor socket: %s.", strerror(errno));
 		goto on_error;
 	}
+	ret = 0;
 
 	return fd;
 
