@@ -1490,10 +1490,38 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	char path[MAXPATHLEN];
 	int ret, fd;
 
+	if (console->path && !strcmp(console->path, "none"))
+		return 0;
+
 	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs->mount);
 	if (ret < 0 || (size_t)ret >= sizeof(path))
 		return -1;
 
+	/* When we are asked to setup a console we remove any previous
+	 * /dev/console bind-mounts.
+	 */
+	ret = umount(path);
+	if (ret < 0) {
+		if (errno != EINVAL && errno != ENOENT) {
+			/* EINVAL: path is not a mountpoint
+			 * ENOENT: path does not exist
+			 * anything else means something weird is happening.
+			 */
+			ERROR("failed to unmount \"%s\": %s", path, strerror(errno));
+			return -errno;
+		}
+	} else {
+		DEBUG("unmounted console \"%s\"", path);
+	}
+	ret = unlink(path);
+	if (ret && errno != ENOENT) {
+		SYSERROR("error unlinking %s", path);
+		return -errno;
+	}
+
+	/* For unprivileged containers autodev or automounts will already have
+	 * taken care of creating /dev/console.
+	 */
 	fd = open(path, O_CREAT | O_EXCL, S_IXUSR | S_IXGRP | S_IXOTH);
 	if (fd < 0) {
 		if (errno != EEXIST) {
@@ -1502,11 +1530,6 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 		}
 	} else {
 		close(fd);
-	}
-
-	if (console->master < 0) {
-		INFO("no console");
-		return 0;
 	}
 
 	if (chmod(console->name, S_IXUSR | S_IXGRP | S_IXOTH)) {
