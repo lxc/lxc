@@ -30,3 +30,8 @@ lxc.stopsignal=SIGRTMIN+14
 # lxc.cap.drop = setpcap          # big big login delays in Fedora 20 systemd
 #
 lxc.cap.drop = setfcap sys_nice sys_pacct sys_rawio
+
+# fixes for systemd in lxc containers
+lxc.autodev = 1
+lxc.pts = 1024
+lxc.kmsg = 0
