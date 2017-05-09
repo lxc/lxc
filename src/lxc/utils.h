@@ -348,4 +348,11 @@ int lxc_setgroups(int size, gid_t list[]);
 /* Find an unused loop device and associate it with source. */
 int lxc_prepare_loop_dev(const char *source, char *loop_dev, int flags);
 
+/* Clear all mounts on a given node.
+ * >= 0 successfully cleared. The number returned is the number of umounts
+ *      performed.
+ * < 0  error umounting. Return -errno.
+ */
+int lxc_unstack_mountpoint(const char *path, bool lazy);
+
 #endif /* __LXC_UTILS_H */
