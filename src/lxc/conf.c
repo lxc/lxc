@@ -1500,23 +1500,19 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	/* When we are asked to setup a console we remove any previous
 	 * /dev/console bind-mounts.
 	 */
-	ret = umount(path);
-	if (ret < 0) {
-		if (errno != EINVAL && errno != ENOENT) {
-			/* EINVAL: path is not a mountpoint
-			 * ENOENT: path does not exist
-			 * anything else means something weird is happening.
-			 */
+	if (file_exists(path)) {
+		ret = lxc_unstack_mountpoint(path, false);
+		if (ret < 0) {
 			ERROR("failed to unmount \"%s\": %s", path, strerror(errno));
+			return -ret;
+		} else {
+			DEBUG("cleared all (%d) mounts from \"%s\"", ret, path);
+		}
+		ret = unlink(path);
+		if (ret < 0) {
+			SYSERROR("error unlinking %s", path);
 			return -errno;
 		}
-	} else {
-		DEBUG("unmounted console \"%s\"", path);
-	}
-	ret = unlink(path);
-	if (ret && errno != ENOENT) {
-		SYSERROR("error unlinking %s", path);
-		return -errno;
 	}
 
 	/* For unprivileged containers autodev or automounts will already have
@@ -1603,8 +1599,11 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 
 		/* In case the user requested a bind-mount for /dev/console and
 		 * requests a ttydir we move the mount to the
-		 * /dev/<ttydir/console. If it is a character device created via
-		 * mknod() we simply rename it.
+		 * /dev/<ttydir/console.
+		 * Note, we only move the uppermost mount and clear all other
+		 * mounts underneath for safety.
+		 * If it is a character device created via mknod() we simply
+		 * rename it.
 		 */
 		ret = safe_mount(path, lxcpath, "none", MS_MOVE, NULL, rootfs->mount);
 		if (ret < 0) {
@@ -1622,19 +1621,24 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		} else {
 			DEBUG("moved mount \"%s\" to \"%s\"", path, lxcpath);
 		}
-	} else {
-		ret = umount(path);
+
+		/* Clear all remaining bind-mounts. */
+		ret = lxc_unstack_mountpoint(path, false);
 		if (ret < 0) {
-			if (errno != EINVAL && errno != ENOENT) {
-				/* EINVAL: path is not a mountpoint
-				 * ENOENT: path does not exist
-				 * anything else means something weird is happening.
-				 */
-				ERROR("failed to unmount \"%s\": %s", path, strerror(errno));
-				return -errno;
-			}
+			ERROR("failed to unmount \"%s\": %s", path, strerror(errno));
+			return -ret;
 		} else {
-			DEBUG("unmounted console \"%s\"", path);
+			DEBUG("cleared all (%d) mounts from \"%s\"", ret, path);
+		}
+	} else {
+		if (file_exists(path)) {
+			ret = lxc_unstack_mountpoint(path, false);
+			if (ret < 0) {
+				ERROR("failed to unmount \"%s\": %s", path, strerror(errno));
+				return -ret;
+			} else {
+				DEBUG("cleared all (%d) mounts from \"%s\"", ret, path);
+			}
 		}
 
 		if (safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs->mount) < 0) {
