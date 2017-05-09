@@ -55,8 +55,9 @@ int lxc_abstract_unix_open(const char *path, int type, int flags)
 
 	addr.sun_family = AF_UNIX;
 
-	len = strlen(&path[1]) + 1;
-	if (len >= sizeof(addr.sun_path) - 1) {
+	len = strlen(&path[1]);
+	/* do not enforce \0-termination */
+	if (len >= sizeof(addr.sun_path)) {
 		close(fd);
 		errno = ENAMETOOLONG;
 		return -1;
@@ -64,7 +65,7 @@ int lxc_abstract_unix_open(const char *path, int type, int flags)
 	/* addr.sun_path[0] has already been set to 0 by memset() */
 	strncpy(&addr.sun_path[1], &path[1], strlen(&path[1]));
 
-	if (bind(fd, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + len)) {
+	if (bind(fd, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + len + 1)) {
 		int tmp = errno;
 		close(fd);
 		errno = tmp;
@@ -109,8 +110,9 @@ int lxc_abstract_unix_connect(const char *path)
 
 	addr.sun_family = AF_UNIX;
 
-	len = strlen(&path[1]) + 1;
-	if (len >= sizeof(addr.sun_path) - 1) {
+	len = strlen(&path[1]);
+	/* do not enforce \0-termination */
+	if (len >= sizeof(addr.sun_path)) {
 		close(fd);
 		errno = ENAMETOOLONG;
 		return -1;
@@ -118,7 +120,7 @@ int lxc_abstract_unix_connect(const char *path)
 	/* addr.sun_path[0] has already been set to 0 by memset() */
 	strncpy(&addr.sun_path[1], &path[1], strlen(&path[1]));
 
-	if (connect(fd, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + len)) {
+	if (connect(fd, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + len + 1)) {
 		int tmp = errno;
 		/* special case to connect to older containers */
 		if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0)
@@ -136,8 +138,8 @@ int lxc_abstract_unix_send_fd(int fd, int sendfd, void *data, size_t size)
 	struct msghdr msg = { 0 };
 	struct iovec iov;
 	struct cmsghdr *cmsg;
-	char cmsgbuf[CMSG_SPACE(sizeof(int))];
-	char buf[1];
+	char cmsgbuf[CMSG_SPACE(sizeof(int))] = {0};
+	char buf[1] = {0};
 	int *val;
 
 	msg.msg_control = cmsgbuf;
@@ -166,9 +168,9 @@ int lxc_abstract_unix_recv_fd(int fd, int *recvfd, void *data, size_t size)
 	struct msghdr msg = { 0 };
 	struct iovec iov;
 	struct cmsghdr *cmsg;
-	char cmsgbuf[CMSG_SPACE(sizeof(int))];
-	char buf[1];
 	int ret, *val;
+	char cmsgbuf[CMSG_SPACE(sizeof(int))] = {0};
+	char buf[1] = {0};
 
 	msg.msg_name = NULL;
 	msg.msg_namelen = 0;
@@ -210,8 +212,8 @@ int lxc_abstract_unix_send_credential(int fd, void *data, size_t size)
 		.uid = getuid(),
 		.gid = getgid(),
 	};
-	char cmsgbuf[CMSG_SPACE(sizeof(cred))];
-	char buf[1];
+	char cmsgbuf[CMSG_SPACE(sizeof(cred))] = {0};
+	char buf[1] = {0};
 
 	msg.msg_control = cmsgbuf;
 	msg.msg_controllen = sizeof(cmsgbuf);
@@ -239,9 +241,9 @@ int lxc_abstract_unix_rcv_credential(int fd, void *data, size_t size)
 	struct iovec iov;
 	struct cmsghdr *cmsg;
 	struct ucred cred;
-	char cmsgbuf[CMSG_SPACE(sizeof(cred))];
-	char buf[1];
 	int ret;
+	char cmsgbuf[CMSG_SPACE(sizeof(cred))] = {0};
+	char buf[1] = {0};
 
 	msg.msg_name = NULL;
 	msg.msg_namelen = 0;
