@@ -668,10 +668,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <listitem>
             <para>
               Specify a path to a device to which the console will be
-              attached.  The keyword 'none' will simply disable the
-              console.  This is dangerous once if have a rootfs with a
-              console device file where the application can write, the
-              messages will fall in the host.
+              attached. The keyword 'none' will simply disable the
+              console. Note, when specifying 'none' and creating a device node
+              for the console in the container at /dev/console or bind-mounting
+              the hosts's /dev/console into the container at /dev/console the
+              container will have direct access to the hosts's /dev/console.
+              This is dangerous when the container has write access to the
+              device and should thus be used with caution.
             </para>
           </listitem>
         </varlistentry>
@@ -727,7 +730,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <listitem>
             <para>
               Specify a directory under <filename>/dev</filename>
-              under which to create the container console devices.
+              under which to create the container console devices. Note that LXC
+              will move any bind-mounts or device nodes for /dev/console into
+              this directory.
             </para>
           </listitem>
         </varlistentry>
