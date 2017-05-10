@@ -2221,10 +2221,15 @@ pop_stack:
 		if (errno != EINVAL)
 			return -errno;
 	} else {
+		/* Just stop counting when this happens. That'd just be so
+		 * stupid that we won't even bother trying to report back the
+		 * correct value anymore.
+		 */
+		if (umounts != INT_MAX)
+			umounts++;
 		/* We succeeded in umounting. Make sure that there's no other
 		 * mountpoint stacked underneath.
 		 */
-		umounts++;
 		goto pop_stack;
 	}
 
