@@ -1228,23 +1228,23 @@ int prepare_ramfs_root(char *root)
 	char *p2;
 
 	if (realpath(root, nroot) == NULL)
-		return -1;
+		return -errno;
 
 	if (chdir("/") == -1)
-		return -1;
+		return -errno;
 
 	/*
 	 * We could use here MS_MOVE, but in userns this mount is
 	 * locked and can't be moved.
 	 */
-	if (mount(root, "/", NULL, MS_REC | MS_BIND, NULL)) {
+	if (mount(root, "/", NULL, MS_REC | MS_BIND, NULL) < 0) {
 		SYSERROR("Failed to move %s into /", root);
-		return -1;
+		return -errno;
 	}
 
-	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL)) {
+	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0) {
 		SYSERROR("Failed to make . rprivate");
-		return -1;
+		return -errno;
 	}
 
 	/*
@@ -1310,17 +1310,28 @@ int prepare_ramfs_root(char *root)
 
 static int setup_pivot_root(const struct lxc_rootfs *rootfs)
 {
-	if (!rootfs->path)
+	if (!rootfs->path) {
+		DEBUG("container does not have a rootfs, so not doing pivot root");
 		return 0;
+	}
 
 	if (detect_ramfs_rootfs()) {
-		if (prepare_ramfs_root(rootfs->mount))
+		DEBUG("detected that container is on ramfs");
+		if (prepare_ramfs_root(rootfs->mount)) {
+			ERROR("failed to prepare minimal ramfs root");
 			return -1;
-	} else if (setup_rootfs_pivot_root(rootfs->mount)) {
-		ERROR("failed to setup pivot root");
+		}
+
+		DEBUG("prepared ramfs root for container");
+		return 0;
+	}
+
+	if (setup_rootfs_pivot_root(rootfs->mount) < 0) {
+		ERROR("failed to pivot root");
 		return -1;
 	}
 
+	DEBUG("finished pivot root");
 	return 0;
 }
 
