@@ -415,16 +415,17 @@ void lxc_console_free(struct lxc_conf *conf, int fd)
 	}
 }
 
-static void lxc_console_peer_default(struct lxc_console *console)
+static int lxc_console_peer_default(struct lxc_console *console)
 {
 	struct lxc_tty_state *ts;
 	const char *path = console->path;
+	int fd;
+	int ret = 0;
 
-	/* if no console was given, try current controlling terminal, there
-	 * won't be one if we were started as a daemon (-d)
+	/* If no console was given, try current controlling terminal, there
+	 * won't be one if we were started as a daemon (-d).
 	 */
 	if (!path && !access("/dev/tty", F_OK)) {
-		int fd;
 		fd = open("/dev/tty", O_RDWR);
 		if (fd >= 0) {
 			close(fd);
@@ -432,25 +433,29 @@ static void lxc_console_peer_default(struct lxc_console *console)
 		}
 	}
 
-	if (!path)
+	if (!path) {
+		errno = ENOTTY;
+		DEBUG("process does not have a controlling terminal");
 		goto out;
+	}
 
-	DEBUG("opening %s for console peer", path);
-	console->peer = lxc_unpriv(open(path, O_CLOEXEC | O_RDWR | O_CREAT |
-					O_APPEND, 0600));
-	if (console->peer < 0)
-		goto out;
+	console->peer = lxc_unpriv(open(path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
+	if (console->peer < 0) {
+		ERROR("failed to open \"%s\"", path);
+		return -ENOTTY;
+	}
+	DEBUG("using \"%s\" as peer tty device", path);
 
-	DEBUG("using '%s' as console", path);
-
-	if (!isatty(console->peer))
-		goto err1;
+	if (!isatty(console->peer)) {
+		ERROR("file descriptor for file \"%s\" does not refer to a tty device", path);
+		goto on_error1;
+	}
 
 	ts = lxc_console_sigwinch_init(console->peer, console->master);
 	console->tty_state = ts;
 	if (!ts) {
-		WARN("Unable to install SIGWINCH");
-		goto err1;
+		WARN("unable to install SIGWINCH handler");
+		goto on_error1;
 	}
 
 	lxc_console_winsz(console->peer, console->master);
@@ -458,23 +463,27 @@ static void lxc_console_peer_default(struct lxc_console *console)
 	console->tios = malloc(sizeof(*console->tios));
 	if (!console->tios) {
 		SYSERROR("failed to allocate memory");
-		goto err1;
+		ret = -ENOMEM;
+		goto on_error1;
 	}
 
 	if (lxc_setup_tios(console->peer, console->tios) < 0)
-		goto err2;
+		goto on_error2;
+	else
+		goto out;
 
-	return;
-
-err2:
+on_error2:
 	free(console->tios);
 	console->tios = NULL;
-err1:
+	ret = -ENOTTY;
+
+on_error1:
 	close(console->peer);
 	console->peer = -1;
+	ret = -ENOTTY;
+
 out:
-	DEBUG("no console peer");
-	return;
+	return ret;
 }
 
 void lxc_console_delete(struct lxc_console *console)
@@ -503,21 +512,24 @@ int lxc_console_create(struct lxc_conf *conf)
 	int ret;
 
 	if (conf->is_execute) {
-		INFO("no console for lxc-execute.");
+		INFO("not allocating a console device for lxc-execute.");
 		return 0;
 	}
 
-	if (!conf->rootfs.path)
+	if (!conf->rootfs.path) {
+		INFO("container does not have a rootfs, console device will be shared with the host");
 		return 0;
+	}
 
-	if (console->path && !strcmp(console->path, "none"))
+	if (console->path && !strcmp(console->path, "none")) {
+		INFO("no console requested");
 		return 0;
+	}
 
 	process_lock();
-	ret = openpty(&console->master, &console->slave,
-		    console->name, NULL, NULL);
+	ret = openpty(&console->master, &console->slave, console->name, NULL, NULL);
 	process_unlock();
-	if (ret) {
+	if (ret < 0) {
 		SYSERROR("failed to allocate a pty");
 		return -1;
 	}
@@ -532,17 +544,19 @@ int lxc_console_create(struct lxc_conf *conf)
 		goto err;
 	}
 
-	lxc_console_peer_default(console);
+	ret = lxc_console_peer_default(console);
+	if (ret < 0) {
+		ERROR("failed to allocate peer tty device");
+		goto err;
+	}
 
 	if (console->log_path) {
-		console->log_fd = lxc_unpriv(open(console->log_path,
-						  O_CLOEXEC | O_RDWR |
-						  O_CREAT | O_APPEND, 0600));
+		console->log_fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
 		if (console->log_fd < 0) {
-			SYSERROR("failed to open '%s'", console->log_path);
+			SYSERROR("failed to open console log file \"%s\"", console->log_path);
 			goto err;
 		}
-		DEBUG("using '%s' as console log", console->log_path);
+		DEBUG("using \"%s\" as console log file", console->log_path);
 	}
 
 	return 0;

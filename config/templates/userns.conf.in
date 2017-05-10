@@ -6,7 +6,6 @@ lxc.cgroup.devices.allow =
 lxc.devttydir =
 
 # Extra bind-mounts for userns
-lxc.mount.entry = /dev/console dev/console none bind,create=file 0 0
 lxc.mount.entry = /dev/full dev/full none bind,create=file 0 0
 lxc.mount.entry = /dev/null dev/null none bind,create=file 0 0
 lxc.mount.entry = /dev/random dev/random none bind,create=file 0 0

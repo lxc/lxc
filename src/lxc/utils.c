@@ -2204,3 +2204,29 @@ on_error:
 
 	return fd_loop;
 }
+
+int lxc_unstack_mountpoint(const char *path, bool lazy)
+{
+	int ret;
+	int umounts = 0;
+
+pop_stack:
+	ret = umount2(path, lazy ? MNT_DETACH : 0);
+	if (ret < 0) {
+		/* We consider anything else than EINVAL deadly to prevent going
+		 * into an infinite loop. (The other alternative is constantly
+		 * parsing /proc/self/mountinfo which is yucky and probably
+		 * racy.)
+		 */
+		if (errno != EINVAL)
+			return -errno;
+	} else {
+		/* We succeeded in umounting. Make sure that there's no other
+		 * mountpoint stacked underneath.
+		 */
+		umounts++;
+		goto pop_stack;
+	}
+
+	return umounts;
+}
