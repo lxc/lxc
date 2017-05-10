@@ -139,6 +139,7 @@ struct lxc_netdev {
 	bool ipv6_gateway_auto;
 	char *upscript;
 	char *downscript;
+	char *upscript_args;
 };
 
 /*

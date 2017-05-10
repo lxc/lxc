@@ -2747,7 +2747,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 
 	if (netdev->upscript) {
 		err = run_script(handler->name, "net", netdev->upscript, "up",
-				 "veth", veth1, (char*) NULL);
+				 "veth", veth1, netdev->upscript_args, (char*) NULL);
 		if (err)
 			goto out_delete;
 	}
@@ -2777,7 +2777,7 @@ static int shutdown_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 
 	if (netdev->downscript) {
 		err = run_script(handler->name, "net", netdev->downscript,
-				 "down", "veth", veth1, (char*) NULL);
+				 "down", "veth", veth1, netdev->upscript_args, (char*) NULL);
 		if (err)
 			return -1;
 	}
@@ -2820,7 +2820,7 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 
 	if (netdev->upscript) {
 		err = run_script(handler->name, "net", netdev->upscript, "up",
-				 "macvlan", netdev->link, (char*) NULL);
+				 "macvlan", netdev->link, netdev->upscript_args, (char*) NULL);
 		if (err)
 			goto out;
 	}
@@ -2842,7 +2842,7 @@ static int shutdown_macvlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	if (netdev->downscript) {
 		err = run_script(handler->name, "net", netdev->downscript,
 				 "down", "macvlan", netdev->link,
-				 (char*) NULL);
+				  netdev->upscript_args,(char*) NULL);
 		if (err)
 			return -1;
 	}
@@ -2923,7 +2923,7 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	if (netdev->upscript) {
 		int err;
 		err = run_script(handler->name, "net", netdev->upscript,
-				 "up", "phys", netdev->link, (char*) NULL);
+				 "up", "phys", netdev->upscript_args, netdev->link, (char*) NULL);
 		if (err)
 			return -1;
 	}
@@ -2937,7 +2937,7 @@ static int shutdown_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 
 	if (netdev->downscript) {
 		err = run_script(handler->name, "net", netdev->downscript,
-				 "down", "phys", netdev->link, (char*) NULL);
+			 "down", "phys", netdev->link, netdev->upscript_args, (char*) NULL);
 		if (err)
 			return -1;
 	}
@@ -2956,7 +2956,7 @@ static int instantiate_empty(struct lxc_handler *handler, struct lxc_netdev *net
 	if (netdev->upscript) {
 		int err;
 		err = run_script(handler->name, "net", netdev->upscript,
-				 "up", "empty", (char*) NULL);
+				 "up", "empty", netdev->upscript_args, (char*) NULL);
 		if (err)
 			return -1;
 	}
@@ -2969,7 +2969,7 @@ static int shutdown_empty(struct lxc_handler *handler, struct lxc_netdev *netdev
 
 	if (netdev->downscript) {
 		err = run_script(handler->name, "net", netdev->downscript,
-				 "down", "empty", (char*) NULL);
+				 "down", "empty", netdev->upscript_args, (char*) NULL);
 		if (err)
 			return -1;
 	}
@@ -4176,6 +4176,7 @@ static void lxc_remove_nic(struct lxc_list *it)
 	if (netdev->type == LXC_NET_VETH)
 		free(netdev->priv.veth_attr.pair);
 	free(netdev->upscript);
+	free(netdev->upscript_args);
 	free(netdev->hwaddr);
 	free(netdev->mtu);
 	free(netdev->ipv4_gateway);
