@@ -2383,11 +2383,14 @@ static void cgfs_destroy(void *hdata, struct lxc_conf *conf)
 	free(d);
 }
 
-static inline bool cgfs_create(void *hdata)
+static inline bool cgfs_create(void *hdata, bool inner)
 {
 	struct cgfs_data *d = hdata;
 	struct cgroup_process_info *i;
 	struct cgroup_meta_data *md;
+
+	if (inner)
+		return true;
 
 	if (!d)
 		return false;
@@ -2399,11 +2402,14 @@ static inline bool cgfs_create(void *hdata)
 	return true;
 }
 
-static inline bool cgfs_enter(void *hdata, pid_t pid)
+static inline bool cgfs_enter(void *hdata, pid_t pid, bool inner)
 {
 	struct cgfs_data *d = hdata;
 	struct cgroup_process_info *i;
 	int ret;
+
+	if (inner)
+		return true;
 
 	if (!d)
 		return false;
@@ -2428,9 +2434,11 @@ static inline bool cgfs_create_legacy(void *hdata, pid_t pid)
 	return true;
 }
 
-static const char *cgfs_get_cgroup(void *hdata, const char *subsystem)
+static const char *cgfs_get_cgroup(void *hdata, const char *subsystem, bool inner)
 {
 	struct cgfs_data *d = hdata;
+
+	(void)inner;
 
 	if (!d)
 		return NULL;
@@ -2646,12 +2654,15 @@ static bool do_cgfs_chown(char *cgroup_path, struct lxc_conf *conf)
 	return true;
 }
 
-static bool cgfs_chown(void *hdata, struct lxc_conf *conf)
+static bool cgfs_chown(void *hdata, struct lxc_conf *conf, bool inner)
 {
 	struct cgfs_data *d = hdata;
 	struct cgroup_process_info *info_ptr;
 	char *cgpath;
 	bool r = true;
+
+	if (inner)
+		return true;
 
 	if (!d)
 		return false;

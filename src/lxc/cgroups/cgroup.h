@@ -28,6 +28,12 @@
 #include <stddef.h>
 #include <sys/types.h>
 
+/* When lxc.cgroup.protect_limits is in effect the container's cgroup namespace
+ * will be moved into an additional subdirectory "cgns/" inside the cgroup in
+ * order to prevent it from accessing the outer limiting cgroup.
+ */
+#define CGROUP_NAMESPACE_SUBDIR "cgns"
+
 struct lxc_handler;
 struct lxc_conf;
 struct lxc_list;
@@ -43,10 +49,10 @@ struct cgroup_ops {
 
 	void *(*init)(const char *name);
 	void (*destroy)(void *hdata, struct lxc_conf *conf);
-	bool (*create)(void *hdata);
-	bool (*enter)(void *hdata, pid_t pid);
+	bool (*create)(void *hdata, bool inner);
+	bool (*enter)(void *hdata, pid_t pid, bool inner);
 	bool (*create_legacy)(void *hdata, pid_t pid);
-	const char *(*get_cgroup)(void *hdata, const char *subsystem);
+	const char *(*get_cgroup)(void *hdata, const char *subsystem, bool inner);
 	bool (*escape)();
 	int (*num_hierarchies)();
 	bool (*get_hierarchies)(int n, char ***out);
@@ -54,7 +60,7 @@ struct cgroup_ops {
 	int (*get)(const char *filename, char *value, size_t len, const char *name, const char *lxcpath);
 	bool (*unfreeze)(void *hdata);
 	bool (*setup_limits)(void *hdata, struct lxc_list *cgroup_conf, bool with_devices);
-	bool (*chown)(void *hdata, struct lxc_conf *conf);
+	bool (*chown)(void *hdata, struct lxc_conf *conf, bool inner);
 	bool (*attach)(const char *name, const char *lxcpath, pid_t pid);
 	bool (*mount_cgroup)(void *hdata, const char *root, int type);
 	int (*nrtasks)(void *hdata);
@@ -66,14 +72,14 @@ extern bool cgroup_attach(const char *name, const char *lxcpath, pid_t pid);
 extern bool cgroup_mount(const char *root, struct lxc_handler *handler, int type);
 extern void cgroup_destroy(struct lxc_handler *handler);
 extern bool cgroup_init(struct lxc_handler *handler);
-extern bool cgroup_create(struct lxc_handler *handler);
+extern bool cgroup_create(struct lxc_handler *handler, bool inner);
 extern bool cgroup_setup_limits(struct lxc_handler *handler, bool with_devices);
-extern bool cgroup_chown(struct lxc_handler *handler);
-extern bool cgroup_enter(struct lxc_handler *handler);
+extern bool cgroup_chown(struct lxc_handler *handler, bool inner);
+extern bool cgroup_enter(struct lxc_handler *handler, bool inner);
 extern void cgroup_cleanup(struct lxc_handler *handler);
 extern bool cgroup_create_legacy(struct lxc_handler *handler);
 extern int cgroup_nrtasks(struct lxc_handler *handler);
-extern const char *cgroup_get_cgroup(struct lxc_handler *handler, const char *subsystem);
+extern const char *cgroup_get_cgroup(struct lxc_handler *handler, const char *subsystem, bool inner);
 extern bool cgroup_escape();
 extern int cgroup_num_hierarchies();
 extern bool cgroup_get_hierarchies(int i, char ***out);

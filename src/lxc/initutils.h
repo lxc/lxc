@@ -43,6 +43,7 @@
 #define DEFAULT_THIN_POOL "lxc"
 #define DEFAULT_ZFSROOT "lxc"
 #define DEFAULT_RBDPOOL "lxc"
+#define DEFAULT_CGPROTECT "privileged"
 
 extern void lxc_setup_fs(void);
 extern const char *lxc_global_config_value(const char *option_name);

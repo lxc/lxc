@@ -609,13 +609,16 @@ static inline void cleanup_cgroups(char *path)
 		cgm_remove_cgroup(slist[i], path);
 }
 
-static inline bool cgm_create(void *hdata)
+static inline bool cgm_create(void *hdata, bool inner)
 {
 	struct cgm_data *d = hdata;
 	char **slist = subsystems;
 	int i, index=0, baselen, ret;
 	int32_t existed;
 	char result[MAXPATHLEN], *tmp, *cgroup_path;
+
+	if (inner)
+		return true;
 
 	if (!d)
 		return false;
@@ -709,12 +712,15 @@ static bool lxc_cgmanager_enter(pid_t pid, const char *controller,
 	return true;
 }
 
-static inline bool cgm_enter(void *hdata, pid_t pid)
+static inline bool cgm_enter(void *hdata, pid_t pid, bool inner)
 {
 	struct cgm_data *d = hdata;
 	char **slist = subsystems;
 	bool ret = false;
 	int i;
+
+	if (inner)
+		return true;
 
 	if (!d || !d->cgroup_path)
 		return false;
@@ -737,9 +743,11 @@ out:
 	return ret;
 }
 
-static const char *cgm_get_cgroup(void *hdata, const char *subsystem)
+static const char *cgm_get_cgroup(void *hdata, const char *subsystem, bool inner)
 {
 	struct cgm_data *d = hdata;
+
+	(void)inner;
 
 	if (!d || !d->cgroup_path)
 		return NULL;
@@ -1541,9 +1549,12 @@ out:
 	return ret;
 }
 
-static bool cgm_chown(void *hdata, struct lxc_conf *conf)
+static bool cgm_chown(void *hdata, struct lxc_conf *conf, bool inner)
 {
 	struct cgm_data *d = hdata;
+
+	if (inner)
+		return true;
 
 	if (!d || !d->cgroup_path)
 		return false;

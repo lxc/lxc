@@ -283,7 +283,7 @@ static void exec_criu(struct criu_opts *opts)
 		} else {
 			const char *p;
 
-			p = cgroup_get_cgroup(opts->handler, controllers[0]);
+			p = cgroup_get_cgroup(opts->handler, controllers[0], false);
 			if (!p) {
 				ERROR("failed to get cgroup path for %s", controllers[0]);
 				goto err;
@@ -806,7 +806,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		goto out_fini_handler;
 	}
 
-	if (!cgroup_create(handler)) {
+	if (!cgroup_create(handler, false)) {
 		ERROR("failed creating groups");
 		goto out_fini_handler;
 	}

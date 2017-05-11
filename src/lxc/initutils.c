@@ -88,14 +88,15 @@ static char *copy_global_config_value(char *p)
 const char *lxc_global_config_value(const char *option_name)
 {
 	static const char * const options[][2] = {
-		{ "lxc.bdev.lvm.vg",        DEFAULT_VG      },
-		{ "lxc.bdev.lvm.thin_pool", DEFAULT_THIN_POOL },
-		{ "lxc.bdev.zfs.root",      DEFAULT_ZFSROOT },
-		{ "lxc.bdev.rbd.rbdpool",   DEFAULT_RBDPOOL },
-		{ "lxc.lxcpath",            NULL            },
-		{ "lxc.default_config",     NULL            },
-		{ "lxc.cgroup.pattern",     NULL            },
-		{ "lxc.cgroup.use",         NULL            },
+		{ "lxc.bdev.lvm.vg",           DEFAULT_VG      },
+		{ "lxc.bdev.lvm.thin_pool",    DEFAULT_THIN_POOL },
+		{ "lxc.bdev.zfs.root",         DEFAULT_ZFSROOT },
+		{ "lxc.bdev.rbd.rbdpool",      DEFAULT_RBDPOOL },
+		{ "lxc.lxcpath",               NULL            },
+		{ "lxc.default_config",        NULL            },
+		{ "lxc.cgroup.pattern",        NULL            },
+		{ "lxc.cgroup.use",            NULL            },
+		{ "lxc.cgroup.protect_limits", DEFAULT_CGPROTECT },
 		{ NULL, NULL },
 	};
 
@@ -105,6 +106,23 @@ const char *lxc_global_config_value(const char *option_name)
 #else
 	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
 #endif
+
+	const char * const (*ptr)[2];
+	size_t opt;
+	char buf[1024], *p, *p2;
+	FILE *fin = NULL;
+
+	for (opt = 0, ptr = options; (*ptr)[0]; ptr++, opt++) {
+		if (!strcmp(option_name, (*ptr)[0]))
+			break;
+	}
+	if (!(*ptr)[0]) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	if (values[opt])
+		return values[opt];
 
 	/* user_config_path is freed as soon as it is used */
 	char *user_config_path = NULL;
@@ -136,32 +154,6 @@ const char *lxc_global_config_value(const char *option_name)
 		user_default_config_path = strdup(LXC_DEFAULT_CONFIG);
 		user_lxc_path = strdup(LXCPATH);
 		user_cgroup_pattern = strdup(DEFAULT_CGROUP_PATTERN);
-	}
-
-	const char * const (*ptr)[2];
-	size_t i;
-	char buf[1024], *p, *p2;
-	FILE *fin = NULL;
-
-	for (i = 0, ptr = options; (*ptr)[0]; ptr++, i++) {
-		if (!strcmp(option_name, (*ptr)[0]))
-			break;
-	}
-	if (!(*ptr)[0]) {
-		free(user_config_path);
-		free(user_default_config_path);
-		free(user_lxc_path);
-		free(user_cgroup_pattern);
-		errno = EINVAL;
-		return NULL;
-	}
-
-	if (values[i]) {
-		free(user_config_path);
-		free(user_default_config_path);
-		free(user_lxc_path);
-		free(user_cgroup_pattern);
-		return values[i];
 	}
 
 	fin = fopen_cloexec(user_config_path, "r");
@@ -203,36 +195,36 @@ const char *lxc_global_config_value(const char *option_name)
 				free(user_lxc_path);
 				user_lxc_path = copy_global_config_value(p);
 				remove_trailing_slashes(user_lxc_path);
-				values[i] = user_lxc_path;
+				values[opt] = user_lxc_path;
 				user_lxc_path = NULL;
 				goto out;
 			}
 
-			values[i] = copy_global_config_value(p);
+			values[opt] = copy_global_config_value(p);
 			goto out;
 		}
 	}
 	/* could not find value, use default */
 	if (strcmp(option_name, "lxc.lxcpath") == 0) {
 		remove_trailing_slashes(user_lxc_path);
-		values[i] = user_lxc_path;
+		values[opt] = user_lxc_path;
 		user_lxc_path = NULL;
 	}
 	else if (strcmp(option_name, "lxc.default_config") == 0) {
-		values[i] = user_default_config_path;
+		values[opt] = user_default_config_path;
 		user_default_config_path = NULL;
 	}
 	else if (strcmp(option_name, "lxc.cgroup.pattern") == 0) {
-		values[i] = user_cgroup_pattern;
+		values[opt] = user_cgroup_pattern;
 		user_cgroup_pattern = NULL;
 	}
 	else
-		values[i] = (*ptr)[1];
+		values[opt] = (*ptr)[1];
 
 	/* special case: if default value is NULL,
 	 * and there is no config, don't view that
 	 * as an error... */
-	if (!values[i])
+	if (!values[opt])
 		errno = 0;
 
 out:
@@ -243,7 +235,7 @@ out:
 	free(user_default_config_path);
 	free(user_lxc_path);
 
-	return values[i];
+	return values[opt];
 }
 
 extern void remove_trailing_slashes(char *p)
