@@ -120,10 +120,7 @@ case "$with_init_script" in
 			centos)
 				init_script=sysvinit,systemd
 				;;
-			debian|raspbian)
-				init_script=upstart,systemd
-				;;
-			ubuntu)
+			debian|raspbian|ubuntu)
 				init_script=upstart,systemd
 				;;
 			pld)
