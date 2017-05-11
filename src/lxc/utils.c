@@ -23,6 +23,7 @@
 
 #include "config.h"
 
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -1998,12 +1999,18 @@ int lxc_safe_uint(const char *numstr, unsigned int *converted)
 	char *err = NULL;
 	unsigned long int uli;
 
+	while (isspace(*numstr))
+		numstr++;
+
+	if (*numstr == '-')
+		return -EINVAL;
+
 	errno = 0;
 	uli = strtoul(numstr, &err, 0);
-	if (errno > 0)
+	if (errno == ERANGE && uli == ULONG_MAX)
 		return -errno;
 
-	if (!err || err == numstr || *err != '\0')
+	if (err == numstr || *err != '\0')
 		return -EINVAL;
 
 	if (uli > UINT_MAX)
@@ -2020,13 +2027,16 @@ int lxc_safe_int(const char *numstr, int *converted)
 
 	errno = 0;
 	sli = strtol(numstr, &err, 0);
-	if (errno > 0)
+	if (errno == ERANGE && (sli == LONG_MAX || sli == LONG_MIN))
 		return -errno;
 
-	if (!err || err == numstr || *err != '\0')
+	if (errno != 0 && sli == 0)
+		return -errno;
+
+	if (err == numstr || *err != '\0')
 		return -EINVAL;
 
-	if (sli > INT_MAX)
+	if (sli > INT_MAX || sli < INT_MIN)
 		return -ERANGE;
 
 	*converted = (int)sli;
@@ -2040,14 +2050,14 @@ int lxc_safe_long(const char *numstr, long int *converted)
 
 	errno = 0;
 	sli = strtol(numstr, &err, 0);
-	if (errno > 0)
+	if (errno == ERANGE && (sli == LONG_MAX || sli == LONG_MIN))
 		return -errno;
 
-	if (!err || err == numstr || *err != '\0')
-		return -EINVAL;
+	if (errno != 0 && sli == 0)
+		return -errno;
 
-	if (sli > LONG_MAX)
-		return -ERANGE;
+	if (err == numstr || *err != '\0')
+		return -EINVAL;
 
 	*converted = sli;
 	return 0;
