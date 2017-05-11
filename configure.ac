@@ -114,13 +114,13 @@ case "$with_init_script" in
 			fedora|altlinux|opensuse*)
 				init_script=systemd
 				;;
-			redhat|centos|oracle|oracleserver|sparclinux|plamo)
+			redhat|oracle|oracleserver|sparclinux|plamo)
 				init_script=sysvinit
 				;;
-			debian|raspbian)
-				init_script=upstart,systemd
+			centos)
+				init_script=sysvinit,systemd
 				;;
-			ubuntu)
+			debian|raspbian|ubuntu)
 				init_script=upstart,systemd
 				;;
 			pld)
