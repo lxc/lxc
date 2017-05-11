@@ -1071,6 +1071,13 @@ void resolve_clone_flags(struct lxc_handler *handler)
 		INFO("Inheriting a UTS namespace.");
 }
 
+/* lxc_spawn() performs crucial setup tasks and clone()s the new process which
+ * exec()s the requested container binary.
+ * Note that lxc_spawn() runs in the parent namespaces. Any operations performed
+ * right here should be double checked if they'd pose a security risk. (For
+ * example, any {u}mount() operations performed here will be reflected on the
+ * host!)
+ */
 static int lxc_spawn(struct lxc_handler *handler)
 {
 	int failed_before_rename = 0;
