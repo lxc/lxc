@@ -1061,8 +1061,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 	int saved_ns_fd[LXC_NS_MAX];
 	int preserve_mask = 0, i, flags;
 	int netpipepair[2], nveths;
+	bool wants_to_map_ids;
+	struct lxc_list *id_map;
 
 	netpipe = -1;
+	id_map = &handler->conf->id_map;
+	wants_to_map_ids = !lxc_list_empty(id_map);
 
 	for (i = 0; i < LXC_NS_MAX; i++)
 		if (handler->conf->inherit_ns_fd[i] != -1)
@@ -1124,7 +1128,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * it readonly.
 	 * If the container is unprivileged then skip rootfs pinning.
 	 */
-	if (lxc_list_empty(&handler->conf->id_map)) {
+	if (wants_to_map_ids) {
 		handler->pinfd = pin_rootfs(handler->conf->rootfs.path);
 		if (handler->pinfd == -1)
 			INFO("Failed to pin the rootfs for container \"%s\".", handler->name);
@@ -1178,7 +1182,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * mapped to something else on the host.) later to become a valid uid
 	 * again.
 	 */
-	if (lxc_map_ids(&handler->conf->id_map, handler->pid)) {
+	if (wants_to_map_ids && lxc_map_ids(id_map, handler->pid)) {
 		ERROR("Failed to set up id mapping.");
 		goto out_delete_net;
 	}
