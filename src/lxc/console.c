@@ -441,7 +441,7 @@ static int lxc_console_peer_default(struct lxc_console *console)
 
 	console->peer = lxc_unpriv(open(path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
 	if (console->peer < 0) {
-		ERROR("failed to open \"%s\"", path);
+		ERROR("failed to open \"%s\": %s", path, strerror(errno));
 		return -ENOTTY;
 	}
 	DEBUG("using \"%s\" as peer tty device", path);

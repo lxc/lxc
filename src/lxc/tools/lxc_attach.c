@@ -301,15 +301,12 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 
 	/* In the case of lxc-attach our peer pty will always be the current
 	 * controlling terminal. We clear whatever was set by the user for
-	 * lxc.console.path here and set it to "/dev/tty". Doing this will (a)
-	 * prevent segfaults when the container has been setup with
-	 * lxc.console = none and (b) provide an easy way to ensure that we
-	 * always do the correct thing. strdup() must be used since console.path
-	 * is free()ed when we call lxc_container_put(). */
+	 * lxc.console.path here and set it NULL. lxc_console_peer_default()
+	 * will then try to open /dev/tty. If the process doesn't have a
+	 * controlling terminal we should still proceed.
+	 */
 	free(conf->console.path);
-	conf->console.path = strdup("/dev/tty");
-	if (!conf->console.path)
-		return -1;
+	conf->console.path = NULL;
 
 	/* Create pty on the host. */
 	if (lxc_console_create(conf) < 0)
