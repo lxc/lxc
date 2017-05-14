@@ -127,6 +127,14 @@ lxc_log_define(lxc_conf, lxc);
 #define LO_FLAGS_AUTOCLEAR 4
 #endif
 
+#ifndef CAP_SETUID
+#define CAP_SETUID 7
+#endif
+
+#ifndef CAP_SETGID
+#define CAP_SETGID 6
+#endif
+
 /* needed for cgroup automount checks, regardless of whether we
  * have included linux/capability.h or not */
 #ifndef CAP_SYS_ADMIN
