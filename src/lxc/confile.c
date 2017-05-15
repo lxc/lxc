@@ -2627,7 +2627,7 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		return lxc_clear_environment(c);
 	else if (strncmp(key, "lxc.id_map", 10) == 0)
 		return lxc_clear_idmaps(c);
-	return -1;
+	return lxc_clear_simple_config_item(c, key);
 }
 
 /*
