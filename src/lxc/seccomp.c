@@ -631,9 +631,9 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
  * The first line of the config file has a policy language version
  * the second line has some directives
  * then comes policy subject to the directives
- * right now version must be '1'
- * the directives must include 'whitelist' (only type of policy currently
- * supported) and can include 'debug' (though debug is not yet supported).
+ * right now version must be '1' or '2'
+ * the directives must include 'whitelist'(version == 1 or 2) or 'blacklist'
+ * (version == 2) and can include 'debug' (though debug is not yet supported).
  */
 static int parse_config(FILE *f, struct lxc_conf *conf)
 {
