@@ -28,8 +28,6 @@
 #include <sys/un.h>
 #include <poll.h>
 
-#include "conf.h"
-
 typedef enum {
 	lxc_msg_state,
 	lxc_msg_priority,
