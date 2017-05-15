@@ -1128,7 +1128,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * it readonly.
 	 * If the container is unprivileged then skip rootfs pinning.
 	 */
-	if (wants_to_map_ids) {
+	if (!wants_to_map_ids) {
 		handler->pinfd = pin_rootfs(handler->conf->rootfs.path);
 		if (handler->pinfd == -1)
 			INFO("Failed to pin the rootfs for container \"%s\".", handler->name);
