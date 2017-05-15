@@ -92,6 +92,23 @@ static uint32_t get_v2_default_action(char *line)
 	return ret_action;
 }
 
+static const char *get_action_name(uint32_t action)
+{
+	// The upper 16 bits indicate the type of the seccomp action
+	switch(action & 0xffff0000){
+	case SCMP_ACT_KILL:
+		return "kill";
+	case SCMP_ACT_ALLOW:
+		return "allow";
+	case SCMP_ACT_TRAP:
+		return "trap";
+	case SCMP_ACT_ERRNO(0):
+		return "errno";
+	default:
+		return "invalid action";
+	}
+}
+
 static uint32_t get_and_clear_v2_action(char *line, uint32_t def_action)
 {
 	char *p = strchr(line, ' ');
@@ -217,7 +234,7 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_
 		return NULL;
 	}
 	if (seccomp_attr_set(ctx, SCMP_FLTATR_CTL_NNP, 0)) {
-		ERROR("Failed to turn off n-new-privs.");
+		ERROR("Failed to turn off no-new-privs.");
 		seccomp_release(ctx);
 		return NULL;
 	}
@@ -281,8 +298,8 @@ bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 	}
 	ret = seccomp_rule_add_exact(ctx, action, nr, 0);
 	if (ret < 0) {
-		ERROR("Failed (%d) loading rule for %s (nr %d action %d): %s.",
-		      ret, line, nr, action, strerror(-ret));
+		ERROR("Failed (%d) loading rule for %s (nr %d action %d(%s)): %s.",
+		      ret, line, nr, action, get_action_name(action), strerror(-ret));
 		return false;
 	}
 	return true;
@@ -398,7 +415,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 			return -1;
 		}
 		if (seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0)) {
-			ERROR("Failed to turn off n-new-privs.");
+			ERROR("Failed to turn off no-new-privs.");
 			return -1;
 		}
 #ifdef SCMP_FLTATR_ATL_TSKIP
@@ -573,7 +590,8 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 		if (cur_rule_arch == native_arch ||
 		    cur_rule_arch == lxc_seccomp_arch_native ||
 		    compat_arch[0] == SCMP_ARCH_NATIVE) {
-			INFO("Adding native rule for %s action %d.", line, action);
+			INFO("Adding native rule for %s action %d(%s).", line, action,
+			     get_action_name(action));
 			if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line, conf->seccomp_ctx, action))
 				goto bad_rule;
 		}
@@ -582,15 +600,18 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 				cur_rule_arch == lxc_seccomp_arch_mips64n32 ||
 				cur_rule_arch == lxc_seccomp_arch_mipsel64n32 ? 1 : 0;
 
-			INFO("Adding compat-only rule for %s action %d.", line, action);
+			INFO("Adding compat-only rule for %s action %d(%s).", line, action,
+			     get_action_name(action));
 			if (!do_resolve_add_rule(compat_arch[arch_index], line, compat_ctx[arch_index], action))
 				goto bad_rule;
 		}
 		else {
-			INFO("Adding native rule for %s action %d.", line, action);
+			INFO("Adding native rule for %s action %d(%s).", line, action,
+			     get_action_name(action));
 			if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line, conf->seccomp_ctx, action))
 				goto bad_rule;
-			INFO("Adding compat rule for %s action %d.", line, action);
+			INFO("Adding compat rule for %s action %d(%s).", line, action,
+			     get_action_name(action));
 			if (!do_resolve_add_rule(compat_arch[0], line, compat_ctx[0], action))
 				goto bad_rule;
 			if (compat_arch[1] != SCMP_ARCH_NATIVE &&
@@ -631,9 +652,9 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
  * The first line of the config file has a policy language version
  * the second line has some directives
  * then comes policy subject to the directives
- * right now version must be '1'
- * the directives must include 'whitelist' (only type of policy currently
- * supported) and can include 'debug' (though debug is not yet supported).
+ * right now version must be '1' or '2'
+ * the directives must include 'whitelist'(version == 1 or 2) or 'blacklist'
+ * (version == 2) and can include 'debug' (though debug is not yet supported).
  */
 static int parse_config(FILE *f, struct lxc_conf *conf)
 {
@@ -735,7 +756,7 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 	check_seccomp_attr_set = seccomp_attr_set(SCMP_FLTATR_CTL_NNP, 0);
 #endif
 	if (check_seccomp_attr_set) {
-		ERROR("Failed to turn off n-new-privs.");
+		ERROR("Failed to turn off no-new-privs.");
 		return -1;
 	}
 #ifdef SCMP_FLTATR_ATL_TSKIP
