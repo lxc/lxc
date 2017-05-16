@@ -2874,7 +2874,8 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		return lxc_clear_idmaps(c);
 	else if (strncmp(key, "lxc.limit", 9) == 0)
 		return lxc_clear_limits(c, key);
-	return -1;
+
+	return lxc_clear_simple_config_item(c, key);
 }
 
 /*
