@@ -59,6 +59,8 @@ struct blkio_stats {
 struct stats {
 	uint64_t mem_used;
 	uint64_t mem_limit;
+	uint64_t memsw_used;
+	uint64_t memsw_limit;
 	uint64_t kmem_used;
 	uint64_t kmem_limit;
 	uint64_t cpu_use_nanos;
@@ -126,6 +128,7 @@ Options :\n\
                   c = CPU use\n\
                   b = Block I/O use\n\
                   m = Memory use\n\
+                  s = Memory + Swap use\n\
                   k = Kernel memory use\n\
   -r, --reverse   sort in reverse (descending) order\n",
 	.name     = ".*",
@@ -337,6 +340,8 @@ static void stats_get(struct lxc_container *c, struct ct *ct, struct stats *tota
 	ct->c = c;
 	ct->stats->mem_used      = stat_get_int(c, "memory.usage_in_bytes");
 	ct->stats->mem_limit     = stat_get_int(c, "memory.limit_in_bytes");
+	ct->stats->memsw_used    = stat_get_int(c, "memory.memsw.usage_in_bytes");
+	ct->stats->memsw_limit   = stat_get_int(c, "memory.memsw.limit_in_bytes");
 	ct->stats->kmem_used     = stat_get_int(c, "memory.kmem.usage_in_bytes");
 	ct->stats->kmem_limit    = stat_get_int(c, "memory.kmem.limit_in_bytes");
 	ct->stats->cpu_use_nanos = stat_get_int(c, "cpuacct.usage");
@@ -348,6 +353,8 @@ static void stats_get(struct lxc_container *c, struct ct *ct, struct stats *tota
 	if (total) {
 		total->mem_used      = total->mem_used      + ct->stats->mem_used;
 		total->mem_limit     = total->mem_limit     + ct->stats->mem_limit;
+		total->memsw_used    = total->memsw_used    + ct->stats->memsw_used;
+		total->memsw_limit   = total->memsw_limit   + ct->stats->memsw_limit;
 		total->kmem_used     = total->kmem_used     + ct->stats->kmem_used;
 		total->kmem_limit    = total->kmem_limit    + ct->stats->kmem_limit;
 		total->cpu_use_nanos = total->cpu_use_nanos + ct->stats->cpu_use_nanos;
@@ -363,11 +370,15 @@ static void stats_print_header(struct stats *stats)
 {
 	printf(TERMRVRS TERMBOLD);
 	printf("%-18s %12s %12s %12s %36s %10s", "Container", "CPU",  "CPU",  "CPU",  "BlkIO", "Mem");
+	if (stats->memsw_used > 0)
+		printf(" %10s", "MemSw");
 	if (stats->kmem_used > 0)
 		printf(" %10s", "KMem");
 	printf("\n");
 
 	printf("%-18s %12s %12s %12s %36s %10s", "Name",      "Used", "Sys",  "User", "Total(Read/Write)", "Used");
+	if (stats->memsw_used > 0)
+		printf(" %10s", "Used");
 	if (stats->kmem_used > 0)
 		printf(" %10s", "Used");
 	printf("\n");
@@ -382,6 +393,7 @@ static void stats_print(const char *name, const struct stats *stats,
 	char iosb_read_str[20];
 	char iosb_write_str[20];
 	char mem_used_str[20];
+	char memsw_used_str[20];
 	char kmem_used_str[20];
 	struct timeval time_val;
 	unsigned long long time_ms;
@@ -404,6 +416,11 @@ static void stats_print(const char *name, const struct stats *stats,
 		       (float)stats->cpu_use_user / USER_HZ,
 		       iosb_str,
 		       mem_used_str);
+
+		if (total->memsw_used > 0) {
+			size_humanize(stats->memsw_used, memsw_used_str, sizeof(memsw_used_str));
+			printf(" %10s", memsw_used_str);
+		}
 		if (total->kmem_used > 0) {
 			size_humanize(stats->kmem_used, kmem_used_str, sizeof(kmem_used_str));
 			printf(" %10s", kmem_used_str);
@@ -462,6 +479,16 @@ static int cmp_memory(const void *sct1, const void *sct2)
 	return ct1->stats->mem_used < ct2->stats->mem_used;
 }
 
+static int cmp_memorysw(const void *sct1, const void *sct2)
+{
+	const struct ct *ct1 = sct1;
+	const struct ct *ct2 = sct2;
+
+	if (sort_reverse)
+		return ct2->stats->memsw_used < ct1->stats->memsw_used;
+	return ct1->stats->memsw_used < ct2->stats->memsw_used;
+}
+
 static int cmp_kmemory(const void *sct1, const void *sct2)
 {
 	const struct ct *ct1 = sct1;
@@ -482,6 +509,7 @@ static void ct_sort(int active)
 	case 'c': cmp_func = cmp_cpuuse; break;
 	case 'b': cmp_func = cmp_blkio; break;
 	case 'm': cmp_func = cmp_memory; break;
+	case 's': cmp_func = cmp_memorysw; break;
 	case 'k': cmp_func = cmp_kmemory; break;
 	}
 	qsort(ct, active, sizeof(*ct), (int (*)(const void *,const void *))cmp_func);
@@ -560,7 +588,7 @@ int main(int argc, char *argv[])
 		delay = 300;
 	}
         if (batch) {
-		printf("time_ms,container,cpu_nanos,cpu_sys_userhz,cpu_user_userhz,blkio_bytes,blkio_iops,mem_used_bytes,kernel_mem_used_bytes\n");
+		printf("time_ms,container,cpu_nanos,cpu_sys_userhz,cpu_user_userhz,blkio_bytes,blkio_iops,mem_used_bytes,memsw_used_bytes,kernel_mem_used_bytes\n");
 	}
 
 	for(;;) {
@@ -610,6 +638,7 @@ int main(int argc, char *argv[])
 			case 'c':
 			case 'b':
 			case 'm':
+			case 's':
 			case 'k':
 				if (sort_by == in_char)
 					sort_reverse ^= 1;
