@@ -783,8 +783,10 @@ static char **get_controllers(char **klist, char **nlist, char *line)
 		return NULL;
 	/* note - if we change how mountinfo works, then our caller
 	 * will need to verify /sys/fs/cgroup/ in this field */
-	if (strncmp(p, "/sys/fs/cgroup/", 15) != 0)
+	if (strncmp(p, "/sys/fs/cgroup/", 15) != 0) {
+		INFO("cgfsng: found hierarchy not under /sys/fs/cgroup: \"%s\"", p);
 		return NULL;
+	}
 	p += 15;
 	p2 = strchr(p, ' ');
 	if (!p2) {
@@ -1136,8 +1138,10 @@ static bool parse_hierarchies(void)
 	/* verify that all controllers in cgroup.use and all crucial
 	 * controllers are accounted for
 	 */
-	if (!all_controllers_found())
+	if (!all_controllers_found()) {
+		INFO("cgfsng: not all controllers were find, deferring to cgfs driver");
 		return false;
+	}
 
 	return true;
 }
