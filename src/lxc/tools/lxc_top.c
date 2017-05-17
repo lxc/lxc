@@ -429,12 +429,12 @@ static void stats_print(const char *name, const struct stats *stats,
 		gettimeofday(&time_val, NULL);
 		time_ms = (unsigned long long) (time_val.tv_sec) * 1000 + (unsigned long long) (time_val.tv_usec) / 1000;
 		printf("%" PRIu64 ",%s,%" PRIu64 ",%" PRIu64 ",%" PRIu64
-		       ",%" PRIu64 ",%" PRIu64 ",%" PRIu64 ",%" PRIu64,
+		       ",%" PRIu64 ",%" PRIu64 ",%" PRIu64 ",%" PRIu64 ",%" PRIu64,
 		       (uint64_t)time_ms, name, (uint64_t)stats->cpu_use_nanos,
 		       (uint64_t)stats->cpu_use_sys,
 		       (uint64_t)stats->cpu_use_user, (uint64_t)stats->io_service_bytes.total,
 		       (uint64_t)stats->io_serviced.total, (uint64_t)stats->mem_used,
-		       (uint64_t)stats->kmem_used);
+		       (uint64_t)stats->memsw_used, (uint64_t)stats->kmem_used);
 	}
 
 }
