@@ -2008,7 +2008,7 @@ int lxc_safe_uint(const char *numstr, unsigned int *converted)
 	errno = 0;
 	uli = strtoul(numstr, &err, 0);
 	if (errno == ERANGE && uli == ULONG_MAX)
-		return -errno;
+		return -ERANGE;
 
 	if (err == numstr || *err != '\0')
 		return -EINVAL;
@@ -2028,10 +2028,10 @@ int lxc_safe_int(const char *numstr, int *converted)
 	errno = 0;
 	sli = strtol(numstr, &err, 0);
 	if (errno == ERANGE && (sli == LONG_MAX || sli == LONG_MIN))
-		return -errno;
+		return -ERANGE;
 
 	if (errno != 0 && sli == 0)
-		return -errno;
+		return -EINVAL;
 
 	if (err == numstr || *err != '\0')
 		return -EINVAL;
@@ -2051,10 +2051,10 @@ int lxc_safe_long(const char *numstr, long int *converted)
 	errno = 0;
 	sli = strtol(numstr, &err, 0);
 	if (errno == ERANGE && (sli == LONG_MAX || sli == LONG_MIN))
-		return -errno;
+		return -ERANGE;
 
 	if (errno != 0 && sli == 0)
-		return -errno;
+		return -EINVAL;
 
 	if (err == numstr || *err != '\0')
 		return -EINVAL;
