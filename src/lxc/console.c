@@ -697,6 +697,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	ts->escape = escape;
 	ts->winch_proxy = c->name;
 	ts->winch_proxy_lxcpath = c->config_path;
+	ts->stdoutfd = stdoutfd;
 
 	lxc_console_winsz(stdinfd, masterfd);
 	lxc_cmd_console_winch(ts->winch_proxy, ts->winch_proxy_lxcpath);
