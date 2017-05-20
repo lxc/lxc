@@ -791,6 +791,18 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 		ERROR("Error loading the seccomp policy.");
 		return -1;
 	}
+
+/* After load seccomp filter into the kernel successfully, export the current seccomp
+ * filter to log file */
+#if HAVE_SCMP_FILTER_CTX
+	if ((lxc_log_get_level() <= LXC_LOG_PRIORITY_TRACE || conf->loglevel <= LXC_LOG_PRIORITY_TRACE) &&
+	    lxc_log_fd >= 0) {
+		ret = seccomp_export_pfc(conf->seccomp_ctx, lxc_log_fd);
+		/* Just give an warning when export error */
+		if (ret < 0)
+			WARN("Failed to export seccomp filter to log file: %s.", strerror(-ret));
+	}
+#endif
 	return 0;
 }
 
