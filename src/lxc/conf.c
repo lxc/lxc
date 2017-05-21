@@ -5034,6 +5034,8 @@ int lxc_clear_simple_config_item(struct lxc_conf *c, const char *key)
 		c->monitor_unshare = 0;
 	} else if (strcmp(key, "lxc.pts") == 0) {
 		c->pts = 0;
+	} else if (strcmp(key, "lxc.pts.allocate") == 0) {
+		c->pts_allocate = 0;
 	} else {
 		return -1;
 	}

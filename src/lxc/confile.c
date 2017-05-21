@@ -124,10 +124,11 @@ static int config_init_gid(const char *, const char *, struct lxc_conf *);
 static int config_ephemeral(const char *, const char *, struct lxc_conf *);
 static int config_no_new_privs(const char *, const char *, struct lxc_conf *);
 static int config_limit(const char *, const char *, struct lxc_conf *);
+static int config_pts_allocate(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
-
 	{ "lxc.arch",                 config_personality          },
+	{ "lxc.pts.allocate",	      config_pts_allocate	  },
 	{ "lxc.pts",                  config_pts                  },
 	{ "lxc.tty",                  config_tty                  },
 	{ "lxc.devttydir",            config_ttydir               },
@@ -2839,6 +2840,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_limit_entry(c, retv, inlen, "all");
 	else if (strncmp(key, "lxc.limit.", 10) == 0) // specific limit
 		return lxc_get_limit_entry(c, retv, inlen, key + 10);
+	else if (strcmp(key, "lxc.pts.allocate") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->pts_allocate);
 	else return -1;
 
 	if (!v)
@@ -3259,6 +3262,15 @@ static int config_no_new_privs(const char *key, const char *value,
 	}
 
 	lxc_conf->no_new_privs = v ? true : false;
+
+	return 0;
+}
+
+static int config_pts_allocate(const char *key, const char *value,
+			       struct lxc_conf *lxc_conf)
+{
+	if (lxc_safe_uint(value, &lxc_conf->pts_allocate) < 0)
+		return -1;
 
 	return 0;
 }
