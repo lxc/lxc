@@ -593,7 +593,7 @@ int lxc_console_set_stdfds(int fd)
 }
 
 int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr)
+			     struct lxc_epoll_descr *descr)
 {
 	struct lxc_tty_state *ts = cbdata;
 	char c;
@@ -624,11 +624,11 @@ int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
 }
 
 int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr)
+			      struct lxc_epoll_descr *descr)
 {
 	struct lxc_tty_state *ts = cbdata;
 	char buf[1024];
-	int r, w;
+	ssize_t r, w;
 
 	if (fd != ts->masterfd)
 		return 1;
@@ -752,4 +752,3 @@ err1:
 
 	return ret;
 }
-
