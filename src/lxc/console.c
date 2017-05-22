@@ -378,7 +378,7 @@ int lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	}
 
 	if (*ttyreq > 0) {
-		if (*ttyreq > tty_info->nbtty)
+		if (*ttyreq > conf->tty)
 			goto out;
 
 		if (tty_info->pty_info[*ttyreq - 1].busy)
@@ -390,11 +390,12 @@ int lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	}
 
 	/* search for next available tty, fixup index tty1 => [0] */
-	for (ttynum = 1; ttynum <= tty_info->nbtty && tty_info->pty_info[ttynum - 1].busy; ttynum++)
-		;
+	ttynum = 1;
+	while (ttynum <= conf->tty && tty_info->pty_info[ttynum - 1].busy)
+		ttynum++;
 
 	/* we didn't find any available slot for tty */
-	if (ttynum > tty_info->nbtty)
+	if (ttynum > conf->tty)
 		goto out;
 
 	*ttyreq = ttynum;
