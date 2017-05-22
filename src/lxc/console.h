@@ -27,6 +27,9 @@
 #include "conf.h"
 #include "list.h"
 
+#define LXC_GET_TTY_FD -1
+#define LXC_GET_PTY_FDS -2
+
 struct lxc_epoll_descr; /* defined in mainloop.h */
 struct lxc_container; /* defined in lxccontainer.h */
 struct lxc_tty_state
@@ -214,5 +217,13 @@ extern int lxc_console_cb_sigwinch_fd(int fd, uint32_t events, void *cbdata,
  * from a non-threaded context.
  */
 extern void lxc_console_sigwinch_fini(struct lxc_tty_state *ts);
+
+/*
+ * lxc_pty_allocate: allocate pty master slave file descriptor pair
+ * @data : can be used to extend the function to send additional data about the
+ *	   pty device, e.g. it's /dev/pts/<n> name.
+ */
+extern int lxc_pty_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq,
+			    int *masterfd, int *slavefd, void *data);
 
 #endif

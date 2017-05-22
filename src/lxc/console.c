@@ -761,3 +761,58 @@ err1:
 
 	return ret;
 }
+
+int lxc_pty_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq,
+		     int *masterfd, int *slavefd, void *data)
+{
+	int ttynum;
+	struct lxc_tty_info *tty_info = &conf->tty_info;
+
+	if (*ttyreq == LXC_GET_TTY_FD) {
+		ERROR("cannot allocate /dev/tty<N> devices as simple pty devices");
+		goto out;
+	}
+
+	if (*ttyreq == 0) {
+		ERROR("cannot allocate /dev/console as simple pty device");
+		return 0;
+	}
+
+	if (*ttyreq > 0) {
+		if (*ttyreq <= conf->tty) {
+			ERROR("cannot allocate /dev/tty<N> as simple pty device");
+			goto out;
+		}
+
+		if (*ttyreq > tty_info->nbtty)
+			goto out;
+
+		if (tty_info->pty_info[*ttyreq - 1].busy)
+			goto out;
+
+		/* the requested tty is available */
+		ttynum = *ttyreq;
+		goto out_tty;
+	}
+
+	DEBUG("trying to find an available pty master slave fd pair");
+	/* search for next available pty devices starting at conf->tty + 1 after
+	 * the last /dev/tty<N> device the user requested
+	 */
+	ttynum = conf->tty + 1;
+	while (ttynum <= tty_info->nbtty && tty_info->pty_info[ttynum - 1].busy)
+		ttynum++;
+
+	/* we didn't find any available slot for tty */
+	if (ttynum > tty_info->nbtty)
+		return -1;
+
+	*ttyreq = ttynum;
+
+out_tty:
+	tty_info->pty_info[ttynum - 1].busy = sockfd;
+	*masterfd = tty_info->pty_info[ttynum - 1].master;
+	*slavefd = tty_info->pty_info[ttynum - 1].slave;
+out:
+	return 0;
+}
