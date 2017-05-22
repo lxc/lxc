@@ -964,88 +964,104 @@ static bool append_ptyname(char **pp, char *name)
 	return true;
 }
 
-static int setup_tty(struct lxc_conf *conf)
+static int lxc_setup_tty(struct lxc_conf *conf)
 {
+	int i, ret;
 	const struct lxc_tty_info *tty_info = &conf->tty_info;
 	char *ttydir = conf->ttydir;
 	char path[MAXPATHLEN], lxcpath[MAXPATHLEN];
-	int i, ret;
 
 	if (!conf->rootfs.path)
 		return 0;
 
 	for (i = 0; i < tty_info->nbtty; i++) {
-
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
 		ret = snprintf(path, sizeof(path), "/dev/tty%d", i + 1);
-		if (ret >= sizeof(path)) {
+		if (ret < 0 || (size_t)ret >= sizeof(path)) {
 			ERROR("pathname too long for ttys");
 			return -1;
 		}
+
 		if (ttydir) {
 			/* create dev/lxc/tty%d" */
-			ret = snprintf(lxcpath, sizeof(lxcpath), "/dev/%s/tty%d", ttydir, i + 1);
-			if (ret >= sizeof(lxcpath)) {
+			ret = snprintf(lxcpath, sizeof(lxcpath),
+				       "/dev/%s/tty%d", ttydir, i + 1);
+			if (ret < 0 || (size_t)ret >= sizeof(lxcpath)) {
 				ERROR("pathname too long for ttys");
 				return -1;
 			}
+
 			ret = creat(lxcpath, 0660);
-			if (ret==-1 && errno != EEXIST) {
-				SYSERROR("error creating %s", lxcpath);
+			if (ret < 0 && errno != EEXIST) {
+				SYSERROR("failed to create \"%s\"", lxcpath);
 				return -1;
 			}
 			if (ret >= 0)
 				close(ret);
+
 			ret = unlink(path);
-			if (ret && errno != ENOENT) {
-				SYSERROR("error unlinking %s", path);
+			if (ret < 0 && errno != ENOENT) {
+				SYSERROR("failed to unlink \"%s\"", path);
 				return -1;
 			}
 
-			if (mount(pty_info->name, lxcpath, "none", MS_BIND, 0)) {
-				WARN("failed to mount '%s'->'%s'",
+			ret = mount(pty_info->name, lxcpath, "none", MS_BIND, 0);
+			if (ret < 0) {
+				WARN("failed to bind mount \"%s\" onto \"%s\"",
 				     pty_info->name, path);
 				continue;
 			}
+			DEBUG("bind mounted \"%s\" onto \"%s\"", pty_info->name,
+			      path);
 
-			ret = snprintf(lxcpath, sizeof(lxcpath), "%s/tty%d", ttydir, i+1);
-			if (ret >= sizeof(lxcpath)) {
+			ret = snprintf(lxcpath, sizeof(lxcpath), "%s/tty%d",
+				       ttydir, i + 1);
+			if (ret < 0 || (size_t)ret >= sizeof(lxcpath)) {
 				ERROR("tty pathname too long");
 				return -1;
 			}
+
 			ret = symlink(lxcpath, path);
-			if (ret) {
-				SYSERROR("failed to create symlink for tty %d", i+1);
+			if (ret < 0) {
+				SYSERROR("failed to create symlink \"%s\" -> \"%s\"",
+				         path, lxcpath);
 				return -1;
 			}
 		} else {
-			/* If we populated /dev, then we need to create /dev/ttyN */
-			if (access(path, F_OK)) {
+			/* If we populated /dev, then we need to create
+			 * /dev/ttyN
+			 */
+			ret = access(path, F_OK);
+			if (ret < 0) {
 				ret = creat(path, 0660);
-				if (ret==-1) {
-					SYSERROR("error creating %s", path);
+				if (ret < 0) {
+					SYSERROR("failed to create \"%s\"", path);
 					/* this isn't fatal, continue */
 				} else {
 					close(ret);
 				}
 			}
-			if (mount(pty_info->name, path, "none", MS_BIND, 0)) {
+
+			ret = mount(pty_info->name, path, "none", MS_BIND, 0);
+			if (ret < 0) {
 				SYSERROR("failed to mount '%s'->'%s'", pty_info->name, path);
 				continue;
 			}
+
+			DEBUG("bind mounted \"%s\" onto \"%s\"", pty_info->name,
+			      path);
 		}
+
 		if (!append_ptyname(&conf->pty_names, pty_info->name)) {
 			ERROR("Error setting up container_ttys string");
 			return -1;
 		}
 	}
 
-	INFO("%d tty(s) has been setup", tty_info->nbtty);
-
+	INFO("finished setting up %d /dev/tty<N> device(s)", tty_info->nbtty);
 	return 0;
 }
-
 
 static int setup_rootfs_pivot_root(const char *rootfs)
 {
@@ -3650,42 +3666,48 @@ int lxc_create_tty(const char *name, struct lxc_conf *conf)
 	if (!conf->tty)
 		return 0;
 
-	tty_info->pty_info =
-		malloc(sizeof(*tty_info->pty_info)*conf->tty);
+	tty_info->pty_info = malloc(sizeof(*tty_info->pty_info) * conf->tty);
 	if (!tty_info->pty_info) {
-		SYSERROR("failed to allocate pty_info");
-		return -1;
+		SYSERROR("failed to allocate struct *pty_info");
+		return -ENOMEM;
 	}
 
 	for (i = 0; i < conf->tty; i++) {
-
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
 		process_lock();
 		ret = openpty(&pty_info->master, &pty_info->slave,
-			    pty_info->name, NULL, NULL);
+			      pty_info->name, NULL, NULL);
 		process_unlock();
 		if (ret) {
-			SYSERROR("failed to create pty #%d", i);
+			SYSERROR("failed to create pty device number %d", i);
 			tty_info->nbtty = i;
 			lxc_delete_tty(tty_info);
-			return -1;
+			return -ENOTTY;
 		}
 
-		DEBUG("allocated pty '%s' (%d/%d)",
+		DEBUG("allocated pty \"%s\" with master fd %d and slave fd %d",
 		      pty_info->name, pty_info->master, pty_info->slave);
 
 		/* Prevent leaking the file descriptors to the container */
-		fcntl(pty_info->master, F_SETFD, FD_CLOEXEC);
-		fcntl(pty_info->slave, F_SETFD, FD_CLOEXEC);
+		ret = fcntl(pty_info->master, F_SETFD, FD_CLOEXEC);
+		if (ret < 0)
+			WARN("failed to set FD_CLOEXEC flag on master fd %d of "
+			     "pty device \"%s\": %s",
+			     pty_info->master, pty_info->name, strerror(errno));
+
+		ret = fcntl(pty_info->slave, F_SETFD, FD_CLOEXEC);
+		if (ret < 0)
+			WARN("failed to set FD_CLOEXEC flag on slave fd %d of "
+			     "pty device \"%s\": %s",
+			     pty_info->slave, pty_info->name, strerror(errno));
 
 		pty_info->busy = 0;
 	}
 
 	tty_info->nbtty = conf->tty;
 
-	INFO("tty's configured");
-
+	INFO("finished allocating %d pts devices", conf->tty);
 	return 0;
 }
 
@@ -4191,8 +4213,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-
-	if (!lxc_conf->is_execute && setup_tty(lxc_conf)) {
+	if (!lxc_conf->is_execute && lxc_setup_tty(lxc_conf)) {
 		ERROR("failed to setup the ttys for '%s'", name);
 		return -1;
 	}
