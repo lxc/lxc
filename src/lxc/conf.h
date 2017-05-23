@@ -408,6 +408,10 @@ struct lxc_conf {
 
 	/* RLIMIT_* limits */
 	struct lxc_list limits;
+
+	/* Number of pts devices to allocate before the container's init starts.
+	 */
+	unsigned int pts_allocate;
 };
 
 #ifdef HAVE_TLS

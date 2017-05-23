@@ -27,6 +27,9 @@
 #include "conf.h"
 #include "list.h"
 
+#define LXC_GET_TTY_FD -1
+#define LXC_GET_PTY_FDS -2
+
 struct lxc_epoll_descr; /* defined in mainloop.h */
 struct lxc_container; /* defined in lxccontainer.h */
 struct lxc_tty_state
@@ -62,7 +65,7 @@ struct lxc_tty_state
  *            indication that the console or tty is no longer in use
  * @ttyreq  : the tty requested to be opened, -1 for any, 0 for the console
  */
-extern int  lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttynum);
+extern int lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttynum);
 
 /*
  * Create a new pty:
@@ -76,7 +79,7 @@ extern int  lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttynum)
  * automatically chowned to the uid/gid of the unprivileged user. For this
  * ttys_shift_ids() can be called.)
  */
-extern int  lxc_console_create(struct lxc_conf *);
+extern int lxc_console_create(struct lxc_conf *);
 
 /*
  * Delete a pty created via lxc_console_create():
@@ -102,7 +105,8 @@ extern void lxc_console_free(struct lxc_conf *conf, int fd);
 /*
  * Register pty event handlers in an open mainloop
  */
-extern int  lxc_console_mainloop_add(struct lxc_epoll_descr *, struct lxc_conf *);
+extern int lxc_console_mainloop_add(struct lxc_epoll_descr *,
+				    struct lxc_conf *);
 
 /*
  * Handle SIGWINCH events on the allocated ptys.
@@ -118,9 +122,8 @@ extern void lxc_console_sigwinch(int sig);
  * - registers SIGWINCH, I/O handlers in the mainloop
  * - performs all necessary cleanup operations
  */
-extern int  lxc_console(struct lxc_container *c, int ttynum,
-		        int stdinfd, int stdoutfd, int stderrfd,
-		        int escape);
+extern int lxc_console(struct lxc_container *c, int ttynum, int stdinfd,
+		       int stdoutfd, int stderrfd, int escape);
 
 /*
  * Allocate one of the ptys given to the container via lxc.tty. Returns an open
@@ -128,8 +131,8 @@ extern int  lxc_console(struct lxc_container *c, int ttynum,
  * Set ttynum to -1 to allocate the first available pty, or to a value within
  * the range specified by lxc.tty to allocate a specific pty.
  */
-extern int  lxc_console_getfd(struct lxc_container *c, int *ttynum,
-			      int *masterfd);
+extern int lxc_console_getfd(struct lxc_container *c, int *ttynum,
+			     int *masterfd);
 
 /*
  * Make fd a duplicate of the standard file descriptors:
@@ -145,7 +148,8 @@ extern int lxc_console_set_stdfds(int fd);
  * This function exits the loop cleanly when an EPOLLHUP event is received.
  */
 extern int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr);
+				    struct lxc_epoll_descr *descr);
+
 
 /*
  * Handler for events on the master fd of the pty. To be registered via the
@@ -154,14 +158,13 @@ extern int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
  * This function exits the loop cleanly when an EPOLLHUP event is received.
  */
 extern int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr);
+				     struct lxc_epoll_descr *descr);
 
 /*
  * Setup new terminal properties. The old terminal settings are stored in
  * oldtios.
  */
 extern int lxc_setup_tios(int fd, struct termios *oldtios);
-
 
 /*
  * lxc_console_winsz: propagte winsz from one terminal to another
@@ -200,7 +203,7 @@ extern struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd);
  * declared and defined in mainloop.{c,h} or lxc_console_mainloop_add().
  */
 extern int lxc_console_cb_sigwinch_fd(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr);
+				      struct lxc_epoll_descr *descr);
 
 /*
  * lxc_console_sigwinch_fini: uninstall SIGWINCH handler
@@ -214,5 +217,13 @@ extern int lxc_console_cb_sigwinch_fd(int fd, uint32_t events, void *cbdata,
  * from a non-threaded context.
  */
 extern void lxc_console_sigwinch_fini(struct lxc_tty_state *ts);
+
+/*
+ * lxc_pty_allocate: allocate pty master slave file descriptor pair
+ * @data : can be used to extend the function to send additional data about the
+ *	   pty device, e.g. it's /dev/pts/<n> name.
+ */
+extern int lxc_pty_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq,
+			    int *masterfd, int *slavefd, void *data);
 
 #endif

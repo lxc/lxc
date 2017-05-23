@@ -1024,15 +1024,16 @@ static int recv_ttys_from_child(struct lxc_handler *handler)
 	struct lxc_conf *conf = handler->conf;
 	int i, sock = handler->ttysock[1];
 	struct lxc_tty_info *tty_info = &conf->tty_info;
+	int npty = conf->tty + conf->pts_allocate;
 
-	if (!conf->tty)
+	if (!npty)
 		return 0;
 
-	tty_info->pty_info = malloc(sizeof(*tty_info->pty_info) * conf->tty);
+	tty_info->pty_info = malloc(sizeof(*tty_info->pty_info) * npty);
 	if (!tty_info->pty_info)
 		return -1;
 
-	for (i = 0; i < conf->tty; i++) {
+	for (i = 0; i < npty; i++) {
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 		pty_info->busy = 0;
 		if (recv_fd(sock, &pty_info->slave) < 0 ||
@@ -1041,7 +1042,7 @@ static int recv_ttys_from_child(struct lxc_handler *handler)
 			return -1;
 		}
 	}
-	tty_info->nbtty = conf->tty;
+	tty_info->nbtty = npty;
 
 	return 0;
 }

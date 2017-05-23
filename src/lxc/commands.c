@@ -142,6 +142,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_GET_CONFIG_ITEM] = "get_config_item",
 		[LXC_CMD_GET_NAME]        = "get_name",
 		[LXC_CMD_GET_LXCPATH]     = "get_lxcpath",
+		[LXC_CMD_GET_PTY]	  = "get_pty_fd",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -168,14 +169,65 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
  */
 static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 {
-	int ret,rspfd;
+	int ret, rspfd = 0;
 	struct lxc_cmd_rsp *rsp = &cmd->rsp;
 
-	ret = lxc_abstract_unix_recv_fd(sock, &rspfd, rsp, sizeof(*rsp));
-	if (ret < 0) {
-		WARN("Command %s failed to receive response: %s.",
-		     lxc_cmd_str(cmd->req.cmd), strerror(errno));
-		return -1;
+	if (cmd->req.cmd == LXC_CMD_GET_PTY) {
+		struct lxc_cmd_pty_rsp_data *ptydata;
+
+		struct msghdr msg = {0};
+		struct iovec iov = {0};
+		struct cmsghdr *cmsg = NULL;
+		int ptyfds[CMD_PTY_FD_PAIR] = {-1, -1};
+		int *ptyfdptr = NULL;
+		char cmsgbuf[CMSG_SPACE(sizeof(ptyfds))] = {0};
+
+		msg.msg_name = NULL;
+		msg.msg_namelen = 0;
+		msg.msg_control = cmsgbuf;
+		msg.msg_controllen = sizeof(cmsgbuf);
+
+		iov.iov_base = rsp;
+		iov.iov_len = sizeof(*rsp);
+		msg.msg_iov = &iov;
+		msg.msg_iovlen = 1;
+
+		ret = recvmsg(sock, &msg, 0);
+		if (ret <= 0)
+			return 0;
+
+		cmsg = CMSG_FIRSTHDR(&msg);
+
+		if (cmsg &&
+		    cmsg->cmsg_len == CMSG_LEN(CMD_PTY_FD_PAIR * sizeof(int)) &&
+		    cmsg->cmsg_level == SOL_SOCKET &&
+		    cmsg->cmsg_type == SCM_RIGHTS) {
+			ptyfdptr = (int *)(CMSG_DATA(cmsg));
+			memcpy(ptyfds, ptyfdptr, CMD_PTY_FD_PAIR * sizeof(int));
+		}
+
+		ptydata = malloc(sizeof(*ptydata));
+		if (!ptydata) {
+			ERROR("Command %s couldn't allocate response buffer.",
+			      lxc_cmd_str(cmd->req.cmd));
+			return -1;
+		}
+
+		ptydata->masterfd = ptyfds[CMD_PTY_MASTER_FD];
+		ptydata->slavefd = ptyfds[CMD_PTY_SLAVE_FD];
+		ptydata->ttynum = PTR_TO_INT(rsp->data);
+		rsp->data = ptydata;
+		DEBUG("received master fd %d for pty %d",
+		      ptyfds[CMD_PTY_MASTER_FD], ptydata->ttynum);
+		DEBUG("received slave fd %d for pty %d",
+		      ptyfds[CMD_PTY_SLAVE_FD], ptydata->ttynum);
+	} else {
+		ret = lxc_abstract_unix_recv_fd(sock, &rspfd, rsp, sizeof(*rsp));
+		if (ret < 0) {
+			WARN("Command %s failed to receive response: %s.",
+					lxc_cmd_str(cmd->req.cmd), strerror(errno));
+			return -1;
+		}
 	}
 
 	if (cmd->req.cmd == LXC_CMD_CONSOLE) {
@@ -283,7 +335,10 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
 	char *offset = &path[1];
 	size_t len;
-	int stay_connected = cmd->req.cmd == LXC_CMD_CONSOLE;
+	bool stay_connected = false;
+
+	if (cmd->req.cmd == LXC_CMD_CONSOLE || cmd->req.cmd == LXC_CMD_GET_PTY)
+		stay_connected = true;
 
 	*stopped = 0;
 
@@ -843,6 +898,106 @@ static int lxc_cmd_get_lxcpath_callback(int fd, struct lxc_cmd_req *req,
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
 
+int lxc_cmd_get_pty(const char *name, int *ttynum, int *masterfd, int *slavefd,
+		    const char *lxcpath)
+{
+	int ret, stopped;
+	struct lxc_cmd_pty_rsp_data *rspdata;
+	struct lxc_cmd_rr cmd = {
+	    .req = {.cmd = LXC_CMD_GET_PTY, .data = INT_TO_PTR(*ttynum)},
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0)
+		return ret;
+
+	if (cmd.rsp.ret < 0) {
+		ERROR("Console access denied: %s.", strerror(-cmd.rsp.ret));
+		ret = -1;
+		goto out;
+	}
+
+	if (ret == 0) {
+		DEBUG("Console %d invalid, busy or all consoles busy.", *ttynum);
+		ret = -1;
+		goto out;
+	}
+
+	rspdata = cmd.rsp.data;
+	if (rspdata->masterfd < 0) {
+		ERROR("Unable to allocate master fd for tty %d.", *ttynum);
+		goto out;
+	}
+
+	if (rspdata->slavefd < 0) {
+		ERROR("Unable to allocate slave fd for tty %d.", *ttynum);
+		goto out;
+	}
+
+	ret = cmd.rsp.ret; /* sock fd */
+	*masterfd = rspdata->masterfd;
+	*slavefd = rspdata->slavefd;
+	*ttynum = rspdata->ttynum;
+	INFO("tty %d allocated fd %d sock %d.", *ttynum, *masterfd, ret);
+out:
+	free(cmd.rsp.data);
+	return ret;
+}
+
+static int lxc_cmd_get_pty_callback(int fd, struct lxc_cmd_req *req,
+				    struct lxc_handler *handler)
+{
+	int ret;
+	int ttynum;
+	struct lxc_cmd_rsp data;
+
+	struct msghdr msg = {0};
+	struct iovec iov = {0};
+	struct cmsghdr *cmsg = NULL;
+	int ptyfds[CMD_PTY_FD_PAIR] = {-1, -1};
+	int *ptyfdptr = NULL;
+	char cmsgbuf[CMSG_SPACE(sizeof(ptyfds))] = {0};
+
+	ttynum = PTR_TO_INT(req->data);
+	ret = lxc_pty_allocate(handler->conf, fd, &ttynum,
+			       &ptyfds[CMD_PTY_MASTER_FD],
+			       &ptyfds[CMD_PTY_SLAVE_FD], NULL);
+	if (ret < 0)
+		return 1;
+
+	DEBUG("sending master fd %d for pty %d", ptyfds[CMD_PTY_MASTER_FD], ttynum);
+	DEBUG("sending slave fd %d for pty %d", ptyfds[CMD_PTY_SLAVE_FD], ttynum);
+
+	memset(&data, 0, sizeof(data));
+	data.data = INT_TO_PTR(ttynum);
+
+	msg.msg_control = cmsgbuf;
+	msg.msg_controllen = sizeof(cmsgbuf);
+
+	cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_RIGHTS;
+	cmsg->cmsg_len = CMSG_LEN(CMD_PTY_FD_PAIR * sizeof(int));
+
+	ptyfdptr = (int *)(CMSG_DATA(cmsg));
+	memcpy(ptyfdptr, ptyfds, CMD_PTY_FD_PAIR * sizeof(int));
+
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+	msg.msg_controllen = cmsg->cmsg_len;
+
+	iov.iov_base = &data;
+	iov.iov_len = sizeof(data);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
+	ret = sendmsg(fd, &msg, MSG_NOSIGNAL);
+	if (ret < 0)
+		return 1;
+
+	return 0;
+}
+
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 			   struct lxc_handler *handler)
 {
@@ -859,6 +1014,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_CONFIG_ITEM] = lxc_cmd_get_config_item_callback,
 		[LXC_CMD_GET_NAME]        = lxc_cmd_get_name_callback,
 		[LXC_CMD_GET_LXCPATH]     = lxc_cmd_get_lxcpath_callback,
+		[LXC_CMD_GET_PTY]	  = lxc_cmd_get_pty_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX) {

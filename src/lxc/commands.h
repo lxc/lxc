@@ -43,6 +43,7 @@ typedef enum {
 	LXC_CMD_GET_CONFIG_ITEM,
 	LXC_CMD_GET_NAME,
 	LXC_CMD_GET_LXCPATH,
+	LXC_CMD_GET_PTY,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
 
@@ -68,9 +69,21 @@ struct lxc_cmd_console_rsp_data {
 	int ttynum;
 };
 
+#define CMD_PTY_FD_PAIR 2
+#define CMD_PTY_MASTER_FD 0
+#define CMD_PTY_SLAVE_FD 1
+
+struct lxc_cmd_pty_rsp_data {
+	int masterfd;
+	int slavefd;
+	int ttynum;
+};
+
 extern int lxc_cmd_console_winch(const char *name, const char *lxcpath);
 extern int lxc_cmd_console(const char *name, int *ttynum, int *fd,
 			   const char *lxcpath);
+extern int lxc_cmd_get_pty(const char *name, int *ttynum, int *masterfd,
+			   int *slavefd, const char *lxcpath);
 /*
  * Get the 'real' cgroup path (as seen in /proc/self/cgroup) for a container
  * for a particular subsystem

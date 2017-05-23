@@ -974,7 +974,7 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 	if (!conf->rootfs.path)
 		return 0;
 
-	for (i = 0; i < tty_info->nbtty; i++) {
+	for (i = 0; i < conf->tty; i++) {
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
 		ret = snprintf(path, sizeof(path), "/dev/tty%d", i + 1);
@@ -1059,7 +1059,7 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 		}
 	}
 
-	INFO("finished setting up %d /dev/tty<N> device(s)", tty_info->nbtty);
+	INFO("finished setting up %d /dev/tty<N> device(s)", conf->tty);
 	return 0;
 }
 
@@ -2713,6 +2713,9 @@ struct lxc_conf *lxc_conf_init(void)
 	new->loglevel = LXC_LOG_PRIORITY_NOTSET;
 	new->personality = -1;
 	new->autodev = 1;
+	new->console.descr = NULL;
+	new->console.tios = NULL;
+	new->console.tty_state = NULL;
 	new->console.log_path = NULL;
 	new->console.log_fd = -1;
 	new->console.path = NULL;
@@ -3657,22 +3660,28 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 	return 0;
 }
 
-int lxc_create_tty(const char *name, struct lxc_conf *conf)
+/*
+ * lxc_allocate_pty_devices() allocates the requested number of pty master and
+ * slave file descriptors in the containers mount namespace. This presupposes
+ * that a fresh devpts instance has been mounted!
+ */
+int lxc_allocate_pty_devices(const char *name, struct lxc_conf *conf)
 {
 	struct lxc_tty_info *tty_info = &conf->tty_info;
 	int i, ret;
+	int npty = conf->tty + conf->pts_allocate;
 
 	/* no tty in the configuration */
-	if (!conf->tty)
+	if (!npty)
 		return 0;
 
-	tty_info->pty_info = malloc(sizeof(*tty_info->pty_info) * conf->tty);
+	tty_info->pty_info = malloc(sizeof(*tty_info->pty_info) * npty);
 	if (!tty_info->pty_info) {
 		SYSERROR("failed to allocate struct *pty_info");
 		return -ENOMEM;
 	}
 
-	for (i = 0; i < conf->tty; i++) {
+	for (i = 0; i < npty; i++) {
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
 		process_lock();
@@ -3705,9 +3714,8 @@ int lxc_create_tty(const char *name, struct lxc_conf *conf)
 		pty_info->busy = 0;
 	}
 
-	tty_info->nbtty = conf->tty;
-
-	INFO("finished allocating %d pts devices", conf->tty);
+	tty_info->nbtty = npty;
+	INFO("finished allocating %d pts devices", npty);
 	return 0;
 }
 
@@ -3718,13 +3726,18 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 	for (i = 0; i < tty_info->nbtty; i++) {
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
-		close(pty_info->master);
-		close(pty_info->slave);
+		if (pty_info->master >= 0)
+			close(pty_info->master);
+
+		if (pty_info->slave >= 0)
+			close(pty_info->slave);
 	}
 
-	free(tty_info->pty_info);
-	tty_info->pty_info = NULL;
-	tty_info->nbtty = 0;
+	if (tty_info->pty_info) {
+		free(tty_info->pty_info);
+		tty_info->pty_info = NULL;
+		tty_info->nbtty = 0;
+	}
 }
 
 /*
@@ -4203,7 +4216,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (lxc_create_tty(name, lxc_conf)) {
+	if (lxc_allocate_pty_devices(name, lxc_conf)) {
 		ERROR("failed to create the ttys");
 		return -1;
 	}
@@ -5031,6 +5044,8 @@ int lxc_clear_simple_config_item(struct lxc_conf *c, const char *key)
 		c->monitor_unshare = 0;
 	} else if (strcmp(key, "lxc.pts") == 0) {
 		c->pts = 0;
+	} else if (strcmp(key, "lxc.pts.allocate") == 0) {
+		c->pts_allocate = 0;
 	} else {
 		return -1;
 	}

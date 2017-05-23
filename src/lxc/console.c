@@ -147,12 +147,20 @@ struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
 
 void lxc_console_sigwinch_fini(struct lxc_tty_state *ts)
 {
-	if (ts->sigfd >= 0)
+	if (!ts) {
+		SYSERROR("no sigwinch handler");
+		return;
+	}
+
+	if (ts->sigfd >= 0) {
 		close(ts->sigfd);
+		ts->sigfd = -1;
+	}
 
 	lxc_list_del(&ts->node);
 	sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
 	free(ts);
+	ts = NULL;
 }
 
 static int lxc_console_cb_con(int fd, uint32_t events, void *data,
@@ -340,10 +348,10 @@ static int lxc_console_peer_proxy_alloc(struct lxc_console *console, int sockfd)
 		goto err1;
 
 	ts = lxc_console_sigwinch_init(console->peerpty.master, console->master);
+	console->tty_state = ts;
 	if (!ts)
 		goto err1;
 
-	console->tty_state = ts;
 	console->peer = console->peerpty.slave;
 	console->peerpty.busy = sockfd;
 	lxc_console_mainloop_add_peer(console);
@@ -370,7 +378,7 @@ int lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	}
 
 	if (*ttyreq > 0) {
-		if (*ttyreq > tty_info->nbtty)
+		if (*ttyreq > conf->tty)
 			goto out;
 
 		if (tty_info->pty_info[*ttyreq - 1].busy)
@@ -382,11 +390,12 @@ int lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	}
 
 	/* search for next available tty, fixup index tty1 => [0] */
-	for (ttynum = 1; ttynum <= tty_info->nbtty && tty_info->pty_info[ttynum - 1].busy; ttynum++)
-		;
+	ttynum = 1;
+	while (ttynum <= conf->tty && tty_info->pty_info[ttynum - 1].busy)
+		ttynum++;
 
 	/* we didn't find any available slot for tty */
-	if (ttynum > tty_info->nbtty)
+	if (ttynum > conf->tty)
 		goto out;
 
 	*ttyreq = ttynum;
@@ -593,7 +602,7 @@ int lxc_console_set_stdfds(int fd)
 }
 
 int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr)
+			     struct lxc_epoll_descr *descr)
 {
 	struct lxc_tty_state *ts = cbdata;
 	char c;
@@ -624,11 +633,11 @@ int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
 }
 
 int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr)
+			      struct lxc_epoll_descr *descr)
 {
 	struct lxc_tty_state *ts = cbdata;
 	char buf[1024];
-	int r, w;
+	ssize_t r, w;
 
 	if (fd != ts->masterfd)
 		return 1;
@@ -753,3 +762,57 @@ err1:
 	return ret;
 }
 
+int lxc_pty_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq,
+		     int *masterfd, int *slavefd, void *data)
+{
+	int ttynum;
+	struct lxc_tty_info *tty_info = &conf->tty_info;
+
+	if (*ttyreq == LXC_GET_TTY_FD) {
+		ERROR("cannot allocate /dev/tty<N> devices as simple pty devices");
+		goto out;
+	}
+
+	if (*ttyreq == 0) {
+		ERROR("cannot allocate /dev/console as simple pty device");
+		return 0;
+	}
+
+	if (*ttyreq > 0) {
+		if (*ttyreq <= conf->tty) {
+			ERROR("cannot allocate /dev/tty<N> as simple pty device");
+			goto out;
+		}
+
+		if (*ttyreq > tty_info->nbtty)
+			goto out;
+
+		if (tty_info->pty_info[*ttyreq - 1].busy)
+			goto out;
+
+		/* the requested tty is available */
+		ttynum = *ttyreq;
+		goto out_tty;
+	}
+
+	DEBUG("trying to find an available pty master slave fd pair");
+	/* search for next available pty devices starting at conf->tty + 1 after
+	 * the last /dev/tty<N> device the user requested
+	 */
+	ttynum = conf->tty + 1;
+	while (ttynum <= tty_info->nbtty && tty_info->pty_info[ttynum - 1].busy)
+		ttynum++;
+
+	/* we didn't find any available slot for tty */
+	if (ttynum > tty_info->nbtty)
+		return -1;
+
+	*ttyreq = ttynum;
+
+out_tty:
+	tty_info->pty_info[ttynum - 1].busy = sockfd;
+	*masterfd = tty_info->pty_info[ttynum - 1].master;
+	*slavefd = tty_info->pty_info[ttynum - 1].slave;
+out:
+	return 0;
+}
