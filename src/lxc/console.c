@@ -147,12 +147,20 @@ struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
 
 void lxc_console_sigwinch_fini(struct lxc_tty_state *ts)
 {
-	if (ts->sigfd >= 0)
+	if (!ts) {
+		SYSERROR("no sigwinch handler");
+		return;
+	}
+
+	if (ts->sigfd >= 0) {
 		close(ts->sigfd);
+		ts->sigfd = -1;
+	}
 
 	lxc_list_del(&ts->node);
 	sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
 	free(ts);
+	ts = NULL;
 }
 
 static int lxc_console_cb_con(int fd, uint32_t events, void *data,
@@ -340,10 +348,10 @@ static int lxc_console_peer_proxy_alloc(struct lxc_console *console, int sockfd)
 		goto err1;
 
 	ts = lxc_console_sigwinch_init(console->peerpty.master, console->master);
+	console->tty_state = ts;
 	if (!ts)
 		goto err1;
 
-	console->tty_state = ts;
 	console->peer = console->peerpty.slave;
 	console->peerpty.busy = sockfd;
 	lxc_console_mainloop_add_peer(console);

@@ -2713,6 +2713,9 @@ struct lxc_conf *lxc_conf_init(void)
 	new->loglevel = LXC_LOG_PRIORITY_NOTSET;
 	new->personality = -1;
 	new->autodev = 1;
+	new->console.descr = NULL;
+	new->console.tios = NULL;
+	new->console.tty_state = NULL;
 	new->console.log_path = NULL;
 	new->console.log_fd = -1;
 	new->console.path = NULL;
