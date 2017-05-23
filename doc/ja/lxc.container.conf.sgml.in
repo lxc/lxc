@@ -920,17 +920,21 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <option>lxc.console</option>
 	  </term>
 	  <listitem>
-	    <para>
+            <para>
               <!--
-	      Specify a path to a device to which the console will be
-	      attached.  The keyword 'none' will simply disable the
-	      console.  This is dangerous once if have a rootfs with a
-	      console device file where the application can write, the
-	      messages will fall in the host.
-              -->
+              Specify a path to a device to which the console will be
+              attached. The keyword 'none' will simply disable the
+              console. Note, when specifying 'none' and creating a device node
+              for the console in the container at /dev/console or bind-mounting
+              the hosts's /dev/console into the container at /dev/console the
+              container will have direct access to the hosts's /dev/console.
+              This is dangerous when the container has write access to the
+              device and should thus be used with caution.
+                -->
               コンソールを割り当てるデバイスのパスを指定します。'none' というキーワードは、単純にコンソールを無効にします。
-              この設定は、アプリケーションが書き込む事ができるコンソールデバイスファイルが rootfs に存在する場合、メッセージがホスト側に出力されるので危険です。
-	    </para>
+              'none' を指定し、コンテナ内のコンソールに対するデバイスノードを /dev/console に作成するか、もしくはホストの /dev/console をコンテナ内の /dev/console に bind mount する場合、そのコンテナはホストの /dev/console へ直接アクセスを行うことに注意が必要です。
+              そのコンテナがデバイスへの書き込み権を持っている場合は危険ですので、注意してこの指定を使用する必要があります。
+            </para>
 	  </listitem>
 	</varlistentry>
       </variablelist>
@@ -1001,13 +1005,16 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <option>lxc.devttydir</option>
 	  </term>
 	  <listitem>
-	    <para>
+            <para>
               <!--
-	      Specify a directory under <filename>/dev</filename>
-	      under which to create the container console devices.
-              -->
+              Specify a directory under <filename>/dev</filename>
+              under which to create the container console devices. Note that LXC
+              will move any bind-mounts or device nodes for /dev/console into
+              this directory.
+                -->
               コンテナのコンソールデバイスを作成するための <filename>/dev</filename> 以下のディレクトリを指定します。
-	    </para>
+              LXC は /dev/console に対する bind mount や /dev/console デバイスノードをこのディレクトリ以下に移動することに注意が必要です。
+            </para>
 	  </listitem>
 	</varlistentry>
       </variablelist>
