@@ -1,0 +1,513 @@
+#!/bin/bash
+
+#
+# template script for generating Fedora Cloud container for LXC
+#
+
+#
+# lxc: linux Container library
+
+# Authors:
+# Daniel Lezcano <daniel.lezcano@free.fr>
+# Ramez Hanna <rhanna@informatiq.org>
+# Michael H. Warfield <mhw@WittsEnd.com>
+# Reto Gantenbein <reto.gantenbein@linuxmonk.ch>
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+set -e
+
+# configurations
+FEDORA_RELEASE_MIN=24
+FEDORA_RELEASE_DEFAULT=${FEDORA_RELEASE_DEFAULT:-25}
+MIRROR=${MIRROR:-https://archives.fedoraproject.org/pub}
+
+local_state_dir="@LOCALSTATEDIR@"
+lxc_path="@LXCPATH@"
+lxc_template_config="@LXCTEMPLATECONFIG@"
+lxc_default_conf="@LXC_DEFAULT_CONFIG@"
+
+# allows the lxc-cache directory to be set by environment variable
+LXC_CACHE_PATH="${LXC_CACHE_PATH:-"${local_state_dir}/cache/lxc"}"
+
+# these are only going into comments in the resulting config...
+lxc_network_type=veth
+lxc_network_link=lxcbr0
+
+# detect use under userns (unsupported)
+for arg in "$@"; do
+    [ "${arg}" = "--" ] && break
+    if [ "${arg}" = "--mapped-uid" ] || [ "${arg}" = "--mapped-gid" ]
+    then
+        echo "This template can't be used for unprivileged containers." 1>&2
+        echo "You may want to try the \"download\" template instead." 1>&2
+        exit 1
+    fi
+done
+
+# make sure the usual locations are in PATH
+export PATH=${PATH}:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Is this fedora?
+# Allow for weird remixes like the Raspberry Pi
+#
+# Use the Mitre standard CPE identifier for the release ID if possible...
+# This may be in /etc/os-release or /etc/system-release-cpe.  We
+# should be able to use EITHER.  Give preference to /etc/os-release for now.
+
+if [ -e /etc/os-release ]
+then
+# This is a shell friendly configuration file.  We can just source it.
+# What we're looking for in here is the ID, VERSION_ID and the CPE_NAME
+    . /etc/os-release
+    echo "Host CPE ID from /etc/os-release: ${CPE_NAME}"
+fi
+
+if [ "${CPE_NAME}" = "" ] && [ -e /etc/system-release-cpe ]
+then
+    CPE_NAME=$(head -n1 /etc/system-release-cpe)
+    CPE_URI=$(expr "${CPE_NAME}" : '\([^:]*:[^:]*\)')
+    if [ "${CPE_URI}" != "cpe:/o" ]
+    then
+        CPE_NAME=
+    else
+        echo "Host CPE ID from /etc/system-release-cpe: ${CPE_NAME}"
+        # Probably a better way to do this but sill remain posix
+        # compatible but this works, shrug...
+        # Must be nice and not introduce convenient bashisms here.
+        ID=$(expr "${CPE_NAME}" : '[^:]*:[^:]*:[^:]*:\([^:]*\)')
+        VERSION_ID=$(expr "${CPE_NAME}" : '[^:]*:[^:]*:[^:]*:[^:]*:\([^:]*\)')
+    fi
+fi
+
+if [ "${CPE_NAME}" != "" ] && [ "${ID}" = "fedora" ] && [ "${VERSION_ID}" != "" ]
+then
+    fedora_host_ver="${VERSION_ID}"
+    is_fedora=true
+elif [ -e /etc/redhat-release ]
+then
+    # Only if all other methods fail, try to parse the redhat-release file.
+    fedora_host_ver=$( sed -e '/^Fedora /!d' -e 's/Fedora.*\srelease\s*\([0-9][0-9]*\)\s.*/\1/' < /etc/redhat-release )
+    if [ "${fedora_host_ver}" != "" ]
+    then
+        is_fedora=true
+    fi
+fi
+
+clean()
+{
+    if [ ! -e "${cache}" ]
+    then
+        return 0
+    fi
+
+    # lock, so we won't purge while someone is creating a repository
+    (
+        if ! flock -x 9
+        then
+            echo "Error: Cache repository is busy."
+            exit 1
+        fi
+
+        echo -n "Purging the download cache for Fedora ${release} ..."
+        rm --preserve-root --one-file-system -rf "${cache}" && echo "Done." || exit 1
+
+        exit 0
+
+    ) 9>"${local_state_dir}/lock/subsys/$(basename "${0}")"
+}
+
+configure_fedora()
+{
+    local rootfs=${rootfs}
+    local release=${release}
+    local utsname=${utsname}
+
+    # disable selinux
+    mkdir -p "${rootfs}/selinux"
+    echo 0 > "${rootfs}/selinux/enforce"
+
+    # also kill it in the /etc/selinux/config file if it's there...
+    if [ -f "${rootfs}/etc/selinux/config" ]
+    then
+        sed -i '/^SELINUX=/s/.*/SELINUX=disabled/' "${rootfs}/etc/selinux/config"
+    fi
+
+    # nice catch from Dwight Engen in the Oracle template.
+    # wantonly plagerized here with much appreciation.
+    if [ -f "${rootfs}/usr/sbin/selinuxenabled" ]
+    then
+        rm -f "${rootfs}/usr/sbin/selinuxenabled"
+        ln -s /bin/false "${rootfs}/usr/sbin/selinuxenabled"
+    fi
+
+    echo "${utsname}" > "${rootfs}/etc/hostname"
+
+    # set default localtime to the host localtime if not set...
+    if [ -e /etc/localtime ] && [ ! -e "${rootfs}/etc/localtime" ]
+    then
+        # if /etc/localtime is a symlink, this should preserve it.
+        cp -a /etc/localtime "${rootfs}/etc/localtime"
+    fi
+
+    # make sure fstab is empty
+    echo -n > "${rootfs}/etc/fstab"
+
+    # enable networking via systemd-networkd
+    test -d "${rootfs}/etc/systemd/network" || mkdir "${rootfs}/etc/systemd/network"
+    cat <<EOF > "${rootfs}/etc/systemd/network/eth0.network"
+[Match]
+Name=eth0
+
+[Network]
+DHCP=yes
+EOF
+    mkdir -p "${rootfs}/etc/systemd/system/socket.target.wants"
+    chroot "${rootfs}" ln -s /usr/lib/systemd/system/systemd-networkd.socket \
+        /etc/systemd/system/socket.target.wants/systemd-networkd.socket
+    chroot "${rootfs}" ln -s /usr/lib/systemd/system/systemd-networkd.service \
+        /etc/systemd/system/multi-user.target.wants/systemd-networkd.service
+    mkdir -p "${rootfs}/etc/systemd/system/network-online.target.wants"
+    chroot "${rootfs}" ln -s /usr/lib/systemd/system/systemd-networkd-wait-online.service \
+        /etc/systemd/system/network-online.target.wants/systemd-networkd-wait-online.service
+
+    # disable traditional network init
+    chroot "${rootfs}" chkconfig network off
+
+    # enable systemd-resolved
+    rm -f "${rootfs}/etc/resolv.conf"
+    chroot "${rootfs}" ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
+    chroot "${rootfs}" ln -s /usr/lib/systemd/system/systemd-resolved.service \
+        /etc/systemd/system/multi-user.target.wants/systemd-resolved.service
+
+    # disable systemd default units which won't work a container
+    for svc in plymouth-start.service systemd-sysctl.service
+    do
+        chroot "${rootfs}" ln -s /dev/null /etc/systemd/system/${svc}
+    done
+
+    # disable system services
+    for svc in auditd chronyd
+    do
+        rm -f "${rootfs}/etc/systemd/system/multi-user.target.wants/${svc}.service"
+    done
+
+    # if desired, prevent systemd from over-mounting /tmp with tmpfs
+    rm -f "${rootfs}/etc/systemd/system/tmp.mount"
+    if [ "${masktmp}" -eq 1 ]
+    then
+        chroot "${rootfs}" ln -s /dev/null /etc/systemd/system/tmp.mount
+    fi
+}
+
+copy_configuration()
+{
+    local path="${1}"
+    local rootfs="${2}"
+    local hostname="${3}"
+
+    # include configuration from default.conf if available
+    grep -q "^lxc." "${lxc_default_conf}" > "${path}/config" 2>/dev/null || true
+
+    grep -q "^lxc.rootfs" "${path}/config" 2>/dev/null || echo "
+lxc.rootfs = ${rootfs}
+" >> "${path}/config"
+
+    # if there is exactly one veth network entry, make sure it has an
+    # associated hwaddr.
+    local nics
+    nics=$(grep -c -e '^lxc\.network\.type[ \t]*=[ \t]*veth' "${path}/config")
+    if [ "${nics}" -eq 1 ]
+    then
+        grep -q '^lxc.network.hwaddr' "${path}/config" || sed -i -e "/^lxc\.network\.type[ \t]*=[ \t]*veth/a lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')" "${path}/config"
+    fi
+
+    # include common Fedora configuration
+    if [ -f "${lxc_template_config}/fedora.common.conf" ]
+    then
+        echo "
+# Include common configuration
+lxc.include = ${lxc_template_config}/fedora.common.conf
+" >> "${path}/config"
+    fi
+
+    cat <<EOF >> "${path}/config"
+# Container specific configuration
+lxc.arch = $(uname -m)
+lxc.utsname = ${hostname}
+
+# When using LXC with apparmor, uncomment the next line to run unconfined:
+#lxc.aa_profile = unconfined
+
+# example simple networking setup, uncomment to enable
+#lxc.network.type = ${lxc_network_type}
+#lxc.network.flags = up
+#lxc.network.link = ${lxc_network_link}
+#lxc.network.name = eth0
+# Additional example for veth network type
+#    static MAC address,
+#lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')
+#    persistent veth device name on host side
+#        Note: This may potentially collide with other containers of same name!
+#lxc.network.veth.pair = v-${name}-e0
+
+EOF
+
+
+}
+
+copy_fedora()
+{
+    local rootfs="${1}"
+
+    echo -n "Copy Fedora ${release} rootfs to ${rootfs} ... "
+    mkdir -p "${rootfs}"
+    rsync -Ha "${cache}/rootfs/" "${rootfs}/"
+    echo
+}
+
+download_fedora()
+{
+    local url_base="${mirror}/fedora/linux/releases/${release}/CloudImages/x86_64/images/"
+
+    # as the cloud image will be updated regularly, parse the directory index for
+    # for the exact file name
+    echo "Query cloud image name from ${url_base} ... "
+    image=$(curl -s -S -f "${url_base}" | sed -n -e '/raw\.xz/ s/.*href="\(.*\.raw\.xz\)">.*/\1/p' | tail -1)
+    # shellcheck disable=SC2181
+    if [ $? -ne 0 ] || [ -z "${image}" ]
+    then
+        echo "Error: Failed to get the latest cloud image name"
+        exit 1
+    fi
+
+    if [ -e "${image%%.xz}" ]
+    then
+        return 0
+    fi
+
+    echo "Download cloud image ${image} ... "
+
+    if ! curl -s -S -f -O "${url_base}${image}"
+    then
+        echo "Error: Failed to download cloud image from ${url_base}"
+        exit 1
+    fi
+
+    unxz "${image}"
+}
+
+install_fedora()
+{
+    local rootfs=$1
+    local release=$2
+    local clean=$3
+    local cache=$4
+
+    mkdir -p ${local_state_dir}/lock/subsys/
+
+
+
+    (
+        if ! flock -x 9
+        then
+            echo "Error: Cache repository is busy."
+            return 1
+        fi
+
+        echo "Checking cache download in ${cache}/rootfs ... "
+        if [ ! -e "${cache}/rootfs" ]
+        then
+            mkdir -p "${cache}"
+            pushd "${cache}" >/dev/null
+
+            download_fedora
+
+            test -d image || mkdir image
+            mount -o loop,offset="$(echo 2048*512 | bc)" "${image%%.xz}" image
+
+            echo -n "Copy image content to ${cache}/rootfs ... "
+            mkdir rootfs
+            rsync -Ha --exclude='lost+found' image/ rootfs/
+            echo
+
+            umount image
+            rmdir image
+            popd >/dev/null
+        fi
+
+        copy_fedora "${rootfs}"
+
+        return 0
+    ) 9>"${local_state_dir}/lock/subsys/$(basename "${0}")"
+
+    return $?
+}
+
+revert()
+{
+    echo "Interrupted, so cleaning up"
+    lxc-destroy -n "${name}"
+    # maybe was interrupted before copy config
+    # Too risky to run... there was not much path validation before
+#    rm -rf "${path}"
+    echo "Exiting..."
+    exit 1
+}
+
+usage()
+{
+    cat <<EOF
+LXC Container configuration for Fedora Cloud images.
+
+Template specific options can be passed to lxc-create after a '--' like this:
+
+  lxc-create --name=NAME -t fedora-cloud [OPTION..] -- [TEMPLATE_OPTION..]
+
+Template options:
+
+  -c, --clean            Clean download cache before creating new container
+  -d, --debug            Run with 'set -x' to debug errors
+      --fqdn             Fully qualified domain name (FQDN)
+  -h, --help             Print this help text
+      --mask-tmp         Prevent systemd from over-mounting /tmp with tmpfs.
+      --mirror=MIRROR    Fedora mirror to use during installation. Overrides the
+                         MIRROR environment variable (see below).
+  -p, --path=PATH        Path to where the container will be created,
+                         defaults to @LXCPATH@.
+  -R, --release=RELEASE  Fedora release number of the container, defaults
+                         to host's release if the host is Fedora.
+      --rootfs=ROOTFS    Path for the actual container root file system
+
+Environment variables:
+
+  LXC_CACHE_PATH         Cache directory for image bootstrap. Is set to
+                         '${LXC_CACHE_PATH}'
+
+  MIRROR                 The Fedora package mirror to use.
+                         Is set to '${MIRROR}'
+
+  FEDORA_RELEASE_DEFAULT Set default Fedora release if not detected from the
+                         host. Is set to '${FEDORA_RELEASE_DEFAULT}'
+
+EOF
+    return 0
+}
+
+options=$(getopt -o hp:n:cR:d -l help,path:,rootfs:,name:,clean,release:,debug,fqdn:,mask-tmp,mirror: -- "$@")
+# shellcheck disable=SC2181
+if [ $? -ne 0 ]; then
+    usage "$(basename "${0}")"
+    exit 1
+fi
+
+clean=0
+debug=0
+masktmp=0
+mirror=${MIRROR}
+
+eval set -- "$options"
+while true
+do
+    case "${1}" in
+        -h|--help)      usage "${0}" && exit 0  ;;
+        --rootfs)       rootfs="${2}";  shift 2 ;;
+        -p|--path)      path="${2}";    shift 2 ;;
+        --mirror)       mirror="${2}";  shift 2 ;;
+        -n|--name)      name="${2}";    shift 2 ;;
+        -c|--clean)     clean=1;        shift 1 ;;
+        -R|--release)   release="${2}"; shift 2 ;;
+        -d|--debug)     debug=1;        shift 1 ;;
+        --fqdn)         utsname="${2}"; shift 2 ;;
+        --mask-tmp)     masktmp=1;      shift 1 ;;
+        --)             shift 1;        break   ;;
+        *)                              break   ;;
+    esac
+done
+
+if [ "${debug}" -eq 1 ]
+then
+    set -x
+fi
+
+if [ -z "${release}" ]
+then
+    # set default release
+    if [ "${is_fedora}" ]
+    then
+        echo "Set Fedora release to ${fedora_host_ver}"
+        release="${fedora_host_ver}"
+    else
+        echo "This is not a Fedora host, defaulting to ${FEDORA_RELEASE_DEFAULT}. Use -R|--release to specify release"
+        release=${FEDORA_RELEASE_DEFAULT}
+    fi
+fi
+
+if [ "${release}" -lt "${FEDORA_RELEASE_MIN}" ]
+then
+    echo "Fedora release ${release} is not supported. Set -R at least to ${FEDORA_RELEASE_MIN}"
+    exit 1
+fi
+
+if [ "$(id -u)" != "0" ]
+then
+    echo "This script should be run as 'root'"
+    exit 1
+fi
+
+if [ "$(uname -m)" != "x86_64" ]; then
+    echo "Error: Fedora Cloud is only available on x86_64"
+    exit 1
+fi
+
+if [ -z "${path}" ]
+then
+    path="${lxc_path}/${name}"
+fi
+
+# detect rootfs
+config="${path}/config"
+if [ -z "${rootfs}" ]
+then
+    if grep -q '^lxc.rootfs' "${config}" 2>/dev/null ; then
+        rootfs=$(awk -F= '/^lxc.rootfs =/{ print $2 }' "${config}")
+    else
+        rootfs="${path}/rootfs"
+    fi
+fi
+
+cache=${LXC_CACHE_PATH}/fedora-cloud-${release}
+
+trap revert SIGHUP SIGINT SIGTERM
+
+# delete template cache
+if [ "${clean}" -eq 1 ]
+then
+    clean
+fi
+
+# bootstrap rootfs from Fedora Cloud image and copy to container file system
+install_fedora "${rootfs}" "${release}" "${cache}"
+
+# customize container file system
+configure_fedora "${rootfs}" "${release}" "${utsname:-${name}}"
+
+# create container configuration (will be overwritten by newer lxc-create)
+copy_configuration "${path}" "${rootfs}" "${utsname:-${name}}"
+
+echo "Container ${name} created."
+exit 0
+
+# vim: set ts=4 sw=4 expandtab:
