@@ -3073,7 +3073,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	if (container_mem_lock(c))
 		return NULL;
 
-	if (!is_stopped(c)) {
+	if (!(flags & LXC_CLONE_FORCE) && !is_stopped(c)) {
 		ERROR("error: Original container (%s) is running", c->name);
 		goto out;
 	}
@@ -3366,9 +3366,9 @@ static bool get_snappath_dir(struct lxc_container *c, char *snappath)
 	return true;
 }
 
-static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
+static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile, int flags)
 {
-	int i, flags, ret;
+	int i, ret;
 	struct lxc_container *c2;
 	char snappath[MAXPATHLEN], newname[20];
 
@@ -3399,7 +3399,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	 * We pass LXC_CLONE_SNAPSHOT to make sure that a rdepends file entry is
 	 * created in the original container
 	 */
-	flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_KEEPMACADDR | LXC_CLONE_KEEPNAME |
+	flags |= LXC_CLONE_SNAPSHOT | LXC_CLONE_KEEPMACADDR | LXC_CLONE_KEEPNAME |
 		LXC_CLONE_KEEPBDEVTYPE | LXC_CLONE_MAYBE_SNAPSHOT;
 	if (bdev_is_dir(c->lxc_conf, c->lxc_conf->rootfs.path)) {
 		ERROR("Snapshot of directory-backed container requested.");
@@ -3456,7 +3456,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	return i;
 }
 
-WRAP_API_1(int, lxcapi_snapshot, const char *)
+WRAP_API_2(int, lxcapi_snapshot, const char *, int)
 
 static void lxcsnap_free(struct lxc_snapshot *s)
 {
