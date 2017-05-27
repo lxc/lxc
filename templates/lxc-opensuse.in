@@ -138,7 +138,11 @@ download_opensuse()
     # download a mini opensuse into a cache
     echo "Downloading opensuse minimal ..."
     mkdir -p "$cache/partial-$arch-packages"
-    zypper --quiet --root $cache/partial-$arch-packages --non-interactive ar http://download.opensuse.org/distribution/$DISTRO/repo/oss/ repo-oss || return 1
+    if [[ $DISTRO == "tumbleweed" ]]; then
+        zypper --quiet --root $cache/partial-$arch-packages --non-interactive ar http://download.opensuse.org/$DISTRO/repo/oss/ repo-oss || return 1
+    else
+        zypper --quiet --root $cache/partial-$arch-packages --non-interactive ar http://download.opensuse.org/distribution/$DISTRO/repo/oss/ repo-oss || return 1
+    fi
     # Leap update repos were rearranged
     if [[ $DISTRO == "leap/4"* ]]; then
         zypper --quiet --root $cache/partial-$arch-packages --non-interactive ar http://download.opensuse.org/update/$DISTRO/oss/ update || return 1
@@ -479,6 +483,10 @@ else
             echo "Selected openSUSE Leap 42.2"
             DISTRO="leap/42.2"
             ;; 
+        tumbleweed|factory)
+            echo "Selected openSUSE Leap Tumbleweed"
+            DISTRO="tumbleweed"
+            ;;
 
 	*)
 	    echo "You have chosen an invalid release, quitting..."
