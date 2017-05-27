@@ -3581,27 +3581,33 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 			    size_t buf_size)
 {
-	char path[PATH_MAX];
-	int ret, closeret;
-	FILE *f;
+	char path[MAXPATHLEN];
+	int fd, ret;
 
-	ret = snprintf(path, PATH_MAX, "/proc/%d/%cid_map", pid, idtype == ID_TYPE_UID ? 'u' : 'g');
-	if (ret < 0 || ret >= PATH_MAX) {
-		fprintf(stderr, "%s: path name too long\n", __func__);
+	ret = snprintf(path, MAXPATHLEN, "/proc/%d/%cid_map", pid,
+		       idtype == ID_TYPE_UID ? 'u' : 'g');
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("failed to create path \"%s\"", path);
 		return -E2BIG;
 	}
-	f = fopen(path, "w");
-	if (!f) {
-		perror("open");
-		return -EINVAL;
+
+	fd = open(path, O_WRONLY);
+	if (fd < 0) {
+		SYSERROR("failed to open \"%s\"", path);
+		return -1;
 	}
-	ret = fwrite(buf, buf_size, 1, f);
-	if (ret < 0)
-		SYSERROR("writing id mapping");
-	closeret = fclose(f);
-	if (closeret)
-		SYSERROR("writing id mapping");
-	return ret < 0 ? ret : closeret;
+
+	errno = 0;
+	ret = lxc_write_nointr(fd, buf, buf_size);
+	if (ret != buf_size) {
+		SYSERROR("failed to write %cid mapping to \"%s\"",
+			 idtype == ID_TYPE_UID ? 'u' : 'g', path);
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+	return 0;
 }
 
 int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
