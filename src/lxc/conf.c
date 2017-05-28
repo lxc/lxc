@@ -3865,12 +3865,12 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 	char *chownpath = path;
 
 	if (!get_mapped_rootid(conf, ID_TYPE_UID, &val)) {
-		ERROR("No mapping for container root");
+		ERROR("No uid mapping for container root");
 		return -1;
 	}
 	rootuid = (uid_t) val;
 	if (!get_mapped_rootid(conf, ID_TYPE_GID, &val)) {
-		ERROR("No mapping for container root");
+		ERROR("No gid mapping for container root");
 		return -1;
 	}
 	rootgid = (gid_t) val;
