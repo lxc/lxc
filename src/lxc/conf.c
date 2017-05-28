@@ -3387,7 +3387,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	enum idtype type;
 	char u_or_g;
 	char *pos;
-	int euid, fill, left;
+	int fill, left;
 	char cmd_output[MAXPATHLEN];
 	/* strlen("new@idmap") = 9
 	 * +
@@ -3404,8 +3404,6 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	int ret = 0, uidmap = 0, gidmap = 0;
 	bool use_shadow = false, had_entry = false;
 
-	euid = geteuid();
-
 	/* If new{g,u}idmap exists, that is, if shadow is handing out subuid
 	 * ranges, then insist that root also reserve ranges in subuid. This
 	 * will protected it by preventing another user from being handed the
@@ -3416,15 +3414,14 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	if (uidmap > 0 && gidmap > 0) {
 		DEBUG("Functional newuidmap and newgidmap binary found.");
 		use_shadow = true;
-	} else if (uidmap == -ENOENT && gidmap == -ENOENT && !euid) {
-		DEBUG("No newuidmap and newgidmap binary found. Trying to "
-		      "write directly with euid 0.");
-		use_shadow = false;
 	} else {
-		DEBUG("Either one or both of the newuidmap and newgidmap "
-		      "binaries do not exist or are missing necessary "
-		      "privilege.");
-		return -1;
+		/* In case unprivileged users run application containers via
+		 * execute() or a start*() there are valid cases where they may
+		 * only want to map their own {g,u}id. Let's not block them from
+		 * doing so by requiring geteuid() == 0.
+		 */
+		DEBUG("No newuidmap and newgidmap binary found. Trying to "
+		      "write directly with euid %d.", geteuid());
 	}
 
 	for (type = ID_TYPE_UID, u_or_g = 'u'; type <= ID_TYPE_GID;
