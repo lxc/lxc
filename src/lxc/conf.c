@@ -239,7 +239,7 @@ extern int memfd_create(const char *name, unsigned int flags);
 #endif
 
 char *lxchook_names[NUM_LXC_HOOKS] = {
-	"pre-start", "pre-mount", "mount", "autodev", "start", "stop", "post-stop", "clone", "destroy" };
+	"pre-start", "pre-mount", "mount", "autodev", "priv-start", "start", "stop", "post-stop", "clone", "destroy" };
 
 typedef int (*instantiate_cb)(struct lxc_handler *, struct lxc_netdev *);
 
@@ -4227,6 +4227,11 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
+	if (run_lxc_hooks(name, "priv-start", lxc_conf, lxcpath, NULL)) {
+		ERROR("failed to run privileged-start hooks for container '%s'.", name);
+		return -1;
+	}
+
 	if (!lxc_list_empty(&lxc_conf->keepcaps)) {
 		if (!lxc_list_empty(&lxc_conf->caps)) {
 			ERROR("Container requests lxc.cap.drop and lxc.cap.keep: either use lxc.cap.drop or lxc.cap.keep, not both.");
@@ -4260,6 +4265,8 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
 		which = LXCHOOK_MOUNT;
 	else if (strcmp(hook, "autodev") == 0)
 		which = LXCHOOK_AUTODEV;
+	else if (strcmp(hook, "priv-start") == 0)
+		which = LXCHOOK_PRIVSTART;
 	else if (strcmp(hook, "start") == 0)
 		which = LXCHOOK_START;
 	else if (strcmp(hook, "stop") == 0)
