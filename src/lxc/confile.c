@@ -313,6 +313,14 @@ int lxc_listconfigs(char *retv, int inlen)
 	return fulllen;
 }
 
+static inline bool config_value_empty(const char *value)
+{
+	if (value && strlen(value) > 0)
+		return false;
+
+	return true;
+}
+
 static int config_string_item(char **conf_item, const char *value)
 {
 	char *new_value;
