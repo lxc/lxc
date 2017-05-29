@@ -3293,6 +3293,10 @@ static int config_syslog(const char *key, const char *value,
 			 struct lxc_conf *lxc_conf)
 {
 	int facility;
+
+	if (config_value_empty(value))
+		return 0;
+
 	facility = lxc_syslog_priority_to_int(value);
 	if (facility == -EINVAL) {
 		ERROR("Wrong value for lxc.syslog.");
