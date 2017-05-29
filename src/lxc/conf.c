@@ -4541,108 +4541,158 @@ static int run_userns_fn(void *data)
 {
 	struct userns_fn_data *d = data;
 	char c;
-	// we're not sharing with the parent any more, if it was a thread
 
+	/* Close write end of the pipe. */
 	close(d->p[1]);
+
+	/* Wait for parent to finish establishing a new mapping in the user
+	 * namespace we are executing in.
+	 */
 	if (read(d->p[0], &c, 1) != 1)
 		return -1;
+
+	/* Close read end of the pipe. */
 	close(d->p[0]);
+
+	/* Call function to run. */
 	return d->fn(d->arg);
 }
 
-/*
- * Add ID_TYPE_UID/ID_TYPE_GID entries to an existing lxc_conf,
- * if they are not already there.
- */
-static struct lxc_list *idmap_add_id(struct lxc_conf *conf,
-		uid_t uid, gid_t gid)
+static struct id_map *mapped_hostid_entry(unsigned id, struct lxc_conf *conf,
+					  enum idtype idtype)
 {
-	int hostuid_mapped = mapped_hostid(uid, conf, ID_TYPE_UID);
-	int hostgid_mapped = mapped_hostid(gid, conf, ID_TYPE_GID);
-	struct lxc_list *new = NULL, *tmp, *it, *next;
-	struct id_map *entry;
+	struct lxc_list *it;
+	struct id_map *map;
+	struct id_map *retmap = NULL;
 
-	new = malloc(sizeof(*new));
-	if (!new) {
-		ERROR("Out of memory building id map");
+	lxc_list_for_each(it, &conf->id_map) {
+		map = it->elem;
+		if (map->idtype != idtype)
+			continue;
+
+		if (id >= map->hostid && id < map->hostid + map->range) {
+			retmap = map;
+			break;
+		}
+	}
+
+	if (!retmap)
 		return NULL;
-	}
-	lxc_list_init(new);
 
-	if (hostuid_mapped < 0) {
-		hostuid_mapped = find_unmapped_nsuid(conf, ID_TYPE_UID);
-		if (hostuid_mapped < 0)
-			goto err;
-		tmp = malloc(sizeof(*tmp));
-		if (!tmp)
-			goto err;
-		entry = malloc(sizeof(*entry));
-		if (!entry) {
-			free(tmp);
-			goto err;
-		}
-		tmp->elem = entry;
-		entry->idtype = ID_TYPE_UID;
-		entry->nsid = hostuid_mapped;
-		entry->hostid = (unsigned long) uid;
-		entry->range = 1;
-		lxc_list_add_tail(new, tmp);
-	}
-	if (hostgid_mapped < 0) {
-		hostgid_mapped = find_unmapped_nsuid(conf, ID_TYPE_GID);
-		if (hostgid_mapped < 0)
-			goto err;
-		tmp = malloc(sizeof(*tmp));
-		if (!tmp)
-			goto err;
-		entry = malloc(sizeof(*entry));
-		if (!entry) {
-			free(tmp);
-			goto err;
-		}
-		tmp->elem = entry;
-		entry->idtype = ID_TYPE_GID;
-		entry->nsid = hostgid_mapped;
-		entry->hostid = (unsigned long) gid;
-		entry->range = 1;
-		lxc_list_add_tail(new, tmp);
-	}
-	lxc_list_for_each_safe(it, &conf->id_map, next) {
-		tmp = malloc(sizeof(*tmp));
-		if (!tmp)
-			goto err;
-		entry = malloc(sizeof(*entry));
-		if (!entry) {
-			free(tmp);
-			goto err;
-		}
-		memset(entry, 0, sizeof(*entry));
-		memcpy(entry, it->elem, sizeof(*entry));
-		tmp->elem = entry;
-		lxc_list_add_tail(new, tmp);
-	}
+	retmap = malloc(sizeof(*retmap));
+	if (!retmap)
+		return NULL;
 
-	return new;
-
-err:
-	ERROR("Out of memory building a new uid/gid map");
-	if (new)
-		lxc_free_idmap(new);
-	free(new);
-	return NULL;
+	memcpy(retmap, map, sizeof(*retmap));
+	return retmap;
 }
 
 /*
- * Run a function in a new user namespace.
- * The caller's euid/egid will be mapped in if it is not already.
+ * Allocate a new {g,u}id mapping for the given {g,u}id. Re-use an already
+ * existing one or establish a new one.
+ */
+static struct lxc_list *idmap_add_id(struct lxc_conf *conf, uid_t uid,
+				     gid_t gid)
+{
+	int hostuid_mapped, hostgid_mapped;
+	struct id_map *hostuid_idmap, *hostgid_idmap;
+	struct id_map *entry = NULL;
+	struct lxc_list *new = NULL;
+	struct lxc_list *tmp = NULL;
+
+	hostuid_idmap = mapped_hostid_entry(uid, conf, ID_TYPE_UID);
+	hostgid_idmap = mapped_hostid_entry(gid, conf, ID_TYPE_GID);
+
+	/* Allocate new {g,u}id map list. */
+	new = malloc(sizeof(*new));
+	if (!new)
+		goto on_error;
+	lxc_list_init(new);
+
+	tmp = malloc(sizeof(*tmp));
+	if (!tmp)
+		goto on_error;
+	entry = hostuid_idmap;
+	if (!hostuid_idmap) {
+		hostuid_mapped = find_unmapped_nsuid(conf, ID_TYPE_UID);
+		if (hostuid_mapped < 0)
+			goto on_error;
+
+		entry = malloc(sizeof(*entry));
+		if (!entry)
+			goto on_error;
+
+		tmp->elem = entry;
+		entry->idtype = ID_TYPE_UID;
+		entry->nsid = hostuid_mapped;
+		entry->hostid = (unsigned long)uid;
+		entry->range = 1;
+		DEBUG("adding uid mapping: nsid %lu hostid %lu range %lu",
+		      entry->nsid, entry->hostid, entry->range);
+	}
+	lxc_list_add_tail(new, tmp);
+	entry = NULL;
+	tmp = NULL;
+
+	tmp = malloc(sizeof(*tmp));
+	if (!tmp)
+		goto on_error;
+	entry = hostgid_idmap;
+	if (!hostgid_idmap) {
+		hostgid_mapped = find_unmapped_nsuid(conf, ID_TYPE_GID);
+		if (hostgid_mapped < 0)
+			goto on_error;
+
+		entry = malloc(sizeof(*entry));
+		if (!entry)
+			goto on_error;
+
+		tmp->elem = entry;
+		entry->idtype = ID_TYPE_GID;
+		entry->nsid = hostgid_mapped;
+		entry->hostid = (unsigned long)gid;
+		entry->range = 1;
+		DEBUG("adding gid mapping: nsid %lu hostid %lu range %lu",
+		      entry->nsid, entry->hostid, entry->range);
+	}
+	lxc_list_add_tail(new, tmp);
+
+	return new;
+
+on_error:
+	ERROR("failed to allocate memory for new id map");
+	if (new)
+		lxc_free_idmap(new);
+	free(new);
+	free(tmp);
+	if (entry)
+		free(entry);
+	return NULL;
+}
+
+/* Run a function in a new user namespace.
+ * The caller's euid/egid will be mapped if it is not already.
+ * Afaict, userns_exec_1() is only used to operate based on privileges for the
+ * user's own {g,u}id on the host and for the container root's unmapped {g,u}id.
+ * This means we require only to establish a mapping from:
+ * - the container root {g,u}id as seen from the host > user's host {g,u}id
+ * - the container root -> some sub{g,u}id
+ * The former we add, if the user did not specifiy a mapping. The latter we
+ * retrieve from the ontainer's configured {g,u}id mappings as it must have been
+ * there to start the container in the first place.
  */
 int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 {
-	int ret, pid;
+	pid_t pid;
+	uid_t euid, egid;
 	struct userns_fn_data d;
-	char c = '1';
 	int p[2];
-	struct lxc_list *idmap;
+	struct lxc_list *it;
+	struct id_map *map;
+	char c = '1';
+	int ret = -1;
+	struct lxc_list *idmap = NULL, *tmplist = NULL;
+	struct id_map *container_root_uid = NULL, *container_root_gid = NULL;
 
 	ret = pipe(p);
 	if (ret < 0) {
@@ -4653,41 +4703,119 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	d.arg = data;
 	d.p[0] = p[0];
 	d.p[1] = p[1];
+
+	/* Clone child in new user namespace. */
 	pid = lxc_clone(run_userns_fn, &d, CLONE_NEWUSER);
-	if (pid < 0)
-		goto err;
+	if (pid < 0) {
+		ERROR("failed to clone child process in new user namespace");
+		goto on_error;
+	}
+
 	close(p[0]);
 	p[0] = -1;
 
-	if ((idmap = idmap_add_id(conf, geteuid(), getegid())) == NULL) {
-		ERROR("Error adding self to container uid/gid map");
-		goto err;
+	/* Find container root. */
+	lxc_list_for_each(it, &conf->id_map) {
+		map = it->elem;
+
+		if (map->nsid != 0)
+			continue;
+
+		if (map->idtype == ID_TYPE_UID && container_root_uid == NULL) {
+			container_root_uid = malloc(sizeof(*container_root_uid));
+			if (!container_root_uid)
+				goto on_error;
+			container_root_uid->idtype = map->idtype;
+			container_root_uid->hostid = map->hostid;
+			container_root_uid->nsid = 0;
+			container_root_uid->range = map->range;
+		} else if (map->idtype == ID_TYPE_GID && container_root_gid == NULL) {
+			container_root_gid = malloc(sizeof(*container_root_gid));
+			if (!container_root_gid)
+				goto on_error;
+			container_root_gid->idtype = map->idtype;
+			container_root_gid->hostid = map->hostid;
+			container_root_gid->nsid = 0;
+			container_root_gid->range = map->range;
+		}
+
+		/* Found container root. */
+		if (container_root_uid && container_root_gid)
+			break;
 	}
 
+	/* This is actually checked earlier but it can't hurt. */
+	if (!container_root_uid || !container_root_gid) {
+		ERROR("no mapping for container root found");
+		goto on_error;
+	}
+
+	/* Check whether the {g,u}id of the user has a mapping. */
+	euid = geteuid();
+	egid = getegid();
+	idmap = idmap_add_id(conf, euid, egid);
+	if (!idmap) {
+		ERROR("failed to prepare id mapping for uid %d and gid %d",
+		      euid, egid);
+		goto on_error;
+	}
+
+	/* Add container root to the map. */
+	tmplist = malloc(sizeof(*tmplist));
+	if (!tmplist)
+		goto on_error;
+	lxc_list_add_elem(tmplist, container_root_uid);
+	lxc_list_add_tail(idmap, tmplist);
+	/* idmap will now keep track of that memory. */
+	container_root_uid = NULL;
+
+	tmplist = malloc(sizeof(*tmplist));
+	if (!tmplist)
+		goto on_error;
+	lxc_list_add_elem(tmplist, container_root_gid);
+	lxc_list_add_tail(idmap, tmplist);
+	/* idmap will now keep track of that memory. */
+	container_root_gid = NULL;
+
+	if (lxc_log_get_level() == LXC_LOG_PRIORITY_TRACE) {
+		lxc_list_for_each(it, idmap) {
+			map = it->elem;
+			TRACE("establishing %cid mapping for \"%d\" in new "
+			      "user namespace: nsuid %lu - hostid %lu - range "
+			      "%lu",
+			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid,
+			      map->nsid, map->hostid, map->range);
+		}
+	}
+
+	/* Set up {g,u}id mapping for user namespace of child process. */
 	ret = lxc_map_ids(idmap, pid);
-	lxc_free_idmap(idmap);
-	free(idmap);
-	if (ret) {
-		ERROR("Error setting up child mappings");
-		goto err;
+	if (ret < 0) {
+		ERROR("error setting up {g,u}id mappings for child process "
+		      "\"%d\"",
+		      pid);
+		goto on_error;
 	}
 
-	// kick the child
+	/* Tell child to proceed. */
 	if (write(p[1], &c, 1) != 1) {
-		SYSERROR("writing to pipe to child");
-		goto err;
+		SYSERROR("failed telling child process \"%d\" to proceed", pid);
+		goto on_error;
 	}
 
+	/* Wait for child to finish. */
 	ret = wait_for_pid(pid);
 
-	close(p[1]);
-	return ret;
+on_error:
+	lxc_free_idmap(idmap);
+	free(container_root_uid);
+	free(container_root_gid);
 
-err:
 	if (p[0] != -1)
 		close(p[0]);
 	close(p[1]);
-	return -1;
+
+	return ret;
 }
 
 /* not thread-safe, do not use from api without first forking */
