@@ -1091,6 +1091,9 @@ static int config_init_gid(const char *key, const char *value,
 {
 	unsigned int init_gid;
 
+	if (config_value_empty(value))
+		return 0;
+
 	if (lxc_safe_uint(value, &init_gid) < 0)
 		return -1;
 	lxc_conf->init_gid = init_gid;
