@@ -400,9 +400,9 @@ out:
 }
 
 static int config_network(const char *key, const char *value,
-		struct lxc_conf *lxc_conf)
+			  struct lxc_conf *lxc_conf)
 {
-	if (value && strlen(value)) {
+	if (!config_value_empty(value)) {
 		ERROR("lxc.network must not have a value");
 		return -1;
 	}
