@@ -1838,7 +1838,7 @@ static int config_mount(const char *key, const char *value,
 	char *mntelem;
 	struct lxc_list *mntlist;
 
-	if (!value || strlen(value) == 0)
+	if (config_value_empty(value))
 		return lxc_clear_mount_entries(lxc_conf);
 
 	mntlist = malloc(sizeof(*mntlist));
