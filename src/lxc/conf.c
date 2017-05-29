@@ -1394,6 +1394,7 @@ static int lxc_setup_devpts(int num_pts)
 		SYSERROR("failed to mount new devpts instance");
 		return -1;
 	}
+	DEBUG("mount new devpts instance with options \"%s\"", devpts_mntopts);
 
 	/* Remove any pre-existing /dev/ptmx file. */
 	ret = access("/dev/ptmx", F_OK);
@@ -3651,6 +3652,13 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 	tty_info->nbtty = 0;
 }
 
+
+int chown_mapped_root_exec_wrapper(void *args)
+{
+	execvp("lxc-usernsexec", args);
+	return -1;
+}
+
 /*
  * chown_mapped_root: for an unprivileged user with uid/gid X to
  * chown a dir to subuid/subgid Y, he needs to run chown as root
@@ -3661,26 +3669,46 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
  */
 int chown_mapped_root(char *path, struct lxc_conf *conf)
 {
-	uid_t rootuid;
-	gid_t rootgid;
-	pid_t pid;
+	uid_t rootuid, rootgid;
 	unsigned long val;
 	char *chownpath = path;
+	int hostuid, hostgid, ret;
+	struct stat sb;
+	char map1[100], map2[100], map3[100], map4[100], map5[100];
+	char ugid[100];
+	char *args1[] = {"lxc-usernsexec",
+			 "-m", map1,
+			 "-m", map2,
+			 "-m", map3,
+			 "-m", map5,
+			 "--", "chown", ugid, path,
+			 NULL};
+	char *args2[] = {"lxc-usernsexec",
+			 "-m", map1,
+			 "-m", map2,
+			 "-m", map3,
+			 "-m", map4,
+			 "-m", map5,
+			 "--", "chown", ugid, path,
+			 NULL};
+	char cmd_output[MAXPATHLEN];
+
+	hostuid = geteuid();
+	hostgid = getegid();
 
 	if (!get_mapped_rootid(conf, ID_TYPE_UID, &val)) {
 		ERROR("No uid mapping for container root");
 		return -1;
 	}
-	rootuid = (uid_t) val;
+	rootuid = (uid_t)val;
 	if (!get_mapped_rootid(conf, ID_TYPE_GID, &val)) {
 		ERROR("No gid mapping for container root");
 		return -1;
 	}
-	rootgid = (gid_t) val;
+	rootgid = (gid_t)val;
 
 	/*
-	 * In case of overlay, we want only the writeable layer
-	 * to be chowned
+	 * In case of overlay, we want only the writeable layer to be chowned
 	 */
 	if (strncmp(path, "overlayfs:", 10) == 0 || strncmp(path, "aufs:", 5) == 0) {
 		chownpath = strchr(path, ':');
@@ -3688,7 +3716,7 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 			ERROR("Bad overlay path: %s", path);
 			return -1;
 		}
-		chownpath = strchr(chownpath+1, ':');
+		chownpath = strchr(chownpath + 1, ':');
 		if (!chownpath) {
 			ERROR("Bad overlay path: %s", path);
 			return -1;
@@ -3696,7 +3724,7 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 		chownpath++;
 	}
 	path = chownpath;
-	if (geteuid() == 0) {
+	if (hostuid == 0) {
 		if (chown(path, rootuid, rootgid) < 0) {
 			ERROR("Error chowning %s", path);
 			return -1;
@@ -3704,97 +3732,85 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 		return 0;
 	}
 
-	if (rootuid == geteuid()) {
+	if (rootuid == hostuid) {
 		// nothing to do
 		INFO("%s: container root is our uid;  no need to chown" ,__func__);
 		return 0;
 	}
 
-	pid = fork();
-	if (pid < 0) {
-		SYSERROR("Failed forking");
+	// save the current gid of "path"
+	if (stat(path, &sb) < 0) {
+		ERROR("Error stat %s", path);
 		return -1;
 	}
-	if (!pid) {
-		int hostuid = geteuid(), hostgid = getegid(), ret;
-		struct stat sb;
-		char map1[100], map2[100], map3[100], map4[100], map5[100];
-		char ugid[100];
-		char *args1[] = { "lxc-usernsexec", "-m", map1, "-m", map2,
-				"-m", map3, "-m", map5,
-				"--", "chown", ugid, path, NULL };
-		char *args2[] = { "lxc-usernsexec", "-m", map1, "-m", map2,
-				"-m", map3, "-m", map4, "-m", map5,
-				"--", "chown", ugid, path, NULL };
 
-		// save the current gid of "path"
-		if (stat(path, &sb) < 0) {
-			ERROR("Error stat %s", path);
-			return -1;
-		}
-
-		/*
-		 * A file has to be group-owned by a gid mapped into the
-		 * container, or the container won't be privileged over it.
-		 */
-		if (sb.st_uid == geteuid() &&
-				mapped_hostid(sb.st_gid, conf, ID_TYPE_GID) < 0 &&
-				chown(path, -1, hostgid) < 0) {
-			ERROR("Failed chgrping %s", path);
-			return -1;
-		}
-
-		// "u:0:rootuid:1"
-		ret = snprintf(map1, 100, "u:0:%d:1", rootuid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error uid printing map string");
-			return -1;
-		}
-
-		// "u:hostuid:hostuid:1"
-		ret = snprintf(map2, 100, "u:%d:%d:1", hostuid, hostuid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error uid printing map string");
-			return -1;
-		}
-
-		// "g:0:rootgid:1"
-		ret = snprintf(map3, 100, "g:0:%d:1", rootgid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error gid printing map string");
-			return -1;
-		}
-
-		// "g:pathgid:rootgid+pathgid:1"
-		ret = snprintf(map4, 100, "g:%d:%d:1", (gid_t)sb.st_gid,
-				rootgid + (gid_t)sb.st_gid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error gid printing map string");
-			return -1;
-		}
-
-		// "g:hostgid:hostgid:1"
-		ret = snprintf(map5, 100, "g:%d:%d:1", hostgid, hostgid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error gid printing map string");
-			return -1;
-		}
-
-		// "0:pathgid" (chown)
-		ret = snprintf(ugid, 100, "0:%d", (gid_t)sb.st_gid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error owner printing format string for chown");
-			return -1;
-		}
-
-		if (hostgid == sb.st_gid)
-			ret = execvp("lxc-usernsexec", args1);
-		else
-			ret = execvp("lxc-usernsexec", args2);
-		SYSERROR("Failed executing usernsexec");
-		exit(1);
+	/*
+	 * A file has to be group-owned by a gid mapped into the
+	 * container, or the container won't be privileged over it.
+	 */
+	DEBUG("trying to chown \"%s\" to %d", path, hostgid);
+	if (sb.st_uid == hostuid &&
+	    mapped_hostid(sb.st_gid, conf, ID_TYPE_GID) < 0 &&
+	    chown(path, -1, hostgid) < 0) {
+		ERROR("Failed chgrping %s", path);
+		return -1;
 	}
-	return wait_for_pid(pid);
+
+	// "u:0:rootuid:1"
+	ret = snprintf(map1, 100, "u:0:%d:1", rootuid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("Error uid printing map string");
+		return -1;
+	}
+
+	// "u:hostuid:hostuid:1"
+	ret = snprintf(map2, 100, "u:%d:%d:1", hostuid, hostuid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("Error uid printing map string");
+		return -1;
+	}
+
+	// "g:0:rootgid:1"
+	ret = snprintf(map3, 100, "g:0:%d:1", rootgid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("Error gid printing map string");
+		return -1;
+	}
+
+	// "g:pathgid:rootgid+pathgid:1"
+	ret = snprintf(map4, 100, "g:%d:%d:1", (gid_t)sb.st_gid,
+		       rootgid + (gid_t)sb.st_gid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("Error gid printing map string");
+		return -1;
+	}
+
+	// "g:hostgid:hostgid:1"
+	ret = snprintf(map5, 100, "g:%d:%d:1", hostgid, hostgid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("Error gid printing map string");
+		return -1;
+	}
+
+	// "0:pathgid" (chown)
+	ret = snprintf(ugid, 100, "0:%d", (gid_t)sb.st_gid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("Error owner printing format string for chown");
+		return -1;
+	}
+
+	if (hostgid == sb.st_gid)
+		ret = run_command(cmd_output, sizeof(cmd_output),
+				  chown_mapped_root_exec_wrapper,
+				  (void *)args1);
+	else
+		ret = run_command(cmd_output, sizeof(cmd_output),
+				  chown_mapped_root_exec_wrapper,
+				  (void *)args2);
+	if (ret < 0)
+		ERROR("lxc-usernsexec failed: %s", cmd_output);
+
+	return ret;
 }
 
 int ttys_shift_ids(struct lxc_conf *c)
