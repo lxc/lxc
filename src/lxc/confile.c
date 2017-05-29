@@ -1443,6 +1443,9 @@ static int config_haltsignal(const char *key, const char *value,
 {
 	int sig_n = sig_parse(value);
 
+	if (config_value_empty(value))
+		return 0;
+
 	if (sig_n < 0)
 		return -1;
 	lxc_conf->haltsignal = sig_n;
