@@ -1284,6 +1284,9 @@ freak_out:
 static int config_tty(const char *key, const char *value,
 		      struct lxc_conf *lxc_conf)
 {
+	if (config_value_empty(value))
+		return 0;
+
 	if (lxc_safe_uint(value, &lxc_conf->tty) < 0)
 		return -1;
 
