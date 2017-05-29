@@ -881,7 +881,7 @@ static int config_network_ipv6(const char *key, const char *value,
 	char *slash,*valdup;
 	char *netmask;
 
-	if (!value || !strlen(value))
+	if (config_value_empty(value))
 		return lxc_clear_config_item(lxc_conf, key);
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
