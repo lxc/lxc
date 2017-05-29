@@ -1523,7 +1523,7 @@ static int config_cap_keep(const char *key, const char *value,
 	struct lxc_list *keeplist;
 	int ret = -1;
 
-	if (!strlen(value))
+	if (config_value_empty(value))
 		return lxc_clear_config_keepcaps(lxc_conf);
 
 	keepcaps = strdup(value);
