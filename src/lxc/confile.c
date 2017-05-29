@@ -1619,7 +1619,7 @@ static int config_limit(const char *key, const char *value,
 	struct rlimit limit;
 	unsigned long limit_value;
 
-	if (!value || strlen(value) == 0)
+	if (config_value_empty(value))
 		return lxc_clear_limits(lxc_conf, key);
 
 	if (strncmp(key, "lxc.limit.", sizeof("lxc.limit.")-1) != 0)
