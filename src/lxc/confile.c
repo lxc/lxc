@@ -1305,7 +1305,7 @@ static int config_cgroup(const char *key, const char *value,
 	struct lxc_list *cglist = NULL;
 	struct lxc_cgroup *cgelem = NULL;
 
-	if (!value || strlen(value) == 0)
+	if (config_value_empty(value))
 		return lxc_clear_cgroups(lxc_conf, key);
 
 	subkey = strstr(key, token);
