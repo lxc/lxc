@@ -1200,7 +1200,7 @@ static int config_group(const char *key, const char *value,
 	struct lxc_list *grouplist;
 	int ret = -1;
 
-	if (!strlen(value))
+	if (config_value_empty(value))
 		return lxc_clear_groups(lxc_conf);
 
 	groups = strdup(value);
