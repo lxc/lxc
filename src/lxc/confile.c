@@ -833,7 +833,7 @@ static int config_network_hwaddr(const char *key, const char *value,
 		return -1;
 	};
 
-	if (!new_value || strlen(new_value) == 0) {
+	if (config_value_empty(new_value)) {
 		free(new_value);
 		netdev->hwaddr = NULL;
 		return 0;
