@@ -1454,7 +1454,7 @@ static int config_mount_auto(const char *key, const char *value,
 	int i;
 	int ret = -1;
 
-	if (!value || strlen(value) == 0) {
+	if (config_value_empty(value)) {
 		lxc_conf->auto_mounts = 0;
 		return 0;
 	}
