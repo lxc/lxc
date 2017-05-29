@@ -5033,6 +5033,9 @@ int lxc_clear_simple_config_item(struct lxc_conf *c, const char *key)
 		c->pts = 0;
 	} else if (strcmp(key, "lxc.include") == 0) {
 		lxc_clear_includes(c);
+	} else if (strcmp(key, "lxc.syslog") == 0) {
+		free(c->syslog);
+		c->syslog = NULL;
 	} else {
 		return -1;
 	}
