@@ -3275,6 +3275,9 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 static int config_ephemeral(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf)
 {
+	if (config_value_empty(value))
+		return 0;
+
 	if (lxc_safe_uint(value, &lxc_conf->ephemeral) < 0)
 		return -1;
 
