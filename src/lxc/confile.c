@@ -1076,6 +1076,9 @@ static int config_init_uid(const char *key, const char *value,
 {
 	unsigned int init_uid;
 
+	if (config_value_empty(value))
+		return 0;
+
 	if (lxc_safe_uint(value, &init_uid) < 0)
 		return -1;
 	lxc_conf->init_uid = init_uid;
