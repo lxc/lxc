@@ -1479,14 +1479,12 @@ static int config_autodev(const char *key, const char *value,
 
 static int sig_num(const char *sig)
 {
-	int n;
-	char *endp = NULL;
+	unsigned int signum;
 
-	errno = 0;
-	n = strtol(sig, &endp, 10);
-	if (sig == endp || n < 0 || errno != 0)
+	if (lxc_safe_uint(sig, &signum) < 0)
 		return -1;
-	return n;
+
+	return signum;
 }
 
 static int rt_sig_num(const char *signame)
