@@ -1518,7 +1518,7 @@ static int config_idmap(const char *key, const char *value, struct lxc_conf *lxc
 	char type;
 	int ret;
 
-	if (!value || strlen(value) == 0)
+	if (config_value_empty(value))
 		return lxc_clear_idmaps(lxc_conf);
 
 	subkey = strstr(key, token);
