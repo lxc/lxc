@@ -1913,7 +1913,7 @@ static int config_cap_drop(const char *key, const char *value,
 	struct lxc_list *droplist;
 	int ret = -1;
 
-	if (!strlen(value))
+	if (config_value_empty(value))
 		return lxc_clear_config_caps(lxc_conf);
 
 	dropcaps = strdup(value);
