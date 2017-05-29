@@ -325,7 +325,7 @@ static int config_string_item(char **conf_item, const char *value)
 {
 	char *new_value;
 
-	if (!value || strlen(value) == 0) {
+	if (config_value_empty(value)) {
 		free(*conf_item);
 		*conf_item = NULL;
 		return 0;
@@ -333,7 +333,7 @@ static int config_string_item(char **conf_item, const char *value)
 
 	new_value = strdup(value);
 	if (!new_value) {
-		SYSERROR("failed to strdup '%s': %m", value);
+		SYSERROR("failed to duplicate string \"%s\"", value);
 		return -1;
 	}
 
