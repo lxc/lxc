@@ -1075,6 +1075,9 @@ static int config_pts(const char *key, const char *value,
 static int config_start(const char *key, const char *value,
 		      struct lxc_conf *lxc_conf)
 {
+	if (config_value_empty(value))
+		return 0;
+
 	if(strcmp(key, "lxc.start.auto") == 0) {
 		lxc_conf->start_auto = atoi(value);
 		return 0;
