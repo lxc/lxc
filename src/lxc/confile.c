@@ -845,7 +845,7 @@ static int config_network_ipv4_gateway(const char *key, const char *value,
 
 	free(netdev->ipv4_gateway);
 
-	if (!value || strlen(value) == 0) {
+	if (config_value_empty(value)) {
 		netdev->ipv4_gateway = NULL;
 	} else if (!strcmp(value, "auto")) {
 		netdev->ipv4_gateway = NULL;
