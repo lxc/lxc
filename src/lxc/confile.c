@@ -1328,7 +1328,7 @@ static int config_environment(const char *key, const char *value,
 {
 	struct lxc_list *list_item = NULL;
 
-	if (!strlen(value))
+	if (config_value_empty(value))
 		return lxc_clear_environment(lxc_conf);
 
 	list_item = malloc(sizeof(*list_item));
