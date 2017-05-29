@@ -434,7 +434,7 @@ static int config_network_type(const char *key, const char *value,
 	struct lxc_netdev *netdev;
 	struct lxc_list *list;
 
-	if (!value || strlen(value) == 0)
+	if (config_value_empty(value))
 		return lxc_clear_config_network(lxc_conf);
 
 	netdev = malloc(sizeof(*netdev));
