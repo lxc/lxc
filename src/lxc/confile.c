@@ -1193,7 +1193,7 @@ static int config_loglevel(const char *key, const char *value,
 {
 	int newlevel;
 
-	if (!value || strlen(value) == 0)
+	if (config_value_empty(value))
 		return 0;
 
 	if (value[0] >= '0' && value[0] <= '9')
