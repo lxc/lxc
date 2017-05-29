@@ -1946,12 +1946,14 @@ static int config_rootfs_options(const char *key, const char *value,
 }
 
 static int config_rootfs_backend(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf)
+				 struct lxc_conf *lxc_conf)
 {
-	if (strlen(value) == 0) {
+	if (config_value_empty(value)) {
 		free(lxc_conf->rootfs.bdev_type);
 		lxc_conf->rootfs.bdev_type = NULL;
+		return 0;
 	}
+
 	if (!is_valid_bdev_type(value)) {
 		ERROR("Bad rootfs.backend: '%s'", value);
 		return -1;
