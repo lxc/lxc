@@ -1540,10 +1540,14 @@ static int config_haltsignal(const char *key, const char *value,
 }
 
 static int config_rebootsignal(const char *key, const char *value,
-			     struct lxc_conf *lxc_conf)
+			       struct lxc_conf *lxc_conf)
 {
-	int sig_n = sig_parse(value);
+	int sig_n;
 
+	if (config_value_empty(value))
+		return 0;
+
+	sig_n = sig_parse(value);
 	if (sig_n < 0)
 		return -1;
 	lxc_conf->rebootsignal = sig_n;
