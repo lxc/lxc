@@ -1407,6 +1407,9 @@ static int config_lsm_aa_profile(const char *key, const char *value,
 static int config_lsm_aa_incomplete(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
+	if (config_value_empty(value))
+		return 0;
+
 	if (lxc_safe_uint(value, &lxc_conf->lsm_aa_allow_incomplete) < 0)
 		return -1;
 
