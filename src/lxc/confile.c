@@ -994,7 +994,7 @@ static int config_network_ipv6_gateway(const char *key, const char *value,
 
 	free(netdev->ipv6_gateway);
 
-	if (!value || strlen(value) == 0) {
+	if (config_value_empty(value)) {
 		netdev->ipv6_gateway = NULL;
 	} else if (!strcmp(value, "auto")) {
 		netdev->ipv6_gateway = NULL;
