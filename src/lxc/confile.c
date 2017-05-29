@@ -3312,6 +3312,9 @@ static int config_no_new_privs(const char *key, const char *value,
 {
 	unsigned int v;
 
+	if (config_value_empty(value))
+		return 0;
+
 	if (lxc_safe_uint(value, &v) < 0)
 		return -1;
 
