@@ -2162,6 +2162,9 @@ static int config_utsname(const char *key, const char *value,
 {
 	struct utsname *utsname;
 
+	if (config_value_empty(value))
+		return 0;
+
 	utsname = malloc(sizeof(*utsname));
 	if (!utsname) {
 		SYSERROR("failed to allocate memory");
