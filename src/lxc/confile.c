@@ -1184,7 +1184,7 @@ static int config_hook(const char *key, const char *value,
 {
 	char *copy;
 
-	if (!value || strlen(value) == 0)
+	if (config_value_empty(value))
 		return lxc_clear_hooks(lxc_conf, key);
 
 	if (strcmp(key, "lxc.hook") == 0) {
