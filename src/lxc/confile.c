@@ -1918,6 +1918,9 @@ out:
 static int config_includefile(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
+	if (config_value_empty(value))
+		return 0;
+
 	if (is_dir(value))
 		return do_includedir(value, lxc_conf);
 
