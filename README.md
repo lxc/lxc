@@ -70,10 +70,10 @@ quite restricted. Just to highlight the two most common problems:
    inside of the container will not be able to boot up correctly.
 
 2. User Namespaces: As outlined above, user namespaces are a big security
-   enhancement. However, users which are unprivileged on the host will only be
-   able to establish a mapping for their own UID if they do not rely on
-   privileged helpers. A standard POSIX system however, requires 65536 UIDs and
-   GIDs to be available to guarantee full functionality.
+   enhancement. However, without relying on privileged helpers users who are
+   unprivileged on the host are only permitted to map their own UID into
+   a container. A standard POSIX system however, requires 65536 UIDs and GIDs
+   to be available to guarantee full functionality.
 
 ## Configuration
 
