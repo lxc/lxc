@@ -2171,11 +2171,15 @@ out:
 }
 
 static int config_includefile(const char *key, const char *value,
-			  struct lxc_conf *lxc_conf)
+			      struct lxc_conf *lxc_conf)
 {
-	if (config_value_empty(value))
+	/* Set config value to default. */
+	if (config_value_empty(value)) {
+		lxc_clear_config_item(lxc_conf, key);
 		return 0;
+	}
 
+	/* Parse new config value. */
 	if (is_dir(value))
 		return do_includedir(value, lxc_conf);
 
