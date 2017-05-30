@@ -1227,14 +1227,16 @@ static int config_start(const char *key, const char *value,
 static int config_monitor(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
-	if (config_value_empty(value))
-		return 0;
-
-	if(strcmp(key, "lxc.monitor.unshare") == 0) {
-		if (lxc_safe_uint(value, &lxc_conf->monitor_unshare) < 0)
-			return -1;
+	/* Set config value to default. */
+	if (config_value_empty(value)) {
+		lxc_conf->monitor_unshare = 0;
 		return 0;
 	}
+
+	/* Parse new config value. */
+	if (strcmp(key, "lxc.monitor.unshare") == 0)
+		return lxc_safe_uint(value, &lxc_conf->monitor_unshare);
+
 	SYSERROR("Unknown key: %s", key);
 	return -1;
 }
