@@ -1179,28 +1179,47 @@ static int config_pts(const char *key, const char *value,
 }
 
 static int config_start(const char *key, const char *value,
-		      struct lxc_conf *lxc_conf)
+			struct lxc_conf *lxc_conf)
 {
-	if (config_value_empty(value))
-		return 0;
+	bool is_empty;
 
-	if(strcmp(key, "lxc.start.auto") == 0) {
+	is_empty = config_value_empty(value);
+
+	if (strcmp(key, "lxc.start.auto") == 0) {
+		/* Set config value to default. */
+		if (is_empty) {
+			lxc_conf->start_auto = 0;
+			return 0;
+		}
+
+		/* Parse new config value. */
 		if (lxc_safe_uint(value, &lxc_conf->start_auto) < 0)
 			return -1;
+
 		if (lxc_conf->start_auto > 1)
 			return -1;
+
 		return 0;
+	} else if (strcmp(key, "lxc.start.delay") == 0) {
+		/* Set config value to default. */
+		if (is_empty) {
+			lxc_conf->start_delay = 0;
+			return 0;
+		}
+
+		/* Parse new config value. */
+		return lxc_safe_uint(value, &lxc_conf->start_delay);
+	} else if (strcmp(key, "lxc.start.order") == 0) {
+		/* Set config value to default. */
+		if (is_empty) {
+			lxc_conf->start_order = 0;
+			return 0;
+		}
+
+		/* Parse new config value. */
+		return lxc_safe_int(value, &lxc_conf->start_order);
 	}
-	else if (strcmp(key, "lxc.start.delay") == 0) {
-		if (lxc_safe_uint(value, &lxc_conf->start_delay) < 0)
-			return -1;
-		return 0;
-	}
-	else if (strcmp(key, "lxc.start.order") == 0) {
-		if (lxc_safe_int(value, &lxc_conf->start_order) < 0)
-			return -1;
-		return 0;
-	}
+
 	SYSERROR("Unknown key: %s", key);
 	return -1;
 }
