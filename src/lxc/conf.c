@@ -2873,7 +2873,8 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	return 0;
 
 out_delete:
-	lxc_netdev_delete_by_name(veth1);
+	if (netdev->ifindex != 0)
+		lxc_netdev_delete_by_name(veth1);
 	if (!netdev->priv.veth_attr.pair)
 		free(veth1);
 	free(veth2);
@@ -3201,7 +3202,7 @@ bool lxc_delete_network(struct lxc_handler *handler)
 		/* Explicitly delete host veth device to prevent lingering
 		 * devices. We had issues in LXD around this.
 		 */
-		if (netdev->type == LXC_NET_VETH && !am_unpriv()) {
+		if (netdev->ifindex != 0 && netdev->type == LXC_NET_VETH && !am_unpriv()) {
 			char *hostveth;
 			if (netdev->priv.veth_attr.pair) {
 				hostveth = netdev->priv.veth_attr.pair;
