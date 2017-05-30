@@ -3385,7 +3385,6 @@ static bool new_hwaddr(char *hwaddr)
 {
 	int ret;
 
-	/* COMMENT(brauner): Initialize random number generator. */
 	(void)randseed(true);
 
 	ret = snprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x", rand() % 255,
@@ -3474,9 +3473,13 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 static int config_ephemeral(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf)
 {
-	if (config_value_empty(value))
+	/* Set config value to default. */
+	if (config_value_empty(value)) {
+		lxc_conf->ephemeral = 0;
 		return 0;
+	}
 
+	/* Parse new config value. */
 	if (lxc_safe_uint(value, &lxc_conf->ephemeral) < 0)
 		return -1;
 
