@@ -2820,29 +2820,147 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 
 int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 {
-	if (strcmp(key, "lxc.network") == 0)
-		return lxc_clear_config_network(c);
-	else if (strncmp(key, "lxc.network.", 12) == 0)
-		return lxc_clear_nic(c, key + 12);
-	else if (strcmp(key, "lxc.cap.drop") == 0)
-		return lxc_clear_config_caps(c);
-	else if (strcmp(key, "lxc.cap.keep") == 0)
-		return lxc_clear_config_keepcaps(c);
-	else if (strncmp(key, "lxc.cgroup", 10) == 0)
-		return lxc_clear_cgroups(c, key);
-	else if (strcmp(key, "lxc.mount.entry") == 0)
-		return lxc_clear_mount_entries(c);
-	else if (strcmp(key, "lxc.mount.auto") == 0)
-		return lxc_clear_automounts(c);
-	else if (strncmp(key, "lxc.hook", 8) == 0)
-		return lxc_clear_hooks(c, key);
-	else if (strncmp(key, "lxc.group", 9) == 0)
-		return lxc_clear_groups(c);
-	else if (strncmp(key, "lxc.environment", 15) == 0)
-		return lxc_clear_environment(c);
-	else if (strncmp(key, "lxc.id_map", 10) == 0)
-		return lxc_clear_idmaps(c);
-	return lxc_clear_simple_config_item(c, key);
+	int ret = 0;
+
+	if (strcmp(key, "lxc.network") == 0) {
+		ret = lxc_clear_config_network(c);
+
+	} else if (strncmp(key, "lxc.network.", 12) == 0) {
+		ret = lxc_clear_nic(c, key + 12);
+
+	} else if (strcmp(key,  "lxc.cap.drop") == 0) {
+		ret = lxc_clear_config_caps(c);
+
+	} else if (strcmp(key,  "lxc.cap.keep") == 0) {
+		ret = lxc_clear_config_keepcaps(c);
+
+	} else if (strncmp(key, "lxc.cgroup", 10) == 0) {
+		ret = lxc_clear_cgroups(c, key);
+
+	} else if (strcmp(key,  "lxc.mount.entry") == 0) {
+		ret = lxc_clear_mount_entries(c);
+
+	} else if (strcmp(key,  "lxc.mount.auto") == 0) {
+		ret = lxc_clear_automounts(c);
+
+	} else if (strncmp(key, "lxc.hook", 8) == 0) {
+		ret = lxc_clear_hooks(c, key);
+
+	} else if (strncmp(key, "lxc.group", 9) == 0) {
+		ret = lxc_clear_groups(c);
+
+	} else if (strncmp(key, "lxc.environment", 15) == 0) {
+		ret = lxc_clear_environment(c);
+
+	} else if (strncmp(key, "lxc.id_map", 10) == 0) {
+		ret = lxc_clear_idmaps(c);
+
+	} else if (strcmp(key, "lxc.utsname") == 0) {
+		free(c->utsname);
+		c->utsname = NULL;
+
+	} else if (strcmp(key, "lxc.arch") == 0) {
+		c->personality = -1;
+
+	} else if (strcmp(key, "lxc.haltsignal") == 0) {
+		c->haltsignal = 0;
+
+	} else if (strcmp(key, "lxc.rebootsignal") == 0) {
+		c->rebootsignal = 0;
+
+	} else if (strcmp(key, "lxc.stopsignal") == 0) {
+		c->stopsignal = 0;
+
+	} else if (strcmp(key, "lxc.init_cmd") == 0) {
+		free(c->init_cmd);
+		c->init_cmd = NULL;
+
+	} else if (strcmp(key, "lxc.init_uid") == 0) {
+		c->init_uid = 0;
+
+	} else if (strcmp(key, "lxc.init_gid") == 0) {
+		c->init_gid = 0;
+
+	} else if (strcmp(key, "lxc.ephemeral") == 0) {
+		c->ephemeral = 0;
+
+	} else if (strcmp(key, "lxc.console.logfile") == 0) {
+		free(c->console.log_path);
+		c->console.log_path = NULL;
+
+	} else if (strcmp(key, "lxc.console") == 0) {
+		free(c->console.path);
+		c->console.path = NULL;
+
+	} else if (strcmp(key, "lxc.tty") == 0) {
+		c->tty = 0;
+
+	} else if (strcmp(key, "lxc.devttydir") == 0) {
+		free(c->ttydir);
+		c->ttydir = NULL;
+
+	} else if (strcmp(key, "lxc.autodev") == 0) {
+		c->autodev = 1;
+
+	} else if (strcmp(key, "lxc.kmsg") == 0) {
+		c->kmsg = 0;
+
+	} else if (strcmp(key, "lxc.mount") == 0) {
+		free(c->fstab);
+		c->fstab = NULL;
+
+	} else if (strcmp(key, "lxc.rootfs") == 0) {
+		free(c->rootfs.path);
+		c->rootfs.path = NULL;
+
+	} else if (strcmp(key, "lxc.rootfs.mount") == 0) {
+		free(c->rootfs.mount);
+		c->rootfs.mount = NULL;
+
+	} else if (strcmp(key, "lxc.rootfs.options") == 0) {
+		free(c->rootfs.options);
+		c->rootfs.options = NULL;
+
+	} else if (strcmp(key, "lxc.rootfs.backend") == 0) {
+		free(c->rootfs.bdev_type);
+		c->rootfs.bdev_type = NULL;
+
+	} else if (strcmp(key, "lxc.aa_profile") == 0) {
+		free(c->lsm_aa_profile);
+		c->lsm_aa_profile = NULL;
+
+	} else if (strcmp(key, "lxc.aa_allow_incomplete") == 0) {
+		c->lsm_aa_allow_incomplete = 0;
+
+	} else if (strcmp(key, "lxc.se_context") == 0) {
+		free(c->lsm_se_context);
+		c->lsm_se_context = NULL;
+
+	} else if (strcmp(key, "lxc.seccomp") == 0) {
+		free(c->seccomp);
+		c->seccomp = NULL;
+
+	} else if (strcmp(key, "lxc.loglevel") == 0) {
+		c->loglevel = LXC_LOG_PRIORITY_NOTSET;
+
+	} else if (strcmp(key, "lxc.logfile") == 0) {
+		free(c->logfile);
+		c->logfile = NULL;
+
+	} else if (strcmp(key, "lxc.monitor.unshare") == 0) {
+		c->monitor_unshare = 0;
+
+	} else if (strcmp(key, "lxc.pts") == 0) {
+		c->pts = 0;
+
+	} else if (strcmp(key, "lxc.include") == 0) {
+		lxc_clear_includes(c);
+
+	} else {
+		ret = -1;
+	}
+
+	return ret;
 }
 
 /*
