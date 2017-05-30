@@ -2863,6 +2863,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_conf_int(c, retv, inlen, c->haltsignal);
 	else if (strcmp(key, "lxc.rebootsignal") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->rebootsignal);
+	else if (strcmp(key, "lxc.stopsignal") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->stopsignal);
 	else return -1;
 
 	if (!v)
