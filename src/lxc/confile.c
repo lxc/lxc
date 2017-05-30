@@ -1401,13 +1401,14 @@ freak_out:
 static int config_tty(const char *key, const char *value,
 		      struct lxc_conf *lxc_conf)
 {
-	if (config_value_empty(value))
+	/* Set config value to default. */
+	if (config_value_empty(value)) {
+		lxc_conf->tty = 0;
 		return 0;
+	}
 
-	if (lxc_safe_uint(value, &lxc_conf->tty) < 0)
-		return -1;
-
-	return 0;
+	/* Parse new config value. */
+	return lxc_safe_uint(value, &lxc_conf->tty);
 }
 
 static int config_ttydir(const char *key, const char *value,
