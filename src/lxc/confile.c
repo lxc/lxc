@@ -1072,13 +1072,17 @@ static int config_init_cmd(const char *key, const char *value,
 }
 
 static int config_init_uid(const char *key, const char *value,
-				 struct lxc_conf *lxc_conf)
+			   struct lxc_conf *lxc_conf)
 {
 	unsigned int init_uid;
 
-	if (config_value_empty(value))
+	/* Set config value to default. */
+	if (config_value_empty(value)) {
+		lxc_conf->init_uid = 0;
 		return 0;
+	}
 
+	/* Parse new config value. */
 	if (lxc_safe_uint(value, &init_uid) < 0)
 		return -1;
 	lxc_conf->init_uid = init_uid;
