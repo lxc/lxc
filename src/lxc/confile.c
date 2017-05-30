@@ -1801,61 +1801,149 @@ out:
 
 static int config_idmap(const char *key, const char *value, struct lxc_conf *lxc_conf)
 {
-	char *token = "lxc.id_map";
-	char *subkey;
-	struct lxc_list *idmaplist = NULL;
-	struct id_map *idmap = NULL;
 	unsigned long hostid, nsid, range;
 	char type;
-	int ret;
+	char *window, *slide;
+	char *dup = NULL;
+	struct lxc_list *idmaplist = NULL;
+	struct id_map *idmap = NULL;
 
 	if (config_value_empty(value))
 		return lxc_clear_idmaps(lxc_conf);
 
-	subkey = strstr(key, token);
-
-	if (!subkey)
-		return -1;
-
-	if (!strlen(subkey))
-		return -1;
-
 	idmaplist = malloc(sizeof(*idmaplist));
 	if (!idmaplist)
-		goto out;
+		goto on_error;
 
 	idmap = malloc(sizeof(*idmap));
 	if (!idmap)
-		goto out;
+		goto on_error;
 	memset(idmap, 0, sizeof(*idmap));
 
-	ret = sscanf(value, "%c %lu %lu %lu", &type, &nsid, &hostid, &range);
-	if (ret != 4)
-		goto out;
+	/* Duplicate string. */
+	dup = strdup(value);
+	if (!dup)
+		goto on_error;
 
+	/* A prototypical idmap entry would be: "0 1000 1000000 65536" */
+
+	/* align */
+        slide = window = dup;
+        /* skip whitespace */
+        slide += strspn(slide, " \t\r");
+        if (slide != window && *slide == '\0')
+                goto on_error;
+
+	/* Validate type. */
+        if (*slide != 'u' && *slide != 'g')
+                goto on_error;
+        /* Assign type. */
+        type = *slide;
+
+	/* move beyond type */
+        slide++;
+	/* align */
+        window = slide;
+        /* Validate that only whitespace follows. */
+        slide += strspn(slide, " \t\r");
+	/* There must be whitespace. */
+        if (slide == window)
+                goto on_error;
+
+        /* Mark beginning of nsuid. */
+        window = slide;
+	/* Validate that non-whitespace follows. */
+        slide += strcspn(slide, " \t\r");
+	/* There must be non-whitespace. */
+        if (slide == window || *slide == '\0')
+                goto on_error;
+        /* Mark end of nsuid. */
+        *slide = '\0';
+
+        /* Parse nsuid. */
+        if (lxc_safe_ulong(window, &nsid) < 0)
+                goto on_error;
+
+	/* Move beyond \0. */
+        slide++;
+	/* align */
+        window = slide;
+        /* Validate that only whitespace follows. */
+        slide += strspn(slide, " \t\r");
+	/* If there was only one whitespace then we whiped it with our \0 above.
+	 * So only ensure that we're not at the end of the string.
+	 */
+	if (*slide == '\0')
+                goto on_error;
+
+        /* Mark beginning of hostid. */
+        window = slide;
+	/* Validate that non-whitespace follows. */
+        slide += strcspn(slide, " \t\r");
+	/* There must be non-whitespace. */
+        if (slide == window || *slide == '\0')
+                goto on_error;
+        /* Mark end of nsuid. */
+        *slide = '\0';
+
+        /* Parse hostid. */
+        if (lxc_safe_ulong(window, &hostid) < 0)
+                goto on_error;
+
+	/* Move beyond \0. */
+        slide++;
+	/* align */
+        window = slide;
+        /* Validate that only whitespace follows. */
+        slide += strspn(slide, " \t\r");
+	/* If there was only one whitespace then we whiped it with our \0 above.
+	 * So only ensure that we're not at the end of the string.
+	 */
+        if (*slide == '\0')
+                goto on_error;
+
+        /* Mark beginning of range. */
+        window = slide;
+	/* Validate that non-whitespace follows. */
+        slide += strcspn(slide, " \t\r");
+	/* There must be non-whitespace. */
+        if (slide == window)
+                goto on_error;
+
+	/* The range is the last valid entry we expect. So make sure that there
+	 * is not trailing garbage and if there is, error out.
+	 */
+	if (*(slide + strspn(slide, " \t\r\n")) != '\0')
+                goto on_error;
+        /* Mark end of range. */
+        *slide = '\0';
+
+        /* Parse range. */
+        if (lxc_safe_ulong(window, &range) < 0)
+                goto on_error;
+
+	/* Yay, we survived. */
 	INFO("read uid map: type %c nsid %lu hostid %lu range %lu", type, nsid, hostid, range);
 	if (type == 'u')
 		idmap->idtype = ID_TYPE_UID;
 	else if (type == 'g')
 		idmap->idtype = ID_TYPE_GID;
 	else
-		goto out;
+		goto on_error;
 
 	idmap->hostid = hostid;
 	idmap->nsid = nsid;
 	idmap->range = range;
-
 	idmaplist->elem = idmap;
 	lxc_list_add_tail(&lxc_conf->id_map, idmaplist);
+	idmap = NULL;
 
 	return 0;
 
-out:
+on_error:
 	free(idmaplist);
-
-	if (idmap) {
-		free(idmap);
-	}
+	free(idmap);
+	free(dup);
 
 	return -1;
 }
