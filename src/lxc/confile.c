@@ -2703,10 +2703,16 @@ void write_config(FILE *fout, struct lxc_conf *c)
 bool do_append_unexp_config_line(struct lxc_conf *conf, const char *key, const char *v)
 {
 	int ret;
-	size_t len = strlen(key) + strlen(v) + 4;
-	char *tmp = alloca(len);
+	size_t len;
+	char *tmp;
 
-	ret = snprintf(tmp, len, "%s = %s", key, v);
+	len = strlen(key) + strlen(v) + 4;
+	tmp = alloca(len);
+
+	if (config_value_empty(v))
+		ret = snprintf(tmp, len, "%s =", key);
+	else
+		ret = snprintf(tmp, len, "%s = %s", key, v);
 	if (ret < 0 || ret >= len)
 		return false;
 
