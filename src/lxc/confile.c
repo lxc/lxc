@@ -3300,9 +3300,17 @@ static int config_syslog(const char *key, const char *value,
 {
 	int facility;
 
+	/* Clear any previously set value. */
+	if (lxc_conf->syslog) {
+		free(lxc_conf->syslog);
+		lxc_conf->syslog = NULL;
+	}
+
+	/* Check if value is empty. */
 	if (config_value_empty(value))
 		return 0;
 
+	/* Parse value. */
 	facility = lxc_syslog_priority_to_int(value);
 	if (facility == -EINVAL) {
 		ERROR("Wrong value for lxc.syslog.");
