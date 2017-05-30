@@ -1443,16 +1443,21 @@ static int config_lsm_aa_profile(const char *key, const char *value,
 }
 
 static int config_lsm_aa_incomplete(const char *key, const char *value,
-				 struct lxc_conf *lxc_conf)
+				    struct lxc_conf *lxc_conf)
 {
-	if (config_value_empty(value))
+	/* Set config value to default. */
+	if (config_value_empty(value)) {
+		lxc_conf->lsm_aa_allow_incomplete = 0;
 		return 0;
+	}
 
+	/* Parse new config value. */
 	if (lxc_safe_uint(value, &lxc_conf->lsm_aa_allow_incomplete) < 0)
 		return -1;
 
 	if (lxc_conf->lsm_aa_allow_incomplete > 1) {
-		ERROR("Wrong value for lxc.lsm_aa_allow_incomplete. Can only be set to 0 or 1");
+		ERROR("Wrong value for lxc.lsm_aa_allow_incomplete. Can only "
+		      "be set to 0 or 1");
 		return -1;
 	}
 
