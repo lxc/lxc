@@ -1418,11 +1418,15 @@ static int config_ttydir(const char *key, const char *value,
 }
 
 static int config_kmsg(const char *key, const char *value,
-			  struct lxc_conf *lxc_conf)
+		       struct lxc_conf *lxc_conf)
 {
-	if (config_value_empty(value))
+	/* Set config value to default. */
+	if (config_value_empty(value)) {
+		lxc_conf->kmsg = 0;
 		return 0;
+	}
 
+	/* Parse new config value. */
 	if (lxc_safe_uint(value, &lxc_conf->kmsg) < 0)
 		return -1;
 
