@@ -2859,6 +2859,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_conf_int(c, retv, inlen, c->ephemeral);
 	else if (strcmp(key, "lxc.id_map") == 0)
 		return lxc_get_idmaps(c, retv, inlen);
+	else if (strcmp(key, "lxc.haltsignal") == 0)
+		return lxc_get_conf_int(c, retv, inlen, c->haltsignal);
 	else return -1;
 
 	if (!v)
