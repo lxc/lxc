@@ -3518,13 +3518,17 @@ static int config_syslog(const char *key, const char *value,
 }
 
 static int config_no_new_privs(const char *key, const char *value,
-				    struct lxc_conf *lxc_conf)
+			       struct lxc_conf *lxc_conf)
 {
 	unsigned int v;
 
-	if (config_value_empty(value))
+	/* Set config value to default. */
+	if (config_value_empty(value)) {
+		lxc_conf->no_new_privs = false;
 		return 0;
+	}
 
+	/* Parse new config value. */
 	if (lxc_safe_uint(value, &v) < 0)
 		return -1;
 
