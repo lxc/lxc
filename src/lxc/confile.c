@@ -1675,8 +1675,10 @@ out:
 static int config_fstab(const char *key, const char *value,
 			struct lxc_conf *lxc_conf)
 {
-	if (config_value_empty(value))
+	if (config_value_empty(value)) {
+		lxc_clear_config_item(lxc_conf, key);
 		return -1;
+	}
 
 	return config_path_item(&lxc_conf->fstab, value);
 }
