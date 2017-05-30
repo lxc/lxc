@@ -1484,21 +1484,27 @@ static int config_logfile(const char *key, const char *value,
 }
 
 static int config_loglevel(const char *key, const char *value,
-			     struct lxc_conf *lxc_conf)
+			   struct lxc_conf *lxc_conf)
 {
 	int newlevel;
 
-	if (config_value_empty(value))
+	/* Set config value to default. */
+	if (config_value_empty(value)) {
+		lxc_conf->loglevel = LXC_LOG_PRIORITY_NOTSET;
 		return 0;
+	}
 
+	/* Parse new config value. */
 	if (value[0] >= '0' && value[0] <= '9') {
 		if (lxc_safe_int(value, &newlevel) < 0)
 			return -1;
 	} else {
 		newlevel = lxc_log_priority_to_int(value);
 	}
-	// store these values in the lxc_conf, and then try to set for
-	// actual current logging.
+
+	/* store these values in the lxc_conf, and then try to set for actual
+	 * current logging.
+	 */
 	lxc_conf->loglevel = newlevel;
 	return lxc_log_set_level(&lxc_conf->loglevel, newlevel);
 }
