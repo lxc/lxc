@@ -2233,8 +2233,10 @@ static int config_utsname(const char *key, const char *value,
 {
 	struct utsname *utsname;
 
-	if (config_value_empty(value))
+	if (config_value_empty(value)) {
+		lxc_clear_config_item(lxc_conf, key);
 		return 0;
+	}
 
 	utsname = malloc(sizeof(*utsname));
 	if (!utsname) {
@@ -2243,8 +2245,7 @@ static int config_utsname(const char *key, const char *value,
 	}
 
 	if (strlen(value) >= sizeof(utsname->nodename)) {
-		ERROR("node name '%s' is too long",
-			      value);
+		ERROR("node name '%s' is too long", value);
 		free(utsname);
 		return -1;
 	}
