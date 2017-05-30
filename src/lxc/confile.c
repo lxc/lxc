@@ -2967,6 +2967,54 @@ static int lxc_get_item_network(struct lxc_conf *c, char *retv, int inlen)
 	return fulllen;
 }
 
+static int lxc_get_idmaps(struct lxc_conf *c, char *retv, int inlen)
+{
+	struct lxc_list *it;
+	int len, listlen, ret;
+	int fulllen = 0;
+/* "u 1000 1000000 65536"
+ *
+ * let's render this as
+ *
+ * sizeof(char)
+ * +
+ * sizeof(" ")
+ * +
+ * sizeof(uint64_t)
+ * +
+ * sizeof(" ")
+ * +
+ * sizeof(uint64_t)
+ * +
+ * sizeof(" ")
+ * +
+ * sizeof(uint64_t)
+ * +
+ * \0
+ */
+#define __LXC_IDMAP_STR_BUF (3 * LXC_NUMSTRLEN64 + 3 + 1 + 1)
+	char buf[__LXC_IDMAP_STR_BUF];
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	listlen = lxc_list_len(&c->id_map);
+	lxc_list_for_each(it, &c->id_map)
+	{
+		struct id_map *map = it->elem;
+		ret = snprintf(buf, __LXC_IDMAP_STR_BUF, "%c %lu %lu %lu",
+			       (map->idtype == ID_TYPE_UID) ? 'u' : 'g',
+			       map->nsid, map->hostid, map->range);
+		if (ret < 0 || ret >= __LXC_IDMAP_STR_BUF)
+			return -1;
+
+		strprint(retv, inlen, "%s%s", buf, (listlen-- > 1) ? "\n" : "");
+	}
+	return fulllen;
+}
+
 int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 			int inlen)
 {
@@ -3054,6 +3102,8 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_limit_entry(c, retv, inlen, "all");
 	else if (strncmp(key, "lxc.limit.", 10) == 0) // specific limit
 		return lxc_get_limit_entry(c, retv, inlen, key + 10);
+	else if (strcmp(key, "lxc.id_map") == 0)
+		return lxc_get_idmaps(c, retv, inlen);
 	else return -1;
 
 	if (!v)
