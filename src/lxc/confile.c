@@ -1580,9 +1580,13 @@ static int config_haltsignal(const char *key, const char *value,
 {
 	int sig_n;
 
-	if (config_value_empty(value))
+	/* Set config value to default. */
+	if (config_value_empty(value)) {
+		lxc_conf->haltsignal = 0;
 		return 0;
+	}
 
+	/* Parse new config value. */
 	sig_n = sig_parse(value);
 
 	if (sig_n < 0)
