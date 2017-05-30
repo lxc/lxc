@@ -1428,9 +1428,13 @@ static int config_loglevel(const char *key, const char *value,
 static int config_autodev(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
-	if (config_value_empty(value))
+	/* Set config value to default. */
+	if (config_value_empty(value)) {
+		lxc_conf->autodev = 0;
 		return 0;
+	}
 
+	/* Parse new config value. */
 	if (lxc_safe_uint(value, &lxc_conf->autodev) < 0)
 		return -1;
 
