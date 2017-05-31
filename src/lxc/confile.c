@@ -392,7 +392,7 @@ static int config_network_nic(const char *key, const char *value,
 		ERROR("unknown key %s", key);
 		goto out;
 	}
-	ret = config->cb(key, value, lxc_conf);
+	ret = config->set(key, value, lxc_conf);
 
 out:
 	free(copy);
@@ -2230,7 +2230,7 @@ static int parse_line(char *buffer, void *data)
 		goto out;
 	}
 
-	ret = config->cb(key, value, plc->conf);
+	ret = config->set(key, value, plc->conf);
 
 out:
 	free(linep);
