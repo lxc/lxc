@@ -64,73 +64,73 @@
 lxc_log_define(lxc_confile, lxc);
 
 static int set_config_personality(const char *, const char *, struct lxc_conf *);
-static int get_config_personality(struct lxc_container *, const char *, char *, int);
+static int get_config_personality(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_pts(const char *, const char *, struct lxc_conf *);
-static int get_config_pts(struct lxc_container *, const char *, char *, int);
+static int get_config_pts(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_tty(const char *, const char *, struct lxc_conf *);
-static int get_config_tty(struct lxc_container *, const char *, char *, int);
+static int get_config_tty(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_ttydir(const char *, const char *, struct lxc_conf *);
-static int get_config_ttydir(struct lxc_container *, const char *, char *, int);
+static int get_config_ttydir(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_kmsg(const char *, const char *, struct lxc_conf *);
-static int get_config_kmsg(struct lxc_container *, const char *, char *, int);
+static int get_config_kmsg(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_lsm_aa_profile(const char *, const char *, struct lxc_conf *);
-static int get_config_lsm_aa_profile(struct lxc_container *, const char *, char *, int);
+static int get_config_lsm_aa_profile(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_lsm_aa_incomplete(const char *, const char *, struct lxc_conf *);
-static int get_config_lsm_aa_incomplete(struct lxc_container *, const char *, char *, int);
+static int get_config_lsm_aa_incomplete(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_lsm_se_context(const char *, const char *, struct lxc_conf *);
-static int get_config_lsm_se_context(struct lxc_container *, const char *, char *, int);
+static int get_config_lsm_se_context(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_cgroup(const char *, const char *, struct lxc_conf *);
-static int get_config_cgroup(struct lxc_container *, const char *, char *, int);
+static int get_config_cgroup(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_idmaps(const char *, const char *, struct lxc_conf *);
-static int get_config_idmaps(struct lxc_container *, const char *, char *, int);
+static int get_config_idmaps(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_loglevel(const char *, const char *, struct lxc_conf *);
-static int get_config_loglevel(struct lxc_container *, const char *, char *, int);
+static int get_config_loglevel(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_logfile(const char *, const char *, struct lxc_conf *);
-static int get_config_logfile(struct lxc_container *, const char *, char *, int);
+static int get_config_logfile(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_mount(const char *, const char *, struct lxc_conf *);
-static int get_config_mount(struct lxc_container *, const char *, char *, int);
+static int get_config_mount(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_mount_auto(const char *, const char *, struct lxc_conf *);
-static int get_config_mount_auto(struct lxc_container *, const char *, char *, int);
+static int get_config_mount_auto(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_fstab(const char *, const char *, struct lxc_conf *);
-static int get_config_fstab(struct lxc_container *, const char *, char *, int);
+static int get_config_fstab(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_rootfs(const char *, const char *, struct lxc_conf *);
-static int get_config_rootfs(struct lxc_container *, const char *, char *, int);
+static int get_config_rootfs(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_rootfs_mount(const char *, const char *, struct lxc_conf *);
-static int get_config_rootfs_mount(struct lxc_container *, const char *, char *, int);
+static int get_config_rootfs_mount(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_rootfs_options(const char *, const char *, struct lxc_conf *);
-static int get_config_rootfs_options(struct lxc_container *, const char *, char *, int);
+static int get_config_rootfs_options(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_rootfs_backend(const char *, const char *, struct lxc_conf *);
-static int get_config_rootfs_backend(struct lxc_container *, const char *, char *, int);
+static int get_config_rootfs_backend(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_pivotdir(const char *, const char *, struct lxc_conf *);
-static int get_config_pivotdir(struct lxc_container *, const char *, char *, int);
+static int get_config_pivotdir(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_utsname(const char *, const char *, struct lxc_conf *);
-static int get_config_utsname(struct lxc_container *, const char *, char *, int);
+static int get_config_utsname(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_hooks(const char *, const char *, struct lxc_conf *lxc_conf);
-static int get_config_hooks(struct lxc_container *, const char *, char *, int);
+static int get_config_hooks(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_network(const char *, const char *, struct lxc_conf *);
-static int get_config_network(struct lxc_container *, const char *, char *, int);
+static int get_config_network(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_network_type(const char *, const char *, struct lxc_conf *);
 static int set_config_network_flags(const char *, const char *, struct lxc_conf *);
@@ -147,70 +147,70 @@ static int set_config_network_script_up(const char *, const char *, struct lxc_c
 static int set_config_network_script_down(const char *, const char *, struct lxc_conf *);
 static int set_config_network_ipv6(const char *, const char *, struct lxc_conf *);
 static int set_config_network_ipv6_gateway(const char *, const char *, struct lxc_conf *);
-static int get_config_network_item(struct lxc_container *, const char *, char *, int);
+static int get_config_network_item(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_cap_drop(const char *, const char *, struct lxc_conf *);
-static int get_config_cap_drop(struct lxc_container *, const char *, char *, int);
+static int get_config_cap_drop(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_cap_keep(const char *, const char *, struct lxc_conf *);
-static int get_config_cap_keep(struct lxc_container *, const char *, char *, int);
+static int get_config_cap_keep(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_console(const char *, const char *, struct lxc_conf *);
-static int get_config_console(struct lxc_container *, const char *, char *, int);
+static int get_config_console(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_console_logfile(const char *, const char *, struct lxc_conf *);
-static int get_config_console_logfile(struct lxc_container *, const char *, char *, int);
+static int get_config_console_logfile(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_seccomp(const char *, const char *, struct lxc_conf *);
-static int get_config_seccomp(struct lxc_container *, const char *, char *, int);
+static int get_config_seccomp(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_includefile(const char *, const char *, struct lxc_conf *);
 static int set_config_network_nic(const char *, const char *, struct lxc_conf *);
 
 static int set_config_autodev(const char *, const char *, struct lxc_conf *);
-static int get_config_autodev(struct lxc_container *, const char *, char *, int);
+static int get_config_autodev(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_haltsignal(const char *, const char *, struct lxc_conf *);
-static int get_config_haltsignal(struct lxc_container *, const char *, char *, int);
+static int get_config_haltsignal(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_rebootsignal(const char *, const char *, struct lxc_conf *);
-static int get_config_rebootsignal(struct lxc_container *, const char *, char *, int);
+static int get_config_rebootsignal(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_stopsignal(const char *, const char *, struct lxc_conf *);
-static int get_config_stopsignal(struct lxc_container *, const char *, char *, int);
+static int get_config_stopsignal(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_start(const char *, const char *, struct lxc_conf *);
-static int get_config_start(struct lxc_container *, const char *, char *, int);
+static int get_config_start(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_syslog(const char *, const char *, struct lxc_conf *);
-static int get_config_syslog(struct lxc_container *, const char *, char *, int);
+static int get_config_syslog(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_monitor(const char *, const char *, struct lxc_conf *);
-static int get_config_monitor(struct lxc_container *, const char *, char *, int);
+static int get_config_monitor(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_group(const char *, const char *, struct lxc_conf *);
-static int get_config_group(struct lxc_container *, const char *, char *, int);
+static int get_config_group(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_environment(const char *, const char *, struct lxc_conf *);
-static int get_config_environment(struct lxc_container *, const char *, char *, int);
+static int get_config_environment(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_init_cmd(const char *, const char *, struct lxc_conf *);
-static int get_config_init_cmd(struct lxc_container *, const char *, char *, int);
+static int get_config_init_cmd(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_init_uid(const char *, const char *, struct lxc_conf *);
-static int get_config_init_uid(struct lxc_container *, const char *, char *, int);
+static int get_config_init_uid(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_init_gid(const char *, const char *, struct lxc_conf *);
-static int get_config_init_gid(struct lxc_container *, const char *, char *, int);
+static int get_config_init_gid(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_ephemeral(const char *, const char *, struct lxc_conf *);
-static int get_config_ephemeral(struct lxc_container *, const char *, char *, int);
+static int get_config_ephemeral(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_no_new_privs(const char *, const char *, struct lxc_conf *);
-static int get_config_no_new_privs(struct lxc_container *, const char *, char *, int);
+static int get_config_no_new_privs(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_limit(const char *, const char *, struct lxc_conf *);
-static int get_config_limit(struct lxc_container *, const char *, char *, int);
+static int get_config_limit(const char *, char *, int, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 	{ "lxc.arch",                 set_config_personality,          get_config_personality,       NULL},
@@ -3260,8 +3260,8 @@ static int set_config_no_new_privs(const char *key, const char *value,
 }
 
 /* Callbacks to get configuration items. */
-static int get_config_personality(struct lxc_container *c, const char *key,
-				  char *retv, int inlen)
+static int get_config_personality(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c)
 {
 	int fulllen = 0;
 
@@ -3273,7 +3273,7 @@ static int get_config_personality(struct lxc_container *c, const char *key,
 #if HAVE_SYS_PERSONALITY_H
 	int len = 0;
 
-	switch (c->lxc_conf->personality) {
+	switch (c->personality) {
 	case PER_LINUX32:
 		strprint(retv, inlen, "i686");
 		break;
@@ -3288,16 +3288,16 @@ static int get_config_personality(struct lxc_container *c, const char *key,
 	return fulllen;
 }
 
-static int get_config_pts(struct lxc_container *c, const char *key, char *retv,
-			  int inlen)
+static int get_config_pts(const char *key, char *retv, int inlen,
+			  struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen, c->lxc_conf->pts);
+	return lxc_get_conf_int(c, retv, inlen, c->pts);
 }
 
-static int get_config_tty(struct lxc_container *c, const char *key, char *retv,
-			  int inlen)
+static int get_config_tty(const char *key, char *retv, int inlen,
+			  struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen, c->lxc_conf->tty);
+	return lxc_get_conf_int(c, retv, inlen, c->tty);
 }
 
 static inline int lxc_get_conf_str(char *retv, int inlen, const char *value)
@@ -3310,35 +3310,35 @@ static inline int lxc_get_conf_str(char *retv, int inlen, const char *value)
 	return strlen(value);
 }
 
-static int get_config_ttydir(struct lxc_container *c, const char *key,
-			     char *retv, int inlen)
+static int get_config_ttydir(const char *key, char *retv, int inlen,
+			     struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->ttydir);
+	return lxc_get_conf_str(retv, inlen, c->ttydir);
 }
 
-static int get_config_kmsg(struct lxc_container *c, const char *key, char *retv,
-			   int inlen)
+static int get_config_kmsg(const char *key, char *retv, int inlen,
+			   struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen, c->lxc_conf->kmsg);
+	return lxc_get_conf_int(c, retv, inlen, c->kmsg);
 }
 
-static int get_config_lsm_aa_profile(struct lxc_container *c, const char *key,
-				     char *retv, int inlen)
+static int get_config_lsm_aa_profile(const char *key, char *retv, int inlen,
+				     struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->lsm_aa_profile);
+	return lxc_get_conf_str(retv, inlen, c->lsm_aa_profile);
 }
 
-static int get_config_lsm_aa_incomplete(struct lxc_container *c,
-					const char *key, char *retv, int inlen)
+static int get_config_lsm_aa_incomplete(const char *key, char *retv, int inlen,
+					struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
-				c->lxc_conf->lsm_aa_allow_incomplete);
+	return lxc_get_conf_int(c, retv, inlen,
+				c->lsm_aa_allow_incomplete);
 }
 
-static int get_config_lsm_se_context(struct lxc_container *c, const char *key,
-				     char *retv, int inlen)
+static int get_config_lsm_se_context(const char *key, char *retv, int inlen,
+				     struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->lsm_se_context);
+	return lxc_get_conf_str(retv, inlen, c->lsm_se_context);
 }
 
 /*
@@ -3350,8 +3350,8 @@ static int get_config_lsm_se_context(struct lxc_container *c, const char *key,
  * If you ask for 'lxc.cgroup", then all cgroup entries will be printed,
  * in 'lxc.cgroup.subsystem.key = value' format.
  */
-static int get_config_cgroup(struct lxc_container *c, const char *key,
-			     char *retv, int inlen)
+static int get_config_cgroup(const char *key, char *retv, int inlen,
+			     struct lxc_conf *c)
 {
 	struct lxc_list *it;
 	int len;
@@ -3370,7 +3370,7 @@ static int get_config_cgroup(struct lxc_container *c, const char *key,
 	else
 		return -1;
 
-	lxc_list_for_each(it, &c->lxc_conf->cgroup) {
+	lxc_list_for_each(it, &c->cgroup) {
 		struct lxc_cgroup *cg = it->elem;
 		if (get_all) {
 			strprint(retv, inlen, "lxc.cgroup.%s = %s\n", cg->subsystem, cg->value);
@@ -3382,8 +3382,8 @@ static int get_config_cgroup(struct lxc_container *c, const char *key,
 	return fulllen;
 }
 
-static int get_config_idmaps(struct lxc_container *c, const char *key,
-			     char *retv, int inlen)
+static int get_config_idmaps(const char *key, char *retv, int inlen,
+			     struct lxc_conf *c)
 {
 	struct lxc_list *it;
 	int len, listlen, ret;
@@ -3416,8 +3416,8 @@ static int get_config_idmaps(struct lxc_container *c, const char *key,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = lxc_list_len(&c->lxc_conf->id_map);
-	lxc_list_for_each(it, &c->lxc_conf->id_map)
+	listlen = lxc_list_len(&c->id_map);
+	lxc_list_for_each(it, &c->id_map)
 	{
 		struct id_map *map = it->elem;
 		ret = snprintf(buf, __LXC_IDMAP_STR_BUF, "%c %lu %lu %lu",
@@ -3431,28 +3431,28 @@ static int get_config_idmaps(struct lxc_container *c, const char *key,
 	return fulllen;
 }
 
-static int get_config_loglevel(struct lxc_container *c, const char *key,
-			       char *retv, int inlen)
+static int get_config_loglevel(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c)
 {
 	const char *v;
-	v = lxc_log_priority_to_string(c->lxc_conf->loglevel);
+	v = lxc_log_priority_to_string(c->loglevel);
 	return lxc_get_conf_str(retv, inlen, v);
 }
 
-static int get_config_logfile(struct lxc_container *c, const char *key,
-			      char *retv, int inlen)
+static int get_config_logfile(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->logfile);
+	return lxc_get_conf_str(retv, inlen, c->logfile);
 }
 
-static int get_config_fstab(struct lxc_container *c, const char *key,
-			    char *retv, int inlen)
+static int get_config_fstab(const char *key, char *retv, int inlen,
+			    struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->fstab);
+	return lxc_get_conf_str(retv, inlen, c->fstab);
 }
 
-static int get_config_mount_auto(struct lxc_container *c, const char *key,
-				 char *retv, int inlen)
+static int get_config_mount_auto(const char *key, char *retv, int inlen,
+				 struct lxc_conf *c)
 {
 	int len, fulllen = 0;
 	const char *sep = "";
@@ -3462,10 +3462,10 @@ static int get_config_mount_auto(struct lxc_container *c, const char *key,
 	else
 		memset(retv, 0, inlen);
 
-	if (!(c->lxc_conf->auto_mounts & LXC_AUTO_ALL_MASK))
+	if (!(c->auto_mounts & LXC_AUTO_ALL_MASK))
 		return 0;
 
-	switch (c->lxc_conf->auto_mounts & LXC_AUTO_PROC_MASK) {
+	switch (c->auto_mounts & LXC_AUTO_PROC_MASK) {
 	case LXC_AUTO_PROC_MIXED:
 		strprint(retv, inlen, "%sproc:mixed", sep);
 		sep = " ";
@@ -3478,7 +3478,7 @@ static int get_config_mount_auto(struct lxc_container *c, const char *key,
 		break;
 	}
 
-	switch (c->lxc_conf->auto_mounts & LXC_AUTO_SYS_MASK) {
+	switch (c->auto_mounts & LXC_AUTO_SYS_MASK) {
 	case LXC_AUTO_SYS_RO:
 		strprint(retv, inlen, "%ssys:ro", sep);
 		sep = " ";
@@ -3495,7 +3495,7 @@ static int get_config_mount_auto(struct lxc_container *c, const char *key,
 		break;
 	}
 
-	switch (c->lxc_conf->auto_mounts & LXC_AUTO_CGROUP_MASK) {
+	switch (c->auto_mounts & LXC_AUTO_CGROUP_MASK) {
 	case LXC_AUTO_CGROUP_NOSPEC:
 		strprint(retv, inlen, "%scgroup", sep);
 		sep = " ";
@@ -3535,8 +3535,8 @@ static int get_config_mount_auto(struct lxc_container *c, const char *key,
 	return fulllen;
 }
 
-static int get_config_mount(struct lxc_container *c, const char *key,
-			    char *retv, int inlen)
+static int get_config_mount(const char *key, char *retv, int inlen,
+			    struct lxc_conf *c)
 {
 	int len, fulllen = 0;
 	struct lxc_list *it;
@@ -3546,7 +3546,7 @@ static int get_config_mount(struct lxc_container *c, const char *key,
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->lxc_conf->mount_list)
+	lxc_list_for_each(it, &c->mount_list)
 	{
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
 	}
@@ -3554,46 +3554,46 @@ static int get_config_mount(struct lxc_container *c, const char *key,
 	return fulllen;
 }
 
-static int get_config_rootfs(struct lxc_container *c, const char *key,
-			     char *retv, int inlen)
+static int get_config_rootfs(const char *key, char *retv, int inlen,
+			     struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->rootfs.path);
+	return lxc_get_conf_str(retv, inlen, c->rootfs.path);
 }
 
-static int get_config_rootfs_mount(struct lxc_container *c, const char *key,
-				   char *retv, int inlen)
+static int get_config_rootfs_mount(const char *key, char *retv, int inlen,
+				   struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->rootfs.mount);
+	return lxc_get_conf_str(retv, inlen, c->rootfs.mount);
 }
 
-static int get_config_rootfs_options(struct lxc_container *c, const char *key,
-				     char *retv, int inlen)
+static int get_config_rootfs_options(const char *key, char *retv, int inlen,
+				     struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->rootfs.options);
+	return lxc_get_conf_str(retv, inlen, c->rootfs.options);
 }
 
-static int get_config_rootfs_backend(struct lxc_container *c, const char *key,
-				     char *retv, int inlen)
+static int get_config_rootfs_backend(const char *key, char *retv, int inlen,
+				     struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->rootfs.bdev_type);
+	return lxc_get_conf_str(retv, inlen, c->rootfs.bdev_type);
 }
 
-static int get_config_pivotdir(struct lxc_container *c, const char *key,
-			       char *retv, int inlen)
+static int get_config_pivotdir(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c)
 {
 	return 0;
 }
 
-static int get_config_utsname(struct lxc_container *c, const char *key,
-			      char *retv, int inlen)
+static int get_config_utsname(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c)
 {
 	return lxc_get_conf_str(
 	    retv, inlen,
-	    c->lxc_conf->utsname ? c->lxc_conf->utsname->nodename : NULL);
+	    c->utsname ? c->utsname->nodename : NULL);
 }
 
-static int get_config_hooks(struct lxc_container *c, const char *key,
-			    char *retv, int inlen)
+static int get_config_hooks(const char *key, char *retv, int inlen,
+			    struct lxc_conf *c)
 {
 	char *subkey;
 	int len, fulllen = 0, found = -1;
@@ -3623,14 +3623,14 @@ static int get_config_hooks(struct lxc_container *c, const char *key,
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->lxc_conf->hooks[found]) {
+	lxc_list_for_each(it, &c->hooks[found]) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
 	}
 	return fulllen;
 }
 
-static int get_config_network(struct lxc_container *c, const char *key,
-			      char *retv, int inlen)
+static int get_config_network(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c)
 {
 	int len, fulllen = 0;
 	struct lxc_list *it;
@@ -3640,7 +3640,7 @@ static int get_config_network(struct lxc_container *c, const char *key,
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->lxc_conf->network) {
+	lxc_list_for_each(it, &c->network) {
 		struct lxc_netdev *n = it->elem;
 		const char *t = lxc_net_type_to_str(n->type);
 		strprint(retv, inlen, "%s\n", t ? t : "(invalid)");
@@ -3657,8 +3657,8 @@ static int get_config_network(struct lxc_container *c, const char *key,
  * things like veth.pair return '' if invalid (i.e. if called for vlan
  * type).
  */
-static int get_config_network_item(struct lxc_container *c, const char *key,
-				   char *retv, int inlen)
+static int get_config_network_item(const char *key, char *retv, int inlen,
+				   struct lxc_conf *c)
 {
 	char *p1;
 	int len, fulllen = 0;
@@ -3679,7 +3679,7 @@ static int get_config_network_item(struct lxc_container *c, const char *key,
 		return -1;
 	p1++;
 
-	netdev = get_netdev_from_key(key, &c->lxc_conf->network);
+	netdev = get_netdev_from_key(key, &c->network);
 	if (!netdev)
 		return -1;
 	if (strcmp(p1, "name") == 0) {
@@ -3776,8 +3776,8 @@ static int get_config_network_item(struct lxc_container *c, const char *key,
 	return fulllen;
 }
 
-static int get_config_cap_drop(struct lxc_container *c, const char *key,
-			       char *retv, int inlen)
+static int get_config_cap_drop(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c)
 {
 	int len, fulllen = 0;
 	struct lxc_list *it;
@@ -3787,14 +3787,14 @@ static int get_config_cap_drop(struct lxc_container *c, const char *key,
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->lxc_conf->caps) {
+	lxc_list_for_each(it, &c->caps) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
 	}
 	return fulllen;
 }
 
-static int get_config_cap_keep(struct lxc_container *c, const char *key,
-			       char *retv, int inlen)
+static int get_config_cap_keep(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c)
 {
 	int len, fulllen = 0;
 	struct lxc_list *it;
@@ -3804,88 +3804,81 @@ static int get_config_cap_keep(struct lxc_container *c, const char *key,
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->lxc_conf->keepcaps) {
+	lxc_list_for_each(it, &c->keepcaps) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
 	}
 	return fulllen;
 }
 
-static int get_config_console(struct lxc_container *c, const char *key,
-			      char *retv, int inlen)
+static int get_config_console(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->console.path);
+	return lxc_get_conf_str(retv, inlen, c->console.path);
 }
 
-static int get_config_console_logfile(struct lxc_container *c, const char *key,
-				      char *retv, int inlen)
+static int get_config_console_logfile(const char *key, char *retv, int inlen,
+				      struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->console.log_path);
+	return lxc_get_conf_str(retv, inlen, c->console.log_path);
 }
 
-static int get_config_seccomp(struct lxc_container *c, const char *key,
-			      char *retv, int inlen)
+static int get_config_seccomp(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->seccomp);
+	return lxc_get_conf_str(retv, inlen, c->seccomp);
 }
 
-static int get_config_autodev(struct lxc_container *c, const char *key,
-			      char *retv, int inlen)
+static int get_config_autodev(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen, c->lxc_conf->autodev);
+	return lxc_get_conf_int(c, retv, inlen, c->autodev);
 }
 
-static int get_config_haltsignal(struct lxc_container *c, const char *key,
-				 char *retv, int inlen)
+static int get_config_haltsignal(const char *key, char *retv, int inlen,
+				 struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
-				c->lxc_conf->haltsignal);
+	return lxc_get_conf_int(c, retv, inlen, c->haltsignal);
 }
 
-static int get_config_rebootsignal(struct lxc_container *c, const char *key,
-				   char *retv, int inlen)
+static int get_config_rebootsignal(const char *key, char *retv, int inlen,
+				   struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
-				c->lxc_conf->rebootsignal);
+	return lxc_get_conf_int(c, retv, inlen, c->rebootsignal);
 }
 
-static int get_config_stopsignal(struct lxc_container *c, const char *key,
-				 char *retv, int inlen)
+static int get_config_stopsignal(const char *key, char *retv, int inlen,
+				 struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
-				c->lxc_conf->stopsignal);
+	return lxc_get_conf_int(c, retv, inlen, c->stopsignal);
 }
 
-static int get_config_start(struct lxc_container *c, const char *key,
-			    char *retv, int inlen)
+static int get_config_start(const char *key, char *retv, int inlen,
+			    struct lxc_conf *c)
 {
 	if (strcmp(key, "lxc.start.auto") == 0)
-		return lxc_get_conf_int(c->lxc_conf, retv, inlen,
-					c->lxc_conf->start_auto);
+		return lxc_get_conf_int(c, retv, inlen, c->start_auto);
 	else if (strcmp(key, "lxc.start.delay") == 0)
-		return lxc_get_conf_int(c->lxc_conf, retv, inlen,
-					c->lxc_conf->start_delay);
+		return lxc_get_conf_int(c, retv, inlen, c->start_delay);
 	else if (strcmp(key, "lxc.start.order") == 0)
-		return lxc_get_conf_int(c->lxc_conf, retv, inlen,
-					c->lxc_conf->start_order);
+		return lxc_get_conf_int(c, retv, inlen, c->start_order);
 
 	return -1;
 }
 
-static int get_config_syslog(struct lxc_container *c, const char *key,
-			     char *retv, int inlen)
+static int get_config_syslog(const char *key, char *retv, int inlen,
+			     struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->syslog);
+	return lxc_get_conf_str(retv, inlen, c->syslog);
 }
 
-static int get_config_monitor(struct lxc_container *c, const char *key,
-			      char *retv, int inlen)
+static int get_config_monitor(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
-				c->lxc_conf->monitor_unshare);
+	return lxc_get_conf_int(c, retv, inlen, c->monitor_unshare);
 }
 
-static int get_config_group(struct lxc_container *c, const char *key,
-			    char *retv, int inlen)
+static int get_config_group(const char *key, char *retv, int inlen,
+			    struct lxc_conf *c)
 {
 	int len, fulllen = 0;
 	struct lxc_list *it;
@@ -3895,14 +3888,14 @@ static int get_config_group(struct lxc_container *c, const char *key,
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->lxc_conf->groups) {
+	lxc_list_for_each(it, &c->groups) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
 	}
 	return fulllen;
 }
 
-static int get_config_environment(struct lxc_container *c, const char *key,
-				  char *retv, int inlen)
+static int get_config_environment(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c)
 {
 	int len, fulllen = 0;
 	struct lxc_list *it;
@@ -3912,44 +3905,40 @@ static int get_config_environment(struct lxc_container *c, const char *key,
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->lxc_conf->environment) {
+	lxc_list_for_each(it, &c->environment) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
 	}
 	return fulllen;
 }
 
-static int get_config_init_cmd(struct lxc_container *c, const char *key,
-			       char *retv, int inlen)
+static int get_config_init_cmd(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c)
 {
-	return lxc_get_conf_str(retv, inlen, c->lxc_conf->init_cmd);
+	return lxc_get_conf_str(retv, inlen, c->init_cmd);
 }
 
-static int get_config_init_uid(struct lxc_container *c, const char *key,
-			       char *retv, int inlen)
+static int get_config_init_uid(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
-				c->lxc_conf->init_uid);
+	return lxc_get_conf_int(c, retv, inlen, c->init_uid);
 }
 
-static int get_config_init_gid(struct lxc_container *c, const char *key,
-			       char *retv, int inlen)
+static int get_config_init_gid(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
-				c->lxc_conf->init_gid);
+	return lxc_get_conf_int(c, retv, inlen, c->init_gid);
 }
 
-static int get_config_ephemeral(struct lxc_container *c, const char *key,
-				char *retv, int inlen)
+static int get_config_ephemeral(const char *key, char *retv, int inlen,
+				struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
-				c->lxc_conf->ephemeral);
+	return lxc_get_conf_int(c, retv, inlen, c->ephemeral);
 }
 
-static int get_config_no_new_privs(struct lxc_container *c, const char *key,
-				   char *retv, int inlen)
+static int get_config_no_new_privs(const char *key, char *retv, int inlen,
+				   struct lxc_conf *c)
 {
-	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
-				c->lxc_conf->no_new_privs);
+	return lxc_get_conf_int(c, retv, inlen, c->no_new_privs);
 }
 
 /*
@@ -3957,8 +3946,8 @@ static int get_config_no_new_privs(struct lxc_container *c, const char *key,
  * will be printed. If you ask for 'lxc.limit', then all limit entries will be
  * printed, in 'lxc.limit.resource = value' format.
  */
-static int get_config_limit(struct lxc_container *c, const char *key,
-			    char *retv, int inlen)
+static int get_config_limit(const char *key, char *retv, int inlen,
+			    struct lxc_conf *c)
 {
 	int fulllen = 0, len;
 	bool get_all = false;
@@ -3976,7 +3965,7 @@ static int get_config_limit(struct lxc_container *c, const char *key,
 	else
 		return -1;
 
-	lxc_list_for_each(it, &c->lxc_conf->limits) {
+	lxc_list_for_each(it, &c->limits) {
 		char buf[LXC_NUMSTRLEN64 * 2 + 2]; /* 2 colon separated 64 bit
 						      integers or the word
 						      'unlimited' */
