@@ -101,6 +101,7 @@ static int set_config_logfile(const char *, const char *, struct lxc_conf *);
 static int get_config_logfile(struct lxc_container *, const char *, char *, int);
 
 static int set_config_mount(const char *, const char *, struct lxc_conf *);
+static int get_config_mount(struct lxc_container *, const char *, char *, int);
 
 static int set_config_mount_auto(const char *, const char *, struct lxc_conf *);
 static int get_config_mount_auto(struct lxc_container *, const char *, char *, int);
@@ -167,7 +168,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.id_map",               set_config_idmaps,               get_config_idmaps,            NULL},
 	{ "lxc.loglevel",             set_config_loglevel,             get_config_loglevel,          NULL},
 	{ "lxc.logfile",              set_config_logfile,              get_config_logfile,           NULL},
-	{ "lxc.mount.entry",          set_config_mount,                 NULL, NULL},
+	{ "lxc.mount.entry",          set_config_mount,                get_config_mount,             NULL},
 	{ "lxc.mount.auto",           set_config_mount_auto,           get_config_mount_auto,        NULL},
 	{ "lxc.mount",                set_config_fstab,	               get_config_fstab,             NULL},
 	{ "lxc.rootfs.mount",         set_config_rootfs_mount,          NULL, NULL},
@@ -2764,22 +2765,6 @@ static int lxc_get_item_cap_keep(struct lxc_conf *c, char *retv, int inlen)
 	return fulllen;
 }
 
-static int lxc_get_mount_entries(struct lxc_conf *c, char *retv, int inlen)
-{
-	int len, fulllen = 0;
-	struct lxc_list *it;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	lxc_list_for_each(it, &c->mount_list) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
-	}
-	return fulllen;
-}
-
 /*
  * lxc.network.0.XXX, where XXX can be: name, type, link, flags, type,
  * macvlan.mode, veth.pair, vlan, ipv4, ipv6, script.up, hwaddr, mtu,
@@ -2912,9 +2897,7 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 {
 	const char *v = NULL;
 
-	if (strcmp(key, "lxc.mount.entry") == 0)
-		return lxc_get_mount_entries(c, retv, inlen);
-	else if (strcmp(key, "lxc.utsname") == 0)
+	if (strcmp(key, "lxc.utsname") == 0)
 		v = c->utsname ? c->utsname->nodename : NULL;
 	else if (strcmp(key, "lxc.console.logfile") == 0)
 		v = c->console.log_path;
@@ -3823,6 +3806,25 @@ static int get_config_mount_auto(struct lxc_container *c, const char *key,
 		break;
 	default:
 		break;
+	}
+
+	return fulllen;
+}
+
+static int get_config_mount(struct lxc_container *c, const char *key,
+			    char *retv, int inlen)
+{
+	int len, fulllen = 0;
+	struct lxc_list *it;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	lxc_list_for_each(it, &c->lxc_conf->mount_list)
+	{
+		strprint(retv, inlen, "%s\n", (char *)it->elem);
 	}
 
 	return fulllen;
