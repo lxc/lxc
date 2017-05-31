@@ -96,6 +96,7 @@ static int clr_config_idmaps(const char *, struct lxc_conf *);
 
 static int set_config_loglevel(const char *, const char *, struct lxc_conf *);
 static int get_config_loglevel(const char *, char *, int, struct lxc_conf *);
+static int clr_config_loglevel(const char *, struct lxc_conf *);
 
 static int set_config_logfile(const char *, const char *, struct lxc_conf *);
 static int get_config_logfile(const char *, char *, int, struct lxc_conf *);
@@ -215,7 +216,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.se_context",           set_config_lsm_se_context,       get_config_lsm_se_context,    clr_config_lsm_se_context,    },
 	{ "lxc.cgroup",               set_config_cgroup,               get_config_cgroup,            clr_config_cgroup,            },
 	{ "lxc.id_map",               set_config_idmaps,               get_config_idmaps,            clr_config_idmaps,            },
-	{ "lxc.loglevel",             set_config_loglevel,             get_config_loglevel,          NULL },
+	{ "lxc.loglevel",             set_config_loglevel,             get_config_loglevel,          clr_config_loglevel,          },
 	{ "lxc.logfile",              set_config_logfile,              get_config_logfile,           NULL },
 	{ "lxc.mount.entry",          set_config_mount,                get_config_mount,             NULL },
 	{ "lxc.mount.auto",           set_config_mount_auto,           get_config_mount_auto,        NULL },
@@ -2624,9 +2625,6 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		free(c->seccomp);
 		c->seccomp = NULL;
 
-	} else if (strcmp(key, "lxc.loglevel") == 0) {
-		c->loglevel = LXC_LOG_PRIORITY_NOTSET;
-
 	} else if (strcmp(key, "lxc.logfile") == 0) {
 		free(c->logfile);
 		c->logfile = NULL;
@@ -3772,4 +3770,10 @@ static inline int clr_config_cgroup(const char *key, struct lxc_conf *c)
 static inline int clr_config_idmaps(const char *key, struct lxc_conf *c)
 {
 	return lxc_clear_idmaps(c);
+}
+
+static inline int clr_config_loglevel(const char *key, struct lxc_conf *c)
+{
+	c->loglevel = LXC_LOG_PRIORITY_NOTSET;
+	return 0;
 }
