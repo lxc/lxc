@@ -66,7 +66,10 @@ lxc_log_define(lxc_confile, lxc);
 
 static int set_config_personality(const char *, const char *, struct lxc_conf *);
 static int get_config_personality(struct lxc_container *, const char *, char *, int);
+
 static int set_config_pts(const char *, const char *, struct lxc_conf *);
+static int get_config_pts(struct lxc_container *, const char *, char *, int);
+
 static int set_config_tty(const char *, const char *, struct lxc_conf *);
 static int set_config_ttydir(const char *, const char *, struct lxc_conf *);
 static int set_config_kmsg(const char *, const char *, struct lxc_conf *);
@@ -128,7 +131,7 @@ static int set_config_limit(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 	{ "lxc.arch",                 set_config_personality,          get_config_personality, NULL},
-	{ "lxc.pts",                  set_config_pts,                   NULL, NULL},
+	{ "lxc.pts",                  set_config_pts,                  get_config_pts,         NULL},
 	{ "lxc.tty",                  set_config_tty,                   NULL, NULL},
 	{ "lxc.devttydir",            set_config_ttydir,                NULL, NULL},
 	{ "lxc.kmsg",                 set_config_kmsg,                  NULL, NULL},
@@ -2569,12 +2572,14 @@ int lxc_fill_elevated_privileges(char *flaglist, int *flags)
 	return 0;
 }
 
-static int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v)
+static inline int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen,
+				   int v)
 {
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
+
 	return snprintf(retv, inlen, "%d", v);
 }
 
@@ -3005,8 +3010,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->fstab;
 	else if (strcmp(key, "lxc.tty") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->tty);
-	else if (strcmp(key, "lxc.pts") == 0)
-		return lxc_get_conf_int(c, retv, inlen, c->pts);
 	else if (strcmp(key, "lxc.devttydir") == 0)
 		v = c->ttydir;
 	else if (strcmp(key, "lxc.aa_profile") == 0)
@@ -3692,4 +3695,10 @@ static int get_config_personality(struct lxc_container *c, const char *key,
 #endif
 
 	return fulllen;
+}
+
+static int get_config_pts(struct lxc_container *c, const char *key, char *retv,
+			  int inlen)
+{
+	return lxc_get_conf_int(c->lxc_conf, retv, inlen, c->lxc_conf->pts);
 }
