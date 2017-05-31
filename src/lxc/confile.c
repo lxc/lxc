@@ -166,6 +166,7 @@ static int clr_config_network(const char *, struct lxc_conf *);
 
 static int set_config_cap_drop(const char *, const char *, struct lxc_conf *);
 static int get_config_cap_drop(const char *, char *, int, struct lxc_conf *);
+static int clr_config_cap_drop(const char *, struct lxc_conf *);
 
 static int set_config_cap_keep(const char *, const char *, struct lxc_conf *);
 static int get_config_cap_keep(const char *, char *, int, struct lxc_conf *);
@@ -267,7 +268,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.network.ipv6",         set_config_network_ipv6,         get_config_network_item,      clr_config_network_item,      },
 	{ "lxc.network.",             set_config_network_nic,          get_config_network_item,      clr_config_network_item,      },
 	{ "lxc.network",              set_config_network,              get_config_network,           clr_config_network,           },
-	{ "lxc.cap.drop",             set_config_cap_drop,             get_config_cap_drop,          NULL },
+	{ "lxc.cap.drop",             set_config_cap_drop,             get_config_cap_drop,          clr_config_cap_drop,          },
 	{ "lxc.cap.keep",             set_config_cap_keep,             get_config_cap_keep,          NULL },
 	{ "lxc.console.logfile",      set_config_console_logfile,      get_config_console_logfile,   NULL },
 	{ "lxc.console",              set_config_console,              get_config_console,           NULL },
@@ -2550,10 +2551,7 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 {
 	int ret = 0;
 
-	if (strcmp(key, "lxc.cap.drop") == 0) {
-		ret = lxc_clear_config_caps(c);
-
-	} else if (strcmp(key, "lxc.cap.keep") == 0) {
+	if (strcmp(key, "lxc.cap.keep") == 0) {
 		ret = lxc_clear_config_keepcaps(c);
 
 	} else if (strncmp(key, "lxc.group", 9) == 0) {
@@ -3827,3 +3825,7 @@ static inline int clr_config_network(const char *key, struct lxc_conf *c)
 	return lxc_clear_config_network(c);
 }
 
+static inline int clr_config_cap_drop(const char *key, struct lxc_conf *c)
+{
+	return lxc_clear_config_caps(c);
+}
