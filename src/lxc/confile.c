@@ -195,6 +195,7 @@ static int get_config_seccomp(const char *, char *, int, struct lxc_conf *);
 static int clr_config_seccomp(const char *, struct lxc_conf *);
 
 static int set_config_includefile(const char *, const char *, struct lxc_conf *);
+static int clr_config_includefile(const char *, struct lxc_conf *);
 
 static int set_config_autodev(const char *, const char *, struct lxc_conf *);
 static int get_config_autodev(const char *, char *, int, struct lxc_conf *);
@@ -310,7 +311,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.console.logfile",      set_config_console_logfile,      get_config_console_logfile,   clr_config_console_logfile,   },
 	{ "lxc.console",              set_config_console,              get_config_console,           clr_config_console,           },
 	{ "lxc.seccomp",              set_config_seccomp,              get_config_seccomp,           clr_config_seccomp,           },
-	{ "lxc.include",              set_config_includefile,          NULL,                         NULL                          },
+	{ "lxc.include",              set_config_includefile,          NULL,                         clr_config_includefile,       },
 	{ "lxc.autodev",              set_config_autodev,              get_config_autodev,           clr_config_autodev,           },
 	{ "lxc.haltsignal",           set_config_haltsignal,           get_config_haltsignal,        clr_config_haltsignal,        },
 	{ "lxc.rebootsignal",         set_config_rebootsignal,         get_config_rebootsignal,      clr_config_rebootsignal,      },
@@ -2772,16 +2773,7 @@ static inline int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen,
 
 int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 {
-	int ret = 0;
-
-	if (strcmp(key, "lxc.include") == 0) {
-		lxc_clear_includes(c);
-
-	} else {
-		ret = -1;
-	}
-
-	return ret;
+	return 0;
 }
 
 /* Write out a configuration file. */
@@ -4247,4 +4239,10 @@ static inline int clr_config_no_new_privs(const char *key, struct lxc_conf *c)
 static inline int clr_config_limit(const char *key, struct lxc_conf *c)
 {
 	return lxc_clear_limits(c, key);
+}
+
+static inline int clr_config_includes(const char *key, struct lxc_conf *c)
+{
+	lxc_clear_includes(c);
+	return 0;
 }
