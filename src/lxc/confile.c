@@ -65,6 +65,8 @@ static int set_config_tty(const char *, const char *, struct lxc_conf *);
 static int get_config_tty(struct lxc_container *, const char *, char *, int);
 
 static int set_config_ttydir(const char *, const char *, struct lxc_conf *);
+static int get_config_ttydir(struct lxc_container *, const char *, char *, int);
+
 static int set_config_kmsg(const char *, const char *, struct lxc_conf *);
 static int set_config_lsm_aa_profile(const char *, const char *, struct lxc_conf *);
 static int set_config_lsm_aa_incomplete(const char *, const char *, struct lxc_conf *);
@@ -123,7 +125,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.arch",                 set_config_personality,          get_config_personality, NULL},
 	{ "lxc.pts",                  set_config_pts,                  get_config_pts,         NULL},
 	{ "lxc.tty",                  set_config_tty,                  get_config_tty,         NULL},
-	{ "lxc.devttydir",            set_config_ttydir,                NULL, NULL},
+	{ "lxc.devttydir",            set_config_ttydir,               get_config_ttydir,      NULL},
 	{ "lxc.kmsg",                 set_config_kmsg,                  NULL, NULL},
 	{ "lxc.aa_profile",           set_config_lsm_aa_profile,        NULL, NULL},
 	{ "lxc.aa_allow_incomplete",  set_config_lsm_aa_incomplete,     NULL, NULL},
@@ -2773,8 +2775,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_auto_mounts(c, retv, inlen);
 	else if (strcmp(key, "lxc.mount") == 0)
 		v = c->fstab;
-	else if (strcmp(key, "lxc.devttydir") == 0)
-		v = c->ttydir;
 	else if (strcmp(key, "lxc.aa_profile") == 0)
 		v = c->lsm_aa_profile;
 	else if (strcmp(key, "lxc.aa_allow_incomplete") == 0)
@@ -3405,4 +3405,20 @@ static int get_config_tty(struct lxc_container *c, const char *key, char *retv,
 			  int inlen)
 {
 	return lxc_get_conf_int(c->lxc_conf, retv, inlen, c->lxc_conf->tty);
+}
+
+static inline int lxc_get_conf_str(char *retv, int inlen, char *value)
+{
+	if (!value)
+		return 0;
+	if (retv && inlen >= strlen(value) + 1)
+		strncpy(retv, value, strlen(value) + 1);
+
+	return strlen(value);
+}
+
+static int get_config_ttydir(struct lxc_container *c, const char *key,
+			     char *retv, int inlen)
+{
+	return lxc_get_conf_str(retv, inlen, c->lxc_conf->ttydir);
 }
