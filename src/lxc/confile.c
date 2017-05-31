@@ -222,6 +222,7 @@ static int clr_config_monitor(const char *, struct lxc_conf *);
 
 static int set_config_group(const char *, const char *, struct lxc_conf *);
 static int get_config_group(const char *, char *, int, struct lxc_conf *);
+static int clr_config_group(const char *, struct lxc_conf *);
 
 static int set_config_environment(const char *, const char *, struct lxc_conf *);
 static int get_config_environment(const char *, char *, int, struct lxc_conf *);
@@ -311,7 +312,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.start.delay",          set_config_start,                get_config_start,             clr_config_start,             },
 	{ "lxc.start.order",          set_config_start,                get_config_start,             clr_config_start,             },
 	{ "lxc.monitor.unshare",      set_config_monitor,              get_config_monitor,           clr_config_monitor,           },
-	{ "lxc.group",                set_config_group,                get_config_group,             NULL },
+	{ "lxc.group",                set_config_group,                get_config_group,             clr_config_group,             },
 	{ "lxc.environment",          set_config_environment,          get_config_environment,       NULL },
 	{ "lxc.init_cmd",             set_config_init_cmd,             get_config_init_cmd,          NULL },
 	{ "lxc.init_uid",             set_config_init_uid,             get_config_init_uid,          NULL },
@@ -2766,10 +2767,7 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 {
 	int ret = 0;
 
-	if (strncmp(key, "lxc.group", 9) == 0) {
-		ret = lxc_clear_groups(c);
-
-	} else if (strncmp(key, "lxc.environment", 15) == 0) {
+	if (strncmp(key, "lxc.environment", 15) == 0) {
 		ret = lxc_clear_environment(c);
 
 	} else if (strncmp(key, "lxc.limit", 9) == 0) {
@@ -4218,4 +4216,10 @@ static inline int clr_config_monitor(const char *key, struct lxc_conf *c)
 {
 	c->monitor_unshare = 0;
 	return 0;
+}
+
+static inline int clr_config_group(const char *key, struct lxc_conf *c)
+{
+	return lxc_clear_groups(c);
+}
 }
