@@ -2673,12 +2673,6 @@ static inline int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen,
 	return snprintf(retv, inlen, "%d", v);
 }
 
-int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
-			int inlen)
-{
-	return 0;
-}
-
 int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 {
 	int ret = 0;
