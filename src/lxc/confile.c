@@ -56,6 +56,7 @@
 lxc_log_define(lxc_confile, lxc);
 
 static int set_config_personality(const char *, const char *, struct lxc_conf *);
+static int get_config_personality(struct lxc_container *, const char *, char *, int);
 static int set_config_pts(const char *, const char *, struct lxc_conf *);
 static int set_config_tty(const char *, const char *, struct lxc_conf *);
 static int set_config_ttydir(const char *, const char *, struct lxc_conf *);
@@ -114,8 +115,7 @@ static int set_config_init_gid(const char *, const char *, struct lxc_conf *);
 static int set_config_ephemeral(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
-
-	{ "lxc.arch",                 set_config_personality,           NULL, NULL},
+	{ "lxc.arch",                 set_config_personality,          get_config_personality, NULL},
 	{ "lxc.pts",                  set_config_pts,                   NULL, NULL},
 	{ "lxc.tty",                  set_config_tty,                   NULL, NULL},
 	{ "lxc.devttydir",            set_config_ttydir,                NULL, NULL},
@@ -2390,28 +2390,6 @@ static int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v)
 	return snprintf(retv, inlen, "%d", v);
 }
 
-static int lxc_get_arch_entry(struct lxc_conf *c, char *retv, int inlen)
-{
-	int fulllen = 0;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	#if HAVE_SYS_PERSONALITY_H
-	int len = 0;
-
-	switch(c->personality) {
-	case PER_LINUX32: strprint(retv, inlen, "i686"); break;
-	case PER_LINUX: strprint(retv, inlen, "x86_64"); break;
-	default: break;
-	}
-	#endif
-
-	return fulllen;
-}
-
 /*
  * If you ask for a specific cgroup value, i.e. lxc.cgroup.devices.list,
  * then just the value(s) will be printed.  Since there still could be
@@ -2794,8 +2772,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_conf_int(c, retv, inlen, c->pts);
 	else if (strcmp(key, "lxc.devttydir") == 0)
 		v = c->ttydir;
-	else if (strcmp(key, "lxc.arch") == 0)
-		return lxc_get_arch_entry(c, retv, inlen);
 	else if (strcmp(key, "lxc.aa_profile") == 0)
 		v = c->lsm_aa_profile;
 	else if (strcmp(key, "lxc.aa_allow_incomplete") == 0)
@@ -3385,4 +3361,33 @@ static int set_config_ephemeral(const char *key, const char *value,
 	}
 
 	return 0;
+}
+
+/* Callbacks to get configuration items. */
+static int get_config_personality(struct lxc_container *c, const char *key,
+				  char *retv, int inlen)
+{
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+#if HAVE_SYS_PERSONALITY_H
+	int len = 0;
+
+	switch (c->lxc_conf->personality) {
+	case PER_LINUX32:
+		strprint(retv, inlen, "i686");
+		break;
+	case PER_LINUX:
+		strprint(retv, inlen, "x86_64");
+		break;
+	default:
+		break;
+	}
+#endif
+
+	return fulllen;
 }
