@@ -77,6 +77,7 @@ static int clr_config_tty(const char *, struct lxc_conf *);
 
 static int set_config_ttydir(const char *, const char *, struct lxc_conf *);
 static int get_config_ttydir(const char *, char *, int, struct lxc_conf *);
+static int clr_config_ttydir(const char *, struct lxc_conf *);
 
 static int set_config_kmsg(const char *, const char *, struct lxc_conf *);
 static int get_config_kmsg(const char *, char *, int, struct lxc_conf *);
@@ -219,7 +220,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.arch",                 set_config_personality,          get_config_personality,       clr_config_personality, },
 	{ "lxc.pts",                  set_config_pts,                  get_config_pts,               clr_config_pts, },
 	{ "lxc.tty",                  set_config_tty,                  get_config_tty,               clr_config_tty, },
-	{ "lxc.devttydir",            set_config_ttydir,               get_config_ttydir,            NULL },
+	{ "lxc.devttydir",            set_config_ttydir,               get_config_ttydir,            clr_config_ttydir, },
 	{ "lxc.kmsg",                 set_config_kmsg,                 get_config_kmsg,              NULL },
 	{ "lxc.aa_profile",           set_config_lsm_aa_profile,       get_config_lsm_aa_profile,    NULL },
 	{ "lxc.aa_allow_incomplete",  set_config_lsm_aa_incomplete,    get_config_lsm_aa_incomplete, NULL },
@@ -2803,10 +2804,6 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		free(c->console.path);
 		c->console.path = NULL;
 
-	} else if (strcmp(key, "lxc.devttydir") == 0) {
-		free(c->ttydir);
-		c->ttydir = NULL;
-
 	} else if (strcmp(key, "lxc.autodev") == 0) {
 		c->autodev = 1;
 
@@ -4090,5 +4087,12 @@ static inline int clr_config_pts(const char *key, struct lxc_conf *c)
 static inline int clr_config_tty(const char *key, struct lxc_conf *c)
 {
 	c->tty = 0;
+	return 0;
+}
+
+static inline int clr_config_ttydir(const char *key, struct lxc_conf *c)
+{
+	free(c->ttydir);
+	c->ttydir = NULL;
 	return 0;
 }
