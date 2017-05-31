@@ -30,13 +30,16 @@
 
 struct lxc_conf;
 struct lxc_list;
+struct lxc_container;
 
-typedef int (*config_cb)(const char *, const char *, struct lxc_conf *);
+typedef int (*config_set_cb)(const char *, const char *, struct lxc_conf *);
+typedef int (*config_get_cb)(struct lxc_container *, const char *, char *, int);
+typedef int (*config_clear_cb)(void);
 struct lxc_config_t {
 	char *name;
-	config_cb set;
-	config_cb get;
-	config_cb clear;
+	config_set_cb set;
+	config_get_cb get;
+	config_clear_cb clear;
 };
 
 extern struct lxc_config_t *lxc_getconfig(const char *key);
