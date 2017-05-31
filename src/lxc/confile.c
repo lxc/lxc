@@ -183,6 +183,8 @@ static int set_config_start(const char *, const char *, struct lxc_conf *);
 static int get_config_start(struct lxc_container *, const char *, char *, int);
 
 static int set_config_syslog(const char *, const char *, struct lxc_conf *);
+static int get_config_syslog(struct lxc_container *, const char *, char *, int);
+
 static int set_config_monitor(const char *, const char *, struct lxc_conf *);
 static int set_config_group(const char *, const char *, struct lxc_conf *);
 static int set_config_environment(const char *, const char *, struct lxc_conf *);
@@ -262,7 +264,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.init_uid",             set_config_init_uid,              NULL, NULL},
 	{ "lxc.init_gid",             set_config_init_gid,              NULL, NULL},
 	{ "lxc.ephemeral",            set_config_ephemeral,             NULL, NULL},
-	{ "lxc.syslog",               set_config_syslog,                NULL, NULL},
+	{ "lxc.syslog",               set_config_syslog,               get_config_syslog,            NULL},
 	{ "lxc.no_new_privs",	      set_config_no_new_privs,	    NULL, NULL},
 	{ "lxc.limit",                set_config_limit,                 NULL, NULL},
 };
@@ -2754,8 +2756,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_conf_int(c, retv, inlen, c->init_gid);
 	else if (strcmp(key, "lxc.ephemeral") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->ephemeral);
-	else if (strcmp(key, "lxc.syslog") == 0)
-		v = c->syslog;
 	else if (strcmp(key, "lxc.no_new_privs") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->no_new_privs);
 	else if (strcmp(key, "lxc.limit") == 0) // all limits
@@ -3958,4 +3958,10 @@ static int get_config_start(struct lxc_container *c, const char *key,
 					c->lxc_conf->start_order);
 
 	return -1;
+}
+
+static int get_config_syslog(struct lxc_container *c, const char *key,
+			     char *retv, int inlen)
+{
+	return lxc_get_conf_str(retv, inlen, c->lxc_conf->syslog);
 }
