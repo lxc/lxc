@@ -34,7 +34,9 @@ struct lxc_list;
 typedef int (*config_cb)(const char *, const char *, struct lxc_conf *);
 struct lxc_config_t {
 	char *name;
-	config_cb cb;
+	config_cb set;
+	config_cb get;
+	config_cb clear;
 };
 
 extern struct lxc_config_t *lxc_getconfig(const char *key);
