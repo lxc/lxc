@@ -121,6 +121,8 @@ static int set_config_hooks(const char *, const char *, struct lxc_conf *lxc_con
 static int get_config_hooks(struct lxc_container *, const char *, char *, int);
 
 static int set_config_network(const char *, const char *, struct lxc_conf *);
+static int get_config_network(struct lxc_container *, const char *, char *, int);
+
 static int set_config_network_type(const char *, const char *, struct lxc_conf *);
 static int set_config_network_flags(const char *, const char *, struct lxc_conf *);
 static int set_config_network_link(const char *, const char *, struct lxc_conf *);
@@ -204,7 +206,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.network.ipv6.gateway", set_config_network_ipv6_gateway,  NULL, NULL},
 	{ "lxc.network.ipv6",         set_config_network_ipv6,          NULL, NULL},
 	{ "lxc.network.",             set_config_network_nic,           NULL, NULL},
-	{ "lxc.network",              set_config_network,               NULL, NULL},
+	{ "lxc.network",              set_config_network,              get_config_network,           NULL},
 	{ "lxc.cap.drop",             set_config_cap_drop,              NULL, NULL},
 	{ "lxc.cap.keep",             set_config_cap_keep,              NULL, NULL},
 	{ "lxc.console.logfile",      set_config_console_logfile,       NULL, NULL},
@@ -2614,24 +2616,6 @@ static int lxc_get_item_nic(struct lxc_conf *c, char *retv, int inlen,
 	return fulllen;
 }
 
-static int lxc_get_item_network(struct lxc_conf *c, char *retv, int inlen)
-{
-	int len, fulllen = 0;
-	struct lxc_list *it;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	lxc_list_for_each(it, &c->network) {
-		struct lxc_netdev *n = it->elem;
-		const char *t = lxc_net_type_to_str(n->type);
-		strprint(retv, inlen, "%s\n", t ? t : "(invalid)");
-	}
-	return fulllen;
-}
-
 int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 			int inlen)
 {
@@ -2645,8 +2629,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_item_cap_drop(c, retv, inlen);
 	else if (strcmp(key, "lxc.cap.keep") == 0)
 		return lxc_get_item_cap_keep(c, retv, inlen);
-	else if (strcmp(key, "lxc.network") == 0)
-		return lxc_get_item_network(c, retv, inlen);
 	else if (strncmp(key, "lxc.network.", 12) == 0)
 		return lxc_get_item_nic(c, retv, inlen, key + 12);
 	else if (strcmp(key, "lxc.start.auto") == 0)
@@ -3565,5 +3547,25 @@ static int get_config_hooks(struct lxc_container *c, const char *key,
 	lxc_list_for_each(it, &c->lxc_conf->hooks[found]) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
 	}
+	return fulllen;
+}
+
+static int get_config_network(struct lxc_container *c, const char *key,
+			      char *retv, int inlen)
+{
+	int len, fulllen = 0;
+	struct lxc_list *it;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	lxc_list_for_each(it, &c->lxc_conf->network) {
+		struct lxc_netdev *n = it->elem;
+		const char *t = lxc_net_type_to_str(n->type);
+		strprint(retv, inlen, "%s\n", t ? t : "(invalid)");
+	}
+
 	return fulllen;
 }
