@@ -1999,7 +1999,7 @@ static int do_lxcapi_get_config_item(struct lxc_container *c, const char *key, c
 	 * implemented.
 	 */
 	if (config && config->get)
-		ret = config->get(c, key, retv, inlen);
+		ret = config->get(key, retv, inlen, c->lxc_conf);
 
 	container_mem_unlock(c);
 	return ret;

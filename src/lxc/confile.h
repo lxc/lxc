@@ -33,7 +33,7 @@ struct lxc_list;
 struct lxc_container;
 
 typedef int (*config_set_cb)(const char *, const char *, struct lxc_conf *);
-typedef int (*config_get_cb)(struct lxc_container *, const char *, char *, int);
+typedef int (*config_get_cb)(const char *, char *, int, struct lxc_conf *);
 typedef int (*config_clear_cb)(void);
 struct lxc_config_t {
 	char *name;
