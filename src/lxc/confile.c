@@ -142,9 +142,6 @@ static int set_config_hooks(const char *, const char *, struct lxc_conf *lxc_con
 static int get_config_hooks(const char *, char *, int, struct lxc_conf *);
 static int clr_config_hooks(const char *, struct lxc_conf *);
 
-static int set_config_network(const char *, const char *, struct lxc_conf *);
-static int get_config_network(const char *, char *, int, struct lxc_conf *);
-
 static int set_config_network_type(const char *, const char *, struct lxc_conf *);
 static int set_config_network_flags(const char *, const char *, struct lxc_conf *);
 static int set_config_network_link(const char *, const char *, struct lxc_conf *);
@@ -161,6 +158,10 @@ static int set_config_network_script_down(const char *, const char *, struct lxc
 static int set_config_network_ipv6(const char *, const char *, struct lxc_conf *);
 static int set_config_network_ipv6_gateway(const char *, const char *, struct lxc_conf *);
 static int get_config_network_item(const char *, char *, int, struct lxc_conf *);
+static int clr_config_network_item(const char *, struct lxc_conf *);
+
+static int set_config_network(const char *, const char *, struct lxc_conf *);
+static int get_config_network(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_cap_drop(const char *, const char *, struct lxc_conf *);
 static int get_config_cap_drop(const char *, char *, int, struct lxc_conf *);
@@ -248,22 +249,22 @@ static struct lxc_config_t config[] = {
 	{ "lxc.hook.clone",           set_config_hooks,                get_config_hooks,             clr_config_hooks,             },
 	{ "lxc.hook.destroy",         set_config_hooks,                get_config_hooks,             clr_config_hooks,             },
 	{ "lxc.hook",                 set_config_hooks,                get_config_hooks,             clr_config_hooks,             },
-	{ "lxc.network.type",         set_config_network_type,         get_config_network_item,      NULL },
-	{ "lxc.network.flags",        set_config_network_flags,        get_config_network_item,      NULL },
-	{ "lxc.network.link",         set_config_network_link,         get_config_network_item,      NULL },
-	{ "lxc.network.name",         set_config_network_name,         get_config_network_item,      NULL },
-	{ "lxc.network.macvlan.mode", set_config_network_macvlan_mode, get_config_network_item,      NULL },
-	{ "lxc.network.veth.pair",    set_config_network_veth_pair,    get_config_network_item,      NULL },
-	{ "lxc.network.script.up",    set_config_network_script_up,    get_config_network_item,      NULL },
-	{ "lxc.network.script.down",  set_config_network_script_down,  get_config_network_item,      NULL },
-	{ "lxc.network.hwaddr",       set_config_network_hwaddr,       get_config_network_item,      NULL },
-	{ "lxc.network.mtu",          set_config_network_mtu,          get_config_network_item,      NULL },
-	{ "lxc.network.vlan.id",      set_config_network_vlan_id,      get_config_network_item,      NULL },
-	{ "lxc.network.ipv4.gateway", set_config_network_ipv4_gateway, get_config_network_item,      NULL },
-	{ "lxc.network.ipv4",         set_config_network_ipv4,         get_config_network_item,      NULL },
-	{ "lxc.network.ipv6.gateway", set_config_network_ipv6_gateway, get_config_network_item,      NULL },
-	{ "lxc.network.ipv6",         set_config_network_ipv6,         get_config_network_item,      NULL },
-	{ "lxc.network.",             set_config_network_nic,          get_config_network_item,      NULL },
+	{ "lxc.network.type",         set_config_network_type,         get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.flags",        set_config_network_flags,        get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.link",         set_config_network_link,         get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.name",         set_config_network_name,         get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.macvlan.mode", set_config_network_macvlan_mode, get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.veth.pair",    set_config_network_veth_pair,    get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.script.up",    set_config_network_script_up,    get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.script.down",  set_config_network_script_down,  get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.hwaddr",       set_config_network_hwaddr,       get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.mtu",          set_config_network_mtu,          get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.vlan.id",      set_config_network_vlan_id,      get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.ipv4.gateway", set_config_network_ipv4_gateway, get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.ipv4",         set_config_network_ipv4,         get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.ipv6.gateway", set_config_network_ipv6_gateway, get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.ipv6",         set_config_network_ipv6,         get_config_network_item,      clr_config_network_item,      },
+	{ "lxc.network.",             set_config_network_nic,          get_config_network_item,      clr_config_network_item,      },
 	{ "lxc.network",              set_config_network,              get_config_network,           NULL },
 	{ "lxc.cap.drop",             set_config_cap_drop,             get_config_cap_drop,          NULL },
 	{ "lxc.cap.keep",             set_config_cap_keep,             get_config_cap_keep,          NULL },
@@ -2551,9 +2552,6 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 	if (strcmp(key, "lxc.network") == 0) {
 		ret = lxc_clear_config_network(c);
 
-	} else if (strncmp(key, "lxc.network.", 12) == 0) {
-		ret = lxc_clear_nic(c, key + 12);
-
 	} else if (strcmp(key, "lxc.cap.drop") == 0) {
 		ret = lxc_clear_config_caps(c);
 
@@ -3821,3 +3819,7 @@ static inline int clr_config_hooks(const char *key, struct lxc_conf *c)
 	return lxc_clear_hooks(c, key);
 }
 
+static inline int clr_config_network_item(const char *key, struct lxc_conf *c)
+{
+	return lxc_clear_nic(c, key + 12);
+}
