@@ -80,6 +80,8 @@ static int set_config_lsm_se_context(const char *, const char *, struct lxc_conf
 static int get_config_lsm_se_context(struct lxc_container *, const char *, char *, int);
 
 static int set_config_cgroup(const char *, const char *, struct lxc_conf *);
+static int get_config_cgroup(struct lxc_container *, const char *, char *, int);
+
 static int set_config_idmap(const char *, const char *, struct lxc_conf *);
 static int set_config_loglevel(const char *, const char *, struct lxc_conf *);
 static int set_config_logfile(const char *, const char *, struct lxc_conf *);
@@ -138,7 +140,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.aa_profile",           set_config_lsm_aa_profile,       get_config_lsm_aa_profile,    NULL},
 	{ "lxc.aa_allow_incomplete",  set_config_lsm_aa_incomplete,    get_config_lsm_aa_incomplete, NULL},
 	{ "lxc.se_context",           set_config_lsm_se_context,       get_config_lsm_se_context,    NULL},
-	{ "lxc.cgroup",               set_config_cgroup,                NULL, NULL},
+	{ "lxc.cgroup",               set_config_cgroup,               get_config_cgroup,            NULL},
 	{ "lxc.id_map",               set_config_idmap,                 NULL, NULL},
 	{ "lxc.loglevel",             set_config_loglevel,              NULL, NULL},
 	{ "lxc.logfile",              set_config_logfile,               NULL, NULL},
@@ -2407,41 +2409,6 @@ static inline int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen,
 	return snprintf(retv, inlen, "%d", v);
 }
 
-/*
- * If you ask for a specific cgroup value, i.e. lxc.cgroup.devices.list,
- * then just the value(s) will be printed.  Since there still could be
- * more than one, it is newline-separated.
- * (Maybe that's ambigous, since some values, i.e. devices.list, will
- * already have newlines?)
- * If you ask for 'lxc.cgroup", then all cgroup entries will be printed,
- * in 'lxc.cgroup.subsystem.key = value' format.
- */
-static int lxc_get_cgroup_entry(struct lxc_conf *c, char *retv, int inlen,
-				const char *key)
-{
-	int fulllen = 0, len;
-	int all = 0;
-	struct lxc_list *it;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	if (strcmp(key, "all") == 0)
-		all = 1;
-
-	lxc_list_for_each(it, &c->cgroup) {
-		struct lxc_cgroup *cg = it->elem;
-		if (all) {
-			strprint(retv, inlen, "lxc.cgroup.%s = %s\n", cg->subsystem, cg->value);
-		} else if (strcmp(cg->subsystem, key) == 0) {
-			strprint(retv, inlen, "%s\n", cg->value);
-		}
-	}
-	return fulllen;
-}
-
 static int lxc_get_item_hooks(struct lxc_conf *c, char *retv, int inlen,
 			      const char *key)
 {
@@ -2787,10 +2754,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->logfile;
 	else if (strcmp(key, "lxc.loglevel") == 0)
 		v = lxc_log_priority_to_string(c->loglevel);
-	else if (strcmp(key, "lxc.cgroup") == 0) // all cgroup info
-		return lxc_get_cgroup_entry(c, retv, inlen, "all");
-	else if (strncmp(key, "lxc.cgroup.", 11) == 0) // specific cgroup info
-		return lxc_get_cgroup_entry(c, retv, inlen, key + 11);
 	else if (strcmp(key, "lxc.utsname") == 0)
 		v = c->utsname ? c->utsname->nodename : NULL;
 	else if (strcmp(key, "lxc.console.logfile") == 0)
@@ -3446,4 +3409,45 @@ static int get_config_lsm_se_context(struct lxc_container *c, const char *key,
 				     char *retv, int inlen)
 {
 	return lxc_get_conf_str(retv, inlen, c->lxc_conf->lsm_se_context);
+}
+
+/*
+ * If you ask for a specific cgroup value, i.e. lxc.cgroup.devices.list,
+ * then just the value(s) will be printed.  Since there still could be
+ * more than one, it is newline-separated.
+ * (Maybe that's ambigous, since some values, i.e. devices.list, will
+ * already have newlines?)
+ * If you ask for 'lxc.cgroup", then all cgroup entries will be printed,
+ * in 'lxc.cgroup.subsystem.key = value' format.
+ */
+static int get_config_cgroup(struct lxc_container *c, const char *key,
+			     char *retv, int inlen)
+{
+	struct lxc_list *it;
+	int len;
+	int fulllen = 0;
+	bool get_all = false;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (!strcmp(key, "lxc.cgroup"))
+		get_all = true;
+	else if (!strncmp(key, "lxc.cgroup.", 11))
+		key += 11;
+	else
+		return -1;
+
+	lxc_list_for_each(it, &c->lxc_conf->cgroup) {
+		struct lxc_cgroup *cg = it->elem;
+		if (get_all) {
+			strprint(retv, inlen, "lxc.cgroup.%s = %s\n", cg->subsystem, cg->value);
+		} else if (!strcmp(cg->subsystem, key)) {
+			strprint(retv, inlen, "%s\n", cg->value);
+		}
+	}
+
+	return fulllen;
 }
