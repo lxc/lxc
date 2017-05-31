@@ -177,6 +177,8 @@ static int set_config_rebootsignal(const char *, const char *, struct lxc_conf *
 static int get_config_rebootsignal(struct lxc_container *, const char *, char *, int);
 
 static int set_config_stopsignal(const char *, const char *, struct lxc_conf *);
+static int get_config_stopsignal(struct lxc_container *, const char *, char *, int);
+
 static int set_config_start(const char *, const char *, struct lxc_conf *);
 static int set_config_syslog(const char *, const char *, struct lxc_conf *);
 static int set_config_monitor(const char *, const char *, struct lxc_conf *);
@@ -247,7 +249,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.autodev",              set_config_autodev,              get_config_autodev,           NULL},
 	{ "lxc.haltsignal",           set_config_haltsignal,           get_config_haltsignal,        NULL},
 	{ "lxc.rebootsignal",         set_config_rebootsignal,         get_config_rebootsignal,      NULL},
-	{ "lxc.stopsignal",           set_config_stopsignal,            NULL, NULL},
+	{ "lxc.stopsignal",           set_config_stopsignal,           get_config_stopsignal,        NULL},
 	{ "lxc.start.auto",           set_config_start,                 NULL, NULL},
 	{ "lxc.start.delay",          set_config_start,                 NULL, NULL},
 	{ "lxc.start.order",          set_config_start,                 NULL, NULL},
@@ -2764,8 +2766,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_limit_entry(c, retv, inlen, "all");
 	else if (strncmp(key, "lxc.limit.", 10) == 0) // specific limit
 		return lxc_get_limit_entry(c, retv, inlen, key + 10);
-	else if (strcmp(key, "lxc.stopsignal") == 0)
-		return lxc_get_conf_int(c, retv, inlen, c->stopsignal);
 	else return -1;
 
 	if (!v)
@@ -3929,4 +3929,11 @@ static int get_config_rebootsignal(struct lxc_container *c, const char *key,
 {
 	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
 				c->lxc_conf->rebootsignal);
+}
+
+static int get_config_stopsignal(struct lxc_container *c, const char *key,
+				 char *retv, int inlen)
+{
+	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
+				c->lxc_conf->stopsignal);
 }
