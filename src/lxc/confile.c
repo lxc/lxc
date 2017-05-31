@@ -153,6 +153,8 @@ static int set_config_console_logfile(const char *, const char *, struct lxc_con
 static int get_config_console_logfile(struct lxc_container *, const char *, char *, int);
 
 static int set_config_seccomp(const char *, const char *, struct lxc_conf *);
+static int get_config_seccomp(struct lxc_container *, const char *, char *, int);
+
 static int set_config_includefile(const char *, const char *, struct lxc_conf *);
 static int set_config_network_nic(const char *, const char *, struct lxc_conf *);
 static int set_config_autodev(const char *, const char *, struct lxc_conf *);
@@ -221,7 +223,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.cap.keep",             set_config_cap_keep,             get_config_cap_keep,          NULL},
 	{ "lxc.console.logfile",      set_config_console_logfile,      get_config_console_logfile,   NULL},
 	{ "lxc.console",              set_config_console,              get_config_console,           NULL},
-	{ "lxc.seccomp",              set_config_seccomp,               NULL, NULL},
+	{ "lxc.seccomp",              set_config_seccomp,              get_config_seccomp,           NULL},
 	{ "lxc.include",              set_config_includefile,           NULL, NULL},
 	{ "lxc.autodev",              set_config_autodev,               NULL, NULL},
 	{ "lxc.haltsignal",           set_config_haltsignal,            NULL, NULL},
@@ -2500,8 +2502,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_conf_int(c, retv, inlen, c->monitor_unshare);
 	else if (strcmp(key, "lxc.group") == 0)
 		return lxc_get_item_groups(c, retv, inlen);
-	else if (strcmp(key, "lxc.seccomp") == 0)
-		v = c->seccomp;
 	else if (strcmp(key, "lxc.environment") == 0)
 		return lxc_get_item_environment(c, retv, inlen);
 	else if (strcmp(key, "lxc.init_cmd") == 0)
@@ -3600,4 +3600,10 @@ static int get_config_console_logfile(struct lxc_container *c, const char *key,
 				      char *retv, int inlen)
 {
 	return lxc_get_conf_str(retv, inlen, c->lxc_conf->console.log_path);
+}
+
+static int get_config_seccomp(struct lxc_container *c, const char *key,
+			      char *retv, int inlen)
+{
+	return lxc_get_conf_str(retv, inlen, c->lxc_conf->seccomp);
 }
