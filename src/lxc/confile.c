@@ -144,6 +144,8 @@ static int set_config_cap_drop(const char *, const char *, struct lxc_conf *);
 static int get_config_cap_drop(struct lxc_container *, const char *, char *, int);
 
 static int set_config_cap_keep(const char *, const char *, struct lxc_conf *);
+static int get_config_cap_keep(struct lxc_container *, const char *, char *, int);
+
 static int set_config_console(const char *, const char *, struct lxc_conf *);
 static int set_config_console_logfile(const char *, const char *, struct lxc_conf *);
 static int set_config_seccomp(const char *, const char *, struct lxc_conf *);
@@ -212,7 +214,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.network.",             set_config_network_nic,          get_config_network_item,      NULL},
 	{ "lxc.network",              set_config_network,              get_config_network,           NULL},
 	{ "lxc.cap.drop",             set_config_cap_drop,             get_config_cap_drop,          NULL},
-	{ "lxc.cap.keep",             set_config_cap_keep,              NULL, NULL},
+	{ "lxc.cap.keep",             set_config_cap_keep,             get_config_cap_keep,          NULL},
 	{ "lxc.console.logfile",      set_config_console_logfile,       NULL, NULL},
 	{ "lxc.console",              set_config_console,               NULL, NULL},
 	{ "lxc.seccomp",              set_config_seccomp,               NULL, NULL},
@@ -2479,22 +2481,6 @@ static int lxc_get_item_environment(struct lxc_conf *c, char *retv, int inlen)
 	return fulllen;
 }
 
-static int lxc_get_item_cap_keep(struct lxc_conf *c, char *retv, int inlen)
-{
-	int len, fulllen = 0;
-	struct lxc_list *it;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	lxc_list_for_each(it, &c->keepcaps) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
-	}
-	return fulllen;
-}
-
 int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 			int inlen)
 {
@@ -2504,8 +2490,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->console.log_path;
 	else if (strcmp(key, "lxc.console") == 0)
 		v = c->console.path;
-	else if (strcmp(key, "lxc.cap.keep") == 0)
-		return lxc_get_item_cap_keep(c, retv, inlen);
 	else if (strcmp(key, "lxc.start.auto") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->start_auto);
 	else if (strcmp(key, "lxc.start.delay") == 0)
@@ -3583,8 +3567,24 @@ static int get_config_cap_drop(struct lxc_container *c, const char *key,
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->lxc_conf->caps)
-	{
+	lxc_list_for_each(it, &c->lxc_conf->caps) {
+		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	}
+	return fulllen;
+}
+
+static int get_config_cap_keep(struct lxc_container *c, const char *key,
+			       char *retv, int inlen)
+{
+	int len, fulllen = 0;
+	struct lxc_list *it;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	lxc_list_for_each(it, &c->lxc_conf->keepcaps) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
 	}
 	return fulllen;
