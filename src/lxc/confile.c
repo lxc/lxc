@@ -86,6 +86,8 @@ static int set_config_lsm_aa_incomplete(const char *, const char *, struct lxc_c
 static int get_config_lsm_aa_incomplete(struct lxc_container *, const char *, char *, int);
 
 static int set_config_lsm_se_context(const char *, const char *, struct lxc_conf *);
+static int get_config_lsm_se_context(struct lxc_container *, const char *, char *, int);
+
 static int set_config_cgroup(const char *, const char *, struct lxc_conf *);
 static int set_config_idmap(const char *, const char *, struct lxc_conf *);
 static int set_config_loglevel(const char *, const char *, struct lxc_conf *);
@@ -147,7 +149,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.kmsg",                 set_config_kmsg,                 get_config_kmsg,              NULL},
 	{ "lxc.aa_profile",           set_config_lsm_aa_profile,       get_config_lsm_aa_profile,    NULL},
 	{ "lxc.aa_allow_incomplete",  set_config_lsm_aa_incomplete,    get_config_lsm_aa_incomplete, NULL},
-	{ "lxc.se_context",           set_config_lsm_se_context,        NULL, NULL},
+	{ "lxc.se_context",           set_config_lsm_se_context,       get_config_lsm_se_context,    NULL},
 	{ "lxc.cgroup",               set_config_cgroup,                NULL, NULL},
 	{ "lxc.id_map",               set_config_idmap,                 NULL, NULL},
 	{ "lxc.loglevel",             set_config_loglevel,              NULL, NULL},
@@ -3018,8 +3020,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_auto_mounts(c, retv, inlen);
 	else if (strcmp(key, "lxc.mount") == 0)
 		v = c->fstab;
-	else if (strcmp(key, "lxc.se_context") == 0)
-		v = c->lsm_se_context;
 	else if (strcmp(key, "lxc.logfile") == 0)
 		v = c->logfile;
 	else if (strcmp(key, "lxc.loglevel") == 0)
@@ -3742,4 +3742,10 @@ static int get_config_lsm_aa_incomplete(struct lxc_container *c,
 {
 	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
 				c->lxc_conf->lsm_aa_allow_incomplete);
+}
+
+static int get_config_lsm_se_context(struct lxc_container *c, const char *key,
+				     char *retv, int inlen)
+{
+	return lxc_get_conf_str(retv, inlen, c->lxc_conf->lsm_se_context);
 }
