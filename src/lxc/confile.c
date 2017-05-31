@@ -210,6 +210,7 @@ static int set_config_no_new_privs(const char *, const char *, struct lxc_conf *
 static int get_config_no_new_privs(struct lxc_container *, const char *, char *, int);
 
 static int set_config_limit(const char *, const char *, struct lxc_conf *);
+static int get_config_limit(struct lxc_container *, const char *, char *, int);
 
 static struct lxc_config_t config[] = {
 	{ "lxc.arch",                 set_config_personality,          get_config_personality,       NULL},
@@ -282,7 +283,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.ephemeral",            set_config_ephemeral,            get_config_ephemeral,         NULL},
 	{ "lxc.syslog",               set_config_syslog,               get_config_syslog,            NULL},
 	{ "lxc.no_new_privs",	      set_config_no_new_privs,         get_config_no_new_privs,      NULL},
-	{ "lxc.limit",                set_config_limit,                 NULL, NULL},
+	{ "lxc.limit",                set_config_limit,                get_config_limit,             NULL},
 };
 
 struct signame {
@@ -2672,71 +2673,10 @@ static inline int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen,
 	return snprintf(retv, inlen, "%d", v);
 }
 
-/*
- * If you ask for a specific value, i.e. lxc.limit.nofile, then just the value
- * will be printed. If you ask for 'lxc.limit', then all limit entries will be
- * printed, in 'lxc.limit.resource = value' format.
- */
-static int lxc_get_limit_entry(struct lxc_conf *c, char *retv, int inlen,
-				const char *key)
-{
-	int fulllen = 0, len;
-	int all = 0;
-	struct lxc_list *it;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	if (strcmp(key, "all") == 0)
-		all = 1;
-
-	lxc_list_for_each(it, &c->limits) {
-		char buf[LXC_NUMSTRLEN64*2+2]; /* 2 colon separated 64 bit integers or the word 'unlimited' */
-		int partlen;
-		struct lxc_limit *lim = it->elem;
-
-		if (lim->limit.rlim_cur == RLIM_INFINITY) {
-			memcpy(buf, "unlimited", sizeof("unlimited"));
-			partlen = sizeof("unlimited")-1;
-		} else {
-			partlen = sprintf(buf, "%"PRIu64, (uint64_t)lim->limit.rlim_cur);
-		}
-		if (lim->limit.rlim_cur != lim->limit.rlim_max) {
-			if (lim->limit.rlim_max == RLIM_INFINITY) {
-				memcpy(buf+partlen, ":unlimited", sizeof(":unlimited"));
-			} else {
-				sprintf(buf+partlen, ":%"PRIu64, (uint64_t)lim->limit.rlim_max);
-			}
-		}
-
-		if (all) {
-			strprint(retv, inlen, "lxc.limit.%s = %s\n", lim->resource, buf);
-		} else if (strcmp(lim->resource, key) == 0) {
-			strprint(retv, inlen, "%s", buf);
-		}
-	}
-
-	return fulllen;
-}
-
 int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 			int inlen)
 {
-	const char *v = NULL;
-
-	if (strcmp(key, "lxc.limit") == 0) // all limits
-		return lxc_get_limit_entry(c, retv, inlen, "all");
-	else if (strncmp(key, "lxc.limit.", 10) == 0) // specific limit
-		return lxc_get_limit_entry(c, retv, inlen, key + 10);
-	else return -1;
-
-	if (!v)
-		return 0;
-	if (retv && inlen >= strlen(v) + 1)
-		strncpy(retv, v, strlen(v)+1);
-	return strlen(v);
+	return 0;
 }
 
 int lxc_clear_config_item(struct lxc_conf *c, const char *key)
@@ -4010,4 +3950,63 @@ static int get_config_no_new_privs(struct lxc_container *c, const char *key,
 {
 	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
 				c->lxc_conf->no_new_privs);
+}
+
+/*
+ * If you ask for a specific value, i.e. lxc.limit.nofile, then just the value
+ * will be printed. If you ask for 'lxc.limit', then all limit entries will be
+ * printed, in 'lxc.limit.resource = value' format.
+ */
+static int get_config_limit(struct lxc_container *c, const char *key,
+			    char *retv, int inlen)
+{
+	int fulllen = 0, len;
+	bool get_all = false;
+	struct lxc_list *it;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (!strcmp(key, "lxc.limit"))
+		get_all = true;
+	else if (strncmp(key, "lxc.limit.", 10) == 0)
+		key += 10;
+	else
+		return -1;
+
+	lxc_list_for_each(it, &c->lxc_conf->limits) {
+		char buf[LXC_NUMSTRLEN64 * 2 + 2]; /* 2 colon separated 64 bit
+						      integers or the word
+						      'unlimited' */
+		int partlen;
+		struct lxc_limit *lim = it->elem;
+
+		if (lim->limit.rlim_cur == RLIM_INFINITY) {
+			memcpy(buf, "unlimited", sizeof("unlimited"));
+			partlen = sizeof("unlimited") - 1;
+		} else {
+			partlen = sprintf(buf, "%" PRIu64,
+					  (uint64_t)lim->limit.rlim_cur);
+		}
+		if (lim->limit.rlim_cur != lim->limit.rlim_max) {
+			if (lim->limit.rlim_max == RLIM_INFINITY) {
+				memcpy(buf + partlen, ":unlimited",
+				       sizeof(":unlimited"));
+			} else {
+				sprintf(buf + partlen, ":%" PRIu64,
+					(uint64_t)lim->limit.rlim_max);
+			}
+		}
+
+		if (get_all) {
+			strprint(retv, inlen, "lxc.limit.%s = %s\n",
+				 lim->resource, buf);
+		} else if (strcmp(lim->resource, key) == 0) {
+			strprint(retv, inlen, "%s", buf);
+		}
+	}
+
+	return fulllen;
 }
