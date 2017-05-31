@@ -147,6 +147,8 @@ static int set_config_cap_keep(const char *, const char *, struct lxc_conf *);
 static int get_config_cap_keep(struct lxc_container *, const char *, char *, int);
 
 static int set_config_console(const char *, const char *, struct lxc_conf *);
+static int get_config_console(struct lxc_container *, const char *, char *, int);
+
 static int set_config_console_logfile(const char *, const char *, struct lxc_conf *);
 static int set_config_seccomp(const char *, const char *, struct lxc_conf *);
 static int set_config_includefile(const char *, const char *, struct lxc_conf *);
@@ -216,7 +218,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.cap.drop",             set_config_cap_drop,             get_config_cap_drop,          NULL},
 	{ "lxc.cap.keep",             set_config_cap_keep,             get_config_cap_keep,          NULL},
 	{ "lxc.console.logfile",      set_config_console_logfile,       NULL, NULL},
-	{ "lxc.console",              set_config_console,               NULL, NULL},
+	{ "lxc.console",              set_config_console,              get_config_console,           NULL},
 	{ "lxc.seccomp",              set_config_seccomp,               NULL, NULL},
 	{ "lxc.include",              set_config_includefile,           NULL, NULL},
 	{ "lxc.autodev",              set_config_autodev,               NULL, NULL},
@@ -2488,8 +2490,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 
 	if (strcmp(key, "lxc.console.logfile") == 0)
 		v = c->console.log_path;
-	else if (strcmp(key, "lxc.console") == 0)
-		v = c->console.path;
 	else if (strcmp(key, "lxc.start.auto") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->start_auto);
 	else if (strcmp(key, "lxc.start.delay") == 0)
@@ -3588,4 +3588,10 @@ static int get_config_cap_keep(struct lxc_container *c, const char *key,
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
 	}
 	return fulllen;
+}
+
+static int get_config_console(struct lxc_container *c, const char *key,
+			      char *retv, int inlen)
+{
+	return lxc_get_conf_str(retv, inlen, c->lxc_conf->console.path);
 }
