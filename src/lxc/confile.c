@@ -65,6 +65,7 @@ lxc_log_define(lxc_confile, lxc);
 
 static int set_config_personality(const char *, const char *, struct lxc_conf *);
 static int get_config_personality(const char *, char *, int, struct lxc_conf *);
+static int clr_config_personality(const char *, struct lxc_conf *);
 
 static int set_config_pts(const char *, const char *, struct lxc_conf *);
 static int get_config_pts(const char *, char *, int, struct lxc_conf *);
@@ -213,7 +214,7 @@ static int set_config_limit(const char *, const char *, struct lxc_conf *);
 static int get_config_limit(const char *, char *, int, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
-	{ "lxc.arch",                 set_config_personality,          get_config_personality,       NULL },
+	{ "lxc.arch",                 set_config_personality,          get_config_personality,       clr_config_personality, },
 	{ "lxc.pts",                  set_config_pts,                  get_config_pts,               NULL },
 	{ "lxc.tty",                  set_config_tty,                  get_config_tty,               NULL },
 	{ "lxc.devttydir",            set_config_ttydir,               get_config_ttydir,            NULL },
@@ -2770,9 +2771,6 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		free(c->utsname);
 		c->utsname = NULL;
 
-	} else if (strcmp(key, "lxc.arch") == 0) {
-		c->personality = -1;
-
 	} else if (strcmp(key, "lxc.haltsignal") == 0) {
 		c->haltsignal = 0;
 
@@ -4078,4 +4076,11 @@ static int get_config_limit(const char *key, char *retv, int inlen,
 	}
 
 	return fulllen;
+}
+
+/* Callbacks to clear config items. */
+static inline int clr_config_personality(const char *key, struct lxc_conf *c)
+{
+	c->personality = -1;
+	return 0;
 }
