@@ -191,6 +191,7 @@ static int clr_config_console(const char *, struct lxc_conf *);
 
 static int set_config_seccomp(const char *, const char *, struct lxc_conf *);
 static int get_config_seccomp(const char *, char *, int, struct lxc_conf *);
+static int clr_config_seccomp(const char *, struct lxc_conf *);
 
 static int set_config_includefile(const char *, const char *, struct lxc_conf *);
 static int set_config_network_nic(const char *, const char *, struct lxc_conf *);
@@ -293,7 +294,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.cap.keep",             set_config_cap_keep,             get_config_cap_keep,          clr_config_cap_keep,          },
 	{ "lxc.console.logfile",      set_config_console_logfile,      get_config_console_logfile,   clr_config_console_logfile,   },
 	{ "lxc.console",              set_config_console,              get_config_console,           clr_config_console,           },
-	{ "lxc.seccomp",              set_config_seccomp,              get_config_seccomp,           NULL },
+	{ "lxc.seccomp",              set_config_seccomp,              get_config_seccomp,           clr_config_seccomp,           },
 	{ "lxc.include",              set_config_includefile,          NULL,                         NULL },
 	{ "lxc.autodev",              set_config_autodev,              get_config_autodev,           NULL },
 	{ "lxc.haltsignal",           set_config_haltsignal,           get_config_haltsignal,        NULL },
@@ -2792,10 +2793,6 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 	} else if (strcmp(key, "lxc.autodev") == 0) {
 		c->autodev = 1;
 
-	} else if (strcmp(key, "lxc.seccomp") == 0) {
-		free(c->seccomp);
-		c->seccomp = NULL;
-
 	} else if (strcmp(key, "lxc.monitor.unshare") == 0) {
 		c->monitor_unshare = 0;
 
@@ -4185,5 +4182,12 @@ static inline int clr_config_console_logfile(const char *key,
 {
 	free(c->console.log_path);
 	c->console.log_path = NULL;
+	return 0;
+}
+
+static inline int clr_config_seccomp(const char *key, struct lxc_conf *c)
+{
+	free(c->seccomp);
+	c->seccomp = NULL;
 	return 0;
 }
