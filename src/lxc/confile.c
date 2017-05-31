@@ -101,8 +101,12 @@ static int set_config_logfile(const char *, const char *, struct lxc_conf *);
 static int get_config_logfile(struct lxc_container *, const char *, char *, int);
 
 static int set_config_mount(const char *, const char *, struct lxc_conf *);
+
 static int set_config_mount_auto(const char *, const char *, struct lxc_conf *);
+
 static int set_config_fstab(const char *, const char *, struct lxc_conf *);
+static int get_config_fstab(struct lxc_container *, const char *, char *, int);
+
 static int set_config_rootfs(const char *, const char *, struct lxc_conf *);
 static int set_config_rootfs_mount(const char *, const char *, struct lxc_conf *);
 static int set_config_rootfs_options(const char *, const char *, struct lxc_conf *);
@@ -164,7 +168,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.logfile",              set_config_logfile,              get_config_logfile,           NULL},
 	{ "lxc.mount.entry",          set_config_mount,                 NULL, NULL},
 	{ "lxc.mount.auto",           set_config_mount_auto,            NULL, NULL},
-	{ "lxc.mount",                set_config_fstab,                 NULL, NULL},
+	{ "lxc.mount",                set_config_fstab,	               get_config_fstab,             NULL},
 	{ "lxc.rootfs.mount",         set_config_rootfs_mount,          NULL, NULL},
 	{ "lxc.rootfs.options",       set_config_rootfs_options,        NULL, NULL},
 	{ "lxc.rootfs.backend",       set_config_rootfs_backend,        NULL, NULL},
@@ -1493,12 +1497,18 @@ static int set_config_lsm_se_context(const char *key, const char *value,
 }
 
 static int set_config_logfile(const char *key, const char *value,
-			     struct lxc_conf *c)
+			      struct lxc_conf *c)
 {
 	int ret;
 
-	// store these values in the lxc_conf, and then try to set for
-	// actual current logging.
+	if (config_value_empty(value)) {
+		free(c->logfile);
+		c->logfile = NULL;
+		return 0;
+	}
+
+	/* Store these values in the lxc_conf, and then try to set for actual
+	 * current logging. */
 	ret = set_config_path_item(&c->logfile, value);
 	if (ret == 0)
 		ret = lxc_log_set_file(&c->logfd, c->logfile);
@@ -2944,8 +2954,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_mount_entries(c, retv, inlen);
 	else if (strcmp(key, "lxc.mount.auto") == 0)
 		return lxc_get_auto_mounts(c, retv, inlen);
-	else if (strcmp(key, "lxc.mount") == 0)
-		v = c->fstab;
 	else if (strcmp(key, "lxc.utsname") == 0)
 		v = c->utsname ? c->utsname->nodename : NULL;
 	else if (strcmp(key, "lxc.console.logfile") == 0)
@@ -3768,4 +3776,10 @@ static int get_config_logfile(struct lxc_container *c, const char *key,
 			      char *retv, int inlen)
 {
 	return lxc_get_conf_str(retv, inlen, c->lxc_conf->logfile);
+}
+
+static int get_config_fstab(struct lxc_container *c, const char *key,
+			    char *retv, int inlen)
+{
+	return lxc_get_conf_str(retv, inlen, c->lxc_conf->fstab);
 }
