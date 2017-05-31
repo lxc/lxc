@@ -1,6 +1,5 @@
 /*
  * lxc: linux Container library
- *
  * (C) Copyright IBM Corp. 2007, 2008
  *
  * Authors:
@@ -101,6 +100,8 @@ static int set_config_fstab(const char *, const char *, struct lxc_conf *);
 static int get_config_fstab(struct lxc_container *, const char *, char *, int);
 
 static int set_config_rootfs(const char *, const char *, struct lxc_conf *);
+static int get_config_rootfs(struct lxc_container *, const char *, char *, int);
+
 static int set_config_rootfs_mount(const char *, const char *, struct lxc_conf *);
 static int set_config_rootfs_options(const char *, const char *, struct lxc_conf *);
 static int set_config_rootfs_backend(const char *, const char *, struct lxc_conf *);
@@ -162,7 +163,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.rootfs.mount",         set_config_rootfs_mount,          NULL, NULL},
 	{ "lxc.rootfs.options",       set_config_rootfs_options,        NULL, NULL},
 	{ "lxc.rootfs.backend",       set_config_rootfs_backend,        NULL, NULL},
-	{ "lxc.rootfs",               set_config_rootfs,                NULL, NULL},
+	{ "lxc.rootfs",               set_config_rootfs,               get_config_rootfs,            NULL},
 	{ "lxc.pivotdir",             set_config_pivotdir,              NULL, NULL},
 	{ "lxc.utsname",              set_config_utsname,               NULL, NULL},
 	{ "lxc.hook.pre-start",       set_config_hook,                  NULL, NULL},
@@ -2672,8 +2673,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->rootfs.bdev_type;
 	else if (strcmp(key, "lxc.rootfs.options") == 0)
 		v = c->rootfs.options;
-	else if (strcmp(key, "lxc.rootfs") == 0)
-		v = c->rootfs.path;
 	else if (strcmp(key, "lxc.cap.drop") == 0)
 		return lxc_get_item_cap_drop(c, retv, inlen);
 	else if (strcmp(key, "lxc.cap.keep") == 0)
@@ -3526,4 +3525,10 @@ static int get_config_mount(struct lxc_container *c, const char *key,
 	}
 
 	return fulllen;
+}
+
+static int get_config_rootfs(struct lxc_container *c, const char *key,
+			     char *retv, int inlen)
+{
+	return lxc_get_conf_str(retv, inlen, c->lxc_conf->rootfs.path);
 }
