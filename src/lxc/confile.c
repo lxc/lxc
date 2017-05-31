@@ -136,6 +136,7 @@ static int clr_config_pivotdir(const char *, struct lxc_conf *);
 
 static int set_config_utsname(const char *, const char *, struct lxc_conf *);
 static int get_config_utsname(const char *, char *, int, struct lxc_conf *);
+static int clr_config_utsname(const char *, struct lxc_conf *);
 
 static int set_config_hooks(const char *, const char *, struct lxc_conf *lxc_conf);
 static int get_config_hooks(const char *, char *, int, struct lxc_conf *);
@@ -235,7 +236,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.rootfs.backend",       set_config_rootfs_backend,       get_config_rootfs_backend,    clr_config_rootfs_backend,    },
 	{ "lxc.rootfs",               set_config_rootfs,               get_config_rootfs,            clr_config_rootfs,            },
 	{ "lxc.pivotdir",             set_config_pivotdir,             get_config_pivotdir,          clr_config_pivotdir,          },
-	{ "lxc.utsname",              set_config_utsname,              get_config_utsname,           NULL },
+	{ "lxc.utsname",              set_config_utsname,              get_config_utsname,           clr_config_utsname,           },
 	{ "lxc.hook.pre-start",       set_config_hooks,                get_config_hooks,             NULL },
 	{ "lxc.hook.pre-mount",       set_config_hooks,                get_config_hooks,             NULL },
 	{ "lxc.hook.mount",           set_config_hooks,                get_config_hooks,             NULL },
@@ -2567,10 +2568,6 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 	} else if (strncmp(key, "lxc.environment", 15) == 0) {
 		ret = lxc_clear_environment(c);
 
-	} else if (strcmp(key, "lxc.utsname") == 0) {
-		free(c->utsname);
-		c->utsname = NULL;
-
 	} else if (strcmp(key, "lxc.haltsignal") == 0) {
 		c->haltsignal = 0;
 
@@ -3811,5 +3808,12 @@ static inline int clr_config_rootfs_backend(const char *key, struct lxc_conf *c)
 
 static inline int clr_config_pivotdir(const char *key, struct lxc_conf *c)
 {
+	return 0;
+}
+
+static inline int clr_config_utsname(const char *key, struct lxc_conf *c)
+{
+	free(c->utsname);
+	c->utsname = NULL;
 	return 0;
 }
