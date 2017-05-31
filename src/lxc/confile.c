@@ -95,6 +95,8 @@ static int set_config_idmaps(const char *, const char *, struct lxc_conf *);
 static int get_config_idmaps(struct lxc_container *, const char *, char *, int);
 
 static int set_config_loglevel(const char *, const char *, struct lxc_conf *);
+static int get_config_loglevel(struct lxc_container *, const char *, char *, int);
+
 static int set_config_logfile(const char *, const char *, struct lxc_conf *);
 static int set_config_mount(const char *, const char *, struct lxc_conf *);
 static int set_config_mount_auto(const char *, const char *, struct lxc_conf *);
@@ -156,7 +158,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.se_context",           set_config_lsm_se_context,       get_config_lsm_se_context,    NULL},
 	{ "lxc.cgroup",               set_config_cgroup,               get_config_cgroup,            NULL},
 	{ "lxc.id_map",               set_config_idmaps,               get_config_idmaps,            NULL},
-	{ "lxc.loglevel",             set_config_loglevel,              NULL, NULL},
+	{ "lxc.loglevel",             set_config_loglevel,             get_config_loglevel,          NULL},
 	{ "lxc.logfile",              set_config_logfile,               NULL, NULL},
 	{ "lxc.mount.entry",          set_config_mount,                 NULL, NULL},
 	{ "lxc.mount.auto",           set_config_mount_auto,            NULL, NULL},
@@ -2944,8 +2946,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->fstab;
 	else if (strcmp(key, "lxc.logfile") == 0)
 		v = c->logfile;
-	else if (strcmp(key, "lxc.loglevel") == 0)
-		v = lxc_log_priority_to_string(c->loglevel);
 	else if (strcmp(key, "lxc.utsname") == 0)
 		v = c->utsname ? c->utsname->nodename : NULL;
 	else if (strcmp(key, "lxc.console.logfile") == 0)
@@ -3625,7 +3625,7 @@ static int get_config_tty(struct lxc_container *c, const char *key, char *retv,
 	return lxc_get_conf_int(c->lxc_conf, retv, inlen, c->lxc_conf->tty);
 }
 
-static inline int lxc_get_conf_str(char *retv, int inlen, char *value)
+static inline int lxc_get_conf_str(char *retv, int inlen, const char *value)
 {
 	if (!value)
 		return 0;
@@ -3754,4 +3754,12 @@ static int get_config_idmaps(struct lxc_container *c, const char *key,
 		strprint(retv, inlen, "%s%s", buf, (listlen-- > 1) ? "\n" : "");
 	}
 	return fulllen;
+}
+
+static int get_config_loglevel(struct lxc_container *c, const char *key,
+			       char *retv, int inlen)
+{
+	const char *v;
+	v = lxc_log_priority_to_string(c->lxc_conf->loglevel);
+	return lxc_get_conf_str(retv, inlen, v);
 }
