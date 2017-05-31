@@ -157,7 +157,10 @@ static int get_config_seccomp(struct lxc_container *, const char *, char *, int)
 
 static int set_config_includefile(const char *, const char *, struct lxc_conf *);
 static int set_config_network_nic(const char *, const char *, struct lxc_conf *);
+
 static int set_config_autodev(const char *, const char *, struct lxc_conf *);
+static int get_config_autodev(struct lxc_container *, const char *, char *, int);
+
 static int set_config_haltsignal(const char *, const char *, struct lxc_conf *);
 static int set_config_rebootsignal(const char *, const char *, struct lxc_conf *);
 static int set_config_stopsignal(const char *, const char *, struct lxc_conf *);
@@ -224,8 +227,8 @@ static struct lxc_config_t config[] = {
 	{ "lxc.console.logfile",      set_config_console_logfile,      get_config_console_logfile,   NULL},
 	{ "lxc.console",              set_config_console,              get_config_console,           NULL},
 	{ "lxc.seccomp",              set_config_seccomp,              get_config_seccomp,           NULL},
-	{ "lxc.include",              set_config_includefile,           NULL, NULL},
-	{ "lxc.autodev",              set_config_autodev,               NULL, NULL},
+	{ "lxc.include",              set_config_includefile,          NULL,                         NULL},
+	{ "lxc.autodev",              set_config_autodev,              get_config_autodev,           NULL},
 	{ "lxc.haltsignal",           set_config_haltsignal,            NULL, NULL},
 	{ "lxc.rebootsignal",         set_config_rebootsignal,          NULL, NULL},
 	{ "lxc.stopsignal",           set_config_stopsignal,            NULL, NULL},
@@ -2518,8 +2521,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_conf_int(c, retv, inlen, c->rebootsignal);
 	else if (strcmp(key, "lxc.stopsignal") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->stopsignal);
-	else if (strcmp(key, "lxc.autodev") == 0)
-		return lxc_get_conf_int(c, retv, inlen, c->autodev);
 	else return -1;
 
 	if (!v)
@@ -3606,4 +3607,10 @@ static int get_config_seccomp(struct lxc_container *c, const char *key,
 			      char *retv, int inlen)
 {
 	return lxc_get_conf_str(retv, inlen, c->lxc_conf->seccomp);
+}
+
+static int get_config_autodev(struct lxc_container *c, const char *key,
+			      char *retv, int inlen)
+{
+	return lxc_get_conf_int(c->lxc_conf, retv, inlen, c->lxc_conf->autodev);
 }
