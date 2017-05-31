@@ -4092,6 +4092,24 @@ bad:
 	return -1;
 }
 
+int lxc_early_setup(struct lxc_handler *handler)
+{
+	const char *name = handler->name;
+	struct lxc_conf *lxc_conf = handler->conf;
+
+	if (lxc_create_tty(name, lxc_conf)) {
+		ERROR("failed to create the ttys");
+		return -1;
+	}
+
+	if (send_ttys_to_parent(handler) < 0) {
+		ERROR("failure sending console info to parent");
+		return -1;
+	}
+
+	return 0;
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	const char *name = handler->name;
@@ -4200,16 +4218,6 @@ int lxc_setup(struct lxc_handler *handler)
 
 	if (lxc_setup_devpts(lxc_conf->pts)) {
 		ERROR("failed to setup the new pts instance");
-		return -1;
-	}
-
-	if (lxc_create_tty(name, lxc_conf)) {
-		ERROR("failed to create the ttys");
-		return -1;
-	}
-
-	if (send_ttys_to_parent(handler) < 0) {
-		ERROR("failure sending console info to parent");
 		return -1;
 	}
 

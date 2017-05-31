@@ -820,9 +820,8 @@ static int do_start(void *data)
 		     "standard file descriptors. Migration will not work.");
 	}
 
-	/* Setup the container, ip, names, utsname, ... */
-	if (lxc_setup(handler)) {
-		ERROR("Failed to setup container \"%s\".", handler->name);
+	if (lxc_early_setup(handler)) {
+		ERROR("Failed to execute early setup for container \"%s\".", handler->name);
 		goto out_warn_father;
 	}
 
@@ -848,6 +847,12 @@ static int do_start(void *data)
 			goto out_warn_father;
 		}
 		INFO("Unshared CLONE_NEWCGROUP.");
+	}
+
+	/* Setup the container, ip, names, utsname, ... */
+	if (lxc_setup(handler)) {
+		ERROR("Failed to setup container \"%s\".", handler->name);
+		goto out_warn_father;
 	}
 
 	/* Set the label to change to when we exec(2) the container's init. */

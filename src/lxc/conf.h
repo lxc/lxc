@@ -463,6 +463,7 @@ extern int do_rootfs_setup(struct lxc_conf *conf, const char *name,
  */
 
 struct cgroup_process_info;
+extern int lxc_early_setup(struct lxc_handler *handler);
 extern int lxc_setup(struct lxc_handler *handler);
 
 extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
