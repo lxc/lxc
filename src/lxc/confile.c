@@ -206,6 +206,7 @@ static int clr_config_haltsignal(const char *, struct lxc_conf *);
 
 static int set_config_rebootsignal(const char *, const char *, struct lxc_conf *);
 static int get_config_rebootsignal(const char *, char *, int, struct lxc_conf *);
+static int clr_config_rebootsignal(const char *, struct lxc_conf *);
 
 static int set_config_stopsignal(const char *, const char *, struct lxc_conf *);
 static int get_config_stopsignal(const char *, char *, int, struct lxc_conf *);
@@ -300,7 +301,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.include",              set_config_includefile,          NULL,                         NULL                          },
 	{ "lxc.autodev",              set_config_autodev,              get_config_autodev,           clr_config_autodev,           },
 	{ "lxc.haltsignal",           set_config_haltsignal,           get_config_haltsignal,        clr_config_haltsignal,        },
-	{ "lxc.rebootsignal",         set_config_rebootsignal,         get_config_rebootsignal,      NULL },
+	{ "lxc.rebootsignal",         set_config_rebootsignal,         get_config_rebootsignal,      clr_config_rebootsignal,      },
 	{ "lxc.stopsignal",           set_config_stopsignal,           get_config_stopsignal,        NULL },
 	{ "lxc.start.auto",           set_config_start,                get_config_start,             NULL },
 	{ "lxc.start.delay",          set_config_start,                get_config_start,             NULL },
@@ -2770,9 +2771,6 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 	} else if (strncmp(key, "lxc.limit", 9) == 0) {
 		ret = lxc_clear_limits(c, key);
 
-	} else if (strcmp(key, "lxc.rebootsignal") == 0) {
-		c->rebootsignal = 0;
-
 	} else if (strcmp(key, "lxc.stopsignal") == 0) {
 		c->stopsignal = 0;
 
@@ -4197,5 +4195,11 @@ static inline int clr_config_autodev(const char *key, struct lxc_conf *c)
 static inline int clr_config_haltsignal(const char *key, struct lxc_conf *c)
 {
 	c->haltsignal = 0;
+	return 0;
+}
+
+static inline int clr_config_rebootsignal(const char *key, struct lxc_conf *c)
+{
+	c->rebootsignal = 0;
 	return 0;
 }
