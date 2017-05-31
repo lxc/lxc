@@ -94,6 +94,7 @@ static int get_config_logfile(struct lxc_container *, const char *, char *, int)
 static int set_config_mount(const char *, const char *, struct lxc_conf *);
 
 static int set_config_mount_auto(const char *, const char *, struct lxc_conf *);
+static int get_config_mount_auto(struct lxc_container *, const char *, char *, int);
 
 static int set_config_fstab(const char *, const char *, struct lxc_conf *);
 static int get_config_fstab(struct lxc_container *, const char *, char *, int);
@@ -155,7 +156,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.loglevel",             set_config_loglevel,             get_config_loglevel,          NULL},
 	{ "lxc.logfile",              set_config_logfile,              get_config_logfile,           NULL},
 	{ "lxc.mount.entry",          set_config_mount,                 NULL, NULL},
-	{ "lxc.mount.auto",           set_config_mount_auto,            NULL, NULL},
+	{ "lxc.mount.auto",           set_config_mount_auto,           get_config_mount_auto,        NULL},
 	{ "lxc.mount",                set_config_fstab,	               get_config_fstab,             NULL},
 	{ "lxc.rootfs.mount",         set_config_rootfs_mount,          NULL, NULL},
 	{ "lxc.rootfs.options",       set_config_rootfs_options,        NULL, NULL},
@@ -2542,45 +2543,6 @@ static int lxc_get_mount_entries(struct lxc_conf *c, char *retv, int inlen)
 	return fulllen;
 }
 
-static int lxc_get_auto_mounts(struct lxc_conf *c, char *retv, int inlen)
-{
-	int len, fulllen = 0;
-	const char *sep = "";
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	if (!(c->auto_mounts & LXC_AUTO_ALL_MASK))
-		return 0;
-
-	switch (c->auto_mounts & LXC_AUTO_PROC_MASK) {
-		case LXC_AUTO_PROC_MIXED:         strprint(retv, inlen, "%sproc:mixed", sep);        sep = " "; break;
-		case LXC_AUTO_PROC_RW:            strprint(retv, inlen, "%sproc:rw", sep);           sep = " "; break;
-		default: break;
-	}
-	switch (c->auto_mounts & LXC_AUTO_SYS_MASK) {
-		case LXC_AUTO_SYS_RO:             strprint(retv, inlen, "%ssys:ro", sep);            sep = " "; break;
-		case LXC_AUTO_SYS_RW:             strprint(retv, inlen, "%ssys:rw", sep);            sep = " "; break;
-		case LXC_AUTO_SYS_MIXED:          strprint(retv, inlen, "%ssys:mixed", sep);         sep = " "; break;
-		default: break;
-	}
-	switch (c->auto_mounts & LXC_AUTO_CGROUP_MASK) {
-		case LXC_AUTO_CGROUP_NOSPEC:      strprint(retv, inlen, "%scgroup", sep);            sep = " "; break;
-		case LXC_AUTO_CGROUP_MIXED:       strprint(retv, inlen, "%scgroup:mixed", sep);      sep = " "; break;
-		case LXC_AUTO_CGROUP_RO:          strprint(retv, inlen, "%scgroup:ro", sep);         sep = " "; break;
-		case LXC_AUTO_CGROUP_RW:          strprint(retv, inlen, "%scgroup:rw", sep);         sep = " "; break;
-		case LXC_AUTO_CGROUP_FULL_NOSPEC: strprint(retv, inlen, "%scgroup-full", sep);       sep = " "; break;
-		case LXC_AUTO_CGROUP_FULL_MIXED:  strprint(retv, inlen, "%scgroup-full:mixed", sep); sep = " "; break;
-		case LXC_AUTO_CGROUP_FULL_RO:     strprint(retv, inlen, "%scgroup-full:ro", sep);    sep = " "; break;
-		case LXC_AUTO_CGROUP_FULL_RW:     strprint(retv, inlen, "%scgroup-full:rw", sep);    sep = " "; break;
-		default: break;
-	}
-
-	return fulllen;
-}
-
 /*
  * lxc.network.0.XXX, where XXX can be: name, type, link, flags, type,
  * macvlan.mode, veth.pair, vlan, ipv4, ipv6, script.up, hwaddr, mtu,
@@ -2715,8 +2677,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 
 	if (strcmp(key, "lxc.mount.entry") == 0)
 		return lxc_get_mount_entries(c, retv, inlen);
-	else if (strcmp(key, "lxc.mount.auto") == 0)
-		return lxc_get_auto_mounts(c, retv, inlen);
 	else if (strcmp(key, "lxc.utsname") == 0)
 		v = c->utsname ? c->utsname->nodename : NULL;
 	else if (strcmp(key, "lxc.console.logfile") == 0)
@@ -3480,4 +3440,88 @@ static int get_config_fstab(struct lxc_container *c, const char *key,
 			    char *retv, int inlen)
 {
 	return lxc_get_conf_str(retv, inlen, c->lxc_conf->fstab);
+}
+
+static int get_config_mount_auto(struct lxc_container *c, const char *key,
+				 char *retv, int inlen)
+{
+	int len, fulllen = 0;
+	const char *sep = "";
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (!(c->lxc_conf->auto_mounts & LXC_AUTO_ALL_MASK))
+		return 0;
+
+	switch (c->lxc_conf->auto_mounts & LXC_AUTO_PROC_MASK) {
+	case LXC_AUTO_PROC_MIXED:
+		strprint(retv, inlen, "%sproc:mixed", sep);
+		sep = " ";
+		break;
+	case LXC_AUTO_PROC_RW:
+		strprint(retv, inlen, "%sproc:rw", sep);
+		sep = " ";
+		break;
+	default:
+		break;
+	}
+
+	switch (c->lxc_conf->auto_mounts & LXC_AUTO_SYS_MASK) {
+	case LXC_AUTO_SYS_RO:
+		strprint(retv, inlen, "%ssys:ro", sep);
+		sep = " ";
+		break;
+	case LXC_AUTO_SYS_RW:
+		strprint(retv, inlen, "%ssys:rw", sep);
+		sep = " ";
+		break;
+	case LXC_AUTO_SYS_MIXED:
+		strprint(retv, inlen, "%ssys:mixed", sep);
+		sep = " ";
+		break;
+	default:
+		break;
+	}
+
+	switch (c->lxc_conf->auto_mounts & LXC_AUTO_CGROUP_MASK) {
+	case LXC_AUTO_CGROUP_NOSPEC:
+		strprint(retv, inlen, "%scgroup", sep);
+		sep = " ";
+		break;
+	case LXC_AUTO_CGROUP_MIXED:
+		strprint(retv, inlen, "%scgroup:mixed", sep);
+		sep = " ";
+		break;
+	case LXC_AUTO_CGROUP_RO:
+		strprint(retv, inlen, "%scgroup:ro", sep);
+		sep = " ";
+		break;
+	case LXC_AUTO_CGROUP_RW:
+		strprint(retv, inlen, "%scgroup:rw", sep);
+		sep = " ";
+		break;
+	case LXC_AUTO_CGROUP_FULL_NOSPEC:
+		strprint(retv, inlen, "%scgroup-full", sep);
+		sep = " ";
+		break;
+	case LXC_AUTO_CGROUP_FULL_MIXED:
+		strprint(retv, inlen, "%scgroup-full:mixed", sep);
+		sep = " ";
+		break;
+	case LXC_AUTO_CGROUP_FULL_RO:
+		strprint(retv, inlen, "%scgroup-full:ro", sep);
+		sep = " ";
+		break;
+	case LXC_AUTO_CGROUP_FULL_RW:
+		strprint(retv, inlen, "%scgroup-full:rw", sep);
+		sep = " ";
+		break;
+	default:
+		break;
+	}
+
+	return fulllen;
 }
