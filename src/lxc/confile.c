@@ -943,7 +943,7 @@ static int set_config_network_ipv4(const char *key, const char *value,
 	char *addr = NULL, *bcast = NULL, *prefix = NULL;
 
 	if (config_value_empty(value))
-		return lxc_clear_config_item(lxc_conf, key);
+		return clr_config_network_item(key, lxc_conf);
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
@@ -1072,7 +1072,7 @@ static int set_config_network_ipv6(const char *key, const char *value,
 	char *slash, *valdup, *netmask;
 
 	if (config_value_empty(value))
-		return lxc_clear_config_item(lxc_conf, key);
+		return clr_config_network_item(key, lxc_conf);
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
 	if (!netdev)
@@ -1921,7 +1921,7 @@ static int set_config_fstab(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf)
 {
 	if (config_value_empty(value)) {
-		lxc_clear_config_item(lxc_conf, key);
+		clr_config_fstab(key, lxc_conf);
 		return -1;
 	}
 
@@ -2245,7 +2245,7 @@ static int set_config_includefiles(const char *key, const char *value,
 {
 	/* Set config value to default. */
 	if (config_value_empty(value)) {
-		lxc_clear_config_item(lxc_conf, key);
+		clr_config_includefiles(key, lxc_conf);
 		return 0;
 	}
 
@@ -2304,7 +2304,7 @@ static int set_config_utsname(const char *key, const char *value,
 	struct utsname *utsname;
 
 	if (config_value_empty(value)) {
-		lxc_clear_config_item(lxc_conf, key);
+		clr_config_utsname(key, lxc_conf);
 		return 0;
 	}
 
@@ -2562,11 +2562,6 @@ static inline int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	return snprintf(retv, inlen, "%d", v);
-}
-
-int lxc_clear_config_item(struct lxc_conf *c, const char *key)
-{
-	return 0;
 }
 
 /* Write out a configuration file. */

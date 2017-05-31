@@ -38,7 +38,7 @@ struct lxc_config_t {
 	char *name;
 	config_set_cb set;
 	config_get_cb get;
-	config_clr_cb clear;
+	config_clr_cb clr;
 };
 
 extern struct lxc_config_t *lxc_getconfig(const char *key);
