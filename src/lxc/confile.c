@@ -80,6 +80,7 @@ static int clr_config_lsm_aa_profile(const char *, struct lxc_conf *);
 
 static int set_config_lsm_aa_incomplete(const char *, const char *, struct lxc_conf *);
 static int get_config_lsm_aa_incomplete(const char *, char *, int, struct lxc_conf *);
+static int clr_config_lsm_aa_incomplete(const char *, struct lxc_conf *);
 
 static int set_config_lsm_se_context(const char *, const char *, struct lxc_conf *);
 static int get_config_lsm_se_context(const char *, char *, int, struct lxc_conf *);
@@ -201,13 +202,13 @@ static int set_config_ephemeral(const char *, const char *, struct lxc_conf *);
 static int get_config_ephemeral(const char *, char *, int, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
-	{ "lxc.arch",                 set_config_personality,          get_config_personality,       clr_config_personality,    },
-	{ "lxc.pts",                  set_config_pts,                  get_config_pts,               clr_config_pts,            },
-	{ "lxc.tty",                  set_config_tty,                  get_config_tty,               clr_config_tty,            },
-	{ "lxc.devttydir",            set_config_ttydir,               get_config_ttydir,            clr_config_ttydir,         },
-	{ "lxc.kmsg",                 set_config_kmsg,                 get_config_kmsg,              clr_config_kmsg,           },
-	{ "lxc.aa_profile",           set_config_lsm_aa_profile,       get_config_lsm_aa_profile,    clr_config_lsm_aa_profile, },
-	{ "lxc.aa_allow_incomplete",  set_config_lsm_aa_incomplete,    get_config_lsm_aa_incomplete, NULL },
+	{ "lxc.arch",                 set_config_personality,          get_config_personality,       clr_config_personality,       },
+	{ "lxc.pts",                  set_config_pts,                  get_config_pts,               clr_config_pts,               },
+	{ "lxc.tty",                  set_config_tty,                  get_config_tty,               clr_config_tty,               },
+	{ "lxc.devttydir",            set_config_ttydir,               get_config_ttydir,            clr_config_ttydir,            },
+	{ "lxc.kmsg",                 set_config_kmsg,                 get_config_kmsg,              clr_config_kmsg,              },
+	{ "lxc.aa_profile",           set_config_lsm_aa_profile,       get_config_lsm_aa_profile,    clr_config_lsm_aa_profile,    },
+	{ "lxc.aa_allow_incomplete",  set_config_lsm_aa_incomplete,    get_config_lsm_aa_incomplete, clr_config_lsm_aa_incomplete, },
 	{ "lxc.se_context",           set_config_lsm_se_context,       get_config_lsm_se_context,    NULL },
 	{ "lxc.cgroup",               set_config_cgroup,               get_config_cgroup,            NULL },
 	{ "lxc.id_map",               set_config_idmaps,               get_config_idmaps,            NULL },
@@ -2622,9 +2623,6 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 		free(c->rootfs.bdev_type);
 		c->rootfs.bdev_type = NULL;
 
-	} else if (strcmp(key, "lxc.aa_allow_incomplete") == 0) {
-		c->lsm_aa_allow_incomplete = 0;
-
 	} else if (strcmp(key, "lxc.se_context") == 0) {
 		free(c->lsm_se_context);
 		c->lsm_se_context = NULL;
@@ -3756,5 +3754,12 @@ static inline int clr_config_lsm_aa_profile(const char *key, struct lxc_conf *c)
 {
 	free(c->lsm_aa_profile);
 	c->lsm_aa_profile = NULL;
+	return 0;
+}
+
+static inline int clr_config_lsm_aa_incomplete(const char *key,
+					       struct lxc_conf *c)
+{
+	c->lsm_aa_allow_incomplete = 0;
 	return 0;
 }
