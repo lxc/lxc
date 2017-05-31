@@ -116,6 +116,7 @@ static int clr_config_fstab(const char *, struct lxc_conf *);
 
 static int set_config_rootfs_mount(const char *, const char *, struct lxc_conf *);
 static int get_config_rootfs_mount(const char *, char *, int, struct lxc_conf *);
+static int clr_config_rootfs_mount(const char *, struct lxc_conf *);
 
 static int set_config_rootfs_options(const char *, const char *, struct lxc_conf *);
 static int get_config_rootfs_options(const char *, char *, int, struct lxc_conf *);
@@ -226,10 +227,10 @@ static struct lxc_config_t config[] = {
 	{ "lxc.mount.entry",          set_config_mount,                get_config_mount,             clr_config_mount,             },
 	{ "lxc.mount.auto",           set_config_mount_auto,           get_config_mount_auto,        clr_config_mount_auto,        },
 	{ "lxc.mount",                set_config_fstab,	               get_config_fstab,             clr_config_fstab,             },
-	{ "lxc.rootfs.mount",         set_config_rootfs_mount,         get_config_rootfs_mount,      NULL },
+	{ "lxc.rootfs.mount",         set_config_rootfs_mount,         get_config_rootfs_mount,      clr_config_rootfs_mount,      },
 	{ "lxc.rootfs.options",       set_config_rootfs_options,       get_config_rootfs_options,    NULL },
 	{ "lxc.rootfs.backend",       set_config_rootfs_backend,       get_config_rootfs_backend,    NULL },
-	{ "lxc.rootfs",               set_config_rootfs,               get_config_rootfs,            clr_config_rootfs, },
+	{ "lxc.rootfs",               set_config_rootfs,               get_config_rootfs,            clr_config_rootfs,            },
 	{ "lxc.pivotdir",             set_config_pivotdir,             get_config_pivotdir,          NULL },
 	{ "lxc.utsname",              set_config_utsname,              get_config_utsname,           NULL },
 	{ "lxc.hook.pre-start",       set_config_hooks,                get_config_hooks,             NULL },
@@ -2600,10 +2601,6 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 	} else if (strcmp(key, "lxc.autodev") == 0) {
 		c->autodev = 1;
 
-	} else if (strcmp(key, "lxc.rootfs.mount") == 0) {
-		free(c->rootfs.mount);
-		c->rootfs.mount = NULL;
-
 	} else if (strcmp(key, "lxc.rootfs.options") == 0) {
 		free(c->rootfs.options);
 		c->rootfs.options = NULL;
@@ -3796,3 +3793,9 @@ static inline int clr_config_rootfs(const char *key, struct lxc_conf *c)
 	return 0;
 }
 
+static inline int clr_config_rootfs_mount(const char *key, struct lxc_conf *c)
+{
+	free(c->rootfs.mount);
+	c->rootfs.mount = NULL;
+	return 0;
+}
