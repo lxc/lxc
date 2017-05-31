@@ -8,9 +8,9 @@ Documentation=man:lxc-start man:lxc
 [Service]
 Type=simple
 KillMode=mixed
-KillSignal=SIGPWR
 TimeoutStopSec=120s
 ExecStart=@BINDIR@/lxc-start -F -n %i
+ExecStop=@BINDIR@/lxc-stop -n %i
 # Environment=BOOTUP=serial
 # Environment=CONSOLETYPE=serial
 Delegate=yes
