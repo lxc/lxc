@@ -229,6 +229,7 @@ static int clr_config_init_uid(const char *, struct lxc_conf *);
 
 static int set_config_init_gid(const char *, const char *, struct lxc_conf *);
 static int get_config_init_gid(const char *, char *, int, struct lxc_conf *);
+static int clr_config_init_gid(const char *, struct lxc_conf *);
 
 static int set_config_ephemeral(const char *, const char *, struct lxc_conf *);
 static int get_config_ephemeral(const char *, char *, int, struct lxc_conf *);
@@ -300,7 +301,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.environment",          set_config_environment,          get_config_environment,       clr_config_environment,       },
 	{ "lxc.init_cmd",             set_config_init_cmd,             get_config_init_cmd,          clr_config_init_cmd,          },
 	{ "lxc.init_uid",             set_config_init_uid,             get_config_init_uid,          clr_config_init_uid,          },
-	{ "lxc.init_gid",             set_config_init_gid,             get_config_init_gid,          NULL },
+	{ "lxc.init_gid",             set_config_init_gid,             get_config_init_gid,          clr_config_init_gid,          },
 	{ "lxc.ephemeral",            set_config_ephemeral,            get_config_ephemeral,         NULL },
 };
 
@@ -2565,10 +2566,7 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 {
 	int ret = 0;
 
-	if (strcmp(key, "lxc.init_gid") == 0) {
-		c->init_gid = 0;
-
-	} else if (strcmp(key, "lxc.ephemeral") == 0) {
+	if (strcmp(key, "lxc.ephemeral") == 0) {
 		c->ephemeral = 0;
 
 	} else if (strcmp(key, "lxc.include") == 0) {
@@ -3890,5 +3888,11 @@ static inline int clr_config_init_cmd(const char *key, struct lxc_conf *c)
 static inline int clr_config_init_uid(const char *key, struct lxc_conf *c)
 {
 	c->init_uid = 0;
+	return 0;
+}
+
+static inline int clr_config_init_gid(const char *key, struct lxc_conf *c)
+{
+	c->init_gid = 0;
 	return 0;
 }
