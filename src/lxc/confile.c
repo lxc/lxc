@@ -71,6 +71,8 @@ static int set_config_pts(const char *, const char *, struct lxc_conf *);
 static int get_config_pts(struct lxc_container *, const char *, char *, int);
 
 static int set_config_tty(const char *, const char *, struct lxc_conf *);
+static int get_config_tty(struct lxc_container *, const char *, char *, int);
+
 static int set_config_ttydir(const char *, const char *, struct lxc_conf *);
 static int set_config_kmsg(const char *, const char *, struct lxc_conf *);
 static int set_config_lsm_aa_profile(const char *, const char *, struct lxc_conf *);
@@ -132,7 +134,7 @@ static int set_config_limit(const char *, const char *, struct lxc_conf *);
 static struct lxc_config_t config[] = {
 	{ "lxc.arch",                 set_config_personality,          get_config_personality, NULL},
 	{ "lxc.pts",                  set_config_pts,                  get_config_pts,         NULL},
-	{ "lxc.tty",                  set_config_tty,                   NULL, NULL},
+	{ "lxc.tty",                  set_config_tty,                  get_config_tty,         NULL},
 	{ "lxc.devttydir",            set_config_ttydir,                NULL, NULL},
 	{ "lxc.kmsg",                 set_config_kmsg,                  NULL, NULL},
 	{ "lxc.aa_profile",           set_config_lsm_aa_profile,        NULL, NULL},
@@ -3008,8 +3010,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_auto_mounts(c, retv, inlen);
 	else if (strcmp(key, "lxc.mount") == 0)
 		v = c->fstab;
-	else if (strcmp(key, "lxc.tty") == 0)
-		return lxc_get_conf_int(c, retv, inlen, c->tty);
 	else if (strcmp(key, "lxc.devttydir") == 0)
 		v = c->ttydir;
 	else if (strcmp(key, "lxc.aa_profile") == 0)
@@ -3701,4 +3701,10 @@ static int get_config_pts(struct lxc_container *c, const char *key, char *retv,
 			  int inlen)
 {
 	return lxc_get_conf_int(c->lxc_conf, retv, inlen, c->lxc_conf->pts);
+}
+
+static int get_config_tty(struct lxc_container *c, const char *key, char *retv,
+			  int inlen)
+{
+	return lxc_get_conf_int(c->lxc_conf, retv, inlen, c->lxc_conf->tty);
 }
