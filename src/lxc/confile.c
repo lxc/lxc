@@ -202,6 +202,7 @@ static int clr_config_autodev(const char *, struct lxc_conf *);
 
 static int set_config_haltsignal(const char *, const char *, struct lxc_conf *);
 static int get_config_haltsignal(const char *, char *, int, struct lxc_conf *);
+static int clr_config_haltsignal(const char *, struct lxc_conf *);
 
 static int set_config_rebootsignal(const char *, const char *, struct lxc_conf *);
 static int get_config_rebootsignal(const char *, char *, int, struct lxc_conf *);
@@ -298,7 +299,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.seccomp",              set_config_seccomp,              get_config_seccomp,           clr_config_seccomp,           },
 	{ "lxc.include",              set_config_includefile,          NULL,                         NULL                          },
 	{ "lxc.autodev",              set_config_autodev,              get_config_autodev,           clr_config_autodev,           },
-	{ "lxc.haltsignal",           set_config_haltsignal,           get_config_haltsignal,        NULL },
+	{ "lxc.haltsignal",           set_config_haltsignal,           get_config_haltsignal,        clr_config_haltsignal,        },
 	{ "lxc.rebootsignal",         set_config_rebootsignal,         get_config_rebootsignal,      NULL },
 	{ "lxc.stopsignal",           set_config_stopsignal,           get_config_stopsignal,        NULL },
 	{ "lxc.start.auto",           set_config_start,                get_config_start,             NULL },
@@ -2769,9 +2770,6 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 	} else if (strncmp(key, "lxc.limit", 9) == 0) {
 		ret = lxc_clear_limits(c, key);
 
-	} else if (strcmp(key, "lxc.haltsignal") == 0) {
-		c->haltsignal = 0;
-
 	} else if (strcmp(key, "lxc.rebootsignal") == 0) {
 		c->rebootsignal = 0;
 
@@ -4193,5 +4191,11 @@ static inline int clr_config_seccomp(const char *key, struct lxc_conf *c)
 static inline int clr_config_autodev(const char *key, struct lxc_conf *c)
 {
 	c->autodev = 1;
+	return 0;
+}
+
+static inline int clr_config_haltsignal(const char *key, struct lxc_conf *c)
+{
+	c->haltsignal = 0;
 	return 0;
 }
