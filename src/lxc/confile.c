@@ -216,9 +216,6 @@ static int set_config_start(const char *, const char *, struct lxc_conf *);
 static int get_config_start(const char *, char *, int, struct lxc_conf *);
 static int clr_config_start(const char *, struct lxc_conf *);
 
-static int set_config_syslog(const char *, const char *, struct lxc_conf *);
-static int get_config_syslog(const char *, char *, int, struct lxc_conf *);
-
 static int set_config_monitor(const char *, const char *, struct lxc_conf *);
 static int get_config_monitor(const char *, char *, int, struct lxc_conf *);
 
@@ -239,6 +236,10 @@ static int get_config_init_gid(const char *, char *, int, struct lxc_conf *);
 
 static int set_config_ephemeral(const char *, const char *, struct lxc_conf *);
 static int get_config_ephemeral(const char *, char *, int, struct lxc_conf *);
+
+static int set_config_syslog(const char *, const char *, struct lxc_conf *);
+static int get_config_syslog(const char *, char *, int, struct lxc_conf *);
+static int clr_config_syslog(const char *, struct lxc_conf *);
 
 static int set_config_no_new_privs(const char *, const char *, struct lxc_conf *);
 static int get_config_no_new_privs(const char *, char *, int, struct lxc_conf *);
@@ -315,7 +316,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.init_uid",             set_config_init_uid,             get_config_init_uid,          NULL },
 	{ "lxc.init_gid",             set_config_init_gid,             get_config_init_gid,          NULL },
 	{ "lxc.ephemeral",            set_config_ephemeral,            get_config_ephemeral,         NULL },
-	{ "lxc.syslog",               set_config_syslog,               get_config_syslog,            NULL },
+	{ "lxc.syslog",               set_config_syslog,               get_config_syslog,            clr_config_syslog,            },
 	{ "lxc.no_new_privs",	      set_config_no_new_privs,         get_config_no_new_privs,      NULL },
 	{ "lxc.limit",                set_config_limit,                get_config_limit,             NULL },
 };
@@ -2792,10 +2793,6 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 	} else if (strcmp(key, "lxc.include") == 0) {
 		lxc_clear_includes(c);
 
-	} else if (strcmp(key, "lxc.syslog") == 0) {
-		free(c->syslog);
-		c->syslog = NULL;
-
 	} else if (strcmp(key, "lxc.no_new_privs") == 0) {
 		c->no_new_privs = false;
 
@@ -4209,5 +4206,12 @@ static inline int clr_config_start(const char *key, struct lxc_conf *c)
 	else if (strcmp(key + 10, "order") == 0)
 		c->start_order = 0;
 
+	return 0;
+}
+
+static inline int clr_config_syslog(const char *key, struct lxc_conf *c)
+{
+	free(c->syslog);
+	c->syslog = NULL;
 	return 0;
 }
