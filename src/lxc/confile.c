@@ -186,6 +186,8 @@ static int set_config_init_cmd(const char *, const char *, struct lxc_conf *);
 static int get_config_init_cmd(struct lxc_container *, const char *, char *, int);
 
 static int set_config_init_uid(const char *, const char *, struct lxc_conf *);
+static int get_config_init_uid(struct lxc_container *, const char *, char *, int);
+
 static int set_config_init_gid(const char *, const char *, struct lxc_conf *);
 static int set_config_ephemeral(const char *, const char *, struct lxc_conf *);
 
@@ -255,7 +257,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.group",                set_config_group,                get_config_group,             NULL},
 	{ "lxc.environment",          set_config_environment,          get_config_environment,       NULL},
 	{ "lxc.init_cmd",             set_config_init_cmd,             get_config_init_cmd,          NULL},
-	{ "lxc.init_uid",             set_config_init_uid,              NULL, NULL},
+	{ "lxc.init_uid",             set_config_init_uid,             get_config_init_uid,          NULL},
 	{ "lxc.init_gid",             set_config_init_gid,              NULL, NULL},
 	{ "lxc.ephemeral",            set_config_ephemeral,             NULL, NULL},
 };
@@ -2479,9 +2481,7 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 {
 	const char *v = NULL;
 
-	if (strcmp(key, "lxc.init_uid") == 0)
-		return lxc_get_conf_int(c, retv, inlen, c->init_uid);
-	else if (strcmp(key, "lxc.init_gid") == 0)
+	if (strcmp(key, "lxc.init_gid") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->init_gid);
 	else if (strcmp(key, "lxc.ephemeral") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->ephemeral);
@@ -3661,4 +3661,11 @@ static int get_config_init_cmd(struct lxc_container *c, const char *key,
 			       char *retv, int inlen)
 {
 	return lxc_get_conf_str(retv, inlen, c->lxc_conf->init_cmd);
+}
+
+static int get_config_init_uid(struct lxc_container *c, const char *key,
+			       char *retv, int inlen)
+{
+	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
+				c->lxc_conf->init_uid);
 }
