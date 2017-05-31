@@ -177,6 +177,8 @@ static int set_config_monitor(const char *, const char *, struct lxc_conf *);
 static int get_config_monitor(struct lxc_container *, const char *, char *, int);
 
 static int set_config_group(const char *, const char *, struct lxc_conf *);
+static int get_config_group(struct lxc_container *, const char *, char *, int);
+
 static int set_config_environment(const char *, const char *, struct lxc_conf *);
 static int set_config_init_cmd(const char *, const char *, struct lxc_conf *);
 static int set_config_init_uid(const char *, const char *, struct lxc_conf *);
@@ -246,7 +248,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.start.delay",          set_config_start,                get_config_start,             NULL},
 	{ "lxc.start.order",          set_config_start,                get_config_start,             NULL},
 	{ "lxc.monitor.unshare",      set_config_monitor,              get_config_monitor,           NULL},
-	{ "lxc.group",                set_config_group,                 NULL, NULL},
+	{ "lxc.group",                set_config_group,                get_config_group,             NULL},
 	{ "lxc.environment",          set_config_environment,           NULL, NULL},
 	{ "lxc.init_cmd",             set_config_init_cmd,              NULL, NULL},
 	{ "lxc.init_uid",             set_config_init_uid,              NULL, NULL},
@@ -2468,22 +2470,6 @@ static inline int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen,
 	return snprintf(retv, inlen, "%d", v);
 }
 
-static int lxc_get_item_groups(struct lxc_conf *c, char *retv, int inlen)
-{
-	int len, fulllen = 0;
-	struct lxc_list *it;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	lxc_list_for_each(it, &c->groups) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
-	}
-	return fulllen;
-}
-
 static int lxc_get_item_environment(struct lxc_conf *c, char *retv, int inlen)
 {
 	int len, fulllen = 0;
@@ -2505,9 +2491,7 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 {
 	const char *v = NULL;
 
-	if (strcmp(key, "lxc.group") == 0)
-		return lxc_get_item_groups(c, retv, inlen);
-	else if (strcmp(key, "lxc.environment") == 0)
+	if (strcmp(key, "lxc.environment") == 0)
 		return lxc_get_item_environment(c, retv, inlen);
 	else if (strcmp(key, "lxc.init_cmd") == 0)
 		v = c->init_cmd;
@@ -3653,4 +3637,21 @@ static int get_config_monitor(struct lxc_container *c, const char *key,
 {
 	return lxc_get_conf_int(c->lxc_conf, retv, inlen,
 				c->lxc_conf->monitor_unshare);
+}
+
+static int get_config_group(struct lxc_container *c, const char *key,
+			    char *retv, int inlen)
+{
+	int len, fulllen = 0;
+	struct lxc_list *it;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	lxc_list_for_each(it, &c->lxc_conf->groups) {
+		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	}
+	return fulllen;
 }
