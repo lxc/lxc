@@ -121,6 +121,8 @@ static int set_config_rootfs_backend(const char *, const char *, struct lxc_conf
 static int get_config_rootfs_backend(struct lxc_container *, const char *, char *, int);
 
 static int set_config_pivotdir(const char *, const char *, struct lxc_conf *);
+static int get_config_pivotdir(struct lxc_container *, const char *, char *, int);
+
 static int set_config_utsname(const char *, const char *, struct lxc_conf *);
 static int set_config_hook(const char *, const char *, struct lxc_conf *lxc_conf);
 static int set_config_network(const char *, const char *, struct lxc_conf *);
@@ -182,7 +184,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.rootfs.options",       set_config_rootfs_options,       get_config_rootfs_options,    NULL},
 	{ "lxc.rootfs.backend",       set_config_rootfs_backend,       get_config_rootfs_backend,    NULL},
 	{ "lxc.rootfs",               set_config_rootfs,               get_config_rootfs,            NULL},
-	{ "lxc.pivotdir",             set_config_pivotdir,              NULL, NULL},
+	{ "lxc.pivotdir",             set_config_pivotdir,             get_config_pivotdir,          NULL},
 	{ "lxc.utsname",              set_config_utsname,               NULL, NULL},
 	{ "lxc.hook.pre-start",       set_config_hook,                  NULL, NULL},
 	{ "lxc.hook.pre-mount",       set_config_hook,                  NULL, NULL},
@@ -3851,4 +3853,10 @@ static int get_config_rootfs_backend(struct lxc_container *c, const char *key,
 				     char *retv, int inlen)
 {
 	return lxc_get_conf_str(retv, inlen, c->lxc_conf->rootfs.bdev_type);
+}
+
+static int get_config_pivotdir(struct lxc_container *c, const char *key,
+			       char *retv, int inlen)
+{
+	return 0;
 }
