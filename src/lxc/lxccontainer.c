@@ -1985,13 +1985,22 @@ WRAP_API_3(char **, lxcapi_get_ips, const char *, const char *, int)
 
 static int do_lxcapi_get_config_item(struct lxc_container *c, const char *key, char *retv, int inlen)
 {
-	int ret;
+	int ret = -1;
+	struct lxc_config_t *config;
 
 	if (!c || !c->lxc_conf)
 		return -1;
+
 	if (container_mem_lock(c))
 		return -1;
-	ret = lxc_get_config_item(c->lxc_conf, key, retv, inlen);
+
+	config = lxc_getconfig(key);
+	/* Verify that the config key exists and that it has a callback
+	 * implemented.
+	 */
+	if (config && config->get)
+		ret = config->get(c, key, retv, inlen);
+
 	container_mem_unlock(c);
 	return ret;
 }
