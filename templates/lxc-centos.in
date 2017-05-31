@@ -398,6 +398,12 @@ start on power-status-changed
 
 exec /sbin/shutdown -h now "SIGPWR received"
 EOF
+    else
+        # Change default target from graphical to multi-user
+        rm -f ${rootfs_path}/etc/systemd/system/default.target
+        chroot ${rootfs_path} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+        # Make systemd honor SIGPWR
+        chroot ${rootfs_path} ln -s /usr/lib/systemd/system/halt.target /etc/systemd/system/sigpwr.target
     fi
 }
 
