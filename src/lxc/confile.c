@@ -117,7 +117,9 @@ static int get_config_pivotdir(struct lxc_container *, const char *, char *, int
 static int set_config_utsname(const char *, const char *, struct lxc_conf *);
 static int get_config_utsname(struct lxc_container *, const char *, char *, int);
 
-static int set_config_hook(const char *, const char *, struct lxc_conf *lxc_conf);
+static int set_config_hooks(const char *, const char *, struct lxc_conf *lxc_conf);
+static int get_config_hooks(struct lxc_container *, const char *, char *, int);
+
 static int set_config_network(const char *, const char *, struct lxc_conf *);
 static int set_config_network_type(const char *, const char *, struct lxc_conf *);
 static int set_config_network_flags(const char *, const char *, struct lxc_conf *);
@@ -176,16 +178,16 @@ static struct lxc_config_t config[] = {
 	{ "lxc.rootfs",               set_config_rootfs,               get_config_rootfs,            NULL},
 	{ "lxc.pivotdir",             set_config_pivotdir,             get_config_pivotdir,          NULL},
 	{ "lxc.utsname",              set_config_utsname,              get_config_utsname,           NULL},
-	{ "lxc.hook.pre-start",       set_config_hook,                  NULL, NULL},
-	{ "lxc.hook.pre-mount",       set_config_hook,                  NULL, NULL},
-	{ "lxc.hook.mount",           set_config_hook,                  NULL, NULL},
-	{ "lxc.hook.autodev",         set_config_hook,                  NULL, NULL},
-	{ "lxc.hook.start",           set_config_hook,                  NULL, NULL},
-	{ "lxc.hook.stop",            set_config_hook,                  NULL, NULL},
-	{ "lxc.hook.post-stop",       set_config_hook,                  NULL, NULL},
-	{ "lxc.hook.clone",           set_config_hook,                  NULL, NULL},
-	{ "lxc.hook.destroy",         set_config_hook,                  NULL, NULL},
-	{ "lxc.hook",                 set_config_hook,                  NULL, NULL},
+	{ "lxc.hook.pre-start",       set_config_hooks,                get_config_hooks,             NULL},
+	{ "lxc.hook.pre-mount",       set_config_hooks,                get_config_hooks,             NULL},
+	{ "lxc.hook.mount",           set_config_hooks,                get_config_hooks,             NULL},
+	{ "lxc.hook.autodev",         set_config_hooks,                get_config_hooks,             NULL},
+	{ "lxc.hook.start",           set_config_hooks,                get_config_hooks,             NULL},
+	{ "lxc.hook.stop",            set_config_hooks,                get_config_hooks,             NULL},
+	{ "lxc.hook.post-stop",       set_config_hooks,                get_config_hooks,             NULL},
+	{ "lxc.hook.clone",           set_config_hooks,                get_config_hooks,             NULL},
+	{ "lxc.hook.destroy",         set_config_hooks,                get_config_hooks,             NULL},
+	{ "lxc.hook",                 set_config_hooks,                get_config_hooks,             NULL},
 	{ "lxc.network.type",         set_config_network_type,          NULL, NULL},
 	{ "lxc.network.flags",        set_config_network_flags,         NULL, NULL},
 	{ "lxc.network.link",         set_config_network_link,          NULL, NULL},
@@ -1148,8 +1150,8 @@ static int set_config_init_gid(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_hook(const char *key, const char *value,
-				 struct lxc_conf *lxc_conf)
+static int set_config_hooks(const char *key, const char *value,
+			    struct lxc_conf *lxc_conf)
 {
 	char *copy;
 
@@ -2439,42 +2441,6 @@ static inline int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen,
 	return snprintf(retv, inlen, "%d", v);
 }
 
-static int lxc_get_item_hooks(struct lxc_conf *c, char *retv, int inlen,
-			      const char *key)
-{
-	char *subkey;
-	int len, fulllen = 0, found = -1;
-	struct lxc_list *it;
-	int i;
-
-	/* "lxc.hook.mount" */
-	subkey = strchr(key, '.');
-	if (subkey) subkey = strchr(subkey+1, '.');
-	if (!subkey)
-		return -1;
-	subkey++;
-	if (!*subkey)
-		return -1;
-	for (i=0; i<NUM_LXC_HOOKS; i++) {
-		if (strcmp(lxchook_names[i], subkey) == 0) {
-			found=i;
-			break;
-		}
-	}
-	if (found == -1)
-		return -1;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	lxc_list_for_each(it, &c->hooks[found]) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
-	}
-	return fulllen;
-}
-
 static int lxc_get_item_groups(struct lxc_conf *c, char *retv, int inlen)
 {
 	int len, fulllen = 0;
@@ -2679,8 +2645,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_item_cap_drop(c, retv, inlen);
 	else if (strcmp(key, "lxc.cap.keep") == 0)
 		return lxc_get_item_cap_keep(c, retv, inlen);
-	else if (strncmp(key, "lxc.hook", 8) == 0)
-		return lxc_get_item_hooks(c, retv, inlen, key);
 	else if (strcmp(key, "lxc.network") == 0)
 		return lxc_get_item_network(c, retv, inlen);
 	else if (strncmp(key, "lxc.network.", 12) == 0)
@@ -3565,4 +3529,41 @@ static int get_config_utsname(struct lxc_container *c, const char *key,
 	return lxc_get_conf_str(
 	    retv, inlen,
 	    c->lxc_conf->utsname ? c->lxc_conf->utsname->nodename : NULL);
+}
+
+static int get_config_hooks(struct lxc_container *c, const char *key,
+			    char *retv, int inlen)
+{
+	char *subkey;
+	int len, fulllen = 0, found = -1;
+	struct lxc_list *it;
+	int i;
+
+	/* "lxc.hook.mount" */
+	subkey = strchr(key, '.');
+	if (subkey)
+		subkey = strchr(subkey + 1, '.');
+	if (!subkey)
+		return -1;
+	subkey++;
+	if (!*subkey)
+		return -1;
+	for (i = 0; i < NUM_LXC_HOOKS; i++) {
+		if (strcmp(lxchook_names[i], subkey) == 0) {
+			found = i;
+			break;
+		}
+	}
+	if (found == -1)
+		return -1;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	lxc_list_for_each(it, &c->lxc_conf->hooks[found]) {
+		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	}
+	return fulllen;
 }
