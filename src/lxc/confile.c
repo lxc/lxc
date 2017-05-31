@@ -103,6 +103,8 @@ static int set_config_rootfs(const char *, const char *, struct lxc_conf *);
 static int get_config_rootfs(struct lxc_container *, const char *, char *, int);
 
 static int set_config_rootfs_mount(const char *, const char *, struct lxc_conf *);
+static int get_config_rootfs_mount(struct lxc_container *, const char *, char *, int);
+
 static int set_config_rootfs_options(const char *, const char *, struct lxc_conf *);
 static int set_config_rootfs_backend(const char *, const char *, struct lxc_conf *);
 static int set_config_pivotdir(const char *, const char *, struct lxc_conf *);
@@ -160,7 +162,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.mount.entry",          set_config_mount,                get_config_mount,             NULL},
 	{ "lxc.mount.auto",           set_config_mount_auto,           get_config_mount_auto,        NULL},
 	{ "lxc.mount",                set_config_fstab,	               get_config_fstab,             NULL},
-	{ "lxc.rootfs.mount",         set_config_rootfs_mount,          NULL, NULL},
+	{ "lxc.rootfs.mount",         set_config_rootfs_mount,         get_config_rootfs_mount,      NULL},
 	{ "lxc.rootfs.options",       set_config_rootfs_options,        NULL, NULL},
 	{ "lxc.rootfs.backend",       set_config_rootfs_backend,        NULL, NULL},
 	{ "lxc.rootfs",               set_config_rootfs,               get_config_rootfs,            NULL},
@@ -2667,8 +2669,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		v = c->console.log_path;
 	else if (strcmp(key, "lxc.console") == 0)
 		v = c->console.path;
-	else if (strcmp(key, "lxc.rootfs.mount") == 0)
-		v = c->rootfs.mount;
 	else if (strcmp(key, "lxc.rootfs.backend") == 0)
 		v = c->rootfs.bdev_type;
 	else if (strcmp(key, "lxc.rootfs.options") == 0)
@@ -3531,4 +3531,10 @@ static int get_config_rootfs(struct lxc_container *c, const char *key,
 			     char *retv, int inlen)
 {
 	return lxc_get_conf_str(retv, inlen, c->lxc_conf->rootfs.path);
+}
+
+static int get_config_rootfs_mount(struct lxc_container *c, const char *key,
+				   char *retv, int inlen)
+{
+	return lxc_get_conf_str(retv, inlen, c->lxc_conf->rootfs.mount);
 }
