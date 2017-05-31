@@ -205,6 +205,7 @@ static int clr_config_stopsignal(const char *, struct lxc_conf *);
 
 static int set_config_start(const char *, const char *, struct lxc_conf *);
 static int get_config_start(const char *, char *, int, struct lxc_conf *);
+static int clr_config_start(const char *, struct lxc_conf *);
 
 static int set_config_monitor(const char *, const char *, struct lxc_conf *);
 static int get_config_monitor(const char *, char *, int, struct lxc_conf *);
@@ -286,9 +287,9 @@ static struct lxc_config_t config[] = {
 	{ "lxc.haltsignal",           set_config_haltsignal,           get_config_haltsignal,        clr_config_haltsignal,        },
 	{ "lxc.rebootsignal",         set_config_rebootsignal,         get_config_rebootsignal,      clr_config_rebootsignal,      },
 	{ "lxc.stopsignal",           set_config_stopsignal,           get_config_stopsignal,        clr_config_stopsignal,        },
-	{ "lxc.start.auto",           set_config_start,                get_config_start,             NULL },
-	{ "lxc.start.delay",          set_config_start,                get_config_start,             NULL },
-	{ "lxc.start.order",          set_config_start,                get_config_start,             NULL },
+	{ "lxc.start.auto",           set_config_start,                get_config_start,             clr_config_start,             },
+	{ "lxc.start.delay",          set_config_start,                get_config_start,             clr_config_start,             },
+	{ "lxc.start.order",          set_config_start,                get_config_start,             clr_config_start,             },
 	{ "lxc.monitor.unshare",      set_config_monitor,              get_config_monitor,           NULL },
 	{ "lxc.group",                set_config_group,                get_config_group,             NULL },
 	{ "lxc.environment",          set_config_environment,          get_config_environment,       NULL },
@@ -3584,11 +3585,11 @@ static int get_config_stopsignal(const char *key, char *retv, int inlen,
 static int get_config_start(const char *key, char *retv, int inlen,
 			    struct lxc_conf *c)
 {
-	if (strcmp(key, "lxc.start.auto") == 0)
+	if (strcmp(key + 10, "auto") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->start_auto);
-	else if (strcmp(key, "lxc.start.delay") == 0)
+	else if (strcmp(key + 10, "delay") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->start_delay);
-	else if (strcmp(key, "lxc.start.order") == 0)
+	else if (strcmp(key + 10, "order") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->start_order);
 
 	return -1;
@@ -3859,5 +3860,17 @@ static inline int clr_config_rebootsignal(const char *key, struct lxc_conf *c)
 static inline int clr_config_stopsignal(const char *key, struct lxc_conf *c)
 {
 	c->stopsignal = 0;
+	return 0;
+}
+
+static inline int clr_config_start(const char *key, struct lxc_conf *c)
+{
+	if (strcmp(key + 10, "auto") == 0)
+		c->start_auto = 0;
+	else if (strcmp(key + 10, "delay") == 0)
+		c->start_delay = 0;
+	else if (strcmp(key + 10, "order") == 0)
+		c->start_order = 0;
+
 	return 0;
 }
