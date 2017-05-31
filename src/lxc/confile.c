@@ -68,6 +68,8 @@ static int set_config_ttydir(const char *, const char *, struct lxc_conf *);
 static int get_config_ttydir(struct lxc_container *, const char *, char *, int);
 
 static int set_config_kmsg(const char *, const char *, struct lxc_conf *);
+static int get_config_kmsg(struct lxc_container *, const char *, char *, int);
+
 static int set_config_lsm_aa_profile(const char *, const char *, struct lxc_conf *);
 static int set_config_lsm_aa_incomplete(const char *, const char *, struct lxc_conf *);
 static int set_config_lsm_se_context(const char *, const char *, struct lxc_conf *);
@@ -126,7 +128,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.pts",                  set_config_pts,                  get_config_pts,         NULL},
 	{ "lxc.tty",                  set_config_tty,                  get_config_tty,         NULL},
 	{ "lxc.devttydir",            set_config_ttydir,               get_config_ttydir,      NULL},
-	{ "lxc.kmsg",                 set_config_kmsg,                  NULL, NULL},
+	{ "lxc.kmsg",                 set_config_kmsg,                 get_config_kmsg, NULL},
 	{ "lxc.aa_profile",           set_config_lsm_aa_profile,        NULL, NULL},
 	{ "lxc.aa_allow_incomplete",  set_config_lsm_aa_incomplete,     NULL, NULL},
 	{ "lxc.se_context",           set_config_lsm_se_context,        NULL, NULL},
@@ -2845,8 +2847,6 @@ int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv,
 		return lxc_get_conf_int(c, retv, inlen, c->stopsignal);
 	else if (strcmp(key, "lxc.autodev") == 0)
 		return lxc_get_conf_int(c, retv, inlen, c->autodev);
-	else if (strcmp(key, "lxc.kmsg") == 0)
-		return lxc_get_conf_int(c, retv, inlen, c->kmsg);
 	else return -1;
 
 	if (!v)
@@ -3421,4 +3421,10 @@ static int get_config_ttydir(struct lxc_container *c, const char *key,
 			     char *retv, int inlen)
 {
 	return lxc_get_conf_str(retv, inlen, c->lxc_conf->ttydir);
+}
+
+static int get_config_kmsg(struct lxc_container *c, const char *key, char *retv,
+			   int inlen)
+{
+	return lxc_get_conf_int(c->lxc_conf, retv, inlen, c->lxc_conf->kmsg);
 }
