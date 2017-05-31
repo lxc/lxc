@@ -121,6 +121,7 @@ static int clr_config_mount_auto(const char *, struct lxc_conf *);
 
 static int set_config_fstab(const char *, const char *, struct lxc_conf *);
 static int get_config_fstab(const char *, char *, int, struct lxc_conf *);
+static int clr_config_fstab(const char *, struct lxc_conf *);
 
 static int set_config_rootfs(const char *, const char *, struct lxc_conf *);
 static int get_config_rootfs(const char *, char *, int, struct lxc_conf *);
@@ -240,8 +241,8 @@ static struct lxc_config_t config[] = {
 	{ "lxc.loglevel",             set_config_loglevel,             get_config_loglevel,          clr_config_loglevel,          },
 	{ "lxc.logfile",              set_config_logfile,              get_config_logfile,           clr_config_logfile,           },
 	{ "lxc.mount.entry",          set_config_mount,                get_config_mount,             clr_config_mount,             },
-	{ "lxc.mount.auto",           set_config_mount_auto,           get_config_mount_auto,        clr_config_mount_auto, },
-	{ "lxc.mount",                set_config_fstab,	               get_config_fstab,             NULL },
+	{ "lxc.mount.auto",           set_config_mount_auto,           get_config_mount_auto,        clr_config_mount_auto,        },
+	{ "lxc.mount",                set_config_fstab,	               get_config_fstab,             clr_config_fstab,             },
 	{ "lxc.rootfs.mount",         set_config_rootfs_mount,         get_config_rootfs_mount,      NULL },
 	{ "lxc.rootfs.options",       set_config_rootfs_options,       get_config_rootfs_options,    NULL },
 	{ "lxc.rootfs.backend",       set_config_rootfs_backend,       get_config_rootfs_backend,    NULL },
@@ -2805,10 +2806,6 @@ int lxc_clear_config_item(struct lxc_conf *c, const char *key)
 	} else if (strcmp(key, "lxc.autodev") == 0) {
 		c->autodev = 1;
 
-	} else if (strcmp(key, "lxc.mount") == 0) {
-		free(c->fstab);
-		c->fstab = NULL;
-
 	} else if (strcmp(key, "lxc.rootfs") == 0) {
 		free(c->rootfs.path);
 		c->rootfs.path = NULL;
@@ -4132,4 +4129,11 @@ static inline int clr_config_mount(const char *key, struct lxc_conf *c)
 static inline int clr_config_mount_auto(const char *key, struct lxc_conf *c)
 {
 	return lxc_clear_automounts(c);
+}
+
+static inline int clr_config_fstab(const char *key, struct lxc_conf *c)
+{
+	free(c->fstab);
+	c->fstab = NULL;
+	return 0;
 }
