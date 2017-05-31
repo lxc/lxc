@@ -55,135 +55,134 @@
 
 lxc_log_define(lxc_confile, lxc);
 
-static int config_personality(const char *, const char *, struct lxc_conf *);
-static int config_pts(const char *, const char *, struct lxc_conf *);
-static int config_tty(const char *, const char *, struct lxc_conf *);
-static int config_ttydir(const char *, const char *, struct lxc_conf *);
-static int config_kmsg(const char *, const char *, struct lxc_conf *);
-static int config_lsm_aa_profile(const char *, const char *, struct lxc_conf *);
-static int config_lsm_aa_incomplete(const char *, const char *, struct lxc_conf *);
-static int config_lsm_se_context(const char *, const char *, struct lxc_conf *);
-static int config_cgroup(const char *, const char *, struct lxc_conf *);
-static int config_idmap(const char *, const char *, struct lxc_conf *);
-static int config_loglevel(const char *, const char *, struct lxc_conf *);
-static int config_logfile(const char *, const char *, struct lxc_conf *);
-static int config_mount(const char *, const char *, struct lxc_conf *);
-static int config_mount_auto(const char *, const char *, struct lxc_conf *);
-static int config_fstab(const char *, const char *, struct lxc_conf *);
-static int config_rootfs(const char *, const char *, struct lxc_conf *);
-static int config_rootfs_mount(const char *, const char *, struct lxc_conf *);
-static int config_rootfs_options(const char *, const char *, struct lxc_conf *);
-static int config_rootfs_backend(const char *, const char *, struct lxc_conf *);
-static int config_pivotdir(const char *, const char *, struct lxc_conf *);
-static int config_utsname(const char *, const char *, struct lxc_conf *);
-static int config_hook(const char *, const char *, struct lxc_conf *lxc_conf);
-static int config_network(const char *, const char *, struct lxc_conf *);
-static int config_network_type(const char *, const char *, struct lxc_conf *);
-static int config_network_flags(const char *, const char *, struct lxc_conf *);
-static int config_network_link(const char *, const char *, struct lxc_conf *);
-static int config_network_name(const char *, const char *, struct lxc_conf *);
-static int config_network_veth_pair(const char *, const char *, struct lxc_conf *);
-static int config_network_macvlan_mode(const char *, const char *, struct lxc_conf *);
-static int config_network_hwaddr(const char *, const char *, struct lxc_conf *);
-static int config_network_vlan_id(const char *, const char *, struct lxc_conf *);
-static int config_network_mtu(const char *, const char *, struct lxc_conf *);
-static int config_network_ipv4(const char *, const char *, struct lxc_conf *);
-static int config_network_ipv4_gateway(const char *, const char *, struct lxc_conf *);
-static int config_network_script_up(const char *, const char *, struct lxc_conf *);
-static int config_network_script_down(const char *, const char *, struct lxc_conf *);
-static int config_network_ipv6(const char *, const char *, struct lxc_conf *);
-static int config_network_ipv6_gateway(const char *, const char *, struct lxc_conf *);
-static int config_cap_drop(const char *, const char *, struct lxc_conf *);
-static int config_cap_keep(const char *, const char *, struct lxc_conf *);
-static int config_console(const char *, const char *, struct lxc_conf *);
-static int config_console_logfile(const char *, const char *, struct lxc_conf *);
-static int config_seccomp(const char *, const char *, struct lxc_conf *);
-static int config_includefile(const char *, const char *, struct lxc_conf *);
-static int config_network_nic(const char *, const char *, struct lxc_conf *);
-static int config_autodev(const char *, const char *, struct lxc_conf *);
-static int config_haltsignal(const char *, const char *, struct lxc_conf *);
-static int config_rebootsignal(const char *, const char *, struct lxc_conf *);
-static int config_stopsignal(const char *, const char *, struct lxc_conf *);
-static int config_start(const char *, const char *, struct lxc_conf *);
-static int config_monitor(const char *, const char *, struct lxc_conf *);
-static int config_group(const char *, const char *, struct lxc_conf *);
-static int config_environment(const char *, const char *, struct lxc_conf *);
-static int config_init_cmd(const char *, const char *, struct lxc_conf *);
-static int config_init_uid(const char *, const char *, struct lxc_conf *);
-static int config_init_gid(const char *, const char *, struct lxc_conf *);
-static int config_ephemeral(const char *, const char *, struct lxc_conf *);
+static int set_config_personality(const char *, const char *, struct lxc_conf *);
+static int set_config_pts(const char *, const char *, struct lxc_conf *);
+static int set_config_tty(const char *, const char *, struct lxc_conf *);
+static int set_config_ttydir(const char *, const char *, struct lxc_conf *);
+static int set_config_kmsg(const char *, const char *, struct lxc_conf *);
+static int set_config_lsm_aa_profile(const char *, const char *, struct lxc_conf *);
+static int set_config_lsm_aa_incomplete(const char *, const char *, struct lxc_conf *);
+static int set_config_lsm_se_context(const char *, const char *, struct lxc_conf *);
+static int set_config_cgroup(const char *, const char *, struct lxc_conf *);
+static int set_config_idmap(const char *, const char *, struct lxc_conf *);
+static int set_config_loglevel(const char *, const char *, struct lxc_conf *);
+static int set_config_logfile(const char *, const char *, struct lxc_conf *);
+static int set_config_mount(const char *, const char *, struct lxc_conf *);
+static int set_config_mount_auto(const char *, const char *, struct lxc_conf *);
+static int set_config_fstab(const char *, const char *, struct lxc_conf *);
+static int set_config_rootfs(const char *, const char *, struct lxc_conf *);
+static int set_config_rootfs_mount(const char *, const char *, struct lxc_conf *);
+static int set_config_rootfs_options(const char *, const char *, struct lxc_conf *);
+static int set_config_rootfs_backend(const char *, const char *, struct lxc_conf *);
+static int set_config_pivotdir(const char *, const char *, struct lxc_conf *);
+static int set_config_utsname(const char *, const char *, struct lxc_conf *);
+static int set_config_hook(const char *, const char *, struct lxc_conf *lxc_conf);
+static int set_config_network(const char *, const char *, struct lxc_conf *);
+static int set_config_network_type(const char *, const char *, struct lxc_conf *);
+static int set_config_network_flags(const char *, const char *, struct lxc_conf *);
+static int set_config_network_link(const char *, const char *, struct lxc_conf *);
+static int set_config_network_name(const char *, const char *, struct lxc_conf *);
+static int set_config_network_veth_pair(const char *, const char *, struct lxc_conf *);
+static int set_config_network_macvlan_mode(const char *, const char *, struct lxc_conf *);
+static int set_config_network_hwaddr(const char *, const char *, struct lxc_conf *);
+static int set_config_network_vlan_id(const char *, const char *, struct lxc_conf *);
+static int set_config_network_mtu(const char *, const char *, struct lxc_conf *);
+static int set_config_network_ipv4(const char *, const char *, struct lxc_conf *);
+static int set_config_network_ipv4_gateway(const char *, const char *, struct lxc_conf *);
+static int set_config_network_script_up(const char *, const char *, struct lxc_conf *);
+static int set_config_network_script_down(const char *, const char *, struct lxc_conf *);
+static int set_config_network_ipv6(const char *, const char *, struct lxc_conf *);
+static int set_config_network_ipv6_gateway(const char *, const char *, struct lxc_conf *);
+static int set_config_cap_drop(const char *, const char *, struct lxc_conf *);
+static int set_config_cap_keep(const char *, const char *, struct lxc_conf *);
+static int set_config_console(const char *, const char *, struct lxc_conf *);
+static int set_config_console_logfile(const char *, const char *, struct lxc_conf *);
+static int set_config_seccomp(const char *, const char *, struct lxc_conf *);
+static int set_config_includefile(const char *, const char *, struct lxc_conf *);
+static int set_config_network_nic(const char *, const char *, struct lxc_conf *);
+static int set_config_autodev(const char *, const char *, struct lxc_conf *);
+static int set_config_haltsignal(const char *, const char *, struct lxc_conf *);
+static int set_config_rebootsignal(const char *, const char *, struct lxc_conf *);
+static int set_config_stopsignal(const char *, const char *, struct lxc_conf *);
+static int set_config_start(const char *, const char *, struct lxc_conf *);
+static int set_config_monitor(const char *, const char *, struct lxc_conf *);
+static int set_config_group(const char *, const char *, struct lxc_conf *);
+static int set_config_environment(const char *, const char *, struct lxc_conf *);
+static int set_config_init_cmd(const char *, const char *, struct lxc_conf *);
+static int set_config_init_uid(const char *, const char *, struct lxc_conf *);
+static int set_config_init_gid(const char *, const char *, struct lxc_conf *);
+static int set_config_ephemeral(const char *, const char *, struct lxc_conf *);
 
 static struct lxc_config_t config[] = {
 
-	{ "lxc.arch",                 config_personality,           NULL, NULL},
-	{ "lxc.pts",                  config_pts,                   NULL, NULL},
-	{ "lxc.tty",                  config_tty,                   NULL, NULL},
-	{ "lxc.devttydir",            config_ttydir,                NULL, NULL},
-	{ "lxc.kmsg",                 config_kmsg,                  NULL, NULL},
-	{ "lxc.aa_profile",           config_lsm_aa_profile,        NULL, NULL},
-	{ "lxc.aa_allow_incomplete",  config_lsm_aa_incomplete,     NULL, NULL},
-	{ "lxc.se_context",           config_lsm_se_context,        NULL, NULL},
-	{ "lxc.cgroup",               config_cgroup,                NULL, NULL},
-	{ "lxc.id_map",               config_idmap,                 NULL, NULL},
-	{ "lxc.loglevel",             config_loglevel,              NULL, NULL},
-	{ "lxc.logfile",              config_logfile,               NULL, NULL},
-	{ "lxc.mount.entry",          config_mount,                 NULL, NULL},
-	{ "lxc.mount.auto",           config_mount_auto,            NULL, NULL},
-	{ "lxc.mount",                config_fstab,                 NULL, NULL},
-	{ "lxc.rootfs.mount",         config_rootfs_mount,          NULL, NULL},
-	{ "lxc.rootfs.options",       config_rootfs_options,        NULL, NULL},
-	{ "lxc.rootfs.backend",       config_rootfs_backend,        NULL, NULL},
-	{ "lxc.rootfs",               config_rootfs,                NULL, NULL},
-	{ "lxc.pivotdir",             config_pivotdir,              NULL, NULL},
-	{ "lxc.utsname",              config_utsname,               NULL, NULL},
-	{ "lxc.hook.pre-start",       config_hook,                  NULL, NULL},
-	{ "lxc.hook.pre-mount",       config_hook,                  NULL, NULL},
-	{ "lxc.hook.mount",           config_hook,                  NULL, NULL},
-	{ "lxc.hook.autodev",         config_hook,                  NULL, NULL},
-	{ "lxc.hook.start",           config_hook,                  NULL, NULL},
-	{ "lxc.hook.stop",            config_hook,                  NULL, NULL},
-	{ "lxc.hook.post-stop",       config_hook,                  NULL, NULL},
-	{ "lxc.hook.clone",           config_hook,                  NULL, NULL},
-	{ "lxc.hook.destroy",         config_hook,                  NULL, NULL},
-	{ "lxc.hook",                 config_hook,                  NULL, NULL},
-	{ "lxc.network.type",         config_network_type,          NULL, NULL},
-	{ "lxc.network.flags",        config_network_flags,         NULL, NULL},
-	{ "lxc.network.link",         config_network_link,          NULL, NULL},
-	{ "lxc.network.name",         config_network_name,          NULL, NULL},
-	{ "lxc.network.macvlan.mode", config_network_macvlan_mode,  NULL, NULL},
-	{ "lxc.network.veth.pair",    config_network_veth_pair,     NULL, NULL},
-	{ "lxc.network.script.up",    config_network_script_up,     NULL, NULL},
-	{ "lxc.network.script.down",  config_network_script_down,   NULL, NULL},
-	{ "lxc.network.hwaddr",       config_network_hwaddr,        NULL, NULL},
-	{ "lxc.network.mtu",          config_network_mtu,           NULL, NULL},
-	{ "lxc.network.vlan.id",      config_network_vlan_id,       NULL, NULL},
-	{ "lxc.network.ipv4.gateway", config_network_ipv4_gateway,  NULL, NULL},
-	{ "lxc.network.ipv4",         config_network_ipv4,          NULL, NULL},
-	{ "lxc.network.ipv6.gateway", config_network_ipv6_gateway,  NULL, NULL},
-	{ "lxc.network.ipv6",         config_network_ipv6,          NULL, NULL},
-	/* config_network_nic must come after all other 'lxc.network.*' entries */
-	{ "lxc.network.",             config_network_nic,           NULL, NULL},
-	{ "lxc.network",              config_network,               NULL, NULL},
-	{ "lxc.cap.drop",             config_cap_drop,              NULL, NULL},
-	{ "lxc.cap.keep",             config_cap_keep,              NULL, NULL},
-	{ "lxc.console.logfile",      config_console_logfile,       NULL, NULL},
-	{ "lxc.console",              config_console,               NULL, NULL},
-	{ "lxc.seccomp",              config_seccomp,               NULL, NULL},
-	{ "lxc.include",              config_includefile,           NULL, NULL},
-	{ "lxc.autodev",              config_autodev,               NULL, NULL},
-	{ "lxc.haltsignal",           config_haltsignal,            NULL, NULL},
-	{ "lxc.rebootsignal",         config_rebootsignal,          NULL, NULL},
-	{ "lxc.stopsignal",           config_stopsignal,            NULL, NULL},
-	{ "lxc.start.auto",           config_start,                 NULL, NULL},
-	{ "lxc.start.delay",          config_start,                 NULL, NULL},
-	{ "lxc.start.order",          config_start,                 NULL, NULL},
-	{ "lxc.monitor.unshare",      config_monitor,               NULL, NULL},
-	{ "lxc.group",                config_group,                 NULL, NULL},
-	{ "lxc.environment",          config_environment,           NULL, NULL},
-	{ "lxc.init_cmd",             config_init_cmd,              NULL, NULL},
-	{ "lxc.init_uid",             config_init_uid,              NULL, NULL},
-	{ "lxc.init_gid",             config_init_gid,              NULL, NULL},
-	{ "lxc.ephemeral",            config_ephemeral,             NULL, NULL},
+	{ "lxc.arch",                 set_config_personality,           NULL, NULL},
+	{ "lxc.pts",                  set_config_pts,                   NULL, NULL},
+	{ "lxc.tty",                  set_config_tty,                   NULL, NULL},
+	{ "lxc.devttydir",            set_config_ttydir,                NULL, NULL},
+	{ "lxc.kmsg",                 set_config_kmsg,                  NULL, NULL},
+	{ "lxc.aa_profile",           set_config_lsm_aa_profile,        NULL, NULL},
+	{ "lxc.aa_allow_incomplete",  set_config_lsm_aa_incomplete,     NULL, NULL},
+	{ "lxc.se_context",           set_config_lsm_se_context,        NULL, NULL},
+	{ "lxc.cgroup",               set_config_cgroup,                NULL, NULL},
+	{ "lxc.id_map",               set_config_idmap,                 NULL, NULL},
+	{ "lxc.loglevel",             set_config_loglevel,              NULL, NULL},
+	{ "lxc.logfile",              set_config_logfile,               NULL, NULL},
+	{ "lxc.mount.entry",          set_config_mount,                 NULL, NULL},
+	{ "lxc.mount.auto",           set_config_mount_auto,            NULL, NULL},
+	{ "lxc.mount",                set_config_fstab,                 NULL, NULL},
+	{ "lxc.rootfs.mount",         set_config_rootfs_mount,          NULL, NULL},
+	{ "lxc.rootfs.options",       set_config_rootfs_options,        NULL, NULL},
+	{ "lxc.rootfs.backend",       set_config_rootfs_backend,        NULL, NULL},
+	{ "lxc.rootfs",               set_config_rootfs,                NULL, NULL},
+	{ "lxc.pivotdir",             set_config_pivotdir,              NULL, NULL},
+	{ "lxc.utsname",              set_config_utsname,               NULL, NULL},
+	{ "lxc.hook.pre-start",       set_config_hook,                  NULL, NULL},
+	{ "lxc.hook.pre-mount",       set_config_hook,                  NULL, NULL},
+	{ "lxc.hook.mount",           set_config_hook,                  NULL, NULL},
+	{ "lxc.hook.autodev",         set_config_hook,                  NULL, NULL},
+	{ "lxc.hook.start",           set_config_hook,                  NULL, NULL},
+	{ "lxc.hook.stop",            set_config_hook,                  NULL, NULL},
+	{ "lxc.hook.post-stop",       set_config_hook,                  NULL, NULL},
+	{ "lxc.hook.clone",           set_config_hook,                  NULL, NULL},
+	{ "lxc.hook.destroy",         set_config_hook,                  NULL, NULL},
+	{ "lxc.hook",                 set_config_hook,                  NULL, NULL},
+	{ "lxc.network.type",         set_config_network_type,          NULL, NULL},
+	{ "lxc.network.flags",        set_config_network_flags,         NULL, NULL},
+	{ "lxc.network.link",         set_config_network_link,          NULL, NULL},
+	{ "lxc.network.name",         set_config_network_name,          NULL, NULL},
+	{ "lxc.network.macvlan.mode", set_config_network_macvlan_mode,  NULL, NULL},
+	{ "lxc.network.veth.pair",    set_config_network_veth_pair,     NULL, NULL},
+	{ "lxc.network.script.up",    set_config_network_script_up,     NULL, NULL},
+	{ "lxc.network.script.down",  set_config_network_script_down,   NULL, NULL},
+	{ "lxc.network.hwaddr",       set_config_network_hwaddr,        NULL, NULL},
+	{ "lxc.network.mtu",          set_config_network_mtu,           NULL, NULL},
+	{ "lxc.network.vlan.id",      set_config_network_vlan_id,       NULL, NULL},
+	{ "lxc.network.ipv4.gateway", set_config_network_ipv4_gateway,  NULL, NULL},
+	{ "lxc.network.ipv4",         set_config_network_ipv4,          NULL, NULL},
+	{ "lxc.network.ipv6.gateway", set_config_network_ipv6_gateway,  NULL, NULL},
+	{ "lxc.network.ipv6",         set_config_network_ipv6,          NULL, NULL},
+	{ "lxc.network.",             set_config_network_nic,           NULL, NULL},
+	{ "lxc.network",              set_config_network,               NULL, NULL},
+	{ "lxc.cap.drop",             set_config_cap_drop,              NULL, NULL},
+	{ "lxc.cap.keep",             set_config_cap_keep,              NULL, NULL},
+	{ "lxc.console.logfile",      set_config_console_logfile,       NULL, NULL},
+	{ "lxc.console",              set_config_console,               NULL, NULL},
+	{ "lxc.seccomp",              set_config_seccomp,               NULL, NULL},
+	{ "lxc.include",              set_config_includefile,           NULL, NULL},
+	{ "lxc.autodev",              set_config_autodev,               NULL, NULL},
+	{ "lxc.haltsignal",           set_config_haltsignal,            NULL, NULL},
+	{ "lxc.rebootsignal",         set_config_rebootsignal,          NULL, NULL},
+	{ "lxc.stopsignal",           set_config_stopsignal,            NULL, NULL},
+	{ "lxc.start.auto",           set_config_start,                 NULL, NULL},
+	{ "lxc.start.delay",          set_config_start,                 NULL, NULL},
+	{ "lxc.start.order",          set_config_start,                 NULL, NULL},
+	{ "lxc.monitor.unshare",      set_config_monitor,               NULL, NULL},
+	{ "lxc.group",                set_config_group,                 NULL, NULL},
+	{ "lxc.environment",          set_config_environment,           NULL, NULL},
+	{ "lxc.init_cmd",             set_config_init_cmd,              NULL, NULL},
+	{ "lxc.init_uid",             set_config_init_uid,              NULL, NULL},
+	{ "lxc.init_gid",             set_config_init_gid,              NULL, NULL},
+	{ "lxc.ephemeral",            set_config_ephemeral,             NULL, NULL},
 };
 
 struct signame {
@@ -321,7 +320,7 @@ static inline bool config_value_empty(const char *value)
 	return true;
 }
 
-static int config_string_item(char **conf_item, const char *value)
+static int set_config_string_item(char **conf_item, const char *value)
 {
 	char *new_value;
 
@@ -342,7 +341,7 @@ static int config_string_item(char **conf_item, const char *value)
 	return 0;
 }
 
-static int config_string_item_max(char **conf_item, const char *value,
+static int set_config_string_item_max(char **conf_item, const char *value,
 				  size_t max)
 {
 	if (strlen(value) >= max) {
@@ -350,12 +349,12 @@ static int config_string_item_max(char **conf_item, const char *value,
 		return -1;
 	}
 
-	return config_string_item(conf_item, value);
+	return set_config_string_item(conf_item, value);
 }
 
-static int config_path_item(char **conf_item, const char *value)
+static int set_config_path_item(char **conf_item, const char *value)
 {
-	return config_string_item_max(conf_item, value, PATH_MAX);
+	return set_config_string_item_max(conf_item, value, PATH_MAX);
 }
 
 /*
@@ -364,7 +363,7 @@ static int config_path_item(char **conf_item, const char *value)
  * comes an integer, find the right callback (by rewriting
  * the key), and call it.
  */
-static int config_network_nic(const char *key, const char *value,
+static int set_config_network_nic(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	char *copy = strdup(key), *p;
@@ -399,7 +398,7 @@ out:
 	return ret;
 }
 
-static int config_network(const char *key, const char *value,
+static int set_config_network(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
 	if (!config_value_empty(value)) {
@@ -412,7 +411,7 @@ static int config_network(const char *key, const char *value,
 
 static int macvlan_mode(int *valuep, const char *value);
 
-static int config_network_type(const char *key, const char *value,
+static int set_config_network_type(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_list *network = &lxc_conf->network;
@@ -586,7 +585,7 @@ static struct lxc_netdev *network_netdev(const char *key, const char *value,
 
 static int network_ifname(char **valuep, const char *value)
 {
-	return config_string_item_max(valuep, value, IFNAMSIZ);
+	return set_config_string_item_max(valuep, value, IFNAMSIZ);
 }
 
 #ifndef MACVLAN_MODE_PRIVATE
@@ -661,7 +660,7 @@ static int rand_complete_hwaddr(char *hwaddr)
 	return 0;
 }
 
-static int config_network_flags(const char *key, const char *value,
+static int set_config_network_flags(const char *key, const char *value,
 				struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -675,7 +674,7 @@ static int config_network_flags(const char *key, const char *value,
 	return 0;
 }
 
-static int config_network_link(const char *key, const char *value,
+static int set_config_network_link(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -687,7 +686,7 @@ static int config_network_link(const char *key, const char *value,
 	return network_ifname(&netdev->link, value);
 }
 
-static int config_network_name(const char *key, const char *value,
+static int set_config_network_name(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -699,7 +698,7 @@ static int config_network_name(const char *key, const char *value,
 	return network_ifname(&netdev->name, value);
 }
 
-static int config_network_veth_pair(const char *key, const char *value,
+static int set_config_network_veth_pair(const char *key, const char *value,
 				    struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -715,7 +714,7 @@ static int config_network_veth_pair(const char *key, const char *value,
 	return network_ifname(&netdev->priv.veth_attr.pair, value);
 }
 
-static int config_network_macvlan_mode(const char *key, const char *value,
+static int set_config_network_macvlan_mode(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -731,7 +730,7 @@ static int config_network_macvlan_mode(const char *key, const char *value,
 	return macvlan_mode(&netdev->priv.macvlan_attr.mode, value);
 }
 
-static int config_network_hwaddr(const char *key, const char *value,
+static int set_config_network_hwaddr(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -759,7 +758,7 @@ static int config_network_hwaddr(const char *key, const char *value,
 	return 0;
 }
 
-static int config_network_vlan_id(const char *key, const char *value,
+static int set_config_network_vlan_id(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -778,7 +777,7 @@ static int config_network_vlan_id(const char *key, const char *value,
 	return 0;
 }
 
-static int config_network_mtu(const char *key, const char *value,
+static int set_config_network_mtu(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -787,10 +786,10 @@ static int config_network_mtu(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	return config_string_item(&netdev->mtu, value);
+	return set_config_string_item(&netdev->mtu, value);
 }
 
-static int config_network_ipv4(const char *key, const char *value,
+static int set_config_network_ipv4(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -881,7 +880,7 @@ static int config_network_ipv4(const char *key, const char *value,
 	return 0;
 }
 
-static int config_network_ipv4_gateway(const char *key, const char *value,
+static int set_config_network_ipv4_gateway(const char *key, const char *value,
 			               struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -919,7 +918,7 @@ static int config_network_ipv4_gateway(const char *key, const char *value,
 	return 0;
 }
 
-static int config_network_ipv6(const char *key, const char *value,
+static int set_config_network_ipv6(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -983,7 +982,7 @@ static int config_network_ipv6(const char *key, const char *value,
 	return 0;
 }
 
-static int config_network_ipv6_gateway(const char *key, const char *value,
+static int set_config_network_ipv6_gateway(const char *key, const char *value,
 			               struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -1021,7 +1020,7 @@ static int config_network_ipv6_gateway(const char *key, const char *value,
 	return 0;
 }
 
-static int config_network_script_up(const char *key, const char *value,
+static int set_config_network_script_up(const char *key, const char *value,
 				    struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -1030,10 +1029,10 @@ static int config_network_script_up(const char *key, const char *value,
 	if (!netdev)
  		return -1;
 
-	return config_string_item(&netdev->upscript, value);
+	return set_config_string_item(&netdev->upscript, value);
 }
 
-static int config_network_script_down(const char *key, const char *value,
+static int set_config_network_script_down(const char *key, const char *value,
 				      struct lxc_conf *lxc_conf)
 {
 	struct lxc_netdev *netdev;
@@ -1042,7 +1041,7 @@ static int config_network_script_down(const char *key, const char *value,
 	if (!netdev)
  		return -1;
 
-	return config_string_item(&netdev->downscript, value);
+	return set_config_string_item(&netdev->downscript, value);
 }
 
 static int add_hook(struct lxc_conf *lxc_conf, int which, char *hook)
@@ -1059,19 +1058,19 @@ static int add_hook(struct lxc_conf *lxc_conf, int which, char *hook)
 	return 0;
 }
 
-static int config_seccomp(const char *key, const char *value,
+static int set_config_seccomp(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	return config_path_item(&lxc_conf->seccomp, value);
+	return set_config_path_item(&lxc_conf->seccomp, value);
 }
 
-static int config_init_cmd(const char *key, const char *value,
+static int set_config_init_cmd(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	return config_path_item(&lxc_conf->init_cmd, value);
+	return set_config_path_item(&lxc_conf->init_cmd, value);
 }
 
-static int config_init_uid(const char *key, const char *value,
+static int set_config_init_uid(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
 	unsigned int init_uid;
@@ -1090,7 +1089,7 @@ static int config_init_uid(const char *key, const char *value,
 	return 0;
 }
 
-static int config_init_gid(const char *key, const char *value,
+static int set_config_init_gid(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
 	unsigned int init_gid;
@@ -1109,7 +1108,7 @@ static int config_init_gid(const char *key, const char *value,
 	return 0;
 }
 
-static int config_hook(const char *key, const char *value,
+static int set_config_hook(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
 	char *copy;
@@ -1149,7 +1148,7 @@ static int config_hook(const char *key, const char *value,
 	return -1;
 }
 
-static int config_personality(const char *key, const char *value,
+static int set_config_personality(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf)
 {
 	signed long personality = lxc_config_parse_arch(value);
@@ -1162,7 +1161,7 @@ static int config_personality(const char *key, const char *value,
 	return 0;
 }
 
-static int config_pts(const char *key, const char *value,
+static int set_config_pts(const char *key, const char *value,
 		      struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
@@ -1178,7 +1177,7 @@ static int config_pts(const char *key, const char *value,
 	return 0;
 }
 
-static int config_start(const char *key, const char *value,
+static int set_config_start(const char *key, const char *value,
 			struct lxc_conf *lxc_conf)
 {
 	bool is_empty;
@@ -1224,7 +1223,7 @@ static int config_start(const char *key, const char *value,
 	return -1;
 }
 
-static int config_monitor(const char *key, const char *value,
+static int set_config_monitor(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
@@ -1241,7 +1240,7 @@ static int config_monitor(const char *key, const char *value,
 	return -1;
 }
 
-static int config_group(const char *key, const char *value,
+static int set_config_group(const char *key, const char *value,
 		      struct lxc_conf *lxc_conf)
 {
 	char *groups, *groupptr, *sptr, *token;
@@ -1287,7 +1286,7 @@ static int config_group(const char *key, const char *value,
 	return ret;
 }
 
-static int config_environment(const char *key, const char *value,
+static int set_config_environment(const char *key, const char *value,
                               struct lxc_conf *lxc_conf)
 {
 	struct lxc_list *list_item = NULL;
@@ -1314,7 +1313,7 @@ freak_out:
 	return -1;
 }
 
-static int config_tty(const char *key, const char *value,
+static int set_config_tty(const char *key, const char *value,
 		      struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
@@ -1327,13 +1326,13 @@ static int config_tty(const char *key, const char *value,
 	return lxc_safe_uint(value, &lxc_conf->tty);
 }
 
-static int config_ttydir(const char *key, const char *value,
+static int set_config_ttydir(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
-	return config_string_item_max(&lxc_conf->ttydir, value, NAME_MAX+1);
+	return set_config_string_item_max(&lxc_conf->ttydir, value, NAME_MAX+1);
 }
 
-static int config_kmsg(const char *key, const char *value,
+static int set_config_kmsg(const char *key, const char *value,
 		       struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
@@ -1352,13 +1351,13 @@ static int config_kmsg(const char *key, const char *value,
 	return 0;
 }
 
-static int config_lsm_aa_profile(const char *key, const char *value,
+static int set_config_lsm_aa_profile(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	return config_string_item(&lxc_conf->lsm_aa_profile, value);
+	return set_config_string_item(&lxc_conf->lsm_aa_profile, value);
 }
 
-static int config_lsm_aa_incomplete(const char *key, const char *value,
+static int set_config_lsm_aa_incomplete(const char *key, const char *value,
 				    struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
@@ -1380,26 +1379,26 @@ static int config_lsm_aa_incomplete(const char *key, const char *value,
 	return 0;
 }
 
-static int config_lsm_se_context(const char *key, const char *value,
+static int set_config_lsm_se_context(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
-	return config_string_item(&lxc_conf->lsm_se_context, value);
+	return set_config_string_item(&lxc_conf->lsm_se_context, value);
 }
 
-static int config_logfile(const char *key, const char *value,
+static int set_config_logfile(const char *key, const char *value,
 			     struct lxc_conf *c)
 {
 	int ret;
 
 	// store these values in the lxc_conf, and then try to set for
 	// actual current logging.
-	ret = config_path_item(&c->logfile, value);
+	ret = set_config_path_item(&c->logfile, value);
 	if (ret == 0)
 		ret = lxc_log_set_file(&c->logfd, c->logfile);
 	return ret;
 }
 
-static int config_loglevel(const char *key, const char *value,
+static int set_config_loglevel(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
 	int newlevel;
@@ -1425,7 +1424,7 @@ static int config_loglevel(const char *key, const char *value,
 	return lxc_log_set_level(&lxc_conf->loglevel, newlevel);
 }
 
-static int config_autodev(const char *key, const char *value,
+static int set_config_autodev(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
@@ -1491,7 +1490,7 @@ static int sig_parse(const char *signame) {
 	return -1;
 }
 
-static int config_haltsignal(const char *key, const char *value,
+static int set_config_haltsignal(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
 {
 	int sig_n;
@@ -1512,7 +1511,7 @@ static int config_haltsignal(const char *key, const char *value,
 	return 0;
 }
 
-static int config_rebootsignal(const char *key, const char *value,
+static int set_config_rebootsignal(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
 	int sig_n;
@@ -1532,7 +1531,7 @@ static int config_rebootsignal(const char *key, const char *value,
 	return 0;
 }
 
-static int config_stopsignal(const char *key, const char *value,
+static int set_config_stopsignal(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
 {
 	int sig_n;
@@ -1552,7 +1551,7 @@ static int config_stopsignal(const char *key, const char *value,
 	return 0;
 }
 
-static int config_cgroup(const char *key, const char *value,
+static int set_config_cgroup(const char *key, const char *value,
 			 struct lxc_conf *lxc_conf)
 {
 	char *token = "lxc.cgroup.";
@@ -1611,7 +1610,7 @@ out:
 	return -1;
 }
 
-static int config_idmap(const char *key, const char *value, struct lxc_conf *lxc_conf)
+static int set_config_idmap(const char *key, const char *value, struct lxc_conf *lxc_conf)
 {
 	unsigned long hostid, nsid, range;
 	char type;
@@ -1760,7 +1759,7 @@ on_error:
 	return -1;
 }
 
-static int config_fstab(const char *key, const char *value,
+static int set_config_fstab(const char *key, const char *value,
 			struct lxc_conf *lxc_conf)
 {
 	if (config_value_empty(value)) {
@@ -1768,10 +1767,10 @@ static int config_fstab(const char *key, const char *value,
 		return -1;
 	}
 
-	return config_path_item(&lxc_conf->fstab, value);
+	return set_config_path_item(&lxc_conf->fstab, value);
 }
 
-static int config_mount_auto(const char *key, const char *value,
+static int set_config_mount_auto(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf)
 {
 	char *autos, *autoptr, *sptr, *token;
@@ -1837,7 +1836,7 @@ static int config_mount_auto(const char *key, const char *value,
 	return ret;
 }
 
-static int config_mount(const char *key, const char *value,
+static int set_config_mount(const char *key, const char *value,
 			struct lxc_conf *lxc_conf)
 {
 	char *mntelem;
@@ -1862,7 +1861,7 @@ static int config_mount(const char *key, const char *value,
 	return 0;
 }
 
-static int config_cap_keep(const char *key, const char *value,
+static int set_config_cap_keep(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
 	char *keepcaps, *keepptr, *sptr, *token;
@@ -1911,7 +1910,7 @@ static int config_cap_keep(const char *key, const char *value,
 	return ret;
 }
 
-static int config_cap_drop(const char *key, const char *value,
+static int set_config_cap_drop(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
 	char *dropcaps, *dropptr, *sptr, *token;
@@ -1957,16 +1956,16 @@ static int config_cap_drop(const char *key, const char *value,
 	return ret;
 }
 
-static int config_console(const char *key, const char *value,
+static int set_config_console(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
-	return config_path_item(&lxc_conf->console.path, value);
+	return set_config_path_item(&lxc_conf->console.path, value);
 }
 
-static int config_console_logfile(const char *key, const char *value,
+static int set_config_console_logfile(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
-	return config_path_item(&lxc_conf->console.log_path, value);
+	return set_config_path_item(&lxc_conf->console.log_path, value);
 }
 
 /*
@@ -2070,7 +2069,7 @@ out:
 	return ret;
 }
 
-static int config_includefile(const char *key, const char *value,
+static int set_config_includefile(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
@@ -2086,25 +2085,25 @@ static int config_includefile(const char *key, const char *value,
 	return lxc_config_read(value, lxc_conf, true);
 }
 
-static int config_rootfs(const char *key, const char *value,
+static int set_config_rootfs(const char *key, const char *value,
 			 struct lxc_conf *lxc_conf)
 {
-	return config_path_item(&lxc_conf->rootfs.path, value);
+	return set_config_path_item(&lxc_conf->rootfs.path, value);
 }
 
-static int config_rootfs_mount(const char *key, const char *value,
+static int set_config_rootfs_mount(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
-	return config_path_item(&lxc_conf->rootfs.mount, value);
+	return set_config_path_item(&lxc_conf->rootfs.mount, value);
 }
 
-static int config_rootfs_options(const char *key, const char *value,
+static int set_config_rootfs_options(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf)
 {
-	return config_string_item(&lxc_conf->rootfs.options, value);
+	return set_config_string_item(&lxc_conf->rootfs.options, value);
 }
 
-static int config_rootfs_backend(const char *key, const char *value,
+static int set_config_rootfs_backend(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf)
 {
 	if (config_value_empty(value)) {
@@ -2118,17 +2117,17 @@ static int config_rootfs_backend(const char *key, const char *value,
 		return -1;
 	}
 
-	return config_string_item(&lxc_conf->rootfs.bdev_type, value);
+	return set_config_string_item(&lxc_conf->rootfs.bdev_type, value);
 }
 
-static int config_pivotdir(const char *key, const char *value,
+static int set_config_pivotdir(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
 	WARN("lxc.pivotdir is ignored.  It will soon become an error.");
 	return 0;
 }
 
-static int config_utsname(const char *key, const char *value,
+static int set_config_utsname(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
 	struct utsname *utsname;
@@ -3367,7 +3366,7 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 	return true;
 }
 
-static int config_ephemeral(const char *key, const char *value,
+static int set_config_ephemeral(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
@@ -3387,4 +3386,3 @@ static int config_ephemeral(const char *key, const char *value,
 
 	return 0;
 }
-
