@@ -340,6 +340,7 @@ bool task_blocking_signal(pid_t pid, int signal);
 int lxc_safe_uint(const char *numstr, unsigned int *converted);
 int lxc_safe_int(const char *numstr, int *converted);
 int lxc_safe_long(const char *numstr, long int *converted);
+int lxc_safe_ulong(const char *numstr, unsigned long *converted);
 
 /* Switch to a new uid and gid. */
 int lxc_switch_uid_gid(uid_t uid, gid_t gid);

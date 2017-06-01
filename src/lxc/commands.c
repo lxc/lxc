@@ -534,14 +534,18 @@ static int lxc_cmd_get_config_item_callback(int fd, struct lxc_cmd_req *req,
 	int cilen;
 	struct lxc_cmd_rsp rsp;
 	char *cidata;
+	struct lxc_config_t *item;
 
 	memset(&rsp, 0, sizeof(rsp));
-	cilen = lxc_get_config_item(handler->conf, req->data, NULL, 0);
+	item = lxc_getconfig(req->data);
+	if (!item)
+		goto err1;
+	cilen = item->get(req->data, NULL, 0, handler->conf);
 	if (cilen <= 0)
 		goto err1;
 
 	cidata = alloca(cilen + 1);
-	if (lxc_get_config_item(handler->conf, req->data, cidata, cilen + 1) != cilen)
+	if (item->get(req->data, cidata, cilen + 1, handler->conf) != cilen)
 		goto err1;
 	cidata[cilen] = '\0';
 	rsp.data = cidata;

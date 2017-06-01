@@ -1676,17 +1676,27 @@ static void do_clear_unexp_config_line(struct lxc_conf *conf, const char *key)
 		WARN("Error clearing configuration for %s", key);
 }
 
-static bool do_lxcapi_clear_config_item(struct lxc_container *c, const char *key)
+static bool do_lxcapi_clear_config_item(struct lxc_container *c,
+					const char *key)
 {
-	int ret;
+	int ret = 1;
+	struct lxc_config_t *config;
 
 	if (!c || !c->lxc_conf)
 		return false;
+
 	if (container_mem_lock(c))
 		return false;
-	ret = lxc_clear_config_item(c->lxc_conf, key);
+
+	config = lxc_getconfig(key);
+	/* Verify that the config key exists and that it has a callback
+	 * implemented.
+	 */
+	if (config && config->clr)
+		ret = config->clr(key, c->lxc_conf);
 	if (!ret)
 		do_clear_unexp_config_line(c->lxc_conf, key);
+
 	container_mem_unlock(c);
 	return ret == 0;
 }
@@ -1985,13 +1995,22 @@ WRAP_API_3(char **, lxcapi_get_ips, const char *, const char *, int)
 
 static int do_lxcapi_get_config_item(struct lxc_container *c, const char *key, char *retv, int inlen)
 {
-	int ret;
+	int ret = -1;
+	struct lxc_config_t *config;
 
 	if (!c || !c->lxc_conf)
 		return -1;
+
 	if (container_mem_lock(c))
 		return -1;
-	ret = lxc_get_config_item(c->lxc_conf, key, retv, inlen);
+
+	config = lxc_getconfig(key);
+	/* Verify that the config key exists and that it has a callback
+	 * implemented.
+	 */
+	if (config && config->get)
+		ret = config->get(key, retv, inlen, c->lxc_conf);
+
 	container_mem_unlock(c);
 	return ret;
 }
@@ -2461,7 +2480,7 @@ static bool set_config_item_locked(struct lxc_container *c, const char *key, con
 	config = lxc_getconfig(key);
 	if (!config)
 		return false;
-	if (config->cb(key, v, c->lxc_conf) != 0)
+	if (config->set(key, v, c->lxc_conf) != 0)
 		return false;
 	return do_append_unexp_config_line(c->lxc_conf, key, v);
 }

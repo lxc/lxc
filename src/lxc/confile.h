@@ -31,10 +31,14 @@
 struct lxc_conf;
 struct lxc_list;
 
-typedef int (*config_cb)(const char *, const char *, struct lxc_conf *);
+typedef int (*config_set_cb)(const char *, const char *, struct lxc_conf *);
+typedef int (*config_get_cb)(const char *, char *, int, struct lxc_conf *);
+typedef int (*config_clr_cb)(const char *key, struct lxc_conf *c);
 struct lxc_config_t {
 	char *name;
-	config_cb cb;
+	config_set_cb set;
+	config_get_cb get;
+	config_clr_cb clr;
 };
 
 extern struct lxc_config_t *lxc_getconfig(const char *key);
@@ -51,7 +55,6 @@ extern int lxc_config_define_load(struct lxc_list *defines,
 extern signed long lxc_config_parse_arch(const char *arch);
 extern int lxc_fill_elevated_privileges(char *flaglist, int *flags);
 
-extern int lxc_get_config_item(struct lxc_conf *c, const char *key, char *retv, int inlen);
 extern int lxc_clear_config_item(struct lxc_conf *c, const char *key);
 extern void write_config(FILE *fout, struct lxc_conf *c);
 

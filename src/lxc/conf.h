@@ -453,7 +453,7 @@ extern int lxc_clear_groups(struct lxc_conf *c);
 extern int lxc_clear_environment(struct lxc_conf *c);
 extern int lxc_clear_limits(struct lxc_conf *c, const char *key);
 extern int lxc_delete_autodev(struct lxc_handler *handler);
-extern int lxc_clear_simple_config_item(struct lxc_conf *c, const char *key);
+extern void lxc_clear_includes(struct lxc_conf *conf);
 
 extern int do_rootfs_setup(struct lxc_conf *conf, const char *name,
 			   const char *lxcpath);
