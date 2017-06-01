@@ -3351,6 +3351,8 @@ int lxc_assign_network(const char *lxcpath, char *lxcname,
 		netdev = iterator->elem;
 
 		if (netdev->type == LXC_NET_VETH && !am_root) {
+			if (netdev->mtu)
+				INFO("mtu ignored due to insufficient privilege");
 			if (unpriv_assign_nic(lxcpath, lxcname, netdev, pid))
 				return -1;
 			// lxc-user-nic has moved the nic to the new ns.
