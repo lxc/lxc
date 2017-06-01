@@ -42,6 +42,7 @@
 #include "parse.h"
 #include "config.h"
 #include "confile.h"
+#include "confile_utils.h"
 #include "utils.h"
 #include "log.h"
 #include "conf.h"
@@ -1778,8 +1779,7 @@ static int set_config_idmaps(const char *key, const char *value,
 {
 	unsigned long hostid, nsid, range;
 	char type;
-	char *window, *slide;
-	char *dup = NULL;
+	int ret;
 	struct lxc_list *idmaplist = NULL;
 	struct id_map *idmap = NULL;
 
@@ -1795,109 +1795,10 @@ static int set_config_idmaps(const char *key, const char *value,
 		goto on_error;
 	memset(idmap, 0, sizeof(*idmap));
 
-	/* Duplicate string. */
-	dup = strdup(value);
-	if (!dup)
+	ret = parse_idmaps(value, &type, &nsid, &hostid, &range);
+	if (ret < 0)
 		goto on_error;
 
-	/* A prototypical idmap entry would be: "u 1000 1000000 65536" */
-
-	/* align */
-        slide = window = dup;
-        /* skip whitespace */
-        slide += strspn(slide, " \t\r");
-        if (slide != window && *slide == '\0')
-                goto on_error;
-
-	/* Validate type. */
-        if (*slide != 'u' && *slide != 'g')
-                goto on_error;
-        /* Assign type. */
-        type = *slide;
-
-	/* move beyond type */
-        slide++;
-	/* align */
-        window = slide;
-        /* Validate that only whitespace follows. */
-        slide += strspn(slide, " \t\r");
-	/* There must be whitespace. */
-        if (slide == window)
-                goto on_error;
-
-        /* Mark beginning of nsuid. */
-        window = slide;
-	/* Validate that non-whitespace follows. */
-        slide += strcspn(slide, " \t\r");
-	/* There must be non-whitespace. */
-        if (slide == window || *slide == '\0')
-                goto on_error;
-        /* Mark end of nsuid. */
-        *slide = '\0';
-
-        /* Parse nsuid. */
-        if (lxc_safe_ulong(window, &nsid) < 0)
-                goto on_error;
-
-	/* Move beyond \0. */
-        slide++;
-	/* align */
-        window = slide;
-        /* Validate that only whitespace follows. */
-        slide += strspn(slide, " \t\r");
-	/* If there was only one whitespace then we whiped it with our \0 above.
-	 * So only ensure that we're not at the end of the string.
-	 */
-	if (*slide == '\0')
-                goto on_error;
-
-        /* Mark beginning of hostid. */
-        window = slide;
-	/* Validate that non-whitespace follows. */
-        slide += strcspn(slide, " \t\r");
-	/* There must be non-whitespace. */
-        if (slide == window || *slide == '\0')
-                goto on_error;
-        /* Mark end of nsuid. */
-        *slide = '\0';
-
-        /* Parse hostid. */
-        if (lxc_safe_ulong(window, &hostid) < 0)
-                goto on_error;
-
-	/* Move beyond \0. */
-        slide++;
-	/* align */
-        window = slide;
-        /* Validate that only whitespace follows. */
-        slide += strspn(slide, " \t\r");
-	/* If there was only one whitespace then we whiped it with our \0 above.
-	 * So only ensure that we're not at the end of the string.
-	 */
-        if (*slide == '\0')
-                goto on_error;
-
-        /* Mark beginning of range. */
-        window = slide;
-	/* Validate that non-whitespace follows. */
-        slide += strcspn(slide, " \t\r");
-	/* There must be non-whitespace. */
-        if (slide == window)
-                goto on_error;
-
-	/* The range is the last valid entry we expect. So make sure that there
-	 * is not trailing garbage and if there is, error out.
-	 */
-	if (*(slide + strspn(slide, " \t\r\n")) != '\0')
-                goto on_error;
-        /* Mark end of range. */
-        *slide = '\0';
-
-        /* Parse range. */
-        if (lxc_safe_ulong(window, &range) < 0)
-                goto on_error;
-
-	/* Yay, we survived. */
 	INFO("read uid map: type %c nsid %lu hostid %lu range %lu", type, nsid, hostid, range);
 	if (type == 'u')
 		idmap->idtype = ID_TYPE_UID;
@@ -1918,7 +1819,6 @@ static int set_config_idmaps(const char *key, const char *value,
 on_error:
 	free(idmaplist);
 	free(idmap);
-	free(dup);
 
 	return -1;
 }
